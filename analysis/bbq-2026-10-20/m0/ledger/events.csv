@@ -1,0 +1,14 @@
+time,run,kind,quest,bp,source,note
+2026-10-20 12:27:16.345554,2026-10-20 12:26:55.253150,reroll,catch-fairy,10,bbq-m0.log:98,"requested; button sequence follows, no BP balance confirmation; next board changed target slug"
+2026-10-20 12:34:35.253212,2026-10-20 12:26:55.253150,reward,auto-10,20,bbq-m0.log:3837,inferred from disappearance; completion occurred since 2026-10-20 12:27:26.595103
+2026-10-20 12:34:58.856216,2026-10-20 12:26:55.253150,reroll,tera-self-defeat,10,bbq-m0.log:3907,"requested; button sequence follows, no BP balance confirmation; next board changed target slug"
+2026-10-20 12:36:40.658831,2026-10-20 12:26:55.253150,reward,photo-coastal,30,bbq-m0.log:4121,inferred from disappearance; completion occurred since 2026-10-20 12:35:09.116446
+2026-10-20 12:40:49.720920,2026-10-20 12:26:55.253150,reward,auto-10,20,bbq-m0.log:4662,inferred from disappearance; completion occurred since 2026-10-20 12:37:02.645528
+2026-10-20 12:47:29.674247,2026-10-20 12:26:55.253150,reward,make-tm,20,bbq-m0.log:5462,inferred from disappearance; completion occurred since 2026-10-20 12:46:15.073868
+2026-10-20 13:02:20.357160,2026-10-20 12:26:55.253150,reward,photo-swim,30,bbq-m0.log:7213,inferred from disappearance; completion occurred since 2026-10-20 13:00:57.900285
+2026-10-20 13:08:02.400931,2026-10-20 12:26:55.253150,reward,catch-any,20,bbq-m0.log:7858,inferred from disappearance; completion occurred since 2026-10-20 13:04:51.641501
+2026-10-20 13:12:29.449200,2026-10-20 12:26:55.253150,reward,auto-10,20,bbq-m0.log:8416,inferred from disappearance; completion occurred since 2026-10-20 13:08:29.163088
+2026-10-20 13:13:54.861875,2026-10-20 12:26:55.253150,reward,photo-swim,30,bbq-m0.log:8597,inferred from disappearance; completion occurred since 2026-10-20 13:12:31.535452
+2026-10-20 13:14:16.927052,2026-10-20 12:26:55.253150,reroll,tera-self-defeat,10,bbq-m0.log:8664,"requested; button sequence follows, no BP balance confirmation; next board changed target slug"
+2026-10-20 13:16:03.260931,2026-10-20 12:26:55.253150,reward,travel-500,20,bbq-m0.log:8842,inferred from disappearance; completion occurred since 2026-10-20 13:14:26.158486
+2026-10-20 13:20:01.050312,2026-10-20 12:26:55.253150,reward,sour-sandwich,150,bbq-m0.log:9809,inferred from disappearance; completion occurred since 2026-10-20 13:16:25.733036
