@@ -177,8 +177,9 @@ int read_BP(const ProgramInfo& info, VideoStream& stream, ProControllerContext& 
     context.wait_for_all_requests();
     
     VideoSnapshot screen = stream.video().snapshot();
+    // Stop before the BP suffix: its left edge can be misread as an extra 1.
     ImageRGB32 BP_value = to_blackwhite_rgb32_range(
-        extract_box_reference(screen, ImageFloatBox(0.866, 0.019, 0.091, 0.041)),
+        extract_box_reference(screen, ImageFloatBox(0.866, 0.019, 0.088, 0.041)),
         true,
         combine_rgb(198, 198, 198), combine_rgb(255, 255, 255)
     );
@@ -233,8 +234,9 @@ std::vector<BBQuests> read_quests(
     }
 
     // Reuse the board snapshot: no extra menu navigation or capture.
+    // Stop before the BP suffix: its left edge can be misread as an extra 1.
     ImageRGB32 BP_value = to_blackwhite_rgb32_range(
-        extract_box_reference(screen, ImageFloatBox(0.866, 0.019, 0.091, 0.041)),
+        extract_box_reference(screen, ImageFloatBox(0.866, 0.019, 0.088, 0.041)),
         true, combine_rgb(198, 198, 198), combine_rgb(255, 255, 255)
     );
     int bp = result == 0 ? OCR::read_number(stream.logger(), BP_value) : -1;
