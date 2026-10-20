@@ -158,6 +158,22 @@ void log_bbq_snapshot(VideoStream& stream, const std::string& label){
     stream.log("BBQ event=snapshot saved=" + std::to_string(saved) + " path=" + path);
 }
 
+int read_BP_from_image(Logger& logger, const ImageViewRGB32& screen){
+    // Normalized coordinates for the upper-right balance on a 16:9 quest panel.
+    // Keep the right edge at 0.954: the old 0.957 edge included the left stroke
+    // of the B in "BP", making 6750 read as 67501. See the full-frame reference
+    // UnitTestResources/PokemonSV/BlueberryPoints/6750.png and its README.
+    const ImageFloatBox BP_NUMBER_BOX(0.866, 0.019, 0.088, 0.041);
+    // Isolate the near-white digits from the blue panel background. These are
+    // the existing quest-panel text thresholds, inclusive on all RGB channels.
+    const uint32_t BP_TEXT_MIN = combine_rgb(198, 198, 198);
+    const uint32_t BP_TEXT_MAX = combine_rgb(255, 255, 255);
+    ImageRGB32 number = to_blackwhite_rgb32_range(
+        extract_box_reference(screen, BP_NUMBER_BOX), true, BP_TEXT_MIN, BP_TEXT_MAX
+    );
+    return OCR::read_number(logger, number);
+}
+
 int read_BP(const ProgramInfo& info, VideoStream& stream, ProControllerContext& context){
     WhiteButtonWatcher right_panel(COLOR_BLUE, WhiteButton::ButtonB, {0.484, 0.117, 0.022, 0.037});
     int result = run_until<ProControllerContext>(
@@ -177,18 +193,12 @@ int read_BP(const ProgramInfo& info, VideoStream& stream, ProControllerContext& 
     context.wait_for_all_requests();
     
     VideoSnapshot screen = stream.video().snapshot();
-    // Stop before the BP suffix: its left edge can be misread as an extra 1.
-    ImageRGB32 BP_value = to_blackwhite_rgb32_range(
-        extract_box_reference(screen, ImageFloatBox(0.866, 0.019, 0.088, 0.041)),
-        true,
-        combine_rgb(198, 198, 198), combine_rgb(255, 255, 255)
-    );
 
     //Close panel
     pbf_mash_button(context, BUTTON_B, 800ms);
     context.wait_for_all_requests();
 
-    return OCR::read_number(stream.logger(), BP_value);
+    return read_BP_from_image(stream.logger(), screen);
 }
 
 std::vector<BBQuests> read_quests(
@@ -234,12 +244,7 @@ std::vector<BBQuests> read_quests(
     }
 
     // Reuse the board snapshot: no extra menu navigation or capture.
-    // Stop before the BP suffix: its left edge can be misread as an extra 1.
-    ImageRGB32 BP_value = to_blackwhite_rgb32_range(
-        extract_box_reference(screen, ImageFloatBox(0.866, 0.019, 0.088, 0.041)),
-        true, combine_rgb(198, 198, 198), combine_rgb(255, 255, 255)
-    );
-    int bp = result == 0 ? OCR::read_number(stream.logger(), BP_value) : -1;
+    int bp = result == 0 ? read_BP_from_image(stream.logger(), screen) : -1;
     std::string board;
     for (BBQuests quest : quest_list){
         if (!board.empty()) board += ",";

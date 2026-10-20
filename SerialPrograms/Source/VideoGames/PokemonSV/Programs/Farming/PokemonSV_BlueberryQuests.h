@@ -56,6 +56,9 @@ const std::set<BBQuests> not_possible_quests = {
 };
 
 
+// Read the numeric balance from a captured 16:9 quest panel; -1 on OCR failure.
+int read_BP_from_image(Logger& logger, const ImageViewRGB32& screen);
+
 // Open the BBQ panel and read the current amount of BP
 int read_BP(const ProgramInfo& info, VideoStream& stream, ProControllerContext& context);
 
