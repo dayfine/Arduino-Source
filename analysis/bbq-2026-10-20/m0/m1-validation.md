@@ -36,3 +36,24 @@ the first board reads 6750, then one completion or reroll yields the expected
 balance change. Stop early if BP is still wrong. The farmer's spending, retry
 policy and navigation remain unchanged. The preflight screenshot is a starting
 checkpoint only if no manual play occurs before the run.
+
+At 14:49:18 PDT the rebuilt app's video and audio were working. Pre-run screenshot
+[next-run-starting-board.png](next-run-starting-board.png) confirms **6750 BP** and
+catch-any / sneak-up / auto-10, each at zero progress. The quest panel was closed
+after capture to restore the overworld. The app is idle and ready for a short
+live check of revision 249ba6f28's corrected crop.
+
+The next run started at **14:53:30.588997 PDT**. Live PaddleOCR board records at
+14:53:56.158868 and 14:54:08.585491 both read **6750**, matching the preflight
+screenshot. This validates the corrected crop on the initial balance with the
+actual application backend. A subsequent balance change remains to be checked.
+At 14:56:36.165843, after the first catch attempt failed, the board still read
+6750. The attempt took 147667 ms including verification; attempt two then began.
+At roughly five minutes elapsed the route was still recovering without a logged
+completion. Initial-balance OCR and failure evidence are validated; observing a
+changed balance remains open and does not justify an extended failing catch run.
+
+Final STOPPED: **14:59:14.303107 PDT**, elapsed **5m44s**. Catch-any exhausted
+two attempts without completion; the final board still read **6750 BP**. No
+reward or reroll was logged. The crop fix passed repeated live reads; balance
+change reconciliation remains open for the next trial that makes progress.
