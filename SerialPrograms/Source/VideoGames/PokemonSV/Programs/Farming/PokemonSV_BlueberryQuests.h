@@ -19,6 +19,9 @@ namespace NintendoSwitch{
 namespace PokemonSV{
 
 BBQuests BBQuests_string_to_enum(const std::string& token);
+std::string BBQuests_enum_to_string(BBQuests quest);
+// Save local diagnostic evidence under DEBUG_PATH()/BBQ, without telemetry.
+void log_bbq_snapshot(VideoStream& stream, const std::string& label);
 
 enum class CameraAngle{
     none,

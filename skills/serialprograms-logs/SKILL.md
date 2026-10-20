@@ -31,3 +31,7 @@ For BP accounting, `scripts/bbq_ledger.py` accepts ordered logs, a quest reward 
 - Measure attempt time from quest start through verification/recovery. Preserve stopped or rotated attempts as censored, rather than marking them failures. Net BP/hour requires actual reward and reroll accounting, not just quest completion counts.
 
 Update this skill with verified new formats and useful filters; separate source-confirmed behavior from hypotheses based on log wording.
+
+## Local M1 diagnostics
+
+Filter `BBQ ` to see exact quest slugs, per-call attempt/limit, `event=route_return`, `event=result` route/verification durations, `event=retry_exhausted recovery=skip_current_batch`, and `event=board` with `panel_detected`, raw OCR BP (`unknown` on failure), and ordered quest slugs. An attempt number restarting at 1 in a later batch is still expected until M4 lands. `absent_from_board` is the existing completion heuristic, not an independent reward confirmation. Screenshots are saved locally under the runtime Debug/BBQ directory with their full paths logged; no telemetry is used by this helper. Catch battle-entry timeout images precede recovery; verification-failure images show the later recovered state. BP uses the existing quest-panel crop and needs live validation before balance reconciliation.

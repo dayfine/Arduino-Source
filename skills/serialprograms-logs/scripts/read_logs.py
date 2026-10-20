@@ -5,7 +5,7 @@ from pathlib import Path
 import re
 
 HEADER = re.compile(r"^(\d{4}-\d\d-\d\d \d\d:\d\d:\d\d\.\d+) - \[([^]]+)\]: (.*)")
-EVENT = re.compile(r"Starting Program:|Program State:|Received Stop Request|Quest:|Processing quests\.|Quest not possible|Current quest exists on list|Quest completed successfully\.|Quest did not complete successfully\.|Failed to complete a quest|Did not enter battle|Unable to locate the overworld radar ball|Saving and resetting\.|Exception|UserSetupError|Program stopped with an exception")
+EVENT = re.compile(r"BBQ |Photo:|Catch:|Starting Program:|Program State:|Received Stop Request|Quest:|Processing quests\.|Quest not possible|Current quest exists on list|Quest completed successfully\.|Quest did not complete successfully\.|Failed to complete a quest|Did not enter battle|Unable to locate the overworld radar ball|Saving and resetting\.|Exception|UserSetupError|Program stopped with an exception")
 
 
 def records(path):

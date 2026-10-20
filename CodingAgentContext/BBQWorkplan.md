@@ -13,15 +13,16 @@ capture, menu, timing and spawn behavior. Compilation alone does not validate a
 route. If a milestone regresses another quest, resolve or revert it before
 moving on. Do not bundle the later experiments into the initial stall fix.
 
-Statuses below describe preparation only. Implementation milestones are pending;
-this document does not imply that any gameplay change has landed.
+M0 is complete; see the [baseline findings](../analysis/bbq-2026-10-20/m0/findings.md).
+M1 diagnostics are implemented locally; their Switch acceptance check remains open.
+Later behavior milestones remain pending.
 
 ## Stage 1 — Make blocked boards recover
 
 | ID | Small change | Done when / validation |
 | --- | --- | --- |
-| M0 | Establish development baseline. | Local build **done**; profile **prepared**. Startup and a short equivalent Switch 1 baseline remain pending until the installed instance can release the devices. Preserve the current installed setup. |
-| M1 | Add task-level diagnostic logging and BP snapshots. | One trial records requested slug, attempt, phase timing, board, outcome, BP and recovery. Failure screenshots identify the route/phase. Existing controller/inference noise can be filtered. Behavior and route timings remain unchanged. |
+| M0 | Establish development baseline. | **Complete.** Local Switch 1 baseline: 53m47s, 10 completions, inferred 330 net BP (~368 BP/h). Default profile was used after reopening. Camera Support was corrected before the run; see M0 findings for comparability limits. |
+| M1 | Add task-level diagnostic logging and BP snapshots. | **Implemented; Switch validation pending.** Logs exact slug, numbered attempts, route/verification duration, board/BP, outcome and retry-exhaustion action. Catch entry-timeout and verification-failure images save locally. Validate BP against visible balances, screenshots and one result before proceeding. Navigation, retry and spending policies are unchanged; OCR/image I/O adds diagnostic overhead. Landing-phase images and broader route phase detail remain follow-ups. |
 | M2 | Fix save/reset milestone handling. | A newly reached completion milestone saves once; repeated no-progress rounds and the initial zero count do not trigger repeated saves. Verify the state transition with a focused check. |
 | M3 | Guard battle handling on confirmed entry. | An entry timeout cannot fall through into Tera/attack commands. A normal encounter still follows its existing battle/shiny-handling path. Exercise both paths. |
 | M4 | Persist the outstanding quest's retry budget across rounds. | With one retry configured, the same outstanding quest gets two attempts total. Rereading the board does not reset the budget; confirmed completion/replacement does. Existing skip fallback cannot reattempt the exhausted quest next round. |

@@ -16,8 +16,9 @@ reward-source disagreements and accounting limits are documented in the
 [analysis report](../analysis/bbq-2026-10-20/report.md).
 
 Build preparation is complete: the local arm64 app compiles and a `bbq-dev`
-profile is prepared. Startup/gameplay validation remains pending while the
-installed instance stays running. No gameplay fixes have been implemented.
+profile is prepared. The [M0 local baseline](../analysis/bbq-2026-10-20/m0/findings.md) completed
+10 quests in 53m47s (~368 inferred net BP/hour). M1 diagnostic logging is now
+implemented locally, with Switch validation pending; recovery behavior is unchanged.
 
 Execution follows the [incremental workplan](BBQWorkplan.md): one behavior change
 per milestone, validated before proceeding. The four stages below define scope

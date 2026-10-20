@@ -45,6 +45,9 @@
 #include "PokemonSV_BlueberryQuests.h"
 
 #include<vector>
+#include <chrono>
+#include "Common/Cpp/PrettyPrint.h"
+#include "CommonFramework/GlobalAutoPaths.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -140,6 +143,21 @@ BBQuests BBQuests_string_to_enum(const std::string& token){
     return iter->second;
 }
 
+std::string BBQuests_enum_to_string(BBQuests quest){
+    for (const auto& item : BBQuests_TOKEN_TO_ENUM()){
+        if (item.second == quest){
+            return item.first.empty() ? "unknown" : item.first;
+        }
+    }
+    return "unknown";
+}
+
+void log_bbq_snapshot(VideoStream& stream, const std::string& label){
+    const std::string path = DEBUG_PATH() + "BBQ/" + now_to_filestring() + "-" + label + ".png";
+    const bool saved = stream.video().snapshot()->save(path);
+    stream.log("BBQ event=snapshot saved=" + std::to_string(saved) + " path=" + path);
+}
+
 int read_BP(const ProgramInfo& info, VideoStream& stream, ProControllerContext& context){
     WhiteButtonWatcher right_panel(COLOR_BLUE, WhiteButton::ButtonB, {0.484, 0.117, 0.022, 0.037});
     int result = run_until<ProControllerContext>(
@@ -213,6 +231,21 @@ std::vector<BBQuests> read_quests(
     if (fourth_quest != ""){
         quest_list.push_back(BBQuests_string_to_enum(fourth_quest));
     }
+
+    // Reuse the board snapshot: no extra menu navigation or capture.
+    ImageRGB32 BP_value = to_blackwhite_rgb32_range(
+        extract_box_reference(screen, ImageFloatBox(0.866, 0.019, 0.091, 0.041)),
+        true, combine_rgb(198, 198, 198), combine_rgb(255, 255, 255)
+    );
+    int bp = result == 0 ? OCR::read_number(stream.logger(), BP_value) : -1;
+    std::string board;
+    for (BBQuests quest : quest_list){
+        if (!board.empty()) board += ",";
+        board += BBQuests_enum_to_string(quest);
+    }
+    stream.log("BBQ event=board panel_detected=" + std::to_string(result == 0)
+        + " bp=" + (bp < 0 ? std::string("unknown") : std::to_string(bp))
+        + " quests=" + board);
 
     //Close quest list
     pbf_mash_button(context, BUTTON_B, 800ms);
@@ -412,7 +445,12 @@ bool process_and_do_quest(
     bool quest_completed = false;
     int quest_attempts = 0;
 
+    const std::string slug = BBQuests_enum_to_string(current_quest);
     while (!quest_completed){
+        const auto attempt_start = std::chrono::steady_clock::now();
+        const std::string attempt = "BBQ quest=" + slug + " attempt=" + std::to_string(quest_attempts + 1)
+            + " limit=" + std::to_string((unsigned)BBQ_OPTIONS.NUM_RETRIES + 1);
+        console.log(attempt + " event=start");
         switch (current_quest){
         case BBQuests::make_tm:
             quest_make_tm(env.program_info(), console, context);
@@ -511,10 +549,14 @@ bool process_and_do_quest(
             break;
         }
 
+        const auto route_end = std::chrono::steady_clock::now();
+        console.log(attempt + " event=route_return elapsed_ms=" + std::to_string(
+            std::chrono::duration_cast<std::chrono::milliseconds>(route_end - attempt_start).count()));
         //Validate quest was completed by checking list
         std::vector<BBQuests> quest_list = read_quests(env.program_info(), console, context, BBQ_OPTIONS);
         if (std::find(quest_list.begin(), quest_list.end(), current_quest) != quest_list.end()){
             console.log("Current quest exists on list. Quest did not complete.");
+            log_bbq_snapshot(console, slug + "-verification-failed");
             quest_attempts++;
         }else{
             console.log("Current quest was not found. Quest completed!");
@@ -526,7 +568,13 @@ bool process_and_do_quest(
             quest_completed = true;
         }
 
+        console.log(attempt + " event=result outcome=" + (quest_completed ? "absent_from_board" : "still_on_board")
+            + " verification_ms=" + std::to_string(std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::steady_clock::now() - route_end).count())
+            + " total_ms=" + std::to_string(std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::steady_clock::now() - attempt_start).count()));
         if (quest_attempts > BBQ_OPTIONS.NUM_RETRIES){
+            console.log("BBQ quest=" + slug + " event=retry_exhausted recovery=skip_current_batch");
             console.log("Failed to complete a quest multiple times. Skipping it for now.", COLOR_RED);
             break;
         }
