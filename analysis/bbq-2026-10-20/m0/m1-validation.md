@@ -57,3 +57,29 @@ Final STOPPED: **14:59:14.303107 PDT**, elapsed **5m44s**. Catch-any exhausted
 two attempts without completion; the final board still read **6750 BP**. No
 reward or reroll was logged. The crop fix passed repeated live reads; balance
 change reconciliation remains open for the next trial that makes progress.
+
+## Controlled balance-change check for PR review
+
+The farmer stayed stopped. Native Screenshot-button frames were captured before
+and after one manual blue reroll: **6750 BP / catch-any** became **6740 BP /
+photo-swim**; sneak-up and auto-10 stayed in place. The menu explicitly displayed
+the 10-BP price before confirmation. Frames were saved at 16:04:33 and 16:06:10
+PDT and are the unmodified `UnitTestResources/PokemonSV/BlueberryPoints` fixtures.
+This reconciles the observed 10-BP decrease and actual quest replacement. The
+shared image-reader regression cases use these exact frames at 1080p and 720p.
+
+
+## M1 acceptance result
+
+M1 is complete. Research revision `8f9b9e3eb` adds the shared production reader
+and registered regression cases; the same change is `e5e44d0e3` on the focused
+PR branch. The native arm64 macOS build passed. All four PaddleOCR cases passed
+for the corrected crop, and the separately built old-crop control failed all
+four with `67501` / `67401`. Production source retains the corrected crop.
+
+Together with the live quest/attempt logs and saved failure evidence above, the
+controlled reroll supplies the missing balance-change reconciliation. This
+accepts diagnostic accuracy for the observed setup, not route reliability or
+improved throughput. Coverage remains two four-digit balances on the
+Traditional Chinese Switch 1 UI. M2 save/reset handling is the next behavior
+milestone; retry and reroll behavior have not changed.
