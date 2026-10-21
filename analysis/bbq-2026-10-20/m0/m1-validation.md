@@ -83,3 +83,24 @@ accepts diagnostic accuracy for the observed setup, not route reliability or
 improved throughput. Coverage remains two four-digit balances on the
 Traditional Chinese Switch 1 UI. M2 save/reset handling is the next behavior
 milestone; retry and reroll behavior have not changed.
+
+
+## PR #1625 review follow-up
+
+PR revision `23f3f9d9b` (research copy `bfdead026`) addresses the author's review
+comments. It deduplicates the catch slug lookup, uses structured bindings and a
+shared constexpr unknown marker, and extracts internal board/snapshot-result/
+attempt helpers. Multi-field logs use streams; the existing `duration_to_string`
+provides readable durations alongside retained `_ms` fields. Only the slug and
+snapshot helpers remain in the quest header because catch diagnostics use them
+from another translation unit. Test registration uses the dedicated tests header.
+
+The native arm64 application build passes. Five `PokemonSV::BBQDiagnosticLogs`
+cases pass with a recording logger and fixed monotonic timestamps, covering
+ordered/unknown/empty boards, successful attempts, failed attempts and retry
+exhaustion, snapshot-write outcomes, and long/zero durations. All four existing
+production BP reader cases also pass with PaddleOCR. These are emitted-message
+and timing tests, not a simulation of physical screenshot writes or route
+execution. The gameplay sequences, retry limits and BP crop are unchanged.
+Temporary local build/test evidence: `/private/tmp/bbq-pr1625-review-build.log`
+and `/private/tmp/bbq-pr1625-review-tests.log`.
