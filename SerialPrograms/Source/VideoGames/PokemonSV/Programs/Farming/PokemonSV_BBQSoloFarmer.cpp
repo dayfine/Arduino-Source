@@ -5,6 +5,8 @@
  */
 
 #include "Common/Cpp/Exceptions.h"
+#include "CommonFramework/Exceptions/ProgramFinishedException.h"
+#include "PokemonSV_BBQQuestRetries.h"
 #include "CommonFramework/Notifications/ProgramNotifications.h"
 #include "CommonFramework/ProgramStats/StatsTracking.h"
 #include "CommonTools/StartupChecks/StartProgramChecks.h"
@@ -96,6 +98,7 @@ void BBQSoloFarmer::program(SingleSwitchProgramEnvironment& env, ProControllerCo
     std::vector<BBQuests> quests_to_do; //do-able quests
     uint8_t eggs_hatched = 0; //Track eggs
     uint64_t num_completed_quests = 0;
+    BBQQuestRetries retry_state;
 
     //Test a specific quest
     /*
@@ -115,7 +118,18 @@ void BBQSoloFarmer::program(SingleSwitchProgramEnvironment& env, ProControllerCo
         //Get and reroll quests until we can at least one
         while (quests_to_do.size() < 1){
             quest_list = read_quests(env.program_info(), env.console, context, BBQ_OPTIONS);
+            retry_state.observe_board(quest_list, quest_list.size() == 4 &&
+                std::find(quest_list.begin(), quest_list.end(), BBQuests::UnableToDetect) == quest_list.end());
             quests_to_do = process_quest_list(env.program_info(), env.console, context, BBQ_OPTIONS, quest_list, eggs_hatched);
+
+            const bool had_runnable_quests = !quests_to_do.empty();
+            std::erase_if(quests_to_do, [&](BBQuests quest){
+                return !retry_state.can_attempt(quest, BBQ_OPTIONS.NUM_RETRIES);
+            });
+            if (had_runnable_quests && quests_to_do.empty()){
+                env.log("All runnable outstanding quests exhausted their retry budgets. Stopping without rerolling.", COLOR_RED);
+                throw ProgramFinishedException();
+            }
 
             //Clear out the regular quest list.
             quest_list.clear();
@@ -126,7 +140,7 @@ void BBQSoloFarmer::program(SingleSwitchProgramEnvironment& env, ProControllerCo
             quest_list = read_quests(env.program_info(), env.console, context, BBQ_OPTIONS);
             if (std::find(quest_list.begin(), quest_list.end(), current_quest) != quest_list.end()){
                 env.log("Current quest exists on list. Doing quest.");
-                bool questSuccess = process_and_do_quest(env, env.console, context, BBQ_OPTIONS, current_quest, eggs_hatched);
+                bool questSuccess = process_and_do_quest(env, env.console, context, BBQ_OPTIONS, current_quest, eggs_hatched, &retry_state);
                 if (questSuccess){
                     env.log("Quest completed successfully.");
                     stats.questsCompleted++;
@@ -138,6 +152,7 @@ void BBQSoloFarmer::program(SingleSwitchProgramEnvironment& env, ProControllerCo
             }else{
                 //Note: This doesn't account for case such as "sneak up" being added and then completed alongside the next quest
                 env.log("Current quest does not exist on list. Quest completed at some point.");
+                retry_state.completed(current_quest);
                 stats.questsCompleted++;
                 env.update_stats();
                 num_completed_quests++;

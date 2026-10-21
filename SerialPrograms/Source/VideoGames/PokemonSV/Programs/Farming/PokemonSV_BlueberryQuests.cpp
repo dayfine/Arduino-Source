@@ -43,6 +43,7 @@
 #include "VideoGames/PokemonSV/Programs/Farming/PokemonSV_BlueberryCatchPhoto.h"
 #include "VideoGames/PokemonSV/Programs/PokemonSV_Terarium.h"
 #include "PokemonSV_BlueberryQuests.h"
+#include "PokemonSV_BBQQuestRetries.h"
 
 #include<vector>
 
@@ -407,12 +408,19 @@ bool process_and_do_quest(
     ConsoleHandle& console, ProControllerContext& context,
     BBQOption& BBQ_OPTIONS,
     BBQuests current_quest,
-    uint8_t& eggs_hatched
+    uint8_t& eggs_hatched,
+    BBQQuestRetries* retry_state
 ){
     bool quest_completed = false;
-    int quest_attempts = 0;
+    BBQQuestRetries local_retries;
+    BBQQuestRetries& retries = retry_state ? *retry_state : local_retries;
 
     while (!quest_completed){
+        if (!retries.can_attempt(current_quest, BBQ_OPTIONS.NUM_RETRIES)){
+            console.log("Outstanding quest exhausted its retry budget. Skipping it.", COLOR_RED);
+            break;
+        }
+        retries.record_attempt(current_quest);
         switch (current_quest){
         case BBQuests::make_tm:
             quest_make_tm(env.program_info(), console, context);
@@ -515,7 +523,7 @@ bool process_and_do_quest(
         std::vector<BBQuests> quest_list = read_quests(env.program_info(), console, context, BBQ_OPTIONS);
         if (std::find(quest_list.begin(), quest_list.end(), current_quest) != quest_list.end()){
             console.log("Current quest exists on list. Quest did not complete.");
-            quest_attempts++;
+
         }else{
             console.log("Current quest was not found. Quest completed!");
             if (current_quest == BBQuests::hatch_egg){
@@ -524,11 +532,7 @@ bool process_and_do_quest(
             }
 
             quest_completed = true;
-        }
-
-        if (quest_attempts > BBQ_OPTIONS.NUM_RETRIES){
-            console.log("Failed to complete a quest multiple times. Skipping it for now.", COLOR_RED);
-            break;
+            retries.completed(current_quest);
         }
     }
     return quest_completed;

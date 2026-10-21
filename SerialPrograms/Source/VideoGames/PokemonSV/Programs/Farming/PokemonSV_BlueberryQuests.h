@@ -75,13 +75,16 @@ std::vector<BBQuests> process_quest_list(
     uint8_t& eggs_hatched
 );
 
+class BBQQuestRetries;
+
 //Take the current quest and calls the function to do it, then checks the quest was successful. Returns true if so.
 bool process_and_do_quest(
     ProgramEnvironment& env,
     ConsoleHandle& console, ProControllerContext& context,
     BBQOption& BBQ_OPTIONS,
     BBQuests current_quest,
-    uint8_t& eggs_hatched
+    uint8_t& eggs_hatched,
+    BBQQuestRetries* retry_state = nullptr
 );
 
 //Iterate through TMs until a craftable one is found. Make the TM and return to position.
