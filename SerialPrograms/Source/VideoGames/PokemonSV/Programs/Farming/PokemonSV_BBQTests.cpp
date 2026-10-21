@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <set>
+#include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "PokemonSV_BlueberryQuests.h"
 #include "PokemonSV_BBQSoloFarmer.h"
@@ -197,6 +198,7 @@ struct BBQRoundsScenario{
     bool out_of_bp = false;
     size_t max_reads = 1000;
     std::vector<BBQuests> new_quests = {};
+    std::vector<std::pair<BBQuests, BBQAction>> exclusions = {};
     uint64_t expected_completed = 0;
     std::string expected;
 };
@@ -216,6 +218,12 @@ public:
             options.NUM_EGGS.set(0);
             options.OUT_OF_EGGS.set(BBQOption::OOEggs::Stop);
         }
+        for (const auto& [quest, action] : m_scenario.exclusions){
+            auto row = std::make_unique<BBQuestTableRow>(options.QUEST_EXCLUSIONS);
+            row->quest.set(quest);
+            row->action.set(action);
+            options.QUEST_EXCLUSIONS.append_row(std::move(row));
+        }
 
         SimulatedBBQGameActions game;
         game.panel = m_scenario.panel;
@@ -231,6 +239,8 @@ public:
         NullLogger logger;
         try{
             run_bbq_rounds(logger, options, game);
+        }catch (UserSetupError&){
+            game.events.push_back("error");
         }catch (std::runtime_error&){
             game.events.push_back("stuck");
         }
@@ -250,8 +260,25 @@ private:
     const BBQRoundsScenario m_scenario;
 };
 
+// Every blue quest the program can do, each with the given action.
+std::vector<std::pair<BBQuests, BBQAction>> every_doable_blue_quest(BBQAction action){
+    std::vector<std::pair<BBQuests, BBQAction>> ret;
+    for (BBQuests quest : blue_quests){
+        if (!not_possible_quests.contains(quest)){
+            ret.emplace_back(quest, action);
+        }
+    }
+    return ret;
+}
+
 static void add_tests_BBQFarmerRounds(UnitTestDatabase& database){
     const std::string round_of_3 = "read process read do completed read do completed read do completed";
+    std::string read_30_times;
+    for (int c = 0; c < 30; c++){
+        read_30_times += "read process ";
+    }
+    std::vector<std::pair<BBQuests, BBQAction>> all_skipped_but_make_tm = every_doable_blue_quest(BBQAction::skip);
+    all_skipped_but_make_tm.emplace_back(BBQuests::make_tm, BBQAction::run);
     const BBQRoundsScenario scenarios[] = {
         {
             // The goal (4) is reached in the middle of round 2. The loop only
@@ -327,15 +354,13 @@ static void add_tests_BBQFarmerRounds(UnitTestDatabase& database){
             .expected = "read process read do end read process",
         },
         {
-            // Today: rerolls change nothing (out of BP), so the farmer reads
-            // and rerolls the panel forever.
-            .name = "today: rerolls that do not help repeat forever",
+            // Rerolls change nothing, so the panel never becomes doable.
+            .name = "gives up when rerolling does not help",
             .num_quests = 3,
             .panel = {BBQuests::pickup_10, BBQuests::catch_flying, BBQuests::UnableToDetect},
             .out_of_bp = true,
-            .max_reads = 4,
             .expected_completed = 0,
-            .expected = "read process read process read process read process read stuck",
+            .expected = read_30_times + "error",
         },
         {
             // Today: the save check only looks for exact multiples, so going
@@ -386,6 +411,23 @@ static void add_tests_BBQFarmerRounds(UnitTestDatabase& database){
                 "read process read do read do completed end "
                 "read process read do completed read do completed end "
                 "read process read do completed end",
+        },
+        {
+            // Rerolling could never produce a doable panel, so the run
+            // fails before reading the panel.
+            .name = "fails at start when every blue quest is excluded",
+            .num_quests = 3,
+            .exclusions = every_doable_blue_quest(BBQAction::reroll),
+            .expected_completed = 0,
+            .expected = "error",
+        },
+        {
+            // A run row keeps the quest doable even when another row skips it.
+            .name = "a quest with a run row is not excluded",
+            .num_quests = 3,
+            .exclusions = all_skipped_but_make_tm,
+            .expected_completed = 3,
+            .expected = round_of_3 + " end",
         },
     };
     for (const BBQRoundsScenario& scenario : scenarios){
