@@ -1,0 +1,42 @@
+2026-10-21 11:51:10.602977 - [Console 0]: Reading quests.
+2026-10-21 11:51:11.917456 - [Console 0]: String Match Result: "用寶可夢洗澡澡幫寶可夢洗澡吧！" -> "用寶可夢洗澡澡幫寶可夢洗澡吧" -> (用寶可夢洗澡澡幫寶可夢洗澡吧): (wash-pokemon) (log10p = -28)
+2026-10-21 11:51:13.309783 - [Console 0]: String Match Result: "在草原區拍攝野生的寶可夢吧！" -> "在草原區拍攝野生的寶可夢吧" -> (在草原區拍攝野生的寶可夢吧): (photo-savanna) (log10p = -26)
+2026-10-21 11:51:14.998638 - [Console 0]: String Match Result: "移動500公尺吧！" -> "移動500公尺吧" -> (移動500公尺吧): (travel-500) (log10p = -16)
+2026-10-21 11:51:16.322851 - [Console 0]: String Match Result: "使用太晶化打倒野生的寶可夢吧！" -> "使用太晶化打倒野生的寶可夢吧" -> (使用太晶化打倒野生的寶可夢吧): (tera-self-defeat) (log10p = -28)
+2026-10-21 11:51:16.322918 - [Console 0]: issue_mash_button(): B, duration = 800ms
+2026-10-21 11:51:17.156932 - [Console 0]: Current quest was not found. Quest completed!
+2026-10-21 11:51:17.157073 - [Program]: Current Stats: Quests Completed: 6 - Saves: 0
+2026-10-21 11:51:27.989263 - [Program]: Current Stats: Quests Completed: 6 - Saves: 0
+2026-10-21 11:51:29.191705 - [Console 0]: Reading quests.
+2026-10-21 11:51:30.263030 - [Console 0]: String Match Result: "用寶可夢洗澡澡幫寶可夢洗澡吧！" -> "用寶可夢洗澡澡幫寶可夢洗澡吧" -> (用寶可夢洗澡澡幫寶可夢洗澡吧): (wash-pokemon) (log10p = -28)
+2026-10-21 11:51:31.338338 - [Console 0]: String Match Result: "在草原區拍攝野生的寶可夢吧！" -> "在草原區拍攝野生的寶可夢吧" -> (在草原區拍攝野生的寶可夢吧): (photo-savanna) (log10p = -26)
+2026-10-21 11:51:32.086084 - [Console 0]: String Match Result: "移動500公尺吧！" -> "移動500公尺吧" -> (移動500公尺吧): (travel-500) (log10p = -16)
+2026-10-21 11:51:33.187788 - [Console 0]: String Match Result: "使用太晶化打倒野生的寶可夢吧！" -> "使用太晶化打倒野生的寶可夢吧" -> (使用太晶化打倒野生的寶可夢吧): (tera-self-defeat) (log10p = -28)
+2026-10-21 11:51:33.187851 - [Console 0]: issue_mash_button(): B, duration = 800ms
+2026-10-21 11:51:35.277034 - [Console 0]: Reading quests.
+2026-10-21 11:51:36.412745 - [Console 0]: String Match Result: "用寶可夢洗澡澡幫寶可夢洗澡吧！" -> "用寶可夢洗澡澡幫寶可夢洗澡吧" -> (用寶可夢洗澡澡幫寶可夢洗澡吧): (wash-pokemon) (log10p = -28)
+2026-10-21 11:51:37.347725 - [Console 0]: String Match Result: "在草原區拍攝野生的寶可夢吧！" -> "在草原區拍攝野生的寶可夢吧" -> (在草原區拍攝野生的寶可夢吧): (photo-savanna) (log10p = -26)
+2026-10-21 11:51:38.185986 - [Console 0]: String Match Result: "移動500公尺吧！" -> "移動500公尺吧" -> (移動500公尺吧): (travel-500) (log10p = -16)
+2026-10-21 11:51:39.293836 - [Console 0]: String Match Result: "使用太晶化打倒野生的寶可夢吧！" -> "使用太晶化打倒野生的寶可夢吧" -> (使用太晶化打倒野生的寶可夢吧): (tera-self-defeat) (log10p = -28)
+2026-10-21 11:51:39.293896 - [Console 0]: issue_mash_button(): B, duration = 800ms
+2026-10-21 11:52:05.619783 - [Console 0]: Reading quests.
+2026-10-21 11:52:07.744259 - [Console 0]: String Match Result: "用寶可夢洗澡澡幫寶可夢洗澡吧！" -> "用寶可夢洗澡澡幫寶可夢洗澡吧" -> (用寶可夢洗澡澡幫寶可夢洗澡吧): (wash-pokemon) (log10p = -28)
+2026-10-21 11:52:09.043915 - [Console 0]: String Match Result: "在草原區拍攝野生的寶可夢吧！" -> "在草原區拍攝野生的寶可夢吧" -> (在草原區拍攝野生的寶可夢吧): (photo-savanna) (log10p = -26)
+2026-10-21 11:52:10.009207 - [Console 0]: String Match Result: "移動500公尺吧！" -> "移動500公尺吧" -> (移動500公尺吧): (travel-500) (log10p = -16)
+2026-10-21 11:52:10.916559 - [Console 0]: String Match Result: "製作招式學習器吧！" -> "製作招式學習器吧" -> (製作招式學習器吧): (make-tm) (log10p = -16)
+2026-10-21 11:52:10.916637 - [Console 0]: issue_mash_button(): B, duration = 800ms
+2026-10-21 11:52:11.750678 - [Console 0]: Reroll replacement verified. Discarding the old batch.
+2026-10-21 11:52:12.960154 - [Console 0]: Reading quests.
+2026-10-21 11:52:14.044051 - [Console 0]: String Match Result: "用寶可夢洗澡澡幫寶可夢洗澡吧！" -> "用寶可夢洗澡澡幫寶可夢洗澡吧" -> (用寶可夢洗澡澡幫寶可夢洗澡吧): (wash-pokemon) (log10p = -28)
+2026-10-21 11:52:15.069896 - [Console 0]: String Match Result: "在草原區拍攝野生的寶可夢吧！" -> "在草原區拍攝野生的寶可夢吧" -> (在草原區拍攝野生的寶可夢吧): (photo-savanna) (log10p = -26)
+2026-10-21 11:52:15.861851 - [Console 0]: String Match Result: "移動500公尺吧！" -> "移動500公尺吧" -> (移動500公尺吧): (travel-500) (log10p = -16)
+2026-10-21 11:52:16.652873 - [Console 0]: String Match Result: "製作招式學習器吧！" -> "製作招式學習器吧" -> (製作招式學習器吧): (make-tm) (log10p = -16)
+2026-10-21 11:52:16.652930 - [Console 0]: issue_mash_button(): B, duration = 800ms
+2026-10-21 11:52:18.689479 - [Console 0]: Reading quests.
+2026-10-21 11:52:19.873499 - [Console 0]: String Match Result: "用寶可夢洗澡澡幫寶可夢洗澡吧！" -> "用寶可夢洗澡澡幫寶可夢洗澡吧" -> (用寶可夢洗澡澡幫寶可夢洗澡吧): (wash-pokemon) (log10p = -28)
+2026-10-21 11:52:20.953165 - [Console 0]: String Match Result: "在草原區拍攝野生的寶可夢吧！" -> "在草原區拍攝野生的寶可夢吧" -> (在草原區拍攝野生的寶可夢吧): (photo-savanna) (log10p = -26)
+2026-10-21 11:52:22.138666 - [Console 0]: String Match Result: "移動500公尺吧！" -> "移動500公尺吧" -> (移動500公尺吧): (travel-500) (log10p = -16)
+2026-10-21 11:52:23.130944 - [Console 0]: String Match Result: "製作招式學習器吧！" -> "製作招式學習器吧" -> (製作招式學習器吧): (make-tm) (log10p = -16)
+2026-10-21 11:52:23.130998 - [Console 0]: issue_mash_button(): B, duration = 800ms
+2026-10-21 11:52:23.965141 - [Program]: Current quest exists on list. Doing quest.
+2026-10-21 11:52:23.965418 - [Console 0]: Quest: Give your pokemon a bath!
