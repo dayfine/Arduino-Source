@@ -12,6 +12,8 @@
 
 See the [2026-10-21 run audit](RUN_AUDIT_2026-10-21.md) for all eleven BBQ starts,
 completion velocity, route outcomes, positive evidence and prioritized follow-ups.
+The [BP ledger](BP_LEDGER_2026-10-21.md) adds reconstructed reward income,
+reroll expense and net BP/hour, including incidental completion adjustments.
 
 These are planning notes, not implemented changes. Existing milestones are
 tracked in their GitHub PRs; these follow-ups must be evaluated against the latest

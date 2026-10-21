@@ -1,0 +1,66 @@
+run,timestamp,kind,quest,bp,basis,confidence
+R01,2026-10-21 10:03:50.639153,expense,catch-steel,-10,legacy reroll command sequence; assumes each paid confirmation succeeded,provisional legacy payment
+R01,2026-10-21 10:05:51.886782,income,sneak-up,20,dispatched success plus board disappearance,reconstructed
+R01,2026-10-21 10:06:09.046221,expense,pickup-10,-10,legacy reroll command sequence; assumes each paid confirmation succeeded,provisional legacy payment
+R01,2026-10-21 10:06:12.090050,expense,auto-10,-10,legacy reroll command sequence; assumes each paid confirmation succeeded,provisional legacy payment
+R01,2026-10-21 10:06:15.145779,expense,tera-self-defeat,-10,legacy reroll command sequence; assumes each paid confirmation succeeded,provisional legacy payment
+R01,2026-10-21 10:06:27.942499,expense,catch-fairy,-10,legacy reroll command sequence; assumes each paid confirmation succeeded,provisional legacy payment
+R02,2026-10-21 10:22:52.429370,income,auto-10,20,dispatched success plus board disappearance,reconstructed
+R02,2026-10-21 10:24:13.733460,income,make-tm,20,dispatched success plus board disappearance,reconstructed
+R02,2026-10-21 10:26:00.439425,income,photo-polar,30,dispatched success plus board disappearance,reconstructed
+R05,2026-10-21 10:42:58.343570,income,travel-500,20,dispatched success plus board disappearance,reconstructed
+R06,2026-10-21 10:53:23.630266,expense,pickup-10,-10,verified target-only reroll replacement; standard blue/red cost,balance-observed
+R07,2026-10-21 11:06:08.719131,income,auto-10,20,dispatched success plus board disappearance,reconstructed
+R09,2026-10-21 11:27:48.694928,income,catch-ground,40,dispatched success plus board disappearance,reconstructed
+R09,2026-10-21 11:29:20.213790,income,photo-fly,30,dispatched success plus board disappearance,reconstructed
+R09,2026-10-21 11:31:25.206017,income,sneak-up,20,dispatched success plus board disappearance,reconstructed
+R09,2026-10-21 11:32:33.101962,expense,pickup-10,-10,verified target-only reroll replacement; standard blue/red cost,reconstructed
+R09,2026-10-21 11:45:49.682836,income,travel-500,20,dispatched success plus board disappearance,reconstructed
+R09,2026-10-21 11:49:52.632586,income,catch-dragon,40,dispatched success plus board disappearance,reconstructed
+R09,2026-10-21 11:51:17.157031,income,photo-fly,30,dispatched success plus board disappearance,reconstructed
+R09,2026-10-21 11:52:11.750678,expense,tera-self-defeat,-10,verified target-only reroll replacement; standard blue/red cost,reconstructed
+R09,2026-10-21 11:54:29.487896,income,wash-pokemon,100,dispatched success plus board disappearance,reconstructed
+R09,2026-10-21 11:57:35.054900,income,photo-savanna,30,dispatched success plus board disappearance,reconstructed
+R09,2026-10-21 11:59:06.047579,income,travel-500,20,dispatched success plus board disappearance,reconstructed
+R09,2026-10-21 12:00:15.743432,income,make-tm,20,dispatched success plus board disappearance,reconstructed
+R09,2026-10-21 12:00:56.557545,expense,pickup-10,-10,verified target-only reroll replacement; standard blue/red cost,reconstructed
+R09,2026-10-21 12:01:27.881377,expense,catch-poison,-10,verified target-only reroll replacement; standard blue/red cost,reconstructed
+R09,2026-10-21 12:01:59.841996,expense,pickup-10,-10,verified target-only reroll replacement; standard blue/red cost,reconstructed
+R09,2026-10-21 12:03:31.118557,income,photo-swim,30,dispatched success plus board disappearance,reconstructed
+R09,2026-10-21 12:05:39.351850,income,sneak-up,20,dispatched success plus board disappearance,reconstructed
+R09,2026-10-21 12:12:52.401207,income,auto-10,20,dispatched success plus board disappearance,reconstructed
+R09,2026-10-21 12:13:54.565526,expense,pickup-10,-10,verified target-only reroll replacement; standard blue/red cost,reconstructed
+R10,2026-10-21 12:32:37.796761,income,hatch-egg,200,dispatched success plus board disappearance,reconstructed
+R10,2026-10-21 12:34:14.914281,income,photo-canyon,30,dispatched success plus board disappearance,reconstructed
+R10,2026-10-21 12:35:38.970357,income,photo-fly,30,dispatched success plus board disappearance,reconstructed
+R10,2026-10-21 12:38:20.382625,income,catch-normal,40,dispatched success plus board disappearance,reconstructed
+R10,2026-10-21 12:39:54.777247,income,make-tm,20,dispatched success plus board disappearance,reconstructed
+R10,2026-10-21 12:41:31.783974,income,travel-500,20,dispatched success plus board disappearance,reconstructed
+R10,2026-10-21 12:53:20.084900,income,auto-10,20,dispatched success plus board disappearance,reconstructed
+R10,2026-10-21 12:54:07.898537,expense,pickup-10,-10,verified target-only reroll replacement; standard blue/red cost,reconstructed
+R10,2026-10-21 12:54:43.516497,expense,catch-bug,-10,verified target-only reroll replacement; standard blue/red cost,reconstructed
+R10,2026-10-21 12:55:21.499461,expense,tera-self-defeat,-10,verified target-only reroll replacement; standard blue/red cost,reconstructed
+R10,2026-10-21 13:05:54.358080,income,auto-10,20,dispatched success plus board disappearance,reconstructed
+R10,2026-10-21 13:07:08.046575,income,make-tm,20,dispatched success plus board disappearance,reconstructed
+R10,2026-10-21 13:08:42.471546,income,travel-500,20,dispatched success plus board disappearance,reconstructed
+R10,2026-10-21 13:09:33.667377,expense,tera-self-defeat,-10,verified target-only reroll replacement; standard blue/red cost,reconstructed
+R10,2026-10-21 13:12:49.800422,income,sandwich-three,130,dispatched success plus board disappearance,reconstructed
+R10,2026-10-21 13:14:20.502833,income,travel-500,20,dispatched success plus board disappearance,reconstructed
+R11,2026-10-21 13:23:22.050757,expense,tera-self-defeat,-10,verified target-only reroll replacement; standard blue/red cost,reconstructed
+R11,2026-10-21 13:23:46.581376,expense,pickup-10,-10,verified target-only reroll replacement; standard blue/red cost,reconstructed
+R11,2026-10-21 13:25:04.102596,income,photo-polar,30,dispatched success plus board disappearance,reconstructed
+R11,2026-10-21 13:25:04.102596,income,photo-swim,30,additional incidental board disappearance; not a second counter increment,reconstructed
+R11,2026-10-21 13:28:56.323200,income,auto-10,20,dispatched success plus board disappearance,reconstructed
+R11,2026-10-21 13:30:09.112031,income,photo-swim,30,dispatched success plus board disappearance,reconstructed
+R11,2026-10-21 13:31:04.134401,expense,tera-self-defeat,-10,verified target-only reroll replacement; standard blue/red cost,reconstructed
+R11,2026-10-21 13:43:14.117274,income,auto-10,20,dispatched success plus board disappearance,reconstructed
+R11,2026-10-21 13:44:11.000866,expense,tera-self-defeat,-10,verified target-only reroll replacement; standard blue/red cost,reconstructed
+R11,2026-10-21 13:46:42.131486,income,catch-psychic,40,dispatched success plus board disappearance,reconstructed
+R11,2026-10-21 13:55:41.909546,income,make-tm,20,dispatched success plus board disappearance,reconstructed
+R11,2026-10-21 14:03:46.787605,expense,pickup-10,-10,verified target-only reroll replacement; standard blue/red cost,reconstructed
+R11,2026-10-21 14:04:21.897944,expense,tera-self-defeat,-10,verified target-only reroll replacement; standard blue/red cost,reconstructed
+R11,2026-10-21 14:09:00.599744,income,catch-electric,40,dispatched success plus board disappearance,reconstructed
+R11,2026-10-21 14:17:17.155710,expense,pickup-10,-10,verified target-only reroll replacement; standard blue/red cost,reconstructed
+R11,2026-10-21 14:30:18.840207,income,travel-500,20,dispatched success plus board disappearance,reconstructed
+R11,2026-10-21 14:38:53.016588,expense,tera-self-defeat,-10,verified target-only reroll replacement; standard blue/red cost,reconstructed
+R11,2026-10-21 15:06:32.246525,income,wash-pokemon,100,dispatched success plus board disappearance,reconstructed
