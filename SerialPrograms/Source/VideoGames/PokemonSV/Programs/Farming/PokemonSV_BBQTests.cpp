@@ -97,6 +97,13 @@ public:
     std::set<BBQuests> never_completes = {};
     bool out_of_bp = false;
     size_t max_reads = 1000;
+    // New quests are drawn from this list in turn, skipping any that are
+    // already on the panel.
+    std::vector<BBQuests> new_quests = {
+        BBQuests::photo_canyon, BBQuests::photo_coastal, BBQuests::photo_polar,
+        BBQuests::photo_savanna, BBQuests::catch_any, BBQuests::catch_normal,
+        BBQuests::catch_fire, BBQuests::catch_water, BBQuests::catch_grass,
+    };
 
     std::vector<std::string> events;
 
@@ -153,16 +160,9 @@ private:
         }
     }
 
-    // New quests come from a fixed rotation of doable blue quests, skipping
-    // any that are already on the panel.
     BBQuests next_new_quest(){
-        static const BBQuests ROTATION[] = {
-            BBQuests::photo_canyon, BBQuests::photo_coastal, BBQuests::photo_polar,
-            BBQuests::photo_savanna, BBQuests::catch_any, BBQuests::catch_normal,
-            BBQuests::catch_fire, BBQuests::catch_water, BBQuests::catch_grass,
-        };
         while (true){
-            BBQuests quest = ROTATION[m_next_new_quest++ % std::size(ROTATION)];
+            BBQuests quest = new_quests[m_next_new_quest++ % new_quests.size()];
             if (std::find(panel.begin(), panel.end(), quest) == panel.end()){
                 return quest;
             }
@@ -196,6 +196,7 @@ struct BBQRoundsScenario{
     std::set<BBQuests> never_completes = {};
     bool out_of_bp = false;
     size_t max_reads = 1000;
+    std::vector<BBQuests> new_quests = {};
     uint64_t expected_completed = 0;
     std::string expected;
 };
@@ -223,6 +224,9 @@ public:
         game.never_completes = m_scenario.never_completes;
         game.out_of_bp = m_scenario.out_of_bp;
         game.max_reads = m_scenario.max_reads;
+        if (!m_scenario.new_quests.empty()){
+            game.new_quests = m_scenario.new_quests;
+        }
 
         NullLogger logger;
         try{
@@ -304,29 +308,23 @@ static void add_tests_BBQFarmerRounds(UnitTestDatabase& database){
         // "today:" state the current behavior, so that each fix shows up as a
         // change to one of them.
         {
-            // Today: sneak-up never completes and is attempted again in every
-            // round it stays on the panel.
-            .name = "today: a failed quest is attempted every round",
+            // sneak-up fails in round 1 and is still on the panel in round 2,
+            // where only the two new quests are attempted.
+            .name = "failed quest is not attempted again",
             .num_quests = 4,
             .never_completes = {BBQuests::sneak_up},
             .expected_completed = 4,
             .expected =
                 "read process read do completed read do completed read do end "
-                "read process read do completed read do completed read do end",
+                "read process read do completed read do completed end",
         },
         {
-            // Today: the only doable quest never completes, so the farmer
-            // attempts it every round and never finishes.
-            .name = "today: a panel of failed quests is retried forever",
+            .name = "stops when only failed quests are doable",
             .num_quests = 3,
             .panel = {BBQuests::sneak_up, BBQuests::pickup_10, BBQuests::catch_flying},
             .never_completes = {BBQuests::sneak_up},
-            .max_reads = 6,
             .expected_completed = 0,
-            .expected =
-                "read process read do end "
-                "read process read do end "
-                "read process read do end read stuck",
+            .expected = "read process read do end read process",
         },
         {
             // Today: rerolls change nothing (out of BP), so the farmer reads
@@ -350,15 +348,44 @@ static void add_tests_BBQFarmerRounds(UnitTestDatabase& database){
         },
         {
             // Today: round 1 completes nothing, but 0 is a multiple of 2, so
-            // it saves anyway.
+            // it saves anyway. Every quest failed, so the farmer then stops.
             .name = "today: a round without completions saves",
             .num_quests = 3,
             .save_num_quests = 2,
             .outcomes = {false, false, false},
-            .expected_completed = 3,
+            .expected_completed = 0,
+            .expected = "read process read do read do read do end(save) read process",
+        },
+        {
+            // sneak-up fails, then leaves the panel along with make-tm. Round 2
+            // reads a full panel without it, and its replacement for
+            // photo-canyon brings it back. Round 3 attempts it again.
+            .name = "failed quest that leaves a full panel is attempted again",
+            .num_quests = 5,
+            .panel = {BBQuests::sneak_up, BBQuests::make_tm, BBQuests::pickup_10, BBQuests::catch_flying},
+            .outcomes = {false},
+            .also_completes = {{BBQuests::make_tm, BBQuests::sneak_up}},
+            .new_quests = {BBQuests::auto_10, BBQuests::photo_canyon, BBQuests::sneak_up},
+            .expected_completed = 5,
             .expected =
-                "read process read do read do read do end(save) "
-                + round_of_3 + " end",
+                "read process read do read do completed end "
+                "read process read do completed read do completed end "
+                "read process read do completed read do completed end",
+        },
+        {
+            // As above with 3 slots. A 4th quest could have been missed by
+            // OCR, so the read does not prove sneak-up left: it stays failed.
+            .name = "failed quest missing from a 3-slot panel stays failed",
+            .num_quests = 4,
+            .panel = {BBQuests::sneak_up, BBQuests::make_tm, BBQuests::pickup_10},
+            .outcomes = {false},
+            .also_completes = {{BBQuests::make_tm, BBQuests::sneak_up}},
+            .new_quests = {BBQuests::auto_10, BBQuests::photo_canyon, BBQuests::sneak_up},
+            .expected_completed = 4,
+            .expected =
+                "read process read do read do completed end "
+                "read process read do completed read do completed end "
+                "read process read do completed end",
         },
     };
     for (const BBQRoundsScenario& scenario : scenarios){
