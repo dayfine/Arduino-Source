@@ -1,0 +1,25 @@
+2026-10-21 14:39:12.452042 - [Console 0]: Quest: Give your pokemon a bath!
+2026-10-21 14:40:08.487233 - [Console 0]: Wash button found!
+2026-10-21 14:40:11.713945 - [Console 0]: In wash. Scrubbing.
+2026-10-21 14:40:19.817837 - [Console 0]: In wash. Scrubbing.
+2026-10-21 14:40:27.921638 - [Console 0]: In wash. Scrubbing.
+2026-10-21 14:40:36.025841 - [Console 0]: In wash. Scrubbing.
+2026-10-21 14:40:44.131581 - [Console 0]: In wash. Scrubbing.
+2026-10-21 14:40:52.241866 - [Console 0]: In wash. Scrubbing.
+2026-10-21 14:41:00.345179 - [Console 0]: In wash. Scrubbing.
+2026-10-21 14:41:08.448373 - [Console 0]: In wash. Scrubbing.
+2026-10-21 14:41:16.552083 - [Console 0]: In wash. Scrubbing.
+2026-10-21 14:41:24.606547 - [Console 0]: In wash. Scrubbing.
+2026-10-21 14:41:32.710989 - [Console 0]: In wash. Scrubbing.
+2026-10-21 14:41:40.815061 - [Console 0]: In wash. Scrubbing.
+2026-10-21 14:41:48.926209 - [Console 0]: In wash. Scrubbing.
+2026-10-21 14:41:57.030019 - [Console 0]: In wash. Scrubbing.
+2026-10-21 14:42:05.138424 - [Console 0]: In wash. Scrubbing.
+2026-10-21 14:42:13.247795 - [Console 0]: In wash. Scrubbing.
+2026-10-21 14:42:21.354352 - [Console 0]: In wash. Scrubbing.
+2026-10-21 14:42:29.458075 - [Console 0]: In wash. Scrubbing.
+2026-10-21 14:42:37.568480 - [Console 0]: In wash. Scrubbing.
+2026-10-21 14:42:45.672623 - [Console 0]: In wash. Scrubbing.
+2026-10-21 14:42:53.675702 - [Console 0]: Failed to get to rinse after 3 minutes.
+2026-10-21 14:43:57.736582 - [Console 0]: Failed to finish rinse after 1 minute.
+2026-10-21 14:43:57.767542 - [Console 0]: Shower did not complete. Backing out.
