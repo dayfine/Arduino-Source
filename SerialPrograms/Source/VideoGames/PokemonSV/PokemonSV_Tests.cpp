@@ -65,6 +65,7 @@ private:
 }
 
 void add_tests(UnitTestDatabase& database){
+    add_tests_BBQDiagnosticLogs(database);
     // Full-frame references exercise the production crop, filter and OCR together.
     database.add<Test_BlueberryPoints>("PokemonSV/BlueberryPoints/6750.png", 6750, 1920, 1080);
     database.add<Test_BlueberryPoints>("PokemonSV/BlueberryPoints/6750.png", 6750, 1280, 720);

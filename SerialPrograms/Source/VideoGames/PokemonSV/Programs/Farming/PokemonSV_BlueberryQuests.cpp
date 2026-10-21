@@ -4,6 +4,11 @@
  *
  */
 
+#include <sstream>
+#include <string_view>
+#include "Common/Cpp/PrettyPrint.h"
+#include "Common/Cpp/TestRunners/UnitTestDatabase.h"
+#include "Common/Cpp/Logging/AbstractLogger.h"
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
 #include "CommonFramework/Tools/ErrorDumper.h"
 #include "CommonFramework/ImageTypes/ImageViewRGB32.h"
@@ -143,19 +148,101 @@ BBQuests BBQuests_string_to_enum(const std::string& token){
     return iter->second;
 }
 
+namespace{
+
+constexpr std::string_view UNKNOWN_QUEST = "unknown";
+using BBQClock = std::chrono::steady_clock;
+
+void append_elapsed(std::ostream& out, std::string_view field, BBQClock::duration elapsed){
+    const auto milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(elapsed);
+    out << ' ' << field << "_ms=" << milliseconds.count()
+        << ' ' << field << "=\"" << duration_to_string(milliseconds) << '\"';
+}
+
+void log_bbq_board(Logger& logger, bool panel_detected, int bp, const std::vector<BBQuests>& quests){
+    std::ostringstream out;
+    out << "BBQ event=board panel_detected=" << panel_detected << " bp=";
+    if (bp < 0){
+        out << UNKNOWN_QUEST;
+    }else{
+        out << bp;
+    }
+    out << " quests=";
+    bool first = true;
+    for (BBQuests quest : quests){
+        if (!first) out << ',';
+        first = false;
+        out << BBQuests_enum_to_string(quest);
+    }
+    logger.log(out.str());
+}
+
+void log_bbq_snapshot_result(Logger& logger, bool saved, const std::string& path){
+    std::ostringstream out;
+    out << "BBQ event=snapshot saved=" << saved << " path=" << path;
+    logger.log(out.str());
+}
+
+void log_bbq_retry_exhausted(Logger& logger, const std::string& slug){
+    std::ostringstream out;
+    out << "BBQ quest=" << slug << " event=retry_exhausted recovery=skip_current_batch";
+    logger.log(out.str());
+}
+
+class BBQAttemptLog{
+public:
+    BBQAttemptLog(Logger& logger, const std::string& slug, unsigned attempt, unsigned limit,
+        BBQClock::time_point start = BBQClock::now())
+        : m_logger(logger), m_start(start), m_route_end(start)
+    {
+        std::ostringstream out;
+        out << "BBQ quest=" << slug << " attempt=" << attempt << " limit=" << limit;
+        m_attempt_description = out.str();
+        out << " event=start";
+        m_logger.log(out.str());
+    }
+
+    void route_return(BBQClock::time_point end = BBQClock::now()){
+        m_route_end = end;
+        std::ostringstream out;
+        out << m_attempt_description << " event=route_return";
+        append_elapsed(out, "elapsed", end - m_start);
+        m_logger.log(out.str());
+    }
+
+    void result(bool completed, BBQClock::time_point end = BBQClock::now()){
+        std::ostringstream out;
+        out << m_attempt_description << " event=result outcome="
+            << (completed ? "absent_from_board" : "still_on_board");
+        append_elapsed(out, "verification", end - m_route_end);
+        append_elapsed(out, "total", end - m_start);
+        m_logger.log(out.str());
+    }
+
+private:
+    Logger& m_logger;
+    const BBQClock::time_point m_start;
+    BBQClock::time_point m_route_end;
+    std::string m_attempt_description;
+};
+
+}
+
 std::string BBQuests_enum_to_string(BBQuests quest){
-    for (const auto& item : BBQuests_TOKEN_TO_ENUM()){
-        if (item.second == quest){
-            return item.first.empty() ? "unknown" : item.first;
+    for (const auto& [token, value] : BBQuests_TOKEN_TO_ENUM()){
+        if (value == quest){
+            return token.empty() ? std::string(UNKNOWN_QUEST) : token;
         }
     }
-    return "unknown";
+    return std::string(UNKNOWN_QUEST);
 }
 
 void log_bbq_snapshot(VideoStream& stream, const std::string& label){
-    const std::string path = DEBUG_PATH() + "BBQ/" + now_to_filestring() + "-" + label + ".png";
-    const bool saved = stream.video().snapshot()->save(path);
-    stream.log("BBQ event=snapshot saved=" + std::to_string(saved) + " path=" + path);
+    std::ostringstream path;
+    path << DEBUG_PATH() << "BBQ/" << now_to_filestring() << '-' << label << ".png";
+    const std::string filename = path.str();
+    const bool saved = stream.video().snapshot()->save(filename);
+    log_bbq_snapshot_result(stream.logger(), saved, filename);
 }
 
 int read_BP_from_image(Logger& logger, const ImageViewRGB32& screen){
@@ -244,15 +331,8 @@ std::vector<BBQuests> read_quests(
     }
 
     // Reuse the board snapshot: no extra menu navigation or capture.
-    int bp = result == 0 ? read_BP_from_image(stream.logger(), screen) : -1;
-    std::string board;
-    for (BBQuests quest : quest_list){
-        if (!board.empty()) board += ",";
-        board += BBQuests_enum_to_string(quest);
-    }
-    stream.log("BBQ event=board panel_detected=" + std::to_string(result == 0)
-        + " bp=" + (bp < 0 ? std::string("unknown") : std::to_string(bp))
-        + " quests=" + board);
+    log_bbq_board(stream.logger(), result == 0,
+        result == 0 ? read_BP_from_image(stream.logger(), screen) : -1, quest_list);
 
     //Close quest list
     pbf_mash_button(context, BUTTON_B, 800ms);
@@ -454,10 +534,8 @@ bool process_and_do_quest(
 
     const std::string slug = BBQuests_enum_to_string(current_quest);
     while (!quest_completed){
-        const auto attempt_start = std::chrono::steady_clock::now();
-        const std::string attempt = "BBQ quest=" + slug + " attempt=" + std::to_string(quest_attempts + 1)
-            + " limit=" + std::to_string((unsigned)BBQ_OPTIONS.NUM_RETRIES + 1);
-        console.log(attempt + " event=start");
+        BBQAttemptLog attempt_log(console.logger(), slug, quest_attempts + 1,
+            (unsigned)BBQ_OPTIONS.NUM_RETRIES + 1);
         switch (current_quest){
         case BBQuests::make_tm:
             quest_make_tm(env.program_info(), console, context);
@@ -556,9 +634,7 @@ bool process_and_do_quest(
             break;
         }
 
-        const auto route_end = std::chrono::steady_clock::now();
-        console.log(attempt + " event=route_return elapsed_ms=" + std::to_string(
-            std::chrono::duration_cast<std::chrono::milliseconds>(route_end - attempt_start).count()));
+        attempt_log.route_return();
         //Validate quest was completed by checking list
         std::vector<BBQuests> quest_list = read_quests(env.program_info(), console, context, BBQ_OPTIONS);
         if (std::find(quest_list.begin(), quest_list.end(), current_quest) != quest_list.end()){
@@ -575,13 +651,9 @@ bool process_and_do_quest(
             quest_completed = true;
         }
 
-        console.log(attempt + " event=result outcome=" + (quest_completed ? "absent_from_board" : "still_on_board")
-            + " verification_ms=" + std::to_string(std::chrono::duration_cast<std::chrono::milliseconds>(
-                std::chrono::steady_clock::now() - route_end).count())
-            + " total_ms=" + std::to_string(std::chrono::duration_cast<std::chrono::milliseconds>(
-                std::chrono::steady_clock::now() - attempt_start).count()));
+        attempt_log.result(quest_completed);
         if (quest_attempts > BBQ_OPTIONS.NUM_RETRIES){
-            console.log("BBQ quest=" + slug + " event=retry_exhausted recovery=skip_current_batch");
+            log_bbq_retry_exhausted(console.logger(), slug);
             console.log("Failed to complete a quest multiple times. Skipping it for now.", COLOR_RED);
             break;
         }
@@ -1445,6 +1517,97 @@ void quest_auto_battle(
     }
 }
 
+
+
+namespace{
+
+class BBQTestLogger : public Logger{
+public:
+    virtual void log(const std::string& message, Color) override{
+        messages.push_back(message);
+    }
+    std::vector<std::string> messages;
+};
+
+class Test_BBQDiagnosticLogs : public UnitTest{
+public:
+    Test_BBQDiagnosticLogs(const std::string& scenario)
+        : UnitTest("PokemonSV::BBQDiagnosticLogs - " + scenario), m_scenario(scenario)
+    {}
+
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        BBQTestLogger logger;
+        std::vector<std::string> expected;
+        const BBQClock::time_point start{};
+        if (m_scenario == "board"){
+            log_bbq_board(logger, true, 6750,
+                {BBQuests::photo_swim, BBQuests::sneak_up, BBQuests::auto_10});
+            log_bbq_board(logger, false, -1, {BBQuests::UnableToDetect});
+            log_bbq_board(logger, true, 0, {});
+            expected = {
+                "BBQ event=board panel_detected=1 bp=6750 quests=photo-swim,sneak-up,auto-10",
+                "BBQ event=board panel_detected=0 bp=unknown quests=unknown",
+                "BBQ event=board panel_detected=1 bp=0 quests=",
+            };
+            if (BBQuests_enum_to_string(static_cast<BBQuests>(-1)) != "unknown"){
+                return "An unrecognized quest must have the unknown slug.";
+            }
+        }else if (m_scenario == "success"){
+            BBQAttemptLog attempt_log(logger, "make-tm", 1, 2, start);
+            attempt_log.route_return(start + 2000ms);
+            attempt_log.result(true, start + 2500ms);
+            expected = {
+                "BBQ quest=make-tm attempt=1 limit=2 event=start",
+                "BBQ quest=make-tm attempt=1 limit=2 event=route_return elapsed_ms=2000 elapsed=\"2.000 seconds\"",
+                "BBQ quest=make-tm attempt=1 limit=2 event=result outcome=absent_from_board verification_ms=500 verification=\"0.500 seconds\" total_ms=2500 total=\"2.500 seconds\"",
+            };
+        }else if (m_scenario == "retry-exhausted"){
+            BBQAttemptLog attempt_log(logger, "catch-any", 2, 2, start);
+            attempt_log.route_return(start + 3345ms);
+            attempt_log.result(false, start + 4110ms);
+            log_bbq_retry_exhausted(logger, "catch-any");
+            expected = {
+                "BBQ quest=catch-any attempt=2 limit=2 event=start",
+                "BBQ quest=catch-any attempt=2 limit=2 event=route_return elapsed_ms=3345 elapsed=\"3.345 seconds\"",
+                "BBQ quest=catch-any attempt=2 limit=2 event=result outcome=still_on_board verification_ms=765 verification=\"0.765 seconds\" total_ms=4110 total=\"4.110 seconds\"",
+                "BBQ quest=catch-any event=retry_exhausted recovery=skip_current_batch",
+            };
+        }else if (m_scenario == "snapshot"){
+            log_bbq_snapshot_result(logger, true, "/local/debug/BBQ/frame.png");
+            log_bbq_snapshot_result(logger, false, "/local/debug/BBQ/frame.png");
+            expected = {
+                "BBQ event=snapshot saved=1 path=/local/debug/BBQ/frame.png",
+                "BBQ event=snapshot saved=0 path=/local/debug/BBQ/frame.png",
+            };
+        }else if (m_scenario == "long-duration"){
+            BBQAttemptLog attempt_log(logger, "unknown", 256, 256, start);
+            attempt_log.route_return(start + 120000ms);
+            attempt_log.result(false, start + 120000ms);
+            expected = {
+                "BBQ quest=unknown attempt=256 limit=256 event=start",
+                "BBQ quest=unknown attempt=256 limit=256 event=route_return elapsed_ms=120000 elapsed=\"2.000 minutes\"",
+                "BBQ quest=unknown attempt=256 limit=256 event=result outcome=still_on_board verification_ms=0 verification=\"0.000 seconds\" total_ms=120000 total=\"2.000 minutes\"",
+            };
+        }else{
+            return "Unknown BBQ log test scenario.";
+        }
+        if (logger.messages != expected){
+            return "Unexpected BBQ diagnostic log sequence for " + m_scenario;
+        }
+        return true;
+    }
+
+private:
+    const std::string m_scenario;
+};
+
+}
+
+void add_tests_BBQDiagnosticLogs(UnitTestDatabase& database){
+    for (const std::string scenario : {"board", "success", "retry-exhausted", "snapshot", "long-duration"}){
+        database.add<Test_BBQDiagnosticLogs>(scenario);
+    }
+}
 
 
 }

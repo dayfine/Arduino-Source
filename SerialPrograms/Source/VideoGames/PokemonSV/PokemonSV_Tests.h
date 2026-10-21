@@ -16,6 +16,7 @@ namespace PokemonSV{
 
 
 void add_tests(UnitTestDatabase& database);
+void add_tests_BBQDiagnosticLogs(UnitTestDatabase& database);
 
 
 
