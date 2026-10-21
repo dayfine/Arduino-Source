@@ -146,6 +146,13 @@ public:
         }
         return success;
     }
+    virtual void reroll_quest(BBQuests quest) override{
+        events.push_back("reroll");
+        auto iter = std::find(panel.begin(), panel.end(), quest);
+        if (iter != panel.end()){
+            *iter = next_new_quest();
+        }
+    }
     virtual void quest_completed() override{
         events.push_back("completed");
     }
@@ -199,6 +206,7 @@ struct BBQRoundsScenario{
     size_t max_reads = 1000;
     std::vector<BBQuests> new_quests = {};
     std::vector<std::pair<BBQuests, BBQAction>> exclusions = {};
+    BBQOption::OutOfRetries out_of_retries = BBQOption::OutOfRetries::Skip;
     uint64_t expected_completed = 0;
     std::string expected;
 };
@@ -224,6 +232,7 @@ public:
             row->action.set(action);
             options.QUEST_EXCLUSIONS.append_row(std::move(row));
         }
+        options.OUT_OF_RETRIES.set(m_scenario.out_of_retries);
 
         SimulatedBBQGameActions game;
         game.panel = m_scenario.panel;
@@ -371,14 +380,15 @@ static void add_tests_BBQFarmerRounds(UnitTestDatabase& database){
         {
             // Round 1 completes nothing. It must not save, even though the
             // count (0) is a multiple of the interval.
-            // Every quest fails, so nothing doable is left and the farmer
-            // stops, but the round with no completions doesn't save.
+            // Every quest fails and is rerolled, so round 1 completes
+            // nothing and doesn't save; round 2 reaches the milestone.
             .name = "round without completions does not save",
             .num_quests = 3,
             .save_num_quests = 2,
             .outcomes = {false, false, false},
-            .expected_completed = 0,
-            .expected = "read process read do read do read do end read process",
+            .out_of_retries = BBQOption::OutOfRetries::Reroll,
+            .expected_completed = 3,
+            .expected = "read process read do reroll read do reroll read do reroll end " + round_of_3 + " end(save)",
         },
         {
             // sneak-up fails, then leaves the panel along with make-tm. Round 2
@@ -427,6 +437,24 @@ static void add_tests_BBQFarmerRounds(UnitTestDatabase& database){
             .exclusions = all_skipped_but_make_tm,
             .expected_completed = 3,
             .expected = round_of_3 + " end",
+        },
+        {
+            // sneak-up is rerolled to photo-polar, which round 2 attempts.
+            .name = "out of retries with reroll replaces the failed quest",
+            .num_quests = 3,
+            .never_completes = {BBQuests::sneak_up},
+            .out_of_retries = BBQOption::OutOfRetries::Reroll,
+            .expected_completed = 5,
+            .expected = "read process read do completed read do completed read do reroll end " + round_of_3 + " end",
+        },
+        {
+            .name = "out of retries with stop stops at once",
+            .num_quests = 3,
+            .panel = {BBQuests::sneak_up, BBQuests::make_tm, BBQuests::auto_10},
+            .never_completes = {BBQuests::sneak_up},
+            .out_of_retries = BBQOption::OutOfRetries::Stop,
+            .expected_completed = 0,
+            .expected = "read process read do",
         },
     };
     for (const BBQRoundsScenario& scenario : scenarios){
