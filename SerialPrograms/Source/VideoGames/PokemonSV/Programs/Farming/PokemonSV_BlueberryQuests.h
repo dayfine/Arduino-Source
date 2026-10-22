@@ -170,8 +170,9 @@ public:
     //Fly from Central Plaza to Chargestone Cavern, wait for spawns, and walk into the battle court.
     virtual void fly_to_battle_area() = 0;
 
-    //Send the lead out with Let's Go until no kill has been heard for 6 seconds.
-    virtual void clear() = 0;
+    //Send the lead out with Let's Go until no kill has been heard for 6 seconds, or until
+    //kills() reaches `stop_at_kills`, whichever comes first.
+    virtual void clear(uint64_t stop_at_kills) = 0;
 
     //Fly back to Central Plaza. Leaving the cave respawns its Pokemon.
     virtual void return_to_plaza() = 0;
@@ -185,8 +186,8 @@ struct BBQAutoBattlePolicy{
     uint64_t kill_target = 10;
 };
 
-//Clear Chargestone Cavern until the kills reach the target, healing after every pass. Logs one
-//line per pass: its kills, the total, the time spent, and what happens next.
+//Clear Chargestone Cavern until the kills reach the target, healing after every pass but the
+//last. Logs one line per pass: its kills, the total, the time spent, and what happens next.
 void run_auto_battle(
     Logger& logger,
     BBQAutoBattleActions& actions,
