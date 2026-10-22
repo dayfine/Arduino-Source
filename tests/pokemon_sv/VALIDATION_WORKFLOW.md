@@ -12,8 +12,15 @@ workflow document, not an installed agent skill.
   audits, BP ledgers and this workflow live under `tests/pokemon_sv/`.
 - Release branches: one branch per feature/PR. Never open a feature PR directly
   from the testing branch, which accumulates unrelated experimental changes.
-- Existing PRs remain owned/refined on their existing branches. Fetch revisions
-  into the lab; do not overwrite another agent's branch or push stale history.
+- **Codex owns** the testing branch, notes branch, implementation/live validation
+  loop and run records (`RESULT.md`).
+- **Claude owns** existing PR branches and descriptions: refining code, rebasing
+  as parents merge, answering review comments and incorporating VERIFIED results.
+  Codex fetches these revisions into the lab; it does not push to existing PR
+  branches. Changes for an existing PR are handed over as lab commits plus their
+  RESULT.md, rather than pushed over Claude's work.
+- For a new feature, Codex may create the dedicated release branch and open its
+  draft PR. Ownership then passes to Claude for further PR changes and review.
 
 The initial lab baseline combines upstream main `db9ef1772` with M6
 `a1b685f9e` (including M4 and its prerequisites), then cherry-picks M5
@@ -31,11 +38,23 @@ Current dependency map, checked on GitHub 2026-10-21:
 | Verified reroll | #1659 | #1640 |
 | Unsupported-quest policies (M5) | #1644 | #1659, therefore #1640 |
 | Exhausted-quest actions (M6) | #1645 | #1642 and #1659, including their ancestors |
+| Battle-entry guard (M3) | #1636 | None |
+| Endless-reroll guard | #1639 | #1632 |
+| Save/reset milestones | #1626 | #1632 |
 
-These are prerequisites, not new implementations to recreate. M3 (#1636),
-diagnostic PRs and other sibling changes are not automatically in this baseline.
-Integrate and verify them explicitly if a trial needs them. Recheck GitHub
-dependencies before extraction because these PRs are still being refined.
+Before V0's live run, also integrate **#1636, #1639 and #1626**. The initial lab
+baseline described above does not yet contain them. #1636 is independent and
+guards both Tera routes; #1639 and #1626 change the round loop exercised by every
+run. Include them to collect relevant evidence and approximate the intended
+merged program. Record their exact imported SHAs in STACK.md and build/test the
+combined baseline; integration alone is not live verification.
+
+These are existing implementations to reuse, not recreate. Other diagnostic or
+sibling PRs are not automatically included. Recheck GitHub heads before each
+run and extraction, since rebases move them. Heads checked on 2026-10-21:
+#1645 `a1b685f9e`, #1644 `f7e3ba6f0`, #1659 `5b86beecb`, #1636 `07f03d2fe`,
+#1639 `f62d994dd`, #1626 `548ac951c`. Historical run records retain their original
+SHAs even after the PR heads move.
 
 ## Repeat this loop for one candidate at a time
 
@@ -47,7 +66,9 @@ dependencies before extraction because these PRs are still being refined.
    native C++ tests exercising the production seam. Keep necessary follow-up
    corrections as adjacent commits belonging to that slice. Do not add another
    independent feature until the current candidate has an evaluated result.
-   Existing implemented PRs can enter as verification-only candidates.
+   Existing implemented PRs can enter as verification-only candidates. Follow
+   the repository conventions below from the first commit, rather than leaving
+   style/module cleanup for PR handoff.
 3. **Build and test.** Run relevant registered native C++ tests and build the
    full local arm64 ComputerControl app. No Python/source-extraction tests.
    Store build/test logs and the executable's SHA-256 beside the run record.
@@ -88,10 +109,35 @@ dependencies before extraction because these PRs are still being refined.
    the target feature's result and unrelated findings. Classify as VERIFIED,
    FAILED, or INCONCLUSIVE; a feature whose trigger never occurred remains
    inconclusive even after two hours of successful farming.
-10. **Extract and publish.** For a verified slice, make a dedicated PR branch as
-    described below, build/test that branch, then create or update its draft PR.
-    Link the exact tested revision, native cases, live evidence and dependencies.
-    Update the queue and stack manifest, then select the next candidate.
+10. **Handoff or publish.** For an existing PR, hand Claude the lab commits and
+    RESULT.md; Claude updates its branch and short verification section. For a
+    new feature, extract a dedicated branch as described below, build/test it,
+    open its draft PR, then hand ownership to Claude. Record the exact tested
+    revision, native cases, live evidence and dependencies. Update the queue
+    and stack manifest, then select the next candidate.
+
+## Repository conventions for every feature commit
+
+- Native C++ tests are registered in `PokemonSV_Tests.cpp`. Use data-driven
+  scenarios and designated initializers so values have field names; avoid
+  if/else-if chains selecting individual test cases. Failure messages report
+  what was expected and what was actually read.
+- Match surrounding comment density and explain why. Use `virtual ... override`,
+  nested namespace braces and CRLF line endings in source files.
+- Include the real header instead of adding forward declarations. Declare and
+  define a function in the same owning module; module dependencies point one
+  way. Do not declare it in one module's header and define it in another.
+- Use `UserSetupError` for setup/configuration problems. `SEND_ERROR_REPORT` is
+  for program failures. Normal stop decisions return a result to the farmer;
+  do not throw deep in quest code just to end the program.
+- Reuse prerequisite implementations such as `run_bbq_rounds()`/`BBQGameActions`
+  from #1632 and `reroll_quest()` from #1659. Do not copy them into a second PR.
+- No files under `tests/` belong in a release branch's change: milestone notes,
+  lab manifests, RESULT.md, fixtures and Python stay on notes/lab branches.
+  Native tests under `SerialPrograms/Source/.../PokemonSV_Tests.cpp` are release
+  code and remain with their feature.
+- Defaults preserve today's behavior. Put an intentional behavior change in its
+  own PR and make it explicit in the title.
 
 ## Verification is specific to the feature
 
@@ -108,6 +154,23 @@ dependencies before extraction because these PRs are still being refined.
 - Performance changes: compare comparable starting state/policies and report
   end-to-end net BP/hour plus stage timings. Warm/cold OCR, lead changes,
   incidental completions and different quest mixes must remain visible.
+
+Required paths for PRs currently in review:
+
+| PR | Live acceptance paths |
+| --- | --- |
+| #1659 verified reroll | Menu opens beside a different quest than planned and the farmer corrects the cursor before paying; a fourth-slot reroll; intended replacement and matching BP spend. An out-of-eggs egg in slot four is a candidate trigger without withdrawing an egg. The fourth arrow box has not yet been seen live. |
+| #1644 unsupported-quest rerolls | Pickup rerolled while another quest remains runnable; one-quest fallback when nothing is runnable, replacing one unconfigured unsupported quest rather than the whole panel. |
+| #1642 failed-quest memory | A quest exhausts attempts and stays unattempted across later batches while present; after a fully known four-slot board proves its removal, a returning quest receives attempts again. |
+| #1645 out-of-retries action | A Reroll-policy run with paid target/replacement evidence and a Stop-policy run following normal end-of-program handling, including configured go-home, time-fix and finish notification. Skip follows #1642. |
+| #1636 battle-entry guard | An unconfirmed Tera battle entry skips the handler; a normal confirmed entry invokes it. |
+| #1639 endless-reroll guard | Native tests normally suffice: the guard usually requires an unrealistic exclusions table to trigger. If it occurs naturally, preserve live evidence; ordinary farming does not verify it. |
+| #1626 save/reset milestones | A reached or crossed completion milestone saves/resets once; subsequent rounds without another milestone do not repeat that save. Record active interval and exact completion/save events. |
+
+Track each acceptance path separately. A useful partial run can verify one path
+while leaving another INCONCLUSIVE; do not label the whole PR fully verified
+when a required path has not been observed. Avoid manufacturing destructive
+state merely to satisfy a checklist.
 
 ## Extract a feature into its own PR branch
 
@@ -126,20 +189,44 @@ are not release content.
   only required ancestors, then the feature commit(s), as current M6 does. Keep
   all dependencies explicit and rebase onto main as they merge. Do not copy
   the entire lab branch or conceal dependencies in a giant squash commit.
-- Reuse an existing appropriate PR rather than opening a duplicate. Coordinate
-  revisions with whoever is refining that branch; no force-push over their work.
-- Verify the release branch's diff, native tests and full build. If extraction
-  changes behavior or removes runtime dependencies, repeat the relevant live
-  validation. A lab run validates that integrated SHA, not an arbitrary cherry-pick.
+- Reuse an existing appropriate PR rather than opening a duplicate. Claude
+  applies handoff commits to existing PR branches; Codex does not push there.
+- Verify the release branch's diff, native tests and full build. Check the diff
+  against its intended base for files under `tests/`; none may be introduced.
+  Keep the notes and lab folders on their existing fork branches, or outside
+  the repository if preferred; never cherry-pick their commits into release.
+- A pure rebase does **not** require another live run. Record the tested feature
+  base/head separately from the full integrated lab SHA, then compare:
+
+  ```sh
+  git range-diff <tested-base>..<tested-sha> <new-base>..<pr-head>
+  ```
+
+  If the feature's production-code patch is unchanged, retain the earlier live
+  result and record the comparison. Test-only merge-conflict resolution in
+  `PokemonSV_Tests.cpp` does not itself require a live rerun; rerun native tests
+  and the build. Feature code changes need relevant live revalidation. A change
+  to a relied-on runtime dependency or its removal must also be assessed for
+  changed behavior; range-diff is evidence of patch equivalence, not proof that
+  arbitrary different runtime environments are equivalent.
 - Create the PR as a **draft**, with a `Live verification: VERIFIED` section and
   remaining dependency/review work. Do not conflate passing a trial with merging
   or automatically changing someone else's existing draft state. Mark ready for
   review only after dependencies and branch-specific checks are satisfied.
 
-PR descriptions must state the problem/result, exact dependency chain, feature
-delta, native coverage, run duration, triggered acceptance paths, BP income/
-expense/net, other issues and remaining limits. Link the evidence. Do not claim
-untested branches or unobserved rare paths passed.
+Keep PR descriptions short: problem/result, dependencies and relevant native
+validation. Claude adds a short **Live verification** section from RESULT.md:
+
+- Tested SHA (and rebase equivalence when applicable).
+- Duration.
+- Acceptance paths triggered.
+- Result, including any unverified required paths.
+- One line of BP income, expense and net.
+
+Link RESULT.md for the ledger, five-minute observations, other issues and full
+run details. Those details belong in the run record, not pasted into the PR.
+Codex uses this same concise format when initially opening a new draft PR.
+Do not claim untested branches or unobserved rare paths passed.
 
 ## New issues and run records
 
@@ -175,7 +262,7 @@ exist. Re-score after every run; do not sum overlapping opportunities.
 
 | Order | Candidate | Evidence / expected return | Confidence and effort |
 | --- | --- | --- | --- |
-| 1 | V0: integrate and verify existing M4/M5/M6 | Final baseline spent 69% in failed dispatches; persistent exhaustion/fallback prevents repeating the same failed batch indefinitely | High confidence in bounded retries; net earning gain needs measurement. Existing code; build/native checks plus 1–2h live trial. |
+| 1 | V0: integrate M4/M5/M6 plus #1636/#1639/#1626; verify per-PR paths | Final baseline spent 69% in failed dispatches; persistent exhaustion/fallback prevents repeating the same failed batch indefinitely. Guard and save changes belong in the intended merged baseline | High confidence in bounded retries; net earning gain needs measurement. Existing code; build/native checks plus 1–2h live trials as needed for distinct paths. |
 | 2 | M8a: restore/verify party after hatch failures | Correctness gate: one timeout bypassed restoration; wrong lead coincided with 10–12min Auto Battle versus 4min after repair | Confirmed defect. Roughly 0.5–1.5 engineering days plus focused and farming validation. |
 | 3 | M11a: do not enter rinse after scrub timeout; bound recovery | Six failed wash attempts today each incurred an unnecessary roughly one-minute stage; small, well-supported change before speculative positioning work | High confidence in removing that wait; roughly 0.25–0.5 day plus live exposure. Completion improvement unproven. |
 | 4 | M12a: observe and recover target acquisition | Shared Pride Rock routes consumed 66min of the final 128min run without success; largest remaining route opportunity | Medium/low root-cause confidence; roughly 1–3 days. Capture one complete approach before choosing a fix. Benefit overlaps V0. |
