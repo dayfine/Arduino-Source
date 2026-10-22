@@ -213,6 +213,29 @@ logged attempts (bbq-lab 0/12, bbq-m5 2/18, bbq-m3 0/2, bbq-m4 1/1). Try about
 Plaza and Canyon Plaza; count battles and sneak-up successes. Feeds C12; if a
 spot works, sneak-up can leave the reroll list.
 
+**Quest value from logs (2026-10-22; re-run `python3 pokemon_sv/tools/quest_stats.py`).**
+All lab profile logs; BP rewards from R3. A reroll costs 10 BP + ~25 s
+(~90 s of quest time at the run's pace), so reroll quests whose seconds per
+success are well above ~250 s.
+
+| Route | Att | Success | s/attempt | s/success | BP | BP/min |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Make TM | 12 | 100% | 74 | 74 | 20 | 16 |
+| Travel 500 m | 15 | 100% | 89 | 89 | 20 | 13 |
+| Photo Swimming/Water/Polar | 10 | 70% | 70 | 101 | 30 | 18 |
+| Auto Battle 10/30 | 13 | 100% | 464 | 464 | 20 | 2.6 |
+| Bath | 5 | 40% | 267 | 667 | ? | ~2 |
+| Sneak up (Pride Rock) | 19 | 16% | 109 | 689 | ~20 | 1.7 |
+| Catch any/Normal/Fire (Pride Rock) | 14 | 14% | 148 | 1038 | ~20 | 1.2 |
+| Photo Normal/Fire (Pride Rock) | 13 | ~0% | 96 | very high | 30 | ~0 |
+
+Levels (user, 2026-10-22): (1) measure from all logs (this table); (2) hard-
+coded decisions: reroll sneak-up, catch any/normal/fire, photo normal/fire,
+bath via the exclusions table now; Auto Battle borderline, keep for M9a tests;
+C13 later = adaptive reroll from running per-route stats; (3) fix ROI =
+frequency x time lost: Pride Rock routes first (C11, C12, E4), then Auto
+Battle (M9a, #21, C10), then bath.
+
 **To analyze from run logs (added 2026-10-22 by the user):**
 
 - A1, quest order within a round. The planner keeps board order; nothing
