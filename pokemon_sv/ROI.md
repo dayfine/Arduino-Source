@@ -37,6 +37,8 @@ the live runs needed to validate.
 | M10 pickup-10 doable | +71 | 4 | 2 | 12 | guess; 12% of draws, now always rerolled | needs feasibility check |
 | C12+E4 catch-any at a dense spot | +42 | 3 | 2 | 8 | guess: 14% -> 60% | queued |
 | E4 sneak-up at a better spot | +32 | 2 | 2 | 8 | guess: 16% -> 50% | queued |
+| C16 pickup-10 as incidental (skip, don't reroll) | +0 to +100 | 0 (settings) | 2 | high if it works | test in R7: unknown whether it completes passively | queued (R7 settings) |
+| Make TM: remember last craftable TM | +0 to +5 | 0.5 | 0.5 | low | Make TM 79 s / 91% today; matters only if early TMs run out | not queued |
 | M10 photo-fly doable | +40 | 4 | 2 | 7 | guess | needs feasibility check |
 | Typed catches at denser spots | +17 | 4 | 3 | 2 | guess: 75% -> 90% | not queued |
 

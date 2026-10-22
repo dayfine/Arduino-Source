@@ -342,6 +342,19 @@ when C10 shortens Auto Battle. (4) Typed catches stay (F gains nothing).
    Accidental multi-completions so far: R3b catch-any + sneak-up (ball from
    behind). Saves ~1.5 min per batched quest. Queue after it: C10, C12.
 
+17. C16 (added 2026-10-22 by the user): a third quest category, "incidental":
+   not worth a dedicated trip but may progress while doing other quests
+   (candidate: pickup-10). Policy: keep (skip) while other slots are doable,
+   reroll if it blocks the board or sits past a time cap. Evidence so far: none.
+   A first log scan suggested pickup-10 left the board 19 times without a
+   reroll, but every R4/R5 case had BP -10 (an unlogged reroll path), and m5 had
+   no BP readings, so that claim is retracted. Test in R7 (no code): set
+   pickup-10's exclusion row to skip (rows override C15); incidental if it ever
+   leaves the board with BP +20 and no reroll; back to reroll after ~30 min
+   with no progress. Code only if the test says so (`incidental_quests` set in
+   plan_quests(), a variation on C15). Also: find the reroll path that doesn't
+   log "Reroll selected" so log scans can see it.
+
 
 **To analyze from run logs (added 2026-10-22 by the user):**
 
