@@ -110,6 +110,9 @@ public:
     EnumDropdownOption<OOEggs> OUT_OF_EGGS;
     BooleanCheckBoxOption FIX_TIME_FOR_HATCH;
 
+    //Auto battle quest
+    SimpleIntegerOption<uint8_t> AUTO_BATTLE_HEAL_PERCENT;
+
     //Tera raid
     TeraAIOption BATTLE_AI;
     TeraFarmerCatchOnWin CATCH_ON_WIN;

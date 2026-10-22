@@ -29,6 +29,7 @@
 #include "VideoGames/PokemonSV/Inference/Dialogs/PokemonSV_DialogDetector.h"
 #include "VideoGames/PokemonSV/Inference/Overworld/PokemonSV_OverworldDetector.h"
 #include "VideoGames/PokemonSV/Inference/Overworld/PokemonSV_OverworldSensors.h"
+#include "VideoGames/PokemonSV/Inference/Overworld/PokemonSV_LetsGoHpReader.h"
 #include "VideoGames/PokemonSV/Inference/Boxes/PokemonSV_BoxDetection.h"
 #include "VideoGames/PokemonSV/Programs/Boxes/PokemonSV_BoxRoutines.h"
 #include "VideoGames/PokemonSV/Programs/PokemonSV_MenuNavigation.h"
@@ -46,6 +47,7 @@
 #include "VideoGames/PokemonSV/Programs/PokemonSV_Terarium.h"
 #include "PokemonSV_BlueberryQuests.h"
 
+#include<cmath>
 #include<optional>
 #include<vector>
 
@@ -1525,14 +1527,27 @@ BBQAutoBattleResult run_auto_battle(
         const uint64_t kills_before = actions.kills();
 
         actions.fly_to_battle_area();
-        actions.clear(policy.kill_target);
+        const std::optional<double> hp = actions.clear(policy.kill_target);
 
         const uint64_t kills = actions.kills();
         empty_passes = kills == kills_before ? empty_passes + 1 : 0;
         const auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(actions.now() - start);
 
+        //Unknown HP heals, as every pass did before the threshold existed. The log rounds HP
+        //down, so it shows below the threshold exactly when it is.
+        const bool heal = !hp || *hp * 100 < policy.heal_below_hp_percent;
+        const std::string hp_text = hp ? std::to_string((int)std::floor(*hp * 100)) + "%" : "?";
+        const std::string threshold_text = std::to_string(policy.heal_below_hp_percent) + "%";
+
         std::optional<BBQAutoBattleResult> end;
-        std::string next = "Below the target: return, heal and go again.";
+        std::string next;
+        if (!hp){
+            next = "Below the target and HP unknown: return, heal and go again.";
+        }else if (heal){
+            next = "Below the target and HP below " + threshold_text + ": return, heal and go again.";
+        }else{
+            next = "Below the target and HP at or above " + threshold_text + ": return and go again without healing.";
+        }
         if (kills >= policy.kill_target){
             end = BBQAutoBattleResult::TargetReached;
             next = "Target reached: return without healing.";
@@ -1547,6 +1562,7 @@ BBQAutoBattleResult run_auto_battle(
             "Auto Battle pass " + std::to_string(pass) + ": "
             + std::to_string(kills - kills_before) + " kills, "
             + std::to_string(kills) + "/" + std::to_string(policy.kill_target) + " in total, "
+            + "HP " + hp_text + ", "
             + std::to_string(elapsed.count()) + " s elapsed. "
             + next
         );
@@ -1556,7 +1572,11 @@ BBQAutoBattleResult run_auto_battle(
         if (end){
             return *end;
         }
-        actions.heal();
+        //Skipping the heal also skips its re-fly: return_to_plaza() already lands on the Central
+        //Plaza fly point, which is where the flight to Chargestone starts from.
+        if (heal){
+            actions.heal();
+        }
     }
     return BBQAutoBattleResult::TargetReached;
 }
@@ -1569,10 +1589,11 @@ public:
         ProgramEnvironment& env,
         VideoStream& stream, ProControllerContext& context,
         LetsGoEncounterBotStats& stats,
-        LetsGoEncounterBotTracker& tracker
+        LetsGoEncounterBotTracker& tracker,
+        LetsGoHpWatcher& hp_watcher
     )
         : m_env(env), m_stream(stream), m_context(context)
-        , m_stats(stats), m_tracker(tracker)
+        , m_stats(stats), m_tracker(tracker), m_hp_watcher(hp_watcher)
     {}
 
     virtual uint64_t kills() const override{
@@ -1594,7 +1615,11 @@ public:
         pbf_move_left_joystick(m_context, {+1, 0}, 1440ms, 400ms);
         pbf_press_button(m_context, BUTTON_L, 160ms, 400ms);
     }
-    virtual void clear(uint64_t stop_at_kills) override{
+    virtual std::optional<double> clear(uint64_t stop_at_kills) override{
+        //The watcher runs for the whole quest. Forget what it read before this clear, so a reading
+        //from an earlier pass is never reported as this one's.
+        m_hp_watcher.clear();
+
         use_lets_go_to_clear_in_front(m_stream, m_context, m_tracker, false, [&](ProControllerContext& context){
             pbf_move_left_joystick(context, {0, -1}, 1440ms, 400ms);
             pbf_wait(context, 12000ms);
@@ -1604,6 +1629,13 @@ public:
         );
 
         m_context.wait_for_all_requests();
+
+        //Read before leaving: the HP bar is only on screen in the overworld with the lead out.
+        const double hp = m_hp_watcher.last_known_value();
+        if (hp <= 0){
+            return std::nullopt;
+        }
+        return hp;
     }
     virtual void return_to_plaza() override{
         PokemonSV::return_to_plaza(m_env.program_info(), m_stream, m_context);
@@ -1636,6 +1668,7 @@ private:
     ProControllerContext& m_context;
     LetsGoEncounterBotStats& m_stats;
     LetsGoEncounterBotTracker& m_tracker;
+    LetsGoHpWatcher& m_hp_watcher;
 };
 
 }
@@ -1669,8 +1702,9 @@ void quest_auto_battle(
         policy.kill_target = 30;
         policy.time_limit = std::chrono::minutes(60);
     }
+    policy.heal_below_hp_percent = BBQ_OPTIONS.AUTO_BATTLE_HEAL_PERCENT;
 
-    ConsoleBBQAutoBattleActions actions(env, stream, context, stats, tracker);
+    ConsoleBBQAutoBattleActions actions(env, stream, context, stats, tracker, sensors.lets_go_hp);
     run_auto_battle(stream.logger(), actions, policy);
 }
 

@@ -272,8 +272,9 @@ public:
     virtual void fly_to_battle_area() = 0;
 
     //Send the lead out with Let's Go until no kill has been heard for 6 seconds, or until
-    //kills() reaches `stop_at_kills`, whichever comes first.
-    virtual void clear(uint64_t stop_at_kills) = 0;
+    //kills() reaches `stop_at_kills`, whichever comes first. Returns the lead's last known HP,
+    //from 0 to 1, or nothing if it could not be read.
+    virtual std::optional<double> clear(uint64_t stop_at_kills) = 0;
 
     //Fly back to Central Plaza. Leaving the cave respawns its Pokemon.
     virtual void return_to_plaza() = 0;
@@ -289,6 +290,8 @@ struct BBQAutoBattlePolicy{
     uint64_t max_empty_passes = 3;
     //Give up after the pass that ends past this time.
     std::chrono::minutes time_limit = std::chrono::minutes(35);
+    //Between passes, heal only if the lead's HP is below this percentage or unknown.
+    uint8_t heal_below_hp_percent = 50;
 };
 
 enum class BBQAutoBattleResult{
@@ -297,10 +300,11 @@ enum class BBQAutoBattleResult{
     TimeLimit,
 };
 
-//Clear Chargestone Cavern until the kills reach the target, healing after every pass but the
-//last. Gives up when a limit in `policy` is reached; the board check then decides the quest
-//failed. Either way it ends at Central Plaza. Logs one line per pass: its kills, the total, the
-//time spent, and what happens next.
+//Clear Chargestone Cavern until the kills reach the target. Between passes, heals when the lead's
+//HP is below `policy.heal_below_hp_percent` or unknown. Gives up when a limit in `policy` is
+//reached; the board check then decides the quest failed. Either way it ends at Central Plaza.
+//Logs one line per pass: its kills, the total, the lead's HP, the time spent, and what happens
+//next.
 BBQAutoBattleResult run_auto_battle(
     Logger& logger,
     BBQAutoBattleActions& actions,
