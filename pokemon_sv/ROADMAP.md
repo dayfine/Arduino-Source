@@ -327,6 +327,21 @@ when C10 shortens Auto Battle. (4) Typed catches stay (F gains nothing).
    tests in PokemonSV_Tests.cpp (BBQuestPlan group). Workaround now: list them
    in QUEST_EXCLUSIONS with action reroll (done for bbq-r5 at 13:19).
 
+16. M15 step 1 (added 2026-10-22 by the user, from R5b; next after C15):
+   batch quests on one trip. Today every quest is its own trip (fly, attempt,
+   return, date change, panel read: ~1.5-2 min overhead). R5b 13:33-13:45 made
+   5 trips for catch-electric, photo-swim, photo-coastal, sandwich. Step 1, no
+   route planner needed:
+   (a) same-target pairs: photo-X + catch-X (e.g. photo-ghost + catch-ghost on
+       the board at 13:45), photo + sneak-up/catch-any: photograph first, then
+       catch/sneak in the same encounter;
+   (b) no-trip quests back to back (make-tm, sandwiches, hatch): skip the
+       return / date change / panel read between them;
+   (c) later: same-area pairs once each route records its destination plaza
+       (photo-swim + photo-coastal at Coastal).
+   Accidental multi-completions so far: R3b catch-any + sneak-up (ball from
+   behind). Saves ~1.5 min per batched quest. Queue after it: C10, C12.
+
 
 **To analyze from run logs (added 2026-10-22 by the user):**
 
