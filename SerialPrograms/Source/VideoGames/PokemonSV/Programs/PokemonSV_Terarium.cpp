@@ -24,7 +24,14 @@ namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonSV{
 
-void return_to_plaza(const ProgramInfo& info, VideoStream& stream, ProControllerContext& context){
+namespace{
+
+//  Returns true if it stopped at a wild battle's menu (only when stop_at_battle
+//  is set). Otherwise it flees each battle and returns false once at the plaza.
+bool return_to_plaza_impl(
+    const ProgramInfo& info, VideoStream& stream, ProControllerContext& context,
+    bool stop_at_battle
+){
     stream.log("Attempting to return to Central Plaza.");
     //Modified version of handle_battles_and_back_to_pokecenter()
     bool returned_to_pokecenter = false;
@@ -92,6 +99,9 @@ void return_to_plaza(const ProgramInfo& info, VideoStream& stream, ProController
                 stream.log("Shiny detected!");
                 pbf_press_button(context, BUTTON_CAPTURE, 2000ms, 5000ms);
                 throw ProgramFinishedException();
+            }else if (stop_at_battle){
+                stream.log("Detected battle. Stopping at the battle menu.");
+                return true;
             }else{
                 stream.log("Detected battle. Running from battle.");
                 try{
@@ -111,6 +121,17 @@ void return_to_plaza(const ProgramInfo& info, VideoStream& stream, ProController
         }
     }
     context.wait_for_all_requests();
+    return false;
+}
+
+}
+
+void return_to_plaza(const ProgramInfo& info, VideoStream& stream, ProControllerContext& context){
+    return_to_plaza_impl(info, stream, context, false);
+}
+
+bool return_to_plaza_unless_battle(const ProgramInfo& info, VideoStream& stream, ProControllerContext& context){
+    return return_to_plaza_impl(info, stream, context, true);
 }
 
 void map_move_cursor_fly(
