@@ -53,7 +53,7 @@ three quests, so live reuse needs a later eligible four-slot observation.
 | --- | --- | --- | --- | --- |
 | 1 | M7a: safe quest-board observation reuse | IMPLEMENTED 57f330fc9; full build and 55 native tests passed | Controlled four-slot reuse and subsequent fresh reads OBSERVED | Fork draft [#12](https://github.com/dayfine/Arduino-Source/pull/12); extracted full build / 41 native PASS; Claude owns PR |
 | 1b | M7b: replan after exhausted-quest reroll | IMPLEMENTED ea047a930; isolated full build and 58 native tests PASS | Failed Savanna Photo → Travel dispatch/completion OBSERVED; repeat discard paths observed | Fork draft [#13](https://github.com/dayfine/Arduino-Source/pull/13); extracted full build / 46 native PASS; Claude owns PR |
-| 2 | M8a: hatch failure party restoration | DOCUMENTED; no feature commit | NOT STARTED | Implement restoration/restart contract through native action seam |
+| 2 | M8a: hatch failure party restoration | ISOLATED WORKTREE PREPARED; no feature commit | NOT STARTED | Implement restoration/restart contract through native action seam |
 | 3 | M11a: failed scrub must not enter rinse | DOCUMENTED; no feature commit | Baseline failure/success evidence only | Implement bounded failure/recovery and transition gating |
 | 4 | M12a: Pride Rock target acquisition | DOCUMENTED; no feature commit | Baseline missing-battle evidence only | Capture target/arrival/framing and choose bounded recovery |
 | 5 | M13: nested navigation bounds | DOCUMENTED; no feature commit | Baseline prolonged recovery only | Bound total recovery and expose exhaustion |
@@ -148,3 +148,5 @@ under tests/ may be included in a release branch's diff.
 | 2026-10-21 22:12 PDT | M7 targeted live acceptance finished; early normal Stop and game save verified | Both paths observed; phase two 35m53s, four completions, gross 200 / rerolls 50 / net 150 BP; M14 BP status requested; release native 41/46 PASS |
 
 | 2026-10-21 22:14 PDT | Fork drafts opened; PR branches/descriptions handed to Claude | M7a dayfine/Arduino-Source#12 (M6 + M5); M7b dayfine/Arduino-Source#13 (M7a + save milestones); no upstream PR |
+
+| 2026-10-21 | M8a preparation started | Isolated worktree Arduino-Source-m8a, branch bbq/m8a-party-restoration at tested lab ea047a930; no M8 code/build/live acceptance yet |
