@@ -69,7 +69,13 @@ Maintainers review on github.com, which does not mark moved code.
   into a new interface's methods), say so and rely on the "How to review"
   section.
 - **Measure before claiming.** Count the moved lines with the command above,
-  e.g. "about half of the changed lines are moved".
+  e.g. "about half of the changed lines are moved", and check what it actually
+  marks before describing it:
+  - code that moved *and* had names changed on every line (e.g. `env` to
+    `m_env`) is not detected as moved; call it "moved with renames" and say to
+    compare it by eye;
+  - a function body that keeps its place while its signature changes shows as
+    unchanged lines, not as a move.
 
 Example: upstream PokemonAutomation/Arduino-Source#1663.
 
