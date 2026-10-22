@@ -399,4 +399,36 @@ BP 7234 -> 7994 in game: earned 870, spent 110 (rerolls), net +760, 398 BP/hour.
 
 **R4 (started 2026-10-22 10:31, `lab/r4` = `lab/r3` + #21 + #22 + #23, profile
 bbq-r4).** Exclusions: policy C' (C keeping catch-any, to test #23). Notes in
-`~/Projects/Arduino-Source-r4/build-prep/R4_BUILD.md`.
+`~/Projects/Arduino-Source-r4/build-prep/R4_BUILD.md`. Ran 10:31-12:32, stopped by
+rule at 120 min; no errors, no stuck steps.
+
+| | R3b | R4 |
+| --- | ---: | ---: |
+| Quests completed | 23 | 38 |
+| BP net (earned / spent) | +760 (870 / 110) | +910 (1160 / 250) |
+| BP/hour net | 398 | 459 (peak ~540) |
+| Quest-panel reads per completion | 4.0 | 2.9 (111 reads, 43 reused) |
+| Auto Battle 10, time to target | 337 s mean, 7 runs | 230 s mean (145-344), 7 runs |
+| Passes to target | 4, 5, 5, 4, 3, 2, 4 | 4, 3, 3, 2, 3, 4, 5 |
+| Heals between passes | after every short pass | 0 of 24 passes (HP 96-100%) |
+
+- **#21 confirmed:** HP never fell below 50%, so no heals; each pass is ~70 s
+  instead of ~100 s. The remaining Auto Battle time is spawn density (1-9 kills
+  per pass) and the extra pass at 9 counted kills (C10).
+- **#22 confirmed:** reads per completion 4.0 -> 2.9.
+- **#23 untested:** no catch quest was drawn in 38 quests. Carried to R5.
+- 25 rerolls (policy C' plus OUT_OF_RETRIES), 1 failed-and-rerolled quest.
+- **Red quest measured:** wild-tera (top slot) completed in ~2.5 min, +100 BP.
+- **Kleavor (tera-self-defeat):** 14 attempts by the passive recorder's count,
+  4 misses. Frames in the session scratchpad (`kleavor/<time>/sheet.png`): the
+  glide always lands on the 黑奇石 field; on a hit Kleavor stands straight
+  ahead, on a miss the field in view is empty. No clear time-of-day pattern
+  (hit at night, misses at day and dusk). Older logs: Oct 20 00:12-01:08 had 14
+  misses in a row on upstream main, each after a date change. Feeds C12: pan
+  the camera with ZL lock-on before giving up; else glide on to the Scyther
+  grassland. The main app log (`SerialPrograms*.log`, Oct 17-21: 76 completions)
+  is not yet in quest_stats.py / quest_draws.py.
+
+**R5 (started 2026-10-22 12:33, `lab/r5` = `lab/r4` + C14 #24, profile bbq-r5,
+same settings as R4).** Tests the Central Plaza arrival check and, if a catch
+quest is drawn, #23. Notes in `~/Projects/Arduino-Source-r5/build-prep/R5_BUILD.md`.
