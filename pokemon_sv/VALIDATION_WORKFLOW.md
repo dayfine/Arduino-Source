@@ -1,8 +1,9 @@
 # BBQ milestone implementation and live validation loop
 
 Status: operational workflow documented; isolated testing branch created.
-Its integrated baseline has not yet been built, tested or run. This is a
-workflow document, not an installed agent skill.
+The M7 integrated build and native tests passed; live coverage is tracked
+separately in MILESTONE_STATE.md. This is a workflow document, not an installed
+agent skill.
 
 Track current implementation, integration, live evidence and PR readiness in
 [MILESTONE_STATE.md](MILESTONE_STATE.md); update it after every loop transition.
@@ -11,8 +12,12 @@ Track current implementation, integration, live evidence and PR readiness in
 
 - Testing branch: `bbq/validation-stack` on dayfine/Arduino-Source.
 - Isolated worktree: `/Users/difan/Projects/Arduino-Source-bbq-lab`.
-- Planning/evidence branch: `bbq/m7-board-read-notes`; milestone notes, daily
-  audits, BP ledgers and this workflow live under `tests/pokemon_sv/`.
+- Planning/evidence branch: `agents`; milestone notes, daily audits, BP ledgers,
+  run records and this workflow live under `pokemon_sv/`.
+- Rules/notes worktree: `/Users/difan/Projects/Arduino-Source-agents`. Read its
+  [AGENTS.md](../AGENTS.md) before working from any code checkout; code branches
+  do not carry this rules file. Never merge/rebase/cherry-pick `agents` into code.
+- `bbq/m7-board-read-notes` is retired from active use; its history is retained.
 - Release branches: one branch per feature/PR. Never open a feature PR directly
   from the testing branch, which accumulates unrelated experimental changes.
 - **Codex owns** the testing branch, notes branch, implementation/live validation
@@ -28,7 +33,7 @@ Track current implementation, integration, live evidence and PR readiness in
 The initial lab baseline combines upstream main `db9ef1772` with M6
 `a1b685f9e` (including M4 and its prerequisites), then cherry-picks M5
 `f7e3ba6f0` as lab commit `075376f2f`. The integration merge is `9d5d232fe`.
-`tests/pokemon_sv/lab/STACK.md` in the lab branch records its components and
+`pokemon_sv/lab/STACK.md` on `agents` records its components and
 verification status. Record exact SHAs, not only moving branch names.
 
 Current dependency map, checked on GitHub 2026-10-21:
@@ -126,11 +131,20 @@ SHAs even after the PR heads move.
    the target feature's result and unrelated findings. Classify as VERIFIED,
    FAILED, or INCONCLUSIVE; a feature whose trigger never occurred remains
    inconclusive even after two hours of successful farming.
-10. **Handoff or publish.** For an existing PR, hand Claude the lab commits and
-    RESULT.md; Claude updates its branch and short verification section. For a
-    new feature, extract a dedicated branch as described below, build/test it,
-    open its draft PR, then hand ownership to Claude. Record the exact tested
-    revision, native cases, live evidence and dependencies. Update the queue
+10. **Handoff or open a fork PR.** Follow [PR_WORKFLOW.md](PR_WORKFLOW.md).
+    For an existing PR, hand Claude the lab commits and RESULT.md; Claude updates
+    its branch and short verification section, recording fork-PR results on the
+    fork. For new work, extract a dedicated branch as described below, build/test
+    it, and open a draft PR on **dayfine/Arduino-Source**. Base stacked fork PRs
+    on a parent's branch; with two parents, merge the other into the feature branch.
+    Start the description with a banner naming the base, parent PRs and whether
+    the diff shows only this change; qualify upstream references as
+    `PokemonAutomation/Arduino-Source#<number>`. Hand ownership to Claude with
+    the exact tested revision, native cases, live evidence and dependencies.
+    Codex does not open or reopen upstream PRs. Claude moves work upstream only
+    when all parent PRs have merged and the change is ready for review, rebased
+    onto `main`, rebuilt and tested; upstream PRs are never drafts. Claude then
+    closes the fork PR with a link to its upstream replacement. Update the queue
     and stack manifest, then select the next candidate.
 
 ## Repository conventions for every feature commit

@@ -11,6 +11,8 @@ owns existing PR branches/descriptions and receives verified commits/results.
 ## Current checkpoint
 
 - Active candidate: **M7a — reduce redundant quest-board reads safely**.
+- Notes/rules now live on `agents`, worktree
+  `/Users/difan/Projects/Arduino-Source-agents`; old notes branch retired from use.
 - M4–M6 are **DONE for this milestone sequence**, per the user's clarification.
   Claude continues their upstream PR refinement; do not restart their live
   acceptance campaign as a new V0 milestone. This records milestone completion,
@@ -33,7 +35,7 @@ owns existing PR branches/descriptions and receives verified commits/results.
 - Read-only five-minute observer records the restarted run. No stop timer owns
   it. Old observer exited on a historical-state bug, now corrected locally;
   deadline stopping remains unverified. User retains control of the newer run.
-- Run record: lab branch `tests/pokemon_sv/lab/runs/2026-10-21-m7-live/RESULT.md`.
+- Run record: [M7 trial](lab/runs/2026-10-21-m7-live/RESULT.md) on `agents`.
 
 The user stopped Flying Trial and returned manually after automation missed the
 handoff. The new shallow AX helper successfully pressed Screenshot and Start;
@@ -125,3 +127,5 @@ under tests/ may be included in a release branch's diff.
 | 2026-10-21 18:49 PDT | M7 implemented and full build/55 native tests passed; live run started with timer/checkpoints | Feature 57f330fc9; starting 13,690 BP; lab live RESULT.md |
 
 | 2026-10-21 20:10 PDT | First M7 hour inconclusive; invalid hatch exclusion blocked Auto 10, user restarted after edits | Zero reuse / 75 three-slot reads; 6 completions; +80 observed BP across both runs at 20:08; lab RESULT |
+
+| 2026-10-21 | Notes/rules moved to agents; step 10 aligned with fork workflow; failed-reroll queue delay tracked as M7b | AGENTS.md; M7.md evening example; M7a does not fix M7b |

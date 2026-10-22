@@ -8,6 +8,14 @@ from it.**
 Agents working here: Codex (implementation and live validation on a Switch)
 and Claude (getting PRs ready for review). The user decides scope and priorities.
 
+## Session startup from a code checkout
+
+Read `/Users/difan/Projects/Arduino-Source-agents/AGENTS.md` at the start of each
+session, even when the working directory is a code worktree without AGENTS.md.
+Keep this dedicated worktree on `agents`. Commit all new notes and run records
+here; `bbq/m7-board-read-notes` is retired from active use. Do not copy these
+rules or notes into code branches.
+
 ## Roles
 
 - **Codex owns:**
