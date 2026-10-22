@@ -256,10 +256,19 @@ completions per red; unmeasured):
 Chained rerolls are priced in: D costs ~0.4 more rerolls per completed quest;
 P(5 bad draws in a row) is 0.47^5 = 2%. F over-rerolls. Red quests raise the
 value of a completion, which favours fast quests and rerolling slow ones.
-Red slot: 101 of 468 reads had a 4th (red) quest; 40 of those were
-photo-savanna (Pride Rock photo, ~0% success), which blocks the bonus slot.
-To measure: red reward (BP), completions between reds, whether a red can be
-rerolled.
+Red quests (corrected 2026-10-22): a red ("strong") quest appears in the
+TOP slot and pushes the blue quests to slots 2-4, so a 4-entry board means a
+red is present and slot 1 is the red. (An earlier note here read slot 4 as red
+and blamed Photo Savanna; that was wrong: Photo Savanna was a blue quest.)
+Red episodes in all logs: lab salty-sandwich 8 min/0 completions; m3 tera-raid;
+m5 wash-pokemon 25 min (23 reads) and 54 min (40 reads, 1 completion);
+m5 hatch-egg x2; m5 sandwich-three; m7b auto-30 x2; R3 tera-raid, done,
++150 BP. Serebii: a strong quest comes after 10 completed quests, pays
+130-200 BP, and costs 50 BP to reroll (10 for a blue). So a completion is
+worth ~+15 BP extra (use the +10..+20 columns). Red policy (to decide with
+more data): attempt reds the program does reliably (tera raid, auto-30,
+hatch); reroll (50 BP) reds it can't (wash at 40%/267 s held the slot for
+54 min).
 
 14. C14 (added 2026-10-22 from R3, high priority: it ended R3): return to
    Central Plaza can land elsewhere and the program then dies. R3 08:17:
