@@ -54,6 +54,21 @@ visible, its button titles are readable, and window screenshots work.
   the lab window without touching it. The app's own "Screenshot" button saves
   the Switch frame at full resolution.
 
+## Moving by hand (checked 2026-10-22 02:40)
+
+- **More keys** (macOS key codes): Y = `/` (44), L = Q (12), ZL = `r` (15),
+  ZR = `\` (42), left stick W/A/S/D = 13/0/1/2, D-pad I/J/K/L = 34/38/40/37.
+  `ui key <code> <ms>` holds one key, so diagonals are two holds in a row.
+- **Map:** Y opens it. R/L cycle Academy → Paldea → Kitakami → Academy; the
+  Terarium is the Academy map zoomed out. At the widest zoom the cursor does
+  not move and A does nothing; pan at the middle zoom. About 1 s of stick
+  moves the cursor about a third of the Terarium at the middle zoom.
+- **No flying indoors:** from the Item Printer room, Fly answers "無法在這裡使用
+  飛翔移動" (can't fly here). Leave the building first, or start from a program
+  that ends outdoors (the BBQ Farmer ends at Central Plaza).
+- Helper: `switch_raw.sh <keycode> <ms> <name>` in Claude's scratchpad clicks
+  the video, holds the key and takes a screenshot.
+
 ## Save the game by hand (no program running)
 
 X (menu) → R (save) → A (confirm), then B until the overworld. Take a
