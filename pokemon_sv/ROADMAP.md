@@ -315,6 +315,18 @@ when C10 shortens Auto Battle. (4) Typed catches stay (F gains nothing).
    "Central Plaza" shown on landing, or the map label) and retry the return
    if wrong; (b) make a failed quest fly a failed attempt (return to plaza
    from the map corner) instead of a fatal program error. N1 (#20) helps.
+15. C15 (added 2026-10-22 from R5a): impossible quests sit on the board.
+   `plan_quests()` only skips quests in `not_possible_quests` (pickup-10,
+   photo-flying, catch-flying, UnableToDetect) and rerolls one only when nothing
+   else is doable, then the *first* such slot, which is the red top slot (50 BP)
+   when a red is impossible. R5a 12:55-13:08: red photo-flying + blue
+   catch-flying held 2 of 4 slots for 20+ min; 1 completion in 10 min; no red
+   income while the red slot is blocked. Fix: reroll an impossible blue (10 BP)
+   on sight; reroll an impossible red (50 BP; a red pays 100-150 and blocks the
+   next one); in the fallback pick the cheapest impossible slot. Data-driven
+   tests in PokemonSV_Tests.cpp (BBQuestPlan group). Workaround now: list them
+   in QUEST_EXCLUSIONS with action reroll (done for bbq-r5 at 13:19).
+
 
 **To analyze from run logs (added 2026-10-22 by the user):**
 
