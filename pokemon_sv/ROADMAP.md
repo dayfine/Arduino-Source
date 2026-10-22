@@ -365,3 +365,38 @@ outdoors (no flying indoors), so do it during R3 from Central Plaza.
 **Start, once the Item Printer run ends and the game is saved:** begin C1–C4,
 and do R1 while they build. Code ahead of the Switch, so each run's build is
 ready when the Switch is free.
+
+## Run log
+
+**R3b (2026-10-22 08:29-10:30, `lab/r3`, profile bbq-r3, stopped by rule at 120 min).**
+No errors, no stuck steps. 23 quests done (the program's counter says 24), 2 saves.
+BP 7234 -> 7994 in game: earned 870, spent 110 (rerolls), net +760, 398 BP/hour.
+- **Auto Battle 10, 7 runs, stop-at-target (#17) fired every time.** Passes: 4, 5,
+  5, 4, 3, 2, 4; time to target 349, 451, 446, 345, 256, 174, 340 s (mean 337 s,
+  vs 464 s per quest before). Per-pass kills 1-5, once 9 in a 78 s pass.
+  - The run of 5 passes at 09:13 counted 9/10 kills, but the board read found the
+    quest done: the kill count undercounts by about 1 (same as R3).
+  - Pass totals don't always add up: "1 kills, 4/10" after 2/10 (08:49) and
+    "1 kills, 9/10" after 7/10 (08:52). The per-pass and running counters
+    disagree; look at #17's counting.
+- **10-completion bonus, measured.** The 10th completion (sandwich, 09:18) and the
+  20th (travel-500, 10:04) each paid +130 BP instead of 20; the board had no red
+  quest either time. So the in-game crown bar pays about +110 extra per 10
+  completions (+11 BP per completion). This is not the red-quest mechanic; red
+  quests (e.g. R3's tera raid, +150) come some other way. Use the model's
+  "+10" column for the bonus and keep reds separate.
+- **One attempt can complete two quests:** catch-any at 09:23 also completed
+  sneak-up (a catch thrown from behind), +40 BP.
+- **Rerolls:** excluded quests (photo-fly, pickup-10, sneak-up) on sight; tera-
+  self-defeat (twice) and catch-any failed both tries and were rerolled under
+  OUT_OF_RETRIES.
+- **Panel reads:** 93 reads for 23 completions (4.0 per completion); several
+  bursts of 3-4 reads in ~20 s around rerolls. This is C9; #22 (in R4) fixes it.
+- **Ordering (A1):** at 10:14 the planner chose auto-10 with travel-500 on the
+  board.
+- Log noise: 18,320 `SpectrogramMatcher (Shiny Sound) spectrum timestamps are not
+  continuous` stdout lines; harmless so far.
+
+**R4 (started 2026-10-22 10:31, `lab/r4` = `lab/r3` + #21 + #22 + #23, profile
+bbq-r4).** Exclusions: policy C' (C keeping catch-any, to test #23). Notes in
+`~/Projects/Arduino-Source-r4/build-prep/R4_BUILD.md`.
