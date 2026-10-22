@@ -48,3 +48,14 @@ Active trial: [M7 live RESULT](runs/2026-10-21-m7-live/RESULT.md).
 This manifest and run records are maintained on `agents` from now on.
 All build-prep evidence paths refer to the lab worktree above. Historical
 records on the code stack are retained as provenance, not updated there.
+
+## M7b candidate ready for next session
+
+Feature ea047a930: end a batch after an exhausted-quest reroll and replan.
+The testing stack now contains this commit. Full isolated arm64 build PASS;
+58 native tests PASS, including three new red-to-green regression scenarios.
+Build worktree: /Users/difan/Projects/Arduino-Source-m7b.
+Live M7b result: NOT STARTED. See
+[runs/2026-10-21-m7b-preparation/RESULT.md](runs/2026-10-21-m7b-preparation/RESULT.md).
+The running old lab executable remains M7a 57f330fc9, despite source HEAD moving.
+M7a still needs its optimized four-slot planner-reroll path verified.

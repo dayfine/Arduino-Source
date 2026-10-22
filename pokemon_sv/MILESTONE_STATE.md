@@ -10,7 +10,8 @@ owns existing PR branches/descriptions and receives verified commits/results.
 
 ## Current checkpoint
 
-- Active candidate: **M7a — reduce redundant quest-board reads safely**.
+- Next candidate: **M7b — replan after failed-quest rerolls**, with a controlled
+  M7a reuse acceptance path in the next session.
 - Notes/rules now live on `agents`, worktree
   `/Users/difan/Projects/Arduino-Source-agents`; old notes branch retired from use.
 - M4–M6 are **DONE for this milestone sequence**, per the user's clarification.
@@ -47,6 +48,7 @@ three quests, so live reuse needs a later eligible four-slot observation.
 | Order | Candidate | Implementation / integration | Live verification | Next action |
 | --- | --- | --- | --- | --- |
 | 1 | M7a: safe quest-board observation reuse | IMPLEMENTED 57f330fc9; full build and 55 native tests passed | First hour reuse INCONCLUSIVE; changed-settings restart running | Observe eligible four-slot reroll path before claiming reuse verified |
+| 1b | M7b: replan after exhausted-quest reroll | IMPLEMENTED ea047a930; isolated full build and 58 native tests PASS | NOT STARTED | Preflight and controlled M7a/M7b session |
 | 2 | M8a: hatch failure party restoration | DOCUMENTED; no feature commit | NOT STARTED | Implement restoration/restart contract through native action seam |
 | 3 | M11a: failed scrub must not enter rinse | DOCUMENTED; no feature commit | Baseline failure/success evidence only | Implement bounded failure/recovery and transition gating |
 | 4 | M12a: Pride Rock target acquisition | DOCUMENTED; no feature commit | Baseline missing-battle evidence only | Capture target/arrival/framing and choose bounded recovery |
@@ -129,3 +131,5 @@ under tests/ may be included in a release branch's diff.
 | 2026-10-21 20:10 PDT | First M7 hour inconclusive; invalid hatch exclusion blocked Auto 10, user restarted after edits | Zero reuse / 75 three-slot reads; 6 completions; +80 observed BP across both runs at 20:08; lab RESULT |
 
 | 2026-10-21 | Notes/rules moved to agents; step 10 aligned with fork workflow; failed-reroll queue delay tracked as M7b | AGENTS.md; M7.md evening example; M7a does not fix M7b |
+
+| 2026-10-21 21:02 PDT | M7b prepared in isolated checkout; lab source fast-forwarded, active old binary unchanged | ea047a930; 58 native PASS; M7b preparation RESULT; M7a reuse still unverified |
