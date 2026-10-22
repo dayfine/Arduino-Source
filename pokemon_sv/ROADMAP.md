@@ -174,6 +174,26 @@ runs in parallel. Live runs need the Switch, one at a time.
 6. R6: the N1 fly check (C7).
 7. R7: the heal policy (C8).
 
+**Status (2026-10-22 morning):** all code items except C5 are draft fork PRs
+with passing native tests; none has run on the Switch yet.
+
+| Item | Fork PR | Branch | Base |
+| --- | --- | --- | --- |
+| C1 M9a PR 1 seam + pass log | #15 | `bbq/auto-battle-seam` | `main` |
+| C2 M9a PR 2 stop at target | #17 | `bbq/auto-battle-stop-at-target` | #15 |
+| C3 M9a PR 4 attempt limits | #18 | `bbq/auto-battle-bounds` | #17 |
+| C4 M14 BP status | #16 | `bbq/bp-status` | `bbq/bp-reader-crop` |
+| C5 M8a restore party | — | Codex's uncommitted work in `~/Projects/Arduino-Source-m8a` | |
+| C6 M12a diagnostics | #19 | `bbq/target-diagnostics` | `main` |
+| C7 N1 fly from anywhere | #20 | `bbq/fly-from-anywhere` | `main` |
+| C8 M9a PR 3 heal below 50% | #21 | `bbq/auto-battle-heal-threshold` | #18 |
+
+R3 build is ready (not launched): local branch `lab/r3` = lab stack + #15–#18 +
+#16 ported onto the lab round loop, app at
+`~/Projects/Arduino-Source-r3/build-prep/app`, notes in `build-prep/R3_BUILD.md`.
+The first launch needs the user (camera/microphone prompts). R1 needs the player
+outdoors (no flying indoors), so do it during R3 from Central Plaza.
+
 **Start, once the Item Printer run ends and the game is saved:** begin C1–C4,
 and do R1 while they build. Code ahead of the Switch, so each run's build is
 ready when the Switch is free.
