@@ -459,3 +459,21 @@ rule at 120 min; no errors, no stuck steps.
 **R5 (started 2026-10-22 12:33, `lab/r5` = `lab/r4` + C14 #24, profile bbq-r5,
 same settings as R4).** Tests the Central Plaza arrival check and, if a catch
 quest is drawn, #23. Notes in `~/Projects/Arduino-Source-r5/build-prep/R5_BUILD.md`.
+Ran in two parts on one build. **R5a 12:33-13:18:** 12 quests, net +190
+(259 BP/h): a red photo-flying and blue catch-flying (both "not possible")
+held 2 of 4 slots for 20+ min (C15). Stopped, added both to the reroll rows.
+**R5b 13:19-15:19:** 34 quests, net +1,150 (604 BP/h; 9154 -> 10304 in game).
+- **#24 plaza check:** 73/73 returns (R5a 21 + R5b 52) confirmed on the first
+  landing, 0 retries, 0 false mismatches; one read came out "中心場" and still
+  matched.
+- **Reds:** Auto Battle 30 done in 9 passes / 682 s, 0 heals, +130 (m7b: ~1070
+  s); sandwich-three done by a singleplayer sandwich, +130.
+- **Auto Battle 10:** 201, 199, 276, 206, 268 s; 0 heals in 26 passes.
+- **#23:** heal skip after a no-battle catch attempt fired once (catch-electric);
+  no catch-any drawn, so catch-on-return is still untested.
+- **Kleavor:** 8 tera-self attempts, 3 misses.
+- Panel reads 102 for 34 completions (3.0), 29 reused. Rerolls 27.
+
+**R6 (started 2026-10-22 15:19, `lab/r6` = `lab/r5` + C15 #25, profile bbq-r6
+without the flying reroll rows, so C15 does it).** Notes in
+`~/Projects/Arduino-Source-r6/build-prep/R6_BUILD.md`.

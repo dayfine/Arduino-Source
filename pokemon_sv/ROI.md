@@ -59,7 +59,27 @@ the live runs needed to validate.
 | #17 stop at target | ~30 s per Auto Battle | stop fired every run | R3b, R4 | confirmed |
 | #24 (C14) plaza arrival check | prevents R3's fatal stop | 61/61 landings confirmed, 0 false retries | R5 | confirmed, no BP/h change |
 | Exclusions for impossible quests (C15 workaround) | unblock 2 slots | R5a 259 -> R5b ~620 BP/h (2 reds done) | R5 | confirmed; C15 in R6 |
+| R5b overall (exclusions + #24) | model 657 | 604 BP/h, 34 quests | R5b | inside MC band |
 | #26 (M15 step 1b) no-trip chaining | was estimated ~1.5 min/quest | agent measured ~5-20 s/quest | none | estimate was wrong; low priority |
+
+## Projection (Monte Carlo, `pokemon_sv/tools/roi_mc.py`)
+
+4000 simulated 2-hour runs per scenario on roi.py's inputs (attempt times
+gamma-distributed around each route's mean, CV 0.35; reds 2 per 30 completions
+at 130 BP, ~400 s each, guess). BP/h per run, 2026-10-22:
+
+| Scenario | Median | p10 | p90 |
+| --- | ---: | ---: | ---: |
+| R6 now | 574 | 451 | 698 |
+| + C10 | 614 | 484 | 740 |
+| + C10, C12 Kleavor | 660 | 544 | 783 |
+| + all queued C/E items | 714 | 596 | 829 |
+| + M10 pickup-10, photo-fly | 768 | 657 | 879 |
+
+Measured runs sit inside the "now" band (R4 459, R5b 604); R5a (259) is
+outside because blocked slots aren't modeled (C15 removes that case). The
+p10-p90 spread (~250 BP/h) is larger than any single item's gain, so one run
+can't confirm an item; compare medians over several runs.
 
 ## Updating
 
