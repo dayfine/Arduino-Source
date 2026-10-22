@@ -206,6 +206,13 @@ runs in parallel. Live runs need the Switch, one at a time.
    doesn't help (leaving the area already resets random spawns): keep it only
    for fixed-spawn routes.
 
+**E4 (run, added 2026-10-22):** find a better spot for sneak-up and catch-any.
+Sneak-up uses the same Pride Rock route as catch-any and completed 3 of 33
+logged attempts (bbq-lab 0/12, bbq-m5 2/18, bbq-m3 0/2, bbq-m4 1/1). Try about
+10 attempts each at Pride Rock (baseline), the Chargestone court, Coastal
+Plaza and Canyon Plaza; count battles and sneak-up successes. Feeds C12; if a
+spot works, sneak-up can leave the reroll list.
+
 **To analyze from run logs (added 2026-10-22 by the user):**
 
 - A1, quest order within a round. The planner keeps board order; nothing
