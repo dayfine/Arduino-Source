@@ -26,8 +26,9 @@ verified by earlier runs of a different binary.
 Integration conflicts were resolved in test registration and the shared round
 loop. Full arm64 app build: **PASS**. Relevant registered native tests:
 **55 PASS, 0 FAIL**, including six new M7 scenarios. M7 live validation:
-**RUNNING**, started 2026-10-21 18:49:05 PDT at 13,690 BP;
-one-hour deadline 19:49:05 PDT. No acceptance path is verified yet.
+**INCONCLUSIVE** for first-hour reuse: 75 three-slot reads, zero reuse triggers.
+User stopped/restarted at 19:49 PDT with changed exclusions; new run continues.
+Starting 13,690 BP; observed 13,770 BP at 20:08 across both runs.
 Active candidate: M7a, safe reuse of verified quest-board observations, then M8a.
 The user clarified M4–M6 are done; do not repeat them as a separate V0 campaign.
 The remaining prerequisite PRs are now imported and built. Use the isolated

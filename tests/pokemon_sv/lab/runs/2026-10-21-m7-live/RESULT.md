@@ -1,6 +1,7 @@
 # M7 live trial, 2026-10-21 PDT
 
-Status: RUNNING. No live acceptance path is verified yet.
+Status: first run STOPPED manually at 19:49:03; M7 reuse INCONCLUSIVE.
+User-restarted run from 19:49:04 continues separately with changed policies.
 
 - Started: 18:49:05 PDT; planned stop: 19:49:05 PDT.
 - Tested production SHA: 57f330fc9 (integration base 8aa1821b4).
@@ -46,3 +47,88 @@ Directory: build-prep/m7-live-2026-10-21/
 No release PR has been created. Ending BP, duration, trigger coverage and final
 classification must be added after the run stops. No production rebuild or
 code changes are allowed to alter this running binary during the trial.
+
+## First-hour result, audited after the quota pause
+
+The user stopped at 19:49:03.408 and restarted at 19:49:04.126 after clearing
+some exclusions; they may have made other changes. Treat the restart as a new
+configuration boundary, not a continuation of the controlled first run.
+Duration: 59m58s. Six completions / 15 dispatches, nine exhausted dispatches.
+All **75 observed boards had three recognized slots**, so reuse scheduling and
+first-dispatch counters were both zero. Conservative fresh reads were exercised;
+the optimized four-slot path was not. **No verified M7 PR claim is justified.**
+
+Read-purpose counts: 11 scheduling, 15 pre-dispatch, 26 after attempt and 14
+reroll verification. Remaining nine reads are transaction validation. OCR-only
+intervals (Reading quests → closing B) totaled 6.39 minutes, mean 5.11 seconds;
+these overlap dispatch times and must not be added to them.
+
+| Completed quest | Time | Gross BP |
+| --- | --- | ---: |
+| Savanna Photo | 19:02:28 | 30 |
+| Travel 500 | 19:09:28 | 20 |
+| Canyon Photo | 19:11:13 | 30 |
+| Catch Fighting | 19:18:43 | 40 |
+| Swimming Photo | 19:20:23 | 30 |
+| Swimming Photo | 19:34:57 | 30 |
+
+Gross estimate 180 BP. Thirteen rerolls logged completion (130 BP); a fourteenth
+paid reroll changed Tera Self Defeat to Catch Any before manual Stop, but was
+interrupted before its final rerolled message. Estimated expense 140 BP, net
+40 BP (~40 BP/hour); inferred ending BP 13,730. No screenshot was captured at
+that boundary, so this is ledger inference, not a directly observed end balance.
+
+### Configuration error found and acknowledged
+
+Codex inserted hatch-egg/skip into the settings JSON to disable hatching.
+BBQuests_database() explicitly excludes hatch-egg from the policy table.
+IntegerEnumDropdownCell::load_json() ignores an unknown slug, retaining the
+row's default auto_10. Thus that row became **Auto Battle 10 / Skip**. The quest
+occupied slot one from 18:54:46 through the end and was skipped on ten planning
+passes, never attempted. This is a preflight configuration error, not an M7
+production regression. The user clearing exclusions removed the blocker; the
+new run attempted Auto Battle immediately. NUM_EGGS=0 with the existing
+OUT_OF_EGGS policy already gates hatching; do not add an unsupported table row.
+The starting JSON snapshot is retained unchanged as evidence of the error.
+The on-disk profile still contains the stale row because current UI edits have
+not yet been saved; do not reload it over the user's active settings.
+
+### Additional evidence and operational corrections
+
+- Correct-lead Catch Any: 3 exhausted dispatches, 6 attempts, 14.45 minutes.
+- Correct-lead Sneak Up: 4 exhausted dispatches, 8 attempts, 14.30 minutes.
+- All 14 attempts logged no battle entry. Combined 28.75 minutes (~48% of run).
+  This strengthens M12 even after the party was repaired.
+- Savanna Photo completed once after a retry (3.20 min), then exhausted once
+  (3.21 min); target/framing issues are intermittent, not universal absence.
+- Catch Fighting succeeded after a retry in 7.40 minutes; its first attempt had
+  11 unable-to-detect-battle-slot messages. Preserve for later diagnosis.
+- Observer state detection incorrectly treated any historical STOPPED as the
+  current state. At the deadline it exited without requesting Stop after the
+  manual stop/restart. Deadline stopping is therefore still NOT VERIFIED.
+  Local helper corrected to inspect the latest state and relinquish ownership
+  when a new run begins; retain observe-original.py. No newer run was stopped.
+- Quota pause: no sampling work from 19:00:24 to 20:03 PDT; log observer ran.
+
+## User-restarted run, from 19:49:04 PDT
+
+Same binary, changed policy settings. User confirmed clearing exclusions but
+cannot recall all other edits. Active UI differs from the original disk JSON;
+exact changed rows remain unexported, so avoid an exact configuration claim.
+At 20:04:32 it had three completions: Auto Battle 10, Travel 500 and Make TM.
+At 20:08:10 a native screenshot shows **13,770 BP**, red Salty Sandwich plus
+Travel 500, Sneak Up and Swimming Photo. Combined directly observed gain from
+18:48:33 is +80 BP. A ledger of 240 gross and 160 reroll expense across both runs
+matches this balance; the first-run boundary remains inferred.
+
+New four-slot boards make reuse eligible in principle, but no reuse log had
+occurred as of the 20:10 checkpoint. A read-only five-minute observer (session
+76940) now records restarted-status.json/restarted-checkpoints.jsonl and the
+new run log. It sends no Stop or game input and exits on Stop/new restart or
+at the two-hour logging horizon. This is not a new stop timer. User retains
+control of the restarted run. About 3,952 discontinuous-audio timestamp errors
+were logged in the early restarted run; causality is not established.
+
+Local evidence: first-hour.log, first-hour-events.txt, dispatches.json,
+active-settings-details.txt, and screenshot-20261021-200810053717.png under the
+profile's Screenshots directory. No binary rebuild or release PR was made.
