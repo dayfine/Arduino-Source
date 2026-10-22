@@ -9,6 +9,8 @@
 
 #include <optional>
 #include <vector>
+#include "Common/Cpp/Time.h"
+#include "Common/Cpp/Logging/AbstractLogger.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
 #include "VideoGames/PokemonSV/Programs/ShinyHunting/PokemonSV_LetsGoTools.h"
@@ -250,6 +252,57 @@ void quest_auto_battle(
     VideoStream& stream, ProControllerContext& context,
     const BBQOption& BBQ_OPTIONS,
     BBQuests current_quest
+);
+
+//The game steps of one Auto Battle pass. They are injected so that the loop's decisions (when
+//to go again, when to stop) run in tests without a Switch.
+class BBQAutoBattleActions{
+public:
+    virtual ~BBQAutoBattleActions() = default;
+
+    //Kills heard since the quest started. Kills are counted as they are heard, in any step.
+    virtual uint64_t kills() const = 0;
+
+    //The current time, for the pass log and the time limit.
+    virtual WallClock now() const = 0;
+
+    //Fly from Central Plaza to Chargestone Cavern, wait for spawns, and walk into the battle court.
+    virtual void fly_to_battle_area() = 0;
+
+    //Send the lead out with Let's Go until no kill has been heard for 6 seconds, or until
+    //kills() reaches `stop_at_kills`, whichever comes first.
+    virtual void clear(uint64_t stop_at_kills) = 0;
+
+    //Fly back to Central Plaza. Leaving the cave respawns its Pokemon.
+    virtual void return_to_plaza() = 0;
+
+    //Walk to the nurse and heal, then fly to the Central Plaza fly point again: the flight to
+    //Chargestone moves the map cursor from there.
+    virtual void heal() = 0;
+};
+
+struct BBQAutoBattlePolicy{
+    uint64_t kill_target = 10;
+    //Give up after this many passes in a row with no kill.
+    uint64_t max_empty_passes = 3;
+    //Give up after the pass that ends past this time.
+    std::chrono::minutes time_limit = std::chrono::minutes(35);
+};
+
+enum class BBQAutoBattleResult{
+    TargetReached,
+    NoKills,        //max_empty_passes passes in a row had no kill.
+    TimeLimit,
+};
+
+//Clear Chargestone Cavern until the kills reach the target, healing after every pass but the
+//last. Gives up when a limit in `policy` is reached; the board check then decides the quest
+//failed. Either way it ends at Central Plaza. Logs one line per pass: its kills, the total, the
+//time spent, and what happens next.
+BBQAutoBattleResult run_auto_battle(
+    Logger& logger,
+    BBQAutoBattleActions& actions,
+    const BBQAutoBattlePolicy& policy
 );
 
 }

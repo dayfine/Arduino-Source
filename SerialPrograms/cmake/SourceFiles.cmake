@@ -518,12 +518,14 @@ file(GLOB LIBRARY_SOURCES
     Source/CommonFramework/AudioPipeline/IO/AudioInputDevice.h
     Source/CommonFramework/AudioPipeline/IO/AudioInputFile.cpp
     Source/CommonFramework/AudioPipeline/IO/AudioInputFile.h
-    Source/CommonFramework/AudioPipeline/IO/AudioSink.cpp
-    Source/CommonFramework/AudioPipeline/IO/AudioSink.h
+    Source/CommonFramework/AudioPipeline/IO/AudioOutputDevice.cpp
+    Source/CommonFramework/AudioPipeline/IO/AudioOutputDevice.h
     Source/CommonFramework/AudioPipeline/IO/AudioSource.cpp
     Source/CommonFramework/AudioPipeline/IO/AudioSource.h
     Source/CommonFramework/AudioPipeline/Spectrum/AudioSpectrumHolder.cpp
     Source/CommonFramework/AudioPipeline/Spectrum/AudioSpectrumHolder.h
+    Source/CommonFramework/AudioPipeline/SinkPipeline_Tests.cpp
+    Source/CommonFramework/AudioPipeline/SinkPipeline_Tests.h
     Source/CommonFramework/AudioPipeline/Spectrum/FFTStreamer.cpp
     Source/CommonFramework/AudioPipeline/Spectrum/FFTStreamer.h
     Source/CommonFramework/AudioPipeline/Spectrum/FFTStreamer_Tests.cpp
