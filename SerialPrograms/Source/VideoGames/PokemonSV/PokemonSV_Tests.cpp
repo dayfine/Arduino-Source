@@ -734,8 +734,9 @@ void add_tests_BBQFarmerRounds(UnitTestDatabase& database){
             .num_quests = 3,
             .save_num_quests = 2,
             .outcomes = {false, false, false},
+            .out_of_retries = BBQOption::OutOfRetries::Reroll,
             .expected_completed = 3,
-            .expected = "read process read do read do read do end " + round_of_3 + " end(save)",
+            .expected = "read process read do reroll read do reroll read do reroll end " + round_of_3 + " end(save)",
         },
         {
             .name = "stops when out of eggs",
