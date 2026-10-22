@@ -1331,21 +1331,26 @@ void run_auto_battle(
         const uint64_t kills_before = actions.kills();
 
         actions.fly_to_battle_area();
-        actions.clear();
+        actions.clear(policy.kill_target);
 
         const uint64_t kills = actions.kills();
+        const bool target_reached = kills >= policy.kill_target;
         const auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(actions.now() - start);
         logger.log(
             "Auto Battle pass " + std::to_string(pass) + ": "
             + std::to_string(kills - kills_before) + " kills, "
             + std::to_string(kills) + "/" + std::to_string(policy.kill_target) + " in total, "
             + std::to_string(elapsed.count()) + " s elapsed. "
-            + (kills < policy.kill_target
-                ? "Below the target: return, heal and go again."
-                : "Target reached: return and heal.")
+            + (target_reached
+                ? "Target reached: return without healing."
+                : "Below the target: return, heal and go again.")
         );
 
+        //The next quest starts from Central Plaza, so return even when done.
         actions.return_to_plaza();
+        if (target_reached){
+            return;
+        }
         actions.heal();
     }
 }
@@ -1383,12 +1388,14 @@ public:
         pbf_move_left_joystick(m_context, {+1, 0}, 1440ms, 400ms);
         pbf_press_button(m_context, BUTTON_L, 160ms, 400ms);
     }
-    virtual void clear() override{
+    virtual void clear(uint64_t stop_at_kills) override{
         use_lets_go_to_clear_in_front(m_stream, m_context, m_tracker, false, [&](ProControllerContext& context){
             pbf_move_left_joystick(context, {0, -1}, 1440ms, 400ms);
             pbf_wait(context, 12000ms);
             context.wait_for_all_requests();
-            });
+            },
+            [&]{ return m_stats.m_kills >= stop_at_kills; }
+        );
 
         m_context.wait_for_all_requests();
     }

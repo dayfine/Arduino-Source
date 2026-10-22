@@ -63,6 +63,7 @@ class ScriptedAutoBattle : public BBQAutoBattleActions{
 public:
     static constexpr int FLY_SECONDS = 20;      // Fly to Chargestone, wait 3 s, walk in (~19.5 s).
     static constexpr int CLEAR_SECONDS = 26;    // Battling, then 6 s with no kill.
+    static constexpr int CLEAR_TAIL_SECONDS = 6;    // Skipped when the clear stops at the target.
     static constexpr int RETURN_SECONDS = 28;   // Fly back to Central Plaza.
     static constexpr int HEAL_SECONDS = 28;     // Walk to the nurse and heal (14 s), then re-fly (14 s).
 
@@ -83,13 +84,16 @@ public:
         steps.push_back("fly");
         seconds += FLY_SECONDS;
     }
-    virtual void clear() override{
+    virtual void clear(uint64_t stop_at_kills) override{
         if (m_clears >= kills_per_clear.size()){
             throw std::runtime_error("Cleared more often than scripted.");
         }
         steps.push_back("clear");
         seconds += CLEAR_SECONDS;
         m_kills += kills_per_clear[m_clears++];
+        if (m_kills >= stop_at_kills){
+            seconds -= CLEAR_TAIL_SECONDS;
+        }
     }
     virtual void return_to_plaza() override{
         steps.push_back("return");
@@ -107,6 +111,8 @@ private:
 
 // One pass as it shows in the expected steps.
 const std::string PASS = "fly clear return heal";
+// The pass that reaches the target.
+const std::string LAST_PASS = "fly clear return";
 
 std::string passes(int count){
     std::vector<std::string> ret(count, PASS);
@@ -170,40 +176,41 @@ private:
 void add_tests_BBQAutoBattle(UnitTestDatabase& database){
     constexpr int PASS_SECONDS = ScriptedAutoBattle::FLY_SECONDS + ScriptedAutoBattle::CLEAR_SECONDS
         + ScriptedAutoBattle::RETURN_SECONDS + ScriptedAutoBattle::HEAL_SECONDS;
+    constexpr int LAST_PASS_SAVED_SECONDS = ScriptedAutoBattle::CLEAR_TAIL_SECONDS + ScriptedAutoBattle::HEAL_SECONDS;
     const BBQAutoBattleScenario scenarios[] = {
         {
-            // The final pass still heals and re-flies, though the quest is done.
+            // The final pass stops clearing at the target, and skips the heal and re-fly.
             .name = "auto battle 10 at 2 kills per pass",
             .kills_per_clear = {2, 2, 2, 2, 2},
-            .expected_steps = passes(5),
-            .expected_seconds = 5 * PASS_SECONDS,
+            .expected_steps = passes(4) + " " + LAST_PASS,
+            .expected_seconds = 5 * PASS_SECONDS - LAST_PASS_SAVED_SECONDS,
             .expected_log = {
                 "Auto Battle pass 1: 2 kills, 2/10 in total, 46 s elapsed. Below the target: return, heal and go again.",
                 "Auto Battle pass 2: 2 kills, 4/10 in total, 148 s elapsed. Below the target: return, heal and go again.",
                 "Auto Battle pass 3: 2 kills, 6/10 in total, 250 s elapsed. Below the target: return, heal and go again.",
                 "Auto Battle pass 4: 2 kills, 8/10 in total, 352 s elapsed. Below the target: return, heal and go again.",
-                "Auto Battle pass 5: 2 kills, 10/10 in total, 454 s elapsed. Target reached: return and heal.",
+                "Auto Battle pass 5: 2 kills, 10/10 in total, 448 s elapsed. Target reached: return without healing.",
             },
         },
         {
             .name = "auto battle 30 at 3 kills per pass",
             .kill_target = 30,
             .kills_per_clear = {3, 3, 3, 3, 3, 3, 3, 3, 3, 3},
-            .expected_steps = passes(10),
-            .expected_seconds = 10 * PASS_SECONDS,
+            .expected_steps = passes(9) + " " + LAST_PASS,
+            .expected_seconds = 10 * PASS_SECONDS - LAST_PASS_SAVED_SECONDS,
         },
         {
-            // A clear keeps going while kills are heard, past the target.
+            // Kills heard before the clear can stop still count.
             .name = "kills past the target",
             .kills_per_clear = {4, 4, 4},
-            .expected_steps = passes(3),
-            .expected_seconds = 3 * PASS_SECONDS,
+            .expected_steps = passes(2) + " " + LAST_PASS,
+            .expected_seconds = 3 * PASS_SECONDS - LAST_PASS_SAVED_SECONDS,
         },
         {
             .name = "passes with no kill go again",
             .kills_per_clear = {0, 0, 5, 0, 5},
-            .expected_steps = passes(5),
-            .expected_seconds = 5 * PASS_SECONDS,
+            .expected_steps = passes(4) + " " + LAST_PASS,
+            .expected_seconds = 5 * PASS_SECONDS - LAST_PASS_SAVED_SECONDS,
         },
         {
             // Nothing bounds the loop: with no kills it never ends.
