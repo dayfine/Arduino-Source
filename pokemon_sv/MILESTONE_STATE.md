@@ -136,3 +136,5 @@ under tests/ may be included in a release branch's diff.
 | 2026-10-21 21:02 PDT | M7b prepared in isolated checkout; lab source fast-forwarded, active old binary unchanged | ea047a930; 58 native PASS; M7b preparation RESULT; M7a reuse still unverified |
 
 | 2026-10-21 21:08 PDT | M7a run stopped normally; Central Plaza verified and game saved | Final 14,070 BP (+380 across both runs); 12 second-run completions / 1 program save; zero reuse; M7b app not launched |
+
+| 2026-10-21 21:23 PDT | M7b app/profile preflight complete and combined trial RUNNING | ea047a930; 14,070 starting BP; camera/mic allowed; observer session 93328; M7b live RESULT |
