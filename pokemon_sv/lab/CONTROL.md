@@ -10,6 +10,11 @@ visible, its button titles are readable, and window screenshots work.
 - **One checkout per candidate**, e.g. `~/Projects/Arduino-Source-m7b`. The
   full arm64 app is built into `build-prep/app/` (CMake + Ninja), and the build
   output goes to `build-prep/build.log`.
+- **Configure flags that work (2026-10-22):** `PKG_CONFIG_PATH=/opt/homebrew/opt/opencv@4/lib/pkgconfig`
+  (Homebrew's `opencv` is now 5), `-DCMAKE_PREFIX_PATH=~/Projects/Arduino-Source/.cache/qt/6.8.3/macos`,
+  and `-DWrapOpenGL_AGL=/Library/Developer/CommandLineTools/SDKs/MacOSX15.4.sdk/System/Library/Frameworks/AGL.framework/AGL.tbd`.
+  The default SDK (26.4) has no AGL, so the full app link fails with
+  `framework 'AGL' not found` without that flag. Example: `~/Projects/Arduino-Source-r3/build-prep/R3_BUILD.md`.
 - **Native tests** use `build-prep/bbq-native-runner.cpp` and
   `link-native-tests.py`, linked against the app's objects. Logs go to
   `build-prep/native-*.log`.
