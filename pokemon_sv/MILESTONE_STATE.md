@@ -138,3 +138,5 @@ under tests/ may be included in a release branch's diff.
 | 2026-10-21 21:08 PDT | M7a run stopped normally; Central Plaza verified and game saved | Final 14,070 BP (+380 across both runs); 12 second-run completions / 1 program save; zero reuse; M7b app not launched |
 
 | 2026-10-21 21:23 PDT | M7b app/profile preflight complete and combined trial RUNNING | ea047a930; 14,070 starting BP; camera/mic allowed; observer session 93328; M7b live RESULT |
+
+| 2026-10-21 21:34 PDT | M7b failed-reroll → Travel path observed in phase one; controlled M7a phase RUNNING | 45.72s reroll-to-dispatch; Travel completed in 92.23s; +30 BP; phase two 14,100 starting BP / session 9238 |
