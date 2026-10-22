@@ -261,6 +261,19 @@ photo-savanna (Pride Rock photo, ~0% success), which blocks the bonus slot.
 To measure: red reward (BP), completions between reds, whether a red can be
 rerolled.
 
+14. C14 (added 2026-10-22 from R3, high priority: it ended R3): return to
+   Central Plaza can land elsewhere and the program then dies. R3 08:17:
+   return_to_plaza() found the Pokecenter icon 130 px off, got no "Fly" menu
+   item, fell back to "zoom to max map level" and flew to the closest point,
+   which was near Chargestone. Nothing checked the arrival; every central_to_*
+   offset was then wrong; 3 x 2 min fly retries, then "Unable to fly to
+   Chargestone Cavern!" ended the program (08:25). Existing code (not changed
+   by the lab stack); bbq-m5 hit the same no-Fly error twice. Fix: (a) after
+   return_to_plaza(), verify the arrival (the place-name banner "中心廣場" /
+   "Central Plaza" shown on landing, or the map label) and retry the return
+   if wrong; (b) make a failed quest fly a failed attempt (return to plaza
+   from the map corner) instead of a fatal program error. N1 (#20) helps.
+
 **To analyze from run logs (added 2026-10-22 by the user):**
 
 - A1, quest order within a round. The planner keeps board order; nothing
