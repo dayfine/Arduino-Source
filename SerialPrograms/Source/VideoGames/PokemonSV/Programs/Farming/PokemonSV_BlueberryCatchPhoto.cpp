@@ -897,6 +897,10 @@ void quest_catch_handle_battle(
     }
 }
 
+bool catch_quest_catches_on_return(BBQuests current_quest, bool battled_this_attempt){
+    return current_quest == BBQuests::catch_any && !battled_this_attempt;
+}
+
 void quest_catch(
     const ProgramInfo& info,
     ConsoleHandle& console, ProControllerContext& context,
@@ -904,6 +908,7 @@ void quest_catch(
     BBQuests current_quest
 ){
     EncounterWatcher encounter_watcher(console, COLOR_RED);
+    bool battle_menu_seen = false;
 
     //Navigate to target and start battle
     int ret = run_until<ProControllerContext>(
@@ -919,7 +924,11 @@ void quest_catch(
                 std::chrono::seconds(25),
                 { battle_menu }
             );
-            if (ret2 != 0){
+            if (ret2 == 0){
+                //encounter_watcher looks for the same battle menu. If this watcher
+                //sees it first, run_until() returns -1 even though a battle started.
+                battle_menu_seen = true;
+            }else{
                 console.log("Did not enter battle. Did target spawn?");
             }
         },
@@ -930,7 +939,8 @@ void quest_catch(
     );
     encounter_watcher.throw_if_no_sound();
 
-    if (ret >= 0){
+    bool battled = false;
+    if (ret >= 0 || battle_menu_seen){
         console.log("Battle menu detected.");
 
         bool is_shiny = (bool)encounter_watcher.shiny_screenshot();
@@ -940,10 +950,22 @@ void quest_catch(
             throw ProgramFinishedException();
         }else{
             quest_catch_handle_battle(info, console, context, BBQ_OPTIONS, current_quest);
+            battled = true;
         }
     }
 
-    return_to_plaza(info, console, context);
+    while (true){
+        if (!catch_quest_catches_on_return(current_quest, battled)){
+            return_to_plaza(info, console, context);
+            break;
+        }
+        if (!return_to_plaza_unless_battle(info, console, context)){
+            break;
+        }
+        console.log("Battle on the way back to Central Plaza. Any wild Pokemon counts: catching it.");
+        quest_catch_handle_battle(info, console, context, BBQ_OPTIONS, current_quest);
+        battled = true;
+    }
 
     //Day skip and attempt to respawn fixed encounters
     pbf_press_button(context, BUTTON_HOME, 160ms, GameSettings::instance().GAME_TO_HOME_DELAY1);
@@ -951,6 +973,15 @@ void quest_catch(
     roll_date_forward_1(console, context, true);
     pbf_press_button(context, BUTTON_HOME, 160ms, ConsoleSettings::instance().SETTINGS_TO_HOME_DELAY0);
     resume_game_from_home(console, context);
+
+    //Nothing to heal without a battle (return_to_plaza() flees with a Smoke Ball).
+    //The player is still on the Central Plaza fly point, where return_to_plaza()
+    //landed, so the central_to_* routes need no re-fly either.
+    if (!battled){
+        console.log("No battle this attempt. Skipping the Pokecenter heal.");
+        context.wait_for_all_requests();
+        return;
+    }
 
     //Heal up and then reset position again.
     OverworldWatcher done_healing(console.logger(), COLOR_BLUE);
