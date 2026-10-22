@@ -89,10 +89,10 @@ See [pokemon_sv/PR_WORKFLOW.md](pokemon_sv/PR_WORKFLOW.md). In short:
 - [pokemon_sv/MILESTONE_STATE.md](pokemon_sv/MILESTONE_STATE.md): current
   state of each milestone and the active lab run (owned by Codex).
 - [pokemon_sv/ROADMAP.md](pokemon_sv/ROADMAP.md): milestones ordered by payoff
-  and dependency, with what to reuse from existing code (2026-10-21).
-  **Proposed, pending the user's approval.** Once approved, the queue in
-  MILESTONE_STATE.md should be updated to match. It adds N1 (fly from
-  anywhere) and M15 (area batching).
+  and dependency, with what to reuse from existing code. **Approved by the
+  user on 2026-10-21**, with the cave experiments moved ahead of M8a (see its
+  "Decisions" section). The queue in MILESTONE_STATE.md should be updated to
+  match. It adds N1 (fly from anywhere) and M15 (area batching).
 - [pokemon_sv/M9a_PLAN.md](pokemon_sv/M9a_PLAN.md): the PR-by-PR plan for
   faster, bounded Auto Battle quests.
 - [pokemon_sv/PR_WORKFLOW.md](pokemon_sv/PR_WORKFLOW.md): where PRs live and

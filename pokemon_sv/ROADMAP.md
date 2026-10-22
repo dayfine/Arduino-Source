@@ -1,7 +1,23 @@
 # BBQ roadmap: payoff, sharing and order
 
-Status: analysis, 2026-10-21 late evening. It reorders the milestones in
-[MILESTONE_STATE.md](MILESTONE_STATE.md) by payoff and dependency. Paths are
+Status: **approved by the user, 2026-10-21.** It reorders the milestones in
+[MILESTONE_STATE.md](MILESTONE_STATE.md) by payoff and dependency.
+
+## Decisions (user, 2026-10-21)
+
+- **The order in section 5 is approved,** with one change: the M9a cave
+  experiments (E1, a cheaper spawn reset; E2, more kills per visit) get Switch
+  time **before M8a**. Run them with hatching disabled and the intended lead
+  checked at the start, so the M8 party bug can't confound them.
+- **M9a PR 3's heal threshold defaults to 50%.** That makes PR 3 a behavior
+  change, so its title says so and maintainers decide.
+- **Who implements is open.** The goal is one automated dev loop that
+  implements, tests and validates, then hands over to the PR process.
+  - Codex could run it, but its quota is lower.
+  - Claude can run it instead, by orchestrating agents through a workflow
+    when the user asks for one.
+  - Either way, the roles in AGENTS.md still hold: one owner per branch, and
+    PRs only upstream when ready. Paths are
 relative to `SerialPrograms/Source/VideoGames/PokemonSV`.
 
 ## 1. Battle efficiency: BBQ Auto Battle vs the Material Farmer

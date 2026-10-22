@@ -174,10 +174,12 @@ comparable conditions (same lead, full HP), is how to confirm them.
 - **PR 4:** force a no-progress case live (for example, a lead that can't
   battle) only if it is safe. Otherwise rely on the native tests.
 
-## Open questions for the user
+## Decisions (user, 2026-10-21)
 
-1. The heal threshold default for PR 3 (see above).
-2. Whether E1 and E2 are worth live time before M8a, since M8a affects every
-   battle route through the lead.
-3. Who implements: by [AGENTS.md](../AGENTS.md), Codex implements and validates
-   and Claude owns the PRs. This plan is written so either can start PR 1.
+1. **PR 3's heal threshold defaults to 50%.** This is a behavior change, so the
+   PR title says so.
+2. **E1 and E2 get Switch time before M8a.** Check the lead at the start of
+   each run, and keep hatching disabled.
+3. **Who implements is open:** Codex, or Claude orchestrating a workflow (see
+   [ROADMAP.md](ROADMAP.md), "Decisions"). This plan is written so either can
+   start PR 1.
