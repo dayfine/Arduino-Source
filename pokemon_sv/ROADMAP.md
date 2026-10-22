@@ -194,6 +194,18 @@ runs in parallel. Live runs need the Switch, one at a time.
    (b) Skip the nurse heal when the attempt had no battle (keep the day skip,
    which respawns the fixed encounter): ~15-20 s per failed attempt.
 
+12. C12 (added 2026-10-22 from R3, after C11): catch-any route and day skips.
+   (a) Catch any accepts any Pokémon, but its route goes to Pride Rock, where
+   22 of 26 logged attempts saw no battle in 25 s. Route catch-any to a dense
+   spawn area instead (e.g. the Chargestone battle court: ~6 Pokémon in front
+   of the player on landing, 2026-10-22 07:27) and engage the nearest one.
+   (b) Pride Rock is not labelled a fixed spawn in the code (unlike the
+   Duosion and Horsea routes); 52poke lists Litleo as a random Savanna spawn
+   and a fixed Pyroar only after the Zero storyline, with no location. If the
+   target is a random spawn, the ~15 s Home-menu day skip after each attempt
+   doesn't help (leaving the area already resets random spawns): keep it only
+   for fixed-spawn routes.
+
 **To analyze from run logs (added 2026-10-22 by the user):**
 
 - A1, quest order within a round. The planner keeps board order; nothing
