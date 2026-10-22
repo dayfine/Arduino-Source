@@ -173,11 +173,14 @@ runs in parallel. Live runs need the Switch, one at a time.
    the quest is done. R3's Auto Battle 10: the program heard 9 kills after
    pass 4, but the game had already completed the quest (the user saw a new
    quest appear on the board during pass 4), so pass 5 and its heal (~100 s)
-   were wasted. Options: (1) detect the game's new-quest/quest-complete pop-up
-   during the clear and the return (needs frames: passive captures in
-   Claude's scratchpad ab-frames/ from R3); (2) read the board between passes
-   once the heard count is near the target (~5 s per read). Also from R3: the
-   stop check runs only after the 5 s ZR mash, so the stop lags up to 5 s.
+   were wasted. Decided (user): no pop-up detector; optimize when the board
+   is read instead. Read the board (~5 s, existing reader) after a pass, before
+   the heal, once the heard count is within reach of the target (e.g. heard
+   >= target - typical kills per pass); if the quest is gone, end the attempt
+   as completed and skip heal/re-fly. Fold this into the same read-timing
+   policy as C9, so a read taken here also serves the next scheduling read.
+   Also from R3: the stop check runs only after the 5 s ZR mash, so the stop
+   lags up to 5 s.
 
 **Run (in order):**
 
