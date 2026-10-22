@@ -182,3 +182,15 @@ Local phase-two evidence includes run-final.log, end-board-14250BP.png,
 end-party-full-health.png, and save-confirmed.png under the documented
 build-prep/m7b-reuse-live-2026-10-21 directory. Native snapshots establish
 visible ending balance and saved handoff. No release code changed during run.
+
+## Fork PR handoff
+
+- M7a: [dayfine/Arduino-Source#12](https://github.com/dayfine/Arduino-Source/pull/12),
+  draft, head bbq/reuse-quest-board (8dbace6c7), base bbq/exhausted-quest-actions
+  (fork #10), with M5 fork #9 also merged.
+- M7b: [dayfine/Arduino-Source#13](https://github.com/dayfine/Arduino-Source/pull/13),
+  draft, head bbq/replan-after-reroll (30e84abef), base bbq/reuse-quest-board
+  (fork #12), with save milestones fork #4 also merged.
+- Claude owns both PR branches/descriptions from creation onward. Codex does
+  not push refinements to them. Neither draft is upstream-ready while parents
+  remain unmerged. Existing PR branches were not pushed.

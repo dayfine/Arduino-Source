@@ -74,3 +74,15 @@ Release extraction branches pushed: bbq/reuse-quest-board at 8dbace6c7
 30e84abef (M7a + save milestones parents; full build / 46 native PASS).
 Production feature patch IDs match tested lab features; see linked result.
 BP run statistics requested as independent M14, documented but not implemented.
+
+## Fork PR handoff
+
+- M7a: [dayfine/Arduino-Source#12](https://github.com/dayfine/Arduino-Source/pull/12),
+  draft, head bbq/reuse-quest-board (8dbace6c7), base bbq/exhausted-quest-actions
+  (fork #10), with M5 fork #9 also merged.
+- M7b: [dayfine/Arduino-Source#13](https://github.com/dayfine/Arduino-Source/pull/13),
+  draft, head bbq/replan-after-reroll (30e84abef), base bbq/reuse-quest-board
+  (fork #12), with save milestones fork #4 also merged.
+- Claude owns both PR branches/descriptions from creation onward. Codex does
+  not push refinements to them. Neither draft is upstream-ready while parents
+  remain unmerged. Existing PR branches were not pushed.
