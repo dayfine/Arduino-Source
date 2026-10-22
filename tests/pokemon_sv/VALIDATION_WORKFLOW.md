@@ -45,12 +45,18 @@ Current dependency map, checked on GitHub 2026-10-21:
 | Endless-reroll guard | #1639 | #1632 |
 | Save/reset milestones | #1626 | #1632 |
 
-Before V0's live run, also integrate **#1636, #1639 and #1626**. The initial lab
+Before the next M7 lab build, also integrate **#1636, #1639 and #1626**. The initial lab
 baseline described above does not yet contain them. #1636 is independent and
 guards both Tera routes; #1639 and #1626 change the round loop exercised by every
 run. Include them to collect relevant evidence and approximate the intended
 merged program. Record their exact imported SHAs in STACK.md and build/test the
 combined baseline; integration alone is not live verification.
+
+The user clarified that M4–M6 are done for the current milestone sequence.
+Do not add a separate V0 campaign to repeat them. The next feature is **M7a**,
+then **M8a**. Baseline integration/build/regression checks are preparation for
+M7's run; existing PR coverage paths below remain reference material for Claude
+and for regressions naturally encountered during later trials.
 
 These are existing implementations to reuse, not recreate. Other diagnostic or
 sibling PRs are not automatically included. Recheck GitHub heads before each
@@ -258,19 +264,20 @@ Every run record contains:
 
 ## Queue ordered by estimated return
 
-Correctness gates precede speed optimization. Within that constraint, rank by
+Current sequence starts with M7a, then M8a, following the user's clarification
+that M4–M6 are already done. For the remaining candidates, rank by
 expected marginal net BP/hour improvement, confidence and implementation plus
 validation effort. Estimated saved time is a proxy until measured BP results
 exist. Re-score after every run; do not sum overlapping opportunities.
 
 | Order | Candidate | Evidence / expected return | Confidence and effort |
 | --- | --- | --- | --- |
-| 1 | V0: integrate M4/M5/M6 plus #1636/#1639/#1626; verify per-PR paths | Final baseline spent 69% in failed dispatches; persistent exhaustion/fallback prevents repeating the same failed batch indefinitely. Guard and save changes belong in the intended merged baseline | High confidence in bounded retries; net earning gain needs measurement. Existing code; build/native checks plus 1–2h live trials as needed for distinct paths. |
+| 1 | M7a: safe reuse of verified quest-board observations | Main runs spent 24.25min in 210 measured reads; first remove the immediate scheduling reread after a verified reroll while preserving certainty and retry state | Baseline evidence exists; native tests/build and a 1–2h M7 run. Integrate prerequisite PRs as preparation, not a repeated M4–M6 campaign. |
 | 2 | M8a: restore/verify party after hatch failures | Correctness gate: one timeout bypassed restoration; wrong lead coincided with 10–12min Auto Battle versus 4min after repair | Confirmed defect. Roughly 0.5–1.5 engineering days plus focused and farming validation. |
 | 3 | M11a: do not enter rinse after scrub timeout; bound recovery | Six failed wash attempts today each incurred an unnecessary roughly one-minute stage; small, well-supported change before speculative positioning work | High confidence in removing that wait; roughly 0.25–0.5 day plus live exposure. Completion improvement unproven. |
 | 4 | M12a: observe and recover target acquisition | Shared Pride Rock routes consumed 66min of the final 128min run without success; largest remaining route opportunity | Medium/low root-cause confidence; roughly 1–3 days. Capture one complete approach before choosing a fix. Benefit overlaps V0. |
 | 5 | M13: bound nested navigation recovery | One return consumed 8m50s inside a catch; outer quest budgets cannot intervene | Confirmed control-flow gap, uncertain frequency; roughly 0.5–1 day plus focused validation. |
-| 6 | M7a: reuse verified observations and reconcile whole-board changes | Main runs spent 24.25min in 210 measured reads; some are necessary. One incidental photo completion missed the counter | High evidence for redundant reads/accounting gap; roughly 1–2 days. Target only redundant reads; no assumed 24min saving. |
+| 6 | M7 follow-ups: whole-board accounting and scheduling | One incidental photo completion missed the counter; a newly recognized red quest waited for old work | Separate reviewable slices; re-score after M7a. They need not delay M8a. |
 | 7 | M9a: stop at defeat target; avoid unnecessary heal/reset | Final correct-lead Auto Battles already took about four minutes; earlier 10–12min traces are confounded | Medium confidence in marginal gain; roughly 1–2 days. Compare using the correct lead first. |
 | 8 | M8b: startup egg inventory and box selection | Prevent wrong-box/no-egg attempts and manual setup; today's main correctness issue is already M8a | Requested but frequency/throughput benefit unmeasured; roughly 1–2 days. |
 | 9 | M10a: implement Pickup | Eight Pickup rerolls in the longer runs cost 80 BP, about 19 BP/hour; successful pickup could also earn rewards but takes route time | Unknown route cost/success; roughly 1–3 days. Reroll savings alone do not prove better net BP/hour. |
