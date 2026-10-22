@@ -41,8 +41,12 @@ visible, its button titles are readable, and window screenshots work.
   - **`ui click x y`**, **`ui key <keycode> [ms]`**, **`ui scroll`** and
     **`ui drag`** post events.
   - Keys go to the app's controller mapping, so they press Switch buttons.
-  - The app ignores keys while a program runs ("Keyboard Command Suppressed")
-    and when its window isn't focused.
+  - Keys only reach the controller when the app's **video area has focus**.
+    Click the video first (`ui click`); a click there sends nothing to the
+    Switch. Without the click, keys are dropped silently, with no log line.
+  - While a program runs, keys are ignored and logged as "Keyboard Command
+    Suppressed: Program is Running". Pressing a key during a run is therefore
+    a safe test of the key path (verified 2026-10-21 23:42).
 - **Pro Controller key mapping** (macOS key codes): A = Enter (36), B = Shift
   (56), X = `'` (39), R = E (14), Home = H (4). It's defined in
   `NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController_from_Keyboard.cpp`.
