@@ -473,9 +473,6 @@ BBQuestPlan plan_quests(
     BBQuestPlan plan;
     std::vector<std::unique_ptr<BBQuestTableRow>> exclusions_table = BBQ_OPTIONS.QUEST_EXCLUSIONS.copy_snapshot();
 
-    //The first quest not possible that has no table row, to reroll if nothing else can be done.
-    std::optional<size_t> not_possible_slot;
-
     logger.log("Processing quests.");
     for (size_t slot = 0; slot < quest_list.size(); slot++){
         const BBQuests n = quest_list[slot];
@@ -494,10 +491,11 @@ BBQuestPlan plan_quests(
             continue;
         }
         if (!possible){
-            logger.log("Quest not possible.");
-            if (!not_possible_slot){
-                not_possible_slot = slot;
-            }
+            //Left on the panel, it holds a slot until something else is rerolled. A red quest
+            //costs 50 BP to reroll instead of 10, but pays 100-150 BP and keeps the next red
+            //quest from appearing, so it is rerolled too.
+            logger.log("Quest not possible. Rerolling quest. New quest will be run in the next batch of quests.");
+            plan.reroll_slots.push_back(slot);
             continue;
         }
         logger.log("Quest not in inclusion/exclusions table. Adding to list.");
@@ -507,13 +505,7 @@ BBQuestPlan plan_quests(
     //Check that quests_to_do is not empty (after completing all quests on the list, be sure to erase it.
     //Lag might be a problem in multi - look into making slots like menu-left navigation
     if (plan.reroll_slots.empty() && plan.to_do.empty()){
-        if (not_possible_slot){
-            //Rerolling one quest costs less BP than rerolling all of them.
-            logger.log("No possible quests! Rerolling a quest that is not possible.");
-            plan.reroll_slots.push_back(*not_possible_slot);
-        }else{
-            plan.reroll_all = true;
-        }
+        plan.reroll_all = true;
     }
     return plan;
 }
