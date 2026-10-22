@@ -20,8 +20,11 @@ verified by earlier runs of a different binary.
 
 Source integration completed without conflicts. Full build, native tests and
 live validation: **PENDING**. No new candidate feature or live run has started.
-Next candidate: V0, verify persistent exhaustion and configured fallback across
-batches. Use an isolated bbq-lab profile and the workflow's preflight/run record.
+Next candidate: M7a, safe reuse of verified quest-board observations, then M8a.
+The user clarified M4–M6 are done; do not repeat them as a separate V0 campaign.
+Remaining baseline integration/build checks are preparation for M7. Import
+#1636, #1639 and #1626 before the next build, per the workflow. Use an isolated
+bbq-lab profile and an M7-specific preflight/run record.
 
 The branch is an accumulating experiment stack, never a feature PR source.
 Append each milestone's feature SHA(s), tested integrated SHA, run IDs/outcome,
