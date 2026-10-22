@@ -169,6 +169,15 @@ runs in parallel. Live runs need the Switch, one at a time.
    bonus quest never reuse; (c) the before-dispatch read runs right after a
    fresh scheduling read. Fix (a) and (c) first; (b) needs care because a
    3-slot read can be a missed 4th slot.
+10. C10 (added 2026-10-22 by the user): stop Auto Battle when the game says
+   the quest is done. R3's Auto Battle 10: the program heard 9 kills after
+   pass 4, but the game had already completed the quest (the user saw a new
+   quest appear on the board during pass 4), so pass 5 and its heal (~100 s)
+   were wasted. Options: (1) detect the game's new-quest/quest-complete pop-up
+   during the clear and the return (needs frames: passive captures in
+   Claude's scratchpad ab-frames/ from R3); (2) read the board between passes
+   once the heard count is near the target (~5 s per read). Also from R3: the
+   stop check runs only after the 5 s ZR mash, so the stop lags up to 5 s.
 
 **Run (in order):**
 
