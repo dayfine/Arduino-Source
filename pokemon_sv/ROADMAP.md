@@ -182,6 +182,18 @@ runs in parallel. Live runs need the Switch, one at a time.
    Also from R3: the stop check runs only after the 5 s ZR mash, so the stop
    lags up to 5 s.
 
+11. C11 (added 2026-10-22 from R3): catch-route fixes in quest_catch()
+   (Programs/Farming/PokemonSV_BlueberryCatchPhoto.cpp).
+   (a) Don't flee from the target: the 25 s battle wait can expire just before
+   the battle starts; return_to_plaza() then sees a battle and runs. R3
+   08:00:21 (battle 0.4 s after the timeout) and bbq-lab 19:12 did this.
+   Fix: after the timeout, keep watching for the battle menu for a short
+   grace period (a few s) and handle it as the catch; consider a longer wait.
+   Pride Rock route (catch any/normal/fire) over 26 logged attempts: 22 no
+   battle, 2 in-time battles, 2+ battles just after the timeout.
+   (b) Skip the nurse heal when the attempt had no battle (keep the day skip,
+   which respawns the fixed encounter): ~15-20 s per failed attempt.
+
 **To analyze from run logs (added 2026-10-22 by the user):**
 
 - A1, quest order within a round. The planner keeps board order; nothing
