@@ -257,6 +257,7 @@ public:
         press_Bs_to_back_to_overworld(m_info, m_stream, m_context);
     }
     virtual std::vector<BBQuests> read_quests() override{
+        m_stream.log("Reading quest panel to verify reroll.");
         return PokemonSV::read_quests(m_info, m_stream, m_context, m_options);
     }
 
@@ -294,8 +295,10 @@ BBQRerollResult reroll_quest(
     Logger& logger,
     BBQRerollActions& actions,
     std::vector<BBQuests>& quests,
-    size_t slot
+    size_t slot,
+    std::optional<std::vector<BBQuests>>& observed_panel
 ){
+    observed_panel.reset();
     if (!actions.open_panel()){
         return BBQRerollResult::PanelNotOpened;
     }
@@ -332,13 +335,19 @@ BBQRerollResult reroll_quest(
         if (slot < after.size() && after[slot] != quests[slot] && after[slot] != BBQuests::UnableToDetect){
             logger.log("Quest " + std::to_string(slot + 1) + " rerolled.");
             quests[slot] = after[slot];
+            //Three slots can mean a missed fourth quest. Reuse only a complete
+            //read whose other slots agree with the panel used for this reroll.
+            if (after.size() == 4 && after == quests
+                && std::find(after.begin(), after.end(), BBQuests::UnableToDetect) == after.end()){
+                observed_panel = std::move(after);
+            }
             return BBQRerollResult::Rerolled;
         }
     }
     return BBQRerollResult::NotReplaced;
 }
 
-void reroll_quest_slot(
+std::optional<std::vector<BBQuests>> reroll_quest_slot(
     const ProgramInfo& info,
     VideoStream& stream, ProControllerContext& context,
     const BBQOption& BBQ_OPTIONS,
@@ -346,9 +355,10 @@ void reroll_quest_slot(
     size_t slot
 ){
     ConsoleBBQRerollActions actions(info, stream, context, BBQ_OPTIONS);
-    switch (reroll_quest(stream.logger(), actions, quest_list, slot)){
+    std::optional<std::vector<BBQuests>> observed_panel;
+    switch (reroll_quest(stream.logger(), actions, quest_list, slot, observed_panel)){
     case BBQRerollResult::Rerolled:
-        return;
+        return observed_panel;
     case BBQRerollResult::PanelNotOpened:
         OperationFailedExceptionWithScreenshot::fire(
             ErrorReportMode::SEND_ERROR_REPORT,
@@ -405,7 +415,7 @@ BBQuestPlan plan_quests(
     return plan;
 }
 
-std::vector<BBQuests> process_quest_list(
+BBQuestBatch process_quest_list(
     const ProgramInfo& info,
     VideoStream& stream, ProControllerContext& context,
     const BBQOption& BBQ_OPTIONS,
@@ -416,8 +426,9 @@ std::vector<BBQuests> process_quest_list(
 
     //Each reroll updates the panel the next one checks against.
     std::vector<BBQuests> panel = quest_list;
+    std::optional<std::vector<BBQuests>> observed_panel;
     for (size_t slot : plan.reroll_slots){
-        reroll_quest_slot(info, stream, context, BBQ_OPTIONS, panel, slot);
+        observed_panel = reroll_quest_slot(info, stream, context, BBQ_OPTIONS, panel, slot);
     }
     if (plan.reroll_all){
         stream.log("No possible quests! Rerolling all quests.");
@@ -437,7 +448,12 @@ std::vector<BBQuests> process_quest_list(
         );
     }
     */
-    return plan.to_do;
+    //A mutation invalidates queued work, even when other quests remain runnable.
+    //A complete replacement observation can seed the next selection instead.
+    if (!plan.reroll_slots.empty() || plan.reroll_all){
+        return {{}, std::move(observed_panel)};
+    }
+    return {std::move(plan.to_do), std::nullopt};
 }
 
 bool process_and_do_quest(
@@ -550,6 +566,7 @@ bool process_and_do_quest(
         }
 
         //Validate quest was completed by checking list
+        console.log("Reading quest panel after attempt.");
         std::vector<BBQuests> quest_list = read_quests(env.program_info(), console, context, BBQ_OPTIONS);
         if (std::find(quest_list.begin(), quest_list.end(), current_quest) != quest_list.end()){
             console.log("Current quest exists on list. Quest did not complete.");

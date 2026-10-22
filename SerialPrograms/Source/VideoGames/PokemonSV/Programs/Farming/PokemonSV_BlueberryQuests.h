@@ -75,6 +75,13 @@ BBQuestPlan plan_quests(
     uint8_t eggs_hatched
 );
 
+//Work selected from a panel, or a complete observed panel to replan after a reroll.
+//The observation is consumed once, before any further game actions.
+struct BBQuestBatch{
+    std::vector<BBQuests> to_do;
+    std::optional<std::vector<BBQuests>> observed_panel;
+};
+
 //The steps of rerolling one quest on the quest panel. They are injected so that the reroll
 //(which quest it pays for, when it gives up) runs in tests without a Switch.
 class BBQRerollActions{
@@ -113,17 +120,19 @@ enum class BBQRerollResult{
 
 //Reroll the quest in `slot` of `quests`, the quests last read from the panel. Only pays once
 //the reroll menu is open next to that slot, then reads the panel again to check the quest was
-//replaced. On Rerolled, `quests[slot]` is updated to the new quest.
+//replaced. On Rerolled, `quests[slot]` is updated. observed_panel is populated
+//only for four known slots with no other changes, so scheduling can reuse it.
 BBQRerollResult reroll_quest(
     Logger& logger,
     BBQRerollActions& actions,
     std::vector<BBQuests>& quests,
-    size_t slot
+    size_t slot,
+    std::optional<std::vector<BBQuests>>& observed_panel
 );
 
 //Reroll the quest in `slot` of `quests` on the console, with reroll_quest(). Stops the program
-//if the reroll fails.
-void reroll_quest_slot(
+//if the reroll fails. Returns a complete observed panel when reusable.
+std::optional<std::vector<BBQuests>> reroll_quest_slot(
     const ProgramInfo& info,
     VideoStream& stream, ProControllerContext& context,
     const BBQOption& BBQ_OPTIONS,
@@ -133,7 +142,7 @@ void reroll_quest_slot(
 
 //Determine which quests are possible and which quests are not. (ex. no eggs, reroll egg hatcher.)
 //Quests not possible are removed from the list. If the list is empty, then reroll all items.
-std::vector<BBQuests> process_quest_list(
+BBQuestBatch process_quest_list(
     const ProgramInfo& info,
     VideoStream& stream, ProControllerContext& context,
     const BBQOption& BBQ_OPTIONS,
