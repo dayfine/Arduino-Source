@@ -15,26 +15,31 @@ owns existing PR branches/descriptions and receives verified commits/results.
   Claude continues their upstream PR refinement; do not restart their live
   acceptance campaign as a new V0 milestone. This records milestone completion,
   not a claim that all PRs merged or every listed rare path was observed.
-- Lab: `bbq/validation-stack`, HEAD `cb06dd640`, worktree
+- Lab: `bbq/validation-stack`, tested production SHA `57f330fc9`, worktree
   `/Users/difan/Projects/Arduino-Source-bbq-lab`.
-- Integrated: upstream main `db9ef1772`, M6 `a1b685f9e` and its M4/rounds/planner/
-  verified-reroll ancestors, plus M5 `f7e3ba6f0` (lab cherry-pick `075376f2f`).
-- Still to integrate before the next lab build: #1636 `07f03d2fe`, #1639 `f62d994dd`,
-  #1626 `548ac951c`. Recheck moving heads before import.
-- Combined full build: **NOT RUN**. Combined native tests: **NOT RUN**.
-- Lab profile/preflight: **NOT PREPARED**. Live run: **NOT STARTED**.
-- No timer/observer is armed and no live run is scheduled. Controller handoff is
-  needed before taking control from the user's Flying Trial program.
+- Integrated: upstream main `db9ef1772`, M6 `a1b685f9e` with M4/rounds/planner/
+  verified-reroll ancestors, M5 `f7e3ba6f0` (lab cherry-pick `075376f2f`),
+  #1636 `07f03d2fe`, #1639 `f62d994dd`, #1626 `548ac951c`.
+- Lab integration test correction: `8aa1821b4`; no production change in that commit.
+- Full arm64 build: **PASS**. Registered native C++ tests: **55 PASS, 0 FAIL**.
+- Binary SHA-256: `9bc7b7b0da2396993615384a815fdb160e79ca53cbfc1ae893a73edbf1626603`.
+- Isolated `bbq-lab` profile prepared; hatching disabled. Lead Primarina Lv.100,
+  full HP; Central Plaza and starting board verified. Starting BP **13,690**.
+- M7 live trial: **RUNNING**, 2026-10-21 18:49:05 PDT; planned stop 19:49:05.
+  Five-minute log observer and one-hour normal-stop deadline armed; verify process
+  liveness when resuming. No live acceptance path is verified yet.
+- Run record: lab branch `tests/pokemon_sv/lab/runs/2026-10-21-m7-live/RESULT.md`.
 
-The combined build still needs integration/regression checks as preparation
-for M7. This is not a separate M4–M6 revalidation run. Earlier evidence retains
-its original revision/path limits.
+The user stopped Flying Trial and returned manually after automation missed the
+handoff. The new shallow AX helper successfully pressed Screenshot and Start;
+deadline Stop still needs outcome verification. M7's starting board has only
+three quests, so live reuse needs a later eligible four-slot observation.
 
 ## Queue and implementation state
 
 | Order | Candidate | Implementation / integration | Live verification | Next action |
 | --- | --- | --- | --- | --- |
-| 1 | M7a: safe quest-board observation reuse | DOCUMENTED; no feature commit | Baseline redundant reads only | Integrate prerequisites, implement reuse/invalidation, native tests/build, then M7 trial |
+| 1 | M7a: safe quest-board observation reuse | IMPLEMENTED 57f330fc9; full build and 55 native tests passed | RUNNING; started 18:49 PDT, 13,690 BP | Monitor, stop, audit triggered paths/BP, then extract draft if verified |
 | 2 | M8a: hatch failure party restoration | DOCUMENTED; no feature commit | NOT STARTED | Implement restoration/restart contract through native action seam |
 | 3 | M11a: failed scrub must not enter rinse | DOCUMENTED; no feature commit | Baseline failure/success evidence only | Implement bounded failure/recovery and transition gating |
 | 4 | M12a: Pride Rock target acquisition | DOCUMENTED; no feature commit | Baseline missing-battle evidence only | Capture target/arrival/framing and choose bounded recovery |
@@ -58,9 +63,9 @@ M7 with a separate verification campaign. Claude owns remaining upstream work.
 
 | PR | GitHub state | Lab integration | Previously identified coverage paths |
 | --- | --- | --- | --- |
-| #1636 battle-entry guard | Ready for review | PENDING | Unconfirmed Tera entry skips handler; confirmed entry takes handler |
-| #1639 endless-reroll guard | Draft | PENDING | Native guard scenarios; live only if naturally encountered |
-| #1626 save/reset milestones | Draft | PENDING | Reached/crossed milestone saves once; no duplicate save without a new milestone |
+| #1636 battle-entry guard | Ready for review | INTEGRATED | Unconfirmed Tera entry skips handler; confirmed entry takes handler |
+| #1639 endless-reroll guard | Draft | INTEGRATED | Native guard scenarios; live only if naturally encountered |
+| #1626 save/reset milestones | Draft | INTEGRATED | Reached/crossed milestone saves once; no duplicate save without a new milestone |
 | #1659 verified reroll | Draft | INTEGRATED via M6 | Wrong initial cursor corrected; fourth-slot arrow; matching replacement/spend |
 | #1642 persistent failed quests | Draft | INTEGRATED via M6 | Exhaustion persists across batches; full-panel removal permits a new instance |
 | #1644 unsupported policies | Draft | INTEGRATED as 075376f2f | Pickup reroll with other runnable work; single unsupported fallback |
@@ -71,7 +76,7 @@ Dependencies: #1642 → #1632; #1659 → #1640; #1644 → #1659;
 An already-ready PR is not automatically live-verified; a draft PR can have
 verified evidence while dependency/review work remains.
 
-## Immediate execution steps
+## Execution steps (1–5 completed; live trial in progress)
 
 1. Fetch/recheck heads and integrate #1636, #1639 and #1626 in the lab worktree.
    Resolve integration conflicts there and update STACK.md with exact SHAs.
@@ -111,3 +116,5 @@ under tests/ may be included in a release branch's diff.
 | --- | --- | --- |
 | 2026-10-21 | Tracker initialized; V0 partially integrated, no combined build/run yet | Lab HEAD cb06dd640 and GitHub PR metadata reconciled |
 | 2026-10-21 | User clarified M4–M6 are done; removed redundant V0 campaign and selected M7a next, then M8a | User clarification; no additional implementation/build/live result claimed |
+
+| 2026-10-21 18:49 PDT | M7 implemented and full build/55 native tests passed; live run started with timer/checkpoints | Feature 57f330fc9; starting 13,690 BP; lab live RESULT.md |
