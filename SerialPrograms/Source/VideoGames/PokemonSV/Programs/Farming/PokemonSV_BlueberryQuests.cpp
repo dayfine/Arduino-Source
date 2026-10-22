@@ -41,6 +41,7 @@
 #include "VideoGames/PokemonSV/Programs/TeraRaids/PokemonSV_TeraBattler.h"
 #include "VideoGames/PokemonSV/Programs/Farming/PokemonSV_BlueberryCatchPhoto.h"
 #include "VideoGames/PokemonSV/Programs/PokemonSV_Terarium.h"
+#include "PokemonSV_BBQTargetDiagnostics.h"
 
 #include "PokemonSV_BlueberryQuests.h"
 
@@ -665,6 +666,8 @@ void quest_sneak_up(
     ConsoleHandle& console, ProControllerContext& context,
     const BBQOption& BBQ_OPTIONS
 ){
+    TargetAttemptRecorder recorder(console, BBQuests::sneak_up, BBQ_OPTIONS.SAVE_TARGET_DIAGNOSTICS);
+    bool battle_menu_seen = false;
     EncounterWatcher encounter_watcher(console, COLOR_RED);
     console.log("Quest: Sneak up.");
     //Navigate to target and start battle
@@ -697,6 +700,7 @@ void quest_sneak_up(
 
             pbf_wait(context, 2400ms);
             context.wait_for_all_requests();
+            recorder.checkpoint("after-lock-on");
 
             NormalBattleMenuWatcher battle_menu(COLOR_YELLOW);
             int ret2 = wait_until(
@@ -704,8 +708,10 @@ void quest_sneak_up(
                 std::chrono::seconds(15),
                 { battle_menu }
             );
+            battle_menu_seen = ret2 == 0;
             if (ret2 != 0){
                 console.log("Did not enter battle. Did target spawn?");
+                recorder.checkpoint("battle-entry-timeout");
             }
         },
         {
@@ -713,6 +719,11 @@ void quest_sneak_up(
             static_cast<AudioInferenceCallback&>(encounter_watcher),
         }
         );
+    recorder.finish({
+        .kind = TargetAttemptKind::battle,
+        .encounter_detected = ret >= 0,
+        .battle_menu_seen = battle_menu_seen,
+    });
     encounter_watcher.throw_if_no_sound();
 
     if (ret >= 0){

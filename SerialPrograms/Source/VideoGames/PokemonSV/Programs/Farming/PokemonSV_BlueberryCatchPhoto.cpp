@@ -26,6 +26,7 @@
 #include "VideoGames/PokemonSV/Programs/PokemonSV_WorldNavigation.h"
 #include "VideoGames/PokemonSV/Programs/Battles/PokemonSV_BasicCatcher.h"
 #include "VideoGames/PokemonSV/Programs/PokemonSV_Terarium.h"
+#include "PokemonSV_BBQTargetDiagnostics.h"
 #include "PokemonSV_BlueberryCatchPhoto.h"
 
 namespace PokemonAutomation{
@@ -289,6 +290,8 @@ void quest_photo(
     CameraAngle move_camera = CameraAngle::none;
 
     while(!took_photo){
+        TargetAttemptRecorder recorder(console, current_quest, BBQ_OPTIONS.SAVE_TARGET_DIAGNOSTICS);
+        bool photo_prompt_seen = false;
         EncounterWatcher encounter_watcher(console, COLOR_RED);
         int ret = run_until<ProControllerContext>(
             console, context,
@@ -311,6 +314,7 @@ void quest_photo(
                     pbf_move_right_joystick(context, {0, -1}, 400ms, 160ms);
                 }
                 context.wait_for_all_requests();
+                recorder.checkpoint("before-shutter");
 
                 pbf_press_button(context, BUTTON_A, 160ms, 400ms);
 
@@ -319,9 +323,11 @@ void quest_photo(
                     std::chrono::seconds(10),
                     { photo_prompt }
                 );
+                photo_prompt_seen = ret == 0;
                 if (ret != 0){
                     console.log("Photo not taken.");
                 }
+                recorder.checkpoint(photo_prompt_seen ? "photo-prompt" : "photo-prompt-timeout");
 
                 //Mash B until overworld
                 int exit = run_until<ProControllerContext>(
@@ -342,6 +348,11 @@ void quest_photo(
                 static_cast<AudioInferenceCallback&>(encounter_watcher),
             }
         );
+        recorder.finish({
+            .kind = TargetAttemptKind::photo,
+            .encounter_detected = ret >= 0,
+            .photo_prompt_seen = photo_prompt_seen,
+        });
         encounter_watcher.throw_if_no_sound();
 
         if (ret >= 0){
@@ -899,6 +910,8 @@ void quest_catch(
     const BBQOption& BBQ_OPTIONS,
     BBQuests current_quest
 ){
+    TargetAttemptRecorder recorder(console, current_quest, BBQ_OPTIONS.SAVE_TARGET_DIAGNOSTICS);
+    bool battle_menu_seen = false;
     EncounterWatcher encounter_watcher(console, COLOR_RED);
 
     //Navigate to target and start battle
@@ -908,6 +921,7 @@ void quest_catch(
             
             quest_catch_navi(info, console, context, BBQ_OPTIONS, current_quest);
             context.wait_for_all_requests();
+            recorder.checkpoint("after-lock-on");
 
             NormalBattleMenuWatcher battle_menu(COLOR_YELLOW);
             int ret2 = wait_until(
@@ -915,8 +929,10 @@ void quest_catch(
                 std::chrono::seconds(25),
                 { battle_menu }
             );
+            battle_menu_seen = ret2 == 0;
             if (ret2 != 0){
                 console.log("Did not enter battle. Did target spawn?");
+                recorder.checkpoint("battle-entry-timeout");
             }
         },
         {
@@ -924,6 +940,11 @@ void quest_catch(
             static_cast<AudioInferenceCallback&>(encounter_watcher),
         }
     );
+    recorder.finish({
+        .kind = TargetAttemptKind::battle,
+        .encounter_detected = ret >= 0,
+        .battle_menu_seen = battle_menu_seen,
+    });
     encounter_watcher.throw_if_no_sound();
 
     if (ret >= 0){
