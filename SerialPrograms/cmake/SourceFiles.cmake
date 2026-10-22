@@ -2587,6 +2587,8 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonSV/Programs/Farming/PokemonSV_AuctionFarmer.h
     Source/VideoGames/PokemonSV/Programs/Farming/PokemonSV_BBQSoloFarmer.cpp
     Source/VideoGames/PokemonSV/Programs/Farming/PokemonSV_BBQSoloFarmer.h
+    Source/VideoGames/PokemonSV/Programs/Farming/PokemonSV_BBQTargetDiagnostics.cpp
+    Source/VideoGames/PokemonSV/Programs/Farming/PokemonSV_BBQTargetDiagnostics.h
     Source/VideoGames/PokemonSV/Programs/Farming/PokemonSV_BlueberryCatchPhoto.cpp
     Source/VideoGames/PokemonSV/Programs/Farming/PokemonSV_BlueberryCatchPhoto.h
     Source/VideoGames/PokemonSV/Programs/Farming/PokemonSV_BlueberryQuests.cpp
