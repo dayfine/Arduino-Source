@@ -59,10 +59,12 @@ int read_BP(const ProgramInfo& info, VideoStream& stream, ProControllerContext& 
 //Open the quest panel and read in the current quests.
 //Currently only supports singleplayer.
 //For multiplayer, we will want keep track of which quest are gold/red and scroll cursor down until all of the current player's blue quests are in.
+//If BP is not null, also read the BP balance from the same screenshot (-1 on OCR failure).
 std::vector<BBQuests> read_quests(
     const ProgramInfo& info,
     VideoStream& stream, ProControllerContext& context,
-    const BBQOption& BBQ_OPTIONS
+    const BBQOption& BBQ_OPTIONS,
+    int* BP = nullptr
 );
 
 //Determine which quests are possible and which quests are not. (ex. no eggs, reroll egg hatcher.)
