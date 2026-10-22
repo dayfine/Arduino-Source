@@ -270,6 +270,39 @@ more data): attempt reds the program does reliably (tera raid, auto-30,
 hatch); reroll (50 BP) reds it can't (wash at 40%/267 s held the slot for
 54 min).
 
+**Revised with red quests separated (2026-10-22, `pokemon_sv/tools/reroll_model.py`).**
+`quest_draws.py` now compares reads by content and splits the red top slot from
+the blues; the old 148 count was inflated by the red shift. 502 reads, 138 blue
+draws: travel-500 13%, pickup-10 12%, auto-10 12%, tera-self-defeat 10%,
+make-tm 9%, sneak-up 8%, photo-swim 8%, catch-any 5%, photo-savanna 4%,
+photo-fly 4%, typed catches 17% combined. 8 red draws: tera-raid 2, wash 2,
+salty-sandwich, hatch-egg, sandwich-three, auto-30 (1 each). Red episodes:
+lab salty-sandwich 12 min, m5 wash 27 and 58 min, hatch 3 min, sandwich-three
+6 min, m7b-reuse auto-30 18 min, R3 tera-raid 11 min.
+
+Model: 2 tries then reroll; blue reroll 10 BP + 25 s; a red after every 10 blue
+completions pays 150 BP, red reroll 50 BP draws another red. Red times:
+tera-raid 518 s, auto-30 ~1070 s, wash 40% x 267 s, hatch 191 s, sandwich reds
+unmeasured (guess 50% x 250 s). BP/hour:
+
+| Blue policy | blue only | + attempt all reds | + reroll wash/sandwich reds | ignore reds | draws/quest |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| A: impossible only | 201 | 315 | 271 | 201 | 1.56 |
+| B: + sneak-up | 204 | 322 | 276 | 204 | 1.62 |
+| C: + Pride Rock catch/photo, savanna | 228 | 356 | 303 | 228 | 1.66 |
+| C': C keeping catch-any (R4, tests #23) | 218 | 341 | 291 | 218 | 1.63 |
+| D: C + auto-10 | 218 | 370 | 309 | 218 | 2.03 |
+| F: D + typed catches | 171 | 369 | 295 | 171 | 2.54 |
+
+Findings: (1) reds are worth ~+55% BP/hour; finishing them matters more than
+any blue reroll choice. (2) Never reroll a red: the reroll costs 50 BP and draws
+another red, so even wash at 40% beats it. What hurts is a red the program
+keeps failing without the 2-try cap (m5 wash held 58 min): make sure
+OUT_OF_RETRIES applies to the red slot, and fix wash (C-item). (3) With reds,
+rerolling auto-10 (D) edges out C (370 vs 356) because completions carry the
+red bonus; without reds it loses. Keep C for R4 (C' to test #23), revisit D
+when C10 shortens Auto Battle. (4) Typed catches stay (F gains nothing).
+
 14. C14 (added 2026-10-22 from R3, high priority: it ended R3): return to
    Central Plaza can land elsewhere and the program then dies. R3 08:17:
    return_to_plaza() found the Pokecenter icon 130 px off, got no "Fly" menu
