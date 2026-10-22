@@ -43,6 +43,36 @@ the fork (dayfine/Arduino-Source) until it is ready.
   comment on the closed upstream PR, linking the fork PR. That PR's review
   threads stay readable upstream.
 
+## Writing the PR description
+
+Write the description so a reviewer knows what to read and what to skim.
+Maintainers review on github.com, which does not mark moved code.
+
+- **Order:** start with the banner (see Linking above), then the problem, the
+  change, and the tests. Keep it short. Run details and ledgers go in a linked
+  run record, not in the PR.
+- **Add a "How to review" section whenever a PR moves or restructures code**
+  (refactors, seams, code moved to another file or class). It says:
+  - which code is moved unchanged, and where it came from;
+  - which parts are new or changed, and the order to read them in (usually the
+    new logic first, then the tests);
+  - the local command that colors moved lines apart from real changes, even
+    when re-indented:
+
+    ```
+    git diff --color-moved=dimmed-zebra --color-moved-ws=allow-indentation-change main...<branch>
+    ```
+  - when code is only re-indented in place, that GitHub's "Hide whitespace"
+    setting (`?w=1`) removes it from the diff.
+- **Split a move from a change** into separate commits when the code allows it,
+  and say "review commit by commit". When they can't be split (e.g. code moved
+  into a new interface's methods), say so and rely on the "How to review"
+  section.
+- **Measure before claiming.** Count the moved lines with the command above,
+  e.g. "about half of the changed lines are moved".
+
+Example: upstream PokemonAutomation/Arduino-Source#1663.
+
 ## Current map (2026-10-21)
 
 Open upstream, ready for review: #1628, #1631, #1632, #1636, #1640, FRLG #1663.

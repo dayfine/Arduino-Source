@@ -40,6 +40,9 @@ See [pokemon_sv/PR_WORKFLOW.md](pokemon_sv/PR_WORKFLOW.md). In short:
 - **Drafts and stacked PRs** go on the fork, based on their parent's branch.
 - **Upstream references in fork PRs** are written in full:
   `PokemonAutomation/Arduino-Source#1631`.
+- **Descriptions** tell the reviewer what to read: a "How to review" section for
+  any PR that moves or restructures code (see "Writing the PR description" in
+  PR_WORKFLOW.md).
 
 ## Code conventions for PR branches
 
