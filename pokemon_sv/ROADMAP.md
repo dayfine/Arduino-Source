@@ -236,6 +236,31 @@ C13 later = adaptive reroll from running per-route stats; (3) fix ROI =
 frequency x time lost: Pride Rock routes first (C11, C12, E4), then Auto
 Battle (M9a, #21, C10), then bath.
 
+**Reroll policy with chained rerolls and red quests (2026-10-22).** A reroll
+draws a random new quest, which may also be bad. New-quest distribution from
+148 slot changes in all logs (`pokemon_sv/tools/quest_draws.py`): travel-500
+14%, pickup-10 11%, auto-10 9%, tera-self-defeat 9%, sneak-up 9%, photo-swim 8%,
+make-tm 8%, photo-savanna 5%, catch-any 5%, photo-fly 4%, rest <2% each.
+Renewal model (each draw: attempt up to 2 tries, reroll on failure; or reroll
+at 10 BP + 25 s), long-run BP/hour, by bonus BP per completion (red reward /
+completions per red; unmeasured):
+
+| Policy | bad draws | draws/quest | +0 | +5 | +10 | +20 |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| A: reroll only impossible | 15% | 1.52 | 226 | 294 | 362 | 498 |
+| B: current (+ sneak-up) | 24% | 1.59 | 232 | 305 | 377 | 522 |
+| C: B + Pride Rock catch/photo + bath | 37% | 1.67 | 267 | 354 | 442 | 618 |
+| D: C + Auto Battle | 47% | 1.98 | 277 | 389 | 501 | 724 |
+| F: D + all typed catches | 55% | 2.26 | 247 | | | |
+
+Chained rerolls are priced in: D costs ~0.4 more rerolls per completed quest;
+P(5 bad draws in a row) is 0.47^5 = 2%. F over-rerolls. Red quests raise the
+value of a completion, which favours fast quests and rerolling slow ones.
+Red slot: 101 of 468 reads had a 4th (red) quest; 40 of those were
+photo-savanna (Pride Rock photo, ~0% success), which blocks the bonus slot.
+To measure: red reward (BP), completions between reds, whether a red can be
+rerolled.
+
 **To analyze from run logs (added 2026-10-22 by the user):**
 
 - A1, quest order within a round. The planner keeps board order; nothing
