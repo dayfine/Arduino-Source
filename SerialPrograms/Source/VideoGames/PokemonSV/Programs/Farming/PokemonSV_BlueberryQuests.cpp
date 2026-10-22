@@ -44,6 +44,7 @@
 #include "VideoGames/PokemonSV/Programs/PokemonSV_Terarium.h"
 #include "PokemonSV_BlueberryQuests.h"
 
+#include<optional>
 #include<vector>
 
 namespace PokemonAutomation{
@@ -1319,13 +1320,14 @@ void quest_tera_raid(
     day_skip_from_overworld(console, context);
 }
 
-void run_auto_battle(
+BBQAutoBattleResult run_auto_battle(
     Logger& logger,
     BBQAutoBattleActions& actions,
     const BBQAutoBattlePolicy& policy
 ){
     const WallClock start = actions.now();
     uint64_t pass = 0;
+    uint64_t empty_passes = 0;
     while (actions.kills() < policy.kill_target){
         pass++;
         const uint64_t kills_before = actions.kills();
@@ -1334,25 +1336,37 @@ void run_auto_battle(
         actions.clear(policy.kill_target);
 
         const uint64_t kills = actions.kills();
-        const bool target_reached = kills >= policy.kill_target;
+        empty_passes = kills == kills_before ? empty_passes + 1 : 0;
         const auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(actions.now() - start);
+
+        std::optional<BBQAutoBattleResult> end;
+        std::string next = "Below the target: return, heal and go again.";
+        if (kills >= policy.kill_target){
+            end = BBQAutoBattleResult::TargetReached;
+            next = "Target reached: return without healing.";
+        }else if (empty_passes >= policy.max_empty_passes){
+            end = BBQAutoBattleResult::NoKills;
+            next = "No kill in " + std::to_string(empty_passes) + " passes in a row: return and give up.";
+        }else if (elapsed >= policy.time_limit){
+            end = BBQAutoBattleResult::TimeLimit;
+            next = "Time limit of " + std::to_string(policy.time_limit.count()) + " min reached: return and give up.";
+        }
         logger.log(
             "Auto Battle pass " + std::to_string(pass) + ": "
             + std::to_string(kills - kills_before) + " kills, "
             + std::to_string(kills) + "/" + std::to_string(policy.kill_target) + " in total, "
             + std::to_string(elapsed.count()) + " s elapsed. "
-            + (target_reached
-                ? "Target reached: return without healing."
-                : "Below the target: return, heal and go again.")
+            + next
         );
 
         //The next quest starts from Central Plaza, so return even when done.
         actions.return_to_plaza();
-        if (target_reached){
-            return;
+        if (end){
+            return *end;
         }
         actions.heal();
     }
+    return BBQAutoBattleResult::TargetReached;
 }
 
 namespace{
@@ -1454,11 +1468,14 @@ void quest_auto_battle(
         sensors.lets_go_kill
     );
 
+    //The time limits are about 3x the slowest attempts seen with a correct lead.
     BBQAutoBattlePolicy policy;
     policy.kill_target = 10;
+    policy.time_limit = std::chrono::minutes(35);
 
     if (current_quest == BBQuests::auto_30){
         policy.kill_target = 30;
+        policy.time_limit = std::chrono::minutes(60);
     }
 
     ConsoleBBQAutoBattleActions actions(env, stream, context, stats, tracker);

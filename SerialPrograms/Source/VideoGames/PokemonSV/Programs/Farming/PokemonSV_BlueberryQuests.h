@@ -164,7 +164,7 @@ public:
     //Kills heard since the quest started. Kills are counted as they are heard, in any step.
     virtual uint64_t kills() const = 0;
 
-    //The current time, for the pass log.
+    //The current time, for the pass log and the time limit.
     virtual WallClock now() const = 0;
 
     //Fly from Central Plaza to Chargestone Cavern, wait for spawns, and walk into the battle court.
@@ -184,11 +184,23 @@ public:
 
 struct BBQAutoBattlePolicy{
     uint64_t kill_target = 10;
+    //Give up after this many passes in a row with no kill.
+    uint64_t max_empty_passes = 3;
+    //Give up after the pass that ends past this time.
+    std::chrono::minutes time_limit = std::chrono::minutes(35);
+};
+
+enum class BBQAutoBattleResult{
+    TargetReached,
+    NoKills,        //max_empty_passes passes in a row had no kill.
+    TimeLimit,
 };
 
 //Clear Chargestone Cavern until the kills reach the target, healing after every pass but the
-//last. Logs one line per pass: its kills, the total, the time spent, and what happens next.
-void run_auto_battle(
+//last. Gives up when a limit in `policy` is reached; the board check then decides the quest
+//failed. Either way it ends at Central Plaza. Logs one line per pass: its kills, the total, the
+//time spent, and what happens next.
+BBQAutoBattleResult run_auto_battle(
     Logger& logger,
     BBQAutoBattleActions& actions,
     const BBQAutoBattlePolicy& policy
