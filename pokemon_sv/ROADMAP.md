@@ -162,6 +162,13 @@ runs in parallel. Live runs need the Switch, one at a time.
 6. C6: M12a step 1, diagnostics.
 7. C7: N1, fly from anywhere.
 8. C8: M9a PR 3, heal at 50%.
+9. C9 (added 2026-10-22 by the user, ahead of M15): M7 follow-ups for panel
+   reads. R3 showed 3 avoidable reads (~12–15 s) after each failed quest that
+   leads to rerolls: (a) the out-of-retries reroll's verify read is not handed
+   to scheduling; (b) M7a only reuses 4-slot verify reads, so boards without a
+   bonus quest never reuse; (c) the before-dispatch read runs right after a
+   fresh scheduling read. Fix (a) and (c) first; (b) needs care because a
+   3-slot read can be a missed 4th slot.
 
 **Run (in order):**
 
