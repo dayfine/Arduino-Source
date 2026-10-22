@@ -4,6 +4,9 @@ Status: operational workflow documented; isolated testing branch created.
 Its integrated baseline has not yet been built, tested or run. This is a
 workflow document, not an installed agent skill.
 
+Track current implementation, integration, live evidence and PR readiness in
+[MILESTONE_STATE.md](MILESTONE_STATE.md); update it after every loop transition.
+
 ## Branches and ownership
 
 - Testing branch: `bbq/validation-stack` on dayfine/Arduino-Source.

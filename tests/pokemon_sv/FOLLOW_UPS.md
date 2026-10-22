@@ -1,6 +1,7 @@
 # BBQ farmer follow-up milestones
 
 Implementation/run loop and ranked queue: [VALIDATION_WORKFLOW.md](VALIDATION_WORKFLOW.md).
+Current implementation, integration, run and PR states: [MILESTONE_STATE.md](MILESTONE_STATE.md).
 
 | Milestone | Work | Validation needed | Status |
 | --- | --- | --- | --- |
