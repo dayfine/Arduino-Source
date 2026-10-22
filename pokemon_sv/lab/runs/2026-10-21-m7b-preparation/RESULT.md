@@ -73,3 +73,10 @@ of the optimized path. Further unstructured running has limited M7a value.
 No new live result or feature PR is claimed. Extract a dedicated code-only fork
 PR after evaluated live evidence, with M7a/M6 dependencies explicit; never open
 it from the accumulating lab branch. All notes stay on agents.
+
+## Handoff completed at 21:08 PDT
+
+Previous program is STOPPED; game saved and idle at Central Plaza. Final balance
+14,070 BP, Primarina Lv.100 321/321 leading. Three blue quests: Savanna Photo,
+Make TM, Catch Any. Old M7a app remains open, so the next step is closing it and
+opening this exact M7b build/profile; no M7b trial has started.

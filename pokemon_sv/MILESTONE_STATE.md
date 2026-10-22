@@ -31,11 +31,12 @@ owns existing PR branches/descriptions and receives verified commits/results.
 - First M7 live trial: **INCONCLUSIVE for reuse**, 18:49:05–19:49:03 PDT:
   six completions; 75 three-slot reads; zero four-slot reuse triggers.
 - Preflight error: unsupported hatch-egg/skip JSON row loaded as auto-10/skip.
-  User cleared exclusions and restarted at 19:49:04. New run continues under
-  changed settings; three completions and 13,770 BP observed by 20:08.
-- Read-only five-minute observer records the restarted run. No stop timer owns
-  it. Old observer exited on a historical-state bug, now corrected locally;
-  deadline stopping remains unverified. User retains control of the newer run.
+  User cleared exclusions and restarted at 19:49:04. That run stopped at
+  21:05:50: twelve recorded completions and one program save, zero M7a reuse.
+  Final 14,070 BP; saved manually and idle at Central Plaza.
+- Old app remains open, STOPPED. M7b is built separately but not launched.
+  Verify the executable/profile before the next run. Deadline stopping remains
+  unverified; normal identity-checked Stop succeeded at the after-attempt boundary.
 - Run record: [M7 trial](lab/runs/2026-10-21-m7-live/RESULT.md) on `agents`.
 
 The user stopped Flying Trial and returned manually after automation missed the
@@ -133,3 +134,5 @@ under tests/ may be included in a release branch's diff.
 | 2026-10-21 | Notes/rules moved to agents; step 10 aligned with fork workflow; failed-reroll queue delay tracked as M7b | AGENTS.md; M7.md evening example; M7a does not fix M7b |
 
 | 2026-10-21 21:02 PDT | M7b prepared in isolated checkout; lab source fast-forwarded, active old binary unchanged | ea047a930; 58 native PASS; M7b preparation RESULT; M7a reuse still unverified |
+
+| 2026-10-21 21:08 PDT | M7a run stopped normally; Central Plaza verified and game saved | Final 14,070 BP (+380 across both runs); 12 second-run completions / 1 program save; zero reuse; M7b app not launched |

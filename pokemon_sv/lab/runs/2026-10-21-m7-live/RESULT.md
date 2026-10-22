@@ -1,7 +1,8 @@
 # M7 live trial, 2026-10-21 PDT
 
 Status: first run STOPPED manually at 19:49:03; M7 reuse INCONCLUSIVE.
-User-restarted run from 19:49:04 continues separately with changed policies.
+User-restarted run from 19:49:04 STOPPED at 21:05:50 with changed policies.
+Final balance 14,070 BP; saved at Central Plaza; M7a reuse INCONCLUSIVE.
 
 - Started: 18:49:05 PDT; planned stop: 19:49:05 PDT.
 - Tested production SHA: 57f330fc9 (integration base 8aa1821b4).
@@ -132,3 +133,37 @@ were logged in the early restarted run; causality is not established.
 Local evidence: first-hour.log, first-hour-events.txt, dispatches.json,
 active-settings-details.txt, and screenshot-20261021-200810053717.png under the
 profile's Screenshots directory. No binary rebuild or release PR was made.
+
+## Final stop and saved handoff, 2026-10-21 21:08 PDT
+
+User authorized stopping the current program, returning to Central Plaza and
+saving for the next M7b session. The identity-checked shallow AX helper pressed
+Stop at the next after-attempt panel boundary. STOPPED was verified at
+21:05:50.136589. Restarted-run duration: 76m46s. Last recorded stats: twelve
+completions and one program save; the final Catch Any attempt was interrupted
+before its completion check and Catch Any remains on the final board.
+No M7a reuse event occurred. No M7b executable was started.
+
+The program had already returned to Central Plaza before that boundary; a
+manual flight was unnecessary. Native final board snapshot at 21:06:05 shows
+**14,070 BP**, Savanna Photo, Make TM and Catch Any, all incomplete, no red.
+This is a directly observed **+380 BP** from the original 13,690 starting
+snapshot across both runs and the manual restart boundary. Do not attribute
+this whole balance change to either run separately without the inferred ledger.
+
+Party snapshot: Primarina Lv.100 321/321 still leads; all six full HP. Iron Hands
+Lv.100, Corviknight Lv.77, Chien-Pao Lv.99, Magmar Lv.71 and Golett Lv.67.
+Manual save performed through main menu R, confirmed Yes. The 21:07:31 snapshot
+shows the explicit save-completed dialog. Menus then closed; the 21:08:14
+snapshot verifies overworld at Central Plaza. Controller is idle.
+
+Local evidence copied to lab build-prep/m7-live-2026-10-21/:
+- final-board-14070BP.png
+- final-party.png
+- final-save-confirmed.png
+- final-central-plaza.png
+- restarted-final.log (scoped to the second run before STOPPED).
+
+The app left open is still the old M7a lab app, stopped. **Do not press Start
+expecting M7b**: switch to the built Arduino-Source-m7b app and validate its
+isolated profile before the next trial. See the M7b preparation record.
