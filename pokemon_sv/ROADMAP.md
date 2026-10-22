@@ -1,0 +1,132 @@
+# BBQ roadmap: payoff, sharing and order
+
+Status: analysis, 2026-10-21 late evening. It reorders the milestones in
+[MILESTONE_STATE.md](MILESTONE_STATE.md) by payoff and dependency. Paths are
+relative to `SerialPrograms/Source/VideoGames/PokemonSV`.
+
+## 1. Battle efficiency: BBQ Auto Battle vs the Material Farmer
+
+| | Kills per minute | Share of a trip spent battling | Kills per trip | Heals |
+| --- | ---: | ---: | ---: | --- |
+| Material Farmer, tonight (sandwich active, North Province) | **5.3** (92 kills in 17.5 min) | ~75–80% (140–280 s clearing in 185–340 s trips) | 11–43, about 20 typical | none in 17 min |
+| BBQ Auto Battle 10, correct lead | ~2.5 (10 kills in 227–249 s) | ~26% | 0–4, typically 1–2 | every pass |
+| BBQ Auto Battle 30, correct lead | ~1.9 (34 kills in 17.5 min) | ~26% | ~3 | every pass |
+| BBQ Auto Battle 10, wrong lead (M8 party bug) | ~0.9 | | | every pass |
+
+The BBQ route kills two to three times slower. Four reasons, from the code and
+the logs:
+
+1. **One clear per trip.** The Material Farmer walks forward and clears again
+   several times per trip (`run_lets_go_iteration()`); BBQ clears once, then
+   leaves.
+2. **A heal and a re-fly every pass**, about 28 s; see [M9a_PLAN.md](M9a_PLAN.md).
+3. **No sandwich.** Encounter power raises spawn density for the farmer.
+4. **Different areas.** Chargestone's court may simply have fewer spawns. This
+   is unmeasured, and part of M9a's E3.
+
+## 2. Doing more quests in an area before returning to Central Plaza
+
+Today every quest starts and ends at Central Plaza:
+
+- each route flies there with `central_to_*()`, a fixed map-cursor offset from
+  the Central Plaza fly point (`Programs/PokemonSV_Terarium.cpp`);
+- each route then calls `return_to_plaza()`.
+
+Several quests share a spot (`quest_photo_navi()` and `quest_catch_navi()` in
+`Programs/Farming/PokemonSV_BlueberryCatchPhoto.cpp`):
+
+| Area | Photo quests | Catch quests |
+| --- | --- | --- |
+| Coastal Plaza (Exeggutor-A and others) | coastal, grass, dragon, poison, dark, steel | grass, dragon, steel, poison, dark |
+| Canyon Plaza (Golett and others) | canyon, ghost, ground, bug, rock, fighting | ghost, ground, fighting, bug |
+| Savanna Plaza (Pride Rock) | savanna, normal, fire, flying | any, normal, fire, flying |
+| Polar Rest Area / Polar Classroom 1 | flying, psychic; swim, water, polar | psychic, water, ice |
+
+A board with, say, photo-coastal and catch-grass could do both on one trip:
+photo first, then catch the same target. That saves one return and one flight,
+about 45 s per pair. Pairs are common because boards draw from these lists, but
+their frequency hasn't been measured.
+
+**What it needs (new milestone N1, below):**
+- **Fly from anywhere.** `central_to_*()` only works from Central Plaza.
+  `return_to_plaza()` already shows the robust pattern: move the map cursor to
+  a corner first, then to the target, then snap to the nearest fly point. A
+  general `fly_to(TerariumFlyPoint)` built on it removes the "start at Central
+  Plaza" assumption. Checking the fly point's name before flying also covers
+  issue #263 item 7.
+- **Planner ordering.** `plan_quests()` (#1640) groups to-do quests by area.
+- **A start-and-end contract per route.** Each route declares where it starts
+  and ends. The round loop calls `return_to_plaza()` only when the next quest
+  is in a different area.
+
+## 3. What to reuse from the Item Printer and Material Farmer code
+
+| Code | Where | Reuse in BBQ |
+| --- | --- | --- |
+| `LetsGoHpWatcher` plus `check_hp()` threshold healing | `Inference/Overworld/PokemonSV_LetsGoHpReader.h`, `Programs/Farming/PokemonSV_MaterialFarmerTools.cpp` | **Yes**, M9a PR 3. `check_hp()` takes `MaterialFarmerOptions`; split out a version taking only the threshold. |
+| `auto_heal_from_menu_or_overworld()` (heal from the menu) | `Programs/Battles/PokemonSV_Battles.cpp` | **Maybe.** It heals anywhere, with no flight to the nurse, but uses items. Option: heal from the menu when HP is low and the next quest is in the same area. |
+| `run_lets_go_iteration()` (several forward clears per trip) | MaterialFarmerTools | **Yes, as a pattern**, for M9a E2. The path is area-specific; the loop is shared. |
+| `run_from_battles_and_back_to_pokecenter()` | MaterialFarmerTools | **Partly.** BBQ's `return_to_plaza()` already handles battles while flying back; reuse the "run from incidental battles" part for E2 walks. |
+| Sandwich making with encounter power | `make_sandwich_material_farm()`, `SandwichRoutines` | **Experiment.** A type-encounter sandwich could make typed catch and photo targets appear (M12a), and raise Auto Battle spawns. It costs about 3 min and ingredients, and lasts 30 min. |
+| Consecutive-failure cap with game reset | `run_material_farmer()` | **The pattern**, for M13 and M9a PR 4 bounds. |
+
+## 4. Other shared code for navigation and finding targets
+
+- **Fly points on the map:** `fly_to_closest_pokecenter_on_map()`,
+  `FastTravelDetector`, `MapPokeCenterIconDetector`, and AutoStory's
+  `move_cursor_towards_flypoint_and_go_there(..., FlyPoint)`. Together they
+  give "move near, then snap to a detected fly point", the basis for N1.
+- **Facing and realigning:** `DirectionDetector` (the minimap compass) and
+  AutoStory's `realign_player()` and `realign_player_from_landmark()`, which
+  turn the player to a heading from the minimap. BBQ routes use fixed glides
+  and camera presses; this would make arrival less sensitive to timing (M12a).
+- **Object-guided walking:** AutoStory's YOLO helpers
+  (`move_player_until_yolo_object_detected()` and similar) walk until a trained
+  object is on screen. The models are trained on story landmarks, not on the
+  Terarium's wild Pokémon, so there's no direct reuse without new training
+  data. The helpers' shape (walk, detect, bound the rounds) is still the right
+  one for a target search.
+- **Reacting to unexpected battles:** AutoStory's
+  `do_action_and_monitor_for_battles()` and `handle_unexpected_battles()`
+  overlap with the Material Farmer's wrapper. Pick one for BBQ walks.
+
+## 5. Milestones by payoff and dependency
+
+Payoff is measured where we have data. On the M7 run with a correct lead, Catch
+Any and Sneak Up spent 28.75 minutes, 48% of the hour, failing to find a
+target.
+
+| Order | Milestone | Payoff | Depends on | Coding (agent) | Live test |
+| --- | --- | --- | --- | --- | --- |
+| 1 | **M8a** restore the party after a failed hatch | Correctness gate. A wrong lead slows every battle route about 2.5× and confounds all measurements. | none | ~1 h | 30 min, focused |
+| 2 | **M14** BP income/expense/net in the status | Lets every later change be judged in BP/hour | #1628 BP reader | ~30 min | with any run |
+| 3 | **M9a PRs 1, 2, 4** (seam and pass log; stop at target; bounds) | ~30 s per Auto Battle quest; no endless loop | none (independent of the stacks) | ~1.5 h | one Auto Battle 10 and one 30 |
+| 4 | **M12a step 1**: target-acquisition diagnostics | Finds the cause behind 48% of an hour | none | ~1 h (logs and frame captures per attempt) | recorded runs |
+| 5 | **N1** fly from anywhere, with the name check | Enables area batching; fixes issue item 7 | none | ~1.5 h | fly to each Terarium point once |
+| 6 | **M12a step 2**: target search or alternate target | The largest single payoff, if step 1 finds a fixable cause | step 4, maybe N1 | ~2 h | several runs |
+| 7 | **M15 (new)**: area batching | ~45 s per same-area pair | N1, #1640 planner | ~1.5 h | several runs |
+| 8 | **M9a PR 3** heal only when HP is low | ~2–5 min per Auto Battle quest | M9a PR 1; maintainers' default decision | ~45 min | one Auto Battle 30 |
+| 9 | **M11a** no rinse after a failed scrub | ~1 min per failed wash | none | ~1 h | wash attempts |
+| 10 | **M13** navigation recovery bounds | Prevents rare long stalls (one return took 8m50s) | none | ~1 h | injected failures |
+| 11 | **M7 follow-ups** | Accounting accuracy | M7 | ~45 min | with any run |
+| 12 | **M8b** startup egg box | Convenience | M8a | ~1.5 h | one startup |
+| 13 | **M10** Pickup; Flying catch and photo | Low and unknown | investigation | unknown | unknown |
+| exp. | **Sandwich encounter power** for typed catch, photo and Auto Battle | Possibly large for M12a's typed targets | M12a step 1 | ~1 h (the sandwich code exists) | A/B runs |
+
+**What changed from the old order:**
+- **M14 moved up**, since BP/hour is how everything else gets judged.
+- **M12a's diagnostics moved ahead of** M11a, M13 and M8b: they target the
+  largest measured loss.
+- **N1 and area batching (M15) are new**, from your point 2.
+- **M9a is split**: its cheap, default-preserving PRs go early, and the
+  behavior-changing heal policy waits for maintainers to decide the default.
+
+**Effort:** agreed, the coding adds up to about a day: roughly 12–15 agent-hours
+for items 1–12. The real cost is per-PR testing and review. Each PR needs:
+- its own native tests;
+- a 30–60 minute live run on the lab profile;
+- a fork PR, then an upstream PR once its parents merge.
+
+So the pace is set by Switch time (one run at a time) and maintainers' reviews,
+not by coding. Items 1–3 can be coded together and then validated in one
+combined lab run, because they touch different code. Each still gets its own PR.
