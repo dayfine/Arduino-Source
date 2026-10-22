@@ -1,5 +1,7 @@
 # BBQ farmer follow-up milestones
 
+Implementation/run loop and ranked queue: [VALIDATION_WORKFLOW.md](VALIDATION_WORKFLOW.md).
+
 | Milestone | Work | Validation needed | Status |
 | --- | --- | --- | --- |
 | [M7](M7.md) | Quest-board certainty and reuse; investigate the recorded five-read reroll sequence | Native C++ tests, local build, comparative live timing/board reads | Investigation documented |
