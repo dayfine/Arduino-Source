@@ -126,7 +126,6 @@ void run_bbq_rounds(Logger& logger, const BBQOption& options, BBQGameActions& ga
 
         //Get and reroll quests until we can at least one
         while (quests_to_do.size() < 1){
-            const bool reused_panel = observed_panel.has_value();
             if (observed_panel){
                 logger.log("Reusing verified quest panel for scheduling.");
                 quest_list = std::move(*observed_panel);
@@ -139,7 +138,9 @@ void run_bbq_rounds(Logger& logger, const BBQOption& options, BBQGameActions& ga
             BBQuestBatch batch = game.process_quest_list(quest_list, eggs_hatched);
             quests_to_do = std::move(batch.to_do);
             observed_panel = std::move(batch.observed_panel);
-            if (reused_panel && !quests_to_do.empty() && !observed_panel){
+            //Work is only returned when nothing changed in game, so the panel
+            //it was chosen from is still current for the first dispatch.
+            if (!quests_to_do.empty() && !observed_panel){
                 dispatch_panel = quest_list;
             }
 
@@ -158,10 +159,11 @@ void run_bbq_rounds(Logger& logger, const BBQOption& options, BBQGameActions& ga
             quest_list.clear();
         }
 
-        //Never carry an observation across quest actions or the round's date/reset work.
+        //Never carry an observation across quest actions or a save and reset.
         observed_panel.reset();
         const uint64_t completed_before_round = num_completed_quests;
         bool replan_after_reroll = false;
+        std::optional<std::vector<BBQuests>> rerolled_panel;
         for (auto current_quest : quests_to_do){
             //Check if quest was already completed (ex. 500 meters completed while navigating to take a photo)
             if (dispatch_panel){
@@ -187,7 +189,7 @@ void run_bbq_rounds(Logger& logger, const BBQOption& options, BBQGameActions& ga
                         break;
                     case BBQOption::OutOfRetries::Reroll:
                         logger.log("Reroll selected. Rerolling the failed quest.");
-                        game.reroll_quest(current_quest);
+                        rerolled_panel = game.reroll_quest(current_quest);
                         logger.log("Reroll finished. Discarding the remaining batch before scheduling.");
                         replan_after_reroll = true;
                         break;
@@ -214,7 +216,15 @@ void run_bbq_rounds(Logger& logger, const BBQOption& options, BBQGameActions& ga
 
         uint64_t temp_save_num_option = options.SAVE_NUM_QUESTS;
         // A round can cross a milestone without ending at an exact multiple.
-        game.end_round(bbq_save_due(completed_before_round, num_completed_quests, temp_save_num_option));
+        const bool save = bbq_save_due(completed_before_round, num_completed_quests, temp_save_num_option);
+        game.end_round(save);
+
+        //The reroll was the last game action of the round. Fixing the date
+        //does not change the quests, so its verified read can seed the next
+        //plan. A save resets the game, so the panel is read again after one.
+        if (rerolled_panel && !save){
+            observed_panel = std::move(rerolled_panel);
+        }
     }
 }
 
@@ -244,14 +254,14 @@ public:
     virtual bool do_quest(BBQuests quest, uint8_t& eggs_hatched) override{
         return process_and_do_quest(m_env, m_env.console, m_context, m_options, quest, eggs_hatched);
     }
-    virtual void reroll_quest(BBQuests quest) override{
+    virtual std::optional<std::vector<BBQuests>> reroll_quest(BBQuests quest) override{
         std::vector<BBQuests> quests = PokemonSV::read_quests(m_env.program_info(), m_env.console, m_context, m_options);
         auto iter = std::find(quests.begin(), quests.end(), quest);
         if (iter == quests.end()){
             m_env.log("Failed quest is no longer on the panel. Not rerolling.");
-            return;
+            return std::nullopt;
         }
-        reroll_quest_slot(m_env.program_info(), m_env.console, m_context, m_options, quests, iter - quests.begin());
+        return reroll_quest_slot(m_env.program_info(), m_env.console, m_context, m_options, quests, iter - quests.begin());
     }
     virtual void quest_completed() override{
         m_stats.questsCompleted++;
