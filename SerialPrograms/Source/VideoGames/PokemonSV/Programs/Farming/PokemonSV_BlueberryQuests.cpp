@@ -308,9 +308,11 @@ public:
     ConsoleBBQRerollActions(
         const ProgramInfo& info,
         VideoStream& stream, ProControllerContext& context,
-        const BBQOption& BBQ_OPTIONS
+        const BBQOption& BBQ_OPTIONS,
+        const std::function<void(int BP)>& record_BP
     )
         : m_info(info), m_stream(stream), m_context(context), m_options(BBQ_OPTIONS)
+        , m_record_BP(record_BP)
     {}
 
     virtual bool open_panel() override{
@@ -356,7 +358,13 @@ public:
     }
     virtual std::vector<BBQuests> read_quests() override{
         m_stream.log("Reading quest panel to verify reroll.");
-        return PokemonSV::read_quests(m_info, m_stream, m_context, m_options);
+        if (!m_record_BP){
+            return PokemonSV::read_quests(m_info, m_stream, m_context, m_options);
+        }
+        int BP = -1;
+        std::vector<BBQuests> quests = PokemonSV::read_quests(m_info, m_stream, m_context, m_options, &BP);
+        m_record_BP(BP);
+        return quests;
     }
 
 private:
@@ -364,6 +372,7 @@ private:
     VideoStream& m_stream;
     ProControllerContext& m_context;
     const BBQOption& m_options;
+    const std::function<void(int BP)>& m_record_BP;
 };
 
 
@@ -456,9 +465,10 @@ std::optional<std::vector<BBQuests>> reroll_quest_slot(
     VideoStream& stream, ProControllerContext& context,
     const BBQOption& BBQ_OPTIONS,
     std::vector<BBQuests>& quest_list,
-    size_t slot
+    size_t slot,
+    const std::function<void(int BP)>& record_BP
 ){
-    ConsoleBBQRerollActions actions(info, stream, context, BBQ_OPTIONS);
+    ConsoleBBQRerollActions actions(info, stream, context, BBQ_OPTIONS, record_BP);
     std::optional<std::vector<BBQuests>> observed_panel;
     switch (reroll_quest(stream.logger(), actions, quest_list, slot, observed_panel)){
     case BBQRerollResult::Rerolled:
@@ -544,7 +554,8 @@ BBQuestBatch process_quest_list(
     VideoStream& stream, ProControllerContext& context,
     const BBQOption& BBQ_OPTIONS,
     const std::vector<BBQuests>& quest_list,
-    uint8_t eggs_hatched
+    uint8_t eggs_hatched,
+    const std::function<void(int BP)>& record_BP
 ){
     BBQuestPlan plan = plan_quests(stream.logger(), BBQ_OPTIONS, quest_list, eggs_hatched);
 
@@ -552,7 +563,7 @@ BBQuestBatch process_quest_list(
     std::vector<BBQuests> panel = quest_list;
     std::optional<std::vector<BBQuests>> observed_panel;
     for (size_t slot : plan.reroll_slots){
-        observed_panel = reroll_quest_slot(info, stream, context, BBQ_OPTIONS, panel, slot);
+        observed_panel = reroll_quest_slot(info, stream, context, BBQ_OPTIONS, panel, slot, record_BP);
     }
     if (plan.reroll_all){
         stream.log("No possible quests! Rerolling all quests.");

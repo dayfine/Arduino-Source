@@ -329,7 +329,12 @@ public:
     virtual BBQuestBatch process_quest_list(
         const std::vector<BBQuests>& quests, uint8_t eggs_hatched
     ) override{
-        return PokemonSV::process_quest_list(m_env.program_info(), m_env.console, m_context, m_options, quests, eggs_hatched);
+        //Reroll verification reads can seed the next plan instead of a
+        //read_quests() call, so their BP is recorded too.
+        return PokemonSV::process_quest_list(
+            m_env.program_info(), m_env.console, m_context, m_options, quests, eggs_hatched,
+            [this](int BP){ record_BP(BP); }
+        );
     }
     virtual bool do_quest(BBQuests quest, uint8_t& eggs_hatched) override{
         return process_and_do_quest(m_env, m_env.console, m_context, m_options, quest, eggs_hatched);
@@ -343,7 +348,10 @@ public:
             m_env.log("Failed quest is no longer on the panel. Not rerolling.");
             return std::nullopt;
         }
-        return reroll_quest_slot(m_env.program_info(), m_env.console, m_context, m_options, quests, iter - quests.begin());
+        return reroll_quest_slot(
+            m_env.program_info(), m_env.console, m_context, m_options, quests, iter - quests.begin(),
+            [this](int BP){ record_BP(BP); }
+        );
     }
     virtual void quest_completed() override{
         m_stats.questsCompleted++;

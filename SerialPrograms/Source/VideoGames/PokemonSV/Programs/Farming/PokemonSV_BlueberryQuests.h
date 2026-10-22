@@ -7,6 +7,7 @@
 #ifndef PokemonAutomation_PokemonSV_BlueberryQuests_H
 #define PokemonAutomation_PokemonSV_BlueberryQuests_H
 
+#include <functional>
 #include <optional>
 #include <vector>
 #include "Common/Cpp/Time.h"
@@ -147,22 +148,26 @@ BBQRerollResult reroll_quest(
 
 //Reroll the quest in `slot` of `quests` on the console, with reroll_quest(). Stops the program
 //if the reroll fails. Returns the observed panel when reusable.
+//If record_BP is set, it gets the BP read from each verification read's screenshot.
 std::optional<std::vector<BBQuests>> reroll_quest_slot(
     const ProgramInfo& info,
     VideoStream& stream, ProControllerContext& context,
     const BBQOption& BBQ_OPTIONS,
     std::vector<BBQuests>& quests,
-    size_t slot
+    size_t slot,
+    const std::function<void(int BP)>& record_BP = {}
 );
 
 //Determine which quests are possible and which quests are not. (ex. no eggs, reroll egg hatcher.)
 //Quests not possible are removed from the list. If the list is empty, then reroll all items.
+//record_BP is passed to reroll_quest_slot().
 BBQuestBatch process_quest_list(
     const ProgramInfo& info,
     VideoStream& stream, ProControllerContext& context,
     const BBQOption& BBQ_OPTIONS,
     const std::vector<BBQuests>& quest_list,
-    uint8_t eggs_hatched
+    uint8_t eggs_hatched,
+    const std::function<void(int BP)>& record_BP = {}
 );
 
 //Take the current quest and calls the function to do it, then checks the quest was successful. Returns true if so.
