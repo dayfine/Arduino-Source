@@ -84,3 +84,46 @@ The original session 93328 exits on the earlier STOPPED and has no ownership of
 this profile. Evaluate planner scheduling reuse/first-dispatch reuse and fresh
 later reads, plus any subsequent failed-reroll replans. Record separate phase
 end balances and do not combine configurations into a single velocity claim.
+
+## Phase-two optimized path observed (stability run ongoing)
+
+At 21:35:24.384806, the verified four-slot board changed only Flying Photo to
+Coastal Photo. Scheduling reuse logged at 21:35:24.384839 and first-dispatch
+reuse at 21:35:24.384898, immediately followed by Auto Battle 30. No board OCR
+call occurred between verification and dispatch. Fresh post-attempt read at
+21:52:47.243406, quest success at 21:52:57.356249, then a fresh pre-dispatch read
+at 21:52:57.356296 before Coastal Photo at 21:53:07.544978. Thus both reuse and
+subsequent invalidation are directly observed; general stability trial remains
+in progress through its one-hour deadline.
+
+Auto Battle 30 dispatched at 21:35:24 and returned success at 21:52:57, about
+17m33s. There were 34 detected-kill events, including additional events after
+its target was reached, followed by unconditional return/healing. This augments
+M9, not a new M7 regression. Detected-kill events are a proxy; the actual quest
+success is established by the post-attempt panel replacement.
+
+## Dedicated release extraction checks
+
+- M7a branch bbq/reuse-quest-board, head 8dbace6c7. Base the eventual fork PR on
+  bbq/exhausted-quest-actions (fork #10); merges M5 f7e3ba6f0 (fork #9).
+  Feature commit 3f1f79f0a, plus restoration of two pre-existing out-of-BP native
+  fixture fields lost during extraction. Full arm64 build PASS; **41 native
+  tests PASS**. Local evidence in Arduino-Source-m7a-release/build-prep/.
+- M7b branch bbq/replan-after-reroll, head 30e84abef. Base eventual fork PR on
+  bbq/reuse-quest-board; also merges save milestones 548ac951c (fork #4).
+  Carries native save-scenario adaptation 0ec332559 and feature 2ff0fdd65.
+  Full arm64 build PASS; **46 native tests PASS**. Local evidence in
+  Arduino-Source-m7b-release/build-prep/.
+- Save parent is necessary for intended behavior: without it, newly ended
+  zero-completion batches would hit the pre-existing save-at-zero bug.
+- Production feature patch identity matches tested lab code using stable
+  zero-context patch IDs: M7a f7407f30c7c67cce768563b8a6afb43a9f0f639e;
+  M7b 382744314cf342618dd23223566725ca15410618. M7b all-file feature patch ID
+  also matches d1e8e53d6c0d2d2a955eecd4c2d1275708440ca9.
+  Range-diff evidence is saved in the M7b release build-prep directory.
+- Neither release branch includes notes under tests/ in its diff; actual unit
+  tests remain in the repository's native PokemonSV_Tests.cpp.
+- Release builds ran in the background during phase two. Treat the live timing
+  as an observed sequence, not a controlled performance/throughput benchmark.
+- Branches pushed to the fork; PRs not yet opened. Existing PR branches were
+  not pushed or rewritten. Running binary remained the pinned lab M7b build.
