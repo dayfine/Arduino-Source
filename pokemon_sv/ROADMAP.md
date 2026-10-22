@@ -146,3 +146,34 @@ for items 1–12. The real cost is per-PR testing and review. Each PR needs:
 So the pace is set by Switch time (one run at a time) and maintainers' reviews,
 not by coding. Items 1–3 can be coded together and then validated in one
 combined lab run, because they touch different code. Each still gets its own PR.
+
+## Execution queue (approved by the user, 2026-10-21)
+
+Coding and live runs are two separate queues. Coding needs only a checkout and
+runs in parallel. Live runs need the Switch, one at a time.
+
+**Code (in order):**
+
+1. C1: M9a PR 1, the Auto Battle seam and per-pass log.
+2. C2: M9a PR 2, stop at the target.
+3. C3: M9a PR 4, attempt limits.
+4. C4: M14, the BP status.
+5. C5: M8a, restore the party.
+6. C6: M12a step 1, diagnostics.
+7. C7: N1, fly from anywhere.
+8. C8: M9a PR 3, heal at 50%.
+
+**Run (in order):**
+
+1. R1: E1, fly Chargestone → Chargestone. This needs no code: it can be done
+   by hand through the keyboard control in lab/CONTROL.md.
+2. R2: E2/E3, a recorded cave visit (needs C1).
+3. R3: a combined lab run of C1–C4.
+4. R4: M8a (C5).
+5. R5: M12a diagnostics (C6).
+6. R6: the N1 fly check (C7).
+7. R7: the heal policy (C8).
+
+**Start, once the Item Printer run ends and the game is saved:** begin C1–C4,
+and do R1 while they build. Code ahead of the Switch, so each run's build is
+ready when the Switch is free.
