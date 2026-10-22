@@ -364,7 +364,7 @@ void quest_photo(
                     battle_menu.move_to_slot(console, context, 3);
                     pbf_press_button(context, BUTTON_A, 80ms, 400ms);
                     press_Bs_to_back_to_overworld(info, console, context);
-                    return_to_plaza(info, console, context);
+                    return_to_plaza(info, console, context, BBQ_OPTIONS.LANGUAGE);
                 }catch (...){
                     console.log("Unable to flee.");
                     OperationFailedExceptionWithScreenshot::fire(
@@ -377,7 +377,7 @@ void quest_photo(
         }
     }
     context.wait_for_all_requests();
-    return_to_plaza(info, console, context);
+    return_to_plaza(info, console, context, BBQ_OPTIONS.LANGUAGE);
 }
 
 void quest_catch_navi(
@@ -956,10 +956,10 @@ void quest_catch(
 
     while (true){
         if (!catch_quest_catches_on_return(current_quest, battled)){
-            return_to_plaza(info, console, context);
+            return_to_plaza(info, console, context, BBQ_OPTIONS.LANGUAGE);
             break;
         }
-        if (!return_to_plaza_unless_battle(info, console, context)){
+        if (!return_to_plaza_unless_battle(info, console, context, BBQ_OPTIONS.LANGUAGE)){
             break;
         }
         console.log("Battle on the way back to Central Plaza. Any wild Pokemon counts: catching it.");

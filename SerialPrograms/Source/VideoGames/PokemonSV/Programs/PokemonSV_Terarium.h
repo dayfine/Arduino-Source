@@ -7,6 +7,8 @@
 #ifndef PokemonAutomation_PokemonSV_Terarium_H
 #define PokemonAutomation_PokemonSV_Terarium_H
 
+#include "CommonFramework/Language.h"
+#include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
 #include "CommonFramework/Tools/VideoStream.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 
@@ -15,12 +17,22 @@ namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonSV{
 
-// Return to Central Plaza from anywhere in the terarium
-void return_to_plaza(const ProgramInfo& info, VideoStream& stream, ProControllerContext& context);
+// Return to Central Plaza from anywhere in the terarium. When the language
+// has OCR data and a known Central Plaza name, check the place name shown on
+// landing and return again if it is wrong. Throws if no return lands there.
+void return_to_plaza(const ProgramInfo& info, VideoStream& stream, ProControllerContext& context, Language language);
+
+// Thrown by map_move_cursor_fly() when it can't fly to its destination.
+// BBQ quests catch it to fail the current attempt instead of the program.
+class TerariumFlyFailedException : public OperationFailedExceptionWithScreenshot{
+public:
+    using OperationFailedExceptionWithScreenshot::OperationFailedExceptionWithScreenshot;
+    virtual const char* name() const override{ return "TerariumFlyFailedException"; }
+};
 
 // Same as return_to_plaza(), but stops at the first wild battle instead of fleeing it.
 // Returns true with the battle menu open, or false once at Central Plaza.
-bool return_to_plaza_unless_battle(const ProgramInfo& info, VideoStream& stream, ProControllerContext& context);
+bool return_to_plaza_unless_battle(const ProgramInfo& info, VideoStream& stream, ProControllerContext& context, Language language);
 
 // Open map from overworld, move cursor to fly location, and fly to location
 void map_move_cursor_fly(

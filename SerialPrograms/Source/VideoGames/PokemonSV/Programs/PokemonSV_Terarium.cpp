@@ -4,20 +4,24 @@
  *
  */
 
+#include "Common/Cpp/Time.h"
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
 #include "CommonFramework/Tools/ErrorDumper.h"
 #include "CommonFramework/Exceptions/ProgramFinishedException.h"
 #include "CommonTools/Async/InferenceRoutines.h"
+#include "CommonTools/OCR/OCR_Routines.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_Superscalar.h"
 #include "VideoGames/PokemonSV/Inference/Battles/PokemonSV_NormalBattleMenus.h"
 #include "VideoGames/PokemonSV/Inference/Battles/PokemonSV_EncounterWatcher.h"
 #include "VideoGames/PokemonSV/Inference/PokemonSV_MainMenuDetector.h"
 #include "VideoGames/PokemonSV/Inference/Overworld/PokemonSV_OverworldDetector.h"
+#include "VideoGames/PokemonSV/Inference/Overworld/PokemonSV_PlaceNameBannerReader.h"
 #include "VideoGames/PokemonSV/Programs/PokemonSV_GameEntry.h"
 #include "VideoGames/PokemonSV/Programs/PokemonSV_SaveGame.h"
 #include "VideoGames/PokemonSV/Programs/PokemonSV_MenuNavigation.h"
 #include "VideoGames/PokemonSV/Programs/PokemonSV_WorldNavigation.h"
+#include "PokemonSV_TerariumPlazaReturn.h"
 #include "PokemonSV_Terarium.h"
 
 namespace PokemonAutomation{
@@ -26,16 +30,17 @@ namespace PokemonSV{
 
 namespace{
 
-//  Returns true if it stopped at a wild battle's menu (only when stop_at_battle
-//  is set). Otherwise it flees each battle and returns false once at the plaza.
-bool return_to_plaza_impl(
+// Flies to the closest Pokecenter on the map. Nothing here checks where the
+// player lands: the closest-Pokecenter search can fall back to any fly point.
+// Returns true if it stopped at a wild battle's menu (only when stop_at_battle
+// is set). Otherwise it flees each battle and returns false once landed.
+bool fly_toward_plaza(
     const ProgramInfo& info, VideoStream& stream, ProControllerContext& context,
-    bool stop_at_battle
+    bool laggy, bool stop_at_battle
 ){
     stream.log("Attempting to return to Central Plaza.");
     //Modified version of handle_battles_and_back_to_pokecenter()
     bool returned_to_pokecenter = false;
-    bool laggy = false;
 
     while(!returned_to_pokecenter){
         EncounterWatcher encounter_watcher(stream, COLOR_RED);
@@ -124,14 +129,99 @@ bool return_to_plaza_impl(
     return false;
 }
 
+// Thrown out of PlazaReturnConsoleActions::fly_to_plaza() to leave the
+// return-and-check loop when a fly stops at a wild battle.
+struct StoppedAtBattle{};
+
+class PlazaReturnConsoleActions : public PlazaReturnActions{
+public:
+    PlazaReturnConsoleActions(
+        const ProgramInfo& info, VideoStream& stream, ProControllerContext& context,
+        Language language, bool stop_at_battle
+    )
+        : m_info(info)
+        , m_stream(stream)
+        , m_context(context)
+        , m_language(language)
+        , m_stop_at_battle(stop_at_battle)
+    {}
+
+    virtual void fly_to_plaza(bool overshoot) override{
+        if (fly_toward_plaza(m_info, m_stream, m_context, overshoot, m_stop_at_battle)){
+            throw StoppedAtBattle();
+        }
+    }
+
+    // The banner fades in shortly after the overworld is back and stays for
+    // a few seconds. Read until it matches or the window ends.
+    virtual std::string read_landing_banner(const std::function<bool(const std::string& text)>& matches) override{
+        PlaceNameBannerReader reader;
+        VideoOverlaySet overlays(m_stream.overlay());
+        reader.make_overlays(overlays);
+
+        std::string last;
+        const WallClock deadline = current_time() + std::chrono::seconds(8);
+        while (current_time() < deadline){
+            m_context.wait_for_all_requests();
+            VideoSnapshot screen = m_stream.video().snapshot();
+            for (std::string& text : reader.read(m_stream.logger(), m_language, screen)){
+                if (matches(text)){
+                    return text;
+                }
+                if (!text.empty()){
+                    last = std::move(text);
+                }
+            }
+            m_context.wait_for(std::chrono::milliseconds(250));
+        }
+        return last;
+    }
+
+private:
+    const ProgramInfo& m_info;
+    VideoStream& m_stream;
+    ProControllerContext& m_context;
+    const Language m_language;
+    const bool m_stop_at_battle;
+};
+
+//  Returns true if it stopped at a wild battle's menu (only when stop_at_battle
+//  is set). Otherwise it flees each battle and returns false once at the plaza.
+bool return_to_plaza_impl(
+    const ProgramInfo& info, VideoStream& stream, ProControllerContext& context,
+    Language language, bool stop_at_battle
+){
+    const bool ocr_available = OCR::ocr_language_available(language);
+    if (!ocr_available){
+        stream.log("No OCR data for the game language. Central Plaza arrivals won't be checked.", COLOR_ORANGE);
+    }
+    const std::string expected_banner = central_plaza_banner_to_check(language, ocr_available);
+
+    PlazaReturnConsoleActions actions(info, stream, context, language, stop_at_battle);
+    PlazaReturnResult result;
+    try{
+        result = return_to_plaza_checked(stream.logger(), actions, expected_banner, 3);
+    }catch (StoppedAtBattle&){
+        return true;
+    }
+    if (result == PlazaReturnResult::FAILED){
+        OperationFailedExceptionWithScreenshot::fire(
+            ErrorReportMode::SEND_ERROR_REPORT,
+            "Unable to return to Central Plaza: no landing showed its name.",
+            stream
+        );
+    }
+    return false;
 }
 
-void return_to_plaza(const ProgramInfo& info, VideoStream& stream, ProControllerContext& context){
-    return_to_plaza_impl(info, stream, context, false);
 }
 
-bool return_to_plaza_unless_battle(const ProgramInfo& info, VideoStream& stream, ProControllerContext& context){
-    return return_to_plaza_impl(info, stream, context, true);
+void return_to_plaza(const ProgramInfo& info, VideoStream& stream, ProControllerContext& context, Language language){
+    return_to_plaza_impl(info, stream, context, language, false);
+}
+
+bool return_to_plaza_unless_battle(const ProgramInfo& info, VideoStream& stream, ProControllerContext& context, Language language){
+    return return_to_plaza_impl(info, stream, context, language, true);
 }
 
 void map_move_cursor_fly(
@@ -155,7 +245,8 @@ void map_move_cursor_fly(
             stream.log("Failed to fly! Closing map and retrying.");
             press_Bs_to_back_to_overworld(info, stream, context);
             if (i == 2){
-                OperationFailedExceptionWithScreenshot::fire(
+                throw_and_log<TerariumFlyFailedException>(
+                    stream.logger(),
                     ErrorReportMode::SEND_ERROR_REPORT,
                     "Unable to fly to " + location + "!",
                     stream

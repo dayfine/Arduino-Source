@@ -229,7 +229,8 @@ void quest_wild_tera(
 //Give bath
 void quest_wash_pokemon(
     const ProgramInfo& info,
-    VideoStream& stream, ProControllerContext& context
+    VideoStream& stream, ProControllerContext& context,
+    const BBQOption& BBQ_OPTIONS
 );
 
 //Withdraw and hatch an egg
