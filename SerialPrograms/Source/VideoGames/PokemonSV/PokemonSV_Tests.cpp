@@ -120,6 +120,7 @@ public:
     size_t cursor = 0;
     bool panel_opens = true;
     bool menu_seen = true;
+    bool out_of_bp = false;
     int missed_reads = 0;   // Reads that fail OCR on every slot.
     std::optional<std::vector<BBQuests>> read_override;
 
@@ -173,6 +174,7 @@ struct BBQRerollScenario{
     size_t cursor = 0;
     bool panel_opens = true;
     bool menu_seen = true;
+    bool out_of_bp = false;
     int missed_reads = 0;
     std::optional<std::vector<BBQuests>> read_override;
     BBQRerollResult expected;
