@@ -982,8 +982,13 @@ namespace{
 // doable all quests are rerolled. After any reroll it returns nothing to do.
 // Red quests are not modeled. Records the game actions taken.
 // With out_of_bp, rerolls do nothing, as in the game when BP runs out.
+// With plan_options, process_quest_list() decides with plan_quests() instead.
 class SimulatedBBQGameActions : public BBQGameActions{
 public:
+    // Thrown where reroll_quest_slot() stops the program because a reroll
+    // did not replace the quest, which is what running out of BP looks like.
+    struct RerollNotReplaced{};
+
     std::vector<BBQuests> panel;
     // Each attempt returns the next outcome; once exhausted, attempts succeed.
     std::vector<bool> outcomes;
@@ -1005,6 +1010,9 @@ public:
     // Rerolls return the panel they read to verify the reroll, as
     // reroll_quest() does when that read is reusable.
     bool reuse_rerolled_panel = false;
+    // When set, process_quest_list() plans with plan_quests(), as the console
+    // does: each slot it rerolls is replaced, or out of BP, the program stops.
+    const BBQOption* plan_options = nullptr;
 
     std::vector<std::string> events;
     std::vector<BBQuests> attempted_quests;
@@ -1020,6 +1028,9 @@ public:
         const std::vector<BBQuests>& quests, uint8_t
     ) override{
         events.push_back("process");
+        if (plan_options){
+            return process_with_plan(quests);
+        }
         bool rerolled = false;
         for (BBQuests& slot : panel){
             if (!out_of_bp && table_rerolls.contains(slot)){
@@ -1076,6 +1087,30 @@ public:
     }
 
 private:
+    BBQuestBatch process_with_plan(const std::vector<BBQuests>& quests){
+        NullLogger logger;
+        BBQuestPlan plan = plan_quests(logger, *plan_options, quests, 0);
+        for (size_t slot : plan.reroll_slots){
+            events.push_back("reroll(slot)");
+            if (out_of_bp){
+                throw RerollNotReplaced();
+            }
+            panel[slot] = next_new_quest();
+        }
+        if (plan.reroll_all){
+            events.push_back("reroll(all)");
+            if (!out_of_bp){
+                for (BBQuests& slot : panel){
+                    slot = next_new_quest();
+                }
+            }
+        }
+        if (!plan.reroll_slots.empty() || plan.reroll_all){
+            return {{}, reuse_rerolled_panel ? std::optional(panel) : std::nullopt};
+        }
+        return {std::move(plan.to_do), std::nullopt};
+    }
+
     void complete(BBQuests quest){
         auto iter = std::find(panel.begin(), panel.end(), quest);
         if (iter != panel.end()){
@@ -1123,6 +1158,7 @@ struct BBQRoundsScenario{
     bool out_of_bp = false;
     std::set<BBQuests> table_rerolls;
     bool reuse_rerolled_panel = false;
+    bool plan_with_plan_quests = false;
     uint64_t expected_completed = 0;
     std::vector<BBQuests> expected_attempted;
     std::optional<size_t> expected_reads;
@@ -1163,12 +1199,17 @@ public:
         game.out_of_bp = m_scenario.out_of_bp;
         game.table_rerolls = m_scenario.table_rerolls;
         game.reuse_rerolled_panel = m_scenario.reuse_rerolled_panel;
+        if (m_scenario.plan_with_plan_quests){
+            game.plan_options = &options;
+        }
 
         NullLogger logger;
         try{
             run_bbq_rounds(logger, options, game);
         }catch (UserSetupError&){
             game.events.push_back("error");
+        }catch (SimulatedBBQGameActions::RerollNotReplaced&){
+            game.events.push_back("stopped");
         }
         const uint64_t completed = (uint64_t)std::count(game.events.begin(), game.events.end(), "completed");
         if (completed != m_scenario.expected_completed){
@@ -1219,6 +1260,10 @@ void add_tests_BBQFarmerRounds(UnitTestDatabase& database){
     std::string read_30_times;
     for (int c = 0; c < 30; c++){
         read_30_times += "read process ";
+    }
+    std::string read_and_reroll_30_times;
+    for (int c = 0; c < 30; c++){
+        read_and_reroll_30_times += "read process reroll(slot) ";
     }
     std::vector<std::pair<BBQuests, BBQAction>> all_skipped_but_make_tm = every_doable_blue_quest(BBQAction::skip);
     all_skipped_but_make_tm.emplace_back(BBQuests::make_tm, BBQAction::run);
@@ -1487,6 +1532,61 @@ void add_tests_BBQFarmerRounds(UnitTestDatabase& database){
             .out_of_bp = true,
             .expected_completed = 0,
             .expected = read_30_times + "error",
+        },
+        {
+            // plan_quests() rerolls a quest not possible on sight, even next
+            // to doable quests. The reroll empties the batch, so the doable
+            // quests run from the next read, one read later than before.
+            .name = "a quest not possible is rerolled before the doable quests run",
+            .num_quests = 3,
+            .panel = {BBQuests::make_tm, BBQuests::catch_flying, BBQuests::sneak_up},
+            .new_quests = {BBQuests::travel_500, BBQuests::auto_10, BBQuests::wash_pokemon},
+            .plan_with_plan_quests = true,
+            .expected_completed = 3,
+            .expected_attempted = {BBQuests::make_tm, BBQuests::travel_500, BBQuests::sneak_up},
+            .expected = "read process reroll(slot) " + round_of_3 + " end",
+        },
+        {
+            // A panel whose doable quests sit next to a quest not possible
+            // counts toward the read limit, since its batch is empty. Only
+            // rerolls that keep drawing quests not possible reach it.
+            .name = "rerolls that keep drawing quests not possible reach the read limit",
+            .num_quests = 3,
+            .panel = {BBQuests::make_tm, BBQuests::catch_flying, BBQuests::sneak_up},
+            .new_quests = {BBQuests::pickup_10, BBQuests::catch_flying},
+            .plan_with_plan_quests = true,
+            .expected_completed = 0,
+            .expected = read_and_reroll_30_times + "error",
+        },
+        {
+            // Out of BP, the reroll of a quest not possible is not replaced,
+            // and the program stops before it reaches the doable quests or
+            // the read limit.
+            .name = "out of BP, a quest not possible stops the run before doable quests",
+            .num_quests = 3,
+            .panel = {BBQuests::make_tm, BBQuests::catch_flying, BBQuests::sneak_up},
+            .out_of_bp = true,
+            .plan_with_plan_quests = true,
+            .expected_completed = 0,
+            .expected = "read process reroll(slot) stopped",
+        },
+        {
+            // Out of BP with only skipped quests: plan_quests() rerolls all,
+            // which does not check the result, so the read limit stops it.
+            .name = "out of BP, skipped quests alone reach the read limit",
+            .num_quests = 3,
+            .panel = {BBQuests::pickup_10, BBQuests::catch_flying, BBQuests::UnableToDetect},
+            .exclusions = {{BBQuests::pickup_10, BBQAction::skip}, {BBQuests::catch_flying, BBQAction::skip}},
+            .out_of_bp = true,
+            .plan_with_plan_quests = true,
+            .expected_completed = 0,
+            .expected = [](){
+                std::string ret;
+                for (int c = 0; c < 30; c++){
+                    ret += "read process reroll(all) ";
+                }
+                return ret + "error";
+            }(),
         },
     };
     for (const BBQRoundsScenario& scenario : scenarios){
