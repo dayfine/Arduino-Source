@@ -434,9 +434,14 @@ BBQRerollResult reroll_quest(
         if (slot < after.size() && after[slot] != quests[slot] && after[slot] != BBQuests::UnableToDetect){
             logger.log("Quest " + std::to_string(slot + 1) + " rerolled.");
             quests[slot] = after[slot];
-            //Three slots can mean a missed fourth quest. Reuse only a complete
-            //read whose other slots agree with the panel used for this reroll.
-            if (after.size() == 4 && after == quests
+            //Reuse only a read whose slots are all known and, apart from the
+            //rerolled one, agree with the panel used for this reroll. Three
+            //slots can mean a missed fourth quest, so a 3-slot read is only
+            //reused when that panel had 3 slots too. Both reads could have
+            //missed the same fourth quest, as a fresh read also could. That
+            //quest is then left out of one plan, which costs no BP, and a
+            //3-slot read never proves a failed quest left the panel.
+            if (after.size() >= 3 && after == quests
                 && std::find(after.begin(), after.end(), BBQuests::UnableToDetect) == after.end()){
                 observed_panel = std::move(after);
             }

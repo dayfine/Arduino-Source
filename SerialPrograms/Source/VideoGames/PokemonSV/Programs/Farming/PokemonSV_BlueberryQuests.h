@@ -135,7 +135,8 @@ enum class BBQRerollResult{
 //Reroll the quest in `slot` of `quests`, the quests last read from the panel. Only pays once
 //the reroll menu is open next to that slot, then reads the panel again to check the quest was
 //replaced. On Rerolled, `quests[slot]` is updated. observed_panel is populated
-//only for four known slots with no other changes, so scheduling can reuse it.
+//only when every slot is known and no other slot changed, so scheduling can
+//reuse it. A 3-slot read is only reused when `quests` had 3 slots.
 BBQRerollResult reroll_quest(
     Logger& logger,
     BBQRerollActions& actions,
@@ -145,7 +146,7 @@ BBQRerollResult reroll_quest(
 );
 
 //Reroll the quest in `slot` of `quests` on the console, with reroll_quest(). Stops the program
-//if the reroll fails. Returns a complete observed panel when reusable.
+//if the reroll fails. Returns the observed panel when reusable.
 std::optional<std::vector<BBQuests>> reroll_quest_slot(
     const ProgramInfo& info,
     VideoStream& stream, ProControllerContext& context,
