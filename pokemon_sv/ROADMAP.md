@@ -182,6 +182,21 @@ runs in parallel. Live runs need the Switch, one at a time.
    Also from R3: the stop check runs only after the 5 s ZR mash, so the stop
    lags up to 5 s.
 
+**To analyze from run logs (added 2026-10-22 by the user):**
+
+- A1, quest order within a round. The planner keeps board order; nothing
+  ranks quests by cost or success rate. R3 07:54: board was Make TM, Catch
+  any, Travel 500 m (+ an unread 4th); it ran TM, then Catch any (the target
+  was in view, but the player fell and the attempt failed), with travel-500
+  last. Questions for the logs: how often does travel-500 complete for free
+  while doing other quests (the pre-dispatch read catches this), vs its cost
+  when run alone; per-type success rate and time, to order cheap/reliable
+  quests first; whether a failed quest should push cheap ones ahead. Output:
+  an ordering rule (e.g. by expected BP per minute) with evidence.
+- A2, Catch any failure where the target was visible but the player fell
+  (R3, ~07:57-07:59): feeds M12a; check what the route does on uneven
+  ground.
+
 **Run (in order):**
 
 1. R1: E1, fly Chargestone → Chargestone. This needs no code: it can be done
