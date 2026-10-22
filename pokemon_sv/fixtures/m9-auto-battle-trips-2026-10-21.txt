@@ -1,0 +1,188 @@
+2026-10-21 12:41:30.949710 - [Console 0]: String Match Result: no matches
+2026-10-21 12:41:31.783974 - [Program]: Quest completed successfully.
+2026-10-21 12:41:31.784018 - [Program]: Current Stats: Quests Completed: 6 - Saves: 0
+2026-10-21 12:41:35.160415 - [Console 0]: String Match Result: "撿10次道具吧！" -> "撿10次道具吧" -> (撿10次道具吧): (pickup-10) (log10p = -14)
+2026-10-21 12:41:38.451647 - [Console 0]: String Match Result: "製作招式學習器吧！" -> "製作招式學習器吧" -> (製作招式學習器吧): (make-tm) (log10p = -16)
+2026-10-21 12:41:40.794380 - [Console 0]: String Match Result: "用自主對戰打倒10隻寶可夢吧！" -> "用自主對戰打倒10隻寶可夢吧" -> (用自主對戰打倒10隻寶可夢吧): (auto-10) (log10p = -28)
+2026-10-21 12:41:42.354798 - [Console 0]: String Match Result: no matches
+2026-10-21 12:41:43.193621 - [Console 0]: Quest: Auto Battle 10/30
+2026-10-21 12:41:43.194688 - [Console 0]: Attempting to fly to Chargestone Cavern.
+2026-10-21 12:42:03.074449 - [Console 0]: Clearing what's in front with Let's Go...
+2026-10-21 12:42:10.201960 - [Console 0]: Did not detect sweat bubble.
+2026-10-21 12:42:18.977478 - [Console 0]: Detected kill.
+2026-10-21 12:42:18.977904 - [Program]: Current Stats: Quests Completed: 6 - Saves: 0
+2026-10-21 12:42:22.797698 - [Console 0]: Detected kill.
+2026-10-21 12:42:22.797886 - [Program]: Current Stats: Quests Completed: 6 - Saves: 0
+2026-10-21 12:42:24.049469 - [Console 0]: Last Kill: 1.251 seconds ago
+2026-10-21 12:42:28.798122 - [Console 0]: Last Kill: 6.000 seconds ago
+2026-10-21 12:42:28.798201 - [Console 0]: Nothing left to clear...
+2026-10-21 12:42:28.798267 - [Console 0]: Attempting to return to Central Plaza.
+2026-10-21 12:42:29.908125 - [Console 0]: Overworld detected.
+2026-10-21 12:43:10.868879 - [Console 0]: Overworld detected.
+2026-10-21 12:43:24.561566 - [Console 0]: Attempting to fly to Chargestone Cavern.
+2026-10-21 12:43:44.049973 - [Console 0]: Clearing what's in front with Let's Go...
+2026-10-21 12:43:51.177696 - [Console 0]: Did not detect sweat bubble.
+2026-10-21 12:43:56.799948 - [Console 0]: Detected kill.
+2026-10-21 12:43:56.803123 - [Program]: Current Stats: Quests Completed: 6 - Saves: 0
+2026-10-21 12:44:00.180059 - [Console 0]: Detected kill.
+2026-10-21 12:44:00.180160 - [Program]: Current Stats: Quests Completed: 6 - Saves: 0
+2026-10-21 12:44:05.025316 - [Console 0]: Last Kill: 4.845 seconds ago
+2026-10-21 12:44:06.182086 - [Console 0]: Last Kill: 6.002 seconds ago
+2026-10-21 12:44:06.182163 - [Console 0]: Nothing left to clear...
+2026-10-21 12:44:06.182691 - [Console 0]: Attempting to return to Central Plaza.
+2026-10-21 12:44:07.237701 - [Console 0]: Overworld detected.
+2026-10-21 12:44:48.206990 - [Console 0]: Overworld detected.
+2026-10-21 12:45:02.017781 - [Console 0]: Attempting to fly to Chargestone Cavern.
+2026-10-21 12:45:21.543173 - [Console 0]: Clearing what's in front with Let's Go...
+2026-10-21 12:45:28.665362 - [Console 0]: Did not detect sweat bubble.
+2026-10-21 12:45:42.513221 - [Console 0]: Last Kill: 102.333 seconds ago
+2026-10-21 12:45:42.513241 - [Console 0]: Nothing left to clear...
+2026-10-21 12:45:42.513253 - [Console 0]: Attempting to return to Central Plaza.
+2026-10-21 12:45:43.666235 - [Console 0]: Overworld detected.
+2026-10-21 12:46:25.114591 - [Console 0]: Overworld detected.
+2026-10-21 12:46:39.060979 - [Console 0]: Attempting to fly to Chargestone Cavern.
+2026-10-21 12:46:58.633200 - [Console 0]: Clearing what's in front with Let's Go...
+2026-10-21 12:47:05.761172 - [Console 0]: Did not detect sweat bubble.
+2026-10-21 12:47:12.558991 - [Console 0]: Detected kill.
+2026-10-21 12:47:12.562637 - [Program]: Current Stats: Quests Completed: 6 - Saves: 0
+2026-10-21 12:47:19.609162 - [Console 0]: Last Kill: 7.050 seconds ago
+2026-10-21 12:47:19.609171 - [Console 0]: Nothing left to clear...
+2026-10-21 12:47:19.609181 - [Console 0]: Attempting to return to Central Plaza.
+2026-10-21 12:47:20.611376 - [Console 0]: Overworld detected.
+2026-10-21 12:48:01.667875 - [Console 0]: Overworld detected.
+2026-10-21 12:48:15.381356 - [Console 0]: Attempting to fly to Chargestone Cavern.
+2026-10-21 12:48:34.779365 - [Console 0]: Clearing what's in front with Let's Go...
+2026-10-21 12:48:41.906111 - [Console 0]: Did not detect sweat bubble.
+2026-10-21 12:48:47.095121 - [Console 0]: Detected kill.
+2026-10-21 12:48:47.095882 - [Program]: Current Stats: Quests Completed: 6 - Saves: 0
+2026-10-21 12:48:55.753215 - [Console 0]: Last Kill: 8.658 seconds ago
+2026-10-21 12:48:55.753384 - [Console 0]: Nothing left to clear...
+2026-10-21 12:48:55.753422 - [Console 0]: Attempting to return to Central Plaza.
+2026-10-21 12:48:56.907184 - [Console 0]: Overworld detected.
+2026-10-21 12:49:38.415817 - [Console 0]: Overworld detected.
+2026-10-21 12:49:52.307197 - [Console 0]: Attempting to fly to Chargestone Cavern.
+2026-10-21 12:50:12.011766 - [Console 0]: Clearing what's in front with Let's Go...
+2026-10-21 12:50:19.138616 - [Console 0]: Did not detect sweat bubble.
+2026-10-21 12:50:26.053250 - [Console 0]: Detected kill.
+2026-10-21 12:50:26.053936 - [Program]: Current Stats: Quests Completed: 6 - Saves: 0
+2026-10-21 12:50:30.930244 - [Console 0]: Detected kill.
+2026-10-21 12:50:30.930358 - [Program]: Current Stats: Quests Completed: 6 - Saves: 0
+2026-10-21 12:50:32.986882 - [Console 0]: Last Kill: 2.056 seconds ago
+2026-10-21 12:50:34.151214 - [Console 0]: Detected kill.
+2026-10-21 12:50:34.151316 - [Program]: Current Stats: Quests Completed: 6 - Saves: 0
+2026-10-21 12:50:36.932261 - [Console 0]: Last Kill: 2.781 seconds ago
+2026-10-21 12:50:40.151162 - [Console 0]: Last Kill: 6.000 seconds ago
+2026-10-21 12:50:40.151427 - [Console 0]: Nothing left to clear...
+2026-10-21 12:50:40.151533 - [Console 0]: Attempting to return to Central Plaza.
+2026-10-21 12:50:41.305848 - [Console 0]: Overworld detected.
+2026-10-21 12:51:22.302158 - [Console 0]: Overworld detected.
+2026-10-21 12:51:36.133788 - [Console 0]: Attempting to fly to Chargestone Cavern.
+2026-10-21 12:51:55.708648 - [Console 0]: Clearing what's in front with Let's Go...
+2026-10-21 12:52:02.832759 - [Console 0]: Did not detect sweat bubble.
+2026-10-21 12:52:08.593100 - [Console 0]: Detected kill.
+2026-10-21 12:52:08.593195 - [Program]: Current Stats: Quests Completed: 6 - Saves: 0
+2026-10-21 12:52:16.680623 - [Console 0]: Last Kill: 8.087 seconds ago
+2026-10-21 12:52:16.680636 - [Console 0]: Nothing left to clear...
+2026-10-21 12:52:16.680656 - [Console 0]: Attempting to return to Central Plaza.
+2026-10-21 12:52:17.784270 - [Console 0]: Overworld detected.
+2026-10-21 12:52:58.770820 - [Console 0]: Overworld detected.
+2026-10-21 12:53:15.821545 - [Console 0]: String Match Result: "撿10次道具吧！" -> "撿10次道具吧" -> (撿10次道具吧): (pickup-10) (log10p = -14)
+2026-10-21 12:53:17.067642 - [Console 0]: String Match Result: "製作招式學習器吧！" -> "製作招式學習器吧" -> (製作招式學習器吧): (make-tm) (log10p = -16)
+2026-10-21 12:53:18.321552 - [Console 0]: String Match Result: "移動500公尺吧！" -> "移動500公尺吧" -> (移動500公尺吧): (travel-500) (log10p = -16)
+2026-10-21 12:53:19.250047 - [Console 0]: String Match Result: no matches
+2026-10-21 12:53:20.084900 - [Program]: Quest completed successfully.
+2026-10-21 12:53:20.085230 - [Program]: Current Stats: Quests Completed: 7 - Saves: 0
+2026-10-21 12:55:20.665342 - [Console 0]: String Match Result: no matches
+2026-10-21 12:55:24.918242 - [Console 0]: String Match Result: "用自主對戰打倒10隻寶可夢吧！" -> "用自主對戰打倒10隻寶可夢吧" -> (用自主對戰打倒10隻寶可夢吧): (auto-10) (log10p = -28)
+2026-10-21 12:55:26.707746 - [Console 0]: String Match Result: "製作招式學習器吧！" -> "製作招式學習器吧" -> (製作招式學習器吧): (make-tm) (log10p = -16)
+2026-10-21 12:55:28.395496 - [Console 0]: String Match Result: "移動500公尺吧！" -> "移動500公尺吧" -> (移動500公尺吧): (travel-500) (log10p = -16)
+2026-10-21 12:55:29.545850 - [Console 0]: String Match Result: no matches
+2026-10-21 12:55:33.766426 - [Console 0]: String Match Result: "用自主對戰打倒10隻寶可夢吧！" -> "用自主對戰打倒10隻寶可夢吧" -> (用自主對戰打倒10隻寶可夢吧): (auto-10) (log10p = -28)
+2026-10-21 12:55:35.900000 - [Console 0]: String Match Result: "製作招式學習器吧！" -> "製作招式學習器吧" -> (製作招式學習器吧): (make-tm) (log10p = -16)
+2026-10-21 12:55:37.302236 - [Console 0]: String Match Result: "移動500公尺吧！" -> "移動500公尺吧" -> (移動500公尺吧): (travel-500) (log10p = -16)
+2026-10-21 12:55:38.442738 - [Console 0]: String Match Result: no matches
+2026-10-21 12:55:39.277004 - [Console 0]: Quest: Auto Battle 10/30
+2026-10-21 12:55:39.280467 - [Console 0]: Attempting to fly to Chargestone Cavern.
+2026-10-21 12:55:59.064878 - [Console 0]: Clearing what's in front with Let's Go...
+2026-10-21 12:56:06.192416 - [Console 0]: Did not detect sweat bubble.
+2026-10-21 12:56:11.161891 - [Console 0]: Detected kill.
+2026-10-21 12:56:11.161998 - [Program]: Current Stats: Quests Completed: 7 - Saves: 0
+2026-10-21 12:56:20.040283 - [Console 0]: Last Kill: 8.878 seconds ago
+2026-10-21 12:56:20.040287 - [Console 0]: Nothing left to clear...
+2026-10-21 12:56:20.040291 - [Console 0]: Attempting to return to Central Plaza.
+2026-10-21 12:56:21.194083 - [Console 0]: Overworld detected.
+2026-10-21 12:57:02.548995 - [Console 0]: Overworld detected.
+2026-10-21 12:57:16.268682 - [Console 0]: Attempting to fly to Chargestone Cavern.
+2026-10-21 12:57:35.638543 - [Console 0]: Clearing what's in front with Let's Go...
+2026-10-21 12:57:42.760383 - [Console 0]: Did not detect sweat bubble.
+2026-10-21 12:57:56.608923 - [Console 0]: Last Kill: 105.447 seconds ago
+2026-10-21 12:57:56.609156 - [Console 0]: Nothing left to clear...
+2026-10-21 12:57:56.609383 - [Console 0]: Attempting to return to Central Plaza.
+2026-10-21 12:57:57.661617 - [Console 0]: Overworld detected.
+2026-10-21 12:58:38.625269 - [Console 0]: Overworld detected.
+2026-10-21 12:58:52.547761 - [Console 0]: Attempting to fly to Chargestone Cavern.
+2026-10-21 12:59:12.600312 - [Console 0]: Clearing what's in front with Let's Go...
+2026-10-21 12:59:19.728053 - [Console 0]: Did not detect sweat bubble.
+2026-10-21 12:59:26.639248 - [Console 0]: Detected kill.
+2026-10-21 12:59:26.640107 - [Program]: Current Stats: Quests Completed: 7 - Saves: 0
+2026-10-21 12:59:33.575959 - [Console 0]: Last Kill: 6.936 seconds ago
+2026-10-21 12:59:33.575970 - [Console 0]: Nothing left to clear...
+2026-10-21 12:59:33.575975 - [Console 0]: Attempting to return to Central Plaza.
+2026-10-21 12:59:34.680592 - [Console 0]: Overworld detected.
+2026-10-21 13:00:15.620707 - [Console 0]: Overworld detected.
+2026-10-21 13:00:29.292508 - [Console 0]: Attempting to fly to Chargestone Cavern.
+2026-10-21 13:00:49.212769 - [Console 0]: Clearing what's in front with Let's Go...
+2026-10-21 13:00:56.335964 - [Console 0]: Did not detect sweat bubble.
+2026-10-21 13:01:02.058356 - [Console 0]: Detected kill.
+2026-10-21 13:01:02.062157 - [Program]: Current Stats: Quests Completed: 7 - Saves: 0
+2026-10-21 13:01:06.212254 - [Console 0]: Detected kill.
+2026-10-21 13:01:06.212406 - [Program]: Current Stats: Quests Completed: 7 - Saves: 0
+2026-10-21 13:01:09.254891 - [Console 0]: Detected kill.
+2026-10-21 13:01:09.259186 - [Program]: Current Stats: Quests Completed: 7 - Saves: 0
+2026-10-21 13:01:10.183894 - [Console 0]: Last Kill: 0.928 seconds ago
+2026-10-21 13:01:14.474995 - [Console 0]: Detected kill.
+2026-10-21 13:01:14.476815 - [Program]: Current Stats: Quests Completed: 7 - Saves: 0
+2026-10-21 13:01:15.255918 - [Console 0]: Last Kill: 0.780 seconds ago
+2026-10-21 13:01:20.475745 - [Console 0]: Last Kill: 6.000 seconds ago
+2026-10-21 13:01:20.475804 - [Console 0]: Nothing left to clear...
+2026-10-21 13:01:20.476048 - [Console 0]: Attempting to return to Central Plaza.
+2026-10-21 13:01:21.579904 - [Console 0]: Overworld detected.
+2026-10-21 13:02:03.065150 - [Console 0]: Overworld detected.
+2026-10-21 13:02:16.724366 - [Console 0]: Attempting to fly to Chargestone Cavern.
+2026-10-21 13:02:36.554563 - [Console 0]: Clearing what's in front with Let's Go...
+2026-10-21 13:02:43.679808 - [Console 0]: Did not detect sweat bubble.
+2026-10-21 13:02:50.130658 - [Console 0]: Detected kill.
+2026-10-21 13:02:50.131269 - [Program]: Current Stats: Quests Completed: 7 - Saves: 0
+2026-10-21 13:02:56.594252 - [Console 0]: Detected kill.
+2026-10-21 13:02:56.596163 - [Program]: Current Stats: Quests Completed: 7 - Saves: 0
+2026-10-21 13:02:57.527680 - [Console 0]: Last Kill: 0.933 seconds ago
+2026-10-21 13:03:02.595270 - [Console 0]: Last Kill: 6.001 seconds ago
+2026-10-21 13:03:02.595796 - [Console 0]: Nothing left to clear...
+2026-10-21 13:03:02.595828 - [Console 0]: Attempting to return to Central Plaza.
+2026-10-21 13:03:03.647834 - [Console 0]: Overworld detected.
+2026-10-21 13:03:44.764795 - [Console 0]: Overworld detected.
+2026-10-21 13:03:58.641075 - [Console 0]: Attempting to fly to Chargestone Cavern.
+2026-10-21 13:04:18.219839 - [Console 0]: Clearing what's in front with Let's Go...
+2026-10-21 13:04:25.343625 - [Console 0]: Did not detect sweat bubble.
+2026-10-21 13:04:30.722941 - [Console 0]: Detected kill.
+2026-10-21 13:04:30.724455 - [Program]: Current Stats: Quests Completed: 7 - Saves: 0
+2026-10-21 13:04:38.132199 - [Console 0]: Detected kill.
+2026-10-21 13:04:38.136483 - [Program]: Current Stats: Quests Completed: 7 - Saves: 0
+2026-10-21 13:04:39.191497 - [Console 0]: Last Kill: 1.059 seconds ago
+2026-10-21 13:04:41.252164 - [Console 0]: Detected kill.
+2026-10-21 13:04:41.252220 - [Program]: Current Stats: Quests Completed: 7 - Saves: 0
+2026-10-21 13:04:44.133223 - [Console 0]: Last Kill: 2.881 seconds ago
+2026-10-21 13:04:46.672153 - [Console 0]: Detected kill.
+2026-10-21 13:04:46.672237 - [Program]: Current Stats: Quests Completed: 7 - Saves: 0
+2026-10-21 13:04:47.252224 - [Console 0]: Last Kill: 0.580 seconds ago
+2026-10-21 13:04:52.673189 - [Console 0]: Last Kill: 6.001 seconds ago
+2026-10-21 13:04:52.673257 - [Console 0]: Nothing left to clear...
+2026-10-21 13:04:52.673324 - [Console 0]: Attempting to return to Central Plaza.
+2026-10-21 13:04:53.724248 - [Console 0]: Overworld detected.
+2026-10-21 13:05:35.012650 - [Console 0]: Overworld detected.
+2026-10-21 13:05:51.538749 - [Console 0]: String Match Result: "使用太晶化打倒野生的寶可夢吧！" -> "使用太晶化打倒野生的寶可夢吧" -> (使用太晶化打倒野生的寶可夢吧): (tera-self-defeat) (log10p = -28)
+2026-10-21 13:05:52.307550 - [Console 0]: String Match Result: "製作招式學習器吧！" -> "製作招式學習器吧" -> (製作招式學習器吧): (make-tm) (log10p = -16)
+2026-10-21 13:05:53.042942 - [Console 0]: String Match Result: "移動500公尺吧！" -> "移動500公尺吧" -> (移動500公尺吧): (travel-500) (log10p = -16)
+2026-10-21 13:05:53.522583 - [Console 0]: String Match Result: no matches
+2026-10-21 13:05:54.358080 - [Program]: Quest completed successfully.
+2026-10-21 13:05:54.358194 - [Program]: Current Stats: Quests Completed: 8 - Saves: 0

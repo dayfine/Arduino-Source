@@ -1,0 +1,12 @@
+run,income_events,reroll_events,gross_bp,reroll_bp,net_bp,net_bp_per_hour,status
+R01,1,5,20,50,-30,-523.52,provisional legacy payment
+R02,3,0,70,0,70,449.42,reconstructed
+R03,0,0,0,0,0,0.0,reconstructed
+R04,0,0,0,0,0,0.0,reconstructed
+R05,1,0,20,0,20,205.46,reconstructed
+R06,0,1,0,10,-10,-357.24,reconstructed
+R07,1,0,20,0,20,128.24,reconstructed
+R08,0,0,0,0,0,0.0,reconstructed
+R09,13,6,420,60,360,300.56,reconstructed
+R10,12,4,570,40,530,643.0,reconstructed
+R11,10,8,350,80,270,126.27,reconstructed

@@ -1,0 +1,11 @@
+2026-10-21 15:03:03.543614 - [Program]: Current quest exists on list. Doing quest.
+2026-10-21 15:03:03.543883 - [Console 0]: Quest: Give your pokemon a bath!
+2026-10-21 15:03:47.681918 - [Console 0]: Wash button found!
+2026-10-21 15:05:20.054974 - [Console 0]: Rinse button found. Switching to rinse.
+2026-10-21 15:05:39.710355 - [Console 0]: Shower completed successfully.
+2026-10-21 15:06:26.037599 - [Console 0]: String Match Result: "捕捉1隻寶可夢吧！" -> "捕捉1隻寶可夢吧" -> (捕捉一隻寶可夢吧): (catch-any) (log10p = -13.1007)
+2026-10-21 15:06:28.382518 - [Console 0]: String Match Result: "從背後投球，出其不意地襲擊寶可夢1次吧！" -> "從背後投球出其不意地襲擊寶可夢1次吧" -> (從背後投球出其不意地襲擊寶可夢一次吧): (sneak-up) (log10p = -32.7488)
+2026-10-21 15:06:30.272702 - [Console 0]: String Match Result: "在草原區拍攝野生的寶可夢吧！" -> "在草原區拍攝野生的寶可夢吧" -> (在草原區拍攝野生的寶可夢吧): (photo-savanna) (log10p = -26)
+2026-10-21 15:06:31.409904 - [Console 0]: String Match Result: no matches
+2026-10-21 15:06:32.245420 - [Console 0]: Current quest was not found. Quest completed!
+2026-10-21 15:06:32.246525 - [Program]: Quest completed successfully.

@@ -1,0 +1,72 @@
+2026-10-21 14:08:51.141706 - [Console 0]: Reading quests.
+2026-10-21 14:08:53.503342 - [Console 0]: String Match Result: "用寶可夢洗澡澡幫寶可夢洗澡吧！" -> "用寶可夢洗澡澡幫寶可夢洗澡吧" -> (用寶可夢洗澡澡幫寶可夢洗澡吧): (wash-pokemon) (log10p = -28)
+2026-10-21 14:08:55.574055 - [Console 0]: String Match Result: "撿10次道具吧！" -> "撿10次道具吧" -> (撿10次道具吧): (pickup-10) (log10p = -14)
+2026-10-21 14:08:57.727001 - [Console 0]: String Match Result: "從背後投球，出其不意地襲擊寶可夢1次吧！" -> "從背後投球出其不意地襲擊寶可夢1次吧" -> (從背後投球出其不意地襲擊寶可夢一次吧): (sneak-up) (log10p = -32.7488)
+2026-10-21 14:08:59.765568 - [Console 0]: String Match Result: "在草原區拍攝野生的寶可夢吧！" -> "在草原區拍攝野生的寶可夢吧" -> (在草原區拍攝野生的寶可夢吧): (photo-savanna) (log10p = -26)
+2026-10-21 14:09:00.599744 - [Program]: Quest completed successfully.
+2026-10-21 14:09:01.852760 - [Console 0]: Reading quests.
+2026-10-21 14:09:04.211044 - [Console 0]: String Match Result: "用寶可夢洗澡澡幫寶可夢洗澡吧！" -> "用寶可夢洗澡澡幫寶可夢洗澡吧" -> (用寶可夢洗澡澡幫寶可夢洗澡吧): (wash-pokemon) (log10p = -28)
+2026-10-21 14:09:06.018323 - [Console 0]: String Match Result: "撿10次道具吧！" -> "撿10次道具吧" -> (撿10次道具吧): (pickup-10) (log10p = -14)
+2026-10-21 14:09:08.078581 - [Console 0]: String Match Result: "從背後投球，出其不意地襲擊寶可夢1次吧！" -> "從背後投球出其不意地襲擊寶可夢1次吧" -> (從背後投球出其不意地襲擊寶可夢一次吧): (sneak-up) (log10p = -32.7488)
+2026-10-21 14:09:09.815843 - [Console 0]: String Match Result: "在草原區拍攝野生的寶可夢吧！" -> "在草原區拍攝野生的寶可夢吧" -> (在草原區拍攝野生的寶可夢吧): (photo-savanna) (log10p = -26)
+2026-10-21 14:09:10.650024 - [Program]: Current quest exists on list. Doing quest.
+2026-10-21 14:09:10.652251 - [Console 0]: Quest: Sneak up.
+2026-10-21 14:10:51.241416 - [Console 0]: Reading quests.
+2026-10-21 14:10:53.723430 - [Console 0]: String Match Result: "用寶可夢洗澡澡幫寶可夢洗澡吧！" -> "用寶可夢洗澡澡幫寶可夢洗澡吧" -> (用寶可夢洗澡澡幫寶可夢洗澡吧): (wash-pokemon) (log10p = -28)
+2026-10-21 14:10:55.707352 - [Console 0]: String Match Result: "撿10次道具吧！" -> "撿10次道具吧" -> (撿10次道具吧): (pickup-10) (log10p = -14)
+2026-10-21 14:10:57.483990 - [Console 0]: String Match Result: "從背後投球，出其不意地襲擊寶可夢1次吧！" -> "從背後投球出其不意地襲擊寶可夢1次吧" -> (從背後投球出其不意地襲擊寶可夢一次吧): (sneak-up) (log10p = -32.7488)
+2026-10-21 14:10:59.372254 - [Console 0]: String Match Result: "在草原區拍攝野生的寶可夢吧！" -> "在草原區拍攝野生的寶可夢吧" -> (在草原區拍攝野生的寶可夢吧): (photo-savanna) (log10p = -26)
+2026-10-21 14:11:00.206511 - [Console 0]: Quest: Sneak up.
+2026-10-21 14:12:39.770129 - [Console 0]: Reading quests.
+2026-10-21 14:12:42.498773 - [Console 0]: String Match Result: "用寶可夢洗澡澡幫寶可夢洗澡吧！" -> "用寶可夢洗澡澡幫寶可夢洗澡吧" -> (用寶可夢洗澡澡幫寶可夢洗澡吧): (wash-pokemon) (log10p = -28)
+2026-10-21 14:12:44.179736 - [Console 0]: String Match Result: "撿10次道具吧！" -> "撿10次道具吧" -> (撿10次道具吧): (pickup-10) (log10p = -14)
+2026-10-21 14:12:46.761594 - [Console 0]: String Match Result: "從背後投球，出其不意地襲擊寶可夢1次吧！" -> "從背後投球出其不意地襲擊寶可夢1次吧" -> (從背後投球出其不意地襲擊寶可夢一次吧): (sneak-up) (log10p = -32.7488)
+2026-10-21 14:12:48.794629 - [Console 0]: String Match Result: "在草原區拍攝野生的寶可夢吧！" -> "在草原區拍攝野生的寶可夢吧" -> (在草原區拍攝野生的寶可夢吧): (photo-savanna) (log10p = -26)
+2026-10-21 14:12:49.629026 - [Console 0]: Failed to complete a quest multiple times. Skipping it for now.
+2026-10-21 14:12:49.629220 - [Program]: Quest did not complete successfully.
+2026-10-21 14:12:50.889570 - [Console 0]: Reading quests.
+2026-10-21 14:12:54.142978 - [Console 0]: String Match Result: "用寶可夢洗澡澡幫寶可夢洗澡吧！" -> "用寶可夢洗澡澡幫寶可夢洗澡吧" -> (用寶可夢洗澡澡幫寶可夢洗澡吧): (wash-pokemon) (log10p = -28)
+2026-10-21 14:12:56.269483 - [Console 0]: String Match Result: "撿10次道具吧！" -> "撿10次道具吧" -> (撿10次道具吧): (pickup-10) (log10p = -14)
+2026-10-21 14:12:59.819910 - [Console 0]: String Match Result: "從背後投球，出其不意地襲擊寶可夢1次吧！" -> "從背後投球出其不意地襲擊寶可夢1次吧" -> (從背後投球出其不意地襲擊寶可夢一次吧): (sneak-up) (log10p = -32.7488)
+2026-10-21 14:13:03.783525 - [Console 0]: String Match Result: "在草原區拍攝野生的寶可夢吧！" -> "在草原區拍攝野生的寶可夢吧" -> (在草原區拍攝野生的寶可夢吧): (photo-savanna) (log10p = -26)
+2026-10-21 14:13:04.617689 - [Program]: Current quest exists on list. Doing quest.
+2026-10-21 14:14:31.056324 - [Console 0]: Reading quests.
+2026-10-21 14:14:33.781674 - [Console 0]: String Match Result: "用寶可夢洗澡澡幫寶可夢洗澡吧！" -> "用寶可夢洗澡澡幫寶可夢洗澡吧" -> (用寶可夢洗澡澡幫寶可夢洗澡吧): (wash-pokemon) (log10p = -28)
+2026-10-21 14:14:35.330532 - [Console 0]: String Match Result: "撿10次道具吧！" -> "撿10次道具吧" -> (撿10次道具吧): (pickup-10) (log10p = -14)
+2026-10-21 14:14:38.083308 - [Console 0]: String Match Result: "從背後投球，出其不意地襲擊寶可夢1次吧！" -> "從背後投球出其不意地襲擊寶可夢1次吧" -> (從背後投球出其不意地襲擊寶可夢一次吧): (sneak-up) (log10p = -32.7488)
+2026-10-21 14:14:40.124715 - [Console 0]: String Match Result: "在草原區拍攝野生的寶可夢吧！" -> "在草原區拍攝野生的寶可夢吧" -> (在草原區拍攝野生的寶可夢吧): (photo-savanna) (log10p = -26)
+2026-10-21 14:16:08.249213 - [Console 0]: Reading quests.
+2026-10-21 14:16:10.299390 - [Console 0]: String Match Result: "用寶可夢洗澡澡幫寶可夢洗澡吧！" -> "用寶可夢洗澡澡幫寶可夢洗澡吧" -> (用寶可夢洗澡澡幫寶可夢洗澡吧): (wash-pokemon) (log10p = -28)
+2026-10-21 14:16:11.829778 - [Console 0]: String Match Result: "撿10次道具吧！" -> "撿10次道具吧" -> (撿10次道具吧): (pickup-10) (log10p = -14)
+2026-10-21 14:16:14.424591 - [Console 0]: String Match Result: "從背後投球，出其不意地襲擊寶可夢1次吧！" -> "從背後投球出其不意地襲擊寶可夢1次吧" -> (從背後投球出其不意地襲擊寶可夢一次吧): (sneak-up) (log10p = -32.7488)
+2026-10-21 14:16:16.073035 - [Console 0]: String Match Result: "在草原區拍攝野生的寶可夢吧！" -> "在草原區拍攝野生的寶可夢吧" -> (在草原區拍攝野生的寶可夢吧): (photo-savanna) (log10p = -26)
+2026-10-21 14:16:16.907177 - [Console 0]: Failed to complete a quest multiple times. Skipping it for now.
+2026-10-21 14:16:16.907186 - [Program]: Quest did not complete successfully.
+2026-10-21 14:16:29.099231 - [Console 0]: Reading quests.
+2026-10-21 14:16:30.432442 - [Console 0]: String Match Result: "用寶可夢洗澡澡幫寶可夢洗澡吧！" -> "用寶可夢洗澡澡幫寶可夢洗澡吧" -> (用寶可夢洗澡澡幫寶可夢洗澡吧): (wash-pokemon) (log10p = -28)
+2026-10-21 14:16:31.475319 - [Console 0]: String Match Result: "撿10次道具吧！" -> "撿10次道具吧" -> (撿10次道具吧): (pickup-10) (log10p = -14)
+2026-10-21 14:16:33.528990 - [Console 0]: String Match Result: "從背後投球，出其不意地襲擊寶可夢1次吧！" -> "從背後投球出其不意地襲擊寶可夢1次吧" -> (從背後投球出其不意地襲擊寶可夢一次吧): (sneak-up) (log10p = -32.7488)
+2026-10-21 14:16:35.112992 - [Console 0]: String Match Result: "在草原區拍攝野生的寶可夢吧！" -> "在草原區拍攝野生的寶可夢吧" -> (在草原區拍攝野生的寶可夢吧): (photo-savanna) (log10p = -26)
+2026-10-21 14:16:37.200736 - [Console 0]: Reading quests.
+2026-10-21 14:16:38.813305 - [Console 0]: String Match Result: "用寶可夢洗澡澡幫寶可夢洗澡吧！" -> "用寶可夢洗澡澡幫寶可夢洗澡吧" -> (用寶可夢洗澡澡幫寶可夢洗澡吧): (wash-pokemon) (log10p = -28)
+2026-10-21 14:16:39.863076 - [Console 0]: String Match Result: "撿10次道具吧！" -> "撿10次道具吧" -> (撿10次道具吧): (pickup-10) (log10p = -14)
+2026-10-21 14:16:41.564025 - [Console 0]: String Match Result: "從背後投球，出其不意地襲擊寶可夢1次吧！" -> "從背後投球出其不意地襲擊寶可夢1次吧" -> (從背後投球出其不意地襲擊寶可夢一次吧): (sneak-up) (log10p = -32.7488)
+2026-10-21 14:16:42.969213 - [Console 0]: String Match Result: "在草原區拍攝野生的寶可夢吧！" -> "在草原區拍攝野生的寶可夢吧" -> (在草原區拍攝野生的寶可夢吧): (photo-savanna) (log10p = -26)
+2026-10-21 14:17:08.797262 - [Console 0]: Reading quests.
+2026-10-21 14:17:10.649920 - [Console 0]: String Match Result: "用寶可夢洗澡澡幫寶可夢洗澡吧！" -> "用寶可夢洗澡澡幫寶可夢洗澡吧" -> (用寶可夢洗澡澡幫寶可夢洗澡吧): (wash-pokemon) (log10p = -28)
+2026-10-21 14:17:12.075020 - [Console 0]: String Match Result: "移動500公尺吧！" -> "移動500公尺吧" -> (移動500公尺吧): (travel-500) (log10p = -16)
+2026-10-21 14:17:14.358604 - [Console 0]: String Match Result: "從背後投球，出其不意地襲擊寶可夢1次吧！" -> "從背後投球出其不意地襲擊寶可夢1次吧" -> (從背後投球出其不意地襲擊寶可夢一次吧): (sneak-up) (log10p = -32.7488)
+2026-10-21 14:17:16.314171 - [Console 0]: String Match Result: "在草原區拍攝野生的寶可夢吧！" -> "在草原區拍攝野生的寶可夢吧" -> (在草原區拍攝野生的寶可夢吧): (photo-savanna) (log10p = -26)
+2026-10-21 14:17:17.155710 - [Console 0]: Reroll replacement verified. Discarding the old batch.
+2026-10-21 14:17:18.407369 - [Console 0]: Reading quests.
+2026-10-21 14:17:20.089575 - [Console 0]: String Match Result: "用寶可夢洗澡澡幫寶可夢洗澡吧！" -> "用寶可夢洗澡澡幫寶可夢洗澡吧" -> (用寶可夢洗澡澡幫寶可夢洗澡吧): (wash-pokemon) (log10p = -28)
+2026-10-21 14:17:21.485810 - [Console 0]: String Match Result: "移動500公尺吧！" -> "移動500公尺吧" -> (移動500公尺吧): (travel-500) (log10p = -16)
+2026-10-21 14:17:23.385472 - [Console 0]: String Match Result: "從背後投球，出其不意地襲擊寶可夢1次吧！" -> "從背後投球出其不意地襲擊寶可夢1次吧" -> (從背後投球出其不意地襲擊寶可夢一次吧): (sneak-up) (log10p = -32.7488)
+2026-10-21 14:17:24.903374 - [Console 0]: String Match Result: "在草原區拍攝野生的寶可夢吧！" -> "在草原區拍攝野生的寶可夢吧" -> (在草原區拍攝野生的寶可夢吧): (photo-savanna) (log10p = -26)
+2026-10-21 14:17:29.138960 - [Console 0]: Reading quests.
+2026-10-21 14:17:30.750591 - [Console 0]: String Match Result: "用寶可夢洗澡澡幫寶可夢洗澡吧！" -> "用寶可夢洗澡澡幫寶可夢洗澡吧" -> (用寶可夢洗澡澡幫寶可夢洗澡吧): (wash-pokemon) (log10p = -28)
+2026-10-21 14:17:32.033344 - [Console 0]: String Match Result: "移動500公尺吧！" -> "移動500公尺吧" -> (移動500公尺吧): (travel-500) (log10p = -16)
+2026-10-21 14:17:34.293936 - [Console 0]: String Match Result: "從背後投球，出其不意地襲擊寶可夢1次吧！" -> "從背後投球出其不意地襲擊寶可夢1次吧" -> (從背後投球出其不意地襲擊寶可夢一次吧): (sneak-up) (log10p = -32.7488)
+2026-10-21 14:17:36.361459 - [Console 0]: String Match Result: "在草原區拍攝野生的寶可夢吧！" -> "在草原區拍攝野生的寶可夢吧" -> (在草原區拍攝野生的寶可夢吧): (photo-savanna) (log10p = -26)
+2026-10-21 14:17:37.201508 - [Program]: Current quest exists on list. Doing quest.
+2026-10-21 14:17:37.201549 - [Console 0]: Quest: Give your pokemon a bath!
