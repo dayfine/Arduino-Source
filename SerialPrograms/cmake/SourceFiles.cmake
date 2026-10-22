@@ -2342,6 +2342,8 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonSV/Inference/Map/PokemonSV_FastTravelDetector.h
     Source/VideoGames/PokemonSV/Inference/Map/PokemonSV_MapDetector.cpp
     Source/VideoGames/PokemonSV/Inference/Map/PokemonSV_MapDetector.h
+    Source/VideoGames/PokemonSV/Inference/Map/PokemonSV_MapFlyPointLabelReader.cpp
+    Source/VideoGames/PokemonSV/Inference/Map/PokemonSV_MapFlyPointLabelReader.h
     Source/VideoGames/PokemonSV/Inference/Map/PokemonSV_MapMenuDetector.cpp
     Source/VideoGames/PokemonSV/Inference/Map/PokemonSV_MapMenuDetector.h
     Source/VideoGames/PokemonSV/Inference/Map/PokemonSV_MapPokeCenterIconDetector.cpp
@@ -2663,6 +2665,8 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonSV/Programs/PokemonSV_SaveGame.h
     Source/VideoGames/PokemonSV/Programs/PokemonSV_Terarium.cpp
     Source/VideoGames/PokemonSV/Programs/PokemonSV_Terarium.h
+    Source/VideoGames/PokemonSV/Programs/PokemonSV_TerariumFlyPoints.cpp
+    Source/VideoGames/PokemonSV/Programs/PokemonSV_TerariumFlyPoints.h
     Source/VideoGames/PokemonSV/Programs/PokemonSV_WorldNavigation.cpp
     Source/VideoGames/PokemonSV/Programs/PokemonSV_WorldNavigation.h
     Source/VideoGames/PokemonSV/Programs/Sandwiches/PokemonSV_IngredientSession.cpp
