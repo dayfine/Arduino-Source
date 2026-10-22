@@ -419,8 +419,8 @@ rule at 120 min; no errors, no stuck steps.
 - **#23 untested:** no catch quest was drawn in 38 quests. Carried to R5.
 - 25 rerolls (policy C' plus OUT_OF_RETRIES), 1 failed-and-rerolled quest.
 - **Red quest measured:** wild-tera (top slot) completed in ~2.5 min, +100 BP.
-- **Kleavor (tera-self-defeat):** 14 attempts by the passive recorder's count,
-  4 misses. Frames in the session scratchpad (`kleavor/<time>/sheet.png`): the
+- **Kleavor (tera-self-defeat):** 14 attempts, 6 misses ("Did not enter
+  battle"), 8 battles. Frames in the session scratchpad (`kleavor/<time>/sheet.png`): the
   glide always lands on the 黑奇石 field; on a hit Kleavor stands straight
   ahead, on a miss the field in view is empty. No clear time-of-day pattern
   (hit at night, misses at day and dusk). Older logs: Oct 20 00:12-01:08 had 14
