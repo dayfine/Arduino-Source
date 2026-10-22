@@ -94,11 +94,19 @@ SHAs even after the PR heads move.
    fixed, disable hatch attempts in unrelated trials. Do not enable wild-Tera
    trials without the required battle-entry guard. Choose policies and enough
    quest capacity for the timed run; capture their actual active values.
+   Validate edited JSON enum slugs against the option's actual dropdown database,
+   then check the loaded UI. Unknown slugs can silently retain a row's default.
+   Hatch is intentionally absent from Quest Exclusions: disable hatch attempts
+   through NUM_EGGS and OUT_OF_EGGS, never by injecting a hatch-egg policy row.
+   Snapshot disk settings and loaded values separately when they differ.
 6. **Run for 60 minutes.** Record actual start and a deadline. Extend to at most
    120 minutes only if conditions remain useful and more exposure can resolve a
    specific uncertainty. Start a separate deadline observer that survives the
    sampling turn and checks the exact app/profile/run identity. A written plan
    alone is not an armed timer. Never let a broad timer stop a different program.
+   Determine current state from the latest state transition, not whether STOPPED
+   ever appeared. Pin the run's start event as well as PID/path/profile; a manual
+   restart invalidates the old timer and starts a separate evidence record.
 7. **Observe every five minutes.** Read logs and capture relevant frames. Check
    the feature trigger/outcome, completions, failed attempts, recovery duration,
    rerolls, expected income/expense/net BP and signs of new issues. Record

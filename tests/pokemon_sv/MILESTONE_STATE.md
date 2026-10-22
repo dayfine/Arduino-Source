@@ -25,9 +25,14 @@ owns existing PR branches/descriptions and receives verified commits/results.
 - Binary SHA-256: `9bc7b7b0da2396993615384a815fdb160e79ca53cbfc1ae893a73edbf1626603`.
 - Isolated `bbq-lab` profile prepared; hatching disabled. Lead Primarina Lv.100,
   full HP; Central Plaza and starting board verified. Starting BP **13,690**.
-- M7 live trial: **RUNNING**, 2026-10-21 18:49:05 PDT; planned stop 19:49:05.
-  Five-minute log observer and one-hour normal-stop deadline armed; verify process
-  liveness when resuming. No live acceptance path is verified yet.
+- First M7 live trial: **INCONCLUSIVE for reuse**, 18:49:05–19:49:03 PDT:
+  six completions; 75 three-slot reads; zero four-slot reuse triggers.
+- Preflight error: unsupported hatch-egg/skip JSON row loaded as auto-10/skip.
+  User cleared exclusions and restarted at 19:49:04. New run continues under
+  changed settings; three completions and 13,770 BP observed by 20:08.
+- Read-only five-minute observer records the restarted run. No stop timer owns
+  it. Old observer exited on a historical-state bug, now corrected locally;
+  deadline stopping remains unverified. User retains control of the newer run.
 - Run record: lab branch `tests/pokemon_sv/lab/runs/2026-10-21-m7-live/RESULT.md`.
 
 The user stopped Flying Trial and returned manually after automation missed the
@@ -39,7 +44,7 @@ three quests, so live reuse needs a later eligible four-slot observation.
 
 | Order | Candidate | Implementation / integration | Live verification | Next action |
 | --- | --- | --- | --- | --- |
-| 1 | M7a: safe quest-board observation reuse | IMPLEMENTED 57f330fc9; full build and 55 native tests passed | RUNNING; started 18:49 PDT, 13,690 BP | Monitor, stop, audit triggered paths/BP, then extract draft if verified |
+| 1 | M7a: safe quest-board observation reuse | IMPLEMENTED 57f330fc9; full build and 55 native tests passed | First hour reuse INCONCLUSIVE; changed-settings restart running | Observe eligible four-slot reroll path before claiming reuse verified |
 | 2 | M8a: hatch failure party restoration | DOCUMENTED; no feature commit | NOT STARTED | Implement restoration/restart contract through native action seam |
 | 3 | M11a: failed scrub must not enter rinse | DOCUMENTED; no feature commit | Baseline failure/success evidence only | Implement bounded failure/recovery and transition gating |
 | 4 | M12a: Pride Rock target acquisition | DOCUMENTED; no feature commit | Baseline missing-battle evidence only | Capture target/arrival/framing and choose bounded recovery |
@@ -118,3 +123,5 @@ under tests/ may be included in a release branch's diff.
 | 2026-10-21 | User clarified M4–M6 are done; removed redundant V0 campaign and selected M7a next, then M8a | User clarification; no additional implementation/build/live result claimed |
 
 | 2026-10-21 18:49 PDT | M7 implemented and full build/55 native tests passed; live run started with timer/checkpoints | Feature 57f330fc9; starting 13,690 BP; lab live RESULT.md |
+
+| 2026-10-21 20:10 PDT | First M7 hour inconclusive; invalid hatch exclusion blocked Auto 10, user restarted after edits | Zero reuse / 75 three-slot reads; 6 completions; +80 observed BP across both runs at 20:08; lab RESULT |
