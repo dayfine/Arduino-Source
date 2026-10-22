@@ -11,6 +11,7 @@ Current implementation, integration, run and PR states: [MILESTONE_STATE.md](MIL
 | [M10](M10.md) | Implement Pickup and investigate/validate disabled Flying-type capture/photo routes | Native C++ tests, local builds, separate live validation for each route | Requested; documented |
 | [M11](M11.md) | Recover from stalled Pokémon washing; investigate picnic furniture obstruction and avoid rinse after scrub failure | Native C++ tests, local build, controlled obstructed/clear-view live runs | Observed; requested; documented |
 | [M12](M12.md) | Verify/recover shared Pride Rock target acquisition for catch, sneak-up and Savanna photo | Native C++ tests, local build, recorded target-present/absent route trials | New finding from daily audit; documented |
+| [M14](M14.md) | BP earned, reroll BP spent and net BP/rate in Current Run statistics | Native accounting cases, full build, live balance reconciliation | Requested; documented |
 | [M13](M13.md) | Bound nested plaza/map recovery; preserve cancellation and expose navigation failure to the farmer | Native C++ tests, local build, bounded navigation-failure trial | New finding from daily audit; documented |
 
 See the [2026-10-21 run audit](RUN_AUDIT_2026-10-21.md) for all eleven BBQ starts,

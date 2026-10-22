@@ -1,7 +1,9 @@
 # M7b/M7a combined trial, 2026-10-21 PDT
 
-Status: phase one STOPPED at 21:31:12 after its M7b trigger; controlled phase
-two RUNNING from 21:34:47. M7a optimized path still awaiting observation.
+Status: both phases STOPPED normally. M7a reuse/invalidation and M7b
+failed-reroll replanning OBSERVED. End balance 14,250 BP; game saved at Central
+Plaza with the full-health Lv.100 Primarina lead. Targeted acceptance complete;
+one-hour stability/deadline stopping NOT verified.
 
 - Tested integrated revision ea047a9309ce8c429d288cbfb77f88266f32d34d.
 - Binary SHA-256 8626deb7a10585cb3887a5166db95f8ffacef43aa20203c94207f79d5de7814b.
@@ -127,3 +129,56 @@ success is established by the post-attempt panel replacement.
   as an observed sequence, not a controlled performance/throughput benchmark.
 - Branches pushed to the fork; PRs not yet opened. Existing PR branches were
   not pushed or rewritten. Running binary remained the pinned lab M7b build.
+
+## Early-stop decision and BP status request
+
+At 22:08 PDT the user requested BP earned/spent in Current Run and asked to
+consider stopping after analysis. Both intended M7 paths were already directly
+observed, including invalidation. Additional time was dominated by known route
+failures: Auto30 17m33s; Catch Any two failures and reroll about 5m19s; Swimming
+Photo two failures and reroll about 2m40s. Travel subsequently completed at
+22:05:50 (four recorded phase-two completions). Catch Fire uses the same failing
+route and was in progress. Chose an early normal Stop at the next fresh
+after-attempt/planning boundary rather than extending solely to one hour.
+This is targeted live acceptance with limited regression runtime, not a full
+one-hour stability result or a controlled throughput comparison.
+
+New requested follow-up: [M14 BP status counters](../../../M14.md): gross earned,
+reroll expense, net and rate, with incidental credit and payment deduplication.
+No running binary or PR feature was changed for this request.
+
+## Final phase-two result and balance reconciliation
+
+- Start 21:34:47.158120; normal STOPPED 22:10:39.689496: **35m52.53s**.
+  Early stop at a fresh post-attempt read, with exact executable/profile/PID
+  verified. Original observer also saw the latest STOPPED and relinquished.
+- Current Run: **4 recorded completions, 0 program saves**. Six completions
+  across both phases, whose counters reset independently.
+- Rewards: Auto30 130 + Coastal Photo 30 + incidental Auto10 20 + Travel 20
+  = **200 BP earned**. Five verified blue rerolls at 10 BP = **50 BP spent**:
+  Flying Photo policy (21:35:24), failed Catch Any (22:00:02), Sneak policy
+  (22:00:37), Pickup policy (22:00:58), failed Swimming Photo (22:03:56).
+- Observed balance **14,100 → 14,250**, exactly **+150 net BP**; approximately
+  **251 net BP/hour** for this phase. This is observed yield under its quest mix,
+  policies and background builds, not a forecast or an M7 speedup comparison.
+- Both phases combined: 14,070 → 14,250 = **+180 BP**, 240 gross / 60 expense.
+  Active runtime about 43m59s; wall time including profile transition 47m34s.
+  Keep phase-specific rates because settings changed at the phase boundary.
+- Catch Fire's second attempt was interrupted at its post-attempt read before
+  result processing. No completion or additional reroll payment is claimed;
+  ending board still has Make TM / Catch Fire / Savanna Photo.
+- M7a: one eligible planner observation reused for scheduling and first
+  dispatch, with later reads fresh; two redundant reads avoided on that path.
+- M7b: phase-one replacement Travel dispatched before stale queued TM/Catch;
+  two additional failed-reroll discard/replan events in phase two.
+- Main throughput limits remain Auto30 route/trips (M9), Catch Any/Fire target
+  acquisition (M12), and two failed Swimming Photo attempts. Exact swimming
+  failure cause remains unproven; capture framing/target evidence next trial.
+- Central Plaza confirmed visually. All six party members full HP, lead
+  Primarina Lv.100 321/321. Manual game save confirmed by the success dialog
+  at 22:11:53; this is separate from the program's zero-save counter.
+
+Local phase-two evidence includes run-final.log, end-board-14250BP.png,
+end-party-full-health.png, and save-confirmed.png under the documented
+build-prep/m7b-reuse-live-2026-10-21 directory. Native snapshots establish
+visible ending balance and saved handoff. No release code changed during run.

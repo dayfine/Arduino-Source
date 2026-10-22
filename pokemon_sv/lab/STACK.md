@@ -59,3 +59,18 @@ Live M7b result: NOT STARTED. See
 [runs/2026-10-21-m7b-preparation/RESULT.md](runs/2026-10-21-m7b-preparation/RESULT.md).
 The running old lab executable remains M7a 57f330fc9, despite source HEAD moving.
 M7a still needs its optimized four-slot planner-reroll path verified.
+
+## M7a/M7b final acceptance, 2026-10-21 22:12 PDT
+
+Supersedes earlier active-run statuses above. Tested integrated ea047a930; full
+arm64 / 58 native PASS. Both intended live paths observed in the
+[M7 combined result](runs/2026-10-21-m7b-live/RESULT.md). Normal early Stop;
+35m53s phase two, 200 earned − 50 spent = +150 BP, ending 14,250. Game saved
+at Central Plaza, full Lv100 Primarina lead. Limited stability duration; no
+claim of completed one-hour trial or deadline-stop verification.
+
+Release extraction branches pushed: bbq/reuse-quest-board at 8dbace6c7
+(M6 + M5 parents; full build / 41 native PASS); bbq/replan-after-reroll at
+30e84abef (M7a + save milestones parents; full build / 46 native PASS).
+Production feature patch IDs match tested lab features; see linked result.
+BP run statistics requested as independent M14, documented but not implemented.

@@ -10,15 +10,16 @@ owns existing PR branches/descriptions and receives verified commits/results.
 
 ## Current checkpoint
 
-- Next candidate: **M7b — replan after failed-quest rerolls**, with a controlled
-  M7a reuse acceptance path in the next session.
+- Current: **M7a and M7b acceptance paths observed**; ending the combined
+  trial early after analysis, then final BP/save audit and fork draft handoff.
+  Next implementation candidate is M8a; BP status counters requested as M14.
 - Notes/rules now live on `agents`, worktree
   `/Users/difan/Projects/Arduino-Source-agents`; old notes branch retired from use.
 - M4–M6 are **DONE for this milestone sequence**, per the user's clarification.
   Claude continues their upstream PR refinement; do not restart their live
   acceptance campaign as a new V0 milestone. This records milestone completion,
   not a claim that all PRs merged or every listed rare path was observed.
-- Lab: `bbq/validation-stack`, tested production SHA `57f330fc9`, worktree
+- Lab: `bbq/validation-stack`, tested production SHA `ea047a930`, worktree
   `/Users/difan/Projects/Arduino-Source-bbq-lab`.
 - Integrated: upstream main `db9ef1772`, M6 `a1b685f9e` with M4/rounds/planner/
   verified-reroll ancestors, M5 `f7e3ba6f0` (lab cherry-pick `075376f2f`),
@@ -34,9 +35,11 @@ owns existing PR branches/descriptions and receives verified commits/results.
   User cleared exclusions and restarted at 19:49:04. That run stopped at
   21:05:50: twelve recorded completions and one program save, zero M7a reuse.
   Final 14,070 BP; saved manually and idle at Central Plaza.
-- Old app remains open, STOPPED. M7b is built separately but not launched.
-  Verify the executable/profile before the next run. Deadline stopping remains
-  unverified; normal identity-checked Stop succeeded at the after-attempt boundary.
+- Current M7b app: isolated `bbq-m7b-reuse` profile, PID 27590; phase two
+  started 21:34:47. Both M7a reuse/invalidation and M7b replanning observed.
+  Normal early Stop succeeded at 22:10:39; final 14,250 BP (+150 phase two),
+  Central Plaza/full party verified, game manually saved.
+  Deadline stopping remains unverified; do not claim a completed one-hour trial.
 - Run record: [M7 trial](lab/runs/2026-10-21-m7-live/RESULT.md) on `agents`.
 
 The user stopped Flying Trial and returned manually after automation missed the
@@ -48,14 +51,15 @@ three quests, so live reuse needs a later eligible four-slot observation.
 
 | Order | Candidate | Implementation / integration | Live verification | Next action |
 | --- | --- | --- | --- | --- |
-| 1 | M7a: safe quest-board observation reuse | IMPLEMENTED 57f330fc9; full build and 55 native tests passed | First hour reuse INCONCLUSIVE; changed-settings restart running | Observe eligible four-slot reroll path before claiming reuse verified |
-| 1b | M7b: replan after exhausted-quest reroll | IMPLEMENTED ea047a930; isolated full build and 58 native tests PASS | NOT STARTED | Preflight and controlled M7a/M7b session |
+| 1 | M7a: safe quest-board observation reuse | IMPLEMENTED 57f330fc9; full build and 55 native tests passed | Controlled four-slot reuse and subsequent fresh reads OBSERVED | Final balance audit; extracted release build / 41 native PASS; fork draft |
+| 1b | M7b: replan after exhausted-quest reroll | IMPLEMENTED ea047a930; isolated full build and 58 native tests PASS | Failed Savanna Photo → Travel dispatch/completion OBSERVED; repeat discard paths observed | Final balance audit; extracted release build / 46 native PASS; fork draft |
 | 2 | M8a: hatch failure party restoration | DOCUMENTED; no feature commit | NOT STARTED | Implement restoration/restart contract through native action seam |
 | 3 | M11a: failed scrub must not enter rinse | DOCUMENTED; no feature commit | Baseline failure/success evidence only | Implement bounded failure/recovery and transition gating |
 | 4 | M12a: Pride Rock target acquisition | DOCUMENTED; no feature commit | Baseline missing-battle evidence only | Capture target/arrival/framing and choose bounded recovery |
 | 5 | M13: nested navigation bounds | DOCUMENTED; no feature commit | Baseline prolonged recovery only | Bound total recovery and expose exhaustion |
 | 6 | M7 follow-ups: incidental accounting and scheduling | DOCUMENTED; separate from first M7 slice | Baseline incidental completion/delayed red quest | Re-score after M7a; keep independent changes reviewable |
-| 7 | M9a: target exit/heal policy | DOCUMENTED; no feature commit | Mixed-lead baseline only | Compare correct-lead route, then reduce avoidable work |
+| 6b | M14: BP income/expense/net status | DOCUMENTED; no code change | Start/end ledger motivating example | Design exact transaction/incident accounting; standalone stats slice |
+| 7 | M9a: target exit/heal policy | DOCUMENTED; no feature commit | Correct Lv100 lead: Auto30 17m33s, 34 detected kills | Reduce repeat trips and post-target work; timing is observational |
 | 8 | M8b: startup egg box/inventory | DOCUMENTED; no feature commit | NOT STARTED | Verify eggs/box selection without party changes |
 | 9 | M10a: Pickup | DOCUMENTED; no active route | NOT STARTED | Establish what counts and measure a bounded pickup route |
 | 10 | M10b/c: Flying-type catch/photo | DOCUMENTED; disabled routes exist | NOT STARTED | Establish demand and why routes are disabled |
@@ -140,3 +144,5 @@ under tests/ may be included in a release branch's diff.
 | 2026-10-21 21:23 PDT | M7b app/profile preflight complete and combined trial RUNNING | ea047a930; 14,070 starting BP; camera/mic allowed; observer session 93328; M7b live RESULT |
 
 | 2026-10-21 21:34 PDT | M7b failed-reroll → Travel path observed in phase one; controlled M7a phase RUNNING | 45.72s reroll-to-dispatch; Travel completed in 92.23s; +30 BP; phase two 14,100 starting BP / session 9238 |
+
+| 2026-10-21 22:12 PDT | M7 targeted live acceptance finished; early normal Stop and game save verified | Both paths observed; phase two 35m53s, four completions, gross 200 / rerolls 50 / net 150 BP; M14 BP status requested; release native 41/46 PASS |
