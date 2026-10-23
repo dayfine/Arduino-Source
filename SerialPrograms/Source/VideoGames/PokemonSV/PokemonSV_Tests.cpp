@@ -511,6 +511,7 @@ public:
     bool reuse_rerolled_panel = false;
 
     std::vector<std::string> events;
+    std::vector<BBQuests> attempted_quests;
 
     virtual std::vector<BBQuests> read_quests() override{
         events.push_back("read");
@@ -539,6 +540,7 @@ public:
     }
     virtual bool do_quest(BBQuests quest, uint8_t&) override{
         events.push_back("do");
+        attempted_quests.push_back(quest);
         const bool success = !never_completes.contains(quest)
             && (m_next_outcome < outcomes.size() ? outcomes[m_next_outcome++] : true);
         if (success){
@@ -611,6 +613,7 @@ struct BBQRoundsScenario{
     BBQOption::OutOfRetries out_of_retries = BBQOption::OutOfRetries::Skip;
     bool reuse_rerolled_panel = false;
     uint64_t expected_completed = 0;
+    std::vector<BBQuests> expected_attempted = {};
     std::string expected;
 };
 
@@ -648,6 +651,18 @@ public:
             return "Expected " + std::to_string(m_scenario.expected_completed)
                 + " completed quests, counted " + std::to_string(completed);
         }
+        if (!m_scenario.expected_attempted.empty() && game.attempted_quests != m_scenario.expected_attempted){
+            std::vector<std::string> expected_quests;
+            std::vector<std::string> actual_quests;
+            for (BBQuests quest : m_scenario.expected_attempted){
+                expected_quests.push_back(std::to_string((int)quest));
+            }
+            for (BBQuests quest : game.attempted_quests){
+                actual_quests.push_back(std::to_string((int)quest));
+            }
+            return "Expected quest order: " + join_events(expected_quests)
+                + "\nActual quest order:   " + join_events(actual_quests);
+        }
         const std::string actual = join_events(game.events);
         if (actual != m_scenario.expected){
             return "Expected: " + m_scenario.expected + "\nActual:   " + actual;
@@ -662,6 +677,41 @@ private:
 void add_tests_BBQFarmerRounds(UnitTestDatabase& database){
     const std::string round_of_3 = "read process read do completed read do completed read do completed";
     const BBQRoundsScenario scenarios[] = {
+        {
+            .name = "failed reroll replans before queued photo and TM",
+            .num_quests = 1,
+            .panel = {BBQuests::catch_grass, BBQuests::photo_savanna, BBQuests::make_tm},
+            .outcomes = {false},
+            .new_quests = {BBQuests::travel_500, BBQuests::photo_canyon, BBQuests::photo_coastal, BBQuests::photo_polar},
+            .out_of_retries = BBQOption::OutOfRetries::Reroll,
+            .expected_completed = 3,
+            .expected_attempted = {BBQuests::catch_grass, BBQuests::travel_500, BBQuests::photo_savanna, BBQuests::make_tm},
+            .expected = "read process read do reroll end " + round_of_3 + " end",
+        },
+        {
+            .name = "failed reroll on full board reads fresh after round actions",
+            .num_quests = 1,
+            .panel = {BBQuests::catch_grass, BBQuests::photo_savanna, BBQuests::make_tm, BBQuests::wash_pokemon},
+            .outcomes = {false},
+            .new_quests = {BBQuests::travel_500, BBQuests::photo_canyon, BBQuests::photo_coastal, BBQuests::photo_polar},
+            .out_of_retries = BBQOption::OutOfRetries::Reroll,
+            .reuse_rerolled_panel = true,
+            .expected_completed = 4,
+            .expected_attempted = {BBQuests::catch_grass, BBQuests::travel_500, BBQuests::photo_savanna, BBQuests::make_tm, BBQuests::wash_pokemon},
+            .expected = "read process read do reroll end " + round_of_3 + " read do completed end",
+        },
+        {
+            .name = "replanning after failure preserves a crossed save milestone",
+            .num_quests = 2,
+            .save_num_quests = 1,
+            .panel = {BBQuests::make_tm, BBQuests::catch_grass, BBQuests::photo_savanna},
+            .outcomes = {true, false},
+            .new_quests = {BBQuests::photo_canyon, BBQuests::travel_500, BBQuests::photo_coastal, BBQuests::photo_polar},
+            .out_of_retries = BBQOption::OutOfRetries::Reroll,
+            .expected_completed = 4,
+            .expected_attempted = {BBQuests::make_tm, BBQuests::catch_grass, BBQuests::photo_canyon, BBQuests::travel_500, BBQuests::photo_savanna},
+            .expected = "read process read do completed read do reroll end(save) " + round_of_3 + " end(save)",
+        },
         {
             .name = "reuses reroll observation for selection and first dispatch only",
             .num_quests = 1,
@@ -715,11 +765,32 @@ void add_tests_BBQFarmerRounds(UnitTestDatabase& database){
             .expected = "read process " + round_of_3 + " end",
         },
         {
-            .name = "saves at exact multiples",
+            .name = "saves at each milestone",
             .num_quests = 6,
             .save_num_quests = 3,
             .expected_completed = 6,
             .expected = round_of_3 + " end(save) " + round_of_3 + " end(save)",
+        },
+        {
+            // 0 -> 3 crosses the milestone at 2 without landing on it.
+            .name = "saves when a round skips past a milestone",
+            .num_quests = 6,
+            .save_num_quests = 2,
+            .expected_completed = 6,
+            .expected = round_of_3 + " end(save) " + round_of_3 + " end(save)",
+        },
+        {
+            // Three partial rounds each fail and reroll their first quest.
+            // None may save while the completed count is still zero.
+            .name = "round without completions does not save",
+            .num_quests = 3,
+            .save_num_quests = 2,
+            .outcomes = {false, false, false},
+            .out_of_retries = BBQOption::OutOfRetries::Reroll,
+            .expected_completed = 3,
+            .expected =
+                "read process read do reroll end read process read do reroll end "
+                "read process read do reroll end " + round_of_3 + " end(save)",
         },
         {
             .name = "stops when out of eggs",
