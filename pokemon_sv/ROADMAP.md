@@ -505,3 +505,22 @@ NUM_EGGS = 30, OUT_OF_EGGS = reroll. **Final 15:30-17:30:** 35 quests, net
 - **Auto Battle 10:** 323, 138, 276, 269, 267 s; 0 heals in 22 passes.
 - **Kleavor:** 8 attempts, 3 misses.
 - Panel reads 92 for 35 completions (2.6), 22 reused.
+
+**R7 (2026-10-22 18:10-18:49, `lab/r7` = `lab/r6` + #25 BP check, #26-#32,
+profile bbq-r7 with pickup-10 set to skip).** Stopped on an error after 40 min:
+`OperationFailedExceptionWithScreenshot: No more egg hatch after 10 minutes.`
+8 quests, net +200 before that. Working live: #31 per-pass kills add up
+(3+5+2=10); #32 read the board at 8/10, saw the quest, went again; #30 one
+failed fly recovered on attempt 2; #27 reroll lines name slot and quest; #24
+10/10 landings; #28 put Make TM first. No pickup-10 drawn (C16 no data).
+
+**C17 (added 2026-10-22, high priority): hatch picked a hatched Pokémon as the
+egg.** 18:39:36.417 "Cursor moved" to box 13 slot (0,0); 18:39:36.432 "Found
+egg" 15 ms later; the slot held a Litten that R6's hatch had put back there.
+The detector most likely read the summary panel before it updated (stale frame
+from the previous slot). The Litten rode for 10 min, the program threw, and the
+lead (Primarina) was left in the box (restored by hand at 19:05). Fix: (1) let
+the panel settle and require the egg reading on two frames ~300 ms apart;
+(2) after the swap, confirm party slot 1 is an egg, else swap back and skip;
+(3) on any hatch failure, swap the lead back (overlaps M8a, Codex's
+uncommitted work). Until fixed: NUM_EGGS = 0 in bbq-r6/bbq-r7.

@@ -81,6 +81,7 @@ quests), `SAVE_NUM_QUESTS` = 10, language `chi_tra`.
 | R3b | + Auto Battle stop-at-target, bounds, BP status | 398 | 23 quests; 10-completion bonus measured |
 | R4 | + heal only below 50% HP, panel-read reuse | 459 | Auto Battle 10: 337 -> 230 s; 0 heals in 24 passes; reads 4.0 -> 2.9 per completion |
 | R5a / R5b | + Central Plaza landing check | 259 / 604 | 73/73 landings confirmed; R5a lost 2 slots to impossible quests, fixed by rerolling them |
+| R7 | + BP-check, ordering, Make TM resume, return bounds, kill count, C10 board read, no-trip chaining | 424 (40 min) | stopped by the hatch bug (C17); every new feature seen working |
 | R6 | + reroll impossible quests on sight (C15), eggs enabled | 644 | 35 quests; hatch red +220; 120/120 landings over R5+R6; catch-any completed after the #23 fix |
 
 Per-run details, Kleavor frame studies and the red-quest data are in
@@ -109,6 +110,6 @@ Rough value from `ROI.md` where modeled. In descending order of what we'd do nex
 | Read in-game time; log what species a battle was against | to explain spawn misses | diagnostics |
 | Item Printer: log BP before/after | turns BP/hour into items/hour | measurement |
 
-Known open bugs: Auto Battle kill count runs ~1 short and per-pass totals don't
+Known open bugs: hatch can take a hatched Pokémon for an egg and strand the lead in the box (C17); Auto Battle kill count runs ~1 short and per-pass totals don't
 always add up (#17); a failed hatch can leave the egg as party lead (M8a, Codex's
 uncommitted work in `~/Projects/Arduino-Source-m8a`).
