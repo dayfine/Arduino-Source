@@ -30,11 +30,20 @@ namespace PokemonSV{
 
 namespace{
 
-// Flies to the closest Pokecenter on the map. Nothing here checks where the
-// player lands: the closest-Pokecenter search can fall back to any fly point.
-// Returns true if it stopped at a wild battle's menu (only when stop_at_battle
-// is set). Otherwise it flees each battle and returns false once landed.
-bool fly_toward_plaza(
+// What one fly toward Central Plaza did.
+enum class PlazaFly{
+    Flew,
+    DidNotFly,          //  No Pokecenter to fly to, or the fly was interrupted.
+    StoppedAtBattle,    //  Only when stop_at_battle is set.
+};
+
+// Flies to the closest Pokecenter on the map, once. Nothing here checks where
+// the player lands: the closest-Pokecenter search can fall back to any fly
+// point. Returns DidNotFly if the fly failed or a battle interrupted it (the
+// battle is fled); the caller decides whether to try again, so one return
+// can't loop for minutes. With stop_at_battle set, it instead stops at a wild
+// battle's menu and returns StoppedAtBattle.
+PlazaFly fly_toward_plaza(
     const ProgramInfo& info, VideoStream& stream, ProControllerContext& context,
     bool laggy, bool stop_at_battle
 ){
@@ -42,7 +51,7 @@ bool fly_toward_plaza(
     //Modified version of handle_battles_and_back_to_pokecenter()
     bool returned_to_pokecenter = false;
 
-    while(!returned_to_pokecenter){
+    {
         EncounterWatcher encounter_watcher(stream, COLOR_RED);
         int ret = run_until<ProControllerContext>(
             stream, context,
@@ -80,13 +89,15 @@ bool fly_toward_plaza(
                 pbf_press_button(context, BUTTON_ZR, 320ms, 800ms);
 
                 try{
-                    //The only pokecenter on the map is Central Plaza
-                    fly_to_closest_pokecenter_on_map(info, stream, context);
+                    //The only pokecenter on the map is Central Plaza. Each failed search
+                    //costs ~13 s, and repeating the same one rarely helps (bbq-m5 11:20:
+                    //17 identical "no Pokecenter" tries), so give up after 3.
+                    fly_to_closest_pokecenter_on_map(info, stream, context, 3);
                     context.wait_for_all_requests();
                     returned_to_pokecenter = true;
                 }catch (...){
-                    stream.log("Failed to return to Pokecenter. Closing map and retrying.");
-                    laggy = true;
+                    //The next try mashes B back to the overworld first.
+                    stream.log("Failed to return to Pokecenter.", COLOR_RED);
                 }
                 context.wait_for_all_requests();
             },
@@ -106,7 +117,7 @@ bool fly_toward_plaza(
                 throw ProgramFinishedException();
             }else if (stop_at_battle){
                 stream.log("Detected battle. Stopping at the battle menu.");
-                return true;
+                return PlazaFly::StoppedAtBattle;
             }else{
                 stream.log("Detected battle. Running from battle.");
                 try{
@@ -126,7 +137,7 @@ bool fly_toward_plaza(
         }
     }
     context.wait_for_all_requests();
-    return false;
+    return returned_to_pokecenter ? PlazaFly::Flew : PlazaFly::DidNotFly;
 }
 
 // Thrown out of PlazaReturnConsoleActions::fly_to_plaza() to leave the
@@ -146,9 +157,14 @@ public:
         , m_stop_at_battle(stop_at_battle)
     {}
 
-    virtual void fly_to_plaza(bool overshoot) override{
-        if (fly_toward_plaza(m_info, m_stream, m_context, overshoot, m_stop_at_battle)){
+    virtual bool fly_to_plaza(bool overshoot) override{
+        switch (fly_toward_plaza(m_info, m_stream, m_context, overshoot, m_stop_at_battle)){
+        case PlazaFly::StoppedAtBattle:
             throw StoppedAtBattle();
+        case PlazaFly::Flew:
+            return true;
+        default:
+            return false;
         }
     }
 
