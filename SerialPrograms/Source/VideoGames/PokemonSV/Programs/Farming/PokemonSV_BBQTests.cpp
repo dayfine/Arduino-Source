@@ -474,6 +474,7 @@ struct BBQuestPlanScenario{
     std::string name;
     std::vector<BBQuests> quests;
     std::vector<std::pair<BBQuests, BBQAction>> extra_exclusions;
+    std::optional<int> bp = 1000;
     uint8_t num_eggs = 1;
     uint8_t eggs_hatched = 0;
     BBQOption::OOEggs out_of_eggs = BBQOption::OOEggs::Reroll;
@@ -516,7 +517,7 @@ public:
         }
 
         NullLogger logger;
-        const BBQuestPlan plan = plan_quests(logger, options, m_scenario.quests, m_scenario.eggs_hatched);
+        const BBQuestPlan plan = plan_quests(logger, options, m_scenario.quests, m_scenario.eggs_hatched, m_scenario.bp);
         if (plan.to_do != m_scenario.expected_to_do){
             return "Expected quests to do: " + quests_to_string(m_scenario.expected_to_do)
                 + "got: " + quests_to_string(plan.to_do);
@@ -717,6 +718,50 @@ static void add_tests_BBQuestPlan(UnitTestDatabase& database){
             .extra_exclusions = {{catch_flying, BBQAction::run}},
             .expected_to_do = {make_tm, sneak_up},
             .expected_reroll_slots = {0},
+        },
+        {
+            // A red reroll costs 50 BP, a blue one 10.
+            .name = "BP for a blue reroll but not a red one skips the red quest not possible",
+            .quests = {photo_flying, make_tm, catch_flying, sneak_up},
+            .bp = 49,
+            .expected_to_do = {make_tm, sneak_up},
+            .expected_reroll_slots = {2},
+        },
+        {
+            .name = "BP for exactly a red reroll rerolls it and skips the blue one",
+            .quests = {photo_flying, make_tm, catch_flying, sneak_up},
+            .bp = 55,
+            .expected_to_do = {make_tm, sneak_up},
+            .expected_reroll_slots = {0},
+        },
+        {
+            // Before, the reroll did not happen and the program stopped.
+            .name = "BP under a blue reroll skips quests not possible and runs the doable ones",
+            .quests = {photo_flying, make_tm, catch_flying, sneak_up},
+            .bp = 9,
+            .expected_to_do = {make_tm, sneak_up},
+        },
+        {
+            .name = "unknown BP skips quests not possible and runs the doable ones",
+            .quests = {photo_flying, make_tm, catch_flying, sneak_up},
+            .bp = std::nullopt,
+            .expected_to_do = {make_tm, sneak_up},
+        },
+        {
+            // A reroll row is paid for first.
+            .name = "BP left after a reroll row decides the quests not possible",
+            .quests = {make_tm, catch_flying, sneak_up, pickup_10},
+            .extra_exclusions = {{sneak_up, BBQAction::reroll}},
+            .bp = 25,
+            .expected_to_do = {make_tm},
+            .expected_reroll_slots = {1, 2},
+        },
+        {
+            // Nothing else changes the panel, so BP does not hold it back.
+            .name = "nothing doable rerolls each quest not possible whatever the BP",
+            .quests = {photo_flying, auto_10, catch_flying},
+            .bp = 0,
+            .expected_reroll_slots = {0, 2},
         },
         {
             .name = "nothing doable and nothing not possible rerolls all",
