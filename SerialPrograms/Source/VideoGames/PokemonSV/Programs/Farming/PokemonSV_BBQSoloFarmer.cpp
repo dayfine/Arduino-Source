@@ -361,6 +361,11 @@ public:
         int BP = -1;
         std::vector<BBQuests> quests = PokemonSV::read_quests(m_env.program_info(), m_env.console, m_context, m_options, &BP);
         record_BP(BP);
+        std::string board = "Board:";
+        for (BBQuests quest : quests){
+            board += " " + BBQuests_enum_to_string(quest);
+        }
+        m_env.console.overlay().add_log(board, COLOR_WHITE);
         return quests;
     }
     virtual BBQuestBatch process_quest_list(
@@ -374,7 +379,11 @@ public:
         );
     }
     virtual bool do_quest(BBQuests quest, uint8_t& eggs_hatched, std::vector<BBQuests>& panel_after) override{
-        return process_and_do_quest(m_env, m_env.console, m_context, m_options, quest, eggs_hatched, &panel_after);
+        const std::string name = BBQuests_enum_to_string(quest);
+        m_env.console.overlay().add_log("Quest: " + name, COLOR_WHITE);
+        const bool completed = process_and_do_quest(m_env, m_env.console, m_context, m_options, quest, eggs_hatched, &panel_after);
+        m_env.console.overlay().add_log(name + (completed ? ": done" : ": not done"), completed ? COLOR_GREEN : COLOR_ORANGE);
+        return completed;
     }
     virtual std::optional<std::vector<BBQuests>> reroll_quest(BBQuests quest) override{
         int BP = -1;
@@ -385,6 +394,7 @@ public:
             m_env.log("Failed quest is no longer on the panel. Not rerolling.");
             return std::nullopt;
         }
+        m_env.console.overlay().add_log("Reroll: " + BBQuests_enum_to_string(quest), COLOR_YELLOW);
         return reroll_quest_slot(
             m_env.program_info(), m_env.console, m_context, m_options, quests, iter - quests.begin(),
             [this](int BP){ record_BP(BP); }
