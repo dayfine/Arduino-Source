@@ -7,8 +7,10 @@
 #ifndef PokemonAutomation_PokemonSV_BlueberryQuests_H
 #define PokemonAutomation_PokemonSV_BlueberryQuests_H
 
+#include <chrono>
 #include <functional>
 #include <optional>
+#include <string>
 #include <vector>
 #include "Common/Cpp/Time.h"
 #include "Common/Cpp/Logging/AbstractLogger.h"
@@ -208,6 +210,14 @@ void quest_travel_500(
 );
 
 //Run around until you encounter a pokemon. Tera, then defeat it by spamming your first move.
+// Send out the lead at whatever is in front and wait for a battle. If none starts,
+// turn the camera about a quarter at a time, up to three times, and try again.
+// Returns true once the battle menu shows.
+bool send_out_and_look_around(
+    ConsoleHandle& console, ProControllerContext& context,
+    std::chrono::seconds first_wait, const std::string& target
+);
+
 void quest_tera_self_defeat(
     const ProgramInfo& info,
     ConsoleHandle& console, ProControllerContext& context,
