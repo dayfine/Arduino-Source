@@ -1108,21 +1108,14 @@ void quest_wash_pokemon(const ProgramInfo& info, VideoStream& stream, ProControl
 
 namespace{
 
-// True if the slot under the box cursor holds an egg. The summary panel can lag the
-// cursor by a frame or two, so wait for it to settle and require two consecutive fresh
-// snapshots that both show an egg.
-bool box_cursor_slot_is_egg(VideoStream& stream, ProControllerContext& context){
-    BoxCurrentEggDetector egg_detector;
-    SomethingInBoxSlotDetector sth_in_box_detector(COLOR_RED);
+// True if the slot shows the egg icon. Like Egg Hatcher, this reads the slot's
+// sprite rather than the summary panel, which only tells eggs apart in the stats
+// view. The cursor lifts the sprite under it, so keep it off the slot.
+bool box_slot_is_egg(VideoStream& stream, ProControllerContext& context, BoxCursorLocation side, uint8_t row, uint8_t col){
     context.wait_for_all_requests();
-    for (int i = 0; i < 2; i++){
-        context.wait_for(std::chrono::milliseconds(300));
-        auto snapshot = stream.video().snapshot();
-        if (!sth_in_box_detector.detect(snapshot) || !egg_detector.detect(snapshot)){
-            return false;
-        }
-    }
-    return true;
+    context.wait_for(std::chrono::milliseconds(300));
+    BoxEggDetector egg_detector(side, row, col);
+    return egg_detector.detect(stream.video().snapshot());
 }
 
 }
@@ -1158,23 +1151,25 @@ void quest_hatch_egg(
     enter_box_system_from_overworld(env.program_info(), console, context);
     context.wait_for(std::chrono::milliseconds(400));
     
-    //move_to_left_box(context);
+    //Read every box slot from one frame, with the cursor on the party lead.
+    move_box_cursor(env.program_info(), console, context, BoxCursorLocation::PARTY, 0, 0);
+    context.wait_for_all_requests();
+    context.wait_for(std::chrono::milliseconds(300));
+    const VideoSnapshot box_screen = console.video().snapshot();
     bool egg_found = false;
     uint8_t row = 0;
     uint8_t col = 0;
-    for ( ; row < 5; row++){
-        for (uint8_t j_col = 0; j_col < 6; j_col++){
-            col = (row % 2 == 0 ? j_col : 5 - j_col);
-            move_box_cursor(env.program_info(), console, context, BoxCursorLocation::SLOTS, row, col);
-            if (box_cursor_slot_is_egg(console, context)){
-                console.log("Found egg.");
+    for ( ; row < 5 && !egg_found; row++){
+        for (col = 0; col < 6; col++){
+            if (BoxEggDetector(BoxCursorLocation::SLOTS, row, col).detect(box_screen)){
+                console.log("Found egg at row " + std::to_string(row) + ", column " + std::to_string(col) + ".");
                 egg_found = true;
                 break;
             }
         }
-        if (egg_found){
-            break;
-        }
+    }
+    if (egg_found){
+        row--;
     }
 
     if (!egg_found){
@@ -1184,8 +1179,9 @@ void quest_hatch_egg(
             BoxCursorLocation::SLOTS, row, col,
             BoxCursorLocation::PARTY, 0, 0);
 
-        //The cursor is now on the party lead. Make sure it is the egg before riding off.
-        if (!box_cursor_slot_is_egg(console, context)){
+        //Make sure the party lead is the egg before riding off. Move the cursor off it first.
+        move_box_cursor(env.program_info(), console, context, BoxCursorLocation::SLOTS, row, col);
+        if (!box_slot_is_egg(console, context, BoxCursorLocation::PARTY, 0, 0)){
             console.log("Party lead is not an egg after the swap. Swapping it back.", COLOR_RED);
         }else{
             leave_box_system_to_overworld(env.program_info(), console, context);
