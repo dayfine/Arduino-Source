@@ -104,6 +104,12 @@ struct BBQuestBatch{
     std::vector<BBQuests> to_do;
     std::optional<std::vector<BBQuests>> observed_panel;
 };
+//Expected seconds per completed quest (time per attempt / success rate), measured in lab
+//runs R3-R5, or nothing for a quest that was not measured.
+std::optional<double> expected_seconds_per_success(BBQuests quest);
+//Reorder quests so the cheapest by expected_seconds_per_success() run first. Quests that
+//were not measured keep their places; ties keep their order.
+void order_quests_by_cost(Logger& logger, std::vector<BBQuests>& quests);
 
 //The steps of rerolling one quest on the quest panel. They are injected so that the reroll
 //(which quest it pays for, when it gives up) runs in tests without a Switch.

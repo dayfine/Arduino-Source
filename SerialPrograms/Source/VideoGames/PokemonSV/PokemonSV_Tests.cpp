@@ -1434,12 +1434,43 @@ void add_tests_BBQFarmerRounds(UnitTestDatabase& database){
         {
             // Doing photo_swim also completes travel_500, so travel_500 is
             // gone when the loop reads the panel before attempting it.
+            // make_tm runs first, as the cheapest.
             .name = "quest already gone counts as completed",
             .num_quests = 3,
             .panel = {BBQuests::photo_swim, BBQuests::travel_500, BBQuests::make_tm},
             .also_completes = {{BBQuests::photo_swim, BBQuests::travel_500}},
             .expected_completed = 3,
-            .expected = "read process do completed read completed read do completed end",
+            .expected = "read process do completed read do completed read completed end",
+            .expected_attempted = {BBQuests::make_tm, BBQuests::photo_swim},
+        },
+        {
+            // Expected seconds per completion: make-tm 79, travel-500 89,
+            // auto-10 280.
+            .name = "doable quests run cheapest first",
+            .num_quests = 3,
+            .panel = {BBQuests::auto_10, BBQuests::travel_500, BBQuests::make_tm},
+            .expected_completed = 3,
+            .expected = round_of_3 + " end",
+            .expected_attempted = {BBQuests::make_tm, BBQuests::travel_500, BBQuests::auto_10},
+        },
+        {
+            // photo-swim 63 s at 71% (89 s), typed catch 137 s at 75%
+            // (183 s), tera-self 153 s at 59% (259 s).
+            .name = "success rate counts in the order",
+            .num_quests = 3,
+            .panel = {BBQuests::tera_self_defeat, BBQuests::catch_fire, BBQuests::photo_swim},
+            .expected_completed = 3,
+            .expected = round_of_3 + " end",
+            .expected_attempted = {BBQuests::photo_swim, BBQuests::catch_fire, BBQuests::tera_self_defeat},
+        },
+        {
+            // sneak_up has no measurement, so it stays in slot 2.
+            .name = "unmeasured quests keep their place",
+            .num_quests = 3,
+            .panel = {BBQuests::auto_10, BBQuests::sneak_up, BBQuests::make_tm},
+            .expected_completed = 3,
+            .expected = round_of_3 + " end",
+            .expected_attempted = {BBQuests::make_tm, BBQuests::sneak_up, BBQuests::auto_10},
         },
         {
             // The first attempt fails: 3 attempts, 2 completions.

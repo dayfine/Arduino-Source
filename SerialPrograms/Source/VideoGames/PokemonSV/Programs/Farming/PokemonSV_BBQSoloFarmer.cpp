@@ -241,6 +241,10 @@ void run_bbq_rounds(Logger& logger, const BBQOption& options, BBQGameActions& ga
         const uint64_t completed_before_round = num_completed_quests;
         bool replan_after_reroll = false;
         std::optional<std::vector<BBQuests>> rerolled_panel;
+        //Cheap, reliable quests first: a quest done early can also finish a later one (e.g.
+        //travel-500 while flying to a photo target), and a failure costs less of the round.
+        order_quests_by_cost(logger, quests_to_do);
+
         for (auto current_quest : quests_to_do){
             //Check if quest was already completed (ex. 500 meters completed while navigating to take a photo)
             if (dispatch_panel){
