@@ -1319,6 +1319,114 @@ void quest_tera_raid(
     day_skip_from_overworld(console, context);
 }
 
+void run_auto_battle(
+    Logger& logger,
+    BBQAutoBattleActions& actions,
+    const BBQAutoBattlePolicy& policy
+){
+    const WallClock start = actions.now();
+    uint64_t pass = 0;
+    while (actions.kills() < policy.kill_target){
+        pass++;
+        const uint64_t kills_before = actions.kills();
+
+        actions.fly_to_battle_area();
+        actions.clear();
+
+        const uint64_t kills = actions.kills();
+        const auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(actions.now() - start);
+        logger.log(
+            "Auto Battle pass " + std::to_string(pass) + ": "
+            + std::to_string(kills - kills_before) + " kills, "
+            + std::to_string(kills) + "/" + std::to_string(policy.kill_target) + " in total, "
+            + std::to_string(elapsed.count()) + " s elapsed. "
+            + (kills < policy.kill_target
+                ? "Below the target: return, heal and go again."
+                : "Target reached: return and heal.")
+        );
+
+        actions.return_to_plaza();
+        actions.heal();
+    }
+}
+
+namespace{
+
+class ConsoleBBQAutoBattleActions : public BBQAutoBattleActions{
+public:
+    ConsoleBBQAutoBattleActions(
+        ProgramEnvironment& env,
+        VideoStream& stream, ProControllerContext& context,
+        LetsGoEncounterBotStats& stats,
+        LetsGoEncounterBotTracker& tracker
+    )
+        : m_env(env), m_stream(stream), m_context(context)
+        , m_stats(stats), m_tracker(tracker)
+    {}
+
+    virtual uint64_t kills() const override{
+        return m_stats.m_kills;
+    }
+    virtual WallClock now() const override{
+        return current_time();
+    }
+    virtual void fly_to_battle_area() override{
+        central_to_chargestone(m_env.program_info(), m_stream, m_context);
+
+        //Wait for spawns
+        pbf_wait(m_context, 3000ms);
+        m_context.wait_for_all_requests();
+
+        //Forward and right, stay in the battle court - safe zone
+        pbf_press_button(m_context, BUTTON_L, 160ms, 400ms);
+        pbf_move_left_joystick(m_context, {0, +1}, 2000ms, 400ms);
+        pbf_move_left_joystick(m_context, {+1, 0}, 1440ms, 400ms);
+        pbf_press_button(m_context, BUTTON_L, 160ms, 400ms);
+    }
+    virtual void clear() override{
+        use_lets_go_to_clear_in_front(m_stream, m_context, m_tracker, false, [&](ProControllerContext& context){
+            pbf_move_left_joystick(context, {0, -1}, 1440ms, 400ms);
+            pbf_wait(context, 12000ms);
+            context.wait_for_all_requests();
+            });
+
+        m_context.wait_for_all_requests();
+    }
+    virtual void return_to_plaza() override{
+        PokemonSV::return_to_plaza(m_env.program_info(), m_stream, m_context);
+    }
+    virtual void heal() override{
+        OverworldWatcher done_healing(m_stream.logger(), COLOR_BLUE);
+        pbf_move_left_joystick(m_context, {0, +1}, 800ms, 160ms);
+
+        pbf_mash_button(m_context, BUTTON_A, 2400ms);
+        m_context.wait_for_all_requests();
+
+        int exit = run_until<ProControllerContext>(
+            m_stream, m_context,
+            [&](ProControllerContext& context){
+                pbf_mash_button(context, BUTTON_B, 16000ms);
+            },
+            { { done_healing } }
+            );
+        if (exit == 0){
+            m_stream.log("Overworld detected.");
+        }
+        open_map_from_overworld(m_env.program_info(), m_stream, m_context);
+        pbf_press_button(m_context, BUTTON_ZL, 320ms, 800ms);
+        fly_to_overworld_from_map(m_env.program_info(), m_stream, m_context);
+    }
+
+private:
+    ProgramEnvironment& m_env;
+    VideoStream& m_stream;
+    ProControllerContext& m_context;
+    LetsGoEncounterBotStats& m_stats;
+    LetsGoEncounterBotTracker& m_tracker;
+};
+
+}
+
 void quest_auto_battle(
     ProgramEnvironment& env,
     VideoStream& stream, ProControllerContext& context,
@@ -1339,55 +1447,15 @@ void quest_auto_battle(
         sensors.lets_go_kill
     );
 
-    uint64_t target_number = 10;
+    BBQAutoBattlePolicy policy;
+    policy.kill_target = 10;
 
     if (current_quest == BBQuests::auto_30){
-        target_number = 30;
+        policy.kill_target = 30;
     }
 
-    while (stats.m_kills < target_number){
-
-        central_to_chargestone(env.program_info(), stream, context);
-
-        //Wait for spawns
-        pbf_wait(context, 3000ms);
-        context.wait_for_all_requests();
-
-        //Forward and right, stay in the battle court - safe zone
-        pbf_press_button(context, BUTTON_L, 160ms, 400ms);
-        pbf_move_left_joystick(context, {0, +1}, 2000ms, 400ms);
-        pbf_move_left_joystick(context, {+1, 0}, 1440ms, 400ms);
-        pbf_press_button(context, BUTTON_L, 160ms, 400ms);
-
-        use_lets_go_to_clear_in_front(stream, context, tracker, false, [&](ProControllerContext& context){
-            pbf_move_left_joystick(context, {0, -1}, 1440ms, 400ms);
-            pbf_wait(context, 12000ms);
-            context.wait_for_all_requests();
-            });
-
-        context.wait_for_all_requests();
-        return_to_plaza(env.program_info(), stream, context);
-
-        OverworldWatcher done_healing(stream.logger(), COLOR_BLUE);
-        pbf_move_left_joystick(context, {0, +1}, 800ms, 160ms);
-
-        pbf_mash_button(context, BUTTON_A, 2400ms);
-        context.wait_for_all_requests();
-
-        int exit = run_until<ProControllerContext>(
-            stream, context,
-            [&](ProControllerContext& context){
-                pbf_mash_button(context, BUTTON_B, 16000ms);
-            },
-            { { done_healing } }
-            );
-        if (exit == 0){
-            stream.log("Overworld detected.");
-        }
-        open_map_from_overworld(env.program_info(), stream, context);
-        pbf_press_button(context, BUTTON_ZL, 320ms, 800ms);
-        fly_to_overworld_from_map(env.program_info(), stream, context);
-    }
+    ConsoleBBQAutoBattleActions actions(env, stream, context, stats, tracker);
+    run_auto_battle(stream.logger(), actions, policy);
 }
 
 
