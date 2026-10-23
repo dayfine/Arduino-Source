@@ -1044,22 +1044,31 @@ void quest_tera_self_defeat(
                 jump_glide_fly(console, context, BBQ_OPTIONS.INVERTED_FLIGHT, 8000ms, 12800ms, 2400ms);
             }
 
-            ssf_press_button(context, BUTTON_ZR, 0ms, 1600ms);
-            ssf_press_button(context, BUTTON_ZL, 800ms, 400ms);
-            ssf_press_button(context, BUTTON_ZL, 1200ms, 400ms);
+            //Send out the lead at whatever is in front and wait for a battle.
+            auto try_battle = [&](std::chrono::seconds timeout){
+                ssf_press_button(context, BUTTON_ZR, 0ms, 1600ms);
+                ssf_press_button(context, BUTTON_ZL, 800ms, 400ms);
+                ssf_press_button(context, BUTTON_ZL, 1200ms, 400ms);
 
-            pbf_wait(context, 2400ms);
-            context.wait_for_all_requests();
+                pbf_wait(context, 2400ms);
+                context.wait_for_all_requests();
 
-            NormalBattleMenuWatcher battle_menu(COLOR_YELLOW);
-            int ret2 = wait_until(
-                console, context,
-                std::chrono::seconds(15),
-                { battle_menu }
-            );
-            battle_menu_detected = ret2 == 0;
+                NormalBattleMenuWatcher battle_menu(COLOR_YELLOW);
+                return wait_until(console, context, timeout, { battle_menu }) == 0;
+            };
+
+            battle_menu_detected = try_battle(std::chrono::seconds(15));
+
+            //The glide lands in the right place, but Kleavor is absent ~40% of the time.
+            //Any wild Pokemon counts, and Scyther roam the area, so turn the camera
+            //about a quarter at a time and try again.
+            for (int turn = 1; turn <= 3 && !battle_menu_detected; turn++){
+                console.log("Did not enter battle. Did Kleavor spawn? Looking around (" + std::to_string(turn) + "/3).");
+                pbf_move_right_joystick(context, {+1, 0}, 480ms, 320ms);
+                battle_menu_detected = try_battle(std::chrono::seconds(6));
+            }
             if (!battle_menu_detected){
-                console.log("Did not enter battle. Did Kleavor spawn?");
+                console.log("Did not enter battle after looking around.");
             }
         },
         {
