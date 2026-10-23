@@ -537,6 +537,16 @@ bool process_and_do_quest(
 void quest_make_tm(const ProgramInfo& info, VideoStream& stream, ProControllerContext& context){
     stream.log("Quest: Make TM");
 
+    //The index of the last craftable TM in this program run. The machine opens on the first
+    //TM, and the craftable one moves only a few places between quests as materials run out,
+    //so starting there saves walking past the same uncraftable TMs (~2.5 s each) every time.
+    static WallClock last_tm_run = WallClock::min();
+    static int last_tm_index = 0;
+    if (last_tm_run != info.start_time){
+        last_tm_run = info.start_time;
+        last_tm_index = 0;
+    }
+
     //Mount and then dismount in case you're crouched
     pbf_press_button(context, BUTTON_PLUS, 160ms, 840ms);
     pbf_press_button(context, BUTTON_PLUS, 160ms, 840ms);
@@ -565,28 +575,62 @@ void quest_make_tm(const ProgramInfo& info, VideoStream& stream, ProControllerCo
     if (enter_machine == 0){
         stream.log("TM machine entered. Finding TM to make.");
 
-        int make_tm = run_until<ProControllerContext>(
-            stream, context,
-            [&](ProControllerContext& context){
-                for (int i = 0; i < 229; i++){ //229 is max number of TMs
-                    //click on tm
+        int make_tm = -1;
+        if (last_tm_index > 0){
+            stream.log("Trying TM " + std::to_string(last_tm_index + 1) + " first, the last one made.");
+            make_tm = run_until<ProControllerContext>(
+                stream, context,
+                [&](ProControllerContext& context){
+                    for (int i = 0; i < last_tm_index; i++){
+                        pbf_press_dpad(context, DPAD_RIGHT, 160ms, 160ms);
+                    }
                     pbf_press_button(context, BUTTON_A, 160ms, 400ms);
                     pbf_wait(context, 800ms);
                     context.wait_for_all_requests();
-
-                    //not craftable, close and move on to next
-                    pbf_press_button(context, BUTTON_A, 160ms, 400ms);
-                    pbf_press_dpad(context, DPAD_RIGHT, 160ms, 160ms);
-                    pbf_wait(context, 800ms);
-                    context.wait_for_all_requests();
+                },
+                {{ makeTM }}
+            );
+            context.wait_for_all_requests();
+            if (make_tm != 0){
+                stream.log("Not craftable. Scanning from the first TM.");
+                pbf_press_button(context, BUTTON_A, 160ms, 400ms);
+                for (int i = 0; i < last_tm_index; i++){
+                    pbf_press_dpad(context, DPAD_LEFT, 160ms, 160ms);
                 }
-            },
-            {{ makeTM }}
-        );
-        context.wait_for_all_requests();
+                pbf_wait(context, 800ms);
+                context.wait_for_all_requests();
+            }
+        }
+
+        if (make_tm != 0){
+            int tm_index = 0;
+            make_tm = run_until<ProControllerContext>(
+                stream, context,
+                [&](ProControllerContext& context){
+                    for (int i = 0; i < 229; i++){ //229 is max number of TMs
+                        //click on tm
+                        tm_index = i;
+                        pbf_press_button(context, BUTTON_A, 160ms, 400ms);
+                        pbf_wait(context, 800ms);
+                        context.wait_for_all_requests();
+
+                        //not craftable, close and move on to next
+                        pbf_press_button(context, BUTTON_A, 160ms, 400ms);
+                        pbf_press_dpad(context, DPAD_RIGHT, 160ms, 160ms);
+                        pbf_wait(context, 800ms);
+                        context.wait_for_all_requests();
+                    }
+                },
+                {{ makeTM }}
+            );
+            context.wait_for_all_requests();
+            if (make_tm == 0){
+                last_tm_index = tm_index;
+            }
+        }
 
         if (make_tm == 0){
-            stream.log("Craftable TM found. Making TM");
+            stream.log("Craftable TM found. Making TM " + std::to_string(last_tm_index + 1) + ".");
 
             pbf_mash_button(context, BUTTON_A, 1760ms);
             context.wait_for_all_requests();
