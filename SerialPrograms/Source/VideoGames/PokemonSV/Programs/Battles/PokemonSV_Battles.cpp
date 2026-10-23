@@ -324,7 +324,9 @@ void process_battle(
             stream, context,
             language,
             action.ball, action.ball_limit,
-            settings.USE_FIRST_MOVE_IF_CANNOT_THROW_BALL
+            settings.USE_FIRST_MOVE_IF_CANNOT_THROW_BALL,
+            nullptr,
+            settings.USE_FIRST_MOVE_BEFORE_THROWING
         );
         send_catch_notification(
             env,

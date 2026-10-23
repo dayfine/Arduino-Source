@@ -166,9 +166,11 @@ CatchResults basic_catcher(
     Language language,
     const std::string& ball_slug, uint16_t ball_limit,
     bool use_first_move_if_cant_throw,
-    std::function<void()> on_throw_lambda
+    std::function<void()> on_throw_lambda,
+    bool use_first_move_before_throwing
 ){
     uint16_t balls_used = 0;
+    bool first_move_used = false;
 
     bool caught = false;
     bool overworld_seen = false;
@@ -224,6 +226,16 @@ CatchResults basic_catcher(
                 battle_menu.move_to_slot(stream, context, 0);
                 pbf_mash_button(context, BUTTON_A, 3000ms);
                 pbf_mash_button(context, BUTTON_B, 3000ms);
+                last_move_attack = true;
+                break;
+            }
+
+            if (use_first_move_before_throwing && !first_move_used){
+                stream.log("BasicCatcher: Using the first move before throwing.");
+                battle_menu.move_to_slot(stream, context, 0);
+                pbf_mash_button(context, BUTTON_A, 3000ms);
+                pbf_mash_button(context, BUTTON_B, 3000ms);
+                first_move_used = true;
                 last_move_attack = true;
                 break;
             }

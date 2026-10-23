@@ -31,6 +31,13 @@ public:
             LockMode::UNLOCK_WHILE_RUNNING,
             true
         )
+        , USE_FIRST_MOVE_BEFORE_THROWING(
+            "<b>Use 1st Move Once Before Throwing Balls:</b><br>"
+            "When the action is to throw balls, use the 1st move once before the first throw, "
+            "e.g. Thunder Wave to paralyze the target. It must not deal damage.",
+            LockMode::UNLOCK_WHILE_RUNNING,
+            false
+        )
         , VIDEO_ON_SHINY(
             "<b>Video Capture:</b><br>Take a video of the encounter if it is shiny.",
             LockMode::UNLOCK_WHILE_RUNNING,
@@ -60,11 +67,13 @@ public:
     {
         PA_ADD_OPTION(ACTIONS_TABLE);
         PA_ADD_OPTION(USE_FIRST_MOVE_IF_CANNOT_THROW_BALL);
+        PA_ADD_OPTION(USE_FIRST_MOVE_BEFORE_THROWING);
         PA_ADD_OPTION(VIDEO_ON_SHINY);
     }
 
     EncounterActionsTable ACTIONS_TABLE;
     BooleanCheckBoxOption USE_FIRST_MOVE_IF_CANNOT_THROW_BALL;
+    BooleanCheckBoxOption USE_FIRST_MOVE_BEFORE_THROWING;
     BooleanCheckBoxOption VIDEO_ON_SHINY;
 
     EventNotificationOption NOTIFICATION_NONSHINY;
