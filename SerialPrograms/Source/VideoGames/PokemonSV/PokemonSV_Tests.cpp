@@ -529,7 +529,7 @@ struct BBQRoundsScenario{
     uint64_t expected_completed = 0;
     std::string expected;
     // Checked when not empty.
-    std::vector<BBQuests> expected_attempted;
+    std::vector<BBQuests> expected_attempted = {};
 };
 
 class Test_BBQFarmerRounds : public UnitTest{
