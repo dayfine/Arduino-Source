@@ -287,12 +287,12 @@ struct TerariumFlyScenario{
     std::string name;
     TerariumFlyPoint destination = TerariumFlyPoint::COASTAL_PLAZA;
     Language language = Language::English;
-    std::vector<bool> central_plaza_found;
-    std::vector<std::string> labels;
-    std::vector<bool> fly_point_under_cursor;
+    std::vector<bool> central_plaza_found = {};
+    std::vector<std::string> labels = {};
+    std::vector<bool> fly_point_under_cursor = {};
     bool expected_flew = true;
     std::string expected_steps;
-    std::vector<std::string> expected_log;  // Checked when not empty.
+    std::vector<std::string> expected_log = {}; // Checked when not empty.
 };
 
 class Test_TerariumFly : public UnitTest{
