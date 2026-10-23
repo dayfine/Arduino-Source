@@ -84,6 +84,8 @@ quests), `SAVE_NUM_QUESTS` = 10, language `chi_tra`.
 | R7 | + BP-check, ordering, Make TM resume, return bounds, kill count, C10 board read, no-trip chaining | 424 (40 min) | stopped by the hatch bug (C17); every new feature seen working |
 | R6 | + reroll impossible quests on sight (C15), eggs enabled | 644 | 35 quests; hatch red +220; 120/120 landings over R5+R6; catch-any completed after the #23 fix |
 | R8 | + hatch fix (C17), start-up fly-spot check | 509 (58 min) | hatch red +200 end to end; failed-hatch recovery restored the lead; 3 false starts fixed |
+| R9 | + C18 egg icon scan | ~440 (37 min) | 10 quests, net +270; no hatch quest drawn |
+| R10 | + Kleavor/Pride Rock look-around (#35), catch-any court (#36), catch-flying canyon, catch options; Camera Support turned off in-game | 507 (2h10) | 32 quests, net +1,100. Losses: pickup-10 via auto battle 0/10 after 40+ kills (now never run), Tera-self glide 1/6 (moved to the court). 12:44-13:03 ran with Camera Support ON: 0 kills in 6 Auto Battle passes. |
 
 Per-run details, Kleavor frame studies and the red-quest data are in
 `ROADMAP.md` ("Run log"). Upstream PRs: PokemonAutomation/Arduino-Source#1628,

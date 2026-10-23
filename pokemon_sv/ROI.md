@@ -65,6 +65,7 @@ the live runs needed to validate.
 | C15 reroll impossible on sight + eggs enabled | model 657 | 644 BP/h, 35 quests, hatch red +220 | R6 | inside MC band; #23 catch path seen working |
 | #26 (M15 step 1b) no-trip chaining | was estimated ~1.5 min/quest | agent measured ~5-20 s/quest | none | estimate was wrong; low priority |
 | C17 hatch fix (stats view, lead check, restore) + start-up fly-spot check | model 657 | 509 BP/h over 58 min, 13 quests, hatch red +200 | R8 | short run, inside MC p10-p90 (451-698); hatch works end to end |
+| R10 build (look-arounds, catch-any court, catch-flying, catch options) | model 657 | 507 BP/h over 2h10, 32 quests | R10 | below band: pickup-10 run as Auto Battle never completes (~26 min lost, 4 rerolls), Tera-self glide 1/6 (17 min, s/success 1023 vs 247 in R6). Make TM 6/7, sneak-up 3/5, travel 6/6, photos 5/5. Without those two losses ~690 BP/h. Camera Support ON gave 0 kills in Auto Battle. |
 
 ## Projection (Monte Carlo, `pokemon_sv/tools/roi_mc.py`)
 
