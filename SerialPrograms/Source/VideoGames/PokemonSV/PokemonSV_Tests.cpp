@@ -192,7 +192,7 @@ public:
 struct PlazaReturnCase{
     std::string name;
     std::string expected_banner;
-    std::vector<std::vector<std::string>> landings;
+    std::vector<std::vector<std::string>> landings = {};
     PlazaReturnResult result;
     std::vector<bool> overshoots;
     size_t banner_reads;
