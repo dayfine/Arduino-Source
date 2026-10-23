@@ -171,7 +171,8 @@ int read_BP(const ProgramInfo& info, VideoStream& stream, ProControllerContext& 
 std::vector<BBQuests> read_quests(
     const ProgramInfo& info,
     VideoStream& stream, ProControllerContext& context,
-    const BBQOption& BBQ_OPTIONS
+    const BBQOption& BBQ_OPTIONS,
+    int* BP
 ){
     std::vector<BBQuests> quest_list;
 
@@ -208,6 +209,11 @@ std::vector<BBQuests> read_quests(
     std::string fourth_quest = fourth_quest_detector.detect_quest(screen);
     if (fourth_quest != ""){
         quest_list.push_back(BBQuests_string_to_enum(fourth_quest));
+    }
+
+    //The balance is on the same panel, so reading it costs no extra button presses.
+    if (BP != nullptr){
+        *BP = read_BP_from_image(stream.logger(), screen);
     }
 
     //Close quest list
