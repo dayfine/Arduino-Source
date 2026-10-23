@@ -20,6 +20,7 @@
 #include "VideoGames/PokemonSV/Programs/PokemonSV_SaveGame.h"
 #include "VideoGames/PokemonSV/Programs/PokemonSV_MenuNavigation.h"
 #include "VideoGames/PokemonSV/Programs/PokemonSV_WorldNavigation.h"
+#include "VideoGames/PokemonSV/Programs/PokemonSV_Terarium.h"
 //#include "VideoGames/PokemonSV/PokemonSV_Settings.h"
 #include "VideoGames/PokemonSV/Programs/Farming/PokemonSV_BlueberryQuests.h"
 #include "VideoGames/PokemonSV/Programs/Farming/PokemonSV_BBQPointsLedger.h"
@@ -452,9 +453,9 @@ void BBQSoloFarmer::program(SingleSwitchProgramEnvironment& env, ProControllerCo
     //  Connect the controller.
     require_player(env.console, context, BUTTON_LCLICK);
     
-    //Fly to plaza
-    open_map_from_overworld(env.program_info(), env.console, context);
-    fly_to_overworld_from_map(env.program_info(), env.console, context);
+    //Fly to plaza. The program can start anywhere in the Terarium, so use the same
+    //checked return as after each quest instead of flying to the map cursor.
+    return_to_plaza(env.program_info(), env.console, context, BBQ_OPTIONS.LANGUAGE);
 
     //Test a specific quest
     /*
