@@ -28,6 +28,7 @@
 #include "PokemonSV_ConnectToInternet.h"
 #include "PokemonSV_WorldNavigation.h"
 
+#include <algorithm>
 #include <array>
 #include <cmath>
 #include <sstream>
@@ -531,8 +532,9 @@ bool fly_to_visible_closest_flypoint_cur_zoom_level(
 }
 
 
-void fly_to_closest_pokecenter_on_map(const ProgramInfo& info, VideoStream& stream, ProControllerContext& context){
+void fly_to_closest_pokecenter_on_map(const ProgramInfo& info, VideoStream& stream, ProControllerContext& context, int max_tries){
     const int MAX_TRY_COUNT = 17;
+    const int try_limit = std::clamp(max_tries, 1, MAX_TRY_COUNT);
     int try_count = 0;
     // Part 1: Tries to detect a pokecenter that is very close to the player
     // Zoom in one level onto the map.
@@ -556,7 +558,7 @@ void fly_to_closest_pokecenter_on_map(const ProgramInfo& info, VideoStream& stre
             break;
         }catch (OperationFailedException&){ // pokecenter was detected, but failed to fly there
             try_count++;
-            if (try_count >= MAX_TRY_COUNT){
+            if (try_count >= try_limit){
                 OperationFailedExceptionWithScreenshot::fire(
                     ErrorReportMode::SEND_ERROR_REPORT,
                     "fly_to_closest_pokecenter_on_map(): At min warpable map level, pokecenter was detected, but failed to fly there.",
@@ -608,7 +610,7 @@ void fly_to_closest_pokecenter_on_map(const ProgramInfo& info, VideoStream& stre
             }
         }catch (OperationFailedException&){ 
             try_count++;
-            if (try_count >= MAX_TRY_COUNT){
+            if (try_count >= try_limit){
                 // either: 
                 // - pokecenter was detected, but failed to fly there. 
                 // - could not find pokecenter icon.
