@@ -20,7 +20,6 @@
 #include "VideoGames/PokemonSV/Programs/PokemonSV_SaveGame.h"
 #include "VideoGames/PokemonSV/Programs/PokemonSV_MenuNavigation.h"
 #include "VideoGames/PokemonSV/Programs/PokemonSV_WorldNavigation.h"
-#include "VideoGames/PokemonSV/Programs/PokemonSV_Terarium.h"
 //#include "VideoGames/PokemonSV/PokemonSV_Settings.h"
 #include "VideoGames/PokemonSV/Programs/Farming/PokemonSV_BlueberryQuests.h"
 #include "VideoGames/PokemonSV/Programs/Farming/PokemonSV_BBQPointsLedger.h"
@@ -453,9 +452,12 @@ void BBQSoloFarmer::program(SingleSwitchProgramEnvironment& env, ProControllerCo
     //  Connect the controller.
     require_player(env.console, context, BUTTON_LCLICK);
     
-    //Fly to plaza. The program can start anywhere in the Terarium, including at
-    //Central Plaza itself.
-    return_to_plaza_from_anywhere(env.program_info(), env.console, context, BBQ_OPTIONS.LANGUAGE);
+    //Fly to plaza. Pressing "fly here" on the player only works at a fly spot,
+    //so stop with a setup error instead of retrying when there isn't one.
+    open_map_from_overworld(env.program_info(), env.console, context);
+    if (!fly_to_overworld_from_map(env.program_info(), env.console, context, true)){
+        throw UserSetupError(env.console, "No fly spot where the player stands. Start the program at Central Plaza.");
+    }
 
     //Test a specific quest
     /*

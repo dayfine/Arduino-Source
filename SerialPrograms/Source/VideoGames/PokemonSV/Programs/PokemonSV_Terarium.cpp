@@ -236,29 +236,6 @@ void return_to_plaza(const ProgramInfo& info, VideoStream& stream, ProController
     return_to_plaza_impl(info, stream, context, language, false);
 }
 
-void return_to_plaza_from_anywhere(const ProgramInfo& info, VideoStream& stream, ProControllerContext& context, Language language){
-    const std::string expected_banner = central_plaza_banner_to_check(language, OCR::ocr_language_available(language));
-    if (!expected_banner.empty()){
-        stream.log("Checking whether the player is at Central Plaza.");
-        open_map_from_overworld(info, stream, context);
-        if (fly_to_overworld_from_map(info, stream, context, true)){
-            PlazaReturnConsoleActions actions(info, stream, context, language, false);
-            auto matches = [&](const std::string& text){
-                return place_name_banner_matches(expected_banner, text);
-            };
-            const std::string banner = actions.read_landing_banner(matches);
-            if (matches(banner)){
-                stream.log("Already at Central Plaza (banner \"" + banner + "\").");
-                return;
-            }
-            stream.log("Flew to the spot here, but the banner read \"" + banner + "\".");
-        }else{
-            press_Bs_to_back_to_overworld(info, stream, context);
-        }
-    }
-    return_to_plaza(info, stream, context, language);
-}
-
 bool return_to_plaza_unless_battle(const ProgramInfo& info, VideoStream& stream, ProControllerContext& context, Language language){
     return return_to_plaza_impl(info, stream, context, language, true);
 }

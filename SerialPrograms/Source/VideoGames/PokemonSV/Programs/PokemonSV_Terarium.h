@@ -30,12 +30,6 @@ public:
     virtual const char* name() const override{ return "TerariumFlyFailedException"; }
 };
 
-// For program start, when the player may already be at Central Plaza: there the
-// player icon hides the plaza's Pokecenter icon, so return_to_plaza() can't find
-// it. Fly to the spot under the player first and keep it if the banner says Central
-// Plaza; otherwise use return_to_plaza().
-void return_to_plaza_from_anywhere(const ProgramInfo& info, VideoStream& stream, ProControllerContext& context, Language language);
-
 // Same as return_to_plaza(), but stops at the first wild battle instead of fleeing it.
 // Returns true with the battle menu open, or false once at Central Plaza.
 bool return_to_plaza_unless_battle(const ProgramInfo& info, VideoStream& stream, ProControllerContext& context, Language language);
