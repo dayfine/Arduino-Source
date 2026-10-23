@@ -514,6 +514,8 @@ file(GLOB LIBRARY_SOURCES
     Source/CommonFramework/AudioPipeline/ChannelMixer.h
     Source/CommonFramework/AudioPipeline/IO/AudioFileLoader.cpp
     Source/CommonFramework/AudioPipeline/IO/AudioFileLoader.h
+    Source/CommonFramework/AudioPipeline/IO/AudioFileLoader_Tests.cpp
+    Source/CommonFramework/AudioPipeline/IO/AudioFileLoader_Tests.h
     Source/CommonFramework/AudioPipeline/IO/AudioInputDevice.cpp
     Source/CommonFramework/AudioPipeline/IO/AudioInputDevice.h
     Source/CommonFramework/AudioPipeline/IO/AudioInputFile.cpp
@@ -1050,6 +1052,8 @@ file(GLOB LIBRARY_SOURCES
     Source/Kernels/AudioPipeline/Kernels_RawAudio2WorkingAudio.h
     Source/Kernels/AudioPipeline/Kernels_WorkingAudio2RawAudio.cpp
     Source/Kernels/AudioPipeline/Kernels_WorkingAudio2RawAudio.h
+    Source/Kernels/AudioPipeline/Kernels_WorkingAudio2WorkingAudio.cpp
+    Source/Kernels/AudioPipeline/Kernels_WorkingAudio2WorkingAudio.h
     Source/Kernels/AudioResampler/Kernels_AudioResampler.cpp
     Source/Kernels/AudioResampler/Kernels_AudioResampler.h
     Source/Kernels/AudioResampler/Kernels_AudioResampler_BlockKernel_Default.cpp
