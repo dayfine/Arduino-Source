@@ -162,12 +162,14 @@ BBQuestBatch process_quest_list(
 );
 
 //Take the current quest and calls the function to do it, then checks the quest was successful. Returns true if so.
+//If panel_after is given, it receives the quest panel read that checked the last attempt.
 bool process_and_do_quest(
     ProgramEnvironment& env,
     ConsoleHandle& console, ProControllerContext& context,
     BBQOption& BBQ_OPTIONS,
     BBQuests current_quest,
-    uint8_t& eggs_hatched
+    uint8_t& eggs_hatched,
+    std::vector<BBQuests>* panel_after = nullptr
 );
 
 //Iterate through TMs until a craftable one is found. Make the TM and return to position.
