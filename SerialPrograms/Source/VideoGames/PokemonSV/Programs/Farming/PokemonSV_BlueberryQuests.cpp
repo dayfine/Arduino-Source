@@ -1492,12 +1492,7 @@ void quest_hatch_egg(
     //Enter box system, navigate to left box, find the first egg, swap it with first pokemon in party
     enter_box_system_from_overworld(env.program_info(), console, context);
     context.wait_for(std::chrono::milliseconds(400));
-
-    //BoxCurrentEggDetector reads the summary panel, which only tells eggs apart
-    //in the stats or judge view. The party lead is not an egg, so switch there.
-    move_box_cursor(env.program_info(), console, context, BoxCursorLocation::PARTY, 0, 0);
-    change_view_to_stats_or_judge(console, context);
-
+    
     //move_to_left_box(context);
     bool egg_found = false;
     uint8_t row = 0;
