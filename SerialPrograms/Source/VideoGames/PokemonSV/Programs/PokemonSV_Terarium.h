@@ -7,8 +7,10 @@
 #ifndef PokemonAutomation_PokemonSV_Terarium_H
 #define PokemonAutomation_PokemonSV_Terarium_H
 
+#include "CommonFramework/Language.h"
 #include "CommonFramework/Tools/VideoStream.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
+#include "PokemonSV_TerariumFlyPoints.h"
 
 namespace PokemonAutomation{
     struct ProgramInfo;
@@ -25,6 +27,15 @@ void map_move_cursor_fly(
     double x, double y,
     Milliseconds hold, Milliseconds release,
     std::string location
+);
+
+// Fly to a Terarium fly point from anywhere in the Terarium. Before flying,
+// checks the fly point's name on the map when that name is known in
+// "language". Returns false, back in the overworld, if it couldn't get there.
+bool fly_to_terarium_point(
+    const ProgramInfo& info,
+    VideoStream& stream, ProControllerContext& context,
+    Language language, TerariumFlyPoint destination
 );
 
 // From central plaza, fly to the polar rest area
