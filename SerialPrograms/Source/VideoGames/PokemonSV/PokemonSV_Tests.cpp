@@ -73,6 +73,9 @@ public:
     std::vector<uint64_t> kills_per_clear;
     // The lead's HP read in each clear, in turn. Past the end, it is unknown.
     std::vector<std::optional<double>> hp_per_clear;
+    // Kills heard on each flight back, in turn: the lead finishing a kill
+    // after the clear ends. Past the end, none.
+    std::vector<uint64_t> kills_per_return;
 
     std::vector<std::string> steps;
     int seconds = 0;
@@ -103,6 +106,10 @@ public:
     virtual void return_to_plaza() override{
         steps.push_back("return");
         seconds += RETURN_SECONDS;
+        if (m_returns < kills_per_return.size()){
+            m_kills += kills_per_return[m_returns];
+        }
+        m_returns++;
     }
     virtual void heal() override{
         steps.push_back("heal");
@@ -112,6 +119,7 @@ public:
 private:
     uint64_t m_kills = 0;
     size_t m_clears = 0;
+    size_t m_returns = 0;
 };
 
 // One pass as it shows in the expected steps.
@@ -139,6 +147,7 @@ struct BBQAutoBattleScenario{
     int time_limit_minutes = 35;
     std::vector<uint64_t> kills_per_clear;
     std::vector<std::optional<double>> hp_per_clear = {}; // Unknown when not given.
+    std::vector<uint64_t> kills_per_return = {};        // None when not given.
     int heal_below_hp_percent = 50;
     BBQAutoBattleResult expected_result = BBQAutoBattleResult::TargetReached;
     std::string expected_steps;
@@ -157,6 +166,7 @@ public:
         ScriptedAutoBattle actions;
         actions.kills_per_clear = m_scenario.kills_per_clear;
         actions.hp_per_clear = m_scenario.hp_per_clear;
+        actions.kills_per_return = m_scenario.kills_per_return;
 
         RecordingLogger logger;
         BBQAutoBattlePolicy policy;
@@ -358,6 +368,43 @@ void add_tests_BBQAutoBattle(UnitTestDatabase& database){
             .expected_result = BBQAutoBattleResult::NoKills,
             .expected_steps = passes(3, LAST_PASS),
             .expected_seconds = 3 * (PASS_SECONDS - ScriptedAutoBattle::HEAL_SECONDS),
+        },
+        {
+            // R3b: "pass 2: 1 kills, 4/10 in total" after "2/10". A kill heard after a pass's
+            // line counts in the next one, so the passes add up to the total.
+            .name = "a kill heard on the way back counts in the next pass",
+            .kills_per_clear = {2, 1, 3, 4},
+            .kills_per_return = {1},
+            .expected_steps = passes(3) + " " + LAST_PASS,
+            .expected_seconds = 4 * PASS_SECONDS - LAST_PASS_SAVED_SECONDS,
+            .expected_log = {
+                "Auto Battle pass 1: 2 kills, 2/10 in total, HP ?, 46 s elapsed. Below the target and HP unknown: return, heal and go again.",
+                "Auto Battle pass 2: 2 kills, 4/10 in total, HP ?, 148 s elapsed. Below the target and HP unknown: return, heal and go again.",
+                "Auto Battle pass 3: 3 kills, 7/10 in total, HP ?, 250 s elapsed. Below the target and HP unknown: return, heal and go again.",
+                "Auto Battle pass 4: 4 kills, 11/10 in total, HP ?, 346 s elapsed. Target reached: return without healing.",
+            },
+        },
+        {
+            // A pass whose only kill was heard on the previous flight back is not empty.
+            .name = "a kill heard on the way back resets the empty passes",
+            .kills_per_clear = {0, 0, 0, 0, 0, 0},
+            .kills_per_return = {0, 1},
+            .expected_result = BBQAutoBattleResult::NoKills,
+            .expected_steps = passes(5) + " " + LAST_PASS,
+            .expected_seconds = 6 * PASS_SECONDS - ScriptedAutoBattle::HEAL_SECONDS,
+        },
+        {
+            .name = "a kill heard on the way back that reaches the target skips the heal",
+            .kills_per_clear = {3, 3, 3},
+            .kills_per_return = {0, 0, 1},
+            .expected_steps = passes(2) + " " + LAST_PASS,
+            .expected_seconds = 3 * PASS_SECONDS - ScriptedAutoBattle::HEAL_SECONDS,
+            .expected_log = {
+                "Auto Battle pass 1: 3 kills, 3/10 in total, HP ?, 46 s elapsed. Below the target and HP unknown: return, heal and go again.",
+                "Auto Battle pass 2: 3 kills, 6/10 in total, HP ?, 148 s elapsed. Below the target and HP unknown: return, heal and go again.",
+                "Auto Battle pass 3: 3 kills, 9/10 in total, HP ?, 250 s elapsed. Below the target and HP unknown: return, heal and go again.",
+                "Auto Battle: kills heard on the way back reached the target, 10/10. Stop without healing.",
+            },
         },
     };
     for (const BBQAutoBattleScenario& scenario : scenarios){
