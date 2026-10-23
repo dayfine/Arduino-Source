@@ -161,7 +161,7 @@ struct BBQAutoBattleScenario{
     std::vector<std::optional<double>> hp_per_clear = {}; // Unknown when not given.
     std::vector<uint64_t> kills_per_return = {};        // None when not given.
     uint64_t check_board_within_kills = 0;              // Off unless a scenario tests it.
-    std::vector<bool> quest_on_board_per_read;          // On the board when not given.
+    std::vector<bool> quest_on_board_per_read = {};     // On the board when not given.
     int heal_below_hp_percent = 50;
     BBQAutoBattleResult expected_result = BBQAutoBattleResult::TargetReached;
     std::string expected_steps;
