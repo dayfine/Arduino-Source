@@ -154,8 +154,8 @@ struct BBQRoundsScenario{
     std::vector<BBQuests> panel = {BBQuests::make_tm, BBQuests::auto_10, BBQuests::sneak_up};
     std::vector<bool> outcomes;
     std::vector<std::pair<BBQuests, BBQuests>> also_completes;
-    std::set<BBQuests> never_completes;
-    std::vector<BBQuests> new_quests;
+    std::set<BBQuests> never_completes = {};
+    std::vector<BBQuests> new_quests = {};
     uint64_t expected_completed = 0;
     std::string expected;
 };
