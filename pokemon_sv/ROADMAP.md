@@ -490,3 +490,18 @@ held 2 of 4 slots for 20+ min (C15). Stopped, added both to the reroll rows.
 **R6 (started 2026-10-22 15:19, `lab/r6` = `lab/r5` + C15 #25, profile bbq-r6
 without the flying reroll rows, so C15 does it).** Notes in
 `~/Projects/Arduino-Source-r6/build-prep/R6_BUILD.md`.
+Restarted twice in the first 11 min for settings: OUT_OF_EGGS was
+"keep-going", which skips hatch quests and blocks the red slot (the app warns
+of this); the user had 400+ eggs, so box 13 (30 eggs) was selected and
+NUM_EGGS = 30, OUT_OF_EGGS = reroll. **Final 15:30-17:30:** 35 quests, net
++1,240 (644 BP/h; in game 10334 -> 11574). No errors or stalls.
+- **C15:** impossible quests rerolled on sight; no "enough BP" stop (balance
+  ~10k). 14 rerolls total.
+- **Hatch red:** done in the first 4 min, +220 BP (largest single payout).
+- **#24 plaza check:** 47/47 confirmed first try (R5+R6: 120/120).
+- **#23:** first catch-any draws. 16:26 attempt 1: no battle -> heal skipped;
+  16:28 attempt 2: battle entered and handled (no early flee), ball thrown,
+  quest completed. Catch-on-return (battle on the way back) still not seen.
+- **Auto Battle 10:** 323, 138, 276, 269, 267 s; 0 heals in 22 passes.
+- **Kleavor:** 8 attempts, 3 misses.
+- Panel reads 92 for 35 completions (2.6), 22 reused.

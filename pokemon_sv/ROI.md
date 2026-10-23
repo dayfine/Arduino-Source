@@ -62,6 +62,7 @@ the live runs needed to validate.
 | #24 (C14) plaza arrival check | prevents R3's fatal stop | 61/61 landings confirmed, 0 false retries | R5 | confirmed, no BP/h change |
 | Exclusions for impossible quests (C15 workaround) | unblock 2 slots | R5a 259 -> R5b ~620 BP/h (2 reds done) | R5 | confirmed; C15 in R6 |
 | R5b overall (exclusions + #24) | model 657 | 604 BP/h, 34 quests | R5b | inside MC band |
+| C15 reroll impossible on sight + eggs enabled | model 657 | 644 BP/h, 35 quests, hatch red +220 | R6 | inside MC band; #23 catch path seen working |
 | #26 (M15 step 1b) no-trip chaining | was estimated ~1.5 min/quest | agent measured ~5-20 s/quest | none | estimate was wrong; low priority |
 
 ## Projection (Monte Carlo, `pokemon_sv/tools/roi_mc.py`)
