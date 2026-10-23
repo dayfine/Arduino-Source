@@ -120,7 +120,7 @@ struct BBQAutoBattleScenario{
     bool expected_endless = false;  // Runs past the script without stopping.
     std::string expected_steps;
     int expected_seconds = 0;
-    std::vector<std::string> expected_log;  // Checked when not empty.
+    std::vector<std::string> expected_log = {}; // Checked when not empty.
 };
 
 class Test_BBQAutoBattle : public UnitTest{
