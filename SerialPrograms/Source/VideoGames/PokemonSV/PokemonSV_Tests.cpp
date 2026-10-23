@@ -606,10 +606,19 @@ public:
         panel.missed_reads = m_scenario.missed_reads;
         panel.read_override = m_scenario.read_override;
 
-        NullLogger logger;
+        RecordingLogger logger;
         std::vector<BBQuests> quests = m_scenario.quests;
         std::optional<std::vector<BBQuests>> observed_panel;
         const BBQRerollResult result = reroll_quest(logger, panel, quests, m_scenario.slot, observed_panel);
+        //Each reroll logs one line naming its slot and quest, whatever the result.
+        const std::string reroll_line = "Rerolling quest " + std::to_string(m_scenario.slot + 1)
+            + " (" + BBQuests_enum_to_string(m_scenario.quests[m_scenario.slot]) + ").";
+        const size_t reroll_lines = std::count_if(logger.lines.begin(), logger.lines.end(), [](const std::string& line){
+            return line.starts_with("Rerolling quest ");
+        });
+        if (reroll_lines != 1 || std::find(logger.lines.begin(), logger.lines.end(), reroll_line) == logger.lines.end()){
+            return "Expected one log line \"" + reroll_line + "\", got " + std::to_string(reroll_lines) + " reroll lines.";
+        }
         if (result != m_scenario.expected){
             return "Expected " + reroll_result_to_string(m_scenario.expected)
                 + ", got " + reroll_result_to_string(result);

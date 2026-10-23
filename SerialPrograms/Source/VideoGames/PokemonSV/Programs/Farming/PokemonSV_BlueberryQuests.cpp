@@ -146,6 +146,15 @@ BBQuests BBQuests_string_to_enum(const std::string& token){
     return iter->second;
 }
 
+std::string BBQuests_enum_to_string(BBQuests quest){
+    for (const auto& [token, value] : BBQuests_TOKEN_TO_ENUM()){
+        if (value == quest && !token.empty()){
+            return token;
+        }
+    }
+    return "unknown";
+}
+
 int read_BP(const ProgramInfo& info, VideoStream& stream, ProControllerContext& context){
     WhiteButtonWatcher right_panel(COLOR_BLUE, WhiteButton::ButtonB, {0.484, 0.117, 0.022, 0.037});
     int result = run_until<ProControllerContext>(
@@ -408,6 +417,11 @@ BBQRerollResult reroll_quest(
     std::optional<std::vector<BBQuests>>& observed_panel
 ){
     observed_panel.reset();
+    //Every slot reroll logs this one line, whatever decided it, so a log shows each BP spent.
+    logger.log(
+        "Rerolling quest " + std::to_string(slot + 1) + " (" +
+        (slot < quests.size() ? BBQuests_enum_to_string(quests[slot]) : "unknown") + ")."
+    );
     if (!actions.open_panel()){
         return BBQRerollResult::PanelNotOpened;
     }

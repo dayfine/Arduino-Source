@@ -23,6 +23,8 @@ namespace NintendoSwitch{
 namespace PokemonSV{
 
 BBQuests BBQuests_string_to_enum(const std::string& token);
+//The slug of a quest, as quest reads log it (e.g. "pickup-10"), or "unknown".
+std::string BBQuests_enum_to_string(BBQuests quest);
 
 enum class CameraAngle{
     none,
