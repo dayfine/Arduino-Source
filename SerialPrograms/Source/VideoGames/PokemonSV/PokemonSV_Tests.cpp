@@ -165,7 +165,7 @@ public:
 struct BBQRerollScenario{
     std::string name;
     std::vector<BBQuests> quests;
-    std::vector<BBQuests> replacements;
+    std::vector<BBQuests> replacements = {};
     size_t slot;
     size_t cursor = 0;
     bool panel_opens = true;
@@ -173,7 +173,7 @@ struct BBQRerollScenario{
     bool out_of_bp = false;
     int missed_reads = 0;
     BBQRerollResult expected;
-    std::vector<size_t> expected_rerolled_slots;
+    std::vector<size_t> expected_rerolled_slots = {};
     std::vector<BBQuests> expected_quests;
 };
 
