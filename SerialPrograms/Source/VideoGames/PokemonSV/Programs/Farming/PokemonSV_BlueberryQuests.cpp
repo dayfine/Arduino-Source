@@ -760,7 +760,6 @@ bool process_and_do_quest(
                 break;
             case BBQuests::auto_10:
             case BBQuests::auto_30:
-            case BBQuests::pickup_10:   //Items the Let's Go lead brings back count as pickups.
                 quest_auto_battle(env, console, context, BBQ_OPTIONS, current_quest);
                 break;
             //All involve taking pictures
@@ -1060,21 +1059,18 @@ void quest_tera_self_defeat(
     int ret = run_until<ProControllerContext>(
         console, context,
         [&](ProControllerContext& context){
-            central_to_canyon_plaza(info, console, context);
+            //Any wild Pokemon counts. The Chargestone battle court, where Auto Battle and
+            //catch-any go, has many spawns; the glide to Kleavor often started no battle.
+            central_to_chargestone(info, console, context);
+            pbf_wait(context, 3000ms);
+            context.wait_for_all_requests();
 
-            pbf_move_left_joystick(context, {+0.606, +0.5}, 160ms, 840ms);
-            pbf_press_button(context, BUTTON_L | BUTTON_PLUS, 160ms, 840ms);
+            pbf_press_button(context, BUTTON_L, 160ms, 400ms);
+            pbf_move_left_joystick(context, {0, +1}, 2000ms, 400ms);
+            pbf_move_left_joystick(context, {+1, 0}, 1440ms, 400ms);
+            pbf_press_button(context, BUTTON_L, 160ms, 400ms);
 
-            //Drop on top of Kleavor (plenty of Scyther in the area as well)
-            if (console.state().console_type() == ConsoleType::Switch1){
-                jump_glide_fly(console, context, BBQ_OPTIONS.INVERTED_FLIGHT, 8000ms, 13200ms, 2400ms);
-            }else{ //All switch 2s
-                jump_glide_fly(console, context, BBQ_OPTIONS.INVERTED_FLIGHT, 8000ms, 12800ms, 2400ms);
-            }
-
-            //The glide lands in the right place, but Kleavor is absent ~40% of the time.
-            //Any wild Pokemon counts, and Scyther roam the area.
-            battle_menu_detected = send_out_and_look_around(console, context, std::chrono::seconds(15), "Kleavor");
+            battle_menu_detected = send_out_and_look_around(console, context, std::chrono::seconds(6), "a wild Pokemon");
         },
         {
             static_cast<VisualInferenceCallback&>(encounter_watcher),
@@ -1098,15 +1094,7 @@ void quest_tera_self_defeat(
         console.log("Battle entry not confirmed. Skipping battle handling.");
         break;
     }
-    pbf_press_button(context, BUTTON_PLUS, 160ms, 840ms);
     return_to_plaza(info, console, context, BBQ_OPTIONS.LANGUAGE);
-
-    //Day skip and attempt to respawn fixed encounters
-    pbf_press_button(context, BUTTON_HOME, 160ms, GameSettings::instance().GAME_TO_HOME_DELAY1);
-    home_to_date_time(console, context, true);
-    roll_date_forward_1(console, context, true);
-    pbf_press_button(context, BUTTON_HOME, 160ms, ConsoleSettings::instance().SETTINGS_TO_HOME_DELAY0);
-    resume_game_from_home(console, context);
 
     //Heal up and then reset position again.
     OverworldWatcher done_healing(console.logger(), COLOR_BLUE);
@@ -1929,7 +1917,7 @@ void quest_auto_battle(
     const BBQOption& BBQ_OPTIONS,
     BBQuests current_quest
 ){
-    stream.log("Quest: Auto Battle 10/30, or pick up 10 items");
+    stream.log("Quest: Auto Battle 10/30");
 
 
     OverworldSensors sensors(

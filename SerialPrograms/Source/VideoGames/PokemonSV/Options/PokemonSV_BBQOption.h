@@ -101,7 +101,8 @@ public:
 
     //Quests the program cannot do. They are rerolled, or skipped without the BP to reroll them.
     //Not a setting yet; tests set their own.
-    std::set<BBQuests> NOT_POSSIBLE_QUESTS = {BBQuests::UnableToDetect};
+    //pickup_10 needs items picked up on the ground: Let's Go kills don't count (0/10 after 40+ kills).
+    std::set<BBQuests> NOT_POSSIBLE_QUESTS = {BBQuests::UnableToDetect, BBQuests::pickup_10};
 
     BooleanCheckBoxOption INVERTED_FLIGHT;
 
