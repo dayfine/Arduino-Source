@@ -168,15 +168,15 @@ struct BBQAutoBattleScenario{
     uint64_t kill_target = 10;
     int time_limit_minutes = 35;
     std::vector<uint64_t> kills_per_clear;
-    std::vector<std::optional<double>> hp_per_clear;    // Unknown when not given.
-    std::vector<uint64_t> kills_per_return;             // None when not given.
+    std::vector<std::optional<double>> hp_per_clear = {}; // Unknown when not given.
+    std::vector<uint64_t> kills_per_return = {};        // None when not given.
     uint64_t check_board_within_kills = 0;              // Off unless a scenario tests it.
-    std::vector<bool> quest_on_board_per_read;          // On the board when not given.
+    std::vector<bool> quest_on_board_per_read = {};     // On the board when not given.
     int heal_below_hp_percent = 50;
     BBQAutoBattleResult expected_result = BBQAutoBattleResult::TargetReached;
     std::string expected_steps;
     int expected_seconds = 0;
-    std::vector<std::string> expected_log;  // Checked when not empty.
+    std::vector<std::string> expected_log = {}; // Checked when not empty.
 };
 
 class Test_BBQAutoBattle : public UnitTest{
@@ -559,13 +559,13 @@ public:
 struct BBQuestPlanScenario{
     std::string name;
     std::vector<BBQuests> quests;
-    std::vector<std::pair<BBQuests, BBQAction>> extra_exclusions;
+    std::vector<std::pair<BBQuests, BBQAction>> extra_exclusions = {};
     std::optional<int> bp = 1000;
     uint8_t num_eggs = 1;
     uint8_t eggs_hatched = 0;
     BBQOption::OOEggs out_of_eggs = BBQOption::OOEggs::Reroll;
-    std::vector<BBQuests> expected_to_do;
-    std::vector<size_t> expected_reroll_slots;
+    std::vector<BBQuests> expected_to_do = {};
+    std::vector<size_t> expected_reroll_slots = {};
     bool expected_reroll_all = false;
 };
 
@@ -681,18 +681,18 @@ public:
 struct BBQRerollScenario{
     std::string name;
     std::vector<BBQuests> quests;
-    std::vector<BBQuests> replacements;
+    std::vector<BBQuests> replacements = {};
     size_t slot;
     size_t cursor = 0;
     bool panel_opens = true;
     bool menu_seen = true;
     bool out_of_bp = false;
     int missed_reads = 0;
-    std::optional<std::vector<BBQuests>> read_override;
+    std::optional<std::vector<BBQuests>> read_override = {};
     BBQRerollResult expected;
-    std::vector<size_t> expected_rerolled_slots;
+    std::vector<size_t> expected_rerolled_slots = {};
     std::vector<BBQuests> expected_quests;
-    std::optional<std::vector<BBQuests>> expected_observed_panel;
+    std::optional<std::vector<BBQuests>> expected_observed_panel = {};
 };
 
 std::string reroll_result_to_string(BBQRerollResult result){
@@ -1322,19 +1322,19 @@ struct BBQRoundsScenario{
     uint64_t save_num_quests = 0;
     bool stop_when_out_of_eggs = false;
     std::vector<BBQuests> panel = {BBQuests::make_tm, BBQuests::auto_10, BBQuests::sneak_up};
-    std::vector<bool> outcomes;
-    std::vector<std::pair<BBQuests, BBQuests>> also_completes;
-    std::set<BBQuests> never_completes;
-    std::vector<BBQuests> new_quests;
+    std::vector<bool> outcomes = {};
+    std::vector<std::pair<BBQuests, BBQuests>> also_completes = {};
+    std::set<BBQuests> never_completes = {};
+    std::vector<BBQuests> new_quests = {};
     BBQOption::OutOfRetries out_of_retries = BBQOption::OutOfRetries::Skip;
-    std::vector<std::pair<BBQuests, BBQAction>> exclusions;
+    std::vector<std::pair<BBQuests, BBQAction>> exclusions = {};
     bool out_of_bp = false;
-    std::set<BBQuests> table_rerolls;
+    std::set<BBQuests> table_rerolls = {};
     bool reuse_rerolled_panel = false;
     bool plan_with_plan_quests = false;
     uint64_t expected_completed = 0;
-    std::vector<BBQuests> expected_attempted;
-    std::optional<size_t> expected_reads;
+    std::vector<BBQuests> expected_attempted = {};
+    std::optional<size_t> expected_reads = {};
     std::string expected;
 };
 
@@ -1898,7 +1898,7 @@ struct BBQPointsLedgerScenario{
         int minute;
     };
     std::string name;
-    std::vector<Read> reads;
+    std::vector<Read> reads = {};
     int expected_start = -1;
     uint64_t expected_earned = 0;
     uint64_t expected_spent = 0;
@@ -2217,8 +2217,8 @@ private:
 struct PlazaReturnCase{
     std::string name;
     std::string expected_banner;
-    std::vector<std::vector<std::string>> landings;
-    std::vector<bool> fly_results;
+    std::vector<std::vector<std::string>> landings = {};
+    std::vector<bool> fly_results = {};
     PlazaReturnResult result;
     std::vector<bool> overshoots;
     size_t banner_reads;
