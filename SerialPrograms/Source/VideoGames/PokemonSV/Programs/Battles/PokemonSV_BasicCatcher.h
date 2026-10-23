@@ -48,7 +48,8 @@ CatchResults basic_catcher(
     const std::string& ball_slug, uint16_t ball_limit,
     bool use_first_move_if_cant_throw,
     std::function<void()> on_throw_lambda = nullptr,
-    bool use_first_move_before_throwing = false
+    bool use_first_move_before_throwing = false,
+    uint8_t switch_to_slot_before_throwing = 0
 );
 
 

@@ -9,6 +9,7 @@
 
 #include "Common/Cpp/Options/BatchOption.h"
 #include "Common/Cpp/Options/BooleanCheckBoxOption.h"
+#include "Common/Cpp/Options/SimpleIntegerOption.h"
 #include "CommonFramework/Notifications/EventNotificationOption.h"
 #include "Pokemon/Pokemon_Strings.h"
 #include "PokemonSV_EncounterActionsTable.h"
@@ -30,6 +31,13 @@ public:
             "Therefore, your first move should be non-damaging to avoid killing the wild " + STRING_POKEMON + ".",
             LockMode::UNLOCK_WHILE_RUNNING,
             true
+        )
+        , SWITCH_TO_SLOT_BEFORE_THROWING(
+            "<b>Switch to Party Slot Before Throwing Balls:</b><br>"
+            "When the action is to throw balls, first switch to this party slot (2-6), "
+            "e.g. a " + STRING_POKEMON + " with a paralysis move for the option below. 0 = don't switch.",
+            LockMode::UNLOCK_WHILE_RUNNING,
+            0, 0, 6
         )
         , USE_FIRST_MOVE_BEFORE_THROWING(
             "<b>Use 1st Move Once Before Throwing Balls:</b><br>"
@@ -67,12 +75,14 @@ public:
     {
         PA_ADD_OPTION(ACTIONS_TABLE);
         PA_ADD_OPTION(USE_FIRST_MOVE_IF_CANNOT_THROW_BALL);
+        PA_ADD_OPTION(SWITCH_TO_SLOT_BEFORE_THROWING);
         PA_ADD_OPTION(USE_FIRST_MOVE_BEFORE_THROWING);
         PA_ADD_OPTION(VIDEO_ON_SHINY);
     }
 
     EncounterActionsTable ACTIONS_TABLE;
     BooleanCheckBoxOption USE_FIRST_MOVE_IF_CANNOT_THROW_BALL;
+    SimpleIntegerOption<uint8_t> SWITCH_TO_SLOT_BEFORE_THROWING;
     BooleanCheckBoxOption USE_FIRST_MOVE_BEFORE_THROWING;
     BooleanCheckBoxOption VIDEO_ON_SHINY;
 

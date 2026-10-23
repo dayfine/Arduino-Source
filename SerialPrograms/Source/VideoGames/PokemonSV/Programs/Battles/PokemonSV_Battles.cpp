@@ -326,7 +326,8 @@ void process_battle(
             action.ball, action.ball_limit,
             settings.USE_FIRST_MOVE_IF_CANNOT_THROW_BALL,
             nullptr,
-            settings.USE_FIRST_MOVE_BEFORE_THROWING
+            settings.USE_FIRST_MOVE_BEFORE_THROWING,
+            settings.SWITCH_TO_SLOT_BEFORE_THROWING
         );
         send_catch_notification(
             env,

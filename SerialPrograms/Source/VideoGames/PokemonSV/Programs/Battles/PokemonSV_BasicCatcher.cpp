@@ -167,9 +167,11 @@ CatchResults basic_catcher(
     const std::string& ball_slug, uint16_t ball_limit,
     bool use_first_move_if_cant_throw,
     std::function<void()> on_throw_lambda,
-    bool use_first_move_before_throwing
+    bool use_first_move_before_throwing,
+    uint8_t switch_to_slot_before_throwing
 ){
     uint16_t balls_used = 0;
+    bool switched = switch_to_slot_before_throwing < 2 || switch_to_slot_before_throwing > 6;
     bool first_move_used = false;
 
     bool caught = false;
@@ -230,6 +232,26 @@ CatchResults basic_catcher(
                 break;
             }
 
+            if (!switched){
+                switched = true;
+                last_move_attack = true;
+                stream.log("BasicCatcher: Switching to party slot " + std::to_string(switch_to_slot_before_throwing) + " before throwing.");
+                battle_menu.move_to_slot(stream, context, 1);
+                pbf_press_button(context, BUTTON_A, 160ms, 840ms);
+                context.wait_for_all_requests();
+                SwapMenuWatcher swap_menu(COLOR_BLUE);
+                if (wait_until(stream, context, std::chrono::seconds(10), {swap_menu}) != 0 ||
+                    !swap_menu.move_to_slot(stream, context, (uint8_t)(switch_to_slot_before_throwing - 1))
+                ){
+                    stream.log("BasicCatcher: Unable to switch. Throwing balls without switching.", COLOR_RED);
+                    pbf_mash_button(context, BUTTON_B, 2000ms);
+                    break;
+                }
+                pbf_press_button(context, BUTTON_A, 160ms, 840ms);
+                pbf_press_button(context, BUTTON_A, 160ms, 840ms);
+                pbf_mash_button(context, BUTTON_B, 2000ms);
+                break;
+            }
             if (use_first_move_before_throwing && !first_move_used){
                 stream.log("BasicCatcher: Using the first move before throwing.");
                 battle_menu.move_to_slot(stream, context, 0);
