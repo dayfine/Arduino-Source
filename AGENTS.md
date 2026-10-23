@@ -20,7 +20,7 @@ Instructions for AI coding agents working on this repository. People should read
   `/W4 /WX` with MSVC and clang-cl. The Windows clang-cl build warns about things macOS and Linux
   don't, e.g. `-Wmissing-designated-field-initializers`: give struct fields used with designated
   initializers a default (`= {}`).
-- New `.cpp`/`.h` files must be added to `SerialPrograms/SourceFiles.cmake`.
+- New `.cpp`/`.h` files must be added to `SerialPrograms/cmake/SourceFiles.cmake`.
 
 ## Source files
 
