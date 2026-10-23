@@ -124,7 +124,7 @@ struct BBQPointsLedgerScenario{
         int minute;
     };
     std::string name;
-    std::vector<Read> reads;
+    std::vector<Read> reads = {};
     int expected_start = -1;
     uint64_t expected_earned = 0;
     uint64_t expected_spent = 0;
