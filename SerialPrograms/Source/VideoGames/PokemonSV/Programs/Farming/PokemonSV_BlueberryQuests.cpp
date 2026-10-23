@@ -1106,6 +1106,27 @@ void quest_wash_pokemon(const ProgramInfo& info, VideoStream& stream, ProControl
     context.wait_for_all_requests();
 }
 
+namespace{
+
+// True if the slot under the box cursor holds an egg. The summary panel can lag the
+// cursor by a frame or two, so wait for it to settle and require two consecutive fresh
+// snapshots that both show an egg.
+bool box_cursor_slot_is_egg(VideoStream& stream, ProControllerContext& context){
+    BoxCurrentEggDetector egg_detector;
+    SomethingInBoxSlotDetector sth_in_box_detector(COLOR_RED);
+    context.wait_for_all_requests();
+    for (int i = 0; i < 2; i++){
+        context.wait_for(std::chrono::milliseconds(300));
+        auto snapshot = stream.video().snapshot();
+        if (!sth_in_box_detector.detect(snapshot) || !egg_detector.detect(snapshot)){
+            return false;
+        }
+    }
+    return true;
+}
+
+}
+
 void quest_hatch_egg(
     ProgramEnvironment& env,
     ConsoleHandle& console, ProControllerContext& context,
@@ -1138,8 +1159,6 @@ void quest_hatch_egg(
     context.wait_for(std::chrono::milliseconds(400));
     
     //move_to_left_box(context);
-    BoxCurrentEggDetector egg_detector;
-    SomethingInBoxSlotDetector sth_in_box_detector(COLOR_RED);
     bool egg_found = false;
     uint8_t row = 0;
     uint8_t col = 0;
@@ -1147,9 +1166,7 @@ void quest_hatch_egg(
         for (uint8_t j_col = 0; j_col < 6; j_col++){
             col = (row % 2 == 0 ? j_col : 5 - j_col);
             move_box_cursor(env.program_info(), console, context, BoxCursorLocation::SLOTS, row, col);
-            context.wait_for_all_requests();
-            auto snapshot = console.video().snapshot();
-            if (sth_in_box_detector.detect(snapshot) && egg_detector.detect(snapshot)){
+            if (box_cursor_slot_is_egg(console, context)){
                 console.log("Found egg.");
                 egg_found = true;
                 break;
@@ -1167,12 +1184,23 @@ void quest_hatch_egg(
             BoxCursorLocation::SLOTS, row, col,
             BoxCursorLocation::PARTY, 0, 0);
 
-        leave_box_system_to_overworld(env.program_info(), console, context);
+        //The cursor is now on the party lead. Make sure it is the egg before riding off.
+        if (!box_cursor_slot_is_egg(console, context)){
+            console.log("Party lead is not an egg after the swap. Swapping it back.", COLOR_RED);
+        }else{
+            leave_box_system_to_overworld(env.program_info(), console, context);
 
-        hatch_eggs_anywhere(env, console, context, true, 1);
+            //If the hatch fails, still put the lead back in its box slot.
+            //The quest stays on the list, so it counts as a failed attempt.
+            try{
+                hatch_eggs_anywhere(env, console, context, true, 1);
+            }catch (OperationFailedException& e){
+                console.log("Egg hatch failed: " + e.message() + " Restoring the party lead.", COLOR_RED);
+            }
 
-        enter_box_system_from_overworld(env.program_info(), console, context);
-        context.wait_for(std::chrono::milliseconds(400));
+            enter_box_system_from_overworld(env.program_info(), console, context);
+            context.wait_for(std::chrono::milliseconds(400));
+        }
 
         swap_two_box_slots(env.program_info(), console, context,
             BoxCursorLocation::PARTY, 0, 0,
