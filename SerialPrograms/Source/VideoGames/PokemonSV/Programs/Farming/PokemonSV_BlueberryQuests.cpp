@@ -45,6 +45,9 @@
 #include "PokemonSV_BlueberryQuests.h"
 
 #include<vector>
+#include <chrono>
+#include "Common/Cpp/PrettyPrint.h"
+#include "CommonFramework/GlobalAutoPaths.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -140,6 +143,21 @@ BBQuests BBQuests_string_to_enum(const std::string& token){
     return iter->second;
 }
 
+std::string BBQuests_enum_to_string(BBQuests quest){
+    for (const auto& item : BBQuests_TOKEN_TO_ENUM()){
+        if (item.second == quest){
+            return item.first.empty() ? "unknown" : item.first;
+        }
+    }
+    return "unknown";
+}
+
+void log_bbq_snapshot(VideoStream& stream, const std::string& label){
+    const std::string path = DEBUG_PATH() + "BBQ/" + now_to_filestring() + "-" + label + ".png";
+    const bool saved = stream.video().snapshot()->save(path);
+    stream.log("BBQ event=snapshot saved=" + std::to_string(saved) + " path=" + path);
+}
+
 int read_BP(const ProgramInfo& info, VideoStream& stream, ProControllerContext& context){
     WhiteButtonWatcher right_panel(COLOR_BLUE, WhiteButton::ButtonB, {0.484, 0.117, 0.022, 0.037});
     int result = run_until<ProControllerContext>(
@@ -159,8 +177,9 @@ int read_BP(const ProgramInfo& info, VideoStream& stream, ProControllerContext& 
     context.wait_for_all_requests();
     
     VideoSnapshot screen = stream.video().snapshot();
+    // Stop before the BP suffix: its left edge can be misread as an extra 1.
     ImageRGB32 BP_value = to_blackwhite_rgb32_range(
-        extract_box_reference(screen, ImageFloatBox(0.866, 0.019, 0.091, 0.041)),
+        extract_box_reference(screen, ImageFloatBox(0.866, 0.019, 0.088, 0.041)),
         true,
         combine_rgb(198, 198, 198), combine_rgb(255, 255, 255)
     );
@@ -213,6 +232,22 @@ std::vector<BBQuests> read_quests(
     if (fourth_quest != ""){
         quest_list.push_back(BBQuests_string_to_enum(fourth_quest));
     }
+
+    // Reuse the board snapshot: no extra menu navigation or capture.
+    // Stop before the BP suffix: its left edge can be misread as an extra 1.
+    ImageRGB32 BP_value = to_blackwhite_rgb32_range(
+        extract_box_reference(screen, ImageFloatBox(0.866, 0.019, 0.088, 0.041)),
+        true, combine_rgb(198, 198, 198), combine_rgb(255, 255, 255)
+    );
+    int bp = result == 0 ? OCR::read_number(stream.logger(), BP_value) : -1;
+    std::string board;
+    for (BBQuests quest : quest_list){
+        if (!board.empty()) board += ",";
+        board += BBQuests_enum_to_string(quest);
+    }
+    stream.log("BBQ event=board panel_detected=" + std::to_string(result == 0)
+        + " bp=" + (bp < 0 ? std::string("unknown") : std::to_string(bp))
+        + " quests=" + board);
 
     //Close quest list
     pbf_mash_button(context, BUTTON_B, 800ms);
@@ -412,7 +447,12 @@ bool process_and_do_quest(
     bool quest_completed = false;
     int quest_attempts = 0;
 
+    const std::string slug = BBQuests_enum_to_string(current_quest);
     while (!quest_completed){
+        const auto attempt_start = std::chrono::steady_clock::now();
+        const std::string attempt = "BBQ quest=" + slug + " attempt=" + std::to_string(quest_attempts + 1)
+            + " limit=" + std::to_string((unsigned)BBQ_OPTIONS.NUM_RETRIES + 1);
+        console.log(attempt + " event=start");
         switch (current_quest){
         case BBQuests::make_tm:
             quest_make_tm(env.program_info(), console, context);
@@ -511,10 +551,14 @@ bool process_and_do_quest(
             break;
         }
 
+        const auto route_end = std::chrono::steady_clock::now();
+        console.log(attempt + " event=route_return elapsed_ms=" + std::to_string(
+            std::chrono::duration_cast<std::chrono::milliseconds>(route_end - attempt_start).count()));
         //Validate quest was completed by checking list
         std::vector<BBQuests> quest_list = read_quests(env.program_info(), console, context, BBQ_OPTIONS);
         if (std::find(quest_list.begin(), quest_list.end(), current_quest) != quest_list.end()){
             console.log("Current quest exists on list. Quest did not complete.");
+            log_bbq_snapshot(console, slug + "-verification-failed");
             quest_attempts++;
         }else{
             console.log("Current quest was not found. Quest completed!");
@@ -526,7 +570,13 @@ bool process_and_do_quest(
             quest_completed = true;
         }
 
+        console.log(attempt + " event=result outcome=" + (quest_completed ? "absent_from_board" : "still_on_board")
+            + " verification_ms=" + std::to_string(std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::steady_clock::now() - route_end).count())
+            + " total_ms=" + std::to_string(std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::steady_clock::now() - attempt_start).count()));
         if (quest_attempts > BBQ_OPTIONS.NUM_RETRIES){
+            console.log("BBQ quest=" + slug + " event=retry_exhausted recovery=skip_current_batch");
             console.log("Failed to complete a quest multiple times. Skipping it for now.", COLOR_RED);
             break;
         }
@@ -1056,6 +1106,20 @@ void quest_wash_pokemon(const ProgramInfo& info, VideoStream& stream, ProControl
     context.wait_for_all_requests();
 }
 
+namespace{
+
+// True if the slot shows the egg icon. Like Egg Hatcher, this reads the slot's
+// sprite rather than the summary panel, which only tells eggs apart in the stats
+// view. The cursor lifts the sprite under it, so keep it off the slot.
+bool box_slot_is_egg(VideoStream& stream, ProControllerContext& context, BoxCursorLocation side, uint8_t row, uint8_t col){
+    context.wait_for_all_requests();
+    context.wait_for(std::chrono::milliseconds(300));
+    BoxEggDetector egg_detector(side, row, col);
+    return egg_detector.detect(stream.video().snapshot());
+}
+
+}
+
 void quest_hatch_egg(
     ProgramEnvironment& env,
     ConsoleHandle& console, ProControllerContext& context,
@@ -1087,27 +1151,25 @@ void quest_hatch_egg(
     enter_box_system_from_overworld(env.program_info(), console, context);
     context.wait_for(std::chrono::milliseconds(400));
     
-    //move_to_left_box(context);
-    BoxCurrentEggDetector egg_detector;
-    SomethingInBoxSlotDetector sth_in_box_detector(COLOR_RED);
+    //Read every box slot from one frame, with the cursor on the party lead.
+    move_box_cursor(env.program_info(), console, context, BoxCursorLocation::PARTY, 0, 0);
+    context.wait_for_all_requests();
+    context.wait_for(std::chrono::milliseconds(300));
+    const VideoSnapshot box_screen = console.video().snapshot();
     bool egg_found = false;
     uint8_t row = 0;
     uint8_t col = 0;
-    for ( ; row < 5; row++){
-        for (uint8_t j_col = 0; j_col < 6; j_col++){
-            col = (row % 2 == 0 ? j_col : 5 - j_col);
-            move_box_cursor(env.program_info(), console, context, BoxCursorLocation::SLOTS, row, col);
-            context.wait_for_all_requests();
-            auto snapshot = console.video().snapshot();
-            if (sth_in_box_detector.detect(snapshot) && egg_detector.detect(snapshot)){
-                console.log("Found egg.");
+    for ( ; row < 5 && !egg_found; row++){
+        for (col = 0; col < 6; col++){
+            if (BoxEggDetector(BoxCursorLocation::SLOTS, row, col).detect(box_screen)){
+                console.log("Found egg at row " + std::to_string(row) + ", column " + std::to_string(col) + ".");
                 egg_found = true;
                 break;
             }
         }
-        if (egg_found){
-            break;
-        }
+    }
+    if (egg_found){
+        row--;
     }
 
     if (!egg_found){
@@ -1117,12 +1179,24 @@ void quest_hatch_egg(
             BoxCursorLocation::SLOTS, row, col,
             BoxCursorLocation::PARTY, 0, 0);
 
-        leave_box_system_to_overworld(env.program_info(), console, context);
+        //Make sure the party lead is the egg before riding off. Move the cursor off it first.
+        move_box_cursor(env.program_info(), console, context, BoxCursorLocation::SLOTS, row, col);
+        if (!box_slot_is_egg(console, context, BoxCursorLocation::PARTY, 0, 0)){
+            console.log("Party lead is not an egg after the swap. Swapping it back.", COLOR_RED);
+        }else{
+            leave_box_system_to_overworld(env.program_info(), console, context);
 
-        hatch_eggs_anywhere(env, console, context, true, 1);
+            //If the hatch fails, still put the lead back in its box slot.
+            //The quest stays on the list, so it counts as a failed attempt.
+            try{
+                hatch_eggs_anywhere(env, console, context, true, 1);
+            }catch (OperationFailedException& e){
+                console.log("Egg hatch failed: " + e.message() + " Restoring the party lead.", COLOR_RED);
+            }
 
-        enter_box_system_from_overworld(env.program_info(), console, context);
-        context.wait_for(std::chrono::milliseconds(400));
+            enter_box_system_from_overworld(env.program_info(), console, context);
+            context.wait_for(std::chrono::milliseconds(400));
+        }
 
         swap_two_box_slots(env.program_info(), console, context,
             BoxCursorLocation::PARTY, 0, 0,
