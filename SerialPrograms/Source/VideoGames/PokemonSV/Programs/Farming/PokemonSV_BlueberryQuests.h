@@ -57,7 +57,7 @@ const std::set<BBQuests> gold_quests = {
 
 //Quests that are not currently supported. Gold quests currently excluded as this is singleplayer only right now.
 const std::set<BBQuests> not_possible_quests = {
-    BBQuests::UnableToDetect, BBQuests::pickup_10, BBQuests::photo_flying, BBQuests::catch_flying
+    BBQuests::UnableToDetect, BBQuests::pickup_10, BBQuests::photo_flying
 };
 
 
