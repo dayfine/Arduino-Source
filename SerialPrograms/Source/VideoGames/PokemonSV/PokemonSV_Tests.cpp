@@ -111,7 +111,7 @@ private:
 
 // One pass as it shows in the expected steps.
 const std::string PASS = "fly clear return heal";
-// The pass that reaches the target.
+// The last pass: it returns without healing.
 const std::string LAST_PASS = "fly clear return";
 
 std::string passes(int count){
@@ -119,11 +119,21 @@ std::string passes(int count){
     return join(ret, " ");
 }
 
+std::string auto_battle_result_to_string(BBQAutoBattleResult result){
+    switch (result){
+    case BBQAutoBattleResult::TargetReached:    return "TargetReached";
+    case BBQAutoBattleResult::NoKills:          return "NoKills";
+    case BBQAutoBattleResult::TimeLimit:        return "TimeLimit";
+    }
+    return "?";
+}
+
 struct BBQAutoBattleScenario{
     std::string name;
     uint64_t kill_target = 10;
+    int time_limit_minutes = 35;
     std::vector<uint64_t> kills_per_clear;
-    bool expected_endless = false;  // Runs past the script without stopping.
+    BBQAutoBattleResult expected_result = BBQAutoBattleResult::TargetReached;
     std::string expected_steps;
     int expected_seconds = 0;
     std::vector<std::string> expected_log = {}; // Checked when not empty.
@@ -143,16 +153,16 @@ public:
         RecordingLogger logger;
         BBQAutoBattlePolicy policy;
         policy.kill_target = m_scenario.kill_target;
-        bool endless = false;
+        policy.time_limit = std::chrono::minutes(m_scenario.time_limit_minutes);
+        BBQAutoBattleResult result;
         try{
-            run_auto_battle(logger, actions, policy);
+            result = run_auto_battle(logger, actions, policy);
         }catch (const std::runtime_error&){
-            endless = true;
+            return "Expected the loop to stop, but it cleared more often than scripted.";
         }
-        if (endless != m_scenario.expected_endless){
-            return endless
-                ? "Expected the loop to stop, but it cleared more often than scripted."
-                : "Expected the loop to run past the script, but it stopped.";
+        if (result != m_scenario.expected_result){
+            return "Expected " + auto_battle_result_to_string(m_scenario.expected_result)
+                + ", got " + auto_battle_result_to_string(result);
         }
         const std::string steps = join(actions.steps, " ");
         if (steps != m_scenario.expected_steps){
@@ -213,12 +223,47 @@ void add_tests_BBQAutoBattle(UnitTestDatabase& database){
             .expected_seconds = 5 * PASS_SECONDS - LAST_PASS_SAVED_SECONDS,
         },
         {
-            // Nothing bounds the loop: with no kills it never ends.
-            .name = "no kills never stops",
-            .kills_per_clear = {0, 0, 0, 0, 0, 0},
-            .expected_endless = true,
-            .expected_steps = passes(6) + " fly",
-            .expected_seconds = 6 * PASS_SECONDS + ScriptedAutoBattle::FLY_SECONDS,
+            .name = "gives up after 3 passes with no kill",
+            .kills_per_clear = {0, 0, 0},
+            .expected_result = BBQAutoBattleResult::NoKills,
+            .expected_steps = passes(2) + " " + LAST_PASS,
+            .expected_seconds = 3 * PASS_SECONDS - ScriptedAutoBattle::HEAL_SECONDS,
+            .expected_log = {
+                "Auto Battle pass 1: 0 kills, 0/10 in total, 46 s elapsed. Below the target: return, heal and go again.",
+                "Auto Battle pass 2: 0 kills, 0/10 in total, 148 s elapsed. Below the target: return, heal and go again.",
+                "Auto Battle pass 3: 0 kills, 0/10 in total, 250 s elapsed. No kill in 3 passes in a row: return and give up.",
+            },
+        },
+        {
+            // Only passes in a row count.
+            .name = "a kill resets the empty passes",
+            .kills_per_clear = {0, 0, 1, 0, 0, 0},
+            .expected_result = BBQAutoBattleResult::NoKills,
+            .expected_steps = passes(5) + " " + LAST_PASS,
+            .expected_seconds = 6 * PASS_SECONDS - ScriptedAutoBattle::HEAL_SECONDS,
+        },
+        {
+            // The pass that ends past the limit is the last.
+            .name = "gives up at the time limit",
+            .time_limit_minutes = 5,
+            .kills_per_clear = {1, 1, 1, 1},
+            .expected_result = BBQAutoBattleResult::TimeLimit,
+            .expected_steps = passes(3) + " " + LAST_PASS,
+            .expected_seconds = 4 * PASS_SECONDS - ScriptedAutoBattle::HEAL_SECONDS,
+            .expected_log = {
+                "Auto Battle pass 1: 1 kills, 1/10 in total, 46 s elapsed. Below the target: return, heal and go again.",
+                "Auto Battle pass 2: 1 kills, 2/10 in total, 148 s elapsed. Below the target: return, heal and go again.",
+                "Auto Battle pass 3: 1 kills, 3/10 in total, 250 s elapsed. Below the target: return, heal and go again.",
+                "Auto Battle pass 4: 1 kills, 4/10 in total, 352 s elapsed. Time limit of 5 min reached: return and give up.",
+            },
+        },
+        {
+            // Reaching the target counts as reached, even past the time limit.
+            .name = "target reached past the time limit",
+            .time_limit_minutes = 5,
+            .kills_per_clear = {3, 3, 3, 3},
+            .expected_steps = passes(3) + " " + LAST_PASS,
+            .expected_seconds = 4 * PASS_SECONDS - LAST_PASS_SAVED_SECONDS,
         },
     };
     for (const BBQAutoBattleScenario& scenario : scenarios){
