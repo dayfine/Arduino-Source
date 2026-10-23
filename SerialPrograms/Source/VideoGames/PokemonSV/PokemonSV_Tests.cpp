@@ -197,7 +197,7 @@ struct PlazaReturnCase{
     std::string name;
     std::string expected_banner;
     std::vector<std::vector<std::string>> landings = {};
-    std::vector<bool> fly_results;
+    std::vector<bool> fly_results = {};
     PlazaReturnResult result;
     std::vector<bool> overshoots;
     size_t banner_reads;
