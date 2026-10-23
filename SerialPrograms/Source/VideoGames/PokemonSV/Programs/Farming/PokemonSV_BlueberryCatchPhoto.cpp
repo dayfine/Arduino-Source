@@ -387,8 +387,25 @@ void quest_catch_navi(
     BBQuests current_quest
 ){
     switch (current_quest){
-        case BBQuests::catch_any: case BBQuests::catch_normal: case BBQuests::catch_fire:
-            console.log("Catch: Any/Normal/Fire");
+        case BBQuests::catch_any:
+            console.log("Catch: Any");
+
+            //Chargestone battle court, where Auto Battle goes: a safe zone with many
+            //spawns. Any wild Pokemon counts, so send out the lead at whatever is in front.
+            central_to_chargestone(info, console, context);
+            pbf_wait(context, 3000ms);
+            context.wait_for_all_requests();
+
+            pbf_press_button(context, BUTTON_L, 160ms, 400ms);
+            pbf_move_left_joystick(context, {0, +1}, 2000ms, 400ms);
+            pbf_move_left_joystick(context, {+1, 0}, 1440ms, 400ms);
+            pbf_press_button(context, BUTTON_L, 160ms, 400ms);
+
+            send_out_and_look_around(console, context, std::chrono::seconds(6), "a wild Pokemon");
+            break;
+
+        case BBQuests::catch_normal: case BBQuests::catch_fire:
+            console.log("Catch: Normal/Fire");
 
             //Savanna Plaza - Pride Rock
             central_to_savanna_plaza(info, console, context);

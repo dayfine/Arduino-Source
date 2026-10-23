@@ -1163,22 +1163,9 @@ void quest_sneak_up(
                 pbf_press_button(context, BUTTON_L, 160ms, 400ms);
             }
 
-            ssf_press_button(context, BUTTON_ZR, 0ms, 1600ms);
-            ssf_press_button(context, BUTTON_ZL, 800ms, 400ms);
-            ssf_press_button(context, BUTTON_ZL, 1200ms, 400ms);
-
-            pbf_wait(context, 2400ms);
-            context.wait_for_all_requests();
-
-            NormalBattleMenuWatcher battle_menu(COLOR_YELLOW);
-            int ret2 = wait_until(
-                console, context,
-                std::chrono::seconds(15),
-                { battle_menu }
-            );
-            if (ret2 != 0){
-                console.log("Did not enter battle. Did target spawn?");
-            }
+            //Pride Rock's target is often missing or facing us; anything that hasn't
+            //noticed us counts, so look around if the first throw starts nothing.
+            send_out_and_look_around(console, context, std::chrono::seconds(15), "the target");
         },
         {
             static_cast<VisualInferenceCallback&>(encounter_watcher),
