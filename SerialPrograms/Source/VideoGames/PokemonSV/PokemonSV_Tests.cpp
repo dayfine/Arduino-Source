@@ -613,7 +613,7 @@ struct BBQRoundsScenario{
     BBQOption::OutOfRetries out_of_retries = BBQOption::OutOfRetries::Skip;
     bool reuse_rerolled_panel = false;
     uint64_t expected_completed = 0;
-    std::vector<BBQuests> expected_attempted;
+    std::vector<BBQuests> expected_attempted = {};
     std::string expected;
 };
 
