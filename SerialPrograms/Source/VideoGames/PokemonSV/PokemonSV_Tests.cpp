@@ -176,11 +176,11 @@ struct BBQRerollScenario{
     bool menu_seen = true;
     bool out_of_bp = false;
     int missed_reads = 0;
-    std::optional<std::vector<BBQuests>> read_override;
+    std::optional<std::vector<BBQuests>> read_override = {};
     BBQRerollResult expected;
     std::vector<size_t> expected_rerolled_slots = {};
     std::vector<BBQuests> expected_quests;
-    std::optional<std::vector<BBQuests>> expected_observed_panel;
+    std::optional<std::vector<BBQuests>> expected_observed_panel = {};
 };
 
 std::string reroll_result_to_string(BBQRerollResult result){
