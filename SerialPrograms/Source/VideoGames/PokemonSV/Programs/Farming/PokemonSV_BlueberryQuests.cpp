@@ -45,6 +45,7 @@
 #include "VideoGames/PokemonSV/Programs/PokemonSV_Terarium.h"
 #include "PokemonSV_BlueberryQuests.h"
 
+#include <algorithm>
 #include<vector>
 
 namespace PokemonAutomation{
@@ -457,6 +458,68 @@ void reroll_quest_slot(
             "Quest " + std::to_string(slot + 1) + " was not replaced after rerolling it. Check that there is enough BP.",
             stream
         );
+    }
+}
+
+std::optional<double> expected_seconds_per_success(BBQuests quest){
+    switch (quest){
+    case BBQuests::make_tm:             return 79;
+    case BBQuests::travel_500:          return 89;
+    case BBQuests::photo_swim:          return 63 / 0.71;
+    case BBQuests::hatch_egg:           return 190;
+    case BBQuests::tera_self_defeat:    return 153 / 0.59;
+    case BBQuests::auto_10:             return 280;
+    case BBQuests::sandwich_three:
+    case BBQuests::bitter_sandwich:
+    case BBQuests::sweet_sandwich:
+    case BBQuests::salty_sandwich:
+    case BBQuests::sour_sandwich:
+    case BBQuests::spicy_sandwich:
+        return 200;
+    case BBQuests::catch_normal:
+    case BBQuests::catch_fighting:
+    case BBQuests::catch_flying:
+    case BBQuests::catch_poison:
+    case BBQuests::catch_ground:
+    case BBQuests::catch_rock:
+    case BBQuests::catch_bug:
+    case BBQuests::catch_ghost:
+    case BBQuests::catch_steel:
+    case BBQuests::catch_fire:
+    case BBQuests::catch_water:
+    case BBQuests::catch_grass:
+    case BBQuests::catch_electric:
+    case BBQuests::catch_psychic:
+    case BBQuests::catch_ice:
+    case BBQuests::catch_dragon:
+    case BBQuests::catch_dark:
+    case BBQuests::catch_fairy:
+        return 137 / 0.75;
+    default:
+        return std::nullopt;
+    }
+}
+
+void order_quests_by_cost(Logger& logger, std::vector<BBQuests>& quests){
+    //Only the measured quests move, among the places they hold.
+    std::vector<size_t> places;
+    std::vector<BBQuests> measured;
+    for (size_t i = 0; i < quests.size(); i++){
+        if (expected_seconds_per_success(quests[i])){
+            places.push_back(i);
+            measured.push_back(quests[i]);
+        }
+    }
+    std::stable_sort(measured.begin(), measured.end(), [](BBQuests a, BBQuests b){
+        return *expected_seconds_per_success(a) < *expected_seconds_per_success(b);
+    });
+    bool changed = false;
+    for (size_t i = 0; i < places.size(); i++){
+        changed |= quests[places[i]] != measured[i];
+        quests[places[i]] = measured[i];
+    }
+    if (changed){
+        logger.log("Running the quests with the lowest expected time per completion first.");
     }
 }
 

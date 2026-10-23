@@ -135,6 +135,10 @@ void run_bbq_rounds(Logger& logger, const BBQOption& options, BBQGameActions& ga
             quest_list.clear();
         }
 
+        //Cheap, reliable quests first: a quest done early can also finish a later one (e.g.
+        //travel-500 while flying to a photo target), and a failure costs less of the round.
+        order_quests_by_cost(logger, quests_to_do);
+
         for (auto current_quest : quests_to_do){
             //Check if quest was already completed (ex. 500 meters completed while navigating to take a photo)
             quest_list = read_panel();
