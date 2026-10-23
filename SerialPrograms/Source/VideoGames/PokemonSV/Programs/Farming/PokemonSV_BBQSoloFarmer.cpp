@@ -453,9 +453,9 @@ void BBQSoloFarmer::program(SingleSwitchProgramEnvironment& env, ProControllerCo
     //  Connect the controller.
     require_player(env.console, context, BUTTON_LCLICK);
     
-    //Fly to plaza. The program can start anywhere in the Terarium, so use the same
-    //checked return as after each quest instead of flying to the map cursor.
-    return_to_plaza(env.program_info(), env.console, context, BBQ_OPTIONS.LANGUAGE);
+    //Fly to plaza. The program can start anywhere in the Terarium, including at
+    //Central Plaza itself.
+    return_to_plaza_from_anywhere(env.program_info(), env.console, context, BBQ_OPTIONS.LANGUAGE);
 
     //Test a specific quest
     /*
