@@ -546,6 +546,12 @@ void add_tests_TeraEncounterAction(UnitTestDatabase& database){
     }
 }
 
+// The quests the BBQ scenarios treat as not possible. The program can do them
+// now, but the planner tests need quests it cannot do.
+const std::set<BBQuests> TEST_NOT_POSSIBLE_QUESTS = {
+    BBQuests::UnableToDetect, BBQuests::pickup_10, BBQuests::photo_flying, BBQuests::catch_flying
+};
+
 namespace{
 
 class NullLogger : public Logger{
@@ -593,6 +599,7 @@ public:
 
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
         BBQOption options;
+        options.NOT_POSSIBLE_QUESTS = TEST_NOT_POSSIBLE_QUESTS;
         options.NUM_EGGS.set(m_scenario.num_eggs);
         options.OUT_OF_EGGS.set(m_scenario.out_of_eggs);
         for (const auto& [quest, action] : m_scenario.extra_exclusions){
@@ -1148,7 +1155,7 @@ namespace{
 // A singleplayer quest panel that behaves like the game's: 3 blue quests,
 // and a completed quest is replaced by a new one. process_quest_list()
 // follows the rules of the real one that the round loop depends on: quests
-// in not_possible_quests are skipped, quests in table_rerolls are rerolled
+// in TEST_NOT_POSSIBLE_QUESTS are skipped, quests in table_rerolls are rerolled
 // in their slot as an exclusions table reroll row does, and if nothing is
 // doable all quests are rerolled. After any reroll it returns nothing to do.
 // Red quests are not modeled. Records the game actions taken.
@@ -1211,7 +1218,7 @@ public:
         }
         std::vector<BBQuests> doable;
         for (BBQuests quest : quests){
-            if (!not_possible_quests.contains(quest)){
+            if (!TEST_NOT_POSSIBLE_QUESTS.contains(quest)){
                 doable.push_back(quest);
             }
         }
@@ -1347,6 +1354,7 @@ public:
 
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
         BBQOption options;
+        options.NOT_POSSIBLE_QUESTS = TEST_NOT_POSSIBLE_QUESTS;
         options.NUM_QUESTS.set(m_scenario.num_quests);
         options.SAVE_NUM_QUESTS.set(m_scenario.save_num_quests);
         if (m_scenario.stop_when_out_of_eggs){
@@ -1421,7 +1429,7 @@ private:
 std::vector<std::pair<BBQuests, BBQAction>> every_doable_blue_quest(BBQAction action){
     std::vector<std::pair<BBQuests, BBQAction>> ret;
     for (BBQuests quest : blue_quests){
-        if (!not_possible_quests.contains(quest)){
+        if (!TEST_NOT_POSSIBLE_QUESTS.contains(quest)){
             ret.emplace_back(quest, action);
         }
     }

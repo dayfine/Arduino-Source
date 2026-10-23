@@ -603,7 +603,7 @@ BBQuestPlan plan_quests(
             plan_out_of_eggs(logger, BBQ_OPTIONS, slot, plan);
             continue;
         }
-        const bool possible = !not_possible_quests.contains(n);
+        const bool possible = !BBQ_OPTIONS.NOT_POSSIBLE_QUESTS.contains(n);
         if (plan_from_exclusions(logger, exclusions_table, n, slot, possible, plan)){
             continue;
         }
@@ -667,8 +667,8 @@ BBQuestBatch process_quest_list(
 ){
     //Read BP only when a quest not possible may be rerolled while others are doable.
     std::optional<int> bp;
-    if (std::any_of(quest_list.begin(), quest_list.end(), [](BBQuests quest){
-        return quest != BBQuests::UnableToDetect && not_possible_quests.contains(quest);
+    if (std::any_of(quest_list.begin(), quest_list.end(), [&](BBQuests quest){
+        return quest != BBQuests::UnableToDetect && BBQ_OPTIONS.NOT_POSSIBLE_QUESTS.contains(quest);
     })){
         const int read = read_BP(info, stream, context);
         if (read >= 0){
@@ -755,14 +755,12 @@ bool process_and_do_quest(
             case BBQuests::sandwich_three:
                 quest_sandwich(env, console, context, BBQ_OPTIONS, current_quest);
                 break;
-            //case BBQuests::pickup_10:
-            //    quest_pickup(env, env.program_info(), console, context, BBQ_OPTIONS);
-            //    break;
             case BBQuests::tera_raid:
                 quest_tera_raid(env, console, context, BBQ_OPTIONS);
                 break;
             case BBQuests::auto_10:
             case BBQuests::auto_30:
+            case BBQuests::pickup_10:   //Items the Let's Go lead brings back count as pickups.
                 quest_auto_battle(env, console, context, BBQ_OPTIONS, current_quest);
                 break;
             //All involve taking pictures
@@ -1931,7 +1929,7 @@ void quest_auto_battle(
     const BBQOption& BBQ_OPTIONS,
     BBQuests current_quest
 ){
-    stream.log("Quest: Auto Battle 10/30");
+    stream.log("Quest: Auto Battle 10/30, or pick up 10 items");
 
 
     OverworldSensors sensors(

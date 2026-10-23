@@ -7,6 +7,7 @@
 #ifndef PokemonAutomation_PokemonSV_BBQOption_H
 #define PokemonAutomation_PokemonSV_BBQOption_H
 
+#include <set>
 #include "Common/Cpp/Options/GroupOption.h"
 #include "Common/Cpp/Options/EnumDropdownOption.h"
 #include "Common/Cpp/Options/EditableTableOption.h"
@@ -97,6 +98,10 @@ public:
     SimpleIntegerOption<uint64_t> SAVE_NUM_QUESTS;
 
     BBQuestTable QUEST_EXCLUSIONS;
+
+    //Quests the program cannot do. They are rerolled, or skipped without the BP to reroll them.
+    //Not a setting yet; tests set their own.
+    std::set<BBQuests> NOT_POSSIBLE_QUESTS = {BBQuests::UnableToDetect};
 
     BooleanCheckBoxOption INVERTED_FLIGHT;
 

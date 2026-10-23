@@ -183,24 +183,6 @@ CameraAngle quest_photo_navi(
             pbf_press_button(context, BUTTON_L, 160ms, 400ms);
 
             break;
-        case BBQuests::photo_flying:
-            console.log("Photo: Flying");
-
-            //Vullaby/Mandibuzz
-            central_to_savanna_plaza(info, console, context);
-
-            pbf_move_left_joystick(context, {+1, +1}, 80ms, 160ms);
-            pbf_press_button(context, BUTTON_L | BUTTON_PLUS, 160ms, 840ms);
-
-            pbf_move_left_joystick(context, {0, +1}, 4400ms, 160ms);
-            pbf_press_button(context, BUTTON_L | BUTTON_PLUS, 160ms, 840ms);
-
-            pbf_move_left_joystick(context, {0, +1}, 1200ms, 160ms);
-
-            pbf_move_left_joystick(context, {+1, 0}, 80ms, 160ms);
-
-            angle = CameraAngle::down;
-            break;
         case BBQuests::photo_electric:
             console.log("Photo: Electric");
 
@@ -283,12 +265,115 @@ CameraAngle quest_photo_navi(
     return angle;
 }
 
+//Open photo mode, tilt the camera, take the photo and return to the overworld.
+void take_photo(ConsoleHandle& console, ProControllerContext& context, CameraAngle move_camera){
+    //Take photo.
+    console.log("Taking photo.");
+    PromptDialogWatcher photo_prompt(COLOR_RED);
+    OverworldWatcher overworld(console.logger(), COLOR_BLUE);
+
+    pbf_press_dpad(context, DPAD_DOWN, 400ms, 160ms);
+    pbf_wait(context, 800ms);
+    context.wait_for_all_requests();
+
+    if (move_camera == CameraAngle::up){
+        pbf_move_right_joystick(context, {0, +1}, 400ms, 160ms);
+    }else if (move_camera == CameraAngle::down){
+        pbf_move_right_joystick(context, {0, -1}, 400ms, 160ms);
+    }
+    context.wait_for_all_requests();
+
+    pbf_press_button(context, BUTTON_A, 160ms, 400ms);
+
+    int ret = wait_until(
+        console, context,
+        std::chrono::seconds(10),
+        { photo_prompt }
+    );
+    if (ret != 0){
+        console.log("Photo not taken.");
+    }
+
+    //Mash B until overworld
+    int exit = run_until<ProControllerContext>(
+        console, context,
+        [&](ProControllerContext& context){
+            pbf_mash_button(context, BUTTON_B, 16000ms);
+        },
+        {{ overworld }}
+    );
+    if (exit == 0){
+        console.log("Overworld detected.");
+    }
+}
+
+//Take a photo of a Flying type: run into one at the canyon grassland, flee, and photograph
+//it while it is still in front. Flying Pokemon are hard to frame in the overworld, but
+//after fleeing the target stays next to the player.
+void quest_photo_after_fleeing(
+    const ProgramInfo& info,
+    ConsoleHandle& console, ProControllerContext& context,
+    const BBQOption& BBQ_OPTIONS
+){
+    console.log("Photo: Flying");
+    EncounterWatcher encounter_watcher(console, COLOR_RED);
+    bool battle_menu_detected = false;
+    int ret = run_until<ProControllerContext>(
+        console, context,
+        [&](ProControllerContext& context){
+            //Same spot as catch_flying: Scyther, Altaria, Swablu and Fletchling spawn there.
+            central_to_canyon_plaza(info, console, context);
+
+            pbf_move_left_joystick(context, {+0.606, +0.5}, 160ms, 840ms);
+            pbf_press_button(context, BUTTON_L | BUTTON_PLUS, 160ms, 840ms);
+
+            if (console.state().console_type() == ConsoleType::Switch1){
+                jump_glide_fly(console, context, BBQ_OPTIONS.INVERTED_FLIGHT, 8000ms, 13200ms, 2400ms);
+            }else{ //All switch 2s
+                jump_glide_fly(console, context, BBQ_OPTIONS.INVERTED_FLIGHT, 8000ms, 12800ms, 2400ms);
+            }
+
+            battle_menu_detected = send_out_and_look_around(console, context, std::chrono::seconds(6), "a flying Pokemon");
+        },
+        {
+            static_cast<VisualInferenceCallback&>(encounter_watcher),
+            static_cast<AudioInferenceCallback&>(encounter_watcher),
+        }
+    );
+    encounter_watcher.throw_if_no_sound();
+
+    if (ret < 0 && !battle_menu_detected){
+        console.log("No battle started. Returning to plaza; the quest stays on the board.");
+        return_to_plaza(info, console, context, BBQ_OPTIONS.LANGUAGE);
+        return;
+    }
+    if ((bool)encounter_watcher.shiny_screenshot()){
+        console.log("Shiny detected!");
+        pbf_press_button(context, BUTTON_CAPTURE, 2000ms, 5000ms);
+        throw ProgramFinishedException();
+    }
+
+    console.log("Fleeing, then taking the photo.");
+    NormalBattleMenuWatcher battle_menu(COLOR_YELLOW);
+    battle_menu.move_to_slot(console, context, 3);
+    pbf_press_button(context, BUTTON_A, 80ms, 400ms);
+    press_Bs_to_back_to_overworld(info, console, context);
+
+    take_photo(console, context, CameraAngle::none);
+    return_to_plaza(info, console, context, BBQ_OPTIONS.LANGUAGE);
+}
+
 void quest_photo(
     const ProgramInfo& info,
     ConsoleHandle& console, ProControllerContext& context,
     const BBQOption& BBQ_OPTIONS,
     BBQuests current_quest
 ){
+    if (current_quest == BBQuests::photo_flying){
+        quest_photo_after_fleeing(info, console, context, BBQ_OPTIONS);
+        return;
+    }
+
     bool took_photo = false;
     CameraAngle move_camera = CameraAngle::none;
 
@@ -300,44 +385,7 @@ void quest_photo(
 
                 move_camera = quest_photo_navi(info, console, context, BBQ_OPTIONS, current_quest);
 
-                //Take photo.
-                console.log("Taking photo.");
-                PromptDialogWatcher photo_prompt(COLOR_RED);
-                OverworldWatcher overworld(console.logger(), COLOR_BLUE);
-
-                pbf_press_dpad(context, DPAD_DOWN, 400ms, 160ms);
-                pbf_wait(context, 800ms);
-                context.wait_for_all_requests();
-
-                if (move_camera == CameraAngle::up){
-                    pbf_move_right_joystick(context, {0, +1}, 400ms, 160ms);
-                }else if (move_camera == CameraAngle::down){
-                    pbf_move_right_joystick(context, {0, -1}, 400ms, 160ms);
-                }
-                context.wait_for_all_requests();
-
-                pbf_press_button(context, BUTTON_A, 160ms, 400ms);
-
-                int ret = wait_until(
-                    console, context,
-                    std::chrono::seconds(10),
-                    { photo_prompt }
-                );
-                if (ret != 0){
-                    console.log("Photo not taken.");
-                }
-
-                //Mash B until overworld
-                int exit = run_until<ProControllerContext>(
-                    console, context,
-                    [&](ProControllerContext& context){
-                        pbf_mash_button(context, BUTTON_B, 16000ms);
-                    },
-                    {{ overworld }}
-                );
-                if (exit == 0){
-                    console.log("Overworld detected.");
-                }
+                take_photo(console, context, move_camera);
                 took_photo = true;
                 context.wait_for_all_requests();
             },

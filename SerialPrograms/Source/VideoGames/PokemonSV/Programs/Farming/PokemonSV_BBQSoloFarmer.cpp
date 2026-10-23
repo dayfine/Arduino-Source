@@ -131,7 +131,7 @@ void forget_quests_gone_from_panel(std::set<BBQuests>& failed_quests, const std:
 bool exclusions_leave_a_blue_quest(const BBQOption& options){
     const std::vector<std::unique_ptr<BBQuestTableRow>> exclusions = options.QUEST_EXCLUSIONS.copy_snapshot();
     for (BBQuests quest : blue_quests){
-        if (not_possible_quests.contains(quest)){
+        if (options.NOT_POSSIBLE_QUESTS.contains(quest)){
             continue;
         }
         bool in_table = false;

@@ -55,10 +55,6 @@ const std::set<BBQuests> gold_quests = {
     BBQuests::group_masks, BBQuests::sandwich_four, BBQuests::catch_hint, BBQuests::catch_hint2
 };
 
-//Quests that are not currently supported. Gold quests currently excluded as this is singleplayer only right now.
-const std::set<BBQuests> not_possible_quests = {
-    BBQuests::UnableToDetect, BBQuests::pickup_10, BBQuests::photo_flying
-};
 
 
 // Open the BBQ panel and read the current amount of BP
