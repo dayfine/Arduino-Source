@@ -138,7 +138,7 @@ struct BBQAutoBattleScenario{
     uint64_t kill_target = 10;
     int time_limit_minutes = 35;
     std::vector<uint64_t> kills_per_clear;
-    std::vector<std::optional<double>> hp_per_clear;    // Unknown when not given.
+    std::vector<std::optional<double>> hp_per_clear = {}; // Unknown when not given.
     int heal_below_hp_percent = 50;
     BBQAutoBattleResult expected_result = BBQAutoBattleResult::TargetReached;
     std::string expected_steps;
