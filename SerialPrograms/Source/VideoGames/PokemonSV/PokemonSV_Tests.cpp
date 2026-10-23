@@ -817,18 +817,19 @@ void add_tests_BBQuestPlan(UnitTestDatabase& database){
             .expected_reroll_slots = {0, 2, 3},
         },
         {
-            .name = "a skip row keeps a red quest not possible",
+            // The table doesn't apply to quests not possible: they are always rerolled.
+            .name = "a skip row doesn't keep a red quest not possible",
             .quests = {photo_flying, make_tm, catch_flying, sneak_up},
             .extra_exclusions = {{photo_flying, BBQAction::skip}},
             .expected_to_do = {make_tm, sneak_up},
-            .expected_reroll_slots = {2},
+            .expected_reroll_slots = {0, 2},
         },
         {
-            .name = "a run row keeps a blue quest not possible",
+            .name = "a run row doesn't keep a blue quest not possible",
             .quests = {photo_flying, make_tm, catch_flying, sneak_up},
             .extra_exclusions = {{catch_flying, BBQAction::run}},
             .expected_to_do = {make_tm, sneak_up},
-            .expected_reroll_slots = {0},
+            .expected_reroll_slots = {0, 2},
         },
         {
             // A red reroll costs 50 BP, a blue one 10.
@@ -887,20 +888,19 @@ void add_tests_BBQuestPlan(UnitTestDatabase& database){
             .expected_reroll_all = true,
         },
         {
-            .name = "a skipped quest not possible is not rerolled",
+            .name = "a skip row doesn't stop a quest not possible being rerolled",
             .quests = {pickup_10, auto_10, catch_flying},
             .extra_exclusions = {{pickup_10, BBQAction::skip}},
-            .expected_reroll_slots = {2},
+            .expected_reroll_slots = {0, 2},
         },
         {
-            // Only skipped quests left: nothing changes the panel otherwise.
-            .name = "skip rows on every quest not possible reroll all when nothing is doable",
+            .name = "skip rows on every quest not possible still reroll each of them",
             .quests = {photo_flying, auto_10, catch_flying},
             .extra_exclusions = {
                 {photo_flying, BBQAction::skip},
                 {catch_flying, BBQAction::skip},
             },
-            .expected_reroll_all = true,
+            .expected_reroll_slots = {0, 2},
         },
         {
             .name = "a reroll row rerolls a quest not possible",
@@ -910,10 +910,11 @@ void add_tests_BBQuestPlan(UnitTestDatabase& database){
             .expected_reroll_slots = {2},
         },
         {
-            .name = "a run row does not run a quest not possible",
+            .name = "a run row rerolls a quest not possible instead",
             .quests = {make_tm, pickup_10},
             .extra_exclusions = {{pickup_10, BBQAction::run}},
             .expected_to_do = {make_tm},
+            .expected_reroll_slots = {1},
         },
         {
             // The reroll replaces a quest, so the next read has something new.
@@ -1789,22 +1790,17 @@ void add_tests_BBQFarmerRounds(UnitTestDatabase& database){
             .expected = "read process do completed read do completed end",
         },
         {
-            // Out of BP with only skipped quests: plan_quests() rerolls all,
-            // which does not check the result, so the read limit stops it.
-            .name = "out of BP, skipped quests alone reach the read limit",
+            // Out of BP, nothing doable: plan_quests() rerolls a quest not possible
+            // even though the table skips it, the reroll does not happen, and the
+            // program stops.
+            .name = "out of BP, quests not possible stop the program when their reroll fails",
             .num_quests = 3,
             .panel = {BBQuests::pickup_10, BBQuests::catch_flying, BBQuests::UnableToDetect},
             .exclusions = {{BBQuests::pickup_10, BBQAction::skip}, {BBQuests::catch_flying, BBQAction::skip}},
             .out_of_bp = true,
             .plan_with_plan_quests = true,
             .expected_completed = 0,
-            .expected = [](){
-                std::string ret;
-                for (int c = 0; c < 30; c++){
-                    ret += "read process reroll(all) ";
-                }
-                return ret + "error";
-            }(),
+            .expected = "read process reroll(slot) stopped",
         },
         {
             // make-tm ends round 1 back at Central Plaza: its read plans

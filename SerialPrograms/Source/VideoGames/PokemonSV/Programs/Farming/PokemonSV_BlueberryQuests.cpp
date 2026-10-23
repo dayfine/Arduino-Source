@@ -604,7 +604,8 @@ BBQuestPlan plan_quests(
             continue;
         }
         const bool possible = !BBQ_OPTIONS.NOT_POSSIBLE_QUESTS.contains(n);
-        if (plan_from_exclusions(logger, exclusions_table, n, slot, possible, plan)){
+        //The table doesn't apply to a quest not possible: it is always rerolled.
+        if (possible && plan_from_exclusions(logger, exclusions_table, n, slot, possible, plan)){
             continue;
         }
         if (!possible){

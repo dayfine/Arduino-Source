@@ -13,6 +13,7 @@
 #include "Common/Cpp/Options/EditableTableOption.h"
 #include "Common/Cpp/Options/SimpleIntegerOption.h"
 #include "Common/Cpp/Options/BooleanCheckBoxOption.h"
+#include "Common/Cpp/Options/StaticTextOption.h"
 #include "CommonTools/Options/LanguageOCROption.h"
 #include "VideoGames/PokemonSwSh/Options/PokemonSwSh_BallSelectOption.h"
 #include "VideoGames/PokemonSV/Options/PokemonSV_TeraAIOption.h"
@@ -97,12 +98,14 @@ public:
     SimpleIntegerOption<uint64_t> NUM_QUESTS;
     SimpleIntegerOption<uint64_t> SAVE_NUM_QUESTS;
 
-    BBQuestTable QUEST_EXCLUSIONS;
-
-    //Quests the program cannot do. They are rerolled, or skipped without the BP to reroll them.
-    //Not a setting yet; tests set their own.
+    //Quests the program cannot do. They are always rerolled, whatever the exclusions table says,
+    //or skipped without the BP to reroll them. Not a setting; tests set their own.
     //pickup_10 needs items picked up on the ground: Let's Go kills don't count (0/10 after 40+ kills).
     std::set<BBQuests> NOT_POSSIBLE_QUESTS = {BBQuests::UnableToDetect, BBQuests::pickup_10};
+
+    //Lists NOT_POSSIBLE_QUESTS above the exclusions table, where they cannot be changed.
+    StaticTextOption NOT_POSSIBLE_NOTE;
+    BBQuestTable QUEST_EXCLUSIONS;
 
     BooleanCheckBoxOption INVERTED_FLIGHT;
 

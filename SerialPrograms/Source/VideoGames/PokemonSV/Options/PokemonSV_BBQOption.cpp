@@ -111,7 +111,7 @@ BBQuestTable::BBQuestTable()
         "(Quests can be explicitly included, but this is not necessary.) "
         "Do not exclude too many quests, as rerolling costs BP. "
         "If no quest is possible, the program rerolls one quest it cannot do, or all quests if there is none. "
-        "Quests the program cannot do, such as pickup, are never run, but can be rerolled or skipped here. "
+        "Quests the program cannot do are listed above and always rerolled. "
         "Does not include egg hatching, as eggs are handled in other options. ",
         //"Duplicates of the same quest",
         //duplicates will work in table order. might lead to weird behavior like rerolling and then marking a quest as complete.
@@ -134,6 +134,22 @@ std::vector<std::unique_ptr<EditableTableRow>> BBQuestTable::make_defaults(){
 }
 
 
+//The quests the program cannot do, by name, for the note above the exclusions table.
+std::string not_possible_note(const std::set<BBQuests>& quests){
+    std::string ret =
+        "<b>Always rerolled:</b><br>"
+        "The program cannot do these quests. It rerolls them when they appear "
+        "(10 BP, or 50 for a red quest), and rows in the table below don't change that.";
+    for (BBQuests quest : quests){
+        if (quest == BBQuests::UnableToDetect){
+            continue;
+        }
+        const EnumEntry* entry = BBQuests_database().find(quest);
+        ret += "<br>- " + (entry ? entry->display : std::string("?"));
+    }
+    return ret;
+}
+
 BBQOption::BBQOption(OCR::LanguageOCROption* language_option)
     : GroupOption("Blueberry Quests", LockMode::UNLOCK_WHILE_RUNNING)
     , m_language_owner(language_option == nullptr
@@ -155,6 +171,7 @@ BBQOption::BBQOption(OCR::LanguageOCROption* language_option)
         "<b>Save and reset the game after completing this many quests:</b><br>This preserves progress and prevents potential game lags from long runs.<br>0 disables this option.",
         LockMode::UNLOCK_WHILE_RUNNING, 50
     )
+    , NOT_POSSIBLE_NOTE(not_possible_note(NOT_POSSIBLE_QUESTS))
     , INVERTED_FLIGHT(
         "<b>Inverted Flight:</b><br>Check this box if inverted flight controls are set.",
         LockMode::LOCK_WHILE_RUNNING,
@@ -218,6 +235,7 @@ BBQOption::BBQOption(OCR::LanguageOCROption* language_option)
     }
     PA_ADD_OPTION(NUM_QUESTS);
     PA_ADD_OPTION(SAVE_NUM_QUESTS);
+    PA_ADD_OPTION(NOT_POSSIBLE_NOTE);
     PA_ADD_OPTION(QUEST_EXCLUSIONS);
     PA_ADD_OPTION(INVERTED_FLIGHT);
     PA_ADD_OPTION(QUICKBALL);
