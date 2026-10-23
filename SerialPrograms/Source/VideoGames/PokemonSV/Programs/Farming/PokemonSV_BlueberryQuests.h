@@ -324,8 +324,9 @@ enum class BBQAutoBattleResult{
 //Clear Chargestone Cavern until the kills reach the target. Between passes, heals when the lead's
 //HP is below `policy.heal_below_hp_percent` or unknown. Gives up when a limit in `policy` is
 //reached; the board check then decides the quest failed. Either way it ends at Central Plaza.
-//Logs one line per pass: its kills, the total, the lead's HP, the time spent, and what happens
-//next.
+//Logs one line per pass: its kills (heard since the previous pass's line), the total, the lead's
+//HP, the time spent, and what happens next. Kills heard on the way back that reach the target end
+//it without healing.
 BBQAutoBattleResult run_auto_battle(
     Logger& logger,
     BBQAutoBattleActions& actions,
