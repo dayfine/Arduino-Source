@@ -169,18 +169,18 @@ public:
 struct BBQRerollScenario{
     std::string name;
     std::vector<BBQuests> quests;
-    std::vector<BBQuests> replacements;
+    std::vector<BBQuests> replacements = {};
     size_t slot;
     size_t cursor = 0;
     bool panel_opens = true;
     bool menu_seen = true;
     bool out_of_bp = false;
     int missed_reads = 0;
-    std::optional<std::vector<BBQuests>> read_override;
+    std::optional<std::vector<BBQuests>> read_override = {};
     BBQRerollResult expected;
-    std::vector<size_t> expected_rerolled_slots;
+    std::vector<size_t> expected_rerolled_slots = {};
     std::vector<BBQuests> expected_quests;
-    std::optional<std::vector<BBQuests>> expected_observed_panel;
+    std::optional<std::vector<BBQuests>> expected_observed_panel = {};
 };
 
 std::string reroll_result_to_string(BBQRerollResult result){
@@ -608,8 +608,8 @@ struct BBQRoundsScenario{
     std::vector<BBQuests> panel = {BBQuests::make_tm, BBQuests::auto_10, BBQuests::sneak_up};
     std::vector<bool> outcomes;
     std::vector<std::pair<BBQuests, BBQuests>> also_completes;
-    std::set<BBQuests> never_completes;
-    std::vector<BBQuests> new_quests;
+    std::set<BBQuests> never_completes = {};
+    std::vector<BBQuests> new_quests = {};
     BBQOption::OutOfRetries out_of_retries = BBQOption::OutOfRetries::Skip;
     bool reuse_rerolled_panel = false;
     uint64_t expected_completed = 0;
