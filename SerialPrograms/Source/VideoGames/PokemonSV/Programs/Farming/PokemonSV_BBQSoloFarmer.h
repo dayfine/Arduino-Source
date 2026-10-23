@@ -13,7 +13,7 @@
 #include "CommonFramework/Notifications/EventNotificationsTable.h"
 #include "NintendoSwitch/NintendoSwitch_SingleSwitchProgram.h"
 #include "NintendoSwitch/Options/NintendoSwitch_GoHomeWhenDoneOption.h"
-#include "VideoGames/PokemonSV/Options/PokemonSV_BBQOption.h"
+#include "VideoGames/PokemonSV/Programs/Farming/PokemonSV_BlueberryQuests.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -33,8 +33,8 @@ public:
 
     // Decide which of the quests just read are worth attempting this round.
     // May reroll quests in game, so the returned list can be empty even when
-    // `quests` is not; the loop then reads the panel again.
-    virtual std::vector<BBQuests> process_quest_list(
+    // `quests` is not; a complete post-reroll observation can seed selection.
+    virtual BBQuestBatch process_quest_list(
         const std::vector<BBQuests>& quests, uint8_t eggs_hatched
     ) = 0;
 

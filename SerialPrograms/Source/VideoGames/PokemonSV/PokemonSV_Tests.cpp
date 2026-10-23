@@ -122,6 +122,7 @@ public:
     bool menu_seen = true;
     bool out_of_bp = false;
     int missed_reads = 0;   // Reads that fail OCR on every slot.
+    std::optional<std::vector<BBQuests>> read_override;
 
     bool panel_open = false;
     bool menu_open = false;
@@ -161,7 +162,7 @@ public:
             missed_reads--;
             return std::vector<BBQuests>(quests.size(), BBQuests::UnableToDetect);
         }
-        return quests;
+        return read_override.value_or(quests);
     }
 };
 
@@ -175,9 +176,11 @@ struct BBQRerollScenario{
     bool menu_seen = true;
     bool out_of_bp = false;
     int missed_reads = 0;
+    std::optional<std::vector<BBQuests>> read_override = {};
     BBQRerollResult expected;
     std::vector<size_t> expected_rerolled_slots = {};
     std::vector<BBQuests> expected_quests;
+    std::optional<std::vector<BBQuests>> expected_observed_panel = {};
 };
 
 std::string reroll_result_to_string(BBQRerollResult result){
@@ -206,10 +209,12 @@ public:
         panel.menu_seen = m_scenario.menu_seen;
         panel.out_of_bp = m_scenario.out_of_bp;
         panel.missed_reads = m_scenario.missed_reads;
+        panel.read_override = m_scenario.read_override;
 
         NullLogger logger;
         std::vector<BBQuests> quests = m_scenario.quests;
-        const BBQRerollResult result = reroll_quest(logger, panel, quests, m_scenario.slot);
+        std::optional<std::vector<BBQuests>> observed_panel;
+        const BBQRerollResult result = reroll_quest(logger, panel, quests, m_scenario.slot, observed_panel);
         if (result != m_scenario.expected){
             return "Expected " + reroll_result_to_string(m_scenario.expected)
                 + ", got " + reroll_result_to_string(result);
@@ -221,6 +226,10 @@ public:
         if (quests != m_scenario.expected_quests){
             return "Expected quests: " + quests_to_string(m_scenario.expected_quests)
                 + "got: " + quests_to_string(quests);
+        }
+        if (observed_panel != m_scenario.expected_observed_panel){
+            return "Expected observed panel: " + quests_to_string(m_scenario.expected_observed_panel.value_or(std::vector<BBQuests>{}))
+                + ", got: " + quests_to_string(observed_panel.value_or(std::vector<BBQuests>{}));
         }
         if (panel.panel_open || panel.menu_open){
             return "Panel left open.";
@@ -248,9 +257,41 @@ void add_tests_BBQuestPlan(UnitTestDatabase& database){
             .expected_to_do = {make_tm},
         },
         {
-            .name = "nothing doable rerolls all",
-            .quests = {pickup_10, auto_10, catch_flying},
+            // One quest costs less BP to reroll than all of them.
+            .name = "nothing doable rerolls the first quest not possible",
+            .quests = {auto_10, pickup_10, catch_flying},
+            .expected_reroll_slots = {1},
+        },
+        {
+            .name = "nothing doable and nothing not possible rerolls all",
+            .quests = {auto_10, sneak_up},
+            .extra_exclusions = {{sneak_up, BBQAction::skip}},
             .expected_reroll_all = true,
+        },
+        {
+            // An undetected quest is not known to be impossible.
+            .name = "an undetected quest is not rerolled alone",
+            .quests = {UnableToDetect, auto_10},
+            .expected_reroll_all = true,
+        },
+        {
+            .name = "a skipped quest not possible is not rerolled",
+            .quests = {pickup_10, auto_10, catch_flying},
+            .extra_exclusions = {{pickup_10, BBQAction::skip}},
+            .expected_reroll_slots = {2},
+        },
+        {
+            .name = "a reroll row rerolls a quest not possible",
+            .quests = {make_tm, sneak_up, pickup_10},
+            .extra_exclusions = {{pickup_10, BBQAction::reroll}},
+            .expected_to_do = {make_tm, sneak_up},
+            .expected_reroll_slots = {2},
+        },
+        {
+            .name = "a run row does not run a quest not possible",
+            .quests = {make_tm, pickup_10},
+            .extra_exclusions = {{pickup_10, BBQAction::run}},
+            .expected_to_do = {make_tm},
         },
         {
             // The reroll replaces a quest, so the next read has something new.
@@ -309,6 +350,47 @@ void add_tests_BBQReroll(UnitTestDatabase& database){
     using enum BBQuests;
     const BBQRerollScenario scenarios[] = {
         {
+            .name = "unknown fourth slot is not reusable",
+            .quests = {make_tm, travel_500, sneak_up, hatch_egg},
+            .replacements = {catch_any},
+            .slot = 2,
+            .read_override = std::vector<BBQuests>{make_tm, travel_500, catch_any, UnableToDetect},
+            .expected = BBQRerollResult::Rerolled,
+            .expected_rerolled_slots = {2},
+            .expected_quests = {make_tm, travel_500, catch_any, hatch_egg},
+        },
+        {
+            .name = "missing fourth slot is not reusable",
+            .quests = {make_tm, travel_500, sneak_up, hatch_egg},
+            .replacements = {catch_any},
+            .slot = 2,
+            .read_override = std::vector<BBQuests>{make_tm, travel_500, catch_any},
+            .expected = BBQRerollResult::Rerolled,
+            .expected_rerolled_slots = {2},
+            .expected_quests = {make_tm, travel_500, catch_any, hatch_egg},
+        },
+        {
+            .name = "another changed quest is not reusable",
+            .quests = {make_tm, travel_500, sneak_up, hatch_egg},
+            .replacements = {catch_any},
+            .slot = 2,
+            .read_override = std::vector<BBQuests>{photo_canyon, travel_500, catch_any, hatch_egg},
+            .expected = BBQRerollResult::Rerolled,
+            .expected_rerolled_slots = {2},
+            .expected_quests = {make_tm, travel_500, catch_any, hatch_egg},
+        },
+        {
+            .name = "complete observation after missed reads is reusable",
+            .quests = {make_tm, travel_500, sneak_up, hatch_egg},
+            .replacements = {catch_any},
+            .slot = 2,
+            .missed_reads = 2,
+            .expected = BBQRerollResult::Rerolled,
+            .expected_rerolled_slots = {2},
+            .expected_quests = {make_tm, travel_500, catch_any, hatch_egg},
+            .expected_observed_panel = std::vector<BBQuests>{make_tm, travel_500, catch_any, hatch_egg},
+        },
+        {
             .name = "cursor on the top quest",
             .quests = {make_tm, sneak_up, travel_500},
             .replacements = {catch_any},
@@ -328,6 +410,7 @@ void add_tests_BBQReroll(UnitTestDatabase& database){
             .expected = BBQRerollResult::Rerolled,
             .expected_rerolled_slots = {1},
             .expected_quests = {make_tm, catch_any, sneak_up, hatch_egg},
+            .expected_observed_panel = std::vector<BBQuests>{make_tm, catch_any, sneak_up, hatch_egg},
         },
         {
             .name = "fourth quest",
@@ -337,6 +420,7 @@ void add_tests_BBQReroll(UnitTestDatabase& database){
             .expected = BBQRerollResult::Rerolled,
             .expected_rerolled_slots = {3},
             .expected_quests = {make_tm, travel_500, sneak_up, catch_any},
+            .expected_observed_panel = std::vector<BBQuests>{make_tm, travel_500, sneak_up, catch_any},
         },
         {
             .name = "panel not opened spends nothing",
@@ -424,6 +508,7 @@ public:
         BBQuests::photo_savanna, BBQuests::catch_any, BBQuests::catch_normal,
         BBQuests::catch_fire, BBQuests::catch_water, BBQuests::catch_grass,
     };
+    bool reuse_rerolled_panel = false;
 
     std::vector<std::string> events;
 
@@ -434,7 +519,7 @@ public:
         }
         return panel;
     }
-    virtual std::vector<BBQuests> process_quest_list(
+    virtual BBQuestBatch process_quest_list(
         const std::vector<BBQuests>& quests, uint8_t
     ) override{
         events.push_back("process");
@@ -444,12 +529,13 @@ public:
                 doable.push_back(quest);
             }
         }
-        if (doable.empty()){
+        const bool rerolled = doable.empty();
+        if (rerolled){
             for (BBQuests& slot : panel){
                 slot = next_new_quest();
             }
         }
-        return doable;
+        return {std::move(doable), rerolled && reuse_rerolled_panel && quests.size() == 4 ? std::optional(panel) : std::nullopt};
     }
     virtual bool do_quest(BBQuests quest, uint8_t&) override{
         events.push_back("do");
@@ -523,6 +609,7 @@ struct BBQRoundsScenario{
     std::set<BBQuests> never_completes = {};
     std::vector<BBQuests> new_quests = {};
     BBQOption::OutOfRetries out_of_retries = BBQOption::OutOfRetries::Skip;
+    bool reuse_rerolled_panel = false;
     uint64_t expected_completed = 0;
     std::string expected;
 };
@@ -552,6 +639,7 @@ public:
         if (!m_scenario.new_quests.empty()){
             game.new_quests = m_scenario.new_quests;
         }
+        game.reuse_rerolled_panel = m_scenario.reuse_rerolled_panel;
 
         NullLogger logger;
         run_bbq_rounds(logger, options, game);
@@ -574,6 +662,22 @@ private:
 void add_tests_BBQFarmerRounds(UnitTestDatabase& database){
     const std::string round_of_3 = "read process read do completed read do completed read do completed";
     const BBQRoundsScenario scenarios[] = {
+        {
+            .name = "reuses reroll observation for selection and first dispatch only",
+            .num_quests = 1,
+            .panel = {BBQuests::pickup_10, BBQuests::catch_flying, BBQuests::UnableToDetect, BBQuests::photo_flying},
+            .reuse_rerolled_panel = true,
+            .expected_completed = 4,
+            .expected = "read process process do completed read do completed read do completed read do completed end",
+        },
+        {
+            .name = "three-slot reroll still reads the panel again",
+            .num_quests = 1,
+            .panel = {BBQuests::pickup_10, BBQuests::catch_flying, BBQuests::UnableToDetect},
+            .reuse_rerolled_panel = true,
+            .expected_completed = 3,
+            .expected = "read process read process read do completed read do completed read do completed end",
+        },
         {
             // The goal (4) is reached in the middle of round 2. The loop only
             // checks the goal between rounds, so round 2 finishes and 6 quests

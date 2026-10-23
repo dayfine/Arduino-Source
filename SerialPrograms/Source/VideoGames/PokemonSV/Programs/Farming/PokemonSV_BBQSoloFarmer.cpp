@@ -103,6 +103,8 @@ void run_bbq_rounds(Logger& logger, const BBQOption& options, BBQGameActions& ga
     // on the panel, so without this it gets NUM_RETRIES more attempts every
     // round, forever, e.g. a sneak-up whose target does not spawn.
     std::set<BBQuests> failed_quests;
+    std::optional<std::vector<BBQuests>> observed_panel;
+    std::optional<std::vector<BBQuests>> dispatch_panel;
     auto read_panel = [&](){
         std::vector<BBQuests> panel = game.read_quests();
         forget_quests_gone_from_panel(failed_quests, panel);
@@ -117,8 +119,22 @@ void run_bbq_rounds(Logger& logger, const BBQOption& options, BBQGameActions& ga
 
         //Get and reroll quests until we can at least one
         while (quests_to_do.size() < 1){
-            quest_list = read_panel();
-            quests_to_do = game.process_quest_list(quest_list, eggs_hatched);
+            const bool reused_panel = observed_panel.has_value();
+            if (observed_panel){
+                logger.log("Reusing verified quest panel for scheduling.");
+                quest_list = std::move(*observed_panel);
+                observed_panel.reset();
+                forget_quests_gone_from_panel(failed_quests, quest_list);
+            }else{
+                logger.log("Reading quest panel for scheduling.");
+                quest_list = read_panel();
+            }
+            BBQuestBatch batch = game.process_quest_list(quest_list, eggs_hatched);
+            quests_to_do = std::move(batch.to_do);
+            observed_panel = std::move(batch.observed_panel);
+            if (reused_panel && !quests_to_do.empty() && !observed_panel){
+                dispatch_panel = quest_list;
+            }
 
             // Rerolling costs BP and the failed quests may be doable another
             // time, so stop instead of spending BP to replace them.
@@ -135,9 +151,18 @@ void run_bbq_rounds(Logger& logger, const BBQOption& options, BBQGameActions& ga
             quest_list.clear();
         }
 
+        //Never carry an observation across quest actions or the round's date/reset work.
+        observed_panel.reset();
         for (auto current_quest : quests_to_do){
             //Check if quest was already completed (ex. 500 meters completed while navigating to take a photo)
-            quest_list = read_panel();
+            if (dispatch_panel){
+                logger.log("Reusing verified quest panel for first dispatch.");
+                quest_list = std::move(*dispatch_panel);
+                dispatch_panel.reset();
+            }else{
+                logger.log("Reading quest panel before dispatch.");
+                quest_list = read_panel();
+            }
             if (std::find(quest_list.begin(), quest_list.end(), current_quest) != quest_list.end()){
                 logger.log("Current quest exists on list. Doing quest.");
                 bool questSuccess = game.do_quest(current_quest, eggs_hatched);
@@ -194,7 +219,7 @@ public:
     virtual std::vector<BBQuests> read_quests() override{
         return PokemonSV::read_quests(m_env.program_info(), m_env.console, m_context, m_options);
     }
-    virtual std::vector<BBQuests> process_quest_list(
+    virtual BBQuestBatch process_quest_list(
         const std::vector<BBQuests>& quests, uint8_t eggs_hatched
     ) override{
         return PokemonSV::process_quest_list(m_env.program_info(), m_env.console, m_context, m_options, quests, eggs_hatched);
