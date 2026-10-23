@@ -387,8 +387,25 @@ void quest_catch_navi(
     BBQuests current_quest
 ){
     switch (current_quest){
-        case BBQuests::catch_any: case BBQuests::catch_normal: case BBQuests::catch_fire:
-            console.log("Catch: Any/Normal/Fire");
+        case BBQuests::catch_any:
+            console.log("Catch: Any");
+
+            //Chargestone battle court, where Auto Battle goes: a safe zone with many
+            //spawns. Any wild Pokemon counts, so send out the lead at whatever is in front.
+            central_to_chargestone(info, console, context);
+            pbf_wait(context, 3000ms);
+            context.wait_for_all_requests();
+
+            pbf_press_button(context, BUTTON_L, 160ms, 400ms);
+            pbf_move_left_joystick(context, {0, +1}, 2000ms, 400ms);
+            pbf_move_left_joystick(context, {+1, 0}, 1440ms, 400ms);
+            pbf_press_button(context, BUTTON_L, 160ms, 400ms);
+
+            send_out_and_look_around(console, context, std::chrono::seconds(6), "a wild Pokemon");
+            break;
+
+        case BBQuests::catch_normal: case BBQuests::catch_fire:
+            console.log("Catch: Normal/Fire");
 
             //Savanna Plaza - Pride Rock
             central_to_savanna_plaza(info, console, context);
@@ -514,37 +531,21 @@ void quest_catch_navi(
         case BBQuests::catch_flying:
             console.log("Catch: Flying");
 
-            //Vullaby/Mandibuzz
-            central_to_savanna_plaza(info, console, context);
+            //Canyon grassland at Black Augurite, where the Tera-self quest glides: Scyther,
+            //Altaria, Swablu and Fletchling spawn around the fixed Kleavor. The Savanna
+            //route waited for one Vullaby/Mandibuzz spawn and was marked not possible.
+            central_to_canyon_plaza(info, console, context);
 
-            pbf_move_left_joystick(context, {+1, +0.688}, 80ms, 160ms);
+            pbf_move_left_joystick(context, {+0.606, +0.5}, 160ms, 840ms);
             pbf_press_button(context, BUTTON_L | BUTTON_PLUS, 160ms, 840ms);
 
-            pbf_move_left_joystick(context, {0, +1}, 4000ms, 160ms);
-            pbf_press_button(context, BUTTON_L | BUTTON_PLUS, 160ms, 840ms);
-
-            pbf_move_left_joystick(context, {+1, +1}, 80ms, 160ms);
-            pbf_press_button(context, BUTTON_L, 160ms, 400ms);
-
             if (console.state().console_type() == ConsoleType::Switch1){
-                pbf_move_left_joystick(context, {0, +1}, 1600ms, 160ms);
-            }else{
-                pbf_move_left_joystick(context, {0, +1}, 1360ms, 160ms);
+                jump_glide_fly(console, context, BBQ_OPTIONS.INVERTED_FLIGHT, 8000ms, 13200ms, 2400ms);
+            }else{ //All switch 2s
+                jump_glide_fly(console, context, BBQ_OPTIONS.INVERTED_FLIGHT, 8000ms, 12800ms, 2400ms);
             }
 
-            pbf_press_button(context, BUTTON_L, 160ms, 400ms);
-
-            pbf_move_left_joystick(context, {-1, +1}, 80ms, 160ms);
-            pbf_press_button(context, BUTTON_L, 160ms, 400ms);
-
-            if (console.state().console_type() == ConsoleType::Switch1){
-                pbf_move_left_joystick(context, {0, +1}, 800ms, 160ms);
-            }else{
-                pbf_move_left_joystick(context, {0, +1}, 960ms, 160ms);
-            }
-            pbf_wait(context, 3200ms);
-            context.wait_for_all_requests();
-
+            send_out_and_look_around(console, context, std::chrono::seconds(6), "a flying Pokemon");
             break;
         case BBQuests::catch_rock: case BBQuests::catch_electric:
             console.log("Catch: Rock/Electric");
