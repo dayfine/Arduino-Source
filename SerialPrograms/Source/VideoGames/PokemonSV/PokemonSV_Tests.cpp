@@ -1261,7 +1261,8 @@ public:
 private:
     BBQuestBatch process_with_plan(const std::vector<BBQuests>& quests){
         NullLogger logger;
-        BBQuestPlan plan = plan_quests(logger, *plan_options, quests, 0);
+        //Out of BP, plan_quests() skips a quest not possible next to doable ones.
+        BBQuestPlan plan = plan_quests(logger, *plan_options, quests, 0, out_of_bp ? 0 : 1000);
         for (size_t slot : plan.reroll_slots){
             events.push_back("reroll(slot)");
             if (out_of_bp){
@@ -1448,7 +1449,7 @@ void add_tests_BBQFarmerRounds(UnitTestDatabase& database){
             .new_quests = {BBQuests::travel_500, BBQuests::photo_canyon, BBQuests::photo_coastal, BBQuests::photo_polar},
             .out_of_retries = BBQOption::OutOfRetries::Reroll,
             .expected_completed = 3,
-            .expected_attempted = {BBQuests::catch_grass, BBQuests::travel_500, BBQuests::photo_savanna, BBQuests::make_tm},
+            .expected_attempted = {BBQuests::make_tm, BBQuests::travel_500, BBQuests::photo_savanna, BBQuests::catch_grass},
             .expected = "read process do reroll end " + round_of_3 + " end",
         },
         {
@@ -1460,7 +1461,7 @@ void add_tests_BBQFarmerRounds(UnitTestDatabase& database){
             .out_of_retries = BBQOption::OutOfRetries::Reroll,
             .reuse_rerolled_panel = true,
             .expected_completed = 4,
-            .expected_attempted = {BBQuests::catch_grass, BBQuests::travel_500, BBQuests::photo_savanna, BBQuests::make_tm, BBQuests::wash_pokemon},
+            .expected_attempted = {BBQuests::make_tm, BBQuests::travel_500, BBQuests::photo_savanna, BBQuests::catch_grass, BBQuests::wash_pokemon},
             .expected = "read process do reroll end process do completed read do completed read do completed read do completed end",
         },
         {
@@ -1498,34 +1499,36 @@ void add_tests_BBQFarmerRounds(UnitTestDatabase& database){
             // Each reroll's verified read is reused, and so is the last one
             // for the first dispatch. The round loop used to read the panel
             // 3 times between the failed reroll and the next attempt.
+            // Lab R7: sneak-up (no cost measured) replaces make-tm, so #28's
+            // ordering keeps catch-fighting first.
             .name = "failed reroll then table reroll reuse verified reads",
             .num_quests = 1,
-            .panel = {BBQuests::catch_fighting, BBQuests::make_tm, BBQuests::photo_savanna},
+            .panel = {BBQuests::catch_fighting, BBQuests::sneak_up, BBQuests::photo_savanna},
             .outcomes = {false},
             .new_quests = {BBQuests::pickup_10, BBQuests::travel_500, BBQuests::photo_canyon, BBQuests::photo_coastal, BBQuests::photo_polar},
             .out_of_retries = BBQOption::OutOfRetries::Reroll,
             .table_rerolls = {BBQuests::pickup_10},
             .reuse_rerolled_panel = true,
             .expected_completed = 3,
-            .expected_attempted = {BBQuests::catch_fighting, BBQuests::travel_500, BBQuests::make_tm, BBQuests::photo_savanna},
-            .expected_reads = 2,
-            .expected = "read process do reroll end process process do completed do completed read do completed end",
+            .expected_attempted = {BBQuests::catch_fighting, BBQuests::travel_500, BBQuests::sneak_up, BBQuests::photo_savanna},
+            .expected_reads = 3,
+            .expected = "read process do reroll end process process do completed read do completed read do completed end",
         },
         {
             // As above, but neither reroll's read is reusable. Only the
             // first dispatch skips a read: 2 reads before the next attempt
-            // instead of 3. make-tm starts from travel-500's read.
+            // instead of 3.
             .name = "failed reroll then table reroll without reusable reads",
             .num_quests = 1,
-            .panel = {BBQuests::catch_fighting, BBQuests::make_tm, BBQuests::photo_savanna},
+            .panel = {BBQuests::catch_fighting, BBQuests::sneak_up, BBQuests::photo_savanna},
             .outcomes = {false},
             .new_quests = {BBQuests::pickup_10, BBQuests::travel_500, BBQuests::photo_canyon, BBQuests::photo_coastal, BBQuests::photo_polar},
             .out_of_retries = BBQOption::OutOfRetries::Reroll,
             .table_rerolls = {BBQuests::pickup_10},
             .expected_completed = 3,
-            .expected_attempted = {BBQuests::catch_fighting, BBQuests::travel_500, BBQuests::make_tm, BBQuests::photo_savanna},
-            .expected_reads = 4,
-            .expected = "read process do reroll end read process read process do completed do completed read do completed end",
+            .expected_attempted = {BBQuests::catch_fighting, BBQuests::travel_500, BBQuests::sneak_up, BBQuests::photo_savanna},
+            .expected_reads = 5,
+            .expected = "read process do reroll end read process read process do completed read do completed read do completed end",
         },
         {
             // The save resets the game, so the reroll's read is not reused.
@@ -1558,8 +1561,8 @@ void add_tests_BBQFarmerRounds(UnitTestDatabase& database){
             .panel = {BBQuests::photo_swim, BBQuests::travel_500, BBQuests::make_tm},
             .also_completes = {{BBQuests::photo_swim, BBQuests::travel_500}},
             .expected_completed = 3,
-            .expected = "read process do completed read do completed read completed end",
             .expected_attempted = {BBQuests::make_tm, BBQuests::photo_swim},
+            .expected = "read process do completed read do completed read completed end",
         },
         {
             // Expected seconds per completion: make-tm 79, travel-500 89,
@@ -1568,8 +1571,9 @@ void add_tests_BBQFarmerRounds(UnitTestDatabase& database){
             .num_quests = 3,
             .panel = {BBQuests::auto_10, BBQuests::travel_500, BBQuests::make_tm},
             .expected_completed = 3,
-            .expected = round_of_3 + " end",
             .expected_attempted = {BBQuests::make_tm, BBQuests::travel_500, BBQuests::auto_10},
+            //travel-500 starts from make-tm's read (no-trip chaining).
+            .expected = "read process do completed do completed read do completed end",
         },
         {
             // photo-swim 63 s at 71% (89 s), typed catch 137 s at 75%
@@ -1578,8 +1582,8 @@ void add_tests_BBQFarmerRounds(UnitTestDatabase& database){
             .num_quests = 3,
             .panel = {BBQuests::tera_self_defeat, BBQuests::catch_fire, BBQuests::photo_swim},
             .expected_completed = 3,
-            .expected = round_of_3 + " end",
             .expected_attempted = {BBQuests::photo_swim, BBQuests::catch_fire, BBQuests::tera_self_defeat},
+            .expected = round_of_3 + " end",
         },
         {
             // sneak_up has no measurement, so it stays in slot 2.
@@ -1587,8 +1591,8 @@ void add_tests_BBQFarmerRounds(UnitTestDatabase& database){
             .num_quests = 3,
             .panel = {BBQuests::auto_10, BBQuests::sneak_up, BBQuests::make_tm},
             .expected_completed = 3,
-            .expected = round_of_3 + " end",
             .expected_attempted = {BBQuests::make_tm, BBQuests::sneak_up, BBQuests::auto_10},
+            .expected = round_of_3 + " end",
         },
         {
             // The first attempt fails: 3 attempts, 2 completions.
@@ -1748,7 +1752,8 @@ void add_tests_BBQFarmerRounds(UnitTestDatabase& database){
             .plan_with_plan_quests = true,
             .expected_completed = 3,
             .expected_attempted = {BBQuests::make_tm, BBQuests::travel_500, BBQuests::sneak_up},
-            .expected = "read process reroll(slot) " + round_of_3 + " end",
+            //travel-500 starts from make-tm's read (no-trip chaining).
+            .expected = "read process reroll(slot) read process do completed do completed read do completed end",
         },
         {
             // A panel whose doable quests sit next to a quest not possible
@@ -1763,16 +1768,17 @@ void add_tests_BBQFarmerRounds(UnitTestDatabase& database){
             .expected = read_and_reroll_30_times + "error",
         },
         {
-            // Out of BP, the reroll of a quest not possible is not replaced,
-            // and the program stops before it reaches the doable quests or
-            // the read limit.
-            .name = "out of BP, a quest not possible stops the run before doable quests",
-            .num_quests = 3,
+            // Out of BP, plan_quests() does not reroll a quest not possible
+            // next to doable quests (#25 follow-up): it is skipped and the
+            // doable quests run, as before C15.
+            .name = "out of BP, a quest not possible is skipped and the doable quests run",
+            .num_quests = 2,
             .panel = {BBQuests::make_tm, BBQuests::catch_flying, BBQuests::sneak_up},
             .out_of_bp = true,
             .plan_with_plan_quests = true,
-            .expected_completed = 0,
-            .expected = "read process reroll(slot) stopped",
+            .expected_completed = 2,
+            .expected_attempted = {BBQuests::make_tm, BBQuests::sneak_up},
+            .expected = "read process do completed read do completed end",
         },
         {
             // Out of BP with only skipped quests: plan_quests() rerolls all,
@@ -1791,15 +1797,17 @@ void add_tests_BBQFarmerRounds(UnitTestDatabase& database){
                 }
                 return ret + "error";
             }(),
+        },
+        {
             // make-tm ends round 1 back at Central Plaza: its read plans
             // round 2 with no round actions between it and travel-500.
             .name = "no-trip quests chain with no round actions between",
             .num_quests = 5,
-            .panel = {BBQuests::auto_10, BBQuests::sneak_up, BBQuests::make_tm},
+            .panel = {BBQuests::photo_savanna, BBQuests::sneak_up, BBQuests::make_tm},
             .new_quests = {BBQuests::travel_500, BBQuests::photo_canyon, BBQuests::photo_coastal, BBQuests::photo_polar},
             .expected_completed = 6,
             .expected_attempted = {
-                BBQuests::auto_10, BBQuests::sneak_up, BBQuests::make_tm,
+                BBQuests::photo_savanna, BBQuests::sneak_up, BBQuests::make_tm,
                 BBQuests::travel_500, BBQuests::photo_canyon, BBQuests::photo_coastal,
             },
             .expected_reads = 5,
@@ -1822,7 +1830,7 @@ void add_tests_BBQFarmerRounds(UnitTestDatabase& database){
         {
             .name = "failed no-trip quest ends the round as usual",
             .num_quests = 3,
-            .panel = {BBQuests::auto_10, BBQuests::sneak_up, BBQuests::make_tm},
+            .panel = {BBQuests::photo_savanna, BBQuests::sneak_up, BBQuests::make_tm},
             .outcomes = {true, true, false},
             .new_quests = {BBQuests::travel_500, BBQuests::photo_canyon, BBQuests::photo_coastal, BBQuests::photo_polar},
             .expected_completed = 4,
@@ -1834,7 +1842,7 @@ void add_tests_BBQFarmerRounds(UnitTestDatabase& database){
             .name = "no-trip quest does not chain past a save",
             .num_quests = 6,
             .save_num_quests = 3,
-            .panel = {BBQuests::auto_10, BBQuests::sneak_up, BBQuests::make_tm},
+            .panel = {BBQuests::photo_savanna, BBQuests::sneak_up, BBQuests::make_tm},
             .new_quests = {BBQuests::travel_500, BBQuests::photo_canyon, BBQuests::photo_coastal, BBQuests::photo_polar},
             .expected_completed = 6,
             .expected =
@@ -1844,7 +1852,7 @@ void add_tests_BBQFarmerRounds(UnitTestDatabase& database){
         {
             .name = "no-trip quest that reaches the goal ends the round",
             .num_quests = 3,
-            .panel = {BBQuests::auto_10, BBQuests::sneak_up, BBQuests::make_tm},
+            .panel = {BBQuests::photo_savanna, BBQuests::sneak_up, BBQuests::make_tm},
             .expected_completed = 3,
             .expected = "read process do completed read do completed read do completed end",
         },
