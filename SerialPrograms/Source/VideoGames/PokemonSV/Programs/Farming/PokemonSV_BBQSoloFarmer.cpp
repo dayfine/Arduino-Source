@@ -88,9 +88,12 @@ void BBQSoloFarmer::program(SingleSwitchProgramEnvironment& env, ProControllerCo
     //  Connect the controller.
     require_player(env.console, context, BUTTON_LCLICK);
     
-    //Fly to plaza
+    //Fly to plaza. Pressing "fly here" on the player only works at a fly spot,
+    //so stop with a setup error instead of retrying when there isn't one.
     open_map_from_overworld(env.program_info(), env.console, context);
-    fly_to_overworld_from_map(env.program_info(), env.console, context);
+    if (!fly_to_overworld_from_map(env.program_info(), env.console, context, true)){
+        throw UserSetupError(env.console, "No fly spot where the player stands. Start the program at Central Plaza.");
+    }
 
     std::vector<BBQuests> quest_list; //all quests
     std::vector<BBQuests> quests_to_do; //do-able quests
