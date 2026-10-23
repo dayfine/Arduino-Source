@@ -2362,6 +2362,8 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonSV/Inference/Overworld/PokemonSV_OverworldDetector.h
     Source/VideoGames/PokemonSV/Inference/Overworld/PokemonSV_OverworldSensors.cpp
     Source/VideoGames/PokemonSV/Inference/Overworld/PokemonSV_OverworldSensors.h
+    Source/VideoGames/PokemonSV/Inference/Overworld/PokemonSV_PlaceNameBannerReader.cpp
+    Source/VideoGames/PokemonSV/Inference/Overworld/PokemonSV_PlaceNameBannerReader.h
     Source/VideoGames/PokemonSV/Inference/Overworld/PokemonSV_StationaryOverworldWatcher.cpp
     Source/VideoGames/PokemonSV/Inference/Overworld/PokemonSV_StationaryOverworldWatcher.h
     Source/VideoGames/PokemonSV/Inference/Picnics/PokemonSV_PicnicDetector.cpp
@@ -2663,6 +2665,8 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonSV/Programs/PokemonSV_SaveGame.h
     Source/VideoGames/PokemonSV/Programs/PokemonSV_Terarium.cpp
     Source/VideoGames/PokemonSV/Programs/PokemonSV_Terarium.h
+    Source/VideoGames/PokemonSV/Programs/PokemonSV_TerariumPlazaReturn.cpp
+    Source/VideoGames/PokemonSV/Programs/PokemonSV_TerariumPlazaReturn.h
     Source/VideoGames/PokemonSV/Programs/PokemonSV_WorldNavigation.cpp
     Source/VideoGames/PokemonSV/Programs/PokemonSV_WorldNavigation.h
     Source/VideoGames/PokemonSV/Programs/Sandwiches/PokemonSV_IngredientSession.cpp
