@@ -1392,6 +1392,17 @@ BBQAutoBattleResult run_auto_battle(
             );
             return BBQAutoBattleResult::TargetReached;
         }
+        //The heard count can fall short of the game's: a kill whose sound was missed still counts
+        //in game. Near the target, read the board before going again. The read (~5 s) costs much
+        //less than a pass and its heal.
+        if (actions.kills() + policy.check_board_within_kills >= policy.kill_target){
+            const std::string count_text = std::to_string(actions.kills()) + "/" + std::to_string(policy.kill_target);
+            if (!actions.quest_on_board()){
+                logger.log("Auto Battle: the quest is no longer on the board at " + count_text + " kills heard. Stop: the game completed it.");
+                return BBQAutoBattleResult::QuestDone;
+            }
+            logger.log("Auto Battle: the quest is still on the board at " + count_text + " kills heard. Go again.");
+        }
         //Skipping the heal also skips its re-fly: return_to_plaza() already lands on the Central
         //Plaza fly point, which is where the flight to Chargestone starts from.
         if (heal){
@@ -1410,10 +1421,13 @@ public:
         VideoStream& stream, ProControllerContext& context,
         LetsGoEncounterBotStats& stats,
         LetsGoEncounterBotTracker& tracker,
-        LetsGoHpWatcher& hp_watcher
+        LetsGoHpWatcher& hp_watcher,
+        const BBQOption& options,
+        BBQuests quest
     )
         : m_env(env), m_stream(stream), m_context(context)
         , m_stats(stats), m_tracker(tracker), m_hp_watcher(hp_watcher)
+        , m_options(options), m_quest(quest)
     {}
 
     virtual uint64_t kills() const override{
@@ -1460,6 +1474,10 @@ public:
     virtual void return_to_plaza() override{
         PokemonSV::return_to_plaza(m_env.program_info(), m_stream, m_context);
     }
+    virtual bool quest_on_board() override{
+        const std::vector<BBQuests> quests = read_quests(m_env.program_info(), m_stream, m_context, m_options);
+        return std::find(quests.begin(), quests.end(), m_quest) != quests.end();
+    }
     virtual void heal() override{
         OverworldWatcher done_healing(m_stream.logger(), COLOR_BLUE);
         pbf_move_left_joystick(m_context, {0, +1}, 800ms, 160ms);
@@ -1489,6 +1507,8 @@ private:
     LetsGoEncounterBotStats& m_stats;
     LetsGoEncounterBotTracker& m_tracker;
     LetsGoHpWatcher& m_hp_watcher;
+    const BBQOption& m_options;
+    BBQuests m_quest;
 };
 
 }
@@ -1524,7 +1544,7 @@ void quest_auto_battle(
     }
     policy.heal_below_hp_percent = BBQ_OPTIONS.AUTO_BATTLE_HEAL_PERCENT;
 
-    ConsoleBBQAutoBattleActions actions(env, stream, context, stats, tracker, sensors.lets_go_hp);
+    ConsoleBBQAutoBattleActions actions(env, stream, context, stats, tracker, sensors.lets_go_hp, BBQ_OPTIONS, current_quest);
     run_auto_battle(stream.logger(), actions, policy);
 }
 
