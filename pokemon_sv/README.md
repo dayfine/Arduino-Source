@@ -83,6 +83,7 @@ quests), `SAVE_NUM_QUESTS` = 10, language `chi_tra`.
 | R5a / R5b | + Central Plaza landing check | 259 / 604 | 73/73 landings confirmed; R5a lost 2 slots to impossible quests, fixed by rerolling them |
 | R7 | + BP-check, ordering, Make TM resume, return bounds, kill count, C10 board read, no-trip chaining | 424 (40 min) | stopped by the hatch bug (C17); every new feature seen working |
 | R6 | + reroll impossible quests on sight (C15), eggs enabled | 644 | 35 quests; hatch red +220; 120/120 landings over R5+R6; catch-any completed after the #23 fix |
+| R8 | + hatch fix (C17), start-up fly-spot check | 509 (58 min) | hatch red +200 end to end; failed-hatch recovery restored the lead; 3 false starts fixed |
 
 Per-run details, Kleavor frame studies and the red-quest data are in
 `ROADMAP.md` ("Run log"). Upstream PRs: PokemonAutomation/Arduino-Source#1628,
@@ -103,6 +104,7 @@ Rough value from `ROI.md` where modeled. In descending order of what we'd do nex
 | M15 (a) photo + catch of the same target in one outing | e.g. photo-ghost + catch-ghost; routes differ today | needs new paths |
 | M15 (c) same-area batching | needs each route to record its plaza; N1 (#20) fly-from-anywhere | small |
 | C13 adaptive reroll from live success rates | replaces the hand-tuned exclusion list | small, robustness |
+| C18 find eggs by the slot icon (Egg Hatcher's method) | view-independent, one frame, up to ~18 s faster per hatch | small, robustness |
 | Make TM: detect craftable TMs on screen / OCR materials | today it presses A down the list | small |
 | M11a skip the rinse after a failed scrub (wash) | wash is rerolled today | small |
 | M8b select the egg box at startup | today the user picks the box | convenience |
@@ -110,6 +112,6 @@ Rough value from `ROI.md` where modeled. In descending order of what we'd do nex
 | Read in-game time; log what species a battle was against | to explain spawn misses | diagnostics |
 | Item Printer: log BP before/after | turns BP/hour into items/hour | measurement |
 
-Known open bugs: hatch can take a hatched Pokémon for an egg and strand the lead in the box (C17); Auto Battle kill count runs ~1 short and per-pass totals don't
+Known open bugs: the plaza search may leave the map zoomed out after a fallback (C19, suspected); fork PRs #21-#32 fail Windows Clang's `-Wmissing-designated-field-initializers` (fix before upstreaming); Auto Battle kill count runs ~1 short and per-pass totals don't
 always add up (#17); a failed hatch can leave the egg as party lead (M8a, Codex's
 uncommitted work in `~/Projects/Arduino-Source-m8a`).

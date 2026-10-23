@@ -524,3 +524,45 @@ the panel settle and require the egg reading on two frames ~300 ms apart;
 (2) after the swap, confirm party slot 1 is an egg, else swap back and skip;
 (3) on any hatch failure, swap the lead back (overlaps M8a, Codex's
 uncommitted work). Until fixed: NUM_EGGS = 0 in bbq-r6/bbq-r7.
+
+**R8 (2026-10-22 19:17-20:44, `lab/r8` = `lab/r7` + C17 fixes, profile bbq-r8
+with eggs on, box 13, NUM_EGGS = 30).** Three false starts, then a clean run
+19:46-20:44: 13 quests, net +490 in 58 min (509 BP/h on the in-game balance,
+11784 -> 12274; the program's own figure is 564). No errors after 19:46.
+- **C17's first diagnosis was wrong.** `BoxCurrentEggDetector` checks that the
+  summary-panel row under the name bar is blank. That only tells eggs apart in
+  the stats/judge view; in the default view the row is blank for every
+  Pokémon, so the first occupied slot (the Litten at 13/(0,0)) read as an egg.
+  The 300 ms two-frame check in fork #33 couldn't help. 19:23 the Litten was
+  swapped in again and rode 10 min; at the timeout the new recovery swapped the
+  lead back and returned to the plaza (19:33-19:34): **recovery confirmed**.
+  Fix (6eac746d6): move the cursor to the party lead and switch to the stats
+  view before scanning. 19:47 found the egg at (0,1), hatched in ~1 min,
+  lead restored, **+200 BP**.
+- **Start-up flew to the map cursor with no check.** Started in the Savanna it
+  looped on the fly prompt forever. Using the checked plaza return at start-up
+  fails when already at Central Plaza: the player icon hides the plaza's
+  Pokécenter icon, and flying to the area you're in shows no place-name
+  banner. Final (b31d5dd18): "fly here" on the player with the Fly menu-item
+  check; no fly spot -> `UserSetupError` "Start the program at Central Plaza."
+- **Suspected, not verified:** when the Pokécenter search falls back, it zooms
+  the map out twice and never back in. If the game keeps the zoom between map
+  openings, every later search starts at the wrong level (fits three failures
+  in a row here and bbq-m5's 17 identical misses).
+- **C10 #32:** heard 8/10, read the board, still there; next pass 0 kills, read
+  again, gone -> stopped. Auto Battle 10: 3 and 5 passes, 0 heals.
+- Rerolls 9 (3 sneak-up, 1 photo-swim, 1 photo-fly, 4 after failed retries).
+  Kleavor 4 attempts. #24 landings all confirmed.
+- **Windows Clang:** upstream #1663 failed only Windows Clang on
+  `-Wmissing-designated-field-initializers`, which Apple clang's `-Wextra`
+  doesn't enable. Lab `PokemonSV_Tests.cpp` has ~100 such omissions from fork
+  PRs #21-#32. Local builds should add the flag; fix with `= {}` defaults
+  before any of those PRs goes upstream.
+
+**C18 (added 2026-10-22): find eggs by the slot icon, as Egg Hatcher does.**
+`BoxEggDetector(SLOTS, row, col)` template-matches the egg sprite in the grid:
+independent of the view mode, all 30 slots from one frame, no cursor moves
+(saves up to ~18 s per hatch). Replace the stats-view patch in fork #33.
+
+**C19 (added 2026-10-22): normalize the map zoom before the plaza search**, if
+the zoom-persistence guess holds (check the slider before/after a fallback).

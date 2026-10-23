@@ -64,6 +64,7 @@ the live runs needed to validate.
 | R5b overall (exclusions + #24) | model 657 | 604 BP/h, 34 quests | R5b | inside MC band |
 | C15 reroll impossible on sight + eggs enabled | model 657 | 644 BP/h, 35 quests, hatch red +220 | R6 | inside MC band; #23 catch path seen working |
 | #26 (M15 step 1b) no-trip chaining | was estimated ~1.5 min/quest | agent measured ~5-20 s/quest | none | estimate was wrong; low priority |
+| C17 hatch fix (stats view, lead check, restore) + start-up fly-spot check | model 657 | 509 BP/h over 58 min, 13 quests, hatch red +200 | R8 | short run, inside MC p10-p90 (451-698); hatch works end to end |
 
 ## Projection (Monte Carlo, `pokemon_sv/tools/roi_mc.py`)
 
