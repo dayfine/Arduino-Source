@@ -3,7 +3,7 @@
 Date: 2026-10-23 PDT. Owner: Codex for research and prospective lab work;
 existing PR ownership remains as defined in AGENTS.md. Status: **research
 complete for an initial Paldea pass and a 24-starter Terarium survey; supervised
-acquisition prototype implemented, full build pending, no live validation**.
+acquisition prototype implemented and full app build passed; no live validation**.
 The user authorized starting a prototype after the survey. Its
 [implementation and field handoff](PROTOTYPE_STATE.md) records the deliberately
 limited experiment; this does not establish completion of the field gates below.

@@ -22,10 +22,20 @@ roadmap, existing programs or their PR branches.
 - Worktree: `/Users/difan/Projects/Arduino-Source-isolated`.
 - Program: **Pokemon SV → Shiny Hunting → Isolated Hunt Prototype**.
 - Source: `SerialPrograms/Source/VideoGames/PokemonSV/Programs/ShinyHunting/PokemonSV_IsolatedHuntPrototype.{h,cpp}`.
-- Build: `cmake --build build-prep/app -j 8` from the worktree.
-- Build log: `build-prep/build.log`; configure log: `build-prep/configure.log`.
-- Initial build status: in progress. Final result and binary hash to be recorded
-  below before any live claim. No Switch inputs have been sent for this work.
+- Code revision: `e917f111423c8a8bc7be04fa49eea3bf34652b19`, pushed to the fork.
+- Packages revision: `92946a8fb1c789165ad4171b5981a61a47e59304`.
+- Build: `cmake --build build-prep/app -j 4` from the worktree.
+- Logs: `build-prep/configure.log`, `build-prep/build.log` (initial eight-job
+  build, intentionally interrupted to reduce memory contention), and
+  `build-prep/build-j4.log` (successful resumed build).
+- **Full arm64 application build, link and resource deployment passed.** The
+  prototype and panel registration also passed direct native compilation.
+- Binary SHA-256: `c4dcdb54b0360568c3246945d1725ab164bc9fdd7a348aca68fee090e2d4845e`.
+- Linker warning: Homebrew Tesseract was built for macOS 26.6.2 while the app's
+  deployment target is 26.0. The build host runs 26.6.2; deployment to an older
+  OS has not been verified.
+- No app launch or Switch inputs were performed for this work. Live validation
+  is still pending; this is a built prototype, not a verified hunting route.
 
 Launch the completed build with a separate profile:
 
