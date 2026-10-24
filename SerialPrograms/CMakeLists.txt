@@ -197,6 +197,7 @@ add_library(SerialProgramsLib STATIC ${CORE_LIBRARY_SOURCES} ${LIBRARY_SOURCES})
 # Create binary target
 if (APPLE)
     set(PA_MACOS_BUNDLE_IDENTIFIER "PokemonAutomation.SerialPrograms" CACHE STRING "Bundle identifier for this macOS build")
+    set(PA_MACOS_BUNDLE_NAME "SerialPrograms" CACHE STRING "Display name for this macOS build")
     set(PA_MACOS_SIGNING_IDENTITY "" CACHE STRING "Optional persistent certificate for local macOS code signing")
     if (PA_MACOS_SIGNING_IDENTITY AND PA_MACOS_BUNDLE_IDENTIFIER STREQUAL "PokemonAutomation.SerialPrograms")
         message(FATAL_ERROR "Set PA_MACOS_BUNDLE_IDENTIFIER to a dedicated local identifier before enabling local signing.")
@@ -211,7 +212,7 @@ if (APPLE)
     set_target_properties(SerialPrograms PROPERTIES
         BUNDLE True
         MACOSX_BUNDLE_GUI_IDENTIFIER ${PA_MACOS_BUNDLE_IDENTIFIER}
-        MACOSX_BUNDLE_BUNDLE_NAME SerialPrograms
+        MACOSX_BUNDLE_BUNDLE_NAME ${PA_MACOS_BUNDLE_NAME}
         MACOSX_BUNDLE_BUNDLE_VERSION "0.1"
         MACOSX_BUNDLE_SHORT_VERSION_STRING "0.1"
         MACOSX_BUNDLE_ICON_FILE "icon.icns"
