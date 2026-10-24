@@ -2,8 +2,12 @@
 
 Date: 2026-10-23 PDT. Owner: Codex for research and prospective lab work;
 existing PR ownership remains as defined in AGENTS.md. Status: **research
-complete for an initial Paldea pass and a 24-starter Terarium survey; field
-validation and implementation have not started**. This plan does not change the approved BBQ roadmap's priority
+complete for an initial Paldea pass and a 24-starter Terarium survey; supervised
+acquisition prototype implemented, full build pending, no live validation**.
+The user authorized starting a prototype after the survey. Its
+[implementation and field handoff](PROTOTYPE_STATE.md) records the deliberately
+limited experiment; this does not establish completion of the field gates below.
+This plan does not change the approved BBQ roadmap's priority
 or consume Switch time. M8a's separate worktree is retained.
 
 ## 1. Recommendation and scope

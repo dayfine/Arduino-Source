@@ -1,6 +1,7 @@
 # Isolated-encounter research: Paldea first pass
 
-2026-10-23 PDT. Research only: no hunting program implemented or live game test.
+2026-10-23 PDT. Initial research pass; no live game test. A subsequent supervised
+[acquisition prototype](PROTOTYPE_STATE.md) is implemented, with full build pending.
 Both Scarlet and Violet; Paldea only in this pass. Kitakami and Terarium are
 not included in these counts. This report separates spawn-table candidates,
 creator demonstrations, visual terrain assessment and unmeasured route details.
