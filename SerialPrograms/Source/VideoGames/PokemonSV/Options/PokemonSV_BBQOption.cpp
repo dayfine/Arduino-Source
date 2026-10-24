@@ -130,6 +130,13 @@ std::vector<std::string> BBQuestTable::make_header() const{
 std::vector<std::unique_ptr<EditableTableRow>> BBQuestTable::make_defaults(){
     std::vector<std::unique_ptr<EditableTableRow>> ret;
     ret.emplace_back(new BBQuestTableRow(*this));
+    //The red Flying-type photo has a route (meet one at the canyon, flee, take the photo) but
+    //has never been drawn in testing: it is ~0.8% of red quests, about once per 1,200
+    //completions. Reroll it until it is tested; remove this row to let it run.
+    auto flying_photo = std::make_unique<BBQuestTableRow>(*this);
+    flying_photo->quest.set(BBQuests::photo_flying);
+    flying_photo->action.set(BBQAction::reroll);
+    ret.emplace_back(std::move(flying_photo));
     return ret;
 }
 

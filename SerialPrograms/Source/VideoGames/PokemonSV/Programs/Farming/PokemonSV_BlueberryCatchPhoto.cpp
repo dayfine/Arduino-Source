@@ -354,9 +354,18 @@ void quest_photo_after_fleeing(
     }
 
     console.log("Fleeing, then taking the photo.");
-    NormalBattleMenuWatcher battle_menu(COLOR_YELLOW);
-    battle_menu.move_to_slot(console, context, 3);
-    pbf_press_button(context, BUTTON_A, 80ms, 400ms);
+    //Keep choosing Run while the battle menu comes back, so a failed escape can't leave us
+    //in the battle. After 5 tries, return_to_plaza() below handles what is left.
+    for (int i = 0; i < 5; i++){
+        NormalBattleMenuWatcher battle_menu(COLOR_YELLOW);
+        context.wait_for_all_requests();
+        if (wait_until(console, context, std::chrono::seconds(5), {battle_menu}) != 0){
+            break;
+        }
+        battle_menu.move_to_slot(console, context, 3);
+        pbf_press_button(context, BUTTON_A, 80ms, 400ms);
+        pbf_mash_button(context, BUTTON_B, 2000ms);
+    }
     press_Bs_to_back_to_overworld(info, console, context);
 
     take_photo(console, context, CameraAngle::none);
