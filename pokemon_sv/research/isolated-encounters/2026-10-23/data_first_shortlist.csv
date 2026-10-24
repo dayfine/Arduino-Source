@@ -1,0 +1,17 @@
+version,selection_rank,table_id,new_families,cumulative_families,families,species_and_types,x,z,nearest_flypoint,center_distance_grid_cells,terrain,live_verified
+scarlet,1,206,8,8,bronzor; deerling; delibird; frigibax; gastly; magnemite; sneasel; snom,bronzong:psychic; delibird:flying; frigibax:dragon; haunter:poison; magneton:electric; sawsbuck winter:grass; sawsbuck winter:normal; sneasel:dark; snom:bug,2875,1875,F52,0.63,unknown,False
+scarlet,2,97,6,14,charcadet; cyclizar; nacli; nymble; ralts; varoom,charcadet:fire; cyclizar:dragon; kirlia:fairy; lokix:bug; nacli:rock; varoom:steel,625,2375,F33,0.08,unknown,False
+scarlet,3,175,6,20,azurill; chewtle; scyther; starly; stunky; tropius,azumarill:fairy; drednaw:rock; scyther:bug; skuntank:dark; staraptor:normal; tropius:grass,1375,1375,F58,0.42,unknown,False
+scarlet,4,451,6,26,bramblin; flittle; larvesta; orthworm; rufflet; stonjourner,bramblin:ghost; flittle:psychic; larvesta:bug; larvesta:fire; orthworm:steel; rufflet:flying; rufflet:normal; stonjourner:rock,1125,2625,F31,0.44,unknown,False
+scarlet,5,3,5,31,applin; bonsly; diglett; maschiff; shroodle,applin:dragon; bonsly:rock; diglett:ground; maschiff:dark; shroodle:poison,1625,3875,F14,0.44,unknown,False
+scarlet,6,133,5,36,axew; croagunk; murkrow; nacli; spoink; toedscool,axew:dragon; croagunk:poison; murkrow:dark; nacli:rock; spoink:psychic; toedscool:ground,2875,3875,F15,0.55,unknown,False
+scarlet,7,224,4,40,axew; larvitar; pawmi; skiddo; tinkatink,axew:dragon; larvitar:rock; pawmo:fighting; skiddo:grass; tinkatink:fairy,3625,4125,F22,0.96,unknown,False
+scarlet,8,47,3,43,applin; impidimp; oranguru; voltorb,applin:dragon; impidimp:fairy; oranguru:psychic; voltorb:electric,3375,2375,F44,0.24,unknown,False
+violet,1,206,8,8,bronzor; deerling; delibird; frigibax; gastly; magnemite; sneasel; snom,bronzong:psychic; delibird:flying; frigibax:dragon; haunter:poison; magneton:electric; sawsbuck winter:grass; sawsbuck winter:normal; sneasel:dark; snom:bug,2875,1875,F52,0.63,unknown,False
+violet,2,197,7,15,gulpin; murkrow; nymble; pawmi; shuppet; spoink; toedscool,gulpin:poison; murkrow:dark; nymble:bug; pawmo:electric; shuppet:ghost; spoink:psychic; toedscool:ground,3625,3625,F18,0.46,unknown,False
+violet,3,99,6,21,crabrawler; nacli; ralts; sandygast; shellder; varoom,cloyster:ice; crabrawler:fighting; kirlia:fairy; nacli:rock; sandygast:ground; varoom:steel,375,2375,F32,0.27,unknown,False
+violet,4,146,5,26,azurill; bombirdier; dreepy; flittle; gastly; orthworm,bombirdier:dark; dreepy:dragon; flittle:psychic; gastly:poison; marill:fairy; orthworm:steel,1375,2625,F29,0.36,unknown,False
+violet,5,3,5,31,applin; bonsly; diglett; maschiff; shroodle,applin:dragon; bonsly:rock; diglett:ground; maschiff:dark; shroodle:poison,1625,3875,F14,0.44,unknown,False
+violet,6,175,4,35,azurill; chewtle; scyther; starly; tropius,azumarill:fairy; drednaw:rock; scyther:bug; staraptor:normal; tropius:grass,1375,1375,F58,0.42,unknown,False
+violet,7,492,4,39,charcadet; gulpin; makuhita; nacli; rookidee; skiddo; spoink,charcadet:fire; gulpin:poison; makuhita:fighting; nacli:rock; rookidee:flying; skiddo:grass; spoink:psychic,2875,3625,F16,0.74,unknown,False
+violet,8,451,3,42,bramblin; flittle; larvesta; orthworm; rufflet,bramblin:ghost; flittle:psychic; larvesta:bug; larvesta:fire; orthworm:steel; rufflet:flying; rufflet:normal,1125,2625,F31,0.44,unknown,False

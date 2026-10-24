@@ -1,0 +1,37 @@
+version,type,strict_species,strict_families,family_only_families,family_only_species,strict_table_type_pairs,family_only_table_type_pairs,strict_family_names
+scarlet,bug,9,7,7,10,64,69,larvesta; nymble; scyther; slither-wing; snom; surskit; tarountula
+scarlet,dark,7,7,7,8,71,72,bombirdier; houndour; maschiff; murkrow; sableye; sneasel; stunky
+scarlet,dragon,8,8,9,10,99,105,applin; axew; cyclizar; frigibax; gible; goomy; skrelp; swablu
+scarlet,electric,10,8,8,10,62,74,magnemite; mareep; pawmi; sandy-shocks; shinx; tadbulb; voltorb; wattrel
+scarlet,fairy,11,6,6,11,90,100,azurill; fidough; flabebe; impidimp; ralts; tinkatink
+scarlet,fighting,5,5,5,7,15,18,crabrawler; hawlucha; heracross; makuhita; pawmi
+scarlet,fire,6,5,6,8,30,32,charcadet; fletchling; houndour; larvesta; litleo
+scarlet,flying,5,5,5,5,13,13,delibird; drifloon; rookidee; rufflet; wingull
+scarlet,ghost,11,7,7,11,32,36,bramblin; drifloon; flutter-mane; gastly; greavard; sableye; sandygast
+scarlet,grass,7,6,6,7,23,23,brute-bonnet; deerling; hoppip; skiddo; toedscool; tropius
+scarlet,ground,7,6,6,8,47,55,diglett; mudbray; numel; sandygast; toedscool; wooper
+scarlet,ice,1,1,2,3,27,32,shellder
+scarlet,normal,5,5,6,7,32,36,azurill; deerling; rufflet; starly; yungoos
+scarlet,poison,9,8,8,10,67,94,croagunk; gastly; qwilfish; shroodle; skrelp; stunky; toxel; wooper
+scarlet,psychic,13,12,12,13,96,96,bronzor; bruxish; drowzee; eevee; flittle; gothita; hatenna; oranguru; scream-tail; slowpoke; spoink; veluza
+scarlet,rock,9,6,6,9,67,68,bonsly; chewtle; larvitar; nacli; rockruff; stonjourner
+scarlet,steel,7,7,7,7,44,44,cufant; klefki; magnemite; orthworm; pawniard; pineco; varoom
+scarlet,water,1,1,1,1,1,1,azurill
+violet,bug,8,6,6,9,63,68,larvesta; nymble; scyther; snom; surskit; tarountula
+violet,dark,7,7,7,8,73,74,bombirdier; houndour; iron-jugulis; maschiff; murkrow; sableye; sneasel
+violet,dragon,9,8,9,11,30,36,applin; axew; bagon; cyclizar; dreepy; frigibax; goomy; swablu
+violet,electric,9,7,7,9,61,73,magnemite; mareep; pawmi; shinx; tadbulb; voltorb; wattrel
+violet,fairy,12,7,7,12,91,101,azurill; fidough; flabebe; impidimp; iron-valiant; ralts; tinkatink
+violet,fighting,5,5,5,6,15,17,crabrawler; hawlucha; heracross; makuhita; pawmi
+violet,fire,7,6,7,9,31,33,charcadet; fletchling; houndour; iron-moth; larvesta; litleo
+violet,flying,6,6,6,6,13,13,delibird; iron-jugulis; rookidee; rufflet; swablu; wingull
+violet,ghost,9,7,7,9,27,28,bramblin; dreepy; gastly; greavard; misdreavus; sandygast; shuppet
+violet,grass,6,5,5,6,22,22,deerling; hoppip; skiddo; toedscool; tropius
+violet,ground,8,7,7,9,49,57,diglett; iron-treads; mudbray; numel; sandygast; toedscool; wooper
+violet,ice,2,2,3,4,27,32,iron-bundle; shellder
+violet,normal,5,5,6,7,32,36,azurill; deerling; rufflet; starly; yungoos
+violet,poison,10,9,9,10,94,95,foongus; gastly; gulpin; iron-moth; qwilfish; shroodle; toxel; varoom; wooper
+violet,psychic,12,10,10,12,97,97,bronzor; bruxish; drowzee; eevee; flittle; gothita; hatenna; slowpoke; spoink; veluza
+violet,rock,8,5,5,8,70,71,bonsly; chewtle; iron-thorns; nacli; rockruff
+violet,steel,8,8,8,8,45,45,cufant; iron-treads; klefki; magnemite; orthworm; pawniard; pineco; varoom
+violet,water,2,2,2,2,2,2,azurill; iron-bundle

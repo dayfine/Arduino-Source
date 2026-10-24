@@ -1,0 +1,61 @@
+{
+  "retrieved_date": "2026-10-23 America/Los_Angeles",
+  "inputs": {
+    "area_type_pokemon_scarlet.js": {
+      "url": "https://alexis-matuk.github.io/shinyHuntingOptimizer/js/area_type_pokemon_scarlet.js",
+      "sha256": "9215c277cfa12c2dbb04f7d5af45bfb9461e98aedf134781080b6a1b4d3cfdbf",
+      "bytes": 534284
+    },
+    "area_type_pokemon_violet.js": {
+      "url": "https://alexis-matuk.github.io/shinyHuntingOptimizer/js/area_type_pokemon_violet.js",
+      "sha256": "713606e37eaaf31688e2778f88a7caf2a9957c203173780f3616193d83d0b7b4",
+      "bytes": 526529
+    },
+    "pmarkers.js": {
+      "url": "https://alexis-matuk.github.io/shinyHuntingOptimizer/js/pmarkers.js",
+      "sha256": "8072896bc941e66240ffe9ada963252f3b67556aa4ac4c54da02738a04250255",
+      "bytes": 46834
+    },
+    "pokemon_calculated_scarlet.js": {
+      "url": "https://alexis-matuk.github.io/shinyHuntingOptimizer/js/pokemon_calculated_scarlet.js",
+      "sha256": "131f87fbb56786596936d4b4640457532b16bf3814142e433be761e79475b1ab",
+      "bytes": 348399
+    },
+    "pokemon_calculated_violet.js": {
+      "url": "https://alexis-matuk.github.io/shinyHuntingOptimizer/js/pokemon_calculated_violet.js",
+      "sha256": "b04a2a386f401ac2c42031b176ef8c99577855f18c5c68e0342160f317332bc9",
+      "bytes": 348754
+    },
+    "pokemon_info.js": {
+      "url": "https://alexis-matuk.github.io/shinyHuntingOptimizer/js/pokemon_info.js",
+      "sha256": "975735d8c59eef5ad000166d6a964152cff10a042e8251a6cb64e7b9bd0ab111",
+      "bytes": 11737
+    },
+    "pokemon_species.csv": {
+      "url": "https://raw.githubusercontent.com/PokeAPI/pokeapi/master/data/v2/csv/pokemon_species.csv",
+      "sha256": "e66e2eeb25fd3836b0ebab6bf87bbf01960aa3c0555e2bac495fa8393c5e0c45",
+      "bytes": 56884
+    },
+    "serebii-map.html": {
+      "url": "https://www.serebii.net/pokearth/paldea/",
+      "sha256": "ef5914a3e5f4312a4864790994d54ce573c86d0e3a5328f37ed230b450153cae",
+      "bytes": 436259
+    },
+    "type_success_scarlet.js": {
+      "url": "https://alexis-matuk.github.io/shinyHuntingOptimizer/js/type_success_scarlet.js",
+      "sha256": "f4686fe41762560d9b76fc8d5dcc71489617e3b75330b6bdab0cbccfd3f6d738",
+      "bytes": 25197
+    },
+    "type_success_violet.js": {
+      "url": "https://alexis-matuk.github.io/shinyHuntingOptimizer/js/type_success_violet.js",
+      "sha256": "1c8eead191ad80e50fefb8e7669308af094ffb62ec2704899f09abc64f94413a",
+      "bytes": 24130
+    },
+    "version_exclusive_sets.js": {
+      "url": "https://alexis-matuk.github.io/shinyHuntingOptimizer/js/version_exclusive_sets.js",
+      "sha256": "dd16b3effa49e474cc4ea549706efa5744725df5caf5625d47b409165ca5ea5b",
+      "bytes": 636
+    }
+  },
+  "edward_source_revision": "8c93e25036e9c27694bec8098ae3a6960edafc78"
+}
