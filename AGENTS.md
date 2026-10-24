@@ -130,9 +130,10 @@ See [pokemon_sv/PR_WORKFLOW.md](pokemon_sv/PR_WORKFLOW.md). In short:
 
 ## C++ harness and verification (fork issue #40)
 
-The fork branch `harness/code-health` adds reusable measurements/policy under
-`devtools/code_health/`, incremental comparison against the base revision, and a PR/main CI job. After it
-lands, run from a code checkout with its dedicated Python environment:
+Fork PR #41 is merged into `origin/main` at `67ed6141d`. It provides reusable
+measurements/policy under `devtools/code_health/`, incremental comparison
+against the base revision, and a PR/main CI job. Run from a code checkout
+with its dedicated Python environment:
 
 ```sh
 .venv-code-health/bin/python devtools/verify.py --build-dir SerialPrograms/bin --binary SerialPrograms/bin/SerialPrograms --base-ref origin/main

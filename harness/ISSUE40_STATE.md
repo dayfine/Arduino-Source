@@ -39,3 +39,13 @@ were refactored into smaller helpers without changing controller steps. Now
 all 12 changed C++ files pass, the 29 native scenarios still pass, and the full
 application builds/links. This uses #41 as a local gate via PYTHONPATH/--root,
 without copying the harness into the prototype branch.
+
+## Merged and pulled
+
+User merged fork #41. Merge commit 67ed6141d7014630c58a6e53a5faf0a3b8b5ac25
+is fetched as origin/main. Harness worktree now checks out that revision
+(detached), preserving the old local main branch's unrelated history.
+Isolated branch rebased/pushed to 8a59974e525417851f0ecf93c6ab769f955c9388,
+including the merged tooling directly. Local incremental check: all 12 changed
+C++ files pass; 22 harness tests and 29 native scenarios pass. No Switch/app
+restart was needed for the tooling merge.

@@ -163,3 +163,12 @@ All 12 changed C++ files now pass. Existing 29 native scenarios and full app
 build/link pass; raw log build-lint-refactor.log. No live test or UI/route/sandwich
 integration is claimed. Use the harness from its worktree via PYTHONPATH and
 --root until the fork PR lands; do not copy prerequisite code.
+
+## Latest merged-tooling checkpoint
+
+User merged #41; pulled origin/main 67ed6141d. Prototype branch rebased and
+pushed at 8a59974e525417851f0ecf93c6ab769f955c9388. Tooling now lives in this
+checkout: run python -m devtools.code_health --base-ref origin/main directly,
+without a PYTHONPATH pointing to the harness worktree. All 12 changed C++ files
+pass; 22 harness self-tests and 29 native scenarios pass. UI/console adapter,
+sandwich integration and both end-to-end routes remain the next coding work.
