@@ -868,15 +868,11 @@ void close_tm_message(VideoStream& stream, ProControllerContext& context){
 void quest_make_tm(const ProgramInfo& info, VideoStream& stream, ProControllerContext& context){
     stream.log("Quest: Make TM");
 
-    //The index of the last craftable TM in this program run. The machine opens on the first
+    //The index of the last craftable TM. The machine opens on the first
     //TM, and the craftable one moves only a few places between quests as materials run out,
     //so starting there saves walking past the same uncraftable TMs (~2.5 s each) every time.
-    static WallClock last_tm_run = WallClock::min();
+    //It is kept while the app runs, across program restarts, since it is the same save.
     static int last_tm_index = 0;
-    if (last_tm_run != info.start_time){
-        last_tm_run = info.start_time;
-        last_tm_index = 0;
-    }
 
     //Mount and then dismount in case you're crouched
     pbf_press_button(context, BUTTON_PLUS, 160ms, 840ms);
@@ -906,41 +902,17 @@ void quest_make_tm(const ProgramInfo& info, VideoStream& stream, ProControllerCo
     if (enter_machine == 0){
         stream.log("TM machine entered. Finding TM to make.");
 
-        int make_tm = -1;
-        if (last_tm_index > 0){
-            stream.log("Trying TM " + std::to_string(last_tm_index + 1) + " first, the last one made.");
-            make_tm = run_until<ProControllerContext>(
+        //Look at `count` TMs from the cursor, which is on TM `from`, moving right after
+        //each one that isn't craftable. Returns the index of a craftable one, or -1 with
+        //the cursor `count` places to the right.
+        auto scan = [&](int from, int count){
+            int tm_index = from;
+            int ret = run_until<ProControllerContext>(
                 stream, context,
                 [&](ProControllerContext& context){
-                    for (int i = 0; i < last_tm_index; i++){
-                        pbf_press_dpad(context, DPAD_RIGHT, 160ms, 160ms);
-                    }
-                    pbf_press_button(context, BUTTON_A, 160ms, 400ms);
-                    pbf_wait(context, 800ms);
-                    context.wait_for_all_requests();
-                },
-                {{ makeTM }}
-            );
-            context.wait_for_all_requests();
-            if (make_tm != 0){
-                stream.log("Not craftable. Scanning from the first TM.");
-                close_tm_message(stream, context);
-                for (int i = 0; i < last_tm_index; i++){
-                    pbf_press_dpad(context, DPAD_LEFT, 160ms, 160ms);
-                }
-                pbf_wait(context, 800ms);
-                context.wait_for_all_requests();
-            }
-        }
-
-        if (make_tm != 0){
-            int tm_index = 0;
-            make_tm = run_until<ProControllerContext>(
-                stream, context,
-                [&](ProControllerContext& context){
-                    for (int i = 0; i < 229; i++){ //229 is max number of TMs
+                    for (int i = 0; i < count; i++){
                         //click on tm
-                        tm_index = i;
+                        tm_index = from + i;
                         pbf_press_button(context, BUTTON_A, 160ms, 400ms);
                         pbf_wait(context, 800ms);
                         context.wait_for_all_requests();
@@ -956,9 +928,35 @@ void quest_make_tm(const ProgramInfo& info, VideoStream& stream, ProControllerCo
                 {{ makeTM }}
             );
             context.wait_for_all_requests();
-            if (make_tm == 0){
-                last_tm_index = tm_index;
+            return ret == 0 ? tm_index : -1;
+        };
+
+        //229 is max number of TMs
+        int made = -1;
+        if (last_tm_index > 0){
+            //The TMs after the last one made still have their materials; the earlier ones
+            //were out when it was made. Look a few TMs ahead before starting over.
+            const int ahead = std::min(30, 229 - last_tm_index);
+            stream.log("Trying TM " + std::to_string(last_tm_index + 1) + " and the next " + std::to_string(ahead - 1) + ", from the last one made.");
+            for (int i = 0; i < last_tm_index; i++){
+                pbf_press_dpad(context, DPAD_RIGHT, 160ms, 160ms);
             }
+            made = scan(last_tm_index, ahead);
+            if (made < 0){
+                stream.log("None craftable. Scanning from the first TM.");
+                for (int i = 0; i < last_tm_index + ahead; i++){
+                    pbf_press_dpad(context, DPAD_LEFT, 160ms, 160ms);
+                }
+                pbf_wait(context, 800ms);
+                context.wait_for_all_requests();
+            }
+        }
+        if (made < 0){
+            made = scan(0, 229);
+        }
+        int make_tm = made >= 0 ? 0 : -1;
+        if (made >= 0){
+            last_tm_index = made;
         }
 
         if (make_tm == 0){
