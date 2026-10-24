@@ -137,6 +137,14 @@ std::vector<std::unique_ptr<EditableTableRow>> BBQuestTable::make_defaults(){
     flying_photo->quest.set(BBQuests::photo_flying);
     flying_photo->action.set(BBQAction::reroll);
     ret.emplace_back(std::move(flying_photo));
+    //The Flying-type catch spot, the canyon grassland at Black Augurite, also has the fixed
+    //Kleavor and other non-Flying Pokemon. Both R15 attempts battled one: the catch did not
+    //count, and Kleavor fainted the lead after 5 minutes of throws. Reroll it until the
+    //route checks the opponent's type; remove this row to let it run.
+    auto flying_catch = std::make_unique<BBQuestTableRow>(*this);
+    flying_catch->quest.set(BBQuests::catch_flying);
+    flying_catch->action.set(BBQAction::reroll);
+    ret.emplace_back(std::move(flying_catch));
     return ret;
 }
 
