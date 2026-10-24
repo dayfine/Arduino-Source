@@ -60,3 +60,52 @@ camera initialization. Still one round / 30 seconds, no herbs, stop on shiny.
 Do not report a second pilot as started until the Start button is pressed and
 live startup logs confirm it. Capture initialization has intermittently shown
 0 FPS on reopening; a Reset Video restored frames previously.
+
+## Longer pilot, live evidence and user corrections (14:08 PDT)
+
+User requested longer roaming, so AZP handback was paused before any AZP Start.
+Release was opened, its saved AZP MODE corrected from platform to zerogate, and
+closed without running. Prototype PID 91204 ran a longer pilot from 13:56:31:
+180-second hunt bound, max 20 rounds, ordinary ingredients. Sandwich preparation
+ended 13:59:12, travel/approach ended 13:59:36. It stopped 14:00:17 after an
+unresolved refusal, not the three-minute time limit. Recorded 3 detected kills,
+2 clearing rounds, 1 refusal, 0 encounters, 0 refreshes, about 40 hunt seconds.
+No departure/reset after the refusal. Five-second screenshot observer exited
+on STOPPED. Detection counts do not identify killed species.
+
+Confirmed Meal Powers on screen at 14:01:11: Fire Encounter Lv1, Fighting Teensy
+Lv1, Ghost Catching Lv1, 27:55 remaining. This is the first actual power check;
+previous claims that the maker completed were not power verification. User
+requires at least Lv2 Encounter Power and ordinary ingredients by default.
+
+At 14:03:04 screenshot, clearly visible Numel near the player. User had moved
+camera/player while stopped. Numel is Fire/Ground: this observed pool is NOT
+Charcadet-only. Before refusal, screenshots show player/lead at a rock wall
+beside the center; obstruction is a hypothesis, not confirmed refusal cause.
+Do not dismiss unresolved refusal as proof of a shiny or as definitely harmless.
+The automated patch approach is unverified/invalid for current isolation goal;
+re-check actual named center and video demonstrated rocky habitat before more
+yield testing. A stronger Fire power will not remove competing Fire species.
+
+Code da0db2aeb changes ordinary Fire recipe to 6 Rice + 2 Curry Powder +
+2 Wasabi, reported Fire Encounter Lv2 by multiple first-hand community recipes:
+https://www.reddit.com/r/PokemonScarletViolet/comments/zhff1k/
+https://www.reddit.com/r/PokemonScarletViolet/comments/z3h6mr/
+No herbs, 6 fillings / 4 condiments; shared rice placement supports six servings.
+Native seven groups and incremental lint pass. Not yet made/verified in game;
+require screen confirmation of Fire Encounter Lv2 before hunting. Binary hash:
+de9d6dc9950ca9c35b73407854cacccd698fb9a8246adf581a0f8992bf99b9d1.
+Prototype reopened as PID 93949, NOT running, still at field location. Do not
+resume full hunt here: initial reset_start requires Zero Gate. No farm handback
+has occurred after this second trial; preserving current field scene first.
+
+User asks why capture permissions recur. Read-only codesign inspection confirms
+lab Signature=adhoc, linker-signed, DR is exact cdhash; release uses Developer ID
+certificate and stable certificate-based DR. Lab plist ID is
+PokemonAutomation.SerialPrograms but embedded linker identifier is SerialPrograms.
+No valid local code-signing identities installed. No signing/keychain/TCC changes
+made. Proposed fix: dedicated lab bundle ID/path and persistent certificate
+signing, then one-time camera/audio consent; do not bypass privacy checks.
+Camera and microphone usage strings exist, Photos/album usage string absent.
+Apple reference: https://developer.apple.com/documentation/technotes/tn3127-inside-code-signing-requirements
+Quota 14:06: 44% primary, 52% weekly remaining. Primary reset 18:25 PDT.
