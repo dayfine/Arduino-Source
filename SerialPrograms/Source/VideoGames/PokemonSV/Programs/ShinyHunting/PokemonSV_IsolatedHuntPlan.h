@@ -9,6 +9,8 @@ namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonSV{
 
+enum class IsolatedShinyAction{ STOP, CATCH, CATCH_AND_SAVE };
+
 enum class IsolatedEncounterType{ GRASS, FIRE };
 enum class IsolatedHuntLocation{ CHARGESTONE_CAVE, WEST_PROVINCE_ONE_CENTRAL };
 
@@ -19,6 +21,7 @@ struct IsolatedHuntRequest{
     std::string ball;
     uint16_t ball_limit = 40;
     bool enabled = true;
+    IsolatedShinyAction shiny_action = IsolatedShinyAction::STOP;
 };
 
 struct IsolatedHuntLocationProfile{

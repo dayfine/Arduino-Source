@@ -2472,6 +2472,14 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonSV/PokemonSV_Settings.h
     Source/VideoGames/PokemonSV/PokemonSV_IsolatedHuntLoop_Tests.cpp
     Source/VideoGames/PokemonSV/PokemonSV_IsolatedHuntLoop_Tests.h
+    Source/VideoGames/PokemonSV/Options/PokemonSV_IsolatedHuntTable.cpp
+    Source/VideoGames/PokemonSV/Options/PokemonSV_IsolatedHuntTable.h
+    Source/VideoGames/PokemonSV/Programs/ShinyHunting/PokemonSV_IsolatedHuntEncounter.cpp
+    Source/VideoGames/PokemonSV/Programs/ShinyHunting/PokemonSV_IsolatedHuntEncounter.h
+    Source/VideoGames/PokemonSV/PokemonSV_IsolatedHuntEncounter_Tests.cpp
+    Source/VideoGames/PokemonSV/PokemonSV_IsolatedHuntEncounter_Tests.h
+    Source/VideoGames/PokemonSV/PokemonSV_IsolatedHuntOptions_Tests.cpp
+    Source/VideoGames/PokemonSV/PokemonSV_IsolatedHuntOptions_Tests.h
     Source/VideoGames/PokemonSV/PokemonSV_IsolatedHunt_Tests.cpp
     Source/VideoGames/PokemonSV/PokemonSV_IsolatedHunt_Tests.h
     Source/VideoGames/PokemonSV/PokemonSV_Tests.cpp

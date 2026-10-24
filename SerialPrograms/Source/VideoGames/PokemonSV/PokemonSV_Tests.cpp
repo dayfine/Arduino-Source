@@ -28,6 +28,8 @@
 #include "PokemonSV_Tests.h"
 #include "PokemonSV_IsolatedHunt_Tests.h"
 #include "PokemonSV_IsolatedHuntLoop_Tests.h"
+#include "PokemonSV_IsolatedHuntOptions_Tests.h"
+#include "PokemonSV_IsolatedHuntEncounter_Tests.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -53,6 +55,8 @@ void add_tests(UnitTestDatabase& database){
     database.add<Test_IsolatedHunt>("PokemonSV/IsolatedHunt/Plan", test_isolated_hunt_plan);
     database.add<Test_IsolatedHunt>("PokemonSV/IsolatedHunt/Locations", test_isolated_hunt_locations);
     database.add<Test_IsolatedHunt>("PokemonSV/IsolatedHunt/Loop", test_isolated_hunt_loop);
+    database.add<Test_IsolatedHunt>("PokemonSV/IsolatedHunt/Options", test_isolated_hunt_options);
+    database.add<Test_IsolatedHunt>("PokemonSV/IsolatedHunt/EncounterOptions", test_isolated_hunt_encounter_options);
     add_tests_WhiteButtonDetector(database);
     add_tests_BoxInfoDetector(database);
     add_tests_BoxEggDetector(database);
