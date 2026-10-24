@@ -68,11 +68,12 @@ Raw logs/comparison are under isolated worktree build-prep/isolated-live-2026-10
 `build-signed-first.log`, `build-signed-second.log`, `signing-comparison.json`.
 UI evidence `/tmp/signing-first-ui.png`, `/tmp/signing-second-ui.png`.
 
-Current app PID 97316, profile sv-isolated-live-20261024, open/stopped, sole device
-owner. Current captured game shows Zero Gate, not the earlier Numel field patch;
-user moved game during signing work. No Switch input or hunt Start was issued
-for signing validation. AZP remains stopped; this task explicitly kept hunting
-stopped. Next field work still requires Lv2 powers and corrected habitat/route.
+A later live reopen prompted for microphone access. Release and lab IDs and
+certificate requirements were verified distinct. After approval, release -> lab
+-> release showed no additional permission prompt. The earlier ad-hoc lab used
+the release bundle ID, so stale grants are plausible but not proven as the cause.
+See the current location/handback record for device state; the prototype is now
+closed and release AZP is open/stopped without a game picture.
 
 References:
 - https://developer.apple.com/documentation/technotes/tn3127-inside-code-signing-requirements
