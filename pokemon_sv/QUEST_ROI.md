@@ -1,0 +1,83 @@
+# BBQ quest ROI
+
+Per-quest measurements from every lab run (all `bbq-*` profiles), to decide which
+quests to run and which to reroll. Updated 2026-10-23 after R12b. Regenerate with
+`scratchpad/allroi.py` (to move into `tools/`) over the profile logs.
+
+**Camera Support matters.** Runs before R10 13:16 had in-game Camera Support ON;
+the timed routes then often miss (sneak-up 3/33 vs 11/13 after). "Camera off" is the
+current setup; the table uses it when there are 2+ attempts, else the older data.
+
+- BP: quest reward (Bulbapedia table, see BP_LEDGER_2026-10-21.md). Every completion
+  also fills the 10-completion bar (+110 per 10, ~+11 each), not included here.
+- s/attempt: from "Doing quest" to the board check, including the trip back.
+- BP/min of quest time = BP x success / (s per attempt / 60).
+
+| Quest (route) | BP | Camera on | Camera off | s/attempt | Success | BP/min of quest time | From |
+|---|---:|---:|---:|---:|---:|---:|---|
+| Make a singleplayer sandwich | 130 | 8/8 | 6/6 | 198 | 100% | 39.4 | camera off |
+| Swimming/Water/Polar | 30 | 24/39 | 15/16 | 62 | 94% | 27.2 | camera off |
+| Steel | 30 | - | 1/1 | 76 | 100% | 23.7 | camera off |
+| Canyon/Ghost/Ground | 30 | 8/10 | 3/3 | 78 | 100% | 23.1 | camera off |
+| Coastal/Grass/Dragon | 30 | 10/12 | 1/1 | 75 | 83% | 20.0 | camera on |
+| Steel | 40 | - | 1/1 | 136 | 100% | 17.6 | camera off |
+| Ghost/Ground | 40 | 3/4 | 2/2 | 140 | 100% | 17.1 | camera off |
+| In-flight/Psychic | 30 | 4/6 | 4/7 | 67 | 57% | 15.4 | camera off |
+| Travel 500 meters | 20 | 41/41 | 13/13 | 87 | 100% | 13.8 | camera off |
+| Normal/Fire | 40 | - | 1/1 | 186 | 100% | 12.9 | camera off |
+| Hatch an Egg | 200 | 3/3 | - | 972 | 100% | 12.3 | camera on |
+| Rock/Electric | 40 | 3/5 | 2/4 | 113 | 50% | 10.6 | camera off |
+| Grass/Dragon | 40 | 4/6 | 5/7 | 164 | 71% | 10.5 | camera off |
+| Fairy | 40 | 4/6 | - | 159 | 67% | 10.1 | camera on |
+| Bug | 40 | 2/3 | - | 168 | 67% | 9.5 | camera on |
+| Sneak up | 20 | 3/33 | 11/13 | 112 | 85% | 9.1 | camera off |
+| Water/Ice | 40 | 1/1 | 3/5 | 180 | 60% | 8.0 | camera off |
+| Defeat a wild tera | 20 | 3/3 | 1/1 | 159 | 100% | 7.5 | camera on |
+| Psychic | 40 | 1/3 | - | 120 | 33% | 6.7 | camera on |
+| Make TM | 20 | 32/33 | 12/17 | 139 | 71% | 6.1 | camera off |
+| Give your pokemon a bath! | 100 | 2/8 | - | 292 | 25% | 5.1 | camera on |
+| Any/Normal/Fire | 40 | 9/36 | - | 149 | 25% | 4.0 | camera on |
+| Tera-self and defeat any wild | 20 | 29/51 | 7/15 | 152 | 47% | 3.7 | camera off |
+| Any | 20 | - | 2/4 | 169 | 50% | 3.6 | camera off |
+| Fighting | 40 | 1/4 | 1/1 | 180 | 25% | 3.3 | camera on |
+| Auto Battle | 20 | 49/51 | 10/18 | 222 | 56% | 3.0 | camera off |
+| Normal/Fire | 30 | 3/25 | 1/1 | 96 | 12% | 2.2 | camera on |
+| Poison/Dark | 40 | 0/3 | 0/2 | 163 | 0% | 0.0 | camera off |
+| Tera Raid | ? | 1/1 | 1/1 | 518 | 100% | ? | camera on |
+
+Caveats: most rows have fewer than 10 attempts. The camera-off Auto Battle row
+includes 8 pick-up-10 attempts run as Auto Battle in R10 (kills don't count toward
+pickups); on the current build Auto Battle is 7/7 at ~240 s (5.0 BP/min). Tera-self
+camera-off includes R10's canyon glide (1/6); at the Chargestone court it is 6/9 at
+~140 s (5.7 BP/min). Make TM camera-off includes two stuck 12-minute scans fixed in
+efa64d507; after the fix 2/2 at ~120 s (~10 BP/min). Catch Poison/Dark (Alolan Muk,
+Coastal glide) has **never** succeeded: 0/5.
+
+## Run or reroll
+
+The program averages ~700 BP/h (~11.7 BP/min) on the current build, including
+travel, saves and rerolls. A reroll costs 10 BP (50 for red) plus ~25 s, about
+10 + 25/60 x 11.7 = ~15 BP-equivalent for blue. So, for a quest with reward R
+(+11 bar bonus), success rate p and time t minutes per attempt:
+
+    run if  (R + 11) x p  -  t x 11.7  >  -15     (blue; use -55 for red)
+
+| Quest | (R+11)p - 11.7t | Decision |
+|---|---:|---|
+| Catch Poison/Dark | 0 - 32 = -32 | reroll |
+| Catch Any (court) | 15.5 - 33 = -17 | borderline reroll |
+| Auto Battle (current) | 31 - 47 = -16 | borderline reroll |
+| Tera-self (court) | 21 - 27 = -7 | run |
+| Make TM (fixed) | 31 - 23 = +8 | run |
+| Sneak up | 26 - 22 = +4 | run |
+| Photo in-flight | 23 - 13 = +10 | run |
+| Photos (swim/canyon/steel) | ~39 - 13 = +26 | run |
+
+## Proposal: exclusions from a threshold
+
+Instead of hand-picking exclusion rows, a "Reroll quests below N BP/min" option
+(default ~5) would reroll any quest whose measured BP/min is under N. The
+per-quest numbers would ship as a table in the program (like the existing
+`expected_seconds_per_success()` in PokemonSV_BlueberryQuests.cpp, which already
+orders quests by cost), with explicit exclusion rows still overriding it. Quests
+the program cannot do stay "always rerolled".
