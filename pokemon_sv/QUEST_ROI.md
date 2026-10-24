@@ -221,3 +221,15 @@ catch-flying 0/2. No rerolls and no direct flights happened: the only quest that
 the canyon grassland: the first was caught and did not count, with a Scyther right next to it after;
 the second threw balls at the fixed Kleavor for 5 minutes until it fainted the lead. The route needs
 a species/type check before throwing (flee a wrong type) before it is worth running.
+
+**Missed flights in R15 (from the log, 23:03-23:11):**
+
+| Where | What happened | Cost | Fix |
+|---|---|---|---|
+| Inside auto-10 (4 passes) | each pass returned to Central (~28 s) and flew back to Chargestone (~17 s) | ~45 s/pass, ~3 of its 5 min | between passes, with no heal due (HP stayed 80-100%), fly from the court back onto the Chargestone fly point (~17 s); return only to heal. auto-10 would take ~3 min, which changes its run/reroll call |
+| Tera-self -> auto-10 | returned first: auto-battle is on the "starts at Central" list | 29 s + 17 s | let auto-battle start with the direct flight (its first step is central_to_chargestone) |
+| auto-10 -> catch-flying | auto-battle's final return | 28 s + 20 s | direct flight |
+
+Grouping by place had nothing to group on this board (Pride Rock, Chargestone, Canyon); it pays only
+when two quests share an area (sneak-up + tera-self at Pride Rock, Canyon catches/photos). The gain
+here is skipping returns, not reordering.
