@@ -377,6 +377,21 @@ public:
         m_record_BP(BP);
         return quests;
     }
+    virtual BBQuests read_slot_in_panel(size_t slot) override{
+        //The new quest slides in after the reroll.
+        pbf_wait(m_context, 400ms);
+        m_context.wait_for_all_requests();
+        VideoSnapshot screen = m_stream.video().snapshot();
+        BlueberryQuestDetector detector(
+            m_stream.logger(), COLOR_GREEN, m_options.LANGUAGE,
+            (BlueberryQuestDetector::QuestPosition)slot
+        );
+        const std::string quest = detector.detect_quest(screen);
+        if (m_record_BP){
+            m_record_BP(read_BP_from_image(m_stream.logger(), screen));
+        }
+        return quest.empty() ? BBQuests::UnableToDetect : BBQuests_string_to_enum(quest);
+    }
 
 private:
     const ProgramInfo& m_info;
@@ -415,7 +430,8 @@ BBQRerollResult reroll_quest(
     BBQRerollActions& actions,
     std::vector<BBQuests>& quests,
     size_t slot,
-    std::optional<std::vector<BBQuests>>& observed_panel
+    std::optional<std::vector<BBQuests>>& observed_panel,
+    const std::function<bool(BBQuests)>& reroll_again
 ){
     observed_panel.reset();
     //Every slot reroll logs this one line, whatever decided it, so a log shows each BP spent.
@@ -449,8 +465,53 @@ BBQRerollResult reroll_quest(
         actions.close_panel();
         return BBQRerollResult::MenuNotFound;
     }
-    actions.confirm_reroll();
+
+    //Read the new quest without leaving the panel. Closing it, opening it again and reading
+    //all 4 quests takes about 3 times as long as the reroll itself. A quest that is to be
+    //rerolled too is rerolled again from here.
+    bool rerolled = false;
+    for (;;){
+        actions.confirm_reroll();
+        BBQuests now = BBQuests::UnableToDetect;
+        for (int read = 0; read < 3; read++){
+            const BBQuests quest = actions.read_slot_in_panel(slot);
+            if (quest != quests[slot] && quest != BBQuests::UnableToDetect){
+                now = quest;
+                break;
+            }
+        }
+        if (now == BBQuests::UnableToDetect){
+            //Close the panel and read all of it below.
+            break;
+        }
+        logger.log("Quest " + std::to_string(slot + 1) + " rerolled to " + BBQuests_enum_to_string(now) + ".");
+        quests[slot] = now;
+        rerolled = true;
+        if (!reroll_again || !reroll_again(now)){
+            actions.close_panel();
+            //Only this slot changed, so the panel is known without reading it again.
+            if (quests.size() >= 3
+                && std::find(quests.begin(), quests.end(), BBQuests::UnableToDetect) == quests.end()){
+                observed_panel = quests;
+            }
+            return BBQRerollResult::Rerolled;
+        }
+        //The cursor stays on the rerolled quest.
+        const std::optional<size_t> menu_slot = actions.open_reroll_menu();
+        if (menu_slot != slot){
+            if (menu_slot){
+                actions.close_reroll_menu();
+            }
+            actions.close_panel();
+            return BBQRerollResult::Rerolled;
+        }
+        logger.log("Rerolling quest " + std::to_string(slot + 1) + " again (" + BBQuests_enum_to_string(now) + ").");
+    }
     actions.close_panel();
+    if (rerolled){
+        //The last reroll may or may not have happened. Leave the panel to be read again.
+        return BBQRerollResult::Rerolled;
+    }
 
     //A read can miss the quest in the slot, so read up to 3 times before deciding it is
     //still the old quest.
@@ -482,11 +543,12 @@ std::optional<std::vector<BBQuests>> reroll_quest_slot(
     const BBQOption& BBQ_OPTIONS,
     std::vector<BBQuests>& quest_list,
     size_t slot,
-    const std::function<void(int BP)>& record_BP
+    const std::function<void(int BP)>& record_BP,
+    const std::function<bool(BBQuests)>& reroll_again
 ){
     ConsoleBBQRerollActions actions(info, stream, context, BBQ_OPTIONS, record_BP);
     std::optional<std::vector<BBQuests>> observed_panel;
-    switch (reroll_quest(stream.logger(), actions, quest_list, slot, observed_panel)){
+    switch (reroll_quest(stream.logger(), actions, quest_list, slot, observed_panel, reroll_again)){
     case BBQRerollResult::Rerolled:
         return observed_panel;
     case BBQRerollResult::PanelNotOpened:
@@ -707,8 +769,22 @@ BBQuestBatch process_quest_list(
     //Each reroll updates the panel the next one checks against.
     std::vector<BBQuests> panel = quest_list;
     std::optional<std::vector<BBQuests>> observed_panel;
+    //A new quest that the table rerolls, or a blue one not possible, is rerolled again while the
+    //panel is still open. The first row for a quest decides.
+    const std::vector<std::unique_ptr<BBQuestTableRow>> exclusions_table = BBQ_OPTIONS.QUEST_EXCLUSIONS.copy_snapshot();
+    const auto reroll_again = [&](BBQuests quest){
+        if (BBQ_OPTIONS.NOT_POSSIBLE_QUESTS.contains(quest)){
+            return reroll_cost(quest) == 10;
+        }
+        for (const std::unique_ptr<BBQuestTableRow>& row : exclusions_table){
+            if (row->quest == quest){
+                return row->action == BBQAction::reroll;
+            }
+        }
+        return false;
+    };
     for (size_t slot : plan.reroll_slots){
-        observed_panel = reroll_quest_slot(info, stream, context, BBQ_OPTIONS, panel, slot, record_BP);
+        observed_panel = reroll_quest_slot(info, stream, context, BBQ_OPTIONS, panel, slot, record_BP, reroll_again);
     }
     if (plan.reroll_all){
         stream.log("No possible quests! Rerolling all quests.");

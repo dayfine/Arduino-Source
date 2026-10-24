@@ -139,6 +139,9 @@ public:
 
     //Open the quest panel and read the quests on it, as read_quests() does.
     virtual std::vector<BBQuests> read_quests() = 0;
+
+    //With the panel still open after a reroll, read only the quest in `slot`.
+    virtual BBQuests read_slot_in_panel(size_t slot) = 0;
 };
 
 enum class BBQRerollResult{
@@ -153,12 +156,14 @@ enum class BBQRerollResult{
 //replaced. On Rerolled, `quests[slot]` is updated. observed_panel is populated
 //only when every slot is known and no other slot changed, so scheduling can
 //reuse it. A 3-slot read is only reused when `quests` had 3 slots.
+//If reroll_again returns true for the new quest, it is rerolled again without leaving the panel.
 BBQRerollResult reroll_quest(
     Logger& logger,
     BBQRerollActions& actions,
     std::vector<BBQuests>& quests,
     size_t slot,
-    std::optional<std::vector<BBQuests>>& observed_panel
+    std::optional<std::vector<BBQuests>>& observed_panel,
+    const std::function<bool(BBQuests)>& reroll_again = {}
 );
 
 //Reroll the quest in `slot` of `quests` on the console, with reroll_quest(). Stops the program
@@ -170,7 +175,8 @@ std::optional<std::vector<BBQuests>> reroll_quest_slot(
     const BBQOption& BBQ_OPTIONS,
     std::vector<BBQuests>& quests,
     size_t slot,
-    const std::function<void(int BP)>& record_BP = {}
+    const std::function<void(int BP)>& record_BP = {},
+    const std::function<bool(BBQuests)>& reroll_again = {}
 );
 
 //Determine which quests are possible and which quests are not. (ex. no eggs, reroll egg hatcher.)

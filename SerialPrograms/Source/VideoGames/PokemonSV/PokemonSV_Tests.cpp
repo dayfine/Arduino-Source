@@ -642,6 +642,7 @@ public:
     bool out_of_bp = false;
     int missed_reads = 0;   // Reads that fail OCR on every slot.
     std::optional<std::vector<BBQuests>> read_override;
+    bool slot_reads = false;    // Off, reads in the open panel miss and the whole panel is read.
 
     bool panel_open = false;
     bool menu_open = false;
@@ -683,6 +684,12 @@ public:
         }
         return read_override.value_or(quests);
     }
+    virtual BBQuests read_slot_in_panel(size_t slot) override{
+        if (!slot_reads || !panel_open){
+            return BBQuests::UnableToDetect;
+        }
+        return quests[slot];
+    }
 };
 
 struct BBQRerollScenario{
@@ -696,6 +703,8 @@ struct BBQRerollScenario{
     bool out_of_bp = false;
     int missed_reads = 0;
     std::optional<std::vector<BBQuests>> read_override = {};
+    bool slot_reads = false;
+    std::vector<BBQuests> reroll_again = {};
     BBQRerollResult expected;
     std::vector<size_t> expected_rerolled_slots = {};
     std::vector<BBQuests> expected_quests;
@@ -729,16 +738,21 @@ public:
         panel.out_of_bp = m_scenario.out_of_bp;
         panel.missed_reads = m_scenario.missed_reads;
         panel.read_override = m_scenario.read_override;
+        panel.slot_reads = m_scenario.slot_reads;
+        const std::vector<BBQuests>& again = m_scenario.reroll_again;
 
         RecordingLogger logger;
         std::vector<BBQuests> quests = m_scenario.quests;
         std::optional<std::vector<BBQuests>> observed_panel;
-        const BBQRerollResult result = reroll_quest(logger, panel, quests, m_scenario.slot, observed_panel);
+        const BBQRerollResult result = reroll_quest(
+            logger, panel, quests, m_scenario.slot, observed_panel,
+            [&](BBQuests quest){ return std::find(again.begin(), again.end(), quest) != again.end(); }
+        );
         //Each reroll logs one line naming its slot and quest, whatever the result.
         const std::string reroll_line = "Rerolling quest " + std::to_string(m_scenario.slot + 1)
             + " (" + BBQuests_enum_to_string(m_scenario.quests[m_scenario.slot]) + ").";
         const size_t reroll_lines = std::count_if(logger.lines.begin(), logger.lines.end(), [](const std::string& line){
-            return line.starts_with("Rerolling quest ");
+            return line.starts_with("Rerolling quest ") && line.find(" again ") == std::string::npos;
         });
         if (reroll_lines != 1 || std::find(logger.lines.begin(), logger.lines.end(), reroll_line) == logger.lines.end()){
             return "Expected one log line \"" + reroll_line + "\", got " + std::to_string(reroll_lines) + " reroll lines.";
@@ -1136,6 +1150,41 @@ void add_tests_BBQReroll(UnitTestDatabase& database){
         },
         {
             // Cannot be told apart from out of BP.
+            .name = "the new quest is read in the open panel",
+            .quests = {make_tm, sneak_up, travel_500, hatch_egg},
+            .replacements = {catch_any},
+            .slot = 2,
+            .slot_reads = true,
+            .expected = BBQRerollResult::Rerolled,
+            .expected_rerolled_slots = {2},
+            .expected_quests = {make_tm, sneak_up, catch_any, hatch_egg},
+            .expected_observed_panel = std::vector<BBQuests>{make_tm, sneak_up, catch_any, hatch_egg},
+        },
+        {
+            .name = "a new quest to reroll is rerolled again in the open panel",
+            .quests = {make_tm, sneak_up, travel_500},
+            .replacements = {auto_10, catch_any, catch_bug},
+            .slot = 1,
+            .slot_reads = true,
+            .reroll_again = {auto_10, catch_any},
+            .expected = BBQRerollResult::Rerolled,
+            .expected_rerolled_slots = {1, 1, 1},
+            .expected_quests = {make_tm, catch_bug, travel_500},
+            .expected_observed_panel = std::vector<BBQuests>{make_tm, catch_bug, travel_500},
+        },
+        {
+            // The second reroll may not have happened, so the panel is read again.
+            .name = "out of BP while rerolling again leaves the panel to be read",
+            .quests = {make_tm, sneak_up, travel_500},
+            .replacements = {auto_10, auto_10},
+            .slot = 1,
+            .slot_reads = true,
+            .reroll_again = {auto_10},
+            .expected = BBQRerollResult::Rerolled,
+            .expected_rerolled_slots = {1, 1},
+            .expected_quests = {make_tm, auto_10, travel_500},
+        },
+        {
             .name = "replaced by the same quest is not replaced",
             .quests = {make_tm, sneak_up, travel_500},
             .replacements = {travel_500},
