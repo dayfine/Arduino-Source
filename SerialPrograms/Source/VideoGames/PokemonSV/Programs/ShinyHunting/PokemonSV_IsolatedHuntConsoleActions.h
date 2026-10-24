@@ -4,7 +4,7 @@
 #include <functional>
 #include "NintendoSwitch/NintendoSwitch_SingleSwitchProgram.h"
 #include "VideoGames/PokemonSV/Inference/Overworld/PokemonSV_OverworldSensors.h"
-#include "VideoGames/PokemonSV/Options/PokemonSV_SandwichMakerOption.h"
+#include "VideoGames/PokemonSV/Options/PokemonSV_IsolatedHuntSandwichOption.h"
 #include "PokemonSV_IsolatedHuntLoop.h"
 #include "PokemonSV_IsolatedHuntStats.h"
 #include "PokemonSV_IsolatedHuntEncounter.h"
@@ -16,7 +16,7 @@ namespace PokemonSV{
 class ConsoleIsolatedHuntActions : public IsolatedHuntActions{
 public:
     ConsoleIsolatedHuntActions(SingleSwitchProgramEnvironment& env, ProControllerContext& context,
-        IsolatedHuntStats& stats, Language language, SandwichMakerOption& sandwich,
+        IsolatedHuntStats& stats, Language language, IsolatedHuntSandwichOption& sandwich,
         const EncounterBotCommonOptions& encounter_options, const IsolatedHuntRequest& request);
     virtual bool prepare_sandwich(const IsolatedHuntRequest& request) override;
     virtual bool travel_to_anchor(const IsolatedHuntRequest& request) override;
@@ -39,7 +39,7 @@ private:
     ProControllerContext& m_context;
     IsolatedHuntStats& m_stats;
     Language m_language;
-    SandwichMakerOption& m_sandwich;
+    IsolatedHuntSandwichOption& m_sandwich;
     std::unique_ptr<EncounterBotCommonOptions> m_options;
     // Audio inference must stop before destroying the tracker captured in its callback.
     std::unique_ptr<LetsGoEncounterBotTracker> m_encounters;

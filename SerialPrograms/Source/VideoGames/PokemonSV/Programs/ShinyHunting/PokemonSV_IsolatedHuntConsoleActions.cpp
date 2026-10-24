@@ -56,7 +56,7 @@ const char* stop_name(IsolatedHuntStop stop){
 
 ConsoleIsolatedHuntActions::ConsoleIsolatedHuntActions(SingleSwitchProgramEnvironment& env,
     ProControllerContext& context, IsolatedHuntStats& stats, Language language,
-    SandwichMakerOption& sandwich, const EncounterBotCommonOptions& encounter_options,
+    IsolatedHuntSandwichOption& sandwich, const EncounterBotCommonOptions& encounter_options,
     const IsolatedHuntRequest& request
 )
     : m_env(env), m_context(context), m_stats(stats), m_language(language), m_sandwich(sandwich)
@@ -113,7 +113,7 @@ bool ConsoleIsolatedHuntActions::guard(const std::string& stage, Milliseconds ti
 }
 
 bool ConsoleIsolatedHuntActions::prepare_sandwich(const IsolatedHuntRequest& request){
-    m_sandwich.TYPE.set(request.type == IsolatedEncounterType::GRASS ? PokemonType::grass : PokemonType::fire);
+    m_sandwich.configure_for(request.type);
     const bool success = guard("save and make " + request.pokemon + " sandwich", 240000ms,
         [&](ProControllerContext& context){
             save_game_from_overworld(m_env.program_info(), m_env.console, context);

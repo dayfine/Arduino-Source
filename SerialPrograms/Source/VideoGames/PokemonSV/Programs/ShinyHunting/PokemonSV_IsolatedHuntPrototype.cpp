@@ -66,8 +66,7 @@ IsolatedHuntPrototype::IsolatedHuntPrototype()
         },
         LockMode::LOCK_WHILE_RUNNING, Start::HUNT_FROM_ZERO_GATE
     )
-    , SANDWICH_OPTIONS("<b>Sandwich:</b> Sparkling/Title/Encounter recipe; encounter type comes from each hunt row.",
-        &LANGUAGE, BaseRecipe::shiny, false, GroupOption::EnableMode::ALWAYS_ENABLED)
+    , SANDWICH_OPTIONS(&LANGUAGE)
     , RUN_SECONDS(
         "<b>Clearing time limit (seconds):</b><br>Starts after the approach. Stops between passes; each pass takes at most about 17 seconds.",
         LockMode::LOCK_WHILE_RUNNING, 120, 15, 600
@@ -133,8 +132,8 @@ void IsolatedHuntPrototype::run_hunts(SingleSwitchProgramEnvironment& env, ProCo
     if (!plan.error.empty()){
         throw UserSetupError(env.logger(), plan.error);
     }
-    if (LANGUAGE == Language::None || SANDWICH_OPTIONS.BASE_RECIPE != BaseRecipe::shiny){
-        throw UserSetupError(env.logger(), "Select game language and the Sparkling/Title/Encounter sandwich recipe before starting.");
+    if (LANGUAGE == Language::None){
+        throw UserSetupError(env.logger(), "Select the game language before starting.");
     }
     assert_16_9_720p_min(env.logger(), env.console);
     require_player(env.console, context, BUTTON_LCLICK);

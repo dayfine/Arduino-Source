@@ -5,6 +5,7 @@ namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonSV{
 UnitTestResult test_isolated_hunt_options();
+UnitTestResult test_isolated_hunt_sandwich();
 }
 }
 }
