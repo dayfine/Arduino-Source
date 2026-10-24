@@ -65,3 +65,8 @@ Prototype revision `ba454e4a8` adds a live-verified return-to-Zero-Gate mode.
 The three stationary trials were controls on the AZ platform, not target-hunt
 validation. See [RESULT.md](RESULT.md). Next work is explicit target selection,
 programmed approach and sandwich setup; leave AZP running during code work.
+
+At 02:16 PDT release AZP was still actively running, 313 kills/5 encounters/
+0 shinies. Subsequent code checkpoint is 81172c9f0 with 29 passing native
+scenarios and full app link; console/UI integration remains pending. A one-time
+06:01 PDT continuation is recorded in IMPLEMENTATION_QUEUE.md.

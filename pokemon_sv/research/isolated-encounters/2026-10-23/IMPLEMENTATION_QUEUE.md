@@ -128,3 +128,18 @@ Preserve shinies, save, close prototype and return to Zero Gate; reopen release
 AZP in zerogate mode and verify clearing before any handback is complete. Always
 restore AZP on low quota or when live work finishes; reserve at least 20% before
 starting another experiment. Do not leave the Switch idle for code analysis.
+
+## One-time continuation
+
+Armed for 2026-10-24 06:01 PDT (after the 05:59 reset). Detached timer PID
+7576 was verified alive at 02:16. Local state/log/prompt are under
+/Users/difan/.codex/timers/isolated-20261024-0601/.
+It resumes the same Codex session once, first checking actual quota; it will
+not start a model turn if quota is unknown or any window has less than 25%.
+The resumed prompt requires honoring any newer pause/cancellation/scope change.
+Delete its ARMED file to cancel before it fires. This is a one-time continuation,
+not a permanent monitoring service. Read its state.json for actual execution
+status; a scheduled timer is not evidence the later code or field run finished.
+
+At 02:16 PDT release AZP PID 96268 was still running: 313 kills, 5 encounters,
+0 shinies. No prototype instance owns hardware. Code branch is clean/pushed.
