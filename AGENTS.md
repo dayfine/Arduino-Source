@@ -127,3 +127,35 @@ See [pokemon_sv/PR_WORKFLOW.md](pokemon_sv/PR_WORKFLOW.md). In short:
   how to write their descriptions.
 - [pokemon_sv/lab/CONTROL.md](pokemon_sv/lab/CONTROL.md): how to build, launch
   and control a lab instance and the Switch.
+
+## C++ harness and verification (fork issue #40)
+
+The fork branch `harness/code-health` adds reusable measurements/policy under
+`devtools/code_health/`, a dated `baseline.json`, and a PR/main CI job. After it
+lands, run from a code checkout with its dedicated Python environment:
+
+```sh
+.venv-code-health/bin/python devtools/verify.py --build-dir SerialPrograms/bin --binary SerialPrograms/bin/SerialPrograms --base-ref origin/main
+```
+
+This command requires a configured build, Packages/downloaded resources and the
+CommandLineTests fixture checkout; see `devtools/code_health/README.md`. On
+macOS use the app's `Contents/MacOS/SerialPrograms` binary; on Windows use
+`RelWithDebInfo/SerialPrograms.exe`. It runs linter self-tests, the code-health
+ratchet, CMake build and native registered C++ tests, stops at the first failure,
+and returns that exit status. Agents must read that status before opening a
+code PR; report any unavailable prerequisite instead of claiming a pass.
+Linter-only changes run its self-tests and repository scan; they do not require
+a SerialPrograms rebuild. Python self-tests are for this Python tool only;
+application tests remain native C++.
+
+Limits: file 500 lines advisory / 1000 hard, function 50 physical lines (25
+recommended), 4 brace nesting levels inside a function, 7 parameters. Existing
+offenders have dated entries in `devtools/code_health/baseline.json`. New debt,
+worsening compared with the base revision, and still-needed expired exceptions
+fail. **Fix/extract code; do not raise limits or regenerate the baseline to
+hide growth.** Keep one concern per branch/PR and require applicable checks/CI
+before review. Shared infrastructure needs portable regression coverage;
+gameplay changes additionally need appropriate live validation.
+
+Canonical rules remain here on `agents`; never merge this branch into code.
