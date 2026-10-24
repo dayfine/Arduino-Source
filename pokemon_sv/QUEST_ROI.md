@@ -181,3 +181,32 @@ Sampling the typed catches by rerolling everything else: each is 0.78% of blue d
 flying/fighting/bug/psychic with 67%; 5000 BP gives 98% and 92%. A typed photo (red)
 is 0.83% of red draws, and reds come once per 10 completions, so the red Flying-type photo
 cannot be sampled this way; it stays unsampled until it shows up in normal runs.
+
+## Rare-quest test (R14, 2026-10-23)
+
+Every quest already measured was set to reroll, so new draws would be attempted once. 21:27-22:35, build
+ad74693a1. About 1,470 BP of rerolls: ~900 by the program (98 rerolls) and ~570 by hand from the panel
+(a 6,000 BP sponsor purchase in the same window is not a reroll).
+
+| Quest | Attempts | OK | s/attempt | Note |
+|---|---|---|---|---|
+| Catch: Fighting | 2 | 1 | 145 | first sighting |
+| Catch: Bug | 1 | 1 | 172 | first sighting |
+| Catch: Fairy | 4 | 2 | 136 | |
+| Photo: Normal/Fire | 2 | 2 | 84 | |
+| Tera-self (Pride Rock) | 5 | 1 | 129 | misses were before the day skip after a win (ad74693a1) |
+| Hatch an Egg (red, 200 BP) | 1 | 1 | 179 | run after the table was cleared |
+
+Typed catches drawn: about 14 of ~100 blue draws, in line with Bulbapedia's 14%.
+
+**The board holds at most one typed catch.** In every log since 10-21 (~600 typed-catch reads), no board
+had two typed catches at once (catch-any not counted). So while a typed catch is kept, the others cannot
+be drawn, and the per-draw odds above (0.78% each) only apply with that slot free. Keep a typed catch only
+if it is the target.
+
+Still unsampled: **catch-flying** and **catch-psychic** (both drawn in earlier runs, R4-R6 and M5, but
+never attempted), and the red Flying-type photo (0.83% of reds). They keep the default action (run), and
+photo-flying keeps its default reroll row.
+
+Rerolling took ~24 s each (close the panel, open it again, read all 4 quests). Lab commit 88d904280
+reads only the rerolled slot with the panel open and rerolls again in place, which should take ~4 s.
