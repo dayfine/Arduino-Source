@@ -23,7 +23,8 @@ class VerifyTests(unittest.TestCase):
         self.assertIn('agent-native-tests', steps[-1])
         called = []
         def run(command, **kwargs):
-            called.append(command)
+            called.append((command, kwargs['cwd']))
             return SimpleNamespace(returncode=0)
-        self.assertEqual(0, verify(steps, run=run))
-        self.assertEqual(steps, called)
+        self.assertEqual(0, verify(steps, run=run, native_cwd='/native-resources'))
+        self.assertEqual(steps, [command for command, cwd in called])
+        self.assertEqual('/native-resources', called[-1][1])

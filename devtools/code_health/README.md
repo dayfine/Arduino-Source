@@ -70,7 +70,11 @@ this checkout's CMake build (e.g. `cmake -S SerialPrograms -B SerialPrograms/bin
 `PokemonAutomation/CommandLineTests` fixture checkout in an ancestor of the
 binary, within its five-level resource search, or use `UnitTestResources`.
 Unpack downloadable model ZIPs exactly as the existing CI's “Install downloadable
-resources for tests” step does. Missing fixture/model resources are not passes.
+resources for tests” step does. For this runner on macOS, install models under
+`~/Library/Application Support/SerialPrograms/Profiles/agent-native-tests/DownloadedResources/`
+because the isolated test profile has its own runtime directory. On Linux and
+Windows install under `<build-dir>/DownloadedResources/`. Missing fixture/model
+resources are not passes.
 
 For a configured Linux build:
 
@@ -82,7 +86,7 @@ On macOS use `--binary SerialPrograms/bin/SerialPrograms.app/Contents/MacOS/Seri
 on Windows use `--binary SerialPrograms/bin/RelWithDebInfo/SerialPrograms.exe`.
 The command runs linter self-tests, the ratchet, CMake build, then native tests;
 it stops at the first nonzero exit and propagates it. Native tests run from
-the binary directory, matching Linux/Windows resource layout. On macOS it uses
+the build directory, matching Linux/Windows CI resource layout. On macOS it uses
 a separate `agent-native-tests` profile (named profiles are macOS-only); Qt is
 offscreen on all platforms. Use this checkout's build/binary,
 not a release installation or another worktree's executable.

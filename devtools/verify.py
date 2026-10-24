@@ -44,7 +44,7 @@ def main():
     env['QT_QPA_PLATFORM'] = 'offscreen'
     try:
         return verify(commands(build_dir, args.binary.resolve(), args.base_ref, args.jobs),
-                      env=env, native_cwd=args.binary.resolve().parent)
+                      env=env, native_cwd=build_dir)
     except OSError as error:
         print(f'Verification could not run: {error}', file=sys.stderr)
         return 2
