@@ -1190,9 +1190,18 @@ void quest_tera_self_defeat(
     }
     case TeraEncounterAction::Recover:
         console.log("Battle entry not confirmed. Skipping battle handling.");
-        break;
+        return_to_plaza(info, console, context, BBQ_OPTIONS.LANGUAGE);
+        return;
     }
     return_to_plaza(info, console, context, BBQ_OPTIONS.LANGUAGE);
+
+    //The defeated Pride Rock Pokemon stays gone until the day changes, and sneak-up and the
+    //next Tera-self need it (R14: two Tera-self attempts right after a win found nothing).
+    pbf_press_button(context, BUTTON_HOME, 160ms, GameSettings::instance().GAME_TO_HOME_DELAY1);
+    home_to_date_time(console, context, true);
+    roll_date_forward_1(console, context, true);
+    pbf_press_button(context, BUTTON_HOME, 160ms, ConsoleSettings::instance().SETTINGS_TO_HOME_DELAY0);
+    resume_game_from_home(console, context);
 
     heal_after_battle_if_due(info, console, context);
 }
