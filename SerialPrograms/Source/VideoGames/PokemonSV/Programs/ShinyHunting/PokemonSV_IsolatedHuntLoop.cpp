@@ -105,6 +105,9 @@ IsolatedHuntResult run_isolated_hunt(
         limits.max_rounds == 0 || limits.max_empty_rounds == 0 || limits.duration_ms == 0 || limits.power_duration_ms == 0){
         return {.stop = IsolatedHuntStop::INVALID_PLAN};
     }
+    if (!actions.reset_start(request)){
+        return failed_stage(request, actions, IsolatedHuntStop::START_FAILED);
+    }
     if (!actions.prepare_sandwich(request)){
         return failed_stage(request, actions, IsolatedHuntStop::SETUP_FAILED);
     }

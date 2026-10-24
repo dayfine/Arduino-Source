@@ -9,7 +9,7 @@ namespace PokemonSV{
 
 enum class IsolatedHuntEvent{ CLEAR, REFUSAL, BATTLE };
 enum class IsolatedHuntBattleResult{ CONTINUE, STOP, FAILED };
-enum class IsolatedHuntStop{ ROUND_LIMIT, INVALID_PLAN, SETUP_FAILED, TRAVEL_FAILED, UNRESOLVED_REFUSAL, BATTLE_POLICY, BATTLE_FAILED, TIME_LIMIT, NO_PROGRESS, REFRESH_FAILED, POWER_EXPIRED };
+enum class IsolatedHuntStop{ ROUND_LIMIT, INVALID_PLAN, START_FAILED, SETUP_FAILED, TRAVEL_FAILED, UNRESOLVED_REFUSAL, BATTLE_POLICY, BATTLE_FAILED, TIME_LIMIT, NO_PROGRESS, REFRESH_FAILED, POWER_EXPIRED };
 
 struct IsolatedHuntRound{
     uint64_t kills = 0;
@@ -35,6 +35,7 @@ struct IsolatedHuntResult{
 class IsolatedHuntActions{
 public:
     virtual ~IsolatedHuntActions() = default;
+    virtual bool reset_start(const IsolatedHuntRequest& request) = 0;
     virtual bool prepare_sandwich(const IsolatedHuntRequest& request) = 0;
     // Also called after a handled battle; success must mean the route anchor is restored.
     virtual bool travel_to_anchor(const IsolatedHuntRequest& request) = 0;

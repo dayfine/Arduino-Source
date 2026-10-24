@@ -18,6 +18,7 @@ public:
     ConsoleIsolatedHuntActions(SingleSwitchProgramEnvironment& env, ProControllerContext& context,
         IsolatedHuntStats& stats, Language language, IsolatedHuntSandwichOption& sandwich,
         const EncounterBotCommonOptions& encounter_options, const IsolatedHuntRequest& request);
+    virtual bool reset_start(const IsolatedHuntRequest& request) override;
     virtual bool prepare_sandwich(const IsolatedHuntRequest& request) override;
     virtual bool travel_to_anchor(const IsolatedHuntRequest& request) override;
     virtual IsolatedHuntRound clear_round(const IsolatedHuntRequest& request) override;

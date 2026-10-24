@@ -13,6 +13,7 @@
 #include "VideoGames/PokemonSV/Programs/Eggs/PokemonSV_EggRoutines.h"
 #include "VideoGames/PokemonSV/Programs/Sandwiches/PokemonSV_SandwichRoutines.h"
 #include "VideoGames/PokemonSV/Programs/PokemonSV_SaveGame.h"
+#include "VideoGames/PokemonSV/Programs/PokemonSV_MenuNavigation.h"
 #include "VideoGames/PokemonSV/Programs/PokemonSV_WorldNavigation.h"
 #include "PokemonSV_IsolatedHuntTravel.h"
 #include "PokemonSV_IsolatedHuntConsoleActions.h"
@@ -38,6 +39,7 @@ private:
 const char* stop_name(IsolatedHuntStop stop){
     switch (stop){
     case IsolatedHuntStop::ROUND_LIMIT: return "round limit";
+    case IsolatedHuntStop::START_FAILED: return "start flight failed";
     case IsolatedHuntStop::INVALID_PLAN: return "invalid plan";
     case IsolatedHuntStop::SETUP_FAILED: return "setup failed";
     case IsolatedHuntStop::TRAVEL_FAILED: return "travel failed";
@@ -110,6 +112,19 @@ bool ConsoleIsolatedHuntActions::guard(const std::string& stage, Milliseconds ti
         m_env.console.log(stage + ": " + error.message(), COLOR_RED);
     }
     return false;
+}
+
+bool ConsoleIsolatedHuntActions::reset_start(const IsolatedHuntRequest&){
+    bool arrived = false;
+    const bool success = guard("re-fly Zero Gate starting anchor", 90000ms,
+        [&](ProControllerContext& context){
+            // The full-hunt start contract is outdoors at Zero Gate, including after a picnic retry.
+            // Select only the overlapping anchor; never substitute a nearby unrelated fly point.
+            open_map_from_overworld(m_env.program_info(), m_env.console, context);
+            arrived = fly_to_overworld_from_map(m_env.program_info(), m_env.console, context, true);
+        }
+    );
+    return success && arrived;
 }
 
 bool ConsoleIsolatedHuntActions::prepare_sandwich(const IsolatedHuntRequest& request){
