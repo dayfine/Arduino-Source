@@ -162,3 +162,22 @@ catch-poison-dark      5   0  0.14           0.01   -64.4 ..  -19.6   reroll
 ```
 
 Notes: tera-self counts are mostly the Chargestone court (6/13); the Pride Rock route is 1/1 so far. Auto-10 succeeds 9/9 but loses on time (~250 s), so its verdict depends on the time estimate, which this does not sample. Rare quests (about 1% of draws each) are not worth chasing for data alone: R14 took ~26 rerolls (~260 BP) per rare quest seen.
+
+## Draw rates (Bulbapedia, advanced difficulty)
+
+Bulbapedia's Blueberry Quest table gives each quest a rate per difficulty pool. This save
+draws from the advanced pool. Blue: sneak-up 12%, auto-10 12%, travel 13%, pick-up 12%,
+Make TM 5%, catch any 5%, photo in flight 6%, photo swimming 6%, Tera-self 9%, each biome
+photo 1.5%, typed catch 14% in total (0.78% per type). Bonus (red): wash 8%, wild Tera 15%,
+auto-30 9%, three-ingredient sandwich 15%, Tera raid 15%, each flavour sandwich 3%, typed
+photo 15% in total (0.83% per type), hatch 8%. Rewards: blue 20 (photos and Tera-self 30,
+typed catches 40), red 100-200.
+
+Our 584 logged blue draws agree within the noise, except Make TM (9.4% vs 5%) and typed
+catches (10.1% vs 14%).
+
+Sampling the typed catches by rerolling everything else: each is 0.78% of blue draws, so
+3000 BP (~300 draws) sees a given one with 90% chance and all four of
+flying/fighting/bug/psychic with 67%; 5000 BP gives 98% and 92%. A typed photo (red)
+is 0.83% of red draws, and reds come once per 10 completions, so the red Flying-type photo
+cannot be sampled this way; it stays unsampled until it shows up in normal runs.
