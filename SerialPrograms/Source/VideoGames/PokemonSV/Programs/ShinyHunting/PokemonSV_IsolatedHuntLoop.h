@@ -9,7 +9,7 @@ namespace PokemonSV{
 
 enum class IsolatedHuntEvent{ CLEAR, REFUSAL, BATTLE };
 enum class IsolatedHuntBattleResult{ CONTINUE, STOP, FAILED };
-enum class IsolatedHuntStop{ ROUND_LIMIT, INVALID_PLAN, SETUP_FAILED, TRAVEL_FAILED, UNRESOLVED_REFUSAL, BATTLE_POLICY, BATTLE_FAILED, TIME_LIMIT, NO_PROGRESS, REFRESH_FAILED };
+enum class IsolatedHuntStop{ ROUND_LIMIT, INVALID_PLAN, SETUP_FAILED, TRAVEL_FAILED, UNRESOLVED_REFUSAL, BATTLE_POLICY, BATTLE_FAILED, TIME_LIMIT, NO_PROGRESS, REFRESH_FAILED, POWER_EXPIRED };
 
 struct IsolatedHuntRound{
     uint64_t kills = 0;
@@ -20,6 +20,7 @@ struct IsolatedHuntLimits{
     uint16_t max_rounds = 30;
     uint8_t max_empty_rounds = 3;
     uint64_t duration_ms = 120000;
+    uint64_t power_duration_ms = 29 * 60 * 1000;
 };
 
 struct IsolatedHuntResult{
@@ -43,9 +44,12 @@ public:
     // True only after battle entry is confirmed, not merely after throwing the lead.
     virtual bool acquire_refused_target(const IsolatedHuntRequest& request) = 0;
     virtual IsolatedHuntBattleResult handle_battle(const IsolatedHuntRequest& request) = 0;
+    virtual bool battle_pending() const{ return false; }
     // Monotonic time; setup and initial travel are excluded from the hunt budget.
     virtual uint64_t now_ms() const = 0;
 };
+
+bool can_leave_isolated_hunt(IsolatedHuntStop stop);
 
 IsolatedHuntResult run_isolated_hunt(
     const IsolatedHuntRequest& request, const IsolatedHuntLimits& limits,

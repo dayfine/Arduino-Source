@@ -13,6 +13,8 @@
 #include "CommonTools/Options/LanguageOCROption.h"
 #include "NintendoSwitch/NintendoSwitch_SingleSwitchProgram.h"
 #include "VideoGames/PokemonSV/Options/PokemonSV_EncounterBotCommon.h"
+#include "VideoGames/PokemonSV/Options/PokemonSV_IsolatedHuntTable.h"
+#include "VideoGames/PokemonSV/Options/PokemonSV_SandwichMakerOption.h"
 #include "VideoGames/PokemonSV/Inference/Overworld/PokemonSV_OverworldSensors.h"
 #include "PokemonSV_LetsGoTools.h"
 
@@ -34,6 +36,9 @@ public:
     virtual void program(SingleSwitchProgramEnvironment& env, ProControllerContext& context) override;
 
 private:
+    void add_options();
+    void run_hunts(SingleSwitchProgramEnvironment& env, ProControllerContext& context);
+    bool run_one_hunt(SingleSwitchProgramEnvironment& env, ProControllerContext& context, const IsolatedHuntRequest& request);
     bool approach(SingleSwitchProgramEnvironment& env, ProControllerContext& context);
     bool clear_pass(SingleSwitchProgramEnvironment& env, ProControllerContext& context,
         OverworldSensors& sensors, uint8_t& empty);
@@ -42,6 +47,7 @@ private:
         OverworldSensors& sensors, OverworldBattleTracker& battle_tracker, LetsGoEncounterBotTracker& encounters);
 
     enum class Start{
+        HUNT_FROM_ZERO_GATE,
         PREPARED_SPOT,
         CENTRAL_PLAZA,
         RETURN_TO_ZERO_GATE,
@@ -49,7 +55,10 @@ private:
 
     OCR::LanguageOCROption LANGUAGE;
     EnumDropdownOption<Start> START;
+    IsolatedHuntTable HUNTS;
+    SandwichMakerOption SANDWICH_OPTIONS;
     SimpleIntegerOption<uint16_t> RUN_SECONDS;
+    SimpleIntegerOption<uint16_t> MAX_ROUNDS;
     SimpleIntegerOption<uint8_t> EMPTY_PASSES;
     EncounterBotCommonOptions ENCOUNTER_OPTIONS;
     EventNotificationsOption NOTIFICATIONS;

@@ -5,7 +5,7 @@ namespace NintendoSwitch{
 namespace PokemonSV{
 namespace{
 
-bool handle_encounter(const IsolatedHuntRequest& request, IsolatedHuntActions& actions, IsolatedHuntResult& result){
+bool handle_battle_policy(const IsolatedHuntRequest& request, IsolatedHuntActions& actions, IsolatedHuntResult& result){
     result.encounters++;
     switch (actions.handle_battle(request)){
     case IsolatedHuntBattleResult::STOP:
@@ -15,14 +15,32 @@ bool handle_encounter(const IsolatedHuntRequest& request, IsolatedHuntActions& a
         result.stop = IsolatedHuntStop::BATTLE_FAILED;
         return true;
     case IsolatedHuntBattleResult::CONTINUE:
-        if (!actions.travel_to_anchor(request)){
-            result.stop = IsolatedHuntStop::TRAVEL_FAILED;
-            return true;
-        }
         return false;
     }
     result.stop = IsolatedHuntStop::BATTLE_FAILED;
     return true;
+}
+
+IsolatedHuntResult failed_stage(const IsolatedHuntRequest& request, IsolatedHuntActions& actions, IsolatedHuntStop reason){
+    IsolatedHuntResult result{.stop = reason};
+    if (actions.battle_pending()){
+        handle_battle_policy(request, actions, result);
+    }
+    return result;
+}
+
+bool handle_encounter(const IsolatedHuntRequest& request, IsolatedHuntActions& actions, IsolatedHuntResult& result){
+    if (handle_battle_policy(request, actions, result)){
+        return true;
+    }
+    if (!actions.travel_to_anchor(request)){
+        result.stop = IsolatedHuntStop::TRAVEL_FAILED;
+        if (actions.battle_pending()){
+            handle_battle_policy(request, actions, result);
+        }
+        return true;
+    }
+    return false;
 }
 
 bool handle_event(const IsolatedHuntRequest& request, IsolatedHuntActions& actions,
@@ -48,6 +66,9 @@ bool handle_empty_round(const IsolatedHuntRequest& request, const IsolatedHuntLi
     if (empty > 0 && allow_refresh){
         if (!actions.refresh_spawns(request)){
             result.stop = IsolatedHuntStop::REFRESH_FAILED;
+            if (actions.battle_pending()){
+                handle_battle_policy(request, actions, result);
+            }
             return true;
         }
         result.refreshes++;
@@ -55,6 +76,25 @@ bool handle_empty_round(const IsolatedHuntRequest& request, const IsolatedHuntLi
     return false;
 }
 
+bool expired(IsolatedHuntResult& result, const IsolatedHuntLimits& limits,
+    uint64_t now, uint64_t hunt_started, uint64_t power_started
+){
+    if (now - power_started >= limits.power_duration_ms){
+        result.stop = IsolatedHuntStop::POWER_EXPIRED;
+        return true;
+    }
+    if (now - hunt_started >= limits.duration_ms){
+        result.stop = IsolatedHuntStop::TIME_LIMIT;
+        return true;
+    }
+    return false;
+}
+
+}
+
+bool can_leave_isolated_hunt(IsolatedHuntStop stop){
+    return stop == IsolatedHuntStop::ROUND_LIMIT || stop == IsolatedHuntStop::TIME_LIMIT ||
+        stop == IsolatedHuntStop::POWER_EXPIRED;
 }
 
 IsolatedHuntResult run_isolated_hunt(
@@ -62,21 +102,21 @@ IsolatedHuntResult run_isolated_hunt(
     IsolatedHuntActions& actions
 ){
     if (!make_isolated_hunt_plan({request}).error.empty() ||
-        limits.max_rounds == 0 || limits.max_empty_rounds == 0 || limits.duration_ms == 0){
+        limits.max_rounds == 0 || limits.max_empty_rounds == 0 || limits.duration_ms == 0 || limits.power_duration_ms == 0){
         return {.stop = IsolatedHuntStop::INVALID_PLAN};
     }
     if (!actions.prepare_sandwich(request)){
-        return {.stop = IsolatedHuntStop::SETUP_FAILED};
+        return failed_stage(request, actions, IsolatedHuntStop::SETUP_FAILED);
     }
+    const uint64_t power_started = actions.now_ms();
     if (!actions.travel_to_anchor(request)){
-        return {.stop = IsolatedHuntStop::TRAVEL_FAILED};
+        return failed_stage(request, actions, IsolatedHuntStop::TRAVEL_FAILED);
     }
     IsolatedHuntResult result{.stop = IsolatedHuntStop::ROUND_LIMIT};
     const uint64_t started = actions.now_ms();
     uint8_t empty = 0;
     while (result.rounds < limits.max_rounds){
-        if (actions.now_ms() - started >= limits.duration_ms){
-            result.stop = IsolatedHuntStop::TIME_LIMIT;
+        if (expired(result, limits, actions.now_ms(), started, power_started)){
             return result;
         }
         const auto round = actions.clear_round(request);
@@ -90,7 +130,9 @@ IsolatedHuntResult run_isolated_hunt(
             continue;
         }
         empty = round.kills == 0 ? empty + 1 : 0;
-        const bool allow_refresh = result.rounds < limits.max_rounds && actions.now_ms() - started < limits.duration_ms;
+        const auto now = actions.now_ms();
+        const bool allow_refresh = result.rounds < limits.max_rounds && now - started < limits.duration_ms &&
+            now - power_started < limits.power_duration_ms;
         if (handle_empty_round(request, limits, actions, result, empty, allow_refresh)){
             return result;
         }

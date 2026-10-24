@@ -55,6 +55,7 @@ void add_tests(UnitTestDatabase& database){
     database.add<Test_IsolatedHunt>("PokemonSV/IsolatedHunt/Plan", test_isolated_hunt_plan);
     database.add<Test_IsolatedHunt>("PokemonSV/IsolatedHunt/Locations", test_isolated_hunt_locations);
     database.add<Test_IsolatedHunt>("PokemonSV/IsolatedHunt/Loop", test_isolated_hunt_loop);
+    database.add<Test_IsolatedHunt>("PokemonSV/IsolatedHunt/ExitPolicy", test_isolated_hunt_exit_policy);
     database.add<Test_IsolatedHunt>("PokemonSV/IsolatedHunt/Options", test_isolated_hunt_options);
     database.add<Test_IsolatedHunt>("PokemonSV/IsolatedHunt/EncounterOptions", test_isolated_hunt_encounter_options);
     add_tests_WhiteButtonDetector(database);

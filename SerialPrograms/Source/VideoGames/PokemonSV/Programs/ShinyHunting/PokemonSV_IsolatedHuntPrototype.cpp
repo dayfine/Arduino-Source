@@ -27,6 +27,8 @@
 #include "VideoGames/PokemonSV/Programs/PokemonSV_SaveGame.h"
 #include "PokemonSV_LetsGoTools.h"
 #include "PokemonSV_IsolatedHuntPrototype.h"
+#include "PokemonSV_IsolatedHuntStats.h"
+#include "PokemonSV_IsolatedHuntConsoleActions.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -36,24 +38,14 @@ IsolatedHuntPrototype_Descriptor::IsolatedHuntPrototype_Descriptor()
     : SingleSwitchProgramDescriptor(
         "PokemonSV:IsolatedHuntPrototype",
         STRING_POKEMON + " SV", "Isolated Hunt Prototype",
-        "", "Short supervised clearing and battle-acquisition experiment. Prepare sandwich powers and a healthy lead before starting.",
+        "", "Experimental target-specific sandwich, travel and bounded hunting. Start at the Zero Gate fly spot with a healthy lead; routes need field calibration.",
         ProgramControllerClass::StandardController_NoRestrictions,
         FeedbackType::VIDEO_AUDIO,
         AllowCommandsWhenRunning::DISABLE_COMMANDS
     )
 {}
 
-struct IsolatedHuntPrototype_Descriptor::Stats : public LetsGoEncounterBotStats{
-    Stats()
-        : passes(m_stats["Clearing Passes"])
-        , refusals(m_stats["Refusals"])
-    {
-        m_display_order.emplace_back("Clearing Passes");
-        m_display_order.emplace_back("Refusals");
-    }
-    std::atomic<uint64_t>& passes;
-    std::atomic<uint64_t>& refusals;
-};
+struct IsolatedHuntPrototype_Descriptor::Stats : public IsolatedHuntStats{};
 
 std::unique_ptr<StatsTracker> IsolatedHuntPrototype_Descriptor::make_stats() const{
     return std::unique_ptr<StatsTracker>(new Stats());
@@ -62,20 +54,25 @@ std::unique_ptr<StatsTracker> IsolatedHuntPrototype_Descriptor::make_stats() con
 IsolatedHuntPrototype::IsolatedHuntPrototype()
     : LANGUAGE("<b>Game Language:</b>", IV_READER().languages(), LockMode::LOCK_WHILE_RUNNING, true)
     , START(
-        "<b>Start:</b><br>Prepared spot: stand on foot, facing the target patch. "
+        "<b>Start:</b><br>Full hunt: start at Zero Gate as if just flown there, on foot. "
+        "Other modes are supervised controls. Prepared spot: stand on foot, facing the target patch. "
         "Central Plaza: start as if just flown there; uses the existing Chargestone court approach. "
         "Chespin requires the Canyon diversity upgrade and a verified Grass spawn patch.",
         {
+            {Start::HUNT_FROM_ZERO_GATE, "hunt-from-zero-gate", "Full hunt from Zero Gate (experimental routes)"},
             {Start::PREPARED_SPOT, "prepared", "Prepared hunting spot (Chespin or Charcadet)"},
             {Start::CENTRAL_PLAZA, "central-plaza", "Central Plaza to Chargestone court"},
             {Start::RETURN_TO_ZERO_GATE, "return-zerogate", "Return from Area Zero to Zero Gate (travel only)"},
         },
-        LockMode::LOCK_WHILE_RUNNING, Start::PREPARED_SPOT
+        LockMode::LOCK_WHILE_RUNNING, Start::HUNT_FROM_ZERO_GATE
     )
+    , SANDWICH_OPTIONS("<b>Sandwich:</b> Sparkling/Title/Encounter recipe; encounter type comes from each hunt row.",
+        &LANGUAGE, BaseRecipe::shiny, false, GroupOption::EnableMode::ALWAYS_ENABLED)
     , RUN_SECONDS(
         "<b>Clearing time limit (seconds):</b><br>Starts after the approach. Stops between passes; each pass takes at most about 17 seconds.",
         LockMode::LOCK_WHILE_RUNNING, 120, 15, 600
     )
+    , MAX_ROUNDS("<b>Maximum clearing rounds per target:</b>", LockMode::LOCK_WHILE_RUNNING, 100, 1, 1000)
     , EMPTY_PASSES(
         "<b>Stop after consecutive passes without a kill:</b><br>Stops for inspection without resetting nearby spawns.",
         LockMode::LOCK_WHILE_RUNNING, 3, 1, 10
@@ -89,12 +86,68 @@ IsolatedHuntPrototype::IsolatedHuntPrototype()
         &NOTIFICATION_ERROR_FATAL,
     })
 {
+    add_options();
+}
+
+void IsolatedHuntPrototype::add_options(){
+    SANDWICH_OPTIONS.TYPE.set_visibility(ConfigOptionState::HIDDEN);
     PA_ADD_OPTION(LANGUAGE);
     PA_ADD_OPTION(START);
+    PA_ADD_OPTION(HUNTS);
+    PA_ADD_OPTION(SANDWICH_OPTIONS);
+    PA_ADD_OPTION(MAX_ROUNDS);
     PA_ADD_OPTION(RUN_SECONDS);
     PA_ADD_OPTION(EMPTY_PASSES);
     PA_ADD_OPTION(ENCOUNTER_OPTIONS);
     PA_ADD_OPTION(NOTIFICATIONS);
+}
+
+bool IsolatedHuntPrototype::run_one_hunt(SingleSwitchProgramEnvironment& env,
+    ProControllerContext& context, const IsolatedHuntRequest& request
+){
+    auto& stats = env.current_stats<IsolatedHuntPrototype_Descriptor::Stats>();
+    ConsoleIsolatedHuntActions actions(env, context, stats, LANGUAGE, SANDWICH_OPTIONS, ENCOUNTER_OPTIONS, request);
+    const IsolatedHuntLimits limits{
+        .max_rounds = MAX_ROUNDS, .max_empty_rounds = EMPTY_PASSES,
+        .duration_ms = (uint64_t)RUN_SECONDS * 1000,
+    };
+    const auto result = run_isolated_hunt(request, limits, actions);
+    actions.report(request, result);
+    if (!can_leave_isolated_hunt(result.stop)){
+        env.console.log("Stopped at the current location for inspection; no departure after refusal, policy stop or failure.", COLOR_BLUE);
+        return false;
+    }
+    if (!actions.return_to_zero_gate(request)){
+        if (actions.battle_pending()){
+            actions.handle_battle(request);
+        }
+        env.console.log("Return flight failed or was interrupted. Inspect location before restarting AZP.", COLOR_RED);
+        return false;
+    }
+    env.console.log("Return flight completed and saved. Verify Zero Gate before handing back to AZP.");
+    return true;
+}
+
+void IsolatedHuntPrototype::run_hunts(SingleSwitchProgramEnvironment& env, ProControllerContext& context){
+    const auto plan = make_isolated_hunt_plan(HUNTS.snapshot());
+    if (!plan.error.empty()){
+        throw UserSetupError(env.logger(), plan.error);
+    }
+    if (LANGUAGE == Language::None || SANDWICH_OPTIONS.BASE_RECIPE != BaseRecipe::shiny){
+        throw UserSetupError(env.logger(), "Select game language and the Sparkling/Title/Encounter sandwich recipe before starting.");
+    }
+    assert_16_9_720p_min(env.logger(), env.console);
+    require_player(env.console, context, BUTTON_LCLICK);
+    OverworldWatcher overworld(env.logger(), COLOR_BLUE);
+    if (wait_until(env.console, context, 5000ms, {overworld}) < 0){
+        throw UserSetupError(env.logger(), "Start at the Zero Gate fly spot in the overworld.");
+    }
+    for (const auto& request : plan.hunts){
+        if (!run_one_hunt(env, context, request)){
+            break;
+        }
+    }
+    send_program_finished_notification(env, NOTIFICATION_PROGRAM_FINISH);
 }
 
 bool IsolatedHuntPrototype::approach(SingleSwitchProgramEnvironment& env, ProControllerContext& context){
@@ -195,6 +248,10 @@ bool IsolatedHuntPrototype::process_encounter(SingleSwitchProgramEnvironment& en
 }
 
 void IsolatedHuntPrototype::program(SingleSwitchProgramEnvironment& env, ProControllerContext& context){
+    if (START == Start::HUNT_FROM_ZERO_GATE){
+        run_hunts(env, context);
+        return;
+    }
     auto& stats = env.current_stats<IsolatedHuntPrototype_Descriptor::Stats>();
     assert_16_9_720p_min(env.logger(), env.console);
     require_player(env.console, context, BUTTON_LCLICK);

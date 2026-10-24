@@ -2476,6 +2476,11 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonSV/Options/PokemonSV_IsolatedHuntTable.h
     Source/VideoGames/PokemonSV/Programs/PokemonSV_RegionTravel.cpp
     Source/VideoGames/PokemonSV/Programs/PokemonSV_RegionTravel.h
+    Source/VideoGames/PokemonSV/Programs/ShinyHunting/PokemonSV_IsolatedHuntTravel.cpp
+    Source/VideoGames/PokemonSV/Programs/ShinyHunting/PokemonSV_IsolatedHuntTravel.h
+    Source/VideoGames/PokemonSV/Programs/ShinyHunting/PokemonSV_IsolatedHuntStats.h
+    Source/VideoGames/PokemonSV/Programs/ShinyHunting/PokemonSV_IsolatedHuntConsoleActions.cpp
+    Source/VideoGames/PokemonSV/Programs/ShinyHunting/PokemonSV_IsolatedHuntConsoleActions.h
     Source/VideoGames/PokemonSV/Programs/ShinyHunting/PokemonSV_IsolatedHuntEncounter.cpp
     Source/VideoGames/PokemonSV/Programs/ShinyHunting/PokemonSV_IsolatedHuntEncounter.h
     Source/VideoGames/PokemonSV/PokemonSV_IsolatedHuntEncounter_Tests.cpp
