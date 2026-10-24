@@ -124,3 +124,14 @@ location or sandwich was validated. Revision ba454e4a8 adds the live-verified
 Area Zero → Zero Gate return mode. Release AZP was restored and clearing at
 01:42 PDT. Continue target selection, programmed travel and sandwich setup
 before another takeover.
+
+## 2026-10-24 tested-core checkpoint
+
+Branch prototype/sv-isolated-hunt is now 81172c9f0, rebased onto fork main
+8e973c48f. Pure planning and bounded action-loop modules have 29 passing native
+C++ scenarios and a successful full application link. They are not wired into
+the existing supervised UI. Read IMPLEMENTATION_QUEUE.md before continuing;
+next work is the editable options table, console adapter, both actual travel
+routes, sandwich and roaming integration. Leave release AZP farming until the
+mostly end-to-end gate is met. Earlier scratch is preserved as a patch in the
+raw run folder, not current source.

@@ -5,17 +5,69 @@ the Switch again. Issue dayfine/Arduino-Source#40 is first priority in the
 current quota window. Resume this queue after 05:59 PDT, or earlier if #40 is
 finished with allowance left. Query actual quota before substantial work.
 
-## Starting state
+## Starting state (updated 02:14 PDT)
 
+- Issue #40 completed as fork draft #41; CI code-health and tabs passed. See
+  harness/ISSUE40_STATE.md. Its PR branch is handed to Claude; do not push it.
 - Code worktree: /Users/difan/Projects/Arduino-Source-isolated
-- Branch: prototype/sv-isolated-hunt; committed ba454e4a8 adds verified return
-  from Area Zero to Zero Gate. Two dirty prototype files add target selection
-  and a staged sandwich preparation mode; they compile/link, but were written
-  before the user's test-first direction. Treat these as scratch, not a tested
-  solution; preserve the diff and rework through native test-first slices.
-- Release AZP is restored, running PID 96268, first resumed kill 01:42:42 PDT.
-  Leave it farming during implementation. See the 2026-10-24 run STATE/RESULT.
-- No target route, sandwich, respawn movement or shiny acquisition is validated.
+- Branch: prototype/sv-isolated-hunt, pushed head 81172c9f0. Rebased onto current
+  fork main 8e973c48f. Old return-mode commit ba454e4a8 is now 3f51f0809.
+- Earlier pre-test-first scratch was preserved in
+  build-prep/isolated-live-2026-10-24/pre-test-first-scratch.patch, then removed
+  before native test-first work. Do not blindly reapply it.
+- New pure modules: PokemonSV_IsolatedHuntPlan.{h,cpp} and
+  PokemonSV_IsolatedHuntLoop.{h,cpp}, under Programs/ShinyHunting.
+- Native tests in PokemonSV_IsolatedHunt*_Tests.{h,cpp}, registered in
+  PokemonSV_Tests.cpp and CMake. 11 planning scenarios, 2 location cases and
+  16 action-loop cases pass (29 total). Separate C++ test main under build-prep
+  calls the SAME registered test functions, no duplicated implementation or
+  Python application tests. Binary: build-prep/isolated-plan-tests.
+- Full application build/link passed: build-prep/isolated-live-2026-10-24/
+  build-plan-loop-tests.log. Rebase needed 129 rebuild steps, latest incremental
+  6 steps. Existing Tesseract deployment-target warning only. New modules/tests
+  also meet the new code-health hard limits. Sources use CRLF.
+- Core supports compatible target/type/location planning, enabled rows,
+  ball/limit propagation, all-or-nothing validation; sandwich-before-travel,
+  bounded clearing, empty-round refresh/stop, time limit, refusal acquisition
+  without despawn on failure, shared battle callback and reanchor after battle.
+- IMPORTANT: the pure loop is NOT wired to a console adapter or editable hunt
+  table yet. Existing prototype UI still runs the older supervised experiment.
+  Do not launch it believing the new end-to-end hunt is implemented.
+- Release AZP restored, running PID 96268; observed 114 kills/2 encounters at
+  01:56 PDT after restart. Leave it farming during implementation. No actual
+  target route, sandwich, respawn movement or shiny acquisition is validated.
+
+## Next coding slices after resumption
+
+1. Read this queue, canonical rules and actual quota. Check code/notes status,
+   preserve others' edits, and keep the active release app untouched.
+2. Add editable target/type/location/ball/limit/enabled table, using shared
+   EditableTableOption and PokemonBallSelectCell; plan through the tested pure
+   module. Add native option snapshot/validation tests before implementation.
+   Catalog currently implements only Grass/Chespin and Fire/Charcadet, with
+   fly anchors and habitat/unlock prerequisites; other research candidates stay
+   explicitly unsupported.
+3. Add ConsoleIsolatedHuntActions implementing the tested seam, delegating to
+   shared sandwich, map/navigation, Let’s Go detectors, process_battle and
+   encounter action options. Every action must itself be bounded; now_ms must
+   be monotonic. Save before ingredients, use the selected type, validate
+   recipe/language before controller inputs. Stop-on-shiny remains the default;
+   selected catch/save policy and ball must reach shared encounter handling.
+4. Program travel/approach to BOTH actual test sites, including region switching
+   if starting from the shared Zero Gate handoff. Central Plaza -> Chargestone
+   flight is already shared, but court vs Cave Chespin spawn patch is unverified.
+   Charcadet fly/approach needs coding/calibration from the researched video.
+   Avoid guessed unbounded map pans. Explicit starting anchors are acceptable,
+   but manual travel between sandwich and hunting is not the completed flow.
+5. Add native tests for battle during travel/setup (current bool travel seam may
+   need a richer event result), arrival failures, refresh/reanchor failures and
+   state recovery before implementing that behavior. Reuse shiny/flee/catch
+   handling, do not create another battle engine. Continuously watch refusal
+   throughout each clearing observation window.
+6. Wire status stage/counters/timings and run the program through the new loop.
+   Bound sandwich lifetime as well as clearing duration; initial setup/travel
+   must not silently exhaust the power. Build/link and native checks before
+   borrowing hardware. Only field-test once mostly end-to-end complete.
 
 ## Required product flow
 
