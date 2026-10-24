@@ -1060,6 +1060,34 @@ bool send_out_and_look_around(
     return false;
 }
 
+//From Central Plaza, glide from Savanna Plaza to Pride Rock and face the lion's spot.
+//With Camera Support off this lands in front of a wild Pokemon nearly every time
+//(sneak-up 12/12 from R11 to R12b, each in a battle ~55 s after starting).
+void central_to_pride_rock(
+    const ProgramInfo& info,
+    ConsoleHandle& console, ProControllerContext& context,
+    const BBQOption& BBQ_OPTIONS
+){
+    central_to_savanna_plaza(info, console, context);
+
+    pbf_move_left_joystick(context, {+0.724, -1}, 80ms, 160ms);
+    pbf_press_button(context, BUTTON_L | BUTTON_PLUS, 160ms, 840ms);
+
+    jump_glide_fly(console, context, BBQ_OPTIONS.INVERTED_FLIGHT, 4800ms, 3200ms, 3200ms);
+
+    pbf_press_button(context, BUTTON_PLUS, 160ms, 840ms);
+    pbf_move_left_joystick(context, {+1, 0}, 160ms, 400ms);
+
+    pbf_press_button(context, BUTTON_L, 160ms, 400ms);
+    pbf_move_left_joystick(context, {0, +1}, 800ms, 400ms);
+
+    //Turn slightly for switch 1
+    if (console.state().console_type() == ConsoleType::Switch1){
+        pbf_move_left_joystick(context, {-1, +1}, 160ms, 400ms);
+        pbf_press_button(context, BUTTON_L, 160ms, 400ms);
+    }
+}
+
 void quest_tera_self_defeat(
     const ProgramInfo& info,
     ConsoleHandle& console, ProControllerContext& context,
@@ -1072,18 +1100,12 @@ void quest_tera_self_defeat(
     int ret = run_until<ProControllerContext>(
         console, context,
         [&](ProControllerContext& context){
-            //Any wild Pokemon counts. The Chargestone battle court, where Auto Battle and
-            //catch-any go, has many spawns; the glide to Kleavor often started no battle.
-            central_to_chargestone(info, console, context);
-            pbf_wait(context, 3000ms);
-            context.wait_for_all_requests();
+            //Any wild Pokemon counts, so go where a battle starts most reliably: Pride Rock,
+            //the sneak-up route (12/12 battles since R11). The glide to Kleavor started a
+            //battle 1/6 times in R10 and the Chargestone court 6/11.
+            central_to_pride_rock(info, console, context, BBQ_OPTIONS);
 
-            pbf_press_button(context, BUTTON_L, 160ms, 400ms);
-            pbf_move_left_joystick(context, {0, +1}, 2000ms, 400ms);
-            pbf_move_left_joystick(context, {+1, 0}, 1440ms, 400ms);
-            pbf_press_button(context, BUTTON_L, 160ms, 400ms);
-
-            battle_menu_detected = send_out_and_look_around(console, context, std::chrono::seconds(6), "a wild Pokemon");
+            battle_menu_detected = send_out_and_look_around(console, context, std::chrono::seconds(15), "a wild Pokemon");
         },
         {
             static_cast<VisualInferenceCallback&>(encounter_watcher),
@@ -1142,28 +1164,10 @@ void quest_sneak_up(
     int ret = run_until<ProControllerContext>(
         console, context,
         [&](ProControllerContext& context){
-            //Savanna Plaza - Pride Rock
-            central_to_savanna_plaza(info, console, context);
+            central_to_pride_rock(info, console, context, BBQ_OPTIONS);
 
-            pbf_move_left_joystick(context, {+0.724, -1}, 80ms, 160ms);
-            pbf_press_button(context, BUTTON_L | BUTTON_PLUS, 160ms, 840ms);
-
-            jump_glide_fly(console, context, BBQ_OPTIONS.INVERTED_FLIGHT, 4800ms, 3200ms, 3200ms);
-
-            pbf_press_button(context, BUTTON_PLUS, 160ms, 840ms);
-            pbf_move_left_joystick(context, {+1, 0}, 160ms, 400ms);
-
-            pbf_press_button(context, BUTTON_L, 160ms, 400ms);
-            pbf_move_left_joystick(context, {0, +1}, 800ms, 400ms);
-
-            //Turn slightly for switch 1
-            if (console.state().console_type() == ConsoleType::Switch1){
-                pbf_move_left_joystick(context, {-1, +1}, 160ms, 400ms);
-                pbf_press_button(context, BUTTON_L, 160ms, 400ms);
-            }
-
-            //Pride Rock's target is often missing or facing us; anything that hasn't
-            //noticed us counts, so look around if the first throw starts nothing.
+            //Pride Rock's target is sometimes missing; anything that hasn't noticed us
+            //counts, so look around if the first throw starts nothing.
             send_out_and_look_around(console, context, std::chrono::seconds(15), "the target");
         },
         {
