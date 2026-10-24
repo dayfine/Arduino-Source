@@ -453,7 +453,7 @@
       "path": "SerialPrograms/Source/CommonFramework/AudioPipeline/AudioInfo.cpp",
       "symbol": "PokemonAutomation::AudioDeviceInfo::all_input_devices()",
       "check": "function_lines",
-      "value": 84,
+      "value": 76,
       "review_at": "2027-01-22",
       "reason": "Existing debt at initial code-health rollout"
     },
@@ -461,15 +461,15 @@
       "path": "SerialPrograms/Source/CommonFramework/AudioPipeline/AudioInfo.cpp",
       "symbol": "PokemonAutomation::AudioDeviceInfo::all_output_devices()",
       "check": "function_lines",
-      "value": 73,
+      "value": 53,
       "review_at": "2027-01-22",
       "reason": "Existing debt at initial code-health rollout"
     },
     {
       "path": "SerialPrograms/Source/CommonFramework/AudioPipeline/AudioInfo.cpp",
-      "symbol": "PokemonAutomation::set_format( QAudioFormat & native_format , AudioChannelFormat format)",
+      "symbol": "PokemonAutomation::input_choices( std :: vector<AudioFormat> supported , const AudioFormat & preferred)",
       "check": "function_lines",
-      "value": 64,
+      "value": 101,
       "review_at": "2027-01-22",
       "reason": "Existing debt at initial code-health rollout"
     },
@@ -477,7 +477,31 @@
       "path": "SerialPrograms/Source/CommonFramework/AudioPipeline/AudioInfo.cpp",
       "symbol": "PokemonAutomation::supported_input_formats( int & preferred_index , const NativeAudioInfo & info , const std :: string & display_name)",
       "check": "function_lines",
-      "value": 97,
+      "value": 101,
+      "review_at": "2027-01-22",
+      "reason": "Existing debt at initial code-health rollout"
+    },
+    {
+      "path": "SerialPrograms/Source/CommonFramework/AudioPipeline/AudioInfo_Tests.cpp",
+      "symbol": "PokemonAutomation::InputChoiceNamingTest::run( Logger & , CancellableScope &) const",
+      "check": "function_lines",
+      "value": 72,
+      "review_at": "2027-01-22",
+      "reason": "Existing debt at initial code-health rollout"
+    },
+    {
+      "path": "SerialPrograms/Source/CommonFramework/AudioPipeline/AudioInfo_Tests.cpp",
+      "symbol": "PokemonAutomation::InputChoicesCardQuirkTest::run( Logger & , CancellableScope &) const",
+      "check": "function_lines",
+      "value": 87,
+      "review_at": "2027-01-22",
+      "reason": "Existing debt at initial code-health rollout"
+    },
+    {
+      "path": "SerialPrograms/Source/CommonFramework/AudioPipeline/AudioInfo_Tests.cpp",
+      "symbol": "PokemonAutomation::InputChoicesSortDedupeTest::run( Logger & , CancellableScope &) const",
+      "check": "function_lines",
+      "value": 82,
       "review_at": "2027-01-22",
       "reason": "Existing debt at initial code-health rollout"
     },
@@ -499,14 +523,6 @@
     },
     {
       "path": "SerialPrograms/Source/CommonFramework/AudioPipeline/Backends/AudioPassthroughPairQt.cpp",
-      "symbol": "PokemonAutomation::AudioPassthroughPairQt::build_tree( float input_volume)",
-      "check": "function_lines",
-      "value": 55,
-      "review_at": "2027-01-22",
-      "reason": "Existing debt at initial code-health rollout"
-    },
-    {
-      "path": "SerialPrograms/Source/CommonFramework/AudioPipeline/Backends/AudioPassthroughPairQt.cpp",
       "symbol": "PokemonAutomation::AudioPassthroughPairQt::init_audio_sink()",
       "check": "function_lines",
       "value": 54,
@@ -517,7 +533,7 @@
       "path": "SerialPrograms/Source/CommonFramework/AudioPipeline/Backends/AudioPassthroughPairQt.cpp",
       "symbol": "PokemonAutomation::AudioPassthroughPairQt::rebuild_sink_branch()",
       "check": "function_lines",
-      "value": 77,
+      "value": 67,
       "review_at": "2027-01-22",
       "reason": "Existing debt at initial code-health rollout"
     },
@@ -550,6 +566,46 @@
       "symbol": "PokemonAutomation::AudioFileLoader::convertRawWavSamples()",
       "check": "function_lines",
       "value": 60,
+      "review_at": "2027-01-22",
+      "reason": "Existing debt at initial code-health rollout"
+    },
+    {
+      "path": "SerialPrograms/Source/CommonFramework/AudioPipeline/IO/AudioFileLoader.cpp",
+      "symbol": "PokemonAutomation::AudioFileLoader::loadFullAudio()",
+      "check": "function_lines",
+      "value": 62,
+      "review_at": "2027-01-22",
+      "reason": "Existing debt at initial code-health rollout"
+    },
+    {
+      "path": "SerialPrograms/Source/CommonFramework/AudioPipeline/IO/AudioFileLoader.cpp",
+      "symbol": "PokemonAutomation::AudioFileLoader::start()",
+      "check": "function_lines",
+      "value": 58,
+      "review_at": "2027-01-22",
+      "reason": "Existing debt at initial code-health rollout"
+    },
+    {
+      "path": "SerialPrograms/Source/CommonFramework/AudioPipeline/IO/AudioFileLoader_Tests.cpp",
+      "symbol": "PokemonAutomation::DecodedNativePlaybackTest::run( Logger & logger , CancellableScope &) const",
+      "check": "function_lines",
+      "value": 73,
+      "review_at": "2027-01-22",
+      "reason": "Existing debt at initial code-health rollout"
+    },
+    {
+      "path": "SerialPrograms/Source/CommonFramework/AudioPipeline/IO/AudioInputFile.cpp",
+      "symbol": "PokemonAutomation::probe_decoded_native_format( const std :: string & filename , QAudioFormat & out_format)",
+      "check": "function_lines",
+      "value": 65,
+      "review_at": "2027-01-22",
+      "reason": "Existing debt at initial code-health rollout"
+    },
+    {
+      "path": "SerialPrograms/Source/CommonFramework/AudioPipeline/SinkPipeline_Tests.cpp",
+      "symbol": "PokemonAutomation::SinkGateMultichannel51Test::run( Logger & logger , CancellableScope &) const",
+      "check": "function_lines",
+      "value": 52,
       "review_at": "2027-01-22",
       "reason": "Existing debt at initial code-health rollout"
     },
@@ -878,6 +934,14 @@
       "symbol": "PokemonAutomation::StreamHistoryOption::StreamHistoryOption()",
       "check": "function_lines",
       "value": 110,
+      "review_at": "2027-01-22",
+      "reason": "Existing debt at initial code-health rollout"
+    },
+    {
+      "path": "SerialPrograms/Source/CommonFramework/Recording/StreamHistorySession.cpp",
+      "symbol": "PokemonAutomation::StreamHistorySession::initialize()",
+      "check": "function_lines",
+      "value": 62,
       "review_at": "2027-01-22",
       "reason": "Existing debt at initial code-health rollout"
     },
@@ -1890,10 +1954,34 @@
       "reason": "Existing debt at initial code-health rollout"
     },
     {
+      "path": "SerialPrograms/Source/Kernels/AudioPipeline/Kernels_AudioPipeline_Tests.cpp",
+      "symbol": "PokemonAutomation::Kernels::AudioPipeline::Working2WorkingOrderTest::run( Logger & logger , CancellableScope & scope) const",
+      "check": "function_lines",
+      "value": 114,
+      "review_at": "2027-01-22",
+      "reason": "Existing debt at initial code-health rollout"
+    },
+    {
+      "path": "SerialPrograms/Source/Kernels/AudioPipeline/Kernels_AudioPipeline_Tests.cpp",
+      "symbol": "PokemonAutomation::Kernels::AudioPipeline::add_tests( UnitTestDatabase & database)",
+      "check": "function_lines",
+      "value": 52,
+      "review_at": "2027-01-22",
+      "reason": "Existing debt at initial code-health rollout"
+    },
+    {
+      "path": "SerialPrograms/Source/Kernels/AudioPipeline/Kernels_WorkingAudio2WorkingAudio.cpp",
+      "symbol": "PokemonAutomation::Kernels::AudioPipeline::WorkingAudio2WorkingAudio::WorkingAudio2WorkingAudio( Logger & logger , size_t in_sample_rate , size_t out_sample_rate , size_t in_channels , size_t out_channels , std :: vector<float> weight_matrix , size_t buffer_size)",
+      "check": "function_lines",
+      "value": 62,
+      "review_at": "2027-01-22",
+      "reason": "Existing debt at initial code-health rollout"
+    },
+    {
       "path": "SerialPrograms/Source/Kernels/AudioResampler/Kernels_AudioResampler.cpp",
       "symbol": "PokemonAutomation::Kernels::AudioResampler::AudioResampler::AudioResampler( Logger & logger , size_t in_sample_rate , size_t out_sample_rate , size_t channels , size_t buffer_size , uint32_t taps , double beta)",
       "check": "function_lines",
-      "value": 59,
+      "value": 60,
       "review_at": "2027-01-22",
       "reason": "Existing debt at initial code-health rollout"
     },
@@ -2029,7 +2117,7 @@
       "path": "SerialPrograms/Source/Kernels/AudioResampler/Kernels_AudioResampler_WeightTable.cpp",
       "symbol": "PokemonAutomation::Kernels::AudioResampler::WeightTable::WeightTable( size_t in_sample_rate , size_t out_sample_rate , uint32_t taps , double beta , size_t sample_block , size_t tap_block)",
       "check": "function_lines",
-      "value": 109,
+      "value": 111,
       "review_at": "2027-01-22",
       "reason": "Existing debt at initial code-health rollout"
     },
@@ -2061,23 +2149,7 @@
       "path": "SerialPrograms/Source/Kernels/BinaryMatrix/Kernels_BinaryMatrix_Tests.cpp",
       "symbol": "PokemonAutomation::Kernels::Test_BinaryMatrix::run( Logger & logger , CancellableScope & scope) const",
       "check": "function_lines",
-      "value": 67,
-      "review_at": "2027-01-22",
-      "reason": "Existing debt at initial code-health rollout"
-    },
-    {
-      "path": "SerialPrograms/Source/Kernels/BinaryMatrix/Kernels_BinaryMatrix_Tests.cpp",
-      "symbol": "PokemonAutomation::Kernels::test_binary_matrix_tile_t()",
-      "check": "function_lines",
-      "value": 256,
-      "review_at": "2027-01-22",
-      "reason": "Existing debt at initial code-health rollout"
-    },
-    {
-      "path": "SerialPrograms/Source/Kernels/BinaryMatrix/Kernels_BinaryMatrix_Tests.cpp",
-      "symbol": "PokemonAutomation::Kernels::test_binary_matrix_tile_t()",
-      "check": "nesting",
-      "value": 5,
+      "value": 111,
       "review_at": "2027-01-22",
       "reason": "Existing debt at initial code-health rollout"
     },
@@ -2085,7 +2157,7 @@
       "path": "SerialPrograms/Source/Kernels/BinaryMatrix/Kernels_PackedBinaryMatrixCore.tpp",
       "symbol": "PokemonAutomation::Kernels::PackedBinaryMatrixCore<Tile>::submatrix( size_t x , size_t y , size_t width , size_t height) const",
       "check": "function_lines",
-      "value": 72,
+      "value": 79,
       "review_at": "2027-01-22",
       "reason": "Existing debt at initial code-health rollout"
     },
@@ -2123,41 +2195,17 @@
     },
     {
       "path": "SerialPrograms/Source/Kernels/ImageFilters/Kernels_ImageFilter_Tests.cpp",
-      "symbol": "PokemonAutomation::Kernels::Test_CompressRGB32ToBinaryEuclidean::run( Logger & logger , CancellableScope & scope) const",
+      "symbol": "PokemonAutomation::Kernels::Test_ImageFilterRGB32RangeMultiple::run( Logger & logger , CancellableScope & scope) const",
       "check": "function_lines",
-      "value": 74,
+      "value": 65,
       "review_at": "2027-01-22",
       "reason": "Existing debt at initial code-health rollout"
     },
     {
       "path": "SerialPrograms/Source/Kernels/ImageFilters/Kernels_ImageFilter_Tests.cpp",
-      "symbol": "PokemonAutomation::Kernels::Test_ImageFilterByMask::run( Logger & logger , CancellableScope & scope) const",
+      "symbol": "PokemonAutomation::Kernels::add_tests_ImageFilters( UnitTestDatabase & database)",
       "check": "function_lines",
-      "value": 84,
-      "review_at": "2027-01-22",
-      "reason": "Existing debt at initial code-health rollout"
-    },
-    {
-      "path": "SerialPrograms/Source/Kernels/ImageFilters/Kernels_ImageFilter_Tests.cpp",
-      "symbol": "PokemonAutomation::Kernels::Test_ImageFilterRGB32Euclidean::run( Logger & logger , CancellableScope & scope) const",
-      "check": "function_lines",
-      "value": 115,
-      "review_at": "2027-01-22",
-      "reason": "Existing debt at initial code-health rollout"
-    },
-    {
-      "path": "SerialPrograms/Source/Kernels/ImageFilters/Kernels_ImageFilter_Tests.cpp",
-      "symbol": "PokemonAutomation::Kernels::Test_ImageFilterRGB32Range::run( Logger & logger , CancellableScope & scope) const",
-      "check": "function_lines",
-      "value": 106,
-      "review_at": "2027-01-22",
-      "reason": "Existing debt at initial code-health rollout"
-    },
-    {
-      "path": "SerialPrograms/Source/Kernels/ImageFilters/Kernels_ImageFilter_Tests.cpp",
-      "symbol": "PokemonAutomation::Kernels::Test_ImageToBlackWhiteRGB32Range::run( Logger & logger , CancellableScope & scope) const",
-      "check": "function_lines",
-      "value": 112,
+      "value": 53,
       "review_at": "2027-01-22",
       "reason": "Existing debt at initial code-health rollout"
     },
@@ -2501,7 +2549,7 @@
       "path": "SerialPrograms/Source/Kernels/ImageScaleBrightness/Kernels_ImageScaleBrightness_arm64_NEON.cpp",
       "symbol": "PokemonAutomation::Kernels::scale_brightness_arm64_NEON_four_pixels_per_channel_scale( size_t width , uint32_t * image , float r_scale , float g_scale , float b_scale)",
       "check": "function_lines",
-      "value": 89,
+      "value": 93,
       "review_at": "2027-01-22",
       "reason": "Existing debt at initial code-health rollout"
     },
@@ -4413,7 +4461,7 @@
       "path": "SerialPrograms/Source/StaticRegistrationQt.cpp",
       "symbol": "PokemonAutomation::register_all_statics()",
       "check": "function_lines",
-      "value": 83,
+      "value": 82,
       "review_at": "2027-01-22",
       "reason": "Existing debt at initial code-health rollout"
     },
@@ -4469,7 +4517,7 @@
       "path": "SerialPrograms/Source/VideoGames/PokemonFRLG/PokemonFRLG_Navigation.cpp",
       "symbol": "",
       "check": "file_lines",
-      "value": 1567,
+      "value": 1645,
       "review_at": "2027-01-22",
       "reason": "Existing debt at initial code-health rollout"
     },
@@ -4507,9 +4555,9 @@
     },
     {
       "path": "SerialPrograms/Source/VideoGames/PokemonFRLG/PokemonFRLG_Navigation.cpp",
-      "symbol": "PokemonAutomation::NintendoSwitch::PokemonFRLG::exit_wild_battle( ConsoleHandle & console , ProControllerContext & context , bool stop_on_move_learn , bool prevent_evolution)",
+      "symbol": "PokemonAutomation::NintendoSwitch::PokemonFRLG::exit_wild_battle( Logger & logger , WildBattleExitActions & actions , bool stop_on_move_learn , bool prevent_evolution)",
       "check": "function_lines",
-      "value": 125,
+      "value": 85,
       "review_at": "2027-01-22",
       "reason": "Existing debt at initial code-health rollout"
     },
@@ -4598,6 +4646,14 @@
       "symbol": "PokemonAutomation::NintendoSwitch::PokemonFRLG::GameSettings::GameSettings()",
       "check": "function_lines",
       "value": 76,
+      "review_at": "2027-01-22",
+      "reason": "Existing debt at initial code-health rollout"
+    },
+    {
+      "path": "SerialPrograms/Source/VideoGames/PokemonFRLG/PokemonFRLG_Tests.cpp",
+      "symbol": "PokemonAutomation::NintendoSwitch::PokemonFRLG::add_tests_ExitWildBattle( UnitTestDatabase & database)",
+      "check": "function_lines",
+      "value": 89,
       "review_at": "2027-01-22",
       "reason": "Existing debt at initial code-health rollout"
     },
@@ -5229,7 +5285,7 @@
       "path": "SerialPrograms/Source/VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_WildRng.cpp",
       "symbol": "PokemonAutomation::NintendoSwitch::PokemonFRLG::WildRng::WildRng()",
       "check": "function_lines",
-      "value": 172,
+      "value": 183,
       "review_at": "2027-01-22",
       "reason": "Existing debt at initial code-health rollout"
     },
@@ -5237,7 +5293,7 @@
       "path": "SerialPrograms/Source/VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_WildRng.cpp",
       "symbol": "PokemonAutomation::NintendoSwitch::PokemonFRLG::WildRng::program( SingleSwitchProgramEnvironment & env , ProControllerContext & context)",
       "check": "function_lines",
-      "value": 353,
+      "value": 356,
       "review_at": "2027-01-22",
       "reason": "Existing debt at initial code-health rollout"
     },
