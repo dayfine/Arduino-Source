@@ -150,11 +150,11 @@ void picnic_from_overworld(const ProgramInfo& info, VideoStream& stream, ProCont
             stream.log("Detected main menu.");
             success = main_menu.move_cursor(info, stream, context, MenuSide::RIGHT, 2, fast_mode);
             if (success == false){
-                OperationFailedExceptionWithScreenshot::fire(
-                    ErrorReportMode::SEND_ERROR_REPORT,
-                    "picnic_from_overworld(): Cannot move menu cursor to picnic.",
-                    stream
-                );
+                //The cursor reading can flicker between rows. Close the menu and open it
+                //again; the 3-minute limit above still ends a menu that never settles.
+                stream.log("picnic_from_overworld(): Cannot move menu cursor to picnic. Closing the menu and retrying.", COLOR_ORANGE);
+                pbf_press_button(context, BUTTON_B, 160ms, 1000ms);
+                continue;
             }
             pbf_mash_button(context, BUTTON_A, 1000ms); // mash button A to enter picnic mode
             continue;
