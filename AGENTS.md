@@ -39,6 +39,10 @@ See [pokemon_sv/PR_WORKFLOW.md](pokemon_sv/PR_WORKFLOW.md). In short:
   not open or reopen upstream PRs. A change being ready for review does not
   authorize Codex to publish it upstream; hand it to Claude instead. Reaffirmed
   by the user on 2026-10-23.
+- **No agent opens upstream PRs** unless the user asked for that specific PR.
+  Upstream allows **at most two open PRs from us, drafts included**
+  (CONTRIBUTIONS.md, 2026-10-23). Draft #1697 was opened upstream by another
+  session and closed the same day; it is fork #39.
 - **Upstream** (PokemonAutomation/Arduino-Source) only holds PRs that are ready
   for review: no unmerged parent, built and tested.
 - **Drafts and stacked PRs** go on the fork, based on their parent's branch.

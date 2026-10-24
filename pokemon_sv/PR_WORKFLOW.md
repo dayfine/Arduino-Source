@@ -8,6 +8,8 @@ Rule set by the user on 2026-10-21. It applies to Codex and Claude.
 review: no unmerged parent PR, built, and tested.** Everything else is a PR on
 the fork (dayfine/Arduino-Source) until it is ready.
 
+- **At most two open upstream PRs from us, drafts included** (upstream
+  CONTRIBUTIONS.md). No agent opens one unless the user asked for that PR.
 - **Never open a draft PR upstream.** Never open a PR upstream whose parent PR
   has not merged.
 - **Open work-in-progress and stacked PRs on the fork.** On the fork, a PR's base
