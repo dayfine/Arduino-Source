@@ -13,6 +13,8 @@
 #include "CommonTools/Options/LanguageOCROption.h"
 #include "NintendoSwitch/NintendoSwitch_SingleSwitchProgram.h"
 #include "VideoGames/PokemonSV/Options/PokemonSV_EncounterBotCommon.h"
+#include "VideoGames/PokemonSV/Inference/Overworld/PokemonSV_OverworldSensors.h"
+#include "PokemonSV_LetsGoTools.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -32,6 +34,13 @@ public:
     virtual void program(SingleSwitchProgramEnvironment& env, ProControllerContext& context) override;
 
 private:
+    bool approach(SingleSwitchProgramEnvironment& env, ProControllerContext& context);
+    bool clear_pass(SingleSwitchProgramEnvironment& env, ProControllerContext& context,
+        OverworldSensors& sensors, uint8_t& empty);
+    std::string clear_spot(SingleSwitchProgramEnvironment& env, ProControllerContext& context, OverworldSensors& sensors);
+    bool process_encounter(SingleSwitchProgramEnvironment& env, ProControllerContext& context,
+        OverworldSensors& sensors, OverworldBattleTracker& battle_tracker, LetsGoEncounterBotTracker& encounters);
+
     enum class Start{
         PREPARED_SPOT,
         CENTRAL_PLAZA,

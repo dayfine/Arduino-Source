@@ -97,16 +97,111 @@ IsolatedHuntPrototype::IsolatedHuntPrototype()
     PA_ADD_OPTION(NOTIFICATIONS);
 }
 
+bool IsolatedHuntPrototype::approach(SingleSwitchProgramEnvironment& env, ProControllerContext& context){
+    if (START == Start::RETURN_TO_ZERO_GATE){
+        env.console.log("Prototype state: returning from Area Zero to Zero Gate.");
+        return_to_outside_zero_gate(env.program_info(), env.console, context);
+        return false;
+    }
+    if (START == Start::CENTRAL_PLAZA){
+        env.console.log("Prototype state: approach Chargestone court.");
+        central_to_chargestone(env.program_info(), env.console, context);
+        pbf_wait(context, 3000ms);
+        // Match the existing BBQ court approach; its Chespin footprint still needs field verification.
+        pbf_press_button(context, BUTTON_L, 160ms, 400ms);
+        pbf_move_left_joystick(context, {0, +1}, 2000ms, 400ms);
+        pbf_move_left_joystick(context, {+1, 0}, 1440ms, 400ms);
+        pbf_press_button(context, BUTTON_L, 160ms, 400ms);
+        context.wait_for_all_requests();
+    }
+    return true;
+}
+
+bool IsolatedHuntPrototype::clear_pass(SingleSwitchProgramEnvironment& env,
+    ProControllerContext& context, OverworldSensors& sensors, uint8_t& empty
+){
+    auto& stats = env.current_stats<IsolatedHuntPrototype_Descriptor::Stats>();
+    const uint64_t before = stats.m_kills.load();
+    env.console.log("Prototype state: clearing pass " + std::to_string(stats.passes.load() + 1));
+    SweatBubbleWatcher bubble(COLOR_GREEN);
+    int refused = run_until<ProControllerContext>(
+        env.console, context,
+        [](ProControllerContext& context){
+            pbf_press_button(context, BUTTON_R, 160ms, 1600ms);
+        },
+        {bubble}
+    );
+    if (refused == 0){
+        stats.refusals++;
+        env.update_stats();
+        env.console.log("Prototype state: refusal detected; trying ZR. Refusal does not confirm a shiny.");
+        pbf_mash_button(context, BUTTON_ZR, 5000ms);
+        pbf_wait(context, 10000ms);
+        context.wait_for_all_requests();
+        return false;
+    }
+    // A fixed observation window keeps a long kill chain from extending a pass indefinitely.
+    pbf_wait(context, 12000ms);
+    context.wait_for_all_requests();
+    sensors.throw_if_no_sound();
+    stats.passes++;
+    uint64_t kills = stats.m_kills.load() - before;
+    empty = kills == 0 ? empty + 1 : 0;
+    env.update_stats();
+    env.console.log("Prototype pass: kills=" + std::to_string(kills) +
+        ", consecutive empty passes=" + std::to_string(empty));
+    return true;
+}
+
+std::string IsolatedHuntPrototype::clear_spot(SingleSwitchProgramEnvironment& env,
+    ProControllerContext& context, OverworldSensors& sensors
+){
+    WallClock deadline = current_time() + std::chrono::seconds(RUN_SECONDS);
+    uint8_t empty = 0;
+    while (current_time() < deadline){
+        if (!clear_pass(env, context, sensors, empty)){
+            return "Refusal acquisition timed out without a battle. Inspect the target and positioning.";
+        }
+        if (empty >= EMPTY_PASSES){
+            return "No clearing progress. Inspect spawn density, lead health and target reachability.";
+        }
+    }
+    return "Clearing time limit reached.";
+}
+
+bool IsolatedHuntPrototype::process_encounter(SingleSwitchProgramEnvironment& env,
+    ProControllerContext& context, OverworldSensors& sensors,
+    OverworldBattleTracker& battle_tracker, LetsGoEncounterBotTracker& encounters
+){
+    auto& stats = env.current_stats<IsolatedHuntPrototype_Descriptor::Stats>();
+    env.console.log("Prototype state: battle detected; using shared encounter/shiny handling.");
+    sensors.throw_if_no_sound();
+    stats.m_encounters++;
+    env.update_stats();
+    encounters.encounter_rate_tracker().report_encounter();
+    bool caught = false, should_save = false;
+    try{
+        process_battle(caught, should_save, env, ENCOUNTER_OPTIONS, env.console, context,
+            battle_tracker, encounters.encounter_frequencies(), stats.m_shinies, LANGUAGE);
+    }catch (ProgramFinishedException&){
+        env.console.log("Prototype stopped by encounter policy. Leaving the battle for inspection.", COLOR_BLUE);
+        send_program_finished_notification(env, NOTIFICATION_PROGRAM_FINISH);
+        return true;
+    }
+    if (should_save){
+        save_game_from_overworld(env.program_info(), env.console, context);
+    }
+    return false;
+}
+
 void IsolatedHuntPrototype::program(SingleSwitchProgramEnvironment& env, ProControllerContext& context){
     auto& stats = env.current_stats<IsolatedHuntPrototype_Descriptor::Stats>();
     assert_16_9_720p_min(env.logger(), env.console);
     require_player(env.console, context, BUTTON_LCLICK);
-
     OverworldWatcher overworld(env.logger(), COLOR_BLUE);
     if (wait_until(env.console, context, 5000ms, {overworld}) < 0){
         throw UserSetupError(env.logger(), "Start in the overworld at the selected anchor.");
     }
-
     // Stop audio inference before destroying the tracker captured by its kill callback.
     std::unique_ptr<LetsGoEncounterBotTracker> encounters;
     OverworldSensors sensors(env.logger(), env.console, context);
@@ -117,85 +212,17 @@ void IsolatedHuntPrototype::program(SingleSwitchProgramEnvironment& env, ProCont
     int result = run_until<ProControllerContext>(
         env.console, context,
         [&](ProControllerContext& context){
-            if (START == Start::RETURN_TO_ZERO_GATE){
-                env.console.log("Prototype state: returning from Area Zero to Zero Gate.");
-                return_to_outside_zero_gate(env.program_info(), env.console, context);
+            if (!approach(env, context)){
                 stop_reason = "Returned to Zero Gate. Ready for the release AZP program.";
                 return;
             }
-            if (START == Start::CENTRAL_PLAZA){
-                env.console.log("Prototype state: approach Chargestone court.");
-                central_to_chargestone(env.program_info(), env.console, context);
-                pbf_wait(context, 3000ms);
-                // Match the existing BBQ court approach; its Chespin footprint still needs field verification.
-                pbf_press_button(context, BUTTON_L, 160ms, 400ms);
-                pbf_move_left_joystick(context, {0, +1}, 2000ms, 400ms);
-                pbf_move_left_joystick(context, {+1, 0}, 1440ms, 400ms);
-                pbf_press_button(context, BUTTON_L, 160ms, 400ms);
-                context.wait_for_all_requests();
-            }
-
-            WallClock deadline = current_time() + std::chrono::seconds(RUN_SECONDS);
-            uint8_t empty = 0;
-            while (current_time() < deadline){
-                const uint64_t before = stats.m_kills.load();
-                env.console.log("Prototype state: clearing pass " + std::to_string(stats.passes.load() + 1));
-                SweatBubbleWatcher bubble(COLOR_GREEN);
-                int refused = run_until<ProControllerContext>(
-                    env.console, context,
-                    [](ProControllerContext& context){
-                        pbf_press_button(context, BUTTON_R, 160ms, 1600ms);
-                    },
-                    {bubble}
-                );
-                if (refused == 0){
-                    stats.refusals++;
-                    env.update_stats();
-                    env.console.log("Prototype state: refusal detected; trying ZR. Refusal does not confirm a shiny.");
-                    pbf_mash_button(context, BUTTON_ZR, 5000ms);
-                    pbf_wait(context, 10000ms);
-                    context.wait_for_all_requests();
-                    stop_reason = "Refusal acquisition timed out without a battle. Inspect the target and positioning.";
-                    return;
-                }
-
-                // A fixed observation window keeps a long kill chain from extending a pass indefinitely.
-                pbf_wait(context, 12000ms);
-                context.wait_for_all_requests();
-                sensors.throw_if_no_sound();
-                stats.passes++;
-                uint64_t kills = stats.m_kills.load() - before;
-                empty = kills == 0 ? empty + 1 : 0;
-                env.update_stats();
-                env.console.log("Prototype pass: kills=" + std::to_string(kills) +
-                    ", consecutive empty passes=" + std::to_string(empty));
-                if (empty >= EMPTY_PASSES){
-                    stop_reason = "No clearing progress. Inspect spawn density, lead health and target reachability.";
-                    return;
-                }
-            }
-            stop_reason = "Clearing time limit reached.";
+            stop_reason = clear_spot(env, context, sensors);
         },
         {battle_menu}
     );
-
     if (result == 0){
-        env.console.log("Prototype state: battle detected; using shared encounter/shiny handling.");
-        sensors.throw_if_no_sound();
-        stats.m_encounters++;
-        env.update_stats();
-        encounters->encounter_rate_tracker().report_encounter();
-        bool caught = false, should_save = false;
-        try{
-            process_battle(caught, should_save, env, ENCOUNTER_OPTIONS, env.console, context,
-                battle_tracker, encounters->encounter_frequencies(), stats.m_shinies, LANGUAGE);
-        }catch (ProgramFinishedException&){
-            env.console.log("Prototype stopped by encounter policy. Leaving the battle for inspection.", COLOR_BLUE);
-            send_program_finished_notification(env, NOTIFICATION_PROGRAM_FINISH);
+        if (process_encounter(env, context, sensors, battle_tracker, *encounters)){
             return;
-        }
-        if (should_save){
-            save_game_from_overworld(env.program_info(), env.console, context);
         }
         // Do not resume a timed movement path after an encounter changes the anchor.
         stop_reason = "Battle handled. Inspect positioning before another run.";
