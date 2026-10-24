@@ -18,9 +18,13 @@ Numel was seen at current patch; Charcadet-only isolation is NOT established.
 Player hit a wall during sweeps. Correct/verify habitat and approach before
 longer yield tests. Keep nearby Pokemon intact until refusal inspection finishes.
 
-Prototype PID 93949 is open/stopped at the field location, sole device owner.
-AZP restoration was paused at user's request for longer testing; release app is
-closed and AZP has NOT restarted. Release AZP settings now use zerogate mode.
+Prototype PID 97316 is open/stopped with working video/audio, sole device owner.
+Current capture shows Zero Gate; user moved there while signing was being set up.
+AZP restoration remains paused; release app is closed. No hunt restarted during
+signing validation. Release AZP settings use zerogate mode.
 
-Capture permissions recur because lab build uses ad-hoc hash-based signing.
-No signing identity installed; stable certificate signing is proposed, not set up.
+Signing setup is complete on code head `6ca85664b`, which adds no hunt behavior
+beyond `da0db2aeb`. Stable certificate and bundle ID survived a changed signed
+build/relaunch with working capture and no new permission prompt observed.
+Read [MACOS_LOCAL_SIGNING.md](../../../lab/MACOS_LOCAL_SIGNING.md) for setup,
+verification and the current signed binary hash.

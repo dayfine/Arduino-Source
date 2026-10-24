@@ -23,7 +23,6 @@ No actual target test has started. Verify picture, game, healthy lead,
 ingredients and saved Zero Gate start before starting. Flight calibration and
 return destination remain unverified; follow FIELD_VALIDATION.md. User handback
 context must be established from current game rather than assuming AZP.
-Quota at 13:25: 100% primary remaining, 61% weekly remaining.
 
 ## Pilot and revisions at 13:45 PDT
 
@@ -108,4 +107,9 @@ made. Proposed fix: dedicated lab bundle ID/path and persistent certificate
 signing, then one-time camera/audio consent; do not bypass privacy checks.
 Camera and microphone usage strings exist, Photos/album usage string absent.
 Apple reference: https://developer.apple.com/documentation/technotes/tn3127-inside-code-signing-requirements
-Quota 14:06: 44% primary, 52% weekly remaining. Primary reset 18:25 PDT.
+
+## Signing task completed at 14:23 PDT
+
+See ../../lab/MACOS_LOCAL_SIGNING.md for exact branch, certificate-based signing
+checks, changed-binary comparison and successful video/audio relaunch. Code head
+6ca85664b, app PID 97316 open/stopped at captured Zero Gate. No hunting restarted.
