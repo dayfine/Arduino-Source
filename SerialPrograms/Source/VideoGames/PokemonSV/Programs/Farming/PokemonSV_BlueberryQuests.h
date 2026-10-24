@@ -214,6 +214,14 @@ void quest_travel_500(
     VideoStream& stream, ProControllerContext& context
 );
 
+//End a quest away from Central Plaza. With FLY_DIRECTLY, stay there and let the next
+//flight go straight to its destination. Otherwise return to Central Plaza.
+void leave_quest_area(
+    const ProgramInfo& info,
+    VideoStream& stream, ProControllerContext& context,
+    const BBQOption& BBQ_OPTIONS
+);
+
 //After a quest battle, back at Central Plaza: heal every third battle (and fly back
 //onto the fly point), otherwise do nothing.
 void heal_after_battle_if_due(

@@ -201,12 +201,17 @@ private:
     const bool m_stop_at_battle;
 };
 
+//  Set by stay_away_from_plaza(): the player is not at Central Plaza.
+bool away_from_plaza = false;
+Language away_language = Language::None;
+
 //  Returns true if it stopped at a wild battle's menu (only when stop_at_battle
 //  is set). Otherwise it flees each battle and returns false once at the plaza.
 bool return_to_plaza_impl(
     const ProgramInfo& info, VideoStream& stream, ProControllerContext& context,
     Language language, bool stop_at_battle
 ){
+    away_from_plaza = false;
     const bool ocr_available = OCR::ocr_language_available(language);
     if (!ocr_available){
         stream.log("No OCR data for the game language. Central Plaza arrivals won't be checked.", COLOR_ORANGE);
@@ -240,6 +245,70 @@ bool return_to_plaza_unless_battle(const ProgramInfo& info, VideoStream& stream,
     return return_to_plaza_impl(info, stream, context, language, true);
 }
 
+void stay_away_from_plaza(Language language){
+    away_from_plaza = true;
+    away_language = language;
+}
+void ensure_at_plaza(const ProgramInfo& info, VideoStream& stream, ProControllerContext& context){
+    if (away_from_plaza){
+        stream.log("Away from Central Plaza. Returning before a step that starts there.");
+        return_to_plaza_impl(info, stream, context, away_language, false);
+    }
+}
+void reset_plaza_position(){
+    away_from_plaza = false;
+}
+
+namespace{
+
+//  Log the place name shown on landing, to check where a flight went.
+void log_landing_banner(VideoStream& stream, ProControllerContext& context, Language language, const std::string& location){
+    if (!OCR::ocr_language_available(language)){
+        return;
+    }
+    PlaceNameBannerReader reader;
+    const WallClock deadline = current_time() + std::chrono::seconds(5);
+    while (current_time() < deadline){
+        context.wait_for_all_requests();
+        VideoSnapshot screen = stream.video().snapshot();
+        for (const std::string& text : reader.read(stream.logger(), language, screen)){
+            if (!text.empty()){
+                stream.log("Landed for " + location + ", banner: \"" + text + "\".");
+                return;
+            }
+        }
+        context.wait_for(std::chrono::milliseconds(250));
+    }
+    stream.log("Landed for " + location + ", no banner read.");
+}
+
+//  Fly from anywhere to a central_to_*() destination. The map opens centered on the
+//  player, so first put the cursor on Central Plaza the way fly_toward_plaza() finds it
+//  (corner, then toward the center, then onto the Pokecenter icon), then move as from
+//  Central Plaza. Returns false, with the map possibly still open, if it did not fly.
+bool fly_from_anywhere(
+    const ProgramInfo& info,
+    VideoStream& stream, ProControllerContext& context,
+    double x, double y,
+    Milliseconds hold, Milliseconds release
+){
+    open_map_from_overworld(info, stream, context);
+    pbf_press_button(context, BUTTON_ZL, 320ms, 800ms);
+    pbf_move_left_joystick(context, {-1, +1}, 4000ms, 320ms);
+    pbf_move_left_joystick(context, {+1, -1}, 2000ms, 320ms);
+    pbf_press_button(context, BUTTON_ZR, 320ms, 800ms);
+    pbf_press_button(context, BUTTON_ZR, 320ms, 800ms);
+    if (!detect_closest_flypoint_and_move_map_cursor_there(info, stream, context, FlyPoint::POKECENTER, 0.29)){
+        return false;
+    }
+    pbf_press_button(context, BUTTON_ZL, 320ms, 800ms);
+    pbf_move_left_joystick(context, {x, y}, hold, release);
+    pbf_press_button(context, BUTTON_ZL, 320ms, 800ms);
+    return fly_to_overworld_from_map(info, stream, context, true);
+}
+
+}
+
 void map_move_cursor_fly(
     const ProgramInfo& info,
     VideoStream& stream, ProControllerContext& context,
@@ -248,6 +317,22 @@ void map_move_cursor_fly(
     std::string location
 ){
     stream.log("Attempting to fly to " + location + ".");
+
+    if (away_from_plaza){
+        stream.log("Away from Central Plaza. Flying to " + location + " directly.");
+        bool flew = false;
+        try{
+            flew = fly_from_anywhere(info, stream, context, x, y, hold, release);
+        }catch (OperationFailedException&){}
+        if (flew){
+            away_from_plaza = false;
+            log_landing_banner(stream, context, away_language, location);
+            return;
+        }
+        stream.log("Direct flight failed. Returning to Central Plaza first.", COLOR_ORANGE);
+        press_Bs_to_back_to_overworld(info, stream, context);
+        return_to_plaza_impl(info, stream, context, away_language, false);
+    }
 
     for (int i = 0; i < 3; i++){
         try{

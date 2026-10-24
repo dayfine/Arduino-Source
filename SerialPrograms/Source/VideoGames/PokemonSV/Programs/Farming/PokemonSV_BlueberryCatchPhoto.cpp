@@ -369,7 +369,7 @@ void quest_photo_after_fleeing(
     press_Bs_to_back_to_overworld(info, console, context);
 
     take_photo(console, context, CameraAngle::none);
-    return_to_plaza(info, console, context, BBQ_OPTIONS.LANGUAGE);
+    leave_quest_area(info, console, context, BBQ_OPTIONS);
 }
 
 void quest_photo(
@@ -434,7 +434,7 @@ void quest_photo(
         }
     }
     context.wait_for_all_requests();
-    return_to_plaza(info, console, context, BBQ_OPTIONS.LANGUAGE);
+    leave_quest_area(info, console, context, BBQ_OPTIONS);
 }
 
 void quest_catch_navi(

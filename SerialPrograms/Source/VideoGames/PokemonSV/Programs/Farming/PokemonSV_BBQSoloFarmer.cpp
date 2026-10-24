@@ -24,6 +24,7 @@
 #include "VideoGames/PokemonSV/Programs/PokemonSV_GameOptions.h"
 #include "VideoGames/PokemonSV/Programs/Farming/PokemonSV_BlueberryQuests.h"
 #include "VideoGames/PokemonSV/Programs/Farming/PokemonSV_BBQPointsLedger.h"
+#include "VideoGames/PokemonSV/Programs/PokemonSV_Terarium.h"
 #include "PokemonSV_BBQSoloFarmer.h"
 
 namespace PokemonAutomation{
@@ -483,6 +484,7 @@ void BBQSoloFarmer::program(SingleSwitchProgramEnvironment& env, ProControllerCo
     if (!fly_to_overworld_from_map(env.program_info(), env.console, context, true)){
         throw UserSetupError(env.console, "No fly spot where the player stands. Start the program at Central Plaza.");
     }
+    reset_plaza_position();
 
     //Test a specific quest
     /*

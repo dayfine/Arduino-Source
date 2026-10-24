@@ -22,6 +22,13 @@ namespace PokemonSV{
 // landing and return again if it is wrong. Throws if no return lands there.
 void return_to_plaza(const ProgramInfo& info, VideoStream& stream, ProControllerContext& context, Language language);
 
+// Leave the player where they are instead of returning to Central Plaza. The next
+// central_to_*() flight then goes straight to its destination from here, and
+// ensure_at_plaza() makes the return for steps that start at Central Plaza.
+void stay_away_from_plaza(Language language);
+void ensure_at_plaza(const ProgramInfo& info, VideoStream& stream, ProControllerContext& context);
+void reset_plaza_position();
+
 // Thrown by map_move_cursor_fly() when it can't fly to its destination.
 // BBQ quests catch it to fail the current attempt instead of the program.
 class TerariumFlyFailedException : public OperationFailedExceptionWithScreenshot{

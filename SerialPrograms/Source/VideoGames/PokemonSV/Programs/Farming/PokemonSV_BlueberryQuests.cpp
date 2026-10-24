@@ -827,6 +827,24 @@ bool process_and_do_quest(
         //  A failed fly fails this attempt, not the program: the board
         //  check below counts it, and the retry limit applies as usual.
         try{
+            //These start by walking from Central Plaza rather than with a central_to_*() flight.
+            switch (current_quest){
+            case BBQuests::make_tm:
+            case BBQuests::travel_500:
+            case BBQuests::tera_raid:
+            case BBQuests::auto_10:
+            case BBQuests::auto_30:
+            case BBQuests::bitter_sandwich:
+            case BBQuests::salty_sandwich:
+            case BBQuests::sour_sandwich:
+            case BBQuests::spicy_sandwich:
+            case BBQuests::sweet_sandwich:
+            case BBQuests::sandwich_three:
+                ensure_at_plaza(env.program_info(), console, context);
+                break;
+            default:
+                break;
+            }
             switch (current_quest){
             case BBQuests::make_tm:
                 quest_make_tm(env.program_info(), console, context);
@@ -1165,6 +1183,19 @@ bool send_out_and_look_around(
 //fly back onto the fly point, which the walk to the counter leaves. The lead was at
 //full HP after almost every quest battle in R11-R13 (Auto Battle checks HP itself and
 //healed 0 times in 30 passes), and each heal and re-fly took ~20 s.
+void leave_quest_area(
+    const ProgramInfo& info,
+    VideoStream& stream, ProControllerContext& context,
+    const BBQOption& BBQ_OPTIONS
+){
+    if (BBQ_OPTIONS.FLY_DIRECTLY){
+        stream.log("Staying here. The next flight goes to its destination directly.");
+        stay_away_from_plaza(BBQ_OPTIONS.LANGUAGE);
+        return;
+    }
+    return_to_plaza(info, stream, context, BBQ_OPTIONS.LANGUAGE);
+}
+
 void heal_after_battle_if_due(
     const ProgramInfo& info,
     ConsoleHandle& console, ProControllerContext& context
@@ -1176,6 +1207,9 @@ void heal_after_battle_if_due(
         return;
     }
     battles_since_heal = 0;
+
+    //The nurse is in front of the Central Plaza fly point.
+    ensure_at_plaza(info, console, context);
 
     //Heal up and then reset position again.
     OverworldWatcher done_healing(console.logger(), COLOR_BLUE);
@@ -1269,7 +1303,7 @@ void quest_tera_self_defeat(
         return_to_plaza(info, console, context, BBQ_OPTIONS.LANGUAGE);
         return;
     }
-    return_to_plaza(info, console, context, BBQ_OPTIONS.LANGUAGE);
+    leave_quest_area(info, console, context, BBQ_OPTIONS);
 
     //The defeated Pride Rock Pokemon stays gone until the day changes, and sneak-up and the
     //next Tera-self need it (R14: two Tera-self attempts right after a win found nothing).
@@ -1360,7 +1394,7 @@ void quest_sneak_up(
             }
         }
     }
-    return_to_plaza(info, console, context, BBQ_OPTIONS.LANGUAGE);
+    leave_quest_area(info, console, context, BBQ_OPTIONS);
 
     //Day skip and attempt to respawn fixed encounters - in case quest failed
     pbf_press_button(context, BUTTON_HOME, 160ms, GameSettings::instance().GAME_TO_HOME_DELAY1);
@@ -1443,7 +1477,7 @@ void quest_wild_tera(
         console.log("Battle entry not confirmed. Skipping battle handling.");
         break;
     }
-    return_to_plaza(info, console, context, BBQ_OPTIONS.LANGUAGE);
+    leave_quest_area(info, console, context, BBQ_OPTIONS);
 
     //Day skip and attempt to respawn fixed encounters
     pbf_press_button(context, BUTTON_HOME, 160ms, GameSettings::instance().GAME_TO_HOME_DELAY1);
@@ -1553,7 +1587,7 @@ void quest_wash_pokemon(const ProgramInfo& info, VideoStream& stream, ProControl
 
     leave_picnic(info, stream, context);
 
-    return_to_plaza(info, stream, context, BBQ_OPTIONS.LANGUAGE);
+    leave_quest_area(info, stream, context, BBQ_OPTIONS);
     context.wait_for_all_requests();
 }
 
