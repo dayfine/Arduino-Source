@@ -81,3 +81,46 @@ per-quest numbers would ship as a table in the program (like the existing
 `expected_seconds_per_success()` in PokemonSV_BlueberryQuests.cpp, which already
 orders quests by cost), with explicit exclusion rows still overriding it. Quests
 the program cannot do stay "always rerolled".
+
+## Marginal effects and the moving threshold
+
+`tools/reroll_threshold.py` is the renewal-reward model behind the rule above. A
+draw of quest i earns B_i and takes T_i; a reroll earns -C and takes TAU and gives
+a new draw. The long-run rate of a reroll set S is
+
+    lambda(S) = sum_i q_i B_i(S) / sum_i q_i T_i(S)
+
+Rerolling i beats attempting it iff B_i - lambda* T_i < -(C + lambda* TAU), where
+lambda* is the rate of the *optimal* policy, not the current one. Rerolling a group
+raises lambda, which raises the bar for every other quest, so the set is found by
+iterating (Dinkelbach) until it stops changing. The cost side of a group shows up
+as rerolls per kept quest = Q/(1-Q), where Q is the share of draws rerolled.
+
+Current-build inputs (2026-10-23):
+
+```
+baseline (reroll only impossible): 11.37 BP/min = 682 BP/h of quest time
+add to reroll set        q  BP/min  delta  value - lambda*t
+catch-poison-dark     0.01   11.74  +0.36       -76.5 vs -14.7
+catch-any             0.05   11.67  +0.30       -28.5 vs -14.7
+auto-10               0.11   11.36  -0.01       -14.5 vs -14.7
+tera-self-defeat      0.09   11.14  -0.23        -9.5 vs -14.7
+catch-normal-fire     0.02   11.25  -0.12        -0.8 vs -14.7
+sneak-up              0.07   10.70  -0.67        +5.6 vs -14.7
+catch-typed           0.14    9.87  -1.50        +5.7 vs -14.7
+make-tm               0.08   10.58  -0.79        +7.0 vs -14.7
+travel-500            0.12    9.79  -1.59       +14.5 vs -14.7
+photo-savanna         0.04   10.84  -0.53       +15.5 vs -14.7
+photo-other           0.03   10.83  -0.54       +22.8 vs -14.7
+photo-swim            0.07    9.99  -1.38       +28.3 vs -14.7
+
+optimal reroll set: ['auto-10', 'catch-any', 'catch-poison-dark'] (+ impossible)
+rate 12.22 BP/min; P(draw rerolled) = 0.32; rerolls per kept quest = 0.47
+```
+
+Alone, auto-10 is neutral (-0.01 BP/min); once catch-any and Poison/Dark are
+rerolled, the rate rises and auto-10 falls below the new bar. The optimal set
+(auto-10, catch-any, Poison/Dark, plus the impossible quests) rerolls 32% of blue
+draws, 0.47 rerolls per kept quest, for +0.85 BP/min (+7%, ~+50 BP/h) over
+rerolling only the impossible ones. Quest time only: saves, round trips and reds
+are left out, and most inputs have fewer than 10 attempts.
