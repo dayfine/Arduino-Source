@@ -1,0 +1,63 @@
+species,type,page,section,habitat,level,source_weight,other_listed_species,other_listed_land_species,source_line,source_url
+Rowlet,GRASS,Savanna_Biome,initial area,Prairie,55-67,80,Deerling; Sawsbuck,Deerling; Sawsbuck,495,https://bulbapedia.bulbagarden.net/wiki/Savanna_Biome#Pok%C3%A9mon
+Rowlet,FLYING,Savanna_Biome,initial area,Prairie,55-67,80,,,495,https://bulbapedia.bulbagarden.net/wiki/Savanna_Biome#Pok%C3%A9mon
+Sobble,WATER,Savanna_Biome,initial area,Bamboo Forest,55-67,80,,,516,https://bulbapedia.bulbagarden.net/wiki/Savanna_Biome#Pok%C3%A9mon
+Charmander,FIRE,Savanna_Biome,Savanna entrance,Prairie,55-67,100,Litleo; Pyroar,Litleo; Pyroar,529,https://bulbapedia.bulbagarden.net/wiki/Savanna_Biome#Savanna_entrance
+Rowlet,GRASS,Savanna_Biome,Savanna entrance,Prairie,55-67,80,Deerling; Exeggcute; Sawsbuck,Deerling; Exeggcute; Sawsbuck,553,https://bulbapedia.bulbagarden.net/wiki/Savanna_Biome#Savanna_entrance
+Rowlet,FLYING,Savanna_Biome,Savanna entrance,Prairie,55-67,80,Dodrio; Doduo; Scyther,Dodrio; Doduo; Scyther,553,https://bulbapedia.bulbagarden.net/wiki/Savanna_Biome#Savanna_entrance
+Sobble,WATER,Savanna_Biome,Savanna entrance,Bamboo Forest,55-67,80,,,591,https://bulbapedia.bulbagarden.net/wiki/Savanna_Biome#Savanna_entrance
+Totodile,WATER,Savanna_Biome,Savanna entrance,Volcano,55-67,80,Bruxish; Dewpider,Dewpider,595,https://bulbapedia.bulbagarden.net/wiki/Savanna_Biome#Savanna_entrance
+Snivy,GRASS,Savanna_Biome,Northeast Savanna,Prairie,55-67,130,Deerling; Exeggutor; Sawsbuck,Deerling; Exeggutor; Sawsbuck,621,https://bulbapedia.bulbagarden.net/wiki/Savanna_Biome#Northeast_Savanna
+Sobble,WATER,Savanna_Biome,Northeast Savanna,Prairie,55-67,80,,,675,https://bulbapedia.bulbagarden.net/wiki/Savanna_Biome#Northeast_Savanna
+Totodile,WATER,Savanna_Biome,Northeast Savanna,Volcano,55-67,80,Bruxish; Dewpider,Dewpider,680,https://bulbapedia.bulbagarden.net/wiki/Savanna_Biome#Northeast_Savanna
+Fennekin,FIRE,Savanna_Biome,Midwest Savanna,Prairie,55-67,120,Litleo; Magby; Magmar; Pyroar,Litleo; Magby; Magmar; Pyroar,718,https://bulbapedia.bulbagarden.net/wiki/Savanna_Biome#Midwest_Savanna
+Rowlet,GRASS,Savanna_Biome,Midwest Savanna,Prairie,55-67,80,Deerling; Exeggcute; Exeggutor; Sawsbuck,Deerling; Exeggcute; Exeggutor; Sawsbuck,725,https://bulbapedia.bulbagarden.net/wiki/Savanna_Biome#Midwest_Savanna
+Rowlet,FLYING,Savanna_Biome,Midwest Savanna,Prairie,55-67,80,Mandibuzz; Vullaby,Mandibuzz; Vullaby,725,https://bulbapedia.bulbagarden.net/wiki/Savanna_Biome#Midwest_Savanna
+Sobble,WATER,Savanna_Biome,Midwest Savanna,Bamboo Forest,55-67,80,,,751,https://bulbapedia.bulbagarden.net/wiki/Savanna_Biome#Midwest_Savanna
+Chikorita,GRASS,Coastal_Biome,initial area,Prairie,58-68,100,Deerling; Exeggcute; Exeggutor; Sawsbuck,Deerling; Exeggcute; Exeggutor; Sawsbuck,528,https://bulbapedia.bulbagarden.net/wiki/Coastal_Biome#Pok%C3%A9mon
+Chikorita,GRASS,Coastal_Biome,initial area,Desert,58-68,20,Bellossom; Exeggutor,Bellossom; Exeggutor,550,https://bulbapedia.bulbagarden.net/wiki/Coastal_Biome#Pok%C3%A9mon
+Popplio,WATER,Coastal_Biome,initial area,Desert,58-68,70,,,554,https://bulbapedia.bulbagarden.net/wiki/Coastal_Biome#Pok%C3%A9mon
+Popplio,WATER,Coastal_Biome,initial area,Ocean,58-68,70,Finneon; Lumineon; Luvdisc; Tentacool; Tentacruel,,566,https://bulbapedia.bulbagarden.net/wiki/Coastal_Biome#Pok%C3%A9mon
+Chikorita,GRASS,Coastal_Biome,Southeast Beach,Prairie,58-68,100,Deerling; Exeggcute; Exeggutor; Grookey; Sawsbuck,Deerling; Exeggcute; Exeggutor; Grookey; Sawsbuck,605,https://bulbapedia.bulbagarden.net/wiki/Coastal_Biome#Southeast_Beach
+Grookey,GRASS,Coastal_Biome,Southeast Beach,Prairie,58-68,80,Chikorita; Deerling; Exeggcute; Exeggutor; Sawsbuck,Chikorita; Deerling; Exeggcute; Exeggutor; Sawsbuck,626,https://bulbapedia.bulbagarden.net/wiki/Coastal_Biome#Southeast_Beach
+Chikorita,GRASS,Coastal_Biome,Southeast Beach,Desert,58-68,20,Bellossom; Exeggutor; Sawsbuck,Bellossom; Exeggutor; Sawsbuck,636,https://bulbapedia.bulbagarden.net/wiki/Coastal_Biome#Southeast_Beach
+Popplio,WATER,Coastal_Biome,Southeast Beach,Desert,58-68,70,,,646,https://bulbapedia.bulbagarden.net/wiki/Coastal_Biome#Southeast_Beach
+Bulbasaur,GRASS,Coastal_Biome,Torchlit Mountain,Prairie,58-68,100,Chikorita; Deerling; Exeggcute; Exeggutor; Sawsbuck,Chikorita; Deerling; Exeggcute; Exeggutor; Sawsbuck,686,https://bulbapedia.bulbagarden.net/wiki/Coastal_Biome#Torchlit_Mountain
+Bulbasaur,POISON,Coastal_Biome,Torchlit Mountain,Prairie,58-68,100,Grimer; Muk; Seviper,Grimer; Muk; Seviper,686,https://bulbapedia.bulbagarden.net/wiki/Coastal_Biome#Torchlit_Mountain
+Chikorita,GRASS,Coastal_Biome,Torchlit Mountain,Prairie,58-68,100,Bulbasaur; Deerling; Exeggcute; Exeggutor; Sawsbuck,Bulbasaur; Deerling; Exeggcute; Exeggutor; Sawsbuck,695,https://bulbapedia.bulbagarden.net/wiki/Coastal_Biome#Torchlit_Mountain
+Bulbasaur,GRASS,Coastal_Biome,Torchlit Mountain,Rocky Area,58-68,30,Bellossom; Deerling; Sawsbuck,Bellossom; Deerling; Sawsbuck,724,https://bulbapedia.bulbagarden.net/wiki/Coastal_Biome#Torchlit_Mountain
+Bulbasaur,POISON,Coastal_Biome,Torchlit Mountain,Rocky Area,58-68,30,,,724,https://bulbapedia.bulbagarden.net/wiki/Coastal_Biome#Torchlit_Mountain
+Chikorita,GRASS,Coastal_Biome,Coastal Plaza Island,Prairie,58-68,100,Cottonee; Deerling; Exeggcute; Exeggutor; Gloom; Oddish; Sawsbuck; Vileplume; Whimsicott,Cottonee; Deerling; Exeggcute; Exeggutor; Gloom; Oddish; Sawsbuck; Vileplume; Whimsicott,780,https://bulbapedia.bulbagarden.net/wiki/Coastal_Biome#Coastal_Plaza_Island
+Froakie,WATER,Coastal_Biome,Coastal Plaza Island,Prairie,58-68,100,,,792,https://bulbapedia.bulbagarden.net/wiki/Coastal_Biome#Coastal_Plaza_Island
+Chikorita,GRASS,Coastal_Biome,Coastal Plaza Island,Desert,58-68,20,Bellossom; Exeggutor,Bellossom; Exeggutor,805,https://bulbapedia.bulbagarden.net/wiki/Coastal_Biome#Coastal_Plaza_Island
+Froakie,WATER,Coastal_Biome,Coastal Plaza Island,Desert,58-68,80,Popplio,Popplio,809,https://bulbapedia.bulbagarden.net/wiki/Coastal_Biome#Coastal_Plaza_Island
+Popplio,WATER,Coastal_Biome,Coastal Plaza Island,Desert,58-68,70,Froakie,Froakie,810,https://bulbapedia.bulbagarden.net/wiki/Coastal_Biome#Coastal_Plaza_Island
+Froakie,WATER,Coastal_Biome,Coastal Plaza Island,Ocean,58-68,50,Finneon; Lumineon; Luvdisc; Popplio; Tentacool; Tentacruel,Popplio,821,https://bulbapedia.bulbagarden.net/wiki/Coastal_Biome#Coastal_Plaza_Island
+Popplio,WATER,Coastal_Biome,Coastal Plaza Island,Ocean,58-68,70,Finneon; Froakie; Lumineon; Luvdisc; Tentacool; Tentacruel,Froakie,823,https://bulbapedia.bulbagarden.net/wiki/Coastal_Biome#Coastal_Plaza_Island
+Tepig,FIRE,Canyon_Biome,initial area,Prairie,59-70,70,,,488,https://bulbapedia.bulbagarden.net/wiki/Canyon_Biome#Pok%C3%A9mon
+Squirtle,WATER,Canyon_Biome,initial area,Lake,59-70,70,Chinchou; Horsea; Lanturn; Seadra,,498,https://bulbapedia.bulbagarden.net/wiki/Canyon_Biome#Pok%C3%A9mon
+Squirtle,WATER,Canyon_Biome,initial area,Riverside,59-70,70,Alomomola; Chinchou; Horsea; Lanturn; Seadra,,505,https://bulbapedia.bulbagarden.net/wiki/Canyon_Biome#Pok%C3%A9mon
+Tepig,FIRE,Canyon_Biome,initial area,Rocky Area,59-70,70,,,519,https://bulbapedia.bulbagarden.net/wiki/Canyon_Biome#Pok%C3%A9mon
+Turtwig,GRASS,Canyon_Biome,Craggy Cliffs,Prairie,59-70,100,Deerling; Sawsbuck,Deerling; Sawsbuck,553,https://bulbapedia.bulbagarden.net/wiki/Canyon_Biome#Craggy_Cliffs
+Litten,FIRE,Canyon_Biome,Craggy Cliffs,Prairie,59-70,100,,,562,https://bulbapedia.bulbagarden.net/wiki/Canyon_Biome#Craggy_Cliffs
+Squirtle,WATER,Canyon_Biome,Craggy Cliffs,Riverside,59-70,70,Alomomola; Chinchou; Horsea; Lanturn; Seadra,,569,https://bulbapedia.bulbagarden.net/wiki/Canyon_Biome#Craggy_Cliffs
+Turtwig,GRASS,Canyon_Biome,Craggy Cliffs,Rocky Area,59-70,90,Deerling; Sawsbuck,Deerling; Sawsbuck,588,https://bulbapedia.bulbagarden.net/wiki/Canyon_Biome#Craggy_Cliffs
+Litten,FIRE,Canyon_Biome,Craggy Cliffs,Rocky Area,59-70,80,,,600,https://bulbapedia.bulbagarden.net/wiki/Canyon_Biome#Craggy_Cliffs
+Treecko,GRASS,Canyon_Biome,Nature Preserve,Prairie,59-70,130,Deerling,Deerling,637,https://bulbapedia.bulbagarden.net/wiki/Canyon_Biome#Nature_Preserve
+Squirtle,WATER,Canyon_Biome,Nature Preserve,Lake,59-70,70,Chinchou; Horsea; Lanturn; Seadra,,655,https://bulbapedia.bulbagarden.net/wiki/Canyon_Biome#Nature_Preserve
+Squirtle,WATER,Canyon_Biome,Nature Preserve,Riverside,59-70,70,Alomomola; Chinchou; Horsea; Lanturn; Seadra,,662,https://bulbapedia.bulbagarden.net/wiki/Canyon_Biome#Nature_Preserve
+Tepig,FIRE,Canyon_Biome,Nature Preserve,Rocky Area,59-70,70,,,676,https://bulbapedia.bulbagarden.net/wiki/Canyon_Biome#Nature_Preserve
+Piplup,WATER,Polar_Biome,initial area,Snowfield,62-71,100,Dewgong; Oshawott; Seel,Dewgong; Oshawott; Seel,474,https://bulbapedia.bulbagarden.net/wiki/Polar_Biome#Pok%C3%A9mon
+Oshawott,WATER,Polar_Biome,initial area,Snowfield,62-71,70,Dewgong; Piplup; Seel,Dewgong; Piplup; Seel,475,https://bulbapedia.bulbagarden.net/wiki/Polar_Biome#Pok%C3%A9mon
+Piplup,WATER,Polar_Biome,initial area,Ocean,62-71,70,Dewgong; Finneon; Horsea; Lapras; Lumineon; Oshawott; Seadra; Seel,Dewgong; Oshawott; Seel,504,https://bulbapedia.bulbagarden.net/wiki/Polar_Biome#Pok%C3%A9mon
+Oshawott,WATER,Polar_Biome,initial area,Ocean,62-71,150,Dewgong; Finneon; Horsea; Lapras; Lumineon; Piplup; Seadra; Seel,Dewgong; Piplup; Seel,507,https://bulbapedia.bulbagarden.net/wiki/Polar_Biome#Pok%C3%A9mon
+Chimchar,FIRE,Polar_Biome,Mountain,Snowfield,62-71,100,Scorbunny,Scorbunny,537,https://bulbapedia.bulbagarden.net/wiki/Polar_Biome#Mountain
+Piplup,WATER,Polar_Biome,Mountain,Snowfield,62-71,100,Dewgong; Oshawott; Seel,Dewgong; Oshawott; Seel,538,https://bulbapedia.bulbagarden.net/wiki/Polar_Biome#Mountain
+Oshawott,WATER,Polar_Biome,Mountain,Snowfield,62-71,70,Dewgong; Piplup; Seel,Dewgong; Piplup; Seel,541,https://bulbapedia.bulbagarden.net/wiki/Polar_Biome#Mountain
+Scorbunny,FIRE,Polar_Biome,Mountain,Snowfield,62-71,100,Chimchar,Chimchar,572,https://bulbapedia.bulbagarden.net/wiki/Polar_Biome#Mountain
+Piplup,WATER,Polar_Biome,Mountain,Ocean,62-71,70,Dewgong; Finneon; Horsea; Lapras; Lumineon; Oshawott; Seadra; Seel,Dewgong; Oshawott; Seel,585,https://bulbapedia.bulbagarden.net/wiki/Polar_Biome#Mountain
+Oshawott,WATER,Polar_Biome,Mountain,Ocean,62-71,150,Dewgong; Finneon; Horsea; Lapras; Lumineon; Piplup; Seadra; Seel,Dewgong; Piplup; Seel,588,https://bulbapedia.bulbagarden.net/wiki/Polar_Biome#Mountain
+Torchic,FIRE,Polar_Biome,North Mountain Cave,Cave,63-72,200,,,609,https://bulbapedia.bulbagarden.net/wiki/Polar_Biome#North_Mountain_Cave
+Cyndaquil,FIRE,Polar_Biome,Iceberg Cave,Cave,63-72,320,,,672,https://bulbapedia.bulbagarden.net/wiki/Polar_Biome#Iceberg_Cave
+Chespin,GRASS,Chargestone_Cavern,initial area,Cave,65-74,100,,,430,https://bulbapedia.bulbagarden.net/wiki/Chargestone_Cavern#Pok%C3%A9mon
+Chespin,GRASS,Chargestone_Cavern,initial area,Volcano,65-74,10,,,478,https://bulbapedia.bulbagarden.net/wiki/Chargestone_Cavern#Pok%C3%A9mon

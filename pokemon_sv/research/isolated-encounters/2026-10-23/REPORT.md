@@ -7,6 +7,13 @@ creator demonstrations, visual terrain assessment and unmeasured route details.
 
 Detailed design, stages and acceptance gates: [ANALYSIS_AND_PLAN.md](ANALYSIS_AND_PLAN.md).
 
+Follow-up: [24-starter Terarium survey and Charcadet priority](STARTER_SURVEY.md).
+It finds 10 local-table isolation candidates, 4 conditional candidates, 9 with
+listed competitors and 1 source gap (Mudkip). These are source assessments,
+not live results, and do not change the Paldea totals below. Chespin and
+Charcadet now lead the field queue; the original video shortlist remains as
+comparison evidence.
+
 ## What the data supports
 
 Mined the JavaScript tables served by the [Alexis Matuk optimizer](https://alexis-matuk.github.io/shinyHuntingOptimizer/),

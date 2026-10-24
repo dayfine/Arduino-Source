@@ -2,8 +2,8 @@
 
 Date: 2026-10-23 PDT. Owner: Codex for research and prospective lab work;
 existing PR ownership remains as defined in AGENTS.md. Status: **research
-complete for an initial Paldea pass; field validation and implementation have
-not started**. This plan does not change the approved BBQ roadmap's priority
+complete for an initial Paldea pass and a 24-starter Terarium survey; field
+validation and implementation have not started**. This plan does not change the approved BBQ roadmap's priority
 or consume Switch time. M8a's separate worktree is retained.
 
 ## 1. Recommendation and scope
@@ -13,17 +13,24 @@ then implement one spot. Do not begin with automatic navigation for every specie
 or a general overworld shiny classifier. First establish that specific spots
 produce repeatable, reachable encounters at a useful rate.
 
-The first field candidates are Mareep at Cortondo, Oricorio at Artazon and Kirlia
-at Levincia. They exercise short boundary crossings with progressively different
-geometry. Larvesta in Asado is the first comparison for a riding loop. These are
-research priorities, not implemented or field-certified hunts. A high-coverage
-western Paldea cell (table 97) is a parallel scouting candidate, not a substitute for
-the demonstrated Levincia Kirlia location.
+The first field candidates are **Chespin at Chargestone Cavern** for its existing
+BBQ route and **Charcadet at West Province Area One Central** as an explicit
+user-priority hunt. Torchic and Cyndaquil are the next cave comparisons. The
+[starter survey and Charcadet plan](STARTER_SURVEY.md) records habitat evidence,
+unlock requirements and the revised field order. Ten of the 24 starters have a
+local habitat table without another listed species of the selected sandwich
+type; none is field-certified. Chespin needs the Canyon diversity upgrade.
 
-Initial scope: single-player Paldea, both game versions, one family represented
-by at least one obtainable species. Keep forms, gender-dependent evolutions,
-time conditions and version exclusivity explicit. Kitakami and the Terarium
-need separate analyses and must not be included in Paldea totals.
+Mareep at Cortondo, Oricorio at Artazon and Kirlia at Levincia remain short
+boundary-crossing controls. Larvesta in Asado remains the riding-loop comparison.
+A high-coverage western Paldea cell (table 97) is a parallel scouting candidate,
+not a substitute for the demonstrated Levincia Kirlia location.
+
+Scope: single-player, both game versions, one family represented by at least one
+obtainable species. The initial Paldea mining and the separate Terarium starter
+survey retain separate denominators: all coverage totals below are Paldea-only.
+Kitakami still needs analysis. Keep forms, gender-dependent evolutions, time
+conditions and version exclusivity explicit.
 
 Deliverable for the next stage: a small set of exact, photographed anchors,
 named flight points, approach measurements, reset observations and encounter
@@ -299,8 +306,12 @@ Re-run when source data changes. Do not silently mix data vintages or regions.
 
 ### Stage 1 — exact spot cards: next
 
-Start with Cortondo Mareep and Artazon Oricorio; inspect Levincia Kirlia next.
-For diversity, include Asado Larvesta before expanding to many boundary profiles.
+Start with Chespin/Chargestone and Charcadet/West Province Area One Central,
+then Torchic/North Mountain Cave and Cyndaquil/Iceberg Cave. For Chespin, prove
+that the existing BBQ court reaches the Cave habitat: other cavern habitats do
+not all list Chespin. Compare clearing, local refresh and same-cavern re-flight;
+the existing Central Plaza flight routine assumes a different starting point.
+Retain Mareep, Oricorio, Kirlia and Larvesta as movement-pattern controls.
 
 For each spot card record:
 
@@ -452,7 +463,10 @@ These decisions can be deferred until field evidence answers them:
   Setup must be recorded consistently; no need to optimize recipes prematurely.
 
 **Next action:** produce exact spot cards and a short measured field comparison
-for Mareep/Cortondo and Oricorio/Artazon, then Kirlia/Levincia and Larvesta/Asado.
+for Chespin/Chargestone and Charcadet/West Province Area One Central, then the
+Torchic and Cyndaquil caves. The [survey](STARTER_SURVEY.md) specifies Chespin's
+reuse experiment and Charcadet's demonstrated anchor. Exact approach distances,
+reset yields and terrain difficulty remain unmeasured.
 Re-rank from those observations and choose one implementation. No generic hunt
 framework or full-world route work is needed before that decision.
 

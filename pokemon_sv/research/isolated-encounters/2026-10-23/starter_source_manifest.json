@@ -1,0 +1,99 @@
+{
+  "date": "2026-10-23 PDT",
+  "scope": "Gen I\u2013VIII starters in Terarium; no field validation",
+  "counts": {
+    "A": 10,
+    "B": 4,
+    "C": 9,
+    "D": 1
+  },
+  "by_unlock_biome": {
+    "Savanna": {
+      "starters": [
+        "Charmander",
+        "Totodile",
+        "Snivy",
+        "Fennekin",
+        "Rowlet",
+        "Sobble"
+      ],
+      "tier_A": [
+        "Rowlet",
+        "Sobble"
+      ]
+    },
+    "Coastal": {
+      "starters": [
+        "Bulbasaur",
+        "Chikorita",
+        "Mudkip",
+        "Froakie",
+        "Popplio",
+        "Grookey"
+      ],
+      "tier_A": [
+        "Bulbasaur",
+        "Froakie",
+        "Popplio"
+      ]
+    },
+    "Canyon": {
+      "starters": [
+        "Squirtle",
+        "Treecko",
+        "Turtwig",
+        "Tepig",
+        "Chespin",
+        "Litten"
+      ],
+      "tier_A": [
+        "Tepig",
+        "Chespin",
+        "Litten"
+      ]
+    },
+    "Polar": {
+      "starters": [
+        "Cyndaquil",
+        "Torchic",
+        "Chimchar",
+        "Piplup",
+        "Oshawott",
+        "Scorbunny"
+      ],
+      "tier_A": [
+        "Cyndaquil",
+        "Torchic"
+      ]
+    }
+  },
+  "pages": [
+    {
+      "url": "https://bulbapedia.bulbagarden.net/wiki/Savanna_Biome",
+      "cached_research_text_sha256": "0a5894d41bbfe67bb5f21e79148c668901bc5b67d2ac55679ba405d0f53e9dfb",
+      "cache_note": "Combined retrieved web-text windows; not the original HTML or a pinned wiki revision."
+    },
+    {
+      "url": "https://bulbapedia.bulbagarden.net/wiki/Coastal_Biome",
+      "cached_research_text_sha256": "46a04e05d27f09a0bd83c64480140b98f0db3949774e773f903a85757597338a",
+      "cache_note": "Combined retrieved web-text windows; not the original HTML or a pinned wiki revision."
+    },
+    {
+      "url": "https://bulbapedia.bulbagarden.net/wiki/Canyon_Biome",
+      "cached_research_text_sha256": "5ad3e1a49c469867ddc6edef18176925ab00e48dda3419c8c02cab801a6a2d0d",
+      "cache_note": "Combined retrieved web-text windows; not the original HTML or a pinned wiki revision."
+    },
+    {
+      "url": "https://bulbapedia.bulbagarden.net/wiki/Polar_Biome",
+      "cached_research_text_sha256": "c143e2288851d454dfd05ed4b5bff02bfaefcea31d452f2110985f635cb484f7",
+      "cache_note": "Combined retrieved web-text windows; not the original HTML or a pinned wiki revision."
+    },
+    {
+      "url": "https://bulbapedia.bulbagarden.net/wiki/Chargestone_Cavern",
+      "cached_research_text_sha256": "a19f729b9b4773da284700c2ce878493bae0236eeefab68095c28b22ef594377",
+      "cache_note": "Combined retrieved web-text windows; not the original HTML or a pinned wiki revision."
+    }
+  ],
+  "type_mapping": "Edward Simmons Terarium data at 8c93e25036e9c27694bec8098ae3a6960edafc78, with explicit cosmetic/regional-form resolution",
+  "known_gap": "Torchlit Labyrinth table unavailable (maintenance); Mudkip location and upgrade confirmed from species page."
+}
