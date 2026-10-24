@@ -51,7 +51,7 @@ UnitTestResult test_isolated_hunt_sandwich(){
         std::string ingredients;
     };
     const Case cases[]{
-        {.type = IsolatedEncounterType::FIRE, .ingredients = "[\"pickle\",\"olive-oil\"]"},
+        {.type = IsolatedEncounterType::FIRE, .ingredients = "[\"rice\",\"rice\",\"rice\",\"rice\",\"rice\",\"rice\",\"curry-powder\",\"curry-powder\",\"wasabi\",\"wasabi\"]"},
         {.type = IsolatedEncounterType::GRASS, .ingredients = "[\"klawf-stick\",\"tomato\",\"lettuce\",\"salt\",\"olive-oil\",\"wasabi\"]"},
     };
     for (const auto& test : cases){

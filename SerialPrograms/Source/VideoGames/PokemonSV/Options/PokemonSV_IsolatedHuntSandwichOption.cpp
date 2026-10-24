@@ -7,7 +7,7 @@ namespace PokemonSV{
 
 IsolatedHuntSandwichOption::IsolatedHuntSandwichOption(OCR::LanguageOCROption* language)
     : SandwichMakerOption("<b>Sandwich:</b> Encounter Power from ordinary ingredients by default. "
-        "Fire: Pickle + Olive Oil (Lv. 1). Grass: Great Klawf Claw (Lv. 2). "
+        "Fire: 6 Rice + 2 Curry Powder + 2 Wasabi (Lv. 2). Grass: Great Klawf Claw (Lv. 2). "
         "Herba Mystica settings apply only when explicitly enabled below.",
         language, BaseRecipe::shiny, false, GroupOption::EnableMode::ALWAYS_ENABLED)
     , USE_HERBA("<b>Use Herba Mystica:</b><br>Add Sparkling Power using two selected herbs.",
@@ -27,11 +27,13 @@ void IsolatedHuntSandwichOption::configure_for(IsolatedEncounterType type){
     if (USE_HERBA){
         BASE_RECIPE.set(BaseRecipe::shiny);
     }else{
-        // Standard recipes #20 and #105: no rare herbs, even with legacy shiny settings.
+        // Ordinary Fire Lv2 custom recipe and Grass Lv2 recipe #105; no rare herbs.
+        // https://www.reddit.com/r/PokemonScarletViolet/comments/zhff1k/
         // https://bulbapedia.bulbagarden.net/wiki/Sandwich_recipe
         JsonArray ingredients;
         const std::vector<std::string> recipe = type == IsolatedEncounterType::FIRE
-            ? std::vector<std::string>{"pickle", "olive-oil"}
+            ? std::vector<std::string>{"rice", "rice", "rice", "rice", "rice", "rice",
+                "curry-powder", "curry-powder", "wasabi", "wasabi"}
             : std::vector<std::string>{"klawf-stick", "tomato", "lettuce", "salt", "olive-oil", "wasabi"};
         for (const auto& item : recipe){ ingredients.push_back(item); }
         BASE_RECIPE.set(BaseRecipe::custom);
