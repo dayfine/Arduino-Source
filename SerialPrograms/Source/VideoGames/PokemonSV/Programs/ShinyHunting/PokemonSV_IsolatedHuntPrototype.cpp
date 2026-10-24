@@ -23,6 +23,7 @@
 #include "VideoGames/PokemonSV/Inference/PokemonSV_SweatBubbleDetector.h"
 #include "VideoGames/PokemonSV/Programs/Battles/PokemonSV_Battles.h"
 #include "VideoGames/PokemonSV/Programs/PokemonSV_Terarium.h"
+#include "VideoGames/PokemonSV/Programs/PokemonSV_AreaZero.h"
 #include "VideoGames/PokemonSV/Programs/PokemonSV_SaveGame.h"
 #include "PokemonSV_LetsGoTools.h"
 #include "PokemonSV_IsolatedHuntPrototype.h"
@@ -67,6 +68,7 @@ IsolatedHuntPrototype::IsolatedHuntPrototype()
         {
             {Start::PREPARED_SPOT, "prepared", "Prepared hunting spot (Chespin or Charcadet)"},
             {Start::CENTRAL_PLAZA, "central-plaza", "Central Plaza to Chargestone court"},
+            {Start::RETURN_TO_ZERO_GATE, "return-zerogate", "Return from Area Zero to Zero Gate (travel only)"},
         },
         LockMode::LOCK_WHILE_RUNNING, Start::PREPARED_SPOT
     )
@@ -115,6 +117,12 @@ void IsolatedHuntPrototype::program(SingleSwitchProgramEnvironment& env, ProCont
     int result = run_until<ProControllerContext>(
         env.console, context,
         [&](ProControllerContext& context){
+            if (START == Start::RETURN_TO_ZERO_GATE){
+                env.console.log("Prototype state: returning from Area Zero to Zero Gate.");
+                return_to_outside_zero_gate(env.program_info(), env.console, context);
+                stop_reason = "Returned to Zero Gate. Ready for the release AZP program.";
+                return;
+            }
             if (START == Start::CENTRAL_PLAZA){
                 env.console.log("Prototype state: approach Chargestone court.");
                 central_to_chargestone(env.program_info(), env.console, context);

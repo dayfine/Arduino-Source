@@ -35,6 +35,7 @@ private:
     enum class Start{
         PREPARED_SPOT,
         CENTRAL_PLAZA,
+        RETURN_TO_ZERO_GATE,
     };
 
     OCR::LanguageOCROption LANGUAGE;
