@@ -1,174 +1,115 @@
-# Isolated encounter implementation queue
+# Isolated hunt — current state and next run
 
-User steering 2026-10-24: finish sufficient end-to-end coding before borrowing
-the Switch again. Issue dayfine/Arduino-Source#40 is first priority in the
-current quota window. Resume this queue after 05:59 PDT, or earlier if #40 is
-finished with allowance left. Query actual quota before substantial work.
+Updated 2026-10-24 09:12 PDT. Code is built/pushed and ready for bounded field
+calibration. The live Switch is currently running Sword/Shield Max Lair, not
+SV/AZP. Do not interrupt it without the user's handoff. An asynchronous question
+is pending: leave Max Lair running (code only), or switch to SV after the current
+adventure. Silence is not authorization. No Switch was borrowed in this session.
 
-## Starting state (updated 02:14 PDT)
+## Code/build checkpoint
 
-- Issue #40 completed as fork draft #41; CI code-health and tabs passed. See
-  harness/ISSUE40_STATE.md. Its PR branch is handed to Claude; do not push it.
-- Code worktree: /Users/difan/Projects/Arduino-Source-isolated
-- Branch: prototype/sv-isolated-hunt, pushed head 81172c9f0. Rebased onto current
-  fork main 8e973c48f. Old return-mode commit ba454e4a8 is now 3f51f0809.
-- Earlier pre-test-first scratch was preserved in
-  build-prep/isolated-live-2026-10-24/pre-test-first-scratch.patch, then removed
-  before native test-first work. Do not blindly reapply it.
-- New pure modules: PokemonSV_IsolatedHuntPlan.{h,cpp} and
-  PokemonSV_IsolatedHuntLoop.{h,cpp}, under Programs/ShinyHunting.
-- Native tests in PokemonSV_IsolatedHunt*_Tests.{h,cpp}, registered in
-  PokemonSV_Tests.cpp and CMake. 11 planning scenarios, 2 location cases and
-  16 action-loop cases pass (29 total). Separate C++ test main under build-prep
-  calls the SAME registered test functions, no duplicated implementation or
-  Python application tests. Binary: build-prep/isolated-plan-tests.
-- Full application build/link passed: build-prep/isolated-live-2026-10-24/
-  build-plan-loop-tests.log. Rebase needed 129 rebuild steps, latest incremental
-  6 steps. Existing Tesseract deployment-target warning only. New modules/tests
-  also meet the new code-health hard limits. Sources use CRLF.
-- Core supports compatible target/type/location planning, enabled rows,
-  ball/limit propagation, all-or-nothing validation; sandwich-before-travel,
-  bounded clearing, empty-round refresh/stop, time limit, refusal acquisition
-  without despawn on failure, shared battle callback and reanchor after battle.
-- IMPORTANT: the pure loop is NOT wired to a console adapter or editable hunt
-  table yet. Existing prototype UI still runs the older supervised experiment.
-  Do not launch it believing the new end-to-end hunt is implemented.
-- Release AZP restored, running PID 96268; observed 114 kills/2 encounters at
-  01:56 PDT after restart. Leave it farming during implementation. No actual
-  target route, sandwich, respawn movement or shiny acquisition is validated.
+- Worktree: /Users/difan/Projects/Arduino-Source-isolated
+- Branch: prototype/sv-isolated-hunt
+- Head: f2347d3d1d9a17614b0ff5746daccb615d7bbdd5 (pushed, clean).
+- Includes merged fork #41 (67ed6141d), providing incremental lint directly.
+- Build: build-prep/app/SerialPrograms.app, v0.71.3-user.
+- Executable SHA-256: a7569a0b0edb628e14f05bf2fc052381e8c1d89876053f539f78d9ef133396a7.
+- Local final build/link passed. Native Plan, Locations, Loop, ExitPolicy,
+  Options and EncounterOptions groups all passed. Same functions are registered
+  in PokemonSV_Tests.cpp and run through a local native QApplication bootstrap
+  reusing the app's compiler/link flags. The Python helper only orchestrates the
+  C++ build; it is not an application test implementation.
+- Incremental lint: 29 changed C++ files, 0 failures. One advisory is the existing
+  MaterialFarmerTools file, reduced by moving regional flight into shared code.
+- Raw logs: build-prep/isolated-live-2026-10-24/build-final-candidate.log and
+  native-final-candidate.log. Existing Tesseract deployment-target warning only.
 
-## Next coding slices after resumption
+## Implemented flow
 
-1. Read this queue, canonical rules and actual quota. Check code/notes status,
-   preserve others' edits, and keep the active release app untouched.
-2. Add editable target/type/location/ball/limit/enabled table, using shared
-   EditableTableOption and PokemonBallSelectCell; plan through the tested pure
-   module. Add native option snapshot/validation tests before implementation.
-   Catalog currently implements only Grass/Chespin and Fire/Charcadet, with
-   fly anchors and habitat/unlock prerequisites; other research candidates stay
-   explicitly unsupported.
-3. Add ConsoleIsolatedHuntActions implementing the tested seam, delegating to
-   shared sandwich, map/navigation, Let’s Go detectors, process_battle and
-   encounter action options. Every action must itself be bounded; now_ms must
-   be monotonic. Save before ingredients, use the selected type, validate
-   recipe/language before controller inputs. Stop-on-shiny remains the default;
-   selected catch/save policy and ball must reach shared encounter handling.
-4. Program travel/approach to BOTH actual test sites, including region switching
-   if starting from the shared Zero Gate handoff. Central Plaza -> Chargestone
-   flight is already shared, but court vs Cave Chespin spawn patch is unverified.
-   Charcadet fly/approach needs coding/calibration from the researched video.
-   Avoid guessed unbounded map pans. Explicit starting anchors are acceptable,
-   but manual travel between sandwich and hunting is not the completed flow.
-5. Add native tests for battle during travel/setup (current bool travel seam may
-   need a richer event result), arrival failures, refresh/reanchor failures and
-   state recovery before implementing that behavior. Reuse shiny/flee/catch
-   handling, do not create another battle engine. Continuously watch refusal
-   throughout each clearing observation window.
-6. Wire status stage/counters/timings and run the program through the new loop.
-   Bound sandwich lifetime as well as clearing duration; initial setup/travel
-   must not silently exhaust the power. Build/link and native checks before
-   borrowing hardware. Only field-test once mostly end-to-end complete.
+The new default start mode, hunt-from-zero-gate, expects Zero Gate as if just
+flown there, on foot, with a healthy suitable lead. Legacy supervised controls
+and the Area Zero -> Zero Gate travel utility remain available.
 
-## Required product flow
+1. Editable rows: enabled, Pokemon, encounter type, location, shiny action,
+   ball and ball limit. Initial catalog is Charcadet/Fire/West Province One
+   Central and Chespin/Grass/Chargestone Cave. Other research targets unsupported.
+   All enabled rows validate before controller commands; incompatible rows
+   reject the whole plan. Default is one Charcadet row, stop on shiny.
+2. Save before spending ingredients. Make the row's Fire/Grass sandwich through
+   the shared SandwichMakerOption/routines at Zero Gate. Requires game language
+   and Sparkling/Title/Encounter recipe. Type comes from the row automatically.
+3. Programmed flight and approach. Chespin reuses Paldea -> Blueberry entrance,
+   Central Plaza and Chargestone helpers. Regional flight was extracted from
+   MaterialFarmerTools into PokemonSV_RegionTravel, preserving its command and
+   adjustment order. Charcadet uses an experimental relative map seek, icon
+   inference and an initial side-of-center approach.
+4. Bounded four-leg clearing sweeps with R and full-window refusal/battle
+   watching. Charcadet uses 1400ms legs; Chespin 700ms. Empty rounds refly the
+   nearby anchor and reapproach. A refusal attempts ZR acquisition and stops
+   without refreshing/despawning if battle entry is not confirmed.
+5. Shared process_battle handles species/shiny detection, flee/catch/save and
+   notifications. Per-row shiny rule is appended last to a COPY of the base
+   encounter settings; selected ball/limit reach the actual shared handler.
+   Normal battle continuation requires reanchoring. Battles interrupting setup,
+   travel or refresh are handled, then stop the unsafe interrupted route.
+6. Normal time/round/power limits can trigger return flight and save. Policy
+   stop, unresolved refusal, no progress and failures leave the current scene
+   for inspection. Return flight is experimental and must be visually verified
+   before restarting AZP; never infer Zero Gate solely from an overworld frame.
+7. Stats: kills, encounters, shinies, clearing passes, refusals, spawn refreshes,
+   sandwiches, hunt seconds. Logs show stages, stop reason and per-target detected
+   kills/minute. These do not prove target purity or distinct shiny checks.
 
-1. Editable hunt table: Pokemon/species, encounter type, compatible location,
-   enabled flag, ball and ball limit; reuse encounter actions for shiny/flee/
-   catch policy. Show only supported locations, reject incompatible combinations
-   before controller inputs or ingredients. Chespin/Grass/Chargestone Cave and
-   Charcadet/Fire/West Province Area One Central are the first two profiles.
-2. A location catalog groups candidate routes by type, with fly anchor, unlocks,
-   habitat, approach, navigation confidence and refresh strategy. Do not pretend
-   all 24 starters or research candidates have implemented routes.
-3. Make the chosen type sandwich using shared SandwichMakerOption and sandwich
-   routines. Save first. Validate language, recipe/type and required setup.
-   Existing non-shiny preset is Normal only; do not treat it as Fire/Grass.
-4. Programmed flight and approach to BOTH test locations. Explicit initial
-   anchor is acceptable, but another manual flight after setup is not the final
-   flow. Reuse map/flight inference, detect arrival, bound retries and stop on
-   unexpected state. Central Plaza -> Chargestone already exists. Paldea travel,
-   region switching and Charcadet local anchor still need verified routes.
-5. Bounded hunt rounds: roam/circle or move across a spawn boundary as supported
-   by the profile, with return-to-anchor. For stationary Let's Go, continuously
-   monitor refusal across the whole observation window, not just R startup.
-   Observe or kill actual spawns, count kills/encounters, log stage timings and
-   stop on no progress. Do not despawn an unresolved refused target.
-6. Delegate battle detection/species/shiny/flee/catch/save to shared battle and
-   encounter machinery. Never resume an invalid timed route after a battle:
-   re-anchor or stop. Ball table must actually drive shared catch handling.
-7. Status: selected profile, elapsed hunt/setup time, kills, encounters, refusals,
-   refreshes, empty rounds, kill/encounter rates and stop reason. Counters do not
-   prove target purity or distinct shiny checks. Add logged entered species.
+Defaults: 120 hunt seconds, 100 rounds, 3 consecutive empty rounds; 29-minute
+power budget starts after sandwich setup and includes travel. A finite clearing
+round can extend past the time limit. Setup/travel guards are 240s, local refresh
+90s, return 180s; guards monitor battle/deadline inference while shared routines
+run. User stop/cancellation remains available.
 
-## Implementation and tests
+## Validation and known gaps
 
-Use native C++ tests registered in PokemonSV_Tests.cpp, no Python app tests.
-One failing behavior -> minimal implementation -> passing test, then next slice.
-Keep game I/O behind a small action interface and a scripted fake. Coordinator
-uses shared lower-level navigation/sandwich/battle helpers; no dependency from
-shared helpers back to top-level programs. Keep test code in test source files.
+Native tests cover 11 planning cases, 2 location cases, 23 scripted loop cases,
+11 departure-policy states, option defaults/save/restore, and 3 shared shiny
+policy mappings. Cases include interrupted setup/travel/refresh, power exhausted
+by travel, no wasted refresh at the final round, refusal preservation, catch
+settings and reanchor failure. Tests do not prove real movement or spawn purity.
 
-Test priorities: valid/invalid target-type-location combinations; location
-selection; per-target ball propagation; correct type sandwich before travel;
-arrival failure; battle during travel; no-progress bound; refusal prevents
-refresh/despawn; refresh returns to anchor; timer expiry; re-anchor after battle;
-catch/save/flee handoff; finish/recovery states. Use data-driven cases with named
-fields, clear expected/read failures, CRLF source and real header includes.
+A UI-only profile sv-isolated-ui-20261024 was opened with controller/video/audio
+all None, inspected, then closed normally. No Switch input or capture/controller
+handoff occurred. It displayed the new start mode/options/stats. Rebuilt binary
+requested camera/microphone permission, which was granted. Permission may be
+requested again after a subsequent rebuild.
 
-## Live gate
+The following remain unverified and require SV field access:
+- Charcadet: initial Zero Gate -> center seek (-1,-0.47,850ms at one zoom-out),
+  actual destination identity and side-of-center approach.
+- Chespin: cross-region sequence and actual Cave habitat. Existing court route
+  is not evidence Chespin spawns there. Canyon diversity upgrade and fly unlock
+  must already exist; do not spend BP to unlock anything without instruction.
+- Both local refly anchors, square sweeps and target-species purity.
+- Both return-to-Zero-Gate seeks; Chespin region switching is especially unverified.
+- Real sandwich ingredients/placement and battle acquisition/catch behavior in
+  this integrated program. Those are shared implementations, not live proof.
 
-Only borrow hardware when the two configured routes and setup/hunt/encounter
-flow compile/link and native behavior tests pass. Inspect release state, stop
-at a safe point, save, close it, then launch the prototype with exclusive
-controller/capture ownership. Handle camera/microphone permission and wait for
-working video before Start. Run short bounded trials first at both actual
-sites, then longer only if results justify it. Record target/competitor evidence,
-setup/travel times, kills and encounters per minute, refresh yield and failures.
+## Next actions
 
-Preserve shinies, save, close prototype and return to Zero Gate; reopen release
-AZP in zerogate mode and verify clearing before any handback is complete. Always
-restore AZP on low quota or when live work finishes; reserve at least 20% before
-starting another experiment. Do not leave the Switch idle for code analysis.
+1. Honor the user's response about Max Lair. While it runs, code/build work can
+   continue; do not open a device-assigned prototype profile concurrently.
+2. Follow FIELD_VALIDATION.md once the Switch is available in SV. Begin with
+   one short Charcadet round, then calibrate Chespin. Observe actual landing and
+   habitat; do not report a kill rate as a target benchmark before purity checks.
+3. Fix measured route failures, rebuild, repeat native groups/lint as appropriate.
+4. Whenever live work finishes or quota is low, preserve shinies, save, return to
+   verified Zero Gate, close prototype and restore release AZP only when SV is the
+   agreed farming context. Verify clearing resumes. Reserve >=20% before another
+   experiment. Current Max Lair is a different context and must remain untouched
+   until explicitly handed over.
 
-## One-time continuation
+No isolated-hunt PR has been opened. Prototype remains Codex-owned. No upstream
+PR creation/reopening/mark-ready is allowed. Notes belong on agents only.
 
-Armed for 2026-10-24 06:01 PDT (after the 05:59 reset). Detached timer PID
-7576 was verified alive at 02:16. Local state/log/prompt are under
-/Users/difan/.codex/timers/isolated-20261024-0601/.
-It resumes the same Codex session once, first checking actual quota; it will
-not start a model turn if quota is unknown or any window has less than 25%.
-The resumed prompt requires honoring any newer pause/cancellation/scope change.
-Delete its ARMED file to cancel before it fires. This is a one-time continuation,
-not a permanent monitoring service. Read its state.json for actual execution
-status; a scheduled timer is not evidence the later code or field run finished.
+## Scheduling
 
-At 02:16 PDT release AZP PID 96268 was still running: 313 kills, 5 encounters,
-0 shinies. No prototype instance owns hardware. Code branch is clean/pushed.
-
-## 08:21 continuation correction
-
-The timer fired at 06:01, but same-thread Codex resume failed because this
-conversation still had an active writer. It exited 1, with no overnight coding.
-No timer remains armed. User resumed at 08:21 and requested incremental linting
-and generated test inputs for #41; that revision is now the immediate task.
-Isolated code remains at 81172c9f0 until that task is finished.
-
-## 08:29 lint adoption
-
-#41 revised at user request: incremental changed-file checks only, no baseline
-or stored fixture files; 22 tool tests and CI pass. Running its CLI against the
-entire isolated diff initially found two violations. Prototype approach,
-clearing-pass/session and encounter handling were split into private helpers;
-shiny-panel registration was extracted to avoid worsening the existing factory.
-All 12 changed C++ files now pass. Existing 29 native scenarios and full app
-build/link pass; raw log build-lint-refactor.log. No live test or UI/route/sandwich
-integration is claimed. Use the harness from its worktree via PYTHONPATH and
---root until the fork PR lands; do not copy prerequisite code.
-
-## Latest merged-tooling checkpoint
-
-User merged #41; pulled origin/main 67ed6141d. Prototype branch rebased and
-pushed at 8a59974e525417851f0ecf93c6ab769f955c9388. Tooling now lives in this
-checkout: run python -m devtools.code_health --base-ref origin/main directly,
-without a PYTHONPATH pointing to the harness worktree. All 12 changed C++ files
-pass; 22 harness self-tests and 29 native scenarios pass. UI/console adapter,
-sandwich integration and both end-to-end routes remain the next coding work.
+The earlier 06:01 timer fired but same-thread Codex resume failed due to an active
+writer lock. It exited 1; no overnight code ran. No timer remains armed. Do not
+claim background monitoring or automatic future continuation.
