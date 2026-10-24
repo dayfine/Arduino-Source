@@ -17,6 +17,7 @@ User-facing summary: PokemonAutomation/ComputerControl#263.
 | --- | --- |
 | `ROADMAP.md` | Execution queue (C1-C16, E1-E4, A1-A2, M-items), per-run results (R3b onward), quest-value and reroll-policy analysis |
 | `ROI.md` | Ledger of each work item's estimated payoff, cost and measured result; Monte Carlo projection |
+| `QUEST_ROI.md` | Per-quest success rate, time and BP/min across all runs (camera on/off); run-or-reroll rule and the reroll-threshold proposal |
 | `PR_WORKFLOW.md` | Where PRs live (fork vs upstream), banners, stacking, moving PRs upstream |
 | `VALIDATION_WORKFLOW.md` | The older Codex validation loop (milestones M1-M15) |
 | `lab/CONTROL.md` | Driving the lab app and the Switch: build flags, keys, manual map/fly control |

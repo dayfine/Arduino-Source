@@ -2,7 +2,7 @@
 
 Per-quest measurements from every lab run (all `bbq-*` profiles), to decide which
 quests to run and which to reroll. Updated 2026-10-23 after R12b. Regenerate with
-`scratchpad/allroi.py` (to move into `tools/`) over the profile logs.
+`tools/quest_roi.py` over the profile logs.
 
 **Camera Support matters.** Runs before R10 13:16 had in-game Camera Support ON;
 the timed routes then often miss (sneak-up 3/33 vs 11/13 after). "Camera off" is the
