@@ -210,3 +210,14 @@ photo-flying keeps its default reroll row.
 
 Rerolling took ~24 s each (close the panel, open it again, read all 4 quests). Lab commit 88d904280
 reads only the rerolled slot with the panel open and rerolls again in place, which should take ~4 s.
+
+## R15 (2026-10-23, 23:00-23:16, stopped early)
+
+Build 1a2254043 (in-panel reroll, Fly Directly on). Tera-self at Pride Rock 1/1 (107 s), auto-10 1/1,
+catch-flying 0/2. No rerolls and no direct flights happened: the only quest that stayed in the field
+(Tera-self) was followed by auto-10, which returns to Central first. Neither new feature has a sample yet.
+
+**Catch-flying is rerolled by default now (6792b3e0e).** Both attempts battled a non-Flying Pokemon at
+the canyon grassland: the first was caught and did not count, with a Scyther right next to it after;
+the second threw balls at the fixed Kleavor for 5 minutes until it fainted the lead. The route needs
+a species/type check before throwing (flee a wrong type) before it is worth running.
