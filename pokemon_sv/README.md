@@ -87,6 +87,9 @@ quests), `SAVE_NUM_QUESTS` = 10, language `chi_tra`.
 | R8 | + hatch fix (C17), start-up fly-spot check | 509 (58 min) | hatch red +200 end to end; failed-hatch recovery restored the lead; 3 false starts fixed |
 | R9 | + C18 egg icon scan | ~440 (37 min) | 10 quests, net +270; no hatch quest drawn |
 | R10 | + Kleavor/Pride Rock look-around (#35), catch-any court (#36), catch-flying canyon, catch options; Camera Support turned off in-game | 507 (2h10) | 32 quests, net +1,100. Losses: pickup-10 via auto battle 0/10 after 40+ kills (now never run), Tera-self glide 1/6 (moved to the court). 12:44-13:03 ran with Camera Support ON: 0 kills in 6 Auto Battle passes. |
+| R11 | + Tera-self at Chargestone court, pickup-10 always rerolled, overlay lines | 660 (1h29) | 28 quests; stopped by the picnic menu-cursor error (fixed: retry); one 13-min stuck TM scan |
+| R12 | + picnic retry, TM 800 ms wait | 742 (1h06) | 23 quests; stopped by hand when the TM scan stuck on TM 1 (the wait was not enough) |
+| R12b | + close the TM message by sight | 537 (2h03) | 34 quests; Make TM 6/7 fixed; losses: Tera-self at the court 1/7 (17 min), Poison/Dark 0/2, catch-any 0/2 |
 
 Per-run details, Kleavor frame studies and the red-quest data are in
 `ROADMAP.md` ("Run log"). Upstream PRs: PokemonAutomation/Arduino-Source#1628,
