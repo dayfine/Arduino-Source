@@ -260,7 +260,10 @@ void run_bbq_rounds(Logger& logger, const BBQOption& options, BBQGameActions& ga
         //between it and the next dispatch or plan, so a no-trip quest next or
         //the next plan starts from it instead of reading again.
         std::optional<std::vector<BBQuests>> no_trip_panel;
-        for (auto current_quest : quests_to_do){
+        //Quests that failed once this round and wait behind the rest of the batch.
+        std::set<BBQuests> deferred;
+        for (size_t quest_index = 0; quest_index < quests_to_do.size(); quest_index++){
+            const BBQuests current_quest = quests_to_do[quest_index];
             //Check if quest was already completed (ex. 500 meters completed while navigating to take a photo)
             if (dispatch_panel){
                 logger.log("Reusing verified quest panel for first dispatch.");
@@ -287,6 +290,12 @@ void run_bbq_rounds(Logger& logger, const BBQOption& options, BBQGameActions& ga
                     if (bbq_quest_is_no_trip(current_quest)){
                         no_trip_panel = std::move(panel_after);
                     }
+                }else if (options.RETRY_LATER && !deferred.contains(current_quest) && quest_index + 1 < quests_to_do.size()){
+                    //Do the other quests first, and try this one again after them, rather
+                    //than flying back out to the same spot right away.
+                    logger.log("Quest did not complete. Trying it again after the other quests.");
+                    deferred.insert(current_quest);
+                    quests_to_do.push_back(current_quest);
                 }else{
                     logger.log("Quest did not complete successfully.");
                     switch (options.OUT_OF_RETRIES){

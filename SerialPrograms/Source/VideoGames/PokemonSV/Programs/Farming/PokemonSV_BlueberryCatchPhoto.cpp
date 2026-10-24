@@ -1032,26 +1032,7 @@ void quest_catch(
         return;
     }
 
-    //Heal up and then reset position again.
-    OverworldWatcher done_healing(console.logger(), COLOR_BLUE);
-    pbf_move_left_joystick(context, {0, +1}, 800ms, 160ms);
-
-    pbf_mash_button(context, BUTTON_A, 2400ms);
-    context.wait_for_all_requests();
-
-    int exit = run_until<ProControllerContext>(
-        console, context,
-        [&](ProControllerContext& context){
-            pbf_mash_button(context, BUTTON_B, 16000ms);
-        },
-        {{ done_healing }}
-    );
-    if (exit == 0){
-        console.log("Overworld detected.");
-    }
-    open_map_from_overworld(info, console, context);
-    pbf_press_button(context, BUTTON_ZL, 320ms, 800ms);
-    fly_to_overworld_from_map(info, console, context);
+    heal_after_battle_if_due(info, console, context);
     context.wait_for_all_requests();
 }
 

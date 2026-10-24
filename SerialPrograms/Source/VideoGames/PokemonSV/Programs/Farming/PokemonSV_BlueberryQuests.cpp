@@ -554,6 +554,30 @@ std::optional<double> expected_seconds_per_success(BBQuests quest){
     }
 }
 
+//Approximate BP a quest pays (Bulbapedia's Blueberry Quest table): reds 100-200, typed
+//catches 40, the blue photos 30, the other blues 20.
+int quest_reward(BBQuests quest){
+    switch (quest){
+    case BBQuests::hatch_egg:       return 200;
+    case BBQuests::wash_pokemon:    return 100;
+    case BBQuests::photo_fly:
+    case BBQuests::photo_swim:
+    case BBQuests::photo_canyon:
+    case BBQuests::photo_coastal:
+    case BBQuests::photo_polar:
+    case BBQuests::photo_savanna:
+        return 30;
+    case BBQuests::catch_any:       return 20;
+    default:
+        break;
+    }
+    if (red_quests.contains(quest)){
+        return 130;
+    }
+    const std::string slug = BBQuests_enum_to_string(quest);
+    return slug.starts_with("catch-") ? 40 : 20;
+}
+
 void order_quests_by_cost(Logger& logger, std::vector<BBQuests>& quests){
     //Only the measured quests move, among the places they hold.
     std::vector<size_t> places;
@@ -565,7 +589,8 @@ void order_quests_by_cost(Logger& logger, std::vector<BBQuests>& quests){
         }
     }
     std::stable_sort(measured.begin(), measured.end(), [](BBQuests a, BBQuests b){
-        return *expected_seconds_per_success(a) < *expected_seconds_per_success(b);
+        //Most BP per second first: the red sandwich (130 BP, ~200 s) before a Make TM.
+        return quest_reward(a) / *expected_seconds_per_success(a) > quest_reward(b) / *expected_seconds_per_success(b);
     });
     bool changed = false;
     for (size_t i = 0; i < places.size(); i++){
@@ -573,7 +598,7 @@ void order_quests_by_cost(Logger& logger, std::vector<BBQuests>& quests){
         quests[places[i]] = measured[i];
     }
     if (changed){
-        logger.log("Running the quests with the lowest expected time per completion first.");
+        logger.log("Running the quests with the most BP per expected second first.");
     }
 }
 
@@ -1060,6 +1085,44 @@ bool send_out_and_look_around(
     return false;
 }
 
+//After a battle at Central Plaza: heal at the Pokemon Center every third battle and
+//fly back onto the fly point, which the walk to the counter leaves. The lead was at
+//full HP after almost every quest battle in R11-R13 (Auto Battle checks HP itself and
+//healed 0 times in 30 passes), and each heal and re-fly took ~20 s.
+void heal_after_battle_if_due(
+    const ProgramInfo& info,
+    ConsoleHandle& console, ProControllerContext& context
+){
+    static int battles_since_heal = 0;
+    if (++battles_since_heal < 3){
+        console.log("Battle " + std::to_string(battles_since_heal) + " of 3 since the last heal. Not healing yet.");
+        context.wait_for_all_requests();
+        return;
+    }
+    battles_since_heal = 0;
+
+    //Heal up and then reset position again.
+    OverworldWatcher done_healing(console.logger(), COLOR_BLUE);
+    pbf_move_left_joystick(context, {0, +1}, 800ms, 160ms);
+
+    pbf_mash_button(context, BUTTON_A, 2400ms);
+    context.wait_for_all_requests();
+
+    int exit = run_until<ProControllerContext>(
+        console, context,
+        [&](ProControllerContext& context){
+            pbf_mash_button(context, BUTTON_B, 16000ms);
+        },
+        {{ done_healing }}
+    );
+    if (exit == 0){
+        console.log("Overworld detected.");
+    }
+    open_map_from_overworld(info, console, context);
+    pbf_press_button(context, BUTTON_ZL, 320ms, 800ms);
+    fly_to_overworld_from_map(info, console, context);
+}
+
 //From Central Plaza, glide from Savanna Plaza to Pride Rock and face the lion's spot.
 //With Camera Support off this lands in front of a wild Pokemon nearly every time
 //(sneak-up 12/12 from R11 to R12b, each in a battle ~55 s after starting).
@@ -1131,26 +1194,7 @@ void quest_tera_self_defeat(
     }
     return_to_plaza(info, console, context, BBQ_OPTIONS.LANGUAGE);
 
-    //Heal up and then reset position again.
-    OverworldWatcher done_healing(console.logger(), COLOR_BLUE);
-    pbf_move_left_joystick(context, {0, +1}, 800ms, 160ms);
-
-    pbf_mash_button(context, BUTTON_A, 2400ms);
-    context.wait_for_all_requests();
-
-    int exit = run_until<ProControllerContext>(
-        console, context,
-        [&](ProControllerContext& context){
-            pbf_mash_button(context, BUTTON_B, 16000ms);
-        },
-        {{ done_healing }}
-    );
-    if (exit == 0){
-        console.log("Overworld detected.");
-    }
-    open_map_from_overworld(info, console, context);
-    pbf_press_button(context, BUTTON_ZL, 320ms, 800ms);
-    fly_to_overworld_from_map(info, console, context);
+    heal_after_battle_if_due(info, console, context);
 }
 
 void quest_sneak_up(
@@ -1323,26 +1367,7 @@ void quest_wild_tera(
     pbf_press_button(context, BUTTON_HOME, 160ms, ConsoleSettings::instance().SETTINGS_TO_HOME_DELAY0);
     resume_game_from_home(console, context);
 
-    //Heal up and then reset position again.
-    OverworldWatcher done_healing(console.logger(), COLOR_BLUE);
-    pbf_move_left_joystick(context, {0, +1}, 800ms, 160ms);
-
-    pbf_mash_button(context, BUTTON_A, 2400ms);
-    context.wait_for_all_requests();
-
-    int exit = run_until<ProControllerContext>(
-        console, context,
-        [&](ProControllerContext& context){
-            pbf_mash_button(context, BUTTON_B, 16000ms);
-        },
-        {{ done_healing }}
-    );
-    if (exit == 0){
-        console.log("Overworld detected.");
-    }
-    open_map_from_overworld(info, console, context);
-    pbf_press_button(context, BUTTON_ZL, 320ms, 800ms);
-    fly_to_overworld_from_map(info, console, context);
+    heal_after_battle_if_due(info, console, context);
 }
 
 void quest_wash_pokemon(const ProgramInfo& info, VideoStream& stream, ProControllerContext& context, const BBQOption& BBQ_OPTIONS){

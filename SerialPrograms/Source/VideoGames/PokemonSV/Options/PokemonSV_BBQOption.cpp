@@ -215,6 +215,12 @@ BBQOption::BBQOption(OCR::LanguageOCROption* language_option)
         "<b>Number of Retries:</b><br>Reattempt a quest this many times if it fails.",
         LockMode::UNLOCK_WHILE_RUNNING, 1, 0, 5
     )
+    , RETRY_LATER(
+        "<b>Retry Failed Quests Later:</b><br>When a quest fails, do the other quests in the batch first "
+        "and try it once more after them, instead of flying back out to it right away. "
+        "Set the number of retries to 0 to use only this.",
+        LockMode::UNLOCK_WHILE_RUNNING, false
+    )
     , OUT_OF_RETRIES(
         "<b>Out of Retries:</b><br>When a quest fails all its retries, do the selected option.",
         {
@@ -247,6 +253,7 @@ BBQOption::BBQOption(OCR::LanguageOCROption* language_option)
     PA_ADD_OPTION(BATTLE_AI);
     PA_ADD_OPTION(CATCH_ON_WIN);
     PA_ADD_OPTION(NUM_RETRIES);
+    PA_ADD_OPTION(RETRY_LATER);
     PA_ADD_OPTION(OUT_OF_RETRIES);
     PA_ADD_OPTION(FIX_TIME_WHEN_DONE);
 }

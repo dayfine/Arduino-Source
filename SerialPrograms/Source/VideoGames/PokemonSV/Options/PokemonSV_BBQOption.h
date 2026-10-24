@@ -127,6 +127,7 @@ public:
     TeraFarmerCatchOnWin CATCH_ON_WIN;
 
     SimpleIntegerOption<uint8_t> NUM_RETRIES;
+    BooleanCheckBoxOption RETRY_LATER;
     EnumDropdownOption<OutOfRetries> OUT_OF_RETRIES;
 
     BooleanCheckBoxOption FIX_TIME_WHEN_DONE;

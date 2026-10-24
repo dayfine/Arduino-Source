@@ -105,7 +105,10 @@ struct BBQuestBatch{
 //Expected seconds per completed quest (time per attempt / success rate), measured in lab
 //runs R3-R5, or nothing for a quest that was not measured.
 std::optional<double> expected_seconds_per_success(BBQuests quest);
-//Reorder quests so the cheapest by expected_seconds_per_success() run first. Quests that
+//Approximate BP a quest pays.
+int quest_reward(BBQuests quest);
+//Reorder quests so the most BP per expected second (quest_reward() over
+//expected_seconds_per_success()) run first. Quests that
 //were not measured keep their places; ties keep their order.
 void order_quests_by_cost(Logger& logger, std::vector<BBQuests>& quests);
 
@@ -203,6 +206,13 @@ void quest_make_tm(
 void quest_travel_500(
     const ProgramInfo& info,
     VideoStream& stream, ProControllerContext& context
+);
+
+//After a quest battle, back at Central Plaza: heal every third battle (and fly back
+//onto the fly point), otherwise do nothing.
+void heal_after_battle_if_due(
+    const ProgramInfo& info,
+    ConsoleHandle& console, ProControllerContext& context
 );
 
 //Run around until you encounter a pokemon. Tera, then defeat it by spamming your first move.

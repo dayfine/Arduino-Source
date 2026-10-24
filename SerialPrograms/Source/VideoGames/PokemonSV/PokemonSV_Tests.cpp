@@ -1335,6 +1335,7 @@ struct BBQRoundsScenario{
     std::set<BBQuests> never_completes = {};
     std::vector<BBQuests> new_quests = {};
     BBQOption::OutOfRetries out_of_retries = BBQOption::OutOfRetries::Skip;
+    bool retry_later = false;
     std::vector<std::pair<BBQuests, BBQAction>> exclusions = {};
     bool out_of_bp = false;
     std::set<BBQuests> table_rerolls = {};
@@ -1363,6 +1364,7 @@ public:
             options.OUT_OF_EGGS.set(BBQOption::OOEggs::Stop);
         }
         options.OUT_OF_RETRIES.set(m_scenario.out_of_retries);
+        options.RETRY_LATER = m_scenario.retry_later;
         for (const auto& [quest, action] : m_scenario.exclusions){
             auto row = std::make_unique<BBQuestTableRow>(options.QUEST_EXCLUSIONS);
             row->quest.set(quest);
@@ -1564,14 +1566,15 @@ void add_tests_BBQFarmerRounds(UnitTestDatabase& database){
         {
             // Doing photo_swim also completes travel_500, so travel_500 is
             // gone when the loop reads the panel before attempting it.
-            // make_tm runs first, as the cheapest.
+            // photo_swim runs first, as the most BP per second.
             .name = "quest already gone counts as completed",
             .num_quests = 3,
             .panel = {BBQuests::photo_swim, BBQuests::travel_500, BBQuests::make_tm},
             .also_completes = {{BBQuests::photo_swim, BBQuests::travel_500}},
             .expected_completed = 3,
-            .expected_attempted = {BBQuests::make_tm, BBQuests::photo_swim},
-            .expected = "read process do completed read do completed read completed end",
+            .expected_attempted = {BBQuests::photo_swim, BBQuests::make_tm},
+            //make-tm's read after it shows travel-500 gone (no-trip reuse).
+            .expected = "read process do completed read do completed completed end",
         },
         {
             // Expected seconds per completion: make-tm 79, travel-500 89,
@@ -1610,6 +1613,27 @@ void add_tests_BBQFarmerRounds(UnitTestDatabase& database){
             .outcomes = {false},
             .expected_completed = 2,
             .expected = "read process do read do completed read do completed end",
+        },
+        {
+            // With retry later, make-tm fails, the other two run, and make-tm
+            // is tried once more at the end of the batch.
+            .name = "retry later tries a failed quest after the rest of the batch",
+            .num_quests = 3,
+            .outcomes = {false},
+            .retry_later = true,
+            .expected_completed = 3,
+            .expected_attempted = {BBQuests::make_tm, BBQuests::auto_10, BBQuests::sneak_up, BBQuests::make_tm},
+            .expected = "read process do read do completed read do completed read do completed end",
+        },
+        {
+            // A second failure gets the out-of-retries action as before.
+            .name = "retry later fails a quest once more after the batch",
+            .num_quests = 2,
+            .outcomes = {false, true, true, false},
+            .retry_later = true,
+            .expected_completed = 2,
+            .expected_attempted = {BBQuests::make_tm, BBQuests::auto_10, BBQuests::sneak_up, BBQuests::make_tm},
+            .expected = "read process do read do completed read do completed read do end",
         },
         {
             // Nothing on the panel is doable, so process_quest_list() rerolls
