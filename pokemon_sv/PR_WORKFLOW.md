@@ -1,18 +1,23 @@
 # Where BBQ/FRLG PRs live
 
-Rule set by the user on 2026-10-21. It applies to Codex and Claude.
+Rule set by the user on 2026-10-21 and superseded by the global publication
+restriction on 2026-10-23. It applies to every agent, including Codex and Claude.
 
 ## The rule
 
-**Upstream (PokemonAutomation/Arduino-Source) only holds PRs that are ready for
-review: no unmerged parent PR, built, and tested.** Everything else is a PR on
-the fork (dayfine/Arduino-Source) until it is ready.
+**Never open, reopen or mark ready a PR on
+`PokemonAutomation/Arduino-Source`. Open PRs only on the fork,
+`dayfine/Arduino-Source`, as drafts. Hand anything intended for upstream to the
+user.** A successful build, completed validation or merged parent does not
+authorize an agent to publish upstream.
 
 - **At most two open upstream PRs from us, drafts included** (upstream
-  CONTRIBUTIONS.md). No agent opens one unless the user asked for that PR.
-- **Never open a draft PR upstream.** Never open a PR upstream whose parent PR
-  has not merged.
-- **Open work-in-progress and stacked PRs on the fork.** On the fork, a PR's base
+  CONTRIBUTIONS.md). This is a limit for the user's upstream handoff, not
+  permission for an agent to create a PR.
+- **Use `gh` through `~/.local/bin/gh`, first on PATH.** Do not bypass its
+  upstream guard. Always specify `--repo dayfine/Arduino-Source --draft` when
+  creating a PR; do not rely on GitHub CLI's inferred repository.
+- **Open every new PR as a draft on the fork.** On the fork, a PR's base
   can be another fork branch, so stacked PRs show only their own change.
   Upstream they cannot: they must target `main` and show all their parents'
   commits.
@@ -22,15 +27,15 @@ the fork (dayfine/Arduino-Source) until it is ready.
 - **When an upstream parent merges:**
   1. Rebase each child onto `main`.
   2. Rebuild and run its tests.
-  3. Open (or reopen) its upstream PR, with a `Depends on: nothing` banner.
-  4. Close the fork PR, linking the upstream one.
+  3. Keep its fork PR as a draft and prepare an upstream handoff for the user,
+     including the branch, tested revision, results and dependencies.
+  4. Let the user publish upstream. After the user supplies an upstream PR,
+     link it from the fork PR and hand any requested follow-up to its owner.
 
   Its own children stay on the fork, now based on its branch.
-- **Moving a PR upstream is Claude's job** (see "Branches and ownership" in
-  VALIDATION_WORKFLOW.md). Codex hands over branches and run records, and does
-  not open or reopen upstream PRs.
-  The user reaffirmed this restriction for Codex on 2026-10-23: all Codex-created
-  PRs go on `dayfine/Arduino-Source`, including changes that are ready for review.
+- **Claude prepares PRs; the user publishes upstream** (see "Branches and
+  ownership" in VALIDATION_WORKFLOW.md). Codex hands Claude branches and run
+  records. Neither agent opens, reopens or marks ready an upstream PR.
 - **"Draft PR" in VALIDATION_WORKFLOW.md means a PR on the fork.** When Codex
   opens a draft PR for new work (step 10), it opens it on dayfine/Arduino-Source,
   based on its parent's branch, never upstream.
@@ -110,4 +115,4 @@ stale as PRs merge.
   built from the current heads of the fork and upstream PRs above, recorded by
   SHA.
 - **Report results on the fork PR.** A run that verifies a fork PR goes in that
-  fork PR. Claude carries it into the upstream PR when the PR moves up.
+  fork PR. Claude includes it in the upstream handoff for the user.

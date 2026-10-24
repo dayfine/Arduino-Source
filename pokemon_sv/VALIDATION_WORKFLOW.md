@@ -141,11 +141,11 @@ SHAs even after the PR heads move.
     the diff shows only this change; qualify upstream references as
     `PokemonAutomation/Arduino-Source#<number>`. Hand ownership to Claude with
     the exact tested revision, native cases, live evidence and dependencies.
-    Codex does not open or reopen upstream PRs. Claude moves work upstream only
-    when all parent PRs have merged and the change is ready for review, rebased
-    onto `main`, rebuilt and tested; upstream PRs are never drafts. Claude then
-    closes the fork PR with a link to its upstream replacement. Update the queue
-    and stack manifest, then select the next candidate.
+    No agent opens, reopens or marks ready an upstream PR. When all parents have
+    merged and the change is rebased, rebuilt and tested, Claude prepares the
+    upstream handoff for the user; the fork PR remains a draft. The user handles
+    upstream publication. Update the queue and stack manifest, then select the
+    next candidate.
 
 ## Repository conventions for every feature commit
 

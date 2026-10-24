@@ -140,3 +140,25 @@ current: wash + impossible rerolled             690   546   808
 ```
 
 The spread between 2-hour runs (p10-p90, about +-130 BP/h) is wider than any single change, so one run cannot confirm a +15-35 BP/h item; compare several.
+
+## Small samples (tools/reroll_confidence.py)
+
+Each success rate is a Beta(1+successes, 1+failures) posterior. For each quest the model samples the rate, recomputes the optimal rate lambda* and the margin of attempting over rerolling; P(run better) is the share of samples where attempting wins. A quest between 0.2 and 0.8 is undecided at its sample size, so one or two more attempts are worth more than acting on the point estimate. Times are taken as known; their spread is not modelled yet.
+
+```
+quest                  n  ok  mean  P(run better)  margin 10-90%
+travel-500            15  15  0.94           1.00   +25.3 ..  +28.2   run
+make-tm               17  12  0.68           0.95    +2.3 ..  +15.7   run
+auto-10                9   9  0.91           0.00   -15.4 ..   -3.2   reroll
+tera-self-defeat      13   6  0.47           0.11   -24.6 ..   +0.2   reroll
+photo-swim            16  15  0.89           1.00   +38.5 ..  +43.0   run
+photo-other           10   8  0.75           1.00   +25.5 ..  +39.8   run
+sneak-up               9   9  0.91           1.00   +17.5 ..  +22.7   run
+catch-any              4   1  0.33           0.02   -56.4 ..   -8.6   reroll
+catch-normal-fire      2   2  0.75           0.81   -13.4 ..  +26.3   run
+photo-savanna          2   2  0.75           0.98   +14.2 ..  +38.4   run
+catch-typed           24  16  0.65           0.98    +6.9 ..  +20.8   run
+catch-poison-dark      5   0  0.14           0.01   -64.4 ..  -19.6   reroll
+```
+
+Notes: tera-self counts are mostly the Chargestone court (6/13); the Pride Rock route is 1/1 so far. Auto-10 succeeds 9/9 but loses on time (~250 s), so its verdict depends on the time estimate, which this does not sample. Rare quests (about 1% of draws each) are not worth chasing for data alone: R14 took ~26 rerolls (~260 BP) per rare quest seen.
