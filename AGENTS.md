@@ -10,11 +10,23 @@ and Claude (getting PRs ready for review). The user decides scope and priorities
 
 ## Session startup from a code checkout
 
-Read `/Users/difan/Projects/Arduino-Source-agents/AGENTS.md` at the start of each
-session, even when the working directory is a code worktree without AGENTS.md.
-Keep this dedicated worktree on `agents`. Commit all new notes and run records
-here; `bbq/m7-board-read-notes` is retired from active use. Do not copy these
-rules or notes into code branches.
+At the start of each task, from any code worktree, refresh and read the shared
+rules rather than relying on a branch-local copy:
+
+```sh
+git fetch origin agents
+git show origin/agents:AGENTS.md
+git show origin/agents:pokemon_sv/PR_WORKFLOW.md
+```
+
+All linked worktrees share these remote refs. Re-read the PR rule before any
+GitHub PR mutation. If fetching fails, report that the cached rules may be
+stale; the user's explicit restrictions still apply. Keep the dedicated notes
+worktree on `agents`. Commit all new notes and run records here;
+`bbq/m7-board-read-notes` is retired from active use. Do not copy or merge rules
+and notes into code branches. Global Codex and Claude instructions bootstrap
+this lookup for code branches that have no rules file. See
+[WORKTREE_RULES.md](pokemon_sv/WORKTREE_RULES.md) for the audit and setup.
 
 ## Roles
 
@@ -26,7 +38,7 @@ rules or notes into code branches.
   - PR branches and their descriptions, once a PR exists
   - rebasing PRs as their parents merge
   - answering review comments
-  - moving PRs from the fork to upstream
+  - preparing upstream handoffs for the user
 - **Hand over, don't push over.** Changes to an existing PR are handed over as
   lab commits plus a run record. Neither agent pushes to a branch the other
   owns.
@@ -35,17 +47,18 @@ rules or notes into code branches.
 
 See [pokemon_sv/PR_WORKFLOW.md](pokemon_sv/PR_WORKFLOW.md). In short:
 
-- **Codex opens PRs only on the fork** (`dayfine/Arduino-Source`). Codex must
-  not open or reopen upstream PRs. A change being ready for review does not
-  authorize Codex to publish it upstream; hand it to Claude instead. Reaffirmed
-  by the user on 2026-10-23.
-- **No agent opens upstream PRs** unless the user asked for that specific PR.
-  Upstream allows **at most two open PRs from us, drafts included**
-  (CONTRIBUTIONS.md, 2026-10-23). Draft #1697 was opened upstream by another
-  session and closed the same day; it is fork #39.
-- **Upstream** (PokemonAutomation/Arduino-Source) only holds PRs that are ready
-  for review: no unmerged parent, built and tested.
-- **Drafts and stacked PRs** go on the fork, based on their parent's branch.
+- **No agent opens, reopens or marks ready a PR on upstream**
+  (`PokemonAutomation/Arduino-Source`). All agent-created PRs are **drafts on
+  `dayfine/Arduino-Source`**, including changes ready for review. Hand anything
+  intended for upstream to the user. This replaces the former Claude-publishes
+  workflow, per the user's global instructions on 2026-10-23.
+- Upstream allows **at most two open PRs from us, drafts included**
+  (CONTRIBUTIONS.md). This limit does not authorize agents to publish upstream.
+- Use `gh` through `~/.local/bin/gh`, first on PATH. Do not bypass the guard
+  through the Homebrew executable, an override environment variable, another
+  client, or direct API calls. The user's explicit instructions govern any
+  exception; readiness and parent merges are not authorization.
+- **Stacked draft PRs** go on the fork, based on their parent's branch.
 - **Upstream references in fork PRs** are written in full:
   `PokemonAutomation/Arduino-Source#1631`.
 - **Descriptions** tell the reviewer what to read: a "How to review" section for
