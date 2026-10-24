@@ -26,6 +26,8 @@
 #include "Inference/Picnics/PokemonSV_SandwichRecipeDetector.h"
 #include "Inference/Picnics/PokemonSV_SandwichHandDetector.h"
 #include "PokemonSV_Tests.h"
+#include "PokemonSV_IsolatedHunt_Tests.h"
+#include "PokemonSV_IsolatedHuntLoop_Tests.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -33,7 +35,24 @@ namespace PokemonSV{
 
 
 
+namespace{
+class Test_IsolatedHunt : public UnitTest{
+public:
+    Test_IsolatedHunt(std::string name, UnitTestResult (*test)())
+        : UnitTest(std::move(name)), m_test(test)
+    {}
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        return m_test();
+    }
+private:
+    UnitTestResult (*m_test)();
+};
+}
+
 void add_tests(UnitTestDatabase& database){
+    database.add<Test_IsolatedHunt>("PokemonSV/IsolatedHunt/Plan", test_isolated_hunt_plan);
+    database.add<Test_IsolatedHunt>("PokemonSV/IsolatedHunt/Locations", test_isolated_hunt_locations);
+    database.add<Test_IsolatedHunt>("PokemonSV/IsolatedHunt/Loop", test_isolated_hunt_loop);
     add_tests_WhiteButtonDetector(database);
     add_tests_BoxInfoDetector(database);
     add_tests_BoxEggDetector(database);
