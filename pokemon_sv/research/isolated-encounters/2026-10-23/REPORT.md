@@ -5,6 +5,8 @@ Both Scarlet and Violet; Paldea only in this pass. Kitakami and Terarium are
 not included in these counts. This report separates spawn-table candidates,
 creator demonstrations, visual terrain assessment and unmeasured route details.
 
+Detailed design, stages and acceptance gates: [ANALYSIS_AND_PLAN.md](ANALYSIS_AND_PLAN.md).
+
 ## What the data supports
 
 Mined the JavaScript tables served by the [Alexis Matuk optimizer](https://alexis-matuk.github.io/shinyHuntingOptimizer/),
