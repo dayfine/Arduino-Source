@@ -51,6 +51,7 @@
 #include "Programs/General/PokemonSV_StatsResetEventBattle.h"
 
 #include "Programs/ShinyHunting/PokemonSV_ShinyHunt-AreaZeroPlatform.h"
+#include "Programs/ShinyHunting/PokemonSV_IsolatedHuntPrototype.h"
 #include "Programs/ShinyHunting/PokemonSV_ShinyHunt-Scatterbug.h"
 
 #include "Programs/AutoStory/PokemonSV_AutoStory.h"
@@ -82,6 +83,15 @@ PanelListFactory::PanelListFactory()
         RESOURCE_PATH() + "CategoryIcons/PokemonSV.png"
     )
 {}
+
+namespace{
+void add_shiny_hunting_panels(std::vector<PanelEntry>& ret){
+    ret.emplace_back("---- Shiny Hunting ----");
+    ret.emplace_back(make_SingleSwitchProgram<ShinyHuntAreaZeroPlatform>());
+    ret.emplace_back(make_SingleSwitchProgram<IsolatedHuntPrototype>());
+    ret.emplace_back(make_SingleSwitchProgram< ShinyHuntScatterbug>());
+}
+}
 
 std::vector<PanelEntry> PanelListFactory::make_panels() const{
     std::vector<PanelEntry> ret;
@@ -138,9 +148,7 @@ std::vector<PanelEntry> PanelListFactory::make_panels() const{
     ret.emplace_back(make_SingleSwitchProgram<StatsReset>());
     ret.emplace_back(make_SingleSwitchProgram<StatsResetEventBattle>());
 
-    ret.emplace_back("---- Shiny Hunting ----");
-    ret.emplace_back(make_SingleSwitchProgram<ShinyHuntAreaZeroPlatform>());
-    ret.emplace_back(make_SingleSwitchProgram< ShinyHuntScatterbug>());
+    add_shiny_hunting_panels(ret);
 
     ret.emplace_back("---- Story Automation ----");
     ret.emplace_back(make_SingleSwitchProgram<AutoStory>());

@@ -169,8 +169,6 @@ void run_from_battles_and_back_to_pokecenter(
 
 void move_from_material_farming_to_item_printer(const ProgramInfo& info, VideoStream& stream, ProControllerContext& context);
 
-void fly_from_paldea_to_blueberry_entrance(const ProgramInfo& info, VideoStream& stream, ProControllerContext& context);
-
 void move_from_blueberry_entrance_to_league_club(const ProgramInfo& info, VideoStream& stream, ProControllerContext& context);
 
 void move_from_league_club_entrance_to_item_printer(const ProgramInfo& info, VideoStream& stream, ProControllerContext& context);
