@@ -34,8 +34,14 @@ roadmap, existing programs or their PR branches.
 - Linker warning: Homebrew Tesseract was built for macOS 26.6.2 while the app's
   deployment target is 26.0. The build host runs 26.6.2; deployment to an older
   OS has not been verified.
-- No app launch or Switch inputs were performed for this work. Live validation
-  is still pending; this is a built prototype, not a verified hunting route.
+- The GUI was subsequently opened on 2026-10-23 with profile
+  `sv-isolated-prototype`; the correct prototype panel was visually confirmed.
+  The prototype program itself was not run. Live hunting validation is pending.
+- During that GUI session the user selected the controller already used by the
+  other instance, causing a serial conflict. The prototype instance was closed;
+  the original logged STOPPED and then a successful controller reconnection.
+  Separate profiles isolate settings, not physical devices. A second instance
+  must stay disconnected until it has a distinct controller/capture assignment.
 
 Launch the completed build with a separate profile:
 
@@ -45,6 +51,9 @@ Launch the completed build with a separate profile:
 
 Select the prototype in the app and inspect capture/controller settings before
 starting. Launching the app alone does not start the program.
+This build stores the console device settings under `ConsoleSetup`, rather
+than the older `SwitchSetup` key. Confirm the displayed device assignment;
+an empty setting under an obsolete key is not a reliable disconnection.
 
 ## Behavior
 
@@ -93,6 +102,12 @@ Do not begin with a 1–2 hour unattended run.
    refusal or blindly continuing a movement path after a battle.
 
 ## Validation record
+
+The [Kitakami video review](KITAKAMI_VIDEO_REVIEW.md) adds the Sentret cave as
+an optional stationary-clearing control, using the existing prepared-spot mode.
+Before coding a spawn-reset path, check whether clearing itself replenishes
+reachable targets at that anchor. Chespin and Charcadet retain their priority;
+the Kitakami footage is source evidence, not our prototype's validation result.
 
 This is disposable field code, not a production PR. Native compilation and
 full application linking are required; no Python application tests or mirrored

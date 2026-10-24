@@ -15,6 +15,11 @@ not live results, and do not change the Paldea totals below. Chespin and
 Charcadet now lead the field queue; the original video shortlist remains as
 comparison evidence.
 
+2026-10-24 follow-up: [Kitakami video review](KITAKAMI_VIDEO_REVIEW.md), with
+26 scouting profiles and inspected cave/terrain frames. It adds stationary
+spawn-funnel candidates, especially Sentret, without changing the regional
+coverage totals or claiming live verification.
+
 ## What the data supports
 
 Mined the JavaScript tables served by the [Alexis Matuk optimizer](https://alexis-matuk.github.io/shinyHuntingOptimizer/),

@@ -1,0 +1,40 @@
+{
+  "video_url": "https://www.youtube.com/watch?v=TVlLDhGyJ-U",
+  "title": "26 EASY Shiny Hunts in Teal Mask - Pokemon Scarlet & Violet DLC",
+  "channel": "Austin John Plays",
+  "upload_date": "2023-09-19",
+  "duration_seconds": 1416,
+  "review_date": "2026-10-23 to 2026-10-24 PDT",
+  "review_method": "Full English auto-caption transcript read; 16 timestamped frames inspected, with detailed views of stationary cave setups. Not continuous real-time playback.",
+  "headline_target_profiles": 26,
+  "contact_sheet_seconds": [
+    120,
+    175,
+    205,
+    270,
+    283,
+    440,
+    452,
+    485,
+    515,
+    580,
+    641,
+    872,
+    1024,
+    1057,
+    1242,
+    1372
+  ],
+  "cache_hashes": {
+    "TVlLDhGyJ-U.info.json": "400bcd6c49c157c41330f84c265fa3cf671210fad33aac1923e85c6a1ceb38c0",
+    "TVlLDhGyJ-U.en-orig.json3": "f082887f2b9a2537c4405549b7845b999c2f2dcd9f34d6710cffe11967b8a99b",
+    "TVlLDhGyJ-U.video.mp4": "b66af02fe1cf0921b985b5b582377e21d886f9c41fafcc1befd02a17fb1b3a6c"
+  },
+  "raw_materials": "/tmp/sv-video-TVlLDhGyJ-U; not committed",
+  "limits": [
+    "2023 creator demonstration; not current-version field validation",
+    "No combined regional coverage totals computed",
+    "No approach time/distance measured; no live Switch hunt performed"
+  ],
+  "incorporated_date": "2026-10-24 PDT"
+}

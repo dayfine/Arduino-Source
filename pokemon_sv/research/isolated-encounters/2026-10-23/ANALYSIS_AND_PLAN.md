@@ -30,11 +30,21 @@ boundary-crossing controls. Larvesta in Asado remains the riding-loop comparison
 A high-coverage western Paldea cell (table 97) is a parallel scouting candidate,
 not a substitute for the demonstrated Levincia Kirlia location.
 
+The [Kitakami video review](KITAKAMI_VIDEO_REVIEW.md), incorporated 2026-10-24,
+adds 26 scouting profiles and a **stationary spawn-funnel** strategy. Sentret's
+cave is the strongest new prepared-spot control for our existing clearing and
+acquisition prototype; Cleffa/Clefairy and Ekans provide mixed-pool tunnel
+comparisons. Test whether clearing replenishes reachable spawns before adding
+a reset movement. The source's speculative Hoothoot trick is excluded from
+implementation. This addition preserves the Chespin/Charcadet priority.
+
 Scope: single-player, both game versions, one family represented by at least one
 obtainable species. The initial Paldea mining and the separate Terarium starter
 survey retain separate denominators: all coverage totals below are Paldea-only.
-Kitakami still needs analysis. Keep forms, gender-dependent evolutions, time
-conditions and version exclusivity explicit.
+Kitakami now has a separate video-derived scouting catalog; comprehensive
+spawn-table mining remains outstanding. Keep forms, gender-dependent evolutions,
+time conditions and version exclusivity explicit. Do not add the video's
+headline count to the Paldea coverage totals.
 
 Deliverable for the next stage: a small set of exact, photographed anchors,
 named flight points, approach measurements, reset observations and encounter
@@ -316,6 +326,10 @@ that the existing BBQ court reaches the Cave habitat: other cavern habitats do
 not all list Chespin. Compare clearing, local refresh and same-cavern re-flight;
 the existing Central Plaza flight routine assumes a different starting point.
 Retain Mareep, Oricorio, Kirlia and Larvesta as movement-pattern controls.
+Add the Kitakami Sentret wall anchor as an optional stationary control; use
+the timestamped review to identify its entrance and opposite spawn corner.
+Keep multi-floor Mienfoo and capacity-limited Carbink behind this simpler
+prepared-spot experiment. None of these video examples is live-verified here.
 
 For each spot card record:
 
