@@ -28,6 +28,13 @@ and notes into code branches. Global Codex and Claude instructions bootstrap
 this lookup for code branches that have no rules file. See
 [WORKTREE_RULES.md](pokemon_sv/WORKTREE_RULES.md) for the audit and setup.
 
+For substantial autonomous work, check account quota before large chunks and
+after milestones using `python3 tools/read_codex_quota.py` from this notes
+worktree. Follow [QUOTA_MONITORING.md](pokemon_sv/QUOTA_MONITORING.md): use actual
+quota/reset readings, checkpoint and pace work when low, and report unknown
+quota honestly if the local account cannot be queried. Do not confuse quota
+with context or token counters, or promise background monitoring after a turn.
+
 ## Roles
 
 - **Codex owns:**
