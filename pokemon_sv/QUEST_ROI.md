@@ -124,3 +124,19 @@ rerolled, the rate rises and auto-10 falls below the new bar. The optimal set
 draws, 0.47 rerolls per kept quest, for +0.85 BP/min (+7%, ~+50 BP/h) over
 rerolling only the impossible ones. Quest time only: saves, round trips and reds
 are left out, and most inputs have fewer than 10 attempts.
+
+## Monte Carlo (current build, 2026-10-23)
+
+`tools/mc_current.py`: 2-hour runs on the inputs above, reds after every 10 completions, 33 s of overhead per completion fitted to R11/R12/R12b (660/725/676 BP/h).
+
+```
+scenario                                     median   p10   p90  (BP/h per 2-hour run, 3000 sims)
+current: wash + impossible rerolled             690   546   808
++ Poison/Dark rerolled                          704   559   817
++ optimal set (also catch-any, auto-10)         725   597   837
+  + Make TM look-ahead (120 -> 95 s)            731   595   847
+  + photo-flying doable (guess 50%, 120 s)      734   601   856
+  + Poison/Dark route fixed (guess 60%)         734   597   853
+```
+
+The spread between 2-hour runs (p10-p90, about +-130 BP/h) is wider than any single change, so one run cannot confirm a +15-35 BP/h item; compare several.
