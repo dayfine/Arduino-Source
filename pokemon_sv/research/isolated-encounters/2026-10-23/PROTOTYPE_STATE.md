@@ -115,3 +115,12 @@ source-extraction tests are used. Unit tests were not added for this prototype.
 No route, target purity, shiny acquisition or sustained hunting rate has yet
 been verified live. Absorb or delete the prototype after the field question is
 answered; retain measured results in the notes branch.
+
+## 2026-10-24 field checkpoint
+
+[Control results](../../../runs/isolated-2026-10-24/RESULT.md): three AZ-platform
+controls observed 3 total kills and the bounded empty-pass stop. No target
+location or sandwich was validated. Revision ba454e4a8 adds the live-verified
+Area Zero → Zero Gate return mode. Release AZP was restored and clearing at
+01:42 PDT. Continue target selection, programmed travel and sandwich setup
+before another takeover.
