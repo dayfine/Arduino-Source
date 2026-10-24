@@ -21,9 +21,7 @@
 #include "VideoGames/PokemonSV/Programs/PokemonSV_MenuNavigation.h"
 #include "VideoGames/PokemonSV/Programs/PokemonSV_WorldNavigation.h"
 //#include "VideoGames/PokemonSV/PokemonSV_Settings.h"
-#include "VideoGames/PokemonSV/Programs/AutoStory/PokemonSV_AutoStoryTools.h"
-#include "VideoGames/PokemonSV/Programs/AutoStory/PokemonSV_MenuOption.h"
-#include "VideoGames/PokemonSV/Programs/AutoStory/PokemonSV_MenuOptionDatabase.h"
+#include "VideoGames/PokemonSV/Programs/PokemonSV_GameOptions.h"
 #include "VideoGames/PokemonSV/Programs/Farming/PokemonSV_BlueberryQuests.h"
 #include "VideoGames/PokemonSV/Programs/Farming/PokemonSV_BBQPointsLedger.h"
 #include "PokemonSV_BBQSoloFarmer.h"
@@ -468,24 +466,7 @@ void BBQSoloFarmer::program(SingleSwitchProgramEnvironment& env, ProControllerCo
     //Set the game options the routes depend on. With Camera Support on, the game turns the
     //camera during the timed glides and walks, and they miss their targets (0 Auto Battle
     //kills, Tera-self and Pride Rock routes failing in R10 until it was turned off).
-    {
-        env.console.log("Setting the game options the farmer needs.");
-        enter_menu_from_overworld(env.program_info(), env.console, context, 4, MenuSide::RIGHT, true);
-        MenuOption(env.console, context, BBQ_OPTIONS.LANGUAGE).set_options({
-            {MenuOptionItemEnum::TEXT_SPEED, {MenuOptionToggleEnum::FAST}},
-            {MenuOptionItemEnum::SKIP_MOVE_LEARNING, {MenuOptionToggleEnum::ON}},
-            {MenuOptionItemEnum::SEND_TO_BOXES, {MenuOptionToggleEnum::AUTOMATIC, MenuOptionToggleEnum::ON}},
-            {MenuOptionItemEnum::GIVE_NICKNAMES, {MenuOptionToggleEnum::OFF}},
-            {MenuOptionItemEnum::VERTICAL_CAMERA_CONTROLS, {MenuOptionToggleEnum::REGULAR, MenuOptionToggleEnum::NORMAL}},
-            {MenuOptionItemEnum::HORIZONTAL_CAMERA_CONTROLS, {MenuOptionToggleEnum::REGULAR, MenuOptionToggleEnum::NORMAL}},
-            {MenuOptionItemEnum::CAMERA_SUPPORT, {MenuOptionToggleEnum::OFF}},
-            {MenuOptionItemEnum::CAMERA_INTERPOLATION, {MenuOptionToggleEnum::NORMAL, MenuOptionToggleEnum::AVERAGE}},
-            {MenuOptionItemEnum::AUTOSAVE, {MenuOptionToggleEnum::OFF}},
-        });
-        pbf_mash_button(context, BUTTON_A, 500ms);
-        clear_dialog(env.console, context, ClearDialogMode::STOP_TIMEOUT, 5, {CallbackEnum::PROMPT_DIALOG});
-        press_Bs_to_back_to_overworld(env.program_info(), env.console, context);
-    }
+    set_game_options_for_programs(env.program_info(), env.console, context, BBQ_OPTIONS.LANGUAGE);
 
     //Fly to plaza. Pressing "fly here" on the player only works at a fly spot,
     //so stop with a setup error instead of retrying when there isn't one.

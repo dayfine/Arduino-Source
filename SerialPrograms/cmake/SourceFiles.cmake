@@ -2661,6 +2661,8 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonSV/Programs/PokemonSV_AreaZero.h
     Source/VideoGames/PokemonSV/Programs/PokemonSV_ConnectToInternet.cpp
     Source/VideoGames/PokemonSV/Programs/PokemonSV_ConnectToInternet.h
+    Source/VideoGames/PokemonSV/Programs/PokemonSV_GameOptions.cpp
+    Source/VideoGames/PokemonSV/Programs/PokemonSV_GameOptions.h
     Source/VideoGames/PokemonSV/Programs/PokemonSV_GameEntry.cpp
     Source/VideoGames/PokemonSV/Programs/PokemonSV_GameEntry.h
     Source/VideoGames/PokemonSV/Programs/PokemonSV_MenuNavigation.cpp
