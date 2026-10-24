@@ -1,4 +1,4 @@
-"""Git adapter: tracked first-party C++ and base-revision content."""
+"""Git adapter: changed first-party C++ and corresponding base-revision content."""
 import subprocess
 from pathlib import PurePosixPath
 
@@ -17,10 +17,18 @@ def included(path):
             and not any(part.startswith('3rdParty') for part in parts))
 
 
-def tracked(root, revision=None):
-    args = ['ls-tree', '-r', '--name-only', '-z', revision] if revision else ['ls-files', '-z']
-    paths = git(root, *args).decode('utf-8').split('\0')
-    return sorted(path for path in paths if path and included(path))
+def changed_files(root, base_ref):
+    fields = iter(git(root, 'diff', '--name-status', '-z', '--find-renames', base_ref, '--').decode().split('\0'))
+    changes = []
+    for status in fields:
+        if not status:
+            continue
+        original = next(fields)
+        current = next(fields) if status[0] in 'RC' else original
+        if status[0] != 'D' and included(current):
+            previous = original if status[0] not in 'AC' and included(original) else None
+            changes.append((current, previous))
+    return changes
 
 
 def read_revision(root, revision, path):

@@ -1,4 +1,4 @@
-# C++ code-health and agent verification
+# Incremental C++ code-health and agent verification
 
 From the checkout root, create a dedicated environment (Python 3.8+):
 
@@ -9,10 +9,11 @@ python3 -m venv .venv-code-health
 .venv-code-health/bin/python -m devtools.code_health --base-ref origin/main
 ```
 
-The check reads Git-tracked `.h .hpp .c .cpp .tpp` files under `Common/` and
-`SerialPrograms/`, excluding any directory component starting with `3rdParty`.
-Untracked files are excluded, so `git add` new source before checking it.
-Analysis errors and malformed baselines fail the command.
+Only added/modified/renamed Git-tracked `.h .hpp .c .cpp .tpp` files under
+`Common/` and `SerialPrograms/` are analyzed. Directory components starting
+with `3rdParty` are excluded. Unchanged and deleted files are not read.
+Stage new source files with `git add` before checking; tracked unstaged edits
+are included. Missing base revisions and analysis errors fail the command.
 
 | Check | Limit |
 | --- | --- |
@@ -21,40 +22,25 @@ Analysis errors and malformed baselines fail the command.
 | Nesting | 4 lexical brace levels inside the function body |
 | Parameters | 7 |
 
+New files/functions must meet these limits. In modified files, compare each
+metric with its value at the base revision: existing violations may remain or
+improve but may not grow. Unchanged long functions in a touched file do not
+block unrelated improvements. Renamed files compare with their original path.
+Renamed function signatures have a new identity and must meet the limits.
+There is no repository-wide scan, generated baseline or exceptions registry.
+Fix/extract code instead of raising limits.
+
+The CI job runs on PRs (including drafts) and pushes to main, comparing the
+current tree with the PR base / previous main revision. An initial push uses
+Git's empty tree as its base. The tests generate X-line sources in memory or
+temporary Git repos; no large fixture or snapshot files are checked in. These
+Python tests exercise the linter, not SerialPrograms application code.
+
 Lizard 1.17.31 recognizes C++ functions without a compilation database. The
 brace extension counts nested blocks, lambdas and initializer braces; it
 ignores enclosing namespace/class braces, comments and string literals. This
-is lexical code-health analysis, not a C++ compiler or clang-tidy replacement.
-Macro-generated functions and advanced syntax may require parser follow-up.
-Cyclomatic complexity is deliberately not enforced in this first rollout.
-
-## Existing debt and the ratchet
-
-`baseline.json` records each existing violation by path, qualified function
-signature and check, with its measured value, reason and `review_at` date.
-The initial review date is 90 days after generation. An exception expires on
-that date, failing only if the violation still exists. Fix the code; don't
-raise limits, regenerate the baseline to hide growth or add blanket skips.
-A renamed function has a new identity and needs to meet the limits.
-
-With `--base-ref`, current metrics must meet both the dated baseline ceiling
-and the actual base revision's value. A previously improved function cannot
-regrow to its older baseline allowance. New violations fail. CI reads the
-baseline from the trusted base, so editing the PR's baseline cannot mask a
-regression. The initial rollout is the only bootstrap exception: if the base
-has no baseline, the head baseline is read, but base measurements still ratchet.
-For the initial snapshot only:
-
-```sh
-.venv-code-health/bin/python -m devtools.code_health --write-baseline --review-at YYYY-MM-DD
-```
-
-The CI job runs on every PR, including drafts, and pushes to main. It runs
-self-tests first, then scans the current tree against the PR base / previous
-main revision. No hardware, Qt or CMake build is needed for this job.
-Pass/fail C++ fixtures cover each threshold; integration tests use temporary
-Git repos to prove nonzero exits, bootstrap, exclusions and baseline tampering.
-These Python tests exercise the linter, not SerialPrograms application code.
+is lexical analysis, not a C++ compiler or clang-tidy replacement. Macro-generated
+functions and advanced syntax may require parser follow-up. CCN is not enforced.
 
 ## Build and native C++ tests in one command
 
@@ -69,12 +55,11 @@ this checkout's CMake build (e.g. `cmake -S SerialPrograms -B SerialPrograms/bin
 -DQT_MAJOR:STRING=6`), and provide Packages/resources. Put the separate
 `PokemonAutomation/CommandLineTests` fixture checkout in an ancestor of the
 binary, within its five-level resource search, or use `UnitTestResources`.
-Unpack downloadable model ZIPs exactly as the existing CI's “Install downloadable
+Unpack downloadable model ZIPs as the existing CI's “Install downloadable
 resources for tests” step does. For this runner on macOS, install models under
-`~/Library/Application Support/SerialPrograms/Profiles/agent-native-tests/DownloadedResources/`
-because the isolated test profile has its own runtime directory. On Linux and
-Windows install under `<build-dir>/DownloadedResources/`. Missing fixture/model
-resources are not passes.
+`~/Library/Application Support/SerialPrograms/Profiles/agent-native-tests/DownloadedResources/`.
+On Linux/Windows install under `<build-dir>/DownloadedResources/`. Missing
+fixture/model resources are not passes.
 
 For a configured Linux build:
 
@@ -84,23 +69,20 @@ For a configured Linux build:
 
 On macOS use `--binary SerialPrograms/bin/SerialPrograms.app/Contents/MacOS/SerialPrograms`;
 on Windows use `--binary SerialPrograms/bin/RelWithDebInfo/SerialPrograms.exe`.
-The command runs linter self-tests, the ratchet, CMake build, then native tests;
+This runs linter self-tests, the incremental check, CMake build, then native tests;
 it stops at the first nonzero exit and propagates it. Native tests run from
-the build directory, matching Linux/Windows CI resource layout. On macOS it uses
-a separate `agent-native-tests` profile (named profiles are macOS-only); Qt is
-offscreen on all platforms. Use this checkout's build/binary,
-not a release installation or another worktree's executable.
+the build directory. On macOS it uses a separate `agent-native-tests` profile;
+Qt is offscreen on all platforms. Use this checkout's build/binary.
 
-## Agent work loop
+## Agent work loop and reuse
 
 Feature branch -> one concern -> test/verify -> read exit status -> review diff
 and CI -> draft PR on dayfine/Arduino-Source. No upstream PR publication by
 agents. Refresh canonical rules from origin/agents at task start and before
-PR mutations. Canonical AGENTS.md lives on that notes branch and is never
-merged into code branches. Shared infrastructure needs portable, regression-tested behavior;
-program changes additionally need the appropriate live run evidence.
+PR mutations; never merge that notes branch into code branches. Shared
+infrastructure needs portable regression coverage; gameplay changes additionally
+need appropriate live run evidence.
 
-Reuse: `metrics.py` and `policy.py` accept source/metrics as values and know
-nothing about this repository's Git layout. `git_files.py` and `__main__.py`
-are the integration layer. Keep them here until another consumer justifies
-extracting a separate package/repository.
+`metrics.py` and `policy.py` accept source/metrics as values and know nothing
+about this repository's Git layout. `git_files.py` and `__main__.py` are the
+integration layer; extract a separate package only when another consumer needs it.

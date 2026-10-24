@@ -22,15 +22,14 @@ jobs:
       - run: python -m pip install -r devtools/code_health/requirements.txt
       - name: Linter self-tests
         run: python -m unittest discover -s devtools/code_health/tests -v
-      - name: Check dated baseline and ratchet
+      - name: Check changed C++ files
         env:
           PR_BASE: ${{ github.event.pull_request.base.sha }}
           PUSH_BASE: ${{ github.event.before }}
         shell: bash
         run: |
           base="${PR_BASE:-$PUSH_BASE}"
-          if [[ -n "$base" && "$base" != 0000000000000000000000000000000000000000 ]]; then
-            python -m devtools.code_health --base-ref "$base"
-          else
-            python -m devtools.code_health
+          if [[ -z "$base" || "$base" == 0000000000000000000000000000000000000000 ]]; then
+            base=$(git hash-object -w -t tree --stdin </dev/null)
           fi
+          python -m devtools.code_health --base-ref "$base"
