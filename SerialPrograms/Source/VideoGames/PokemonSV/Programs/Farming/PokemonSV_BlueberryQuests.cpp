@@ -852,6 +852,19 @@ bool process_and_do_quest(
     return quest_completed;
 }
 
+//Close the "not enough materials" message a TM without materials shows. Wait until it is
+//gone before the next press: the game drops d-pad presses while it is open or closing.
+void close_tm_message(VideoStream& stream, ProControllerContext& context){
+    for (int i = 0; i < 5; i++){
+        AdvanceDialogWatcher message(COLOR_YELLOW);
+        context.wait_for_all_requests();
+        if (wait_until(stream, context, std::chrono::milliseconds(1200), {message}) != 0){
+            return;
+        }
+        pbf_press_button(context, BUTTON_B, 160ms, 640ms);
+    }
+}
+
 void quest_make_tm(const ProgramInfo& info, VideoStream& stream, ProControllerContext& context){
     stream.log("Quest: Make TM");
 
@@ -911,9 +924,7 @@ void quest_make_tm(const ProgramInfo& info, VideoStream& stream, ProControllerCo
             context.wait_for_all_requests();
             if (make_tm != 0){
                 stream.log("Not craftable. Scanning from the first TM.");
-                //Close the "not enough materials" message. The game drops d-pad presses
-                //while it closes, which left the cursor on this TM.
-                pbf_press_button(context, BUTTON_A, 160ms, 800ms);
+                close_tm_message(stream, context);
                 for (int i = 0; i < last_tm_index; i++){
                     pbf_press_dpad(context, DPAD_LEFT, 160ms, 160ms);
                 }
@@ -934,10 +945,9 @@ void quest_make_tm(const ProgramInfo& info, VideoStream& stream, ProControllerCo
                         pbf_wait(context, 800ms);
                         context.wait_for_all_requests();
 
-                        //not craftable, close and move on to next. Wait for the message to
-                        //close: the game drops a d-pad press during it, which repeated this
-                        //TM for the whole scan when its materials ran out.
-                        pbf_press_button(context, BUTTON_A, 160ms, 800ms);
+                        //not craftable, close and move on to next. With the message still
+                        //open, the d-pad press was dropped and the whole scan stayed on this TM.
+                        close_tm_message(stream, context);
                         pbf_press_dpad(context, DPAD_RIGHT, 160ms, 160ms);
                         pbf_wait(context, 800ms);
                         context.wait_for_all_requests();
