@@ -143,3 +143,23 @@ status; a scheduled timer is not evidence the later code or field run finished.
 
 At 02:16 PDT release AZP PID 96268 was still running: 313 kills, 5 encounters,
 0 shinies. No prototype instance owns hardware. Code branch is clean/pushed.
+
+## 08:21 continuation correction
+
+The timer fired at 06:01, but same-thread Codex resume failed because this
+conversation still had an active writer. It exited 1, with no overnight coding.
+No timer remains armed. User resumed at 08:21 and requested incremental linting
+and generated test inputs for #41; that revision is now the immediate task.
+Isolated code remains at 81172c9f0 until that task is finished.
+
+## 08:29 lint adoption
+
+#41 revised at user request: incremental changed-file checks only, no baseline
+or stored fixture files; 22 tool tests and CI pass. Running its CLI against the
+entire isolated diff initially found two violations. Prototype approach,
+clearing-pass/session and encounter handling were split into private helpers;
+shiny-panel registration was extracted to avoid worsening the existing factory.
+All 12 changed C++ files now pass. Existing 29 native scenarios and full app
+build/link pass; raw log build-lint-refactor.log. No live test or UI/route/sandwich
+integration is claimed. Use the harness from its worktree via PYTHONPATH and
+--root until the fork PR lands; do not copy prerequisite code.
