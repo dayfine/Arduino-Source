@@ -81,8 +81,10 @@ For a configured Linux build:
 On macOS use `--binary SerialPrograms/bin/SerialPrograms.app/Contents/MacOS/SerialPrograms`;
 on Windows use `--binary SerialPrograms/bin/RelWithDebInfo/SerialPrograms.exe`.
 The command runs linter self-tests, the ratchet, CMake build, then native tests;
-it stops at the first nonzero exit and propagates it. It uses a separate
-`agent-native-tests` profile and offscreen Qt. Use this checkout's build/binary,
+it stops at the first nonzero exit and propagates it. Native tests run from
+the binary directory, matching Linux/Windows resource layout. On macOS it uses
+a separate `agent-native-tests` profile (named profiles are macOS-only); Qt is
+offscreen on all platforms. Use this checkout's build/binary,
 not a release installation or another worktree's executable.
 
 ## Agent work loop

@@ -10,19 +10,21 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def commands(build_dir, binary, base_ref, jobs):
+def commands(build_dir, binary, base_ref, jobs, platform=sys.platform):
+    profile = ['--profile', 'agent-native-tests'] if platform == 'darwin' else []
     return [
         [sys.executable, '-m', 'unittest', 'discover', '-s', 'devtools/code_health/tests', '-v'],
         [sys.executable, '-m', 'devtools.code_health', '--base-ref', base_ref],
         ['cmake', '--build', str(build_dir), '--config', 'RelWithDebInfo', '--parallel', str(jobs)],
-        [str(binary), '--profile', 'agent-native-tests', '--command-line-test-mode'],
+        [str(binary), *profile, '--command-line-test-mode'],
     ]
 
 
-def verify(steps, run=subprocess.run, env=None):
-    for command in steps:
+def verify(steps, run=subprocess.run, env=None, native_cwd=None):
+    for index, command in enumerate(steps):
         print('Running:', ' '.join(command), flush=True)
-        result = run(command, cwd=ROOT, env=env)
+        directory = native_cwd if native_cwd and index == len(steps) - 1 else ROOT
+        result = run(command, cwd=directory, env=env)
         if result.returncode:
             return result.returncode
     return 0
@@ -41,7 +43,8 @@ def main():
     env = os.environ.copy()
     env['QT_QPA_PLATFORM'] = 'offscreen'
     try:
-        return verify(commands(build_dir, args.binary.resolve(), args.base_ref, args.jobs), env=env)
+        return verify(commands(build_dir, args.binary.resolve(), args.base_ref, args.jobs),
+                      env=env, native_cwd=args.binary.resolve().parent)
     except OSError as error:
         print(f'Verification could not run: {error}', file=sys.stderr)
         return 2
