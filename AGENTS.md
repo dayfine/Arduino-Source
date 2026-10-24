@@ -35,6 +35,10 @@ rules or notes into code branches.
 
 See [pokemon_sv/PR_WORKFLOW.md](pokemon_sv/PR_WORKFLOW.md). In short:
 
+- **Codex opens PRs only on the fork** (`dayfine/Arduino-Source`). Codex must
+  not open or reopen upstream PRs. A change being ready for review does not
+  authorize Codex to publish it upstream; hand it to Claude instead. Reaffirmed
+  by the user on 2026-10-23.
 - **Upstream** (PokemonAutomation/Arduino-Source) only holds PRs that are ready
   for review: no unmerged parent, built and tested.
 - **Drafts and stacked PRs** go on the fork, based on their parent's branch.

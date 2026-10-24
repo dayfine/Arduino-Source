@@ -27,6 +27,8 @@ the fork (dayfine/Arduino-Source) until it is ready.
 - **Moving a PR upstream is Claude's job** (see "Branches and ownership" in
   VALIDATION_WORKFLOW.md). Codex hands over branches and run records, and does
   not open or reopen upstream PRs.
+  The user reaffirmed this restriction for Codex on 2026-10-23: all Codex-created
+  PRs go on `dayfine/Arduino-Source`, including changes that are ready for review.
 - **"Draft PR" in VALIDATION_WORKFLOW.md means a PR on the fork.** When Codex
   opens a draft PR for new work (step 10), it opens it on dayfine/Arduino-Source,
   based on its parent's branch, never upstream.
