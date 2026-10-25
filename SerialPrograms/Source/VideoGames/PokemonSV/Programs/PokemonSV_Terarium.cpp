@@ -282,37 +282,6 @@ void reset_plaza_position(){
 namespace{
 
 //  Log the place name shown on landing, to check where a flight went.
-void note_start_position(VideoStream& stream, ProControllerContext& context, Language language){
-    const std::string expected = central_plaza_banner_to_check(language, OCR::ocr_language_available(language));
-    if (expected.empty()){
-        stream.log("Start position can't be read in this language. Assuming Central Plaza.");
-        reset_plaza_position();
-        return;
-    }
-    PlaceNameBannerReader reader;
-    const WallClock deadline = current_time() + std::chrono::seconds(5);
-    while (current_time() < deadline){
-        context.wait_for_all_requests();
-        VideoSnapshot screen = stream.video().snapshot();
-        for (const std::string& text : reader.read(stream.logger(), language, screen)){
-            if (text.empty()){
-                continue;
-            }
-            if (place_name_banner_matches(expected, text)){
-                stream.log("Started at Central Plaza (banner \"" + text + "\").");
-                reset_plaza_position();
-            }else{
-                stream.log("Started away from Central Plaza (banner \"" + text + "\"). The first flight goes directly.");
-                stay_away_from_plaza(language);
-            }
-            return;
-        }
-        context.wait_for(std::chrono::milliseconds(250));
-    }
-    stream.log("No banner after the start-up flight. Assuming Central Plaza.", COLOR_ORANGE);
-    reset_plaza_position();
-}
-
 void log_landing_banner(VideoStream& stream, ProControllerContext& context, Language language, const std::string& location){
     if (!OCR::ocr_language_available(language)){
         return;
@@ -358,6 +327,37 @@ bool fly_from_anywhere(
     return fly_to_overworld_from_map(info, stream, context, true);
 }
 
+}
+
+void note_start_position(VideoStream& stream, ProControllerContext& context, Language language){
+    const std::string expected = central_plaza_banner_to_check(language, OCR::ocr_language_available(language));
+    if (expected.empty()){
+        stream.log("Start position can't be read in this language. Assuming Central Plaza.");
+        reset_plaza_position();
+        return;
+    }
+    PlaceNameBannerReader reader;
+    const WallClock deadline = current_time() + std::chrono::seconds(5);
+    while (current_time() < deadline){
+        context.wait_for_all_requests();
+        VideoSnapshot screen = stream.video().snapshot();
+        for (const std::string& text : reader.read(stream.logger(), language, screen)){
+            if (text.empty()){
+                continue;
+            }
+            if (place_name_banner_matches(expected, text)){
+                stream.log("Started at Central Plaza (banner \"" + text + "\").");
+                reset_plaza_position();
+            }else{
+                stream.log("Started away from Central Plaza (banner \"" + text + "\"). The first flight goes directly.");
+                stay_away_from_plaza(language);
+            }
+            return;
+        }
+        context.wait_for(std::chrono::milliseconds(250));
+    }
+    stream.log("No banner after the start-up flight. Assuming Central Plaza.", COLOR_ORANGE);
+    reset_plaza_position();
 }
 
 void map_move_cursor_fly(
