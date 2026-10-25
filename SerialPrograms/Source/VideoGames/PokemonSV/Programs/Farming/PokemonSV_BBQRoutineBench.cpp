@@ -199,9 +199,7 @@ void BBQRoutineBench::program(SingleSwitchProgramEnvironment& env, ProController
         case BBQBenchStart::BackToBack:
             break;
         case BBQBenchStart::Central:
-            if (i > 0){
-                return_to_plaza(env.program_info(), env.console, context, BBQ_OPTIONS.LANGUAGE);
-            }
+            ensure_at_plaza(env.program_info(), env.console, context);
             break;
         case BBQBenchStart::PolarRest:
             //Flies from wherever the player is. Returning to Central first would fail on
@@ -254,8 +252,10 @@ void BBQRoutineBench::program(SingleSwitchProgramEnvironment& env, ProController
     }
     env.log("BENCH,summary,routine=" + routine + "," + bbq_bench_summary(reps));
 
-    //Leave the player at Central Plaza, where the next block starts.
-    return_to_plaza(env.program_info(), env.console, context, BBQ_OPTIONS.LANGUAGE);
+    //Leave the player at Central Plaza, where the next block starts. A routine that
+    //already returned leaves the player there, where a second return can't find the
+    //plaza's icon under the player.
+    ensure_at_plaza(env.program_info(), env.console, context);
 }
 
 
