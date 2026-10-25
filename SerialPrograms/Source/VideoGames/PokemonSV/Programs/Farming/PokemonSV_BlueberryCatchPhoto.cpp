@@ -1010,10 +1010,15 @@ void coastal_plaza_to_grassland(ConsoleHandle& console, ProControllerContext& co
     context.wait_for_all_requests();
 }
 
+//The Terarium's fly points are fast-travel icons, not Pokecenters: the Pokecenter search
+//only works while standing on one, and otherwise retries for minutes before failing.
 void fly_back_to_coastal_plaza(const ProgramInfo& info, ConsoleHandle& console, ProControllerContext& context, Language language){
     try{
         open_map_from_overworld(info, console, context);
-        fly_to_closest_pokecenter_on_map(info, console, context);
+        if (fly_to_visible_closest_flypoint_cur_zoom_level(info, console, context, FlyPoint::FAST_TRAVEL)){
+            return;
+        }
+        fly_to_closest_pokecenter_on_map(info, console, context, 2);
         return;
     }catch (OperationFailedException&){
         console.log("No Pokecenter icon found near the player. Flying to Coastal Plaza directly.", COLOR_ORANGE);

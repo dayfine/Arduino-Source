@@ -141,13 +141,34 @@ public:
                 screen.frame->save(path);
             }
             out << "shot " << path << "\n";
+        }else if (cmd == "shots"){                          //  shots label count interval_ms, while queued moves run
+            const int count = (int)num(2, 10);
+            for (int i = 0; i < count; i++){
+                if (i > 0){
+                    context.wait_for(ms(3, 300));
+                }
+                VideoSnapshot screen = console.video().snapshot();
+                char suffix[16];
+                snprintf(suffix, sizeof(suffix), "_%02d.png", i);
+                if (screen.frame){
+                    screen.frame->save(m_out_prefix + "_" + w.at(1) + suffix);
+                }
+            }
+            out << "shots " << m_out_prefix << "_" << w.at(1) << "_NN.png x" << count << "\n";
         }else if (cmd == "map"){
             open_map_from_overworld(info, console, context);
         }else if (cmd == "fly_here"){
             out << "flew " << fly_to_overworld_from_map(info, console, context, true) << "\n";
         }else if (cmd == "fly_closest"){
             open_map_from_overworld(info, console, context);
-            fly_to_closest_pokecenter_on_map(info, console, context);
+            fly_to_closest_pokecenter_on_map(info, console, context, 2);
+        }else if (cmd == "fly_fast"){                       //  fly to the closest visible fast-travel (Terarium) fly point
+            open_map_from_overworld(info, console, context);
+            const bool flew = fly_to_visible_closest_flypoint_cur_zoom_level(info, console, context, FlyPoint::FAST_TRAVEL);
+            out << "fly_fast " << (flew ? 1 : 0) << "\n";
+            if (!flew){
+                press_Bs_to_back_to_overworld(info, console, context);
+            }
         }else if (cmd == "central"){
             return_to_plaza(info, console, context, m_options.LANGUAGE);
         }else if (cmd == "away"){                           //  next central_to_*() flies from here
@@ -240,7 +261,10 @@ void BBQLabConsole::program(SingleSwitchProgramEnvironment& env, ProControllerCo
             const WallClock start = current_time();
             try{
                 keep_going = runner.run(words, out);
-                context.wait_for_all_requests();
+                //ssf_* lines overlap the lines after them, and shots samples while they run.
+                if (words[0].rfind("ssf_", 0) != 0 && words[0] != "shots"){
+                    context.wait_for_all_requests();
+                }
             }catch (OperationFailedException& e){
                 out << "error line " << line_number << ": " << e.message() << "\n";
                 break;

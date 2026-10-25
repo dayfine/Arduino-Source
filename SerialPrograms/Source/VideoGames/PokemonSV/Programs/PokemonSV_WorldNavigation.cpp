@@ -439,6 +439,21 @@ void move_cursor_to_position_offset_from_flypoint(const ProgramInfo& info, Video
 
 // While in the current map zoom level, detect pokecenter icons and move the map cursor there.
 // Return true if succeed. Return false if no visible pokcenter on map
+int closest_flypoint_to_player(const std::vector<ImageFloatBox>& boxes, size_t screen_width, size_t screen_height){
+    int closest = -1;
+    double min_dist2 = DBL_MAX;
+    for (size_t i = 0; i < boxes.size(); i++){
+        const double x_diff = (boxes[i].x + boxes[i].width/2 - 0.5) * screen_width;
+        const double y_diff = (boxes[i].y + boxes[i].height/2 - 0.5) * screen_height;
+        const double dist2 = x_diff * x_diff + y_diff * y_diff;
+        if (dist2 < min_dist2){
+            min_dist2 = dist2;
+            closest = (int)i;
+        }
+    }
+    return closest;
+}
+
 bool detect_closest_flypoint_and_move_map_cursor_there(
     const ProgramInfo& info,
     VideoStream& stream,
@@ -473,12 +488,11 @@ bool detect_closest_flypoint_and_move_map_cursor_there(
             os << "Found " + fly_point_string + " at box: x=" << box.x << ", y=" << box.y << ", width=" << box.width << ", height=" << box.height << 
                 ", dist to center " << std::sqrt(dist2) << " pixels";
             stream.log(os.str());
-
-            if (dist2 < max_dist){
-                max_dist = dist2;
-                closest_icon_x = loc_x; closest_icon_y = loc_y;
-            }
         }
+        const ImageFloatBox& closest = found_locations[closest_flypoint_to_player(found_locations, screen_width, screen_height)];
+        closest_icon_x = (closest.x + closest.width/2) * screen_width;
+        closest_icon_y = (closest.y + closest.height/2) * screen_height;
+        max_dist = (closest_icon_x - center_x) * (closest_icon_x - center_x) + (closest_icon_y - center_y) * (closest_icon_y - center_y);
         stream.log("Found closest " + fly_point_string + " icon on map: (" + std::to_string(closest_icon_x) + ", " + std::to_string(closest_icon_y) + ").");
         stream.overlay().add_log("Detected " + fly_point_string + " icon");
     }

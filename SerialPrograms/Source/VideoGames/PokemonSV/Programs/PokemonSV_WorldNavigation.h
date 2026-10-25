@@ -10,6 +10,7 @@
 #define PokemonAutomation_PokemonSV_WorldNavigation_H
 
 #include <unordered_set>
+#include <vector>
 #include "CommonFramework/Tools/VideoStream.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "VideoGames/PokemonSV/Inference/PokemonSV_MainMenuDetector.h"
@@ -97,6 +98,10 @@ void place_marker_offset_from_flypoint(const ProgramInfo& info, VideoStream& str
 // with the map open, move the cursor to a specific position offset from the flypoint, as per marker_offset
 // throw exception if no flypoints visible on map
 void move_cursor_to_position_offset_from_flypoint(const ProgramInfo& info, VideoStream& stream, ProControllerContext& context, FlyPoint fly_point, ExpectedMarkerPosition marker_offset);
+
+// Index of the box whose center is closest to the screen center, where the map puts the
+// player, measured in pixels of a screen_width x screen_height frame. -1 if there are none.
+int closest_flypoint_to_player(const std::vector<ImageFloatBox>& boxes, size_t screen_width, size_t screen_height);
 
 // While in the current map zoom level, detect pokecenter icons and move the map cursor there.
 // Return true if succeed. Return false if no visible pokcenter on map

@@ -39,6 +39,10 @@
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "Inference/PokemonSV_BlueberryPointsReader.h"
 #include "Programs/Farming/PokemonSV_BBQPointsLedger.h"
+#include "Inference/Map/PokemonSV_MapDetector.h"
+#include "Inference/Map/PokemonSV_FastTravelDetector.h"
+#include "Inference/Map/PokemonSV_MapPokeCenterIconDetector.h"
+#include "Programs/PokemonSV_WorldNavigation.h"
 
 #include <optional>
 #include <stdexcept>
@@ -2669,6 +2673,70 @@ void add_tests_BBQPlazaReturn(UnitTestDatabase& database){
 
 
 
+// Which fly point the map flight picks, from real map screenshots. The Terarium's fly
+// points are fast-travel icons: a Pokecenter search there finds nothing and, before it
+// was capped, retried for minutes (2026-10-25, from the beach below Coastal Plaza).
+class Test_BBQMapFlyPoint : public UnitTest{
+public:
+    //  expected_x/y: the center of the icon the flight should pick, normalized to the frame;
+    //  negative for "no icon found".
+    Test_BBQMapFlyPoint(const std::string& image, FlyPoint fly_point, double expected_x, double expected_y)
+        : UnitTest("PokemonSV::BBQMapFlyPoint - " + image + " - " + (fly_point == FlyPoint::POKECENTER ? "Pokecenter" : "Fast Travel"))
+        , m_image(UNIT_TEST_RESOURCE_PATH() + image)
+        , m_fly_point(fly_point), m_expected_x(expected_x), m_expected_y(expected_y)
+    {}
+
+    virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
+        ImageRGB32 screen(m_image);
+        const std::vector<ImageFloatBox> boxes = m_fly_point == FlyPoint::POKECENTER
+            ? MapPokeCenterIconDetector(COLOR_RED, MAP_READABLE_AREA).detect_all(screen)
+            : FastTravelDetector(COLOR_RED, MAP_READABLE_AREA).detect_all(screen);
+        const int closest = closest_flypoint_to_player(boxes, screen.width(), screen.height());
+        if (m_expected_x < 0){
+            if (closest >= 0){
+                return "Expected no icon, found " + std::to_string(boxes.size());
+            }
+            return true;
+        }
+        if (closest < 0){
+            return "Expected an icon, found none";
+        }
+        const ImageFloatBox& box = boxes[closest];
+        const double x = box.x + box.width/2, y = box.y + box.height/2;
+        logger.log("Closest of " + std::to_string(boxes.size()) + ": (" + std::to_string(x) + ", " + std::to_string(y) + ")");
+        if (std::abs(x - m_expected_x) > 0.01 || std::abs(y - m_expected_y) > 0.01){
+            return "Expected the icon at (" + std::to_string(m_expected_x) + ", " + std::to_string(m_expected_y)
+                + "), picked (" + std::to_string(x) + ", " + std::to_string(y) + ")";
+        }
+        return true;
+    }
+
+private:
+    const std::string m_image;
+    const FlyPoint m_fly_point;
+    const double m_expected_x, m_expected_y;
+};
+
+class Test_BBQClosestFlyPoint : public UnitTest{
+public:
+    Test_BBQClosestFlyPoint(const std::string& name, std::vector<ImageFloatBox> boxes, int expected)
+        : UnitTest("PokemonSV::BBQClosestFlyPoint - " + name)
+        , m_boxes(std::move(boxes)), m_expected(expected)
+    {}
+
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        const int actual = closest_flypoint_to_player(m_boxes, 1920, 1080);
+        if (actual != m_expected){
+            return "Expected box " + std::to_string(m_expected) + ", picked " + std::to_string(actual);
+        }
+        return true;
+    }
+
+private:
+    const std::vector<ImageFloatBox> m_boxes;
+    const int m_expected;
+};
+
 // BBQ lab tools: the command parsing of the Lab Console and the Routine Bench summary.
 // Both are lab only, but a wrong parse or summary would mislead a whole bench run.
 
@@ -2753,6 +2821,19 @@ private:
 };
 
 void add_tests_BBQLabTools(UnitTestDatabase& database){
+    //  Zoomed-out map from the beach below Coastal Plaza: the plaza's fly point is up-left
+    //  of the player, two farther ones are at the edges, and there is no Pokecenter.
+    database.add<Test_BBQMapFlyPoint>("PokemonSV/BBQMap/coastal-beach.png", FlyPoint::FAST_TRAVEL, 895/1920., 452/1080.);
+    database.add<Test_BBQMapFlyPoint>("PokemonSV/BBQMap/coastal-beach.png", FlyPoint::POKECENTER, -1, -1);
+    //  Standing on the fly point: the player icon covers it, so only "fly here" works.
+    database.add<Test_BBQMapFlyPoint>("PokemonSV/BBQMap/coastal-on-flypoint.png", FlyPoint::POKECENTER, -1, -1);
+    database.add<Test_BBQClosestFlyPoint>("none", std::vector<ImageFloatBox>{}, -1);
+    database.add<Test_BBQClosestFlyPoint>(
+        "pixel distance, not normalized",
+        //  Box 0 is 0.1 away in x (192 px), box 1 is 0.15 away in y (162 px).
+        std::vector<ImageFloatBox>{{0.59, 0.49, 0.02, 0.02}, {0.49, 0.64, 0.02, 0.02}}, 1
+    );
+
     database.add<Test_BBQLabConsoleWords>("command", "press B 160", std::vector<std::string>{"press", "B", "160"});
     database.add<Test_BBQLabConsoleWords>("extra spaces", "  stick L  0 1   500 ", std::vector<std::string>{"stick", "L", "0", "1", "500"});
     database.add<Test_BBQLabConsoleWords>("comment line", "# turn left", std::vector<std::string>{});
