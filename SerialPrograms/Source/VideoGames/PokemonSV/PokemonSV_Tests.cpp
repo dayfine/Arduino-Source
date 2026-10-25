@@ -29,6 +29,7 @@
 #include "PokemonSV_IsolatedHunt_Tests.h"
 #include "PokemonSV_IsolatedHuntFlight_Tests.h"
 #include "PokemonSV_IsolatedHuntPower_Tests.h"
+#include "PokemonSV_SandwichEating_Tests.h"
 #include "PokemonSV_IsolatedHuntLoop_Tests.h"
 #include "PokemonSV_IsolatedHuntCorridor_Tests.h"
 #include "PokemonSV_IsolatedHuntOptions_Tests.h"
@@ -65,6 +66,7 @@ void add_tests(UnitTestDatabase& database){
     database.add<Test_IsolatedHunt>("PokemonSV/IsolatedHunt/Options", test_isolated_hunt_options);
     database.add<Test_IsolatedHunt>("PokemonSV/IsolatedHunt/Sandwich", test_isolated_hunt_sandwich);
     database.add<Test_IsolatedHunt>("PokemonSV/IsolatedHunt/EncounterOptions", test_isolated_hunt_encounter_options);
+    database.add<Test_IsolatedHunt>("PokemonSV/Sandwich/Eating", test_sandwich_eating);
     add_tests_WhiteButtonDetector(database);
     add_tests_BoxInfoDetector(database);
     add_tests_BoxEggDetector(database);

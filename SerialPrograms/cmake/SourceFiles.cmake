@@ -2710,6 +2710,12 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonSV/Programs/Sandwiches/PokemonSV_IngredientSession.h
     Source/VideoGames/PokemonSV/Programs/Sandwiches/PokemonSV_SandwichMaker.cpp
     Source/VideoGames/PokemonSV/Programs/Sandwiches/PokemonSV_SandwichMaker.h
+    Source/VideoGames/PokemonSV/PokemonSV_SandwichEating_Tests.cpp
+    Source/VideoGames/PokemonSV/PokemonSV_SandwichEating_Tests.h
+    Source/VideoGames/PokemonSV/Programs/Sandwiches/PokemonSV_SandwichEatingConsole.cpp
+    Source/VideoGames/PokemonSV/Programs/Sandwiches/PokemonSV_SandwichEatingConsole.h
+    Source/VideoGames/PokemonSV/Programs/Sandwiches/PokemonSV_SandwichEating.cpp
+    Source/VideoGames/PokemonSV/Programs/Sandwiches/PokemonSV_SandwichEating.h
     Source/VideoGames/PokemonSV/Programs/Sandwiches/PokemonSV_SandwichRoutines.cpp
     Source/VideoGames/PokemonSV/Programs/Sandwiches/PokemonSV_SandwichRoutines.h
     Source/VideoGames/PokemonSV/Programs/ShinyHunting/PokemonSV_AreaZeroPlatform.cpp
