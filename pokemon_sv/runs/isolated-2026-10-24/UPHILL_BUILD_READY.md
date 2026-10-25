@@ -1,5 +1,9 @@
 # Bounded uphill corridor — code and signed local build
 
+**Superseded checkpoint:** the Oct 25 pilot stopped during sandwich finish.
+Recovery build and separate shared-routine safeguard are recorded in
+[the Oct 25 run record](../isolated-2026-10-25/RESULT.md). No live corridor verification yet.
+
 Coding-only task, 2026-10-24 PDT. No controller inputs, live program starts,
 Switch commands, live tests, PR mutations or new scheduled jobs. No subagents.
 The old lab PID 37887 was absent at fresh inspection. The unrelated installed
