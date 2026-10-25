@@ -10,6 +10,7 @@
 #include <QFile>
 #include "Common/Cpp/Exceptions.h"
 #include "CommonFramework/Exceptions/OperationFailedException.h"
+#include "CommonFramework/Exceptions/UnexpectedBattleException.h"
 #include "CommonFramework/ProgramStats/StatsTracking.h"
 #include "CommonTools/Async/InferenceRoutines.h"
 #include "CommonTools/InferenceCallbacks/VisualInferenceCallback.h"
@@ -17,6 +18,7 @@
 #include "NintendoSwitch/Programs/NintendoSwitch_GameEntry.h"
 #include "Pokemon/Pokemon_Strings.h"
 #include "VideoGames/PokemonSV/Inference/Battles/PokemonSV_NormalBattleMenus.h"
+#include "VideoGames/PokemonSV/Programs/Battles/PokemonSV_Battles.h"
 #include "VideoGames/PokemonSV/Programs/PokemonSV_MenuNavigation.h"
 #include "VideoGames/PokemonSV/Programs/PokemonSV_WorldNavigation.h"
 #include "VideoGames/PokemonSV/Programs/PokemonSV_Terarium.h"
@@ -187,7 +189,19 @@ void BBQRoutineBench::program(SingleSwitchProgramEnvironment& env, ProController
         case BBQBenchStart::PolarRest:
             //Flies from wherever the player is. Returning to Central first would fail on
             //the first rep, where the plaza's icon is hidden under the player.
-            central_to_polar_rest(env.program_info(), env.console, context);
+            //A wild Pokemon often attacks at Pride Rock right after the day skip. Flee it.
+            for (int attempt = 0;; attempt++){
+                try{
+                    central_to_polar_rest(env.program_info(), env.console, context);
+                    break;
+                }catch (UnexpectedBattleException&){
+                    if (attempt >= 2){
+                        throw;
+                    }
+                    env.log("BENCH,ambush_before_rep," + std::to_string(i + 1));
+                    run_from_battle(env.console, context);
+                }
+            }
             stay_away_from_plaza(BBQ_OPTIONS.LANGUAGE);
             break;
         }
