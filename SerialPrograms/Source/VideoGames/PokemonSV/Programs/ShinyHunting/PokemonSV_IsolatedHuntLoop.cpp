@@ -108,6 +108,7 @@ struct HuntSetup{
 HuntSetup setup_hunt(const IsolatedHuntRequest& request, const IsolatedHuntLimits& limits, IsolatedHuntActions& actions){
     if (!make_isolated_hunt_plan({request}).error.empty() ||
         (limits.ascent.enabled && !valid_isolated_ascent(limits.ascent)) ||
+        (limits.resume_at_anchor && !limits.use_existing_power) ||
         limits.max_rounds == 0 || limits.max_empty_rounds == 0 || limits.duration_ms == 0 || limits.power_duration_ms == 0){
         return {{.stop = IsolatedHuntStop::INVALID_PLAN}};
     }
@@ -115,7 +116,7 @@ HuntSetup setup_hunt(const IsolatedHuntRequest& request, const IsolatedHuntLimit
     if (limits.use_existing_power){
         actions.set_deadlines(setup_started + limits.power_duration_ms, UINT64_MAX);
     }
-    if (!actions.reset_start(request)){
+    if (!limits.resume_at_anchor && !actions.reset_start(request)){
         return {failed_stage(request, actions, IsolatedHuntStop::START_FAILED)};
     }
     if (!limits.use_existing_power && !actions.prepare_sandwich(request)){

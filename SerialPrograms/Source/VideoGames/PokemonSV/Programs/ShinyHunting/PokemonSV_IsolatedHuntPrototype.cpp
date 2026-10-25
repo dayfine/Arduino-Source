@@ -53,17 +53,26 @@ std::unique_ptr<StatsTracker> IsolatedHuntPrototype_Descriptor::make_stats() con
     return std::unique_ptr<StatsTracker>(new Stats());
 }
 
-IsolatedHuntPrototype::IsolatedHuntPrototype()
-    : LANGUAGE("<b>Game Language:</b>", IV_READER().languages(), LockMode::LOCK_WHILE_RUNNING, true)
-    , START(
+namespace{
+const char* hunt_start_description(){
+    return
         "<b>Start:</b><br>Full hunt: start at Zero Gate as if just flown there, on foot. "
+        "Anchor resume: stand near Central in the overworld; re-flies only after verifying Central, then asks for the path checkpoint. "
         "Existing sandwich: finish the result screen, pack up the picnic and return to the Zero Gate overworld first. Set the conservative remaining power budget below. "
         "Meal Power and flight selection are automatic. Use manual controls only at the Central path prompt. Other modes are controls. Prepared spot: stand on foot, facing the target patch. "
         "Central Plaza: start as if just flown there; uses the existing Chargestone court approach. "
-        "Chespin requires the Canyon diversity upgrade and a verified Grass spawn patch.",
+        "Chespin requires the Canyon diversity upgrade and a verified Grass spawn patch.";
+}
+}
+
+IsolatedHuntPrototype::IsolatedHuntPrototype()
+    : LANGUAGE("<b>Game Language:</b>", IV_READER().languages(), LockMode::LOCK_WHILE_RUNNING, true)
+    , START(
+        hunt_start_description(),
         {
             {Start::HUNT_FROM_ZERO_GATE, "hunt-from-zero-gate", "Supervised hunt from Zero Gate"},
             {Start::EXISTING_POWER_FROM_ZERO_GATE, "existing-power-zero-gate", "Resume from Zero Gate with existing sandwich"},
+            {Start::EXISTING_POWER_AT_ANCHOR, "existing-power-anchor", "Resume near hunting anchor with existing sandwich"},
             {Start::PREPARED_SPOT, "prepared", "Prepared hunting spot (Chespin or Charcadet)"},
             {Start::CENTRAL_PLAZA, "central-plaza", "Central Plaza to Chargestone court"},
             {Start::RETURN_TO_ZERO_GATE, "return-zerogate", "Return from Area Zero to Zero Gate (travel only)"},
@@ -101,6 +110,10 @@ IsolatedHuntPrototype::IsolatedHuntPrototype()
     })
 {
     add_options();
+}
+
+bool IsolatedHuntPrototype::existing_power() const{
+    return START == Start::EXISTING_POWER_FROM_ZERO_GATE || START == Start::EXISTING_POWER_AT_ANCHOR;
 }
 
 void IsolatedHuntPrototype::add_options(){
@@ -146,16 +159,18 @@ bool IsolatedHuntPrototype::run_one_hunt(SingleSwitchProgramEnvironment& env,
 ){
     auto& stats = env.current_stats<IsolatedHuntPrototype_Descriptor::Stats>();
     ConsoleIsolatedHuntActions actions(env, context, stats, LANGUAGE, SANDWICH_OPTIONS, ENCOUNTER_OPTIONS, request);
+    if (START == Start::EXISTING_POWER_AT_ANCHOR){ actions.resume_at_anchor(); }
     actions.set_verifier([&](ProControllerContext& stage_context, const IsolatedHuntRequest& hunt, IsolatedHuntVerification stage){
         return verify_setup(env.console, stage_context, hunt, stage);
     });
     const IsolatedHuntLimits limits{
         .max_rounds = MAX_ROUNDS, .max_empty_rounds = EMPTY_PASSES,
         .duration_ms = (uint64_t)RUN_SECONDS * 1000,
-        .power_duration_ms = START == Start::EXISTING_POWER_FROM_ZERO_GATE ? (uint64_t)EXISTING_POWER_SECONDS * 1000 : 29 * 60 * 1000,
+        .power_duration_ms = existing_power() ? (uint64_t)EXISTING_POWER_SECONDS * 1000 : 29 * 60 * 1000,
         .ascent = {.enabled = request.location == IsolatedHuntLocation::WEST_PROVINCE_ONE_CENTRAL,
             .segments_per_ascent = ASCENT_SEGMENTS, .segment_ms = ASCENT_SEGMENT_MS, .clearing_wait_ms = ASCENT_CLEAR_MS},
-        .use_existing_power = START == Start::EXISTING_POWER_FROM_ZERO_GATE,
+        .use_existing_power = existing_power(),
+        .resume_at_anchor = START == Start::EXISTING_POWER_AT_ANCHOR,
     };
     env.console.log("Isolated setup: existing power=" + std::to_string(limits.use_existing_power) +
         ", power budget ms=" + std::to_string(limits.power_duration_ms));
@@ -187,7 +202,7 @@ void IsolatedHuntPrototype::run_hunts(SingleSwitchProgramEnvironment& env, ProCo
     if (!plan.error.empty()){
         throw UserSetupError(env.logger(), plan.error);
     }
-    if (START == Start::EXISTING_POWER_FROM_ZERO_GATE && plan.hunts.size() != 1){
+    if (existing_power() && plan.hunts.size() != 1){
         throw UserSetupError(env.logger(), "Existing sandwich resume requires exactly one enabled hunt.");
     }
     if (LANGUAGE == Language::None){
@@ -324,7 +339,7 @@ bool IsolatedHuntPrototype::process_encounter(SingleSwitchProgramEnvironment& en
 }
 
 void IsolatedHuntPrototype::program(SingleSwitchProgramEnvironment& env, ProControllerContext& context){
-    if (START == Start::HUNT_FROM_ZERO_GATE || START == Start::EXISTING_POWER_FROM_ZERO_GATE){
+    if (START == Start::HUNT_FROM_ZERO_GATE || existing_power()){
         run_hunts(env, context);
         return;
     }

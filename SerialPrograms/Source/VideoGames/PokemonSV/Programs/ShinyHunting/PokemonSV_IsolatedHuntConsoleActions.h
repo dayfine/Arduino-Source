@@ -23,6 +23,7 @@ public:
     virtual bool prepare_sandwich(const IsolatedHuntRequest& request) override;
     using Verifier = std::function<bool(ProControllerContext&, const IsolatedHuntRequest&, IsolatedHuntVerification)>;
     void set_verifier(Verifier verifier){ m_verifier = std::move(verifier); }
+    void resume_at_anchor(){ m_resume_at_anchor = true; }
     virtual bool verify_meal_power(const IsolatedHuntRequest& request) override;
     virtual bool travel_to_anchor(const IsolatedHuntRequest& request) override;
     virtual IsolatedHuntRound clear_round(const IsolatedHuntRequest& request) override;
@@ -60,6 +61,7 @@ private:
     OverworldBattleTracker m_battle_tracker;
     uint16_t m_empty_rounds = 0;
     bool m_initial_travel = true;
+    bool m_resume_at_anchor = false;
     bool m_pending_battle = false;
     bool m_pending_refusal = false;
     bool m_marker_arrived = false;

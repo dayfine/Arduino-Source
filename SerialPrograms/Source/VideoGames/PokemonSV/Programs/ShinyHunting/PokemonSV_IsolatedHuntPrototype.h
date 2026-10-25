@@ -39,6 +39,7 @@ public:
 
 private:
     void add_options();
+    bool existing_power() const;
     void check_power_language(SingleSwitchProgramEnvironment& env) const;
     void run_hunts(SingleSwitchProgramEnvironment& env, ProControllerContext& context);
     bool run_one_hunt(SingleSwitchProgramEnvironment& env, ProControllerContext& context, const IsolatedHuntRequest& request);
@@ -54,6 +55,7 @@ private:
     enum class Start{
         HUNT_FROM_ZERO_GATE,
         EXISTING_POWER_FROM_ZERO_GATE,
+        EXISTING_POWER_AT_ANCHOR,
         PREPARED_SPOT,
         CENTRAL_PLAZA,
         RETURN_TO_ZERO_GATE,

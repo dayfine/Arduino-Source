@@ -35,6 +35,7 @@ struct IsolatedHuntLimits{
     uint64_t power_duration_ms = 29 * 60 * 1000;
     IsolatedAscentLimits ascent;
     bool use_existing_power = false;
+    bool resume_at_anchor = false;
 };
 
 struct IsolatedHuntResult{

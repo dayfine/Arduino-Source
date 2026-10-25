@@ -181,7 +181,7 @@ bool ConsoleIsolatedHuntActions::travel_to_anchor(const IsolatedHuntRequest& req
     const bool success = guard("travel to " + request.pokemon + " patch", 420000ms,
         [&](ProControllerContext& context){
             arrived = travel_to_isolated_hunt(m_env.program_info(), m_env.console, context,
-                request.location, m_initial_travel, m_language);
+                request.location, m_initial_travel && !m_resume_at_anchor, m_language);
             if (arrived){
                 if (request.location == IsolatedHuntLocation::WEST_PROVINCE_ONE_CENTRAL){
                     if (m_initial_travel){

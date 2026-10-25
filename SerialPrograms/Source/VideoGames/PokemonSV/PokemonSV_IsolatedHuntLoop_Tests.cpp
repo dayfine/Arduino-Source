@@ -249,6 +249,10 @@ std::vector<LoopCase> power_cases(){
 
 std::vector<LoopCase> resume_cases(){
     return {
+        {.name = "Existing meal at Central bypasses Zero Gate but retains power and local anchor checks",
+            .limits = {.max_rounds = 2, .use_existing_power = true, .resume_at_anchor = true}, .start_ok = false,
+            .expected = {.stop = IsolatedHuntStop::ROUND_LIMIT, .kills = 4, .rounds = 2},
+            .steps = "verify travel clear clear "},
         {.name = "Existing power resumes clearing without making another sandwich",
             .limits = {.max_rounds = 2, .use_existing_power = true}, .prepare_ok = false,
             .expected = {.stop = IsolatedHuntStop::ROUND_LIMIT, .kills = 4, .rounds = 2},
