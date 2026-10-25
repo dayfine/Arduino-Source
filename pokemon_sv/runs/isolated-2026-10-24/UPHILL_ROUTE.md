@@ -7,14 +7,34 @@ of the bridge/tributary. On ascent: high rock wall to the left, lower terrain
 and drop-offs to the right. Do not cross the river or bridge. Leave a buffer
 before the bank and a margin from the wall.
 
+## Updated decision: fly back instead of walking downhill
+
+User proposed replacing the return walk with a flight to the nearest fly point.
+Prioritize ascent -> guarded flight back to Central -> re-align -> next ascent.
+A downhill route is no longer a prerequisite. Measure flight overhead in the
+next live test; do not claim it is faster before measuring.
+
+Existing shared helpers in Programs/PokemonSV_WorldNavigation.cpp:
+- fly_to_visible_closest_flypoint_cur_zoom_level: select closest visible icon to
+  map center at current zoom, with FlyPoint::POKECENTER or FAST_TRAVEL filter.
+- fly_to_closest_pokecenter_on_map: broader center search with zoom/retry logic.
+These are map-visible candidates, not a global geographic nearest-point search.
+Open/recenter the map on the player and verify Central's name before confirming;
+never allow a different nearby center simply because it is closest visible.
+The prototype's travel_to_isolated_hunt(..., from_zero_gate=false) already
+combines nearest-center selection and the Central two-name-read flight gate.
+Reuse it for end-of-ascent reset, retaining battle/refusal/shiny stop policy and
+meal expiry checks. Test absent/occluded center, wrong name, failed landing and
+arrival/reanchor failure. Flight-back from upper endpoint remains unverified.
+
 ## Alternatives discussed
 
 1. Broad roaming (prototype four-leg square already exists, not a calibrated route).
 2. Follow the dirt path (bends/drift require feedback).
 3. Other movement patterns.
 4. Vision-follow individual targets (more detection/steering work).
-5. Uphill corridor out-and-back, short movement + Lets Go pauses. Prioritize this
-   candidate; first prove a return before repeated loops. Heading feedback and
+5. Uphill corridor with short movement + Lets Go pauses. Prioritize ascent
+   followed by a verified flight reset to Central, per updated decision above. Heading feedback and
    periodic reanchoring are still needed; inverse timed inputs are not proof of
    returning to the same position.
 
@@ -83,7 +103,7 @@ and selected screenshots are committed. No recording loop is left running.
 1. Native tests for route policy at an actions seam: bounded movement segments,
    Lets Go waits, marker missing/arrival, no progress, time/meal expiry, refusal
    and battle interruption; no further movement/reset after unresolved refusal.
-2. Reuse shared advance-and-clear. Add explicit ascent/turnaround/return states,
+2. Reuse shared advance-and-clear. Add explicit ascent/flight-reset/reanchor states,
    per-leg caps and drift/reanchor handling; no unlimited blind walking or
    four-direction square for this corridor. Keep fixed start and heading setup.
 3. Reuse/extract marker alignment and log marker presence, leg, movement ms,
@@ -91,7 +111,7 @@ and selected screenshots are committed. No recording loop is left running.
 4. Offline replay marker detection on actual route screenshots. Build signed
    app, native tests and incremental lint. Keep helper outside signed bundle.
 5. Next live run: verify new automatic power panel gate and Central candidate
-   flight, align at lower corridor, test one ascent + return under current Fire
+   flight, align at lower corridor, test one ascent + guarded flight reset under current Fire
    Lv2, check drift and interruption recovery. Only then repeat loops and measure
    species-confirmed progress/fresh-spawn throughput. Preserve shinies/refusals.
 
