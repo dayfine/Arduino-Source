@@ -70,6 +70,11 @@ the same two things:
    what the route needs (§7.6); shortcuts such as the Nugget Bridge money
    loop are options.
 
+**What reviewers should expect:** about 30 PRs, most 200–600 lines, in
+the order of §7.7. The first eight (shared run flow and tile movement) stand
+on their own and help SV and BDSP whether or not the FireRed program goes
+ahead.
+
 The rest of the doc gives the evidence (§2, §4), the proposed interfaces and
 PR sequence (§3, §5), feedback for the BDSP draft (§6) and the FireRed plan
 (§7).
@@ -649,19 +654,61 @@ Consequences:
   fails is a `UserSetupError` at start, not a failure hours in.
 - The planner and the table are pure logic, so they get unit tests.
 
-### 7.7 Milestones
+### 7.7 PR plan for reviewers
 
-| M | Deliverable | Rough size | Validation |
-|---|---|---|---|
-| F0 | Run-flow prework P1–P5 (SV) | ~1k moved, ~400 new incl. tests | SV AutoStory smoke run of a few checkpoints |
-| F1 | Shared tile path + FRLG adapter; E4 farmer switched to it | ~800 | unit tests; E4 farmer run unchanged |
-| F2 | FRLG overworld/facing detectors, walk interrupts, trainer battle handler | ~1.5k | screenshot tests; scripted fakes |
-| F3 | FRLG AutoStory program shell (options, hooks, registries) + segment 00–01 pilot | ~1.5k | live: new game → Boulder Badge, each checkpoint ×3 from its save |
-| F4 | Route-planning tool (offline) and segments 02–04 | ~2k | live per checkpoint |
-| F5 | Segments 05–07 (puzzles) | ~2k | live |
-| F6 | Segments 08–10, optional segments, money top-up | ~2k | full run |
+Reviewers should know up front what is coming. The whole plan is about 30
+PRs. Most are 200–600 changed lines, each does one thing, and each says what
+to read first. Upstream allows two open PRs from us at a time, so they arrive
+in order; the rest wait as drafts on the fork.
 
-Decide after F3 using measured lines and Switch hours per checkpoint.
+| # | PR | Depends on | Kind | Size (lines) | What the reviewer reads |
+|---|---|---|---|---|---|
+| **Run flow (SV, no behaviour change)** | | | | | |
+| R1 | Shared start/end select databases | — | move | ~150 | `--color-moved`; same slugs and labels |
+| R2 | Story range maths + tests | R1 | move + tests | ~200 | the pure function and its table test |
+| R3 | Shared `AutoStoryStats` | — | move | ~80 | stat keys unchanged |
+| R4 | Retry core behind hooks + tests | R3 | move + new | ~400 (half tests) | §3.2 list of kept behaviours; SV adapters |
+| R5 | Dev harness out of the SV program class | — | move | ~300, mostly a deleted dead block | `--color-moved` |
+| **Tile movement (shared)** | | | | | |
+| T1 | Tile-path executor + interrupt policy + tests | — | new | ~500 (half tests) | result types, resume bookkeeping |
+| T2 | FRLG adapter; Elite Four farmer uses it | T1 | move + new | ~300 | walker moved out of `EliteFourFarmer.cpp`; farmer unchanged on hardware |
+| T3 | Landmark alignment loop + tests | T1 | new | ~300 | control law against scripted fixes |
+| **FRLG detectors (one per PR, images in CommandLineTests)** | | | | | |
+| D1 | Overworld detector | — | new | ~150 + images | detector + screenshot tests |
+| D2 | Facing detector | D1 | new | ~150 + images | same |
+| D3 | Trainer spotting / item pickup watchers | — | new | ~150 + images | same |
+| D4 | New-game screens and naming keyboard | — | new | ~200 + images | same |
+| **FRLG building blocks** | | | | | |
+| B1 | Walk interrupts for FRLG (battle, dialog, item) | T2, D1, D3 | new | ~300 | resolve() paths; fakes |
+| B2 | Trainer battle handler + tests | — | new | ~500 (half tests) | decisions with scripted fakes |
+| B3 | Field moves: teach HM, Cut/Surf/Strength, Bike | D1 | new | ~300 | menus; hardware run |
+| B4 | Mart purchases | — | new | ~250 | buy list; hardware run |
+| **FRLG AutoStory** | | | | | |
+| S0 | Program shell: options, hooks, registries, requirements check | R1–R4 | new | ~500 | options; start-up checks; tests of the requirements plan |
+| S1–S11 | One PR per segment (00 … 10) | S0, B1–B4 | new + path data | ~500–900 each | checkpoint list, start/end states, the paths as data; hardware runs of each checkpoint |
+
+Notes:
+
+- R1–R5 and T1–T3 are useful on their own (SV and BDSP gain from them), so
+  they can be reviewed before anyone decides on the FRLG program.
+- Segment PRs are mostly path data and short checkpoint functions. Paths
+  are planned offline from the decomp; the planner stays outside the repo
+  unless reviewers want it under `devtools/`.
+- Optional features (Nugget Bridge top-up, Retro Mail duplication) come as
+  separate small PRs after S0, so they never hold up a segment.
+
+Milestones, for our own tracking:
+
+| M | PRs | Validation |
+|---|---|---|
+| F0 | R1–R5 | SV AutoStory smoke run of a few checkpoints |
+| F1 | T1–T3 | unit tests; Elite Four farmer unchanged on hardware |
+| F2 | D1–D4, B1–B4 | screenshot tests, fakes, short hardware runs |
+| F3 | S0, S1–S2 (pilot: new game → Boulder Badge) | each checkpoint ×3 from its save |
+| F4–F6 | S3–S11 | each checkpoint from its save, then full runs |
+
+Decide whether to go past F3 using the measured lines and Switch hours per
+checkpoint.
 
 ## 8. Process
 
