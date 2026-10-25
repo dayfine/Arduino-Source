@@ -53,6 +53,7 @@ private:
 
     enum class Start{
         HUNT_FROM_ZERO_GATE,
+        EXISTING_POWER_FROM_ZERO_GATE,
         PREPARED_SPOT,
         CENTRAL_PLAZA,
         RETURN_TO_ZERO_GATE,
@@ -62,6 +63,7 @@ private:
     EnumDropdownOption<Start> START;
     IsolatedHuntTable HUNTS;
     IsolatedHuntSandwichOption SANDWICH_OPTIONS;
+    SimpleIntegerOption<uint16_t> EXISTING_POWER_SECONDS;
     BooleanCheckBoxOption PATCH_VERIFIED;
     SimpleIntegerOption<uint16_t> RUN_SECONDS;
     SimpleIntegerOption<uint16_t> MAX_ROUNDS;

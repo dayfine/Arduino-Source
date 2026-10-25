@@ -19,6 +19,7 @@ struct LoopCase{
     bool acquired = false;
     bool pending_battle = false;
     bool pending_refusal = false;
+    uint64_t reset_ms = 0;
     uint64_t verify_ms = 0;
     uint64_t travel_ms = 0;
     IsolatedHuntBattleResult battle = IsolatedHuntBattleResult::STOP;
@@ -30,7 +31,7 @@ class ScriptedHunt : public IsolatedHuntActions{
 public:
     ScriptedHunt(const LoopCase& test) : m_test(test){}
     std::string steps;
-    virtual bool reset_start(const IsolatedHuntRequest&) override{ steps += "start "; return m_test.start_ok; }
+    virtual bool reset_start(const IsolatedHuntRequest&) override{ steps += "start "; m_clock += m_test.reset_ms; return m_test.start_ok; }
     virtual bool prepare_sandwich(const IsolatedHuntRequest&) override{ steps += "sandwich "; return m_test.prepare_ok; }
     virtual bool verify_meal_power(const IsolatedHuntRequest&) override{
         steps += "verify "; m_clock += m_test.verify_ms; return m_test.power_ok;
@@ -246,8 +247,31 @@ std::vector<LoopCase> power_cases(){
     };
 }
 
+std::vector<LoopCase> resume_cases(){
+    return {
+        {.name = "Existing power resumes clearing without making another sandwich",
+            .limits = {.max_rounds = 2, .use_existing_power = true}, .prepare_ok = false,
+            .expected = {.stop = IsolatedHuntStop::ROUND_LIMIT, .kills = 4, .rounds = 2},
+            .steps = "start verify travel clear clear "},
+        {.name = "Resume rejects missing or wrong active power without remaking",
+            .limits = {.max_rounds = 2, .use_existing_power = true}, .power_ok = false,
+            .expected = {.stop = IsolatedHuntStop::POWER_UNVERIFIED}, .steps = "start verify "},
+        {.name = "Resume uses remaining power budget including verification and travel",
+            .limits = {.max_rounds = 2, .power_duration_ms = 500, .use_existing_power = true}, .travel_ms = 1000,
+            .expected = {.stop = IsolatedHuntStop::POWER_EXPIRED}, .steps = "start verify travel "},
+        {.name = "Resume still dispatches the Central corridor",
+            .limits = {.max_rounds = 2, .ascent = {.enabled = true}, .use_existing_power = true},
+            .expected = {.stop = IsolatedHuntStop::MARKER_MISSING}, .steps = "start verify travel "},
+        {.name = "Resume counts Zero Gate realignment against remaining power",
+            .limits = {.max_rounds = 2, .power_duration_ms = 500, .use_existing_power = true}, .reset_ms = 1000,
+            .expected = {.stop = IsolatedHuntStop::POWER_EXPIRED}, .steps = "start verify travel "},
+    };
+}
+
 std::vector<LoopCase> loop_cases(){
     auto tests = clearing_cases();
+    const auto resume = resume_cases();
+    tests.insert(tests.end(), resume.begin(), resume.end());
     const auto battles = battle_cases();
     tests.insert(tests.end(), battles.begin(), battles.end());
     const auto limits = limit_cases();

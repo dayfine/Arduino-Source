@@ -111,13 +111,17 @@ HuntSetup setup_hunt(const IsolatedHuntRequest& request, const IsolatedHuntLimit
         limits.max_rounds == 0 || limits.max_empty_rounds == 0 || limits.duration_ms == 0 || limits.power_duration_ms == 0){
         return {{.stop = IsolatedHuntStop::INVALID_PLAN}};
     }
+    const uint64_t setup_started = actions.now_ms();
+    if (limits.use_existing_power){
+        actions.set_deadlines(setup_started + limits.power_duration_ms, UINT64_MAX);
+    }
     if (!actions.reset_start(request)){
         return {failed_stage(request, actions, IsolatedHuntStop::START_FAILED)};
     }
-    if (!actions.prepare_sandwich(request)){
+    if (!limits.use_existing_power && !actions.prepare_sandwich(request)){
         return {failed_stage(request, actions, IsolatedHuntStop::SETUP_FAILED)};
     }
-    const uint64_t power_started = actions.now_ms();
+    const uint64_t power_started = limits.use_existing_power ? setup_started : actions.now_ms();
     actions.set_deadlines(power_started + limits.power_duration_ms, UINT64_MAX);
     if (!actions.verify_meal_power(request)){
         return {failed_stage(request, actions, IsolatedHuntStop::POWER_UNVERIFIED)};

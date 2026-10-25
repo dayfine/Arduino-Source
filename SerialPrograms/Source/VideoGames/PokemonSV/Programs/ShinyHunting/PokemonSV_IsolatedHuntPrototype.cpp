@@ -57,11 +57,13 @@ IsolatedHuntPrototype::IsolatedHuntPrototype()
     : LANGUAGE("<b>Game Language:</b>", IV_READER().languages(), LockMode::LOCK_WHILE_RUNNING, true)
     , START(
         "<b>Start:</b><br>Full hunt: start at Zero Gate as if just flown there, on foot. "
+        "Existing sandwich: finish the result screen, pack up the picnic and return to the Zero Gate overworld first. Set the conservative remaining power budget below. "
         "Meal Power and flight selection are automatic. Use manual controls only at the Central path prompt. Other modes are controls. Prepared spot: stand on foot, facing the target patch. "
         "Central Plaza: start as if just flown there; uses the existing Chargestone court approach. "
         "Chespin requires the Canyon diversity upgrade and a verified Grass spawn patch.",
         {
             {Start::HUNT_FROM_ZERO_GATE, "hunt-from-zero-gate", "Supervised hunt from Zero Gate"},
+            {Start::EXISTING_POWER_FROM_ZERO_GATE, "existing-power-zero-gate", "Resume from Zero Gate with existing sandwich"},
             {Start::PREPARED_SPOT, "prepared", "Prepared hunting spot (Chespin or Charcadet)"},
             {Start::CENTRAL_PLAZA, "central-plaza", "Central Plaza to Chargestone court"},
             {Start::RETURN_TO_ZERO_GATE, "return-zerogate", "Return from Area Zero to Zero Gate (travel only)"},
@@ -69,6 +71,10 @@ IsolatedHuntPrototype::IsolatedHuntPrototype()
         LockMode::LOCK_WHILE_RUNNING, Start::HUNT_FROM_ZERO_GATE
     )
     , SANDWICH_OPTIONS(&LANGUAGE)
+    , EXISTING_POWER_SECONDS("<b>Existing sandwich: remaining power budget (seconds):</b><br>Resume only. "
+        "Set below the in-game remaining time, allowing for recovery and leaving a safety margin. "
+        "Includes verification, flight and path setup. Power type and level are checked automatically; the timer is not read.",
+        LockMode::LOCK_WHILE_RUNNING, 300, 30, 1740)
     , PATCH_VERIFIED("<b>Central path inspected:</b><br>At the path pause, position the player on the demonstrated "
         "lower uphill corridor by Central, on foot. Set a destination marker below the river bank. Check only after matching terrain, heading and safe clearing bounds.",
         LockMode::UNLOCK_WHILE_RUNNING, false)
@@ -103,6 +109,7 @@ void IsolatedHuntPrototype::add_options(){
     PA_ADD_OPTION(START);
     PA_ADD_OPTION(HUNTS);
     PA_ADD_OPTION(SANDWICH_OPTIONS);
+    PA_ADD_OPTION(EXISTING_POWER_SECONDS);
     PA_ADD_OPTION(PATCH_VERIFIED);
     PA_ADD_OPTION(MAX_ROUNDS);
     PA_ADD_OPTION(RUN_SECONDS);
@@ -145,9 +152,13 @@ bool IsolatedHuntPrototype::run_one_hunt(SingleSwitchProgramEnvironment& env,
     const IsolatedHuntLimits limits{
         .max_rounds = MAX_ROUNDS, .max_empty_rounds = EMPTY_PASSES,
         .duration_ms = (uint64_t)RUN_SECONDS * 1000,
+        .power_duration_ms = START == Start::EXISTING_POWER_FROM_ZERO_GATE ? (uint64_t)EXISTING_POWER_SECONDS * 1000 : 29 * 60 * 1000,
         .ascent = {.enabled = request.location == IsolatedHuntLocation::WEST_PROVINCE_ONE_CENTRAL,
             .segments_per_ascent = ASCENT_SEGMENTS, .segment_ms = ASCENT_SEGMENT_MS, .clearing_wait_ms = ASCENT_CLEAR_MS},
+        .use_existing_power = START == Start::EXISTING_POWER_FROM_ZERO_GATE,
     };
+    env.console.log("Isolated setup: existing power=" + std::to_string(limits.use_existing_power) +
+        ", power budget ms=" + std::to_string(limits.power_duration_ms));
     const auto result = run_isolated_hunt(request, limits, actions);
     actions.report(request, result);
     if (!can_leave_isolated_hunt(result.stop)){
@@ -175,6 +186,9 @@ void IsolatedHuntPrototype::run_hunts(SingleSwitchProgramEnvironment& env, ProCo
     const auto plan = make_isolated_hunt_plan(HUNTS.snapshot());
     if (!plan.error.empty()){
         throw UserSetupError(env.logger(), plan.error);
+    }
+    if (START == Start::EXISTING_POWER_FROM_ZERO_GATE && plan.hunts.size() != 1){
+        throw UserSetupError(env.logger(), "Existing sandwich resume requires exactly one enabled hunt.");
     }
     if (LANGUAGE == Language::None){
         throw UserSetupError(env.logger(), "Select the game language before starting.");
@@ -310,7 +324,7 @@ bool IsolatedHuntPrototype::process_encounter(SingleSwitchProgramEnvironment& en
 }
 
 void IsolatedHuntPrototype::program(SingleSwitchProgramEnvironment& env, ProControllerContext& context){
-    if (START == Start::HUNT_FROM_ZERO_GATE){
+    if (START == Start::HUNT_FROM_ZERO_GATE || START == Start::EXISTING_POWER_FROM_ZERO_GATE){
         run_hunts(env, context);
         return;
     }
