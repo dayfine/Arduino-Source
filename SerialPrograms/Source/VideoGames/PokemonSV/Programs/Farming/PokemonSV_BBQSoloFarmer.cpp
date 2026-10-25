@@ -484,7 +484,10 @@ void BBQSoloFarmer::program(SingleSwitchProgramEnvironment& env, ProControllerCo
     if (!fly_to_overworld_from_map(env.program_info(), env.console, context, true)){
         throw UserSetupError(env.console, "No fly spot where the player stands. Start the program at Central Plaza.");
     }
-    reset_plaza_position();
+    //The fly spot can be any one, not only Central Plaza's: R16 started at Coastal
+    //Plaza and its first central_to_*() flight aimed from the wrong place for 7
+    //minutes. Flying from anywhere works from every fly spot.
+    stay_away_from_plaza(BBQ_OPTIONS.LANGUAGE);
 
     //Test a specific quest
     /*
