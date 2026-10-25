@@ -1,0 +1,8 @@
+ld: warning: building for macOS-26.0, but linking with dylib '/opt/homebrew/opt/tesseract/lib/libtesseract.5.dylib' which was built for newer version 26.6.2
+Power: English ordinary Fire level two: expected accepted=1, reads=2, close=1; read accepted=0, reads=0, close=0
+Traceback (most recent call last):
+  File "build-prep/run-isolated-native-tests.py", line 64, in <module>
+    subprocess.run([str(binary)], cwd=build, env=env, check=True)
+  File "/Library/Frameworks/Python.framework/Versions/3.8/lib/python3.8/subprocess.py", line 512, in run
+    raise CalledProcessError(retcode, process.args,
+subprocess.CalledProcessError: Command '['/Users/difan/Projects/Arduino-Source-isolated/build-prep/app/IsolatedTests']' returned non-zero exit status 1.
