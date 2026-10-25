@@ -291,6 +291,9 @@ IsolatedHuntBattleResult ConsoleIsolatedHuntActions::handle_battle(const Isolate
 }
 
 bool ConsoleIsolatedHuntActions::return_to_zero_gate(const IsolatedHuntRequest& request){
+    // The caller has accepted the stop policy. Hunt deadlines must not disable the bounded departure stage.
+    // Pending battle/refusal latches remain enforced by guard().
+    set_deadlines(UINT64_MAX, UINT64_MAX);
     bool arrived = false;
     const bool success = guard("return to Zero Gate", 180000ms,
         [&](ProControllerContext& context){
