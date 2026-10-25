@@ -66,6 +66,9 @@ private:
     SimpleIntegerOption<uint16_t> RUN_SECONDS;
     SimpleIntegerOption<uint16_t> MAX_ROUNDS;
     SimpleIntegerOption<uint8_t> EMPTY_PASSES;
+    SimpleIntegerOption<uint16_t> ASCENT_SEGMENTS;
+    SimpleIntegerOption<uint16_t> ASCENT_SEGMENT_MS;
+    SimpleIntegerOption<uint16_t> ASCENT_CLEAR_MS;
     EncounterBotCommonOptions ENCOUNTER_OPTIONS;
     EventNotificationsOption NOTIFICATIONS;
 };

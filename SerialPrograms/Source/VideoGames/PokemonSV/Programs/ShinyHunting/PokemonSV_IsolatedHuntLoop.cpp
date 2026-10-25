@@ -1,4 +1,5 @@
 #include "PokemonSV_IsolatedHuntLoop.h"
+#include "PokemonSV_IsolatedHuntCorridor.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -23,7 +24,14 @@ bool handle_battle_policy(const IsolatedHuntRequest& request, IsolatedHuntAction
 
 IsolatedHuntResult failed_stage(const IsolatedHuntRequest& request, IsolatedHuntActions& actions, IsolatedHuntStop reason){
     IsolatedHuntResult result{.stop = reason};
-    if (actions.battle_pending()){
+    if (actions.refusal_pending()){
+        result.refusals++;
+        if (!actions.acquire_refused_target(request)){
+            result.stop = IsolatedHuntStop::UNRESOLVED_REFUSAL;
+            return result;
+        }
+        handle_battle_policy(request, actions, result);
+    }else if (actions.battle_pending()){
         handle_battle_policy(request, actions, result);
     }
     return result;
@@ -92,6 +100,35 @@ bool expired(IsolatedHuntResult& result, const IsolatedHuntLimits& limits,
 
 }
 
+namespace{
+struct HuntSetup{
+    IsolatedHuntResult result;
+    uint64_t power_started = 0;
+};
+HuntSetup setup_hunt(const IsolatedHuntRequest& request, const IsolatedHuntLimits& limits, IsolatedHuntActions& actions){
+    if (!make_isolated_hunt_plan({request}).error.empty() ||
+        (limits.ascent.enabled && !valid_isolated_ascent(limits.ascent)) ||
+        limits.max_rounds == 0 || limits.max_empty_rounds == 0 || limits.duration_ms == 0 || limits.power_duration_ms == 0){
+        return {{.stop = IsolatedHuntStop::INVALID_PLAN}};
+    }
+    if (!actions.reset_start(request)){
+        return {failed_stage(request, actions, IsolatedHuntStop::START_FAILED)};
+    }
+    if (!actions.prepare_sandwich(request)){
+        return {failed_stage(request, actions, IsolatedHuntStop::SETUP_FAILED)};
+    }
+    const uint64_t power_started = actions.now_ms();
+    actions.set_deadlines(power_started + limits.power_duration_ms, UINT64_MAX);
+    if (!actions.verify_meal_power(request)){
+        return {failed_stage(request, actions, IsolatedHuntStop::POWER_UNVERIFIED)};
+    }
+    if (!actions.travel_to_anchor(request)){
+        return {failed_stage(request, actions, IsolatedHuntStop::TRAVEL_FAILED)};
+    }
+    return {{.stop = IsolatedHuntStop::ROUND_LIMIT}, power_started};
+}
+}
+
 bool can_leave_isolated_hunt(IsolatedHuntStop stop){
     return stop == IsolatedHuntStop::ROUND_LIMIT || stop == IsolatedHuntStop::TIME_LIMIT ||
         stop == IsolatedHuntStop::POWER_EXPIRED;
@@ -101,25 +138,15 @@ IsolatedHuntResult run_isolated_hunt(
     const IsolatedHuntRequest& request, const IsolatedHuntLimits& limits,
     IsolatedHuntActions& actions
 ){
-    if (!make_isolated_hunt_plan({request}).error.empty() ||
-        limits.max_rounds == 0 || limits.max_empty_rounds == 0 || limits.duration_ms == 0 || limits.power_duration_ms == 0){
-        return {.stop = IsolatedHuntStop::INVALID_PLAN};
-    }
-    if (!actions.reset_start(request)){
-        return failed_stage(request, actions, IsolatedHuntStop::START_FAILED);
-    }
-    if (!actions.prepare_sandwich(request)){
-        return failed_stage(request, actions, IsolatedHuntStop::SETUP_FAILED);
-    }
-    const uint64_t power_started = actions.now_ms();
-    if (!actions.verify_meal_power(request)){
-        return failed_stage(request, actions, IsolatedHuntStop::POWER_UNVERIFIED);
-    }
-    if (!actions.travel_to_anchor(request)){
-        return failed_stage(request, actions, IsolatedHuntStop::TRAVEL_FAILED);
-    }
+    const auto setup = setup_hunt(request, limits, actions);
+    if (setup.result.stop != IsolatedHuntStop::ROUND_LIMIT){ return setup.result; }
+    const uint64_t power_started = setup.power_started;
     IsolatedHuntResult result{.stop = IsolatedHuntStop::ROUND_LIMIT};
     const uint64_t started = actions.now_ms();
+    actions.set_deadlines(power_started + limits.power_duration_ms, started + limits.duration_ms);
+    if (limits.ascent.enabled){
+        return run_isolated_corridor(request, limits, actions, power_started, started);
+    }
     uint8_t empty = 0;
     while (result.rounds < limits.max_rounds){
         if (expired(result, limits, actions.now_ms(), started, power_started)){

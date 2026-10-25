@@ -18,6 +18,7 @@ struct LoopCase{
     bool reanchor_ok = true;
     bool acquired = false;
     bool pending_battle = false;
+    bool pending_refusal = false;
     uint64_t verify_ms = 0;
     uint64_t travel_ms = 0;
     IsolatedHuntBattleResult battle = IsolatedHuntBattleResult::STOP;
@@ -51,6 +52,7 @@ public:
         return m_test.battle;
     }
     virtual bool battle_pending() const override{ return m_test.pending_battle; }
+    virtual bool refusal_pending() const override{ return m_test.pending_refusal; }
     virtual uint64_t now_ms() const override{ return m_clock; }
 private:
     const LoopCase& m_test;
@@ -178,6 +180,15 @@ std::vector<LoopCase> setup_cases(){
 
 std::vector<LoopCase> interruption_cases(){
     return {
+        {.name = "Setup refusal cannot reset or depart", .prepare_ok = false, .pending_refusal = true,
+            .expected = {.stop = IsolatedHuntStop::UNRESOLVED_REFUSAL, .refusals = 1},
+            .steps = "start sandwich acquire "},
+        {.name = "Central corridor dispatch checks marker before movement",
+            .limits = {.max_rounds = 2, .ascent = {.enabled = true}},
+            .expected = {.stop = IsolatedHuntStop::MARKER_MISSING}, .steps = "start sandwich verify travel "},
+        {.name = "Invalid corridor stops before ingredients",
+            .limits = {.max_rounds = 2, .ascent = {.enabled = true, .segment_ms = 0}},
+            .expected = {.stop = IsolatedHuntStop::INVALID_PLAN}, .steps = ""},
         {
             .name = "Verification battle stops before flight selection", .power_ok = false, .pending_battle = true,
             .expected = {.stop = IsolatedHuntStop::BATTLE_POLICY, .encounters = 1},
@@ -297,6 +308,9 @@ UnitTestResult test_isolated_hunt_exit_policy(){
         {.stop = IsolatedHuntStop::POWER_UNVERIFIED, .expected = false},
         {.stop = IsolatedHuntStop::INVALID_PLAN, .expected = false},
         {.stop = IsolatedHuntStop::START_FAILED, .expected = false},
+        {.stop = IsolatedHuntStop::MARKER_MISSING, .expected = false},
+        {.stop = IsolatedHuntStop::REANCHOR_FAILED, .expected = false},
+        {.stop = IsolatedHuntStop::CLEARING_TIMEOUT, .expected = false},
     };
     for (const auto& test : cases){
         const bool actual = can_leave_isolated_hunt(test.stop);

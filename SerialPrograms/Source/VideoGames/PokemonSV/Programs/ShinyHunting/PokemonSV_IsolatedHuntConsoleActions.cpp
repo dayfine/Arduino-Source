@@ -16,6 +16,7 @@
 #include "VideoGames/PokemonSV/Programs/PokemonSV_MenuNavigation.h"
 #include "VideoGames/PokemonSV/Programs/PokemonSV_WorldNavigation.h"
 #include "PokemonSV_IsolatedHuntTravel.h"
+#include "PokemonSV_IsolatedHuntCorridor.h"
 #include "PokemonSV_IsolatedHuntConsoleActions.h"
 
 namespace PokemonAutomation{
@@ -51,6 +52,9 @@ const char* stop_name(IsolatedHuntStop stop){
     case IsolatedHuntStop::NO_PROGRESS: return "no progress";
     case IsolatedHuntStop::REFRESH_FAILED: return "refresh failed";
     case IsolatedHuntStop::POWER_EXPIRED: return "sandwich power expired";
+    case IsolatedHuntStop::MARKER_MISSING: return "destination marker missing";
+    case IsolatedHuntStop::REANCHOR_FAILED: return "marker reanchor failed";
+    case IsolatedHuntStop::CLEARING_TIMEOUT: return "lead still clearing at observation cap";
     }
     return "unknown";
 }
@@ -94,19 +98,23 @@ bool ConsoleIsolatedHuntActions::guard(const std::string& stage, Milliseconds ti
     phase(stage);
     const auto started = now_ms();
     m_env.console.log("Isolated stage begin: stage=" + stage + ", timeout ms=" + std::to_string(timeout.count()));
-    m_pending_battle = false;
+    if (m_pending_battle || m_pending_refusal){ return false; }
+    timeout = Milliseconds(isolated_stage_timeout_ms(started, m_deadline, (uint64_t)timeout.count()));
+    if (timeout <= 0ms){ return false; }
     NormalBattleMenuWatcher battle(COLOR_RED);
+    SweatBubbleWatcher refusal(COLOR_GREEN);
     StageDeadline deadline(timeout);
     try{
         const int result = run_until<ProControllerContext>(
             m_env.console, m_context,
-            [&](ProControllerContext& context){ command(context); }, {battle, deadline}
+            [&](ProControllerContext& context){ command(context); }, {battle, refusal, deadline}
         );
         m_pending_battle = result == 0;
-        if (result == 1){
+        m_pending_refusal = result == 1;
+        if (result == 2){
             m_env.console.log("Isolated stage timed out: " + stage, COLOR_RED);
         }
-        const std::string outcome = result < 0 ? "completed" : result == 0 ? "battle" : "timeout";
+        const std::string outcome = result < 0 ? "completed" : result == 0 ? "battle" : result == 1 ? "refusal" : "timeout";
         m_env.console.log("Isolated stage end: stage=" + stage + ", outcome=" + outcome +
             ", elapsed ms=" + std::to_string(now_ms() - started));
         return result < 0;
@@ -176,13 +184,22 @@ bool ConsoleIsolatedHuntActions::travel_to_anchor(const IsolatedHuntRequest& req
                 request.location, m_initial_travel, m_language);
             if (arrived){
                 if (request.location == IsolatedHuntLocation::WEST_PROVINCE_ONE_CENTRAL){
-                    arrived = m_verifier && m_verifier(context, request, IsolatedHuntVerification::CENTRAL_PATH);
+                    if (m_initial_travel){
+                        arrived = m_verifier && m_verifier(context, request, IsolatedHuntVerification::CENTRAL_PATH);
+                    }
+                    m_marker_arrived = false;
                 }else{
                     approach_isolated_patch(m_env.console, context, request.location);
                 }
             }
         }
     );
+    if (success && arrived && !m_initial_travel){
+        m_stats.refreshes++;
+        m_ascent_reset++;
+        m_ascent_leg = 0;
+        m_env.console.log("Isolated ascent: stage=flight-reset, reset=" + std::to_string(m_ascent_reset) + ", landed=1");
+    }
     if (success && arrived && m_initial_travel){
         m_hunt_started = now_ms();
         m_initial_travel = false;
@@ -232,24 +249,7 @@ IsolatedHuntRound ConsoleIsolatedHuntActions::clear_round(const IsolatedHuntRequ
 
 bool ConsoleIsolatedHuntActions::refresh_spawns(const IsolatedHuntRequest& request){
     m_env.console.log("Isolated refresh: reason=empty round, count=" + std::to_string(m_empty_rounds));
-    bool arrived = false;
-    const bool success = guard("refly and refresh " + request.pokemon, 240000ms,
-        [&](ProControllerContext& context){
-            arrived = travel_to_isolated_hunt(m_env.program_info(), m_env.console, context, request.location, false, m_language);
-            if (arrived){
-                if (request.location == IsolatedHuntLocation::WEST_PROVINCE_ONE_CENTRAL){
-                    arrived = m_verifier && m_verifier(context, request, IsolatedHuntVerification::CENTRAL_PATH);
-                }else{
-                    approach_isolated_patch(m_env.console, context, request.location);
-                }
-            }
-        }
-    );
-    if (success && arrived){
-        m_stats.refreshes++;
-        update_elapsed();
-    }
-    return success && arrived;
+    return travel_to_anchor(request);
 }
 
 bool ConsoleIsolatedHuntActions::acquire_refused_target(const IsolatedHuntRequest&){
@@ -264,12 +264,14 @@ bool ConsoleIsolatedHuntActions::acquire_refused_target(const IsolatedHuntReques
         {battle}
     );
     m_pending_battle = result == 0;
+    m_pending_refusal = !m_pending_battle;
     return m_pending_battle;
 }
 
 IsolatedHuntBattleResult ConsoleIsolatedHuntActions::handle_battle(const IsolatedHuntRequest& request){
     phase("shared encounter handling: " + request.pokemon);
     m_pending_battle = false;
+    m_pending_refusal = false;
     m_sensors.throw_if_no_sound();
     m_stats.m_encounters++;
     m_encounters->encounter_rate_tracker().report_encounter();

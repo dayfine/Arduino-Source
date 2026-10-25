@@ -7,14 +7,25 @@ namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonSV{
 
+enum class IsolatedMarkerState{ MISSING, PRESENT, ARRIVED };
+
 enum class IsolatedHuntVerification{ MEAL_POWER, CENTRAL_PATH };
 enum class IsolatedHuntEvent{ CLEAR, REFUSAL, BATTLE };
 enum class IsolatedHuntBattleResult{ CONTINUE, STOP, FAILED };
-enum class IsolatedHuntStop{ ROUND_LIMIT, INVALID_PLAN, START_FAILED, SETUP_FAILED, POWER_UNVERIFIED, TRAVEL_FAILED, UNRESOLVED_REFUSAL, BATTLE_POLICY, BATTLE_FAILED, TIME_LIMIT, NO_PROGRESS, REFRESH_FAILED, POWER_EXPIRED };
+enum class IsolatedHuntStop{ ROUND_LIMIT, INVALID_PLAN, START_FAILED, SETUP_FAILED, POWER_UNVERIFIED, TRAVEL_FAILED, UNRESOLVED_REFUSAL, BATTLE_POLICY, BATTLE_FAILED, TIME_LIMIT, NO_PROGRESS, REFRESH_FAILED, POWER_EXPIRED, MARKER_MISSING, REANCHOR_FAILED, CLEARING_TIMEOUT };
 
 struct IsolatedHuntRound{
     uint64_t kills = 0;
     IsolatedHuntEvent event = IsolatedHuntEvent::CLEAR;
+    bool budget_exhausted = false;
+    bool clearing_busy = false;
+};
+
+struct IsolatedAscentLimits{
+    bool enabled = false;
+    uint16_t segments_per_ascent = 6;
+    uint16_t segment_ms = 600;
+    uint16_t clearing_wait_ms = 5000;
 };
 
 struct IsolatedHuntLimits{
@@ -22,6 +33,7 @@ struct IsolatedHuntLimits{
     uint8_t max_empty_rounds = 3;
     uint64_t duration_ms = 120000;
     uint64_t power_duration_ms = 29 * 60 * 1000;
+    IsolatedAscentLimits ascent;
 };
 
 struct IsolatedHuntResult{
@@ -48,6 +60,14 @@ public:
     virtual bool acquire_refused_target(const IsolatedHuntRequest& request) = 0;
     virtual IsolatedHuntBattleResult handle_battle(const IsolatedHuntRequest& request) = 0;
     virtual bool battle_pending() const{ return false; }
+    virtual bool refusal_pending() const{ return false; }
+    virtual IsolatedMarkerState marker_state(){ return IsolatedMarkerState::MISSING; }
+    virtual bool realign_marker(){ return false; }
+    virtual bool reset_ascent(const IsolatedHuntRequest& request, const char*){ return travel_to_anchor(request); }
+    virtual IsolatedHuntRound advance_ascent(const IsolatedHuntRequest& request, const IsolatedAscentLimits&){
+        return clear_round(request);
+    }
+    virtual void set_deadlines(uint64_t, uint64_t){}
     // Monotonic time; setup and initial travel are excluded from the hunt budget.
     virtual uint64_t now_ms() const = 0;
 };

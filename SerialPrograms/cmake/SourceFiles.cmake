@@ -2471,7 +2471,9 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonSV/PokemonSV_Settings.cpp
     Source/VideoGames/PokemonSV/PokemonSV_Settings.h
     Source/VideoGames/PokemonSV/PokemonSV_IsolatedHuntLoop_Tests.cpp
+    Source/VideoGames/PokemonSV/PokemonSV_IsolatedHuntCorridor_Tests.cpp
     Source/VideoGames/PokemonSV/PokemonSV_IsolatedHuntLoop_Tests.h
+    Source/VideoGames/PokemonSV/PokemonSV_IsolatedHuntCorridor_Tests.h
     Source/VideoGames/PokemonSV/Options/PokemonSV_IsolatedHuntTable.cpp
     Source/VideoGames/PokemonSV/Options/PokemonSV_IsolatedHuntTable.h
     Source/VideoGames/PokemonSV/Options/PokemonSV_IsolatedHuntSandwichOption.cpp
@@ -2491,6 +2493,7 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonSV/Programs/ShinyHunting/PokemonSV_IsolatedHuntTravel.h
     Source/VideoGames/PokemonSV/Programs/ShinyHunting/PokemonSV_IsolatedHuntStats.h
     Source/VideoGames/PokemonSV/Programs/ShinyHunting/PokemonSV_IsolatedHuntConsoleActions.cpp
+    Source/VideoGames/PokemonSV/Programs/ShinyHunting/PokemonSV_IsolatedHuntAscentConsole.cpp
     Source/VideoGames/PokemonSV/Programs/ShinyHunting/PokemonSV_IsolatedHuntConsoleActions.h
     Source/VideoGames/PokemonSV/Programs/ShinyHunting/PokemonSV_IsolatedHuntEncounter.cpp
     Source/VideoGames/PokemonSV/Programs/ShinyHunting/PokemonSV_IsolatedHuntEncounter.h
@@ -2701,6 +2704,8 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonSV/Programs/PokemonSV_Terarium.h
     Source/VideoGames/PokemonSV/Programs/PokemonSV_WorldNavigation.cpp
     Source/VideoGames/PokemonSV/Programs/PokemonSV_WorldNavigation.h
+    Source/VideoGames/PokemonSV/Programs/PokemonSV_MarkerNavigation.h
+    Source/VideoGames/PokemonSV/Programs/PokemonSV_MarkerNavigation.cpp
     Source/VideoGames/PokemonSV/Programs/Sandwiches/PokemonSV_IngredientSession.cpp
     Source/VideoGames/PokemonSV/Programs/Sandwiches/PokemonSV_IngredientSession.h
     Source/VideoGames/PokemonSV/Programs/Sandwiches/PokemonSV_SandwichMaker.cpp
@@ -2714,7 +2719,9 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonSV/Programs/ShinyHunting/PokemonSV_ShinyHunt-AreaZeroPlatform.cpp
     Source/VideoGames/PokemonSV/Programs/ShinyHunting/PokemonSV_ShinyHunt-AreaZeroPlatform.h
     Source/VideoGames/PokemonSV/Programs/ShinyHunting/PokemonSV_IsolatedHuntLoop.cpp
+    Source/VideoGames/PokemonSV/Programs/ShinyHunting/PokemonSV_IsolatedHuntCorridor.cpp
     Source/VideoGames/PokemonSV/Programs/ShinyHunting/PokemonSV_IsolatedHuntLoop.h
+    Source/VideoGames/PokemonSV/Programs/ShinyHunting/PokemonSV_IsolatedHuntCorridor.h
     Source/VideoGames/PokemonSV/Programs/ShinyHunting/PokemonSV_IsolatedHuntPlan.cpp
     Source/VideoGames/PokemonSV/Programs/ShinyHunting/PokemonSV_IsolatedHuntPlan.h
     Source/VideoGames/PokemonSV/Programs/ShinyHunting/PokemonSV_IsolatedHuntPrototype.cpp

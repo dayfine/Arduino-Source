@@ -31,6 +31,12 @@ public:
     virtual IsolatedHuntBattleResult handle_battle(const IsolatedHuntRequest& request) override;
     virtual bool battle_pending() const override{ return m_pending_battle; }
     virtual uint64_t now_ms() const override;
+    virtual bool refusal_pending() const override{ return m_pending_refusal; }
+    virtual IsolatedMarkerState marker_state() override;
+    virtual bool realign_marker() override;
+    virtual bool reset_ascent(const IsolatedHuntRequest& request, const char* reason) override;
+    virtual IsolatedHuntRound advance_ascent(const IsolatedHuntRequest& request, const IsolatedAscentLimits& limits) override;
+    virtual void set_deadlines(uint64_t power, uint64_t hunt) override;
     bool return_to_zero_gate(const IsolatedHuntRequest& request);
     void report(const IsolatedHuntRequest& request, const IsolatedHuntResult& result);
 private:
@@ -39,6 +45,7 @@ private:
     void roam(ProControllerContext& context, IsolatedHuntLocation location);
     void phase(const std::string& stage);
     void update_elapsed();
+    bool clearing_active() const;
 
     Verifier m_verifier;
     SingleSwitchProgramEnvironment& m_env;
@@ -54,6 +61,11 @@ private:
     uint16_t m_empty_rounds = 0;
     bool m_initial_travel = true;
     bool m_pending_battle = false;
+    bool m_pending_refusal = false;
+    bool m_marker_arrived = false;
+    uint64_t m_deadline = UINT64_MAX;
+    uint16_t m_ascent_leg = 0;
+    uint16_t m_ascent_reset = 0;
     uint64_t m_hunt_started = 0;
     uint64_t m_hunt_seconds_before;
 };

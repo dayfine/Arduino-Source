@@ -144,8 +144,8 @@ void walk_forward_until_dialog(
 );
 
 // walk forward while using lets go to clear the path
-// forward_duration: number of ticks to walk forward
-// y = 0: walks forward. y = 128: stand in place. y = 255: walk backwards (towards camera)
+// forward_duration: duration in milliseconds
+// Signed joystick axis: y = -1 forward, y = 0 neutral, y = +1 backward (towards camera).
 // duration_between_lets_go: milliseconds between firing off Let's go to clear the path from wild pokemon
 // delay_after_lets_go: milliseconds to wait after firing off Let's go.
 void walk_forward_while_clear_front_path(

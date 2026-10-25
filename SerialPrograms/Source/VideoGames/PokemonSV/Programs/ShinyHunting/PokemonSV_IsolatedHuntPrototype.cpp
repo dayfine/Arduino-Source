@@ -40,7 +40,7 @@ IsolatedHuntPrototype_Descriptor::IsolatedHuntPrototype_Descriptor()
     : SingleSwitchProgramDescriptor(
         "PokemonSV:IsolatedHuntPrototype",
         STRING_POKEMON + " SV", "Isolated Hunt Prototype",
-        "", "Supervised target-specific sandwich and bounded hunting. Start at Zero Gate with a healthy lead. Checks Meal Powers and Central before clearing. Match the path at its prompt; Central return is manual.",
+        "", "Supervised target-specific sandwich and bounded hunting. Start at Zero Gate with a healthy lead. Checks Meal Powers and Central before clearing. Set an uphill destination marker and match the lower corridor at its prompt. Bounded ascents fly back to name-verified Central. Route geometry needs field calibration.",
         ProgramControllerClass::StandardController_NoRestrictions,
         FeedbackType::VIDEO_AUDIO,
         AllowCommandsWhenRunning::ENABLE_COMMANDS
@@ -70,7 +70,7 @@ IsolatedHuntPrototype::IsolatedHuntPrototype()
     )
     , SANDWICH_OPTIONS(&LANGUAGE)
     , PATCH_VERIFIED("<b>Central path inspected:</b><br>At the path pause, position the player on the demonstrated "
-        "Charcadet path by Central. Check only after matching terrain and safe clearing bounds.",
+        "lower uphill corridor by Central, on foot. Set a destination marker below the river bank. Check only after matching terrain, heading and safe clearing bounds.",
         LockMode::UNLOCK_WHILE_RUNNING, false)
     , RUN_SECONDS(
         "<b>Clearing time limit (seconds):</b><br>Starts after the approach. Stops between passes; each pass takes at most about 17 seconds.",
@@ -81,6 +81,10 @@ IsolatedHuntPrototype::IsolatedHuntPrototype()
         "<b>Stop after consecutive passes without a kill:</b><br>Stops for inspection without resetting nearby spawns.",
         LockMode::LOCK_WHILE_RUNNING, 3, 1, 10
     )
+    , ASCENT_SEGMENTS("<b>Central ascent: maximum segments before flight reset:</b><br>Conservative cap; does not prove arrival or safe geometry.",
+        LockMode::LOCK_WHILE_RUNNING, 6, 1, 30)
+    , ASCENT_SEGMENT_MS("<b>Central ascent: forward segment (ms):</b>", LockMode::LOCK_WHILE_RUNNING, 600, 100, 2000)
+    , ASCENT_CLEAR_MS("<b>Central ascent: clearing wait (ms):</b>", LockMode::LOCK_WHILE_RUNNING, 5000, 2000, 15000)
     , NOTIFICATIONS({
         &ENCOUNTER_OPTIONS.NOTIFICATION_NONSHINY,
         &ENCOUNTER_OPTIONS.NOTIFICATION_SHINY,
@@ -103,6 +107,9 @@ void IsolatedHuntPrototype::add_options(){
     PA_ADD_OPTION(MAX_ROUNDS);
     PA_ADD_OPTION(RUN_SECONDS);
     PA_ADD_OPTION(EMPTY_PASSES);
+    PA_ADD_OPTION(ASCENT_SEGMENTS);
+    PA_ADD_OPTION(ASCENT_SEGMENT_MS);
+    PA_ADD_OPTION(ASCENT_CLEAR_MS);
     PA_ADD_OPTION(ENCOUNTER_OPTIONS);
     PA_ADD_OPTION(NOTIFICATIONS);
 }
@@ -115,7 +122,7 @@ bool IsolatedHuntPrototype::verify_setup(VideoStream& stream, ProControllerConte
     }
     const auto started = current_time();
     PATCH_VERIFIED = false;
-    stream.log("SUPERVISED: match the demonstrated Central Charcadet path. Position safely, then check Central path inspected.", COLOR_BLUE);
+    stream.log("SUPERVISED: stand on foot at the lower Central uphill corridor, set a marker with a river buffer, and match the safe heading. Then check Central path inspected.", COLOR_BLUE);
     const WallClock deadline = current_time() + 110s;
     while (!PATCH_VERIFIED && current_time() < deadline){ context.wait_for(250ms); }
     const bool accepted = PATCH_VERIFIED;
@@ -138,6 +145,8 @@ bool IsolatedHuntPrototype::run_one_hunt(SingleSwitchProgramEnvironment& env,
     const IsolatedHuntLimits limits{
         .max_rounds = MAX_ROUNDS, .max_empty_rounds = EMPTY_PASSES,
         .duration_ms = (uint64_t)RUN_SECONDS * 1000,
+        .ascent = {.enabled = request.location == IsolatedHuntLocation::WEST_PROVINCE_ONE_CENTRAL,
+            .segments_per_ascent = ASCENT_SEGMENTS, .segment_ms = ASCENT_SEGMENT_MS, .clearing_wait_ms = ASCENT_CLEAR_MS},
     };
     const auto result = run_isolated_hunt(request, limits, actions);
     actions.report(request, result);
