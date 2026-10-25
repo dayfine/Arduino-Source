@@ -28,6 +28,9 @@ void return_to_plaza(const ProgramInfo& info, VideoStream& stream, ProController
 void stay_away_from_plaza(Language language);
 void ensure_at_plaza(const ProgramInfo& info, VideoStream& stream, ProControllerContext& context);
 void reset_plaza_position();
+//  After a flight onto the player's own fly spot: read the place banner and set
+//  whether the player is at Central Plaza. Without a readable banner, assume it is.
+void note_start_position(VideoStream& stream, ProControllerContext& context, Language language);
 
 // Thrown by map_move_cursor_fly() when it can't fly to its destination.
 // BBQ quests catch it to fail the current attempt instead of the program.

@@ -486,8 +486,9 @@ void BBQSoloFarmer::program(SingleSwitchProgramEnvironment& env, ProControllerCo
     }
     //The fly spot can be any one, not only Central Plaza's: R16 started at Coastal
     //Plaza and its first central_to_*() flight aimed from the wrong place for 7
-    //minutes. Flying from anywhere works from every fly spot.
-    stay_away_from_plaza(BBQ_OPTIONS.LANGUAGE);
+    //minutes. Away from Central, the first flight goes from anywhere; at Central,
+    //it must not, since the plaza's own icon is hidden under the player.
+    note_start_position(env.console, context, BBQ_OPTIONS.LANGUAGE);
 
     //Test a specific quest
     /*
