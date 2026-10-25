@@ -28,6 +28,7 @@
 #include "VideoGames/PokemonSV/Programs/Battles/PokemonSV_BasicCatcher.h"
 #include "VideoGames/PokemonSV/Programs/Battles/PokemonSV_Battles.h"
 #include "VideoGames/PokemonSV/Programs/PokemonSV_Terarium.h"
+#include "PokemonSV_BBQLab.h"
 #include "PokemonSV_BlueberryQuests.h"
 
 #include<vector>
@@ -1168,6 +1169,7 @@ void wild_battle_tera(
 
                     pbf_press_button(context, BUTTON_R, 160ms, 400ms);
                     pbf_press_button(context, BUTTON_A, 80ms, 400ms);
+                    bbq_lab_event(console, context, "tera_turn");
 
                     first_turn = false;
                 }

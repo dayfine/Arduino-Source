@@ -44,6 +44,8 @@
 #include "VideoGames/PokemonSV/Programs/ShinyHunting/PokemonSV_LetsGoTools.h"
 #include "VideoGames/PokemonSV/Programs/TeraRaids/PokemonSV_TeraRoutines.h"
 #include "VideoGames/PokemonSV/Programs/TeraRaids/PokemonSV_TeraBattler.h"
+#include "VideoGames/PokemonSV/Programs/Battles/PokemonSV_Battles.h"
+#include "PokemonSV_BBQLab.h"
 #include "VideoGames/PokemonSV/Programs/Farming/PokemonSV_BlueberryCatchPhoto.h"
 #include "VideoGames/PokemonSV/Programs/PokemonSV_Terarium.h"
 #include "Pokemon/Pokemon_SpeciesTypes.h"
@@ -1253,6 +1255,7 @@ bool send_out_and_look_around(
         return wait_until(console, context, timeout, { battle_menu }) == 0;
     };
 
+    bbq_lab_event(console, context, "route_done");
     if (try_battle(first_wait)){
         return true;
     }
@@ -1264,7 +1267,31 @@ bool send_out_and_look_around(
         }
     }
     console.log("Did not enter battle after looking around.");
+    bbq_lab_event(console, context, "no_battle");
     return false;
+}
+
+//Skip a day from a quest spot so its Pokemon respawn, then resume. In the lab's
+//leave-area variant, flee a wild Pokemon that attacks right after the skip (A5: before
+//6 of 14 flights out of Pride Rock).
+void skip_day_at_quest_spot(ConsoleHandle& console, ProControllerContext& context){
+    pbf_press_button(context, BUTTON_HOME, 160ms, GameSettings::instance().GAME_TO_HOME_DELAY1);
+    home_to_date_time(console, context, true);
+    roll_date_forward_1(console, context, true);
+    pbf_press_button(context, BUTTON_HOME, 160ms, ConsoleSettings::instance().SETTINGS_TO_HOME_DELAY0);
+    resume_game_from_home(console, context);
+    context.wait_for_all_requests();
+    bbq_lab_event(console, context, "day_skip_done");
+
+    if (!bbq_lab_flags().leave_area_before_day_skip){
+        return;
+    }
+    NormalBattleMenuWatcher battle_menu(COLOR_YELLOW);
+    if (wait_until(console, context, std::chrono::seconds(2), {battle_menu}) == 0){
+        console.log("A wild Pokemon attacked after the day skip. Fleeing.");
+        bbq_lab_event(console, context, "ambush");
+        run_from_battle(console, context);
+    }
 }
 
 //After a battle at Central Plaza: heal at the Pokemon Center every third battle and
@@ -1276,7 +1303,13 @@ void leave_quest_area(
     VideoStream& stream, ProControllerContext& context,
     const BBQOption& BBQ_OPTIONS
 ){
-    if (BBQ_OPTIONS.FLY_DIRECTLY){
+    const int fly_directly_override = bbq_lab_flags().fly_directly_override;
+    const bool fly_directly = fly_directly_override < 0 ? (bool)BBQ_OPTIONS.FLY_DIRECTLY : fly_directly_override == 1;
+    if (fly_directly){
+        if (bbq_lab_flags().leave_area_before_day_skip){
+            stream.log("Flying to the closest fly point so this spot reloads.");
+            fly_to_closest_pokecenter_on_map(info, stream, context);
+        }
         stream.log("Staying here. The next flight goes to its destination directly.");
         stay_away_from_plaza(BBQ_OPTIONS.LANGUAGE);
         return;
@@ -1364,9 +1397,22 @@ void quest_tera_self_defeat(
             //Any wild Pokemon counts, so go where a battle starts most reliably: Pride Rock,
             //the sneak-up route (12/12 battles since R11). The glide to Kleavor started a
             //battle 1/6 times in R10 and the Chargestone court 6/11.
-            central_to_pride_rock(info, console, context, BBQ_OPTIONS);
+            if (bbq_lab_flags().tera_self_at_chargestone){
+                //The R11/R12 route: the Chargestone battle court.
+                central_to_chargestone(info, console, context);
+                pbf_wait(context, 3000ms);
+                context.wait_for_all_requests();
 
-            battle_menu_detected = send_out_and_look_around(console, context, std::chrono::seconds(15), "a wild Pokemon");
+                pbf_press_button(context, BUTTON_L, 160ms, 400ms);
+                pbf_move_left_joystick(context, {0, +1}, 2000ms, 400ms);
+                pbf_move_left_joystick(context, {+1, 0}, 1440ms, 400ms);
+                pbf_press_button(context, BUTTON_L, 160ms, 400ms);
+
+                battle_menu_detected = send_out_and_look_around(console, context, std::chrono::seconds(6), "a wild Pokemon");
+            }else{
+                central_to_pride_rock(info, console, context, BBQ_OPTIONS);
+                battle_menu_detected = send_out_and_look_around(console, context, std::chrono::seconds(15), "a wild Pokemon");
+            }
         },
         {
             static_cast<VisualInferenceCallback&>(encounter_watcher),
@@ -1382,8 +1428,10 @@ void quest_tera_self_defeat(
         throw ProgramFinishedException();
     case TeraEncounterAction::Battle:{
         console.log("Battle menu detected.");
+        bbq_lab_event(console, context, "battle");
         bool tera_self = true;
         wild_battle_tera(info, console, context, tera_self);
+        bbq_lab_event(console, context, "battle_end");
         break;
     }
     case TeraEncounterAction::Recover:{
@@ -1391,11 +1439,7 @@ void quest_tera_self_defeat(
         return_to_plaza(info, console, context, BBQ_OPTIONS.LANGUAGE);
         //Without a day skip the next attempt finds the same empty Pride Rock: bench T3
         //missed 9 times in a row after its first miss.
-        pbf_press_button(context, BUTTON_HOME, 160ms, GameSettings::instance().GAME_TO_HOME_DELAY1);
-        home_to_date_time(console, context, true);
-        roll_date_forward_1(console, context, true);
-        pbf_press_button(context, BUTTON_HOME, 160ms, ConsoleSettings::instance().SETTINGS_TO_HOME_DELAY0);
-        resume_game_from_home(console, context);
+        skip_day_at_quest_spot(console, context);
         return;
     }
     }
@@ -1403,11 +1447,7 @@ void quest_tera_self_defeat(
 
     //The defeated Pride Rock Pokemon stays gone until the day changes, and sneak-up and the
     //next Tera-self need it (R14: two Tera-self attempts right after a win found nothing).
-    pbf_press_button(context, BUTTON_HOME, 160ms, GameSettings::instance().GAME_TO_HOME_DELAY1);
-    home_to_date_time(console, context, true);
-    roll_date_forward_1(console, context, true);
-    pbf_press_button(context, BUTTON_HOME, 160ms, ConsoleSettings::instance().SETTINGS_TO_HOME_DELAY0);
-    resume_game_from_home(console, context);
+    skip_day_at_quest_spot(console, context);
 
     heal_after_battle_if_due(info, console, context);
 }
@@ -1438,6 +1478,7 @@ void quest_sneak_up(
 
     if (ret >= 0){
         console.log("Battle menu detected.");
+        bbq_lab_event(console, context, "battle");
 
         bool is_shiny = (bool)encounter_watcher.shiny_screenshot();
         if (is_shiny){
@@ -1493,12 +1534,7 @@ void quest_sneak_up(
     leave_quest_area(info, console, context, BBQ_OPTIONS);
 
     //Day skip and attempt to respawn fixed encounters - in case quest failed
-    pbf_press_button(context, BUTTON_HOME, 160ms, GameSettings::instance().GAME_TO_HOME_DELAY1);
-    home_to_date_time(console, context, true);
-    roll_date_forward_1(console, context, true);
-    pbf_press_button(context, BUTTON_HOME, 160ms, ConsoleSettings::instance().SETTINGS_TO_HOME_DELAY0);
-    resume_game_from_home(console, context);
-    context.wait_for_all_requests();
+    skip_day_at_quest_spot(console, context);
 }
 
 void quest_wild_tera(
