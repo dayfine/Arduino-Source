@@ -270,6 +270,9 @@ void stay_away_from_plaza(Language language){
     away_from_plaza = true;
     away_language = language;
 }
+bool is_away_from_plaza(){
+    return away_from_plaza;
+}
 void ensure_at_plaza(const ProgramInfo& info, VideoStream& stream, ProControllerContext& context){
     if (away_from_plaza){
         stream.log("Away from Central Plaza. Returning before a step that starts there.");

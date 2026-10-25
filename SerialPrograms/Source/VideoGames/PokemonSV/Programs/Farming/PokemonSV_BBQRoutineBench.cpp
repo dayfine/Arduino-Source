@@ -270,16 +270,23 @@ private:
     bool m_tera_turn = false;
 };
 
-// Coastal glide rep: fly to Coastal Plaza, glide onto the hill, look for a battle and
-// flee it, then return to Central Plaza and skip a day so the spawns refresh.
-void run_coastal_glide(SingleSwitchProgramEnvironment& env, ProControllerContext& context, const BBQOption& options){
-    central_to_coastal_plaza(env.program_info(), env.console, context);
+// Coastal glide rep: get to Coastal Plaza (from Central on the first rep, else the
+// closest fly point, as the farmer's retry does), glide onto the hill, look for a
+// battle and flee it, then skip a day so the spawns refresh.
+void run_coastal_glide(SingleSwitchProgramEnvironment& env, ProControllerContext& context, const BBQOption& options, bool first){
+    (void)first;
+    if (!is_away_from_plaza()){
+        central_to_coastal_plaza(env.program_info(), env.console, context);
+    }else{
+        open_map_from_overworld(env.program_info(), env.console, context);
+        fly_to_closest_pokecenter_on_map(env.program_info(), env.console, context);
+    }
     coastal_plaza_to_grassland(env.console, context, options.INVERTED_FLIGHT);
     if (send_out_and_look_around(env.console, context, std::chrono::seconds(6), "a flying Pokemon")){
         bbq_lab_event(env.console, context, "battle");
         run_from_battle(env.console, context);
     }
-    return_to_plaza(env.program_info(), env.console, context, options.LANGUAGE);
+    stay_away_from_plaza(options.LANGUAGE);
     pbf_press_button(context, BUTTON_HOME, 160ms, GameSettings::instance().GAME_TO_HOME_DELAY1);
     home_to_date_time(env.console, context, true);
     roll_date_forward_1(env.console, context, true);
@@ -335,9 +342,19 @@ void BBQRoutineBench::program(SingleSwitchProgramEnvironment& env, ProController
     //stopped at Pride Rock), fly there first.
     open_map_from_overworld(env.program_info(), env.console, context);
     if (!fly_to_overworld_from_map(env.program_info(), env.console, context, true)){
-        env.log("No fly spot here. Flying to Central Plaza.");
         press_Bs_to_back_to_overworld(env.program_info(), env.console, context);
-        return_to_plaza(env.program_info(), env.console, context, BBQ_OPTIONS.LANGUAGE);
+        if (ROUTINE == BBQBenchRoutine::CoastalGlide){
+            env.log("No fly spot here. Flying to the closest one.");
+            open_map_from_overworld(env.program_info(), env.console, context);
+            fly_to_closest_pokecenter_on_map(env.program_info(), env.console, context);
+            stay_away_from_plaza(BBQ_OPTIONS.LANGUAGE);
+        }else{
+            env.log("No fly spot here. Flying to Central Plaza.");
+            return_to_plaza(env.program_info(), env.console, context, BBQ_OPTIONS.LANGUAGE);
+        }
+    }else if (ROUTINE == BBQBenchRoutine::CoastalGlide){
+        //Started on a fly spot: assume it is the one to use (Coastal Plaza).
+        stay_away_from_plaza(BBQ_OPTIONS.LANGUAGE);
     }
 
     const std::string routine =
@@ -397,7 +414,7 @@ void BBQRoutineBench::program(SingleSwitchProgramEnvironment& env, ProController
                         quest_tera_self_defeat(env.program_info(), env.console, context, BBQ_OPTIONS);
                         break;
                     case BBQBenchRoutine::CoastalGlide:
-                        run_coastal_glide(env, context, BBQ_OPTIONS);
+                        run_coastal_glide(env, context, BBQ_OPTIONS, i == 0);
                         break;
                     }
                 },

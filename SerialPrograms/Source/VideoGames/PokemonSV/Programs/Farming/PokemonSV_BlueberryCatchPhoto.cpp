@@ -989,8 +989,8 @@ void coastal_plaza_to_grassland(ConsoleHandle& console, ProControllerContext& co
         + " for " + std::to_string(lab.coastal_glide_ms) + " ms."
     );
 
-    //Face left, camera behind, mount.
-    pbf_move_left_joystick(context, {-1, 0}, 160ms, 400ms);
+    //Turn toward the cliff (west), camera behind, mount. The landing view faces east.
+    pbf_move_left_joystick(context, {lab.coastal_face_x, lab.coastal_face_y}, 160ms, 400ms);
     pbf_press_button(context, BUTTON_L | BUTTON_PLUS, 160ms, 840ms);
 
     //Ride to the cliff edge and jump off it.

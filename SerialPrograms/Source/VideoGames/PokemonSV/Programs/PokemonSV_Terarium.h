@@ -26,6 +26,7 @@ void return_to_plaza(const ProgramInfo& info, VideoStream& stream, ProController
 // central_to_*() flight then goes straight to its destination from here, and
 // ensure_at_plaza() makes the return for steps that start at Central Plaza.
 void stay_away_from_plaza(Language language);
+bool is_away_from_plaza();
 void ensure_at_plaza(const ProgramInfo& info, VideoStream& stream, ProControllerContext& context);
 void reset_plaza_position();
 //  After a flight onto the player's own fly spot: read the place banner and set
