@@ -183,6 +183,27 @@ int read_BP(const ProgramInfo& info, VideoStream& stream, ProControllerContext& 
     return read_BP_from_image(stream.logger(), screen);
 }
 
+//The quests on the panel in one frame. The fourth slot is only there when the board has
+//four quests.
+static std::vector<BBQuests> read_quests_from_image(Logger& logger, Language language, const ImageViewRGB32& screen){
+    std::vector<BBQuests> quests;
+    const BlueberryQuestDetector::QuestPosition positions[] = {
+        BlueberryQuestDetector::QuestPosition::FIRST,
+        BlueberryQuestDetector::QuestPosition::SECOND,
+        BlueberryQuestDetector::QuestPosition::THIRD,
+    };
+    for (BlueberryQuestDetector::QuestPosition position : positions){
+        BlueberryQuestDetector detector(logger, COLOR_GREEN, language, position);
+        quests.push_back(BBQuests_string_to_enum(detector.detect_quest(screen)));
+    }
+    BlueberryQuestDetector fourth_quest_detector(logger, COLOR_GREEN, language, BlueberryQuestDetector::QuestPosition::FOURTH);
+    std::string fourth_quest = fourth_quest_detector.detect_quest(screen);
+    if (fourth_quest != ""){
+        quests.push_back(BBQuests_string_to_enum(fourth_quest));
+    }
+    return quests;
+}
+
 std::vector<BBQuests> read_quests(
     const ProgramInfo& info,
     VideoStream& stream, ProControllerContext& context,
@@ -212,18 +233,19 @@ std::vector<BBQuests> read_quests(
     //Read in the initial 4 quests.
     stream.log("Reading quests.");
     VideoSnapshot screen = stream.video().snapshot();
-    BlueberryQuestDetector first_quest_detector(stream.logger(), COLOR_GREEN, BBQ_OPTIONS.LANGUAGE, BlueberryQuestDetector::QuestPosition::FIRST);
-    BlueberryQuestDetector second_quest_detector(stream.logger(), COLOR_GREEN, BBQ_OPTIONS.LANGUAGE, BlueberryQuestDetector::QuestPosition::SECOND);
-    BlueberryQuestDetector third_quest_detector(stream.logger(), COLOR_GREEN, BBQ_OPTIONS.LANGUAGE, BlueberryQuestDetector::QuestPosition::THIRD);
-    BlueberryQuestDetector fourth_quest_detector(stream.logger(), COLOR_GREEN, BBQ_OPTIONS.LANGUAGE, BlueberryQuestDetector::QuestPosition::FOURTH);
+    quest_list = read_quests_from_image(stream.logger(), BBQ_OPTIONS.LANGUAGE, screen);
 
-    quest_list.push_back(BBQuests_string_to_enum(first_quest_detector.detect_quest(screen)));
-    quest_list.push_back(BBQuests_string_to_enum(second_quest_detector.detect_quest(screen)));
-    quest_list.push_back(BBQuests_string_to_enum(third_quest_detector.detect_quest(screen)));
-    
-    std::string fourth_quest = fourth_quest_detector.detect_quest(screen);
-    if (fourth_quest != ""){
-        quest_list.push_back(BBQuests_string_to_enum(fourth_quest));
+    //The panel opens on the tab it was last left on. On the notifications tab no quest
+    //reads, and every slot would look undetected, so switch tabs once and read again.
+    const bool none_read = std::all_of(quest_list.begin(), quest_list.end(), [](BBQuests quest){
+        return quest == BBQuests::UnableToDetect;
+    });
+    if (none_read){
+        stream.log("No quest read. The panel may be on its notifications tab: switching tabs.", COLOR_ORANGE);
+        pbf_press_button(context, BUTTON_R, 160ms, 840ms);
+        context.wait_for_all_requests();
+        screen = stream.video().snapshot();
+        quest_list = read_quests_from_image(stream.logger(), BBQ_OPTIONS.LANGUAGE, screen);
     }
 
     //The balance is on the same panel, so reading it costs no extra button presses.
