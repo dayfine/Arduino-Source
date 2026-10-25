@@ -217,6 +217,9 @@ void BBQRoutineBench::program(SingleSwitchProgramEnvironment& env, ProController
             + ",reason=" + reason);
     }
     env.log("BENCH,summary,routine=" + routine + "," + bbq_bench_summary(reps));
+
+    //Leave the player at Central Plaza, where the next block starts.
+    return_to_plaza(env.program_info(), env.console, context, BBQ_OPTIONS.LANGUAGE);
 }
 
 
