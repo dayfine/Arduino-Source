@@ -187,6 +187,12 @@ BBQOption::BBQOption(OCR::LanguageOCROption* language_option)
         LockMode::UNLOCK_WHILE_RUNNING, 50
     )
     , NOT_POSSIBLE_NOTE(not_possible_note(NOT_POSSIBLE_QUESTS))
+    , REROLL_BELOW_BP_PER_MIN(
+        "<b>Reroll Quests Below (BP/min):</b><br>Reroll a blue quest whose measured time makes it pay "
+        "less than this many BP per minute, counting the 10 BP and ~10 s a reroll costs. "
+        "Rows in the table above still decide for their quests. 0 turns this off.",
+        LockMode::UNLOCK_WHILE_RUNNING, 10, 0, 60
+    )
     , INVERTED_FLIGHT(
         "<b>Inverted Flight:</b><br>Check this box if inverted flight controls are set.",
         LockMode::LOCK_WHILE_RUNNING,
@@ -269,6 +275,7 @@ BBQOption::BBQOption(OCR::LanguageOCROption* language_option)
     PA_ADD_OPTION(SAVE_NUM_QUESTS);
     PA_ADD_OPTION(NOT_POSSIBLE_NOTE);
     PA_ADD_OPTION(QUEST_EXCLUSIONS);
+    PA_ADD_OPTION(REROLL_BELOW_BP_PER_MIN);
     PA_ADD_OPTION(INVERTED_FLIGHT);
     PA_ADD_OPTION(QUICKBALL);
     PA_ADD_OPTION(BALL_SELECT);

@@ -2078,6 +2078,82 @@ void add_tests_BBQPointsLedger(UnitTestDatabase& database){
 
 namespace{
 
+// A quest, a BP/min threshold, and whether the quest is rerolled for paying below it.
+struct BBQRerollThresholdScenario{
+    std::string name;
+    BBQuests quest;
+    uint8_t bp_per_min;
+    bool expected_reroll = false;
+};
+
+class Test_BBQRerollThreshold : public UnitTest{
+public:
+    Test_BBQRerollThreshold(BBQRerollThresholdScenario scenario)
+        : UnitTest("PokemonSV::BBQRerollThreshold - " + scenario.name)
+        , m_scenario(std::move(scenario))
+    {}
+
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        const bool got = below_reroll_threshold(m_scenario.quest, m_scenario.bp_per_min);
+        if (got != m_scenario.expected_reroll){
+            return std::string("Expected ") + (m_scenario.expected_reroll ? "reroll" : "run")
+                + ", got " + (got ? "reroll" : "run");
+        }
+        return true;
+    }
+
+private:
+    const BBQRerollThresholdScenario m_scenario;
+};
+
+void add_tests_BBQRerollThreshold(UnitTestDatabase& database){
+    using enum BBQuests;
+    const BBQRerollThresholdScenario scenarios[] = {
+        {
+            // 20 + 11 BP in 280 s: 31 + 10 + 10/6 < 10 x 4.67.
+            .name = "auto battle 10 is rerolled at 10 BP/min",
+            .quest = auto_10,
+            .bp_per_min = 10,
+            .expected_reroll = true,
+        },
+        {
+            .name = "auto battle 10 runs at 8 BP/min",
+            .quest = auto_10,
+            .bp_per_min = 8,
+        },
+        {
+            // 40 + 11 BP in 183 s.
+            .name = "a typed catch runs at 10 BP/min",
+            .quest = catch_bug,
+            .bp_per_min = 10,
+        },
+        {
+            .name = "make tm runs at 10 BP/min",
+            .quest = make_tm,
+            .bp_per_min = 10,
+        },
+        {
+            // Red: a reroll costs 50 BP, and it keeps the next red quest away.
+            .name = "a red quest is never below",
+            .quest = hatch_egg,
+            .bp_per_min = 60,
+        },
+        {
+            .name = "a quest without measurements is never below",
+            .quest = photo_coastal,
+            .bp_per_min = 60,
+        },
+        {
+            .name = "0 turns it off",
+            .quest = auto_10,
+            .bp_per_min = 0,
+        },
+    };
+    for (const BBQRerollThresholdScenario& scenario : scenarios){
+        database.add<Test_BBQRerollThreshold>(scenario);
+    }
+}
+
 // A catch quest, the species read from the opponent's status screen, and whether
 // it counts for the quest (nothing: no table or nothing read, so catch anyway).
 struct BBQCatchCountsScenario{
@@ -2543,6 +2619,7 @@ void add_tests(UnitTestDatabase& database){
 
     add_tests_BBQCatchOnReturn(database);
     add_tests_BBQCatchCounts(database);
+    add_tests_BBQRerollThreshold(database);
     add_tests_WhiteButtonDetector(database);
     add_tests_BoxInfoDetector(database);
     add_tests_BoxEggDetector(database);

@@ -108,6 +108,10 @@ struct BBQuestBatch{
 std::optional<double> expected_seconds_per_success(BBQuests quest);
 //Approximate BP a quest pays.
 int quest_reward(BBQuests quest);
+//Whether a blue quest with a measured time pays less than `bp_per_min` over that time,
+//counting the ~11 BP each completion adds to the bar and the 10 BP and ~10 s a reroll
+//costs. 0 never rerolls; red quests and quests without measurements are never below.
+bool below_reroll_threshold(BBQuests quest, uint8_t bp_per_min);
 //Whether a wild Pokemon counts for a typed catch quest, given the species slugs read
 //from its battle status screen. Nothing when the quest has no species table yet or
 //nothing was read: the caller then catches it anyway, as before.

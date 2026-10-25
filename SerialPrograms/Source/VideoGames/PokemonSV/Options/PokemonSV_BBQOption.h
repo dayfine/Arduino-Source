@@ -106,6 +106,7 @@ public:
     //Lists NOT_POSSIBLE_QUESTS above the exclusions table, where they cannot be changed.
     StaticTextOption NOT_POSSIBLE_NOTE;
     BBQuestTable QUEST_EXCLUSIONS;
+    SimpleIntegerOption<uint8_t> REROLL_BELOW_BP_PER_MIN;
 
     BooleanCheckBoxOption INVERTED_FLIGHT;
 

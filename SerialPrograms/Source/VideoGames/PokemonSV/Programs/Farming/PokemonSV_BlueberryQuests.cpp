@@ -583,7 +583,8 @@ std::optional<double> expected_seconds_per_success(BBQuests quest){
     case BBQuests::travel_500:          return 89;
     case BBQuests::photo_swim:          return 63 / 0.71;
     case BBQuests::hatch_egg:           return 190;
-    case BBQuests::tera_self_defeat:    return 153 / 0.59;
+    //At the Chargestone court, after the day-skip fix: 6/9 at ~140 s (QUEST_ROI.md).
+    case BBQuests::tera_self_defeat:    return 140 / 0.67;
     case BBQuests::auto_10:             return 280;
     case BBQuests::sandwich_three:
     case BBQuests::bitter_sandwich:
@@ -657,6 +658,20 @@ static const std::set<std::string>& FLYING_SPECIES(){
         "wattrel", "wingull", "yanma", "yanmega", "zubat",
     };
     return species;
+}
+
+bool below_reroll_threshold(BBQuests quest, uint8_t bp_per_min){
+    const std::optional<double> seconds = expected_seconds_per_success(quest);
+    if (bp_per_min == 0 || !seconds || red_quests.contains(quest)){
+        return false;
+    }
+    //Rerolling beats running when what the quest pays falls short of what the same time earns
+    //at this rate, plus what the reroll itself costs (see QUEST_ROI.md, "Run or reroll").
+    constexpr double BAR_BONUS = 11;
+    constexpr double REROLL_BP = 10;
+    constexpr double REROLL_MINUTES = 10.0 / 60;
+    const double minutes = *seconds / 60;
+    return quest_reward(quest) + BAR_BONUS + REROLL_BP + bp_per_min * REROLL_MINUTES < bp_per_min * minutes;
 }
 
 bool catch_quest_checks_species(BBQuests quest){
@@ -733,6 +748,11 @@ BBQuestPlan plan_quests(
         if (!possible){
             logger.log("Quest not possible.");
             not_possible_slots.push_back(slot);
+            continue;
+        }
+        if (below_reroll_threshold(n, BBQ_OPTIONS.REROLL_BELOW_BP_PER_MIN)){
+            logger.log("Quest pays below " + std::to_string(BBQ_OPTIONS.REROLL_BELOW_BP_PER_MIN) + " BP/min. Rerolling quest.");
+            plan.reroll_slots.push_back(slot);
             continue;
         }
         logger.log("Quest not in inclusion/exclusions table. Adding to list.");
@@ -816,7 +836,7 @@ BBQuestBatch process_quest_list(
                 return row->action == BBQAction::reroll;
             }
         }
-        return false;
+        return below_reroll_threshold(quest, BBQ_OPTIONS.REROLL_BELOW_BP_PER_MIN);
     };
     for (size_t slot : plan.reroll_slots){
         observed_panel = reroll_quest_slot(info, stream, context, BBQ_OPTIONS, panel, slot, record_BP, reroll_again);
