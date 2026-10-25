@@ -5,6 +5,7 @@
  */
 
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
+#include "Pokemon/AutoStory/Pokemon_AutoStoryRetry.h"
 #include "Pokemon/AutoStory/Pokemon_AutoStorySelect.h"
 #include "Inference/PokemonSV_WhiteButtonDetector.h"
 #include "Inference/Boxes/PokemonSV_BoxDetection.h"
@@ -97,6 +98,141 @@ public:
     }
 };
 
+// Checkpoint steps that record what runs, and fail the attempts they are told to.
+class ScriptedCheckpoint : public Pokemon::CheckpointRetryHooks{
+public:
+    std::set<size_t> failing_actions;
+    std::set<size_t> failing_checks;
+    bool save_fails = false;
+    std::vector<std::string> steps;
+
+    virtual void log(const std::string&) override{}
+    virtual void wait_for_all_requests() override{}
+    virtual void save_checkpoint() override{
+        steps.push_back("save");
+        if (save_fails){
+            throw OperationFailedException(ErrorReportMode::NO_ERROR_REPORT, "save failed");
+        }
+    }
+    virtual void before_attempt(size_t attempt) override{
+        steps.push_back("before" + std::to_string(attempt));
+    }
+    void action(size_t attempt){
+        steps.push_back("action" + std::to_string(attempt));
+        if (failing_actions.contains(attempt)){
+            throw OperationFailedException(ErrorReportMode::NO_ERROR_REPORT, "action failed");
+        }
+        m_attempt = attempt;
+    }
+    virtual void after_success() override{
+        steps.push_back("check");
+        if (failing_checks.contains(m_attempt)){
+            throw OperationFailedException(ErrorReportMode::NO_ERROR_REPORT, "not in the overworld");
+        }
+    }
+    virtual void report_recoverable(const std::string& message) override{
+        steps.push_back("report(" + message + ")");
+    }
+    [[noreturn]] virtual void fail(const OperationFailedException&) override{
+        steps.push_back("fail");
+        throw std::runtime_error("gave up");
+    }
+    virtual void reset_for_retry() override{
+        steps.push_back("reset");
+    }
+
+private:
+    size_t m_attempt = 0;
+};
+
+struct CheckpointRetryScenario{
+    std::string name;
+    std::set<size_t> failing_actions = {};
+    std::set<size_t> failing_checks = {};
+    bool save_fails = false;
+    std::string expected_steps;
+    bool expected_give_up = false;
+};
+
+class Test_CheckpointRetry : public UnitTest{
+public:
+    Test_CheckpointRetry(CheckpointRetryScenario scenario)
+        : UnitTest("Pokemon::CheckpointRetry - " + scenario.name)
+        , m_scenario(std::move(scenario))
+    {}
+
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        ScriptedCheckpoint hooks;
+        hooks.failing_actions = m_scenario.failing_actions;
+        hooks.failing_checks = m_scenario.failing_checks;
+        hooks.save_fails = m_scenario.save_fails;
+        Pokemon::CheckpointRetryPolicy policy;
+        policy.max_attempts = 2;
+        policy.report_at_attempt = 1;
+
+        bool gave_up = false;
+        try{
+            Pokemon::run_checkpoint_with_retries(hooks, policy, "Checkpoint 1.", [&](size_t attempt){
+                hooks.action(attempt);
+            });
+        }catch (const std::runtime_error&){
+            gave_up = true;
+        }
+        std::string steps;
+        for (const std::string& step : hooks.steps){
+            steps += (steps.empty() ? "" : " ") + step;
+        }
+        if (gave_up != m_scenario.expected_give_up){
+            return std::string("Expected ") + (m_scenario.expected_give_up ? "to give up" : "to finish") + ", steps: " + steps;
+        }
+        if (steps != m_scenario.expected_steps){
+            return "Expected steps: " + m_scenario.expected_steps + "\nActual steps:   " + steps;
+        }
+        return true;
+    }
+
+private:
+    const CheckpointRetryScenario m_scenario;
+};
+
+void add_tests_CheckpointRetry(UnitTestDatabase& database){
+    const CheckpointRetryScenario scenarios[] = {
+        {
+            .name = "first attempt succeeds",
+            .expected_steps = "save before0 action0 check",
+        },
+        {
+            // Only the first attempt saves; the retry starts from that save.
+            .name = "a failed attempt resets and retries without saving",
+            .failing_actions = {0},
+            .expected_steps = "save before0 action0 reset before1 action1 check",
+        },
+        {
+            // A save that fails is a failed attempt, and is not tried again.
+            .name = "a failed save is a failed attempt",
+            .save_fails = true,
+            .expected_steps = "save reset before1 action1 check",
+        },
+        {
+            // SV checks for the overworld after the action; not finding it retries.
+            .name = "a failed check after the action retries",
+            .failing_checks = {0},
+            .expected_steps = "save before0 action0 check reset before1 action1 check",
+        },
+        {
+            // With max 2 and the report at 1: attempts 0..2 retry, attempt 3 gives up.
+            .name = "reports once and gives up past the maximum",
+            .failing_actions = {0, 1, 2, 3},
+            .expected_steps = "save before0 action0 reset before1 action1 report(1 failed attempts. Checkpoint 1.) reset "
+                "before2 action2 reset before3 action3 fail",
+            .expected_give_up = true,
+        },
+    };
+    for (const CheckpointRetryScenario& scenario : scenarios){
+        database.add<Test_CheckpointRetry>(scenario);
+    }
+}
+
 void add_tests_AutoStory(UnitTestDatabase& database){
     const AutoStoryIndexScenario scenarios[] = {
         {
@@ -127,6 +263,7 @@ void add_tests_AutoStory(UnitTestDatabase& database){
         database.add<Test_AutoStoryIndex>(scenario);
     }
     database.add<Test_AutoStorySelectDatabase>();
+    add_tests_CheckpointRetry(database);
 }
 
 }

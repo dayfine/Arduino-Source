@@ -1435,6 +1435,8 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/Options/Pokemon_NameSelectWidget.h
     Source/Pokemon/Options/Pokemon_StatsHuntFilter.cpp
     Source/Pokemon/Options/Pokemon_StatsHuntFilter.h
+    Source/Pokemon/AutoStory/Pokemon_AutoStoryRetry.cpp
+    Source/Pokemon/AutoStory/Pokemon_AutoStoryRetry.h
     Source/Pokemon/AutoStory/Pokemon_AutoStorySelect.h
     Source/Pokemon/AutoStory/Pokemon_AutoStoryStats.h
     Source/Pokemon/Pokemon_AdvRng.cpp
@@ -2474,6 +2476,8 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonSV/PokemonSV_Settings.h
     Source/VideoGames/PokemonSV/PokemonSV_Tests.cpp
     Source/VideoGames/PokemonSV/PokemonSV_Tests.h
+    Source/VideoGames/PokemonSV/Programs/AutoStory/PokemonSV_AutoStoryCheckpointHooks.cpp
+    Source/VideoGames/PokemonSV/Programs/AutoStory/PokemonSV_AutoStoryCheckpointHooks.h
     Source/VideoGames/PokemonSV/Programs/AutoStory/PokemonSV_AutoStory.cpp
     Source/VideoGames/PokemonSV/Programs/AutoStory/PokemonSV_AutoStory.h
     Source/VideoGames/PokemonSV/Programs/AutoStory/PokemonSV_AutoStory_Segment_00.cpp
