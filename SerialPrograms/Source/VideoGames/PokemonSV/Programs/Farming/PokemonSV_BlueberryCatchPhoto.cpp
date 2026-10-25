@@ -598,7 +598,7 @@ void quest_catch_navi(
 
             if (BBQ_OPTIONS.COASTAL_FLYING_CATCH){
                 central_to_coastal_plaza(info, console, context);
-                coastal_plaza_to_grassland(console, context);
+                coastal_plaza_to_grassland(console, context, BBQ_OPTIONS.INVERTED_FLIGHT);
                 send_out_and_look_around(console, context, std::chrono::seconds(6), "a flying Pokemon");
                 break;
             }
@@ -978,20 +978,48 @@ bool catch_quest_catches_on_return(BBQuests current_quest, bool battled_this_att
 //Trumbeak and Toucannon spawn. Not calibrated yet: a straight line from the fly point
 //is likely blocked by the plaza, so this stays put until the path is measured on a
 //Switch, and the look-around only reaches spawns near the fly point.
-void coastal_plaza_to_grassland(ConsoleHandle& console, ProControllerContext& context){
-    console.log("Coastal Plaza to grassland: path not calibrated, looking around from the fly point.", COLOR_ORANGE);
+//The user's route (2026-10-25, recorded from the capture card): from the fly point,
+//face left, ride off the cliff over the beach, glide right and up onto the hill west
+//of the plaza, and drop on top (~13 s from mounting to landing).
+void coastal_plaza_to_grassland(ConsoleHandle& console, ProControllerContext& context, bool inverted_flight){
+    const BBQLabFlags& lab = bbq_lab_flags();
+    console.log(
+        "Coastal Plaza to grassland: ride " + std::to_string(lab.coastal_ride_ms)
+        + " ms, glide x " + std::to_string(lab.coastal_glide_x)
+        + " for " + std::to_string(lab.coastal_glide_ms) + " ms."
+    );
+
+    //Face left, camera behind, mount.
+    pbf_move_left_joystick(context, {-1, 0}, 160ms, 400ms);
+    pbf_press_button(context, BUTTON_L | BUTTON_PLUS, 160ms, 840ms);
+
+    //Ride to the cliff edge and jump off it.
+    pbf_move_left_joystick(context, {0, +1}, Milliseconds(lab.coastal_ride_ms), 0ms);
+    ssf_press_button(context, BUTTON_B, 0ms, 800ms);
+    ssf_press_button(context, BUTTON_B, 0ms, 160ms, 80ms);
+    ssf_press_button(context, BUTTON_B, 0ms, 160ms);
+    pbf_wait(context, 800ms);
+
+    //Glide right and up over the hill.
+    const double y = inverted_flight ? -1 : +1;
+    pbf_move_left_joystick(context, {lab.coastal_glide_x, y}, Milliseconds(lab.coastal_glide_ms), 0ms);
+
+    //Drop onto the hilltop.
+    pbf_press_button(context, BUTTON_B, 160ms, 2000ms);
+    context.wait_for_all_requests();
 }
 
 //Look for a Flying type again from the closest fly point, without going back to
 //Central Plaza: after the first look the player is still near Coastal Plaza.
 static void retry_coastal_flying(
     const ProgramInfo& info,
-    ConsoleHandle& console, ProControllerContext& context
+    ConsoleHandle& console, ProControllerContext& context,
+    bool inverted_flight
 ){
     console.log("Flying back to the closest fly point to look again.");
     open_map_from_overworld(info, console, context);
     fly_to_closest_pokecenter_on_map(info, console, context);
-    coastal_plaza_to_grassland(console, context);
+    coastal_plaza_to_grassland(console, context, inverted_flight);
     send_out_and_look_around(console, context, std::chrono::seconds(6), "a flying Pokemon");
 }
 
@@ -1096,7 +1124,7 @@ void quest_catch(
                 if (look == 0){
                     quest_catch_navi(info, console, context, BBQ_OPTIONS, current_quest);
                 }else{
-                    retry_coastal_flying(info, console, context);
+                    retry_coastal_flying(info, console, context, BBQ_OPTIONS.INVERTED_FLIGHT);
                 }
             }
         );

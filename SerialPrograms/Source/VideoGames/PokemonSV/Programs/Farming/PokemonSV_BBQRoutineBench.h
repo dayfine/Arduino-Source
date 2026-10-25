@@ -25,6 +25,7 @@ namespace PokemonSV{
 enum class BBQBenchRoutine{
     SneakUp,
     TeraSelf,
+    CoastalGlide,   //  Coastal Plaza -> grassland hill, look around (catch-flying spot).
 };
 
 // Where each rep starts from.
@@ -75,6 +76,9 @@ private:
     SimpleIntegerOption<uint16_t> REPS;
     EnumDropdownOption<BBQBenchStart> START_FROM;
     EnumDropdownOption<BBQBenchVariant> VARIANT;
+    SimpleIntegerOption<uint16_t> COASTAL_RIDE_MS;
+    SimpleIntegerOption<uint16_t> COASTAL_GLIDE_X_PERCENT;
+    SimpleIntegerOption<uint16_t> COASTAL_GLIDE_MS;
     BBQOption BBQ_OPTIONS;
 };
 

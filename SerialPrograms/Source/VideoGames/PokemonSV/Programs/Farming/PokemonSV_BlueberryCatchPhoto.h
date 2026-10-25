@@ -66,7 +66,7 @@ void quest_catch_handle_battle(
 bool catch_quest_catches_on_return(BBQuests current_quest, bool battled_this_attempt);
 
 //Walk from the Coastal Plaza fly point to the grassland where Flying types spawn.
-void coastal_plaza_to_grassland(ConsoleHandle& console, ProControllerContext& context);
+void coastal_plaza_to_grassland(ConsoleHandle& console, ProControllerContext& context, bool inverted_flight);
 
 //Catch a pokemon
 void quest_catch(

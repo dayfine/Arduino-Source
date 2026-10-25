@@ -28,6 +28,13 @@
 #include "VideoGames/PokemonSV/Programs/PokemonSV_WorldNavigation.h"
 #include "VideoGames/PokemonSV/Programs/PokemonSV_Terarium.h"
 #include "VideoGames/PokemonSV/Programs/Farming/PokemonSV_BlueberryQuests.h"
+#include "VideoGames/PokemonSV/Programs/Farming/PokemonSV_BlueberryCatchPhoto.h"
+#include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
+#include "NintendoSwitch/NintendoSwitch_Settings.h"
+#include "NintendoSwitch/Programs/DateSpam/NintendoSwitch_HomeToDateTime.h"
+#include "NintendoSwitch/Programs/DateSpam/NintendoSwitch_RollDateForward1.h"
+#include "VideoGames/PokemonSV/PokemonSV_Settings.h"
+#include "VideoGames/PokemonSV/Programs/PokemonSV_GameEntry.h"
 #include "PokemonSV_BBQLab.h"
 #include "PokemonSV_BBQRoutineBench.h"
 
@@ -103,7 +110,8 @@ BBQRoutineBench::BBQRoutineBench()
         "<b>Routine:</b>",
         {
             {BBQBenchRoutine::SneakUp,  "sneak-up",     "Sneak up (pass: a battle starts)"},
-            {BBQBenchRoutine::TeraSelf, "tera-self",    "Tera-self (pass: a battle starts and ends without error)"},
+            {BBQBenchRoutine::TeraSelf, "tera-self",    "Tera-self (pass: a battle starts and the Tera turn runs)"},
+            {BBQBenchRoutine::CoastalGlide, "coastal-glide", "Coastal glide to the grassland hill (pass: a battle starts; opponent logged)"},
         },
         LockMode::LOCK_WHILE_RUNNING,
         BBQBenchRoutine::SneakUp
@@ -134,11 +142,26 @@ BBQRoutineBench::BBQRoutineBench()
         LockMode::LOCK_WHILE_RUNNING,
         BBQBenchVariant::None
     )
+    , COASTAL_RIDE_MS(
+        "<b>Coastal glide: ride to the cliff (ms):</b>",
+        LockMode::LOCK_WHILE_RUNNING, 2200
+    )
+    , COASTAL_GLIDE_X_PERCENT(
+        "<b>Coastal glide: right stick while gliding (% of full):</b>",
+        LockMode::LOCK_WHILE_RUNNING, 60, 0, 100
+    )
+    , COASTAL_GLIDE_MS(
+        "<b>Coastal glide: glide before dropping (ms):</b>",
+        LockMode::LOCK_WHILE_RUNNING, 7000
+    )
 {
     PA_ADD_OPTION(ROUTINE);
     PA_ADD_OPTION(REPS);
     PA_ADD_OPTION(START_FROM);
     PA_ADD_OPTION(VARIANT);
+    PA_ADD_OPTION(COASTAL_RIDE_MS);
+    PA_ADD_OPTION(COASTAL_GLIDE_X_PERCENT);
+    PA_ADD_OPTION(COASTAL_GLIDE_MS);
     PA_ADD_OPTION(BBQ_OPTIONS);
 }
 
@@ -247,10 +270,31 @@ private:
     bool m_tera_turn = false;
 };
 
+// Coastal glide rep: fly to Coastal Plaza, glide onto the hill, look for a battle and
+// flee it, then return to Central Plaza and skip a day so the spawns refresh.
+void run_coastal_glide(SingleSwitchProgramEnvironment& env, ProControllerContext& context, const BBQOption& options){
+    central_to_coastal_plaza(env.program_info(), env.console, context);
+    coastal_plaza_to_grassland(env.console, context, options.INVERTED_FLIGHT);
+    if (send_out_and_look_around(env.console, context, std::chrono::seconds(6), "a flying Pokemon")){
+        bbq_lab_event(env.console, context, "battle");
+        run_from_battle(env.console, context);
+    }
+    return_to_plaza(env.program_info(), env.console, context, options.LANGUAGE);
+    pbf_press_button(context, BUTTON_HOME, 160ms, GameSettings::instance().GAME_TO_HOME_DELAY1);
+    home_to_date_time(env.console, context, true);
+    roll_date_forward_1(env.console, context, true);
+    pbf_press_button(context, BUTTON_HOME, 160ms, ConsoleSettings::instance().SETTINGS_TO_HOME_DELAY0);
+    resume_game_from_home(env.console, context);
+}
+
 // Set the lab flags for one rep's arm.
 void set_arm_flags(BBQBenchVariant variant, char arm){
     BBQLabFlags& flags = bbq_lab_flags();
+    const BBQLabFlags tuning = flags;
     flags = BBQLabFlags();
+    flags.coastal_ride_ms = tuning.coastal_ride_ms;
+    flags.coastal_glide_x = tuning.coastal_glide_x;
+    flags.coastal_glide_ms = tuning.coastal_glide_ms;
     switch (variant){
     case BBQBenchVariant::None:
         return;
@@ -296,7 +340,12 @@ void BBQRoutineBench::program(SingleSwitchProgramEnvironment& env, ProController
         return_to_plaza(env.program_info(), env.console, context, BBQ_OPTIONS.LANGUAGE);
     }
 
-    const std::string routine = ROUTINE == BBQBenchRoutine::SneakUp ? "sneak-up" : "tera-self";
+    const std::string routine =
+        ROUTINE == BBQBenchRoutine::SneakUp ? "sneak-up" :
+        ROUTINE == BBQBenchRoutine::TeraSelf ? "tera-self" : "coastal-glide";
+    bbq_lab_flags().coastal_ride_ms = COASTAL_RIDE_MS;
+    bbq_lab_flags().coastal_glide_x = COASTAL_GLIDE_X_PERCENT / 100.0;
+    bbq_lab_flags().coastal_glide_ms = COASTAL_GLIDE_MS;
     const std::string exe_sha256 = executable_sha256();
     const std::string run_id = QDateTime::currentDateTime().toString("yyyyMMdd-HHmmss").toStdString();
     const std::string dir = QDir::currentPath().toStdString() + "/BBQBench/" + run_id;
@@ -346,6 +395,9 @@ void BBQRoutineBench::program(SingleSwitchProgramEnvironment& env, ProController
                         break;
                     case BBQBenchRoutine::TeraSelf:
                         quest_tera_self_defeat(env.program_info(), env.console, context, BBQ_OPTIONS);
+                        break;
+                    case BBQBenchRoutine::CoastalGlide:
+                        run_coastal_glide(env, context, BBQ_OPTIONS);
                         break;
                     }
                 },
