@@ -34,14 +34,26 @@ enum class BBQBenchStart{
     PolarRest,      //  Polar Rest Area, so the route flies in from another region.
 };
 
+// Two variants compared rep by rep: odd reps run A, even reps run B, so both see the
+// same spawns and time of day.
+enum class BBQBenchVariant{
+    None,               //  Every rep runs the code as built.
+    TeraSelfSpot,       //  A: Pride Rock. B: the Chargestone court (R11/R12).
+    DirectLeaveArea,    //  A: return to Central. B: fly directly, leaving the spot before the day skip.
+};
+
 // One judged run of a routine.
 struct BBQBenchRep{
     bool pass;
     double seconds;
+    char arm = '-';
 };
 
 // "passes/reps, median N s" over the reps so far. Median of all reps, passed or not.
 std::string bbq_bench_summary(const std::vector<BBQBenchRep>& reps);
+
+// bbq_bench_summary() of the reps of one arm ('A' or 'B').
+std::string bbq_bench_arm_summary(const std::vector<BBQBenchRep>& reps, char arm);
 
 
 class BBQRoutineBench_Descriptor : public SingleSwitchProgramDescriptor{
@@ -62,6 +74,7 @@ private:
     EnumDropdownOption<BBQBenchRoutine> ROUTINE;
     SimpleIntegerOption<uint16_t> REPS;
     EnumDropdownOption<BBQBenchStart> START_FROM;
+    EnumDropdownOption<BBQBenchVariant> VARIANT;
     BBQOption BBQ_OPTIONS;
 };
 

@@ -5,12 +5,18 @@
  */
 
 #include <algorithm>
+#include <fstream>
 #include <QCoreApplication>
 #include <QCryptographicHash>
+#include <QDateTime>
+#include <QDir>
 #include <QFile>
 #include "Common/Cpp/Exceptions.h"
 #include "CommonFramework/Exceptions/OperationFailedException.h"
+#include "CommonFramework/ImageTools/ImageBoxes.h"
+#include "CommonFramework/ImageTools/ImageStats.h"
 #include "CommonFramework/ProgramStats/StatsTracking.h"
+#include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "CommonTools/Async/InferenceRoutines.h"
 #include "CommonTools/InferenceCallbacks/VisualInferenceCallback.h"
 #include "CommonTools/StartupChecks/VideoResolutionCheck.h"
@@ -22,6 +28,7 @@
 #include "VideoGames/PokemonSV/Programs/PokemonSV_WorldNavigation.h"
 #include "VideoGames/PokemonSV/Programs/PokemonSV_Terarium.h"
 #include "VideoGames/PokemonSV/Programs/Farming/PokemonSV_BlueberryQuests.h"
+#include "PokemonSV_BBQLab.h"
 #include "PokemonSV_BBQRoutineBench.h"
 
 namespace PokemonAutomation{
@@ -45,6 +52,17 @@ std::string bbq_bench_summary(const std::vector<BBQBenchRep>& reps){
     double median = seconds.size() % 2 ? seconds[mid] : (seconds[mid - 1] + seconds[mid]) / 2;
     return std::to_string(passes) + "/" + std::to_string(reps.size())
         + ", median " + std::to_string((int)(median + 0.5)) + " s";
+}
+
+
+std::string bbq_bench_arm_summary(const std::vector<BBQBenchRep>& reps, char arm){
+    std::vector<BBQBenchRep> arm_reps;
+    for (const BBQBenchRep& rep : reps){
+        if (rep.arm == arm){
+            arm_reps.push_back(rep);
+        }
+    }
+    return bbq_bench_summary(arm_reps);
 }
 
 
@@ -106,10 +124,21 @@ BBQRoutineBench::BBQRoutineBench()
         LockMode::LOCK_WHILE_RUNNING,
         BBQBenchStart::BackToBack
     )
+    , VARIANT(
+        "<b>A/B variant:</b><br>Odd reps run A, even reps run B.",
+        {
+            {BBQBenchVariant::None,             "none",                 "None"},
+            {BBQBenchVariant::TeraSelfSpot,     "tera-self-spot",       "Tera-self: A Pride Rock, B Chargestone court"},
+            {BBQBenchVariant::DirectLeaveArea,  "direct-leave-area",    "A return to Central, B fly directly and leave the spot before the day skip"},
+        },
+        LockMode::LOCK_WHILE_RUNNING,
+        BBQBenchVariant::None
+    )
 {
     PA_ADD_OPTION(ROUTINE);
     PA_ADD_OPTION(REPS);
     PA_ADD_OPTION(START_FROM);
+    PA_ADD_OPTION(VARIANT);
     PA_ADD_OPTION(BBQ_OPTIONS);
 }
 
@@ -154,6 +183,87 @@ bool flee_ambush(SingleSwitchProgramEnvironment& env, ProControllerContext& cont
     return true;
 }
 
+// What the routine reported during one rep: when each event happened, the sky at the
+// end of the route, the opponent, and a screenshot at the moments that decide a rep.
+class RepRecorder{
+public:
+    RepRecorder(SingleSwitchProgramEnvironment& env, Language language, std::string dir, uint16_t rep)
+        : m_env(env), m_language(language), m_dir(std::move(dir)), m_rep(rep), m_start(current_time())
+    {}
+
+    void on_event(VideoStream& stream, ProControllerContext& context, const std::string& event){
+        const double t = std::chrono::duration<double>(current_time() - m_start).count();
+        m_events += (m_events.empty() ? "" : ";") + event + "@" + std::to_string((int)(t + 0.5));
+        if (event == "battle"){
+            m_battle = true;
+            try{
+                for (const std::string& slug : read_singles_opponent(m_env.program_info(), stream, context, m_language)){
+                    m_opponent += (m_opponent.empty() ? "" : "|") + slug;
+                }
+            }catch (OperationFailedException&){
+                m_opponent = "unread";
+            }
+        }
+        if (event == "tera_turn"){
+            m_tera_turn = true;
+            //Let the Terastallization show before the screenshot.
+            context.wait_for(std::chrono::seconds(4));
+        }
+        if (event == "route_done"){
+            VideoSnapshot screen = stream.video().snapshot();
+            ImageStats sky = image_stats(extract_box_reference(screen, ImageFloatBox(0.0, 0.0, 1.0, 0.25)));
+            m_sky = (int)((sky.average.r + sky.average.g + sky.average.b) / 3 + 0.5);
+        }
+        if (event == "route_done" || event == "no_battle" || event == "tera_turn" || event == "ambush"){
+            save_screenshot(stream, event);
+        }
+    }
+
+    bool battle() const{ return m_battle; }
+    bool tera_turn() const{ return m_tera_turn; }
+    const std::string& events() const{ return m_events; }
+    const std::string& opponent() const{ return m_opponent; }
+    int sky() const{ return m_sky; }
+
+private:
+    void save_screenshot(VideoStream& stream, const std::string& event){
+        char name[32];
+        snprintf(name, sizeof(name), "rep%02u_", (unsigned)m_rep);
+        VideoSnapshot screen = stream.video().snapshot();
+        if (screen.frame){
+            screen.frame->save(m_dir + "/" + name + event + ".png");
+        }
+    }
+
+    SingleSwitchProgramEnvironment& m_env;
+    Language m_language;
+    std::string m_dir;
+    uint16_t m_rep;
+    WallClock m_start;
+    std::string m_events;
+    std::string m_opponent;
+    int m_sky = -1;
+    bool m_battle = false;
+    bool m_tera_turn = false;
+};
+
+// Set the lab flags for one rep's arm.
+void set_arm_flags(BBQBenchVariant variant, char arm){
+    BBQLabFlags& flags = bbq_lab_flags();
+    flags = BBQLabFlags();
+    switch (variant){
+    case BBQBenchVariant::None:
+        return;
+    case BBQBenchVariant::TeraSelfSpot:
+        flags.tera_self_at_chargestone = arm == 'B';
+        return;
+    case BBQBenchVariant::DirectLeaveArea:
+        flags.fly_directly_override = arm == 'B' ? 1 : 0;
+        flags.leave_area_before_day_skip = arm == 'B';
+        return;
+    }
+}
+
 // SHA-256 of the running executable, so every rep names the exact build.
 std::string executable_sha256(){
     QFile file(QCoreApplication::applicationFilePath());
@@ -187,10 +297,18 @@ void BBQRoutineBench::program(SingleSwitchProgramEnvironment& env, ProController
     }
 
     const std::string routine = ROUTINE == BBQBenchRoutine::SneakUp ? "sneak-up" : "tera-self";
+    const std::string exe_sha256 = executable_sha256();
+    const std::string run_id = QDateTime::currentDateTime().toString("yyyyMMdd-HHmmss").toStdString();
+    const std::string dir = QDir::currentPath().toStdString() + "/BBQBench/" + run_id;
+    QDir().mkpath(QString::fromStdString(dir));
+    std::ofstream csv(dir + "/reps.csv");
+    csv << "run,exe_sha256,routine,variant,start_from,rep,arm,pass,seconds,reason,battle,tera_turn,opponent,sky,events\n";
     env.log("BENCH,start,routine=" + routine
         + ",reps=" + std::to_string(REPS)
         + ",start_from=" + std::to_string((int)START_FROM.get())
-        + ",exe_sha256=" + executable_sha256());
+        + ",variant=" + std::to_string((int)VARIANT.get())
+        + ",dir=" + dir
+        + ",exe_sha256=" + exe_sha256);
 
     std::vector<BBQBenchRep> reps;
     for (uint16_t i = 0; i < REPS; i++){
@@ -208,6 +326,12 @@ void BBQRoutineBench::program(SingleSwitchProgramEnvironment& env, ProController
             stay_away_from_plaza(BBQ_OPTIONS.LANGUAGE);
             break;
         }
+        const char arm = VARIANT == BBQBenchVariant::None ? '-' : (i % 2 == 0 ? 'A' : 'B');
+        set_arm_flags(VARIANT, arm);
+        RepRecorder recorder(env, BBQ_OPTIONS.LANGUAGE, dir, i + 1);
+        set_bbq_lab_event_hook([&](VideoStream& stream, ProControllerContext& context, const std::string& event){
+            recorder.on_event(stream, context, event);
+        });
         BattleSeenWatcher battle;
         WallClock start = current_time();
         std::string reason;
@@ -227,7 +351,7 @@ void BBQRoutineBench::program(SingleSwitchProgramEnvironment& env, ProController
                 },
                 {battle}
             );
-            reason = battle.seen() ? "battle" : "no battle";
+            reason = recorder.battle() ? "battle" : battle.seen() ? "battle outside the route" : "no battle";
         }catch (OperationFailedException& e){
             error = true;
             reason = "error: " + e.message();
@@ -235,9 +359,13 @@ void BBQRoutineBench::program(SingleSwitchProgramEnvironment& env, ProController
             press_Bs_to_back_to_overworld(env.program_info(), env.console, context);
             return_to_plaza(env.program_info(), env.console, context, BBQ_OPTIONS.LANGUAGE);
         }
+        set_bbq_lab_event_hook(nullptr);
         double seconds = std::chrono::duration<double>(current_time() - start).count();
-        bool pass = battle.seen() && !error;
-        reps.push_back({pass, seconds});
+        //The route's own battle counts, not a wild Pokemon attacking elsewhere. Tera-self
+        //also needs its Tera turn.
+        bool pass = recorder.battle() && !error
+            && (ROUTINE != BBQBenchRoutine::TeraSelf || recorder.tera_turn());
+        reps.push_back({pass, seconds, arm});
 
         stats.reps++;
         if (pass){
@@ -246,11 +374,26 @@ void BBQRoutineBench::program(SingleSwitchProgramEnvironment& env, ProController
         env.update_stats();
         std::replace(reason.begin(), reason.end(), ',', ';');
         env.log("BENCH,rep," + std::to_string(i + 1)
+            + ",arm=" + std::string(1, arm)
             + ",pass=" + std::string(pass ? "1" : "0")
             + ",seconds=" + std::to_string((int)(seconds + 0.5))
-            + ",reason=" + reason);
+            + ",reason=" + reason
+            + ",opponent=" + recorder.opponent()
+            + ",sky=" + std::to_string(recorder.sky())
+            + ",events=" + recorder.events());
+        csv << run_id << "," << exe_sha256 << "," << routine << "," << (int)VARIANT.get() << ","
+            << (int)START_FROM.get() << "," << (i + 1) << "," << arm << "," << (pass ? 1 : 0) << ","
+            << (int)(seconds + 0.5) << "," << reason << "," << (recorder.battle() ? 1 : 0) << ","
+            << (recorder.tera_turn() ? 1 : 0) << "," << recorder.opponent() << "," << recorder.sky() << ","
+            << recorder.events() << "\n";
+        csv.flush();
     }
+    set_arm_flags(BBQBenchVariant::None, '-');
     env.log("BENCH,summary,routine=" + routine + "," + bbq_bench_summary(reps));
+    if (VARIANT != BBQBenchVariant::None){
+        env.log("BENCH,summary_arm,A," + bbq_bench_arm_summary(reps, 'A'));
+        env.log("BENCH,summary_arm,B," + bbq_bench_arm_summary(reps, 'B'));
+    }
 
     //Leave the player at Central Plaza, where the next block starts. A routine that
     //already returned leaves the player there, where a second return can't find the
