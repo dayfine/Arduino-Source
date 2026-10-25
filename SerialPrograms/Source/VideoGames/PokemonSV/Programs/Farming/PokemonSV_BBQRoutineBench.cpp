@@ -352,9 +352,9 @@ void BBQRoutineBench::program(SingleSwitchProgramEnvironment& env, ProController
             env.log("No fly spot here. Flying to Central Plaza.");
             return_to_plaza(env.program_info(), env.console, context, BBQ_OPTIONS.LANGUAGE);
         }
-    }else if (ROUTINE == BBQBenchRoutine::CoastalGlide){
-        //Started on a fly spot: assume it is the one to use (Coastal Plaza).
-        stay_away_from_plaza(BBQ_OPTIONS.LANGUAGE);
+    }else{
+        //The banner after flying onto the spot says whether it is Central Plaza.
+        note_start_position(env.console, context, BBQ_OPTIONS.LANGUAGE);
     }
 
     const std::string routine =
