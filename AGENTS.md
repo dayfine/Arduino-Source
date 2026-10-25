@@ -125,6 +125,7 @@ See [pokemon_sv/PR_WORKFLOW.md](pokemon_sv/PR_WORKFLOW.md). In short:
   faster, bounded Auto Battle quests.
 - [pokemon_sv/PR_WORKFLOW.md](pokemon_sv/PR_WORKFLOW.md): where PRs live and
   how to write their descriptions.
+- [pokemon_sv/lab/MACOS_LOCAL_SIGNING.md](pokemon_sv/lab/MACOS_LOCAL_SIGNING.md): persistent lab signing, permission troubleshooting and reuse by other agents.
 - [pokemon_sv/lab/CONTROL.md](pokemon_sv/lab/CONTROL.md): how to build, launch
   and control a lab instance and the Switch.
 

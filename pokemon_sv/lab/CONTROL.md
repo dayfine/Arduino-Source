@@ -30,9 +30,12 @@ visible, its button titles are readable, and window screenshots work.
 - **Settings:** edit `UserSettings/SerialPrograms-Settings.json` (UTF-8 with a
   BOM) before launch, and keep a copy as `settings-at-start.json` in the run
   folder.
-- **Permission prompts:** the first launch of a new build shows camera and
-  microphone prompts. `allow-capture` presses "Allow" ("允許") through
-  Accessibility. Only do that when the user has said so.
+- **Signing and permission prompts:** follow [MACOS_LOCAL_SIGNING.md](MACOS_LOCAL_SIGNING.md)
+  before rebuilding or launching the lab. Reuse its persistent certificate,
+  separate bundle ID and stable path; a rebuild need not trigger new consent.
+  First grants can still prompt. `allow-capture` presses "Allow" ("允許") through
+  Accessibility only when the user authorized that consent. Do not reset TCC or
+  re-sign the installed release to work around a prompt.
 - **Identity:** before any Stop or keypress, check that the process command
   line is exactly that app path plus `--profile <name>`.
 
