@@ -94,16 +94,21 @@ BBQRoutineBench::BBQRoutineBench()
         LockMode::LOCK_WHILE_RUNNING,
         10, 1
     )
-    , START_AT_CENTRAL(
-        "<b>Start every rep at Central Plaza:</b><br>Off runs reps back to back as the farmer "
-        "does, so a build that stays away flies its next route directly.",
+    , START_FROM(
+        "<b>Start every rep from:</b><br>Back to back runs reps as the farmer does, so a build "
+        "that stays away flies its next route directly.",
+        {
+            {BBQBenchStart::BackToBack, "back-to-back", "Where the last rep ended"},
+            {BBQBenchStart::Central,    "central",      "Central Plaza"},
+            {BBQBenchStart::PolarRest,  "polar-rest",   "Polar Rest Area (fly in from another region)"},
+        },
         LockMode::LOCK_WHILE_RUNNING,
-        false
+        BBQBenchStart::BackToBack
     )
 {
     PA_ADD_OPTION(ROUTINE);
     PA_ADD_OPTION(REPS);
-    PA_ADD_OPTION(START_AT_CENTRAL);
+    PA_ADD_OPTION(START_FROM);
     PA_ADD_OPTION(BBQ_OPTIONS);
 }
 
@@ -166,13 +171,24 @@ void BBQRoutineBench::program(SingleSwitchProgramEnvironment& env, ProController
     const std::string routine = ROUTINE == BBQBenchRoutine::SneakUp ? "sneak-up" : "tera-self";
     env.log("BENCH,start,routine=" + routine
         + ",reps=" + std::to_string(REPS)
-        + ",start_at_central=" + std::string(START_AT_CENTRAL ? "1" : "0")
+        + ",start_from=" + std::to_string((int)START_FROM.get())
         + ",exe_sha256=" + executable_sha256());
 
     std::vector<BBQBenchRep> reps;
     for (uint16_t i = 0; i < REPS; i++){
-        if (START_AT_CENTRAL && i > 0){
+        switch (START_FROM){
+        case BBQBenchStart::BackToBack:
+            break;
+        case BBQBenchStart::Central:
+            if (i > 0){
+                return_to_plaza(env.program_info(), env.console, context, BBQ_OPTIONS.LANGUAGE);
+            }
+            break;
+        case BBQBenchStart::PolarRest:
             return_to_plaza(env.program_info(), env.console, context, BBQ_OPTIONS.LANGUAGE);
+            central_to_polar_rest(env.program_info(), env.console, context);
+            stay_away_from_plaza(BBQ_OPTIONS.LANGUAGE);
+            break;
         }
         BattleSeenWatcher battle;
         WallClock start = current_time();

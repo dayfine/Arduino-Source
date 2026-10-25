@@ -12,7 +12,6 @@
 
 #include <string>
 #include <vector>
-#include "Common/Cpp/Options/BooleanCheckBoxOption.h"
 #include "Common/Cpp/Options/EnumDropdownOption.h"
 #include "Common/Cpp/Options/SimpleIntegerOption.h"
 #include "NintendoSwitch/NintendoSwitch_SingleSwitchProgram.h"
@@ -26,6 +25,13 @@ namespace PokemonSV{
 enum class BBQBenchRoutine{
     SneakUp,
     TeraSelf,
+};
+
+// Where each rep starts from.
+enum class BBQBenchStart{
+    BackToBack,     //  Wherever the last rep left the player, as the farmer does.
+    Central,        //  Central Plaza.
+    PolarRest,      //  Polar Rest Area, so the route flies in from another region.
 };
 
 // One judged run of a routine.
@@ -55,7 +61,7 @@ public:
 private:
     EnumDropdownOption<BBQBenchRoutine> ROUTINE;
     SimpleIntegerOption<uint16_t> REPS;
-    BooleanCheckBoxOption START_AT_CENTRAL;
+    EnumDropdownOption<BBQBenchStart> START_FROM;
     BBQOption BBQ_OPTIONS;
 };
 
