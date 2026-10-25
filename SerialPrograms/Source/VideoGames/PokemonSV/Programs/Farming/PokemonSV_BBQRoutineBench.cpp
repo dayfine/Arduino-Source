@@ -164,10 +164,13 @@ void BBQRoutineBench::program(SingleSwitchProgramEnvironment& env, ProController
     }
     require_player(env.console, context, BUTTON_LCLICK);
 
-    //Start on the Central Plaza fly spot, as the farmer does.
+    //Start on the Central Plaza fly spot, as the farmer does. Off a fly spot (a block that
+    //stopped at Pride Rock), fly there first.
     open_map_from_overworld(env.program_info(), env.console, context);
     if (!fly_to_overworld_from_map(env.program_info(), env.console, context, true)){
-        throw UserSetupError(env.console, "No fly spot where the player stands. Start the program at Central Plaza.");
+        env.log("No fly spot here. Flying to Central Plaza.");
+        press_Bs_to_back_to_overworld(env.program_info(), env.console, context);
+        return_to_plaza(env.program_info(), env.console, context, BBQ_OPTIONS.LANGUAGE);
     }
 
     const std::string routine = ROUTINE == BBQBenchRoutine::SneakUp ? "sneak-up" : "tera-self";
