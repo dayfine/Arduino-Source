@@ -185,7 +185,8 @@ void BBQRoutineBench::program(SingleSwitchProgramEnvironment& env, ProController
             }
             break;
         case BBQBenchStart::PolarRest:
-            return_to_plaza(env.program_info(), env.console, context, BBQ_OPTIONS.LANGUAGE);
+            //Flies from wherever the player is. Returning to Central first would fail on
+            //the first rep, where the plaza's icon is hidden under the player.
             central_to_polar_rest(env.program_info(), env.console, context);
             stay_away_from_plaza(BBQ_OPTIONS.LANGUAGE);
             break;
