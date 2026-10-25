@@ -25,6 +25,7 @@
 
 #include "CommonTools/OCR/OCR_Tests.h"
 #include "Kernels/Kernels_Tests.h"
+#include "PokemonBDSP/PokemonBDSP_Tests.h"
 #include "VideoGames/PokemonFRLG/PokemonFRLG_Tests.h"
 #include "VideoGames/PokemonRSE/PokemonRSE_Tests.h"
 #include "VideoGames/PokemonHome/PokemonHome_Tests.h"
@@ -57,6 +58,7 @@ UnitTestDatabase make_UNIT_TESTS_ALL(){
     NintendoSwitch::add_tests_CheckOnlineDetector(ret);
     NintendoSwitch::add_tests_FailedToConnectDetector(ret);
     NintendoSwitch::add_tests_UpdatePopupDetector(ret);
+    NintendoSwitch::PokemonBDSP::add_tests(ret);
     NintendoSwitch::PokemonFRLG::add_tests(ret);
     NintendoSwitch::PokemonRSE::add_tests(ret);
     NintendoSwitch::PokemonHome::add_tests(ret);
