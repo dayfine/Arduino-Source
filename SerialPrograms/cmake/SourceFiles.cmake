@@ -2593,6 +2593,8 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonSV/Programs/Farming/PokemonSV_AuctionFarmer.h
     Source/VideoGames/PokemonSV/Programs/Farming/PokemonSV_BBQPointsLedger.cpp
     Source/VideoGames/PokemonSV/Programs/Farming/PokemonSV_BBQPointsLedger.h
+    Source/VideoGames/PokemonSV/Programs/Farming/PokemonSV_BBQRoutineBench.cpp
+    Source/VideoGames/PokemonSV/Programs/Farming/PokemonSV_BBQRoutineBench.h
     Source/VideoGames/PokemonSV/Programs/Farming/PokemonSV_BBQSoloFarmer.cpp
     Source/VideoGames/PokemonSV/Programs/Farming/PokemonSV_BBQSoloFarmer.h
     Source/VideoGames/PokemonSV/Programs/Farming/PokemonSV_BlueberryCatchPhoto.cpp
