@@ -16,6 +16,7 @@
 #include "VideoGames/PokemonSV/Inference/Battles/PokemonSV_EncounterWatcher.h"
 #include "VideoGames/PokemonSV/Inference/PokemonSV_MainMenuDetector.h"
 #include "VideoGames/PokemonSV/Inference/Overworld/PokemonSV_OverworldDetector.h"
+#include <QString>
 #include "VideoGames/PokemonSV/Inference/Overworld/PokemonSV_PlaceNameBannerReader.h"
 #include "VideoGames/PokemonSV/Programs/PokemonSV_GameEntry.h"
 #include "VideoGames/PokemonSV/Programs/PokemonSV_SaveGame.h"
@@ -342,7 +343,9 @@ void note_start_position(VideoStream& stream, ProControllerContext& context, Lan
         context.wait_for_all_requests();
         VideoSnapshot screen = stream.video().snapshot();
         for (const std::string& text : reader.read(stream.logger(), language, screen)){
-            if (text.empty()){
+            //A stray character is OCR noise, not a place name. Flying onto the spot
+            //the player stands on often shows no banner at all.
+            if (QString::fromStdString(text).size() < 2){
                 continue;
             }
             if (place_name_banner_matches(expected, text)){
