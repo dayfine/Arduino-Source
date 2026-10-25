@@ -29,6 +29,7 @@
 #include "PokemonSV_LetsGoTools.h"
 #include "PokemonSV_IsolatedHuntPrototype.h"
 #include "PokemonSV_IsolatedHuntStats.h"
+#include "PokemonSV_IsolatedHuntPowerConsole.h"
 #include "PokemonSV_IsolatedHuntConsoleActions.h"
 
 namespace PokemonAutomation{
@@ -39,7 +40,7 @@ IsolatedHuntPrototype_Descriptor::IsolatedHuntPrototype_Descriptor()
     : SingleSwitchProgramDescriptor(
         "PokemonSV:IsolatedHuntPrototype",
         STRING_POKEMON + " SV", "Isolated Hunt Prototype",
-        "", "Supervised target-specific sandwich and bounded hunting. Start at Zero Gate with a healthy lead. Verify Meal Powers, select Central, and match the path at the prompts; Central return is manual.",
+        "", "Supervised target-specific sandwich and bounded hunting. Start at Zero Gate with a healthy lead. Checks Meal Powers and Central before clearing. Match the path at its prompt; Central return is manual.",
         ProgramControllerClass::StandardController_NoRestrictions,
         FeedbackType::VIDEO_AUDIO,
         AllowCommandsWhenRunning::ENABLE_COMMANDS
@@ -56,7 +57,7 @@ IsolatedHuntPrototype::IsolatedHuntPrototype()
     : LANGUAGE("<b>Game Language:</b>", IV_READER().languages(), LockMode::LOCK_WHILE_RUNNING, true)
     , START(
         "<b>Start:</b><br>Full hunt: start at Zero Gate as if just flown there, on foot. "
-        "Use manual controls only at supervision prompts. Other modes are supervised controls. Prepared spot: stand on foot, facing the target patch. "
+        "Meal Power and flight selection are automatic. Use manual controls only at the Central path prompt. Other modes are controls. Prepared spot: stand on foot, facing the target patch. "
         "Central Plaza: start as if just flown there; uses the existing Chargestone court approach. "
         "Chespin requires the Canyon diversity upgrade and a verified Grass spawn patch.",
         {
@@ -68,9 +69,6 @@ IsolatedHuntPrototype::IsolatedHuntPrototype()
         LockMode::LOCK_WHILE_RUNNING, Start::HUNT_FROM_ZERO_GATE
     )
     , SANDWICH_OPTIONS(&LANGUAGE)
-    , MEAL_VERIFIED("<b>Meal Powers inspected:</b><br>At the verification pause, check the actual active "
-        "Encounter Power type and level (Lv. 2 ordinary / Lv. 3 herbs). Check only if correct.",
-        LockMode::UNLOCK_WHILE_RUNNING, false)
     , PATCH_VERIFIED("<b>Central path inspected:</b><br>At the path pause, position the player on the demonstrated "
         "Charcadet path by Central. Check only after matching terrain and safe clearing bounds.",
         LockMode::UNLOCK_WHILE_RUNNING, false)
@@ -101,7 +99,6 @@ void IsolatedHuntPrototype::add_options(){
     PA_ADD_OPTION(START);
     PA_ADD_OPTION(HUNTS);
     PA_ADD_OPTION(SANDWICH_OPTIONS);
-    PA_ADD_OPTION(MEAL_VERIFIED);
     PA_ADD_OPTION(PATCH_VERIFIED);
     PA_ADD_OPTION(MAX_ROUNDS);
     PA_ADD_OPTION(RUN_SECONDS);
@@ -113,25 +110,19 @@ void IsolatedHuntPrototype::add_options(){
 bool IsolatedHuntPrototype::verify_setup(VideoStream& stream, ProControllerContext& context,
     const IsolatedHuntRequest& request, IsolatedHuntVerification stage
 ){
+    if (stage == IsolatedHuntVerification::MEAL_POWER){
+        return check_isolated_meal_power(stream, context, LANGUAGE, request.type, SANDWICH_OPTIONS.USE_HERBA ? 3 : 2);
+    }
     const auto started = current_time();
-    const bool meal = stage == IsolatedHuntVerification::MEAL_POWER;
-    auto& verified = meal ? MEAL_VERIFIED : PATCH_VERIFIED;
-    verified = false;
-    const std::string type = request.type == IsolatedEncounterType::FIRE ? "Fire" : "Grass";
-    stream.log(meal ? "SUPERVISED: inspect active Meal Powers: Encounter Power " + type +
-        (SANDWICH_OPTIONS.USE_HERBA ? " Lv. 3." : " Lv. 2.") + " Check Meal Powers inspected only if correct."
-        : "SUPERVISED: match the demonstrated Central Charcadet path. Position safely, then check Central path inspected.", COLOR_BLUE);
-    if (meal){ pbf_press_dpad(context, DPAD_RIGHT, 160ms, 840ms); }
-    context.wait_for_all_requests();
+    PATCH_VERIFIED = false;
+    stream.log("SUPERVISED: match the demonstrated Central Charcadet path. Position safely, then check Central path inspected.", COLOR_BLUE);
     const WallClock deadline = current_time() + 110s;
-    while (!verified && current_time() < deadline){ context.wait_for(250ms); }
-    const bool accepted = verified;
-    verified = false;
-    stream.log("Isolated verification: stage=" + std::string(meal ? "meal power" : "Central path") +
-        ", method=supervised, accepted=" + std::to_string(accepted) + ", elapsed ms=" +
-        std::to_string(std::chrono::duration_cast<Milliseconds>(current_time() - started).count()));
+    while (!PATCH_VERIFIED && current_time() < deadline){ context.wait_for(250ms); }
+    const bool accepted = PATCH_VERIFIED;
+    PATCH_VERIFIED = false;
+    stream.log("Isolated verification: stage=Central path, method=supervised, accepted=" + std::to_string(accepted) +
+        ", elapsed ms=" + std::to_string(std::chrono::duration_cast<Milliseconds>(current_time() - started).count()));
     if (!accepted){ return false; }
-    if (meal){ pbf_press_button(context, BUTTON_B, 160ms, 840ms); }
     OverworldWatcher overworld(stream.logger(), COLOR_BLUE);
     return wait_until(stream, context, 5000ms, {overworld}) == 0;
 }
@@ -165,6 +156,12 @@ bool IsolatedHuntPrototype::run_one_hunt(SingleSwitchProgramEnvironment& env,
     return true;
 }
 
+void IsolatedHuntPrototype::check_power_language(SingleSwitchProgramEnvironment& env) const{
+    if (LANGUAGE != Language::English && LANGUAGE != Language::ChineseTraditional){
+        throw UserSetupError(env.logger(), "Automatic Meal Power verification supports English and Traditional Chinese only.");
+    }
+}
+
 void IsolatedHuntPrototype::run_hunts(SingleSwitchProgramEnvironment& env, ProControllerContext& context){
     const auto plan = make_isolated_hunt_plan(HUNTS.snapshot());
     if (!plan.error.empty()){
@@ -173,12 +170,7 @@ void IsolatedHuntPrototype::run_hunts(SingleSwitchProgramEnvironment& env, ProCo
     if (LANGUAGE == Language::None){
         throw UserSetupError(env.logger(), "Select the game language before starting.");
     }
-    for (const auto& request : plan.hunts){
-        if (request.location == IsolatedHuntLocation::WEST_PROVINCE_ONE_CENTRAL &&
-            LANGUAGE != Language::English && LANGUAGE != Language::ChineseTraditional){
-            throw UserSetupError(env.logger(), "Central flight verification supports English and Traditional Chinese only.");
-        }
-    }
+    check_power_language(env);
     assert_16_9_720p_min(env.logger(), env.console);
     require_player(env.console, context, BUTTON_LCLICK);
     OverworldWatcher overworld(env.logger(), COLOR_BLUE);
@@ -313,6 +305,7 @@ void IsolatedHuntPrototype::program(SingleSwitchProgramEnvironment& env, ProCont
         run_hunts(env, context);
         return;
     }
+    if (START != Start::RETURN_TO_ZERO_GATE){ check_power_language(env); }
     auto& stats = env.current_stats<IsolatedHuntPrototype_Descriptor::Stats>();
     assert_16_9_720p_min(env.logger(), env.console);
     require_player(env.console, context, BUTTON_LCLICK);

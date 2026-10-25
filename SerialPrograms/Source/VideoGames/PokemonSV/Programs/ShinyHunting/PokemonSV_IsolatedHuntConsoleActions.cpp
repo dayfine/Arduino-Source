@@ -160,7 +160,7 @@ bool ConsoleIsolatedHuntActions::prepare_sandwich(const IsolatedHuntRequest& req
 
 bool ConsoleIsolatedHuntActions::verify_meal_power(const IsolatedHuntRequest& request){
     bool verified = false;
-    const bool success = guard("supervised Meal Power verification", 120000ms,
+    const bool success = guard("automatic Meal Power verification", 120000ms,
         [&](ProControllerContext& context){
             verified = m_verifier && m_verifier(context, request, IsolatedHuntVerification::MEAL_POWER);
         }

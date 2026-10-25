@@ -39,6 +39,7 @@ public:
 
 private:
     void add_options();
+    void check_power_language(SingleSwitchProgramEnvironment& env) const;
     void run_hunts(SingleSwitchProgramEnvironment& env, ProControllerContext& context);
     bool run_one_hunt(SingleSwitchProgramEnvironment& env, ProControllerContext& context, const IsolatedHuntRequest& request);
     bool verify_setup(VideoStream& stream, ProControllerContext& context,
@@ -61,7 +62,6 @@ private:
     EnumDropdownOption<Start> START;
     IsolatedHuntTable HUNTS;
     IsolatedHuntSandwichOption SANDWICH_OPTIONS;
-    BooleanCheckBoxOption MEAL_VERIFIED;
     BooleanCheckBoxOption PATCH_VERIFIED;
     SimpleIntegerOption<uint16_t> RUN_SECONDS;
     SimpleIntegerOption<uint16_t> MAX_ROUNDS;
