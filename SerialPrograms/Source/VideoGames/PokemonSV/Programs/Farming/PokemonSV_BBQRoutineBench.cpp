@@ -302,6 +302,9 @@ void set_arm_flags(BBQBenchVariant variant, char arm){
     flags.coastal_ride_ms = tuning.coastal_ride_ms;
     flags.coastal_glide_x = tuning.coastal_glide_x;
     flags.coastal_glide_ms = tuning.coastal_glide_ms;
+    flags.coastal_turn_ms = tuning.coastal_turn_ms;
+    flags.coastal_face_x = tuning.coastal_face_x;
+    flags.coastal_face_y = tuning.coastal_face_y;
     switch (variant){
     case BBQBenchVariant::None:
         return;

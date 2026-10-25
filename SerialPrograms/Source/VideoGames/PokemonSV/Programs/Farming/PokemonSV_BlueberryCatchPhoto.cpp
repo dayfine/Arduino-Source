@@ -989,7 +989,7 @@ void coastal_plaza_to_grassland(ConsoleHandle& console, ProControllerContext& co
         + " for " + std::to_string(lab.coastal_glide_ms) + " ms."
     );
 
-    //Turn toward the cliff (west), camera behind, mount. The landing view faces east.
+    //Turn left from the landing view (it faces the plaza), camera behind, mount.
     pbf_move_left_joystick(context, {lab.coastal_face_x, lab.coastal_face_y}, 160ms, 400ms);
     pbf_press_button(context, BUTTON_L | BUTTON_PLUS, 160ms, 840ms);
 
@@ -1000,9 +1000,10 @@ void coastal_plaza_to_grassland(ConsoleHandle& console, ProControllerContext& co
     ssf_press_button(context, BUTTON_B, 0ms, 160ms);
     pbf_wait(context, 800ms);
 
-    //Glide right and up over the hill.
+    //Turn right right after the jump, then glide up over the hill.
     const double y = inverted_flight ? -1 : +1;
-    pbf_move_left_joystick(context, {lab.coastal_glide_x, y}, Milliseconds(lab.coastal_glide_ms), 0ms);
+    pbf_move_left_joystick(context, {lab.coastal_glide_x, y}, Milliseconds(lab.coastal_turn_ms), 0ms);
+    pbf_move_left_joystick(context, {0, y}, Milliseconds(lab.coastal_glide_ms), 0ms);
 
     //Drop onto the hilltop.
     pbf_press_button(context, BUTTON_B, 160ms, 2000ms);
