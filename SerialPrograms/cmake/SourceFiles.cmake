@@ -2478,6 +2478,7 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonSV/PokemonSV_Tests.h
     Source/VideoGames/PokemonSV/Programs/AutoStory/PokemonSV_AutoStoryCheckpointHooks.cpp
     Source/VideoGames/PokemonSV/Programs/AutoStory/PokemonSV_AutoStoryCheckpointHooks.h
+    Source/VideoGames/PokemonSV/Programs/AutoStory/PokemonSV_AutoStoryDevTests.cpp
     Source/VideoGames/PokemonSV/Programs/AutoStory/PokemonSV_AutoStory.cpp
     Source/VideoGames/PokemonSV/Programs/AutoStory/PokemonSV_AutoStory.h
     Source/VideoGames/PokemonSV/Programs/AutoStory/PokemonSV_AutoStory_Segment_00.cpp
