@@ -108,7 +108,7 @@ struct HuntSetup{
 HuntSetup setup_hunt(const IsolatedHuntRequest& request, const IsolatedHuntLimits& limits, IsolatedHuntActions& actions){
     if (!make_isolated_hunt_plan({request}).error.empty() ||
         (limits.ascent.enabled && !valid_isolated_ascent(limits.ascent)) ||
-        (limits.resume_at_anchor && !limits.use_existing_power) ||
+        (limits.resume_at_anchor && (!limits.use_existing_power || request.location != IsolatedHuntLocation::WEST_PROVINCE_ONE_CENTRAL)) ||
         limits.max_rounds == 0 || limits.max_empty_rounds == 0 || limits.duration_ms == 0 || limits.power_duration_ms == 0){
         return {{.stop = IsolatedHuntStop::INVALID_PLAN}};
     }

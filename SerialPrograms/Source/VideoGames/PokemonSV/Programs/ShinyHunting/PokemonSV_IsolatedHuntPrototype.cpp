@@ -57,7 +57,7 @@ namespace{
 const char* hunt_start_description(){
     return
         "<b>Start:</b><br>Full hunt: start at Zero Gate as if just flown there, on foot. "
-        "Anchor resume: stand near Central in the overworld; re-flies only after verifying Central, then asks for the path checkpoint. "
+        "Anchor resume: stand at the verified Central uphill patch in the overworld. Skips initial flight; confirm location, marker and heading at the path checkpoint. "
         "Existing sandwich: finish the result screen, pack up the picnic and return to the Zero Gate overworld first. Set the conservative remaining power budget below. "
         "Meal Power and flight selection are automatic. Use manual controls only at the Central path prompt. Other modes are controls. Prepared spot: stand on foot, facing the target patch. "
         "Central Plaza: start as if just flown there; uses the existing Chargestone court approach. "
@@ -204,6 +204,9 @@ void IsolatedHuntPrototype::run_hunts(SingleSwitchProgramEnvironment& env, ProCo
     }
     if (existing_power() && plan.hunts.size() != 1){
         throw UserSetupError(env.logger(), "Existing sandwich resume requires exactly one enabled hunt.");
+    }
+    if (START == Start::EXISTING_POWER_AT_ANCHOR && plan.hunts.front().location != IsolatedHuntLocation::WEST_PROVINCE_ONE_CENTRAL){
+        throw UserSetupError(env.logger(), "Anchor resume currently supports the supervised Central corridor only.");
     }
     if (LANGUAGE == Language::None){
         throw UserSetupError(env.logger(), "Select the game language before starting.");
