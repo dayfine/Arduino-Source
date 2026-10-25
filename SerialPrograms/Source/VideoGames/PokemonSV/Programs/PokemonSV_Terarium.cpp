@@ -28,6 +28,26 @@ namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonSV{
 
+//The map reopens at the zoom it was left at (4 levels, 3 by default). The corner
+//moves below were measured one level out from the default, so get there from any zoom:
+//all the way out, then one level in.
+static void zoom_map_to_corner_level(ProControllerContext& context){
+    for (int i = 0; i < 3; i++){
+        pbf_press_button(context, BUTTON_ZL, 320ms, 480ms);
+    }
+    pbf_press_button(context, BUTTON_ZR, 320ms, 800ms);
+}
+
+//The zoom the map opens at after a flight (level 3 of 4), from any zoom.
+static void zoom_map_to_default_level(ProControllerContext& context){
+    for (int i = 0; i < 3; i++){
+        pbf_press_button(context, BUTTON_ZL, 320ms, 480ms);
+    }
+    pbf_press_button(context, BUTTON_ZR, 320ms, 480ms);
+    pbf_press_button(context, BUTTON_ZR, 320ms, 800ms);
+}
+
+
 namespace{
 
 // What one fly toward Central Plaza did.
@@ -77,7 +97,7 @@ PlazaFly fly_toward_plaza(
                 }
 
                 //Move cursor to top left corner - even works when at Entrance fly point
-                pbf_press_button(context, BUTTON_ZL, 320ms, 800ms);
+                zoom_map_to_corner_level(context);
                 pbf_move_left_joystick(context, {-1, +1}, 4000ms, 320ms);
 
                 //Now move toward center
@@ -293,7 +313,7 @@ bool fly_from_anywhere(
     Milliseconds hold, Milliseconds release
 ){
     open_map_from_overworld(info, stream, context);
-    pbf_press_button(context, BUTTON_ZL, 320ms, 800ms);
+    zoom_map_to_corner_level(context);
     pbf_move_left_joystick(context, {-1, +1}, 4000ms, 320ms);
     pbf_move_left_joystick(context, {+1, -1}, 2000ms, 320ms);
     pbf_press_button(context, BUTTON_ZR, 320ms, 800ms);
@@ -337,6 +357,11 @@ void map_move_cursor_fly(
     for (int i = 0; i < 3; i++){
         try{
             open_map_from_overworld(info, stream, context);
+            //A failed attempt closes the map one level out, without the flight that
+            //would reset its zoom.
+            if (i > 0){
+                zoom_map_to_default_level(context);
+            }
             pbf_move_left_joystick(context, {x, y}, hold, release);
             pbf_press_button(context, BUTTON_ZL, 320ms, 800ms);
             fly_to_overworld_from_map(info, stream, context);
