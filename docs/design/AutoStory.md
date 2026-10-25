@@ -16,7 +16,7 @@ Paths: `SV/` = `SerialPrograms/Source/VideoGames/PokemonSV/Programs/AutoStory/`,
 unattended) are being written one game at a time. SV has one on `main`
 (22.4k lines). A team is building BDSP
 (PokemonAutomation/Arduino-Source#1717, 32.7k lines, WIP), SwSh has an
-early draft (#1207), and we want one for FireRed. Each copies or reinvents
+early draft (PokemonAutomation/Arduino-Source#1207), and we want one for FireRed. Each copies or reinvents
 the same two things:
 
 - **The run flow:** an ordered list of checkpoints, each starting from a
