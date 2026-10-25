@@ -243,9 +243,9 @@ BBQOption::BBQOption(OCR::LanguageOCROption* language_option)
         LockMode::UNLOCK_WHILE_RUNNING, false
     )
     , FLY_DIRECTLY(
-        "<b>Fly Directly Between Quests (experimental):</b><br>After a quest that ends in the field, "
+        "<b>Fly Directly Between Quests:</b><br>After a quest that ends in the field, "
         "fly straight to the next quest instead of returning to Central Plaza first.",
-        LockMode::LOCK_WHILE_RUNNING, false
+        LockMode::LOCK_WHILE_RUNNING, true
     )
     , COASTAL_FLYING_CATCH(
         "<b>Catch Flying Types at Coastal Plaza (experimental):</b><br>Look for Pikipek, Trumbeak, "
