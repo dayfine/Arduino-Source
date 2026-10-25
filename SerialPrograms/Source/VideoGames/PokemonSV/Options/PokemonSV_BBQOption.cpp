@@ -145,6 +145,14 @@ std::vector<std::unique_ptr<EditableTableRow>> BBQuestTable::make_defaults(){
     flying_catch->quest.set(BBQuests::catch_flying);
     flying_catch->action.set(BBQAction::reroll);
     ret.emplace_back(std::move(flying_catch));
+    //Catch Poison and Catch Dark share the Alolan Muk route at the Coastal glide, which
+    //has never succeeded (0/5 by R16). Reroll them until it has a route that works.
+    for (BBQuests quest : {BBQuests::catch_poison, BBQuests::catch_dark}){
+        auto row = std::make_unique<BBQuestTableRow>(*this);
+        row->quest.set(quest);
+        row->action.set(BBQAction::reroll);
+        ret.emplace_back(std::move(row));
+    }
     return ret;
 }
 
