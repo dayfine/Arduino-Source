@@ -1,6 +1,10 @@
-# AutoStory: shared run flow, 2D movement, and an FRLG AutoStory
+# AutoStory: FRLG pilot first, shared run flow and 2D movement later
 
-Status: draft for discussion, 2026-10-25. Not proposed upstream yet.
+Status: internal plan, revised 2026-10-25 after review. The upstream-facing
+one-page summary is [AutoStory-Proposal.md](AutoStory-Proposal.md). The
+review comment drafts for the BDSP PR are in
+[AutoStory-1717-review-drafts.md](AutoStory-1717-review-drafts.md). Neither
+file has been posted.
 Sources: SV AutoStory on `main`; BDSP WIP
 [PokemonAutomation/Arduino-Source#1717](https://github.com/PokemonAutomation/Arduino-Source/pull/1717)
 at `65094d4cd`; SwSh WIP PokemonAutomation/Arduino-Source#1207 at `32d506c27`;
@@ -16,8 +20,8 @@ Paths: `SV/` = `SerialPrograms/Source/VideoGames/PokemonSV/Programs/AutoStory/`,
 unattended) are being written one game at a time. SV has one on `main`
 (22.4k lines). A team is building BDSP
 (PokemonAutomation/Arduino-Source#1717, 32.7k lines, WIP), SwSh has an
-early draft (PokemonAutomation/Arduino-Source#1207), and we want one for FireRed. Each copies or reinvents
-the same two things:
+early draft (PokemonAutomation/Arduino-Source#1207), and we want one for
+FireRed. Each copies or reinvents the same two things:
 
 - **The run flow:** an ordered list of checkpoints, each starting from a
   save, retried from that save when it fails, with start/end selection,
@@ -51,33 +55,50 @@ the same two things:
   save on failure. Users asked for the same here
   ([ComputerControl#259](https://github.com/PokemonAutomation/ComputerControl/issues/259));
   Mysticial's reply there is that an AutoStory takes far more effort than it
-  looks (SV took over a year). Shared infrastructure and decomp-planned paths
-  are how this plan tries to keep that cost down.
+  looks (SV took over a year).
 
-**What we think should happen.**
+**What that year was, honestly.** Most of it was hardware hours per
+checkpoint: writing a checkpoint, then tuning it and rerunning it on a
+console until it is reliable. Shared infrastructure does not shorten that.
+Decomp-planned paths might reduce the tuning, but that is unproven. What we
+can do is measure the cost per checkpoint early and stop if it is too high
+(the gate in §7.7).
 
-1. Move SV's run flow into a small shared module, as pure moves in five
-   small PRs with unit tests, keeping SV's behaviour exactly. Each game keeps
-   its own options, save/reset and checkpoints.
-2. Build a shared, console-free tile-path executor (path as data, resume
-   after an interrupt, pluggable interrupt policy, landmark alignment), with
-   per-game timings and detectors. FRLG is the first user; BDSP can adopt
-   it. We offer to do both and to help BDSP move onto them.
-3. Build a FireRed AutoStory to the Champion on top of them: roughly 90–110
-   checkpoints, ~10–12k lines, piloted on Pallet Town → Pewter City first.
-   It must work solo from a new game: no trades and no transferring a
-   levelled Pokémon in. The team, catches and purchases are derived from
-   what the route needs (§7.6); shortcuts such as the Nugget Bridge money
-   loop are options.
+**Order (revised 2026-10-25): own something before proposing changes to
+anyone else's code.**
 
-**What reviewers should expect:** about 30 PRs, most 200–600 lines, in
-the order of §7.7. The first eight (shared run flow and tile movement) stand
-on their own and help SV and BDSP whether or not the FireRed program goes
-ahead.
+1. **Phase A, the pilot: FRLG files only, about 10 PRs.** Build a FireRed
+   AutoStory from a new game to Brock, with a *third* copy of the run flow
+   in FRLG, as BDSP copied SV's. We accept the duplication for now. The
+   tile-path executor (T1) lives in the FRLG module at first, and the Elite
+   Four farmer moves onto it (T2). Users can run something at PR 5 (new game
+   → rival battle); the pilot is complete at PR 10 (Boulder Badge).
+2. **Gate F3**, a public commitment in the proposal: every pilot checkpoint
+   passes 3 times in a row from its save, at an average of at most 3 Switch
+   hours per checkpoint, counting development and validation. Otherwise we
+   stop at Brock.
+3. **Phase B:** the remaining segments to the Champion, one PR per segment.
+4. **Phase C, any time and independent of A and B:** the BDSP bugs found
+   while reading #1717 become standalone review comments with no request
+   attached. They are drafted in the sibling file and not posted; the user
+   decides.
+5. **Phase D, only after the Brock pilot runs and people use it:** "I wrote
+   the third copy; I'll migrate SV and offer it to BDSP." The shared run
+   flow (R0–R5) and the shared tile path move out of FRLG as pure moves with
+   tests. The PRs are the same as before; they come later and are framed
+   differently.
 
-The rest of the doc gives the evidence (§2, §4), the proposed interfaces and
-PR sequence (§3, §5), feedback for the BDSP draft (§6) and the FireRed plan
-(§7).
+Requirements unchanged (§9): FireRed, to the Champion, solo with no trades,
+shortcuts as options, the team worked out backwards from what the route
+needs.
+
+**What reviewers should expect:** about 10 FRLG-only PRs to the pilot, most
+150–500 lines, in the order of §7.7, then a go/no-go decision with measured
+numbers. The likely reviewers are the FRLG authors in §8.
+
+The rest of the doc gives the evidence (§2, §4), the interfaces (§3, §5),
+the BDSP findings (§6), the FireRed plan and PR sequence (§7), and who
+wrote the FRLG code we build on (§8).
 
 ## 1. Design from first principles
 
@@ -126,7 +147,7 @@ unused). 4 is where BDSP split into two styles.
 | Error report | at attempt 10, telemetry `SVT.cpp:1457-1469` | none | SV only |
 | Post-success check | `enter_menu_from_overworld` (retry if not overworld) `SVT.cpp:1453` | none | SV only |
 | Tutorial loop | separate copy `SVT.cpp:1491-1547` | — | SV only |
-| `save=false` path | — | `reload_backup_save` is an empty TODO `BT.cpp:188-197`, no callers | dead |
+| `save=false` path | — | the retry loop calls `reload_backup_save` (`BT.cpp:245-246`), an empty TODO (`:188-197`), and reruns the action without resetting | bug |
 | Dev harness | `test_checkpoints` / `test_code` `SVA.cpp:901-1080,1196-1291` | none | SV only |
 | End of program | `GO_HOME_WHEN_DONE`, start-up checks | neither; language hard-coded English `BA.cpp:701` | BDSP missing |
 
@@ -141,7 +162,7 @@ Coupling worth knowing before moving anything:
 - Segments construct their checkpoints inline
   (`AutoStory_Checkpoint_04().run_checkpoint(...)`), so checkpoint order is
   written twice: in each segment and in the registry. In BDSP this already
-  went wrong twice (§5.2).
+  went wrong twice (§6).
 - Code-health limits (fork #41: functions ≤50 lines, nesting ≤4, ≤7 params)
   are exceeded by: SV constructor ~397 lines, `test_checkpoints` 180 lines /
   8 params / nesting 5, `test_code` 96, `on_config_value_changed` 87,
@@ -150,7 +171,13 @@ Coupling worth knowing before moving anything:
   14-move list), `program` 74, `save_game` 71, retry loop 51 / 8 params. Pure
   moves keep these as legacy; anything new should not add more.
 
-## 3. Run flow: shared core and prework
+## 3. Run flow: shared core (phase D)
+
+In phase A, FRLG gets its own copy of the run flow inside the FRLG module
+(S0). That copy is written in the shape below from the start: hooks, a
+policy struct, and fake-hook unit tests. Phase D's first PR (R0) can then
+move it to the shared module as a pure move. SV and BDSP are untouched
+until phase D.
 
 ### 3.1 What is shared, what is per game
 
@@ -219,10 +246,13 @@ files change.
 - `after_success` throwing (the overworld check) counts as a failed attempt.
 - Each loop's own fatal message text.
 
-### 3.3 Prework PR sequence (SV only, no behaviour change)
+### 3.3 Phase D PR sequence (after the pilot is in use; SV only, no behaviour change)
+
+P1–P5 here are R1–R5 in §7.7.
 
 | # | PR | What moves | Risk | Review |
 |---|---|---|---|---|
+| R0 | FRLG's run flow → `Pokemon/AutoStory` | S0's copy moved unchanged | low | `--color-moved` |
 | P1 | Shared select databases | 6 `make_*_database` → `make_index_database<T>`; same slugs/labels | low | `--color-moved` |
 | P2 | Range math | `get_*_index` arithmetic → pure `to_global_range` + tests | low | tests |
 | P3 | Shared stats | `AutoStoryStats` → `Pokemon/AutoStory`; alias in `SVT.h` | low (keys) | pure move |
@@ -306,8 +336,12 @@ avoid animated tiles; Flash-dark caves are the exception.
 
 ### 5.1 Pieces
 
-Shared, console-free, in `SerialPrograms/Source/Pokemon/Navigation/`
-(precedent: `Pokemon/Pokemon_AdvRng.h` is shared by FRLG and RSE):
+Console-free. In phase A it lives in the FRLG module
+(`FRLG/Navigation/`, namespace `PokemonFRLG`), so the pilot touches only
+FRLG files. In phase D, if BDSP wants it, it moves to
+`SerialPrograms/Source/Pokemon/Navigation/` (precedent:
+`Pokemon/Pokemon_AdvRng.h` is shared by FRLG and RSE). The sketch below
+shows the final shared form.
 
 ```cpp
 namespace PokemonAutomation{
@@ -432,58 +466,60 @@ CommandLineTests, one PR per detector (Mysticial's request on #1717).
 - Battle intro and door fade both look like a black screen: check for a
   battle menu after the fade (BDSP `walk_until_doorway` does; FRLG must).
 
-## 6. Feedback for the BDSP team (draft; the user decides whether to post)
+## 6. BDSP #1717: findings (phase C)
+
+**Revised 2026-10-25.** We do not own anything yet, so we don't ask the BDSP
+team to restructure their WIP, adopt a shared core, or reorder their PRs.
+The defects below become standalone review comments with no request
+attached, drafted in
+[AutoStory-1717-review-drafts.md](AutoStory-1717-review-drafts.md) and
+re-checked at `65094d4cd`. The user decides whether and when to post them.
+Design opinions stay in this internal doc until phase D, and come up
+earlier only if someone asks.
 
 They asked for feedback on "the SV-derived architecture, checkpoint and
 recovery contracts, BDSP helper/detector boundaries, resource distribution,
 and the order in which to extract focused PRs".
 
-**Architecture.** Following SV is right, and their `section_database` is
-cleaner than SV's six copies. Rather than a third copy of the framework
-(SwSh #1207 will need one too), propose the shared core in §3 and adopt it
-when it lands; their loop becomes a hooks object with policy `{20, ..., never
-report}` and their stats/base classes/database code are deleted.
+**Defects (drafted as comments 1–5):**
 
-**Checkpoint and recovery contracts.**
-- `reload_backup_save` is an empty TODO but the `save=false` path calls it
-  and then re-runs the action without any reset (`BT.cpp:188-197`); remove
-  the path or implement it.
-- No start > end check, no recoverable-error report, no `GO_HOME_WHEN_DONE`,
-  language fixed to English (`BA.cpp:701`): adopt SV's behaviour here.
-- Diagnostic options marked "remove before production" (`BA.h:42-46`) and
-  `CheckpointRetryScope`: gate behind developer mode or drop.
+- `reload_backup_save` is an empty TODO (`BT.cpp:188-197`), but the retry
+  loop calls it when `save` is false (`:245-246`) and then reruns the action
+  without any reset.
 - Checkpoint order is written twice (segment + registry) and has drifted:
-  - Segment 08's `run_segment` stops at 0821 (`Segment_08.cpp:~116`), so
-    0822–0826 (Sunyshore and the 8th gym) never run in segment mode.
-  - 0717 is missing from the advanced list (`BA.cpp:155-156` goes 0716 →
+  - Segment 08's `run_segment` stops at 0821 (`Segment_08.cpp:116`), while
+    the registry goes on to 0826 (`BA.cpp:181-185`), so 0822–0826 (Sunyshore
+    and the 8th gym) never run in segment mode.
+  - 0717 is missing from the checkpoint list (`BA.cpp:155-156` goes 0716 →
     0718).
-  - Deriving segments from registry ranges removes this class of bug.
-- Badge texts swapped: Segment 04 says "Third badge (Hearthome)", Segment 05
-  "Fifth badge (Veilstone)"; Veilstone is the 3rd, Hearthome the 5th.
+- `Segment_07.cpp:214` matches `"route_215_skier_edward"`, but the only
+  caller (`:773`) passes `"route_216_skier_edward"`, so the 8.1 s push never
+  runs.
+- Badge texts swapped: Segment 04 (`:31`) says "Third Gym Badge acquired
+  (Hearthome City)", Segment 05 (`:30`) "Fifth Gym Badge acquired (Veilstone
+  City)"; Veilstone is the 3rd, Hearthome the 5th.
 
-**Helper/detector boundaries.**
-- Movement: replace per-segment `move_back_after_unexpected_battle` chains
-  with path data (`trainer_stops_at`, §5.2). Includes the dead skier push
-  above.
-- The landmark loop (segments 00–03) deserves to become the shared alignment
-  routine (§5.1); later segments would gain from it most.
-- `handle_battle` is copied into each of segments 04–09, keyed by trainer-id
-  strings, while `Battle.cpp`'s `handle_expert_battle` and
-  `handle_battle_with_outside_help` have no callers; pick one.
-- `Navigation.cpp` stubs and `Dialog.cpp` (already agreed to delete).
-- Changes to shared `DialogDetector` boxes affect every BDSP program; those
-  need screenshot tests before anything else depends on them.
+**Question (draft 6, optional):** `handle_battle` is copied into each of
+segments 04–09, keyed by trainer-id strings, while `Battle.cpp`'s
+`handle_expert_battle` (`:698`) and `handle_battle_with_outside_help`
+(`:208`) have no callers.
 
-**Resources.** Templates live only in their Packages fork; per-hour variants
-multiply them. Document which landmarks need lighting sets and keep the
-lighting sweep program as a dev tool.
+**Held back (design opinions, for phase D or if asked):**
 
-**Extraction order.** Agree with Mysticial: detectors first, one PR each
-with CommandLineTests images. Then navigation primitives (shared tile path
-if it exists by then), then the battle handler, then segments 00–01.
-
-Tone: the PR is explicitly WIP and asks for early feedback; keep it to a few
-concrete items plus the shared-core offer.
+- A shared run-flow core (§3) instead of per-game copies; their
+  `section_database` is cleaner than SV's six copies and would be the model.
+- No start > end check, no recoverable-error report, no `GO_HOME_WHEN_DONE`,
+  language fixed to English (`BA.cpp:701`), diagnostic options marked
+  "remove before production" (`BA.h:42-46`). These are normal for a WIP
+  and not worth a comment.
+- Movement: path data with `trainer_stops_at` (§5.2) instead of
+  per-segment `move_back_after_unexpected_battle` chains; the landmark loop
+  (segments 00–03) as a shared alignment routine (§5.1).
+- Changes to shared `DialogDetector` boxes affect every BDSP program and
+  need screenshot tests; Mysticial has already asked for detectors first,
+  one PR each.
+- Templates live only in their Packages fork, and per-hour lighting variants
+  multiply them.
 
 ## 7. FRLG AutoStory plan
 
@@ -543,11 +579,13 @@ Already on `main` (`FRLG/`):
 
 ### 7.2 Missing pieces (infrastructure, ~3–5k lines)
 
-1. Shared run flow (§3) adopted in FRLG: FRLG hooks (save via start menu,
-   reset via `soft_reset` + load menu), options, registries.
-2. Shared tile path (§5) with the FRLG adapter, moving `walk_path` and the
-   constants out of `EliteFourFarmer.cpp`; add run (8 frames/tile), bike (6),
-   surf (8) per decomp; ledge steps.
+1. FRLG's own copy of the run flow, in the §3 shape (hooks, policy,
+   fake-hook tests): FRLG hooks (save via start menu, reset via
+   `soft_reset` + load menu), options, registries. It is shared only in
+   phase D.
+2. Tile path (§5) in the FRLG module with the FRLG adapter, moving
+   `walk_path` and the constants out of `EliteFourFarmer.cpp`; add run
+   (8 frames/tile), bike (6), surf (8) per decomp; ledge steps.
 3. Overworld detector (overworld vs dialog vs battle vs menu without opening
    the start menu) and facing detection (player sprite in the centre tile).
 4. Walk interrupts: trainer "!" or approach, wild battle (black screen +
@@ -656,75 +694,133 @@ Consequences:
 
 ### 7.7 PR plan for reviewers
 
-Reviewers should know up front what is coming. The whole plan is about 30
-PRs. Most are 200–600 changed lines, each does one thing, and each says what
+Reviewers should know up front what is coming. Phase A is about 10 PRs,
+touches only FRLG files, and produces something users can run at PR 5.
+Most PRs are 150–500 changed lines, each does one thing, and each says what
 to read first. Upstream allows two open PRs from us at a time, so they arrive
 in order; the rest wait as drafts on the fork.
 
-| # | PR | Depends on | Kind | Size (lines) | What the reviewer reads |
+**Phase A: pilot, new game → Brock (FRLG files only)**
+
+| # | ID | PR | Depends on | Kind | Size (lines) | What the reviewer reads |
+|---|---|---|---|---|---|---|
+| 1 | T1 | Tile-path executor + interrupt policy + tests, in the FRLG module | — | new | ~500 (half tests) | result types, resume bookkeeping |
+| 2 | T2 | FRLG adapter; Elite Four farmer uses it | T1 | move + new | ~300 | walker moved out of `EliteFourFarmer.cpp`; farmer unchanged on hardware |
+| 3 | D4 | New-game screens and naming keyboard | — | new | ~200 + images | detector + screenshot tests |
+| 4 | S0 | Program shell: options, FRLG run-flow copy (hooks + tests), registries | — | new | ~500 (a third of it tests) | retry behaviour against fake hooks; options |
+| 5 | S1 | Segment 00: new game → starter → lab rival | S0, D4, T2 | new + path data | ~500 | **first runnable**; checkpoint list, paths as data; hardware runs |
+| 6 | D1 | Overworld detector | — | new | ~150 + images | detector + screenshot tests |
+| 7 | D3 | Trainer spotting / item pickup watchers | — | new | ~150 + images | same |
+| 8 | B1 | Walk interrupts for FRLG (battle, dialog, item) | T2, D1, D3 | new | ~300 | resolve() paths; fakes |
+| 9 | B2 | Trainer battle handler + tests | — | new | ~500 (half tests) | decisions with scripted fakes |
+| 10 | S2 | Segment 01: parcel → Pokédex → Viridian Forest → Brock | S1, B1, B2 | new + path data | ~700 | **pilot complete**; hardware runs of each checkpoint |
+
+The pilot does not need the facing detector (D2): path data knows the
+facing after each step, as the E4 farmer does today. The requirements
+planner (§7.6) is not needed either, because the pilot route has no HM,
+shop or catch requirements. S1 reuses StarterRng's `walk_to_rival_battle` /
+`auto_battle_rival` and SidHelper's `finish_intro_animations` where they
+fit.
+
+**Phase B: to the Champion (only if gate F3 passes)**
+
+| ID | PR | Depends on | Kind | Size (lines) |
+|---|---|---|---|---|
+| D2 | Facing detector | D1 | new | ~150 + images |
+| T3 | Landmark alignment loop + tests (FRLG; whole-tile output) | T1 | new | ~300 |
+| B3 | Field moves: teach HM, Cut/Surf/Strength, Bike | D1 | new | ~300 |
+| B4 | Mart purchases | — | new | ~250 |
+| B5 | Catch routine | D1 | new | ~300 |
+| S0b | Requirements plan + start-up check (§7.6) + tests | S0 | new | ~400 |
+| S3–S11 | One PR per segment (02 … 10) | S2, B3–B5, S0b | new + path data | ~500–900 each |
+| opt | Nugget Bridge top-up, Retro Mail duplication | S0b | new | small, one each |
+
+**Phase C: BDSP findings (independent, any time).** Not PRs: the review
+comment drafts in
+[AutoStory-1717-review-drafts.md](AutoStory-1717-review-drafts.md), for the
+user to post or not.
+
+**Phase D: shared code (after the pilot runs and people use it).** Framing:
+"I wrote the third copy; I'll migrate SV and offer it to BDSP."
+
+| ID | PR | Depends on | Kind | Size (lines) | What the reviewer reads |
 |---|---|---|---|---|---|
-| **Run flow (SV, no behaviour change)** | | | | | |
-| R1 | Shared start/end select databases | — | move | ~150 | `--color-moved`; same slugs and labels |
+| R0 | FRLG run flow → `Pokemon/AutoStory` | S0 | move | ~300 | `--color-moved`; FRLG unchanged |
+| R1 | Shared start/end select databases (SV) | R0 | move | ~150 | `--color-moved`; same slugs and labels |
 | R2 | Story range maths + tests | R1 | move + tests | ~200 | the pure function and its table test |
-| R3 | Shared `AutoStoryStats` | — | move | ~80 | stat keys unchanged |
-| R4 | Retry core behind hooks + tests | R3 | move + new | ~400 (half tests) | §3.2 list of kept behaviours; SV adapters |
+| R3 | SV `AutoStoryStats` onto the shared one | R0 | move | ~80 | stat keys unchanged |
+| R4 | SV retry loops become adapters over the shared core | R0, R3 | move + new | ~400 (half tests) | §3.2 list of kept behaviours |
 | R5 | Dev harness out of the SV program class | — | move | ~300, mostly a deleted dead block | `--color-moved` |
-| **Tile movement (shared)** | | | | | |
-| T1 | Tile-path executor + interrupt policy + tests | — | new | ~500 (half tests) | result types, resume bookkeeping |
-| T2 | FRLG adapter; Elite Four farmer uses it | T1 | move + new | ~300 | walker moved out of `EliteFourFarmer.cpp`; farmer unchanged on hardware |
-| T3 | Landmark alignment loop + tests | T1 | new | ~300 | control law against scripted fixes |
-| **FRLG detectors (one per PR, images in CommandLineTests)** | | | | | |
-| D1 | Overworld detector | — | new | ~150 + images | detector + screenshot tests |
-| D2 | Facing detector | D1 | new | ~150 + images | same |
-| D3 | Trainer spotting / item pickup watchers | — | new | ~150 + images | same |
-| D4 | New-game screens and naming keyboard | — | new | ~200 + images | same |
-| **FRLG building blocks** | | | | | |
-| B1 | Walk interrupts for FRLG (battle, dialog, item) | T2, D1, D3 | new | ~300 | resolve() paths; fakes |
-| B2 | Trainer battle handler + tests | — | new | ~500 (half tests) | decisions with scripted fakes |
-| B3 | Field moves: teach HM, Cut/Surf/Strength, Bike | D1 | new | ~300 | menus; hardware run |
-| B4 | Mart purchases | — | new | ~250 | buy list; hardware run |
-| **FRLG AutoStory** | | | | | |
-| S0 | Program shell: options, hooks, registries, requirements check | R1–R4 | new | ~500 | options; start-up checks; tests of the requirements plan |
-| S1–S11 | One PR per segment (00 … 10) | S0, B1–B4 | new + path data | ~500–900 each | checkpoint list, start/end states, the paths as data; hardware runs of each checkpoint |
+| T4 | Tile path → `Pokemon/Navigation`, if BDSP wants it | T1 | move | ~300 | `--color-moved` |
+
+R1–R5 touch SV AutoStory, which is someone else's merged program: pure
+moves first, behaviour changes separately (§3.3). The SV AutoStory author
+and Mysticial are the reviewers for these (§8). The BDSP team gets an offer,
+not a request.
 
 Notes:
 
-- R1–R5 and T1–T3 are useful on their own (SV and BDSP gain from them), so
-  they can be reviewed before anyone decides on the FRLG program.
 - Segment PRs are mostly path data and short checkpoint functions. Paths
   are planned offline from the decomp; the planner stays outside the repo
   unless reviewers want it under `devtools/`.
 - Optional features (Nugget Bridge top-up, Retro Mail duplication) come as
-  separate small PRs after S0, so they never hold up a segment.
+  separate small PRs after S0b, so they never hold up a segment.
 
-Milestones, for our own tracking:
+**Milestones**
 
-| M | PRs | Validation |
-|---|---|---|
-| F0 | R1–R5 | SV AutoStory smoke run of a few checkpoints |
-| F1 | T1–T3 | unit tests; Elite Four farmer unchanged on hardware |
-| F2 | D1–D4, B1–B4 | screenshot tests, fakes, short hardware runs |
-| F3 | S0, S1–S2 (pilot: new game → Boulder Badge) | each checkpoint ×3 from its save |
-| F4–F6 | S3–S11 | each checkpoint from its save, then full runs |
+| M | PRs (count to here) | Users can run | Validation |
+|---|---|---|---|
+| F1 | T1, T2 (2) | the E4 farmer, on the new walker | unit tests; E4 farmer unchanged on hardware |
+| F2 | D4, S0, S1 (5) | **new game → rival battle** | each checkpoint ×3 from its save |
+| F3 (gate) | D1, D3, B1, B2, S2 (10) | **new game → Boulder Badge** | each checkpoint ×3 from its save; Switch hours logged per checkpoint |
+| F4–F6 | phase B | further, one segment at a time | each checkpoint from its save, then full runs |
+| F7 | phase D | SV unchanged; FRLG on the shared core | SV AutoStory smoke run of a few checkpoints |
 
-Decide whether to go past F3 using the measured lines and Switch hours per
-checkpoint.
+**Gate F3 (public, in the proposal).** Continue past Brock only if every
+pilot checkpoint (about 12) succeeds 3 times in a row from its own save,
+**and** the measured cost is at most **3 Switch hours per checkpoint on
+average**, counting both development and validation. If either target is
+missed, stop at Brock: the pilot stays a working program, and we post the
+measured cost. At 3 hours, the full game (~100 checkpoints) is about 300
+hardware hours. Also record lines per checkpoint against the ~100–120 that
+the 10–12k-line estimate implies. (The 3-hour budget was added in this
+revision; the earlier gate named only the ×3 runs. The user should confirm
+it before the proposal is posted.)
 
-## 8. Process
+## 8. Who wrote the FRLG code we build on
 
-- All new work as fork drafts on `dayfine/Arduino-Source`; per AGENTS.md,
-  Codex owns new feature branches until the first fork PR and does the live
-  validation; Claude prepares PRs. Nothing goes upstream without the user.
-- F0 touches SV AutoStory, which is someone else's merged program: pure moves
-  first, behaviour changes separately, `--color-moved` reviewable.
-- Code-health limits apply to every new file (functions ≤50 lines); the
-  segment style should be short checkpoint functions calling path data and
-  helpers, which also keeps reviews small.
+From `git log` / `git blame` on `upstream/main` at `f9cf36f7a`
+(2026-10-25). Paths are under `FRLG/`. They are the likely reviewers, and
+one of them may sponsor the work.
+
+| Author | What | Blame share | Last activity |
+|---|---|---|---|
+| thewhitewolfking | `Programs/Farming/PokemonFRLG_EliteFourFarmer.cpp/.h`, the tile walker T2 moves (#1536, #1544) | all 1,004 lines of the .cpp | 2026-10-08 (#1544); no other commits, no open PRs |
+| theAstroGoth | `Programs/RngManipulation/PokemonFRLG_StarterRng.cpp` (the story fragments S1 reuses), most of `PokemonFRLG_Navigation.cpp` | 831 of 862 StarterRng lines; 686 Navigation lines; 88 FRLG commits, the most | 2026-10-21 (#1662); open BDSP starter RNG #1366 |
+| Dalton (Dalton-V) | `Programs/Farming/PokemonFRLG_NuggetBridgeFarmer.cpp` (money top-up option), selection arrows and start menu (#1129), StarterRng input trim (#1679) | 213 of 235 NuggetBridge lines; 354 Navigation lines; 27 FRLG commits | 2026-10-24 (#1720, CONTRIBUTING testing additions); open #1614 FRLG box sorter |
+| kichithewolf | started `PokemonFRLG_Navigation.cpp` (2025-01-29), party slot detection | 234 Navigation lines; 23 FRLG commits | 2026-09-20 (#1485) |
+| Alexander Yee (Mysticial) | maintainer; moves and cleanups | 64 FRLG commits | 2026-10-25 (repo); FRLG 2026-10-15 |
+| us (dayfine) | `WildBattleExitActions` seam and tests (#1663), evolution exit fix (#1684), both merged | 229 lines of `PokemonFRLG_Tests.cpp` | 2026-10-23 |
+
+Reading: theAstroGoth is the most likely FRLG reviewer and sponsor (largest
+and most recent FRLG author, and owns the code S1 reuses). Ask
+thewhitewolfking to look at T2, since it moves their walker; they have been
+quiet since 2026-10-08. Dalton is active and owns the Nugget Bridge code
+behind the money option. For phase D, the SV AutoStory author is jw098 (117
+commits under SV AutoStory; last SV AutoStory commit 2026-08-30, last repo
+commit 2026-10-09).
+
+Process notes that apply to the PRs: code-health limits apply to every new
+file (functions ≤50 lines); the segment style is short checkpoint functions
+calling path data and helpers, which also keeps reviews small. Who does what
+among the agents is recorded outside this doc.
 
 ## 9. Decisions (user, 2026-10-25)
 
-1. **Shared pieces:** propose them to the BDSP team and offer to work on them
-   (F0, F1), not wait for them to ask.
+1. **Shared pieces:** offer to work on them rather than waiting to be
+   asked. *Revised 2026-10-25 after review:* the offer comes in phase D,
+   after the FRLG pilot runs and people use it. Until then, BDSP gets only
+   the standalone bug comments (phase C).
 2. **Scope:** main story to the Champion. No Sevii or post-game.
 3. **Shortcuts** (Nugget Bridge money, Retro Mail duplication): available as
    options. They need planning, e.g. catching the right Pokémon at the right
