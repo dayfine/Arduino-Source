@@ -31,6 +31,7 @@
 #include "Programs/Farming/PokemonSV_TournamentFarmer2.h"
 #include "Programs/Farming/PokemonSV_FlyingTrialFarmer.h"
 #include "Programs/Farming/PokemonSV_BBQSoloFarmer.h"
+#include "Programs/Farming/PokemonSV_BBQRoutineBench.h"
 #include "Programs/Farming/PokemonSV_MaterialFarmer.h"
 #include "Programs/ItemPrinter/PokemonSV_ItemPrinterRNG.h"
 
@@ -115,6 +116,7 @@ std::vector<PanelEntry> PanelListFactory::make_panels() const{
     ret.emplace_back(make_SingleSwitchProgram<TournamentFarmer2>());
     ret.emplace_back(make_SingleSwitchProgram<FlyingTrialFarmer>());
     ret.emplace_back(make_SingleSwitchProgram<BBQSoloFarmer>());
+    ret.emplace_back(make_SingleSwitchProgram<BBQRoutineBench>());
     ret.emplace_back(make_SingleSwitchProgram<MaterialFarmer>());
     ret.emplace_back(make_SingleSwitchProgram<ItemPrinterRNG>());
 
