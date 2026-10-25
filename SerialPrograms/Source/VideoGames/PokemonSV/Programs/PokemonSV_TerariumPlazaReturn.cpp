@@ -76,6 +76,7 @@ std::string plaza_return_result_to_string(PlazaReturnResult result){
     case PlazaReturnResult::ARRIVED:        return "arrived";
     case PlazaReturnResult::NOT_CHECKED:    return "not checked";
     case PlazaReturnResult::FAILED:         return "failed";
+    case PlazaReturnResult::UNCONFIRMED:    return "unconfirmed";
     }
     return "?";
 }
@@ -85,6 +86,7 @@ PlazaReturnResult return_to_plaza_checked(
     const std::string& expected_banner,
     size_t max_attempts
 ){
+    bool last_landing_unread = false;
     for (size_t attempt = 1; attempt <= max_attempts; attempt++){
         const std::string prefix = "Return to Central Plaza, attempt "
             + std::to_string(attempt) + "/" + std::to_string(max_attempts) + ": ";
@@ -92,6 +94,16 @@ PlazaReturnResult return_to_plaza_checked(
         //  A wrong landing usually means the cursor stopped short of Central
         //  Plaza, so retries overshoot from the start.
         if (!actions.fly_to_plaza(attempt > 1)){
+            //  T2 on the routine bench (2026-10-25): the return landed at
+            //  Central Plaza with no banner, and every retry found no icon.
+            if (last_landing_unread){
+                logger.log(
+                    prefix + "the fly didn't happen after a landing with no banner. "
+                        "Central Plaza hides its own icon, so the player is there.",
+                    COLOR_ORANGE
+                );
+                return PlazaReturnResult::UNCONFIRMED;
+            }
             logger.log(prefix + "the fly didn't happen.", COLOR_RED);
             continue;
         }
@@ -105,6 +117,7 @@ PlazaReturnResult return_to_plaza_checked(
             return place_name_banner_matches(expected_banner, text);
         };
         const std::string banner = actions.read_landing_banner(matches);
+        last_landing_unread = banner.empty();
         if (matches(banner)){
             logger.log(prefix + "landed at Central Plaza (banner \"" + banner + "\").");
             return PlazaReturnResult::ARRIVED;

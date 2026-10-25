@@ -2619,6 +2619,28 @@ void add_tests_BBQPlazaReturn(UnitTestDatabase& database){
             .banner_reads = 0,
         },
         {
+            // Routine bench T2 rep 14: landed at Central Plaza with no
+            // banner; its icon is under the player, so the next fly can't
+            // happen.
+            .name = "no banner, then no fly: at Central Plaza",
+            .expected_banner = "中心廣場",
+            .landings = {{"", ""}},
+            .fly_results = {true, false},
+            .result = PlazaReturnResult::UNCONFIRMED,
+            .overshoots = {false, true},
+            .banner_reads = 1,
+        },
+        {
+            // A wrong banner followed by no fly is not Central Plaza.
+            .name = "wrong banner, then no fly: keeps trying",
+            .expected_banner = "中心廣場",
+            .landings = {{"海岸廣場"}, {"中心廣場"}},
+            .fly_results = {true, false, true},
+            .result = PlazaReturnResult::ARRIVED,
+            .overshoots = {false, true, true},
+            .banner_reads = 2,
+        },
+        {
             .name = "a failed fly and a wrong landing both count",
             .expected_banner = "Central Plaza",
             .landings = {{"Coastal Plaza"}},

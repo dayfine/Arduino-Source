@@ -54,12 +54,15 @@ enum class PlazaReturnResult{
     ARRIVED,        //  The banner showed Central Plaza.
     NOT_CHECKED,    //  Landed, but the banner can't be checked in this language.
     FAILED,         //  Every attempt landed somewhere the banner didn't confirm.
+    UNCONFIRMED,    //  A landing showed no banner, and the next fly found nothing to fly
+                    //  to: the player stands on Central Plaza's icon, which hides it.
 };
 std::string plaza_return_result_to_string(PlazaReturnResult result);
 
 //  Fly toward Central Plaza and check the landing banner, up to
 //  `max_attempts` times. A fly that didn't happen uses up an attempt too, so
-//  the return is bounded. `expected_banner` comes from
+//  the return is bounded. A fly that didn't happen right after a landing with
+//  no banner means the player is on Central Plaza: it hides its own icon. `expected_banner` comes from
 //  central_plaza_banner_to_check(); when it is empty the first landing is
 //  accepted unchecked.
 PlazaReturnResult return_to_plaza_checked(
