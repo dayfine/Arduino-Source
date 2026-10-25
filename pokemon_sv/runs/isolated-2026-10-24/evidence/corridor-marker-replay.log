@@ -1,0 +1,9 @@
+ld: warning: building for macOS-26.0, but linking with dylib '/opt/homebrew/opt/tesseract/lib/libtesseract.5.dylib' which was built for newer version 26.6.2
+uphill-marker-heading.png: expected=1, read=1
+  bearing gate=1
+uphill-lower-corridor.png: expected=0, read=0
+  bearing gate=0
+uphill-gastly-interruption.png: expected=0, read=0
+  bearing gate=0
+uphill-user-completed-endpoint.png: expected=0, read=0
+  bearing gate=0

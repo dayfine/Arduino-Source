@@ -1,0 +1,32 @@
+test_cpp_extension_and_directory_scope (test_cli.CliTests) ... ok
+test_deletions_untracked_and_third_party_are_excluded (test_cli.CliTests) ... ok
+test_existing_debt_can_improve_but_not_worsen (test_cli.CliTests) ... ok
+test_invalid_base_fails_closed (test_cli.CliTests) ... ok
+test_new_file_must_meet_limits (test_cli.CliTests) ... ok
+test_new_file_with_spaces_is_checked (test_cli.CliTests) ... ok
+test_rename_compares_with_original_path (test_cli.CliTests) ... ok
+test_unchanged_bad_function_in_changed_file_passes (test_cli.CliTests) ... ok
+test_untouched_debt_is_not_scanned (test_cli.CliTests) ... ok
+test_crlf_macros_have_identical_metrics_to_lf (test_metrics.MetricsTests) ... ok
+test_generated_threshold_boundaries (test_metrics.MetricsTests) ... ok
+test_qualified_functions_and_lambdas_are_measured (test_metrics.MetricsTests) ... ok
+test_small_function_passes (test_metrics.MetricsTests) ... ok
+test_strings_comments_and_raw_literals_do_not_add_nesting (test_metrics.MetricsTests) ... ok
+test_existing_debt_passes_but_growth_fails (test_policy.RatchetTests) ... ok
+test_growth_below_limit_is_allowed (test_policy.RatchetTests) ... ok
+test_improvement_is_allowed (test_policy.RatchetTests) ... ok
+test_new_function_must_meet_limit (test_policy.RatchetTests) ... ok
+test_unchanged_bad_function_does_not_block_other_changes (test_policy.RatchetTests) ... ok
+test_all_steps_run_and_native_tests_use_separate_profile (test_verify.VerifyTests) ... Running: /Users/difan/Projects/Arduino-Source-isolated/.venv-code-health/bin/python -m unittest discover -s devtools/code_health/tests -v
+Running: /Users/difan/Projects/Arduino-Source-isolated/.venv-code-health/bin/python -m devtools.code_health --base-ref origin/main
+Running: cmake --build /build --config RelWithDebInfo --parallel 4
+Running: /binary --profile agent-native-tests --command-line-test-mode
+ok
+test_failure_stops_before_later_steps (test_verify.VerifyTests) ... Running: first
+ok
+test_non_mac_does_not_claim_named_profile_support (test_verify.VerifyTests) ... ok
+
+----------------------------------------------------------------------
+Ran 22 tests in 36.384s
+
+OK

@@ -1,5 +1,9 @@
 # Central uphill route — next implementation checkpoint
 
+Coding update: [UPHILL_BUILD_READY.md](UPHILL_BUILD_READY.md) records the implemented
+bounded ascent/guarded Central flight/reanchor loop, native tests and signed
+build at `be6f865de`. Route geometry and return remain unvalidated live.
+
 User map: evidence/user-uphill-route-arrow.png, copied from Desktop
 截圖 2026-10-24 下午7.48.49.png. User chose a candidate grassy corridor northeast
 from West Province Area One Central to the south bank of the river bend, west
@@ -66,8 +70,10 @@ cursor movements and battle-menu actions, not just forward travel.
 User stated they walked the remaining section to the destination. Agent stopped
 controller input after that message and saved endpoint evidence. Therefore the
 full ascent was completed with user intervention; return remains untested.
-Do not report an autonomous traversal or round trip. Latest endpoint screenshot
-has an empty Meal Powers/notifications panel open. User owns live Switch; no
+Do not report an autonomous traversal or round trip. Offline inspection on the
+next coding task found `uphill-user-completed-endpoint.png` contains capture
+colour bars, not an endpoint view; it cannot prove arrival. The earlier live
+observation of an empty Meal Powers panel is separate from that artifact. User owns live Switch; no
 save, departure or farming handback has been performed. Lab stays open/stopped
 for viewing, with exclusive device access. Do not send inputs absent a fresh
 inspection and current user authorization.
@@ -115,7 +121,6 @@ and selected screenshots are committed. No recording loop is left running.
    Lv2, check drift and interruption recovery. Only then repeat loops and measure
    species-confirmed progress/fresh-spawn throughput. Preserve shinies/refusals.
 
-Current code checkpoint remains 313643338. Logging, automatic split-column power
+At the exploration checkpoint, code was 313643338. See UPHILL_BUILD_READY.md for the subsequent implemented build. Logging, automatic split-column power
 OCR and guarded automatic Central candidate selection are already built/pushed;
-nine native groups, screenshot replay and lint passed. Corridor policy is NOT
-implemented yet. Latest prior notes: CENTRAL_PILOT_AND_AUTOMATION.md.
+nine native groups, screenshot replay and lint passed. Corridor policy was not implemented at that exploration checkpoint. Latest prior notes: CENTRAL_PILOT_AND_AUTOMATION.md.

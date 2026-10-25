@@ -1,0 +1,5 @@
+build-prep/app/SerialPrograms.app: valid on disk
+build-prep/app/SerialPrograms.app: satisfies its Designated Requirement
+build-prep/app/SerialPrograms.app/Contents/MacOS/SerialPrograms: valid on disk
+build-prep/app/SerialPrograms.app/Contents/MacOS/SerialPrograms: satisfies its Designated Requirement
+315d7d9eddc4acf7c41066670794e026ea98c270040240e0592bb98e777ef230  build-prep/app/SerialPrograms.app/Contents/MacOS/SerialPrograms
