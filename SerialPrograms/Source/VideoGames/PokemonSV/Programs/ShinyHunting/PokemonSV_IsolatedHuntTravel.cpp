@@ -76,6 +76,10 @@ bool travel_to_isolated_hunt(const ProgramInfo& info, VideoStream& stream,
             pbf_move_left_joystick(context, {-1, 0}, 950ms, 200ms);
             pbf_move_left_joystick(context, {0, -1}, 650ms, 200ms);
         }
+        if (!from_zero_gate){
+            // The player cursor can cover the local center icon when re-flying from its landing spot.
+            pbf_move_left_joystick(context, {-1, 0}, 160ms, 200ms);
+        }
         if (!detect_closest_flypoint_and_move_map_cursor_there(info, stream, context, FlyPoint::POKECENTER)){
             return false;
         }
