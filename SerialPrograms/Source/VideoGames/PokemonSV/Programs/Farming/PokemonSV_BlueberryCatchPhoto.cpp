@@ -38,6 +38,11 @@ namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonSV{
 
+//The arrow on "Choose next Pokemon / Run away" after the lead faints. The old box,
+//{0.610, 0.523, 0.044, 0.079}, ended before the arrow's right edge (0.672) and never
+//saw it: R16 stopped twice on "Invalid state ret2_run" at this prompt.
+static const ImageFloatBox FAINTED_PROMPT_ARROW_BOX(0.600, 0.500, 0.080, 0.120);
+
 CameraAngle quest_photo_navi(
     const ProgramInfo& info,
     ConsoleHandle& console, ProControllerContext& context,
@@ -906,7 +911,7 @@ void quest_catch_handle_battle(
                 }
 
                 NormalBattleMenuWatcher battle_menu(COLOR_YELLOW);
-                GradientArrowWatcher fainted(COLOR_BLUE, GradientArrowType::RIGHT, {0.610, 0.523, 0.044, 0.079});
+                GradientArrowWatcher fainted(COLOR_BLUE, GradientArrowType::RIGHT, FAINTED_PROMPT_ARROW_BOX);
                 SwapMenuWatcher swap(COLOR_YELLOW);
                 int ret2_run = wait_until(
                     console, context,
@@ -1168,7 +1173,7 @@ void wild_battle_tera(
                 }
 
                 NormalBattleMenuWatcher battle_menu(COLOR_MAGENTA);
-                GradientArrowWatcher fainted(COLOR_BLUE, GradientArrowType::RIGHT, {0.610, 0.523, 0.044, 0.079});
+                GradientArrowWatcher fainted(COLOR_BLUE, GradientArrowType::RIGHT, FAINTED_PROMPT_ARROW_BOX);
                 SwapMenuWatcher swap(COLOR_YELLOW);
 
                 context.wait_for_all_requests();
