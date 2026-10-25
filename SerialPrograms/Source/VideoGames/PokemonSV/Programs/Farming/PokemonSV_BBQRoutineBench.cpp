@@ -10,7 +10,6 @@
 #include <QFile>
 #include "Common/Cpp/Exceptions.h"
 #include "CommonFramework/Exceptions/OperationFailedException.h"
-#include "CommonFramework/Exceptions/UnexpectedBattleException.h"
 #include "CommonFramework/ProgramStats/StatsTracking.h"
 #include "CommonTools/Async/InferenceRoutines.h"
 #include "CommonTools/InferenceCallbacks/VisualInferenceCallback.h"
@@ -141,6 +140,20 @@ private:
     std::atomic<bool> m_seen{false};
 };
 
+// A wild Pokemon often attacks at Pride Rock right after a day skip. Flee it, so the next
+// rep or flight starts in the overworld. Returns true if there was a battle.
+bool flee_ambush(SingleSwitchProgramEnvironment& env, ProControllerContext& context, uint16_t rep){
+    NormalBattleMenuWatcher battle(COLOR_YELLOW);
+    context.wait_for_all_requests();
+    int ret = wait_until(env.console, context, std::chrono::seconds(2), {battle});
+    if (ret < 0){
+        return false;
+    }
+    env.log("BENCH,ambush_before_rep," + std::to_string(rep));
+    run_from_battle(env.console, context);
+    return true;
+}
+
 // SHA-256 of the running executable, so every rep names the exact build.
 std::string executable_sha256(){
     QFile file(QCoreApplication::applicationFilePath());
@@ -181,6 +194,7 @@ void BBQRoutineBench::program(SingleSwitchProgramEnvironment& env, ProController
 
     std::vector<BBQBenchRep> reps;
     for (uint16_t i = 0; i < REPS; i++){
+        flee_ambush(env, context, i + 1);
         switch (START_FROM){
         case BBQBenchStart::BackToBack:
             break;
@@ -192,19 +206,7 @@ void BBQRoutineBench::program(SingleSwitchProgramEnvironment& env, ProController
         case BBQBenchStart::PolarRest:
             //Flies from wherever the player is. Returning to Central first would fail on
             //the first rep, where the plaza's icon is hidden under the player.
-            //A wild Pokemon often attacks at Pride Rock right after the day skip. Flee it.
-            for (int attempt = 0;; attempt++){
-                try{
-                    central_to_polar_rest(env.program_info(), env.console, context);
-                    break;
-                }catch (UnexpectedBattleException&){
-                    if (attempt >= 2){
-                        throw;
-                    }
-                    env.log("BENCH,ambush_before_rep," + std::to_string(i + 1));
-                    run_from_battle(env.console, context);
-                }
-            }
+            central_to_polar_rest(env.program_info(), env.console, context);
             stay_away_from_plaza(BBQ_OPTIONS.LANGUAGE);
             break;
         }
