@@ -19,21 +19,16 @@ namespace{
 
 class CentralFlight : public IsolatedFlightActions{
 public:
-    CentralFlight(VideoStream& stream, ProControllerContext& context, Language language, bool supervised)
-        : m_stream(stream), m_context(context), m_language(language), m_supervised(supervised)
+    CentralFlight(VideoStream& stream, ProControllerContext& context, Language language)
+        : m_stream(stream), m_context(context), m_language(language)
     {}
     virtual bool open_confirmation() override{
-        if (m_supervised){
-            m_stream.log("SUPERVISED: select West Province (Area One) - Central on the map and choose Fly here. "
-                "Leave the Yes/No prompt open. The program checks the name before confirming.", COLOR_BLUE);
-        }else{
-            pbf_press_button(m_context, BUTTON_A, 160ms, 1040ms);
-            MapFlyMenuWatcher menu(COLOR_BLUE);
-            if (wait_until(m_stream, m_context, 5000ms, {menu}) < 0){ return false; }
-            pbf_press_button(m_context, BUTTON_A, 160ms, 1040ms);
-        }
+        pbf_press_button(m_context, BUTTON_A, 160ms, 1040ms);
+        MapFlyMenuWatcher menu(COLOR_BLUE);
+        if (wait_until(m_stream, m_context, 5000ms, {menu}) < 0){ return false; }
+        pbf_press_button(m_context, BUTTON_A, 160ms, 1040ms);
         PromptDialogWatcher prompt(COLOR_BLUE, {0.686, 0.494, 0.171, 0.163});
-        return wait_until(m_stream, m_context, m_supervised ? 180000ms : 5000ms, {prompt}) == 0;
+        return wait_until(m_stream, m_context, 5000ms, {prompt}) == 0;
     }
     virtual std::string read_destination() override{
         m_context.wait_for(250ms);
@@ -56,7 +51,6 @@ private:
     VideoStream& m_stream;
     ProControllerContext& m_context;
     Language m_language;
-    bool m_supervised;
 };
 
 bool refly_local_anchor(const ProgramInfo& info, VideoStream& stream,
@@ -75,11 +69,17 @@ bool travel_to_isolated_hunt(const ProgramInfo& info, VideoStream& stream,
 ){
     if (location == IsolatedHuntLocation::WEST_PROVINCE_ONE_CENTRAL){
         open_map_from_overworld(info, stream, context);
-        if (!from_zero_gate && !detect_closest_flypoint_and_move_map_cursor_there(
-            info, stream, context, FlyPoint::POKECENTER)){
+        if (from_zero_gate){
+            stream.log("Central candidate seek: one zoom out, west 950ms, south 650ms; name verification required.");
+            // Candidate derived from the Central-to-Zero-Gate map traversal; verify identity before flying.
+            pbf_press_button(context, BUTTON_ZL, 160ms, 840ms);
+            pbf_move_left_joystick(context, {-1, 0}, 950ms, 200ms);
+            pbf_move_left_joystick(context, {0, +1}, 650ms, 200ms);
+        }
+        if (!detect_closest_flypoint_and_move_map_cursor_there(info, stream, context, FlyPoint::POKECENTER)){
             return false;
         }
-        CentralFlight flight(stream, context, language, from_zero_gate);
+        CentralFlight flight(stream, context, language);
         const bool arrived = fly_to_isolated_central(flight, language);
         if (!arrived){ stream.log("Central flight failed; stopping for inspection.", COLOR_RED); }
         return arrived;
