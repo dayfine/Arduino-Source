@@ -1743,10 +1743,10 @@ void quest_hatch_egg(
         leave_box_system_to_overworld(env.program_info(), console, context);
 
         pbf_press_button(context, BUTTON_PLUS, 160ms, 400ms);
-
-        return_to_plaza(env.program_info(), console, context, BBQ_OPTIONS.LANGUAGE);
-        context.wait_for_all_requests();
     }
+    //Also without an egg: the player is at the Savanna battle court either way.
+    leave_quest_area(env.program_info(), console, context, BBQ_OPTIONS);
+    context.wait_for_all_requests();
 }
 
 void quest_sandwich(
@@ -1816,7 +1816,7 @@ void quest_sandwich(
 
     leave_picnic(env.program_info(), stream, context);
 
-    return_to_plaza(env.program_info(), stream, context, BBQ_OPTIONS.LANGUAGE);
+    leave_quest_area(env.program_info(), stream, context, BBQ_OPTIONS);
     context.wait_for_all_requests();
 
 }
@@ -1927,7 +1927,7 @@ void quest_tera_raid(
     }
 
     context.wait_for_all_requests();
-    return_to_plaza(env.program_info(), console, context, BBQ_OPTIONS.LANGUAGE);
+    leave_quest_area(env.program_info(), console, context, BBQ_OPTIONS);
     day_skip_from_overworld(console, context);
 }
 

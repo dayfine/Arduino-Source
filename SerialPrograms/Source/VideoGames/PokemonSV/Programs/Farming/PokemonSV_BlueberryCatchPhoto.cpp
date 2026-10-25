@@ -1099,7 +1099,7 @@ void quest_catch(
 
     while (true){
         if (!catch_quest_catches_on_return(current_quest, battled)){
-            return_to_plaza(info, console, context, BBQ_OPTIONS.LANGUAGE);
+            leave_quest_area(info, console, context, BBQ_OPTIONS);
             break;
         }
         if (!return_to_plaza_unless_battle(info, console, context, BBQ_OPTIONS.LANGUAGE)){
@@ -1118,8 +1118,8 @@ void quest_catch(
     resume_game_from_home(console, context);
 
     //Nothing to heal without a battle (return_to_plaza() flees with a Smoke Ball).
-    //The player is still on the Central Plaza fly point, where return_to_plaza()
-    //landed, so the central_to_* routes need no re-fly either.
+    //The player is on the Central Plaza fly point, where return_to_plaza() landed, or
+    //away from it for a direct flight, so the central_to_* routes need no re-fly either.
     if (!battled){
         console.log("No battle this attempt. Skipping the Pokecenter heal.");
         context.wait_for_all_requests();
