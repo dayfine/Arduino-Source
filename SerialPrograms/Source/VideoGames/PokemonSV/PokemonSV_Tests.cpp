@@ -2068,6 +2068,99 @@ void add_tests_BBQPointsLedger(UnitTestDatabase& database){
 
 namespace{
 
+// A catch quest, the species read from the opponent's status screen, and whether
+// it counts for the quest (nothing: no table or nothing read, so catch anyway).
+struct BBQCatchCountsScenario{
+    std::string name;
+    BBQuests quest;
+    std::set<std::string> slugs;
+    std::optional<bool> expected = std::nullopt;
+};
+
+std::string describe(const std::optional<bool>& counts){
+    return counts ? (*counts ? "counts" : "wrong type") : "unknown";
+}
+
+class Test_BBQCatchCounts : public UnitTest{
+public:
+    Test_BBQCatchCounts(BBQCatchCountsScenario scenario)
+        : UnitTest("PokemonSV::BBQCatchCounts - " + scenario.name)
+        , m_scenario(std::move(scenario))
+    {}
+
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        const std::optional<bool> got = catch_quest_counts(m_scenario.quest, m_scenario.slugs);
+        if (got != m_scenario.expected){
+            return "Expected " + describe(m_scenario.expected) + ", got " + describe(got);
+        }
+        return true;
+    }
+
+private:
+    const BBQCatchCountsScenario m_scenario;
+};
+
+void add_tests_BBQCatchCounts(UnitTestDatabase& database){
+    using enum BBQuests;
+    const BBQCatchCountsScenario scenarios[] = {
+        {
+            // The Coastal grassland spawns: Pikipek 36%, Trumbeak 10%, Toucannon 6%.
+            .name = "pikipek counts for catch flying",
+            .quest = catch_flying,
+            .slugs = {"pikipek"},
+            .expected = true,
+        },
+        {
+            .name = "toucannon counts for catch flying",
+            .quest = catch_flying,
+            .slugs = {"toucannon"},
+            .expected = true,
+        },
+        {
+            // Bug/Flying: the canyon route's Scyther counts.
+            .name = "scyther counts for catch flying",
+            .quest = catch_flying,
+            .slugs = {"scyther"},
+            .expected = true,
+        },
+        {
+            // Bug/Rock: the fixed canyon Kleavor that R15 fought twice.
+            .name = "kleavor is the wrong type for catch flying",
+            .quest = catch_flying,
+            .slugs = {"kleavor"},
+            .expected = false,
+        },
+        {
+            // Grass/Poison, next to the Coastal Plaza spawns.
+            .name = "oddish is the wrong type for catch flying",
+            .quest = catch_flying,
+            .slugs = {"oddish"},
+            .expected = false,
+        },
+        {
+            // OCR can return more than one candidate; any Flying one counts.
+            .name = "any flying candidate counts",
+            .quest = catch_flying,
+            .slugs = {"oddish", "pikipek"},
+            .expected = true,
+        },
+        {
+            .name = "unread name is unknown",
+            .quest = catch_flying,
+            .slugs = {},
+        },
+        {
+            // No species table yet for the other types.
+            .name = "catch bug has no table",
+            .quest = catch_bug,
+            .slugs = {"scyther"},
+        },
+    };
+    for (const BBQCatchCountsScenario& scenario : scenarios){
+        database.add<Test_BBQCatchCounts>(scenario);
+    }
+}
+
 // A catch quest, whether this attempt already battled, and whether a wild
 // battle on the way back to Central Plaza should be caught instead of fled.
 struct BBQCatchOnReturnScenario{
@@ -2439,6 +2532,7 @@ void add_tests(UnitTestDatabase& database){
     add_tests_BBQPointsLedger(database);
 
     add_tests_BBQCatchOnReturn(database);
+    add_tests_BBQCatchCounts(database);
     add_tests_WhiteButtonDetector(database);
     add_tests_BoxInfoDetector(database);
     add_tests_BoxEggDetector(database);

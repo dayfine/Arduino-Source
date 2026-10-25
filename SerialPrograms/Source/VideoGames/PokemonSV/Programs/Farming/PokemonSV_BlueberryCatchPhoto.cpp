@@ -26,10 +26,12 @@
 #include "VideoGames/PokemonSV/Programs/PokemonSV_MenuNavigation.h"
 #include "VideoGames/PokemonSV/Programs/PokemonSV_WorldNavigation.h"
 #include "VideoGames/PokemonSV/Programs/Battles/PokemonSV_BasicCatcher.h"
+#include "VideoGames/PokemonSV/Programs/Battles/PokemonSV_Battles.h"
 #include "VideoGames/PokemonSV/Programs/PokemonSV_Terarium.h"
 #include "PokemonSV_BlueberryQuests.h"
 
 #include<vector>
+#include <functional>
 #include "PokemonSV_BlueberryCatchPhoto.h"
 
 namespace PokemonAutomation{
@@ -588,6 +590,13 @@ void quest_catch_navi(
         case BBQuests::catch_flying:
             console.log("Catch: Flying");
 
+            if (BBQ_OPTIONS.COASTAL_FLYING_CATCH){
+                central_to_coastal_plaza(info, console, context);
+                coastal_plaza_to_grassland(console, context);
+                send_out_and_look_around(console, context, std::chrono::seconds(6), "a flying Pokemon");
+                break;
+            }
+
             //Canyon grassland at Black Augurite, where the Tera-self quest glides: Scyther,
             //Altaria, Swablu and Fletchling spawn around the fixed Kleavor. The Savanna
             //route waited for one Vullaby/Mandibuzz spawn and was marked not possible.
@@ -959,11 +968,59 @@ bool catch_quest_catches_on_return(BBQuests current_quest, bool battled_this_att
     return current_quest == BBQuests::catch_any && !battled_this_attempt;
 }
 
-void quest_catch(
+//From the Coastal Plaza fly point to the grassland west of the plaza, where Pikipek,
+//Trumbeak and Toucannon spawn. Not calibrated yet: a straight line from the fly point
+//is likely blocked by the plaza, so this stays put until the path is measured on a
+//Switch, and the look-around only reaches spawns near the fly point.
+void coastal_plaza_to_grassland(ConsoleHandle& console, ProControllerContext& context){
+    console.log("Coastal Plaza to grassland: path not calibrated, looking around from the fly point.", COLOR_ORANGE);
+}
+
+//Look for a Flying type again from the closest fly point, without going back to
+//Central Plaza: after the first look the player is still near Coastal Plaza.
+static void retry_coastal_flying(
+    const ProgramInfo& info,
+    ConsoleHandle& console, ProControllerContext& context
+){
+    console.log("Flying back to the closest fly point to look again.");
+    open_map_from_overworld(info, console, context);
+    fly_to_closest_pokecenter_on_map(info, console, context);
+    coastal_plaza_to_grassland(console, context);
+    send_out_and_look_around(console, context, std::chrono::seconds(6), "a flying Pokemon");
+}
+
+//Read the opponent's species and say whether to flee. Only quests with a species
+//table are read; an unreadable name is caught anyway.
+static bool is_wrong_catch_target(
     const ProgramInfo& info,
     ConsoleHandle& console, ProControllerContext& context,
     const BBQOption& BBQ_OPTIONS,
     BBQuests current_quest
+){
+    if (!catch_quest_checks_species(current_quest)){
+        return false;
+    }
+    std::set<std::string> slugs = read_singles_opponent(info, console, context, BBQ_OPTIONS.LANGUAGE);
+    std::string names;
+    for (const std::string& slug : slugs){
+        names += (names.empty() ? "" : ", ") + slug;
+    }
+    std::optional<bool> counts = catch_quest_counts(current_quest, slugs);
+    console.log("Opponent: " + (names.empty() ? std::string("(unread)") : names)
+        + (counts == std::optional<bool>(false) ? ". Wrong type for this quest." : "."));
+    return counts == std::optional<bool>(false);
+}
+
+enum class CatchAttempt{ NO_BATTLE, WRONG_TYPE, BATTLED };
+
+//One look for a catch target: navigate, and fight and catch whatever comes, unless
+//its species is read and does not count for the quest.
+static CatchAttempt catch_attempt(
+    const ProgramInfo& info,
+    ConsoleHandle& console, ProControllerContext& context,
+    const BBQOption& BBQ_OPTIONS,
+    BBQuests current_quest,
+    const std::function<void(ProControllerContext&)>& navigate
 ){
     EncounterWatcher encounter_watcher(console, COLOR_RED);
     bool battle_menu_seen = false;
@@ -973,7 +1030,7 @@ void quest_catch(
         console, context,
         [&](ProControllerContext& context){
             
-            quest_catch_navi(info, console, context, BBQ_OPTIONS, current_quest);
+            navigate(context);
             context.wait_for_all_requests();
 
             NormalBattleMenuWatcher battle_menu(COLOR_YELLOW);
@@ -997,20 +1054,48 @@ void quest_catch(
     );
     encounter_watcher.throw_if_no_sound();
 
-    bool battled = false;
-    if (ret >= 0 || battle_menu_seen){
-        console.log("Battle menu detected.");
-
-        bool is_shiny = (bool)encounter_watcher.shiny_screenshot();
-        if (is_shiny){
-            console.log("Shiny detected!");
-            pbf_press_button(context, BUTTON_CAPTURE, 2000ms, 5000ms);
-            throw ProgramFinishedException();
-        }else{
-            quest_catch_handle_battle(info, console, context, BBQ_OPTIONS, current_quest);
-            battled = true;
-        }
+    if (ret < 0 && !battle_menu_seen){
+        return CatchAttempt::NO_BATTLE;
     }
+    console.log("Battle menu detected.");
+
+    if (encounter_watcher.shiny_screenshot()){
+        console.log("Shiny detected!");
+        pbf_press_button(context, BUTTON_CAPTURE, 2000ms, 5000ms);
+        throw ProgramFinishedException();
+    }
+    if (is_wrong_catch_target(info, console, context, BBQ_OPTIONS, current_quest)){
+        run_from_battle(console, context);
+        return CatchAttempt::WRONG_TYPE;
+    }
+    quest_catch_handle_battle(info, console, context, BBQ_OPTIONS, current_quest);
+    return CatchAttempt::BATTLED;
+}
+
+void quest_catch(
+    const ProgramInfo& info,
+    ConsoleHandle& console, ProControllerContext& context,
+    const BBQOption& BBQ_OPTIONS,
+    BBQuests current_quest
+){
+    //The Coastal route can look again from the closest fly point; the others get one look.
+    const bool coastal = BBQ_OPTIONS.COASTAL_FLYING_CATCH && current_quest == BBQuests::catch_flying;
+    const size_t looks = coastal ? 3 : 1;
+
+    CatchAttempt result = CatchAttempt::NO_BATTLE;
+    for (size_t look = 0; look < looks && result != CatchAttempt::BATTLED; look++){
+        result = catch_attempt(
+            info, console, context, BBQ_OPTIONS, current_quest,
+            [&](ProControllerContext& context){
+                if (look == 0){
+                    quest_catch_navi(info, console, context, BBQ_OPTIONS, current_quest);
+                }else{
+                    retry_coastal_flying(info, console, context);
+                }
+            }
+        );
+    }
+    bool battled = result != CatchAttempt::NO_BATTLE;
 
     while (true){
         if (!catch_quest_catches_on_return(current_quest, battled)){

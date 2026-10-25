@@ -241,6 +241,12 @@ BBQOption::BBQOption(OCR::LanguageOCROption* language_option)
         "fly straight to the next quest instead of returning to Central Plaza first.",
         LockMode::LOCK_WHILE_RUNNING, false
     )
+    , COASTAL_FLYING_CATCH(
+        "<b>Catch Flying Types at Coastal Plaza (experimental):</b><br>Look for Pikipek, Trumbeak, "
+        "Toucannon and Fletchling in the grassland next to Coastal Plaza instead of the canyon. "
+        "Wrong types are fled from and the plaza is retried, up to 3 times per attempt.",
+        LockMode::LOCK_WHILE_RUNNING, false
+    )
     , OUT_OF_RETRIES(
         "<b>Out of Retries:</b><br>When a quest fails all its retries, do the selected option.",
         {
@@ -275,6 +281,7 @@ BBQOption::BBQOption(OCR::LanguageOCROption* language_option)
     PA_ADD_OPTION(NUM_RETRIES);
     PA_ADD_OPTION(RETRY_LATER);
     PA_ADD_OPTION(FLY_DIRECTLY);
+    PA_ADD_OPTION(COASTAL_FLYING_CATCH);
     PA_ADD_OPTION(OUT_OF_RETRIES);
     PA_ADD_OPTION(FIX_TIME_WHEN_DONE);
 }

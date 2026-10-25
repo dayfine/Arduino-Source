@@ -640,6 +640,41 @@ int quest_reward(BBQuests quest){
     return slug.starts_with("catch-") ? 40 : 20;
 }
 
+//Flying types that can appear in the Terarium. A few extra Flying types do no harm;
+//a missing one only means fleeing from a Pokemon that would have counted.
+static const std::set<std::string>& FLYING_SPECIES(){
+    static const std::set<std::string> species{
+        "aerodactyl", "altaria", "bombirdier", "braviary", "butterfree", "cramorant",
+        "corviknight", "corvisquire", "crobat", "dodrio", "doduo", "dragonite", "drifblim",
+        "drifloon", "ducklett", "emolga", "fearow", "flamigo", "fletchinder", "fletchling",
+        "gligar", "gliscor", "golbat", "gyarados", "hawlucha", "honchkrow", "hoothoot",
+        "hoppip", "jumpluff", "kilowattrel", "landorus", "ledian", "ledyba", "mandibuzz",
+        "mantine", "mantyke", "masquerain", "minior", "murkrow", "noctowl", "noibat",
+        "noivern", "oricorio", "pelipper", "pidgeot", "pidgeotto", "pidgey", "pikipek",
+        "rookidee", "rowlet", "rufflet", "salamence", "scyther", "sigilyph", "skarmory",
+        "skiploom", "spearow", "squawkabilly", "swablu", "swanna", "swellow", "taillow",
+        "talonflame", "togekiss", "toucannon", "tropius", "trumbeak", "vivillon", "vullaby",
+        "wattrel", "wingull", "yanma", "yanmega", "zubat",
+    };
+    return species;
+}
+
+bool catch_quest_checks_species(BBQuests quest){
+    return quest == BBQuests::catch_flying;
+}
+
+std::optional<bool> catch_quest_counts(BBQuests quest, const std::set<std::string>& slugs){
+    if (!catch_quest_checks_species(quest) || slugs.empty()){
+        return std::nullopt;
+    }
+    for (const std::string& slug : slugs){
+        if (FLYING_SPECIES().contains(slug)){
+            return true;
+        }
+    }
+    return false;
+}
+
 void order_quests_by_cost(Logger& logger, std::vector<BBQuests>& quests){
     //Only the measured quests move, among the places they hold.
     std::vector<size_t> places;
