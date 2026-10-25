@@ -12,35 +12,58 @@ Paths: `SV/` = `SerialPrograms/Source/VideoGames/PokemonSV/Programs/AutoStory/`,
 
 ## 0. Summary
 
-- **Run flow.** BDSP copied SV's framework almost name for name (segment and
-  checkpoint interfaces, registries, start/end selects, save-then-retry loop,
-  stats). The two copies have already drifted: retry limits (SV 100 with an
-  off-by-one, BDSP 20), error reporting (SV only), day skip (SV only), start >
-  end check (SV only). SwSh #1207 does not use the framework at all. A small
-  game-agnostic core (retry loop behind a hooks interface, index/range math,
-  stats, select databases) can be extracted from SV as pure moves in five
-  small PRs, then adopted by BDSP and FRLG. Each game keeps its own options,
-  save/reset functions and checkpoints.
-- **2D movement.** FRLG and BDSP both move on a tile grid, and both
-  codebases reinvented the same three things badly or partially: a path as
-  `{direction, tiles}` data, walking under interrupt watchers, and getting
-  back on the path after an interrupt. BDSP's best idea is closed-loop
-  landmark alignment (segments 00–03); its later segments are blind scripts
-  with per-trainer hard-coded "move back" pushes, one of which never runs
-  (§5.2). A shared, console-free core (path executor with resume bookkeeping,
-  interrupt policy, alignment control law) plus per-game adapters (timings,
-  detectors, matchers) fits both. Timing constants stay per game.
-- **FRLG AutoStory** is smaller than SV or BDSP because GBA movement is
-  frame-exact, the camera is fixed with the player centred, Kanto has no
-  lighting changes, and the decomp gives exact trainer positions and sight
-  ranges. Estimate: ~3–5k lines of infrastructure, ~90–110 checkpoints at
-  40–80 lines each, ~10–12k lines total (SV 22.4k, BDSP 32.7k). The
-  bottleneck is Switch time to validate each checkpoint, not code.
-- **Order:** (1) run-flow prework from SV, (2) shared tile movement with FRLG
-  as the first adopter (moving `EliteFourFarmer`'s walker out), (3) FRLG
-  pilot Pallet → Pewter to measure lines and hours per checkpoint, (4) the
-  rest of FRLG by segment. Offer the shared pieces to the BDSP team; their
-  detector-first extraction plan (Mysticial's request) is independent of it.
+**Problem.** AutoStory programs (play a game's story from a new save,
+unattended) are being written one game at a time. SV has one on `main`
+(22.4k lines). A team is building BDSP
+(PokemonAutomation/Arduino-Source#1717, 32.7k lines, WIP), SwSh has an
+early draft (#1207), and we want one for FireRed. Each copies or reinvents
+the same two things:
+
+- **The run flow:** an ordered list of checkpoints, each starting from a
+  save, retried from that save when it fails, with start/end selection,
+  stats and notifications.
+- **Walking on a grid** (FRLG and BDSP): following a path, and getting back
+  on it after a trainer, a wild Pokémon or a dialog interrupts the walk.
+
+**Situation.**
+
+- BDSP copied SV's run flow almost name for name, and the copies have
+  already drifted: different retry limits (SV allows 100 but runs 102, BDSP
+  20), error reporting and day skip only in SV, BDSP's backup reload still a
+  TODO. SwSh does not use the framework at all. None of them has unit tests
+  of the flow.
+- Neither SV, BDSP nor the existing FRLG code can tell which step of a path
+  it was on when something interrupted it. BDSP's later segments push the
+  player back by hard-coded amounts per trainer, keyed by strings; one of
+  those pushes never runs because the names do not match. Its earlier
+  segments have a good image-based landmark alignment loop that the rest of
+  the PR does not use.
+- FRLG on `main` has most of the low-level pieces (detectors, fly, heal,
+  a tested wild-battle exit, a frame-exact tile walker inside the Elite Four
+  farmer) but nothing that plays the story.
+- The pokefirered decompilation gives exact positions and sight ranges of
+  every trainer, so FRLG paths can be planned offline instead of tuned by
+  hand.
+
+**What we think should happen.**
+
+1. Move SV's run flow into a small shared module, as pure moves in five
+   small PRs with unit tests, keeping SV's behaviour exactly. Each game keeps
+   its own options, save/reset and checkpoints.
+2. Build a shared, console-free tile-path executor (path as data, resume
+   after an interrupt, pluggable interrupt policy, landmark alignment), with
+   per-game timings and detectors. FRLG is the first user; BDSP can adopt
+   it. We offer to do both and to help BDSP move onto them.
+3. Build a FireRed AutoStory to the Champion on top of them: roughly 90–110
+   checkpoints, ~10–12k lines, piloted on Pallet Town → Pewter City first.
+   It must work solo from a new game: no trades and no transferring a
+   levelled Pokémon in. The team, catches and purchases are derived from
+   what the route needs (§7.6); shortcuts such as the Nugget Bridge money
+   loop are options.
+
+The rest of the doc gives the evidence (§2, §4), the proposed interfaces and
+PR sequence (§3, §5), feedback for the BDSP draft (§6) and the FireRed plan
+(§7).
 
 ## 1. Design from first principles
 
@@ -566,7 +589,7 @@ requirement, and derive the catch/gift/shop checkpoints from it:
 
 | Requirement | Needed by | Providers (pick per version and options) |
 |---|---|---|
-| Cut user (Cascade badge) | Vermilion Gym tree (seg 03) | Oddish/Bellsprout (Routes 24/25, version exclusive), Paras (Mt. Moon), Farfetch'd (Vermilion in-game trade) |
+| Cut user (Cascade badge) | Vermilion Gym tree (seg 03) | Oddish (Routes 24/25; FireRed exclusive, Bellsprout in LeafGreen), Paras (Mt. Moon), Farfetch'd (Vermilion in-game trade, option only) |
 | Surf user (Soul badge) | Cinnabar (seg 08) | Lapras (Silph Co. 7F gift, seg 07), a Water starter, Seel/Psyduck etc. |
 | Strength user (Rainbow badge) | Victory Road (seg 09) | Machop line, Snorlax, Lapras |
 | Battle strength per gym | each gym and the E4 | starter + leveling loops; Rare Candies (duplication option); type coverage for Brock/Misty |
@@ -625,5 +648,9 @@ Decide after F3 using measured lines and Switch hours per checkpoint.
    (§7.6), not chosen up front.
 5. **Language:** English only.
 
-Still open: FireRed vs LeafGreen first (encounter tables and version
-exclusives differ; the console has LeafGreen installed).
+6. **Version:** FireRed (LeafGreen is already finished on the test
+   console).
+7. **Solo from a new game:** the program must not require a trade, a
+   trade-back, or a levelled Pokémon brought in from another save. Optional
+   trades the game itself offers (e.g. the Vermilion Farfetch'd) are
+   allowed only behind an option.
