@@ -2224,10 +2224,16 @@ void add_tests_BBQCatchCounts(UnitTestDatabase& database){
             .expected = false,
         },
         {
-            // OCR can return more than one candidate; any Flying one counts.
-            .name = "any flying candidate counts",
+            // OCR can return more than one candidate. When they disagree the read
+            // cannot tell, and it is caught anyway.
+            .name = "candidates that disagree are unknown",
             .quest = catch_flying,
             .slugs = {"oddish", "pikipek"},
+        },
+        {
+            .name = "candidates that all count, count",
+            .quest = catch_flying,
+            .slugs = {"trumbeak", "pikipek"},
             .expected = true,
         },
         {
@@ -2236,10 +2242,46 @@ void add_tests_BBQCatchCounts(UnitTestDatabase& database){
             .slugs = {},
         },
         {
-            // No species table yet for the other types.
-            .name = "catch bug has no table",
+            // Every typed catch reads the species now.
+            .name = "scyther counts for catch bug",
             .quest = catch_bug,
             .slugs = {"scyther"},
+            .expected = true,
+        },
+        {
+            // R16: the catch-bug lead fainted to the fixed Kleavor at the court.
+            .name = "kleavor counts for catch bug",
+            .quest = catch_bug,
+            .slugs = {"kleavor"},
+            .expected = true,
+        },
+        {
+            .name = "kleavor is the wrong type for catch fairy",
+            .quest = catch_fairy,
+            .slugs = {"kleavor"},
+            .expected = false,
+        },
+        {
+            // Muk and Alolan Muk: only one form is Dark, so the read cannot tell.
+            .name = "muk is unknown for catch dark",
+            .quest = catch_dark,
+            .slugs = {"muk"},
+        },
+        {
+            .name = "muk counts for catch poison",
+            .quest = catch_poison,
+            .slugs = {"muk"},
+            .expected = true,
+        },
+        {
+            .name = "catch any never reads the species",
+            .quest = catch_any,
+            .slugs = {"pikipek"},
+        },
+        {
+            .name = "an unknown slug is unknown",
+            .quest = catch_bug,
+            .slugs = {"not-a-pokemon"},
         },
     };
     for (const BBQCatchCountsScenario& scenario : scenarios){

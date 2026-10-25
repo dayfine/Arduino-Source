@@ -46,6 +46,7 @@
 #include "VideoGames/PokemonSV/Programs/TeraRaids/PokemonSV_TeraBattler.h"
 #include "VideoGames/PokemonSV/Programs/Farming/PokemonSV_BlueberryCatchPhoto.h"
 #include "VideoGames/PokemonSV/Programs/PokemonSV_Terarium.h"
+#include "Pokemon/Pokemon_SpeciesTypes.h"
 #include "PokemonSV_BlueberryQuests.h"
 
 #include<cmath>
@@ -663,25 +664,6 @@ int quest_reward(BBQuests quest){
     return slug.starts_with("catch-") ? 40 : 20;
 }
 
-//Flying types that can appear in the Terarium. A few extra Flying types do no harm;
-//a missing one only means fleeing from a Pokemon that would have counted.
-static const std::set<std::string>& FLYING_SPECIES(){
-    static const std::set<std::string> species{
-        "aerodactyl", "altaria", "bombirdier", "braviary", "butterfree", "cramorant",
-        "corviknight", "corvisquire", "crobat", "dodrio", "doduo", "dragonite", "drifblim",
-        "drifloon", "ducklett", "emolga", "fearow", "flamigo", "fletchinder", "fletchling",
-        "gligar", "gliscor", "golbat", "gyarados", "hawlucha", "honchkrow", "hoothoot",
-        "hoppip", "jumpluff", "kilowattrel", "landorus", "ledian", "ledyba", "mandibuzz",
-        "mantine", "mantyke", "masquerain", "minior", "murkrow", "noctowl", "noibat",
-        "noivern", "oricorio", "pelipper", "pidgeot", "pidgeotto", "pidgey", "pikipek",
-        "rookidee", "rowlet", "rufflet", "salamence", "scyther", "sigilyph", "skarmory",
-        "skiploom", "spearow", "squawkabilly", "swablu", "swanna", "swellow", "taillow",
-        "talonflame", "togekiss", "toucannon", "tropius", "trumbeak", "vivillon", "vullaby",
-        "wattrel", "wingull", "yanma", "yanmega", "zubat",
-    };
-    return species;
-}
-
 bool below_reroll_threshold(BBQuests quest, uint8_t bp_per_min){
     const std::optional<double> seconds = expected_seconds_per_success(quest);
     if (bp_per_min == 0 || !seconds || red_quests.contains(quest)){
@@ -696,20 +678,51 @@ bool below_reroll_threshold(BBQuests quest, uint8_t bp_per_min){
     return quest_reward(quest) + BAR_BONUS + REROLL_BP + bp_per_min * REROLL_MINUTES < bp_per_min * minutes;
 }
 
+//The type a typed catch quest asks for, or nothing for other quests.
+static std::optional<std::string> catch_quest_type(BBQuests quest){
+    const std::string slug = BBQuests_enum_to_string(quest);
+    if (!slug.starts_with("catch-") || quest == BBQuests::catch_any
+        || quest == BBQuests::catch_hint || quest == BBQuests::catch_hint2
+    ){
+        return std::nullopt;
+    }
+    return slug.substr(6);
+}
+
 bool catch_quest_checks_species(BBQuests quest){
-    return quest == BBQuests::catch_flying;
+    return catch_quest_type(quest).has_value();
 }
 
 std::optional<bool> catch_quest_counts(BBQuests quest, const std::set<std::string>& slugs){
-    if (!catch_quest_checks_species(quest) || slugs.empty()){
+    const std::optional<std::string> type = catch_quest_type(quest);
+    if (!type){
         return std::nullopt;
     }
+    //Over every form of every candidate the name read could be: it counts only if
+    //all of them have the type, and is wrong only if none does. Otherwise (Muk or
+    //Alolan Muk for Dark) the read cannot tell, and it is caught anyway.
+    size_t forms = 0;
+    size_t with_type = 0;
     for (const std::string& slug : slugs){
-        if (FLYING_SPECIES().contains(slug)){
-            return true;
+        const std::vector<std::set<std::string>>* types = Pokemon::species_form_types(slug);
+        if (types == nullptr){
+            return std::nullopt;
+        }
+        for (const std::set<std::string>& form : *types){
+            forms++;
+            with_type += form.contains(*type);
         }
     }
-    return false;
+    if (forms == 0){
+        return std::nullopt;
+    }
+    if (with_type == forms){
+        return true;
+    }
+    if (with_type == 0){
+        return false;
+    }
+    return std::nullopt;
 }
 
 void order_quests_by_cost(Logger& logger, std::vector<BBQuests>& quests){

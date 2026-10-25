@@ -1456,6 +1456,8 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/Pokemon_ShinySparkleSet.h
     Source/Pokemon/Pokemon_StatsCalculation.cpp
     Source/Pokemon/Pokemon_StatsCalculation.h
+    Source/Pokemon/Pokemon_SpeciesTypes.cpp
+    Source/Pokemon/Pokemon_SpeciesTypes.h
     Source/Pokemon/Pokemon_Strings.cpp
     Source/Pokemon/Pokemon_Strings.h
     Source/Pokemon/Pokemon_Types.cpp

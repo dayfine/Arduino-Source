@@ -113,11 +113,12 @@ int quest_reward(BBQuests quest);
 //costs. 0 never rerolls; red quests and quests without measurements are never below.
 bool below_reroll_threshold(BBQuests quest, uint8_t bp_per_min);
 //Whether a wild Pokemon counts for a typed catch quest, given the species slugs read
-//from its battle status screen. Nothing when the quest has no species table yet or
-//nothing was read: the caller then catches it anyway, as before.
+//from its battle status screen. Nothing when it is not a typed catch, nothing was
+//read, or the species has forms both with and without the type: the caller then
+//catches it anyway, as before.
 std::optional<bool> catch_quest_counts(BBQuests quest, const std::set<std::string>& slugs);
-//Whether catch_quest_counts() has a species table for this quest, so reading the
-//opponent's name is worth the time.
+//Whether catch_quest_counts() can decide for this quest (the typed catches), so
+//reading the opponent's name is worth the time.
 bool catch_quest_checks_species(BBQuests quest);
 //Reorder quests so the most BP per expected second (quest_reward() over
 //expected_seconds_per_success()) run first. Quests that
