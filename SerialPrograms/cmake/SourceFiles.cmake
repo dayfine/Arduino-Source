@@ -2591,6 +2591,8 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonSV/Programs/Eggs/PokemonSV_EggRoutines.h
     Source/VideoGames/PokemonSV/Programs/Farming/PokemonSV_AuctionFarmer.cpp
     Source/VideoGames/PokemonSV/Programs/Farming/PokemonSV_AuctionFarmer.h
+    Source/VideoGames/PokemonSV/Programs/Farming/PokemonSV_BBQLabConsole.cpp
+    Source/VideoGames/PokemonSV/Programs/Farming/PokemonSV_BBQLabConsole.h
     Source/VideoGames/PokemonSV/Programs/Farming/PokemonSV_BBQLab.cpp
     Source/VideoGames/PokemonSV/Programs/Farming/PokemonSV_BBQLab.h
     Source/VideoGames/PokemonSV/Programs/Farming/PokemonSV_BBQPointsLedger.cpp
