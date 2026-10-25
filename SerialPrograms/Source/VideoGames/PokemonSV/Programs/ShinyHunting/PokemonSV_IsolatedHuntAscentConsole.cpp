@@ -63,7 +63,7 @@ IsolatedHuntRound ConsoleIsolatedHuntActions::advance_ascent(const IsolatedHuntR
     const int ret = run_until<ProControllerContext>(m_env.console, m_context,
         [&](ProControllerContext& context){
             walk_forward_while_clear_front_path(m_env.program_info(), m_env.console, context,
-                Milliseconds(limits.segment_ms), -1, Milliseconds(limits.segment_ms + 1), Milliseconds(limits.clearing_wait_ms));
+                Milliseconds(limits.segment_ms), +1, Milliseconds(limits.segment_ms + 1), Milliseconds(limits.clearing_wait_ms));
             // Observe recent defeats before another map operation or movement. Never wait without a bound.
             const auto quiet_deadline = std::min(m_deadline, now_ms() + 10000);
             do{

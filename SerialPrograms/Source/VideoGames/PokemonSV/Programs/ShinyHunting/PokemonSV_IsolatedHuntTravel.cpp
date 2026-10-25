@@ -74,7 +74,7 @@ bool travel_to_isolated_hunt(const ProgramInfo& info, VideoStream& stream,
             // Candidate derived from the Central-to-Zero-Gate map traversal; verify identity before flying.
             pbf_press_button(context, BUTTON_ZL, 160ms, 840ms);
             pbf_move_left_joystick(context, {-1, 0}, 950ms, 200ms);
-            pbf_move_left_joystick(context, {0, +1}, 650ms, 200ms);
+            pbf_move_left_joystick(context, {0, -1}, 650ms, 200ms);
         }
         if (!detect_closest_flypoint_and_move_map_cursor_there(info, stream, context, FlyPoint::POKECENTER)){
             return false;
