@@ -1386,10 +1386,18 @@ void quest_tera_self_defeat(
         wild_battle_tera(info, console, context, tera_self);
         break;
     }
-    case TeraEncounterAction::Recover:
+    case TeraEncounterAction::Recover:{
         console.log("Battle entry not confirmed. Skipping battle handling.");
         return_to_plaza(info, console, context, BBQ_OPTIONS.LANGUAGE);
+        //Without a day skip the next attempt finds the same empty Pride Rock: bench T3
+        //missed 9 times in a row after its first miss.
+        pbf_press_button(context, BUTTON_HOME, 160ms, GameSettings::instance().GAME_TO_HOME_DELAY1);
+        home_to_date_time(console, context, true);
+        roll_date_forward_1(console, context, true);
+        pbf_press_button(context, BUTTON_HOME, 160ms, ConsoleSettings::instance().SETTINGS_TO_HOME_DELAY0);
+        resume_game_from_home(console, context);
         return;
+    }
     }
     leave_quest_area(info, console, context, BBQ_OPTIONS);
 
