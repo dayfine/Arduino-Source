@@ -45,7 +45,7 @@ std::vector<std::string> bbq_console_words(const std::string& line){
     std::istringstream in(line);
     std::string word;
     while (in >> word){
-        if (words.empty() && word[0] == '#'){
+        if (word[0] == '#'){
             break;
         }
         words.push_back(word);
@@ -72,9 +72,7 @@ BBQLabConsole::BBQLabConsole(){
     PA_ADD_OPTION(BBQ_OPTIONS);
 }
 
-namespace{
-
-Button parse_buttons(const std::string& text){
+Button bbq_console_buttons(const std::string& text){
     static const std::map<std::string, Button> NAMES{
         {"A", BUTTON_A}, {"B", BUTTON_B}, {"X", BUTTON_X}, {"Y", BUTTON_Y},
         {"L", BUTTON_L}, {"R", BUTTON_R}, {"ZL", BUTTON_ZL}, {"ZR", BUTTON_ZR},
@@ -96,6 +94,8 @@ Button parse_buttons(const std::string& text){
     return buttons;
 }
 
+namespace{
+
 class CommandRunner{
 public:
     CommandRunner(SingleSwitchProgramEnvironment& env, ProControllerContext& context, const BBQOption& options, std::string out_prefix)
@@ -114,7 +114,7 @@ public:
         if (cmd == "stop"){
             return false;
         }else if (cmd == "press"){                          //  press BTN[+BTN] hold [release]
-            pbf_press_button(context, parse_buttons(w.at(1)), ms(2, 160), ms(3, 160));
+            pbf_press_button(context, bbq_console_buttons(w.at(1)), ms(2, 160), ms(3, 160));
         }else if (cmd == "stick"){                          //  stick L|R x y hold [release]
             JoystickPosition position{num(2), num(3)};
             if (w.at(1) == "R"){
@@ -123,7 +123,7 @@ public:
                 pbf_move_left_joystick(context, position, ms(4), ms(5));
             }
         }else if (cmd == "ssf_press"){                      //  ssf_press BTN delay hold
-            ssf_press_button(context, parse_buttons(w.at(1)), ms(2), ms(3, 160));
+            ssf_press_button(context, bbq_console_buttons(w.at(1)), ms(2), ms(3, 160));
         }else if (cmd == "ssf_stick"){                      //  ssf_stick L|R x y delay hold
             JoystickPosition position{num(2), num(3)};
             if (w.at(1) == "R"){

@@ -14,6 +14,7 @@
 #include <string>
 #include <vector>
 #include "NintendoSwitch/NintendoSwitch_SingleSwitchProgram.h"
+#include "NintendoSwitch/Controllers/NintendoSwitch_ControllerButtons.h"
 #include "VideoGames/PokemonSV/Options/PokemonSV_BBQOption.h"
 
 namespace PokemonAutomation{
@@ -21,8 +22,12 @@ namespace NintendoSwitch{
 namespace PokemonSV{
 
 
-//  Split a command line into words. Blank lines and lines starting with '#' give none.
+//  Split a command line into words. A word starting with '#' starts a comment that runs
+//  to the end of the line, so comment lines and blank lines give no words.
 std::vector<std::string> bbq_console_words(const std::string& line);
+
+//  Buttons named like "B" or "L+PLUS". Throws ParseException for an unknown name.
+Button bbq_console_buttons(const std::string& text);
 
 
 class BBQLabConsole_Descriptor : public SingleSwitchProgramDescriptor{

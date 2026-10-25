@@ -32,6 +32,8 @@
 #include "Programs/Farming/PokemonSV_BBQSoloFarmer.h"
 #include "Programs/Farming/PokemonSV_BlueberryCatchPhoto.h"
 #include "Programs/PokemonSV_TerariumPlazaReturn.h"
+#include "Programs/Farming/PokemonSV_BBQLabConsole.h"
+#include "Programs/Farming/PokemonSV_BBQRoutineBench.h"
 #include "PokemonSV_Tests.h"
 #include "CommonFramework/GlobalAutoPaths.h"
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
@@ -2667,6 +2669,121 @@ void add_tests_BBQPlazaReturn(UnitTestDatabase& database){
 
 
 
+// BBQ lab tools: the command parsing of the Lab Console and the Routine Bench summary.
+// Both are lab only, but a wrong parse or summary would mislead a whole bench run.
+
+class Test_BBQLabConsoleWords : public UnitTest{
+public:
+    Test_BBQLabConsoleWords(std::string name, std::string line, std::vector<std::string> expected)
+        : UnitTest("PokemonSV::BBQLabConsole - words: " + name)
+        , m_line(std::move(line))
+        , m_expected(std::move(expected))
+    {}
+
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        const std::vector<std::string> got = bbq_console_words(m_line);
+        if (got != m_expected){
+            std::string text;
+            for (const std::string& word : got){
+                text += "[" + word + "]";
+            }
+            return "Unexpected words: " + text;
+        }
+        return true;
+    }
+
+private:
+    const std::string m_line;
+    const std::vector<std::string> m_expected;
+};
+
+class Test_BBQLabConsoleButtons : public UnitTest{
+public:
+    Test_BBQLabConsoleButtons(std::string text, Button expected, bool throws)
+        : UnitTest("PokemonSV::BBQLabConsole - buttons: " + text)
+        , m_text(std::move(text))
+        , m_expected(expected)
+        , m_throws(throws)
+    {}
+
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        try{
+            const Button got = bbq_console_buttons(m_text);
+            if (m_throws){
+                return std::string("Expected a parse error");
+            }
+            if (got != m_expected){
+                return "Expected buttons " + std::to_string(m_expected) + ", got " + std::to_string(got);
+            }
+        }catch (ParseException&){
+            if (!m_throws){
+                return std::string("Unexpected parse error");
+            }
+        }
+        return true;
+    }
+
+private:
+    const std::string m_text;
+    const Button m_expected;
+    const bool m_throws;
+};
+
+class Test_BBQBenchSummary : public UnitTest{
+public:
+    Test_BBQBenchSummary(std::string name, std::vector<BBQBenchRep> reps, char arm, std::string expected)
+        : UnitTest("PokemonSV::BBQRoutineBench - summary: " + name)
+        , m_reps(std::move(reps))
+        , m_arm(arm)
+        , m_expected(std::move(expected))
+    {}
+
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        const std::string got = m_arm == 0 ? bbq_bench_summary(m_reps) : bbq_bench_arm_summary(m_reps, m_arm);
+        if (got != m_expected){
+            return "Expected \"" + m_expected + "\", got \"" + got + "\"";
+        }
+        return true;
+    }
+
+private:
+    const std::vector<BBQBenchRep> m_reps;
+    const char m_arm;
+    const std::string m_expected;
+};
+
+void add_tests_BBQLabTools(UnitTestDatabase& database){
+    database.add<Test_BBQLabConsoleWords>("command", "press B 160", std::vector<std::string>{"press", "B", "160"});
+    database.add<Test_BBQLabConsoleWords>("extra spaces", "  stick L  0 1   500 ", std::vector<std::string>{"stick", "L", "0", "1", "500"});
+    database.add<Test_BBQLabConsoleWords>("comment line", "# turn left", std::vector<std::string>{});
+    database.add<Test_BBQLabConsoleWords>("blank line", "   ", std::vector<std::string>{});
+    database.add<Test_BBQLabConsoleWords>("trailing comment", "wait 800 # let the glide open", std::vector<std::string>{"wait", "800"});
+
+    database.add<Test_BBQLabConsoleButtons>("B", BUTTON_B, false);
+    database.add<Test_BBQLabConsoleButtons>("L+PLUS", (Button)(BUTTON_L | BUTTON_PLUS), false);
+    database.add<Test_BBQLabConsoleButtons>("LCLICK", BUTTON_LCLICK, false);
+    database.add<Test_BBQLabConsoleButtons>("b", BUTTON_NONE, true);
+    database.add<Test_BBQLabConsoleButtons>("A+Q", BUTTON_NONE, true);
+
+    database.add<Test_BBQBenchSummary>("no reps", std::vector<BBQBenchRep>{}, 0, "0/0");
+    database.add<Test_BBQBenchSummary>(
+        "odd count, median of all reps",
+        std::vector<BBQBenchRep>{{true, 10}, {false, 30}, {true, 20}}, 0, "2/3, median 20 s"
+    );
+    database.add<Test_BBQBenchSummary>(
+        "even count, median between the middle two",
+        std::vector<BBQBenchRep>{{true, 10}, {true, 20}, {false, 30}, {true, 41}}, 0, "3/4, median 25 s"
+    );
+    database.add<Test_BBQBenchSummary>(
+        "arm A only",
+        std::vector<BBQBenchRep>{{true, 10, 'A'}, {false, 99, 'B'}, {false, 30, 'A'}, {true, 99, 'B'}}, 'A', "1/2, median 20 s"
+    );
+    database.add<Test_BBQBenchSummary>(
+        "arm with no reps",
+        std::vector<BBQBenchRep>{{true, 10, 'A'}}, 'B', "0/0"
+    );
+}
+
 void add_tests(UnitTestDatabase& database){
     add_tests_BBQuestPlan(database);
     add_tests_BBQReroll(database);
@@ -2708,6 +2825,7 @@ void add_tests(UnitTestDatabase& database){
     add_tests_BBQPlazaBannerToCheck(database);
     add_tests_BBQPlazaBannerMatch(database);
     add_tests_BBQPlazaReturn(database);
+    add_tests_BBQLabTools(database);
 }
 
 
