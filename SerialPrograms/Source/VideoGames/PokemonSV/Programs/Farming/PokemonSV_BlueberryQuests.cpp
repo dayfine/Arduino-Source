@@ -867,8 +867,6 @@ bool process_and_do_quest(
             case BBQuests::make_tm:
             case BBQuests::travel_500:
             case BBQuests::tera_raid:
-            case BBQuests::auto_10:
-            case BBQuests::auto_30:
             case BBQuests::bitter_sandwich:
             case BBQuests::salty_sandwich:
             case BBQuests::sour_sandwich:
@@ -1921,14 +1919,20 @@ BBQAutoBattleResult run_auto_battle(
     const WallClock start = actions.now();
     uint64_t pass = 0;
     uint64_t empty_passes = 0;
+    //After a heal the player is at Central Plaza; otherwise next to the court.
+    bool at_plaza = true;
     //The kill sound is heard in every step, not only while clearing: the lead can finish a kill
-    //after the clear ends, as the flight back starts. Each pass counts the kills since the last
-    //pass log, so a kill heard after it goes to the next pass and the passes add up to the total.
+    //after the clear ends, as the flight starts. Each pass counts the kills since the last pass
+    //log, so a kill heard after it goes to the next pass and the passes add up to the total.
     uint64_t kills_before = actions.kills();
     while (actions.kills() < policy.kill_target){
         pass++;
 
-        actions.fly_to_battle_area();
+        if (at_plaza){
+            actions.fly_to_battle_area();
+        }else{
+            actions.refly_to_battle_area();
+        }
         const std::optional<double> hp = actions.clear(policy.kill_target);
 
         const uint64_t kills = actions.kills();
@@ -1948,17 +1952,17 @@ BBQAutoBattleResult run_auto_battle(
         }else if (heal){
             next = "Below the target and HP below " + threshold_text + ": return, heal and go again.";
         }else{
-            next = "Below the target and HP at or above " + threshold_text + ": return and go again without healing.";
+            next = "Below the target and HP at or above " + threshold_text + ": fly back in without healing.";
         }
         if (kills >= policy.kill_target){
             end = BBQAutoBattleResult::TargetReached;
-            next = "Target reached: return without healing.";
+            next = "Target reached: leave without healing.";
         }else if (empty_passes >= policy.max_empty_passes){
             end = BBQAutoBattleResult::NoKills;
-            next = "No kill in " + std::to_string(empty_passes) + " passes in a row: return and give up.";
+            next = "No kill in " + std::to_string(empty_passes) + " passes in a row: leave and give up.";
         }else if (elapsed >= policy.time_limit){
             end = BBQAutoBattleResult::TimeLimit;
-            next = "Time limit of " + std::to_string(policy.time_limit.count()) + " min reached: return and give up.";
+            next = "Time limit of " + std::to_string(policy.time_limit.count()) + " min reached: leave and give up.";
         }
         logger.log(
             "Auto Battle pass " + std::to_string(pass) + ": "
@@ -1970,18 +1974,9 @@ BBQAutoBattleResult run_auto_battle(
         );
         kills_before = kills;
 
-        //The next quest starts from Central Plaza, so return even when done.
-        actions.return_to_plaza();
         if (end){
+            actions.leave();
             return *end;
-        }
-        if (actions.kills() >= policy.kill_target){
-            logger.log(
-                "Auto Battle: kills heard on the way back reached the target, "
-                + std::to_string(actions.kills()) + "/" + std::to_string(policy.kill_target)
-                + ". Stop without healing."
-            );
-            return BBQAutoBattleResult::TargetReached;
         }
         //The heard count can fall short of the game's: a kill whose sound was missed still counts
         //in game. Near the target, read the board before going again. The read (~5 s) costs much
@@ -1990,16 +1985,29 @@ BBQAutoBattleResult run_auto_battle(
             const std::string count_text = std::to_string(actions.kills()) + "/" + std::to_string(policy.kill_target);
             if (!actions.quest_on_board()){
                 logger.log("Auto Battle: the quest is no longer on the board at " + count_text + " kills heard. Stop: the game completed it.");
+                actions.leave();
                 return BBQAutoBattleResult::QuestDone;
             }
             logger.log("Auto Battle: the quest is still on the board at " + count_text + " kills heard. Go again.");
         }
-        //Skipping the heal also skips its re-fly: return_to_plaza() already lands on the Central
-        //Plaza fly point, which is where the flight to Chargestone starts from.
-        if (heal){
-            actions.heal();
+        if (!heal){
+            at_plaza = false;
+            continue;
         }
+        actions.return_to_plaza();
+        at_plaza = true;
+        if (actions.kills() >= policy.kill_target){
+            logger.log(
+                "Auto Battle: kills heard on the way back reached the target, "
+                + std::to_string(actions.kills()) + "/" + std::to_string(policy.kill_target)
+                + ". Stop without healing."
+            );
+            //Already at Central Plaza.
+            return BBQAutoBattleResult::TargetReached;
+        }
+        actions.heal();
     }
+    //Only reached when kills heard during a heal reach the target, at Central Plaza.
     return BBQAutoBattleResult::TargetReached;
 }
 
@@ -2031,7 +2039,9 @@ public:
     }
     virtual void fly_to_battle_area() override{
         central_to_chargestone(m_env.program_info(), m_stream, m_context);
-
+        walk_into_battle_court();
+    }
+    void walk_into_battle_court(){
         //Wait for spawns
         pbf_wait(m_context, 3000ms);
         m_context.wait_for_all_requests();
@@ -2064,8 +2074,17 @@ public:
         }
         return hp;
     }
+    virtual void refly_to_battle_area() override{
+        m_stream.log("Flying back onto the closest fly point to respawn the cave.");
+        open_map_from_overworld(m_env.program_info(), m_stream, m_context);
+        fly_to_closest_pokecenter_on_map(m_env.program_info(), m_stream, m_context);
+        walk_into_battle_court();
+    }
     virtual void return_to_plaza() override{
         PokemonSV::return_to_plaza(m_env.program_info(), m_stream, m_context, m_language);
+    }
+    virtual void leave() override{
+        leave_quest_area(m_env.program_info(), m_stream, m_context, m_options);
     }
     virtual bool quest_on_board() override{
         const std::vector<BBQuests> quests = read_quests(m_env.program_info(), m_stream, m_context, m_options);
