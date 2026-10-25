@@ -41,6 +41,7 @@ const char* stop_name(IsolatedHuntStop stop){
     case IsolatedHuntStop::ROUND_LIMIT: return "round limit";
     case IsolatedHuntStop::START_FAILED: return "start flight failed";
     case IsolatedHuntStop::INVALID_PLAN: return "invalid plan";
+    case IsolatedHuntStop::POWER_UNVERIFIED: return "Meal Power not verified";
     case IsolatedHuntStop::SETUP_FAILED: return "setup failed";
     case IsolatedHuntStop::TRAVEL_FAILED: return "travel failed";
     case IsolatedHuntStop::UNRESOLVED_REFUSAL: return "unresolved refusal";
@@ -129,7 +130,8 @@ bool ConsoleIsolatedHuntActions::reset_start(const IsolatedHuntRequest&){
 
 bool ConsoleIsolatedHuntActions::prepare_sandwich(const IsolatedHuntRequest& request){
     m_sandwich.configure_for(request.type);
-    const bool success = guard("save and make " + request.pokemon + " sandwich", 240000ms,
+    // Six rice servings need more placement and OCR steps than the previous single-filling pilot.
+    const bool success = guard("save and make " + request.pokemon + " sandwich", 600000ms,
         [&](ProControllerContext& context){
             save_game_from_overworld(m_env.program_info(), m_env.console, context);
             picnic_at_zero_gate(m_env.program_info(), m_env.console, context);
@@ -146,14 +148,28 @@ bool ConsoleIsolatedHuntActions::prepare_sandwich(const IsolatedHuntRequest& req
     return success;
 }
 
+bool ConsoleIsolatedHuntActions::verify_meal_power(const IsolatedHuntRequest& request){
+    bool verified = false;
+    const bool success = guard("supervised Meal Power verification", 120000ms,
+        [&](ProControllerContext& context){
+            verified = m_verifier && m_verifier(context, request, IsolatedHuntVerification::MEAL_POWER);
+        }
+    );
+    return success && verified;
+}
+
 bool ConsoleIsolatedHuntActions::travel_to_anchor(const IsolatedHuntRequest& request){
     bool arrived = false;
-    const bool success = guard("travel to " + request.pokemon + " patch", 240000ms,
+    const bool success = guard("travel to " + request.pokemon + " patch", 420000ms,
         [&](ProControllerContext& context){
             arrived = travel_to_isolated_hunt(m_env.program_info(), m_env.console, context,
-                request.location, m_initial_travel);
+                request.location, m_initial_travel, m_language);
             if (arrived){
-                approach_isolated_patch(m_env.console, context, request.location);
+                if (request.location == IsolatedHuntLocation::WEST_PROVINCE_ONE_CENTRAL){
+                    arrived = m_verifier && m_verifier(context, request, IsolatedHuntVerification::CENTRAL_PATH);
+                }else{
+                    approach_isolated_patch(m_env.console, context, request.location);
+                }
             }
         }
     );
@@ -199,11 +215,15 @@ IsolatedHuntRound ConsoleIsolatedHuntActions::clear_round(const IsolatedHuntRequ
 
 bool ConsoleIsolatedHuntActions::refresh_spawns(const IsolatedHuntRequest& request){
     bool arrived = false;
-    const bool success = guard("refly and refresh " + request.pokemon, 90000ms,
+    const bool success = guard("refly and refresh " + request.pokemon, 240000ms,
         [&](ProControllerContext& context){
-            arrived = travel_to_isolated_hunt(m_env.program_info(), m_env.console, context, request.location, false);
+            arrived = travel_to_isolated_hunt(m_env.program_info(), m_env.console, context, request.location, false, m_language);
             if (arrived){
-                approach_isolated_patch(m_env.console, context, request.location);
+                if (request.location == IsolatedHuntLocation::WEST_PROVINCE_ONE_CENTRAL){
+                    arrived = m_verifier && m_verifier(context, request, IsolatedHuntVerification::CENTRAL_PATH);
+                }else{
+                    approach_isolated_patch(m_env.console, context, request.location);
+                }
             }
         }
     );

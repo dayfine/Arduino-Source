@@ -38,10 +38,10 @@ IsolatedHuntPrototype_Descriptor::IsolatedHuntPrototype_Descriptor()
     : SingleSwitchProgramDescriptor(
         "PokemonSV:IsolatedHuntPrototype",
         STRING_POKEMON + " SV", "Isolated Hunt Prototype",
-        "", "Experimental target-specific sandwich, travel and bounded hunting. Start at the Zero Gate fly spot with a healthy lead; routes need field calibration.",
+        "", "Supervised target-specific sandwich and bounded hunting. Start at Zero Gate with a healthy lead. Verify Meal Powers, select Central, and match the path at the prompts; Central return is manual.",
         ProgramControllerClass::StandardController_NoRestrictions,
         FeedbackType::VIDEO_AUDIO,
-        AllowCommandsWhenRunning::DISABLE_COMMANDS
+        AllowCommandsWhenRunning::ENABLE_COMMANDS
     )
 {}
 
@@ -55,11 +55,11 @@ IsolatedHuntPrototype::IsolatedHuntPrototype()
     : LANGUAGE("<b>Game Language:</b>", IV_READER().languages(), LockMode::LOCK_WHILE_RUNNING, true)
     , START(
         "<b>Start:</b><br>Full hunt: start at Zero Gate as if just flown there, on foot. "
-        "Other modes are supervised controls. Prepared spot: stand on foot, facing the target patch. "
+        "Use manual controls only at supervision prompts. Other modes are supervised controls. Prepared spot: stand on foot, facing the target patch. "
         "Central Plaza: start as if just flown there; uses the existing Chargestone court approach. "
         "Chespin requires the Canyon diversity upgrade and a verified Grass spawn patch.",
         {
-            {Start::HUNT_FROM_ZERO_GATE, "hunt-from-zero-gate", "Full hunt from Zero Gate (experimental routes)"},
+            {Start::HUNT_FROM_ZERO_GATE, "hunt-from-zero-gate", "Supervised hunt from Zero Gate"},
             {Start::PREPARED_SPOT, "prepared", "Prepared hunting spot (Chespin or Charcadet)"},
             {Start::CENTRAL_PLAZA, "central-plaza", "Central Plaza to Chargestone court"},
             {Start::RETURN_TO_ZERO_GATE, "return-zerogate", "Return from Area Zero to Zero Gate (travel only)"},
@@ -67,6 +67,12 @@ IsolatedHuntPrototype::IsolatedHuntPrototype()
         LockMode::LOCK_WHILE_RUNNING, Start::HUNT_FROM_ZERO_GATE
     )
     , SANDWICH_OPTIONS(&LANGUAGE)
+    , MEAL_VERIFIED("<b>Meal Powers inspected:</b><br>At the verification pause, check the actual active "
+        "Encounter Power type and level (Lv. 2 ordinary / Lv. 3 herbs). Check only if correct.",
+        LockMode::UNLOCK_WHILE_RUNNING, false)
+    , PATCH_VERIFIED("<b>Central path inspected:</b><br>At the path pause, position the player on the demonstrated "
+        "Charcadet path by Central. Check only after matching terrain and safe clearing bounds.",
+        LockMode::UNLOCK_WHILE_RUNNING, false)
     , RUN_SECONDS(
         "<b>Clearing time limit (seconds):</b><br>Starts after the approach. Stops between passes; each pass takes at most about 17 seconds.",
         LockMode::LOCK_WHILE_RUNNING, 120, 15, 600
@@ -94,6 +100,8 @@ void IsolatedHuntPrototype::add_options(){
     PA_ADD_OPTION(START);
     PA_ADD_OPTION(HUNTS);
     PA_ADD_OPTION(SANDWICH_OPTIONS);
+    PA_ADD_OPTION(MEAL_VERIFIED);
+    PA_ADD_OPTION(PATCH_VERIFIED);
     PA_ADD_OPTION(MAX_ROUNDS);
     PA_ADD_OPTION(RUN_SECONDS);
     PA_ADD_OPTION(EMPTY_PASSES);
@@ -101,11 +109,36 @@ void IsolatedHuntPrototype::add_options(){
     PA_ADD_OPTION(NOTIFICATIONS);
 }
 
+bool IsolatedHuntPrototype::verify_setup(VideoStream& stream, ProControllerContext& context,
+    const IsolatedHuntRequest& request, IsolatedHuntVerification stage
+){
+    const bool meal = stage == IsolatedHuntVerification::MEAL_POWER;
+    auto& verified = meal ? MEAL_VERIFIED : PATCH_VERIFIED;
+    verified = false;
+    const std::string type = request.type == IsolatedEncounterType::FIRE ? "Fire" : "Grass";
+    stream.log(meal ? "SUPERVISED: inspect active Meal Powers: Encounter Power " + type +
+        (SANDWICH_OPTIONS.USE_HERBA ? " Lv. 3." : " Lv. 2.") + " Check Meal Powers inspected only if correct."
+        : "SUPERVISED: match the demonstrated Central Charcadet path. Position safely, then check Central path inspected.", COLOR_BLUE);
+    if (meal){ pbf_press_dpad(context, DPAD_RIGHT, 160ms, 840ms); }
+    context.wait_for_all_requests();
+    const WallClock deadline = current_time() + 110s;
+    while (!verified && current_time() < deadline){ context.wait_for(250ms); }
+    const bool accepted = verified;
+    verified = false;
+    if (!accepted){ return false; }
+    if (meal){ pbf_press_button(context, BUTTON_B, 160ms, 840ms); }
+    OverworldWatcher overworld(stream.logger(), COLOR_BLUE);
+    return wait_until(stream, context, 5000ms, {overworld}) == 0;
+}
+
 bool IsolatedHuntPrototype::run_one_hunt(SingleSwitchProgramEnvironment& env,
     ProControllerContext& context, const IsolatedHuntRequest& request
 ){
     auto& stats = env.current_stats<IsolatedHuntPrototype_Descriptor::Stats>();
     ConsoleIsolatedHuntActions actions(env, context, stats, LANGUAGE, SANDWICH_OPTIONS, ENCOUNTER_OPTIONS, request);
+    actions.set_verifier([&](ProControllerContext& stage_context, const IsolatedHuntRequest& hunt, IsolatedHuntVerification stage){
+        return verify_setup(env.console, stage_context, hunt, stage);
+    });
     const IsolatedHuntLimits limits{
         .max_rounds = MAX_ROUNDS, .max_empty_rounds = EMPTY_PASSES,
         .duration_ms = (uint64_t)RUN_SECONDS * 1000,
@@ -134,6 +167,12 @@ void IsolatedHuntPrototype::run_hunts(SingleSwitchProgramEnvironment& env, ProCo
     }
     if (LANGUAGE == Language::None){
         throw UserSetupError(env.logger(), "Select the game language before starting.");
+    }
+    for (const auto& request : plan.hunts){
+        if (request.location == IsolatedHuntLocation::WEST_PROVINCE_ONE_CENTRAL &&
+            LANGUAGE != Language::English && LANGUAGE != Language::ChineseTraditional){
+            throw UserSetupError(env.logger(), "Central flight verification supports English and Traditional Chinese only.");
+        }
     }
     assert_16_9_720p_min(env.logger(), env.console);
     require_player(env.console, context, BUTTON_LCLICK);
@@ -270,6 +309,14 @@ void IsolatedHuntPrototype::program(SingleSwitchProgramEnvironment& env, ProCont
         [&](ProControllerContext& context){
             if (!approach(env, context)){
                 stop_reason = "Returned to Zero Gate. Ready for the release AZP program.";
+                return;
+            }
+            const auto plan = make_isolated_hunt_plan(HUNTS.snapshot());
+            if (!plan.error.empty()){
+                throw UserSetupError(env.logger(), plan.error);
+            }
+            if (!verify_setup(env.console, context, plan.hunts.front(), IsolatedHuntVerification::MEAL_POWER)){
+                stop_reason = "Active Meal Power was not verified; no clearing.";
                 return;
             }
             stop_reason = clear_spot(env, context, sensors);

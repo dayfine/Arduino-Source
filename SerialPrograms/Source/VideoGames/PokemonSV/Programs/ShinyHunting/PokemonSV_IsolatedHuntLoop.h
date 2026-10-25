@@ -7,9 +7,10 @@ namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonSV{
 
+enum class IsolatedHuntVerification{ MEAL_POWER, CENTRAL_PATH };
 enum class IsolatedHuntEvent{ CLEAR, REFUSAL, BATTLE };
 enum class IsolatedHuntBattleResult{ CONTINUE, STOP, FAILED };
-enum class IsolatedHuntStop{ ROUND_LIMIT, INVALID_PLAN, START_FAILED, SETUP_FAILED, TRAVEL_FAILED, UNRESOLVED_REFUSAL, BATTLE_POLICY, BATTLE_FAILED, TIME_LIMIT, NO_PROGRESS, REFRESH_FAILED, POWER_EXPIRED };
+enum class IsolatedHuntStop{ ROUND_LIMIT, INVALID_PLAN, START_FAILED, SETUP_FAILED, POWER_UNVERIFIED, TRAVEL_FAILED, UNRESOLVED_REFUSAL, BATTLE_POLICY, BATTLE_FAILED, TIME_LIMIT, NO_PROGRESS, REFRESH_FAILED, POWER_EXPIRED };
 
 struct IsolatedHuntRound{
     uint64_t kills = 0;
@@ -37,6 +38,7 @@ public:
     virtual ~IsolatedHuntActions() = default;
     virtual bool reset_start(const IsolatedHuntRequest& request) = 0;
     virtual bool prepare_sandwich(const IsolatedHuntRequest& request) = 0;
+    virtual bool verify_meal_power(const IsolatedHuntRequest& request) = 0;
     // Also called after a handled battle; success must mean the route anchor is restored.
     virtual bool travel_to_anchor(const IsolatedHuntRequest& request) = 0;
     // Watch for battles and refusals throughout the bounded movement/observation window.

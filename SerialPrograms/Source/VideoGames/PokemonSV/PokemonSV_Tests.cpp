@@ -27,6 +27,7 @@
 #include "Inference/Picnics/PokemonSV_SandwichHandDetector.h"
 #include "PokemonSV_Tests.h"
 #include "PokemonSV_IsolatedHunt_Tests.h"
+#include "PokemonSV_IsolatedHuntFlight_Tests.h"
 #include "PokemonSV_IsolatedHuntLoop_Tests.h"
 #include "PokemonSV_IsolatedHuntOptions_Tests.h"
 #include "PokemonSV_IsolatedHuntEncounter_Tests.h"
@@ -52,6 +53,7 @@ private:
 }
 
 void add_tests(UnitTestDatabase& database){
+    database.add<Test_IsolatedHunt>("PokemonSV/IsolatedHunt/Flight", test_isolated_hunt_flight);
     database.add<Test_IsolatedHunt>("PokemonSV/IsolatedHunt/Plan", test_isolated_hunt_plan);
     database.add<Test_IsolatedHunt>("PokemonSV/IsolatedHunt/Locations", test_isolated_hunt_locations);
     database.add<Test_IsolatedHunt>("PokemonSV/IsolatedHunt/Loop", test_isolated_hunt_loop);

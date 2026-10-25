@@ -2478,6 +2478,8 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonSV/Options/PokemonSV_IsolatedHuntSandwichOption.h
     Source/VideoGames/PokemonSV/Programs/PokemonSV_RegionTravel.cpp
     Source/VideoGames/PokemonSV/Programs/PokemonSV_RegionTravel.h
+    Source/VideoGames/PokemonSV/Programs/ShinyHunting/PokemonSV_IsolatedHuntFlight.cpp
+    Source/VideoGames/PokemonSV/Programs/ShinyHunting/PokemonSV_IsolatedHuntFlight.h
     Source/VideoGames/PokemonSV/Programs/ShinyHunting/PokemonSV_IsolatedHuntTravel.cpp
     Source/VideoGames/PokemonSV/Programs/ShinyHunting/PokemonSV_IsolatedHuntTravel.h
     Source/VideoGames/PokemonSV/Programs/ShinyHunting/PokemonSV_IsolatedHuntStats.h
@@ -2489,6 +2491,8 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonSV/PokemonSV_IsolatedHuntEncounter_Tests.h
     Source/VideoGames/PokemonSV/PokemonSV_IsolatedHuntOptions_Tests.cpp
     Source/VideoGames/PokemonSV/PokemonSV_IsolatedHuntOptions_Tests.h
+    Source/VideoGames/PokemonSV/PokemonSV_IsolatedHuntFlight_Tests.cpp
+    Source/VideoGames/PokemonSV/PokemonSV_IsolatedHuntFlight_Tests.h
     Source/VideoGames/PokemonSV/PokemonSV_IsolatedHunt_Tests.cpp
     Source/VideoGames/PokemonSV/PokemonSV_IsolatedHunt_Tests.h
     Source/VideoGames/PokemonSV/PokemonSV_Tests.cpp

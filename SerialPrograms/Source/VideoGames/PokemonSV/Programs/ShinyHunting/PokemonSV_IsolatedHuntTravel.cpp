@@ -1,3 +1,10 @@
+#include "CommonTools/Async/InferenceRoutines.h"
+#include "CommonTools/OCR/OCR_Routines.h"
+#include "CommonFramework/ImageTools/ImageBoxes.h"
+#include "VideoGames/PokemonSV/Inference/Map/PokemonSV_MapMenuDetector.h"
+#include "VideoGames/PokemonSV/Inference/Dialogs/PokemonSV_DialogDetector.h"
+#include "VideoGames/PokemonSV/Inference/Overworld/PokemonSV_OverworldDetector.h"
+#include "PokemonSV_IsolatedHuntFlight.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "VideoGames/PokemonSV/Programs/PokemonSV_MenuNavigation.h"
 #include "VideoGames/PokemonSV/Programs/PokemonSV_WorldNavigation.h"
@@ -10,16 +17,47 @@ namespace NintendoSwitch{
 namespace PokemonSV{
 namespace{
 
-bool seek_paldea_flight(const ProgramInfo& info, VideoStream& stream, ProControllerContext& context,
-    double x, double y, Milliseconds duration, FlyPoint kind
-){
-    open_map_from_overworld(info, stream, context);
-    pbf_press_button(context, BUTTON_ZL, 160ms, 840ms);
-    pbf_move_left_joystick(context, {x, y}, duration, 800ms);
-    pbf_press_button(context, BUTTON_ZR, 160ms, 840ms);
-    context.wait_for_all_requests();
-    return fly_to_visible_closest_flypoint_cur_zoom_level(info, stream, context, kind);
-}
+class CentralFlight : public IsolatedFlightActions{
+public:
+    CentralFlight(VideoStream& stream, ProControllerContext& context, Language language, bool supervised)
+        : m_stream(stream), m_context(context), m_language(language), m_supervised(supervised)
+    {}
+    virtual bool open_confirmation() override{
+        if (m_supervised){
+            m_stream.log("SUPERVISED: select West Province (Area One) - Central on the map and choose Fly here. "
+                "Leave the Yes/No prompt open. The program checks the name before confirming.", COLOR_BLUE);
+        }else{
+            pbf_press_button(m_context, BUTTON_A, 160ms, 1040ms);
+            MapFlyMenuWatcher menu(COLOR_BLUE);
+            if (wait_until(m_stream, m_context, 5000ms, {menu}) < 0){ return false; }
+            pbf_press_button(m_context, BUTTON_A, 160ms, 1040ms);
+        }
+        PromptDialogWatcher prompt(COLOR_BLUE, {0.686, 0.494, 0.171, 0.163});
+        return wait_until(m_stream, m_context, m_supervised ? 180000ms : 5000ms, {prompt}) == 0;
+    }
+    virtual std::string read_destination() override{
+        m_context.wait_for(250ms);
+        const auto screen = m_stream.video().snapshot();
+        const auto text = OCR::ocr_read(m_language,
+            extract_box_reference(screen, ImageFloatBox{0.300, 0.335, 0.400, 0.068}));
+        m_stream.log("Flight destination read: " + text);
+        return text;
+    }
+    virtual bool confirmation_visible() override{
+        PromptDialogDetector prompt(COLOR_BLUE, {0.686, 0.494, 0.171, 0.163});
+        return prompt.detect(m_stream.video().snapshot());
+    }
+    virtual bool confirm_and_wait() override{
+        pbf_press_button(m_context, BUTTON_A, 160ms, 1040ms);
+        OverworldWatcher overworld(m_stream.logger(), COLOR_BLUE);
+        return wait_until(m_stream, m_context, 60000ms, {overworld}) == 0;
+    }
+private:
+    VideoStream& m_stream;
+    ProControllerContext& m_context;
+    Language m_language;
+    bool m_supervised;
+};
 
 bool refly_local_anchor(const ProgramInfo& info, VideoStream& stream,
     ProControllerContext& context, IsolatedHuntLocation location
@@ -33,8 +71,19 @@ bool refly_local_anchor(const ProgramInfo& info, VideoStream& stream,
 }
 
 bool travel_to_isolated_hunt(const ProgramInfo& info, VideoStream& stream,
-    ProControllerContext& context, IsolatedHuntLocation location, bool from_zero_gate
+    ProControllerContext& context, IsolatedHuntLocation location, bool from_zero_gate, Language language
 ){
+    if (location == IsolatedHuntLocation::WEST_PROVINCE_ONE_CENTRAL){
+        open_map_from_overworld(info, stream, context);
+        if (!from_zero_gate && !detect_closest_flypoint_and_move_map_cursor_there(
+            info, stream, context, FlyPoint::POKECENTER)){
+            return false;
+        }
+        CentralFlight flight(stream, context, language, from_zero_gate);
+        const bool arrived = fly_to_isolated_central(flight, language);
+        if (!arrived){ stream.log("Central flight failed; stopping for inspection.", COLOR_RED); }
+        return arrived;
+    }
     if (!from_zero_gate){
         return refly_local_anchor(info, stream, context, location);
     }
@@ -44,10 +93,7 @@ bool travel_to_isolated_hunt(const ProgramInfo& info, VideoStream& stream,
         central_to_chargestone(info, stream, context);
         return true;
     }
-    // Experimental initial seek from Zero Gate, based on the relative Paldea map coordinates.
-    // Icon inference selects the nearby center; its actual identity must be checked in the field.
-    stream.log("Experimental flight: Zero Gate to West Province Area One Central.");
-    return seek_paldea_flight(info, stream, context, -1, -0.47, 850ms, FlyPoint::POKECENTER);
+    return false;
 }
 
 void approach_isolated_patch(VideoStream& stream, ProControllerContext& context, IsolatedHuntLocation location){
@@ -58,10 +104,7 @@ void approach_isolated_patch(VideoStream& stream, ProControllerContext& context,
         pbf_move_left_joystick(context, {+1, 0}, 1440ms, 400ms);
         pbf_press_button(context, BUTTON_L, 160ms, 400ms);
     }else{
-        stream.log("Approach: experimental clearing beside West Province One Central.");
-        pbf_move_left_joystick(context, {0, -1}, 1200ms, 400ms);
-        pbf_move_left_joystick(context, {-1, 0}, 1600ms, 400ms);
-        pbf_press_button(context, BUTTON_L, 160ms, 400ms);
+        stream.log("Central approach requires supervised matching of the demonstrated path.", COLOR_BLUE);
     }
     context.wait_for_all_requests();
 }
@@ -78,7 +121,8 @@ bool return_from_isolated_hunt(const ProgramInfo& info, VideoStream& stream,
         context.wait_for_all_requests();
         return fly_to_visible_closest_flypoint_cur_zoom_level(info, stream, context, FlyPoint::FAST_TRAVEL);
     }
-    return seek_paldea_flight(info, stream, context, +1, +0.47, 850ms, FlyPoint::FAST_TRAVEL);
+    stream.log("Central return route is uncalibrated. Supervised return to Zero Gate required; no automatic departure.", COLOR_BLUE);
+    return false;
 }
 
 }

@@ -7,6 +7,7 @@
 #ifndef PokemonAutomation_PokemonSV_IsolatedHuntPrototype_H
 #define PokemonAutomation_PokemonSV_IsolatedHuntPrototype_H
 
+#include "Common/Cpp/Options/BooleanCheckBoxOption.h"
 #include "Common/Cpp/Options/EnumDropdownOption.h"
 #include "Common/Cpp/Options/SimpleIntegerOption.h"
 #include "CommonFramework/Notifications/EventNotificationsTable.h"
@@ -17,6 +18,7 @@
 #include "VideoGames/PokemonSV/Options/PokemonSV_IsolatedHuntSandwichOption.h"
 #include "VideoGames/PokemonSV/Inference/Overworld/PokemonSV_OverworldSensors.h"
 #include "PokemonSV_LetsGoTools.h"
+#include "PokemonSV_IsolatedHuntLoop.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -39,6 +41,8 @@ private:
     void add_options();
     void run_hunts(SingleSwitchProgramEnvironment& env, ProControllerContext& context);
     bool run_one_hunt(SingleSwitchProgramEnvironment& env, ProControllerContext& context, const IsolatedHuntRequest& request);
+    bool verify_setup(VideoStream& stream, ProControllerContext& context,
+        const IsolatedHuntRequest& request, IsolatedHuntVerification stage);
     bool approach(SingleSwitchProgramEnvironment& env, ProControllerContext& context);
     bool clear_pass(SingleSwitchProgramEnvironment& env, ProControllerContext& context,
         OverworldSensors& sensors, uint8_t& empty);
@@ -57,6 +61,8 @@ private:
     EnumDropdownOption<Start> START;
     IsolatedHuntTable HUNTS;
     IsolatedHuntSandwichOption SANDWICH_OPTIONS;
+    BooleanCheckBoxOption MEAL_VERIFIED;
+    BooleanCheckBoxOption PATCH_VERIFIED;
     SimpleIntegerOption<uint16_t> RUN_SECONDS;
     SimpleIntegerOption<uint16_t> MAX_ROUNDS;
     SimpleIntegerOption<uint8_t> EMPTY_PASSES;

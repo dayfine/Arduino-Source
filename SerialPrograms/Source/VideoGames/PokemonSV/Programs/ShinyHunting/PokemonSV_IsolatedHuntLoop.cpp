@@ -112,6 +112,9 @@ IsolatedHuntResult run_isolated_hunt(
         return failed_stage(request, actions, IsolatedHuntStop::SETUP_FAILED);
     }
     const uint64_t power_started = actions.now_ms();
+    if (!actions.verify_meal_power(request)){
+        return failed_stage(request, actions, IsolatedHuntStop::POWER_UNVERIFIED);
+    }
     if (!actions.travel_to_anchor(request)){
         return failed_stage(request, actions, IsolatedHuntStop::TRAVEL_FAILED);
     }

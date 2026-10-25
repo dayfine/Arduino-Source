@@ -2,6 +2,7 @@
 #define PokemonAutomation_PokemonSV_IsolatedHuntConsoleActions_H
 
 #include <functional>
+#include <utility>
 #include "NintendoSwitch/NintendoSwitch_SingleSwitchProgram.h"
 #include "VideoGames/PokemonSV/Inference/Overworld/PokemonSV_OverworldSensors.h"
 #include "VideoGames/PokemonSV/Options/PokemonSV_IsolatedHuntSandwichOption.h"
@@ -20,6 +21,9 @@ public:
         const EncounterBotCommonOptions& encounter_options, const IsolatedHuntRequest& request);
     virtual bool reset_start(const IsolatedHuntRequest& request) override;
     virtual bool prepare_sandwich(const IsolatedHuntRequest& request) override;
+    using Verifier = std::function<bool(ProControllerContext&, const IsolatedHuntRequest&, IsolatedHuntVerification)>;
+    void set_verifier(Verifier verifier){ m_verifier = std::move(verifier); }
+    virtual bool verify_meal_power(const IsolatedHuntRequest& request) override;
     virtual bool travel_to_anchor(const IsolatedHuntRequest& request) override;
     virtual IsolatedHuntRound clear_round(const IsolatedHuntRequest& request) override;
     virtual bool refresh_spawns(const IsolatedHuntRequest& request) override;
@@ -36,6 +40,7 @@ private:
     void phase(const std::string& stage);
     void update_elapsed();
 
+    Verifier m_verifier;
     SingleSwitchProgramEnvironment& m_env;
     ProControllerContext& m_context;
     IsolatedHuntStats& m_stats;

@@ -7,7 +7,7 @@ namespace PokemonSV{
 
 IsolatedHuntSandwichOption::IsolatedHuntSandwichOption(OCR::LanguageOCROption* language)
     : SandwichMakerOption("<b>Sandwich:</b> Encounter Power from ordinary ingredients by default. "
-        "Fire: 6 Rice + 2 Curry Powder + 2 Wasabi (Lv. 2). Grass: Great Klawf Claw (Lv. 2). "
+        "Fire: 6 Rice + 2 Curry Powder + 2 Wasabi (expected Lv. 2; inspect active powers). Grass: Great Klawf Claw (Lv. 2). "
         "Herba Mystica settings apply only when explicitly enabled below.",
         language, BaseRecipe::shiny, false, GroupOption::EnableMode::ALWAYS_ENABLED)
     , USE_HERBA("<b>Use Herba Mystica:</b><br>Add Sparkling Power using two selected herbs.",
