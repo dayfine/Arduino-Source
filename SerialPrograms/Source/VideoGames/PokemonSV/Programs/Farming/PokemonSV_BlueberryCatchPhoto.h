@@ -68,6 +68,10 @@ bool catch_quest_catches_on_return(BBQuests current_quest, bool battled_this_att
 //Walk from the Coastal Plaza fly point to the grassland where Flying types spawn.
 void coastal_plaza_to_grassland(ConsoleHandle& console, ProControllerContext& context, bool inverted_flight);
 
+//From near Coastal Plaza, fly back onto it: the closest fly point, or, when the player
+//marker hides its icon, the direct flight that finds it from the map corner.
+void fly_back_to_coastal_plaza(const ProgramInfo& info, ConsoleHandle& console, ProControllerContext& context, Language language);
+
 //Catch a pokemon
 void quest_catch(
     const ProgramInfo& info,

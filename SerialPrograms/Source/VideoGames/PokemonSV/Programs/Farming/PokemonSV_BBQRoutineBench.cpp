@@ -278,8 +278,7 @@ void run_coastal_glide(SingleSwitchProgramEnvironment& env, ProControllerContext
     if (!is_away_from_plaza()){
         central_to_coastal_plaza(env.program_info(), env.console, context);
     }else{
-        open_map_from_overworld(env.program_info(), env.console, context);
-        fly_to_closest_pokecenter_on_map(env.program_info(), env.console, context);
+        fly_back_to_coastal_plaza(env.program_info(), env.console, context, options.LANGUAGE);
     }
     coastal_plaza_to_grassland(env.console, context, options.INVERTED_FLIGHT);
     if (send_out_and_look_around(env.console, context, std::chrono::seconds(6), "a flying Pokemon")){
@@ -347,9 +346,8 @@ void BBQRoutineBench::program(SingleSwitchProgramEnvironment& env, ProController
     if (!fly_to_overworld_from_map(env.program_info(), env.console, context, true)){
         press_Bs_to_back_to_overworld(env.program_info(), env.console, context);
         if (ROUTINE == BBQBenchRoutine::CoastalGlide){
-            env.log("No fly spot here. Flying to the closest one.");
-            open_map_from_overworld(env.program_info(), env.console, context);
-            fly_to_closest_pokecenter_on_map(env.program_info(), env.console, context);
+            env.log("No fly spot here. Flying to Coastal Plaza.");
+            fly_back_to_coastal_plaza(env.program_info(), env.console, context, BBQ_OPTIONS.LANGUAGE);
             stay_away_from_plaza(BBQ_OPTIONS.LANGUAGE);
         }else{
             env.log("No fly spot here. Flying to Central Plaza.");

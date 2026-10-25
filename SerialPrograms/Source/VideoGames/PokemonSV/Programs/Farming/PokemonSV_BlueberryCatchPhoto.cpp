@@ -1010,16 +1010,28 @@ void coastal_plaza_to_grassland(ConsoleHandle& console, ProControllerContext& co
     context.wait_for_all_requests();
 }
 
+void fly_back_to_coastal_plaza(const ProgramInfo& info, ConsoleHandle& console, ProControllerContext& context, Language language){
+    try{
+        open_map_from_overworld(info, console, context);
+        fly_to_closest_pokecenter_on_map(info, console, context);
+        return;
+    }catch (OperationFailedException&){
+        console.log("No Pokecenter icon found near the player. Flying to Coastal Plaza directly.", COLOR_ORANGE);
+    }
+    press_Bs_to_back_to_overworld(info, console, context);
+    stay_away_from_plaza(language);
+    central_to_coastal_plaza(info, console, context);
+}
+
 //Look for a Flying type again from the closest fly point, without going back to
 //Central Plaza: after the first look the player is still near Coastal Plaza.
 static void retry_coastal_flying(
     const ProgramInfo& info,
     ConsoleHandle& console, ProControllerContext& context,
-    bool inverted_flight
+    bool inverted_flight, Language language
 ){
     console.log("Flying back to the closest fly point to look again.");
-    open_map_from_overworld(info, console, context);
-    fly_to_closest_pokecenter_on_map(info, console, context);
+    fly_back_to_coastal_plaza(info, console, context, language);
     coastal_plaza_to_grassland(console, context, inverted_flight);
     send_out_and_look_around(console, context, std::chrono::seconds(6), "a flying Pokemon");
 }
@@ -1125,7 +1137,7 @@ void quest_catch(
                 if (look == 0){
                     quest_catch_navi(info, console, context, BBQ_OPTIONS, current_quest);
                 }else{
-                    retry_coastal_flying(info, console, context, BBQ_OPTIONS.INVERTED_FLIGHT);
+                    retry_coastal_flying(info, console, context, BBQ_OPTIONS.INVERTED_FLIGHT, BBQ_OPTIONS.LANGUAGE);
                 }
             }
         );
