@@ -44,6 +44,15 @@ the same two things:
 - The pokefirered decompilation gives exact positions and sight ranges of
   every trainer, so FRLG paths can be planned offline instead of tuned by
   hand.
+- It has been done before outside this project: a Poke-Controller script
+  (`FRLG_Story_Auto.py`, [junari's blog](https://junari.hatenablog.com/entry/2024/08/02/234339))
+  plays FRLG to the Hall of Fame with the starter alone in about 12–14
+  hours, on a GameCube Game Boy Player or a Switch, resetting to the last
+  save on failure. Users asked for the same here
+  ([ComputerControl#259](https://github.com/PokemonAutomation/ComputerControl/issues/259));
+  Mysticial's reply there is that an AutoStory takes far more effort than it
+  looks (SV took over a year). Shared infrastructure and decomp-planned paths
+  are how this plan tries to keep that cost down.
 
 **What we think should happen.**
 
@@ -473,6 +482,35 @@ concrete items plus the shared-core offer.
 
 ## 7. FRLG AutoStory plan
 
+### 7.0 Prior art: junari's FRLG script
+
+From the [blog post](https://junari.hatenablog.com/entry/2024/08/02/234339)
+(Poke-Controller MODIFIED, Python; we have not read its code):
+
+- **Scope and time:** new game to the Network Machine, Silph Co., the
+  ending or the Hall of Fame (selectable stop point); about 12–14 hours to
+  the end.
+- **Team:** the starter alone fights every trainer. Squirtle is fastest,
+  then Charmander, then Bulbasaur. Moves come from TMs and tutors: Squirtle
+  Mega Kick + Water Pulse; Charmander Mega Kick, Dig, Dragon Claw; Bulbasaur
+  Return, Earthquake. No transfers from another save. This confirms the
+  solo rule (§9) is workable and shrinks the requirements plan (§7.6) to HM
+  users, TMs and tutors, and money.
+- **Recovery:** on a lost battle or a loop running too long, reset and
+  restart from the nearest save.
+- **Options:** start/stop number, version, hardware, language, gender,
+  player/rival names, starter, fossil, Dojo Pokémon, and a "Nugget farm"
+  mode (lose to the Nugget Bridge Rocket repeatedly, 1.5–2 min each), the
+  same trick as our `NuggetBridgeFarmer`.
+- **Setup it requires:** delete the save from the title screen (Y + B + Up
+  on Switch), 720p output, screen size 100%.
+- **Images:** none shipped; it crops reference images at run time on the
+  first run and reuses them.
+
+Its terms forbid redistribution and claiming authorship, so it is a
+reference for the route, team and options, not a source of code. Its demo
+videos are useful for checking routes.
+
 ### 7.1 Reuse
 
 Already on `main` (`FRLG/`):
@@ -592,7 +630,7 @@ requirement, and derive the catch/gift/shop checkpoints from it:
 | Cut user (Cascade badge) | Vermilion Gym tree (seg 03) | Oddish (Routes 24/25; FireRed exclusive, Bellsprout in LeafGreen), Paras (Mt. Moon), Farfetch'd (Vermilion in-game trade, option only) |
 | Surf user (Soul badge) | Cinnabar (seg 08) | Lapras (Silph Co. 7F gift, seg 07), a Water starter, Seel/Psyduck etc. |
 | Strength user (Rainbow badge) | Victory Road (seg 09) | Machop line, Snorlax, Lapras |
-| Battle strength per gym | each gym and the E4 | starter + leveling loops; Rare Candies (duplication option); type coverage for Brock/Misty |
+| Battle strength per gym | each gym and the E4 | the starter alone, levelled by every trainer on the way (proven by junari's script, §7.0); TMs and tutors (e.g. Water Pulse from Misty, Mega Kick tutor, Dig, Dragon Claw, Return, Earthquake); leveling loops or Rare Candies (duplication option) as a fallback |
 | Money for each Mart list | per Mart | trainer prize money; Nugget Bridge top-up option |
 | Retro Mail duplication (option) | when enabled | Farfetch'd from the Vermilion trade (needs the Pokémon it asks for), Retro Mail, the item to copy; see `ItemDuplication` |
 | Nugget Bridge top-up (option) | after seg 02 | party able to lose on purpose and heal; `NuggetBridgeFarmer` preconditions |
