@@ -1,0 +1,4 @@
+ld: warning: building for macOS-26.0, but linking with dylib '/opt/homebrew/opt/tesseract/lib/libtesseract.5.dylib' which was built for newer version 26.6.2
+Set potential model cache path in session options: /Users/difan/Library/Application Support/FlightEvidence/ModelCache/PaddleOCRPipeline/
+Actual North screenshot OCR: 西第1區：北
+accepted=0, confirmed=0

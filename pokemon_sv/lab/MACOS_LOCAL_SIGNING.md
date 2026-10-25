@@ -78,3 +78,13 @@ closed and release AZP is open/stopped without a game picture.
 References:
 - https://developer.apple.com/documentation/technotes/tn3127-inside-code-signing-requirements
 - https://developer.apple.com/library/archive/documentation/Security/Conceptual/CodeSigningGuide/Procedures/Procedures.html
+
+
+## Evening isolated code build
+
+Prototype `5db7dfe1b` built and passed strict signature verification with the
+same identity and lab bundle ID. Binary SHA256: `d835a99571957987338e19ff45e35d22ccd95540201e2dfa7bff01ead9f91018`.
+Native helper SHA256: `a8ddfa0a03cfcfaf05987931816ad3dad9d4ec633d20682f463c2a5b98aec6d4`; helper remains outside the bundle.
+No app relaunch/permission switching check occurred in this background task.
+See [run record](../runs/isolated-2026-10-24/RESUME_CODE_FIX.md). Updated notes are
+local on agents; only the prototype branch was pushed.

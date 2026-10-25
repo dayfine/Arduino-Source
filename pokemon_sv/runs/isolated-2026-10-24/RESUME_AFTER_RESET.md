@@ -46,3 +46,15 @@ Schedule details (local, not an app-native automation):
 
 No upstream PRs, no subagents, notes only on agents. Commit/push fixes to prototype;
 report results and remaining validation limits. Do not repeat the scheduled job.
+
+
+## Scheduled task executed — evening 2026-10-24
+
+This one-shot request was resumed. Read [RESUME_CODE_FIX.md](RESUME_CODE_FIX.md)
+for the result at pushed prototype head `5db7dfe1b`. Build, eight native groups,
+North-image OCR replay and incremental lint passed. Central selection/path and
+return remain supervised pending real field calibration; actual Fire Lv2 remains
+unverified. No live inputs or restoration occurred because a fresh visible game
+state was unavailable. Do not repeat or reschedule this task automatically.
+Updated notes are committed locally on agents; no agents push was made under the
+push-only-prototype instruction.

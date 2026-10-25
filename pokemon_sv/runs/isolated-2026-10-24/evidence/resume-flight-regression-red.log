@@ -1,0 +1,3 @@
+ld: warning: building for macOS-26.0, but linking with dylib '/opt/homebrew/opt/tesseract/lib/libtesseract.5.dylib' which was built for newer version 26.6.2
+Flight: Observed North pilot must never confirm: expected success=0 [select read ]; read success=1 [select confirm ]
+Unsafe generic-flight regression exit: 1

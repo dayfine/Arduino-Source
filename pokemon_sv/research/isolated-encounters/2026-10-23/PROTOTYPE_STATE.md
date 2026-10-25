@@ -1,33 +1,35 @@
 # Isolated hunt prototype — current checkpoint
 
-Code: `prototype/sv-isolated-hunt` at `da0db2aeb`. Build, seven native C++ test
-groups and incremental lint pass. No PR created. Notes stay on agents.
+Code: `prototype/sv-isolated-hunt` at `5db7dfe1b` (pushed). Full signed lab build,
+eight native C++ groups, recorded-North screenshot OCR replay, deliberate unsafe
+flight regression and incremental lint pass. No PR created or mutated.
 
-Read [latest field record](../../../runs/isolated-2026-10-24/PREFLIGHT_1325.md)
-first; it supersedes the older build/no-live-test status in IMPLEMENTATION_QUEUE.
+Read [evening code resumption](../../../runs/isolated-2026-10-24/RESUME_CODE_FIX.md)
+for exact head/tree/artifact hashes and logs. This checkpoint supersedes the old
+pilot status. These updated notes are committed locally on agents; only the
+prototype branch was pushed, per task scope.
 
-User requires ordinary Encounter Power Lv2 by default; Herba Mystica is explicit
-opt-in only. Fire recipe now 6 Rice + 2 Curry Powder + 2 Wasabi, not yet verified
-in game. Actual previous Pickle recipe was confirmed Fire Encounter Lv1 on screen.
-Automated starting-anchor re-flight is implemented before ingredients, with
-failure/battle tests; start still requires outdoors at Zero Gate, not anywhere.
+Central initial flight selection is supervised. Two complete Central-name reads
+and a visible Yes/No prompt are required before the program confirms. North and
+unreadable/mismatched names stop. English and Traditional Chinese are supported.
+Every Central arrival requires fresh supervised matching/positioning on the
+video's demonstrated path before clearing. Unverified seek, approach and reverse
+offsets were removed. Automatic Central selection/approach/return still require
+field calibration; return is manual.
 
-Two target pilots: 1 kill / 15 seconds, then 3 kills / 40 seconds with one
-unresolved refusal. Counts are sound detections, not identified target kills.
-Actual flight was to West Province One NORTH, not the video's CENTRAL anchor.
-See [location evidence](../../../runs/isolated-2026-10-24/LOCATION_VERIFICATION.md).
-Numel was seen there; Charcadet-only isolation is NOT established.
-Player hit a wall during sweeps. Correct/verify habitat and approach before
-longer yield tests. Keep nearby Pokemon intact until refusal inspection finishes.
+Actual Meal Powers inspection is now required before full-hunt travel or prepared
+clearing. Maker completion is insufficient. Ordinary ingredients remain default;
+Fire recipe 6 Rice + 2 Curry Powder + 2 Wasabi is still NOT made/verified in game.
+Setup budget extended from four to ten minutes for six-rice assembly; field timing
+is pending. No herbs consumed. Supervision time counts against the power timer.
 
-Release PID 1139 is open/stopped, selected AZP/zerogate, sole device owner.
-Prototype is closed. Handback attempted at recovery reserve, but capture changed
-from Switch Home/Violet to colour bars. No AZP Start was issued; handback is NOT
-complete. Verify game picture and Zero Gate before starting. Main pending work
-is corrected Central anchor selection plus actual Fire Encounter Lv2 verification.
+The source video demonstrates CENTRAL. Previous 3 sound kills / 40 seconds and
+refusal/wall behavior occurred at NORTH and are not Charcadet-only yield evidence.
+Positive Central landing/OCR, exact approach, actual Lv2 power and yield remain
+unverified. Preserve unresolved refusals/shinies before any departure/reset.
 
-Signing setup is complete on code head `6ca85664b`, which adds no hunt behavior
-beyond `da0db2aeb`. Stable certificate and bundle ID survived a changed signed
-build/relaunch with working capture and no new permission prompt observed.
-Read [MACOS_LOCAL_SIGNING.md](../../../lab/MACOS_LOCAL_SIGNING.md) for setup,
-verification and the current signed binary hash.
+Fresh background inspection found release PID 1139 at the expected path, but no
+accessible windows and no desktop capture. Current game/program state could not
+be established. No Switch commands or app launches/quits were issued. Farming and
+the earlier AZP handback remain unverified; no restoration is claimed. Signing
+identity, bundle ID and path were preserved. Do not repeat the scheduled job.

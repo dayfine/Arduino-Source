@@ -61,3 +61,15 @@ Current release PID 1139 open/stopped, selected AZP/zerogate, sole device owner.
 Prototype closed. Capture lacks a game picture, so resume the game/restore HDMI,
 verify saved Zero Gate, then start AZP. Do not issue blind game commands or claim
 farming resumed while the capture is unavailable.
+
+
+## Evening code resumption
+
+Prototype `5db7dfe1b` removes the unverified Central seek/approach/return offsets.
+Initial selection and path setup are supervised; the live console code verifies
+two complete Central-name reads at the Yes/No prompt before confirming. Native
+OCR replay of the actual North screenshot read `西第1區：北` and refused confirmation.
+No live validation occurred because this background task could not access a
+current display/game picture. Actual Central landing/path, Fire Lv2 powers and
+yield remain pending. See [code resumption](RESUME_CODE_FIX.md) for tests/hashes.
+Updated notes remain local on agents; only the prototype code branch was pushed.

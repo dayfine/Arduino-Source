@@ -1,0 +1,149 @@
+[1/8] cd /Users/difan/Projects/Arduino-Source-isolated/build-prep/app && /opt/homebrew/bin/cmake -E make_directory Assembly/
+[2/8] Automatic MOC and UIC for target SerialProgramsLib
+[3/7] Building CXX object CMakeFiles/SerialProgramsLib.dir/Source/VideoGames/PokemonSV/Programs/ShinyHunting/PokemonSV_IsolatedHuntConsoleActions.cpp.o
+[4/7] Building CXX object CMakeFiles/SerialProgramsLib.dir/Source/VideoGames/PokemonSV/Programs/ShinyHunting/PokemonSV_IsolatedHuntPrototype.cpp.o
+[5/7] Linking CXX static library libSerialProgramsLib.a
+ranlib: warning: 'libSerialProgramsLib.a(CoreAffinityOption.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(KeyboardInput_State.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(ControllerDescriptor.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(PABotBase2_MessageHandler.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(CheckboxDropdownOption.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(VideoOverlay.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(ImageMatchOption.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(DppClient.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(DppCommandHandler.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(DppUtility.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(Kernels_AbsFFT_Core_x86_AVX2.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(Kernels_AbsFFT_Core_x86_AVX512.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(Kernels_AbsFFT_Core_x86_SSE41.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(Kernels_AudioChannelInterleave_x64_AVX2.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(Kernels_AudioChannelInterleave_x64_AVX512.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(Kernels_AudioChannelInterleave_x64_SSE.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(Kernels_AudioChannelMixer_x64_AVX512.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(Kernels_AudioChannelMixer_x64_FMA3.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(Kernels_AudioChannelMixer_x64_SSE.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(Kernels_AudioResampler_BlockKernel_x64_AVX512.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(Kernels_AudioResampler_BlockKernel_x64_FMA3.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(Kernels_AudioResampler_BlockKernel_x64_SSE2.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(AudioStreamConversion_Core_x86_SSE41.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(Kernels_AudioStreamConverter_Kernels_x64_AVX2.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(Kernels_AudioStreamConverter_Kernels_x64_AVX512.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(Kernels_AudioStreamConverter_Kernels_x64_SSE41.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(Kernels_BinaryImage_BasicFilters_Core_64x16_x64_AVX2.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(Kernels_BinaryImage_BasicFilters_Core_64x32_x64_AVX512.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(Kernels_BinaryImage_BasicFilters_Core_64x64_x64_AVX512.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(Kernels_BinaryImage_BasicFilters_Core_64x8_x64_SSE42.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(Kernels_BinaryMatrix_Core_64x16_x64_AVX2.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(Kernels_BinaryMatrix_Core_64x32_x64_AVX512.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(Kernels_BinaryMatrix_Core_64x64_x64_AVX512.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(Kernels_BinaryMatrix_Core_64x8_x64_SSE42.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(Kernels_ImageFilter_RGB32_Brightness_x64_AVX2.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(Kernels_ImageFilter_RGB32_Brightness_x64_AVX512-VNNI.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(Kernels_ImageFilter_RGB32_Brightness_x64_SSE42.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(Kernels_ImageFilter_RGB32_Euclidean_x64_AVX2.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(Kernels_ImageFilter_RGB32_Euclidean_x64_AVX512.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(Kernels_ImageFilter_RGB32_Euclidean_x64_SSE42.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(Kernels_ImageFilter_RGB32_Range_x64_AVX2.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(Kernels_ImageFilter_RGB32_Range_x64_AVX512.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(Kernels_ImageFilter_RGB32_Range_x64_SSE42.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(Kernels_ImageScaleBrightness_x64_AVX2.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(Kernels_ImageScaleBrightness_x64_AVX512.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(Kernels_ImageScaleBrightness_x64_SSE41.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(Kernels_ImagePixelSumSqrDev_x64_AVX2.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(Kernels_ImagePixelSumSqrDev_x64_AVX512.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(Kernels_ImagePixelSumSqrDev_x64_SSE41.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(Kernels_ImagePixelSumSqr_x64_AVX2.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(Kernels_ImagePixelSumSqr_x64_AVX512.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(Kernels_ImagePixelSumSqr_x64_SSE41.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(Kernels_ScaleInvariantMatrixMatch_Core_x86_AVX2.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(Kernels_ScaleInvariantMatrixMatch_Core_x86_AVX512.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(Kernels_ScaleInvariantMatrixMatch_Core_x86_SSE.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(Kernels_SpikeConvolution_Core_x86_AVX2.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(Kernels_SpikeConvolution_Core_x86_AVX512.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(Kernels_SpikeConvolution_Core_x86_SSE41.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(Kernels_Waterfill_Core_64x16_x64_AVX2.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(Kernels_Waterfill_Core_64x32_x64_AVX512-GF.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(Kernels_Waterfill_Core_64x32_x64_AVX512.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(Kernels_Waterfill_Core_64x64_x64_AVX512-GF.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(Kernels_Waterfill_Core_64x64_x64_AVX512.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(Kernels_Waterfill_Core_64x8_x64_SSE42.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(PokemonBDSP_EndBattleDetector.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(PokemonLA_PokemonInfo.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(CoreAffinityOption.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(KeyboardInput_State.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(ControllerDescriptor.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(PABotBase2_MessageHandler.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(CheckboxDropdownOption.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(VideoOverlay.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(ImageMatchOption.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(DppClient.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(DppCommandHandler.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(DppUtility.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(Kernels_AbsFFT_Core_x86_AVX2.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(Kernels_AbsFFT_Core_x86_AVX512.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(Kernels_AbsFFT_Core_x86_SSE41.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(Kernels_AudioChannelInterleave_x64_AVX2.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(Kernels_AudioChannelInterleave_x64_AVX512.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(Kernels_AudioChannelInterleave_x64_SSE.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(Kernels_AudioChannelMixer_x64_AVX512.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(Kernels_AudioChannelMixer_x64_FMA3.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(Kernels_AudioChannelMixer_x64_SSE.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(Kernels_AudioResampler_BlockKernel_x64_AVX512.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(Kernels_AudioResampler_BlockKernel_x64_FMA3.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(Kernels_AudioResampler_BlockKernel_x64_SSE2.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(AudioStreamConversion_Core_x86_SSE41.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(Kernels_AudioStreamConverter_Kernels_x64_AVX2.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(Kernels_AudioStreamConverter_Kernels_x64_AVX512.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(Kernels_AudioStreamConverter_Kernels_x64_SSE41.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(Kernels_BinaryImage_BasicFilters_Core_64x16_x64_AVX2.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(Kernels_BinaryImage_BasicFilters_Core_64x32_x64_AVX512.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(Kernels_BinaryImage_BasicFilters_Core_64x64_x64_AVX512.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(Kernels_BinaryImage_BasicFilters_Core_64x8_x64_SSE42.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(Kernels_BinaryMatrix_Core_64x16_x64_AVX2.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(Kernels_BinaryMatrix_Core_64x32_x64_AVX512.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(Kernels_BinaryMatrix_Core_64x64_x64_AVX512.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(Kernels_BinaryMatrix_Core_64x8_x64_SSE42.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(Kernels_ImageFilter_RGB32_Brightness_x64_AVX2.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(Kernels_ImageFilter_RGB32_Brightness_x64_AVX512-VNNI.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(Kernels_ImageFilter_RGB32_Brightness_x64_SSE42.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(Kernels_ImageFilter_RGB32_Euclidean_x64_AVX2.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(Kernels_ImageFilter_RGB32_Euclidean_x64_AVX512.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(Kernels_ImageFilter_RGB32_Euclidean_x64_SSE42.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(Kernels_ImageFilter_RGB32_Range_x64_AVX2.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(Kernels_ImageFilter_RGB32_Range_x64_AVX512.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(Kernels_ImageFilter_RGB32_Range_x64_SSE42.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(Kernels_ImageScaleBrightness_x64_AVX2.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(Kernels_ImageScaleBrightness_x64_AVX512.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(Kernels_ImageScaleBrightness_x64_SSE41.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(Kernels_ImagePixelSumSqrDev_x64_AVX2.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(Kernels_ImagePixelSumSqrDev_x64_AVX512.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(Kernels_ImagePixelSumSqrDev_x64_SSE41.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(Kernels_ImagePixelSumSqr_x64_AVX2.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(Kernels_ImagePixelSumSqr_x64_AVX512.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(Kernels_ImagePixelSumSqr_x64_SSE41.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(Kernels_ScaleInvariantMatrixMatch_Core_x86_AVX2.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(Kernels_ScaleInvariantMatrixMatch_Core_x86_AVX512.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(Kernels_ScaleInvariantMatrixMatch_Core_x86_SSE.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(Kernels_SpikeConvolution_Core_x86_AVX2.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(Kernels_SpikeConvolution_Core_x86_AVX512.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(Kernels_SpikeConvolution_Core_x86_SSE41.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(Kernels_Waterfill_Core_64x16_x64_AVX2.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(Kernels_Waterfill_Core_64x32_x64_AVX512-GF.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(Kernels_Waterfill_Core_64x32_x64_AVX512.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(Kernels_Waterfill_Core_64x64_x64_AVX512-GF.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(Kernels_Waterfill_Core_64x64_x64_AVX512.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(Kernels_Waterfill_Core_64x8_x64_SSE42.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(PokemonBDSP_EndBattleDetector.cpp.o)' has no symbols
+ranlib: warning: 'libSerialProgramsLib.a(PokemonLA_PokemonInfo.cpp.o)' has no symbols
+[6/7] Linking CXX executable SerialPrograms.app/Contents/MacOS/SerialPrograms; Signing local macOS app with persistent identity
+ld: warning: building for macOS-26.0, but linking with dylib '/opt/homebrew/opt/tesseract/lib/libtesseract.5.dylib' which was built for newer version 26.6.2
+[Deploy] Copying resources /Users/difan/Projects/Arduino-Source-isolated/SerialPrograms/..//Packages/Resources to /Users/difan/Projects/Arduino-Source-isolated/build-prep/app/SerialPrograms.app/Contents/MacOS/../../../Resources
+[Deploy] Copying firmware
+[Deploy] Copying scripts
+/Users/difan/Projects/Arduino-Source-isolated/build-prep/app/SerialPrograms.app: replacing existing signature
+/Users/difan/Projects/Arduino-Source-isolated/build-prep/app/SerialPrograms.app: valid on disk
+/Users/difan/Projects/Arduino-Source-isolated/build-prep/app/SerialPrograms.app: satisfies its Designated Requirement
+[7/7] Refreshing local macOS app signature
+/Users/difan/Projects/Arduino-Source-isolated/build-prep/app/SerialPrograms.app: replacing existing signature
+/Users/difan/Projects/Arduino-Source-isolated/build-prep/app/SerialPrograms.app: valid on disk
+/Users/difan/Projects/Arduino-Source-isolated/build-prep/app/SerialPrograms.app: satisfies its Designated Requirement

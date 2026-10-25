@@ -1,0 +1,3 @@
+Scanned 35 changed C++ files against origin/main.
+Advisory: 1 changed files exceed 500 lines; prefer functions <=25 lines.
+Code health: 0 failures.
