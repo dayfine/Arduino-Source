@@ -51,6 +51,7 @@ private:
     std::unique_ptr<LetsGoEncounterBotTracker> m_encounters;
     OverworldSensors m_sensors;
     OverworldBattleTracker m_battle_tracker;
+    uint16_t m_empty_rounds = 0;
     bool m_initial_travel = true;
     bool m_pending_battle = false;
     uint64_t m_hunt_started = 0;

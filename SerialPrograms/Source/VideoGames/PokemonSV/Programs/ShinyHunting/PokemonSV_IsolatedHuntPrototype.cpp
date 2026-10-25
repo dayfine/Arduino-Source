@@ -9,6 +9,7 @@
  */
 
 #include "Common/Cpp/Exceptions.h"
+#include "Common/Cpp/ScopeExit.h"
 #include "CommonFramework/Exceptions/ProgramFinishedException.h"
 #include "CommonFramework/Notifications/ProgramNotifications.h"
 #include "CommonTools/Async/InferenceRoutines.h"
@@ -112,6 +113,7 @@ void IsolatedHuntPrototype::add_options(){
 bool IsolatedHuntPrototype::verify_setup(VideoStream& stream, ProControllerContext& context,
     const IsolatedHuntRequest& request, IsolatedHuntVerification stage
 ){
+    const auto started = current_time();
     const bool meal = stage == IsolatedHuntVerification::MEAL_POWER;
     auto& verified = meal ? MEAL_VERIFIED : PATCH_VERIFIED;
     verified = false;
@@ -125,6 +127,9 @@ bool IsolatedHuntPrototype::verify_setup(VideoStream& stream, ProControllerConte
     while (!verified && current_time() < deadline){ context.wait_for(250ms); }
     const bool accepted = verified;
     verified = false;
+    stream.log("Isolated verification: stage=" + std::string(meal ? "meal power" : "Central path") +
+        ", method=supervised, accepted=" + std::to_string(accepted) + ", elapsed ms=" +
+        std::to_string(std::chrono::duration_cast<Milliseconds>(current_time() - started).count()));
     if (!accepted){ return false; }
     if (meal){ pbf_press_button(context, BUTTON_B, 160ms, 840ms); }
     OverworldWatcher overworld(stream.logger(), COLOR_BLUE);
@@ -247,9 +252,27 @@ bool IsolatedHuntPrototype::clear_pass(SingleSwitchProgramEnvironment& env,
 std::string IsolatedHuntPrototype::clear_spot(SingleSwitchProgramEnvironment& env,
     ProControllerContext& context, OverworldSensors& sensors
 ){
-    WallClock deadline = current_time() + std::chrono::seconds(RUN_SECONDS);
+    const auto started = current_time();
+    auto& stats = env.current_stats<IsolatedHuntPrototype_Descriptor::Stats>();
+    const auto seconds_before = stats.hunt_seconds.load();
+    const auto kills_before = stats.m_kills.load();
+    auto update_time = [&]{
+        const auto elapsed = std::chrono::duration_cast<Milliseconds>(current_time() - started).count();
+        stats.hunt_seconds.store(seconds_before + elapsed / 1000);
+        env.update_stats();
+        return elapsed;
+    };
+    ScopeExit report([&]{
+        const auto elapsed = update_time();
+        const auto kills = stats.m_kills.load() - kills_before;
+        env.console.log("Isolated clearing summary: mode=prepared, elapsed ms=" + std::to_string(elapsed) +
+            ", detected kills=" + std::to_string(kills) + ", kills/min=" +
+            std::to_string(elapsed == 0 ? 0.0 : 60000.0 * kills / elapsed));
+    });
+    WallClock deadline = started + std::chrono::seconds(RUN_SECONDS);
     uint8_t empty = 0;
     while (current_time() < deadline){
+        update_time();
         if (!clear_pass(env, context, sensors, empty)){
             return "Refusal acquisition timed out without a battle. Inspect the target and positioning.";
         }

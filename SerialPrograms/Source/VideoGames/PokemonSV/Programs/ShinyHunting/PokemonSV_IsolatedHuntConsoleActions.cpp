@@ -92,6 +92,8 @@ bool ConsoleIsolatedHuntActions::guard(const std::string& stage, Milliseconds ti
     const std::function<void(ProControllerContext&)>& command
 ){
     phase(stage);
+    const auto started = now_ms();
+    m_env.console.log("Isolated stage begin: stage=" + stage + ", timeout ms=" + std::to_string(timeout.count()));
     m_pending_battle = false;
     NormalBattleMenuWatcher battle(COLOR_RED);
     StageDeadline deadline(timeout);
@@ -104,6 +106,9 @@ bool ConsoleIsolatedHuntActions::guard(const std::string& stage, Milliseconds ti
         if (result == 1){
             m_env.console.log("Isolated stage timed out: " + stage, COLOR_RED);
         }
+        const std::string outcome = result < 0 ? "completed" : result == 0 ? "battle" : "timeout";
+        m_env.console.log("Isolated stage end: stage=" + stage + ", outcome=" + outcome +
+            ", elapsed ms=" + std::to_string(now_ms() - started));
         return result < 0;
     }catch (UnexpectedBattleException&){
         m_pending_battle = true;
@@ -112,6 +117,8 @@ bool ConsoleIsolatedHuntActions::guard(const std::string& stage, Milliseconds ti
     }catch (OperationFailedException& error){
         m_env.console.log(stage + ": " + error.message(), COLOR_RED);
     }
+    m_env.console.log("Isolated stage end: stage=" + stage + ", outcome=exception, battle=" +
+        std::to_string(m_pending_battle) + ", elapsed ms=" + std::to_string(now_ms() - started));
     return false;
 }
 
@@ -130,6 +137,9 @@ bool ConsoleIsolatedHuntActions::reset_start(const IsolatedHuntRequest&){
 
 bool ConsoleIsolatedHuntActions::prepare_sandwich(const IsolatedHuntRequest& request){
     m_sandwich.configure_for(request.type);
+    m_env.console.log("Isolated recipe: target=" + request.pokemon + ", type=" +
+        (request.type == IsolatedEncounterType::FIRE ? "fire" : "grass") +
+        ", herbs=" + std::to_string((bool)m_sandwich.USE_HERBA));
     // Six rice servings need more placement and OCR steps than the previous single-filling pilot.
     const bool success = guard("save and make " + request.pokemon + " sandwich", 600000ms,
         [&](ProControllerContext& context){
@@ -193,6 +203,7 @@ void ConsoleIsolatedHuntActions::roam(ProControllerContext& context, IsolatedHun
 
 IsolatedHuntRound ConsoleIsolatedHuntActions::clear_round(const IsolatedHuntRequest& request){
     phase("clearing " + request.pokemon);
+    const auto started = now_ms();
     const auto before = m_stats.m_kills.load();
     NormalBattleMenuWatcher battle(COLOR_RED);
     SweatBubbleWatcher refusal(COLOR_GREEN);
@@ -210,10 +221,17 @@ IsolatedHuntRound ConsoleIsolatedHuntActions::clear_round(const IsolatedHuntRequ
     update_elapsed();
     const auto event = result == 0 ? IsolatedHuntEvent::BATTLE :
         result == 1 ? IsolatedHuntEvent::REFUSAL : IsolatedHuntEvent::CLEAR;
-    return {.kills = m_stats.m_kills.load() - before, .event = event};
+    const auto kills = m_stats.m_kills.load() - before;
+    m_empty_rounds = event == IsolatedHuntEvent::CLEAR && kills == 0 ? m_empty_rounds + 1 : 0;
+    m_env.console.log("Isolated round: target=" + request.pokemon + ", elapsed ms=" +
+        std::to_string(now_ms() - started) + ", detected kills=" + std::to_string(kills) +
+        ", empty rounds=" + std::to_string(m_empty_rounds) + ", event=" +
+        (event == IsolatedHuntEvent::CLEAR ? "clear" : event == IsolatedHuntEvent::REFUSAL ? "refusal" : "battle"));
+    return {.kills = kills, .event = event};
 }
 
 bool ConsoleIsolatedHuntActions::refresh_spawns(const IsolatedHuntRequest& request){
+    m_env.console.log("Isolated refresh: reason=empty round, count=" + std::to_string(m_empty_rounds));
     bool arrived = false;
     const bool success = guard("refly and refresh " + request.pokemon, 240000ms,
         [&](ProControllerContext& context){
@@ -289,7 +307,7 @@ void ConsoleIsolatedHuntActions::report(const IsolatedHuntRequest& request, cons
     const auto rate = seconds == 0 ? 0.0 : 60.0 * (double)result.kills / (double)seconds;
     m_env.console.log("Isolated result: target=" + request.pokemon + ", stop=" +
         stop_name(result.stop) + ", detected kills=" + std::to_string(result.kills) +
-        ", encounters=" + std::to_string(result.encounters) + ", refusals=" + std::to_string(result.refusals) +
+        ", rounds=" + std::to_string(result.rounds) + ", encounters=" + std::to_string(result.encounters) + ", refusals=" + std::to_string(result.refusals) +
         ", refreshes=" + std::to_string(result.refreshes) + ", hunt seconds=" + std::to_string(seconds) +
         ", kills/min=" + std::to_string(rate));
 }
