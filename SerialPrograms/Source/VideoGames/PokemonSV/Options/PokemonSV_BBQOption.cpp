@@ -261,7 +261,7 @@ BBQOption::BBQOption(OCR::LanguageOCROption* language_option)
             {OutOfRetries::Stop,    "stop",     "Stop Program"},
         },
         LockMode::UNLOCK_WHILE_RUNNING,
-        OutOfRetries::Skip
+        OutOfRetries::Reroll
     )
     , FIX_TIME_WHEN_DONE(
         "<b>Fix Time when Done:</b><br>Fix the time after the program finishes.",
