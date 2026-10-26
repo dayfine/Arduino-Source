@@ -1308,7 +1308,17 @@ void leave_quest_area(
     if (fly_directly){
         if (bbq_lab_flags().leave_area_before_day_skip){
             stream.log("Flying to the closest fly point so this spot reloads.");
-            fly_to_closest_pokecenter_on_map(info, stream, context);
+            //Terarium fly points are fast-travel icons; the Pokecenter search alone retried
+            //for minutes. If neither is found, stay: the next flight still goes directly.
+            try{
+                open_map_from_overworld(info, stream, context);
+                if (!fly_to_visible_closest_flypoint_cur_zoom_level(info, stream, context, FlyPoint::FAST_TRAVEL)){
+                    fly_to_closest_pokecenter_on_map(info, stream, context, 2);
+                }
+            }catch (OperationFailedException&){
+                stream.log("No fly point found. Leaving from here.", COLOR_ORANGE);
+                press_Bs_to_back_to_overworld(info, stream, context);
+            }
         }
         stream.log("Staying here. The next flight goes to its destination directly.");
         stay_away_from_plaza(BBQ_OPTIONS.LANGUAGE);
