@@ -33,6 +33,11 @@ void reset_plaza_position();
 //  whether the player is at Central Plaza. Without a readable banner, assume it is.
 void note_start_position(VideoStream& stream, ProControllerContext& context, Language language);
 
+//  After a flight to the closest fly point: if the banner shows Central Plaza, the
+//  player is there (its fly point icon is hidden under the player, so a flight
+//  "from anywhere" can't find it); otherwise away.
+void note_landing_position(VideoStream& stream, ProControllerContext& context, Language language);
+
 // Thrown by map_move_cursor_fly() when it can't fly to its destination.
 // BBQ quests catch it to fail the current attempt instead of the program.
 class TerariumFlyFailedException : public OperationFailedExceptionWithScreenshot{

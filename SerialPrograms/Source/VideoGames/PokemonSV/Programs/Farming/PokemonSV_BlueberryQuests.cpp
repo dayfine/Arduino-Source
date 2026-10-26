@@ -1484,8 +1484,12 @@ void leave_quest_area(
                 stream
             );
         }
-        stream.log("Staying here. The next flight goes to its destination directly.");
-        stay_away_from_plaza(BBQ_OPTIONS.LANGUAGE);
+        //The closest fly point can be Central Plaza (R19 02:50, from Canyon Rest Area):
+        //then the next flight starts there, not "from anywhere".
+        note_landing_position(stream, context, BBQ_OPTIONS.LANGUAGE);
+        if (is_away_from_plaza()){
+            stream.log("Staying here. The next flight goes to its destination directly.");
+        }
         return;
     }
     return_to_plaza(info, stream, context, BBQ_OPTIONS.LANGUAGE);

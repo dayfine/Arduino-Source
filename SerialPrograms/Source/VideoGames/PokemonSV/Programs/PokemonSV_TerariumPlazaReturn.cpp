@@ -84,6 +84,16 @@ bool place_name_banner_readable(const std::string& expected, const std::string& 
 }
 
 
+bool landing_banner_shows(const std::string& expected, const std::vector<std::string>& reads){
+    for (const std::string& text : reads){
+        if (place_name_banner_readable(expected, text) && place_name_banner_matches(expected, text)){
+            return true;
+        }
+    }
+    return false;
+}
+
+
 std::string plaza_return_result_to_string(PlazaReturnResult result){
     switch (result){
     case PlazaReturnResult::ARRIVED:        return "arrived";

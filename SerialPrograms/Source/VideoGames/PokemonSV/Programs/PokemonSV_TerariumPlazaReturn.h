@@ -37,6 +37,10 @@ bool place_name_banner_matches(const std::string& expected, const std::string& o
 //  a name in another script ("cnlo" for 中心廣場).
 bool place_name_banner_readable(const std::string& expected, const std::string& ocr_text);
 
+//  Whether the banner reads after a landing show `expected`: some read is
+//  readable and matches it. No reads, or only noise, is not a match.
+bool landing_banner_shows(const std::string& expected, const std::vector<std::string>& reads);
+
 
 //  The game steps the return-and-check loop drives.
 class PlazaReturnActions{

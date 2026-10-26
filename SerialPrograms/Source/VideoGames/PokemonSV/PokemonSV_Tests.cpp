@@ -2457,6 +2457,26 @@ struct PlazaBannerMatchCase{
     bool matches;
 };
 
+class Test_BBQLandingBannerShows : public UnitTest{
+public:
+    Test_BBQLandingBannerShows(const std::string& name, std::string expected, std::vector<std::string> reads, bool shows)
+        : UnitTest("PokemonSV::BBQLandingBannerShows - " + name)
+        , m_expected(std::move(expected)), m_reads(std::move(reads)), m_shows(shows)
+    {}
+
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        if (landing_banner_shows(m_expected, m_reads) != m_shows){
+            return std::string("Expected ") + (m_shows ? "a match" : "no match");
+        }
+        return true;
+    }
+
+private:
+    const std::string m_expected;
+    const std::vector<std::string> m_reads;
+    const bool m_shows;
+};
+
 class Test_BBQPlazaBannerReadable : public UnitTest{
 public:
     Test_BBQPlazaBannerReadable(const std::string& name, std::string expected, std::string ocr_text, bool readable)
@@ -2527,6 +2547,11 @@ void add_tests_BBQPlazaBannerMatch(UnitTestDatabase& database){
     }
     database.add<Test_BBQPlazaBannerReadable>("stray letter", "中心廣場", "a", false);
     database.add<Test_BBQPlazaBannerReadable>("nothing read", "中心廣場", "", false);
+    database.add<Test_BBQLandingBannerShows>("landed at Central (R19 02:50)", "中心廣場", std::vector<std::string>{"", "中心廣場"}, true);
+    database.add<Test_BBQLandingBannerShows>("Central with stray characters", "中心廣場", std::vector<std::string>{"海是朝英由中心廣場國"}, true);
+    database.add<Test_BBQLandingBannerShows>("another area", "中心廣場", std::vector<std::string>{"極地區"}, false);
+    database.add<Test_BBQLandingBannerShows>("noise only", "中心廣場", std::vector<std::string>{"cnlo", "0", ""}, false);
+    database.add<Test_BBQLandingBannerShows>("no banner", "中心廣場", std::vector<std::string>{}, false);
     database.add<Test_BBQPlazaBannerReadable>("Latin noise for a Chinese name (R18)", "中心廣場", "cnlo", false);
     database.add<Test_BBQPlazaBannerReadable>("name with a stray character", "中心廣場", "海中心廣場銀", true);
     database.add<Test_BBQPlazaBannerReadable>("another plaza", "中心廣場", "海岸廣場", true);

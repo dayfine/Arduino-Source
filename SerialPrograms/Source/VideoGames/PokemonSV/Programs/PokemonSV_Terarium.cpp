@@ -390,6 +390,30 @@ void note_start_position(VideoStream& stream, ProControllerContext& context, Lan
     reset_plaza_position();
 }
 
+void note_landing_position(VideoStream& stream, ProControllerContext& context, Language language){
+    const std::string expected = central_plaza_banner_to_check(language, OCR::ocr_language_available(language));
+    stay_away_from_plaza(language);
+    if (expected.empty()){
+        return;
+    }
+    PlaceNameBannerReader reader;
+    std::vector<std::string> reads;
+    const WallClock deadline = current_time() + std::chrono::seconds(3);
+    while (current_time() < deadline){
+        context.wait_for_all_requests();
+        VideoSnapshot screen = stream.video().snapshot();
+        for (std::string& text : reader.read(stream.logger(), language, screen)){
+            reads.emplace_back(std::move(text));
+        }
+        if (landing_banner_shows(expected, reads)){
+            stream.log("Landed at Central Plaza (banner \"" + reads.back() + "\").");
+            reset_plaza_position();
+            return;
+        }
+        context.wait_for(std::chrono::milliseconds(250));
+    }
+}
+
 void map_move_cursor_fly(
     const ProgramInfo& info,
     VideoStream& stream, ProControllerContext& context,
