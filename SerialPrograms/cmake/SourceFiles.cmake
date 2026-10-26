@@ -2368,6 +2368,8 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonSV/Inference/Overworld/PokemonSV_PlaceNameBannerReader.h
     Source/VideoGames/PokemonSV/Inference/Overworld/PokemonSV_StationaryOverworldWatcher.cpp
     Source/VideoGames/PokemonSV/Inference/Overworld/PokemonSV_StationaryOverworldWatcher.h
+    Source/VideoGames/PokemonSV/Inference/Overworld/PokemonSV_TeraGlowDetector.cpp
+    Source/VideoGames/PokemonSV/Inference/Overworld/PokemonSV_TeraGlowDetector.h
     Source/VideoGames/PokemonSV/Inference/Picnics/PokemonSV_PicnicDetector.cpp
     Source/VideoGames/PokemonSV/Inference/Picnics/PokemonSV_PicnicDetector.h
     Source/VideoGames/PokemonSV/Inference/Picnics/PokemonSV_SandwichHandDetector.cpp

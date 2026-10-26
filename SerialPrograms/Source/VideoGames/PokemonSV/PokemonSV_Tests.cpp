@@ -26,6 +26,7 @@
 #include "Inference/Picnics/PokemonSV_SandwichIngredientDetector.h"
 #include "Inference/Picnics/PokemonSV_SandwichPlateDetector.h"
 #include "Inference/Overworld/PokemonSV_LetsGoKillDetector.h"
+#include "Inference/Overworld/PokemonSV_TeraGlowDetector.h"
 #include "Inference/Picnics/PokemonSV_SandwichRecipeDetector.h"
 #include "Inference/Picnics/PokemonSV_SandwichHandDetector.h"
 #include "Programs/Farming/PokemonSV_BlueberryQuests.h"
@@ -3045,6 +3046,39 @@ void add_tests_BBQPlazaReturn(UnitTestDatabase& database){
 // The "set destination" menu the map shows where nothing can be flown to. Its
 // detector saw the Polar snow behind the "fly here?" prompt as that menu (R17:
 // Polar Classroom 1, 4 of 4 direct flights).
+class Test_BBQTeraGlow : public UnitTest{
+public:
+    //  expected_x: where the glow is, normalized; negative for "no glow".
+    Test_BBQTeraGlow(const std::string& image, double expected_x)
+        : UnitTest("PokemonSV::BBQTeraGlow - " + image)
+        , m_image(UNIT_TEST_RESOURCE_PATH() + "PokemonSV/BBQTeraGlow/" + image)
+        , m_expected_x(expected_x)
+    {}
+
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        ImageRGB32 screen(m_image);
+        const std::optional<TeraGlow> glow = find_tera_glow(screen);
+        if (m_expected_x < 0){
+            if (glow){
+                return "Expected no glow, found one at x=" + std::to_string(glow->x)
+                    + " (orb " + std::to_string(glow->orb_pixels) + ", halo " + std::to_string(glow->halo_pixels) + ")";
+            }
+            return true;
+        }
+        if (!glow){
+            return std::string("Expected a glow, found none");
+        }
+        if (std::abs(glow->x - m_expected_x) > 0.05){
+            return "Expected the glow at x=" + std::to_string(m_expected_x) + ", found x=" + std::to_string(glow->x);
+        }
+        return true;
+    }
+
+private:
+    const std::string m_image;
+    const double m_expected_x;
+};
+
 class Test_BBQMapDestinationMenu : public UnitTest{
 public:
     Test_BBQMapDestinationMenu(const std::string& image, bool expected)
@@ -3279,6 +3313,20 @@ void add_tests_BBQLabTools(UnitTestDatabase& database){
 
     //  Zoomed-out map from the beach below Coastal Plaza: the plaza's fly point is up-left
     //  of the player, two farther ones are at the edges, and there is no Pokecenter.
+    database.add<Test_BBQTeraGlow>("rabsca-day-near.png", 0.425);
+    database.add<Test_BBQTeraGlow>("rabsca-day-mid.png", 0.456);
+    database.add<Test_BBQTeraGlow>("rabsca-night-far.png", 0.540);
+    database.add<Test_BBQTeraGlow>("rabsca-night-route-end.png", 0.558);
+    database.add<Test_BBQTeraGlow>("rabsca-night-right.png", 0.577);
+    database.add<Test_BBQTeraGlow>("rabsca-night-left.png", 0.221);
+    database.add<Test_BBQTeraGlow>("rabsca-night-small.png", 0.390);
+    database.add<Test_BBQTeraGlow>("empty-rain.png", -1);
+    database.add<Test_BBQTeraGlow>("empty-day.png", -1);
+    database.add<Test_BBQTeraGlow>("empty-sunset.png", -1);
+    database.add<Test_BBQTeraGlow>("empty-dusk.png", -1);
+    database.add<Test_BBQTeraGlow>("empty-night.png", -1);
+    database.add<Test_BBQTeraGlow>("empty-battle.png", -1);
+    database.add<Test_BBQTeraGlow>("savanna-plaza.png", -1);
     database.add<Test_BBQMapDestinationMenu>("PokemonSV/BBQMap/destination-menu-snow.png", true);
     database.add<Test_BBQMapDestinationMenu>("PokemonSV/BBQMap/destination-menu-savanna.png", true);
     database.add<Test_BBQMapDestinationMenu>("PokemonSV/BBQMap/polar-class1-fly-confirm.png", false);

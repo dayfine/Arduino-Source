@@ -23,6 +23,7 @@
 #include "VideoGames/PokemonSV/Inference/PokemonSV_MainMenuDetector.h"
 #include "VideoGames/PokemonSV/Inference/Dialogs/PokemonSV_DialogDetector.h"
 #include "VideoGames/PokemonSV/Inference/Overworld/PokemonSV_OverworldDetector.h"
+#include "VideoGames/PokemonSV/Inference/Overworld/PokemonSV_TeraGlowDetector.h"
 #include "VideoGames/PokemonSV/Programs/PokemonSV_MenuNavigation.h"
 #include "VideoGames/PokemonSV/Programs/PokemonSV_WorldNavigation.h"
 #include "VideoGames/PokemonSV/Programs/Battles/PokemonSV_BasicCatcher.h"
@@ -420,6 +421,13 @@ void quest_photo(
                 move_camera = quest_photo_navi(info, console, context, BBQ_OPTIONS, current_quest);
 
                 take_photo(console, context, move_camera);
+                if (current_quest == BBQuests::photo_fly){
+                    //The Geodude stands in the box or past its right edge (console
+                    //2026-10-26: 1 in, 1 at the edge, 1 absent). A second photo turned
+                    //right covers the edge.
+                    pbf_move_right_joystick(context, {+1, 0}, 200ms, 400ms);
+                    take_photo(console, context, move_camera);
+                }
                 took_photo = true;
                 context.wait_for_all_requests();
             },
@@ -605,7 +613,11 @@ void quest_catch_navi(
             pbf_press_button(context, BUTTON_PLUS, 160ms, 840ms);
             pbf_move_left_joystick(context, {+0.6, +0.8}, 80ms, 160ms);
             pbf_press_button(context, BUTTON_L, 160ms, 400ms);
-            pbf_move_left_joystick(context, {0, +1}, 3500ms, 400ms);
+            //Rabsca is ahead after the glide; walk to its glow (the fixed 3.5 s walk
+            //overshot when the glide ran long).
+            if (!follow_tera_glow(console, context)){
+                pbf_move_left_joystick(context, {0, +1}, 3500ms, 400ms);
+            }
 
             send_out_and_look_around(console, context, std::chrono::seconds(6), "Rabsca");
             break;
@@ -954,6 +966,53 @@ void quest_catch_handle_battle(
             console
         );
     }
+}
+
+//Turn and walk toward the glow of a static Tera Pokemon until it is close, so where the
+//glide lands matters less. Returns false if no glow was seen.
+bool follow_tera_glow(ConsoleHandle& console, ProControllerContext& context){
+    size_t turns = 0;
+    size_t misses = 0;
+    bool seen = false;
+    for (size_t step = 0; step < 20; step++){
+        context.wait_for_all_requests();
+        VideoSnapshot screen = console.video().snapshot();
+        const std::optional<TeraGlow> glow = screen.frame ? find_tera_glow(*screen.frame) : std::nullopt;
+        if (!glow){
+            console.log("Tera glow: none (look " + std::to_string(step + 1) + ").");
+            if (seen){
+                //A far glow drops out between frames (console 2026-10-26: lost at
+                //x=0.29 with Rabsca still on screen). Keep walking the same way.
+                if (++misses > 3){
+                    break;
+                }
+                pbf_move_left_joystick(context, {0, +1}, 700ms, 200ms);
+                continue;
+            }
+            if (turns >= 4){
+                break;
+            }
+            //About a quarter turn.
+            pbf_move_right_joystick(context, {+1, 0}, 450ms, 300ms);
+            turns++;
+            continue;
+        }
+        seen = true;
+        misses = 0;
+        const double dx = glow->x - 0.5;
+        console.log("Tera glow at x=" + std::to_string(glow->x) + ", halo " + std::to_string(glow->halo_pixels) + ".");
+        if (dx > 0.06 || dx < -0.06){
+            //About 350 ms pans the camera one frame width.
+            pbf_move_right_joystick(context, {dx > 0 ? +1.0 : -1.0, 0}, Milliseconds((int64_t)(std::abs(dx) * 350) + 40), 300ms);
+            continue;
+        }
+        if (glow->halo_pixels >= 400){
+            break;
+        }
+        pbf_move_left_joystick(context, {0, +1}, 700ms, 200ms);
+    }
+    bbq_lab_event(console, context, seen ? "glow_followed" : "no_glow");
+    return seen;
 }
 
 bool catch_quest_catches_on_return(BBQuests current_quest, bool battled_this_attempt){

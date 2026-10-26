@@ -63,6 +63,8 @@ void quest_catch_handle_battle(
 //Whether quest_catch() catches a wild battle that starts on the way back to Central Plaza
 //instead of fleeing it. Any wild pokemon completes catch_any, so until this attempt has
 //battled, the battle is a catch. Typed catch quests flee: the type is not read in battle.
+bool follow_tera_glow(ConsoleHandle& console, ProControllerContext& context);
+
 bool catch_quest_catches_on_return(BBQuests current_quest, bool battled_this_attempt);
 
 //How many looks quest_catch() takes. The Coastal hill can look again from the closest fly
