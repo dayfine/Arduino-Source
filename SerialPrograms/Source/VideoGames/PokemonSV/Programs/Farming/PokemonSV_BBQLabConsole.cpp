@@ -122,7 +122,7 @@ public:
         //  The routes from Central steer the map cursor blind: fail fast until
         //  "central" or "away" says where the player is (a "coastal" from the
         //  Polar area pressed A on empty map for minutes).
-        static const std::set<std::string> FROM_CENTRAL{"coastal", "class1", "tera-self", "sneak-up"};
+        static const std::set<std::string> FROM_CENTRAL{"coastal", "savanna", "class1", "tera-self", "sneak-up"};
         if (FROM_CENTRAL.contains(cmd)){
             if (!m_position_known){
                 throw ParseException(cmd + ": start position unknown. Run \"central\" (or \"away\") first.");
@@ -204,6 +204,8 @@ public:
             central_to_polar_class1(info, console, context);
         }else if (cmd == "coastal"){
             central_to_coastal_plaza(info, console, context);
+        }else if (cmd == "savanna"){
+            central_to_savanna_plaza(info, console, context);
         }else if (cmd == "back"){
             press_Bs_to_back_to_overworld(info, console, context);
         }else if (cmd == "battle?"){                        //  battle? [seconds]
