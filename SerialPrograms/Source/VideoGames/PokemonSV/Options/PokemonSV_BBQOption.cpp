@@ -137,16 +137,15 @@ std::vector<std::unique_ptr<EditableTableRow>> BBQuestTable::make_defaults(){
     flying_photo->quest.set(BBQuests::photo_flying);
     flying_photo->action.set(BBQAction::reroll);
     ret.emplace_back(std::move(flying_photo));
-    //The Flying-type catch spot, the canyon grassland at Black Augurite, also has the fixed
-    //Kleavor and other non-Flying Pokemon. Both R15 attempts battled one: the catch did not
-    //count, and Kleavor fainted the lead after 5 minutes of throws. Reroll it until the
-    //route checks the opponent's type; remove this row to let it run.
+    //Catch Flying works but rarely pays: from the middle of the Coastal hill (with the
+    //Coastal option) 2 of 10 looks met a Pikipek or Trumbeak (2026-10-25), and the canyon
+    //spot also has the fixed Kleavor. Reroll it by default; remove this row to let it run.
     auto flying_catch = std::make_unique<BBQuestTableRow>(*this);
     flying_catch->quest.set(BBQuests::catch_flying);
     flying_catch->action.set(BBQAction::reroll);
     ret.emplace_back(std::move(flying_catch));
-    //Catch Poison and Catch Dark share the Alolan Muk route at the Coastal glide, which
-    //has never succeeded (0/5 by R16). Reroll them until it has a route that works.
+    //Catch Poison and Catch Dark look for Alolan Grimer at the Coastal hill: 3 of 10 looks
+    //(2026-10-25). Possible but slow, so rerolled by default; remove a row to let it run.
     for (BBQuests quest : {BBQuests::catch_poison, BBQuests::catch_dark}){
         auto row = std::make_unique<BBQuestTableRow>(*this);
         row->quest.set(quest);

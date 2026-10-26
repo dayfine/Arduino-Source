@@ -2324,6 +2324,36 @@ private:
     const BBQCatchOnReturnScenario m_scenario;
 };
 
+class Test_BBQCatchLooks : public UnitTest{
+public:
+    Test_BBQCatchLooks(const std::string& name, BBQuests quest, bool coastal_flying_catch, size_t expected)
+        : UnitTest("PokemonSV::BBQCatchLooks - " + name)
+        , m_quest(quest), m_coastal_flying_catch(coastal_flying_catch), m_expected(expected)
+    {}
+
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        const size_t got = catch_quest_looks(m_quest, m_coastal_flying_catch);
+        if (got != m_expected){
+            return "Expected " + std::to_string(m_expected) + " looks, got " + std::to_string(got);
+        }
+        return true;
+    }
+
+private:
+    const BBQuests m_quest;
+    const bool m_coastal_flying_catch;
+    const size_t m_expected;
+};
+
+void add_tests_BBQCatchLooks(UnitTestDatabase& database){
+    //The Coastal hill retries from the closest fly point; the canyon and the rest look once.
+    database.add<Test_BBQCatchLooks>("flying at the canyon", BBQuests::catch_flying, false, 1);
+    database.add<Test_BBQCatchLooks>("flying at the Coastal hill", BBQuests::catch_flying, true, 3);
+    database.add<Test_BBQCatchLooks>("poison at the Coastal hill", BBQuests::catch_poison, false, 3);
+    database.add<Test_BBQCatchLooks>("dark at the Coastal hill", BBQuests::catch_dark, false, 3);
+    database.add<Test_BBQCatchLooks>("bug is not affected by the Coastal option", BBQuests::catch_bug, true, 1);
+}
+
 void add_tests_BBQCatchOnReturn(UnitTestDatabase& database){
     using enum BBQuests;
     const BBQCatchOnReturnScenario scenarios[] = {
@@ -2880,6 +2910,7 @@ void add_tests(UnitTestDatabase& database){
     add_tests_BBQPointsLedger(database);
 
     add_tests_BBQCatchOnReturn(database);
+    add_tests_BBQCatchLooks(database);
     add_tests_BBQCatchCounts(database);
     add_tests_BBQRerollThreshold(database);
     add_tests_WhiteButtonDetector(database);

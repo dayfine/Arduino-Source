@@ -657,44 +657,14 @@ void quest_catch_navi(
             pbf_move_left_joystick(context, {0, +1}, 400ms, 400ms);
 
             break;
-        case BBQuests::catch_poison: case BBQuests::catch_dark: 
+        case BBQuests::catch_poison: case BBQuests::catch_dark:
             console.log("Catch: Poison/Dark");
 
-            //Muk-A - area a bit laggy but consistently so
+            //Alolan Grimer at the hill west of Coastal Plaza: 3 of 10 looks from its middle
+            //(2026-10-25). The old Alolan Muk glide never caught one (0/5 by R16).
             central_to_coastal_plaza(info, console, context);
-            pbf_move_left_joystick(context, {-1, 0}, 160ms, 400ms);
-
-            pbf_press_button(context, BUTTON_L | BUTTON_PLUS, 160ms, 840ms);
-
-            if (console.state().console_type() == ConsoleType::Switch1){
-                jump_glide_fly(console, context, BBQ_OPTIONS.INVERTED_FLIGHT, 8000ms, 14400ms, 2400ms);
-            }else{
-                jump_glide_fly(console, context, BBQ_OPTIONS.INVERTED_FLIGHT, 8000ms, 12800ms, 2400ms);
-            }
-
-            pbf_press_button(context, BUTTON_PLUS, 160ms, 840ms);
-
-            //Extra throws for this one
-            ssf_press_button(context, BUTTON_ZR, 0ms, 1600ms);
-            ssf_press_button(context, BUTTON_ZL, 800ms, 400ms);
-            ssf_press_button(context, BUTTON_ZL, 1200ms, 400ms);
-            pbf_wait(context, 1600ms);
-            context.wait_for_all_requests();
-            pbf_press_button(context, BUTTON_ZR, 160ms, 400ms); //Withdraw pokemon
-
-            pbf_move_left_joystick(context, {+1, 0}, 160ms, 400ms);
-            pbf_press_button(context, BUTTON_L, 160ms, 400ms);
-            ssf_press_button(context, BUTTON_ZR, 0ms, 1600ms);
-            ssf_press_button(context, BUTTON_ZL, 800ms, 400ms);
-            ssf_press_button(context, BUTTON_ZL, 1200ms, 400ms);
-            pbf_wait(context, 1600ms);
-            context.wait_for_all_requests();
-            pbf_press_button(context, BUTTON_ZR, 160ms, 400ms); //Withdraw pokemon
-
-            pbf_press_button(context, BUTTON_L, 160ms, 400ms);
-            pbf_move_left_joystick(context, {+1, 0}, 160ms, 400ms);
-            pbf_press_button(context, BUTTON_L, 160ms, 400ms);
-
+            coastal_plaza_to_grassland(console, context, BBQ_OPTIONS.INVERTED_FLIGHT);
+            send_out_and_look_around(console, context, std::chrono::seconds(6), "a wild Pokemon");
             break;
         case BBQuests::catch_water: case BBQuests::catch_ice:
             console.log("Catch: Water/Ice");
@@ -1021,7 +991,7 @@ static void retry_coastal_flying(
     console.log("Flying back to the closest fly point to look again.");
     fly_back_to_coastal_plaza(info, console, context, language);
     coastal_plaza_to_grassland(console, context, inverted_flight);
-    send_out_and_look_around(console, context, std::chrono::seconds(6), "a flying Pokemon");
+    send_out_and_look_around(console, context, std::chrono::seconds(6), "a wild Pokemon");
 }
 
 //Read the opponent's species and say whether to flee. Only quests with a species
@@ -1107,15 +1077,20 @@ static CatchAttempt catch_attempt(
     return CatchAttempt::BATTLED;
 }
 
+size_t catch_quest_looks(BBQuests current_quest, bool coastal_flying_catch){
+    const bool coastal =
+        (coastal_flying_catch && current_quest == BBQuests::catch_flying)
+        || current_quest == BBQuests::catch_poison || current_quest == BBQuests::catch_dark;
+    return coastal ? 3 : 1;
+}
+
 void quest_catch(
     const ProgramInfo& info,
     ConsoleHandle& console, ProControllerContext& context,
     const BBQOption& BBQ_OPTIONS,
     BBQuests current_quest
 ){
-    //The Coastal route can look again from the closest fly point; the others get one look.
-    const bool coastal = BBQ_OPTIONS.COASTAL_FLYING_CATCH && current_quest == BBQuests::catch_flying;
-    const size_t looks = coastal ? 3 : 1;
+    const size_t looks = catch_quest_looks(current_quest, BBQ_OPTIONS.COASTAL_FLYING_CATCH);
 
     CatchAttempt result = CatchAttempt::NO_BATTLE;
     for (size_t look = 0; look < looks && result != CatchAttempt::BATTLED; look++){

@@ -65,6 +65,10 @@ void quest_catch_handle_battle(
 //battled, the battle is a catch. Typed catch quests flee: the type is not read in battle.
 bool catch_quest_catches_on_return(BBQuests current_quest, bool battled_this_attempt);
 
+//How many looks quest_catch() takes. The Coastal hill can look again from the closest fly
+//point (Flying with the Coastal option, Poison and Dark always); the others get one look.
+size_t catch_quest_looks(BBQuests current_quest, bool coastal_flying_catch);
+
 //Fly from the Coastal Plaza fly point to the middle of the hill west of the plaza, where
 //Flying types spawn.
 void coastal_plaza_to_grassland(ConsoleHandle& console, ProControllerContext& context, bool inverted_flight);
