@@ -306,6 +306,7 @@ void take_photo(ConsoleHandle& console, ProControllerContext& context, CameraAng
         pbf_move_right_joystick(context, {0, -1}, 400ms, 160ms);
     }
     context.wait_for_all_requests();
+    bbq_lab_event(console, context, "photo");
 
     pbf_press_button(context, BUTTON_A, 160ms, 400ms);
 

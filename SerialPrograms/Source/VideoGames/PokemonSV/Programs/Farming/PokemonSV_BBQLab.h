@@ -27,6 +27,9 @@ struct BBQLabFlags{
 
     //  Overrides BBQ_OPTIONS.FLY_DIRECTLY when set: 0 off, 1 on.
     int fly_directly_override = -1;
+
+    //  The quest being run, for naming reference screenshots.
+    std::string quest_label;
 };
 BBQLabFlags& bbq_lab_flags();
 

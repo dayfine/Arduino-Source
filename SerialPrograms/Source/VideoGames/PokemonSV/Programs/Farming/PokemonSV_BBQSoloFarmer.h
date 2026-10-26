@@ -11,6 +11,7 @@
 #include <optional>
 #include <vector>
 #include "Common/Cpp/Logging/AbstractLogger.h"
+#include "Common/Cpp/Options/BooleanCheckBoxOption.h"
 #include "CommonFramework/Notifications/EventNotificationsTable.h"
 #include "NintendoSwitch/NintendoSwitch_SingleSwitchProgram.h"
 #include "NintendoSwitch/Options/NintendoSwitch_GoHomeWhenDoneOption.h"
@@ -93,6 +94,7 @@ public:
 
 private:
     BBQOption BBQ_OPTIONS;
+    BooleanCheckBoxOption SAVE_REFERENCE_SHOTS;
 
     GoHomeWhenDoneOption GO_HOME_WHEN_DONE;
     EventNotificationOption NOTIFICATION_STATUS_UPDATE;

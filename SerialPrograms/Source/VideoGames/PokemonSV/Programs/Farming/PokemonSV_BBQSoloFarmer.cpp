@@ -5,9 +5,13 @@
  */
 
 #include <set>
+#include <QDir>
+#include <QString>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/PrettyPrint.h"
+#include "CommonFramework/GlobalAutoPaths.h"
 #include "CommonFramework/Notifications/ProgramNotifications.h"
+#include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "CommonFramework/ProgramStats/StatsTracking.h"
 #include "CommonTools/StartupChecks/StartProgramChecks.h"
 #include "CommonTools/StartupChecks/VideoResolutionCheck.h"
@@ -25,6 +29,7 @@
 #include "VideoGames/PokemonSV/Programs/Farming/PokemonSV_BlueberryQuests.h"
 #include "VideoGames/PokemonSV/Programs/Farming/PokemonSV_BBQPointsLedger.h"
 #include "VideoGames/PokemonSV/Programs/PokemonSV_Terarium.h"
+#include "PokemonSV_BBQLab.h"
 #include "PokemonSV_BBQSoloFarmer.h"
 
 namespace PokemonAutomation{
@@ -97,7 +102,14 @@ std::unique_ptr<StatsTracker> BBQSoloFarmer_Descriptor::make_stats() const{
     return std::unique_ptr<StatsTracker>(new Stats());
 }
 BBQSoloFarmer::BBQSoloFarmer()
-    : GO_HOME_WHEN_DONE(true)
+    : SAVE_REFERENCE_SHOTS(
+        "<b>Save Reference Screenshots:</b><br>Save a screenshot at each landing, photo, battle, "
+        "day skip and failed quest to Screenshots/BBQReference, named by quest and event. "
+        "For checking routes and collecting test images.",
+        LockMode::LOCK_WHILE_RUNNING,
+        false
+    )
+    , GO_HOME_WHEN_DONE(true)
     , NOTIFICATION_STATUS_UPDATE("Status Update", true, false, std::chrono::seconds(3600))
     , NOTIFICATIONS({
         &NOTIFICATION_STATUS_UPDATE,
@@ -106,6 +118,7 @@ BBQSoloFarmer::BBQSoloFarmer()
         })
 {
     PA_ADD_OPTION(BBQ_OPTIONS);
+    PA_ADD_OPTION(SAVE_REFERENCE_SHOTS);
     PA_ADD_OPTION(GO_HOME_WHEN_DONE);
     PA_ADD_OPTION(NOTIFICATIONS);
 }
@@ -472,6 +485,24 @@ void BBQSoloFarmer::program(SingleSwitchProgramEnvironment& env, ProControllerCo
 
     //  Connect the controller.
     require_player(env.console, context, BUTTON_LCLICK);
+
+    //  Reference screenshots: every lab event the routines report, saved as
+    //  <time>-<quest>-<event>.png. The guard clears the hook when the program ends.
+    struct HookGuard{
+        ~HookGuard(){ set_bbq_lab_event_hook(nullptr); }
+    } hook_guard;
+    if (SAVE_REFERENCE_SHOTS){
+        const std::string dir = SCREENSHOTS_PATH() + "BBQReference/" + now_to_filestring() + "/";
+        QDir().mkpath(QString::fromStdString(dir));
+        env.log("Saving reference screenshots to " + dir);
+        set_bbq_lab_event_hook([dir](VideoStream& stream, ProControllerContext&, const std::string& event){
+            VideoSnapshot screen = stream.video().snapshot();
+            if (screen.frame){
+                const std::string& quest = bbq_lab_flags().quest_label;
+                screen.frame->save(dir + now_to_filestring() + "-" + (quest.empty() ? "none" : quest) + "-" + event + ".png");
+            }
+        });
+    }
 
     //A run stopped mid-quest can leave the map or a battle on screen (R17 19:27, 19:49).
     recover_to_overworld_at_start(env.program_info(), env.console, context);

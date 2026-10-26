@@ -916,6 +916,7 @@ bool process_and_do_quest(
 ){
     bool quest_completed = false;
     int quest_attempts = 0;
+    bbq_lab_flags().quest_label = BBQuests_enum_to_string(current_quest);
 
     while (!quest_completed){
         //  A failed fly fails this attempt, not the program: the board
@@ -1049,6 +1050,7 @@ bool process_and_do_quest(
         }
         if (std::find(quest_list.begin(), quest_list.end(), current_quest) != quest_list.end()){
             console.log("Current quest exists on list. Quest did not complete.");
+            bbq_lab_event(console, context, "failed");
             quest_attempts++;
         }else{
             console.log("Current quest was not found. Quest completed!");
@@ -1304,6 +1306,7 @@ public:
         pbf_press_button(m_context, BUTTON_B, 160ms, 1000ms);
     }
     virtual bool fight() override{
+        bbq_lab_event(m_console, m_context, "fight");
         try{
             bool tera_self = false;
             wild_battle_tera(m_info, m_console, m_context, tera_self);
@@ -1394,6 +1397,7 @@ public:
         }, LeaveStep::FAILED);
     }
     virtual bool flee() override{
+        bbq_lab_event(m_stream, m_context, "leave_battle");
         return escape_wild_battle(m_info, m_stream, m_context) != EscapeResult::FAILED;
     }
 
