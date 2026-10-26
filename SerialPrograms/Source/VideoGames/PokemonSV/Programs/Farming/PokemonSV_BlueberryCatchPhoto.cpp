@@ -290,7 +290,7 @@ CameraAngle quest_photo_navi(
 }
 
 //Open photo mode, tilt the camera, take the photo and return to the overworld.
-void take_photo(ConsoleHandle& console, ProControllerContext& context, CameraAngle move_camera){
+bool take_photo(ConsoleHandle& console, ProControllerContext& context, CameraAngle move_camera){
     //Take photo.
     console.log("Taking photo.");
     bbq_lab_event(console, context, "route_done");
@@ -316,7 +316,8 @@ void take_photo(ConsoleHandle& console, ProControllerContext& context, CameraAng
         std::chrono::seconds(10),
         { photo_prompt }
     );
-    if (ret != 0){
+    const bool taken = ret == 0;
+    if (!taken){
         console.log("Photo not taken.");
     }
 
@@ -331,6 +332,7 @@ void take_photo(ConsoleHandle& console, ProControllerContext& context, CameraAng
     if (exit == 0){
         console.log("Overworld detected.");
     }
+    return taken;
 }
 
 //Take a photo of a Flying type: run into one at the canyon grassland, flee, and photograph
@@ -422,11 +424,21 @@ void quest_photo(
 
                 take_photo(console, context, move_camera);
                 if (current_quest == BBQuests::photo_fly){
-                    //The Geodude stands in the box or past its right edge (console
-                    //2026-10-26: 1 in, 1 at the edge, 1 absent). A second photo turned
-                    //right covers the edge.
+                    //The Geodude stands in the box, past its right edge, or walks up
+                    //close below it (console 2026-10-26, 8 rounds). Two more photos:
+                    //turned right, and tilted down. Photo mode did not open twice right
+                    //after the previous photo, so each one waits and is retried once.
+                    auto another_photo = [&](CameraAngle angle){
+                        pbf_wait(context, 1000ms);
+                        if (!take_photo(console, context, angle)){
+                            pbf_wait(context, 1000ms);
+                            take_photo(console, context, angle);
+                        }
+                    };
                     pbf_move_right_joystick(context, {+1, 0}, 200ms, 400ms);
-                    take_photo(console, context, move_camera);
+                    another_photo(CameraAngle::none);
+                    pbf_move_right_joystick(context, {-1, 0}, 200ms, 400ms);
+                    another_photo(CameraAngle::down);
                 }
                 took_photo = true;
                 context.wait_for_all_requests();
@@ -1000,13 +1012,16 @@ bool follow_tera_glow(ConsoleHandle& console, ProControllerContext& context){
         seen = true;
         misses = 0;
         const double dx = glow->x - 0.5;
-        console.log("Tera glow at x=" + std::to_string(glow->x) + ", halo " + std::to_string(glow->halo_pixels) + ".");
+        console.log("Tera glow at x=" + std::to_string(glow->x) + ", orb " + std::to_string(glow->orb_pixels) + ", halo " + std::to_string(glow->halo_pixels) + ".");
         if (dx > 0.06 || dx < -0.06){
             //About 350 ms pans the camera one frame width.
             pbf_move_right_joystick(context, {dx > 0 ? +1.0 : -1.0, 0}, Milliseconds((int64_t)(std::abs(dx) * 350) + 40), 300ms);
             continue;
         }
-        if (glow->halo_pixels >= 400){
+        //Close enough for the lead: the orb itself, about 40 samples up close. The
+        //halo is no measure in daylight, where the golden grass counts as halo too
+        //(halo 1019 with Rabsca still far, console 2026-10-26).
+        if (glow->orb_pixels >= 40){
             break;
         }
         pbf_move_left_joystick(context, {0, +1}, 700ms, 200ms);

@@ -254,11 +254,23 @@ public:
                 if (rerolls >= max_rerolls){
                     throw ParseException("quest: " + w.at(1) + " not drawn after " + std::to_string(rerolls) + " rerolls.");
                 }
-                //A blue slot (10 BP); leave red ones (50 BP).
+                //A blue slot (10 BP); leave red ones (50 BP). Prefer one holding a quest of
+                //the target's kind: with two photo quests on the board, 40 rerolls of slot
+                //1 drew no photo quest (2026-10-26).
+                auto kind = [](BBQuests quest){
+                    const std::string slug = BBQuests_enum_to_string(quest);
+                    return slug.substr(0, slug.find('-'));
+                };
+                const std::string target_kind = kind(*targets.begin());
                 size_t slot = quests.size();
                 for (size_t i = 0; i < quests.size(); i++){
-                    if (reroll_cost(quests[i]) == 10){
+                    if (reroll_cost(quests[i]) != 10){
+                        continue;
+                    }
+                    if (slot == quests.size() || kind(quests[i]) == target_kind){
                         slot = i;
+                    }
+                    if (kind(quests[i]) == target_kind){
                         break;
                     }
                 }
