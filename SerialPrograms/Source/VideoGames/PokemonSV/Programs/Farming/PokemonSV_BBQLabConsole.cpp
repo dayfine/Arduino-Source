@@ -219,6 +219,8 @@ public:
                 names += (names.empty() ? "" : "|") + slug;
             }
             out << "opponent " << names << "\n";
+        }else if (cmd == "escape"){                         //  escape: the farmer's wild-battle exit, run 3 times then fight
+            out << "escape " << (int)escape_wild_battle(info, console, context) << "\n";
         }else if (cmd == "flee"){
             out << "flee_attempts " << run_from_battle(console, context) << "\n";
         }else if (cmd == "lookaround"){                     //  lookaround [first_wait_s]

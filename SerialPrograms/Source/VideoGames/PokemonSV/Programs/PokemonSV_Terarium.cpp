@@ -449,8 +449,26 @@ void map_move_cursor_fly(
             }
             pbf_move_left_joystick(context, {x, y}, hold, release);
             pbf_press_button(context, BUTTON_ZL, 320ms, 800ms);
-            fly_to_overworld_from_map(info, stream, context);
-            break;
+            if (fly_to_overworld_from_map(info, stream, context, true)){
+                break;
+            }
+            //A Pokemon icon next to the fly point can take the cursor: Savanna Rest
+            //Area 2 timed out for 2 minutes on 2 of 3 tries (console 2026-10-26). Snap
+            //onto the closest fly point instead.
+            context.wait_for_all_requests();
+            VideoSnapshot missed = stream.video().snapshot();
+            if (missed.frame){
+                QDir().mkpath(QString::fromStdString(ERROR_PATH()));
+                missed.frame->save(ERROR_PATH() + now_to_filestring() + "-CursorFlightMissed.png");
+            }
+            pbf_press_button(context, BUTTON_B, 160ms, 800ms);
+            if (detect_closest_flypoint_and_move_map_cursor_there(info, stream, context, FlyPoint::FAST_TRAVEL)
+                && fly_to_overworld_from_map(info, stream, context, true)
+            ){
+                stream.log("The cursor missed " + location + ". Snapped to the closest fly point.", COLOR_ORANGE);
+                break;
+            }
+            throw OperationFailedException(ErrorReportMode::NO_ERROR_REPORT, "Missed " + location + " on the map.");
         }
         catch(...){
             stream.log("Failed to fly! Closing map and retrying.");

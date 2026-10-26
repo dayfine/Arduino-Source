@@ -1241,6 +1241,9 @@ void wild_battle_tera(
                 switch (ret3){
                 case 0:
                     console.log("Detected battle menu. Pressing A to attack...");
+                    //After failed runs the cursor stays on Run, and A only tries to run
+                    //again (a Trapinch, console 2026-10-26: 5 minutes of A on Run).
+                    battle_menu.move_to_slot(console, context, 0);
                     pbf_mash_button(context, BUTTON_A, 3000ms);
                     context.wait_for_all_requests();
                     break;
