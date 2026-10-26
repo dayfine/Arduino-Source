@@ -231,12 +231,19 @@ void quest_travel_500(
 //screen. Throws if the overworld never comes back.
 void recover_to_overworld_at_start(const ProgramInfo& info, VideoStream& stream, ProControllerContext& context);
 
-//End a quest away from Central Plaza. With FLY_DIRECTLY, stay there and let the next
-//flight go straight to its destination. Otherwise return to Central Plaza.
+//Whether a quest's spot has to reload before it is used again: the quests that defeat,
+//catch or alert its wild Pokemon. Photos, the bath, sandwiches, eggs, raids and Auto
+//Battle leave it as it was.
+bool quest_spot_needs_reload(BBQuests quest);
+
+//End a quest away from Central Plaza. With FLY_DIRECTLY, stay in the field and let the
+//next flight go straight to its destination, first flying to the closest fly point when
+//the spot needs to reload. Otherwise return to Central Plaza.
 void leave_quest_area(
     const ProgramInfo& info,
     VideoStream& stream, ProControllerContext& context,
-    const BBQOption& BBQ_OPTIONS
+    const BBQOption& BBQ_OPTIONS,
+    BBQuests quest
 );
 
 //After a quest battle, back at Central Plaza: heal every third battle (and fly back

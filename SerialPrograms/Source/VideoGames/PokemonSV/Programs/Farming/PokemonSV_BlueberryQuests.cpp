@@ -1376,13 +1376,40 @@ void recover_to_overworld_at_start(const ProgramInfo& info, VideoStream& stream,
     }
 }
 
+bool quest_spot_needs_reload(BBQuests quest){
+    //A photo leaves its Pokemon there; a catch removes it.
+    switch (quest){
+    case BBQuests::sneak_up:
+    case BBQuests::tera_self_defeat:
+    case BBQuests::wild_tera:
+    case BBQuests::catch_any:   case BBQuests::catch_normal:    case BBQuests::catch_fighting:
+    case BBQuests::catch_flying:case BBQuests::catch_poison:    case BBQuests::catch_ground:
+    case BBQuests::catch_rock:  case BBQuests::catch_bug:       case BBQuests::catch_ghost:
+    case BBQuests::catch_steel: case BBQuests::catch_fire:      case BBQuests::catch_water:
+    case BBQuests::catch_grass: case BBQuests::catch_electric:  case BBQuests::catch_psychic:
+    case BBQuests::catch_ice:   case BBQuests::catch_dragon:    case BBQuests::catch_dark:
+    case BBQuests::catch_fairy: case BBQuests::catch_hint:      case BBQuests::catch_hint2:
+        return true;
+    default:
+        return false;
+    }
+}
+
 void leave_quest_area(
     const ProgramInfo& info,
     VideoStream& stream, ProControllerContext& context,
-    const BBQOption& BBQ_OPTIONS
+    const BBQOption& BBQ_OPTIONS,
+    BBQuests quest
 ){
     const int fly_directly_override = bbq_lab_flags().fly_directly_override;
     const bool fly_directly = fly_directly_override < 0 ? (bool)BBQ_OPTIONS.FLY_DIRECTLY : fly_directly_override == 1;
+    if (fly_directly && !quest_spot_needs_reload(quest)){
+        //R17 19:41: a bath at Savanna Plaza flew to Savanna Plaza to leave, then the
+        //next quest, sneak-up, flew to Savanna Plaza again.
+        stream.log("Nothing here needs to reload. Staying; the next flight goes directly.");
+        stay_away_from_plaza(BBQ_OPTIONS.LANGUAGE);
+        return;
+    }
     if (fly_directly){
         //Staying through the day skip kept a defeated Pokemon from respawning
         //(Tera-self 9/15 when it stayed, 4/5 when it left). A battle while leaving (a
@@ -1529,7 +1556,7 @@ void quest_tera_self_defeat(
         return;
     }
     }
-    leave_quest_area(info, console, context, BBQ_OPTIONS);
+    leave_quest_area(info, console, context, BBQ_OPTIONS, BBQuests::tera_self_defeat);
 
     //The defeated Pride Rock Pokemon stays gone until the day changes, and sneak-up and the
     //next Tera-self need it (R14: two Tera-self attempts right after a win found nothing).
@@ -1621,7 +1648,7 @@ void quest_sneak_up(
             }
         }
     }
-    leave_quest_area(info, console, context, BBQ_OPTIONS);
+    leave_quest_area(info, console, context, BBQ_OPTIONS, BBQuests::sneak_up);
 
     //Day skip and attempt to respawn fixed encounters - in case quest failed
     skip_day_at_quest_spot(console, context);
@@ -1699,7 +1726,7 @@ void quest_wild_tera(
         console.log("Battle entry not confirmed. Skipping battle handling.");
         break;
     }
-    leave_quest_area(info, console, context, BBQ_OPTIONS);
+    leave_quest_area(info, console, context, BBQ_OPTIONS, BBQuests::wild_tera);
 
     //Day skip and attempt to respawn fixed encounters
     pbf_press_button(context, BUTTON_HOME, 160ms, GameSettings::instance().GAME_TO_HOME_DELAY1);
@@ -1809,7 +1836,7 @@ void quest_wash_pokemon(const ProgramInfo& info, VideoStream& stream, ProControl
 
     leave_picnic(info, stream, context);
 
-    leave_quest_area(info, stream, context, BBQ_OPTIONS);
+    leave_quest_area(info, stream, context, BBQ_OPTIONS, BBQuests::wash_pokemon);
     context.wait_for_all_requests();
 }
 
@@ -1914,7 +1941,7 @@ void quest_hatch_egg(
         pbf_press_button(context, BUTTON_PLUS, 160ms, 400ms);
     }
     //Also without an egg: the player is at the Savanna battle court either way.
-    leave_quest_area(env.program_info(), console, context, BBQ_OPTIONS);
+    leave_quest_area(env.program_info(), console, context, BBQ_OPTIONS, BBQuests::hatch_egg);
     context.wait_for_all_requests();
 }
 
@@ -1985,7 +2012,7 @@ void quest_sandwich(
 
     leave_picnic(env.program_info(), stream, context);
 
-    leave_quest_area(env.program_info(), stream, context, BBQ_OPTIONS);
+    leave_quest_area(env.program_info(), stream, context, BBQ_OPTIONS, BBQuests::sandwich_three);
     context.wait_for_all_requests();
 
 }
@@ -2096,7 +2123,7 @@ void quest_tera_raid(
     }
 
     context.wait_for_all_requests();
-    leave_quest_area(env.program_info(), console, context, BBQ_OPTIONS);
+    leave_quest_area(env.program_info(), console, context, BBQ_OPTIONS, BBQuests::tera_raid);
     day_skip_from_overworld(console, context);
 }
 
@@ -2273,7 +2300,7 @@ public:
         PokemonSV::return_to_plaza(m_env.program_info(), m_stream, m_context, m_language);
     }
     virtual void leave() override{
-        leave_quest_area(m_env.program_info(), m_stream, m_context, m_options);
+        leave_quest_area(m_env.program_info(), m_stream, m_context, m_options, BBQuests::auto_10);
     }
     virtual bool quest_on_board() override{
         const std::vector<BBQuests> quests = read_quests(m_env.program_info(), m_stream, m_context, m_options);

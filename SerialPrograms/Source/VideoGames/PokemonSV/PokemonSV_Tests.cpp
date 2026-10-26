@@ -2980,6 +2980,25 @@ private:
     const double m_expected_x, m_expected_y;
 };
 
+class Test_BBQSpotNeedsReload : public UnitTest{
+public:
+    Test_BBQSpotNeedsReload(const std::string& name, BBQuests quest, bool expected)
+        : UnitTest("PokemonSV::BBQSpotNeedsReload - " + name)
+        , m_quest(quest), m_expected(expected)
+    {}
+
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        if (quest_spot_needs_reload(m_quest) != m_expected){
+            return std::string("Expected ") + (m_expected ? "reload" : "no reload");
+        }
+        return true;
+    }
+
+private:
+    const BBQuests m_quest;
+    const bool m_expected;
+};
+
 class Test_BBQBenchArmLabel : public UnitTest{
 public:
     Test_BBQBenchArmLabel(BBQBenchVariant variant, char arm, std::string expected)
@@ -3105,6 +3124,22 @@ private:
 };
 
 void add_tests_BBQLabTools(UnitTestDatabase& database){
+    //  Which quests fly to the closest fly point before the day skip.
+    database.add<Test_BBQSpotNeedsReload>("tera_self_defeat", BBQuests::tera_self_defeat, true);
+    database.add<Test_BBQSpotNeedsReload>("sneak_up", BBQuests::sneak_up, true);
+    database.add<Test_BBQSpotNeedsReload>("wild_tera", BBQuests::wild_tera, true);
+    database.add<Test_BBQSpotNeedsReload>("catch_any", BBQuests::catch_any, true);
+    database.add<Test_BBQSpotNeedsReload>("catch_flying", BBQuests::catch_flying, true);
+    database.add<Test_BBQSpotNeedsReload>("catch_hint", BBQuests::catch_hint, true);
+    //  R17 19:41: the bath flew to Savanna Plaza to leave, then sneak-up flew there again.
+    database.add<Test_BBQSpotNeedsReload>("wash_pokemon", BBQuests::wash_pokemon, false);
+    database.add<Test_BBQSpotNeedsReload>("photo_swim", BBQuests::photo_swim, false);
+    database.add<Test_BBQSpotNeedsReload>("photo_flying", BBQuests::photo_flying, false);
+    database.add<Test_BBQSpotNeedsReload>("sandwich_three", BBQuests::sandwich_three, false);
+    database.add<Test_BBQSpotNeedsReload>("hatch_egg", BBQuests::hatch_egg, false);
+    database.add<Test_BBQSpotNeedsReload>("tera_raid", BBQuests::tera_raid, false);
+    database.add<Test_BBQSpotNeedsReload>("auto_10", BBQuests::auto_10, false);
+
     database.add<Test_BBQBenchArmLabel>(BBQBenchVariant::None, '-', "-");
     database.add<Test_BBQBenchArmLabel>(BBQBenchVariant::TeraSelfSpot, 'A', "A: Pride Rock");
     database.add<Test_BBQBenchArmLabel>(BBQBenchVariant::TeraSelfSpot, 'B', "B: Chargestone court");

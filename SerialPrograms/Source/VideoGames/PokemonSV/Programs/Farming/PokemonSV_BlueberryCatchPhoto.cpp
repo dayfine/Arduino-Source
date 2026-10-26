@@ -377,7 +377,7 @@ void quest_photo_after_fleeing(
     press_Bs_to_back_to_overworld(info, console, context);
 
     take_photo(console, context, CameraAngle::none);
-    leave_quest_area(info, console, context, BBQ_OPTIONS);
+    leave_quest_area(info, console, context, BBQ_OPTIONS, BBQuests::photo_flying);
 }
 
 void quest_photo(
@@ -442,7 +442,7 @@ void quest_photo(
         }
     }
     context.wait_for_all_requests();
-    leave_quest_area(info, console, context, BBQ_OPTIONS);
+    leave_quest_area(info, console, context, BBQ_OPTIONS, current_quest);
 }
 
 void quest_catch_navi(
@@ -1109,7 +1109,7 @@ void quest_catch(
 
     while (true){
         if (!catch_quest_catches_on_return(current_quest, battled)){
-            leave_quest_area(info, console, context, BBQ_OPTIONS);
+            leave_quest_area(info, console, context, BBQ_OPTIONS, current_quest);
             break;
         }
         if (!return_to_plaza_unless_battle(info, console, context, BBQ_OPTIONS.LANGUAGE)){
