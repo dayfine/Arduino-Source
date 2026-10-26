@@ -56,6 +56,9 @@ std::string bbq_bench_summary(const std::vector<BBQBenchRep>& reps);
 // bbq_bench_summary() of the reps of one arm ('A' or 'B').
 std::string bbq_bench_arm_summary(const std::vector<BBQBenchRep>& reps, char arm);
 
+// What an arm runs, for the log and the overlay: "A: Pride Rock". "-" without a variant.
+std::string bbq_bench_arm_label(BBQBenchVariant variant, char arm);
+
 
 class BBQRoutineBench_Descriptor : public SingleSwitchProgramDescriptor{
 public:

@@ -86,19 +86,44 @@ BBQRoutineBench_Descriptor::BBQRoutineBench_Descriptor()
         {}
     )
 {}
+std::string bbq_bench_arm_label(BBQBenchVariant variant, char arm){
+    const bool b = arm == 'B';
+    switch (variant){
+    case BBQBenchVariant::None:
+        return "-";
+    case BBQBenchVariant::TeraSelfSpot:
+        return std::string(1, arm) + (b ? ": Chargestone court" : ": Pride Rock");
+    case BBQBenchVariant::DirectLeaveArea:
+        return std::string(1, arm) + (b ? ": fly directly, leave the spot" : ": return to Central");
+    }
+    return std::string(1, arm);
+}
+
 struct BBQRoutineBench_Descriptor::Stats : public StatsTracker{
     Stats()
         : reps(m_stats["Reps"])
         , passes(m_stats["Passes"])
         , errors(m_stats["Errors"])
+        , a_reps(m_stats["A Reps"])
+        , a_passes(m_stats["A Passes"])
+        , b_reps(m_stats["B Reps"])
+        , b_passes(m_stats["B Passes"])
     {
         m_display_order.emplace_back("Reps");
         m_display_order.emplace_back("Passes");
+        m_display_order.emplace_back("A Reps", HIDDEN_IF_ZERO);
+        m_display_order.emplace_back("A Passes", HIDDEN_IF_ZERO);
+        m_display_order.emplace_back("B Reps", HIDDEN_IF_ZERO);
+        m_display_order.emplace_back("B Passes", HIDDEN_IF_ZERO);
         m_display_order.emplace_back("Errors", HIDDEN_IF_ZERO);
     }
     std::atomic<uint64_t>& reps;
     std::atomic<uint64_t>& passes;
     std::atomic<uint64_t>& errors;
+    std::atomic<uint64_t>& a_reps;
+    std::atomic<uint64_t>& a_passes;
+    std::atomic<uint64_t>& b_reps;
+    std::atomic<uint64_t>& b_passes;
 };
 std::unique_ptr<StatsTracker> BBQRoutineBench_Descriptor::make_stats() const{
     return std::unique_ptr<StatsTracker>(new Stats());
@@ -344,7 +369,7 @@ void BBQRoutineBench::program(SingleSwitchProgramEnvironment& env, ProController
     const std::string dir = QDir::currentPath().toStdString() + "/BBQBench/" + run_id;
     QDir().mkpath(QString::fromStdString(dir));
     std::ofstream csv(dir + "/reps.csv");
-    csv << "run,exe_sha256,routine,variant,start_from,rep,arm,pass,seconds,reason,battle,tera_turn,opponent,sky,events\n";
+    csv << "run,exe_sha256,routine,variant,start_from,rep,of,arm,arm_label,pass,seconds,reason,battle,tera_turn,opponent,sky,events\n";
     env.log("BENCH,start,routine=" + routine
         + ",reps=" + std::to_string(REPS)
         + ",start_from=" + std::to_string((int)START_FROM.get())
@@ -369,6 +394,9 @@ void BBQRoutineBench::program(SingleSwitchProgramEnvironment& env, ProController
             break;
         }
         const char arm = VARIANT == BBQBenchVariant::None ? '-' : (i % 2 == 0 ? 'A' : 'B');
+        const std::string arm_label = bbq_bench_arm_label(VARIANT, arm);
+        const std::string progress = routine + " " + std::to_string(i + 1) + "/" + std::to_string(REPS);
+        env.console.overlay().add_log(progress + (arm == '-' ? "" : " - " + arm_label), COLOR_WHITE);
         set_arm_flags(VARIANT, arm);
         RepRecorder recorder(env, BBQ_OPTIONS.LANGUAGE, dir, i + 1);
         set_bbq_lab_event_hook([&](VideoStream& stream, ProControllerContext& context, const std::string& event){
@@ -416,10 +444,24 @@ void BBQRoutineBench::program(SingleSwitchProgramEnvironment& env, ProController
         if (pass){
             stats.passes++;
         }
+        if (arm == 'A'){
+            stats.a_reps++;
+            stats.a_passes += pass;
+        }else if (arm == 'B'){
+            stats.b_reps++;
+            stats.b_passes += pass;
+        }
         env.update_stats();
+        env.console.overlay().add_log(
+            progress + ": " + (pass ? "pass" : "fail") + " (" + reason + ")",
+            pass ? COLOR_GREEN : COLOR_RED
+        );
         std::replace(reason.begin(), reason.end(), ',', ';');
         env.log("BENCH,rep," + std::to_string(i + 1)
+            + ",of=" + std::to_string(REPS)
+            + ",routine=" + routine
             + ",arm=" + std::string(1, arm)
+            + ",arm_label=" + arm_label
             + ",pass=" + std::string(pass ? "1" : "0")
             + ",seconds=" + std::to_string((int)(seconds + 0.5))
             + ",reason=" + reason
@@ -427,7 +469,7 @@ void BBQRoutineBench::program(SingleSwitchProgramEnvironment& env, ProController
             + ",sky=" + std::to_string(recorder.sky())
             + ",events=" + recorder.events());
         csv << run_id << "," << exe_sha256 << "," << routine << "," << (int)VARIANT.get() << ","
-            << (int)START_FROM.get() << "," << (i + 1) << "," << arm << "," << (pass ? 1 : 0) << ","
+            << (int)START_FROM.get() << "," << (i + 1) << "," << REPS << "," << arm << "," << arm_label << "," << (pass ? 1 : 0) << ","
             << (int)(seconds + 0.5) << "," << reason << "," << (recorder.battle() ? 1 : 0) << ","
             << (recorder.tera_turn() ? 1 : 0) << "," << recorder.opponent() << "," << recorder.sky() << ","
             << recorder.events() << "\n";

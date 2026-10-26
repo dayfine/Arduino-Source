@@ -2747,6 +2747,27 @@ private:
     const double m_expected_x, m_expected_y;
 };
 
+class Test_BBQBenchArmLabel : public UnitTest{
+public:
+    Test_BBQBenchArmLabel(BBQBenchVariant variant, char arm, std::string expected)
+        : UnitTest("PokemonSV::BBQBenchArmLabel - " + expected)
+        , m_variant(variant), m_arm(arm), m_expected(std::move(expected))
+    {}
+
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        const std::string got = bbq_bench_arm_label(m_variant, m_arm);
+        if (got != m_expected){
+            return "Expected \"" + m_expected + "\", got \"" + got + "\"";
+        }
+        return true;
+    }
+
+private:
+    const BBQBenchVariant m_variant;
+    const char m_arm;
+    const std::string m_expected;
+};
+
 class Test_BBQClosestFlyPoint : public UnitTest{
 public:
     Test_BBQClosestFlyPoint(const std::string& name, std::vector<ImageFloatBox> boxes, int expected)
@@ -2851,6 +2872,12 @@ private:
 };
 
 void add_tests_BBQLabTools(UnitTestDatabase& database){
+    database.add<Test_BBQBenchArmLabel>(BBQBenchVariant::None, '-', "-");
+    database.add<Test_BBQBenchArmLabel>(BBQBenchVariant::TeraSelfSpot, 'A', "A: Pride Rock");
+    database.add<Test_BBQBenchArmLabel>(BBQBenchVariant::TeraSelfSpot, 'B', "B: Chargestone court");
+    database.add<Test_BBQBenchArmLabel>(BBQBenchVariant::DirectLeaveArea, 'A', "A: return to Central");
+    database.add<Test_BBQBenchArmLabel>(BBQBenchVariant::DirectLeaveArea, 'B', "B: fly directly, leave the spot");
+
     //  Zoomed-out map from the beach below Coastal Plaza: the plaza's fly point is up-left
     //  of the player, two farther ones are at the edges, and there is no Pokecenter.
     database.add<Test_BBQMapFlyPoint>("PokemonSV/BBQMap/coastal-beach.png", FlyPoint::FAST_TRAVEL, 895/1920., 452/1080.);
