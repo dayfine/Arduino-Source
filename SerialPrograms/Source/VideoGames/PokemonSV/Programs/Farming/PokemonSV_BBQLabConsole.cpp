@@ -169,6 +169,8 @@ public:
             if (!flew){
                 press_Bs_to_back_to_overworld(info, console, context);
             }
+        }else if (cmd == "jgf"){                            //  jgf hold_up flight_wait drop_time: jump_glide_fly()
+            jump_glide_fly(console, context, m_options.INVERTED_FLIGHT, ms(1, 1600), ms(2, 2000), ms(3, 3200));
         }else if (cmd == "central"){
             return_to_plaza(info, console, context, m_options.LANGUAGE);
         }else if (cmd == "away"){                           //  next central_to_*() flies from here
@@ -198,14 +200,7 @@ public:
             roll_date_forward_1(console, context, true);
             pbf_press_button(context, BUTTON_HOME, 160ms, ConsoleSettings::instance().SETTINGS_TO_HOME_DELAY0);
             resume_game_from_home(console, context);
-        }else if (cmd == "glide"){                          //  glide ride_ms face_x face_y turn_x turn_ms glide_ms
-            BBQLabFlags& lab = bbq_lab_flags();
-            lab.coastal_ride_ms = (int)num(1, lab.coastal_ride_ms);
-            lab.coastal_face_x = num(2, lab.coastal_face_x);
-            lab.coastal_face_y = num(3, lab.coastal_face_y);
-            lab.coastal_glide_x = num(4, lab.coastal_glide_x);
-            lab.coastal_turn_ms = (int)num(5, lab.coastal_turn_ms);
-            lab.coastal_glide_ms = (int)num(6, lab.coastal_glide_ms);
+        }else if (cmd == "hill"){                           //  Coastal Plaza fly point -> middle of the hill
             coastal_plaza_to_grassland(console, context, m_options.INVERTED_FLIGHT);
         }else if (cmd == "tera-self"){
             quest_tera_self_defeat(info, console, context, m_options);

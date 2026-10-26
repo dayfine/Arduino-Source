@@ -142,26 +142,11 @@ BBQRoutineBench::BBQRoutineBench()
         LockMode::LOCK_WHILE_RUNNING,
         BBQBenchVariant::None
     )
-    , COASTAL_RIDE_MS(
-        "<b>Coastal glide: ride to the cliff (ms):</b>",
-        LockMode::LOCK_WHILE_RUNNING, 2200
-    )
-    , COASTAL_GLIDE_X_PERCENT(
-        "<b>Coastal glide: right stick while gliding (% of full):</b>",
-        LockMode::LOCK_WHILE_RUNNING, 60, 0, 100
-    )
-    , COASTAL_GLIDE_MS(
-        "<b>Coastal glide: glide before dropping (ms):</b>",
-        LockMode::LOCK_WHILE_RUNNING, 7000
-    )
 {
     PA_ADD_OPTION(ROUTINE);
     PA_ADD_OPTION(REPS);
     PA_ADD_OPTION(START_FROM);
     PA_ADD_OPTION(VARIANT);
-    PA_ADD_OPTION(COASTAL_RIDE_MS);
-    PA_ADD_OPTION(COASTAL_GLIDE_X_PERCENT);
-    PA_ADD_OPTION(COASTAL_GLIDE_MS);
     PA_ADD_OPTION(BBQ_OPTIONS);
 }
 
@@ -296,14 +281,7 @@ void run_coastal_glide(SingleSwitchProgramEnvironment& env, ProControllerContext
 // Set the lab flags for one rep's arm.
 void set_arm_flags(BBQBenchVariant variant, char arm){
     BBQLabFlags& flags = bbq_lab_flags();
-    const BBQLabFlags tuning = flags;
     flags = BBQLabFlags();
-    flags.coastal_ride_ms = tuning.coastal_ride_ms;
-    flags.coastal_glide_x = tuning.coastal_glide_x;
-    flags.coastal_glide_ms = tuning.coastal_glide_ms;
-    flags.coastal_turn_ms = tuning.coastal_turn_ms;
-    flags.coastal_face_x = tuning.coastal_face_x;
-    flags.coastal_face_y = tuning.coastal_face_y;
     switch (variant){
     case BBQBenchVariant::None:
         return;
@@ -361,9 +339,6 @@ void BBQRoutineBench::program(SingleSwitchProgramEnvironment& env, ProController
     const std::string routine =
         ROUTINE == BBQBenchRoutine::SneakUp ? "sneak-up" :
         ROUTINE == BBQBenchRoutine::TeraSelf ? "tera-self" : "coastal-glide";
-    bbq_lab_flags().coastal_ride_ms = COASTAL_RIDE_MS;
-    bbq_lab_flags().coastal_glide_x = COASTAL_GLIDE_X_PERCENT / 100.0;
-    bbq_lab_flags().coastal_glide_ms = COASTAL_GLIDE_MS;
     const std::string exe_sha256 = executable_sha256();
     const std::string run_id = QDateTime::currentDateTime().toString("yyyyMMdd-HHmmss").toStdString();
     const std::string dir = QDir::currentPath().toStdString() + "/BBQBench/" + run_id;

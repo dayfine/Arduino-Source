@@ -31,15 +31,6 @@ struct BBQLabFlags{
     //  With direct flights: fly to the closest fly point before the day skip, so the
     //  spot reloads, and flee a wild Pokemon that attacks right after the skip.
     bool leave_area_before_day_skip = false;
-
-    //  Coastal Plaza -> grassland hill glide (coastal_plaza_to_grassland()), tunable
-    //  from the bench while it is calibrated.
-    double coastal_face_x = -1;     //  stick direction to face before mounting,
-    double coastal_face_y = 0;      //  relative to the camera after landing (it faces the plaza)
-    int coastal_ride_ms = 2200;     //  ride from the fly point to the cliff edge
-    double coastal_glide_x = 1.0;   //  stick x for the turn right right after the jump
-    int coastal_turn_ms = 1500;     //  how long to turn right while gliding
-    int coastal_glide_ms = 5500;    //  then glide straight toward the hill before dropping
 };
 BBQLabFlags& bbq_lab_flags();
 

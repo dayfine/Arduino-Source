@@ -974,44 +974,24 @@ bool catch_quest_catches_on_return(BBQuests current_quest, bool battled_this_att
     return current_quest == BBQuests::catch_any && !battled_this_attempt;
 }
 
-//From the Coastal Plaza fly point to the grassland west of the plaza, where Pikipek,
-//Trumbeak and Toucannon spawn. Not calibrated yet: a straight line from the fly point
-//is likely blocked by the plaza, so this stays put until the path is measured on a
-//Switch, and the look-around only reaches spawns near the fly point.
-//The user's route (2026-10-25, recorded from the capture card): from the fly point,
-//face left, ride off the cliff over the beach, glide right and up onto the hill west
-//of the plaza, and drop on top (~13 s from mounting to landing).
+//From the Coastal Plaza fly point to the middle of the hill west of the plaza, inside
+//its cliff ring, where Pikipek, Trumbeak and Toucannon spawn. Calibrated 2026-10-25 from
+//the capture card: 4 of 4 flights landed on the hill, and the first look from its middle
+//found a Toucannon. Riding off the cliff to the south instead runs into the hill's wall.
 void coastal_plaza_to_grassland(ConsoleHandle& console, ProControllerContext& context, bool inverted_flight){
-    const BBQLabFlags& lab = bbq_lab_flags();
-    console.log(
-        "Coastal Plaza to grassland: ride " + std::to_string(lab.coastal_ride_ms)
-        + " ms, glide x " + std::to_string(lab.coastal_glide_x)
-        + " for " + std::to_string(lab.coastal_glide_ms) + " ms."
-    );
+    console.log("Coastal Plaza to the hill west of the plaza.");
 
-    //Turn left from the landing view (it faces the plaza), camera behind, mount.
-    pbf_move_left_joystick(context, {lab.coastal_face_x, lab.coastal_face_y}, 160ms, 400ms);
+    //The landing view faces the plaza. The hill is 35 degrees to its left.
+    pbf_move_left_joystick(context, {-0.57, +0.82}, 160ms, 400ms);
     pbf_press_button(context, BUTTON_L | BUTTON_PLUS, 160ms, 840ms);
+    jump_glide_fly(console, context, inverted_flight, 3000ms, 3000ms, 3200ms);
 
-    //Ride to the cliff edge and jump off it.
-    pbf_move_left_joystick(context, {0, +1}, Milliseconds(lab.coastal_ride_ms), 0ms);
-    ssf_press_button(context, BUTTON_B, 0ms, 800ms);
-    ssf_press_button(context, BUTTON_B, 0ms, 160ms, 80ms);
-    ssf_press_button(context, BUTTON_B, 0ms, 160ms);
-    pbf_wait(context, 800ms);
-
-    //Turn right right after the jump, then glide up over the hill.
-    const double y = inverted_flight ? -1 : +1;
-    pbf_move_left_joystick(context, {lab.coastal_glide_x, y}, Milliseconds(lab.coastal_turn_ms), 0ms);
-    pbf_move_left_joystick(context, {0, y}, Milliseconds(lab.coastal_glide_ms), 0ms);
-
-    //Drop onto the hilltop.
-    pbf_press_button(context, BUTTON_B, 160ms, 2000ms);
+    //Ride from the landing spot to the middle of the hill.
+    pbf_press_button(context, BUTTON_L, 160ms, 400ms);
+    pbf_move_left_joystick(context, {-0.2, +1}, 2000ms, 500ms);
     context.wait_for_all_requests();
 }
 
-//The Terarium's fly points are fast-travel icons, not Pokecenters: the Pokecenter search
-//only works while standing on one, and otherwise retries for minutes before failing.
 void fly_back_to_coastal_plaza(const ProgramInfo& info, ConsoleHandle& console, ProControllerContext& context, Language language){
     try{
         open_map_from_overworld(info, console, context);
