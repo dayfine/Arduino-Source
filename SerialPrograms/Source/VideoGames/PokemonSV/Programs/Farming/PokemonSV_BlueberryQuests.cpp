@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
+#include "CommonFramework/Exceptions/UnexpectedBattleException.h"
 #include "CommonFramework/Tools/ErrorDumper.h"
 #include "CommonFramework/ImageTypes/ImageViewRGB32.h"
 #include "CommonFramework/Exceptions/ProgramFinishedException.h"
@@ -1311,15 +1312,24 @@ void leave_quest_area(
         //(Tera-self 9/15 when it stayed, 4/5 when it left). Terarium fly points are
         //fast-travel icons; the Pokecenter search alone retried for minutes. If neither
         //is found, stay: the next flight still goes directly.
+        //A wild Pokemon that attacks at the spot is fled, then the fly is tried again
+        //(R17 19:47: the battle stopped the farmer).
         stream.log("Flying to the closest fly point so this spot reloads.");
-        try{
-            open_map_from_overworld(info, stream, context);
-            if (!fly_to_visible_closest_flypoint_cur_zoom_level(info, stream, context, FlyPoint::FAST_TRAVEL)){
-                fly_to_closest_pokecenter_on_map(info, stream, context, 2);
+        for (int attempt = 0; attempt < 2; attempt++){
+            try{
+                open_map_from_overworld(info, stream, context);
+                if (!fly_to_visible_closest_flypoint_cur_zoom_level(info, stream, context, FlyPoint::FAST_TRAVEL)){
+                    fly_to_closest_pokecenter_on_map(info, stream, context, 2);
+                }
+                break;
+            }catch (UnexpectedBattleException&){
+                stream.log("A wild Pokemon attacked before the fly. Fleeing.", COLOR_ORANGE);
+                run_from_battle(stream, context);
+            }catch (OperationFailedException&){
+                stream.log("No fly point found. Leaving from here.", COLOR_ORANGE);
+                press_Bs_to_back_to_overworld(info, stream, context);
+                break;
             }
-        }catch (OperationFailedException&){
-            stream.log("No fly point found. Leaving from here.", COLOR_ORANGE);
-            press_Bs_to_back_to_overworld(info, stream, context);
         }
         stream.log("Staying here. The next flight goes to its destination directly.");
         stay_away_from_plaza(BBQ_OPTIONS.LANGUAGE);
