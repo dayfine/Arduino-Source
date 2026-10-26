@@ -926,6 +926,11 @@ bool process_and_do_quest(
             case BBQuests::make_tm:
             case BBQuests::travel_500:
             case BBQuests::tera_raid:
+            //These glide from the Central Plaza fly point (Alolan Geodude). From
+            //elsewhere they glided from the wrong place (R17: Catch Rock/Electric 0/2).
+            case BBQuests::catch_rock:
+            case BBQuests::catch_electric:
+            case BBQuests::photo_fly:
             case BBQuests::bitter_sandwich:
             case BBQuests::salty_sandwich:
             case BBQuests::sour_sandwich:

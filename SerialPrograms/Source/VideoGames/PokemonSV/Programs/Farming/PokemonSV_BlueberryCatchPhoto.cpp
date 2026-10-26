@@ -54,8 +54,24 @@ CameraAngle quest_photo_navi(
 
     //Navigate to target
     switch (current_quest){
-        case BBQuests::photo_fly: case BBQuests::photo_psychic:
-            console.log("Photo: In-flight/Psychic");
+        case BBQuests::photo_fly:
+            console.log("Photo: In-flight");
+
+            //Floating Pokemon count as in flight. Alolan Geodude by Central Plaza, the
+            //catch-rock route; the Polar Duosion was missing 12 of 12 looks (R17).
+            open_map_from_overworld(info, console, context);
+            fly_to_overworld_from_map(info, console, context);
+            pbf_press_button(context, BUTTON_L, 160ms, 400ms);
+            pbf_move_left_joystick(context, {-0.453, +1}, 80ms, 160ms);
+            pbf_press_button(context, BUTTON_L | BUTTON_PLUS, 160ms, 840ms);
+            jump_glide_fly(console, context, BBQ_OPTIONS.INVERTED_FLIGHT, 800ms, 4400ms, 2400ms);
+            pbf_press_button(context, BUTTON_PLUS, 160ms, 840ms);
+            pbf_wait(context, 2400ms);
+            context.wait_for_all_requests();
+
+            break;
+        case BBQuests::photo_psychic:
+            console.log("Photo: Psychic");
 
             //Polar Rest Area - targeting Duosion fixed spawn
             central_to_polar_rest(info, console, context);
