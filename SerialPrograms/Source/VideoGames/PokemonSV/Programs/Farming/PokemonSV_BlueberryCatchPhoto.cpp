@@ -485,6 +485,57 @@ void quest_photo(
     }
 }
 
+//Send out the lead at the target straight ahead, stepping closer between tries. Unlike
+//send_out_and_look_around(), it never turns away: after following a glow the target is
+//in front, and the look-around turned the camera off it (console 2026-10-26).
+static bool send_out_ahead(ConsoleHandle& console, ProControllerContext& context, size_t tries){
+    for (size_t i = 0; i < tries; i++){
+        if (i > 0){
+            console.log("No battle yet. Stepping closer (" + std::to_string(i) + "/" + std::to_string(tries - 1) + ").");
+            pbf_move_left_joystick(context, {0, +1}, 500ms, 200ms);
+        }
+        ssf_press_button(context, BUTTON_ZR, 0ms, 1600ms);
+        ssf_press_button(context, BUTTON_ZL, 800ms, 400ms);
+        ssf_press_button(context, BUTTON_ZL, 1200ms, 400ms);
+        pbf_wait(context, 2400ms);
+        context.wait_for_all_requests();
+
+        NormalBattleMenuWatcher battle_menu(COLOR_YELLOW);
+        if (wait_until(console, context, std::chrono::seconds(6), { battle_menu }) == 0){
+            return true;
+        }
+    }
+    return false;
+}
+
+//Fly from Central to Rabsca, walk to its glow and send out the lead.
+static void central_to_rabsca_and_send_out(
+    const ProgramInfo& info,
+    ConsoleHandle& console, ProControllerContext& context,
+    const BBQOption& BBQ_OPTIONS
+){
+    central_to_savanna_rest_area_2(info, console, context);
+
+    //Turned further right and glided longer than the first version (5.5 s), to land
+    //closer to Rabsca, past the Deerling and Trapinch near the rest area.
+    pbf_move_left_joystick(context, {+1, -0.35}, 80ms, 160ms);
+    pbf_press_button(context, BUTTON_L | BUTTON_PLUS, 160ms, 840ms);
+    jump_glide_fly(console, context, BBQ_OPTIONS.INVERTED_FLIGHT, 3000ms, 6500ms, 2400ms);
+
+    pbf_press_button(context, BUTTON_PLUS, 160ms, 840ms);
+    pbf_move_left_joystick(context, {+0.6, +0.8}, 80ms, 160ms);
+    pbf_press_button(context, BUTTON_L, 160ms, 400ms);
+
+    if (follow_tera_glow(console, context)){
+        //The first send-out from where the glow-follow stops missed 4 of 4 times, and
+        //one 500 ms step closer hit each time (console 2026-10-26).
+        pbf_move_left_joystick(context, {0, +1}, 500ms, 200ms);
+        send_out_ahead(console, context, 3);
+    }else{
+        send_out_and_look_around(console, context, std::chrono::seconds(6), "Rabsca");
+    }
+}
+
 void quest_catch_navi(
     const ProgramInfo& info,
     ConsoleHandle& console, ProControllerContext& context,
@@ -614,24 +665,7 @@ void quest_catch_navi(
             //weakens it before the throws: caught with 2 balls in ~90 s (console 2026-10-26),
             //where the Kleavor route took ~16 balls and 10 min (R21). Walking into it does
             //not start the battle; sending out the lead does.
-            central_to_savanna_rest_area_2(info, console, context);
-
-            pbf_move_left_joystick(context, {+0.98, -0.21}, 80ms, 160ms);
-            pbf_press_button(context, BUTTON_L | BUTTON_PLUS, 160ms, 840ms);
-
-            //A 7 s glide and 3.3 s walk overshot it (0/3 from Central).
-            jump_glide_fly(console, context, BBQ_OPTIONS.INVERTED_FLIGHT, 3000ms, 5500ms, 2400ms);
-
-            pbf_press_button(context, BUTTON_PLUS, 160ms, 840ms);
-            pbf_move_left_joystick(context, {+0.6, +0.8}, 80ms, 160ms);
-            pbf_press_button(context, BUTTON_L, 160ms, 400ms);
-            //Rabsca is ahead after the glide; walk to its glow (the fixed 3.5 s walk
-            //overshot when the glide ran long).
-            if (!follow_tera_glow(console, context)){
-                pbf_move_left_joystick(context, {0, +1}, 3500ms, 400ms);
-            }
-
-            send_out_and_look_around(console, context, std::chrono::seconds(6), "Rabsca");
+            central_to_rabsca_and_send_out(info, console, context, BBQ_OPTIONS);
             break;
         case BBQuests::catch_flying:
             console.log("Catch: Flying");
@@ -1018,10 +1052,11 @@ bool follow_tera_glow(ConsoleHandle& console, ProControllerContext& context){
             pbf_move_right_joystick(context, {dx > 0 ? +1.0 : -1.0, 0}, Milliseconds((int64_t)(std::abs(dx) * 350) + 40), 300ms);
             continue;
         }
-        //Close enough for the lead: the orb itself, about 40 samples up close. The
+        //Close enough for the lead: the orb itself (43-67 samples up close; at 42 the
+        //first send-out missed, console 2026-10-26). The
         //halo is no measure in daylight, where the golden grass counts as halo too
         //(halo 1019 with Rabsca still far, console 2026-10-26).
-        if (glow->orb_pixels >= 40){
+        if (glow->orb_pixels >= 55){
             break;
         }
         pbf_move_left_joystick(context, {0, +1}, 700ms, 200ms);
@@ -1221,7 +1256,12 @@ void quest_catch(
                 if (look == 0){
                     quest_catch_navi(info, console, context, BBQ_OPTIONS, current_quest);
                 }else if (current_quest == BBQuests::catch_bug){
-                    send_out_and_look_around(console, context, std::chrono::seconds(6), "Rabsca");
+                    //After fleeing a wrong-type Pokemon, Rabsca is still near.
+                    if (follow_tera_glow(console, context)){
+                        send_out_ahead(console, context, 3);
+                    }else{
+                        send_out_and_look_around(console, context, std::chrono::seconds(6), "Rabsca");
+                    }
                 }else{
                     retry_coastal_flying(info, console, context, BBQ_OPTIONS.INVERTED_FLIGHT, BBQ_OPTIONS.LANGUAGE);
                 }
