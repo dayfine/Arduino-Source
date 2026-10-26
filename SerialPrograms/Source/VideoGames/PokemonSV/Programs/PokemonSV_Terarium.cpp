@@ -5,6 +5,8 @@
  */
 
 #include "Common/Cpp/Time.h"
+#include "Common/Cpp/PrettyPrint.h"
+#include "CommonFramework/GlobalAutoPaths.h"
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
 #include "CommonFramework/Tools/ErrorDumper.h"
 #include "CommonFramework/Exceptions/ProgramFinishedException.h"
@@ -16,6 +18,7 @@
 #include "VideoGames/PokemonSV/Inference/Battles/PokemonSV_EncounterWatcher.h"
 #include "VideoGames/PokemonSV/Inference/PokemonSV_MainMenuDetector.h"
 #include "VideoGames/PokemonSV/Inference/Overworld/PokemonSV_OverworldDetector.h"
+#include <QDir>
 #include <QString>
 #include "VideoGames/PokemonSV/Inference/Overworld/PokemonSV_PlaceNameBannerReader.h"
 #include "VideoGames/PokemonSV/Programs/PokemonSV_GameEntry.h"
@@ -328,7 +331,27 @@ bool fly_from_anywhere(
     pbf_press_button(context, BUTTON_ZL, 320ms, 800ms);
     pbf_move_left_joystick(context, {x, y}, hold, release);
     pbf_press_button(context, BUTTON_ZL, 320ms, 800ms);
-    return fly_to_overworld_from_map(info, stream, context, true);
+    if (fly_to_overworld_from_map(info, stream, context, true)){
+        return true;
+    }
+
+    //  The two timed cursor moves add up their errors, and a small fly point is
+    //  missed (Polar Classroom 1, 4 of 4 in R17). Close the menu and snap onto the
+    //  closest fly point.
+    context.wait_for_all_requests();
+    VideoSnapshot missed = stream.video().snapshot();
+    if (missed.frame){
+        QDir().mkpath(QString::fromStdString(ERROR_PATH()));
+        missed.frame->save(ERROR_PATH() + now_to_filestring() + "-DirectFlightMissed.png");
+    }
+    pbf_press_button(context, BUTTON_B, 160ms, 800ms);
+    for (FlyPoint fly_point : {FlyPoint::FAST_TRAVEL, FlyPoint::POKECENTER}){
+        if (detect_closest_flypoint_and_move_map_cursor_there(info, stream, context, fly_point)){
+            stream.log("Direct flight missed the fly point. Snapped to the closest one.", COLOR_ORANGE);
+            return fly_to_overworld_from_map(info, stream, context, true);
+        }
+    }
+    return false;
 }
 
 }

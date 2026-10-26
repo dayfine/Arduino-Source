@@ -175,6 +175,8 @@ public:
             return_to_plaza(info, console, context, m_options.LANGUAGE);
         }else if (cmd == "away"){                           //  next central_to_*() flies from here
             stay_away_from_plaza(m_options.LANGUAGE);
+        }else if (cmd == "class1"){                         //  Polar Classroom 1; directly after "away"
+            central_to_polar_class1(info, console, context);
         }else if (cmd == "coastal"){
             central_to_coastal_plaza(info, console, context);
         }else if (cmd == "back"){
