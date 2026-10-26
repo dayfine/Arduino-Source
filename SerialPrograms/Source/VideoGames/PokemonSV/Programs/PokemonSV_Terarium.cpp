@@ -66,7 +66,7 @@ enum class PlazaFly{
 // battle's menu and returns StoppedAtBattle.
 PlazaFly fly_toward_plaza(
     const ProgramInfo& info, VideoStream& stream, ProControllerContext& context,
-    bool laggy, bool stop_at_battle
+    bool laggy, bool stop_at_battle, size_t searches
 ){
     stream.log("Attempting to return to Central Plaza.");
     //Modified version of handle_battles_and_back_to_pokecenter()
@@ -112,8 +112,8 @@ PlazaFly fly_toward_plaza(
                 try{
                     //The only pokecenter on the map is Central Plaza. Each failed search
                     //costs ~13 s, and repeating the same one rarely helps (bbq-m5 11:20:
-                    //17 identical "no Pokecenter" tries), so give up after 3.
-                    fly_to_closest_pokecenter_on_map(info, stream, context, 3);
+                    //17 identical "no Pokecenter" tries), so give up after 3 or fewer.
+                    fly_to_closest_pokecenter_on_map(info, stream, context, (int)searches);
                     context.wait_for_all_requests();
                     returned_to_pokecenter = true;
                 }catch (...){
@@ -178,8 +178,8 @@ public:
         , m_stop_at_battle(stop_at_battle)
     {}
 
-    virtual bool fly_to_plaza(bool overshoot) override{
-        switch (fly_toward_plaza(m_info, m_stream, m_context, overshoot, m_stop_at_battle)){
+    virtual bool fly_to_plaza(bool overshoot, size_t searches) override{
+        switch (fly_toward_plaza(m_info, m_stream, m_context, overshoot, m_stop_at_battle, searches)){
         case PlazaFly::StoppedAtBattle:
             throw StoppedAtBattle();
         case PlazaFly::Flew:

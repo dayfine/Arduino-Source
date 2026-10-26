@@ -2541,9 +2541,10 @@ public:
         : m_landings(std::move(landings))
     {}
 
-    virtual bool fly_to_plaza(bool overshoot) override{
+    virtual bool fly_to_plaza(bool overshoot, size_t searches) override{
         const size_t flight = overshoots.size();
         overshoots.push_back(overshoot);
+        this->searches.push_back(searches);
         return flight >= fly_results.size() || fly_results[flight];
     }
     virtual std::string read_landing_banner(const std::function<bool(const std::string& text)>& matches) override{
@@ -2567,6 +2568,7 @@ public:
     // Whether each fly happened; flies past the end do.
     std::vector<bool> fly_results;
     std::vector<bool> overshoots;
+    std::vector<size_t> searches;
     size_t banner_reads = 0;
 
 private:
@@ -2581,6 +2583,7 @@ struct PlazaReturnCase{
     PlazaReturnResult result;
     std::vector<bool> overshoots;
     size_t banner_reads;
+    std::vector<size_t> searches = {};    //  checked when not empty
 };
 
 class Test_BBQPlazaReturn : public UnitTest{
@@ -2602,6 +2605,9 @@ public:
         if (actions.overshoots != m_case.overshoots){
             return "Expected flights with overshoot " + join_bools(m_case.overshoots)
                 + ", got " + join_bools(actions.overshoots);
+        }
+        if (!m_case.searches.empty() && actions.searches != m_case.searches){
+            return "Expected different Pokecenter search caps per flight";
         }
         if (actions.banner_reads != m_case.banner_reads){
             return "Expected " + std::to_string(m_case.banner_reads) + " banner reads, got "
@@ -2701,6 +2707,7 @@ void add_tests_BBQPlazaReturn(UnitTestDatabase& database){
             .result = PlazaReturnResult::UNCONFIRMED,
             .overshoots = {false, true},
             .banner_reads = 1,
+            .searches = {3, 1},
         },
         {
             // A wrong banner followed by no fly is not Central Plaza.

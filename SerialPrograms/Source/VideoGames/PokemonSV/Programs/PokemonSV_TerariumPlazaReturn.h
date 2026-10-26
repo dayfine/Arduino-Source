@@ -46,8 +46,9 @@ public:
     //  cursor to the top-left corner, back toward the center, then the
     //  closest Pokecenter. "overshoot" moves the cursor back further, which
     //  helps when the game lags. Tries once: returns false if it didn't fly
-    //  (no Pokecenter to fly to, or a battle interrupted it).
-    virtual bool fly_to_plaza(bool overshoot) = 0;
+    //  (no Pokecenter to fly to, or a battle interrupted it). "searches" caps
+    //  the closest-Pokecenter search, ~13 s each.
+    virtual bool fly_to_plaza(bool overshoot, size_t searches) = 0;
 
     //  Watch the place-name banner shown after landing. Returns the first
     //  text read that `matches` accepts, else the last non-empty text read

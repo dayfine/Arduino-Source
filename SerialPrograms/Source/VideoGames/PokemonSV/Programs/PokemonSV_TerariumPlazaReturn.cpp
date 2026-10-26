@@ -99,7 +99,10 @@ PlazaReturnResult return_to_plaza_checked(
 
         //  A wrong landing usually means the cursor stopped short of Central
         //  Plaza, so retries overshoot from the start.
-        if (!actions.fly_to_plaza(attempt > 1)){
+        //  After a landing with no banner the player is likely on Central
+        //  Plaza, whose icon then can't be found: one search tells (R17
+        //  19:34, three searches took a minute).
+        if (!actions.fly_to_plaza(attempt > 1, last_landing_unread ? 1 : 3)){
             //  T2 on the routine bench (2026-10-25): the return landed at
             //  Central Plaza with no banner, and every retry found no icon.
             //  The leave-area bench (19:21) read "a" off the same banner.
