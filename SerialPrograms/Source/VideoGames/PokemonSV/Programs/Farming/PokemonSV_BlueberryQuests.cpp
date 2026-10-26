@@ -1322,14 +1322,14 @@ private:
     ProControllerContext& m_context;
 };
 
+}
+
 //Run from the wild battle on screen, or fight it if it blocks running.
 EscapeResult escape_wild_battle(const ProgramInfo& info, VideoStream& console, ProControllerContext& context){
     ConsoleBattleEscapeActions actions(info, console, context);
     const EscapeResult result = escape_battle(console.logger(), actions);
     console.log("Wild battle: " + escape_result_to_string(result) + ".");
     return result;
-}
-
 }
 
 //Skip a day from a quest spot so its Pokemon respawn, then resume. Away from Central

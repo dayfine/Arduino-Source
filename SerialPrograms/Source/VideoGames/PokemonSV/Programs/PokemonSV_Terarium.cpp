@@ -499,6 +499,11 @@ void central_to_savanna_class(const ProgramInfo& info, VideoStream& stream, ProC
     map_move_cursor_fly(info, stream, context, +1, -0.724, 1120ms, 160ms, "Savanna Classroom");
 }
 
+//The fly point just southeast of Central Plaza (calibrated 2026-10-26: the cursor lands on it).
+void central_to_savanna_rest_area_2(const ProgramInfo& info, VideoStream& stream, ProControllerContext& context){
+    map_move_cursor_fly(info, stream, context, +1, -0.31, 660ms, 160ms, "Savanna Rest Area 2");
+}
+
 void central_to_chargestone(const ProgramInfo& info, VideoStream& stream, ProControllerContext& context){
     map_move_cursor_fly(info, stream, context, -1, -0.055, 1040ms, 160ms, "Chargestone Cavern");
 }

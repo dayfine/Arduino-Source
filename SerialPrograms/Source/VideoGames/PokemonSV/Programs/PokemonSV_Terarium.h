@@ -83,6 +83,9 @@ void central_to_canyon_rest(const ProgramInfo& info, VideoStream& stream, ProCon
 // From central plaza, fly to savanna classroom. Warning: extremely laggy area.
 void central_to_savanna_class(const ProgramInfo& info, VideoStream& stream, ProControllerContext& context);
 
+// From central plaza, fly to Savanna Rest Area 2
+void central_to_savanna_rest_area_2(const ProgramInfo& info, VideoStream& stream, ProControllerContext& context);
+
 // From central plaza, fly to chargestone cavern
 void central_to_chargestone(const ProgramInfo& info, VideoStream& stream, ProControllerContext& context);
 

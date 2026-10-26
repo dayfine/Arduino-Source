@@ -272,6 +272,9 @@ public:
             uint8_t eggs = 0;
             const bool done = process_and_do_quest(m_env, console, context, const_cast<BBQOption&>(m_options), target, eggs);
             out << "quest " << BBQuests_enum_to_string(target) << " " << (done ? "completed" : "not completed") << "\n";
+        }else if (cmd == "catchbattle"){                    //  catchbattle slug: in a battle, run the catch quest's battle handler
+            bbq_lab_flags().quest_label = w.at(1);
+            quest_catch_handle_battle(info, console, context, m_options, BBQuests_string_to_enum(w.at(1)));
         }else if (cmd == "flydirect"){                      //  flydirect 0|1|-1: override FLY_DIRECTLY (-1: use the option)
             bbq_lab_flags().fly_directly_override = (int)num(1, -1);
         }else if (cmd == "run"){                            //  run slug: a photo or catch quest's real action from Central, without the board

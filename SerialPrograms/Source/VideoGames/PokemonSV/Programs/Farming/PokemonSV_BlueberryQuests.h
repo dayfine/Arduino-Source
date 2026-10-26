@@ -19,6 +19,7 @@
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
 #include "VideoGames/PokemonSV/Programs/ShinyHunting/PokemonSV_LetsGoTools.h"
 #include "VideoGames/PokemonSV/Options/PokemonSV_BBQOption.h"
+#include "PokemonSV_BBQLeaveSpot.h"
 
 namespace PokemonAutomation{
     struct ProgramInfo;
@@ -234,6 +235,9 @@ void recover_to_overworld_at_start(const ProgramInfo& info, VideoStream& stream,
 //Skip a day from a quest spot so its Pokemon respawn; away from Central Plaza, flee or
 //fight a wild Pokemon that attacks right after.
 void skip_day_at_quest_spot(const ProgramInfo& info, ConsoleHandle& console, ProControllerContext& context);
+
+//Run from the wild battle on screen, or fight it if it blocks running (Arena Trap).
+EscapeResult escape_wild_battle(const ProgramInfo& info, VideoStream& console, ProControllerContext& context);
 
 //Whether a quest's spot has to reload before it is used again: the quests that defeat,
 //catch or alert its wild Pokemon. Photos, the bath, sandwiches, eggs, raids and Auto

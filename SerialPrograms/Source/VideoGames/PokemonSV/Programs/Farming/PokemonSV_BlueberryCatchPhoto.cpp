@@ -590,12 +590,24 @@ void quest_catch_navi(
         case BBQuests::catch_bug:
             console.log("Catch: Bug");
 
-            central_to_canyon_plaza(info, console, context);
+            //The static Tera Rabsca (Lv 65) northeast of Savanna Rest Area 2. Its battle
+            //weakens it before the throws: caught with 2 balls in ~90 s (console 2026-10-26),
+            //where the Kleavor route took ~16 balls and 10 min (R21). Walking into it does
+            //not start the battle; sending out the lead does.
+            central_to_savanna_rest_area_2(info, console, context);
 
-            pbf_move_left_joystick(context, {+0.606, +0.5}, 160ms, 840ms);
+            pbf_move_left_joystick(context, {+0.98, -0.21}, 80ms, 160ms);
             pbf_press_button(context, BUTTON_L | BUTTON_PLUS, 160ms, 840ms);
 
-            jump_glide_fly(console, context, BBQ_OPTIONS.INVERTED_FLIGHT, 8000ms, 13200ms, 4000ms);
+            //A 7 s glide and 3.3 s walk overshot it (0/3 from Central).
+            jump_glide_fly(console, context, BBQ_OPTIONS.INVERTED_FLIGHT, 3000ms, 5500ms, 2400ms);
+
+            pbf_press_button(context, BUTTON_PLUS, 160ms, 840ms);
+            pbf_move_left_joystick(context, {+0.6, +0.8}, 80ms, 160ms);
+            pbf_press_button(context, BUTTON_L, 160ms, 400ms);
+            pbf_move_left_joystick(context, {0, +1}, 3500ms, 400ms);
+
+            send_out_and_look_around(console, context, std::chrono::seconds(6), "Rabsca");
             break;
         case BBQuests::catch_flying:
             console.log("Catch: Flying");
@@ -1093,7 +1105,14 @@ static CatchAttempt catch_attempt(
     }
     if (is_wrong_catch_target(info, console, context, BBQ_OPTIONS, current_quest)){
         bbq_lab_event(console, context, "wrong_type");
-        run_from_battle(console, context);
+        //A Trapinch at the Rabsca spot blocked running 10 times (console 2026-10-26).
+        if (escape_wild_battle(info, console, context) == EscapeResult::FAILED){
+            OperationFailedExceptionWithScreenshot::fire(
+                ErrorReportMode::SEND_ERROR_REPORT,
+                "catch_attempt(): could not get out of a wrong-type battle.",
+                console
+            );
+        }
         return CatchAttempt::WRONG_TYPE;
     }
     quest_catch_handle_battle(info, console, context, BBQ_OPTIONS, current_quest);
@@ -1104,7 +1123,12 @@ size_t catch_quest_looks(BBQuests current_quest, bool coastal_flying_catch){
     const bool coastal =
         (coastal_flying_catch && current_quest == BBQuests::catch_flying)
         || current_quest == BBQuests::catch_poison || current_quest == BBQuests::catch_dark;
-    return coastal ? 3 : 1;
+    if (coastal){
+        return 3;
+    }
+    //Rabsca stays put while a wrong-type Pokemon that got there first is fled: send the
+    //lead out again in place (console 2026-10-26: a Deerling ended 1 of 3 attempts).
+    return current_quest == BBQuests::catch_bug ? 2 : 1;
 }
 
 void quest_catch(
@@ -1122,6 +1146,8 @@ void quest_catch(
             [&](ProControllerContext& context){
                 if (look == 0){
                     quest_catch_navi(info, console, context, BBQ_OPTIONS, current_quest);
+                }else if (current_quest == BBQuests::catch_bug){
+                    send_out_and_look_around(console, context, std::chrono::seconds(6), "Rabsca");
                 }else{
                     retry_coastal_flying(info, console, context, BBQ_OPTIONS.INVERTED_FLIGHT, BBQ_OPTIONS.LANGUAGE);
                 }

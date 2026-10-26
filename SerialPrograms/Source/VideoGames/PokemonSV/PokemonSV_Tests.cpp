@@ -2352,7 +2352,8 @@ void add_tests_BBQCatchLooks(UnitTestDatabase& database){
     database.add<Test_BBQCatchLooks>("flying at the Coastal hill", BBQuests::catch_flying, true, 3);
     database.add<Test_BBQCatchLooks>("poison at the Coastal hill", BBQuests::catch_poison, false, 3);
     database.add<Test_BBQCatchLooks>("dark at the Coastal hill", BBQuests::catch_dark, false, 3);
-    database.add<Test_BBQCatchLooks>("bug is not affected by the Coastal option", BBQuests::catch_bug, true, 1);
+    database.add<Test_BBQCatchLooks>("bug is not affected by the Coastal option", BBQuests::catch_bug, true, 2);
+    database.add<Test_BBQCatchLooks>("catch_bug (Rabsca, again in place)", BBQuests::catch_bug, false, 2);
 }
 
 void add_tests_BBQCatchOnReturn(UnitTestDatabase& database){
