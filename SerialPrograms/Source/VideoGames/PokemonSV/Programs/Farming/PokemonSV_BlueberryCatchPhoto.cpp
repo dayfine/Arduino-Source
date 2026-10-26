@@ -971,6 +971,9 @@ void central_to_slowpoke_beach(
     pbf_press_button(context, BUTTON_L, 160ms, 400ms);
     pbf_press_button(context, BUTTON_L | BUTTON_PLUS, 160ms, 840ms);
     jump_glide_fly(console, context, BBQ_OPTIONS.INVERTED_FLIGHT, 3000ms, 5000ms, 2400ms);
+    //Let the landing finish: a PLUS pressed during it is lost, and the ride stays out
+    //(R19: sneak-up threw from the ride 2 of 2 times and never started a battle).
+    pbf_wait(context, 1600ms);
 }
 
 void coastal_plaza_to_grassland(ConsoleHandle& console, ProControllerContext& context, bool inverted_flight){
