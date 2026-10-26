@@ -47,6 +47,7 @@
 #include "VideoGames/PokemonSV/Programs/TeraRaids/PokemonSV_TeraBattler.h"
 #include "VideoGames/PokemonSV/Programs/Battles/PokemonSV_Battles.h"
 #include "PokemonSV_BBQLab.h"
+#include "PokemonSV_BBQLeaveSpot.h"
 #include "VideoGames/PokemonSV/Programs/Farming/PokemonSV_BlueberryCatchPhoto.h"
 #include "VideoGames/PokemonSV/Programs/PokemonSV_Terarium.h"
 #include "Pokemon/Pokemon_SpeciesTypes.h"
@@ -1296,10 +1297,85 @@ void skip_day_at_quest_spot(ConsoleHandle& console, ProControllerContext& contex
     }
 }
 
+namespace{
+
+//The game steps of leave_spot(), reporting a battle instead of throwing.
+class ConsoleLeaveSpotActions : public LeaveSpotActions{
+public:
+    ConsoleLeaveSpotActions(const ProgramInfo& info, VideoStream& stream, ProControllerContext& context)
+        : m_info(info), m_stream(stream), m_context(context)
+    {}
+
+    virtual LeaveStep open_map() override{
+        return step([&]{
+            open_map_from_overworld(m_info, m_stream, m_context);
+            return LeaveStep::DONE;
+        }, LeaveStep::FAILED);
+    }
+    virtual LeaveStep fly_to_closest_fast_travel() override{
+        return step([&]{
+            return fly_to_visible_closest_flypoint_cur_zoom_level(m_info, m_stream, m_context, FlyPoint::FAST_TRAVEL)
+                ? LeaveStep::DONE
+                : LeaveStep::NOT_FOUND;
+        }, LeaveStep::FAILED);
+    }
+    virtual LeaveStep fly_to_closest_pokecenter(size_t tries) override{
+        return step([&]{
+            fly_to_closest_pokecenter_on_map(m_info, m_stream, m_context, (int)tries);
+            return LeaveStep::DONE;
+        }, LeaveStep::NOT_FOUND);
+    }
+    virtual LeaveStep back_to_overworld() override{
+        return step([&]{
+            press_Bs_to_back_to_overworld(m_info, m_stream, m_context);
+            return LeaveStep::DONE;
+        }, LeaveStep::FAILED);
+    }
+    virtual bool flee() override{
+        try{
+            run_from_battle(m_stream, m_context);
+            return true;
+        }catch (OperationFailedException&){
+            return false;
+        }
+    }
+
+private:
+    template <typename Step>
+    LeaveStep step(Step&& body, LeaveStep on_failure){
+        try{
+            const LeaveStep ret = body();
+            m_context.wait_for_all_requests();
+            return ret;
+        }catch (UnexpectedBattleException&){
+            return LeaveStep::BATTLE;
+        }catch (OperationFailedException&){
+            return on_failure;
+        }
+    }
+
+    const ProgramInfo& m_info;
+    VideoStream& m_stream;
+    ProControllerContext& m_context;
+};
+
+}
+
 //After a battle at Central Plaza: heal at the Pokemon Center every third battle and
 //fly back onto the fly point, which the walk to the counter leaves. The lead was at
 //full HP after almost every quest battle in R11-R13 (Auto Battle checks HP itself and
 //healed 0 times in 30 passes), and each heal and re-fly took ~20 s.
+void recover_to_overworld_at_start(const ProgramInfo& info, VideoStream& stream, ProControllerContext& context){
+    ConsoleLeaveSpotActions actions(info, stream, context);
+    if (!recover_to_overworld(stream.logger(), actions)){
+        OperationFailedExceptionWithScreenshot::fire(
+            ErrorReportMode::SEND_ERROR_REPORT,
+            "recover_to_overworld_at_start(): could not get back to the overworld.",
+            stream
+        );
+    }
+}
+
 void leave_quest_area(
     const ProgramInfo& info,
     VideoStream& stream, ProControllerContext& context,
@@ -1309,27 +1385,16 @@ void leave_quest_area(
     const bool fly_directly = fly_directly_override < 0 ? (bool)BBQ_OPTIONS.FLY_DIRECTLY : fly_directly_override == 1;
     if (fly_directly){
         //Staying through the day skip kept a defeated Pokemon from respawning
-        //(Tera-self 9/15 when it stayed, 4/5 when it left). Terarium fly points are
-        //fast-travel icons; the Pokecenter search alone retried for minutes. If neither
-        //is found, stay: the next flight still goes directly.
-        //A wild Pokemon that attacks at the spot is fled, then the fly is tried again
-        //(R17 19:47: the battle stopped the farmer).
-        stream.log("Flying to the closest fly point so this spot reloads.");
-        for (int attempt = 0; attempt < 2; attempt++){
-            try{
-                open_map_from_overworld(info, stream, context);
-                if (!fly_to_visible_closest_flypoint_cur_zoom_level(info, stream, context, FlyPoint::FAST_TRAVEL)){
-                    fly_to_closest_pokecenter_on_map(info, stream, context, 2);
-                }
-                break;
-            }catch (UnexpectedBattleException&){
-                stream.log("A wild Pokemon attacked before the fly. Fleeing.", COLOR_ORANGE);
-                run_from_battle(stream, context);
-            }catch (OperationFailedException&){
-                stream.log("No fly point found. Leaving from here.", COLOR_ORANGE);
-                press_Bs_to_back_to_overworld(info, stream, context);
-                break;
-            }
+        //(Tera-self 9/15 when it stayed, 4/5 when it left). A battle while leaving (a
+        //sneak-up battle that starts late, R17 19:47, or a wild Pokemon) is fled and
+        //the fly tried again; with no fly point found, the next flight goes from here.
+        ConsoleLeaveSpotActions actions(info, stream, context);
+        if (leave_spot(stream.logger(), actions) == LeaveResult::STUCK_IN_BATTLE){
+            OperationFailedExceptionWithScreenshot::fire(
+                ErrorReportMode::SEND_ERROR_REPORT,
+                "leave_quest_area(): could not flee a battle while leaving the spot.",
+                stream
+            );
         }
         stream.log("Staying here. The next flight goes to its destination directly.");
         stay_away_from_plaza(BBQ_OPTIONS.LANGUAGE);
@@ -1488,7 +1553,11 @@ void quest_sneak_up(
 
             //Pride Rock's target is sometimes missing; anything that hasn't noticed us
             //counts, so look around if the first throw starts nothing.
-            send_out_and_look_around(console, context, std::chrono::seconds(15), "the target");
+            if (!send_out_and_look_around(console, context, std::chrono::seconds(15), "the target")){
+                //A thrown ball can start the battle after the look ends (R17 19:47: 0.5 s
+                //later, as the map opened). Keep watching a little longer.
+                context.wait_for(std::chrono::seconds(3));
+            }
         },
         {
             static_cast<VisualInferenceCallback&>(encounter_watcher),

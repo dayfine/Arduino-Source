@@ -39,6 +39,7 @@
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "Inference/PokemonSV_BlueberryPointsReader.h"
 #include "Programs/Farming/PokemonSV_BBQPointsLedger.h"
+#include "Programs/Farming/PokemonSV_BBQLeaveSpot.h"
 #include "Inference/Map/PokemonSV_MapDetector.h"
 #include "Inference/Map/PokemonSV_FastTravelDetector.h"
 #include "Inference/Map/PokemonSV_MapPokeCenterIconDetector.h"
@@ -2532,6 +2533,195 @@ void add_tests_BBQPlazaBannerMatch(UnitTestDatabase& database){
 }
 
 
+// Plays back each leave_spot() step's result in order and records the calls,
+// e.g. "map fast pc2 back flee". A step past its script returns DONE.
+class ScriptedLeaveSpotActions : public LeaveSpotActions{
+public:
+    std::vector<LeaveStep> maps, fast, pokecenter, backs;
+    std::vector<bool> flees;
+    std::string calls;
+
+    virtual LeaveStep open_map() override{ return next("map", maps, m_map); }
+    virtual LeaveStep fly_to_closest_fast_travel() override{ return next("fast", fast, m_fast); }
+    virtual LeaveStep fly_to_closest_pokecenter(size_t tries) override{
+        return next("pc" + std::to_string(tries), pokecenter, m_pokecenter);
+    }
+    virtual LeaveStep back_to_overworld() override{ return next("back", backs, m_back); }
+    virtual bool flee() override{
+        add("flee");
+        return m_flee < flees.size() ? flees[m_flee++] : true;
+    }
+
+private:
+    LeaveStep next(const std::string& name, const std::vector<LeaveStep>& script, size_t& index){
+        add(name);
+        return index < script.size() ? script[index++] : LeaveStep::DONE;
+    }
+    void add(const std::string& name){
+        calls += (calls.empty() ? "" : " ") + name;
+    }
+    size_t m_map = 0, m_fast = 0, m_pokecenter = 0, m_back = 0, m_flee = 0;
+};
+
+class Test_BBQRecoverToOverworld : public UnitTest{
+public:
+    Test_BBQRecoverToOverworld(
+        const std::string& name, std::vector<LeaveStep> backs, std::vector<bool> flees,
+        bool expected, std::string calls
+    )
+        : UnitTest("PokemonSV::BBQRecoverToOverworld - " + name)
+        , m_backs(std::move(backs)), m_flees(std::move(flees)), m_expected(expected), m_calls(std::move(calls))
+    {}
+
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        NullLogger logger;
+        ScriptedLeaveSpotActions actions;
+        actions.backs = m_backs;
+        actions.flees = m_flees;
+        const bool got = recover_to_overworld(logger, actions);
+        if (got != m_expected){
+            return std::string("Expected ") + (m_expected ? "recovered" : "not recovered");
+        }
+        if (actions.calls != m_calls){
+            return "Expected steps \"" + m_calls + "\", got \"" + actions.calls + "\"";
+        }
+        return true;
+    }
+
+private:
+    const std::vector<LeaveStep> m_backs;
+    const std::vector<bool> m_flees;
+    const bool m_expected;
+    const std::string m_calls;
+};
+
+struct LeaveSpotCase{
+    std::string name;
+    std::vector<LeaveStep> maps = {}, fast = {}, pokecenter = {}, backs = {};
+    std::vector<bool> flees = {};
+    LeaveResult result;
+    std::string calls;
+};
+
+class Test_BBQLeaveSpot : public UnitTest{
+public:
+    Test_BBQLeaveSpot(LeaveSpotCase test_case)
+        : UnitTest("PokemonSV::BBQLeaveSpot - " + test_case.name)
+        , m_case(std::move(test_case))
+    {}
+
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        NullLogger logger;
+        ScriptedLeaveSpotActions actions;
+        actions.maps = m_case.maps;
+        actions.fast = m_case.fast;
+        actions.pokecenter = m_case.pokecenter;
+        actions.backs = m_case.backs;
+        actions.flees = m_case.flees;
+        const LeaveResult result = leave_spot(logger, actions);
+        if (result != m_case.result){
+            return "Expected " + leave_result_to_string(m_case.result) + ", got " + leave_result_to_string(result);
+        }
+        if (actions.calls != m_case.calls){
+            return "Expected steps \"" + m_case.calls + "\", got \"" + actions.calls + "\"";
+        }
+        return true;
+    }
+
+private:
+    const LeaveSpotCase m_case;
+};
+
+void add_tests_BBQLeaveSpot(UnitTestDatabase& database){
+    using enum LeaveStep;
+    const LeaveSpotCase cases[] = {
+        {
+            .name = "closest fast-travel icon",
+            .result = LeaveResult::FLEW,
+            .calls = "map fast",
+        },
+        {
+            .name = "no fast-travel icon, a Pokecenter",
+            .fast = {NOT_FOUND},
+            .result = LeaveResult::FLEW,
+            .calls = "map fast pc2",
+        },
+        {
+            // The beach below Coastal Plaza (15:52): nothing on the map. Before,
+            // the Pokecenter search retried 17 times.
+            .name = "nothing to fly to leaves from here",
+            .fast = {NOT_FOUND},
+            .pokecenter = {NOT_FOUND},
+            .result = LeaveResult::STAYED,
+            .calls = "map fast pc2 back",
+        },
+        {
+            // R17 19:47: the sneak-up battle started 0.5 s after its watch, as the
+            // map opened, and stopped the farmer.
+            .name = "sneak-up battle starts as the map opens",
+            .maps = {BATTLE},
+            .result = LeaveResult::FLEW,
+            .calls = "map flee map fast",
+        },
+        {
+            .name = "battle during the fly",
+            .fast = {BATTLE},
+            .result = LeaveResult::FLEW,
+            .calls = "map fast flee map fast",
+        },
+        {
+            // R17 19:47: backing out of the map ran into the same battle.
+            .name = "battle while backing out of the map",
+            .fast = {NOT_FOUND, DONE},
+            .pokecenter = {NOT_FOUND},
+            .backs = {BATTLE},
+            .result = LeaveResult::FLEW,
+            .calls = "map fast pc2 back flee map fast",
+        },
+        {
+            .name = "a battle every attempt leaves from here",
+            .maps = {BATTLE, BATTLE, BATTLE},
+            .result = LeaveResult::STAYED,
+            .calls = "map flee map flee map flee",
+        },
+        {
+            .name = "a battle that can't be fled",
+            .maps = {BATTLE},
+            .flees = {false},
+            .result = LeaveResult::STUCK_IN_BATTLE,
+            .calls = "map flee",
+        },
+        {
+            .name = "map fails to open leaves from here",
+            .maps = {FAILED},
+            .result = LeaveResult::STAYED,
+            .calls = "map back",
+        },
+    };
+    for (const LeaveSpotCase& test_case : cases){
+        database.add<Test_BBQLeaveSpot>(test_case);
+    }
+
+    // recover_to_overworld() at program start, from what stopped runs left on screen.
+    database.add<Test_BBQRecoverToOverworld>("already in the overworld", std::vector<LeaveStep>{}, std::vector<bool>{}, true, "back");
+    database.add<Test_BBQRecoverToOverworld>(
+        "map left open (R17 19:27)", std::vector<LeaveStep>{LeaveStep::DONE}, std::vector<bool>{}, true, "back"
+    );
+    database.add<Test_BBQRecoverToOverworld>(
+        "battle left on screen (R17 19:49)", std::vector<LeaveStep>{LeaveStep::BATTLE}, std::vector<bool>{}, true, "back flee back"
+    );
+    database.add<Test_BBQRecoverToOverworld>(
+        "a battle that can't be fled", std::vector<LeaveStep>{LeaveStep::BATTLE}, std::vector<bool>{false}, false, "back flee"
+    );
+    database.add<Test_BBQRecoverToOverworld>(
+        "battles keep coming", std::vector<LeaveStep>{LeaveStep::BATTLE, LeaveStep::BATTLE, LeaveStep::BATTLE, LeaveStep::BATTLE},
+        std::vector<bool>{}, false, "back flee back flee back flee back"
+    );
+    database.add<Test_BBQRecoverToOverworld>(
+        "overworld never comes", std::vector<LeaveStep>{LeaveStep::FAILED}, std::vector<bool>{}, false, "back"
+    );
+}
+
 // Plays back the banner texts read after each landing, in order. Each
 // landing is a list of reads (frames x thresholds), handed to `matches` the
 // way the console reads them.
@@ -3007,6 +3197,7 @@ void add_tests(UnitTestDatabase& database){
     add_tests_BBQPlazaBannerToCheck(database);
     add_tests_BBQPlazaBannerMatch(database);
     add_tests_BBQPlazaReturn(database);
+    add_tests_BBQLeaveSpot(database);
     add_tests_BBQLabTools(database);
 }
 

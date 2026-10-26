@@ -227,6 +227,10 @@ void quest_travel_500(
     VideoStream& stream, ProControllerContext& context
 );
 
+//At program start, back out of the map or flee a battle a stopped run left on
+//screen. Throws if the overworld never comes back.
+void recover_to_overworld_at_start(const ProgramInfo& info, VideoStream& stream, ProControllerContext& context);
+
 //End a quest away from Central Plaza. With FLY_DIRECTLY, stay there and let the next
 //flight go straight to its destination. Otherwise return to Central Plaza.
 void leave_quest_area(

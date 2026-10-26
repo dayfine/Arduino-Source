@@ -342,6 +342,9 @@ void BBQRoutineBench::program(SingleSwitchProgramEnvironment& env, ProController
     }
     require_player(env.console, context, BUTTON_LCLICK);
 
+    //A stopped block can leave the map, a battle or a wall climb on screen.
+    recover_to_overworld_at_start(env.program_info(), env.console, context);
+
     //Start on the Central Plaza fly spot, as the farmer does. Off a fly spot (a block that
     //stopped at Pride Rock), fly there first.
     open_map_from_overworld(env.program_info(), env.console, context);

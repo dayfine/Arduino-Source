@@ -473,6 +473,9 @@ void BBQSoloFarmer::program(SingleSwitchProgramEnvironment& env, ProControllerCo
     //  Connect the controller.
     require_player(env.console, context, BUTTON_LCLICK);
 
+    //A run stopped mid-quest can leave the map or a battle on screen (R17 19:27, 19:49).
+    recover_to_overworld_at_start(env.program_info(), env.console, context);
+
     //Set the game options the routes depend on. With Camera Support on, the game turns the
     //camera during the timed glides and walks, and they miss their targets (0 Auto Battle
     //kills, Tera-self and Pride Rock routes failing in R10 until it was turned off).
