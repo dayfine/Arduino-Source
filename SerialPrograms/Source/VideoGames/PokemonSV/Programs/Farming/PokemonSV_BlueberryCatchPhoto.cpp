@@ -73,12 +73,15 @@ CameraAngle quest_photo_navi(
         case BBQuests::photo_psychic:
             console.log("Photo: Psychic");
 
-            //Polar Rest Area - targeting Duosion fixed spawn
-            central_to_polar_rest(info, console, context);
-
-            pbf_press_button(context, BUTTON_L, 80ms, 400ms);
-            pbf_move_left_joystick(context, {0, +1}, 1840ms, 160ms);
-            pbf_move_left_joystick(context, {-1, 0}, 2000ms, 160ms);
+            //Slowpoke on the beach north of Coastal Plaza: the glide lands on the sand, and
+            //a 250 ms turn left puts one near the middle (in frame 3 of 3, 2026-10-25).
+            //The Polar Duosion was missing 12 of 12 looks in R17.
+            central_to_coastal_plaza(info, console, context);
+            pbf_move_left_joystick(context, {+0.4, +0.92}, 160ms, 400ms);
+            pbf_press_button(context, BUTTON_L, 160ms, 400ms);
+            pbf_press_button(context, BUTTON_L | BUTTON_PLUS, 160ms, 840ms);
+            jump_glide_fly(console, context, BBQ_OPTIONS.INVERTED_FLIGHT, 3000ms, 5000ms, 2400ms);
+            pbf_move_right_joystick(context, {-1, 0}, 250ms, 300ms);
 
             break;
         case BBQuests::photo_swim: case BBQuests::photo_water: case BBQuests::photo_polar:
@@ -514,15 +517,16 @@ void quest_catch_navi(
         case BBQuests::catch_psychic:
             console.log("Catch: Psychic");
 
-            //Polar Rest Area - targeting Duosion fixed spawn
-            central_to_polar_rest(info, console, context);
-
-            pbf_press_button(context, BUTTON_L, 80ms, 400ms);
-            pbf_move_left_joystick(context, {0, +1}, 1840ms, 160ms);
-            pbf_move_left_joystick(context, {-1, 0}, 2000ms, 160ms);
-
+            //Slowpoke on the beach north of Coastal Plaza (see photo-psychic). Face it,
+            //then the ball below locks on.
+            central_to_coastal_plaza(info, console, context);
+            pbf_move_left_joystick(context, {+0.4, +0.92}, 160ms, 400ms);
             pbf_press_button(context, BUTTON_L, 160ms, 400ms);
-            pbf_move_left_joystick(context, {0, +1}, 1200ms, 160ms);
+            pbf_press_button(context, BUTTON_L | BUTTON_PLUS, 160ms, 840ms);
+            jump_glide_fly(console, context, BBQ_OPTIONS.INVERTED_FLIGHT, 3000ms, 5000ms, 2400ms);
+            pbf_press_button(context, BUTTON_PLUS, 160ms, 840ms);
+            pbf_move_left_joystick(context, {-0.4, +0.92}, 160ms, 400ms);
+            pbf_press_button(context, BUTTON_L, 160ms, 400ms);
 
             break;
 
