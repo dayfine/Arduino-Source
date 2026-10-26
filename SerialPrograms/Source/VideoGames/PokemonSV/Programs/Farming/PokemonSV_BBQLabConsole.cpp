@@ -191,6 +191,9 @@ public:
         }else if (cmd == "central"){
             return_to_plaza(info, console, context, m_options.LANGUAGE);
             m_position_known = true;
+        }else if (cmd == "at_central"){                     //  standing on the Central Plaza fly point: no flight
+            reset_plaza_position();
+            m_position_known = true;
         }else if (cmd == "away"){                           //  next central_to_*() flies from here
             stay_away_from_plaza(m_options.LANGUAGE);
             m_position_known = true;

@@ -1637,10 +1637,14 @@ void quest_sneak_up(
     int ret = run_until<ProControllerContext>(
         console, context,
         [&](ProControllerContext& context){
-            central_to_pride_rock(info, console, context, BBQ_OPTIONS);
+            //Anything that hasn't noticed us counts. The Pride Rock target went missing
+            //(R19: 0 of 4 after the outbreak ended); the Slowpoke on the Coastal beach
+            //barely react. Turn left to face them, as for the photo.
+            central_to_slowpoke_beach(info, console, context, BBQ_OPTIONS);
+            pbf_press_button(context, BUTTON_PLUS, 160ms, 840ms);
+            pbf_move_right_joystick(context, {-1, 0}, 250ms, 300ms);
 
-            //Pride Rock's target is sometimes missing; anything that hasn't noticed us
-            //counts, so look around if the first throw starts nothing.
+            //Look around if the first throw starts nothing.
             if (!send_out_and_look_around(console, context, std::chrono::seconds(15), "the target")){
                 //A thrown ball can start the battle after the look ends (R17 19:47: 0.5 s
                 //later, as the map opened). Keep watching a little longer.

@@ -69,6 +69,14 @@ bool catch_quest_catches_on_return(BBQuests current_quest, bool battled_this_att
 //point (Flying with the Coastal option, Poison and Dark always); the others get one look.
 size_t catch_quest_looks(BBQuests current_quest, bool coastal_flying_catch);
 
+//Fly to the beach north of Coastal Plaza and land on the sand, facing a little right of
+//the Slowpoke there (tuned 2026-10-25: in frame 3 of 3 after a 250 ms camera turn left).
+void central_to_slowpoke_beach(
+    const ProgramInfo& info,
+    ConsoleHandle& console, ProControllerContext& context,
+    const BBQOption& BBQ_OPTIONS
+);
+
 //Fly from the Coastal Plaza fly point to the middle of the hill west of the plaza, where
 //Flying types spawn.
 void coastal_plaza_to_grassland(ConsoleHandle& console, ProControllerContext& context, bool inverted_flight);

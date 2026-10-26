@@ -76,11 +76,7 @@ CameraAngle quest_photo_navi(
             //Slowpoke on the beach north of Coastal Plaza: the glide lands on the sand, and
             //a 250 ms turn left puts one near the middle (in frame 3 of 3, 2026-10-25).
             //The Polar Duosion was missing 12 of 12 looks in R17.
-            central_to_coastal_plaza(info, console, context);
-            pbf_move_left_joystick(context, {+0.4, +0.92}, 160ms, 400ms);
-            pbf_press_button(context, BUTTON_L, 160ms, 400ms);
-            pbf_press_button(context, BUTTON_L | BUTTON_PLUS, 160ms, 840ms);
-            jump_glide_fly(console, context, BBQ_OPTIONS.INVERTED_FLIGHT, 3000ms, 5000ms, 2400ms);
+            central_to_slowpoke_beach(info, console, context, BBQ_OPTIONS);
             pbf_move_right_joystick(context, {-1, 0}, 250ms, 300ms);
 
             break;
@@ -519,11 +515,7 @@ void quest_catch_navi(
 
             //Slowpoke on the beach north of Coastal Plaza (see photo-psychic). Face it,
             //then the ball below locks on.
-            central_to_coastal_plaza(info, console, context);
-            pbf_move_left_joystick(context, {+0.4, +0.92}, 160ms, 400ms);
-            pbf_press_button(context, BUTTON_L, 160ms, 400ms);
-            pbf_press_button(context, BUTTON_L | BUTTON_PLUS, 160ms, 840ms);
-            jump_glide_fly(console, context, BBQ_OPTIONS.INVERTED_FLIGHT, 3000ms, 5000ms, 2400ms);
+            central_to_slowpoke_beach(info, console, context, BBQ_OPTIONS);
             pbf_press_button(context, BUTTON_PLUS, 160ms, 840ms);
             pbf_move_left_joystick(context, {-0.4, +0.92}, 160ms, 400ms);
             pbf_press_button(context, BUTTON_L, 160ms, 400ms);
@@ -969,6 +961,18 @@ bool catch_quest_catches_on_return(BBQuests current_quest, bool battled_this_att
 //its cliff ring, where Pikipek, Trumbeak and Toucannon spawn. Calibrated 2026-10-25 from
 //the capture card: 4 of 4 flights landed on the hill, and the first look from its middle
 //found a Toucannon. Riding off the cliff to the south instead runs into the hill's wall.
+void central_to_slowpoke_beach(
+    const ProgramInfo& info,
+    ConsoleHandle& console, ProControllerContext& context,
+    const BBQOption& BBQ_OPTIONS
+){
+    central_to_coastal_plaza(info, console, context);
+    pbf_move_left_joystick(context, {+0.4, +0.92}, 160ms, 400ms);
+    pbf_press_button(context, BUTTON_L, 160ms, 400ms);
+    pbf_press_button(context, BUTTON_L | BUTTON_PLUS, 160ms, 840ms);
+    jump_glide_fly(console, context, BBQ_OPTIONS.INVERTED_FLIGHT, 3000ms, 5000ms, 2400ms);
+}
+
 void coastal_plaza_to_grassland(ConsoleHandle& console, ProControllerContext& context, bool inverted_flight){
     console.log("Coastal Plaza to the hill west of the plaza.");
 
