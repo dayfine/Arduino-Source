@@ -1271,9 +1271,9 @@ bool send_out_and_look_around(
     return false;
 }
 
-//Skip a day from a quest spot so its Pokemon respawn, then resume. In the lab's
-//leave-area variant, flee a wild Pokemon that attacks right after the skip (A5: before
-//6 of 14 flights out of Pride Rock).
+//Skip a day from a quest spot so its Pokemon respawn, then resume. Away from Central
+//Plaza, flee a wild Pokemon that attacks right after the skip (A5: before 6 of 14
+//flights out of Pride Rock).
 void skip_day_at_quest_spot(ConsoleHandle& console, ProControllerContext& context){
     pbf_press_button(context, BUTTON_HOME, 160ms, GameSettings::instance().GAME_TO_HOME_DELAY1);
     home_to_date_time(console, context, true);
@@ -1283,7 +1283,8 @@ void skip_day_at_quest_spot(ConsoleHandle& console, ProControllerContext& contex
     context.wait_for_all_requests();
     bbq_lab_event(console, context, "day_skip_done");
 
-    if (!bbq_lab_flags().leave_area_before_day_skip){
+    //A wild Pokemon can only attack away from Central Plaza.
+    if (!is_away_from_plaza()){
         return;
     }
     NormalBattleMenuWatcher battle_menu(COLOR_YELLOW);
@@ -1306,19 +1307,19 @@ void leave_quest_area(
     const int fly_directly_override = bbq_lab_flags().fly_directly_override;
     const bool fly_directly = fly_directly_override < 0 ? (bool)BBQ_OPTIONS.FLY_DIRECTLY : fly_directly_override == 1;
     if (fly_directly){
-        if (bbq_lab_flags().leave_area_before_day_skip){
-            stream.log("Flying to the closest fly point so this spot reloads.");
-            //Terarium fly points are fast-travel icons; the Pokecenter search alone retried
-            //for minutes. If neither is found, stay: the next flight still goes directly.
-            try{
-                open_map_from_overworld(info, stream, context);
-                if (!fly_to_visible_closest_flypoint_cur_zoom_level(info, stream, context, FlyPoint::FAST_TRAVEL)){
-                    fly_to_closest_pokecenter_on_map(info, stream, context, 2);
-                }
-            }catch (OperationFailedException&){
-                stream.log("No fly point found. Leaving from here.", COLOR_ORANGE);
-                press_Bs_to_back_to_overworld(info, stream, context);
+        //Staying through the day skip kept a defeated Pokemon from respawning
+        //(Tera-self 9/15 when it stayed, 4/5 when it left). Terarium fly points are
+        //fast-travel icons; the Pokecenter search alone retried for minutes. If neither
+        //is found, stay: the next flight still goes directly.
+        stream.log("Flying to the closest fly point so this spot reloads.");
+        try{
+            open_map_from_overworld(info, stream, context);
+            if (!fly_to_visible_closest_flypoint_cur_zoom_level(info, stream, context, FlyPoint::FAST_TRAVEL)){
+                fly_to_closest_pokecenter_on_map(info, stream, context, 2);
             }
+        }catch (OperationFailedException&){
+            stream.log("No fly point found. Leaving from here.", COLOR_ORANGE);
+            press_Bs_to_back_to_overworld(info, stream, context);
         }
         stream.log("Staying here. The next flight goes to its destination directly.");
         stay_away_from_plaza(BBQ_OPTIONS.LANGUAGE);

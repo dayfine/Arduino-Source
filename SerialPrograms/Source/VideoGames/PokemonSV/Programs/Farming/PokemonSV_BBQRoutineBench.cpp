@@ -315,7 +315,6 @@ void set_arm_flags(BBQBenchVariant variant, char arm){
         return;
     case BBQBenchVariant::DirectLeaveArea:
         flags.fly_directly_override = arm == 'B' ? 1 : 0;
-        flags.leave_area_before_day_skip = arm == 'B';
         return;
     }
 }

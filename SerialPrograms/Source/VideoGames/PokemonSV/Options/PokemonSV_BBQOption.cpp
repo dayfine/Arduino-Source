@@ -251,10 +251,10 @@ BBQOption::BBQOption(OCR::LanguageOCROption* language_option)
     )
     , FLY_DIRECTLY(
         "<b>Fly Directly Between Quests:</b><br>After a quest that ends in the field, "
-        "fly straight to the next quest instead of returning to Central Plaza first.<br>"
-        "Off by default: staying at a spot through the day skip keeps a defeated or caught "
-        "Pokemon from respawning there (Tera-self 9/15 on vs 13/14 off on the bench).",
-        LockMode::LOCK_WHILE_RUNNING, false
+        "fly to the closest fly point so the spot reloads, then straight to the next quest "
+        "instead of returning to Central Plaza first. It still returns to heal "
+        "(Tera-self 4/5 and ~25 s faster than returning, 2/5, on the bench).",
+        LockMode::LOCK_WHILE_RUNNING, true
     )
     , COASTAL_FLYING_CATCH(
         "<b>Catch Flying Types at Coastal Plaza (experimental):</b><br>Look for Pikipek, Trumbeak, "

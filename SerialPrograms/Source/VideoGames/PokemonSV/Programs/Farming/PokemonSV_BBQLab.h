@@ -27,10 +27,6 @@ struct BBQLabFlags{
 
     //  Overrides BBQ_OPTIONS.FLY_DIRECTLY when set: 0 off, 1 on.
     int fly_directly_override = -1;
-
-    //  With direct flights: fly to the closest fly point before the day skip, so the
-    //  spot reloads, and flee a wild Pokemon that attacks right after the skip.
-    bool leave_area_before_day_skip = false;
 };
 BBQLabFlags& bbq_lab_flags();
 
