@@ -256,6 +256,13 @@ BBQOption::BBQOption(OCR::LanguageOCROption* language_option)
         "(Tera-self 4/5 and ~25 s faster than returning, 2/5, on the bench).",
         LockMode::LOCK_WHILE_RUNNING, true
     )
+    , RELOAD_FROM_CENTRAL(
+        "<b>Reload Spots From Central Plaza:</b><br>With Fly Directly, still return to Central "
+        "Plaza after a quest whose Pokemon must respawn (catches, Tera-self, sneak-up, "
+        "Pride Rock photos) and skip the day there. A day skip at the closest fly point "
+        "left Pride Rock's Pyroar missing (0/2, and R21 photos 0/6; 3/3 from Central).",
+        LockMode::LOCK_WHILE_RUNNING, true
+    )
     , COASTAL_FLYING_CATCH(
         "<b>Catch Flying Types at Coastal Plaza (experimental):</b><br>Look for Pikipek, Trumbeak, "
         "Toucannon and Fletchling in the grassland next to Coastal Plaza instead of the canyon. "
@@ -297,6 +304,7 @@ BBQOption::BBQOption(OCR::LanguageOCROption* language_option)
     PA_ADD_OPTION(NUM_RETRIES);
     PA_ADD_OPTION(RETRY_LATER);
     PA_ADD_OPTION(FLY_DIRECTLY);
+    PA_ADD_OPTION(RELOAD_FROM_CENTRAL);
     PA_ADD_OPTION(COASTAL_FLYING_CATCH);
     PA_ADD_OPTION(OUT_OF_RETRIES);
     PA_ADD_OPTION(FIX_TIME_WHEN_DONE);

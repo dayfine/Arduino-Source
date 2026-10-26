@@ -3254,6 +3254,8 @@ void add_tests_BBQLabTools(UnitTestDatabase& database){
     //  Which quests fly to the closest fly point before the day skip.
     database.add<Test_BBQSpotNeedsReload>("tera_self_defeat", BBQuests::tera_self_defeat, true);
     database.add<Test_BBQSpotNeedsReload>("sneak_up", BBQuests::sneak_up, true);
+    database.add<Test_BBQSpotNeedsReload>("photo_savanna", BBQuests::photo_savanna, true);
+    database.add<Test_BBQSpotNeedsReload>("photo_normal", BBQuests::photo_normal, true);
     database.add<Test_BBQSpotNeedsReload>("wild_tera", BBQuests::wild_tera, true);
     database.add<Test_BBQSpotNeedsReload>("catch_any", BBQuests::catch_any, true);
     database.add<Test_BBQSpotNeedsReload>("catch_flying", BBQuests::catch_flying, true);

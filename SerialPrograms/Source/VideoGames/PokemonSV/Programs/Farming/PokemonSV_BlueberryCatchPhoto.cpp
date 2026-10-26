@@ -292,6 +292,7 @@ CameraAngle quest_photo_navi(
 void take_photo(ConsoleHandle& console, ProControllerContext& context, CameraAngle move_camera){
     //Take photo.
     console.log("Taking photo.");
+    bbq_lab_event(console, context, "route_done");
     PromptDialogWatcher photo_prompt(COLOR_RED);
     OverworldWatcher overworld(console.logger(), COLOR_BLUE);
 
@@ -1068,6 +1069,7 @@ static CatchAttempt catch_attempt(
             
             navigate(context);
             context.wait_for_all_requests();
+            bbq_lab_event(console, context, "route_done");
 
             NormalBattleMenuWatcher battle_menu(COLOR_YELLOW);
             int ret2 = wait_until(
@@ -1091,9 +1093,11 @@ static CatchAttempt catch_attempt(
     encounter_watcher.throw_if_no_sound();
 
     if (ret < 0 && !battle_menu_seen){
+        bbq_lab_event(console, context, "no_battle");
         return CatchAttempt::NO_BATTLE;
     }
     console.log("Battle menu detected.");
+    bbq_lab_event(console, context, "battle");
 
     if (encounter_watcher.shiny_screenshot()){
         console.log("Shiny detected!");
@@ -1101,6 +1105,7 @@ static CatchAttempt catch_attempt(
         throw ProgramFinishedException();
     }
     if (is_wrong_catch_target(info, console, context, BBQ_OPTIONS, current_quest)){
+        bbq_lab_event(console, context, "wrong_type");
         run_from_battle(console, context);
         return CatchAttempt::WRONG_TYPE;
     }

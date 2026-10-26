@@ -12,6 +12,8 @@
 #include <QDir>
 #include <QFileInfo>
 #include "Common/Cpp/Exceptions.h"
+#include "Common/Cpp/PrettyPrint.h"
+#include "CommonFramework/GlobalAutoPaths.h"
 #include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "CommonTools/Async/InferenceRoutines.h"
@@ -227,12 +229,24 @@ public:
             resume_game_from_home(console, context);
         }else if (cmd == "hill"){                           //  Coastal Plaza fly point -> middle of the hill
             coastal_plaza_to_grassland(console, context, m_options.INVERTED_FLIGHT);
-        }else if (cmd == "quest"){                          //  quest slug [max_rerolls]: reroll blue slots until it is on the board, run it, check the board
-            const BBQuests target = BBQuests_string_to_enum(w.at(1));
+        }else if (cmd == "quest"){                          //  quest slug[,slug...] [max_rerolls]: reroll blue slots until one is on the board, run it, check the board
+            std::set<BBQuests> targets;
+            std::istringstream slugs(w.at(1));
+            for (std::string slug; std::getline(slugs, slug, ',');){
+                targets.insert(BBQuests_string_to_enum(slug));
+            }
             const int max_rerolls = (int)num(2, 15);
             std::vector<BBQuests> quests = read_quests(info, console, context, m_options);
+            auto drawn = [&]{
+                for (BBQuests quest : quests){
+                    if (targets.contains(quest)){
+                        return quest;
+                    }
+                }
+                return BBQuests::UnableToDetect;
+            };
             int rerolls = 0;
-            while (std::find(quests.begin(), quests.end(), target) == quests.end()){
+            while (drawn() == BBQuests::UnableToDetect){
                 if (rerolls >= max_rerolls){
                     throw ParseException("quest: " + w.at(1) + " not drawn after " + std::to_string(rerolls) + " rerolls.");
                 }
@@ -251,10 +265,30 @@ public:
                 rerolls++;
                 quests = read_quests(info, console, context, m_options);
             }
+            const BBQuests target = drawn();
             out << "rerolls " << rerolls << "\n";
             uint8_t eggs = 0;
             const bool done = process_and_do_quest(m_env, console, context, const_cast<BBQOption&>(m_options), target, eggs);
-            out << "quest " << w.at(1) << " " << (done ? "completed" : "not completed") << "\n";
+            out << "quest " << BBQuests_enum_to_string(target) << " " << (done ? "completed" : "not completed") << "\n";
+        }else if (cmd == "flydirect"){                      //  flydirect 0|1|-1: override FLY_DIRECTLY (-1: use the option)
+            bbq_lab_flags().fly_directly_override = (int)num(1, -1);
+        }else if (cmd == "run"){                            //  run slug: a photo or catch quest's real action from Central, without the board
+            if (!m_position_known){
+                throw ParseException("run: start position unknown. Run \"central\" (or \"at_central\") first.");
+            }
+            const BBQuests quest = BBQuests_string_to_enum(w.at(1));
+            bbq_lab_flags().quest_label = w.at(1);
+            m_position_known = false;
+            if (w.at(1).starts_with("photo-")){
+                quest_photo(info, console, context, m_options, quest);
+            }else if (w.at(1).starts_with("catch-")){
+                quest_catch(info, console, context, m_options, quest);
+            }else{
+                throw ParseException("run: only photo-* and catch-* quests.");
+            }
+            //Both end at Central Plaza, or with flydirect 1 at the closest fly point,
+            //where the plaza tracker knows to fly from anywhere.
+            m_position_known = true;
         }else if (cmd == "tera-self"){
             quest_tera_self_defeat(info, console, context, m_options);
         }else if (cmd == "sneak-up"){
@@ -284,6 +318,22 @@ void BBQLabConsole::program(SingleSwitchProgramEnvironment& env, ProControllerCo
     env.log("Lab console: waiting for command files in " + root.toStdString() + "/inbox");
 
     bool position_known = false;
+
+    //Every quest step the console runs saves its lab events, for replaying failed quests.
+    struct HookGuard{
+        ~HookGuard(){ set_bbq_lab_event_hook(nullptr); }
+    } hook_guard;
+    const std::string shot_dir = SCREENSHOTS_PATH() + "BBQReference/console-" + now_to_filestring() + "/";
+    QDir().mkpath(QString::fromStdString(shot_dir));
+    env.log("Saving reference screenshots to " + shot_dir);
+    set_bbq_lab_event_hook([shot_dir](VideoStream& stream, ProControllerContext& context, const std::string& event){
+        context.wait_for_all_requests();
+        VideoSnapshot screen = stream.video().snapshot();
+        if (screen.frame){
+            const std::string& quest = bbq_lab_flags().quest_label;
+            screen.frame->save(shot_dir + now_to_filestring() + "-" + (quest.empty() ? "none" : quest) + "-" + event + ".png");
+        }
+    });
 
     while (true){
         QFileInfoList files = QDir(root + "/inbox").entryInfoList({"*.txt"}, QDir::Files, QDir::Name);

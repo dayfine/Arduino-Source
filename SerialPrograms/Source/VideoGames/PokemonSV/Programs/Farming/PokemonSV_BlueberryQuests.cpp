@@ -1440,9 +1440,14 @@ void recover_to_overworld_at_start(const ProgramInfo& info, VideoStream& stream,
 bool quest_spot_needs_reload(BBQuests quest){
     //A photo leaves its Pokemon there; a catch removes it. Photo-fly's Alolan Geodude
     //spawns about 40% of the time: a retry needs the spot reloaded (R19: 0 of 4 retries
-    //on the same empty slope; a real board pass on the console 2026-10-26).
+    //on the same empty slope; a real board pass on the console 2026-10-26). Pride Rock's
+    //Pyroar is gone after a Tera-self or catch there until a reload (R21: photo 0/6 on
+    //the empty rock; console 2026-10-26: 3/3 after a reload).
     switch (quest){
     case BBQuests::photo_fly:
+    case BBQuests::photo_savanna:
+    case BBQuests::photo_normal:
+    case BBQuests::photo_fire:
     case BBQuests::sneak_up:
     case BBQuests::tera_self_defeat:
     case BBQuests::wild_tera:
@@ -1474,7 +1479,11 @@ void leave_quest_area(
         stay_away_from_plaza(BBQ_OPTIONS.LANGUAGE);
         return;
     }
-    if (fly_directly){
+    //The day skip that follows respawns the spot only from far enough away. The closest
+    //fly point can be too near: after a skip at Savanna Plaza, Pride Rock's Pyroar was
+    //missing 2/2 (console 2026-10-26; R21 photo 0/6), and 3/3 there after a skip at
+    //Central Plaza. Leave for Central Plaza.
+    if (fly_directly && !BBQ_OPTIONS.RELOAD_FROM_CENTRAL){
         //Staying through the day skip kept a defeated Pokemon from respawning
         //(Tera-self 9/15 when it stayed, 4/5 when it left). A battle while leaving (a
         //sneak-up battle that starts late, R17 19:47, or a wild Pokemon) is fled and

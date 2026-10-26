@@ -130,6 +130,7 @@ public:
     SimpleIntegerOption<uint8_t> NUM_RETRIES;
     BooleanCheckBoxOption RETRY_LATER;
     BooleanCheckBoxOption FLY_DIRECTLY;
+    BooleanCheckBoxOption RELOAD_FROM_CENTRAL;
     BooleanCheckBoxOption COASTAL_FLYING_CATCH;
     EnumDropdownOption<OutOfRetries> OUT_OF_RETRIES;
 
