@@ -31,6 +31,11 @@ std::string central_plaza_banner_to_check(Language language, bool ocr_available)
 //  one), which still tells the plazas apart.
 bool place_name_banner_matches(const std::string& expected, const std::string& ocr_text);
 
+//  Whether an OCR read could be a place name at all: at least half as long as
+//  `expected`, ignoring what place_name_banner_matches() ignores. A stray
+//  letter read off the fading banner ("a") is not.
+bool place_name_banner_readable(const std::string& expected, const std::string& ocr_text);
+
 
 //  The game steps the return-and-check loop drives.
 class PlazaReturnActions{

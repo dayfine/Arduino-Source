@@ -71,6 +71,12 @@ bool place_name_banner_matches(const std::string& expected, const std::string& o
 }
 
 
+bool place_name_banner_readable(const std::string& expected, const std::string& ocr_text){
+    const size_t target = normalize_place_name(expected).size();
+    return 2 * normalize_place_name(ocr_text).size() >= std::max<size_t>(target, 1);
+}
+
+
 std::string plaza_return_result_to_string(PlazaReturnResult result){
     switch (result){
     case PlazaReturnResult::ARRIVED:        return "arrived";
@@ -96,6 +102,7 @@ PlazaReturnResult return_to_plaza_checked(
         if (!actions.fly_to_plaza(attempt > 1)){
             //  T2 on the routine bench (2026-10-25): the return landed at
             //  Central Plaza with no banner, and every retry found no icon.
+            //  The leave-area bench (19:21) read "a" off the same banner.
             if (last_landing_unread){
                 logger.log(
                     prefix + "the fly didn't happen after a landing with no banner. "
@@ -117,7 +124,7 @@ PlazaReturnResult return_to_plaza_checked(
             return place_name_banner_matches(expected_banner, text);
         };
         const std::string banner = actions.read_landing_banner(matches);
-        last_landing_unread = banner.empty();
+        last_landing_unread = !place_name_banner_readable(expected_banner, banner);
         if (matches(banner)){
             logger.log(prefix + "landed at Central Plaza (banner \"" + banner + "\").");
             return PlazaReturnResult::ARRIVED;

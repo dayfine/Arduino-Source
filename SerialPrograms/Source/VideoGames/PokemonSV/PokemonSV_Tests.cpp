@@ -2456,6 +2456,26 @@ struct PlazaBannerMatchCase{
     bool matches;
 };
 
+class Test_BBQPlazaBannerReadable : public UnitTest{
+public:
+    Test_BBQPlazaBannerReadable(const std::string& name, std::string expected, std::string ocr_text, bool readable)
+        : UnitTest("PokemonSV::BBQPlazaBannerReadable - " + name)
+        , m_expected(std::move(expected)), m_ocr_text(std::move(ocr_text)), m_readable(readable)
+    {}
+
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        if (place_name_banner_readable(m_expected, m_ocr_text) != m_readable){
+            return std::string("Expected ") + (m_readable ? "readable" : "unreadable");
+        }
+        return true;
+    }
+
+private:
+    const std::string m_expected;
+    const std::string m_ocr_text;
+    const bool m_readable;
+};
+
 class Test_BBQPlazaBannerMatch : public UnitTest{
 public:
     Test_BBQPlazaBannerMatch(PlazaBannerMatchCase test_case)
@@ -2504,6 +2524,11 @@ void add_tests_BBQPlazaBannerMatch(UnitTestDatabase& database){
     for (const PlazaBannerMatchCase& test_case : cases){
         database.add<Test_BBQPlazaBannerMatch>(test_case);
     }
+    database.add<Test_BBQPlazaBannerReadable>("stray letter", "中心廣場", "a", false);
+    database.add<Test_BBQPlazaBannerReadable>("nothing read", "中心廣場", "", false);
+    database.add<Test_BBQPlazaBannerReadable>("another plaza", "中心廣場", "海岸廣場", true);
+    database.add<Test_BBQPlazaBannerReadable>("half the name", "Central Plaza", "Centra", true);
+    database.add<Test_BBQPlazaBannerReadable>("too short for the name", "Central Plaza", "Cen", false);
 }
 
 
@@ -2661,6 +2686,17 @@ void add_tests_BBQPlazaReturn(UnitTestDatabase& database){
             .name = "no banner, then no fly: at Central Plaza",
             .expected_banner = "中心廣場",
             .landings = {{"", ""}},
+            .fly_results = {true, false},
+            .result = PlazaReturnResult::UNCONFIRMED,
+            .overshoots = {false, true},
+            .banner_reads = 1,
+        },
+        {
+            // Leave-area bench (2026-10-25 19:21): landed at Central Plaza
+            // and read "a" off the banner, then retried for 3 minutes.
+            .name = "unreadable banner, then no fly: at Central Plaza",
+            .expected_banner = "中心廣場",
+            .landings = {{"a"}},
             .fly_results = {true, false},
             .result = PlazaReturnResult::UNCONFIRMED,
             .overshoots = {false, true},
