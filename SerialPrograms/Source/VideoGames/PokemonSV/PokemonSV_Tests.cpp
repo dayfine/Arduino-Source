@@ -3014,6 +3014,31 @@ void add_tests_BBQPlazaReturn(UnitTestDatabase& database){
 // Which fly point the map flight picks, from real map screenshots. The Terarium's fly
 // points are fast-travel icons: a Pokecenter search there finds nothing and, before it
 // was capped, retried for minutes (2026-10-25, from the beach below Coastal Plaza).
+// The "set destination" menu the map shows where nothing can be flown to. Its
+// detector saw the Polar snow behind the "fly here?" prompt as that menu (R17:
+// Polar Classroom 1, 4 of 4 direct flights).
+class Test_BBQMapDestinationMenu : public UnitTest{
+public:
+    Test_BBQMapDestinationMenu(const std::string& image, bool expected)
+        : UnitTest("PokemonSV::BBQMapDestinationMenu - " + image)
+        , m_image(UNIT_TEST_RESOURCE_PATH() + image)
+        , m_expected(expected)
+    {}
+
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        ImageRGB32 screen(m_image);
+        const bool got = MapDestinationMenuDetector(COLOR_RED).detect(screen);
+        if (got != m_expected){
+            return std::string("Expected ") + (m_expected ? "the destination menu" : "no destination menu");
+        }
+        return true;
+    }
+
+private:
+    const std::string m_image;
+    const bool m_expected;
+};
+
 class Test_BBQMapFlyPoint : public UnitTest{
 public:
     //  expected_x/y: the center of the icon the flight should pick, normalized to the frame;
@@ -3223,6 +3248,9 @@ void add_tests_BBQLabTools(UnitTestDatabase& database){
 
     //  Zoomed-out map from the beach below Coastal Plaza: the plaza's fly point is up-left
     //  of the player, two farther ones are at the edges, and there is no Pokecenter.
+    database.add<Test_BBQMapDestinationMenu>("PokemonSV/BBQMap/destination-menu-snow.png", true);
+    database.add<Test_BBQMapDestinationMenu>("PokemonSV/BBQMap/destination-menu-savanna.png", true);
+    database.add<Test_BBQMapDestinationMenu>("PokemonSV/BBQMap/polar-class1-fly-confirm.png", false);
     database.add<Test_BBQMapFlyPoint>("PokemonSV/BBQMap/coastal-beach.png", FlyPoint::FAST_TRAVEL, 895/1920., 452/1080.);
     database.add<Test_BBQMapFlyPoint>("PokemonSV/BBQMap/coastal-beach.png", FlyPoint::POKECENTER, -1, -1);
     //  Standing on the fly point: the player icon covers it, so only "fly here" works.

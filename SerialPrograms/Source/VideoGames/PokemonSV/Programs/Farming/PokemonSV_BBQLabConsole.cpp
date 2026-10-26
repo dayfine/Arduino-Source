@@ -6,6 +6,7 @@
 
 #include <fstream>
 #include <map>
+#include <set>
 #include <sstream>
 #include <QDir>
 #include <QFileInfo>
@@ -98,8 +99,12 @@ namespace{
 
 class CommandRunner{
 public:
-    CommandRunner(SingleSwitchProgramEnvironment& env, ProControllerContext& context, const BBQOption& options, std::string out_prefix)
+    CommandRunner(
+        SingleSwitchProgramEnvironment& env, ProControllerContext& context, const BBQOption& options,
+        std::string out_prefix, bool& position_known
+    )
         : m_env(env), m_context(context), m_options(options), m_out_prefix(std::move(out_prefix))
+        , m_position_known(position_known)
     {}
 
     //  Returns false for "stop".
@@ -110,6 +115,18 @@ public:
         auto info = m_env.program_info();
         ConsoleHandle& console = m_env.console;
         ProControllerContext& context = m_context;
+
+        //  The routes from Central steer the map cursor blind: fail fast until
+        //  "central" or "away" says where the player is (a "coastal" from the
+        //  Polar area pressed A on empty map for minutes).
+        static const std::set<std::string> FROM_CENTRAL{"coastal", "class1", "tera-self", "sneak-up"};
+        if (FROM_CENTRAL.contains(cmd)){
+            if (!m_position_known){
+                throw ParseException(cmd + ": start position unknown. Run \"central\" (or \"away\") first.");
+            }
+            //  It leaves Central Plaza without telling the plaza tracker.
+            m_position_known = false;
+        }
 
         if (cmd == "stop"){
             return false;
@@ -173,8 +190,10 @@ public:
             jump_glide_fly(console, context, m_options.INVERTED_FLIGHT, ms(1, 1600), ms(2, 2000), ms(3, 3200));
         }else if (cmd == "central"){
             return_to_plaza(info, console, context, m_options.LANGUAGE);
+            m_position_known = true;
         }else if (cmd == "away"){                           //  next central_to_*() flies from here
             stay_away_from_plaza(m_options.LANGUAGE);
+            m_position_known = true;
         }else if (cmd == "class1"){                         //  Polar Classroom 1; directly after "away"
             central_to_polar_class1(info, console, context);
         }else if (cmd == "coastal"){
@@ -219,6 +238,7 @@ private:
     ProControllerContext& m_context;
     const BBQOption& m_options;
     std::string m_out_prefix;
+    bool& m_position_known;
 };
 
 }
@@ -230,6 +250,8 @@ void BBQLabConsole::program(SingleSwitchProgramEnvironment& env, ProControllerCo
     QDir().mkpath(root + "/outbox");
     QDir().mkpath(root + "/done");
     env.log("Lab console: waiting for command files in " + root.toStdString() + "/inbox");
+
+    bool position_known = false;
 
     while (true){
         QFileInfoList files = QDir(root + "/inbox").entryInfoList({"*.txt"}, QDir::Files, QDir::Name);
@@ -244,7 +266,7 @@ void BBQLabConsole::program(SingleSwitchProgramEnvironment& env, ProControllerCo
         std::ofstream out(out_prefix + ".tmp");
         env.log("Lab console: running " + name);
 
-        CommandRunner runner(env, context, BBQ_OPTIONS, out_prefix);
+        CommandRunner runner(env, context, BBQ_OPTIONS, out_prefix, position_known);
         bool keep_going = true;
         std::string line;
         size_t line_number = 0;

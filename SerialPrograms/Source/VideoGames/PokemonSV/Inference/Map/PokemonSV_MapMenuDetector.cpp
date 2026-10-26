@@ -75,8 +75,10 @@ void MapDestinationMenuDetector::make_overlays(VideoOverlaySet& items) const{
 
 bool MapDestinationMenuDetector::detect(const ImageViewRGB32& screen){
     const ImageStats stats0 = image_stats(extract_box_reference(screen, m_bottom_box));
-    // The white menu background is actually a bit translucent. So we have to relax the `is_white()` condition.
-    const double min_rgb_sum = 500.0;
+    // The menu reads (250, 255, 255), sum ~760. The light-blue Polar snow reads
+    // sum ~610-620: with a bar of 500 it passed for the menu behind the "fly here?"
+    // prompt, and for menu white under the real menu.
+    const double min_rgb_sum = 700.0;
     const double min_stddev_sum = 25.0;
     if (!is_white(stats0, min_rgb_sum, min_stddev_sum)){
         return false;
