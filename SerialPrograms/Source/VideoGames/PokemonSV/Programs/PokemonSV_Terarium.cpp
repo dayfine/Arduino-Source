@@ -369,9 +369,10 @@ void note_start_position(VideoStream& stream, ProControllerContext& context, Lan
         context.wait_for_all_requests();
         VideoSnapshot screen = stream.video().snapshot();
         for (const std::string& text : reader.read(stream.logger(), language, screen)){
-            //A stray character is OCR noise, not a place name. Flying onto the spot
-            //the player stands on often shows no banner at all.
-            if (QString::fromStdString(text).size() < 2){
+            //A stray character or a garbled read is OCR noise, not a place name
+            //(R18: "cnlo" at Central Plaza read as away). Flying onto the spot the
+            //player stands on often shows no banner at all.
+            if (!place_name_banner_readable(expected, text)){
                 continue;
             }
             if (place_name_banner_matches(expected, text)){

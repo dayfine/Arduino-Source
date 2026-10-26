@@ -72,8 +72,15 @@ bool place_name_banner_matches(const std::string& expected, const std::string& o
 
 
 bool place_name_banner_readable(const std::string& expected, const std::string& ocr_text){
-    const size_t target = normalize_place_name(expected).size();
-    return 2 * normalize_place_name(ocr_text).size() >= std::max<size_t>(target, 1);
+    const std::u32string target = normalize_place_name(expected);
+    const std::u32string read = normalize_place_name(ocr_text);
+    //  For a name in another script (Chinese, Japanese, Korean), Latin letters and
+    //  digits are noise: R18 read "cnlo" off the Central Plaza banner.
+    const bool non_latin = std::any_of(target.begin(), target.end(), [](char32_t ch){ return ch >= 0x80; });
+    const size_t count = non_latin
+        ? (size_t)std::count_if(read.begin(), read.end(), [](char32_t ch){ return ch >= 0x80; })
+        : read.size();
+    return 2 * count >= std::max<size_t>(target.size(), 1);
 }
 
 

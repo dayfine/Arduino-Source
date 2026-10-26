@@ -33,7 +33,8 @@ bool place_name_banner_matches(const std::string& expected, const std::string& o
 
 //  Whether an OCR read could be a place name at all: at least half as long as
 //  `expected`, ignoring what place_name_banner_matches() ignores. A stray
-//  letter read off the fading banner ("a") is not.
+//  letter read off the fading banner ("a") is not, nor Latin letters read for
+//  a name in another script ("cnlo" for 中心廣場).
 bool place_name_banner_readable(const std::string& expected, const std::string& ocr_text);
 
 

@@ -2527,6 +2527,8 @@ void add_tests_BBQPlazaBannerMatch(UnitTestDatabase& database){
     }
     database.add<Test_BBQPlazaBannerReadable>("stray letter", "中心廣場", "a", false);
     database.add<Test_BBQPlazaBannerReadable>("nothing read", "中心廣場", "", false);
+    database.add<Test_BBQPlazaBannerReadable>("Latin noise for a Chinese name (R18)", "中心廣場", "cnlo", false);
+    database.add<Test_BBQPlazaBannerReadable>("name with a stray character", "中心廣場", "海中心廣場銀", true);
     database.add<Test_BBQPlazaBannerReadable>("another plaza", "中心廣場", "海岸廣場", true);
     database.add<Test_BBQPlazaBannerReadable>("half the name", "Central Plaza", "Centra", true);
     database.add<Test_BBQPlazaBannerReadable>("too short for the name", "Central Plaza", "Cen", false);
