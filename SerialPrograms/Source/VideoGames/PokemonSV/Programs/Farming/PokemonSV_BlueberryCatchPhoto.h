@@ -89,7 +89,7 @@ void quest_catch(
 //Handle battles for tera-self/defeat-wild-tera. Use first attack until victory.
 void wild_battle_tera(
     const ProgramInfo& info,
-    ConsoleHandle& console, ProControllerContext& context,
+    VideoStream& console, ProControllerContext& context,
     bool& tera_self
 );
 

@@ -1273,10 +1273,61 @@ bool send_out_and_look_around(
     return false;
 }
 
+namespace{
+
+//The game steps of escape_battle().
+class ConsoleBattleEscapeActions : public BattleEscapeActions{
+public:
+    ConsoleBattleEscapeActions(const ProgramInfo& info, VideoStream& console, ProControllerContext& context)
+        : m_info(info), m_console(console), m_context(context)
+    {}
+
+    virtual BattleScreen wait_for_screen() override{
+        OverworldWatcher overworld(m_console.logger(), COLOR_RED);
+        NormalBattleMenuWatcher battle_menu(COLOR_YELLOW);
+        m_context.wait_for_all_requests();
+        switch (wait_until(m_console, m_context, std::chrono::seconds(60), {overworld, battle_menu})){
+        case 0: return BattleScreen::OVERWORLD;
+        case 1: return BattleScreen::BATTLE_MENU;
+        default: return BattleScreen::OTHER;
+        }
+    }
+    virtual void try_run() override{
+        NormalBattleMenuWatcher battle_menu(COLOR_YELLOW);
+        battle_menu.move_to_slot(m_console, m_context, 3);
+        pbf_press_button(m_context, BUTTON_A, 160ms, 840ms);
+        pbf_press_button(m_context, BUTTON_B, 160ms, 1000ms);
+    }
+    virtual bool fight() override{
+        try{
+            bool tera_self = false;
+            wild_battle_tera(m_info, m_console, m_context, tera_self);
+            return true;
+        }catch (OperationFailedException&){
+            return false;
+        }
+    }
+
+private:
+    const ProgramInfo& m_info;
+    VideoStream& m_console;
+    ProControllerContext& m_context;
+};
+
+//Run from the wild battle on screen, or fight it if it blocks running.
+EscapeResult escape_wild_battle(const ProgramInfo& info, VideoStream& console, ProControllerContext& context){
+    ConsoleBattleEscapeActions actions(info, console, context);
+    const EscapeResult result = escape_battle(console.logger(), actions);
+    console.log("Wild battle: " + escape_result_to_string(result) + ".");
+    return result;
+}
+
+}
+
 //Skip a day from a quest spot so its Pokemon respawn, then resume. Away from Central
 //Plaza, flee a wild Pokemon that attacks right after the skip (A5: before 6 of 14
 //flights out of Pride Rock).
-void skip_day_at_quest_spot(ConsoleHandle& console, ProControllerContext& context){
+void skip_day_at_quest_spot(const ProgramInfo& info, ConsoleHandle& console, ProControllerContext& context){
     pbf_press_button(context, BUTTON_HOME, 160ms, GameSettings::instance().GAME_TO_HOME_DELAY1);
     home_to_date_time(console, context, true);
     roll_date_forward_1(console, context, true);
@@ -1293,7 +1344,13 @@ void skip_day_at_quest_spot(ConsoleHandle& console, ProControllerContext& contex
     if (wait_until(console, context, std::chrono::seconds(2), {battle_menu}) == 0){
         console.log("A wild Pokemon attacked after the day skip. Fleeing.");
         bbq_lab_event(console, context, "ambush");
-        run_from_battle(console, context);
+        if (escape_wild_battle(info, console, context) == EscapeResult::FAILED){
+            OperationFailedExceptionWithScreenshot::fire(
+                ErrorReportMode::SEND_ERROR_REPORT,
+                "skip_day_at_quest_spot(): could not get out of a wild battle.",
+                console
+            );
+        }
     }
 }
 
@@ -1332,12 +1389,7 @@ public:
         }, LeaveStep::FAILED);
     }
     virtual bool flee() override{
-        try{
-            run_from_battle(m_stream, m_context);
-            return true;
-        }catch (OperationFailedException&){
-            return false;
-        }
+        return escape_wild_battle(m_info, m_stream, m_context) != EscapeResult::FAILED;
     }
 
 private:
@@ -1552,7 +1604,7 @@ void quest_tera_self_defeat(
         return_to_plaza(info, console, context, BBQ_OPTIONS.LANGUAGE);
         //Without a day skip the next attempt finds the same empty Pride Rock: bench T3
         //missed 9 times in a row after its first miss.
-        skip_day_at_quest_spot(console, context);
+        skip_day_at_quest_spot(info, console, context);
         return;
     }
     }
@@ -1560,7 +1612,7 @@ void quest_tera_self_defeat(
 
     //The defeated Pride Rock Pokemon stays gone until the day changes, and sneak-up and the
     //next Tera-self need it (R14: two Tera-self attempts right after a win found nothing).
-    skip_day_at_quest_spot(console, context);
+    skip_day_at_quest_spot(info, console, context);
 
     heal_after_battle_if_due(info, console, context);
 }
@@ -1602,56 +1654,19 @@ void quest_sneak_up(
             console.log("Shiny detected!");
             pbf_press_button(context, BUTTON_CAPTURE, 2000ms, 5000ms);
             throw ProgramFinishedException();
-        }else{
-            OverworldWatcher overworld(console.logger(), COLOR_BLUE);
-
-            int ret2 = run_until<ProControllerContext>(
-                console, context,
-                [&](ProControllerContext& context){
-                    while (true){
-                        //Flee immediately. Keep trying to flee.
-                        NormalBattleMenuWatcher battle_menu(COLOR_YELLOW);
-                        int ret2 = wait_until(
-                            console, context,
-                            std::chrono::seconds(60),
-                            { battle_menu }
-                        );
-                        switch (ret2){
-                        case 0:
-                            battle_menu.move_to_slot(console, context, 3);
-                            pbf_press_button(context, BUTTON_A, 80ms, 400ms);
-                            break;
-                        default:
-                            console.log("Invalid state quest_sneak_up(). Smoke Ball equipped?");
-                            OperationFailedExceptionWithScreenshot::fire(
-                                ErrorReportMode::SEND_ERROR_REPORT,
-                                "Invalid state quest_sneak_up(). Smoke Ball equipped?",
-                                console
-                            );
-                        }
-                    }
-                },
-                { overworld }
-                );
-
-            switch (ret2){
-            case 0:
-                console.log("Overworld detected.");
-                break;
-            default:
-                console.log("Invalid state in run_battle().");
-                OperationFailedExceptionWithScreenshot::fire(
-                    ErrorReportMode::SEND_ERROR_REPORT,
-                    "Invalid state in run_battle().",
-                    console
-                );
-            }
+        }else if (escape_wild_battle(info, console, context) == EscapeResult::FAILED){
+            //The quest counts once the battle starts. Flee; fight what blocks running.
+            OperationFailedExceptionWithScreenshot::fire(
+                ErrorReportMode::SEND_ERROR_REPORT,
+                "quest_sneak_up(): could not get out of the battle.",
+                console
+            );
         }
     }
     leave_quest_area(info, console, context, BBQ_OPTIONS, BBQuests::sneak_up);
 
     //Day skip and attempt to respawn fixed encounters - in case quest failed
-    skip_day_at_quest_spot(console, context);
+    skip_day_at_quest_spot(info, console, context);
 }
 
 void quest_wild_tera(

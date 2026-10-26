@@ -20,6 +20,37 @@ namespace NintendoSwitch{
 namespace PokemonSV{
 
 
+enum class BattleScreen{
+    OVERWORLD,      //  The battle is over.
+    BATTLE_MENU,    //  Our turn.
+    OTHER,          //  Nothing recognized in time.
+};
+
+//  The game steps escape_battle() drives.
+class BattleEscapeActions{
+public:
+    virtual ~BattleEscapeActions() = default;
+
+    virtual BattleScreen wait_for_screen() = 0;
+    //  From the battle menu: pick Run.
+    virtual void try_run() = 0;
+    //  Attack with the first move until the battle ends. False if it didn't.
+    virtual bool fight() = 0;
+};
+
+enum class EscapeResult{
+    FLED,
+    DEFEATED,   //  Running kept failing, so we fought it.
+    FAILED,
+};
+std::string escape_result_to_string(EscapeResult result);
+
+//  Run from the wild battle on screen. A Pokemon that blocks running (Arena
+//  Trap Trapinch at Pride Rock, R17 21:08: 3 min of "can't escape") is fought
+//  after `max_runs` tries instead.
+EscapeResult escape_battle(Logger& logger, BattleEscapeActions& actions, size_t max_runs = 3);
+
+
 enum class LeaveStep{
     DONE,       //  The step did what it was asked: the map opened, or the fly landed.
     NOT_FOUND,  //  Nothing to fly to on the map.

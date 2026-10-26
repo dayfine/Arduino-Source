@@ -1142,7 +1142,7 @@ void quest_catch(
 
 void wild_battle_tera(
     const ProgramInfo& info,
-    ConsoleHandle& console, ProControllerContext& context,
+    VideoStream& console, ProControllerContext& context,
     bool& tera_self
 ){
     AdvanceDialogWatcher lost(COLOR_YELLOW);

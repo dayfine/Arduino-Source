@@ -21,6 +21,39 @@ std::string leave_result_to_string(LeaveResult result){
     return "?";
 }
 
+std::string escape_result_to_string(EscapeResult result){
+    switch (result){
+    case EscapeResult::FLED:        return "fled";
+    case EscapeResult::DEFEATED:    return "defeated";
+    case EscapeResult::FAILED:      return "failed";
+    }
+    return "?";
+}
+
+EscapeResult escape_battle(Logger& logger, BattleEscapeActions& actions, size_t max_runs){
+    for (size_t runs = 0; ; runs++){
+        switch (actions.wait_for_screen()){
+        case BattleScreen::OVERWORLD:
+            return EscapeResult::FLED;
+        case BattleScreen::BATTLE_MENU:
+            break;
+        case BattleScreen::OTHER:
+            logger.log("Escaping the battle: no battle menu or overworld.", COLOR_RED);
+            return EscapeResult::FAILED;
+        }
+        if (runs < max_runs){
+            actions.try_run();
+            continue;
+        }
+        logger.log("Could not run after " + std::to_string(max_runs) + " tries. Fighting instead.", COLOR_ORANGE);
+        if (!actions.fight()){
+            logger.log("Escaping the battle: the fight did not end.", COLOR_RED);
+            return EscapeResult::FAILED;
+        }
+        return EscapeResult::DEFEATED;
+    }
+}
+
 namespace{
 
 //  One try at the fly. BATTLE: a battle interrupted it and is still on screen.

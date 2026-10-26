@@ -2632,6 +2632,59 @@ private:
     const LeaveSpotCase m_case;
 };
 
+// Plays back the screens seen in a wild battle, and whether the fight ends it.
+class ScriptedBattleEscapeActions : public BattleEscapeActions{
+public:
+    std::vector<BattleScreen> screens;
+    bool fight_ends = true;
+    std::string calls;
+
+    virtual BattleScreen wait_for_screen() override{
+        //  Past the script, the battle menu stays up: a run that never works.
+        return m_screen < screens.size() ? screens[m_screen++] : BattleScreen::BATTLE_MENU;
+    }
+    virtual void try_run() override{ add("run"); }
+    virtual bool fight() override{ add("fight"); return fight_ends; }
+
+private:
+    void add(const std::string& name){
+        calls += (calls.empty() ? "" : " ") + name;
+    }
+    size_t m_screen = 0;
+};
+
+class Test_BBQEscapeBattle : public UnitTest{
+public:
+    Test_BBQEscapeBattle(
+        const std::string& name, std::vector<BattleScreen> screens, bool fight_ends,
+        EscapeResult expected, std::string calls
+    )
+        : UnitTest("PokemonSV::BBQEscapeBattle - " + name)
+        , m_screens(std::move(screens)), m_fight_ends(fight_ends), m_expected(expected), m_calls(std::move(calls))
+    {}
+
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        NullLogger logger;
+        ScriptedBattleEscapeActions actions;
+        actions.screens = m_screens;
+        actions.fight_ends = m_fight_ends;
+        const EscapeResult got = escape_battle(logger, actions);
+        if (got != m_expected){
+            return "Expected " + escape_result_to_string(m_expected) + ", got " + escape_result_to_string(got);
+        }
+        if (actions.calls != m_calls){
+            return "Expected steps \"" + m_calls + "\", got \"" + actions.calls + "\"";
+        }
+        return true;
+    }
+
+private:
+    const std::vector<BattleScreen> m_screens;
+    const bool m_fight_ends;
+    const EscapeResult m_expected;
+    const std::string m_calls;
+};
+
 void add_tests_BBQLeaveSpot(UnitTestDatabase& database){
     using enum LeaveStep;
     const LeaveSpotCase cases[] = {
@@ -2719,6 +2772,28 @@ void add_tests_BBQLeaveSpot(UnitTestDatabase& database){
     );
     database.add<Test_BBQRecoverToOverworld>(
         "overworld never comes", std::vector<LeaveStep>{LeaveStep::FAILED}, std::vector<bool>{}, false, "back"
+    );
+
+    // escape_battle(): sneak-up, leaving a spot, and an ambush after the day skip.
+    using Screens = std::vector<BattleScreen>;
+    const BattleScreen MENU = BattleScreen::BATTLE_MENU, OVERWORLD = BattleScreen::OVERWORLD;
+    database.add<Test_BBQEscapeBattle>(
+        "fled on the first run", Screens{MENU, OVERWORLD}, true, EscapeResult::FLED, "run"
+    );
+    database.add<Test_BBQEscapeBattle>(
+        "fled on the third run", Screens{MENU, MENU, MENU, OVERWORLD}, true, EscapeResult::FLED, "run run run"
+    );
+    database.add<Test_BBQEscapeBattle>(
+        "already over", Screens{OVERWORLD}, true, EscapeResult::FLED, ""
+    );
+    database.add<Test_BBQEscapeBattle>(
+        "Arena Trap Trapinch can't be fled (R17 21:08)", Screens{}, true, EscapeResult::DEFEATED, "run run run fight"
+    );
+    database.add<Test_BBQEscapeBattle>(
+        "can't flee and the fight doesn't end", Screens{}, false, EscapeResult::FAILED, "run run run fight"
+    );
+    database.add<Test_BBQEscapeBattle>(
+        "screen not recognized", Screens{MENU, BattleScreen::OTHER}, true, EscapeResult::FAILED, "run"
     );
 }
 
