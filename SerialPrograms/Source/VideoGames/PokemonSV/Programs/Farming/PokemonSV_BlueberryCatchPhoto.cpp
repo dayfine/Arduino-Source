@@ -985,10 +985,13 @@ void coastal_plaza_to_grassland(ConsoleHandle& console, ProControllerContext& co
     pbf_move_left_joystick(context, {-0.57, +0.82}, 160ms, 400ms);
     pbf_press_button(context, BUTTON_L | BUTTON_PLUS, 160ms, 840ms);
     jump_glide_fly(console, context, inverted_flight, 3000ms, 3000ms, 3200ms);
+    context.wait_for_all_requests();
+    bbq_lab_event(console, context, "landed");
 
-    //Ride from the landing spot to the middle of the hill.
+    //Ride from the landing spot, at the hill's east edge, to its middle (the user's spot,
+    //2026-10-25: 115 px west of the fly point on the default map zoom; this lands 110).
     pbf_press_button(context, BUTTON_L, 160ms, 400ms);
-    pbf_move_left_joystick(context, {-0.2, +1}, 2000ms, 500ms);
+    pbf_move_left_joystick(context, {+0.15, +1}, 2000ms, 500ms);
     context.wait_for_all_requests();
 }
 

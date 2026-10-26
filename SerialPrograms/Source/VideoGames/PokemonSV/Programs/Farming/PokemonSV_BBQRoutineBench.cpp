@@ -222,7 +222,7 @@ public:
             ImageStats sky = image_stats(extract_box_reference(screen, ImageFloatBox(0.0, 0.0, 1.0, 0.25)));
             m_sky = (int)((sky.average.r + sky.average.g + sky.average.b) / 3 + 0.5);
         }
-        if (event == "route_done" || event == "no_battle" || event == "tera_turn" || event == "ambush"){
+        if (event == "route_done" || event == "no_battle" || event == "tera_turn" || event == "ambush" || event == "landed"){
             save_screenshot(stream, event);
         }
     }
