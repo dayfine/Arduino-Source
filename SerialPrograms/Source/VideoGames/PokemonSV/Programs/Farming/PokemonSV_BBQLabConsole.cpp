@@ -278,7 +278,10 @@ void BBQLabConsole::program(SingleSwitchProgramEnvironment& env, ProControllerCo
         out << "end\n";
         out.close();
         in.close();
+        //QFile::rename() does not overwrite: a rerun under the same name kept the old results.
+        QFile::remove(QString::fromStdString(out_prefix + ".out"));
         QFile::rename(QString::fromStdString(out_prefix + ".tmp"), QString::fromStdString(out_prefix + ".out"));
+        QFile::remove(root + "/done/" + file.fileName());
         QFile::remove(root + "/done/" + file.fileName());
         QFile::rename(file.absoluteFilePath(), root + "/done/" + file.fileName());
         if (!keep_going){
