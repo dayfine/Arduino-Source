@@ -495,7 +495,10 @@ void BBQSoloFarmer::program(SingleSwitchProgramEnvironment& env, ProControllerCo
         const std::string dir = SCREENSHOTS_PATH() + "BBQReference/" + now_to_filestring() + "/";
         QDir().mkpath(QString::fromStdString(dir));
         env.log("Saving reference screenshots to " + dir);
-        set_bbq_lab_event_hook([dir](VideoStream& stream, ProControllerContext&, const std::string& event){
+        set_bbq_lab_event_hook([dir](VideoStream& stream, ProControllerContext& context, const std::string& event){
+            //Show the state after the queued presses, not partway through them (R19:
+            //"route_done" frames showed the ride still out, before the dismount ran).
+            context.wait_for_all_requests();
             VideoSnapshot screen = stream.video().snapshot();
             if (screen.frame){
                 const std::string& quest = bbq_lab_flags().quest_label;

@@ -459,6 +459,9 @@ void quest_photo(
     }
     context.wait_for_all_requests();
     leave_quest_area(info, console, context, BBQ_OPTIONS, current_quest);
+    if (quest_spot_needs_reload(current_quest)){
+        skip_day_at_quest_spot(info, console, context);
+    }
 }
 
 void quest_catch_navi(

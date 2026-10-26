@@ -1438,8 +1438,11 @@ void recover_to_overworld_at_start(const ProgramInfo& info, VideoStream& stream,
 }
 
 bool quest_spot_needs_reload(BBQuests quest){
-    //A photo leaves its Pokemon there; a catch removes it.
+    //A photo leaves its Pokemon there; a catch removes it. Photo-fly's Alolan Geodude
+    //spawns about 40% of the time: a retry needs the spot reloaded (R19: 0 of 4 retries
+    //on the same empty slope; a real board pass on the console 2026-10-26).
     switch (quest){
+    case BBQuests::photo_fly:
     case BBQuests::sneak_up:
     case BBQuests::tera_self_defeat:
     case BBQuests::wild_tera:
@@ -1641,14 +1644,12 @@ void quest_sneak_up(
     int ret = run_until<ProControllerContext>(
         console, context,
         [&](ProControllerContext& context){
-            //Anything that hasn't noticed us counts. The Pride Rock target went missing
-            //(R19: 0 of 4 after the outbreak ended); the Slowpoke on the Coastal beach
-            //barely react. Turn left to face them, as for the photo.
-            central_to_slowpoke_beach(info, console, context, BBQ_OPTIONS);
-            pbf_press_button(context, BUTTON_PLUS, 160ms, 840ms);
-            pbf_move_right_joystick(context, {-1, 0}, 250ms, 300ms);
+            //The target must not have noticed us: a battle with a Coastal beach Slowpoke
+            //that faced us did not count (console, 2026-10-26).
+            central_to_pride_rock(info, console, context, BBQ_OPTIONS);
 
-            //Look around if the first throw starts nothing.
+            //Pride Rock's target is sometimes missing; look around if the first throw
+            //starts nothing.
             if (!send_out_and_look_around(console, context, std::chrono::seconds(15), "the target")){
                 //A thrown ball can start the battle after the look ends (R17 19:47: 0.5 s
                 //later, as the map opened). Keep watching a little longer.

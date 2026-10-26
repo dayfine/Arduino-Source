@@ -3261,6 +3261,7 @@ void add_tests_BBQLabTools(UnitTestDatabase& database){
     //  R17 19:41: the bath flew to Savanna Plaza to leave, then sneak-up flew there again.
     database.add<Test_BBQSpotNeedsReload>("wash_pokemon", BBQuests::wash_pokemon, false);
     database.add<Test_BBQSpotNeedsReload>("photo_swim", BBQuests::photo_swim, false);
+    database.add<Test_BBQSpotNeedsReload>("photo_fly (Geodude ~40% spawn, R19)", BBQuests::photo_fly, true);
     database.add<Test_BBQSpotNeedsReload>("photo_flying", BBQuests::photo_flying, false);
     database.add<Test_BBQSpotNeedsReload>("sandwich_three", BBQuests::sandwich_three, false);
     database.add<Test_BBQSpotNeedsReload>("hatch_egg", BBQuests::hatch_egg, false);

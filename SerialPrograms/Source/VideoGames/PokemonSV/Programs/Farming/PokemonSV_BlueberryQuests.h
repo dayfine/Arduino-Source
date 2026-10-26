@@ -231,6 +231,10 @@ void quest_travel_500(
 //screen. Throws if the overworld never comes back.
 void recover_to_overworld_at_start(const ProgramInfo& info, VideoStream& stream, ProControllerContext& context);
 
+//Skip a day from a quest spot so its Pokemon respawn; away from Central Plaza, flee or
+//fight a wild Pokemon that attacks right after.
+void skip_day_at_quest_spot(const ProgramInfo& info, ConsoleHandle& console, ProControllerContext& context);
+
 //Whether a quest's spot has to reload before it is used again: the quests that defeat,
 //catch or alert its wild Pokemon. Photos, the bath, sandwiches, eggs, raids and Auto
 //Battle leave it as it was.

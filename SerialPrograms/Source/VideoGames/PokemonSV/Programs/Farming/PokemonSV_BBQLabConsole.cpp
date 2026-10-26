@@ -4,6 +4,7 @@
  *
  */
 
+#include <algorithm>
 #include <fstream>
 #include <map>
 #include <set>
@@ -226,6 +227,34 @@ public:
             resume_game_from_home(console, context);
         }else if (cmd == "hill"){                           //  Coastal Plaza fly point -> middle of the hill
             coastal_plaza_to_grassland(console, context, m_options.INVERTED_FLIGHT);
+        }else if (cmd == "quest"){                          //  quest slug [max_rerolls]: reroll blue slots until it is on the board, run it, check the board
+            const BBQuests target = BBQuests_string_to_enum(w.at(1));
+            const int max_rerolls = (int)num(2, 15);
+            std::vector<BBQuests> quests = read_quests(info, console, context, m_options);
+            int rerolls = 0;
+            while (std::find(quests.begin(), quests.end(), target) == quests.end()){
+                if (rerolls >= max_rerolls){
+                    throw ParseException("quest: " + w.at(1) + " not drawn after " + std::to_string(rerolls) + " rerolls.");
+                }
+                //A blue slot (10 BP); leave red ones (50 BP).
+                size_t slot = quests.size();
+                for (size_t i = 0; i < quests.size(); i++){
+                    if (reroll_cost(quests[i]) == 10){
+                        slot = i;
+                        break;
+                    }
+                }
+                if (slot == quests.size()){
+                    throw ParseException("quest: no blue slot to reroll.");
+                }
+                reroll_quest_slot(info, console, context, m_options, quests, slot);
+                rerolls++;
+                quests = read_quests(info, console, context, m_options);
+            }
+            out << "rerolls " << rerolls << "\n";
+            uint8_t eggs = 0;
+            const bool done = process_and_do_quest(m_env, console, context, const_cast<BBQOption&>(m_options), target, eggs);
+            out << "quest " << w.at(1) << " " << (done ? "completed" : "not completed") << "\n";
         }else if (cmd == "tera-self"){
             quest_tera_self_defeat(info, console, context, m_options);
         }else if (cmd == "sneak-up"){
