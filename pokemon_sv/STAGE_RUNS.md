@@ -70,6 +70,7 @@ wall-clock, longest gap 10.5 min. That build has no BP check, so that line fails
 | S1 | 2026-10-27 13:21–13:23 | invalid | KI-14 on the first quest. |
 | S0b | 2026-10-27 13:25–13:49 | **pass** | 8 quests in 24 min, 533 BP/h wall; BP check OK (2/2 reroll windows) |
 | S1b | 2026-10-27 13:49–14:21 | **pass** | 8 quests in 32 min, 650 BP/h wall; BP check OK (3/3 windows, every reroll confirmed); longest gap 10.9 min |
+| S1c | 2026-10-27 14:31–14:56 | **pass** | targeted run for #4 and #25: save every 2 quests, 6 quests, flying rows removed from the exclusions table. Saves at 2, 4 and 7 completions (7 crosses the milestone at 6 without landing on it); 3 quests not possible rerolled on sight, each confirmed; BP check OK (4/4). A first try at 14:30 failed in 10 s on a dimmed screen (KI-15). |
 
 Both were re-run with Number of eggs 0 and Out of eggs: Reroll (the boxes have no eggs).
 
@@ -103,5 +104,25 @@ Both were re-run with Number of eggs 0 and Out of eggs: Reroll (the boxes have n
 - [x] no stretch over 15 min without a completion
 - [x] no stop by the program
 
+### S1c: stage 1, 2026-10-27 14:31 → 14:56 (25 min), PASS
+
+- Log: `/Users/difan/Library/Application Support/SerialPrograms/Profiles/bbq-s1/SerialPrograms.log` (run 4 of 4)
+- Stats: Quests Completed 7 · Saves 3 · BP Earned 270 · BP Spent 40 · Net BP 230 · BP/hour 566
+- Wall-clock net BP/h: 556
+- Attempts 8, failed 1, rerolls 4 (4 confirmed) (+0 whole-panel)
+- Longest stretch without a completion: 6.2 min; stretches over 15 min: 0
+- BP check: OK. Balance 14044 -> 14274 (change 230), stats net 230. Rerolls expected to cost 40 BP; 4/4 reroll windows matched the reads.
+- Ended by: the program (finished or stopped itself)
+
+- [x] stats show BP
+- [x] BP check OK
+- [x] no crash or program error
+- [x] no stretch over 15 min without a completion
+- [x] no stop by the program
+
 One 8-quest run says nothing about BP/h: S1b drew an easier board. Both runs show the stage
 works on the real game and the BP accounting closes exactly.
+
+Not seen on the Switch: #5 (give up when rerolls change nothing; needs an empty BP balance) and
+#6's "failed quest still on the panel" (with Out of retries: Reroll every failure is rerolled
+first). Both are covered by the BBQFarmerRounds unit tests, including the stuck cases #53 pins.
