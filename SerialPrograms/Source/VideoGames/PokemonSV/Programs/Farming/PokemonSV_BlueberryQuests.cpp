@@ -1482,7 +1482,11 @@ void leave_quest_area(
     //The day skip that follows respawns the spot only from far enough away. The closest
     //fly point can be too near: after a skip at Savanna Plaza, Pride Rock's Pyroar was
     //missing 2/2 (console 2026-10-26; R21 photo 0/6), and 3/3 there after a skip at
-    //Central Plaza. Leave for Central Plaza.
+    //Central Plaza. Catches agree: a catch at a spot the run already used passed 14/24
+    //when the previous attempt there ended at Central Plaza, 1/6 after a skip at the
+    //closest fly point and 2/9 after staying (R8-R22 logs). R21 ran without this and
+    //its typed catches fell to 3/8. Leave for Central Plaza; don't turn this off to
+    //save the flight.
     if (fly_directly && !BBQ_OPTIONS.RELOAD_FROM_CENTRAL){
         //Staying through the day skip kept a defeated Pokemon from respawning
         //(Tera-self 9/15 when it stayed, 4/5 when it left). A battle while leaving (a
@@ -1563,7 +1567,9 @@ void central_to_pride_rock(
     pbf_move_left_joystick(context, {+1, 0}, 160ms, 400ms);
 
     pbf_press_button(context, BUTTON_L, 160ms, 400ms);
-    pbf_move_left_joystick(context, {0, +1}, 800ms, 400ms);
+    //The glide lands on the rock every time; an 800 ms walk went off its right
+    //edge 2 of 6 times (console 2026-10-26). 300 ms stays on it, 6 of 6.
+    pbf_move_left_joystick(context, {0, +1}, 300ms, 400ms);
 
     //Turn slightly for switch 1
     if (console.state().console_type() == ConsoleType::Switch1){

@@ -149,12 +149,17 @@ CameraAngle quest_photo_navi(
             pbf_move_left_joystick(context, {+1, 0}, 160ms, 400ms);
 
             pbf_press_button(context, BUTTON_L, 160ms, 400ms);
-            pbf_move_left_joystick(context, {0, +1}, 800ms, 400ms);
+            //The glide lands on the rock every time; an 800 ms walk went off its right
+            //edge 2 of 6 times (console 2026-10-26). 300 ms stays on it, 6 of 6.
+            pbf_move_left_joystick(context, {0, +1}, 300ms, 400ms);
 
             //Turn slightly for switch 1
             if (console.state().console_type() == ConsoleType::Switch1){
                 pbf_move_left_joystick(context, {-1, +1}, 160ms, 400ms);
             }
+            //After the shorter walk Pyroar stands to the right, outside the photo box
+            //(console 2026-10-26, 2 of 2). Turn the camera about 30 degrees right.
+            pbf_move_right_joystick(context, {+1, 0}, 150ms, 400ms);
 
             break;
         case BBQuests::photo_bug: case BBQuests::photo_rock:
@@ -290,7 +295,58 @@ CameraAngle quest_photo_navi(
 }
 
 //Open photo mode, tilt the camera, take the photo and return to the overworld.
-bool take_photo(ConsoleHandle& console, ProControllerContext& context, CameraAngle move_camera){
+//Pyroar wanders on Pride Rock: in the photo box, past either edge, above it, or out of
+//view behind the slope (console 2026-10-26, 6 photos). Photo mode moves the camera to the
+//player, so a Pyroar centered in the overworld sits at the right edge of the photo. Turn
+//the photo-mode camera to its red mane instead.
+static void aim_photo_at_red_mane(ConsoleHandle& console, ProControllerContext& context){
+    size_t turns = 0;
+    for (size_t step = 0; step < 8; step++){
+        context.wait_for_all_requests();
+        VideoSnapshot screen = console.video().snapshot();
+        if (!screen.frame){
+            return;
+        }
+        const ImageViewRGB32& image = *screen.frame;
+        const size_t width = image.width();
+        const size_t height = image.height();
+        size_t count = 0;
+        double sum_x = 0;
+        for (size_t y = height / 8; y < height * 7 / 8; y += 4){
+            for (size_t x = 0; x < width; x += 4){
+                //Photo mode's button guide (left) and toolbar (bottom).
+                if (x < width * 2 / 10 || y > height * 7 / 10){
+                    continue;
+                }
+                const Color pixel(image.pixel(x, y));
+                if (pixel.red() > 170 && pixel.green() < 70 && pixel.blue() < 80){
+                    count++;
+                    sum_x += (double)x / width;
+                }
+            }
+        }
+        if (count < 30){
+            console.log("Pyroar mane: none (look " + std::to_string(step + 1) + ").");
+            if (turns >= 3){
+                break;
+            }
+            //About a quarter turn.
+            pbf_move_right_joystick(context, {+1, 0}, 450ms, 300ms);
+            turns++;
+            continue;
+        }
+        const double dx = sum_x / count - 0.5;
+        console.log("Pyroar mane at x=" + std::to_string(sum_x / count) + ", " + std::to_string(count) + " samples.");
+        if (dx < 0.05 && dx > -0.05){
+            break;
+        }
+        //About 350 ms pans the camera one frame width.
+        pbf_move_right_joystick(context, {dx > 0 ? +1.0 : -1.0, 0}, Milliseconds((int64_t)(std::abs(dx) * 350) + 40), 300ms);
+    }
+    bbq_lab_event(console, context, "aimed");
+}
+
+bool take_photo(ConsoleHandle& console, ProControllerContext& context, CameraAngle move_camera, bool aim_at_red_mane = false){
     //Take photo.
     console.log("Taking photo.");
     bbq_lab_event(console, context, "route_done");
@@ -305,6 +361,9 @@ bool take_photo(ConsoleHandle& console, ProControllerContext& context, CameraAng
         pbf_move_right_joystick(context, {0, +1}, 400ms, 160ms);
     }else if (move_camera == CameraAngle::down){
         pbf_move_right_joystick(context, {0, -1}, 400ms, 160ms);
+    }
+    if (aim_at_red_mane){
+        aim_photo_at_red_mane(console, context);
     }
     context.wait_for_all_requests();
     bbq_lab_event(console, context, "photo");
@@ -422,23 +481,27 @@ void quest_photo(
 
                 move_camera = quest_photo_navi(info, console, context, BBQ_OPTIONS, current_quest);
 
-                take_photo(console, context, move_camera);
+                take_photo(
+                    console, context, move_camera,
+                    current_quest == BBQuests::photo_savanna || current_quest == BBQuests::photo_normal || current_quest == BBQuests::photo_fire
+                );
                 if (current_quest == BBQuests::photo_fly){
-                    //The Geodude stands in the box, past its right edge, or walks up
-                    //close below it (console 2026-10-26, 8 rounds). Two more photos:
-                    //turned right, and tilted down. Photo mode did not open twice right
-                    //after the previous photo, so each one waits and is retried once.
-                    auto another_photo = [&](CameraAngle angle){
+                    //The Geodude stands in the box or to either side of it (console
+                    //2026-10-26, 8 rounds; R22 3 of 6 tries). Two more photos, turned
+                    //about 30 degrees left and right (450 ms turns about 90). Photo mode
+                    //did not open twice right after the previous photo, so each one
+                    //waits and is retried once.
+                    auto another_photo = [&](){
                         pbf_wait(context, 1000ms);
-                        if (!take_photo(console, context, angle)){
+                        if (!take_photo(console, context, move_camera)){
                             pbf_wait(context, 1000ms);
-                            take_photo(console, context, angle);
+                            take_photo(console, context, move_camera);
                         }
                     };
-                    pbf_move_right_joystick(context, {+1, 0}, 200ms, 400ms);
-                    another_photo(CameraAngle::none);
-                    pbf_move_right_joystick(context, {-1, 0}, 200ms, 400ms);
-                    another_photo(CameraAngle::down);
+                    pbf_move_right_joystick(context, {-1, 0}, 150ms, 400ms);
+                    another_photo();
+                    pbf_move_right_joystick(context, {+1, 0}, 300ms, 400ms);
+                    another_photo();
                 }
                 took_photo = true;
                 context.wait_for_all_requests();
@@ -562,7 +625,9 @@ void quest_catch_navi(
             pbf_move_left_joystick(context, {+1, 0}, 160ms, 400ms);
 
             pbf_press_button(context, BUTTON_L, 160ms, 400ms);
-            pbf_move_left_joystick(context, {0, +1}, 800ms, 400ms);
+            //The glide lands on the rock every time; an 800 ms walk went off its right
+            //edge 2 of 6 times (console 2026-10-26). 300 ms stays on it, 6 of 6.
+            pbf_move_left_joystick(context, {0, +1}, 300ms, 400ms);
 
             //Turn slightly for switch 1
             if (console.state().console_type() == ConsoleType::Switch1){
@@ -709,6 +774,9 @@ void quest_catch_navi(
             pbf_wait(context, 2400ms);
             context.wait_for_all_requests();
 
+            //Geodude stands near the landing but does not walk in: R22 waited 0 of 2
+            //times into a battle, once with a Geodude a few steps to the right.
+            send_out_and_look_around(console, context, std::chrono::seconds(6), "Geodude");
             break;
         case BBQuests::catch_steel:
             console.log("Catch: Steel");
