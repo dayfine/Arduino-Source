@@ -91,6 +91,11 @@ verified reroll now gets an exact BP window). 76 BBQ tests pass. Binary SHA-256 
 the binary is unchanged in behavior. Not run on the Switch yet. When #16/#52 rebase onto stage 1, this
 wiring is the change they take.
 
+**#16/#52 rebased onto stage 1 (2026-10-27):** `bbq/bp-status` 78c00504d (#25 + merge of
+U#1628's branch + #16, 71 tests) → `bbq/bp-check` 852b61cb0 (#52, 76 tests). They take the BP
+wiring from `test/stage01`; #52 now also logs the BP check when a run stops early. Send order
+is therefore #50, #51, #7, stage 1, then #16 and #52 (stage 0's BP stats land after stage 1).
+
 ## Current working set (10)
 
 Stage 0: A2 #50, P1 #51, #7, #16, #52. Stage 1: #37, #38, #53, #8, #6, #10, #25.
