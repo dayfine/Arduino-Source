@@ -20,6 +20,7 @@ every run; move fixed ones to "Fixed" with the run that proved it.
 | KI-12 | code | `BlueberryQuests.cpp` 2.4k, `BlueberryCatchPhoto.cpp` 1.4k, `PokemonSV_Tests.cpp` 3.4k lines on lab; limit 1,000 | lab/r10 | P1–P3 | Review risk |
 | KI-13 | detector | `MapDestinationMenuDetector` reads Polar snow as the destination menu; upstream AutoStory 28–30 already works around it by zooming out | R17: Polar Classroom 1 direct flights 0/4 | A1 | Medium |
 | KI-14 | hatch-egg | With no egg in the boxes, the egg quest logs "No egg found" and returns inside the box screen without failing; the next check counts it as done, and the next panel open reads the X menu ("Picnic") and stops the program. `main` and lab both. | S0 2026-10-27 13:08 (after 8 quests), S1 13:23 (first quest) | stage 1 follow-up: leave the box and fail the attempt; at start, check for an egg when Number of eggs > 0 and fail early (setup error) | High when the box runs out |
+| KI-15 | start | After about 5 idle minutes the Switch dims the screen; started then, the farmer fails in 10 s with "open_map_from_overworld(): No overworld state found" | S1c 2026-10-27 14:30, after 8 idle minutes | preflight: press B (or another harmless button) and wait before the first overworld check | Low (start only) |
 
 ## Fixed (kept for regression checks)
 

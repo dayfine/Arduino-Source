@@ -189,6 +189,7 @@ will consume and fails early with a `UserSetupError` that says what to fix:
 
 | Check | When | How | Rule |
 |---|---|---|---|
+| Screen awake | always | press B once and wait ~1 s before the first overworld check (KI-15) | none; harmless on the overworld |
 | Eggs | Number of eggs > 0 | open the box once, look for an egg (the hatch quest's own scan) | none → setup error, or treat as out of eggs so Out of eggs decides |
 | Balls | always (catch quests) | read the count of the selected ball, and of Quick Balls when that option is on, from the bag | need ≥ 0.6 × Number of quests × 1.5, capped at 999; else setup error naming the shortfall |
 | Sandwich ingredients | optional checklist entry, off by default | read the picnic ingredient list | only for the sandwich quests; missing → reroll those quests instead of failing |
