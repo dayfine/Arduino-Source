@@ -68,5 +68,40 @@ wall-clock, longest gap 10.5 min. That build has no BP check, so that line fails
 |---|---|---|---|
 | S0 | 2026-10-27 12:47–13:09 | invalid | 8 quests in 21 min (617 BP/h wall), then KI-14: an egg quest with no egg left the game in the box, the next panel read failed and the program stopped, so no BP check line. The error report was saved without a screenshot and the app did not crash (#50's case). |
 | S1 | 2026-10-27 13:21–13:23 | invalid | KI-14 on the first quest. |
+| S0b | 2026-10-27 13:25–13:49 | **pass** | 8 quests in 24 min, 533 BP/h wall; BP check OK (2/2 reroll windows) |
+| S1b | 2026-10-27 13:49–14:21 | **pass** | 8 quests in 32 min, 650 BP/h wall; BP check OK (3/3 windows, every reroll confirmed); longest gap 10.9 min |
 
 Both were re-run with Number of eggs 0 and Out of eggs: Reroll (the boxes have no eggs).
+
+### S0b: stage 0, 2026-10-27 13:25 → 13:49 (24 min), PASS
+
+- Log: `/Users/difan/Library/Application Support/SerialPrograms/Profiles/bbq-s0/SerialPrograms.log` (run 2 of 2)
+- Stats: Quests Completed 8 · Saves 0 · BP Earned 270 · BP Spent 60 · Net BP 210 · BP/hour 543
+- Wall-clock net BP/h: 529
+- Attempts 10, failed 2, rerolls 2 (+0 whole-panel)
+- Longest stretch without a completion: 4.6 min; stretches over 15 min: 0
+- BP check: OK. Balance 13484 -> 13694 (change 210), stats net 210. Rerolls expected to cost 60 BP; 2/2 reroll windows matched the reads.
+- Ended by: the program (finished or stopped itself)
+
+- [x] stats show BP
+- [x] BP check OK
+- [x] no crash or program error
+
+### S1b: stage 1, 2026-10-27 13:49 → 14:21 (32 min), PASS
+
+- Log: `/Users/difan/Library/Application Support/SerialPrograms/Profiles/bbq-s1/SerialPrograms.log` (run 2 of 2)
+- Stats: Quests Completed 8 · Saves 0 · BP Earned 380 · BP Spent 30 · Net BP 350 · BP/hour 656
+- Wall-clock net BP/h: 650
+- Attempts 11, failed 3, rerolls 3 (3 confirmed) (+0 whole-panel)
+- Longest stretch without a completion: 10.9 min; stretches over 15 min: 0
+- BP check: OK. Balance 13694 -> 14044 (change 350), stats net 350. Rerolls expected to cost 30 BP; 3/3 reroll windows matched the reads.
+- Ended by: the program (finished or stopped itself)
+
+- [x] stats show BP
+- [x] BP check OK
+- [x] no crash or program error
+- [x] no stretch over 15 min without a completion
+- [x] no stop by the program
+
+One 8-quest run says nothing about BP/h: S1b drew an easier board. Both runs show the stage
+works on the real game and the BP accounting closes exactly.
