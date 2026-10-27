@@ -181,6 +181,26 @@ stage 1, since that is where attempt logs explain a stall.
 **Order of the upstream queue follows the stages**, not the chain letters: finish stage 0, then
 stage 1, then 2 and 3 (independent, can interleave), then 4, then 5.
 
+## Preflight checks (stage 1 follow-up, from the S0/S1 runs)
+
+The first S0 and S1 runs died on a setup problem the program could have caught at start (KI-14:
+no egg in the boxes). A preflight step, run once before the first round, checks what the run
+will consume and fails early with a `UserSetupError` that says what to fix:
+
+| Check | When | How | Rule |
+|---|---|---|---|
+| Eggs | Number of eggs > 0 | open the box once, look for an egg (the hatch quest's own scan) | none → setup error, or treat as out of eggs so Out of eggs decides |
+| Balls | always (catch quests) | read the count of the selected ball, and of Quick Balls when that option is on, from the bag | need ≥ 0.6 × Number of quests × 1.5, capped at 999; else setup error naming the shortfall |
+| Sandwich ingredients | optional checklist entry, off by default | read the picnic ingredient list | only for the sandwich quests; missing → reroll those quests instead of failing |
+
+Ball burn rate, measured over the 10 runs in the R19 profile (124 completed quests): 50 normal
+throws + 19 Quick Balls = 0.56 balls per completed quest, 1.0 per catch attempt. 1.5× margin
+covers the catch-heavy boards. Reading the count in the battle ball menu (already opened by
+"Selecting ball") is the cheaper alternative: stop when the count falls below one quest's worth.
+
+Fix in the egg quest itself regardless: with no egg found, leave the box and fail the attempt
+instead of returning in the box screen.
+
 ## Risk grades and mapping to existing PRs
 
 Risk is the chance a PR breaks something that works today, not how hard it is to write.

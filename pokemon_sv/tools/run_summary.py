@@ -44,7 +44,7 @@ def parse_stats(text):
 def summarize(lines):
     s = {
         "start": ts(lines[0]), "end": ts(lines[-1]), "stats": {}, "bp_check": None,
-        "attempts": 0, "failed": 0, "rerolls": 0, "reroll_all": 0,
+        "attempts": 0, "failed": 0, "rerolls": 0, "verified_rerolls": 0, "reroll_all": 0,
         "errors": [], "stops": [], "user_stop": False, "completions": [],
     }
     last_done = 0
@@ -62,10 +62,14 @@ def summarize(lines):
             s["bp_check"] = msg.split("BP check:", 1)[1].strip()
         if "Doing quest." in line:
             s["attempts"] += 1
-        if "Quest did not complete" in line:
+        if "Quest did not complete successfully" in line:
             s["failed"] += 1
-        if re.search(r"Quest \d rerolled\.|Rerolling (the failed )?quest", line):
+        # main logs "Rerolling ... quest" per reroll; stage 1 also confirms each
+        # one with "Quest N rerolled."
+        if re.search(r"Rerolling (the failed |Egg )?quest", line):
             s["rerolls"] += 1
+        if re.search(r"Quest \d rerolled\.", line):
+            s["verified_rerolls"] += 1
         if "Rerolling all quests" in line:
             s["reroll_all"] += 1
         if "Received Stop Request" in line:
@@ -118,8 +122,10 @@ def main():
         print(f"- Wall-clock net BP/h: {net / hours:.0f}" if hours > 0 else "")
     except ValueError:
         pass
-    print(f"- Attempts {s['attempts']}, failed {s['failed']}, rerolls {s['rerolls']}"
-          f" (+{s['reroll_all']} whole-panel)")
+    rerolls = max(s["rerolls"], s["verified_rerolls"])
+    print(f"- Attempts {s['attempts']}, failed {s['failed']}, rerolls {rerolls}"
+          + (f" ({s['verified_rerolls']} confirmed)" if s["verified_rerolls"] else "")
+          + f" (+{s['reroll_all']} whole-panel)")
     print(f"- Longest stretch without a completion: {s['max_gap']:.1f} min; stretches over {STALL_MIN} min: {s['stalls']}")
     print(f"- BP check: {s['bp_check'] or 'not logged'}")
     print(f"- Ended by: {'user stop' if s['user_stop'] else 'the program (finished or stopped itself)'}"
