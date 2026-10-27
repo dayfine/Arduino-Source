@@ -158,7 +158,8 @@ At two upstream slots and recent merge pace (two or three a week) this is months
 ## Stages: what each group of PRs buys
 
 PRs land in stages. Each stage ends with something a user notices, a claim stated up front, and a
-2-hour run of upstream `main` plus that stage's PRs to check the claim, reported on
+2-hour run of upstream `main` plus that stage's PRs to check the claim (stages 0 and 1 first get
+30-minute smoke runs, see [STAGE_RUNS.md](STAGE_RUNS.md)), reported on
 ComputerControl#263. Refactors and seams ride inside the stage that needs them; no stage is only
 refactors. Baselines: `main` on 2026-10-20 made ~400 net BP/h, then 3.2 h with no completion;
 lab/r10 makes ~540–570 BP/h with no stalls (R22 543, R23 565 at 102 min). One 2-hour run varies
@@ -167,7 +168,7 @@ about ±20% with the board, so small claims need several runs.
 | Stage | User-visible result | Claim to check | Evidence so far | PRs |
 |---|---|---|---|---|
 | 0. Measure it | BP earned, spent, net and BP/h in the stats, checked at run end against what the rerolls should have cost; no crash when an error report has no screenshot | the end-of-run "BP check" line says OK; 0 crashes | lab: 5 crashes on 10-23, none since the fix | U#1628, #7, B3 #16, #52, A2 #50, P1 #51 |
-| 1. Never stuck | No stretch longer than 15 min without a completed quest | runs with a dead slot go from ~260 to ~600 BP/h; long runs ~400 → ~500+ (≈ +25–35%) | R5a 259 vs R5b 620 BP/h on one build once dead slots were rerolled; main's 3.2 h stall came from retrying one quest every round | U#1631, #37, #38, #53, #8, #6, #10, #25, #4, #5 |
+| 1. Never stuck | No stretch longer than 15 min without a completed quest | 0 stretches over 15 min without a completion, and no BP/h drop on a clean board. Gains only on boards with a dead slot or a stall (one such run: ~260 → ~600 BP/h); the lab's higher average comes from stages 3–5 | R5a 259 vs R5b 620 BP/h on one build once dead slots were rerolled; main's 3.2 h stall came from retrying one quest every round | U#1631, #37, #38, #53, #8, #6, #10, #25, #4, #5 |
 | 2. Gets home | Every flight checks where it landed; no program stop or 9-minute return from a wrong landing | 0 stops from navigation; every landing confirmed | 61/61 and 73/73 landings confirmed, 0 false retries (R5, R6); one return took 8 m 50 s before | A4, C2a, C2b, C3 #30, C4 |
 | 3. Shorter Auto Battle | Auto Battle quests stop at the target and heal only when low | Auto Battle 10: 337 → ~230 s; ≈ +40 BP/h (+7%) | measured in R4: 337 → 230 s, 0 heals in 24 passes | #15, #17, #18, #21, #31, #32 |
 | 4. Better quest choice | Quests ordered by BP per second; rerolls inside the open panel; fewer panel reads | reads per completion 4.0 → 2.9; reroll 14 → 4 s; ≈ +5% | R4 reads; lab console reroll timing | #12, #13, #22, #27, #26, F14, F15 |

@@ -82,6 +82,8 @@ loop stalls or wastes time today; #6, #5 and #4 each replace their scenario in p
 diffs show the behavior change. Fork PR bases form one chain; stage-4 PRs (#12, #13, #22,
 #26, #27) still sit on the old branches and need rebasing when stage 4 starts.
 
+**Stage runs:** S0 (`test/stage0` 23c6bdea5) and S1 (`test/stage01`), plan and results in [STAGE_RUNS.md](STAGE_RUNS.md).
+
 **Test build for the stage 0+1 run:** branch `test/stage01` c0025b745 = stage 1 + #50 + #1628 +
 #16 + #52, with the BP stats and end-of-run check re-wired into stage 1's game-actions seam (each
 verified reroll now gets an exact BP window). 76 BBQ tests pass. Binary SHA-256 prefix
