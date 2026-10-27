@@ -154,6 +154,70 @@ At two upstream slots and recent merge pace (two or three a week) this is months
 - **E and F already exist** as fork drafts and need rebasing, not rework (except the ⚠ ones).
 - **G is where the BP/h is.** Each route ships once its A/C/D parents land.
 
+## Risk grades and mapping to existing PRs
+
+Risk is the chance a PR breaks something that works today, not how hard it is to write.
+**L** = new code with no callers yet, a pure move, or an option that defaults off.
+**M** = changes a shared routine or detector other programs use, or a BBQ path that works today.
+**H** = changes what the farmer does on many quests at once, or a routine many programs call.
+"Can regress" names what to re-run before the PR advances. Existing PRs are fork PRs unless
+marked U (upstream).
+
+| Planned | Existing | Risk | Can regress | Check before publishing |
+|---|---|---|---|---|
+| U#1631 | U#1631 | L | nothing (move) | CI |
+| U#1628 | U#1628 | L | BP OCR only | CI (green) |
+| #7 | #7 | L | nothing (tests) | native tests |
+| B1 | #2 (trimmed) | L | log only, touches BBQ call sites | native tests + 30 min farmer |
+| B2 | #3 + lab hooks | L | off by default | native tests |
+| B3 | #16 | L | extra BP read at panel open (timing) | 30 min farmer |
+| P1 | — | L | nothing (move) | native tests |
+| P2 | — | L | nothing (move) | build |
+| P3 | — | L | nothing (move) | build |
+| A1 | lab 8be12b973 | **M** | every program that flies with `fly_to_overworld_from_map` (14 files) if the translucent menu reads under 700 on dark or night maps | detector tests on day/night/snow menus; AutoStory 28–30 flight |
+| A2 | lab 88052885c (part) | L | error reporting, all games | build |
+| A3 | lab d6908caa5 (part) | L | no callers | native tests |
+| A4 | lab (C theme) | L | no callers | detector tests |
+| A5 | lab b133298ea (part) | L | no callers | detector tests |
+| A6 | lab 6c7ce2315 (part) | L | no callers | detector tests |
+| A7 | lab f20d06c7b (part) | **M** | AutoStory ride calls (moved) | AutoStory build; ride toggle on Switch |
+| C1 | lab D1 | **M** | every BBQ flight; `fly_to_closest_pokecenter_on_map` callers (AutoStory) | Terarium flights ×10; AutoStory default unchanged |
+| C2a | #24 (core) | **M** | every BBQ plaza return | 1 h farmer |
+| C2b | #24 rest + lab | **M** | start-up and returns | 1 h farmer |
+| C3 | #30 | **M** | returns that used to retry forever | 1 h farmer |
+| C4 | replaces #34 | **M** | start-up position, all returns | start from Central / away |
+| C5a | lab D2 | **H** | every catch/photo leaving its spot; battle escape | 2 h farmer |
+| C5b | lab D2 | **H** | every quest's flight path | 2 h farmer |
+| C5c | lab D2 | **M** | reused-spot catches (14/24 reload rate) | bench catch ×10 |
+| D1 | lab D2 (escape part) | **H** | `run_from_battle` callers across SV | SV programs that flee (Let's Go hunts, AutoStory) |
+| D2 | lab 5451a7753, 1d9c4cb13 | L | options default off | build |
+| D3 | lab F | **M** | every BBQ catch | bench catch ×10 per type |
+| D4 | #23 | **M** | catch quests (behavior) | 1 h farmer |
+| E: #15 | #15 | **M** | Auto Battle quests (refactor) | Auto Battle ×5 |
+| E: #17 #18 #21 #31 #32 | same | **M** | Auto Battle kill counts and heals (behavior) | Auto Battle ×5 each |
+| E7 | lab K | **M** | Auto Battle and pickup | Auto Battle ×5 |
+| F: #37 | #37 | **M** | whole round loop (refactor) | 2 h farmer |
+| F: #38 #8 #6 | same | **M** | quest choice, reroll, retries | 1 h farmer |
+| F: #5 #4 #27 | same | L | guard / save / log only | native tests |
+| F: #10 | #10 | **H** | what happens after retries run out (945 lines) | 2 h farmer; split first |
+| F: #25 | #25 (replaces #9) | **M** | rerolls (behavior) | 1 h farmer |
+| F: #12 #13 #22 #26 | same | **M** | panel reads and batching | 1 h farmer |
+| F14 | replaces #28 | **H** | which quests run at all | 2 h farmer A/B vs previous |
+| F15 | lab J | **M** | changes the user's game options at start | start-up on a fresh profile |
+| G1 | lab M, H | **H** | 5 Pride Rock quests (photo normal/fire, catch normal, catch-any, sneak-up, Tera-self) | bench each ×5 |
+| G2 | lab O | **M** | catch bug | bench ×5 |
+| G3a | lab L | **M** | flying catch, Poison/Dark (KI-2) | bench ×5 |
+| G3b | lab L | **M** | Psychic photo, sneak-up at beach | bench ×5 |
+| G4 | lab N | **H** | photo-fly (KI-1, not ready) | bench ×10 |
+| G5 | lab 3612ce636 | L | Rock/Electric catch | bench ×5 |
+| G6 | #35 | L | Kleavor catch | bench ×3 |
+| G7 | #33 | L | egg hatch | hatch quest ×3 |
+| G8 | #29 + lab I | **M** | Make TM | Make TM ×3 |
+| Z1, Z2 | — | L | text only | — |
+
+Closed as superseded: #9 → #25/F14, #14 → #37, #20 → C1/C2b, #28 → F14, #34 → C4, #36 → G1/G3a.
+#19 is waiting on decision 4.
+
 ## Decisions
 
 1. **OverworldControls:** a new file. *Decided 2026-10-26.*

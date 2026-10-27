@@ -125,6 +125,8 @@ See [pokemon_sv/PR_WORKFLOW.md](pokemon_sv/PR_WORKFLOW.md). In short:
   faster, bounded Auto Battle quests.
 - [pokemon_sv/PR_PLAN.md](pokemon_sv/PR_PLAN.md): how all BBQ lab work
   becomes upstream PRs, by layer and chain, with a size estimate per PR.
+  Live status is in [pokemon_sv/PR_PROGRESS.md](pokemon_sv/PR_PROGRESS.md);
+  open problems in [pokemon_sv/KNOWN_ISSUES.md](pokemon_sv/KNOWN_ISSUES.md).
 - [pokemon_sv/PR_WORKFLOW.md](pokemon_sv/PR_WORKFLOW.md): where PRs live and
   how to write their descriptions.
 - [pokemon_sv/lab/MACOS_LOCAL_SIGNING.md](pokemon_sv/lab/MACOS_LOCAL_SIGNING.md): persistent lab signing, permission troubleshooting and reuse by other agents.
