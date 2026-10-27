@@ -13,11 +13,11 @@ Last updated: 2026-10-26 23:10. Fork `main` synced with upstream `main` (4e017f8
 upstream/main
 ├── ✅ U#1636 Tera battle only after confirmed entry
 ├── 🔵 U#1631 quest identity → Options module (L) ........ approved by kichithewolf
-│   └── 🟡 B1 #2 BBQ log lines (L) ......................... rebased locally onto 6c312f238, not pushed
-│       └── 🟡 B2 #3 snapshots (L) ......................... rebased locally, not pushed
+│   └── 🟢 B1 #2 BBQ log lines (L) ......................... c8ba680b3 on 6c312f238, 14/14
+│       └── 🟢 B2 #3 snapshots (L) ......................... e1d2a2de5, 16/16
 ├── 🔵 U#1628 BP reader crop (L) .......................... CI green after CommandLineTests#36 merged
-│   ├── 🟡 #7 quest detector tests (L) .................... rebased locally; README note → CommandLineTests follow-up
-│   └── 🟡 B3 #16 BP status (L) ........................... rebased locally, not pushed
+│   ├── 🟢 #7 quest detector tests (L) .................... a58ecebd8, 29/29; README note → CommandLineTests follow-up
+│   └── 🟢 B3 #16 BP status (L) ........................... 57ea3f413, 19/19
 │
 ├── P prep moves
 │   ├── 🟢 P1 #51 BBQ tests into PokemonSV_BBQTests.cpp (L) ... b9d9a10e0, 9/9 tests
@@ -59,8 +59,8 @@ upstream/main
 | — | 1 | U#1631 quest identity | L | open upstream, approved |
 | 1 | 0 | A2 #50 error report without stream | L | 🟢 ready |
 | 2 | 0 | P1 #51 BBQ tests file | L | 🟢 ready |
-| 3 | 0 | #7 quest detector tests (after U#1628) | L | 🟡 rebased, testing |
-| 4 | 0 | B3 #16 BP status (after U#1628) | L | 🟡 rebased, testing |
+| 3 | 0 | #7 quest detector tests (after U#1628) | L | 🟢 a58ecebd8, 29/29 |
+| 4 | 0 | B3 #16 BP status (after U#1628) | L | 🟢 57ea3f413, 19/19 |
 | 5 | 1 | #37 BBQGameActions seam | M | 🟡 needs rebase onto P1 |
 | 6 | 1 | #38 quest planner | M | 🟡 needs rebase onto P1 |
 | 7 | 1 | #8 verified reroll (fold in-panel reroll) | M | 🟡 needs rework |
@@ -68,7 +68,7 @@ upstream/main
 | 9 | 1 | #10 out-of-retries action (split first) | H | 🟡 needs split |
 | 10 | 1 | #25 reroll impossible quests on sight | M | 🟡 needs rebase |
 | 11 | 1 | #4 save milestones, #5 endless-reroll guard | L | 🟡 needs rebase |
-| 12 | 1 | B1 #2 logging, B2 #3 snapshots | L | 🟡 rebased, testing |
+| 12 | 1 | B1 #2 logging, B2 #3 snapshots | L | 🟢 c8ba680b3 14/14, e1d2a2de5 16/16 |
 
 ## Current working set (10)
 
@@ -77,6 +77,5 @@ Deferred to their stage: #2/#3 (stage 1 tail), D2, A6, P2, P3 (stage 5).
 
 ## Next up (low risk first)
 
-2. Push the four local rebases (#2, #3, #7, #16) after their build and tests.
 3. Stage 1: rebase #37 and #38 onto P1, then their children; split #10.
 4. After stage 1 is queued: stage 2 (#24 split, A4) and stage 3 (Auto Battle chain).
