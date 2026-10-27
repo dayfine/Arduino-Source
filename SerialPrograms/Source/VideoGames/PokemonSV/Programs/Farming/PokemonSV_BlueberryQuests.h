@@ -12,6 +12,7 @@
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
 #include "VideoGames/PokemonSV/Programs/ShinyHunting/PokemonSV_LetsGoTools.h"
 #include "VideoGames/PokemonSV/Options/PokemonSV_BBQOption.h"
+#include "PokemonSV_BBQPointsLedger.h"
 
 namespace PokemonAutomation{
     struct ProgramInfo;
@@ -67,14 +68,19 @@ std::vector<BBQuests> read_quests(
     int* BP = nullptr
 );
 
+//BP the game charges to reroll this quest: 50 for a red quest, 10 for a blue one.
+int reroll_cost(BBQuests quest);
+
 //Determine which quests are possible and which quests are not. (ex. no eggs, reroll egg hatcher.)
 //Quests not possible are removed from the list. If the list is empty, then reroll all items.
+//If ledger is not null, every reroll tells it what it should cost.
 std::vector<BBQuests> process_quest_list(
     const ProgramInfo& info,
     VideoStream& stream, ProControllerContext& context,
     const BBQOption& BBQ_OPTIONS,
     std::vector<BBQuests>& quest_list,
-    uint8_t& eggs_hatched
+    uint8_t& eggs_hatched,
+    BBQPointsLedger* ledger = nullptr
 );
 
 //Take the current quest and calls the function to do it, then checks the quest was successful. Returns true if so.

@@ -162,7 +162,7 @@ void BBQSoloFarmer::program(SingleSwitchProgramEnvironment& env, ProControllerCo
         while (quests_to_do.size() < 1){
             quest_list = read_quests(env.program_info(), env.console, context, BBQ_OPTIONS, &BP);
             record_BP();
-            quests_to_do = process_quest_list(env.program_info(), env.console, context, BBQ_OPTIONS, quest_list, eggs_hatched);
+            quests_to_do = process_quest_list(env.program_info(), env.console, context, BBQ_OPTIONS, quest_list, eggs_hatched, &bp_ledger);
 
             //Clear out the regular quest list.
             quest_list.clear();
@@ -220,6 +220,7 @@ void BBQSoloFarmer::program(SingleSwitchProgramEnvironment& env, ProControllerCo
     //No quest panel is read after the last batch, so read the balance once more.
     BP = read_BP(env.program_info(), env.console, context);
     record_BP();
+    env.log(bp_ledger.reconciliation(), bp_ledger.reconciled() ? COLOR_BLACK : COLOR_RED);
 
     if (BBQ_OPTIONS.FIX_TIME_WHEN_DONE){
         go_home(env.console, context);

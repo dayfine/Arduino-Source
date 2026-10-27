@@ -221,13 +221,28 @@ std::vector<BBQuests> read_quests(
     return quest_list;
 }
 
+int reroll_cost(BBQuests quest){
+    return red_quests.contains(quest) ? 50 : 10;
+}
+
 std::vector<BBQuests> process_quest_list(
     const ProgramInfo& info,
     VideoStream& stream, ProControllerContext& context,
     const BBQOption& BBQ_OPTIONS,
     std::vector<BBQuests>& quest_list,
-    uint8_t& eggs_hatched
+    uint8_t& eggs_hatched,
+    BBQPointsLedger* ledger
 ){
+    auto expect_reroll = [&](BBQuests quest){
+        if (ledger == nullptr){
+            return;
+        }
+        if (quest == BBQuests::UnableToDetect){
+            ledger->skip_spend_check();
+        }else{
+            ledger->expect_spend(reroll_cost(quest));
+        }
+    };
     std::vector<BBQuests> quests_to_do;
     bool rerolled = false;
     std::vector<std::unique_ptr<BBQuestTableRow>> exclusions_table = BBQ_OPTIONS.QUEST_EXCLUSIONS.copy_snapshot();
@@ -272,6 +287,7 @@ std::vector<BBQuests> process_quest_list(
                     context.wait_for_all_requests();
 
                     rerolled = true;
+                    expect_reroll(n);
                     press_Bs_to_back_to_overworld(info, stream, context);
 
                     break;
@@ -336,6 +352,7 @@ std::vector<BBQuests> process_quest_list(
 
                             //Prevent error/rerolling again at the end (allows program to read the rerolled quests)
                             rerolled = true;
+                            expect_reroll(n);
 
                             press_Bs_to_back_to_overworld(info, stream, context);
                             break;
@@ -379,6 +396,7 @@ std::vector<BBQuests> process_quest_list(
         context.wait_for_all_requests();
 
         for (string::size_type i = 0; i < quest_list.size(); i++){
+            expect_reroll(quest_list[i]);
             pbf_press_button(context, BUTTON_A, 160ms, 400ms);
             pbf_press_button(context, BUTTON_A, 160ms, 400ms); //Yes.
             pbf_wait(context, 800ms);
