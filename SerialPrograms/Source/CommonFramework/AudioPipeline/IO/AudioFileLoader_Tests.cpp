@@ -4,7 +4,7 @@
  *
  *  WAV-native file input: WavFile header parsing (PCM 8/16/32-bit and
  *  IEEE-float), probe_wav_native_format(), and AudioFileLoader's batch
- *  API (loadFullAudio still converts to a requested format; the sample
+ *  API (load_full_audio still converts to a requested format; the sample
  *  rate must match that request). The test WAVs are generated on the fly
  *  in the system temp directory; no audio I/O is involved.
  *
@@ -225,7 +225,7 @@ public:
 
 
 //
-//  loadFullAudio() with a matching target: the file's native bytes come
+//  load_full_audio() with a matching target: the file's native bytes come
 //  back unconverted.
 //
 class LoadFullNativePassthroughTest : public UnitTest{
@@ -246,16 +246,16 @@ public:
         target.setChannelCount(2);
 
         AudioFileLoader loader(nullptr, path, target);
-        const auto ret = loader.loadFullAudio();
+        const auto ret = loader.load_full_audio();
         if (std::get<0>(ret) == nullptr){
-            return "loadFullAudio() returned null for a matching-format float wav.";
+            return "load_full_audio() returned null for a matching-format float wav.";
         }
         if (std::get<1>(ret) != data.size()){
             return "Length mismatch: expected " + std::to_string(data.size())
                 + " bytes, got " + std::to_string(std::get<1>(ret)) + ".";
         }
         if (std::memcmp(std::get<0>(ret), data.data(), data.size()) != 0){
-            return "loadFullAudio() modified the native float data.";
+            return "load_full_audio() modified the native float data.";
         }
         return true;
     }
@@ -264,7 +264,7 @@ public:
 
 
 //
-//  loadFullAudio() converts the sample type to the requested format
+//  load_full_audio() converts the sample type to the requested format
 //  (float, normalized by the type's max value, as the pipeline defines it).
 //
 class LoadFullS16ToFloatTest : public UnitTest{
@@ -284,16 +284,18 @@ public:
         target.setChannelCount(2);
 
         AudioFileLoader loader(nullptr, path, target);
-        const auto ret = loader.loadFullAudio();
+        const auto ret = loader.load_full_audio();
         if (std::get<0>(ret) == nullptr){
-            return "loadFullAudio() returned null for the S16 wav.";
+            return "load_full_audio() returned null for the S16 wav.";
         }
         if (std::get<1>(ret) != samples.size() * sizeof(float)){
             return "Length mismatch: expected " + std::to_string(samples.size() * sizeof(float))
                 + " bytes, got " + std::to_string(std::get<1>(ret)) + ".";
         }
         const float* out = (const float*)std::get<0>(ret);
-        const float rcp = 1.0f / 32767.0f;
+        //  The pipeline-wide convention (AudioStreamConverter::convert_from):
+        //  int16 is scaled by 1/32768, not 1/32767.
+        const float rcp = 1.0f / 32768.0f;
         for (size_t c = 0; c < samples.size(); c++){
             const float expected = (float)samples[c] * rcp;
             if (out[c] != expected){
@@ -308,7 +310,7 @@ public:
 
 
 //
-//  loadFullAudio() does not resample: a rate mismatch is rejected.
+//  load_full_audio() does not resample: a rate mismatch is rejected.
 //
 class LoadFullRateMismatchTest : public UnitTest{
 public:
@@ -318,7 +320,7 @@ public:
 
     virtual UnitTestResult run(Logger& logger, CancellableScope& scope) const override{
         const std::vector<int16_t> samples = {0, 1, 0, 1};
-        const std::string path = temp_wav_path("s16_44100_2ch");
+        const std::string path = temp_wav_path("s16_44100_2ch_rate_mismatch");
         write_wav_file(path, 1, 2, 44100, 16, to_bytes(samples));
 
         QAudioFormat target;
@@ -327,9 +329,9 @@ public:
         target.setChannelCount(2);
 
         AudioFileLoader loader(nullptr, path, target);
-        const auto ret = loader.loadFullAudio();
+        const auto ret = loader.load_full_audio();
         if (std::get<0>(ret) != nullptr){
-            return "loadFullAudio() should reject a rate mismatch (44100 vs 48000).";
+            return "load_full_audio() should reject a rate mismatch (44100 vs 48000).";
         }
         return true;
     }
@@ -427,7 +429,7 @@ public:
 
         QEventLoop loop;
         std::vector<float> interleaved;
-        QObject::connect(&loader, &AudioFileLoader::bufferReady, &loader,
+        QObject::connect(&loader, &AudioFileLoader::buffer_ready, &loader,
             [&](const char* data, size_t len){
                 const auto* frames = reinterpret_cast<const float*>(data);
                 interleaved.insert(interleaved.end(), frames, frames + len / sizeof(float));

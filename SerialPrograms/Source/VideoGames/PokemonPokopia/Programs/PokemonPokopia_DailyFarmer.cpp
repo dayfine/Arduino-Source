@@ -41,6 +41,7 @@ DailyFarmer_Descriptor::DailyFarmer_Descriptor()
         STRING_POKEMON + " Pokopia", "Daily Farmer",
         "Programs/PokemonPokopia/DailyFarmer.html",
         "Farm Stamps, Coins, and Recipes by time skipping",
+        PanelQualityStanding::THIRD_PARTY_UNVETTED,
         ProgramControllerClass::StandardController_NoRestrictions,
         FeedbackType::REQUIRED,
         AllowCommandsWhenRunning::DISABLE_COMMANDS

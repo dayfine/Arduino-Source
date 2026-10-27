@@ -12,7 +12,6 @@
 #include "CommonTools/StartupChecks/VideoResolutionCheck.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "NintendoSwitch/Controllers/Joycon/NintendoSwitch_Joycon.h"
-#include "NintendoSwitch/Programs/NintendoSwitch_GameEntry.h"
 #include "Pokemon/Pokemon_Strings.h"
 #include "CommonTools/VisualDetectors/BlackScreenDetector.h"
 #include "VideoGames/PokemonLGPE/Inference/PokemonLGPE_ShinySymbolDetector.h"
@@ -29,6 +28,7 @@ AlolanTrade_Descriptor::AlolanTrade_Descriptor()
         Pokemon::STRING_POKEMON + " LGPE", "Alolan Trade",
         "Programs/PokemonLGPE/AlolanTrade.html",
         "Shiny hunt Alolan forms by trading in-game.",
+        PanelQualityStanding::OFFICIAL,
         ProgramControllerClass::SpecializedController,
         FeedbackType::REQUIRED,
         AllowCommandsWhenRunning::DISABLE_COMMANDS

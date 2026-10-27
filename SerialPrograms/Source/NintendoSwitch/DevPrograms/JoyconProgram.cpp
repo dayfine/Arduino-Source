@@ -22,6 +22,7 @@ JoyconProgram_Descriptor::JoyconProgram_Descriptor()
         "Nintendo Switch", "Joycon Program",
         "",
         "Template for a joycon program.",
+        PanelQualityStanding::DEVELOPER,
         ProgramControllerClass::SpecializedController,
         FeedbackType::NONE,
         AllowCommandsWhenRunning::DISABLE_COMMANDS

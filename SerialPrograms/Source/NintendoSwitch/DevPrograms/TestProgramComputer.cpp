@@ -20,9 +20,7 @@
 #include <QScreen>
 #include <QPixmap>
 #include "Common/Cpp/Exceptions.h"
-#include "Common/Cpp/Containers/AlignedVector.h"
 #include "Common/Cpp/CpuId/CpuId.h"
-#include "CommonFramework/Globals.h"
 #include "CommonFramework/Exceptions/ProgramFinishedException.h"
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
 #include "CommonFramework/ImageTools/ImageBoxes.h"
@@ -32,34 +30,19 @@
 #include "VideoGames/PokemonSwSh/MaxLair/Inference/PokemonSwSh_MaxLair_Detect_PathSelect.h"
 #include "VideoGames/PokemonSwSh/MaxLair/Framework/PokemonSwSh_MaxLair_State.h"
 #include "VideoGames/PokemonSwSh/MaxLair/AI/PokemonSwSh_MaxLair_AI.h"
-#include "CommonTools/ImageMatch/ExactImageMatcher.h"
 #include "TestProgramComputer.h"
 #include "Common/Cpp/Containers/Pimpl.tpp"
-
-#include "Kernels/BinaryMatrix/Kernels_PackedBinaryMatrixCore.h"
-#include "Kernels/Waterfill/Kernels_Waterfill_Core_64x4_Default.h"
-#include "Kernels/BinaryMatrix/Kernels_BinaryMatrix.h"
 #include "Kernels/Waterfill/Kernels_Waterfill.h"
 #include "Kernels/BinaryImageFilters/Kernels_BinaryImage_BasicFilters.h"
-#include "VideoGames/PokemonSwSh/Inference/PokemonSwSh_MarkFinder.h"
 #include "CommonFramework/Notifications/ProgramNotifications.h"
 #include "Pokemon/Inference/Pokemon_NameReader.h"
 #include "VideoGames/PokemonSwSh/Inference/PokemonSwSh_SelectionArrowFinder.h"
 #include "Common/Cpp/Containers/AlignedVector.tpp"
 #include "CommonFramework/Tools/FileDownloader.h"
-#include "Kernels/Waterfill/Kernels_Waterfill_Session.h"
 #include "VideoGames/PokemonLA/Inference/PokemonLA_MountDetector.h"
 #include "VideoGames/PokemonLA/Inference/Objects/PokemonLA_ArcPhoneDetector.h"
-#include "Common/Cpp/Concurrency/BusyPeriodicRunner.h"
 #include "Pokemon/Inference/Pokemon_IvJudgeReader.h"
-#include "Kernels/Kernels_Alignment.h"
-#include "Kernels/ScaleInvariantMatrixMatch/Kernels_ScaleInvariantMatrixMatch.h"
-#include "Kernels/SpikeConvolution/Kernels_SpikeConvolution.h"
 #include "VideoGames/PokemonSwSh/MaxLair/AI/PokemonSwSh_MaxLair_AI.h"
-#include "Kernels/AudioStreamConversion/AudioStreamConversion.h"
-#include "Common/Cpp/StreamConverters.h"
-#include "CommonFramework/AudioPipeline/AudioConstants.h"
-#include "CommonFramework/AudioPipeline/AudioStream.h"
 #include "3rdParty-Core/nlohmann/json.hpp"
 #include "Common/Cpp/Json/JsonValue.h"
 #include "Common/Cpp/Json/JsonArray.h"
@@ -67,16 +50,8 @@
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "CommonFramework/ImageTypes/ImageHSV32.h"
 #include "VideoGames/PokemonSwSh/Inference/PokemonSwSh_YCommDetector.h"
-#include "VideoGames/PokemonLA/Inference/Objects/PokemonLA_FlagTracker.h"
-#include "Common/Cpp/Strings/StringTools.h"
 #include "VideoGames/PokemonSwSh/Inference/Battles/PokemonSwSh_BattleMenuDetector.h"
 #include "VideoGames/PokemonSwSh/Inference/PokemonSwSh_SummaryShinySymbolDetector.h"
-#include "Common/Cpp/Options/EnumDropdownDatabase.h"
-#include "VideoGames/PokemonSwSh/Options/EncounterFilter/PokemonSwSh_EncounterFilterEnums.h"
-#include "VideoGames/PokemonSwSh/MaxLair/Inference/PokemonSwSh_MaxLair_Detect_Lobby.h"
-
-#include "VideoGames/PokemonSV/Inference/PokemonSV_WhiteButtonDetector.h"
-#include "VideoGames/PokemonSV/Inference/Dialogs/PokemonSV_DialogArrowDetector.h"
 #include "VideoGames/PokemonSV/Inference/Dialogs/PokemonSV_GradientArrowDetector.h"
 #include "VideoGames/PokemonSV/Inference/Dialogs/PokemonSV_DialogDetector.h"
 #include "Common/Cpp/Containers/BoxSet.h"
@@ -87,7 +62,6 @@
 #include "VideoGames/PokemonSV/Inference/Boxes/PokemonSV_BoxDetection.h"
 #include "VideoGames/PokemonSV/Inference/Map/PokemonSV_DestinationMarkerDetector.h"
 #include "CommonFramework/Environment/Environment.h"
-#include "Common/Cpp/PrettyPrint.h"
 #include "Common/Qt/TimeQt.h"
 #include "VideoGames/PokemonSV/Inference/Picnics/PokemonSV_SandwichHandDetector.h"
 #include "CommonFramework/Tools/ErrorDumper.h"
@@ -95,20 +69,16 @@
 #include "VideoGames/PokemonSV/Inference/Overworld/PokemonSV_LetsGoKillDetector.h"
 #include "VideoGames/PokemonSV/Inference/PokemonSV_SweatBubbleDetector.h"
 #include "Pokemon/Resources/Pokemon_PokemonSlugs.h"
-#include "VideoGames/PokemonSV/Inference/Battles/PokemonSV_NormalBattleMenus.h"
 #include "Pokemon/Resources/Pokemon_PokemonNames.h"
 #include "CommonTools/OCR/OCR_NumberReader.h"
-#include "VideoGames/PokemonSV/Resources/PokemonSV_Ingredients.h"
 #include "Kernels/ImageStats/Kernels_ImagePixelSumSqr.h"
 #include "VideoGames/PokemonSV/Inference/Boxes/PokemonSV_BoxDetection.h"
 #include "Common/Cpp/Concurrency/Watchdog.h"
 #include "VideoGames/PokemonSV/Inference/Battles/PokemonSV_TeraBattleMenus.h"
 //#include "NintendoSwitch/Programs/NintendoSwitch_GameEntry.h"
-#include "NintendoSwitch/Inference/NintendoSwitch_CheckOnlineDetector.h"
 #include "VideoGames/PokemonSV/Inference/Picnics/PokemonSV_SandwichRecipeDetector.h"
 #include "VideoGames/PokemonSwSh/MaxLair/Inference/PokemonSwSh_MaxLair_Detect_BattleMenu.h"
 #include "VideoGames/PokemonSwSh/MaxLair/Inference/PokemonSwSh_MaxLair_Detect_PokemonSelectMenu.h"
-#include "VideoGames/PokemonSV/Inference/PokemonSV_PokemonSummaryReader.h"
 #include "Pokemon/Pokemon_StatsCalculation.h"
 #include "VideoGames/PokemonSV/Inference/PokemonSV_StatHexagonReader.h"
 #include "PokemonBDSP/Inference/ShinyDetection/PokemonBDSP_ShinySparkleSet.h"
@@ -141,22 +111,14 @@
 #include "Common/Cpp/Options/MacAddressOption.h"
 #include "CommonTools/Images/ImageFilter.h"
 #include "Common/PABotBase2/ReliableConnectionLayer/PABotBase2CC_ReliableStreamConnection.h"
-#include "Common/PABotBase2/ReliableConnectionLayer/PABotBase2FW_ReliableStreamConnection.h"
 #include "Common/Cpp/StreamConnections/MockDevice.h"
-#include "CommonTools/Random.h"
-#include "CommonTools/OCR/OCR_TextMatcher.h"
 #include "Integrations/PybindSwitchController.h"
 #include "Common/Cpp/TestRunners/ParallelUnitTestRunner.h"
-#include "Kernels/KaiserWindow/Kernels_KaiserWindow.h"
-#include "Kernels/Kernels_Alignment.h"
 #include "Kernels/AudioResampler/Kernels_AudioResampler_WeightTable.h"
 //#include "Kernels/AudioResampler/Kernels_AudioResampler_BlockKernel_Default.h"
 //#include "Kernels/AudioResampler/Kernels_AudioResampler_BlockKernel_x64_SSE2.h"
 //#include "Kernels/AudioResampler/Kernels_AudioResampler_BlockKernel_x64_FMA3.h"
 //#include "Kernels/AudioResampler/Kernels_AudioResampler_BlockKernel_x64_AVX512.h"
-#include "Kernels/AudioStreamConverter/Kernels_AudioStreamConverter.h"
-#include "Kernels/AudioChannelInterleave/Kernels_AudioChannelInterleave.h"
-#include "Kernels/AudioChannelMixer/Kernels_AudioChannelMixer.h"
 #include "Kernels/AudioPipeline/Kernels_AudioPipeline.h"
 
 
@@ -181,7 +143,8 @@ TestProgramComputer_Descriptor::TestProgramComputer_Descriptor()
         "Computer:TestProgram",
         "Computer", "Test Program (Computer)",
         "",
-        "Test Program"
+        "Test Program",
+        PanelQualityStanding::DEVELOPER
     )
 {}
 TestProgramComputer::TestProgramComputer()
@@ -1986,25 +1949,6 @@ void TestProgramComputer::program(ProgramEnvironment& env, CancellableScope& sco
 
 
 
-#if 0
-    int16_t in[4] = {1, 1, 2, -2};
-    print_u8((uint8_t*)in, 8);
-
-
-
-    AudioSourceReader reader(AudioSampleFormat::SINT16, 1, false);
-    AudioListener listener(1);
-    reader += listener;
-
-
-//    reader.push_bytes(in, 8);
-    reader.push_bytes((char*)in + 0, 5);
-    reader.push_bytes((char*)in + 5, 3);
-#endif
-
-
-
-//    AudioStreamReader2 reader(2, AudioSampleFormat::SINT16);
 
 
 
@@ -2029,23 +1973,6 @@ void TestProgramComputer::program(ProgramEnvironment& env, CancellableScope& sco
 //    cout << buffer << endl;
 //    cout << reader.dump() << endl;
 #endif
-
-#if 0
-    float f[10];
-    uint8_t i[10] = {};
-    i[0] = 1;
-    i[1] = 255;
-    i[2] = 0;
-    i[3] = 123;
-    i[9] = 123;
-
-    Kernels::AudioStreamConversion::convert_audio_uint8_to_float(f, i, 10);
-    print(f, 10);
-    memset(i, 0, sizeof(i));
-    Kernels::AudioStreamConversion::convert_audio_float_to_uint8(i, f, 10);
-    print_u8(i, 10);
-#endif
-
 
 #if 0
     union{

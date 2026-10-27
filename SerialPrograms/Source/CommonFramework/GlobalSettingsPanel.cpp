@@ -5,7 +5,6 @@
  */
 
 #include <iostream>
-#include <set>
 #ifdef QT_CORE_LIB
 #include <QDesktopServices>
 #include <QUrl>
@@ -340,7 +339,8 @@ GlobalSettings_Descriptor::GlobalSettings_Descriptor()
         "",
         "Global Settings", "Global Settings",
         "",
-        "Global Settings"
+        "Global Settings",
+        PanelQualityStanding::OFFICIAL
     )
 {}
 GlobalSettings_Descriptor::Wrapper& GlobalSettings_Descriptor::instance(){

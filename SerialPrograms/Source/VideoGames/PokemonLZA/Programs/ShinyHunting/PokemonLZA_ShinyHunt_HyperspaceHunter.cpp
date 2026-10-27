@@ -9,7 +9,6 @@
 #include "CommonFramework/Notifications/ProgramNotifications.h"
 #include "CommonFramework/VideoPipeline/VideoOverlay.h"
 #include "CommonTools/Async/InferenceRoutines.h"
-#include "CommonTools/VisualDetectors/BlackScreenDetector.h"
 #include "CommonTools/StartupChecks/VideoResolutionCheck.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_Superscalar.h"
@@ -35,6 +34,7 @@ ShinyHunt_HyperspaceHunter_Descriptor::ShinyHunt_HyperspaceHunter_Descriptor()
         "Hyperspace Hunter",
         "Programs/PokemonLZA/ShinyHunt-HyperspaceHunter.html",
         "Shiny hunt in Hyperspace Wild Zone using fly spot reset or shuttle run methods.",
+        PanelQualityStanding::OFFICIAL,
         ProgramControllerClass::StandardController_NoRestrictions, FeedbackType::REQUIRED,
         AllowCommandsWhenRunning::DISABLE_COMMANDS
     )

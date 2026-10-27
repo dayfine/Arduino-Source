@@ -40,12 +40,11 @@ namespace ML{
 
 LabelImages_Descriptor::LabelImages_Descriptor()
     : ConsolePanelDescriptor(
-        Color(),
         "ML:LabelImages",
         "ML", "Label Images",
         "Programs/ML/LabelImages.html",
         "Label " + Pokemon::STRING_POKEMON + " on images",
-        PanelDeprecation::NOT_DEPRECATED,
+        PanelQualityStanding::DEVELOPER,
         false
     )
 {}

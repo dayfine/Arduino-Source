@@ -6,7 +6,6 @@
 
 #include <chrono>
 #include <string>
-#include <optional>
 #include "Common/Cpp/Color.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "CommonFramework/VideoPipeline/VideoOverlayScopes.h"
@@ -30,6 +29,7 @@ ReadTrainerId_Descriptor::ReadTrainerId_Descriptor()
         Pokemon::STRING_POKEMON + " FRLG",
         "Read TID", "",
         "Read TID from the trainer card.",
+        PanelQualityStanding::DEVELOPER,
         ProgramControllerClass::StandardController_NoRestrictions,
         FeedbackType::REQUIRED,
         AllowCommandsWhenRunning::DISABLE_COMMANDS

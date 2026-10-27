@@ -3,8 +3,7 @@
  *  From: https://github.com/PokemonAutomation/
  *
  *  Gate tests for the device-driven input format list
- *  (AudioInputChoice / input_choices) that replaces the fixed
- *  AudioChannelFormat preset enum. Pure data tests: no audio I/O.
+ *  (AudioInputChoice / input_choices). Pure data tests: no audio I/O.
  *
  */
 
@@ -396,6 +395,59 @@ public:
 
 
 
+class InputChoiceEqualityTest : public UnitTest{
+public:
+    InputChoiceEqualityTest()
+        : UnitTest("AudioInfo - InputChoice_Equality")
+    {}
+
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        const AudioFormat stereo_48k = make_format(48000, 2, QAudioFormat::ChannelConfig::ChannelConfigStereo);
+        const AudioFormat stereo_441 = make_format(44100, 2, QAudioFormat::ChannelConfig::ChannelConfigStereo);
+        const AudioFormat mono_96k = make_format(96000, 1, QAudioFormat::ChannelConfig::ChannelConfigMono);
+
+        //  Same shape: equal. Different shape: not equal (symmetric).
+        AudioInputChoice a(stereo_48k);
+        AudioInputChoice b = AudioInputChoice(stereo_48k);
+        AudioInputChoice c(stereo_441);
+        if (!(a == b)){
+            return "Native choices of the same shape should compare equal.";
+        }
+        if (a == c || c == a){
+            return "Choices with different sample rates should not compare equal.";
+        }
+
+        //  Reinterpreted LR vs RL: the swap flag distinguishes them.
+        const AudioInputChoice lr = AudioInputChoice::reinterpreted(AudioFormat(stereo_48k), AudioFormat(mono_96k), false);
+        const AudioInputChoice rl = AudioInputChoice::reinterpreted(AudioFormat(stereo_48k), AudioFormat(mono_96k), true);
+        if (lr == rl){
+            return "Interleaved L/R and R/L choices should not compare equal.";
+        }
+        const AudioInputChoice lr_copy = AudioInputChoice::reinterpreted(AudioFormat(stereo_48k), AudioFormat(mono_96k), false);
+        if (!(lr == lr_copy)){
+            return "Identical reinterpreted choices should compare equal.";
+        }
+        //  A reinterpreted choice is not equal to the native one of the
+        //  same logical shape.
+        if (lr == a){
+            return "A reinterpreted choice should not equal the native choice of the same shape.";
+        }
+
+        //  Invalid choices: equal to each other, not equal to any valid one.
+        AudioInputChoice invalid;
+        if (!(invalid == AudioInputChoice())){
+            return "Two invalid choices should compare equal.";
+        }
+        if (invalid == a || a == invalid){
+            return "An invalid choice should not equal a valid one.";
+        }
+
+        return true;
+    }
+};
+
+
+
 }
 
 
@@ -406,6 +458,7 @@ void add_tests_AudioInfo(UnitTestDatabase& database){
     database.add<InputChoicesSortDedupeTest>();
     database.add<InputChoicesCardQuirkTest>();
     database.add<InputChoicesEmptyTest>();
+    database.add<InputChoiceEqualityTest>();
 }
 
 

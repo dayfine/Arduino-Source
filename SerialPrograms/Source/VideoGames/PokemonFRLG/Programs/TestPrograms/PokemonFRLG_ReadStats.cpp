@@ -6,7 +6,6 @@
 
 #include <chrono>
 #include <string>
-#include <optional>
 #include "Common/Cpp/Color.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "CommonFramework/VideoPipeline/VideoOverlayScopes.h"
@@ -30,6 +29,7 @@ ReadStats_Descriptor::ReadStats_Descriptor()
         "Read Summary Stats", "",
         "Read stats, level, name, and nature from the summary screen. Start "
         "on page 1 of summary.",
+        PanelQualityStanding::DEVELOPER,
         ProgramControllerClass::StandardController_NoRestrictions,
         FeedbackType::REQUIRED,
         AllowCommandsWhenRunning::DISABLE_COMMANDS

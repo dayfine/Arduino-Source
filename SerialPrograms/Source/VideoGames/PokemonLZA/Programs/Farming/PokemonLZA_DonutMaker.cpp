@@ -13,10 +13,8 @@
 #include "CommonTools/StartupChecks/VideoResolutionCheck.h"
 #include "CommonTools/VisualDetectors/BlackScreenDetector.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
-#include "NintendoSwitch/Commands/NintendoSwitch_Commands_Superscalar.h"
 #include "NintendoSwitch/Programs/NintendoSwitch_GameEntry.h"
 #include "VideoGames/PokemonSwSh/Inference/PokemonSwSh_IvJudgeReader.h"
-#include "VideoGames/PokemonLZA/Resources/PokemonLZA_DonutBerries.h"
 #include "VideoGames/PokemonLZA/Inference/Donuts/PokemonLZA_DonutBerriesDetector.h"
 #include "VideoGames/PokemonLZA/Inference/Donuts/PokemonLZA_FlavorPowerDetector.h"
 #include "VideoGames/PokemonLZA/Inference/Donuts/PokemonLZA_FlavorPowerScreenDetector.h"
@@ -51,6 +49,7 @@ DonutMaker_Descriptor::DonutMaker_Descriptor()
         "Donut Maker",
         "Programs/PokemonLZA/DonutMaker.html",
         "Make donuts and reset until desired flavor powers are found.",
+        PanelQualityStanding::OFFICIAL,
         ProgramControllerClass::StandardController_NoRestrictions,
         FeedbackType::REQUIRED,
         AllowCommandsWhenRunning::DISABLE_COMMANDS

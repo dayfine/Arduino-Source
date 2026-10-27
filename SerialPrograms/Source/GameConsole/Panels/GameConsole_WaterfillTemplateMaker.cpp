@@ -27,8 +27,8 @@ WaterfillTemplateMaker_Descriptor::WaterfillTemplateMaker_Descriptor()
         "Nintendo Switch", "Waterfill Template Maker",
         "",
         "Helper to make waterfill templates.",
+        PanelQualityStanding::DEVELOPER,
         ProgramControllerClass::StandardController_NoRestrictions,
-        Color(),
         FeedbackType::NONE,
         AllowCommandsWhenRunning::ENABLE_COMMANDS
     )

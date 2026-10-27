@@ -4,6 +4,7 @@
  *
  */
 
+#include "Common/Cpp/Strings/StringTools.h"
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
 #include "CommonFramework/ProgramStats/StatsTracking.h"
 #include "CommonFramework/Language.h"
@@ -11,11 +12,8 @@
 #include "CommonFramework/ProgramStats/StatsTracking.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "CommonFramework/VideoPipeline/VideoOverlayScopes.h"
-#include "CommonTools/Async/InferenceRoutines.h"
-#include "CommonTools/StartupChecks/StartProgramChecks.h"
 #include "Pokemon/Pokemon_Strings.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
-#include "NintendoSwitch/NintendoSwitch_Settings.h"
 #include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_WildEncounterReader.h"
 #include "VideoGames/PokemonFRLG/Programs/PokemonFRLG_SafariOptimalAction.h"
 #include "VideoGames/PokemonFRLG/PokemonFRLG_Navigation.h"
@@ -39,6 +37,7 @@ WildRng_Descriptor::WildRng_Descriptor()
         Pokemon::STRING_POKEMON + " FRLG", "Wild RNG",
         "Programs/PokemonFRLG/WildRng.html",
         "Automatically calibrate timings to hit a specific RNG target for FRLG random wild encounters.",
+        PanelQualityStanding::OFFICIAL,
         ProgramControllerClass::StandardController_RequiresPrecision,
         FeedbackType::REQUIRED,
         AllowCommandsWhenRunning::DISABLE_COMMANDS
@@ -68,6 +67,7 @@ std::unique_ptr<StatsTracker> WildRng_Descriptor::make_stats() const{
 
 WildRng::~WildRng(){
     GAME_LOCATION.remove_listener(*this);
+    SEED.remove_listener(*this);
 }
 
 WildRng::WildRng()
@@ -149,8 +149,7 @@ WildRng::WildRng()
         false,
         "<b>Target Seed:</b>",
         LockMode::LOCK_WHILE_RUNNING,
-        "70FE", "70FE",
-        true
+        "70FE", "70FE"
     )
     , ADVANCES(
         "<b>Advances:</b><br>The total number of RNG advances for your target.",
@@ -252,9 +251,17 @@ WildRng::WildRng()
 
     WildRng::on_config_value_changed(this);
     GAME_LOCATION.add_listener(*this);
+    SEED.add_listener(*this);
 }
 
+
+
 void WildRng::on_config_value_changed(void* object){
+    if (object == &SEED){
+        SEED.set(StringTools::strip(static_cast<std::string>(SEED)));
+        return;
+    }
+
     AUTO_CATCH_SHINY.set_visibility(in_safari_zone() ? ConfigOptionState::ENABLED : ConfigOptionState::HIDDEN);
 }
 

@@ -15,15 +15,14 @@ ComputerProgramDescriptor::ComputerProgramDescriptor(
     std::string category, std::string display_name,
     std::string doc_link,
     std::string description,
-    PanelDeprecation deprecation
+    PanelQualityStanding standing
 )
     : ProgramDescriptor(
         std::move(identifier),
         std::move(category), std::move(display_name),
         std::move(doc_link),
         std::move(description),
-        COLOR_DARKCYAN,
-        deprecation,
+        standing,
         true,
         {}
     )

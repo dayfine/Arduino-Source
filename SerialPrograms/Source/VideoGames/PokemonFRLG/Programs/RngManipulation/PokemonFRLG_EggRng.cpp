@@ -6,7 +6,7 @@
 
 #include <cmath>
 #include <algorithm>
-#include "CommonTools/Random.h"
+#include "Common/Cpp/Strings/StringTools.h"
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
 #include "CommonFramework/ProgramStats/StatsTracking.h"
 #include "CommonFramework/Notifications/ProgramNotifications.h"
@@ -80,6 +80,7 @@ EggRng_Descriptor::EggRng_Descriptor()
         Pokemon::STRING_POKEMON + " FRLG", "Egg RNG",
         "Programs/PokemonFRLG/EggRng.html",
         "Automatically calibrate timings to hit a specific RNG target for daycare eggs.",
+        PanelQualityStanding::OFFICIAL,
         ProgramControllerClass::StandardController_RequiresPrecision,
         FeedbackType::REQUIRED,
         AllowCommandsWhenRunning::DISABLE_COMMANDS
@@ -117,6 +118,12 @@ struct EggRng_Descriptor::Stats : public StatsTracker{
 };
 std::unique_ptr<StatsTracker> EggRng_Descriptor::make_stats() const{
     return std::unique_ptr<StatsTracker>(new Stats());
+}
+
+EggRng::~EggRng(){
+    HELD_SEED.remove_listener(*this);
+    PICKUP_SEED.remove_listener(*this);
+    STARTING_POINT.remove_listener(*this);
 }
 
 EggRng::EggRng()
@@ -176,8 +183,7 @@ EggRng::EggRng()
         false,
         "<b>Held Seed:</b>",
         LockMode::LOCK_WHILE_RUNNING,
-        "70FE", "70FE",
-        true
+        "70FE", "70FE"
         )
     , HELD_ADVANCES(
         "<b>Held Advances:</b><br>The total number of RNG advances for your held target.",
@@ -189,8 +195,7 @@ EggRng::EggRng()
         false,
         "<b>Pickup Seed:</b>",
         LockMode::LOCK_WHILE_RUNNING,
-        "70FE", "70FE",
-        true
+        "70FE", "70FE"
         )
     , PICKUP_ADVANCES(
         "<b>Pickup Advances:</b><br>The total number of RNG advances for your pickup target.",
@@ -295,10 +300,20 @@ EggRng::EggRng()
     PA_ADD_OPTION(GO_HOME_WHEN_DONE);
     PA_ADD_OPTION(NOTIFICATIONS);
 
+    HELD_SEED.add_listener(*this);
+    PICKUP_SEED.add_listener(*this);
     STARTING_POINT.add_listener(*this);
 }
 
 void EggRng::on_config_value_changed(void* object){
+    if (object == &HELD_SEED){
+        HELD_SEED.set(StringTools::strip(static_cast<std::string>(HELD_SEED)));
+        return;
+    }
+    if (object == &PICKUP_SEED){
+        PICKUP_SEED.set(StringTools::strip(static_cast<std::string>(PICKUP_SEED)));
+        return;
+    }
     // switch between separate calibrations for the held and pickup frames
     if (STARTING_POINT.current_value() == 2){
         HELD_CALIBRATION.set_visibility(ConfigOptionState::HIDDEN);

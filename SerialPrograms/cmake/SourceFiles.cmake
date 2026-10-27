@@ -497,15 +497,12 @@ file(GLOB LIBRARY_SOURCES
     Source/CommonFramework/AudioPipeline/AudioInfo.h
     Source/CommonFramework/AudioPipeline/AudioInfo_Tests.cpp
     Source/CommonFramework/AudioPipeline/AudioInfo_Tests.h
-    Source/CommonFramework/AudioPipeline/AudioNormalization.h
     Source/CommonFramework/AudioPipeline/AudioOption.cpp
     Source/CommonFramework/AudioPipeline/AudioOption.h
     Source/CommonFramework/AudioPipeline/AudioPassthroughPair.h
     Source/CommonFramework/AudioPipeline/AudioPipelineOptions.h
     Source/CommonFramework/AudioPipeline/AudioSession.cpp
     Source/CommonFramework/AudioPipeline/AudioSession.h
-    Source/CommonFramework/AudioPipeline/AudioStream.cpp
-    Source/CommonFramework/AudioPipeline/AudioStream.h
     Source/CommonFramework/AudioPipeline/AudioTemplate.cpp
     Source/CommonFramework/AudioPipeline/AudioTemplate.h
     Source/CommonFramework/AudioPipeline/Backends/AudioPassthroughPairQt.cpp
@@ -537,12 +534,6 @@ file(GLOB LIBRARY_SOURCES
     Source/CommonFramework/AudioPipeline/Spectrum/Spectrograph.h
     Source/CommonFramework/AudioPipeline/Tools/AudioFormatUtils.cpp
     Source/CommonFramework/AudioPipeline/Tools/AudioFormatUtils.h
-    Source/CommonFramework/AudioPipeline/Tools/AudioNormalization.h
-    Source/CommonFramework/AudioPipeline/Tools/TimeSampleBuffer.cpp
-    Source/CommonFramework/AudioPipeline/Tools/TimeSampleBuffer.h
-    Source/CommonFramework/AudioPipeline/Tools/TimeSampleBufferReader.cpp
-    Source/CommonFramework/AudioPipeline/Tools/TimeSampleBufferReader.h
-    Source/CommonFramework/AudioPipeline/Tools/TimeSampleWriter.h
     Source/CommonFramework/AudioPipeline/UI/AudioDisplayWidget.cpp
     Source/CommonFramework/AudioPipeline/UI/AudioDisplayWidget.h
     Source/CommonFramework/AudioPipeline/UI/AudioSelectorWidget.cpp
@@ -1069,10 +1060,6 @@ file(GLOB LIBRARY_SOURCES
     Source/Kernels/AudioResampler/Kernels_AudioResampler_Tests.h
     Source/Kernels/AudioResampler/Kernels_AudioResampler_WeightTable.cpp
     Source/Kernels/AudioResampler/Kernels_AudioResampler_WeightTable.h
-    Source/Kernels/AudioStreamConversion/AudioStreamConversion.cpp
-    Source/Kernels/AudioStreamConversion/AudioStreamConversion.h
-    Source/Kernels/AudioStreamConversion/AudioStreamConversion_Core_Default.cpp
-    Source/Kernels/AudioStreamConversion/AudioStreamConversion_Core_x86_SSE41.cpp
     Source/Kernels/AudioStreamConverter/Kernels_AudioStreamConverter.cpp
     Source/Kernels/AudioStreamConverter/Kernels_AudioStreamConverter.h
     Source/Kernels/AudioStreamConverter/Kernels_AudioStreamConverter_Kernels_ARM64_NEON.cpp
@@ -1398,6 +1385,12 @@ file(GLOB LIBRARY_SOURCES
     Source/NintendoSwitch/Programs/NintendoSwitch_TurboButton.h
     Source/NintendoSwitch/Programs/NintendoSwitch_TurboMacro.cpp
     Source/NintendoSwitch/Programs/NintendoSwitch_TurboMacro.h
+    Source/NintendoSwitch/Programs/Typewriter/NintendoSwitch_Typewriter.cpp
+    Source/NintendoSwitch/Programs/Typewriter/NintendoSwitch_Typewriter.h
+    Source/NintendoSwitch/Programs/Typewriter/NintendoSwitch_Typewriter_Tests.cpp
+    Source/NintendoSwitch/Programs/Typewriter/NintendoSwitch_Typewriter_Tests.h
+    Source/NintendoSwitch/Programs/Typewriter/NintendoSwitch_TypewriterTextMapping.cpp
+    Source/NintendoSwitch/Programs/Typewriter/NintendoSwitch_TypewriterTextMapping.h
     Source/PanelLists.cpp
     Source/PanelLists.h
     Source/Pokemon/Inference/Pokemon_AbilityReader.cpp

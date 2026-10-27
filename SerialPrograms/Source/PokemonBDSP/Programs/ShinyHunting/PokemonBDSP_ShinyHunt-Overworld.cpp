@@ -26,6 +26,7 @@ ShinyHuntOverworld_Descriptor::ShinyHuntOverworld_Descriptor()
         STRING_POKEMON + " BDSP", "Shiny Hunt - Overworld",
         "Programs/PokemonBDSP/ShinyHunt-Overworld.html",
         "Shiny hunt overworld " + STRING_POKEMON + ".",
+        PanelQualityStanding::OFFICIAL,
         ProgramControllerClass::StandardController_NoRestrictions,
         FeedbackType::REQUIRED,
         AllowCommandsWhenRunning::DISABLE_COMMANDS

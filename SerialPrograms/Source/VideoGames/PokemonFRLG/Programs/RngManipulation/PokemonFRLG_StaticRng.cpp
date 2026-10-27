@@ -4,6 +4,7 @@
  *
  */
 
+#include "Common/Cpp/Strings/StringTools.h"
 #include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "CommonFramework/ProgramStats/StatsTracking.h"
 #include "CommonFramework/Notifications/ProgramNotifications.h"
@@ -30,6 +31,7 @@ StaticRng_Descriptor::StaticRng_Descriptor()
         Pokemon::STRING_POKEMON + " FRLG", "Static RNG",
         "Programs/PokemonFRLG/StaticRng.html",
         "Automatically calibrate timings to hit a specific RNG target for FRLG static encounters.",
+        PanelQualityStanding::OFFICIAL,
         ProgramControllerClass::StandardController_RequiresPrecision,
         FeedbackType::REQUIRED,
         AllowCommandsWhenRunning::DISABLE_COMMANDS
@@ -55,6 +57,10 @@ struct StaticRng_Descriptor::Stats : public StatsTracker{
 };
 std::unique_ptr<StatsTracker> StaticRng_Descriptor::make_stats() const{
     return std::unique_ptr<StatsTracker>(new Stats());
+}
+
+StaticRng::~StaticRng(){
+    SEED.remove_listener(*this);
 }
 
 StaticRng::StaticRng()
@@ -121,8 +127,7 @@ StaticRng::StaticRng()
         false,
         "<b>Target Seed:</b>",
         LockMode::LOCK_WHILE_RUNNING,
-        "70FE", "70FE",
-        true
+        "70FE", "70FE"
     )
     , ADVANCES(
         "<b>Advances:</b><br>The total number of RNG advances for your target.",
@@ -211,6 +216,15 @@ StaticRng::StaticRng()
     PA_ADD_OPTION(TAKE_VIDEO);
     PA_ADD_OPTION(GO_HOME_WHEN_DONE);
     PA_ADD_OPTION(NOTIFICATIONS);
+
+    SEED.add_listener(*this);
+}
+
+void StaticRng::on_config_value_changed(void* object){
+    if (object == &SEED){
+        SEED.set(StringTools::strip(static_cast<std::string>(SEED)));
+        return;
+    }
 }
 
 

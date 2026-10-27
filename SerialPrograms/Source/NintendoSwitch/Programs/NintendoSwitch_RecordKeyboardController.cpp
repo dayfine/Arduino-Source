@@ -27,6 +27,7 @@ RecordKeyboardController_Descriptor::RecordKeyboardController_Descriptor()
         "Nintendo Switch", "Record Keyboard Controller",
         "Programs/NintendoSwitch/RecordKeyboardController.html",
         "Record actions from the keyboard controller, then play it back.",
+        PanelQualityStanding::OFFICIAL,
         ProgramControllerClass::StandardController_NoRestrictions,
         FeedbackType::NONE,
         AllowCommandsWhenRunning::ENABLE_COMMANDS
