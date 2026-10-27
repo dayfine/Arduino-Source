@@ -24,6 +24,8 @@
 #include "VideoGames/PokemonSV/Inference/Dialogs/PokemonSV_DialogDetector.h"
 #include "VideoGames/PokemonSV/Inference/Overworld/PokemonSV_OverworldDetector.h"
 #include "VideoGames/PokemonSV/Inference/Overworld/PokemonSV_TeraGlowDetector.h"
+#include "VideoGames/PokemonSV/Inference/Overworld/PokemonSV_LetsGoHpReader.h"
+#include "VideoGames/PokemonSV/Inference/Overworld/PokemonSV_PrideRockDetector.h"
 #include "VideoGames/PokemonSV/Programs/PokemonSV_MenuNavigation.h"
 #include "VideoGames/PokemonSV/Programs/PokemonSV_WorldNavigation.h"
 #include "VideoGames/PokemonSV/Programs/Battles/PokemonSV_BasicCatcher.h"
@@ -34,6 +36,7 @@
 
 #include<vector>
 #include <functional>
+#include <optional>
 #include "PokemonSV_BlueberryCatchPhoto.h"
 
 namespace PokemonAutomation{
@@ -137,30 +140,8 @@ CameraAngle quest_photo_navi(
         case BBQuests::photo_savanna: case BBQuests::photo_normal: case BBQuests::photo_fire:
             console.log("Photo: Normal/Fire");
 
-            //Savanna Plaza - Pride Rock
-            central_to_savanna_plaza(info, console, context);
-
-            pbf_move_left_joystick(context, {+0.724, -1}, 80ms, 160ms);
-            pbf_press_button(context, BUTTON_L | BUTTON_PLUS, 160ms, 840ms);
-
-            jump_glide_fly(console, context, BBQ_OPTIONS.INVERTED_FLIGHT, 4800ms, 3200ms, 3200ms);
-
-            pbf_press_button(context, BUTTON_PLUS, 160ms, 840ms);
-            pbf_move_left_joystick(context, {+1, 0}, 160ms, 400ms);
-
-            pbf_press_button(context, BUTTON_L, 160ms, 400ms);
-            //The glide lands on the rock every time; an 800 ms walk went off its right
-            //edge 2 of 6 times (console 2026-10-26). 300 ms stays on it, 6 of 6.
-            pbf_move_left_joystick(context, {0, +1}, 300ms, 400ms);
-
-            //Turn slightly for switch 1
-            if (console.state().console_type() == ConsoleType::Switch1){
-                pbf_move_left_joystick(context, {-1, +1}, 160ms, 400ms);
-            }
-            //After the shorter walk Pyroar stands to the right, outside the photo box
-            //(console 2026-10-26, 2 of 2). Turn the camera about 30 degrees right.
-            pbf_move_right_joystick(context, {+1, 0}, 150ms, 400ms);
-
+            //Savanna Plaza - Pride Rock. take_photo() turns to Pyroar.
+            central_to_pride_rock(info, console, context, BBQ_OPTIONS);
             break;
         case BBQuests::photo_bug: case BBQuests::photo_rock:
             console.log("Photo: Bug/Rock");
@@ -295,37 +276,18 @@ CameraAngle quest_photo_navi(
 }
 
 //Open photo mode, tilt the camera, take the photo and return to the overworld.
-//Pyroar wanders on Pride Rock: in the photo box, past either edge, above it, or out of
-//view behind the slope (console 2026-10-26, 6 photos). Photo mode moves the camera to the
-//player, so a Pyroar centered in the overworld sits at the right edge of the photo. Turn
-//the photo-mode camera to its red mane instead.
-static void aim_photo_at_red_mane(ConsoleHandle& console, ProControllerContext& context){
+//Turn the camera until Pyroar's mane is in the middle. Returns whether it was seen.
+static bool center_red_mane(ConsoleHandle& console, ProControllerContext& context, bool photo_mode){
     size_t turns = 0;
+    bool seen = false;
     for (size_t step = 0; step < 8; step++){
         context.wait_for_all_requests();
         VideoSnapshot screen = console.video().snapshot();
         if (!screen.frame){
-            return;
+            break;
         }
-        const ImageViewRGB32& image = *screen.frame;
-        const size_t width = image.width();
-        const size_t height = image.height();
-        size_t count = 0;
-        double sum_x = 0;
-        for (size_t y = height / 8; y < height * 7 / 8; y += 4){
-            for (size_t x = 0; x < width; x += 4){
-                //Photo mode's button guide (left) and toolbar (bottom).
-                if (x < width * 2 / 10 || y > height * 7 / 10){
-                    continue;
-                }
-                const Color pixel(image.pixel(x, y));
-                if (pixel.red() > 170 && pixel.green() < 70 && pixel.blue() < 80){
-                    count++;
-                    sum_x += (double)x / width;
-                }
-            }
-        }
-        if (count < 30){
+        const std::optional<double> x = find_red_mane_x(*screen.frame, photo_mode);
+        if (!x){
             console.log("Pyroar mane: none (look " + std::to_string(step + 1) + ").");
             if (turns >= 3){
                 break;
@@ -335,21 +297,36 @@ static void aim_photo_at_red_mane(ConsoleHandle& console, ProControllerContext& 
             turns++;
             continue;
         }
-        const double dx = sum_x / count - 0.5;
-        console.log("Pyroar mane at x=" + std::to_string(sum_x / count) + ", " + std::to_string(count) + " samples.");
+        seen = true;
+        const double dx = *x - 0.5;
+        console.log("Pyroar mane at x=" + std::to_string(*x) + ".");
         if (dx < 0.05 && dx > -0.05){
             break;
         }
         //About 350 ms pans the camera one frame width.
         pbf_move_right_joystick(context, {dx > 0 ? +1.0 : -1.0, 0}, Milliseconds((int64_t)(std::abs(dx) * 350) + 40), 300ms);
     }
-    bbq_lab_event(console, context, "aimed");
+    return seen;
+}
+
+//Pyroar wanders on Pride Rock: in the photo box, past either edge, above it, or out of
+//view behind the slope (console 2026-10-26, 6 photos). Photo mode moves the camera to the
+//player, so a Pyroar centered in the overworld sits at the right edge of the photo
+//(x=0.57 -> 0.92). Face it in the overworld first, with a short step so the player turns
+//to the camera, then center it again in photo mode.
+static void face_red_mane(ConsoleHandle& console, ProControllerContext& context){
+    if (center_red_mane(console, context, false)){
+        pbf_move_left_joystick(context, {0, +1}, 100ms, 400ms);
+    }
 }
 
 bool take_photo(ConsoleHandle& console, ProControllerContext& context, CameraAngle move_camera, bool aim_at_red_mane = false){
     //Take photo.
     console.log("Taking photo.");
     bbq_lab_event(console, context, "route_done");
+    if (aim_at_red_mane){
+        face_red_mane(console, context);
+    }
     PromptDialogWatcher photo_prompt(COLOR_RED);
     OverworldWatcher overworld(console.logger(), COLOR_BLUE);
 
@@ -363,7 +340,8 @@ bool take_photo(ConsoleHandle& console, ProControllerContext& context, CameraAng
         pbf_move_right_joystick(context, {0, -1}, 400ms, 160ms);
     }
     if (aim_at_red_mane){
-        aim_photo_at_red_mane(console, context);
+        center_red_mane(console, context, true);
+        bbq_lab_event(console, context, "aimed");
     }
     context.wait_for_all_requests();
     bbq_lab_event(console, context, "photo");
@@ -548,6 +526,42 @@ void quest_photo(
     }
 }
 
+//Whether the lead is out in Let's Go mode: its HP bar shows at the bottom left.
+static bool lead_out_in_lets_go(ConsoleHandle& console, ProControllerContext& context){
+    LetsGoHpWatcher hp_watcher(COLOR_RED);
+    wait_until(console, context, std::chrono::milliseconds(1500), { hp_watcher });
+    return hp_watcher.last_known_value() > 0;
+}
+
+//Hold ZL to lock on to the nearest Pokemon (the camera turns to it and its name and level
+//show above it), then send out the lead at it with ZR. With nothing to lock on to, ZR
+//sends the lead out in Let's Go mode instead and no battle starts (console 2026-10-26: a
+//Geodude a few steps to the left). Then call the lead back with R, turn about a quarter
+//and try again. Returns whether a battle started.
+static bool send_out_locked_on(ConsoleHandle& console, ProControllerContext& context, size_t tries){
+    bbq_lab_event(console, context, "route_done");
+    for (size_t attempt = 0; attempt < tries; attempt++){
+        if (attempt > 0){
+            pbf_move_right_joystick(context, {+1, 0}, 450ms, 300ms);
+        }
+        ssf_press_button(context, BUTTON_ZL, 1200ms, 3500ms);
+        ssf_press_button(context, BUTTON_ZR, 0ms, 400ms);
+        pbf_wait(context, 3000ms);
+        context.wait_for_all_requests();
+        NormalBattleMenuWatcher battle_menu(COLOR_YELLOW);
+        if (wait_until(console, context, std::chrono::seconds(8), { battle_menu }) == 0){
+            return true;
+        }
+        console.log("Lock-on " + std::to_string(attempt + 1) + "/" + std::to_string(tries) + ": no battle.", COLOR_ORANGE);
+        if (lead_out_in_lets_go(console, context)){
+            console.log("The lead is out in Let's Go mode: calling it back.");
+            pbf_press_button(context, BUTTON_R, 160ms, 1000ms);
+        }
+    }
+    bbq_lab_event(console, context, "no_battle");
+    return false;
+}
+
 //Send out the lead at the target straight ahead, stepping closer between tries. Unlike
 //send_out_and_look_around(), it never turns away: after following a glow the target is
 //in front, and the look-around turned the camera off it (console 2026-10-26).
@@ -614,27 +628,7 @@ void quest_catch_navi(
             console.log(current_quest == BBQuests::catch_any ? "Catch: Any (Pride Rock)" : "Catch: Normal/Fire");
 
             //Savanna Plaza - Pride Rock
-            central_to_savanna_plaza(info, console, context);
-
-            pbf_move_left_joystick(context, {+0.724, -1}, 80ms, 160ms);
-            pbf_press_button(context, BUTTON_L | BUTTON_PLUS, 160ms, 840ms);
-
-            jump_glide_fly(console, context, BBQ_OPTIONS.INVERTED_FLIGHT, 4800ms, 3200ms, 3200ms);
-
-            pbf_press_button(context, BUTTON_PLUS, 160ms, 840ms);
-            pbf_move_left_joystick(context, {+1, 0}, 160ms, 400ms);
-
-            pbf_press_button(context, BUTTON_L, 160ms, 400ms);
-            //The glide lands on the rock every time; an 800 ms walk went off its right
-            //edge 2 of 6 times (console 2026-10-26). 300 ms stays on it, 6 of 6.
-            pbf_move_left_joystick(context, {0, +1}, 300ms, 400ms);
-
-            //Turn slightly for switch 1
-            if (console.state().console_type() == ConsoleType::Switch1){
-                pbf_move_left_joystick(context, {-1, +1}, 160ms, 400ms);
-                pbf_press_button(context, BUTTON_L, 160ms, 400ms);
-            }
-
+            central_to_pride_rock(info, console, context, BBQ_OPTIONS);
             break;
 
         case BBQuests::catch_psychic:
@@ -775,8 +769,10 @@ void quest_catch_navi(
             context.wait_for_all_requests();
 
             //Geodude stands near the landing but does not walk in: R22 waited 0 of 2
-            //times into a battle, once with a Geodude a few steps to the right.
-            send_out_and_look_around(console, context, std::chrono::seconds(6), "Geodude");
+            //times into a battle, once with a Geodude a few steps to the right, and the
+            //look-around, which sends the lead straight ahead, missed it 30 degrees off.
+            //Locking on first turns to it: 3 of 3 battles (console 2026-10-26).
+            send_out_locked_on(console, context, 4);
             break;
         case BBQuests::catch_steel:
             console.log("Catch: Steel");

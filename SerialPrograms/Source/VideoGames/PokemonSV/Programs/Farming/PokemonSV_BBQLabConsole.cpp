@@ -192,7 +192,13 @@ public:
         }else if (cmd == "jgf"){                            //  jgf hold_up flight_wait drop_time: jump_glide_fly()
             jump_glide_fly(console, context, m_options.INVERTED_FLIGHT, ms(1, 1600), ms(2, 2000), ms(3, 3200));
         }else if (cmd == "central"){
-            return_to_plaza(info, console, context, m_options.LANGUAGE);
+            //Central Plaza hides its own map icon, so a return from there can't find
+            //it and fails (console 2026-10-26: "central" right after "run", 3 times).
+            if (m_position_known && !is_away_from_plaza()){
+                out << "already at Central Plaza\n";
+            }else{
+                return_to_plaza(info, console, context, m_options.LANGUAGE);
+            }
             m_position_known = true;
         }else if (cmd == "at_central"){                     //  standing on the Central Plaza fly point: no flight
             reset_plaza_position();

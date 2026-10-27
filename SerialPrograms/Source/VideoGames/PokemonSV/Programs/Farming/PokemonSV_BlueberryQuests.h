@@ -261,6 +261,14 @@ void heal_after_battle_if_due(
     ConsoleHandle& console, ProControllerContext& context
 );
 
+// Savanna Plaza to the top of Pride Rock, facing Pyroar. Flies again from Central Plaza
+// when the landing missed the rock.
+void central_to_pride_rock(
+    const ProgramInfo& info,
+    ConsoleHandle& console, ProControllerContext& context,
+    const BBQOption& BBQ_OPTIONS
+);
+
 //Run around until you encounter a pokemon. Tera, then defeat it by spamming your first move.
 // Send out the lead at whatever is in front and wait for a battle. If none starts,
 // turn the camera about a quarter at a time, up to three times, and try again.

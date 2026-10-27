@@ -32,6 +32,7 @@
 #include "VideoGames/PokemonSV/Inference/Overworld/PokemonSV_OverworldDetector.h"
 #include "VideoGames/PokemonSV/Inference/Overworld/PokemonSV_OverworldSensors.h"
 #include "VideoGames/PokemonSV/Inference/Overworld/PokemonSV_LetsGoHpReader.h"
+#include "VideoGames/PokemonSV/Inference/Overworld/PokemonSV_PrideRockDetector.h"
 #include "VideoGames/PokemonSV/Inference/Boxes/PokemonSV_BoxDetection.h"
 #include "VideoGames/PokemonSV/Programs/Boxes/PokemonSV_BoxRoutines.h"
 #include "VideoGames/PokemonSV/Programs/PokemonSV_MenuNavigation.h"
@@ -1556,26 +1557,44 @@ void central_to_pride_rock(
     ConsoleHandle& console, ProControllerContext& context,
     const BBQOption& BBQ_OPTIONS
 ){
-    central_to_savanna_plaza(info, console, context);
+    //The glide lands on the rock 12 of 12 times in clear weather, but in rain it
+    //came down short or in the grass below 6 of 7 times (console 2026-10-26). Check
+    //where it landed and fly again from Central Plaza.
+    for (size_t flight = 0; flight < 3; flight++){
+        if (flight > 0){
+            console.log("Missed Pride Rock. Flying again from Central Plaza.", COLOR_ORANGE);
+            return_to_plaza(info, console, context, BBQ_OPTIONS.LANGUAGE);
+        }
+        central_to_savanna_plaza(info, console, context);
 
-    pbf_move_left_joystick(context, {+0.724, -1}, 80ms, 160ms);
-    pbf_press_button(context, BUTTON_L | BUTTON_PLUS, 160ms, 840ms);
+        pbf_move_left_joystick(context, {+0.724, -1}, 80ms, 160ms);
+        pbf_press_button(context, BUTTON_L | BUTTON_PLUS, 160ms, 840ms);
 
-    jump_glide_fly(console, context, BBQ_OPTIONS.INVERTED_FLIGHT, 4800ms, 3200ms, 3200ms);
+        //3200 to 3600 ms all land on the rock in clear weather (console 2026-10-26,
+        //15 of 15), 3600 near its left edge. 3400 lands in the middle with a little
+        //more reach for the short glides seen in rain.
+        jump_glide_fly(console, context, BBQ_OPTIONS.INVERTED_FLIGHT, 4800ms, 3400ms, 3200ms);
 
-    pbf_press_button(context, BUTTON_PLUS, 160ms, 840ms);
-    pbf_move_left_joystick(context, {+1, 0}, 160ms, 400ms);
+        pbf_press_button(context, BUTTON_PLUS, 160ms, 840ms);
+        pbf_move_left_joystick(context, {+1, 0}, 160ms, 400ms);
 
-    pbf_press_button(context, BUTTON_L, 160ms, 400ms);
-    //The glide lands on the rock every time; an 800 ms walk went off its right
-    //edge 2 of 6 times (console 2026-10-26). 300 ms stays on it, 6 of 6.
-    pbf_move_left_joystick(context, {0, +1}, 300ms, 400ms);
-
-    //Turn slightly for switch 1
-    if (console.state().console_type() == ConsoleType::Switch1){
-        pbf_move_left_joystick(context, {-1, +1}, 160ms, 400ms);
         pbf_press_button(context, BUTTON_L, 160ms, 400ms);
+        //An 800 ms walk went off the rock's right edge 2 of 6 times (console
+        //2026-10-26). 300 ms stays on it, 6 of 6.
+        pbf_move_left_joystick(context, {0, +1}, 300ms, 400ms);
+
+        //The 3400 ms glide lands facing Pyroar (console 2026-10-26, 6 of 6). The old
+        //Switch 1 turn left after it put Pyroar at the right edge, where the lead
+        //missed it 3 of 3 times.
+
+        context.wait_for_all_requests();
+        VideoSnapshot screen = console.video().snapshot();
+        if (!screen.frame || !off_pride_rock(*screen.frame)){
+            return;
+        }
+        bbq_lab_event(console, context, "off_rock");
     }
+    console.log("Missed Pride Rock 3 times. Trying from here.", COLOR_RED);
 }
 
 void quest_tera_self_defeat(
