@@ -1,0 +1,8 @@
+{
+  "fork": "dayfine/Arduino-Source",
+  "upstream": "PokemonAutomation/Arduino-Source",
+  "author": "dayfine",
+  "limit": 2,
+  "order": [50, 51, 7, 16, 52, 37, 38, 53, 8, 6, 5, 4, 10, 25, 2, 3],
+  "exclude": [39, 42]
+}
