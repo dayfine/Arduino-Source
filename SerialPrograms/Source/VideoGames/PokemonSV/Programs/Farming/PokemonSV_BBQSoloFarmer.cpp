@@ -6,6 +6,7 @@
 
 #include <set>
 #include "Common/Cpp/Exceptions.h"
+#include "Common/Cpp/PrettyPrint.h"
 #include "CommonFramework/Notifications/ProgramNotifications.h"
 #include "CommonFramework/ProgramStats/StatsTracking.h"
 #include "CommonTools/StartupChecks/StartProgramChecks.h"
@@ -21,6 +22,7 @@
 #include "VideoGames/PokemonSV/Programs/PokemonSV_WorldNavigation.h"
 //#include "VideoGames/PokemonSV/PokemonSV_Settings.h"
 #include "VideoGames/PokemonSV/Programs/Farming/PokemonSV_BlueberryQuests.h"
+#include "VideoGames/PokemonSV/Programs/Farming/PokemonSV_BBQPointsLedger.h"
 #include "PokemonSV_BBQSoloFarmer.h"
 
 namespace PokemonAutomation{
@@ -49,14 +51,45 @@ struct BBQSoloFarmer_Descriptor::Stats : public StatsTracker{
         : questsCompleted(m_stats["Quests Completed"])
         , saves(m_stats["Saves"])
         , errors(m_stats["Errors"])
+        , bp_earned(m_stats["BP Earned"])
+        , bp_spent(m_stats["BP Spent"])
     {
         m_display_order.emplace_back("Quests Completed");
         m_display_order.emplace_back("Saves");
         m_display_order.emplace_back("Errors", HIDDEN_IF_ZERO);
+        m_display_order.emplace_back("BP Earned");
+        m_display_order.emplace_back("BP Spent");
     }
+
+    void update_BP(const BBQPointsLedger& ledger){
+        bp_earned.store(ledger.earned, std::memory_order_relaxed);
+        bp_spent.store(ledger.spent, std::memory_order_relaxed);
+        bp_per_hour.store(ledger.net_per_hour(), std::memory_order_relaxed);
+        has_bp_per_hour.store(true, std::memory_order_relaxed);
+    }
+
+    //  Net and BP/hour are derived, so they are shown but not saved. Past runs
+    //  have no BP/hour since their time span isn't saved.
+    virtual std::string to_str(PrintMode mode) const override{
+        std::string str = StatsTracker::to_str(mode);
+        if (mode == SAVE_TO_STATS_FILE){
+            return str;
+        }
+        const int64_t net = (int64_t)bp_earned.load(std::memory_order_relaxed) - (int64_t)bp_spent.load(std::memory_order_relaxed);
+        str += " - Net BP: " + tostr_u_commas(net);
+        if (has_bp_per_hour.load(std::memory_order_relaxed)){
+            str += " - BP/hour: " + tostr_u_commas(bp_per_hour.load(std::memory_order_relaxed));
+        }
+        return str;
+    }
+
     std::atomic<uint64_t>& questsCompleted;
     std::atomic<uint64_t>& saves;
     std::atomic<uint64_t>& errors;
+    std::atomic<uint64_t>& bp_earned;
+    std::atomic<uint64_t>& bp_spent;
+    std::atomic<int64_t> bp_per_hour{0};
+    std::atomic<bool> has_bp_per_hour{false};
 };
 std::unique_ptr<StatsTracker> BBQSoloFarmer_Descriptor::make_stats() const{
     return std::unique_ptr<StatsTracker>(new Stats());
@@ -245,24 +278,32 @@ public:
     {}
 
     virtual std::vector<BBQuests> read_quests() override{
-        return PokemonSV::read_quests(m_env.program_info(), m_env.console, m_context, m_options);
+        int BP = -1;
+        std::vector<BBQuests> quests = PokemonSV::read_quests(m_env.program_info(), m_env.console, m_context, m_options, &BP);
+        record_BP(BP);
+        return quests;
     }
     virtual std::vector<BBQuests> process_quest_list(
         const std::vector<BBQuests>& quests, uint8_t eggs_hatched
     ) override{
-        return PokemonSV::process_quest_list(m_env.program_info(), m_env.console, m_context, m_options, quests, eggs_hatched);
+        std::vector<BBQuests> to_do = PokemonSV::process_quest_list(
+            m_env.program_info(), m_env.console, m_context, m_options, quests, eggs_hatched, &m_bp_ledger
+        );
+        update_BP_stats();
+        return to_do;
     }
     virtual bool do_quest(BBQuests quest, uint8_t& eggs_hatched) override{
         return process_and_do_quest(m_env, m_env.console, m_context, m_options, quest, eggs_hatched);
     }
     virtual void reroll_quest(BBQuests quest) override{
-        std::vector<BBQuests> quests = PokemonSV::read_quests(m_env.program_info(), m_env.console, m_context, m_options);
+        std::vector<BBQuests> quests = read_quests();
         auto iter = std::find(quests.begin(), quests.end(), quest);
         if (iter == quests.end()){
             m_env.log("Failed quest is no longer on the panel. Not rerolling.");
             return;
         }
-        reroll_quest_slot(m_env.program_info(), m_env.console, m_context, m_options, quests, iter - quests.begin());
+        reroll_quest_slot(m_env.program_info(), m_env.console, m_context, m_options, quests, iter - quests.begin(), &m_bp_ledger);
+        update_BP_stats();
     }
     virtual void quest_completed() override{
         m_stats.questsCompleted++;
@@ -290,12 +331,28 @@ public:
         send_program_status_notification(m_env, m_status_update);
     }
 
+    //BP is read from the quest panel screenshots the program already takes.
+    void record_BP(int BP){
+        m_bp_ledger.record(BP, current_time());
+        update_BP_stats();
+    }
+
 private:
+    void update_BP_stats(){
+        m_env.log(
+            "BP: " + std::to_string(m_bp_ledger.balance) + " (start " + std::to_string(m_bp_ledger.starting_balance) +
+            ", earned " + std::to_string(m_bp_ledger.earned) + ", spent " + std::to_string(m_bp_ledger.spent) + ")"
+        );
+        m_stats.update_BP(m_bp_ledger);
+        m_env.update_stats();
+    }
+
     SingleSwitchProgramEnvironment& m_env;
     ProControllerContext& m_context;
     BBQOption& m_options;
     BBQSoloFarmer_Descriptor::Stats& m_stats;
     EventNotificationOption& m_status_update;
+    BBQPointsLedger m_bp_ledger;
 };
 
 }
@@ -330,6 +387,9 @@ void BBQSoloFarmer::program(SingleSwitchProgramEnvironment& env, ProControllerCo
 
     BBQSoloFarmerGameActions game(env, context, BBQ_OPTIONS, stats, NOTIFICATION_STATUS_UPDATE);
     run_bbq_rounds(env.logger(), BBQ_OPTIONS, game);
+
+    //No quest panel is read after the last batch, so read the balance once more.
+    game.record_BP(read_BP(env.program_info(), env.console, context));
     env.update_stats();
 
     if (BBQ_OPTIONS.FIX_TIME_WHEN_DONE){
