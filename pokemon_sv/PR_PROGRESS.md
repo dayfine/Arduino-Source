@@ -18,6 +18,7 @@ upstream/main
 ├── 🔵 U#1628 BP reader crop (L) .......................... CI green after CommandLineTests#36 merged
 │   ├── 🟢 #7 quest detector tests (L) .................... a58ecebd8, 29/29; README note → CommandLineTests follow-up
 │   └── 🟢 B3 #16 BP status (L) ........................... 57ea3f413, 19/19
+│       └── 🟢 #52 BP check at run end (L) ................ 7f38c7189, 24/24
 │
 ├── P prep moves
 │   ├── 🟢 P1 #51 BBQ tests into PokemonSV_BBQTests.cpp (L) ... b9d9a10e0, 9/9 tests
@@ -60,7 +61,8 @@ upstream/main
 | 1 | 0 | A2 #50 error report without stream | L | 🟢 ready |
 | 2 | 0 | P1 #51 BBQ tests file | L | 🟢 ready |
 | 3 | 0 | #7 quest detector tests (after U#1628) | L | 🟢 a58ecebd8, 29/29 |
-| 4 | 0 | B3 #16 BP status (after U#1628) | L | 🟢 57ea3f413, 19/19 |
+| 4 | 0 | B3 #16 BP status (after U#1628) | L | 🟢 57ea3f413, 19/19; to do: fork code health flags `program()` 111→129 and `read_quests` 54 lines |
+| 4b | 0 | #52 BP check: rerolls vs reads at run end (on #16) | L | 🟢 7f38c7189, 24/24 |
 | 5 | 1 | #37 BBQGameActions seam | M | 🟡 needs rebase onto P1 |
 | 6 | 1 | #38 quest planner | M | 🟡 needs rebase onto P1 |
 | 7 | 1 | #8 verified reroll (fold in-panel reroll) | M | 🟡 needs rework |
@@ -72,7 +74,7 @@ upstream/main
 
 ## Current working set (10)
 
-Stage 0: A2 #50, P1 #51, #7, #16. Stage 1: #37, #38, #8, #6, #10, #25.
+Stage 0: A2 #50, P1 #51, #7, #16, #52. Stage 1: #37, #38, #8, #6, #10, #25.
 Deferred to their stage: #2/#3 (stage 1 tail), D2, A6, P2, P3 (stage 5).
 
 ## Next up (low risk first)
