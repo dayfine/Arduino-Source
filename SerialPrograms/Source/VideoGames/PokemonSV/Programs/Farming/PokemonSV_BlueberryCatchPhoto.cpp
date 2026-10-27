@@ -437,6 +437,21 @@ void quest_photo_after_fleeing(
     leave_quest_area(info, console, context, BBQ_OPTIONS, BBQuests::photo_flying);
 }
 
+//The Geodude for photo-fly lands right next to the player, at the edge of the photo or
+//out of it: photo mode moves the camera to the player (console 2026-10-26; R22 3 of 6
+//tries, then 0 of 2 with extra photos turned 30 degrees either way). Lock on with ZL,
+//which turns the camera to it, and step back while locked. Walking back turns the
+//player away, so lock on again and tap forward to face it before the photo.
+static void back_off_facing_target(ProControllerContext& context){
+    ssf_press_button(context, BUTTON_ZL, 1000ms, 3000ms);
+    ssf_press_left_joystick(context, {0, -1}, 0ms, 900ms);
+    pbf_wait(context, 2500ms);
+    ssf_press_button(context, BUTTON_ZL, 1000ms, 2000ms);
+    ssf_press_left_joystick(context, {0, +1}, 0ms, 100ms);
+    pbf_wait(context, 1500ms);
+    context.wait_for_all_requests();
+}
+
 void quest_photo(
     const ProgramInfo& info,
     ConsoleHandle& console, ProControllerContext& context,
@@ -459,28 +474,13 @@ void quest_photo(
 
                 move_camera = quest_photo_navi(info, console, context, BBQ_OPTIONS, current_quest);
 
+                if (current_quest == BBQuests::photo_fly){
+                    back_off_facing_target(context);
+                }
                 take_photo(
                     console, context, move_camera,
                     current_quest == BBQuests::photo_savanna || current_quest == BBQuests::photo_normal || current_quest == BBQuests::photo_fire
                 );
-                if (current_quest == BBQuests::photo_fly){
-                    //The Geodude stands in the box or to either side of it (console
-                    //2026-10-26, 8 rounds; R22 3 of 6 tries). Two more photos, turned
-                    //about 30 degrees left and right (450 ms turns about 90). Photo mode
-                    //did not open twice right after the previous photo, so each one
-                    //waits and is retried once.
-                    auto another_photo = [&](){
-                        pbf_wait(context, 1000ms);
-                        if (!take_photo(console, context, move_camera)){
-                            pbf_wait(context, 1000ms);
-                            take_photo(console, context, move_camera);
-                        }
-                    };
-                    pbf_move_right_joystick(context, {-1, 0}, 150ms, 400ms);
-                    another_photo();
-                    pbf_move_right_joystick(context, {+1, 0}, 300ms, 400ms);
-                    another_photo();
-                }
                 took_photo = true;
                 context.wait_for_all_requests();
             },

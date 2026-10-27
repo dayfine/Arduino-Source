@@ -283,9 +283,20 @@ public:
                 if (slot == quests.size()){
                     throw ParseException("quest: no blue slot to reroll.");
                 }
-                reroll_quest_slot(info, console, context, m_options, quests, slot);
+                //Keep rerolling the same slot inside the panel, reading only that slot,
+                //until a target shows: the panel is not closed and read again each time.
                 rerolls++;
-                quests = read_quests(info, console, context, m_options);
+                const std::optional<std::vector<BBQuests>> panel = reroll_quest_slot(
+                    info, console, context, m_options, quests, slot, {},
+                    [&](BBQuests now){
+                        if (targets.contains(now) || rerolls >= max_rerolls){
+                            return false;
+                        }
+                        rerolls++;
+                        return true;
+                    }
+                );
+                quests = panel ? *panel : read_quests(info, console, context, m_options);
             }
             const BBQuests target = drawn();
             out << "rerolls " << rerolls << "\n";
