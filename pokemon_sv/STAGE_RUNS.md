@@ -64,4 +64,9 @@ wall-clock, longest gap 10.5 min. That build has no BP check, so that line fails
 
 ## Results
 
-_None yet._
+| Run | When | Result | Note |
+|---|---|---|---|
+| S0 | 2026-10-27 12:47–13:09 | invalid | 8 quests in 21 min (617 BP/h wall), then KI-14: an egg quest with no egg left the game in the box, the next panel read failed and the program stopped, so no BP check line. The error report was saved without a screenshot and the app did not crash (#50's case). |
+| S1 | 2026-10-27 13:21–13:23 | invalid | KI-14 on the first quest. |
+
+Both were re-run with Number of eggs 0 and Out of eggs: Reroll (the boxes have no eggs).

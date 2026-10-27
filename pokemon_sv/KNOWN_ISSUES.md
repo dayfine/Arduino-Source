@@ -19,6 +19,7 @@ every run; move fixed ones to "Fixed" with the run that proved it.
 | KI-11 | code | `Terarium.cpp` keeps a global `away_from_plaza` | lab/r10 | C4 position object | Review risk |
 | KI-12 | code | `BlueberryQuests.cpp` 2.4k, `BlueberryCatchPhoto.cpp` 1.4k, `PokemonSV_Tests.cpp` 3.4k lines on lab; limit 1,000 | lab/r10 | P1–P3 | Review risk |
 | KI-13 | detector | `MapDestinationMenuDetector` reads Polar snow as the destination menu; upstream AutoStory 28–30 already works around it by zooming out | R17: Polar Classroom 1 direct flights 0/4 | A1 | Medium |
+| KI-14 | hatch-egg | With no egg in the boxes, the egg quest logs "No egg found" and returns inside the box screen without failing; the next check counts it as done, and the next panel open reads the X menu ("Picnic") and stops the program. `main` and lab both. | S0 2026-10-27 13:08 (after 8 quests), S1 13:23 (first quest) | stage 1 follow-up: leave the box and fail the attempt; at start, check for an egg when Number of eggs > 0 and fail early (setup error) | High when the box runs out |
 
 ## Fixed (kept for regression checks)
 
