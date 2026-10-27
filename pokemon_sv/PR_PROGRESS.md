@@ -72,6 +72,19 @@ upstream/main
 | 11 | 1 | #4 save milestones, #5 endless-reroll guard | L | 🟡 needs rebase |
 | 12 | 1 | B1 #2 logging, B2 #3 snapshots | L | 🟢 c8ba680b3 14/14, e1d2a2de5 16/16 |
 
+## Stage 1 stack (rebuilt 2026-10-27, linear on P1 #51)
+
+#37 21b53eda2 → #38 f4b2be7d5 → #8 7c4feb6dd → #6 00a5ce3ee → #5 e1a20c26c → #4 df9c3e358 →
+#10 7f8931a6a → #25 17e3a94db (carries closed #9's commit). Every commit builds and passes the
+BBQ tests on its own (15 → 61 tests). Fork PR bases form one chain; stage-4 PRs (#12, #13, #22,
+#26, #27) still sit on the old branches and need rebasing when stage 4 starts.
+
+**Test build for the stage 0+1 run:** branch `test/stage01` c0025b745 = stage 1 + #50 + #1628 +
+#16 + #52, with the BP stats and end-of-run check re-wired into stage 1's game-actions seam (each
+verified reroll now gets an exact BP window). 76 BBQ tests pass. Binary SHA-256 prefix
+81b7714581a0204e (verify-wt). Not run on the Switch yet. When #16/#52 rebase onto stage 1, this
+wiring is the change they take.
+
 ## Current working set (10)
 
 Stage 0: A2 #50, P1 #51, #7, #16, #52. Stage 1: #37, #38, #8, #6, #10, #25.
