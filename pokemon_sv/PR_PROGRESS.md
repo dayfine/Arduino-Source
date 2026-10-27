@@ -7,7 +7,7 @@ Live status of [PR_PLAN.md](PR_PLAN.md). Update whenever a PR changes state. Ris
 Legend: ✅ merged upstream · 🔵 open upstream · 🟢 fork draft, built and tested ·
 🟡 fork draft, needs build/tests · 🛠 branch in progress · ⬜ not started · ❌ closed
 
-Last updated: 2026-10-26 23:00.
+Last updated: 2026-10-26 23:10. Fork `main` synced with upstream `main` (4e017f888).
 
 ```
 upstream/main
@@ -20,13 +20,13 @@ upstream/main
 │   └── 🟡 B3 #16 BP status (L) ........................... rebased locally, not pushed
 │
 ├── P prep moves
-│   ├── 🛠 P1 BBQ tests into PokemonSV_BBQTests.cpp (L) ... branch bbq/tests-file b9d9a10e0, build pending
+│   ├── 🟢 P1 #51 BBQ tests into PokemonSV_BBQTests.cpp (L) ... b9d9a10e0, 9/9 tests
 │   ├── ⬜ P2 spot routes → BlueberryRoutes (L)
 │   └── ⬜ P3 BlueberryCatchPhoto split (L)
 │
 ├── A L1 cores
 │   ├── ⬜ A1 MapDestinationMenu snow fix (M) ............. needs day/night/snow menu samples in CommandLineTests
-│   ├── 🛠 A2 error report without stream (L) ............. branch fix/error-report-without-stream d65c9f427, build pending
+│   ├── 🟢 A2 #50 error report without stream (L) ......... d65c9f427, built, code health 0 failures
 │   ├── ⬜ A3 SpeciesTypes table (L)
 │   ├── ⬜ A4 PlaceNameBannerReader (L)
 │   ├── ⬜ A5 PrideRockDetector (L)
@@ -57,8 +57,8 @@ upstream/main
 |---|---|---|---|
 | — | U#1631 quest identity | L | open upstream, approved |
 | — | U#1628 BP reader crop | L | open upstream, CI green |
-| 1 | A2 error report without stream | L | 🛠 build pending |
-| 2 | P1 BBQ tests file | L | 🛠 build pending |
+| 1 | A2 #50 error report without stream | L | 🟢 ready |
+| 2 | P1 #51 BBQ tests file | L | 🟢 ready |
 | 3 | #7 quest detector tests (after U#1628) | L | 🟡 rebased |
 | 4 | B3 #16 BP status (after U#1628) | L | 🟡 rebased |
 | 5 | B1 #2 logging (after U#1631; decision 4) | L | 🟡 rebased |
@@ -74,7 +74,6 @@ A2, P1, #2, #3, #7, #16, D2, A6, P2, P3.
 
 ## Next up (low risk first)
 
-1. Build and test P1 and A2 once the running farmer test ends; open them as fork drafts.
 2. Push the four local rebases (#2, #3, #7, #16) after their build and tests.
 3. A3–A6: detectors and the species table, each with its tests; reference images go to
    CommandLineTests, not this repo.
