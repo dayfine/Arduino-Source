@@ -51,30 +51,32 @@ upstream/main
   6, start the next batch of 8–10 from the plan, lowest risk first.
 - A PR leaves the working set when it goes upstream or is closed.
 
-## Upstream queue (publish in this order)
+## Upstream queue (publish in this order, by stage; see PR_PLAN.md "Stages")
 
-| # | PR | Risk | State |
-|---|---|---|---|
-| — | U#1631 quest identity | L | open upstream, approved |
-| — | U#1628 BP reader crop | L | open upstream, CI green |
-| 1 | A2 #50 error report without stream | L | 🟢 ready |
-| 2 | P1 #51 BBQ tests file | L | 🟢 ready |
-| 3 | #7 quest detector tests (after U#1628) | L | 🟡 rebased |
-| 4 | B3 #16 BP status (after U#1628) | L | 🟡 rebased |
-| 5 | B1 #2 logging (after U#1631; decision 4) | L | 🟡 rebased |
-| 6 | D2 BasicCatcher options | L | ⬜ |
-| 7 | A6 TeraGlowDetector | L | ⬜ |
-| 8 | P2 spot routes move | L | ⬜ |
-| 9 | P3 CatchPhoto split | L | ⬜ |
-| 10 | B2 #3 snapshots | L | 🟡 rebased |
+| # | Stage | PR | Risk | State |
+|---|---|---|---|---|
+| — | 0 | U#1628 BP reader crop | L | open upstream, CI green |
+| — | 1 | U#1631 quest identity | L | open upstream, approved |
+| 1 | 0 | A2 #50 error report without stream | L | 🟢 ready |
+| 2 | 0 | P1 #51 BBQ tests file | L | 🟢 ready |
+| 3 | 0 | #7 quest detector tests (after U#1628) | L | 🟡 rebased, testing |
+| 4 | 0 | B3 #16 BP status (after U#1628) | L | 🟡 rebased, testing |
+| 5 | 1 | #37 BBQGameActions seam | M | 🟡 needs rebase onto P1 |
+| 6 | 1 | #38 quest planner | M | 🟡 needs rebase onto P1 |
+| 7 | 1 | #8 verified reroll (fold in-panel reroll) | M | 🟡 needs rework |
+| 8 | 1 | #6 persistent retries | M | 🟡 needs rebase |
+| 9 | 1 | #10 out-of-retries action (split first) | H | 🟡 needs split |
+| 10 | 1 | #25 reroll impossible quests on sight | M | 🟡 needs rebase |
+| 11 | 1 | #4 save milestones, #5 endless-reroll guard | L | 🟡 needs rebase |
+| 12 | 1 | B1 #2 logging, B2 #3 snapshots | L | 🟡 rebased, testing |
 
 ## Current working set (10)
 
-A2, P1, #2, #3, #7, #16, D2, A6, P2, P3.
+Stage 0: A2 #50, P1 #51, #7, #16. Stage 1: #37, #38, #8, #6, #10, #25.
+Deferred to their stage: #2/#3 (stage 1 tail), D2, A6, P2, P3 (stage 5).
 
 ## Next up (low risk first)
 
 2. Push the four local rebases (#2, #3, #7, #16) after their build and tests.
-3. A3–A6: detectors and the species table, each with its tests; reference images go to
-   CommandLineTests, not this repo.
-4. P2 and P3 moves.
+3. Stage 1: rebase #37 and #38 onto P1, then their children; split #10.
+4. After stage 1 is queued: stage 2 (#24 split, A4) and stage 3 (Auto Battle chain).
