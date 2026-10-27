@@ -65,7 +65,7 @@ upstream/main
 ├── A  L1 cores (independent of each other)
 │   ├── A1 [new] MapMenuDetector snow fix (+5 images) ..................... 6 + 20
 │   ├── A2 [new] don't crash reporting an error with no stream/screenshot . 13
-│   ├── A3 [new] Pokemon_SpeciesTypes table ............................ 300 + 40
+│   ├── A3 [new] species types as Resources JSON + loader (Packages PR too) 80 + 40
 │   ├── A4 [new] PlaceNameBannerReader ................................. 100 + 60
 │   ├── A5 [new] PrideRockDetector ..................................... 130 + 80
 │   ├── A6 [new] TeraGlowDetector (+14 images) ......................... 120 + 100

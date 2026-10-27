@@ -43,6 +43,35 @@ upstream/main
 └── ❌ closed as superseded: #9 #14 #20 #28 #34 #36
 ```
 
+## Working set rules (user, 2026-10-26)
+
+- **Upstream: exactly two open at a time.** When one merges, the user publishes the next from the
+  queue below the same day.
+- **Working set: about 10 fork drafts** that are being built, tested or fixed. When it drops under
+  6, start the next batch of 8–10 from the plan, lowest risk first.
+- A PR leaves the working set when it goes upstream or is closed.
+
+## Upstream queue (publish in this order)
+
+| # | PR | Risk | State |
+|---|---|---|---|
+| — | U#1631 quest identity | L | open upstream, approved |
+| — | U#1628 BP reader crop | L | open upstream, CI green |
+| 1 | A2 error report without stream | L | 🛠 build pending |
+| 2 | P1 BBQ tests file | L | 🛠 build pending |
+| 3 | #7 quest detector tests (after U#1628) | L | 🟡 rebased |
+| 4 | B3 #16 BP status (after U#1628) | L | 🟡 rebased |
+| 5 | B1 #2 logging (after U#1631; decision 4) | L | 🟡 rebased |
+| 6 | D2 BasicCatcher options | L | ⬜ |
+| 7 | A6 TeraGlowDetector | L | ⬜ |
+| 8 | P2 spot routes move | L | ⬜ |
+| 9 | P3 CatchPhoto split | L | ⬜ |
+| 10 | B2 #3 snapshots | L | 🟡 rebased |
+
+## Current working set (10)
+
+A2, P1, #2, #3, #7, #16, D2, A6, P2, P3.
+
 ## Next up (low risk first)
 
 1. Build and test P1 and A2 once the running farmer test ends; open them as fork drafts.
