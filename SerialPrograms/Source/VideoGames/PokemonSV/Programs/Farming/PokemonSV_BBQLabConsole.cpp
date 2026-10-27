@@ -212,6 +212,8 @@ public:
             central_to_coastal_plaza(info, console, context);
         }else if (cmd == "savanna"){
             central_to_savanna_plaza(info, console, context);
+        }else if (cmd == "rest2"){                          //  Savanna Rest Area 2, the Rabsca route's fly point
+            central_to_savanna_rest_area_2(info, console, context);
         }else if (cmd == "back"){
             press_Bs_to_back_to_overworld(info, console, context);
         }else if (cmd == "battle?"){                        //  battle? [seconds]

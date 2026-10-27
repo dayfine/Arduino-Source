@@ -81,6 +81,9 @@ CameraAngle quest_photo_navi(
             //a 250 ms turn left puts one near the middle (in frame 3 of 3, 2026-10-25).
             //The Polar Duosion was missing 12 of 12 looks in R17.
             central_to_slowpoke_beach(info, console, context, BBQ_OPTIONS);
+            //Get off the ride: photo mode does not open on it, the game says so instead
+            //(R22, 0 of 2 with Slowpokes in view).
+            pbf_press_button(context, BUTTON_PLUS, 160ms, 840ms);
             pbf_move_right_joystick(context, {-1, 0}, 250ms, 300ms);
 
             break;
@@ -474,6 +477,8 @@ void quest_photo(
 
                 move_camera = quest_photo_navi(info, console, context, BBQ_OPTIONS, current_quest);
 
+                //Not for the Slowpokes on the beach: they stand further off, and backing off
+                //left them small and outside the box (console 2026-10-26, 2 of 2).
                 if (current_quest == BBQuests::photo_fly){
                     back_off_facing_target(context);
                 }
@@ -536,13 +541,18 @@ static bool lead_out_in_lets_go(ConsoleHandle& console, ProControllerContext& co
 //Hold ZL to lock on to the nearest Pokemon (the camera turns to it and its name and level
 //show above it), then send out the lead at it with ZR. With nothing to lock on to, ZR
 //sends the lead out in Let's Go mode instead and no battle starts (console 2026-10-26: a
-//Geodude a few steps to the left). Then call the lead back with R, turn about a quarter
-//and try again. Returns whether a battle started.
-static bool send_out_locked_on(ConsoleHandle& console, ProControllerContext& context, size_t tries){
+//Geodude a few steps to the left). Then call the lead back with R and try again: turned
+//about a quarter, or, with a target known to be ahead, a step closer.
+//Returns whether a battle started.
+static bool send_out_locked_on(ConsoleHandle& console, ProControllerContext& context, size_t tries, bool target_ahead = false){
     bbq_lab_event(console, context, "route_done");
     for (size_t attempt = 0; attempt < tries; attempt++){
         if (attempt > 0){
-            pbf_move_right_joystick(context, {+1, 0}, 450ms, 300ms);
+            if (target_ahead){
+                pbf_move_left_joystick(context, {0, +1}, 500ms, 200ms);
+            }else{
+                pbf_move_right_joystick(context, {+1, 0}, 450ms, 300ms);
+            }
         }
         ssf_press_button(context, BUTTON_ZL, 1200ms, 3500ms);
         ssf_press_button(context, BUTTON_ZR, 0ms, 400ms);
@@ -562,29 +572,6 @@ static bool send_out_locked_on(ConsoleHandle& console, ProControllerContext& con
     return false;
 }
 
-//Send out the lead at the target straight ahead, stepping closer between tries. Unlike
-//send_out_and_look_around(), it never turns away: after following a glow the target is
-//in front, and the look-around turned the camera off it (console 2026-10-26).
-static bool send_out_ahead(ConsoleHandle& console, ProControllerContext& context, size_t tries){
-    for (size_t i = 0; i < tries; i++){
-        if (i > 0){
-            console.log("No battle yet. Stepping closer (" + std::to_string(i) + "/" + std::to_string(tries - 1) + ").");
-            pbf_move_left_joystick(context, {0, +1}, 500ms, 200ms);
-        }
-        ssf_press_button(context, BUTTON_ZR, 0ms, 1600ms);
-        ssf_press_button(context, BUTTON_ZL, 800ms, 400ms);
-        ssf_press_button(context, BUTTON_ZL, 1200ms, 400ms);
-        pbf_wait(context, 2400ms);
-        context.wait_for_all_requests();
-
-        NormalBattleMenuWatcher battle_menu(COLOR_YELLOW);
-        if (wait_until(console, context, std::chrono::seconds(6), { battle_menu }) == 0){
-            return true;
-        }
-    }
-    return false;
-}
-
 //Fly from Central to Rabsca, walk to its glow and send out the lead.
 static void central_to_rabsca_and_send_out(
     const ProgramInfo& info,
@@ -594,10 +581,12 @@ static void central_to_rabsca_and_send_out(
     central_to_savanna_rest_area_2(info, console, context);
 
     //Turned further right and glided longer than the first version (5.5 s), to land
-    //closer to Rabsca, past the Deerling and Trapinch near the rest area.
+    //closer to Rabsca, past the Deerling and Trapinch near the rest area. 6500 ms
+    //landed short with Rabsca far to the left (2 of 2); 7000 ms lands just in front
+    //of it in clear weather (console 2026-10-26). In rain the glide falls short.
     pbf_move_left_joystick(context, {+1, -0.35}, 80ms, 160ms);
     pbf_press_button(context, BUTTON_L | BUTTON_PLUS, 160ms, 840ms);
-    jump_glide_fly(console, context, BBQ_OPTIONS.INVERTED_FLIGHT, 3000ms, 6500ms, 2400ms);
+    jump_glide_fly(console, context, BBQ_OPTIONS.INVERTED_FLIGHT, 3000ms, 7000ms, 2400ms);
 
     pbf_press_button(context, BUTTON_PLUS, 160ms, 840ms);
     pbf_move_left_joystick(context, {+0.6, +0.8}, 80ms, 160ms);
@@ -605,9 +594,10 @@ static void central_to_rabsca_and_send_out(
 
     if (follow_tera_glow(console, context)){
         //The first send-out from where the glow-follow stops missed 4 of 4 times, and
-        //one 500 ms step closer hit each time (console 2026-10-26).
+        //one 500 ms step closer hit each time (console 2026-10-26). Rabsca is then the
+        //nearest Pokemon: lock on to it rather than sending the lead straight ahead.
         pbf_move_left_joystick(context, {0, +1}, 500ms, 200ms);
-        send_out_ahead(console, context, 3);
+        send_out_locked_on(console, context, 3, true);
     }else{
         send_out_and_look_around(console, context, std::chrono::seconds(6), "Rabsca");
     }
@@ -1322,7 +1312,7 @@ void quest_catch(
                 }else if (current_quest == BBQuests::catch_bug){
                     //After fleeing a wrong-type Pokemon, Rabsca is still near.
                     if (follow_tera_glow(console, context)){
-                        send_out_ahead(console, context, 3);
+                        send_out_locked_on(console, context, 3, true);
                     }else{
                         send_out_and_look_around(console, context, std::chrono::seconds(6), "Rabsca");
                     }
