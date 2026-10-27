@@ -96,6 +96,15 @@ U#1628's branch + #16, 71 tests) → `bbq/bp-check` 852b61cb0 (#52, 76 tests). T
 wiring from `test/stage01`; #52 now also logs the BP check when a run stops early. Send order
 is therefore #50, #51, #7, stage 1, then #16 and #52 (stage 0's BP stats land after stage 1).
 
+**Paused 2026-10-27 until an upstream PR merges** (U#1628 awaiting review, U#1631 approved).
+On resume:
+- Egg fix `bbq/egg-preflight` 1ebdecbcb (on #25, no PR yet): KI-14 + start checks (wake screen,
+  egg in box). Open decision: strict setup error when Number of eggs > 0 and the box has none
+  (current code), or treat it as out of eggs so Out of eggs decides (recommended; defaults are
+  30 eggs / Stop). Then Switch test E1 (about 2 min, see the plan in the session notes: wake a
+  dimmed screen, scan the box, stop with the setup message), then open the fork PR.
+- Switch use: run `switch_guard.sh` first; ask before each run (the user runs Max Lair on it).
+
 ## Current working set (10)
 
 Stage 0: A2 #50, P1 #51, #7, #16, #52. Stage 1: #37, #38, #53, #8, #6, #10, #25.
