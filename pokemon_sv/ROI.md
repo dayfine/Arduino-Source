@@ -67,6 +67,9 @@ the live runs needed to validate.
 | C17 hatch fix (stats view, lead check, restore) + start-up fly-spot check | model 657 | 509 BP/h over 58 min, 13 quests, hatch red +200 | R8 | short run, inside MC p10-p90 (451-698); hatch works end to end |
 | R10 build (look-arounds, catch-any court, catch-flying, catch options) | model 657 | 507 BP/h over 2h10, 32 quests | R10 | below band: pickup-10 run as Auto Battle never completes (~26 min lost, 4 rerolls), Tera-self glide 1/6 (17 min, s/success 1023 vs 247 in R6). Make TM 6/7, sneak-up 3/5, travel 6/6, photos 5/5. Without those two losses ~690 BP/h. Camera Support ON gave 0 kills in Auto Battle. |
 | R11-R12b (court Tera-self, always-reroll, picnic retry, TM fixes) | model 690 (mc_current.py) | 660 / 742 / 537 BP/h; 85 quests over 4h38 | R11, R12, R12b | mean ~630; R12b lost ~27 min to Tera-self at the court (1/7) and Poison/Dark + catch-any (0/4). Make TM after the by-sight fix 6/7. Sneak-up 9/9, photos swim 13/14. |
+| R21 (lab/r10, 10-26 04:01) | — | 384 BP/h wall (790 net, 123 min), 26 quests | R21 | weak routes and failed tries; see scratchpad report_tables.md |
+| R22 (lab/r10, 10-26 14:24) | — | 531 BP/h wall (1,080 net, 122 min), 35 quests; stats 543 | R22 | failed tries ~34 min |
+| R23 (lab/r10 f20d06c7b: Pride Rock landing check + 3,400 ms glide, Pyroar aim, lock-on with recall, photo-fly back-off, Rabsca 7,000 ms) | — | 520 BP/h wall (1,040 net: +1,220 / −180, 120 min), 34 quests; stats 564 | R23 | Tera-self 5/5, catch-rock 1/1, catch-any 5/6, Pyroar photo 3/4, sneak-up 7/10 (2 off-rock landings re-flown), photo-coastal 1/1; losses: photo-fly 1/5, photo-swim 0/2, photo-dark 0/2 (Alolan Muk in frame), 10 pickup-10 rerolls. Same as R22 within run-to-run noise. |
 
 ## Projection (Monte Carlo, `pokemon_sv/tools/roi_mc.py`)
 

@@ -6,10 +6,10 @@ every run; move fixed ones to "Fixed" with the run that proved it.
 
 | ID | Quest / area | Issue | Evidence | Fix / owner PR | Severity |
 |---|---|---|---|---|---|
-| KI-1 | photo-fly | Back-off is blind: it walks back and re-locks whether or not a Geodude is near, so photos show rock and bush | R23: 1/5 attempts, 2 quests rerolled | G4: lock on first, back off only when locked and close | High (≈6 min/2 h) |
+| KI-1 | photo-fly | Back-off is blind: it walks back and re-locks whether or not a Geodude is near, so photos show rock and bush | R23 final: 1/5 attempts, 2 quests rerolled | G4: lock on first, back off only when locked and close | High (≈6 min/2 h) |
 | KI-2 | photo-dark | Alolan Muk in frame, partly in the box, but the photo doesn't count; likely too small / off-centre | R23: 0/2, rerolled (22:39, 22:40) | G3a: aim or lock on before the photo | Medium |
 | KI-3 | photo-swim | Photo shows empty water; nothing swimming in frame | R23: 0/2, rerolled (22:13, 22:14) | not planned yet; needs a look-around or a different spot | Medium |
-| KI-4 | Pride Rock (5 quests) | Glide misses the rock some of the time; caught by the landing check and re-flown (+~1 min each) | R23: 2 misses then landed; rain: 6/7 fell | G1 (landing check); rain: KI-5 | Low now |
+| KI-4 | Pride Rock (5 quests) | Glide misses the rock some of the time; caught by the landing check and re-flown (+~1 min each) | R23: 2 off-rock landings in 10 sneak-up attempts, both re-flown; rain: 6/7 fell | G1 (landing check); rain: KI-5 | Low now |
 | KI-5 | all glides | Rain shortens glides (Pride Rock, Rabsca) | lab 2026-10-26: Rabsca 7,000 ms short 2/2 in rain | follow-up: rain detector → longer glide or defer (`RETRY_LATER`) | Medium |
 | KI-6 | lock-on catches | Lock-on takes the nearest Pokémon; wrong species wastes a battle (Deerling, Sawsbuck at the Geodude spot) | lab: Geodude 1/3 with retries | A7 follow-up: read the lock label, switch target | Medium |
 | KI-7 | relaunch | After "no overworld" at relaunch the fly retry pressed A on the map for 2 min | lab console 2026-10-26 | C2b / C4 recovery bounds | Low |
