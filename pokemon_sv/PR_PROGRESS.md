@@ -63,31 +63,35 @@ upstream/main
 | 3 | 0 | #7 quest detector tests (after U#1628) | L | 🟢 a58ecebd8, 29/29 |
 | 4 | 0 | B3 #16 BP status (after U#1628) | L | 🟢 57ea3f413, 19/19; to do: fork code health flags `program()` 111→129 and `read_quests` 54 lines |
 | 4b | 0 | #52 BP check: rerolls vs reads at run end (on #16) | L | 🟢 7f38c7189, 24/24 |
-| 5 | 1 | #37 BBQGameActions seam | M | 🟡 needs rebase onto P1 |
-| 6 | 1 | #38 quest planner | M | 🟡 needs rebase onto P1 |
-| 7 | 1 | #8 verified reroll (fold in-panel reroll) | M | 🟡 needs rework |
-| 8 | 1 | #6 persistent retries | M | 🟡 needs rebase |
-| 9 | 1 | #10 out-of-retries action (split first) | H | 🟡 needs split |
-| 10 | 1 | #25 reroll impossible quests on sight | M | 🟡 needs rebase |
-| 11 | 1 | #4 save milestones, #5 endless-reroll guard | L | 🟡 needs rebase |
+| 5 | 1 | #37 BBQGameActions seam | M | 🟢 21b53eda2, 15 |
+| 6 | 1 | #38 quest planner | M | 🟢 f4b2be7d5, 24 |
+| 6b | 1 | #53 pin today's stuck behaviors (test-only) | L | 🟢 e326a90ac, 29 |
+| 7 | 1 | #8 verified reroll (fold in-panel reroll) | M | 🟢 6ebb53d73, 38 |
+| 8 | 1 | #6 persistent retries | M | 🟢 90cb78ef8, 40 |
+| 9 | 1 | #10 out-of-retries action | H | 🟢 41b3e4fcd, 44 |
+| 10 | 1 | #25 reroll impossible quests on sight | M | 🟢 8ee930626, 61 |
+| 11 | 1 | #4 save milestones, #5 endless-reroll guard | L | 🟢 0bcd8071d, b4bc0f0bb, 42 |
 | 12 | 1 | B1 #2 logging, B2 #3 snapshots | L | 🟢 c8ba680b3 14/14, e1d2a2de5 16/16 |
 
 ## Stage 1 stack (rebuilt 2026-10-27, linear on P1 #51)
 
-#37 21b53eda2 → #38 f4b2be7d5 → #8 7c4feb6dd → #6 00a5ce3ee → #5 e1a20c26c → #4 df9c3e358 →
-#10 7f8931a6a → #25 17e3a94db (carries closed #9's commit). Every commit builds and passes the
-BBQ tests on its own (15 → 61 tests). Fork PR bases form one chain; stage-4 PRs (#12, #13, #22,
+#37 21b53eda2 → #38 f4b2be7d5 → #53 e326a90ac → #8 6ebb53d73 → #6 90cb78ef8 → #5 b4bc0f0bb →
+#4 0bcd8071d → #10 41b3e4fcd → #25 8ee930626 (carries closed #9's commit). Every commit builds
+and passes the BBQ tests on its own (15 → 61 tests). #53 (test-only) pins five ways the round
+loop stalls or wastes time today; #6, #5 and #4 each replace their scenario in place, so their
+diffs show the behavior change. Fork PR bases form one chain; stage-4 PRs (#12, #13, #22,
 #26, #27) still sit on the old branches and need rebasing when stage 4 starts.
 
 **Test build for the stage 0+1 run:** branch `test/stage01` c0025b745 = stage 1 + #50 + #1628 +
 #16 + #52, with the BP stats and end-of-run check re-wired into stage 1's game-actions seam (each
 verified reroll now gets an exact BP window). 76 BBQ tests pass. Binary SHA-256 prefix
-81b7714581a0204e (verify-wt). Not run on the Switch yet. When #16/#52 rebase onto stage 1, this
+81b7714581a0204e (verify-wt). Built before #53 was inserted; the stack differs only in tests, so
+the binary is unchanged in behavior. Not run on the Switch yet. When #16/#52 rebase onto stage 1, this
 wiring is the change they take.
 
 ## Current working set (10)
 
-Stage 0: A2 #50, P1 #51, #7, #16, #52. Stage 1: #37, #38, #8, #6, #10, #25.
+Stage 0: A2 #50, P1 #51, #7, #16, #52. Stage 1: #37, #38, #53, #8, #6, #10, #25.
 Deferred to their stage: #2/#3 (stage 1 tail), D2, A6, P2, P3 (stage 5).
 
 ## Next up (low risk first)
