@@ -17,14 +17,19 @@ own BP window). The two builds run different BP-tracking code, so each needs its
 | S0 | `test/stage0` 23c6bdea5 | `main` + U#1628 (BP OCR) + #16 (BP stats) + #52 (BP check) + #50 (error report fix) | copy of the R23 profile (`bbq-r19`), new name `bbq-s0` | 30 min |
 | S1 | `test/stage01` c0025b745 | stage 1 (#37 … #25) + the stage 0 PRs above, BP wiring moved into the seam | copy of `bbq-r19` as `bbq-s1`; Out of retries: **Reroll** | 30 min |
 
-Binaries (built 2026-10-27, BBQ tests 24/24 and 76/76; SHA-256 prefix of the executable):
-S0 `c348e5a726bb3284`, S1 `eb9dab46790196d8`, in the session scratchpad under `builds/stage0` and
-`builds/stage01` (app, `Resources`, `Firmware`). Rebuild from the branch if the scratchpad is gone.
+Binaries (built 2026-10-27, BBQ tests 24/24 and 76/76) are copied with `Resources` and
+`Firmware` to the session scratchpad under `builds/stage0` and `builds/stage01`, then signed with
+the lab identity ([lab/MACOS_LOCAL_SIGNING.md](lab/MACOS_LOCAL_SIGNING.md): bundle ID
+`com.dayfine.pokemonautomation.lab`, certificate "PokemonAutomation Local Development") so the
+camera grant carries over. SHA-256 prefix of the signed executable: S0 `c9ea73dda5c39198`, S1
+`807bbf61b7b45290`. Rebuild from the branch if the scratchpad is gone.
 
 Both start from the same save at Central Plaza, with at least 500 BP so that rerolls never run
 out. Prepare and launch as in [lab/CONTROL.md](lab/CONTROL.md): quit the app cleanly before editing
 a profile, keep `settings-at-start.json`, and don't press controller keys while a program runs.
-Stop each run by hand at 30 minutes.
+Set **Number of quests to 8** (about 30 minutes at R23's rate) so the farmer ends by itself: the
+`BP check` line is logged only when the program finishes, not when it is stopped by hand. A
+watcher presses Stop only as a safety cap at 50 minutes.
 
 ## Pass criteria
 
