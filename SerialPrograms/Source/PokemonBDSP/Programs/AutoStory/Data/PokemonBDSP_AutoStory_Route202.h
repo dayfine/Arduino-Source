@@ -9,6 +9,7 @@
 #ifndef PokemonAutomation_PokemonBDSP_AutoStory_Route202_H
 #define PokemonAutomation_PokemonBDSP_AutoStory_Route202_H
 
+#include <vector>
 #include "Pokemon/Navigation/Pokemon_TileGrid.h"
 
 namespace PokemonAutomation{
@@ -22,15 +23,14 @@ const Pokemon::TileGrid& grid();
 //  Where the player stands in the tall grass after the catching tutorial.
 extern const Pokemon::TilePos CATCH_SPOT;
 
-//  The girl who gives a Potion, and the tile to talk to her from (face north).
-extern const Pokemon::TilePos POTION_GIVER;
-extern const Pokemon::TilePos POTION_GIVER_FRONT;
+//  The three trainers, south to north. Which one is Tristan, Natalie or
+//  Logan is not known from the map.
+extern const Pokemon::TilePos TRAINER_A;
+extern const Pokemon::TilePos TRAINER_B;
+extern const Pokemon::TilePos TRAINER_C;
 
-//  Trainers. Names follow Bulbapedia's list order (south to north); the map
-//  shows sprites, not names.
-extern const Pokemon::TilePos TRAINER_TRISTAN;
-extern const Pokemon::TilePos TRAINER_NATALIE;
-extern const Pokemon::TilePos TRAINER_LOGAN;
+//  Their sight lines, in this map's tiles. The story wants these battles.
+const std::vector<Pokemon::TrainerSight>& trainer_sights();
 
 //  A tile in the gap of the north edge; walking north from it leaves for
 //  Jubilife City.

@@ -7,7 +7,10 @@
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "Pokemon/Navigation/Pokemon_TileGrid.h"
+#include "Data/PokemonBDSP_AutoStory_Route201.h"
 #include "Data/PokemonBDSP_AutoStory_Route202.h"
+#include "Data/PokemonBDSP_AutoStory_SandgemTown.h"
+#include "Data/PokemonBDSP_AutoStory_StoryMaps.h"
 #include "Utils/PokemonBDSP_AutoStory_NewGame.h"
 #include "PokemonBDSP_AutoStory_Tests.h"
 
@@ -25,15 +28,15 @@ using Pokemon::TilePos;
 using Pokemon::TileType;
 
 //  A small map with every tile type.
-//  Row 2 is a ledge with a gap at x = 4; the NPC at (3,4) and the sign at
-//  (1,4) stand on the bottom row.
+//  Row 2 is a ledge with a gap at x = 4. The bottom row has a sign at (1,4),
+//  an NPC at (3,4) and a door at (5,4); (3,0) is off the map.
 const TileGrid& small_grid(){
     static const TileGrid grid({
-        R"(#.....#)",
+        R"(#..?..#)",
         R"(#.."".#)",
         R"(#vvv..#)",
         R"(#.....#)",
-        R"(#S.N..#)",
+        R"(#S.N.D#)",
     });
     return grid;
 }
@@ -60,8 +63,10 @@ public:
             {{2, 2}, TileType::LEDGE},
             {{3, 4}, TileType::NPC},
             {{1, 4}, TileType::SIGN},
-            {{-1, 0}, TileType::BLOCKED},
-            {{7, 4}, TileType::BLOCKED},
+            {{5, 4}, TileType::DOOR},
+            {{3, 0}, TileType::UNKNOWN},
+            {{-1, 0}, TileType::UNKNOWN},
+            {{7, 4}, TileType::UNKNOWN},
         };
         for (const Case& c : cases){
             if (grid.at(c.pos) != c.type){
@@ -78,27 +83,88 @@ public:
             }catch (InternalProgramError&){}
         }
 
-        const TileGrid& route = Route202::grid();
-        if (route.width() != 36 || route.height() != 26){
-            return "Route 202 is " + std::to_string(route.width()) + "x" + std::to_string(route.height()) + ".";
+        if (grid.rows()[4] != "#S.N.D#"){
+            return "Small grid row 4 prints as " + grid.rows()[4] + ".";
         }
-        const Case named[] = {
-            {Route202::CATCH_SPOT,          TileType::TALL_GRASS},
-            {Route202::POTION_GIVER,        TileType::NPC},
-            {Route202::POTION_GIVER_FRONT,  TileType::WALKABLE},
-            {Route202::TRAINER_TRISTAN,     TileType::NPC},
-            {Route202::TRAINER_NATALIE,     TileType::NPC},
-            {Route202::TRAINER_LOGAN,       TileType::NPC},
-            {Route202::EXIT_JUBILIFE,       TileType::WALKABLE},
+
+        struct Map{
+            const char* name;
+            const TileGrid& grid;
+            int width;
+            int height;
         };
-        for (const Case& c : named){
-            if (route.at(c.pos) != c.type){
-                return "Route 202 tile " + Pokemon::to_string(c.pos) + " is type " + std::to_string((int)route.at(c.pos)) + ".";
+        const Map maps[] = {
+            {MAP_ROUTE_201,     Route201::grid(),       64, 20},
+            {MAP_SANDGEM_TOWN,  SandgemTown::grid(),    34, 23},
+            {MAP_ROUTE_202,     Route202::grid(),       36, 26},
+        };
+        for (const Map& map : maps){
+            if (map.grid.width() != map.width || map.grid.height() != map.height){
+                return std::string(map.name) + " is " + std::to_string(map.grid.width()) + "x" + std::to_string(map.grid.height()) + ".";
             }
         }
-        if (Route202::POTION_GIVER_FRONT.next(GridDirection::NORTH) != Route202::POTION_GIVER){
-            return "The Potion giver's front tile is not south of her.";
+
+        struct Named{
+            const char* map;
+            TilePos pos;
+            TileType type;
+        };
+        const Named named[] = {
+            {MAP_ROUTE_201,     Route201::POTION_GIVER,             TileType::NPC},
+            {MAP_ROUTE_201,     Route201::POTION_GIVER_TALK_SPOT,   TileType::TALL_GRASS},
+            {MAP_SANDGEM_TOWN,  SandgemTown::LAB_DOOR,              TileType::DOOR},
+            {MAP_SANDGEM_TOWN,  SandgemTown::POKEMON_CENTER_DOOR,   TileType::DOOR},
+            {MAP_SANDGEM_TOWN,  SandgemTown::POKE_MART_DOOR,        TileType::DOOR},
+            {MAP_ROUTE_202,     Route202::CATCH_SPOT,               TileType::TALL_GRASS},
+            {MAP_ROUTE_202,     Route202::TRAINER_A,                TileType::NPC},
+            {MAP_ROUTE_202,     Route202::TRAINER_B,                TileType::NPC},
+            {MAP_ROUTE_202,     Route202::TRAINER_C,                TileType::NPC},
+            {MAP_ROUTE_202,     Route202::EXIT_JUBILIFE,            TileType::WALKABLE},
+        };
+        const Pokemon::MapSet& world = story_maps();
+        for (const Named& c : named){
+            const TilePos pos = world.to_world(c.map, c.pos);
+            if (world.world().at(pos) != c.type){
+                return std::string(c.map) + " tile " + Pokemon::to_string(c.pos) + " is type " +
+                    std::to_string((int)world.world().at(pos)) + " in the joined maps.";
+            }
+            const std::optional<Pokemon::MapTile> local = world.to_local(pos);
+            if (!local || local->map != c.map || local->pos != c.pos){
+                return std::string(c.map) + " tile " + Pokemon::to_string(c.pos) + " does not map back.";
+            }
         }
+        if (Route201::POTION_GIVER_TALK_SPOT.next(GridDirection::WEST) != Route201::POTION_GIVER){
+            return "The Potion giver's talk spot is not east of her.";
+        }
+
+        //  The maps join where their exits meet.
+        struct Join{
+            const char* from_map;
+            TilePos from;
+            GridDirection direction;
+            const char* to_map;
+            TilePos to;
+        };
+        const Join joins[] = {
+            {MAP_ROUTE_201,     {63, 4},    GridDirection::EAST,    MAP_SANDGEM_TOWN,   {0, 7}},
+            {MAP_ROUTE_201,     {63, 6},    GridDirection::EAST,    MAP_SANDGEM_TOWN,   {0, 9}},
+            {MAP_SANDGEM_TOWN,  {24, 0},    GridDirection::NORTH,   MAP_ROUTE_202,      {25, 25}},
+            {MAP_SANDGEM_TOWN,  {29, 0},    GridDirection::NORTH,   MAP_ROUTE_202,      {30, 25}},
+        };
+        for (const Join& join : joins){
+            const TilePos from = world.to_world(join.from_map, join.from);
+            const std::optional<TilePos> next = world.world().step(from, join.direction);
+            if (!next || *next != world.to_world(join.to_map, join.to)){
+                return "No step from " + world.describe(from) + " to " + join.to_map + " " + Pokemon::to_string(join.to) + ".";
+            }
+        }
+        Pokemon::MapSet overlapping;
+        overlapping.add("a", small_grid(), {0, 0});
+        overlapping.add("b", small_grid(), {6, 4});    //  shares one blocked tile
+        try{
+            overlapping.add("c", small_grid(), {5, 4});
+            return "Maps that overlap on a door were accepted.";
+        }catch (InternalProgramError&){}
         return true;
     }
 };
@@ -116,7 +182,7 @@ public:
             GridDirection direction;
             TilePos stop;
             size_t tiles;
-            bool wall_in_map;
+            bool anchored;
         };
         const TileGrid& small = small_grid();
         const TileGrid& route = Route202::grid();
@@ -126,9 +192,12 @@ public:
             {small, {2, 3}, GridDirection::NORTH, {2, 3}, 0, true},     //  a ledge stops a north walk
             {small, {3, 3}, GridDirection::SOUTH, {3, 3}, 0, true},     //  the NPC is a wall
             {small, {4, 4}, GridDirection::NORTH, {4, 0}, 4, false},    //  through the gap, off the top edge
+            {small, {4, 3}, GridDirection::EAST,  {5, 3}, 1, true},
+            {small, {4, 4}, GridDirection::EAST,  {4, 4}, 0, false},    //  into the door
+            {small, {2, 0}, GridDirection::EAST,  {2, 0}, 0, false},    //  off the map
             {route, Route202::CATCH_SPOT, GridDirection::WEST,  {3, 21}, 15, true},
             {route, Route202::CATCH_SPOT, GridDirection::NORTH, {18, 20}, 1, true},
-            {route, Route202::POTION_GIVER_FRONT, GridDirection::NORTH, Route202::POTION_GIVER_FRONT, 0, true},
+            {route, {7, 12}, GridDirection::NORTH, {7, 12}, 0, true},  //  trainer_a holds the player
             //  Through the gap east of the north ledge, over the south ledge
             //  and off the bottom edge to Sandgem Town.
             {route, {29, 4}, GridDirection::SOUTH, {29, 25}, 21, false},
@@ -137,10 +206,10 @@ public:
         };
         for (const Case& c : cases){
             const Pokemon::WallHit hit = Pokemon::walk_to_wall(c.grid, c.from, c.direction);
-            if (hit.stop != c.stop || hit.tiles != c.tiles || hit.wall_in_map != c.wall_in_map){
+            if (hit.stop != c.stop || hit.tiles != c.tiles || hit.anchored != c.anchored){
                 return "Walking " + std::string(Pokemon::direction_name(c.direction)) + " from " +
                     Pokemon::to_string(c.from) + " stops at " + Pokemon::to_string(hit.stop) + " after " +
-                    std::to_string(hit.tiles) + " tiles" + (hit.wall_in_map ? "" : " (map edge)") +
+                    std::to_string(hit.tiles) + " tiles" + (hit.anchored ? "" : " (not anchored)") +
                     ", expected " + Pokemon::to_string(c.stop) + " after " + std::to_string(c.tiles) + ".";
             }
         }
@@ -150,17 +219,31 @@ public:
 
 //  Checks a plan from `from` to `to`: every leg can be walked, ledges are
 //  crossed only southward, and each leg's wall flag matches the grid.
+//  With `maps`, legs are printed with the map tile they end on, and with
+//  the trainers whose sight they cross.
 std::string check_plan(
     Logger& logger, const std::string& name,
-    const TileGrid& grid, const TilePos& from, const TilePos& to
+    const TileGrid& grid, const TilePos& from, const TilePos& to,
+    const Pokemon::MapSet* maps = nullptr,
+    const std::vector<Pokemon::TrainerSight>& trainers = {}
 ){
     const std::optional<std::vector<TileLeg>> legs = Pokemon::plan_tile_route(grid, from, to);
     if (!legs){
         return name + ": no route found.";
     }
-    std::string text = name + " " + Pokemon::to_string(from) + " -> " + Pokemon::to_string(to) + ":";
-    for (const TileLeg& leg : *legs){
-        text += " " + Pokemon::to_string(leg) + ";";
+    auto describe = [&](const TilePos& pos){
+        return maps ? maps->describe(pos) : Pokemon::to_string(pos);
+    };
+    const std::vector<std::vector<std::string>> seen = Pokemon::legs_crossing_sight(grid, from, *legs, trainers);
+    std::string text = name + ": from " + describe(from);
+    TilePos end = from;
+    for (size_t i = 0; i < legs->size(); i++){
+        const TileLeg& leg = (*legs)[i];
+        end = Pokemon::trace_legs(grid, end, {leg}).back();
+        text += "\n    " + Pokemon::to_string(leg) + " to " + describe(end);
+        for (const std::string& trainer : seen[i]){
+            text += ", crosses " + trainer + "'s sight";
+        }
     }
     logger.log(text);
 
@@ -239,12 +322,16 @@ public:
             return "A route north over a ledge was found.";
         }
 
-        const TileGrid& route = Route202::grid();
-        error = check_plan(logger, "Catch spot to Potion giver", route, Route202::CATCH_SPOT, Route202::POTION_GIVER_FRONT);
+        const Pokemon::MapSet& maps = story_maps();
+        const std::vector<Pokemon::TrainerSight> trainers = story_trainer_sights();
+        const TilePos catch_spot = maps.to_world(MAP_ROUTE_202, Route202::CATCH_SPOT);
+        const TilePos potion = maps.to_world(MAP_ROUTE_201, Route201::POTION_GIVER_TALK_SPOT);
+        const TilePos jubilife = maps.to_world(MAP_ROUTE_202, Route202::EXIT_JUBILIFE);
+        error = check_plan(logger, "Catch spot to Potion giver", maps.world(), catch_spot, potion, &maps, trainers);
         if (!error.empty()){
             return error;
         }
-        error = check_plan(logger, "Potion giver to Jubilife", route, Route202::POTION_GIVER_FRONT, Route202::EXIT_JUBILIFE);
+        error = check_plan(logger, "Potion giver to Jubilife", maps.world(), potion, jubilife, &maps, trainers);
         if (!error.empty()){
             return error;
         }

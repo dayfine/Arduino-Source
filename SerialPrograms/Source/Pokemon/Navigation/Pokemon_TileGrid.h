@@ -28,7 +28,10 @@ enum class TileType{
     LEDGE,          //  'v': crossed only southward, hopping to the tile past it
     NPC,            //  'N': a standing NPC or trainer; blocks like a wall
     SIGN,           //  'S': a sign; blocks like a wall
+    DOOR,           //  'D': walking into it enters a building
+    UNKNOWN,        //  '?': off the map; an exit or ground we have no map of
 };
+char tile_char(TileType type);
 
 //  Row 0 is the top of the map, so SOUTH increases y.
 enum class GridDirection{
@@ -55,11 +58,14 @@ public:
     //  Throws InternalProgramError otherwise.
     explicit TileGrid(const std::vector<std::string>& rows);
 
+    //  The grid as the ASCII rows it parses from.
+    std::vector<std::string> rows() const;
+
     int width() const{ return m_width; }
     int height() const{ return m_height; }
     bool in_bounds(const TilePos& pos) const;
 
-    //  Out-of-bounds tiles read as BLOCKED.
+    //  Out-of-bounds tiles read as UNKNOWN.
     TileType at(const TilePos& pos) const;
 
     //  Whether the player can stand on this tile.
@@ -69,8 +75,9 @@ public:
     //  A south step onto a ledge hops to the tile past it.
     std::optional<TilePos> step(const TilePos& from, GridDirection direction) const;
 
-    //  Whether a step from `pos` is stopped by a tile inside the map. Map
-    //  edges are exits or unknown ground, so they never count as walls.
+    //  Whether a step from `pos` is refused by a tile that holds the player
+    //  in place. Doors and unknown tiles are not walls: walking into a door
+    //  enters the building, and unknown ground may be an exit.
     bool at_wall(const TilePos& pos, GridDirection direction) const;
 
 private:
@@ -84,8 +91,8 @@ private:
 struct WallHit{
     TilePos stop;
     size_t tiles = 0;           //  tiles travelled; a ledge hop counts 2
-    TilePos wall;               //  the tile that stopped the player
-    bool wall_in_map = false;   //  false: the walk ran off the map edge
+    TilePos wall;               //  the first tile the player could not enter
+    bool anchored = false;      //  the player is held at `stop` (see TileGrid::at_wall())
 };
 WallHit walk_to_wall(const TileGrid& grid, const TilePos& from, GridDirection direction);
 
@@ -111,6 +118,24 @@ std::optional<std::vector<TileLeg>> plan_tile_route(
     const TileGrid& grid,
     const TilePos& from, const TilePos& to,
     const TilePlanCosts& costs = TilePlanCosts()
+);
+
+//  A trainer sees the tiles in a straight line in front of them, up to
+//  `range` tiles or the first tile the player cannot stand on.
+struct TrainerSight{
+    std::string name;
+    TilePos pos;
+    GridDirection facing;
+    int range = 4;
+};
+std::vector<TilePos> sight_tiles(const TileGrid& grid, const TrainerSight& trainer);
+
+//  For each leg, the trainers whose sight line it enters.
+std::vector<std::vector<std::string>> legs_crossing_sight(
+    const TileGrid& grid,
+    const TilePos& from,
+    const std::vector<TileLeg>& legs,
+    const std::vector<TrainerSight>& trainers
 );
 
 //  The tiles a list of legs visits, starting with `from`. Throws

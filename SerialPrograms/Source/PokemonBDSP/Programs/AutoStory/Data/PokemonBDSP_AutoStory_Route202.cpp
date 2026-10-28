@@ -25,7 +25,8 @@ using namespace Pokemon;
 //  Ledges: rows 9 and 19; the one at (24,19) is behind the sign.
 //  The Poke Ball item at (3,6) is blocked.
 //  NPCs stand on the tile under their feet; the sprites rise into the row
-//  above.
+//  above. The girl at (22,15), pixel (365,235), is not the Potion giver;
+//  that one is on Route 201.
 const TileGrid& grid(){
     //     0         1         2         3
     //     012345678901234567890123456789012345
@@ -65,17 +66,23 @@ const TileGrid& grid(){
 //  the patch nearest the Sandgem Town entrance at the bottom right.
 const TilePos CATCH_SPOT{18, 21};
 
-//  Pixel (365,235) is the sprite's middle; its feet are at about (370,248).
-//  She stands east of the central trees' trunks, south of the tall grass.
-const TilePos POTION_GIVER{22, 15};
-const TilePos POTION_GIVER_FRONT{22, 16};
-
 //  Blue-cap trainer, feet at about (128,186), facing south.
-const TilePos TRAINER_TRISTAN{7, 11};
+const TilePos TRAINER_A{7, 11};
 //  Blue-cap trainer, feet at about (175,125), facing east.
-const TilePos TRAINER_NATALIE{10, 7};
+const TilePos TRAINER_B{10, 7};
 //  Blue-cap trainer, feet at about (430,77), facing south.
-const TilePos TRAINER_LOGAN{26, 4};
+const TilePos TRAINER_C{26, 4};
+
+//  Facing is read from the sprites. The range is a guess; DP trainers on
+//  early routes see a few tiles.
+const std::vector<TrainerSight>& trainer_sights(){
+    static const std::vector<TrainerSight> sights{
+        {"trainer_a", TRAINER_A, GridDirection::SOUTH, 4},
+        {"trainer_b", TRAINER_B, GridDirection::EAST, 4},
+        {"trainer_c", TRAINER_C, GridDirection::SOUTH, 4},
+    };
+    return sights;
+}
 
 //  Pixel (256,8): the path in the middle of the 8-tile gap at (11..18, 0).
 const TilePos EXIT_JUBILIFE{15, 0};

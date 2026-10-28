@@ -1432,6 +1432,8 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/Inference/Pokemon_TrainPokemonOCR.h
     Source/Pokemon/Inference/Pokemon_TypeReader.cpp
     Source/Pokemon/Inference/Pokemon_TypeReader.h
+    Source/Pokemon/Navigation/Pokemon_MapSet.cpp
+    Source/Pokemon/Navigation/Pokemon_MapSet.h
     Source/Pokemon/Navigation/Pokemon_TileGrid.cpp
     Source/Pokemon/Navigation/Pokemon_TileGrid.h
     Source/Pokemon/Options/Pokemon_BoxSortingTable.cpp
@@ -1602,8 +1604,14 @@ file(GLOB LIBRARY_SOURCES
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_Tests.h
     Source/PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_BDSPData.cpp
     Source/PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_BDSPData.h
+    Source/PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_Route201.cpp
+    Source/PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_Route201.h
     Source/PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_Route202.cpp
     Source/PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_Route202.h
+    Source/PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_SandgemTown.cpp
+    Source/PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_SandgemTown.h
+    Source/PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_StoryMaps.cpp
+    Source/PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_StoryMaps.h
     Source/PokemonBDSP/Programs/AutoStory/StorySegments/PokemonBDSP_AutoStory_Segment_00.cpp
     Source/PokemonBDSP/Programs/AutoStory/StorySegments/PokemonBDSP_AutoStory_Segment_00.h
     Source/PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Battle.cpp

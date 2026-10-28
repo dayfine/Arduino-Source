@@ -37,6 +37,20 @@ TilePos TilePos::next(GridDirection direction) const{
     return *this;
 }
 
+char tile_char(TileType type){
+    switch (type){
+    case TileType::BLOCKED:     return '#';
+    case TileType::WALKABLE:    return '.';
+    case TileType::TALL_GRASS:  return '"';
+    case TileType::LEDGE:       return 'v';
+    case TileType::NPC:         return 'N';
+    case TileType::SIGN:        return 'S';
+    case TileType::DOOR:        return 'D';
+    case TileType::UNKNOWN:     return '?';
+    }
+    return '?';
+}
+
 std::string to_string(const TilePos& pos){
     return "(" + std::to_string(pos.x) + "," + std::to_string(pos.y) + ")";
 }
@@ -65,6 +79,8 @@ TileGrid::TileGrid(const std::vector<std::string>& rows)
             case 'v':   m_tiles.push_back(TileType::LEDGE);         break;
             case 'N':   m_tiles.push_back(TileType::NPC);           break;
             case 'S':   m_tiles.push_back(TileType::SIGN);          break;
+            case 'D':   m_tiles.push_back(TileType::DOOR);          break;
+            case '?':   m_tiles.push_back(TileType::UNKNOWN);       break;
             default:
                 throw InternalProgramError(
                     nullptr, PA_CURRENT_FUNCTION,
@@ -76,13 +92,25 @@ TileGrid::TileGrid(const std::vector<std::string>& rows)
     }
 }
 
+std::vector<std::string> TileGrid::rows() const{
+    std::vector<std::string> rows;
+    for (int y = 0; y < m_height; y++){
+        std::string row;
+        for (int x = 0; x < m_width; x++){
+            row += tile_char(at({x, y}));
+        }
+        rows.push_back(std::move(row));
+    }
+    return rows;
+}
+
 bool TileGrid::in_bounds(const TilePos& pos) const{
     return 0 <= pos.x && pos.x < m_width && 0 <= pos.y && pos.y < m_height;
 }
 
 TileType TileGrid::at(const TilePos& pos) const{
     if (!in_bounds(pos)){
-        return TileType::BLOCKED;
+        return TileType::UNKNOWN;
     }
     return m_tiles[(size_t)pos.y * m_width + pos.x];
 }
@@ -107,7 +135,8 @@ std::optional<TilePos> TileGrid::step(const TilePos& from, GridDirection directi
 }
 
 bool TileGrid::at_wall(const TilePos& pos, GridDirection direction) const{
-    return in_bounds(pos.next(direction)) && !step(pos, direction).has_value();
+    const TileType next = at(pos.next(direction));
+    return next != TileType::DOOR && next != TileType::UNKNOWN && !step(pos, direction).has_value();
 }
 
 
@@ -120,7 +149,7 @@ WallHit walk_to_wall(const TileGrid& grid, const TilePos& from, GridDirection di
         const std::optional<TilePos> next = grid.step(before, direction);
         if (!next){
             hit.wall = before.next(direction);
-            hit.wall_in_map = grid.in_bounds(hit.wall);
+            hit.anchored = grid.at_wall(before, direction);
             return hit;
         }
         hit.tiles += std::abs(next->x - before.x) + std::abs(next->y - before.y);
@@ -259,6 +288,48 @@ std::optional<std::vector<TileLeg>> plan_tile_route(
     }
     legs.back().ends_at_wall = grid.at_wall(pos, legs.back().direction);
     return legs;
+}
+
+std::vector<TilePos> sight_tiles(const TileGrid& grid, const TrainerSight& trainer){
+    std::vector<TilePos> tiles;
+    TilePos pos = trainer.pos;
+    for (int i = 0; i < trainer.range; i++){
+        pos = pos.next(trainer.facing);
+        if (!grid.standable(pos)){
+            break;
+        }
+        tiles.push_back(pos);
+    }
+    return tiles;
+}
+
+std::vector<std::vector<std::string>> legs_crossing_sight(
+    const TileGrid& grid,
+    const TilePos& from,
+    const std::vector<TileLeg>& legs,
+    const std::vector<TrainerSight>& trainers
+){
+    std::vector<std::vector<TilePos>> sights;
+    for (const TrainerSight& trainer : trainers){
+        sights.push_back(sight_tiles(grid, trainer));
+    }
+    std::vector<std::vector<std::string>> crossings;
+    TilePos pos = from;
+    for (const TileLeg& leg : legs){
+        const std::vector<TilePos> tiles = trace_legs(grid, pos, {leg});
+        std::vector<std::string> seen_by;
+        for (size_t t = 0; t < trainers.size(); t++){
+            for (size_t i = 1; i < tiles.size(); i++){
+                if (std::find(sights[t].begin(), sights[t].end(), tiles[i]) != sights[t].end()){
+                    seen_by.push_back(trainers[t].name);
+                    break;
+                }
+            }
+        }
+        crossings.push_back(std::move(seen_by));
+        pos = tiles.back();
+    }
+    return crossings;
 }
 
 std::vector<TilePos> trace_legs(
