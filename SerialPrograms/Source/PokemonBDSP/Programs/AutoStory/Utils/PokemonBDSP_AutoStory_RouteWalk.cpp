@@ -6,7 +6,11 @@
 
 #include <algorithm>
 #include <cctype>
+#include "Common/Cpp/PrettyPrint.h"
+#include "Common/Cpp/Filesystem/Filesystem.h"
+#include "CommonFramework/GlobalAutoPaths.h"
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
+#include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "CommonFramework/ImageTools/ImageBoxes.h"
 #include "CommonFramework/ImageTools/ImageStats.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
@@ -249,6 +253,12 @@ std::vector<TilePos> walk_route(
             }
             if (!banner.empty()){
                 stream.log("[Route] " + leg_label + ": location banner \"" + banner + "\".");
+            }
+            //  Where each leg ended, to compare with the plan after a run.
+            if (VideoSnapshot screen = stream.video().snapshot()){
+                const std::string folder = SCREENSHOTS_PATH() + "AutoStory/route/";
+                Filesystem::create_directories(Filesystem::Path(folder));
+                screen.frame->save(folder + now_to_filestring() + "-" + normalize_name(leg_label) + ".png");
             }
             if (result.stop == WalkStop::TRANSITION){
                 OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
