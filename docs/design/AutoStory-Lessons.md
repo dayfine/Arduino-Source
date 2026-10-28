@@ -70,18 +70,22 @@ dialogue decides. Walk, then wait for the dialogue with its own timeout.
 
 ## 6. Butters' 00.04 and 00.05, checked against the game
 
-What his recorded version does, what went wrong with it on console B, and what replaced it.
+What his recorded version does, what went wrong with it on console B, and what replaced it. Our
+changes are on the fork branch
+[`bdsp/new-game-intro-v2`](https://github.com/dayfine/Arduino-Source/commits/bdsp/new-game-intro-v2),
+on top of his segment 00 ([`bdsp/1717-seg00`](https://github.com/dayfine/Arduino-Source/compare/503a28fc6...bdsp/1717-seg00)).
 
-| His version | What happened | Now |
-|---|---|---|
-| Every leg is a stick hold of a recorded length (00.05 alone is ~150 lines of them). | Drift, as in section 1. In r79 the 00.05 legs reached the Trainers' School, then "west 200 ms, A" faced an empty tile: Barry stands up and to the right, at the blackboard. | 00.04 walks map plans whose legs end at walls (design doc, sections 3 to 5). 00.05 is being stepped through (section 8 below). |
-| Tristan is fought with move slot 3 (Ember). | Chimchar only; we had Piplup (r28). | The Fight menu is read by OCR and the strongest move picked. |
-| No training, no healing before the Route 202 trainers. | A Lv5 Piplup with Pound fainted to Logan's Shinx (r72). | Three wild battles first (Piplup learns Water Gun), then Potions. |
-| The Potion is found in the Bag by a pixel match. | Console B's colours differ; the match failed (r27). | OCR of the item name. |
-| The Route 201 Poké Mart lady is reached by timed legs. | Missed her by a tile (r33, r39); so did our first planned route, which had her above the row (r77). | Walk west along her grass's top row until she stops us: she stands at (43,3), and we stop at (44,3) facing her. One A per line, 1.5 s apart. |
-| Barry in the Trainers' School: "west 200 ms, A", then mash B. | Faced nobody (r79). | From the school door: one tile west, north until Barry stops us, then A per line. He gives the Town Map. |
-| Leaving 00.04: walk north 5 s into Jubilife. | Ran past Dawn's spot (r35); with our route, walked into the wall beside the stairs (r78). | Walk north; when the wall stops us and no dialogue follows, step a tile west and try again. Next: put the stairs in the map. |
-| Checkpoint retry reloads and repeats the same steps. | Deterministic failures retried up to 20 times. | Lab runs stop at the first failure (section 3). |
+| His version | What happened | Now | Our commits |
+|---|---|---|---|
+| Every leg is a stick hold of a recorded length (00.05 alone is ~150 lines of them). | Drift, as in section 1. In r79 the 00.05 legs reached the Trainers' School, then "west 200 ms, A" faced an empty tile: Barry stands up and to the right, at the blackboard. | 00.04 walks map plans whose legs end at walls (design doc, sections 3 to 5). 00.05 is being stepped through (section 8 below). | [`1598fc2c7`](https://github.com/dayfine/Arduino-Source/commit/1598fc2c74e7cccf6356251bf35e21fdbcac5006), [`0a5311175`](https://github.com/dayfine/Arduino-Source/commit/0a5311175ec72feb0fcb326a38d7e2dc7b1ec673) |
+| Tristan is fought with move slot 3 (Ember). | Chimchar only; we had Piplup (r28). | The Fight menu is read by OCR and the strongest move picked. | [`c16ee0262`](https://github.com/dayfine/Arduino-Source/commit/c16ee0262772a5519e489fb9ad360d263d07852c), [`97df88c43`](https://github.com/dayfine/Arduino-Source/commit/97df88c439845600a02d0114478bb66d4b158ad5) |
+| No training, no healing before the Route 202 trainers. | A Lv5 Piplup with Pound fainted to Logan's Shinx (r72). | Three wild battles first (Piplup learns Water Gun), then Potions. | [`08a9fb7e0`](https://github.com/dayfine/Arduino-Source/commit/08a9fb7e01b6be5ee042708b89e32ca2149dca69), [`a95359311`](https://github.com/dayfine/Arduino-Source/commit/a953593111dba3d56b10cf995eb7e9c86455018d) |
+| The Potion is found in the Bag by a pixel match. | Console B's colours differ; the match failed (r27). | OCR of the item name. | [`50c9d955d`](https://github.com/dayfine/Arduino-Source/commit/50c9d955d44d767d58d45834dc7e8d3a1b0e6c65) |
+| The Route 201 Poké Mart lady is reached by timed legs. | Missed her by a tile (r33, r39); so did our first planned route, which had her above the row (r77). | Walk west along her grass's top row until she stops us: she stands at (43,3), and we stop at (44,3) facing her. One A per line, 1.5 s apart. | [`99715d5d6`](https://github.com/dayfine/Arduino-Source/commit/99715d5d6d3e2c373980b68123363a2b64ae1022), [`f823453e9`](https://github.com/dayfine/Arduino-Source/commit/f823453e9cea8966d20752c4da5f48f54e634d76) |
+| Barry in the Trainers' School: "west 200 ms, A", then mash B. | Faced nobody (r79). | From the school door: one tile west, north until Barry stops us, then A per line. He gives the Town Map. | (not yet coded) |
+| Leaving 00.04: walk north 5 s into Jubilife. | Ran past Dawn's spot (r35); with our route, walked into the wall beside the stairs (r78). | Walk north; when the wall stops us and no dialogue follows, step a tile west and try again. Next: put the stairs in the map. | [`3cef78b77`](https://github.com/dayfine/Arduino-Source/commit/3cef78b771877675c83356133d8917eb0de681c9) |
+| The Pokétch president (Phase 23): timed legs, then wait for his dialogue. | He stands in the road and talks when we face him; pressing A to advance re-opened his talk each time it ended, so his first line came back again and again. | Talk once with A, then advance with B, which never starts a talk. | (stepped through; not yet coded) |
+| Checkpoint retry reloads and repeats the same steps. | Deterministic failures retried up to 20 times. | Lab runs stop at the first failure (section 3). | lab scripts |
 
 His route did one thing right that we dropped for a while: the Poké Mart lady on Route 201
 gives **10 Potions**. With them, healing needs no trip to the Pokémon Center: heal to full
@@ -101,16 +105,17 @@ The run now gets the Potions first and saves on Route 202, (30,19), so later att
   in rows 15 to 17, not 33 (r75 lost its place by three rows); the lady is in the grass row,
   not above it; Jubilife's south edge is a wall with stairs, not open ground. Rule: when a
   wall leg stops somewhere unexpected, compare its screenshot with the grid before changing
-  any timing, and add the measured stop as a wall-hit test.
+  any timing, and add the measured stop as a wall-hit test. ([`a95359311`](https://github.com/dayfine/Arduino-Source/commit/a953593111dba3d56b10cf995eb7e9c86455018d), [`f823453e9`](https://github.com/dayfine/Arduino-Source/commit/f823453e9cea8966d20752c4da5f48f54e634d76), [`3cef78b77`](https://github.com/dayfine/Arduino-Source/commit/3cef78b771877675c83356133d8917eb0de681c9))
 - **Movement is not tile-locked.** A short tap moves about 0.77 of a tile. A left/right
   wiggle for encounters rocked across one tile edge and found no battle in three minutes
-  (r74). Walk wall to wall instead: the catch grass's rows sit between tree walls.
+  (r74). Walk wall to wall instead: the catch grass's rows sit between tree walls. ([`68279ca9b`](https://github.com/dayfine/Arduino-Source/commit/68279ca9ba631a5012207ad664892a2bdf88e760))
 - **One fixed OCR cut for every button.** Move names under the cursor are dark text on a
   light blue button, and status moves sit lower (no "Effective" line); a fixed cut and box
   read "" for Water Gun and Growl (r73). Threshold halfway between each button's background
-  and its darkest pixel, and keep the tallest text band.
+  and its darkest pixel, and keep the tallest text band. ([`97df88c43`](https://github.com/dayfine/Arduino-Source/commit/97df88c439845600a02d0114478bb66d4b158ad5))
 - **Not saying what we are doing.** The overlay and the log now print each checkpoint's steps,
   the current one and the next, and every status report starts with the current problem.
+  ([`3cd874125`](https://github.com/dayfine/Arduino-Source/commit/3cd8741250dc03f1c166e15cfc9563f5ac36add9))
 
 ## 8. Step through new ground before automating it
 
