@@ -7,12 +7,14 @@
 #ifndef PokemonAutomation_PokemonSwSh_MaxLair_StrongBoss_H
 #define PokemonAutomation_PokemonSwSh_MaxLair_StrongBoss_H
 
+#include "Common/Cpp/Options/EnumDropdownOption.h"
 #include "Common/Cpp/Options/FloatingPointOption.h"
 #include "CommonFramework/Notifications/EventNotificationsTable.h"
 #include "NintendoSwitch/Options/NintendoSwitch_StartInGripMenuOption.h"
 #include "NintendoSwitch/Options/NintendoSwitch_GoHomeWhenDoneOption.h"
 #include "NintendoSwitch/NintendoSwitch_MultiSwitchProgram.h"
 #include "VideoGames/PokemonSwSh/Options/PokemonSwSh_DateToucher.h"
+#include "Framework/PokemonSwSh_MaxLair_PathPolicy.h"
 #include "Options/PokemonSwSh_MaxLair_Options.h"
 #include "Options/PokemonSwSh_MaxLair_Options_Consoles.h"
 #include "Options/PokemonSwSh_MaxLair_Options_Hosting.h"
@@ -50,6 +52,7 @@ private:
     StartInGripOrGameOption START_LOCATION;
     GoHomeWhenDoneOption GO_HOME_WHEN_DONE;
 
+    EnumDropdownOption<MaxLairInternal::PathKeepingRule> PATH_KEEPING;
     FloatingPointOption MIN_WIN_RATE;
     MaxLairInternal::BossSlotOption BOSS_SLOT;
 
