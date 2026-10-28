@@ -12,6 +12,7 @@
 #include <algorithm>
 #include <cmath>
 #include <chrono>
+#include <array>
 #include <cctype>
 
 #include "PokemonBDSP_AutoStory_RouteWalk.h"
@@ -676,7 +677,12 @@ namespace PokemonAutomation {
                 for (size_t i = 0; i < moves.move_count; i++) {
                     // The names are dark on a light grey button: keep only the
                     // dark text, black on white, for the OCR.
-                    ImageRGB32 text = extract_box_reference(screen, moves.buttons[i]).copy();
+                    // Only the name: right of the type icon, above "Effective",
+                    // left of the PP.
+                    const ImageFloatBox& button = moves.buttons[i];
+                    const ImageFloatBox name_box{button.x + button.width * 0.17, button.y + button.height * 0.10,
+                        button.width * 0.53, button.height * 0.50};
+                    ImageRGB32 text = extract_box_reference(screen, name_box).copy();
                     for (size_t y = 0; y < text.height(); y++) {
                         for (size_t x = 0; x < text.width(); x++) {
                             const uint32_t pixel = text.pixel(x, y);
@@ -688,7 +694,11 @@ namespace PokemonAutomation {
                     for (unsigned char ch : OCR::tesseract_ocr_read(Language::English, text)) {
                         if (std::isalpha(ch)) name.push_back((char)std::tolower(ch));
                     }
+                    // A slot read well once keeps its name when a later read fails.
+                    static std::array<std::string, 4> last_read;
                     const KnownMove* known = nullptr;
+                    for (int pass = 0; pass < 2 && !known; pass++) {
+                    if (pass == 1) name = last_read[i];
                     for (const KnownMove& move : KNOWN_MOVES) {
                         //  The longest name that appears wins: "bubblebeam" over "bubble".
                         if (name.find(move.name) != std::string::npos &&
@@ -696,6 +706,8 @@ namespace PokemonAutomation {
                             known = &move;
                         }
                     }
+                    }
+                    if (known) last_read[i] = known->name;
                     // An unreadable move counts as a plain attack, ahead of known
                     // status moves.
                     const int score = known ? known->power * 2 + (std::string(known->type) != "normal" ? 1 : 0) : 40 * 2 - 1;
