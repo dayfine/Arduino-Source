@@ -100,6 +100,7 @@ public:
     static constexpr int CLEAR_TAIL_SECONDS = 6;    // Skipped when the clear stops at `stop_at_kills`.
     static constexpr int RETURN_SECONDS = 28;   // Fly back to Central Plaza.
     static constexpr int HEAL_SECONDS = 28;     // Walk to the nurse and heal (14 s), then re-fly (14 s).
+    static constexpr int BOARD_SECONDS = 5;     // Open the quest panel, read it, close it.
 
     // Kills heard in each clear, in turn. Running past the end throws, which
     // also stops a loop that would never end.
@@ -109,6 +110,8 @@ public:
     // Kills heard on each flight back, in turn: the lead finishing a kill
     // after the clear ends. Past the end, none.
     std::vector<uint64_t> kills_per_return;
+    // Whether each board read finds the quest, in turn. Past the end, it does.
+    std::vector<bool> quest_on_board_per_read;
 
     std::vector<std::string> steps;
     int seconds = 0;
@@ -144,6 +147,13 @@ public:
         }
         m_returns++;
     }
+    virtual bool quest_on_board() override{
+        steps.push_back("board");
+        seconds += BOARD_SECONDS;
+        const bool on_board = m_reads >= quest_on_board_per_read.size() || quest_on_board_per_read[m_reads];
+        m_reads++;
+        return on_board;
+    }
     virtual void heal() override{
         steps.push_back("heal");
         seconds += HEAL_SECONDS;
@@ -153,6 +163,7 @@ private:
     uint64_t m_kills = 0;
     size_t m_clears = 0;
     size_t m_returns = 0;
+    size_t m_reads = 0;
 };
 
 // One pass as it shows in the expected steps.
@@ -170,6 +181,7 @@ std::string auto_battle_result_to_string(BBQAutoBattleResult result){
     case BBQAutoBattleResult::TargetReached:    return "TargetReached";
     case BBQAutoBattleResult::NoKills:          return "NoKills";
     case BBQAutoBattleResult::TimeLimit:        return "TimeLimit";
+    case BBQAutoBattleResult::QuestDone:        return "QuestDone";
     }
     return "?";
 }
@@ -181,6 +193,8 @@ struct BBQAutoBattleScenario{
     std::vector<uint64_t> kills_per_clear;
     std::vector<std::optional<double>> hp_per_clear = {}; // Unknown when not given.
     std::vector<uint64_t> kills_per_return = {};        // None when not given.
+    uint64_t check_board_within_kills = 0;              // Off unless a scenario tests it.
+    std::vector<bool> quest_on_board_per_read = {};     // On the board when not given.
     int heal_below_hp_percent = 50;
     BBQAutoBattleResult expected_result = BBQAutoBattleResult::TargetReached;
     std::string expected_steps;
@@ -200,12 +214,14 @@ public:
         actions.kills_per_clear = m_scenario.kills_per_clear;
         actions.hp_per_clear = m_scenario.hp_per_clear;
         actions.kills_per_return = m_scenario.kills_per_return;
+        actions.quest_on_board_per_read = m_scenario.quest_on_board_per_read;
 
         RecordingLogger logger;
         BBQAutoBattlePolicy policy;
         policy.kill_target = m_scenario.kill_target;
         policy.time_limit = std::chrono::minutes(m_scenario.time_limit_minutes);
         policy.heal_below_hp_percent = (uint8_t)m_scenario.heal_below_hp_percent;
+        policy.check_board_within_kills = m_scenario.check_board_within_kills;
         BBQAutoBattleResult result;
         try{
             result = run_auto_battle(logger, actions, policy);
@@ -440,6 +456,60 @@ static void add_tests_BBQAutoBattle(UnitTestDatabase& database){
                 "Auto Battle pass 3: 3 kills, 9/10 in total, HP ?, 250 s elapsed. Below the target and HP unknown: return, heal and go again.",
                 "Auto Battle: kills heard on the way back reached the target, 10/10. Stop without healing.",
             },
+        },
+        {
+            // R3b: 9 kills heard, but the game had completed the quest. The board read
+            // replaces the 5th pass and its heal.
+            .name = "near the target, a board without the quest ends it",
+            .kills_per_clear = {3, 3, 3},
+            .check_board_within_kills = 2,
+            .quest_on_board_per_read = {false},
+            .expected_result = BBQAutoBattleResult::QuestDone,
+            .expected_steps = passes(2) + " " + LAST_PASS + " board",
+            .expected_seconds = 3 * PASS_SECONDS - ScriptedAutoBattle::HEAL_SECONDS + ScriptedAutoBattle::BOARD_SECONDS,
+            .expected_log = {
+                "Auto Battle pass 1: 3 kills, 3/10 in total, HP ?, 46 s elapsed. Below the target and HP unknown: return, heal and go again.",
+                "Auto Battle pass 2: 3 kills, 6/10 in total, HP ?, 148 s elapsed. Below the target and HP unknown: return, heal and go again.",
+                "Auto Battle pass 3: 3 kills, 9/10 in total, HP ?, 250 s elapsed. Below the target and HP unknown: return, heal and go again.",
+                "Auto Battle: the quest is no longer on the board at 9/10 kills heard. Stop: the game completed it.",
+            },
+        },
+        {
+            // Each pass near the target reads the board until the quest is gone.
+            .name = "near the target, a board with the quest goes again",
+            .kills_per_clear = {4, 4, 1, 1},
+            .check_board_within_kills = 2,
+            .quest_on_board_per_read = {true, false},
+            .expected_result = BBQAutoBattleResult::QuestDone,
+            .expected_steps = PASS + " " + LAST_PASS + " board heal " + LAST_PASS + " board",
+            .expected_seconds = 3 * PASS_SECONDS - ScriptedAutoBattle::HEAL_SECONDS + 2 * ScriptedAutoBattle::BOARD_SECONDS,
+            .expected_log = {
+                "Auto Battle pass 1: 4 kills, 4/10 in total, HP ?, 46 s elapsed. Below the target and HP unknown: return, heal and go again.",
+                "Auto Battle pass 2: 4 kills, 8/10 in total, HP ?, 148 s elapsed. Below the target and HP unknown: return, heal and go again.",
+                "Auto Battle: the quest is still on the board at 8/10 kills heard. Go again.",
+                "Auto Battle pass 3: 1 kills, 9/10 in total, HP ?, 255 s elapsed. Below the target and HP unknown: return, heal and go again.",
+                "Auto Battle: the quest is no longer on the board at 9/10 kills heard. Stop: the game completed it.",
+            },
+        },
+        {
+            // Far from the target the board is never read, and reaching the target
+            // needs no read.
+            .name = "far from the target, no board read",
+            .kills_per_clear = {5, 5},
+            .check_board_within_kills = 2,
+            .quest_on_board_per_read = {false},
+            .expected_steps = PASS + " " + LAST_PASS,
+            .expected_seconds = 2 * PASS_SECONDS - LAST_PASS_SAVED_SECONDS,
+        },
+        {
+            // High HP skips the heal but not the read.
+            .name = "near the target with high HP, read the board without healing",
+            .kill_target = 30,
+            .kills_per_clear = {10, 10, 9, 1},
+            .hp_per_clear = {0.9, 0.9, 0.9, 0.9},
+            .check_board_within_kills = 2,
+            .expected_steps = passes(2, LAST_PASS) + " " + LAST_PASS + " board " + LAST_PASS,
+            .expected_seconds = 4 * (PASS_SECONDS - ScriptedAutoBattle::HEAL_SECONDS) - ScriptedAutoBattle::CLEAR_TAIL_SECONDS + ScriptedAutoBattle::BOARD_SECONDS,
         },
     };
     for (const BBQAutoBattleScenario& scenario : scenarios){
