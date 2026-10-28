@@ -90,12 +90,12 @@ void register_bdsp_lab_console(){
                 if (words.size() < 4){
                     throw ParseException("bdsp_probe: need x y ms");
                 }
-                const double moving = words.size() > 4 ? std::stod(words[4]) : 4.0;
+                const double moving = words.size() > 4 ? std::stod(words[4]) : 15.0;
                 const WalkProbe probe = probe_walk(env.console, context,
                     std::stod(words[1]), std::stod(words[2]), Milliseconds(std::stoll(words[3])), moving, "bdsp_probe");
-                out << "bdsp_probe first " << probe.first_move.count() << "ms last " << probe.last_move.count() << "ms changes";
-                for (double change : probe.changes){
-                    out << " " << (int)(change + 0.5);
+                out << "bdsp_probe first " << probe.first_move.count() << "ms last " << probe.last_move.count() << "ms samples";
+                for (const WalkProbe::Sample& sample : probe.samples){
+                    out << " " << sample.at.count() << ":" << (int)(sample.change + 0.5);
                 }
                 out << "\n";
             }

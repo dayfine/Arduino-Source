@@ -90,7 +90,7 @@ public:
         ImageRGB32 small = frame.scale_to(192, 108);
         if (m_has_last){
             const double change = ImageMatch::pixel_RMSD(m_last, small);
-            m_result.changes.push_back(change);
+            m_result.samples.push_back({at, change});
             if (change >= m_moving_change){
                 if (m_result.first_move < 0ms){
                     m_result.first_move = at;

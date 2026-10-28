@@ -73,11 +73,17 @@ constexpr double WALK_BLOCKED_CHANGE = 10.0;
 //  One straight walk timed finely, to check a map against the game: holds the
 //  stick at (x, y) and samples the screen every 100ms until the view has been
 //  still for 800ms or `limit` runs out. Times count from the start of the hold.
-//  Handles no battles or dialogs: use it on open ground, away from tall grass.
+//  A sample moved if it changed by at least `moving_change`: still is 4 to 7,
+//  walking 16 to 85. Handles no battles or dialogs: use it on open ground,
+//  away from tall grass.
 struct WalkProbe{
     Milliseconds first_move{-1};    //  the first sample that moved; -1 if none did
     Milliseconds last_move{-1};     //  the last sample that moved; -1 if none did
-    std::vector<double> changes;    //  walk_screen_change() between samples
+    struct Sample{
+        Milliseconds at;
+        double change;              //  walk_screen_change() since the previous sample
+    };
+    std::vector<Sample> samples;
 };
 WalkProbe probe_walk(
     VideoStream& stream, ProControllerContext& context,
