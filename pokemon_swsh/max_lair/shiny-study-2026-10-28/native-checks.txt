@@ -1,0 +1,1 @@
+PASS shiny stop; reset timing; ore exhaustion; existing-route decision; geometric sampling (mean 100.141)

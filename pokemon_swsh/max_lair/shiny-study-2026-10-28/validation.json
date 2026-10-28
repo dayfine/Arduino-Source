@@ -1,0 +1,18 @@
+{
+  "samples_per_cell": 30000,
+  "policy_cells": 1470,
+  "comparison_cells": 294,
+  "completed_simulated_hunts": 44100000,
+  "unique_keys": true,
+  "probability_bounds": true,
+  "shared_geometric_targets": true,
+  "mean_geometric_wins": 100.2028667,
+  "no_censored_hunts": true,
+  "analytic_always_keep_true70": {
+    "expected_mean_attempts": 142.85714285714286,
+    "observed_mean_attempts": 143.1733,
+    "expected_probability_shiny_within24": 0.5634727872438678,
+    "observed_probability_shiny_within24": 0.5642333333,
+    "within_three_monte_carlo_standard_errors": true
+  }
+}
