@@ -71,6 +71,23 @@ bool black_screen_was_battle(VideoStream& stream, ProControllerContext& context)
     return ret >= 0;
 }
 
+//  A step in tall grass that was started before the stick was released still
+//  finishes, and its encounter starts after the walk has ended. Watch a little
+//  longer, and run from it. Returns whether there was one.
+bool run_from_late_encounter(VideoStream& stream, ProControllerContext& context, const std::string& label){
+    WhiteScreenOverWatcher encounter_flash(COLOR_YELLOW, {0.1, 0.1, 0.8, 0.8});
+    BlackScreenWatcher black(COLOR_RED);
+    BattleMenuWatcher battle_menu(BattleType::STANDARD, COLOR_YELLOW);
+    const int ret = wait_until(stream, context, 1200ms, {{encounter_flash}, {black}, {battle_menu}});
+    if (ret < 0 || (ret == 1 && !black_screen_was_battle(stream, context))){
+        return false;
+    }
+    stream.log("[Walk] " + label + ": wild battle after the walk; running.");
+    escape_wild_battle(stream, context, BattleType::STANDARD);
+    context.wait_for_all_requests();
+    return true;
+}
+
 //  Samples the screen every 100ms for probe_walk() and stops it once the view
 //  has been still for 800ms.
 class WalkProbeSampler : public VisualInferenceCallback{
@@ -130,6 +147,11 @@ WalkResult walk_until(
     VideoSnapshot before = snapshot_or_fail(stream, label);
     auto finish = [&](WalkStop stop){
         result.stop = stop;
+        if ((stop == WalkStop::LIMIT || stop == WalkStop::BLOCKED) &&
+            run_from_late_encounter(stream, context, label)
+        ){
+            result.wild_battles++;
+        }
         stream.log("[Walk] " + label + ": " + walk_stop_name(stop) + " after " +
             std::to_string(result.walked.count()) + "ms, " +
             std::to_string(result.wild_battles) + " wild battle(s).");
@@ -224,6 +246,11 @@ WalkResult walk_for(
     }
     if (ret == 3){
         result.stop = WalkStop::DIALOG;
+    }
+    //  An encounter after the hold leaves us where the walk ended, so it does
+    //  not count as cutting the walk short.
+    if (ret < 0){
+        run_from_late_encounter(stream, context, label);
     }
     stream.log("[Walk] " + label + ": " + walk_stop_name(result.stop) + " after a " +
         std::to_string(duration.count()) + "ms hold, " + std::to_string(result.wild_battles) + " wild battle(s).");
