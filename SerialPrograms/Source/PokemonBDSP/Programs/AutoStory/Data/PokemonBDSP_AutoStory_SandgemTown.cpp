@@ -26,6 +26,8 @@ using namespace Pokemon;
 //
 //  Checked on the console: walking south from Route 202 (30,22) stops at
 //  (29,2) above the Poke Mart, and walking west from there stops at (20,2).
+//  The lab's sign stands on row 7, in front of the fence: walking west along
+//  row 7 stops at it.
 const TileGrid& grid(){
     //     0         1         2         3
     //     0123456789012345678901234567890123
@@ -36,8 +38,8 @@ const TileGrid& grid(){
         R"(####################......########)",  //   3
         R"(####################......########)",  //   4
         R"(####################......########)",  //   5
-        R"(#####S##D###..###D##S....S#D######)",  //   6
-        R"(..............................####)",  //   7
+        R"(########D###..###D##S....S#D######)",  //   6
+        R"(.....S........................####)",  //   7
         R"(..............................####)",  //   8
         R"(..............................####)",  //   9
         R"(######.........#####..........####)",  //  10
