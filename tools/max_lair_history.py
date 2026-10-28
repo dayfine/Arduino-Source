@@ -328,10 +328,11 @@ def report(output, cutoff, attempts, routes, fingerprints, summary, validation):
         'The parser uses final state `wins >= 4` and checks it against the program counters. '
         'This ordinarily tracks beating and catching an eligible boss. Skipped catches or an '
         'already-caught boss can make battle victories invisible to that criterion.',
-        f'- **Pheromosa needs investigation:** Standard recorded {observed("pheromosa", "Standard")}. The original '
-        'session counters agree, so this is not an aggregation error. It is not enough evidence '
-        'to assert that every recorded failure was a boss-battle defeat; already-caught/uncatchable boss status or '
-        'another systematic problem must be ruled out before using this as a battle-win baseline.',
+        f'- **Pheromosa is excluded from the battle-win baseline:** Standard recorded {observed("pheromosa", "Standard")}. '
+        'On 2026-10-28 the user confirmed that the September 26–27 farming sessions were '
+        'after Pheromosa had already been caught. The counter therefore could not measure '
+        'actual boss-battle wins. Keep the raw recorded outcomes for audit, but do not treat '
+        'them as a 0% battle-win estimate. The user has since lost that retained route.',
         '- First-raid losses count even without a policy decision. Lobby/start failures and '
         'interrupted attempts without a completed result do not count as losses.',
         '- Program restarts are uncertain route boundaries. Matching full type maps plus '
