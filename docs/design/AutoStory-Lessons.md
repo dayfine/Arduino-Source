@@ -58,14 +58,7 @@ at each checkpoint (`Screenshots/AutoStory/saves/`: play time, badges, party).
 **Rule:** for a trainer or a scene, the walk can end in any way short of a transition; the
 dialogue decides. Walk, then wait for the dialogue with its own timeout.
 
-## 5. Watch what was dropped, not just the latest number
-
-Max Lair StrongBoss dropped a path at 14/19 because a bad stretch (2/6) pulled the overall rate
-under 0.75. New paths then won 5 of 12. The "drop in win rate" came from the program throwing
-away its best path. Losing a path cannot be undone, so dropping it should need stronger evidence
-than keeping it. (Draft: `maxlair/path-keeping`, an option next to the old rule.)
-
-## 6. Our own process
+## 5. Our own process
 
 - Look at the screen, then the code, before rerunning. Every run since r28 that failed in a new
   way was explained by one screenshot.
@@ -74,7 +67,7 @@ than keeping it. (Draft: `maxlair/path-keeping`, an option next to the old rule.
   `--ignore-cr-at-eol`.
 - When a program is stuck or failing, stop it and close the game at once; don't let retries run.
 
-## 7. Next: a map instead of recorded legs
+## 6. Next: a map instead of recorded legs
 
 BDSP keeps DP's overworld layouts: Bulbapedia's DP map of Route 202 (37 x 26 tiles of 16 px)
 matches our console B screenshots (the 202 sign by the L-shaped path, the eastern tree wall, the
