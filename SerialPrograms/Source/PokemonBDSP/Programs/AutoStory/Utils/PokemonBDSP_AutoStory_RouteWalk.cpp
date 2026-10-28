@@ -121,6 +121,11 @@ std::string map_of(const MapSet& maps, const std::vector<TilePos>& tiles){
 }
 
 
+void route_status(VideoStream& stream, const std::string& text){
+    stream.log("[Route] " + text, COLOR_BLUE);
+    stream.overlay().add_log(text, COLOR_WHITE);
+}
+
 Milliseconds route_open_hold(GridDirection direction, size_t tiles){
     const Milliseconds step = ms_per_tile(direction);
     return step * tiles - step / 2;
@@ -154,6 +159,7 @@ std::vector<TilePos> walk_route(
             OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
                 label + ": no plan from " + describe(maps, from) + ".", stream);
         }
+        route_status(stream, label + ": " + std::to_string(legs->size()) + " legs planned");
         std::string text = "[Route] " + label + ": plan from " + describe(maps, from) + ":";
         for (const PlannedLeg& leg : *legs){
             text += "\n    " + to_string(leg.leg) + " to " + describe(maps, leg.after);
@@ -161,8 +167,12 @@ std::vector<TilePos> walk_route(
         stream.log(text);
 
         bool replanned = false;
+        size_t leg_number = 0;
         for (const PlannedLeg& planned : *legs){
             const TileLeg& leg = planned.leg;
+            leg_number++;
+            route_status(stream, "Leg " + std::to_string(leg_number) + "/" + std::to_string(legs->size()) + ": " +
+                to_string(leg) + " to " + describe(maps, planned.after));
             double x, y;
             stick_for(leg.direction, x, y);
             const std::string leg_label = label + ": " + to_string(leg);
@@ -319,8 +329,21 @@ std::vector<TilePos> walk_route(
             }
 
             if (watching.empty()){
-                OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
-                    leg_label + ": a dialogue opened where no known trainer can see.", stream);
+                //  A trainer the map does not have. Fight, then plan again from
+                //  anywhere the leg could have stopped.
+                std::vector<TilePos> anywhere = from;
+                for (const std::vector<TilePos>& path : paths){
+                    anywhere.insert(anywhere.end(), path.begin(), path.end());
+                }
+                std::sort(anywhere.begin(), anywhere.end(), [](const TilePos& a, const TilePos& b){
+                    return a.y != b.y ? a.y < b.y : a.x < b.x;
+                });
+                anywhere.erase(std::unique(anywhere.begin(), anywhere.end()), anywhere.end());
+                route_status(stream, label + ": a trainer the map lacks stopped us; fighting.");
+                fight("unknown trainer");
+                from = anywhere;
+                replanned = true;
+                break;
             }
             //  Each possible start tile was stopped on the first tile of its path
             //  inside a watching trainer's sight.
@@ -344,6 +367,7 @@ std::vector<TilePos> walk_route(
                     leg_label + ": " + trainer.name + " talked, but no path enters their sight.", stream);
             }
             stream.log("[Route] " + label + ": " + trainer.name + " stopped us at " + describe(maps, stopped) + ".");
+            route_status(stream, "Fighting " + trainer.name + ".");
             fight(trainer.name);
             trainers.erase(trainers.begin() + watching[0]);
             from = stopped;

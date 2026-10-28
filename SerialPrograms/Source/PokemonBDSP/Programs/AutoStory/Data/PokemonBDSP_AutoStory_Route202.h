@@ -28,6 +28,7 @@ extern const Pokemon::TilePos CATCH_SPOT;
 extern const Pokemon::TilePos TRAINER_A;
 extern const Pokemon::TilePos TRAINER_B;
 extern const Pokemon::TilePos TRAINER_C;
+extern const Pokemon::TilePos TRAINER_D;
 
 //  Their sight lines, in this map's tiles. The story wants these battles.
 const std::vector<Pokemon::TrainerSight>& trainer_sights();

@@ -45,6 +45,9 @@ constexpr Milliseconds ROUTE_TURN_TAP = Milliseconds(100);
 //  faces another way: one already facing it may take a step.
 void route_turn(VideoStream& stream, ProControllerContext& context, Pokemon::GridDirection direction);
 
+//  Shows what the route walk is doing in the log and the video overlay.
+void route_status(VideoStream& stream, const std::string& text);
+
 //  Called when a trainer's dialogue has opened. Fights the battle and returns
 //  to the overworld.
 using RouteTrainerFight = std::function<void(const std::string& trainer)>;

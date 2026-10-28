@@ -472,11 +472,14 @@ void BDSPAutoStory::program(
         stats.m_current = index;
         env.update_stats();
         env.log("[AutoStory] Objective: " + checkpoint.name() + ". Ends: " + checkpoint.end_text(), COLOR_BLUE);
+        env.console.overlay().add_log("Now: " + checkpoint.name(), COLOR_WHITE);
+        env.console.overlay().add_log("Goal: " + checkpoint.end_text(), COLOR_GRAY);
         checkpoint.run_checkpoint(env, context, options, stats);
         stats.m_completed++;
         stats.m_last_completed = index;
         env.update_stats();
         env.log("[AutoStory] Completed: " + checkpoint.name() + ".", COLOR_DARKGREEN);
+        env.console.overlay().add_log("Done: " + checkpoint.name(), COLOR_GREEN);
     };
     auto run_selected_range = [&](size_t attempt){
         if (attempt > 0) env.log("[Fake saves] Reloaded initial save; restarting the entire selected range from its start.");
@@ -488,6 +491,8 @@ void BDSPAutoStory::program(
             env.update_stats();
             env.log("[AutoStory] Objective: " + AutoStory_Checkpoint_0004().name() + " (after the catch). Ends: " +
                 AutoStory_Checkpoint_0004().end_text(), COLOR_BLUE);
+            env.console.overlay().add_log("Now: " + AutoStory_Checkpoint_0004().name() + " (after the catch)", COLOR_WHITE);
+            env.console.overlay().add_log("Goal: " + AutoStory_Checkpoint_0004().end_text(), COLOR_GRAY);
             diagnostic_checkpoint_0004_after_catch(env, context, options, stats);
             stats.m_completed++;
             stats.m_last_completed = 4;

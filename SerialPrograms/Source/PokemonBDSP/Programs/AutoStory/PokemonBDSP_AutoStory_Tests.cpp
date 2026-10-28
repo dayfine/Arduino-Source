@@ -123,6 +123,7 @@ public:
             {MAP_ROUTE_202,     Route202::TRAINER_A,                TileType::NPC},
             {MAP_ROUTE_202,     Route202::TRAINER_B,                TileType::NPC},
             {MAP_ROUTE_202,     Route202::TRAINER_C,                TileType::NPC},
+            {MAP_ROUTE_202,     Route202::TRAINER_D,                TileType::NPC},
             {MAP_ROUTE_202,     Route202::EXIT_JUBILIFE,            TileType::WALKABLE},
         };
         const Pokemon::MapSet& world = story_maps();
