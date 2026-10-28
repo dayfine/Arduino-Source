@@ -1575,24 +1575,6 @@ file(GLOB LIBRARY_SOURCES
     Source/PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_BDSPData.h
     Source/PokemonBDSP/Programs/AutoStory/StorySegments/PokemonBDSP_AutoStory_Segment_00.cpp
     Source/PokemonBDSP/Programs/AutoStory/StorySegments/PokemonBDSP_AutoStory_Segment_00.h
-    Source/PokemonBDSP/Programs/AutoStory/StorySegments/PokemonBDSP_AutoStory_Segment_01.cpp
-    Source/PokemonBDSP/Programs/AutoStory/StorySegments/PokemonBDSP_AutoStory_Segment_01.h
-    Source/PokemonBDSP/Programs/AutoStory/StorySegments/PokemonBDSP_AutoStory_Segment_02.cpp
-    Source/PokemonBDSP/Programs/AutoStory/StorySegments/PokemonBDSP_AutoStory_Segment_02.h
-    Source/PokemonBDSP/Programs/AutoStory/StorySegments/PokemonBDSP_AutoStory_Segment_03.cpp
-    Source/PokemonBDSP/Programs/AutoStory/StorySegments/PokemonBDSP_AutoStory_Segment_03.h
-    Source/PokemonBDSP/Programs/AutoStory/StorySegments/PokemonBDSP_AutoStory_Segment_04.cpp
-    Source/PokemonBDSP/Programs/AutoStory/StorySegments/PokemonBDSP_AutoStory_Segment_04.h
-    Source/PokemonBDSP/Programs/AutoStory/StorySegments/PokemonBDSP_AutoStory_Segment_05.cpp
-    Source/PokemonBDSP/Programs/AutoStory/StorySegments/PokemonBDSP_AutoStory_Segment_05.h
-    Source/PokemonBDSP/Programs/AutoStory/StorySegments/PokemonBDSP_AutoStory_Segment_06.cpp
-    Source/PokemonBDSP/Programs/AutoStory/StorySegments/PokemonBDSP_AutoStory_Segment_06.h
-    Source/PokemonBDSP/Programs/AutoStory/StorySegments/PokemonBDSP_AutoStory_Segment_07.cpp
-    Source/PokemonBDSP/Programs/AutoStory/StorySegments/PokemonBDSP_AutoStory_Segment_07.h
-    Source/PokemonBDSP/Programs/AutoStory/StorySegments/PokemonBDSP_AutoStory_Segment_08.cpp
-    Source/PokemonBDSP/Programs/AutoStory/StorySegments/PokemonBDSP_AutoStory_Segment_08.h
-    Source/PokemonBDSP/Programs/AutoStory/StorySegments/PokemonBDSP_AutoStory_Segment_09.cpp
-    Source/PokemonBDSP/Programs/AutoStory/StorySegments/PokemonBDSP_AutoStory_Segment_09.h
     Source/PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Battle.cpp
     Source/PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Battle.h
     Source/PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Dialog.cpp
