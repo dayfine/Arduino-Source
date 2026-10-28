@@ -713,10 +713,30 @@ namespace PokemonAutomation {
                 story_at_jubilife_exit, trainers, fight, "To Jubilife");
 
             step(5);
-            // Entering Jubilife starts a scene: Dawn walks over while we stand still.
-            if (walk_until(stream, context, 0, 1, 4000ms, "to Dawn in Jubilife").stop == WalkStop::TRANSITION) {
+            // Jubilife's south edge is a wall with stairs in it, west of where the
+            // route may leave us (r78 stood at its east end). Entering starts a
+            // scene: Dawn walks over while we stand still. So walk north; if the
+            // wall stops us and no dialogue follows, the stairs are further west.
+            bool met_dawn = false;
+            for (size_t attempt = 0; attempt < 6 && !met_dawn; attempt++) {
+                const WalkResult walk = walk_until(stream, context, 0, 1, 4000ms, "to Dawn in Jubilife");
+                if (walk.stop == WalkStop::TRANSITION) {
+                    OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
+                        "Jubilife: left the area instead of meeting Dawn.", stream);
+                }
+                ShortDialogWatcher dialog(COLOR_CYAN);
+                if (walk.stop == WalkStop::DIALOG || wait_until(stream, context, 6s, {{dialog}}) == 0) {
+                    met_dawn = true;
+                    break;
+                }
+                stream.log("[00.04] Jubilife: the wall stopped us; looking for the stairs one tile west.");
+                route_turn(stream, context, Pokemon::GridDirection::WEST);
+                pbf_move_left_joystick(context, {-1, 0}, route_open_hold(Pokemon::GridDirection::WEST, 1), 200ms);
+                context.wait_for_all_requests();
+            }
+            if (!met_dawn) {
                 OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
-                    "Jubilife: left the area instead of meeting Dawn.", stream);
+                    "Jubilife: no stairs found and no Dawn after six tiles west.", stream);
             }
             wait_for_dialogue(stream, context, "Phase 21 (dawn Jubilife dialog)");
 
