@@ -925,6 +925,9 @@ namespace PokemonAutomation {
             // ---------------------------------------------------------------------------
             // Tristan battle
             // ---------------------------------------------------------------------------
+            // Two grass rows at 240 ms each, with room to spare: the wall stops us.
+            static constexpr Milliseconds CATCH_GRASS_WALK = 900ms;
+
             static void encounter_one_wild_pokemon(VideoStream& stream, ProControllerContext& context) {
                 context.wait_for_all_requests();
                 pbf_wait(context, 1000ms);
@@ -932,15 +935,17 @@ namespace PokemonAutomation {
                 bool encounter_found = false;
                 const auto deadline = std::chrono::steady_clock::now() + 180s;
 
-                // Wiggle left/right until battle starts.
+                // Walk up and down the catch grass until a battle starts. Its three rows
+                // sit between tree walls, so each walk ends at a wall, on the same tile
+                // every time, after two new grass tiles. Short sideways steps drift and
+                // can rock across one tile edge without entering new grass.
                 while (!encounter_found && std::chrono::steady_clock::now() < deadline) {
                     BlackScreenWatcher battle_start;
                     BattleMenuWatcher battle_menu(BattleType::STANDARD, COLOR_YELLOW);
                     BattleDialogWatcher battle_dialog(COLOR_YELLOW);
 
-                    // Face left, then step: a tap toward the other way only turns.
-                    route_turn(stream, context, Pokemon::GridDirection::WEST);
-                    pbf_move_left_joystick(context, {-1, 0}, route_open_hold(Pokemon::GridDirection::WEST, 1), 200ms);
+                    route_turn(stream, context, Pokemon::GridDirection::NORTH);
+                    pbf_move_left_joystick(context, {0, 1}, CATCH_GRASS_WALK, 200ms);
                     context.wait_for_all_requests();
 
                     int ret = wait_until(
@@ -959,9 +964,8 @@ namespace PokemonAutomation {
                         break;
                     }
 
-                    // Face right, then step: a tap toward the other way only turns.
-                    route_turn(stream, context, Pokemon::GridDirection::EAST);
-                    pbf_move_left_joystick(context, {1, 0}, route_open_hold(Pokemon::GridDirection::EAST, 1), 200ms);
+                    route_turn(stream, context, Pokemon::GridDirection::SOUTH);
+                    pbf_move_left_joystick(context, {0, -1}, CATCH_GRASS_WALK, 200ms);
                     context.wait_for_all_requests();
 
                     ret = wait_until(
@@ -982,7 +986,7 @@ namespace PokemonAutomation {
                 }
 
                 if (!encounter_found) OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
-                    "Wild encounter: Left/right wiggle did not find a battle within three minutes.", stream);
+                    "Wild encounter: walking up and down the grass found no battle within three minutes.", stream);
                 stream.log("[AutoStory] Wild battle detected!", COLOR_GREEN);
 
                 // Wait until the actual battle menu appears.

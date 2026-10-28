@@ -376,7 +376,7 @@ public:
             return error;
         }
         const TilePos below_sign = maps.to_world(MAP_SANDGEM_TOWN, SandgemTown::POKEMON_CENTER_SIGN.next(GridDirection::SOUTH));
-        error = check_robust_plan(logger, "Catch spot to the Pokemon Center", maps, {catch_spot},
+        error = check_robust_plan(logger, "After training to the Pokemon Center", maps, story_after_training_area(),
             [&](const TilePos& pos){ return pos == below_sign; });
         if (!error.empty()){
             return error;

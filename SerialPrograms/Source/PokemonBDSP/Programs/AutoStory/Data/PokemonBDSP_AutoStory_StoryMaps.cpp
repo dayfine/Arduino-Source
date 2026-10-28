@@ -69,6 +69,17 @@ std::vector<TilePos> story_potion_giver_area(){
     return area;
 }
 
+std::vector<TilePos> story_after_training_area(){
+    const TilePos catch_spot = story_maps().to_world(MAP_ROUTE_202, Route202::CATCH_SPOT);
+    std::vector<TilePos> area;
+    for (int y = catch_spot.y - 2; y <= catch_spot.y; y++){
+        for (int x = catch_spot.x - 1; x <= catch_spot.x + 1; x++){
+            area.push_back({x, y});
+        }
+    }
+    return area;
+}
+
 std::vector<TrainerSight> story_trainer_sights(){
     std::vector<TrainerSight> sights = Route202::trainer_sights();
     for (TrainerSight& sight : sights){
