@@ -146,6 +146,8 @@ private:
 
 // One pass as it shows in the expected steps.
 const std::string PASS = "fly clear return heal";
+// A pass that returns without healing.
+const std::string LAST_PASS = "fly clear return";
 
 std::string passes(int count){
     std::vector<std::string> ret(count, PASS);
@@ -211,40 +213,41 @@ private:
 static void add_tests_BBQAutoBattle(UnitTestDatabase& database){
     constexpr int PASS_SECONDS = ScriptedAutoBattle::FLY_SECONDS + ScriptedAutoBattle::CLEAR_SECONDS
         + ScriptedAutoBattle::RETURN_SECONDS + ScriptedAutoBattle::HEAL_SECONDS;
+    constexpr int LAST_PASS_SAVED_SECONDS = ScriptedAutoBattle::CLEAR_TAIL_SECONDS + ScriptedAutoBattle::HEAL_SECONDS;
     const BBQAutoBattleScenario scenarios[] = {
         {
-            // The final pass still heals and re-flies, though the quest is done.
+            // The final pass stops clearing at the target, and skips the heal and re-fly.
             .name = "auto battle 10 at 2 kills per pass",
             .kills_per_clear = {2, 2, 2, 2, 2},
-            .expected_steps = passes(5),
-            .expected_seconds = 5 * PASS_SECONDS,
+            .expected_steps = passes(4) + " " + LAST_PASS,
+            .expected_seconds = 5 * PASS_SECONDS - LAST_PASS_SAVED_SECONDS,
             .expected_log = {
                 "Auto Battle pass 1: 2 kills, 2/10 in total, HP ?, 46 s elapsed. Below the target: return, heal and go again.",
                 "Auto Battle pass 2: 2 kills, 4/10 in total, HP ?, 148 s elapsed. Below the target: return, heal and go again.",
                 "Auto Battle pass 3: 2 kills, 6/10 in total, HP ?, 250 s elapsed. Below the target: return, heal and go again.",
                 "Auto Battle pass 4: 2 kills, 8/10 in total, HP ?, 352 s elapsed. Below the target: return, heal and go again.",
-                "Auto Battle pass 5: 2 kills, 10/10 in total, HP ?, 454 s elapsed. Target reached: return and heal.",
+                "Auto Battle pass 5: 2 kills, 10/10 in total, HP ?, 448 s elapsed. Target reached: return without healing.",
             },
         },
         {
             .name = "auto battle 30 at 3 kills per pass",
             .kill_target = 30,
             .kills_per_clear = {3, 3, 3, 3, 3, 3, 3, 3, 3, 3},
-            .expected_steps = passes(10),
-            .expected_seconds = 10 * PASS_SECONDS,
+            .expected_steps = passes(9) + " " + LAST_PASS,
+            .expected_seconds = 10 * PASS_SECONDS - LAST_PASS_SAVED_SECONDS,
         },
         {
-            // A clear keeps going while kills are heard, past the target.
+            // Kills heard before the clear can stop still count.
             .name = "kills past the target",
             .kills_per_clear = {4, 4, 4},
-            .expected_steps = passes(3),
-            .expected_seconds = 3 * PASS_SECONDS,
+            .expected_steps = passes(2) + " " + LAST_PASS,
+            .expected_seconds = 3 * PASS_SECONDS - LAST_PASS_SAVED_SECONDS,
         },
         {
             .name = "passes with no kill go again",
             .kills_per_clear = {0, 0, 5, 0, 5},
-            .expected_steps = passes(5),
-            .expected_seconds = 5 * PASS_SECONDS,
+            .expected_steps = passes(4) + " " + LAST_PASS,
+            .expected_seconds = 5 * PASS_SECONDS - LAST_PASS_SAVED_SECONDS,
         },
         {
             // Nothing bounds the loop: with no kills it never ends.

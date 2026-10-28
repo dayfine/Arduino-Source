@@ -5,7 +5,6 @@
  */
 
 #include<cmath>
-#include<limits>
 #include<optional>
 #include<vector>
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
@@ -1264,8 +1263,7 @@ BBQAutoBattleResult run_auto_battle(
         const uint64_t kills_before = actions.kills();
 
         actions.fly_to_battle_area();
-        //Clear until no kill has been heard for 6 seconds, even past the target.
-        const std::optional<double> hp = actions.clear(std::numeric_limits<uint64_t>::max());
+        const std::optional<double> hp = actions.clear(policy.kill_target);
 
         const uint64_t kills = actions.kills();
         const auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(actions.now() - start);
@@ -1275,7 +1273,7 @@ BBQAutoBattleResult run_auto_battle(
         std::string next = "Below the target: return, heal and go again.";
         if (kills >= policy.kill_target){
             end = BBQAutoBattleResult::TargetReached;
-            next = "Target reached: return and heal.";
+            next = "Target reached: return without healing.";
         }
         logger.log(
             "Auto Battle pass " + std::to_string(pass) + ": "
@@ -1286,11 +1284,12 @@ BBQAutoBattleResult run_auto_battle(
             + next
         );
 
+        //The next quest starts from Central Plaza, so return even when done.
         actions.return_to_plaza();
-        actions.heal();
         if (end){
             return *end;
         }
+        actions.heal();
     }
     return BBQAutoBattleResult::TargetReached;
 }
