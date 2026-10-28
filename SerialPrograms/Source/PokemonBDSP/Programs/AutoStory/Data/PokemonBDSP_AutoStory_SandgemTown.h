@@ -21,6 +21,9 @@ const Pokemon::TileGrid& grid();
 
 extern const Pokemon::TilePos LAB_DOOR;
 extern const Pokemon::TilePos POKEMON_CENTER_DOOR;
+//  The sign east of the Pokemon Center's door. Walking north from row 10 in
+//  its column stops on the tile below it.
+extern const Pokemon::TilePos POKEMON_CENTER_SIGN;
 extern const Pokemon::TilePos POKE_MART_DOOR;
 
 

@@ -375,6 +375,17 @@ public:
         if (!error.empty()){
             return error;
         }
+        const TilePos below_sign = maps.to_world(MAP_SANDGEM_TOWN, SandgemTown::POKEMON_CENTER_SIGN.next(GridDirection::SOUTH));
+        error = check_robust_plan(logger, "Catch spot to the Pokemon Center", maps, {catch_spot},
+            [&](const TilePos& pos){ return pos == below_sign; });
+        if (!error.empty()){
+            return error;
+        }
+        const TilePos below_door = maps.to_world(MAP_SANDGEM_TOWN, SandgemTown::POKEMON_CENTER_DOOR.next(GridDirection::SOUTH));
+        error = check_robust_plan(logger, "Pokemon Center to Jubilife", maps, {below_door}, story_at_jubilife_exit);
+        if (!error.empty()){
+            return error;
+        }
         error = check_robust_plan(logger, "Catch spot to Jubilife", maps, {catch_spot}, story_at_jubilife_exit);
         if (!error.empty()){
             return error;

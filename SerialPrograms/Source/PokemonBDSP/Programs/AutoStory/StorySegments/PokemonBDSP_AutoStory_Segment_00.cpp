@@ -9,7 +9,9 @@
 #include "PokemonBDSP_AutoStory_Segment_00.h"
 #include "../Data/PokemonBDSP_AutoStory_Route201.h"
 #include "../Data/PokemonBDSP_AutoStory_Route202.h"
+#include "../Data/PokemonBDSP_AutoStory_SandgemTown.h"
 #include "../Data/PokemonBDSP_AutoStory_StoryMaps.h"
+#include "../Utils/PokemonBDSP_AutoStory_PokemonCenter.h"
 #include "../Utils/PokemonBDSP_AutoStory_RouteWalk.h"
 #include "../Utils/PokemonBDSP_AutoStory_Segment_00_tools.h"
 #include "../Utils/PokemonBDSP_AutoStory_Walk.h"
@@ -616,7 +618,8 @@ namespace PokemonAutomation {
             // The Potion on Route 201 is optional, and the starter outclasses the
             // Route 202 trainers, so we go straight north.
             static const char* const STEPS[] = {
-                "Walk north up Route 202 from the catch spot to the Jubilife exit, fighting trainers who see us",
+                "Heal at the Sandgem Town Pokemon Center, just south of the catch spot",
+                "Walk north up Route 202 to the Jubilife exit, fighting trainers who see us",
                 "Enter Jubilife and get through Dawn's scene",
             };
             constexpr size_t STEP_COUNT = sizeof(STEPS) / sizeof(STEPS[0]);
@@ -649,10 +652,21 @@ namespace PokemonAutomation {
 
             pbf_wait(context, 1500ms);
             step(1);
+            // The catch can leave the starter hurt, and there are no Potions yet.
+            // Walk to the tile south of the Center's sign, which the walls of
+            // row 10 and the sign itself pin down, then find the door to its west.
+            const TilePos below_sign = maps.to_world(MAP_SANDGEM_TOWN, SandgemTown::POKEMON_CENTER_SIGN.next(Pokemon::GridDirection::SOUTH));
             walk_route(stream, context, maps, {maps.to_world(MAP_ROUTE_202, Route202::CATCH_SPOT)},
-                story_at_jubilife_exit, trainers, fight, "To Jubilife");
+                [&](const TilePos& pos) { return pos == below_sign; }, trainers, fight, "To the Pokemon Center");
+            heal_at_pokemon_center(stream, context, Pokemon::GridDirection::WEST, "Sandgem Town Pokemon Center");
 
             step(2);
+            // Out of the Center we stand on the tile below its door.
+            const TilePos below_door = maps.to_world(MAP_SANDGEM_TOWN, SandgemTown::POKEMON_CENTER_DOOR.next(Pokemon::GridDirection::SOUTH));
+            walk_route(stream, context, maps, {below_door},
+                story_at_jubilife_exit, trainers, fight, "To Jubilife");
+
+            step(3);
             // Entering Jubilife starts a scene: Dawn walks over while we stand still.
             if (walk_until(stream, context, 0, 1, 4000ms, "to Dawn in Jubilife").stop == WalkStop::TRANSITION) {
                 OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,

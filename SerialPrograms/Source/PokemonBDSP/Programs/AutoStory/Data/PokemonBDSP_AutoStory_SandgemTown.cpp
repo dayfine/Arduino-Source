@@ -64,6 +64,8 @@ const TileGrid& grid(){
 const TilePos LAB_DOOR{8, 6};
 //  Pixel (288,104): the Pokemon Center's glass door.
 const TilePos POKEMON_CENTER_DOOR{17, 6};
+//  On the console, walking south from (20,2) stops at (20,5), above it.
+const TilePos POKEMON_CENTER_SIGN{20, 6};
 //  Pixel (448,104): the Poke Mart's door.
 const TilePos POKE_MART_DOOR{27, 6};
 
