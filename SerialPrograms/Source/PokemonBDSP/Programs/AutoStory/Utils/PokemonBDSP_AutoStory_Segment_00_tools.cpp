@@ -14,6 +14,7 @@
 #include <chrono>
 #include <cctype>
 
+#include "PokemonBDSP_AutoStory_RouteWalk.h"
 #include "PokemonBDSP_AutoStory_Segment_00_tools.h"
 #include "PokemonBDSP_Autostory_Segment_01_tools.h"
 
@@ -819,8 +820,9 @@ namespace PokemonAutomation {
                     BattleMenuWatcher battle_menu(BattleType::STANDARD, COLOR_YELLOW);
                     BattleDialogWatcher battle_dialog(COLOR_YELLOW);
 
-                    // Turn left.
-                    pbf_move_left_joystick(context, {-1, 0}, 120ms, 200ms);
+                    // Face left, then step: a tap toward the other way only turns.
+                    route_turn(stream, context, Pokemon::GridDirection::WEST);
+                    pbf_move_left_joystick(context, {-1, 0}, route_open_hold(Pokemon::GridDirection::WEST, 1), 200ms);
                     context.wait_for_all_requests();
 
                     int ret = wait_until(
@@ -839,8 +841,9 @@ namespace PokemonAutomation {
                         break;
                     }
 
-                    // Turn right.
-                    pbf_move_left_joystick(context, {1, 0}, 120ms, 200ms);
+                    // Face right, then step: a tap toward the other way only turns.
+                    route_turn(stream, context, Pokemon::GridDirection::EAST);
+                    pbf_move_left_joystick(context, {1, 0}, route_open_hold(Pokemon::GridDirection::EAST, 1), 200ms);
                     context.wait_for_all_requests();
 
                     ret = wait_until(
