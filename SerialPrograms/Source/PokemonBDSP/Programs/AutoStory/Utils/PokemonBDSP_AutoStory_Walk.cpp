@@ -205,7 +205,13 @@ WalkResult walk_until(
         const double change = walk_screen_change(*before.frame, *after.frame);
         stream.log("[Walk] " + label + ": " + std::to_string(result.walked.count()) +
             "ms, screen change " + std::to_string(change) + ".");
-        //  Two still chunks in a row, so one dropped frame does not stop us.
+        //  Two still chunks in a row, so one dropped frame does not stop us. A
+        //  frame exactly the same is a stalled video or a game hitch, not a wall:
+        //  standing at a wall still animates.
+        if (change == 0){
+            before = std::move(after);
+            continue;
+        }
         unchanged = change < WALK_BLOCKED_CHANGE ? unchanged + 1 : 0;
         if (unchanged >= 2){
             return finish(WalkStop::BLOCKED);

@@ -467,15 +467,30 @@ void BDSPAutoStory::program(
 
     const bool fake_saves = options.checkpoint_save_mode == CheckpointSaveMode::FAKE;
     if (fake_saves) options.checkpoint_retry_scope = CheckpointRetryScope::DEFER_TO_SELECTED_RANGE;
+    //  Logs what a checkpoint is for before it runs, and that it finished after.
+    auto run_checkpoint_logged = [&](size_t index, const AutoStory_Checkpoint& checkpoint){
+        env.log("[AutoStory] Objective: " + checkpoint.name() + ". Ends: " + checkpoint.end_text(), COLOR_BLUE);
+        checkpoint.run_checkpoint(env, context, options, stats);
+        stats.m_completed++;
+        stats.m_last_completed = index;
+        env.update_stats();
+        env.log("[AutoStory] Completed: " + checkpoint.name() + ".", COLOR_DARKGREEN);
+    };
     auto run_selected_range = [&](size_t attempt){
         if (attempt > 0) env.log("[Fake saves] Reloaded initial save; restarting the entire selected range from its start.");
         // DIAGNOSTIC ONLY: Remove this branch before pushing to production.
         if (DIAGNOSTIC_POST_CATCH_ONLY && ENABLE_ADVANCED_MODE &&
             START_CHECKPOINT_TUTORIAL.slug() == "4"){
             env.log("Diagnostic only: Running checkpoint 00.04 after catch.");
+            env.log("[AutoStory] Objective: " + AutoStory_Checkpoint_0004().name() + " (after the catch). Ends: " +
+                AutoStory_Checkpoint_0004().end_text(), COLOR_BLUE);
             diagnostic_checkpoint_0004_after_catch(env, context, options, stats);
+            stats.m_completed++;
+            stats.m_last_completed = 4;
+            env.update_stats();
+            env.log("[AutoStory] Completed: " + AutoStory_Checkpoint_0004().name() + ".", COLOR_DARKGREEN);
             env.log("Diagnostic continuation: Running checkpoint 00.05.");
-            AutoStory_Checkpoint_0005().run_checkpoint(env, context, options, stats);
+            run_checkpoint_logged(5, AutoStory_Checkpoint_0005());
             return;
         }
 
@@ -492,7 +507,7 @@ void BDSPAutoStory::program(
 
             for (size_t i = start; i <= end && i < checkpoints.size(); i++){
                 env.log("Running Checkpoint: " + std::to_string(i));
-                checkpoints[i]->run_checkpoint(env, context, options, stats);
+                run_checkpoint_logged(i, *checkpoints[i]);
             }
 
         }else{

@@ -112,6 +112,15 @@ std::vector<TilePos> walk_route(
                 //  for a slow start; past the wall the player stands still.
                 const Milliseconds limit = ROUTE_START_DELAY + ms_per_tile(leg.direction) * leg.tiles * 5 / 4 + 1000ms;
                 result = walk_until(stream, context, x, y, limit, leg_label);
+                //  A wild battle may end the walk early. Walking to a wall again
+                //  ends in the same place, so finish the leg.
+                const bool interrupted = result.wild_battles > 0;
+                for (size_t again = 0; again < 3 && result.wild_battles > 0 &&
+                    (result.stop == WalkStop::LIMIT || result.stop == WalkStop::BLOCKED); again++
+                ){
+                    stream.log("[Route] " + leg_label + ": a wild battle on the way; walking to the wall again.");
+                    result = walk_until(stream, context, x, y, limit, leg_label);
+                }
                 //  A wall well before the nearest one the map has means we are
                 //  not where we think: stop rather than walk on from a wrong tile.
                 size_t nearest = SIZE_MAX;
@@ -120,7 +129,7 @@ std::vector<TilePos> walk_route(
                 }
                 const Milliseconds moving = result.walked - 800ms - ROUTE_START_DELAY;
                 const size_t walked_tiles = moving.count() <= 0 ? 0 : (size_t)(moving / ms_per_tile(leg.direction));
-                if (result.stop == WalkStop::BLOCKED && walked_tiles + 3 < nearest){
+                if (!interrupted && result.stop == WalkStop::BLOCKED && walked_tiles + 3 < nearest){
                     OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
                         leg_label + ": stopped after about " + std::to_string(walked_tiles) +
                         " tiles; the map has no wall for " + std::to_string(nearest) + ".", stream);
