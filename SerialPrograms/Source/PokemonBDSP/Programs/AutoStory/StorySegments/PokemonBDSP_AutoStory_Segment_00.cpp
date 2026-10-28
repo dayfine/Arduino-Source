@@ -629,11 +629,11 @@ namespace PokemonAutomation {
             //--------------------------------------------------------
             // To get potions
             // -------------------------------------------------------
-            const TilePos potion = maps.to_world(MAP_ROUTE_201, Route201::POTION_GIVER_TALK_SPOT);
+            const TilePos potion_row = maps.to_world(MAP_ROUTE_201, Route201::POTION_GIVER_ROW_EAST);
             walk_route(stream, context, maps, {maps.to_world(MAP_ROUTE_202, Route202::CATCH_SPOT)},
-                [&](const TilePos& pos) { return pos == potion; }, trainers, fight, "To the Potion giver");
-            // She stands on the tile west of the talk spot.
-            if (walk_to_talk(stream, context, -1, 0, 2000ms, "to the Potion giver").stop != WalkStop::DIALOG) {
+                [&](const TilePos& pos) { return pos == potion_row; }, trainers, fight, "To the Potion giver");
+            // She wanders along the grass row west of here; walk it until she talks.
+            if (walk_to_talk(stream, context, -1, 0, 4000ms, "to the Potion giver").stop != WalkStop::DIALOG) {
                 OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
                     "Potion giver not reached.", stream);
             }
@@ -654,8 +654,12 @@ namespace PokemonAutomation {
             // ---------------------------------------------------------
             // On to Jubilife, fighting the Route 202 trainers who see us
             // ---------------------------------------------------------
-            // The training battle's wiggle can leave us a tile east of the talk spot.
-            walk_route(stream, context, maps, {potion, {potion.x + 1, potion.y}},
+            // We met her, and the training battle's wiggle moved us, somewhere on her row.
+            std::vector<TilePos> potion_row_tiles;
+            for (TilePos pos = maps.to_world(MAP_ROUTE_201, Route201::POTION_GIVER_ROW_WEST_END); pos.x <= potion_row.x; pos.x++) {
+                potion_row_tiles.push_back(pos);
+            }
+            walk_route(stream, context, maps, potion_row_tiles,
                 story_at_jubilife_exit, trainers, fight, "To Jubilife");
             // Entering Jubilife starts a scene: Dawn walks over while we stand still.
             if (walk_until(stream, context, 0, 1, 4000ms, "to Dawn in Jubilife").stop == WalkStop::TRANSITION) {

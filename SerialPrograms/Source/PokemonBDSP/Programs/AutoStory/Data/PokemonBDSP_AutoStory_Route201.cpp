@@ -33,7 +33,7 @@ const TileGrid& grid(){
         R"(################################################################)",  //   0
         R"(################################################################)",  //   1
         R"(################################################################)",  //   2
-        R"(##########################################""N""""""""...........)",  //   3
+        R"(##########################################"""""""""""...........)",  //   3
         R"(##########################################"""""""""""..S........)",  //   4
         R"(##########################################"""""""""##...........)",  //   5
         R"(##..####..####....######..##....##..####.."""""""""##...........)",  //   6
@@ -55,10 +55,11 @@ const TileGrid& grid(){
 }
 
 
-//  Pixel (718,45) is the sprite's middle; its feet are at about (718,57),
-//  on the top row of the tall grass with the tree trunks right above.
-const TilePos POTION_GIVER{44, 3};
-const TilePos POTION_GIVER_TALK_SPOT{45, 3};
+//  On the DP map she stands at (44,3), pixel (718,57). On the console she
+//  was at (44,3) once and east of (42,3) another time: she wanders.
+const TilePos POTION_GIVER_ROW_EAST{53, 3};
+const TilePos POTION_GIVER_ROW_WEST_END{42, 3};
+const TilePos POTION_GIVER_ROW_EAST_END{52, 3};
 
 
 

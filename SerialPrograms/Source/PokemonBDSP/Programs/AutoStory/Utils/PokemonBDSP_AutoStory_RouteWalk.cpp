@@ -7,6 +7,7 @@
 #include <algorithm>
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
 #include "CommonTools/Async/InferenceRoutines.h"
+#include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "PokemonBDSP/Inference/PokemonBDSP_DialogDetector.h"
 #include "PokemonBDSP_AutoStory_Walk.h"
 #include "PokemonBDSP_AutoStory_RouteWalk.h"
@@ -72,9 +73,15 @@ std::vector<TilePos> leg_path(const TileGrid& grid, TilePos from, GridDirection 
 
 Milliseconds route_open_hold(GridDirection direction, size_t tiles){
     const Milliseconds step = ms_per_tile(direction);
-    //  A tap only turns a player facing another way: on the console a 150ms
-    //  tap south after walking north did not move. 250ms turns and steps.
-    return std::max<Milliseconds>(step * tiles - step / 2, Milliseconds(250));
+    return step * tiles - step / 2;
+}
+
+void route_turn(VideoStream& stream, ProControllerContext& context, GridDirection direction){
+    double x, y;
+    stick_for(direction, x, y);
+    stream.log(std::string("[Route] Turning ") + direction_name(direction) + ".");
+    pbf_move_left_joystick(context, {x, y}, ROUTE_TURN_TAP, 300ms);
+    context.wait_for_all_requests();
 }
 
 
@@ -88,6 +95,8 @@ std::vector<TilePos> walk_route(
     const std::string& label
 ){
     const TileGrid& grid = maps.world();
+    //  Which way the player faces, once a leg has set it.
+    std::optional<GridDirection> facing;
     for (size_t plans = 0; plans < 8; plans++){
         const std::optional<std::vector<PlannedLeg>> legs = plan_robust_route(grid, from, goal);
         if (!legs){
@@ -136,12 +145,17 @@ std::vector<TilePos> walk_route(
                         " tiles; the map has no wall for " + std::to_string(nearest) + ".", stream);
                 }
             }else{
+                //  The hold is timed for a player facing the way to go.
+                if (facing != leg.direction){
+                    route_turn(stream, context, leg.direction);
+                }
                 result = walk_for(stream, context, x, y, route_open_hold(leg.direction, leg.tiles), leg_label);
                 if (result.wild_battles > 0){
                     OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
                         leg_label + ": a wild battle cut an open leg short; position unknown.", stream);
                 }
             }
+            facing = leg.direction;
             if (result.stop == WalkStop::TRANSITION){
                 OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
                     leg_label + ": unexpected transition.", stream);

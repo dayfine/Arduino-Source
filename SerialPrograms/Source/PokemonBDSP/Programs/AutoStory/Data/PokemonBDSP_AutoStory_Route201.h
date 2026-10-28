@@ -19,10 +19,13 @@ namespace Route201{
 
 const Pokemon::TileGrid& grid();
 
-//  The girl who gives a Potion, at the top-left corner of the north-east
-//  tall grass, and the tile east of her to talk from (face west).
-extern const Pokemon::TilePos POTION_GIVER;
-extern const Pokemon::TilePos POTION_GIVER_TALK_SPOT;
+//  The girl who gives a Potion walks along the top row of the north-east tall
+//  grass, (42..52, 3). This is the tile east of that row, against the trees:
+//  walk west from here to meet her.
+extern const Pokemon::TilePos POTION_GIVER_ROW_EAST;
+//  The first and last tiles of her row.
+extern const Pokemon::TilePos POTION_GIVER_ROW_WEST_END;
+extern const Pokemon::TilePos POTION_GIVER_ROW_EAST_END;
 
 
 

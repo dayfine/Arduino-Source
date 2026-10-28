@@ -443,7 +443,9 @@ std::optional<std::vector<PlannedLeg>> plan_robust_route(
             );
         }
     }
-    const size_t max_spread = std::max(costs.max_spread, from.size());
+    //  Only the start may be wider than costs.max_spread: every leg must bring
+    //  the player within it.
+    const size_t max_spread = costs.max_spread;
     auto reached = [&](const Spread& spread){
         return std::all_of(spread.begin(), spread.end(), goal);
     };

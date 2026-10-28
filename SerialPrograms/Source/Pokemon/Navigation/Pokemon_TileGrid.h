@@ -164,7 +164,7 @@ struct RobustPlanCosts : TilePlanCosts{
     int open_error = 1;
     int open_error_per = 5;
     int max_open_tiles = 12;    //  longest open leg to consider
-    size_t max_spread = 5;      //  most tiles the player may be on at once
+    size_t max_spread = 5;      //  most tiles the player may be on after a leg
 };
 
 //  Cheapest legs that take the player from any of the tiles in `from` to tiles

@@ -111,8 +111,9 @@ public:
             TileType type;
         };
         const Named named[] = {
-            {MAP_ROUTE_201,     Route201::POTION_GIVER,             TileType::NPC},
-            {MAP_ROUTE_201,     Route201::POTION_GIVER_TALK_SPOT,   TileType::TALL_GRASS},
+            {MAP_ROUTE_201,     Route201::POTION_GIVER_ROW_EAST,    TileType::WALKABLE},
+            {MAP_ROUTE_201,     Route201::POTION_GIVER_ROW_WEST_END, TileType::TALL_GRASS},
+            {MAP_ROUTE_201,     Route201::POTION_GIVER_ROW_EAST_END, TileType::TALL_GRASS},
             {MAP_SANDGEM_TOWN,  SandgemTown::LAB_DOOR,              TileType::DOOR},
             {MAP_SANDGEM_TOWN,  SandgemTown::POKEMON_CENTER_DOOR,   TileType::DOOR},
             {MAP_SANDGEM_TOWN,  SandgemTown::POKE_MART_DOOR,        TileType::DOOR},
@@ -134,8 +135,8 @@ public:
                 return std::string(c.map) + " tile " + Pokemon::to_string(c.pos) + " does not map back.";
             }
         }
-        if (Route201::POTION_GIVER_TALK_SPOT.next(GridDirection::WEST) != Route201::POTION_GIVER){
-            return "The Potion giver's talk spot is not east of her.";
+        if (Route201::POTION_GIVER_ROW_EAST.next(GridDirection::WEST) != Route201::POTION_GIVER_ROW_EAST_END){
+            return "The Potion giver's row does not end next to its east tile.";
         }
 
         //  The maps join where their exits meet.
@@ -361,7 +362,7 @@ public:
         const Pokemon::MapSet& maps = story_maps();
         const std::vector<Pokemon::TrainerSight> trainers = story_trainer_sights();
         const TilePos catch_spot = maps.to_world(MAP_ROUTE_202, Route202::CATCH_SPOT);
-        const TilePos potion = maps.to_world(MAP_ROUTE_201, Route201::POTION_GIVER_TALK_SPOT);
+        const TilePos potion = maps.to_world(MAP_ROUTE_201, Route201::POTION_GIVER_ROW_EAST);
         const TilePos jubilife = maps.to_world(MAP_ROUTE_202, Route202::EXIT_JUBILIFE);
         error = check_plan(logger, "Catch spot to Potion giver", maps.world(), catch_spot, potion, &maps, trainers);
         if (!error.empty()){
@@ -376,8 +377,12 @@ public:
         if (!error.empty()){
             return error;
         }
-        //  The training battle's wiggle may leave us a tile east of the talk spot.
-        error = check_robust_plan(logger, "Potion giver to Jubilife", maps, {potion, {potion.x + 1, potion.y}},
+        //  She may be met anywhere on her row.
+        std::vector<TilePos> row;
+        for (TilePos pos = maps.to_world(MAP_ROUTE_201, Route201::POTION_GIVER_ROW_WEST_END); pos.x <= potion.x; pos.x++){
+            row.push_back(pos);
+        }
+        error = check_robust_plan(logger, "Potion giver to Jubilife", maps, row,
             story_at_jubilife_exit);
         if (!error.empty()){
             return error;

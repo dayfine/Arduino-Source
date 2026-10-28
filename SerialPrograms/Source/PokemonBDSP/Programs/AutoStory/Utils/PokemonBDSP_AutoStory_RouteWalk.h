@@ -31,11 +31,19 @@ constexpr Milliseconds ROUTE_MS_PER_TILE_UP_DOWN = Milliseconds(240);   //  nort
 //  From pressing the stick to the first step, when standing still.
 constexpr Milliseconds ROUTE_START_DELAY = Milliseconds(250);
 
-//  How long to hold the stick for an open leg of `tiles` tiles: a step once
-//  started is always finished, so stop half a tile early. On the console a
-//  1290ms hold west went 9 tiles and an 800ms hold south 4, so the player
-//  starts at once and finishes the step in progress.
+//  How long to hold the stick for an open leg of `tiles` tiles, for a player
+//  already facing that way: a step once started is always finished, so stop
+//  half a tile early. On the console a 1290ms hold west went 9 tiles and an
+//  800ms hold south 4: the player starts at once and finishes the step.
 Milliseconds route_open_hold(Pokemon::GridDirection direction, size_t tiles);
+
+//  A tap this short turns a player who faces another way, without a step: on
+//  the console a 150ms tap south after walking north only turned the player.
+constexpr Milliseconds ROUTE_TURN_TAP = Milliseconds(100);
+
+//  Turns the player to face `direction` without moving. Only for a player who
+//  faces another way: one already facing it may take a step.
+void route_turn(VideoStream& stream, ProControllerContext& context, Pokemon::GridDirection direction);
 
 //  Called when a trainer's dialogue has opened. Fights the battle and returns
 //  to the overworld.
