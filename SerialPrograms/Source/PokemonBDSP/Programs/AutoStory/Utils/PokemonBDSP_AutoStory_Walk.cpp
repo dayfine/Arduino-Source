@@ -1,0 +1,201 @@
+/*  BDSP AutoStory - Walk
+ *
+ *  From: https://github.com/PokemonAutomation/
+ *
+ */
+
+#include <algorithm>
+#include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
+#include "CommonFramework/ImageTools/ImageDiff.h"
+#include "CommonFramework/ImageTypes/ImageRGB32.h"
+#include "CommonFramework/VideoPipeline/VideoFeed.h"
+#include "CommonTools/Async/InferenceRoutines.h"
+#include "CommonTools/VisualDetectors/BlackScreenDetector.h"
+#include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
+#include "PokemonBDSP/Inference/PokemonBDSP_DialogDetector.h"
+#include "PokemonBDSP/Inference/PokemonBDSP_TransitionWatchers.h"
+#include "PokemonBDSP/Inference/Battles/PokemonBDSP_BattleMenuDetector.h"
+#include "PokemonBDSP_AutoStory_Segment_00_tools.h"
+#include "PokemonBDSP_Autostory_Segment_01_tools.h"
+#include "PokemonBDSP_AutoStory_Walk.h"
+
+namespace PokemonAutomation{
+namespace NintendoSwitch{
+namespace PokemonBDSP{
+
+using namespace std::chrono_literals;
+
+
+const char* walk_stop_name(WalkStop stop){
+    switch (stop){
+    case WalkStop::ARRIVED:     return "arrived";
+    case WalkStop::DIALOG:      return "dialog";
+    case WalkStop::TRANSITION:  return "transition";
+    case WalkStop::BLOCKED:     return "blocked";
+    case WalkStop::LIMIT:       return "limit";
+    }
+    return "?";
+}
+
+double walk_screen_change(const ImageViewRGB32& before, const ImageViewRGB32& after){
+    //  Small copies: only the whole-view scroll matters, not detail.
+    return ImageMatch::pixel_RMSD(before.scale_to(192, 108), after.scale_to(192, 108));
+}
+
+
+namespace{
+
+VideoSnapshot snapshot_or_fail(VideoStream& stream, const std::string& label){
+    VideoSnapshot frame = stream.video().snapshot();
+    if (!frame){
+        OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
+            label + ": No video frame.", stream);
+    }
+    return frame;
+}
+
+//  After a black screen: a wild battle if a battle screen shows up, else a transition.
+bool black_screen_was_battle(VideoStream& stream, ProControllerContext& context){
+    BattleMenuWatcher battle_menu(BattleType::STANDARD, COLOR_YELLOW);
+    BattleDialogWatcher battle_dialog(COLOR_YELLOW);
+    BlackScreenWatcher gone(COLOR_RED, {0.1, 0.1, 0.8, 0.8}, 100, 10,
+        BlackScreenWatcher::FinderType::GONE, 500ms);
+    const int ret = wait_until(stream, context, 10s, {{battle_menu}, {battle_dialog}, {gone}});
+    if (ret == 2){
+        //  The battle intro also starts from black; give its first screen a moment.
+        BattleMenuWatcher late_menu(BattleType::STANDARD, COLOR_YELLOW);
+        BattleDialogWatcher late_dialog(COLOR_YELLOW);
+        return wait_until(stream, context, 2s, {{late_menu}, {late_dialog}}) >= 0;
+    }
+    return ret >= 0;
+}
+
+}
+
+
+WalkResult walk_until(
+    VideoStream& stream, ProControllerContext& context,
+    double x, double y, Milliseconds limit, const std::string& label,
+    const std::function<bool(const ImageViewRGB32& screen)>& arrived
+){
+    constexpr Milliseconds CHUNK = 400ms;
+    WalkResult result{WalkStop::LIMIT, 0ms, 0};
+    size_t unchanged = 0;
+
+    context.wait_for_all_requests();
+    VideoSnapshot before = snapshot_or_fail(stream, label);
+    auto finish = [&](WalkStop stop){
+        result.stop = stop;
+        stream.log("[Walk] " + label + ": " + walk_stop_name(stop) + " after " +
+            std::to_string(result.walked.count()) + "ms, " +
+            std::to_string(result.wild_battles) + " wild battle(s).");
+        return result;
+    };
+
+    while (true){
+        if (arrived && arrived(*before.frame)){
+            return finish(WalkStop::ARRIVED);
+        }
+        if (result.walked >= limit){
+            return finish(WalkStop::LIMIT);
+        }
+        const Milliseconds chunk = std::min(CHUNK, limit - result.walked);
+
+        WhiteScreenOverWatcher encounter_flash(COLOR_YELLOW, {0.1, 0.1, 0.8, 0.8});
+        BlackScreenWatcher black(COLOR_RED);
+        BattleMenuWatcher battle_menu(BattleType::STANDARD, COLOR_YELLOW);
+        ShortDialogWatcher dialog(COLOR_YELLOW);
+        const int ret = run_until<ProControllerContext>(
+            stream, context,
+            [&](ProControllerContext& context){
+                pbf_move_left_joystick(context, {x, y}, chunk, 0ms);
+            },
+            {{encounter_flash}, {black}, {battle_menu}, {dialog}}
+        );
+        result.walked += chunk;
+
+        bool battle = ret == 0 || ret == 2;
+        if (ret == 1){
+            battle = black_screen_was_battle(stream, context);
+            if (!battle){
+                return finish(WalkStop::TRANSITION);
+            }
+        }
+        if (battle){
+            result.wild_battles++;
+            stream.log("[Walk] " + label + ": wild battle; running.");
+            escape_wild_battle(stream, context, BattleType::STANDARD);
+            context.wait_for_all_requests();
+            before = snapshot_or_fail(stream, label);
+            unchanged = 0;
+            continue;
+        }
+        if (ret == 3){
+            return finish(WalkStop::DIALOG);
+        }
+
+        context.wait_for_all_requests();
+        VideoSnapshot after = snapshot_or_fail(stream, label);
+        const double change = walk_screen_change(*before.frame, *after.frame);
+        stream.log("[Walk] " + label + ": " + std::to_string(result.walked.count()) +
+            "ms, screen change " + std::to_string(change) + ".");
+        //  Two still chunks in a row, so one dropped frame does not stop us.
+        unchanged = change < WALK_BLOCKED_CHANGE ? unchanged + 1 : 0;
+        if (unchanged >= 2){
+            return finish(WalkStop::BLOCKED);
+        }
+        before = std::move(after);
+    }
+}
+
+WalkResult walk_to_talk(
+    VideoStream& stream, ProControllerContext& context,
+    double x, double y, Milliseconds limit, const std::string& label
+){
+    WalkResult total{WalkStop::LIMIT, 0ms, 0};
+    while (total.walked < limit){
+        const WalkResult step = walk_until(stream, context, x, y,
+            std::min<Milliseconds>(400ms, limit - total.walked), label);
+        total.walked += step.walked;
+        total.wild_battles += step.wild_battles;
+        if (step.stop == WalkStop::DIALOG || step.stop == WalkStop::TRANSITION){
+            total.stop = step.stop;
+            return total;
+        }
+        ShortDialogWatcher dialog(COLOR_YELLOW);
+        const int ret = run_until<ProControllerContext>(
+            stream, context,
+            [](ProControllerContext& context){
+                pbf_press_button(context, BUTTON_A, 80ms, 720ms);
+            },
+            {{dialog}}
+        );
+        if (ret == 0){
+            total.stop = WalkStop::DIALOG;
+            stream.log("[Walk] " + label + ": talking after " + std::to_string(total.walked.count()) + "ms.");
+            return total;
+        }
+    }
+    stream.log("[Walk] " + label + ": nobody to talk to within " + std::to_string(limit.count()) + "ms.");
+    return total;
+}
+
+WalkResult walk_expecting(
+    VideoStream& stream, ProControllerContext& context,
+    double x, double y, Milliseconds limit, const std::string& label,
+    WalkStop expected,
+    const std::function<bool(const ImageViewRGB32& screen)>& arrived
+){
+    const WalkResult result = walk_until(stream, context, x, y, limit, label, arrived);
+    if (result.stop != expected){
+        OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
+            label + ": expected " + walk_stop_name(expected) + ", got " +
+            walk_stop_name(result.stop) + ".", stream);
+    }
+    return result;
+}
+
+
+}
+}
+}

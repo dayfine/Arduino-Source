@@ -8,6 +8,7 @@
 #include "CommonFramework/GlobalAutoPaths.h"
 #include "PokemonBDSP_AutoStory_Segment_00.h"
 #include "../Utils/PokemonBDSP_AutoStory_Segment_00_tools.h"
+#include "../Utils/PokemonBDSP_AutoStory_Walk.h"
 #include "../Utils/PokemonBDSP_OverworldMatchers.h"
 
 #include <algorithm>
@@ -600,32 +601,66 @@ namespace PokemonAutomation {
 
         // Resumes from the save made after catching the second Pokemon.
         static void tutorial_part_3_after_catch_navigation(SingleSwitchProgramEnvironment& env, VideoStream& stream, ProControllerContext& context) {
+            // A retry reloads the save at whatever time the clock has reached.
+            // Pin it again so the landmark references see the same lighting.
+            set_time_fast(env, context, DateTime{ 2026, 1, 1, 0, 0, 50 });
+
+            // A recorded stick movement, walked with the screen watched: wild
+            // battles are run from, and a wall ends it early. Anything else
+            // (a dialogue or a door) is not part of the recording.
+            auto leg = [&](double x, double y, Milliseconds duration, const std::string& label) {
+                const WalkResult result = walk_until(stream, context, x, y, duration, label);
+                if (result.stop != WalkStop::LIMIT && result.stop != WalkStop::BLOCKED) {
+                    OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
+                        label + ": unexpected " + walk_stop_name(result.stop) + ".", stream);
+                }
+            };
+            // Walk to a wall: hold long enough to reach it from anywhere the legs
+            // before could have left us. A wall stops the player whether or not
+            // the screen reads as still (tall grass keeps swaying), so running
+            // out the time is as good as BLOCKED.
+            auto to_wall = [&](double x, double y, Milliseconds limit, const std::string& label) {
+                const WalkResult result = walk_until(stream, context, x, y, limit, label);
+                if (result.stop != WalkStop::LIMIT && result.stop != WalkStop::BLOCKED) {
+                    OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
+                        label + ": unexpected " + walk_stop_name(result.stop) + ".", stream);
+                }
+            };
+            // Walk toward a trainer, then fight with whatever starter we have. A
+            // trainer who spots us freezes the player and walks over, so the walk
+            // can end in any way short of a transition; their dialogue decides.
+            auto trainer = [&](double x, double y, Milliseconds limit, const std::string& name) {
+                const WalkResult walk = walk_until(stream, context, x, y, limit, "to " + name);
+                if (walk.stop == WalkStop::TRANSITION) {
+                    OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
+                        name + ": left the area instead of meeting the trainer.", stream);
+                }
+                wait_for_dialogue(stream, context, name + " encounter dialog");
+                pbf_mash_button(context, BUTTON_B, 5000ms);
+                fight_trainer(stream, context, name);
+                context.wait_for_all_requests();
+                use_potion_first_pokemon(stream, context);
+                context.wait_for_all_requests();
+            };
+
             pbf_wait(context, 1500ms);
             //--------------------------------------------------------
             // To get potions
             // -------------------------------------------------------
-            walk_through_grass(stream, context, 1, 0, 10, "Route 202 grass exit",
-                BattleType::STANDARD, 200ms, match_route202_grass_exit);
-            // Recording: the exit reference was reached after two 200ms steps.
-            // Eight further steps (1600ms) reached the eastern tree boundary.
-            // Continue outside grass to preserve the next down movement's start.
-            stream.log("[Tutorial] Route 202 grass exit confirmed; continuing right to the tree boundary.");
-            pbf_move_left_joystick(context, {1.0, 0.0}, 1600ms, 0ms);
-            pbf_wait(context, 700ms);
-            context.wait_for_all_requests();
-            pbf_move_left_joystick(context, { 0.000000, -1.000000 }, 1421ms, 0ms);
-            pbf_wait(context, 52ms);
-            pbf_move_left_joystick(context, { -1.000000, -0.000000 }, 1013ms, 0ms);
-            pbf_wait(context, 142ms);
-            pbf_move_left_joystick(context, { 0.000000, -1.000000 }, 1112ms, 0ms);
-            pbf_wait(context, 45ms);
-            pbf_move_left_joystick(context, { -1.000000, -0.000000 }, 3206ms, 0ms);
-            pbf_wait(context, 912ms);
-            pbf_move_left_joystick(context, { 0.000000, 1.000000 }, 856ms, 0ms);
-            context.wait_for_all_requests();
+            // Out of the grass and on to the eastern tree boundary.
+            to_wall(1, 0, 6000ms, "Route 202 grass to the east trees");
+            leg(0, -1, 1421ms, "Potion path 1");
+            leg(-1, 0, 1013ms, "Potion path 2");
+            leg(0, -1, 1112ms, "Potion path 3");
+            leg(-1, 0, 3206ms, "Potion path 4");
+            leg(0, 1, 856ms, "Potion path 5");
             pbf_wait(context, 1500ms);
-            walk_through_grass(stream, context, -1, 0, 18, "left through grass 3");
-            pbf_press_button(context, BUTTON_A, 180ms, 0ms);
+            // The Potion giver stands at the west end of this grass row. Walk
+            // toward her pressing A until she talks, instead of for a time.
+            if (walk_to_talk(stream, context, -1, 0, 6000ms, "to the Potion giver").stop != WalkStop::DIALOG) {
+                OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
+                    "Potion giver not reached.", stream);
+            }
 
             wait_for_dialogue(stream, context, "Phase 17 (accept potions)");
 
@@ -636,8 +671,8 @@ namespace PokemonAutomation {
             stream.log("[Tutorial] Checking starter HP after the first Potion pickup.");
             use_potion_first_pokemon(stream, context);
             context.wait_for_all_requests();
-            // Start with one training encounter toward level 6 / Ember. The helper
-            // waits through XP/automatic move learning and heals after the fight.
+            // One training encounter before the trainers. The helper waits
+            // through XP/automatic move learning and heals after the fight.
             battle_1_pokemon(stream, context);
 
             // Stop on the verified Route 201 reference instead of overshooting
@@ -650,67 +685,38 @@ namespace PokemonAutomation {
             // ---------------------------------------------------------
             // Navigate back to catch tutorial grass
             // ---------------------------------------------------------
-            pbf_move_left_joystick(context, { 0.000000, -1.000000 }, 560ms, 0ms);
-            pbf_wait(context, 1500ms);
-            pbf_move_left_joystick(context, { 1.000000, -0.000000 }, 5000ms, 0ms);
-            pbf_wait(context, 1500ms);
-            pbf_move_left_joystick(context, { -1.000000, -0.000000 }, 1000ms, 0ms);
-            pbf_wait(context, 1500ms);
+            leg(0, -1, 560ms, "back to the grass 1");
+            leg(1, 0, 5000ms, "back to the grass 2");
+            leg(-1, 0, 1000ms, "back to the grass 3");
             align_to_sandgem_junction(stream, context);
-            pbf_move_left_joystick(context, { 0.000000, 1.000000 }, 1855ms, 0ms);
-            pbf_wait(context, 1500ms);
-            pbf_move_left_joystick(context, { 1.000000, -0.000000 }, 430ms, 0ms);
-            pbf_wait(context, 1500ms);
-            pbf_move_left_joystick(context, { 0.000000, 1.000000 }, 850ms, 0ms);
-            pbf_wait(context, 1500ms);
-            pbf_move_left_joystick(context, { -1.000000, -0.000000 }, 1120ms, 0ms);
+            leg(0, 1, 1855ms, "back to the grass 4");
+            leg(1, 0, 430ms, "back to the grass 5");
+            leg(0, 1, 850ms, "back to the grass 6");
+            leg(-1, 0, 1120ms, "back to the grass 7");
 
-            // Continue on to jubilife
-            walk_through_grass(stream, context, -1, 0, 18, "left through grass 3");
-            walk_through_grass(stream, context, 0, 1, 18, "up through grass 3");
-            pbf_move_left_joystick(context, { 1.000000, -0.000000 }, 1000ms, 0ms);
-            wait_for_dialogue(stream, context, "Phase 18 (tristan encounter dialog)");
+            // Continue on to jubilife. Walk the grass out to its walls rather than
+            // for a time, so where we stand, and so Tristan's line of sight, does
+            // not depend on how the legs before went.
+            to_wall(-1, 0, 6000ms, "left through grass 3");
+            to_wall(0, 1, 6000ms, "up through grass 3");
+            trainer(1, 0, 3000ms, "Tristan");
 
-            pbf_mash_button(context, BUTTON_B, 5000ms);
-            fight_tristan(stream, context);
+            leg(1, 0, 1366ms, "to Natalie 1");
+            leg(0, -1, 1951ms, "to Natalie 2");
+            trainer(1, 0, 3000ms, "Natalie");
 
-            use_potion_first_pokemon(stream, context);
-            context.wait_for_all_requests();
-            pbf_move_left_joystick(context, { 1.000000, -0.000000 }, 1366ms, 0ms);
-            pbf_wait(context, 467ms);
-            pbf_move_left_joystick(context, { 0.000000, -1.000000 }, 1018ms, 0ms);
-            pbf_wait(context, 311ms);
-            pbf_move_left_joystick(context, { 0.000000, -1.000000 }, 353ms, 0ms);
-            pbf_wait(context, 660ms);
-            pbf_move_left_joystick(context, { 0.000000, -1.000000 }, 580ms, 0ms);
-            pbf_wait(context, 1672ms);
-            pbf_move_left_joystick(context, { 1.000000, -0.000000 }, 1344ms, 0ms);
+            leg(1, 0, 1301ms, "to Logan 1");
+            leg(0, 1, 3000ms, "up through grass");
+            leg(0, -1, 392ms, "to Logan 2");
+            trainer(-1, 0, 3000ms, "Logan");
 
-            wait_for_dialogue(stream, context, "Phase 19 (natalie encounter dialog)");
-
-            pbf_mash_button(context, BUTTON_B, 5000ms);
-
-            fight_Natalie(stream, context);
-            context.wait_for_all_requests();
-            use_potion_first_pokemon(stream, context);
-            context.wait_for_all_requests();
-
-            pbf_move_left_joystick(context, { 1.000000, -0.000000 }, 1301ms, 0ms);
-            walk_through_grass(stream, context, 0, 1, 15, "up through grass");
-            pbf_move_left_joystick(context, { 0.000000, -1.000000 }, 392ms, 0ms);
-            pbf_wait(context, 1261ms);
-            pbf_move_left_joystick(context, { -1.000000, -0.000000 }, 815ms, 0ms);
-
-            wait_for_dialogue(stream, context, "Phase 20 (logan encounter dialog)");
-
-            pbf_mash_button(context, BUTTON_B, 5000ms);
-            fight_Natalie(stream, context);
-            context.wait_for_all_requests();
-            use_potion_first_pokemon(stream, context);
-            context.wait_for_all_requests();
-            walk_through_grass(stream, context, -1, 0, 8, "left through grass");
-
-            pbf_move_left_joystick(context, { 0.000000, 1.000000 }, 2469ms, 0ms);
+            leg(-1, 0, 1600ms, "left through grass");
+            // Entering Jubilife starts a scene: Dawn walks over while we stand still.
+            // Walk up to the entrance as recorded, then let her dialogue decide.
+            if (walk_until(stream, context, 0, 1, 2469ms, "to Dawn in Jubilife").stop == WalkStop::TRANSITION) {
+                OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
+                    "Jubilife: left the area instead of meeting Dawn.", stream);
+            }
             wait_for_dialogue(stream, context, "Phase 21 (dawn Jubilife dialog)");
 
             pbf_mash_button(context, BUTTON_B, 5000ms);

@@ -1,6 +1,7 @@
 #include "PokemonBDSP/Inference/PokemonBDSP_TransitionWatchers.h"
 #include "CommonFramework/GlobalAutoPaths.h"
 #include "Common/Cpp/Filesystem/Filesystem.h"
+#include "Common/Cpp/PrettyPrint.h"
 /*  BDSP AutoStory Tools
  *
  *  From: https://github.com/PokemonAutomation/
@@ -105,9 +106,20 @@ bool save_game(
                 pbf_mash_button(context, BUTTON_B, 1000ms);
             }
 
-            // Reuse existing feedback-based save: opens menu with MenuWatcher
-            // + respects GameSettings::OVERWORLD_TO_MENU_DELAY0 internally.
-            save_game(env.console, context);
+            // The feedback-based save of save_game(VideoStream&, ...), split at the
+            // save prompt to keep a screenshot of it: it shows the play time and
+            // badges, a record of where each checkpoint save stands.
+            overworld_to_menu(env.console, context);
+            pbf_press_button(context, BUTTON_R, 80ms, 2000ms);
+            context.wait_for_all_requests();
+            if (VideoSnapshot screen = env.console.video().snapshot()){
+                const std::string folder = SCREENSHOTS_PATH() + "AutoStory/saves/";
+                Filesystem::create_directories(Filesystem::Path(folder));
+                const std::string path = folder + now_to_filestring() + ".png";
+                screen.frame->save(path);
+                env.console.log("Save prompt screenshot: " + path);
+            }
+            pbf_press_button(context, BUTTON_ZL, 80ms, 5000ms);
 
             // Return to overworld cleanly.
             pbf_mash_button(context, BUTTON_B, 1000ms);
@@ -224,6 +236,14 @@ void checkpoint_reattempt_loop(
         }catch (OperationFailedException& e){
             if (retry_scope == CheckpointRetryScope::DEFER_TO_SELECTED_RANGE) throw;
             env.console.log("checkpoint_reattempt_loop: attempt " + std::to_string(i) + " failed: " + e.message(), COLOR_RED);
+            //  Keep what the screen showed at the failure; the retry below resets the game.
+            if (VideoSnapshot screen = env.console.video().snapshot()){
+                const std::string folder = SCREENSHOTS_PATH() + "AutoStory/failures/";
+                Filesystem::create_directories(Filesystem::Path(folder));
+                const std::string path = folder + now_to_filestring() + "-attempt" + std::to_string(i) + ".png";
+                screen.frame->save(path);
+                env.console.log("Failure screenshot: " + path);
+            }
             stats.m_reset++;
             env.update_stats();
 

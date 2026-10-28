@@ -62,15 +62,10 @@ namespace PokemonAutomation {
             void fight_trainer_using_move_slot(VideoStream& stream, ProControllerContext& context,
                 size_t move_slot, const std::string& label);
 
-            void fight_tristan(
-                VideoStream& stream,
-                ProControllerContext& context
-            );
-
-            void fight_Natalie(
-                VideoStream& stream,
-                ProControllerContext& context
-            );
+            // Any trainer battle, whatever the starter: uses move slot 1 until the
+            // battle ends. Slot 1 is a damaging move (Tackle, Scratch or Pound) for
+            // every starter.
+            void fight_trainer(VideoStream& stream, ProControllerContext& context, const std::string& label);
 
             // ---------------------------------------------------------------------------
             // Catching / healing

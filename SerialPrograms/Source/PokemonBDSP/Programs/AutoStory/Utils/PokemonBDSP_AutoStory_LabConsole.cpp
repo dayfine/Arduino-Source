@@ -17,6 +17,7 @@
 #include "PokemonBDSP/Programs/PokemonBDSP_GameEntry.h"
 #include "PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_OverworldDetector.h"
 #include "PokemonBDSP_AutoStory_NewGame.h"
+#include "PokemonBDSP_AutoStory_Walk.h"
 #include "PokemonBDSP_AutoStory_LabConsole.h"
 
 namespace PokemonAutomation{
@@ -67,6 +68,19 @@ void register_bdsp_lab_console(){
                     row = screen ? NameListDetector().selected_row(screen) : -1;
                 }
                 out << "name_list_row " << row << "\n";
+            }
+        );
+        register_lab_console_command(
+            "bdsp_walk", "bdsp_walk x y ms: walk_until() with the left stick at (x, y) for at most ms",
+            [](SingleSwitchProgramEnvironment& env, ProControllerContext& context,
+               const std::vector<std::string>& words, std::ostream& out){
+                if (words.size() < 4){
+                    throw ParseException("bdsp_walk: need x y ms");
+                }
+                const WalkResult result = walk_until(env.console, context,
+                    std::stod(words[1]), std::stod(words[2]), Milliseconds(std::stoll(words[3])), "bdsp_walk");
+                out << "bdsp_walk " << walk_stop_name(result.stop) << " " << result.walked.count()
+                    << "ms " << result.wild_battles << " wild\n";
             }
         );
         return true;
