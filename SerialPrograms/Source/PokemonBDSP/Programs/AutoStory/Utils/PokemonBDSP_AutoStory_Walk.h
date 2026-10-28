@@ -12,6 +12,7 @@
 
 #include <functional>
 #include <string>
+#include <vector>
 #include "Common/Cpp/Time.h"
 #include "CommonFramework/ImageTypes/ImageViewRGB32.h"
 #include "CommonFramework/Tools/VideoStream.h"
@@ -67,6 +68,22 @@ WalkResult walk_to_talk(
 //  place against trees.
 double walk_screen_change(const ImageViewRGB32& before, const ImageViewRGB32& after);
 constexpr double WALK_BLOCKED_CHANGE = 10.0;
+
+
+//  One straight walk timed finely, to check a map against the game: holds the
+//  stick at (x, y) and samples the screen every 100ms until the view has been
+//  still for 800ms or `limit` runs out. Times count from the start of the hold.
+//  Handles no battles or dialogs: use it on open ground, away from tall grass.
+struct WalkProbe{
+    Milliseconds first_move{-1};    //  the first sample that moved; -1 if none did
+    Milliseconds last_move{-1};     //  the last sample that moved; -1 if none did
+    std::vector<double> changes;    //  walk_screen_change() between samples
+};
+WalkProbe probe_walk(
+    VideoStream& stream, ProControllerContext& context,
+    double x, double y, Milliseconds limit,
+    double moving_change, const std::string& label
+);
 
 
 }

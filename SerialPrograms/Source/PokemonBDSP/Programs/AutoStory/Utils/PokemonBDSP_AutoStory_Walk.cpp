@@ -10,6 +10,7 @@
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "CommonTools/Async/InferenceRoutines.h"
+#include "CommonTools/InferenceCallbacks/VisualInferenceCallback.h"
 #include "CommonTools/VisualDetectors/BlackScreenDetector.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "PokemonBDSP/Inference/PokemonBDSP_DialogDetector.h"
@@ -69,6 +70,49 @@ bool black_screen_was_battle(VideoStream& stream, ProControllerContext& context)
     }
     return ret >= 0;
 }
+
+//  Samples the screen every 100ms for probe_walk() and stops it once the view
+//  has been still for 800ms.
+class WalkProbeSampler : public VisualInferenceCallback{
+public:
+    WalkProbeSampler(WalkProbe& result, double moving_change, WallClock start)
+        : VisualInferenceCallback("WalkProbeSampler")
+        , m_result(result)
+        , m_moving_change(moving_change)
+        , m_start(start)
+    {}
+    virtual void make_overlays(VideoOverlaySet&) const override{}
+    virtual bool process_frame(const ImageViewRGB32& frame, WallClock timestamp) override{
+        if (m_has_last && timestamp - m_last_time < 100ms){
+            return false;
+        }
+        const Milliseconds at = std::chrono::duration_cast<Milliseconds>(timestamp - m_start);
+        ImageRGB32 small = frame.scale_to(192, 108);
+        if (m_has_last){
+            const double change = ImageMatch::pixel_RMSD(m_last, small);
+            m_result.changes.push_back(change);
+            if (change >= m_moving_change){
+                if (m_result.first_move < 0ms){
+                    m_result.first_move = at;
+                }
+                m_result.last_move = at;
+            }
+        }
+        m_last = std::move(small);
+        m_last_time = timestamp;
+        m_has_last = true;
+        const Milliseconds still_since = m_result.last_move < 0ms ? 0ms : m_result.last_move;
+        return at - still_since >= 800ms;
+    }
+
+private:
+    WalkProbe& m_result;
+    double m_moving_change;
+    WallClock m_start;
+    ImageRGB32 m_last;
+    WallClock m_last_time;
+    bool m_has_last = false;
+};
 
 }
 
@@ -178,6 +222,27 @@ WalkResult walk_to_talk(
     }
     stream.log("[Walk] " + label + ": nobody to talk to within " + std::to_string(limit.count()) + "ms.");
     return total;
+}
+
+WalkProbe probe_walk(
+    VideoStream& stream, ProControllerContext& context,
+    double x, double y, Milliseconds limit,
+    double moving_change, const std::string& label
+){
+    WalkProbe result;
+    context.wait_for_all_requests();
+    WalkProbeSampler sampler(result, moving_change, current_time());
+    run_until<ProControllerContext>(
+        stream, context,
+        [&](ProControllerContext& context){
+            pbf_move_left_joystick(context, {x, y}, limit, 0ms);
+        },
+        {{sampler}}
+    );
+    context.wait_for_all_requests();
+    stream.log("[Walk] " + label + ": probe moved from " + std::to_string(result.first_move.count()) +
+        "ms to " + std::to_string(result.last_move.count()) + "ms.");
+    return result;
 }
 
 WalkResult walk_expecting(

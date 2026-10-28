@@ -22,6 +22,12 @@ extern const char* const MAP_ROUTE_202;
 //  Route 201, Sandgem Town and Route 202.
 const Pokemon::MapSet& story_maps();
 
+//  Whether a plan may cross this map. Routes are traced from the DP maps and
+//  their tree walls carried over to BDSP; towns changed more in the remake, so
+//  a town is crossed by screen-driven legs until the console has confirmed its
+//  grid.
+bool story_map_plannable(const std::string& map);
+
 //  Route 202's trainers, in world tiles of story_maps().
 std::vector<Pokemon::TrainerSight> story_trainer_sights();
 

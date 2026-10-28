@@ -45,6 +45,10 @@ const MapSet& story_maps(){
     return maps;
 }
 
+bool story_map_plannable(const std::string& map){
+    return map == MAP_ROUTE_201 || map == MAP_ROUTE_202;
+}
+
 std::vector<TrainerSight> story_trainer_sights(){
     std::vector<TrainerSight> sights = Route202::trainer_sights();
     for (TrainerSight& sight : sights){

@@ -83,6 +83,23 @@ void register_bdsp_lab_console(){
                     << "ms " << result.wild_battles << " wild\n";
             }
         );
+        register_lab_console_command(
+            "bdsp_probe", "bdsp_probe x y ms [moving]: probe_walk() at (x, y) for at most ms; prints when the view moved",
+            [](SingleSwitchProgramEnvironment& env, ProControllerContext& context,
+               const std::vector<std::string>& words, std::ostream& out){
+                if (words.size() < 4){
+                    throw ParseException("bdsp_probe: need x y ms");
+                }
+                const double moving = words.size() > 4 ? std::stod(words[4]) : 4.0;
+                const WalkProbe probe = probe_walk(env.console, context,
+                    std::stod(words[1]), std::stod(words[2]), Milliseconds(std::stoll(words[3])), moving, "bdsp_probe");
+                out << "bdsp_probe first " << probe.first_move.count() << "ms last " << probe.last_move.count() << "ms changes";
+                for (double change : probe.changes){
+                    out << " " << (int)(change + 0.5);
+                }
+                out << "\n";
+            }
+        );
         return true;
     }();
     (void)registered;
