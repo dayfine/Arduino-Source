@@ -96,6 +96,10 @@ U#1628's branch + #16, 71 tests) → `bbq/bp-check` 852b61cb0 (#52, 76 tests). T
 wiring from `test/stage01`; #52 now also logs the BP check when a run stops early. Send order
 is therefore #50, #51, #7, stage 1, then #16 and #52 (stage 0's BP stats land after stage 1).
 
+**2026-10-27: upstream bugs found (not reported yet; user's call):**
+- `StatSet::update_file` (CommonFramework/ProgramStats/StatsDatabase.cpp:153) fails when the stats file doesn't exist, so a fresh profile shows "Unable to save stats." after every program; regression from #1630 (QFile ReadWrite used to create it). Fix: treat a missing file as empty.
+- #1741 broke Windows builds: CommonFramework/Main.cpp:284 uses cout/endl (Windows-only block) after `using std::cout/endl` were removed. Makes U#1743's Windows checks fail; not our change.
+
 **2026-10-27: fork #50 sent upstream as U#1743** (user's go; head 51715774e, uses `screenshot_view()`, says it fixes a regression from #1431, asks jw098 to review). Upstream now 2 of 2 (U#1628, U#1743). Upstream main 820694c4a breaks the macOS build (#1741 commented out `<iostream>` in SetupSettings.cpp, which still uses `cout`).
 
 **2026-10-27: U#1631 merged (squash ce4f06e11); chain rebased onto it.**
