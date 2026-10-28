@@ -21,6 +21,7 @@
 #include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
 #include "CommonFramework/ImageTools/ImageBoxes.h"
+#include "CommonTools/OCR/OCR_RawTesseractOCR.h"
 #include "CommonFramework/Tools/ErrorDumper.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "CommonFramework/VideoPipeline/VideoOverlayScopes.h"
@@ -643,6 +644,49 @@ namespace PokemonAutomation {
             // ---------------------------------------------------------------------------
             // Natalie battle
             // ---------------------------------------------------------------------------
+            // Early moves the starters and their foes have, as type and power. A
+            // status move has power 0.
+            struct KnownMove { const char* name; const char* type; int power; };
+            static const KnownMove KNOWN_MOVES[] = {
+                {"pound", "normal", 40}, {"tackle", "normal", 40}, {"scratch", "normal", 40},
+                {"quickattack", "normal", 40}, {"headbutt", "normal", 70},
+                {"watergun", "water", 40}, {"bubble", "water", 40}, {"bubblebeam", "water", 65},
+                {"ember", "fire", 40}, {"flamewheel", "fire", 60}, {"machpunch", "fighting", 40},
+                {"absorb", "grass", 20}, {"razorleaf", "grass", 55}, {"bite", "dark", 60},
+                {"peck", "flying", 35}, {"wingattack", "flying", 60}, {"metalclaw", "steel", 50},
+                {"growl", "normal", 0}, {"leer", "normal", 0}, {"tailwhip", "normal", 0},
+                {"withdraw", "water", 0}, {"taunt", "dark", 0},
+            };
+
+            // The best move on the move menu: the most powerful one we know, and
+            // on a tie one that is not Normal (an early starter's own type).
+            // Reads the names with OCR; 1 if none is known.
+            static size_t pick_best_move(VideoStream& stream, const ImageViewRGB32& screen,
+                const BattleMoveMenuState& moves, const std::string& label) {
+                size_t best = 1;
+                int best_score = -1;
+                for (size_t i = 0; i < moves.move_count; i++) {
+                    std::string name;
+                    for (unsigned char ch : OCR::tesseract_ocr_read(Language::English, extract_box_reference(screen, moves.buttons[i]))) {
+                        if (std::isalpha(ch)) name.push_back((char)std::tolower(ch));
+                    }
+                    const KnownMove* known = nullptr;
+                    for (const KnownMove& move : KNOWN_MOVES) {
+                        //  The longest name that appears wins: "bubblebeam" over "bubble".
+                        if (name.find(move.name) != std::string::npos &&
+                            (!known || std::string(move.name).size() > std::string(known->name).size())) {
+                            known = &move;
+                        }
+                    }
+                    const int score = known ? known->power * 2 + (std::string(known->type) != "normal" ? 1 : 0) : -1;
+                    stream.log("[" + label + "] Move " + std::to_string(i + 1) + " reads \"" + name + "\"" +
+                        (known ? std::string(" = ") + known->name + " (" + known->type + ", " + std::to_string(known->power) + ")" : " (unknown)") + ".");
+                    if (score > best_score) { best_score = score; best = i + 1; }
+                }
+                stream.log("[" + label + "] Best move: " + std::to_string(best) + ".");
+                return best;
+            }
+
             static void select_battle_move_slot(VideoStream& stream, ProControllerContext& context,
                 BattleType battle_type, size_t target, const std::string& label,
                 bool confirm_default_target = false, size_t current_move = 1) {
@@ -715,6 +759,10 @@ namespace PokemonAutomation {
                         "; selected slot=" + std::to_string(slot) + "/4; target=" + std::to_string(target) + ".");
                     if (moves.move_count == previous_move_count && moves.move_count > 0) stable_move_count++;
                     else { previous_move_count = moves.move_count; stable_move_count = 1; confirmed = 0; }
+                    // Target 0: pick the best move once the menu has settled.
+                    if (target == 0 && stable_move_count >= 3 && frame) {
+                        target = pick_best_move(stream, *frame.frame, moves, label);
+                    }
                     if (moves.move_count > 0 && moves.move_count < target && stable_move_count >= 3) {
                         OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
                             label + ": Move slot " + std::to_string(target) + " is absent; no move confirmed.", stream);
@@ -1337,7 +1385,8 @@ namespace PokemonAutomation {
             }
 
             void fight_trainer(VideoStream& stream, ProControllerContext& context, const std::string& label) {
-                fight_using_move_slot(stream, context, BattleType::TRAINER, 1, label);
+                // Move 0: the best move on the menu each turn, whatever the starter.
+                fight_using_move_slot(stream, context, BattleType::TRAINER, 0, label);
             }
 
             void battle_1_pokemon(VideoStream& stream, ProControllerContext& context) {
