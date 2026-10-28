@@ -5,6 +5,7 @@
  */
 
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
+#include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "CommonTools/Async/InferenceRoutines.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "PokemonBDSP/Inference/PokemonBDSP_DialogDetector.h"
@@ -31,7 +32,17 @@ void heal_at_pokemon_center(
     constexpr Milliseconds NUDGE = 50ms;
     bool inside = false;
     for (size_t tries = 0; tries < 16 && !inside; tries++){
+        //  The door's fade is not always black enough to read as a transition;
+        //  a whole new scene says we are in just as well.
+        context.wait_for_all_requests();
+        VideoSnapshot outside = stream.video().snapshot();
         inside = walk_until(stream, context, 0, 1, 1200ms, label + ": into the door").stop == WalkStop::TRANSITION;
+        context.wait_for_all_requests();
+        VideoSnapshot now = stream.video().snapshot();
+        if (!inside && outside && now && walk_screen_change(*outside.frame, *now.frame) > WALK_SCENE_CHANGE){
+            stream.log("[Route] " + label + ": the scene changed; inside.");
+            inside = true;
+        }
         if (!inside){
             route_turn(stream, context, door_side);
             pbf_move_left_joystick(context, {door_side == GridDirection::EAST ? 1.0 : -1.0, 0}, NUDGE, 300ms);
