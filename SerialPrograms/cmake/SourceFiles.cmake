@@ -405,6 +405,8 @@ file(GLOB LIBRARY_SOURCES
     ../Common/Cpp/StreamConnections/MockDevice.h
     ../Common/Cpp/TestRunners/ParallelUnitTestRunner.cpp
     ../Common/Cpp/TestRunners/ParallelUnitTestRunner.h
+    ../Common/Cpp/TestRunners/TestImageDistortionManager.cpp
+    ../Common/Cpp/TestRunners/TestImageDistortionManager.h
     ../Common/Cpp/TestRunners/UnitTest.h
     ../Common/Cpp/TestRunners/UnitTestDatabase.h
     ../Common/Cpp/ValueDebouncer.h
@@ -503,6 +505,14 @@ file(GLOB LIBRARY_SOURCES
     Source/CommonFramework/AudioPipeline/AudioPipelineOptions.h
     Source/CommonFramework/AudioPipeline/AudioSession.cpp
     Source/CommonFramework/AudioPipeline/AudioSession.h
+    Source/CommonFramework/AudioPipeline/AudioSourceDescriptor.cpp
+    Source/CommonFramework/AudioPipeline/AudioSourceDescriptor.h
+    Source/CommonFramework/AudioPipeline/AudioSources/AudioSource_Device.cpp
+    Source/CommonFramework/AudioPipeline/AudioSources/AudioSource_Device.h
+    Source/CommonFramework/AudioPipeline/AudioSources/AudioSource_File.cpp
+    Source/CommonFramework/AudioPipeline/AudioSources/AudioSource_File.h
+    Source/CommonFramework/AudioPipeline/AudioSources/AudioSource_Null.cpp
+    Source/CommonFramework/AudioPipeline/AudioSources/AudioSource_Null.h
     Source/CommonFramework/AudioPipeline/AudioTemplate.cpp
     Source/CommonFramework/AudioPipeline/AudioTemplate.h
     Source/CommonFramework/AudioPipeline/Backends/AudioPassthroughPairQt.cpp
@@ -521,7 +531,6 @@ file(GLOB LIBRARY_SOURCES
     Source/CommonFramework/AudioPipeline/IO/AudioInputFile.h
     Source/CommonFramework/AudioPipeline/IO/AudioOutputDevice.cpp
     Source/CommonFramework/AudioPipeline/IO/AudioOutputDevice.h
-    Source/CommonFramework/AudioPipeline/IO/AudioSource.cpp
     Source/CommonFramework/AudioPipeline/IO/AudioSource.h
     Source/CommonFramework/AudioPipeline/Spectrum/AudioSpectrumHolder.cpp
     Source/CommonFramework/AudioPipeline/Spectrum/AudioSpectrumHolder.h
@@ -882,8 +891,8 @@ file(GLOB LIBRARY_SOURCES
     Source/CommonTools/VisualDetectors/ImageMatchDetector.h
     Source/ComputerPrograms/ComputerProgram.cpp
     Source/ComputerPrograms/ComputerProgram.h
-    Source/ComputerPrograms/UnitTestRunner.cpp
-    Source/ComputerPrograms/UnitTestRunner.h
+    Source/ComputerPrograms/ComputerPrograms_UnitTestRunner.cpp
+    Source/ComputerPrograms/ComputerPrograms_UnitTestRunner.h
     Source/ComputerPrograms/Framework/ComputerProgramSession.cpp
     Source/ComputerPrograms/Framework/ComputerProgramSession.h
     Source/ComputerPrograms/Framework/ComputerProgramWidget.cpp
@@ -2430,6 +2439,8 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonSV/Options/PokemonSV_BattleMoveTable.h
     Source/VideoGames/PokemonSV/Options/PokemonSV_BBQOption.cpp
     Source/VideoGames/PokemonSV/Options/PokemonSV_BBQOption.h
+    Source/VideoGames/PokemonSV/Options/PokemonSV_BBQuests.cpp
+    Source/VideoGames/PokemonSV/Options/PokemonSV_BBQuests.h
     Source/VideoGames/PokemonSV/Options/PokemonSV_EggPowerSandwichOption.cpp
     Source/VideoGames/PokemonSV/Options/PokemonSV_EggPowerSandwichOption.h
     Source/VideoGames/PokemonSV/Options/PokemonSV_EncounterActionsTable.cpp
@@ -3094,6 +3105,8 @@ file(GLOB LIBRARY_SOURCES
     Source/Tests/CommandLineTests.cpp
     Source/Tests/CommandLineTests.h
     Source/Tests/GuardPageImage.h
+    Source/Tests/ImageUnitTest.cpp
+    Source/Tests/ImageUnitTest.h
     Source/Tests/TestUtils.cpp
     Source/Tests/TestUtils.h
     Source/VideoGames/ZeldaTotK/Programs/ZeldaTotK_BowItemDuper.cpp
