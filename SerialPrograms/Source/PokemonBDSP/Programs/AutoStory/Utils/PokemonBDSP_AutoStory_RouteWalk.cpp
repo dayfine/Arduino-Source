@@ -5,7 +5,12 @@
  */
 
 #include <algorithm>
+#include <cctype>
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
+#include "CommonFramework/ImageTools/ImageBoxes.h"
+#include "CommonFramework/ImageTools/ImageStats.h"
+#include "CommonFramework/VideoPipeline/VideoFeed.h"
+#include "CommonTools/OCR/OCR_RawTesseractOCR.h"
 #include "CommonTools/Async/InferenceRoutines.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "PokemonBDSP/Inference/PokemonBDSP_DialogDetector.h"
@@ -68,6 +73,47 @@ std::vector<TilePos> leg_path(const TileGrid& grid, TilePos from, GridDirection 
     return path;
 }
 
+//  Lower-case letters and digits only: "Route 202" and "ROUTE 2O2 " compare
+//  by "route202".
+std::string normalize_name(const std::string& text){
+    std::string out;
+    for (unsigned char ch : text){
+        if (std::isalnum(ch)){
+            out.push_back((char)std::tolower(ch));
+        }
+    }
+    return out;
+}
+
+//  The location banner: a white box at the top left that names a map for a
+//  few seconds after the player enters it. Left of the centred name it is plain
+//  white (251 on console B, against 27-75 for the trees there otherwise).
+const ImageFloatBox LOCATION_BANNER_WHITE{0.035, 0.035, 0.085, 0.050};
+const ImageFloatBox LOCATION_BANNER_TEXT{0.100, 0.025, 0.300, 0.080};
+
+//  The banner's map name, normalized, or empty when no banner shows.
+std::string read_location_banner(const ImageViewRGB32& screen){
+    const ImageStats white = image_stats(extract_box_reference(screen, LOCATION_BANNER_WHITE));
+    if (white.average.sum() < 690 || white.stddev.sum() > 30){
+        return "";
+    }
+    return normalize_name(OCR::tesseract_ocr_read(Language::English,
+        extract_box_reference(screen, LOCATION_BANNER_TEXT)));
+}
+
+//  The map all of `tiles` are on, or empty if they are on several or none.
+std::string map_of(const MapSet& maps, const std::vector<TilePos>& tiles){
+    std::string name;
+    for (const TilePos& pos : tiles){
+        const std::optional<MapTile> tile = maps.to_local(pos);
+        if (!tile || (!name.empty() && tile->map != name)){
+            return "";
+        }
+        name = tile->map;
+    }
+    return name;
+}
+
 }
 
 
@@ -117,12 +163,21 @@ std::vector<TilePos> walk_route(
             stick_for(leg.direction, x, y);
             const std::string leg_label = label + ": " + to_string(leg);
 
+            //  Note any location banner the walk passes, to check map changes.
+            std::string banner;
+            auto watch_banner = [&](const ImageViewRGB32& screen){
+                if (banner.empty()){
+                    banner = read_location_banner(screen);
+                }
+                return false;
+            };
+
             WalkResult result;
             if (leg.ends_at_wall){
                 //  Long enough to reach the wall from the farthest tile, with room
                 //  for a slow start; past the wall the player stands still.
                 const Milliseconds limit = ROUTE_START_DELAY + ms_per_tile(leg.direction) * leg.tiles * 5 / 4 + 1000ms;
-                result = walk_until(stream, context, x, y, limit, leg_label);
+                result = walk_until(stream, context, x, y, limit, leg_label, watch_banner);
                 //  A wild battle may end the walk early. Walking to a wall again
                 //  ends in the same place, so finish the leg.
                 const bool interrupted = result.wild_battles > 0;
@@ -130,7 +185,7 @@ std::vector<TilePos> walk_route(
                     (result.stop == WalkStop::LIMIT || result.stop == WalkStop::BLOCKED); again++
                 ){
                     stream.log("[Route] " + leg_label + ": a wild battle on the way; walking to the wall again.");
-                    result = walk_until(stream, context, x, y, limit, leg_label);
+                    result = walk_until(stream, context, x, y, limit, leg_label, watch_banner);
                 }
                 //  A wall well before the nearest one the map has: something the
                 //  map does not know is in the way. Work out where we stopped from
@@ -178,6 +233,23 @@ std::vector<TilePos> walk_route(
                 }
             }
             facing = leg.direction;
+            if (banner.empty()){
+                context.wait_for_all_requests();
+                if (VideoSnapshot screen = stream.video().snapshot()){
+                    watch_banner(*screen.frame);
+                }
+            }
+            //  Entering another map shows its name; a missing or wrong name means
+            //  the walk did not end where the plan says.
+            const std::string map_before = map_of(maps, from);
+            const std::string map_after = map_of(maps, planned.after);
+            if (!map_after.empty() && map_after != map_before && banner != normalize_name(map_after)){
+                OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
+                    leg_label + ": expected to enter " + map_after + ", but the location banner read \"" + banner + "\".", stream);
+            }
+            if (!banner.empty()){
+                stream.log("[Route] " + leg_label + ": location banner \"" + banner + "\".");
+            }
             if (result.stop == WalkStop::TRANSITION){
                 OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
                     leg_label + ": unexpected transition.", stream);
