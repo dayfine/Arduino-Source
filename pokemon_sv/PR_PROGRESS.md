@@ -96,6 +96,17 @@ U#1628's branch + #16, 71 tests) → `bbq/bp-check` 852b61cb0 (#52, 76 tests). T
 wiring from `test/stage01`; #52 now also logs the BP check when a run stops early. Send order
 is therefore #50, #51, #7, stage 1, then #16 and #52 (stage 0's BP stats land after stage 1).
 
+**2026-10-27: U#1631 merged (squash ce4f06e11); chain rebased onto it.**
+- Fork `main` merged with upstream main (e61ff4147); #50/#51/#2 bases refreshed, so their diffs show only their own change.
+- #2 7d24d5f88 (base now `main`), #3 72099ba89; #50 9a21fb6c0; #51 0b0fef3ce (conflict: kept upstream's
+  BBQuests slug test in PokemonSV_Tests.cpp, since it tests Options, not the farmer).
+- Stage 1: #37 64c2af9d1, #38 5e35b966c, #53 0725fc73f, #8 99d649735, #6 7a7c8805e, #5 4fd705d95, #4 77bcaa53e,
+  #10 c0dfb0b3f, unsupported-quest-rerolls c22cfcd9d, #25 74a07493b, #16 e47e69ca2 (merge of bp-reader-crop redone;
+  same test-registration conflict), #52 b41504756, egg-preflight 2b3dddbfc. Built; BBQ tests 16/30/45/62/77/62 pass.
+- Not rebased: #27 (on #8) and #12→#13→#22→#26 (on #10) still sit on the old commits.
+- U#1628 now conflicts with upstream main (test registrations). Rebased locally as `prep/1628` e04057221, not
+  pushed: pushing updates the user's upstream PR. If pushed, redo #16's merge onto it.
+
 **Paused 2026-10-27 until an upstream PR merges** (U#1628 awaiting review, U#1631 approved).
 On resume:
 - Egg fix `bbq/egg-preflight` 1ebdecbcb (on #25, no PR yet): KI-14 + start checks (wake screen,
