@@ -632,8 +632,29 @@ namespace PokemonAutomation {
             const TilePos potion_row = maps.to_world(MAP_ROUTE_201, Route201::POTION_GIVER_ROW_EAST);
             walk_route(stream, context, maps, {maps.to_world(MAP_ROUTE_202, Route202::CATCH_SPOT)},
                 [&](const TilePos& pos) { return pos == potion_row; }, trainers, fight, "To the Potion giver");
-            // She wanders along the grass row west of here; walk it until she talks.
-            if (walk_to_talk(stream, context, -1, 0, 4000ms, "to the Potion giver").stop != WalkStop::DIALOG) {
+            // She stands in her row at (44,3) or steps up into the gap between the
+            // tree trunks above it, (44,2). Walk the row west until she talks; if
+            // she was in the gap we pass under her to the row's west end, so come
+            // back east a tile at a time, trying east and north at each.
+            auto press_a_for_dialog = [&]() {
+                ShortDialogWatcher dialog(COLOR_YELLOW);
+                return run_until<ProControllerContext>(stream, context,
+                    [](ProControllerContext& context) { pbf_press_button(context, BUTTON_A, 80ms, 920ms); },
+                    {{dialog}}) == 0;
+            };
+            bool talking = walk_to_talk(stream, context, -1, 0, 4000ms, "to the Potion giver").stop == WalkStop::DIALOG;
+            for (size_t step = 0; !talking && step < 4; step++) {
+                route_turn(stream, context, Pokemon::GridDirection::NORTH);
+                talking = press_a_for_dialog();
+                if (talking) {
+                    break;
+                }
+                route_turn(stream, context, Pokemon::GridDirection::EAST);
+                const WalkResult moved = walk_for(stream, context, 1, 0,
+                    route_open_hold(Pokemon::GridDirection::EAST, 1), "back east to the Potion giver");
+                talking = moved.stop == WalkStop::DIALOG || press_a_for_dialog();
+            }
+            if (!talking) {
                 OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
                     "Potion giver not reached.", stream);
             }
