@@ -65,14 +65,18 @@ can do is measure the cost per checkpoint early and stop if it is too high
 (the gate in §7.7).
 
 **Order (revised 2026-10-25): own something before proposing changes to
-anyone else's code.**
+anyone else's code.** Revised again 2026-10-27: new code goes in its final
+home from its first PR (§0.1). Adding new files to a shared module changes no
+one else's code, so "FRLG files only" bought nothing, and "write it in FRLG,
+move it out later" was a plan for move-only PRs of our own code.
 
-1. **Phase A, the pilot: FRLG files only, about 10 PRs.** Build a FireRed
-   AutoStory from a new game to Brock, with a *third* copy of the run flow
-   in FRLG, as BDSP copied SV's. We accept the duplication for now. The
-   tile-path executor (T1) lives in the FRLG module at first, and the Elite
-   Four farmer moves onto it (T2). Users can run something at PR 5 (new game
-   → rival battle); the pilot is complete at PR 10 (Boulder Badge).
+1. **Phase A, the pilot: about 10 PRs, touching only new files and FRLG.**
+   Build a FireRed AutoStory from a new game to Brock. The run flow (S0)
+   and the tile-path executor (T1) are written in `Pokemon/AutoStory/` and
+   `Pokemon/Navigation/` from the start, used only by FRLG; SV and BDSP are
+   not touched. The Elite Four farmer moves onto the tile path (T2). Users
+   can run something at PR 5 (new game → rival battle); the pilot is
+   complete at PR 10 (Boulder Badge).
 2. **Gate F3**, a public commitment in the proposal: every pilot checkpoint
    passes 3 times in a row from its save, at an average of at most 3 Switch
    hours per checkpoint, counting development and validation. Otherwise we
@@ -82,23 +86,53 @@ anyone else's code.**
    while reading #1717 become standalone review comments with no request
    attached. They are drafted in the sibling file and not posted; the user
    decides.
-5. **Phase D, only after the Brock pilot runs and people use it:** "I wrote
-   the third copy; I'll migrate SV and offer it to BDSP." The shared run
-   flow (R0–R5) and the shared tile path move out of FRLG as pure moves with
-   tests. The PRs are the same as before; they come later and are framed
-   differently.
+5. **Phase D, only after the Brock pilot runs and people use it:** "FRLG
+   runs on the shared core; I'll migrate SV and offer it to BDSP." Nothing
+   of ours moves: phase D changes SV's code to use the shared core (R1–R5),
+   and BDSP gets an offer.
 
 Requirements unchanged (§9): FireRed, to the Champion, solo with no trades,
 shortcuts as options, the team worked out backwards from what the route
 needs.
 
-**What reviewers should expect:** about 10 FRLG-only PRs to the pilot, most
-150–500 lines, in the order of §7.7, then a go/no-go decision with measured
-numbers. The likely reviewers are the FRLG authors in §8.
+**What reviewers should expect:** about 10 PRs to the pilot, most 150–500
+lines, in the order of §7.7, then a go/no-go decision with measured
+numbers. The likely reviewers are the FRLG authors in §8, plus Mysticial
+for the new shared folders.
 
-The rest of the doc gives the evidence (§2, §4), the interfaces (§3, §5),
-the BDSP findings (§6), the FireRed plan and PR sequence (§7), and who
-wrote the FRLG code we build on (§8).
+The rest of the doc gives the code layout (§0.1), the evidence (§2, §4),
+the interfaces (§3, §5), the BDSP findings (§6), the FireRed plan and PR
+sequence (§7), and who wrote the FRLG code we build on (§8).
+
+### 0.1 Code layout: reusable pieces and their homes (2026-10-27)
+
+Four AutoStory efforts (SV on `main`, BDSP #1717, SwSh #1207, our FRLG
+plan) and our BBQ and BDSP lab work keep rebuilding the same pieces. SwSh
+#1207 is timed input throughout (mash A for 30 s, hold the stick for 20 s,
+fixed menu walks), as BDSP's segment 00 was; running BDSP's intro on a
+console showed why that breaks (dropped inputs, menus opened by a stray A,
+loops that never end). The pieces below are game-neutral and get their
+final home in the PR that first adds them, even while one game uses them.
+
+| Piece | What it is | Home | First PR |
+|---|---|---|---|
+| Screen machine | Closed loop over known screens: each state has a detector, one step, the screens it may lead to, a visit limit and an in-a-row limit; a screen counts once two frames agree; fails on an unexpected screen, a stall (8 steps with no change) or a timeout. Replaces mash-for-N-seconds. | `CommonTools/` (templated on the controller context, like `run_until`) | BDSP new-game intro (lab), then FRLG D4 |
+| Step trace | Logs each recognized screen and action, saves a screenshot when the screen changes, and fails with the last screens attached. | `CommonTools/` | same |
+| Failure policy | On a failed operation: keep the error screenshot, go HOME, close the game, rethrow, so every run ends in a known state. | `NintendoSwitch/Programs/` (next to `GameEntry`) | same |
+| List selection | Read the selected row, move until the target row, confirm, verify the result. Readers are per game (BDSP name list, FRLG start menu, SV menus). | routine in `CommonTools/`; readers per game | same |
+| System keyboard | Detector, cursor finder, `type_on_system_keyboard`. | `NintendoSwitch/Inference/` | lab Lab Console PR |
+| Lab Console | Probe and debug runner (command files, per-game detector registry, `detect name image` offline). | `NintendoSwitch/Programs/LabConsole/` | lab Lab Console PR |
+| Run flow | Checkpoint list, save, retry from save, start/end range, stats (§3). | `Pokemon/AutoStory/` | fork #43–#46 / S0 |
+| Tile path | Path data, interrupt and resume, landmark alignment (§5). | `Pokemon/Navigation/` (console-free) | T1 |
+| Decision tests | Game steps injected as fakes (`WildBattleExitActions`, the BBQ Tera tests). | a test file per program, from its first PR | every program PR |
+
+Per game, deliberately not shared: detectors and templates, timings and
+speeds, battle UI, menus, new-game screens, path data.
+
+Rules that follow (also in the PR workflow): no "copy now, move later"
+step in any plan; tests go into the program's own test file in the PR that
+adds them; a seam PR sets the interface later PRs need, and behaviour PRs
+change policy, not signatures.
 
 ## 1. Design from first principles
 
@@ -171,13 +205,14 @@ Coupling worth knowing before moving anything:
   14-move list), `program` 74, `save_game` 71, retry loop 51 / 8 params. Pure
   moves keep these as legacy; anything new should not add more.
 
-## 3. Run flow: shared core (phase D)
+## 3. Run flow: shared core
 
-In phase A, FRLG gets its own copy of the run flow inside the FRLG module
-(S0). That copy is written in the shape below from the start: hooks, a
-policy struct, and fake-hook unit tests. Phase D's first PR (R0) can then
-move it to the shared module as a pure move. SV and BDSP are untouched
-until phase D.
+The shared core is written in `Pokemon/AutoStory/` in the shape below
+(hooks, a policy struct, fake-hook unit tests) by the first PR that needs
+it: fork #46 already does this for SV, and S0 adds FRLG's hooks on top of
+it. FRLG is its first user only if S0 lands before #46; either way the code
+is written once, in its final place (§0.1). SV changes only in phase D,
+BDSP not at all.
 
 ### 3.1 What is shared, what is per game
 
@@ -252,7 +287,6 @@ P1–P5 here are R1–R5 in §7.7.
 
 | # | PR | What moves | Risk | Review |
 |---|---|---|---|---|
-| R0 | FRLG's run flow → `Pokemon/AutoStory` | S0's copy moved unchanged | low | `--color-moved` |
 | P1 | Shared select databases | 6 `make_*_database` → `make_index_database<T>`; same slugs/labels | low | `--color-moved` |
 | P2 | Range math | `get_*_index` arithmetic → pure `to_global_range` + tests | low | tests |
 | P3 | Shared stats | `AutoStoryStats` → `Pokemon/AutoStory`; alias in `SVT.h` | low (keys) | pure move |
@@ -336,12 +370,10 @@ avoid animated tiles; Flash-dark caves are the exception.
 
 ### 5.1 Pieces
 
-Console-free. In phase A it lives in the FRLG module
-(`FRLG/Navigation/`, namespace `PokemonFRLG`), so the pilot touches only
-FRLG files. In phase D, if BDSP wants it, it moves to
-`SerialPrograms/Source/Pokemon/Navigation/` (precedent:
-`Pokemon/Pokemon_AdvRng.h` is shared by FRLG and RSE). The sketch below
-shows the final shared form.
+Console-free. It lives in `SerialPrograms/Source/Pokemon/Navigation/`
+from T1 on (precedent: `Pokemon/Pokemon_AdvRng.h` is shared by FRLG and
+RSE), with FRLG's adapter in the FRLG module. BDSP can adopt it later
+without anything moving.
 
 ```cpp
 namespace PokemonAutomation{
@@ -579,12 +611,12 @@ Already on `main` (`FRLG/`):
 
 ### 7.2 Missing pieces (infrastructure, ~3–5k lines)
 
-1. FRLG's own copy of the run flow, in the §3 shape (hooks, policy,
-   fake-hook tests): FRLG hooks (save via start menu, reset via
-   `soft_reset` + load menu), options, registries. It is shared only in
-   phase D.
-2. Tile path (§5) in the FRLG module with the FRLG adapter, moving
-   `walk_path` and the constants out of `EliteFourFarmer.cpp`; add run
+1. The run flow (§3), shared core in `Pokemon/AutoStory/`; FRLG hooks
+   (save via start menu, reset via `soft_reset` + load menu), options,
+   registries in the FRLG module.
+2. Tile path (§5) in `Pokemon/Navigation/`, the FRLG adapter in the FRLG
+   module, moving `walk_path` and the constants out of
+   `EliteFourFarmer.cpp` (thewhitewolfking's code, not ours); add run
    (8 frames/tile), bike (6), surf (8) per decomp; ledge steps.
 3. Overworld detector (overworld vs dialog vs battle vs menu without opening
    the start menu) and facing detection (player sprite in the centre tile).
@@ -595,7 +627,9 @@ Already on `main` (`FRLG/`):
    Pokémon after a faint, move learn (skip or replace per config),
    evolution (allow/cancel per config), whiteout → fail the checkpoint.
 6. New game: intro, naming keyboard (preset names avoid it), options menu
-   (text Fast, animations Off, style Set), load menu on a fresh save.
+   (text Fast, animations Off, style Set), load menu on a fresh save. Built
+   on the screen machine and step trace (§0.1), as the BDSP intro is in the
+   lab: every input follows a screen read, no mash-for-N-seconds.
 7. Field moves: teach HM from bag, use Cut/Surf/Strength from the party
    menu, Fly (exists), Bike on/off; puzzles below.
 8. Shop and PC: buy list per Mart, deposit/withdraw for HM carriers.
@@ -700,14 +734,14 @@ Most PRs are 150–500 changed lines, each does one thing, and each says what
 to read first. Upstream allows two open PRs from us at a time, so they arrive
 in order; the rest wait as drafts on the fork.
 
-**Phase A: pilot, new game → Brock (FRLG files only)**
+**Phase A: pilot, new game → Brock (new files and FRLG only)**
 
 | # | ID | PR | Depends on | Kind | Size (lines) | What the reviewer reads |
 |---|---|---|---|---|---|---|
-| 1 | T1 | Tile-path executor + interrupt policy + tests, in the FRLG module | — | new | ~500 (half tests) | result types, resume bookkeeping |
+| 1 | T1 | Tile-path executor + interrupt policy + tests, in `Pokemon/Navigation/` | — | new | ~500 (half tests) | result types, resume bookkeeping |
 | 2 | T2 | FRLG adapter; Elite Four farmer uses it | T1 | move + new | ~300 | walker moved out of `EliteFourFarmer.cpp`; farmer unchanged on hardware |
-| 3 | D4 | New-game screens and naming keyboard | — | new | ~200 + images | detector + screenshot tests |
-| 4 | S0 | Program shell: options, FRLG run-flow copy (hooks + tests), registries | — | new | ~500 (a third of it tests) | retry behaviour against fake hooks; options |
+| 3 | D4 | Screen machine + step trace (`CommonTools/`), then FRLG new-game screens and naming on it | — | new | ~400 + images | machine tests with fake screens; detector + screenshot tests |
+| 4 | S0 | Program shell: options, FRLG hooks on the shared run flow (`Pokemon/AutoStory/`, + tests), registries | — | new | ~500 (a third of it tests) | retry behaviour against fake hooks; options |
 | 5 | S1 | Segment 00: new game → starter → lab rival | S0, D4, T2 | new + path data | ~500 | **first runnable**; checkpoint list, paths as data; hardware runs |
 | 6 | D1 | Overworld detector | — | new | ~150 + images | detector + screenshot tests |
 | 7 | D3 | Trainer spotting / item pickup watchers | — | new | ~150 + images | same |
@@ -740,18 +774,17 @@ comment drafts in
 [AutoStory-1717-review-drafts.md](AutoStory-1717-review-drafts.md), for the
 user to post or not.
 
-**Phase D: shared code (after the pilot runs and people use it).** Framing:
-"I wrote the third copy; I'll migrate SV and offer it to BDSP."
+**Phase D: SV onto the shared code (after the pilot runs and people use
+it).** Framing: "FRLG runs on the shared core; I'll migrate SV and offer it
+to BDSP." Nothing of ours moves in phase D.
 
 | ID | PR | Depends on | Kind | Size (lines) | What the reviewer reads |
 |---|---|---|---|---|---|
-| R0 | FRLG run flow → `Pokemon/AutoStory` | S0 | move | ~300 | `--color-moved`; FRLG unchanged |
-| R1 | Shared start/end select databases (SV) | R0 | move | ~150 | `--color-moved`; same slugs and labels |
+| R1 | Shared start/end select databases (SV) | — | move | ~150 | `--color-moved`; same slugs and labels |
 | R2 | Story range maths + tests | R1 | move + tests | ~200 | the pure function and its table test |
-| R3 | SV `AutoStoryStats` onto the shared one | R0 | move | ~80 | stat keys unchanged |
-| R4 | SV retry loops become adapters over the shared core | R0, R3 | move + new | ~400 (half tests) | §3.2 list of kept behaviours |
+| R3 | SV `AutoStoryStats` onto the shared one | — | move | ~80 | stat keys unchanged |
+| R4 | SV retry loops become adapters over the shared core | R3 | move + new | ~400 (half tests) | §3.2 list of kept behaviours |
 | R5 | Dev harness out of the SV program class | — | move | ~300, mostly a deleted dead block | `--color-moved` |
-| T4 | Tile path → `Pokemon/Navigation`, if BDSP wants it | T1 | move | ~300 | `--color-moved` |
 
 R1–R5 touch SV AutoStory, which is someone else's merged program: pure
 moves first, behaviour changes separately (§3.3). The SV AutoStory author

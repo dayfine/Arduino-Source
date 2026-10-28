@@ -16,17 +16,17 @@ Hall of Fame with the starter alone, so the route is known to be automatable.
 ## What I'm building first: a pilot to Brock
 
 A FireRed AutoStory from a new game to the Boulder Badge (about 12
-checkpoints), solo with no trades. It is built only in FRLG files and uses
-its own copy of the SV-style run flow (checkpoints, retries from the last
-save, start/end selection, stats), as BDSP's draft does. I accept that
-duplication for now; merging the copies is only worth proposing once one of
-them is used.
+checkpoints), solo with no trades. It changes no existing program: the
+game-neutral parts (the run flow with checkpoints, retries from the last
+save, start/end selection and stats; the tile-path walker; a closed-loop
+screen driver) go into new shared folders from the start, with FRLG as
+their only user, so nothing has to be moved later.
 
 About 10 PRs, each 150–500 lines, each doing one thing:
 
-1. Tile-path executor with unit tests, FRLG-only.
+1. Tile-path executor with unit tests, in a new `Pokemon/Navigation/`.
 2. Elite Four farmer moved onto it, with no behaviour change.
-3. New-game screen and naming-keyboard detectors.
+3. A closed-loop screen driver (each input follows a screen read), then the new-game screens and naming keyboard on it.
 4. Program shell: options, run flow, checkpoint list.
 5. **New game → starter → rival battle. This is the first version users can run.**
 6. Overworld detector.
@@ -67,7 +67,6 @@ I'll post the measured numbers before continuing.
 ## Later, only if the pilot is used
 
 - The remaining segments to the Champion, one PR per segment.
-- Having written a third copy of the run flow, I'd offer to move it into a
-  shared module, migrate SV AutoStory onto it as pure moves with unit tests,
-  and offer the same to BDSP. None of this is a precondition for the FRLG
-  work.
+- With FRLG running on the shared run flow, I'd offer to migrate SV
+  AutoStory onto it (pure moves with unit tests first) and offer the same to
+  BDSP. None of this is a precondition for the FRLG work.
