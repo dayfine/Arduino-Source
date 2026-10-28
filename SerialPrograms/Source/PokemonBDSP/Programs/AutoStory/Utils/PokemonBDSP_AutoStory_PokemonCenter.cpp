@@ -76,7 +76,13 @@ void heal_at_pokemon_center(
     context.wait_for_all_requests();
 
     route_status(stream, label + ": healed; walking out.");
-    if (walk_until(stream, context, 0, -1, 6000ms, label + ": out the door").stop != WalkStop::TRANSITION){
+    context.wait_for_all_requests();
+    VideoSnapshot counter = stream.video().snapshot();
+    const bool faded_out = walk_until(stream, context, 0, -1, 6000ms, label + ": out the door").stop == WalkStop::TRANSITION;
+    context.wait_for_all_requests();
+    VideoSnapshot now = stream.video().snapshot();
+    const bool scene_changed = counter && now && walk_screen_change(*counter.frame, *now.frame) > WALK_SCENE_CHANGE;
+    if (!faded_out && !scene_changed){
         OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
             label + ": did not get back out.", stream);
     }
