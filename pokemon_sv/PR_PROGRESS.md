@@ -96,6 +96,8 @@ U#1628's branch + #16, 71 tests) → `bbq/bp-check` 852b61cb0 (#52, 76 tests). T
 wiring from `test/stage01`; #52 now also logs the BP check when a run stops early. Send order
 is therefore #50, #51, #7, stage 1, then #16 and #52 (stage 0's BP stats land after stage 1).
 
+**2026-10-27: fork #50 sent upstream as U#1743** (user's go; head 51715774e, uses `screenshot_view()`, says it fixes a regression from #1431, asks jw098 to review). Upstream now 2 of 2 (U#1628, U#1743). Upstream main 820694c4a breaks the macOS build (#1741 commented out `<iostream>` in SetupSettings.cpp, which still uses `cout`).
+
 **2026-10-27: U#1631 merged (squash ce4f06e11); chain rebased onto it.**
 - Fork `main` merged with upstream main (e61ff4147); #50/#51/#2 bases refreshed, so their diffs show only their own change.
 - #2 7d24d5f88 (base now `main`), #3 72099ba89; #50 9a21fb6c0; #51 0b0fef3ce (conflict: kept upstream's
