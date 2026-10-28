@@ -24,14 +24,18 @@ void heal_at_pokemon_center(
     VideoStream& stream, ProControllerContext& context,
     GridDirection door_side, const std::string& label
 ){
+    //  Movement is not locked to tiles: a short tap moves part of one, and the
+    //  door takes us in only when we are lined up with it. Nudge toward it a
+    //  third of a tile at a time, trying north after each nudge.
     route_status(stream, label + ": finding the door.");
+    constexpr Milliseconds NUDGE = 50ms;
     bool inside = false;
-    for (size_t tries = 0; tries < 5 && !inside; tries++){
+    for (size_t tries = 0; tries < 16 && !inside; tries++){
         inside = walk_until(stream, context, 0, 1, 1200ms, label + ": into the door").stop == WalkStop::TRANSITION;
         if (!inside){
             route_turn(stream, context, door_side);
-            walk_for(stream, context, door_side == GridDirection::EAST ? 1 : -1, 0,
-                route_open_hold(door_side, 1), label + ": a tile toward the door");
+            pbf_move_left_joystick(context, {door_side == GridDirection::EAST ? 1.0 : -1.0, 0}, NUDGE, 300ms);
+            context.wait_for_all_requests();
         }
     }
     if (!inside){

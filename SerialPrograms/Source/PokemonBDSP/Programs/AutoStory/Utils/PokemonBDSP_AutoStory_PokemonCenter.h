@@ -18,8 +18,8 @@ namespace PokemonBDSP{
 
 
 //  Heals the party at a Pokemon Center. Starts on the row below the Center's
-//  front, a few tiles from its door in `door_side`: tries north, and steps a
-//  tile toward the door each time a wall stops it. Inside, walks up to the
+//  front, a few tiles from its door in `door_side`: tries north, and nudges
+//  toward the door each time a wall stops it. Inside, walks up to the
 //  nurse, accepts, and walks back out. Ends on the tile below the door.
 void heal_at_pokemon_center(
     VideoStream& stream, ProControllerContext& context,
