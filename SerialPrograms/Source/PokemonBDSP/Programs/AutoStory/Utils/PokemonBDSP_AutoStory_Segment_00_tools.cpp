@@ -190,6 +190,19 @@ namespace PokemonAutomation {
                 }
             };
 
+            // Options fades in after A on its icon: poll instead of judging one frame.
+            static bool wait_for_options_screen(VideoStream& stream, ProControllerContext& context,
+                const TutorialOptionsDetector& options_screen, Milliseconds timeout) {
+                context.wait_for_all_requests();
+                const WallClock deadline = current_time() + timeout;
+                while (current_time() < deadline) {
+                    auto frame = stream.video().snapshot();
+                    if (frame && options_screen.detect(frame)) return true;
+                    context.wait_for(100ms);
+                }
+                return false;
+            }
+
             class TutorialOptionPositionDetector {
             public:
                 // Locate the two long red horizontal lines surrounding the
@@ -297,10 +310,8 @@ namespace PokemonAutomation {
                 bool options_open = false;
                 for (size_t attempt = 0; attempt < 2; attempt++) {
                     pbf_press_dpad(context, attempt == 0 ? DPAD_RIGHT : DPAD_LEFT, 80ms, 350ms);
-                    pbf_press_button(context, BUTTON_A, 80ms, 1000ms);
-                    context.wait_for_all_requests();
-                    auto frame = stream.video().snapshot();
-                    if (frame && options_screen.detect(frame)) {
+                    pbf_press_button(context, BUTTON_A, 80ms, 0ms);
+                    if (wait_for_options_screen(stream, context, options_screen, 5s)) {
                         options_open = true;
                         break;
                     }
@@ -450,10 +461,8 @@ namespace PokemonAutomation {
                 }
                 bool reopened = false;
                 for (size_t attempt = 0; attempt < 2; attempt++) {
-                    pbf_press_button(context, BUTTON_A, 80ms, 1000ms);
-                    context.wait_for_all_requests();
-                    auto check = stream.video().snapshot();
-                    if (check && options_screen.detect(check)) { reopened = true; break; }
+                    pbf_press_button(context, BUTTON_A, 80ms, 0ms);
+                    if (wait_for_options_screen(stream, context, options_screen, 5s)) { reopened = true; break; }
                     pbf_press_button(context, BUTTON_B, 80ms, 1000ms);
                     context.wait_for_all_requests();
                     MenuWatcher return_menu;
