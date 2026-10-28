@@ -113,6 +113,7 @@ public:
         const Named named[] = {
             {MAP_ROUTE_201,     Route201::POTION_GIVER,             TileType::NPC},
             {MAP_ROUTE_201,     Route201::POTION_GIVER.next(GridDirection::SOUTH), TileType::TALL_GRASS},
+            {MAP_ROUTE_201,     Route201::POTION_GIVER_TALK_FROM,   TileType::TALL_GRASS},
             {MAP_ROUTE_201,     Route201::POTION_GIVER_ROW_EAST,    TileType::WALKABLE},
             {MAP_ROUTE_201,     Route201::POTION_GIVER_ROW_WEST_END, TileType::TALL_GRASS},
             {MAP_ROUTE_201,     Route201::POTION_GIVER_ROW_EAST_END, TileType::TALL_GRASS},
@@ -399,11 +400,16 @@ public:
         if (!error.empty()){
             return error;
         }
-        //  After talking to her and the training battle, anywhere in the top
-        //  two rows of her grass.
-        const std::vector<TilePos> row = story_potion_giver_area();
-        error = check_robust_plan(logger, "Potion giver to Jubilife", maps, row,
-            story_at_jubilife_exit);
+        //  To where she is talked to, and back to the catch grass to save.
+        const TilePos talk_from = maps.to_world(MAP_ROUTE_201, Route201::POTION_GIVER_TALK_FROM);
+        error = check_robust_plan(logger, "Catch spot to the Potion giver's west", maps, {catch_spot},
+            [&](const TilePos& pos){ return pos == talk_from; });
+        if (!error.empty()){
+            return error;
+        }
+        const std::vector<TilePos> back = story_after_training_area();
+        error = check_robust_plan(logger, "Potion giver back to the catch grass", maps, {talk_from},
+            [&](const TilePos& pos){ return std::find(back.begin(), back.end(), pos) != back.end(); });
         if (!error.empty()){
             return error;
         }

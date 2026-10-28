@@ -921,12 +921,30 @@ static double confirmed_potion_hp(VideoStream& stream, ProControllerContext& con
         "Potion: Slot 1 HP bar could not be confirmed.", stream);
 }
 
+bool bag_has_item(VideoStream& stream, ProControllerContext& context, const std::string& name, int target_pocket) {
+    const bool found = find_bag_item_by_name(stream, context, name, target_pocket, 5);
+    pbf_mash_button(context, BUTTON_B, 2000ms);
+    context.wait_for_all_requests();
+    OverworldWatcher overworld;
+    if (wait_until(stream, context, std::chrono::seconds(10), {{overworld}}) != 0) {
+        OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
+            "Bag: Did not return to the overworld after looking for " + name + ".", stream);
+    }
+    return found;
+}
+
 void use_potion_first_pokemon(VideoStream& stream, ProControllerContext& context, double heal_below) {
     OverlayBoxScope hp_overlay(stream.overlay(), COLOR_GREEN, {0.137, 0.160, 0.202, 0.016}, "");
     bool healed = false;
     for (size_t dose = 0; dose < 3; dose++) {
         stream.log("[Potion] Finding Bag/Medicine/Potion; dose " + std::to_string(dose + 1) + "/3.");
         if (!find_bag_item_by_name(stream, context, "potion", 1, 5)) {
+            if (dose == 0 && heal_below < 1.0) {
+                // Only a check: without Potions there is nothing to do here.
+                stream.log("[Potion] No Potion in the Bag; skipping the HP check.", COLOR_ORANGE);
+                healed = true;
+                break;
+            }
             OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
                 "Potion: Could not verify Potion in the Medicine pocket.", stream);
         }

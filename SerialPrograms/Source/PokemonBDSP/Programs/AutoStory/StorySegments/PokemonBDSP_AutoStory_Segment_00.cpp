@@ -618,6 +618,7 @@ namespace PokemonAutomation {
             // The Potion on Route 201 is optional, and the starter outclasses the
             // Route 202 trainers, so we go straight north.
             static const char* const STEPS[] = {
+                "Get 10 Potions from the Poke Mart lady on Route 201, return to the catch grass and save (skipped if the Bag has Potions)",
                 "Train: fight 3 wild Pokemon in the catch grass, with the best move",
                 "Heal to full with Potions from the Bag",
                 "Walk north up Route 202 to the Jubilife exit, fighting trainers who see us; after each, use a Potion if HP is under half",
@@ -664,6 +665,33 @@ namespace PokemonAutomation {
 
             pbf_wait(context, 1500ms);
             step(1);
+            // Potions let us heal where we stand, instead of walking back to the
+            // Pokemon Center. The lady is reached as done by hand: west along her
+            // grass's second row to the trees, north to the trees, face east.
+            if (bag_has_item(stream, context, "potion", 1)) {
+                stream.log("[00.04] The Bag has Potions; not visiting the Poke Mart lady.");
+            } else {
+                const TilePos catch_spot = maps.to_world(MAP_ROUTE_202, Route202::CATCH_SPOT);
+                const TilePos talk_from = maps.to_world(MAP_ROUTE_201, Route201::POTION_GIVER_TALK_FROM);
+                walk_route(stream, context, maps, {catch_spot},
+                    [&](const TilePos& pos) { return pos == talk_from; }, trainers, fight, "To the Poke Mart lady");
+                route_turn(stream, context, Pokemon::GridDirection::EAST);
+                pbf_press_button(context, BUTTON_A, 80ms, 1000ms);
+                pbf_mash_button(context, BUTTON_B, 8000ms);
+                context.wait_for_all_requests();
+                if (!bag_has_item(stream, context, "potion", 1)) {
+                    OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
+                        "Poke Mart lady: no Potion in the Bag after talking to her.", stream);
+                }
+                const std::vector<TilePos> back = story_after_training_area();
+                walk_route(stream, context, maps, {talk_from},
+                    [&](const TilePos& pos) { return std::find(back.begin(), back.end(), pos) != back.end(); },
+                    trainers, fight, "Back to the catch grass");
+                stream.log("[00.04] Saving with the Potions, back in the catch grass.");
+                save_game(env, context);
+            }
+
+            step(2);
             // The starter starts around level 5 with only a Normal move; the
             // Route 202 trainers need a level or two more.
             for (size_t battle = 0; battle < 3; battle++) {
@@ -671,16 +699,14 @@ namespace PokemonAutomation {
                 battle_1_pokemon(stream, context);
             }
 
-            step(2);
-            // The save already has Potions in the Bag, so heal here rather than
-            // walking back to the Sandgem Town Pokemon Center.
+            step(3);
             use_potion_first_pokemon(stream, context);
 
-            step(3);
+            step(4);
             walk_route(stream, context, maps, story_after_training_area(),
                 story_at_jubilife_exit, trainers, fight, "To Jubilife");
 
-            step(4);
+            step(5);
             // Entering Jubilife starts a scene: Dawn walks over while we stand still.
             if (walk_until(stream, context, 0, 1, 4000ms, "to Dawn in Jubilife").stop == WalkStop::TRANSITION) {
                 OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,

@@ -445,9 +445,19 @@ void open_menu(
     int num_icons
 );
 
+//  Open the Bag from the overworld, look for `name` in the pocket, and close
+//  it again. True if the item is there.
+bool bag_has_item(
+    VideoStream& stream,
+    ProControllerContext& context,
+    const std::string& name,
+    int target_pocket
+);
+
 //  Read the lead's HP bar in the Bag and, if it is below `heal_below` (a
 //  fraction of full), use Potions until it is full. heal_below = 1 always
-//  heals; 0.5 only checks and heals when the lead is under half.
+//  heals; 0.5 only checks and heals when the lead is under half, and is
+//  skipped when the Bag has no Potion.
 void use_potion_first_pokemon(
     VideoStream& stream,
     ProControllerContext& context,
