@@ -612,6 +612,29 @@ namespace PokemonAutomation {
             // Pin it again so the landmark references see the same lighting.
             set_time_fast(env, context, DateTime{ 2026, 1, 1, 0, 0, 50 });
 
+            // What this part of 00.04 does, logged up front and as each step starts.
+            static const char* const STEPS[] = {
+                "Walk from the catch spot through Sandgem to the Potion giver on Route 201",
+                "Talk to the Potion giver and take the Potion",
+                "Heal the starter",
+                "Training battle: one wild Pokemon, then heal",
+                "Walk back through Sandgem and up Route 202 to the Jubilife exit, fighting trainers who see us",
+                "Enter Jubilife and get through Dawn's scene",
+            };
+            constexpr size_t STEP_COUNT = sizeof(STEPS) / sizeof(STEPS[0]);
+            {
+                std::string text = "[00.04] After the catch, the steps are:";
+                for (size_t i = 0; i < STEP_COUNT; i++) {
+                    text += "\n    " + std::to_string(i + 1) + ". " + STEPS[i];
+                }
+                stream.log(text, COLOR_BLUE);
+            }
+            auto step = [&](size_t number) {
+                std::string text = "[00.04 step " + std::to_string(number) + "/" + std::to_string(STEP_COUNT) + "] " + STEPS[number - 1];
+                text += number < STEP_COUNT ? std::string(" -- next: ") + STEPS[number] : std::string(" -- last step");
+                stream.log(text, COLOR_BLUE);
+            };
+
             const MapSet& maps = story_maps();
             std::vector<TrainerSight> trainers = story_trainer_sights();
             // Fight a trainer whose dialogue has opened, with whatever starter we
@@ -629,9 +652,11 @@ namespace PokemonAutomation {
             //--------------------------------------------------------
             // To get potions
             // -------------------------------------------------------
+            step(1);
             const TilePos potion_row = maps.to_world(MAP_ROUTE_201, Route201::POTION_GIVER_ROW_EAST);
             walk_route(stream, context, maps, {maps.to_world(MAP_ROUTE_202, Route202::CATCH_SPOT)},
                 [&](const TilePos& pos) { return pos == potion_row; }, trainers, fight, "To the Potion giver");
+            step(2);
             // She stands in her row at (44,3) or steps up into the gap between the
             // tree trunks above it, (44,2). Walk the row west until she talks; if
             // she was in the gap we pass under her to the row's west end, so come
@@ -665,19 +690,23 @@ namespace PokemonAutomation {
             context.wait_for_all_requests();
             // Catching the second Pokemon can damage the starter. Verify healing
             // once Potions are available, before continuing toward the trainers.
+            step(3);
             stream.log("[Tutorial] Checking starter HP after the first Potion pickup.");
             use_potion_first_pokemon(stream, context);
             context.wait_for_all_requests();
             // One training encounter before the trainers. The helper waits
             // through XP/automatic move learning and heals after the fight.
+            step(4);
             battle_1_pokemon(stream, context);
 
             // ---------------------------------------------------------
             // On to Jubilife, fighting the Route 202 trainers who see us
             // ---------------------------------------------------------
+            step(5);
             // We met her, and the training battle's wiggle moved us, somewhere near her.
             walk_route(stream, context, maps, story_potion_giver_area(),
                 story_at_jubilife_exit, trainers, fight, "To Jubilife");
+            step(6);
             // Entering Jubilife starts a scene: Dawn walks over while we stand still.
             if (walk_until(stream, context, 0, 1, 4000ms, "to Dawn in Jubilife").stop == WalkStop::TRANSITION) {
                 OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
