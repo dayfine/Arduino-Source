@@ -613,12 +613,10 @@ namespace PokemonAutomation {
             set_time_fast(env, context, DateTime{ 2026, 1, 1, 0, 0, 50 });
 
             // What this part of 00.04 does, logged up front and as each step starts.
+            // The Potion on Route 201 is optional, and the starter outclasses the
+            // Route 202 trainers, so we go straight north.
             static const char* const STEPS[] = {
-                "Walk from the catch spot through Sandgem to the Potion giver on Route 201",
-                "Talk to the Potion giver and take the Potion",
-                "Heal the starter",
-                "Training battle: one wild Pokemon, then heal",
-                "Walk back through Sandgem and up Route 202 to the Jubilife exit, fighting trainers who see us",
+                "Walk north up Route 202 from the catch spot to the Jubilife exit, fighting trainers who see us",
                 "Enter Jubilife and get through Dawn's scene",
             };
             constexpr size_t STEP_COUNT = sizeof(STEPS) / sizeof(STEPS[0]);
@@ -637,82 +635,20 @@ namespace PokemonAutomation {
 
             const MapSet& maps = story_maps();
             std::vector<TrainerSight> trainers = story_trainer_sights();
-            // Fight a trainer whose dialogue has opened, with whatever starter we
-            // have, and heal after.
+            // Fight a trainer whose dialogue has opened, with whatever starter we have.
             auto fight = [&](const std::string& name) {
                 wait_for_dialogue(stream, context, name + " encounter dialog");
                 pbf_mash_button(context, BUTTON_B, 5000ms);
                 fight_trainer(stream, context, name);
                 context.wait_for_all_requests();
-                use_potion_first_pokemon(stream, context);
-                context.wait_for_all_requests();
             };
 
             pbf_wait(context, 1500ms);
-            //--------------------------------------------------------
-            // To get potions
-            // -------------------------------------------------------
             step(1);
-            const TilePos potion_row = maps.to_world(MAP_ROUTE_201, Route201::POTION_GIVER_ROW_EAST);
             walk_route(stream, context, maps, {maps.to_world(MAP_ROUTE_202, Route202::CATCH_SPOT)},
-                [&](const TilePos& pos) { return pos == potion_row; }, trainers, fight, "To the Potion giver");
-            step(2);
-            // She stands in the gap above her row, at (44,2). Walk the row to its
-            // west end (42,3), step back east to below her, face north and talk.
-            // If a step went a tile off, try the tiles either side.
-            auto press_a_for_dialog = [&]() {
-                ShortDialogWatcher dialog(COLOR_YELLOW);
-                return run_until<ProControllerContext>(stream, context,
-                    [](ProControllerContext& context) { pbf_press_button(context, BUTTON_A, 80ms, 920ms); },
-                    {{dialog}}) == 0;
-            };
-            auto step_across = [&](Pokemon::GridDirection direction, size_t tiles) {
-                route_turn(stream, context, direction);
-                walk_for(stream, context, direction == Pokemon::GridDirection::EAST ? 1 : -1, 0,
-                    route_open_hold(direction, tiles), "to below the Potion giver");
-            };
-            walk_until(stream, context, -1, 0, 3000ms, "to the west end of the Potion giver's row");
-            step_across(Pokemon::GridDirection::EAST, 2);
-            route_turn(stream, context, Pokemon::GridDirection::NORTH);
-            bool talking = press_a_for_dialog();
-            if (!talking) {
-                step_across(Pokemon::GridDirection::EAST, 1);
-                route_turn(stream, context, Pokemon::GridDirection::NORTH);
-                talking = press_a_for_dialog();
-            }
-            if (!talking) {
-                step_across(Pokemon::GridDirection::WEST, 2);
-                route_turn(stream, context, Pokemon::GridDirection::NORTH);
-                talking = press_a_for_dialog();
-            }
-            if (!talking) {
-                OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
-                    "Potion giver not reached.", stream);
-            }
-
-            wait_for_dialogue(stream, context, "Phase 17 (accept potions)");
-
-            pbf_mash_button(context, BUTTON_B, 10000ms);
-            context.wait_for_all_requests();
-            // Catching the second Pokemon can damage the starter. Verify healing
-            // once Potions are available, before continuing toward the trainers.
-            step(3);
-            stream.log("[Tutorial] Checking starter HP after the first Potion pickup.");
-            use_potion_first_pokemon(stream, context);
-            context.wait_for_all_requests();
-            // One training encounter before the trainers. The helper waits
-            // through XP/automatic move learning and heals after the fight.
-            step(4);
-            battle_1_pokemon(stream, context);
-
-            // ---------------------------------------------------------
-            // On to Jubilife, fighting the Route 202 trainers who see us
-            // ---------------------------------------------------------
-            step(5);
-            // We met her, and the training battle's wiggle moved us, somewhere near her.
-            walk_route(stream, context, maps, story_potion_giver_area(),
                 story_at_jubilife_exit, trainers, fight, "To Jubilife");
-            step(6);
+
+            step(2);
             // Entering Jubilife starts a scene: Dawn walks over while we stand still.
             if (walk_until(stream, context, 0, 1, 4000ms, "to Dawn in Jubilife").stop == WalkStop::TRANSITION) {
                 OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,

@@ -374,6 +374,10 @@ public:
         if (!error.empty()){
             return error;
         }
+        error = check_robust_plan(logger, "Catch spot to Jubilife", maps, {catch_spot}, story_at_jubilife_exit);
+        if (!error.empty()){
+            return error;
+        }
         error = check_robust_plan(logger, "Catch spot to Potion giver", maps, {catch_spot},
             [&](const TilePos& pos){ return pos == potion; });
         if (!error.empty()){
