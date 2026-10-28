@@ -619,8 +619,8 @@ namespace PokemonAutomation {
             // Route 202 trainers, so we go straight north.
             static const char* const STEPS[] = {
                 "Train: fight 3 wild Pokemon in the catch grass, with the best move",
-                "Heal at the Sandgem Town Pokemon Center, just south of the catch spot",
-                "Walk north up Route 202 to the Jubilife exit, fighting trainers who see us",
+                "Heal to full with Potions from the Bag",
+                "Walk north up Route 202 to the Jubilife exit, fighting trainers who see us; after each, use a Potion if HP is under half",
                 "Enter Jubilife and get through Dawn's scene",
             };
             constexpr size_t STEP_COUNT = sizeof(STEPS) / sizeof(STEPS[0]);
@@ -658,6 +658,8 @@ namespace PokemonAutomation {
                 }
                 fight_trainer(stream, context, name);
                 context.wait_for_all_requests();
+                // The next trainer may be a few tiles on: check HP now.
+                use_potion_first_pokemon(stream, context, 0.5);
             };
 
             pbf_wait(context, 1500ms);
@@ -670,18 +672,12 @@ namespace PokemonAutomation {
             }
 
             step(2);
-            // The catch can leave the starter hurt, and there are no Potions yet.
-            // Walk to the tile south of the Center's sign, which the walls of
-            // row 10 and the sign itself pin down, then find the door to its west.
-            const TilePos below_sign = maps.to_world(MAP_SANDGEM_TOWN, SandgemTown::POKEMON_CENTER_SIGN.next(Pokemon::GridDirection::SOUTH));
-            walk_route(stream, context, maps, story_after_training_area(),
-                [&](const TilePos& pos) { return pos == below_sign; }, trainers, fight, "To the Pokemon Center");
-            heal_at_pokemon_center(stream, context, "Sandgem Town Pokemon Center");
+            // The save already has Potions in the Bag, so heal here rather than
+            // walking back to the Sandgem Town Pokemon Center.
+            use_potion_first_pokemon(stream, context);
 
             step(3);
-            // Out of the Center we stand on the tile below its door.
-            const TilePos below_door = maps.to_world(MAP_SANDGEM_TOWN, SandgemTown::POKEMON_CENTER_DOOR.next(Pokemon::GridDirection::SOUTH));
-            walk_route(stream, context, maps, {below_door},
+            walk_route(stream, context, maps, story_after_training_area(),
                 story_at_jubilife_exit, trainers, fight, "To Jubilife");
 
             step(4);

@@ -88,11 +88,6 @@ namespace PokemonAutomation {
             //     ProControllerContext& context
             // );
 
-            void use_potion_first_pokemon(
-                VideoStream& stream,
-                ProControllerContext& context
-            );
-
             // ---------------------------------------------------------------------------
             // Grass movement helpers
             // ---------------------------------------------------------------------------

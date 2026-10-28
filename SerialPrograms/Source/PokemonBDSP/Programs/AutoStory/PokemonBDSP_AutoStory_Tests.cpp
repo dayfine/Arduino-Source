@@ -208,6 +208,10 @@ public:
             {route, {30, 19}, GridDirection::WEST,  {22, 19}, 8, true},
             {route, {22, 19}, GridDirection::SOUTH, {22, 24}, 5, true},
             {route, {7, 12}, GridDirection::NORTH, {7, 12}, 0, true},  //  trainer_a holds the player
+            //  After trainer_d, as measured in r75: the east wall is at column 31
+            //  on row 16, and column 30 is open up to the trees above row 4.
+            {route, {22, 16}, GridDirection::EAST,  {30, 16}, 8, true},
+            {route, {30, 16}, GridDirection::NORTH, {30, 4}, 12, true},
             //  Through the gap east of the north ledge, over the south ledge
             //  and off the bottom edge to Sandgem Town.
             {route, {29, 4}, GridDirection::SOUTH, {29, 25}, 21, false},
@@ -386,7 +390,7 @@ public:
         if (!error.empty()){
             return error;
         }
-        error = check_robust_plan(logger, "Catch spot to Jubilife", maps, {catch_spot}, story_at_jubilife_exit);
+        error = check_robust_plan(logger, "After training to Jubilife", maps, story_after_training_area(), story_at_jubilife_exit);
         if (!error.empty()){
             return error;
         }

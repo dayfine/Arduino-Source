@@ -921,7 +921,7 @@ static double confirmed_potion_hp(VideoStream& stream, ProControllerContext& con
         "Potion: Slot 1 HP bar could not be confirmed.", stream);
 }
 
-void use_potion_first_pokemon(VideoStream& stream, ProControllerContext& context) {
+void use_potion_first_pokemon(VideoStream& stream, ProControllerContext& context, double heal_below) {
     OverlayBoxScope hp_overlay(stream.overlay(), COLOR_GREEN, {0.137, 0.160, 0.202, 0.016}, "");
     bool healed = false;
     for (size_t dose = 0; dose < 3; dose++) {
@@ -933,6 +933,11 @@ void use_potion_first_pokemon(VideoStream& stream, ProControllerContext& context
         const double before = confirmed_potion_hp(stream, context);
         stream.log("[Potion] Slot 1 HP bar before use=" + std::to_string(before * 100) + "%.");
         if (before >= 0.98) { healed = true; break; }
+        if (dose == 0 && before >= heal_below) {
+            stream.log("[Potion] Slot 1 HP is at least " + std::to_string(heal_below * 100) + "%; no Potion needed.");
+            healed = true;
+            break;
+        }
         if (before <= 0.005) {
             OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
                 "Potion: Slot 1 appears fainted; a Potion cannot revive it.", stream);

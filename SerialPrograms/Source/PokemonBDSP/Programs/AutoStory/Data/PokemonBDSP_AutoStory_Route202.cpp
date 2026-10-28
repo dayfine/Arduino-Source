@@ -26,6 +26,9 @@ using namespace Pokemon;
 //  but on the console the player stands at (22,19) right under it, beside
 //  the trees at (21,19), and the sign at (24,20) is one row below.
 //  The Poke Ball item at (3,6) is blocked.
+//  The east tree wall comes in to column 31 at rows 15 to 17: walking east
+//  along row 16 stops at column 30 on the console (r75), and column 30 is
+//  open north to row 4.
 //  NPCs stand on the tile under their feet; the sprites rise into the row
 //  above. The girl at (22,15), pixel (365,235), is a trainer.
 const TileGrid& grid(){
@@ -47,8 +50,8 @@ const TileGrid& grid(){
         R"(###...............####"""""""""""###)",  //  12
         R"(###............S..####"""""""""""###)",  //  13
         R"(###...............####"""""""""""###)",  //  14
-        R"(###....##.........####N."""""""""###)",  //  15
-        R"(###""""##..............."""""""""###)",  //  16
+        R"(###....##.........####N."""""""#####)",  //  15
+        R"(###""""##..............."""""""#####)",  //  16
         R"(###""""##....................""#####)",  //  17
         R"(###""""##vvvvv########vvvvvvvvv#####)",  //  18
         R"(###""""##.....########.........#####)",  //  19

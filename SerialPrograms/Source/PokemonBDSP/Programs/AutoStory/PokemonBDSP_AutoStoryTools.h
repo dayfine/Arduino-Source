@@ -445,9 +445,13 @@ void open_menu(
     int num_icons
 );
 
+//  Read the lead's HP bar in the Bag and, if it is below `heal_below` (a
+//  fraction of full), use Potions until it is full. heal_below = 1 always
+//  heals; 0.5 only checks and heals when the lead is under half.
 void use_potion_first_pokemon(
     VideoStream& stream,
-    ProControllerContext& context
+    ProControllerContext& context,
+    double heal_below = 1.0
 );
 
 enum class GearLevel {
