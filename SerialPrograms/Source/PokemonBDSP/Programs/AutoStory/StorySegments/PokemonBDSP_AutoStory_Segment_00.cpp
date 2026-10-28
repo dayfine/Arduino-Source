@@ -658,7 +658,7 @@ namespace PokemonAutomation {
             const TilePos below_sign = maps.to_world(MAP_SANDGEM_TOWN, SandgemTown::POKEMON_CENTER_SIGN.next(Pokemon::GridDirection::SOUTH));
             walk_route(stream, context, maps, {maps.to_world(MAP_ROUTE_202, Route202::CATCH_SPOT)},
                 [&](const TilePos& pos) { return pos == below_sign; }, trainers, fight, "To the Pokemon Center");
-            heal_at_pokemon_center(stream, context, Pokemon::GridDirection::WEST, "Sandgem Town Pokemon Center");
+            heal_at_pokemon_center(stream, context, "Sandgem Town Pokemon Center");
 
             step(2);
             // Out of the Center we stand on the tile below its door.
