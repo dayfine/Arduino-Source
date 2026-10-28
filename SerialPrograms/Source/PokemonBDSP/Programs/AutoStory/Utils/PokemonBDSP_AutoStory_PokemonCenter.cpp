@@ -88,6 +88,12 @@ void heal_at_pokemon_center(
     //  walk in once it is straight ahead.
     route_status(stream, label + ": lining up with the door.");
     bool inside = false;
+    VideoSnapshot last_outside;
+    auto scene_changed_since = [&](const VideoSnapshot& before){
+        context.wait_for_all_requests();
+        VideoSnapshot now = stream.video().snapshot();
+        return before && now && walk_screen_change(*before.frame, *now.frame) > WALK_SCENE_CHANGE;
+    };
     for (size_t tries = 0; tries < 12 && !inside; tries++){
         context.wait_for_all_requests();
         VideoSnapshot outside = stream.video().snapshot();
@@ -96,9 +102,17 @@ void heal_at_pokemon_center(
         }
         const std::optional<double> doorway = lit_doorway_x(*outside.frame);
         if (!doorway){
+            //  The door may have taken us in after all, more slowly than we watched.
+            pbf_wait(context, 1500ms);
+            if (scene_changed_since(last_outside)){
+                stream.log("[Route] " + label + ": the scene changed; inside.");
+                inside = true;
+                break;
+            }
             OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
                 label + ": no lit doorway on screen.", stream);
         }
+        last_outside = outside;
         const double tiles = (*doorway - 0.5) * SCREEN_WIDTH_TILES;
         stream.log("[Route] " + label + ": doorway " + std::to_string(tiles) + " tiles across.");
         if (std::abs(tiles) > 0.25){
@@ -110,11 +124,10 @@ void heal_at_pokemon_center(
             continue;
         }
         inside = walk_until(stream, context, 0, 1, 1500ms, label + ": into the door").stop == WalkStop::TRANSITION;
-        context.wait_for_all_requests();
-        VideoSnapshot now = stream.video().snapshot();
-        //  The door's fade is not always black enough to read as a transition;
-        //  a whole new scene says we are in just as well.
-        if (!inside && now && walk_screen_change(*outside.frame, *now.frame) > WALK_SCENE_CHANGE){
+        //  The door's fade is not always black enough to read as a transition,
+        //  and may finish after the walk; a whole new scene says we are in.
+        pbf_wait(context, 2000ms);
+        if (!inside && scene_changed_since(outside)){
             stream.log("[Route] " + label + ": the scene changed; inside.");
             inside = true;
         }
