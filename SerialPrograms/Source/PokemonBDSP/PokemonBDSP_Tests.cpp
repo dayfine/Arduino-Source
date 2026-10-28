@@ -18,6 +18,7 @@
 #include "Programs/AutoStory/PokemonBDSP_AutoStoryTools.h"
 #include "PokemonBDSP_Tests.h"
 #include "Inference/PokemonBDSP_MenuDetector.h"
+#include "Programs/AutoStory/PokemonBDSP_AutoStory_Tests.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -288,6 +289,7 @@ bool run_bag_screenshot_tests(Logger& logger, const std::string& folder){
 void add_tests(UnitTestDatabase& database){
     database.add<Test_BagScreenshots>();
     add_tests_MenuDetector(database);
+    add_tests_AutoStory(database);
 }
 
 }

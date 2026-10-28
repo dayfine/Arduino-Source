@@ -2,12 +2,15 @@
 #include <memory>
 
 #include "PokemonBDSP_AutoStory.h"
+#include "Utils/PokemonBDSP_AutoStory_NewGame.h"
 
 #include "CommonFramework/Globals.h"
+#include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "CommonFramework/Notifications/ProgramNotifications.h"
 #include "CommonTools/Async/InferenceRoutines.h"
 #include "CommonTools/VisualDetectors/ImageMatchDetector.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
+#include "NintendoSwitch/Programs/NintendoSwitch_GameEntry.h"
 
 #include "StorySegments/PokemonBDSP_AutoStory_Segment_00.h"
 
@@ -179,6 +182,12 @@ BDSPAutoStory::BDSPAutoStory()
         "0"
     )
 
+    , NEW_GAME_INTRO(
+          "<b>Start a new game first:</b><br>"
+          "For a game with no save: restart it and play the intro (language, appearance, names) "
+          "until the player is in control in the bedroom. Runs before the selected range.",
+          LockMode::LOCK_WHILE_RUNNING, false)
+    , PLAYER_NAME(false, "<b>Player name:</b><br>For a new game. Letters and digits.", LockMode::LOCK_WHILE_RUNNING, "Kosmos", "Kosmos")
     , STARTERCHOICE(
           "<b>Starter Pokemon:</b>",
           {
@@ -341,6 +350,8 @@ BDSPAutoStory::BDSPAutoStory()
     PA_ADD_OPTION(END_DESCRIPTION_CHECKPOINT);
 
 
+    PA_ADD_OPTION(NEW_GAME_INTRO);
+    PA_ADD_OPTION(PLAYER_NAME);
     PA_ADD_OPTION(STARTERCHOICE);
     PA_ADD_OPTION(STARTER_SHINY);
     PA_ADD_OPTION(CATCH_LEGENDARY);
@@ -494,12 +505,28 @@ void BDSPAutoStory::program(
             }
         }
     };
-    if (fake_saves){
-        checkpoint_reattempt_loop(env, context, options.notif_status_update, stats,
-            std::move(run_selected_range), true, CheckpointSaveMode::FAKE,
-            CheckpointRetryScope::SELECTED_RANGE);
-    }else{
-        run_selected_range(0);
+    try{
+        if (NEW_GAME_INTRO){
+            play_new_game_intro(env, context, PLAYER_NAME);
+        }
+        if (fake_saves){
+            checkpoint_reattempt_loop(env, context, options.notif_status_update, stats,
+                std::move(run_selected_range), true, CheckpointSaveMode::FAKE,
+                CheckpointRetryScope::SELECTED_RANGE);
+        }else{
+            run_selected_range(0);
+        }
+    }catch (OperationFailedException&){
+        //  Leave the Switch in a known state: on HOME with the game closed, so the next
+        //  run (or the user) starts from there. The error already holds its screenshot.
+        env.log("AutoStory failed: going to HOME and closing the game.", COLOR_RED);
+        try{
+            go_home(env.console, context);
+            close_game_from_home(env.console, context);
+        }catch (OperationFailedException& e){
+            env.log("Could not close the game: " + e.message(), COLOR_RED);
+        }
+        throw;
     }
 
     send_program_finished_notification(env, NOTIFICATION_PROGRAM_FINISH);

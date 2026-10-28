@@ -8,6 +8,8 @@
 #define PokemonAutomation_PokemonBDSP_SelectionArrow_H
 
 #include <deque>
+#include <vector>
+#include "CommonFramework/ImageTools/ImageBoxes.h"
 #include "CommonFramework/VideoPipeline/VideoOverlayScopes.h"
 #include "CommonTools/InferenceCallbacks/VisualInferenceCallback.h"
 
@@ -15,6 +17,9 @@ namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonBDSP{
 
+
+//  The menu selection arrows in `image`, in its pixel coordinates.
+std::vector<ImagePixelBox> find_selection_arrows(const ImageViewRGB32& image);
 
 class SelectionArrowFinder : public VisualInferenceCallback{
 public:

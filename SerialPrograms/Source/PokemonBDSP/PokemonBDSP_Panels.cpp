@@ -32,6 +32,7 @@
 
 #include "Programs/AutoStory/PokemonBDSP_AutoStory.h"
 #include "Programs/TestPrograms/PokemonBDSP_OverworldLightingTest.h"
+#include "Programs/AutoStory/Utils/PokemonBDSP_AutoStory_LabConsole.h"
 
 #include "Programs/Glitches/PokemonBDSP_ActivateMenuGlitch-1.1.3.h"
 #include "Programs/Glitches/PokemonBDSP_ActivateMenuGlitch-1.1.2.h"
@@ -58,7 +59,11 @@ PanelListFactory::PanelListFactory()
         Pokemon::STRING_POKEMON + " Brilliant Diamond and Shining Pearl",
         RESOURCE_PATH() + "CategoryIcons/PokemonBDSP.png"
     )
-{}
+{
+    //  At startup, so the Nintendo Switch Lab Console can probe BDSP screens
+    //  without BDSP's program list being opened first.
+    register_bdsp_lab_console();
+}
 
 std::vector<PanelEntry> PanelListFactory::make_panels() const{
     std::vector<PanelEntry> ret;

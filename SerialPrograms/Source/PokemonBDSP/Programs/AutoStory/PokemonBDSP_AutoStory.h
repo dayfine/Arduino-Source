@@ -5,6 +5,7 @@
 #include "Common/Cpp/Options/BooleanCheckBoxOption.h"
 #include "Common/Cpp/Options/EnumDropdownOption.h"
 #include "Common/Cpp/Options/StaticTextOption.h"
+#include "Common/Cpp/Options/StringOption.h"
 #include "CommonFramework/Notifications/EventNotificationsTable.h"
 #include "CommonTools/Options/StringSelectOption.h"
 #include "NintendoSwitch/NintendoSwitch_SingleSwitchProgram.h"
@@ -55,6 +56,8 @@ private:
     StringSelectOption START_SEGMENT;
     StringSelectOption END_SEGMENT;
 
+    BooleanCheckBoxOption                  NEW_GAME_INTRO;
+    StringOption                           PLAYER_NAME;
     EnumDropdownOption<StarterChoice>      STARTERCHOICE;
     BooleanCheckBoxOption                  STARTER_SHINY;
     BooleanCheckBoxOption                  CATCH_LEGENDARY;

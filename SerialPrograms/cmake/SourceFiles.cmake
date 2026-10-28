@@ -1536,6 +1536,8 @@ file(GLOB LIBRARY_SOURCES
     Source/PokemonBDSP/Inference/PokemonBDSP_TransitionWatchers.h
     Source/PokemonBDSP/Inference/PokemonBDSP_MenuDetector.cpp
     Source/PokemonBDSP/Inference/PokemonBDSP_MenuDetector.h
+    Source/PokemonBDSP/Inference/PokemonBDSP_NameListDetector.cpp
+    Source/PokemonBDSP/Inference/PokemonBDSP_NameListDetector.h
     Source/PokemonBDSP/Inference/PokemonBDSP_PokeballSpriteMatcher.cpp
     Source/PokemonBDSP/Inference/PokemonBDSP_PokeballSpriteMatcher.h
     Source/PokemonBDSP/Inference/PokemonBDSP_ReceivePokemonDetector.cpp
@@ -1594,6 +1596,8 @@ file(GLOB LIBRARY_SOURCES
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory.h
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStoryTools.cpp
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStoryTools.h
+    Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_Tests.cpp
+    Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_Tests.h
     Source/PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_BDSPData.cpp
     Source/PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_BDSPData.h
     Source/PokemonBDSP/Programs/AutoStory/StorySegments/PokemonBDSP_AutoStory_Segment_00.cpp
@@ -1602,8 +1606,12 @@ file(GLOB LIBRARY_SOURCES
     Source/PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Battle.h
     Source/PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Dialog.cpp
     Source/PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Dialog.h
+    Source/PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_LabConsole.cpp
+    Source/PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_LabConsole.h
     Source/PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Navigation.cpp
     Source/PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Navigation.h
+    Source/PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_NewGame.cpp
+    Source/PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_NewGame.h
     Source/PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_MenuCursorDetector.cpp
     Source/PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_MenuCursorDetector.h
     Source/PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_OverworldDetector.cpp
