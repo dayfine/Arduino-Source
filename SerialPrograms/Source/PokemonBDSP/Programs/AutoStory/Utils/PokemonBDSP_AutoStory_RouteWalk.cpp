@@ -198,9 +198,25 @@ std::vector<TilePos> walk_route(
                 for (const TilePos& pos : from){
                     nearest = std::min(nearest, walk_to_wall(grid, pos, leg.direction).tiles);
                 }
-                const Milliseconds moving = result.walked - 800ms - ROUTE_START_DELAY;
-                const size_t walked_tiles = moving.count() <= 0 ? 0 : (size_t)(moving / ms_per_tile(leg.direction));
-                if (!interrupted && result.stop == WalkStop::BLOCKED && walked_tiles + 3 < nearest){
+                auto tiles_moved = [&](const WalkResult& walk){
+                    const Milliseconds moving = walk.walked - ROUTE_START_DELAY -
+                        (walk.stop == WalkStop::BLOCKED ? 800ms : 0ms);
+                    return moving.count() <= 0 ? (size_t)0 : (size_t)(moving / ms_per_tile(leg.direction));
+                };
+                size_t walked_tiles = tiles_moved(result);
+                //  Someone walking about may stand in the way for a moment: wait
+                //  and walk to the wall again before calling it an obstacle.
+                for (size_t again = 0; !interrupted && again < 2 &&
+                    result.stop == WalkStop::BLOCKED && walked_tiles + 2 < nearest; again++
+                ){
+                    stream.log("[Route] " + leg_label + ": stopped after about " + std::to_string(walked_tiles) +
+                        " tiles, short of the wall; waiting for the way to clear.", COLOR_ORANGE);
+                    pbf_wait(context, 2500ms);
+                    context.wait_for_all_requests();
+                    result = walk_until(stream, context, x, y, limit, leg_label, watch_banner);
+                    walked_tiles += tiles_moved(result);
+                }
+                if (!interrupted && result.stop == WalkStop::BLOCKED && walked_tiles + 2 < nearest){
                     std::vector<TilePos> stopped;
                     for (const TilePos& pos : from){
                         const std::vector<TilePos> path = leg_path(grid, pos, leg.direction, SIZE_MAX);
