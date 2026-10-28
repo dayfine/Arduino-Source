@@ -345,6 +345,19 @@ bool find_bag_item(
     std::chrono::milliseconds search_timeout = std::chrono::minutes(10)
 );
 
+// Starts in the overworld, opens the Bag on `target_pocket`, and moves the cursor
+// onto the item whose name reads `name` (letters only, lower case, e.g. "potion").
+// Reads the cursor row's name with OCR, so it does not depend on the capture
+// card's colors or sharpness the way a template match does.
+// Returns false if the pocket is empty or the name is not found.
+bool find_bag_item_by_name(
+    VideoStream& stream,
+    ProControllerContext& context,
+    const std::string& name,
+    int target_pocket,
+    int num_icons = 8
+);
+
 // Find Escape Rope, choose Use, and verify a transition back to the overworld.
 bool use_escape_rope(
     VideoStream& stream,

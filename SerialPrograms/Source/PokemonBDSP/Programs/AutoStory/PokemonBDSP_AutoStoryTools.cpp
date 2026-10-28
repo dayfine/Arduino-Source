@@ -903,14 +903,10 @@ static double confirmed_potion_hp(VideoStream& stream, ProControllerContext& con
 
 void use_potion_first_pokemon(VideoStream& stream, ProControllerContext& context) {
     OverlayBoxScope hp_overlay(stream.overlay(), COLOR_GREEN, {0.137, 0.160, 0.202, 0.016}, "");
-    BagItemTemplate potion;
-    potion.reference_path = "PokemonBDSP/Autostory/Bag_Potion.png";
-    potion.label = "Potion";
-    potion.reference_row = 1;
     bool healed = false;
     for (size_t dose = 0; dose < 3; dose++) {
         stream.log("[Potion] Finding Bag/Medicine/Potion; dose " + std::to_string(dose + 1) + "/3.");
-        if (!find_bag_item(stream, context, potion, 1, 5, 64, std::chrono::seconds(45))) {
+        if (!find_bag_item_by_name(stream, context, "potion", 1, 5)) {
             OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
                 "Potion: Could not verify Potion in the Medicine pocket.", stream);
         }
@@ -1724,6 +1720,71 @@ bool find_bag_item(
 
     }
     stream.log("[Bag search] Item not found after three passes per nonempty pocket.", COLOR_ORANGE);
+    return false;
+}
+
+bool find_bag_item_by_name(
+    VideoStream& stream,
+    ProControllerContext& context,
+    const std::string& name,
+    int target_pocket,
+    int num_icons
+){
+    open_menu(stream, context, MenuCursorPosition::BAG, num_icons);
+    pbf_wait(context, 1000ms);
+    context.wait_for_all_requests();
+    if (!bag_navigate_to_pocket(stream, context, target_pocket)) return false;
+
+    //  Walk down the list reading the cursor row. The list does not wrap, so
+    //  turn around once the cursor stops moving.
+    DpadPosition direction = DPAD_DOWN;
+    std::string previous;
+    size_t same = 0;
+    size_t confirmed = 0;
+    size_t unknown_cursor = 0;
+    for (size_t scan = 0; scan < 128; scan++){
+        context.wait_for_all_requests();
+        const VideoSnapshot frame = stream.video().snapshot();
+        if (!frame || bag_list_is_empty(*frame.frame)){
+            stream.log("[Bag search] " + name + ": pocket is empty.", COLOR_ORANGE);
+            return false;
+        }
+        const int cursor = bag_cursor_position(*frame.frame);
+        if (cursor == 0){
+            if (++unknown_cursor >= 3){
+                stream.log("[Bag search] " + name + ": cursor not found.", COLOR_ORANGE);
+                return false;
+            }
+            pbf_wait(context, 200ms);
+            continue;
+        }
+        unknown_cursor = 0;
+        const std::string text = OCR::tesseract_ocr_read(Language::English,
+            extract_box_reference(*frame.frame, bag_list_name_box(cursor)));
+        std::string normalized;
+        for (unsigned char ch : text){
+            if (std::isalpha(ch)) normalized.push_back((char)std::tolower(ch));
+        }
+        stream.log("[Bag search] Row " + std::to_string(cursor) + " reads \"" + normalized + "\".");
+        if (normalized == name){
+            if (++confirmed >= 2){
+                stream.log("[Bag search] " + name + " confirmed in row " + std::to_string(cursor) + ".", COLOR_GREEN);
+                return true;
+            }
+            pbf_wait(context, 150ms);
+            continue;
+        }
+        confirmed = 0;
+        same = normalized == previous ? same + 1 : 0;
+        previous = normalized;
+        if (same >= 2){
+            if (direction == DPAD_UP) break;
+            direction = DPAD_UP;
+            same = 0;
+        }
+        pbf_press_dpad(context, direction, 80ms, 300ms);
+    }
+    stream.log("[Bag search] " + name + " not found.", COLOR_ORANGE);
     return false;
 }
 
