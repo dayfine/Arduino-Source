@@ -643,10 +643,19 @@ namespace PokemonAutomation {
 
             const MapSet& maps = story_maps();
             std::vector<TrainerSight> trainers = story_trainer_sights();
-            // Fight a trainer whose dialogue has opened, with whatever starter we have.
+            // Fight a trainer whose dialogue has opened, with whatever starter we
+            // have. Someone who only talks leaves no battle to fight.
             auto fight = [&](const std::string& name) {
-                wait_for_dialogue(stream, context, name + " encounter dialog");
                 pbf_mash_button(context, BUTTON_B, 5000ms);
+                context.wait_for_all_requests();
+                BattleMenuWatcher battle_menu(BattleType::TRAINER, COLOR_YELLOW);
+                BattleDialogWatcher battle_dialog(COLOR_YELLOW);
+                if (wait_until(stream, context, 8s, {{battle_menu}, {battle_dialog}}) < 0) {
+                    stream.log("[00.04] " + name + ": no battle followed the talk.");
+                    pbf_mash_button(context, BUTTON_B, 2000ms);
+                    context.wait_for_all_requests();
+                    return;
+                }
                 fight_trainer(stream, context, name);
                 context.wait_for_all_requests();
             };

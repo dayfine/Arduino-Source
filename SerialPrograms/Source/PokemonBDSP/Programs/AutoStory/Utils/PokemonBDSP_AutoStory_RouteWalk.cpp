@@ -227,6 +227,16 @@ std::vector<TilePos> walk_route(
                     walked_tiles += tiles_moved(result);
                 }
                 if (!interrupted && result.stop == WalkStop::BLOCKED && walked_tiles + 2 < nearest){
+                    //  Someone who stays put: talk to them. A trainer we walked up
+                    //  to from the side starts the battle this way.
+                    pbf_press_button(context, BUTTON_A, 80ms, 200ms);
+                    {
+                        ShortDialogWatcher dialog(COLOR_YELLOW);
+                        if (wait_until(stream, context, 2000ms, {{dialog}}) == 0){
+                            route_status(stream, leg_label + ": someone is in the way; talking to them.");
+                            fight("someone in the way");
+                        }
+                    }
                     std::vector<TilePos> stopped;
                     for (const TilePos& pos : from){
                         const std::vector<TilePos> path = leg_path(grid, pos, leg.direction, SIZE_MAX);

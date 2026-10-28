@@ -48,8 +48,9 @@ void route_turn(VideoStream& stream, ProControllerContext& context, Pokemon::Gri
 //  Shows what the route walk is doing in the log and the video overlay.
 void route_status(VideoStream& stream, const std::string& text);
 
-//  Called when a trainer's dialogue has opened. Fights the battle and returns
-//  to the overworld.
+//  Called when a trainer's dialogue has opened, or when someone standing in
+//  the way was talked to. Fights the battle if one starts, and returns to the
+//  overworld either way.
 using RouteTrainerFight = std::function<void(const std::string& trainer)>;
 
 //  Walks from any of the world tiles `from` of `maps` until every tile the
