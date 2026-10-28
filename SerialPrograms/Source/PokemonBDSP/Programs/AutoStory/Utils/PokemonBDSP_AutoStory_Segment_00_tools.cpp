@@ -20,6 +20,8 @@
 
 #include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
+#include "Common/Cpp/PrettyPrint.h"
+#include "Common/Cpp/Filesystem/Filesystem.h"
 #include "CommonFramework/ImageTools/ImageBoxes.h"
 #include "CommonTools/OCR/OCR_RawTesseractOCR.h"
 #include "CommonFramework/Tools/ErrorDumper.h"
@@ -663,6 +665,12 @@ namespace PokemonAutomation {
             // Reads the names with OCR; 1 if none is known.
             static size_t pick_best_move(VideoStream& stream, const ImageViewRGB32& screen,
                 const BattleMoveMenuState& moves, const std::string& label) {
+                // Keep the menu as it looked, to check the reads against.
+                {
+                    const std::string folder = SCREENSHOTS_PATH() + "AutoStory/moves/";
+                    Filesystem::create_directories(Filesystem::Path(folder));
+                    screen.save(folder + now_to_filestring() + "-" + label + ".png");
+                }
                 size_t best = 1;
                 int best_score = -1;
                 for (size_t i = 0; i < moves.move_count; i++) {
@@ -1020,6 +1028,9 @@ namespace PokemonAutomation {
                     BattleMenuWatcher battle_menu(battle_type);
                     // Reuse the farming handlers' move-learning prompt recovery.
                     SelectionArrowFinder learn_move(stream.overlay(),{0.50,0.62,0.40,0.18},COLOR_YELLOW);
+                    // The end transition can be missed; the overworld coming back
+                    // ends the battle just as well.
+                    OverworldWatcher back_in_overworld;
 
                     int ret = run_until<ProControllerContext>(
                         stream,
@@ -1035,8 +1046,15 @@ namespace PokemonAutomation {
                                 ? PeriodicInferenceCallback{end_battle}
                                 : PeriodicInferenceCallback{},
                             confirm_default_target ? PeriodicInferenceCallback{learn_move} : PeriodicInferenceCallback{},
+                            battle_menu_seen
+                                ? PeriodicInferenceCallback{back_in_overworld}
+                                : PeriodicInferenceCallback{},
                         }
                     );
+                    if (ret == 3) {
+                        stream.log("[" + label + "] Back in the overworld; the battle is over.");
+                        ret = 1;
+                    }
 
                     switch (ret) {
 
