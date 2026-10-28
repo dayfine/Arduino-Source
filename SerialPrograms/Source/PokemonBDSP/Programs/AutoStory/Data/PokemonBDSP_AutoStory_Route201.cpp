@@ -56,12 +56,12 @@ const TileGrid& grid(){
 }
 
 
-//  On the DP map she is at (44,3), pixel (718,57). On the console she is
-//  reached as the user did by hand: west along row 4 to the trees, north to
-//  the trees, then face east. That puts her at (43,3), in the top grass row;
-//  she only turns.
+//  On the DP map she is at (44,3), pixel (718,57). On the console (by hand,
+//  then through the Lab Console) she stands at (43,3), in the top grass row,
+//  and only turns: walking west along row 3 from the trees at its east end
+//  stops at (44,3), facing her.
 const TilePos POTION_GIVER{43, 3};
-const TilePos POTION_GIVER_TALK_FROM{42, 3};
+const TilePos POTION_GIVER_TALK_FROM{44, 3};
 const TilePos POTION_GIVER_ROW_EAST{53, 3};
 const TilePos POTION_GIVER_ROW_WEST_END{42, 3};
 const TilePos POTION_GIVER_ROW_EAST_END{52, 3};

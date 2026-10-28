@@ -402,14 +402,20 @@ public:
         }
         //  To where she is talked to, and back to the catch grass to save.
         const TilePos talk_from = maps.to_world(MAP_ROUTE_201, Route201::POTION_GIVER_TALK_FROM);
-        error = check_robust_plan(logger, "Catch spot to the Potion giver's west", maps, {catch_spot},
+        error = check_robust_plan(logger, "Catch spot to the Potion giver", maps, {catch_spot},
             [&](const TilePos& pos){ return pos == talk_from; });
         if (!error.empty()){
             return error;
         }
-        const std::vector<TilePos> back = story_after_training_area();
-        error = check_robust_plan(logger, "Potion giver back to the catch grass", maps, {talk_from},
-            [&](const TilePos& pos){ return std::find(back.begin(), back.end(), pos) != back.end(); });
+        const TilePos save_spot = maps.to_world(MAP_ROUTE_202, Route202::POTION_SAVE_SPOT);
+        error = check_robust_plan(logger, "Potion giver to the save spot", maps, {talk_from},
+            [&](const TilePos& pos){ return pos == save_spot; });
+        if (!error.empty()){
+            return error;
+        }
+        const std::vector<TilePos> grass = story_after_training_area();
+        error = check_robust_plan(logger, "Save spot to the catch grass", maps, {save_spot},
+            [&](const TilePos& pos){ return std::find(grass.begin(), grass.end(), pos) != grass.end(); });
         if (!error.empty()){
             return error;
         }

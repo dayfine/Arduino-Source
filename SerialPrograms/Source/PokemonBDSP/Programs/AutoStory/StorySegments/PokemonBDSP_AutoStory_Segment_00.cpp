@@ -618,7 +618,7 @@ namespace PokemonAutomation {
             // The Potion on Route 201 is optional, and the starter outclasses the
             // Route 202 trainers, so we go straight north.
             static const char* const STEPS[] = {
-                "Get 10 Potions from the Poke Mart lady on Route 201, return to the catch grass and save (skipped if the Bag has Potions)",
+                "Get 10 Potions from the Poke Mart lady on Route 201, walk back to Route 202 and save (skipped if the Bag has Potions)",
                 "Train: fight 3 wild Pokemon in the catch grass, with the best move",
                 "Heal to full with Potions from the Bag",
                 "Walk north up Route 202 to the Jubilife exit, fighting trainers who see us; after each, use a Potion if HP is under half",
@@ -666,8 +666,10 @@ namespace PokemonAutomation {
             pbf_wait(context, 1500ms);
             step(1);
             // Potions let us heal where we stand, instead of walking back to the
-            // Pokemon Center. The lady is reached as done by hand: west along her
-            // grass's second row to the trees, north to the trees, face east.
+            // Pokemon Center. A save made after getting them starts at the save
+            // spot with Potions in the Bag; the post-catch save starts at the
+            // catch spot without.
+            const TilePos save_spot = maps.to_world(MAP_ROUTE_202, Route202::POTION_SAVE_SPOT);
             if (bag_has_item(stream, context, "potion", 1)) {
                 stream.log("[00.04] The Bag has Potions; not visiting the Poke Mart lady.");
             } else {
@@ -675,21 +677,25 @@ namespace PokemonAutomation {
                 const TilePos talk_from = maps.to_world(MAP_ROUTE_201, Route201::POTION_GIVER_TALK_FROM);
                 walk_route(stream, context, maps, {catch_spot},
                     [&](const TilePos& pos) { return pos == talk_from; }, trainers, fight, "To the Poke Mart lady");
-                route_turn(stream, context, Pokemon::GridDirection::EAST);
-                pbf_press_button(context, BUTTON_A, 80ms, 1000ms);
-                pbf_mash_button(context, BUTTON_B, 8000ms);
+                // Her lines take a while to print: one A per line.
+                for (size_t line = 0; line < 9; line++) {
+                    pbf_press_button(context, BUTTON_A, 80ms, 1500ms);
+                }
                 context.wait_for_all_requests();
                 if (!bag_has_item(stream, context, "potion", 1)) {
                     OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
                         "Poke Mart lady: no Potion in the Bag after talking to her.", stream);
                 }
-                const std::vector<TilePos> back = story_after_training_area();
                 walk_route(stream, context, maps, {talk_from},
-                    [&](const TilePos& pos) { return std::find(back.begin(), back.end(), pos) != back.end(); },
-                    trainers, fight, "Back to the catch grass");
-                stream.log("[00.04] Saving with the Potions, back in the catch grass.");
+                    [&](const TilePos& pos) { return pos == save_spot; }, trainers, fight, "Back to Route 202");
+                stream.log("[00.04] Saving with the Potions, at the save spot on Route 202.");
                 save_game(env, context);
             }
+            walk_route(stream, context, maps, {save_spot},
+                [&](const TilePos& pos) {
+                    const std::vector<TilePos> grass = story_after_training_area();
+                    return std::find(grass.begin(), grass.end(), pos) != grass.end();
+                }, trainers, fight, "To the catch grass");
 
             step(2);
             // The starter starts around level 5 with only a Normal move; the

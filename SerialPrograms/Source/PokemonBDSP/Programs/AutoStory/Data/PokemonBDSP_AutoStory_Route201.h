@@ -22,7 +22,8 @@ const Pokemon::TileGrid& grid();
 //  The girl who gives Potions, in the top row of the north-east tall grass,
 //  (42..52, 3), one tile from its west end.
 extern const Pokemon::TilePos POTION_GIVER;
-//  West of her, against the trees on two sides: talk to her from here, facing east.
+//  East of her, where a walk west along her row stops: talk to her from here,
+//  facing west.
 extern const Pokemon::TilePos POTION_GIVER_TALK_FROM;
 //  The tile east of her row, against the trees: walk west from here to meet her.
 extern const Pokemon::TilePos POTION_GIVER_ROW_EAST;
