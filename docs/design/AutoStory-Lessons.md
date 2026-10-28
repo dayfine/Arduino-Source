@@ -85,6 +85,9 @@ on top of his segment 00 ([`bdsp/1717-seg00`](https://github.com/dayfine/Arduino
 | Barry in the Trainers' School: "west 200 ms, A", then mash B. | Faced nobody (r79). | From the school door: one tile west, north until Barry stops us, then A per line. He gives the Town Map. | (not yet coded) |
 | Leaving 00.04: walk north 5 s into Jubilife. | Ran past Dawn's spot (r35); with our route, walked into the wall beside the stairs (r78). | Walk north; when the wall stops us and no dialogue follows, step a tile west and try again. Next: put the stairs in the map. | [`3cef78b77`](https://github.com/dayfine/Arduino-Source/commit/3cef78b771877675c83356133d8917eb0de681c9) |
 | The Pokétch president (Phase 23): timed legs, then wait for his dialogue. | He stands in the road and talks when we face him; pressing A to advance re-opened his talk each time it ended, so his first line came back again and again. | Talk once with A, then advance with B, which never starts a talk. | (stepped through; not yet coded) |
+| Three coupon clowns: recorded legs, then press toward each and A until a dialogue opens. | The recorded legs ended a row off each clown; walking past a clown on the row above or below never talks. | Each clown stands still: below the Poké Mart's planters (from the south, facing north; Coupon 1), at the TV station door (from the east, facing west; Coupon 3), beside the Pokétch Company sign (from the south, facing north; Coupon 2). The default "Yes" answers both quiz questions; close "obtained" with A, the rest with B. | (stepped through; not yet coded) |
+| Pokétch from the president: a landmark match, then align and talk. | — (not reached) | He is back at his first spot. Stand level with him on his east side, face west, A, then B. "Please press the R Button" means the Pokétch is ours. | (stepped through; not yet coded) |
+| Into the Jubilife Pokémon Center, to the PC. | — (not reached) | The door opening is half a tile east of where the frame stops a walk north. Inside: north to the counter, about 4 tiles east, then the tile below the PC, facing north. | (stepped through; not yet coded) |
 | Checkpoint retry reloads and repeats the same steps. | Deterministic failures retried up to 20 times. | Lab runs stop at the first failure (section 3). | lab scripts |
 
 His route did one thing right that we dropped for a while: the Poké Mart lady on Route 201
@@ -113,6 +116,16 @@ The run now gets the Potions first and saves on Route 202, (30,19), so later att
   light blue button, and status moves sit lower (no "Effective" line); a fixed cut and box
   read "" for Water Gun and Growl (r73). Threshold halfway between each button's background
   and its darkest pixel, and keep the tallest text band. ([`97df88c43`](https://github.com/dayfine/Arduino-Source/commit/97df88c439845600a02d0114478bb66d4b158ad5))
+- **Reading positions from roofs and heads.** In the tilted 3D view, a roof shifts against the
+  ground as the camera follows us, and a sprite's head rises into the row above its feet. Fixed
+  clowns looked like they wandered, and we pressed A diagonally next to the president, which
+  talks to nobody. Rule: judge rows and columns by feet and ground features (planters, curbs,
+  plaza edges), and stand level with an NPC before talking.
+- **Dead reckoning in a town without a map.** In Jubilife, open-street "walk until stopped" legs
+  ran far past what was meant, and buildings hid the player; we lost our place twice. Bulbapedia's
+  DP map of Jubilife matches the BDSP layout (school, Center, Mart, TV station, Pokétch Company,
+  fountain park all where DP has them), so towns get a tile grid too, checked against the
+  console, with the story NPCs on it.
 - **Not saying what we are doing.** The overlay and the log now print each checkpoint's steps,
   the current one and the next, and every status report starts with the current problem.
   ([`3cd874125`](https://github.com/dayfine/Arduino-Source/commit/3cd8741250dc03f1c166e15cfc9563f5ac36add9))
@@ -123,5 +136,6 @@ After hours of whole-run attempts at the lady, five minutes of stepping found he
 Console takes 5 to 10 commands at a time (walk until stopped, a few presses, a screenshot),
 then waits while we look. Where the map or the scene is unknown (a new town, a building,
 an NPC to talk to), step through it first, write down each stop and dialogue, and only then
-write the automated version from what was seen. 00.05 (the Trainers' School, the Pokétch)
-is being done this way.
+write the automated version from what was seen. 00.05 was done this way on 2026-10-28: Barry and the Town Map, the president, all three
+coupon clowns, the Pokétch and the Center PC, about 60 batches, ending in a save at the PC
+(segment 0 complete).
