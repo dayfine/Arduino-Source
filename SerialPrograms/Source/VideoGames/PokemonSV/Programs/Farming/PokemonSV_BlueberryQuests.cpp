@@ -1258,6 +1258,7 @@ BBQAutoBattleResult run_auto_battle(
 ){
     const WallClock start = actions.now();
     uint64_t pass = 0;
+    uint64_t empty_passes = 0;
     while (actions.kills() < policy.kill_target){
         pass++;
         const uint64_t kills_before = actions.kills();
@@ -1266,6 +1267,7 @@ BBQAutoBattleResult run_auto_battle(
         const std::optional<double> hp = actions.clear(policy.kill_target);
 
         const uint64_t kills = actions.kills();
+        empty_passes = kills == kills_before ? empty_passes + 1 : 0;
         const auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(actions.now() - start);
         const std::string hp_text = hp ? std::to_string((int)std::floor(*hp * 100)) + "%" : "?";
 
@@ -1274,6 +1276,12 @@ BBQAutoBattleResult run_auto_battle(
         if (kills >= policy.kill_target){
             end = BBQAutoBattleResult::TargetReached;
             next = "Target reached: return without healing.";
+        }else if (empty_passes >= policy.max_empty_passes){
+            end = BBQAutoBattleResult::NoKills;
+            next = "No kill in " + std::to_string(empty_passes) + " passes in a row: return and give up.";
+        }else if (elapsed >= policy.time_limit){
+            end = BBQAutoBattleResult::TimeLimit;
+            next = "Time limit of " + std::to_string(policy.time_limit.count()) + " min reached: return and give up.";
         }
         logger.log(
             "Auto Battle pass " + std::to_string(pass) + ": "
@@ -1406,11 +1414,14 @@ void quest_auto_battle(
         sensors.lets_go_kill
     );
 
+    //The time limits are about 3x the slowest attempts seen with a correct lead.
     BBQAutoBattlePolicy policy;
     policy.kill_target = 10;
+    policy.time_limit = std::chrono::minutes(35);
 
     if (current_quest == BBQuests::auto_30){
         policy.kill_target = 30;
+        policy.time_limit = std::chrono::minutes(60);
     }
 
     ConsoleBBQAutoBattleActions actions(env, stream, context, stats, tracker, sensors.lets_go_hp);
