@@ -18,9 +18,9 @@
 #include "Pokemon/Inference/Pokemon_NameReader.h"
 #include "PokemonSwSh_GenerateNameOCRPokedex.h"
 
-#include <iostream>
-using std::cout;
-using std::endl;
+//#include <iostream>
+//using std::cout;
+//using std::endl;
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -34,6 +34,7 @@ GenerateNameOCRDataPokedex_Descriptor::GenerateNameOCRDataPokedex_Descriptor()
         STRING_POKEMON + " SwSh", "Generate " + STRING_POKEMON + " Name OCR Data",
         "",
         "Generate " + STRING_POKEMON + " Name OCR data by iterating the " + STRING_POKEDEX + ".",
+        PanelQualityStanding::DEVELOPER,
         ProgramControllerClass::StandardController_NoRestrictions,
         FeedbackType::REQUIRED,
         AllowCommandsWhenRunning::DISABLE_COMMANDS

@@ -7,9 +7,9 @@
 
 
 #if 0
+#include "CommonFramework/Exceptions/UnexpectedBattleException.h"
 #include "CommonTools/Async/InferenceRoutines.h"
 #include "CommonTools/VisualDetectors/BlackScreenDetector.h"
-#include "CommonFramework/Exceptions/UnexpectedBattleException.h"
 #endif
 
 
@@ -26,14 +26,15 @@
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "NintendoSwitch/Programs/DateManip/NintendoSwitch_DateManip.h"
 #include "NintendoSwitch/Programs/NintendoSwitch_GameEntry.h"
-#include "VideoGames/PokemonSV/PokemonSV_Settings.h"
 #include "Pokemon/Pokemon_Strings.h"
 #include "VideoGames/PokemonSwSh/Inference/PokemonSwSh_IvJudgeReader.h"
+#include "VideoGames/PokemonSV/PokemonSV_Settings.h"
 #include "VideoGames/PokemonSV/Inference/PokemonSV_MainMenuDetector.h"
 #include "VideoGames/PokemonSV/Inference/Overworld/PokemonSV_DirectionDetector.h"
 #include "VideoGames/PokemonSV/Programs/PokemonSV_GameEntry.h"
 #include "VideoGames/PokemonSV/Programs/PokemonSV_MenuNavigation.h"
 #include "VideoGames/PokemonSV/Programs/PokemonSV_WorldNavigation.h"
+
 #include "PokemonSV_AutoStory_Segment_00.h"
 #include "PokemonSV_AutoStory_Segment_01.h"
 #include "PokemonSV_AutoStory_Segment_02.h"
@@ -75,11 +76,12 @@
 #include "PokemonSV_AutoStory_Segment_38.h"
 #include "PokemonSV_AutoStory_Segment_39.h"
 #include "PokemonSV_AutoStory_Segment_40.h"
+
 #include "PokemonSV_AutoStory.h"
 
-#include <iostream>
-using std::cout;
-using std::endl;
+//#include <iostream>
+//using std::cout;
+//using std::endl;
 //#include <unordered_map>
 //#include <algorithm>
 
@@ -377,10 +379,10 @@ AutoStory_Descriptor::AutoStory_Descriptor()
         STRING_POKEMON + " SV", "Auto Story",
         "Programs/PokemonSV/AutoStory.html",
         "Progress through the mainstory of SV.",
+        PanelQualityStanding::OFFICIAL,
         ProgramControllerClass::StandardController_RequiresPrecision,
         FeedbackType::VIDEO_AUDIO,
         AllowCommandsWhenRunning::DISABLE_COMMANDS,
-        PanelDeprecation::NOT_DEPRECATED,
         {
             "PokemonSV/AreaZero",
         }

@@ -6,7 +6,6 @@
 
 #include <chrono>
 #include <string>
-#include <optional>
 #include "Common/Cpp/Color.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "CommonFramework/VideoPipeline/VideoOverlayScopes.h"
@@ -30,6 +29,7 @@ ReadBattleLevelUp_Descriptor::ReadBattleLevelUp_Descriptor()
         Pokemon::STRING_POKEMON + " FRLG",
         "Read Battle Level-Up Stats", "",
         "Read stats from the relevant popup after leveling up during a battle.",
+        PanelQualityStanding::DEVELOPER,
         ProgramControllerClass::StandardController_NoRestrictions,
         FeedbackType::REQUIRED,
         AllowCommandsWhenRunning::DISABLE_COMMANDS

@@ -7,7 +7,6 @@
 #include <cmath>
 #include <algorithm>
 #include "Common/Cpp/Strings/StringTools.h"
-#include "CommonTools/Random.h"
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
 #include "CommonFramework/ProgramStats/StatsTracking.h"
 #include "CommonFramework/Notifications/ProgramNotifications.h"
@@ -15,8 +14,8 @@
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "CommonFramework/Language.h"
 #include "CommonTools/Async/InferenceRoutines.h"
-#include "Pokemon/Pokemon_Strings.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
+#include "Pokemon/Pokemon_Strings.h"
 #include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_DaycareManDetector.h"
 #include "VideoGames/PokemonFRLG/Programs/PokemonFRLG_StartMenuNavigation.h"
 #include "VideoGames/PokemonFRLG/PokemonFRLG_Navigation.h"
@@ -81,6 +80,7 @@ EggRng_Descriptor::EggRng_Descriptor()
         Pokemon::STRING_POKEMON + " FRLG", "Egg RNG",
         "Programs/PokemonFRLG/EggRng.html",
         "Automatically calibrate timings to hit a specific RNG target for daycare eggs.",
+        PanelQualityStanding::OFFICIAL,
         ProgramControllerClass::StandardController_RequiresPrecision,
         FeedbackType::REQUIRED,
         AllowCommandsWhenRunning::DISABLE_COMMANDS

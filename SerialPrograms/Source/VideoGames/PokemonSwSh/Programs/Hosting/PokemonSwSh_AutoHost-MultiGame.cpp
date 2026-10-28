@@ -5,7 +5,6 @@
  */
 
 #include "Common/Cpp/PrettyPrint.h"
-#include "Common/Cpp/ExpressionEvaluator.h"
 //#include "NintendoSwitch/Commands/NintendoSwitch_Commands_Device.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_Superscalar.h"
@@ -32,6 +31,7 @@ AutoHostMultiGame_Descriptor::AutoHostMultiGame_Descriptor()
         STRING_POKEMON + " SwSh", "Auto-Host Multi-Game",
         "Programs/PokemonSwSh/AutoHost-MultiGame.html",
         "Run AutoHost-Rolling across multiple game saves. (Up to 16 dens!)",
+        PanelQualityStanding::OFFICIAL,
         ProgramControllerClass::StandardController_PerformanceClassSensitive,
         FeedbackType::OPTIONAL_,
         AllowCommandsWhenRunning::DISABLE_COMMANDS

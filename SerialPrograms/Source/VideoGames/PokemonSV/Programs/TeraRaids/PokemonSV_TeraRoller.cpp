@@ -8,7 +8,6 @@
 #include "CommonFramework/Exceptions/ProgramFinishedException.h"
 #include "CommonFramework/Notifications/ProgramNotifications.h"
 #include "CommonFramework/ProgramStats/StatsTracking.h"
-#include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "CommonFramework/VideoPipeline/VideoOverlay.h"
 #include "CommonTools/Async/InferenceRoutines.h"
 #include "CommonTools/StartupChecks/VideoResolutionCheck.h"
@@ -41,6 +40,7 @@ TeraRoller_Descriptor::TeraRoller_Descriptor()
         STRING_POKEMON + " SV", "Tera Roller",
         "Programs/PokemonSV/TeraRoller.html",
         "Roll Tera raids to find shiny " + STRING_POKEMON + ".",
+        PanelQualityStanding::OFFICIAL,
         ProgramControllerClass::StandardController_PerformanceClassSensitive,
         FeedbackType::REQUIRED,
         AllowCommandsWhenRunning::DISABLE_COMMANDS

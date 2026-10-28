@@ -4,10 +4,14 @@
  *
  */
 
+#include <QAudioFormat>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/Containers/Pimpl.tpp"
 #include "Common/Cpp/Logging/AbstractLogger.h"
 #include "Common/Cpp/PrettyPrint.h"
+#include "Kernels/AudioPipeline/Kernels_RawAudio2WorkingAudio.h"
+#include "Kernels/AudioPipeline/Kernels_WorkingAudio2RawAudio.h"
+#include "Kernels/AudioPipeline/Kernels_WorkingAudio2WorkingAudio.h"
 #include "CommonFramework/GlobalSettingsPanel.h"
 #include "CommonFramework/AudioPipeline/AudioPipelineOptions.h"
 #include "CommonFramework/AudioPipeline/Tools/AudioFormatUtils.h"
@@ -15,17 +19,6 @@
 #include "CommonFramework/AudioPipeline/IO/AudioSource.h"
 #include "CommonFramework/AudioPipeline/IO/AudioOutputDevice.h"
 #include "CommonFramework/AudioPipeline/Spectrum/FFTStreamer.h"
-#include "Kernels/AudioPipeline/Kernels_RawAudio2WorkingAudio.h"
-#include "Kernels/AudioPipeline/Kernels_WorkingAudio2RawAudio.h"
-#include "Kernels/AudioPipeline/Kernels_WorkingAudio2WorkingAudio.h"
-#include <QAudioFormat>
-#if QT_VERSION_MAJOR == 5
-#include <QAudioDeviceInfo>
-#elif QT_VERSION_MAJOR == 6
-#include <QAudioDevice>
-#else
-#error "Unsupported Qt version."
-#endif
 #include "AudioPassthroughPairQt.h"
 
 //#include <iostream>
@@ -36,18 +29,6 @@ namespace PokemonAutomation{
 
 
 namespace{
-
-
-Kernels::AudioPipeline::SampleFormat to_sample_format(AudioSampleFormat format){
-    switch (format){
-    case AudioSampleFormat::UINT8:   return Kernels::AudioPipeline::SampleFormat::UINT8;
-    case AudioSampleFormat::SINT16:  return Kernels::AudioPipeline::SampleFormat::SINT16;
-    case AudioSampleFormat::SINT32:  return Kernels::AudioPipeline::SampleFormat::SINT32;
-    case AudioSampleFormat::FLOAT32: return Kernels::AudioPipeline::SampleFormat::FLOAT32;
-    default:
-        throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "Unsupported audio sample format.");
-    }
-}
 
 
 //  QAudioFormat with a channel count and, for 1 and 2 channels, the
@@ -115,14 +96,6 @@ private:
 };
 
 
-void AudioPassthroughPairQt::add_listener(FFTListener& listener){
-    auto scope_check = m_sanitizer.check_scope();
-    m_fft_listeners.add(listener);
-}
-void AudioPassthroughPairQt::remove_listener(FFTListener& listener){
-    auto scope_check = m_sanitizer.check_scope();
-    m_fft_listeners.remove(listener);
-}
 void AudioPassthroughPairQt::add_listener(
     const AudioFormat& format, WorkingAudioStreamListener& listener
 ){
@@ -141,6 +114,14 @@ void AudioPassthroughPairQt::remove_listener(WorkingAudioStreamListener& listene
     }
     detach_working_entry(iter->second);
     m_working_entries.erase(iter);
+}
+void AudioPassthroughPairQt::add_listener(FFTListener& listener){
+    auto scope_check = m_sanitizer.check_scope();
+    m_fft_listeners.add(listener);
+}
+void AudioPassthroughPairQt::remove_listener(FFTListener& listener){
+    auto scope_check = m_sanitizer.check_scope();
+    m_fft_listeners.remove(listener);
 }
 
 
@@ -172,7 +153,7 @@ private:
 void AudioPassthroughPairQt::build_working_entry(
     WorkingListenerEntry& entry, Kernels::AudioPipeline::WorkingAudioStreamListener& listener
 ){
-    if (!m_source_decoder || m_input_format == AudioChannelFormat::NONE){
+    if (!m_source_decoder){
         return;
     }
     //  Re-adding with a new format: detach the old node first.
@@ -189,13 +170,13 @@ void AudioPassthroughPairQt::build_working_entry(
         return;
     }
 
-    //  INTERLEAVE_RL_96000 plays the card's channel 1 (the odd physical
+    //  A reinterpreted input choice with reversed channel order
+    //  (INTERLEAVE_RL_96000) plays the card's channel 1 (the odd physical
     //  samples) as the left channel; the input reinterpretation preserves
     //  the physical order, so the swap is applied to the matrix (the same
     //  special case the sink branch uses).
     std::vector<float> matrix;
-    if (m_input_format == AudioChannelFormat::INTERLEAVE_RL_96000
-        && raw_channels == 2 && out_channels == 2){
+    if (m_input_choice.swap_channels() && raw_channels == 2 && out_channels == 2){
         //  out = [in 1, in 0]; weight(in i -> out o) at index i + in_ch * o.
         matrix = {0.0f, 1.0f, 1.0f, 0.0f};
     }else{
@@ -209,7 +190,10 @@ void AudioPassthroughPairQt::build_working_entry(
     }
 
     entry.m_node.reset(new Kernels::AudioPipeline::WorkingAudio2WorkingAudio(
-        m_logger, raw_rate, out_rate, raw_channels, out_channels, std::move(matrix)
+        m_logger,
+        raw_rate, out_rate,
+        raw_channels, out_channels,
+        std::move(matrix)
     ));
     entry.m_forwarder.reset(new InternalWorkingListener(listener, out_rate, out_channels));
     entry.m_node->add_listener(*entry.m_forwarder);
@@ -279,11 +263,11 @@ void AudioPassthroughPairQt::teardown_sink_branch(){
 
 
 void AudioPassthroughPairQt::build_tree(float input_volume){
-    if (!m_reader || m_input_format == AudioChannelFormat::NONE){
+    if (!m_reader){
         return;
     }
-    //  For the INTERLEAVE_96000 presets, m_reader reports the reinterpreted
-    //  2ch x 48000 stream; MONO_96000 keeps the physical 1ch x 96000 shape
+    //  For reinterpreted input choices, m_reader reports the reinterpreted
+    //  2ch x 48000 stream; native choices keep the physical shape
     //  (AudioInputFile / AudioInputDevice apply it).
     size_t raw_rate = m_reader->raw_sample_rate();
     size_t raw_channels = m_reader->raw_channels();
@@ -317,7 +301,10 @@ void AudioPassthroughPairQt::build_tree(float input_volume){
             throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "No channel mixer matrix.");
         }
         m_fft_conv.reset(new Kernels::AudioPipeline::WorkingAudio2WorkingAudio(
-            m_logger, raw_rate, fft_rate, raw_channels, 1, std::move(matrix)
+            m_logger,
+            raw_rate, fft_rate,
+            raw_channels, 1,
+            std::move(matrix)
         ));
         m_fft_conv->add_listener(*m_fft_node);
         m_source_decoder->add_listener(*m_fft_conv);
@@ -359,17 +346,16 @@ void AudioPassthroughPairQt::rebuild_sink_branch(){
         sink_rate, sink_channels,
         convert_audio_volume_from_slider(m_output_volume)
     ));
-    //  INTERLEAVE_RL_96000 plays the card's channel 1 (the odd physical
+    //  A reinterpreted input choice with reversed channel order
+    //  (INTERLEAVE_RL_96000) plays the card's channel 1 (the odd physical
     //  samples) as the left channel; the input reinterpretation preserves
     //  the physical order, so the sink branch swaps the two channels.
     //  (The FFT pair-average is order-invariant.)
     //  Qt channel configs can't express a reversed channel order, so the
-    //  swap matrix is literal for now; once the format encodes the
-    //  card's channel mapping (dropdown rewrite),
-    //  build_channel_mixer_matrix will derive it and this special case
-    //  goes away.
+    //  swap matrix stays literal; the choice now carries the card's
+    //  channel mapping (swap_channels()), which drives this special case.
     bool swap_channels =
-        m_input_format == AudioChannelFormat::INTERLEAVE_RL_96000
+        m_input_choice.swap_channels()
         && raw_channels == 2 && sink_channels == 2;
     if (raw_rate == sink_rate && raw_channels == sink_channels && !swap_channels){
         //  No conversion needed: feed the encoder directly.
@@ -388,7 +374,10 @@ void AudioPassthroughPairQt::rebuild_sink_branch(){
             throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "No channel mixer matrix.");
         }
         m_sink_conv.reset(new Kernels::AudioPipeline::WorkingAudio2WorkingAudio(
-            m_logger, raw_rate, sink_rate, raw_channels, sink_channels, std::move(matrix)
+            m_logger,
+            raw_rate, sink_rate,
+            raw_channels, sink_channels,
+            std::move(matrix)
         ));
         m_sink_conv->add_listener(*m_sink_encoder);
         m_source_decoder->push_front_listener(*m_sink_conv);
@@ -407,73 +396,34 @@ AudioPassthroughPairQt::~AudioPassthroughPairQt(){
 
 AudioPassthroughPairQt::AudioPassthroughPairQt(Logger& logger)
     : m_logger(logger)
-    , m_file_input_multiplier((float)GlobalSettings::instance().AUDIO_PIPELINE->FILE_VOLUME_SCALE)
-    , m_device_input_multiplier((float)GlobalSettings::instance().AUDIO_PIPELINE->DEVICE_VOLUME_SCALE)
 {}
 
 void AudioPassthroughPairQt::reset(
-    const std::string& file,
-    const AudioDeviceInfo& output, double output_volume
+    const std::shared_ptr<AudioSourceDescriptor>& descriptor,
+    const AudioInputChoice& format,
+    const AudioDeviceInfo& output,
+    double output_volume
 ){
     auto scope_check = m_sanitizer.check_scope();
-    QMetaObject::invokeMethod(this, [this, file, output, output_volume]{
+    QMetaObject::invokeMethod(this, [this, format, descriptor, output, output_volume]{
         auto scope_check = m_sanitizer.check_scope();
         std::unique_ptr<AudioSource> source;
-        if (!file.empty()){
-            source.reset(new AudioSource(
-                m_logger,
-                file,
-                AudioChannelFormat::DUAL_48000
-            ));
+        if (descriptor){
+            source = descriptor->make_AudioSource(m_logger, format);
         }
         WriteSpinLock lg(m_lock, PA_CURRENT_FUNCTION);
         if (m_reader){
             teardown_tree();
             m_sink_device.reset();
             m_reader.reset();
-            m_input_format = AudioChannelFormat::NONE;
         }
-        m_input_format = AudioChannelFormat::DUAL_48000;
-        if (source){
-            m_reader = std::move(source);
-            m_output_device = output;
-            m_output_volume = output_volume;
-            init_audio_sink();
-            build_tree(m_file_input_multiplier);
-            m_fft_listener.reset(new InternalFFTListener(*this));
-        }
-    });
-}
-void AudioPassthroughPairQt::reset(
-    const AudioDeviceInfo& input, AudioChannelFormat format,
-    const AudioDeviceInfo& output, double output_volume
-){
-    auto scope_check = m_sanitizer.check_scope();
-//    cout << "AudioPassthroughPairQt::reset(): " << output.display_name() << endl;
-    QMetaObject::invokeMethod(this, [this, format, output, output_volume, input]{
-        auto scope_check = m_sanitizer.check_scope();
-        std::unique_ptr<AudioSource> source;
-        if (input && format != AudioChannelFormat::NONE){
-            source.reset(new AudioSource(
-                m_logger,
-                input,
-                format
-            ));
-        }
-        WriteSpinLock lg(m_lock, PA_CURRENT_FUNCTION);
-        if (m_reader){
-            teardown_tree();
-            m_sink_device.reset();
-            m_reader.reset();
-            m_input_format = AudioChannelFormat::NONE;
-        }
-        m_input_format = format;
+        m_input_choice = format;
         m_output_device = output;
         m_output_volume = output_volume;
         if (source){
             m_reader = std::move(source);
             init_audio_sink();
-            build_tree(m_device_input_multiplier);
+            build_tree(m_reader->volume_multiplier());
             m_fft_listener.reset(new InternalFFTListener(*this));
         }
     });
@@ -486,62 +436,33 @@ void AudioPassthroughPairQt::clear_audio_source(){
         if (m_reader){
             teardown_tree();
             m_reader.reset();
-            m_input_format = AudioChannelFormat::NONE;
+            m_input_choice = AudioInputChoice();
         }
     });
 }
-void AudioPassthroughPairQt::set_audio_source(const std::string& file){
+void AudioPassthroughPairQt::set_audio_source(
+    const std::shared_ptr<AudioSourceDescriptor>& descriptor,
+    const AudioInputChoice& format
+){
+//    cout << "descriptor = " << descriptor->display_name() << endl;
     auto scope_check = m_sanitizer.check_scope();
-    QMetaObject::invokeMethod(this, [this, file]{
+    QMetaObject::invokeMethod(this, [this, descriptor, format]{
         auto scope_check = m_sanitizer.check_scope();
         std::unique_ptr<AudioSource> source;
-        if (!file.empty()){
-            source.reset(new AudioSource(
-                m_logger,
-                file,
-                AudioChannelFormat::DUAL_48000
-            ));
+        if (descriptor){
+            source = descriptor->make_AudioSource(m_logger, format);
         }
         WriteSpinLock lg(m_lock, PA_CURRENT_FUNCTION);
         if (m_reader){
             teardown_tree();
             m_sink_device.reset();
             m_reader.reset();
-            m_input_format = AudioChannelFormat::NONE;
         }
-        m_input_format = AudioChannelFormat::DUAL_48000;
+        m_input_choice = format;
         if (source){
             m_reader = std::move(source);
             init_audio_sink();
-            build_tree(m_file_input_multiplier);
-            m_fft_listener.reset(new InternalFFTListener(*this));
-        }
-    });
-}
-void AudioPassthroughPairQt::set_audio_source(const AudioDeviceInfo& device, AudioChannelFormat format){
-    auto scope_check = m_sanitizer.check_scope();
-    QMetaObject::invokeMethod(this, [this, format, device]{
-        auto scope_check = m_sanitizer.check_scope();
-        std::unique_ptr<AudioSource> source;
-        if (device && format != AudioChannelFormat::NONE){
-            source.reset(new AudioSource(
-                m_logger,
-                device,
-                format
-            ));
-        }
-        WriteSpinLock lg(m_lock, PA_CURRENT_FUNCTION);
-        if (m_reader){
-            teardown_tree();
-            m_sink_device.reset();
-            m_reader.reset();
-            m_input_format = AudioChannelFormat::NONE;
-        }
-        m_input_format = format;
-        if (source){
-            m_reader = std::move(source);
-            init_audio_sink();
-            build_tree(m_device_input_multiplier);
+            build_tree(m_reader->volume_multiplier());
             m_fft_listener.reset(new InternalFFTListener(*this));
         }
     });
@@ -574,7 +495,7 @@ void AudioPassthroughPairQt::init_audio_sink(){
 
 //    cout << "AudioPassthroughPairQt::init_audio_sink()" << endl;
     auto scope_check = m_sanitizer.check_scope();
-    if (m_input_format == AudioChannelFormat::NONE){
+    if (!m_reader){
         return;
     }
     if (!m_output_device){

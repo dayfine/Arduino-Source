@@ -24,13 +24,11 @@ language
 */
 
 #include <array>
-#include <map>
 #include <optional>
 #include <sstream>
 #include <algorithm>
 #include "Common/Cpp/Exceptions.h"
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
-#include "CommonFramework/ImageTools/ImageStats.h"
 #include "CommonFramework/Notifications/ProgramNotifications.h"
 #include "CommonFramework/ProgramStats/StatsTracking.h"
 #include "CommonFramework/VideoPipeline/VideoOverlay.h"
@@ -59,6 +57,7 @@ BoxSorter_Descriptor::BoxSorter_Descriptor()
         STRING_POKEMON + " Home", "Box Sorter",
         "Programs/PokemonHome/BoxSorter.html",
         "Order boxes of " + STRING_POKEMON + ".",
+        PanelQualityStanding::OFFICIAL,
         ProgramControllerClass::StandardController_RequiresPrecision,
         FeedbackType::REQUIRED,
         AllowCommandsWhenRunning::DISABLE_COMMANDS

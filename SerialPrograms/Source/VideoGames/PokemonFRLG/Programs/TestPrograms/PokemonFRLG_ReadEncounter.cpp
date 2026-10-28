@@ -6,7 +6,6 @@
 
 #include <chrono>
 #include <string>
-#include <optional>
 #include "Common/Cpp/Color.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "CommonFramework/VideoPipeline/VideoOverlayScopes.h"
@@ -29,6 +28,7 @@ ReadEncounter_Descriptor::ReadEncounter_Descriptor()
         Pokemon::STRING_POKEMON + " FRLG",
         "Read Wild Encounter", "",
         "Read name and level of a wild encounter.",
+        PanelQualityStanding::DEVELOPER,
         ProgramControllerClass::StandardController_NoRestrictions,
         FeedbackType::REQUIRED,
         AllowCommandsWhenRunning::DISABLE_COMMANDS

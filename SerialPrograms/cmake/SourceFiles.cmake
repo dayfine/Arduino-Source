@@ -405,6 +405,8 @@ file(GLOB LIBRARY_SOURCES
     ../Common/Cpp/StreamConnections/MockDevice.h
     ../Common/Cpp/TestRunners/ParallelUnitTestRunner.cpp
     ../Common/Cpp/TestRunners/ParallelUnitTestRunner.h
+    ../Common/Cpp/TestRunners/TestImageDistortionManager.cpp
+    ../Common/Cpp/TestRunners/TestImageDistortionManager.h
     ../Common/Cpp/TestRunners/UnitTest.h
     ../Common/Cpp/TestRunners/UnitTestDatabase.h
     ../Common/Cpp/ValueDebouncer.h
@@ -503,6 +505,14 @@ file(GLOB LIBRARY_SOURCES
     Source/CommonFramework/AudioPipeline/AudioPipelineOptions.h
     Source/CommonFramework/AudioPipeline/AudioSession.cpp
     Source/CommonFramework/AudioPipeline/AudioSession.h
+    Source/CommonFramework/AudioPipeline/AudioSourceDescriptor.cpp
+    Source/CommonFramework/AudioPipeline/AudioSourceDescriptor.h
+    Source/CommonFramework/AudioPipeline/AudioSources/AudioSource_Device.cpp
+    Source/CommonFramework/AudioPipeline/AudioSources/AudioSource_Device.h
+    Source/CommonFramework/AudioPipeline/AudioSources/AudioSource_File.cpp
+    Source/CommonFramework/AudioPipeline/AudioSources/AudioSource_File.h
+    Source/CommonFramework/AudioPipeline/AudioSources/AudioSource_Null.cpp
+    Source/CommonFramework/AudioPipeline/AudioSources/AudioSource_Null.h
     Source/CommonFramework/AudioPipeline/AudioTemplate.cpp
     Source/CommonFramework/AudioPipeline/AudioTemplate.h
     Source/CommonFramework/AudioPipeline/Backends/AudioPassthroughPairQt.cpp
@@ -521,7 +531,6 @@ file(GLOB LIBRARY_SOURCES
     Source/CommonFramework/AudioPipeline/IO/AudioInputFile.h
     Source/CommonFramework/AudioPipeline/IO/AudioOutputDevice.cpp
     Source/CommonFramework/AudioPipeline/IO/AudioOutputDevice.h
-    Source/CommonFramework/AudioPipeline/IO/AudioSource.cpp
     Source/CommonFramework/AudioPipeline/IO/AudioSource.h
     Source/CommonFramework/AudioPipeline/Spectrum/AudioSpectrumHolder.cpp
     Source/CommonFramework/AudioPipeline/Spectrum/AudioSpectrumHolder.h
@@ -864,6 +873,10 @@ file(GLOB LIBRARY_SOURCES
     Source/CommonTools/Options/TrainOCRModeOption.h
     Source/CommonTools/Resources/SpriteDatabase.cpp
     Source/CommonTools/Resources/SpriteDatabase.h
+    Source/CommonTools/ScreenMachine/ScreenMachine.cpp
+    Source/CommonTools/ScreenMachine/ScreenMachine.h
+    Source/CommonTools/ScreenMachine/StepTrace.cpp
+    Source/CommonTools/ScreenMachine/StepTrace.h
     Source/CommonTools/StartupChecks/StartProgramChecks.cpp
     Source/CommonTools/StartupChecks/StartProgramChecks.h
     Source/CommonTools/StartupChecks/VideoResolutionCheck.cpp
@@ -882,8 +895,8 @@ file(GLOB LIBRARY_SOURCES
     Source/CommonTools/VisualDetectors/ImageMatchDetector.h
     Source/ComputerPrograms/ComputerProgram.cpp
     Source/ComputerPrograms/ComputerProgram.h
-    Source/ComputerPrograms/UnitTestRunner.cpp
-    Source/ComputerPrograms/UnitTestRunner.h
+    Source/ComputerPrograms/ComputerPrograms_UnitTestRunner.cpp
+    Source/ComputerPrograms/ComputerPrograms_UnitTestRunner.h
     Source/ComputerPrograms/Framework/ComputerProgramSession.cpp
     Source/ComputerPrograms/Framework/ComputerProgramSession.h
     Source/ComputerPrograms/Framework/ComputerProgramWidget.cpp
@@ -1314,6 +1327,8 @@ file(GLOB LIBRARY_SOURCES
     Source/NintendoSwitch/Inference/NintendoSwitch_SelectedSettingDetector.h
     Source/NintendoSwitch/Inference/NintendoSwitch_StartGameUserSelectDetector.cpp
     Source/NintendoSwitch/Inference/NintendoSwitch_StartGameUserSelectDetector.h
+    Source/NintendoSwitch/Inference/NintendoSwitch_SystemKeyboardDetector.cpp
+    Source/NintendoSwitch/Inference/NintendoSwitch_SystemKeyboardDetector.h
     Source/NintendoSwitch/Inference/NintendoSwitch_UpdatePopupDetector.cpp
     Source/NintendoSwitch/Inference/NintendoSwitch_UpdatePopupDetector.h
     Source/NintendoSwitch/NintendoSwitch_ConsoleHandle.cpp
@@ -1365,6 +1380,8 @@ file(GLOB LIBRARY_SOURCES
     Source/NintendoSwitch/Programs/FastCodeEntry/NintendoSwitch_KeyboardCodeEntry.h
     Source/NintendoSwitch/Programs/FastCodeEntry/NintendoSwitch_NumberCodeEntry.cpp
     Source/NintendoSwitch/Programs/FastCodeEntry/NintendoSwitch_NumberCodeEntry.h
+    Source/NintendoSwitch/Programs/LabConsole/NintendoSwitch_LabConsole.cpp
+    Source/NintendoSwitch/Programs/LabConsole/NintendoSwitch_LabConsole.h
     Source/NintendoSwitch/Programs/NintendoSwitch_FriendCodeAdder.cpp
     Source/NintendoSwitch/Programs/NintendoSwitch_FriendCodeAdder.h
     Source/NintendoSwitch/Programs/NintendoSwitch_FriendDelete.cpp
@@ -1385,6 +1402,12 @@ file(GLOB LIBRARY_SOURCES
     Source/NintendoSwitch/Programs/NintendoSwitch_TurboButton.h
     Source/NintendoSwitch/Programs/NintendoSwitch_TurboMacro.cpp
     Source/NintendoSwitch/Programs/NintendoSwitch_TurboMacro.h
+    Source/NintendoSwitch/Programs/Typewriter/NintendoSwitch_Typewriter.cpp
+    Source/NintendoSwitch/Programs/Typewriter/NintendoSwitch_Typewriter.h
+    Source/NintendoSwitch/Programs/Typewriter/NintendoSwitch_Typewriter_Tests.cpp
+    Source/NintendoSwitch/Programs/Typewriter/NintendoSwitch_Typewriter_Tests.h
+    Source/NintendoSwitch/Programs/Typewriter/NintendoSwitch_TypewriterTextMapping.cpp
+    Source/NintendoSwitch/Programs/Typewriter/NintendoSwitch_TypewriterTextMapping.h
     Source/PanelLists.cpp
     Source/PanelLists.h
     Source/Pokemon/Inference/Pokemon_AbilityReader.cpp
@@ -1824,6 +1847,8 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonFRLG/Programs/TestPrograms/PokemonFRLG_SafariOptimalActionTest.h
     Source/VideoGames/PokemonFRLG/Programs/TestPrograms/PokemonFRLG_SoundListener.cpp
     Source/VideoGames/PokemonFRLG/Programs/TestPrograms/PokemonFRLG_SoundListener.h
+    Source/VideoGames/PokemonFRLG/Programs/TestPrograms/PokemonFRLG_TestPartyInference.cpp
+    Source/VideoGames/PokemonFRLG/Programs/TestPrograms/PokemonFRLG_TestPartyInference.h
     Source/VideoGames/PokemonFRLG/Resources/PokemonFRLG_PokemonSprites.cpp
     Source/VideoGames/PokemonFRLG/Resources/PokemonFRLG_PokemonSprites.h
     Source/VideoGames/PokemonHome/Inference/PokemonHome_AlphaDetector.cpp
@@ -2460,6 +2485,8 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonSV/Options/PokemonSV_BattleMoveTable.h
     Source/VideoGames/PokemonSV/Options/PokemonSV_BBQOption.cpp
     Source/VideoGames/PokemonSV/Options/PokemonSV_BBQOption.h
+    Source/VideoGames/PokemonSV/Options/PokemonSV_BBQuests.cpp
+    Source/VideoGames/PokemonSV/Options/PokemonSV_BBQuests.h
     Source/VideoGames/PokemonSV/Options/PokemonSV_EggPowerSandwichOption.cpp
     Source/VideoGames/PokemonSV/Options/PokemonSV_EggPowerSandwichOption.h
     Source/VideoGames/PokemonSV/Options/PokemonSV_EncounterActionsTable.cpp
@@ -3124,6 +3151,8 @@ file(GLOB LIBRARY_SOURCES
     Source/Tests/CommandLineTests.cpp
     Source/Tests/CommandLineTests.h
     Source/Tests/GuardPageImage.h
+    Source/Tests/ImageUnitTest.cpp
+    Source/Tests/ImageUnitTest.h
     Source/Tests/TestUtils.cpp
     Source/Tests/TestUtils.h
     Source/VideoGames/ZeldaTotK/Programs/ZeldaTotK_BowItemDuper.cpp

@@ -5,7 +5,6 @@
  */
 
 #include <iostream>
-#include <set>
 #ifdef QT_CORE_LIB
 #include <QDesktopServices>
 #include <QUrl>
@@ -31,9 +30,9 @@
 #include "CommonFramework/AudioPipeline/AudioPipelineOptions.h"
 #include "CommonFramework/VideoPipeline/VideoPipelineOptions.h"
 #include "CommonFramework/ErrorReports/ErrorReports.h"
-#include "Integrations/DiscordSettingsOption.h"
-//#include "CommonFramework/Environment/Environment.h"
 #include "Controllers/ControllerSettings.h"
+//#include "CommonFramework/Environment/Environment.h"
+#include "Integrations/DiscordSettingsOption.h"
 #include "GlobalSettingsPanel.h"
 
 // #include <iostream>
@@ -340,7 +339,8 @@ GlobalSettings_Descriptor::GlobalSettings_Descriptor()
         "",
         "Global Settings", "Global Settings",
         "",
-        "Global Settings"
+        "Global Settings",
+        PanelQualityStanding::OFFICIAL
     )
 {}
 GlobalSettings_Descriptor::Wrapper& GlobalSettings_Descriptor::instance(){

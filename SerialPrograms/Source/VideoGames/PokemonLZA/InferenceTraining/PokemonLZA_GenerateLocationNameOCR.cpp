@@ -18,9 +18,9 @@
 #include "VideoGames/PokemonLZA/Inference/Map/PokemonLZA_LocationNameReader.h"
 #include "PokemonLZA_GenerateLocationNameOCR.h"
 
-#include <iostream>
-using std::cout;
-using std::endl;
+//#include <iostream>
+//using std::cout;
+//using std::endl;
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -34,6 +34,7 @@ GenerateLocationNameOCR_Descriptor::GenerateLocationNameOCR_Descriptor()
         STRING_POKEMON + " LZA", "Generate Location Name OCR Data",
         "",
         "Generate Location Name OCR data by iterating the fly spot list.",
+        PanelQualityStanding::DEVELOPER,
         ProgramControllerClass::StandardController_NoRestrictions,
         FeedbackType::REQUIRED,
         AllowCommandsWhenRunning::DISABLE_COMMANDS

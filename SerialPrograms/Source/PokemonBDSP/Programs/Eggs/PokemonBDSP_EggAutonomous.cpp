@@ -12,10 +12,10 @@
 #include "NintendoSwitch/Programs/NintendoSwitch_GameEntry.h"
 #include "Pokemon/Pokemon_Strings.h"
 #include "Pokemon/Inference/Pokemon_IvJudgeReader.h"
-#include "VideoGames/PokemonSwSh/Inference/PokemonSwSh_IvJudgeReader.h"
 #include "PokemonBDSP/PokemonBDSP_Settings.h"
 #include "PokemonBDSP/Programs/PokemonBDSP_GameEntry.h"
 #include "PokemonBDSP/Programs/PokemonBDSP_GameNavigation.h"
+#include "VideoGames/PokemonSwSh/Inference/PokemonSwSh_IvJudgeReader.h"
 #include "PokemonBDSP_EggAutonomousState.h"
 #include "PokemonBDSP_EggAutonomous.h"
 
@@ -33,6 +33,7 @@ EggAutonomous_Descriptor::EggAutonomous_Descriptor()
         STRING_POKEMON + " BDSP", "Egg Autonomous",
         "Programs/PokemonBDSP/EggAutonomous.html",
         "Automatically fetch+hatch eggs and keep all shinies.",
+        PanelQualityStanding::OFFICIAL,
         ProgramControllerClass::StandardController_NoRestrictions,
         FeedbackType::REQUIRED,
         AllowCommandsWhenRunning::DISABLE_COMMANDS

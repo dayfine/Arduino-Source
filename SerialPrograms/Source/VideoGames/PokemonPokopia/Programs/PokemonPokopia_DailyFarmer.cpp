@@ -10,6 +10,7 @@
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "CommonFramework/ProgramStats/StatsTracking.h"
 #include "CommonFramework/Tools/ErrorDumper.h"
+#include "CommonFramework/Notifications/ProgramNotifications.h"
 #include "CommonTools/Async/InferenceRoutines.h"
 #include "CommonTools/VisualDetectors/BlackScreenDetector.h"
 #include "CommonTools/StartupChecks/VideoResolutionCheck.h"
@@ -18,12 +19,11 @@
 #include "NintendoSwitch/Programs/NintendoSwitch_GameEntry.h"
 #include "NintendoSwitch/Programs/DateSpam/NintendoSwitch_HomeToDateTime.h"
 #include "NintendoSwitch/Programs/DateManip/NintendoSwitch_DateManip.h"
-#include "Pokemon/Pokemon_Strings.h"
 // #include "VideoGames/PokemonPokopia/Inference/PokemonPokopia_ButtonDetector.h"
 // #include "VideoGames/PokemonPokopia/Inference/PokemonPokopia_MovesDetection.h"
 // #include "VideoGames/PokemonPokopia/Inference/PokemonPokopia_PCDetection.h"
 // #include "VideoGames/PokemonPokopia/Inference/PokemonPokopia_SettingsScreenDetector.h"
-#include "CommonFramework/Notifications/ProgramNotifications.h"
+#include "Pokemon/Pokemon_Strings.h"
 
 #include "VideoGames/PokemonPokopia/Programs/PokemonPokopia_PCNavigation.h"
 #include "VideoGames/PokemonPokopia/Programs/PokemonPokopia_DailyFarmer.h"
@@ -41,6 +41,7 @@ DailyFarmer_Descriptor::DailyFarmer_Descriptor()
         STRING_POKEMON + " Pokopia", "Daily Farmer",
         "Programs/PokemonPokopia/DailyFarmer.html",
         "Farm Stamps, Coins, and Recipes by time skipping",
+        PanelQualityStanding::THIRD_PARTY_UNVETTED,
         ProgramControllerClass::StandardController_NoRestrictions,
         FeedbackType::REQUIRED,
         AllowCommandsWhenRunning::DISABLE_COMMANDS

@@ -37,6 +37,7 @@ ShinyHunt_BenchSit_Descriptor::ShinyHunt_BenchSit_Descriptor()
         STRING_POKEMON + " LZA", "Bench Sit",
         "Programs/PokemonLZA/ShinyHunt-BenchSit.html",
         "Shiny hunt by repeatedly sitting on a bench to reset spawns.",
+        PanelQualityStanding::OFFICIAL,
         ProgramControllerClass::StandardController_NoRestrictions,
         FeedbackType::REQUIRED,
         AllowCommandsWhenRunning::DISABLE_COMMANDS

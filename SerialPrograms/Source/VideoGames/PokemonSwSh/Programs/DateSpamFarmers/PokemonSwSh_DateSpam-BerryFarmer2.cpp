@@ -6,9 +6,9 @@
 
 #include "Common/Cpp/PrettyPrint.h"
 #include "Common/Cpp/Time.h"
+#include "Common/Cpp/ColoredText.h"
 #include "CommonFramework/Exceptions/ProgramFinishedException.h"
 #include "CommonFramework/Notifications/ProgramNotifications.h"
-#include "Common/Cpp/ColoredText.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "CommonTools/Async/InferenceRoutines.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
@@ -35,6 +35,7 @@ BerryFarmer2_Descriptor::BerryFarmer2_Descriptor()
         STRING_POKEMON + " SwSh", "Date Spam - Berry Farmer 2",
         "Programs/PokemonSwSh/DateSpam-BerryFarmer2.html",
         "Farm berries using Feedback.",
+        PanelQualityStanding::OFFICIAL,
         ProgramControllerClass::StandardController_PerformanceClassSensitive,
         FeedbackType::REQUIRED,
         AllowCommandsWhenRunning::DISABLE_COMMANDS

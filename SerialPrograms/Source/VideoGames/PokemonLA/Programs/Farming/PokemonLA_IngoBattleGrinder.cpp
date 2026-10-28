@@ -16,10 +16,10 @@
 #include "VideoGames/PokemonLA/Inference/Battles/PokemonLA_BattleMenuDetector.h"
 #include "VideoGames/PokemonLA/Inference/Battles/PokemonLA_BattlePokemonSwitchDetector.h"
 #include "VideoGames/PokemonLA/Programs/PokemonLA_BattleRoutines.h"
-#include "PokemonLA_IngoBattleGrinder.h"
 #include "VideoGames/PokemonLA/Inference/Objects/PokemonLA_ArcPhoneDetector.h"
 #include "VideoGames/PokemonLA/Inference/Objects/PokemonLA_DialogEllipseDetector.h"
 #include "VideoGames/PokemonLA/Inference/PokemonLA_DialogDetector.h"
+#include "PokemonLA_IngoBattleGrinder.h"
 
 
 namespace PokemonAutomation{
@@ -40,6 +40,7 @@ IngoBattleGrinder_Descriptor::IngoBattleGrinder_Descriptor()
         "Programs/PokemonLA/IngoBattleGrinder.html",
         "Attend Ingo's battles to grind exp and move related " + STRING_POKEDEX + " research tasks. "
         "Less effective than Ingo Move Grinder for " + STRING_POKEDEX + " research tasks but more effective for everything else.",
+        PanelQualityStanding::OFFICIAL,
         ProgramControllerClass::StandardController_NoRestrictions,
         FeedbackType::REQUIRED,
         AllowCommandsWhenRunning::DISABLE_COMMANDS

@@ -7,9 +7,9 @@
 
 //#include <iostream>
 //#include <filesystem>
-#include <QMessageBox>
 #include <opencv2/imgproc.hpp>
 #include <opencv2/imgcodecs.hpp>
+#include <QMessageBox>
 //#include "Common/Cpp/PrettyPrint.h"
 #include "CommonFramework/Globals.h"
 #include "CommonFramework/GlobalAutoPaths.h"
@@ -29,10 +29,10 @@ RunYOLO_Descriptor::RunYOLO_Descriptor()
         "Nintendo Switch", "Run YOLO",
         "Programs/NintendoSwitch/RunYOLO.html",
         "Run YOLO object detection model.",
+        PanelQualityStanding::DEVELOPER,
         ProgramControllerClass::StandardController_NoRestrictions,
         FeedbackType::NONE,
-        AllowCommandsWhenRunning::ENABLE_COMMANDS,
-        {}
+        AllowCommandsWhenRunning::ENABLE_COMMANDS
     )
 {}
 

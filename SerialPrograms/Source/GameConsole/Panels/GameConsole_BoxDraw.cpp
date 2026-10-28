@@ -18,12 +18,11 @@ namespace GameConsole{
 
 BoxDraw_Descriptor::BoxDraw_Descriptor()
     : ConsolePanelDescriptor(
-        Color(),
         "GameConsole:BoxDraw",
         "Game Console", "Box Draw",
         "",
         "Test box coordinates for development.",
-        PanelDeprecation::NOT_DEPRECATED,
+        PanelQualityStanding::DEVELOPER,
         false
     )
 {}

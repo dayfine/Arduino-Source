@@ -13,9 +13,9 @@
 #include "CommonFramework/Language.h"
 #include "CommonTools/Async/InferenceRoutines.h"
 #include "CommonTools/StartupChecks/StartProgramChecks.h"
-#include "Pokemon/Pokemon_Strings.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "NintendoSwitch/NintendoSwitch_Settings.h"
+#include "Pokemon/Pokemon_Strings.h"
 #include "VideoGames/PokemonFRLG/PokemonFRLG_Navigation.h"
 #include "PokemonFRLG_RngNavigation.h"
 #include "PokemonFRLG_HardReset.h"
@@ -34,6 +34,7 @@ GiftRng_Descriptor::GiftRng_Descriptor()
         Pokemon::STRING_POKEMON + " FRLG", "Gift RNG",
         "Programs/PokemonFRLG/GiftRng.html",
         "Automatically calibrate timings to hit a specific RNG target for FRLG gift " + STRING_POKEMON,
+        PanelQualityStanding::OFFICIAL,
         ProgramControllerClass::StandardController_RequiresPrecision,
         FeedbackType::REQUIRED,
         AllowCommandsWhenRunning::DISABLE_COMMANDS

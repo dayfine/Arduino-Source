@@ -22,6 +22,7 @@ FlagNavigationTest_Descriptor::FlagNavigationTest_Descriptor()
         STRING_POKEMON + " LA", "Flag Navigation Test",
         "",
         "Navigate to the flag pin.",
+        PanelQualityStanding::DEVELOPER,
         ProgramControllerClass::StandardController_NoRestrictions,
         FeedbackType::REQUIRED,
         AllowCommandsWhenRunning::DISABLE_COMMANDS

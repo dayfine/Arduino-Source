@@ -7,9 +7,7 @@
 #include "CommonFramework/StaticGlobals.h"
 #include "CommonFramework/GlobalAutoPaths.h"
 #include "Pokemon/Pokemon_Strings.h"
-#include "PokemonFRLG_Panels.h"
 
-#include "PokemonFRLG_Settings.h"
 #include "Programs/Farming/PokemonFRLG_EliteFourFarmer.h"
 #include "Programs/Farming/PokemonFRLG_HeldItemFarmer-SafariZone.h"
 #include "Programs/Farming/PokemonFRLG_ItemDuplication.h"
@@ -30,12 +28,16 @@
 #include "Programs/RngManipulation/PokemonFRLG_WildRng.h"
 #include "Programs/RngManipulation/PokemonFRLG_RoamingLegendaryRng.h"
 #include "Programs/RngManipulation/PokemonFRLG_EggRng.h"
+#include "Programs/TestPrograms/PokemonFRLG_TestPartyInference.h"
 #include "Programs/TestPrograms/PokemonFRLG_SoundListener.h"
 #include "Programs/TestPrograms/PokemonFRLG_ReadStats.h"
 #include "Programs/TestPrograms/PokemonFRLG_ReadBattleLevelUp.h"
 #include "Programs/TestPrograms/PokemonFRLG_ReadTrainerId.h"
 #include "Programs/TestPrograms/PokemonFRLG_ReadEncounter.h"
 #include "Programs/TestPrograms/PokemonFRLG_SafariOptimalActionTest.h"
+
+#include "PokemonFRLG_Panels.h"
+#include "PokemonFRLG_Settings.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -62,6 +64,7 @@ std::vector<PanelEntry> PanelListFactory::make_panels() const{
     ret.emplace_back(make_SingleSwitchProgram<EvTrainer>());
     ret.emplace_back(make_SingleSwitchProgram<HeldItemFarmerSafariZone>());
     ret.emplace_back(make_SingleSwitchProgram<ItemDuplication>());
+    ret.emplace_back(make_SingleSwitchProgram<EliteFourFarmer>());
 
     //ret.emplace_back("---- General ----");
 
@@ -84,8 +87,7 @@ std::vector<PanelEntry> PanelListFactory::make_panels() const{
     ret.emplace_back(make_SingleSwitchProgram<EggRng>());
 
     if (IS_BETA_VERSION || STATIC_GLOBALS.DEVELOPER_MODE){
-        ret.emplace_back("---- Untested/Beta/WIP ----");
-        ret.emplace_back(make_SingleSwitchProgram<EliteFourFarmer>());
+//        ret.emplace_back("---- Untested/Beta/WIP ----");
     }
 
     if (STATIC_GLOBALS.DEVELOPER_MODE){
@@ -96,6 +98,7 @@ std::vector<PanelEntry> PanelListFactory::make_panels() const{
         ret.emplace_back(make_SingleSwitchProgram<ReadTrainerId>());
         ret.emplace_back(make_SingleSwitchProgram<ReadEncounter>());
         ret.emplace_back(make_SingleSwitchProgram<SafariOptimalActionTest>());
+        ret.emplace_back(make_SingleSwitchProgram<TestPartyInference>());
     }
 
     return ret;
