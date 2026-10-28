@@ -94,7 +94,8 @@ std::vector<TilePos> walk_route(
     const RouteTrainerFight& fight,
     const std::string& label
 ){
-    const TileGrid& grid = maps.world();
+    //  Our own copy, so things found in the way can be added to it.
+    TileGrid grid = maps.world();
     //  Which way the player faces, once a leg has set it.
     std::optional<GridDirection> facing;
     for (size_t plans = 0; plans < 8; plans++){
@@ -131,8 +132,9 @@ std::vector<TilePos> walk_route(
                     stream.log("[Route] " + leg_label + ": a wild battle on the way; walking to the wall again.");
                     result = walk_until(stream, context, x, y, limit, leg_label);
                 }
-                //  A wall well before the nearest one the map has means we are
-                //  not where we think: stop rather than walk on from a wrong tile.
+                //  A wall well before the nearest one the map has: something the
+                //  map does not know is in the way. Work out where we stopped from
+                //  the time walked, put it on our map and plan again from there.
                 size_t nearest = SIZE_MAX;
                 for (const TilePos& pos : from){
                     nearest = std::min(nearest, walk_to_wall(grid, pos, leg.direction).tiles);
@@ -140,9 +142,29 @@ std::vector<TilePos> walk_route(
                 const Milliseconds moving = result.walked - 800ms - ROUTE_START_DELAY;
                 const size_t walked_tiles = moving.count() <= 0 ? 0 : (size_t)(moving / ms_per_tile(leg.direction));
                 if (!interrupted && result.stop == WalkStop::BLOCKED && walked_tiles + 3 < nearest){
-                    OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
-                        leg_label + ": stopped after about " + std::to_string(walked_tiles) +
-                        " tiles; the map has no wall for " + std::to_string(nearest) + ".", stream);
+                    std::vector<TilePos> stopped;
+                    for (const TilePos& pos : from){
+                        const std::vector<TilePos> path = leg_path(grid, pos, leg.direction, SIZE_MAX);
+                        for (size_t k = walked_tiles == 0 ? 0 : walked_tiles - 1; k <= walked_tiles + 1 && k <= path.size(); k++){
+                            stopped.push_back(k == 0 ? pos : path[k - 1]);
+                        }
+                    }
+                    if (stopped.empty()){
+                        OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
+                            leg_label + ": stopped early, and no tile fits.", stream);
+                    }
+                    if (stopped.size() == 1){
+                        const TilePos blocker = stopped[0].next(leg.direction);
+                        grid.set(blocker, TileType::BLOCKED);
+                        stream.log("[Route] " + leg_label + ": something the map lacks is at " +
+                            maps.describe(blocker) + "; marked it.", COLOR_ORANGE);
+                    }
+                    stream.log("[Route] " + leg_label + ": stopped early after about " + std::to_string(walked_tiles) +
+                        " tiles, at " + describe(maps, stopped) + "; planning again.", COLOR_ORANGE);
+                    facing = leg.direction;
+                    from = stopped;
+                    replanned = true;
+                    break;
                 }
             }else{
                 //  The hold is timed for a player facing the way to go.

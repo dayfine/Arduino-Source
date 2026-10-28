@@ -39,18 +39,21 @@ struct AutoStoryStats : public StatsTracker{
         : m_checkpoint(m_stats["Checkpoint"])
         , m_segment(m_stats["Segment"])
         , m_reset(m_stats["Reset"])
+        , m_current(m_stats["Current Checkpoint (00.0X = X)"])
         , m_completed(m_stats["Checkpoints Completed"])
         , m_last_completed(m_stats["Last Completed (00.0X = X)"])
     {
         m_display_order.emplace_back("Checkpoint");
         m_display_order.emplace_back("Segment");
         m_display_order.emplace_back("Reset");
+        m_display_order.emplace_back("Current Checkpoint (00.0X = X)");
         m_display_order.emplace_back("Checkpoints Completed");
         m_display_order.emplace_back("Last Completed (00.0X = X)");
     }
     std::atomic<uint64_t>& m_checkpoint;
     std::atomic<uint64_t>& m_segment;
     std::atomic<uint64_t>& m_reset;
+    std::atomic<uint64_t>& m_current;
     std::atomic<uint64_t>& m_completed;
     std::atomic<uint64_t>& m_last_completed;
     bool m_first_run = true;

@@ -69,6 +69,10 @@ public:
     //  Out-of-bounds tiles read as UNKNOWN.
     TileType at(const TilePos& pos) const;
 
+    //  Changes one tile, e.g. to block one found in the way on the console.
+    //  Out-of-bounds tiles are left alone.
+    void set(const TilePos& pos, TileType type);
+
     //  Whether the player can stand on this tile.
     bool standable(const TilePos& pos) const;
 

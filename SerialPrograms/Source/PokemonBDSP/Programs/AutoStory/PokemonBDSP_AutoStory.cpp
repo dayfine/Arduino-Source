@@ -469,6 +469,8 @@ void BDSPAutoStory::program(
     if (fake_saves) options.checkpoint_retry_scope = CheckpointRetryScope::DEFER_TO_SELECTED_RANGE;
     //  Logs what a checkpoint is for before it runs, and that it finished after.
     auto run_checkpoint_logged = [&](size_t index, const AutoStory_Checkpoint& checkpoint){
+        stats.m_current = index;
+        env.update_stats();
         env.log("[AutoStory] Objective: " + checkpoint.name() + ". Ends: " + checkpoint.end_text(), COLOR_BLUE);
         checkpoint.run_checkpoint(env, context, options, stats);
         stats.m_completed++;
@@ -482,6 +484,8 @@ void BDSPAutoStory::program(
         if (DIAGNOSTIC_POST_CATCH_ONLY && ENABLE_ADVANCED_MODE &&
             START_CHECKPOINT_TUTORIAL.slug() == "4"){
             env.log("Diagnostic only: Running checkpoint 00.04 after catch.");
+            stats.m_current = 4;
+            env.update_stats();
             env.log("[AutoStory] Objective: " + AutoStory_Checkpoint_0004().name() + " (after the catch). Ends: " +
                 AutoStory_Checkpoint_0004().end_text(), COLOR_BLUE);
             diagnostic_checkpoint_0004_after_catch(env, context, options, stats);

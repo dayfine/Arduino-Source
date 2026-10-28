@@ -116,6 +116,12 @@ TileType TileGrid::at(const TilePos& pos) const{
     return m_tiles[(size_t)pos.y * m_width + pos.x];
 }
 
+void TileGrid::set(const TilePos& pos, TileType type){
+    if (in_bounds(pos)){
+        m_tiles[(size_t)pos.y * m_width + pos.x] = type;
+    }
+}
+
 bool TileGrid::standable(const TilePos& pos) const{
     const TileType type = at(pos);
     return type == TileType::WALKABLE || type == TileType::TALL_GRASS;
