@@ -1,0 +1,103 @@
+{
+  "as_of": "2026-10-28 08:30:00",
+  "inputs": [
+    {
+      "path": "/Users/difan/Library/Application Support/SerialPrograms/SerialPrograms-20260916-114943616810.log",
+      "bytes": 52430805,
+      "sha256": "0d7a3cfedfcbfff5339c04026faa772285ce8775d9f4f2f511937abfa8ad30e8",
+      "first_timestamp": "2026-09-12 14:48:07.344133",
+      "last_timestamp": "2026-09-16 11:49:43.615844"
+    },
+    {
+      "path": "/Users/difan/Library/Application Support/SerialPrograms/SerialPrograms-20260920-053942935523.log",
+      "bytes": 52438187,
+      "sha256": "f6252b3b3d230b9e7a76e23e2797959d33cccbed5ad77a2b43d1d04fc93021a8",
+      "first_timestamp": "2026-09-16 11:49:43.615858",
+      "last_timestamp": "2026-09-20 05:39:42.935365"
+    },
+    {
+      "path": "/Users/difan/Library/Application Support/SerialPrograms/SerialPrograms-20260923-203230111747.log",
+      "bytes": 52435566,
+      "sha256": "709b1f6b992cb23205679238c267415dccde10aac6d430a671a44176925ab4b8",
+      "first_timestamp": "2026-09-20 05:39:42.935383",
+      "last_timestamp": "2026-09-23 20:32:30.111480"
+    },
+    {
+      "path": "/Users/difan/Library/Application Support/SerialPrograms/SerialPrograms-20260926-144120892768.log",
+      "bytes": 52430196,
+      "sha256": "1e0c59c56d5c393062991a8a3f20bd7a65010c2adc0a2a76e5d933e780c0a529",
+      "first_timestamp": "2026-09-23 20:32:30.111523",
+      "last_timestamp": "2026-09-26 14:41:20.892529"
+    },
+    {
+      "path": "/Users/difan/Library/Application Support/SerialPrograms/SerialPrograms-20260929-120411828898.log",
+      "bytes": 52444268,
+      "sha256": "d4166ab832a192864a431f11d1caa93b03befedd585a1d1cbcf993eb01bb7fc4",
+      "first_timestamp": "2026-09-26 14:41:20.892650",
+      "last_timestamp": "2026-09-29 12:04:11.809580"
+    },
+    {
+      "path": "/Users/difan/Library/Application Support/SerialPrograms/SerialPrograms-20261003-002716116160.log",
+      "bytes": 52438656,
+      "sha256": "a4cd503e2787ca1bbaf176936efaf64a344eccc57925c9941c40dd09d4c5a384",
+      "first_timestamp": "2026-09-29 12:04:11.809589",
+      "last_timestamp": "2026-10-03 00:27:16.115936"
+    },
+    {
+      "path": "/Users/difan/Library/Application Support/SerialPrograms/SerialPrograms-20261005-215511163092.log",
+      "bytes": 52440609,
+      "sha256": "a87b6e19400a6c3aa729cf08ea5ab9751e8b9dd71c11f0bbc5ee30025d7f3fc3",
+      "first_timestamp": "2026-10-03 00:27:16.115943",
+      "last_timestamp": "2026-10-05 21:55:11.156011"
+    },
+    {
+      "path": "/Users/difan/Library/Application Support/SerialPrograms/SerialPrograms-20261008-153738870093.log",
+      "bytes": 52442875,
+      "sha256": "8c1d6362e6f43449522611d22a1a325c2b06c3f95b4ad56769f06dd1fd573831",
+      "first_timestamp": "2026-10-05 21:55:11.162000",
+      "last_timestamp": "2026-10-08 15:37:36.821498"
+    },
+    {
+      "path": "/Users/difan/Library/Application Support/SerialPrograms/SerialPrograms-20261011-153913642489.log",
+      "bytes": 52430975,
+      "sha256": "2ecd5fa248f940f45495608917bb2f1de395fc9bc5f02dc4d8332a1c7d3d158f",
+      "first_timestamp": "2026-10-08 15:37:38.869546",
+      "last_timestamp": "2026-10-11 15:39:13.223490"
+    },
+    {
+      "path": "/Users/difan/Library/Application Support/SerialPrograms/SerialPrograms-20261014-170729174889.log",
+      "bytes": 52430912,
+      "sha256": "0f80cc120cc246789335876f2dd5e043f96d8e9a0f1d07de6f30593f7e2233fb",
+      "first_timestamp": "2026-10-11 15:39:13.639732",
+      "last_timestamp": "2026-10-14 17:07:29.174488"
+    },
+    {
+      "path": "/Users/difan/Library/Application Support/SerialPrograms/SerialPrograms-20261017-101045350858.log",
+      "bytes": 52431402,
+      "sha256": "3caccdbe5bda8a1db8d28c023b81f107a81b883f6007ca99a594cb691bb1638a",
+      "first_timestamp": "2026-10-14 17:07:29.174500",
+      "last_timestamp": "2026-10-17 10:10:45.346557"
+    },
+    {
+      "path": "/Users/difan/Library/Application Support/SerialPrograms/SerialPrograms-20261020-032023983416.log",
+      "bytes": 52439179,
+      "sha256": "8db344d1f12fec5750a8e572228970876960e98348cf0e580d29709ca0343fde",
+      "first_timestamp": "2026-10-17 10:10:45.350070",
+      "last_timestamp": "2026-10-20 03:20:13.936042"
+    },
+    {
+      "path": "/Users/difan/Library/Application Support/SerialPrograms/SerialPrograms-20261024-102033498870.log",
+      "bytes": 52439898,
+      "sha256": "50354ae8527c1dad766f4e321b4cbe974846e807a1011634a9289d122c261ce3",
+      "first_timestamp": "2026-10-20 03:20:23.983011",
+      "last_timestamp": "2026-10-24 10:20:33.492093"
+    },
+    {
+      "path": "/Users/difan/Library/Application Support/SerialPrograms/SerialPrograms.log",
+      "bytes": 27960539,
+      "sha256": "0deb96071a320df8794a8efac40814eaadf71e328c9e1e09866bf19363b802b6",
+      "first_timestamp": "2026-10-24 10:20:33.498740",
+      "last_timestamp": "2026-10-28 08:41:34.888900"
+    }
+  ]
+}
