@@ -1,0 +1,13 @@
+{
+  "likely75_vs_tuned_observed": {
+    "positive": 0,
+    "negative": 47,
+    "unresolved": 25
+  },
+  "tuned_likely_vs_tuned_observed": {
+    "positive": 23,
+    "negative": 25,
+    "unresolved": 24
+  },
+  "tuned_likely_advantages_exactly_matching_standard": 16
+}

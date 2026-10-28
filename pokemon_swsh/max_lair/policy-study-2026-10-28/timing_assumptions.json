@@ -1,0 +1,46 @@
+{
+  "cutoff": "2026-10-28 08:30:00",
+  "reset_decision_to_end_median_seconds": 25.9975195,
+  "continue_decision_to_end_median_seconds": 18.253479,
+  "reset_samples": 1010,
+  "continue_samples": 25,
+  "incremental_reset_seconds": 7.7440405000000005,
+  "timings": {
+    "mewtwo": {
+      "win": {
+        "count": 550,
+        "median_seconds": 738.4157525,
+        "mean_seconds": 749.5581962181818
+      },
+      "loss": {
+        "count": 253,
+        "median_seconds": 716.099668,
+        "mean_seconds": 732.5862401936758
+      }
+    },
+    "cresselia": {
+      "win": {
+        "count": 150,
+        "median_seconds": 766.45103,
+        "mean_seconds": 776.8153854333333
+      },
+      "loss": {
+        "count": 33,
+        "median_seconds": 771.80606,
+        "mean_seconds": 775.9335028787879
+      }
+    },
+    "xurkitree": {
+      "win": {
+        "count": 112,
+        "median_seconds": 723.909866,
+        "mean_seconds": 738.6821336875
+      },
+      "loss": {
+        "count": 56,
+        "median_seconds": 683.881279,
+        "mean_seconds": 722.3437007142857
+      }
+    }
+  }
+}

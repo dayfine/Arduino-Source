@@ -1,0 +1,19 @@
+{
+  "native_deterministic_checks": 6,
+  "result_rows": 3700,
+  "unique_result_keys": true,
+  "outcome_bounds": true,
+  "ore_limit": true,
+  "timing_monotonicity": true,
+  "policy_revision": "4bf135d85fa001071dbc9b5550d0a08bb28c5c08",
+  "policy_source_sha256": "99394c27bff2e6f940a8737eb9adf9d7511a5b137781f5c93f2c8fbee411735a",
+  "models_sha256": "c05db4e1ec163ace785c87374b0cf50210b8aca26e0364f6963de1fee5b24b16",
+  "training_sessions": 500,
+  "heldout_sessions": 2000,
+  "models": 24,
+  "horizons_hours": [
+    8,
+    24,
+    72
+  ]
+}

@@ -1,0 +1,6 @@
+PASS Standard six independent wins
+PASS Observed retains one winning route
+PASS PR55 retains one winning route
+PASS Six losses are six fresh routes
+PASS Reset overhead costs one attempt
+PASS No ore forces a new route

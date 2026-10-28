@@ -1,0 +1,6 @@
+variant,positive,negative,unresolved
+999-ore-no-replenishment,22,26,24
+empirical,23,25,24
+good-routes-20pct-slower,32,13,27
+no-reset-overhead,2,30,40
+reset-extra-60s,28,27,17
