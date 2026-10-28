@@ -195,8 +195,13 @@ public:
             {small, {4, 3}, GridDirection::EAST,  {5, 3}, 1, true},
             {small, {4, 4}, GridDirection::EAST,  {4, 4}, 0, false},    //  into the door
             {small, {2, 0}, GridDirection::EAST,  {2, 0}, 0, false},    //  off the map
-            {route, Route202::CATCH_SPOT, GridDirection::WEST,  {3, 21}, 15, true},
-            {route, Route202::CATCH_SPOT, GridDirection::NORTH, {18, 20}, 1, true},
+            {route, Route202::CATCH_SPOT, GridDirection::WEST,  {3, 22}, 16, true},
+            {route, Route202::CATCH_SPOT, GridDirection::NORTH, {19, 20}, 2, true},
+            {route, Route202::CATCH_SPOT, GridDirection::EAST,  {30, 22}, 11, true},
+            //  Measured on the console from the post-catch save.
+            {route, {30, 22}, GridDirection::NORTH, {30, 19}, 3, true},
+            {route, {30, 19}, GridDirection::WEST,  {22, 19}, 8, true},
+            {route, {22, 19}, GridDirection::SOUTH, {22, 24}, 5, true},
             {route, {7, 12}, GridDirection::NORTH, {7, 12}, 0, true},  //  trainer_a holds the player
             //  Through the gap east of the north ledge, over the south ledge
             //  and off the bottom edge to Sandgem Town.

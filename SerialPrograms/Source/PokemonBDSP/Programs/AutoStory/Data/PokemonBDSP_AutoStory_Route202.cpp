@@ -22,7 +22,9 @@ using namespace Pokemon;
 //  Trees: each tile under a trunk or a canopy that hides most of the ground
 //  is blocked. The thin top of a canopy that only overhangs the row above a
 //  tree is not.
-//  Ledges: rows 9 and 19; the one at (24,19) is behind the sign.
+//  Ledges: rows 9 and 18. On the DP map the south ledge looks like row 19,
+//  but on the console the player stands at (22,19) right under it, beside
+//  the trees at (21,19), and the sign at (24,20) is one row below.
 //  The Poke Ball item at (3,6) is blocked.
 //  NPCs stand on the tile under their feet; the sprites rise into the row
 //  above. The girl at (22,15), pixel (365,235), is not the Potion giver;
@@ -49,8 +51,8 @@ const TileGrid& grid(){
         R"(###....##.........####N."""""""""###)",  //  15
         R"(###""""##..............."""""""""###)",  //  16
         R"(###""""##....................""#####)",  //  17
-        R"(###""""##.....########.........#####)",  //  18
-        R"(###""""##vvvvv########vvvvvvvvv#####)",  //  19
+        R"(###""""##vvvvv########vvvvvvvvv#####)",  //  18
+        R"(###""""##.....########.........#####)",  //  19
         R"(###""""""......""""""...S......#####)",  //  20
         R"(###""""""......""""""..........#####)",  //  21
         R"(###""""""......""""""..........#####)",  //  22
@@ -62,9 +64,11 @@ const TileGrid& grid(){
 }
 
 
-//  Pixel (304,344): middle of the tall-grass patch at (15..20, 20..22),
-//  the patch nearest the Sandgem Town entrance at the bottom right.
-const TilePos CATCH_SPOT{18, 21};
+//  Where the post-catch save stands: the bottom row of the tall-grass patch at
+//  (15..20, 20..22), nearest the Sandgem Town entrance at the bottom right.
+//  On the console the sign at (24,20) is 5 columns right and 2 rows up, and
+//  walking east stops at the trees after 11 tiles.
+const TilePos CATCH_SPOT{19, 22};
 
 //  Blue-cap trainer, feet at about (128,186), facing south.
 const TilePos TRAINER_A{7, 11};
