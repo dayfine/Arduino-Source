@@ -32,6 +32,11 @@ bool story_map_plannable(const std::string& map);
 //  any of them enters Jubilife City.
 bool story_at_jubilife_exit(const Pokemon::TilePos& world);
 
+//  Where we may stand after talking to the Potion giver and the training
+//  battle next to her: the standable tiles of the top two rows of her grass
+//  and the tile east of them, in world tiles.
+std::vector<Pokemon::TilePos> story_potion_giver_area();
+
 //  Route 202's trainers, in world tiles of story_maps().
 std::vector<Pokemon::TrainerSight> story_trainer_sights();
 

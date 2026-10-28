@@ -54,6 +54,21 @@ bool story_at_jubilife_exit(const TilePos& world){
     return tile && tile->map == MAP_ROUTE_202 && tile->pos.y <= 3;
 }
 
+std::vector<TilePos> story_potion_giver_area(){
+    const MapSet& maps = story_maps();
+    std::vector<TilePos> area;
+    const TilePos west = maps.to_world(MAP_ROUTE_201, Route201::POTION_GIVER_ROW_WEST_END);
+    const TilePos east = maps.to_world(MAP_ROUTE_201, Route201::POTION_GIVER_ROW_EAST);
+    for (int y = west.y; y <= west.y + 1; y++){
+        for (int x = west.x; x <= east.x; x++){
+            if (maps.world().standable({x, y})){
+                area.push_back({x, y});
+            }
+        }
+    }
+    return area;
+}
+
 std::vector<TrainerSight> story_trainer_sights(){
     std::vector<TrainerSight> sights = Route202::trainer_sights();
     for (TrainerSight& sight : sights){

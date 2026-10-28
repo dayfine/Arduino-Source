@@ -33,7 +33,7 @@ const TileGrid& grid(){
         R"(################################################################)",  //   0
         R"(################################################################)",  //   1
         R"(################################################################)",  //   2
-        R"(##########################################"""""""""""...........)",  //   3
+        R"(##########################################""N""""""""...........)",  //   3
         R"(##########################################"""""""""""..S........)",  //   4
         R"(##########################################"""""""""##...........)",  //   5
         R"(##..####..####....######..##....##..####.."""""""""##...........)",  //   6
@@ -55,8 +55,10 @@ const TileGrid& grid(){
 }
 
 
-//  On the DP map she stands at (44,3), pixel (718,57). On the console she
-//  was at (44,3) once and east of (42,3) another time: she wanders.
+//  She stands at (44,3), pixel (718,57) on the DP map, and only turns. On the
+//  console she blocked a walk east from (43,3); walks west along the row have
+//  not always stopped at her, so she is looked for both in the row and above.
+const TilePos POTION_GIVER{44, 3};
 const TilePos POTION_GIVER_ROW_EAST{53, 3};
 const TilePos POTION_GIVER_ROW_WEST_END{42, 3};
 const TilePos POTION_GIVER_ROW_EAST_END{52, 3};

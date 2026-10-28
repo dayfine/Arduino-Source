@@ -111,6 +111,7 @@ public:
             TileType type;
         };
         const Named named[] = {
+            {MAP_ROUTE_201,     Route201::POTION_GIVER,             TileType::NPC},
             {MAP_ROUTE_201,     Route201::POTION_GIVER_ROW_EAST,    TileType::WALKABLE},
             {MAP_ROUTE_201,     Route201::POTION_GIVER_ROW_WEST_END, TileType::TALL_GRASS},
             {MAP_ROUTE_201,     Route201::POTION_GIVER_ROW_EAST_END, TileType::TALL_GRASS},
@@ -377,11 +378,9 @@ public:
         if (!error.empty()){
             return error;
         }
-        //  She may be met anywhere on her row.
-        std::vector<TilePos> row;
-        for (TilePos pos = maps.to_world(MAP_ROUTE_201, Route201::POTION_GIVER_ROW_WEST_END); pos.x <= potion.x; pos.x++){
-            row.push_back(pos);
-        }
+        //  After talking to her and the training battle, anywhere in the top
+        //  two rows of her grass.
+        const std::vector<TilePos> row = story_potion_giver_area();
         error = check_robust_plan(logger, "Potion giver to Jubilife", maps, row,
             story_at_jubilife_exit);
         if (!error.empty()){

@@ -675,12 +675,8 @@ namespace PokemonAutomation {
             // ---------------------------------------------------------
             // On to Jubilife, fighting the Route 202 trainers who see us
             // ---------------------------------------------------------
-            // We met her, and the training battle's wiggle moved us, somewhere on her row.
-            std::vector<TilePos> potion_row_tiles;
-            for (TilePos pos = maps.to_world(MAP_ROUTE_201, Route201::POTION_GIVER_ROW_WEST_END); pos.x <= potion_row.x; pos.x++) {
-                potion_row_tiles.push_back(pos);
-            }
-            walk_route(stream, context, maps, potion_row_tiles,
+            // We met her, and the training battle's wiggle moved us, somewhere near her.
+            walk_route(stream, context, maps, story_potion_giver_area(),
                 story_at_jubilife_exit, trainers, fight, "To Jubilife");
             // Entering Jubilife starts a scene: Dawn walks over while we stand still.
             if (walk_until(stream, context, 0, 1, 4000ms, "to Dawn in Jubilife").stop == WalkStop::TRANSITION) {
