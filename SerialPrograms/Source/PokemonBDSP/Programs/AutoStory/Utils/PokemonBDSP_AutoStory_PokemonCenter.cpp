@@ -146,12 +146,22 @@ void heal_at_pokemon_center(
     context.wait_for_all_requests();
 
     route_status(stream, label + ": healed; walking out.");
+    //  Her last line may still be up, and it would stop the walk.
+    pbf_mash_button(context, BUTTON_B, 2000ms);
     context.wait_for_all_requests();
     VideoSnapshot counter = stream.video().snapshot();
-    const bool faded_out = walk_until(stream, context, 0, -1, 6000ms, label + ": out the door").stop == WalkStop::TRANSITION;
-    context.wait_for_all_requests();
-    VideoSnapshot now = stream.video().snapshot();
-    const bool scene_changed = counter && now && walk_screen_change(*counter.frame, *now.frame) > WALK_SCENE_CHANGE;
+    bool faded_out = false;
+    bool scene_changed = false;
+    for (size_t tries = 0; tries < 3 && !faded_out && !scene_changed; tries++){
+        const WalkResult walk = walk_until(stream, context, 0, -1, 6000ms, label + ": out the door");
+        faded_out = walk.stop == WalkStop::TRANSITION;
+        if (walk.stop == WalkStop::DIALOG){
+            pbf_mash_button(context, BUTTON_B, 2000ms);
+        }
+        context.wait_for_all_requests();
+        VideoSnapshot now = stream.video().snapshot();
+        scene_changed = counter && now && walk_screen_change(*counter.frame, *now.frame) > WALK_SCENE_CHANGE;
+    }
     if (!faded_out && !scene_changed){
         OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
             label + ": did not get back out.", stream);
