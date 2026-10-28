@@ -208,6 +208,10 @@ std::vector<TilePos> walk_route(
                             stopped.push_back(k == 0 ? pos : path[k - 1]);
                         }
                     }
+                    std::sort(stopped.begin(), stopped.end(), [](const TilePos& a, const TilePos& b){
+                        return a.y != b.y ? a.y < b.y : a.x < b.x;
+                    });
+                    stopped.erase(std::unique(stopped.begin(), stopped.end()), stopped.end());
                     if (stopped.empty()){
                         OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
                             leg_label + ": stopped early, and no tile fits.", stream);
