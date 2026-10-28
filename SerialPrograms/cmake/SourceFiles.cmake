@@ -1314,6 +1314,8 @@ file(GLOB LIBRARY_SOURCES
     Source/NintendoSwitch/Inference/NintendoSwitch_SelectedSettingDetector.h
     Source/NintendoSwitch/Inference/NintendoSwitch_StartGameUserSelectDetector.cpp
     Source/NintendoSwitch/Inference/NintendoSwitch_StartGameUserSelectDetector.h
+    Source/NintendoSwitch/Inference/NintendoSwitch_SystemKeyboardDetector.cpp
+    Source/NintendoSwitch/Inference/NintendoSwitch_SystemKeyboardDetector.h
     Source/NintendoSwitch/Inference/NintendoSwitch_UpdatePopupDetector.cpp
     Source/NintendoSwitch/Inference/NintendoSwitch_UpdatePopupDetector.h
     Source/NintendoSwitch/NintendoSwitch_ConsoleHandle.cpp
@@ -1373,6 +1375,8 @@ file(GLOB LIBRARY_SOURCES
     Source/NintendoSwitch/Programs/NintendoSwitch_GameEntry.h
     Source/NintendoSwitch/Programs/NintendoSwitch_MenuStabilityTester.cpp
     Source/NintendoSwitch/Programs/NintendoSwitch_MenuStabilityTester.h
+    Source/NintendoSwitch/Programs/LabConsole/NintendoSwitch_LabConsole.cpp
+    Source/NintendoSwitch/Programs/LabConsole/NintendoSwitch_LabConsole.h
     Source/NintendoSwitch/Programs/NintendoSwitch_PreventSleep.cpp
     Source/NintendoSwitch/Programs/NintendoSwitch_PreventSleep.h
     Source/NintendoSwitch/Programs/NintendoSwitch_PushJoySticks.cpp
@@ -1471,6 +1475,8 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/Resources/Pokemon_PokemonNames.h
     Source/Pokemon/Resources/Pokemon_PokemonSlugs.cpp
     Source/Pokemon/Resources/Pokemon_PokemonSlugs.h
+    Source/PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_LabConsole.cpp
+    Source/PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_LabConsole.h
     Source/PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_OverworldMatchers.cpp
     Source/PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_OverworldMatchers.h
     Source/PokemonBDSP/Programs/TestPrograms/PokemonBDSP_OverworldLightingTest.cpp

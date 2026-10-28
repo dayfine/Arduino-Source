@@ -21,6 +21,7 @@
 #include "Programs/NintendoSwitch_TurboMacro.h"
 #include "Programs/NintendoSwitch_PushJoySticks.h"
 #include "Programs/NintendoSwitch_PreventSleep.h"
+#include "Programs/LabConsole/NintendoSwitch_LabConsole.h"
 #include "Programs/NintendoSwitch_FriendCodeAdder.h"
 #include "Programs/NintendoSwitch_FriendDelete.h"
 #include "Programs/NintendoSwitch_RecordKeyboardController.h"
@@ -76,6 +77,7 @@ std::vector<PanelEntry> PanelListFactory::make_panels() const{
     ret.emplace_back("---- Testing ----");
     ret.emplace_back(GameConsole::make_ConsolePanel<GameConsole::BoxDraw>());
     ret.emplace_back(GameConsole::make_ConsoleProgram<GameConsole::SnapshotDumper>());
+    ret.emplace_back(make_SingleSwitchProgram<LabConsole>());
 
     if (STATIC_GLOBALS.DEVELOPER_MODE){
         ret.emplace_back("---- Developer Tools ----");
