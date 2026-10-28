@@ -980,9 +980,9 @@ namespace PokemonAutomation {
                 const std::string& label, bool confirm_default_target, bool post_battle_dialogue_cleanup
             ) {
                 if (move_slots.empty() || std::any_of(move_slots.begin(),move_slots.end(),
-                    [](size_t slot) { return slot<1 || slot>4; })) {
+                    [](size_t slot) { return slot>4; })) {
                     OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
-                        label+": Supply a nonempty move list containing only positions 1 through 4.",stream);
+                        label+": Supply a nonempty move list containing only positions 0 (best) through 4.",stream);
                 }
                 size_t move_index=0;
                 // The first Fight menu starts at move 1. Later turns retain
