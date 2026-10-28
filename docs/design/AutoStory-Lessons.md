@@ -2,8 +2,9 @@
 
 Each entry is a failure seen on a Switch while running BDSP AutoStory (Developer-Butters'
 U#1717 plus our intro work, October 2026), the pattern behind it, and the rule we now follow.
-Runs are the lab builds r14 to r39 on console B. The patterns repeat, so the rules matter
-more than the individual fixes.
+Runs are the lab builds r14 to r79 on console B. The patterns repeat, so the rules matter
+more than the individual fixes. Sections 6 to 8 cover r40 to r79, which took 00.04 from the
+catch to Dawn in Jubilife unattended (r79).
 
 ## 1. Timed movement drifts; stop on what the screen shows
 
@@ -67,12 +68,55 @@ dialogue decides. Walk, then wait for the dialogue with its own timeout.
   `--ignore-cr-at-eol`.
 - When a program is stuck or failing, stop it and close the game at once; don't let retries run.
 
-## 6. Next: a map instead of recorded legs
+## 6. Butters' 00.04 and 00.05, checked against the game
 
-BDSP keeps DP's overworld layouts: Bulbapedia's DP map of Route 202 (37 x 26 tiles of 16 px)
-matches our console B screenshots (the 202 sign by the L-shaped path, the eastern tree wall, the
-Potion giver at the edge of the grass by the trees). The DP maps can be turned into a walkability
-grid per route: walls, grass, ledges, doors, NPCs and trainer sightlines.
-Planned legs then end at known walls; the route banner (OCR) and the walls we hit tell us where
-we are. This replaces the recorded stick movements, and FRLG can use the same tool.
-The pieces and their status are in [AutoStory-Design.md](AutoStory-Design.md).
+What his recorded version does, what went wrong with it on console B, and what replaced it.
+
+| His version | What happened | Now |
+|---|---|---|
+| Every leg is a stick hold of a recorded length (00.05 alone is ~150 lines of them). | Drift, as in section 1. In r79 the 00.05 legs reached the Trainers' School, then "west 200 ms, A" faced an empty tile: Barry stands up and to the right, at the blackboard. | 00.04 walks map plans whose legs end at walls (design doc, sections 3 to 5). 00.05 is being stepped through (section 8 below). |
+| Tristan is fought with move slot 3 (Ember). | Chimchar only; we had Piplup (r28). | The Fight menu is read by OCR and the strongest move picked. |
+| No training, no healing before the Route 202 trainers. | A Lv5 Piplup with Pound fainted to Logan's Shinx (r72). | Three wild battles first (Piplup learns Water Gun), then Potions. |
+| The Potion is found in the Bag by a pixel match. | Console B's colours differ; the match failed (r27). | OCR of the item name. |
+| The Route 201 Poké Mart lady is reached by timed legs. | Missed her by a tile (r33, r39); so did our first planned route, which had her above the row (r77). | Walk west along her grass's top row until she stops us: she stands at (43,3), and we stop at (44,3) facing her. One A per line, 1.5 s apart. |
+| Barry in the Trainers' School: "west 200 ms, A", then mash B. | Faced nobody (r79). | From the school door: one tile west, north until Barry stops us, then A per line. He gives the Town Map. |
+| Leaving 00.04: walk north 5 s into Jubilife. | Ran past Dawn's spot (r35); with our route, walked into the wall beside the stairs (r78). | Walk north; when the wall stops us and no dialogue follows, step a tile west and try again. Next: put the stairs in the map. |
+| Checkpoint retry reloads and repeats the same steps. | Deterministic failures retried up to 20 times. | Lab runs stop at the first failure (section 3). |
+
+His route did one thing right that we dropped for a while: the Poké Mart lady on Route 201
+gives **10 Potions**. With them, healing needs no trip to the Pokémon Center: heal to full
+after training, and after each trainer read the HP bar in the Bag and use a Potion under half.
+The run now gets the Potions first and saves on Route 202, (30,19), so later attempts skip her.
+
+## 7. Our own mistakes in this round
+
+- **An optional step kept for two hours.** We spent ~15 runs making the Route 201 detour
+  work before asking whether the story needs it. Rule: before automating an inherited
+  step, write down why the story needs it; after three different failures at one stage,
+  question the stage, not the symptom.
+- **Claims not checked against the screen.** We concluded "the save already has Potions"
+  from log lines of runs that had, in fact, reached the lady; r76's Bag screenshot showed an
+  empty Medicine pocket. Rule: an inventory or position claim needs a screenshot of it.
+- **Map errors, each found from one screenshot.** Route 202's east tree wall is at column 31
+  in rows 15 to 17, not 33 (r75 lost its place by three rows); the lady is in the grass row,
+  not above it; Jubilife's south edge is a wall with stairs, not open ground. Rule: when a
+  wall leg stops somewhere unexpected, compare its screenshot with the grid before changing
+  any timing, and add the measured stop as a wall-hit test.
+- **Movement is not tile-locked.** A short tap moves about 0.77 of a tile. A left/right
+  wiggle for encounters rocked across one tile edge and found no battle in three minutes
+  (r74). Walk wall to wall instead: the catch grass's rows sit between tree walls.
+- **One fixed OCR cut for every button.** Move names under the cursor are dark text on a
+  light blue button, and status moves sit lower (no "Effective" line); a fixed cut and box
+  read "" for Water Gun and Growl (r73). Threshold halfway between each button's background
+  and its darkest pixel, and keep the tallest text band.
+- **Not saying what we are doing.** The overlay and the log now print each checkpoint's steps,
+  the current one and the next, and every status report starts with the current problem.
+
+## 8. Step through new ground before automating it
+
+After hours of whole-run attempts at the lady, five minutes of stepping found her: the Lab
+Console takes 5 to 10 commands at a time (walk until stopped, a few presses, a screenshot),
+then waits while we look. Where the map or the scene is unknown (a new town, a building,
+an NPC to talk to), step through it first, write down each stop and dialogue, and only then
+write the automated version from what was seen. 00.05 (the Trainers' School, the Pokétch)
+is being done this way.

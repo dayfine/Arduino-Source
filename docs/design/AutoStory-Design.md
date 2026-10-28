@@ -1,8 +1,10 @@
 # AutoStory: design of the closed-loop pieces
 
 Companion to [AutoStory-Lessons.md](AutoStory-Lessons.md): that doc lists the failures, this one
-describes the pieces built in response and how they fit together. Status as of 2026-10-28;
-each section says what is built, where, and what is still planned.
+describes the pieces built in response and how they fit together. Status as of 2026-10-28
+(evening): 00.04, from the catch to Dawn in Jubilife, runs unattended on console B (r79);
+00.05 is being stepped through. Each section says what is built, where, and what is still
+planned.
 
 The common idea: **never act on an assumption the screen could have checked.** Each piece
 reads the screen, takes one step, and reads again. Durations are caps, not plans.
@@ -114,7 +116,25 @@ Also built: `walk_to_wall` (where a straight walk stops, and whether it is held 
 expect a battle, not avoided, since we want the experience before Roark), `trace_legs` (the
 tiles a plan visits, for tests and logs).
 
-## 5. Executor, localisation and calibration (planned)
+## 5. Executor, localisation and calibration (built for 00.04)
+
+Built in `Utils/PokemonBDSP_AutoStory_RouteWalk` (`walk_route`), with `plan_robust_route` in
+the planner. What it does differs from the plan below in these ways:
+
+- **Plans for uncertainty.** The robust planner tracks every tile we may be on (at most 5
+  after the start). An open leg of n tiles may end 1 + n/5 tiles off; wall legs bring the
+  possible tiles back together. Offline tests check each plan the segment uses.
+- **Turning is its own action.** A tap facing another way only turns, so an open leg turns
+  first (`route_turn`). Measured speeds: 160 ms per tile across, 240 ms up or down; an open
+  leg holds (n - 1/2) tiles' worth.
+- **Things the map lacks.** A walk that stops early waits twice for the way to clear, then
+  presses A (a trainer who saw us from the side, or someone standing in the way), fights
+  if a battle follows, marks the tile blocked, and plans again.
+- **Map changes** are checked against the location banner (OCR).
+- **Every leg** saves a screenshot under `Screenshots/AutoStory/route/`, and the overlay and
+  log show the checkpoint's steps, the current one and the next.
+
+The original plan:
 
 The piece that turns a plan into stick input:
 
@@ -164,16 +184,34 @@ Doubts to settle first (from tracing the DP images): Route 202's row offset agai
 and which roof rows block; Route 201's tree line sits about 3 px off the grass grid; trainer
 sight range (4 tiles is a guess).
 
-## 7. Battles (built: general; planned: move choice)
+## 7. Battles and healing (built)
 
-- Trainer battles: `fight_trainer` uses move slot 1, whatever the starter (lesson 2: the old
-  code needed Chimchar's Ember in slot 3). Wild battles are escaped while walking.
+- **Move choice:** each turn the Fight menu's move names are read by OCR, with the threshold
+  set per button (the one under the cursor is light blue). The strongest known attack is
+  used, so Water Gun once Piplup learns it, whatever the starter. If no attack can be read,
+  the last move that is not a known status move is used: the starter's own-type attack.
+- **Training:** before the Route 202 trainers, three wild battles in the catch grass. The
+  run walks up and down between the tree walls north and south of the grass, never in short
+  sideways steps (lesson 7).
+- **Healing:** 00.04 first gets 10 Potions from the Poké Mart lady on Route 201, saves on
+  Route 202, then heals from the Bag. That means full after training, and a Potion after any
+  trainer that leaves the lead under half (`use_potion_first_pokemon(…, heal_below)`). The
+  Pokémon Center routine (lining up with the lit doorway, the nurse) is kept for later.
 - Items are found by OCR of their names (Potion), not by pixel templates.
-- Planned: a move picker that OCRs the move names and chooses by power, type and the
-  opponent's type (Piplup gets Water Gun early, which matters for Roark); healing between
-  trainer battles; levelling before Roark, fighting the trainers on the way.
+- Wild battles while walking are run from.
+- Planned: the opponent's type in the move choice (Roark), and a lead that faints (the
+  "can't battle" party screen).
 
-## 8. Evidence and repeatability (built)
+## 8. Stepping through new ground (Lab Console)
+
+A Lab Console program on the console takes command files: walk until stopped
+(`bdsp_walk x y ms`), presses, stick holds, detector reads and screenshots. New ground is
+stepped through in batches of 5 to 10 commands (15 to 30 s), each ending with a screenshot,
+and each stop and dialogue is written down before the automated version is written. This is
+how the Poké Mart lady's tile, her dialogue timing, and Barry's position in the Trainers'
+School were found, after whole-run attempts had failed on each.
+
+## 9. Evidence and repeatability (built)
 
 - The clock is set (2026-01-01 00:00:50) at the start of each attempt, because some landmark
   matchers depend on lighting.
