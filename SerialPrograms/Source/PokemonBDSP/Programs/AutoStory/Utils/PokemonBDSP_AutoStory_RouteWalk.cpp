@@ -72,7 +72,8 @@ std::vector<TilePos> leg_path(const TileGrid& grid, TilePos from, GridDirection 
 
 Milliseconds route_open_hold(GridDirection direction, size_t tiles){
     const Milliseconds step = ms_per_tile(direction);
-    return ROUTE_START_DELAY + step * tiles - step / 2;
+    //  A shorter tap may only turn the player.
+    return std::max<Milliseconds>(step * tiles - step / 2, Milliseconds(150));
 }
 
 

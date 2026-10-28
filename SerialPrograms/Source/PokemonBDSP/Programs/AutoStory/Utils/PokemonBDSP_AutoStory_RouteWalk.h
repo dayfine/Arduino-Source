@@ -32,7 +32,9 @@ constexpr Milliseconds ROUTE_MS_PER_TILE_UP_DOWN = Milliseconds(240);   //  nort
 constexpr Milliseconds ROUTE_START_DELAY = Milliseconds(250);
 
 //  How long to hold the stick for an open leg of `tiles` tiles: a step once
-//  started is always finished, so stop half a tile early.
+//  started is always finished, so stop half a tile early. On the console a
+//  1290ms hold west went 9 tiles and an 800ms hold south 4, so the player
+//  starts at once and finishes the step in progress.
 Milliseconds route_open_hold(Pokemon::GridDirection direction, size_t tiles);
 
 //  Called when a trainer's dialogue has opened. Fights the battle and returns

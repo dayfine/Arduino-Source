@@ -530,7 +530,8 @@ std::optional<std::vector<PlannedLeg>> plan_robust_route(
                 int grass = 0;
                 bool ok = true;
                 for (const TilePos& pos : spread){
-                    for (int n = std::max(1, tiles - costs.open_error); n <= tiles + costs.open_error; n++){
+                    const int error = costs.open_error + tiles / costs.open_error_per;
+                    for (int n = std::max(1, tiles - error); n <= tiles + error; n++){
                         int leg_grass = 0;
                         const std::optional<TilePos> end = step_tiles(grid, pos, direction, n, leg_grass);
                         if (!end){

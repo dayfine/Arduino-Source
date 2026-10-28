@@ -159,9 +159,12 @@ struct PlannedLeg{
 std::string to_string(const PlannedLeg& leg);
 
 struct RobustPlanCosts : TilePlanCosts{
-    int open_error = 1;         //  an open leg may end this many tiles short or long
+    //  An open leg of n tiles may end open_error + n / open_error_per tiles
+    //  short or long: on the console 7 tiles went 9.
+    int open_error = 1;
+    int open_error_per = 5;
     int max_open_tiles = 12;    //  longest open leg to consider
-    size_t max_spread = 4;      //  most tiles the player may be on at once
+    size_t max_spread = 5;      //  most tiles the player may be on at once
 };
 
 //  Cheapest legs that take the player from any of the tiles in `from` to tiles
