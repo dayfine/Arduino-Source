@@ -75,3 +75,4 @@ Potion giver at the edge of the grass by the trees). The DP maps can be turned i
 grid per route: walls, grass, ledges, doors, NPCs and trainer sightlines.
 Planned legs then end at known walls; the route banner (OCR) and the walls we hit tell us where
 we are. This replaces the recorded stick movements, and FRLG can use the same tool.
+The pieces and their status are in [AutoStory-Design.md](AutoStory-Design.md).
