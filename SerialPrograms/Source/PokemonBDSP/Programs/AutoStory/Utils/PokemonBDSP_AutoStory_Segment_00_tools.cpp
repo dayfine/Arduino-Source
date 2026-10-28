@@ -674,20 +674,53 @@ namespace PokemonAutomation {
                 }
                 size_t best = 1;
                 int best_score = -1;
+                bool any_attack = false;
+                size_t last_not_status = 1;
                 for (size_t i = 0; i < moves.move_count; i++) {
-                    // The names are dark on a light grey button: keep only the
-                    // dark text, black on white, for the OCR.
-                    // Only the name: right of the type icon, above "Effective",
-                    // left of the PP.
+                    // The name is dark text on a light button (grey, or light blue under the
+                    // cursor). Take the box right of the type icon and left of the PP, tall
+                    // enough for a status move's name, which sits lower: it has no "Effective"
+                    // line under it.
                     const ImageFloatBox& button = moves.buttons[i];
-                    const ImageFloatBox name_box{button.x + button.width * 0.17, button.y + button.height * 0.10,
-                        button.width * 0.53, button.height * 0.50};
-                    ImageRGB32 text = extract_box_reference(screen, name_box).copy();
-                    for (size_t y = 0; y < text.height(); y++) {
-                        for (size_t x = 0; x < text.width(); x++) {
-                            const uint32_t pixel = text.pixel(x, y);
-                            const bool dark = ((pixel >> 16) & 0xff) < 100 && ((pixel >> 8) & 0xff) < 100 && (pixel & 0xff) < 100;
-                            text.pixel(x, y) = dark ? 0xff000000 : 0xffffffff;
+                    const ImageFloatBox name_box{button.x + button.width * 0.17, button.y + button.height * 0.08,
+                        button.width * 0.53, button.height * 0.80};
+                    const ImageViewRGB32 box = extract_box_reference(screen, name_box);
+                    // Text is darker than halfway between the background and the darkest pixel;
+                    // a fixed cut thins the strokes on the blue button.
+                    std::vector<int> gray(box.width() * box.height());
+                    for (size_t y = 0; y < box.height(); y++) {
+                        for (size_t x = 0; x < box.width(); x++) {
+                            const uint32_t pixel = box.pixel(x, y);
+                            gray[y * box.width() + x] = (int)(((pixel >> 16) & 0xff) + ((pixel >> 8) & 0xff) + (pixel & 0xff)) / 3;
+                        }
+                    }
+                    std::vector<int> sorted = gray;
+                    std::nth_element(sorted.begin(), sorted.begin() + sorted.size() / 2, sorted.end());
+                    const int background = sorted[sorted.size() / 2];
+                    const int darkest = *std::min_element(gray.begin(), gray.end());
+                    const int threshold = (background + darkest) / 2;
+                    // The name is the tallest band of text rows; "Effective" is smaller.
+                    size_t band_top = 0, band_bottom = 0;
+                    for (size_t y = 0; y < box.height();) {
+                        auto has_text = [&](size_t row) {
+                            for (size_t x = 0; x < box.width(); x++) if (gray[row * box.width() + x] < threshold) return true;
+                            return false;
+                        };
+                        if (!has_text(y)) { y++; continue; }
+                        size_t end = y;
+                        while (end < box.height() && has_text(end)) end++;
+                        if (end - y > band_bottom - band_top) { band_top = y; band_bottom = end; }
+                        y = end;
+                    }
+                    // Black text on white, with a margin, for the OCR.
+                    const size_t pad = 6;
+                    const size_t top = band_top >= 4 ? band_top - 4 : 0;
+                    const size_t bottom = std::min(box.height(), band_bottom + 4);
+                    ImageRGB32 text(box.width() + 2 * pad, bottom - top + 2 * pad);
+                    text.fill(0xffffffff);
+                    for (size_t y = top; y < bottom; y++) {
+                        for (size_t x = 0; x < box.width(); x++) {
+                            if (gray[y * box.width() + x] < threshold) text.pixel(x + pad, y - top + pad) = 0xff000000;
                         }
                     }
                     std::string name;
@@ -714,7 +747,12 @@ namespace PokemonAutomation {
                     stream.log("[" + label + "] Move " + std::to_string(i + 1) + " reads \"" + name + "\"" +
                         (known ? std::string(" = ") + known->name + " (" + known->type + ", " + std::to_string(known->power) + ")" : " (unknown)") + ".");
                     if (score > best_score) { best_score = score; best = i + 1; }
+                    if (known && known->power > 0) any_attack = true;
+                    if (!known || known->power > 0) last_not_status = i + 1;
                 }
+                // No attack read: the newest move is the starter's own-type attack
+                // (Water Gun, Ember, Absorb), unless it is a status move.
+                if (!any_attack) best = last_not_status;
                 stream.log("[" + label + "] Best move: " + std::to_string(best) + ".");
                 return best;
             }
