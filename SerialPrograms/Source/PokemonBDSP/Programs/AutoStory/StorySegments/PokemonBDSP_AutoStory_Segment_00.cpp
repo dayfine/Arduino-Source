@@ -665,7 +665,10 @@ namespace PokemonAutomation {
             // Walk to the tile south of the Center's sign, which the walls of
             // row 10 and the sign itself pin down, then find the door to its west.
             const TilePos below_sign = maps.to_world(MAP_SANDGEM_TOWN, SandgemTown::POKEMON_CENTER_SIGN.next(Pokemon::GridDirection::SOUTH));
-            walk_route(stream, context, maps, {maps.to_world(MAP_ROUTE_202, Route202::CATCH_SPOT)},
+            // The training wiggle steps left and right, so it may end a tile to
+            // either side of the catch spot.
+            const TilePos catch_spot = maps.to_world(MAP_ROUTE_202, Route202::CATCH_SPOT);
+            walk_route(stream, context, maps, {{catch_spot.x - 1, catch_spot.y}, catch_spot, {catch_spot.x + 1, catch_spot.y}},
                 [&](const TilePos& pos) { return pos == below_sign; }, trainers, fight, "To the Pokemon Center");
             heal_at_pokemon_center(stream, context, "Sandgem Town Pokemon Center");
 
