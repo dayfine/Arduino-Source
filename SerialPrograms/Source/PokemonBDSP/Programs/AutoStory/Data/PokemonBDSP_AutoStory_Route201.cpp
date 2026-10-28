@@ -33,8 +33,8 @@ const TileGrid& grid(){
     static const TileGrid grid({
         R"(################################################################)",  //   0
         R"(################################################################)",  //   1
-        R"(################################################################)",  //   2
-        R"(##########################################""N""""""""...........)",  //   3
+        R"(############################################N###################)",  //   2
+        R"(##########################################"""""""""""...........)",  //   3
         R"(##########################################"""""""""""..S........)",  //   4
         R"(##########################################"""""""""##...........)",  //   5
         R"(##..####..####....######..##....##..####.."""""""""##...........)",  //   6
@@ -56,10 +56,10 @@ const TileGrid& grid(){
 }
 
 
-//  She stands at (44,3), pixel (718,57) on the DP map, and only turns. On the
-//  console she blocked a walk east from (43,3); walks west along the row have
-//  not always stopped at her, so she is looked for both in the row and above.
-const TilePos POTION_GIVER{44, 3};
+//  On the DP map she is at (44,3), pixel (718,57). On the console she stands
+//  in the gap between the tree trunks above the row, (44,2), and only turns:
+//  walks west along the row pass under her. Talk to her from (44,3), facing north.
+const TilePos POTION_GIVER{44, 2};
 const TilePos POTION_GIVER_ROW_EAST{53, 3};
 const TilePos POTION_GIVER_ROW_WEST_END{42, 3};
 const TilePos POTION_GIVER_ROW_EAST_END{52, 3};

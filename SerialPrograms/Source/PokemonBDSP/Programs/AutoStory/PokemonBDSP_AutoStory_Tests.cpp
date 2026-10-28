@@ -112,6 +112,7 @@ public:
         };
         const Named named[] = {
             {MAP_ROUTE_201,     Route201::POTION_GIVER,             TileType::NPC},
+            {MAP_ROUTE_201,     Route201::POTION_GIVER.next(GridDirection::SOUTH), TileType::TALL_GRASS},
             {MAP_ROUTE_201,     Route201::POTION_GIVER_ROW_EAST,    TileType::WALKABLE},
             {MAP_ROUTE_201,     Route201::POTION_GIVER_ROW_WEST_END, TileType::TALL_GRASS},
             {MAP_ROUTE_201,     Route201::POTION_GIVER_ROW_EAST_END, TileType::TALL_GRASS},
