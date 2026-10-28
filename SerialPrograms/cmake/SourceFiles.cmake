@@ -1432,6 +1432,8 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/Inference/Pokemon_TrainPokemonOCR.h
     Source/Pokemon/Inference/Pokemon_TypeReader.cpp
     Source/Pokemon/Inference/Pokemon_TypeReader.h
+    Source/Pokemon/Navigation/Pokemon_TileGrid.cpp
+    Source/Pokemon/Navigation/Pokemon_TileGrid.h
     Source/Pokemon/Options/Pokemon_BoxSortingTable.cpp
     Source/Pokemon/Options/Pokemon_BoxSortingTable.h
     Source/Pokemon/Options/Pokemon_EncounterBotOptions.h
@@ -1600,6 +1602,8 @@ file(GLOB LIBRARY_SOURCES
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_Tests.h
     Source/PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_BDSPData.cpp
     Source/PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_BDSPData.h
+    Source/PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_Route202.cpp
+    Source/PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_Route202.h
     Source/PokemonBDSP/Programs/AutoStory/StorySegments/PokemonBDSP_AutoStory_Segment_00.cpp
     Source/PokemonBDSP/Programs/AutoStory/StorySegments/PokemonBDSP_AutoStory_Segment_00.h
     Source/PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Battle.cpp
