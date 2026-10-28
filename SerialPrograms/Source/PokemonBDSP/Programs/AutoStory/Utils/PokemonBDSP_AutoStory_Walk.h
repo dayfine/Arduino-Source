@@ -78,6 +78,8 @@ WalkResult walk_to_talk(
 //  place against trees.
 double walk_screen_change(const ImageViewRGB32& before, const ImageViewRGB32& after);
 constexpr double WALK_BLOCKED_CHANGE = 10.0;
+//  More than walking changes in 400ms: a new scene, such as a battle opening.
+constexpr double WALK_SCENE_CHANGE = 120.0;
 
 
 //  One straight walk timed finely, to check a map against the game: holds the

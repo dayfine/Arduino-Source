@@ -71,15 +71,32 @@ bool black_screen_was_battle(VideoStream& stream, ProControllerContext& context)
     return ret >= 0;
 }
 
+//  A grass encounter opens with a leaf animation, neither white nor black, and
+//  shows the battle's text box a few seconds later. After a change of the
+//  whole screen that walking cannot make, wait for the battle to show.
+bool battle_follows(VideoStream& stream, ProControllerContext& context){
+    BattleMenuWatcher battle_menu(BattleType::STANDARD, COLOR_YELLOW);
+    BattleDialogWatcher battle_dialog(COLOR_YELLOW);
+    return wait_until(stream, context, 5s, {{battle_menu}, {battle_dialog}}) >= 0;
+}
+
 //  A step in tall grass that was started before the stick was released still
 //  finishes, and its encounter starts after the walk has ended. Watch a little
 //  longer, and run from it. Returns whether there was one.
 bool run_from_late_encounter(VideoStream& stream, ProControllerContext& context, const std::string& label){
+    VideoSnapshot before = stream.video().snapshot();
     WhiteScreenOverWatcher encounter_flash(COLOR_YELLOW, {0.1, 0.1, 0.8, 0.8});
     BlackScreenWatcher black(COLOR_RED);
     BattleMenuWatcher battle_menu(BattleType::STANDARD, COLOR_YELLOW);
-    const int ret = wait_until(stream, context, 1200ms, {{encounter_flash}, {black}, {battle_menu}});
-    if (ret < 0 || (ret == 1 && !black_screen_was_battle(stream, context))){
+    BattleDialogWatcher battle_dialog(COLOR_YELLOW);
+    const int ret = wait_until(stream, context, 1200ms, {{encounter_flash}, {black}, {battle_menu}, {battle_dialog}});
+    bool battle = ret == 0 || ret == 2 || ret == 3 || (ret == 1 && black_screen_was_battle(stream, context));
+    if (ret < 0){
+        VideoSnapshot after = stream.video().snapshot();
+        battle = before && after && walk_screen_change(*before.frame, *after.frame) > WALK_SCENE_CHANGE &&
+            battle_follows(stream, context);
+    }
+    if (!battle){
         return false;
     }
     stream.log("[Walk] " + label + ": wild battle after the walk; running.");
@@ -171,16 +188,17 @@ WalkResult walk_until(
         BlackScreenWatcher black(COLOR_RED);
         BattleMenuWatcher battle_menu(BattleType::STANDARD, COLOR_YELLOW);
         ShortDialogWatcher dialog(COLOR_YELLOW);
+        BattleDialogWatcher battle_dialog(COLOR_YELLOW);
         const int ret = run_until<ProControllerContext>(
             stream, context,
             [&](ProControllerContext& context){
                 pbf_move_left_joystick(context, {x, y}, chunk, 0ms);
             },
-            {{encounter_flash}, {black}, {battle_menu}, {dialog}}
+            {{encounter_flash}, {black}, {battle_menu}, {dialog}, {battle_dialog}}
         );
         result.walked += chunk;
 
-        bool battle = ret == 0 || ret == 2;
+        bool battle = ret == 0 || ret == 2 || ret == 4;
         if (ret == 1){
             battle = black_screen_was_battle(stream, context);
             if (!battle){
@@ -205,6 +223,15 @@ WalkResult walk_until(
         const double change = walk_screen_change(*before.frame, *after.frame);
         stream.log("[Walk] " + label + ": " + std::to_string(result.walked.count()) +
             "ms, screen change " + std::to_string(change) + ".");
+        if (change > WALK_SCENE_CHANGE && battle_follows(stream, context)){
+            result.wild_battles++;
+            stream.log("[Walk] " + label + ": wild battle (leaf opening); running.");
+            escape_wild_battle(stream, context, BattleType::STANDARD);
+            context.wait_for_all_requests();
+            before = snapshot_or_fail(stream, label);
+            unchanged = 0;
+            continue;
+        }
         //  Two still chunks in a row, so one dropped frame does not stop us. A
         //  frame exactly the same is a stalled video or a game hitch, not a wall:
         //  standing at a wall still animates.
@@ -230,14 +257,15 @@ WalkResult walk_for(
     BlackScreenWatcher black(COLOR_RED);
     BattleMenuWatcher battle_menu(BattleType::STANDARD, COLOR_YELLOW);
     ShortDialogWatcher dialog(COLOR_YELLOW);
+    BattleDialogWatcher battle_dialog(COLOR_YELLOW);
     const int ret = run_until<ProControllerContext>(
         stream, context,
         [&](ProControllerContext& context){
             pbf_move_left_joystick(context, {x, y}, duration, 0ms);
         },
-        {{encounter_flash}, {black}, {battle_menu}, {dialog}}
+        {{encounter_flash}, {black}, {battle_menu}, {dialog}, {battle_dialog}}
     );
-    bool battle = ret == 0 || ret == 2;
+    bool battle = ret == 0 || ret == 2 || ret == 4;
     if (ret == 1){
         battle = black_screen_was_battle(stream, context);
         if (!battle){
