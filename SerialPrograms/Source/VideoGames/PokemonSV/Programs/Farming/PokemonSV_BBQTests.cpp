@@ -104,6 +104,8 @@ public:
     // Kills heard in each clear, in turn. Running past the end throws, which
     // also stops a loop that would never end.
     std::vector<uint64_t> kills_per_clear;
+    // The lead's HP read in each clear, in turn. Past the end, it is unknown.
+    std::vector<std::optional<double>> hp_per_clear;
 
     std::vector<std::string> steps;
     int seconds = 0;
@@ -124,11 +126,12 @@ public:
         }
         steps.push_back("clear");
         seconds += CLEAR_SECONDS;
+        const std::optional<double> hp = m_clears < hp_per_clear.size() ? hp_per_clear[m_clears] : std::nullopt;
         m_kills += kills_per_clear[m_clears++];
         if (m_kills >= stop_at_kills){
             seconds -= CLEAR_TAIL_SECONDS;
         }
-        return std::nullopt;
+        return hp;
     }
     virtual void return_to_plaza() override{
         steps.push_back("return");
@@ -149,8 +152,8 @@ const std::string PASS = "fly clear return heal";
 // A pass that returns without healing.
 const std::string LAST_PASS = "fly clear return";
 
-std::string passes(int count){
-    std::vector<std::string> ret(count, PASS);
+std::string passes(int count, const std::string& pass = PASS){
+    std::vector<std::string> ret(count, pass);
     return join(ret, " ");
 }
 
@@ -168,6 +171,8 @@ struct BBQAutoBattleScenario{
     uint64_t kill_target = 10;
     int time_limit_minutes = 35;
     std::vector<uint64_t> kills_per_clear;
+    std::vector<std::optional<double>> hp_per_clear = {}; // Unknown when not given.
+    int heal_below_hp_percent = 50;
     BBQAutoBattleResult expected_result = BBQAutoBattleResult::TargetReached;
     std::string expected_steps;
     int expected_seconds = 0;
@@ -184,11 +189,13 @@ public:
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
         ScriptedAutoBattle actions;
         actions.kills_per_clear = m_scenario.kills_per_clear;
+        actions.hp_per_clear = m_scenario.hp_per_clear;
 
         RecordingLogger logger;
         BBQAutoBattlePolicy policy;
         policy.kill_target = m_scenario.kill_target;
         policy.time_limit = std::chrono::minutes(m_scenario.time_limit_minutes);
+        policy.heal_below_hp_percent = (uint8_t)m_scenario.heal_below_hp_percent;
         BBQAutoBattleResult result;
         try{
             result = run_auto_battle(logger, actions, policy);
@@ -232,10 +239,10 @@ static void add_tests_BBQAutoBattle(UnitTestDatabase& database){
             .expected_steps = passes(4) + " " + LAST_PASS,
             .expected_seconds = 5 * PASS_SECONDS - LAST_PASS_SAVED_SECONDS,
             .expected_log = {
-                "Auto Battle pass 1: 2 kills, 2/10 in total, HP ?, 46 s elapsed. Below the target: return, heal and go again.",
-                "Auto Battle pass 2: 2 kills, 4/10 in total, HP ?, 148 s elapsed. Below the target: return, heal and go again.",
-                "Auto Battle pass 3: 2 kills, 6/10 in total, HP ?, 250 s elapsed. Below the target: return, heal and go again.",
-                "Auto Battle pass 4: 2 kills, 8/10 in total, HP ?, 352 s elapsed. Below the target: return, heal and go again.",
+                "Auto Battle pass 1: 2 kills, 2/10 in total, HP ?, 46 s elapsed. Below the target and HP unknown: return, heal and go again.",
+                "Auto Battle pass 2: 2 kills, 4/10 in total, HP ?, 148 s elapsed. Below the target and HP unknown: return, heal and go again.",
+                "Auto Battle pass 3: 2 kills, 6/10 in total, HP ?, 250 s elapsed. Below the target and HP unknown: return, heal and go again.",
+                "Auto Battle pass 4: 2 kills, 8/10 in total, HP ?, 352 s elapsed. Below the target and HP unknown: return, heal and go again.",
                 "Auto Battle pass 5: 2 kills, 10/10 in total, HP ?, 448 s elapsed. Target reached: return without healing.",
             },
         },
@@ -266,8 +273,8 @@ static void add_tests_BBQAutoBattle(UnitTestDatabase& database){
             .expected_steps = passes(2) + " " + LAST_PASS,
             .expected_seconds = 3 * PASS_SECONDS - ScriptedAutoBattle::HEAL_SECONDS,
             .expected_log = {
-                "Auto Battle pass 1: 0 kills, 0/10 in total, HP ?, 46 s elapsed. Below the target: return, heal and go again.",
-                "Auto Battle pass 2: 0 kills, 0/10 in total, HP ?, 148 s elapsed. Below the target: return, heal and go again.",
+                "Auto Battle pass 1: 0 kills, 0/10 in total, HP ?, 46 s elapsed. Below the target and HP unknown: return, heal and go again.",
+                "Auto Battle pass 2: 0 kills, 0/10 in total, HP ?, 148 s elapsed. Below the target and HP unknown: return, heal and go again.",
                 "Auto Battle pass 3: 0 kills, 0/10 in total, HP ?, 250 s elapsed. No kill in 3 passes in a row: return and give up.",
             },
         },
@@ -288,9 +295,9 @@ static void add_tests_BBQAutoBattle(UnitTestDatabase& database){
             .expected_steps = passes(3) + " " + LAST_PASS,
             .expected_seconds = 4 * PASS_SECONDS - ScriptedAutoBattle::HEAL_SECONDS,
             .expected_log = {
-                "Auto Battle pass 1: 1 kills, 1/10 in total, HP ?, 46 s elapsed. Below the target: return, heal and go again.",
-                "Auto Battle pass 2: 1 kills, 2/10 in total, HP ?, 148 s elapsed. Below the target: return, heal and go again.",
-                "Auto Battle pass 3: 1 kills, 3/10 in total, HP ?, 250 s elapsed. Below the target: return, heal and go again.",
+                "Auto Battle pass 1: 1 kills, 1/10 in total, HP ?, 46 s elapsed. Below the target and HP unknown: return, heal and go again.",
+                "Auto Battle pass 2: 1 kills, 2/10 in total, HP ?, 148 s elapsed. Below the target and HP unknown: return, heal and go again.",
+                "Auto Battle pass 3: 1 kills, 3/10 in total, HP ?, 250 s elapsed. Below the target and HP unknown: return, heal and go again.",
                 "Auto Battle pass 4: 1 kills, 4/10 in total, HP ?, 352 s elapsed. Time limit of 5 min reached: return and give up.",
             },
         },
@@ -301,6 +308,91 @@ static void add_tests_BBQAutoBattle(UnitTestDatabase& database){
             .kills_per_clear = {3, 3, 3, 3},
             .expected_steps = passes(3) + " " + LAST_PASS,
             .expected_seconds = 4 * PASS_SECONDS - LAST_PASS_SAVED_SECONDS,
+        },
+        {
+            // Same kills as "auto battle 10 at 2 kills per pass", 4 heals (112 s) faster.
+            .name = "high HP skips the heal",
+            .kills_per_clear = {2, 2, 2, 2, 2},
+            .hp_per_clear = {0.8, 0.8, 0.8, 0.8, 0.8},
+            .expected_steps = passes(5, LAST_PASS),
+            .expected_seconds = 5 * PASS_SECONDS - LAST_PASS_SAVED_SECONDS - 4 * ScriptedAutoBattle::HEAL_SECONDS,
+            .expected_log = {
+                "Auto Battle pass 1: 2 kills, 2/10 in total, HP 80%, 46 s elapsed. Below the target and HP at or above 50%: return and go again without healing.",
+                "Auto Battle pass 2: 2 kills, 4/10 in total, HP 80%, 120 s elapsed. Below the target and HP at or above 50%: return and go again without healing.",
+                "Auto Battle pass 3: 2 kills, 6/10 in total, HP 80%, 194 s elapsed. Below the target and HP at or above 50%: return and go again without healing.",
+                "Auto Battle pass 4: 2 kills, 8/10 in total, HP 80%, 268 s elapsed. Below the target and HP at or above 50%: return and go again without healing.",
+                "Auto Battle pass 5: 2 kills, 10/10 in total, HP 80%, 336 s elapsed. Target reached: return without healing.",
+            },
+        },
+        {
+            // Same kills as "auto battle 30 at 3 kills per pass", 9 heals (252 s) faster.
+            .name = "high HP skips the heal in auto battle 30",
+            .kill_target = 30,
+            .kills_per_clear = {3, 3, 3, 3, 3, 3, 3, 3, 3, 3},
+            .hp_per_clear = {0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9},
+            .expected_steps = passes(10, LAST_PASS),
+            .expected_seconds = 10 * PASS_SECONDS - LAST_PASS_SAVED_SECONDS - 9 * ScriptedAutoBattle::HEAL_SECONDS,
+        },
+        {
+            .name = "low HP heals",
+            .kills_per_clear = {2, 2, 2, 2, 2},
+            .hp_per_clear = {0.3, 0.3, 0.3, 0.3, 0.3},
+            .expected_steps = passes(4) + " " + LAST_PASS,
+            .expected_seconds = 5 * PASS_SECONDS - LAST_PASS_SAVED_SECONDS,
+            .expected_log = {
+                "Auto Battle pass 1: 2 kills, 2/10 in total, HP 30%, 46 s elapsed. Below the target and HP below 50%: return, heal and go again.",
+                "Auto Battle pass 2: 2 kills, 4/10 in total, HP 30%, 148 s elapsed. Below the target and HP below 50%: return, heal and go again.",
+                "Auto Battle pass 3: 2 kills, 6/10 in total, HP 30%, 250 s elapsed. Below the target and HP below 50%: return, heal and go again.",
+                "Auto Battle pass 4: 2 kills, 8/10 in total, HP 30%, 352 s elapsed. Below the target and HP below 50%: return, heal and go again.",
+                "Auto Battle pass 5: 2 kills, 10/10 in total, HP 30%, 448 s elapsed. Target reached: return without healing.",
+            },
+        },
+        {
+            // Unknown HP heals, as every pass did before the threshold.
+            .name = "unknown HP heals",
+            .kills_per_clear = {2, 2, 2, 2, 2},
+            .hp_per_clear = {0.8, std::nullopt, 0.8, std::nullopt, 0.8},
+            .expected_steps = LAST_PASS + " " + PASS + " " + LAST_PASS + " " + PASS + " " + LAST_PASS,
+            .expected_seconds = 5 * PASS_SECONDS - LAST_PASS_SAVED_SECONDS - 2 * ScriptedAutoBattle::HEAL_SECONDS,
+        },
+        {
+            // HP at the threshold skips the heal; just below heals.
+            .name = "heal threshold boundary",
+            .kills_per_clear = {3, 3, 3, 3},
+            .hp_per_clear = {0.5, 0.49, 0.5, 0.5},
+            .expected_steps = LAST_PASS + " " + PASS + " " + LAST_PASS + " " + LAST_PASS,
+            .expected_seconds = 4 * PASS_SECONDS - LAST_PASS_SAVED_SECONDS - 2 * ScriptedAutoBattle::HEAL_SECONDS,
+            .expected_log = {
+                "Auto Battle pass 1: 3 kills, 3/10 in total, HP 50%, 46 s elapsed. Below the target and HP at or above 50%: return and go again without healing.",
+                "Auto Battle pass 2: 3 kills, 6/10 in total, HP 49%, 120 s elapsed. Below the target and HP below 50%: return, heal and go again.",
+                "Auto Battle pass 3: 3 kills, 9/10 in total, HP 50%, 222 s elapsed. Below the target and HP at or above 50%: return and go again without healing.",
+                "Auto Battle pass 4: 3 kills, 12/10 in total, HP 50%, 290 s elapsed. Target reached: return without healing.",
+            },
+        },
+        {
+            .name = "a threshold of 100% heals unless HP is full",
+            .kills_per_clear = {4, 4, 4},
+            .hp_per_clear = {1.0, 0.99, 1.0},
+            .heal_below_hp_percent = 100,
+            .expected_steps = LAST_PASS + " " + PASS + " " + LAST_PASS,
+            .expected_seconds = 3 * PASS_SECONDS - LAST_PASS_SAVED_SECONDS - ScriptedAutoBattle::HEAL_SECONDS,
+        },
+        {
+            .name = "a threshold of 0% heals only when HP is unknown",
+            .kills_per_clear = {4, 4, 4},
+            .hp_per_clear = {0.01, std::nullopt, 0.01},
+            .heal_below_hp_percent = 0,
+            .expected_steps = LAST_PASS + " " + PASS + " " + LAST_PASS,
+            .expected_seconds = 3 * PASS_SECONDS - LAST_PASS_SAVED_SECONDS - ScriptedAutoBattle::HEAL_SECONDS,
+        },
+        {
+            // The limits still end the attempt when no pass heals.
+            .name = "gives up after 3 passes with no kill and high HP",
+            .kills_per_clear = {0, 0, 0},
+            .hp_per_clear = {1.0, 1.0, 1.0},
+            .expected_result = BBQAutoBattleResult::NoKills,
+            .expected_steps = passes(3, LAST_PASS),
+            .expected_seconds = 3 * (PASS_SECONDS - ScriptedAutoBattle::HEAL_SECONDS),
         },
     };
     for (const BBQAutoBattleScenario& scenario : scenarios){

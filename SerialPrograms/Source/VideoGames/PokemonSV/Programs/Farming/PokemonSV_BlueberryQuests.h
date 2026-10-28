@@ -196,6 +196,8 @@ struct BBQAutoBattlePolicy{
     uint64_t max_empty_passes = 3;
     //Give up after the pass that ends past this time.
     std::chrono::minutes time_limit = std::chrono::minutes(35);
+    //Between passes, heal only if the lead's HP is below this percentage or unknown.
+    uint8_t heal_below_hp_percent = 50;
 };
 
 //Why run_auto_battle() returned.
