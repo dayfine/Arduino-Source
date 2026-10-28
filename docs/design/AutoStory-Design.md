@@ -135,6 +135,13 @@ The piece that turns a plan into stick input:
   on the console by probing known wall distances, not guessed. Running shoes would be a second
   speed; we walk.
 
+**Routes first, towns only when trusted.** Routes are open ground between tree walls, where the
+DP layout carries over and walls make good anchors. Towns changed more in the remake (buildings,
+signs, roofs), so a town grid is used for planning only once the console check (section 6)
+confirms it. Until then a town is crossed with screen-driven legs: walk to a wall or fence,
+then to the exit, ending on the route banner (OCR) or the transition. Each map carries a
+confidence flag that the executor checks before planning across it.
+
 This replaces Butters' recorded legs in 00.04 (catch -> Potion giver -> Jubilife) first, then
 segments 01 and 02.
 
