@@ -21,8 +21,9 @@ using namespace Pokemon;
 //  the NPC at the Potion girl fit a grid with no vertical offset.
 //
 //  Trees follow the Route 202 rules: tiles under trunks or mostly under a
-//  canopy are blocked. Ledges: row 10 west of the tall grass, and (53..57,8)
-//  in the north-east. West edge, rows 9..12: towards Lake Verity. South gap
+//  canopy are blocked. Ledges: row 10 west of the tall grass, and (53..56,7)
+//  in the north-east. On the console the north-east ledge is one row higher
+//  than it looks on the DP map, as on Route 202; the west one is unchecked. West edge, rows 9..12: towards Lake Verity. South gap
 //  (14..17, 19): Twinleaf Town. East edge, rows 3..6: Sandgem Town.
 //  Route 201 has no trainers; the N tiles are NPCs.
 const TileGrid& grid(){
@@ -36,8 +37,8 @@ const TileGrid& grid(){
         R"(##########################################"""""""""""..S........)",  //   4
         R"(##########################################"""""""""##...........)",  //   5
         R"(##..####..####....######..##....##..####.."""""""""##...........)",  //   6
-        R"(##..####..####....######..##....##..####.."""""""""##....N######)",  //   7
-        R"(##........####............................"""""""""##vvvvv######)",  //   8
+        R"(##..####..####....######..##....##..####.."""""""""##vvvvN######)",  //   7
+        R"(##........####............................"""""""""##.....######)",  //   8
         R"(....####.................................."""""""""##.....######)",  //   9
         R"(vvvv####vvvvvvvvvvvvvvvvvvvvvvvv........S."""""""""##.....######)",  //  10
         R"(....####............""""""N"""............................######)",  //  11

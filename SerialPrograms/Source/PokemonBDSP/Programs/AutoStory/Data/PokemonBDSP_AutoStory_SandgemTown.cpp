@@ -23,13 +23,16 @@ using namespace Pokemon;
 //  running west along row 6 to the map edge. Top middle: Pokemon Center.
 //  Top right: Poke Mart. Exits: west, rows 7..9 (Route 201); north,
 //  (20..29, 0) (Route 202); south, (20..25, 22) (the beach).
+//
+//  Checked on the console: walking south from Route 202 (30,22) stops at
+//  (29,2) above the Poke Mart, and walking west from there stops at (20,2).
 const TileGrid& grid(){
     //     0         1         2         3
     //     0123456789012345678901234567890123
     static const TileGrid grid({
         R"(####################..........####)",  //   0
         R"(####################..........####)",  //   1
-        R"(####################......########)",  //   2
+        R"(####################..........####)",  //   2
         R"(####################......########)",  //   3
         R"(####################......########)",  //   4
         R"(####################......########)",  //   5
