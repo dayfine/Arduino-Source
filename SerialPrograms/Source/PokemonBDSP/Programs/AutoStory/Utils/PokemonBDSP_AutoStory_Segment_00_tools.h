@@ -76,7 +76,8 @@ namespace PokemonAutomation {
                 ProControllerContext& context
             );
 
-            // One wild encounter using Scratch, followed by verified Potion healing.
+            // Finds one wild Pokemon in the grass by stepping left and right, and
+            // fights it with the best move on the menu. Does not heal.
             void battle_1_pokemon(VideoStream& stream, ProControllerContext& context);
 
             // Burst wiggle variant of catch_1_pokemon for testing.

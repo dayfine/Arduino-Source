@@ -666,8 +666,18 @@ namespace PokemonAutomation {
                 size_t best = 1;
                 int best_score = -1;
                 for (size_t i = 0; i < moves.move_count; i++) {
+                    // The names are white on a button coloured by type: keep only
+                    // the white text, black on white, for the OCR.
+                    ImageRGB32 text = extract_box_reference(screen, moves.buttons[i]).copy();
+                    for (size_t y = 0; y < text.height(); y++) {
+                        for (size_t x = 0; x < text.width(); x++) {
+                            const uint32_t pixel = text.pixel(x, y);
+                            const bool white = ((pixel >> 16) & 0xff) > 200 && ((pixel >> 8) & 0xff) > 200 && (pixel & 0xff) > 200;
+                            text.pixel(x, y) = white ? 0xff000000 : 0xffffffff;
+                        }
+                    }
                     std::string name;
-                    for (unsigned char ch : OCR::tesseract_ocr_read(Language::English, extract_box_reference(screen, moves.buttons[i]))) {
+                    for (unsigned char ch : OCR::tesseract_ocr_read(Language::English, text)) {
                         if (std::isalpha(ch)) name.push_back((char)std::tolower(ch));
                     }
                     const KnownMove* known = nullptr;
@@ -678,7 +688,9 @@ namespace PokemonAutomation {
                             known = &move;
                         }
                     }
-                    const int score = known ? known->power * 2 + (std::string(known->type) != "normal" ? 1 : 0) : -1;
+                    // An unreadable move counts as a plain attack, ahead of known
+                    // status moves.
+                    const int score = known ? known->power * 2 + (std::string(known->type) != "normal" ? 1 : 0) : 40 * 2 - 1;
                     stream.log("[" + label + "] Move " + std::to_string(i + 1) + " reads \"" + name + "\"" +
                         (known ? std::string(" = ") + known->name + " (" + known->type + ", " + std::to_string(known->power) + ")" : " (unknown)") + ".");
                     if (score > best_score) { best_score = score; best = i + 1; }
@@ -1392,12 +1404,10 @@ namespace PokemonAutomation {
             void battle_1_pokemon(VideoStream& stream, ProControllerContext& context) {
                 stream.log("[Training] Finding one wild Pokemon using the catch encounter wiggle.", COLOR_BLUE);
                 encounter_one_wild_pokemon(stream, context);
-                // Use the same battle loop as Tristan, but Scratch is slot 1.
-                fight_using_move_slot(stream, context, BattleType::STANDARD, 1, "Training (Scratch)");
-                stream.log("[Training] Fight and level-up cleanup complete; verifying Potion healing.");
-                use_potion_first_pokemon(stream, context);
+                // The best move on the menu, whatever the starter.
+                fight_using_move_slot(stream, context, BattleType::STANDARD, 0, "Training");
                 context.wait_for_all_requests();
-                stream.log("[Training] One wild battle completed; slot 1 healing verified.", COLOR_GREEN);
+                stream.log("[Training] One wild battle completed.", COLOR_GREEN);
             }
 
             // ---------------------------------------------------------------------------
