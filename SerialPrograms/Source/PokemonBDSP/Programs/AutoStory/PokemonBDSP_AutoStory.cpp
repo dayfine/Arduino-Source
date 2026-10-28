@@ -84,10 +84,10 @@ BDSPAutoStory_Descriptor::BDSPAutoStory_Descriptor()
           "Auto Story",
           "Programs/PokemonBDSP/AutoStory.html",
           "Automatically completes BDSP story segments.",
+          PanelQualityStanding::OFFICIAL_BETA,
           ProgramControllerClass::StandardController_NoRestrictions,
           FeedbackType::REQUIRED,
           AllowCommandsWhenRunning::DISABLE_COMMANDS,
-          PanelDeprecation::NOT_DEPRECATED,
           {"Tesseract"}
           )
 {}
