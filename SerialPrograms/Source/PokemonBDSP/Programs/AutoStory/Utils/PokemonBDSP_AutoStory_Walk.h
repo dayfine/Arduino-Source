@@ -47,6 +47,16 @@ WalkResult walk_until(
     const std::function<bool(const ImageViewRGB32& screen)>& arrived = nullptr
 );
 
+//  Holds the left stick at (x, y) for `duration` in one go, for a walk of a
+//  set length: walk_until() checks the screen between short holds, and each
+//  break can cost a step. Stops early for a dialog or a transition. A wild
+//  battle is run from and ends the walk with `wild_battles` 1, at a place the
+//  caller cannot know.
+WalkResult walk_for(
+    VideoStream& stream, ProControllerContext& context,
+    double x, double y, Milliseconds duration, const std::string& label
+);
+
 //  walk_until() that requires `expected`. Fails with the screenshot otherwise.
 WalkResult walk_expecting(
     VideoStream& stream, ProControllerContext& context,

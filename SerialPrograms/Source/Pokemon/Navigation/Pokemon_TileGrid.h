@@ -12,6 +12,7 @@
 #define PokemonAutomation_Pokemon_TileGrid_H
 
 #include <cstddef>
+#include <functional>
 #include <optional>
 #include <string>
 #include <vector>
@@ -144,6 +145,40 @@ std::vector<TilePos> trace_legs(
     const TileGrid& grid,
     const TilePos& from,
     const std::vector<TileLeg>& legs
+);
+
+
+//  A leg of a plan that allows for open legs going a tile short or long. A
+//  leg to a wall is walked until the player stops; an open leg is walked for
+//  `leg.tiles` tiles' worth of time. `after` lists every tile the player may
+//  stand on once the leg is done.
+struct PlannedLeg{
+    TileLeg leg;
+    std::vector<TilePos> after;
+};
+std::string to_string(const PlannedLeg& leg);
+
+struct RobustPlanCosts : TilePlanCosts{
+    int open_error = 1;         //  an open leg may end this many tiles short or long
+    int max_open_tiles = 12;    //  longest open leg to consider
+    size_t max_spread = 4;      //  most tiles the player may be on at once
+};
+
+//  Cheapest legs that take the player from any of the tiles in `from` to tiles
+//  that are all `goal`, even if every open leg ends up to `open_error` tiles
+//  off: the walls of later legs must bring the possible positions together.
+//  Legs that would leave the map or enter a door are not used. Nothing if no
+//  such plan exists.
+std::optional<std::vector<PlannedLeg>> plan_robust_route(
+    const TileGrid& grid,
+    const std::vector<TilePos>& from, const std::function<bool(const TilePos&)>& goal,
+    const RobustPlanCosts& costs = RobustPlanCosts()
+);
+//  The same, from one tile to exactly `to`.
+std::optional<std::vector<PlannedLeg>> plan_robust_route(
+    const TileGrid& grid,
+    const TilePos& from, const TilePos& to,
+    const RobustPlanCosts& costs = RobustPlanCosts()
 );
 
 

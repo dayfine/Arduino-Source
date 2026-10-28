@@ -49,6 +49,11 @@ bool story_map_plannable(const std::string& map){
     return map == MAP_ROUTE_201 || map == MAP_ROUTE_202;
 }
 
+bool story_at_jubilife_exit(const TilePos& world){
+    const std::optional<MapTile> tile = story_maps().to_local(world);
+    return tile && tile->map == MAP_ROUTE_202 && tile->pos.y <= 3;
+}
+
 std::vector<TrainerSight> story_trainer_sights(){
     std::vector<TrainerSight> sights = Route202::trainer_sights();
     for (TrainerSight& sight : sights){

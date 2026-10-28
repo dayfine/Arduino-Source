@@ -28,6 +28,10 @@ const Pokemon::MapSet& story_maps();
 //  grid.
 bool story_map_plannable(const std::string& map);
 
+//  The open rows at the top of Route 202, in world tiles: walking north from
+//  any of them enters Jubilife City.
+bool story_at_jubilife_exit(const Pokemon::TilePos& world);
+
 //  Route 202's trainers, in world tiles of story_maps().
 std::vector<Pokemon::TrainerSight> story_trainer_sights();
 

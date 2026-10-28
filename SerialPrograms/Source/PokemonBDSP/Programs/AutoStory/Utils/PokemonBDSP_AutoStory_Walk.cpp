@@ -192,6 +192,44 @@ WalkResult walk_until(
     }
 }
 
+WalkResult walk_for(
+    VideoStream& stream, ProControllerContext& context,
+    double x, double y, Milliseconds duration, const std::string& label
+){
+    WalkResult result{WalkStop::LIMIT, duration, 0};
+    context.wait_for_all_requests();
+    WhiteScreenOverWatcher encounter_flash(COLOR_YELLOW, {0.1, 0.1, 0.8, 0.8});
+    BlackScreenWatcher black(COLOR_RED);
+    BattleMenuWatcher battle_menu(BattleType::STANDARD, COLOR_YELLOW);
+    ShortDialogWatcher dialog(COLOR_YELLOW);
+    const int ret = run_until<ProControllerContext>(
+        stream, context,
+        [&](ProControllerContext& context){
+            pbf_move_left_joystick(context, {x, y}, duration, 0ms);
+        },
+        {{encounter_flash}, {black}, {battle_menu}, {dialog}}
+    );
+    bool battle = ret == 0 || ret == 2;
+    if (ret == 1){
+        battle = black_screen_was_battle(stream, context);
+        if (!battle){
+            result.stop = WalkStop::TRANSITION;
+        }
+    }
+    if (battle){
+        result.wild_battles = 1;
+        stream.log("[Walk] " + label + ": wild battle; running.");
+        escape_wild_battle(stream, context, BattleType::STANDARD);
+        context.wait_for_all_requests();
+    }
+    if (ret == 3){
+        result.stop = WalkStop::DIALOG;
+    }
+    stream.log("[Walk] " + label + ": " + walk_stop_name(result.stop) + " after a " +
+        std::to_string(duration.count()) + "ms hold, " + std::to_string(result.wild_battles) + " wild battle(s).");
+    return result;
+}
+
 WalkResult walk_to_talk(
     VideoStream& stream, ProControllerContext& context,
     double x, double y, Milliseconds limit, const std::string& label

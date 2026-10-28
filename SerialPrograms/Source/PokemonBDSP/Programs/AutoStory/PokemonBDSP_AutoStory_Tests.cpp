@@ -4,6 +4,7 @@
  *
  */
 
+#include <functional>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "Pokemon/Navigation/Pokemon_TileGrid.h"
@@ -222,6 +223,36 @@ public:
     }
 };
 
+//  Plans from `from` to `goal` allowing open legs a tile short or long, and
+//  logs the legs with every map tile each may end on.
+std::string check_robust_plan(
+    Logger& logger, const std::string& name, const Pokemon::MapSet& maps,
+    const std::vector<TilePos>& from, const std::function<bool(const TilePos&)>& goal
+){
+    const auto legs = Pokemon::plan_robust_route(maps.world(), from, goal);
+    if (!legs){
+        return name + ": no robust route found.";
+    }
+    std::string text = name + " (robust): from";
+    for (const TilePos& pos : from){
+        text += " " + maps.describe(pos);
+    }
+    for (const Pokemon::PlannedLeg& leg : *legs){
+        text += "\n    " + Pokemon::to_string(leg.leg) + " to";
+        for (const TilePos& pos : leg.after){
+            text += " " + maps.describe(pos);
+        }
+    }
+    logger.log(text);
+    const std::vector<TilePos>& end = legs->empty() ? from : legs->back().after;
+    for (const TilePos& pos : end){
+        if (!goal(pos)){
+            return name + ": the robust plan may end on " + maps.describe(pos) + ".";
+        }
+    }
+    return "";
+}
+
 //  Checks a plan from `from` to `to`: every leg can be walked, ledges are
 //  crossed only southward, and each leg's wall flag matches the grid.
 //  With `maps`, legs are printed with the map tile they end on, and with
@@ -337,6 +368,17 @@ public:
             return error;
         }
         error = check_plan(logger, "Potion giver to Jubilife", maps.world(), potion, jubilife, &maps, trainers);
+        if (!error.empty()){
+            return error;
+        }
+        error = check_robust_plan(logger, "Catch spot to Potion giver", maps, {catch_spot},
+            [&](const TilePos& pos){ return pos == potion; });
+        if (!error.empty()){
+            return error;
+        }
+        //  The training battle's wiggle may leave us a tile east of the talk spot.
+        error = check_robust_plan(logger, "Potion giver to Jubilife", maps, {potion, {potion.x + 1, potion.y}},
+            story_at_jubilife_exit);
         if (!error.empty()){
             return error;
         }
