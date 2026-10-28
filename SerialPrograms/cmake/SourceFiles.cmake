@@ -1477,6 +1477,10 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/Resources/Pokemon_PokemonSlugs.h
     Source/PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_LabConsole.cpp
     Source/PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_LabConsole.h
+    Source/PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_NewGame.cpp
+    Source/PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_NewGame.h
+    Source/PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Trace.cpp
+    Source/PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Trace.h
     Source/PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_OverworldMatchers.cpp
     Source/PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_OverworldMatchers.h
     Source/PokemonBDSP/Programs/TestPrograms/PokemonBDSP_OverworldLightingTest.cpp

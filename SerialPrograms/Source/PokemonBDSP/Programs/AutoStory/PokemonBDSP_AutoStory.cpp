@@ -2,6 +2,7 @@
 #include <memory>
 
 #include "PokemonBDSP_AutoStory.h"
+#include "Utils/PokemonBDSP_AutoStory_NewGame.h"
 
 #include "CommonFramework/Globals.h"
 #include "CommonFramework/Notifications/ProgramNotifications.h"
@@ -421,6 +422,12 @@ BDSPAutoStory::BDSPAutoStory()
     , END_SEGMENT_MAINSTORY(
           "<b>End Segment:</b>", section_database(false, false),
           LockMode::LOCK_WHILE_RUNNING, std::to_string(ALL_SEGMENTS().size() - 1))
+    , NEW_GAME_INTRO(
+          "<b>Start a new game first:</b><br>"
+          "For a game with no save: restart it and play the intro (language, appearance, names) "
+          "until the player is in control in the bedroom. Tutorial section only; runs before the selected range.",
+          LockMode::LOCK_WHILE_RUNNING, false)
+    , PLAYER_NAME(false, "<b>Player name:</b><br>For a new game. Letters and digits.", LockMode::LOCK_WHILE_RUNNING, "Kosmos", "Kosmos")
     , STARTERCHOICE(
           "<b>Starter Pokemon:</b>",
           {
@@ -589,6 +596,8 @@ BDSPAutoStory::BDSPAutoStory()
     PA_ADD_OPTION(END_DESCRIPTION_CHECKPOINT);
 
 
+    PA_ADD_OPTION(NEW_GAME_INTRO);
+    PA_ADD_OPTION(PLAYER_NAME);
     PA_ADD_OPTION(STARTERCHOICE);
     PA_ADD_OPTION(STARTER_SHINY);
     PA_ADD_OPTION(CATCH_LEGENDARY);
@@ -755,6 +764,9 @@ void BDSPAutoStory::program(
             }
         }
     };
+    if (NEW_GAME_INTRO && STORY_SECTION == StorySection::TUTORIAL){
+        play_new_game_intro(env, context, PLAYER_NAME);
+    }
     if (fake_saves){
         checkpoint_reattempt_loop(env, context, options.notif_status_update, stats,
             std::move(run_selected_range), true, CheckpointSaveMode::FAKE,
