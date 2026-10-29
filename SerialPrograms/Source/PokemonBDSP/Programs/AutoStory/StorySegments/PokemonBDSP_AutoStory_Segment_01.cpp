@@ -94,35 +94,42 @@ bool talk_or_fight(VideoStream& stream, ProControllerContext& context, const std
     fail(stream, label + ": neither a battle nor the overworld after the dialogue.");
 }
 
-void jubilife_to_oreburgh(SingleSwitchProgramEnvironment& env, VideoStream& stream, ProControllerContext& context){
-    (void)env;
+//  Logs a checkpoint's steps up front, then each step as it starts, with the
+//  one after it, in the log and the overlay.
+class StepLog{
+public:
+    StepLog(VideoStream& stream, std::string checkpoint, std::string intro, std::vector<std::string> steps)
+        : m_stream(stream), m_checkpoint(std::move(checkpoint)), m_steps(std::move(steps))
+    {
+        std::string text = "[" + m_checkpoint + "] " + intro + ", the steps are:";
+        for (size_t i = 0; i < m_steps.size(); i++){
+            text += "\n    " + std::to_string(i + 1) + ". " + m_steps[i];
+        }
+        m_stream.log(text, COLOR_BLUE);
+    }
+    void operator()(size_t number){
+        const std::string count = std::to_string(number) + "/" + std::to_string(m_steps.size());
+        const bool last = number >= m_steps.size();
+        m_stream.log("[" + m_checkpoint + " step " + count + "] " + m_steps[number - 1] +
+            (last ? std::string(" -- last step") : " -- next: " + m_steps[number]), COLOR_BLUE);
+        add_wrapped_log(m_stream.overlay(), m_checkpoint + " step " + count + ": " + m_steps[number - 1], COLOR_WHITE);
+        if (!last){
+            add_wrapped_log(m_stream.overlay(), "Next: " + m_steps[number], COLOR_GRAY);
+        }
+    }
+
+private:
+    VideoStream& m_stream;
+    std::string m_checkpoint;
+    std::vector<std::string> m_steps;
+};
+
+void jubilife_to_barry(VideoStream& stream, ProControllerContext& context){
     // What 01.01 does, stepped through on the console before writing it.
-    static const char* const STEPS[] = {
+    StepLog step(stream, "01.01", "From the Jubilife Pokemon Center to Barry", {
         "Heal at the nurse, then walk out of the Pokemon Center",
         "Walk to Jubilife's east exit and battle Barry at the Route 203 entrance",
-        "Walk east along Route 203, fighting the trainers who see us",
-        "Enter the Oreburgh Gate from the corner by the cliff",
-        "Listen to the Hiker, who gives HM Rock Smash",
-        "Walk east through the Gate past Curtis and Diana, out to Oreburgh City",
-        "Listen to the man who meets us at the city's entrance",
-    };
-    constexpr size_t STEP_COUNT = sizeof(STEPS) / sizeof(STEPS[0]);
-    {
-        std::string text = "[01.01] From Jubilife to Oreburgh, the steps are:";
-        for (size_t i = 0; i < STEP_COUNT; i++){
-            text += "\n    " + std::to_string(i + 1) + ". " + STEPS[i];
-        }
-        stream.log(text, COLOR_BLUE);
-    }
-    auto step = [&](size_t number){
-        std::string text = "[01.01 step " + std::to_string(number) + "/" + std::to_string(STEP_COUNT) + "] " + STEPS[number - 1];
-        text += number < STEP_COUNT ? std::string(" -- next: ") + STEPS[number] : std::string(" -- last step");
-        stream.log(text, COLOR_BLUE);
-        add_wrapped_log(stream.overlay(), "01.01 step " + std::to_string(number) + "/" + std::to_string(STEP_COUNT) + ": " + STEPS[number - 1], COLOR_WHITE);
-        if (number < STEP_COUNT){
-            add_wrapped_log(stream.overlay(), "Next: " + std::string(STEPS[number]), COLOR_GRAY);
-        }
-    };
+    });
 
     step(1);
     // The save stands us at the PC, right of the counter, facing it; west
@@ -135,8 +142,9 @@ void jubilife_to_oreburgh(SingleSwitchProgramEnvironment& env, VideoStream& stre
     if (walk_to_talk(stream, context, 0, 1, 3000ms, "to the nurse").stop != WalkStop::DIALOG){
         fail(stream, "Jubilife Pokemon Center: the nurse did not answer.");
     }
-    // Her first line, then Yes to healing; B for the rest.
-    finish_dialogue(stream, context, 2, "Nurse");
+    // Two lines, then Yes to "rest your Pokemon?" (B would answer No), and
+    // one more A for "I'll take your Pokemon"; B for the rest.
+    finish_dialogue(stream, context, 4, "Nurse");
     // South through the door until a girl standing below it stops us. The
     // door's fade may or may not read as a transition.
     WalkResult out{WalkStop::LIMIT, 0ms, 0};
@@ -189,8 +197,18 @@ void jubilife_to_oreburgh(SingleSwitchProgramEnvironment& env, VideoStream& stre
     if (!talk_or_fight(stream, context, "Barry", true)){
         fail(stream, "Route 203: Barry talked but did not battle.");
     }
+}
 
-    step(3);
+void route203_to_oreburgh(VideoStream& stream, ProControllerContext& context){
+    StepLog step(stream, "01.02", "From Barry on Route 203 to Oreburgh City", {
+        "Walk east along Route 203, fighting the trainers who see us",
+        "Enter the Oreburgh Gate from the corner by the cliff",
+        "Listen to the Hiker, who gives HM Rock Smash",
+        "Walk east through the Gate past Curtis and Diana, out to Oreburgh City",
+        "Listen to the man who meets us at the city's entrance",
+    });
+
+    step(1);
     // East to the cliff at the route's end. A woman standing on the path
     // only talks; a step south goes around her. Youngsters Dallas and
     // Sebastian see us on the way.
@@ -218,7 +236,7 @@ void jubilife_to_oreburgh(SingleSwitchProgramEnvironment& env, VideoStream& stre
     }
     route_status(stream, "Route 203: " + std::to_string(fights) + " trainer battle(s) on the way.");
 
-    step(4);
+    step(2);
     // North to the corner by the route's sign; the Gate's opening is in the
     // cliff a couple of tiles south of it.
     walk_until(stream, context, 0, 1, 6000ms, "north to the corner by the cliff");
@@ -234,7 +252,7 @@ void jubilife_to_oreburgh(SingleSwitchProgramEnvironment& env, VideoStream& stre
     }
     context.wait_for(1500ms);
 
-    step(5);
+    step(3);
     // The Hiker steps up to us as we walk east.
     const WalkResult to_hiker = walk_until(stream, context, 1, 0, 4000ms, "to the Hiker");
     if (to_hiker.stop != WalkStop::DIALOG && !dialogue_opens(stream, context, 2000ms)){
@@ -242,7 +260,7 @@ void jubilife_to_oreburgh(SingleSwitchProgramEnvironment& env, VideoStream& stre
     }
     finish_dialogue(stream, context, 0, "Hiker");
 
-    step(6);
+    step(4);
     // East: Camper Curtis and Picnicker Diana see us; past them the exit's
     // white fade, and the man in Oreburgh stops us right outside.
     fights = 0;
@@ -265,7 +283,7 @@ void jubilife_to_oreburgh(SingleSwitchProgramEnvironment& env, VideoStream& stre
         fail(stream, "Oreburgh Gate: did not reach Oreburgh City.");
     }
 
-    step(7);
+    step(5);
     finish_dialogue(stream, context, 0, "Man at Oreburgh's entrance");
     context.wait_for_all_requests();
 }
@@ -278,12 +296,25 @@ void checkpoint_0101(
 ){
     checkpoint_reattempt_loop(env, context, options, stats,
         [&](size_t /*attempt*/){
-            jubilife_to_oreburgh(env, env.console, context);
+            jubilife_to_barry(env.console, context);
         },
         true
     );
 }
 
+void checkpoint_0102(
+    SingleSwitchProgramEnvironment& env,
+    ProControllerContext& context,
+    AutoStoryOptions options,
+    AutoStoryStats& stats
+){
+    checkpoint_reattempt_loop(env, context, options, stats,
+        [&](size_t /*attempt*/){
+            route203_to_oreburgh(env.console, context);
+        },
+        true
+    );
+}
 }
 
 
@@ -301,12 +332,13 @@ void AutoStory_Segment_01::run_segment(
     env.update_stats();
     env.console.log("Start Segment " + name(), COLOR_ORANGE);
     AutoStory_Checkpoint_0101().run_checkpoint(env, context, options, stats);
+    AutoStory_Checkpoint_0102().run_checkpoint(env, context, options, stats);
     env.console.log("End Segment " + name(), COLOR_GREEN);
 }
 
-std::string AutoStory_Checkpoint_0101::name()       const { return "01.01 - Jubilife to Oreburgh"; }
+std::string AutoStory_Checkpoint_0101::name()       const { return "01.01 - Jubilife to Barry"; }
 std::string AutoStory_Checkpoint_0101::start_text() const { return "Standing in front of the Jubilife City Pokemon Center PC."; }
-std::string AutoStory_Checkpoint_0101::end_text()   const { return "In Oreburgh City, after the man at the entrance."; }
+std::string AutoStory_Checkpoint_0101::end_text()   const { return "On Route 203 by its sign, after beating Barry."; }
 
 void AutoStory_Checkpoint_0101::run_checkpoint(
     SingleSwitchProgramEnvironment& env,
@@ -315,6 +347,19 @@ void AutoStory_Checkpoint_0101::run_checkpoint(
     AutoStoryStats& stats
 ) const{
     checkpoint_0101(env, context, options, stats);
+}
+
+std::string AutoStory_Checkpoint_0102::name()       const { return "01.02 - Route 203 to Oreburgh"; }
+std::string AutoStory_Checkpoint_0102::start_text() const { return AutoStory_Checkpoint_0101().end_text(); }
+std::string AutoStory_Checkpoint_0102::end_text()   const { return "In Oreburgh City, after the man at the entrance."; }
+
+void AutoStory_Checkpoint_0102::run_checkpoint(
+    SingleSwitchProgramEnvironment& env,
+    ProControllerContext& context,
+    AutoStoryOptions options,
+    AutoStoryStats& stats
+) const{
+    checkpoint_0102(env, context, options, stats);
 }
 
 
