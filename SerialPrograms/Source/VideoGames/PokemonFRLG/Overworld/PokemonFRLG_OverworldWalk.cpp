@@ -31,8 +31,8 @@ constexpr Milliseconds TURN_SETTLE = 300ms;
 constexpr Milliseconds FACE_HOLD = 40ms;        //  short enough to turn without stepping
 constexpr Milliseconds FACE_SETTLE = 300ms;     //  the turn animation, before A reaches what is ahead
 constexpr Milliseconds STEP_RELEASE = 100ms;
-constexpr Milliseconds WARP_FADE_TIMEOUT = 3000ms;
-constexpr Milliseconds WARP_ARRIVAL_TIMEOUT = 5000ms;
+//  From the end of the hold, through the fade out and in.
+constexpr Milliseconds WARP_TIMEOUT = 8000ms;
 constexpr Milliseconds SURF_PROMPT_TIMEOUT = 5000ms;
 constexpr Milliseconds SURF_ANIMATION = 3000ms;
 //  After a warp's fade: leaving by a door the game walks the player a tile out
@@ -273,21 +273,15 @@ void clear_late_interrupts(
     }
 }
 
+//  One watcher for the whole fade: a ladder's black is short enough to be
+//  over before a second watcher, started once the fade is seen, looks.
 void wait_out_warp(ConsoleHandle& console, ProControllerContext& context, const RouteStep& step){
-    BlackScreenWatcher fade(COLOR_RED);
-    context.wait_for_all_requests();
-    if (wait_until(console, context, WARP_FADE_TIMEOUT, {fade}) < 0){
-        OperationFailedExceptionWithScreenshot::fire(
-            ErrorReportMode::SEND_ERROR_REPORT,
-            "walk_overworld_route(): no fade after walking onto the warp to " + step.end.map + ".",
-            console
-        );
-    }
     BlackScreenOverWatcher arrival(COLOR_RED);
-    if (wait_until(console, context, WARP_ARRIVAL_TIMEOUT, {arrival}) < 0){
+    context.wait_for_all_requests();
+    if (wait_until(console, context, WARP_TIMEOUT, {arrival}) < 0){
         OperationFailedExceptionWithScreenshot::fire(
             ErrorReportMode::SEND_ERROR_REPORT,
-            "walk_overworld_route(): the screen stayed black after the warp to " + step.end.map + ".",
+            "walk_overworld_route(): no fade in and out after walking onto the warp to " + step.end.map + ".",
             console
         );
     }
