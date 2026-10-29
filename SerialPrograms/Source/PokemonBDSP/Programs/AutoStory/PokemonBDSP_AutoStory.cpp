@@ -13,6 +13,7 @@
 #include "NintendoSwitch/Programs/NintendoSwitch_GameEntry.h"
 
 #include "StorySegments/PokemonBDSP_AutoStory_Segment_00.h"
+#include "StorySegments/PokemonBDSP_AutoStory_Segment_01.h"
 
 #include "CommonTools/Options/StringSelectOption.h"
 
@@ -30,6 +31,7 @@ using namespace std::chrono_literals;
 static std::vector<std::unique_ptr<AutoStory_Segment>> make_segment_list(){
     std::vector<std::unique_ptr<AutoStory_Segment>> segment_list;
     segment_list.emplace_back(std::make_unique<AutoStory_Segment_00>());
+    segment_list.emplace_back(std::make_unique<AutoStory_Segment_01>());
     return segment_list;
 }
 
@@ -47,6 +49,9 @@ static std::vector<std::unique_ptr<AutoStory_Checkpoint>> make_checkpoint_list()
     checkpoint_list.emplace_back(std::make_unique<AutoStory_Checkpoint_0003>());
     checkpoint_list.emplace_back(std::make_unique<AutoStory_Checkpoint_0004>());
     checkpoint_list.emplace_back(std::make_unique<AutoStory_Checkpoint_0005>());
+
+    //Segment 01
+    checkpoint_list.emplace_back(std::make_unique<AutoStory_Checkpoint_0101>());
 
     return checkpoint_list;
 }

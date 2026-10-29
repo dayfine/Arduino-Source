@@ -450,6 +450,14 @@ public:
                 {"Jubilife: president to the Pokemon Center", {president}, center, true},
             };
             std::string failed;
+            //  01.01: out of the Center to the street, anywhere on its row east of
+            //  the main road; the walk east from there finds the exit.
+            {
+                const TilePos street = at(EAST_EXIT_APPROACH);
+                const std::string leg_error = check_robust_plan(logger, "Jubilife: Pokemon Center to the Route 203 street", town,
+                    {at(CENTER_EXIT_STOP)}, [&](const TilePos& pos){ return pos.y == street.y && pos.x >= street.x; });
+                failed += leg_error.empty() ? "" : leg_error + " ";
+            }
             for (const auto& leg : legs){
                 const TilePos to = leg.to;
                 const bool door = leg.door;

@@ -367,6 +367,15 @@ bool find_bag_item_by_name(
     int num_icons = 8
 );
 
+// The same search in a Bag that is already open, such as the one a battle's
+// Bag command opens.
+bool find_bag_item_in_open_bag(
+    VideoStream& stream,
+    ProControllerContext& context,
+    const std::string& name,
+    int target_pocket
+);
+
 // Find Escape Rope, choose Use, and verify a transition back to the overworld.
 bool use_escape_rope(
     VideoStream& stream,

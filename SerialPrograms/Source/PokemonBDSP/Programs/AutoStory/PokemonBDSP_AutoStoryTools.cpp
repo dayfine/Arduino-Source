@@ -1775,6 +1775,15 @@ bool find_bag_item_by_name(
 ){
     open_menu(stream, context, MenuCursorPosition::BAG, num_icons);
     pbf_wait(context, 1000ms);
+    return find_bag_item_in_open_bag(stream, context, name, target_pocket);
+}
+
+bool find_bag_item_in_open_bag(
+    VideoStream& stream,
+    ProControllerContext& context,
+    const std::string& name,
+    int target_pocket
+){
     context.wait_for_all_requests();
     if (!bag_navigate_to_pocket(stream, context, target_pocket)) return false;
 

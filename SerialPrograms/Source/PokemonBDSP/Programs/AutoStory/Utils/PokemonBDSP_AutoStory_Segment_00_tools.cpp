@@ -1048,6 +1048,75 @@ namespace PokemonAutomation {
                 context.wait_for_all_requests();
             }
 
+            // Our HP bar in the battle's bottom-left panel, as a fraction; -1 if
+            // no bar is there. Measured on 1920x1080 frames: the bar runs from
+            // x 88 to 466 on rows 961 to 965.
+            static double battle_player_hp(const ImageViewRGB32& frame) {
+                const ImageViewRGB32 bar = extract_box_reference(frame, ImageFloatBox{0.046, 0.890, 0.197, 0.004});
+                size_t filled = 0;
+                for (size_t x = 0; x < bar.width(); x++) {
+                    size_t color = 0;
+                    for (size_t y = 0; y < bar.height(); y++) {
+                        const uint32_t p = bar.pixel(x, y);
+                        const int r = (p >> 16) & 255, g = (p >> 8) & 255, b = p & 255;
+                        const bool green = g > r + 30 && g > b + 20;
+                        const bool yellow = r > 150 && g > 120 && b < 100;
+                        const bool red = r > 150 && r > g + 50 && r > b + 50;
+                        color += green || yellow || red;
+                    }
+                    filled += color > bar.height() / 2;
+                }
+                return bar.width() && filled ? (double)filled / bar.width() : -1;
+            }
+
+            enum class BattleHeal { NOT_NEEDED, USED, NONE_LEFT };
+
+            // At the battle menu: if our HP is under `heal_below`, use a Potion
+            // from the Bag on the lead, which takes the turn. Otherwise the
+            // battle menu is left up.
+            static BattleHeal battle_heal_if_low(VideoStream& stream, ProControllerContext& context,
+                BattleType battle_type, double heal_below, const std::string& label) {
+                context.wait_for_all_requests();
+                double hp = -1;
+                for (size_t check = 0; check < 5 && hp < 0; check++) {
+                    const auto frame = stream.video().snapshot();
+                    if (frame) hp = battle_player_hp(*frame.frame);
+                    if (hp < 0) pbf_wait(context, 150ms);
+                    context.wait_for_all_requests();
+                }
+                stream.log("[" + label + "] Our HP bar reads " + std::to_string((int)(hp * 100)) + "%.");
+                if (hp < 0 || hp >= heal_below) return BattleHeal::NOT_NEEDED;
+                BattleMenuDetector commands(battle_type);
+                bool on_bag = false;
+                for (size_t check = 0; check < 30 && !on_bag; check++) {
+                    context.wait_for_all_requests();
+                    const auto frame = stream.video().snapshot();
+                    const BattleMenuOption selected = frame ? commands.selected_option(frame) : BattleMenuOption::UNKNOWN;
+                    if (selected == BattleMenuOption::BAG) on_bag = true;
+                    else if (selected == BattleMenuOption::UNKNOWN) pbf_wait(context, 150ms);
+                    else pbf_press_dpad(context, (int)selected < (int)BattleMenuOption::BAG ? DPAD_DOWN : DPAD_UP, 80ms, 300ms);
+                }
+                if (!on_bag) {
+                    stream.log("[" + label + "] Could not reach the Bag command; fighting on.", COLOR_ORANGE);
+                    return BattleHeal::NONE_LEFT;
+                }
+                pbf_press_button(context, BUTTON_A, 80ms, 2000ms);
+                if (!find_bag_item_in_open_bag(stream, context, "potion", 1)) {
+                    stream.log("[" + label + "] No Potion left; fighting on.", COLOR_ORANGE);
+                    pbf_press_button(context, BUTTON_B, 80ms, 1500ms);
+                    pbf_press_button(context, BUTTON_B, 80ms, 1500ms);
+                    context.wait_for_all_requests();
+                    return BattleHeal::NONE_LEFT;
+                }
+                // Potion, then the lead in the party list, then Use.
+                stream.log("[" + label + "] Using a Potion on the lead.", COLOR_BLUE);
+                pbf_press_button(context, BUTTON_A, 80ms, 1500ms);
+                pbf_press_button(context, BUTTON_A, 80ms, 1500ms);
+                pbf_press_button(context, BUTTON_A, 80ms, 2500ms);
+                context.wait_for_all_requests();
+                return BattleHeal::USED;
+            }
+
             static void fight_using_move_list(
                 VideoStream& stream, ProControllerContext& context,
                 BattleType battle_type, const std::vector<size_t>& move_slots,
@@ -1073,6 +1142,8 @@ namespace PokemonAutomation {
                 if (!confirm_default_target) pbf_wait(context,5000ms);
 
                 bool battle_menu_seen = false;
+                bool out_of_potions = false;
+                size_t potions_used = 0;
                 EndBattleWatcher end_battle;
 
                 while (true) {
@@ -1113,6 +1184,15 @@ namespace PokemonAutomation {
                             COLOR_BLUE
                         );
 
+                        // A trainer battle we may lose: a Potion when HP is low.
+                        if (battle_type == BattleType::TRAINER && !out_of_potions && potions_used < 4) {
+                            const BattleHeal heal = battle_heal_if_low(stream, context, battle_type, 0.35, label);
+                            if (heal == BattleHeal::USED) {
+                                potions_used++;
+                                break;
+                            }
+                            out_of_potions = heal == BattleHeal::NONE_LEFT;
+                        }
                         stream.log("["+label+"] Move list position "+std::to_string(move_index+1)+
                             ": use move "+std::to_string(move_slots[move_index])+".");
                         select_battle_move_slot(stream, context, battle_type, move_slots[move_index], label,
