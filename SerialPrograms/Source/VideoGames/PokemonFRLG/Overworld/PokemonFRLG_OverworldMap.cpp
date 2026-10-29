@@ -75,6 +75,7 @@ OverworldMap::OverworldMap(const MapText& text)
             const char tile = terrain[x];
             switch (tile){
             case '#':
+            case 'J':
             case '.':
             case '"':
             case '~':
@@ -125,7 +126,10 @@ char OverworldMap::terrain(const MapPoint& point) const{
 }
 bool OverworldMap::wall(const MapPoint& point) const{
     const char tile = terrain(point);
-    return tile == '#' || tile == 'D';
+    return tile == '#' || tile == 'D' || tile == 'J';
+}
+bool OverworldMap::ledge(const MapPoint& point) const{
+    return terrain(point) == 'J';
 }
 bool OverworldMap::water(const MapPoint& point) const{
     return terrain(point) == '~';

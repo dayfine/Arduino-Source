@@ -82,6 +82,8 @@ struct MapText{
     std::string name;
     //  One character per tile:
     //    '#'  collision (wall, cliff)
+    //    'J'  ledge: a wall, except that walking into it the way it faces
+    //         hops the player down (not modelled, so the planner avoids it)
     //    '.'  floor
     //    '"'  tall grass: floor with wild encounters
     //    '~'  water: entered only by starting to Surf
@@ -119,6 +121,7 @@ public:
     bool wall(const MapPoint& point) const;
     bool water(const MapPoint& point) const;
     bool tall_grass(const MapPoint& point) const;
+    bool ledge(const MapPoint& point) const;
     uint8_t elevation(const MapPoint& point) const;
     //  Whether the tile itself refuses a step in `direction`: entering it, or
     //  leaving it.

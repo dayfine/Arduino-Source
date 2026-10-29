@@ -5,6 +5,8 @@
  *  Plans a route over one or more FRLG maps joined by warps: the D-pad legs
  *  to walk, where to start surfing, and which way to face at the end. FRLG
  *  moves exactly one tile per step, so a planned route can be walked blind.
+ *  Legs end against walls where that costs little: such a leg can be held
+ *  for longer than it takes, and walked again if something interrupts it.
  *
  */
 
@@ -71,6 +73,11 @@ struct RouteCosts{
     int per_warp = 30;          //  the fade in and out
     int per_surf = 40;          //  the dialog and the animation
     int per_grass_tile = 20;    //  extra for tall grass, where wild Pokemon appear
+    //  Extra for a leg that ends where the player could keep walking: it has
+    //  to be timed, and if a message or a battle stops it part-way, where
+    //  the player is can only be estimated. A leg that ends at a wall is
+    //  walked again instead.
+    int per_open_stop = 8;
 };
 
 //  The cheapest route from `start`, standing on land and not surfing, to
@@ -81,18 +88,6 @@ std::optional<std::vector<RouteStep>> plan_overworld_route(
     const MapPosition& start,
     const RouteGoal& goal,
     const RouteCosts& costs = RouteCosts()
-);
-
-//  `route` with each run of plain walking on one area (maps joined by their
-//  connections, at one elevation, on land or on water) planned again with
-//  Pokemon::plan_robust_route(): legs that end against a wall where it can,
-//  so the player is on a known tile after them however long the stick was
-//  held, and open legs that later walls make up for. A run the robust planner
-//  can't do is kept as it was.
-std::vector<RouteStep> anchor_overworld_route(
-    const std::vector<OverworldMap>& maps,
-    const MapPosition& start,
-    const std::vector<RouteStep>& route
 );
 
 //  Replays `route` from `start` with the game's step rules and returns where
