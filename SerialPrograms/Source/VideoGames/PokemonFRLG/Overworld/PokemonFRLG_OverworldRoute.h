@@ -44,6 +44,8 @@ struct RouteStep{
     //  WALK: the last tile is a warp (ladder, stairs), so the screen fades
     //  and the player arrives on another map.
     bool warps = false;
+    //  WALK: on the water, where the player moves twice as fast.
+    bool surfing = false;
     //  Where the player is after the step.
     MapPosition end;
 };
