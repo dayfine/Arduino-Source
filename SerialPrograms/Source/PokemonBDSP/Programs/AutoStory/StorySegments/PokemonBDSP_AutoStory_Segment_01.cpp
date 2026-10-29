@@ -518,11 +518,9 @@ void oreburgh_to_roark(VideoStream& stream, ProControllerContext& context){
     at = walk_route(stream, context, maps, at,
         [&](const Pokemon::TilePos& pos){ return pos == exit; },
         no_trainers, in_the_way, "Back to the corridor's top");
-    if (walk_dir(stream, context, GridDirection::NORTH, 10000ms, "into the entrance hall").stop != WalkStop::TRANSITION){
-        fail(stream, "Oreburgh Mine: walking north from the corridor did not reach the entrance hall.");
-    }
-    context.wait_for(1500ms);
-    if (walk_dir(stream, context, GridDirection::NORTH, 10000ms, "out of the mine").stop != WalkStop::TRANSITION){
+    // The corridor and the entrance hall are one map: this walk goes up
+    // through the hall and out onto the stairs below the sign (r103).
+    if (walk_dir(stream, context, GridDirection::NORTH, 15000ms, "out of the mine").stop != WalkStop::TRANSITION){
         fail(stream, "Oreburgh Mine: did not leave by the entrance.");
     }
     context.wait_for(1500ms);
