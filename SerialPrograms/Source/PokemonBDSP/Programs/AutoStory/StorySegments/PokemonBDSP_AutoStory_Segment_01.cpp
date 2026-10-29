@@ -206,58 +206,70 @@ void jubilife_to_barry(VideoStream& stream, ProControllerContext& context){
 
 void route203_to_oreburgh(VideoStream& stream, ProControllerContext& context){
     StepLog step(stream, "01.02", "From Barry on Route 203 to Oreburgh City", {
-        "Walk east along Route 203, fighting the trainers who see us",
-        "Enter the Oreburgh Gate from the corner by the cliff",
+        "Walk east along Route 203 into the Oreburgh Gate, fighting the trainers who see us",
         "Listen to the Hiker, who gives HM Rock Smash",
         "Walk east through the Gate past Curtis and Diana, out to Oreburgh City",
         "Listen to the man who meets us at the city's entrance",
     });
 
     step(1);
-    // East to the cliff at the route's end. A woman standing on the path
-    // only talks; a step south goes around her. Youngsters Dallas and
-    // Sebastian see us on the way.
+    // Route 203 only goes east, over three stretches joined by stairs, and
+    // the Gate's opening is in the cliff at its north-east end. Who stops us
+    // differs from run to run (a trainer's sight depends on our row), so
+    // there is no fixed list: walk east, talk or fight whoever stops us, and
+    // at a wall find a row, north first, from which east goes on.
     size_t fights = 0;
-    size_t walls = 0;
-    for (size_t leg = 0; leg < 20; leg++){
+    bool inside = false;
+    for (size_t leg = 0; leg < 40 && !inside; leg++){
         const WalkResult walk = walk_until(stream, context, 1, 0, 10000ms, "east along Route 203");
         if (walk.stop == WalkStop::TRANSITION){
-            fail(stream, "Route 203: an unexpected transition walking east.");
+            inside = true;
+            break;
         }
         if (walk.stop == WalkStop::LIMIT){
             continue;
         }
         if (walk.stop == WalkStop::DIALOG || dialogue_opens(stream, context, 1500ms)){
             fights += talk_or_fight(stream, context, "Route 203 trainer " + std::to_string(fights + 1)) ? 1 : 0;
-            walls = 0;
             continue;
         }
-        // A wall: the cliff once both trainers are behind us; before that,
-        // someone on the path, or the cliff if a trainer missed us.
-        if (fights >= 2 || ++walls >= 3){
-            break;
+        // A wall. Rows to try, relative to this one; a row counts once a walk
+        // east from it gets somewhere.
+        static const int ROWS[] = {-1, 1, -2, 2, -3, 3, -4, -5, -6};
+        int row = 0;
+        bool moved_on = false;
+        for (int target : ROWS){
+            const int change = target - row;
+            const GridDirection dir = change > 0 ? GridDirection::SOUTH : GridDirection::NORTH;
+            route_turn(stream, context, dir);
+            pbf_move_left_joystick(context, {0, change > 0 ? -1.0 : 1.0},
+                route_open_hold(dir, (size_t)std::abs(change)), 200ms);
+            context.wait_for_all_requests();
+            row = target;
+            const WalkResult next = walk_until(stream, context, 1, 0, 10000ms, "east along Route 203, another row");
+            if (next.stop == WalkStop::TRANSITION){
+                inside = true;
+            }
+            if (next.stop == WalkStop::DIALOG || (next.stop == WalkStop::BLOCKED && dialogue_opens(stream, context, 1500ms))){
+                fights += talk_or_fight(stream, context, "Route 203 trainer " + std::to_string(fights + 1)) ? 1 : 0;
+            }
+            //  Two still chunks are the least a wall takes; more is progress.
+            if (inside || next.stop != WalkStop::BLOCKED || next.walked > 1200ms){
+                moved_on = true;
+                break;
+            }
         }
-        step_south(stream, context);
-    }
-    route_status(stream, "Route 203: " + std::to_string(fights) + " trainer battle(s) on the way.");
-
-    step(2);
-    // North to the corner by the route's sign; the Gate's opening is in the
-    // cliff a couple of tiles south of it.
-    walk_until(stream, context, 0, 1, 6000ms, "north to the corner by the cliff");
-    bool inside = false;
-    for (size_t row = 0; row < 5 && !inside; row++){
-        inside = walk_until(stream, context, 1, 0, 2500ms, "into the Oreburgh Gate").stop == WalkStop::TRANSITION;
-        if (!inside){
-            step_south(stream, context);
+        if (!moved_on){
+            fail(stream, "Route 203: walls east on every row within six tiles.");
         }
     }
     if (!inside){
-        fail(stream, "Route 203: did not find the Oreburgh Gate's opening in the cliff.");
+        fail(stream, "Route 203: did not reach the Oreburgh Gate.");
     }
+    route_status(stream, "Route 203: " + std::to_string(fights) + " trainer battle(s) on the way.");
     context.wait_for(1500ms);
 
-    step(3);
+    step(2);
     // The Hiker steps up to us as we walk east.
     const WalkResult to_hiker = walk_until(stream, context, 1, 0, 4000ms, "to the Hiker");
     if (to_hiker.stop != WalkStop::DIALOG && !dialogue_opens(stream, context, 2000ms)){
@@ -271,7 +283,7 @@ void route203_to_oreburgh(VideoStream& stream, ProControllerContext& context){
     pbf_press_button(context, BUTTON_B, 80ms, 1000ms);
     context.wait_for_all_requests();
 
-    step(4);
+    step(3);
     // East: Camper Curtis and Picnicker Diana see us; past them the exit's
     // white fade, and the man in Oreburgh stops us right outside.
     fights = 0;
@@ -301,7 +313,7 @@ void route203_to_oreburgh(VideoStream& stream, ProControllerContext& context){
         fail(stream, "Oreburgh Gate: did not reach Oreburgh City.");
     }
 
-    step(5);
+    step(4);
     finish_dialogue(stream, context, 0, "Man at Oreburgh's entrance");
     context.wait_for_all_requests();
 }
