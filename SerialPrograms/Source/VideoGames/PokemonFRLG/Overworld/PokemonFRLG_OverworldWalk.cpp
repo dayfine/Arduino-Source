@@ -31,7 +31,10 @@ constexpr Milliseconds WARP_FADE_TIMEOUT = 3000ms;
 constexpr Milliseconds WARP_ARRIVAL_TIMEOUT = 5000ms;
 constexpr Milliseconds SURF_PROMPT_TIMEOUT = 5000ms;
 constexpr Milliseconds SURF_ANIMATION = 3000ms;
-constexpr Milliseconds AFTER_WARP = 600ms;         //  the walk out of a door after the fade
+//  After a warp's fade: leaving by a door the game walks the player a tile out
+//  on its own, and a leg started before that ends loses tiles (on the console a
+//  600ms wait cost 2 tiles).
+constexpr Milliseconds AFTER_WARP = 1500ms;
 
 
 DpadPosition dpad(MapDirection direction){
