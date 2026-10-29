@@ -259,20 +259,33 @@ void route203_to_oreburgh(VideoStream& stream, ProControllerContext& context){
         fail(stream, "Oreburgh Gate: the Hiker did not stop us.");
     }
     finish_dialogue(stream, context, 0, "Hiker");
+    // Then a "Hidden Moves" tutorial card, closed with B. It is no dialogue
+    // box, and it can come up a moment after his last line.
+    pbf_wait(context, 1500ms);
+    pbf_press_button(context, BUTTON_B, 80ms, 1500ms);
+    pbf_press_button(context, BUTTON_B, 80ms, 1000ms);
+    context.wait_for_all_requests();
 
     step(4);
     // East: Camper Curtis and Picnicker Diana see us; past them the exit's
     // white fade, and the man in Oreburgh stops us right outside.
     fights = 0;
     bool city = false;
+    size_t stuck = 0;
     for (size_t leg = 0; leg < 12 && !city; leg++){
         const WalkResult walk = walk_until(stream, context, 1, 0, 10000ms, "east through the Oreburgh Gate");
         if (walk.stop == WalkStop::LIMIT || walk.stop == WalkStop::TRANSITION){
             continue;
         }
         if (walk.stop != WalkStop::DIALOG && !dialogue_opens(stream, context, 2000ms)){
-            fail(stream, "Oreburgh Gate: a wall stopped us walking east.");
+            // A card or menu left up holds the screen still: B once, then retry.
+            if (++stuck > 1){
+                fail(stream, "Oreburgh Gate: a wall stopped us walking east.");
+            }
+            pbf_press_button(context, BUTTON_B, 80ms, 1500ms);
+            continue;
         }
+        stuck = 0;
         if (fights >= 2){
             city = true;
             break;
