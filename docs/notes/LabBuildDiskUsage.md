@@ -62,20 +62,25 @@ once. The seven builds hold only two distinct `Resources` trees: BDSP's, with
 
 Notes:
 - macOS ships openrsync, which didn't hard-link with `rsync --link-dest`.
-- The clone result is a best case. A real deploy clones from the build
-  folder; if a build rewrites `Resources` (not yet checked), each new
-  revision costs a full copy again.
+- The clone result is a best case and doesn't hold for real deploys. Every
+  build re-copies the whole `Resources` folder into the build directory: all
+  686 files carry the time of the last link. A clone taken from the build
+  folder after a rebuild therefore shares nothing with older deployments, and
+  each deploy costs a full `Resources` (200-300 MB).
 - Snapshots dedupe by content, so they stay at one copy per distinct tree
   whatever the build does.
 
 ## Proposal
 
-Use option 2 for `Resources` and option 3 for the `.app` copies: about 500 MB
-here instead of 4.2 GB, with no change to the app. Use option 5 for worktrees
-that have been idle for more than a few days.
+- **`Resources`:** option 2, content-hash snapshots. Stored once per distinct
+  tree, so it doesn't matter that builds rewrite the folder.
+- **`.app`:** option 3, APFS clones. The console-B copy can be cloned from the
+  console-A copy before its plist edit and re-signing, so only the changed
+  blocks take space (not yet measured).
+- **Worktrees:** option 5 for worktrees idle more than a few days.
+
+Here that is about 500 MB instead of 4.2 GB, with no change to the app.
 
 Open questions:
-- Should the console-B copy (`<name>-B`) share the `.app` too? Today it is a
-  second signed copy with a different bundle id.
 - Should `Resources` hashing skip files the app writes at runtime, if any?
 - Keep this in lab scripts only, or document it next to the ccache guide?
