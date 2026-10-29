@@ -107,7 +107,18 @@ void start_surf(ConsoleHandle& console, ProControllerContext& context, MapDirect
             console
         );
     }
-    pbf_press_button(context, BUTTON_A, 160ms, SURF_ANIMATION);
+    pbf_press_button(context, BUTTON_A, 160ms, 1000ms);
+
+    //  "<Pokemon> used SURF!" waits for A, then the player jumps onto the water.
+    for (int c = 0; c < 5; c++){
+        context.wait_for_all_requests();
+        VideoSnapshot screen = console.video().snapshot();
+        if (!screen || !WhiteDialogDetector(COLOR_RED).detect(screen)){
+            break;
+        }
+        pbf_press_button(context, BUTTON_A, 160ms, 1000ms);
+    }
+    pbf_wait(context, SURF_ANIMATION);
 }
 
 }
