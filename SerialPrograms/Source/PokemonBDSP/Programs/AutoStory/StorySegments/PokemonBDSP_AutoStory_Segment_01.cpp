@@ -145,6 +145,11 @@ void jubilife_to_barry(VideoStream& stream, ProControllerContext& context){
     // Two lines, then Yes to "rest your Pokemon?" (B would answer No), and
     // one more A for "I'll take your Pokemon"; B for the rest.
     finish_dialogue(stream, context, 4, "Nurse");
+    // Healing shows no text box for a few seconds, which reads as the end;
+    // her "Thank you for waiting" lines follow it.
+    if (dialogue_opens(stream, context, 6000ms)){
+        finish_dialogue(stream, context, 0, "Nurse, after healing");
+    }
     // South through the door until a girl standing below it stops us. The
     // door's fade may or may not read as a transition.
     WalkResult out{WalkStop::LIMIT, 0ms, 0};
