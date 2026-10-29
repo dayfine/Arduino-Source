@@ -313,6 +313,7 @@ std::optional<std::vector<RouteStep>> plan_overworld_route(
     }
     std::vector<RouteStep> route;
     bool can_extend = false;
+    bool before_surfing = false;
     for (auto iter = moves.rbegin(); iter != moves.rend(); ++iter){
         const Move& move = iter->first;
         const SearchState& after = iter->second;
@@ -324,14 +325,16 @@ std::optional<std::vector<RouteStep>> plan_overworld_route(
             route.back().warps = move.warped;
             route.back().end = end;
         }else{
-            route.push_back(RouteStep{move.action, move.direction, 1, move.warped, end});
+            route.push_back(RouteStep{move.action, move.direction, 1, move.warped, before_surfing, end});
         }
-        //  A warp or a Surf ends the leg: the game stops the player.
-        can_extend = move.action == RouteAction::WALK && !move.warped;
+        //  A warp or a Surf ends the leg: the game stops the player. Landing
+        //  from the water ends it too, since walking is half the speed.
+        can_extend = move.action == RouteAction::WALK && !move.warped && !move.dismounted;
+        before_surfing = after.player.state.surfing;
     }
     const SearchState& last = states[*best_end];
     if (goal.facing && last.facing != (int)*goal.facing){
-        route.push_back(RouteStep{RouteAction::FACE, *goal.facing, 0, false, goal.position});
+        route.push_back(RouteStep{RouteAction::FACE, *goal.facing, 0, false, false, goal.position});
     }
     return route;
 }

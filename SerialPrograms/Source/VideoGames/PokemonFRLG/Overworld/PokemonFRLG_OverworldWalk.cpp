@@ -22,7 +22,8 @@ using namespace std::chrono_literals;
 namespace{
 
 //  Not yet calibrated on the console.
-constexpr Milliseconds TILE_TIME = 267ms;       //  16 frames at 60 fps
+constexpr Milliseconds TILE_TIME = 267ms;       //  16 frames at 60 fps, measured exact over 15 tiles
+constexpr Milliseconds SURF_TILE_TIME = 133ms;  //  the game moves a surfing player at running speed
 constexpr Milliseconds TURN_TIME = 133ms;       //  turning before the first step
 constexpr Milliseconds FACE_HOLD = 40ms;        //  short enough to turn without stepping
 constexpr Milliseconds FACE_SETTLE = 300ms;     //  the turn animation, before A reaches what is ahead
@@ -139,7 +140,8 @@ void walk_overworld_route(
             //  Release half a tile before the last step would end: the step
             //  in progress completes, and no further step starts.
             const Milliseconds turn = facing == step.direction ? 0ms : TURN_TIME;
-            const Milliseconds hold = turn + TILE_TIME * (step.tiles - 1) + TILE_TIME / 2;
+            const Milliseconds tile = step.surfing ? SURF_TILE_TIME : TILE_TIME;
+            const Milliseconds hold = turn + tile * (step.tiles - 1) + tile / 2;
             pbf_press_dpad(context, dpad(step.direction), hold, STEP_RELEASE);
             if (step.warps){
                 wait_out_warp(console, context, step);
