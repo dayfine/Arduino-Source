@@ -217,7 +217,7 @@ void route203_to_oreburgh(VideoStream& stream, ProControllerContext& context){
     // the Gate's opening is in the cliff at its north-east end. Who stops us
     // differs from run to run (a trainer's sight depends on our row), so
     // there is no fixed list: walk east, talk or fight whoever stops us, and
-    // at a wall find a row, north first, from which east goes on.
+    // at a wall find a row from which east goes on.
     size_t fights = 0;
     bool inside = false;
     for (size_t leg = 0; leg < 40 && !inside; leg++){
@@ -233,20 +233,15 @@ void route203_to_oreburgh(VideoStream& stream, ProControllerContext& context){
             fights += talk_or_fight(stream, context, "Route 203 trainer " + std::to_string(fights + 1)) ? 1 : 0;
             continue;
         }
-        // A wall. Rows to try, relative to this one; a row counts once a walk
-        // east from it gets somewhere.
-        static const int ROWS[] = {-1, 1, -2, 2, -3, 3, -4, -5, -6};
-        int row = 0;
+        // A wall. Find the row from which east goes on: north to the top wall
+        // first (a step north there does not move us, so rows are counted
+        // from it), then a row at a time south. At the route's end this is the
+        // corner by the second sign, with the Gate's opening two rows down.
+        walk_until(stream, context, 0, 1, 6000ms, "north to the top wall");
         bool moved_on = false;
-        for (int target : ROWS){
-            const int change = target - row;
-            const GridDirection dir = change > 0 ? GridDirection::SOUTH : GridDirection::NORTH;
-            route_turn(stream, context, dir);
-            pbf_move_left_joystick(context, {0, change > 0 ? -1.0 : 1.0},
-                route_open_hold(dir, (size_t)std::abs(change)), 200ms);
-            context.wait_for_all_requests();
-            row = target;
-            const WalkResult next = walk_until(stream, context, 1, 0, 10000ms, "east along Route 203, another row");
+        for (size_t row = 1; row <= 10 && !moved_on; row++){
+            step_south(stream, context);
+            const WalkResult next = walk_until(stream, context, 1, 0, 10000ms, "east along Route 203, row " + std::to_string(row) + " below the top");
             if (next.stop == WalkStop::TRANSITION){
                 inside = true;
             }
@@ -254,13 +249,10 @@ void route203_to_oreburgh(VideoStream& stream, ProControllerContext& context){
                 fights += talk_or_fight(stream, context, "Route 203 trainer " + std::to_string(fights + 1)) ? 1 : 0;
             }
             //  Two still chunks are the least a wall takes; more is progress.
-            if (inside || next.stop != WalkStop::BLOCKED || next.walked > 1200ms){
-                moved_on = true;
-                break;
-            }
+            moved_on = inside || next.stop != WalkStop::BLOCKED || next.walked > 1200ms;
         }
         if (!moved_on){
-            fail(stream, "Route 203: walls east on every row within six tiles.");
+            fail(stream, "Route 203: walls east on every row down to ten below the top wall.");
         }
     }
     if (!inside){
