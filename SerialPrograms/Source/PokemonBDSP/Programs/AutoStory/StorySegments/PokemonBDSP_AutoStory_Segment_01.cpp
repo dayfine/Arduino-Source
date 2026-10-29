@@ -472,7 +472,12 @@ void oreburgh_to_roark(VideoStream& stream, ProControllerContext& context){
         [&](const Pokemon::TilePos& pos){ return pos.y >= roark.y && pos.y <= roark.y + 1 && pos.x >= roark.x + 2 && pos.x <= roark.x + 7; },
         no_trainers, in_the_way, "To the stretch east of Roark");
     walk_dir(stream, context, GridDirection::NORTH, 2000ms, "north to the wall on Roark's row");
-    if (walk_dir(stream, context, GridDirection::WEST, 3000ms, "west to the rock beside Roark").stop != WalkStop::BLOCKED){
+    // A wild battle on the way eats into the walk's time (r100): walk again.
+    WalkStop west = WalkStop::LIMIT;
+    for (size_t attempt = 0; attempt < 3 && west == WalkStop::LIMIT; attempt++){
+        west = walk_dir(stream, context, GridDirection::WEST, 6000ms, "west to the rock beside Roark").stop;
+    }
+    if (west != WalkStop::BLOCKED){
         fail(stream, "Oreburgh Mine: walking west along Roark's row did not stop at his rock.");
     }
     if (walk_dir(stream, context, GridDirection::SOUTH, 2000ms, "south to the bottom wall").stop != WalkStop::BLOCKED){
