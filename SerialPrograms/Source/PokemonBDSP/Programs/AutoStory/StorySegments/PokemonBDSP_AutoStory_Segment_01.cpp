@@ -397,26 +397,40 @@ void oreburgh_to_roark(VideoStream& stream, ProControllerContext& context){
     // there west stops against the left-hand pillars, on column 45, which
     // runs clear south into the mine. The belts keep the screen moving, so
     // these stops read as the walk's time limit, not as a wall.
-    bool in_mine = false;
-    for (size_t attempt = 0; attempt < 3 && !in_mine; attempt++){
-        const WalkResult down = walk_dir(stream, context, GridDirection::SOUTH, 12000ms, "south to the right-hand pillar");
-        if (down.stop == WalkStop::TRANSITION){
-            in_mine = true;     // already in the mine's column
-            break;
-        }
+    //
+    // The worker by the fence wanders onto the path and stops the walk south
+    // as a wall would (r95, r96): wait for him to move and walk on.
+    WalkResult down{WalkStop::BLOCKED, 0ms, 0};
+    for (size_t attempt = 0; attempt < 5; attempt++){
+        down = walk_dir(stream, context, GridDirection::SOUTH, 12000ms, "south to the right-hand pillar");
         if (down.stop == WalkStop::DIALOG){
             talk_or_fight(stream, context, "Someone on the way to the mine");
-            continue;
+        }else if (down.stop != WalkStop::BLOCKED){
+            break;
         }
+        context.wait_for(2000ms);
+    }
+    bool in_mine = down.stop == WalkStop::TRANSITION;   // already in the mine's column
+    if (!in_mine && down.stop != WalkStop::LIMIT){
+        fail(stream, "Oreburgh: something kept stopping the walk south to the conveyor pillars.");
+    }
+    if (!in_mine){
         walk_dir(stream, context, GridDirection::WEST, 2500ms, "west to the left-hand pillars");
-        const WalkResult walk = walk_dir(stream, context, GridDirection::SOUTH, 15000ms, "south into the mine");
-        in_mine = walk.stop == WalkStop::TRANSITION;
-        if (walk.stop == WalkStop::DIALOG){
-            talk_or_fight(stream, context, "Someone on the way to the mine");
-        }else if (!in_mine){
-            hold_tiles(stream, context, GridDirection::EAST, 2);
-            context.wait_for(1000ms);
+        in_mine = walk_dir(stream, context, GridDirection::SOUTH, 15000ms, "south into the mine").stop == WalkStop::TRANSITION;
+    }
+    // A column off and the walk ends against the sign above the mine's
+    // stairs (on the console, r96); the stairs are open on both sides of it.
+    for (GridDirection side : {GridDirection::EAST, GridDirection::WEST}){
+        if (in_mine){
+            break;
         }
+        route_turn(stream, context, side);
+        const size_t tiles = side == GridDirection::EAST ? 1 : 2;
+        for (size_t tile = 0; tile < tiles; tile++){
+            pbf_move_left_joystick(context, {side == GridDirection::EAST ? 1.0 : -1.0, 0}, 120ms, 300ms);
+        }
+        context.wait_for_all_requests();
+        in_mine = walk_dir(stream, context, GridDirection::SOUTH, 5000ms, "south down the mine's stairs").stop == WalkStop::TRANSITION;
     }
     if (!in_mine){
         fail(stream, "Oreburgh: no column south of the Center led into the mine.");
