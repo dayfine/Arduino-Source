@@ -11,7 +11,6 @@
 #include <unordered_map>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
-#include "Pokemon/Navigation/Pokemon_MapSet.h"
 #include "PokemonFRLG_OverworldMaps.h"
 #include "PokemonFRLG_OverworldRoute.h"
 
@@ -177,11 +176,36 @@ std::optional<Transition> press(const std::vector<OverworldMap>& maps, const Loc
     return transition;
 }
 
-//  The search state: a player and the way they face. 4 stands for "not
-//  known yet", before the first step.
+//  Whether holding `direction` stops the player where they are: a wall, a
+//  ledge, or water they'd need to Surf onto. A leg that ends there can be
+//  held for longer than it takes, and walked again after an interruption. A
+//  person in the way doesn't count, since they may have wandered off, and
+//  neither does an edge to a map that isn't loaded.
+bool stops_at(const std::vector<OverworldMap>& maps, const Located& player, MapDirection direction){
+    const std::optional<Transition> transition = press(maps, player, direction);
+    if (transition){
+        return transition->action == RouteAction::SURF;
+    }
+    const OverworldMap& map = maps[player.map];
+    const MapPoint ahead = player.state.position.next(direction);
+    if (map.in_bounds(ahead)){
+        return map.object_at(ahead) == nullptr;
+    }
+    for (const MapConnection& connection : map.connections()){
+        if (connection.direction == direction){
+            return false;
+        }
+    }
+    return true;
+}
+
+//  The search state: a player, the way they face (4 stands for "not known
+//  yet", before the first step), and whether they are in the middle of a leg
+//  that could go on, as opposed to just stopped by a warp or Surf.
 struct SearchState{
     Located player;
     int facing = 4;
+    bool moving = false;
 };
 
 class StateIndex{
@@ -198,7 +222,8 @@ public:
         index = index * m_width + s.player.state.position.x;
         index = index * 16 + s.player.state.elevation;
         index = index * 2 + (s.player.state.surfing ? 1 : 0);
-        return index * 5 + s.facing;
+        index = index * 5 + s.facing;
+        return index * 2 + (s.moving ? 1 : 0);
     }
 
 private:
@@ -256,11 +281,19 @@ std::optional<std::vector<RouteStep>> plan_overworld_route(
 
     std::optional<size_t> best_end;
     int best_total = INF;
-    auto facing_cost = [&](const SearchState& s){
-        if (!goal.facing || s.facing == (int)*goal.facing){
+    //  Ending a leg where the player could have gone on.
+    auto stop_cost = [&](const SearchState& s){
+        if (!s.moving || stops_at(maps, s.player, (MapDirection)s.facing)){
             return 0;
         }
-        return costs.per_turn;
+        return costs.per_open_stop;
+    };
+    auto arrival_cost = [&](const SearchState& s){
+        int cost = stop_cost(s);
+        if (goal.facing && s.facing != (int)*goal.facing){
+            cost += costs.per_turn;
+        }
+        return cost;
     };
 
     while (!queue.empty()){
@@ -274,7 +307,7 @@ std::optional<std::vector<RouteStep>> plan_overworld_route(
         }
         const SearchState current = states[index];
         if (current.player.map == goal_map && current.player.state.position == goal.position.point){
-            const int total = cost + facing_cost(current);
+            const int total = cost + arrival_cost(current);
             if (total < best_total){
                 best_total = total;
                 best_end = index;
@@ -287,8 +320,12 @@ std::optional<std::vector<RouteStep>> plan_overworld_route(
             if (!transition){
                 continue;
             }
-            SearchState next{transition->next, (int)direction};
-            int step_cost = costs.per_tile + (current.facing == (int)direction ? 0 : costs.per_turn);
+            const bool continues = transition->action == RouteAction::WALK && !transition->warped && !transition->dismounted;
+            SearchState next{transition->next, (int)direction, continues};
+            int step_cost = costs.per_tile;
+            if (current.facing != (int)direction){
+                step_cost += costs.per_turn + stop_cost(current);
+            }
             if (transition->action == RouteAction::SURF){
                 step_cost += costs.per_surf;
             }
@@ -335,6 +372,8 @@ std::optional<std::vector<RouteStep>> plan_overworld_route(
         }else{
             route.push_back(RouteStep{move.action, move.direction, 1, move.warped, before_surfing, false, move.walked_out, end});
         }
+        route.back().to_wall = move.action == RouteAction::WALK && !move.warped
+            && stops_at(maps, after.player, move.direction);
         //  A warp or a Surf ends the leg: the game stops the player. Landing
         //  from the water ends it too, since walking is half the speed.
         can_extend = move.action == RouteAction::WALK && !move.warped && !move.dismounted;
@@ -346,389 +385,6 @@ std::optional<std::vector<RouteStep>> plan_overworld_route(
     }
     return route;
 }
-
-
-
-namespace{
-
-Pokemon::GridDirection to_grid(MapDirection direction){
-    switch (direction){
-    case MapDirection::NORTH:
-        return Pokemon::GridDirection::NORTH;
-    case MapDirection::EAST:
-        return Pokemon::GridDirection::EAST;
-    case MapDirection::SOUTH:
-        return Pokemon::GridDirection::SOUTH;
-    case MapDirection::WEST:
-        return Pokemon::GridDirection::WEST;
-    }
-    return Pokemon::GridDirection::NORTH;
-}
-MapDirection from_grid(Pokemon::GridDirection direction){
-    switch (direction){
-    case Pokemon::GridDirection::NORTH:
-        return MapDirection::NORTH;
-    case Pokemon::GridDirection::EAST:
-        return MapDirection::EAST;
-    case Pokemon::GridDirection::SOUTH:
-        return MapDirection::SOUTH;
-    case Pokemon::GridDirection::WEST:
-        return MapDirection::WEST;
-    }
-    return MapDirection::NORTH;
-}
-
-//  The tiles a plain walk in `state` can stand on, as a tile grid: floor at
-//  the player's elevation (or any, on elevation 0), or water while surfing.
-//  Tiles that warp when stepped on and objects are walls, so a leg never
-//  takes a ladder or cave mouth by accident. Exit mats are floor: they only
-//  warp a player walking off them in their arrow's direction.
-Pokemon::TileGrid walk_grid(const OverworldMap& map, const PlayerState& state){
-    std::vector<std::string> rows;
-    for (int y = 0; y < map.height(); y++){
-        std::string row;
-        for (int x = 0; x < map.width(); x++){
-            const MapPoint point{x, y};
-            const uint8_t level = map.elevation(point);
-            bool standable = !map.wall(point)
-                && map.object_at(point) == nullptr
-                && !(map.warps_on_step(point) && map.warp_at(point) != nullptr);
-            if (state.surfing){
-                standable = standable && map.water(point);
-            }else{
-                standable = standable && !map.water(point)
-                    && (state.elevation == 0 || level == state.elevation || level == 0 || level == 15);
-            }
-            char tile = '#';
-            if (standable){
-                tile = map.tall_grass(point) ? '"' : '.';
-            }
-            row += tile;
-        }
-        rows.push_back(row);
-    }
-    return Pokemon::TileGrid(rows);
-}
-
-//  `start` and the maps joined to it by connections, placed on one grid.
-Pokemon::MapSet walk_area(const std::vector<OverworldMap>& maps, int start, const PlayerState& state){
-    Pokemon::MapSet area;
-    std::vector<std::pair<int, Pokemon::TilePos>> pending{{start, {0, 0}}};
-    std::vector<bool> placed(maps.size(), false);
-    while (!pending.empty()){
-        const auto [index, offset] = pending.back();
-        pending.pop_back();
-        if (placed[index]){
-            continue;
-        }
-        placed[index] = true;
-        const OverworldMap& map = maps[index];
-        area.add(map.name(), walk_grid(map, state), offset);
-        for (const MapConnection& connection : map.connections()){
-            const int next = find_map(maps, connection.map);
-            if (next < 0 || placed[next]){
-                continue;
-            }
-            const OverworldMap& other = maps[next];
-            Pokemon::TilePos at = offset;
-            switch (connection.direction){
-            case MapDirection::NORTH:
-                at = {offset.x + connection.offset, offset.y - other.height()};
-                break;
-            case MapDirection::SOUTH:
-                at = {offset.x + connection.offset, offset.y + map.height()};
-                break;
-            case MapDirection::WEST:
-                at = {offset.x - other.width(), offset.y + connection.offset};
-                break;
-            case MapDirection::EAST:
-                at = {offset.x + map.width(), offset.y + connection.offset};
-                break;
-            }
-            pending.emplace_back(next, at);
-        }
-    }
-    return area;
-}
-
-//  How far an open leg may end from where it was timed to. FRLG moves a whole
-//  tile per 16 frames and finishes a step once started, so a short leg released
-//  half a tile early is exact; only a long one drifts, from the difference
-//  between the assumed and the real step time.
-Pokemon::RobustPlanCosts frlg_leg_error(){
-    Pokemon::RobustPlanCosts costs;
-    costs.open_error = 0;
-    costs.open_error_per = 6;
-    return costs;
-}
-
-//  The maps a run of plain walking can cross, joined on one grid with a border
-//  of walls: nothing off the loaded maps can be walked on, so an edge stops the
-//  player like any other wall.
-class WalkArea{
-public:
-    WalkArea(const std::vector<OverworldMap>& maps, const Located& from)
-        : m_maps(maps)
-        , m_set(walk_area(maps, from.map, from.state))
-        , m_grid(padded(m_set.world()))
-        , m_state(from.state)
-    {}
-
-    const Pokemon::TileGrid& grid() const{ return m_grid; }
-    Pokemon::TileGrid& grid(){ return m_grid; }
-
-    Pokemon::TilePos to_grid(const Located& player) const{
-        const Pokemon::TilePos world = m_set.to_world(
-            m_maps[player.map].name(), {player.state.position.x, player.state.position.y}
-        );
-        return {world.x + 1, world.y + 1};
-    }
-    std::optional<Located> to_player(const Pokemon::TilePos& tile) const{
-        const std::optional<Pokemon::MapTile> local = m_set.to_local({tile.x - 1, tile.y - 1});
-        if (!local){
-            return std::nullopt;
-        }
-        Located player;
-        player.map = find_map(m_maps, local->map);
-        player.state = m_state;
-        player.state.position = {local->pos.x, local->pos.y};
-        const uint8_t level = m_maps[player.map].elevation(player.state.position);
-        if (level != 15){
-            player.state.elevation = level;
-        }
-        return player;
-    }
-
-private:
-    static Pokemon::TileGrid padded(const Pokemon::TileGrid& world){
-        std::vector<std::string> rows = world.rows();
-        const size_t width = rows.empty() ? 0 : rows[0].size();
-        for (std::string& row : rows){
-            for (char& tile : row){
-                if (tile == '?'){
-                    tile = '#';
-                }
-            }
-            row = "#" + row + "#";
-        }
-        rows.insert(rows.begin(), std::string(width + 2, '#'));
-        rows.push_back(std::string(width + 2, '#'));
-        return Pokemon::TileGrid(rows);
-    }
-
-    const std::vector<OverworldMap>& m_maps;
-    Pokemon::MapSet m_set;
-    Pokemon::TileGrid m_grid;
-    PlayerState m_state;
-};
-
-bool same_place(const Located& a, const Located& b){
-    return a.map == b.map && a.state.position == b.state.position;
-}
-void add_unique(std::vector<Located>& set, const Located& player){
-    for (const Located& p : set){
-        if (same_place(p, player)){
-            return;
-        }
-    }
-    set.push_back(player);
-}
-
-//  One tile of the planned route, as a press of the D-pad.
-struct TileMove{
-    MapDirection direction;
-    RouteAction action;
-    Transition transition;
-    Located before;
-};
-
-//  What the route does after a run of plain walking.
-struct NextAction{
-    enum Kind{
-        END,        //  stand on the goal
-        WARP,       //  walk on until a warp (ladder, cave mouth, exit mat, door)
-        SURF,       //  start surfing
-        DISMOUNT,   //  step off the water onto land
-    } kind = END;
-    TileMove move;
-};
-
-//  Where `player` ends up doing `action`, or nothing if it doesn't do the same
-//  thing from there. WARP walks up to `MAX_WARP_WALK` tiles.
-constexpr int MAX_WARP_WALK = 16;
-std::optional<std::pair<Located, int>> try_action(
-    const std::vector<OverworldMap>& maps, const Located& player, const NextAction& action
-){
-    switch (action.kind){
-    case NextAction::END:
-        return std::make_pair(player, 0);
-    case NextAction::SURF:
-    case NextAction::DISMOUNT:{
-        const std::optional<Transition> t = press(maps, player, action.move.direction);
-        if (!t || t->action != action.move.action || t->dismounted != action.move.transition.dismounted || t->warped){
-            return std::nullopt;
-        }
-        return std::make_pair(t->next, 1);
-    }
-    case NextAction::WARP:{
-        Located at = player;
-        for (int c = 1; c <= MAX_WARP_WALK; c++){
-            const std::optional<Transition> t = press(maps, at, action.move.direction);
-            if (!t || t->action != RouteAction::WALK){
-                return std::nullopt;
-            }
-            if (t->warped){
-                if (!same_place(t->next, action.move.transition.next)){
-                    return std::nullopt;
-                }
-                return std::make_pair(t->next, c);
-            }
-            at = t->next;
-        }
-        return std::nullopt;
-    }
-    }
-    return std::nullopt;
-}
-
-//  The single-tile moves of `route` from `start`.
-std::vector<TileMove> to_moves(const std::vector<OverworldMap>& maps, const Located& start, const std::vector<RouteStep>& route){
-    std::vector<TileMove> moves;
-    Located player = start;
-    for (const RouteStep& step : route){
-        for (int c = 0; c < step.tiles; c++){
-            const std::optional<Transition> transition = press(maps, player, step.direction);
-            if (!transition){
-                throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "Route step refused: " + to_string(step));
-            }
-            moves.push_back(TileMove{step.direction, transition->action, *transition, player});
-            player = transition->next;
-        }
-    }
-    return moves;
-}
-
-}
-
-
-
-std::vector<RouteStep> anchor_overworld_route(
-    const std::vector<OverworldMap>& maps,
-    const MapPosition& start,
-    const std::vector<RouteStep>& route
-){
-    Located first;
-    first.map = find_map(maps, start.map);
-    first.state.position = start.point;
-    first.state.elevation = maps[first.map].elevation(start.point);
-    const std::vector<TileMove> moves = to_moves(maps, first, route);
-
-    std::vector<RouteStep> anchored;
-    std::vector<Located> possible{first};
-    size_t index = 0;
-    while (true){
-        //  A run of plain walking, then the action that ends it.
-        const size_t run_begin = index;
-        while (index < moves.size()
-            && moves[index].action == RouteAction::WALK
-            && !moves[index].transition.warped
-            && !moves[index].transition.dismounted
-        ){
-            index++;
-        }
-        NextAction next;
-        Located goal = index < moves.size() ? moves[index].before : (moves.empty() ? first : moves.back().transition.next);
-        if (index < moves.size()){
-            next.move = moves[index];
-            next.kind = next.move.transition.warped ? NextAction::WARP
-                : next.move.action == RouteAction::SURF ? NextAction::SURF
-                : NextAction::DISMOUNT;
-            if (next.kind == NextAction::WARP){
-                //  Walk on to the warp from wherever the straight walk to it starts.
-                size_t c = index;
-                while (c > run_begin && moves[c - 1].direction == next.move.direction){
-                    c--;
-                }
-                goal = moves[c].before;
-            }
-        }
-
-        //  The tiles the run may end on: any the next action works from.
-        WalkArea area(maps, possible.front());
-        auto works = [&](const Pokemon::TilePos& tile){
-            const std::optional<Located> player = area.to_player(tile);
-            if (!player){
-                return false;
-            }
-            if (next.kind == NextAction::END){
-                return same_place(*player, goal);
-            }
-            return try_action(maps, *player, next).has_value();
-        };
-        std::vector<Pokemon::TilePos> from;
-        for (const Located& p : possible){
-            const Pokemon::TilePos tile = area.to_grid(p);
-            area.grid().set(tile, Pokemon::TileType::WALKABLE);
-            from.push_back(tile);
-        }
-
-        std::vector<Located> after;
-        bool all_work = true;
-        for (const Pokemon::TilePos& tile : from){
-            all_work = all_work && works(tile);
-        }
-        if (all_work){
-            after = possible;
-        }else{
-            const std::optional<std::vector<Pokemon::PlannedLeg>> legs = Pokemon::plan_robust_route(area.grid(), from, works, frlg_leg_error());
-            if (!legs){
-                throw InternalProgramError(
-                    nullptr, PA_CURRENT_FUNCTION,
-                    "No walk that survives a tile of error to the next action from " + to_string(MapPosition{maps[possible.front().map].name(), possible.front().state.position})
-                );
-            }
-            for (const Pokemon::PlannedLeg& planned : *legs){
-                RouteStep step;
-                step.direction = from_grid(planned.leg.direction);
-                step.tiles = (int)planned.leg.tiles;
-                step.to_wall = planned.leg.ends_at_wall;
-                const std::optional<Located> end = area.to_player(planned.after.front());
-                step.end = MapPosition{maps[end->map].name(), end->state.position};
-                anchored.push_back(step);
-            }
-            for (const Pokemon::TilePos& tile : legs->back().after){
-                add_unique(after, *area.to_player(tile));
-            }
-        }
-
-        if (next.kind == NextAction::END){
-            if (after.size() != 1 || !same_place(after[0], goal)){
-                throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "The anchored route doesn't end on one tile.");
-            }
-            return anchored;
-        }
-
-        //  The next action, from every tile the player may be on.
-        std::vector<Located> landed;
-        int longest = 0;
-        for (const Located& p : after){
-            const std::optional<std::pair<Located, int>> result = try_action(maps, p, next);
-            add_unique(landed, result->first);
-            longest = std::max(longest, result->second);
-        }
-        RouteStep step;
-        step.action = next.kind == NextAction::SURF ? RouteAction::SURF : RouteAction::WALK;
-        step.direction = next.move.direction;
-        step.tiles = longest;
-        step.warps = next.kind == NextAction::WARP;
-        step.end = MapPosition{maps[landed.front().map].name(), landed.front().state.position};
-        anchored.push_back(step);
-        possible = landed;
-        index++;
-    }
-}
-
-
 
 MapPosition follow_overworld_route(
     const std::vector<OverworldMap>& maps,
@@ -941,37 +597,6 @@ UnitTestResult test_pokemon_center_to_mewtwo(){
     }
     if (!(route[0].end.map == "CeruleanCity_PokemonCenter_1F" || route[0].warps)){
         return "Unexpected first step:" + describe(route);
-    }
-    return true;
-}
-
-UnitTestResult test_anchored_route(){
-    const std::vector<OverworldMap> maps = overworld_maps(post_game_flags());
-    const MapPosition start{"CeruleanCity_PokemonCenter_1F", CERULEAN_POKEMON_CENTER_PC};
-    const std::optional<std::vector<RouteStep>> route = plan_overworld_route(maps, start, FACING_MEWTWO);
-    if (!route){
-        return "No route.";
-    }
-    //  Throws if any run can't be walked to its next action allowing for a
-    //  tile of error, or if the route doesn't end on the goal.
-    const std::vector<RouteStep> anchored = anchor_overworld_route(maps, start, *route);
-    if (!(anchored.back().end == FACING_MEWTWO.position)){
-        return "Anchored route ends at " + to_string(anchored.back().end) + ":" + describe(anchored);
-    }
-    size_t to_wall = 0;
-    size_t longest_open = 0;
-    for (const RouteStep& step : anchored){
-        if (step.action != RouteAction::WALK){
-            continue;
-        }
-        if (step.to_wall){
-            to_wall++;
-        }else if (!step.warps){
-            longest_open = std::max(longest_open, (size_t)step.tiles);
-        }
-    }
-    if (to_wall == 0 || longest_open > 12){
-        return "Expected legs to walls and no open leg over 12 tiles:" + describe(anchored);
     }
     return true;
 }

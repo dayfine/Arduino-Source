@@ -1426,10 +1426,6 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/Inference/Pokemon_TrainPokemonOCR.h
     Source/Pokemon/Inference/Pokemon_TypeReader.cpp
     Source/Pokemon/Inference/Pokemon_TypeReader.h
-    Source/Pokemon/Navigation/Pokemon_MapSet.cpp
-    Source/Pokemon/Navigation/Pokemon_MapSet.h
-    Source/Pokemon/Navigation/Pokemon_TileGrid.cpp
-    Source/Pokemon/Navigation/Pokemon_TileGrid.h
     Source/Pokemon/Options/Pokemon_BoxSortingTable.cpp
     Source/Pokemon/Options/Pokemon_BoxSortingTable.h
     Source/Pokemon/Options/Pokemon_EncounterBotOptions.h
