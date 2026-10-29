@@ -53,6 +53,7 @@ static std::vector<std::unique_ptr<AutoStory_Checkpoint>> make_checkpoint_list()
     //Segment 01
     checkpoint_list.emplace_back(std::make_unique<AutoStory_Checkpoint_0101>());
     checkpoint_list.emplace_back(std::make_unique<AutoStory_Checkpoint_0102>());
+    checkpoint_list.emplace_back(std::make_unique<AutoStory_Checkpoint_0103>());
 
     return checkpoint_list;
 }

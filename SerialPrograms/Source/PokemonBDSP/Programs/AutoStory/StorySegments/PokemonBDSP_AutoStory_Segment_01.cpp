@@ -321,8 +321,163 @@ void route203_to_oreburgh(VideoStream& stream, ProControllerContext& context){
     }
 
     step(4);
+    // He walks us to the Pokemon Center between his lines, and Barry joins
+    // there: more lines after each walk.
     finish_dialogue(stream, context, 0, "Man at Oreburgh's entrance");
+    for (size_t scene = 0; scene < 6 && dialogue_opens(stream, context, 6000ms); scene++){
+        finish_dialogue(stream, context, 0, "Oreburgh scene");
+    }
     context.wait_for_all_requests();
+}
+
+//  Holds the stick toward `dir` for `tiles` tiles, turning first.
+void hold_tiles(VideoStream& stream, ProControllerContext& context, GridDirection dir, size_t tiles){
+    route_turn(stream, context, dir);
+    const double x = dir == GridDirection::EAST ? 1 : dir == GridDirection::WEST ? -1 : 0;
+    const double y = dir == GridDirection::NORTH ? 1 : dir == GridDirection::SOUTH ? -1 : 0;
+    pbf_move_left_joystick(context, {x, y}, route_open_hold(dir, tiles), 200ms);
+    context.wait_for_all_requests();
+}
+
+WalkResult walk_dir(VideoStream& stream, ProControllerContext& context, GridDirection dir, Milliseconds limit, const std::string& label){
+    const double x = dir == GridDirection::EAST ? 1 : dir == GridDirection::WEST ? -1 : 0;
+    const double y = dir == GridDirection::NORTH ? 1 : dir == GridDirection::SOUTH ? -1 : 0;
+    return walk_until(stream, context, x, y, limit, label);
+}
+
+enum class SearchEnd{ TRANSITION, BLOCKED_EVERYWHERE };
+
+//  Heads `main` (north or south) in a cave: walks that way; when stopped
+//  without moving, steps sideways 1, 2, 3 ... tiles, alternating east and
+//  west, and tries again from each column. Ends on a transition, or when no
+//  column within `reach` gets further (the far wall). Trainers who stop us
+//  are talked to or fought.
+SearchEnd cave_search(VideoStream& stream, ProControllerContext& context, GridDirection main, int reach, const std::string& label){
+    int column = 0;
+    for (size_t leg = 0; leg < 60; leg++){
+        const WalkResult walk = walk_dir(stream, context, main, 10000ms, label);
+        if (walk.stop == WalkStop::TRANSITION){
+            return SearchEnd::TRANSITION;
+        }
+        if (walk.stop == WalkStop::DIALOG || (walk.stop == WalkStop::BLOCKED && dialogue_opens(stream, context, 1000ms))){
+            talk_or_fight(stream, context, label + ": someone in the way");
+            continue;
+        }
+        //  Two still chunks are the least a wall takes; more is progress.
+        if (walk.stop != WalkStop::BLOCKED || walk.walked > 800ms){
+            column = 0;
+            continue;
+        }
+        bool moved_on = false;
+        for (int k = 1; k <= 2 * reach && !moved_on; k++){
+            const int target = (k % 2 == 1 ? 1 : -1) * ((k + 1) / 2);
+            const int change = target - column;
+            hold_tiles(stream, context, change > 0 ? GridDirection::EAST : GridDirection::WEST, (size_t)std::abs(change));
+            column = target;
+            const WalkResult next = walk_dir(stream, context, main, 10000ms, label + ", column " + std::to_string(column));
+            if (next.stop == WalkStop::TRANSITION){
+                return SearchEnd::TRANSITION;
+            }
+            if (next.stop == WalkStop::DIALOG || (next.stop == WalkStop::BLOCKED && dialogue_opens(stream, context, 1000ms))){
+                talk_or_fight(stream, context, label + ": someone in the way");
+            }
+            moved_on = next.stop != WalkStop::BLOCKED || next.walked > 800ms;
+        }
+        if (!moved_on){
+            return SearchEnd::BLOCKED_EVERYWHERE;
+        }
+        column = 0;
+    }
+    fail(stream, label + ": still searching after 60 legs.");
+}
+
+void oreburgh_to_roark(VideoStream& stream, ProControllerContext& context){
+    // What 01.03 does, stepped through on the console before writing it.
+    StepLog step(stream, "01.03", "From the Oreburgh Pokemon Center to Roark in the mine", {
+        "Walk past Barry at the Center's door to the stone ledge, then east to the fence below the Poke Mart",
+        "South under the conveyors and down the stairs below the mine's sign",
+        "Through the mine's entrance hall and down the rocky corridor to the coal room",
+        "Down to the coal room's bottom row and talk to Roark",
+        "Back up the corridor and out of the mine",
+    });
+
+    step(1);
+    // The save stands us in front of the Center, two tiles west of Barry at
+    // its door. These are the holds that worked on the console.
+    hold_tiles(stream, context, GridDirection::EAST, 3);
+    walk_dir(stream, context, GridDirection::NORTH, 3000ms, "north to the Center's front");
+    hold_tiles(stream, context, GridDirection::EAST, 2);
+    walk_dir(stream, context, GridDirection::NORTH, 2500ms, "north beside Barry");
+    if (walk_dir(stream, context, GridDirection::SOUTH, 8000ms, "south to the stone ledge").stop != WalkStop::BLOCKED){
+        fail(stream, "Oreburgh: walking south did not stop at the stone ledge.");
+    }
+    if (walk_dir(stream, context, GridDirection::EAST, 10000ms, "east to the fence below the Poke Mart").stop != WalkStop::BLOCKED){
+        fail(stream, "Oreburgh: walking east did not stop at the fence below the Poke Mart.");
+    }
+
+    step(2);
+    // The conveyors keep the screen moving, so a stop under them never
+    // reads as a wall: hold, then search the columns west for the stairs.
+    walk_dir(stream, context, GridDirection::SOUTH, 10000ms, "south under the conveyors");
+    bool in_mine = false;
+    for (size_t column = 1; column <= 6 && !in_mine; column++){
+        hold_tiles(stream, context, GridDirection::WEST, 1);
+        in_mine = walk_dir(stream, context, GridDirection::SOUTH, 4000ms, "south to the mine's stairs").stop == WalkStop::TRANSITION;
+    }
+    for (size_t column = 1; column <= 10 && !in_mine; column++){
+        hold_tiles(stream, context, GridDirection::EAST, 1);
+        in_mine = walk_dir(stream, context, GridDirection::SOUTH, 4000ms, "south to the mine's stairs").stop == WalkStop::TRANSITION;
+    }
+    if (!in_mine){
+        fail(stream, "Oreburgh: did not find the mine's stairs below its sign.");
+    }
+    context.wait_for(1500ms);
+
+    step(3);
+    if (walk_dir(stream, context, GridDirection::SOUTH, 10000ms, "through the mine's entrance hall").stop != WalkStop::TRANSITION){
+        fail(stream, "Oreburgh Mine: the entrance hall did not lead on south.");
+    }
+    context.wait_for(1500ms);
+
+    step(4);
+    // Boulders and small rocks (Rock Smash, not ours yet) zigzag the
+    // corridor; the coal block fills the room's middle, so its bottom row is
+    // reached down a side.
+    if (cave_search(stream, context, GridDirection::SOUTH, 16, "down to the coal room's bottom row") != SearchEnd::BLOCKED_EVERYWHERE){
+        fail(stream, "Oreburgh Mine: a transition on the way down.");
+    }
+    // Roark stands a row above the bottom row, between two rocks: walking
+    // along the bottom never meets him. Probe each tile: face north, A.
+    bool roark = false;
+    for (GridDirection along : {GridDirection::WEST, GridDirection::EAST}){
+        for (size_t tile = 0; tile < 30 && !roark; tile++){
+            route_turn(stream, context, GridDirection::NORTH);
+            pbf_press_button(context, BUTTON_A, 80ms, 200ms);
+            roark = dialogue_opens(stream, context, 1500ms);
+            if (!roark){
+                if (walk_dir(stream, context, along, 700ms, "along the bottom row").stop == WalkStop::BLOCKED){
+                    break;
+                }
+            }
+        }
+        if (roark){
+            break;
+        }
+    }
+    if (!roark){
+        fail(stream, "Oreburgh Mine: Roark did not answer anywhere along the bottom row.");
+    }
+    finish_dialogue(stream, context, 0, "Roark");
+
+    step(5);
+    if (cave_search(stream, context, GridDirection::NORTH, 16, "up to the entrance hall") != SearchEnd::TRANSITION){
+        fail(stream, "Oreburgh Mine: did not get back up to the entrance hall.");
+    }
+    context.wait_for(1500ms);
+    if (walk_dir(stream, context, GridDirection::NORTH, 10000ms, "out of the mine").stop != WalkStop::TRANSITION){
+        fail(stream, "Oreburgh Mine: did not leave by the entrance.");
+    }
+    context.wait_for(1500ms);
 }
 
 void checkpoint_0101(
@@ -334,6 +489,20 @@ void checkpoint_0101(
     checkpoint_reattempt_loop(env, context, options, stats,
         [&](size_t /*attempt*/){
             jubilife_to_barry(env.console, context);
+        },
+        true
+    );
+}
+
+void checkpoint_0103(
+    SingleSwitchProgramEnvironment& env,
+    ProControllerContext& context,
+    AutoStoryOptions options,
+    AutoStoryStats& stats
+){
+    checkpoint_reattempt_loop(env, context, options, stats,
+        [&](size_t /*attempt*/){
+            oreburgh_to_roark(env.console, context);
         },
         true
     );
@@ -370,6 +539,7 @@ void AutoStory_Segment_01::run_segment(
     env.console.log("Start Segment " + name(), COLOR_ORANGE);
     AutoStory_Checkpoint_0101().run_checkpoint(env, context, options, stats);
     AutoStory_Checkpoint_0102().run_checkpoint(env, context, options, stats);
+    AutoStory_Checkpoint_0103().run_checkpoint(env, context, options, stats);
     env.console.log("End Segment " + name(), COLOR_GREEN);
 }
 
@@ -388,7 +558,7 @@ void AutoStory_Checkpoint_0101::run_checkpoint(
 
 std::string AutoStory_Checkpoint_0102::name()       const { return "01.02 - Route 203 to Oreburgh"; }
 std::string AutoStory_Checkpoint_0102::start_text() const { return AutoStory_Checkpoint_0101().end_text(); }
-std::string AutoStory_Checkpoint_0102::end_text()   const { return "In Oreburgh City, after the man at the entrance."; }
+std::string AutoStory_Checkpoint_0102::end_text()   const { return "In front of the Oreburgh Pokemon Center, after the man's tour and Barry."; }
 
 void AutoStory_Checkpoint_0102::run_checkpoint(
     SingleSwitchProgramEnvironment& env,
@@ -399,6 +569,20 @@ void AutoStory_Checkpoint_0102::run_checkpoint(
     checkpoint_0102(env, context, options, stats);
 }
 
+
+
+std::string AutoStory_Checkpoint_0103::name()       const { return "01.03 - Oreburgh Mine to Roark"; }
+std::string AutoStory_Checkpoint_0103::start_text() const { return AutoStory_Checkpoint_0102().end_text(); }
+std::string AutoStory_Checkpoint_0103::end_text()   const { return "Outside the Oreburgh Mine, after talking to Roark."; }
+
+void AutoStory_Checkpoint_0103::run_checkpoint(
+    SingleSwitchProgramEnvironment& env,
+    ProControllerContext& context,
+    AutoStoryOptions options,
+    AutoStoryStats& stats
+) const{
+    checkpoint_0103(env, context, options, stats);
+}
 
 }
 }
