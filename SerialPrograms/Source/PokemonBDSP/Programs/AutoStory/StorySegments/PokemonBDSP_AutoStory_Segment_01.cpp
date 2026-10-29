@@ -495,9 +495,15 @@ void oreburgh_to_roark(VideoStream& stream, ProControllerContext& context){
         screen.frame->save(folder + now_to_filestring() + "-below-roark.png");
     }
     // His talk opens with the camera zooming in; the first line comes some
-    // seconds later (r98).
-    pbf_press_button(context, BUTTON_A, 80ms, 200ms);
-    if (!dialogue_opens(stream, context, 10000ms)){
+    // seconds later (r98). An A right after the turn can go unheard (r101):
+    // press again if nothing came.
+    context.wait_for(500ms);
+    bool talked = false;
+    for (size_t attempt = 0; attempt < 3 && !talked; attempt++){
+        pbf_press_button(context, BUTTON_A, 80ms, 200ms);
+        talked = dialogue_opens(stream, context, 6000ms);
+    }
+    if (!talked){
         fail(stream, "Oreburgh Mine: no talk opened below Roark.");
     }
     at = {roark.next(GridDirection::SOUTH)};
