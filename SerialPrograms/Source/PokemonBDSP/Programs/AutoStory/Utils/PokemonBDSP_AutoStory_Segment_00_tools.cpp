@@ -1195,6 +1195,7 @@ namespace PokemonAutomation {
                 bool battle_menu_seen = false;
                 bool out_of_potions = false;
                 size_t potions_used = 0;
+                size_t turns = 0;
                 EndBattleWatcher end_battle;
 
                 while (true) {
@@ -1229,6 +1230,12 @@ namespace PokemonAutomation {
                         // -------------------------------------------------
                     case 0:
                         battle_menu_seen = true;
+                        // Early battles take a few turns; this many means the chosen
+                        // move is not being used (no PP, a misread menu).
+                        if (++turns > 25) {
+                            OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
+                                label + ": still at the battle menu after 25 turns.", stream);
+                        }
 
                         stream.log(
                             "[AutoStory] Battle menu detected.",
