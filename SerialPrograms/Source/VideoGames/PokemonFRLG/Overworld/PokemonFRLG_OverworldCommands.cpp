@@ -55,11 +55,18 @@ void register_overworld_commands(){
             }
         );
         register_command_file_command(
-            "frlg_route", "frlg_route FROM_MAP x y TO_MAP x y [facing] [start facing]   (plan and walk an FRLG route)",
+            "frlg_route", "frlg_route FROM_MAP x y TO_MAP x y [facing] [start facing] [Max Repel slot]   (plan and walk an FRLG route)",
             [](CommandFileSession& session, const std::vector<std::string>& words){
                 //  frlg_route ... [goal facing] [facing the player starts with]
+                //  [Items pocket slot of the Max Repel to use when one wears off, from 1]
                 const std::optional<MapDirection> start = words.size() > 8 ? parse_direction(words[8]) : std::nullopt;
-                walk_overworld_route(session.env.console, session.context, plan(words, session.out), start);
+                const std::vector<RouteStep> route = plan(words, session.out);
+                if (words.size() > 9){
+                    const OverworldInterrupts interrupts = overworld_interrupts_with_repel(std::stoi(words[9]) - 1);
+                    walk_overworld_route(session.env.console, session.context, route, start, interrupts);
+                }else{
+                    walk_overworld_route(session.env.console, session.context, route, start);
+                }
             }
         );
         return true;
