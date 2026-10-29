@@ -12,6 +12,7 @@
 #ifndef PokemonAutomation_PokemonFRLG_OverworldWalk_H
 #define PokemonAutomation_PokemonFRLG_OverworldWalk_H
 
+#include <optional>
 #include <vector>
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
@@ -25,9 +26,11 @@ namespace PokemonFRLG{
 //  Walks `route` from where it was planned. The player must be standing still
 //  on the overworld, not running and not on the bike. Throws
 //  OperationFailedException if a warp's fade or the Surf prompt doesn't show.
+//  `facing` is the way the player faces at the start, if known.
 void walk_overworld_route(
     ConsoleHandle& console, ProControllerContext& context,
-    const std::vector<RouteStep>& route
+    const std::vector<RouteStep>& route,
+    std::optional<MapDirection> facing = std::nullopt
 );
 
 

@@ -24,7 +24,8 @@ namespace{
 //  Not yet calibrated on the console.
 constexpr Milliseconds TILE_TIME = 267ms;       //  16 frames at 60 fps, measured exact over 15 tiles
 constexpr Milliseconds SURF_TILE_TIME = 133ms;  //  the game moves a surfing player at running speed
-constexpr Milliseconds TURN_TIME = 133ms;       //  turning before the first step
+constexpr Milliseconds TURN_TAP = 40ms;         //  turns a player facing another way, without a step
+constexpr Milliseconds TURN_SETTLE = 300ms;
 constexpr Milliseconds FACE_HOLD = 40ms;        //  short enough to turn without stepping
 constexpr Milliseconds FACE_SETTLE = 300ms;     //  the turn animation, before A reaches what is ahead
 constexpr Milliseconds STEP_RELEASE = 100ms;
@@ -128,20 +129,30 @@ void start_surf(ConsoleHandle& console, ProControllerContext& context, MapDirect
 
 void walk_overworld_route(
     ConsoleHandle& console, ProControllerContext& context,
-    const std::vector<RouteStep>& route
+    const std::vector<RouteStep>& route,
+    std::optional<MapDirection> facing
 ){
-    //  Each leg starts with a turn unless it goes the way the player faces.
-    //  The first leg's facing isn't known, so it allows for the turn.
-    std::optional<MapDirection> facing;
+    //  Each leg starts with a turn tap unless it goes the way the player faces.
+    //  If the first facing isn't known it taps anyway, which takes an extra
+    //  step if the player already faced that way.
     for (const RouteStep& step : route){
         console.log("Route: " + to_string(step));
         switch (step.action){
         case RouteAction::WALK:{
-            //  Release half a tile before the last step would end: the step
-            //  in progress completes, and no further step starts.
-            const Milliseconds turn = facing == step.direction ? 0ms : TURN_TIME;
+            //  An open leg is released half a tile before the last step would
+            //  end: the step in progress completes and no further step starts.
+            //  A leg to a wall is held two tiles longer, since the wall stops
+            //  the player on its tile however long the stick is held.
+            //  Turning first, with a tap, makes the hold start from a standstill
+            //  facing the right way: holding through a turn lost a tile on the
+            //  console, while holds from a standstill were exact over 15 tiles.
+            if (facing != step.direction){
+                pbf_press_dpad(context, dpad(step.direction), TURN_TAP, TURN_SETTLE);
+            }
             const Milliseconds tile = step.surfing ? SURF_TILE_TIME : TILE_TIME;
-            const Milliseconds hold = turn + tile * (step.tiles - 1) + tile / 2;
+            const Milliseconds hold = step.to_wall
+                ? tile * (step.tiles + 2)
+                : tile * (step.tiles - 1) + tile / 2;
             pbf_press_dpad(context, dpad(step.direction), hold, STEP_RELEASE);
             if (step.warps){
                 wait_out_warp(console, context, step);
@@ -159,10 +170,7 @@ void walk_overworld_route(
         if (step.action != RouteAction::FACE){
             check_not_interrupted(console, context, step);
         }
-        //  A warp can leave the player facing any way.
-        facing = step.action == RouteAction::WALK && step.warps
-            ? std::nullopt
-            : std::optional<MapDirection>(step.direction);
+        facing = step.walked_out ? MapDirection::SOUTH : step.direction;
     }
     context.wait_for_all_requests();
 }
