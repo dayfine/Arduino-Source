@@ -351,7 +351,7 @@ void oreburgh_to_roark(VideoStream& stream, ProControllerContext& context){
     // What 01.03 does, stepped through on the console before writing it.
     StepLog step(stream, "01.03", "From the Oreburgh Pokemon Center to Roark in the mine", {
         "Walk past Barry at the Center's door to the stone ledge, then east to the fence below the Poke Mart",
-        "Two columns west, then one walk south down the yard's stairs, under the conveyors and into the mine",
+        "West to the sand path's west fence, then one walk south down the yard's stairs, under the conveyors and into the mine",
         "Through the mine's entrance hall to the rocky corridor",
         "Walk the planned route down the corridor and round the coal block, and talk to Roark",
         "Walk back to the corridor's top and out of the mine",
@@ -378,27 +378,20 @@ void oreburgh_to_roark(VideoStream& stream, ProControllerContext& context){
     // stairs, under the conveyors and into the mine; on the console it ran
     // on through the entrance hall into the rocky corridor. A worker walks
     // about on the sand path: wait for him, then try the columns beside.
-    hold_tiles(stream, context, GridDirection::WEST, 2);
+    // Timed holds of a tile or two move one tile or two unpredictably, so
+    // the column comes from a wall: the sand path is fenced both sides, and
+    // the mine's column is the first one inside its west fence. A worker
+    // walking about the path may stop us short: then the walk south is
+    // blocked too, so wait for him and walk west again.
     bool in_mine = false;
-    static const int COLUMNS[] = {0, -1, 1, -2};
-    int column = 0;
-    for (int target : COLUMNS){
-        if (target != column){
-            const int change = target - column;
-            hold_tiles(stream, context, change > 0 ? GridDirection::EAST : GridDirection::WEST, (size_t)std::abs(change));
-            column = target;
-        }
-        for (size_t again = 0; again < 2 && !in_mine; again++){
-            const WalkResult walk = walk_dir(stream, context, GridDirection::SOUTH, 15000ms, "south into the mine");
-            in_mine = walk.stop == WalkStop::TRANSITION;
-            if (walk.stop == WalkStop::DIALOG){
-                talk_or_fight(stream, context, "Someone on the way to the mine");
-            }else if (!in_mine){
-                context.wait_for(2000ms);   // the worker may move on
-            }
-        }
-        if (in_mine){
-            break;
+    for (size_t attempt = 0; attempt < 4 && !in_mine; attempt++){
+        walk_dir(stream, context, GridDirection::WEST, 4000ms, "west to the sand path's west fence");
+        const WalkResult walk = walk_dir(stream, context, GridDirection::SOUTH, 15000ms, "south into the mine");
+        in_mine = walk.stop == WalkStop::TRANSITION;
+        if (walk.stop == WalkStop::DIALOG){
+            talk_or_fight(stream, context, "Someone on the way to the mine");
+        }else if (!in_mine){
+            context.wait_for(2000ms);
         }
     }
     if (!in_mine){
