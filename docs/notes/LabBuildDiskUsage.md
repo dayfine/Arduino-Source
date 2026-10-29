@@ -45,10 +45,34 @@ any code change.
    revision takes about 40 s, so idle worktrees can drop `build/` entirely
    instead of keeping 2 GB of objects each.
 
+## Trial (2026-10-29)
+
+Seven lab builds, each with its console-B copy, deployed five ways into a
+scratch folder. Disk use was measured with `df`, which counts shared blocks
+once. The seven builds hold only two distinct `Resources` trees: BDSP's, with
+1,467 files (300 MB), and upstream's, with 686 files (199 MB).
+
+| Option | Disk for 14 deployments |
+|---|---|
+| Plain copy (today) | 4,212 MB |
+| 1. One shared `Resources` | 718 MB, but 2 of the 7 builds would read the other branch's files |
+| 2. Content-hash snapshots + symlink | 912 MB: 500 MB of trees plus 420 MB of `.app` copies |
+| 3. APFS clones (`cp -c`) | about 0 MB, cloned from existing deployments |
+| 4. Hard links (`pax -rwl`) | 965 MB |
+
+Notes:
+- macOS ships openrsync, which didn't hard-link with `rsync --link-dest`.
+- The clone result is a best case. A real deploy clones from the build
+  folder; if a build rewrites `Resources` (not yet checked), each new
+  revision costs a full copy again.
+- Snapshots dedupe by content, so they stay at one copy per distinct tree
+  whatever the build does.
+
 ## Proposal
 
-Use option 2 for lab deployments and option 5 for worktrees that have been idle
-for more than a few days, then measure with `df` before and after.
+Use option 2 for `Resources` and option 3 for the `.app` copies: about 500 MB
+here instead of 4.2 GB, with no change to the app. Use option 5 for worktrees
+that have been idle for more than a few days.
 
 Open questions:
 - Should the console-B copy (`<name>-B`) share the `.app` too? Today it is a
