@@ -12,6 +12,13 @@ If you have any questions regarding the documentation or find any errors in the 
 
 Warning: if you don't have software development experience and deviate from the guide steps, you are at your own risk.
 
+## Faster rebuilds for developers
+
+After the normal build works, use the optional
+[Mac compiler-cache guide](Build-Mac-CompilerCache.md) for incremental builds
+and sharing compiled results across worktrees. The
+[build overview](IncrementalBuilds.md) explains platform coverage and disk usage.
+
 ## Part 1: Install Pre-requisites
 ### Install XCode App
 
@@ -164,7 +171,7 @@ InstalledDir: /Library/Developer/CommandLineTools
 The exact version, target and installed directory may be different on your machine.
 But as long as your Clang version is higher than 13.0.0, you should be fine to proceed.
 
-If you find your Clang version is too low, check this [tutorial](UpdateClang.md) to address it.
+If you find your Clang version is too low, check this [tutorial](https://pokemonautomation.github.io/Developer/UpdateClang.html) to address it.
 
 ## Part 3: Download Codebase
 
