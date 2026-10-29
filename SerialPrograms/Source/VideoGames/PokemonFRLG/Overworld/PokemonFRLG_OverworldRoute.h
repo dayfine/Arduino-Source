@@ -46,6 +46,13 @@ struct RouteStep{
     bool warps = false;
     //  WALK: on the water, where the player moves twice as fast.
     bool surfing = false;
+    //  WALK: a wall stops the player at the end, so the leg can be held for
+    //  longer than it takes and still ends on its tile.
+    bool to_wall = false;
+    //  WALK with `warps`: the player arrives at a door or cave mouth and the
+    //  game walks them a tile out, so they end facing south. Other warps keep
+    //  the way the player faced.
+    bool walked_out = false;
     //  Where the player is after the step.
     MapPosition end;
 };
@@ -74,6 +81,18 @@ std::optional<std::vector<RouteStep>> plan_overworld_route(
     const MapPosition& start,
     const RouteGoal& goal,
     const RouteCosts& costs = RouteCosts()
+);
+
+//  `route` with each run of plain walking on one area (maps joined by their
+//  connections, at one elevation, on land or on water) planned again with
+//  Pokemon::plan_robust_route(): legs that end against a wall where it can,
+//  so the player is on a known tile after them however long the stick was
+//  held, and open legs that later walls make up for. A run the robust planner
+//  can't do is kept as it was.
+std::vector<RouteStep> anchor_overworld_route(
+    const std::vector<OverworldMap>& maps,
+    const MapPosition& start,
+    const std::vector<RouteStep>& route
 );
 
 //  Replays `route` from `start` with the game's step rules and returns where
