@@ -2,8 +2,9 @@
 
 Status: proposed plan revision, 2026-10-28. This updates implementation order;
 it does not record new user approval of a fixed interface or hardware budget.
-Read alongside [AutoStory.md](AutoStory.md). Prepared as a local handoff for
-fork draft #42; no existing PR branch was changed.
+Read alongside [AutoStory.md](AutoStory.md). The concrete implementation slices,
+JSON map format and RNG handoffs are in the
+[FRLG demo work plan](FRLG-Demo-Work-Plan.md).
 
 ## Evidence and scope
 
@@ -27,8 +28,10 @@ farmer, SV registries, or all of BDSP is not a prerequisite.
 
 There are two demos with different purposes:
 
-1. **Startup demo:** fresh FireRed, preset names and explicit starter,
-   bedroom → Oak → starter → lab rival resolved → verified first save.
+1. **Startup demo:** fresh FireRed, supported player-name entry and explicit starter,
+   bedroom → Oak → starter → lab rival resolved → verified post-rival save.
+   Optional handoffs prepare SID Helper and Starter RNG; those paths save
+   the new identity before any reset and preserve the pre-starter checkpoint.
    This tests screen handling, short walks, battle outcomes and the first
    save. Before a verified save exists, recovery must explicitly restart
    the fresh-game flow or stop; it cannot load an assumed checkpoint.
@@ -181,7 +184,9 @@ console runs test their integration. Existing BDSP route tests mostly check
 planned endpoints/geometry, not this execution/recovery matrix.
 
 Require three consecutive autonomous completions from the declared start
-for each completed demo, plus the deliberate failure/recovery run. Record
+for each ordinary demo, plus the deliberate failure/recovery run. RNG mode uses
+manual handoffs; validate its automated legs separately as specified in the
+work plan. Record
 outcomes, resets, false arrivals, and Switch time. Step-through success and
 one unattended run are milestones, not repeated-validation claims. The
 existing Brock gate remains the expansion decision; its proposed three-hour

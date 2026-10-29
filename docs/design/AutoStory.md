@@ -17,7 +17,8 @@ Paths: `SV/` = `SerialPrograms/Source/VideoGames/PokemonSV/Programs/AutoStory/`,
 ## Current implementation order (2026-10-28 review)
 
 The [map-reuse review](AutoStory-Map-Reuse-Review.md) updates the work order
-below. First prove the existing BDSP spatial model with a small FRLG map
+below. The [FRLG demo work plan](FRLG-Demo-Work-Plan.md) specifies map resources,
+startup prerequisites, SID Helper/Starter RNG handoffs and acceptance gates. First prove the existing BDSP spatial model with a small FRLG map
 demo (post-rival save → Oak’s Parcel → Pokédex), and a startup demo through
 the first verified save. Then settle the common executor using both games.
 The old ten-PR sequence in §7.7 is retained as a candidate inventory, not a

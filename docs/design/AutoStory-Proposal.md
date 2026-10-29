@@ -33,7 +33,9 @@ map/door transitions, and a deliberate failure followed by verified reload
 and replay. These two game implementations determine what executor logic
 is worth sharing. Elite Four migration and SV refactoring are independent.
 
-The [map-reuse review](AutoStory-Map-Reuse-Review.md) specifies the work order,
+The [FRLG demo work plan](FRLG-Demo-Work-Plan.md) defines JSON map resources,
+startup prerequisites and optional SID Helper/Starter RNG handoffs. The
+[map-reuse review](AutoStory-Map-Reuse-Review.md) specifies the work order,
 source evidence and validation gates. Exact PR splits follow the runnable
 slice; the previous ten-PR count is no longer a delivery commitment.
 
