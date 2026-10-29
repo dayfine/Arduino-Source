@@ -12,6 +12,9 @@
 #include "../Utils/PokemonBDSP_AutoStory_RouteWalk.h"
 #include "../Utils/PokemonBDSP_AutoStory_Segment_00_tools.h"
 #include "../Utils/PokemonBDSP_AutoStory_Walk.h"
+#include "Common/Cpp/PrettyPrint.h"
+#include "Common/Cpp/Filesystem/Filesystem.h"
+#include "CommonFramework/Globals.h"
 
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
@@ -459,42 +462,36 @@ void oreburgh_to_roark(VideoStream& stream, ProControllerContext& context){
     for (const Pokemon::TilePos& pos : OreburghMine::corridor_top()){
         at.push_back(world(pos));
     }
-    // No wall pins the column below Roark (his rocks are a row up), so plan
-    // to the bottom row east of him, then step west facing north with A at
-    // each tile until he answers.
+    // Roark stands with a rock on each side, so the rock east of him is the
+    // anchor: plan to his row's open stretch east of the rock, walk north to
+    // the wall above it and west until the rock stops us, two tiles east of
+    // him (on the console, r97). Then south to the bottom wall and two tiles
+    // west puts us below him.
     const Pokemon::TilePos roark = world(OreburghMine::ROARK);
     at = walk_route(stream, context, maps, at,
-        [&](const Pokemon::TilePos& pos){ return pos.y == roark.y + 1 && pos.x > roark.x && pos.x <= roark.x + 9; },
-        no_trainers, in_the_way, "To the coal room's bottom row");
-    // Blocked legs on the way can leave us a row short: r97 probed along
-    // Roark's own row, two tiles east of him with his rock in between. The
-    // bottom wall pins the row below him.
-    walk_dir(stream, context, GridDirection::SOUTH, 3000ms, "south to the coal room's bottom wall");
-    // Each probe turns north to press A, so the next step must turn west
-    // again before it moves: an 80ms hold right after a turn often only
-    // turns. A 120ms hold after the turn is one tile (on the console, 143ms
-    // per tile once walking). Sweep west, then back east if we overshot.
-    auto step_one = [&](GridDirection dir){
-        route_turn(stream, context, dir);
-        pbf_move_left_joystick(context, {dir == GridDirection::EAST ? 1.0 : -1.0, 0}, 120ms, 300ms);
-        context.wait_for_all_requests();
-    };
-    auto probe = [&](){
-        route_turn(stream, context, GridDirection::NORTH);
-        pbf_press_button(context, BUTTON_A, 80ms, 200ms);
-        return dialogue_opens(stream, context, 1500ms);
-    };
-    bool answered = probe();
-    for (size_t tile = 0; tile < 12 && !answered; tile++){
-        step_one(GridDirection::WEST);
-        answered = probe();
+        [&](const Pokemon::TilePos& pos){ return pos.y >= roark.y && pos.y <= roark.y + 1 && pos.x >= roark.x + 2 && pos.x <= roark.x + 7; },
+        no_trainers, in_the_way, "To the stretch east of Roark");
+    walk_dir(stream, context, GridDirection::NORTH, 2000ms, "north to the wall on Roark's row");
+    if (walk_dir(stream, context, GridDirection::WEST, 3000ms, "west to the rock beside Roark").stop != WalkStop::BLOCKED){
+        fail(stream, "Oreburgh Mine: walking west along Roark's row did not stop at his rock.");
     }
-    for (size_t tile = 0; tile < 14 && !answered; tile++){
-        step_one(GridDirection::EAST);
-        answered = probe();
+    if (walk_dir(stream, context, GridDirection::SOUTH, 2000ms, "south to the bottom wall").stop != WalkStop::BLOCKED){
+        fail(stream, "Oreburgh Mine: walking south from Roark's rock did not stop at the bottom wall.");
     }
-    if (!answered){
-        fail(stream, "Oreburgh Mine: Roark did not answer along the bottom row.");
+    route_turn(stream, context, GridDirection::WEST);
+    pbf_move_left_joystick(context, {-1, 0}, 120ms, 300ms);
+    pbf_move_left_joystick(context, {-1, 0}, 120ms, 300ms);
+    route_turn(stream, context, GridDirection::NORTH);
+    context.wait_for_all_requests();
+    //  Where we stand to talk to him, to check against the plan after a run.
+    if (VideoSnapshot screen = stream.video().snapshot()){
+        const std::string folder = SCREENSHOTS_PATH() + "AutoStory/route/";
+        Filesystem::create_directories(Filesystem::Path(folder));
+        screen.frame->save(folder + now_to_filestring() + "-below-roark.png");
+    }
+    pbf_press_button(context, BUTTON_A, 80ms, 200ms);
+    if (!dialogue_opens(stream, context, 2000ms)){
+        fail(stream, "Oreburgh Mine: no talk opened below Roark.");
     }
     at = {roark.next(GridDirection::SOUTH)};
     finish_dialogue(stream, context, 0, "Roark");
