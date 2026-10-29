@@ -271,6 +271,7 @@ std::optional<std::vector<RouteStep>> plan_overworld_route(
     first.player.map = start_map;
     first.player.state.position = start.point;
     first.player.state.elevation = maps[start_map].elevation(start.point);
+    first.player.state.surfing = maps[start_map].water(start.point);
     const size_t first_index = index_of(first);
     distance[first_index] = 0;
     states[first_index] = first;
@@ -357,7 +358,7 @@ std::optional<std::vector<RouteStep>> plan_overworld_route(
     }
     std::vector<RouteStep> route;
     bool can_extend = false;
-    bool before_surfing = false;
+    bool before_surfing = first.player.state.surfing;
     for (auto iter = moves.rbegin(); iter != moves.rend(); ++iter){
         const Move& move = iter->first;
         const SearchState& after = iter->second;
@@ -398,6 +399,7 @@ MapPosition follow_overworld_route(
     }
     player.state.position = start.point;
     player.state.elevation = maps[player.map].elevation(start.point);
+    player.state.surfing = maps[player.map].water(start.point);
 
     for (const RouteStep& step : route){
         if (step.action == RouteAction::FACE){
