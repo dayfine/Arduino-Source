@@ -25,7 +25,6 @@
 #include "PokemonBDSP/Inference/Battles/PokemonBDSP_BattleMenuDetector.h"
 
 #include <cstdlib>
-#include <iterator>
 
 using namespace std::chrono_literals;
 
@@ -368,6 +367,15 @@ void oreburgh_to_roark(VideoStream& stream, ProControllerContext& context){
     walk_dir(stream, context, GridDirection::NORTH, 3000ms, "north to the Center's front");
     hold_tiles(stream, context, GridDirection::EAST, 2);
     walk_dir(stream, context, GridDirection::NORTH, 2500ms, "north beside Barry");
+    // Roark answers in the mine only after Barry has told us he is there
+    // (2026-10-29: he ignored A in r101 and r104 and by hand, and answered at
+    // once after a talk with Barry). Barry is just east of us.
+    route_turn(stream, context, GridDirection::EAST);
+    pbf_press_button(context, BUTTON_A, 80ms, 200ms);
+    if (!dialogue_opens(stream, context, 3000ms)){
+        fail(stream, "Oreburgh: Barry did not talk at the gym door.");
+    }
+    finish_dialogue(stream, context, 0, "Barry at the gym door");
     if (walk_dir(stream, context, GridDirection::SOUTH, 8000ms, "south to the stone ledge").stop != WalkStop::BLOCKED){
         fail(stream, "Oreburgh: walking south did not stop at the stone ledge.");
     }
@@ -489,43 +497,34 @@ void oreburgh_to_roark(VideoStream& stream, ProControllerContext& context){
     pbf_move_left_joystick(context, {-1, 0}, 120ms, 300ms);
     route_turn(stream, context, GridDirection::NORTH);
     context.wait_for_all_requests();
-    // He answers only when we stand well lined up below him: on the same
-    // tile, A got nothing in r101 and r104 and in several presses by hand,
-    // and his talk came after a 30ms nudge sideways (by hand, 2026-10-29).
-    // So press A, and if nothing comes, nudge part of a tile and try again,
-    // working out to two nudges either side. His talk opens with the camera
-    // zooming in, and the first line comes some seconds later (r98).
-    const GridDirection nudges[] = {
-        GridDirection::WEST, GridDirection::WEST,
-        GridDirection::EAST, GridDirection::EAST, GridDirection::EAST, GridDirection::EAST,
-        GridDirection::WEST, GridDirection::WEST,
-    };
+    // Movement is by whole tiles: a sideways nudge only steps onto his rock's
+    // tile (r105, r106 read the rock's line as his). Turn to him and press A
+    // once; the camera zooms in and his first line, "OK, stand back and watch
+    // this.", can take some seconds (r98).
     bool talked = false;
-    for (size_t attempt = 0; attempt <= std::size(nudges) && !talked; attempt++){
-        if (attempt > 0){
-            const GridDirection side = nudges[attempt - 1];
-            route_turn(stream, context, side);
-            pbf_move_left_joystick(context, {side == GridDirection::EAST ? 1.0 : -1.0, 0}, 30ms, 300ms);
-            route_turn(stream, context, GridDirection::NORTH);
-        }
+    for (size_t attempt = 0; attempt < 3 && !talked; attempt++){
+        route_turn(stream, context, GridDirection::EAST);
+        route_turn(stream, context, GridDirection::NORTH);
         context.wait_for(500ms);
-        //  Where we stood for each try, to compare after a run.
         if (VideoSnapshot screen = stream.video().snapshot()){
             const std::string folder = SCREENSHOTS_PATH() + "AutoStory/route/";
             Filesystem::create_directories(Filesystem::Path(folder));
             screen.frame->save(folder + now_to_filestring() + "-below-roark-" + std::to_string(attempt) + ".png");
         }
         pbf_press_button(context, BUTTON_A, 80ms, 200ms);
-        talked = dialogue_opens(stream, context, 6000ms);
-        if (talked){
-            stream.log("[Roark] He answered on try " + std::to_string(attempt) + ".");
-        }
+        talked = dialogue_opens(stream, context, 8000ms);
     }
     if (!talked){
-        fail(stream, "Oreburgh Mine: no talk opened below Roark, nudging two either side.");
+        fail(stream, "Oreburgh Mine: no talk opened below Roark.");
     }
-    at = {roark.next(GridDirection::SOUTH)};
     finish_dialogue(stream, context, 0, "Roark");
+    // His scene ends with him smashing his rock and leaving: his tile is
+    // free now. Step onto it and back, or fail if he is still there.
+    if (walk_dir(stream, context, GridDirection::NORTH, 2000ms, "onto Roark's tile").walked <= 800ms){
+        fail(stream, "Oreburgh Mine: Roark is still there after the talk.");
+    }
+    walk_dir(stream, context, GridDirection::SOUTH, 2000ms, "back to the bottom wall");
+    at = {roark.next(GridDirection::SOUTH)};
 
     step(5);
     // Back up the corridor, then north out through the hall. A route leg
