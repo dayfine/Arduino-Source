@@ -103,11 +103,6 @@ const TilePos CLOWN_TV_STATION{34, 11};
 //  East of the Poketch Company's sign. Talked to from the south on the
 //  console; from the east a walk west along row 13 stops right beside him.
 const TilePos CLOWN_POKETCH_COMPANY{13, 13};
-//  Seen on the console: south from the Center door stops on row 33, the
-//  girls stand on row 34.
-const TilePos CENTER_EXIT_STOP{51, 33};
-//  The east wall of row 15; the map's opening to Route 203 is rows 16 to 18.
-const TilePos EAST_EXIT_APPROACH{47, 15};
 
 
 

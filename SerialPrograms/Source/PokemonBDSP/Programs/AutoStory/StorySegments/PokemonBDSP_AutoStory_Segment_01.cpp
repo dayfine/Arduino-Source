@@ -6,8 +6,6 @@
  */
 
 #include "PokemonBDSP_AutoStory_Segment_01.h"
-#include "../Data/PokemonBDSP_AutoStory_JubilifeCity.h"
-#include "../Data/PokemonBDSP_AutoStory_StoryMaps.h"
 #include "../Detect/PokemonBDSP_AutoStory_OverworldDetector.h"
 #include "../Utils/PokemonBDSP_AutoStory_RouteWalk.h"
 #include "../Utils/PokemonBDSP_AutoStory_Segment_00_tools.h"
@@ -21,6 +19,8 @@
 #include "PokemonBDSP/Inference/PokemonBDSP_DialogDetector.h"
 #include "PokemonBDSP/Inference/Battles/PokemonBDSP_BattleMenuDetector.h"
 
+#include <cstdlib>
+
 using namespace std::chrono_literals;
 
 namespace PokemonAutomation{
@@ -28,7 +28,6 @@ namespace NintendoSwitch{
 namespace PokemonBDSP{
 
 using Pokemon::GridDirection;
-using Pokemon::TilePos;
 
 
 namespace{
@@ -150,22 +149,32 @@ void jubilife_to_oreburgh(SingleSwitchProgramEnvironment& env, VideoStream& stre
     }
 
     step(2);
-    const Pokemon::MapSet& maps = jubilife_maps();
-    auto world = [&](const TilePos& pos){ return maps.to_world(MAP_JUBILIFE_CITY, pos); };
-    std::vector<Pokemon::TrainerSight> no_trainers;
-    auto in_the_way = [&](const std::string&){ finish_dialogue(stream, context, 0, "Someone in the way"); };
-    const TilePos street = world(JubilifeCity::EAST_EXIT_APPROACH);
-    walk_route(stream, context, maps, {world(JubilifeCity::CENTER_EXIT_STOP)},
-        [&](const TilePos& pos){ return pos.y == street.y && pos.x >= street.x; },
-        no_trainers, in_the_way, "To the street to Route 203");
-    // East along the street. The opening to the route is a few rows high,
-    // just south of this row; Barry stops us a little way in. A wall means
-    // we are a row off it: a row further south.
+    // Jubilife's plaza has too few walls the grid gets right to plan on (a
+    // leg to a wall the map shows walked on 19 tiles). These are the holds
+    // that worked on the console: west onto the main road, north to the
+    // street east to Route 203, and back a couple of tiles.
+    route_turn(stream, context, GridDirection::WEST);
+    pbf_move_left_joystick(context, {-1, 0}, 720ms, 300ms);
+    route_turn(stream, context, GridDirection::NORTH);
+    pbf_move_left_joystick(context, {0, 1}, 3960ms, 300ms);
+    route_turn(stream, context, GridDirection::SOUTH);
+    pbf_move_left_joystick(context, {0, -1}, 600ms, 300ms);
+    context.wait_for_all_requests();
+    // East along the street. The opening to the route is a few rows high;
+    // Barry stops us a little way in. A wall means we are a row off it: try
+    // rows to the south, then to the north.
+    static const int ROW_CHANGES[] = {0, 1, 1, -3, -1};
     bool barry = false;
-    for (size_t row = 0; row < 4 && !barry; row++){
-        if (row > 0){
-            step_south(stream, context);
+    for (int change : ROW_CHANGES){
+        if (barry){
+            break;
         }
+        for (int i = 0; i < std::abs(change); i++){
+            const GridDirection dir = change > 0 ? GridDirection::SOUTH : GridDirection::NORTH;
+            route_turn(stream, context, dir);
+            pbf_move_left_joystick(context, {0, change > 0 ? -1.0 : 1.0}, route_open_hold(dir, 1), 200ms);
+        }
+        context.wait_for_all_requests();
         WalkResult walk{WalkStop::LIMIT, 0ms, 0};
         for (size_t stretch = 0; stretch < 3 && walk.stop == WalkStop::LIMIT; stretch++){
             walk = walk_until(stream, context, 1, 0, 9000ms, "east to Route 203");

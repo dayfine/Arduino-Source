@@ -33,12 +33,6 @@ extern const Pokemon::TilePos POKETCH_PRESIDENT;
 extern const Pokemon::TilePos CLOWN_MART;
 extern const Pokemon::TilePos CLOWN_TV_STATION;
 extern const Pokemon::TilePos CLOWN_POKETCH_COMPANY;
-//  Walking south out of the Pokemon Center, a girl standing below the door
-//  stops us here.
-extern const Pokemon::TilePos CENTER_EXIT_STOP;
-//  The street north of the Center: on this row, from this column east to
-//  the wall a tile north of the exit to Route 203.
-extern const Pokemon::TilePos EAST_EXIT_APPROACH;
 
 
 
