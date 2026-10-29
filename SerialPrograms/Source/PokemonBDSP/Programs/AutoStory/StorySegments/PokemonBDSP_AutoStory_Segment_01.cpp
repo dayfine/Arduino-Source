@@ -54,14 +54,16 @@ bool dialogue_opens(VideoStream& stream, ProControllerContext& context, Millisec
 //  For a dialogue that has opened: B through it. A trainer's ends in a
 //  battle, which is fought with the best move (Potions when HP runs low),
 //  followed by a Potion if HP is under half. Anyone else's ends back in the
-//  overworld. Returns whether there was a battle.
-bool talk_or_fight(VideoStream& stream, ProControllerContext& context, const std::string& label){
+//  overworld. Returns whether there was a battle. Between a trainer's last
+//  line and the battle the overworld shows with no dialogue for a moment,
+//  so "only talked" needs 4 s of it, and never comes when `battle_expected`.
+bool talk_or_fight(VideoStream& stream, ProControllerContext& context, const std::string& label, bool battle_expected = false){
     ShortDialogDetector dialog;
     OverworldDetector overworld;
     BattleMenuDetector battle_menu(BattleType::TRAINER);
     BlackScreenDetector black;
-    size_t quiet = 0;
-    for (size_t check = 0; check < 60; check++){
+    auto quiet_since = std::chrono::steady_clock::now();
+    for (size_t check = 0; check < 120; check++){
         context.wait_for_all_requests();
         const auto frame = stream.video().snapshot();
         if (!frame){
@@ -75,14 +77,14 @@ bool talk_or_fight(VideoStream& stream, ProControllerContext& context, const std
         }
         const bool talking = dialog.detect(*frame.frame);
         if (!talking && overworld.detect(*frame.frame)){
-            if (++quiet >= 2){
+            if (!battle_expected && std::chrono::steady_clock::now() - quiet_since >= 4s){
                 route_status(stream, label + " only talked.");
                 return false;
             }
             pbf_wait(context, 300ms);
             continue;
         }
-        quiet = 0;
+        quiet_since = std::chrono::steady_clock::now();
         if (talking){
             pbf_press_button(context, BUTTON_B, 80ms, 1100ms);
         }else{
@@ -184,7 +186,7 @@ void jubilife_to_oreburgh(SingleSwitchProgramEnvironment& env, VideoStream& stre
     if (!barry){
         fail(stream, "Route 203: Barry did not stop us at the entrance.");
     }
-    if (!talk_or_fight(stream, context, "Barry")){
+    if (!talk_or_fight(stream, context, "Barry", true)){
         fail(stream, "Route 203: Barry talked but did not battle.");
     }
 
