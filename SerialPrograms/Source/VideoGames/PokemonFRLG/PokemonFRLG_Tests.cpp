@@ -24,6 +24,7 @@
 #include "Inference/PokemonFRLG_TrainerIdReader.h"
 #include "Inference/PokemonFRLG_WildEncounterReader.h"
 #include "PokemonFRLG_Navigation.h"
+#include "Overworld/PokemonFRLG_OverworldRoute.h"
 
 #include "PokemonFRLG_Tests.h"
 namespace PokemonAutomation{
@@ -278,6 +279,7 @@ void add_tests(UnitTestDatabase& database){
     add_tests_HallOfFameSavingDetector(database);
     add_tests_BattleMoveSelectionArrow(database);
     add_tests_ExitWildBattle(database);
+    add_tests_OverworldRoute(database);
 }
 
 
