@@ -80,7 +80,7 @@ struct RouteCosts{
     int per_open_stop = 8;
 };
 
-//  The cheapest route from `start`, standing on land and not surfing, to
+//  The cheapest route from `start`, surfing if it is on water, to
 //  `goal`, or nothing if there is none. `maps` must hold every map the route
 //  may pass through; warps to other maps are not taken.
 std::optional<std::vector<RouteStep>> plan_overworld_route(

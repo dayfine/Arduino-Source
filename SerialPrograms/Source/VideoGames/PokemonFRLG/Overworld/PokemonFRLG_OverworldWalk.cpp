@@ -115,6 +115,44 @@ public:
     }
 };
 
+//  A message, taken to be "REPEL's effect wore off...", after which another
+//  Max Repel is used from the Items pocket.
+class RepelWoreOffInterrupt : public MessageInterrupt{
+public:
+    explicit RepelWoreOffInterrupt(int max_repel_slot)
+        : m_max_repel_slot(max_repel_slot)
+    {}
+    virtual const char* name() const override{
+        return "a message (Repel wore off?)";
+    }
+    virtual void clear(ConsoleHandle& console, ProControllerContext& context) const override{
+        MessageInterrupt::clear(console, context);
+        console.log("Using a Max Repel (Items pocket, slot " + std::to_string(m_max_repel_slot + 1) + ").");
+        open_bag_from_overworld(console, context);
+        //  To the Items pocket, then to the top of it.
+        for (int c = 0; c < 3; c++){
+            pbf_press_dpad(context, DPAD_LEFT, 100ms, 600ms);
+        }
+        for (int c = 0; c < 20; c++){
+            pbf_press_dpad(context, DPAD_UP, 100ms, 100ms);
+        }
+        for (int c = 0; c < m_max_repel_slot; c++){
+            pbf_press_dpad(context, DPAD_DOWN, 100ms, 300ms);
+        }
+        //  USE, "<player> used the MAX REPEL.", back to the bag, then out of
+        //  the bag and the start menu. A third A here would open the item's
+        //  menu again.
+        pbf_press_button(context, BUTTON_A, 160ms, 800ms);
+        pbf_press_button(context, BUTTON_A, 160ms, 1500ms);
+        pbf_press_button(context, BUTTON_A, 160ms, 1500ms);
+        pbf_press_button(context, BUTTON_B, 160ms, 1500ms);
+        pbf_press_button(context, BUTTON_B, 160ms, 1000ms);
+    }
+
+private:
+    int m_max_repel_slot;
+};
+
 
 DpadPosition dpad(MapDirection direction){
     switch (direction){
@@ -288,6 +326,14 @@ void start_surf(ConsoleHandle& console, ProControllerContext& context, MapDirect
 }
 
 
+
+OverworldInterrupts overworld_interrupts_with_repel(int max_repel_slot){
+    OverworldInterrupts ret;
+    ret.emplace_back(std::make_unique<WildBattleInterrupt>());
+    ret.emplace_back(std::make_unique<LateWildBattleInterrupt>());
+    ret.emplace_back(std::make_unique<RepelWoreOffInterrupt>(max_repel_slot));
+    return ret;
+}
 
 const OverworldInterrupts& default_overworld_interrupts(){
     //  Battles first: their screens are checked before the message box's.

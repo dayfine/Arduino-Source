@@ -57,6 +57,11 @@ using OverworldInterrupts = std::vector<std::unique_ptr<OverworldInterrupt>>;
 //  closed with B.
 const OverworldInterrupts& default_overworld_interrupts();
 
+//  The same, except that after a message another Max Repel is used, from
+//  slot `max_repel_slot` (from 0) of the Items pocket. Any message on the
+//  overworld is taken to be the one saying the last Repel wore off.
+OverworldInterrupts overworld_interrupts_with_repel(int max_repel_slot);
+
 
 //  Walks `route` from where it was planned. The player must be standing still
 //  on the overworld, not running and not on the bike. `facing` is the way the
