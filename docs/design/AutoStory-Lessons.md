@@ -125,7 +125,8 @@ The run now gets the Potions first and saves on Route 202, (30,19), so later att
   ran far past what was meant, and buildings hid the player; we lost our place twice. Bulbapedia's
   DP map of Jubilife matches the BDSP layout (school, Center, Mart, TV station, Pokétch Company,
   fountain park all where DP has them), so towns get a tile grid too, checked against the
-  console, with the story NPCs on it.
+  console, with the story NPCs on it. *Later (r82):* the grid's walls in the open plaza are not
+  where the game has them, so it is not good enough to plan on there; see section 9.
 - **Not saying what we are doing.** The overlay and the log now print each checkpoint's steps,
   the current one and the next, and every status report starts with the current problem.
   ([`3cd874125`](https://github.com/dayfine/Arduino-Source/commit/3cd8741250dc03f1c166e15cfc9563f5ac36add9))
@@ -139,3 +140,39 @@ an NPC to talk to), step through it first, write down each stop and dialogue, an
 write the automated version from what was seen. 00.05 was done this way on 2026-10-28: Barry and the Town Map, the president, all three
 coupon clowns, the Pokétch and the Center PC, about 60 batches, ending in a save at the PC
 (segment 0 complete).
+
+## 9. Segment 01 to Oreburgh City (2026-10-28, r81 to r90)
+
+01.01 (Jubilife Center to Barry) and 01.02 (Route 203, Oreburgh Gate, Oreburgh City) were
+stepped through by hand once, written from that ([`8dda984d5`](https://github.com/dayfine/Arduino-Source/commit/8dda984d5ca88a1d59b605a3312711162777bba7)), and then run on console B. Ten
+runs, each stopped at its first failure, and one fix per failure:
+
+| Run | What happened | Rule / fix | Commit |
+|---|---|---|---|
+| r81 | West from the PC hit the end of the counter; the walk south then stopped at the stools. | The hand run had gone south first without our noticing. Write down every move of a hand run, including the ones that "did nothing". | [`da01cc799`](https://github.com/dayfine/Arduino-Source/commit/da01cc799ba92eb5723493d943414c881a4a36dc) |
+| r82 | A grid leg to a wall the Jubilife map shows walked on ~19 tiles and ended at the Trainers' School. | Jubilife's plaza grid is wrong in its open areas. There, use the holds measured on the console, and end each leg with a search (walk east; at a wall, try the next row). | [`c4883f3cb`](https://github.com/dayfine/Arduino-Source/commit/c4883f3cb2e7c1ea18f1a34a1dd0f82b89d1b2f4) |
+| r83 | Barry stopped us, but "only talked" was decided 0.6 s into the pause before his battle. | A trainer's talk and battle have a quiet gap with no text box: wait 4 s of overworld before calling it a talk, and for a story battle never call it one. | [`85ef91790`](https://github.com/dayfine/Arduino-Source/commit/85ef91790d74c0b6b2a9caa88c9890fa07886dfe) |
+| r84 | Stuck for 4 min choosing Water Gun at 0 PP; the game refused it each turn. The user spotted the PP risk at the same time. | Read each move's PP by OCR (text = whatever differs from the button's own color, since PP text turns yellow to red); skip 0-PP moves; fail a battle still at its menu after 25 turns. | [`a5f91acde`](https://github.com/dayfine/Arduino-Source/commit/a5f91acdeff362da2e502e33b56e4c5aaf5ddd6a), [`9721801e3`](https://github.com/dayfine/Arduino-Source/commit/9721801e3f258cd49bae506434253df55528648e) |
+| r85 | Barry started at 66 % with Water Gun 12/25: the nurse had not healed. Her Yes/No is on her third line, and the B after two A presses answered No. The in-battle Potion (15 % → 93 %) worked. | Count an NPC's lines before choosing how many A presses; an extra A on a later line is harmless, a B on a question is not. The run now also saves after Barry (01.01 split at him). | [`b2236ba72`](https://github.com/dayfine/Arduino-Source/commit/b2236ba72f48e09f237a2ea07b82da802c2efba9) |
+| r85 | After the Hiker, a "Hidden Moves" tutorial card held the screen; it is no dialogue box, so the walk read it as a wall. | Tutorial cards close with B; press B after a scene that teaches something. | [`a9863ad8b`](https://github.com/dayfine/Arduino-Source/commit/a9863ad8b73b7941d2b0070025b2415b9913f3a3) |
+| r86 | The nurse healed, but `finish_dialogue` ended during the healing jingle; her "Thank you for waiting" then stopped the walk out. | A scene with an animation in the middle needs a second wait for its last lines. | [`00c8fcbf7`](https://github.com/dayfine/Arduino-Source/commit/00c8fcbf7c1f88680ebf54a98e42001918a122a2) |
+| r87 | Route 203: only one trainer stopped us, so "after two fights the next wall is the cliff" fired at the stairs between stretches. | Who stops us depends on our row, so trainer counts say nothing about where we are. | [`5345260db`](https://github.com/dayfine/Arduino-Source/commit/5345260dbb113e90cb0174a594561b3d3281bef7) |
+| r88 | Reached the north-east corner by the second sign, but the row search counted blocked steps north as moves and never tried the cave's row. | The user's rule: at a wall, go north to the top wall (that pins the row), then try rows south of it one at a time. The cave is two rows below the corner. | [`22998e853`](https://github.com/dayfine/Arduino-Source/commit/22998e853caa8b8529165a33b0c5135511a869a5) |
+| r89 | Got into the Gate on the first row, but the cave's fade did not read as a transition; the Hiker's talk was then taken for a trainer's, and his card stayed up. | On Route 203 only trainers start a talk, so a talk with no battle means the Hiker inside the Gate. | [`3cb2e2f78`](https://github.com/dayfine/Arduino-Source/commit/3cb2e2f78631648b132824997e9f8c757cefd657) |
+| r90 | **01.02 passed**: trainer, Hiker, Curtis, Diana, the man at Oreburgh's entrance. | | |
+
+Also from these runs:
+
+- **01.02 ends too early.** The man at Oreburgh's entrance walks us to the Pokémon Center,
+  where Barry shows up ("Huh? There's someone there."). `finish_dialogue` returned while the
+  scene was walking, between lines. The next checkpoint must finish that scene first. The user
+  saved by hand there after r90.
+- **The lab script's Stop click can miss.** r87's load step left the Lab Console running, so
+  AutoStory was refused as "console busy". `run_from_save.sh` now retries Stop until the
+  console reads free.
+- **Overlay text was cut off** at the log box's width; AutoStory now wraps its overlay lines.
+  ([`344a050ce`](https://github.com/dayfine/Arduino-Source/commit/344a050cecc08a61a0f5b528c2c301493c2095e9))
+- **What held up:** the in-battle HP read and Potion, the PP read (29, 40, 12 → 11 in Barry's
+  battle), the walk out of the Center to the girls below the door, and Barry from the measured
+  holds plus row search.
+
