@@ -58,6 +58,7 @@ OverworldMap::OverworldMap(const MapText& text)
     , m_height((int)text.terrain.size())
     , m_warps(text.warps)
     , m_objects(text.objects)
+    , m_connections(text.connections)
 {
     if (m_height == 0 || text.elevation.size() != text.terrain.size()){
         throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, m_name + ": terrain and elevation need the same number of rows.");
@@ -74,11 +75,19 @@ OverworldMap::OverworldMap(const MapText& text)
             switch (tile){
             case '#':
             case '.':
+            case '"':
             case '~':
             case 'n':
             case 's':
             case 'e':
             case 'w':
+            case 'D':
+            case 'C':
+            case 'L':
+            case '^':
+            case 'v':
+            case '<':
+            case '>':
                 break;
             default:
                 throw InternalProgramError(
@@ -114,10 +123,14 @@ char OverworldMap::terrain(const MapPoint& point) const{
     return m_terrain[(size_t)point.y * m_width + point.x];
 }
 bool OverworldMap::wall(const MapPoint& point) const{
-    return terrain(point) == '#';
+    const char tile = terrain(point);
+    return tile == '#' || tile == 'D';
 }
 bool OverworldMap::water(const MapPoint& point) const{
     return terrain(point) == '~';
+}
+bool OverworldMap::tall_grass(const MapPoint& point) const{
+    return terrain(point) == '"';
 }
 uint8_t OverworldMap::elevation(const MapPoint& point) const{
     if (!in_bounds(point)){
@@ -155,6 +168,42 @@ bool OverworldMap::blocks_leaving(const MapPoint& point, MapDirection direction)
     return false;
 }
 
+bool OverworldMap::warps_on_step(const MapPoint& point) const{
+    const char tile = terrain(point);
+    return tile == 'C' || tile == 'L';
+}
+bool OverworldMap::door(const MapPoint& point) const{
+    return terrain(point) == 'D';
+}
+std::optional<MapDirection> OverworldMap::exit_mat(const MapPoint& point) const{
+    switch (terrain(point)){
+    case '^':
+        return MapDirection::NORTH;
+    case 'v':
+        return MapDirection::SOUTH;
+    case '<':
+        return MapDirection::WEST;
+    case '>':
+        return MapDirection::EAST;
+    default:
+        return std::nullopt;
+    }
+}
+bool OverworldMap::walks_out_on_arrival(const MapPoint& point) const{
+    const char tile = terrain(point);
+    return tile == 'D' || tile == 'C';
+}
+
+void OverworldMap::hide_objects(const std::set<std::string>& flags){
+    std::vector<MapObject> shown;
+    for (const MapObject& object : m_objects){
+        if (object.flag.empty() || flags.count(object.flag) == 0){
+            shown.push_back(object);
+        }
+    }
+    m_objects = std::move(shown);
+}
+
 const MapObject* OverworldMap::object_at(const MapPoint& point) const{
     for (const MapObject& object : m_objects){
         if (object.x == point.x && object.y == point.y){
@@ -175,40 +224,53 @@ const MapWarp* OverworldMap::warp_at(const MapPoint& point) const{
 
 
 StepKind classify_step(const OverworldMap& map, const PlayerState& state, MapDirection direction){
-    const MapPoint destination = state.position.next(direction);
-    if (map.wall(destination)
-        || map.blocks_leaving(state.position, direction)
-        || map.blocks_entering(destination, direction)
+    return classify_step_onto(map, state, direction, map, state.position.next(direction));
+}
+
+StepKind classify_step_onto(
+    const OverworldMap& from, const PlayerState& state, MapDirection direction,
+    const OverworldMap& to, const MapPoint& destination
+){
+    if (to.wall(destination)
+        || from.blocks_leaving(state.position, direction)
+        || to.blocks_entering(destination, direction)
     ){
         return StepKind::BLOCKED;
     }
 
-    const uint8_t level = map.elevation(destination);
+    const uint8_t level = to.elevation(destination);
     const bool mismatch = state.elevation != ELEVATION_ANY
         && level != ELEVATION_ANY && level != ELEVATION_IGNORED
         && level != state.elevation;
     if (mismatch){
         //  CanStopSurfing() and IsPlayerFacingSurfableFishableWater().
-        if (state.surfing && level == ELEVATION_GROUND && map.object_at(destination) == nullptr){
+        if (state.surfing && level == ELEVATION_GROUND && to.object_at(destination) == nullptr){
             return StepKind::STOP_SURFING;
         }
-        if (!state.surfing && state.elevation == ELEVATION_GROUND && map.water(destination)){
+        if (!state.surfing && state.elevation == ELEVATION_GROUND && to.water(destination)){
             return StepKind::START_SURF;
         }
         return StepKind::BLOCKED;
     }
 
-    if (map.object_at(destination) != nullptr){
+    if (to.object_at(destination) != nullptr){
         return StepKind::BLOCKED;
     }
     return StepKind::WALK;
 }
 
 PlayerState after_step(const OverworldMap& map, const PlayerState& state, MapDirection direction, StepKind kind){
+    return after_step_onto(map, state, map, state.position.next(direction), kind);
+}
+
+PlayerState after_step_onto(
+    const OverworldMap& from, const PlayerState& state,
+    const OverworldMap& to, const MapPoint& destination, StepKind kind
+){
     PlayerState next = state;
-    next.position = state.position.next(direction);
-    const uint8_t level = map.elevation(next.position);
-    if (level != ELEVATION_IGNORED && map.elevation(state.position) != ELEVATION_IGNORED){
+    next.position = destination;
+    const uint8_t level = to.elevation(destination);
+    if (level != ELEVATION_IGNORED && from.elevation(state.position) != ELEVATION_IGNORED){
         next.elevation = level;
     }
     if (kind == StepKind::START_SURF){

@@ -61,6 +61,7 @@ struct RouteCosts{
     int per_turn = 2;           //  extra for a leg in a new direction
     int per_warp = 30;          //  the fade in and out
     int per_surf = 40;          //  the dialog and the animation
+    int per_grass_tile = 20;    //  extra for tall grass, where wild Pokemon appear
 };
 
 //  The cheapest route from `start`, standing on land and not surfing, to

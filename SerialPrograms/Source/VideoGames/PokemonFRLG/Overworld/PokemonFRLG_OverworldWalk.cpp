@@ -7,6 +7,8 @@
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
 #include "CommonTools/Async/InferenceRoutines.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
+#include "CommonFramework/VideoPipeline/VideoFeed.h"
+#include "VideoGames/PokemonFRLG/Inference/Dialogs/PokemonFRLG_BattleDialogs.h"
 #include "VideoGames/PokemonFRLG/Inference/Dialogs/PokemonFRLG_DialogDetector.h"
 #include "PokemonFRLG_OverworldWalk.h"
 
@@ -28,6 +30,7 @@ constexpr Milliseconds WARP_FADE_TIMEOUT = 3000ms;
 constexpr Milliseconds WARP_ARRIVAL_TIMEOUT = 5000ms;
 constexpr Milliseconds SURF_PROMPT_TIMEOUT = 5000ms;
 constexpr Milliseconds SURF_ANIMATION = 3000ms;
+constexpr Milliseconds AFTER_WARP = 600ms;         //  the walk out of a door after the fade
 
 
 DpadPosition dpad(MapDirection direction){
@@ -59,6 +62,26 @@ void wait_out_warp(ConsoleHandle& console, ProControllerContext& context, const 
         OperationFailedExceptionWithScreenshot::fire(
             ErrorReportMode::SEND_ERROR_REPORT,
             "walk_overworld_route(): the screen stayed black after the warp to " + step.end.map + ".",
+            console
+        );
+    }
+}
+
+//  A wild battle or a message (e.g. a Repel wearing off) stops the player
+//  part-way through a leg, after which the route no longer matches. Checked
+//  after each step so the walk stops where it went wrong.
+void check_not_interrupted(ConsoleHandle& console, ProControllerContext& context, const RouteStep& step){
+    context.wait_for_all_requests();
+    VideoSnapshot screen = console.video().snapshot();
+    if (!screen){
+        return;
+    }
+    const bool dialog = WhiteDialogDetector(COLOR_RED).detect(screen);
+    const bool battle = BattleDialogDetector(COLOR_RED).detect(screen) || BattleMenuDetector(COLOR_RED).detect(screen);
+    if (dialog || battle){
+        OperationFailedExceptionWithScreenshot::fire(
+            ErrorReportMode::NO_ERROR_REPORT,
+            std::string("walk_overworld_route(): ") + (battle ? "a battle" : "a message") + " interrupted: " + to_string(step),
             console
         );
     }
@@ -102,6 +125,7 @@ void walk_overworld_route(
             pbf_press_dpad(context, dpad(step.direction), hold, STEP_RELEASE);
             if (step.warps){
                 wait_out_warp(console, context, step);
+                pbf_wait(context, AFTER_WARP);
             }
             break;
         }
@@ -112,7 +136,13 @@ void walk_overworld_route(
             pbf_press_dpad(context, dpad(step.direction), FACE_HOLD, STEP_RELEASE);
             break;
         }
-        facing = step.direction;
+        if (step.action != RouteAction::FACE){
+            check_not_interrupted(console, context, step);
+        }
+        //  A warp can leave the player facing any way.
+        facing = step.action == RouteAction::WALK && step.warps
+            ? std::nullopt
+            : std::optional<MapDirection>(step.direction);
     }
     context.wait_for_all_requests();
 }

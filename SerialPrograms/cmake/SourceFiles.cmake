@@ -1717,10 +1717,10 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonFRLG/Inference/Sounds/PokemonFRLG_CatchFanfareDetector.h
     Source/VideoGames/PokemonFRLG/Inference/Sounds/PokemonFRLG_ShinySoundDetector.cpp
     Source/VideoGames/PokemonFRLG/Inference/Sounds/PokemonFRLG_ShinySoundDetector.h
-    Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_CeruleanCaveMaps.cpp
-    Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_CeruleanCaveMaps.h
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMap.cpp
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMap.h
+    Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.cpp
+    Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRoute.cpp
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRoute.h
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWalk.cpp
