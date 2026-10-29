@@ -4,6 +4,7 @@
  *
  */
 
+#include "PokemonBDSP_AutoStory_JubilifeCity.h"
 #include "PokemonBDSP_AutoStory_Route201.h"
 #include "PokemonBDSP_AutoStory_Route202.h"
 #include "PokemonBDSP_AutoStory_SandgemTown.h"
@@ -19,6 +20,7 @@ using namespace Pokemon;
 const char* const MAP_ROUTE_201 = "Route 201";
 const char* const MAP_SANDGEM_TOWN = "Sandgem Town";
 const char* const MAP_ROUTE_202 = "Route 202";
+const char* const MAP_JUBILIFE_CITY = "Jubilife City";
 
 
 //  Offsets come from how the Bulbapedia maps join:
@@ -40,6 +42,15 @@ const MapSet& story_maps(){
         maps.add(MAP_ROUTE_201, Route201::grid(), {0, 0});
         maps.add(MAP_SANDGEM_TOWN, SandgemTown::grid(), {64, -3});
         maps.add(MAP_ROUTE_202, Route202::grid(), {63, -29});
+        return maps;
+    }();
+    return maps;
+}
+
+const MapSet& jubilife_maps(){
+    static const MapSet maps = []{
+        MapSet maps;
+        maps.add(MAP_JUBILIFE_CITY, JubilifeCity::grid(), {0, 0});
         return maps;
     }();
     return maps;

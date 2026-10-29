@@ -68,6 +68,36 @@ std::vector<Pokemon::TilePos> walk_route(
     const std::string& label
 );
 
+//  Walks next to the NPC on world tile `npc`, faces them and presses A, trying
+//  the sides in `sides` (the side of the NPC to stand on) in order until a
+//  dialogue opens. `at` is where the player may be, and is updated. Fails with
+//  a screenshot if no side starts a dialogue. A press from a diagonal tile,
+//  or from a tile a row off, talks to nobody, so each side is tried in turn.
+void talk_to_npc(
+    VideoStream& stream, ProControllerContext& context,
+    const Pokemon::MapSet& maps,
+    std::vector<Pokemon::TilePos>& at,
+    const Pokemon::TilePos& npc,
+    const std::vector<Pokemon::GridDirection>& sides,
+    std::vector<Pokemon::TrainerSight>& trainers,
+    const RouteTrainerFight& fight,
+    const std::string& label
+);
+
+//  Finishes a dialogue that has opened: `a_presses` presses of A, 1.5 s
+//  apart (A answers Yes and closes "obtained" messages), then B until the
+//  overworld is back with no dialogue. B never starts a new talk, while an A
+//  after the last line talks to the NPC again.
+void finish_dialogue(
+    VideoStream& stream, ProControllerContext& context,
+    size_t a_presses, const std::string& label
+);
+
+//  For a player on the tile below a door: walks north through it. If a wall
+//  stops the walk (the door frame, a tile off the opening), steps a tile east,
+//  then west, and tries again. Fails with a screenshot if no step goes in.
+void enter_door_north(VideoStream& stream, ProControllerContext& context, const std::string& label);
+
 
 
 }

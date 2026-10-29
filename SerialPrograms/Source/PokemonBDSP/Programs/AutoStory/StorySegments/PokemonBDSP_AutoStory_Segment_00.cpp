@@ -7,6 +7,7 @@
 
 #include "CommonFramework/GlobalAutoPaths.h"
 #include "PokemonBDSP_AutoStory_Segment_00.h"
+#include "../Data/PokemonBDSP_AutoStory_JubilifeCity.h"
 #include "../Data/PokemonBDSP_AutoStory_Route201.h"
 #include "../Data/PokemonBDSP_AutoStory_Route202.h"
 #include "../Data/PokemonBDSP_AutoStory_SandgemTown.h"
@@ -916,157 +917,123 @@ namespace PokemonAutomation {
             }
 
         static void tutorial_part_4_navigation(SingleSwitchProgramEnvironment& env, VideoStream& stream, ProControllerContext& context) {
-            pbf_move_left_joystick(context, { 0.000000, 1.000000 }, 2580ms, 0ms);
-            pbf_wait(context, 504ms);
-            pbf_move_left_joystick(context, { -1.000000, -0.000000 }, 830ms, 0ms);
-            pbf_wait(context, 617ms);
-            pbf_move_left_joystick(context, { 0.000000, 1.000000 }, 800ms, 0ms);
-            pbf_wait(context, 509ms);
-            pbf_move_left_joystick(context, { 0.000000, 1.000000 }, 2000ms, 0ms);
-            pbf_wait(context, 598ms);
-            pbf_move_left_joystick(context, { -1.000000, -0.000000 }, 200ms, 0ms);
-            pbf_wait(context, 581ms);
-            pbf_press_button(context, BUTTON_A, 150ms, 0ms);
-            pbf_wait(context, 795ms);
+            // What 00.05 does, stepped through on the console before writing it.
+            // Every walk is planned on Jubilife's tile grid; every talk stands
+            // beside the person, faces them and presses A once.
+            static const char* const STEPS[] = {
+                "Trainers' School: talk to Barry, who gives the Town Map",
+                "Talk to the Poketch Company president on the main road",
+                "Get the three coupons from the clowns by the Poke Mart, the TV station and the Poketch Company",
+                "Show the coupons to the president for the Poketch",
+                "Walk into the Pokemon Center and stand at the PC",
+            };
+            constexpr size_t STEP_COUNT = sizeof(STEPS) / sizeof(STEPS[0]);
+            {
+                std::string text = "[00.05] In Jubilife, the steps are:";
+                for (size_t i = 0; i < STEP_COUNT; i++) {
+                    text += "\n    " + std::to_string(i + 1) + ". " + STEPS[i];
+                }
+                stream.log(text, COLOR_BLUE);
+            }
+            auto step = [&](size_t number) {
+                std::string text = "[00.05 step " + std::to_string(number) + "/" + std::to_string(STEP_COUNT) + "] " + STEPS[number - 1];
+                text += number < STEP_COUNT ? std::string(" -- next: ") + STEPS[number] : std::string(" -- last step");
+                stream.log(text, COLOR_BLUE);
+                stream.overlay().add_log("00.05 step " + std::to_string(number) + "/" + std::to_string(STEP_COUNT) + ": " + STEPS[number - 1], COLOR_WHITE);
+                if (number < STEP_COUNT) {
+                    stream.overlay().add_log("Next: " + std::string(STEPS[number]), COLOR_GRAY);
+                }
+            };
 
-            wait_for_dialogue(stream, context, "Phase 22 (barry town map dialog)");
+            const MapSet& maps = jubilife_maps();
+            auto world = [&](const TilePos& pos) { return maps.to_world(MAP_JUBILIFE_CITY, pos); };
+            // Jubilife has no trainers; someone in the way only talks.
+            std::vector<TrainerSight> trainers;
+            auto in_the_way = [&](const std::string&) { finish_dialogue(stream, context, 0, "Someone in the way"); };
+            std::vector<TilePos> at;
+            for (const TilePos& pos : JubilifeCity::after_dawn()) {
+                at.push_back(world(pos));
+            }
 
-            pbf_mash_button(context, BUTTON_B, 15000ms);
+            step(1);
+            const TilePos school = world(JubilifeCity::TRAINERS_SCHOOL_DOOR.next(Pokemon::GridDirection::SOUTH));
+            // Doors sit in open plaza, which no wall pins down: end anywhere
+            // within a tile of the door's column, and let the door search
+            // step sideways.
+            auto by_door = [](const TilePos& front) {
+                return [front](const TilePos& pos) { return pos.y == front.y && pos.x >= front.x - 1 && pos.x <= front.x + 1; };
+            };
+            at = walk_route(stream, context, maps, at, by_door(school),
+                trainers, in_the_way, "To the Trainers' School");
+            enter_door_north(stream, context, "Trainers' School door");
+            // Barry stands at the blackboard, a tile west of the door's column:
+            // step west, walk north until he stops us, talk.
+            route_turn(stream, context, Pokemon::GridDirection::WEST);
+            pbf_move_left_joystick(context, {-1, 0}, route_open_hold(Pokemon::GridDirection::WEST, 1), 200ms);
+            walk_until(stream, context, 0, 1, 3000ms, "to Barry");
+            pbf_press_button(context, BUTTON_A, 80ms, 200ms);
             context.wait_for_all_requests();
-            pbf_move_left_joystick(context, { 0.000000, -1.000000 }, 1521ms, 0ms);
-            pbf_wait(context, 602ms);
-            pbf_move_left_joystick(context, { 1.000000, -0.000000 }, 1100ms, 0ms);
-            pbf_wait(context, 864ms);
-            pbf_press_dpad(context, DPAD_RIGHT, 138ms, 0ms);
-            pbf_wait(context, 2398ms);
-            pbf_move_left_joystick(context, { 0.000000, 1.000000 }, 1018ms, 0ms);
-            pbf_wait(context, 3811ms);
+            {
+                ShortDialogWatcher dialog(COLOR_CYAN);
+                if (wait_until(stream, context, 2000ms, {{dialog}}) != 0) {
+                    OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
+                        "Trainers' School: Barry did not answer.", stream);
+                }
+            }
+            // His scene ends with "You obtained a Town Map!", which A closes.
+            finish_dialogue(stream, context, 16, "Barry");
+            // Out: south to the front wall, a tile east (the door's column), out.
+            walk_until(stream, context, 0, -1, 4000ms, "to the school's front wall");
+            route_turn(stream, context, Pokemon::GridDirection::EAST);
+            pbf_move_left_joystick(context, {1, 0}, route_open_hold(Pokemon::GridDirection::EAST, 1), 200ms);
+            if (walk_until(stream, context, 0, -1, 2500ms, "out of the Trainers' School").stop != WalkStop::TRANSITION) {
+                OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
+                    "Trainers' School: did not leave by the door.", stream);
+            }
+            context.wait_for(1500ms);
+            at = {school.next(Pokemon::GridDirection::WEST), school, school.next(Pokemon::GridDirection::EAST)};
 
-            wait_for_dialogue(stream, context, "Phase 23 (poketech challenge dialog)");
+            step(2);
+            // The president talks on with A after each last line; B moves his
+            // lines on and never starts a new talk.
+            const TilePos president = world(JubilifeCity::POKETCH_PRESIDENT);
+            talk_to_npc(stream, context, maps, at, president,
+                {Pokemon::GridDirection::EAST, Pokemon::GridDirection::SOUTH}, trainers, in_the_way, "Poketch president");
+            finish_dialogue(stream, context, 0, "Poketch president");
 
-            pbf_mash_button(context, BUTTON_B, 5000ms);
+            step(3);
+            // Each clown asks a question whose default answer, Yes, is right,
+            // and hands over a coupon with an "obtained" message A closes.
+            talk_to_npc(stream, context, maps, at, world(JubilifeCity::CLOWN_MART),
+                {Pokemon::GridDirection::SOUTH, Pokemon::GridDirection::WEST, Pokemon::GridDirection::EAST},
+                trainers, in_the_way, "Clown by the Poke Mart");
+            finish_dialogue(stream, context, 8, "Clown by the Poke Mart");
+            talk_to_npc(stream, context, maps, at, world(JubilifeCity::CLOWN_TV_STATION),
+                {Pokemon::GridDirection::EAST, Pokemon::GridDirection::SOUTH, Pokemon::GridDirection::WEST},
+                trainers, in_the_way, "Clown by the TV station");
+            finish_dialogue(stream, context, 8, "Clown by the TV station");
+            talk_to_npc(stream, context, maps, at, world(JubilifeCity::CLOWN_POKETCH_COMPANY),
+                {Pokemon::GridDirection::EAST, Pokemon::GridDirection::SOUTH, Pokemon::GridDirection::WEST},
+                trainers, in_the_way, "Clown by the Poketch Company");
+            finish_dialogue(stream, context, 8, "Clown by the Poketch Company");
+
+            step(4);
+            talk_to_npc(stream, context, maps, at, president,
+                {Pokemon::GridDirection::EAST, Pokemon::GridDirection::SOUTH}, trainers, in_the_way, "Poketch president");
+            finish_dialogue(stream, context, 0, "Poketch president");
+
+            step(5);
+            const TilePos center = world(JubilifeCity::POKEMON_CENTER_DOOR.next(Pokemon::GridDirection::SOUTH));
+            at = walk_route(stream, context, maps, at, by_door(center),
+                trainers, in_the_way, "To the Pokemon Center");
+            enter_door_north(stream, context, "Pokemon Center door");
+            // Inside: north to the counter, three tiles east, north to the PC
+            // at the back wall right of the counter.
+            walk_until(stream, context, 0, 1, 2500ms, "to the counter");
+            route_turn(stream, context, Pokemon::GridDirection::EAST);
+            pbf_move_left_joystick(context, {1, 0}, route_open_hold(Pokemon::GridDirection::EAST, 3), 200ms);
+            walk_until(stream, context, 0, 1, 1500ms, "to the PC");
             context.wait_for_all_requests();
-
-            pbf_move_left_joystick(context, { 1.000000, -0.000000 }, 192ms, 0ms);
-            pbf_wait(context, 820ms);
-            pbf_move_left_joystick(context, { 0.000000, 1.000000 }, 980ms, 0ms);
-            pbf_wait(context, 543ms);
-            pbf_press_dpad(context, DPAD_UP, 203ms, 0ms);
-            pbf_wait(context, 593ms);
-            pbf_press_dpad(context, DPAD_UP, 115ms, 0ms);
-            pbf_wait(context, 566ms);
-            pbf_move_left_joystick(context, { 1.000000, -0.000000 }, 1567ms, 0ms);
-            pbf_wait(context, 538ms);
-            pbf_press_dpad(context, DPAD_LEFT, 157ms, 0ms);
-            pbf_wait(context, 735ms);
-            pbf_press_dpad(context, DPAD_LEFT, 164ms, 0ms);
-            pbf_wait(context, 564ms);
-            pbf_press_dpad(context, DPAD_LEFT, 250ms, 0ms);
-            pbf_wait(context, 513ms);
-            pbf_press_dpad(context, DPAD_LEFT, 250ms, 0ms);
-            pbf_wait(context, 513ms);
-            pbf_press_dpad(context, DPAD_DOWN, 163ms, 0ms);
-            pbf_wait(context, 609ms);
-            pbf_press_dpad(context, DPAD_DOWN, 193ms, 0ms);
-            pbf_wait(context, 584ms);
-            pbf_move_left_joystick(context, { 1.000000, -0.000000 }, 151ms, 0ms);
-            context.wait_for_all_requests();
-
-            //phase 24 Clown 1 dialog
-            clown_dialog_helper(stream, context, DPAD_RIGHT);
-            context.wait_for_all_requests();
-
-            pbf_press_dpad(context, DPAD_UP, 187ms, 0ms);
-            pbf_wait(context, 106ms);
-            pbf_press_dpad(context, DPAD_UP, 32ms, 0ms);
-            pbf_wait(context, 671ms);
-            pbf_press_dpad(context, DPAD_UP, 262ms, 0ms);
-            pbf_wait(context, 684ms);
-            pbf_press_dpad(context, DPAD_UP, 372ms, 0ms);
-            pbf_wait(context, 392ms);
-            pbf_press_dpad(context, DPAD_UP, 419ms, 0ms);
-            pbf_wait(context, 658ms);
-            pbf_move_left_joystick(context, { 1.000000, -0.000000 }, 2013ms, 0ms);
-            pbf_wait(context, 369ms);
-            pbf_move_left_joystick(context, { -1.000000, -0.000000 }, 1448ms, 0ms);
-            pbf_wait(context, 2435ms);
-            pbf_move_left_joystick(context, { 0.000000, 1.000000 }, 1077ms, 0ms);
-            pbf_wait(context, 1084ms);
-            pbf_move_left_joystick(context, { -1.000000, -0.000000 }, 1280ms, 0ms);
-            pbf_wait(context, 1895ms);
-            pbf_press_dpad(context, DPAD_LEFT, 88ms, 0ms);
-
-            context.wait_for_all_requests();
-
-            //phase 25 Clown 2 dialog
-
-            clown_dialog_helper(stream, context, DPAD_UP);
-
-            context.wait_for_all_requests();
-            pbf_move_left_joystick(context, { 0.000000, -1.000000 }, 511ms, 0ms);
-            pbf_wait(context, 1318ms);
-            pbf_move_left_joystick(context, { 0.000000, -1.000000 }, 140ms, 0ms);
-            pbf_wait(context, 1502ms);
-            pbf_move_left_joystick(context, { -1.000000, -0.000000 }, 2093ms, 0ms);
-            pbf_wait(context, 2327ms);
-            pbf_press_dpad(context, DPAD_LEFT, 151ms, 0ms);
-            pbf_wait(context, 549ms);
-            pbf_press_dpad(context, DPAD_LEFT, 118ms, 0ms);
-            pbf_wait(context, 999ms);
-            pbf_press_dpad(context, DPAD_UP, 206ms, 0ms);
-            pbf_wait(context, 474ms);
-            pbf_press_dpad(context, DPAD_UP, 249ms, 0ms);
-            pbf_wait(context, 333ms);
-            pbf_press_dpad(context, DPAD_UP, 212ms, 0ms);
-            pbf_wait(context, 427ms);
-            pbf_press_dpad(context, DPAD_UP, 210ms, 0ms);
-            context.wait_for_all_requests();
-            //phase 26 Clown 3 dialog
-
-            clown_dialog_helper(stream, context, DPAD_LEFT);
-
-            context.wait_for_all_requests();
-            pbf_move_left_joystick(context, { 1.000000, -0.000000 }, 1098ms, 0ms);
-            pbf_wait(context, 2779ms);
-            pbf_press_dpad(context, DPAD_LEFT, 177ms, 0ms);
-            pbf_wait(context, 488ms);
-            pbf_press_dpad(context, DPAD_LEFT, 200ms, 0ms);
-            pbf_wait(context, 649ms);
-            pbf_press_dpad(context, DPAD_LEFT, 160ms, 0ms);
-            pbf_wait(context, 4285ms);
-            pbf_press_dpad(context, DPAD_DOWN, 307ms, 0ms);
-            pbf_wait(context, 639ms);
-            pbf_press_dpad(context, DPAD_DOWN, 463ms, 0ms);
-            pbf_wait(context, 2521ms);
-            pbf_move_left_joystick(context, { 1.000000, -0.000000 }, 3600ms, 0ms);
-            pbf_wait(context, 610ms);
-            approach_poketch_landmarks(stream, context);
-            pbf_move_left_joystick(context, { 1.000000, -0.000000 }, 192ms, 0ms);
-            pbf_wait(context, 3238ms);
-            align_and_talk_to_poketch_man(stream, context);
-
-            pbf_mash_button(context, BUTTON_B, 15000ms);
-            context.wait_for_all_requests();
-
-            // poketech acquired
-            pbf_move_left_joystick(context, { 0.000000, -1.000000 }, 1194ms, 0ms);
-            pbf_wait(context, 1984ms);
-            pbf_move_left_joystick(context, { 1.000000, -0.000000 }, 832ms, 0ms);
-            pbf_wait(context, 1522ms);
-            pbf_press_dpad(context, DPAD_RIGHT, 144ms, 0ms);
-            pbf_wait(context, 1767ms);
-            align_and_enter_jubilife_center(stream, context);
-            pbf_move_left_joystick(context, { 0.000000, 1.000000 }, 1099ms, 0ms);
-            pbf_wait(context, 1222ms);
-            pbf_press_dpad(context, DPAD_RIGHT, 228ms, 0ms);
-            pbf_wait(context, 625ms);
-            pbf_press_dpad(context, DPAD_RIGHT, 238ms, 0ms);
-            pbf_wait(context, 537ms);
-            pbf_press_dpad(context, DPAD_RIGHT, 210ms, 0ms);
-            pbf_wait(context, 566ms);
-            pbf_press_dpad(context, DPAD_RIGHT, 179ms, 0ms);
-            pbf_wait(context, 692ms);
-            pbf_move_left_joystick(context, { 0.000000, 1.000000 }, 642ms, 0ms);
         }
         // ---------------------------------------------------------------------------
         // Segment 00-05 ends

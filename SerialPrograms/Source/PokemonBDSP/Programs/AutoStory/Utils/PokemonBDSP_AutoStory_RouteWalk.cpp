@@ -18,6 +18,7 @@
 #include "CommonTools/Async/InferenceRoutines.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "PokemonBDSP/Inference/PokemonBDSP_DialogDetector.h"
+#include "PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_OverworldDetector.h"
 #include "PokemonBDSP_AutoStory_Walk.h"
 #include "PokemonBDSP_AutoStory_RouteWalk.h"
 
@@ -391,6 +392,95 @@ std::vector<TilePos> walk_route(
     }
     OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
         label + ": too many plans.", stream);
+}
+
+
+
+void talk_to_npc(
+    VideoStream& stream, ProControllerContext& context,
+    const MapSet& maps,
+    std::vector<TilePos>& at,
+    const TilePos& npc,
+    const std::vector<GridDirection>& sides,
+    std::vector<TrainerSight>& trainers,
+    const RouteTrainerFight& fight,
+    const std::string& label
+){
+    for (GridDirection side : sides){
+        const TilePos stand = npc.next(side);
+        if (!maps.world().standable(stand)){
+            continue;
+        }
+        at = walk_route(stream, context, maps, at, [&](const TilePos& pos){ return pos == stand; },
+            trainers, fight, label);
+        //  Face the NPC: the opposite of the side we stand on.
+        const GridDirection face =
+            side == GridDirection::NORTH ? GridDirection::SOUTH :
+            side == GridDirection::SOUTH ? GridDirection::NORTH :
+            side == GridDirection::EAST ? GridDirection::WEST : GridDirection::EAST;
+        route_turn(stream, context, face);
+        pbf_press_button(context, BUTTON_A, 80ms, 200ms);
+        context.wait_for_all_requests();
+        ShortDialogWatcher dialog(COLOR_CYAN);
+        if (wait_until(stream, context, 2000ms, {{dialog}}) == 0){
+            route_status(stream, label + ": talking from " + maps.describe(stand) + ".");
+            return;
+        }
+        route_status(stream, label + ": nobody answered from " + maps.describe(stand) + "; trying another side.");
+    }
+    OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
+        label + ": no side of " + maps.describe(npc) + " started a dialogue.", stream);
+}
+
+void finish_dialogue(
+    VideoStream& stream, ProControllerContext& context,
+    size_t a_presses, const std::string& label
+){
+    for (size_t press = 0; press < a_presses; press++){
+        pbf_press_button(context, BUTTON_A, 80ms, 1500ms);
+    }
+    ShortDialogDetector dialog;
+    OverworldDetector overworld;
+    size_t quiet = 0;
+    for (size_t press = 0; press < 30; press++){
+        context.wait_for_all_requests();
+        const auto frame = stream.video().snapshot();
+        if (frame && !dialog.detect(frame) && overworld.detect(frame)){
+            if (++quiet >= 2){
+                return;
+            }
+            context.wait_for(500ms);
+            continue;
+        }
+        quiet = 0;
+        pbf_press_button(context, BUTTON_B, 80ms, 1200ms);
+    }
+    OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
+        label + ": the dialogue did not end.", stream);
+}
+
+void enter_door_north(VideoStream& stream, ProControllerContext& context, const std::string& label){
+    //  Sideways steps to try after a blocked walk: east, then back west and
+    //  one more.
+    const GridDirection steps[] = {GridDirection::EAST, GridDirection::WEST, GridDirection::WEST};
+    for (size_t attempt = 0; attempt <= 3; attempt++){
+        const WalkResult walk = walk_until(stream, context, 0, 1, 2500ms, label);
+        if (walk.stop == WalkStop::TRANSITION){
+            context.wait_for(1500ms);
+            return;
+        }
+        if (attempt == 3){
+            break;
+        }
+        route_status(stream, label + ": the door frame stopped us; one tile " +
+            (steps[attempt] == GridDirection::EAST ? "east." : "west."));
+        route_turn(stream, context, steps[attempt]);
+        const double x = steps[attempt] == GridDirection::EAST ? 1 : -1;
+        pbf_move_left_joystick(context, {x, 0}, route_open_hold(steps[attempt], 1), 200ms);
+        context.wait_for_all_requests();
+    }
+    OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
+        label + ": could not go through the door.", stream);
 }
 
 

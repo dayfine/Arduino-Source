@@ -8,6 +8,7 @@
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "Pokemon/Navigation/Pokemon_TileGrid.h"
+#include "Data/PokemonBDSP_AutoStory_JubilifeCity.h"
 #include "Data/PokemonBDSP_AutoStory_Route201.h"
 #include "Data/PokemonBDSP_AutoStory_Route202.h"
 #include "Data/PokemonBDSP_AutoStory_SandgemTown.h"
@@ -418,6 +419,49 @@ public:
             [&](const TilePos& pos){ return std::find(grass.begin(), grass.end(), pos) != grass.end(); });
         if (!error.empty()){
             return error;
+        }
+
+        //  00.05 in Jubilife: every leg the segment walks, from where the one
+        //  before it may have left us.
+        {
+            using namespace JubilifeCity;
+            const Pokemon::MapSet& town = jubilife_maps();
+            auto at = [&](const TilePos& pos){ return town.to_world(MAP_JUBILIFE_CITY, pos); };
+            std::vector<TilePos> dawn;
+            for (const TilePos& pos : after_dawn()){
+                dawn.push_back(at(pos));
+            }
+            const TilePos school = at(TRAINERS_SCHOOL_DOOR.next(GridDirection::SOUTH));
+            const TilePos center = at(POKEMON_CENTER_DOOR.next(GridDirection::SOUTH));
+            const std::vector<TilePos> out_of_school{school.next(GridDirection::WEST), school, school.next(GridDirection::EAST)};
+            const TilePos president = at(POKETCH_PRESIDENT).next(GridDirection::EAST);
+            const TilePos clown_mart = at(CLOWN_MART).next(GridDirection::SOUTH);
+            const TilePos clown_tv = at(CLOWN_TV_STATION).next(GridDirection::EAST);
+            const TilePos clown_company = at(CLOWN_POKETCH_COMPANY).next(GridDirection::EAST);
+            //  A door's goal is its front row within a tile of its column; an
+            //  NPC's is the one tile beside them.
+            const struct{ const char* name; std::vector<TilePos> from; TilePos to; bool door; } legs[] = {
+                {"Jubilife: after Dawn to the Trainers' School", dawn, school, true},
+                {"Jubilife: school to the president", out_of_school, president, false},
+                {"Jubilife: president to the clown by the Mart", {president}, clown_mart, false},
+                {"Jubilife: Mart clown to the TV station clown", {clown_mart}, clown_tv, false},
+                {"Jubilife: TV station clown to the Poketch Company clown", {clown_tv}, clown_company, false},
+                {"Jubilife: Poketch Company clown to the president", {clown_company}, president, false},
+                {"Jubilife: president to the Pokemon Center", {president}, center, true},
+            };
+            std::string failed;
+            for (const auto& leg : legs){
+                const TilePos to = leg.to;
+                const bool door = leg.door;
+                const std::string leg_error = check_robust_plan(logger, leg.name, town, leg.from,
+                    [&](const TilePos& pos){
+                        return door ? pos.y == to.y && pos.x >= to.x - 1 && pos.x <= to.x + 1 : pos == to;
+                    });
+                failed += leg_error.empty() ? "" : leg_error + " ";
+            }
+            if (!failed.empty()){
+                return failed;
+            }
         }
         return true;
     }
