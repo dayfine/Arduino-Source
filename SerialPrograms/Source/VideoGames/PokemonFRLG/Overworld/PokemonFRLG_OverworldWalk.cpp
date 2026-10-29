@@ -11,6 +11,7 @@
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "VideoGames/PokemonFRLG/Inference/Dialogs/PokemonFRLG_BattleDialogs.h"
 #include "VideoGames/PokemonFRLG/Inference/Dialogs/PokemonFRLG_DialogDetector.h"
+#include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleFlashWatcher.h"
 #include "VideoGames/PokemonFRLG/PokemonFRLG_Navigation.h"
 #include "PokemonFRLG_OverworldWalk.h"
 
@@ -44,21 +45,38 @@ constexpr Milliseconds AFTER_LEG_WATCH = 500ms;
 constexpr int MAX_INTERRUPTIONS_PER_LEG = 5;
 
 
+//  A wild battle, seen by the flashes it starts with.
 class WildBattleInterrupt : public OverworldInterrupt{
 public:
     virtual const char* name() const override{
         return "a wild battle";
     }
     virtual std::unique_ptr<VisualInferenceCallback> make_watcher() const override{
-        return std::make_unique<BattleDialogWatcher>(COLOR_RED);
+        return std::make_unique<BattleFlashWatcher>(COLOR_RED);
     }
-    //  The battle's opening animation, until "Wild <Pokemon> appeared!".
-    //  Not calibrated yet.
+    //  The first flash shows about 130ms after the step on the console, and
+    //  the watcher needs it to start fading back. Not calibrated yet.
     virtual Milliseconds detection_delay() const override{
-        return 4000ms;
+        return 300ms;
     }
     virtual void clear(ConsoleHandle& console, ProControllerContext& context) const override{
         flee_battle(console, context);
+    }
+};
+
+//  A wild battle whose flashes were missed, seen once "Wild <Pokemon>
+//  appeared!" shows. Where an open leg stopped is then only a rough guess.
+class LateWildBattleInterrupt : public WildBattleInterrupt{
+public:
+    virtual const char* name() const override{
+        return "a wild battle (seen late)";
+    }
+    virtual std::unique_ptr<VisualInferenceCallback> make_watcher() const override{
+        return std::make_unique<BattleDialogWatcher>(COLOR_RED);
+    }
+    //  The flashes, the wipe and the opening animation. Not calibrated yet.
+    virtual Milliseconds detection_delay() const override{
+        return 2000ms;
     }
 };
 
@@ -272,10 +290,11 @@ void start_surf(ConsoleHandle& console, ProControllerContext& context, MapDirect
 
 
 const OverworldInterrupts& default_overworld_interrupts(){
-    //  The battle first: its screen is checked before the message box's.
+    //  Battles first: their screens are checked before the message box's.
     static const OverworldInterrupts interrupts = []{
         OverworldInterrupts ret;
         ret.emplace_back(std::make_unique<WildBattleInterrupt>());
+        ret.emplace_back(std::make_unique<LateWildBattleInterrupt>());
         ret.emplace_back(std::make_unique<MessageInterrupt>());
         return ret;
     }();
