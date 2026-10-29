@@ -23,7 +23,8 @@ pixel resolution first:
 5. A breadth-first search gives the route; the output lists its corners.
 
 ```sh
-sips -s format bmp Veilstone_City_DP.png --out veil.bmp
+swiftc -O png2bmp.swift -o png2bmp     # sips mangles palette PNGs
+./png2bmp Veilstone_City_DP.png veil.bmp
 python3 levels.py veil.bmp out/veil --offset 8,9 \
     --stairs 704,290 --stairs 512,527 --stairs 80,665 ...   # one pixel per staircase
     --from 605,474 --to 82,470                              # pixel points
@@ -32,9 +33,26 @@ swiftc -O draw_route.swift -o draw_route
 ./draw_route Veilstone_City_DP.png route.png "$(head -1 out/veil_route.txt)"
 ```
 
+Options for harder maps:
+
+- `--profile town|oreburgh|cave`: colour rules. `oreburgh` counts the
+  conveyor belts as ground (we walk under them; the pillars block).
+- `--height H`: stretch a squashed image back to H pixels tall. Oreburgh
+  Mine B2F is 512x395 for a 512x512 map: its rocks are 16 px apart across
+  and 12.5 px down.
+- `--objects on`: rocks, boulders, crates and people standing on the floor
+  block the tile under their feet, even when drawn smaller than a tile or
+  off the grid.
+- `--edits FILE`: tiles opened or blocked from what the console showed,
+  `open ROW COL0 COL1` / `block ROW COL0 COL1`; edits apply before objects.
+  E.g. rows the coal block's edge is drawn over are walkable, and people
+  touching the coal block are not found as objects.
+
 `examples/` has Veilstone City's levels and two routes to the Gym (from the
 Pokémon Center and from Route 215). Both reach the Gym's terrace only by its
-south-west stairs.
+south-west stairs. Oreburgh: the Pokémon Center to the mine is one column
+straight south (checked on the console), and Mine B2F's route to Roark
+with its edits file.
 
 Check per map:
 

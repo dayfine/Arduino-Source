@@ -8,7 +8,7 @@ touch only through stairs. Each 16 px tile then takes the region holding
 most of its walkable pixels, and a route may only step between tiles of the
 same region, or across a stair tile into a region the stairs touch.
 
-usage: levels.py MAP.bmp OUT_PREFIX [--from x,y]... [--to x,y]   (pixel coords)
+usage: levels.py MAP.bmp OUT_PREFIX [--profile town|oreburgh|cave] [--min N] [--height H] [--objects on] [--edits FILE] [--offset x,y] [--stairs x,y]... [--from x,y]... [--to x,y]   (pixel coords)
 writes OUT_PREFIX_regions.bmp, OUT_PREFIX_grid.txt, OUT_PREFIX_route.txt
 """
 import struct, sys
@@ -46,10 +46,34 @@ def save_bmp(path, w, h, rgb):
 
 WALK, STAIR, BLOCK = 0, 1, 2
 
+PROFILE = 'town'
+YSIZE = 0         # --height H: stretch a squashed image to H pixels tall
+OBJECTS = False   # --objects on: rocks, people and crates on the floor block their tile
+EDITS = []        # --edits FILE: tiles opened or blocked from what the console showed
+MIN_TILE = 128    # walkable pixels a tile needs (of 256); caves use more, for small rocks
+
 def classify(c, stair_colours):
     r, g, b = c
     if c in stair_colours:
         return STAIR
+    if PROFILE == 'cave':
+        # Oreburgh Mine floor browns; rocks, boulders, coal and walls differ.
+        if c in ((120, 96, 72), (128, 104, 80), (104, 80, 56), (96, 80, 48), (136, 120, 80), (112, 88, 64)):
+            return WALK
+        return BLOCK
+    if PROFILE == 'oreburgh':
+        # Sand paths, and grey-brown dirt; the pink rock is redder (r - b > 35).
+        if r >= 220 and g >= 180 and b >= 130 and r - b <= 100:
+            return WALK
+        if 80 <= r <= 140 and 12 <= r - b <= 30 and g >= b - 4:
+            return WALK
+        if abs(r - g) <= 14 and abs(g - b) <= 14 and 95 <= r <= 175:   # fences' shadows, gravel
+            return WALK
+        # Conveyor belts pass overhead: their blues and dark greys are ground
+        # we walk under. The red pillars stay blocked.
+        if (b >= r + 10 and g >= r) or c in ((77, 92, 92), (60, 82, 82), (46, 62, 62)):
+            return WALK
+        return BLOCK
     if abs(r - g) <= 14 and abs(g - b) <= 14 and abs(r - b) <= 14 and 95 <= r <= 215:
         return WALK
     if g >= 220 and r <= 130:
@@ -65,15 +89,32 @@ def main():
     args = sys.argv[1:]
     path, prefix = args[0], args[1]
     stair_pts = []; starts = []; goal = None; ox = oy = 0
+    global PROFILE, MIN_TILE, OBJECTS, EDITS, YSIZE
     i = 2
     while i < len(args):
         k, v = args[i], args[i + 1]; i += 2
+        if k == '--profile':
+            PROFILE = v; continue
+        if k == '--min':
+            MIN_TILE = int(v); continue
+        if k == '--height':
+            YSIZE = int(v); continue
+        if k == '--objects':
+            OBJECTS = v == 'on'; continue
+        if k == '--edits':
+            EDITS = open(v).read().splitlines(); continue
         xy = tuple(int(t) for t in v.split(','))
         if k == '--stairs': stair_pts.append(xy)
         elif k == '--from': starts.append(xy)
         elif k == '--to': goal = xy
         elif k == '--offset': ox, oy = xy
     w, h, px = load_bmp(path)
+    if YSIZE and YSIZE != h:
+        # Some archive images are squashed vertically (Oreburgh Mine B2F is
+        # 512x395 for a 512x512 map: its rocks are 12.5 px apart down, 16
+        # across). Stretch back with nearest pixels.
+        px = [px[(y * h // YSIZE) * w + x] for y in range(YSIZE) for x in range(w)]
+        h = YSIZE
     # Stair colours: those common in the given stair tiles and rare elsewhere.
     sc = Counter()
     for (x, y) in stair_pts:
@@ -116,13 +157,36 @@ def main():
                         touch.add(region[np_])
         blobs.append(touch)
     big = [i for i, s in enumerate(sizes) if s >= 2048]
+    # Objects standing on the floor (rocks, boulders, people, crates): blobs
+    # of non-walkable pixels that don't reach the image edge. A sprite may be
+    # drawn smaller than a tile or off the tile grid; it blocks the tile under
+    # its feet (bottom centre), and the tiles it covers for big ones.
+    objects = []
+    if OBJECTS:
+        seen = [False] * (w * h)
+        for st in range(w * h):
+            if kind[st] == WALK or seen[st]:
+                continue
+            q = deque([st]); seen[st] = True; pts = []; edge = False
+            while q:
+                p = q.popleft(); pts.append(p); x, y = p % w, p // w
+                if x in (0, w - 1) or y in (0, h - 1): edge = True
+                for nx, ny in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)):
+                    if 0 <= nx < w and 0 <= ny < h:
+                        n = ny * w + nx
+                        if kind[n] != WALK and not seen[n]: seen[n] = True; q.append(n)
+            if not edge and 30 <= len(pts) <= 4000:
+                xs = [p % w for p in pts]; ys = [p // w for p in pts]
+                objects.append((min(xs), min(ys), max(xs), max(ys)))
     # Tiles.
-    cols, rows = (w - ox) // 16, (h - oy) // 16
+    # A last row cut short by the image (at least half a tile) still counts.
+    cols, rows = (w - ox) // 16, (h - oy + 8) // 16
     tile = [[None] * cols for _ in range(rows)]   # ('R', region) | ('S', set) | None
     for ty in range(rows):
         for tx in range(cols):
             cnt = Counter(); stairs = Counter()
-            for y in range(oy + ty * 16, oy + ty * 16 + 16):
+            ys = range(oy + ty * 16, min(h, oy + ty * 16 + 16))
+            for y in ys:
                 for x in range(ox + tx * 16, ox + tx * 16 + 16):
                     p = y * w + x
                     if kind[p] == WALK and sizes[region[p]] >= 2048: cnt[region[p]] += 1
@@ -131,7 +195,25 @@ def main():
                 tile[ty][tx] = ('S', set().union(*(blobs[bid] for bid in stairs)))
             elif cnt:
                 rid, n = cnt.most_common(1)[0]
-                if n >= 128: tile[ty][tx] = ("R", rid)
+                if n >= MIN_TILE * len(ys) // 16: tile[ty][tx] = ("R", rid)
+    # Hand edits from the console: "open ROW COL0 COL1 [REGION_FROM_COL]" / "block ROW COL0 COL1".
+    for line in EDITS:
+        f = line.split()
+        if not f or f[0].startswith('//'): continue
+        r, c0, c1 = int(f[1]), int(f[2]), int(f[3])
+        for c in range(c0, c1 + 1):
+            if f[0] == 'block': tile[r][c] = None
+            elif f[0] == 'open':
+                near = next((tile[rr][cc] for rr, cc in ((r - 1, c), (r + 1, c), (r, c - 1), (r, c + 1), (r - 2, c), (r + 2, c))
+                             if 0 <= rr < rows and 0 <= cc < cols and tile[rr][cc] and tile[rr][cc][0] == 'R'), None)
+                tile[r][c] = near or ('R', -1)
+    for (x0, y0, x1, y1) in objects:
+        feet = ((x0 + x1) // 2 - ox) // 16, (y1 - 2 - oy) // 16
+        tiles = {feet}
+        if x1 - x0 >= 24:   # boulders: every tile column they span, on the feet row
+            tiles |= {((x - ox) // 16, feet[1]) for x in range(x0 + 4, x1 - 3, 8)}
+        for tx, ty in tiles:
+            if 0 <= tx < cols and 0 <= ty < rows: tile[ty][tx] = None
     def can(a, b):
         ta, tb = tile[a[1]][a[0]], tile[b[1]][b[0]]
         if ta is None or tb is None: return False
