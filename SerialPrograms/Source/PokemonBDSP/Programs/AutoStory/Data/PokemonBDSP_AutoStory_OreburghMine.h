@@ -27,6 +27,9 @@ const std::vector<Pokemon::TilePos>& corridor_top();
 //  Roark, between two rocks a row above the room's bottom row. Talked to from
 //  the tile below him, facing north.
 extern const Pokemon::TilePos ROARK;
+//  The corridor's corner a wall-to-wall route ends on, below a straight
+//  walk north out into the entrance hall.
+extern const Pokemon::TilePos CORRIDOR_EXIT_START;
 
 
 }

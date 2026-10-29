@@ -68,6 +68,7 @@ const std::vector<TilePos>& corridor_top(){
 }
 
 const TilePos ROARK{18, 29};
+const TilePos CORRIDOR_EXIT_START{14, 11};
 
 
 }

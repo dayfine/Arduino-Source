@@ -510,12 +510,13 @@ void oreburgh_to_roark(VideoStream& stream, ProControllerContext& context){
     finish_dialogue(stream, context, 0, "Roark");
 
     step(5);
-    // Back to a row below the corridor's top, then north out through the
-    // hall. A route leg north to the top's wall walks on through it into the
-    // hall (r99), so the route stops a row short and the walk does the rest.
-    const Pokemon::TilePos exit = world(OreburghMine::corridor_top()[1]);
+    // Back up the corridor, then north out through the hall. A route leg
+    // north to the top's wall walks on through it into the hall (r99), and
+    // no wall stops us a row short of it, so the route ends on the corner
+    // at (14,11), where that leg started, and the walk does the rest.
+    const Pokemon::TilePos exit = world(OreburghMine::CORRIDOR_EXIT_START);
     at = walk_route(stream, context, maps, at,
-        [&](const Pokemon::TilePos& pos){ return pos.y == exit.y + 1 && pos.x >= exit.x - 1 && pos.x <= exit.x + 1; },
+        [&](const Pokemon::TilePos& pos){ return pos == exit; },
         no_trainers, in_the_way, "Back to the corridor's top");
     if (walk_dir(stream, context, GridDirection::NORTH, 10000ms, "into the entrance hall").stop != WalkStop::TRANSITION){
         fail(stream, "Oreburgh Mine: walking north from the corridor did not reach the entrance hall.");
