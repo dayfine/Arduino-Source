@@ -647,19 +647,63 @@ namespace PokemonAutomation {
             // ---------------------------------------------------------------------------
             // Natalie battle
             // ---------------------------------------------------------------------------
-            // Early moves the starters and their foes have, as type and power. A
-            // status move has power 0.
-            struct KnownMove { const char* name; const char* type; int power; };
+            // Early moves the starters and their foes have, as type, power and
+            // most PP. A status move has power 0.
+            struct KnownMove { const char* name; const char* type; int power; int pp; };
             static const KnownMove KNOWN_MOVES[] = {
-                {"pound", "normal", 40}, {"tackle", "normal", 40}, {"scratch", "normal", 40},
-                {"quickattack", "normal", 40}, {"headbutt", "normal", 70},
-                {"watergun", "water", 40}, {"bubble", "water", 40}, {"bubblebeam", "water", 65},
-                {"ember", "fire", 40}, {"flamewheel", "fire", 60}, {"machpunch", "fighting", 40},
-                {"absorb", "grass", 20}, {"razorleaf", "grass", 55}, {"bite", "dark", 60},
-                {"peck", "flying", 35}, {"wingattack", "flying", 60}, {"metalclaw", "steel", 50},
-                {"growl", "normal", 0}, {"leer", "normal", 0}, {"tailwhip", "normal", 0},
-                {"withdraw", "water", 0}, {"taunt", "dark", 0},
+                {"pound", "normal", 40, 35}, {"tackle", "normal", 40, 35}, {"scratch", "normal", 40, 35},
+                {"quickattack", "normal", 40, 30}, {"headbutt", "normal", 70, 15},
+                {"watergun", "water", 40, 25}, {"bubble", "water", 40, 30}, {"bubblebeam", "water", 65, 20},
+                {"ember", "fire", 40, 25}, {"flamewheel", "fire", 60, 25}, {"machpunch", "fighting", 40, 30},
+                {"absorb", "grass", 20, 25}, {"razorleaf", "grass", 55, 25}, {"bite", "dark", 60, 25},
+                {"peck", "flying", 35, 35}, {"wingattack", "flying", 60, 35}, {"metalclaw", "steel", 50, 35},
+                {"growl", "normal", 0, 40}, {"leer", "normal", 0, 30}, {"tailwhip", "normal", 0, 30},
+                {"withdraw", "water", 0, 40}, {"taunt", "dark", 0, 20},
             };
+
+            // A move button's PP left, "8/25" at its right end; -1 if it cannot be
+            // read. The text is dark, or yellow to red as PP runs low, so text is
+            // whatever differs from the button's own color. `max_pp` helps when
+            // the OCR reads the slash as a digit.
+            static int read_move_pp(const ImageViewRGB32& screen, const ImageFloatBox& button, int max_pp) {
+                const ImageViewRGB32 box = extract_box_reference(screen, ImageFloatBox{
+                    button.x + button.width * 0.75, button.y + button.height * 0.10,
+                    button.width * 0.21, button.height * 0.80});
+                if (box.width() == 0 || box.height() == 0) return -1;
+                std::vector<uint32_t> pixels;
+                for (size_t y = 0; y < box.height(); y++) for (size_t x = 0; x < box.width(); x++) pixels.push_back(box.pixel(x, y));
+                auto brightness = [](uint32_t p) { return ((p >> 16) & 255) + ((p >> 8) & 255) + (p & 255); };
+                std::vector<uint32_t> sorted = pixels;
+                std::nth_element(sorted.begin(), sorted.begin() + sorted.size() / 2, sorted.end(),
+                    [&](uint32_t a, uint32_t b) { return brightness(a) < brightness(b); });
+                const uint32_t background = sorted[sorted.size() / 2];
+                const size_t pad = 8;
+                ImageRGB32 text(box.width() + 2 * pad, box.height() + 2 * pad);
+                text.fill(0xffffffff);
+                for (size_t y = 0; y < box.height(); y++) {
+                    for (size_t x = 0; x < box.width(); x++) {
+                        const uint32_t p = box.pixel(x, y);
+                        int distance = 0;
+                        for (int shift : {16, 8, 0}) distance += std::abs((int)((p >> shift) & 255) - (int)((background >> shift) & 255));
+                        if (distance > 120) text.pixel(x + pad, y + pad) = 0xff000000;
+                    }
+                }
+                const std::string read = OCR::tesseract_ocr_read(Language::English, text);
+                const size_t slash = read.find('/');
+                std::string digits;
+                for (size_t i = 0; i < read.size() && i < slash; i++) if (std::isdigit((unsigned char)read[i])) digits.push_back(read[i]);
+                if (slash == std::string::npos && max_pp > 0) {
+                    // "29135" for 29/35: drop the most PP and the misread slash.
+                    const std::string max = std::to_string(max_pp);
+                    if (digits.size() > max.size() + 1 && digits.compare(digits.size() - max.size(), max.size(), max) == 0) {
+                        digits.resize(digits.size() - max.size() - 1);
+                    } else {
+                        return -1;
+                    }
+                }
+                if (digits.empty() || digits.size() > 2) return -1;
+                return std::stoi(digits);
+            }
 
             // The best move on the move menu: the most powerful one we know, and
             // on a tie one that is not Normal (an early starter's own type).
@@ -741,6 +785,13 @@ namespace PokemonAutomation {
                     }
                     }
                     if (known) last_read[i] = known->name;
+                    // A move with no PP left cannot be chosen; the game says so and
+                    // keeps the menu up.
+                    const int pp = read_move_pp(screen, button, known ? known->pp : 0);
+                    stream.log("[" + label + "] Move " + std::to_string(i + 1) + " PP left: " + (pp < 0 ? std::string("unread") : std::to_string(pp)) + ".");
+                    if (pp == 0) {
+                        continue;
+                    }
                     // An unreadable move counts as a plain attack, ahead of known
                     // status moves.
                     const int score = known ? known->power * 2 + (std::string(known->type) != "normal" ? 1 : 0) : 40 * 2 - 1;
