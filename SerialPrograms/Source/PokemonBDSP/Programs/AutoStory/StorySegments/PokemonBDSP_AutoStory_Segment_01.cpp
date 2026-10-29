@@ -438,14 +438,28 @@ void oreburgh_to_roark(VideoStream& stream, ProControllerContext& context){
     at = walk_route(stream, context, maps, at,
         [&](const Pokemon::TilePos& pos){ return pos.y == roark.y + 1 && pos.x > roark.x && pos.x <= roark.x + 9; },
         no_trainers, in_the_way, "To the coal room's bottom row");
-    bool answered = false;
-    for (size_t tile = 0; tile < 12 && !answered; tile++){
+    // Each probe turns north to press A, so the next step must turn west
+    // again before it moves: an 80ms hold right after a turn often only
+    // turns. A 120ms hold after the turn is one tile (on the console, 143ms
+    // per tile once walking). Sweep west, then back east if we overshot.
+    auto step_one = [&](GridDirection dir){
+        route_turn(stream, context, dir);
+        pbf_move_left_joystick(context, {dir == GridDirection::EAST ? 1.0 : -1.0, 0}, 120ms, 300ms);
+        context.wait_for_all_requests();
+    };
+    auto probe = [&](){
         route_turn(stream, context, GridDirection::NORTH);
         pbf_press_button(context, BUTTON_A, 80ms, 200ms);
-        answered = dialogue_opens(stream, context, 1500ms);
-        if (!answered){
-            hold_tiles(stream, context, GridDirection::WEST, 1);
-        }
+        return dialogue_opens(stream, context, 1500ms);
+    };
+    bool answered = probe();
+    for (size_t tile = 0; tile < 12 && !answered; tile++){
+        step_one(GridDirection::WEST);
+        answered = probe();
+    }
+    for (size_t tile = 0; tile < 14 && !answered; tile++){
+        step_one(GridDirection::EAST);
+        answered = probe();
     }
     if (!answered){
         fail(stream, "Oreburgh Mine: Roark did not answer along the bottom row.");
