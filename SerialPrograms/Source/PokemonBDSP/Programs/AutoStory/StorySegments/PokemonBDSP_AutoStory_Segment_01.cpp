@@ -8,6 +8,7 @@
 #include "PokemonBDSP_AutoStory_Segment_01.h"
 #include "../Data/PokemonBDSP_AutoStory_OreburghMine.h"
 #include "../Data/PokemonBDSP_AutoStory_RavagedPath.h"
+#include "../Data/PokemonBDSP_AutoStory_Route204.h"
 #include "../Data/PokemonBDSP_AutoStory_StoryMaps.h"
 #include "../Detect/PokemonBDSP_AutoStory_OverworldDetector.h"
 #include "../Utils/PokemonBDSP_AutoStory_PokemonCenter.h"
@@ -779,7 +780,7 @@ void oreburgh_to_floaroma(VideoStream& stream, ProControllerContext& context){
         "Back east to Jubilife's north road and up it (Rowan, Dawn and two Galactic grunts: a tag battle)",
         "North on Route 204 into the Ravaged Path",
         "Through the Ravaged Path, smashing its rocks",
-        "North on Route 204 past the twins into Floaroma",
+        "Route 204 north on its grid, past the twins, into Floaroma",
         "Heal at the Floaroma Pokemon Center",
     });
 
@@ -903,24 +904,27 @@ void oreburgh_to_floaroma(VideoStream& stream, ProControllerContext& context){
     }
 
     step(6);
-    // North half of Route 204, by hand: west to the stairs' wall and up
-    // them into a pocket of trees; three rows back down, east along the sand,
-    // north through the grass to the flower beds; round the twins, who stop
-    // us for a double battle; north between the beds into Floaroma.
-    walk_dir(stream, context, GridDirection::WEST, 8000ms, "west to the stairs");
-    walk_dir(stream, context, GridDirection::NORTH, 15000ms, "north up the stairs");
-    hold_tiles(stream, context, GridDirection::SOUTH, 3);
-    walk_dir(stream, context, GridDirection::EAST, 8000ms, "east along the sand");
-    walk_dir(stream, context, GridDirection::NORTH, 10000ms, "north to the flower beds");
-    hold_tiles(stream, context, GridDirection::SOUTH, 2);
-    hold_tiles(stream, context, GridDirection::WEST, 6);
-    if (walk_dir(stream, context, GridDirection::NORTH, 10000ms, "north to the twins").stop == WalkStop::DIALOG){
-        talk_or_fight(stream, context, "The twins", true, true);
+    // On the traced grid (Data/PokemonBDSP_AutoStory_Route204): from the
+    // cave's door west and up the stairs, round the pocket the ledge closes,
+    // east and north through the tall grass, and west below the flower beds,
+    // where the twins see us; then north between the beds into Floaroma.
+    {
+        std::vector<Pokemon::TrainerSight> twins = Route204::north_trainer_sights();
+        auto fight = [&](const std::string& who){
+            const bool doubles = who.find("Twins") != std::string::npos || who.find("someone") != std::string::npos;
+            talk_or_fight(stream, context, who, false, doubles);
+        };
+        std::vector<Pokemon::TilePos> at{Route204::CAVE_EXIT};
+        at = walk_route(stream, context, route204_north_maps(), at, Route204::in_floaroma_path,
+            twins, fight, "To the path into Floaroma");
+        // Floaroma's arrival did not read as a black screen by hand ("limit
+        // after 20000ms", and we stood in the town), so either will do.
+        const WalkResult in = walk_dir(stream, context, GridDirection::NORTH, 20000ms, "north into Floaroma");
+        if (in.stop == WalkStop::BLOCKED || in.stop == WalkStop::DIALOG){
+            fail(stream, "Route 204: the walk north into Floaroma was stopped.");
+        }
+        context.wait_for(2000ms);
     }
-    hold_tiles(stream, context, GridDirection::WEST, 3);
-    walk_dir(stream, context, GridDirection::NORTH, 15000ms, "north between the flower beds");
-    hold_tiles(stream, context, GridDirection::WEST, 1);
-    walk_dir(stream, context, GridDirection::NORTH, 20000ms, "north into Floaroma");
 
     step(7);
     // We arrive in front of a house; the Center is a few tiles south-east.

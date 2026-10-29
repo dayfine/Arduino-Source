@@ -7,6 +7,7 @@
 #include "PokemonBDSP_AutoStory_JubilifeCity.h"
 #include "PokemonBDSP_AutoStory_OreburghMine.h"
 #include "PokemonBDSP_AutoStory_RavagedPath.h"
+#include "PokemonBDSP_AutoStory_Route204.h"
 #include "PokemonBDSP_AutoStory_Route201.h"
 #include "PokemonBDSP_AutoStory_Route202.h"
 #include "PokemonBDSP_AutoStory_SandgemTown.h"
@@ -25,6 +26,7 @@ const char* const MAP_ROUTE_202 = "Route 202";
 const char* const MAP_JUBILIFE_CITY = "Jubilife City";
 const char* const MAP_OREBURGH_MINE = "Oreburgh Mine";
 const char* const MAP_RAVAGED_PATH = "Ravaged Path";
+const char* const MAP_ROUTE_204 = "Route 204";
 
 
 //  Offsets come from how the Bulbapedia maps join:
@@ -76,6 +78,15 @@ MapSet ravaged_path_maps(const std::vector<TilePos>& smashed){
     }
     MapSet maps;
     maps.add(MAP_RAVAGED_PATH, grid, {0, 0});
+    return maps;
+}
+
+const MapSet& route204_north_maps(){
+    static const MapSet maps = []{
+        MapSet maps;
+        maps.add(MAP_ROUTE_204, Route204::north_grid(), {0, 0});
+        return maps;
+    }();
     return maps;
 }
 

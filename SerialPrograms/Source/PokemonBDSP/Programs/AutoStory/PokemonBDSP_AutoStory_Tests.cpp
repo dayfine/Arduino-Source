@@ -11,6 +11,7 @@
 #include "Data/PokemonBDSP_AutoStory_JubilifeCity.h"
 #include "Data/PokemonBDSP_AutoStory_OreburghMine.h"
 #include "Data/PokemonBDSP_AutoStory_RavagedPath.h"
+#include "Data/PokemonBDSP_AutoStory_Route204.h"
 #include "Data/PokemonBDSP_AutoStory_Route201.h"
 #include "Data/PokemonBDSP_AutoStory_Route202.h"
 #include "Data/PokemonBDSP_AutoStory_SandgemTown.h"
@@ -502,6 +503,19 @@ public:
                     cave.world().at(RavagedPath::ABOVE_EXIT.next(GridDirection::SOUTH)) != Pokemon::TileType::DOOR
                 ){
                     failed += "Ravaged Path: the way out is not a door a tile west of the corridor's east end. ";
+                }
+            }
+            //  01.05 on Route 204's north half: from the Ravaged Path's door to
+            //  the path between the flower beds into Floaroma.
+            {
+                const Pokemon::MapSet& route = route204_north_maps();
+                const std::string leg_error = check_robust_plan(logger, "Route 204: Ravaged Path to the Floaroma path", route, {Route204::CAVE_EXIT},
+                    Route204::in_floaroma_path);
+                failed += leg_error.empty() ? "" : leg_error + " ";
+                for (const Pokemon::TrainerSight& twin : Route204::north_trainer_sights()){
+                    if (route.world().at(twin.pos) != Pokemon::TileType::NPC){
+                        failed += "Route 204: " + twin.name + " is not on an NPC tile. ";
+                    }
                 }
             }
             for (const auto& leg : legs){

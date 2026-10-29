@@ -1618,6 +1618,8 @@ file(GLOB LIBRARY_SOURCES
     Source/PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_Route201.h
     Source/PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_Route202.cpp
     Source/PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_Route202.h
+    Source/PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_Route204.cpp
+    Source/PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_Route204.h
     Source/PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_SandgemTown.cpp
     Source/PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_SandgemTown.h
     Source/PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_StoryMaps.cpp
