@@ -30,7 +30,8 @@ The first build fills the cache and takes as long as a normal build.
 ## What the preset sets
 
 - **Cache location and size:** `~/Library/Caches/pokemonautomation-ccache`,
-  capped at 10 GB; ccache evicts old entries itself.
+  capped at 5 GB; ccache evicts old entries itself. A full build adds about
+  250 MB (compressed), so this holds around 20 revisions' worth of compiles.
 - **Path rewriting:** `base_dir` is the checkout, so paths inside it are made
   relative and two worktrees produce the same compiler commands.
 - **Debug paths:** `-fdebug-prefix-map=<checkout>=.` and
