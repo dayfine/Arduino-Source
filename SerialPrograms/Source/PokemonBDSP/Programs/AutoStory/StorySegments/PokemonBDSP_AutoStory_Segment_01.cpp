@@ -367,8 +367,21 @@ void oreburgh_to_roark(VideoStream& stream, ProControllerContext& context){
     if (walk_dir(stream, context, GridDirection::SOUTH, 8000ms, "south to the stone ledge").stop != WalkStop::BLOCKED){
         fail(stream, "Oreburgh: walking south did not stop at the stone ledge.");
     }
-    if (walk_dir(stream, context, GridDirection::EAST, 10000ms, "east to the fence below the Poke Mart").stop != WalkStop::BLOCKED){
-        fail(stream, "Oreburgh: walking east did not stop at the fence below the Poke Mart.");
+    // A townsperson wandering across the row can stop us a tile or two short
+    // (r95), so walk east again until a walk stops without moving.
+    bool at_fence = false;
+    for (size_t attempt = 0; attempt < 5 && !at_fence; attempt++){
+        const WalkResult east = walk_dir(stream, context, GridDirection::EAST, 10000ms, "east to the fence below the Poke Mart");
+        if (east.stop != WalkStop::BLOCKED){
+            fail(stream, "Oreburgh: walking east did not stop at the fence below the Poke Mart.");
+        }
+        at_fence = attempt > 0 && east.walked <= 800ms;
+        if (!at_fence){
+            context.wait_for(1500ms);
+        }
+    }
+    if (!at_fence){
+        fail(stream, "Oreburgh: something kept stopping the walk east to the fence below the Poke Mart.");
     }
 
     step(2);
