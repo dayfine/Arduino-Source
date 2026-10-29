@@ -37,6 +37,7 @@
 #include "Programs/TestPrograms/PokemonFRLG_ReadTrainerId.h"
 #include "Programs/TestPrograms/PokemonFRLG_ReadEncounter.h"
 #include "Programs/TestPrograms/PokemonFRLG_SafariOptimalActionTest.h"
+#include "Overworld/PokemonFRLG_OverworldCommands.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -52,6 +53,7 @@ PanelListFactory::PanelListFactory()
 {}
 
 std::vector<PanelEntry> PanelListFactory::make_panels() const{
+    register_overworld_commands();
     std::vector<PanelEntry> ret;
     
     ret.emplace_back("---- Settings ----");
