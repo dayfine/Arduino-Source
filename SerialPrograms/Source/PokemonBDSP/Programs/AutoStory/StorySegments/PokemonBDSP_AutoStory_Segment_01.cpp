@@ -414,22 +414,23 @@ void oreburgh_to_roark(VideoStream& stream, ProControllerContext& context){
     if (!in_mine && down.stop != WalkStop::LIMIT){
         fail(stream, "Oreburgh: something kept stopping the walk south to the conveyor pillars.");
     }
-    if (!in_mine){
-        walk_dir(stream, context, GridDirection::WEST, 2500ms, "west to the left-hand pillars");
-        in_mine = walk_dir(stream, context, GridDirection::SOUTH, 15000ms, "south into the mine").stop == WalkStop::TRANSITION;
-    }
-    // A column off and the walk ends against the sign above the mine's
-    // stairs (on the console, r96); the stairs are open on both sides of it.
-    for (GridDirection side : {GridDirection::EAST, GridDirection::WEST}){
-        if (in_mine){
-            break;
-        }
+    // West stops against the left-hand pillars, on the column of the sign
+    // above the mine's stairs (on the console, r96): the stairs are open a
+    // tile either side of it, so step back one tile east and walk south.
+    auto step_tiles = [&](GridDirection side, size_t tiles){
         route_turn(stream, context, side);
-        const size_t tiles = side == GridDirection::EAST ? 1 : 2;
         for (size_t tile = 0; tile < tiles; tile++){
             pbf_move_left_joystick(context, {side == GridDirection::EAST ? 1.0 : -1.0, 0}, 120ms, 300ms);
         }
         context.wait_for_all_requests();
+    };
+    if (!in_mine){
+        walk_dir(stream, context, GridDirection::WEST, 2500ms, "west to the left-hand pillars");
+        step_tiles(GridDirection::EAST, 1);
+        in_mine = walk_dir(stream, context, GridDirection::SOUTH, 15000ms, "south into the mine").stop == WalkStop::TRANSITION;
+    }
+    if (!in_mine){
+        step_tiles(GridDirection::WEST, 2);     // the sign's other side
         in_mine = walk_dir(stream, context, GridDirection::SOUTH, 5000ms, "south down the mine's stairs").stop == WalkStop::TRANSITION;
     }
     if (!in_mine){
