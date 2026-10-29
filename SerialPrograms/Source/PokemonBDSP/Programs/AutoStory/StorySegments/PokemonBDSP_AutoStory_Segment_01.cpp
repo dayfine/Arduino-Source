@@ -489,8 +489,10 @@ void oreburgh_to_roark(VideoStream& stream, ProControllerContext& context){
         Filesystem::create_directories(Filesystem::Path(folder));
         screen.frame->save(folder + now_to_filestring() + "-below-roark.png");
     }
+    // His talk opens with the camera zooming in; the first line comes some
+    // seconds later (r98).
     pbf_press_button(context, BUTTON_A, 80ms, 200ms);
-    if (!dialogue_opens(stream, context, 2000ms)){
+    if (!dialogue_opens(stream, context, 10000ms)){
         fail(stream, "Oreburgh Mine: no talk opened below Roark.");
     }
     at = {roark.next(GridDirection::SOUTH)};
