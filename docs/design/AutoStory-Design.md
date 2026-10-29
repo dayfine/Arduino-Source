@@ -3,8 +3,10 @@
 Companion to [AutoStory-Lessons.md](AutoStory-Lessons.md): that doc lists the failures, this one
 describes the pieces built in response and how they fit together. Status as of 2026-10-28
 (evening): 00.04, from the catch to Dawn in Jubilife, runs unattended on console B (r79);
-00.05 is being stepped through. Each section says what is built, where, and what is still
-planned.
+00.05 was stepped through by hand and rewritten on a Jubilife grid (not yet run). Each section
+says what is built, where, and what is still planned. Next work:
+[AutoStory-Segment01-Plan.md](AutoStory-Segment01-Plan.md), then
+[AutoStory-Segment00-Finish.md](AutoStory-Segment00-Finish.md).
 
 The common idea: **never act on an assumption the screen could have checked.** Each piece
 reads the screen, takes one step, and reads again. Durations are caps, not plans.
