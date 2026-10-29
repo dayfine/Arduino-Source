@@ -1171,7 +1171,8 @@ namespace PokemonAutomation {
             static void fight_using_move_list(
                 VideoStream& stream, ProControllerContext& context,
                 BattleType battle_type, const std::vector<size_t>& move_slots,
-                const std::string& label, bool confirm_default_target, bool post_battle_dialogue_cleanup
+                const std::string& label, bool confirm_default_target, bool post_battle_dialogue_cleanup,
+                bool doubles = false, bool switch_on_faint = false
             ) {
                 if (move_slots.empty() || std::any_of(move_slots.begin(),move_slots.end(),
                     [](size_t slot) { return slot>4; })) {
@@ -1196,6 +1197,8 @@ namespace PokemonAutomation {
                 bool out_of_potions = false;
                 size_t potions_used = 0;
                 size_t turns = 0;
+                size_t faint_switches = 0;
+                const bool watch_learn_move = confirm_default_target || doubles || switch_on_faint;
                 EndBattleWatcher end_battle;
 
                 while (true) {
@@ -1209,17 +1212,19 @@ namespace PokemonAutomation {
                     int ret = run_until<ProControllerContext>(
                         stream,
                         context,
-                        [](ProControllerContext& context) {
+                        [&](ProControllerContext& context) {
                             // Clear narration with B while watching for commands.
                             // A here can open Fight before selection begins.
-                            pbf_mash_button(context,BUTTON_B,120000ms);
+                            // With faint switching, a quiet 30 s means the party
+                            // screen after a faint, which B cannot leave.
+                            pbf_mash_button(context,BUTTON_B,switch_on_faint ? 30000ms : 120000ms);
                         },
                         {
                             {battle_menu},
                             battle_menu_seen
                                 ? PeriodicInferenceCallback{end_battle}
                                 : PeriodicInferenceCallback{},
-                            confirm_default_target ? PeriodicInferenceCallback{learn_move} : PeriodicInferenceCallback{},
+                            watch_learn_move ? PeriodicInferenceCallback{learn_move} : PeriodicInferenceCallback{},
                         }
                     );
 
@@ -1256,6 +1261,12 @@ namespace PokemonAutomation {
                         select_battle_move_slot(stream, context, battle_type, move_slots[move_index], label,
                             confirm_default_target,current_move);
                         current_move=move_slots[move_index];
+                        // A double battle asks for the target next; B would
+                        // back out of it. The default target is an opponent.
+                        if (doubles) {
+                            pbf_wait(context,1200ms);
+                            pbf_press_button(context,BUTTON_A,80ms,1500ms);
+                        }
                         // Advance once per move selection; retain the final entry.
                         if (move_index+1<move_slots.size()) move_index++;
 
@@ -1298,6 +1309,17 @@ namespace PokemonAutomation {
                         break;
 
                     default:
+                        // After a faint the game shows the party: Down to the
+                        // next Pokemon, A, then A on "Send out" (by hand,
+                        // 2026-10-29 against Roark).
+                        if (switch_on_faint && faint_switches < 5) {
+                            faint_switches++;
+                            stream.log("[" + label + "] No battle menu for 30 s: a faint; sending out the next Pokemon.", COLOR_ORANGE);
+                            pbf_press_dpad(context, DPAD_DOWN, 80ms, 500ms);
+                            pbf_press_button(context, BUTTON_A, 80ms, 1200ms);
+                            pbf_press_button(context, BUTTON_A, 80ms, 2000ms);
+                            break;
+                        }
                         stream.log(
                             "[AutoStory] " + label + " battle timeout.",
                             COLOR_RED
@@ -1594,6 +1616,11 @@ namespace PokemonAutomation {
             void fight_trainer_using_move_slot(VideoStream& stream, ProControllerContext& context,
                 size_t move_slot, const std::string& label) {
                 fight_using_move_slot(stream,context,BattleType::TRAINER,move_slot,label);
+            }
+
+            void fight_story_battle(VideoStream& stream, ProControllerContext& context, const std::string& label, bool doubles) {
+                // The best move each turn; the next Pokemon after a faint; no new moves.
+                fight_using_move_list(stream, context, BattleType::TRAINER, {0}, label, false, true, doubles, true);
             }
 
             void fight_trainer(VideoStream& stream, ProControllerContext& context, const std::string& label) {

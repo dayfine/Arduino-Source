@@ -67,6 +67,13 @@ namespace PokemonAutomation {
             // every starter.
             void fight_trainer(VideoStream& stream, ProControllerContext& context, const std::string& label);
 
+            // A story battle that may go badly: the best move each turn, Potions
+            // under 35 %, the next Pokemon when one faints, and "Keep old moves"
+            // on level-up prompts. `doubles` confirms the default target each
+            // turn (tag and twin battles). Returns once the battle has ended,
+            // won or lost; after a loss we stand in the last Pokemon Center.
+            void fight_story_battle(VideoStream& stream, ProControllerContext& context, const std::string& label, bool doubles = false);
+
             // ---------------------------------------------------------------------------
             // Catching / healing
             // ---------------------------------------------------------------------------

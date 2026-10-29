@@ -9,12 +9,14 @@
 #include "../Data/PokemonBDSP_AutoStory_OreburghMine.h"
 #include "../Data/PokemonBDSP_AutoStory_StoryMaps.h"
 #include "../Detect/PokemonBDSP_AutoStory_OverworldDetector.h"
+#include "../Utils/PokemonBDSP_AutoStory_PokemonCenter.h"
 #include "../Utils/PokemonBDSP_AutoStory_RouteWalk.h"
 #include "../Utils/PokemonBDSP_AutoStory_Segment_00_tools.h"
 #include "../Utils/PokemonBDSP_AutoStory_Walk.h"
 #include "Common/Cpp/PrettyPrint.h"
 #include "Common/Cpp/Filesystem/Filesystem.h"
 #include "CommonFramework/Globals.h"
+#include "CommonFramework/ImageTypes/ImageRGB32.h"
 
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
@@ -62,7 +64,10 @@ bool dialogue_opens(VideoStream& stream, ProControllerContext& context, Millisec
 //  overworld. Returns whether there was a battle. Between a trainer's last
 //  line and the battle the overworld shows with no dialogue for a moment,
 //  so "only talked" needs 4 s of it, and never comes when `battle_expected`.
-bool talk_or_fight(VideoStream& stream, ProControllerContext& context, const std::string& label, bool battle_expected = false){
+//  `doubles` for tag and twin battles. A lost battle ends in the last
+//  Pokemon Center; see in_pokemon_center().
+bool in_pokemon_center(VideoStream& stream);
+bool talk_or_fight(VideoStream& stream, ProControllerContext& context, const std::string& label, bool battle_expected = false, bool doubles = false){
     ShortDialogDetector dialog;
     OverworldDetector overworld;
     BattleMenuDetector battle_menu(BattleType::TRAINER);
@@ -76,8 +81,10 @@ bool talk_or_fight(VideoStream& stream, ProControllerContext& context, const std
         }
         if (battle_menu.detect(*frame.frame) || black.detect(*frame.frame)){
             route_status(stream, "Fighting " + label + ".");
-            fight_trainer(stream, context, label);
-            use_potion_first_pokemon(stream, context, 0.5);
+            fight_story_battle(stream, context, label, doubles);
+            if (!in_pokemon_center(stream)){
+                use_potion_first_pokemon(stream, context, 0.5);
+            }
             return true;
         }
         const bool talking = dialog.detect(*frame.frame);
@@ -549,6 +556,366 @@ void oreburgh_to_roark(VideoStream& stream, ProControllerContext& context){
     context.wait_for(1500ms);
 }
 
+
+//  A rough check that we stand in a Pokemon Center: its floor fills the lower
+//  half of the screen with warm yellow, where the gym is grey and routes are
+//  green. After a battle it tells a loss (a whiteout ends at the counter)
+//  from a win.
+bool in_pokemon_center(VideoStream& stream){
+    const VideoSnapshot frame = stream.video().snapshot();
+    if (!frame){
+        return false;
+    }
+    const ImageRGB32 small = frame.frame->scale_to(192, 108);
+    size_t warm = 0, total = 0;
+    for (size_t y = 54; y < 108; y++){
+        for (size_t x = 0; x < 192; x++){
+            const uint32_t pixel = small.pixel(x, y);
+            const int r = (pixel >> 16) & 0xff, g = (pixel >> 8) & 0xff, b = pixel & 0xff;
+            total++;
+            if (r > 200 && g > 150 && b < 150 && r - b > 70){
+                warm++;
+            }
+        }
+    }
+    const bool inside = warm * 10 > total * 3;
+    stream.log("[Center check] warm floor " + std::to_string(warm * 100 / total) + " %: " +
+        (inside ? "in a Pokemon Center." : "not in a Pokemon Center."));
+    return inside;
+}
+
+//  Walks in `dir`, breaking Rock Smash rocks in the way: a stop that answers
+//  A with the "breakable with a hidden move" prompt gets Yes, and the walk
+//  goes on. Returns the last walk's result (a stop no rock explains).
+WalkResult walk_smashing(VideoStream& stream, ProControllerContext& context, GridDirection dir, Milliseconds limit, const std::string& label){
+    WalkResult result = walk_dir(stream, context, dir, limit, label);
+    for (size_t rocks = 0; rocks < 6 && result.stop == WalkStop::BLOCKED; rocks++){
+        pbf_press_button(context, BUTTON_A, 80ms, 200ms);
+        if (!dialogue_opens(stream, context, 1500ms)){
+            return result;      // a wall, not a rock
+        }
+        // "Would you like to use Rock Smash?": A for Yes, then the move's
+        // animation, then B to clear anything left (by hand, 2026-10-29).
+        pbf_press_button(context, BUTTON_A, 80ms, 1500ms);
+        pbf_press_button(context, BUTTON_A, 80ms, 4000ms);
+        pbf_press_button(context, BUTTON_B, 80ms, 1500ms);
+        context.wait_for_all_requests();
+        result = walk_dir(stream, context, dir, limit, label);
+    }
+    return result;
+}
+
+//  For a player inside a Pokemon Center after a whiteout, at the counter:
+//  out through the door. The door is straight south of the nurse in most
+//  Centers; in Oreburgh's it was two tiles east of where we stood (by hand).
+void walk_out_of_center(VideoStream& stream, ProControllerContext& context, const std::string& label){
+    finish_dialogue(stream, context, 0, label + ": the nurse");
+    const int shifts[] = {0, 2, -4};
+    for (int shift : shifts){
+        if (shift != 0){
+            hold_tiles(stream, context, shift > 0 ? GridDirection::EAST : GridDirection::WEST, (size_t)std::abs(shift));
+        }
+        if (walk_dir(stream, context, GridDirection::SOUTH, 8000ms, label + ": out of the Center").stop == WalkStop::TRANSITION){
+            context.wait_for(2000ms);
+            return;
+        }
+    }
+    fail(stream, label + ": could not find the Pokemon Center's door.");
+}
+
+//  Oreburgh, from the street in front of the Pokemon Center (its door or its
+//  front wall) into the gym, as walked by hand on 2026-10-29: west to the
+//  cliff, south to the posts, a row up, then 17 tiles east is the gym door's
+//  column. The hold is checked by the door itself: walk north, and if the
+//  gym's wall stops us, try the columns either side.
+void oreburgh_street_to_gym(VideoStream& stream, ProControllerContext& context){
+    if (walk_dir(stream, context, GridDirection::WEST, 15000ms, "west to the cliff").stop != WalkStop::BLOCKED){
+        fail(stream, "Oreburgh: walking west from the Center did not stop at the cliff.");
+    }
+    if (walk_dir(stream, context, GridDirection::SOUTH, 3000ms, "south to the posts").stop != WalkStop::BLOCKED){
+        fail(stream, "Oreburgh: walking south did not stop at the posts.");
+    }
+    hold_tiles(stream, context, GridDirection::NORTH, 1);
+    hold_tiles(stream, context, GridDirection::EAST, 17);
+    // Cumulative steps: here, a tile east, a tile west, two east, two west.
+    const int steps[] = {0, 1, -2, 3, -4};
+    for (int step : steps){
+        if (step != 0){
+            hold_tiles(stream, context, step > 0 ? GridDirection::EAST : GridDirection::WEST, (size_t)std::abs(step));
+        }
+        const WalkResult door = walk_dir(stream, context, GridDirection::NORTH, 4000ms, "north into the gym");
+        // The door's fade can read as the time limit rather than a black
+        // screen (by hand: "limit after 4000ms", and we were inside).
+        if (door.stop == WalkStop::TRANSITION || door.stop == WalkStop::LIMIT){
+            context.wait_for(1000ms);
+            return;
+        }
+        if (door.stop == WalkStop::DIALOG){
+            talk_or_fight(stream, context, "Someone outside the gym");
+        }
+    }
+    fail(stream, "Oreburgh: no column near the gym's door went in.");
+}
+
+//  Inside the Oreburgh Gym: straight up the middle, fighting the trainers
+//  who stop us, to Roark on the top tier. Returns whether Roark was beaten;
+//  false after a whiteout, which leaves us in the Pokemon Center.
+//  Walking straight up meets both gym trainers (one at the entrance, one on
+//  the second tier); their experience helps an under-levelled team, and
+//  after a whiteout they stay beaten. Butters' route goes round them.
+bool oreburgh_gym_battles(VideoStream& stream, ProControllerContext& context){
+    // The entry camera pans for about 7.5 s (Butters' reference video).
+    context.wait_for(8000ms);
+    if (dialogue_opens(stream, context, 3000ms)){
+        if (talk_or_fight(stream, context, "Gym trainer at the entrance") && in_pokemon_center(stream)){
+            return false;
+        }
+    }
+    size_t stuck = 0;
+    for (size_t leg = 0; leg < 10; leg++){
+        const WalkResult up = walk_dir(stream, context, GridDirection::NORTH, 8000ms, "north up the gym");
+        if (up.stop == WalkStop::DIALOG){
+            if (talk_or_fight(stream, context, "Gym trainer") && in_pokemon_center(stream)){
+                return false;
+            }
+            continue;
+        }
+        if (up.stop != WalkStop::BLOCKED){
+            continue;
+        }
+        // Roark stands at the top facing us; a wall or a stair edge says
+        // nothing to A. Only Roark starts a battle from our A here.
+        route_turn(stream, context, GridDirection::NORTH);
+        pbf_press_button(context, BUTTON_A, 80ms, 200ms);
+        if (dialogue_opens(stream, context, 3000ms)){
+            if (talk_or_fight(stream, context, "Roark")){
+                if (in_pokemon_center(stream)){
+                    return false;
+                }
+                finish_dialogue(stream, context, 0, "Roark after the battle");
+                return true;
+            }
+            continue;
+        }
+        if (up.walked <= 800ms && ++stuck >= 3){
+            fail(stream, "Oreburgh Gym: stuck on the way up, and nobody answers A.");
+        }
+    }
+    fail(stream, "Oreburgh Gym: did not reach Roark.");
+}
+
+void oreburgh_gym(VideoStream& stream, ProControllerContext& context){
+    StepLog step(stream, "01.04", "From the Oreburgh Mine to the Coal Badge", {
+        "North to the Pokemon Center's front",
+        "West to the cliff, south to the posts, east along the street into the gym",
+        "Up the gym, fighting its trainers, and beat Roark (after a loss: from the Center, again)",
+        "Out of the gym",
+    });
+    step(1);
+    // 01.03 leaves us below the mine's sign; a tile east is the column
+    // straight up to the Center (by hand: blocked at its front after 6.4 s).
+    hold_tiles(stream, context, GridDirection::EAST, 1);
+    if (walk_dir(stream, context, GridDirection::NORTH, 12000ms, "north to the Center's front").stop != WalkStop::BLOCKED){
+        fail(stream, "Oreburgh: walking north from the mine did not stop at the Pokemon Center.");
+    }
+
+    // Losing costs some money and keeps the experience, so each try comes
+    // back stronger: Roark won twice by hand against Piplup Lv 10 and 14 and
+    // lost the third time.
+    bool won = false;
+    for (size_t attempt = 0; attempt < 5 && !won; attempt++){
+        step(2);
+        oreburgh_street_to_gym(stream, context);
+        step(3);
+        won = oreburgh_gym_battles(stream, context);
+        if (!won){
+            stream.log("[01.04] Lost in the gym (try " + std::to_string(attempt + 1) + "); back from the Center.", COLOR_ORANGE);
+            walk_out_of_center(stream, context, "Oreburgh");
+        }
+    }
+    if (!won){
+        fail(stream, "Oreburgh Gym: lost to Roark five times.");
+    }
+
+    step(4);
+    // Back down the middle and out of the door.
+    for (size_t leg = 0; leg < 4; leg++){
+        const WalkResult down = walk_dir(stream, context, GridDirection::SOUTH, 10000ms, "south out of the gym");
+        if (down.stop == WalkStop::TRANSITION){
+            context.wait_for(2000ms);
+            return;
+        }
+        if (down.stop == WalkStop::DIALOG){
+            finish_dialogue(stream, context, 0, "Someone in the gym");
+        }
+    }
+    fail(stream, "Oreburgh Gym: did not leave by its door.");
+}
+
+//  West until a transition, by the user's rule for a wall in the way: walk
+//  north to the top wall, which pins the row, then try the rows south of it
+//  one at a time. Trainers who stop us are fought. Returns at the first
+//  transition (a building, a cave, a gate).
+void west_until_transition(VideoStream& stream, ProControllerContext& context, const std::string& label, size_t max_legs){
+    for (size_t leg = 0; leg < max_legs; leg++){
+        const WalkResult west = walk_dir(stream, context, GridDirection::WEST, 20000ms, label);
+        if (west.stop == WalkStop::TRANSITION){
+            context.wait_for(2000ms);
+            return;
+        }
+        if (west.stop == WalkStop::DIALOG){
+            talk_or_fight(stream, context, label + ": someone in the way");
+            continue;
+        }
+        if (west.stop != WalkStop::BLOCKED){
+            continue;
+        }
+        walk_dir(stream, context, GridDirection::NORTH, 4000ms, label + ": north to the top wall");
+        bool moved = false;
+        for (size_t row = 0; row < 10 && !moved; row++){
+            hold_tiles(stream, context, GridDirection::SOUTH, 1);
+            const WalkResult probe = walk_dir(stream, context, GridDirection::WEST, 1500ms, label + ": west on the next row");
+            moved = probe.stop != WalkStop::BLOCKED || probe.walked > 1200ms;
+            if (probe.stop == WalkStop::TRANSITION){
+                context.wait_for(2000ms);
+                return;
+            }
+            if (probe.stop == WalkStop::DIALOG){
+                talk_or_fight(stream, context, label + ": someone in the way");
+            }
+        }
+        if (!moved){
+            fail(stream, label + ": no row below the top wall leads west.");
+        }
+    }
+    fail(stream, label + ": no transition after " + std::to_string(max_legs) + " legs.");
+}
+
+void oreburgh_to_floaroma(VideoStream& stream, ProControllerContext& context){
+    StepLog step(stream, "01.05", "From the Oreburgh Gym to Floaroma Town", {
+        "Up to the platform by Oreburgh Gate and into it (Barry bumps into us there)",
+        "Through the Gate and west along Route 203 and Jubilife to the Route 218 gate",
+        "Back east to Jubilife's north road and up it (Rowan, Dawn and two Galactic grunts: a tag battle)",
+        "North on Route 204 into the Ravaged Path",
+        "Through the Ravaged Path, smashing its rocks",
+        "North on Route 204 past the twins into Floaroma",
+        "Heal at the Floaroma Pokemon Center",
+    });
+
+    step(1);
+    // From the gym door, as walked by hand on 2026-10-29.
+    hold_tiles(stream, context, GridDirection::SOUTH, 1);
+    hold_tiles(stream, context, GridDirection::NORTH, 1);
+    walk_dir(stream, context, GridDirection::WEST, 20000ms, "west to the stairs' cliff");
+    walk_dir(stream, context, GridDirection::NORTH, 10000ms, "north along the cliff");
+    hold_tiles(stream, context, GridDirection::EAST, 2);
+    walk_dir(stream, context, GridDirection::NORTH, 5000ms, "north up the stairs");
+    walk_dir(stream, context, GridDirection::WEST, 6000ms, "west along the platform");
+    hold_tiles(stream, context, GridDirection::SOUTH, 1);
+    // Barry runs into us on the platform ("*thud*") the first time; his lines
+    // end with no battle.
+    west_until_transition(stream, context, "Into Oreburgh Gate", 8);
+
+    step(2);
+    // The Gate's cave, Route 203 (trainers stop us) and Jubilife's road all
+    // run west; the first door at the end is the Route 218 gate on
+    // Jubilife's west edge (by hand: twice).
+    west_until_transition(stream, context, "West to the Route 218 gate", 16);
+
+    step(3);
+    // Back out east into Jubilife: its north road is columns 43 to 46 of the
+    // Jubilife grid, about 40 tiles east of the gate. Rowan's scene starts
+    // on the way up it; a wall in a few tiles means we are off its column.
+    if (walk_dir(stream, context, GridDirection::EAST, 6000ms, "back out of the gate").stop != WalkStop::TRANSITION){
+        fail(stream, "Jubilife: did not leave the Route 218 gate eastwards.");
+    }
+    context.wait_for(2000ms);
+    hold_tiles(stream, context, GridDirection::EAST, 40);
+    const int steps[] = {0, 1, -2, 3, -4, 5, -6};
+    bool scene = false;
+    for (int s_step : steps){
+        if (s_step != 0){
+            hold_tiles(stream, context, s_step > 0 ? GridDirection::EAST : GridDirection::WEST, (size_t)std::abs(s_step));
+        }
+        const WalkResult up = walk_dir(stream, context, GridDirection::NORTH, 15000ms, "north up Jubilife's north road");
+        if (up.stop == WalkStop::DIALOG){
+            scene = true;
+            break;
+        }
+        walk_dir(stream, context, GridDirection::SOUTH, 15000ms, "back down to the street");
+    }
+    if (!scene){
+        fail(stream, "Jubilife: no column led up the north road to Rowan.");
+    }
+    if (!talk_or_fight(stream, context, "Galactic grunts with Dawn", true, true)){
+        fail(stream, "Jubilife: Rowan's scene ended without the tag battle.");
+    }
+    if (in_pokemon_center(stream)){
+        fail(stream, "Jubilife: lost the tag battle with Dawn.");
+    }
+    finish_dialogue(stream, context, 0, "Rowan and Dawn after the battle");
+
+    step(4);
+    // Route 204's south half: a trainer just past the sign, then the cave in
+    // the cliff a column west of the path.
+    for (size_t leg = 0; leg < 6; leg++){
+        const WalkResult up = walk_dir(stream, context, GridDirection::NORTH, 15000ms, "north on Route 204");
+        if (up.stop == WalkStop::TRANSITION){
+            break;
+        }
+        if (up.stop == WalkStop::DIALOG){
+            talk_or_fight(stream, context, "Route 204 trainer");
+            continue;
+        }
+        if (up.stop == WalkStop::BLOCKED){
+            hold_tiles(stream, context, GridDirection::WEST, 1);
+        }
+        if (leg == 5){
+            fail(stream, "Route 204: did not reach the Ravaged Path.");
+        }
+    }
+    context.wait_for(2000ms);
+
+    step(5);
+    // Inside: a row down, east along the corridor breaking its rocks to its
+    // east end, a tile back west, and south out of the lit opening. The
+    // chambers west and north end in water (by hand, 2026-10-29).
+    hold_tiles(stream, context, GridDirection::SOUTH, 1);
+    walk_smashing(stream, context, GridDirection::EAST, 10000ms, "east along the Ravaged Path");
+    hold_tiles(stream, context, GridDirection::WEST, 1);
+    const WalkResult out = walk_dir(stream, context, GridDirection::SOUTH, 6000ms, "south out of the Ravaged Path");
+    if (out.stop != WalkStop::TRANSITION && out.stop != WalkStop::LIMIT){
+        fail(stream, "Ravaged Path: the walk south did not leave the cave.");
+    }
+    context.wait_for(2000ms);
+
+    step(6);
+    // North half of Route 204, by hand: west to the stairs' wall and up
+    // them into a pocket of trees; three rows back down, east along the sand,
+    // north through the grass to the flower beds; round the twins, who stop
+    // us for a double battle; north between the beds into Floaroma.
+    walk_dir(stream, context, GridDirection::WEST, 8000ms, "west to the stairs");
+    walk_dir(stream, context, GridDirection::NORTH, 15000ms, "north up the stairs");
+    hold_tiles(stream, context, GridDirection::SOUTH, 3);
+    walk_dir(stream, context, GridDirection::EAST, 8000ms, "east along the sand");
+    walk_dir(stream, context, GridDirection::NORTH, 10000ms, "north to the flower beds");
+    hold_tiles(stream, context, GridDirection::SOUTH, 2);
+    hold_tiles(stream, context, GridDirection::WEST, 6);
+    if (walk_dir(stream, context, GridDirection::NORTH, 10000ms, "north to the twins").stop == WalkStop::DIALOG){
+        talk_or_fight(stream, context, "The twins", true, true);
+    }
+    hold_tiles(stream, context, GridDirection::WEST, 3);
+    walk_dir(stream, context, GridDirection::NORTH, 15000ms, "north between the flower beds");
+    hold_tiles(stream, context, GridDirection::WEST, 1);
+    walk_dir(stream, context, GridDirection::NORTH, 20000ms, "north into Floaroma");
+
+    step(7);
+    // We arrive in front of a house; the Center is a few tiles south-east.
+    walk_dir(stream, context, GridDirection::SOUTH, 1500ms, "south off the house's path");
+    hold_tiles(stream, context, GridDirection::EAST, 4);
+    heal_at_pokemon_center(stream, context, "Floaroma Pokemon Center");
+}
+
 void checkpoint_0101(
     SingleSwitchProgramEnvironment& env,
     ProControllerContext& context,
@@ -590,12 +957,40 @@ void checkpoint_0102(
         true
     );
 }
+
+void checkpoint_0104(
+    SingleSwitchProgramEnvironment& env,
+    ProControllerContext& context,
+    AutoStoryOptions options,
+    AutoStoryStats& stats
+){
+    checkpoint_reattempt_loop(env, context, options, stats,
+        [&](size_t /*attempt*/){
+            oreburgh_gym(env.console, context);
+        },
+        true
+    );
+}
+
+void checkpoint_0105(
+    SingleSwitchProgramEnvironment& env,
+    ProControllerContext& context,
+    AutoStoryOptions options,
+    AutoStoryStats& stats
+){
+    checkpoint_reattempt_loop(env, context, options, stats,
+        [&](size_t /*attempt*/){
+            oreburgh_to_floaroma(env.console, context);
+        },
+        true
+    );
+}
 }
 
 
-std::string AutoStory_Segment_01::name()       const { return "01: Jubilife to Oreburgh"; }
+std::string AutoStory_Segment_01::name()       const { return "01: Jubilife to Floaroma"; }
 std::string AutoStory_Segment_01::start_text() const { return "Start: Standing in front of the Jubilife City Pokemon Center PC."; }
-std::string AutoStory_Segment_01::end_text()   const { return "End: In Oreburgh City, after the man at the entrance."; }
+std::string AutoStory_Segment_01::end_text()   const { return "End: In the Floaroma Town Pokemon Center, with the Coal Badge."; }
 
 void AutoStory_Segment_01::run_segment(
     SingleSwitchProgramEnvironment& env,
@@ -609,6 +1004,8 @@ void AutoStory_Segment_01::run_segment(
     AutoStory_Checkpoint_0101().run_checkpoint(env, context, options, stats);
     AutoStory_Checkpoint_0102().run_checkpoint(env, context, options, stats);
     AutoStory_Checkpoint_0103().run_checkpoint(env, context, options, stats);
+    AutoStory_Checkpoint_0104().run_checkpoint(env, context, options, stats);
+    AutoStory_Checkpoint_0105().run_checkpoint(env, context, options, stats);
     env.console.log("End Segment " + name(), COLOR_GREEN);
 }
 
@@ -651,6 +1048,34 @@ void AutoStory_Checkpoint_0103::run_checkpoint(
     AutoStoryStats& stats
 ) const{
     checkpoint_0103(env, context, options, stats);
+}
+
+
+
+std::string AutoStory_Checkpoint_0104::name()       const { return "01.04 - Oreburgh Gym"; }
+std::string AutoStory_Checkpoint_0104::start_text() const { return AutoStory_Checkpoint_0103().end_text(); }
+std::string AutoStory_Checkpoint_0104::end_text()   const { return "Outside the Oreburgh Gym's door, with the Coal Badge."; }
+
+void AutoStory_Checkpoint_0104::run_checkpoint(
+    SingleSwitchProgramEnvironment& env,
+    ProControllerContext& context,
+    AutoStoryOptions options,
+    AutoStoryStats& stats
+) const{
+    checkpoint_0104(env, context, options, stats);
+}
+
+std::string AutoStory_Checkpoint_0105::name()       const { return "01.05 - Oreburgh to Floaroma"; }
+std::string AutoStory_Checkpoint_0105::start_text() const { return AutoStory_Checkpoint_0104().end_text(); }
+std::string AutoStory_Checkpoint_0105::end_text()   const { return "In the Floaroma Town Pokemon Center, healed."; }
+
+void AutoStory_Checkpoint_0105::run_checkpoint(
+    SingleSwitchProgramEnvironment& env,
+    ProControllerContext& context,
+    AutoStoryOptions options,
+    AutoStoryStats& stats
+) const{
+    checkpoint_0105(env, context, options, stats);
 }
 
 }
