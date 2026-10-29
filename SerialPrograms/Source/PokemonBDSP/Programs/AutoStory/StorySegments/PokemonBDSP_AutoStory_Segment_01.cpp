@@ -465,6 +465,10 @@ void oreburgh_to_roark(VideoStream& stream, ProControllerContext& context){
     at = walk_route(stream, context, maps, at,
         [&](const Pokemon::TilePos& pos){ return pos.y == roark.y + 1 && pos.x > roark.x && pos.x <= roark.x + 9; },
         no_trainers, in_the_way, "To the coal room's bottom row");
+    // Blocked legs on the way can leave us a row short: r97 probed along
+    // Roark's own row, two tiles east of him with his rock in between. The
+    // bottom wall pins the row below him.
+    walk_dir(stream, context, GridDirection::SOUTH, 3000ms, "south to the coal room's bottom wall");
     // Each probe turns north to press A, so the next step must turn west
     // again before it moves: an 80ms hold right after a turn often only
     // turns. A 120ms hold after the turn is one tile (on the console, 143ms
