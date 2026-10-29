@@ -25,6 +25,8 @@ This doesn't actually work. (flickering video display) But here are the instruct
 
 - [Compilling for Mac](BuildInstructions/CompilingForMac.md)
 
+- [Incremental builds and local compiler caching](BuildInstructions/IncrementalBuilds.md)
+
 ## Developer guide
 
 https://github.com/PokemonAutomation/ComputerControl/blob/master/Wiki/Developer/README.md
