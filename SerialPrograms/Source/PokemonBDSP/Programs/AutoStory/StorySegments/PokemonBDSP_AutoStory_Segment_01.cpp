@@ -118,9 +118,9 @@ void jubilife_to_oreburgh(SingleSwitchProgramEnvironment& env, VideoStream& stre
         std::string text = "[01.01 step " + std::to_string(number) + "/" + std::to_string(STEP_COUNT) + "] " + STEPS[number - 1];
         text += number < STEP_COUNT ? std::string(" -- next: ") + STEPS[number] : std::string(" -- last step");
         stream.log(text, COLOR_BLUE);
-        stream.overlay().add_log("01.01 step " + std::to_string(number) + "/" + std::to_string(STEP_COUNT) + ": " + STEPS[number - 1], COLOR_WHITE);
+        add_wrapped_log(stream.overlay(), "01.01 step " + std::to_string(number) + "/" + std::to_string(STEP_COUNT) + ": " + STEPS[number - 1], COLOR_WHITE);
         if (number < STEP_COUNT){
-            stream.overlay().add_log("Next: " + std::string(STEPS[number]), COLOR_GRAY);
+            add_wrapped_log(stream.overlay(), "Next: " + std::string(STEPS[number]), COLOR_GRAY);
         }
     };
 

@@ -16,6 +16,7 @@
 #include "Common/Cpp/Options/EnumDropdownOption.h"
 #include "CommonFramework/ImageTools/ImageBoxes.h"
 #include "CommonFramework/Language.h"
+#include "CommonFramework/VideoPipeline/VideoOverlay.h"
 #include "CommonFramework/Notifications/EventNotificationsTable.h"
 #include "CommonFramework/ProgramStats/StatsTracking.h"
 #include "CommonFramework/Tools/VideoStream.h"
@@ -167,6 +168,10 @@ public:
 
 //  Save the game from the overworld with retries. Returns true if the save was
 //  verified via overworld detection, false if the blind fallback was used.
+// Adds `text` to the video overlay's log, split at spaces into lines short
+// enough for the log box, which draws each line on one row and cuts it off.
+void add_wrapped_log(VideoOverlay& overlay, const std::string& text, Color color);
+
 bool save_game(
     SingleSwitchProgramEnvironment& env,
     ProControllerContext& context

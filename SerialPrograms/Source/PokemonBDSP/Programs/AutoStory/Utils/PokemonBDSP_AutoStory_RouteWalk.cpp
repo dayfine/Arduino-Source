@@ -19,6 +19,7 @@
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "PokemonBDSP/Inference/PokemonBDSP_DialogDetector.h"
 #include "PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_OverworldDetector.h"
+#include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStoryTools.h"
 #include "PokemonBDSP_AutoStory_Walk.h"
 #include "PokemonBDSP_AutoStory_RouteWalk.h"
 
@@ -124,7 +125,7 @@ std::string map_of(const MapSet& maps, const std::vector<TilePos>& tiles){
 
 void route_status(VideoStream& stream, const std::string& text){
     stream.log("[Route] " + text, COLOR_BLUE);
-    stream.overlay().add_log(text, COLOR_WHITE);
+    add_wrapped_log(stream.overlay(), text, COLOR_WHITE);
 }
 
 Milliseconds route_open_hold(GridDirection direction, size_t tiles){
