@@ -220,6 +220,19 @@ void route203_to_oreburgh(VideoStream& stream, ProControllerContext& context){
     // at a wall find a row from which east goes on.
     size_t fights = 0;
     bool inside = false;
+    //  On Route 203 only trainers start a talk; one with no battle is the
+    //  Hiker, who meets us inside the Gate (whose fade may not read as a
+    //  transition).
+    bool met_hiker = false;
+    auto stopped_by = [&](){
+        if (talk_or_fight(stream, context, "Route 203 trainer " + std::to_string(fights + 1))){
+            fights++;
+        }else{
+            route_status(stream, "No battle: that was the Hiker, inside the Oreburgh Gate.");
+            met_hiker = true;
+            inside = true;
+        }
+    };
     for (size_t leg = 0; leg < 40 && !inside; leg++){
         const WalkResult walk = walk_until(stream, context, 1, 0, 10000ms, "east along Route 203");
         if (walk.stop == WalkStop::TRANSITION){
@@ -230,7 +243,7 @@ void route203_to_oreburgh(VideoStream& stream, ProControllerContext& context){
             continue;
         }
         if (walk.stop == WalkStop::DIALOG || dialogue_opens(stream, context, 1500ms)){
-            fights += talk_or_fight(stream, context, "Route 203 trainer " + std::to_string(fights + 1)) ? 1 : 0;
+            stopped_by();
             continue;
         }
         // A wall. Find the row from which east goes on: north to the top wall
@@ -246,7 +259,7 @@ void route203_to_oreburgh(VideoStream& stream, ProControllerContext& context){
                 inside = true;
             }
             if (next.stop == WalkStop::DIALOG || (next.stop == WalkStop::BLOCKED && dialogue_opens(stream, context, 1500ms))){
-                fights += talk_or_fight(stream, context, "Route 203 trainer " + std::to_string(fights + 1)) ? 1 : 0;
+                stopped_by();
             }
             //  Two still chunks are the least a wall takes; more is progress.
             moved_on = inside || next.stop != WalkStop::BLOCKED || next.walked > 1200ms;
@@ -263,11 +276,13 @@ void route203_to_oreburgh(VideoStream& stream, ProControllerContext& context){
 
     step(2);
     // The Hiker steps up to us as we walk east.
-    const WalkResult to_hiker = walk_until(stream, context, 1, 0, 4000ms, "to the Hiker");
-    if (to_hiker.stop != WalkStop::DIALOG && !dialogue_opens(stream, context, 2000ms)){
-        fail(stream, "Oreburgh Gate: the Hiker did not stop us.");
+    if (!met_hiker){
+        const WalkResult to_hiker = walk_until(stream, context, 1, 0, 4000ms, "to the Hiker");
+        if (to_hiker.stop != WalkStop::DIALOG && !dialogue_opens(stream, context, 2000ms)){
+            fail(stream, "Oreburgh Gate: the Hiker did not stop us.");
+        }
+        finish_dialogue(stream, context, 0, "Hiker");
     }
-    finish_dialogue(stream, context, 0, "Hiker");
     // Then a "Hidden Moves" tutorial card, closed with B. It is no dialogue
     // box, and it can come up a moment after his last line.
     pbf_wait(context, 1500ms);
