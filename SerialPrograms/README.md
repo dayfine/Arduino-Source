@@ -13,7 +13,6 @@ Currently, we build with Qt 6.8.3.
 ### Windows:
 
 - [How to Build (Qt 6.8.3) - Windows](BuildInstructions/Build-Windows-Qt6.8.3.md)
-- Local Windows compiler-cache instructions are still missing; see [platform status](BuildInstructions/IncrementalBuilds.md#platform-support).
 
 
 ### Ubuntu Linux:
@@ -26,11 +25,7 @@ This doesn't actually work. (flickering video display) But here are the instruct
 
 - [Compilling for Mac](BuildInstructions/CompilingForMac.md)
 
-- [Local compiler caching on macOS](BuildInstructions/Build-Mac-CompilerCache.md)
-
 ## Developer guide
-
-- [Incremental builds, platform support and compiler caching](BuildInstructions/IncrementalBuilds.md)
 
 https://github.com/PokemonAutomation/ComputerControl/blob/master/Wiki/Developer/README.md
 
