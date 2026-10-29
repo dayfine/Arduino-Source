@@ -25,6 +25,7 @@ namespace{
 constexpr Milliseconds TILE_TIME = 267ms;       //  16 frames at 60 fps
 constexpr Milliseconds TURN_TIME = 133ms;       //  turning before the first step
 constexpr Milliseconds FACE_HOLD = 40ms;        //  short enough to turn without stepping
+constexpr Milliseconds FACE_SETTLE = 300ms;     //  the turn animation, before A reaches what is ahead
 constexpr Milliseconds STEP_RELEASE = 100ms;
 constexpr Milliseconds WARP_FADE_TIMEOUT = 3000ms;
 constexpr Milliseconds WARP_ARRIVAL_TIMEOUT = 5000ms;
@@ -87,9 +88,12 @@ void check_not_interrupted(ConsoleHandle& console, ProControllerContext& context
     }
 }
 
-void start_surf(ConsoleHandle& console, ProControllerContext& context, MapDirection direction){
+void start_surf(ConsoleHandle& console, ProControllerContext& context, MapDirection direction, bool facing_water){
     //  "The water is a deep blue... Would you like to SURF?", with YES selected.
-    pbf_press_dpad(context, dpad(direction), FACE_HOLD, STEP_RELEASE);
+    //  An A pressed while the player is still turning is lost.
+    if (!facing_water){
+        pbf_press_dpad(context, dpad(direction), FACE_HOLD, FACE_SETTLE);
+    }
     pbf_press_button(context, BUTTON_A, 160ms, 0ms);
     SelectionDialogWatcher prompt(COLOR_RED);
     context.wait_for_all_requests();
@@ -130,7 +134,7 @@ void walk_overworld_route(
             break;
         }
         case RouteAction::SURF:
-            start_surf(console, context, step.direction);
+            start_surf(console, context, step.direction, facing == step.direction);
             break;
         case RouteAction::FACE:
             pbf_press_dpad(context, dpad(step.direction), FACE_HOLD, STEP_RELEASE);
