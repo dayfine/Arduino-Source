@@ -25,6 +25,7 @@
 #include "PokemonBDSP/Inference/Battles/PokemonBDSP_BattleMenuDetector.h"
 
 #include <cstdlib>
+#include <iterator>
 
 using namespace std::chrono_literals;
 
@@ -488,23 +489,40 @@ void oreburgh_to_roark(VideoStream& stream, ProControllerContext& context){
     pbf_move_left_joystick(context, {-1, 0}, 120ms, 300ms);
     route_turn(stream, context, GridDirection::NORTH);
     context.wait_for_all_requests();
-    //  Where we stand to talk to him, to check against the plan after a run.
-    if (VideoSnapshot screen = stream.video().snapshot()){
-        const std::string folder = SCREENSHOTS_PATH() + "AutoStory/route/";
-        Filesystem::create_directories(Filesystem::Path(folder));
-        screen.frame->save(folder + now_to_filestring() + "-below-roark.png");
-    }
-    // His talk opens with the camera zooming in; the first line comes some
-    // seconds later (r98). An A right after the turn can go unheard (r101):
-    // press again if nothing came.
-    context.wait_for(500ms);
+    // He answers only when we stand well lined up below him: on the same
+    // tile, A got nothing in r101 and r104 and in several presses by hand,
+    // and his talk came after a 30ms nudge sideways (by hand, 2026-10-29).
+    // So press A, and if nothing comes, nudge part of a tile and try again,
+    // working out to two nudges either side. His talk opens with the camera
+    // zooming in, and the first line comes some seconds later (r98).
+    const GridDirection nudges[] = {
+        GridDirection::WEST, GridDirection::WEST,
+        GridDirection::EAST, GridDirection::EAST, GridDirection::EAST, GridDirection::EAST,
+        GridDirection::WEST, GridDirection::WEST,
+    };
     bool talked = false;
-    for (size_t attempt = 0; attempt < 3 && !talked; attempt++){
+    for (size_t attempt = 0; attempt <= std::size(nudges) && !talked; attempt++){
+        if (attempt > 0){
+            const GridDirection side = nudges[attempt - 1];
+            route_turn(stream, context, side);
+            pbf_move_left_joystick(context, {side == GridDirection::EAST ? 1.0 : -1.0, 0}, 30ms, 300ms);
+            route_turn(stream, context, GridDirection::NORTH);
+        }
+        context.wait_for(500ms);
+        //  Where we stood for each try, to compare after a run.
+        if (VideoSnapshot screen = stream.video().snapshot()){
+            const std::string folder = SCREENSHOTS_PATH() + "AutoStory/route/";
+            Filesystem::create_directories(Filesystem::Path(folder));
+            screen.frame->save(folder + now_to_filestring() + "-below-roark-" + std::to_string(attempt) + ".png");
+        }
         pbf_press_button(context, BUTTON_A, 80ms, 200ms);
         talked = dialogue_opens(stream, context, 6000ms);
+        if (talked){
+            stream.log("[Roark] He answered on try " + std::to_string(attempt) + ".");
+        }
     }
     if (!talked){
-        fail(stream, "Oreburgh Mine: no talk opened below Roark.");
+        fail(stream, "Oreburgh Mine: no talk opened below Roark, nudging two either side.");
     }
     at = {roark.next(GridDirection::SOUTH)};
     finish_dialogue(stream, context, 0, "Roark");
@@ -518,10 +536,16 @@ void oreburgh_to_roark(VideoStream& stream, ProControllerContext& context){
     at = walk_route(stream, context, maps, at,
         [&](const Pokemon::TilePos& pos){ return pos == exit; },
         no_trainers, in_the_way, "Back to the corridor's top");
-    // The corridor and the entrance hall are one map: this walk goes up
-    // through the hall and out onto the stairs below the sign (r103).
-    if (walk_dir(stream, context, GridDirection::NORTH, 15000ms, "out of the mine").stop != WalkStop::TRANSITION){
-        fail(stream, "Oreburgh Mine: did not leave by the entrance.");
+    // Up into the entrance hall (a transition, as on the way in), then on
+    // north out of the mine: in r103 that walk left the mine without a
+    // transition we saw and ended against the sign above the stairs, which
+    // the moving belts make read as the time limit.
+    if (walk_dir(stream, context, GridDirection::NORTH, 10000ms, "into the entrance hall").stop != WalkStop::TRANSITION){
+        fail(stream, "Oreburgh Mine: walking north from the corridor did not reach the entrance hall.");
+    }
+    context.wait_for(1500ms);
+    if (walk_dir(stream, context, GridDirection::NORTH, 10000ms, "out of the mine").stop == WalkStop::DIALOG){
+        fail(stream, "Oreburgh Mine: someone stopped us on the way out of the mine.");
     }
     context.wait_for(1500ms);
 }
