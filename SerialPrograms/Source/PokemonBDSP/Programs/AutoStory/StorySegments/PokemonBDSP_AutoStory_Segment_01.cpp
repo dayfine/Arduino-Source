@@ -7,6 +7,7 @@
 
 #include "PokemonBDSP_AutoStory_Segment_01.h"
 #include "../Data/PokemonBDSP_AutoStory_OreburghMine.h"
+#include "../Data/PokemonBDSP_AutoStory_RavagedPath.h"
 #include "../Data/PokemonBDSP_AutoStory_StoryMaps.h"
 #include "../Detect/PokemonBDSP_AutoStory_OverworldDetector.h"
 #include "../Utils/PokemonBDSP_AutoStory_PokemonCenter.h"
@@ -26,6 +27,7 @@
 #include "PokemonBDSP/Inference/PokemonBDSP_DialogDetector.h"
 #include "PokemonBDSP/Inference/Battles/PokemonBDSP_BattleMenuDetector.h"
 
+#include <algorithm>
 #include <cstdlib>
 
 using namespace std::chrono_literals;
@@ -584,27 +586,6 @@ bool in_pokemon_center(VideoStream& stream){
     return inside;
 }
 
-//  Walks in `dir`, breaking Rock Smash rocks in the way: a stop that answers
-//  A with the "breakable with a hidden move" prompt gets Yes, and the walk
-//  goes on. Returns the last walk's result (a stop no rock explains).
-WalkResult walk_smashing(VideoStream& stream, ProControllerContext& context, GridDirection dir, Milliseconds limit, const std::string& label){
-    WalkResult result = walk_dir(stream, context, dir, limit, label);
-    for (size_t rocks = 0; rocks < 6 && result.stop == WalkStop::BLOCKED; rocks++){
-        pbf_press_button(context, BUTTON_A, 80ms, 200ms);
-        if (!dialogue_opens(stream, context, 1500ms)){
-            return result;      // a wall, not a rock
-        }
-        // "Would you like to use Rock Smash?": A for Yes, then the move's
-        // animation, then B to clear anything left (by hand, 2026-10-29).
-        pbf_press_button(context, BUTTON_A, 80ms, 1500ms);
-        pbf_press_button(context, BUTTON_A, 80ms, 4000ms);
-        pbf_press_button(context, BUTTON_B, 80ms, 1500ms);
-        context.wait_for_all_requests();
-        result = walk_dir(stream, context, dir, limit, label);
-    }
-    return result;
-}
-
 //  For a player inside a Pokemon Center after a whiteout, at the counter:
 //  out through the door. The door is straight south of the nurse in most
 //  Centers; in Oreburgh's it was two tiles east of where we stood (by hand).
@@ -877,17 +858,49 @@ void oreburgh_to_floaroma(VideoStream& stream, ProControllerContext& context){
     context.wait_for(2000ms);
 
     step(5);
-    // Inside: a row down, east along the corridor breaking its rocks to its
-    // east end, a tile back west, and south out of the lit opening. The
-    // chambers west and north end in water (by hand, 2026-10-29).
-    hold_tiles(stream, context, GridDirection::SOUTH, 1);
-    walk_smashing(stream, context, GridDirection::EAST, 10000ms, "east along the Ravaged Path");
-    hold_tiles(stream, context, GridDirection::WEST, 1);
-    const WalkResult out = walk_dir(stream, context, GridDirection::SOUTH, 6000ms, "south out of the Ravaged Path");
-    if (out.stop != WalkStop::TRANSITION && out.stop != WalkStop::LIMIT){
-        fail(stream, "Ravaged Path: the walk south did not leave the cave.");
+    // On the traced grid (Data/PokemonBDSP_AutoStory_RavagedPath): from the
+    // south door up the stairs to the tile west of one of the two rocks
+    // across the lower corridor, smash it, then east and south to the
+    // corridor's east end; the way out is a tile west of it, south.
+    {
+        std::vector<Pokemon::TrainerSight> no_trainers;
+        auto in_the_way = [&](const std::string& who){ talk_or_fight(stream, context, who); };
+        std::vector<Pokemon::TilePos> at{RavagedPath::ENTRANCE};
+        const Pokemon::MapSet rocks_in = ravaged_path_maps();
+        at = walk_route(stream, context, rocks_in, at,
+            [&](const Pokemon::TilePos& pos){
+                const auto& before = RavagedPath::before_rocks();
+                return std::find(before.begin(), before.end(), pos) != before.end();
+            },
+            no_trainers, in_the_way, "To a rock across the corridor");
+        route_turn(stream, context, GridDirection::EAST);
+        pbf_press_button(context, BUTTON_A, 80ms, 200ms);
+        if (!dialogue_opens(stream, context, 2000ms)){
+            fail(stream, "Ravaged Path: no Rock Smash offer facing the rock east of us.");
+        }
+        // "Would you like to use Rock Smash?": A for Yes, the animation, then
+        // B for anything left (by hand, 2026-10-29).
+        pbf_press_button(context, BUTTON_A, 80ms, 1500ms);
+        pbf_press_button(context, BUTTON_A, 80ms, 4000ms);
+        pbf_press_button(context, BUTTON_B, 80ms, 1500ms);
+        context.wait_for_all_requests();
+        // We may be on either row; the rock east of the other stays, but no
+        // leg from our row crosses it.
+        std::vector<Pokemon::TilePos> smashed;
+        for (const Pokemon::TilePos& pos : RavagedPath::before_rocks()){
+            smashed.push_back(pos.next(GridDirection::EAST));
+        }
+        const Pokemon::MapSet rocks_out = ravaged_path_maps(smashed);
+        at = walk_route(stream, context, rocks_out, at,
+            [&](const Pokemon::TilePos& pos){ return pos == RavagedPath::EAST_END; },
+            no_trainers, in_the_way, "To the corridor's east end");
+        hold_tiles(stream, context, GridDirection::WEST, 1);
+        const WalkResult out = walk_dir(stream, context, GridDirection::SOUTH, 4000ms, "south out of the Ravaged Path");
+        if (out.stop != WalkStop::TRANSITION && out.stop != WalkStop::LIMIT){
+            fail(stream, "Ravaged Path: the walk south from a tile west of the corridor's end did not leave the cave.");
+        }
+        context.wait_for(2000ms);
     }
-    context.wait_for(2000ms);
 
     step(6);
     // North half of Route 204, by hand: west to the stairs' wall and up

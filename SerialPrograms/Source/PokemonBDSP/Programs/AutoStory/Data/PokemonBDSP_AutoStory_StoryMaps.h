@@ -20,6 +20,7 @@ extern const char* const MAP_SANDGEM_TOWN;
 extern const char* const MAP_ROUTE_202;
 extern const char* const MAP_JUBILIFE_CITY;
 extern const char* const MAP_OREBURGH_MINE;
+extern const char* const MAP_RAVAGED_PATH;
 
 //  Route 201, Sandgem Town and Route 202.
 const Pokemon::MapSet& story_maps();
@@ -29,6 +30,9 @@ const Pokemon::MapSet& story_maps();
 const Pokemon::MapSet& jubilife_maps();
 //  The Oreburgh Mine's coal room on its own (01.03).
 const Pokemon::MapSet& oreburgh_mine_maps();
+
+//  The Ravaged Path on its own (01.05), with the rocks in `smashed` open.
+Pokemon::MapSet ravaged_path_maps(const std::vector<Pokemon::TilePos>& smashed = {});
 
 //  Whether a plan may cross this map. Routes are traced from the DP maps and
 //  their tree walls carried over to BDSP; towns changed more in the remake, so

@@ -10,6 +10,7 @@
 #include "Pokemon/Navigation/Pokemon_TileGrid.h"
 #include "Data/PokemonBDSP_AutoStory_JubilifeCity.h"
 #include "Data/PokemonBDSP_AutoStory_OreburghMine.h"
+#include "Data/PokemonBDSP_AutoStory_RavagedPath.h"
 #include "Data/PokemonBDSP_AutoStory_Route201.h"
 #include "Data/PokemonBDSP_AutoStory_Route202.h"
 #include "Data/PokemonBDSP_AutoStory_SandgemTown.h"
@@ -468,6 +469,40 @@ public:
                 leg_error = check_robust_plan(logger, "Mine: below Roark to the corridor's corner", mine, {below_roark},
                     [&](const TilePos& pos){ return pos == exit; });
                 failed += leg_error.empty() ? "" : leg_error + " ";
+            }
+            //  01.05 in the Ravaged Path: from the south door to a rock across the
+            //  corridor, and once it is smashed, to the tile above the way out.
+            {
+                const Pokemon::MapSet cave = ravaged_path_maps();
+                for (const TilePos& rock : RavagedPath::rocks()){
+                    if (cave.world().at(rock) != Pokemon::TileType::BLOCKED){
+                        failed += "Ravaged Path: rock " + cave.describe(rock) + " is not blocked. ";
+                    }
+                }
+                const std::vector<TilePos>& before = RavagedPath::before_rocks();
+                std::string leg_error = check_robust_plan(logger, "Ravaged Path: south door to a rock", cave, {RavagedPath::ENTRANCE},
+                    [&](const TilePos& pos){ return std::find(before.begin(), before.end(), pos) != before.end(); });
+                failed += leg_error.empty() ? "" : leg_error + " ";
+                for (const TilePos& from : before){
+                    const TilePos rock = from.next(GridDirection::EAST);
+                    const Pokemon::MapSet open = ravaged_path_maps({rock});
+                    leg_error = check_robust_plan(logger, "Ravaged Path: after smashing " + open.describe(rock) + ", to the corridor's east end", open, {from},
+                        [&](const TilePos& pos){ return pos == RavagedPath::EAST_END; });
+                    failed += leg_error.empty() ? "" : leg_error + " ";
+                }
+                //  What 01.05 plans: from either tile, with both rocks open.
+                std::vector<TilePos> both;
+                for (const TilePos& from : before){
+                    both.push_back(from.next(GridDirection::EAST));
+                }
+                leg_error = check_robust_plan(logger, "Ravaged Path: from either rock's tile to the corridor's east end", ravaged_path_maps(both), before,
+                    [&](const TilePos& pos){ return pos == RavagedPath::EAST_END; });
+                failed += leg_error.empty() ? "" : leg_error + " ";
+                if (!(RavagedPath::EAST_END.next(GridDirection::WEST) == RavagedPath::ABOVE_EXIT) ||
+                    cave.world().at(RavagedPath::ABOVE_EXIT.next(GridDirection::SOUTH)) != Pokemon::TileType::DOOR
+                ){
+                    failed += "Ravaged Path: the way out is not a door a tile west of the corridor's east end. ";
+                }
             }
             for (const auto& leg : legs){
                 const TilePos to = leg.to;
