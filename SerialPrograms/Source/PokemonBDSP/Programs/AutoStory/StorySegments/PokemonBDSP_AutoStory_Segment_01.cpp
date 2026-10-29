@@ -6,6 +6,8 @@
  */
 
 #include "PokemonBDSP_AutoStory_Segment_01.h"
+#include "../Data/PokemonBDSP_AutoStory_OreburghMine.h"
+#include "../Data/PokemonBDSP_AutoStory_StoryMaps.h"
 #include "../Detect/PokemonBDSP_AutoStory_OverworldDetector.h"
 #include "../Utils/PokemonBDSP_AutoStory_RouteWalk.h"
 #include "../Utils/PokemonBDSP_AutoStory_Segment_00_tools.h"
@@ -345,60 +347,14 @@ WalkResult walk_dir(VideoStream& stream, ProControllerContext& context, GridDire
     return walk_until(stream, context, x, y, limit, label);
 }
 
-enum class SearchEnd{ TRANSITION, BLOCKED_EVERYWHERE };
-
-//  Heads `main` (north or south) in a cave: walks that way; when stopped
-//  without moving, steps sideways 1, 2, 3 ... tiles, alternating east and
-//  west, and tries again from each column. Ends on a transition, or when no
-//  column within `reach` gets further (the far wall). Trainers who stop us
-//  are talked to or fought.
-SearchEnd cave_search(VideoStream& stream, ProControllerContext& context, GridDirection main, int reach, const std::string& label){
-    int column = 0;
-    for (size_t leg = 0; leg < 60; leg++){
-        const WalkResult walk = walk_dir(stream, context, main, 10000ms, label);
-        if (walk.stop == WalkStop::TRANSITION){
-            return SearchEnd::TRANSITION;
-        }
-        if (walk.stop == WalkStop::DIALOG || (walk.stop == WalkStop::BLOCKED && dialogue_opens(stream, context, 1000ms))){
-            talk_or_fight(stream, context, label + ": someone in the way");
-            continue;
-        }
-        //  Two still chunks are the least a wall takes; more is progress.
-        if (walk.stop != WalkStop::BLOCKED || walk.walked > 800ms){
-            column = 0;
-            continue;
-        }
-        bool moved_on = false;
-        for (int k = 1; k <= 2 * reach && !moved_on; k++){
-            const int target = (k % 2 == 1 ? 1 : -1) * ((k + 1) / 2);
-            const int change = target - column;
-            hold_tiles(stream, context, change > 0 ? GridDirection::EAST : GridDirection::WEST, (size_t)std::abs(change));
-            column = target;
-            const WalkResult next = walk_dir(stream, context, main, 10000ms, label + ", column " + std::to_string(column));
-            if (next.stop == WalkStop::TRANSITION){
-                return SearchEnd::TRANSITION;
-            }
-            if (next.stop == WalkStop::DIALOG || (next.stop == WalkStop::BLOCKED && dialogue_opens(stream, context, 1000ms))){
-                talk_or_fight(stream, context, label + ": someone in the way");
-            }
-            moved_on = next.stop != WalkStop::BLOCKED || next.walked > 800ms;
-        }
-        if (!moved_on){
-            return SearchEnd::BLOCKED_EVERYWHERE;
-        }
-        column = 0;
-    }
-    fail(stream, label + ": still searching after 60 legs.");
-}
-
 void oreburgh_to_roark(VideoStream& stream, ProControllerContext& context){
     // What 01.03 does, stepped through on the console before writing it.
     StepLog step(stream, "01.03", "From the Oreburgh Pokemon Center to Roark in the mine", {
         "Walk past Barry at the Center's door to the stone ledge, then east to the fence below the Poke Mart",
-        "South under the conveyors and down the stairs below the mine's sign",
-        "Through the mine's entrance hall and down the rocky corridor to the coal room",
-        "Down to the coal room's bottom row and talk to Roark",
-        "Back up the corridor and out of the mine",
+        "Two columns west, then one walk south down the yard's stairs, under the conveyors and into the mine",
+        "Through the mine's entrance hall to the rocky corridor",
+        "Walk the planned route down the corridor and round the coal block, and talk to Roark",
+        "Walk back to the corridor's top and out of the mine",
     });
 
     step(1);
@@ -416,62 +372,91 @@ void oreburgh_to_roark(VideoStream& stream, ProControllerContext& context){
     }
 
     step(2);
-    // The conveyors keep the screen moving, so a stop under them never
-    // reads as a wall: hold, then search the columns west for the stairs.
-    walk_dir(stream, context, GridDirection::SOUTH, 10000ms, "south under the conveyors");
+    // The mine's stairs are straight south of here, two columns west of
+    // the fence (Bulbapedia's Oreburgh map: column 46, between the conveyor
+    // pillars at 42-44 and 48-50). One walk south goes down the yard's
+    // stairs, under the conveyors and into the mine; on the console it ran
+    // on through the entrance hall into the rocky corridor. A worker walks
+    // about on the sand path: wait for him, then try the columns beside.
+    hold_tiles(stream, context, GridDirection::WEST, 2);
     bool in_mine = false;
-    for (size_t column = 1; column <= 6 && !in_mine; column++){
-        hold_tiles(stream, context, GridDirection::WEST, 1);
-        in_mine = walk_dir(stream, context, GridDirection::SOUTH, 4000ms, "south to the mine's stairs").stop == WalkStop::TRANSITION;
-    }
-    for (size_t column = 1; column <= 10 && !in_mine; column++){
-        hold_tiles(stream, context, GridDirection::EAST, 1);
-        in_mine = walk_dir(stream, context, GridDirection::SOUTH, 4000ms, "south to the mine's stairs").stop == WalkStop::TRANSITION;
+    static const int COLUMNS[] = {0, -1, 1, -2};
+    int column = 0;
+    for (int target : COLUMNS){
+        if (target != column){
+            const int change = target - column;
+            hold_tiles(stream, context, change > 0 ? GridDirection::EAST : GridDirection::WEST, (size_t)std::abs(change));
+            column = target;
+        }
+        for (size_t again = 0; again < 2 && !in_mine; again++){
+            const WalkResult walk = walk_dir(stream, context, GridDirection::SOUTH, 15000ms, "south into the mine");
+            in_mine = walk.stop == WalkStop::TRANSITION;
+            if (walk.stop == WalkStop::DIALOG){
+                talk_or_fight(stream, context, "Someone on the way to the mine");
+            }else if (!in_mine){
+                context.wait_for(2000ms);   // the worker may move on
+            }
+        }
+        if (in_mine){
+            break;
+        }
     }
     if (!in_mine){
-        fail(stream, "Oreburgh: did not find the mine's stairs below its sign.");
+        fail(stream, "Oreburgh: no column south of the Center led into the mine.");
     }
     context.wait_for(1500ms);
 
     step(3);
-    if (walk_dir(stream, context, GridDirection::SOUTH, 10000ms, "through the mine's entrance hall").stop != WalkStop::TRANSITION){
-        fail(stream, "Oreburgh Mine: the entrance hall did not lead on south.");
+    // If the fade into the mine was missed, we are already in the corridor
+    // and this walk stops at its boulder; otherwise it crosses the hall.
+    const WalkResult hall = walk_dir(stream, context, GridDirection::SOUTH, 10000ms, "through the mine's entrance hall");
+    if (hall.stop == WalkStop::TRANSITION){
+        context.wait_for(1500ms);
     }
-    context.wait_for(1500ms);
 
     step(4);
-    // Boulders and small rocks (Rock Smash, not ours yet) zigzag the
-    // corridor; the coal block fills the room's middle, so its bottom row is
-    // reached down a side.
-    if (cave_search(stream, context, GridDirection::SOUTH, 16, "down to the coal room's bottom row") != SearchEnd::BLOCKED_EVERYWHERE){
-        fail(stream, "Oreburgh Mine: a transition on the way down.");
+    // Planned on the coal room's tile grid (Data/OreburghMine): the
+    // corridor's rocks zigzag a row at a time, the room's second row passes
+    // under the worker on the first, and the east side leads down to the
+    // bottom row below Roark.
+    const Pokemon::MapSet& maps = oreburgh_mine_maps();
+    auto world = [&](const Pokemon::TilePos& pos){ return maps.to_world(MAP_OREBURGH_MINE, pos); };
+    std::vector<Pokemon::TrainerSight> no_trainers;
+    auto in_the_way = [&](const std::string& who){ talk_or_fight(stream, context, who); };
+    std::vector<Pokemon::TilePos> at;
+    for (const Pokemon::TilePos& pos : OreburghMine::corridor_top()){
+        at.push_back(world(pos));
     }
-    // Roark stands a row above the bottom row, between two rocks: walking
-    // along the bottom never meets him. Probe each tile: face north, A.
-    bool roark = false;
-    for (GridDirection along : {GridDirection::WEST, GridDirection::EAST}){
-        for (size_t tile = 0; tile < 30 && !roark; tile++){
-            route_turn(stream, context, GridDirection::NORTH);
-            pbf_press_button(context, BUTTON_A, 80ms, 200ms);
-            roark = dialogue_opens(stream, context, 1500ms);
-            if (!roark){
-                if (walk_dir(stream, context, along, 700ms, "along the bottom row").stop == WalkStop::BLOCKED){
-                    break;
-                }
-            }
+    // No wall pins the column below Roark (his rocks are a row up), so plan
+    // to the bottom row east of him, then step west facing north with A at
+    // each tile until he answers.
+    const Pokemon::TilePos roark = world(OreburghMine::ROARK);
+    at = walk_route(stream, context, maps, at,
+        [&](const Pokemon::TilePos& pos){ return pos.y == roark.y + 1 && pos.x > roark.x && pos.x <= roark.x + 9; },
+        no_trainers, in_the_way, "To the coal room's bottom row");
+    bool answered = false;
+    for (size_t tile = 0; tile < 12 && !answered; tile++){
+        route_turn(stream, context, GridDirection::NORTH);
+        pbf_press_button(context, BUTTON_A, 80ms, 200ms);
+        answered = dialogue_opens(stream, context, 1500ms);
+        if (!answered){
+            hold_tiles(stream, context, GridDirection::WEST, 1);
         }
-        if (roark){
-            break;
-        }
     }
-    if (!roark){
-        fail(stream, "Oreburgh Mine: Roark did not answer anywhere along the bottom row.");
+    if (!answered){
+        fail(stream, "Oreburgh Mine: Roark did not answer along the bottom row.");
     }
+    at = {roark.next(GridDirection::SOUTH)};
     finish_dialogue(stream, context, 0, "Roark");
 
     step(5);
-    if (cave_search(stream, context, GridDirection::NORTH, 16, "up to the entrance hall") != SearchEnd::TRANSITION){
-        fail(stream, "Oreburgh Mine: did not get back up to the entrance hall.");
+    // Back to the top of the corridor, then north out through the hall.
+    const Pokemon::TilePos exit = world(OreburghMine::corridor_top()[1]);
+    at = walk_route(stream, context, maps, at,
+        [&](const Pokemon::TilePos& pos){ return pos.y == exit.y && pos.x >= exit.x - 1 && pos.x <= exit.x + 1; },
+        no_trainers, in_the_way, "Back to the corridor's top");
+    if (walk_dir(stream, context, GridDirection::NORTH, 10000ms, "into the entrance hall").stop != WalkStop::TRANSITION){
+        fail(stream, "Oreburgh Mine: walking north from the corridor did not reach the entrance hall.");
     }
     context.wait_for(1500ms);
     if (walk_dir(stream, context, GridDirection::NORTH, 10000ms, "out of the mine").stop != WalkStop::TRANSITION){

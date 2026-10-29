@@ -5,6 +5,7 @@
  */
 
 #include "PokemonBDSP_AutoStory_JubilifeCity.h"
+#include "PokemonBDSP_AutoStory_OreburghMine.h"
 #include "PokemonBDSP_AutoStory_Route201.h"
 #include "PokemonBDSP_AutoStory_Route202.h"
 #include "PokemonBDSP_AutoStory_SandgemTown.h"
@@ -21,6 +22,7 @@ const char* const MAP_ROUTE_201 = "Route 201";
 const char* const MAP_SANDGEM_TOWN = "Sandgem Town";
 const char* const MAP_ROUTE_202 = "Route 202";
 const char* const MAP_JUBILIFE_CITY = "Jubilife City";
+const char* const MAP_OREBURGH_MINE = "Oreburgh Mine";
 
 
 //  Offsets come from how the Bulbapedia maps join:
@@ -51,6 +53,15 @@ const MapSet& jubilife_maps(){
     static const MapSet maps = []{
         MapSet maps;
         maps.add(MAP_JUBILIFE_CITY, JubilifeCity::grid(), {0, 0});
+        return maps;
+    }();
+    return maps;
+}
+
+const MapSet& oreburgh_mine_maps(){
+    static const MapSet maps = []{
+        MapSet maps;
+        maps.add(MAP_OREBURGH_MINE, OreburghMine::grid(), {0, 0});
         return maps;
     }();
     return maps;

@@ -9,6 +9,7 @@
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "Pokemon/Navigation/Pokemon_TileGrid.h"
 #include "Data/PokemonBDSP_AutoStory_JubilifeCity.h"
+#include "Data/PokemonBDSP_AutoStory_OreburghMine.h"
 #include "Data/PokemonBDSP_AutoStory_Route201.h"
 #include "Data/PokemonBDSP_AutoStory_Route202.h"
 #include "Data/PokemonBDSP_AutoStory_SandgemTown.h"
@@ -450,6 +451,24 @@ public:
                 {"Jubilife: president to the Pokemon Center", {president}, center, true},
             };
             std::string failed;
+            //  01.03 in the Oreburgh Mine: the corridor's top to below Roark, and back.
+            {
+                const Pokemon::MapSet& mine = oreburgh_mine_maps();
+                auto m = [&](const TilePos& pos){ return mine.to_world(MAP_OREBURGH_MINE, pos); };
+                std::vector<TilePos> top;
+                for (const TilePos& pos : OreburghMine::corridor_top()){
+                    top.push_back(m(pos));
+                }
+                const TilePos below_roark = m(OreburghMine::ROARK).next(GridDirection::SOUTH);
+                const TilePos roark = m(OreburghMine::ROARK);
+                std::string leg_error = check_robust_plan(logger, "Mine: corridor top to the bottom row east of Roark", mine, top,
+                    [&](const TilePos& pos){ return pos.y == roark.y + 1 && pos.x > roark.x && pos.x <= roark.x + 9; });
+                failed += leg_error.empty() ? "" : leg_error + " ";
+                const TilePos exit = m(OreburghMine::corridor_top()[1]);
+                leg_error = check_robust_plan(logger, "Mine: below Roark to the corridor top", mine, {below_roark},
+                    [&](const TilePos& pos){ return pos.y == exit.y && pos.x >= exit.x - 1 && pos.x <= exit.x + 1; });
+                failed += leg_error.empty() ? "" : leg_error + " ";
+            }
             for (const auto& leg : legs){
                 const TilePos to = leg.to;
                 const bool door = leg.door;

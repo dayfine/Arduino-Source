@@ -19,6 +19,7 @@ extern const char* const MAP_ROUTE_201;
 extern const char* const MAP_SANDGEM_TOWN;
 extern const char* const MAP_ROUTE_202;
 extern const char* const MAP_JUBILIFE_CITY;
+extern const char* const MAP_OREBURGH_MINE;
 
 //  Route 201, Sandgem Town and Route 202.
 const Pokemon::MapSet& story_maps();
@@ -26,6 +27,8 @@ const Pokemon::MapSet& story_maps();
 //  Jubilife City on its own: 00.05 starts there after Dawn's scene, so it is
 //  not joined to Route 202.
 const Pokemon::MapSet& jubilife_maps();
+//  The Oreburgh Mine's coal room on its own (01.03).
+const Pokemon::MapSet& oreburgh_mine_maps();
 
 //  Whether a plan may cross this map. Routes are traced from the DP maps and
 //  their tree walls carried over to BDSP; towns changed more in the remake, so
