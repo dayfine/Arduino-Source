@@ -18,11 +18,7 @@ namespace PokemonFRLG{
 
 namespace{
 
-std::optional<MapDirection> parse_facing(const std::vector<std::string>& words){
-    if (words.size() < 8){
-        return std::nullopt;
-    }
-    const std::string& name = words[7];
+std::optional<MapDirection> parse_direction(const std::string& name){
     for (MapDirection direction : {MapDirection::NORTH, MapDirection::EAST, MapDirection::SOUTH, MapDirection::WEST}){
         if (name == direction_name(direction)){
             return direction;
@@ -36,7 +32,7 @@ std::vector<RouteStep> plan(const std::vector<std::string>& words, std::ostream&
         throw ParseException(words[0] + ": expected FROM_MAP x y TO_MAP x y [facing]");
     }
     const MapPosition start{words[1], {std::stoi(words[2]), std::stoi(words[3])}};
-    const RouteGoal goal{{words[4], {std::stoi(words[5]), std::stoi(words[6])}}, parse_facing(words)};
+    const RouteGoal goal{{words[4], {std::stoi(words[5]), std::stoi(words[6])}}, words.size() > 7 ? parse_direction(words[7]) : std::nullopt};
     const std::optional<std::vector<RouteStep>> route = plan_overworld_route(overworld_maps(post_game_flags()), start, goal);
     if (!route){
         throw ParseException(words[0] + ": no route from " + to_string(start) + " to " + to_string(goal.position));
@@ -59,9 +55,11 @@ void register_overworld_commands(){
             }
         );
         register_command_file_command(
-            "frlg_route", "frlg_route FROM_MAP x y TO_MAP x y [facing]   (plan and walk an FRLG route)",
+            "frlg_route", "frlg_route FROM_MAP x y TO_MAP x y [facing] [start facing]   (plan and walk an FRLG route)",
             [](CommandFileSession& session, const std::vector<std::string>& words){
-                walk_overworld_route(session.env.console, session.context, plan(words, session.out));
+                //  frlg_route ... [goal facing] [facing the player starts with]
+                const std::optional<MapDirection> start = words.size() > 8 ? parse_direction(words[8]) : std::nullopt;
+                walk_overworld_route(session.env.console, session.context, plan(words, session.out), start);
             }
         );
         return true;
