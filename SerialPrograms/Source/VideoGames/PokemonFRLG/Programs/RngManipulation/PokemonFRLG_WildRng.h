@@ -13,7 +13,7 @@
 #include "CommonFramework/Notifications/EventNotificationsTable.h"
 #include "CommonTools/Options/LanguageOCROption.h"
 #include "CommonTools/Options/StringSelectOption.h"
-#include "NintendoSwitch/NintendoSwitch_SingleSwitchProgram.h"
+#include "PokemonFRLG_RngProgram.h"
 #include "NintendoSwitch/Options/NintendoSwitch_GoHomeWhenDoneOption.h"
 #include "Pokemon/Pokemon_AdvRng.h"
 #include "PokemonFRLG_BlindNavigation.h"
@@ -31,9 +31,13 @@ public:
     virtual std::unique_ptr<StatsTracker> make_stats() const override;
 };
 
-class WildRng : public SingleSwitchProgramInstance, private ConfigOption::Listener{
+class WildRng : public RngProgramInstance, private ConfigOption::Listener{
 public:
     using Descriptor = WildRng_Descriptor;
+    virtual PartyRequirement party_requirement() const override{ return PartyRequirement::FREE_SLOT; }
+    virtual StartMenuContext start_menu_context() const override{
+        return in_safari_zone() ? StartMenuContext::SAFARI_ZONE : StartMenuContext::STANDARD;
+    }
     ~WildRng();
     WildRng();
     virtual void program(SingleSwitchProgramEnvironment& env, ProControllerContext &context) override;

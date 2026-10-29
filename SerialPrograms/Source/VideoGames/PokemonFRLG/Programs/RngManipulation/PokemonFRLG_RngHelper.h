@@ -13,7 +13,7 @@
 #include "Common/Cpp/Options/StaticTextOption.h"
 #include "CommonFramework/Notifications/EventNotificationsTable.h"
 #include "CommonTools/Options/LanguageOCROption.h"
-#include "NintendoSwitch/NintendoSwitch_SingleSwitchProgram.h"
+#include "PokemonFRLG_RngProgram.h"
 #include "NintendoSwitch/Options/NintendoSwitch_GoHomeWhenDoneOption.h"
 #include "PokemonFRLG_BlindNavigation.h"
 
@@ -28,9 +28,10 @@ public:
     virtual std::unique_ptr<StatsTracker> make_stats() const override;
 };
 
-class RngHelper : public SingleSwitchProgramInstance{
+class RngHelper : public RngProgramInstance{
 public:
     using Descriptor = RngHelper_Descriptor;
+    virtual PartyRequirement party_requirement() const override{ return PartyRequirement::NONE; }
     RngHelper();
     virtual void program(SingleSwitchProgramEnvironment& env, ProControllerContext &context) override;
     virtual void start_program_border_check(

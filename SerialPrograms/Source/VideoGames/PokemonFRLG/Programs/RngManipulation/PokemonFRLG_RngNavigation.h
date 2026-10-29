@@ -26,6 +26,17 @@ static const std::set<std::string> ROAMER_ROUTE1_SUBSET = {
     "raikou", "suicune", "entei", "rattata", "pidgey" 
 };
     
+//  Starting from the overworld, check that the party has a free slot for the
+//  Pokemon the program will catch or receive; without one it goes to the PC
+//  and the program reads the wrong Pokemon. Throws UserSetupError if the party
+//  is full. If the party menu can't be opened, logs that and returns.
+//  Leaves the party menu open.
+void check_party_has_free_slot(
+    ConsoleHandle& console,
+    ProControllerContext& context,
+    StartMenuContext menu_context = StartMenuContext::STANDARD
+);
+
 void go_to_summary(
     ConsoleHandle& console, 
     ProControllerContext& context, 
