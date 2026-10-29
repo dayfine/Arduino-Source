@@ -152,6 +152,57 @@ Do not serialize BDSP's ASCII tile codes as the permanent cross-game schema.
 Convert supported FRLG terrain to the existing shared TileGrid model; handle
 warp actions above its path planner, which currently rejects door tiles.
 
+## Route-planning memory and time budgets
+
+The eight demo layouts contain 4,029 tiles; raw map storage is small. Search
+state growth is the larger risk. The reviewed ordinary planner stores five
+states per tile. The robust planner searches sets of possible positions and
+stores those sets in its node table, parent records, planned legs and priority
+queue. Its default `max_spread = 5` bounds each resulting position set, not the
+number of sets explored. The current implementation has no total state,
+queue-size or planning-time limit. A limit on replans does not bound one search.
+These are source findings, not measurements of peak memory or a reproduced
+out-of-memory failure.
+
+Before the first observed walk, require:
+
+- Explicit per-search limits on stored states, queued entries and elapsed time,
+  plus cancellation checks within expansion work. Check capacity before growing
+  containers, including stale queue entries and temporary successor sets.
+  Bound input position sets and validate search parameters so one expansion
+  cannot evade the resource limits. Never discard possible positions merely
+  to fit a budget; obtain better observations or return a bounded failure.
+- Distinct results for a route found, search exhausted without a route,
+  budget exceeded (with the limiting resource), and cancellation. Budget
+  exhaustion is not proof that no route exists. Re-localize, select a nearer
+  verified landmark, or stop within the existing recovery budget; do not
+  automatically retry the same search with larger limits.
+- Per-search diagnostics: map/region dimensions, starting uncertainty,
+  expanded states, peak stored states, peak queue entries, elapsed time and
+  termination reason. During validation, measure peak memory and identify
+  whether it is planner allocation or whole-process memory; video buffers and
+  allocator retention must not be attributed to the planner without evidence.
+- Short routes between observable anchors or exits. Use map connections/warps
+  for travel between regions and tile search within a bounded region. MapSet
+  builds a dense bounding rectangle, including gaps: validate dimensions and
+  checked size arithmetic before allocation, and do not assemble all Kanto
+  into one tile canvas. The JSON loader also limits resource size and cell count.
+
+Choose and document initial finite limits before execution, then tune them from
+measured demo searches. A byte estimate based only on node count is not a hard
+memory cap unless vector sizes, queue growth and allocation overhead are also
+bounded. Keep search-local data scoped to one search so replans release it.
+
+Native acceptance tests must exercise tight state/queue budgets, deadline and
+cancellation paths, oversized map/input rejection, and distinct no-route versus
+budget-exceeded results. Use an injectable clock for deterministic deadline
+checks. Include unreachable goals, open areas with ambiguous starts and repeated
+replanning; verify cleanup and that budget failure issues no movement command.
+Profile normal and adverse searches on the demo maps, record peak memory/time,
+and confirm repeated replans do not accumulate retained search data. If the
+parcel route exceeds the documented limits, narrow the search or improve
+localization before expanding scope. This gate precedes sharing the executor.
+
 ## Map sources and first importer
 
 The initial source subset consists of eight maps and their dependencies from
@@ -215,9 +266,9 @@ a loss to silently invalidate the next checkpoint's assumed party state.
 | Slice | Deliverable | Acceptance gate |
 |---|---|---|
 | 0. Fixtures and contracts | Recorded fresh intro, keyboard, trainer card, save prompts, starter-facing save and post-rival state | Named start/end states, supported settings, recovery rules and screenshots; no inferred save success |
-| 1. Maps and loader | Small deterministic normalized map pack; typed JSON loader | Native tests reject malformed dimensions, unsupported schema/terrain, broken enabled transitions; test outdoor offsets, directional ledges and warp resolution |
-| 2. One observed walk | Prepared save, Pallet/Route 1 movement and one interior transition | Verify destination/facing; forced missed movement and NPC obstruction lead to re-localization or bounded stop, not an invented exact coordinate |
-| 3. Parcel trip | Full route from post-rival save to saved Dex | Wild interruption resumes from observed state; parcel/Dex evidence; deliberate failure reloads verified checkpoint and completes replay |
+| 1. Maps and loader | Small deterministic normalized map pack; typed JSON loader | Native tests reject malformed dimensions, unsupported schema/terrain, broken enabled transitions; test outdoor offsets, directional ledges and warp resolution; enforce resource/cell limits and checked allocation sizes |
+| 2. One observed walk | Bounded planner, prepared save, Pallet/Route 1 movement and one interior transition | Pass search-budget/cancellation tests and record memory/time measurements; verify destination/facing; forced missed movement and NPC obstruction lead to re-localization or bounded stop, not an invented exact coordinate |
+| 3. Parcel trip | Full route from post-rival save to saved Dex | Wild interruption resumes from observed state; parcel/Dex evidence; deliberate failure reloads verified checkpoint and completes replay; repeated replans remain within documented resource limits |
 | 4. Naming / SID handoff | Enter player name and stop before OK; resume after existing helper | No extra queued input; default rival retained; TID/candidate record associated correctly; first new-identity save verified before any reset |
 | 5. Starter handoff / startup | Verified ball-facing save; ordinary starter/rival path; supported resume after chosen RNG result | No accidental starter acceptance at handoff; no reset of unsaved chosen result; actual rival outcome and save verified |
 | 6. Chain and extract | Startup → parcel demo; compare FRLG and BDSP execution | Repeat unattended ordinary run and supported manual RNG handoff run; extract only demonstrated common policy with both adapters covered |
