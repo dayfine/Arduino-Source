@@ -124,10 +124,13 @@ void jubilife_to_oreburgh(SingleSwitchProgramEnvironment& env, VideoStream& stre
     };
 
     step(1);
-    // The save stands us at the PC, right of the counter, facing it. The
-    // nurse and the door are six tiles west, in the floor emblem's column.
+    // The save stands us at the PC, right of the counter, facing it; west
+    // is the counter's end. Two tiles south clears it, then three west is
+    // the floor emblem's column, with the nurse north and the door south.
+    route_turn(stream, context, GridDirection::SOUTH);
+    pbf_move_left_joystick(context, {0, -1}, route_open_hold(GridDirection::SOUTH, 2), 200ms);
     route_turn(stream, context, GridDirection::WEST);
-    pbf_move_left_joystick(context, {-1, 0}, route_open_hold(GridDirection::WEST, 6), 200ms);
+    pbf_move_left_joystick(context, {-1, 0}, route_open_hold(GridDirection::WEST, 3), 200ms);
     if (walk_to_talk(stream, context, 0, 1, 3000ms, "to the nurse").stop != WalkStop::DIALOG){
         fail(stream, "Jubilife Pokemon Center: the nurse did not answer.");
     }
