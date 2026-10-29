@@ -57,12 +57,16 @@ struct MapWarp{
 
 //  An object standing on a tile (person, item ball, rock, Pokemon), which
 //  blocks it. The game hides it once its event flag is set, e.g. a guard who
-//  leaves after the Hall of Fame; an empty flag means it is always there.
+//  leaves after the Hall of Fame; an empty flag means it is always there. A
+//  person who wanders may stand anywhere up to `wander_x` and `wander_y` tiles
+//  from (x, y), so all of those tiles count as blocked.
 struct MapObject{
     int x = 0;
     int y = 0;
     std::string name;
     std::string flag;
+    int wander_x = 0;
+    int wander_y = 0;
 };
 
 //  Walking off the map's `direction` edge continues on `map`, whose tiles are

@@ -4,6 +4,7 @@
  *
  */
 
+#include <cstdlib>
 #include "Common/Cpp/Exceptions.h"
 #include "PokemonFRLG_OverworldMap.h"
 
@@ -206,7 +207,7 @@ void OverworldMap::hide_objects(const std::set<std::string>& flags){
 
 const MapObject* OverworldMap::object_at(const MapPoint& point) const{
     for (const MapObject& object : m_objects){
-        if (object.x == point.x && object.y == point.y){
+        if (std::abs(object.x - point.x) <= object.wander_x && std::abs(object.y - point.y) <= object.wander_y){
             return &object;
         }
     }
