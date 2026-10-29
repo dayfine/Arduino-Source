@@ -176,3 +176,51 @@ Also from these runs:
   battle), the walk out of the Center to the girls below the door, and Barry from the measured
   holds plus row search.
 
+
+## 10. Oreburgh Mine, Roark's gym and on to Floaroma (2026-10-28/29, r91 to r106, then by hand)
+
+01.03 (city → mine → Roark) was written from the parsed mine map (`devtools/maps/levels.py`)
+and run r91 to r106. After that the user asked to fight the gym as we were, gaining
+experience by losing, and to reach Floaroma by hand; the console now holds a save in the
+Floaroma Pokémon Center (Badge 1, play time 4:23, Piplup Lv 15, Starly Lv 13).
+
+| Run | What happened | Rule / fix | Commit |
+|---|---|---|---|
+| r91–r93 | Timed holds put us a column off the mine's stairs, sometimes left, sometimes right. | Anchor on walls the map shows (the conveyor pillars, the fence below the Mart); never count on a hold's length for a column. | `1a77905e4` |
+| r95, r96 | The walk south stopped early: the hard-hat worker by the fence wanders onto the path. | A stop that a wall cannot explain may be a wandering NPC: wait and walk again before trusting it. | `1a77905e4` |
+| r96 | One column off, the walk ends on the sign above the mine's stairs. | The user: being stuck is fine if we can rescue ourselves. Step one tile east off the sign's column; the stairs are open on both sides. | `b3928e6fc` |
+| r97 | Blocked legs left us a row high, probing Roark's own row with his rock in between. | End a search on a wall that pins the row (the bottom wall) before probing. | `f84c3ce3c`, `2f8be46f9` |
+| r98 | Right below Roark; A started his camera zoom but the first line came after 2 s. | Story NPCs zoom the camera before the first line: wait up to 8 s. | `f59923b67` |
+| r99, r103 | The route back walked through the corridor's top into the hall ("unexpected transition"); later the hall and the corridor turned out to be one walk. | End the planned route on a tile a wall pins (the corner at (14,11)) and let one walk do the transitions. | `a414e333a`, `f59a16e51` |
+| r101, r104 | Below Roark, A did nothing, by hand too. | **Roark only answers after Barry has sent us** ("go down to the mine and ask him"), so talk to Barry at the gym door first. Confirmed by hand: after that talk, Roark answered the first A. | `a65a02b84` |
+| r105, r106 | "Passed", but the nudge before A had stepped onto the rock beside Roark and the rock's one line ("It's a rugged rock…") was taken for his. | A dialogue opening is not proof: check the story effect. Movement is by whole tiles (30, 40 and 60 ms holds all move one tile; 20 ms only turns), so there are no half-tile nudges. 01.03 now steps onto Roark's tile after the talk and fails if he is still there. | `a65a02b84` |
+
+By hand, after 01.03:
+
+- **The gym.** Walking straight up the middle meets both gym trainers (one at the entrance,
+  one on the second tier). Roark (Geodude 12, Onix 12, Cranidos 14) beat Piplup Lv 10 and 14
+  twice; the third try at Lv 14 with a fixed move choice won and Piplup reached 15. A whiteout
+  costs some money and keeps experience, so losing and retrying is a cheap way to level.
+- **Battle loop on the Lab Console** (`~/BDSPLab/fight_lc.sh`, with a colour check for the
+  four battle buttons in `~/BDSPLab/battlemenu`): Battle, A, then the move; the move list
+  needs ~2 s to open, or the Down presses are lost and Pound is used. A double battle needs a
+  third A to pick the target. Move-learn prompts need "Keep old moves" (Down, A); B alone
+  loops on them.
+- **Screenshots lag.** After long walks a `shot` can show a frame several seconds old, which
+  made us think the player was stuck. Wait ~3 s before a `shot` that decides the next move.
+- **Route 204** (Jubilife → Floaroma): Jubilife's north road starts ~10 tiles west of where
+  Route 203 enters; Rowan, Dawn and two Galactic grunts stop us there for a tag battle with
+  Dawn. The Ravaged Path needs Rock Smash on its rocks (A, Yes, Yes); its north exit is the
+  lit opening a tile west of the corridor's east end, *south* of the entrance chamber, not
+  across the water. North of it: up the stairs, then a row down and east along the sand,
+  north through the grass to the flower beds, round the twins (a double battle), and north
+  between the beds into Floaroma. The Center is a few tiles east of where we arrive.
+
+### Butters' segment 01, checked against what we found
+
+| His version | What we found | Rule |
+|---|---|---|
+| Oreburgh city, mine and gym are timed stick holds and d-pad tap counts. | The same drift as section 6; d-pad taps are one tile each only when the player already faces that way. | Walls and the map, not counts. |
+| Roark in the mine: A once, then up to 30 s for his first box, B to advance. | Right to wait long and to advance with B. But A does nothing until Barry has been talked to at the gym door, which his route gets from the tour scene's mashed B. | Make the Barry talk an explicit step. |
+| Gym: up 3, left 4, up 5, right 8, up 11, left 5, up 4, then A at Roark. | That path goes round both gym trainers; straight up meets both. | Worth keeping as a plan for the gym grid; the trainers' experience helps an under-levelled team, though. |
+| "Barry 1 battle logic can be used here since the moves don't matter this early." | Moves matter against Roark: Pound does almost nothing to rock types, and the first two tries were lost. | Pick Water Gun by name; heal or switch before Cranidos. |
