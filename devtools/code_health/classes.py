@@ -33,7 +33,7 @@ class Member:
     deleted: bool = False
     virtual: bool = False
     static: bool = False
-    const: bool = False    # a const (or static) member function: does not mutate the object
+    const: bool = False    # const/static method, or const data: cannot mutate the object
     option: bool = False   # a config option or table cell field (type named *Option or *Cell)
 
 
@@ -175,7 +175,10 @@ def classify(decl, access, class_name):
         return Member(access, 'data') if declarator else Member(access, 'type')
     paren = call_paren(decl)
     if paren is None:
-        return Member(access, 'data', static='static' in decl, option=is_option(decl))
+        # A const value (not a pointer to const) cannot be modified through the public field.
+        read_only = 'const' in decl and '*' not in decl and '&' not in decl
+        return Member(access, 'data', static='static' in decl, option=is_option(decl),
+                      const=read_only)
     name = decl[paren - 1]
     if 'operator' in decl[:paren]:
         kind = 'operator'
@@ -304,7 +307,7 @@ def measure_classes(path, source):
         methods = [m for m in info.members if m.kind == 'method' and not m.deleted]
         public_methods = sum(m.access == 'public' for m in methods)
         mutators = [m for m in methods if not m.const]
-        public_data = sum(m.access == 'public' and m.kind == 'data' and not (m.static or m.option)
+        public_data = sum(m.access == 'public' and m.kind == 'data' and not (m.static or m.option or m.const)
                           for m in info.members) if mutators and not is_test_file(path) else 0
         values = (
             ('public_methods', public_methods),

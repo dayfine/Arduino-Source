@@ -22,14 +22,14 @@ def evaluate(metrics, previous):
 
 
 def advisories(metrics, previous):
-    """New or changed values above an advisory floor that still pass."""
+    """New or changed values between an advisory floor and the limit; legacy excess is not repeated."""
     old = base_values(previous)
     notes = []
     for metric in metrics:
         floor = ADVISORY.get(metric.check)
         if floor is None or old.get(metric.key) == metric.value:
             continue
-        if floor < metric.value <= max(metric.limit, old.get(metric.key, metric.limit)):
+        if floor < metric.value <= metric.limit:
             notes.append(f'{metric.path}:{metric.line}: {metric.symbol or "<file>"}: '
                          f'{metric.check}={metric.value} (advisory above {floor}, limit {metric.limit})')
     return notes

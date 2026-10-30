@@ -27,7 +27,7 @@ are included. Missing base revisions and analysis errors fail the command.
 | Nesting | 4 lexical brace levels inside the function body |
 | Parameters | 7 |
 | Public methods per class/struct | 7 (excluding ctors, dtors, operators, deleted and Qt signals); 6-7 advisory |
-| Public non-static data in a class with mutating methods | 0 (exempt: plain structs, value types with only const/static methods, `*Option`/`*Cell` fields, test files) |
+| Public non-static data in a class with mutating methods | 0 (exempt: plain structs, value types with only const/static methods, const fields, `*Option`/`*Cell` fields, test files) |
 | Single-method interface (one pure virtual + optional virtual dtor, no bases) | not allowed: prefer a callable (`MoveOnlyFunction` / `std::function`) |
 
 New files/functions must meet these limits. In modified files, compare each

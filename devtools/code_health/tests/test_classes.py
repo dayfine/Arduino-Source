@@ -49,6 +49,7 @@ class ClassShapeTests(unittest.TestCase):
         before = measure_classes('Common/x.h', methods(9))
         self.assertEqual([], evaluate(measure_classes('Common/x.h', methods(9, '    A();\n')), before))
         self.assertEqual([], advisories(measure_classes('Common/x.h', methods(9)), before))
+        self.assertEqual([], advisories(measure_classes('Common/x.h', methods(8)), before))
         self.assertTrue(evaluate(measure_classes('Common/x.h', methods(10)), before))
 
     def test_public_data_only_fails_with_methods(self):
@@ -59,6 +60,8 @@ class ClassShapeTests(unittest.TestCase):
                   '    BooleanCheckBoxOption ENABLE; EnumDropdownCell<Mode> mode; Q q; };')
         self.assertEqual(1, values(exempt)['public_data'])
         self.assertEqual(1, values('struct P{ void f(); std::function<void(int)> callback; };')['public_data'])
+        read_only = 'class D{ public: const Type type; const char* name; virtual void run(); };'
+        self.assertEqual(1, values(read_only)['public_data'])
 
     def test_value_types_and_test_fakes_may_expose_data(self):
         value = ('struct TilePos{ int x = 0; int y = 0; TilePos next(Direction d) const;\n'
