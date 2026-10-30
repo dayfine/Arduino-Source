@@ -186,8 +186,6 @@ namespace PokemonAutomation {
 
         static void tutorial_part_1_navigation(SingleSwitchProgramEnvironment& env, 
             VideoStream& stream, ProControllerContext& context) {
-            DateTime t{ 2026, 1, 1, 0, 0, 0 };
-            set_time_fast(env, context, t);
             pbf_move_left_joystick(context, { 0.000000, 1.000000 }, 527ms, 0ms);
             pbf_move_left_joystick(context, { 1.000000, 1.000000 }, 456ms, 0ms);
             pbf_move_left_joystick(context, { 1.000000, -0.000000 }, 915ms, 0ms);
@@ -404,8 +402,6 @@ namespace PokemonAutomation {
             pbf_move_left_joystick(context, { 0.000000, 1.000000 }, 5020ms, 0ms);
             pbf_wait(context, 169ms);
             pbf_move_left_joystick(context, { 1.000000, -0.000000 }, 745ms, 0ms);
-            DateTime t{ 2026, 1, 1, 0, 0, 50 };
-            set_time_fast(env, context, t);
             walk_through_grass(stream, context, 1, 0, 20, "right through grass to path", BattleType::STARTER);
             walk_through_grass(stream, context, 0, 1, 18, "up through grass 2", BattleType::STARTER);
             walk_through_grass(stream, context, 1, 0, 10, "right through grass 2", BattleType::STARTER);
@@ -515,8 +511,6 @@ namespace PokemonAutomation {
             context.wait_for_all_requests();
             pbf_wait(context, 1500ms);
 
-            DateTime t{ 2026, 1, 1, 0, 0, 50 };
-            set_time_fast(env, context, t);
             walk_through_grass(stream, context, 1, 0, 20, "right through grass to path", BattleType::STARTER);
             walk_through_grass(stream, context, 0, 1, 18, "up through grass 2", BattleType::STARTER);
             walk_through_grass(stream, context, 1, 0, 10, "right through grass 2", BattleType::STARTER);
