@@ -12,7 +12,7 @@
 #include "Common/Qt/QtThreadPool_Tests.h"
 #include "Kernels/Kernels_Tests.h"
 #include "CommonFramework/AudioPipeline/AudioInfo_Tests.h"
-#include "CommonFramework/AudioPipeline/ChannelMixer.h"
+#include "CommonFramework/AudioPipeline/Tools/ChannelMixer.h"
 #include "CommonFramework/AudioPipeline/SinkPipeline_Tests.h"
 #include "CommonFramework/AudioPipeline/IO/AudioFileLoader_Tests.h"
 #include "CommonFramework/AudioPipeline/Spectrum/FFTStreamer.h"
@@ -21,7 +21,6 @@
 #include "CommonFramework/Tools/GlobalThreadPools.h"
 #include "CommonTools/VisualDetectors/BlackBorderDetector.h"
 #include "CommonTools/OCR/OCR_Tests.h"
-#include "ComputerPrograms_UnitTestRunner.h"
 
 #include "NintendoSwitch/Inference/NintendoSwitch_CheckOnlineDetector.h"
 #include "NintendoSwitch/Inference/NintendoSwitch_FailedToConnectDetector.h"
@@ -29,13 +28,15 @@
 #include "NintendoSwitch/Programs/CommandFileRunner/NintendoSwitch_CommandFileRunner_Tests.h"
 #include "NintendoSwitch/Programs/Typewriter/NintendoSwitch_Typewriter_Tests.h"
 
-#include "VideoGames/PokemonFRLG/PokemonFRLG_Tests.h"
-#include "VideoGames/PokemonRSE/PokemonRSE_Tests.h"
 #include "VideoGames/PokemonHome/PokemonHome_Tests.h"
 #include "VideoGames/PokemonSwSh/PokemonSwSh_Tests.h"
 #include "VideoGames/PokemonLA/PokemonLA_Tests.h"
 #include "VideoGames/PokemonSV/PokemonSV_Tests.h"
 #include "VideoGames/PokemonLZA/PokemonLZA_Tests.h"
+#include "VideoGames/PokemonFRLG/PokemonFRLG_Tests.h"
+#include "VideoGames/PokemonRSE/PokemonRSE_Tests.h"
+
+#include "ComputerPrograms_UnitTestRunner.h"
 
 namespace PokemonAutomation{
 namespace ComputerPrograms{

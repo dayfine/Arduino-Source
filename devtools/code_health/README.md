@@ -6,8 +6,13 @@ From the checkout root, create a dedicated environment (Python 3.8+):
 python3 -m venv .venv-code-health
 .venv-code-health/bin/python -m pip install -r devtools/code_health/requirements.txt
 .venv-code-health/bin/python -m unittest discover -s devtools/code_health/tests -v
-.venv-code-health/bin/python -m devtools.code_health --base-ref origin/main
+.venv-code-health/bin/python -m devtools.code_health
 ```
+
+Without `--base-ref`, the base is `git merge-base HEAD upstream/main`, or
+`origin/main` when there is no `upstream` remote, and the command prints the
+base it used. A stale fork `main` therefore cannot report upstream changes
+as this branch's. CI passes the PR base explicitly.
 
 Only added/modified/renamed Git-tracked `.h .hpp .c .cpp .tpp` files under
 `Common/` and `SerialPrograms/` are analyzed. Directory components starting
@@ -21,6 +26,9 @@ are included. Missing base revisions and analysis errors fail the command.
 | Function length | 50 physical lines, signature through closing brace; 25 recommended |
 | Nesting | 4 lexical brace levels inside the function body |
 | Parameters | 7 |
+| Public methods per class/struct | 7 (excluding ctors, dtors, operators, deleted and Qt signals); 6-7 advisory |
+| Public non-static data in a class with mutating methods | 0 (exempt: plain structs, value types with only const/static methods, const fields, `*Option`/`*Cell` fields, test files) |
+| Single-method interface (one pure virtual + optional virtual dtor, no bases) | not allowed: prefer a callable (`MoveOnlyFunction` / `std::function`) |
 
 New files/functions must meet these limits. In modified files, compare each
 metric with its value at the base revision: existing violations may remain or
@@ -41,6 +49,22 @@ brace extension counts nested blocks, lambdas and initializer braces; it
 ignores enclosing namespace/class braces, comments and string literals. This
 is lexical analysis, not a C++ compiler or clang-tidy replacement. Macro-generated
 functions and advanced syntax may require parser follow-up. CCN is not enforced.
+
+Class shapes come from a lexical member scan over lizard's tokens
+(`classes.py`), keyed by qualified class name and compared with the base like
+functions. libclang would need a compilation database with Qt include paths
+to parse these headers; the scan only has to tell access sections, member
+functions and data apart. Classes split across `#if` branches are skipped.
+
+## Layering
+
+Files under `Common/`, `SerialPrograms/Source/CommonFramework/` and
+`SerialPrograms/Source/CommonTools/` may not add an `#include` of a game
+module: `Pokemon/`, `PokemonBDSP/` or `VideoGames/` under
+`SerialPrograms/Source`. Consoles, controllers and frameworks (including
+`NintendoSwitch/`) are platform modules games build on, not games; `config.py`
+lists both groups and a test fails when a new top-level directory is in neither.
+Includes already present at the base are not reported.
 
 ## Build and native C++ tests in one command
 
