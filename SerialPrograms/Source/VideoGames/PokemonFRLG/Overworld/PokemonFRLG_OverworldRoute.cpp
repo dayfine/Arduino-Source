@@ -44,6 +44,28 @@ std::string to_string(const RouteStep& step){
 
 
 
+const RouteCosts& default_route_costs(){
+    static const RouteCosts COSTS{
+        {RouteCost::TILE, 1},
+        {RouteCost::TURN, 2},
+        {RouteCost::WARP, 30},
+        {RouteCost::SURF, 40},
+        {RouteCost::GRASS_TILE, 20},
+        {RouteCost::OPEN_STOP, 8},
+    };
+    return COSTS;
+}
+
+int route_cost(const RouteCosts& costs, RouteCost kind){
+    auto iter = costs.find(kind);
+    if (iter == costs.end()){
+        iter = default_route_costs().find(kind);
+    }
+    return iter->second;
+}
+
+
+
 namespace{
 
 
@@ -234,13 +256,13 @@ public:
         step.warped = transition->warped;
         step.facing = transition->walked_out ? Direction::SOUTH : direction;
         if (transition->action == RouteAction::SURF){
-            step.extra_cost += m_costs.per_surf;
+            step.extra_cost += route_cost(m_costs, RouteCost::SURF);
         }
         if (transition->warped){
-            step.extra_cost += m_costs.per_warp;
+            step.extra_cost += route_cost(m_costs, RouteCost::WARP);
         }
         if (is_tall_grass(m_maps[step.next.map], step.next.state.position)){
-            step.extra_cost += m_costs.per_grass_tile;
+            step.extra_cost += route_cost(m_costs, RouteCost::GRASS_TILE);
         }
         return step;
     }
@@ -257,9 +279,9 @@ private:
 
 Pokemon::LegCosts to_leg_costs(const RouteCosts& costs){
     Pokemon::LegCosts leg_costs;
-    leg_costs.per_tile = costs.per_tile;
-    leg_costs.per_turn = costs.per_turn;
-    leg_costs.per_open_stop = costs.per_open_stop;
+    leg_costs.per_tile = route_cost(costs, RouteCost::TILE);
+    leg_costs.per_turn = route_cost(costs, RouteCost::TURN);
+    leg_costs.per_open_stop = route_cost(costs, RouteCost::OPEN_STOP);
     return leg_costs;
 }
 

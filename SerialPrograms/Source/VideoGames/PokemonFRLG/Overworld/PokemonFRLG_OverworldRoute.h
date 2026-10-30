@@ -13,6 +13,7 @@
 #ifndef PokemonAutomation_PokemonFRLG_OverworldRoute_H
 #define PokemonAutomation_PokemonFRLG_OverworldRoute_H
 
+#include <map>
 #include <optional>
 #include <string>
 #include <vector>
@@ -66,18 +67,26 @@ struct RouteGoal{
     std::optional<Direction> facing;
 };
 
-struct RouteCosts{
-    int per_tile = 1;
-    int per_turn = 2;           //  extra for a leg in a new direction
-    int per_warp = 30;          //  the fade in and out
-    int per_surf = 40;          //  the dialog and the animation
-    int per_grass_tile = 20;    //  extra for tall grass, where wild Pokemon appear
+//  What the planner weighs a route by. Each is a cost per occurrence.
+enum class RouteCost{
+    TILE,
+    TURN,           //  extra for a leg in a new direction
+    WARP,           //  the fade in and out
+    SURF,           //  the dialog and the animation
+    GRASS_TILE,     //  extra for tall grass, where wild Pokemon appear
     //  Extra for a leg that ends where the player could keep walking: it has
     //  to be timed, and if a message or a battle stops it part-way, where
     //  the player is can only be estimated. A leg that ends at a wall is
     //  walked again instead.
-    int per_open_stop = 8;
+    OPEN_STOP,
 };
+using RouteCosts = std::map<RouteCost, int>;
+
+//  TILE 1, TURN 2, WARP 30, SURF 40, GRASS_TILE 20, OPEN_STOP 8.
+const RouteCosts& default_route_costs();
+
+//  `costs`'s cost for `kind`, or the default if it has none.
+int route_cost(const RouteCosts& costs, RouteCost kind);
 
 //  The cheapest route from `start`, surfing if it is on water, to
 //  `goal`, or nothing if there is none. `maps` must hold every map the route
@@ -87,7 +96,7 @@ std::optional<std::vector<RouteStep>> plan_overworld_route(
     const std::vector<MapData>& maps,
     const MapPosition& start,
     const RouteGoal& goal,
-    const RouteCosts& costs = RouteCosts(),
+    const RouteCosts& costs = default_route_costs(),
     std::optional<Direction> start_facing = std::nullopt
 );
 
