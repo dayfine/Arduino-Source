@@ -116,9 +116,6 @@ public:
             TileType type;
         };
         const Named named[] = {
-            {MAP_ROUTE_201,     Route201::POTION_GIVER,             TileType::NPC},
-            {MAP_ROUTE_201,     Route201::POTION_GIVER.next(Direction::SOUTH), TileType::TALL_GRASS},
-            {MAP_ROUTE_201,     Route201::POTION_GIVER_TALK_FROM,   TileType::TALL_GRASS},
             {MAP_ROUTE_201,     Route201::POTION_GIVER_ROW_EAST,    TileType::WALKABLE},
             {MAP_ROUTE_201,     Route201::POTION_GIVER_ROW_WEST_END, TileType::TALL_GRASS},
             {MAP_ROUTE_201,     Route201::POTION_GIVER_ROW_EAST_END, TileType::TALL_GRASS},
@@ -406,14 +403,14 @@ public:
             return error;
         }
         //  To where she is talked to, and back to the catch grass to save.
-        const TilePos talk_from = maps.to_world(MAP_ROUTE_201, Route201::POTION_GIVER_TALK_FROM);
-        error = check_robust_plan(logger, "Catch spot to the Potion giver", maps, {catch_spot},
-            [&](const TilePos& pos){ return pos == talk_from; });
+        const TilePos corner = maps.to_world(MAP_ROUTE_201, Route201::POTION_GIVER_ROW_WEST_END);
+        error = check_robust_plan(logger, "Catch spot to the Potion giver's corner", maps, {catch_spot},
+            [&](const TilePos& pos){ return pos == corner; });
         if (!error.empty()){
             return error;
         }
         const TilePos save_spot = maps.to_world(MAP_ROUTE_202, Route202::POTION_SAVE_SPOT);
-        error = check_robust_plan(logger, "Potion giver to the save spot", maps, {talk_from},
+        error = check_robust_plan(logger, "Potion giver to the save spot", maps, story_potion_giver_area(),
             [&](const TilePos& pos){ return pos == save_spot; });
         if (!error.empty()){
             return error;

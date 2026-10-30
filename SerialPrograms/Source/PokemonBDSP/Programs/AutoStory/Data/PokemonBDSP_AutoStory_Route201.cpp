@@ -26,7 +26,7 @@ using namespace Pokemon;
 //  than it looks on the DP map, as on Route 202; the west one is unchecked. West edge, rows 9..12: towards Lake Verity. South gap
 //  (14..17, 19): Twinleaf Town. East edge, rows 3..6: Sandgem Town.
 //  Route 201 has no trainers. Its other NPCs wander, so they are left off:
-//  a planned wall must stay put. The Potion giver only turns.
+//  a planned wall must stay put. The Potion giver moves too (see below).
 const TileGrid& grid(){
     //     0         1         2         3         4         5         6
     //     0123456789012345678901234567890123456789012345678901234567890123
@@ -34,7 +34,7 @@ const TileGrid& grid(){
         R"(################################################################)",  //   0
         R"(################################################################)",  //   1
         R"(################################################################)",  //   2
-        R"(##########################################"N"""""""""...........)",  //   3
+        R"(##########################################"""""""""""...........)",  //   3
         R"(##########################################"""""""""""..S........)",  //   4
         R"(##########################################"""""""""##...........)",  //   5
         R"(##..####..####....######..##....##..####.."""""""""##...........)",  //   6
@@ -56,12 +56,12 @@ const TileGrid& grid(){
 }
 
 
-//  On the DP map she is at (44,3), pixel (718,57). On the console (by hand,
-//  then through the Lab Console) she stands at (43,3), in the top grass row,
-//  and only turns: walking west along row 3 from the trees at its east end
-//  stops at (44,3), facing her.
-const TilePos POTION_GIVER{43, 3};
-const TilePos POTION_GIVER_TALK_FROM{44, 3};
+//  On the DP map she is at (44,3), pixel (718,57), and she was once met at
+//  (43,3) on the console. She does not stay there: r113a and r114a walked
+//  west along row 3 to its west end (42,3) through her tile, and found her
+//  one tile east and one row up (r114a), or two tiles east in the row
+//  (r113a). So she is left off the grid like the other NPCs, and is found by
+//  walking east from the row's west end until she answers.
 const TilePos POTION_GIVER_ROW_EAST{53, 3};
 const TilePos POTION_GIVER_ROW_WEST_END{42, 3};
 const TilePos POTION_GIVER_ROW_EAST_END{52, 3};

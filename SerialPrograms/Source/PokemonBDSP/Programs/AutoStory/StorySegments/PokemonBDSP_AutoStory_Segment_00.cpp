@@ -691,19 +691,19 @@ namespace PokemonAutomation {
                 stream.log("[00.04] The Bag has Potions; not visiting the Poke Mart lady.");
             } else {
                 const TilePos catch_spot = maps.to_world(MAP_ROUTE_202, Route202::CATCH_SPOT);
-                const TilePos talk_from = maps.to_world(MAP_ROUTE_201, Route201::POTION_GIVER_TALK_FROM);
+                // She moves about near the west end of her row (r113a, r114a),
+                // so go to the corner that pins the row, (42, 3): trees to its
+                // west and north. Then walk east until she blocks the walk and
+                // answers, as done by hand.
+                const TilePos corner = maps.to_world(MAP_ROUTE_201, Route201::POTION_GIVER_ROW_WEST_END);
+                const TilePos row_east_end = maps.to_world(MAP_ROUTE_201, Route201::POTION_GIVER_ROW_EAST_END);
                 walk_route(stream, context, maps, {catch_spot},
-                    [&](const TilePos& pos) { return pos == talk_from; }, trainers, fight, "To the Poke Mart lady");
-                // The counted tile can be off: r113a stopped two tiles west of
-                // (44, 3), with her to the east. So find her by talking. The
-                // walk comes from the east and never ends facing east, so
-                // turning east first is a turn, not a step.
-                if (!talk_to_adjacent_npc(stream, context, {
-                        Pokemon::Direction::EAST, Pokemon::Direction::WEST,
-                        Pokemon::Direction::NORTH, Pokemon::Direction::SOUTH,
-                    }, "Poke Mart lady", 2000ms)) {
+                    [&](const TilePos& pos) { return pos == corner; }, trainers, fight, "To the Poke Mart lady");
+                if (!walk_along_row_to_talk(stream, context, Pokemon::Direction::EAST,
+                        (size_t)(row_east_end.x - corner.x), "Poke Mart lady")) {
                     OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
-                        "Poke Mart lady: nobody answered on any side of where the walk stopped.", stream);
+                        "Poke Mart lady: nobody answered walking east along her row from (42, 3), "
+                        "nor on any side of where the walk stopped.", stream);
                 }
                 // Her lines take a while to print: one A per line.
                 for (size_t line = 0; line < 8; line++) {
@@ -717,7 +717,8 @@ namespace PokemonAutomation {
                         "Poke Mart lady: she talked, but no Potion is in the Bag. "
                         "Has this save already had her Potions?", stream);
                 }
-                walk_route(stream, context, maps, {talk_from},
+                // Somewhere along her row: plan from all of it.
+                walk_route(stream, context, maps, story_potion_giver_area(),
                     [&](const TilePos& pos) { return pos == save_spot; }, trainers, fight, "Back to Route 202");
                 stream.log("[00.04] Saving with the Potions, at the save spot on Route 202.");
                 save_game(env, context);
