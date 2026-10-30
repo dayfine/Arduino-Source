@@ -722,15 +722,25 @@ namespace PokemonAutomation {
         // east along the same row, and in. The last leg is open and movement
         // is not locked to tiles, so we may stand part of a tile off the door:
         // whole-tile steps either side missed it in r121a. The Mart's doorway
-        // is lit like the Center's, so it is lined up with by sight the same way.
+        // is lit like the Center's, so it is lined up with by sight the same
+        // way. Two townspeople wander the dirt south of the Mart and stop a
+        // leg short without the walk knowing (r122a counted to the door's
+        // row from three rows south of it): where the doorway shows on screen
+        // says so, and the walk is made once more from there.
         static void enter_sandgem_poke_mart(
             VideoStream& stream, ProControllerContext& context, const MapSet& maps,
             std::vector<TrainerSight>& trainers, const RouteTrainerFight& fight
         ) {
-            const TilePos front = maps.to_world(MAP_SANDGEM_TOWN, SandgemTown::POKE_MART_DOOR.next(Pokemon::Direction::SOUTH));
+            const TilePos door = maps.to_world(MAP_SANDGEM_TOWN, SandgemTown::POKE_MART_DOOR);
+            const TilePos front = door.next(Pokemon::Direction::SOUTH);
+            const auto at_front = [&](const TilePos& pos) { return pos.y == front.y && std::abs(pos.x - front.x) <= 1; };
             walk_route(stream, context, maps, story_door_front(MAP_SANDGEM_TOWN, SandgemTown::POKEMON_CENTER_DOOR),
-                [&](const TilePos& pos) { return pos.y == front.y && std::abs(pos.x - front.x) <= 1; },
-                trainers, fight, "To the Poke Mart");
+                at_front, trainers, fight, "To the Poke Mart");
+            const std::vector<TilePos> short_of_door = tiles_short_of_door(stream, context, maps.world(), door, "To the Poke Mart");
+            if (!short_of_door.empty()) {
+                route_status(stream, "To the Poke Mart: stopped short of the door; walking again.");
+                walk_route(stream, context, maps, short_of_door, at_front, trainers, fight, "To the Poke Mart again");
+            }
             enter_lit_door(stream, context, "Sandgem Poke Mart: through the door");
         }
 

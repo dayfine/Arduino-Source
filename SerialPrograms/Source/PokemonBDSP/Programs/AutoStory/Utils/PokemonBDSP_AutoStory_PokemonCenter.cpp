@@ -29,48 +29,108 @@ namespace{
 
 //  How many tiles the 1080p view spans across: a tile is about 125 px.
 constexpr double SCREEN_WIDTH_TILES = 1920.0 / 125;
+//  The camera keeps the player in the middle of the screen across, and the
+//  centre of his tile a little above the middle down (r121a and r122a: his
+//  feet at y = 590 of 1080).
+constexpr double PLAYER_X = 0.5;
+constexpr double PLAYER_Y = 0.505;
+//  How much of the screen's height one row of tiles takes near the player:
+//  the doorway straight ahead of him (r121a) is centred this far above his
+//  tile's centre. Rows further north look shorter, so this undercounts them.
+constexpr double SCREEN_ROW_HEIGHT = 0.12;
+//  Doorways are looked for down to here, 0 to 1: a door the player can walk
+//  into is north of him.
+constexpr double DOORWAY_SEARCH_BOTTOM = 0.67;
+//  A doorway found within this many rows of straight ahead is at the front
+//  row; further, the walk to the door ended short.
+constexpr double DOORWAY_FRONT_ROWS = 1.5;
 
-//  Where a building's lit doorway is across the screen, 0 to 1: the warm
-//  white columns in the band where doors stand, taking the run of them
-//  nearest the middle (a second building's door may show further off).
-//  Nothing if no doorway shows.
-std::optional<double> lit_doorway_x(const ImageViewRGB32& screen){
-    const ImageRGB32 small = screen.scale_to(480, 270);
-    const size_t width = small.width();
-    std::vector<size_t> counts(width, 0);
-    for (size_t y = 81; y < 157; y++){
-        for (size_t x = 0; x < width; x++){
-            const uint32_t pixel = small.pixel(x, y);
-            const int r = (pixel >> 16) & 0xff, g = (pixel >> 8) & 0xff, b = pixel & 0xff;
-            if (r > 235 && g > 215 && b > 120 && b < 215 && r - b > 40){
-                counts[x]++;
+//  The doorway is looked for on a view this size: 4 px of 1080p per pixel.
+constexpr size_t SMALL_WIDTH = 480;
+constexpr size_t SMALL_HEIGHT = 270;
+//  A doorway's lit columns run at least this many small rows (the Mart's 12,
+//  the Center's 15); the buildings' lit roof bands 3 to 5.
+constexpr size_t DOORWAY_COLUMN_ROWS = 8;
+//  A doorway has this many lit small pixels (the Mart's 260 to 350); a roof
+//  band's run 60 to 75.
+constexpr double DOORWAY_MIN_MASS = 80;
+
+//  Whether a pixel is the pale yellow-white of a lit doorway: the Mart's is
+//  (235, 243, 205), the Center's (255, 255, 185). The buildings' white roof
+//  bands are bluer, their orange bands and the light they throw on the
+//  ground outside are darker.
+bool lit_doorway_pixel(uint32_t pixel){
+    const int r = (pixel >> 16) & 0xff;
+    const int g = (pixel >> 8) & 0xff;
+    const int b = pixel & 0xff;
+    return r >= 215 && g >= 215 && b >= 150 && b <= g - 15 && r >= g - 25;
+}
+
+//  Each column of the small view: how many lit doorway pixels it has in the
+//  search band, and the sum of their rows.
+struct LitColumns{
+    std::vector<size_t> count;
+    std::vector<double> row_sum;
+};
+LitColumns lit_columns(const ImageViewRGB32& screen){
+    const ImageRGB32 small = screen.scale_to(SMALL_WIDTH, SMALL_HEIGHT);
+    LitColumns columns{std::vector<size_t>(small.width(), 0), std::vector<double>(small.width(), 0)};
+    const size_t bottom = (size_t)(DOORWAY_SEARCH_BOTTOM * (double)small.height());
+    for (size_t y = 0; y < bottom; y++){
+        for (size_t x = 0; x < small.width(); x++){
+            if (lit_doorway_pixel(small.pixel(x, y))){
+                columns.count[x]++;
+                columns.row_sum[x] += (double)y;
             }
         }
     }
-    std::optional<double> best;
-    double best_distance = 0;
-    for (size_t x = 0; x < width; ){
-        if (counts[x] < 4){
+    return columns;
+}
+
+//  A run of lit columns: its lit pixels, and the sums of their columns and rows.
+struct LitRun{
+    double mass = 0;
+    double column_sum = 0;
+    double row_sum = 0;
+};
+//  The run of columns with at least DOORWAY_COLUMN_ROWS lit that starts at
+//  `x`, allowing gaps of up to 3 columns (the door's frame). Moves `x` past it.
+LitRun lit_run(const LitColumns& columns, size_t& x){
+    LitRun run;
+    size_t gap = 0;
+    for (; x < columns.count.size() && gap <= 3; x++){
+        if (columns.count[x] < DOORWAY_COLUMN_ROWS){
+            gap++;
+            continue;
+        }
+        run.mass += (double)columns.count[x];
+        run.column_sum += (double)columns.count[x] * (double)x;
+        run.row_sum += columns.row_sum[x];
+        gap = 0;
+    }
+    return run;
+}
+
+//  Where a building's lit doorway is across and down the screen, 0 to 1: the
+//  biggest run of lit columns within 0.35 of the middle (a second building's
+//  door may show further off). Nothing if no doorway shows.
+std::optional<std::pair<double, double>> lit_doorway_position(const ImageViewRGB32& screen){
+    const LitColumns columns = lit_columns(screen);
+    const double width = (double)columns.count.size();
+    std::optional<std::pair<double, double>> best;
+    double best_mass = 0;
+    for (size_t x = 0; x < columns.count.size(); ){
+        if (columns.count[x] < DOORWAY_COLUMN_ROWS){
             x++;
             continue;
         }
-        double mass = 0, moment = 0;
-        size_t gap = 0;
-        for (; x < width && gap <= 3; x++){
-            if (counts[x] >= 4){
-                mass += (double)counts[x];
-                moment += (double)counts[x] * (double)x;
-                gap = 0;
-            }else{
-                gap++;
-            }
+        const LitRun run = lit_run(columns, x);
+        const double center = run.column_sum / run.mass / width;
+        if (run.mass < DOORWAY_MIN_MASS || std::abs(center - PLAYER_X) >= 0.35 || run.mass <= best_mass){
+            continue;
         }
-        const double center = moment / mass / (double)width;
-        const double distance = std::abs(center - 0.5);
-        if (distance < 0.35 && (!best || distance < best_distance)){
-            best = center;
-            best_distance = distance;
-        }
+        best = {center, run.row_sum / run.mass / (double)SMALL_HEIGHT};
+        best_mass = run.mass;
     }
     return best;
 }
@@ -91,28 +151,83 @@ void step_across(VideoStream& stream, ProControllerContext& context, double tile
     pbf_move_left_joystick(context, {tiles > 0 ? 1.0 : -1.0, 0}, hold, 300ms);
 }
 
-//  Walks north into the door straight ahead. Returns whether we are inside.
+//  Walks north into the door straight ahead, `doorway` away. Returns whether
+//  we are inside.
 bool walk_into_door(
     VideoStream& stream, ProControllerContext& context,
-    const VideoSnapshot& outside, const std::string& label
+    const VideoSnapshot& outside, const LitDoorway& doorway, const std::string& label
 ){
-    if (walk_until(stream, context, 0, 1, 1500ms, label + ": into the door").stop == WalkStop::TRANSITION){
+    //  Time for the rows to the door (none when it is straight ahead), the
+    //  door opening, and a start delay.
+    const double rows = std::max(0.0, doorway.rows_up - 1);
+    const Milliseconds limit = 1500ms + Milliseconds((int64_t)(rows * ROUTE_MS_PER_TILE_UP_DOWN.count()));
+    if (walk_until(stream, context, 0, 1, limit, label + ": into the door").stop == WalkStop::TRANSITION){
         pbf_wait(context, 2000ms);
         return true;
     }
     //  The door slides open before it takes us in, and its fade is not always
     //  black enough to read as a transition, and may finish after the walk; a
-    //  whole new scene says we are in.
+    //  whole new scene says we are in. Not after a walk of several rows, which
+    //  scrolls the view: the next look decides.
     pbf_wait(context, 2000ms);
-    if (!scene_changed_since(stream, context, outside)){
+    if (doorway.rows_up > DOORWAY_FRONT_ROWS || !scene_changed_since(stream, context, outside)){
         return false;
     }
     stream.log("[Route] " + label + ": the scene changed; inside.");
     return true;
 }
 
+//  Where the doorway is on screen, in the log.
+void log_doorway(VideoStream& stream, const std::string& label, const LitDoorway& doorway){
+    stream.log("[Route] " + label + ": doorway " + std::to_string(doorway.tiles_across) +
+        " tiles across, " + std::to_string(doorway.rows_up) + " rows up (at " +
+        std::to_string(doorway.x) + ", " + std::to_string(doorway.y) + " of the screen).");
 }
 
+}
+
+
+std::optional<LitDoorway> find_lit_doorway(const ImageViewRGB32& screen){
+    const std::optional<std::pair<double, double>> position = lit_doorway_position(screen);
+    if (!position){
+        return std::nullopt;
+    }
+    return LitDoorway{
+        position->first,
+        position->second,
+        (position->first - PLAYER_X) * SCREEN_WIDTH_TILES,
+        (PLAYER_Y - position->second) / SCREEN_ROW_HEIGHT,
+    };
+}
+
+std::vector<TilePos> tiles_short_of_door(
+    VideoStream& stream, ProControllerContext& context,
+    const TileGrid& grid, const TilePos& door, const std::string& label
+){
+    context.wait_for_all_requests();
+    VideoSnapshot screen = stream.video().snapshot();
+    const std::optional<LitDoorway> doorway = screen ? find_lit_doorway(*screen.frame) : std::nullopt;
+    if (!doorway){
+        stream.log("[Route] " + label + ": no lit doorway on screen; not walking again.");
+        return {};
+    }
+    log_doorway(stream, label, *doorway);
+    if (doorway->rows_up <= DOORWAY_FRONT_ROWS){
+        return {};
+    }
+    //  The doorway's offset says which tile we stand on, give or take one
+    //  each way: the rows are a rough count.
+    const TilePos guess{door.x - (int)std::lround(doorway->tiles_across), door.y + (int)std::lround(doorway->rows_up)};
+    std::vector<TilePos> tiles;
+    for (int y = guess.y - 1; y <= guess.y + 1; y++){
+        for (int x = guess.x - 1; x <= guess.x + 1; x++){
+            if (grid.standable(TilePos{x, y})){
+                tiles.push_back(TilePos{x, y});
+            }
+        }
+    }
+    return tiles;
+}
 
 void enter_lit_door(
     VideoStream& stream, ProControllerContext& context,
@@ -121,17 +236,16 @@ void enter_lit_door(
     //  Movement is not locked to tiles, and the door takes us in only when we
     //  are lined up with it. Its doorway is lit: find it on screen, where the
     //  camera keeps the player in the middle, move across by its offset, and
-    //  walk in once it is straight ahead.
+    //  walk in once it is straight ahead, looking again after every move.
     route_status(stream, label + ": lining up with the door.");
-    bool inside = false;
     VideoSnapshot last_outside;
-    for (size_t tries = 0; tries < 12 && !inside; tries++){
+    for (size_t tries = 0; tries < 12; tries++){
         context.wait_for_all_requests();
         VideoSnapshot outside = stream.video().snapshot();
         if (!outside){
             continue;
         }
-        const std::optional<double> doorway = lit_doorway_x(*outside.frame);
+        const std::optional<LitDoorway> doorway = find_lit_doorway(*outside.frame);
         if (!doorway){
             //  The door may have taken us in after all, more slowly than we watched.
             pbf_wait(context, 1500ms);
@@ -140,23 +254,22 @@ void enter_lit_door(
                     label + ": no lit doorway on screen.", stream);
             }
             stream.log("[Route] " + label + ": the scene changed; inside.");
-            inside = true;
-            break;
+            pbf_wait(context, 1500ms);
+            return;
         }
         last_outside = outside;
-        const double tiles = (*doorway - 0.5) * SCREEN_WIDTH_TILES;
-        stream.log("[Route] " + label + ": doorway " + std::to_string(tiles) + " tiles across.");
-        if (std::abs(tiles) > 0.25){
-            step_across(stream, context, tiles);
+        log_doorway(stream, label, *doorway);
+        if (std::abs(doorway->tiles_across) > 0.25){
+            step_across(stream, context, doorway->tiles_across);
             continue;
         }
-        inside = walk_into_door(stream, context, outside, label);
+        if (walk_into_door(stream, context, outside, *doorway, label)){
+            pbf_wait(context, 1500ms);
+            return;
+        }
     }
-    if (!inside){
-        OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
-            label + ": door not found.", stream);
-    }
-    pbf_wait(context, 1500ms);
+    OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
+        label + ": not through the door after 12 tries.", stream);
 }
 
 void heal_at_pokemon_center(

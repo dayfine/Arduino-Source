@@ -6,7 +6,10 @@
 
 #include <functional>
 #include "Common/Cpp/Exceptions.h"
+#include "Common/Cpp/Filesystem/Filesystem.h"
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
+#include "CommonFramework/GlobalAutoPaths.h"
+#include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "Pokemon/Navigation/Pokemon_TileGrid.h"
 #include "Data/PokemonBDSP_AutoStory_JubilifeCity.h"
 #include "Data/PokemonBDSP_AutoStory_OreburghMine.h"
@@ -17,6 +20,7 @@
 #include "Data/PokemonBDSP_AutoStory_SandgemTown.h"
 #include "Data/PokemonBDSP_AutoStory_StoryMaps.h"
 #include "Utils/PokemonBDSP_AutoStory_NewGame.h"
+#include "Utils/PokemonBDSP_AutoStory_PokemonCenter.h"
 #include "Utils/PokemonBDSP_AutoStory_RouteWalk.h"
 #include "PokemonBDSP_AutoStory_Tests.h"
 
@@ -668,12 +672,108 @@ public:
 };
 
 
+//  The walk to the Poke Mart may be stopped short by someone in the way, and
+//  is then made again from the tiles the doorway on screen puts us on, give
+//  or take one each way: from every such block of tiles south of the Mart,
+//  a robust plan to the row below its door must exist.
+class Test_PokeMartShortWalks : public UnitTest{
+public:
+    Test_PokeMartShortWalks()
+        : UnitTest("PokemonBDSP::AutoStory - walks short of the Poke Mart")
+    {}
+
+    virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
+        const Pokemon::MapSet& maps = story_maps();
+        const TileGrid& grid = maps.world();
+        const TilePos front = maps.to_world(MAP_SANDGEM_TOWN, SandgemTown::POKE_MART_DOOR.next(Direction::SOUTH));
+        const auto at_front = [&](const TilePos& pos){ return pos.y == front.y && std::abs(pos.x - front.x) <= 1; };
+        //  The open ground south of the Mart, to the trees east of town and
+        //  the fence rows below.
+        for (int y = front.y + 1; y <= front.y + 7; y++){
+            for (int x = front.x - 6; x <= front.x + 2; x++){
+                std::vector<TilePos> block;
+                for (int dy = -1; dy <= 1; dy++){
+                    for (int dx = -1; dx <= 1; dx++){
+                        if (grid.standable({x + dx, y + dy})){
+                            block.push_back({x + dx, y + dy});
+                        }
+                    }
+                }
+                if (block.empty()){
+                    continue;
+                }
+                const std::string error = check_robust_plan(logger, "Short of the Poke Mart about " + maps.describe({x, y}),
+                    maps, block, at_front);
+                if (!error.empty()){
+                    return error;
+                }
+            }
+        }
+        return true;
+    }
+};
+
+
+//  The Mart's doorway on the failure screenshots of r121a and r122a, kept in
+//  the unit test resources (the CommandLineTests checkout): where it is
+//  relative to the player, who is in the middle of the screen.
+class Test_LitDoorwayScreenshots : public UnitTest{
+public:
+    Test_LitDoorwayScreenshots()
+        : UnitTest("PokemonBDSP::AutoStory - lit doorway screenshots")
+    {}
+
+    virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
+        struct Case{
+            const char* file;
+            double tiles_across_min;
+            double tiles_across_max;
+            double rows_up_min;
+            double rows_up_max;
+        };
+        const Case cases[] = {
+            //  r121a: below-left of the door, which is part of a tile east, straight ahead.
+            {"PokemonBDSP/AutoStory/SandgemMartDoorUpRight-20261030-023443.png", 0.2, 0.7, 0.5, 1.5},
+            //  r122a: a tile west of the door and three or four rows south of its front.
+            {"PokemonBDSP/AutoStory/SandgemMartDoorFarLeft-20261030-024648.png", -1.3, -0.5, 2.5, 4.5},
+        };
+        for (const Case& c : cases){
+            const std::string path = UNIT_TEST_RESOURCE_PATH() + c.file;
+            if (!Filesystem::is_regular_file(path)){
+                return UnitTestResult(UnitTestResult::SKIPPED, "Screenshot not found: " + path);
+            }
+            const ImageRGB32 screen(path);
+            const std::optional<LitDoorway> doorway = find_lit_doorway(screen);
+            if (!doorway){
+                return std::string(c.file) + ": no lit doorway found.";
+            }
+            logger.log(std::string(c.file) + ": doorway at " + std::to_string(doorway->x) + ", " +
+                std::to_string(doorway->y) + ": " + std::to_string(doorway->tiles_across) + " tiles across, " +
+                std::to_string(doorway->rows_up) + " rows up.");
+            if (doorway->tiles_across < c.tiles_across_min || doorway->tiles_across > c.tiles_across_max){
+                return std::string(c.file) + ": doorway " + std::to_string(doorway->tiles_across) +
+                    " tiles across, expected " + std::to_string(c.tiles_across_min) + " to " +
+                    std::to_string(c.tiles_across_max) + ".";
+            }
+            if (doorway->rows_up < c.rows_up_min || doorway->rows_up > c.rows_up_max){
+                return std::string(c.file) + ": doorway " + std::to_string(doorway->rows_up) +
+                    " rows up, expected " + std::to_string(c.rows_up_min) + " to " +
+                    std::to_string(c.rows_up_max) + ".";
+            }
+        }
+        return true;
+    }
+};
+
+
 void add_tests_AutoStory(UnitTestDatabase& database){
     database.add<Test_IntroDecisions>();
     database.add<Test_TileGridParse>();
     database.add<Test_TileGridWallHit>();
     database.add<Test_TileGridPlans>();
+    database.add<Test_PokeMartShortWalks>();
     database.add<Test_LocationBanner>();
+    database.add<Test_LitDoorwayScreenshots>();
 }
 
 
