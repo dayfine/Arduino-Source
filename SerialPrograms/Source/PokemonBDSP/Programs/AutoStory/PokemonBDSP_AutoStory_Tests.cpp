@@ -1451,6 +1451,7 @@ public:
     virtual std::optional<LitDoorway> lit_doorway() override{ return std::nullopt; }
     virtual Pokemon::Outcome line_up_with_door() override{ return Pokemon::outcome_ok(); }
     virtual bool inside_pokemon_center() override{ return inside; }
+    virtual bool indoors() override{ return inside; }
     virtual Pokemon::Outcome east_then_north_in_sandgem() override{ return Pokemon::outcome_ok(); }
     virtual bool dialogue_showing() override{ return false; }
     virtual Pokemon::Outcome finish_dialogue() override{ return Pokemon::outcome_ok(); }
@@ -1635,6 +1636,43 @@ public:
 
 //  Out of a building, the town's location banner shows; inside, none
 //  (Jubilife, 2026-10-30): what says a walk out of a door got out.
+//  Indoors or out, wherever the camera is (2026-10-30 screenshots).
+class Test_Indoors : public UnitTest{
+public:
+    Test_Indoors()
+        : UnitTest("PokemonBDSP::AutoStory - indoors")
+    {}
+    virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
+        struct Case{ const char* file; bool inside; };
+        const Case cases[] = {
+            {"PokemonBDSP/AutoStory/JubilifeCenterInside-20261030-c6.png", true},
+            {"PokemonBDSP/AutoStory/JubilifeCenterInside-20261030-c4.png", true},
+            {"PokemonBDSP/AutoStory/JubilifeCenterInsideUpper-20261030-r151a.png", true},
+            {"PokemonBDSP/AutoStory/SandgemCenterInside-20261030-053555.png", true},
+            {"PokemonBDSP/AutoStory/JubilifeSchoolInside-20261030.png", true},
+            {"PokemonBDSP/AutoStory/JubilifeCenterDoorstep-20261030-c5.png", false},
+            {"PokemonBDSP/AutoStory/JubilifeSchoolDoorstep-20261030.png", false},
+            {"PokemonBDSP/AutoStory/JubilifeSchoolDoorstep2-20261030.png", false},
+            {"PokemonBDSP/AutoStory/JubilifeCenterFrontDoor-20261030-q2.png", false},
+            {"PokemonBDSP/AutoStory/SandgemCenterBelowSign-20261030-053527.png", false},
+            {"PokemonBDSP/AutoStory/SandgemMartDoorUpRight-20261030-023443.png", false},
+        };
+        for (const Case& c : cases){
+            const std::string path = UNIT_TEST_RESOURCE_PATH() + c.file;
+            if (!Filesystem::is_regular_file(path)){
+                return UnitTestResult(UnitTestResult::SKIPPED, "Screenshot not found: " + path);
+            }
+            const bool inside = indoors(ImageRGB32(path));
+            logger.log(std::string(c.file) + ": " + (inside ? "indoors" : "outside"));
+            if (inside != c.inside){
+                return std::string(c.file) + ": expected " + (c.inside ? "indoors" : "outside") + ".";
+            }
+        }
+        return true;
+    }
+};
+
+
 class Test_LocationBannerShowing : public UnitTest{
 public:
     Test_LocationBannerShowing()
@@ -1681,6 +1719,7 @@ void add_tests_AutoStory(UnitTestDatabase& database){
     database.add<Test_JubilifeEvents>();
     database.add<Test_SchoolLamp>();
     database.add<Test_LocationBannerShowing>();
+    database.add<Test_Indoors>();
 }
 
 

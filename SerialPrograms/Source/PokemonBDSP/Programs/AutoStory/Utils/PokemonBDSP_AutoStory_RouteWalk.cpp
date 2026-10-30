@@ -580,14 +580,11 @@ void leave_door_south(VideoStream& stream, ProControllerContext& context, const 
     //  Center changes the screen as much (r148c stopped on the mat twice).
     auto fading = [&](const ImageViewRGB32& screen){
         const bool fade = have_last && walk_screen_change(last, screen) > WALK_SCENE_CHANGE &&
-            !pokemon_center_inside(screen);
+            !indoors(screen);
         last = screen.copy();
         have_last = true;
         return fade;
     };
-    //  Whether we start in a Pokemon Center: there walking changes the
-    //  screen as much as a fade.
-    const bool in_center = inside && pokemon_center_inside(*inside.frame);
     bool out = false;
     for (size_t tries = 0; tries < 3 && !out; tries++){
         //  Compare within this walk only.
@@ -596,37 +593,17 @@ void leave_door_south(VideoStream& stream, ProControllerContext& context, const 
         if (walk.stop == WalkStop::DIALOG){
             pbf_mash_button(context, BUTTON_B, 2000ms);
         }
-        //  Out shows the town's location banner for a few seconds after the
-        //  fade; inside a building there is none. The fade guess alone is
-        //  not enough: walking in Jubilife's Center changes the screen as
-        //  much (r143a, r148c), and the inside check only knows the mat
-        //  (r151a walked on inside after both said "out").
-        out = walk.stop == WalkStop::TRANSITION;
-        bool center_inside = false;
-        for (size_t looks = 0; looks < 20 && !out; looks++){
-            context.wait_for_all_requests();
-            VideoSnapshot now = stream.video().snapshot();
-            if (now){
-                stream.log("[Route] " + label + ": banner box " + location_banner_stats(*now.frame) + ".");
-                if (location_banner_showing(*now.frame)){
-                    stream.log("[Route] " + label + ": out; the location banner shows.");
-                    out = true;
-                }
-                center_inside = pokemon_center_inside(*now.frame);
-            }
-            if (!out){
-                pbf_wait(context, 300ms);
-            }
-        }
-        //  r152a walked out of the Trainers' School on a fade and saw no
-        //  banner: a fade that does not end in a Pokemon Center is out. In a
-        //  Center the fade guess fires on walking, so there the banner rules.
-        if (!out && walk.stop == WalkStop::ARRIVED && !center_inside && !in_center){
-            stream.log("[Route] " + label + ": a fade and no banner, not a Pokemon Center: out.");
-            out = true;
-        }
+        //  Out is a black transition, or a fade after which the screen is no
+        //  longer a building's inside. A fade guess alone fires on walking in
+        //  Jubilife's Center (r143a, r148c), the Center check knew only the
+        //  entrance mat (r151a), and no location banner shows after a door
+        //  (r153, 6 s of looks).
+        pbf_wait(context, 1500ms);
+        context.wait_for_all_requests();
+        VideoSnapshot now = stream.video().snapshot();
+        out = walk.stop == WalkStop::TRANSITION || (now && !indoors(*now.frame));
         if (!out){
-            stream.log("[Route] " + label + ": no location banner; still inside, walking on.");
+            stream.log("[Route] " + label + ": still indoors; walking on.");
         }
         //  Let the fade-in finish.
         pbf_wait(context, 1500ms);

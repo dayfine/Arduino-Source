@@ -228,6 +228,19 @@ bool pokemon_center_inside(const ImageViewRGB32& screen){
     return image_stats(extract_box_reference(screen, ImageFloatBox(0.30, 0.55, 0.40, 0.15))).average.sum() > 250;
 }
 
+bool indoors(const ImageViewRGB32& screen){
+    size_t warm = 0;
+    size_t count = 0;
+    for (size_t y = 0; y < screen.height(); y += 8){
+        for (size_t x = 0; x < screen.width(); x += 8){
+            const Color pixel(screen.pixel(x, y));
+            count++;
+            warm += pixel.red() > 150 && pixel.red() > pixel.blue() + 70 && pixel.green() > pixel.blue() + 20;
+        }
+    }
+    return count > 0 && warm * 4 > count;
+}
+
 std::optional<double> find_lit_lamp_x(const ImageViewRGB32& screen, const ImageFloatBox& box){
     const size_t x0 = (size_t)(box.x * screen.width()), x1 = (size_t)((box.x + box.width) * screen.width());
     const size_t y0 = (size_t)(box.y * screen.height()), y1 = (size_t)((box.y + box.height) * screen.height());

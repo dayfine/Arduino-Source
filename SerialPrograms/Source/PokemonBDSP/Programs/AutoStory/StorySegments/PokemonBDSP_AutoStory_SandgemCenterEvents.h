@@ -219,6 +219,8 @@ public:
     virtual std::optional<double> school_door_across() = 0;
     //  Moves across by `tiles` (positive: east).
     virtual void step_across(double tiles, const std::string& label) = 0;
+    //  Whether the screen shows a building's inside.
+    virtual bool indoors() = 0;
     //  Inside a building whose door is straight south: out through it. Fails
     //  if three walks south do not change the scene.
     virtual Pokemon::Outcome leave_south(const std::string& label) = 0;

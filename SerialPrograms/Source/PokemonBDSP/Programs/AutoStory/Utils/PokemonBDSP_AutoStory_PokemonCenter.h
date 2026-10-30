@@ -41,6 +41,12 @@ bool pokemon_center_inside(const ImageViewRGB32& screen);
 //  none shows there, or inside a Pokemon Center, whose floor is that colour.
 std::optional<LitDoorway> find_lit_doorway(const ImageViewRGB32& screen);
 
+//  Whether the screen shows a building's inside: its warm walls and floor
+//  fill much of the view wherever the camera is (Pokemon Centers, the
+//  Trainers' School: 42..65% of the screen), and outside, by day or by
+//  night, almost none (1..7%).
+bool indoors(const ImageViewRGB32& screen);
+
 //  A lit street lamp's head inside `box` (0 to 1 of the screen): the mean
 //  x of its white core, or nothing if fewer than a lamp's worth of white
 //  pixels show there (by day the lamps are not lit).

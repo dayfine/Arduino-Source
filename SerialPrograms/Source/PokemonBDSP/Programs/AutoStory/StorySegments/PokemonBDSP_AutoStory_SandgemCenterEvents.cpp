@@ -844,7 +844,7 @@ Checkpoint jubilife_center_checkpoint(JubilifeActions& game){
             [&game](RunState&){ return game.heal_at_center(); });
         //  r143a's heal said it had walked out while still inside.
         heal.expect.push_back(condition("out of the Pokemon Center, in the overworld", [&game](RunState&){
-            return !game.inside_pokemon_center();
+            return !game.indoors();
         }));
         checkpoint.events.push_back(std::move(heal));
     }
@@ -892,7 +892,7 @@ Checkpoint jubilife_school_checkpoint(JubilifeActions& game){
         });
     //  It starts on the Center's doorstep: outside, in the overworld.
     into.require.push_back(condition("out of the Pokemon Center, in the overworld", [&game](RunState&){
-        return !game.inside_pokemon_center();
+        return !game.indoors();
     }));
     checkpoint.events.push_back(std::move(into));
     return checkpoint;
@@ -985,6 +985,11 @@ public:
         m_stream.log("[Route] " + label + ": " + std::to_string(tiles) + " tiles across.");
         move_across(m_stream, m_context, tiles);
         m_context.wait_for_all_requests();
+    }
+    virtual bool indoors() override{
+        m_context.wait_for_all_requests();
+        VideoSnapshot screen = m_stream.video().snapshot();
+        return screen && PokemonBDSP::indoors(*screen.frame);
     }
     virtual Outcome leave_south(const std::string& label) override{
         try{
