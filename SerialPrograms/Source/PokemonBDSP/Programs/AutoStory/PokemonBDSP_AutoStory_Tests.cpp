@@ -23,6 +23,7 @@
 #include "Utils/PokemonBDSP_AutoStory_NewGame.h"
 #include "Utils/PokemonBDSP_AutoStory_PokemonCenter.h"
 #include "Utils/PokemonBDSP_AutoStory_RouteWalk.h"
+#include "StorySegments/PokemonBDSP_AutoStory_SandgemCenterEvents.h"
 #include "PokemonBDSP_AutoStory_Tests.h"
 
 namespace PokemonAutomation{
@@ -517,6 +518,11 @@ public:
             {"North of the gap between the signs to the save spot", above_sign_gap,
                 [&](const TilePos& pos){ return pos == save_spot; }, true},
             {"Save spots to Jubilife", story_save_spots(), story_at_jubilife_exit, false},
+            //  The Sandgem Center test checkpoint: south into town, then to the Center's sign.
+            {"Save spot to Sandgem Town", {save_spot},
+                [&](const TilePos& pos){ return pos == sandgem_entry_stop(); }, true},
+            {"Sandgem's entry to the Pokemon Center", {sandgem_entry_stop()},
+                [&](const TilePos& pos){ return pos == below_sign; }, true},
         };
         for (const auto& walk : walks){
             error = check_robust_plan(logger, walk.name, maps, walk.from, walk.goal);
@@ -532,6 +538,32 @@ public:
                 if (!error.empty()){
                     return error;
                 }
+            }
+        }
+
+        //  The walk south from the save spot keeps out of the tall grass, so
+        //  no wild battle can stop it.
+        {
+            const auto legs = Pokemon::plan_robust_route(maps.world(), {save_spot}, sandgem_entry_stop());
+            if (!legs){
+                return "Save spot to Sandgem Town: no robust route found.";
+            }
+            std::vector<TilePos> starts{save_spot};
+            for (const Pokemon::PlannedLeg& planned : *legs){
+                for (TilePos pos : starts){
+                    for (size_t i = 0; i < planned.leg.tiles; i++){
+                        const std::optional<TilePos> step = maps.world().step(pos, planned.leg.direction);
+                        if (!step){
+                            break;
+                        }
+                        pos = *step;
+                        if (maps.world().at(pos) == TileType::TALL_GRASS){
+                            return "Save spot to Sandgem Town: " + Pokemon::to_string(planned.leg) +
+                                " crosses tall grass at " + maps.describe(pos) + ".";
+                        }
+                    }
+                }
+                starts = planned.after;
             }
         }
 
@@ -853,6 +885,191 @@ public:
 };
 
 
+//  The Route 202 to Sandgem Center checkpoint's events against a scripted
+//  game: where the player is, and what goes wrong on the way.
+class FakeSandgemCenter : public SandgemCenterActions{
+public:
+    enum class Where{ ROUTE_202, SANDGEM_ENTRY, SHORT_OF_DOOR, BELOW_SIGN, INSIDE };
+
+    std::string save_location = "Route 202";
+    //  Walks to the Center that end three rows short (someone in the way).
+    size_t short_walks = 0;
+    //  Walks that a townsperson's talk stops, with the dialogue left open.
+    size_t talking_walks = 0;
+    Where where = Where::ROUTE_202;
+    bool dialogue = false;
+    std::vector<std::string> trace;
+
+    virtual std::string save_screen_location() override{
+        trace.push_back("read save screen");
+        return save_location;
+    }
+    virtual Pokemon::Outcome walk(
+        std::vector<TilePos>& at, const std::function<bool(const TilePos&)>& goal, const std::string& label
+    ) override{
+        trace.push_back("walk: " + label);
+        if (talking_walks > 0){
+            talking_walks--;
+            dialogue = true;
+            return Pokemon::outcome_failed("walk_failed", "a dialogue no trainer explains");
+        }
+        if (goal(sandgem_entry_stop())){
+            at = {sandgem_entry_stop()};
+            where = Where::SANDGEM_ENTRY;
+            return Pokemon::outcome_ok();
+        }
+        if (goal(below_sandgem_center_sign())){
+            at = {below_sandgem_center_sign()};
+            where = Where::BELOW_SIGN;
+            if (short_walks > 0){
+                short_walks--;
+                where = Where::SHORT_OF_DOOR;
+            }
+            return Pokemon::outcome_ok();
+        }
+        return Pokemon::outcome_failed("no_plan", label);
+    }
+    virtual bool east_then_south_into_sandgem() override{
+        trace.push_back("east, then south");
+        const bool entered = where == Where::ROUTE_202;
+        where = Where::SANDGEM_ENTRY;
+        return entered;
+    }
+    virtual std::optional<LitDoorway> lit_doorway() override{
+        switch (where){
+        case Where::BELOW_SIGN:
+            return LitDoorway{.x = 0.3, .y = 0.38, .tiles_across = -3.0, .rows_up = 1.0};
+        case Where::SHORT_OF_DOOR:
+            return LitDoorway{.x = 0.3, .y = 0.14, .tiles_across = -3.0, .rows_up = 3.0};
+        default:
+            return std::nullopt;
+        }
+    }
+    virtual Pokemon::Outcome enter_lit_door() override{
+        trace.push_back("enter door");
+        if (where != Where::BELOW_SIGN){
+            return Pokemon::outcome_failed("door_failed", "no lit doorway on screen");
+        }
+        where = Where::INSIDE;
+        return Pokemon::outcome_ok();
+    }
+    virtual bool screen_shows() override{
+        return true;
+    }
+    virtual bool dialogue_showing() override{
+        return dialogue;
+    }
+    virtual Pokemon::Outcome finish_dialogue() override{
+        trace.push_back("finish dialogue");
+        dialogue = false;
+        return Pokemon::outcome_ok();
+    }
+};
+
+class Test_SandgemCenterEvents : public UnitTest{
+public:
+    Test_SandgemCenterEvents()
+        : UnitTest("PokemonBDSP::AutoStory - Sandgem Center events")
+    {}
+
+    virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
+        const std::string SOUTH = "walk: Route 202 to Sandgem Town";
+        const std::string CENTER = "walk: To the Pokemon Center";
+        struct Case{
+            const char* name;
+            std::string save_location;
+            size_t short_walks;
+            size_t talking_walks;
+            bool completed;
+            size_t failed_event;
+            std::vector<std::string> trace;
+        };
+        const Case cases[] = {
+            {
+                .name = "Straight through",
+                .save_location = "Route 202",
+                .short_walks = 0,
+                .talking_walks = 0,
+                .completed = true,
+                .failed_event = 0,
+                .trace = {"read save screen", SOUTH, CENTER, "enter door"},
+            },
+            {
+                .name = "The save is in Sandgem Town",
+                .save_location = "Sandgem Town",
+                .short_walks = 0,
+                .talking_walks = 0,
+                .completed = false,
+                .failed_event = 1,
+                .trace = {"read save screen", "read save screen"},
+            },
+            {
+                .name = "Stopped short of the door",
+                .save_location = "Route 202",
+                .short_walks = 1,
+                .talking_walks = 0,
+                .completed = true,
+                .failed_event = 0,
+                .trace = {"read save screen", SOUTH, CENTER, CENTER, "enter door"},
+            },
+            {
+                .name = "A talk stops the walk south",
+                .save_location = "Route 202",
+                .short_walks = 0,
+                .talking_walks = 1,
+                .completed = true,
+                .failed_event = 0,
+                .trace = {"read save screen", SOUTH, "finish dialogue", "east, then south", CENTER, "enter door"},
+            },
+            {
+                .name = "Short of the door every time",
+                .save_location = "Route 202",
+                .short_walks = 5,
+                .talking_walks = 0,
+                .completed = false,
+                .failed_event = 3,
+                .trace = {"read save screen", SOUTH, CENTER, CENTER, CENTER},
+            },
+        };
+        for (const Case& c : cases){
+            FakeSandgemCenter game;
+            game.save_location = c.save_location;
+            game.short_walks = c.short_walks;
+            game.talking_walks = c.talking_walks;
+            Pokemon::Checkpoint checkpoint = route202_to_sandgem_center_checkpoint(game);
+            const std::vector<std::string> problems = Pokemon::lint_checkpoint(checkpoint);
+            if (!problems.empty()){
+                return std::string(c.name) + ": lint: " + problems.front();
+            }
+            std::string log_text;
+            Pokemon::EventLogger log = [&](const std::string& line){ log_text += "\n    " + line; };
+            Pokemon::RunState state;
+            const Pokemon::CheckpointReport report = Pokemon::run_checkpoint(state, checkpoint, log);
+            logger.log(std::string(c.name) + ":" + log_text);
+            if (report.completed != c.completed || report.failed_event != c.failed_event){
+                return std::string(c.name) + ": expected " + (c.completed ? "completed" : "failed") +
+                    " at event " + std::to_string(c.failed_event) + ", read " + (report.completed ? "completed" : "failed") +
+                    " at event " + std::to_string(report.failed_event) + ":" + log_text;
+            }
+            if (game.trace != c.trace){
+                std::string expected, read;
+                for (const std::string& step : c.trace){
+                    expected += " [" + step + "]";
+                }
+                for (const std::string& step : game.trace){
+                    read += " [" + step + "]";
+                }
+                return std::string(c.name) + ": expected steps" + expected + ", read" + read + ".";
+            }
+            if (c.completed && game.where != FakeSandgemCenter::Where::INSIDE){
+                return std::string(c.name) + ": completed, but not inside.";
+            }
+        }
+        return true;
+    }
+};
+
+
 void add_tests_AutoStory(UnitTestDatabase& database){
     database.add<Test_IntroDecisions>();
     database.add<Test_TileGridParse>();
@@ -862,6 +1079,7 @@ void add_tests_AutoStory(UnitTestDatabase& database){
     database.add<Test_LocationBanner>();
     database.add<Test_LitDoorwayScreenshots>();
     database.add<Test_SaveScreenLocation>();
+    database.add<Test_SandgemCenterEvents>();
 }
 
 

@@ -14,6 +14,7 @@
 
 #include "StorySegments/PokemonBDSP_AutoStory_Segment_00.h"
 #include "StorySegments/PokemonBDSP_AutoStory_Segment_01.h"
+#include "StorySegments/PokemonBDSP_AutoStory_SandgemCenterEvents.h"
 
 #include "CommonTools/Options/StringSelectOption.h"
 
@@ -151,6 +152,13 @@ BDSPAutoStory::BDSPAutoStory()
           "Use an existing in-game save at the selected starting checkpoint or segment. "
           "Any failure reloads that save and reruns the entire selected range from its start. "
           "Checkpoint saves are not verified in this mode. Remove before pushing to production.",
+          LockMode::LOCK_WHILE_RUNNING, false)
+    // DIAGNOSTIC ONLY: Remove before pushing to production.
+    , DIAGNOSTIC_ROUTE202_TO_SANDGEM_CENTER(
+          "<b>Diagnostic only: Route 202 to Sandgem's Pokemon Center (events)</b><br>"
+          "Start at Route 202's save spot under the south ledge. Walks into Sandgem Town and in through the "
+          "Pokemon Center's door, and stops there: no heal, no save. Runs only this, whatever the other options say. "
+          "Remove before pushing to production.",
           LockMode::LOCK_WHILE_RUNNING, false)
     , ENABLE_ADVANCED_MODE(
           "<b>Advanced mode:</b><br>"
@@ -342,6 +350,7 @@ BDSPAutoStory::BDSPAutoStory()
 
     PA_ADD_OPTION(DIAGNOSTIC_POST_CATCH_ONLY);
     PA_ADD_OPTION(DIAGNOSTIC_FAKE_CHECKPOINT_SAVE);
+    PA_ADD_OPTION(DIAGNOSTIC_ROUTE202_TO_SANDGEM_CENTER);
     PA_ADD_OPTION(ENABLE_ADVANCED_MODE);
 
     // Segment UI
@@ -492,6 +501,16 @@ void BDSPAutoStory::program(
     };
     auto run_selected_range = [&](size_t attempt){
         if (attempt > 0) env.log("[Fake saves] Reloaded initial save; restarting the entire selected range from its start.");
+        // DIAGNOSTIC ONLY: Remove this branch before pushing to production.
+        if (DIAGNOSTIC_ROUTE202_TO_SANDGEM_CENTER){
+            const std::string name = ROUTE202_TO_SANDGEM_CENTER_NAME;
+            env.log("[AutoStory] Objective: " + name + ". Ends: inside Sandgem Town's Pokemon Center, not healed, not saved.", COLOR_BLUE);
+            add_wrapped_log(env.console.overlay(), "Now: " + name, COLOR_WHITE);
+            diagnostic_route202_to_sandgem_center(env, context);
+            env.log("[AutoStory] Completed: " + name + ".", COLOR_DARKGREEN);
+            add_wrapped_log(env.console.overlay(), "Done: " + name, COLOR_GREEN);
+            return;
+        }
         // DIAGNOSTIC ONLY: Remove this branch before pushing to production.
         if (DIAGNOSTIC_POST_CATCH_ONLY && ENABLE_ADVANCED_MODE &&
             START_CHECKPOINT_TUTORIAL.slug() == "4"){
