@@ -134,10 +134,11 @@ public:
 
 // A singleplayer quest panel that behaves like the game's: 3 blue quests,
 // and a completed quest is replaced by a new one. process_quest_list()
-// follows the two rules of the real one that the round loop depends on:
-// quests in not_possible_quests are skipped, and if nothing is doable all
-// quests are rerolled and nothing is returned. Red quests and the
-// exclusions table are not modeled. Records the game actions taken.
+// follows the rules of the real one that the round loop depends on: quests
+// in not_possible_quests are skipped, quests in table_rerolls are rerolled
+// in their slot as an exclusions table reroll row does, and if nothing is
+// doable all quests are rerolled. After any reroll it returns nothing to do.
+// Red quests are not modeled. Records the game actions taken.
 // With out_of_bp, rerolls do nothing, as in the game when BP runs out.
 // A run that reads the panel more than max_reads times is stuck: the read
 // throws, and the test records "stuck".
@@ -160,6 +161,10 @@ public:
         BBQuests::photo_savanna, BBQuests::catch_any, BBQuests::catch_normal,
         BBQuests::catch_fire, BBQuests::catch_water, BBQuests::catch_grass,
     };
+    // Quests that process_quest_list() rerolls in their slot.
+    std::set<BBQuests> table_rerolls;
+    // Rerolls return the panel they read to verify the reroll, as
+    // reroll_quest() does when that read is reusable.
     bool reuse_rerolled_panel = false;
 
     std::vector<std::string> events;
@@ -176,19 +181,29 @@ public:
         const std::vector<BBQuests>& quests, uint8_t
     ) override{
         events.push_back("process");
+        bool rerolled = false;
+        for (BBQuests& slot : panel){
+            if (table_rerolls.contains(slot)){
+                slot = next_new_quest();
+                rerolled = true;
+            }
+        }
         std::vector<BBQuests> doable;
         for (BBQuests quest : quests){
             if (!not_possible_quests.contains(quest)){
                 doable.push_back(quest);
             }
         }
-        const bool rerolled = doable.empty() && !out_of_bp;
-        if (rerolled){
+        if (!rerolled && doable.empty() && !out_of_bp){
             for (BBQuests& slot : panel){
                 slot = next_new_quest();
             }
+            rerolled = true;
         }
-        return {std::move(doable), rerolled && reuse_rerolled_panel && quests.size() == 4 ? std::optional(panel) : std::nullopt};
+        if (rerolled){
+            return {{}, reuse_rerolled_panel ? std::optional(panel) : std::nullopt};
+        }
+        return {std::move(doable), std::nullopt};
     }
     virtual bool do_quest(BBQuests quest, uint8_t&) override{
         events.push_back("do");
@@ -205,12 +220,14 @@ public:
         }
         return success;
     }
-    virtual void reroll_quest(BBQuests quest) override{
+    virtual std::optional<std::vector<BBQuests>> reroll_quest(BBQuests quest) override{
         events.push_back("reroll");
         auto iter = std::find(panel.begin(), panel.end(), quest);
-        if (iter != panel.end()){
-            *iter = next_new_quest();
+        if (iter == panel.end()){
+            return std::nullopt;
         }
+        *iter = next_new_quest();
+        return reuse_rerolled_panel ? std::optional(panel) : std::nullopt;
     }
     virtual void quest_completed() override{
         events.push_back("completed");
@@ -266,9 +283,11 @@ struct BBQRoundsScenario{
     std::vector<BBQuests> new_quests = {};
     std::vector<std::pair<BBQuests, BBQAction>> exclusions = {};
     BBQOption::OutOfRetries out_of_retries = BBQOption::OutOfRetries::Skip;
+    std::set<BBQuests> table_rerolls = {};
     bool reuse_rerolled_panel = false;
     uint64_t expected_completed = 0;
     std::vector<BBQuests> expected_attempted = {};
+    std::optional<size_t> expected_reads = {};
     std::string expected;
 };
 
@@ -305,6 +324,7 @@ public:
         if (!m_scenario.new_quests.empty()){
             game.new_quests = m_scenario.new_quests;
         }
+        game.table_rerolls = m_scenario.table_rerolls;
         game.reuse_rerolled_panel = m_scenario.reuse_rerolled_panel;
 
         NullLogger logger;
@@ -332,6 +352,11 @@ public:
             return "Expected quest order: " + join_events(expected_quests)
                 + "\nActual quest order:   " + join_events(actual_quests);
         }
+        const size_t reads = (size_t)std::count(game.events.begin(), game.events.end(), "read");
+        if (m_scenario.expected_reads && reads != *m_scenario.expected_reads){
+            return "Expected " + std::to_string(*m_scenario.expected_reads)
+                + " quest panel reads, counted " + std::to_string(reads);
+        }
         const std::string actual = join_events(game.events);
         if (actual != m_scenario.expected){
             return "Expected: " + m_scenario.expected + "\nActual:   " + actual;
@@ -355,7 +380,7 @@ std::vector<std::pair<BBQuests, BBQAction>> every_doable_blue_quest(BBQAction ac
 }
 
 static void add_tests_BBQFarmerRounds(UnitTestDatabase& database){
-    const std::string round_of_3 = "read process read do completed read do completed read do completed";
+    const std::string round_of_3 = "read process do completed read do completed read do completed";
     std::string read_30_times;
     for (int c = 0; c < 30; c++){
         read_30_times += "read process ";
@@ -372,10 +397,10 @@ static void add_tests_BBQFarmerRounds(UnitTestDatabase& database){
             .out_of_retries = BBQOption::OutOfRetries::Reroll,
             .expected_completed = 3,
             .expected_attempted = {BBQuests::catch_grass, BBQuests::travel_500, BBQuests::photo_savanna, BBQuests::make_tm},
-            .expected = "read process read do reroll end " + round_of_3 + " end",
+            .expected = "read process do reroll end " + round_of_3 + " end",
         },
         {
-            .name = "failed reroll on full board reads fresh after round actions",
+            .name = "failed reroll on full board reuses its verified read after round actions",
             .num_quests = 1,
             .panel = {BBQuests::catch_grass, BBQuests::photo_savanna, BBQuests::make_tm, BBQuests::wash_pokemon},
             .outcomes = {false},
@@ -384,7 +409,7 @@ static void add_tests_BBQFarmerRounds(UnitTestDatabase& database){
             .reuse_rerolled_panel = true,
             .expected_completed = 4,
             .expected_attempted = {BBQuests::catch_grass, BBQuests::travel_500, BBQuests::photo_savanna, BBQuests::make_tm, BBQuests::wash_pokemon},
-            .expected = "read process read do reroll end " + round_of_3 + " read do completed end",
+            .expected = "read process do reroll end process do completed read do completed read do completed read do completed end",
         },
         {
             .name = "replanning after failure preserves a crossed save milestone",
@@ -396,7 +421,7 @@ static void add_tests_BBQFarmerRounds(UnitTestDatabase& database){
             .out_of_retries = BBQOption::OutOfRetries::Reroll,
             .expected_completed = 4,
             .expected_attempted = {BBQuests::make_tm, BBQuests::catch_grass, BBQuests::photo_canyon, BBQuests::travel_500, BBQuests::photo_savanna},
-            .expected = "read process read do completed read do reroll end(save) " + round_of_3 + " end(save)",
+            .expected = "read process do completed read do reroll end(save) " + round_of_3 + " end(save)",
         },
         {
             .name = "reuses reroll observation for selection and first dispatch only",
@@ -407,12 +432,61 @@ static void add_tests_BBQFarmerRounds(UnitTestDatabase& database){
             .expected = "read process process do completed read do completed read do completed read do completed end",
         },
         {
-            .name = "three-slot reroll still reads the panel again",
+            // reroll_quest() decides whether a 3-slot read is reusable.
+            .name = "reusable three-slot reroll observation is not read again",
             .num_quests = 1,
             .panel = {BBQuests::pickup_10, BBQuests::catch_flying, BBQuests::UnableToDetect},
             .reuse_rerolled_panel = true,
             .expected_completed = 3,
-            .expected = "read process read process read do completed read do completed read do completed end",
+            .expected = "read process process do completed read do completed read do completed end",
+        },
+        {
+            // Seen in a live run: catch-fighting fails and is rerolled into
+            // pickup-10, which the exclusions table rerolls into travel-500.
+            // Each reroll's verified read is reused, and so is the last one
+            // for the first dispatch. The round loop used to read the panel
+            // 3 times between the failed reroll and the next attempt.
+            .name = "failed reroll then table reroll reuse verified reads",
+            .num_quests = 1,
+            .panel = {BBQuests::catch_fighting, BBQuests::make_tm, BBQuests::photo_savanna},
+            .outcomes = {false},
+            .new_quests = {BBQuests::pickup_10, BBQuests::travel_500, BBQuests::photo_canyon, BBQuests::photo_coastal, BBQuests::photo_polar},
+            .out_of_retries = BBQOption::OutOfRetries::Reroll,
+            .table_rerolls = {BBQuests::pickup_10},
+            .reuse_rerolled_panel = true,
+            .expected_completed = 3,
+            .expected_attempted = {BBQuests::catch_fighting, BBQuests::travel_500, BBQuests::make_tm, BBQuests::photo_savanna},
+            .expected_reads = 3,
+            .expected = "read process do reroll end process process do completed read do completed read do completed end",
+        },
+        {
+            // As above, but neither reroll's read is reusable. Only the
+            // first dispatch skips a read: 2 reads before the next attempt
+            // instead of 3.
+            .name = "failed reroll then table reroll without reusable reads",
+            .num_quests = 1,
+            .panel = {BBQuests::catch_fighting, BBQuests::make_tm, BBQuests::photo_savanna},
+            .outcomes = {false},
+            .new_quests = {BBQuests::pickup_10, BBQuests::travel_500, BBQuests::photo_canyon, BBQuests::photo_coastal, BBQuests::photo_polar},
+            .out_of_retries = BBQOption::OutOfRetries::Reroll,
+            .table_rerolls = {BBQuests::pickup_10},
+            .expected_completed = 3,
+            .expected_attempted = {BBQuests::catch_fighting, BBQuests::travel_500, BBQuests::make_tm, BBQuests::photo_savanna},
+            .expected_reads = 5,
+            .expected = "read process do reroll end read process read process do completed read do completed read do completed end",
+        },
+        {
+            // The save resets the game, so the reroll's read is not reused.
+            .name = "failed reroll before a save reads the panel after it",
+            .num_quests = 2,
+            .save_num_quests = 1,
+            .panel = {BBQuests::make_tm, BBQuests::catch_grass, BBQuests::photo_savanna},
+            .outcomes = {true, false},
+            .new_quests = {BBQuests::photo_canyon, BBQuests::travel_500, BBQuests::photo_coastal, BBQuests::photo_polar},
+            .out_of_retries = BBQOption::OutOfRetries::Reroll,
+            .reuse_rerolled_panel = true,
+            .expected_completed = 4,
+            .expected = "read process do completed read do reroll end(save) " + round_of_3 + " end(save)",
         },
         {
             // The goal (4) is reached in the middle of round 2. The loop only
@@ -431,7 +505,7 @@ static void add_tests_BBQFarmerRounds(UnitTestDatabase& database){
             .panel = {BBQuests::photo_swim, BBQuests::travel_500, BBQuests::make_tm},
             .also_completes = {{BBQuests::photo_swim, BBQuests::travel_500}},
             .expected_completed = 3,
-            .expected = "read process read do completed read completed read do completed end",
+            .expected = "read process do completed read completed read do completed end",
         },
         {
             // The first attempt fails: 3 attempts, 2 completions.
@@ -439,7 +513,7 @@ static void add_tests_BBQFarmerRounds(UnitTestDatabase& database){
             .num_quests = 2,
             .outcomes = {false},
             .expected_completed = 2,
-            .expected = "read process read do read do completed read do completed end",
+            .expected = "read process do read do completed read do completed end",
         },
         {
             // Nothing on the panel is doable, so process_quest_list() rerolls
@@ -474,8 +548,8 @@ static void add_tests_BBQFarmerRounds(UnitTestDatabase& database){
             .never_completes = {BBQuests::sneak_up},
             .expected_completed = 4,
             .expected =
-                "read process read do completed read do completed read do end "
-                "read process read do completed read do completed end",
+                "read process do completed read do completed read do end "
+                "read process do completed read do completed end",
         },
         {
             .name = "stops when only failed quests are doable",
@@ -483,7 +557,7 @@ static void add_tests_BBQFarmerRounds(UnitTestDatabase& database){
             .panel = {BBQuests::sneak_up, BBQuests::pickup_10, BBQuests::catch_flying},
             .never_completes = {BBQuests::sneak_up},
             .expected_completed = 0,
-            .expected = "read process read do end read process",
+            .expected = "read process do end read process",
         },
         {
             // Rerolls change nothing, so the panel never becomes doable.
@@ -512,8 +586,8 @@ static void add_tests_BBQFarmerRounds(UnitTestDatabase& database){
             .out_of_retries = BBQOption::OutOfRetries::Reroll,
             .expected_completed = 3,
             .expected =
-                "read process read do reroll end read process read do reroll end "
-                "read process read do reroll end " + round_of_3 + " end(save)",
+                "read process do reroll end read process do reroll end "
+                "read process do reroll end " + round_of_3 + " end(save)",
         },
         {
             // sneak-up fails, then leaves the panel along with make-tm. Round 2
@@ -527,9 +601,9 @@ static void add_tests_BBQFarmerRounds(UnitTestDatabase& database){
             .new_quests = {BBQuests::auto_10, BBQuests::photo_canyon, BBQuests::sneak_up},
             .expected_completed = 5,
             .expected =
-                "read process read do read do completed end "
-                "read process read do completed read do completed end "
-                "read process read do completed read do completed end",
+                "read process do read do completed end "
+                "read process do completed read do completed end "
+                "read process do completed read do completed end",
         },
         {
             // As above with 3 slots. A 4th quest could have been missed by
@@ -542,9 +616,9 @@ static void add_tests_BBQFarmerRounds(UnitTestDatabase& database){
             .new_quests = {BBQuests::auto_10, BBQuests::photo_canyon, BBQuests::sneak_up},
             .expected_completed = 4,
             .expected =
-                "read process read do read do completed end "
-                "read process read do completed read do completed end "
-                "read process read do completed end",
+                "read process do read do completed end "
+                "read process do completed read do completed end "
+                "read process do completed end",
         },
         {
             // Rerolling could never produce a doable panel, so the run
@@ -570,7 +644,7 @@ static void add_tests_BBQFarmerRounds(UnitTestDatabase& database){
             .never_completes = {BBQuests::sneak_up},
             .out_of_retries = BBQOption::OutOfRetries::Reroll,
             .expected_completed = 5,
-            .expected = "read process read do completed read do completed read do reroll end " + round_of_3 + " end",
+            .expected = "read process do completed read do completed read do reroll end " + round_of_3 + " end",
         },
         {
             .name = "out of retries with stop stops at once",
@@ -579,7 +653,7 @@ static void add_tests_BBQFarmerRounds(UnitTestDatabase& database){
             .never_completes = {BBQuests::sneak_up},
             .out_of_retries = BBQOption::OutOfRetries::Stop,
             .expected_completed = 0,
-            .expected = "read process read do",
+            .expected = "read process do",
         },
     };
     for (const BBQRoundsScenario& scenario : scenarios){
@@ -898,6 +972,49 @@ static void add_tests_BBQReroll(UnitTestDatabase& database){
             .expected_quests = {make_tm, travel_500, catch_any, hatch_egg},
         },
         {
+            // The panel used for the reroll had 3 slots, so a 3-slot read is
+            // not a missed fourth quest.
+            .name = "three-slot read of a three-slot panel is reusable",
+            .quests = {make_tm, sneak_up, travel_500},
+            .replacements = {catch_any},
+            .slot = 2,
+            .expected = BBQRerollResult::Rerolled,
+            .expected_rerolled_slots = {2},
+            .expected_quests = {make_tm, sneak_up, catch_any},
+            .expected_observed_panel = std::vector<BBQuests>{make_tm, sneak_up, catch_any},
+        },
+        {
+            .name = "three-slot read with an unknown slot is not reusable",
+            .quests = {make_tm, sneak_up, travel_500},
+            .replacements = {catch_any},
+            .slot = 2,
+            .read_override = std::vector<BBQuests>{make_tm, UnableToDetect, catch_any},
+            .expected = BBQRerollResult::Rerolled,
+            .expected_rerolled_slots = {2},
+            .expected_quests = {make_tm, sneak_up, catch_any},
+        },
+        {
+            .name = "three-slot read with another changed quest is not reusable",
+            .quests = {make_tm, sneak_up, travel_500},
+            .replacements = {catch_any},
+            .slot = 2,
+            .read_override = std::vector<BBQuests>{photo_canyon, sneak_up, catch_any},
+            .expected = BBQRerollResult::Rerolled,
+            .expected_rerolled_slots = {2},
+            .expected_quests = {make_tm, sneak_up, catch_any},
+        },
+        {
+            // The panel used for the reroll missed this fourth quest.
+            .name = "fourth quest not on the three-slot panel is not reusable",
+            .quests = {make_tm, sneak_up, travel_500},
+            .replacements = {catch_any},
+            .slot = 2,
+            .read_override = std::vector<BBQuests>{make_tm, sneak_up, catch_any, hatch_egg},
+            .expected = BBQRerollResult::Rerolled,
+            .expected_rerolled_slots = {2},
+            .expected_quests = {make_tm, sneak_up, catch_any},
+        },
+        {
             .name = "complete observation after missed reads is reusable",
             .quests = {make_tm, travel_500, sneak_up, hatch_egg},
             .replacements = {catch_any},
@@ -916,6 +1033,7 @@ static void add_tests_BBQReroll(UnitTestDatabase& database){
             .expected = BBQRerollResult::Rerolled,
             .expected_rerolled_slots = {2},
             .expected_quests = {make_tm, sneak_up, catch_any},
+            .expected_observed_panel = std::vector<BBQuests>{make_tm, sneak_up, catch_any},
         },
         {
             // Seen on a Switch: the panel can open with the cursor where it
@@ -973,6 +1091,7 @@ static void add_tests_BBQReroll(UnitTestDatabase& database){
             .expected = BBQRerollResult::Rerolled,
             .expected_rerolled_slots = {2},
             .expected_quests = {make_tm, sneak_up, catch_any},
+            .expected_observed_panel = std::vector<BBQuests>{make_tm, sneak_up, catch_any},
         },
         {
             .name = "three missed reads give up",
