@@ -123,6 +123,12 @@ std::string map_of(const MapSet& maps, const std::vector<TilePos>& tiles){
 }
 
 
+bool route_wall_readable(const TileGrid& grid, const std::vector<TilePos>& after){
+    return std::none_of(after.begin(), after.end(), [&](const TilePos& pos){
+        return grid.at(pos) == TileType::TALL_GRASS;
+    });
+}
+
 bool location_banner_matches(const std::string& read, const std::string& expected){
     const std::string a = normalize_name(read);
     const std::string b = normalize_name(expected);
@@ -232,10 +238,16 @@ std::vector<TilePos> walk_route(
     const std::function<bool(const TilePos&)>& goal,
     std::vector<TrainerSight>& trainers,
     const RouteTrainerFight& fight,
-    const std::string& label
+    const std::string& label,
+    const std::vector<TilePos>& avoid
 ){
     //  Our own copy, so things found in the way can be added to it.
     TileGrid grid = maps.world();
+    for (const TilePos& pos : avoid){
+        if (std::find(from.begin(), from.end(), pos) == from.end()){
+            grid.set(pos, TileType::BLOCKED);
+        }
+    }
     //  Which way the player faces, once a leg has set it.
     std::optional<Direction> facing;
     for (size_t plans = 0; plans < 8; plans++){
@@ -262,11 +274,23 @@ std::vector<TilePos> walk_route(
             stick_for(leg.direction, x, y);
             const std::string leg_label = label + ": " + to_string(leg);
 
-            //  Note any location banner the walk passes, to check map changes.
-            std::string banner;
+            //  Note the location banners the walk passes, to check map changes.
+            //  A wild battle or a second walk to the wall may follow the
+            //  banner: any banner seen during the leg counts.
+            const std::string map_before = map_of(maps, from);
+            const std::string map_after = map_of(maps, planned.after);
+            std::vector<std::string> banners;
+            auto banner_ok = [&]{
+                return std::any_of(banners.begin(), banners.end(), [&](const std::string& read){
+                    return location_banner_matches(read, map_after);
+                });
+            };
             auto watch_banner = [&](const ImageViewRGB32& screen){
-                if (banner.empty()){
-                    banner = read_location_banner(screen);
+                if (banners.empty() || (!map_after.empty() && !banner_ok() && banners.size() < 8)){
+                    const std::string read = read_location_banner(screen);
+                    if (!read.empty() && (banners.empty() || banners.back() != read)){
+                        banners.push_back(read);
+                    }
                 }
                 return false;
             };
@@ -362,22 +386,26 @@ std::vector<TilePos> walk_route(
                 }
             }
             facing = leg.direction;
-            if (banner.empty()){
+            {
                 context.wait_for_all_requests();
                 if (VideoSnapshot screen = stream.video().snapshot()){
                     watch_banner(*screen.frame);
                 }
             }
-            //  Entering another map shows its name; a missing or wrong name means
-            //  the walk did not end where the plan says.
-            const std::string map_before = map_of(maps, from);
-            const std::string map_after = map_of(maps, planned.after);
-            if (!map_after.empty() && map_after != map_before && !location_banner_matches(banner, map_after)){
-                OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
-                    leg_label + ": expected to enter " + map_after + ", but the location banner read \"" + banner + "\".", stream);
+            std::string banner_text;
+            for (const std::string& read : banners){
+                banner_text += (banner_text.empty() ? "\"" : ", \"") + read + "\"";
             }
-            if (!banner.empty()){
-                stream.log("[Route] " + leg_label + ": location banner \"" + banner + "\".");
+            //  Entering another map shows its name; a missing or wrong name means
+            //  the walk did not end where the plan says. From tiles on several
+            //  maps (a leg not confirmed) the banner may already have shown.
+            if (!map_before.empty() && !map_after.empty() && map_after != map_before && !banner_ok()){
+                OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
+                    leg_label + ": expected to enter " + map_after + ", but the location banner read " +
+                    (banner_text.empty() ? "nothing" : banner_text) + ".", stream);
+            }
+            if (!banner_text.empty()){
+                stream.log("[Route] " + leg_label + ": location banner " + banner_text + ".");
             }
             //  Where each leg ended, to compare with the plan after a run.
             if (VideoSnapshot screen = stream.video().snapshot()){
@@ -389,7 +417,6 @@ std::vector<TilePos> walk_route(
                 OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
                     leg_label + ": unexpected transition.", stream);
             }
-
             //  A trainer who sees us freezes the player and walks over; the
             //  dialogue may open after the walk has ended.
             const std::vector<std::vector<TilePos>> paths = [&]{

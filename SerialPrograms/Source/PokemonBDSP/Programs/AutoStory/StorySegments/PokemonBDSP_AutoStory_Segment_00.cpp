@@ -714,9 +714,16 @@ namespace PokemonAutomation {
                         "Poke Mart lady: she talked, but no Potion is in the Bag. "
                         "Has this save already had her Potions?", stream);
                 }
-                // Somewhere along her row: plan from all of it.
-                walk_route(stream, context, maps, story_potion_giver_area(),
-                    [&](const TilePos& pos) { return pos == save_spot; }, trainers, fight, "Back to Route 202");
+                // We stand in her row with her next to us, east. r116a planned
+                // east along the row from here: she stood in the way, the tall
+                // grass hid that the walk had stopped, and every later leg was
+                // off. So go back west to the corner, away from her, then plan
+                // with her rows as walls: south out of the grass and round.
+                const std::vector<TilePos> at_corner = walk_route(stream, context, maps, story_potion_giver_row(),
+                    [&](const TilePos& pos) { return pos == corner; }, trainers, fight, "Back to her row's corner");
+                walk_route(stream, context, maps, at_corner,
+                    [&](const TilePos& pos) { return pos == save_spot; }, trainers, fight, "Back to Route 202",
+                    story_potion_giver_wander_area());
                 stream.log("[00.04] Saving with the Potions, at the save spot on Route 202.");
                 save_game(env, context);
             }

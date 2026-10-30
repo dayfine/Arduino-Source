@@ -264,6 +264,43 @@ std::string check_robust_plan(
     return "";
 }
 
+//  The walk back from the Potion giver (00.04): west along her row to its
+//  corner, away from her, then round her rows to the save spot. Every leg on
+//  Route 201 after the corner must end on a wall the walk can read, out of the
+//  tall grass, so that no leg there that runs out of time is taken as an anchor.
+std::string check_potion_giver_walk_back(Logger& logger){
+    const Pokemon::MapSet& maps = story_maps();
+    const TilePos corner = maps.to_world(MAP_ROUTE_201, Route201::POTION_GIVER_ROW_WEST_END);
+    const auto to_corner = Pokemon::plan_robust_route(maps.world(), story_potion_giver_row(),
+        [&](const TilePos& pos){ return pos == corner; });
+    if (!to_corner || to_corner->size() != 1 || to_corner->front().leg.direction != Direction::WEST){
+        return "Potion giver walk back: her row should reach its corner in one leg west.";
+    }
+    TileGrid grid = maps.world();
+    const std::vector<TilePos> wander = story_potion_giver_wander_area();
+    for (const TilePos& pos : wander){
+        grid.set(pos, TileType::BLOCKED);
+    }
+    const TilePos save_spot = maps.to_world(MAP_ROUTE_202, Route202::POTION_SAVE_SPOT);
+    const auto legs = Pokemon::plan_robust_route(grid, {corner}, [&](const TilePos& pos){ return pos == save_spot; });
+    if (!legs || legs->empty()){
+        return "Potion giver walk back: no plan from the corner round her rows.";
+    }
+    std::string text = "Potion giver corner to the save spot, round her rows:";
+    for (const Pokemon::PlannedLeg& leg : *legs){
+        text += "\n    " + Pokemon::to_string(leg.leg) + " to";
+        for (const TilePos& pos : leg.after){
+            text += " " + maps.describe(pos);
+        }
+        const std::optional<Pokemon::MapTile> tile = maps.to_local(leg.after.front());
+        if (tile && tile->map == MAP_ROUTE_201 && (!leg.leg.ends_at_wall || !route_wall_readable(grid, leg.after))){
+            return "Potion giver walk back: " + Pokemon::to_string(leg.leg) + " ends on Route 201 where a stop cannot be read.";
+        }
+    }
+    logger.log(text);
+    return legs->back().after == std::vector<TilePos>{save_spot} ? "" : "Potion giver walk back: may not end at the save spot.";
+}
+
 //  Checks a plan from `from` to `to`: every leg can be walked, ledges are
 //  crossed only southward, and each leg's wall flag matches the grid.
 //  With `maps`, legs are printed with the map tile they end on, and with
@@ -410,8 +447,7 @@ public:
             return error;
         }
         const TilePos save_spot = maps.to_world(MAP_ROUTE_202, Route202::POTION_SAVE_SPOT);
-        error = check_robust_plan(logger, "Potion giver to the save spot", maps, story_potion_giver_area(),
-            [&](const TilePos& pos){ return pos == save_spot; });
+        error = check_potion_giver_walk_back(logger);
         if (!error.empty()){
             return error;
         }

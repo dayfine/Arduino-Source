@@ -74,6 +74,11 @@ bool walk_along_row_to_talk(
 //  read as Route 202.
 bool location_banner_matches(const std::string& read, const std::string& expected);
 
+//  Whether a walk to the wall that ends on any of `after` can tell it has
+//  stopped: not in tall grass, whose sway keeps the screen changing at a
+//  wall. Elsewhere, a walk to the wall that stops confirms where it ended.
+bool route_wall_readable(const Pokemon::TileGrid& grid, const std::vector<Pokemon::TilePos>& after);
+
 //  Shows what the route walk is doing in the log and the video overlay.
 void route_status(VideoStream& stream, const std::string& text);
 
@@ -85,8 +90,10 @@ using RouteTrainerFight = std::function<void(const std::string& trainer)>;
 //  Walks from any of the world tiles `from` of `maps` until every tile the
 //  player may be on is `goal`, and returns those tiles. Trainers in
 //  `trainers` who see the player are fought with `fight` and taken off the
-//  list. Fails with a screenshot on a transition, a dialogue no trainer
-//  explains, a wild battle during an open leg, or when no plan exists.
+//  list. Tiles in `avoid` (where someone wanders) are planned as walls.
+//  Fails with a screenshot
+//  on a transition, a dialogue no trainer explains, a wild battle during an
+//  open leg, or when no plan exists.
 std::vector<Pokemon::TilePos> walk_route(
     VideoStream& stream, ProControllerContext& context,
     const Pokemon::MapSet& maps,
@@ -94,7 +101,8 @@ std::vector<Pokemon::TilePos> walk_route(
     const std::function<bool(const Pokemon::TilePos&)>& goal,
     std::vector<Pokemon::TrainerSight>& trainers,
     const RouteTrainerFight& fight,
-    const std::string& label
+    const std::string& label,
+    const std::vector<Pokemon::TilePos>& avoid = {}
 );
 
 //  Walks next to the NPC on world tile `npc`, faces them and presses A, trying
