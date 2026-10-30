@@ -115,6 +115,10 @@ the walker. Brock route work follows §7.4 segments 00 and 01 of [AutoStory.md](
 - Risk: moving `walk_route` onto the shared walker changes code that ran unattended. The
   branch is not done until 00.04 runs on a console again and 01.05 reaches Floaroma.
 
+Fork drafts (2026-10-29): `nav/core` #66, `frlg/brock-mvp` #67, `bdsp/floaroma-mvp` #68 (on
+#1717 at `45a206f0d`, branch `base/bdsp-1717`; their segments 02 to 09 kept but not in the
+checkpoint list, since they start where #1717's own 01 ends).
+
 Order: N1, then the FRLG child up to its planner tests (it already passes on the core idea),
 then N2 with the FRLG walker on it (re-run the Mewtwo route), then the BDSP child. N3 can go
 any time. The lab branches keep everything else and merge these branches in.
