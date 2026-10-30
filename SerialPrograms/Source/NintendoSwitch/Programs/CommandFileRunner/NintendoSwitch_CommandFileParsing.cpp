@@ -4,6 +4,8 @@
  *
  */
 
+#include <cerrno>
+#include <cstdlib>
 #include <map>
 #include <sstream>
 #include "Common/Cpp/Exceptions.h"
@@ -34,11 +36,17 @@ double optional_number(const std::vector<std::string>& words, size_t index, doub
     if (index >= words.size()){
         return fallback;
     }
-    try{
-        return std::stod(words[index]);
-    }catch (std::exception&){
+    //  strtod() rather than std::stod(): on the macOS Intel CI build, the
+    //  std::invalid_argument that std::stod() throws is not caught as a
+    //  std::exception.
+    const char* begin = words[index].c_str();
+    char* end = nullptr;
+    errno = 0;
+    const double value = std::strtod(begin, &end);
+    if (end == begin || errno == ERANGE){
         throw ParseException(words[0] + ": argument " + std::to_string(index) + " is not a number: " + words[index]);
     }
+    return value;
 }
 
 Milliseconds optional_duration(const std::vector<std::string>& words, size_t index, Milliseconds fallback){
