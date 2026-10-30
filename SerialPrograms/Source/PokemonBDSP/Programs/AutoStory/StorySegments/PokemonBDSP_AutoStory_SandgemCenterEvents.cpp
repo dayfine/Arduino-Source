@@ -903,15 +903,13 @@ Checkpoint jubilife_barry_checkpoint(JubilifeActions& game){
     Checkpoint checkpoint;
     checkpoint.id = "jubilife_barry";
     checkpoint.interrupts.push_back(dialogue_interrupt(game));
-    //  Stepped through on the console (2026-10-28, and r146b's end shot):
-    //  Barry stands at the blackboard, a tile west of the door's column.
+    //  Barry stands at the blackboard a tile west of the door's column, and
+    //  that column is clear to the back wall (shots from inside the door).
+    //  A tile west by a hold went two in r149a and the boy at the table
+    //  stopped us: stay on the door's column, north to the wall, face west.
     checkpoint.events.push_back(wrapped_step("up_to_barry",
-        "a tile west of the door's column, then north until Barry stops us", "at_barry",
-        [&game](RunState&){
-            game.turn(Direction::WEST);
-            const Outcome west = game.tile(Direction::WEST, "West of the door's column");
-            return west.succeeded() ? game.walk_until_stopped(Direction::NORTH, 8, "North to Barry") : west;
-        }));
+        "north up the door's column until the back wall stops us, beside Barry", "at_barry",
+        [&game](RunState&){ return game.walk_until_stopped(Direction::NORTH, 10, "North to the back wall"); }));
     {
         std::shared_ptr<DialogueRead> read = std::make_shared<DialogueRead>();
         Event talk;
@@ -919,7 +917,7 @@ Checkpoint jubilife_barry_checkpoint(JubilifeActions& game){
         talk.why = "Barry gives the Town Map";
         talk.skip_if.push_back(condition("talked_to_barry", [](RunState& state){ return state.flags.count("talked_to_barry") > 0; }));
         talk.act = [&game, read](RunState& state){
-            *read = game.talk(Direction::NORTH, BUTTON_A, "Barry");
+            *read = game.talk(Direction::WEST, BUTTON_A, "Barry");
             if (read->opened && read->closed){
                 state.flags.insert("talked_to_barry");
             }
@@ -929,21 +927,13 @@ Checkpoint jubilife_barry_checkpoint(JubilifeActions& game){
             return read->opened && read->closed;
         }));
         talk.recoveries.push_back(recovery("expect_failed", RecoveryKind::REANCHOR, 1, [&game](RunState&){
-            return game.walk_until_stopped(Direction::NORTH, 4, "North to Barry");
-        }, "not at him: north until he stops us"));
+            return game.walk_until_stopped(Direction::NORTH, 4, "North to the back wall");
+        }, "not beside him: north until the back wall stops us"));
         checkpoint.events.push_back(std::move(talk));
     }
     checkpoint.events.push_back(wrapped_step("out_of_the_school",
-        "south until the front wall stops us, a tile east to the door's column, out", "out_of_school",
-        [&game](RunState&){
-            const Outcome down = game.walk_until_stopped(Direction::SOUTH, 8, "South to the School's front wall");
-            if (!down.succeeded()){
-                return down;
-            }
-            game.turn(Direction::EAST);
-            const Outcome east = game.tile(Direction::EAST, "To the door's column");
-            return east.succeeded() ? game.leave_south("Out of the Trainers' School") : east;
-        }));
+        "straight south down the door's column and out", "out_of_school",
+        [&game](RunState&){ return game.leave_south("Out of the Trainers' School"); }));
     return checkpoint;
 }
 

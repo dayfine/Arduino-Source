@@ -250,9 +250,9 @@ extern const char* const JUBILIFE_SCHOOL_NAME;
 
 //  00.05c: in the Trainers' School, from its door: Barry, who gives the Town
 //  Map, and back out onto the School's doorstep.
-//      1. up_to_barry           a tile west, north until Barry stops us
-//      2. talk_to_barry         his scene, to "You obtained a Town Map!"
-//      3. out_of_the_school     south to the front wall, a tile east, out
+//      1. up_to_barry           north up the door's column to the back wall
+//      2. talk_to_barry         face west: his scene, to "You obtained a Town Map!"
+//      3. out_of_the_school     south down the door's column and out
 Pokemon::Checkpoint jubilife_barry_checkpoint(JubilifeActions& game);
 extern const char* const JUBILIFE_BARRY_NAME;
 
