@@ -1452,6 +1452,11 @@ public:
     virtual Pokemon::Outcome line_up_with_door() override{ return Pokemon::outcome_ok(); }
     virtual bool inside_pokemon_center() override{ return inside; }
     virtual bool indoors() override{ return inside; }
+    bool president_talks = true;
+    virtual DialogueRead walk_until_talked_to(size_t, const std::string& label) override{
+        trace.push_back("meet: " + label);
+        return president_talks ? DialogueRead{.opened = true, .closed = true, .text = "Oh?"} : DialogueRead{};
+    }
     virtual Pokemon::Outcome east_then_north_in_sandgem() override{ return Pokemon::outcome_ok(); }
     virtual bool dialogue_showing() override{ return false; }
     virtual Pokemon::Outcome finish_dialogue() override{ return Pokemon::outcome_ok(); }
@@ -1577,6 +1582,17 @@ public:
                 }
                 if (!Pokemon::run_checkpoint(barry_state, barry, log).completed || !game.left_school){
                     return std::string(c.name) + ": 00.05c did not complete.";
+                }
+            }
+            if (school_done){
+                Pokemon::RunState president_state;
+                Pokemon::Checkpoint president = jubilife_president_checkpoint(game);
+                const std::vector<std::string> problems = Pokemon::lint_checkpoint(president);
+                if (!problems.empty()){
+                    return std::string(c.name) + ": 00.05d lint: " + problems.front();
+                }
+                if (!Pokemon::run_checkpoint(president_state, president, log).completed){
+                    return std::string(c.name) + ": 00.05d did not complete.";
                 }
             }
             size_t tries = 0;

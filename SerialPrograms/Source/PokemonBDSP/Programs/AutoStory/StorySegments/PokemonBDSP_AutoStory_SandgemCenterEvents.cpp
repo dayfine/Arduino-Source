@@ -938,6 +938,45 @@ Checkpoint jubilife_barry_checkpoint(JubilifeActions& game){
     return checkpoint;
 }
 
+const char* const JUBILIFE_PRESIDENT_NAME = "00.05d Jubilife: the Poketch Company president (events)";
+
+Checkpoint jubilife_president_checkpoint(JubilifeActions& game){
+    Checkpoint checkpoint;
+    checkpoint.id = "jubilife_president";
+    checkpoint.interrupts.push_back(dialogue_interrupt(game));
+    checkpoint.events.push_back(wrapped_step("into_the_road",
+        "a tap to face east, four one-tile steps into the main road", "in_road",
+        [&game](RunState&){
+            game.turn(Direction::EAST);
+            for (size_t tiles = 0; tiles < 4; tiles++){
+                const Outcome moved = game.tile(Direction::EAST, "East into the road");
+                if (!moved.succeeded()){
+                    return moved;
+                }
+            }
+            return outcome_ok();
+        }));
+    {
+        std::shared_ptr<DialogueRead> read = std::make_shared<DialogueRead>();
+        Event meet;
+        meet.name = "meet_the_president";
+        meet.why = "the president sends us for the three clowns' coupons";
+        meet.skip_if.push_back(condition("met_president", [](RunState& state){ return state.flags.count("met_president") > 0; }));
+        meet.act = [&game, read](RunState& state){
+            *read = game.walk_until_talked_to(6, "The Poketch Company president");
+            if (read->opened && read->closed){
+                state.flags.insert("met_president");
+            }
+            return outcome_ok();
+        };
+        meet.expect.push_back(condition("his talk opened and was closed", [read](RunState&){
+            return read->opened && read->closed;
+        }));
+        checkpoint.events.push_back(std::move(meet));
+    }
+    return checkpoint;
+}
+
 class ConsoleJubilifeActions : public ConsoleMartLadyActionsT<JubilifeActions>{
 public:
     ConsoleJubilifeActions(SingleSwitchProgramEnvironment& env, ProControllerContext& context)
@@ -985,6 +1024,21 @@ public:
         m_stream.log("[Route] " + label + ": " + std::to_string(tiles) + " tiles across.");
         move_across(m_stream, m_context, tiles);
         m_context.wait_for_all_requests();
+    }
+    virtual DialogueRead walk_until_talked_to(size_t tiles, const std::string& label) override{
+        DialogueRead read;
+        const Milliseconds limit = (int64_t)tiles * ROUTE_MS_PER_TILE_UP_DOWN + 800ms;
+        walk_until(m_stream, m_context, 0, 1, limit, label);
+        //  He walks up after the "!" and only then talks.
+        ShortDialogWatcher opened(COLOR_CYAN);
+        if (wait_until(m_stream, m_context, 5000ms, {{opened}}) != 0){
+            m_stream.log("[Talk] " + label + ": no one talked.");
+            return read;
+        }
+        read.opened = true;
+        PokemonBDSP::finish_dialogue(m_stream, m_context, BUTTON_B, label);
+        read.closed = true;
+        return read;
     }
     virtual bool indoors() override{
         m_context.wait_for_all_requests();
@@ -1039,6 +1093,12 @@ void diagnostic_jubilife_center(SingleSwitchProgramEnvironment& env, ProControll
     ConsoleJubilifeActions game(env, context);
     Checkpoint checkpoint = jubilife_center_checkpoint(game);
     run_on_console(env, checkpoint, JUBILIFE_CENTER_NAME);
+}
+
+void diagnostic_jubilife_president(SingleSwitchProgramEnvironment& env, ProControllerContext& context){
+    ConsoleJubilifeActions game(env, context);
+    Checkpoint checkpoint = jubilife_president_checkpoint(game);
+    run_on_console(env, checkpoint, JUBILIFE_PRESIDENT_NAME);
 }
 
 void diagnostic_jubilife_barry(SingleSwitchProgramEnvironment& env, ProControllerContext& context){

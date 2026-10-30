@@ -221,6 +221,10 @@ public:
     virtual void step_across(double tiles, const std::string& label) = 0;
     //  Whether the screen shows a building's inside.
     virtual bool indoors() = 0;
+    //  Walks north for at most `tiles` tiles' time until someone's talk
+    //  opens (a person who sees us walks up and talks), then reads it on
+    //  with B, which never starts a talk over.
+    virtual DialogueRead walk_until_talked_to(size_t tiles, const std::string& label) = 0;
     //  Inside a building whose door is straight south: out through it. Fails
     //  if three walks south do not change the scene.
     virtual Pokemon::Outcome leave_south(const std::string& label) = 0;
@@ -257,6 +261,17 @@ extern const char* const JUBILIFE_SCHOOL_NAME;
 //      3. out_of_the_school     south down the door's column and out
 Pokemon::Checkpoint jubilife_barry_checkpoint(JubilifeActions& game);
 extern const char* const JUBILIFE_BARRY_NAME;
+
+//  00.05d: from the School's doorstep, the Poketch Company president on the
+//  main road, who sends us for the clowns' coupons. Stepped through on the
+//  console (2026-10-30): four tiles east is the road; a couple of tiles
+//  north he sees us, walks up and talks.
+//      1. into_the_road         a tap east, four one-tile steps
+//      2. meet_the_president    north until his talk opens; read it with B
+Pokemon::Checkpoint jubilife_president_checkpoint(JubilifeActions& game);
+extern const char* const JUBILIFE_PRESIDENT_NAME;
+//  DIAGNOSTIC ONLY: Remove before pushing to production.
+void diagnostic_jubilife_president(SingleSwitchProgramEnvironment& env, ProControllerContext& context);
 
 //  DIAGNOSTIC ONLY: Remove before pushing to production.
 void diagnostic_jubilife_barry(SingleSwitchProgramEnvironment& env, ProControllerContext& context);
