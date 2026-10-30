@@ -70,17 +70,29 @@ Notes:
 - Snapshots dedupe by content, so they stay at one copy per distinct tree
   whatever the build does.
 
-## Proposal
+## Adopted (2026-10-29)
 
-- **`Resources`:** option 2, content-hash snapshots. Stored once per distinct
-  tree, so it doesn't matter that builds rewrite the folder.
-- **`.app`:** option 3, APFS clones. The console-B copy can be cloned from the
-  console-A copy before its plist edit and re-signing, so only the changed
-  blocks take space (not yet measured).
-- **Worktrees:** option 5 for worktrees idle more than a few days.
+- **`Resources`:** content-hash snapshots in `~/BDSPLab/builds/.resources/<hash>/`,
+  linked from each deployment; a prune keeps the 5 newest deployments per build
+  family (`bdsp-r105` and `frlgnav8` are families `bdsp-r` and `frlgnav`) and
+  deletes snapshots nothing links to.
+- **`.app`:** APFS clones for the console-B copy.
+- **Worktrees:** build directories only for worktrees in use; the others are
+  deleted and rebuilt from ccache when needed (about a minute).
 
-Here that is about 500 MB instead of 4.2 GB, with no change to the app.
+Result: 12 deployments (two build families, with console-B copies) take 587 MB,
+199 MB of it the one snapshot they share, against 4.2 GB for 14 before. Three
+worktree build directories in use take 6.4 GB.
+
+## Lab output
+
+What the lab apps write grows faster than the builds and isn't covered above:
+per-leg route screenshots and move screenshots from AutoStory runs (2.2 GB in
+the console-B profile after two days), Command File Runner probe shots (1 GB,
+cleared), and rotated logs. These are run evidence, not build output, so they
+are cleared by hand after a run is recorded.
 
 Open questions:
 - Should `Resources` hashing skip files the app writes at runtime, if any?
 - Keep this in lab scripts only, or document it next to the ccache guide?
+- Should AutoStory keep per-leg screenshots only for failed runs?
