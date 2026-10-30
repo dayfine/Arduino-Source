@@ -13,6 +13,7 @@
 #include "VideoGames/PokemonFRLG/Inference/Dialogs/PokemonFRLG_DialogDetector.h"
 #include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleFlashWatcher.h"
 #include "VideoGames/PokemonFRLG/PokemonFRLG_Navigation.h"
+#include "PokemonFRLG_PlayerFacingReader.h"
 #include "PokemonFRLG_OverworldWalk.h"
 
 namespace PokemonAutomation{
@@ -356,8 +357,16 @@ void walk_overworld_route(
     const OverworldInterrupts& interrupts
 ){
     //  Each leg starts with a turn tap unless it goes the way the player faces.
-    //  If the first facing isn't known it taps anyway, which takes an extra
-    //  step if the player already faced that way.
+    //  A tap while already facing that way takes a step, so a facing not
+    //  given is read from the screen. If that fails too it taps anyway.
+    if (!facing){
+        context.wait_for_all_requests();
+        VideoSnapshot screen = console.video().snapshot();
+        if (screen){
+            facing = read_player_facing(screen);
+        }
+        console.log(std::string("Route: the player faces ") + (facing ? direction_name(*facing) : "an unknown way") + ".");
+    }
     for (const RouteStep& step : route){
         console.log("Route: " + to_string(step));
         switch (step.action){
