@@ -1,11 +1,11 @@
-/*  Leg Planner Tests
+/*  Navigation Tests
  *
  *  From: https://github.com/PokemonAutomation/
  *
  */
 
-#ifndef PokemonAutomation_Pokemon_LegPlanner_Tests_H
-#define PokemonAutomation_Pokemon_LegPlanner_Tests_H
+#ifndef PokemonAutomation_Pokemon_Navigation_Tests_H
+#define PokemonAutomation_Pokemon_Navigation_Tests_H
 
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 
@@ -14,6 +14,7 @@ namespace Pokemon{
 
 
 void add_tests_LegPlanner(UnitTestDatabase& database);
+void add_tests_LegWalker(UnitTestDatabase& database);
 
 
 

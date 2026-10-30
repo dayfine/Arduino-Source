@@ -12,7 +12,7 @@
 #include <vector>
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "Pokemon_LegPlanner.h"
-#include "Pokemon_LegPlanner_Tests.h"
+#include "Pokemon_Navigation_Tests.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
