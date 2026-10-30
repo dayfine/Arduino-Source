@@ -4,7 +4,6 @@
  *
  */
 
-#include <utility>
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "CommonTools/Async/InferenceRoutines.h"
@@ -24,42 +23,50 @@ namespace PokemonFRLG{
 
 //  Where to look for the black screen of a game starting: the middle of the
 //  frame, away from its edges.
-const ImageFloatBox LAUNCH_BLACK_SCREEN_BOX{0.1, 0.15, 0.8, 0.7};
+const ImageFloatBox LAUNCH_BLACK_SCREEN_BOX(/* x */ 0.1, /* y */ 0.15, /* width */ 0.8, /* height */ 0.7);
+
+struct GameLaunch{
+    bool started = false;           //  the game was seen starting
+    bool online_license = false;    //  the console checked an online license
+};
 
 //  Press A to start the game, then wait until it is time to go back Home.
 //  Normally that is a fixed delay. With an online license, the console first
 //  returns to the Home menu to check the license, so wait for the game to
-//  actually start instead. Returns true if the game was seen starting.
-bool start_game_before_home(
+//  actually start instead. Once a launch has shown the license check, pass
+//  `online_license` to skip looking for it again.
+GameLaunch start_game_before_home(
     ConsoleHandle& console, ProControllerContext& context,
-    Milliseconds launch_delay,
-    bool& online_license
+    Milliseconds launch_delay, bool online_license
 ){
-    //  The same 50ms press as before this change, so without an online
-    //  license the timing that `launch_delay` is calibrated for stays the same.
+    //  A on the selected profile starts the game: the screen goes black until
+    //  the game draws its first frame. `launch_delay` counts from the end of
+    //  this press, so keep the press short and fixed.
     pbf_press_button(context, BUTTON_A, 50ms, 0ms);
     context.wait_for_all_requests();
 
     if (!online_license){
         //  An online license shows itself by the Home menu or the license
         //  popup coming up during the launch delay. If neither does, the delay
-        //  has passed as before and it is time to go Home.
+        //  has passed and it is time to go Home.
         HomeMenuWatcher home(console);
         CheckOnlineWatcher check_online;
         if (wait_until(console, context, launch_delay, { home, check_online }) < 0){
-            return false;
+            return GameLaunch{};
         }
-        online_license = true;
         console.log("Back at Home after starting the game. Waiting for the online license check...", COLOR_BLUE);
     }
 
     BlackScreenWatcher black_screen(COLOR_BLUE, LAUNCH_BLACK_SCREEN_BOX);
-    if (wait_until(console, context, std::chrono::seconds(30), { black_screen }, 1ms) < 0){
+    if (wait_until(
+        console, context, std::chrono::seconds(30), { black_screen },
+        /* default_video_period */ 1ms  //  check every frame, to go Home as soon as the game starts
+    ) < 0){
         console.log("Game did not start within 30 seconds of the online license check.", COLOR_RED);
-        return false;
+        return GameLaunch{.started = false, .online_license = true};
     }
     console.log("Black screen detected.");
-    return true;
+    return GameLaunch{.started = true, .online_license = true};
 }
 
 void rng_reset_and_return_home(
@@ -72,7 +79,7 @@ void rng_reset_and_return_home(
     close_game_from_home(console, context);
 
     bool update_popup = false;
-    bool online_license = false;
+    GameLaunch launch;
     WallClock deadline = current_time() + std::chrono::minutes(5);
     while (true){
         if (current_time() > deadline){
@@ -150,7 +157,7 @@ void rng_reset_and_return_home(
             pbf_press_button(context, BUTTON_A, 160ms, 840ms);
             pbf_press_dpad(context, DPAD_UP, 40ms, 0ms);
         }
-        bool game_started = start_game_before_home(console, context, launch_delay, online_license);
+        launch = start_game_before_home(console, context, launch_delay, launch.online_license);
         pbf_press_button(context, BUTTON_HOME, 200ms, 1800ms);
 
         while(current_time() < deadline){
@@ -160,13 +167,12 @@ void rng_reset_and_return_home(
                 console, context,
                 std::chrono::seconds(2 + (update_popup ? 1 : 0)),
                 { black_screen, update_menu },
-                1ms
+                /* default_video_period */ 1ms
             );
-            bool black_screen_detected = std::exchange(game_started, false);  //  a black screen seen at launch counts once
             switch (ret3){
             case 0:
                 console.log("Black screen detected.");
-                black_screen_detected = true;
+                launch.started = true;
                 break;
             case 1:
                 console.log("Update menu detected.", COLOR_BLUE);
@@ -188,7 +194,7 @@ void rng_reset_and_return_home(
 
             switch (ret4){
             case 0:
-                if (black_screen_detected){
+                if (launch.started){  //  seen here or while starting the game
                     console.log("Detected Home screen after black screen.");
                     return;
                 }else{
@@ -200,13 +206,13 @@ void rng_reset_and_return_home(
             case 1:
                 console.log("Detected user-select screen. Trying again...", COLOR_BLUE);
                 move_to_user(context, user_slot);
-                game_started = start_game_before_home(console, context, launch_delay, online_license);
+                launch = start_game_before_home(console, context, launch_delay, launch.online_license);
                 pbf_press_button(context, BUTTON_HOME, 200ms, 2800ms);
                 continue;
             case 2:
                 console.log("Detected update menu. Trying again...", COLOR_BLUE);
                 pbf_press_dpad(context, DPAD_UP, 40ms, 0ms);
-                game_started = start_game_before_home(console, context, launch_delay, online_license);
+                launch = start_game_before_home(console, context, launch_delay, launch.online_license);
                 pbf_press_button(context, BUTTON_HOME, 200ms, 2800ms);
                 continue;
             default:
