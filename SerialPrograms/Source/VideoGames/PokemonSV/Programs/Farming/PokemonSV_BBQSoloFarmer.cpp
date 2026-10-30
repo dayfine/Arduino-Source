@@ -298,6 +298,25 @@ private:
     EventNotificationOption& m_status_update;
 };
 
+//Checks before the first round, so that a setup problem stops the program at once instead of
+//in the middle of a quest.
+void check_before_start(SingleSwitchProgramEnvironment& env, ProControllerContext& context, const BBQOption& options){
+    //The Switch dims the screen after a few idle minutes, which hides the overworld. Any button
+    //wakes it, and B is harmless on the overworld.
+    pbf_press_button(context, BUTTON_B, 160ms, 1000ms);
+    context.wait_for_all_requests();
+
+    if (options.NUM_EGGS > 0 && !box_has_egg(env.program_info(), env.console, context)){
+        throw UserSetupError(
+            env.console,
+            "\"Hatch Quest - Number of Eggs\" is " + std::to_string((int)options.NUM_EGGS) +
+            ", but the current box (the one the box system opens on) has no egg. "
+            "Put eggs in that box, or set it to 0 and choose Reroll or Keep Going in "
+            "\"Hatch Quest - Zero Eggs\"."
+        );
+    }
+}
+
 }
 
 void BBQSoloFarmer::program(SingleSwitchProgramEnvironment& env, ProControllerContext& context){
@@ -313,6 +332,8 @@ void BBQSoloFarmer::program(SingleSwitchProgramEnvironment& env, ProControllerCo
 
     //  Connect the controller.
     require_player(env.console, context, BUTTON_LCLICK);
+
+    check_before_start(env, context, BBQ_OPTIONS);
     
     //Fly to plaza
     open_map_from_overworld(env.program_info(), env.console, context);
