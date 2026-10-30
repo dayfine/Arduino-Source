@@ -96,9 +96,16 @@ Pokemon::TilePos below_sandgem_center_sign();
 //  one under it, at the gap's west half.
 std::vector<Pokemon::TilePos> doors_row_by_the_gap();
 
+//  On the doors' row, east of the Lab's sign, where a walk west along the
+//  row stops (checked on the console).
+Pokemon::TilePos east_of_lab_sign();
+
 //  Whether `doorway` is straight ahead on the row below it: about a row up,
 //  within half a tile across.
 bool doorway_lined_up(const LitDoorway& doorway);
+
+//  Whether a sign's OCR text has `key` (lower case), ignoring case.
+bool sign_text_matches(const std::string& text, const std::string& key);
 
 //  Whether `doorway` is the Center's, seen from the row below its door: up
 //  the screen by about a row, and no further across than the Center's sign.
@@ -145,8 +152,23 @@ public:
     //  box, then presses `next` once per line, 1.5 s apart, while it shows.
     virtual DialogueRead talk(Pokemon::Direction direction, Button next, const std::string& label) = 0;
 
-    //  As 00.04 walks it after the Potions: from below the Center's door to
-    //  Route 202's save spot, and the save there, which must read Route 202.
+    //  From the tile north of a sign, facing it: south a tile, two tiles
+    //  `way` (WEST or EAST), and north a tile, to the sign's other side.
+    virtual Pokemon::Outcome step_around_sign(Pokemon::Direction way) = 0;
+
+    //  Faces east and presses A: whether a box opened at the bottom of the
+    //  screen (a sign's may be green, not a dialogue's), what OCR reads in
+    //  it, and whether B closed it.
+    virtual DialogueRead read_sign(const std::string& label) = 0;
+
+    //  Walks `direction`, pressing A after each short stretch, for at most
+    //  `tiles` tiles' time until someone answers; then one A per line, 1.5 s
+    //  apart, while the box shows.
+    virtual DialogueRead talk_walking(Pokemon::Direction direction, size_t tiles, const std::string& label) = 0;
+
+    //  As 00.04 walks it after the Potions, from east of the Lab's sign on
+    //  the doors' row to Route 202's save spot, and the save there, which
+    //  must read Route 202.
     virtual Pokemon::Outcome walk_to_route_202_save_spot() = 0;
     virtual Pokemon::Outcome save_on_route_202() = 0;
 };

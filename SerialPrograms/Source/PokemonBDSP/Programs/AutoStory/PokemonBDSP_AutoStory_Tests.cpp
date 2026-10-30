@@ -548,6 +548,8 @@ public:
                 }, true},
             {"Doors' row by the gap to the trees east of the Mart", doors_row_by_the_gap(),
                 [&](const TilePos& pos){ return pos == row_end; }, true},
+            {"East of the Lab's sign to the trees east of the Mart", {east_of_lab_sign()},
+                [&](const TilePos& pos){ return pos == row_end; }, true},
             //  Its re-anchor after a wild battle in the lady's grass.
             {"East end of the lady's row to the Route 201 sign", {route201_row_3_east_end()},
                 [&](const TilePos& pos){ return pos == route201_sign_west(); }, false},
@@ -1206,91 +1208,106 @@ public:
 };
 
 
-//  The Poke Mart lady checkpoint against a scripted game.
+//  The Poke Mart lady checkpoint against a scripted game: where the player
+//  stands along the row from the doors' row to the lady, as stepped through
+//  on the console.
 class FakeMartLady : public MartLadyActions{
 public:
-    enum class Where{ CENTER_FRONT, BELOW_SIGN, SHORT_OF_SIGN, SIGN_WEST, ROW_3, LADY, ROUTE_202 };
+    enum class Where{ DOORS_ROW, LAB_EAST, LAB_WEST, ROUTE_201_EAST, ROUTE_201_WEST, SHORT_OF_201, LADY, ROUTE_202 };
 
-    //  Walks to the sign that end a tile short of it.
+    //  Walks back east from the lady that a wild battle ends short of the sign.
     size_t short_walks = 0;
     //  Talks to the lady before she is there to answer.
     size_t lady_away = 0;
-    Where where = Where::CENTER_FRONT;
+    Where where = Where::DOORS_ROW;
     std::vector<std::string> trace;
 
     virtual std::string save_screen_location() override{ return ""; }
     virtual Pokemon::Outcome walk(
-        std::vector<TilePos>& at, const std::function<bool(const TilePos&)>& goal, const std::string& label
+        std::vector<TilePos>&, const std::function<bool(const TilePos&)>&, const std::string& label
     ) override{
         trace.push_back("walk: " + label);
-        if (goal(route201_sign_west())){
-            at = {route201_sign_west()};
-            where = Where::SIGN_WEST;
-            if (short_walks > 0){
-                short_walks--;
-                where = Where::SHORT_OF_SIGN;
-            }
-            return Pokemon::outcome_ok();
-        }
-        if (goal(below_sandgem_center_sign())){
-            at = {below_sandgem_center_sign()};
-            where = Where::BELOW_SIGN;
-            return Pokemon::outcome_ok();
-        }
         return Pokemon::outcome_failed("no_plan", label);
     }
     virtual bool east_then_south_into_sandgem() override{ return false; }
     virtual Pokemon::Outcome entry_to_doors_row() override{ return Pokemon::outcome_failed("no_plan", "not on this checkpoint"); }
     virtual Pokemon::Outcome step_to_front_row() override{ return Pokemon::outcome_failed("no_plan", "not on this checkpoint"); }
     virtual std::optional<LitDoorway> lit_doorway() override{
-        switch (where){
-        case Where::CENTER_FRONT:
-            return LitDoorway{.x = 0.5, .y = 0.38, .tiles_across = 0.0, .rows_up = 1.0};
-        case Where::BELOW_SIGN:
+        if (where == Where::DOORS_ROW){
             return LitDoorway{.x = 0.3, .y = 0.38, .tiles_across = -3.0, .rows_up = 1.0};
-        default:
-            return std::nullopt;
         }
+        return std::nullopt;
     }
-    virtual Pokemon::Outcome line_up_with_door() override{
-        trace.push_back("line up");
-        if (where != Where::BELOW_SIGN && where != Where::CENTER_FRONT){
-            return Pokemon::outcome_failed("not_lined_up", "no lit doorway on screen");
-        }
-        where = Where::CENTER_FRONT;
-        return Pokemon::outcome_ok();
-    }
+    virtual Pokemon::Outcome line_up_with_door() override{ return Pokemon::outcome_failed("no_plan", "not on this checkpoint"); }
     virtual bool inside_pokemon_center() override{ return false; }
     virtual Pokemon::Outcome east_then_north_in_sandgem() override{ return Pokemon::outcome_ok(); }
     virtual bool dialogue_showing() override{ return false; }
     virtual Pokemon::Outcome finish_dialogue() override{ return Pokemon::outcome_ok(); }
     virtual Pokemon::Outcome walk_until_stopped(Direction direction, size_t, const std::string& label) override{
         trace.push_back("go: " + label);
-        if (direction == Direction::EAST && where == Where::SHORT_OF_SIGN){
-            where = Where::SIGN_WEST;
-        }else if (direction == Direction::NORTH && where == Where::SIGN_WEST){
-            where = Where::ROW_3;
-        }else if (direction == Direction::WEST && where == Where::ROW_3){
-            where = Where::LADY;
+        if (direction == Direction::WEST && where == Where::DOORS_ROW){
+            where = Where::LAB_EAST;
+        }else if (direction == Direction::WEST && where == Where::LAB_WEST){
+            where = Where::ROUTE_201_EAST;
+        }else if (direction == Direction::EAST && where == Where::LADY){
+            where = Where::ROUTE_201_WEST;
+            if (short_walks > 0){
+                short_walks--;
+                where = Where::SHORT_OF_201;
+            }
+        }else if (direction == Direction::EAST && where == Where::SHORT_OF_201){
+            where = Where::ROUTE_201_WEST;
+        }else if (direction == Direction::EAST && where == Where::ROUTE_201_EAST){
+            where = Where::LAB_WEST;
         }
         return Pokemon::outcome_ok();
     }
-    virtual DialogueRead talk(Direction direction, Button, const std::string& label) override{
+    virtual DialogueRead talk(Direction, Button, const std::string& label) override{
         trace.push_back("talk: " + label);
-        if (direction == Direction::EAST && where == Where::SIGN_WEST){
-            return DialogueRead{.opened = true, .closed = true, .text = "Route 201"};
-        }
-        if (direction == Direction::WEST && where == Where::LADY){
-            if (lady_away > 0){
-                lady_away--;
-                return DialogueRead{.opened = false, .closed = true, .text = ""};
+        return DialogueRead{};
+    }
+    virtual Pokemon::Outcome step_around_sign(Direction way) override{
+        trace.push_back(way == Direction::WEST ? "round west" : "round east");
+        const std::pair<Where, Where> sides[] = {
+            {Where::LAB_EAST, Where::LAB_WEST},
+            {Where::ROUTE_201_EAST, Where::ROUTE_201_WEST},
+        };
+        for (const auto& [east, west] : sides){
+            if (way == Direction::WEST && where == east){
+                where = west;
+                return Pokemon::outcome_ok();
             }
-            return DialogueRead{.opened = true, .closed = true, .text = "Potions"};
+            if (way == Direction::EAST && where == west){
+                where = east;
+                return Pokemon::outcome_ok();
+            }
         }
-        return DialogueRead{.opened = false, .closed = true, .text = ""};
+        return Pokemon::outcome_failed("no_sign", "no sign to step round");
+    }
+    virtual DialogueRead read_sign(const std::string& label) override{
+        trace.push_back("read: " + label);
+        if (where == Where::LAB_WEST){
+            return DialogueRead{.opened = true, .closed = true, .text = "Pokemon Research Lab"};
+        }
+        if (where == Where::ROUTE_201_WEST){
+            return DialogueRead{.opened = true, .closed = true, .text = "Route 201 Sandgem Town"};
+        }
+        return DialogueRead{};
+    }
+    virtual DialogueRead talk_walking(Direction direction, size_t, const std::string& label) override{
+        trace.push_back("talk: " + label);
+        if (direction != Direction::WEST || (where != Where::ROUTE_201_WEST && where != Where::LADY)){
+            return DialogueRead{};
+        }
+        where = Where::LADY;
+        if (lady_away > 0){
+            lady_away--;
+            return DialogueRead{};
+        }
+        return DialogueRead{.opened = true, .closed = true, .text = "Did you know"};
     }
     virtual Pokemon::Outcome walk_to_route_202_save_spot() override{
-        return step("to Route 202", Where::BELOW_SIGN, Where::ROUTE_202);
+        return step("to Route 202", Where::LAB_EAST, Where::ROUTE_202);
     }
     virtual Pokemon::Outcome save_on_route_202() override{
         return step("save", Where::ROUTE_202, Where::ROUTE_202);
@@ -1314,11 +1331,13 @@ public:
     {}
 
     virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
-        const std::vector<std::string> TO_SIGN = {"walk: West to the Route 201 sign"};
-        const std::vector<std::string> SIGN = {"talk: Route 201 sign"};
-        const std::vector<std::string> LADY = {"go: North to the trees", "go: West along the lady's row", "talk: Poke Mart lady"};
-        const std::vector<std::string> BACK = {"walk: Back to the Route 201 sign", "talk: Route 201 sign",
-            "walk: Back to the Pokemon Center", "to Route 202", "save"};
+        const std::vector<std::string> TO_SIGN = {"go: West to the Lab's sign", "round west", "read: the Lab's sign",
+            "go: West to the Route 201 sign", "round west"};
+        const std::vector<std::string> SIGN = {"read: Route 201's sign"};
+        const std::vector<std::string> LADY = {"talk: Poke Mart lady"};
+        const std::vector<std::string> EAST = {"go: East to the Route 201 sign"};
+        const std::vector<std::string> BACK = {"round east", "go: East to the Lab's sign", "read: the Lab's sign",
+            "round east", "to Route 202", "save"};
         const auto join = [](std::initializer_list<std::vector<std::string>> parts){
             std::vector<std::string> all;
             for (const std::vector<std::string>& part : parts){
@@ -1341,15 +1360,15 @@ public:
                 .lady_away = 0,
                 .completed = true,
                 .failed_event = 0,
-                .trace = join({TO_SIGN, SIGN, LADY, BACK}),
+                .trace = join({TO_SIGN, SIGN, LADY, EAST, SIGN, BACK}),
             },
             {
-                .name = "A tile short of the sign",
+                .name = "Back east, a tile short of the sign",
                 .short_walks = 1,
                 .lady_away = 0,
                 .completed = true,
                 .failed_event = 0,
-                .trace = join({TO_SIGN, SIGN, {"go: East to the sign"}, SIGN, LADY, BACK}),
+                .trace = join({TO_SIGN, SIGN, LADY, EAST, SIGN, {"go: East to the sign"}, SIGN, BACK}),
             },
             {
                 .name = "The lady answers the second time",
@@ -1357,14 +1376,14 @@ public:
                 .lady_away = 1,
                 .completed = true,
                 .failed_event = 0,
-                .trace = join({TO_SIGN, SIGN, LADY, LADY, BACK}),
+                .trace = join({TO_SIGN, SIGN, LADY, LADY, EAST, SIGN, BACK}),
             },
             {
                 .name = "The lady never answers",
                 .short_walks = 0,
                 .lady_away = 5,
                 .completed = false,
-                .failed_event = 4,
+                .failed_event = 6,
                 .trace = join({TO_SIGN, SIGN, LADY, LADY, LADY}),
             },
         };
