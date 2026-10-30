@@ -343,7 +343,11 @@ void enter_lit_door(
         }
         last_outside = outside;
         log_doorway(stream, label, *doorway);
-        if (std::abs(doorway->tiles_across) > 0.25){
+        //  We stand on tiles, so within half a tile is the door's column;
+        //  a step moves about 0.7 of a reading, and at 0.25 r144a stepped
+        //  between 0.3 and -0.4 twelve times. Try the door there, and step
+        //  toward it if it does not take us.
+        if (std::abs(doorway->tiles_across) > 0.5){
             step_across(stream, context, doorway->tiles_across);
             continue;
         }
@@ -351,6 +355,7 @@ void enter_lit_door(
             pbf_wait(context, 1500ms);
             return;
         }
+        step_across(stream, context, doorway->tiles_across);
     }
     OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
         label + ": not through the door after 12 tries.", stream);
