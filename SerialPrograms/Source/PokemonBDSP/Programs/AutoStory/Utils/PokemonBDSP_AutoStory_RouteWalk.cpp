@@ -176,6 +176,25 @@ void route_turn(VideoStream& stream, ProControllerContext& context, Direction di
     context.wait_for_all_requests();
 }
 
+std::optional<Direction> talk_to_adjacent_npc(
+    VideoStream& stream, ProControllerContext& context,
+    const std::vector<Direction>& directions,
+    const std::string& label, Milliseconds wait
+){
+    for (Direction direction : directions){
+        route_turn(stream, context, direction);
+        pbf_press_button(context, BUTTON_A, 80ms, 0ms);
+        context.wait_for_all_requests();
+        ShortDialogWatcher dialog(COLOR_CYAN);
+        if (wait_until(stream, context, wait, {{dialog}}) == 0){
+            stream.log("[Route] " + label + ": answered from the " + direction_name(direction) + ".");
+            return direction;
+        }
+    }
+    stream.log("[Route] " + label + ": nobody answered next to us.");
+    return std::nullopt;
+}
+
 
 std::vector<TilePos> walk_route(
     VideoStream& stream, ProControllerContext& context,

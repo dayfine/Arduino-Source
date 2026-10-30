@@ -12,6 +12,7 @@
 #define PokemonAutomation_PokemonBDSP_AutoStory_RouteWalk_H
 
 #include <functional>
+#include <optional>
 #include <string>
 #include <vector>
 #include "Common/Cpp/Time.h"
@@ -44,6 +45,17 @@ constexpr Milliseconds ROUTE_TURN_TAP = Milliseconds(100);
 //  Turns the player to face `direction` without moving. Only for a player who
 //  faces another way: one already facing it may take a step.
 void route_turn(VideoStream& stream, ProControllerContext& context, Pokemon::Direction direction);
+
+//  Talks to someone on a tile next to ours, without trusting the tile we
+//  counted ourselves onto: for each of `directions` in order, turns that way,
+//  presses A and waits up to `wait` for a dialogue. Returns the direction that
+//  answered, its dialogue open, or none if nobody did. Turns are taps (see
+//  route_turn()), so do not list the way the player already faces first.
+std::optional<Pokemon::Direction> talk_to_adjacent_npc(
+    VideoStream& stream, ProControllerContext& context,
+    const std::vector<Pokemon::Direction>& directions,
+    const std::string& label, Milliseconds wait = Milliseconds(1500)
+);
 
 //  Whether the location banner's OCR `read` names the map `expected`. Both
 //  are compared as lower-case letters and digits. OCR drops or swaps letters

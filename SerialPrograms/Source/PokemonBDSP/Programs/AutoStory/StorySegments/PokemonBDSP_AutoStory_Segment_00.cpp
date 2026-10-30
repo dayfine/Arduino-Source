@@ -445,11 +445,7 @@ namespace PokemonAutomation {
         // and the TV stand stops us a row above her.
         static void talk_to_mom_at_home(VideoStream& stream, ProControllerContext& context) {
             for (size_t row = 0; row < 4; row++) {
-                route_turn(stream, context, Pokemon::Direction::EAST);
-                pbf_press_button(context, BUTTON_A, 80ms, 0ms);
-                context.wait_for_all_requests();
-                ShortDialogWatcher dialog(COLOR_CYAN);
-                if (wait_until(stream, context, 1500ms, {{dialog}}) == 0) {
+                if (talk_to_adjacent_npc(stream, context, {Pokemon::Direction::EAST}, "Home: Mom")) {
                     stream.log("[00.04] Mom answered after " + std::to_string(row) + " step(s) north.");
                     return;
                 }
@@ -698,14 +694,28 @@ namespace PokemonAutomation {
                 const TilePos talk_from = maps.to_world(MAP_ROUTE_201, Route201::POTION_GIVER_TALK_FROM);
                 walk_route(stream, context, maps, {catch_spot},
                     [&](const TilePos& pos) { return pos == talk_from; }, trainers, fight, "To the Poke Mart lady");
+                // The counted tile can be off: r113a stopped two tiles west of
+                // (44, 3), with her to the east. So find her by talking. The
+                // walk comes from the east and never ends facing east, so
+                // turning east first is a turn, not a step.
+                if (!talk_to_adjacent_npc(stream, context, {
+                        Pokemon::Direction::EAST, Pokemon::Direction::WEST,
+                        Pokemon::Direction::NORTH, Pokemon::Direction::SOUTH,
+                    }, "Poke Mart lady", 2000ms)) {
+                    OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
+                        "Poke Mart lady: nobody answered on any side of where the walk stopped.", stream);
+                }
                 // Her lines take a while to print: one A per line.
-                for (size_t line = 0; line < 9; line++) {
+                for (size_t line = 0; line < 8; line++) {
                     pbf_press_button(context, BUTTON_A, 80ms, 1500ms);
                 }
                 context.wait_for_all_requests();
                 if (!bag_has_item(stream, context, "potion", 1)) {
+                    // She gives the Potions once: on a save that already got
+                    // (and used) them, she only talks.
                     OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
-                        "Poke Mart lady: no Potion in the Bag after talking to her.", stream);
+                        "Poke Mart lady: she talked, but no Potion is in the Bag. "
+                        "Has this save already had her Potions?", stream);
                 }
                 walk_route(stream, context, maps, {talk_from},
                     [&](const TilePos& pos) { return pos == save_spot; }, trainers, fight, "Back to Route 202");
