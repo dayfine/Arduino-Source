@@ -313,6 +313,9 @@ OverworldInterrupts overworld_interrupts_with_repel(int max_repel_slot){
 void use_max_repel_from_bag(ConsoleHandle& console, ProControllerContext& context, int slot){
     console.log("Using a Max Repel (Items pocket, slot " + std::to_string(slot + 1) + ").");
     open_bag_from_overworld(console, context);
+    //  The bag is seen while it still slides in, and ignores presses until
+    //  it is done.
+    pbf_wait(context, 1000ms);
     //  To the Items pocket, then to the top of it.
     for (int c = 0; c < 3; c++){
         pbf_press_dpad(context, DPAD_LEFT, 100ms, 600ms);
@@ -328,7 +331,7 @@ void use_max_repel_from_bag(ConsoleHandle& console, ProControllerContext& contex
     pbf_press_button(context, BUTTON_A, 160ms, 800ms);
     pbf_press_button(context, BUTTON_A, 160ms, 1500ms);
     pbf_press_button(context, BUTTON_A, 160ms, 1500ms);
-    pbf_press_button(context, BUTTON_B, 160ms, 1500ms);
+    pbf_press_button(context, BUTTON_B, 160ms, 2000ms);
     pbf_press_button(context, BUTTON_B, 160ms, 1000ms);
     context.wait_for_all_requests();
 }
