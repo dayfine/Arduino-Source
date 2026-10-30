@@ -1,0 +1,46 @@
+{
+  "checkpoint": "00.04-mom",
+  "game": "BDSP",
+  "summary": "Back home after Dawn's tour: talk to Mom and take the Parcel for Barry.",
+  "source": "Segment_00.cpp talk_to_mom_at_home; Lessons 7 (r108b), 13 (r109)",
+  "start": {
+    "save": "none (mid-segment; resumes from the 00.03 save)",
+    "pose": {"map": "Twinleaf Town", "tile": "home_door", "facing": "N", "sure": "tile"}
+  },
+  "interrupts": ["scene_dialogue"],
+  "events": [
+    {
+      "id": "enter_home",
+      "why": "Mom has the Parcel for Barry; nothing else unlocks the next scene.",
+      "skip_if": [{"pose": {"map": "Player's House 1F"}}],
+      "do": {"walk": {"dir": "N", "until": "transition", "max_ms": 3000}},
+      "expect": [{"transition": true}, {"screen": "overworld", "stable_ms": 1000}],
+      "pose_after": {"map": "Player's House 1F", "tile": "door_mat", "sure": "column",
+                     "why": "the door fixes the column; the row is one of mat..mat+3"}
+    },
+    {
+      "id": "talk_mom",
+      "why": "Mom stands a column east of the door, two rows north of the mat (by TV).",
+      "requires": [{"pose": {"map": "Player's House 1F", "sure": "column"}}],
+      "do": {"talk": {
+        "approach": {"probe": {"face": "E", "press": "A", "step": "N", "max_steps": 4,
+                               "stop_on": "dialogue_opened"}},
+        "opens_within_ms": 3000
+      }},
+      "expect": [{"dialogue_opened": true}],
+      "pose_after": {"tile": "mom_west", "facing": "E", "sure": "tile",
+                     "why": "the row that answered is Mom's row"},
+      "recover": [{"on": "probe_exhausted", "then": "stop",
+                   "note": "the TV stand stops us a row above her; four rows covers mat+0..3"}]
+    },
+    {
+      "id": "mom_dialogue",
+      "do": {"dialogue": {"first": "none", "advance": "B",
+                          "until": {"screen": "overworld", "stable_ms": 4000}, "max_s": 60}},
+      "expect": [{"bag": {"pocket": "Key Items", "item": "Parcel", "min": 1}, "proposed": true}],
+      "recover": [{"on": "expect_failed", "then": "stop",
+                   "note": "a dialogue opening is not proof; the Parcel is"}]
+    }
+  ],
+  "end": {"expect": [{"screen": "overworld"}, {"bag": {"item": "Parcel"}}], "save": false}
+}

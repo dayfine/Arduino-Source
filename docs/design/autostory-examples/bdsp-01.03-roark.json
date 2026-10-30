@@ -1,0 +1,73 @@
+{
+  "checkpoint": "01.03",
+  "game": "BDSP",
+  "summary": "From the Oreburgh Pokemon Center: Barry at the gym door, then Roark in the mine.",
+  "source": "Segment_01.cpp oreburgh_to_roark; Lessons 6, 12 (r91-r106)",
+  "start": {
+    "save": "in front of the Oreburgh Pokemon Center",
+    "pose": {"map": "Oreburgh City", "tile": "center_front_2w_of_barry", "sure": "tile"}
+  },
+  "interrupts": ["wild_battle_flee", "wanderer_block"],
+  "events": [
+    {
+      "id": "talk_barry_gym_door",
+      "why": "Roark ignores A until Barry has sent us to the mine (r101, r104, by hand).",
+      "do": {"talk": {"approach": {"face": "E", "from": "beside_barry"}, "opens_within_ms": 3000}},
+      "expect": [{"dialogue_opened": true}],
+      "then": {"dialogue": {"first": "none", "advance": "B",
+                            "until": {"screen": "overworld", "stable_ms": 4000}}},
+      "sets": "barry_sent_us_to_mine"
+    },
+    {
+      "id": "to_mine",
+      "why": "Holds put us a column off the stairs (r91-r93); walls the map shows pin it.",
+      "do": {"sequence": [
+        {"anchor": {"walk": "S", "until": "blocked", "max_ms": 8000, "at": "stone_ledge", "pins": "y"}},
+        {"anchor": {"walk": "E", "until": "blocked_without_moving", "max_ms": 10000,
+                    "at": "fence_below_mart", "pins": "x", "repeat_max": 5}},
+        {"anchor": {"walk": "S", "until": "blocked", "at": "conveyor_pillar"}},
+        {"walk": {"dir": "S", "until": "transition", "max_ms": 10000}}
+      ]},
+      "expect": [{"pose": {"map": "Oreburgh Mine B1F"}}],
+      "recover": [
+        {"on": "blocked_unexplained", "then": {"wait_ms": 2000, "retry": 2},
+         "note": "the hard-hat worker wanders onto the path (r95)"},
+        {"on": "stopped_on_sign", "then": {"step": "E", "tiles": 1, "retry": 1},
+         "note": "one column off ends on the sign above the stairs (r96)"}
+      ]
+    },
+    {
+      "id": "below_roark",
+      "why": "Roark stands between two rocks; the east rock and the bottom wall pin the tile below him.",
+      "do": {"sequence": [
+        {"route_to": {"map": "Oreburgh Mine B1F", "area": "roark_row_east_stretch"}},
+        {"anchor": {"walk": "N", "until": "blocked", "pins": "y"}},
+        {"anchor": {"walk": "W", "until": "blocked", "at": "roark_rock_east", "pins": "x", "repeat_max": 3}},
+        {"anchor": {"walk": "S", "until": "blocked", "at": "bottom_wall", "pins": "y"}},
+        {"step": "W", "tiles": 2},
+        {"turn": "N"}
+      ]},
+      "expect": [{"pose": {"tile": "below_roark", "facing": "N", "sure": "tile"}}],
+      "recover": [{"on": "limit_after_wild_battle", "then": {"retry": 2},
+                   "note": "a wild battle eats into the walk's time (r100)"}]
+    },
+    {
+      "id": "talk_roark",
+      "requires": [{"flag": "barry_sent_us_to_mine"}],
+      "do": {"talk": {"approach": {"face": "N"}, "press": "A", "opens_within_ms": 8000, "attempts": 3}},
+      "expect": [{"dialogue_opened": true}],
+      "then": {"dialogue": {"first": "none", "advance": "B",
+                            "until": {"screen": "overworld", "stable_ms": 4000}, "max_s": 90}},
+      "verify": [{"tile_free": "roark", "probe": {"walk": "N", "moved_min_ms": 800, "then_back": true}}],
+      "recover": [{"on": "verify_failed", "then": "stop",
+                   "note": "r105/r106: the rock's one line was taken for Roark's"}]
+    },
+    {
+      "id": "out_of_mine",
+      "do": {"route_to": {"map": "Oreburgh Mine B1F", "tile": "corridor_corner_14_11"},
+             "then": {"walk": {"dir": "N", "until": "transition", "allow_transitions": 2}}},
+      "expect": [{"pose": {"map": "Oreburgh City"}}]
+    }
+  ],
+  "end": {"save": true}
+}

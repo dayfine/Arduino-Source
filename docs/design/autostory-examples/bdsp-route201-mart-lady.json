@@ -1,0 +1,57 @@
+{
+  "checkpoint": "00.04-potions",
+  "game": "BDSP",
+  "summary": "Get 10 Potions from the Poke Mart lady on Route 201, walk back to Route 202 and save.",
+  "source": "Segment_00.cpp (00.04 step 1); Lessons 5, 9; Route201.cpp POTION_GIVER_ROW_*",
+  "start": {
+    "save": "after the catch",
+    "pose": {"map": "Route 202", "tile": "CATCH_SPOT", "sure": "tile"}
+  },
+  "interrupts": ["wild_battle_flee", "trainer_battle"],
+  "events": [
+    {
+      "id": "skip_if_have_potions",
+      "why": "She gives the Potions once; a later attempt starts from the Route 202 save with them.",
+      "skip_if": [{"bag": {"pocket": "Medicine", "item": "Potion", "min": 1}}],
+      "do": {"goto_event": "save_on_202"}
+    },
+    {
+      "id": "to_row_corner",
+      "why": "She wanders near the west end of her row; the corner (42,3) has trees west and north, so two walls pin it.",
+      "do": {"route_to": {"map": "Route 201", "tile": "POTION_GIVER_ROW_WEST_END"}},
+      "expect": [{"pose": {"map": "Route 201", "tile": "POTION_GIVER_ROW_WEST_END", "sure": "tile"}}],
+      "confirm": [{"anchor": {"walk": "N", "until": "blocked", "max_ms": 1500, "pins": "y"}},
+                  {"anchor": {"walk": "W", "until": "blocked", "max_ms": 1500, "pins": "x"}}]
+    },
+    {
+      "id": "walk_into_lady",
+      "why": "Wherever she has wandered on the row, walking east along it meets her.",
+      "do": {"talk": {
+        "approach": {"walk_into": {"dir": "E", "max_tiles": "row_east_end - corner",
+                                   "press_each_step": "A", "stop_on": "dialogue_opened"}},
+        "opens_within_ms": 3000
+      }},
+      "expect": [{"dialogue_opened": true}],
+      "recover": [
+        {"on": "blocked_no_dialogue", "then": {"wait_ms": 1500, "retry": 2},
+         "note": "grass sway hides BLOCKED; A on every step does the stopping"},
+        {"on": "row_end_reached", "then": {"talk": {"approach": {"probe_sides": ["N", "S", "E", "W"]}}}},
+        {"on": "still_nobody", "then": "stop"}
+      ]
+    },
+    {
+      "id": "lady_dialogue",
+      "do": {"dialogue": {"first": "none", "advance": "A", "line_gap_ms": 1500,
+                          "until": {"screen": "overworld", "stable_ms": 4000}, "max_s": 30}},
+      "expect": [{"bag": {"pocket": "Medicine", "item": "Potion", "min": 10}}],
+      "recover": [{"on": "expect_failed", "then": "stop",
+                   "note": "talked but no Potion: this save already had hers"}]
+    },
+    {
+      "id": "save_on_202",
+      "do": {"route_to": {"map": "Route 202", "tile": "POTION_SAVE_SPOT", "from_area": "potion_giver_row"}},
+      "expect": [{"pose": {"map": "Route 202", "tile": "POTION_SAVE_SPOT"}}, {"banner": "Route 202", "match": "fuzzy"}]
+    }
+  ],
+  "end": {"save": true, "expect": [{"bag": {"item": "Potion", "min": 1}}]}
+}

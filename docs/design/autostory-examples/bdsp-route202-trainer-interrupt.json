@@ -1,0 +1,51 @@
+{
+  "checkpoint": "00.04-route202",
+  "game": "BDSP",
+  "summary": "North up Route 202 to the Jubilife exit; trainers who see us interrupt a leg.",
+  "source": "Segment_00.cpp (00.04 step 4); Route202.cpp trainer_sights; Lessons 4, 5, 11 (r83, r87)",
+  "start": {
+    "save": "Route 202, POTION_SAVE_SPOT (30,19)",
+    "pose": {"map": "Route 202", "tile": "POTION_SAVE_SPOT", "sure": "tile"}
+  },
+  "interrupts": [
+    {
+      "id": "trainer_battle",
+      "detect": {"during": "walk", "stop": "dialogue"},
+      "expected_on_legs": "legs_crossing_sight(trainer_sights)",
+      "handle": {"sequence": [
+        {"dialogue": {"advance": "B", "until": {"any": [{"screen": "battle"}, {"screen": "overworld", "stable_ms": 4000}]}}},
+        {"battle": {"policy": "best_move_by_ocr", "skip_zero_pp": true, "max_turns": 25}},
+        {"heal": {"potion_if_hp_below": 0.5}}
+      ]},
+      "pose_after": {"from": "sight_line", "sure": "set",
+                     "why": "a trainer stops us where his sight line meets our leg; the leg's tiles bound where"},
+      "then": "replan_current_event",
+      "trainers": [
+        {"id": "trainer_a", "tile": [7, 11], "facing": "S", "sight": 4},
+        {"id": "trainer_b", "tile": [10, 7], "facing": "E", "sight": 4},
+        {"id": "trainer_c", "tile": [26, 4], "facing": "S", "sight": 4},
+        {"id": "trainer_d", "tile": [22, 15], "facing": "S", "sight": 4,
+         "note": "challenged us at (22,17) walking east on row 17"}
+      ]
+    },
+    {"id": "wild_battle_flee", "detect": {"during": "walk", "stop": "battle_start"},
+     "handle": {"battle": {"policy": "run"}}, "pose_after": {"from": "elapsed_time", "sure": "set"},
+     "then": "rewalk_wall_leg_or_relocalise"},
+    {"id": "talk_only", "detect": {"during": "walk", "stop": "dialogue"},
+     "rule": "a trainer's talk and battle have a quiet gap: overworld must be stable 4 s before calling it a talk (r83)"}
+  ],
+  "events": [
+    {
+      "id": "to_jubilife_exit",
+      "why": "Trainers give the experience Roark needs later; their sight lines are expected, not avoided.",
+      "do": {"route_to": {"map": "Route 202", "tile": "EXIT_JUBILIFE"}},
+      "expect": [{"transition": true}, {"banner": "Jubilife City", "match": "fuzzy"}],
+      "recover": [
+        {"on": "blocked_early", "then": {"sequence": [{"wait_ms": 1500}, {"press": "A"}, {"mark_blocked": "front_tile"}, {"replan": true}]},
+         "note": "someone the map lacks; a side trainer who saw us"},
+        {"on": "pose_set_too_wide", "then": {"anchor": "nearest_two_walls"}}
+      ]
+    }
+  ],
+  "end": {"expect": [{"banner": "Jubilife City"}], "save": false}
+}
