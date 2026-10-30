@@ -1,5 +1,10 @@
 # AutoStory segment 00: what is left (scheduled after segment 01's first pass)
 
+**Superseded 2026-10-29:** segment 00 now runs on the MVP branch `bdsp/floaroma-mvp`
+(fork #68, on #1717 and the shared core); 00.00 to 00.03 passed unattended from a new game
+(r108b) and 00.04 got past Mom (r109). Current results are in
+[AutoStory-Lessons.md](AutoStory-Lessons.md) §7 and §13. Kept for the history below.
+
 Status 2026-10-28. Code: fork branch `bdsp/new-game-intro-v2`, worktree
 `~/Projects/Arduino-Source-bdsp`, latest commit 6dbcc8e10 (00.05 on a Jubilife grid).
 Testing: the `bdsp-autostory-test` skill.

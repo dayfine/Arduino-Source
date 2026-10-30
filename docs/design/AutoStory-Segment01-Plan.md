@@ -1,5 +1,9 @@
 # AutoStory segment 01 plan: Jubilife to the Coal Badge
 
+**Done 2026-10-29:** 01.01 to 01.03 were built from this plan and run on the console
+(r81 to r106; Lessons §11 and §12), and Floaroma was reached by hand. The MVP branch
+`bdsp/floaroma-mvp` (fork #68) carries the code. Kept as the plan of record.
+
 Status 2026-10-28: research done, nothing built yet. Companion to
 [AutoStory-Design.md](AutoStory-Design.md) (the pieces) and
 [AutoStory-Lessons.md](AutoStory-Lessons.md) (what went wrong in segment 00).

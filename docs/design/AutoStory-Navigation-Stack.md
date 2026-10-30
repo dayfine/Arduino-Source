@@ -78,6 +78,19 @@ Rule: the screen is read, the pose is tracked. A pose is never inferred from ela
 alone except for an open leg, and then it is marked inexact until a wall or a landmark fixes
 it.
 
+**Status 2026-10-29: the pose is planned but not yet corrected.** The planner plans in tiles and
+the walker counts them; nothing reads the pose back after a leg, so a dropped tap is found
+only when the next action fails (00.04 r108b: two taps to Mom's row moved one tile; see
+Lessons §7). Next, in the core: after each leg, confirm the pose with an anchor the game shows
+(wall, landmark, dialogue answered, facing) and replan from the confirmed tile. FRLG's
+overworld screens (overworld, dialogue, battle interrupt) should also become screen-machine
+states, as BDSP's intro already is.
+
+Review follow-ups on the core (2026-10-29, fork #66/#67): the single-method `LegMover` becomes a
+`MoveOnlyFunction` (fork `common/move-only-function`); `ScreenState`'s `matches`/`act` move
+from `std::function` to `MoveOnlyFunction` too; `plan_legs` is split under 50 lines; FRLG's
+`OverworldMap` (20 public methods) becomes plain data plus free functions.
+
 ## 4. Branches and PRs
 
 ```
