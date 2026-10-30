@@ -1,4 +1,5 @@
 """Exercise changed-file discovery and real base comparisons in temporary Git repos."""
+import os
 import subprocess
 import sys
 import tempfile
@@ -9,6 +10,8 @@ from devtools.code_health.git_files import default_base, included
 
 
 REPO = Path(__file__).resolve().parents[3]
+# These fixtures' findings must not become annotations on the CI run's own PR.
+ENV = {key: value for key, value in os.environ.items() if key != 'GITHUB_ACTIONS'}
 
 
 class CliTests(unittest.TestCase):
@@ -33,7 +36,7 @@ class CliTests(unittest.TestCase):
     def cli(self, *args):
         return subprocess.run([sys.executable, '-m', 'devtools.code_health',
                                '--root', str(self.root), '--base-ref', 'HEAD', *args],
-                              cwd=REPO, capture_output=True, text=True)
+                              cwd=REPO, capture_output=True, text=True, env=ENV)
 
     def commit(self):
         self.git('add', '.')
@@ -125,7 +128,7 @@ class CliTests(unittest.TestCase):
         self.git('update-ref', 'refs/remotes/upstream/main', fork_point)
         self.assertEqual((fork_point, 'merge-base of HEAD and upstream/main'), default_base(self.root))
         result = subprocess.run([sys.executable, '-m', 'devtools.code_health', '--root', str(self.root)],
-                                cwd=REPO, capture_output=True, text=True)
+                                cwd=REPO, capture_output=True, text=True, env=ENV)
         self.assertEqual(1, result.returncode, result.stderr)
         self.assertIn(f'Base: {fork_point} (merge-base of HEAD and upstream/main).', result.stdout)
 
@@ -159,6 +162,23 @@ class CliTests(unittest.TestCase):
         result = self.cli()
         self.assertEqual(1, result.returncode, result.stderr)
         self.assertIn('Tool.cpp:1: layering', result.stderr)
+
+    def test_github_annotates_failures_and_advisories(self):
+        self.source(3)
+        self.commit()
+        self.source(30)
+        self.assertNotIn('::warning', self.cli().stdout)
+        result = self.cli('--github')
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertIn('::warning file=Common/example.cpp,line=1,title=Code health (advisory)::'
+                      'example(): function_lines=30', result.stdout)
+        self.assertNotIn('::error', result.stdout)
+        self.source(51)
+        result = self.cli('--github')
+        self.assertEqual(1, result.returncode, result.stderr)
+        self.assertIn('::error file=Common/example.cpp,line=1,title=Code health::'
+                      'example(): function_lines=51', result.stdout)
+        self.assertIn('Code health: 1 failures.', result.stdout)
 
 
 if __name__ == '__main__':
