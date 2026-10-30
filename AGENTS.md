@@ -35,6 +35,23 @@ quota/reset readings, checkpoint and pace work when low, and report unknown
 quota honestly if the local account cannot be queried. Do not confuse quota
 with context or token counters, or promise background monitoring after a turn.
 
+## Commands: keep them tight
+
+Every shell command can raise a permission prompt for the user. Keep each one small and
+obviously safe.
+
+- **One purpose per command.** No chains that build, deploy and clean up in one line. No `cd A
+  && … && cd B && …` across repos: use `git -C <path>`.
+- **No `rm` on globs or variables.** Delete only what you created, by explicit path, inside your
+  own worktree or your temp folder. For git trees use `git clean` or `git worktree remove`.
+  Anything else that needs deleting goes in your report for the user.
+- **Stay in your lane.** Don't touch other agents' worktrees, `~/BDSPLab/builds` (except a deploy
+  your brief asks for), the SerialPrograms profile folders, or the consoles. Console B is run by
+  the main session only.
+- **No broad scans.** No `find`/`du`/`ls -R` from `/` or `~`, and no `system_profiler` in loops:
+  they walk network volumes and trigger macOS privacy prompts. Use explicit paths.
+- **Wait with one background command,** not chained `sleep`s.
+
 ## Roles
 
 - **Codex owns:**
