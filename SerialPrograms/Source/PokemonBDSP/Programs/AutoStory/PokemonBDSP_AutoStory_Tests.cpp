@@ -449,7 +449,7 @@ public:
                 [&](const TilePos& pos){ return std::find(grass.begin(), grass.end(), pos) != grass.end(); }, false},
             {"After training to the Pokemon Center", story_after_training_area(),
                 [&](const TilePos& pos){ return pos == below_sign; }, false},
-            //  The Mart's door takes a tile either side: enter_door_north() steps across.
+            //  The Mart's door takes a tile either side: enter_lit_door() lines up by sight.
             {"Pokemon Center to the Poke Mart", story_door_front(MAP_SANDGEM_TOWN, SandgemTown::POKEMON_CENTER_DOOR),
                 [&](const TilePos& pos){ return pos.y == below_mart.y && std::abs(pos.x - below_mart.x) <= 1; }, true},
             {"Poke Mart to the trees east of it", story_door_front(MAP_SANDGEM_TOWN, SandgemTown::POKE_MART_DOOR),

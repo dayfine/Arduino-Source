@@ -16,6 +16,16 @@ namespace NintendoSwitch{
 namespace PokemonBDSP{
 
 
+//  Goes in through a building's door (a Pokemon Center's or a Poke Mart's).
+//  Starts in front of it with its lit doorway on screen, within a few tiles:
+//  lines up with the doorway by sight and walks in. Whole-tile steps sideways
+//  miss it, since movement is not locked to tiles, and its fade may not read
+//  as black: a new scene also counts as inside.
+void enter_lit_door(
+    VideoStream& stream, ProControllerContext& context,
+    const std::string& label
+);
+
 //  Heals the party at a Pokemon Center. Starts in front of the Center with its
 //  lit doorway on screen, within a few tiles of it: lines up with the doorway
 //  by sight, walks in, talks to the nurse, accepts, and walks back out. Ends

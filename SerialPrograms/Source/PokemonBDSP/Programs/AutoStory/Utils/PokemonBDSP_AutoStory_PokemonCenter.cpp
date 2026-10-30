@@ -75,10 +75,46 @@ std::optional<double> lit_doorway_x(const ImageViewRGB32& screen){
     return best;
 }
 
+//  Whether the whole view is a different scene from "before".
+bool scene_changed_since(VideoStream& stream, ProControllerContext& context, const VideoSnapshot& before){
+    context.wait_for_all_requests();
+    VideoSnapshot now = stream.video().snapshot();
+    return before && now && walk_screen_change(*before.frame, *now.frame) > WALK_SCENE_CHANGE;
+}
+
+//  Moves across by "tiles", east if positive, west if negative.
+void step_across(VideoStream& stream, ProControllerContext& context, double tiles){
+    const Direction side = tiles > 0 ? Direction::EAST : Direction::WEST;
+    route_turn(stream, context, side);
+    const Milliseconds hold = std::max<Milliseconds>(Milliseconds(40),
+        Milliseconds((int64_t)(std::abs(tiles) * ROUTE_MS_PER_TILE_ACROSS.count())));
+    pbf_move_left_joystick(context, {tiles > 0 ? 1.0 : -1.0, 0}, hold, 300ms);
+}
+
+//  Walks north into the door straight ahead. Returns whether we are inside.
+bool walk_into_door(
+    VideoStream& stream, ProControllerContext& context,
+    const VideoSnapshot& outside, const std::string& label
+){
+    if (walk_until(stream, context, 0, 1, 1500ms, label + ": into the door").stop == WalkStop::TRANSITION){
+        pbf_wait(context, 2000ms);
+        return true;
+    }
+    //  The door slides open before it takes us in, and its fade is not always
+    //  black enough to read as a transition, and may finish after the walk; a
+    //  whole new scene says we are in.
+    pbf_wait(context, 2000ms);
+    if (!scene_changed_since(stream, context, outside)){
+        return false;
+    }
+    stream.log("[Route] " + label + ": the scene changed; inside.");
+    return true;
+}
+
 }
 
 
-void heal_at_pokemon_center(
+void enter_lit_door(
     VideoStream& stream, ProControllerContext& context,
     const std::string& label
 ){
@@ -89,11 +125,6 @@ void heal_at_pokemon_center(
     route_status(stream, label + ": lining up with the door.");
     bool inside = false;
     VideoSnapshot last_outside;
-    auto scene_changed_since = [&](const VideoSnapshot& before){
-        context.wait_for_all_requests();
-        VideoSnapshot now = stream.video().snapshot();
-        return before && now && walk_screen_change(*before.frame, *now.frame) > WALK_SCENE_CHANGE;
-    };
     for (size_t tries = 0; tries < 12 && !inside; tries++){
         context.wait_for_all_requests();
         VideoSnapshot outside = stream.video().snapshot();
@@ -104,39 +135,35 @@ void heal_at_pokemon_center(
         if (!doorway){
             //  The door may have taken us in after all, more slowly than we watched.
             pbf_wait(context, 1500ms);
-            if (scene_changed_since(last_outside)){
-                stream.log("[Route] " + label + ": the scene changed; inside.");
-                inside = true;
-                break;
+            if (!scene_changed_since(stream, context, last_outside)){
+                OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
+                    label + ": no lit doorway on screen.", stream);
             }
-            OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
-                label + ": no lit doorway on screen.", stream);
+            stream.log("[Route] " + label + ": the scene changed; inside.");
+            inside = true;
+            break;
         }
         last_outside = outside;
         const double tiles = (*doorway - 0.5) * SCREEN_WIDTH_TILES;
         stream.log("[Route] " + label + ": doorway " + std::to_string(tiles) + " tiles across.");
         if (std::abs(tiles) > 0.25){
-            const Direction side = tiles > 0 ? Direction::EAST : Direction::WEST;
-            route_turn(stream, context, side);
-            const Milliseconds hold = std::max<Milliseconds>(Milliseconds(40),
-                Milliseconds((int64_t)(std::abs(tiles) * ROUTE_MS_PER_TILE_ACROSS.count())));
-            pbf_move_left_joystick(context, {tiles > 0 ? 1.0 : -1.0, 0}, hold, 300ms);
+            step_across(stream, context, tiles);
             continue;
         }
-        inside = walk_until(stream, context, 0, 1, 1500ms, label + ": into the door").stop == WalkStop::TRANSITION;
-        //  The door's fade is not always black enough to read as a transition,
-        //  and may finish after the walk; a whole new scene says we are in.
-        pbf_wait(context, 2000ms);
-        if (!inside && scene_changed_since(outside)){
-            stream.log("[Route] " + label + ": the scene changed; inside.");
-            inside = true;
-        }
+        inside = walk_into_door(stream, context, outside, label);
     }
     if (!inside){
         OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
             label + ": door not found.", stream);
     }
     pbf_wait(context, 1500ms);
+}
+
+void heal_at_pokemon_center(
+    VideoStream& stream, ProControllerContext& context,
+    const std::string& label
+){
+    enter_lit_door(stream, context, label);
 
     //  The nurse's counter is straight ahead of the door.
     route_status(stream, label + ": talking to the nurse.");

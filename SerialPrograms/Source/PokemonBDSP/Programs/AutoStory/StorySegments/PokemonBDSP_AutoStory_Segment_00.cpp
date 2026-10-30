@@ -719,8 +719,10 @@ namespace PokemonAutomation {
         constexpr int POTIONS_TO_BUY = 5;
 
         // From below the Center's door to below the Poke Mart's, ten tiles
-        // east along the same row, and in. The last leg is open, so we may be
-        // a tile off the door's column: enter_door_north() tries either side.
+        // east along the same row, and in. The last leg is open and movement
+        // is not locked to tiles, so we may stand part of a tile off the door:
+        // whole-tile steps either side missed it in r121a. The Mart's doorway
+        // is lit like the Center's, so it is lined up with by sight the same way.
         static void enter_sandgem_poke_mart(
             VideoStream& stream, ProControllerContext& context, const MapSet& maps,
             std::vector<TrainerSight>& trainers, const RouteTrainerFight& fight
@@ -729,7 +731,7 @@ namespace PokemonAutomation {
             walk_route(stream, context, maps, story_door_front(MAP_SANDGEM_TOWN, SandgemTown::POKEMON_CENTER_DOOR),
                 [&](const TilePos& pos) { return pos.y == front.y && std::abs(pos.x - front.x) <= 1; },
                 trainers, fight, "To the Poke Mart");
-            enter_door_north(stream, context, "Sandgem Poke Mart: through the door");
+            enter_lit_door(stream, context, "Sandgem Poke Mart: through the door");
         }
 
         // Inside the Mart, the clerk's counter is straight ahead of the door
