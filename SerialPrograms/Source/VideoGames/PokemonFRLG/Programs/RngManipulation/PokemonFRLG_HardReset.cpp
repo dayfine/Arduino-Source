@@ -21,6 +21,47 @@ namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonFRLG{
 
+//  Press A to start the game, then wait until it is time to go back Home.
+//  Normally that is a fixed delay. With an online license, the console first
+//  returns to the Home menu to check the license, so wait for the game to
+//  actually start instead. Returns true if the game was seen starting.
+bool start_game_before_home(
+    ConsoleHandle& console, ProControllerContext& context,
+    Milliseconds launch_delay,
+    bool& online_license
+){
+    pbf_press_button(context, BUTTON_A, 50ms, 0ms);
+    context.wait_for_all_requests();
+
+    if (!online_license){
+        HomeMenuWatcher home(console);
+        CheckOnlineWatcher check_online;
+        online_license = wait_until(
+            console, context,
+            launch_delay,
+            { home, check_online }
+        ) >= 0;
+        if (!online_license){
+            return false;
+        }
+        console.log("Back at Home after starting the game. Waiting for the online license check...", COLOR_BLUE);
+    }
+
+    BlackScreenWatcher black_screen(COLOR_BLUE, {0.1, 0.15, 0.8, 0.7});
+    int ret = wait_until(
+        console, context,
+        std::chrono::seconds(30),
+        { black_screen },
+        1ms
+    );
+    if (ret < 0){
+        console.log("Game did not start within 30 seconds of the online license check.", COLOR_RED);
+        return false;
+    }
+    console.log("Black screen detected.");
+    return true;
+}
+
 void rng_reset_and_return_home(
     ConsoleHandle& console, ProControllerContext& context,
     Milliseconds& launch_delay,
@@ -31,6 +72,7 @@ void rng_reset_and_return_home(
     close_game_from_home(console, context);
 
     bool update_popup = false;
+    bool online_license = false;
     WallClock deadline = current_time() + std::chrono::minutes(5);
     while (true){
         if (current_time() > deadline){
@@ -108,20 +150,20 @@ void rng_reset_and_return_home(
             pbf_press_button(context, BUTTON_A, 160ms, 840ms);
             pbf_press_dpad(context, DPAD_UP, 40ms, 0ms);
         }
-        pbf_press_button(context, BUTTON_A, 50ms, launch_delay);
+        bool game_started = start_game_before_home(console, context, launch_delay, online_license);
         pbf_press_button(context, BUTTON_HOME, 200ms, 1800ms);
 
         while(current_time() < deadline){
             // make sure a black screen appeared as a result of the button presses
             // if a popup appears, flag that it happened even if it gets closed by the home button press
-            // Not sure how to handle the online check, so leaving it out for now
             int ret3 = wait_until(
                 console, context,
                 std::chrono::seconds(2 + (update_popup ? 1 : 0)),
                 { black_screen, update_menu },
                 1ms
             );
-            bool black_screen_detected = false;
+            bool black_screen_detected = game_started;
+            game_started = false;
             switch (ret3){
             case 0:
                 console.log("Black screen detected.");
@@ -159,13 +201,13 @@ void rng_reset_and_return_home(
             case 1:
                 console.log("Detected user-select screen. Trying again...", COLOR_BLUE);
                 move_to_user(context, user_slot);
-                pbf_press_button(context, BUTTON_A, 50ms, launch_delay);
+                game_started = start_game_before_home(console, context, launch_delay, online_license);
                 pbf_press_button(context, BUTTON_HOME, 200ms, 2800ms);
                 continue;
             case 2:
                 console.log("Detected update menu. Trying again...", COLOR_BLUE);
                 pbf_press_dpad(context, DPAD_UP, 40ms, 0ms);
-                pbf_press_button(context, BUTTON_A, 50ms, launch_delay);
+                game_started = start_game_before_home(console, context, launch_delay, online_license);
                 pbf_press_button(context, BUTTON_HOME, 200ms, 2800ms);
                 continue;
             default:
