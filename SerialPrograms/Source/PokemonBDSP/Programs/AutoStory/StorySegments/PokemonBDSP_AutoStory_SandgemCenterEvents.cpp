@@ -66,6 +66,14 @@ TilePos below_sandgem_center_sign(){
     return story_maps().to_world(MAP_SANDGEM_TOWN, SandgemTown::POKEMON_CENTER_SIGN.next(Direction::SOUTH));
 }
 
+std::vector<TilePos> doors_row_by_the_gap(){
+    const Pokemon::MapSet& maps = story_maps();
+    return {
+        maps.to_world(MAP_SANDGEM_TOWN, {20, 7}), maps.to_world(MAP_SANDGEM_TOWN, {21, 7}),
+        maps.to_world(MAP_SANDGEM_TOWN, {20, 8}), maps.to_world(MAP_SANDGEM_TOWN, {21, 8}),
+    };
+}
+
 bool doorway_lined_up(const LitDoorway& doorway){
     return doorway.rows_up > 0 && doorway.rows_up <= 1.5 && std::abs(doorway.tiles_across) <= 0.5;
 }
@@ -244,6 +252,38 @@ Event walk_to_center_door(SandgemCenterActions& game, std::string name){
     return event;
 }
 
+//  3. From where the walk south stops, onto the row below the doors on
+//  legs that end at walls (west to the wall, south to the Center's sign)
+//  and two short open ones through the gap between the signs, which keeps
+//  clear of the Lab's and the Mart's doors. 00.04's planned walk to below
+//  the sign (walk_to_center_door()) goes round the town in 13 legs, and a
+//  wall leg that ended short there took us into the Lab (r127a) and the
+//  Mart (r128b). The doorway in sight then says which row we are on.
+Event walk_to_doors_row(SandgemCenterActions& game){
+    Event event;
+    event.name = "walk_to_doors_row";
+    event.why = "to the row below the Center's door, its doorway in sight";
+    event.skip_if.push_back(center_doorway_ahead(game));
+    event.require.push_back(pose_known(MAP_SANDGEM_TOWN, PoseCertainty::SET));
+    //  Once by the gap, a try again only steps by the rows: the walk west
+    //  from there would run along the doors' row, past the Center.
+    event.act = [&game](RunState& state){
+        if (state.pose.tiles == doors_row_by_the_gap()){
+            return game.step_to_front_row();
+        }
+        const Outcome walked = game.entry_to_doors_row();
+        if (walked.succeeded()){
+            state.pose = pose_on(doors_row_by_the_gap());
+        }
+        return walked;
+    };
+    event.expect.push_back(outside(game));
+    event.expect.push_back(center_doorway_ahead(game));
+    event.recoveries.push_back(recovery("expect_failed", RecoveryKind::WAIT, 2, nullptr,
+        "a row off the doors' row, or someone in the way: step by the rows to the doorway"));
+    return event;
+}
+
 //  4. In front of the door. From below the sign the doorway is three tiles
 //  west: step across by its offset, as enter_lit_door() does, without going
 //  in or turning north (a turn there took r127c in). The expects look after
@@ -330,6 +370,45 @@ public:
             }
         }
         return saw_sandgem;
+    }
+
+    virtual Outcome entry_to_doors_row() override{
+        const WalkResult west = walk_until(m_stream, m_context, -1, 0, 3000ms, "Sandgem: west to the wall");
+        if (west.stop != WalkStop::BLOCKED){
+            return outcome_failed("not_anchored", std::string("Sandgem: west: ") + walk_stop_name(west.stop) + " instead of the wall");
+        }
+        const WalkResult south = walk_until(m_stream, m_context, 0, -1, 2000ms, "Sandgem: south to the Center's sign");
+        if (south.stop != WalkStop::BLOCKED){
+            return outcome_failed("not_anchored", std::string("Sandgem: south: ") + walk_stop_name(south.stop) + " instead of the sign");
+        }
+        //  The first press of a new way turns us as well as moving: a bit
+        //  over a tile east, which still leaves the gap's west half.
+        for (const WalkResult& walk : {
+            walk_for(m_stream, m_context, 1, 0, ROUTE_MS_PER_TILE_ACROSS + 80ms, "Sandgem: a tile east, past the sign"),
+            walk_for(m_stream, m_context, 0, -1, 2 * ROUTE_MS_PER_TILE_UP_DOWN + 80ms, "Sandgem: south between the signs"),
+        }){
+            if (walk.stop == WalkStop::DIALOG || walk.stop == WalkStop::TRANSITION || walk.wild_battles > 0){
+                return outcome_failed("walk_failed", std::string("Sandgem: ") + walk_stop_name(walk.stop) + " between the signs");
+            }
+        }
+        return outcome_ok();
+    }
+
+    virtual Outcome step_to_front_row() override{
+        const std::optional<LitDoorway> doorway = lit_doorway();
+        if (!doorway){
+            return outcome_failed("no_doorway", "no lit doorway on screen to step by");
+        }
+        const double rows = doorway->rows_up - 1;
+        if (std::abs(rows) < 0.5){
+            return outcome_ok();
+        }
+        const WalkResult walk = walk_for(m_stream, m_context, 0, rows > 0 ? 1 : -1,
+            Milliseconds((int64_t)(std::abs(rows) * ROUTE_MS_PER_TILE_UP_DOWN.count())), "Sandgem: to the doors' row");
+        if (walk.stop == WalkStop::DIALOG || walk.stop == WalkStop::TRANSITION){
+            return outcome_failed("walk_failed", std::string("Sandgem: ") + walk_stop_name(walk.stop) + " stepping to the doors' row");
+        }
+        return outcome_ok();
     }
 
     virtual std::optional<LitDoorway> lit_doorway() override{
@@ -520,6 +599,8 @@ public:
         return m_center.walk(at, goal, label);
     }
     virtual bool east_then_south_into_sandgem() override{ return m_center.east_then_south_into_sandgem(); }
+    virtual Outcome entry_to_doors_row() override{ return m_center.entry_to_doors_row(); }
+    virtual Outcome step_to_front_row() override{ return m_center.step_to_front_row(); }
     virtual std::optional<LitDoorway> lit_doorway() override{ return m_center.lit_doorway(); }
     virtual Outcome line_up_with_door() override{ return m_center.line_up_with_door(); }
     virtual bool inside_pokemon_center() override{ return m_center.inside_pokemon_center(); }
@@ -654,7 +735,7 @@ Checkpoint route202_to_sandgem_center_checkpoint(SandgemCenterActions& game){
     checkpoint.interrupts.push_back(dialogue_interrupt(game));
     checkpoint.events.push_back(confirm_on_route_202(game));
     checkpoint.events.push_back(walk_to_sandgem(game));
-    checkpoint.events.push_back(walk_to_center_door(game, "walk_to_center_door"));
+    checkpoint.events.push_back(walk_to_doors_row(game));
     checkpoint.events.push_back(at_center_door(game, "at_center_door"));
     //  No save: the save stays on Route 202, so the run can be repeated.
     return checkpoint;

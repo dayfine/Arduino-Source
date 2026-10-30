@@ -959,6 +959,33 @@ public:
         where = Where::SANDGEM_ENTRY;
         return entered;
     }
+    virtual Pokemon::Outcome entry_to_doors_row() override{
+        trace.push_back("to the doors' row");
+        if (lost_walks > 0){
+            lost_walks--;
+            where = Where::LOST;
+            return Pokemon::outcome_failed("not_anchored", "Sandgem: west: limit instead of the wall");
+        }
+        where = Where::BELOW_SIGN;
+        if (short_walks > 0){
+            short_walks--;
+            where = Where::SHORT_OF_DOOR;
+        }
+        return Pokemon::outcome_ok();
+    }
+    virtual Pokemon::Outcome step_to_front_row() override{
+        trace.push_back("step to the front row");
+        if (where != Where::SHORT_OF_DOOR){
+            return Pokemon::outcome_failed("no_doorway", "no lit doorway on screen to step by");
+        }
+        //  A wanderer may stand in the way again.
+        if (short_walks > 0){
+            short_walks--;
+            return Pokemon::outcome_ok();
+        }
+        where = Where::BELOW_SIGN;
+        return Pokemon::outcome_ok();
+    }
     virtual std::optional<LitDoorway> lit_doorway() override{
         switch (where){
         case Where::BELOW_SIGN:
@@ -1007,7 +1034,8 @@ public:
 
     virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
         const std::string SOUTH = "walk: Route 202 to Sandgem Town";
-        const std::string CENTER = "walk: To the Pokemon Center";
+        const std::string ROW = "to the doors' row";
+        const std::string STEP = "step to the front row";
         struct Case{
             const char* name;
             std::string save_location;
@@ -1027,7 +1055,7 @@ public:
                 .lost_walks = 0,
                 .completed = true,
                 .failed_event = 0,
-                .trace = {"read save screen", SOUTH, CENTER, "line up"},
+                .trace = {"read save screen", SOUTH, ROW, "line up"},
             },
             {
                 .name = "The save is in Sandgem Town",
@@ -1047,7 +1075,7 @@ public:
                 .lost_walks = 0,
                 .completed = true,
                 .failed_event = 0,
-                .trace = {"read save screen", SOUTH, CENTER, CENTER, "line up"},
+                .trace = {"read save screen", SOUTH, ROW, STEP, "line up"},
             },
             {
                 .name = "A talk stops the walk south",
@@ -1057,17 +1085,17 @@ public:
                 .lost_walks = 0,
                 .completed = true,
                 .failed_event = 0,
-                .trace = {"read save screen", SOUTH, "finish dialogue", "east, then south", CENTER, "line up"},
+                .trace = {"read save screen", SOUTH, "finish dialogue", "east, then south", ROW, "line up"},
             },
             {
-                .name = "Lost on the way to the door",
+                .name = "A wall leg in town ends short",
                 .save_location = "Route 202",
                 .short_walks = 0,
                 .talking_walks = 0,
                 .lost_walks = 1,
-                .completed = true,
-                .failed_event = 0,
-                .trace = {"read save screen", SOUTH, CENTER, "east, then north", CENTER, "line up"},
+                .completed = false,
+                .failed_event = 3,
+                .trace = {"read save screen", SOUTH, ROW},
             },
             {
                 .name = "Short of the door every time",
@@ -1077,7 +1105,7 @@ public:
                 .lost_walks = 0,
                 .completed = false,
                 .failed_event = 3,
-                .trace = {"read save screen", SOUTH, CENTER, CENTER, CENTER},
+                .trace = {"read save screen", SOUTH, ROW, STEP, STEP},
             },
         };
         for (const Case& c : cases){
@@ -1201,6 +1229,8 @@ public:
         return Pokemon::outcome_failed("no_plan", label);
     }
     virtual bool east_then_south_into_sandgem() override{ return false; }
+    virtual Pokemon::Outcome entry_to_doors_row() override{ return Pokemon::outcome_failed("no_plan", "not on this checkpoint"); }
+    virtual Pokemon::Outcome step_to_front_row() override{ return Pokemon::outcome_failed("no_plan", "not on this checkpoint"); }
     virtual std::optional<LitDoorway> lit_doorway() override{
         switch (where){
         case Where::CENTER_FRONT:

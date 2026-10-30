@@ -288,7 +288,10 @@ bool line_up_with_lit_door(
             return false;
         }
         log_doorway(stream, label, *doorway);
-        if (std::abs(doorway->tiles_across) <= 0.25){
+        //  Steps overshoot: within a quarter tile, r128 measured 0.29, -0.28,
+        //  0.48, -0.67 and 0.48 tiles in turn and never settled. The door
+        //  still takes us in from 0.4 (enter_lit_door()).
+        if (std::abs(doorway->tiles_across) <= 0.4){
             return true;
         }
         step_across(stream, context, doorway->tiles_across);

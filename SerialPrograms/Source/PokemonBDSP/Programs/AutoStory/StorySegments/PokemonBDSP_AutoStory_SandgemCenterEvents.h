@@ -52,6 +52,17 @@ public:
     //  whether Sandgem Town's location banner showed on the way.
     virtual bool east_then_south_into_sandgem() = 0;
 
+    //  From where the walk south stops in Sandgem (sandgem_entry_stop()), or
+    //  anywhere in the strip north of the signs: west until the wall stops
+    //  us, south until the Center's sign does, then a tile east and two
+    //  south, between the signs, onto the row below the doors. Fails on a
+    //  stop that is not a wall (a talk, a door).
+    virtual Pokemon::Outcome entry_to_doors_row() = 0;
+
+    //  Walks north or south by the rows between us and the row below the
+    //  lit doorway on screen.
+    virtual Pokemon::Outcome step_to_front_row() = 0;
+
     //  The lit doorway nearest the middle of the screen, if any.
     virtual std::optional<LitDoorway> lit_doorway() = 0;
 
@@ -81,6 +92,10 @@ Pokemon::TilePos sandgem_entry_stop();
 //  heal walks to (r75), with the doorway in sight.
 Pokemon::TilePos below_sandgem_center_sign();
 
+//  Where entry_to_doors_row() may leave us: the row below the doors, or the
+//  one under it, at the gap's west half.
+std::vector<Pokemon::TilePos> doors_row_by_the_gap();
+
 //  Whether `doorway` is straight ahead on the row below it: about a row up,
 //  within half a tile across.
 bool doorway_lined_up(const LitDoorway& doorway);
@@ -98,7 +113,7 @@ bool center_doorway_at_front_row(const LitDoorway& doorway);
 //  Events:
 //      1. confirm_on_route_202     the save screen reads Route 202
 //      2. walk_to_sandgem          the pose is on Sandgem Town
-//      3. walk_to_center_door      the Center's doorway at the front row
+//      3. walk_to_doors_row        the Center's doorway at the front row
 //      4. at_center_door           the doorway straight ahead, a row up, outside
 Pokemon::Checkpoint route202_to_sandgem_center_checkpoint(SandgemCenterActions& game);
 
