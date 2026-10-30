@@ -336,6 +336,7 @@ public:
         m_bp_ledger.record(BP, current_time());
         update_BP_stats();
     }
+    const BBQPointsLedger& bp_ledger() const{ return m_bp_ledger; }
 
 private:
     void update_BP_stats(){
@@ -354,6 +355,29 @@ private:
     EventNotificationOption& m_status_update;
     BBQPointsLedger m_bp_ledger;
 };
+
+void log_BP_check(SingleSwitchProgramEnvironment& env, const BBQPointsLedger& ledger, const std::string& note){
+    env.log(ledger.reconciliation() + note, ledger.reconciled() ? COLOR_BLACK : COLOR_RED);
+}
+
+//Run the quest rounds, then check the BP stats against the rerolls. The check is logged even
+//when the run stops early.
+void run_rounds_and_check_BP(
+    SingleSwitchProgramEnvironment& env, ProControllerContext& context,
+    const BBQOption& options, BBQSoloFarmerGameActions& game
+){
+    try{
+        run_bbq_rounds(env.logger(), options, game);
+    }catch (...){
+        //The balance isn't read again, since the game may be on any screen.
+        log_BP_check(env, game.bp_ledger(), " Stopped early, so this is as of the last panel read.");
+        throw;
+    }
+
+    //No quest panel is read after the last batch, so read the balance once more.
+    game.record_BP(read_BP(env.program_info(), env.console, context));
+    log_BP_check(env, game.bp_ledger(), "");
+}
 
 }
 
@@ -386,10 +410,7 @@ void BBQSoloFarmer::program(SingleSwitchProgramEnvironment& env, ProControllerCo
     */
 
     BBQSoloFarmerGameActions game(env, context, BBQ_OPTIONS, stats, NOTIFICATION_STATUS_UPDATE);
-    run_bbq_rounds(env.logger(), BBQ_OPTIONS, game);
-
-    //No quest panel is read after the last batch, so read the balance once more.
-    game.record_BP(read_BP(env.program_info(), env.console, context));
+    run_rounds_and_check_BP(env, context, BBQ_OPTIONS, game);
     env.update_stats();
 
     if (BBQ_OPTIONS.FIX_TIME_WHEN_DONE){

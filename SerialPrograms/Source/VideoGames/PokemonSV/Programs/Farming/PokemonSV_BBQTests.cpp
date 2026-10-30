@@ -1011,11 +1011,14 @@ static void add_tests_BBQReroll(UnitTestDatabase& database){
 namespace{
 
 // Balance reads in order, each at a minute offset from the first, and the
-// ledger they must produce. A negative read is an OCR failure.
+// ledger they must produce. A negative read is an OCR failure. "spend_before"
+// is what the program paid for rerolls just before the read (-1: a reroll of
+// unknown cost).
 struct BBQPointsLedgerScenario{
     struct Read{
         int balance;
         int minute;
+        int spend_before = 0;
     };
     std::string name;
     std::vector<Read> reads = {};
@@ -1024,6 +1027,8 @@ struct BBQPointsLedgerScenario{
     uint64_t expected_spent = 0;
     int64_t expected_net = 0;
     int64_t expected_per_hour = 0;
+    uint64_t expected_checked = 0;
+    uint64_t expected_mismatched = 0;
 };
 
 class Test_BBQPointsLedger : public UnitTest{
@@ -1037,6 +1042,11 @@ public:
         const WallClock start = current_time();
         BBQPointsLedger ledger;
         for (const BBQPointsLedgerScenario::Read& read : m_scenario.reads){
+            if (read.spend_before < 0){
+                ledger.skip_spend_check();
+            }else if (read.spend_before > 0){
+                ledger.expect_spend(read.spend_before);
+            }
             ledger.record(read.balance, start + std::chrono::minutes(read.minute));
         }
         const std::pair<const char*, std::pair<int64_t, int64_t>> checks[] = {
@@ -1045,6 +1055,10 @@ public:
             {"spent", {(int64_t)m_scenario.expected_spent, (int64_t)ledger.spent}},
             {"net", {m_scenario.expected_net, ledger.net()}},
             {"net per hour", {m_scenario.expected_per_hour, ledger.net_per_hour()}},
+            {"checked reroll windows", {(int64_t)m_scenario.expected_checked, (int64_t)ledger.checked_windows}},
+            {"mismatched reroll windows", {(int64_t)m_scenario.expected_mismatched, (int64_t)ledger.mismatched_windows}},
+            //Reconciled means a balance was read and no reroll window mismatched.
+            {"reconciled", {m_scenario.expected_start >= 0 && m_scenario.expected_mismatched == 0, ledger.reconciled()}},
         };
         for (const auto& [field, values] : checks){
             if (values.first != values.second){
@@ -1059,6 +1073,70 @@ private:
     const BBQPointsLedgerScenario m_scenario;
 };
 
+}
+
+// Reroll windows where the next read does not show what the rerolls should have cost.
+static void add_tests_BBQPointsLedgerMismatches(UnitTestDatabase& database){
+    const BBQPointsLedgerScenario mismatches[] = {
+        {
+            // The game didn't take the BP: the reroll didn't happen.
+            .name = "a reroll that cost nothing is a mismatch",
+            .reads = {{6750, 0}, {6750, 1, 10}},
+            .expected_start = 6750,
+            .expected_checked = 1,
+            .expected_mismatched = 1,
+        },
+        {
+            // 6740 misread as 6140.
+            .name = "a misread after a reroll is a mismatch",
+            .reads = {{6750, 0}, {6140, 1, 10}},
+            .expected_start = 6750,
+            .expected_spent = 610,
+            .expected_net = -610,
+            .expected_per_hour = -36600,
+            .expected_checked = 1,
+            .expected_mismatched = 1,
+        },
+    };
+    for (const BBQPointsLedgerScenario& scenario : mismatches){
+        database.add<Test_BBQPointsLedger>(scenario);
+    }
+}
+
+// Reroll windows: what the rerolls should have cost against the next read.
+static void add_tests_BBQPointsLedgerRerolls(UnitTestDatabase& database){
+    const BBQPointsLedgerScenario scenarios[] = {
+        {
+            // A blue and a red reroll, each followed by a read, as the farmer does.
+            .name = "rerolls that match the reads reconcile",
+            .reads = {{6750, 0}, {6740, 1, 10}, {6800, 10}, {6750, 11, 50}},
+            .expected_start = 6750,
+            .expected_earned = 60,
+            .expected_spent = 60,
+            .expected_per_hour = 0,
+            .expected_checked = 2,
+        },
+        {
+            // The next read may include quest income, so the window isn't checked.
+            .name = "a failed read after a reroll skips the check",
+            .reads = {{6750, 0}, {-1, 1, 10}, {6790, 10}},
+            .expected_start = 6750,
+            .expected_earned = 40,
+            .expected_net = 40,
+            .expected_per_hour = 240,
+        },
+        {
+            .name = "a reroll of unknown cost skips the check",
+            .reads = {{6750, 0}, {6700, 1, -1}},
+            .expected_start = 6750,
+            .expected_spent = 50,
+            .expected_net = -50,
+            .expected_per_hour = -3000,
+        },
+    };
+    for (const BBQPointsLedgerScenario& scenario : scenarios){
+        database.add<Test_BBQPointsLedger>(scenario);
+    }
 }
 
 static void add_tests_BBQPointsLedger(UnitTestDatabase& database){
@@ -1107,6 +1185,8 @@ static void add_tests_BBQPointsLedger(UnitTestDatabase& database){
     for (const BBQPointsLedgerScenario& scenario : scenarios){
         database.add<Test_BBQPointsLedger>(scenario);
     }
+    add_tests_BBQPointsLedgerRerolls(database);
+    add_tests_BBQPointsLedgerMismatches(database);
 }
 
 
