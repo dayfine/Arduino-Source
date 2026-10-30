@@ -7,7 +7,8 @@ CLASS_LIMITS = {
 }
 
 # Advisory floors: new or changed values above these (and within the limit) are reported.
-ADVISORY = {'public_methods': 5}
+# Changed files above their floor are always reported.
+ADVISORY = {'file_lines': 500, 'function_lines': 25, 'public_methods': 5}
 
 HINTS = {
     'public_methods': 'split the class or move helpers into free functions',
