@@ -22,6 +22,10 @@ namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonFRLG{
 
+//  Where to look for the black screen of a game starting: the middle of the
+//  frame, away from its edges.
+const ImageFloatBox LAUNCH_BLACK_SCREEN_BOX{0.1, 0.15, 0.8, 0.7};
+
 //  Press A to start the game, then wait until it is time to go back Home.
 //  Normally that is a fixed delay. With an online license, the console first
 //  returns to the Home menu to check the license, so wait for the game to
@@ -31,31 +35,26 @@ bool start_game_before_home(
     Milliseconds launch_delay,
     bool& online_license
 ){
+    //  The same 50ms press as before this change, so without an online
+    //  license the timing that `launch_delay` is calibrated for stays the same.
     pbf_press_button(context, BUTTON_A, 50ms, 0ms);
     context.wait_for_all_requests();
 
     if (!online_license){
+        //  An online license shows itself by the Home menu or the license
+        //  popup coming up during the launch delay. If neither does, the delay
+        //  has passed as before and it is time to go Home.
         HomeMenuWatcher home(console);
         CheckOnlineWatcher check_online;
-        online_license = wait_until(
-            console, context,
-            launch_delay,
-            { home, check_online }
-        ) >= 0;
-        if (!online_license){
+        if (wait_until(console, context, launch_delay, { home, check_online }) < 0){
             return false;
         }
+        online_license = true;
         console.log("Back at Home after starting the game. Waiting for the online license check...", COLOR_BLUE);
     }
 
-    BlackScreenWatcher black_screen(COLOR_BLUE, {0.1, 0.15, 0.8, 0.7});
-    int ret = wait_until(
-        console, context,
-        std::chrono::seconds(30),
-        { black_screen },
-        1ms
-    );
-    if (ret < 0){
+    BlackScreenWatcher black_screen(COLOR_BLUE, LAUNCH_BLACK_SCREEN_BOX);
+    if (wait_until(console, context, std::chrono::seconds(30), { black_screen }, 1ms) < 0){
         console.log("Game did not start within 30 seconds of the online license check.", COLOR_RED);
         return false;
     }
@@ -88,7 +87,7 @@ void rng_reset_and_return_home(
         HomeMenuWatcher home(console, false, COLOR_RED, std::chrono::milliseconds(2000));
         UpdateMenuWatcher update_menu(console, COLOR_PURPLE);
         CheckOnlineWatcher check_online(COLOR_CYAN);
-        BlackScreenWatcher black_screen(COLOR_BLUE, {0.1, 0.15, 0.8, 0.7});
+        BlackScreenWatcher black_screen(COLOR_BLUE, LAUNCH_BLACK_SCREEN_BOX);
 
         // first, get to the user select screen
         context.wait_for_all_requests();
@@ -163,7 +162,7 @@ void rng_reset_and_return_home(
                 { black_screen, update_menu },
                 1ms
             );
-            bool black_screen_detected = std::exchange(game_started, false);
+            bool black_screen_detected = std::exchange(game_started, false);  //  a black screen seen at launch counts once
             switch (ret3){
             case 0:
                 console.log("Black screen detected.");
