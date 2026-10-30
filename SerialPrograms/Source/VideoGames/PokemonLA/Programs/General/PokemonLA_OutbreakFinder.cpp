@@ -5,6 +5,7 @@
  */
 
 #include <iterator>
+#include <sstream>
 #include "Common/Cpp/Exceptions.h"
 #include "CommonFramework/StaticGlobals.h"
 #include "CommonFramework/GlobalAutoPaths.h"
@@ -31,10 +32,9 @@
 #include "VideoGames/PokemonLA/Inference/Objects/PokemonLA_ButtonDetector.h"
 #include "VideoGames/PokemonLA/Inference/Objects/PokemonLA_MMOQuestionMarkDetector.h"
 #include "PokemonLA_MMORoutines.h"
+
+
 #include "PokemonLA_OutbreakFinder.h"
-
-
-#include <sstream>
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -104,6 +104,7 @@ OutbreakFinder_Descriptor::OutbreakFinder_Descriptor()
         STRING_POKEMON + " LA", "Outbreak Finder",
         "Programs/PokemonLA/OutbreakFinder.html",
         "Search for an outbreak for a specific " + STRING_POKEMON,
+        PanelQualityStanding::OFFICIAL,
         ProgramControllerClass::StandardController_NoRestrictions,
         FeedbackType::REQUIRED,
         AllowCommandsWhenRunning::DISABLE_COMMANDS

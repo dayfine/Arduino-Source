@@ -6,7 +6,6 @@
 
 #include "Common/Cpp/PrettyPrint.h"
 #include "CommonFramework/Notifications/ProgramNotifications.h"
-#include "Controllers/ControllerTypes.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_Superscalar.h"
 #include "NintendoSwitch/Programs/NintendoSwitch_GameEntry.h"
@@ -27,6 +26,7 @@ StowOnSideFarmer_Descriptor::StowOnSideFarmer_Descriptor()
         STRING_POKEMON + " SwSh", "Date Spam - Stow-On-Side Farmer",
         "Programs/PokemonSwSh/DateSpam-StowOnSideFarmer.html",
         "Farm the Stow-on-Side items dealer.",
+        PanelQualityStanding::OFFICIAL,
         ProgramControllerClass::StandardController_PerformanceClassSensitive,
         FeedbackType::NONE,
         AllowCommandsWhenRunning::DISABLE_COMMANDS

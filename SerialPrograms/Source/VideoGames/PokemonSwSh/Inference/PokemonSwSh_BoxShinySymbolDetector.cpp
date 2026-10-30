@@ -6,6 +6,7 @@
  *
  */
 
+#include <iostream>
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "CommonFramework/StaticGlobals.h"
 #include "CommonFramework/GlobalAutoPaths.h"
@@ -15,7 +16,6 @@
 #include "CommonFramework/VideoPipeline/VideoOverlayScopes.h"
 #include "PokemonSwSh_BoxShinySymbolDetector.h"
 
-#include <iostream>
 using std::cout;
 using std::endl;
 

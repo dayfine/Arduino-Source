@@ -18,11 +18,10 @@
 
 #include "Common/Cpp/ListenerSet.h"
 #include "Common/Cpp/Concurrency/Watchdog.h"
-#include "AudioFeed.h"
-#include "AudioPassthroughPair.h"
-#include "AudioStream.h"
 #include "Spectrum/FFTStreamer.h"
 #include "Spectrum/AudioSpectrumHolder.h"
+#include "AudioFeed.h"
+#include "AudioPassthroughPair.h"
 #include "AudioOption.h"
 
 namespace PokemonAutomation{
@@ -32,9 +31,14 @@ class Logger;
 
 class AudioSession final : public AudioFeed, private FFTListener, private WatchdogCallback{
 public:
+    using WorkingAudioStreamListener = Kernels::AudioPipeline::WorkingAudioStreamListener;
+
     struct StateListener{
         virtual void pre_input_change(){}
-        virtual void post_input_change(const std::string& file, const AudioDeviceInfo& device, AudioChannelFormat format){}
+        virtual void post_input_change(
+            const std::shared_ptr<const AudioSourceDescriptor>& source,
+            const AudioInputChoice& choice
+        ){}
         virtual void post_output_change(const AudioDeviceInfo& device){}
         virtual void post_volume_change(double volume){}
         virtual void post_display_change(AudioOption::AudioDisplayType display){}
@@ -42,13 +46,10 @@ public:
     void add_state_listener(StateListener& listener);
     void remove_state_listener(StateListener& listener);
 
-    void add_stream_listener(AudioFloatStreamListener& listener);
-    void remove_stream_listener(AudioFloatStreamListener& listener);
-
     //  Attach a listener that receives the working audio stream (float)
     //  converted to the requested format. See AudioPassthroughPair.
-    void add_working_stream_listener(const AudioFormat& format, Kernels::AudioPipeline::WorkingAudioStreamListener& listener);
-    void remove_working_stream_listener(Kernels::AudioPipeline::WorkingAudioStreamListener& listener);
+    void add_working_stream_listener(const AudioFormat& format, WorkingAudioStreamListener& listener);
+    void remove_working_stream_listener(WorkingAudioStreamListener& listener);
 
     void add_spectrum_listener(AudioSpectrumHolder::Listener& listener);
     void remove_spectrum_listener(AudioSpectrumHolder::Listener& listener);
@@ -61,8 +62,10 @@ public:
     void save(AudioOption& option) const;
     void load(const AudioOption& option);
 
-    std::pair<std::string, AudioDeviceInfo> input_device() const;
-    AudioChannelFormat input_format() const;
+    Logger& logger(){ return m_logger; }
+
+    std::shared_ptr<AudioSourceDescriptor> input_source() const;
+    AudioInputChoice input_choice() const;
 
     AudioDeviceInfo output_device() const;
     double output_volume() const;
@@ -71,9 +74,8 @@ public:
     AudioSpectrumHolder& spectrums(){ return m_spectrum_holder; }
 
     void clear_audio_input();
-    void set_audio_input(std::string file);
-    void set_audio_input(AudioDeviceInfo info);
-    void set_format(AudioChannelFormat format);
+    void set_audio_input(const std::shared_ptr<AudioSourceDescriptor>& source);
+    void set_input_choice(const AudioInputChoice& choice);
 
     void clear_audio_output();
     void set_audio_output(AudioDeviceInfo info);
@@ -92,7 +94,7 @@ private:
     virtual void on_fft(size_t sample_rate, std::shared_ptr<const AlignedVector<float>> fft_output) override;
     virtual void on_watchdog_timeout() override;
 
-    bool sanitize_format();
+    bool sanitize_choice();
 
     void signal_pre_input_change();
     void signal_post_input_change();

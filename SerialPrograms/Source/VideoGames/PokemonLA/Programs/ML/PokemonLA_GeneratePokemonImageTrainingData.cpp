@@ -7,13 +7,9 @@
 #include "Common/Cpp/Exceptions.h"
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
 #include "CommonFramework/Exceptions/ProgramFinishedException.h"
-#include "CommonFramework/ImageTools/ImageStats.h"
 #include "CommonFramework/Notifications/ProgramNotifications.h"
-#include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "Pokemon/Pokemon_Strings.h"
-#include "VideoGames/PokemonLA/Inference/Objects/PokemonLA_ButtonDetector.h"
-#include "VideoGames/PokemonLA/Programs/PokemonLA_GameEntry.h"
 #include "VideoGames/PokemonLA/Programs/PokemonLA_RegionNavigation.h"
 #include "VideoGames/PokemonLA/PokemonLA_TravelLocations.h"
 #include "PokemonLA_GeneratePokemonImageTrainingData.h"
@@ -64,6 +60,7 @@ GeneratePokemonImageTrainingData_Descriptor::GeneratePokemonImageTrainingData_De
         STRING_POKEMON + " LA", "Generate " + STRING_POKEMON + " Image Training Data",
         "Programs/PokemonLA/GeneratePokemonImageTrainingData.html",
         "Generate training images of " + STRING_POKEMON + " for machine learning purposes.",
+        PanelQualityStanding::DEVELOPER,
         ProgramControllerClass::StandardController_NoRestrictions,
         FeedbackType::REQUIRED,
         AllowCommandsWhenRunning::DISABLE_COMMANDS
