@@ -4,12 +4,16 @@
  *
  */
 
+#include <filesystem>
+#include <fstream>
+#include "Common/Cpp/PrettyPrint.h"
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "CommonFramework/GlobalAutoPaths.h"
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "VideoGames/PokemonSV/Inference/PokemonSV_BlueberryPointsReader.h"
 #include "VideoGames/PokemonSV/Options/PokemonSV_BBQuests.h"
 #include "PokemonSV_BBQLogger.h"
+#include "PokemonSV_BBQSnapshot.h"
 #include "PokemonSV_BlueberryQuests.h"
 #include "PokemonSV_BBQTests.h"
 
@@ -205,6 +209,92 @@ static void add_tests_BBQDiagnosticLogs(UnitTestDatabase& database){
 }
 
 
+namespace{
+
+// A fresh folder under the system temp folder, removed afterwards.
+class TempFolder{
+public:
+    TempFolder()
+        : path(std::filesystem::temp_directory_path() / ("bbq-snapshot-test-" + now_to_filestring()))
+    {
+        std::filesystem::create_directories(path);
+    }
+    ~TempFolder(){
+        std::error_code error;
+        std::filesystem::remove_all(path, error);
+    }
+    const std::filesystem::path path;
+};
+
+ImageRGB32 small_frame(){
+    ImageRGB32 frame(4, 4);
+    frame.fill(0xff00ff00);
+    return frame;
+}
+
+class Test_BBQSnapshotSaved : public UnitTest{
+public:
+    Test_BBQSnapshotSaved() : UnitTest("PokemonSV::BBQSnapshot - saves into a new folder") {}
+
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        TempFolder temp;
+        const std::string directory = (temp.path / "BBQ").string() + "/";
+        BBQTestLogger logger;
+
+        const std::string path = save_bbq_snapshot(
+            logger, small_frame(), directory, BBQuests::make_tm, "verification-failed"
+        );
+
+        const std::string suffix = "-make-tm-verification-failed.png";
+        if (path.rfind(directory, 0) != 0 || path.size() < suffix.size()
+            || path.compare(path.size() - suffix.size(), suffix.size(), suffix) != 0
+        ){
+            return "Unexpected snapshot path: " + path;
+        }
+        if (!std::filesystem::exists(path)){
+            return "Snapshot was not written: " + path;
+        }
+        if (logger.messages != std::vector<std::string>{"BBQ event=snapshot saved=1 path=" + path}){
+            return "Unexpected snapshot log.";
+        }
+        return true;
+    }
+};
+
+class Test_BBQSnapshotFailed : public UnitTest{
+public:
+    Test_BBQSnapshotFailed() : UnitTest("PokemonSV::BBQSnapshot - reports a failed save") {}
+
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        // The folder cannot be created because a file already has its name.
+        TempFolder temp;
+        std::ofstream(temp.path / "BBQ") << "not a folder";
+        const std::string directory = (temp.path / "BBQ").string() + "/";
+        BBQTestLogger logger;
+
+        const std::string path = save_bbq_snapshot(
+            logger, small_frame(), directory, BBQuests::make_tm, "verification-failed"
+        );
+
+        if (!path.empty()){
+            return "Expected no path for a failed save, got: " + path;
+        }
+        const std::string expected_prefix = "BBQ event=snapshot saved=0 path=" + directory;
+        if (logger.messages.size() != 1 || logger.messages[0].rfind(expected_prefix, 0) != 0){
+            return "Unexpected snapshot log.";
+        }
+        return true;
+    }
+};
+
+}
+
+static void add_tests_BBQSnapshot(UnitTestDatabase& database){
+    database.add<Test_BBQSnapshotSaved>();
+    database.add<Test_BBQSnapshotFailed>();
+}
+
+
 void add_tests_BBQ(UnitTestDatabase& database){
     database.add<Test_BBQuestsSlugs>();
 
@@ -218,6 +308,7 @@ void add_tests_BBQ(UnitTestDatabase& database){
 
     add_tests_TeraEncounterAction(database);
     add_tests_BBQDiagnosticLogs(database);
+    add_tests_BBQSnapshot(database);
 }
 
 
