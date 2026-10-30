@@ -1727,6 +1727,8 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRoute.h
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWalk.cpp
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWalk.h
+    Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_PlayerFacingReader.cpp
+    Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_PlayerFacingReader.h
     Source/VideoGames/PokemonFRLG/PokemonFRLG_Navigation.cpp
     Source/VideoGames/PokemonFRLG/PokemonFRLG_Navigation.h
     Source/VideoGames/PokemonFRLG/PokemonFRLG_Panels.cpp
