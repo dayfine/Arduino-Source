@@ -677,11 +677,35 @@ namespace PokemonAutomation {
             use_potion_first_pokemon(stream, context, 0.5);
         }
 
-        // To the Poke Mart lady and her talk. She stands in the top row of Route
-        // 201's north-east grass, under the trees, and wanders about it (r113a,
-        // r114a). Come west past the sign to the trees east of the grass, step
-        // north onto her row under the trees, and walk west along the row
-        // until she blocks the walk and answers.
+        // Looks for the Poke Mart lady from each tile of her row, from `tiles`
+        // tiles east of its west end to the end. She wanders the open ground
+        // between the tree trunks just above the grass (r114a, r119a), a row
+        // the walk along row 3 never meets, so at each tile: face north and
+        // press A, then west (in case she stands in the row), and if nobody
+        // answers step one tile west. Facing north, a short tap west only
+        // turns; facing west, a short hold is one tile (as for Mom at home).
+        // Returns whether her dialogue is open.
+        static bool probe_row_for_poke_mart_lady(VideoStream& stream, ProControllerContext& context, size_t tiles) {
+            const std::vector<Pokemon::Direction> sides = {Pokemon::Direction::NORTH, Pokemon::Direction::WEST};
+            for (size_t step = 0; ; step++) {
+                route_status(stream, "Poke Mart lady: probing north and west, " +
+                    std::to_string(step) + "/" + std::to_string(tiles) + " tiles west of the approach");
+                if (talk_to_adjacent_npc(stream, context, sides, "Poke Mart lady")) {
+                    stream.log("[00.04] Poke Mart lady answered after " + std::to_string(step) + " tile(s) west.");
+                    return true;
+                }
+                if (step >= tiles) {
+                    return false;
+                }
+                // Facing west now. The grass may start a wild battle: run.
+                walk_through_grass(stream, context, -1, 0, 1, "west along the Poke Mart lady's row",
+                    BattleType::STANDARD, route_open_hold(Pokemon::Direction::WEST, 1));
+            }
+        }
+
+        // To the Poke Mart lady and her talk. Come west past the sign to the
+        // trees east of her grass, step north onto row 3 under the trees, and
+        // probe tile by tile west along it until she answers.
         static void meet_poke_mart_lady(
             VideoStream& stream, ProControllerContext& context, const MapSet& maps,
             std::vector<TrainerSight>& trainers, const RouteTrainerFight& fight
@@ -690,11 +714,9 @@ namespace PokemonAutomation {
             const TilePos corner = maps.to_world(MAP_ROUTE_201, Route201::POTION_GIVER_ROW_WEST_END);
             walk_route(stream, context, maps, story_save_spots(),
                 [&](const TilePos& pos) { return pos == approach; }, trainers, fight, "To the Poke Mart lady");
-            if (!walk_along_row_to_talk(stream, context, Pokemon::Direction::WEST,
-                    (size_t)(approach.x - corner.x), "Poke Mart lady")) {
+            if (!probe_row_for_poke_mart_lady(stream, context, (size_t)(approach.x - corner.x))) {
                 OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
-                    "Poke Mart lady: nobody answered walking west along her row from (53, 3), "
-                    "nor on any side of where the walk stopped.", stream);
+                    "Poke Mart lady: no answer from north or west at any of row 3's tiles 53..42.", stream);
             }
             // Her talk gives 10 Potions ("obtained" lines): A to the end.
             finish_dialogue(stream, context, BUTTON_A, "Poke Mart lady");

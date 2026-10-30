@@ -57,16 +57,6 @@ std::optional<Pokemon::Direction> talk_to_adjacent_npc(
     const std::string& label, Milliseconds wait = Milliseconds(1500)
 );
 
-//  Talks to someone standing somewhere along a row: walks `direction` for
-//  up to `tiles` tiles, pressing A as it goes (walk_to_talk()), so the walk
-//  ends facing whoever blocks it. Start from a tile a wall pins to the row.
-//  If nobody answered by the end, tries the other sides of where the walk
-//  stopped (talk_to_adjacent_npc()). Returns whether a dialogue is open.
-bool walk_along_row_to_talk(
-    VideoStream& stream, ProControllerContext& context,
-    Pokemon::Direction direction, size_t tiles, const std::string& label
-);
-
 //  Whether the location banner's OCR `read` names the map `expected`. Both
 //  are compared as lower-case letters and digits. OCR drops or swaps letters
 //  ("andgemltown" for Sandgem Town on r109), so up to a quarter of the name's

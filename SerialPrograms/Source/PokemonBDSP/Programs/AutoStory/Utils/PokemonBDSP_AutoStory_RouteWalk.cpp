@@ -201,36 +201,6 @@ std::optional<Direction> talk_to_adjacent_npc(
     return std::nullopt;
 }
 
-bool walk_along_row_to_talk(
-    VideoStream& stream, ProControllerContext& context,
-    Direction direction, size_t tiles, const std::string& label
-){
-    double x, y;
-    stick_for(direction, x, y);
-    route_status(stream, label + ": walking " + direction_name(direction) + " until someone answers");
-    const Milliseconds limit = ROUTE_START_DELAY + ms_per_tile(direction) * tiles;
-    const WalkResult walk = walk_to_talk(stream, context, x, y, limit, label);
-    if (walk.stop == WalkStop::DIALOG){
-        stream.log("[Route] " + label + ": answered after walking " + direction_name(direction) +
-            " for " + std::to_string(walk.walked.count()) + "ms.");
-        return true;
-    }
-    if (walk.stop == WalkStop::TRANSITION){
-        OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
-            label + ": left the map while walking " + direction_name(direction) + " along the row.", stream);
-    }
-    //  The walk faces `direction` and A was pressed that way: try the others.
-    std::vector<Direction> others;
-    for (Direction side : {Direction::NORTH, Direction::SOUTH, Direction::EAST, Direction::WEST}){
-        if (side != direction){
-            others.push_back(side);
-        }
-    }
-    stream.log("[Route] " + label + ": nobody in the row; trying the other sides.");
-    return talk_to_adjacent_npc(stream, context, others, label).has_value();
-}
-
-
 std::vector<TilePos> walk_route(
     VideoStream& stream, ProControllerContext& context,
     const MapSet& maps,
