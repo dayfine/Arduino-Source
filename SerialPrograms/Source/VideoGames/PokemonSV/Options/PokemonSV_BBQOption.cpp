@@ -194,6 +194,12 @@ BBQOption::BBQOption(OCR::LanguageOCROption* language_option)
         "<b>Fix Time when Done:</b><br>Fix the time after the program finishes.",
         LockMode::UNLOCK_WHILE_RUNNING, false
     )
+    , SAVE_TARGET_DIAGNOSTICS(
+        "<b>Save Target Diagnostics:</b><br>For catch, Sneak Up and photo quests, save a frame at each step of reaching the target to DebugDumps/BBQ/targets/. "
+        "When the target may not have been reached, also save the stream history there, if it is enabled in the global settings. "
+        "For finding out why these quests fail. The log records each attempt either way.",
+        LockMode::UNLOCK_WHILE_RUNNING, false
+    )
 {
     if (m_language_owner){
         PA_ADD_OPTION(LANGUAGE);
@@ -211,6 +217,7 @@ BBQOption::BBQOption(OCR::LanguageOCROption* language_option)
     PA_ADD_OPTION(CATCH_ON_WIN);
     PA_ADD_OPTION(NUM_RETRIES);
     PA_ADD_OPTION(FIX_TIME_WHEN_DONE);
+    PA_ADD_OPTION(SAVE_TARGET_DIAGNOSTICS);
 }
 
 
