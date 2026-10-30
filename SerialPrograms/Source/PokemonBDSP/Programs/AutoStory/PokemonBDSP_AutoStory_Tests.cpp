@@ -1460,7 +1460,13 @@ public:
             ? Pokemon::outcome_failed("walk_failed", label)
             : Pokemon::outcome_ok();
     }
-    virtual DialogueRead talk(Direction, Button, const std::string&) override{ return {}; }
+    virtual DialogueRead talk(Direction, Button, const std::string& label) override{
+        trace.push_back("talk: " + label);
+        if (label == "Barry" && barry_answers){
+            return DialogueRead{.opened = true, .closed = true, .text = "Barry"};
+        }
+        return {};
+    }
     virtual Pokemon::Outcome step(Direction direction, const std::string& label) override{
         trace.push_back("step: " + label);
         (void)direction;
@@ -1493,6 +1499,12 @@ public:
     }
     virtual void step_across(double tiles, const std::string&) override{
         column += (size_t)std::lround(tiles);
+    }
+    bool barry_answers = true;
+    bool left_school = false;
+    virtual Pokemon::Outcome leave_south(const std::string&) override{
+        left_school = true;
+        return Pokemon::outcome_ok();
     }
     //  Half tiles: a nudge east then west lands back on the column.
     int half = 0;
@@ -1554,6 +1566,17 @@ public:
                 Pokemon::RunState school_state;
                 Pokemon::Checkpoint school = jubilife_school_checkpoint(game);
                 school_done = Pokemon::run_checkpoint(school_state, school, log).completed;
+            }
+            if (school_done){
+                Pokemon::RunState barry_state;
+                Pokemon::Checkpoint barry = jubilife_barry_checkpoint(game);
+                const std::vector<std::string> problems = Pokemon::lint_checkpoint(barry);
+                if (!problems.empty()){
+                    return std::string(c.name) + ": 00.05c lint: " + problems.front();
+                }
+                if (!Pokemon::run_checkpoint(barry_state, barry, log).completed || !game.left_school){
+                    return std::string(c.name) + ": 00.05c did not complete.";
+                }
             }
             size_t tries = 0;
             for (const std::string& step : game.trace){

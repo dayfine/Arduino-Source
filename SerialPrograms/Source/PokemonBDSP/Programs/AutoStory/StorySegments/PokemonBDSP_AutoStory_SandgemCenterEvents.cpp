@@ -657,14 +657,6 @@ void save_end_screenshot(SingleSwitchProgramEnvironment& env, const std::string&
     }
 }
 
-void pin_clock(SingleSwitchProgramEnvironment& env, ProControllerContext& context){
-    //  The doorways are found by their lit colour: pin the clock as 00.04
-    //  does, so a reloaded save sees the same lighting.
-    set_time_fast(env, context, DateTime{2026, 1, 1, 0, 0, 50});
-    pbf_wait(context, 1500ms);
-    context.wait_for_all_requests();
-}
-
 //  Runs `checkpoint`, logging its events, and fails with a screenshot
 //  naming the event and why if it does not complete.
 void run_on_console(SingleSwitchProgramEnvironment& env, Checkpoint& checkpoint, const char* name){
@@ -707,7 +699,6 @@ Checkpoint route202_to_sandgem_center_checkpoint(SandgemCenterActions& game){
 }
 
 void diagnostic_route202_to_sandgem_center(SingleSwitchProgramEnvironment& env, ProControllerContext& context){
-    pin_clock(env, context);
     ConsoleSandgemCenterActions game(env.console, context);
     Checkpoint checkpoint = route202_to_sandgem_center_checkpoint(game);
     run_on_console(env, checkpoint, ROUTE202_TO_SANDGEM_CENTER_NAME);
@@ -799,10 +790,7 @@ Checkpoint sandgem_mart_lady_checkpoint(MartLadyActions& game){
     return checkpoint;
 }
 
-void diagnostic_sandgem_mart_lady(SingleSwitchProgramEnvironment& env, ProControllerContext& context, bool pin){
-    if (pin){
-        pin_clock(env, context);
-    }
+void diagnostic_sandgem_mart_lady(SingleSwitchProgramEnvironment& env, ProControllerContext& context){
     ConsoleMartLadyActions game(env, context);
     Checkpoint checkpoint = sandgem_mart_lady_checkpoint(game);
     run_on_console(env, checkpoint, SANDGEM_MART_LADY_NAME);
@@ -908,6 +896,56 @@ Checkpoint jubilife_school_checkpoint(JubilifeActions& game){
     return checkpoint;
 }
 
+const char* const JUBILIFE_BARRY_NAME = "00.05c Jubilife: Barry in the Trainers' School (events)";
+
+Checkpoint jubilife_barry_checkpoint(JubilifeActions& game){
+    Checkpoint checkpoint;
+    checkpoint.id = "jubilife_barry";
+    checkpoint.interrupts.push_back(dialogue_interrupt(game));
+    //  Stepped through on the console (2026-10-28, and r146b's end shot):
+    //  Barry stands at the blackboard, a tile west of the door's column.
+    checkpoint.events.push_back(wrapped_step("up_to_barry",
+        "a tile west of the door's column, then north until Barry stops us", "at_barry",
+        [&game](RunState&){
+            game.turn(Direction::WEST);
+            const Outcome west = game.tile(Direction::WEST, "West of the door's column");
+            return west.succeeded() ? game.walk_until_stopped(Direction::NORTH, 8, "North to Barry") : west;
+        }));
+    {
+        std::shared_ptr<DialogueRead> read = std::make_shared<DialogueRead>();
+        Event talk;
+        talk.name = "talk_to_barry";
+        talk.why = "Barry gives the Town Map";
+        talk.skip_if.push_back(condition("talked_to_barry", [](RunState& state){ return state.flags.count("talked_to_barry") > 0; }));
+        talk.act = [&game, read](RunState& state){
+            *read = game.talk(Direction::NORTH, BUTTON_A, "Barry");
+            if (read->opened && read->closed){
+                state.flags.insert("talked_to_barry");
+            }
+            return outcome_ok();
+        };
+        talk.expect.push_back(condition("his dialogue opened and was closed", [read](RunState&){
+            return read->opened && read->closed;
+        }));
+        talk.recoveries.push_back(recovery("expect_failed", RecoveryKind::REANCHOR, 1, [&game](RunState&){
+            return game.walk_until_stopped(Direction::NORTH, 4, "North to Barry");
+        }, "not at him: north until he stops us"));
+        checkpoint.events.push_back(std::move(talk));
+    }
+    checkpoint.events.push_back(wrapped_step("out_of_the_school",
+        "south until the front wall stops us, a tile east to the door's column, out", "out_of_school",
+        [&game](RunState&){
+            const Outcome down = game.walk_until_stopped(Direction::SOUTH, 8, "South to the School's front wall");
+            if (!down.succeeded()){
+                return down;
+            }
+            game.turn(Direction::EAST);
+            const Outcome east = game.tile(Direction::EAST, "To the door's column");
+            return east.succeeded() ? game.leave_south("Out of the Trainers' School") : east;
+        }));
+    return checkpoint;
+}
+
 class ConsoleJubilifeActions : public ConsoleMartLadyActionsT<JubilifeActions>{
 public:
     ConsoleJubilifeActions(SingleSwitchProgramEnvironment& env, ProControllerContext& context)
@@ -956,6 +994,14 @@ public:
         move_across(m_stream, m_context, tiles);
         m_context.wait_for_all_requests();
     }
+    virtual Outcome leave_south(const std::string& label) override{
+        try{
+            leave_door_south(m_stream, m_context, label);
+        }catch (OperationFailedException& e){
+            return outcome_failed("walk_failed", e.message());
+        }
+        return outcome_ok();
+    }
     virtual void nudge(Direction direction, const std::string& label) override{
         route_turn(m_stream, m_context, direction);
         walk_for(m_stream, m_context, direction == Direction::EAST ? 1 : -1, 0, 80ms, label);
@@ -993,10 +1039,15 @@ private:
 };
 
 void diagnostic_jubilife_center(SingleSwitchProgramEnvironment& env, ProControllerContext& context){
-    pin_clock(env, context);
     ConsoleJubilifeActions game(env, context);
     Checkpoint checkpoint = jubilife_center_checkpoint(game);
     run_on_console(env, checkpoint, JUBILIFE_CENTER_NAME);
+}
+
+void diagnostic_jubilife_barry(SingleSwitchProgramEnvironment& env, ProControllerContext& context){
+    ConsoleJubilifeActions game(env, context);
+    Checkpoint checkpoint = jubilife_barry_checkpoint(game);
+    run_on_console(env, checkpoint, JUBILIFE_BARRY_NAME);
 }
 
 void diagnostic_jubilife_school(SingleSwitchProgramEnvironment& env, ProControllerContext& context){

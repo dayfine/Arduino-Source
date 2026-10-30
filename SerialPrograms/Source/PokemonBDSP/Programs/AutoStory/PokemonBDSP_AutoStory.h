@@ -51,6 +51,8 @@ private:
     BooleanCheckBoxOption DIAGNOSTIC_JUBILIFE_CENTER;
     // DIAGNOSTIC ONLY: Remove before pushing to production.
     BooleanCheckBoxOption DIAGNOSTIC_JUBILIFE_SCHOOL;
+    // DIAGNOSTIC ONLY: Remove before pushing to production.
+    BooleanCheckBoxOption DIAGNOSTIC_JUBILIFE_BARRY;
     BooleanCheckBoxOption ENABLE_ADVANCED_MODE;
 
     StringSelectOption START_CHECKPOINT_TUTORIAL;

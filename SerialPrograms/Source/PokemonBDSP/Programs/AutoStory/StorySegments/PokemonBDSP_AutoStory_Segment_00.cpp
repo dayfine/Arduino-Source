@@ -1015,9 +1015,6 @@ namespace PokemonAutomation {
         // mean steps 1 to 4 are done; where that save stands is read off the
         // save screen (resume_with_potions()).
         static void tutorial_part_3_after_catch_navigation(SingleSwitchProgramEnvironment& env, VideoStream& stream, ProControllerContext& context) {
-            // A retry reloads the save at whatever time the clock has reached.
-            // Pin it again so the landmark references see the same lighting.
-            set_time_fast(env, context, DateTime{ 2026, 1, 1, 0, 0, 50 });
             log_after_catch_steps(stream);
 
             const MapSet& maps = story_maps();

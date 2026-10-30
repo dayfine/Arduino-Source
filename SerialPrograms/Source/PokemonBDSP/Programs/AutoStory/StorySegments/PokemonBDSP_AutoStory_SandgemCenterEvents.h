@@ -196,8 +196,8 @@ extern const char* const SANDGEM_MART_LADY_NAME;
 
 //  DIAGNOSTIC ONLY: Remove before pushing to production.
 //  Runs the Mart lady checkpoint on the console, from in front of Sandgem's
-//  Pokemon Center door; pins the clock first if `pin_clock`.
-void diagnostic_sandgem_mart_lady(SingleSwitchProgramEnvironment& env, ProControllerContext& context, bool pin_clock);
+//  Pokemon Center door.
+void diagnostic_sandgem_mart_lady(SingleSwitchProgramEnvironment& env, ProControllerContext& context);
 
 
 //  The game steps of 00.05's first two checkpoints, in Jubilife.
@@ -219,6 +219,9 @@ public:
     virtual std::optional<double> school_door_across() = 0;
     //  Moves across by `tiles` (positive: east).
     virtual void step_across(double tiles, const std::string& label) = 0;
+    //  Inside a building whose door is straight south: out through it. Fails
+    //  if three walks south do not change the scene.
+    virtual Pokemon::Outcome leave_south(const std::string& label) = 0;
     //  One tile `direction` from standing still, facing that way already.
     virtual Pokemon::Outcome tile(Pokemon::Direction direction, const std::string& label) = 0;
     //  Walks north; true if a door took us through.
@@ -245,6 +248,16 @@ extern const char* const JUBILIFE_CENTER_NAME;
 Pokemon::Checkpoint jubilife_school_checkpoint(JubilifeActions& game);
 extern const char* const JUBILIFE_SCHOOL_NAME;
 
+//  00.05c: in the Trainers' School, from its door: Barry, who gives the Town
+//  Map, and back out onto the School's doorstep.
+//      1. up_to_barry           a tile west, north until Barry stops us
+//      2. talk_to_barry         his scene, to "You obtained a Town Map!"
+//      3. out_of_the_school     south to the front wall, a tile east, out
+Pokemon::Checkpoint jubilife_barry_checkpoint(JubilifeActions& game);
+extern const char* const JUBILIFE_BARRY_NAME;
+
+//  DIAGNOSTIC ONLY: Remove before pushing to production.
+void diagnostic_jubilife_barry(SingleSwitchProgramEnvironment& env, ProControllerContext& context);
 //  DIAGNOSTIC ONLY: Remove before pushing to production.
 void diagnostic_jubilife_center(SingleSwitchProgramEnvironment& env, ProControllerContext& context);
 void diagnostic_jubilife_school(SingleSwitchProgramEnvironment& env, ProControllerContext& context);
