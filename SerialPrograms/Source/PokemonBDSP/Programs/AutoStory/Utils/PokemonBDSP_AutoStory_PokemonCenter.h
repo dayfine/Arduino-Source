@@ -10,6 +10,7 @@
 #include <optional>
 #include <string>
 #include <vector>
+#include "CommonFramework/ImageTools/ImageBoxes.h"
 #include "CommonFramework/ImageTypes/ImageViewRGB32.h"
 #include "CommonFramework/Tools/VideoStream.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
@@ -39,6 +40,19 @@ bool pokemon_center_inside(const ImageViewRGB32& screen);
 //  two thirds of `screen`, the pale yellow-white of its open door. Nothing if
 //  none shows there, or inside a Pokemon Center, whose floor is that colour.
 std::optional<LitDoorway> find_lit_doorway(const ImageViewRGB32& screen);
+
+//  A lit street lamp's head inside `box` (0 to 1 of the screen): the mean
+//  x of its white core, or nothing if fewer than a lamp's worth of white
+//  pixels show there (by day the lamps are not lit).
+std::optional<double> find_lit_lamp_x(const ImageViewRGB32& screen, const ImageFloatBox& box);
+
+//  How many tiles a thing seen at screen x is across from the player
+//  (positive: east).
+double tiles_across_at(double screen_x);
+
+//  Moves across by `tiles`, east if positive, west if negative, facing that
+//  way first.
+void move_across(VideoStream& stream, ProControllerContext& context, double tiles);
 
 //  The tiles a player who sees `doorway` (the door on world tile `door`) may
 //  stand on: the one its offset says, give or take one each way, since the

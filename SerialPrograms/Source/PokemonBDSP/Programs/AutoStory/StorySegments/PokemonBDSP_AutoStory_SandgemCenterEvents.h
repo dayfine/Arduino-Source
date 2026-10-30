@@ -213,6 +213,12 @@ public:
     virtual void turn(Pokemon::Direction direction) = 0;
     //  Half a tile `direction` (EAST or WEST), facing it first.
     virtual void nudge(Pokemon::Direction direction, const std::string& label) = 0;
+    //  On the School's doorsteps' row, near its door: tiles across from the
+    //  player to the door's column, read from the lit lamp east of it;
+    //  nothing if no lamp is lit (by day).
+    virtual std::optional<double> school_door_across() = 0;
+    //  Moves across by `tiles` (positive: east).
+    virtual void step_across(double tiles, const std::string& label) = 0;
     //  One tile `direction` from standing still, facing that way already.
     virtual Pokemon::Outcome tile(Pokemon::Direction direction, const std::string& label) = 0;
     //  Walks north; true if a door took us through.

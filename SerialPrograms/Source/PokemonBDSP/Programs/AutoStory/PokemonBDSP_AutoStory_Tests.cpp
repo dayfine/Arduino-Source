@@ -1483,6 +1483,17 @@ public:
     virtual void turn(Direction direction) override{
         trace.push_back(std::string("turn ") + Pokemon::direction_name(direction));
     }
+    //  The lamp: off by `lamp_off` tiles after the counted walk, or unlit.
+    std::optional<double> lamp_off;
+    virtual std::optional<double> school_door_across() override{
+        if (!lamp_off){
+            return std::nullopt;
+        }
+        return (double)door_at - (double)column;
+    }
+    virtual void step_across(double tiles, const std::string&) override{
+        column += (size_t)std::lround(tiles);
+    }
     //  Half tiles: a nudge east then west lands back on the column.
     int half = 0;
     virtual void nudge(Direction direction, const std::string&) override{
@@ -1509,19 +1520,24 @@ public:
         : UnitTest("PokemonBDSP::AutoStory - Jubilife 00.05a/b events")
     {}
     virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
-        struct Case{ const char* name; size_t door_at; bool stuck; bool stays_inside; bool center_done; bool school_done; size_t tries; };
+        struct Case{ const char* name; size_t door_at; bool stuck; bool stays_inside; bool center_done; bool school_done; size_t tries; bool lamp = false; };
         const Case cases[] = {
             {"Door eleven tiles west, as measured", 11, false, false, true, true, 1},
             {"Door a whole tile off: a map error, not found", 12, false, false, true, false, 4},
             {"Door off by two: not found", 14, false, false, true, false, 4},
             {"The house never stops us", 11, true, false, false, false, 0},
             {"The heal leaves us inside (r143a)", 11, false, true, false, false, 0},
+            {"A tile off, the lamp lit: it lines us up", 12, false, false, true, true, 1, true},
+            {"Two tiles off, the lamp lit: it lines us up", 9, false, false, true, true, 1, true},
         };
         for (const Case& c : cases){
             FakeJubilife game;
             game.door_at = c.door_at;
             game.stuck_on_house = c.stuck;
             game.heal_stays_inside = c.stays_inside;
+            if (c.lamp){
+                game.lamp_off = 0.0;
+            }
             for (size_t which = 0; which < 2; which++){
                 Pokemon::Checkpoint checkpoint = which == 0 ? jubilife_center_checkpoint(game) : jubilife_school_checkpoint(game);
                 const std::vector<std::string> problems = Pokemon::lint_checkpoint(checkpoint);
@@ -1553,6 +1569,47 @@ public:
 };
 
 
+//  The School's lamp at night, from its doorsteps' row (2026-10-30): where
+//  the door took us in, the lamp reads within half a tile of the door; a
+//  tile either side, more.
+class Test_SchoolLamp : public UnitTest{
+public:
+    Test_SchoolLamp()
+        : UnitTest("PokemonBDSP::AutoStory - Jubilife School lamp")
+    {}
+    virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
+        const ImageFloatBox box(0.55, 0.20, 0.30, 0.10);
+        struct Case{ const char* file; double min; double max; };
+        const Case cases[] = {
+            {"PokemonBDSP/AutoStory/JubilifeSchoolRightOfDoor-20261030.png", -1.5, -0.5},
+            {"PokemonBDSP/AutoStory/JubilifeSchoolOneTileShort-20261030.png", -1.5, -0.5},
+            {"PokemonBDSP/AutoStory/JubilifeSchoolAtDoor-20261030.png", -0.5, 0.5},
+            {"PokemonBDSP/AutoStory/JubilifeSchoolAtDoor2-20261030.png", -0.5, 0.5},
+            {"PokemonBDSP/AutoStory/JubilifeSchoolDoorstep-20261030.png", -0.5, 0.5},
+            {"PokemonBDSP/AutoStory/JubilifeSchoolOneTilePast-20261030.png", 0.5, 1.5},
+        };
+        for (const Case& c : cases){
+            const std::string path = UNIT_TEST_RESOURCE_PATH() + c.file;
+            if (!Filesystem::is_regular_file(path)){
+                return UnitTestResult(UnitTestResult::SKIPPED, "Screenshot not found: " + path);
+            }
+            const ImageRGB32 screen(path);
+            const std::optional<double> lamp = find_lit_lamp_x(screen, box);
+            if (!lamp){
+                return std::string(c.file) + ": no lit lamp found.";
+            }
+            const double across = tiles_across_at(*lamp) - tiles_across_at(0.67);
+            logger.log(std::string(c.file) + ": lamp at " + std::to_string(*lamp) + ", door " + std::to_string(across) + " tiles across.");
+            if (across < c.min || across > c.max){
+                return std::string(c.file) + ": door " + std::to_string(across) + " tiles across, expected " +
+                    std::to_string(c.min) + " to " + std::to_string(c.max) + ".";
+            }
+        }
+        return true;
+    }
+};
+
+
 void add_tests_AutoStory(UnitTestDatabase& database){
     database.add<Test_IntroDecisions>();
     database.add<Test_TileGridParse>();
@@ -1566,6 +1623,7 @@ void add_tests_AutoStory(UnitTestDatabase& database){
     database.add<Test_PokemonCenterInside>();
     database.add<Test_MartLadyEvents>();
     database.add<Test_JubilifeEvents>();
+    database.add<Test_SchoolLamp>();
 }
 
 

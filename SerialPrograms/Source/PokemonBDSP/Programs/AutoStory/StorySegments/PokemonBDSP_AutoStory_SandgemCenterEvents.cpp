@@ -28,6 +28,7 @@
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_StoryMaps.h"
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStoryTools.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Location.h"
+#include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_PokemonCenter.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_RouteWalk.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Segment_00_tools.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Walk.h"
@@ -816,6 +817,12 @@ void diagnostic_sandgem_mart_lady(SingleSwitchProgramEnvironment& env, ProContro
 
 const char* const JUBILIFE_CENTER_NAME = "00.05a Jubilife: steps to the Pokemon Center (events)";
 const size_t SCHOOL_TILES_WEST_OF_CENTER = 11;
+//  The School's lamp, east of its door, from its doorsteps' row at night
+//  (2026-10-30): at 0.65 to 0.69 of the screen across the door takes us in;
+//  at 0.61 (right of it) and 0.75 (past it) its front stops us. A tile is
+//  0.065 of the screen. The box leaves out the Center's lamp further east.
+const double SCHOOL_LAMP_X_AT_DOOR = 0.67;
+const ImageFloatBox SCHOOL_LAMP_BOX(0.55, 0.20, 0.30, 0.10);
 const char* const JUBILIFE_SCHOOL_NAME = "00.05b Jubilife: Pokemon Center to the Trainers' School (events)";
 
 Checkpoint jubilife_center_checkpoint(JubilifeActions& game){
@@ -874,6 +881,14 @@ Checkpoint jubilife_school_checkpoint(JubilifeActions& game){
                     return moved;
                 }
             }
+            //  At night the lamp east of the door says how far off we are.
+            for (size_t looks = 0; looks < 2; looks++){
+                const std::optional<double> across = game.school_door_across();
+                if (!across || std::abs(*across) <= 0.5){
+                    break;
+                }
+                game.step_across(*across, "Line up with the School's door by its lamp");
+            }
             if (game.through_door_north("Trainers' School door")){
                 return outcome_ok();
             }
@@ -919,6 +934,27 @@ public:
     }
     virtual void turn(Direction direction) override{
         route_turn(m_stream, m_context, direction);
+    }
+    virtual std::optional<double> school_door_across() override{
+        m_context.wait_for_all_requests();
+        VideoSnapshot screen = m_stream.video().snapshot();
+        if (!screen){
+            return std::nullopt;
+        }
+        const std::optional<double> lamp = find_lit_lamp_x(*screen.frame, SCHOOL_LAMP_BOX);
+        if (!lamp){
+            m_stream.log("[Route] School's door: no lit lamp on screen.");
+            return std::nullopt;
+        }
+        const double across = tiles_across_at(*lamp) - tiles_across_at(SCHOOL_LAMP_X_AT_DOOR);
+        m_stream.log("[Route] School's door: the lamp at " + std::to_string(*lamp) + " of the screen, the door " +
+            std::to_string(across) + " tiles across.");
+        return across;
+    }
+    virtual void step_across(double tiles, const std::string& label) override{
+        m_stream.log("[Route] " + label + ": " + std::to_string(tiles) + " tiles across.");
+        move_across(m_stream, m_context, tiles);
+        m_context.wait_for_all_requests();
     }
     virtual void nudge(Direction direction, const std::string& label) override{
         route_turn(m_stream, m_context, direction);

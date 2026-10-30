@@ -228,6 +228,31 @@ bool pokemon_center_inside(const ImageViewRGB32& screen){
     return image_stats(extract_box_reference(screen, ImageFloatBox(0.30, 0.55, 0.40, 0.15))).average.sum() > 250;
 }
 
+std::optional<double> find_lit_lamp_x(const ImageViewRGB32& screen, const ImageFloatBox& box){
+    const size_t x0 = (size_t)(box.x * screen.width()), x1 = (size_t)((box.x + box.width) * screen.width());
+    const size_t y0 = (size_t)(box.y * screen.height()), y1 = (size_t)((box.y + box.height) * screen.height());
+    double sum = 0;
+    size_t count = 0;
+    for (size_t y = y0; y < y1 && y < screen.height(); y++){
+        for (size_t x = x0; x < x1 && x < screen.width(); x++){
+            const Color pixel(screen.pixel(x, y));
+            if (pixel.red() > 235 && pixel.green() > 220 && pixel.blue() > 150){
+                sum += x;
+                count++;
+            }
+        }
+    }
+    //  Jubilife's lamps at night: 50 to 100 such pixels at 480 px across.
+    if (count * 480 * 480 < 30 * screen.width() * screen.width()){
+        return std::nullopt;
+    }
+    return sum / count / screen.width();
+}
+
+double tiles_across_at(double screen_x){
+    return (screen_x - PLAYER_X) * SCREEN_WIDTH_TILES;
+}
+
 std::optional<LitDoorway> find_lit_doorway(const ImageViewRGB32& screen){
     //  A Center's lit floor has the doorway's colour.
     if (pokemon_center_inside(screen)){
@@ -391,6 +416,11 @@ void heal_at_pokemon_center(
     leave_door_south(stream, context, label + ": out the door");
 }
 
+
+
+void move_across(VideoStream& stream, ProControllerContext& context, double tiles){
+    step_across(stream, context, tiles);
+}
 
 
 }
