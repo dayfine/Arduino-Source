@@ -20,98 +20,122 @@ constexpr uint8_t ELEVATION_IGNORED = 15;   //  doesn't take part
 constexpr uint8_t ELEVATION_GROUND = 3;     //  where Surf starts and ends
 
 
-OverworldMap::OverworldMap(const MapText& text)
-    : m_name(text.name)
-    , m_height((int)text.terrain.size())
-    , m_warps(text.warps)
-    , m_objects(text.objects)
-    , m_connections(text.connections)
-{
-    if (m_height == 0 || text.elevation.size() != text.terrain.size()){
-        throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, m_name + ": terrain and elevation need the same number of rows.");
-    }
-    m_width = (int)text.terrain[0].size();
-    for (int y = 0; y < m_height; y++){
-        const std::string& terrain = text.terrain[y];
-        const std::string& elevation = text.elevation[y];
-        if ((int)terrain.size() != m_width || (int)elevation.size() != m_width){
-            throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, m_name + ": row " + std::to_string(y) + " has the wrong length.");
-        }
-        for (int x = 0; x < m_width; x++){
-            const char tile = terrain[x];
-            switch (tile){
-            case '#':
-            case 'J':
-            case '.':
-            case '"':
-            case '~':
-            case 'n':
-            case 's':
-            case 'e':
-            case 'w':
-            case 'D':
-            case 'C':
-            case 'L':
-            case '^':
-            case 'v':
-            case '<':
-            case '>':
-                break;
-            default:
-                throw InternalProgramError(
-                    nullptr, PA_CURRENT_FUNCTION,
-                    m_name + ": unknown terrain '" + std::string(1, tile) + "' at " + to_string(TilePos{x, y})
-                );
-            }
-            const char digit = elevation[x];
-            int level;
-            if ('0' <= digit && digit <= '9'){
-                level = digit - '0';
-            }else if ('a' <= digit && digit <= 'f'){
-                level = digit - 'a' + 10;
-            }else{
-                throw InternalProgramError(
-                    nullptr, PA_CURRENT_FUNCTION,
-                    m_name + ": bad elevation '" + std::string(1, digit) + "' at " + to_string(TilePos{x, y})
-                );
-            }
-            m_terrain.push_back(tile);
-            m_elevation.push_back((uint8_t)level);
-        }
+namespace{
+
+bool known_terrain(char tile){
+    switch (tile){
+    case '#':
+    case 'J':
+    case '.':
+    case '"':
+    case '~':
+    case 'n':
+    case 's':
+    case 'e':
+    case 'w':
+    case 'D':
+    case 'C':
+    case 'L':
+    case '^':
+    case 'v':
+    case '<':
+    case '>':
+        return true;
+    default:
+        return false;
     }
 }
 
-bool OverworldMap::in_bounds(const TilePos& point) const{
-    return 0 <= point.x && point.x < m_width && 0 <= point.y && point.y < m_height;
+//  The level of an elevation digit, or nothing if it isn't one.
+std::optional<uint8_t> elevation_level(char digit){
+    if ('0' <= digit && digit <= '9'){
+        return (uint8_t)(digit - '0');
+    }
+    if ('a' <= digit && digit <= 'f'){
+        return (uint8_t)(digit - 'a' + 10);
+    }
+    return std::nullopt;
 }
-char OverworldMap::terrain(const TilePos& point) const{
-    if (!in_bounds(point)){
+
+//  Appends row `y` of `text` to `map`.
+void add_row(OverworldMap& map, const MapText& text, int y){
+    const std::string& terrain = text.terrain[y];
+    const std::string& elevation = text.elevation[y];
+    if ((int)terrain.size() != map.width || (int)elevation.size() != map.width){
+        throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, map.name + ": row " + std::to_string(y) + " has the wrong length.");
+    }
+    for (int x = 0; x < map.width; x++){
+        const char tile = terrain[x];
+        if (!known_terrain(tile)){
+            throw InternalProgramError(
+                nullptr, PA_CURRENT_FUNCTION,
+                map.name + ": unknown terrain '" + std::string(1, tile) + "' at " + to_string(TilePos{x, y})
+            );
+        }
+        const std::optional<uint8_t> level = elevation_level(elevation[x]);
+        if (!level){
+            throw InternalProgramError(
+                nullptr, PA_CURRENT_FUNCTION,
+                map.name + ": bad elevation '" + std::string(1, elevation[x]) + "' at " + to_string(TilePos{x, y})
+            );
+        }
+        map.terrain.push_back(tile);
+        map.elevation.push_back(*level);
+    }
+}
+
+}
+
+
+OverworldMap make_overworld_map(const MapText& text){
+    OverworldMap map;
+    map.name = text.name;
+    map.height = (int)text.terrain.size();
+    map.warps = text.warps;
+    map.objects = text.objects;
+    map.connections = text.connections;
+    if (map.height == 0 || text.elevation.size() != text.terrain.size()){
+        throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, map.name + ": terrain and elevation need the same number of rows.");
+    }
+    map.width = (int)text.terrain[0].size();
+    for (int y = 0; y < map.height; y++){
+        add_row(map, text, y);
+    }
+    return map;
+}
+
+bool in_bounds(const OverworldMap& map, const TilePos& point){
+    return 0 <= point.x && point.x < map.width && 0 <= point.y && point.y < map.height;
+}
+char terrain_at(const OverworldMap& map, const TilePos& point){
+    if (!in_bounds(map, point)){
         return '#';
     }
-    return m_terrain[(size_t)point.y * m_width + point.x];
+    return map.terrain[(size_t)point.y * map.width + point.x];
 }
-bool OverworldMap::wall(const TilePos& point) const{
-    const char tile = terrain(point);
-    return tile == '#' || tile == 'D' || tile == 'J';
-}
-bool OverworldMap::ledge(const TilePos& point) const{
-    return terrain(point) == 'J';
-}
-bool OverworldMap::water(const TilePos& point) const{
-    return terrain(point) == '~';
-}
-bool OverworldMap::tall_grass(const TilePos& point) const{
-    return terrain(point) == '"';
-}
-uint8_t OverworldMap::elevation(const TilePos& point) const{
-    if (!in_bounds(point)){
+uint8_t elevation_at(const OverworldMap& map, const TilePos& point){
+    if (!in_bounds(map, point)){
         return ELEVATION_IGNORED;
     }
-    return m_elevation[(size_t)point.y * m_width + point.x];
+    return map.elevation[(size_t)point.y * map.width + point.x];
 }
 
-bool OverworldMap::blocks_entering(const TilePos& point, Direction direction) const{
-    const char tile = terrain(point);
+bool is_wall(const OverworldMap& map, const TilePos& point){
+    const char tile = terrain_at(map, point);
+    return tile == '#' || tile == 'D' || tile == 'J';
+}
+bool is_ledge(const OverworldMap& map, const TilePos& point){
+    return terrain_at(map, point) == 'J';
+}
+bool is_water(const OverworldMap& map, const TilePos& point){
+    return terrain_at(map, point) == '~';
+}
+bool is_tall_grass(const OverworldMap& map, const TilePos& point){
+    return terrain_at(map, point) == '"';
+}
+
+bool blocks_entering(const OverworldMap& map, const TilePos& point, Direction direction){
+    const char tile = terrain_at(map, point);
     switch (direction){
     case Direction::SOUTH:
         return tile == 'n';
@@ -124,8 +148,8 @@ bool OverworldMap::blocks_entering(const TilePos& point, Direction direction) co
     }
     return false;
 }
-bool OverworldMap::blocks_leaving(const TilePos& point, Direction direction) const{
-    const char tile = terrain(point);
+bool blocks_leaving(const OverworldMap& map, const TilePos& point, Direction direction){
+    const char tile = terrain_at(map, point);
     switch (direction){
     case Direction::NORTH:
         return tile == 'n';
@@ -139,15 +163,15 @@ bool OverworldMap::blocks_leaving(const TilePos& point, Direction direction) con
     return false;
 }
 
-bool OverworldMap::warps_on_step(const TilePos& point) const{
-    const char tile = terrain(point);
+bool warps_on_step(const OverworldMap& map, const TilePos& point){
+    const char tile = terrain_at(map, point);
     return tile == 'C' || tile == 'L';
 }
-bool OverworldMap::door(const TilePos& point) const{
-    return terrain(point) == 'D';
+bool is_door(const OverworldMap& map, const TilePos& point){
+    return terrain_at(map, point) == 'D';
 }
-std::optional<Direction> OverworldMap::exit_mat(const TilePos& point) const{
-    switch (terrain(point)){
+std::optional<Direction> exit_mat(const OverworldMap& map, const TilePos& point){
+    switch (terrain_at(map, point)){
     case '^':
         return Direction::NORTH;
     case 'v':
@@ -160,31 +184,31 @@ std::optional<Direction> OverworldMap::exit_mat(const TilePos& point) const{
         return std::nullopt;
     }
 }
-bool OverworldMap::walks_out_on_arrival(const TilePos& point) const{
-    const char tile = terrain(point);
+bool walks_out_on_arrival(const OverworldMap& map, const TilePos& point){
+    const char tile = terrain_at(map, point);
     return tile == 'D' || tile == 'C';
 }
 
-void OverworldMap::hide_objects(const std::set<std::string>& flags){
+void hide_objects(OverworldMap& map, const std::set<std::string>& flags){
     std::vector<MapObject> shown;
-    for (const MapObject& object : m_objects){
+    for (const MapObject& object : map.objects){
         if (object.flag.empty() || flags.count(object.flag) == 0){
             shown.push_back(object);
         }
     }
-    m_objects = std::move(shown);
+    map.objects = std::move(shown);
 }
 
-const MapObject* OverworldMap::object_at(const TilePos& point) const{
-    for (const MapObject& object : m_objects){
+const MapObject* object_at(const OverworldMap& map, const TilePos& point){
+    for (const MapObject& object : map.objects){
         if (std::abs(object.x - point.x) <= object.wander_x && std::abs(object.y - point.y) <= object.wander_y){
             return &object;
         }
     }
     return nullptr;
 }
-const MapWarp* OverworldMap::warp_at(const TilePos& point) const{
-    for (const MapWarp& warp : m_warps){
+const MapWarp* warp_at(const OverworldMap& map, const TilePos& point){
+    for (const MapWarp& warp : map.warps){
         if (warp.x == point.x && warp.y == point.y){
             return &warp;
         }
@@ -202,29 +226,29 @@ StepKind classify_step_onto(
     const OverworldMap& from, const PlayerState& state, Direction direction,
     const OverworldMap& to, const TilePos& destination
 ){
-    if (to.wall(destination)
-        || from.blocks_leaving(state.position, direction)
-        || to.blocks_entering(destination, direction)
+    if (is_wall(to, destination)
+        || blocks_leaving(from, state.position, direction)
+        || blocks_entering(to, destination, direction)
     ){
         return StepKind::BLOCKED;
     }
 
-    const uint8_t level = to.elevation(destination);
+    const uint8_t level = elevation_at(to, destination);
     const bool mismatch = state.elevation != ELEVATION_ANY
         && level != ELEVATION_ANY && level != ELEVATION_IGNORED
         && level != state.elevation;
     if (mismatch){
         //  CanStopSurfing() and IsPlayerFacingSurfableFishableWater().
-        if (state.surfing && level == ELEVATION_GROUND && to.object_at(destination) == nullptr){
+        if (state.surfing && level == ELEVATION_GROUND && object_at(to, destination) == nullptr){
             return StepKind::STOP_SURFING;
         }
-        if (!state.surfing && state.elevation == ELEVATION_GROUND && to.water(destination)){
+        if (!state.surfing && state.elevation == ELEVATION_GROUND && is_water(to, destination)){
             return StepKind::START_SURF;
         }
         return StepKind::BLOCKED;
     }
 
-    if (to.object_at(destination) != nullptr){
+    if (object_at(to, destination) != nullptr){
         return StepKind::BLOCKED;
     }
     return StepKind::WALK;
@@ -240,8 +264,8 @@ PlayerState after_step_onto(
 ){
     PlayerState next = state;
     next.position = destination;
-    const uint8_t level = to.elevation(destination);
-    if (level != ELEVATION_IGNORED && from.elevation(state.position) != ELEVATION_IGNORED){
+    const uint8_t level = elevation_at(to, destination);
+    if (level != ELEVATION_IGNORED && elevation_at(from, state.position) != ELEVATION_IGNORED){
         next.elevation = level;
     }
     if (kind == StepKind::START_SURF){

@@ -5,7 +5,7 @@
  *  An FRLG map as the game sees it: per tile collision, elevation and the
  *  behaviors that matter for walking (water, one-way edges), plus its warps
  *  and the objects standing on it. The map data is generated from the
- *  pret/pokefirered decompilation, and try_step() follows the game's own
+ *  pret/pokefirered decompilation, and classify_step() follows the game's own
  *  collision checks (GetCollisionAtCoords() in src/event_object_movement.c),
  *  so a route planned on these maps is one the game allows.
  *
@@ -91,58 +91,53 @@ struct MapText{
 };
 
 
-class OverworldMap{
-public:
-    //  Throws InternalProgramError if the rows don't match in size or use a
-    //  character outside the legend.
-    explicit OverworldMap(const MapText& text);
-
-    const std::string& name() const{ return m_name; }
-    int width() const{ return m_width; }
-    int height() const{ return m_height; }
-
-    bool in_bounds(const TilePos& point) const;
-    //  Out-of-bounds tiles are walls.
-    bool wall(const TilePos& point) const;
-    bool water(const TilePos& point) const;
-    bool tall_grass(const TilePos& point) const;
-    bool ledge(const TilePos& point) const;
-    uint8_t elevation(const TilePos& point) const;
-    //  Whether the tile itself refuses a step in `direction`: entering it, or
-    //  leaving it.
-    bool blocks_entering(const TilePos& point, Direction direction) const;
-    bool blocks_leaving(const TilePos& point, Direction direction) const;
-
-    //  The warp the game takes on stepping onto this tile ('C', 'L').
-    bool warps_on_step(const TilePos& point) const;
-    //  A door ('D'), entered by walking north into it.
-    bool door(const TilePos& point) const;
-    //  The direction that takes the exit mat on this tile, if it is one.
-    std::optional<Direction> exit_mat(const TilePos& point) const;
-    //  Arriving on a door or cave entrance, the game walks the player one
-    //  tile south, out of it.
-    bool walks_out_on_arrival(const TilePos& point) const;
-
-    const MapObject* object_at(const TilePos& point) const;
-    const MapWarp* warp_at(const TilePos& point) const;
-    const std::vector<MapWarp>& warps() const{ return m_warps; }
-    const std::vector<MapConnection>& connections() const{ return m_connections; }
-
-    //  Removes the objects the game hides once one of `flags` is set.
-    void hide_objects(const std::set<std::string>& flags);
-
-private:
-    char terrain(const TilePos& point) const;
-
-    std::string m_name;
-    int m_width = 0;
-    int m_height = 0;
-    std::vector<char> m_terrain;
-    std::vector<uint8_t> m_elevation;
-    std::vector<MapWarp> m_warps;
-    std::vector<MapObject> m_objects;
-    std::vector<MapConnection> m_connections;
+//  A map ready for planning: MapText checked, with its rows joined.
+struct OverworldMap{
+    std::string name;
+    int width = 0;
+    int height = 0;
+    //  Row by row, `width` tiles each, as in MapText.
+    std::vector<char> terrain;
+    std::vector<uint8_t> elevation;
+    std::vector<MapWarp> warps;
+    std::vector<MapObject> objects;
+    std::vector<MapConnection> connections;
 };
+
+//  Throws InternalProgramError if the rows don't match in size or use a
+//  character outside the legend.
+OverworldMap make_overworld_map(const MapText& text);
+
+bool in_bounds(const OverworldMap& map, const TilePos& point);
+//  The terrain character (see MapText::terrain). Out-of-bounds tiles are
+//  walls.
+char terrain_at(const OverworldMap& map, const TilePos& point);
+uint8_t elevation_at(const OverworldMap& map, const TilePos& point);
+
+bool is_wall(const OverworldMap& map, const TilePos& point);
+bool is_water(const OverworldMap& map, const TilePos& point);
+bool is_tall_grass(const OverworldMap& map, const TilePos& point);
+bool is_ledge(const OverworldMap& map, const TilePos& point);
+//  Whether the tile itself refuses a step in `direction`: entering it, or
+//  leaving it.
+bool blocks_entering(const OverworldMap& map, const TilePos& point, Direction direction);
+bool blocks_leaving(const OverworldMap& map, const TilePos& point, Direction direction);
+
+//  The warp the game takes on stepping onto this tile ('C', 'L').
+bool warps_on_step(const OverworldMap& map, const TilePos& point);
+//  A door ('D'), entered by walking north into it.
+bool is_door(const OverworldMap& map, const TilePos& point);
+//  The direction that takes the exit mat on this tile, if it is one.
+std::optional<Direction> exit_mat(const OverworldMap& map, const TilePos& point);
+//  Arriving on a door or cave entrance, the game walks the player one
+//  tile south, out of it.
+bool walks_out_on_arrival(const OverworldMap& map, const TilePos& point);
+
+const MapObject* object_at(const OverworldMap& map, const TilePos& point);
+const MapWarp* warp_at(const OverworldMap& map, const TilePos& point);
+
+//  Removes the objects the game hides once one of `flags` is set.
+void hide_objects(OverworldMap& map, const std::set<std::string>& flags);
 
 
 //  What decides where the player's next step can go.

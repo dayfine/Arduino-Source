@@ -24,7 +24,7 @@ namespace{
 const std::vector<OverworldMap>& all_maps(){
     static const std::vector<OverworldMap> MAPS{
         //  CeruleanCity_PokemonCenter_1F: 15x10
-        OverworldMap(MapText{
+        make_overworld_map(MapText{
             "CeruleanCity_PokemonCenter_1F",
             {
                 "#.#############",
@@ -69,7 +69,7 @@ const std::vector<OverworldMap>& all_maps(){
             },
         }),
         //  CeruleanCity: 48x40
-        OverworldMap(MapText{
+        make_overworld_map(MapText{
             "CeruleanCity",
             {
                 "################~~~~~#...#...#~~~~~~~~~~~~~~~~~~",
@@ -190,7 +190,7 @@ const std::vector<OverworldMap>& all_maps(){
             },
         }),
         //  Route24: 24x40
-        OverworldMap(MapText{
+        make_overworld_map(MapText{
             "Route24",
             {
                 "########################",
@@ -293,7 +293,7 @@ const std::vector<OverworldMap>& all_maps(){
             },
         }),
         //  CeruleanCave_1F: 40x23
-        OverworldMap(MapText{
+        make_overworld_map(MapText{
             "CeruleanCave_1F",
             {
                 "########################################",
@@ -370,7 +370,7 @@ const std::vector<OverworldMap>& all_maps(){
             },
         }),
         //  CeruleanCave_2F: 40x23
-        OverworldMap(MapText{
+        make_overworld_map(MapText{
             "CeruleanCave_2F",
             {
                 "########################################",
@@ -449,7 +449,7 @@ const std::vector<OverworldMap>& all_maps(){
             },
         }),
         //  CeruleanCave_B1F: 40x23
-        OverworldMap(MapText{
+        make_overworld_map(MapText{
             "CeruleanCave_B1F",
             {
                 "########################################",
@@ -531,7 +531,7 @@ const std::vector<OverworldMap>& all_maps(){
 std::vector<OverworldMap> overworld_maps(const std::set<std::string>& set_flags){
     std::vector<OverworldMap> maps = all_maps();
     for (OverworldMap& map : maps){
-        map.hide_objects(set_flags);
+        hide_objects(map, set_flags);
     }
     return maps;
 }
