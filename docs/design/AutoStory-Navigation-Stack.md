@@ -95,7 +95,7 @@ upstream main
 |---|---|---|
 | N1 | `Pokemon_Grid.h`, `Pokemon_LegPlanner.h` | a small made-up game: walls, a warp, a one-way tile, grass, open vs wall legs |
 | N2 | `Pokemon_LegWalker.h` | scripted mover and interrupts: wall leg re-walked, open leg estimate, too many interrupts |
-| N3 | `CommonTools/ScreenMachine` + `StepTrace` (from the BDSP lab) | the existing machine tests with fake screens |
+| N3 | `CommonTools/ScreenMachine` + `StepTrace` (from the BDSP lab) | none yet: the checks between reads need tests with small fake frames |
 
 `frlg/brock-mvp` (on N1–N3): the FRLG overworld code moves onto the core types in its final
 place (no move PRs of our own code later), then the Brock route. Includes the bag fix

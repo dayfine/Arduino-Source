@@ -677,6 +677,8 @@ positions; the decomp is the source of truth.
 | 08 | To Cinnabar (Route 21 by default) → Mansion (Secret Key) → Blaine | Seafoam optional; decline One Island |
 | 09 | Giovanni (Viridian) → Route 22 rival → Victory Road (Strength boulders) | |
 | 10 | Elite Four + Champion | reuse `EliteFourFarmer` pieces |
+| 11 | Sevii post-game: Ruby (Mt. Ember), Sapphire (Dotted Hole), Network Machine | added 2026-10-29 (§9.2) |
+| 12 | Mew | method to settle (§9.2); likely needs the naming typer |
 | opt | Money top-up, leveling loop, gift Pokémon, fossils | config-driven, outside the main order |
 
 Estimate ~90–110 checkpoints. Hardest: 00 (keyboard, intro), 05 (spin
@@ -865,6 +867,11 @@ among the agents is recorded outside this doc.
    after the FRLG pilot runs and people use it. Until then, BDSP gets only
    the standalone bug comments (phase C).
 2. **Scope:** main story to the Champion. No Sevii or post-game.
+   *Revised 2026-10-29:* the run ends with catching Mew, so it includes the
+   Sevii Islands post-game for the Ruby and Sapphire (Network Machine). Mew
+   has no in-game encounter in FRLG, so how it is obtained (e.g. arbitrary
+   code execution through box names, which needs the FRLG naming typer) is
+   still to be settled and becomes its own segment.
 3. **Shortcuts** (Nugget Bridge money, Retro Mail duplication): available as
    options. They need planning, e.g. catching the right Pokémon at the right
    time, so they feed into the requirements plan (§7.6).
