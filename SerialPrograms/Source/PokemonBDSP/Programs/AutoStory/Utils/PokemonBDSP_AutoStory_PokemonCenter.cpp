@@ -215,9 +215,11 @@ std::vector<TilePos> tiles_short_of_door(
     if (doorway->rows_up <= DOORWAY_FRONT_ROWS){
         return {};
     }
-    //  The doorway's offset says which tile we stand on, give or take one
-    //  each way: the rows are a rough count.
-    const TilePos guess{door.x - (int)std::lround(doorway->tiles_across), door.y + (int)std::lround(doorway->rows_up)};
+    return tiles_by_lit_doorway(*doorway, grid, door);
+}
+
+std::vector<TilePos> tiles_by_lit_doorway(const LitDoorway& doorway, const TileGrid& grid, const TilePos& door){
+    const TilePos guess{door.x - (int)std::lround(doorway.tiles_across), door.y + (int)std::lround(doorway.rows_up)};
     std::vector<TilePos> tiles;
     for (int y = guess.y - 1; y <= guess.y + 1; y++){
         for (int x = guess.x - 1; x <= guess.x + 1; x++){

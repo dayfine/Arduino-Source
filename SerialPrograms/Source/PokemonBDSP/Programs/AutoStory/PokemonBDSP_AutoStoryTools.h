@@ -181,10 +181,20 @@ public:
 // enough for the log box, which draws each line on one row and cuts it off.
 void add_wrapped_log(VideoOverlay& overlay, const std::string& text, Color color);
 
+//  With `expected_location`, the map named on the save screen's card must be
+//  it (compared as a location banner is), or the save is backed out of and
+//  the function fails with a screenshot: r124a saved in Sandgem Town after a
+//  walk that was sure it stood on Route 202.
 bool save_game(
     SingleSwitchProgramEnvironment& env,
-    ProControllerContext& context
+    ProControllerContext& context,
+    const std::string& expected_location = ""
 );
+
+//  Opens the save screen from the overworld, reads where the game says we
+//  are (read_save_screen_location() in the Location module), and backs out
+//  without saving.
+std::string read_location_from_save_screen(VideoStream& stream, ProControllerContext& context);
 
 // Fake save game to be replaced with save_game when program runs smoothly
 void checkpoint_save(SingleSwitchProgramEnvironment& env, ProControllerContext& context);

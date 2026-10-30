@@ -19,6 +19,7 @@
 #include "Data/PokemonBDSP_AutoStory_Route202.h"
 #include "Data/PokemonBDSP_AutoStory_SandgemTown.h"
 #include "Data/PokemonBDSP_AutoStory_StoryMaps.h"
+#include "Utils/PokemonBDSP_AutoStory_Location.h"
 #include "Utils/PokemonBDSP_AutoStory_NewGame.h"
 #include "Utils/PokemonBDSP_AutoStory_PokemonCenter.h"
 #include "Utils/PokemonBDSP_AutoStory_RouteWalk.h"
@@ -825,6 +826,33 @@ public:
 };
 
 
+//  The save prompt r124a took beside Sandgem's Poke Mart, sure it stood on
+//  Route 202 (in CommandLineTests under PokemonBDSP/AutoStory): its card
+//  names Sandgem Town, which the save must read before confirming.
+class Test_SaveScreenLocation : public UnitTest{
+public:
+    Test_SaveScreenLocation()
+        : UnitTest("PokemonBDSP::AutoStory - save screen location")
+    {}
+
+    virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
+        const std::string path = UNIT_TEST_RESOURCE_PATH() + "PokemonBDSP/AutoStory/SaveScreenSandgemTown-20261030-034444.png";
+        if (!Filesystem::is_regular_file(path)){
+            return UnitTestResult(UnitTestResult::SKIPPED, "Screenshot not found: " + path);
+        }
+        const std::string read = read_save_screen_location(ImageRGB32(path));
+        logger.log("Save screen location read: \"" + read + "\".");
+        if (!location_banner_matches(read, MAP_SANDGEM_TOWN)){
+            return "Save screen location \"" + read + "\" should match Sandgem Town.";
+        }
+        if (location_banner_matches(read, MAP_ROUTE_202)){
+            return "Save screen location \"" + read + "\" should not match Route 202.";
+        }
+        return true;
+    }
+};
+
+
 void add_tests_AutoStory(UnitTestDatabase& database){
     database.add<Test_IntroDecisions>();
     database.add<Test_TileGridParse>();
@@ -833,6 +861,7 @@ void add_tests_AutoStory(UnitTestDatabase& database){
     database.add<Test_PokeMartShortWalks>();
     database.add<Test_LocationBanner>();
     database.add<Test_LitDoorwayScreenshots>();
+    database.add<Test_SaveScreenLocation>();
 }
 
 

@@ -34,6 +34,13 @@ struct LitDoorway{
 //  none shows there.
 std::optional<LitDoorway> find_lit_doorway(const ImageViewRGB32& screen);
 
+//  The tiles a player who sees `doorway` (the door on world tile `door`) may
+//  stand on: the one its offset says, give or take one each way, since the
+//  rows are a rough count. Only standable tiles of `grid`.
+std::vector<Pokemon::TilePos> tiles_by_lit_doorway(
+    const LitDoorway& doorway, const Pokemon::TileGrid& grid, const Pokemon::TilePos& door
+);
+
 //  For a player who walked to the row below the door on world tile `door`:
 //  if its lit doorway shows further up the screen than straight ahead, the
 //  walk ended short (someone in the way stops an open leg, and the walk

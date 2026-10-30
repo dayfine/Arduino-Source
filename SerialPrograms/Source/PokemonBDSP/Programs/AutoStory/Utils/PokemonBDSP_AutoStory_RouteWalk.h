@@ -57,13 +57,6 @@ std::optional<Pokemon::Direction> talk_to_adjacent_npc(
     const std::string& label, Milliseconds wait = Milliseconds(1500)
 );
 
-//  Whether the location banner's OCR `read` names the map `expected`. Both
-//  are compared as lower-case letters and digits. OCR drops or swaps letters
-//  ("andgemltown" for Sandgem Town on r109), so up to a quarter of the name's
-//  letters may differ; the digits must match exactly, so Route 201 is never
-//  read as Route 202.
-bool location_banner_matches(const std::string& read, const std::string& expected);
-
 //  Whether a walk to the wall that ends on any of `after` can tell it has
 //  stopped: not in tall grass, whose sway keeps the screen changing at a
 //  wall. Elsewhere, a walk to the wall that stops confirms where it ended.
@@ -83,7 +76,10 @@ using RouteTrainerFight = std::function<void(const std::string& trainer)>;
 //  list. Tiles in `avoid` (where someone wanders) are planned as walls.
 //  Fails with a screenshot
 //  on a transition, a dialogue no trainer explains, a wild battle during an
-//  open leg, or when no plan exists.
+//  open leg, or when no plan exists. A walk from one map to another must see
+//  the second map's location banner on the way: a walk whose legs all ended
+//  on walls can still end in the wrong place (r124a saved in Sandgem Town
+//  after "arriving" on Route 202).
 std::vector<Pokemon::TilePos> walk_route(
     VideoStream& stream, ProControllerContext& context,
     const Pokemon::MapSet& maps,

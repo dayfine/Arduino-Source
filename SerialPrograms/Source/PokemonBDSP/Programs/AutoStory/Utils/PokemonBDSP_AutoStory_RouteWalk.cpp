@@ -11,15 +11,13 @@
 #include "CommonFramework/GlobalAutoPaths.h"
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
-#include "CommonFramework/ImageTools/ImageBoxes.h"
-#include "CommonFramework/ImageTools/ImageStats.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
-#include "CommonTools/OCR/OCR_RawTesseractOCR.h"
 #include "CommonTools/Async/InferenceRoutines.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "PokemonBDSP/Inference/PokemonBDSP_DialogDetector.h"
 #include "PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_OverworldDetector.h"
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStoryTools.h"
+#include "PokemonBDSP_AutoStory_Location.h"
 #include "PokemonBDSP_AutoStory_Walk.h"
 #include "PokemonBDSP_AutoStory_RouteWalk.h"
 
@@ -79,34 +77,6 @@ std::vector<TilePos> leg_path(const TileGrid& grid, TilePos from, Direction dire
     return path;
 }
 
-//  Lower-case letters and digits only: "Route 202" and "ROUTE 2O2 " compare
-//  by "route202".
-std::string normalize_name(const std::string& text){
-    std::string out;
-    for (unsigned char ch : text){
-        if (std::isalnum(ch)){
-            out.push_back((char)std::tolower(ch));
-        }
-    }
-    return out;
-}
-
-//  The location banner: a white box at the top left that names a map for a
-//  few seconds after the player enters it. Left of the centred name it is plain
-//  white (251 on console B, against 27-75 for the trees there otherwise).
-const ImageFloatBox LOCATION_BANNER_WHITE{0.035, 0.035, 0.085, 0.050};
-const ImageFloatBox LOCATION_BANNER_TEXT{0.100, 0.025, 0.300, 0.080};
-
-//  The banner's map name, normalized, or empty when no banner shows.
-std::string read_location_banner(const ImageViewRGB32& screen){
-    const ImageStats white = image_stats(extract_box_reference(screen, LOCATION_BANNER_WHITE));
-    if (white.average.sum() < 690 || white.stddev.sum() > 30){
-        return "";
-    }
-    return normalize_name(OCR::tesseract_ocr_read(Language::English,
-        extract_box_reference(screen, LOCATION_BANNER_TEXT)));
-}
-
 //  The map all of `tiles` are on, or empty if they are on several or none.
 std::string map_of(const MapSet& maps, const std::vector<TilePos>& tiles){
     std::string name;
@@ -127,41 +97,6 @@ bool route_wall_readable(const TileGrid& grid, const std::vector<TilePos>& after
     return std::none_of(after.begin(), after.end(), [&](const TilePos& pos){
         return grid.at(pos) == TileType::TALL_GRASS;
     });
-}
-
-bool location_banner_matches(const std::string& read, const std::string& expected){
-    const std::string a = normalize_name(read);
-    const std::string b = normalize_name(expected);
-    if (a.empty() || b.empty()){
-        return false;
-    }
-    auto digits = [](const std::string& text){
-        std::string out;
-        for (char ch : text){
-            if (std::isdigit((unsigned char)ch)){
-                out.push_back(ch);
-            }
-        }
-        return out;
-    };
-    if (digits(a) != digits(b)){
-        return false;
-    }
-    //  Levenshtein distance.
-    std::vector<size_t> row(b.size() + 1);
-    for (size_t j = 0; j <= b.size(); j++){
-        row[j] = j;
-    }
-    for (size_t i = 1; i <= a.size(); i++){
-        size_t diagonal = row[0];
-        row[0] = i;
-        for (size_t j = 1; j <= b.size(); j++){
-            const size_t above = row[j];
-            row[j] = std::min({row[j] + 1, row[j - 1] + 1, diagonal + (a[i - 1] == b[j - 1] ? 0 : 1)});
-            diagonal = above;
-        }
-    }
-    return row[b.size()] <= std::max<size_t>(1, b.size() / 4);
 }
 
 void route_status(VideoStream& stream, const std::string& text){
@@ -220,6 +155,9 @@ std::vector<TilePos> walk_route(
     }
     //  Which way the player faces, once a leg has set it.
     std::optional<Direction> facing;
+    //  Every banner read on the way, to check the map we arrive on against.
+    const std::string map_start = map_of(maps, from);
+    std::vector<std::string> all_banners;
     for (size_t plans = 0; plans < 8; plans++){
         const std::optional<std::vector<PlannedLeg>> legs = plan_robust_route(grid, from, goal);
         if (!legs){
@@ -366,6 +304,7 @@ std::vector<TilePos> walk_route(
             for (const std::string& read : banners){
                 banner_text += (banner_text.empty() ? "\"" : ", \"") + read + "\"";
             }
+            all_banners.insert(all_banners.end(), banners.begin(), banners.end());
             //  Entering another map shows its name; a missing or wrong name means
             //  the walk did not end where the plan says. From tiles on several
             //  maps (a leg not confirmed) the banner may already have shown.
@@ -381,7 +320,7 @@ std::vector<TilePos> walk_route(
             if (VideoSnapshot screen = stream.video().snapshot()){
                 const std::string folder = SCREENSHOTS_PATH() + "AutoStory/route/";
                 Filesystem::create_directories(Filesystem::Path(folder));
-                screen.frame->save(folder + now_to_filestring() + "-" + normalize_name(leg_label) + ".png");
+                screen.frame->save(folder + now_to_filestring() + "-" + normalize_location_name(leg_label) + ".png");
             }
             if (result.stop == WalkStop::TRANSITION){
                 OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
@@ -467,6 +406,21 @@ std::vector<TilePos> walk_route(
             break;
         }
         if (!replanned){
+            //  Legs whose ends span two maps skip the per-leg check; the walk
+            //  as a whole must still have seen the banner of the map it ends on.
+            const std::string map_end = map_of(maps, from);
+            const bool changed_map = !map_start.empty() && !map_end.empty() && map_end != map_start;
+            if (changed_map && std::none_of(all_banners.begin(), all_banners.end(), [&](const std::string& read){
+                return location_banner_matches(read, map_end);
+            })){
+                std::string seen;
+                for (const std::string& read : all_banners){
+                    seen += (seen.empty() ? "\"" : ", \"") + read + "\"";
+                }
+                OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
+                    label + ": arrived at " + describe(maps, from) + " on the map, but " + map_end +
+                    "'s location banner never showed (read " + (seen.empty() ? "nothing" : seen) + ").", stream);
+            }
             stream.log("[Route] " + label + ": arrived at " + describe(maps, from) + ".");
             return from;
         }
@@ -588,24 +542,36 @@ void leave_door_south(VideoStream& stream, ProControllerContext& context, const 
     pbf_mash_button(context, BUTTON_B, 2000ms);
     context.wait_for_all_requests();
     VideoSnapshot inside = stream.video().snapshot();
-    bool faded_out = false;
-    bool scene_changed = false;
-    for (size_t tries = 0; tries < 3 && !faded_out && !scene_changed; tries++){
-        const WalkResult walk = walk_until(stream, context, 0, -1, 6000ms, label);
-        faded_out = walk.stop == WalkStop::TRANSITION;
+    //  The door's fade changes the whole screen between two looks, as walking
+    //  never does (16 to 102 per look inside a Center; the fades read 121 to
+    //  192). Stop the walk there: a stick held through the fade-in walks on
+    //  outside, and r124a stood ten rows south of the Mart's door after
+    //  "walking out" until a wall stopped it.
+    ImageRGB32 last;
+    bool have_last = false;
+    auto fading = [&](const ImageViewRGB32& screen){
+        const bool fade = have_last && walk_screen_change(last, screen) > WALK_SCENE_CHANGE;
+        last = screen.copy();
+        have_last = true;
+        return fade;
+    };
+    bool out = false;
+    for (size_t tries = 0; tries < 3 && !out; tries++){
+        const WalkResult walk = walk_until(stream, context, 0, -1, 6000ms, label, fading);
         if (walk.stop == WalkStop::DIALOG){
             pbf_mash_button(context, BUTTON_B, 2000ms);
         }
+        //  The fade-in finishes after the walk has stopped.
+        pbf_wait(context, 2000ms);
         context.wait_for_all_requests();
         VideoSnapshot now = stream.video().snapshot();
-        scene_changed = inside && now && walk_screen_change(*inside.frame, *now.frame) > WALK_SCENE_CHANGE;
+        out = walk.stop == WalkStop::TRANSITION ||
+            (inside && now && walk_screen_change(*inside.frame, *now.frame) > WALK_SCENE_CHANGE);
     }
-    if (!faded_out && !scene_changed){
+    if (!out){
         OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
             label + ": did not get back out.", stream);
     }
-    pbf_wait(context, 1500ms);
-    context.wait_for_all_requests();
 }
 
 

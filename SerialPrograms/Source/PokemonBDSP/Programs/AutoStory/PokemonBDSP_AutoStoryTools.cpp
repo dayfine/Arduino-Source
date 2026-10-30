@@ -46,6 +46,7 @@
 #include "PokemonBDSP/Programs/PokemonBDSP_GameNavigation.h"
 
 #include "Detect/PokemonBDSP_AutoStory_OverworldDetector.h"
+#include "Utils/PokemonBDSP_AutoStory_Location.h"
 
 #include "PokemonBDSP_AutoStoryTools.h"
 
@@ -132,13 +133,53 @@ void add_wrapped_log(VideoOverlay& overlay, const std::string& text, Color color
     }
 }
 
+//  Opens the save prompt from the overworld and keeps a screenshot of it: it
+//  shows the play time and badges, a record of where each checkpoint save
+//  stands. Returns the map its card names.
+static std::string open_save_prompt(VideoStream& stream, ProControllerContext& context){
+    overworld_to_menu(stream, context);
+    pbf_press_button(context, BUTTON_R, 80ms, 2000ms);
+    context.wait_for_all_requests();
+    VideoSnapshot screen = stream.video().snapshot();
+    if (!screen){
+        return "";
+    }
+    const std::string folder = SCREENSHOTS_PATH() + "AutoStory/saves/";
+    Filesystem::create_directories(Filesystem::Path(folder));
+    const std::string path = folder + now_to_filestring() + ".png";
+    screen.frame->save(path);
+    stream.log("Save prompt screenshot: " + path);
+    const std::string location = read_save_screen_location(*screen.frame);
+    stream.log("Save screen location: \"" + location + "\".");
+    return location;
+}
+
+//  Backs out of the save prompt and its menu to the overworld.
+static void leave_save_prompt(VideoStream& stream, ProControllerContext& context){
+    pbf_mash_button(context, BUTTON_B, 2000ms);
+    context.wait_for_all_requests();
+    OverworldWatcher overworld;
+    if (wait_until(stream, context, std::chrono::seconds(15), {overworld}) < 0){
+        OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
+            "Failed to detect the overworld after leaving the save prompt.", stream);
+    }
+}
+
+std::string read_location_from_save_screen(VideoStream& stream, ProControllerContext& context){
+    const std::string location = open_save_prompt(stream, context);
+    leave_save_prompt(stream, context);
+    return location;
+}
+
 bool save_game(
     SingleSwitchProgramEnvironment& env,
-    ProControllerContext& context
+    ProControllerContext& context,
+    const std::string& expected_location
 ) {
     static constexpr size_t MAX_RETRIES = 3;
 
-    for (size_t attempt = 0; attempt < MAX_RETRIES; attempt++){
+    std::string wrong_place;
+    for (size_t attempt = 0; attempt < MAX_RETRIES && wrong_place.empty(); attempt++){
         try {
             env.console.log("Checkpoint save attempt: " + std::to_string(attempt + 1));
 
@@ -149,17 +190,13 @@ bool save_game(
             }
 
             // The feedback-based save of save_game(VideoStream&, ...), split at the
-            // save prompt to keep a screenshot of it: it shows the play time and
-            // badges, a record of where each checkpoint save stands.
-            overworld_to_menu(env.console, context);
-            pbf_press_button(context, BUTTON_R, 80ms, 2000ms);
-            context.wait_for_all_requests();
-            if (VideoSnapshot screen = env.console.video().snapshot()){
-                const std::string folder = SCREENSHOTS_PATH() + "AutoStory/saves/";
-                Filesystem::create_directories(Filesystem::Path(folder));
-                const std::string path = folder + now_to_filestring() + ".png";
-                screen.frame->save(path);
-                env.console.log("Save prompt screenshot: " + path);
+            // save prompt to check where it stands.
+            const std::string location = open_save_prompt(env.console, context);
+            if (!expected_location.empty() && !location_banner_matches(location, expected_location)){
+                wrong_place = "About to save in \"" + location + "\", expected " + expected_location + "; not saving.";
+                env.console.log(wrong_place, COLOR_RED);
+                leave_save_prompt(env.console, context);
+                break;
             }
             pbf_press_button(context, BUTTON_ZL, 80ms, 5000ms);
 
@@ -186,6 +223,10 @@ bool save_game(
             env.console.log("Checkpoint save failed: " + e.message(), COLOR_RED);
             context.wait_for(1000ms);
         }
+    }
+    //  No blind fallback for the wrong place: it would save there.
+    if (!wrong_place.empty()){
+        OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT, wrong_place, env.console);
     }
 
     // Blind fallback: reuse the non-feedback save_game(context) from GameNavigation
