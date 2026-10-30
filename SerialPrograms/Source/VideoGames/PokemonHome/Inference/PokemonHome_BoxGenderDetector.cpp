@@ -4,6 +4,7 @@
  *
  */
 
+#include <iostream>
 #include "Common/Cpp/Color.h"
 #include "CommonFramework/GlobalAutoPaths.h"
 #include "CommonFramework/StaticGlobals.h"
@@ -15,7 +16,6 @@
 #include "CommonTools/Images/ImageFilter.h"
 #include "PokemonHome_BoxGenderDetector.h"
 
-#include <iostream>
 using std::cout;
 using std::endl;
 

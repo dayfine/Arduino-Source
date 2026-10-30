@@ -76,8 +76,7 @@ void FatalProgramException::send_fatal_error_notif_and_telemetry_report(
         error_report_mode(),
         message(),
         name(),
-        //Constructed from a message alone, the exception has no stream or screenshot.
-        m_screenshot ? ImageViewRGB32(*m_screenshot) : ImageViewRGB32(),
+        screenshot_view(),
         m_stream ? &m_stream->history() : nullptr
     );
 }

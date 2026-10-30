@@ -8,10 +8,9 @@
 #define PokemonAutomation_Kernels_x64_AVX512_H
 
 #include <stdint.h>
+#include <iostream>
 #include <immintrin.h>
 #include "Common/Compiler.h"
-
-#include <iostream>
 
 namespace PokemonAutomation{
 namespace Kernels{

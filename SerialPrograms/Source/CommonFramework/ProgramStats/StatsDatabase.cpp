@@ -6,11 +6,12 @@
 
 #include "Common/Cpp/Filesystem/FileIO.h"
 #include "Common/Cpp/Time.h"
+
 #include "StatsDatabase.h"
 
-#include <iostream>
-using std::cout;
-using std::endl;
+//#include <iostream>
+//using std::cout;
+//using std::endl;
 
 namespace PokemonAutomation{
 
