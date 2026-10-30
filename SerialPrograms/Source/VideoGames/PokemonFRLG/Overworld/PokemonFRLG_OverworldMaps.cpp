@@ -183,11 +183,13 @@ std::pair<std::string, TilePos> read_point(const JsonObject& object, const std::
 std::pair<std::string, std::set<std::string>> read_flag_set(const JsonObject& object, const std::string& where){
     const std::string name = read_string(object, "name", where);
     std::set<std::string> flags;
-    const JsonArray& array = read_array(object, "flags", where);
+    //  Named, since GCC warns of a reference returned for a temporary key.
+    const std::string key = "flags";
+    const JsonArray& array = read_array(object, key, where);
     for (size_t c = 0; c < array.size(); c++){
         const std::string* flag = array[c].to_string();
         if (flag == nullptr){
-            throw ParseException(where + "flags[" + std::to_string(c) + "] is not a string.");
+            throw ParseException(where + key + "[" + std::to_string(c) + "] is not a string.");
         }
         flags.insert(*flag);
     }
