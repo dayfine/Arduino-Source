@@ -1254,8 +1254,13 @@ namespace PokemonAutomation {
             // Jubilife has no trainers; someone in the way only talks.
             std::vector<TrainerSight> trainers;
             auto in_the_way = [&](const std::string&) { finish_dialogue(stream, context, BUTTON_B, "Someone in the way"); };
+            // From the save below the steps, against the wall east of them:
+            // a tile west (the first press only turns), then up the steps.
+            route_turn(stream, context, Pokemon::Direction::WEST);
+            walk_for(stream, context, -1, 0, 200ms, "To the steps");
+            walk_for(stream, context, 0, 1, 480ms, "Up the steps");
             std::vector<TilePos> at;
-            for (const TilePos& pos : JubilifeCity::after_dawn()) {
+            for (const TilePos& pos : JubilifeCity::up_the_steps()) {
                 at.push_back(world(pos));
             }
 

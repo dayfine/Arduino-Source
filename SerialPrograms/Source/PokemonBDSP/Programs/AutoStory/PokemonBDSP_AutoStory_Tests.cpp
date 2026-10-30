@@ -282,9 +282,10 @@ public:
 //  logs the legs with every map tile each may end on.
 std::string check_robust_plan(
     Logger& logger, const std::string& name, const Pokemon::MapSet& maps,
-    const std::vector<TilePos>& from, const std::function<bool(const TilePos&)>& goal
+    const std::vector<TilePos>& from, const std::function<bool(const TilePos&)>& goal,
+    const Pokemon::RobustPlanCosts& costs = Pokemon::RobustPlanCosts()
 ){
-    const auto legs = Pokemon::plan_robust_route(maps.world(), from, goal);
+    const auto legs = Pokemon::plan_robust_route(maps.world(), from, goal, costs);
     if (!legs){
         return name + ": no robust route found.";
     }
@@ -314,9 +315,10 @@ std::string check_robust_plan(
 //  as an anchor.
 std::string check_plan_stops_readable(
     const std::string& name, const Pokemon::MapSet& maps,
-    const std::vector<TilePos>& from, const std::function<bool(const TilePos&)>& goal
+    const std::vector<TilePos>& from, const std::function<bool(const TilePos&)>& goal,
+    const Pokemon::RobustPlanCosts& costs = Pokemon::RobustPlanCosts()
 ){
-    const auto legs = Pokemon::plan_robust_route(maps.world(), from, goal);
+    const auto legs = Pokemon::plan_robust_route(maps.world(), from, goal, costs);
     if (!legs){
         return name + ": no robust route found.";
     }
@@ -625,7 +627,7 @@ public:
             const Pokemon::MapSet& town = jubilife_maps();
             auto at = [&](const TilePos& pos){ return town.to_world(MAP_JUBILIFE_CITY, pos); };
             std::vector<TilePos> dawn;
-            for (const TilePos& pos : after_dawn()){
+            for (const TilePos& pos : up_the_steps()){
                 dawn.push_back(at(pos));
             }
             const TilePos school = at(TRAINERS_SCHOOL_DOOR.next(Direction::SOUTH));
@@ -718,7 +720,7 @@ public:
                 const std::string leg_error = check_robust_plan(logger, leg.name, town, leg.from,
                     [&](const TilePos& pos){
                         return door ? pos.y == to.y && pos.x >= to.x - 1 && pos.x <= to.x + 1 : pos == to;
-                    });
+                    }, town_plan_costs());
                 failed += leg_error.empty() ? "" : leg_error + " ";
             }
             if (!failed.empty()){
