@@ -17,7 +17,6 @@
 #include "Common/Cpp/Json/JsonArray.h"
 #include "Common/Cpp/Json/JsonObject.h"
 #include "Common/Cpp/Options/KeyboardLayoutOption.h"
-#include "CommonFramework/Globals.h"
 #include "CommonFramework/StaticGlobals.h"
 #include "CommonFramework/GlobalAutoPaths.h"
 #include "CommonFramework/Logging/Logger.h"
@@ -30,10 +29,10 @@
 #include "CommonFramework/AudioPipeline/AudioPipelineOptions.h"
 #include "CommonFramework/VideoPipeline/VideoPipelineOptions.h"
 #include "CommonFramework/ErrorReports/ErrorReports.h"
-#include "GlobalSettingsPanel.h"
-//#include "CommonFramework/Environment/Environment.h"
 #include "Controllers/ControllerSettings.h"
+//#include "CommonFramework/Environment/Environment.h"
 #include "Integrations/DiscordSettingsOption.h"
+#include "GlobalSettingsPanel.h"
 
 // #include <iostream>
 // using std::cout;
@@ -193,9 +192,7 @@ GlobalSettings::GlobalSettings()
     PA_ADD_OPTION(STATS_FILE);
     PA_ADD_OPTION(TEMP_FOLDER);
     PA_ADD_OPTION(THEME);
-    if (IS_BETA_VERSION){
-        PA_ADD_OPTION(WALLPAPER);
-    }
+    PA_ADD_OPTION(WALLPAPER);
     PA_ADD_OPTION(OCR_LIBRARY);
 
     // gated behind Dev mode. see GlobalSettings::load_json
