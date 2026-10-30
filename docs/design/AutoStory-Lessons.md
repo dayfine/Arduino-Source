@@ -224,3 +224,28 @@ By hand, after 01.03:
 | Roark in the mine: A once, then up to 30 s for his first box, B to advance. | Right to wait long and to advance with B. But A does nothing until Barry has been talked to at the gym door, which his route gets from the tour scene's mashed B. | Make the Barry talk an explicit step. |
 | Gym: up 3, left 4, up 5, right 8, up 11, left 5, up 4, then A at Roark. | That path goes round both gym trainers; straight up meets both. | Worth keeping as a plan for the gym grid; the trainers' experience helps an under-levelled team, though. |
 | "Barry 1 battle logic can be used here since the moves don't matter this early." | Moves matter against Roark: Pound does almost nothing to rock types, and the first two tries were lost. | Pick Water Gun by name; heal or switch before Cranidos. |
+
+## 11. Floaroma MVP from a new game, and the lab around it (2026-10-29, r107 to r109)
+
+The MVP branch (`bdsp/floaroma-mvp`, fork #68) runs segments 00 and 01 from a new game on
+the shared navigation core. Half of today's failures were in the lab, not in the game.
+
+| Run | What happened | Rule / fix | Commit |
+|---|---|---|---|
+| r107 | Every program refused to start: "requires video feedback". The camera opened without error but delivered no frames. | Launch lab apps through LaunchServices (`open -n`), never by running the binary from a shell: the app then inherits the shell's (the Claude app's) camera permission, which has none. `stage_launch.sh` now checks for video before anything else. | lab scripts |
+| r107 | The MVP build stopped at run time on a missing template ("Unable to open file"). | The worktree's `Packages` linked to upstream's resource set (686 files); BDSP AutoStory needs `~/BDSPLab/packages` (1,467). The build copies `Resources` only when it is missing, so delete it after relinking. | r108 deployment |
+| r108 | 00.01 "Failed to enter Date Change screen". | The clock pin walks the System Settings menu by position; with "Synchronize Clock via Internet" on, the date row is disabled and the walk lands on Time Zone. Turned the sync off on console B; dropping the pin is queued. | — |
+| r108b | 00.04: A beside Mom started nothing. Two d-pad taps north from the door should have put us level with her; one did not move. | Same as section 1, now in the house: counted taps lose tiles. The door fixes the column, so face east and press A one row at a time going north until she answers. | `985de47c1` |
+| r109 | Mom answered after 1 step; then entering Sandgem the check read the banner as "andgemltown" and failed. | A check tied to an exact OCR string is too narrow (section 2): the place was right. Match banner names loosely, with a test that a different town still fails. | pending |
+| r109a | The run never started: the Start click landed where the button was before the window grew to 1554×1488. `stage_run.sh` would then have clicked Start/Stop "to stop the wrong program" and started an unwatched run. | Never toggle Start/Stop blindly: stop only when the log says RUNNING. Better, don't click at all: the lab app gets a control folder (`LabControl/start`, `stop`, `state`). Clicks also take focus from the user's work. | `lab/control-folder` |
+
+What this round adds to the design:
+
+- **Confirm where we are, not just where we planned to be.** The planner plans in tiles and
+  the walker counts them, but nothing reads the position back; every drift so far (sections
+  1, 6, 9, 10 and the Mom row here) was found only when the next action failed. After each
+  leg, confirm with something the game shows (a wall reached, a landmark, a dialogue
+  answered, the facing) and replan from the confirmed tile when it differs.
+- **Overworld screens belong in the screen machine.** The new-game intro runs on
+  `ScreenMachine`; walking, dialogue and battle interrupts should be states of the same loop,
+  so a dropped input shows up as an unexpected screen instead of a later timeout.
