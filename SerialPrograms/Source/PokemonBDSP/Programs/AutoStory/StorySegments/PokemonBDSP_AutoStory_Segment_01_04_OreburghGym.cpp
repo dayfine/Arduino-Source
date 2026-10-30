@@ -32,7 +32,7 @@ namespace{
 //  out through the door. The door is straight south of the nurse in most
 //  Centers; in Oreburgh's it was two tiles east of where we stood (by hand).
 void walk_out_of_center(VideoStream& stream, ProControllerContext& context, const std::string& label){
-    finish_dialogue(stream, context, 0, label + ": the nurse");
+    finish_dialogue(stream, context, BUTTON_B, label + ": the nurse");
     const int shifts[] = {0, 2, -4};
     for (int shift : shifts){
         if (shift != 0){
@@ -115,7 +115,7 @@ bool oreburgh_gym_battles(VideoStream& stream, ProControllerContext& context){
                 if (in_pokemon_center(stream)){
                     return false;
                 }
-                finish_dialogue(stream, context, 0, "Roark after the battle");
+                finish_dialogue(stream, context, BUTTON_B, "Roark after the battle");
                 return true;
             }
             continue;
@@ -169,7 +169,7 @@ void oreburgh_gym(VideoStream& stream, ProControllerContext& context){
             return;
         }
         if (down.stop == WalkStop::DIALOG){
-            finish_dialogue(stream, context, 0, "Someone in the gym");
+            finish_dialogue(stream, context, BUTTON_B, "Someone in the gym");
         }
     }
     fail(stream, "Oreburgh Gym: did not leave by its door.");

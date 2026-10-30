@@ -135,7 +135,7 @@ void oreburgh_to_floaroma(VideoStream& stream, ProControllerContext& context){
     if (in_pokemon_center(stream)){
         fail(stream, "Jubilife: lost the tag battle with Dawn.");
     }
-    finish_dialogue(stream, context, 0, "Rowan and Dawn after the battle");
+    finish_dialogue(stream, context, BUTTON_B, "Rowan and Dawn after the battle");
 
     step(4);
     // Route 204's south half: a trainer just past the sign, then the cave in

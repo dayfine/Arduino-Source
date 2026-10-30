@@ -195,6 +195,35 @@ std::optional<Direction> talk_to_adjacent_npc(
     return std::nullopt;
 }
 
+bool walk_along_row_to_talk(
+    VideoStream& stream, ProControllerContext& context,
+    Direction direction, size_t tiles, const std::string& label
+){
+    double x, y;
+    stick_for(direction, x, y);
+    route_status(stream, label + ": walking " + direction_name(direction) + " until someone answers");
+    const Milliseconds limit = ROUTE_START_DELAY + ms_per_tile(direction) * tiles;
+    const WalkResult walk = walk_to_talk(stream, context, x, y, limit, label);
+    if (walk.stop == WalkStop::DIALOG){
+        stream.log("[Route] " + label + ": answered after walking " + direction_name(direction) +
+            " for " + std::to_string(walk.walked.count()) + "ms.");
+        return true;
+    }
+    if (walk.stop == WalkStop::TRANSITION){
+        OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
+            label + ": left the map while walking " + direction_name(direction) + " along the row.", stream);
+    }
+    //  The walk faces `direction` and A was pressed that way: try the others.
+    std::vector<Direction> others;
+    for (Direction side : {Direction::NORTH, Direction::SOUTH, Direction::EAST, Direction::WEST}){
+        if (side != direction){
+            others.push_back(side);
+        }
+    }
+    stream.log("[Route] " + label + ": nobody in the row; trying the other sides.");
+    return talk_to_adjacent_npc(stream, context, others, label).has_value();
+}
+
 
 std::vector<TilePos> walk_route(
     VideoStream& stream, ProControllerContext& context,
@@ -489,29 +518,48 @@ void talk_to_npc(
 
 void finish_dialogue(
     VideoStream& stream, ProControllerContext& context,
-    size_t a_presses, const std::string& label
+    Button button, const std::string& label, Milliseconds timeout
 ){
-    for (size_t press = 0; press < a_presses; press++){
-        pbf_press_button(context, BUTTON_A, 80ms, 1500ms);
-    }
+    //  No line counts: talks differ in length (r115a: 8 A left the Poke Mart
+    //  lady's Potions talk open). The box blinks off between lines and during
+    //  "obtained" jingles, so only a stable absence ends the talk.
+    const WallClock none = WallClock::max();
     ShortDialogDetector dialog;
     OverworldDetector overworld;
-    size_t quiet = 0;
-    for (size_t press = 0; press < 30; press++){
+    const WallClock deadline = current_time() + timeout;
+    WallClock quiet_since = none;
+    WallClock unknown_since = none;
+    while (current_time() < deadline){
         context.wait_for_all_requests();
         const auto frame = stream.video().snapshot();
-        if (frame && !dialog.detect(frame) && overworld.detect(frame)){
-            if (++quiet >= 2){
+        const WallClock now = current_time();
+        const bool talking = frame && dialog.detect(frame);
+        if (frame && !talking && overworld.detect(frame)){
+            unknown_since = none;
+            if (quiet_since == none){
+                quiet_since = now;
+            }else if (now - quiet_since >= 1500ms){
                 return;
             }
-            context.wait_for(500ms);
+            context.wait_for(200ms);
             continue;
         }
-        quiet = 0;
-        pbf_press_button(context, BUTTON_B, 80ms, 1200ms);
+        quiet_since = none;
+        //  Press only on a box (an A on the overworld talks again), or on a
+        //  screen that is neither for 3 s.
+        if (talking || (unknown_since != none && now - unknown_since >= 3000ms)){
+            unknown_since = none;
+            pbf_press_button(context, button, 80ms, 1200ms);
+            continue;
+        }
+        if (unknown_since == none){
+            unknown_since = now;
+        }
+        context.wait_for(200ms);
     }
     OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
-        label + ": the dialogue did not end.", stream);
+        label + ": the dialogue did not end within " +
+        std::to_string(std::chrono::duration_cast<std::chrono::seconds>(timeout).count()) + " s.", stream);
 }
 
 void enter_door_north(VideoStream& stream, ProControllerContext& context, const std::string& label){

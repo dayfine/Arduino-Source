@@ -57,7 +57,7 @@ void oreburgh_to_roark(VideoStream& stream, ProControllerContext& context){
     if (!dialogue_opens(stream, context, 3000ms)){
         fail(stream, "Oreburgh: Barry did not talk at the gym door.");
     }
-    finish_dialogue(stream, context, 0, "Barry at the gym door");
+    finish_dialogue(stream, context, BUTTON_B, "Barry at the gym door");
     if (walk_dir(stream, context, Direction::SOUTH, 8000ms, "south to the stone ledge").stop != WalkStop::BLOCKED){
         fail(stream, "Oreburgh: walking south did not stop at the stone ledge.");
     }
@@ -199,7 +199,7 @@ void oreburgh_to_roark(VideoStream& stream, ProControllerContext& context){
     if (!talked){
         fail(stream, "Oreburgh Mine: no talk opened below Roark.");
     }
-    finish_dialogue(stream, context, 0, "Roark");
+    finish_dialogue(stream, context, BUTTON_B, "Roark");
     // His scene ends with him smashing his rock and leaving: his tile is
     // free now. Step onto it and back, or fail if he is still there.
     if (walk_dir(stream, context, Direction::NORTH, 2000ms, "onto Roark's tile").walked <= 800ms){

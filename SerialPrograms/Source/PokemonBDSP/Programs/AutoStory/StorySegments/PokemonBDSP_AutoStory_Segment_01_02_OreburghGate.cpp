@@ -110,7 +110,7 @@ void route203_to_oreburgh(VideoStream& stream, ProControllerContext& context){
         if (to_hiker.stop != WalkStop::DIALOG && !dialogue_opens(stream, context, 2000ms)){
             fail(stream, "Oreburgh Gate: the Hiker did not stop us.");
         }
-        finish_dialogue(stream, context, 0, "Hiker");
+        finish_dialogue(stream, context, BUTTON_B, "Hiker");
     }
     // Then a "Hidden Moves" tutorial card, closed with B. It is no dialogue
     // box, and it can come up a moment after his last line.
@@ -152,9 +152,9 @@ void route203_to_oreburgh(VideoStream& stream, ProControllerContext& context){
     step(4);
     // He walks us to the Pokemon Center between his lines, and Barry joins
     // there: more lines after each walk.
-    finish_dialogue(stream, context, 0, "Man at Oreburgh's entrance");
+    finish_dialogue(stream, context, BUTTON_B, "Man at Oreburgh's entrance");
     for (size_t scene = 0; scene < 6 && dialogue_opens(stream, context, 6000ms); scene++){
-        finish_dialogue(stream, context, 0, "Oreburgh scene");
+        finish_dialogue(stream, context, BUTTON_B, "Oreburgh scene");
     }
     context.wait_for_all_requests();
 }
