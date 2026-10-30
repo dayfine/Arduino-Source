@@ -18,8 +18,8 @@
 //#include "VideoGames/PokemonLZA/PokemonLZA_Settings.h"
 //#include "VideoGames/PokemonLZA/Inference/PokemonLZA_SelectionArrowDetector.h"
 //#include "VideoGames/PokemonLZA/Inference/PokemonLZA_DialogDetector.h"
-#include "VideoGames/PokemonLZA/Programs/PokemonLZA_GameEntry.h"
 #include "VideoGames/PokemonLA/Inference/Sounds/PokemonLA_ShinySoundDetector.h"
+#include "VideoGames/PokemonLZA/Programs/PokemonLZA_GameEntry.h"
 #include "PokemonLZA_BeldumHunter.h"
 
 namespace PokemonAutomation{
@@ -34,6 +34,7 @@ BeldumHunter_Descriptor::BeldumHunter_Descriptor()
         STRING_POKEMON + " LZA", "Shiny Hunt - Beldum",
         "Programs/PokemonLZA/BeldumHunter.html",
         "Repeatedly enter Lysandre Labs to shiny hunt Beldum.",
+        PanelQualityStanding::OFFICIAL,
         ProgramControllerClass::StandardController_NoRestrictions,
         FeedbackType::VIDEO_AUDIO,
         AllowCommandsWhenRunning::DISABLE_COMMANDS

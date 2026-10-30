@@ -11,8 +11,8 @@
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "CommonTools/Async/InferenceRoutines.h"
 #include "CommonTools/StartupChecks/StartProgramChecks.h"
-#include "Pokemon/Pokemon_Strings.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
+#include "Pokemon/Pokemon_Strings.h"
 #include "VideoGames/PokemonRSE/Inference/Dialogs/PokemonRSE_BattleDialogs.h"
 #include "VideoGames/PokemonRSE/Inference/Dialogs/PokemonRSE_DialogDetector.h"
 #include "VideoGames/PokemonRSE/Inference/PokemonRSE_ShinyNumberDetector.h"
@@ -29,6 +29,7 @@ StarterReset_Descriptor::StarterReset_Descriptor()
         Pokemon::STRING_POKEMON + " RSE", "[RS]Starter Reset - Video",
         "Programs/PokemonRSE/StarterReset.html",
         "Soft reset for a shiny starter. Ruby and Sapphire only.",
+        PanelQualityStanding::OFFICIAL_BETA,
         ProgramControllerClass::StandardController_RequiresPrecision,
         FeedbackType::REQUIRED,
         AllowCommandsWhenRunning::DISABLE_COMMANDS

@@ -6,6 +6,7 @@
 
 #include <cfloat>
 #include <cmath>
+#include <iostream>
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "Kernels/Waterfill/Kernels_Waterfill_Session.h"
 #include "CommonFramework/GlobalAutoPaths.h"
@@ -17,7 +18,6 @@
 #include "Tests/TestUtils.h"
 #include "PokemonLA_MapMarkerLocator.h"
 
-#include <iostream>
 using std::cout;
 using std::endl;
 

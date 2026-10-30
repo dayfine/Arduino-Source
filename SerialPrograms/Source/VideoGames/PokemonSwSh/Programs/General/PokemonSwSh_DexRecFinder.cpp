@@ -18,7 +18,6 @@
 #include "Pokemon/Inference/Pokemon_NameReader.h"
 #include "VideoGames/PokemonSwSh/PokemonSwSh_Settings.h"
 #include "VideoGames/PokemonSwSh/Commands/PokemonSwSh_Commands_GameEntry.h"
-#include "VideoGames/PokemonSwSh/Commands/PokemonSwSh_Commands_DateSpam.h"
 #include "VideoGames/PokemonSwSh/Resources/PokemonSwSh_NameDatabase.h"
 #include "PokemonSwSh_DexRecFinder.h"
 
@@ -36,6 +35,7 @@ DexRecFinder_Descriptor::DexRecFinder_Descriptor()
         STRING_POKEMON + " SwSh", "Dex Rec Finder",
         "Programs/PokemonSwSh/DexRecFinder.html",
         "Search for a " + STRING_POKEDEX + " recommendation by date-spamming.",
+        PanelQualityStanding::OFFICIAL,
         ProgramControllerClass::StandardController_PerformanceClassSensitive,
         FeedbackType::OPTIONAL_,
         AllowCommandsWhenRunning::DISABLE_COMMANDS

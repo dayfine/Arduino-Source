@@ -4,9 +4,8 @@
  *
  */
 
-#include "PokemonLZA_FriendshipFarmer.h"
-
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
+
 #include "CommonFramework/Notifications/ProgramNotifications.h"
 #include "CommonFramework/ProgramStats/StatsTracking.h"
 #include "CommonTools/Async/InferenceRoutines.h"
@@ -20,6 +19,7 @@
 #include "VideoGames/PokemonLZA/Inference/PokemonLZA_DialogDetector.h"
 #include "VideoGames/PokemonLZA/Inference/PokemonLZA_OverworldPartySelectionDetector.h"
 #include "VideoGames/PokemonLZA/Inference/PokemonLZA_SelectionArrowDetector.h"
+#include "PokemonLZA_FriendshipFarmer.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -31,6 +31,7 @@ FriendshipFarmer_Descriptor::FriendshipFarmer_Descriptor()
         Pokemon::STRING_POKEMON + " LZA", "Friendship Farmer",
         "Programs/PokemonLZA/FriendshipFarmer.html",
         "Farm friendship for pokemon in your party using either the cafe or bench method.",
+        PanelQualityStanding::OFFICIAL,
         ProgramControllerClass::StandardController_NoRestrictions,
         FeedbackType::REQUIRED,
         AllowCommandsWhenRunning::DISABLE_COMMANDS
