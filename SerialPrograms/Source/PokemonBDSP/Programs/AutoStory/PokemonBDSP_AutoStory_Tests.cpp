@@ -1480,6 +1480,16 @@ public:
         column = 0;
         return Pokemon::outcome_ok();
     }
+    virtual void turn(Direction direction) override{
+        trace.push_back(std::string("turn ") + Pokemon::direction_name(direction));
+    }
+    //  Half tiles: a nudge east then west lands back on the column.
+    int half = 0;
+    virtual void nudge(Direction direction, const std::string&) override{
+        half += direction == Direction::EAST ? -1 : 1;
+        if (half == 2){ column++; half = 0; }
+        if (half == -2){ column--; half = 0; }
+    }
     virtual Pokemon::Outcome tile(Direction direction, const std::string&) override{
         if (direction == Direction::WEST){
             column++;
@@ -1501,11 +1511,11 @@ public:
     virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
         struct Case{ const char* name; size_t door_at; bool stuck; bool stays_inside; bool center_done; bool school_done; size_t tries; };
         const Case cases[] = {
-            {"Door ten tiles west, as measured", 10, false, false, true, true, 3},
-            {"Door a tile further", 11, false, false, true, true, 4},
-            {"Door off the counted range", 14, false, false, true, false, 5},
-            {"The house never stops us", 10, true, false, false, false, 0},
-            {"The heal leaves us inside (r143a)", 10, false, true, false, false, 0},
+            {"Door eleven tiles west, as measured", 11, false, false, true, true, 1},
+            {"Door a whole tile off: a map error, not found", 12, false, false, true, false, 4},
+            {"Door off by two: not found", 14, false, false, true, false, 4},
+            {"The house never stops us", 11, true, false, false, false, 0},
+            {"The heal leaves us inside (r143a)", 11, false, true, false, false, 0},
         };
         for (const Case& c : cases){
             FakeJubilife game;

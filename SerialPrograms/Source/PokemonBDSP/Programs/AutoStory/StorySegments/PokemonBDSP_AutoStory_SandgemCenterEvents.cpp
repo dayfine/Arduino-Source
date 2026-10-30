@@ -815,6 +815,7 @@ void diagnostic_sandgem_mart_lady(SingleSwitchProgramEnvironment& env, ProContro
 // ---------------------------------------------------------------------------
 
 const char* const JUBILIFE_CENTER_NAME = "00.05a Jubilife: steps to the Pokemon Center (events)";
+const size_t SCHOOL_TILES_WEST_OF_CENTER = 11;
 const char* const JUBILIFE_SCHOOL_NAME = "00.05b Jubilife: Pokemon Center to the Trainers' School (events)";
 
 Checkpoint jubilife_center_checkpoint(JubilifeActions& game){
@@ -861,25 +862,28 @@ Checkpoint jubilife_school_checkpoint(JubilifeActions& game){
     Event into = wrapped_step("into_the_school",
         "west from the Center's doorstep, counting tiles, north through the School's door", "in_school",
         [&game](RunState&){
-            //  The first press only turns us.
-            Outcome moved = game.step(Direction::WEST, "Turn west");
-            for (size_t tiles = 1; tiles <= 12 && moved.succeeded(); tiles++){
-                moved = game.tile(Direction::WEST, "West to the School's door");
-                if (!moved.succeeded() || tiles < 8){
-                    continue;
+            //  Measured on the console (2026-10-30): from the Center's doorstep,
+            //  a tap to face west and eleven one-tile holds put us under the
+            //  School's doorway; twelve is past it. A hold ends a part of a
+            //  tile off (back east, eleven stopped beside the Center's door),
+            //  so if the School's front stops us, nudge half a tile each way.
+            game.turn(Direction::WEST);
+            for (size_t tiles = 0; tiles < SCHOOL_TILES_WEST_OF_CENTER; tiles++){
+                const Outcome moved = game.tile(Direction::WEST, "West to the School's door");
+                if (!moved.succeeded()){
+                    return moved;
                 }
+            }
+            if (game.through_door_north("Trainers' School door")){
+                return outcome_ok();
+            }
+            for (Direction side : {Direction::EAST, Direction::WEST, Direction::WEST}){
+                game.nudge(side, "Line up with the School's door");
                 if (game.through_door_north("Trainers' School door")){
                     return outcome_ok();
                 }
-                //  The School's front stopped us: back down, face west again.
-                moved = game.step(Direction::SOUTH, "Back to the doorsteps' row");
-                if (moved.succeeded()){
-                    moved = game.step(Direction::WEST, "Turn west");
-                }
             }
-            return moved.succeeded()
-                ? outcome_failed("door_failed", "no door 8 to 12 tiles west of the Center's doorstep")
-                : moved;
+            return outcome_failed("door_failed", "the School's door did not take us from 11 tiles west of the Center's doorstep, or half a tile either side");
         });
     //  It starts on the Center's doorstep: outside, in the overworld.
     into.require.push_back(condition("out of the Pokemon Center, in the overworld", [&game](RunState&){
@@ -912,6 +916,13 @@ public:
             return outcome_failed("heal_failed", e.message());
         }
         return outcome_ok();
+    }
+    virtual void turn(Direction direction) override{
+        route_turn(m_stream, m_context, direction);
+    }
+    virtual void nudge(Direction direction, const std::string& label) override{
+        route_turn(m_stream, m_context, direction);
+        walk_for(m_stream, m_context, direction == Direction::EAST ? 1 : -1, 0, 80ms, label);
     }
     virtual Outcome tile(Direction direction, const std::string& label) override{
         const double x = direction == Direction::EAST ? 1 : direction == Direction::WEST ? -1 : 0;

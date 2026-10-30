@@ -96,6 +96,9 @@ const std::vector<TilePos>& up_the_steps(){
     return tiles;
 }
 
+//  Checked on the console (2026-10-30): from the Pokemon Center's doorstep,
+//  eleven one-tile holds west put us under this door, not the twelve these
+//  columns give; one of the two doors is a column off here.
 const TilePos TRAINERS_SCHOOL_DOOR{39, 30};
 const TilePos POKEMON_CENTER_DOOR{51, 30};
 const TilePos TV_STATION_DOOR{35, 10};

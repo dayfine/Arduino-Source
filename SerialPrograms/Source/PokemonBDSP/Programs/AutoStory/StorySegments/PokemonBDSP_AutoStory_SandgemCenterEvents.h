@@ -209,6 +209,10 @@ public:
     //  From in front of a Pokemon Center, its lit doorway on screen: heals
     //  and walks out. Ends on the Center's doorstep.
     virtual Pokemon::Outcome heal_at_center() = 0;
+    //  Faces `direction` without moving: a tap the game takes as a turn.
+    virtual void turn(Pokemon::Direction direction) = 0;
+    //  Half a tile `direction` (EAST or WEST), facing it first.
+    virtual void nudge(Pokemon::Direction direction, const std::string& label) = 0;
     //  One tile `direction` from standing still, facing that way already.
     virtual Pokemon::Outcome tile(Pokemon::Direction direction, const std::string& label) = 0;
     //  Walks north; true if a door took us through.
@@ -228,8 +232,9 @@ Pokemon::Checkpoint jubilife_center_checkpoint(JubilifeActions& game);
 extern const char* const JUBILIFE_CENTER_NAME;
 
 //  00.05b: from the Center's doorstep into the Trainers' School. Nothing on
-//  the doorsteps' row stops a walk, so the School's door is counted: ten
-//  one-tile steps west (measured), trying north from the eighth on.
+//  the doorsteps' row stops a walk, so the School's door is counted: eleven
+//  one-tile steps west (measured both ways), then north; half a tile either
+//  side if the School's front stops us.
 //      1. into_the_school       through the School's door
 Pokemon::Checkpoint jubilife_school_checkpoint(JubilifeActions& game);
 extern const char* const JUBILIFE_SCHOOL_NAME;
