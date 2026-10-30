@@ -30,6 +30,14 @@ namespace NintendoSwitch{
 namespace PokemonBDSP{
 
 
+//  What a talk showed: whether a dialogue opened, whether it had closed
+//  after, and what OCR read in its first box.
+struct DialogueRead{
+    bool opened = false;
+    bool closed = false;
+    std::string text;
+};
+
 //  The game steps the checkpoint is made of.
 class SandgemCenterActions{
 public:
@@ -52,16 +60,18 @@ public:
     //  whether Sandgem Town's location banner showed on the way.
     virtual bool east_then_south_into_sandgem() = 0;
 
-    //  From where the walk south stops in Sandgem (sandgem_entry_stop()), or
-    //  anywhere in the strip north of the signs: west until the wall stops
-    //  us, south until the Center's sign does, then a tile east and two
-    //  south, between the signs, onto the row below the doors. Fails on a
-    //  stop that is not a wall (a talk, a door).
-    virtual Pokemon::Outcome entry_to_doors_row() = 0;
+    //  walk() with town_plan_costs(): short open legs allowed, so the plan
+    //  can step a tile across and go straight through a gap.
+    virtual Pokemon::Outcome walk_in_town(
+        std::vector<Pokemon::TilePos>& at,
+        const std::function<bool(const Pokemon::TilePos&)>& goal,
+        const std::string& label
+    ) = 0;
 
-    //  Walks north or south by the rows between us and the row below the
-    //  lit doorway on screen.
-    virtual Pokemon::Outcome step_to_front_row() = 0;
+    //  Faces `facing` and presses A: whether a box opened at the bottom of
+    //  the screen (a sign's may be green, not a dialogue's), what OCR reads
+    //  in it, and whether B closed it.
+    virtual DialogueRead read_sign(Pokemon::Direction facing, const std::string& label) = 0;
 
     //  The lit doorway nearest the middle of the screen, if any.
     virtual std::optional<LitDoorway> lit_doorway() = 0;
@@ -92,10 +102,6 @@ Pokemon::TilePos sandgem_entry_stop();
 //  heal walks to (r75), with the doorway in sight.
 Pokemon::TilePos below_sandgem_center_sign();
 
-//  Where entry_to_doors_row() may leave us: the row below the doors, or the
-//  one under it, at the gap's west half.
-std::vector<Pokemon::TilePos> doors_row_by_the_gap();
-
 //  On the doors' row, east of the Lab's sign, where a walk west along the
 //  row stops (checked on the console).
 Pokemon::TilePos east_of_lab_sign();
@@ -120,7 +126,8 @@ bool center_doorway_at_front_row(const LitDoorway& doorway);
 //  Events:
 //      1. confirm_on_route_202     the save screen reads Route 202
 //      2. walk_to_sandgem          the pose is on Sandgem Town
-//      3. walk_to_doors_row        the Center's doorway at the front row
+//      3. walk_to_center_sign      below the Center's sign (planned, town costs)
+//      4. read_center_sign         it reads, facing north
 //      4. at_center_door           the doorway straight ahead, a row up, outside
 Pokemon::Checkpoint route202_to_sandgem_center_checkpoint(SandgemCenterActions& game);
 
@@ -132,14 +139,6 @@ extern const char* const ROUTE202_TO_SANDGEM_CENTER_NAME;
 void diagnostic_route202_to_sandgem_center(SingleSwitchProgramEnvironment& env, ProControllerContext& context);
 
 
-
-//  What a talk showed: whether a dialogue opened, whether it had closed
-//  after, and what OCR read in its first box.
-struct DialogueRead{
-    bool opened = false;
-    bool closed = false;
-    std::string text;
-};
 
 //  The game steps of the Poke Mart lady checkpoint.
 class MartLadyActions : public SandgemCenterActions{
@@ -155,11 +154,6 @@ public:
     //  From the tile north of a sign, facing it: south a tile, two tiles
     //  `way` (WEST or EAST), and north a tile, to the sign's other side.
     virtual Pokemon::Outcome step_around_sign(Pokemon::Direction way) = 0;
-
-    //  Faces east and presses A: whether a box opened at the bottom of the
-    //  screen (a sign's may be green, not a dialogue's), what OCR reads in
-    //  it, and whether B closed it.
-    virtual DialogueRead read_sign(const std::string& label) = 0;
 
     //  Walks `direction`, pressing A after each short stretch, for at most
     //  `tiles` tiles' time until someone answers; then one A per line, 1.5 s

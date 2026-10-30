@@ -539,14 +539,9 @@ public:
                 [&](const TilePos& pos){ return pos == below_sign; }, true},
             //  From and back to where the Route 202 checkpoint ends: the doors'
             //  row by the signs' gap.
-            {"Doors' row by the gap to west of the Route 201 sign", doors_row_by_the_gap(),
+            {"Below the Center's sign to west of the Route 201 sign", {below_sandgem_center_sign()},
                 [&](const TilePos& pos){ return pos == route201_sign_west(); }, false},
-            {"Route 201 sign to the doors' row by the gap", {route201_sign_west()},
-                [&](const TilePos& pos){
-                    const std::vector<TilePos> gap = doors_row_by_the_gap();
-                    return std::find(gap.begin(), gap.end(), pos) != gap.end();
-                }, true},
-            {"Doors' row by the gap to the trees east of the Mart", doors_row_by_the_gap(),
+            {"Below the Center's sign to the trees east of the Mart", {below_sandgem_center_sign()},
                 [&](const TilePos& pos){ return pos == row_end; }, true},
             {"East of the Lab's sign to the trees east of the Mart", {east_of_lab_sign()},
                 [&](const TilePos& pos){ return pos == row_end; }, true},
@@ -569,6 +564,31 @@ public:
                     return error;
                 }
             }
+        }
+
+        //  In town, short open legs are cheap: from where the walk south stops,
+        //  the plan is the user's (2026-10-30): west to the wall, a tile east
+        //  into the gap's column, straight south through the gap between the
+        //  signs, a tile west to below the Center's sign. Not round the town.
+        {
+            const auto legs = Pokemon::plan_robust_route(maps.world(), {sandgem_entry_stop()},
+                [&](const TilePos& pos){ return pos == below_sign; }, town_plan_costs());
+            std::string read;
+            for (const Pokemon::PlannedLeg& planned : legs ? *legs : std::vector<Pokemon::PlannedLeg>()){
+                read += " [" + Pokemon::to_string(planned.leg) + "]";
+            }
+            const std::vector<std::pair<Direction, size_t>> expected{
+                {Direction::WEST, 9}, {Direction::EAST, 1}, {Direction::SOUTH, 5}, {Direction::WEST, 1},
+            };
+            bool same = legs && legs->size() == expected.size();
+            for (size_t i = 0; same && i < expected.size(); i++){
+                same = (*legs)[i].leg.direction == expected[i].first && (*legs)[i].leg.tiles == expected[i].second;
+            }
+            if (!same){
+                return "Sandgem's entry to below the Center's sign, town costs: expected west 9, east 1, south 5, west 1; planned" +
+                    (read.empty() ? std::string(" nothing") : read) + ".";
+            }
+            logger.log("Sandgem's entry to below the Center's sign, town costs:" + read);
         }
 
         //  The walk south from the save spot keeps out of the tall grass, so
@@ -972,32 +992,17 @@ public:
         where = Where::SANDGEM_ENTRY;
         return entered;
     }
-    virtual Pokemon::Outcome entry_to_doors_row() override{
-        trace.push_back("to the doors' row");
-        if (lost_walks > 0){
-            lost_walks--;
-            where = Where::LOST;
-            return Pokemon::outcome_failed("not_anchored", "Sandgem: west: limit instead of the wall");
-        }
-        where = Where::BELOW_SIGN;
-        if (short_walks > 0){
-            short_walks--;
-            where = Where::SHORT_OF_DOOR;
-        }
-        return Pokemon::outcome_ok();
+    virtual Pokemon::Outcome walk_in_town(
+        std::vector<TilePos>& at, const std::function<bool(const TilePos&)>& goal, const std::string& label
+    ) override{
+        return walk(at, goal, label);
     }
-    virtual Pokemon::Outcome step_to_front_row() override{
-        trace.push_back("step to the front row");
-        if (where != Where::SHORT_OF_DOOR){
-            return Pokemon::outcome_failed("no_doorway", "no lit doorway on screen to step by");
+    virtual DialogueRead read_sign(Direction facing, const std::string& label) override{
+        trace.push_back("read: " + label);
+        if (where == Where::BELOW_SIGN && facing == Direction::NORTH){
+            return DialogueRead{.opened = true, .closed = true, .text = "Pokemon Center"};
         }
-        //  A wanderer may stand in the way again.
-        if (short_walks > 0){
-            short_walks--;
-            return Pokemon::outcome_ok();
-        }
-        where = Where::BELOW_SIGN;
-        return Pokemon::outcome_ok();
+        return DialogueRead{};
     }
     virtual std::optional<LitDoorway> lit_doorway() override{
         switch (where){
@@ -1047,8 +1052,8 @@ public:
 
     virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
         const std::string SOUTH = "walk: Route 202 to Sandgem Town";
-        const std::string ROW = "to the doors' row";
-        const std::string STEP = "step to the front row";
+        const std::string ROW = "walk: To below the Center's sign";
+        const std::string READ = "read: the Center's sign";
         struct Case{
             const char* name;
             std::string save_location;
@@ -1068,7 +1073,7 @@ public:
                 .lost_walks = 0,
                 .completed = true,
                 .failed_event = 0,
-                .trace = {"read save screen", SOUTH, ROW},
+                .trace = {"read save screen", SOUTH, ROW, READ},
             },
             {
                 .name = "The save is in Sandgem Town",
@@ -1081,14 +1086,14 @@ public:
                 .trace = {"read save screen", "read save screen"},
             },
             {
-                .name = "Stopped short of the door",
+                .name = "A row off: the sign does not read",
                 .save_location = "Route 202",
                 .short_walks = 1,
                 .talking_walks = 0,
                 .lost_walks = 0,
-                .completed = true,
-                .failed_event = 0,
-                .trace = {"read save screen", SOUTH, ROW, STEP},
+                .completed = false,
+                .failed_event = 4,
+                .trace = {"read save screen", SOUTH, ROW, READ},
             },
             {
                 .name = "A talk stops the walk south",
@@ -1098,10 +1103,10 @@ public:
                 .lost_walks = 0,
                 .completed = true,
                 .failed_event = 0,
-                .trace = {"read save screen", SOUTH, "finish dialogue", "east, then south", ROW},
+                .trace = {"read save screen", SOUTH, "finish dialogue", "east, then south", ROW, READ},
             },
             {
-                .name = "A wall leg in town ends short",
+                .name = "The walk in town fails",
                 .save_location = "Route 202",
                 .short_walks = 0,
                 .talking_walks = 0,
@@ -1109,16 +1114,6 @@ public:
                 .completed = false,
                 .failed_event = 3,
                 .trace = {"read save screen", SOUTH, ROW},
-            },
-            {
-                .name = "Short of the door every time",
-                .save_location = "Route 202",
-                .short_walks = 5,
-                .talking_walks = 0,
-                .lost_walks = 0,
-                .completed = false,
-                .failed_event = 3,
-                .trace = {"read save screen", SOUTH, ROW, STEP, STEP},
             },
         };
         for (const Case& c : cases){
@@ -1230,8 +1225,12 @@ public:
         return Pokemon::outcome_failed("no_plan", label);
     }
     virtual bool east_then_south_into_sandgem() override{ return false; }
-    virtual Pokemon::Outcome entry_to_doors_row() override{ return Pokemon::outcome_failed("no_plan", "not on this checkpoint"); }
-    virtual Pokemon::Outcome step_to_front_row() override{ return Pokemon::outcome_failed("no_plan", "not on this checkpoint"); }
+    virtual Pokemon::Outcome walk_in_town(
+        std::vector<TilePos>&, const std::function<bool(const TilePos&)>&, const std::string& label
+    ) override{
+        trace.push_back("walk: " + label);
+        return Pokemon::outcome_failed("no_plan", label);
+    }
     virtual std::optional<LitDoorway> lit_doorway() override{
         if (where == Where::DOORS_ROW){
             return LitDoorway{.x = 0.3, .y = 0.38, .tiles_across = -3.0, .rows_up = 1.0};
@@ -1284,7 +1283,7 @@ public:
         }
         return Pokemon::outcome_failed("no_sign", "no sign to step round");
     }
-    virtual DialogueRead read_sign(const std::string& label) override{
+    virtual DialogueRead read_sign(Direction, const std::string& label) override{
         trace.push_back("read: " + label);
         if (where == Where::LAB_WEST){
             return DialogueRead{.opened = true, .closed = true, .text = "Pokemon Research Lab"};

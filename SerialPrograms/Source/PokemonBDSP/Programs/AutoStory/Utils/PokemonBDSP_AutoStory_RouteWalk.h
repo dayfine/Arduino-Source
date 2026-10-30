@@ -88,8 +88,17 @@ std::vector<Pokemon::TilePos> walk_route(
     std::vector<Pokemon::TrainerSight>& trainers,
     const RouteTrainerFight& fight,
     const std::string& label,
-    const std::vector<Pokemon::TilePos>& avoid = {}
+    const std::vector<Pokemon::TilePos>& avoid = {},
+    const Pokemon::RobustPlanCosts& costs = Pokemon::RobustPlanCosts()
 );
+
+//  Plan costs for walking in town: short open legs (up to 5 tiles) are taken
+//  to land exactly and cost little more than a leg to a wall, so a plan
+//  steps a tile across and walks straight through a gap rather than going
+//  round the town to end every leg on a wall (Sandgem: 13 legs, r127a and
+//  r128b walked into the Lab and the Mart). Pair it with a check at the end
+//  (a sign read) for the timed legs.
+Pokemon::RobustPlanCosts town_plan_costs();
 
 //  Walks next to the NPC on world tile `npc`, faces them and presses A, trying
 //  the sides in `sides` (the side of the NPC to stand on) in order until a

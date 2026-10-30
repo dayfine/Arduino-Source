@@ -149,6 +149,12 @@ struct RobustPlanCosts : TilePlanCosts{
     //  short or long: on the console 7 tiles went 9.
     int open_error = 1;
     int open_error_per = 5;
+    //  Open legs this many tiles or shorter land exactly: a short hold moves
+    //  whole tiles. 0 keeps every open leg uncertain.
+    int exact_open_tiles = 0;
+    //  Extra per tile of an open leg: its timing error grows with its length,
+    //  so a short step after a wall beats a long open leg.
+    int per_open_tile = 0;
     int max_open_tiles = 12;    //  longest open leg to consider
     size_t max_spread = 5;      //  most tiles the player may be on after a leg
 };

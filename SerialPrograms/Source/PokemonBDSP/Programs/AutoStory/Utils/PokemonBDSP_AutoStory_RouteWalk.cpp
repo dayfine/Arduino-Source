@@ -136,6 +136,14 @@ std::optional<Direction> talk_to_adjacent_npc(
     return std::nullopt;
 }
 
+RobustPlanCosts town_plan_costs(){
+    RobustPlanCosts costs;
+    costs.exact_open_tiles = 5;
+    costs.leg_not_at_wall = 6;
+    costs.per_open_tile = 2;
+    return costs;
+}
+
 std::vector<TilePos> walk_route(
     VideoStream& stream, ProControllerContext& context,
     const MapSet& maps,
@@ -144,7 +152,8 @@ std::vector<TilePos> walk_route(
     std::vector<TrainerSight>& trainers,
     const RouteTrainerFight& fight,
     const std::string& label,
-    const std::vector<TilePos>& avoid
+    const std::vector<TilePos>& avoid,
+    const RobustPlanCosts& costs
 ){
     //  Our own copy, so things found in the way can be added to it.
     TileGrid grid = maps.world();
@@ -159,7 +168,7 @@ std::vector<TilePos> walk_route(
     const std::string map_start = map_of(maps, from);
     std::vector<std::string> all_banners;
     for (size_t plans = 0; plans < 8; plans++){
-        const std::optional<std::vector<PlannedLeg>> legs = plan_robust_route(grid, from, goal);
+        const std::optional<std::vector<PlannedLeg>> legs = plan_robust_route(grid, from, goal, costs);
         if (!legs){
             OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
                 label + ": no plan from " + describe(maps, from) + ".", stream);

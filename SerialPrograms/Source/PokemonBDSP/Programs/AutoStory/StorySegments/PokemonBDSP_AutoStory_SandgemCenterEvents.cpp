@@ -67,14 +67,6 @@ TilePos below_sandgem_center_sign(){
     return story_maps().to_world(MAP_SANDGEM_TOWN, SandgemTown::POKEMON_CENTER_SIGN.next(Direction::SOUTH));
 }
 
-std::vector<TilePos> doors_row_by_the_gap(){
-    const Pokemon::MapSet& maps = story_maps();
-    return {
-        maps.to_world(MAP_SANDGEM_TOWN, {20, 7}), maps.to_world(MAP_SANDGEM_TOWN, {21, 7}),
-        maps.to_world(MAP_SANDGEM_TOWN, {20, 8}), maps.to_world(MAP_SANDGEM_TOWN, {21, 8}),
-    };
-}
-
 TilePos east_of_lab_sign(){
     return story_maps().to_world(MAP_SANDGEM_TOWN, {6, 7});
 }
@@ -218,35 +210,49 @@ Event walk_to_sandgem(SandgemCenterActions& game){
     return event;
 }
 
-//  3. From where the walk south stops, onto the row below the doors on
-//  legs that end at walls (west to the wall, south to the Center's sign)
-//  and two short open ones through the gap between the signs, which keeps
-//  clear of the Lab's and the Mart's doors. 00.04's planned walk to below
-//  the sign (walk_to_center_door()) goes round the town in 13 legs, and a
-//  wall leg that ended short there took us into the Lab (r127a) and the
-//  Mart (r128b). The doorway in sight then says which row we are on.
-Event walk_to_doors_row(SandgemCenterActions& game){
+//  3. From where the walk south stops to below the Center's sign, planned
+//  with town costs: west to the wall, a tile east into the gap's column,
+//  straight south through the gap between the signs, a tile west (the
+//  user's route, 2026-10-30; the plan test checks the planner finds it).
+//  With walls only, the plan went round the town in 13 legs, into the Lab
+//  (r127a) and the Mart (r128b); judging the row by the doorway's height put
+//  us a row up, level with the signs (r132a, r133a).
+Event walk_to_center_sign(SandgemCenterActions& game){
     Event event;
-    event.name = "walk_to_doors_row";
-    event.why = "to the row below the Center's door, its doorway in sight";
-    event.skip_if.push_back(center_doorway_ahead(game));
+    event.name = "walk_to_center_sign";
+    event.why = "through the signs' gap to below the Center's sign";
     event.require.push_back(pose_known(MAP_SANDGEM_TOWN, PoseCertainty::SET));
-    //  Once by the gap, a try again only steps by the rows: the walk west
-    //  from there would run along the doors' row, past the Center.
     event.act = [&game](RunState& state){
-        if (state.pose.tiles == doors_row_by_the_gap()){
-            return game.step_to_front_row();
-        }
-        const Outcome walked = game.entry_to_doors_row();
+        std::vector<TilePos> at = state.pose.tiles;
+        const TilePos goal = below_sandgem_center_sign();
+        const Outcome walked = game.walk_in_town(at, [goal](const TilePos& pos){ return pos == goal; }, "To below the Center's sign");
         if (walked.succeeded()){
-            state.pose = pose_on(doors_row_by_the_gap());
+            state.pose = pose_on(at);
         }
         return walked;
     };
     event.expect.push_back(outside(game));
-    event.expect.push_back(center_doorway_ahead(game));
-    event.recoveries.push_back(recovery("expect_failed", RecoveryKind::WAIT, 2, nullptr,
-        "a row off the doors' row, or someone in the way: step by the rows to the doorway"));
+    return event;
+}
+
+//  4. The gate: the Center's sign, at the building's bottom right, reads
+//  from the tile below it facing north, and only from there.
+Event read_center_sign(SandgemCenterActions& game){
+    std::shared_ptr<DialogueRead> read = std::make_shared<DialogueRead>();
+    Event event;
+    event.name = "read_center_sign";
+    event.why = "read the Center's sign from below it";
+    event.act = [&game, read](RunState&){
+        *read = game.read_sign(Direction::NORTH, "the Center's sign");
+        return outcome_ok();
+    };
+    event.expect.push_back(condition("the Center's sign's box opened and closed", [read](RunState&){
+        return read->opened && read->closed;
+    }));
+    event.expect.push_back(condition("the Center's sign's text, if read, has \"center\"", [read](RunState&){
+        return read->text.empty() || sign_text_matches(read->text, "center");
+    }));
+    event.pose_learned = pose_on({below_sandgem_center_sign()}, Direction::NORTH);
     return event;
 }
 
@@ -282,13 +288,22 @@ public:
         const std::function<bool(const TilePos&)>& goal,
         const std::string& label
     ) override{
+        return walk_planned(at, goal, label, Pokemon::RobustPlanCosts());
+    }
+
+    Outcome walk_planned(
+        std::vector<TilePos>& at,
+        const std::function<bool(const TilePos&)>& goal,
+        const std::string& label,
+        const Pokemon::RobustPlanCosts& costs
+    ){
         //  No trainer sees this way; one who does is a failure to look at.
         const RouteTrainerFight fight = [this](const std::string& trainer){
             OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
                 "Trainer " + trainer + " saw us on a way no trainer should see.", m_stream);
         };
         try{
-            at = walk_route(m_stream, m_context, story_maps(), at, goal, m_trainers, fight, label);
+            at = walk_route(m_stream, m_context, story_maps(), at, goal, m_trainers, fight, label, {}, costs);
             return outcome_ok();
         }catch (OperationFailedException& e){
             //  Through a door: nothing to re-anchor on in there.
@@ -314,43 +329,48 @@ public:
         return saw_sandgem;
     }
 
-    virtual Outcome entry_to_doors_row() override{
-        const WalkResult west = walk_until(m_stream, m_context, -1, 0, 3000ms, "Sandgem: west to the wall");
-        if (west.stop != WalkStop::BLOCKED){
-            return outcome_failed("not_anchored", std::string("Sandgem: west: ") + walk_stop_name(west.stop) + " instead of the wall");
-        }
-        const WalkResult south = walk_until(m_stream, m_context, 0, -1, 2000ms, "Sandgem: south to the Center's sign");
-        if (south.stop != WalkStop::BLOCKED){
-            return outcome_failed("not_anchored", std::string("Sandgem: south: ") + walk_stop_name(south.stop) + " instead of the sign");
-        }
-        //  The first press of a new way turns us as well as moving: a bit
-        //  over a tile east, which still leaves the gap's west half.
-        for (const WalkResult& walk : {
-            walk_for(m_stream, m_context, 1, 0, ROUTE_MS_PER_TILE_ACROSS + 80ms, "Sandgem: a tile east, past the sign"),
-            walk_for(m_stream, m_context, 0, -1, 2 * ROUTE_MS_PER_TILE_UP_DOWN + 80ms, "Sandgem: south between the signs"),
-        }){
-            if (walk.stop == WalkStop::DIALOG || walk.stop == WalkStop::TRANSITION || walk.wild_battles > 0){
-                return outcome_failed("walk_failed", std::string("Sandgem: ") + walk_stop_name(walk.stop) + " between the signs");
-            }
-        }
-        return outcome_ok();
+    virtual Outcome walk_in_town(
+        std::vector<TilePos>& at,
+        const std::function<bool(const TilePos&)>& goal,
+        const std::string& label
+    ) override{
+        return walk_planned(at, goal, label, town_plan_costs());
     }
 
-    virtual Outcome step_to_front_row() override{
-        const std::optional<LitDoorway> doorway = lit_doorway();
-        if (!doorway){
-            return outcome_failed("no_doorway", "no lit doorway on screen to step by");
+    virtual DialogueRead read_sign(Direction facing, const std::string& label) override{
+        VideoStream& stream = m_stream;
+        DialogueRead read;
+        route_turn(stream, m_context, facing);
+        //  Let the camera settle after the turn: its drift read as a box
+        //  opening (r132a).
+        pbf_wait(m_context, 800ms);
+        m_context.wait_for_all_requests();
+        VideoSnapshot before = stream.video().snapshot();
+        //  The text types out over about a second; B before it has finished
+        //  only finishes it (r131a).
+        pbf_press_button(m_context, BUTTON_A, 80ms, 1500ms);
+        m_context.wait_for_all_requests();
+        VideoSnapshot shown = stream.video().snapshot();
+        if (!before || !shown){
+            return read;
         }
-        const double rows = doorway->rows_up - 1;
-        if (std::abs(rows) < 0.5){
-            return outcome_ok();
+        const double opened = walk_screen_change(extract_box_reference(*before.frame, SIGN_BOX), extract_box_reference(*shown.frame, SIGN_BOX));
+        read.opened = opened > SIGN_BOX_OPENED;
+        if (!read.opened){
+            stream.log("[Sign] " + label + ": no box opened (change " + std::to_string(opened) + ").");
+            return read;
         }
-        const WalkResult walk = walk_for(m_stream, m_context, 0, rows > 0 ? 1 : -1,
-            Milliseconds((int64_t)(std::abs(rows) * ROUTE_MS_PER_TILE_UP_DOWN.count())), "Sandgem: to the doors' row");
-        if (walk.stop == WalkStop::DIALOG || walk.stop == WalkStop::TRANSITION){
-            return outcome_failed("walk_failed", std::string("Sandgem: ") + walk_stop_name(walk.stop) + " stepping to the doors' row");
+        //  Tesseract read the Lab's white-on-grey text as "e R O e IO" (r131a).
+        read.text = OCR::ocr_read(Language::English, extract_box_reference(*shown.frame, SIGN_TEXT), OCR::PageSegMode::SINGLE_BLOCK);
+        stream.log("[Sign] " + label + ": reads \"" + read.text + "\" (change " + std::to_string(opened) + ").");
+        for (size_t presses = 0; presses < 3 && !read.closed; presses++){
+            pbf_press_button(m_context, BUTTON_B, 80ms, 1000ms);
+            m_context.wait_for_all_requests();
+            VideoSnapshot after = stream.video().snapshot();
+            read.closed = after && walk_screen_change(extract_box_reference(*before.frame, SIGN_BOX), extract_box_reference(*after.frame, SIGN_BOX)) < SIGN_BOX_OPENED;
         }
-        return outcome_ok();
+        stream.log("[Sign] " + label + (read.closed ? ": closed." : ": still open."));
+        return read;
     }
 
     virtual std::optional<LitDoorway> lit_doorway() override{
@@ -437,7 +457,7 @@ Event read_sign(MartLadyActions& game, std::string name, std::string sign, std::
     event.name = std::move(name);
     event.why = "read " + sign + " from the tile west of it";
     event.act = [&game, read, sign](RunState&){
-        *read = game.read_sign(sign);
+        *read = game.read_sign(Direction::EAST, sign);
         return outcome_ok();
     };
     event.expect.push_back(condition(sign + "'s box opened and closed", [read](RunState&){
@@ -490,8 +510,12 @@ public:
         return m_center.walk(at, goal, label);
     }
     virtual bool east_then_south_into_sandgem() override{ return m_center.east_then_south_into_sandgem(); }
-    virtual Outcome entry_to_doors_row() override{ return m_center.entry_to_doors_row(); }
-    virtual Outcome step_to_front_row() override{ return m_center.step_to_front_row(); }
+    virtual Outcome walk_in_town(
+        std::vector<TilePos>& at, const std::function<bool(const TilePos&)>& goal, const std::string& label
+    ) override{
+        return m_center.walk_in_town(at, goal, label);
+    }
+    virtual DialogueRead read_sign(Direction facing, const std::string& label) override{ return m_center.read_sign(facing, label); }
     virtual std::optional<LitDoorway> lit_doorway() override{ return m_center.lit_doorway(); }
     virtual Outcome line_up_with_door() override{ return m_center.line_up_with_door(); }
     virtual bool inside_pokemon_center() override{ return m_center.inside_pokemon_center(); }
@@ -566,41 +590,6 @@ public:
         return outcome_ok();
     }
 
-    virtual DialogueRead read_sign(const std::string& label) override{
-        VideoStream& stream = m_env.console;
-        DialogueRead read;
-        route_turn(stream, m_context, Direction::EAST);
-        //  Let the camera settle after the turn: its drift read as a box
-        //  opening (r132a).
-        pbf_wait(m_context, 800ms);
-        m_context.wait_for_all_requests();
-        VideoSnapshot before = stream.video().snapshot();
-        //  The text types out over about a second; B before it has finished
-        //  only finishes it (r131a).
-        pbf_press_button(m_context, BUTTON_A, 80ms, 1500ms);
-        m_context.wait_for_all_requests();
-        VideoSnapshot shown = stream.video().snapshot();
-        if (!before || !shown){
-            return read;
-        }
-        const double opened = walk_screen_change(extract_box_reference(*before.frame, SIGN_BOX), extract_box_reference(*shown.frame, SIGN_BOX));
-        read.opened = opened > SIGN_BOX_OPENED;
-        if (!read.opened){
-            stream.log("[Sign] " + label + ": no box opened (change " + std::to_string(opened) + ").");
-            return read;
-        }
-        //  Tesseract read the Lab's white-on-grey text as "e R O e IO" (r131a).
-        read.text = OCR::ocr_read(Language::English, extract_box_reference(*shown.frame, SIGN_TEXT), OCR::PageSegMode::SINGLE_BLOCK);
-        stream.log("[Sign] " + label + ": reads \"" + read.text + "\" (change " + std::to_string(opened) + ").");
-        for (size_t presses = 0; presses < 3 && !read.closed; presses++){
-            pbf_press_button(m_context, BUTTON_B, 80ms, 1000ms);
-            m_context.wait_for_all_requests();
-            VideoSnapshot after = stream.video().snapshot();
-            read.closed = after && walk_screen_change(extract_box_reference(*before.frame, SIGN_BOX), extract_box_reference(*after.frame, SIGN_BOX)) < SIGN_BOX_OPENED;
-        }
-        stream.log("[Sign] " + label + (read.closed ? ": closed." : ": still open."));
-        return read;
-    }
 
     virtual Outcome walk_to_route_202_save_spot() override{
         return wrap("walk_failed", [&]{ walk_from_sandgem_center_to_route_202_save_spot(m_env.console, m_context, {east_of_lab_sign()}); });
@@ -705,10 +694,10 @@ Checkpoint route202_to_sandgem_center_checkpoint(SandgemCenterActions& game){
     checkpoint.interrupts.push_back(dialogue_interrupt(game));
     checkpoint.events.push_back(confirm_on_route_202(game));
     checkpoint.events.push_back(walk_to_sandgem(game));
-    //  It ends on the row below the doors with the Center's doorway in
-    //  sight: lining up with the door itself overshot or walked in (r128,
-    //  r129), and nothing after needs it.
-    checkpoint.events.push_back(walk_to_doors_row(game));
+    //  It ends below the Center's sign, facing it: lining up with the door
+    //  itself overshot or walked in (r128, r129), and nothing after needs it.
+    checkpoint.events.push_back(walk_to_center_sign(game));
+    checkpoint.events.push_back(read_center_sign(game));
     //  No save: the save stays on Route 202, so the run can be repeated.
     return checkpoint;
 }
@@ -733,21 +722,16 @@ TilePos route201_row_3_east_end(){
     return story_maps().to_world(MAP_ROUTE_201, {63, 3});
 }
 
-//  Where the Route 202 checkpoint ends: the row below the doors by the
-//  signs' gap, the Center's doorway in sight.
+//  Where the Route 202 checkpoint ends: below the Center's sign.
 Event on_doors_row(SandgemCenterActions& game){
     Event event;
     event.name = "on_doors_row";
-    event.why = "on the row below the doors, the Center's doorway in sight";
+    event.why = "below the Center's sign, where the Route 202 checkpoint ends";
     event.act = [](RunState& state){
-        state.pose = pose_on(doors_row_by_the_gap());
+        state.pose = pose_on({below_sandgem_center_sign()}, Direction::NORTH);
         return outcome_ok();
     };
     event.expect.push_back(outside(game));
-    event.expect.push_back(center_doorway_ahead(game));
-    event.recoveries.push_back(recovery("expect_failed", RecoveryKind::REANCHOR, 1, [&game](RunState&){
-        return game.step_to_front_row();
-    }, "a row off: step by the rows to the doorway"));
     return event;
 }
 
