@@ -21,16 +21,6 @@ namespace PokemonAutomation{
 
 
 
-bool AudioSourceDescriptor_File::operator==(const AudioSourceDescriptor& x) const{
-    if (typeid(*this) != typeid(x)){
-        return false;
-    }
-
-    std::string other_path = static_cast<const AudioSourceDescriptor_File&>(x).m_path;
-
-    ReadSpinLock lg(m_lock, PA_CURRENT_FUNCTION);
-    return m_path == other_path;
-}
 
 std::string AudioSourceDescriptor_File::path() const{
     ReadSpinLock lg(m_lock, PA_CURRENT_FUNCTION);
@@ -39,6 +29,29 @@ std::string AudioSourceDescriptor_File::path() const{
 void AudioSourceDescriptor_File::set_path(std::string path){
     WriteSpinLock lg(m_lock, PA_CURRENT_FUNCTION);
     m_path = std::move(path);
+}
+
+bool AudioSourceDescriptor_File::operator==(const AudioSourceDescriptor& x) const{
+    if (typeid(*this) != typeid(x)){
+        return false;
+    }
+
+    std::string other_path = static_cast<const AudioSourceDescriptor_File&>(x).m_path;
+
+    ReadSpinLock lg(m_lock, PA_CURRENT_FUNCTION);
+//    cout << m_path << " == " << other_path << endl;
+    return m_path == other_path;
+}
+std::string AudioSourceDescriptor_File::display_name() const{
+    return "Play Audio File";
+}
+
+std::vector<AudioInputChoice> AudioSourceDescriptor_File::supported_formats() const{
+    return {};
+}
+bool AudioSourceDescriptor_File::sanitize_desired_format(Logger& logger, AudioInputChoice& format) const{
+    format = AudioInputChoice();
+    return true;
 }
 
 void AudioSourceDescriptor_File::run_post_select(){
