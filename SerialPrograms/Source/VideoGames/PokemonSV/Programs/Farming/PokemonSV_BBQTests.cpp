@@ -7,6 +7,10 @@
 #include <optional>
 #include <stdexcept>
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
+#include "CommonFramework/GlobalAutoPaths.h"
+#include "CommonFramework/ImageTypes/ImageRGB32.h"
+#include "VideoGames/PokemonSV/Inference/PokemonSV_BlueberryPointsReader.h"
+#include "VideoGames/PokemonSV/Options/PokemonSV_BBQuests.h"
 #include "PokemonSV_BlueberryQuests.h"
 #include "PokemonSV_BBQTests.h"
 
@@ -16,6 +20,57 @@ namespace PokemonSV{
 
 
 namespace{
+
+class Test_BBQuestsSlugs : public UnitTest{
+public:
+    Test_BBQuestsSlugs()
+        : UnitTest("PokemonSV::BBQuests - slug round trip")
+    {}
+
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        for (int c = 0; c < (int)BBQuests::UnableToDetect; c++){
+            const BBQuests quest = (BBQuests)c;
+            const std::string& slug = BBQuests_enum_to_string(quest);
+            if (slug.empty()){
+                return "Quest " + std::to_string(c) + " has no slug.";
+            }
+            if (BBQuests_string_to_enum(slug) != quest){
+                return "Slug " + slug + " does not map back to quest " + std::to_string(c) + ".";
+            }
+        }
+        if (!BBQuests_enum_to_string(BBQuests::UnableToDetect).empty()){
+            return "UnableToDetect must map to the empty slug.";
+        }
+        if (BBQuests_string_to_enum("not-a-quest") != BBQuests::UnableToDetect){
+            return "An unrecognized slug must map to UnableToDetect.";
+        }
+        return true;
+    }
+};
+
+class Test_BlueberryPoints : public UnitTest{
+public:
+    Test_BlueberryPoints(const std::string& image, int expected, size_t width, size_t height)
+        : UnitTest("PokemonSV::BlueberryPoints - " + image + " - " + std::to_string(width))
+        , m_image(UNIT_TEST_RESOURCE_PATH() + image)
+        , m_expected(expected), m_width(width), m_height(height)
+    {}
+
+    virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
+        ImageRGB32 reference(m_image);
+        ImageRGB32 image = reference.scale_to(m_width, m_height);
+        const int actual = read_BP_from_image(logger, image);
+        if (actual != m_expected){
+            return "Expected " + std::to_string(m_expected) + " BP, read " + std::to_string(actual);
+        }
+        return true;
+    }
+
+private:
+    const std::string m_image;
+    const int m_expected;
+    const size_t m_width, m_height;
+};
 
 struct TeraEncounterScenario{
     std::string name;
@@ -402,6 +457,16 @@ static void add_tests_BBQAutoBattle(UnitTestDatabase& database){
 
 
 void add_tests_BBQ(UnitTestDatabase& database){
+    database.add<Test_BBQuestsSlugs>();
+
+    // Full-frame references, in the CommandLineTests repo: they exercise the production
+    // crop, filter and OCR together.
+    database.add<Test_BlueberryPoints>("PokemonSV/BlueberryPoints/6750.png", 6750, 1920, 1080);
+    database.add<Test_BlueberryPoints>("PokemonSV/BlueberryPoints/6750.png", 6750, 1280, 720);
+
+    database.add<Test_BlueberryPoints>("PokemonSV/BlueberryPoints/6740.png", 6740, 1920, 1080);
+    database.add<Test_BlueberryPoints>("PokemonSV/BlueberryPoints/6740.png", 6740, 1280, 720);
+
     add_tests_TeraEncounterAction(database);
     add_tests_BBQAutoBattle(database);
 }
