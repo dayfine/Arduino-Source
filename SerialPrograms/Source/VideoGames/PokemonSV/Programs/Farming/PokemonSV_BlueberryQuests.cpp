@@ -292,6 +292,9 @@ BBQRerollResult reroll_quest(
     std::vector<BBQuests>& quests,
     size_t slot
 ){
+    //Every slot reroll logs this one line, whatever decided it, so a log shows each BP spent.
+    const std::string quest = slot < quests.size() ? BBQuests_enum_to_string(quests[slot]) : "";
+    logger.log("Rerolling quest " + std::to_string(slot + 1) + " (" + (quest.empty() ? "unknown" : quest) + ").");
     if (!actions.open_panel()){
         return BBQRerollResult::PanelNotOpened;
     }
