@@ -185,6 +185,11 @@ BBQOption::BBQOption(OCR::LanguageOCROption* language_option)
         "<b>Hatch Quest - Fix time for eggs:</b><br>Fix the time before doing a hatch egg quest.",
         LockMode::UNLOCK_WHILE_RUNNING, false
     )
+    , AUTO_BATTLE_HEAL_PERCENT(
+        "<b>Auto Battle Quest - Heal Below HP %:</b><br>Between passes, heal at the Pokemon Center only if your lead's HP is below this percentage. "
+        "If its HP could not be read, heal anyway.",
+        LockMode::UNLOCK_WHILE_RUNNING, 50, 0, 100
+    )
     , CATCH_ON_WIN(true)
     , NUM_RETRIES(
         "<b>Number of Retries:</b><br>Reattempt a quest this many times if it fails.",
@@ -207,6 +212,7 @@ BBQOption::BBQOption(OCR::LanguageOCROption* language_option)
     PA_ADD_OPTION(NUM_EGGS);
     PA_ADD_OPTION(OUT_OF_EGGS);
     PA_ADD_OPTION(FIX_TIME_FOR_HATCH);
+    PA_ADD_OPTION(AUTO_BATTLE_HEAL_PERCENT);
     PA_ADD_OPTION(BATTLE_AI);
     PA_ADD_OPTION(CATCH_ON_WIN);
     PA_ADD_OPTION(NUM_RETRIES);
