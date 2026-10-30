@@ -2,9 +2,16 @@
 
 Each entry is a failure seen on a Switch while running BDSP AutoStory (Developer-Butters'
 U#1717 plus our intro work, October 2026), the pattern behind it, and the rule we now follow.
-Runs are the lab builds r14 to r79 on console B. The patterns repeat, so the rules matter
-more than the individual fixes. Sections 6 to 8 cover r40 to r79, which took 00.04 from the
-catch to Dawn in Jubilife unattended (r79).
+Runs are the lab builds r14 to r109 on console B. The patterns repeat, so the rules matter
+more than the individual fixes.
+
+The lessons fall into two parts. **Part 1 is for Butters**: what his recorded segments in
+#1717 (PokemonAutomation/Arduino-Source#1717) need to survive another console, another
+starter or another day, with the general rules behind each fix. **Part 2 is for us**: our
+own code, our lab and our process. The rules in Part 1 apply to our code too.
+
+
+# Part 1. For Butters: his segments on another console
 
 ## 1. Timed movement drifts; stop on what the screen shows
 
@@ -59,16 +66,7 @@ at each checkpoint (`Screenshots/AutoStory/saves/`: play time, badges, party).
 **Rule:** for a trainer or a scene, the walk can end in any way short of a transition; the
 dialogue decides. Walk, then wait for the dialogue with its own timeout.
 
-## 5. Our own process
-
-- Look at the screen, then the code, before rerunning. Every run since r28 that failed in a new
-  way was explained by one screenshot.
-- Put new code in its final module first; no copy-then-move PRs of our own code.
-- Keep line endings as they are (CRLF files stay CRLF); compare `git diff --stat` with
-  `--ignore-cr-at-eol`.
-- When a program is stuck or failing, stop it and close the game at once; don't let retries run.
-
-## 6. Butters' 00.04 and 00.05, checked against the game
+## 5. Butters' 00.04 and 00.05, checked against the game
 
 What his recorded version does, what went wrong with it on console B, and what replaced it. Our
 changes are on the fork branch
@@ -77,7 +75,7 @@ on top of his segment 00 ([`bdsp/1717-seg00`](https://github.com/dayfine/Arduino
 
 | His version | What happened | Now | Our commits |
 |---|---|---|---|
-| Every leg is a stick hold of a recorded length (00.05 alone is ~150 lines of them). | Drift, as in section 1. In r79 the 00.05 legs reached the Trainers' School, then "west 200 ms, A" faced an empty tile: Barry stands up and to the right, at the blackboard. | 00.04 walks map plans whose legs end at walls (design doc, sections 3 to 5). 00.05 is being stepped through (section 8 below). | [`1598fc2c7`](https://github.com/dayfine/Arduino-Source/commit/1598fc2c74e7cccf6356251bf35e21fdbcac5006), [`0a5311175`](https://github.com/dayfine/Arduino-Source/commit/0a5311175ec72feb0fcb326a38d7e2dc7b1ec673) |
+| Every leg is a stick hold of a recorded length (00.05 alone is ~150 lines of them). | Drift, as in section 1. In r79 the 00.05 legs reached the Trainers' School, then "west 200 ms, A" faced an empty tile: Barry stands up and to the right, at the blackboard. | 00.04 walks map plans whose legs end at walls (design doc, sections 3 to 5). 00.05 is being stepped through (section 10 below). | [`1598fc2c7`](https://github.com/dayfine/Arduino-Source/commit/1598fc2c74e7cccf6356251bf35e21fdbcac5006), [`0a5311175`](https://github.com/dayfine/Arduino-Source/commit/0a5311175ec72feb0fcb326a38d7e2dc7b1ec673) |
 | Tristan is fought with move slot 3 (Ember). | Chimchar only; we had Piplup (r28). | The Fight menu is read by OCR and the strongest move picked. | [`c16ee0262`](https://github.com/dayfine/Arduino-Source/commit/c16ee0262772a5519e489fb9ad360d263d07852c), [`97df88c43`](https://github.com/dayfine/Arduino-Source/commit/97df88c439845600a02d0114478bb66d4b158ad5) |
 | No training, no healing before the Route 202 trainers. | A Lv5 Piplup with Pound fainted to Logan's Shinx (r72). | Three wild battles first (Piplup learns Water Gun), then Potions. | [`08a9fb7e0`](https://github.com/dayfine/Arduino-Source/commit/08a9fb7e01b6be5ee042708b89e32ca2149dca69), [`a95359311`](https://github.com/dayfine/Arduino-Source/commit/a953593111dba3d56b10cf995eb7e9c86455018d) |
 | The Potion is found in the Bag by a pixel match. | Console B's colours differ; the match failed (r27). | OCR of the item name. | [`50c9d955d`](https://github.com/dayfine/Arduino-Source/commit/50c9d955d44d767d58d45834dc7e8d3a1b0e6c65) |
@@ -95,7 +93,36 @@ gives **10 Potions**. With them, healing needs no trip to the Pokémon Center: h
 after training, and after each trainer read the HP bar in the Bag and use a Potion under half.
 The run now gets the Potions first and saves on Route 202, (30,19), so later attempts skip her.
 
-## 7. Our own mistakes in this round
+## 6. Butters' segment 01, checked against what we found
+
+| His version | What we found | Rule |
+|---|---|---|
+| Oreburgh city, mine and gym are timed stick holds and d-pad tap counts. | The same drift as section 5; d-pad taps are one tile each only when the player already faces that way. | Walls and the map, not counts. |
+| Roark in the mine: A once, then up to 30 s for his first box, B to advance. | Right to wait long and to advance with B. But A does nothing until Barry has been talked to at the gym door, which his route gets from the tour scene's mashed B. | Make the Barry talk an explicit step. |
+| Gym: up 3, left 4, up 5, right 8, up 11, left 5, up 4, then A at Roark. | That path goes round both gym trainers; straight up meets both. | Worth keeping as a plan for the gym grid; the trainers' experience helps an under-levelled team, though. |
+| "Barry 1 battle logic can be used here since the moves don't matter this early." | Moves matter against Roark: Pound does almost nothing to rock types, and the first two tries were lost. | Pick Water Gun by name; heal or switch before Cranidos. |
+
+## 7. Butters' route on console B, 2026-10-29 (r107 to r109)
+
+Two failures in today's runs came from #1717's own code rather than ours:
+
+| Run | What happened | Rule / fix | Commit |
+|---|---|---|---|
+| r108 | 00.01 "Failed to enter Date Change screen". | The clock pin walks the System Settings menu by position; with "Synchronize Clock via Internet" on, the date row is disabled and the walk lands on Time Zone. Turned the sync off on console B; dropping the pin is queued. | — |
+| r108b | 00.04: A beside Mom started nothing. Two d-pad taps north from the door should have put us level with her; one did not move. | Same as section 1, now in the house: counted taps lose tiles. The door fixes the column, so face east and press A one row at a time going north until she answers. | `985de47c1` |
+
+# Part 2. For us: our code, our lab, our process
+
+## 8. Our own process
+
+- Look at the screen, then the code, before rerunning. Every run since r28 that failed in a new
+  way was explained by one screenshot.
+- Put new code in its final module first; no copy-then-move PRs of our own code.
+- Keep line endings as they are (CRLF files stay CRLF); compare `git diff --stat` with
+  `--ignore-cr-at-eol`.
+- When a program is stuck or failing, stop it and close the game at once; don't let retries run.
+
+## 9. Our own mistakes in this round
 
 - **An optional step kept for two hours.** We spent ~15 runs making the Route 201 detour
   work before asking whether the story needs it. Rule: before automating an inherited
@@ -126,12 +153,12 @@ The run now gets the Potions first and saves on Route 202, (30,19), so later att
   DP map of Jubilife matches the BDSP layout (school, Center, Mart, TV station, Pokétch Company,
   fountain park all where DP has them), so towns get a tile grid too, checked against the
   console, with the story NPCs on it. *Later (r82):* the grid's walls in the open plaza are not
-  where the game has them, so it is not good enough to plan on there; see section 9.
+  where the game has them, so it is not good enough to plan on there; see section 11.
 - **Not saying what we are doing.** The overlay and the log now print each checkpoint's steps,
   the current one and the next, and every status report starts with the current problem.
   ([`3cd874125`](https://github.com/dayfine/Arduino-Source/commit/3cd8741250dc03f1c166e15cfc9563f5ac36add9))
 
-## 8. Step through new ground before automating it
+## 10. Step through new ground before automating it
 
 After hours of whole-run attempts at the lady, five minutes of stepping found her: the Lab
 Console takes 5 to 10 commands at a time (walk until stopped, a few presses, a screenshot),
@@ -141,7 +168,7 @@ write the automated version from what was seen. 00.05 was done this way on 2026-
 coupon clowns, the Pokétch and the Center PC, about 60 batches, ending in a save at the PC
 (segment 0 complete).
 
-## 9. Segment 01 to Oreburgh City (2026-10-28, r81 to r90)
+## 11. Segment 01 to Oreburgh City (2026-10-28, r81 to r90)
 
 01.01 (Jubilife Center to Barry) and 01.02 (Route 203, Oreburgh Gate, Oreburgh City) were
 stepped through by hand once, written from that ([`8dda984d5`](https://github.com/dayfine/Arduino-Source/commit/8dda984d5ca88a1d59b605a3312711162777bba7)), and then run on console B. Ten
@@ -176,8 +203,7 @@ Also from these runs:
   battle), the walk out of the Center to the girls below the door, and Barry from the measured
   holds plus row search.
 
-
-## 10. Oreburgh Mine, Roark's gym and on to Floaroma (2026-10-28/29, r91 to r106, then by hand)
+## 12. Oreburgh Mine, Roark's gym and on to Floaroma (2026-10-28/29, r91 to r106, then by hand)
 
 01.03 (city → mine → Roark) was written from the parsed mine map (`devtools/maps/levels.py`)
 and run r91 to r106. After that the user asked to fight the gym as we were, gaining
@@ -216,16 +242,7 @@ By hand, after 01.03:
   north through the grass to the flower beds, round the twins (a double battle), and north
   between the beds into Floaroma. The Center is a few tiles east of where we arrive.
 
-### Butters' segment 01, checked against what we found
-
-| His version | What we found | Rule |
-|---|---|---|
-| Oreburgh city, mine and gym are timed stick holds and d-pad tap counts. | The same drift as section 6; d-pad taps are one tile each only when the player already faces that way. | Walls and the map, not counts. |
-| Roark in the mine: A once, then up to 30 s for his first box, B to advance. | Right to wait long and to advance with B. But A does nothing until Barry has been talked to at the gym door, which his route gets from the tour scene's mashed B. | Make the Barry talk an explicit step. |
-| Gym: up 3, left 4, up 5, right 8, up 11, left 5, up 4, then A at Roark. | That path goes round both gym trainers; straight up meets both. | Worth keeping as a plan for the gym grid; the trainers' experience helps an under-levelled team, though. |
-| "Barry 1 battle logic can be used here since the moves don't matter this early." | Moves matter against Roark: Pound does almost nothing to rock types, and the first two tries were lost. | Pick Water Gun by name; heal or switch before Cranidos. |
-
-## 11. Floaroma MVP from a new game, and the lab around it (2026-10-29, r107 to r109)
+## 13. Floaroma MVP from a new game, and the lab around it (2026-10-29, r107 to r109)
 
 The MVP branch (`bdsp/floaroma-mvp`, fork #68) runs segments 00 and 01 from a new game on
 the shared navigation core. Half of today's failures were in the lab, not in the game.
@@ -234,8 +251,6 @@ the shared navigation core. Half of today's failures were in the lab, not in the
 |---|---|---|---|
 | r107 | Every program refused to start: "requires video feedback". The camera opened without error but delivered no frames. | Launch lab apps through LaunchServices (`open -n`), never by running the binary from a shell: the app then inherits the shell's (the Claude app's) camera permission, which has none. `stage_launch.sh` now checks for video before anything else. | lab scripts |
 | r107 | The MVP build stopped at run time on a missing template ("Unable to open file"). | The worktree's `Packages` linked to upstream's resource set (686 files); BDSP AutoStory needs `~/BDSPLab/packages` (1,467). The build copies `Resources` only when it is missing, so delete it after relinking. | r108 deployment |
-| r108 | 00.01 "Failed to enter Date Change screen". | The clock pin walks the System Settings menu by position; with "Synchronize Clock via Internet" on, the date row is disabled and the walk lands on Time Zone. Turned the sync off on console B; dropping the pin is queued. | — |
-| r108b | 00.04: A beside Mom started nothing. Two d-pad taps north from the door should have put us level with her; one did not move. | Same as section 1, now in the house: counted taps lose tiles. The door fixes the column, so face east and press A one row at a time going north until she answers. | `985de47c1` |
 | r109 | Mom answered after 1 step; then entering Sandgem the check read the banner as "andgemltown" and failed. | A check tied to an exact OCR string is too narrow (section 2): the place was right. Match banner names loosely, with a test that a different town still fails. | pending |
 | r109a | The run never started: the Start click landed where the button was before the window grew to 1554×1488. `stage_run.sh` would then have clicked Start/Stop "to stop the wrong program" and started an unwatched run. | Never toggle Start/Stop blindly: stop only when the log says RUNNING. Better, don't click at all: the lab app gets a control folder (`LabControl/start`, `stop`, `state`). Clicks also take focus from the user's work. | `lab/control-folder` |
 
@@ -243,7 +258,7 @@ What this round adds to the design:
 
 - **Confirm where we are, not just where we planned to be.** The planner plans in tiles and
   the walker counts them, but nothing reads the position back; every drift so far (sections
-  1, 6, 9, 10 and the Mom row here) was found only when the next action failed. After each
+  1, 5, 11, 12 and the Mom row in section 7) was found only when the next action failed. After each
   leg, confirm with something the game shows (a wall reached, a landmark, a dialogue
   answered, the facing) and replan from the confirmed tile when it differs.
 - **Overworld screens belong in the screen machine.** The new-game intro runs on
