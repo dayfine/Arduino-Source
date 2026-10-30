@@ -17,6 +17,7 @@
 #include "Data/PokemonBDSP_AutoStory_SandgemTown.h"
 #include "Data/PokemonBDSP_AutoStory_StoryMaps.h"
 #include "Utils/PokemonBDSP_AutoStory_NewGame.h"
+#include "Utils/PokemonBDSP_AutoStory_RouteWalk.h"
 #include "PokemonBDSP_AutoStory_Tests.h"
 
 namespace PokemonAutomation{
@@ -588,11 +589,45 @@ public:
 }
 
 
+class Test_LocationBanner : public UnitTest{
+public:
+    Test_LocationBanner()
+        : UnitTest("PokemonBDSP::AutoStory - location banner match")
+    {}
+
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        struct Case{
+            const char* read;
+            const char* expected;
+            bool match;
+        };
+        const Case cases[] = {
+            {"sandgemtown",     "Sandgem Town",     true},
+            {"andgemltown",     "Sandgem Town",     true},     //  r109's OCR
+            {"Route 202",       "Route 202",        true},
+            {"route2o2",        "Route 202",        false},    //  a digit read as a letter is not trusted
+            {"route201",        "Route 202",        false},
+            {"jubilifecity",    "Sandgem Town",     false},
+            {"twinleaftown",    "Sandgem Town",     false},
+            {"",                "Sandgem Town",     false},
+        };
+        for (const Case& c : cases){
+            if (location_banner_matches(c.read, c.expected) != c.match){
+                return std::string("Banner \"") + c.read + "\" for " + c.expected +
+                    (c.match ? " should match." : " should not match.");
+            }
+        }
+        return true;
+    }
+};
+
+
 void add_tests_AutoStory(UnitTestDatabase& database){
     database.add<Test_IntroDecisions>();
     database.add<Test_TileGridParse>();
     database.add<Test_TileGridWallHit>();
     database.add<Test_TileGridPlans>();
+    database.add<Test_LocationBanner>();
 }
 
 

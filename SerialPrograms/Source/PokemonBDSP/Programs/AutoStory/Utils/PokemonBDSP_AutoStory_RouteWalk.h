@@ -45,6 +45,13 @@ constexpr Milliseconds ROUTE_TURN_TAP = Milliseconds(100);
 //  faces another way: one already facing it may take a step.
 void route_turn(VideoStream& stream, ProControllerContext& context, Pokemon::Direction direction);
 
+//  Whether the location banner's OCR `read` names the map `expected`. Both
+//  are compared as lower-case letters and digits. OCR drops or swaps letters
+//  ("andgemltown" for Sandgem Town on r109), so up to a quarter of the name's
+//  letters may differ; the digits must match exactly, so Route 201 is never
+//  read as Route 202.
+bool location_banner_matches(const std::string& read, const std::string& expected);
+
 //  Shows what the route walk is doing in the log and the video overlay.
 void route_status(VideoStream& stream, const std::string& text);
 

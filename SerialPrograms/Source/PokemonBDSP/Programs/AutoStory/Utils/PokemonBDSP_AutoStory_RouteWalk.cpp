@@ -123,6 +123,41 @@ std::string map_of(const MapSet& maps, const std::vector<TilePos>& tiles){
 }
 
 
+bool location_banner_matches(const std::string& read, const std::string& expected){
+    const std::string a = normalize_name(read);
+    const std::string b = normalize_name(expected);
+    if (a.empty() || b.empty()){
+        return false;
+    }
+    auto digits = [](const std::string& text){
+        std::string out;
+        for (char ch : text){
+            if (std::isdigit((unsigned char)ch)){
+                out.push_back(ch);
+            }
+        }
+        return out;
+    };
+    if (digits(a) != digits(b)){
+        return false;
+    }
+    //  Levenshtein distance.
+    std::vector<size_t> row(b.size() + 1);
+    for (size_t j = 0; j <= b.size(); j++){
+        row[j] = j;
+    }
+    for (size_t i = 1; i <= a.size(); i++){
+        size_t diagonal = row[0];
+        row[0] = i;
+        for (size_t j = 1; j <= b.size(); j++){
+            const size_t above = row[j];
+            row[j] = std::min({row[j] + 1, row[j - 1] + 1, diagonal + (a[i - 1] == b[j - 1] ? 0 : 1)});
+            diagonal = above;
+        }
+    }
+    return row[b.size()] <= std::max<size_t>(1, b.size() / 4);
+}
+
 void route_status(VideoStream& stream, const std::string& text){
     stream.log("[Route] " + text, COLOR_BLUE);
     add_wrapped_log(stream.overlay(), text, COLOR_WHITE);
@@ -289,7 +324,7 @@ std::vector<TilePos> walk_route(
             //  the walk did not end where the plan says.
             const std::string map_before = map_of(maps, from);
             const std::string map_after = map_of(maps, planned.after);
-            if (!map_after.empty() && map_after != map_before && banner != normalize_name(map_after)){
+            if (!map_after.empty() && map_after != map_before && !location_banner_matches(banner, map_after)){
                 OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
                     leg_label + ": expected to enter " + map_after + ", but the location banner read \"" + banner + "\".", stream);
             }
