@@ -11,7 +11,6 @@
 #include <QPushButton>
 #include "Common/Cpp/ColoredText.h"
 #include "Common/Qt/Options/ConfigWidget.h"
-#include "CommonFramework/Globals.h"
 #include "CommonFramework/Panels/PanelSession.h"
 #include "CommonFramework/ProgramSession.h"
 #include "GameConsole/ConsoleProgram.h"
@@ -248,19 +247,7 @@ RunnablePanelActionBar::RunnablePanelActionBar(
     connect(
         m_start_button, &QPushButton::clicked,
         this, [&](bool){
-            std::string error;
-            switch (program_session.current_state()){
-            case ProgramState::STOPPED:
-                error = program_session.start_program();
-                break;
-            case ProgramState::RUNNING:
-                error = program_session.stop_program();
-                break;
-            default:;
-            }
-            if (!error.empty()){
-                program_session.report_error(error);
-            }
+            start_or_stop_program(program_session);
         }
     );
     connect(
@@ -277,6 +264,21 @@ RunnablePanelActionBar::RunnablePanelActionBar(
             }
         }
     );
+}
+void start_or_stop_program(ProgramSession& program_session){
+    std::string error;
+    switch (program_session.current_state()){
+    case ProgramState::STOPPED:
+        error = program_session.start_program();
+        break;
+    case ProgramState::RUNNING:
+        error = program_session.stop_program();
+        break;
+    default:;
+    }
+    if (!error.empty()){
+        program_session.report_error(error);
+    }
 }
 void RunnablePanelActionBar::set_state(ProgramState state){
     m_last_known_state = state;

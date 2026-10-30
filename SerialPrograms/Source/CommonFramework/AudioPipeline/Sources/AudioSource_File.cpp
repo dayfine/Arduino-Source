@@ -21,16 +21,6 @@ namespace PokemonAutomation{
 
 
 
-bool AudioSourceDescriptor_File::operator==(const AudioSourceDescriptor& x) const{
-    if (typeid(*this) != typeid(x)){
-        return false;
-    }
-
-    std::string other_path = static_cast<const AudioSourceDescriptor_File&>(x).m_path;
-
-    ReadSpinLock lg(m_lock, PA_CURRENT_FUNCTION);
-    return m_path == other_path;
-}
 
 std::string AudioSourceDescriptor_File::path() const{
     ReadSpinLock lg(m_lock, PA_CURRENT_FUNCTION);
@@ -41,12 +31,35 @@ void AudioSourceDescriptor_File::set_path(std::string path){
     m_path = std::move(path);
 }
 
+bool AudioSourceDescriptor_File::operator==(const AudioSourceDescriptor& x) const{
+    if (typeid(*this) != typeid(x)){
+        return false;
+    }
+
+    std::string other_path = static_cast<const AudioSourceDescriptor_File&>(x).m_path;
+
+    ReadSpinLock lg(m_lock, PA_CURRENT_FUNCTION);
+//    cout << m_path << " == " << other_path << endl;
+    return m_path == other_path;
+}
+std::string AudioSourceDescriptor_File::display_name() const{
+    return "Play Audio File";
+}
+
+std::vector<AudioInputChoice> AudioSourceDescriptor_File::supported_formats() const{
+    return {};
+}
+bool AudioSourceDescriptor_File::sanitize_desired_format(Logger& logger, AudioInputChoice& format) const{
+    format = AudioInputChoice();
+    return true;
+}
+
 void AudioSourceDescriptor_File::run_post_select(){
 //    if (!m_path.empty()){
 //        return;
 //    }
     std::string path = QFileDialog::getOpenFileName(
-        nullptr, "Open image file", ".", "*.png *.jpg"
+        nullptr, "Open audio file", ".", "*.wav *.mp3"
     ).toStdString();
     set_path(std::move(path));
 }
@@ -68,6 +81,10 @@ std::unique_ptr<AudioSource> AudioSourceDescriptor_File::make_AudioSource(
     const AudioInputChoice& format
 ) const{
 //    cout << "make_AudioSource: " << m_path << endl;
+    if (m_path.empty()){
+        //  E.g. the user cancelled the file dialog: no source.
+        return nullptr;
+    }
     return std::make_unique<AudioSource_File>(logger, m_path);
 }
 
