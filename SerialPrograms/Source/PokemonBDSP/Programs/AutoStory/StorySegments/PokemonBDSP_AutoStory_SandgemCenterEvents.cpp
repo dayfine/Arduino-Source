@@ -447,17 +447,17 @@ Event wrapped_step(std::string name, std::string why, std::string flag, Pokemon:
     return event;
 }
 
-//  A gate: the sign in front of us, read with A from the tile west of it,
-//  facing east. Only that tile reads it, so the read says where we stand;
-//  the text, when OCR gets it, says which sign. A walk that stopped short
-//  of it is put right by walking east until the sign stops us.
-Event read_sign(MartLadyActions& game, std::string name, std::string sign, std::string key){
+//  A gate: the sign we walked into, read with A facing it. Only the tiles
+//  beside it read it, so the read says which row we are on; the text, when
+//  OCR gets it, says which sign. A walk that stopped short of it is put
+//  right by walking on until the sign stops us.
+Event read_sign(MartLadyActions& game, std::string name, std::string sign, Direction facing, std::string key){
     std::shared_ptr<DialogueRead> read = std::make_shared<DialogueRead>();
     Event event;
     event.name = std::move(name);
-    event.why = "read " + sign + " from the tile west of it";
-    event.act = [&game, read, sign](RunState&){
-        *read = game.read_sign(Direction::EAST, sign);
+    event.why = "read " + sign + " facing " + std::string(Pokemon::direction_name(facing));
+    event.act = [&game, read, sign, facing](RunState&){
+        *read = game.read_sign(facing, sign);
         return outcome_ok();
     };
     event.expect.push_back(condition(sign + "'s box opened and closed", [read](RunState&){
@@ -466,28 +466,30 @@ Event read_sign(MartLadyActions& game, std::string name, std::string sign, std::
     event.expect.push_back(condition(sign + "'s text, if read, has \"" + key + "\"", [read, key](RunState&){
         return read->text.empty() || sign_text_matches(read->text, key);
     }));
-    event.recoveries.push_back(recovery("expect_failed", RecoveryKind::REANCHOR, 1, [&game](RunState&){
-        return game.walk_until_stopped(Direction::EAST, 2, "East to the sign");
-    }, "not at the sign: east until it stops us"));
+    event.recoveries.push_back(recovery("expect_failed", RecoveryKind::REANCHOR, 1, [&game, facing](RunState&){
+        return game.walk_until_stopped(facing, 2, "On to the sign");
+    }, "not at the sign: on until it stops us"));
     return event;
 }
 
-//  Along the top row of her grass, west from the Route 201 sign, until she
-//  answers A; then one A per line. She may have wandered: ask again.
+//  She stands on the top row of her grass, under the trees, a tile or two
+//  in from its west edge. From the edge's top tile: east until she stops us,
+//  pressing A; then one A per line. Missed: back west to the edge, again.
 Event talk_to_mart_lady(MartLadyActions& game){
     std::shared_ptr<DialogueRead> read = std::make_shared<DialogueRead>();
     Event event;
     event.name = "talk_to_mart_lady";
     event.why = "the Poke Mart lady on Route 201 talks (she gives new games Potions)";
     event.act = [&game, read](RunState&){
-        *read = game.talk_walking(Direction::WEST, 8, "Poke Mart lady");
+        *read = game.talk_walking(Direction::EAST, 4, "Poke Mart lady");
         return outcome_ok();
     };
     event.expect.push_back(condition("a dialogue opened and was closed", [read](RunState&){
         return read->opened && read->closed;
     }));
-    event.recoveries.push_back(recovery("expect_failed", RecoveryKind::WAIT, 2, nullptr,
-        "she may have wandered: walk on west and ask again"));
+    event.recoveries.push_back(recovery("expect_failed", RecoveryKind::REANCHOR, 2, [&game](RunState&){
+        return game.walk_until_stopped(Direction::WEST, 6, "West to the grass's edge");
+    }, "missed her: back west to the grass's edge and again"));
     return event;
 }
 
@@ -574,25 +576,23 @@ public:
         return read;
     }
 
-    virtual Outcome step_around_sign(Direction way) override{
-        //  The holds that took a tile, two tiles and a tile on the console,
-        //  turning included.
-        const double x = way == Direction::EAST ? 1 : -1;
-        for (const WalkResult& walk : {
-            walk_for(m_env.console, m_context, 0, -1, 300ms, "Round the sign: south"),
-            walk_for(m_env.console, m_context, x, 0, 420ms, "Round the sign: across"),
-            walk_for(m_env.console, m_context, 0, 1, 300ms, "Round the sign: north"),
-        }){
-            if (walk.stop == WalkStop::DIALOG || walk.stop == WalkStop::TRANSITION){
-                return outcome_failed("walk_failed", std::string("round the sign: ") + walk_stop_name(walk.stop));
-            }
+    virtual Outcome step(Direction direction, const std::string& label) override{
+        //  200 ms took exactly one row on the console, turning included; 300 ms
+        //  took one or two (2026-10-30).
+        const double x = direction == Direction::EAST ? 1 : direction == Direction::WEST ? -1 : 0;
+        const double y = direction == Direction::NORTH ? 1 : direction == Direction::SOUTH ? -1 : 0;
+        const WalkResult walk = walk_for(m_env.console, m_context, x, y, 200ms, label);
+        if (walk.stop == WalkStop::DIALOG || walk.stop == WalkStop::TRANSITION){
+            return outcome_failed("walk_failed", label + ": " + walk_stop_name(walk.stop));
         }
         return outcome_ok();
     }
 
 
     virtual Outcome walk_to_route_202_save_spot() override{
-        return wrap("walk_failed", [&]{ walk_from_sandgem_center_to_route_202_save_spot(m_env.console, m_context, {east_of_lab_sign()}); });
+        return wrap("walk_failed", [&]{ walk_from_sandgem_center_to_route_202_save_spot(
+            m_env.console, m_context, {story_maps().to_world(MAP_SANDGEM_TOWN, SandgemTown::FRONT_ROW_EAST_END)}
+        ); });
     }
     virtual Outcome save_on_route_202() override{
         bool saved = false;
@@ -736,51 +736,54 @@ Event on_doors_row(SandgemCenterActions& game){
 }
 
 Checkpoint sandgem_mart_lady_checkpoint(MartLadyActions& game){
-    //  Stepped through on the console (2026-10-30): west along the doors'
-    //  row, the Lab's sign stops us; round it, it reads "Pokemon Research
-    //  Lab" from the west. Straight west, Route 201's sign stops us; round
-    //  it, it reads "Route 201 -> Sandgem Town" (a green box). The lady
-    //  stands on that row in the grass, a few tiles west. Back east, each
-    //  sign stops us from the west and reads again.
+    //  Measured on the console (2026-10-30) with walks that stop on their
+    //  own: from below the Center's sign, west stops at the Lab's sign, which
+    //  reads facing west. A row south is the path; west along it runs about
+    //  22 tiles to her grass's west edge. North from there stops at the trees
+    //  2 rows up, on her row. Back: a row south of her row is the signs' row,
+    //  and east along it stops at Route 201's sign, which reads facing east.
+    //  A row south again is the path; east along it stops at the trees east
+    //  of the Mart, a row below the front row's east end.
     Checkpoint checkpoint;
     checkpoint.id = "mart_lady";
     checkpoint.interrupts.push_back(dialogue_interrupt(game));
     checkpoint.events.push_back(on_doors_row(game));
     checkpoint.events.push_back(wrapped_step("west_to_lab_sign",
-        "west along the doors' row until the Lab's sign stops us, then round it", "west_of_lab_sign",
+        "west along the doors' row until the Lab's sign stops us", "at_lab_sign",
+        [&game](RunState&){ return game.walk_until_stopped(Direction::WEST, 20, "West to the Lab's sign"); }));
+    checkpoint.events.push_back(read_sign(game, "read_lab_sign", "the Lab's sign", Direction::WEST, "lab"));
+    checkpoint.events.push_back(wrapped_step("west_along_the_path",
+        "a tile south onto the path, then west to the grass's edge", "at_grass_edge",
         [&game](RunState&){
-            const Outcome west = game.walk_until_stopped(Direction::WEST, 20, "West to the Lab's sign");
-            return west.succeeded() ? game.step_around_sign(Direction::WEST) : west;
+            const Outcome down = game.step(Direction::SOUTH, "South onto the path");
+            return down.succeeded() ? game.walk_until_stopped(Direction::WEST, 28, "West along the path") : down;
         }));
-    checkpoint.events.push_back(read_sign(game, "read_lab_sign", "the Lab's sign", "lab"));
-    checkpoint.events.push_back(wrapped_step("west_to_route_201_sign",
-        "straight west until Route 201's sign stops us, then round it", "west_of_route_201_sign",
-        [&game](RunState&){
-            const Outcome west = game.walk_until_stopped(Direction::WEST, 16, "West to the Route 201 sign");
-            return west.succeeded() ? game.step_around_sign(Direction::WEST) : west;
-        }));
-    checkpoint.events.push_back(read_sign(game, "read_route_201_sign", "Route 201's sign", "201"));
+    checkpoint.events.push_back(wrapped_step("north_to_the_trees",
+        "north until the trees stop us, on her row", "on_her_row",
+        [&game](RunState&){ return game.walk_until_stopped(Direction::NORTH, 3, "North to the trees"); }));
     checkpoint.events.push_back(talk_to_mart_lady(game));
     checkpoint.events.push_back(wrapped_step("back_to_route_201_sign",
-        "east out of her grass until Route 201's sign stops us", "back_at_route_201_sign",
-        [&game](RunState&){ return game.walk_until_stopped(Direction::EAST, 14, "East to the Route 201 sign"); }));
-    checkpoint.events.push_back(read_sign(game, "read_route_201_sign_again", "Route 201's sign", "201"));
-    checkpoint.events.push_back(wrapped_step("back_to_lab_sign",
-        "round Route 201's sign, then east until the Lab's sign stops us", "back_at_lab_sign",
+        "a tile south onto the signs' row, then east until Route 201's sign stops us", "at_route_201_sign",
         [&game](RunState&){
-            const Outcome around = game.step_around_sign(Direction::EAST);
-            return around.succeeded() ? game.walk_until_stopped(Direction::EAST, 16, "East to the Lab's sign") : around;
+            const Outcome down = game.step(Direction::SOUTH, "South onto the signs' row");
+            return down.succeeded() ? game.walk_until_stopped(Direction::EAST, 16, "East to the Route 201 sign") : down;
         }));
-    checkpoint.events.push_back(read_sign(game, "read_lab_sign_again", "the Lab's sign", "lab"));
-    //  Back to where 00.04 saves with its Potions: round the Lab's sign, then
-    //  as Segment 00 walks it, east to the trees and north through the gap.
-    checkpoint.events.push_back(wrapped_step("walk_to_route_202_save_spot",
-        "round the Lab's sign, east to the trees, north through the signs' gap, to Route 202's save spot", "at_route_202_save_spot",
-        [&game](RunState& state){
-            const Outcome around = game.step_around_sign(Direction::EAST);
-            if (!around.succeeded()){
-                return around;
+    checkpoint.events.push_back(read_sign(game, "read_route_201_sign", "Route 201's sign", Direction::EAST, "201"));
+    checkpoint.events.push_back(wrapped_step("east_along_the_path",
+        "a tile south onto the path, east to the trees east of the Mart, north a row", "at_front_row_east_end",
+        [&game](RunState&){
+            const Outcome down = game.step(Direction::SOUTH, "South onto the path");
+            if (!down.succeeded()){
+                return down;
             }
+            const Outcome east = game.walk_until_stopped(Direction::EAST, 40, "East along the path");
+            return east.succeeded() ? game.walk_until_stopped(Direction::NORTH, 2, "North to the front row") : east;
+        }));
+    //  Back to where 00.04 saves with its Potions, as Segment 00 walks it
+    //  from the trees east of the Mart.
+    checkpoint.events.push_back(wrapped_step("walk_to_route_202_save_spot",
+        "from the trees east of the Mart to Route 202's save spot", "at_route_202_save_spot",
+        [&game](RunState& state){
             const Outcome walked = game.walk_to_route_202_save_spot();
             if (walked.succeeded()){
                 state.pose = pose_on({story_maps().to_world(MAP_ROUTE_202, Route202::SAVE_SPOT)});

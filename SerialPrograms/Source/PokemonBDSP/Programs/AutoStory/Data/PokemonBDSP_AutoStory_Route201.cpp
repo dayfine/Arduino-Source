@@ -62,13 +62,21 @@ const TileGrid& grid(){
 
 //  Pixel (888,64) on the DP map, on the doors' row of Sandgem (world row 4):
 //  walking east along row 4 from the grass stops at (54,4), and facing east
-//  from there reads it. Not checked on the console yet.
+//  from there reads it.
+//  Checked on the console (2026-10-30, CFR "walk"): a row south of her row
+//  (row 3), east stops at the sign's west side and A reads "Route 201 ->
+//  Sandgem Town" (a green box); north from there is one row, to row 3. Row 3
+//  runs on east past the sign's north side to the Lab's fence. Row 5, the
+//  path, runs from the grass's west edge to Sandgem without a stop.
 const TilePos BORDER_SIGN{55, 4};
 //  On the console (by hand, then through the Lab Console; 99715d5d6 and
 //  f823453e9 on bdsp/new-game-intro-v2) she stood at (43,3), and walking
 //  west along row 3 from the trees at its east end stopped at (44,3), facing
 //  her; her lines need one A each, 1.5 s apart. Later runs (r113a..r120a)
 //  found her wandering.
+//  Checked on the console (2026-10-30, CFR "walk"), twice: from the grass's
+//  west edge on row 5, north stops at the trees 2 rows up, and east from
+//  there stops at her. r135a missed her walking west along row 4.
 const TilePos POTION_GIVER{43, 3};
 const TilePos POTION_GIVER_TALK_FROM{44, 3};
 

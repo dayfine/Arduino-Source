@@ -151,18 +151,18 @@ public:
     //  box, then presses `next` once per line, 1.5 s apart, while it shows.
     virtual DialogueRead talk(Pokemon::Direction direction, Button next, const std::string& label) = 0;
 
-    //  From the tile north of a sign, facing it: south a tile, two tiles
-    //  `way` (WEST or EAST), and north a tile, to the sign's other side.
-    virtual Pokemon::Outcome step_around_sign(Pokemon::Direction way) = 0;
+    //  One tile `direction`: the one hold that is not a walk until stopped.
+    //  The walk after it stops on something that tells whether it took.
+    virtual Pokemon::Outcome step(Pokemon::Direction direction, const std::string& label) = 0;
 
     //  Walks `direction`, pressing A after each short stretch, for at most
     //  `tiles` tiles' time until someone answers; then one A per line, 1.5 s
     //  apart, while the box shows.
     virtual DialogueRead talk_walking(Pokemon::Direction direction, size_t tiles, const std::string& label) = 0;
 
-    //  As 00.04 walks it after the Potions, from east of the Lab's sign on
-    //  the doors' row to Route 202's save spot, and the save there, which
-    //  must read Route 202.
+    //  As 00.04 walks it after the Potions, from the trees east of the Mart
+    //  (the front row's east end) to Route 202's save spot, and the save
+    //  there, which must read Route 202.
     virtual Pokemon::Outcome walk_to_route_202_save_spot() = 0;
     virtual Pokemon::Outcome save_on_route_202() = 0;
 };
@@ -174,20 +174,21 @@ Pokemon::TilePos route201_sign_west();
 //  The east end of the lady's row, against Sandgem's fence.
 Pokemon::TilePos route201_row_3_east_end();
 
-//  From in front of Sandgem's Pokemon Center door: to Route 201's border
-//  sign and read it, talk to the Poke Mart lady, read the sign again, back
-//  to the front of the Center's door, then to Route 202's save spot, where
-//  the save it starts from stands, and save there, so it can be repeated.
-//  Events:
-//      1. at_center_door               the doorway straight ahead, a row up
-//      2. walk_to_route_201_sign       the pose is the tile west of the sign
-//      3. read_route_201_sign          the sign's dialogue opened and closed
-//      4. talk_to_mart_lady            a dialogue opened and was closed
-//      5. back_to_route_201_sign       the pose is the tile west of the sign
-//      6. read_route_201_sign_again    the sign's dialogue opened and closed
-//      7. back_to_center_door          the Center's doorway at the front row
-//      8. at_center_door_again         the doorway straight ahead, a row up
-//      9. walk_to_route_202_save_spot  the walk ended there (Segment 00's)
+//  From below Sandgem's Pokemon Center sign (where the Center checkpoint
+//  ends): to the Poke Mart lady and back to Route 202's save spot, where the
+//  save it starts from stands, and save there, so it can be repeated. Every
+//  leg but three one-tile steps walks until something stops it, as measured
+//  on the console (2026-10-30, CFR "walk"):
+//      1. on_doors_row                 below the Center's sign
+//      2. west_to_lab_sign             west until the Lab's sign stops us
+//      3. read_lab_sign                facing west, "Pokemon Research Lab"
+//      4. west_along_the_path          south a tile, west to the grass's edge
+//      5. north_to_the_trees           north until the trees stop us (2 rows)
+//      6. talk_to_mart_lady            east until she stops us; she talks
+//      7. back_to_route_201_sign       south a tile, east until the sign stops us
+//      8. read_route_201_sign          facing east, "Route 201 -> Sandgem Town"
+//      9. east_along_the_path          south a tile, east to the trees, north a row
+//     10. walk_to_route_202_save_spot  the walk ended there (Segment 00's)
 //  then the save, which must read Route 202.
 Pokemon::Checkpoint sandgem_mart_lady_checkpoint(MartLadyActions& game);
 

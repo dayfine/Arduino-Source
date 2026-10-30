@@ -1205,13 +1205,15 @@ public:
 
 
 //  The Poke Mart lady checkpoint against a scripted game: where the player
-//  stands along the row from the doors' row to the lady, as stepped through
-//  on the console.
+//  stands along the route measured on the console.
 class FakeMartLady : public MartLadyActions{
 public:
-    enum class Where{ DOORS_ROW, LAB_EAST, LAB_WEST, ROUTE_201_EAST, ROUTE_201_WEST, SHORT_OF_201, LADY, ROUTE_202 };
+    enum class Where{
+        DOORS_ROW, LAB_EAST, PATH_WEST, GRASS_EDGE, TOP_EDGE, LADY,
+        SIGNS_ROW, SHORT_OF_201, ROUTE_201_WEST, PATH_EAST, MART_TREES_LOW, MART_TREES, ROUTE_202,
+    };
 
-    //  Walks back east from the lady that a wild battle ends short of the sign.
+    //  Walks back east that a wild battle ends short of the sign.
     size_t short_walks = 0;
     //  Talks to the lady before she is there to answer.
     size_t lady_away = 0;
@@ -1232,12 +1234,7 @@ public:
         trace.push_back("walk: " + label);
         return Pokemon::outcome_failed("no_plan", label);
     }
-    virtual std::optional<LitDoorway> lit_doorway() override{
-        if (where == Where::DOORS_ROW){
-            return LitDoorway{.x = 0.3, .y = 0.38, .tiles_across = -3.0, .rows_up = 1.0};
-        }
-        return std::nullopt;
-    }
+    virtual std::optional<LitDoorway> lit_doorway() override{ return std::nullopt; }
     virtual Pokemon::Outcome line_up_with_door() override{ return Pokemon::outcome_failed("no_plan", "not on this checkpoint"); }
     virtual bool inside_pokemon_center() override{ return false; }
     virtual Pokemon::Outcome east_then_north_in_sandgem() override{ return Pokemon::outcome_ok(); }
@@ -1245,20 +1242,40 @@ public:
     virtual Pokemon::Outcome finish_dialogue() override{ return Pokemon::outcome_ok(); }
     virtual Pokemon::Outcome walk_until_stopped(Direction direction, size_t, const std::string& label) override{
         trace.push_back("go: " + label);
-        if (direction == Direction::WEST && where == Where::DOORS_ROW){
-            where = Where::LAB_EAST;
-        }else if (direction == Direction::WEST && where == Where::LAB_WEST){
-            where = Where::ROUTE_201_EAST;
-        }else if (direction == Direction::EAST && where == Where::LADY){
-            where = Where::ROUTE_201_WEST;
-            if (short_walks > 0){
-                short_walks--;
-                where = Where::SHORT_OF_201;
+        const struct{ Where from; Direction direction; Where to; } walks[] = {
+            {Where::DOORS_ROW, Direction::WEST, Where::LAB_EAST},
+            {Where::PATH_WEST, Direction::WEST, Where::GRASS_EDGE},
+            {Where::GRASS_EDGE, Direction::NORTH, Where::TOP_EDGE},
+            {Where::LADY, Direction::WEST, Where::TOP_EDGE},
+            {Where::TOP_EDGE, Direction::WEST, Where::TOP_EDGE},
+            {Where::SIGNS_ROW, Direction::EAST, Where::ROUTE_201_WEST},
+            {Where::SHORT_OF_201, Direction::EAST, Where::ROUTE_201_WEST},
+            {Where::PATH_EAST, Direction::EAST, Where::MART_TREES_LOW},
+            {Where::MART_TREES_LOW, Direction::NORTH, Where::MART_TREES},
+        };
+        for (const auto& walk : walks){
+            if (walk.from == where && walk.direction == direction){
+                where = walk.to;
+                if (where == Where::ROUTE_201_WEST && short_walks > 0 && walk.from == Where::SIGNS_ROW){
+                    short_walks--;
+                    where = Where::SHORT_OF_201;
+                }
+                break;
             }
-        }else if (direction == Direction::EAST && where == Where::SHORT_OF_201){
-            where = Where::ROUTE_201_WEST;
-        }else if (direction == Direction::EAST && where == Where::ROUTE_201_EAST){
-            where = Where::LAB_WEST;
+        }
+        return Pokemon::outcome_ok();
+    }
+    virtual Pokemon::Outcome step(Direction direction, const std::string& label) override{
+        trace.push_back("step: " + label);
+        if (direction != Direction::SOUTH){
+            return Pokemon::outcome_ok();
+        }
+        if (where == Where::LAB_EAST){
+            where = Where::PATH_WEST;
+        }else if (where == Where::LADY || where == Where::TOP_EDGE){
+            where = Where::SIGNS_ROW;
+        }else if (where == Where::ROUTE_201_WEST){
+            where = Where::PATH_EAST;
         }
         return Pokemon::outcome_ok();
     }
@@ -1266,37 +1283,19 @@ public:
         trace.push_back("talk: " + label);
         return DialogueRead{};
     }
-    virtual Pokemon::Outcome step_around_sign(Direction way) override{
-        trace.push_back(way == Direction::WEST ? "round west" : "round east");
-        const std::pair<Where, Where> sides[] = {
-            {Where::LAB_EAST, Where::LAB_WEST},
-            {Where::ROUTE_201_EAST, Where::ROUTE_201_WEST},
-        };
-        for (const auto& [east, west] : sides){
-            if (way == Direction::WEST && where == east){
-                where = west;
-                return Pokemon::outcome_ok();
-            }
-            if (way == Direction::EAST && where == west){
-                where = east;
-                return Pokemon::outcome_ok();
-            }
-        }
-        return Pokemon::outcome_failed("no_sign", "no sign to step round");
-    }
-    virtual DialogueRead read_sign(Direction, const std::string& label) override{
+    virtual DialogueRead read_sign(Direction facing, const std::string& label) override{
         trace.push_back("read: " + label);
-        if (where == Where::LAB_WEST){
+        if (where == Where::LAB_EAST && facing == Direction::WEST){
             return DialogueRead{.opened = true, .closed = true, .text = "Pokemon Research Lab"};
         }
-        if (where == Where::ROUTE_201_WEST){
+        if (where == Where::ROUTE_201_WEST && facing == Direction::EAST){
             return DialogueRead{.opened = true, .closed = true, .text = "Route 201 Sandgem Town"};
         }
         return DialogueRead{};
     }
     virtual DialogueRead talk_walking(Direction direction, size_t, const std::string& label) override{
         trace.push_back("talk: " + label);
-        if (direction != Direction::WEST || (where != Where::ROUTE_201_WEST && where != Where::LADY)){
+        if (direction != Direction::EAST || (where != Where::TOP_EDGE && where != Where::LADY)){
             return DialogueRead{};
         }
         where = Where::LADY;
@@ -1307,20 +1306,16 @@ public:
         return DialogueRead{.opened = true, .closed = true, .text = "Did you know"};
     }
     virtual Pokemon::Outcome walk_to_route_202_save_spot() override{
-        return step("to Route 202", Where::LAB_EAST, Where::ROUTE_202);
+        trace.push_back("to Route 202");
+        if (where != Where::MART_TREES){
+            return Pokemon::outcome_failed("wrong_place", "to Route 202");
+        }
+        where = Where::ROUTE_202;
+        return Pokemon::outcome_ok();
     }
     virtual Pokemon::Outcome save_on_route_202() override{
-        return step("save", Where::ROUTE_202, Where::ROUTE_202);
-    }
-
-private:
-    Pokemon::Outcome step(const std::string& name, Where from, Where to){
-        trace.push_back(name);
-        if (where != from){
-            return Pokemon::outcome_failed("wrong_place", name);
-        }
-        where = to;
-        return Pokemon::outcome_ok();
+        trace.push_back("save");
+        return where == Where::ROUTE_202 ? Pokemon::outcome_ok() : Pokemon::outcome_failed("wrong_place", "save");
     }
 };
 
@@ -1331,13 +1326,14 @@ public:
     {}
 
     virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
-        const std::vector<std::string> TO_SIGN = {"go: West to the Lab's sign", "round west", "read: the Lab's sign",
-            "go: West to the Route 201 sign", "round west"};
-        const std::vector<std::string> SIGN = {"read: Route 201's sign"};
+        const std::vector<std::string> TO_LADY = {"go: West to the Lab's sign", "read: the Lab's sign",
+            "step: South onto the path", "go: West along the path", "go: North to the trees"};
         const std::vector<std::string> LADY = {"talk: Poke Mart lady"};
-        const std::vector<std::string> EAST = {"go: East to the Route 201 sign"};
-        const std::vector<std::string> BACK = {"round east", "go: East to the Lab's sign", "read: the Lab's sign",
-            "round east", "to Route 202", "save"};
+        const std::vector<std::string> RETRY = {"go: West to the grass's edge"};
+        const std::vector<std::string> TO_SIGN = {"step: South onto the signs' row", "go: East to the Route 201 sign"};
+        const std::vector<std::string> SIGN = {"read: Route 201's sign"};
+        const std::vector<std::string> HOME = {"step: South onto the path", "go: East along the path",
+            "go: North to the front row", "to Route 202", "save"};
         const auto join = [](std::initializer_list<std::vector<std::string>> parts){
             std::vector<std::string> all;
             for (const std::vector<std::string>& part : parts){
@@ -1360,7 +1356,7 @@ public:
                 .lady_away = 0,
                 .completed = true,
                 .failed_event = 0,
-                .trace = join({TO_SIGN, SIGN, LADY, EAST, SIGN, BACK}),
+                .trace = join({TO_LADY, LADY, TO_SIGN, SIGN, HOME}),
             },
             {
                 .name = "Back east, a tile short of the sign",
@@ -1368,7 +1364,7 @@ public:
                 .lady_away = 0,
                 .completed = true,
                 .failed_event = 0,
-                .trace = join({TO_SIGN, SIGN, LADY, EAST, SIGN, {"go: East to the sign"}, SIGN, BACK}),
+                .trace = join({TO_LADY, LADY, TO_SIGN, SIGN, {"go: On to the sign"}, SIGN, HOME}),
             },
             {
                 .name = "The lady answers the second time",
@@ -1376,7 +1372,7 @@ public:
                 .lady_away = 1,
                 .completed = true,
                 .failed_event = 0,
-                .trace = join({TO_SIGN, SIGN, LADY, LADY, EAST, SIGN, BACK}),
+                .trace = join({TO_LADY, LADY, RETRY, LADY, TO_SIGN, SIGN, HOME}),
             },
             {
                 .name = "The lady never answers",
@@ -1384,7 +1380,7 @@ public:
                 .lady_away = 5,
                 .completed = false,
                 .failed_event = 6,
-                .trace = join({TO_SIGN, SIGN, LADY, LADY, LADY}),
+                .trace = join({TO_LADY, LADY, RETRY, LADY, RETRY, LADY}),
             },
         };
         for (const Case& c : cases){

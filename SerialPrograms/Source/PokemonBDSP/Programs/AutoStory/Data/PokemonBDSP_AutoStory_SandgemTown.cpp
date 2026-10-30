@@ -85,6 +85,12 @@ const TilePos POKEMON_CENTER_SIGN{20, 6};
 //  Pixel (448,104): the Poke Mart's door.
 const TilePos POKE_MART_DOOR{27, 6};
 //  Walking east along the doors' front row stops here, against the trees.
+//  Checked on the console (2026-10-30, CFR "walk"): east along row 8 (the
+//  path under the Lab's sign) from Route 201 stops at (29,8), and north from
+//  there stops here. From below the Center's sign (20,7), west stops at the
+//  Lab's sign, which reads facing west; south from there stops at the house
+//  4 rows down, and north back at the sign's row; west of the house's north
+//  side is trees. A 200 ms hold south took one row; 300 ms took one or two.
 const TilePos FRONT_ROW_EAST_END{29, 7};
 
 std::vector<TilePos> below_sign_gap(){
