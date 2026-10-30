@@ -218,9 +218,11 @@ public:
 //  00.05a: from 00.05's save below Jubilife's steps to the Pokemon Center,
 //  healed, on its doorstep. Measured on the console (2026-10-30):
 //      1. up_the_steps          a tile west, then north up the steps
-//      2. east_to_the_house     east until the house east of the road stops us
-//      3. north_to_the_center   north until the Center stops us
-//      4. heal                  in, the nurse, out onto the doorstep
+//      2. west_to_the_fence     west until the fence's end stops us
+//      3. north_to_the_sign     north until the sign by the west lamp stops us
+//      4. east_to_the_house     east across the road until the house stops us
+//      5. north_to_the_center   north until the Center's doorway stops us
+//      6. heal                  in, the nurse, out onto the doorstep
 //  No save: the save stays below the steps, so it can be repeated.
 Pokemon::Checkpoint jubilife_center_checkpoint(JubilifeActions& game);
 extern const char* const JUBILIFE_CENTER_NAME;

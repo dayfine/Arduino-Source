@@ -824,12 +824,23 @@ Checkpoint jubilife_center_checkpoint(JubilifeActions& game){
     checkpoint.events.push_back(wrapped_step("up_the_steps",
         "a tile west of the save, then up the steps onto the main road", "on_main_road",
         [&game](RunState&){ return game.climb_the_steps(); }));
+    //  Every leg walks until a wall stops it, measured on the console
+    //  (2026-10-30): the fence's end west of the steps; the sign by the lamp
+    //  west of the road; across the road, the house east of it; and north up
+    //  the east sidewalk, the Center's doorway. The kids south of the Center
+    //  can push us part of a tile aside, so the heal lines up by sight.
+    checkpoint.events.push_back(wrapped_step("west_to_the_fence",
+        "west until the fence's end stops us", "at_fence_end",
+        [&game](RunState&){ return game.walk_until_stopped(Direction::WEST, 8, "West to the fence's end"); }));
+    checkpoint.events.push_back(wrapped_step("north_to_the_sign",
+        "north until the sign by the lamp west of the road stops us", "at_sign",
+        [&game](RunState&){ return game.walk_until_stopped(Direction::NORTH, 8, "North to the sign"); }));
     checkpoint.events.push_back(wrapped_step("east_to_the_house",
-        "east until the house east of the road stops us", "at_east_house",
-        [&game](RunState&){ return game.walk_until_stopped(Direction::EAST, 12, "East to the house"); }));
+        "east across the road until the house east of it stops us", "at_east_house",
+        [&game](RunState&){ return game.walk_until_stopped(Direction::EAST, 14, "East to the house"); }));
     checkpoint.events.push_back(wrapped_step("north_to_the_center",
-        "north until the Pokemon Center stops us", "at_center",
-        [&game](RunState&){ return game.walk_until_stopped(Direction::NORTH, 12, "North to the Pokemon Center"); }));
+        "north up the east sidewalk until the Pokemon Center stops us", "at_center",
+        [&game](RunState&){ return game.walk_until_stopped(Direction::NORTH, 14, "North to the Pokemon Center"); }));
     checkpoint.events.push_back(wrapped_step("heal",
         "in, the nurse heals, out onto the doorstep", "healed",
         [&game](RunState&){ return game.heal_at_center(); }));
