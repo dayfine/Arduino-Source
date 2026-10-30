@@ -187,6 +187,12 @@ done
 - **Build locally only** for a lab deployment or Switch run, for tests that
   need images not yet in upstream CommandLineTests, or for a quick
   edit-compile loop in a worktree that already has a build.
+- **Compile just the files you touched** for a quick local check, in a build
+  directory that already exists: `ninja -C <build> CMakeFiles/SerialProgramsLib.dir/Source/<path>.cpp.o`
+  takes seconds. Leave the full build and the tests to CI.
+- **Keep one persistent build directory and switch branches in it**, rather
+  than creating a worktree with a cold build per task; ninja rebuilds only what
+  the switch changed, and the shared ccache covers the rest.
 - **One local build at a time, `-j4`.** A full build takes 0.5–1.5 GB per
   compiler process; three cold builds at full parallelism exhausted a 16 GB Mac.
   Reuse an existing build directory rather than a fresh worktree per task: a
