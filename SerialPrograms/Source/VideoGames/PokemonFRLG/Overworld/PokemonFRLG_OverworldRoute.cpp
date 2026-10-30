@@ -123,13 +123,13 @@ std::optional<Transition> cross_edge(const std::vector<MapData>& maps, const Loc
         TilePos point;
         switch (direction){
         case Direction::NORTH:
-            point = {here.x - connection.offset, to.height - 1};
+            point = {here.x - connection.offset, to.tiles.height - 1};
             break;
         case Direction::SOUTH:
             point = {here.x - connection.offset, 0};
             break;
         case Direction::WEST:
-            point = {to.width - 1, here.y - connection.offset};
+            point = {to.tiles.width - 1, here.y - connection.offset};
             break;
         case Direction::EAST:
             point = {0, here.y - connection.offset};
@@ -403,26 +403,12 @@ std::string describe(const std::vector<RouteStep>& route){
 //  A 5x4 map for the step rules: a pond, a raised ledge reached by a stair
 //  tile, and a tile that can't be entered moving south.
 const MapData& small_map(){
-    static const MapData MAP = []{
-        MapData map{
-            "Small", 5, 4,
-            {
-                "#####",
-                "#.n.#",
-                "#.~.#",
-                "#####",
-            },
-            {
-                "33333",
-                "33403",
-                "33133",
-                "33333",
-            },
-            {}, {}, {},
-        };
-        check_map(map);
-        return map;
-    }();
+    static const MapData MAP = parse_map(R"({
+        "name": "Small", "width": 5, "height": 4,
+        "tiles": ["#####", "#.n.#", "#.~.#", "#####"],
+        "elevation": ["33333", "33403", "33133", "33333"],
+        "warps": [], "objects": [], "connections": []
+    })", "Small");
     return MAP;
 }
 
@@ -464,7 +450,7 @@ UnitTestResult test_maps(){
     if (b1f == nullptr || city == nullptr || map_named(maps, "CeruleanCity_PokemonCenter_1F") == nullptr){
         return "Missing a map.";
     }
-    if (b1f->width != 40 || b1f->height != 23 || city->width != 48 || city->height != 40){
+    if (b1f->tiles.width != 40 || b1f->tiles.height != 23 || city->tiles.width != 48 || city->tiles.height != 40){
         return "Unexpected map size.";
     }
     const MapObject* mewtwo = object_at(*b1f, CERULEAN_CAVE_MEWTWO);

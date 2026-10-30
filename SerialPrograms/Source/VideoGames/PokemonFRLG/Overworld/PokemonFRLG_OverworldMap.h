@@ -31,7 +31,7 @@ using Pokemon::TilePos;
 
 
 //  A warp from (x, y) to warp `dest_warp` of `dest_map`. Whether and how the
-//  player takes it depends on the tile there (see MapData::tiles). An empty
+//  player takes it depends on the tile there (see Tile). An empty
 //  `dest_map` leads to a map that isn't loaded.
 struct MapWarp{
     int x = 0;
@@ -63,44 +63,68 @@ struct MapConnection{
     std::string map;
 };
 
+//  What a tile is, for walking. The map files write each as one character,
+//  shown here.
+enum class Tile : uint8_t{
+    WALL,           //  '#'  collision (wall, cliff)
+    LEDGE,          //  'J'  a wall, except that walking into it the way it
+                    //       faces hops the player down (not modelled, so the
+                    //       planner avoids it)
+    FLOOR,          //  '.'
+    TALL_GRASS,     //  '"'  floor with wild encounters
+    WATER,          //  '~'  entered only by starting to Surf
+    DOOR,           //  'D'  a wall that warps the player who walks north into it
+    CAVE_ENTRANCE,  //  'C'  floor that warps the player who steps onto it
+    LADDER,         //  'L'  ladder or escalator: floor that warps the player
+                    //       who steps onto it
+    MAT_NORTH,      //  '^'  exit mat: floor that warps the player standing on
+    MAT_SOUTH,      //  'v'  it who walks in the arrow's direction
+    MAT_WEST,       //  '<'
+    MAT_EAST,       //  '>'
+    CLOSED_NORTH,   //  'n'  can't be entered moving south or left moving north
+    CLOSED_SOUTH,   //  's'  can't be entered moving north or left moving south
+    CLOSED_EAST,    //  'e'  can't be entered moving west or left moving east
+    CLOSED_WEST,    //  'w'  can't be entered moving east or left moving west
+};
+
+//  The tile a map file's character stands for, or nothing if it isn't one.
+std::optional<Tile> tile_from_char(char c);
+
+
+//  One value per tile of a map, row by row from the top.
+template <typename Cell>
+struct Grid{
+    int width = 0;
+    int height = 0;
+    std::vector<Cell> cells;
+
+    bool contains(const TilePos& point) const{
+        return 0 <= point.x && point.x < width && 0 <= point.y && point.y < height;
+    }
+    //  `point` must be inside the grid.
+    const Cell& at(const TilePos& point) const{
+        return cells[(size_t)point.y * width + point.x];
+    }
+};
+
+
 //  A map as generated from the decompilation (see PokemonFRLG_OverworldMaps.h
 //  for its JSON form).
 struct MapData{
     std::string name;
-    int width = 0;
-    int height = 0;
-    //  `height` rows of `width` characters, row 0 at the top:
-    //    '#'  collision (wall, cliff)
-    //    'J'  ledge: a wall, except that walking into it the way it faces
-    //         hops the player down (not modelled, so the planner avoids it)
-    //    '.'  floor
-    //    '"'  tall grass: floor with wild encounters
-    //    '~'  water: entered only by starting to Surf
-    //    'D'  door: a wall that warps the player who walks north into it
-    //    'C'  cave entrance: floor that warps the player who steps onto it
-    //    'L'  ladder or escalator: floor that warps the player who steps onto it
-    //    '^' 'v' '<' '>'  exit mat: floor that warps the player standing on it
-    //         who walks in the arrow's direction
-    //    'n'  can't be entered moving south or left moving north
-    //    's'  can't be entered moving north or left moving south
-    //    'e'  can't be entered moving west or left moving east
-    //    'w'  can't be entered moving east or left moving west
-    std::vector<std::string> tiles;
-    //  One hex digit per tile. Walking keeps to one elevation; tiles of
-    //  elevation 0 (stairs, ladders) join elevations, and 15 ignores them.
-    std::vector<std::string> elevation;
+    Grid<Tile> tiles;
+    //  Walking keeps to one elevation; tiles of elevation 0 (stairs,
+    //  ladders) join elevations, and 15 ignores them. The same size as
+    //  `tiles`.
+    Grid<uint8_t> elevation;
     std::vector<MapWarp> warps;
     std::vector<MapObject> objects;
     std::vector<MapConnection> connections;
 };
 
-//  Throws ParseException, naming the map, if the rows don't match its size
-//  or use a character outside the legend.
-void check_map(const MapData& map);
-
 bool in_bounds(const MapData& map, const TilePos& point);
-//  The tile's character (see MapData::tiles). Out-of-bounds tiles are walls.
-char terrain_at(const MapData& map, const TilePos& point);
+//  Out-of-bounds tiles are walls.
+Tile tile_at(const MapData& map, const TilePos& point);
 uint8_t elevation_at(const MapData& map, const TilePos& point);
 
 bool is_wall(const MapData& map, const TilePos& point);
@@ -112,9 +136,9 @@ bool is_ledge(const MapData& map, const TilePos& point);
 bool blocks_entering(const MapData& map, const TilePos& point, Direction direction);
 bool blocks_leaving(const MapData& map, const TilePos& point, Direction direction);
 
-//  The warp the game takes on stepping onto this tile ('C', 'L').
+//  The warp the game takes on stepping onto this tile (CAVE_ENTRANCE, LADDER).
 bool warps_on_step(const MapData& map, const TilePos& point);
-//  A door ('D'), entered by walking north into it.
+//  A door, entered by walking north into it.
 bool is_door(const MapData& map, const TilePos& point);
 //  The direction that takes the exit mat on this tile, if it is one.
 std::optional<Direction> exit_mat(const MapData& map, const TilePos& point);

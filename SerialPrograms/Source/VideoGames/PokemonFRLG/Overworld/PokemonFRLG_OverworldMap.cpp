@@ -20,161 +20,117 @@ constexpr uint8_t ELEVATION_IGNORED = 15;   //  doesn't take part
 constexpr uint8_t ELEVATION_GROUND = 3;     //  where Surf starts and ends
 
 
-namespace{
-
-bool known_terrain(char tile){
-    switch (tile){
-    case '#':
-    case 'J':
-    case '.':
-    case '"':
-    case '~':
-    case 'n':
-    case 's':
-    case 'e':
-    case 'w':
-    case 'D':
-    case 'C':
-    case 'L':
-    case '^':
-    case 'v':
-    case '<':
-    case '>':
-        return true;
-    default:
-        return false;
+std::optional<Tile> tile_from_char(char c){
+    switch (c){
+    case '#': return Tile::WALL;
+    case 'J': return Tile::LEDGE;
+    case '.': return Tile::FLOOR;
+    case '"': return Tile::TALL_GRASS;
+    case '~': return Tile::WATER;
+    case 'D': return Tile::DOOR;
+    case 'C': return Tile::CAVE_ENTRANCE;
+    case 'L': return Tile::LADDER;
+    case '^': return Tile::MAT_NORTH;
+    case 'v': return Tile::MAT_SOUTH;
+    case '<': return Tile::MAT_WEST;
+    case '>': return Tile::MAT_EAST;
+    case 'n': return Tile::CLOSED_NORTH;
+    case 's': return Tile::CLOSED_SOUTH;
+    case 'e': return Tile::CLOSED_EAST;
+    case 'w': return Tile::CLOSED_WEST;
+    default: return std::nullopt;
     }
 }
 
-//  The level of an elevation digit, or nothing if it isn't one.
-std::optional<uint8_t> elevation_level(char digit){
-    if ('0' <= digit && digit <= '9'){
-        return (uint8_t)(digit - '0');
-    }
-    if ('a' <= digit && digit <= 'f'){
-        return (uint8_t)(digit - 'a' + 10);
-    }
-    return std::nullopt;
-}
-
-[[noreturn]] void throw_bad_map(const MapData& map, const std::string& message){
-    throw ParseException(map.name + ": " + message);
-}
-
-void check_row(const MapData& map, int y){
-    const std::string& tiles = map.tiles[y];
-    const std::string& elevation = map.elevation[y];
-    if ((int)tiles.size() != map.width || (int)elevation.size() != map.width){
-        throw_bad_map(map, "row " + std::to_string(y) + " of tiles or elevation isn't " + std::to_string(map.width) + " wide.");
-    }
-    for (int x = 0; x < map.width; x++){
-        if (!known_terrain(tiles[x])){
-            throw_bad_map(map, "unknown tile '" + std::string(1, tiles[x]) + "' at " + to_string(TilePos{x, y}) + ".");
-        }
-        if (!elevation_level(elevation[x])){
-            throw_bad_map(map, "bad elevation '" + std::string(1, elevation[x]) + "' at " + to_string(TilePos{x, y}) + ".");
-        }
-    }
-}
-
-}
-
-
-void check_map(const MapData& map){
-    if (map.width <= 0 || map.height <= 0){
-        throw_bad_map(map, "width and height must be positive.");
-    }
-    if ((int)map.tiles.size() != map.height || (int)map.elevation.size() != map.height){
-        throw_bad_map(map, "tiles and elevation need " + std::to_string(map.height) + " rows.");
-    }
-    for (int y = 0; y < map.height; y++){
-        check_row(map, y);
-    }
-}
 
 bool in_bounds(const MapData& map, const TilePos& point){
-    return 0 <= point.x && point.x < map.width && 0 <= point.y && point.y < map.height;
+    return map.tiles.contains(point);
 }
-char terrain_at(const MapData& map, const TilePos& point){
-    if (!in_bounds(map, point)){
-        return '#';
-    }
-    return map.tiles[point.y][point.x];
+Tile tile_at(const MapData& map, const TilePos& point){
+    return in_bounds(map, point) ? map.tiles.at(point) : Tile::WALL;
 }
 uint8_t elevation_at(const MapData& map, const TilePos& point){
-    if (!in_bounds(map, point)){
-        return ELEVATION_IGNORED;
-    }
-    return elevation_level(map.elevation[point.y][point.x]).value_or(ELEVATION_IGNORED);
+    return map.elevation.contains(point) ? map.elevation.at(point) : ELEVATION_IGNORED;
 }
 
 bool is_wall(const MapData& map, const TilePos& point){
-    const char tile = terrain_at(map, point);
-    return tile == '#' || tile == 'D' || tile == 'J';
+    const Tile tile = tile_at(map, point);
+    return tile == Tile::WALL || tile == Tile::DOOR || tile == Tile::LEDGE;
 }
 bool is_ledge(const MapData& map, const TilePos& point){
-    return terrain_at(map, point) == 'J';
+    return tile_at(map, point) == Tile::LEDGE;
 }
 bool is_water(const MapData& map, const TilePos& point){
-    return terrain_at(map, point) == '~';
+    return tile_at(map, point) == Tile::WATER;
 }
 bool is_tall_grass(const MapData& map, const TilePos& point){
-    return terrain_at(map, point) == '"';
+    return tile_at(map, point) == Tile::TALL_GRASS;
+}
+
+namespace{
+
+//  The tile closed on its `side` edge.
+Tile closed_side(Direction side){
+    switch (side){
+    case Direction::NORTH:
+        return Tile::CLOSED_NORTH;
+    case Direction::SOUTH:
+        return Tile::CLOSED_SOUTH;
+    case Direction::EAST:
+        return Tile::CLOSED_EAST;
+    case Direction::WEST:
+        return Tile::CLOSED_WEST;
+    }
+    return Tile::WALL;
+}
+Direction opposite(Direction direction){
+    switch (direction){
+    case Direction::NORTH:
+        return Direction::SOUTH;
+    case Direction::SOUTH:
+        return Direction::NORTH;
+    case Direction::EAST:
+        return Direction::WEST;
+    case Direction::WEST:
+        return Direction::EAST;
+    }
+    return direction;
+}
+
 }
 
 bool blocks_entering(const MapData& map, const TilePos& point, Direction direction){
-    const char tile = terrain_at(map, point);
-    switch (direction){
-    case Direction::SOUTH:
-        return tile == 'n';
-    case Direction::NORTH:
-        return tile == 's';
-    case Direction::WEST:
-        return tile == 'e';
-    case Direction::EAST:
-        return tile == 'w';
-    }
-    return false;
+    //  Moving south enters by the north edge.
+    return tile_at(map, point) == closed_side(opposite(direction));
 }
 bool blocks_leaving(const MapData& map, const TilePos& point, Direction direction){
-    const char tile = terrain_at(map, point);
-    switch (direction){
-    case Direction::NORTH:
-        return tile == 'n';
-    case Direction::SOUTH:
-        return tile == 's';
-    case Direction::EAST:
-        return tile == 'e';
-    case Direction::WEST:
-        return tile == 'w';
-    }
-    return false;
+    return tile_at(map, point) == closed_side(direction);
 }
 
 bool warps_on_step(const MapData& map, const TilePos& point){
-    const char tile = terrain_at(map, point);
-    return tile == 'C' || tile == 'L';
+    const Tile tile = tile_at(map, point);
+    return tile == Tile::CAVE_ENTRANCE || tile == Tile::LADDER;
 }
 bool is_door(const MapData& map, const TilePos& point){
-    return terrain_at(map, point) == 'D';
+    return tile_at(map, point) == Tile::DOOR;
 }
 std::optional<Direction> exit_mat(const MapData& map, const TilePos& point){
-    switch (terrain_at(map, point)){
-    case '^':
+    switch (tile_at(map, point)){
+    case Tile::MAT_NORTH:
         return Direction::NORTH;
-    case 'v':
+    case Tile::MAT_SOUTH:
         return Direction::SOUTH;
-    case '<':
+    case Tile::MAT_WEST:
         return Direction::WEST;
-    case '>':
+    case Tile::MAT_EAST:
         return Direction::EAST;
     default:
         return std::nullopt;
     }
 }
 bool walks_out_on_arrival(const MapData& map, const TilePos& point){
-    const char tile = terrain_at(map, point);
-    return tile == 'D' || tile == 'C';
+    const Tile tile = tile_at(map, point);
+    return tile == Tile::DOOR || tile == Tile::CAVE_ENTRANCE;
 }
 
 void hide_objects(MapData& map, const std::set<std::string>& flags){

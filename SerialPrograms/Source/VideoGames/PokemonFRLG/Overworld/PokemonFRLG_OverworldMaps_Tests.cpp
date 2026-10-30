@@ -68,7 +68,9 @@ bool mentions(const std::string& text, std::initializer_list<const char*> parts)
 
 UnitTestResult test_valid_map(){
     const MapData map = parse_map(VALID_MAP, "Test.json");
-    if (map.name != "Test" || map.width != 3 || map.height != 2 || map.tiles[1] != "\"Dv"){
+    if (map.name != "Test" || map.tiles.width != 3 || map.tiles.height != 2
+        || map.tiles.at({0, 1}) != Tile::TALL_GRASS || map.tiles.at({2, 1}) != Tile::MAT_SOUTH
+    ){
         return "Wrong name, size or tiles.";
     }
     if (elevation_at(map, {2, 0}) != 1 || elevation_at(map, {1, 1}) != 15){
@@ -112,7 +114,7 @@ UnitTestResult test_bad_row_length(){
     std::string json = VALID_MAP;
     json.replace(json.find("\"#.~\""), 5, "\"#.\"");
     const std::string error = parse_error(json);
-    if (!mentions(error, {"Test", "row 0", "3 wide"})){
+    if (!mentions(error, {"Test.json", "tiles[0]", "string of 3 tiles"})){
         return "Expected an error naming the short row, got: \"" + error + "\"";
     }
     return true;
@@ -122,7 +124,7 @@ UnitTestResult test_unknown_tile(){
     std::string json = VALID_MAP;
     json.replace(json.find("\"#.~\""), 5, "\"#.?\"");
     const std::string error = parse_error(json);
-    if (!mentions(error, {"Test", "unknown tile '?'", "(2, 0)"})){
+    if (!mentions(error, {"Test.json", "tiles[0]", "unknown tile '?'", "(2, 0)"})){
         return "Expected an error naming the unknown tile, got: \"" + error + "\"";
     }
     return true;

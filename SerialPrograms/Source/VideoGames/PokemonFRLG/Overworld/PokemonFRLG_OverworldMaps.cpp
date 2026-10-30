@@ -74,17 +74,46 @@ const JsonArray& read_array(const JsonObject& object, const std::string& key, co
     return *array;
 }
 
-std::vector<std::string> read_rows(const JsonObject& object, const std::string& key, const std::string& where){
-    std::vector<std::string> rows;
-    const JsonArray& array = read_array(object, key, where);
-    for (size_t c = 0; c < array.size(); c++){
-        const std::string* row = array[c].to_string();
-        if (row == nullptr){
-            throw ParseException(where + key + "[" + std::to_string(c) + "] is not a string.");
-        }
-        rows.push_back(*row);
+//  The grid `key`: `height` strings of `width` characters, each read by
+//  `read_cell`, which gives nothing for a character it doesn't know.
+template <typename Cell>
+Grid<Cell> read_grid(
+    const JsonObject& object, const std::string& key, const std::string& where,
+    int width, int height, std::optional<Cell> (*read_cell)(char c)
+){
+    const JsonArray& rows = read_array(object, key, where);
+    if ((int)rows.size() != height){
+        throw ParseException(where + key + " has " + std::to_string(rows.size()) + " rows, not " + std::to_string(height) + ".");
     }
-    return rows;
+    Grid<Cell> grid{width, height, {}};
+    for (int y = 0; y < height; y++){
+        const std::string row_where = where + key + "[" + std::to_string(y) + "]";
+        const std::string* row = rows[y].to_string();
+        if (row == nullptr || (int)row->size() != width){
+            throw ParseException(row_where + " is not a string of " + std::to_string(width) + " tiles.");
+        }
+        for (int x = 0; x < width; x++){
+            const std::optional<Cell> cell = read_cell((*row)[x]);
+            if (!cell){
+                throw ParseException(
+                    row_where + " has unknown tile '" + std::string(1, (*row)[x]) + "' at " + to_string(TilePos{x, y}) + "."
+                );
+            }
+            grid.cells.push_back(*cell);
+        }
+    }
+    return grid;
+}
+
+//  An elevation digit's level.
+std::optional<uint8_t> elevation_from_char(char digit){
+    if ('0' <= digit && digit <= '9'){
+        return (uint8_t)(digit - '0');
+    }
+    if ('a' <= digit && digit <= 'f'){
+        return (uint8_t)(digit - 'a' + 10);
+    }
+    return std::nullopt;
 }
 
 MapWarp read_warp(const JsonObject& object, const std::string& where){
@@ -144,14 +173,16 @@ MapData read_map(const JsonValue& json, const std::string& source){
     const std::string where = source + ": ";
     MapData map;
     map.name = read_string(root, "name", where);
-    map.width = read_int(root, "width", where);
-    map.height = read_int(root, "height", where);
-    map.tiles = read_rows(root, "tiles", where);
-    map.elevation = read_rows(root, "elevation", where);
+    const int width = read_int(root, "width", where);
+    const int height = read_int(root, "height", where);
+    if (width <= 0 || height <= 0){
+        throw ParseException(where + "width and height must be positive.");
+    }
+    map.tiles = read_grid<Tile>(root, "tiles", where, width, height, tile_from_char);
+    map.elevation = read_grid<uint8_t>(root, "elevation", where, width, height, elevation_from_char);
     map.warps = read_list<MapWarp>(root, "warps", where, read_warp);
     map.objects = read_list<MapObject>(root, "objects", where, read_map_object);
     map.connections = read_list<MapConnection>(root, "connections", where, read_connection);
-    check_map(map);
     return map;
 }
 
