@@ -119,6 +119,20 @@ Fork drafts (2026-10-29): `nav/core` #66, `frlg/brock-mvp` #67, `bdsp/floaroma-m
 #1717 at `45a206f0d`, branch `base/bdsp-1717`; their segments 02 to 09 kept but not in the
 checkpoint list, since they start where #1717's own 01 ends).
 
+Follow-ups queued for `bdsp/floaroma-mvp` (2026-10-29), in order:
+
+1. **Drop the clock pin.** Segment 00 sets the Switch clock (2026-01-01 00:00:50) because #1717's
+   landmark matchers were captured at that lighting. It is used by 00.01's timed walk from the
+   bedroom, the starter-grass walk, the Sandgem junction alignment and finding the Poketch man in
+   Jubilife; segment 01 and the tile-grid walks don't need it. Replace the two landmark
+   alignments with tile-grid walks anchored on walls (as 00.04 does) and the 00.01 timed moves
+   with screen-driven walks, then remove `set_time_fast`. It also breaks runs on its own: with
+   "Synchronize Clock via Internet" on, the date row is disabled and the menu walk lands on Time
+   Zone (r108, 00.01, six failed attempts).
+2. **Move `walk_route` onto the shared leg walker** (N2), then run 00.04 and 01 on the console.
+3. **Trim the BDSP resources** to what segments 00 and 01 load (the AutoStory folder is 789 files,
+   101 MB, mostly #1717's item icons and later-segment landmarks).
+
 Order: N1, then the FRLG child up to its planner tests (it already passes on the core idea),
 then N2 with the FRLG walker on it (re-run the Mewtwo route), then the BDSP child. N3 can go
 any time. The lab branches keep everything else and merge these branches in.
