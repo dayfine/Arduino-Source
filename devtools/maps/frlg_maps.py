@@ -27,6 +27,10 @@ TERRAIN = {
     'MB_LADDER': 'L', 'MB_UP_ESCALATOR': 'L', 'MB_DOWN_ESCALATOR': 'L',
     'MB_SOUTH_ARROW_WARP': 'v', 'MB_NORTH_ARROW_WARP': '^',
     'MB_EAST_ARROW_WARP': '>', 'MB_WEST_ARROW_WARP': '<',
+    #   Stairs at the side of a room warp like an exit mat, the way the stairs
+    #   go up or down (IsDirectionalStairWarpMetatileBehavior()).
+    'MB_UP_RIGHT_STAIR_WARP': '>', 'MB_DOWN_RIGHT_STAIR_WARP': '>',
+    'MB_UP_LEFT_STAIR_WARP': '<', 'MB_DOWN_LEFT_STAIR_WARP': '<',
     'MB_IMPASSABLE_NORTH': 'n', 'MB_IMPASSABLE_SOUTH': 's',
     'MB_IMPASSABLE_EAST': 'e', 'MB_IMPASSABLE_WEST': 'w',
 }
@@ -35,9 +39,20 @@ DIRECTIONS = {'up': 'north', 'down': 'south', 'left': 'west', 'right': 'east'}
 
 #   Places and flag sets the decompilation doesn't name, written into the map
 #   they belong to.
+#   A `*_front` point is where the player stands to talk to someone across a
+#   counter, or to walk north through a door.
 POINTS = {
+    #   Where a new game starts (WarpToPlayersRoom() in src/new_game.c).
+    'PalletTown_PlayersHouse_2F': {'start': (6, 6)},
+    'PalletTown': {'oaks_lab_front': (16, 14)},
+    #   The clerk is across the counter to the west.
+    'ViridianCity_Mart': {'clerk_front': (4, 3)},
+    'ViridianCity_PokemonCenter_1F': {'nurse_front': (7, 4)},
+    'PewterCity': {'gym_front': (15, 17)},
+    'PewterCity_PokemonCenter_1F': {'nurse_front': (7, 4)},
+    'PewterCity_Gym': {'brock_front': (6, 6)},
     #   The tile in front of the PC.
-    'CeruleanCity_PokemonCenter_1F': {'pc': (11, 2)},
+    'CeruleanCity_PokemonCenter_1F': {'pc': (11, 2), 'nurse_front': (7, 4)},
     #   Where the player stands after entering from Cerulean City.
     'CeruleanCave_1F': {'entrance': (33, 21)},
     #   Mewtwo's tile. Its battle starts by talking to it from the south.
@@ -71,10 +86,6 @@ class Decomp:
             return file.read()
 
 
-def snake(name):
-    return re.sub(r'([a-z])([A-Z])', r'\1_\2', name)
-
-
 def behaviors(decomp):
     names = {}
     for line in decomp.read('include/constants/metatile_behaviors.h').decode().splitlines():
@@ -85,7 +96,7 @@ def behaviors(decomp):
 
 
 def tileset_attributes(decomp, symbol, kind):
-    name = snake(symbol.replace('gTileset_', '')).lower()
+    name = re.sub(r'([a-z])([A-Z0-9])', r'\1_\2', symbol.replace('gTileset_', '')).lower()
     data = decomp.read(f'data/tilesets/{kind}/{name}/metatile_attributes.bin')
     return [struct.unpack_from('<I', data, i)[0] for i in range(0, len(data), 4)]
 
@@ -176,7 +187,7 @@ def main():
     decomp = Decomp(args.commit, args.cache)
     names = behaviors(decomp)
     layouts = {l['id']: l for l in json.loads(decomp.read('data/layouts/layouts.json'))['layouts'] if 'id' in l}
-    loaded = {'MAP_' + snake(m).upper(): m for m in args.maps}
+    loaded = {json.loads(decomp.read(f'data/maps/{m}/map.json'))['id']: m for m in args.maps}
     unhandled = {}
     os.makedirs(args.out, exist_ok=True)
     for name in args.maps:

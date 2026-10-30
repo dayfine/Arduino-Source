@@ -91,8 +91,9 @@ enum class Tile : uint8_t{
     CAVE_ENTRANCE,  //  'C'  floor that warps the player who steps onto it
     LADDER,         //  'L'  ladder or escalator: floor that warps the player
                     //       who steps onto it
-    MAT_NORTH,      //  '^'  exit mat: floor that warps the player standing on
-    MAT_SOUTH,      //  'v'  it who walks in the arrow's direction
+    MAT_NORTH,      //  '^'  exit mat, or stairs at the side of a room: floor
+    MAT_SOUTH,      //  'v'  that warps the player standing on it who walks
+                    //       in the arrow's direction
     MAT_WEST,       //  '<'
     MAT_EAST,       //  '>'
     CLOSED_NORTH,   //  'n'  can't be entered moving south or left moving north

@@ -21,6 +21,27 @@ namespace{
 const char MAP_FOLDER[] = "PokemonFRLG/Maps/";
 
 const char* const MAP_NAMES[] = {
+    //  From a new game to Brock.
+    "PalletTown",
+    "PalletTown_PlayersHouse_1F",
+    "PalletTown_PlayersHouse_2F",
+    "PalletTown_RivalsHouse",
+    "PalletTown_ProfessorOaksLab",
+    "Route1",
+    "ViridianCity",
+    "ViridianCity_Mart",
+    "ViridianCity_PokemonCenter_1F",
+    "Route22",
+    "Route2",
+    "Route2_ViridianForest_SouthEntrance",
+    "ViridianForest",
+    "Route2_ViridianForest_NorthEntrance",
+    "PewterCity",
+    "PewterCity_PokemonCenter_1F",
+    "PewterCity_Mart",
+    "PewterCity_Museum_1F",
+    "PewterCity_Gym",
+    //  Cerulean Cave, for Mewtwo.
     "CeruleanCity_PokemonCenter_1F",
     "CeruleanCity",
     "Route24",

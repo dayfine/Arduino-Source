@@ -4,6 +4,7 @@
  *
  */
 
+#include <algorithm>
 #include <functional>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
@@ -592,6 +593,64 @@ UnitTestResult test_mewtwo_tile_unreachable(){
     return true;
 }
 
+UnitTestResult test_story_maps(){
+    const std::vector<MapData> maps = overworld_maps();
+    for (const char* name : {
+        "PalletTown_PlayersHouse_2F", "PalletTown_ProfessorOaksLab", "Route1", "ViridianCity_Mart",
+        "Route22", "Route2", "ViridianForest", "PewterCity", "PewterCity_Museum_1F", "PewterCity_Gym",
+    }){
+        if (map_named(maps, name) == nullptr){
+            return std::string("Missing map ") + name + ".";
+        }
+    }
+    return true;
+}
+
+//  Which maps `route` warps into, in order.
+std::vector<std::string> maps_warped_into(const std::vector<RouteStep>& route){
+    std::vector<std::string> maps;
+    for (const RouteStep& step : route){
+        if (step.warps){
+            maps.push_back(step.end.map);
+        }
+    }
+    return maps;
+}
+
+UnitTestResult test_bedroom_to_oaks_lab(){
+    const std::vector<MapData> maps = overworld_maps();
+    std::vector<RouteStep> route;
+    UnitTestResult result = check_route(
+        maps, point_on(maps, "PalletTown_PlayersHouse_2F", "start"),
+        {point_on(maps, "PalletTown", "oaks_lab_front"), Direction::NORTH}, route
+    );
+    if (result.result != UnitTestResult::PASSED){
+        return result;
+    }
+    const std::vector<std::string> warped = maps_warped_into(route);
+    if (warped != std::vector<std::string>{"PalletTown_PlayersHouse_1F", "PalletTown"}){
+        return "Expected to take the stairs and leave by the front door:" + describe(route);
+    }
+    return true;
+}
+
+UnitTestResult test_viridian_mart_to_pewter_gym(){
+    const std::vector<MapData> maps = overworld_maps();
+    std::vector<RouteStep> route;
+    UnitTestResult result = check_route(
+        maps, point_on(maps, "ViridianCity_Mart", "clerk_front"),
+        {point_on(maps, "PewterCity", "gym_front"), Direction::NORTH}, route
+    );
+    if (result.result != UnitTestResult::PASSED){
+        return result;
+    }
+    const std::vector<std::string> warped = maps_warped_into(route);
+    if (std::find(warped.begin(), warped.end(), "ViridianForest") == warped.end()){
+        return "Expected to go through Viridian Forest:" + describe(route);
+    }
+    return true;
+}
+
 //  Two small maps that don't need the map files: a room left by the exit mat
 //  at its bottom, onto the door of a yard, out of which the game walks the
 //  player.
@@ -634,6 +693,9 @@ UnitTestResult test_route_through_warp(){
 
 void add_tests_OverworldRoute(UnitTestDatabase& database){
     database.add<Test_OverworldRoute>("route through a warp", test_route_through_warp);
+    database.add<Test_OverworldRoute>("maps to Brock", test_story_maps);
+    database.add<Test_OverworldRoute>("bedroom to Oak's Lab", test_bedroom_to_oaks_lab);
+    database.add<Test_OverworldRoute>("Viridian Mart to Pewter Gym", test_viridian_mart_to_pewter_gym);
     database.add<Test_OverworldRoute>("step rules", test_step_rules);
     database.add<Test_OverworldRoute>("maps", test_maps);
     database.add<Test_OverworldRoute>("Cerulean Cave entrance to Mewtwo", test_entrance_to_mewtwo);
