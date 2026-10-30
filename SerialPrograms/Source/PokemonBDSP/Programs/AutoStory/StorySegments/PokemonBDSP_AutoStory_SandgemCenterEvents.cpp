@@ -506,7 +506,12 @@ public:
         //  Time for every tile, and for the wall to read as still.
         const Milliseconds limit = ROUTE_START_DELAY + 800ms +
             (int64_t)tiles * (across ? ROUTE_MS_PER_TILE_ACROSS : ROUTE_MS_PER_TILE_UP_DOWN);
+        //  Turn first: the first press of a new way only turns us, the screen
+        //  holds still meanwhile, and that read as a wall two tiles into the
+        //  walk west to the Lab's sign (r132a).
+        route_turn(m_env.console, m_context, direction);
         const WalkResult walked = walk_until(m_env.console, m_context, x, y, limit, label);
+        m_env.console.log("[Walk] " + label + ": stopped on " + walk_stop_name(walked.stop) + ".");
         if (walked.stop == WalkStop::TRANSITION || walked.stop == WalkStop::DIALOG){
             return outcome_failed("walk_failed", label + ": " + walk_stop_name(walked.stop) + " instead of a stop");
         }
@@ -565,6 +570,9 @@ public:
         VideoStream& stream = m_env.console;
         DialogueRead read;
         route_turn(stream, m_context, Direction::EAST);
+        //  Let the camera settle after the turn: its drift read as a box
+        //  opening (r132a).
+        pbf_wait(m_context, 800ms);
         m_context.wait_for_all_requests();
         VideoSnapshot before = stream.video().snapshot();
         //  The text types out over about a second; B before it has finished
