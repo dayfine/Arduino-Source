@@ -71,9 +71,9 @@ const TileGrid& grid(){
 //  right. On the console the sign at (24,20) is 5 columns right and 2 rows up,
 //  and walking east stops at the trees after 11 tiles.
 const TilePos CATCH_SPOT{19, 22};
-//  Where the console's 00.04 save stands, made by the runs that fetched
-//  Potions from Route 201 (r113a..r117a): under the south ledge, against the
-//  east trees.
+//  Where 00.04 saves once it has Potions, before Route 202's trainers (the
+//  console's saves from r113a..r117a stand here too): under the south ledge,
+//  against the east trees.
 const TilePos SAVE_SPOT{30, 19};
 
 //  Blue-cap trainer, feet at about (128,186), facing south.

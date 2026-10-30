@@ -583,6 +583,31 @@ void enter_door_north(VideoStream& stream, ProControllerContext& context, const 
         label + ": could not go through the door.", stream);
 }
 
+void leave_door_south(VideoStream& stream, ProControllerContext& context, const std::string& label){
+    //  A last line of talk may still be up, and it would stop the walk.
+    pbf_mash_button(context, BUTTON_B, 2000ms);
+    context.wait_for_all_requests();
+    VideoSnapshot inside = stream.video().snapshot();
+    bool faded_out = false;
+    bool scene_changed = false;
+    for (size_t tries = 0; tries < 3 && !faded_out && !scene_changed; tries++){
+        const WalkResult walk = walk_until(stream, context, 0, -1, 6000ms, label);
+        faded_out = walk.stop == WalkStop::TRANSITION;
+        if (walk.stop == WalkStop::DIALOG){
+            pbf_mash_button(context, BUTTON_B, 2000ms);
+        }
+        context.wait_for_all_requests();
+        VideoSnapshot now = stream.video().snapshot();
+        scene_changed = inside && now && walk_screen_change(*inside.frame, *now.frame) > WALK_SCENE_CHANGE;
+    }
+    if (!faded_out && !scene_changed){
+        OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
+            label + ": did not get back out.", stream);
+    }
+    pbf_wait(context, 1500ms);
+    context.wait_for_all_requests();
+}
+
 
 
 }

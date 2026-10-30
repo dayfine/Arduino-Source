@@ -28,7 +28,9 @@ using namespace Pokemon;
 //  Twinleaf Town. East edge, rows 3..6: Sandgem Town.
 //  Route 201 has no trainers. Its NPCs wander, so they are left off: a
 //  planned wall must stay put. The Poke Mart lady, who gives 10 Potions, is
-//  one of them (see below).
+//  one of them: she roams the north-east tall grass (42..52, 3) and the open
+//  ground under the trees above it, and eight runs (r113a..r120a) never got
+//  her talk, so 00.04 buys its Potions in Sandgem instead.
 const TileGrid& grid(){
     //     0         1         2         3         4         5         6
     //     0123456789012345678901234567890123456789012345678901234567890123
@@ -56,22 +58,6 @@ const TileGrid& grid(){
     });
     return grid;
 }
-
-
-//  The lady stands in the top row of the north-east tall grass, (42..52, 3),
-//  right under the trees: on the DP map she is at (44,3), pixel (718,57), and
-//  on the console she was met at (43,3) and (44,3) from the east (r113a..r116a
-//  screenshots show her and the player in the tufts under the trunks). She
-//  wanders about the grass, so she is not on the grid. East of the grass her
-//  row is open to Sandgem's fence at (64,6).
-const TilePos POTION_GIVER_ROW_WEST_END{42, 3};
-//  Just east of her grass: coming from Sandgem, walk west past the sign
-//  along row 5 or 6 to the trees at column 52, then north to the trees
-//  above row 3. Walk west from here along row 3 to meet her.
-const TilePos POTION_GIVER_APPROACH{53, 3};
-//  Against Sandgem's fence: walking east along her row stops here, out of
-//  the grass, where a stop can be read.
-const TilePos POTION_GIVER_ROW_EAST_END{63, 3};
 
 
 

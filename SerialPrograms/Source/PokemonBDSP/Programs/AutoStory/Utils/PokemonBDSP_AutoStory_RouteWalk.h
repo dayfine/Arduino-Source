@@ -128,6 +128,12 @@ void finish_dialogue(
 //  then west, and tries again. Fails with a screenshot if no step goes in.
 void enter_door_north(VideoStream& stream, ProControllerContext& context, const std::string& label);
 
+//  For a player inside a building whose door is straight south: closes any
+//  talk still up and walks south out of it. The door's fade is not always
+//  black enough to read as a transition, so a whole new scene also counts.
+//  Fails with a screenshot if three walks south get nowhere.
+void leave_door_south(VideoStream& stream, ProControllerContext& context, const std::string& label);
+
 
 
 }

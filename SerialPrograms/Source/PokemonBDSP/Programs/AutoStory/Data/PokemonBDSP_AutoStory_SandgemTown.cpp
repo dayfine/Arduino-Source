@@ -68,6 +68,8 @@ const TilePos POKEMON_CENTER_DOOR{17, 6};
 const TilePos POKEMON_CENTER_SIGN{20, 6};
 //  Pixel (448,104): the Poke Mart's door.
 const TilePos POKE_MART_DOOR{27, 6};
+//  Walking east along the doors' front row stops here, against the trees.
+const TilePos FRONT_ROW_EAST_END{29, 7};
 
 
 

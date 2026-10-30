@@ -107,17 +107,6 @@ std::vector<TilePos> story_save_spots(){
     };
 }
 
-std::vector<TilePos> story_potion_giver_row(){
-    const MapSet& maps = story_maps();
-    const TilePos west = maps.to_world(MAP_ROUTE_201, Route201::POTION_GIVER_ROW_WEST_END);
-    const TilePos east = maps.to_world(MAP_ROUTE_201, Route201::POTION_GIVER_APPROACH);
-    std::vector<TilePos> row;
-    for (int x = west.x; x <= east.x; x++){
-        row.push_back({x, west.y});
-    }
-    return row;
-}
-
 std::vector<TilePos> story_door_front(const char* map, const TilePos& door){
     const TilePos below = story_maps().to_world(map, door.next(Direction::SOUTH));
     return {below.next(Direction::WEST), below, below.next(Direction::EAST)};

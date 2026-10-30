@@ -25,6 +25,10 @@ extern const Pokemon::TilePos POKEMON_CENTER_DOOR;
 //  its column stops on the tile below it.
 extern const Pokemon::TilePos POKEMON_CENTER_SIGN;
 extern const Pokemon::TilePos POKE_MART_DOOR;
+//  The east end of the row below the Center's and the Mart's doors, at the
+//  trees: one known tile to plan the way north to Route 202 from. From the
+//  Mart's door, a tile either side of its column, no plan north is robust.
+extern const Pokemon::TilePos FRONT_ROW_EAST_END;
 
 
 
