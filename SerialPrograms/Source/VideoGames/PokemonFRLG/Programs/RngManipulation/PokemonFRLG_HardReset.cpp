@@ -4,6 +4,7 @@
  *
  */
 
+#include <utility>
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "CommonTools/Async/InferenceRoutines.h"
@@ -162,8 +163,7 @@ void rng_reset_and_return_home(
                 { black_screen, update_menu },
                 1ms
             );
-            bool black_screen_detected = game_started;
-            game_started = false;
+            bool black_screen_detected = std::exchange(game_started, false);
             switch (ret3){
             case 0:
                 console.log("Black screen detected.");
