@@ -154,6 +154,25 @@ MapConnection read_connection(const JsonObject& object, const std::string& where
     return connection;
 }
 
+std::pair<std::string, TilePos> read_point(const JsonObject& object, const std::string& where){
+    const std::string name = read_string(object, "name", where);
+    return {name, TilePos{read_int(object, "x", where), read_int(object, "y", where)}};
+}
+
+std::pair<std::string, std::set<std::string>> read_flag_set(const JsonObject& object, const std::string& where){
+    const std::string name = read_string(object, "name", where);
+    std::set<std::string> flags;
+    const JsonArray& array = read_array(object, "flags", where);
+    for (size_t c = 0; c < array.size(); c++){
+        const std::string* flag = array[c].to_string();
+        if (flag == nullptr){
+            throw ParseException(where + "flags[" + std::to_string(c) + "] is not a string.");
+        }
+        flags.insert(*flag);
+    }
+    return {name, std::move(flags)};
+}
+
 template <typename Item>
 std::vector<Item> read_list(
     const JsonObject& object, const std::string& key, const std::string& where,
@@ -183,6 +202,12 @@ MapData read_map(const JsonValue& json, const std::string& source){
     map.warps = read_list<MapWarp>(root, "warps", where, read_warp);
     map.objects = read_list<MapObject>(root, "objects", where, read_map_object);
     map.connections = read_list<MapConnection>(root, "connections", where, read_connection);
+    for (auto& point : read_list<std::pair<std::string, TilePos>>(root, "points", where, read_point)){
+        map.points.insert(std::move(point));
+    }
+    for (auto& flag_set : read_list<std::pair<std::string, std::set<std::string>>>(root, "flag_sets", where, read_flag_set)){
+        map.flag_sets.insert(std::move(flag_set));
+    }
     return map;
 }
 
@@ -221,13 +246,28 @@ std::vector<MapData> overworld_maps(const std::set<std::string>& set_flags){
     return maps;
 }
 
-const std::set<std::string>& post_game_flags(){
-    static const std::set<std::string> FLAGS{
-        "FLAG_HIDE_CERULEAN_CAVE_GUARD",
-        "FLAG_HIDE_CERULEAN_RIVAL",
-        "FLAG_HIDE_CERULEAN_ROCKET",
-    };
-    return FLAGS;
+TilePos map_point(const std::vector<MapData>& maps, const std::string& map, const std::string& point){
+    for (const MapData& data : maps){
+        if (data.name != map){
+            continue;
+        }
+        const auto iter = data.points.find(point);
+        if (iter != data.points.end()){
+            return iter->second;
+        }
+    }
+    throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "No point \"" + point + "\" on map " + map + ".");
+}
+
+std::set<std::string> map_flag_set(const std::vector<MapData>& maps, const std::string& name){
+    std::set<std::string> flags;
+    for (const MapData& map : maps){
+        const auto iter = map.flag_sets.find(name);
+        if (iter != map.flag_sets.end()){
+            flags.insert(iter->second.begin(), iter->second.end());
+        }
+    }
+    return flags;
 }
 
 

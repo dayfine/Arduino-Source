@@ -17,7 +17,9 @@
  *          "warps": [{"x": 22, "y": 19, "dest_map": "...", "dest_warp": 1}, ...],
  *          "objects": [{"x": 1, "y": 13, "kind": "cooltrainer_m",
  *                       "flag": "FLAG_...", "wander_x": 0, "wander_y": 0}, ...],
- *          "connections": [{"direction": "north", "offset": 12, "map": "Route24"}, ...]
+ *          "connections": [{"direction": "north", "offset": 12, "map": "Route24"}, ...],
+ *          "points": [{"name": "pc", "x": 11, "y": 2}, ...],
+ *          "flag_sets": [{"name": "after_hall_of_fame", "flags": ["FLAG_...", ...]}, ...]
  *      }
  *
  */
@@ -50,18 +52,14 @@ MapData load_map(const std::string& name);
 //  once, on the first call.
 std::vector<MapData> overworld_maps(const std::set<std::string>& set_flags = {});
 
-//  Flags set once the player has entered the Hall of Fame, which clear the
-//  way to Cerulean Cave: its guard, the rival and the Rocket in Cerulean City.
-const std::set<std::string>& post_game_flags();
+//  Point `point` of map `map` among `maps`, e.g. ("CeruleanCave_B1F",
+//  "mewtwo"). Throws InternalProgramError if there is none.
+TilePos map_point(const std::vector<MapData>& maps, const std::string& map, const std::string& point);
 
-//  Where the player stands after entering Cerulean Cave from Cerulean City (1F).
-constexpr TilePos CERULEAN_CAVE_ENTRANCE{33, 21};
-
-//  Mewtwo's tile on B1F. Its battle starts by talking to it from the south.
-constexpr TilePos CERULEAN_CAVE_MEWTWO{7, 12};
-
-//  The tile in front of the PC in Cerulean City's Pokemon Center.
-constexpr TilePos CERULEAN_POKEMON_CENTER_PC{11, 2};
+//  The flags in flag set `name` of every map among `maps`, e.g.
+//  "after_hall_of_fame": the flags the Hall of Fame sets, which clear the way
+//  to Cerulean Cave.
+std::set<std::string> map_flag_set(const std::vector<MapData>& maps, const std::string& name);
 
 
 void add_tests_OverworldMaps(UnitTestDatabase& database);

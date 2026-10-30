@@ -407,7 +407,7 @@ const MapData& small_map(){
         "name": "Small", "width": 5, "height": 4,
         "tiles": ["#####", "#.n.#", "#.~.#", "#####"],
         "elevation": ["33333", "33403", "33133", "33333"],
-        "warps": [], "objects": [], "connections": []
+        "warps": [], "objects": [], "connections": [], "points": [], "flag_sets": []
     })", "Small");
     return MAP;
 }
@@ -438,13 +438,22 @@ UnitTestResult test_step_rules(){
     return true;
 }
 
+//  The maps after the Hall of Fame, which clears the way to Cerulean Cave.
+std::vector<MapData> post_game_maps(){
+    return overworld_maps(map_flag_set(overworld_maps(), "after_hall_of_fame"));
+}
+
+MapPosition point_on(const std::vector<MapData>& maps, const std::string& map, const std::string& point){
+    return MapPosition{map, map_point(maps, map, point)};
+}
+
 const MapData* map_named(const std::vector<MapData>& maps, const std::string& name){
     const int index = find_map(maps, name);
     return index < 0 ? nullptr : &maps[index];
 }
 
 UnitTestResult test_maps(){
-    const std::vector<MapData> maps = overworld_maps(post_game_flags());
+    const std::vector<MapData> maps = post_game_maps();
     const MapData* b1f = map_named(maps, "CeruleanCave_B1F");
     const MapData* city = map_named(maps, "CeruleanCity");
     if (b1f == nullptr || city == nullptr || map_named(maps, "CeruleanCity_PokemonCenter_1F") == nullptr){
@@ -453,9 +462,10 @@ UnitTestResult test_maps(){
     if (b1f->tiles.width != 40 || b1f->tiles.height != 23 || city->tiles.width != 48 || city->tiles.height != 40){
         return "Unexpected map size.";
     }
-    const MapObject* mewtwo = object_at(*b1f, CERULEAN_CAVE_MEWTWO);
+    const TilePos mewtwo_tile = map_point(maps, "CeruleanCave_B1F", "mewtwo");
+    const MapObject* mewtwo = object_at(*b1f, mewtwo_tile);
     if (mewtwo == nullptr || mewtwo->kind != "mewtwo"){
-        return "Mewtwo is not on B1F at " + to_string(CERULEAN_CAVE_MEWTWO) + ".";
+        return "Mewtwo is not on B1F at " + to_string(mewtwo_tile) + ".";
     }
     if (object_at(*city, {1, 13}) != nullptr){
         return "The cave guard is still there after the Hall of Fame.";
@@ -487,14 +497,16 @@ UnitTestResult check_route(
     return true;
 }
 
-const RouteGoal FACING_MEWTWO{
-    {"CeruleanCave_B1F", CERULEAN_CAVE_MEWTWO.next(Direction::SOUTH)}, Direction::NORTH
-};
+//  Below Mewtwo, facing it, to talk to it.
+RouteGoal facing_mewtwo(const std::vector<MapData>& maps){
+    const TilePos mewtwo = map_point(maps, "CeruleanCave_B1F", "mewtwo");
+    return RouteGoal{{"CeruleanCave_B1F", mewtwo.next(Direction::SOUTH)}, Direction::NORTH};
+}
 
 UnitTestResult test_entrance_to_mewtwo(){
-    const std::vector<MapData> maps = overworld_maps(post_game_flags());
+    const std::vector<MapData> maps = post_game_maps();
     std::vector<RouteStep> route;
-    UnitTestResult result = check_route(maps, {"CeruleanCave_1F", CERULEAN_CAVE_ENTRANCE}, FACING_MEWTWO, route);
+    UnitTestResult result = check_route(maps, point_on(maps, "CeruleanCave_1F", "entrance"), facing_mewtwo(maps), route);
     if (result.result != UnitTestResult::PASSED){
         return result;
     }
@@ -511,10 +523,10 @@ UnitTestResult test_entrance_to_mewtwo(){
 }
 
 UnitTestResult test_pokemon_center_to_mewtwo(){
-    const std::vector<MapData> maps = overworld_maps(post_game_flags());
+    const std::vector<MapData> maps = post_game_maps();
     std::vector<RouteStep> route;
     UnitTestResult result = check_route(
-        maps, {"CeruleanCity_PokemonCenter_1F", CERULEAN_POKEMON_CENTER_PC}, FACING_MEWTWO, route
+        maps, point_on(maps, "CeruleanCity_PokemonCenter_1F", "pc"), facing_mewtwo(maps), route
     );
     if (result.result != UnitTestResult::PASSED){
         return result;
@@ -539,18 +551,18 @@ UnitTestResult test_pokemon_center_to_mewtwo(){
 UnitTestResult test_cave_guard_blocks(){
     //  Before the Hall of Fame the guard stands in the cave entrance.
     const std::vector<MapData> maps = overworld_maps();
-    if (plan_overworld_route(maps, {"CeruleanCity_PokemonCenter_1F", CERULEAN_POKEMON_CENTER_PC}, FACING_MEWTWO)){
+    if (plan_overworld_route(maps, point_on(maps, "CeruleanCity_PokemonCenter_1F", "pc"), facing_mewtwo(maps))){
         return "Planned past the cave guard.";
     }
     return true;
 }
 
 UnitTestResult test_mewtwo_tile_unreachable(){
-    const std::vector<MapData> maps = overworld_maps(post_game_flags());
+    const std::vector<MapData> maps = post_game_maps();
     const std::optional<std::vector<RouteStep>> route = plan_overworld_route(
         maps,
-        {"CeruleanCave_1F", CERULEAN_CAVE_ENTRANCE},
-        {{"CeruleanCave_B1F", CERULEAN_CAVE_MEWTWO}, std::nullopt}
+        point_on(maps, "CeruleanCave_1F", "entrance"),
+        {point_on(maps, "CeruleanCave_B1F", "mewtwo"), std::nullopt}
     );
     if (route){
         return "Planned a route onto Mewtwo itself:" + describe(*route);
@@ -567,7 +579,7 @@ const char* const TEST_ROOM_JSON = R"({
     "elevation": ["33333", "33333", "33333", "33333"],
     "warps": [{"x": 2, "y": 3, "dest_map": "Yard", "dest_warp": 0}],
     "objects": [],
-    "connections": []
+    "connections": [], "points": [], "flag_sets": []
 })";
 const char* const TEST_YARD_JSON = R"({
     "name": "Yard", "width": 5, "height": 4,
@@ -575,7 +587,7 @@ const char* const TEST_YARD_JSON = R"({
     "elevation": ["33333", "33333", "33333", "33333"],
     "warps": [{"x": 2, "y": 1, "dest_map": "Room", "dest_warp": 0}],
     "objects": [],
-    "connections": []
+    "connections": [], "points": [], "flag_sets": []
 })";
 
 UnitTestResult test_route_through_warp(){

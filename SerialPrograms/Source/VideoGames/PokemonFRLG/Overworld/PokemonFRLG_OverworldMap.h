@@ -15,6 +15,7 @@
 #define PokemonAutomation_PokemonFRLG_OverworldMap_H
 
 #include <cstdint>
+#include <map>
 #include <optional>
 #include <set>
 #include <string>
@@ -133,6 +134,11 @@ struct MapData{
     std::vector<MapWarp> warps;
     std::vector<MapObject> objects;
     std::vector<MapConnection> connections;
+    //  Places on the map that routes start or end at, by name, e.g. "pc".
+    std::map<std::string, TilePos> points;
+    //  Event flags that are set together, by name, e.g.
+    //  "after_hall_of_fame".
+    std::map<std::string, std::set<std::string>> flag_sets;
 };
 
 bool in_bounds(const MapData& map, const TilePos& point);

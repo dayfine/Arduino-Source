@@ -6,6 +6,7 @@
 
 #include <functional>
 #include <initializer_list>
+#include <set>
 #include <string>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
@@ -43,7 +44,9 @@ const char* const VALID_MAP = R"({
     "elevation": ["031", "3f3"],
     "warps": [{"x": 1, "y": 1, "dest_map": "Other", "dest_warp": 2}],
     "objects": [{"x": 0, "y": 1, "kind": "nurse", "flag": "FLAG_X", "wander_x": 1, "wander_y": 0}],
-    "connections": [{"direction": "south", "offset": -4, "map": "Other"}]
+    "connections": [{"direction": "south", "offset": -4, "map": "Other"}],
+    "points": [{"name": "door", "x": 1, "y": 1}],
+    "flag_sets": [{"name": "later", "flags": ["FLAG_X", "FLAG_Y"]}]
 })";
 
 //  The ParseException that parsing `json` throws, or empty if it doesn't.
@@ -86,6 +89,9 @@ UnitTestResult test_valid_map(){
     const MapConnection& connection = map.connections.at(0);
     if (connection.direction != Direction::SOUTH || connection.offset != -4 || connection.map != "Other"){
         return "Wrong connections.";
+    }
+    if (map.points.at("door") != TilePos{1, 1} || map.flag_sets.at("later") != std::set<std::string>{"FLAG_X", "FLAG_Y"}){
+        return "Wrong points or flag sets.";
     }
     return true;
 }

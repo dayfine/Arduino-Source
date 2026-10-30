@@ -9,7 +9,8 @@ Downloads each map's data/maps/<map>/map.json, its layout's map.bin and its
 tilesets' metatile_attributes.bin at --commit into --cache, then writes
 <out>/<map>.json in the schema of Packages/Resources/PokemonFRLG/Maps/README.md.
 Warps and connections lead only to maps in the same run: others get an empty
-dest_map, or are left out.
+dest_map, or are left out. Named points and flag sets come from POINTS and
+FLAG_SETS below.
 """
 import argparse
 import json
@@ -31,6 +32,26 @@ TERRAIN = {
 }
 FLOOR = ('MB_NORMAL', 'MB_CAVE', 'MB_ROCK_STAIRS', 'MB_TALL_GRASS')
 DIRECTIONS = {'up': 'north', 'down': 'south', 'left': 'west', 'right': 'east'}
+
+#   Places and flag sets the decompilation doesn't name, written into the map
+#   they belong to.
+POINTS = {
+    #   The tile in front of the PC.
+    'CeruleanCity_PokemonCenter_1F': {'pc': (11, 2)},
+    #   Where the player stands after entering from Cerulean City.
+    'CeruleanCave_1F': {'entrance': (33, 21)},
+    #   Mewtwo's tile. Its battle starts by talking to it from the south.
+    'CeruleanCave_B1F': {'mewtwo': (7, 12)},
+}
+FLAG_SETS = {
+    #   Set once the player has entered the Hall of Fame. They clear the way
+    #   to Cerulean Cave: its guard, the rival and the Rocket.
+    'CeruleanCity': {'after_hall_of_fame': [
+        'FLAG_HIDE_CERULEAN_CAVE_GUARD',
+        'FLAG_HIDE_CERULEAN_RIVAL',
+        'FLAG_HIDE_CERULEAN_ROCKET',
+    ]},
+}
 
 
 class Decomp:
@@ -139,6 +160,8 @@ def map_json(decomp, name, layouts, names, loaded, unhandled):
             {'direction': DIRECTIONS[c['direction']], 'offset': c['offset'], 'map': loaded[c['map']]}
             for c in (source.get('connections') or []) if c['map'] in loaded
         ],
+        'points': [{'name': n, 'x': x, 'y': y} for n, (x, y) in POINTS.get(name, {}).items()],
+        'flag_sets': [{'name': n, 'flags': flags} for n, flags in FLAG_SETS.get(name, {}).items()],
     }
 
 
