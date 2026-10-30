@@ -3,6 +3,7 @@ import posixpath
 import re
 
 from .config import GAME_MODULES, SHARED_DIRS, SOURCE_ROOT
+from .findings import Finding
 
 
 INCLUDE = re.compile(r'^[ \t]*#[ \t]*include[ \t]*[<"]([^>"]+)[>"]', re.M)
@@ -36,7 +37,7 @@ def game_includes(path, source):
 def check(path, source, previous_source):
     """Fail includes of game modules that this change adds to shared code."""
     before = game_includes(path, previous_source)
-    return [f'{path}:{line}: layering: shared code includes game module {module} ("{include}"); '
-            'move the dependency into the game or invert it through an interface/callback'
+    return [Finding(path, line, f'layering: shared code includes game module {module} ("{include}"); '
+                    'move the dependency into the game or invert it through an interface/callback')
             for include, (line, module) in sorted(game_includes(path, source).items())
             if include not in before]
