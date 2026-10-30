@@ -157,13 +157,12 @@ void jubilife_to_barry(VideoStream& stream, ProControllerContext& context){
     if (walk_to_talk(stream, context, 0, 1, 3000ms, "to the nurse").stop != WalkStop::DIALOG){
         fail(stream, "Jubilife Pokemon Center: the nurse did not answer.");
     }
-    // Two lines, then Yes to "rest your Pokemon?" (B would answer No), and
-    // one more A for "I'll take your Pokemon"; B for the rest.
-    finish_dialogue(stream, context, 4, "Nurse");
+    // A throughout: Yes to "rest your Pokemon?" (B would answer No).
+    finish_dialogue(stream, context, BUTTON_A, "Nurse");
     // Healing shows no text box for a few seconds, which reads as the end;
     // her "Thank you for waiting" lines follow it.
     if (dialogue_opens(stream, context, 6000ms)){
-        finish_dialogue(stream, context, 0, "Nurse, after healing");
+        finish_dialogue(stream, context, BUTTON_B, "Nurse, after healing");
     }
     // South through the door until a girl standing below it stops us. The
     // door's fade may or may not read as a transition.
@@ -296,7 +295,7 @@ void route203_to_oreburgh(VideoStream& stream, ProControllerContext& context){
         if (to_hiker.stop != WalkStop::DIALOG && !dialogue_opens(stream, context, 2000ms)){
             fail(stream, "Oreburgh Gate: the Hiker did not stop us.");
         }
-        finish_dialogue(stream, context, 0, "Hiker");
+        finish_dialogue(stream, context, BUTTON_B, "Hiker");
     }
     // Then a "Hidden Moves" tutorial card, closed with B. It is no dialogue
     // box, and it can come up a moment after his last line.
@@ -338,9 +337,9 @@ void route203_to_oreburgh(VideoStream& stream, ProControllerContext& context){
     step(4);
     // He walks us to the Pokemon Center between his lines, and Barry joins
     // there: more lines after each walk.
-    finish_dialogue(stream, context, 0, "Man at Oreburgh's entrance");
+    finish_dialogue(stream, context, BUTTON_B, "Man at Oreburgh's entrance");
     for (size_t scene = 0; scene < 6 && dialogue_opens(stream, context, 6000ms); scene++){
-        finish_dialogue(stream, context, 0, "Oreburgh scene");
+        finish_dialogue(stream, context, BUTTON_B, "Oreburgh scene");
     }
     context.wait_for_all_requests();
 }
@@ -385,7 +384,7 @@ void oreburgh_to_roark(VideoStream& stream, ProControllerContext& context){
     if (!dialogue_opens(stream, context, 3000ms)){
         fail(stream, "Oreburgh: Barry did not talk at the gym door.");
     }
-    finish_dialogue(stream, context, 0, "Barry at the gym door");
+    finish_dialogue(stream, context, BUTTON_B, "Barry at the gym door");
     if (walk_dir(stream, context, Direction::SOUTH, 8000ms, "south to the stone ledge").stop != WalkStop::BLOCKED){
         fail(stream, "Oreburgh: walking south did not stop at the stone ledge.");
     }
@@ -527,7 +526,7 @@ void oreburgh_to_roark(VideoStream& stream, ProControllerContext& context){
     if (!talked){
         fail(stream, "Oreburgh Mine: no talk opened below Roark.");
     }
-    finish_dialogue(stream, context, 0, "Roark");
+    finish_dialogue(stream, context, BUTTON_B, "Roark");
     // His scene ends with him smashing his rock and leaving: his tile is
     // free now. Step onto it and back, or fail if he is still there.
     if (walk_dir(stream, context, Direction::NORTH, 2000ms, "onto Roark's tile").walked <= 800ms){
@@ -591,7 +590,7 @@ bool in_pokemon_center(VideoStream& stream){
 //  out through the door. The door is straight south of the nurse in most
 //  Centers; in Oreburgh's it was two tiles east of where we stood (by hand).
 void walk_out_of_center(VideoStream& stream, ProControllerContext& context, const std::string& label){
-    finish_dialogue(stream, context, 0, label + ": the nurse");
+    finish_dialogue(stream, context, BUTTON_B, label + ": the nurse");
     const int shifts[] = {0, 2, -4};
     for (int shift : shifts){
         if (shift != 0){
@@ -674,7 +673,7 @@ bool oreburgh_gym_battles(VideoStream& stream, ProControllerContext& context){
                 if (in_pokemon_center(stream)){
                     return false;
                 }
-                finish_dialogue(stream, context, 0, "Roark after the battle");
+                finish_dialogue(stream, context, BUTTON_B, "Roark after the battle");
                 return true;
             }
             continue;
@@ -728,7 +727,7 @@ void oreburgh_gym(VideoStream& stream, ProControllerContext& context){
             return;
         }
         if (down.stop == WalkStop::DIALOG){
-            finish_dialogue(stream, context, 0, "Someone in the gym");
+            finish_dialogue(stream, context, BUTTON_B, "Someone in the gym");
         }
     }
     fail(stream, "Oreburgh Gym: did not leave by its door.");
@@ -835,7 +834,7 @@ void oreburgh_to_floaroma(VideoStream& stream, ProControllerContext& context){
     if (in_pokemon_center(stream)){
         fail(stream, "Jubilife: lost the tag battle with Dawn.");
     }
-    finish_dialogue(stream, context, 0, "Rowan and Dawn after the battle");
+    finish_dialogue(stream, context, BUTTON_B, "Rowan and Dawn after the battle");
 
     step(4);
     // Route 204's south half: a trainer just past the sign, then the cave in

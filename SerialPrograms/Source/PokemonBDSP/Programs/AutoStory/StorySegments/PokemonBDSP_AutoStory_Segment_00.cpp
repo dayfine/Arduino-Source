@@ -705,11 +705,8 @@ namespace PokemonAutomation {
                         "Poke Mart lady: nobody answered walking east along her row from (42, 3), "
                         "nor on any side of where the walk stopped.", stream);
                 }
-                // Her lines take a while to print: one A per line.
-                for (size_t line = 0; line < 8; line++) {
-                    pbf_press_button(context, BUTTON_A, 80ms, 1500ms);
-                }
-                context.wait_for_all_requests();
+                // Her talk gives 10 Potions ("obtained" lines): A to the end.
+                finish_dialogue(stream, context, BUTTON_A, "Poke Mart lady");
                 if (!bag_has_item(stream, context, "potion", 1)) {
                     // She gives the Potions once: on a save that already got
                     // (and used) them, she only talks.
@@ -980,7 +977,7 @@ namespace PokemonAutomation {
             auto world = [&](const TilePos& pos) { return maps.to_world(MAP_JUBILIFE_CITY, pos); };
             // Jubilife has no trainers; someone in the way only talks.
             std::vector<TrainerSight> trainers;
-            auto in_the_way = [&](const std::string&) { finish_dialogue(stream, context, 0, "Someone in the way"); };
+            auto in_the_way = [&](const std::string&) { finish_dialogue(stream, context, BUTTON_B, "Someone in the way"); };
             std::vector<TilePos> at;
             for (const TilePos& pos : JubilifeCity::after_dawn()) {
                 at.push_back(world(pos));
@@ -1012,7 +1009,7 @@ namespace PokemonAutomation {
                 }
             }
             // His scene ends with "You obtained a Town Map!", which A closes.
-            finish_dialogue(stream, context, 16, "Barry");
+            finish_dialogue(stream, context, BUTTON_A, "Barry");
             // Out: south to the front wall, a tile east (the door's column), out.
             walk_until(stream, context, 0, -1, 4000ms, "to the school's front wall");
             route_turn(stream, context, Pokemon::Direction::EAST);
@@ -1030,7 +1027,7 @@ namespace PokemonAutomation {
             const TilePos president = world(JubilifeCity::POKETCH_PRESIDENT);
             talk_to_npc(stream, context, maps, at, president,
                 {Pokemon::Direction::EAST, Pokemon::Direction::SOUTH}, trainers, in_the_way, "Poketch president");
-            finish_dialogue(stream, context, 0, "Poketch president");
+            finish_dialogue(stream, context, BUTTON_B, "Poketch president");
 
             step(3);
             // Each clown asks a question whose default answer, Yes, is right,
@@ -1038,20 +1035,20 @@ namespace PokemonAutomation {
             talk_to_npc(stream, context, maps, at, world(JubilifeCity::CLOWN_MART),
                 {Pokemon::Direction::SOUTH, Pokemon::Direction::WEST, Pokemon::Direction::EAST},
                 trainers, in_the_way, "Clown by the Poke Mart");
-            finish_dialogue(stream, context, 8, "Clown by the Poke Mart");
+            finish_dialogue(stream, context, BUTTON_A, "Clown by the Poke Mart");
             talk_to_npc(stream, context, maps, at, world(JubilifeCity::CLOWN_TV_STATION),
                 {Pokemon::Direction::EAST, Pokemon::Direction::SOUTH, Pokemon::Direction::WEST},
                 trainers, in_the_way, "Clown by the TV station");
-            finish_dialogue(stream, context, 8, "Clown by the TV station");
+            finish_dialogue(stream, context, BUTTON_A, "Clown by the TV station");
             talk_to_npc(stream, context, maps, at, world(JubilifeCity::CLOWN_POKETCH_COMPANY),
                 {Pokemon::Direction::EAST, Pokemon::Direction::SOUTH, Pokemon::Direction::WEST},
                 trainers, in_the_way, "Clown by the Poketch Company");
-            finish_dialogue(stream, context, 8, "Clown by the Poketch Company");
+            finish_dialogue(stream, context, BUTTON_A, "Clown by the Poketch Company");
 
             step(4);
             talk_to_npc(stream, context, maps, at, president,
                 {Pokemon::Direction::EAST, Pokemon::Direction::SOUTH}, trainers, in_the_way, "Poketch president");
-            finish_dialogue(stream, context, 0, "Poketch president");
+            finish_dialogue(stream, context, BUTTON_B, "Poketch president");
 
             step(5);
             const TilePos center = world(JubilifeCity::POKEMON_CENTER_DOOR.next(Pokemon::Direction::SOUTH));

@@ -113,13 +113,16 @@ void talk_to_npc(
     const std::string& label
 );
 
-//  Finishes a dialogue that has opened: `a_presses` presses of A, 1.5 s
-//  apart (A answers Yes and closes "obtained" messages), then B until the
-//  overworld is back with no dialogue. B never starts a new talk, while an A
-//  after the last line talks to the NPC again.
+//  Finishes a dialogue that has opened, however many lines it has: presses
+//  `button` while a dialogue box shows, and returns once the overworld has
+//  shown with no box for 1.5 s (the box blinks off between lines and during
+//  "obtained" jingles). Use A where the talk asks Yes/No or gives an item (A
+//  answers Yes and closes "obtained" lines; B would answer No), B elsewhere
+//  (B never starts a new talk). Fails with a screenshot after `timeout`.
 void finish_dialogue(
     VideoStream& stream, ProControllerContext& context,
-    size_t a_presses, const std::string& label
+    Button button, const std::string& label,
+    Milliseconds timeout = std::chrono::seconds(40)
 );
 
 //  For a player on the tile below a door: walks north through it. If a wall
