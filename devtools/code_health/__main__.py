@@ -1,15 +1,18 @@
-"""Lint changed C++: python -m devtools.code_health --base-ref origin/main."""
+"""Lint changed C++: python -m devtools.code_health [--base-ref REV]."""
 import argparse
 import subprocess
 import sys
 from pathlib import Path
 
-from .git_files import changed_files, read_revision
+from .git_files import changed_files, default_base, read_revision
 from .metrics import measure
 from .policy import evaluate
 
 
-def run(root, base_ref):
+def run(root, base_ref=None):
+    if base_ref is None:
+        base_ref, how = default_base(root)
+        print(f'Base: {base_ref} ({how}).')
     changes = changed_files(root, base_ref)
     failures = []
     advisory = 0
@@ -29,7 +32,8 @@ def run(root, base_ref):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--root', type=Path, default=Path.cwd())
-    parser.add_argument('--base-ref', default='origin/main', help='Compare changed files with this revision')
+    parser.add_argument('--base-ref', help='Compare changed files with this revision (default: '
+                        'merge-base of HEAD and upstream/main, else origin/main)')
     args = parser.parse_args()
     try:
         return run(args.root.resolve(), args.base_ref)

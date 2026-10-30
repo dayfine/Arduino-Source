@@ -6,8 +6,13 @@ From the checkout root, create a dedicated environment (Python 3.8+):
 python3 -m venv .venv-code-health
 .venv-code-health/bin/python -m pip install -r devtools/code_health/requirements.txt
 .venv-code-health/bin/python -m unittest discover -s devtools/code_health/tests -v
-.venv-code-health/bin/python -m devtools.code_health --base-ref origin/main
+.venv-code-health/bin/python -m devtools.code_health
 ```
+
+Without `--base-ref`, the base is `git merge-base HEAD upstream/main`, or
+`origin/main` when there is no `upstream` remote, and the command prints the
+base it used. A stale fork `main` therefore cannot report upstream changes
+as this branch's. CI passes the PR base explicitly.
 
 Only added/modified/renamed Git-tracked `.h .hpp .c .cpp .tpp` files under
 `Common/` and `SerialPrograms/` are analyzed. Directory components starting

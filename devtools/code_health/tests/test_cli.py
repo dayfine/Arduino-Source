@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from devtools.code_health.git_files import included
+from devtools.code_health.git_files import default_base, included
 
 
 REPO = Path(__file__).resolve().parents[3]
@@ -108,6 +108,26 @@ class CliTests(unittest.TestCase):
         for path in ('3rdParty/a.cpp', 'Common/3rdParty2/a.cpp', 'other/a.cpp',
                      'Common/a.py', 'SerialPrograms/3rdParty/a.h'):
             self.assertFalse(included(path), path)
+
+
+    def test_default_base_is_merge_base_with_upstream_then_origin(self):
+        self.source(3)
+        self.commit()
+        fork_point = self.git('rev-parse', 'HEAD').decode().strip()
+        with self.assertRaises(ValueError):
+            default_base(self.root)
+        self.git('update-ref', 'refs/remotes/origin/main', fork_point)
+        self.source(60)
+        self.commit()
+        self.assertEqual((fork_point, 'merge-base of HEAD and origin/main'), default_base(self.root))
+        # A stale fork main: upstream moved on from an older commit; prefer its merge-base.
+        self.git('update-ref', 'refs/remotes/origin/main', 'HEAD')
+        self.git('update-ref', 'refs/remotes/upstream/main', fork_point)
+        self.assertEqual((fork_point, 'merge-base of HEAD and upstream/main'), default_base(self.root))
+        result = subprocess.run([sys.executable, '-m', 'devtools.code_health', '--root', str(self.root)],
+                                cwd=REPO, capture_output=True, text=True)
+        self.assertEqual(1, result.returncode, result.stderr)
+        self.assertIn(f'Base: {fork_point} (merge-base of HEAD and upstream/main).', result.stdout)
 
 
 if __name__ == '__main__':
