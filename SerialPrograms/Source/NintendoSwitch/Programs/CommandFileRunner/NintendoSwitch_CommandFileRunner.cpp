@@ -120,20 +120,20 @@ public:
     {}
 
     //  Runs one line. Returns false for "stop". Throws to fail the line.
-    bool run(const CommandLine& line){
-        if (line.name() == "stop"){
+    bool run(const std::vector<std::string>& words){
+        if (words[0] == "stop"){
             return false;
         }
-        auto iter = builtins().find(line.name());
+        auto iter = builtins().find(words[0]);
         if (iter != builtins().end()){
-            (this->*iter->second.handler)(line);
+            (this->*iter->second.handler)(words);
             return true;
         }
-        std::optional<CommandFileCommand> command = find_registered_command(line.name());
+        std::optional<CommandFileCommand> command = find_registered_command(words[0]);
         if (!command){
-            throw ParseException("Unknown command: " + line.name() + " (try \"help\")");
+            throw ParseException("Unknown command: " + words[0] + " (try \"help\")");
         }
-        (*command)(m_session, line.words());
+        (*command)(m_session, words);
         return true;
     }
 
@@ -149,7 +149,7 @@ public:
     }
 
 private:
-    using Handler = void (LineRunner::*)(const CommandLine&);
+    using Handler = void (LineRunner::*)(const std::vector<std::string>&);
     struct Builtin{
         std::string usage;
         Handler handler;
@@ -190,23 +190,23 @@ private:
         return image;
     }
 
-    void press(const CommandLine& line){
+    void press(const std::vector<std::string>& words){
         pbf_press_button(
-            context(), parse_buttons(line.arg(1)),
-            line.duration(2, BUTTON_HOLD), line.duration(3, BUTTON_RELEASE)
+            context(), parse_buttons(required_arg(words, 1)),
+            optional_duration(words, 2, BUTTON_HOLD), optional_duration(words, 3, BUTTON_RELEASE)
         );
     }
-    void dpad(const CommandLine& line){
+    void dpad(const std::vector<std::string>& words){
         pbf_press_dpad(
-            context(), parse_dpad(line.arg(1)),
-            line.duration(2, DPAD_HOLD), line.duration(3, DPAD_RELEASE)
+            context(), parse_dpad(required_arg(words, 1)),
+            optional_duration(words, 2, DPAD_HOLD), optional_duration(words, 3, DPAD_RELEASE)
         );
     }
-    void stick(const CommandLine& line){
-        const std::string& side = line.arg(1);
-        const JoystickPosition position{line.number(2, 0), line.number(3, 0)};
-        const Milliseconds hold = line.duration(4, STICK_HOLD);
-        const Milliseconds release = line.duration(5, STICK_RELEASE);
+    void stick(const std::vector<std::string>& words){
+        const std::string& side = required_arg(words, 1);
+        const JoystickPosition position{optional_number(words, 2, 0), optional_number(words, 3, 0)};
+        const Milliseconds hold = optional_duration(words, 4, STICK_HOLD);
+        const Milliseconds release = optional_duration(words, 5, STICK_RELEASE);
         if (side == "L"){
             pbf_move_left_joystick(context(), position, hold, release);
         }else if (side == "R"){
@@ -215,16 +215,16 @@ private:
             throw ParseException("stick: expected L or R, got " + side);
         }
     }
-    void wait(const CommandLine& line){
-        pbf_wait(context(), line.duration(1, 0ms));
+    void wait(const std::vector<std::string>& words){
+        pbf_wait(context(), optional_duration(words, 1, 0ms));
     }
-    void shot(const CommandLine& line){
-        out() << "shot " << save_screenshot(line.arg(1)) << "\n";
+    void shot(const std::vector<std::string>& words){
+        out() << "shot " << save_screenshot(required_arg(words, 1)) << "\n";
     }
-    void shots(const CommandLine& line){
-        const std::string& label = line.arg(1);
-        const int count = (int)line.number(2, 1);
-        const Milliseconds interval = line.duration(3, SHOTS_INTERVAL);
+    void shots(const std::vector<std::string>& words){
+        const std::string& label = required_arg(words, 1);
+        const int count = (int)optional_number(words, 2, 1);
+        const Milliseconds interval = optional_duration(words, 3, SHOTS_INTERVAL);
         for (int c = 0; c < count; c++){
             if (c > 0){
                 context().wait_for(interval);
@@ -232,12 +232,12 @@ private:
             out() << "shot " << save_screenshot(label + "_" + std::to_string(c)) << "\n";
         }
     }
-    void detect(const CommandLine& line){
-        const std::string& name = line.arg(1);
+    void detect(const std::vector<std::string>& words){
+        const std::string& name = required_arg(words, 1);
         std::unique_ptr<StaticScreenDetector> detector = make_detector(name, console());
         bool found;
-        if (line.has(2)){
-            found = detector->detect(load_image(line.arg(2)));
+        if (words.size() > 2){
+            found = detector->detect(load_image(words[2]));
         }else{
             VideoSnapshot screen = current_frame();
             found = screen && detector->detect(screen);
@@ -245,9 +245,9 @@ private:
         out() << "detect " << name << " " << (found ? "yes" : "no") << "\n";
     }
     //  "wait_for" and "expect": wait for a detector to fire.
-    void wait_for(const CommandLine& line){
-        const std::string& name = line.arg(1);
-        const Milliseconds timeout = line.duration(2, WAIT_FOR_TIMEOUT);
+    void wait_for(const std::vector<std::string>& words){
+        const std::string& name = required_arg(words, 1);
+        const Milliseconds timeout = optional_duration(words, 2, WAIT_FOR_TIMEOUT);
         std::unique_ptr<StaticScreenDetector> detector = make_detector(name, console());
         context().wait_for_all_requests();
         const WallClock start = current_time();
@@ -255,32 +255,32 @@ private:
             VideoSnapshot screen = console().video().snapshot();
             if (screen && detector->detect(screen)){
                 const auto elapsed = std::chrono::duration_cast<Milliseconds>(current_time() - start);
-                out() << line.name() << " " << name << " after " << elapsed.count() << "ms\n";
+                out() << words[0] << " " << name << " after " << elapsed.count() << "ms\n";
                 return;
             }
             context().wait_for(DETECTOR_POLL_INTERVAL);
         }
-        if (line.name() == "expect"){
+        if (words[0] == "expect"){
             throw OperationFailedException(
                 ErrorReportMode::NO_ERROR_REPORT,
                 "expect " + name + ": not seen within " + std::to_string(timeout.count()) + "ms."
             );
         }
-        out() << line.name() << " " << name << " timeout\n";
+        out() << words[0] << " " << name << " timeout\n";
     }
-    void state(const CommandLine& line){
-        if (line.has(1)){
-            out() << "state " << detectors_firing(load_image(line.arg(1))) << "\n";
+    void state(const std::vector<std::string>& words){
+        if (words.size() > 1){
+            out() << "state " << detectors_firing(load_image(words[1])) << "\n";
             return;
         }
         VideoSnapshot screen = current_frame();
         out() << "state " << (screen ? detectors_firing(screen) : "(no video frame)") << "\n";
     }
-    void close_game(const CommandLine&){
+    void close_game(const std::vector<std::string>&){
         go_home(console(), context());
         close_game_from_home(console(), context());
     }
-    void help(const CommandLine&){
+    void help(const std::vector<std::string>&){
         out() << "commands:\n  stop\n";
         for (const auto& item : builtins()){
             out() << "  " << item.second.usage << "\n";
@@ -330,15 +330,15 @@ enum class LineResult{
 
 //  Runs one line and adds its "ok" or "error" result to `session.out`.
 LineResult run_line(LineRunner& runner, CommandFileSession& session, const std::string& text, size_t number, WallClock file_start){
-    const CommandLine line(text);
-    if (line.empty()){
+    const std::vector<std::string> words = split_command_line(text);
+    if (words.empty()){
         return LineResult::NEXT_LINE;
     }
     const WallClock start = current_time();
     bool keep_going = true;
     std::string error;
     try{
-        keep_going = runner.run(line);
+        keep_going = runner.run(words);
         session.context.wait_for_all_requests();
     }catch (ProgramCancelledException&){
         throw;

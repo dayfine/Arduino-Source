@@ -34,37 +34,56 @@ bool throws_parse_error(const std::function<void()>& body){
 
 
 UnitTestResult test_split_line(){
-    const CommandLine line("  press   A 200   100  ");
-    if (line.words() != std::vector<std::string>{"press", "A", "200", "100"}){
+    if (split_command_line("  press   A 200   100  ") != std::vector<std::string>{"press", "A", "200", "100"}){
         return "Expected 4 words.";
-    }
-    if (line.name() != "press" || line.arg(1) != "A"){
-        return "Wrong name or first argument.";
-    }
-    if (line.duration(2, 160ms) != 200ms || line.duration(4, 160ms) != 160ms){
-        return "Durations should read the argument, or fall back when it is missing.";
     }
     return true;
 }
 
 UnitTestResult test_comments(){
-    if (!CommandLine("# just a comment").empty() || !CommandLine("").empty()){
+    if (!split_command_line("# just a comment").empty() || !split_command_line("").empty()){
         return "A comment or blank line has no command.";
     }
-    const CommandLine line("wait 500 # half a second");
-    if (line.words() != std::vector<std::string>{"wait", "500"}){
+    if (split_command_line("wait 500 # half a second") != std::vector<std::string>{"wait", "500"}){
         return "A comment after a command should be dropped.";
     }
     return true;
 }
 
-UnitTestResult test_argument_errors(){
-    const CommandLine line("wait soon");
-    if (!throws_parse_error([&]{ line.arg(2); })){
-        return "A missing argument should be a parse error.";
+UnitTestResult test_arguments(){
+    const std::vector<std::string> words = split_command_line("stick L 0.5 -1 200");
+    if (required_arg(words, 1) != "L"){
+        return "required_arg should return the word.";
     }
-    if (!throws_parse_error([&]{ line.number(1, 0); })){
+    if (optional_number(words, 2, 0) != 0.5 || optional_number(words, 3, 0) != -1 || optional_number(words, 5, 7) != 7){
+        return "optional_number should read the argument, or fall back when it is missing.";
+    }
+    if (optional_duration(words, 4, 160ms) != 200ms || optional_duration(words, 5, 160ms) != 160ms){
+        return "optional_duration should read the argument, or fall back when it is missing.";
+    }
+    return true;
+}
+
+//  The message of the ParseException `body` throws, or "" if it throws none.
+std::string parse_error_message(const std::function<void()>& body){
+    try{
+        body();
+    }catch (ParseException& e){
+        return e.message();
+    }
+    return "";
+}
+
+UnitTestResult test_argument_errors(){
+    const std::vector<std::string> words = split_command_line("wait soon");
+    if (parse_error_message([&]{ required_arg(words, 2); }) != "wait: missing argument 2"){
+        return "A missing argument should be a parse error naming the command.";
+    }
+    if (parse_error_message([&]{ optional_number(words, 1, 0); }) != "wait: argument 1 is not a number: soon"){
         return "A word that isn't a number should be a parse error.";
+    }
+    if (parse_error_message([&]{ optional_duration(words, 1, 0ms); }) != "wait: argument 1 is not a number: soon"){
+        return "A duration that isn't a number should be a parse error.";
     }
     return true;
 }
@@ -140,6 +159,7 @@ private:
 void add_tests_CommandFileRunner(UnitTestDatabase& database){
     database.add<Test_CommandFileRunner>("split a line", test_split_line);
     database.add<Test_CommandFileRunner>("comments", test_comments);
+    database.add<Test_CommandFileRunner>("arguments", test_arguments);
     database.add<Test_CommandFileRunner>("argument errors", test_argument_errors);
     database.add<Test_CommandFileRunner>("buttons", test_buttons);
     database.add<Test_CommandFileRunner>("D-pad", test_dpad);

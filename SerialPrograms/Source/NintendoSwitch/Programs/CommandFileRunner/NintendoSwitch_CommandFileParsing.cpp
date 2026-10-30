@@ -13,6 +13,39 @@ namespace PokemonAutomation{
 namespace NintendoSwitch{
 
 
+std::vector<std::string> split_command_line(const std::string& line){
+    std::vector<std::string> words;
+    std::istringstream in(line);
+    std::string word;
+    while (in >> word && word[0] != '#'){
+        words.push_back(word);
+    }
+    return words;
+}
+
+const std::string& required_arg(const std::vector<std::string>& words, size_t index){
+    if (index >= words.size()){
+        throw ParseException(words[0] + ": missing argument " + std::to_string(index));
+    }
+    return words[index];
+}
+
+double optional_number(const std::vector<std::string>& words, size_t index, double fallback){
+    if (index >= words.size()){
+        return fallback;
+    }
+    try{
+        return std::stod(words[index]);
+    }catch (std::exception&){
+        throw ParseException(words[0] + ": argument " + std::to_string(index) + " is not a number: " + words[index]);
+    }
+}
+
+Milliseconds optional_duration(const std::vector<std::string>& words, size_t index, Milliseconds fallback){
+    return Milliseconds((int64_t)optional_number(words, index, (double)fallback.count()));
+}
+
+
 Button parse_buttons(const std::string& text){
     static const std::map<std::string, Button> NAMES{
         {"A", BUTTON_A}, {"B", BUTTON_B}, {"X", BUTTON_X}, {"Y", BUTTON_Y},
