@@ -255,6 +255,37 @@ private:
     const RouteCosts& m_costs;
 };
 
+Pokemon::LegCosts to_leg_costs(const RouteCosts& costs){
+    Pokemon::LegCosts leg_costs;
+    leg_costs.per_tile = costs.per_tile;
+    leg_costs.per_turn = costs.per_turn;
+    leg_costs.per_open_stop = costs.per_open_stop;
+    return leg_costs;
+}
+
+RouteStep to_route_step(const std::vector<OverworldMap>& maps, const Pokemon::Leg<Located>& leg){
+    RouteStep step;
+    switch (leg.kind){
+    case Pokemon::LegKind::WALK:
+        step.action = RouteAction::WALK;
+        break;
+    case Pokemon::LegKind::ACTION:
+        step.action = RouteAction::SURF;
+        break;
+    case Pokemon::LegKind::FACE:
+        step.action = RouteAction::FACE;
+        break;
+    }
+    step.direction = leg.direction;
+    step.tiles = leg.kind == Pokemon::LegKind::FACE ? 0 : leg.tiles;
+    step.warps = leg.warps;
+    step.surfing = leg.start.state.surfing;
+    step.to_wall = leg.to_wall;
+    step.facing_after = leg.facing_after;
+    step.end = MapPosition{maps[leg.end.map].name, leg.end.state.position};
+    return step;
+}
+
 }
 
 
@@ -278,16 +309,12 @@ std::optional<std::vector<RouteStep>> plan_overworld_route(
     first.state.surfing = is_water(maps[start_map], start.point);
 
     const StepModel model(maps, costs);
-    Pokemon::LegCosts leg_costs;
-    leg_costs.per_tile = costs.per_tile;
-    leg_costs.per_turn = costs.per_turn;
-    leg_costs.per_open_stop = costs.per_open_stop;
     const auto legs = Pokemon::plan_legs(
         model, first, start_facing,
         std::function<bool(const Located&)>([&](const Located& player){
             return player.map == goal_map && player.state.position == goal.position.point;
         }),
-        goal.facing, leg_costs
+        goal.facing, to_leg_costs(costs)
     );
     if (!legs){
         return std::nullopt;
@@ -295,26 +322,7 @@ std::optional<std::vector<RouteStep>> plan_overworld_route(
 
     std::vector<RouteStep> route;
     for (const Pokemon::Leg<Located>& leg : *legs){
-        RouteStep step;
-        switch (leg.kind){
-        case Pokemon::LegKind::WALK:
-            step.action = RouteAction::WALK;
-            break;
-        case Pokemon::LegKind::ACTION:
-            step.action = RouteAction::SURF;
-            break;
-        case Pokemon::LegKind::FACE:
-            step.action = RouteAction::FACE;
-            break;
-        }
-        step.direction = leg.direction;
-        step.tiles = leg.kind == Pokemon::LegKind::FACE ? 0 : leg.tiles;
-        step.warps = leg.warps;
-        step.surfing = leg.start.state.surfing;
-        step.to_wall = leg.to_wall;
-        step.facing_after = leg.facing_after;
-        step.end = MapPosition{maps[leg.end.map].name, leg.end.state.position};
-        route.push_back(step);
+        route.push_back(to_route_step(maps, leg));
     }
     return route;
 }
