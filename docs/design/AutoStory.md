@@ -368,6 +368,11 @@ avoid animated tiles; Flash-dark caves are the exception.
 
 ## 5. 2D movement: shared design
 
+**Superseded 2026-10-29** by [AutoStory-Navigation-Stack.md](AutoStory-Navigation-Stack.md): a
+shared core (`nav/core`: grid types, a leg planner over a per-game step model, a leg walker
+with per-game movers and interrupts, the screen machine) with two children, `frlg/brock-mvp`
+and `bdsp/floaroma-mvp`. The sketch below is kept for its reasoning (§5.2 still holds).
+
 ### 5.1 Pieces
 
 Console-free. It lives in `SerialPrograms/Source/Pokemon/Navigation/`
@@ -727,6 +732,11 @@ Consequences:
 - The planner and the table are pure logic, so they get unit tests.
 
 ### 7.7 PR plan for reviewers
+
+**2026-10-29:** T1 and T2 below become N1–N3 on `nav/core` and the FRLG child
+`frlg/brock-mvp` ([AutoStory-Navigation-Stack.md](AutoStory-Navigation-Stack.md) §4). The
+Elite Four farmer moves onto the walker later, not as part of the pilot. The rest of the table
+stands.
 
 Reviewers should know up front what is coming. Phase A is about 10 PRs,
 touches only FRLG files, and produces something users can run at PR 5.
