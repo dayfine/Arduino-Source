@@ -424,8 +424,6 @@ file(GLOB LIBRARY_SOURCES
     ../Common/Qt/GlobalThreadPoolsQt.cpp
     ../Common/Qt/GlobalThreadPoolsQt.h
     ../Common/Qt/NoWheelComboBox.h
-    ../Common/Qt/WallpaperWidget.cpp
-    ../Common/Qt/WallpaperWidget.h
     ../Common/Qt/Options/BatchWidget.cpp
     ../Common/Qt/Options/BatchWidget.h
     ../Common/Qt/Options/BooleanCheckBoxWidget.cpp
@@ -507,20 +505,19 @@ file(GLOB LIBRARY_SOURCES
     Source/CommonFramework/AudioPipeline/AudioSession.h
     Source/CommonFramework/AudioPipeline/AudioSourceDescriptor.cpp
     Source/CommonFramework/AudioPipeline/AudioSourceDescriptor.h
-    Source/CommonFramework/AudioPipeline/AudioSources/AudioSource_Device.cpp
-    Source/CommonFramework/AudioPipeline/AudioSources/AudioSource_Device.h
-    Source/CommonFramework/AudioPipeline/AudioSources/AudioSource_File.cpp
-    Source/CommonFramework/AudioPipeline/AudioSources/AudioSource_File.h
-    Source/CommonFramework/AudioPipeline/AudioSources/AudioSource_Null.cpp
-    Source/CommonFramework/AudioPipeline/AudioSources/AudioSource_Null.h
+    Source/CommonFramework/AudioPipeline/Sources/AudioSource_Device.cpp
+    Source/CommonFramework/AudioPipeline/Sources/AudioSource_Device.h
+    Source/CommonFramework/AudioPipeline/Sources/AudioSource_File.cpp
+    Source/CommonFramework/AudioPipeline/Sources/AudioSource_File.h
+    Source/CommonFramework/AudioPipeline/Sources/AudioSource_Null.cpp
+    Source/CommonFramework/AudioPipeline/Sources/AudioSource_Null.h
+    Source/CommonFramework/AudioPipeline/AudioSource.h
     Source/CommonFramework/AudioPipeline/AudioTemplate.cpp
     Source/CommonFramework/AudioPipeline/AudioTemplate.h
     Source/CommonFramework/AudioPipeline/Backends/AudioPassthroughPairQt.cpp
     Source/CommonFramework/AudioPipeline/Backends/AudioPassthroughPairQt.h
     Source/CommonFramework/AudioPipeline/Backends/AudioPassthroughPairQtThread.cpp
     Source/CommonFramework/AudioPipeline/Backends/AudioPassthroughPairQtThread.h
-    Source/CommonFramework/AudioPipeline/ChannelMixer.cpp
-    Source/CommonFramework/AudioPipeline/ChannelMixer.h
     Source/CommonFramework/AudioPipeline/IO/AudioFileLoader.cpp
     Source/CommonFramework/AudioPipeline/IO/AudioFileLoader.h
     Source/CommonFramework/AudioPipeline/IO/AudioFileLoader_Tests.cpp
@@ -531,7 +528,6 @@ file(GLOB LIBRARY_SOURCES
     Source/CommonFramework/AudioPipeline/IO/AudioInputFile.h
     Source/CommonFramework/AudioPipeline/IO/AudioOutputDevice.cpp
     Source/CommonFramework/AudioPipeline/IO/AudioOutputDevice.h
-    Source/CommonFramework/AudioPipeline/IO/AudioSource.h
     Source/CommonFramework/AudioPipeline/Spectrum/AudioSpectrumHolder.cpp
     Source/CommonFramework/AudioPipeline/Spectrum/AudioSpectrumHolder.h
     Source/CommonFramework/AudioPipeline/SinkPipeline_Tests.cpp
@@ -543,6 +539,8 @@ file(GLOB LIBRARY_SOURCES
     Source/CommonFramework/AudioPipeline/Spectrum/Spectrograph.h
     Source/CommonFramework/AudioPipeline/Tools/AudioFormatUtils.cpp
     Source/CommonFramework/AudioPipeline/Tools/AudioFormatUtils.h
+    Source/CommonFramework/AudioPipeline/Tools/ChannelMixer.cpp
+    Source/CommonFramework/AudioPipeline/Tools/ChannelMixer.h
     Source/CommonFramework/AudioPipeline/UI/AudioDisplayWidget.cpp
     Source/CommonFramework/AudioPipeline/UI/AudioDisplayWidget.h
     Source/CommonFramework/AudioPipeline/UI/AudioSelectorWidget.cpp
@@ -623,6 +621,8 @@ file(GLOB LIBRARY_SOURCES
     Source/CommonFramework/Options/NestedBoxDrawOption.h
     Source/CommonFramework/Options/QtWidget/LabelCellWidget.cpp
     Source/CommonFramework/Options/QtWidget/LabelCellWidget.h
+    Source/CommonFramework/Options/QtWidget/WallpaperWidget.cpp
+    Source/CommonFramework/Options/QtWidget/WallpaperWidget.h
     Source/CommonFramework/Options/ResolutionOption.cpp
     Source/CommonFramework/Options/ResolutionOption.h
     Source/CommonFramework/Options/ScreenshotFormatOption.h
@@ -753,18 +753,21 @@ file(GLOB LIBRARY_SOURCES
     Source/CommonFramework/VideoPipeline/VideoSession.h
     Source/CommonFramework/VideoPipeline/VideoSource.cpp
     Source/CommonFramework/VideoPipeline/VideoSource.h
-    Source/CommonFramework/VideoPipeline/VideoSourceDescriptor.cpp
     Source/CommonFramework/VideoPipeline/VideoSourceDescriptor.h
-    Source/CommonFramework/VideoPipeline/VideoSources/VideoSource_Camera.cpp
-    Source/CommonFramework/VideoPipeline/VideoSources/VideoSource_Camera.h
-    Source/CommonFramework/VideoPipeline/VideoSources/VideoSource_Null.cpp
-    Source/CommonFramework/VideoPipeline/VideoSources/VideoSource_Null.h
-    Source/CommonFramework/VideoPipeline/VideoSources/VideoSource_StillImage.cpp
-    Source/CommonFramework/VideoPipeline/VideoSources/VideoSource_StillImage.h
+    Source/CommonFramework/VideoPipeline/VideoSourceOption.cpp
+    Source/CommonFramework/VideoPipeline/VideoSourceOption.h
+    Source/CommonFramework/VideoPipeline/Sources/VideoSource_Camera.cpp
+    Source/CommonFramework/VideoPipeline/Sources/VideoSource_Camera.h
+    Source/CommonFramework/VideoPipeline/Sources/VideoSource_Null.cpp
+    Source/CommonFramework/VideoPipeline/Sources/VideoSource_Null.h
+    Source/CommonFramework/VideoPipeline/Sources/VideoSource_StillImage.cpp
+    Source/CommonFramework/VideoPipeline/Sources/VideoSource_StillImage.h
     Source/CommonFramework/Windows/ButtonDiagram.cpp
     Source/CommonFramework/Windows/ButtonDiagram.h
     Source/CommonFramework/Windows/DpiScaler.cpp
     Source/CommonFramework/Windows/DpiScaler.h
+    Source/CommonFramework/Windows/LabControl.cpp
+    Source/CommonFramework/Windows/LabControl.h
     Source/CommonFramework/Windows/MainWindow.cpp
     Source/CommonFramework/Windows/MainWindow.h
     Source/CommonFramework/Windows/WindowTracker.cpp
@@ -2386,6 +2389,8 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonSV/Inference/PokemonSV_AuctionItemNameReader.h
     Source/VideoGames/PokemonSV/Inference/PokemonSV_BagDetector.cpp
     Source/VideoGames/PokemonSV/Inference/PokemonSV_BagDetector.h
+    Source/VideoGames/PokemonSV/Inference/PokemonSV_BlueberryPointsReader.cpp
+    Source/VideoGames/PokemonSV/Inference/PokemonSV_BlueberryPointsReader.h
     Source/VideoGames/PokemonSV/Inference/PokemonSV_BlueberryQuestDetector.cpp
     Source/VideoGames/PokemonSV/Inference/PokemonSV_BlueberryQuestDetector.h
     Source/VideoGames/PokemonSV/Inference/PokemonSV_BlueberryQuestReader.cpp
