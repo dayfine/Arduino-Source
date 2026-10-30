@@ -8,7 +8,7 @@ touch only through stairs. Each 16 px tile then takes the region holding
 most of its walkable pixels, and a route may only step between tiles of the
 same region, or across a stair tile into a region the stairs touch.
 
-usage: levels.py MAP.bmp OUT_PREFIX [--profile town|oreburgh|cave] [--min N] [--height H] [--objects on] [--edits FILE] [--offset x,y] [--stairs x,y]... [--from x,y]... [--to x,y]   (pixel coords)
+usage: levels.py MAP.bmp OUT_PREFIX [--profile town|sandtown|oreburgh|cave] [--min N] [--height H] [--objects on] [--edits FILE] [--offset x,y] [--stairs x,y]... [--from x,y]... [--to x,y]   (pixel coords)
 writes OUT_PREFIX_regions.bmp, OUT_PREFIX_grid.txt, OUT_PREFIX_route.txt
 """
 import struct, sys
@@ -74,6 +74,11 @@ def classify(c, stair_colours):
         if (b >= r + 10 and g >= r) or c in ((77, 92, 92), (60, 82, 82), (46, 62, 62)):
             return WALK
         return BLOCK
+    if PROFILE == 'sandtown':
+        # Towns on dirt and sand (Sandgem): road (248, 224, 152), beach
+        # (248, 248, 224). Roofs' pure white (248, 248, 248) stays blocked.
+        if r >= 220 and g >= 180 and 120 <= b <= 230 and r - b <= 110:
+            return WALK
     if abs(r - g) <= 14 and abs(g - b) <= 14 and abs(r - b) <= 14 and 95 <= r <= 215:
         return WALK
     if g >= 220 and r <= 130:

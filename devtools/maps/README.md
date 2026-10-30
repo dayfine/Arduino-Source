@@ -35,8 +35,9 @@ swiftc -O draw_route.swift -o draw_route
 
 Options for harder maps:
 
-- `--profile town|oreburgh|cave`: colour rules. `oreburgh` counts the
+- `--profile town|sandtown|oreburgh|cave`: colour rules. `oreburgh` counts the
   conveyor belts as ground (we walk under them; the pillars block).
+  `sandtown` adds dirt roads and sand (Sandgem) to `town`.
 - `--height H`: stretch a squashed image back to H pixels tall. Oreburgh
   Mine B2F is 512x395 for a 512x512 map: its rocks are 16 px apart across
   and 12.5 px down.
@@ -62,3 +63,32 @@ Check per map:
 - **Stairs** are given by hand, one pixel inside each.
 - **Not modelled:** one-way ledges and people. Static NPCs are added from
   what the console shows.
+
+## Overlay: a data file's grid, and a run's routes, over the map
+
+`python3 -m devtools.maps` (standard library only) draws a navigation data
+file's grid over the map image it was read from, as SVG, and optionally the
+walks a console run planned and walked:
+
+```sh
+python3 -m devtools.maps fetch Sandgem_Town_DP.png          # into ~/.cache/maps
+python3 -m devtools.maps overlay path/to/Data/..._SandgemTown.cpp -o sandgem.svg
+python3 -m devtools.maps overlay path/to/Data/..._SandgemTown.cpp \
+    --log "$HOME/Library/Application Support/SerialPrograms/Profiles/<profile>/SerialPrograms.log" \
+    --last 3 -o sandgem-run.svg
+python3 -m unittest discover -s devtools/maps/tests -t .
+```
+
+It reads the file's `R"(...)"` rows and `const TilePos NAME{x, y};` tiles, and
+its header comment for the image (`(Name.png, W x H px)`) and where tile (0, 0)
+starts (`starts 8 px in from the left edge`). Walls are red, tall grass green,
+ledges purple, signs orange, doors blue, every fifth row and column numbered.
+With `--log`, a leg planned "to wall" that stopped on anything but `blocked`
+is marked yellow: the grid has a wall where the game doesn't.
+
+Sandgem Town, levels.py against the console-checked grid: with `sandtown`
+and `--objects on`, rows 0..7 agree but for two lit door fronts read as
+objects (we stood on (17, 7)) and the Lab's front, (6..9, 7), read as blocked
+(walked on the console). Lawns, roads and the beach come out as separate
+regions with no ledge between them, and the image squeezes rows 7..18 into
+7..15, so the south half is taken from the game's collision instead.
