@@ -127,26 +127,7 @@ public:
     }
     virtual void clear(ConsoleHandle& console, ProControllerContext& context) const override{
         MessageInterrupt::clear(console, context);
-        console.log("Using a Max Repel (Items pocket, slot " + std::to_string(m_max_repel_slot + 1) + ").");
-        open_bag_from_overworld(console, context);
-        //  To the Items pocket, then to the top of it.
-        for (int c = 0; c < 3; c++){
-            pbf_press_dpad(context, DPAD_LEFT, 100ms, 600ms);
-        }
-        for (int c = 0; c < 20; c++){
-            pbf_press_dpad(context, DPAD_UP, 100ms, 100ms);
-        }
-        for (int c = 0; c < m_max_repel_slot; c++){
-            pbf_press_dpad(context, DPAD_DOWN, 100ms, 300ms);
-        }
-        //  USE, "<player> used the MAX REPEL.", back to the bag, then out of
-        //  the bag and the start menu. A third A here would open the item's
-        //  menu again.
-        pbf_press_button(context, BUTTON_A, 160ms, 800ms);
-        pbf_press_button(context, BUTTON_A, 160ms, 1500ms);
-        pbf_press_button(context, BUTTON_A, 160ms, 1500ms);
-        pbf_press_button(context, BUTTON_B, 160ms, 1500ms);
-        pbf_press_button(context, BUTTON_B, 160ms, 1000ms);
+        use_max_repel_from_bag(console, context, m_max_repel_slot);
     }
 
 private:
@@ -327,6 +308,29 @@ OverworldInterrupts overworld_interrupts_with_repel(int max_repel_slot){
     ret.emplace_back(std::make_unique<LateWildBattleInterrupt>());
     ret.emplace_back(std::make_unique<RepelWoreOffInterrupt>(max_repel_slot));
     return ret;
+}
+
+void use_max_repel_from_bag(ConsoleHandle& console, ProControllerContext& context, int slot){
+    console.log("Using a Max Repel (Items pocket, slot " + std::to_string(slot + 1) + ").");
+    open_bag_from_overworld(console, context);
+    //  To the Items pocket, then to the top of it.
+    for (int c = 0; c < 3; c++){
+        pbf_press_dpad(context, DPAD_LEFT, 100ms, 600ms);
+    }
+    for (int c = 0; c < 20; c++){
+        pbf_press_dpad(context, DPAD_UP, 100ms, 100ms);
+    }
+    for (int c = 0; c < slot; c++){
+        pbf_press_dpad(context, DPAD_DOWN, 100ms, 300ms);
+    }
+    //  USE, "<player> used the MAX REPEL.", back to the bag, then out of the
+    //  bag and the start menu. A third A here would open the item's menu again.
+    pbf_press_button(context, BUTTON_A, 160ms, 800ms);
+    pbf_press_button(context, BUTTON_A, 160ms, 1500ms);
+    pbf_press_button(context, BUTTON_A, 160ms, 1500ms);
+    pbf_press_button(context, BUTTON_B, 160ms, 1500ms);
+    pbf_press_button(context, BUTTON_B, 160ms, 1000ms);
+    context.wait_for_all_requests();
 }
 
 const OverworldInterrupts& default_overworld_interrupts(){
