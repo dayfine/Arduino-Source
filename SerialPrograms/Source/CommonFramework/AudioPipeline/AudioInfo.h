@@ -9,24 +9,21 @@
 
 #include <string>
 #include <vector>
-#include <QtConfig>
 #include "Common/Cpp/Containers/Pimpl.h"
 
 class QAudioFormat;
 
-#if QT_VERSION_MAJOR == 5
-class QAudioDeviceInfo;
-using NativeAudioInfo = QAudioDeviceInfo;
-#elif QT_VERSION_MAJOR == 6
 class QAudioDevice;
 using NativeAudioInfo = QAudioDevice;
-#else
-#error "Unknown Qt version."
-#endif
 
 
 
 namespace PokemonAutomation{
+namespace Kernels{
+namespace AudioPipeline{
+    enum class SampleFormat;
+}
+}
 
 
 enum class AudioSampleFormat{
@@ -38,24 +35,87 @@ enum class AudioSampleFormat{
 };
 size_t sample_size(AudioSampleFormat format);
 
+Kernels::AudioPipeline::SampleFormat to_sample_format(AudioSampleFormat format);
 
-enum class AudioChannelFormat{
-    NONE,
-    MONO_48000,
-    DUAL_44100,
-    DUAL_48000,
-    MONO_96000,
-    INTERLEAVE_LR_96000,
-    INTERLEAVE_RL_96000,
-    END_LIST,
+
+AudioSampleFormat get_sample_format(const QAudioFormat& native_format);
+
+
+
+class AudioFormat{
+public:
+    AudioFormat();
+    AudioFormat(QAudioFormat native_format);
+
+    AudioSampleFormat sample_format() const;
+    size_t sample_rate() const;
+    size_t channels() const;
+
+    const QAudioFormat& native_format() const;
+    QAudioFormat& native_format();
+
+private:
+    Pimpl<QAudioFormat> m_native_format;
 };
-extern const char* AUDIO_FORMAT_LABELS[];
-
-//  Convert our audio format enum to QAudioFormat.
-void set_format(QAudioFormat& native_format, AudioChannelFormat format);
 
 
-AudioSampleFormat get_sample_format(QAudioFormat& native_format);
+//
+//  An entry in the audio input format dropdown. It carries the shape the
+//  pipeline consumes ("format") and, for misreporting capture cards, how
+//  that shape relates to what the device physically emits
+//  ("physical_format").
+//
+//  Native choices have physical == format. Some capture
+//  cards only expose a 1ch x 96000 stream although they actually deliver
+//  two 48 kHz channels interleaved; for those, in addition to the native
+//  choice, two reinterpreted choices read the same physical stream as
+//  2ch x 48000: "Interleaved Stereo L/R" (the physical channel order) and
+//  "Interleaved Stereo R/L" (swapped).
+//
+class AudioInputChoice{
+public:
+    ~AudioInputChoice();
+    AudioInputChoice(const AudioInputChoice& x);
+    AudioInputChoice& operator=(const AudioInputChoice& x);
+
+public:
+    AudioInputChoice();                     //  invalid
+    AudioInputChoice(AudioFormat format);   //  native: physical == format
+
+    static AudioInputChoice reinterpreted(
+        AudioFormat format, AudioFormat physical, bool swap_channels
+    );
+
+    bool is_valid() const;
+    explicit operator bool() const;
+
+    bool operator==(const AudioInputChoice& x) const;
+
+    const AudioFormat& format() const;          //  what the pipeline consumes
+    const AudioFormat& physical_format() const; //  what the device emits
+    bool is_reinterpreted() const;
+    bool swap_channels() const;
+
+    std::string display_name() const;
+
+private:
+    AudioFormat m_format;
+    AudioFormat m_physical;
+    bool m_reinterpreted = false;
+    bool m_swap_channels = false;
+};
+
+struct AudioInputChoiceList{
+    std::vector<AudioInputChoice> choices;
+    size_t preferred_index = 0;
+};
+
+//  Builds the input format choices for a device from its supported formats
+//  (any order, duplicates allowed) and its preferred format.
+AudioInputChoiceList input_choices(
+    std::vector<AudioFormat> supported,
+    const AudioFormat& preferred
+);
 
 
 
@@ -75,9 +135,11 @@ public:
     const std::string& display_name() const;
     const std::string& device_name() const;
 
-    const std::vector<AudioChannelFormat>& supported_formats() const;
-    int preferred_format_index() const;
-    QAudioFormat preferred_format() const;
+    //  The device-driven format list (see input_choices()). Populated for
+    //  input devices only; empty for output devices (the sink opens in its
+    //  native format).
+    const std::vector<AudioInputChoice>& supported_choices() const;
+    size_t preferred_choice_index() const;
 
     const NativeAudioInfo& native_info() const;
 

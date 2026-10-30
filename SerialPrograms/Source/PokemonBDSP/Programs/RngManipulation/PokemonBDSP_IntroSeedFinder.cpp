@@ -10,7 +10,6 @@
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/PrettyPrint.h"
 #include "CommonFramework/GlobalAutoPaths.h"
-#include "CommonFramework/Globals.h"
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "CommonTools/Async/InferenceSession.h"
@@ -46,10 +45,10 @@ IntroSeedFinder_Descriptor::IntroSeedFinder_Descriptor()
         "",
         "Recover the RNG seed from the intro cutscene by watching Munchlax blink, so that the "
         "secret ID can be worked out from the trainer card afterwards.",
+        PanelQualityStanding::OFFICIAL_BETA,
         ProgramControllerClass::StandardController_NoRestrictions,
         FeedbackType::REQUIRED,
-        AllowCommandsWhenRunning::ENABLE_COMMANDS,
-        {}
+        AllowCommandsWhenRunning::ENABLE_COMMANDS
     )
 {}
 

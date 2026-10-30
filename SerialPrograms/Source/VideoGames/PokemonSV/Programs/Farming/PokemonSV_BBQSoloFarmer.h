@@ -72,6 +72,8 @@ bool bbq_quest_is_no_trip(BBQuests quest);
 // bbq_quest_is_no_trip()) are chained: the panel read that checked one is
 // reused for a no-trip quest next or for the next plan, without the round
 // actions between.
+// Throws UserSetupError if the exclusions leave no blue quest to do, or if
+// the panel shows nothing doable for many reads in a row.
 void run_bbq_rounds(Logger& logger, const BBQOption& options, BBQGameActions& game);
 
 

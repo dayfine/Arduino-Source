@@ -5,8 +5,9 @@
  */
 
 #include <iostream>
-#include <QDir>
 #include <QMessageBox>
+#include "Common/Cpp/Filesystem/FileIO.h"
+#include "Common/Cpp/Filesystem/Filesystem.h"
 #include "Common/Cpp/PrettyPrint.h"
 #include "Common/Cpp/Logging/GlobalLogger.h"
 #include "Common/Cpp/Logging/LastLogTracker.h"
@@ -14,13 +15,13 @@
 #include "Common/Cpp/Json/JsonObject.h"
 #include "Common/Cpp/Concurrency/AsyncTask.h"
 #include "Common/Cpp/Hardware/Hardware.h"
+#include "Common/Cpp/ColoredText.h"
 #include "CommonFramework/Globals.h"
 #include "CommonFramework/StaticGlobals.h"
 #include "CommonFramework/GlobalAutoPaths.h"
 #include "CommonFramework/GlobalSettingsPanel.h"
 #include "CommonFramework/Logging/Logger.h"
 #include "CommonFramework/Notifications/ProgramNotifications.h"
-#include "Common/Cpp/ColoredText.h"
 #include "CommonFramework/Recording/StreamHistorySession.h"
 #include "CommonFramework/Tools/GlobalThreadPools.h"
 #include "ProgramDumper.h"
@@ -113,7 +114,7 @@ SendableErrorReport::SendableErrorReport()
     , m_program_runtime_millis(0)
     , m_dump_name(ERROR_DUMP_NAME)
 {
-    QDir().mkpath(QString::fromStdString(m_directory));
+    Filesystem::create_directories(Filesystem::Path(m_directory));
 }
 SendableErrorReport::SendableErrorReport(
     Logger* logger,
@@ -143,14 +144,15 @@ SendableErrorReport::SendableErrorReport(
             log += line.text;
             log += "\r\n";
         }
-        QFile file(QString::fromStdString(m_directory + ERROR_LOGS_NAME));
-        bool exists = file.exists();
-        if (file.open(QIODevice::WriteOnly)){
+        const Filesystem::Path log_file_path(m_directory + ERROR_LOGS_NAME);
+        bool exists = Filesystem::exists(log_file_path);
+        FileIO file(log_file_path, FileMode::WRITE);
+        if (file.is_open()){
             if (!exists){
                 std::string bom = "\xef\xbb\xbf";
-                file.write(bom.c_str(), bom.size());
+                file.write(bom);
             }
-            file.write(log.c_str());
+            file.write(log);
             file.flush();
         }
         m_logs_name = ERROR_LOGS_NAME;
@@ -293,15 +295,14 @@ void SendableErrorReport::save_report_json(Logger* logger) const{
 
 void SendableErrorReport::move_to_sent(){
 //    cout << "move_to_sent()" << endl;
-    QDir().mkdir(QString::fromStdString(ERROR_PATH_SENT));
+    Filesystem::create_directories(Filesystem::Path(ERROR_PATH_SENT));
 
     std::string new_directory = ERROR_PATH_SENT + "/" + m_timestamp + "/";
 //    cout << "old: " << m_directory << endl;
 //    cout << "new: " << new_directory << endl;
-    bool success = QDir().rename(
-        QString::fromStdString(m_directory),
-        QString::fromStdString(new_directory)
-    );
+    std::error_code ec;
+    Filesystem::rename(Filesystem::Path(m_directory), Filesystem::Path(new_directory), ec);
+    bool success = !ec;
     if (success){
         global_logger_tagged().log("Moved error report " + m_timestamp + ".");
     }else{
@@ -313,15 +314,15 @@ void SendableErrorReport::move_to_sent(){
 
 std::vector<std::string> SendableErrorReport::get_pending_reports(){
     std::vector<std::string> ret;
-    QDir dir(QString::fromStdString(ERROR_PATH_UNSENT));
-    dir.setFilter(QDir::Filter::AllDirs);
-    QFileInfoList list = dir.entryInfoList();
-    for (const auto& item : list){
-        std::string path = item.filePath().toStdString();
-        if (path.back() == '.'){
+    for (const Filesystem::Path& entry : Filesystem::list_directory(Filesystem::Path(ERROR_PATH_UNSENT))){
+        if (!Filesystem::is_directory(entry)){
             continue;
         }
-        ret.emplace_back(std::move(path));
+        const std::string name = entry.filename().string();
+        if (name.back() == '.'){
+            continue;
+        }
+        ret.emplace_back(entry.string_slash_normalized());
     }
     return ret;
 }

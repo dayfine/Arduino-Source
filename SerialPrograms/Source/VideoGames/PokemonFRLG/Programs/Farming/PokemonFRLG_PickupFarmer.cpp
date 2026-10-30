@@ -10,10 +10,8 @@
 #include "CommonFramework/ProgramStats/StatsTracking.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "CommonTools/Async/InferenceRoutines.h"
-#include "CommonTools/VisualDetectors/BlackScreenDetector.h"
-#include "CommonTools/StartupChecks/StartProgramChecks.h"
-#include "Pokemon/Pokemon_Strings.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
+#include "Pokemon/Pokemon_Strings.h"
 #include "VideoGames/PokemonFRLG/Inference/Dialogs/PokemonFRLG_BattleDialogs.h"
 #include "VideoGames/PokemonFRLG/Inference/Dialogs/PokemonFRLG_PartyDialogs.h"
 #include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_PartyMenuDetector.h"
@@ -31,6 +29,7 @@ PickupFarmer_Descriptor::PickupFarmer_Descriptor()
         Pokemon::STRING_POKEMON + " FRLG", "Pickup Farmer",
         "Programs/PokemonFRLG/PickupFarmer.html",
         "Farms berries, nuggets, rare candies, PP-UP, and TM10 by battling wild encounters and periodically checking for picked-up items.",
+        PanelQualityStanding::OFFICIAL,
         ProgramControllerClass::StandardController_NoRestrictions,
         FeedbackType::REQUIRED,
         AllowCommandsWhenRunning::DISABLE_COMMANDS

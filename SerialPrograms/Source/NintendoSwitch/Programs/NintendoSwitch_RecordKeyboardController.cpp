@@ -4,15 +4,17 @@
  *
  */
 
-#include <QFile>
+#include <iostream>
+#include "Common/Cpp/Filesystem/FileIO.h"
+#include "Common/Cpp/Filesystem/Filesystem.h"
 #include "Common/Cpp/Json/JsonArray.h"
 #include "Common/Cpp/Json/JsonObject.h"
+#include "Controllers/ControllerTypeStrings.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProControllerState.h"
 #include "NintendoSwitch/Controllers/Joycon/NintendoSwitch_JoyconState.h"
-#include "NintendoSwitch_RecordKeyboardController.h"
-#include "Controllers/ControllerTypeStrings.h"
 
-#include <iostream>
+#include "NintendoSwitch_RecordKeyboardController.h"
+
 using std::cout;
 using std::endl;
 
@@ -26,6 +28,7 @@ RecordKeyboardController_Descriptor::RecordKeyboardController_Descriptor()
         "Nintendo Switch", "Record Keyboard Controller",
         "Programs/NintendoSwitch/RecordKeyboardController.html",
         "Record actions from the keyboard controller, then play it back.",
+        PanelQualityStanding::OFFICIAL,
         ProgramControllerClass::StandardController_NoRestrictions,
         FeedbackType::NONE,
         AllowCommandsWhenRunning::ENABLE_COMMANDS
@@ -97,8 +100,7 @@ void RecordKeyboardController::program(SingleSwitchProgramEnvironment& env, Canc
     if (MODE == Mode::RECORD){
         // check if given file name already exists. If it does, throw an error so we don't overwrite it.
         std::string output_json_filename = std::string(FILE_NAME) + ".json";
-        QFile file(QString::fromStdString(output_json_filename));
-        if (file.open(QFile::ReadOnly)){
+        if (Filesystem::exists(Filesystem::Path(output_json_filename))){
             throw FileException(
                 nullptr,
                 PA_CURRENT_FUNCTION,
@@ -217,9 +219,9 @@ void json_to_cpp_code(Logger& logger, const JsonValue& json, const std::string& 
             break;
         }
 
-        QFile file(QString::fromStdString(output_file_name + ".txt"));
-        if (file.open(QIODevice::WriteOnly)){
-            file.write(output_text.c_str(), output_text.size());
+        FileIO file(Filesystem::Path(output_file_name + ".txt"), FileMode::WRITE);
+        if (file.is_open()){
+            file.write(output_text);
         }
 
     }catch (ParseException& e){

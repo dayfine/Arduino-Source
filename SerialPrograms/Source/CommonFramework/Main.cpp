@@ -1,9 +1,7 @@
 
-#include <QDir>
-#include <QApplication>
-#include <QFileInfo>
+#include <iostream>
 //#include <QTextStream>
-#include <QMessageBox>
+#include <QApplication>
 #include "Common/Cpp/Logging/LastLogTracker.h"
 #include "Common/Cpp/Logging/FileLogger.h"
 #include "Common/Cpp/Logging/GlobalLogger.h"
@@ -13,7 +11,6 @@
 #include "Common/Cpp/Concurrency/AsyncTask.h"
 #include "Common/Cpp/Concurrency/FireForgetDispatcher.h"
 #include "Common/Cpp/Concurrency/Watchdog.h"
-#include "Common/Cpp/Concurrency/PeriodicRunner.h"
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/ImageResolution.h"
 #include "Common/Cpp/ScopeExit.h"
@@ -21,35 +18,29 @@
 #include "StaticRegistration.h"
 #include "CommonFramework/GlobalAutoPaths.h"
 #include "CommonFramework/Tools/GlobalThreadPools.h"
-#include "VideoPipeline/Backends/MediaServicesQt6.h"
-#include "Globals.h"
-#include "GlobalSettingsPanel.h"
-#include "GlobalServices.h"
-#include "PersistentSettings.h"
+#include "CommonFramework/VideoPipeline/Backends/CameraImplementations.h"
+#include "CommonTools/OCR/OCR_Routines.h"
 #include "Tests/CommandLineTests.h"
-#include "ErrorReports/ProgramDumper.h"
-#include "ErrorReports/ErrorReports.h"
-#include "Environment/HardwareValidation.h"
+#include "ControllerInput/ControllerInput.h"
+#include "Controllers/SerialPort/SerialPortPollerQt.h"
 #include "Integrations/DiscordSettingsOption.h"
 #include "Integrations/DiscordSocial/DiscordSocial.h"
 #include "Integrations/DppIntegration/DppClient.h"
-#include "Logging/Logger.h"
-#include "Logging/OutputRedirector.h"
+#include "Integrations/DiscordWebhook.h"
+#include "VideoPipeline/Backends/MediaServicesQt6.h"
+#include "ErrorReports/ProgramDumper.h"
+#include "ErrorReports/ErrorReports.h"
+#include "Environment/HardwareValidation.h"
 //#include "Tools/StatsDatabase.h"
 //#include "Windows/DpiScaler.h"
+#include "Logging/Logger.h"
+#include "Logging/OutputRedirector.h"
 #include "Startup/SetupSettings.h"
 #include "Startup/NewVersionCheck.h"
-#include "CommonFramework/VideoPipeline/Backends/CameraImplementations.h"
-#include "CommonTools/OCR/OCR_Routines.h"
-#include "ControllerInput/ControllerInput.h"
-#include "Controllers/SerialPort/SerialPortPollerQt.h"
-#include "Integrations/DiscordWebhook.h"
 #include "Windows/MainWindow.h"
-
-#include <iostream>
-using std::cout;
-using std::endl;
-
+#include "GlobalSettingsPanel.h"
+#include "GlobalServices.h"
+#include "PersistentSettings.h"
 
 using namespace PokemonAutomation;
 
@@ -60,12 +51,16 @@ namespace PokemonAutomation{
 Q_DECLARE_METATYPE(std::string)
 
 void set_working_directory(){
-    QString application_dir_path = qApp->applicationDirPath();
-    if (application_dir_path.endsWith(".app/Contents/MacOS")){
+    const std::string app_dir = Filesystem::application_binary_directory().string_slash_normalized();
+    const std::string bundle_dir = "/Contents/MacOS";
+    const std::string bundle_suffix = ".app" + bundle_dir;
+    if (app_dir.size() > bundle_suffix.size() &&
+        app_dir.compare(app_dir.size() - bundle_suffix.size(), bundle_suffix.size(), bundle_suffix) == 0){
         // a macOS bundle. Change working directory to the folder that hosts the .app folder.
-        QString app_bundle_path = application_dir_path.chopped(15);
-        QString base_folder_path = QFileInfo(app_bundle_path).dir().absolutePath();
-        QDir::setCurrent(base_folder_path);
+        const std::string app_bundle_path = app_dir.substr(0, app_dir.size() - bundle_dir.size());
+        const Filesystem::Path base_folder_path = Filesystem::Path(app_bundle_path).parent_path();
+        std::error_code ec;
+        Filesystem::set_current_path(base_folder_path, ec);
     }
 }
 
@@ -77,7 +72,7 @@ FileLogger& global_file_logger(){
     static FileLogger logger(
         GlobalThreadPools::unlimited_normal(),
         FileLoggerConfig{
-            .file_path = USER_FILE_PATH() + QCoreApplication::applicationName().toStdString() + ".log",
+            .file_path = USER_FILE_PATH() + Filesystem::application_binary_name().stem().string() + ".log",
         }
     );
     return logger;
@@ -98,9 +93,9 @@ int run_program(int argc, char *argv[]){
 #endif
 
     {
-        QString bin_dir = QCoreApplication::applicationDirPath();
-        QString qml_import_path = QDir(bin_dir).filePath("qml");
-        qputenv("QML_IMPORT_PATH", qml_import_path.toLocal8Bit());
+        const std::string qml_import_path =
+            (Filesystem::application_binary_directory() / Filesystem::Path("qml")).string_slash_normalized();
+        qputenv("QML_IMPORT_PATH", qml_import_path.c_str());
     }
 
     GlobalOutputRedirector redirect_stdout(std::cout, "stdout", Color());
@@ -137,8 +132,8 @@ int run_program(int argc, char *argv[]){
 //    QApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
 //#endif
 
-    QDir().mkpath(QString::fromStdString(SETTINGS_PATH()));
-    QDir().mkpath(QString::fromStdString(SCREENSHOTS_PATH()));
+    Filesystem::create_directories(Filesystem::Path(SETTINGS_PATH()));
+    Filesystem::create_directories(Filesystem::Path(SCREENSHOTS_PATH()));
 
 
 
@@ -155,15 +150,7 @@ int run_program(int argc, char *argv[]){
 
     //  Read program settings from json file: SerialPrograms-Settings.json.
     try{
-        if (!migrate_settings(logger, application.applicationName().toStdString() + "-Settings.json")){
-            return 1;
-        }
-
         PERSISTENT_SETTINGS().read();
-
-        if (!migrate_stats(logger)){
-            return 1;
-        }
     }catch (const FileException& error){
         logger.log(error.message(), COLOR_RED);
     }catch (const ParseException& error){
@@ -178,16 +165,21 @@ int run_program(int argc, char *argv[]){
     GlobalThreadPools::qt_worker_threadpool();
     GlobalThreadPools::qt_event_threadpool();
 
+    bool augment_test_color_distortions = false;
     for (size_t i = 0; i < argc; i++){
         constexpr const char* force_run_tests = "--command-line-test-mode";
+        constexpr const char* distort_test_images = "--augment-color-distortions";
 
         if (strcmp(argv[i], force_run_tests) == 0){
             GlobalSettings::instance().COMMAND_LINE_TEST_MODE = true;
         }
+        if (strcmp(argv[i], distort_test_images) == 0){
+            augment_test_color_distortions = true;
+        }
     }
 
     if (GlobalSettings::instance().COMMAND_LINE_TEST_MODE){
-        return run_command_line_tests();
+        return run_command_line_tests(augment_test_color_distortions);
     }
 
     //  Check whether the hardware is powerful enough to run this program.
@@ -287,7 +279,7 @@ int main(int argc, char *argv[]){
 //  Joining threads on Qt 6.9+ Windows will hang!
 //
 #ifdef PA_ENABLE_QT_ADOPTION_WORKAROUND
-    cout << "Qt6.9 bug workaround: std::quick_exit() to avoid thread join hangs." << endl;
+    std::cout << "Qt6.9 bug workaround: std::quick_exit() to avoid thread join hangs." << std::endl;
     std::quick_exit(ret);
 #endif
 
@@ -302,7 +294,7 @@ int main(int argc, char *argv[]){
     GlobalThreadPools::qt_worker_threadpool().stop();
     GlobalThreadPools::qt_event_threadpool().stop();
 
-    cout << "Exiting main()..." << endl;
+    std::cout << "Exiting main()..." << std::endl;
 
     return ret;
 }

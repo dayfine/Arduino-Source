@@ -4,9 +4,8 @@
  *
  */
 
-#include <QDir>
-#include <QKeyEvent>
 #include "Common/Cpp/Exceptions.h"
+#include "Common/Cpp/Filesystem/Filesystem.h"
 #include "Common/Cpp/PrettyPrint.h"
 #include "CommonFramework/Globals.h"
 #include "CommonFramework/GlobalAutoPaths.h"
@@ -29,8 +28,8 @@ SnapshotDumper_Descriptor::SnapshotDumper_Descriptor()
         "Game Console", "Snapshot Dumper",
         "Programs/NintendoSwitch/SnapshotDumper.html",
         "Periodically take screenshots.",
+        PanelQualityStanding::DEVELOPER,
         ProgramControllerClass::StandardController_NoRestrictions,
-        Color(),
         FeedbackType::NONE,
         AllowCommandsWhenRunning::ENABLE_COMMANDS
     )
@@ -139,7 +138,7 @@ void SnapshotKeyTrigger::run_controller_input(ControllerInputState& state){
 
 void SnapshotDumper::program(ConsoleProgramEnvironment& env, CancellableScope& scope){
     std::string folder_path = USER_FILE_PATH() + "ScreenshotDumper/";
-    QDir().mkpath(folder_path.c_str());
+    Filesystem::create_directories(Filesystem::Path(folder_path));
 
     if (SNAPSHOT_MODE == SnapshotMode::KEYPRESS){
         SnapshotKeyTrigger key_trigger(env.console(), FORMAT);
@@ -173,7 +172,7 @@ std::string to_format_string(Format format){
 
 void dump_snapshot(VideoStream& stream, std::string folder_name, std::string format){
     std::string folder_path = USER_FILE_PATH() + folder_name + "/";
-    QDir().mkpath(folder_path.c_str());
+    Filesystem::create_directories(Filesystem::Path(folder_path));
     VideoSnapshot last = stream.video().snapshot();
     std::string filename = folder_path + now_to_filestring() + format;
     last->save(filename);
