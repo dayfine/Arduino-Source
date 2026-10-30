@@ -569,7 +569,8 @@ public:
         //  In town, short open legs are cheap: from where the walk south stops,
         //  the plan is the user's (2026-10-30): west to the wall, a tile east
         //  into the gap's column, straight south through the gap between the
-        //  signs, a tile west to below the Center's sign. Not round the town.
+        //  signs, a tile west, then north until the Center's sign stops us
+        //  (r134a: "south 5" went 6). Not round the town.
         {
             const auto legs = Pokemon::plan_robust_route(maps.world(), {sandgem_entry_stop()},
                 [&](const TilePos& pos){ return pos == below_sign; }, town_plan_costs());
@@ -578,14 +579,14 @@ public:
                 read += " [" + Pokemon::to_string(planned.leg) + "]";
             }
             const std::vector<std::pair<Direction, size_t>> expected{
-                {Direction::WEST, 9}, {Direction::EAST, 1}, {Direction::SOUTH, 5}, {Direction::WEST, 1},
+                {Direction::WEST, 9}, {Direction::EAST, 1}, {Direction::SOUTH, 6}, {Direction::WEST, 1}, {Direction::NORTH, 2},
             };
             bool same = legs && legs->size() == expected.size();
             for (size_t i = 0; same && i < expected.size(); i++){
                 same = (*legs)[i].leg.direction == expected[i].first && (*legs)[i].leg.tiles == expected[i].second;
             }
             if (!same){
-                return "Sandgem's entry to below the Center's sign, town costs: expected west 9, east 1, south 5, west 1; planned" +
+                return "Sandgem's entry to below the Center's sign, town costs: expected west 9, east 1, south 6, west 1, north 2; planned" +
                     (read.empty() ? std::string(" nothing") : read) + ".";
             }
             logger.log("Sandgem's entry to below the Center's sign, town costs:" + read);

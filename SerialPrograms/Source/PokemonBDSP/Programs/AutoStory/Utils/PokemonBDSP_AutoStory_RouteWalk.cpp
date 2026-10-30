@@ -138,7 +138,10 @@ std::optional<Direction> talk_to_adjacent_npc(
 
 RobustPlanCosts town_plan_costs(){
     RobustPlanCosts costs;
-    costs.exact_open_tiles = 5;
+    //  A tile's hold moves exactly a tile; a longer open leg may end a tile
+    //  either way ("south 5" went 6 in r134a), so the plan ends on a wall.
+    costs.exact_open_tiles = 1;
+    costs.open_error_per = 8;
     costs.leg_not_at_wall = 6;
     costs.per_open_tile = 2;
     return costs;
