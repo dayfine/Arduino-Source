@@ -5,6 +5,7 @@
  */
 
 #include <algorithm>
+#include <set>
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "CommonFramework/GlobalAutoPaths.h"
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
@@ -136,6 +137,9 @@ public:
 // quests in not_possible_quests are skipped, and if nothing is doable all
 // quests are rerolled and nothing is returned. Red quests and the
 // exclusions table are not modeled. Records the game actions taken.
+// With out_of_bp, rerolls do nothing, as in the game when BP runs out.
+// A run that reads the panel more than max_reads times is stuck: the read
+// throws, and the test records "stuck".
 class SimulatedBBQGameActions : public BBQGameActions{
 public:
     std::vector<BBQuests> panel;
@@ -144,12 +148,16 @@ public:
     // Completing the first quest also completes the second, e.g. walking
     // 500 meters while navigating to a photo target.
     std::vector<std::pair<BBQuests, BBQuests>> also_completes = {};
+    // Attempts at these always fail, e.g. a target that never spawns.
+    std::set<BBQuests> never_completes = {};
+    bool out_of_bp = false;
+    size_t max_reads = 1000;
 
     std::vector<std::string> events;
 
     virtual std::vector<BBQuests> read_quests() override{
         events.push_back("read");
-        if (++m_reads > 1000){
+        if (++m_reads > max_reads){
             throw std::runtime_error("Too many quest panel reads.");
         }
         return panel;
@@ -164,7 +172,7 @@ public:
                 doable.push_back(quest);
             }
         }
-        if (doable.empty()){
+        if (doable.empty() && !out_of_bp){
             for (BBQuests& slot : panel){
                 slot = next_new_quest();
             }
@@ -173,7 +181,8 @@ public:
     }
     virtual bool do_quest(BBQuests quest, uint8_t&) override{
         events.push_back("do");
-        const bool success = m_next_outcome < outcomes.size() ? outcomes[m_next_outcome++] : true;
+        const bool success = !never_completes.contains(quest)
+            && (m_next_outcome < outcomes.size() ? outcomes[m_next_outcome++] : true);
         if (success){
             complete(quest);
             for (const auto& [done, extra] : also_completes){
@@ -239,6 +248,9 @@ struct BBQRoundsScenario{
     std::vector<BBQuests> panel = {BBQuests::make_tm, BBQuests::auto_10, BBQuests::sneak_up};
     std::vector<bool> outcomes = {};
     std::vector<std::pair<BBQuests, BBQuests>> also_completes = {};
+    std::set<BBQuests> never_completes = {};
+    bool out_of_bp = false;
+    size_t max_reads = 1000;
     uint64_t expected_completed = 0;
     std::string expected;
 };
@@ -263,9 +275,16 @@ public:
         game.panel = m_scenario.panel;
         game.outcomes = m_scenario.outcomes;
         game.also_completes = m_scenario.also_completes;
+        game.never_completes = m_scenario.never_completes;
+        game.out_of_bp = m_scenario.out_of_bp;
+        game.max_reads = m_scenario.max_reads;
 
         NullLogger logger;
-        run_bbq_rounds(logger, options, game);
+        try{
+            run_bbq_rounds(logger, options, game);
+        }catch (std::runtime_error&){
+            game.events.push_back("stuck");
+        }
         const uint64_t completed = (uint64_t)std::count(game.events.begin(), game.events.end(), "completed");
         if (completed != m_scenario.expected_completed){
             return "Expected " + std::to_string(m_scenario.expected_completed)
@@ -334,6 +353,67 @@ static void add_tests_BBQFarmerRounds(UnitTestDatabase& database){
             .stop_when_out_of_eggs = true,
             .expected_completed = 0,
             .expected = "",
+        },
+
+        // The ways the loop gets stuck or loses time. Scenarios named
+        // "today:" state the current behavior, so that each fix shows up as a
+        // change to one of them.
+        {
+            // Today: sneak-up never completes and is attempted again in every
+            // round it stays on the panel.
+            .name = "today: a failed quest is attempted every round",
+            .num_quests = 4,
+            .never_completes = {BBQuests::sneak_up},
+            .expected_completed = 4,
+            .expected =
+                "read process read do completed read do completed read do end "
+                "read process read do completed read do completed read do end",
+        },
+        {
+            // Today: the only doable quest never completes, so the farmer
+            // attempts it every round and never finishes.
+            .name = "today: a panel of failed quests is retried forever",
+            .num_quests = 3,
+            .panel = {BBQuests::sneak_up, BBQuests::pickup_10, BBQuests::catch_flying},
+            .never_completes = {BBQuests::sneak_up},
+            .max_reads = 6,
+            .expected_completed = 0,
+            .expected =
+                "read process read do end "
+                "read process read do end "
+                "read process read do end read stuck",
+        },
+        {
+            // Today: rerolls change nothing (out of BP), so the farmer reads
+            // and rerolls the panel forever.
+            .name = "today: rerolls that do not help repeat forever",
+            .num_quests = 3,
+            .panel = {BBQuests::pickup_10, BBQuests::catch_flying, BBQuests::UnableToDetect},
+            .out_of_bp = true,
+            .max_reads = 4,
+            .expected_completed = 0,
+            .expected = "read process read process read process read process read stuck",
+        },
+        {
+            // Today: the save check only looks for exact multiples, so going
+            // from 0 to 3 skips the milestone at 2 without saving.
+            .name = "today: a round that skips past a milestone does not save",
+            .num_quests = 6,
+            .save_num_quests = 2,
+            .expected_completed = 6,
+            .expected = round_of_3 + " end " + round_of_3 + " end(save)",
+        },
+        {
+            // Today: round 1 completes nothing, but 0 is a multiple of 2, so
+            // it saves anyway.
+            .name = "today: a round without completions saves",
+            .num_quests = 3,
+            .save_num_quests = 2,
+            .outcomes = {false, false, false},
+            .expected_completed = 3,
+            .expected =
+                "read process read do read do read do end(save) "
+                + round_of_3 + " end",
         },
     };
     for (const BBQRoundsScenario& scenario : scenarios){
