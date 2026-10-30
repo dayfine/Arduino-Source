@@ -65,9 +65,10 @@ const TileGrid& grid(){
 //  wanders about the grass, so she is not on the grid. East of the grass her
 //  row is open to Sandgem's fence at (64,6).
 const TilePos POTION_GIVER_ROW_WEST_END{42, 3};
-//  North of the tile east of the sign at (55,4): the trees north and the
-//  sign's row pin it. Walk west from here along row 3 to meet her.
-const TilePos POTION_GIVER_APPROACH{56, 3};
+//  Just east of her grass: coming from Sandgem, walk west past the sign
+//  along row 5 or 6 to the trees at column 52, then north to the trees
+//  above row 3. Walk west from here along row 3 to meet her.
+const TilePos POTION_GIVER_APPROACH{53, 3};
 //  Against Sandgem's fence: walking east along her row stops here, out of
 //  the grass, where a stop can be read.
 const TilePos POTION_GIVER_ROW_EAST_END{63, 3};

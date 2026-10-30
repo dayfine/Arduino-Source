@@ -679,9 +679,9 @@ namespace PokemonAutomation {
 
         // To the Poke Mart lady and her talk. She stands in the top row of Route
         // 201's north-east grass, under the trees, and wanders about it (r113a,
-        // r114a). Come along the open strip east of the grass to the tile on
-        // her row that the trees north and the sign's row pin, and walk west
-        // along the row until she blocks the walk and answers.
+        // r114a). Come west past the sign to the trees east of the grass, step
+        // north onto her row under the trees, and walk west along the row
+        // until she blocks the walk and answers.
         static void meet_poke_mart_lady(
             VideoStream& stream, ProControllerContext& context, const MapSet& maps,
             std::vector<TrainerSight>& trainers, const RouteTrainerFight& fight
@@ -693,7 +693,7 @@ namespace PokemonAutomation {
             if (!walk_along_row_to_talk(stream, context, Pokemon::Direction::WEST,
                     (size_t)(approach.x - corner.x), "Poke Mart lady")) {
                 OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
-                    "Poke Mart lady: nobody answered walking west along her row from (56, 3), "
+                    "Poke Mart lady: nobody answered walking west along her row from (53, 3), "
                     "nor on any side of where the walk stopped.", stream);
             }
             // Her talk gives 10 Potions ("obtained" lines): A to the end.
