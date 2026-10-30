@@ -69,6 +69,15 @@ void register_overworld_commands(){
                 }
             }
         );
+        register_command_file_command(
+            "frlg_max_repel", "frlg_max_repel SLOT   (use the Max Repel in that Items pocket slot, from 1)",
+            [](CommandFileSession& session, const std::vector<std::string>& words){
+                if (words.size() < 2){
+                    throw ParseException("frlg_max_repel: expected SLOT");
+                }
+                use_max_repel_from_bag(session.env.console, session.context, std::stoi(words[1]) - 1);
+            }
+        );
         return true;
     }();
     (void)registered;
