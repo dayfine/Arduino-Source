@@ -4,9 +4,14 @@ import subprocess
 import sys
 from pathlib import Path
 
+from .classes import measure_classes
 from .git_files import changed_files, default_base, read_revision
 from .metrics import measure
-from .policy import evaluate
+from .policy import advisories, evaluate
+
+
+def analyze(path, source):
+    return measure(path, source) + measure_classes(path, source)
 
 
 def run(root, base_ref=None):
@@ -14,15 +19,18 @@ def run(root, base_ref=None):
         base_ref, how = default_base(root)
         print(f'Base: {base_ref} ({how}).')
     changes = changed_files(root, base_ref)
-    failures = []
+    failures, notes = [], []
     advisory = 0
     for current, original in changes:
-        metrics = measure(current, (root / current).read_text(encoding='utf-8-sig'))
-        previous = measure(current, read_revision(root, base_ref, original)) if original else []
+        metrics = analyze(current, (root / current).read_text(encoding='utf-8-sig'))
+        previous = analyze(current, read_revision(root, base_ref, original)) if original else []
         failures.extend(evaluate(metrics, previous))
+        notes.extend(advisories(metrics, previous))
         advisory += sum(m.check == 'file_lines' and 500 < m.value <= 1000 for m in metrics)
     print(f'Scanned {len(changes)} changed C++ files against {base_ref}.')
     print(f'Advisory: {advisory} changed files exceed 500 lines; prefer functions <=25 lines.')
+    for note in notes:
+        print('Advisory: ' + note)
     for failure in failures:
         print(failure, file=sys.stderr)
     print(f'Code health: {len(failures)} failures.')

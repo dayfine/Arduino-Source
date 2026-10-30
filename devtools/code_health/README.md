@@ -26,6 +26,9 @@ are included. Missing base revisions and analysis errors fail the command.
 | Function length | 50 physical lines, signature through closing brace; 25 recommended |
 | Nesting | 4 lexical brace levels inside the function body |
 | Parameters | 7 |
+| Public methods per class/struct | 7 (excluding ctors, dtors, operators, deleted and Qt signals); 6-7 advisory |
+| Public non-static data in a class with mutating methods | 0 (exempt: plain structs, value types with only const/static methods, `*Option`/`*Cell` fields, test files) |
+| Single-method interface (one pure virtual + optional virtual dtor, no bases) | not allowed: prefer a callable (`MoveOnlyFunction` / `std::function`) |
 
 New files/functions must meet these limits. In modified files, compare each
 metric with its value at the base revision: existing violations may remain or
@@ -46,6 +49,12 @@ brace extension counts nested blocks, lambdas and initializer braces; it
 ignores enclosing namespace/class braces, comments and string literals. This
 is lexical analysis, not a C++ compiler or clang-tidy replacement. Macro-generated
 functions and advanced syntax may require parser follow-up. CCN is not enforced.
+
+Class shapes come from a lexical member scan over lizard's tokens
+(`classes.py`), keyed by qualified class name and compared with the base like
+functions. libclang would need a compilation database with Qt include paths
+to parse these headers; the scan only has to tell access sections, member
+functions and data apart. Classes split across `#if` branches are skipped.
 
 ## Build and native C++ tests in one command
 

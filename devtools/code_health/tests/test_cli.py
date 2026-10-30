@@ -130,5 +130,21 @@ class CliTests(unittest.TestCase):
         self.assertIn(f'Base: {fork_point} (merge-base of HEAD and upstream/main).', result.stdout)
 
 
+    def test_class_shape_applies_to_new_classes_only(self):
+        interface = 'struct Listener{ virtual void on_event() = 0; };\n'
+        (self.root / 'Common/old.h').write_text(interface)
+        self.commit()
+        with (self.root / 'Common/old.h').open('a') as file:
+            file.write('int helper();\n')
+        self.git('add', '.')
+        self.assertEqual(0, self.cli().returncode)
+        (self.root / 'Common/new.h').write_text(interface.replace('Listener', 'Fresh'))
+        self.git('add', '.')
+        result = self.cli()
+        self.assertEqual(1, result.returncode, result.stderr)
+        self.assertIn('Fresh: single_method_interface=1', result.stderr)
+        self.assertIn('std::function', result.stderr)
+
+
 if __name__ == '__main__':
     unittest.main()
