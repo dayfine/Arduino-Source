@@ -1,78 +1,62 @@
 # Disk use of local builds and lab deployments
 
-Goal: keep many builds (dozens of lab deployments, several worktrees) within a
-few GiB, without risking one build running with another build's files.
+Goal: keep many builds (dozens of lab deployments, several worktrees) within a few GiB, without
+one build ever running with another build's files. Measured on Apple Silicon, 2026-10-29.
 
-## Measured (2026-10-29, Apple Silicon)
+## Do this
 
-| What | Size each | Notes |
+1. **Store each deployment's `Resources` as a content-hash snapshot**, linked from the deployment
+   (`~/BDSPLab/builds/.resources/<hash>/`, made by `snapshot_resources.sh` from `bdsp_deploy.sh`).
+   Builds with identical resources share one copy; a changed tree gets a new snapshot, so no build
+   sees another branch's files. The app only reads `Resources` (`get_resource_path()` looks for it
+   next to the executable and up to five parents; downloads go to the profile's
+   `DownloadedResources`), and no snapshot had a file modified after a day of runs.
+2. **Make the console-B copy of a deployment with APFS clones** (`cp -c`, in `make_slot_b.sh`).
+   It costs almost nothing; check savings with `df`, since `du` counts clones in full.
+3. **Prune deployments to the 5 newest per build family** (`prune_builds.sh`: `bdsp-r105` and
+   `frlgnav8` are families `bdsp-r` and `frlgnav`) and delete snapshots nothing links to.
+4. **Keep build directories only for worktrees in use**, with the `macos-ccache` preset
+   (PokemonAutomation/Arduino-Source#1767): a cached revision rebuilds in about a minute, so an
+   idle worktree's 2.1 GB `build/` can go. Keep the worktree itself (see "Don't").
+5. **Share a `Packages` checkout only between worktrees that need the same resource set.**
+   Upstream branches can link to one checkout; BDSP AutoStory branches use `~/BDSPLab/packages`.
+6. **Clear lab run output after the run is recorded**: AutoStory route and move screenshots (keep
+   `failures/` and `saves/`), Command File Runner probe shots, and old logs. They grow faster than
+   the builds (2.2 GB of AutoStory screenshots in two days).
+
+These stay in the lab scripts; the ccache guide (#1767) covers the only part upstream needs.
+
+## Don't
+
+| Technique | Why it fails | Measured (14 deployments; plain copies 4,212 MB) |
 |---|---|---|
-| Worktree build directory | 2.1 GB | 1.0 GB objects, 0.9 GB `libSerialProgramsLib.a`, 0.2 GB `Resources` |
-| Lab deployment (`~/BDSPLab/builds/<name>`) | 334 MB | 300 MB `Resources`, 30 MB `.app` |
-| Shared ccache (`macos-ccache` preset) | 0.76 GB total | about 250 MB per fully rebuilt revision; capped at 5 GB |
+| One `Resources` folder for every deployment | A build silently reads another branch's files: 2 of the 7 builds tried would have | 718 MB |
+| APFS clones for `Resources` across deployments | Every build re-copies `Resources`, so a clone from a fresh build shares nothing with older deployments | ~0 in the trial, a full tree (200-300 MB) per deploy in practice |
+| Hard links (`pax -rwl`; macOS's openrsync ignores `--link-dest`) | No smaller than snapshots, and writing a file in place changes it in every deployment | 965 MB |
+| Deleting a worktree that has deployments | The app loads `onnxruntime` through an rpath into the worktree it was built in; its deployments then crash at launch (dyld "Library not loaded") | — |
+| Linking a worktree to a `Packages` checkout with another resource set | Builds fine, then fails at run time on the first missing file ("FileException: Unable to open file") | — |
+| Deleting a folder without looking for links into it | Lab profiles linked `DownloadedResources` to one profile's copy; deleting it broke six profiles | — |
 
-The ccache preset (PokemonAutomation/Arduino-Source#1767) makes rebuilds fast. It
-doesn't make any of these smaller. Today `~/BDSPLab/builds` holds 12
-deployments (6 builds, each with a console-B copy) in 3.7 GB, almost all of it
-copies of `Resources`.
+After pointing a worktree at another `Packages`, delete `<build>/Resources`: the build copies it
+only when the folder is missing (a post-build step), so it won't refresh by itself.
 
-## What the app already allows
+## Numbers
 
-`get_resource_path()` (`CommonFramework/GlobalAutoPaths.cpp`) looks for a
-`Resources/` folder next to the executable and then up to five parent folders.
-A deployment can therefore use a `Resources` folder it doesn't own, without
-any code change.
+| What | Size |
+|---|---|
+| Worktree build directory | 2.1 GB (1.0 GB objects, 0.9 GB `libSerialProgramsLib.a`, 0.2 GB `Resources`) |
+| Lab deployment, plain copy | 334 MB (300 MB `Resources`, 30 MB `.app`) |
+| `Resources` trees | BDSP 1,467 files, 300 MB; upstream 686 files, 199 MB |
+| Shared ccache | about 1 GB; about 250 MB per fully rebuilt revision; capped at 5 GB |
 
-## What works and what doesn't
+Scan of 2026-10-29 (85 GB free of 460 GB):
 
-Tried on 2026-10-29 with seven lab builds, each with its console-B copy, deployed into a scratch
-folder and measured with `df` (which counts shared blocks once). The seven builds hold two distinct
-`Resources` trees: BDSP's (1,467 files, 300 MB) and upstream's (686 files, 199 MB). A plain copy of
-all 14 deployments took 4,212 MB.
-
-| Technique | Works? | Disk for 14 | Why |
-|---|---|---|---|
-| Content-hash `Resources` snapshots, linked from each deployment | **Yes, in use** | 912 MB (500 MB of trees, 420 MB of `.app`) | One copy per distinct tree, whatever the build does; a deployment can only see the tree it was built with |
-| APFS clones (`cp -c`) for the console-B `.app` copy | **Yes, in use** | the second copy is close to free | Clones of a just-made copy share blocks. macOS only, and `du` shows full sizes (use `df`) |
-| APFS clones for `Resources` across deployments | No | ~0 in the trial, a full tree per deploy in practice | Every build re-copies `Resources`, so a clone from a fresh build shares nothing with older deployments |
-| One `Resources` folder for all deployments | No | 718 MB | Version skew: 2 of the 7 builds would silently read the other branch's files |
-| Hard links (`pax -rwl`) | No | 965 MB | Not smaller than snapshots, and writing one file in place changes it in every deployment. macOS's openrsync didn't link with `--link-dest` at all |
-| Dropping idle worktrees' build directories | **Yes, in use** | 2.1 GB each | ccache rebuilds a cached revision in about a minute. Keep the worktree itself (see Pitfalls) |
-| Sharing one `Packages` checkout between worktrees | **Only for the same resource set** | 0.8 to 1.1 GB each | Saves a copy where branches need the same resources; wrong for branches with their own (BDSP), see Pitfalls |
-
-## In use now
-
-`~/BDSPLab/bdsp_deploy.sh` stores `Resources` as snapshots in `builds/.resources/<hash>/` and clones
-the console-B copy; `prune_builds.sh` keeps the 5 newest deployments per build family (`bdsp-r105`
-and `frlgnav8` are families `bdsp-r` and `frlgnav`) and deletes snapshots nothing links to. Result:
-12 deployments take 587 MB (199 MB of it one shared snapshot) instead of 4.2 GB, and the three
-worktree build directories in use take 6.4 GB.
-
-## Pitfalls found on 2026-10-29
-
-- **A build's `Resources` come from its worktree's `Packages`.** Sharing one `Packages` checkout
-  between worktrees (a link) saves 0.8 to 1.1 GB each, but only where the branches need the same
-  resources. BDSP AutoStory needs its own set (1,467 files, with #1717's 789 AutoStory templates);
-  a worktree linked to upstream's set (686 files) built fine and then failed at run time with
-  "FileException: Unable to open file" on the first missing template.
-- **`Resources` is copied once.** The copy is a post-build step that runs only when the build
-  directory has no `Resources` yet, so pointing a worktree at another `Packages` doesn't refresh
-  it: delete `<build>/Resources` and rebuild, or copy it by hand.
-- **Deployments aren't self-contained.** The app finds `onnxruntime` through an rpath into the
-  worktree it was built in. Deleting an idle worktree's build directory is safe; deleting the
-  worktree breaks every deployment built from it (dyld "Library not loaded").
-- **Look for links before deleting a folder.** Lab profiles linked their `DownloadedResources` to
-  one profile's copy; deleting that copy broke resource downloads in six profiles.
-
-## Lab output
-
-What the lab apps write grows faster than the builds and isn't covered above:
-per-leg route screenshots and move screenshots from AutoStory runs (2.2 GB in
-the console-B profile after two days), Command File Runner probe shots (1 GB,
-cleared), and rotated logs. These are run evidence, not build output, so they
-are cleared by hand after a run is recorded.
-
-Open questions:
-- Should `Resources` hashing skip files the app writes at runtime, if any?
-- Keep this in lab scripts only, or document it next to the ccache guide?
-- Should AutoStory keep per-leg screenshots only for failed runs?
+| Item | Size |
+|---|---|
+| Lab deployments (16, with three snapshots) | 1.2 GB, 0.7 GB of it snapshots |
+| Build directories in use (`bdsp/floaroma-mvp`, `frlg/brock-mvp`, `lab/frlg-nav-cfr`) | 6.4 GB |
+| Other build directories (`bdsp/new-game-intro-v2`, `build/local-ccache`, `bbq/m8a`) | 6.2 GB |
+| `Packages` checkouts (BDSP and upstream) | 1.8 GB |
+| Qt 6.8.3 (debug symbols removed) | 1.6 GB |
+| ccache | 0.9 GB |
+| SerialPrograms profiles and logs | 4.8 GB |
