@@ -21,6 +21,7 @@
 #include "NintendoSwitch/Inference/NintendoSwitch_HomeMenuDetector.h"
 #include "NintendoSwitch/Inference/NintendoSwitch_StartGameUserSelectDetector.h"
 #include "NintendoSwitch/Programs/NintendoSwitch_GameEntry.h"
+#include "NintendoSwitch_CommandFileParsing.h"
 #include "NintendoSwitch_CommandFileRunner.h"
 
 namespace PokemonAutomation{
@@ -109,81 +110,6 @@ void register_command_file_detector(const std::string& name, CommandFileDetector
 
 
 namespace{
-
-//  One line of a command file, split into words.
-class CommandLine{
-public:
-    explicit CommandLine(const std::string& line){
-        std::istringstream in(line);
-        std::string word;
-        while (in >> word && word[0] != '#'){
-            m_words.push_back(word);
-        }
-    }
-
-    bool empty() const{ return m_words.empty(); }
-    const std::string& name() const{ return m_words[0]; }
-    const std::vector<std::string>& words() const{ return m_words; }
-    bool has(size_t index) const{ return index < m_words.size(); }
-
-    const std::string& arg(size_t index) const{
-        if (!has(index)){
-            throw ParseException(name() + ": missing argument " + std::to_string(index));
-        }
-        return m_words[index];
-    }
-    double number(size_t index, double fallback) const{
-        if (!has(index)){
-            return fallback;
-        }
-        try{
-            return std::stod(m_words[index]);
-        }catch (std::exception&){
-            throw ParseException(name() + ": argument " + std::to_string(index) + " is not a number: " + m_words[index]);
-        }
-    }
-    Milliseconds duration(size_t index, Milliseconds fallback) const{
-        return Milliseconds((int64_t)number(index, (double)fallback.count()));
-    }
-
-private:
-    std::vector<std::string> m_words;
-};
-
-
-Button parse_buttons(const std::string& text){
-    static const std::map<std::string, Button> NAMES{
-        {"A", BUTTON_A}, {"B", BUTTON_B}, {"X", BUTTON_X}, {"Y", BUTTON_Y},
-        {"L", BUTTON_L}, {"R", BUTTON_R}, {"ZL", BUTTON_ZL}, {"ZR", BUTTON_ZR},
-        {"PLUS", BUTTON_PLUS}, {"MINUS", BUTTON_MINUS},
-        {"LCLICK", BUTTON_LCLICK}, {"RCLICK", BUTTON_RCLICK},
-        {"HOME", BUTTON_HOME}, {"CAPTURE", BUTTON_CAPTURE},
-    };
-    Button buttons = BUTTON_NONE;
-    std::istringstream in(text);
-    std::string name;
-    while (std::getline(in, name, '+')){
-        auto iter = NAMES.find(name);
-        if (iter == NAMES.end()){
-            throw ParseException("Unknown button: " + name);
-        }
-        buttons = (Button)(buttons | iter->second);
-    }
-    return buttons;
-}
-
-DpadPosition parse_dpad(const std::string& text){
-    static const std::map<std::string, DpadPosition> NAMES{
-        {"UP", DPAD_UP}, {"DOWN", DPAD_DOWN}, {"LEFT", DPAD_LEFT}, {"RIGHT", DPAD_RIGHT},
-    };
-    auto iter = NAMES.find(text);
-    if (iter == NAMES.end()){
-        throw ParseException("Unknown D-pad direction: " + text);
-    }
-    return iter->second;
-}
-
-
 
 //  Runs the lines of one command file.
 class LineRunner{
@@ -394,20 +320,6 @@ void write_file(const std::string& path, const std::string& text){
     if (file.is_open()){
         file.write(text.data(), text.size());
     }
-}
-
-//  The inbox file whose name sorts first, if any.
-std::optional<Filesystem::Path> next_command_file(const std::string& inbox){
-    std::optional<Filesystem::Path> next;
-    for (const Filesystem::Path& path : Filesystem::list_directory(Filesystem::Path(inbox))){
-        if (!Filesystem::is_regular_file(path) || path.extension().string() != ".txt"){
-            continue;
-        }
-        if (!next || path.string() < next->string()){
-            next = path;
-        }
-    }
-    return next;
 }
 
 enum class LineResult{
