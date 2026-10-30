@@ -84,7 +84,7 @@ struct RouteCosts{
 //  may pass through; warps to other maps are not taken. Planned with
 //  Pokemon::plan_legs() on the game's step rules.
 std::optional<std::vector<RouteStep>> plan_overworld_route(
-    const std::vector<OverworldMap>& maps,
+    const std::vector<MapData>& maps,
     const MapPosition& start,
     const RouteGoal& goal,
     const RouteCosts& costs = RouteCosts(),
@@ -94,7 +94,7 @@ std::optional<std::vector<RouteStep>> plan_overworld_route(
 //  Replays `route` from `start` with the game's step rules and returns where
 //  it ends. Throws InternalProgramError if a step can't be taken as planned.
 MapPosition follow_overworld_route(
-    const std::vector<OverworldMap>& maps,
+    const std::vector<MapData>& maps,
     const MapPosition& start,
     const std::vector<RouteStep>& route
 );

@@ -31,7 +31,7 @@ using Pokemon::TilePos;
 
 
 //  A warp from (x, y) to warp `dest_warp` of `dest_map`. Whether and how the
-//  player takes it depends on the tile there (see MapText::terrain). An empty
+//  player takes it depends on the tile there (see MapData::tiles). An empty
 //  `dest_map` leads to a map that isn't loaded.
 struct MapWarp{
     int x = 0;
@@ -41,14 +41,15 @@ struct MapWarp{
 };
 
 //  An object standing on a tile (person, item ball, rock, Pokemon), which
-//  blocks it. The game hides it once its event flag is set, e.g. a guard who
-//  leaves after the Hall of Fame; an empty flag means it is always there. A
-//  person who wanders may stand anywhere up to `wander_x` and `wander_y` tiles
-//  from (x, y), so all of those tiles count as blocked.
+//  blocks it. `kind` is its graphics, e.g. "nurse" or "mewtwo". The game
+//  hides it once its event flag is set, e.g. a guard who leaves after the
+//  Hall of Fame; an empty flag means it is always there. A person who wanders
+//  may stand anywhere up to `wander_x` and `wander_y` tiles from (x, y), so
+//  all of those tiles count as blocked.
 struct MapObject{
     int x = 0;
     int y = 0;
-    std::string name;
+    std::string kind;
     std::string flag;
     int wander_x = 0;
     int wander_y = 0;
@@ -62,10 +63,13 @@ struct MapConnection{
     std::string map;
 };
 
-//  A map as generated from the decompilation.
-struct MapText{
+//  A map as generated from the decompilation (see PokemonFRLG_OverworldMaps.h
+//  for its JSON form).
+struct MapData{
     std::string name;
-    //  One character per tile:
+    int width = 0;
+    int height = 0;
+    //  `height` rows of `width` characters, row 0 at the top:
     //    '#'  collision (wall, cliff)
     //    'J'  ledge: a wall, except that walking into it the way it faces
     //         hops the player down (not modelled, so the planner avoids it)
@@ -81,7 +85,7 @@ struct MapText{
     //    's'  can't be entered moving north or left moving south
     //    'e'  can't be entered moving west or left moving east
     //    'w'  can't be entered moving east or left moving west
-    std::vector<std::string> terrain;
+    std::vector<std::string> tiles;
     //  One hex digit per tile. Walking keeps to one elevation; tiles of
     //  elevation 0 (stairs, ladders) join elevations, and 15 ignores them.
     std::vector<std::string> elevation;
@@ -90,54 +94,39 @@ struct MapText{
     std::vector<MapConnection> connections;
 };
 
+//  Throws ParseException, naming the map, if the rows don't match its size
+//  or use a character outside the legend.
+void check_map(const MapData& map);
 
-//  A map ready for planning: MapText checked, with its rows joined.
-struct OverworldMap{
-    std::string name;
-    int width = 0;
-    int height = 0;
-    //  Row by row, `width` tiles each, as in MapText.
-    std::vector<char> terrain;
-    std::vector<uint8_t> elevation;
-    std::vector<MapWarp> warps;
-    std::vector<MapObject> objects;
-    std::vector<MapConnection> connections;
-};
+bool in_bounds(const MapData& map, const TilePos& point);
+//  The tile's character (see MapData::tiles). Out-of-bounds tiles are walls.
+char terrain_at(const MapData& map, const TilePos& point);
+uint8_t elevation_at(const MapData& map, const TilePos& point);
 
-//  Throws InternalProgramError if the rows don't match in size or use a
-//  character outside the legend.
-OverworldMap make_overworld_map(const MapText& text);
-
-bool in_bounds(const OverworldMap& map, const TilePos& point);
-//  The terrain character (see MapText::terrain). Out-of-bounds tiles are
-//  walls.
-char terrain_at(const OverworldMap& map, const TilePos& point);
-uint8_t elevation_at(const OverworldMap& map, const TilePos& point);
-
-bool is_wall(const OverworldMap& map, const TilePos& point);
-bool is_water(const OverworldMap& map, const TilePos& point);
-bool is_tall_grass(const OverworldMap& map, const TilePos& point);
-bool is_ledge(const OverworldMap& map, const TilePos& point);
+bool is_wall(const MapData& map, const TilePos& point);
+bool is_water(const MapData& map, const TilePos& point);
+bool is_tall_grass(const MapData& map, const TilePos& point);
+bool is_ledge(const MapData& map, const TilePos& point);
 //  Whether the tile itself refuses a step in `direction`: entering it, or
 //  leaving it.
-bool blocks_entering(const OverworldMap& map, const TilePos& point, Direction direction);
-bool blocks_leaving(const OverworldMap& map, const TilePos& point, Direction direction);
+bool blocks_entering(const MapData& map, const TilePos& point, Direction direction);
+bool blocks_leaving(const MapData& map, const TilePos& point, Direction direction);
 
 //  The warp the game takes on stepping onto this tile ('C', 'L').
-bool warps_on_step(const OverworldMap& map, const TilePos& point);
+bool warps_on_step(const MapData& map, const TilePos& point);
 //  A door ('D'), entered by walking north into it.
-bool is_door(const OverworldMap& map, const TilePos& point);
+bool is_door(const MapData& map, const TilePos& point);
 //  The direction that takes the exit mat on this tile, if it is one.
-std::optional<Direction> exit_mat(const OverworldMap& map, const TilePos& point);
+std::optional<Direction> exit_mat(const MapData& map, const TilePos& point);
 //  Arriving on a door or cave entrance, the game walks the player one
 //  tile south, out of it.
-bool walks_out_on_arrival(const OverworldMap& map, const TilePos& point);
+bool walks_out_on_arrival(const MapData& map, const TilePos& point);
 
-const MapObject* object_at(const OverworldMap& map, const TilePos& point);
-const MapWarp* warp_at(const OverworldMap& map, const TilePos& point);
+const MapObject* object_at(const MapData& map, const TilePos& point);
+const MapWarp* warp_at(const MapData& map, const TilePos& point);
 
 //  Removes the objects the game hides once one of `flags` is set.
-void hide_objects(OverworldMap& map, const std::set<std::string>& flags);
+void hide_objects(MapData& map, const std::set<std::string>& flags);
 
 
 //  What decides where the player's next step can go.
@@ -155,21 +144,21 @@ enum class StepKind{
 };
 
 //  What pressing `direction` once does to the player in `state`.
-StepKind classify_step(const OverworldMap& map, const PlayerState& state, Direction direction);
+StepKind classify_step(const MapData& map, const PlayerState& state, Direction direction);
 
 //  The same for a step that crosses into another map: from `state` on `from`
 //  onto `destination` on `to`.
 StepKind classify_step_onto(
-    const OverworldMap& from, const PlayerState& state, Direction direction,
-    const OverworldMap& to, const TilePos& destination
+    const MapData& from, const PlayerState& state, Direction direction,
+    const MapData& to, const TilePos& destination
 );
 
 //  The player after a step of kind WALK, STOP_SURFING or START_SURF (the
 //  Surf action moves the player onto the water).
-PlayerState after_step(const OverworldMap& map, const PlayerState& state, Direction direction, StepKind kind);
+PlayerState after_step(const MapData& map, const PlayerState& state, Direction direction, StepKind kind);
 PlayerState after_step_onto(
-    const OverworldMap& from, const PlayerState& state,
-    const OverworldMap& to, const TilePos& destination, StepKind kind
+    const MapData& from, const PlayerState& state,
+    const MapData& to, const TilePos& destination, StepKind kind
 );
 
 

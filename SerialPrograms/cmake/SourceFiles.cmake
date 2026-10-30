@@ -1739,6 +1739,7 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMap.h
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.cpp
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h
+    Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps_Tests.cpp
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRoute.cpp
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRoute.h
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWalk.cpp

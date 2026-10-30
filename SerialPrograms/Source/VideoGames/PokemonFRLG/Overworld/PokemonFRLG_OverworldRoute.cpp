@@ -47,7 +47,7 @@ std::string to_string(const RouteStep& step){
 namespace{
 
 
-int find_map(const std::vector<OverworldMap>& maps, const std::string& name){
+int find_map(const std::vector<MapData>& maps, const std::string& name){
     for (size_t c = 0; c < maps.size(); c++){
         if (maps[c].name == name){
             return (int)c;
@@ -85,7 +85,7 @@ struct Transition{
 };
 
 //  The player taking `warp`, or nothing if it leads off the loaded maps.
-std::optional<Transition> take_warp(const std::vector<OverworldMap>& maps, const MapWarp* warp){
+std::optional<Transition> take_warp(const std::vector<MapData>& maps, const MapWarp* warp){
     if (warp == nullptr){
         return std::nullopt;
     }
@@ -93,7 +93,7 @@ std::optional<Transition> take_warp(const std::vector<OverworldMap>& maps, const
     if (destination < 0 || warp->dest_warp < 0 || warp->dest_warp >= (int)maps[destination].warps.size()){
         return std::nullopt;
     }
-    const OverworldMap& map = maps[destination];
+    const MapData& map = maps[destination];
     const MapWarp& arrival = map.warps[warp->dest_warp];
     TilePos position{arrival.x, arrival.y};
     Transition transition;
@@ -108,8 +108,8 @@ std::optional<Transition> take_warp(const std::vector<OverworldMap>& maps, const
 }
 
 //  Walking off the map's edge onto the map connected there, if it is loaded.
-std::optional<Transition> cross_edge(const std::vector<OverworldMap>& maps, const Located& player, Direction direction){
-    const OverworldMap& map = maps[player.map];
+std::optional<Transition> cross_edge(const std::vector<MapData>& maps, const Located& player, Direction direction){
+    const MapData& map = maps[player.map];
     for (const MapConnection& connection : map.connections){
         if (connection.direction != direction){
             continue;
@@ -118,7 +118,7 @@ std::optional<Transition> cross_edge(const std::vector<OverworldMap>& maps, cons
         if (destination < 0){
             return std::nullopt;
         }
-        const OverworldMap& to = maps[destination];
+        const MapData& to = maps[destination];
         const TilePos here = player.state.position;
         TilePos point;
         switch (direction){
@@ -152,8 +152,8 @@ std::optional<Transition> cross_edge(const std::vector<OverworldMap>& maps, cons
 //  Pressing `direction` once (field_control_avatar.c): an exit mat or a door
 //  warps without the player moving, a step onto a ladder or cave entrance
 //  warps after it, and anything else is a step by the collision rules.
-std::optional<Transition> press(const std::vector<OverworldMap>& maps, const Located& player, Direction direction){
-    const OverworldMap& map = maps[player.map];
+std::optional<Transition> press(const std::vector<MapData>& maps, const Located& player, Direction direction){
+    const MapData& map = maps[player.map];
     const TilePos here = player.state.position;
     if (exit_mat(map, here) == direction){
         return take_warp(maps, warp_at(map, here));
@@ -188,12 +188,12 @@ std::optional<Transition> press(const std::vector<OverworldMap>& maps, const Loc
 //  held for longer than it takes, and walked again after an interruption. A
 //  person in the way doesn't count, since they may have wandered off, and
 //  neither does an edge to a map that isn't loaded.
-bool stops_at(const std::vector<OverworldMap>& maps, const Located& player, Direction direction){
+bool stops_at(const std::vector<MapData>& maps, const Located& player, Direction direction){
     const std::optional<Transition> transition = press(maps, player, direction);
     if (transition){
         return transition->action == RouteAction::SURF;
     }
-    const OverworldMap& map = maps[player.map];
+    const MapData& map = maps[player.map];
     const TilePos ahead = player.state.position.next(direction);
     if (in_bounds(map, ahead)){
         return object_at(map, ahead) == nullptr;
@@ -215,7 +215,7 @@ public:
     using State = Located;
     using StateHash = LocatedHash;
 
-    StepModel(const std::vector<OverworldMap>& maps, const RouteCosts& costs)
+    StepModel(const std::vector<MapData>& maps, const RouteCosts& costs)
         : m_maps(maps)
         , m_costs(costs)
     {}
@@ -251,7 +251,7 @@ public:
     static constexpr int ACTION_SURF = 1;
 
 private:
-    const std::vector<OverworldMap>& m_maps;
+    const std::vector<MapData>& m_maps;
     const RouteCosts& m_costs;
 };
 
@@ -263,7 +263,7 @@ Pokemon::LegCosts to_leg_costs(const RouteCosts& costs){
     return leg_costs;
 }
 
-RouteStep to_route_step(const std::vector<OverworldMap>& maps, const Pokemon::Leg<Located>& leg){
+RouteStep to_route_step(const std::vector<MapData>& maps, const Pokemon::Leg<Located>& leg){
     RouteStep step;
     switch (leg.kind){
     case Pokemon::LegKind::WALK:
@@ -291,7 +291,7 @@ RouteStep to_route_step(const std::vector<OverworldMap>& maps, const Pokemon::Le
 
 
 std::optional<std::vector<RouteStep>> plan_overworld_route(
-    const std::vector<OverworldMap>& maps,
+    const std::vector<MapData>& maps,
     const MapPosition& start,
     const RouteGoal& goal,
     const RouteCosts& costs,
@@ -329,7 +329,7 @@ std::optional<std::vector<RouteStep>> plan_overworld_route(
 
 
 MapPosition follow_overworld_route(
-    const std::vector<OverworldMap>& maps,
+    const std::vector<MapData>& maps,
     const MapPosition& start,
     const std::vector<RouteStep>& route
 ){
@@ -380,6 +380,9 @@ public:
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
         try{
             return m_body();
+        }catch (FileException& e){
+            //  CI runs with upstream Packages, which may not have the maps yet.
+            return UnitTestResult(UnitTestResult::SKIPPED, "Map files not found: " + e.message());
         }catch (Exception& e){
             return std::string(e.name()) + ": " + e.message();
         }
@@ -399,29 +402,32 @@ std::string describe(const std::vector<RouteStep>& route){
 
 //  A 5x4 map for the step rules: a pond, a raised ledge reached by a stair
 //  tile, and a tile that can't be entered moving south.
-const OverworldMap& small_map(){
-    static const OverworldMap MAP = make_overworld_map(MapText{
-        "Small",
-        {
-            "#####",
-            "#.n.#",
-            "#.~.#",
-            "#####",
-        },
-        {
-            "33333",
-            "33403",
-            "33133",
-            "33333",
-        },
-        {},
-        {},
-    });
+const MapData& small_map(){
+    static const MapData MAP = []{
+        MapData map{
+            "Small", 5, 4,
+            {
+                "#####",
+                "#.n.#",
+                "#.~.#",
+                "#####",
+            },
+            {
+                "33333",
+                "33403",
+                "33133",
+                "33333",
+            },
+            {}, {}, {},
+        };
+        check_map(map);
+        return map;
+    }();
     return MAP;
 }
 
 UnitTestResult test_step_rules(){
-    const OverworldMap& map = small_map();
+    const MapData& map = small_map();
     PlayerState state{{1, 1}, 3, false};
     if (classify_step(map, state, Direction::EAST) != StepKind::BLOCKED){
         return "Walked from elevation 3 onto elevation 4.";
@@ -446,15 +452,15 @@ UnitTestResult test_step_rules(){
     return true;
 }
 
-const OverworldMap* map_named(const std::vector<OverworldMap>& maps, const std::string& name){
+const MapData* map_named(const std::vector<MapData>& maps, const std::string& name){
     const int index = find_map(maps, name);
     return index < 0 ? nullptr : &maps[index];
 }
 
 UnitTestResult test_maps(){
-    const std::vector<OverworldMap> maps = overworld_maps(post_game_flags());
-    const OverworldMap* b1f = map_named(maps, "CeruleanCave_B1F");
-    const OverworldMap* city = map_named(maps, "CeruleanCity");
+    const std::vector<MapData> maps = overworld_maps(post_game_flags());
+    const MapData* b1f = map_named(maps, "CeruleanCave_B1F");
+    const MapData* city = map_named(maps, "CeruleanCity");
     if (b1f == nullptr || city == nullptr || map_named(maps, "CeruleanCity_PokemonCenter_1F") == nullptr){
         return "Missing a map.";
     }
@@ -462,7 +468,7 @@ UnitTestResult test_maps(){
         return "Unexpected map size.";
     }
     const MapObject* mewtwo = object_at(*b1f, CERULEAN_CAVE_MEWTWO);
-    if (mewtwo == nullptr || mewtwo->name != "mewtwo"){
+    if (mewtwo == nullptr || mewtwo->kind != "mewtwo"){
         return "Mewtwo is not on B1F at " + to_string(CERULEAN_CAVE_MEWTWO) + ".";
     }
     if (object_at(*city, {1, 13}) != nullptr){
@@ -476,7 +482,7 @@ UnitTestResult test_maps(){
 
 //  Plans `start` to `goal`, replays it with the step rules and checks where it ends.
 UnitTestResult check_route(
-    const std::vector<OverworldMap>& maps,
+    const std::vector<MapData>& maps,
     const MapPosition& start, const RouteGoal& goal,
     std::vector<RouteStep>& route
 ){
@@ -500,7 +506,7 @@ const RouteGoal FACING_MEWTWO{
 };
 
 UnitTestResult test_entrance_to_mewtwo(){
-    const std::vector<OverworldMap> maps = overworld_maps(post_game_flags());
+    const std::vector<MapData> maps = overworld_maps(post_game_flags());
     std::vector<RouteStep> route;
     UnitTestResult result = check_route(maps, {"CeruleanCave_1F", CERULEAN_CAVE_ENTRANCE}, FACING_MEWTWO, route);
     if (result.result != UnitTestResult::PASSED){
@@ -519,7 +525,7 @@ UnitTestResult test_entrance_to_mewtwo(){
 }
 
 UnitTestResult test_pokemon_center_to_mewtwo(){
-    const std::vector<OverworldMap> maps = overworld_maps(post_game_flags());
+    const std::vector<MapData> maps = overworld_maps(post_game_flags());
     std::vector<RouteStep> route;
     UnitTestResult result = check_route(
         maps, {"CeruleanCity_PokemonCenter_1F", CERULEAN_POKEMON_CENTER_PC}, FACING_MEWTWO, route
@@ -546,7 +552,7 @@ UnitTestResult test_pokemon_center_to_mewtwo(){
 
 UnitTestResult test_cave_guard_blocks(){
     //  Before the Hall of Fame the guard stands in the cave entrance.
-    const std::vector<OverworldMap> maps = overworld_maps();
+    const std::vector<MapData> maps = overworld_maps();
     if (plan_overworld_route(maps, {"CeruleanCity_PokemonCenter_1F", CERULEAN_POKEMON_CENTER_PC}, FACING_MEWTWO)){
         return "Planned past the cave guard.";
     }
@@ -554,7 +560,7 @@ UnitTestResult test_cave_guard_blocks(){
 }
 
 UnitTestResult test_mewtwo_tile_unreachable(){
-    const std::vector<OverworldMap> maps = overworld_maps(post_game_flags());
+    const std::vector<MapData> maps = overworld_maps(post_game_flags());
     const std::optional<std::vector<RouteStep>> route = plan_overworld_route(
         maps,
         {"CeruleanCave_1F", CERULEAN_CAVE_ENTRANCE},
@@ -566,9 +572,48 @@ UnitTestResult test_mewtwo_tile_unreachable(){
     return true;
 }
 
+//  Two small maps that don't need the map files: a room left by the exit mat
+//  at its bottom, onto the door of a yard, out of which the game walks the
+//  player.
+const char* const TEST_ROOM_JSON = R"({
+    "name": "Room", "width": 5, "height": 4,
+    "tiles": ["#####", "#...#", "#...#", "##v##"],
+    "elevation": ["33333", "33333", "33333", "33333"],
+    "warps": [{"x": 2, "y": 3, "dest_map": "Yard", "dest_warp": 0}],
+    "objects": [],
+    "connections": []
+})";
+const char* const TEST_YARD_JSON = R"({
+    "name": "Yard", "width": 5, "height": 4,
+    "tiles": ["#####", "##D##", "#...#", "#####"],
+    "elevation": ["33333", "33333", "33333", "33333"],
+    "warps": [{"x": 2, "y": 1, "dest_map": "Room", "dest_warp": 0}],
+    "objects": [],
+    "connections": []
+})";
+
+UnitTestResult test_route_through_warp(){
+    const std::vector<MapData> maps{
+        parse_map(TEST_ROOM_JSON, "Room"),
+        parse_map(TEST_YARD_JSON, "Yard"),
+    };
+    std::vector<RouteStep> route;
+    UnitTestResult result = check_route(maps, {"Room", {2, 1}}, {{"Yard", {1, 2}}, std::nullopt}, route);
+    if (result.result != UnitTestResult::PASSED){
+        return result;
+    }
+    for (const RouteStep& step : route){
+        if (step.warps && step.end.map == "Yard"){
+            return true;
+        }
+    }
+    return "Expected to warp into the yard:" + describe(route);
+}
+
 }
 
 void add_tests_OverworldRoute(UnitTestDatabase& database){
+    database.add<Test_OverworldRoute>("route through a warp", test_route_through_warp);
     database.add<Test_OverworldRoute>("step rules", test_step_rules);
     database.add<Test_OverworldRoute>("maps", test_maps);
     database.add<Test_OverworldRoute>("Cerulean Cave entrance to Mewtwo", test_entrance_to_mewtwo);

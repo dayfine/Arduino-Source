@@ -57,84 +57,72 @@ std::optional<uint8_t> elevation_level(char digit){
     return std::nullopt;
 }
 
-//  Appends row `y` of `text` to `map`.
-void add_row(OverworldMap& map, const MapText& text, int y){
-    const std::string& terrain = text.terrain[y];
-    const std::string& elevation = text.elevation[y];
-    if ((int)terrain.size() != map.width || (int)elevation.size() != map.width){
-        throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, map.name + ": row " + std::to_string(y) + " has the wrong length.");
+[[noreturn]] void throw_bad_map(const MapData& map, const std::string& message){
+    throw ParseException(map.name + ": " + message);
+}
+
+void check_row(const MapData& map, int y){
+    const std::string& tiles = map.tiles[y];
+    const std::string& elevation = map.elevation[y];
+    if ((int)tiles.size() != map.width || (int)elevation.size() != map.width){
+        throw_bad_map(map, "row " + std::to_string(y) + " of tiles or elevation isn't " + std::to_string(map.width) + " wide.");
     }
     for (int x = 0; x < map.width; x++){
-        const char tile = terrain[x];
-        if (!known_terrain(tile)){
-            throw InternalProgramError(
-                nullptr, PA_CURRENT_FUNCTION,
-                map.name + ": unknown terrain '" + std::string(1, tile) + "' at " + to_string(TilePos{x, y})
-            );
+        if (!known_terrain(tiles[x])){
+            throw_bad_map(map, "unknown tile '" + std::string(1, tiles[x]) + "' at " + to_string(TilePos{x, y}) + ".");
         }
-        const std::optional<uint8_t> level = elevation_level(elevation[x]);
-        if (!level){
-            throw InternalProgramError(
-                nullptr, PA_CURRENT_FUNCTION,
-                map.name + ": bad elevation '" + std::string(1, elevation[x]) + "' at " + to_string(TilePos{x, y})
-            );
+        if (!elevation_level(elevation[x])){
+            throw_bad_map(map, "bad elevation '" + std::string(1, elevation[x]) + "' at " + to_string(TilePos{x, y}) + ".");
         }
-        map.terrain.push_back(tile);
-        map.elevation.push_back(*level);
     }
 }
 
 }
 
 
-OverworldMap make_overworld_map(const MapText& text){
-    OverworldMap map;
-    map.name = text.name;
-    map.height = (int)text.terrain.size();
-    map.warps = text.warps;
-    map.objects = text.objects;
-    map.connections = text.connections;
-    if (map.height == 0 || text.elevation.size() != text.terrain.size()){
-        throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, map.name + ": terrain and elevation need the same number of rows.");
+void check_map(const MapData& map){
+    if (map.width <= 0 || map.height <= 0){
+        throw_bad_map(map, "width and height must be positive.");
     }
-    map.width = (int)text.terrain[0].size();
+    if ((int)map.tiles.size() != map.height || (int)map.elevation.size() != map.height){
+        throw_bad_map(map, "tiles and elevation need " + std::to_string(map.height) + " rows.");
+    }
     for (int y = 0; y < map.height; y++){
-        add_row(map, text, y);
+        check_row(map, y);
     }
-    return map;
 }
 
-bool in_bounds(const OverworldMap& map, const TilePos& point){
+bool in_bounds(const MapData& map, const TilePos& point){
     return 0 <= point.x && point.x < map.width && 0 <= point.y && point.y < map.height;
 }
-char terrain_at(const OverworldMap& map, const TilePos& point){
+char terrain_at(const MapData& map, const TilePos& point){
     if (!in_bounds(map, point)){
         return '#';
     }
-    return map.terrain[(size_t)point.y * map.width + point.x];
+    return map.tiles[point.y][point.x];
 }
-uint8_t elevation_at(const OverworldMap& map, const TilePos& point){
+uint8_t elevation_at(const MapData& map, const TilePos& point){
     if (!in_bounds(map, point)){
         return ELEVATION_IGNORED;
     }
-    return map.elevation[(size_t)point.y * map.width + point.x];
+    return elevation_level(map.elevation[point.y][point.x]).value_or(ELEVATION_IGNORED);
 }
 
-bool is_wall(const OverworldMap& map, const TilePos& point){
+bool is_wall(const MapData& map, const TilePos& point){
     const char tile = terrain_at(map, point);
     return tile == '#' || tile == 'D' || tile == 'J';
 }
-bool is_ledge(const OverworldMap& map, const TilePos& point){
+bool is_ledge(const MapData& map, const TilePos& point){
     return terrain_at(map, point) == 'J';
 }
-bool is_water(const OverworldMap& map, const TilePos& point){
+bool is_water(const MapData& map, const TilePos& point){
     return terrain_at(map, point) == '~';
 }
-bool is_tall_grass(const OverworldMap& map, const TilePos& point){
+bool is_tall_grass(const MapData& map, const TilePos& point){
     return terrain_at(map, point) == '"';
 }
 
-bool blocks_entering(const OverworldMap& map, const TilePos& point, Direction direction){
+bool blocks_entering(const MapData& map, const TilePos& point, Direction direction){
     const char tile = terrain_at(map, point);
     switch (direction){
     case Direction::SOUTH:
@@ -148,7 +136,7 @@ bool blocks_entering(const OverworldMap& map, const TilePos& point, Direction di
     }
     return false;
 }
-bool blocks_leaving(const OverworldMap& map, const TilePos& point, Direction direction){
+bool blocks_leaving(const MapData& map, const TilePos& point, Direction direction){
     const char tile = terrain_at(map, point);
     switch (direction){
     case Direction::NORTH:
@@ -163,14 +151,14 @@ bool blocks_leaving(const OverworldMap& map, const TilePos& point, Direction dir
     return false;
 }
 
-bool warps_on_step(const OverworldMap& map, const TilePos& point){
+bool warps_on_step(const MapData& map, const TilePos& point){
     const char tile = terrain_at(map, point);
     return tile == 'C' || tile == 'L';
 }
-bool is_door(const OverworldMap& map, const TilePos& point){
+bool is_door(const MapData& map, const TilePos& point){
     return terrain_at(map, point) == 'D';
 }
-std::optional<Direction> exit_mat(const OverworldMap& map, const TilePos& point){
+std::optional<Direction> exit_mat(const MapData& map, const TilePos& point){
     switch (terrain_at(map, point)){
     case '^':
         return Direction::NORTH;
@@ -184,12 +172,12 @@ std::optional<Direction> exit_mat(const OverworldMap& map, const TilePos& point)
         return std::nullopt;
     }
 }
-bool walks_out_on_arrival(const OverworldMap& map, const TilePos& point){
+bool walks_out_on_arrival(const MapData& map, const TilePos& point){
     const char tile = terrain_at(map, point);
     return tile == 'D' || tile == 'C';
 }
 
-void hide_objects(OverworldMap& map, const std::set<std::string>& flags){
+void hide_objects(MapData& map, const std::set<std::string>& flags){
     std::vector<MapObject> shown;
     for (const MapObject& object : map.objects){
         if (object.flag.empty() || flags.count(object.flag) == 0){
@@ -199,7 +187,7 @@ void hide_objects(OverworldMap& map, const std::set<std::string>& flags){
     map.objects = std::move(shown);
 }
 
-const MapObject* object_at(const OverworldMap& map, const TilePos& point){
+const MapObject* object_at(const MapData& map, const TilePos& point){
     for (const MapObject& object : map.objects){
         if (std::abs(object.x - point.x) <= object.wander_x && std::abs(object.y - point.y) <= object.wander_y){
             return &object;
@@ -207,7 +195,7 @@ const MapObject* object_at(const OverworldMap& map, const TilePos& point){
     }
     return nullptr;
 }
-const MapWarp* warp_at(const OverworldMap& map, const TilePos& point){
+const MapWarp* warp_at(const MapData& map, const TilePos& point){
     for (const MapWarp& warp : map.warps){
         if (warp.x == point.x && warp.y == point.y){
             return &warp;
@@ -218,13 +206,13 @@ const MapWarp* warp_at(const OverworldMap& map, const TilePos& point){
 
 
 
-StepKind classify_step(const OverworldMap& map, const PlayerState& state, Direction direction){
+StepKind classify_step(const MapData& map, const PlayerState& state, Direction direction){
     return classify_step_onto(map, state, direction, map, state.position.next(direction));
 }
 
 StepKind classify_step_onto(
-    const OverworldMap& from, const PlayerState& state, Direction direction,
-    const OverworldMap& to, const TilePos& destination
+    const MapData& from, const PlayerState& state, Direction direction,
+    const MapData& to, const TilePos& destination
 ){
     if (is_wall(to, destination)
         || blocks_leaving(from, state.position, direction)
@@ -254,13 +242,13 @@ StepKind classify_step_onto(
     return StepKind::WALK;
 }
 
-PlayerState after_step(const OverworldMap& map, const PlayerState& state, Direction direction, StepKind kind){
+PlayerState after_step(const MapData& map, const PlayerState& state, Direction direction, StepKind kind){
     return after_step_onto(map, state, map, state.position.next(direction), kind);
 }
 
 PlayerState after_step_onto(
-    const OverworldMap& from, const PlayerState& state,
-    const OverworldMap& to, const TilePos& destination, StepKind kind
+    const MapData& from, const PlayerState& state,
+    const MapData& to, const TilePos& destination, StepKind kind
 ){
     PlayerState next = state;
     next.position = destination;
