@@ -1,6 +1,6 @@
 # AutoStory: FRLG pilot first, shared run flow and 2D movement later
 
-Status: internal plan, revised 2026-10-25 after review. The upstream-facing
+Status: internal plan, revised 2026-10-28 after the map-reuse review. The upstream-facing
 one-page summary is [AutoStory-Proposal.md](AutoStory-Proposal.md). The
 review comment drafts for the BDSP PR are in
 [AutoStory-1717-review-drafts.md](AutoStory-1717-review-drafts.md). Neither
@@ -13,6 +13,24 @@ decompilation; the [52poke walkthrough](https://wiki.52poke.com/wiki/%E9%99%84%E
 Paths: `SV/` = `SerialPrograms/Source/VideoGames/PokemonSV/Programs/AutoStory/`,
 `BDSP/` = `SerialPrograms/Source/PokemonBDSP/Programs/AutoStory/` (PR ref),
 `FRLG/` = `SerialPrograms/Source/VideoGames/PokemonFRLG/`.
+
+## Current implementation order (2026-10-28 review)
+
+The [map-reuse review](AutoStory-Map-Reuse-Review.md) updates the work order
+below. The [FRLG demo work plan](FRLG-Demo-Work-Plan.md) specifies map resources,
+startup prerequisites, SID Helper/Starter RNG handoffs and acceptance gates. First prove the existing BDSP spatial model with a small FRLG map
+demo (post-rival save → Oak’s Parcel → Pokédex), and a startup demo through
+the first verified save. Then settle the common executor using both games.
+The old ten-PR sequence in §7.7 is retained as a candidate inventory, not a
+prerequisite chain. In particular, migrating the Elite Four farmer and SV
+is no longer on the critical path to the first runnable FRLG demo.
+
+Shared map and screen modules already exist in our BDSP work. Reuse them
+through explicit prerequisites; do not rewrite them. Keep game-specific
+observations and movement execution local until both implementations prove
+what needs sharing. The source findings, validation limits, map structure,
+and revised gates are in the review. Earlier interface sketches in §3/§5
+are candidates to test, not settled interfaces.
 
 ## 0. Summary
 
@@ -108,8 +126,8 @@ sequence (§7), and who wrote the FRLG code we build on (§8).
 
 Four AutoStory efforts (SV on `main`, BDSP #1717, SwSh #1207, our FRLG
 plan) and our BBQ and BDSP lab work keep rebuilding the same pieces. SwSh
-#1207 is timed input throughout (mash A for 30 s, hold the stick for 20 s,
-fixed menu walks), as BDSP's segment 00 was; running BDSP's intro on a
+#1207 combines timed routes with limited transition, battle-menu and catch
+feedback, but lacks verified checkpoint recovery; running BDSP's intro on a
 console showed why that breaks (dropped inputs, menus opened by a stray A,
 loops that never end). The pieces below are game-neutral and get their
 final home in the PR that first adds them, even while one game uses them.
@@ -733,7 +751,7 @@ Consequences:
   fails is a `UserSetupError` at start, not a failure hours in.
 - The planner and the table are pure logic, so they get unit tests.
 
-### 7.7 PR plan for reviewers
+### 7.7 Earlier PR inventory (ordering superseded by the map-reuse review)
 
 **2026-10-29:** T1 and T2 below become N1–N3 on `nav/core` and the FRLG child
 `frlg/brock-mvp` ([AutoStory-Navigation-Stack.md](AutoStory-Navigation-Stack.md) §4). The

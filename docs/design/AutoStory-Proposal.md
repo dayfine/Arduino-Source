@@ -1,6 +1,6 @@
 # FireRed AutoStory: proposal
 
-Status: draft, 2026-10-25. The full internal plan, with the evidence and line
+Status: draft under revision, 2026-10-28. The full internal plan, with the evidence and line
 references, is [AutoStory.md](AutoStory.md).
 
 ## Problem
@@ -16,34 +16,35 @@ Hall of Fame with the starter alone, so the route is known to be automatable.
 ## What I'm building first: a pilot to Brock
 
 A FireRed AutoStory from a new game to the Boulder Badge (about 12
-checkpoints), solo with no trades. It changes no existing program: the
+checkpoints), solo with no trades. The
 game-neutral parts (the run flow with checkpoints, retries from the last
 save, start/end selection and stats; the tile-path walker; a closed-loop
-screen driver) go into new shared folders from the start, with FRLG as
-their only user, so nothing has to be moved later.
+screen driver) reuse existing shared modules where applicable; FRLG supplies its own
+movement and observation implementation.
 
-About 10 PRs, each 150–500 lines, each doing one thing:
+The first implementation milestone is a map-based demo from a verified
+post-rival save: Pallet → Route 1 → Viridian Mart → Oak’s Parcel delivered
+→ Pokédex verified and saved. Build it alongside a startup demo from a new
+game through the lab rival and first verified save, then chain them.
 
-1. Tile-path executor with unit tests, in a new `Pokemon/Navigation/`.
-2. Elite Four farmer moved onto it, with no behaviour change.
-3. A closed-loop screen driver (each input follows a screen read), then the new-game screens and naming keyboard on it.
-4. Program shell: options, run flow, checkpoint list.
-5. **New game → starter → rival battle. This is the first version users can run.**
-6. Overworld detector.
-7. Trainer-spotted and item-pickup watchers.
-8. Resuming a walk after a battle or dialog interrupts it.
-9. Trainer battle handler with unit tests.
-10. **Parcel → Pokédex → Viridian Forest → Brock. This completes the pilot.**
+Reuse the existing BDSP shared map/planner and screen modules with an FRLG
+adapter. The demo must demonstrate a wild-battle interruption, verified
+map/door transitions, and a deliberate failure followed by verified reload
+and replay. These two game implementations determine what executor logic
+is worth sharing. Elite Four migration and SV refactoring are independent.
 
-Detectors come one per PR, with screenshot tests in CommandLineTests. Paths
-are planned offline from the pret/pokefirered decompilation (trainer
-positions and sight lines) and checked in as reviewed data.
+The [FRLG demo work plan](FRLG-Demo-Work-Plan.md) defines JSON map resources,
+startup prerequisites and optional SID Helper/Starter RNG handoffs. The
+[map-reuse review](AutoStory-Map-Reuse-Review.md) specifies the work order,
+source evidence and validation gates. Exact PR splits follow the runnable
+slice; the previous ten-PR count is no longer a delivery commitment.
 
 ## What I'd like reviewed first
 
-PRs 1–2: the tile executor's result and resume types, and moving `walk_path`
-out of `PokemonFRLG_EliteFourFarmer.cpp`. They touch existing FRLG code, and
-the rest of the pilot builds on them.
+The small map subset and FRLG adapter, especially how observed position,
+map transitions and save/reload postconditions constrain the next action.
+New detector changes include screenshot fixtures. No general executor
+interface is frozen before these behaviors work in the demo.
 
 ## The cost, honestly
 
