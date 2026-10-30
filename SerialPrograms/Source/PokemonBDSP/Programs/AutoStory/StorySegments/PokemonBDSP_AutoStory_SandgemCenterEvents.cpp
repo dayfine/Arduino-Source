@@ -934,12 +934,22 @@ public:
         return outcome_ok();
     }
     virtual bool through_door_north(const std::string& label) override{
+        m_context.wait_for_all_requests();
+        VideoSnapshot before = m_stream.video().snapshot();
         const WalkResult up = walk_until(m_stream, m_context, 0, 1, 1200ms, label);
-        if (up.stop != WalkStop::TRANSITION){
-            return false;
-        }
         m_context.wait_for(1500ms);
-        return true;
+        if (up.stop == WalkStop::TRANSITION){
+            return true;
+        }
+        //  The School's fade is not always black enough to read as one: r146b
+        //  went in (changes 156, 261) and read "limit". A whole new scene is
+        //  through, as leave_door_south() counts it.
+        VideoSnapshot after = m_stream.video().snapshot();
+        const bool through = before && after && walk_screen_change(*before.frame, *after.frame) > WALK_SCENE_CHANGE;
+        if (through){
+            m_stream.log("[Route] " + label + ": a new scene; through the door.");
+        }
+        return through;
     }
 private:
     VideoStream& m_stream;
