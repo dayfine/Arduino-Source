@@ -372,7 +372,7 @@ static void add_tests_BBQFarmerRounds(UnitTestDatabase& database){
             .expected = "read process " + round_of_3 + " end",
         },
         {
-            .name = "saves at exact multiples",
+            .name = "saves at each milestone",
             .num_quests = 6,
             .save_num_quests = 3,
             .expected_completed = 6,
@@ -386,9 +386,7 @@ static void add_tests_BBQFarmerRounds(UnitTestDatabase& database){
             .expected = "",
         },
 
-        // The ways the loop gets stuck or loses time. Scenarios named
-        // "today:" state the current behavior, so that each fix shows up as a
-        // change to one of them.
+        // The ways the loop used to get stuck or lose time.
         {
             // sneak-up fails in round 1 and is still on the panel in round 2,
             // where only the two new quests are attempted.
@@ -418,23 +416,24 @@ static void add_tests_BBQFarmerRounds(UnitTestDatabase& database){
             .expected = read_30_times + "error",
         },
         {
-            // Today: the save check only looks for exact multiples, so going
-            // from 0 to 3 skips the milestone at 2 without saving.
-            .name = "today: a round that skips past a milestone does not save",
+            // 0 -> 3 crosses the milestone at 2 without landing on it.
+            .name = "saves when a round skips past a milestone",
             .num_quests = 6,
             .save_num_quests = 2,
             .expected_completed = 6,
-            .expected = round_of_3 + " end " + round_of_3 + " end(save)",
+            .expected = round_of_3 + " end(save) " + round_of_3 + " end(save)",
         },
         {
-            // Today: round 1 completes nothing, but 0 is a multiple of 2, so
-            // it saves anyway. Every quest failed, so the farmer then stops.
-            .name = "today: a round without completions saves",
+            // Round 1 completes nothing. It must not save, even though the
+            // count (0) is a multiple of the interval.
+            // Every quest fails, so nothing doable is left and the farmer
+            // stops, but the round with no completions doesn't save.
+            .name = "round without completions does not save",
             .num_quests = 3,
             .save_num_quests = 2,
             .outcomes = {false, false, false},
             .expected_completed = 0,
-            .expected = "read process read do read do read do end(save) read process",
+            .expected = "read process read do read do read do end read process",
         },
         {
             // sneak-up fails, then leaves the panel along with make-tm. Round 2
