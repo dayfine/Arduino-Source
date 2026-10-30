@@ -31,5 +31,19 @@ def changed_files(root, base_ref):
     return changes
 
 
+UPSTREAMS = ('upstream/main', 'origin/main')
+
+
+def default_base(root):
+    """(merge-base of HEAD with upstream/main, else origin/main; description)."""
+    for ref in UPSTREAMS:
+        exists = subprocess.run(['git', '-C', str(root), 'rev-parse', '--verify', '-q', ref + '^{commit}'],
+                                capture_output=True)
+        if exists.returncode == 0:
+            base = git(root, 'merge-base', 'HEAD', ref).decode().strip()
+            return base, f'merge-base of HEAD and {ref}'
+    raise ValueError('No --base-ref given and neither upstream/main nor origin/main exists')
+
+
 def read_revision(root, revision, path):
     return git(root, 'show', revision + ':' + path).decode('utf-8-sig')
