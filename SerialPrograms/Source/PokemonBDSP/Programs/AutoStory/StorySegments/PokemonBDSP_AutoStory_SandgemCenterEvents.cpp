@@ -1003,8 +1003,10 @@ Checkpoint jubilife_clown_mart_checkpoint(JubilifeActions& game){
         talk.why = "the clown asks a question (Yes is right) and gives Coupon 1";
         talk.skip_if.push_back(condition("coupon_1", [](RunState& state){ return state.flags.count("coupon_1") > 0; }));
         talk.act = [&game, read](RunState& state){
-            //  He stands a row south and a tile west: try that row, then one
-            //  more, facing west each time.
+            //  He may be what stopped the walk east (r155c, 2.8 s against
+            //  2.2): ask ahead first. Else he stands a row south and a tile
+            //  west: try that row, then one more, facing west each time.
+            *read = game.talk(Direction::EAST, BUTTON_A, "Clown by the Poke Mart");
             for (size_t rows = 0; rows < 2 && !read->opened; rows++){
                 const Outcome down = game.step(Direction::SOUTH, "A row south");
                 if (!down.succeeded()){
