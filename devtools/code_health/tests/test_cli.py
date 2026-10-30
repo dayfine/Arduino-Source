@@ -1,14 +1,17 @@
 """Exercise changed-file discovery and real base comparisons in temporary Git repos."""
+import os
 import subprocess
 import sys
 import tempfile
 import unittest
 from pathlib import Path
 
-from devtools.code_health.git_files import included
+from devtools.code_health.git_files import default_base, included
 
 
 REPO = Path(__file__).resolve().parents[3]
+# These fixtures' findings must not become annotations on the CI run's own PR.
+ENV = {key: value for key, value in os.environ.items() if key != 'GITHUB_ACTIONS'}
 
 
 class CliTests(unittest.TestCase):
@@ -33,7 +36,7 @@ class CliTests(unittest.TestCase):
     def cli(self, *args):
         return subprocess.run([sys.executable, '-m', 'devtools.code_health',
                                '--root', str(self.root), '--base-ref', 'HEAD', *args],
-                              cwd=REPO, capture_output=True, text=True)
+                              cwd=REPO, capture_output=True, text=True, env=ENV)
 
     def commit(self):
         self.git('add', '.')
@@ -108,6 +111,74 @@ class CliTests(unittest.TestCase):
         for path in ('3rdParty/a.cpp', 'Common/3rdParty2/a.cpp', 'other/a.cpp',
                      'Common/a.py', 'SerialPrograms/3rdParty/a.h'):
             self.assertFalse(included(path), path)
+
+
+    def test_default_base_is_merge_base_with_upstream_then_origin(self):
+        self.source(3)
+        self.commit()
+        fork_point = self.git('rev-parse', 'HEAD').decode().strip()
+        with self.assertRaises(ValueError):
+            default_base(self.root)
+        self.git('update-ref', 'refs/remotes/origin/main', fork_point)
+        self.source(60)
+        self.commit()
+        self.assertEqual((fork_point, 'merge-base of HEAD and origin/main'), default_base(self.root))
+        # A stale fork main: upstream moved on from an older commit; prefer its merge-base.
+        self.git('update-ref', 'refs/remotes/origin/main', 'HEAD')
+        self.git('update-ref', 'refs/remotes/upstream/main', fork_point)
+        self.assertEqual((fork_point, 'merge-base of HEAD and upstream/main'), default_base(self.root))
+        result = subprocess.run([sys.executable, '-m', 'devtools.code_health', '--root', str(self.root)],
+                                cwd=REPO, capture_output=True, text=True, env=ENV)
+        self.assertEqual(1, result.returncode, result.stderr)
+        self.assertIn(f'Base: {fork_point} (merge-base of HEAD and upstream/main).', result.stdout)
+
+
+    def test_class_shape_applies_to_new_classes_only(self):
+        interface = 'struct Listener{ virtual void on_event() = 0; };\n'
+        (self.root / 'Common/old.h').write_text(interface)
+        self.commit()
+        with (self.root / 'Common/old.h').open('a') as file:
+            file.write('int helper();\n')
+        self.git('add', '.')
+        self.assertEqual(0, self.cli().returncode)
+        (self.root / 'Common/new.h').write_text(interface.replace('Listener', 'Fresh'))
+        self.git('add', '.')
+        result = self.cli()
+        self.assertEqual(1, result.returncode, result.stderr)
+        self.assertIn('Fresh: single_method_interface=1', result.stderr)
+        self.assertIn('std::function', result.stderr)
+
+
+    def test_shared_code_may_not_add_game_includes(self):
+        shared = self.root / 'SerialPrograms/Source/CommonTools/Tool.cpp'
+        shared.parent.mkdir(parents=True)
+        shared.write_text('#include "Pokemon/Pokemon_Strings.h"\n')
+        self.commit()
+        shared.write_text('#include "Pokemon/Pokemon_Strings.h"\n#include "NintendoSwitch/X.h"\n')
+        self.git('add', '.')
+        self.assertEqual(0, self.cli().returncode)
+        shared.write_text('#include "VideoGames/PokemonSV/PokemonSV_Settings.h"\n')
+        self.git('add', '.')
+        result = self.cli()
+        self.assertEqual(1, result.returncode, result.stderr)
+        self.assertIn('Tool.cpp:1: layering', result.stderr)
+
+    def test_github_annotates_failures_and_advisories(self):
+        self.source(3)
+        self.commit()
+        self.source(30)
+        self.assertNotIn('::warning', self.cli().stdout)
+        result = self.cli('--github')
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertIn('::warning file=Common/example.cpp,line=1,title=Code health (advisory)::'
+                      'example(): function_lines=30', result.stdout)
+        self.assertNotIn('::error', result.stdout)
+        self.source(51)
+        result = self.cli('--github')
+        self.assertEqual(1, result.returncode, result.stderr)
+        self.assertIn('::error file=Common/example.cpp,line=1,title=Code health::'
+                      'example(): function_lines=51', result.stdout)
+        self.assertIn('Code health: 1 failures.', result.stdout)
 
 
 if __name__ == '__main__':
