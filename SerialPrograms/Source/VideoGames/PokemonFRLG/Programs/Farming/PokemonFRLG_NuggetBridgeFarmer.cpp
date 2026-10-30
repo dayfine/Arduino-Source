@@ -13,8 +13,8 @@
 #include "VideoGames/PokemonFRLG/Inference/Dialogs/PokemonFRLG_DialogDetector.h"
 #include "VideoGames/PokemonFRLG/Inference/Dialogs/PokemonFRLG_BattleDialogs.h"
 #include "VideoGames/PokemonFRLG/PokemonFRLG_Navigation.h"
-#include "PokemonFRLG_NuggetBridgeFarmer.h"
 #include "VideoGames/PokemonFRLG/Programs/PokemonFRLG_StartMenuNavigation.h"
+#include "PokemonFRLG_NuggetBridgeFarmer.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -26,6 +26,7 @@ NuggetBridgeFarmer_Descriptor::NuggetBridgeFarmer_Descriptor()
         Pokemon::STRING_POKEMON + " FRLG", "Nugget Bridge Farmer",
         "Programs/PokemonFRLG/NuggetBridgeFarmer.html",
         "Farm the Nugget Bridge for money.",
+        PanelQualityStanding::OFFICIAL,
         ProgramControllerClass::StandardController_RequiresPrecision,
         FeedbackType::REQUIRED,
         AllowCommandsWhenRunning::DISABLE_COMMANDS

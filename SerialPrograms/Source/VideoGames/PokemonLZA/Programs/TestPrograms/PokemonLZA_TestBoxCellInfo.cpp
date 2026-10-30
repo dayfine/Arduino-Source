@@ -4,18 +4,17 @@
  *
  */
 
+//#include <iostream>
+#include <sstream>
 #include "CommonTools/StartupChecks/VideoResolutionCheck.h"
-#include "CommonFramework/VideoPipeline/VideoFeed.h"
-#include "Pokemon/Pokemon_Strings.h"
 #include "CommonTools/Async/InferenceRoutines.h"
+#include "Pokemon/Pokemon_Strings.h"
 #include "VideoGames/PokemonLZA/Inference/Boxes/PokemonLZA_BoxDetection.h"
 #include "VideoGames/PokemonLZA/Inference/Boxes/PokemonLZA_BoxInfoDetector.h"
 #include "PokemonLZA_TestBoxCellInfo.h"
 
-#include <iostream>
-#include <sstream>
-using std::cout;
-using std::endl;
+//using std::cout;
+//using std::endl;
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -31,10 +30,10 @@ TestBoxCellInfo_Descriptor::TestBoxCellInfo_Descriptor()
         "",
         "Test program to check inference on pokemon info in box system. "
         "Move around on box cells while running the pokemon. Log overlay will show current selected cell and pokemon info of the cell.",
+        PanelQualityStanding::DEVELOPER,
         ProgramControllerClass::StandardController_NoRestrictions,
         FeedbackType::REQUIRED,
-        AllowCommandsWhenRunning::ENABLE_COMMANDS,
-        {}
+        AllowCommandsWhenRunning::ENABLE_COMMANDS
     )
 {}
 

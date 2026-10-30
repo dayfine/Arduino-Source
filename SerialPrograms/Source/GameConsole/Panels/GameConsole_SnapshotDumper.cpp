@@ -4,7 +4,6 @@
  *
  */
 
-#include <QKeyEvent>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/Filesystem/Filesystem.h"
 #include "Common/Cpp/PrettyPrint.h"
@@ -29,8 +28,8 @@ SnapshotDumper_Descriptor::SnapshotDumper_Descriptor()
         "Game Console", "Snapshot Dumper",
         "Programs/NintendoSwitch/SnapshotDumper.html",
         "Periodically take screenshots.",
+        PanelQualityStanding::DEVELOPER,
         ProgramControllerClass::StandardController_NoRestrictions,
-        Color(),
         FeedbackType::NONE,
         AllowCommandsWhenRunning::ENABLE_COMMANDS
     )

@@ -31,6 +31,7 @@ GiftReset_Descriptor::GiftReset_Descriptor()
         Pokemon::STRING_POKEMON + " FRLG", "Gift Reset",
         "Programs/PokemonFRLG/GiftReset.html",
         "Soft reset for a shiny gift Pokemon.",
+        PanelQualityStanding::OFFICIAL,
         ProgramControllerClass::StandardController_NoRestrictions,
         FeedbackType::REQUIRED,
         AllowCommandsWhenRunning::DISABLE_COMMANDS

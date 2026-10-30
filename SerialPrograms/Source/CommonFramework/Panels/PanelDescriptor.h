@@ -16,9 +16,16 @@ namespace PokemonAutomation{
 class PanelSession;
 
 
-enum class PanelDeprecation{
-    NOT_DEPRECATED,
+enum class PanelQualityStanding{
+    OFFICIAL,
+    OFFICIAL_BETA,
+    OFFICIAL_BELOW_STANDARDS,
+    THIRD_PARTY,
+    THIRD_PARTY_UNVETTED,
+    UNMAINTAINED,
     DEPRECATED,
+    DEVELOPER,
+//    UNCATEGORIZED,
 };
 
 
@@ -32,8 +39,7 @@ public:
         std::string category, std::string display_name,
         std::string doc_link,
         std::string description,
-        Color color,
-        PanelDeprecation deprecation,
+        PanelQualityStanding standing,
         bool restore_defaults_button
     );
     virtual ~PanelDescriptor() = default;
@@ -43,12 +49,17 @@ public:
     const std::string& display_name() const{ return m_display_name; }
     const std::string& doc_link() const{ return m_doc_link; }
     const std::string& description() const{ return m_description; }
+    PanelQualityStanding standing() const{ return m_standing; }
 
     Color color() const{ return m_color; }
-    PanelDeprecation deprecation() const{ return m_deprecation; }
     bool restore_defaults_button() const{ return m_restore_defaults_button; }
 
     virtual std::unique_ptr<PanelSession> make_panel() const = 0;
+
+
+public:
+    static Color pick_color(PanelQualityStanding standing);
+
 
 private:
     const std::string m_identifier;
@@ -56,8 +67,8 @@ private:
     const std::string m_display_name;
     const std::string m_doc_link;
     const std::string m_description;
+    const PanelQualityStanding m_standing;
     const Color m_color;
-    const PanelDeprecation m_deprecation;
     const bool m_restore_defaults_button;
 };
 
