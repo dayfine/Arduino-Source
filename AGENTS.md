@@ -167,4 +167,34 @@ files. **Fix/extract code; do not raise limits to hide growth.** Keep one concer
 branch/PR and require applicable checks/CI before review. Shared infrastructure needs portable regression coverage;
 gameplay changes additionally need appropriate live validation.
 
+### Let CI build and test; build locally only when you must
+
+Upstream's C++ CI (six jobs: Mac, Mac Intel, Ubuntu clang/gcc, Windows
+clang/MSVC) builds the app and runs the native unit tests against
+`PokemonAutomation/CommandLineTests`. Every job is skipped on draft PRs, and all
+fork PRs are drafts, so a push alone runs nothing but the tab check. Dispatch
+the jobs on the fork branch instead:
+
+```sh
+for w in mac windows-clang ubuntu-default; do
+  gh workflow run cpp-ci-serial-programs-$w.yml -R dayfine/Arduino-Source --ref <branch>
+done
+```
+
+- **Use CI** for review fixes, refactors and anything whose check is "compiles
+  everywhere and the unit tests pass". A run takes 8–30 minutes. Windows clang
+  catches warnings that Apple Clang misses.
+- **Build locally only** for a lab deployment or Switch run, for tests that
+  need images not yet in upstream CommandLineTests, or for a quick
+  edit-compile loop in a worktree that already has a build.
+- **One local build at a time, `-j4`.** A full build takes 0.5–1.5 GB per
+  compiler process; three cold builds at full parallelism exhausted a 16 GB Mac.
+  Reuse an existing build directory rather than a fresh worktree per task: a
+  new worktree on another base revision is mostly ccache misses.
+- **A fresh macOS configure** needs
+  `PKG_CONFIG_PATH=/opt/homebrew/opt/opencv@4/lib/pkgconfig` and
+  `-DWrapOpenGL_AGL=<CommandLineTools SDK>/System/Library/Frameworks/AGL.framework/AGL.tbd`,
+  or the final link fails with "framework 'AGL' not found".
+- Report which CI runs passed (with links) instead of claiming a local pass.
+
 Canonical rules remain here on `agents`; never merge this branch into code.
