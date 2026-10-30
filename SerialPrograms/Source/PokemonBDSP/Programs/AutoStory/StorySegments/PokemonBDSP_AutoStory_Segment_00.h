@@ -100,45 +100,6 @@ public:
         AutoStoryStats& stats) const override;
 };
 
-// start: game launched, in front of the TV.
-// end:   Standing outside lake varety before starter
-//Segment 00-00 begins
-void checkpoint_000(SingleSwitchProgramEnvironment& env,
-    ProControllerContext& context,
-    EventNotificationOption& notif_status_update,
-    AutoStoryStats& stats);
-
-// start: Standing outside lake varety before starter
-// end:   Standing outside lake varety after starter battle
-//Segment 00-001 begins
-void checkpoint_001(SingleSwitchProgramEnvironment& env,
-    ProControllerContext& context,
-    EventNotificationOption& notif_status_update,
-    AutoStoryStats& stats);
-
-// start: Standing outside lake varety after starter battle
-// end:   recieved Pokedex, standing in front of the professor
-//Segment 00-002 begins
-void checkpoint_002(SingleSwitchProgramEnvironment& env,
-    ProControllerContext& context,
-    EventNotificationOption& notif_status_update,
-    AutoStoryStats& stats);
-
-// start: recieved Pokedex, standing in front of the professor
-// end:   Standing in the entrance to Jubilife City after speaking to dawn
-//Segment 00-003 begins
-void checkpoint_003(SingleSwitchProgramEnvironment& env,
-    ProControllerContext& context,
-    EventNotificationOption& notif_status_update,
-    AutoStoryStats& stats);
-
-// start: Standing in the entrance to Jubilife City after speaking to dawn
-// end:   Standing in the Pokemon Center ready to deposit pokemon after recieving poketech.
-//Segment 00-004 begins
-void checkpoint_004(SingleSwitchProgramEnvironment& env,
-    ProControllerContext& context,
-    EventNotificationOption& notif_status_update,
-    AutoStoryStats& stats);
 }
 }
 }

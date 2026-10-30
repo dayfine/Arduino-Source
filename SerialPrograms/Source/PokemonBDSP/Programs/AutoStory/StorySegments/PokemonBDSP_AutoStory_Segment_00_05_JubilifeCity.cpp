@@ -9,7 +9,6 @@
  *
  */
 
-#include <algorithm>
 #include <cmath>
 
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
@@ -42,122 +41,6 @@ namespace PokemonAutomation {
         // Collects poketech and stands in front of the PC to end the tutorial section
         // and send the starter to pokemon HOME.
         // ---------------------------------------------------------------------------
-
-            // Stop the approach as soon as buildings can guide it, instead of
-            // overshooting south and then blindly walking back north.
-            static void approach_poketch_landmarks(VideoStream& stream, ProControllerContext& context) {
-                context.wait_for_all_requests();
-                Milliseconds walked = 0ms;
-                while (walked < 1900ms) {
-                    auto frame = stream.video().snapshot();
-                    if (!frame) OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
-                        "Poketch approach: No video frame.", stream);
-                    const auto result = match_poketch_landmarks(*frame.frame);
-                    VideoOverlaySet overlays(stream.overlay());
-                    for (const auto& landmark : result.landmarks) {
-                        overlays.add(COLOR_CYAN, landmark.search);
-                        if (landmark.accepted) overlays.add(COLOR_GREEN, landmark.found);
-                        stream.log("[Poketch approach] " + landmark.name + " score=" + std::to_string(landmark.score) +
-                            " margin=" + std::to_string(landmark.margin));
-                    }
-                    if (result.located) {
-                        stream.log("[Poketch approach] Landmarks acquired after " + std::to_string(walked.count()) + "ms; ending downward approach.");
-                        return;
-                    }
-                    const Milliseconds step = std::min(200ms, 1900ms - walked);
-                    pbf_move_left_joystick(context, {0, -1}, step, 0ms);
-                    walked += step;
-                    pbf_wait(context, 700ms);
-                    context.wait_for_all_requests();
-                }
-                stream.log("[Poketch approach] Reached 1900ms downward limit; handing off to locator.");
-            }
-
-            static void align_and_talk_to_poketch_man(VideoStream& stream, ProControllerContext& context) {
-                context.wait_for_all_requests();
-                pbf_wait(context, 700ms);
-                context.wait_for_all_requests();
-                size_t confirmed = 0, coarse_confirmed = 0;
-                double previous_dx = 0, previous_dy = 0;
-                size_t acquisition_misses = 0, vertical_probe = 0;
-                // Two small excursions around the approach position. This is
-                // visibility recovery, not permission to interact without a match.
-                const int vertical_probes[] = {-80, 160, -240, 320, -160, -120, 240, -360, 480, -240};
-                for (size_t attempt = 0; attempt < 80; attempt++) {
-                    auto frame = stream.video().snapshot();
-                    if (!frame) OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
-                        "Poketch interaction: No video frame.", stream);
-                    const OverworldMatchResult result = match_poketch_landmarks(*frame.frame);
-                    stream.log(result.coarse ? "[Poketch landmarks] Coarse acquisition." : "[Poketch landmarks] Fine alignment.");
-                    VideoOverlaySet overlays(stream.overlay());
-                    for (const auto& landmark : result.landmarks) {
-                        overlays.add(COLOR_CYAN, landmark.search);
-                        if (landmark.accepted) overlays.add(COLOR_GREEN, landmark.found);
-                        stream.log("[Poketch landmarks] " + landmark.name + " score=" + std::to_string(landmark.score) +
-                            " margin=" + std::to_string(landmark.margin) + " accepted=" + std::to_string(landmark.accepted) +
-                            " screen-relative offset=(" + std::to_string(landmark.dx) + "," + std::to_string(landmark.dy) + ")");
-                    }
-                    if (result.located) acquisition_misses = 0;
-                    if (result.coarse && result.located) {
-                        if (coarse_confirmed && std::abs(result.dx - previous_dx) <= 0.00625 && std::abs(result.dy - previous_dy) <= 1.0/90)
-                            coarse_confirmed++;
-                        else coarse_confirmed = 1;
-                        previous_dx = result.dx; previous_dy = result.dy;
-                    } else coarse_confirmed = 0;
-                    if (!result.located) {
-                        confirmed = 0;
-                        if (++acquisition_misses >= 4 && vertical_probe < sizeof(vertical_probes) / sizeof(vertical_probes[0])) {
-                            int probe = vertical_probes[vertical_probe++];
-                            acquisition_misses = 0;
-                            stream.log("[Poketch landmarks] Bounded vertical visibility probe " + std::to_string(vertical_probe) +
-                                "/10: " + (probe < 0 ? "down " : "up ") + std::to_string(std::abs(probe)) + "ms.");
-                            pbf_move_left_joystick(context, {0, probe < 0 ? -1.0 : 1.0}, Milliseconds(std::abs(probe)), 0ms);
-                            pbf_wait(context, 700ms);
-                        } else {
-                            stream.log("[Poketch landmarks] No trustworthy acquisition; waiting for another frame.");
-                            pbf_wait(context, 250ms);
-                        }
-                    } else if (result.coarse && coarse_confirmed < 3) {
-                        confirmed = 0;
-                        stream.log("[Poketch landmarks] Waiting for consistent coarse offset before movement.");
-                        pbf_wait(context, 250ms);
-                    } else if (result.at_target) {
-                        if (++confirmed >= 3) {
-                            stream.log("[Poketch landmarks] Above-NPC reference confirmed; turning down.");
-                            pbf_press_dpad(context, DPAD_DOWN, 40ms, 400ms);
-                            context.wait_for_all_requests();
-                            pbf_press_button(context, BUTTON_A, 80ms, 500ms);
-                            context.wait_for_all_requests();
-                            wait_for_dialogue(stream, context, "Phase 27 (poketech challenge completed dialog)", 10s);
-                            return;
-                        }
-                        pbf_wait(context, 300ms);
-                    } else {
-                        confirmed = 0;
-                        const double dx = result.dx, dy = result.dy;
-                        stream.log("[Poketch landmarks] Reference screen-relative offset=(" + std::to_string(result.dx) + "," + std::to_string(result.dy) + ").");
-                        const bool horizontal = std::abs(dx) > 7.0/960 &&
-                            (std::abs(dy) <= 7.0/540 || std::abs(dx) >= std::abs(dy)*9.0/16);
-                        double error = horizontal ? dx : dy*9.0/16;
-                        auto duration = std::abs(error) > 0.03125 ? 80ms : std::abs(error) > 0.015625 ? 40ms : 16ms;
-                        if (std::abs(dx) <= 7.0/960 && std::abs(dy) <= 7.0/540) {
-                            stream.log("[Poketch landmarks] Coarse position near target; waiting for fine confirmation.");
-                            pbf_wait(context, 300ms);
-                            context.wait_for_all_requests();
-                            continue;
-                        }
-                        stream.log("[Poketch landmarks] Correcting " + std::string(horizontal ? "horizontal" : "vertical") +
-                            " axis for " + std::to_string(duration.count()) + "ms.");
-                        pbf_move_left_joystick(context,
-                            {horizontal ? (dx > 0 ? 1.0 : -1.0) : 0.0,
-                             horizontal ? 0.0 : (dy < 0 ? 1.0 : -1.0)}, duration, 0ms);
-                        pbf_wait(context, 700ms);
-                    }
-                    context.wait_for_all_requests();
-                }
-                OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
-                    "Poketch interaction: Building landmarks did not confirm the reference position; A not pressed.", stream);
-            }
 
             void align_and_enter_jubilife_center(VideoStream& stream, ProControllerContext& context) {
                 context.wait_for_all_requests();

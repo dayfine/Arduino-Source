@@ -11,10 +11,8 @@
  */
 
 #include <algorithm>
-#include <cmath>
 
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
-#include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "CommonTools/Async/InferenceRoutines.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 
@@ -155,84 +153,6 @@ namespace PokemonAutomation {
             catch_1_pokemon(stream, context);
             pbf_wait(context, 1500ms);
             context.wait_for_all_requests();
-        }
-
-        // Align to a route reference before continuing recorded navigation.
-        // Matcher offsets and thresholds are fractions of screen width/height.
-        static void align_to_tutorial_landmarks(
-            VideoStream& stream, ProControllerContext& context,
-            OverworldMatchResult (*matcher)(const ImageRGB32&), const std::string& label
-        ) {
-            context.wait_for_all_requests();
-            pbf_wait(context, 700ms);
-            context.wait_for_all_requests();
-            size_t confirmations = 0, coarse_confirmations = 0;
-            double previous_dx = 0, previous_dy = 0;
-            for (size_t attempt = 0; attempt < 60; attempt++) {
-                const auto frame = stream.video().snapshot();
-                if (!frame) OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
-                    label + ": No video frame.", stream);
-                const auto result = matcher(*frame.frame);
-                VideoOverlaySet overlays(stream.overlay());
-                for (const auto& landmark : result.landmarks) {
-                    overlays.add(COLOR_CYAN, landmark.search);
-                    if (landmark.accepted) overlays.add(COLOR_GREEN, landmark.found);
-                    stream.log("[" + label + "] " + landmark.name +
-                        " score=" + std::to_string(landmark.score) +
-                        " margin=" + std::to_string(landmark.margin) +
-                        " accepted=" + std::to_string(landmark.accepted) +
-                        " screen-relative offset=(" + std::to_string(landmark.dx) +
-                        "," + std::to_string(landmark.dy) + ")");
-                }
-                stream.log("[" + label + "] located=" + std::to_string(result.located) +
-                    " mode=" + (result.coarse ? "vertical acquisition" : "fine alignment") +
-                    " reference screen-relative offset=(" + std::to_string(result.dx) +
-                    "," + std::to_string(result.dy) + ")");
-                if (result.coarse && result.located) {
-                    if (coarse_confirmations && std::abs(result.dx-previous_dx)<=0.00625 &&
-                        std::abs(result.dy-previous_dy)<=1.0/90) coarse_confirmations++;
-                    else coarse_confirmations=1;
-                    previous_dx=result.dx;
-                    previous_dy=result.dy;
-                } else coarse_confirmations=0;
-                if (!result.located) {
-                    confirmations = 0;
-                    pbf_wait(context, 250ms);
-                } else if (result.coarse && coarse_confirmations<3) {
-                    confirmations = 0;
-                    stream.log("[" + label + "] Waiting for consistent vertical acquisition.");
-                    pbf_wait(context, 250ms);
-                } else if (result.at_target) {
-                    if (++confirmations >= 3) {
-                        stream.log("[" + label + "] Reference position confirmed.");
-                        return;
-                    }
-                    pbf_wait(context, 300ms);
-                } else {
-                    confirmations = 0;
-                    const bool horizontal = !result.coarse &&
-                        std::abs(result.dx) >= std::abs(result.dy)*9.0/16;
-                    const double error = horizontal ? result.dx : result.dy*9.0/16;
-                    const auto duration = std::abs(error) > 1.0/24 ? 80ms :
-                        std::abs(error) > 0.015625 ? 40ms : 16ms;
-                    stream.log("[" + label + "] Correcting " +
-                        std::string(horizontal ? "horizontal" : "vertical") + " axis " +
-                        (horizontal ? (result.dx>0 ? "right" : "left") : (result.dy<0 ? "up" : "down")) +
-                        " for " + std::to_string(duration.count()) + "ms.");
-                    // Reuse confirmed-Run encounter handling if correction enters grass.
-                    walk_through_grass(stream, context,
-                        horizontal ? (result.dx > 0 ? 1 : -1) : 0,
-                        horizontal ? 0 : (result.dy < 0 ? 1 : -1),
-                        1, label, BattleType::STANDARD, duration);
-                }
-                context.wait_for_all_requests();
-            }
-            OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
-                label + ": Reference position not confirmed; route movement stopped.", stream);
-        }
-
-        static void align_to_sandgem_junction(VideoStream& stream, ProControllerContext& context) {
-            align_to_tutorial_landmarks(stream, context, match_sandgem_junction, "Sandgem junction");
         }
 
         // Resumes from the save made after catching the second Pokemon.

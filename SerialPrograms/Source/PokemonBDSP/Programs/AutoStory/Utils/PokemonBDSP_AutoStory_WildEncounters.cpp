@@ -29,7 +29,7 @@ namespace PokemonAutomation {
         namespace PokemonBDSP {
 
             // ---------------------------------------------------------------------------
-            // Tristan battle
+            // Wild encounters
             // ---------------------------------------------------------------------------
             // Two grass rows at 240 ms each, with room to spare: the wall stops us.
             static constexpr Milliseconds CATCH_GRASS_WALK = 900ms;

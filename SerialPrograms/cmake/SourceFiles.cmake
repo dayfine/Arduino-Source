@@ -1563,8 +1563,6 @@ file(GLOB LIBRARY_SOURCES
     Source/PokemonBDSP/Programs/TestPrograms/PokemonBDSP_OverworldLightingTest.h
     Source/PokemonBDSP/PokemonBDSP_Tests.cpp
     Source/PokemonBDSP/PokemonBDSP_Tests.h
-    Source/PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Segment_00_tools.cpp
-    Source/PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Segment_00_tools.h
     Source/PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_Autostory_Segment_01_tools.cpp
     Source/PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_Autostory_Segment_01_tools.h
     Source/PokemonBDSP/Inference/Battles/PokemonBDSP_BattleBallReader.cpp

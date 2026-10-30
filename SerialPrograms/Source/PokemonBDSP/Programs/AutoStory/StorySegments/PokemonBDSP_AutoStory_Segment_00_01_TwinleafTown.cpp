@@ -21,9 +21,6 @@
 #include "PokemonBDSP_AutoStory_Segment_00_Shared.h"
 
 using namespace std::chrono_literals;
-using PokemonAutomation::Pokemon::MapSet;
-using PokemonAutomation::Pokemon::TilePos;
-using PokemonAutomation::Pokemon::TrainerSight;
 
 namespace PokemonAutomation {
     namespace NintendoSwitch {

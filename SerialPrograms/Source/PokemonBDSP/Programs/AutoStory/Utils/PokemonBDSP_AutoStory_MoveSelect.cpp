@@ -29,7 +29,7 @@ namespace PokemonAutomation {
         namespace PokemonBDSP {
 
             // ---------------------------------------------------------------------------
-            // Natalie battle
+            // Move selection
             // ---------------------------------------------------------------------------
             // Early moves the starters and their foes have, as type, power and
             // most PP. A status move has power 0.

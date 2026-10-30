@@ -27,7 +27,7 @@ namespace PokemonAutomation {
         namespace PokemonBDSP {
 
             // ---------------------------------------------------------------------------
-            // Time helper
+            // Game options check
             // ---------------------------------------------------------------------------
 
             // Options chrome and position detectors are independent of setting values.
