@@ -60,6 +60,19 @@ const TileGrid& grid(){
 }
 
 
+//  Pixel (888,64) on the DP map, on the doors' row of Sandgem (world row 4):
+//  walking east along row 4 from the grass stops at (54,4), and facing east
+//  from there reads it. Not checked on the console yet.
+const TilePos BORDER_SIGN{55, 4};
+//  On the console (by hand, then through the Lab Console; 99715d5d6 and
+//  f823453e9 on bdsp/new-game-intro-v2) she stood at (43,3), and walking
+//  west along row 3 from the trees at its east end stopped at (44,3), facing
+//  her; her lines need one A each, 1.5 s apart. Later runs (r113a..r120a)
+//  found her wandering.
+const TilePos POTION_GIVER{43, 3};
+const TilePos POTION_GIVER_TALK_FROM{44, 3};
+
+
 
 }
 }

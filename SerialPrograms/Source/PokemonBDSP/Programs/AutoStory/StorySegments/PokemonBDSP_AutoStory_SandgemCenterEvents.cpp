@@ -9,11 +9,15 @@
 #include <memory>
 #include <utility>
 #include "CommonFramework/Exceptions/OperationFailedException.h"
+#include "CommonFramework/ImageTools/ImageBoxes.h"
+#include "CommonFramework/Language.h"
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
-#include "CommonTools/VisualDetectors/BlackScreenDetector.h"
+#include "CommonTools/Async/InferenceRoutines.h"
+#include "CommonTools/OCR/OCR_RawTesseractOCR.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "PokemonBDSP/Inference/PokemonBDSP_DialogDetector.h"
+#include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_Route201.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_Route202.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_SandgemTown.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_StoryMaps.h"
@@ -22,6 +26,7 @@
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_RouteWalk.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Segment_00_tools.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Walk.h"
+#include "PokemonBDSP/Programs/AutoStory/StorySegments/PokemonBDSP_AutoStory_Segment_00.h"
 #include "PokemonBDSP_AutoStory_SandgemCenterEvents.h"
 
 namespace PokemonAutomation{
@@ -57,6 +62,10 @@ TilePos below_sandgem_center_sign(){
     return story_maps().to_world(MAP_SANDGEM_TOWN, SandgemTown::POKEMON_CENTER_SIGN.next(Direction::SOUTH));
 }
 
+bool doorway_lined_up(const LitDoorway& doorway){
+    return doorway.rows_up > 0 && doorway.rows_up <= 1.5 && std::abs(doorway.tiles_across) <= 0.5;
+}
+
 bool center_doorway_at_front_row(const LitDoorway& doorway){
     //  From below the sign the door is three tiles west; a tile either way
     //  for where the walk stopped, and the rows as tiles_short_of_door()
@@ -65,12 +74,6 @@ bool center_doorway_at_front_row(const LitDoorway& doorway){
         doorway.tiles_across >= -4.5 && doorway.tiles_across <= 1.5;
 }
 
-bool inside_past_door(bool screen_shows, const std::optional<LitDoorway>& doorway){
-    if (!screen_shows){
-        return false;
-    }
-    return !doorway || !(doorway->rows_up > 0 && doorway->rows_up <= 1.5 && std::abs(doorway->tiles_across) <= 1);
-}
 
 
 namespace{
@@ -111,15 +114,6 @@ Condition center_doorway_ahead(SandgemCenterActions& game){
         return doorway && center_doorway_at_front_row(*doorway);
     });
 }
-
-Condition inside_center(SandgemCenterActions& game){
-    return condition("inside, past the door", [&game](RunState&){
-        return inside_past_door(game.screen_shows(), game.lit_doorway());
-    });
-}
-
-const char* const FLAG_THROUGH_DOOR = "through_center_door";
-
 
 //  1. The save the checkpoint starts from is Route 202's save spot: the
 //  save screen's card says which map, and its walls pin the tile.
@@ -179,12 +173,13 @@ Event walk_to_sandgem(SandgemCenterActions& game){
 //  sign stops us (13 legs). Someone in the way stops an open leg short
 //  without the walk knowing: the doorway, further up the screen than the
 //  front row, then says where we are.
-Event walk_to_center_door(SandgemCenterActions& game){
+//  `from_map` is the map the walk starts on.
+Event walk_to_center_door(SandgemCenterActions& game, std::string name, const char* from_map){
     Event event;
-    event.name = "walk_to_center_door";
+    event.name = std::move(name);
     event.why = "to the row below the Center's door, its doorway in sight";
     event.skip_if.push_back(center_doorway_ahead(game));
-    event.require.push_back(pose_known(MAP_SANDGEM_TOWN, PoseCertainty::SET));
+    event.require.push_back(pose_known(from_map, PoseCertainty::SET));
     event.act = [&game](RunState& state){
         std::vector<TilePos> at = state.pose.tiles;
         const TilePos goal = below_sandgem_center_sign();
@@ -212,29 +207,22 @@ Event walk_to_center_door(SandgemCenterActions& game){
     return event;
 }
 
-//  4. In through the door. enter_lit_door() lines up with the doorway by
-//  sight and walks in; its fade is not always black enough to read, so
-//  inside is checked after: not black, and no doorway straight ahead.
-Event enter_center(SandgemCenterActions& game){
+//  4. In front of the door, facing it. From below the sign the doorway is
+//  three tiles west: step across by its offset, as enter_lit_door() does,
+//  and face north, without going in. The tile below the door is learned.
+Event at_center_door(SandgemCenterActions& game, std::string name){
     Event event;
-    event.name = "enter_center";
-    event.why = "through the Center's door to the inside";
-    event.skip_if.push_back(condition("went through the door", [](RunState& state){
-        return state.flags.count(FLAG_THROUGH_DOOR) > 0;
+    event.name = std::move(name);
+    event.why = "in front of the Center's door, facing it";
+    event.act = [&game](RunState&){ return game.line_up_with_door(); };
+    event.expect.push_back(condition("the doorway straight ahead, a row up", [&game](RunState&){
+        const std::optional<LitDoorway> doorway = game.lit_doorway();
+        return doorway && doorway_lined_up(*doorway);
     }));
-    event.skip_if.push_back(inside_center(game));
-    event.act = [&game](RunState& state){
-        const Outcome entered = game.enter_lit_door();
-        if (entered.succeeded()){
-            state.flags.insert(FLAG_THROUGH_DOOR);
-        }
-        return entered;
-    };
-    event.expect.push_back(inside_center(game));
-    event.recoveries.push_back(recovery("expect_failed", RecoveryKind::WAIT, 1, [&game](RunState&){
-        //  The fade may still be on: look again in a moment.
-        return game.screen_shows() ? outcome_ok() : outcome_failed("fade_on", "the screen is still black");
-    }, "the inside may not have drawn yet"));
+    event.pose_learned = pose_on({story_maps().to_world(MAP_SANDGEM_TOWN,
+        SandgemTown::POKEMON_CENTER_DOOR.next(Direction::SOUTH))}, Direction::NORTH);
+    event.recoveries.push_back(recovery("expect_failed", RecoveryKind::WAIT, 1, nullptr,
+        "someone may have stood in the way: look and line up again"));
     return event;
 }
 
@@ -306,19 +294,11 @@ public:
         return screen ? find_lit_doorway(*screen.frame) : std::nullopt;
     }
 
-    virtual Outcome enter_lit_door() override{
-        try{
-            PokemonBDSP::enter_lit_door(m_stream, m_context, "Sandgem Pokemon Center: through the door");
-            return outcome_ok();
-        }catch (OperationFailedException& e){
-            return outcome_failed("door_failed", e.message());
+    virtual Outcome line_up_with_door() override{
+        if (!line_up_with_lit_door(m_stream, m_context, "Sandgem Pokemon Center: in front of the door")){
+            return outcome_failed("not_lined_up", "no lit doorway, or not lined up after 6 steps");
         }
-    }
-
-    virtual bool screen_shows() override{
-        m_context.wait_for_all_requests();
-        VideoSnapshot screen = m_stream.video().snapshot();
-        return screen && !BlackScreenDetector().detect(*screen.frame);
+        return outcome_ok();
     }
 
     virtual bool dialogue_showing() override{
@@ -336,36 +316,247 @@ public:
         }
     }
 
-private:
+protected:
     VideoStream& m_stream;
     ProControllerContext& m_context;
     std::vector<Pokemon::TrainerSight> m_trainers;
 };
 
+
+// ---------------------------------------------------------------------------
+//  The Poke Mart lady
+// ---------------------------------------------------------------------------
+
+//  A planned walk on the story maps to the tile `goal`, from where the pose
+//  says we are on `from_map`.
+Event walk_to_tile(MartLadyActions& game, std::string name, std::string why, const char* from_map, TilePos goal){
+    Event event;
+    event.name = std::move(name);
+    event.why = std::move(why);
+    event.require.push_back(pose_known(from_map, PoseCertainty::SET));
+    const std::string label = event.why;
+    event.act = [&game, goal, label](RunState& state){
+        std::vector<TilePos> at = state.pose.tiles;
+        const Outcome walked = game.walk(at, [goal](const TilePos& pos){ return pos == goal; }, label);
+        if (walked.succeeded()){
+            state.pose = pose_on(at);
+        }
+        return walked;
+    };
+    event.expect.push_back(condition("on " + story_maps().describe(goal), [goal](RunState& state){
+        return state.pose.certainty == PoseCertainty::TILE && state.pose.tiles.front() == goal;
+    }));
+    return event;
+}
+
+//  The gate: from the tile west of Route 201's border sign, facing east, A
+//  reads it, and B closes it. Only that tile reads the sign, so the read
+//  confirms where we stand. A walk that stopped a tile short is put right by
+//  walking east until the sign stops us.
+Event read_route_201_sign(MartLadyActions& game, std::string name){
+    std::shared_ptr<DialogueRead> read = std::make_shared<DialogueRead>();
+    Event event;
+    event.name = std::move(name);
+    event.why = "read Route 201's border sign from the tile west of it";
+    event.act = [&game, read](RunState&){
+        *read = game.talk(Direction::EAST, BUTTON_B, "Route 201 sign");
+        return outcome_ok();
+    };
+    event.expect.push_back(condition("the sign's dialogue opened and closed", [read](RunState&){
+        return read->opened && read->closed;
+    }));
+    event.pose_learned = pose_on({route201_sign_west()}, Direction::EAST);
+    event.recoveries.push_back(recovery("expect_failed", RecoveryKind::REANCHOR, 1, [&game](RunState&){
+        return game.walk_until_stopped(Direction::EAST, 2, "East to the sign");
+    }, "not at the sign: east until it stops us"));
+    return event;
+}
+
+//  From the sign, north to the trees and west along the top row of her
+//  grass until she stops us, a tile east of her; then one A per line.
+//  She may have wandered: walk on west and ask again.
+Event talk_to_mart_lady(MartLadyActions& game){
+    std::shared_ptr<DialogueRead> read = std::make_shared<DialogueRead>();
+    Event event;
+    event.name = "talk_to_mart_lady";
+    event.why = "the Poke Mart lady on Route 201 talks (she gave Potions to new games)";
+    event.require.push_back(pose_known(MAP_ROUTE_201, PoseCertainty::SET));
+    event.act = [&game, read](RunState&){
+        const Outcome north = game.walk_until_stopped(Direction::NORTH, 1, "North to the trees");
+        if (!north.succeeded()){
+            return north;
+        }
+        const Outcome west = game.walk_until_stopped(Direction::WEST, 10, "West along the lady's row");
+        if (!west.succeeded()){
+            return west;
+        }
+        *read = game.talk(Direction::WEST, BUTTON_A, "Poke Mart lady");
+        return outcome_ok();
+    };
+    event.expect.push_back(condition("a dialogue opened and was closed", [read](RunState&){
+        return read->opened && read->closed;
+    }));
+    event.pose_learned = pose_on({story_maps().to_world(MAP_ROUTE_201, Route201::POTION_GIVER_TALK_FROM)}, Direction::WEST);
+    event.recoveries.push_back(recovery("expect_failed", RecoveryKind::WAIT, 2, nullptr,
+        "she may have wandered: walk on west and ask again"));
+    return event;
+}
+
+//  Back to the sign from the lady's grass. A wild battle in the grass
+//  stops an open leg somewhere: north to the trees and east to Sandgem's
+//  fence pins the row's east end, and the walk is planned again from there.
+Event back_to_route_201_sign(MartLadyActions& game){
+    Event event = walk_to_tile(game, "back_to_route_201_sign", "Back to the Route 201 sign", MAP_ROUTE_201, route201_sign_west());
+    event.recoveries.push_back(recovery("", RecoveryKind::REANCHOR, 1, [&game](RunState& state){
+        const Outcome north = game.walk_until_stopped(Direction::NORTH, 12, "North to the trees");
+        if (!north.succeeded()){
+            return north;
+        }
+        const Outcome east = game.walk_until_stopped(Direction::EAST, 25, "East to Sandgem's fence");
+        if (!east.succeeded()){
+            return east;
+        }
+        state.pose = pose_on({route201_row_3_east_end()}, Direction::EAST);
+        return outcome_ok();
+    }, "north to the trees and east to Sandgem's fence"));
+    return event;
+}
+
+//  A step of 00.04 that Segment 00 walks as one function, wrapped as an
+//  event: done once `flag` is set.
+Event wrapped_step(std::string name, std::string why, std::string flag, Pokemon::Act step){
+    Event event;
+    event.name = std::move(name);
+    event.why = std::move(why);
+    event.skip_if.push_back(condition(flag, [flag](RunState& state){ return state.flags.count(flag) > 0; }));
+    event.act = [flag, step = std::move(step)](RunState& state) mutable{
+        const Outcome done = step(state);
+        if (done.succeeded()){
+            state.flags.insert(flag);
+        }
+        return done;
+    };
+    event.expect.push_back(condition(flag, [flag](RunState& state){ return state.flags.count(flag) > 0; }));
+    return event;
 }
 
 
-Checkpoint route202_to_sandgem_center_checkpoint(SandgemCenterActions& game){
-    Checkpoint checkpoint;
-    checkpoint.id = "sandgem_center";
-    checkpoint.interrupts.push_back(dialogue_interrupt(game));
-    checkpoint.events.push_back(confirm_on_route_202(game));
-    checkpoint.events.push_back(walk_to_sandgem(game));
-    checkpoint.events.push_back(walk_to_center_door(game));
-    checkpoint.events.push_back(enter_center(game));
-    //  No save: the save stays on Route 202, so the run can be repeated.
-    return checkpoint;
-}
+//  The console's side of the Mart lady checkpoint.
+class ConsoleMartLadyActions : public MartLadyActions{
+public:
+    ConsoleMartLadyActions(SingleSwitchProgramEnvironment& env, ProControllerContext& context)
+        : m_env(env)
+        , m_context(context)
+        , m_center(env.console, context)
+    {}
 
-void diagnostic_route202_to_sandgem_center(SingleSwitchProgramEnvironment& env, ProControllerContext& context){
+    virtual std::string save_screen_location() override{ return m_center.save_screen_location(); }
+    virtual Outcome walk(
+        std::vector<TilePos>& at,
+        const std::function<bool(const TilePos&)>& goal,
+        const std::string& label
+    ) override{
+        return m_center.walk(at, goal, label);
+    }
+    virtual bool east_then_south_into_sandgem() override{ return m_center.east_then_south_into_sandgem(); }
+    virtual std::optional<LitDoorway> lit_doorway() override{ return m_center.lit_doorway(); }
+    virtual Outcome line_up_with_door() override{ return m_center.line_up_with_door(); }
+    virtual bool dialogue_showing() override{ return m_center.dialogue_showing(); }
+    virtual Outcome finish_dialogue() override{ return m_center.finish_dialogue(); }
+
+    virtual Outcome walk_until_stopped(Direction direction, size_t tiles, const std::string& label) override{
+        const bool across = direction == Direction::EAST || direction == Direction::WEST;
+        const double x = direction == Direction::EAST ? 1 : direction == Direction::WEST ? -1 : 0;
+        const double y = direction == Direction::NORTH ? 1 : direction == Direction::SOUTH ? -1 : 0;
+        //  Time for every tile, and for the wall to read as still.
+        const Milliseconds limit = ROUTE_START_DELAY + 800ms +
+            (int64_t)tiles * (across ? ROUTE_MS_PER_TILE_ACROSS : ROUTE_MS_PER_TILE_UP_DOWN);
+        const WalkResult walked = walk_until(m_env.console, m_context, x, y, limit, label);
+        if (walked.stop == WalkStop::TRANSITION || walked.stop == WalkStop::DIALOG){
+            return outcome_failed("walk_failed", label + ": " + walk_stop_name(walked.stop) + " instead of a stop");
+        }
+        return outcome_ok();
+    }
+
+    virtual DialogueRead talk(Direction direction, Button next, const std::string& label) override{
+        VideoStream& stream = m_env.console;
+        DialogueRead read;
+        route_turn(stream, m_context, direction);
+        pbf_press_button(m_context, BUTTON_A, 80ms, 0ms);
+        m_context.wait_for_all_requests();
+        ShortDialogWatcher opened(COLOR_CYAN);
+        if (wait_until(stream, m_context, 2000ms, {{opened}}) != 0){
+            stream.log("[Talk] " + label + ": no dialogue opened.");
+            return read;
+        }
+        read.opened = true;
+        //  The first box's text, inside its white margins.
+        if (VideoSnapshot screen = stream.video().snapshot()){
+            read.text = OCR::tesseract_ocr_read(Language::English, extract_box_reference(*screen.frame, ImageFloatBox(0.23, 0.80, 0.56, 0.16)));
+        }
+        stream.log("[Talk] " + label + ": the dialogue reads \"" + read.text + "\".");
+        //  One press per line, 1.5 s apart, and only while a box shows: a
+        //  press after it has closed would start the talk over.
+        size_t quiet = 0;
+        for (size_t presses = 0; presses < 20 && quiet < 2; presses++){
+            ShortDialogWatcher dialog(COLOR_YELLOW);
+            if (wait_until(stream, m_context, 1500ms, {{dialog}}) == 0){
+                quiet = 0;
+                pbf_press_button(m_context, next, 80ms, 0ms);
+            }else{
+                quiet++;
+            }
+        }
+        read.closed = !dialogue_showing();
+        stream.log("[Talk] " + label + (read.closed ? ": closed." : ": still open."));
+        return read;
+    }
+
+    virtual Outcome walk_to_route_202_save_spot() override{
+        return wrap("walk_failed", [&]{ walk_from_sandgem_center_to_route_202_save_spot(m_env.console, m_context); });
+    }
+    virtual Outcome walk_to_jubilife() override{
+        return wrap("walk_failed", [&]{ walk_route_202_to_jubilife(m_env.console, m_context); });
+    }
+    virtual Outcome meet_dawn() override{
+        return wrap("dawn_failed", [&]{ meet_dawn_in_jubilife(m_env.console, m_context); });
+    }
+    virtual Outcome save_in_jubilife() override{
+        bool saved = false;
+        const Outcome outcome = wrap("save_failed", [&]{ saved = save_game(m_env, m_context, MAP_JUBILIFE_CITY); });
+        if (outcome.succeeded() && !saved){
+            return outcome_failed("save_failed", "the save screen did not read Jubilife City, or the save did not finish");
+        }
+        return outcome;
+    }
+
+private:
+    static Outcome wrap(const char* failure, const std::function<void()>& step){
+        try{
+            step();
+            return outcome_ok();
+        }catch (OperationFailedException& e){
+            return outcome_failed(failure, e.message());
+        }
+    }
+
+    SingleSwitchProgramEnvironment& m_env;
+    ProControllerContext& m_context;
+    ConsoleSandgemCenterActions m_center;
+};
+
+
+void pin_clock(SingleSwitchProgramEnvironment& env, ProControllerContext& context){
     //  The doorways are found by their lit colour: pin the clock as 00.04
     //  does, so a reloaded save sees the same lighting.
     set_time_fast(env, context, DateTime{2026, 1, 1, 0, 0, 50});
     pbf_wait(context, 1500ms);
     context.wait_for_all_requests();
+}
 
-    ConsoleSandgemCenterActions game(env.console, context);
-    Checkpoint checkpoint = route202_to_sandgem_center_checkpoint(game);
+//  Runs `checkpoint`, logging its events, and fails with a screenshot
+//  naming the event and why if it does not complete.
+void run_on_console(SingleSwitchProgramEnvironment& env, Checkpoint& checkpoint, const char* name){
     const std::vector<std::string> problems = Pokemon::lint_checkpoint(checkpoint);
     for (const std::string& problem : problems){
         env.log("[Checkpoint] lint: " + problem, COLOR_RED);
@@ -380,9 +571,92 @@ void diagnostic_route202_to_sandgem_center(SingleSwitchProgramEnvironment& env, 
         const std::string where = report.failed_event == 0 ? "" : " at event " +
             std::to_string(report.failed_event) + " " + report.failed_name;
         OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
-            std::string(ROUTE202_TO_SANDGEM_CENTER_NAME) + ": failed" + where + ": " +
+            std::string(name) + ": failed" + where + ": " +
             report.failure.failure + (report.failure.detail.empty() ? "" : ": " + report.failure.detail), env.console);
     }
+}
+
+}
+
+
+Checkpoint route202_to_sandgem_center_checkpoint(SandgemCenterActions& game){
+    Checkpoint checkpoint;
+    checkpoint.id = "sandgem_center";
+    checkpoint.interrupts.push_back(dialogue_interrupt(game));
+    checkpoint.events.push_back(confirm_on_route_202(game));
+    checkpoint.events.push_back(walk_to_sandgem(game));
+    checkpoint.events.push_back(walk_to_center_door(game, "walk_to_center_door", MAP_SANDGEM_TOWN));
+    checkpoint.events.push_back(at_center_door(game, "at_center_door"));
+    //  No save: the save stays on Route 202, so the run can be repeated.
+    return checkpoint;
+}
+
+void diagnostic_route202_to_sandgem_center(SingleSwitchProgramEnvironment& env, ProControllerContext& context){
+    pin_clock(env, context);
+    ConsoleSandgemCenterActions game(env.console, context);
+    Checkpoint checkpoint = route202_to_sandgem_center_checkpoint(game);
+    run_on_console(env, checkpoint, ROUTE202_TO_SANDGEM_CENTER_NAME);
+}
+
+
+const char* const SANDGEM_MART_LADY_NAME = "Sandgem's Pokemon Center to the Poke Mart lady, then the rest of 00.04 (events)";
+
+TilePos route201_sign_west(){
+    return story_maps().to_world(MAP_ROUTE_201, Route201::BORDER_SIGN.next(Direction::WEST));
+}
+
+TilePos route201_row_3_east_end(){
+    //  Row 3 is open east of her grass to Sandgem's fence: (64,3) is
+    //  Sandgem's (0,6), a wall.
+    return story_maps().to_world(MAP_ROUTE_201, {63, 3});
+}
+
+Checkpoint sandgem_mart_lady_checkpoint(MartLadyActions& game){
+    Checkpoint checkpoint;
+    checkpoint.id = "mart_lady";
+    checkpoint.interrupts.push_back(dialogue_interrupt(game));
+    checkpoint.events.push_back(at_center_door(game, "at_center_door"));
+    checkpoint.events.push_back(walk_to_tile(game, "walk_to_route_201_sign", "West to the Route 201 sign",
+        MAP_SANDGEM_TOWN, route201_sign_west()));
+    checkpoint.events.push_back(read_route_201_sign(game, "read_route_201_sign"));
+    checkpoint.events.push_back(talk_to_mart_lady(game));
+    checkpoint.events.push_back(back_to_route_201_sign(game));
+    checkpoint.events.push_back(read_route_201_sign(game, "read_route_201_sign_again"));
+    checkpoint.events.push_back(walk_to_center_door(game, "back_to_center_door", MAP_ROUTE_201));
+    checkpoint.events.push_back(at_center_door(game, "at_center_door_again"));
+    //  The rest of 00.04 from below the Center's door, as Segment 00 walks it.
+    checkpoint.events.push_back(wrapped_step("walk_to_route_202_save_spot",
+        "east to the trees, north through the gap between the signs, to Route 202's save spot", "at_route_202_save_spot",
+        [&game](RunState& state){
+            const Outcome walked = game.walk_to_route_202_save_spot();
+            if (walked.succeeded()){
+                state.pose = pose_on({story_maps().to_world(MAP_ROUTE_202, Route202::SAVE_SPOT)});
+            }
+            return walked;
+        }));
+    checkpoint.events.push_back(wrapped_step("walk_to_jubilife",
+        "north up Route 202 to Jubilife, fighting the trainers who see us", "at_jubilife_exit",
+        [&game](RunState& state){
+            const Outcome walked = game.walk_to_jubilife();
+            if (walked.succeeded()){
+                state.pose = Pose{};
+            }
+            return walked;
+        }));
+    checkpoint.events.push_back(wrapped_step("meet_dawn", "into Jubilife and through Dawn's scene", "met_dawn",
+        [&game](RunState&){ return game.meet_dawn(); }));
+    //  00.04 saves at its end (checkpoint_reattempt_loop()), in Jubilife.
+    checkpoint.save = [&game](RunState&){ return game.save_in_jubilife(); };
+    return checkpoint;
+}
+
+void diagnostic_sandgem_mart_lady(SingleSwitchProgramEnvironment& env, ProControllerContext& context, bool pin){
+    if (pin){
+        pin_clock(env, context);
+    }
+    ConsoleMartLadyActions game(env, context);
+    Checkpoint checkpoint = sandgem_mart_lady_checkpoint(game);
+    run_on_console(env, checkpoint, SANDGEM_MART_LADY_NAME);
 }
 
 

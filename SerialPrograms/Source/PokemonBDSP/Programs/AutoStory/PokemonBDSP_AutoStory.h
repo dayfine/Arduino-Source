@@ -45,6 +45,8 @@ private:
     BooleanCheckBoxOption DIAGNOSTIC_FAKE_CHECKPOINT_SAVE;
     // DIAGNOSTIC ONLY: Remove before pushing to production.
     BooleanCheckBoxOption DIAGNOSTIC_ROUTE202_TO_SANDGEM_CENTER;
+    // DIAGNOSTIC ONLY: Remove before pushing to production.
+    BooleanCheckBoxOption DIAGNOSTIC_SANDGEM_MART_LADY;
     BooleanCheckBoxOption ENABLE_ADVANCED_MODE;
 
     StringSelectOption START_CHECKPOINT_TUTORIAL;

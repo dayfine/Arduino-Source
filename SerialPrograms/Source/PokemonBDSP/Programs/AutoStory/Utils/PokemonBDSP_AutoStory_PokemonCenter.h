@@ -29,9 +29,15 @@ struct LitDoorway{
     double rows_up;         //  rows north of the player's tile, roughly: 1 straight ahead
 };
 
+//  Whether `screen` is the inside of a Pokemon Center seen from its door:
+//  the orange back wall at the top left, and the black below the entrance
+//  mat along the bottom edge. Its lit floor reads as a doorway
+//  (find_lit_doorway()), so this is what says we are in (r126 runs 2, 3).
+bool pokemon_center_inside(const ImageViewRGB32& screen);
+
 //  Finds a lit doorway (a Pokemon Center's or a Poke Mart's) in the upper
 //  two thirds of `screen`, the pale yellow-white of its open door. Nothing if
-//  none shows there.
+//  none shows there, or inside a Pokemon Center, whose floor is that colour.
 std::optional<LitDoorway> find_lit_doorway(const ImageViewRGB32& screen);
 
 //  The tiles a player who sees `doorway` (the door on world tile `door`) may
@@ -50,6 +56,15 @@ std::vector<Pokemon::TilePos> tiles_by_lit_doorway(
 std::vector<Pokemon::TilePos> tiles_short_of_door(
     VideoStream& stream, ProControllerContext& context,
     const Pokemon::TileGrid& grid, const Pokemon::TilePos& door, const std::string& label
+);
+
+//  For a player on the row below a building's door, its lit doorway on
+//  screen: steps across by the doorway's offset, looking again after each
+//  step, until it is straight ahead, then faces north. Does not go in.
+//  Returns false if no doorway shows, or after 6 steps.
+bool line_up_with_lit_door(
+    VideoStream& stream, ProControllerContext& context,
+    const std::string& label
 );
 
 //  Goes in through a building's door (a Pokemon Center's or a Poke Mart's).

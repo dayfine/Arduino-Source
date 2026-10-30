@@ -19,6 +19,15 @@ namespace Route201{
 
 const Pokemon::TileGrid& grid();
 
+//  The sign by the Sandgem Town border, at the east end of the route.
+extern const Pokemon::TilePos BORDER_SIGN;
+//  The Poke Mart lady, who gives 10 Potions: at the west end of the top
+//  grass row. Not on the grid: she turns and may wander.
+extern const Pokemon::TilePos POTION_GIVER;
+//  East of her: walking west along her row from the open ground east of the
+//  grass stops here, facing her.
+extern const Pokemon::TilePos POTION_GIVER_TALK_FROM;
+
 
 
 }

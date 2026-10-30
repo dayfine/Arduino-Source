@@ -8,6 +8,8 @@
 #include <optional>
 #include <vector>
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
+#include "CommonFramework/ImageTools/ImageBoxes.h"
+#include "CommonFramework/ImageTools/ImageStats.h"
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "CommonTools/Async/InferenceRoutines.h"
@@ -151,6 +153,13 @@ void step_across(VideoStream& stream, ProControllerContext& context, double tile
     pbf_move_left_joystick(context, {tiles > 0 ? 1.0 : -1.0, 0}, hold, 300ms);
 }
 
+//  Whether the screen now shows a Pokemon Center's inside.
+bool center_inside_now(VideoStream& stream, ProControllerContext& context){
+    context.wait_for_all_requests();
+    VideoSnapshot now = stream.video().snapshot();
+    return now && pokemon_center_inside(*now.frame);
+}
+
 //  Walks north into the door straight ahead, `doorway` away. Returns whether
 //  we are inside.
 bool walk_into_door(
@@ -161,7 +170,12 @@ bool walk_into_door(
     //  door opening, and a start delay.
     const double rows = std::max(0.0, doorway.rows_up - 1);
     const Milliseconds limit = 1500ms + Milliseconds((int64_t)(rows * ROUTE_MS_PER_TILE_UP_DOWN.count()));
-    if (walk_until(stream, context, 0, 1, limit, label + ": into the door").stop == WalkStop::TRANSITION){
+    //  The Center's fade is too light to read as black (r126 runs 2 and 3: a
+    //  screen change of 49 at 400 ms), so its inside, once it shows, stops
+    //  the walk too.
+    const WalkStop stop = walk_until(stream, context, 0, 1, limit, label + ": into the door",
+        [](const ImageViewRGB32& screen){ return pokemon_center_inside(screen); }).stop;
+    if (stop == WalkStop::TRANSITION || stop == WalkStop::ARRIVED){
         pbf_wait(context, 2000ms);
         return true;
     }
@@ -170,6 +184,10 @@ bool walk_into_door(
     //  whole new scene says we are in. Not after a walk of several rows, which
     //  scrolls the view: the next look decides.
     pbf_wait(context, 2000ms);
+    if (center_inside_now(stream, context)){
+        stream.log("[Route] " + label + ": a Pokemon Center's inside shows; inside.");
+        return true;
+    }
     if (doorway.rows_up > DOORWAY_FRONT_ROWS || !scene_changed_since(stream, context, outside)){
         return false;
     }
@@ -187,7 +205,28 @@ void log_doorway(VideoStream& stream, const std::string& label, const LitDoorway
 }
 
 
+bool pokemon_center_inside(const ImageViewRGB32& screen){
+    //  The back wall above the bookcase, at the top left.
+    const ImageStats wall = image_stats(extract_box_reference(screen, ImageFloatBox(0.02, 0.02, 0.10, 0.10)));
+    const double r = wall.average.r, g = wall.average.g, b = wall.average.b;
+    if (r < 180 || r < g + 40 || g < b + 40){
+        return false;
+    }
+    //  Black below the floor, either side of the step out of the door.
+    for (const ImageFloatBox& box : {ImageFloatBox(0.02, 0.95, 0.30, 0.04), ImageFloatBox(0.65, 0.95, 0.33, 0.04)}){
+        if (image_stats(extract_box_reference(screen, box)).average.sum() > 90){
+            return false;
+        }
+    }
+    //  And the floor lit between them: not a fade.
+    return image_stats(extract_box_reference(screen, ImageFloatBox(0.30, 0.55, 0.40, 0.15))).average.sum() > 400;
+}
+
 std::optional<LitDoorway> find_lit_doorway(const ImageViewRGB32& screen){
+    //  A Center's lit floor has the doorway's colour.
+    if (pokemon_center_inside(screen)){
+        return std::nullopt;
+    }
     const std::optional<std::pair<double, double>> position = lit_doorway_position(screen);
     if (!position){
         return std::nullopt;
@@ -231,6 +270,37 @@ std::vector<TilePos> tiles_by_lit_doorway(const LitDoorway& doorway, const TileG
     return tiles;
 }
 
+bool line_up_with_lit_door(
+    VideoStream& stream, ProControllerContext& context,
+    const std::string& label
+){
+    route_status(stream, label + ": lining up with the door.");
+    bool stepped = false;
+    for (size_t tries = 0; tries < 6; tries++){
+        context.wait_for_all_requests();
+        VideoSnapshot screen = stream.video().snapshot();
+        const std::optional<LitDoorway> doorway = screen ? find_lit_doorway(*screen.frame) : std::nullopt;
+        if (!doorway){
+            stream.log("[Route] " + label + ": no lit doorway on screen.");
+            return false;
+        }
+        log_doorway(stream, label, *doorway);
+        if (std::abs(doorway->tiles_across) <= 0.25){
+            //  A tap north turns a player who faces across without a step;
+            //  one already facing north (no step taken) would walk in.
+            if (stepped){
+                route_turn(stream, context, Direction::NORTH);
+                context.wait_for_all_requests();
+            }
+            return true;
+        }
+        step_across(stream, context, doorway->tiles_across);
+        stepped = true;
+    }
+    stream.log("[Route] " + label + ": not lined up after 6 steps.");
+    return false;
+}
+
 void enter_lit_door(
     VideoStream& stream, ProControllerContext& context,
     const std::string& label
@@ -246,6 +316,11 @@ void enter_lit_door(
         VideoSnapshot outside = stream.video().snapshot();
         if (!outside){
             continue;
+        }
+        //  Inside a Center, its lit floor would read as another doorway.
+        if (pokemon_center_inside(*outside.frame)){
+            stream.log("[Route] " + label + ": a Pokemon Center's inside shows; inside.");
+            return;
         }
         const std::optional<LitDoorway> doorway = find_lit_doorway(*outside.frame);
         if (!doorway){

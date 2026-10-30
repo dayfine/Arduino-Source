@@ -156,9 +156,17 @@ BDSPAutoStory::BDSPAutoStory()
     // DIAGNOSTIC ONLY: Remove before pushing to production.
     , DIAGNOSTIC_ROUTE202_TO_SANDGEM_CENTER(
           "<b>Diagnostic only: Route 202 to Sandgem's Pokemon Center (events)</b><br>"
-          "Start at Route 202's save spot under the south ledge. Walks into Sandgem Town and in through the "
-          "Pokemon Center's door, and stops there: no heal, no save. Runs only this, whatever the other options say. "
+          "Start at Route 202's save spot under the south ledge. Walks into Sandgem Town to the front of the "
+          "Pokemon Center's door, facing it, and stops there: no heal, no save. Runs only this, whatever the other options say "
+          "(with the Mart lady option too, runs both in turn). "
           "Remove before pushing to production.",
+          LockMode::LOCK_WHILE_RUNNING, false)
+    // DIAGNOSTIC ONLY: Remove before pushing to production.
+    , DIAGNOSTIC_SANDGEM_MART_LADY(
+          "<b>Diagnostic only: Sandgem's Pokemon Center to the Poke Mart lady, then the rest of 00.04 (events)</b><br>"
+          "Start in front of Sandgem's Pokemon Center door. Reads Route 201's border sign, talks to the Poke Mart lady, reads the sign "
+          "again, goes back to the Center's door, then walks 00.04's rest to Dawn in Jubilife and saves there. "
+          "With the Route 202 option too, runs that first, from its Route 202 save. Remove before pushing to production.",
           LockMode::LOCK_WHILE_RUNNING, false)
     , ENABLE_ADVANCED_MODE(
           "<b>Advanced mode:</b><br>"
@@ -351,6 +359,7 @@ BDSPAutoStory::BDSPAutoStory()
     PA_ADD_OPTION(DIAGNOSTIC_POST_CATCH_ONLY);
     PA_ADD_OPTION(DIAGNOSTIC_FAKE_CHECKPOINT_SAVE);
     PA_ADD_OPTION(DIAGNOSTIC_ROUTE202_TO_SANDGEM_CENTER);
+    PA_ADD_OPTION(DIAGNOSTIC_SANDGEM_MART_LADY);
     PA_ADD_OPTION(ENABLE_ADVANCED_MODE);
 
     // Segment UI
@@ -502,13 +511,24 @@ void BDSPAutoStory::program(
     auto run_selected_range = [&](size_t attempt){
         if (attempt > 0) env.log("[Fake saves] Reloaded initial save; restarting the entire selected range from its start.");
         // DIAGNOSTIC ONLY: Remove this branch before pushing to production.
-        if (DIAGNOSTIC_ROUTE202_TO_SANDGEM_CENTER){
-            const std::string name = ROUTE202_TO_SANDGEM_CENTER_NAME;
-            env.log("[AutoStory] Objective: " + name + ". Ends: inside Sandgem Town's Pokemon Center, not healed, not saved.", COLOR_BLUE);
-            add_wrapped_log(env.console.overlay(), "Now: " + name, COLOR_WHITE);
-            diagnostic_route202_to_sandgem_center(env, context);
-            env.log("[AutoStory] Completed: " + name + ".", COLOR_DARKGREEN);
-            add_wrapped_log(env.console.overlay(), "Done: " + name, COLOR_GREEN);
+        if (DIAGNOSTIC_ROUTE202_TO_SANDGEM_CENTER || DIAGNOSTIC_SANDGEM_MART_LADY){
+            if (DIAGNOSTIC_ROUTE202_TO_SANDGEM_CENTER){
+                const std::string name = ROUTE202_TO_SANDGEM_CENTER_NAME;
+                env.log("[AutoStory] Objective: " + name + ". Ends: in front of Sandgem Town's Pokemon Center door, not healed, not saved.", COLOR_BLUE);
+                add_wrapped_log(env.console.overlay(), "Now: " + name, COLOR_WHITE);
+                diagnostic_route202_to_sandgem_center(env, context);
+                env.log("[AutoStory] Completed: " + name + ".", COLOR_DARKGREEN);
+                add_wrapped_log(env.console.overlay(), "Done: " + name, COLOR_GREEN);
+            }
+            if (DIAGNOSTIC_SANDGEM_MART_LADY){
+                const std::string name = SANDGEM_MART_LADY_NAME;
+                env.log("[AutoStory] Objective: " + name + ". Ends: " + AutoStory_Checkpoint_0004().end_text() + ", saved.", COLOR_BLUE);
+                add_wrapped_log(env.console.overlay(), "Now: " + name, COLOR_WHITE);
+                //  The checkpoint before has pinned the clock already.
+                diagnostic_sandgem_mart_lady(env, context, !DIAGNOSTIC_ROUTE202_TO_SANDGEM_CENTER);
+                env.log("[AutoStory] Completed: " + name + ".", COLOR_DARKGREEN);
+                add_wrapped_log(env.console.overlay(), "Done: " + name, COLOR_GREEN);
+            }
             return;
         }
         // DIAGNOSTIC ONLY: Remove this branch before pushing to production.
