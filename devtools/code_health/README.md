@@ -38,6 +38,13 @@ Renamed function signatures have a new identity and must meet the limits.
 There is no repository-wide scan, generated baseline or exceptions registry.
 Fix/extract code instead of raising limits.
 
+With `--github` (CI passes it; also the default when `GITHUB_ACTIONS=true`) each
+failure is also printed as an `::error` annotation and each advisory as a
+`::warning` at its file and line, so they show inline in the PR diff: changed files
+over 500 lines at line 1, functions over 25 lines at their start, classes with 6-7
+public methods at the class. At most 50 of each level are annotated per run;
+advisories never fail the job.
+
 The CI job runs on PRs (including drafts) and pushes to main, comparing the
 current tree with the PR base / previous main revision. An initial push uses
 Git's empty tree as its base. The tests generate X-line sources in memory or
