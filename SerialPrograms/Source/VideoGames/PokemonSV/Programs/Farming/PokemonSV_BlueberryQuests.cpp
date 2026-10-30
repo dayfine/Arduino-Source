@@ -4,6 +4,7 @@
  *
  */
 
+#include <algorithm>
 #include<vector>
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
 #include "CommonFramework/Tools/ErrorDumper.h"
@@ -171,10 +172,11 @@ void plan_out_of_eggs(Logger& logger, const BBQOption& BBQ_OPTIONS, size_t slot,
 }
 
 //Apply each exclusions table row for the quest, in table order. Returns false if no row is for it.
+//A quest the program cannot do is never run, but can still be rerolled or skipped.
 bool plan_from_exclusions(
     Logger& logger,
     const std::vector<std::unique_ptr<BBQuestTableRow>>& exclusions_table,
-    BBQuests quest, size_t slot,
+    BBQuests quest, size_t slot, bool possible,
     BBQuestPlan& plan
 ){
     bool quest_in_table = false;
@@ -186,6 +188,10 @@ bool plan_from_exclusions(
         quest_in_table = true;
         switch (row->action){
         case BBQAction::run:
+            if (!possible){
+                logger.log("Run selected, but this quest is not possible. Skipping quest.");
+                break;
+            }
             logger.log("Run selected. Adding quest to list.");
             plan.to_do.push_back(quest);
             break;
@@ -367,20 +373,28 @@ void reroll_quest_slot(
     }
 }
 
+int reroll_cost(BBQuests quest){
+    return red_quests.contains(quest) ? 50 : 10;
+}
+
 BBQuestPlan plan_quests(
     Logger& logger,
     const BBQOption& BBQ_OPTIONS,
     const std::vector<BBQuests>& quest_list,
-    uint8_t eggs_hatched
+    uint8_t eggs_hatched,
+    std::optional<int> bp
 ){
     BBQuestPlan plan;
     std::vector<std::unique_ptr<BBQuestTableRow>> exclusions_table = BBQ_OPTIONS.QUEST_EXCLUSIONS.copy_snapshot();
 
+    //Quests not possible and not in the table, in panel order. Rerolled below if BP allows.
+    std::vector<size_t> not_possible_slots;
+
     logger.log("Processing quests.");
     for (size_t slot = 0; slot < quest_list.size(); slot++){
         const BBQuests n = quest_list[slot];
-        if (not_possible_quests.contains(n)){
-            logger.log("Quest not possible");
+        if (n == BBQuests::UnableToDetect){
+            logger.log("Quest not detected.");
             continue;
         }
         //Check eggs remaining.
@@ -389,15 +403,57 @@ BBQuestPlan plan_quests(
             plan_out_of_eggs(logger, BBQ_OPTIONS, slot, plan);
             continue;
         }
-        if (!plan_from_exclusions(logger, exclusions_table, n, slot, plan)){
-            logger.log("Quest not in inclusion/exclusions table. Adding to list.");
-            plan.to_do.push_back(n);
+        const bool possible = !not_possible_quests.contains(n);
+        if (plan_from_exclusions(logger, exclusions_table, n, slot, possible, plan)){
+            continue;
+        }
+        if (!possible){
+            logger.log("Quest not possible.");
+            not_possible_slots.push_back(slot);
+            continue;
+        }
+        logger.log("Quest not in inclusion/exclusions table. Adding to list.");
+        plan.to_do.push_back(n);
+    }
+
+    if (plan.to_do.empty()){
+        //Nothing else to do: a quest not possible only changes by rerolling it.
+        for (size_t slot : not_possible_slots){
+            logger.log("No possible quests! Rerolling quest " + std::to_string(slot + 1) + ", which is not possible.");
+            plan.reroll_slots.push_back(slot);
+        }
+    }else{
+        //Left on the panel, a quest not possible holds a slot until something else is rerolled.
+        //A red quest costs 50 BP to reroll instead of 10, but pays 100-150 BP and keeps the
+        //next red quest from appearing, so it is rerolled too. Without the BP for it, it is
+        //skipped and the doable quests run, rather than stopping the program on a reroll
+        //that does not happen.
+        int budget = bp.value_or(0);
+        for (size_t slot : plan.reroll_slots){
+            budget -= reroll_cost(quest_list[slot]);
+        }
+        for (size_t slot : not_possible_slots){
+            const int cost = reroll_cost(quest_list[slot]);
+            if (!bp || budget < cost){
+                logger.log(
+                    "Quest " + std::to_string(slot + 1) + " not possible, but BP (" +
+                    (bp ? std::to_string(*bp) : "unknown") + ") does not cover its " +
+                    std::to_string(cost) + " BP reroll. Skipping it."
+                );
+                continue;
+            }
+            logger.log("Quest " + std::to_string(slot + 1) + " not possible. Rerolling quest. New quest will be run in the next batch of quests.");
+            budget -= cost;
+            plan.reroll_slots.push_back(slot);
         }
     }
+    std::sort(plan.reroll_slots.begin(), plan.reroll_slots.end());
 
     //Check that quests_to_do is not empty (after completing all quests on the list, be sure to erase it.
     //Lag might be a problem in multi - look into making slots like menu-left navigation
-    plan.reroll_all = plan.reroll_slots.empty() && plan.to_do.empty();
+    if (plan.reroll_slots.empty() && plan.to_do.empty()){
+        plan.reroll_all = true;
+    }
     return plan;
 }
 
@@ -408,7 +464,18 @@ std::vector<BBQuests> process_quest_list(
     const std::vector<BBQuests>& quest_list,
     uint8_t eggs_hatched
 ){
-    BBQuestPlan plan = plan_quests(stream.logger(), BBQ_OPTIONS, quest_list, eggs_hatched);
+    //Read BP only when a quest not possible may be rerolled while others are doable.
+    std::optional<int> bp;
+    if (std::any_of(quest_list.begin(), quest_list.end(), [](BBQuests quest){
+        return quest != BBQuests::UnableToDetect && not_possible_quests.contains(quest);
+    })){
+        const int read = read_BP(info, stream, context);
+        if (read >= 0){
+            bp = read;
+        }
+        stream.log("BP: " + (bp ? std::to_string(*bp) : "unable to read"));
+    }
+    BBQuestPlan plan = plan_quests(stream.logger(), BBQ_OPTIONS, quest_list, eggs_hatched, bp);
 
     //Each reroll updates the panel the next one checks against.
     std::vector<BBQuests> panel = quest_list;
