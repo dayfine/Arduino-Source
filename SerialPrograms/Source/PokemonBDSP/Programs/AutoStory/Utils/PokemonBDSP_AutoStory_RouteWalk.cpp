@@ -585,6 +585,9 @@ void leave_door_south(VideoStream& stream, ProControllerContext& context, const 
         have_last = true;
         return fade;
     };
+    //  Whether we start in a Pokemon Center: there walking changes the
+    //  screen as much as a fade.
+    const bool in_center = inside && pokemon_center_inside(*inside.frame);
     bool out = false;
     for (size_t tries = 0; tries < 3 && !out; tries++){
         //  Compare within this walk only.
@@ -599,16 +602,28 @@ void leave_door_south(VideoStream& stream, ProControllerContext& context, const 
         //  much (r143a, r148c), and the inside check only knows the mat
         //  (r151a walked on inside after both said "out").
         out = walk.stop == WalkStop::TRANSITION;
-        for (size_t looks = 0; looks < 12 && !out; looks++){
+        bool center_inside = false;
+        for (size_t looks = 0; looks < 20 && !out; looks++){
             context.wait_for_all_requests();
             VideoSnapshot now = stream.video().snapshot();
-            if (now && location_banner_showing(*now.frame)){
-                stream.log("[Route] " + label + ": out; the location banner shows.");
-                out = true;
+            if (now){
+                stream.log("[Route] " + label + ": banner box " + location_banner_stats(*now.frame) + ".");
+                if (location_banner_showing(*now.frame)){
+                    stream.log("[Route] " + label + ": out; the location banner shows.");
+                    out = true;
+                }
+                center_inside = pokemon_center_inside(*now.frame);
             }
             if (!out){
                 pbf_wait(context, 300ms);
             }
+        }
+        //  r152a walked out of the Trainers' School on a fade and saw no
+        //  banner: a fade that does not end in a Pokemon Center is out. In a
+        //  Center the fade guess fires on walking, so there the banner rules.
+        if (!out && walk.stop == WalkStop::ARRIVED && !center_inside && !in_center){
+            stream.log("[Route] " + label + ": a fade and no banner, not a Pokemon Center: out.");
+            out = true;
         }
         if (!out){
             stream.log("[Route] " + label + ": no location banner; still inside, walking on.");

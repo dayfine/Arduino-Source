@@ -63,6 +63,11 @@ bool location_banner_showing(const ImageViewRGB32& screen){
     return white.average.sum() >= 690 && white.stddev.sum() <= 30;
 }
 
+std::string location_banner_stats(const ImageViewRGB32& screen){
+    const ImageStats white = image_stats(extract_box_reference(screen, LOCATION_BANNER_WHITE));
+    return "mean " + std::to_string((int)white.average.sum()) + ", spread " + std::to_string((int)white.stddev.sum());
+}
+
 std::string read_location_banner(const ImageViewRGB32& screen){
     if (!location_banner_showing(screen)){
         return "";

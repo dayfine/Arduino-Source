@@ -28,6 +28,8 @@ std::string normalize_location_name(const std::string& text);
 std::string read_location_banner(const ImageViewRGB32& screen);
 //  Whether the location banner's white box shows, without reading it.
 bool location_banner_showing(const ImageViewRGB32& screen);
+//  The banner box's mean and spread, for the log.
+std::string location_banner_stats(const ImageViewRGB32& screen);
 
 //  The map named at the top left of the save screen's card ("Sandgem Town",
 //  "Route 202"), read by OCR and normalized; empty if nothing reads.
