@@ -6,8 +6,8 @@
 
 #include <algorithm>
 #include <utility>
-#include <QMenuBar>
 //#include <QStatusBar>
+#include <QMenuBar>
 #include <QHBoxLayout>
 #include <QVBoxLayout>
 #include <QGroupBox>
@@ -15,14 +15,17 @@
 #include <QLabel>
 #include <QPushButton>
 #include <QMessageBox>
+#include <QTimer>
 #include "Common/Cpp/ScopeExit.h"
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/Logging/MultiOutputLogger.h"
+#include "Common/Cpp/Logging/GlobalLogger.h"
 #include "Common/Cpp/Filesystem/Filesystem.h"
 #include "Common/Cpp/CpuId/CpuId.h"
+#include "Common/Cpp/ColoredText.h"
 #include "Common/Qt/CollapsibleGroupBox.h"
 #include "Common/Qt/UiStateQtWidget.h"
-#include "Common/Qt/WallpaperWidget.h"
+#include "PanelLists.h"
 #include "CommonFramework/Globals.h"
 #include "CommonFramework/GlobalAutoPaths.h"
 #include "CommonFramework/GlobalSettingsPanel.h"
@@ -30,17 +33,15 @@
 #include "CommonFramework/Startup/NewVersionCheck.h"
 #include "CommonFramework/Options/ResolutionOption.h"
 #include "CommonFramework/Options/Environment/ThemeSelectorOption.h"
-#include "Common/Cpp/ColoredText.h"
+#include "CommonFramework/Options/QtWidget/WallpaperWidget.h"
 #include "CommonFramework/Windows/DpiScaler.h"
-#include "PanelLists.h"
 #include "WindowTracker.h"
 #include "ButtonDiagram.h"
 #include "MainWindow.h"
 
-
-#include <iostream>
-using std::cout;
-using std::endl;
+//#include <iostream>
+//using std::cout;
+//using std::endl;
 
 namespace PokemonAutomation{
 
@@ -194,7 +195,7 @@ MainWindow::MainWindow(QWidget* parent)
             this, [](const QString&){
                 std::string str;
                 str += PROGRAM_NAME + " Computer-Control Programs<br>";
-                str += "Copyright: 2020 - 2025<br>";
+                str += "Copyright: 2020 - 2027<br>";
                 str += "Version: " + PROGRAM_VERSION + "<br>";
                 str += "<br>";
                 str += "Framework: Qt " + std::to_string(QT_VERSION_MAJOR);
@@ -288,6 +289,16 @@ MainWindow::MainWindow(QWidget* parent)
     GlobalSettings::instance().WALLPAPER.add_listener(*this);
     SystemSleepController::instance().add_listener(*this);
     update_wallpaper();
+
+    //  Let lab scripts start/stop the selected program. See LabControl.h.
+    QTimer* lab_control_timer = new QTimer(this);
+    connect(
+        lab_control_timer, &QTimer::timeout,
+        this, [this]{
+            poll_lab_control(m_current_panel.get(), m_lab_control_status);
+        }
+    );
+    lab_control_timer->start(500);
 //    cout << "Done constructing" << endl;
 }
 MainWindow::~MainWindow(){

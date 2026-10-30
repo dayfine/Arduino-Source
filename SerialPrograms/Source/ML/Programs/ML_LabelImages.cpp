@@ -5,7 +5,7 @@
  */
 
 #include <cmath>
-#include <iostream>
+//#include <iostream>
 #ifdef QT_CORE_LIB
 #include <QDesktopServices>
 #include <QUrl>
@@ -20,19 +20,19 @@
 #include "CommonFramework/GlobalAutoPaths.h"
 #include "CommonFramework/Logging/Logger.h"
 #include "CommonFramework/Options/Environment/PerformanceOptions.h"
-#include "CommonFramework/VideoPipeline/VideoSources/VideoSource_StillImage.h"
+#include "CommonFramework/VideoPipeline/Sources/VideoSource_StillImage.h"
+#include "ML/DataLabeling/ML_AnnotationIO.h"
+#include "ML/DataLabeling/ML_SegmentAnythingModel.h"
 #include "ControllerInput/Keyboard/KeyboardInput_State.h"
 #include "GameConsole/Framework/ConsoleSystemSession.h"
 #include "Pokemon/Pokemon_Strings.h"
-#include "ML/DataLabeling/ML_AnnotationIO.h"
-#include "ML/DataLabeling/ML_SegmentAnythingModel.h"
 #include "ML_LabelImages.h"
 #include "ML_LabelImagesOverlayManager.h"
 
 
 
-using std::cout;
-using std::endl;
+//using std::cout;
+//using std::endl;
 
 namespace PokemonAutomation{
 namespace ML{
@@ -40,12 +40,11 @@ namespace ML{
 
 LabelImages_Descriptor::LabelImages_Descriptor()
     : ConsolePanelDescriptor(
-        Color(),
         "ML:LabelImages",
         "ML", "Label Images",
         "Programs/ML/LabelImages.html",
         "Label " + Pokemon::STRING_POKEMON + " on images",
-        PanelDeprecation::NOT_DEPRECATED,
+        PanelQualityStanding::DEVELOPER,
         false
     )
 {}

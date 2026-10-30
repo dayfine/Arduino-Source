@@ -6,16 +6,107 @@
 
 #include <algorithm>
 #include <cstring>
-#include <numeric>
+#include <map>
+#include <memory>
+#include "Common/Cpp/Concurrency/SpinLock.h"
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/PrettyPrint.h"
 #include "Common/Cpp/Containers/AlignedVector.tpp"
+#include "Kernels/Kernels_Alignment.h"
 #include "Kernels_AudioResampler_BlockKernels.h"
 #include "Kernels_AudioResampler.h"
 
 namespace PokemonAutomation{
 namespace Kernels{
 namespace AudioResampler{
+
+namespace{
+
+struct ResamplerTableKey{
+    size_t in_sample_rate;
+    size_t out_sample_rate;
+    uint32_t taps;
+    double beta;
+
+    bool operator<(const ResamplerTableKey& o) const{
+        if (in_sample_rate != o.in_sample_rate){
+            return in_sample_rate < o.in_sample_rate;
+        }
+        if (out_sample_rate != o.out_sample_rate){
+            return out_sample_rate < o.out_sample_rate;
+        }
+        if (taps != o.taps){
+            return taps < o.taps;
+        }
+        return beta < o.beta;
+    }
+};
+
+
+//
+//  Process-wide cache of resampler weight tables. Building a table (the
+//  Kaiser window plus the index / weight allocations) is the expensive
+//  part of an AudioResampler, and most resamplers in a pipeline share the
+//  same (in rate, out rate, taps, beta) - only the block sizes differ.
+//  A table built for larger blocks is valid for smaller ones (the block
+//  sizes only extend the allocations, not the weights), so an entry is
+//  only replaced when a strictly larger block is requested; resamplers
+//  still holding the older, smaller table keep their shared_ptr.
+//
+class ResamplerTableCache{
+public:
+    static ResamplerTableCache& instance(){
+        static ResamplerTableCache cache;
+        return cache;
+    }
+
+    std::shared_ptr<const WeightTable> get_table(
+        size_t in_sample_rate,
+        size_t out_sample_rate,
+        uint32_t taps,
+        double beta,
+        size_t sample_block,
+        size_t tap_block
+    ){
+        const ResamplerTableKey key{in_sample_rate, out_sample_rate, taps, beta};
+
+        {
+            ReadSpinLock lg(m_lock, "ResamplerTableCache");
+            auto iter = m_tables.find(key);
+            if (iter != m_tables.end()
+                && iter->second->sample_block() >= sample_block
+                && iter->second->tap_block() >= tap_block
+            ){
+                return iter->second;
+            }
+        }
+
+        //  Built outside the lock: the window computation can be slow,
+        //  and concurrent misses may build the same table twice - the
+        //  loser's table is simply dropped.
+        auto table = std::make_shared<WeightTable>(
+            in_sample_rate, out_sample_rate, taps, beta, sample_block, tap_block
+        );
+
+        WriteSpinLock lg(m_lock, "ResamplerTableCache");
+        auto iter = m_tables.find(key);
+        if (iter != m_tables.end()
+            && iter->second->sample_block() >= sample_block
+            && iter->second->tap_block() >= tap_block
+        ){
+            return iter->second;
+        }
+        m_tables[key] = table;
+        return table;
+    }
+
+private:
+    SpinLockMRSW m_lock;
+    std::map<ResamplerTableKey, std::shared_ptr<const WeightTable>> m_tables;
+};
+
+}
+
 
 
 
@@ -29,24 +120,32 @@ AudioResampler::AudioResampler(
     uint32_t taps,
     double beta
 )
-    : AudioPipeline::WorkingAudioStreamListener(in_sample_rate, channels)
-    , m_out_rate(out_sample_rate)
+    : AudioPipeline::WorkingAudioNode(in_sample_rate, out_sample_rate, channels, channels)
     , m_taps(taps)
     , m_block(get_block_kernel(in_sample_rate, out_sample_rate))
     , m_table(
-        in_sample_rate, out_sample_rate, taps, beta,
-        m_block.sample_block, m_block.tap_block
+        ResamplerTableCache::instance().get_table(
+            in_sample_rate, out_sample_rate, taps, beta,
+            m_block.sample_block, m_block.tap_block
+        )
     )
-    , m_period_in_extended(m_table.period_in() * (m_table.period_out_extended() / m_table.period_out()))
-    , m_period_out_extended(m_table.period_out_extended())
-    , m_buffer_stride(std::max(buffer_size, m_block.sample_block))
+    , m_period_in_extended(m_table->period_in() * (m_table->period_out_extended() / m_table->period_out()))
+    , m_period_out_extended(m_table->period_out_extended())
+    //  Round the buffer up to PA_ALIGNMENT bytes (after the max, so the
+    //  result is aligned whichever of the two is larger) so that channels
+    //  beyond channel 0 start aligned for the SIMD kernels.
+    , m_buffer_stride(
+        align_int_up<PA_ALIGNMENT>(
+            std::max(buffer_size, m_block.sample_block) * sizeof(float)
+        ) / sizeof(float)
+    )
     , m_buffer(channels * m_buffer_stride)
-    , m_flush_at((buffer_size / m_block.sample_block) * m_block.sample_block)
+    , m_flush_at((m_buffer_stride / m_block.sample_block) * m_block.sample_block)
 {
     logger.log(
         "Initializing AudioResampler: " + tostr_u_commas(in_sample_rate) +
         " -> " + tostr_u_commas(out_sample_rate) +
-        ", channels = " + tostr_u_commas(channels),
+        " Hz, channels = " + tostr_u_commas(channels),
         COLOR_PURPLE
     );
 
@@ -70,7 +169,7 @@ AudioResampler::AudioResampler(
     //  already includes the kernel's implied read overshoots, so the max over
     //  all positions is an exact worst case and needs no slack.
     size_t max_input_samples_needed = 0;
-    for (size_t wr = 0; wr < m_table.period_out(); wr++){
+    for (size_t wr = 0; wr < m_table->period_out(); wr++){
         max_input_samples_needed = std::max(max_input_samples_needed, input_samples_needed(wr));
     }
     m_carry_capacity = max_input_samples_needed;
@@ -81,7 +180,7 @@ AudioResampler::AudioResampler(
 }
 
 void AudioResampler::add_listener(AudioPipeline::WorkingAudioStreamListener& listener){
-    if (m_out_rate != listener.sample_rate()){
+    if (out_sample_rate() != listener.sample_rate()){
         throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "Sample rate doesn't match.");
     }
     if (this->channels() != listener.channels()){
@@ -104,13 +203,13 @@ void AudioResampler::flush(size_t count){
 }
 
 size_t AudioResampler::input_samples_needed(size_t wr) const{
-    const uint32_t* index = m_table.in_sample_index();
+    const uint32_t* index = m_table->in_sample_index();
     const size_t block = m_block.sample_block;
     //  taps_allocated() bounds the kernel's input reads: the unrolls'
     //  final partial group reads at most
     //  ceil(taps / tap_block) * tap_block taps, and the table's padding to
     //  taps + tap_block - 1 rows is at least that.
-    return index[wr + block - 1] + m_table.taps_allocated() + (block - 1) - index[wr];
+    return index[wr + block - 1] + m_table->taps_allocated() + (block - 1) - index[wr];
 }
 
 template <typename InBase>
@@ -118,7 +217,7 @@ size_t AudioResampler::emit_block(
     size_t in_index, InBase in_base,
     size_t& out, size_t& wr, size_t& periods, size_t& cursor, size_t& out_off
 ){
-    const uint32_t* index = m_table.in_sample_index();
+    const uint32_t* index = m_table->in_sample_index();
     const size_t block = m_block.sample_block;
 
     if (out_off + block > m_flush_at){
@@ -127,7 +226,7 @@ size_t AudioResampler::emit_block(
     }
     float* out_base = m_buffer.data() + out_off;
     for (size_t c = 0; c < this->channels(); c++){
-        m_block.fp(m_table, in_index, in_base(c), wr, out_base + c * m_buffer_stride);
+        m_block.fp(*m_table, in_index, in_base(c), wr, out_base + c * m_buffer_stride);
     }
     out_off += block;
 
@@ -148,7 +247,7 @@ void AudioResampler::push_samples(size_t samples, size_t stride, const float* da
         return;
     }
 
-    const uint32_t* index = m_table.in_sample_index();
+    const uint32_t* index = m_table->in_sample_index();
     const size_t block = m_block.sample_block;
     const size_t channels = this->channels();
 
@@ -190,7 +289,7 @@ void AudioResampler::push_samples(size_t samples, size_t stride, const float* da
     //  upsampling the cursor barely advances between blocks, so this keeps
     //  the block loops from running away.
     const size_t available = (pushed_end > cursor) ? (pushed_end - cursor) : 0;
-    const size_t out_limit = available * m_out_rate / this->sample_rate() + block;
+    const size_t out_limit = available * out_sample_rate() / this->sample_rate() + block;
 
     size_t out_off = 0;
 

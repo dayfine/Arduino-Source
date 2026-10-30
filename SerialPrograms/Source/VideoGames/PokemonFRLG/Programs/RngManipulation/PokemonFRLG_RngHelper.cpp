@@ -8,8 +8,8 @@
 #include "CommonFramework/Notifications/ProgramNotifications.h"
 #include "CommonFramework/ProgramStats/StatsTracking.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
-#include "Pokemon/Pokemon_Strings.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
+#include "Pokemon/Pokemon_Strings.h"
 #include "VideoGames/PokemonFRLG/PokemonFRLG_Navigation.h"
 #include "PokemonFRLG_RngNavigation.h"
 #include "PokemonFRLG_RngCalibration.h"
@@ -26,6 +26,7 @@ RngHelper_Descriptor::RngHelper_Descriptor()
         Pokemon::STRING_POKEMON + " FRLG", "RNG Helper",
         "Programs/PokemonFRLG/RngHelper.html",
         "Soft reset with specific timings for hitting a target Seed and Frame for RNG manipulation.",
+        PanelQualityStanding::OFFICIAL,
         ProgramControllerClass::StandardController_RequiresPrecision,
         FeedbackType::REQUIRED,
         AllowCommandsWhenRunning::DISABLE_COMMANDS

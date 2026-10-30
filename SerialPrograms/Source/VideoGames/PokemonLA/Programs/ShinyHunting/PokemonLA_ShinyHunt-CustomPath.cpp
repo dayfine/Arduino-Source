@@ -5,7 +5,6 @@
  */
 
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
-#include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "CommonFramework/Notifications/ProgramNotifications.h"
 #include "CommonFramework/ProgramStats/StatsTracking.h"
 #include "CommonTools/Async/InferenceRoutines.h"
@@ -36,6 +35,7 @@ ShinyHuntCustomPath_Descriptor::ShinyHuntCustomPath_Descriptor()
         STRING_POKEMON + " LA", "Shiny Hunt - Custom Path",
         "Programs/PokemonLA/ShinyHunt-CustomPath.html",
         "Repeatedly travel on a custom path to shiny hunt " + STRING_POKEMON + " around it.",
+        PanelQualityStanding::OFFICIAL,
         ProgramControllerClass::StandardController_PerformanceClassSensitive,
         FeedbackType::VIDEO_AUDIO,
         AllowCommandsWhenRunning::DISABLE_COMMANDS

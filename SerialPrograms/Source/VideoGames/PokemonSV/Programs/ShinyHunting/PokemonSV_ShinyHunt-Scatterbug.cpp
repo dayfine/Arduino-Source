@@ -11,12 +11,10 @@
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
 #include "CommonFramework/Notifications/ProgramNotifications.h"
 #include "CommonFramework/ProgramStats/StatsTracking.h"
-#include "CommonFramework/Tools/ErrorDumper.h"
 #include "CommonTools/Async/InferenceRoutines.h"
 #include "CommonTools/StartupChecks/VideoResolutionCheck.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "NintendoSwitch/Programs/NintendoSwitch_GameEntry.h"
-#include "Pokemon/Pokemon_Strings.h"
 #include "VideoGames/PokemonSV/Inference/Boxes/PokemonSV_IvJudgeReader.h"
 #include "VideoGames/PokemonSV/Inference/Overworld/PokemonSV_LetsGoHpReader.h"
 #include "VideoGames/PokemonSV/Inference/Overworld/PokemonSV_OverworldSensors.h"
@@ -46,6 +44,7 @@ ShinyHuntScatterbug_Descriptor::ShinyHuntScatterbug_Descriptor()
         STRING_POKEMON + " SV", "Shiny Hunt - Scatterbug",
         "Programs/PokemonSV/ShinyHunt-Scatterbug.html",
         "Shiny hunt Scatterbug.",
+        PanelQualityStanding::OFFICIAL,
         ProgramControllerClass::StandardController_NoRestrictions,
         FeedbackType::VIDEO_AUDIO,
         AllowCommandsWhenRunning::DISABLE_COMMANDS

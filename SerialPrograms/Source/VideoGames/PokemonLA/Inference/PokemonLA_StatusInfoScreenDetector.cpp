@@ -4,6 +4,7 @@
  *
  */
 
+#include <iostream>
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "CommonFramework/GlobalAutoPaths.h"
 #include "CommonFramework/ImageTools/ImageBoxes.h"
@@ -15,7 +16,6 @@
 #include "PokemonLA_CommonColorCheck.h"
 #include "PokemonLA_StatusInfoScreenDetector.h"
 
-#include <iostream>
 using std::cout;
 using std::endl;
 

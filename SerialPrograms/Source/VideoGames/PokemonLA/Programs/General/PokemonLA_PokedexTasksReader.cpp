@@ -4,6 +4,8 @@
  *
  */
 
+#include <array>
+#include <fstream>
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "CommonFramework/Notifications/ProgramNotifications.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
@@ -12,11 +14,9 @@
 #include "CommonTools/OCR/OCR_NumberReader.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "NintendoSwitch/Programs/NintendoSwitch_GameEntry.h"
+
 #include "Pokemon/Pokemon_Strings.h"
 #include "PokemonLA_PokedexTasksReader.h"
-
-#include <array>
-#include <fstream>
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -67,6 +67,7 @@ PokedexTasksReader_Descriptor::PokedexTasksReader_Descriptor()
         STRING_POKEMON + " LA", STRING_POKEDEX + " Tasks Reader",
         "Programs/PokemonLA/PokedexTasksReader.html",
         "Read all the tasks in your " + STRING_POKEDEX + " and output a file with the tasks you did.",
+        PanelQualityStanding::OFFICIAL,
         ProgramControllerClass::StandardController_NoRestrictions,
         FeedbackType::REQUIRED,
         AllowCommandsWhenRunning::DISABLE_COMMANDS

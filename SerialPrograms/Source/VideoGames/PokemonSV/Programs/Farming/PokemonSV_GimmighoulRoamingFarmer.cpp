@@ -14,8 +14,8 @@
 #include "NintendoSwitch/Programs/DateSpam/NintendoSwitch_RollDateForward1.h"
 #include "NintendoSwitch/Programs/DateSpam/NintendoSwitch_RollDateBackwardN.h"
 #include "Pokemon/Pokemon_Strings.h"
-#include "VideoGames/PokemonSV/PokemonSV_Settings.h"
 #include "VideoGames/PokemonSwSh/Commands/PokemonSwSh_Commands_DateSpam.h"
+#include "VideoGames/PokemonSV/PokemonSV_Settings.h"
 #include "VideoGames/PokemonSV/Programs/PokemonSV_GameEntry.h"
 #include "VideoGames/PokemonSV/Programs/PokemonSV_SaveGame.h"
 #include "PokemonSV_GimmighoulRoamingFarmer.h"
@@ -32,6 +32,7 @@ GimmighoulRoamingFarmer_Descriptor::GimmighoulRoamingFarmer_Descriptor()
         STRING_POKEMON + " SV", "Gimmighoul Roaming Farmer",
         "Programs/PokemonSV/GimmighoulRoamingFarmer.html",
         "Farm roaming Gimmighoul for coins.",
+        PanelQualityStanding::OFFICIAL,
         ProgramControllerClass::StandardController_PerformanceClassSensitive,
         FeedbackType::REQUIRED,
         AllowCommandsWhenRunning::DISABLE_COMMANDS
