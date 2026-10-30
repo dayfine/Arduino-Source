@@ -77,3 +77,7 @@ build_*/
 .cache/*
 Packages/*
 
+
+# Local agent/linter environments.
+.venv-code-health/
+__pycache__/

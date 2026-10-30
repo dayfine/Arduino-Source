@@ -4,8 +4,8 @@
  *
  */
 
-#include "CommonTools/StartupChecks/VideoResolutionCheck.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
+#include "CommonTools/StartupChecks/VideoResolutionCheck.h"
 #include "Pokemon/Pokemon_Strings.h"
 #include "VideoGames/PokemonLZA/Inference/Boxes/PokemonLZA_BoxDetection.h"
 #include "PokemonLZA_MoveBoxArrow.h"
@@ -25,10 +25,10 @@ MoveBoxArrow_Descriptor::MoveBoxArrow_Descriptor()
         "Test program to move the box cursor to a specified location. "
         "Used for debugging box cursor movement. "
         "Start this program while in the box system view.",
+        PanelQualityStanding::DEVELOPER,
         ProgramControllerClass::StandardController_NoRestrictions,
         FeedbackType::REQUIRED,
-        AllowCommandsWhenRunning::ENABLE_COMMANDS,
-        {}
+        AllowCommandsWhenRunning::ENABLE_COMMANDS
     )
 {}
 

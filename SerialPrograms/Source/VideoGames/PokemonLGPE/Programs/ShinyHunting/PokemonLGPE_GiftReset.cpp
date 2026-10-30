@@ -10,11 +10,10 @@
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "CommonTools/Async/InferenceRoutines.h"
 #include "CommonTools/StartupChecks/VideoResolutionCheck.h"
+#include "CommonTools/VisualDetectors/BlackScreenDetector.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "NintendoSwitch/Controllers/Joycon/NintendoSwitch_Joycon.h"
-#include "NintendoSwitch/Programs/NintendoSwitch_GameEntry.h"
 #include "Pokemon/Pokemon_Strings.h"
-#include "CommonTools/VisualDetectors/BlackScreenDetector.h"
 #include "VideoGames/PokemonLGPE/Inference/PokemonLGPE_ShinySymbolDetector.h"
 #include "VideoGames/PokemonLGPE/Programs/PokemonLGPE_GameEntry.h"
 #include "PokemonLGPE_GiftReset.h"
@@ -29,6 +28,7 @@ GiftReset_Descriptor::GiftReset_Descriptor()
         Pokemon::STRING_POKEMON + " LGPE", "Gift Reset",
         "Programs/PokemonLGPE/GiftReset.html",
         "Shiny hunt gift Pokemon by resetting the game.",
+        PanelQualityStanding::OFFICIAL,
         ProgramControllerClass::SpecializedController,
         FeedbackType::REQUIRED,
         AllowCommandsWhenRunning::DISABLE_COMMANDS

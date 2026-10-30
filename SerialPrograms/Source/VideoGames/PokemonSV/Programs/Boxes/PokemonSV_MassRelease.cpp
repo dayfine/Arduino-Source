@@ -9,7 +9,6 @@
 #include "CommonFramework/ProgramStats/StatsTracking.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "CommonTools/StartupChecks/VideoResolutionCheck.h"
-#include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "NintendoSwitch/Programs/NintendoSwitch_GameEntry.h"
 #include "Pokemon/Pokemon_Strings.h"
 #include "VideoGames/PokemonSV/Inference/Boxes/PokemonSV_BoxDetection.h"
@@ -32,6 +31,7 @@ MassRelease_Descriptor::MassRelease_Descriptor()
         STRING_POKEMON + " SV", "Mass Release",
         "Programs/PokemonSV/MassRelease.html",
         "Mass release boxes of " + STRING_POKEMON + ".",
+        PanelQualityStanding::OFFICIAL,
         ProgramControllerClass::StandardController_NoRestrictions,
         FeedbackType::REQUIRED,
         AllowCommandsWhenRunning::DISABLE_COMMANDS

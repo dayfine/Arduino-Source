@@ -10,10 +10,9 @@
 #include "CommonFramework/ProgramStats/StatsTracking.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "CommonTools/Async/InferenceRoutines.h"
-#include "CommonTools/StartupChecks/StartProgramChecks.h"
-#include "Pokemon/Pokemon_Strings.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_Superscalar.h"
+#include "Pokemon/Pokemon_Strings.h"
 #include "VideoGames/PokemonRSE/Inference/Dialogs/PokemonRSE_BattleDialogs.h"
 #include "VideoGames/PokemonRSE/Inference/Dialogs/PokemonRSE_DialogDetector.h"
 #include "VideoGames/PokemonRSE/PokemonRSE_Navigation.h"
@@ -29,6 +28,7 @@ ShinyHuntMew_Descriptor::ShinyHuntMew_Descriptor()
         Pokemon::STRING_POKEMON + " RSE", "Shiny Hunt - Mew",
         "Programs/PokemonRSE/ShinyHuntMew.html",
         "Use the Run Away method to shiny hunt Mew in Emerald.",
+        PanelQualityStanding::OFFICIAL_BETA,
         ProgramControllerClass::StandardController_NoRestrictions,
         FeedbackType::VIDEO_AUDIO,
         AllowCommandsWhenRunning::DISABLE_COMMANDS

@@ -16,24 +16,35 @@
  */
 
 #include <algorithm>
+#include <atomic>
 #include <cmath>
 #include <cstdint>
+#include <cstdio>
+#include <cstdlib>
 #include <cstring>
+#include <filesystem>
 #include <numbers>
 #include <random>
+#include <thread>
 #include <vector>
+#include <QAudioDecoder>
 #include <QAudioFormat>
+#include <QCoreApplication>
+#include <QEventLoop>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/PrettyPrint.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "Common/Cpp/Containers/AlignedVector.tpp"
-#include "CommonFramework/AudioPipeline/AudioInfo.h"
-#include "CommonFramework/AudioPipeline/ChannelMixer.h"
 #include "Kernels/AudioPipeline/Kernels_RawAudio2WorkingAudio.h"
 #include "Kernels/AudioPipeline/Kernels_WorkingAudio2RawAudio.h"
 #include "Kernels/AudioPipeline/Kernels_ChannelMixer.h"
 #include "Kernels/AudioResampler/Kernels_AudioResampler.h"
+#include "CommonFramework/GlobalAutoPaths.h"
+#include "CommonFramework/AudioPipeline/AudioInfo.h"
+#include "CommonFramework/AudioPipeline/Tools/ChannelMixer.h"
+#include "CommonFramework/AudioPipeline/Backends/AudioPassthroughPairQt.h"
+#include "CommonFramework/AudioPipeline/Sources/AudioSource_File.h"
 #include "SinkPipeline_Tests.h"
 
 namespace PokemonAutomation{
@@ -55,16 +66,20 @@ Kernels::AudioPipeline::SampleFormat to_kernels_format(AudioSampleFormat format)
 
 
 
-//  QAudioFormat with just a channel count and the standard layout for it
-//  (1 = mono, 2 = stereo L+R). Enough for build_channel_mixer_matrix().
+//  QAudioFormat with just a channel count and, for 1 and 2 channels, the
+//  standard layout. More channels leave the config unknown so that
+//  resolve_positions() falls back to the standard layout for the count.
+//  (Same convention as AudioPassthroughPairQt's channel_format().)
 QAudioFormat channel_format(size_t channels){
     QAudioFormat format;
     format.setChannelCount((int)channels);
-    format.setChannelConfig(
-        channels == 1
-            ? QAudioFormat::ChannelConfig::ChannelConfigMono
-            : QAudioFormat::ChannelConfig::ChannelConfigStereo
-    );
+    if (channels <= 2){
+        format.setChannelConfig(
+            channels == 1
+                ? QAudioFormat::ChannelConfig::ChannelConfigMono
+                : QAudioFormat::ChannelConfig::ChannelConfigStereo
+        );
+    }
     return format;
 }
 
@@ -208,7 +223,7 @@ std::vector<char> run_tree(
             throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "No channel mixer matrix.");
         }
         mixer.reset(new Kernels::AudioPipeline::ChannelMixer(
-            in_rate, in_channels, out_channels, std::move(matrix)
+            logger, in_rate, in_channels, out_channels, std::move(matrix)
         ));
         mixer->add_listener(*head);
         head = mixer.get();
@@ -576,6 +591,138 @@ public:
 
 
 
+//
+//  Multichannel (5.1) file input: 6ch x 48000 in, 1ch / 2ch out, same
+//  Regression gate for the mp3-probe deadlock: the file source's
+//  constructor probes the decoder on a nested event loop, and events
+//  queued on the pair's thread are dispatched during that loop. A
+//  queued set_audio_sink must be able to take the pair's lock then, so
+//  the source has to be constructed outside the lock (a regression
+//  here deadlocks; the watchdog aborts the run instead of hanging it).
+class SinkGateFileSourceNoDeadlockTest : public UnitTest{
+public:
+    SinkGateFileSourceNoDeadlockTest()
+        : UnitTest("AudioPipeline - SinkGate_FileSource_NoDeadlock")
+    {}
+
+    virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
+        const std::string fixture =
+            UNIT_TEST_RESOURCE_PATH() + "CommonFramework/AudioPipeline/decoded_probe_44100_2ch.mp3";
+        if (!std::filesystem::exists(std::filesystem::path(fixture))){
+            return "Missing mp3 fixture: " + fixture + ".";
+        }
+        if (!QAudioDecoder(nullptr).isSupported()){
+            return UnitTestResult(
+                UnitTestResult::SKIPPED,
+                "No audio decode backend (Qt Multimedia media plugin missing or failing to load)."
+            );
+        }
+
+        std::atomic<bool> finished{false};
+        std::thread watchdog([&finished]{
+            for (int i = 0; i < 300 && !finished.load(std::memory_order_relaxed); i++){
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            }
+            if (!finished.load(std::memory_order_relaxed)){
+                std::fprintf(stderr, "SinkGate_FileSource_NoDeadlock: still running after 30 s: deadlock, aborting.\n");
+                std::abort();
+            }
+        });
+
+        AudioPassthroughPairQt pair(logger);
+        QMetaObject::invokeMethod(
+            &pair,
+            [&pair]{
+                pair.set_audio_sink(AudioDeviceInfo(), 1.0);
+            },
+            Qt::QueuedConnection
+        );
+        //  Must complete: the probe runs before the lock is taken, so the
+        //  queued sink event above can run through while it decodes.
+        pair.set_audio_source(
+            std::make_unique<AudioSourceDescriptor_File>(fixture),
+            AudioInputChoice()
+        );
+        QCoreApplication::processEvents(QEventLoop::AllEvents, 500);
+
+        finished.store(true, std::memory_order_relaxed);
+        watchdog.join();
+        return true;
+    }
+};
+
+
+
+//  rate, so the tree is a plain mix. The input format carries no channel
+//  config, so the matrix must come from the standard 5.1 fallback layout
+//  (resolve_positions), and the mix must match a scalar reference
+//  computed from the same matrix. This also pins that a 6ch input gets a
+//  real (non-empty) matrix at all: before channel_format() stopped
+//  forcing the stereo config on counts above 2, the 6ch shape resolved
+//  as 2ch and no matrix could be built.
+//
+class SinkGateMultichannel51Test : public UnitTest{
+public:
+    SinkGateMultichannel51Test()
+        : UnitTest("AudioPipeline - SinkGate_Multichannel51_Downmix")
+    {}
+
+    virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
+        //  6ch (5.1: FL FR C LFE BL BR) x 48000 float, one constant per
+        //  channel.
+        const size_t n = 4800;
+        std::vector<float> fl(n, 0.3f), fr(n, 0.1f), c(n, -0.2f), lfe(n, 0.4f), bl(n, 0.05f), br(n, -0.05f);
+        const std::vector<std::vector<float>> in_channels = {fl, fr, c, lfe, bl, br};
+        const std::vector<char> raw = interleave_bytes({fl, fr, c, lfe, bl, br});
+
+        for (size_t out_channels : {1, 2}){
+            std::vector<float> matrix = build_channel_mixer_matrix(
+                channel_format(6), channel_format(out_channels)
+            );
+            if (matrix.size() != 6 * out_channels){
+                return "Expected a 6x" + std::to_string(out_channels) + " mix matrix, got "
+                    + std::to_string(matrix.size()) + " entries.";
+            }
+
+            //  The LFE channel does not reach a mono mix.
+            if (out_channels == 1 && matrix[3] != 0.0f){
+                return "The LFE channel should have zero gain into mono.";
+            }
+
+            const std::vector<char> out = run_tree(
+                logger, raw,
+                AudioSampleFormat::FLOAT32, 48000, 6,
+                AudioSampleFormat::FLOAT32, 48000, out_channels
+            );
+            const size_t out_frames = out.size() / (sizeof(float) * out_channels);
+            if (out_frames != n){
+                return "Expected " + std::to_string(n) + " output frames, got "
+                    + std::to_string(out_frames) + ".";
+            }
+            for (size_t i = 0; i < n; i++){
+                for (size_t o = 0; o < out_channels; o++){
+                    float reference = 0.0f;
+                    for (size_t k = 0; k < 6; k++){
+                        reference += matrix[k + 6 * o] * in_channels[k][i];
+                    }
+                    const float got = *reinterpret_cast<const float*>(
+                        out.data() + (i * out_channels + o) * sizeof(float)
+                    );
+                    if (std::fabs(got - reference) > 1e-6f){
+                        return "Mix mismatch on output channel " + std::to_string(o)
+                            + " frame " + std::to_string(i) + ": got "
+                            + tostr_default(got) + ", expected " + tostr_default(reference) + ".";
+                    }
+                }
+            }
+        }
+
+        return true;
+    }
+};
+
+
+
 }
 
 
@@ -588,6 +735,8 @@ void add_tests_SinkPipeline(UnitTestDatabase& database){
     database.add<SinkGateDecimateTest>();
     database.add<SinkGateUpmixTest>();
     database.add<SinkGateDownmixTest>();
+    database.add<SinkGateMultichannel51Test>();
+    database.add<SinkGateFileSourceNoDeadlockTest>();
 }
 
 

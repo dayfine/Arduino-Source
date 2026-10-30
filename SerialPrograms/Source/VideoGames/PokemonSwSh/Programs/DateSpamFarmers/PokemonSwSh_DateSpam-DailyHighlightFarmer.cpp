@@ -6,7 +6,6 @@
 
 #include "Common/Cpp/PrettyPrint.h"
 #include "CommonFramework/Notifications/ProgramNotifications.h"
-#include "Controllers/ControllerTypes.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_Superscalar.h"
 #include "NintendoSwitch/Programs/NintendoSwitch_GameEntry.h"
@@ -27,6 +26,7 @@ DailyHighlightFarmer_Descriptor::DailyHighlightFarmer_Descriptor()
         STRING_POKEMON + " SwSh", "Date Spam - Daily Highlight Farmer",
         "Programs/PokemonSwSh/DateSpam-DailyHighlightFarmer.html",
         "Farm the daily highlight watt trader in Crown Tundra.",
+        PanelQualityStanding::OFFICIAL_BETA,
         ProgramControllerClass::StandardController_PerformanceClassSensitive,
         FeedbackType::NONE,
         AllowCommandsWhenRunning::DISABLE_COMMANDS

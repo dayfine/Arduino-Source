@@ -4,6 +4,7 @@
  *
  */
 
+#include <string>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/PrettyPrint.h"
 #include "NintendoSwitch/NintendoSwitch_Settings.h"
@@ -12,9 +13,8 @@
 #include "Pokemon/Pokemon_Strings.h"
 #include "VideoGames/PokemonSwSh/Programs/PokemonSwSh_GameEntry.h"
 #include "VideoGames/PokemonSwSh/Programs/RNG/PokemonSwSh_BasicRNG.h"
-#include "VideoGames/PokemonSwSh/Programs/RNG/PokemonSwSh_SeedFinder.h"
 
-#include <string>
+#include "VideoGames/PokemonSwSh/Programs/RNG/PokemonSwSh_SeedFinder.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -27,6 +27,7 @@ SeedFinder_Descriptor::SeedFinder_Descriptor()
         STRING_POKEMON + " SwSh", "Seed Finder",
         "Programs/PokemonSwSh/SeedFinder.html",
         "Finds the current state to be used for manual RNG manipulation.",
+        PanelQualityStanding::OFFICIAL,
         ProgramControllerClass::StandardController_NoRestrictions,
         FeedbackType::REQUIRED,
         AllowCommandsWhenRunning::DISABLE_COMMANDS

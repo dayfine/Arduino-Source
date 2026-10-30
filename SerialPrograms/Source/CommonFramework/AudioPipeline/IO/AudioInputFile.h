@@ -19,16 +19,27 @@ class QAudioFormat;
 namespace PokemonAutomation{
 
 class Logger;
-class AudioStreamToFloat;
 class AudioFileLoader;
+
+
+//  Probes a .wav file's native audio format (sample rate, channel count,
+//  sample type) by reading its header. Returns false if the file cannot be
+//  opened or is not a supported WAV (PCM 8/16/32-bit or IEEE-float).
+bool probe_wav_native_format(const std::string& filename, QAudioFormat& out_format);
+
+//  Probes the native output format of a compressed audio file (.mp3, .ogg,
+//  .flac, ...) by starting a throwaway QAudioDecoder without a target
+//  format and reading the format off the first decoded buffer: that is
+//  the format the decoder will produce for this file. Returns false if no
+//  decode backend is available, the file cannot be opened, or no buffer
+//  arrives within 3 seconds.
+bool probe_decoded_native_format(const std::string& filename, QAudioFormat& out_format);
 
 
 //
 //  Raw audio input from a file (.wav via WavFile, compressed formats via
-//  QAudioDecoder).
-//
-//  Feeds the legacy AudioStreamToFloat reader and, in parallel, emits the raw
-//  stream to RawAudioStreamListener children (root of the new pipeline tree).
+//  QAudioDecoder). Emits the raw stream to RawAudioStreamListener children
+//  (root of the new pipeline tree).
 //  AudioFileLoader only ever emits chunks that are whole multiples of the
 //  frame size, so the raw output is frame-aligned by construction and is
 //  passed to the listeners as-is.
@@ -38,7 +49,7 @@ public:
     ~AudioInputFile();
 
     AudioInputFile(
-        Logger& logger, AudioStreamToFloat& reader,
+        Logger& logger,
         const std::string& file, const QAudioFormat& format
     );
 
@@ -61,7 +72,6 @@ private:
 
 
 private:
-    AudioStreamToFloat& m_reader;
     std::unique_ptr<AudioFileLoader> m_source;
     Kernels::AudioPipeline::SampleFormat m_sample_type;
     size_t m_sample_rate;

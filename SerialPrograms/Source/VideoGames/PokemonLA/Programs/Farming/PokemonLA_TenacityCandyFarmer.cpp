@@ -16,10 +16,10 @@
 #include "VideoGames/PokemonLA/Inference/Battles/PokemonLA_BattlePokemonSwitchDetector.h"
 #include "VideoGames/PokemonLA/Programs/PokemonLA_BattleRoutines.h"
 #include "VideoGames/PokemonLA/Programs/PokemonLA_GameSave.h"
-#include "PokemonLA_TenacityCandyFarmer.h"
 #include "VideoGames/PokemonLA/Inference/Objects/PokemonLA_ArcPhoneDetector.h"
 #include "VideoGames/PokemonLA/Inference/Objects/PokemonLA_ButtonDetector.h"
 #include "VideoGames/PokemonLA/Inference/PokemonLA_DialogDetector.h"
+#include "PokemonLA_TenacityCandyFarmer.h"
 
 
 namespace PokemonAutomation{
@@ -36,6 +36,7 @@ TenacityCandyFarmer_Descriptor::TenacityCandyFarmer_Descriptor()
         "Programs/PokemonLA/TenacityCandyFarmer.html",
         "Attend Ingo's Path of Tenacity battles leading with a stats fully upgraded, max level, "
         "Modest nature Arceus with Legend Plate applied to grind exp, exp candies XL and evolution items.",
+        PanelQualityStanding::OFFICIAL,
         ProgramControllerClass::StandardController_NoRestrictions,
         FeedbackType::REQUIRED,
         AllowCommandsWhenRunning::DISABLE_COMMANDS
