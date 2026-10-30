@@ -4,20 +4,20 @@
  *
  */
 
+#include <map>
 #include <memory>
-#include <QFile>
-#include <QDir>
 #include "3rdParty/TesseractPA/TesseractPA.h"
 #include "Common/Cpp/Exceptions.h"
+#include "Common/Cpp/Filesystem/Filesystem.h"
 #include "Common/Cpp/Concurrency/SpinLock.h"
 #include "CommonFramework/GlobalAutoPaths.h"
 #include "CommonFramework/Logging/Logger.h"
 #include "CommonFramework/ImageTypes/ImageViewRGB32.h"
 #include "OCR_RawTesseractOCR.h"
 
-#include <iostream>
-using std::cout;
-using std::endl;
+//#include <iostream>
+//using std::cout;
+//using std::endl;
 
 namespace PokemonAutomation{
 namespace OCR{
@@ -28,10 +28,18 @@ bool tesseract_language_available(Language language){
     path += "Tesseract/";
     path += language_data(language).code;
     path += ".traineddata";
-    QFile file(QString::fromStdString(path));
-    return file.exists();
+    return Filesystem::exists(Filesystem::Path(path));
 }
 
+
+//  The path to the Tesseract resource folder relative to the current working directory.
+std::string tesseract_resource_relative_path(){
+    std::error_code ec;
+    return Filesystem::relative(
+        Filesystem::Path(DOWNLOADED_RESOURCE_PATH() + "Tesseract/"),
+        ec
+    ).string_slash_normalized();
+}
 
 // Thread-safe object pool for TesseractAPI instances for a specific language.
 // Allows concurrent OCR operations by maintaining multiple Tesseract instances that can be
@@ -40,11 +48,7 @@ class TesseractPool{
 public:
     TesseractPool(Language language)
         : m_language_code(language_data(language).code)
-        , m_training_data_path(
-            QDir::current().relativeFilePath(
-                QString::fromStdString(DOWNLOADED_RESOURCE_PATH() + "Tesseract/")
-            ).toStdString()
-        )
+        , m_training_data_path(tesseract_resource_relative_path())
     {}
 
     // Perform OCR on the given image. Thread-safe - can be called concurrently.

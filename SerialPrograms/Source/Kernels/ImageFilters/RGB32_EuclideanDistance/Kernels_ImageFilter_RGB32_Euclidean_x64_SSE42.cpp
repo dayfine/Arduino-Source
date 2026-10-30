@@ -9,8 +9,6 @@
 #include <immintrin.h>
 #include "Kernels/ImageFilters/Kernels_ImageFilter_Basic_Routines.h"
 #include "Kernels/ImageFilters/Kernels_ImageFilter_Basic_Routines_x64_SSE42.h"
-#include "Kernels_ImageFilter_RGB32_Euclidean.h"
-
 //#include <iostream>
 //using std::cout;
 //using std::endl;
@@ -60,7 +58,7 @@ public:
         __m128i sum_sqr = _mm_add_epi32(r, g);
         sum_sqr = _mm_add_epi32(sum_sqr, b);
 
-        return _mm_cmpgt_epi32(m_distance_squared, sum_sqr);
+        return _mm_cmpeq_epi32(_mm_min_epu32(sum_sqr, m_distance_squared), sum_sqr);
     }
 
 private:

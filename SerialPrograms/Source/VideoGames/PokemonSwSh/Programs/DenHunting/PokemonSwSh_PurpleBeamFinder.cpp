@@ -32,6 +32,7 @@ PurpleBeamFinder_Descriptor::PurpleBeamFinder_Descriptor()
         STRING_POKEMON + " SwSh", "Purple Beam Finder",
         "Programs/PokemonSwSh/PurpleBeamFinder.html",
         "Automatically reset for a purple beam.",
+        PanelQualityStanding::OFFICIAL,
         ProgramControllerClass::StandardController_NoRestrictions,
         FeedbackType::REQUIRED,
         AllowCommandsWhenRunning::DISABLE_COMMANDS

@@ -21,28 +21,28 @@ class AudioPassthroughPairQt;
 
 class AudioPassthroughPairQtThread : public AudioPassthroughPair{
 public:
-    virtual void add_listener(AudioFloatStreamListener& listener) override;
-    virtual void remove_listener(AudioFloatStreamListener& listener) override;
-
     virtual void add_listener(FFTListener& listener) override;
     virtual void remove_listener(FFTListener& listener) override;
+
+    virtual void add_listener(const AudioFormat& format, Kernels::AudioPipeline::WorkingAudioStreamListener& listener) override;
+    virtual void remove_listener(Kernels::AudioPipeline::WorkingAudioStreamListener& listener) override;
 
 public:
     AudioPassthroughPairQtThread(Logger& logger);
     ~AudioPassthroughPairQtThread();
 
     virtual void reset(
-        const std::string& file,
-        const AudioDeviceInfo& output, double output_volume
-    ) override;
-    virtual void reset(
-        const AudioDeviceInfo& input, AudioChannelFormat format,
-        const AudioDeviceInfo& output, double output_volume
+        const std::shared_ptr<AudioSourceDescriptor>& descriptor,
+        const AudioInputChoice& format,
+        const AudioDeviceInfo& output,
+        double output_volume
     ) override;
 
     virtual void clear_audio_source() override;
-    virtual void set_audio_source(const std::string& file) override;
-    virtual void set_audio_source(const AudioDeviceInfo& device, AudioChannelFormat format) override;
+    virtual void set_audio_source(
+        const std::shared_ptr<AudioSourceDescriptor>& descriptor,
+        const AudioInputChoice& format
+    ) override;
 
     virtual void clear_audio_sink() override;
     virtual void set_audio_sink(const AudioDeviceInfo& device, double volume) override;

@@ -5,7 +5,6 @@
  */
 
 #include "Common/Cpp/ScopeExit.h"
-#include "CommonFramework/VideoPipeline/VideoOverlay.h"
 #include "CommonFramework/VideoPipeline/Stats/ThreadUtilizationStats.h"
 #include "CommonFramework/Panels/PanelSession.h"
 #include "CommonFramework/Tools/GlobalThreadPools.h"
@@ -66,14 +65,13 @@ MultiConsoleProgramDescriptor::MultiConsoleProgramDescriptor(
     std::string category, std::string display_name,
     std::string doc_link,
     std::string description,
+    PanelQualityStanding standing,
     ProgramControllerClass controller_class,
-    Color color,
     FeedbackType feedback,
     AllowCommandsWhenRunning allow_commands_while_running,
     size_t min_consoles,
     size_t max_consoles,
     size_t default_consoles,
-    PanelDeprecation deprecation,
     std::vector<std::string> required_resources
 )
     : ProgramDescriptor(
@@ -81,8 +79,7 @@ MultiConsoleProgramDescriptor::MultiConsoleProgramDescriptor(
         std::move(category), std::move(display_name),
         std::move(doc_link),
         std::move(description),
-        color,
-        deprecation,
+        standing,
         true,
         std::move(required_resources)
     )

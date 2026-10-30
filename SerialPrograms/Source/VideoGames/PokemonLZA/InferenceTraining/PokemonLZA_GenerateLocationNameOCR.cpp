@@ -4,11 +4,10 @@
  *
  */
 
-#include <QDir>
+#include "Common/Cpp/Filesystem/Filesystem.h"
 #include "Common/Cpp/PrettyPrint.h"
 #include "Common/Cpp/Json/JsonValue.h"
 #include "Common/Cpp/Json/JsonArray.h"
-#include "CommonFramework/Globals.h"
 #include "CommonFramework/GlobalAutoPaths.h"
 #include "CommonFramework/ImageTypes/ImageViewRGB32.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
@@ -18,9 +17,9 @@
 #include "VideoGames/PokemonLZA/Inference/Map/PokemonLZA_LocationNameReader.h"
 #include "PokemonLZA_GenerateLocationNameOCR.h"
 
-#include <iostream>
-using std::cout;
-using std::endl;
+//#include <iostream>
+//using std::cout;
+//using std::endl;
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -34,6 +33,7 @@ GenerateLocationNameOCR_Descriptor::GenerateLocationNameOCR_Descriptor()
         STRING_POKEMON + " LZA", "Generate Location Name OCR Data",
         "",
         "Generate Location Name OCR data by iterating the fly spot list.",
+        PanelQualityStanding::DEVELOPER,
         ProgramControllerClass::StandardController_NoRestrictions,
         FeedbackType::REQUIRED,
         AllowCommandsWhenRunning::DISABLE_COMMANDS
@@ -90,9 +90,8 @@ void GenerateLocationNameOCR::dump_images(
     std::string path = "LocationNameOCR/";
     path += language_data(LANGUAGE).code;
 
-    QDir dir(QString::fromStdString(path));
-    if (!dir.exists()){
-        dir.mkpath(".");
+    if (!Filesystem::exists(Filesystem::Path(path))){
+        Filesystem::create_directories(Filesystem::Path(path));
     }
 
     path += "/";

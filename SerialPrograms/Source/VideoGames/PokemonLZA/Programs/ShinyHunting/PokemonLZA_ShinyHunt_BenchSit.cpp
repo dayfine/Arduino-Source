@@ -37,6 +37,7 @@ ShinyHunt_BenchSit_Descriptor::ShinyHunt_BenchSit_Descriptor()
         STRING_POKEMON + " LZA", "Bench Sit",
         "Programs/PokemonLZA/ShinyHunt-BenchSit.html",
         "Shiny hunt by repeatedly sitting on a bench to reset spawns.",
+        PanelQualityStanding::OFFICIAL,
         ProgramControllerClass::StandardController_NoRestrictions,
         FeedbackType::REQUIRED,
         AllowCommandsWhenRunning::DISABLE_COMMANDS
@@ -231,9 +232,9 @@ void ShinyHunt_BenchSit::check_daynight(
     context.wait_for_all_requests();
     pbf_wait(context, 160ms);
     // double snapshot
-    ImageViewRGB32 frame1 = env.console.video().snapshot();
+    VideoSnapshot frame1 = env.console.video().snapshot();
     pbf_wait(context, 120ms);
-    ImageViewRGB32 frame2 = env.console.video().snapshot();
+    VideoSnapshot frame2 = env.console.video().snapshot();
     should_run_based_on_day_night(frame1, env.console.overlay());
     should_run_based_on_day_night(frame2, env.console.overlay());
     if (m_day_night_detector){

@@ -65,15 +65,15 @@ CodeboardTimingsOption::CodeboardTimingsOption(
         LockMode::UNLOCK_WHILE_RUNNING,
         true
     )
-    , HOLD(
+    , HOLD0(
         "<b>Hold:</b><br>Duration to hold each button press down.",
         LockMode::UNLOCK_WHILE_RUNNING,
         STATIC_GLOBALS.DEVELOPER_MODE && performance_class == ControllerPerformanceClass::SerialPABotBase_Wired
-            ? "40 ms"
+            ? switch2 ? "48 ms" : "40 ms"
             : std::to_string(unit.count() * 2) + " ms"
     )
     , COOLDOWN(
-        "<b>Cooldown:</b><br>Do not reuse a button until this long after it is reused.",
+        "<b>Cooldown:</b><br>Do not reuse a button until this long after it is released.",
         LockMode::UNLOCK_WHILE_RUNNING,
         std::to_string(unit.count() * 1) + " ms"
     )
@@ -105,7 +105,7 @@ CodeboardTimingsOption::CodeboardTimingsOption(
     )
 {
     PA_ADD_OPTION(REORDERING);
-    PA_ADD_OPTION(HOLD);
+    PA_ADD_OPTION(HOLD0);
     PA_ADD_OPTION(COOLDOWN);
     PA_ADD_OPTION(PRESS_DELAY);
     PA_ADD_OPTION(MOVE_DELAY);
@@ -155,7 +155,7 @@ KeyboardControllerTimingsOption::KeyboardControllerTimingsOption()
         "40 ms"
     )
     , COOLDOWN(
-        "<b>Cooldown:</b><br>Do not reuse a key until this long after it is reused.",
+        "<b>Cooldown:</b><br>Do not reuse a key until this long after it is released.",
         LockMode::UNLOCK_WHILE_RUNNING,
         "24 ms"
     )

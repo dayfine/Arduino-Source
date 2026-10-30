@@ -29,6 +29,7 @@ MassPurchase_Descriptor::MassPurchase_Descriptor()
         STRING_POKEMON + " SV", "Mass Purchase",
         "Programs/PokemonSV/MassPurchase.html",
         "Purchase a specified amount of items from a shop.",
+        PanelQualityStanding::OFFICIAL,
         ProgramControllerClass::StandardController_NoRestrictions,
         FeedbackType::REQUIRED,
         AllowCommandsWhenRunning::DISABLE_COMMANDS

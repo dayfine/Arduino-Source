@@ -4,10 +4,10 @@
  *
  */
 
+#include "Common/Cpp/PrettyPrint.h"
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
 #include "CommonFramework/ProgramStats/StatsTracking.h"
 #include "CommonFramework/Notifications/ProgramNotifications.h"
-#include "Common/Cpp/PrettyPrint.h"
 #include "CommonFramework/VideoPipeline/VideoOverlay.h"
 #include "CommonTools/Async/InferenceRoutines.h"
 #include "CommonTools/VisualDetectors/BlackScreenDetector.h"
@@ -32,6 +32,7 @@ ShinyHunt_ShuttleRun_Descriptor::ShinyHunt_ShuttleRun_Descriptor()
         "Shuttle Run",
         "Programs/PokemonLZA/ShinyHunt-ShuttleRun.html",
         "Shiny hunt by repeatedly running back and forth between two points",
+        PanelQualityStanding::THIRD_PARTY_UNVETTED,
         ProgramControllerClass::StandardController_NoRestrictions, FeedbackType::REQUIRED,
         AllowCommandsWhenRunning::DISABLE_COMMANDS
     )

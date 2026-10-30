@@ -9,9 +9,9 @@
 #include "NintendoSwitch/Programs/NintendoSwitch_GameEntry.h"
 #include "Pokemon/Pokemon_Strings.h"
 //#include "VideoGames/PokemonSV/PokemonSV_Settings.h"
+#include "VideoGames/PokemonSV/Programs/Boxes/PokemonSV_BoxRoutines.h"
 #include "PokemonSV_TradeRoutines.h"
 #include "PokemonSV_SelfBoxTrade.h"
-#include "VideoGames/PokemonSV/Programs/Boxes/PokemonSV_BoxRoutines.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -25,6 +25,7 @@ SelfBoxTrade_Descriptor::SelfBoxTrade_Descriptor()
         STRING_POKEMON + " SV", "Self Box Trade",
         "Programs/PokemonSV/SelfBoxTrade.html",
         "Trade boxes of " + STRING_POKEMON + " between two local Switches.",
+        PanelQualityStanding::OFFICIAL,
         ProgramControllerClass::StandardController_NoRestrictions,
         FeedbackType::REQUIRED,
         AllowCommandsWhenRunning::DISABLE_COMMANDS,

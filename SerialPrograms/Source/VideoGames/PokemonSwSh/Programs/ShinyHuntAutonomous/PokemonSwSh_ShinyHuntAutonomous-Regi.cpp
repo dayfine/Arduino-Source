@@ -4,7 +4,6 @@
  *
  */
 
-#include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "CommonFramework/Notifications/ProgramNotifications.h"
 #include "NintendoSwitch/NintendoSwitch_Settings.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
@@ -28,6 +27,7 @@ ShinyHuntAutonomousRegi_Descriptor::ShinyHuntAutonomousRegi_Descriptor()
         STRING_POKEMON + " SwSh", "Shiny Hunt Autonomous - Regi",
         "Programs/PokemonSwSh/ShinyHuntAutonomous-Regi.html",
         "Automatically hunt for shiny Regi using video feedback.",
+        PanelQualityStanding::OFFICIAL,
         ProgramControllerClass::StandardController_NoRestrictions,
         FeedbackType::REQUIRED,
         AllowCommandsWhenRunning::DISABLE_COMMANDS

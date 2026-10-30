@@ -6,11 +6,9 @@
 
 #include <chrono>
 #include <string>
-#include <optional>
 #include "Common/Cpp/Color.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "CommonFramework/VideoPipeline/VideoOverlayScopes.h"
-#include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "Pokemon/Pokemon_Strings.h"
 #include "Pokemon/Inference/Pokemon_NameReader.h"
 #include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_StatsReader.h"
@@ -30,6 +28,7 @@ ReadStats_Descriptor::ReadStats_Descriptor()
         "Read Summary Stats", "",
         "Read stats, level, name, and nature from the summary screen. Start "
         "on page 1 of summary.",
+        PanelQualityStanding::DEVELOPER,
         ProgramControllerClass::StandardController_NoRestrictions,
         FeedbackType::REQUIRED,
         AllowCommandsWhenRunning::DISABLE_COMMANDS

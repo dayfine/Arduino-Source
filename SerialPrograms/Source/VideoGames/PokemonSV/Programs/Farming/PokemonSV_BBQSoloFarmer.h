@@ -65,6 +65,8 @@ public:
 // eggs run out when OUT_OF_EGGS is Stop, or until every doable quest on the
 // panel is one that already failed all its attempts, or until a quest fails
 // all its attempts when OUT_OF_RETRIES is Stop.
+// Throws UserSetupError if the exclusions leave no blue quest to do, or if
+// the panel shows nothing doable for many reads in a row.
 void run_bbq_rounds(Logger& logger, const BBQOption& options, BBQGameActions& game);
 
 

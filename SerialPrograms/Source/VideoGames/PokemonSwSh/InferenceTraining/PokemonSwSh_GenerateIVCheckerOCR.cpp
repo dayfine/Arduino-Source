@@ -4,12 +4,12 @@
  *
  */
 
-#include <QDir>
+#include "Common/Cpp/Filesystem/Filesystem.h"
 #include "Common/Cpp/PrettyPrint.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "Pokemon/Pokemon_Strings.h"
-#include "PokemonSwSh_GenerateIVCheckerOCR.h"
 #include "VideoGames/PokemonSwSh/Inference/PokemonSwSh_IvJudgeReader.h"
+#include "PokemonSwSh_GenerateIVCheckerOCR.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -34,6 +34,7 @@ GenerateIVCheckerOCR_Descriptor::GenerateIVCheckerOCR_Descriptor()
         STRING_POKEMON + " SwSh", "Generate IV Checker OCR Data",
         "",
         "Generate IV Checker OCR Data",
+        PanelQualityStanding::DEVELOPER,
         ProgramControllerClass::StandardController_NoRestrictions,
         FeedbackType::REQUIRED,
         AllowCommandsWhenRunning::DISABLE_COMMANDS
@@ -71,9 +72,8 @@ void GenerateIVCheckerOCR::program(SingleSwitchProgramEnvironment& env, ProContr
     std::string path = "IVCheckerOCR/";
     path += language_data(LANGUAGE).code;
 
-    QDir dir(QString::fromStdString(path));
-    if (!dir.exists()){
-        dir.mkpath(".");
+    if (!Filesystem::exists(Filesystem::Path(path))){
+        Filesystem::create_directories(Filesystem::Path(path));
     }
     path += "/";
 

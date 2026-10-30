@@ -9,7 +9,6 @@
 #include "CommonFramework/ProgramStats/StatsTracking.h"
 #include "CommonTools/Async/InferenceRoutines.h"
 #include "CommonTools/StartupChecks/VideoResolutionCheck.h"
-#include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "NintendoSwitch/Programs/NintendoSwitch_GameEntry.h"
 #include "Pokemon/Pokemon_Strings.h"
 #include "VideoGames/PokemonSV/Programs/PokemonSV_WorldNavigation.h"
@@ -31,6 +30,7 @@ MaterialFarmer_Descriptor::MaterialFarmer_Descriptor()
         STRING_POKEMON + " SV", "Material Farmer",
         "Programs/PokemonSV/MaterialFarmer.html",
         "Farm materials - Happiny dust from Chanseys/Blisseys, for Item Printer.",
+        PanelQualityStanding::OFFICIAL,
         ProgramControllerClass::StandardController_NoRestrictions,
         FeedbackType::VIDEO_AUDIO,
         AllowCommandsWhenRunning::DISABLE_COMMANDS

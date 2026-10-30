@@ -4,7 +4,7 @@
  *
  */
 
-#include <QDir>
+#include "Common/Cpp/Filesystem/Filesystem.h"
 #include "Common/Cpp/PrettyPrint.h"
 #include "Common/Cpp/Json/JsonValue.h"
 #include "Common/Cpp/Json/JsonArray.h"
@@ -29,6 +29,7 @@ GenerateNameOCRData_Descriptor::GenerateNameOCRData_Descriptor()
         STRING_POKEMON + " Home", STRING_POKEMON + " Home: Generate Name OCR",
         "",
         "Generate " + STRING_POKEMON + " Name OCR data by iterating the National " + STRING_POKEDEX + ".",
+        PanelQualityStanding::DEVELOPER,
         ProgramControllerClass::StandardController_NoRestrictions,
         FeedbackType::REQUIRED,
         AllowCommandsWhenRunning::DISABLE_COMMANDS
@@ -80,9 +81,8 @@ void GenerateNameOCRData::program(SingleSwitchProgramEnvironment& env, ProContro
         path += language_code;
         path += "/";
 
-        QDir dir(QString::fromStdString(path));
-        if (!dir.exists()){
-            dir.mkpath(".");
+        if (!Filesystem::exists(Filesystem::Path(path))){
+            Filesystem::create_directories(Filesystem::Path(path));
         }
 
         path += slug;
