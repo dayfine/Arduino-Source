@@ -618,7 +618,8 @@ private:
         }
         stream.log("[Talk] " + label + ": the dialogue reads \"" + read.text + "\".");
         size_t quiet = 0;
-        for (size_t presses = 0; presses < 20 && quiet < 2; presses++){
+        //  Barry's scene, to the Town Map, took more than 20 (r150a).
+        for (size_t presses = 0; presses < 80 && quiet < 2; presses++){
             ShortDialogWatcher dialog(COLOR_YELLOW);
             if (wait_until(stream, m_context, 1500ms, {{dialog}}) == 0){
                 quiet = 0;
