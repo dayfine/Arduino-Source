@@ -74,6 +74,7 @@ Any other line comes from a command, such as `detect home yes` or the path of a 
 | `dpad UP\|DOWN\|LEFT\|RIGHT [hold] [release]` | Presses the D-pad. | hold 100, release 200 |
 | `stick L\|R x y [hold] [release]` | Moves the left or right stick. `x` and `y` run from -1 to 1; `y` is +1 for up. | hold 160, release 160 |
 | `wait ms` | Waits. | |
+| `walk x y [max] [still]` | Holds the left stick in 200 ms slices until two slices in a row change the screen less than `still` (RMSD at 192x108): a wall or someone in the way. Prints `walk still\|limit after N ms, moving M ms` and each slice's change. For measuring maps: a timed `stick` hold moves a different number of tiles from try to try. | max 5000, still 10 |
 
 ### Screen
 

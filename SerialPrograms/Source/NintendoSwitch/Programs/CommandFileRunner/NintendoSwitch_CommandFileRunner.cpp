@@ -13,6 +13,7 @@
 #include "Common/Cpp/Filesystem/Filesystem.h"
 #include "Common/Cpp/Filesystem/FileIO.h"
 #include "CommonFramework/GlobalAutoPaths.h"
+#include "CommonFramework/ImageTools/ImageDiff.h"
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
@@ -41,6 +42,13 @@ constexpr Milliseconds STICK_HOLD = 160ms;
 constexpr Milliseconds STICK_RELEASE = 160ms;
 constexpr Milliseconds SHOTS_INTERVAL = 500ms;
 constexpr Milliseconds WAIT_FOR_TIMEOUT = 5000ms;
+
+//  "walk": the stick is held in slices this long, and the frames between
+//  slices are compared (RMSD at 192x108). Two slices in a row under the
+//  threshold count as standing still against something.
+constexpr Milliseconds WALK_SLICE = 200ms;
+constexpr Milliseconds WALK_LIMIT = 5000ms;
+constexpr double WALK_STILL_RMSD = 10;
 
 //  How often "wait_for" and "expect" check a new frame.
 constexpr Milliseconds DETECTOR_POLL_INTERVAL = 100ms;
@@ -160,6 +168,7 @@ private:
             {"dpad",        {"dpad UP|DOWN|LEFT|RIGHT [hold_ms] [release_ms]", &LineRunner::dpad}},
             {"stick",       {"stick L|R x y [hold_ms] [release_ms]   (x, y from -1 to 1)", &LineRunner::stick}},
             {"wait",        {"wait ms", &LineRunner::wait}},
+            {"walk",        {"walk x y [max_ms] [still_rmsd]   (left stick until the screen holds still)", &LineRunner::walk}},
             {"shot",        {"shot label", &LineRunner::shot}},
             {"shots",       {"shots label count [interval_ms]", &LineRunner::shots}},
             {"detect",      {"detect detector [image]   (image: a path, or a file in the outbox)", &LineRunner::detect}},
@@ -217,6 +226,45 @@ private:
     }
     void wait(const std::vector<std::string>& words){
         pbf_wait(context(), optional_duration(words, 1, 0ms));
+    }
+    //  Holds the left stick until the screen stops changing (a wall, a
+    //  sign, someone in the way) or max_ms passes, and reports how long it
+    //  moved. Measuring a map with walks that stop on their own: a timed
+    //  hold moves a different number of tiles from one try to the next.
+    void walk(const std::vector<std::string>& words){
+        const JoystickPosition position{optional_number(words, 1, 0), optional_number(words, 2, 0)};
+        const Milliseconds limit = optional_duration(words, 3, WALK_LIMIT);
+        const double still = optional_number(words, 4, WALK_STILL_RMSD);
+        VideoSnapshot before = current_frame();
+        if (!before){
+            throw OperationFailedException(ErrorReportMode::NO_ERROR_REPORT, "walk: no video frame");
+        }
+        Milliseconds walked = 0ms;
+        Milliseconds moving = 0ms;
+        int quiet = 0;
+        std::ostringstream changes;
+        while (walked < limit && quiet < 2){
+            pbf_move_left_joystick(context(), position, WALK_SLICE, 0ms);
+            VideoSnapshot after = current_frame();
+            if (!after){
+                break;
+            }
+            const double change = ImageMatch::pixel_RMSD(
+                before.frame->scale_to(192, 108), after.frame->scale_to(192, 108)
+            );
+            walked += WALK_SLICE;
+            changes << " " << (int)change;
+            if (change < still){
+                quiet++;
+            }else{
+                quiet = 0;
+                moving = walked;
+            }
+            before = std::move(after);
+        }
+        pbf_wait(context(), STICK_RELEASE);
+        out() << "walk " << (quiet >= 2 ? "still" : "limit") << " after " << walked.count()
+            << "ms, moving " << moving.count() << "ms; changes" << changes.str() << "\n";
     }
     void shot(const std::vector<std::string>& words){
         out() << "shot " << save_screenshot(required_arg(words, 1)) << "\n";
