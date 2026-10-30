@@ -870,9 +870,10 @@ Checkpoint jubilife_school_checkpoint(JubilifeActions& game){
                 }
             }
             //  At night the lamp east of the door says how far off we are.
-            for (size_t looks = 0; looks < 2; looks++){
+            for (size_t looks = 0; looks < 3; looks++){
                 const std::optional<double> across = game.school_door_across();
-                if (!across || std::abs(*across) <= 0.5){
+                //  The door took us from -0.19 and 0.19 but not -0.34 (r148b).
+                if (!across || std::abs(*across) <= 0.3){
                     break;
                 }
                 game.step_across(*across, "Line up with the School's door by its lamp");

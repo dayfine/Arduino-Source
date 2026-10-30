@@ -576,14 +576,19 @@ void leave_door_south(VideoStream& stream, ProControllerContext& context, const 
     //  "walking out" until a wall stopped it.
     ImageRGB32 last;
     bool have_last = false;
+    //  A fade, and not a Pokemon Center's inside: walking in Jubilife's
+    //  Center changes the screen as much (r148c stopped on the mat twice).
     auto fading = [&](const ImageViewRGB32& screen){
-        const bool fade = have_last && walk_screen_change(last, screen) > WALK_SCENE_CHANGE;
+        const bool fade = have_last && walk_screen_change(last, screen) > WALK_SCENE_CHANGE &&
+            !pokemon_center_inside(screen);
         last = screen.copy();
         have_last = true;
         return fade;
     };
     bool out = false;
     for (size_t tries = 0; tries < 3 && !out; tries++){
+        //  Compare within this walk only.
+        have_last = false;
         const WalkResult walk = walk_until(stream, context, 0, -1, 6000ms, label, fading);
         if (walk.stop == WalkStop::DIALOG){
             pbf_mash_button(context, BUTTON_B, 2000ms);
