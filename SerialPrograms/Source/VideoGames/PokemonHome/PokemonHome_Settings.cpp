@@ -3,8 +3,6 @@
  *  From: https://github.com/PokemonAutomation/
  *
  */
-
-#include "CommonFramework/Globals.h"
 #include "Pokemon/Pokemon_Strings.h"
 #include "PokemonHome_Settings.h"
 
@@ -33,7 +31,8 @@ GameSettings_Descriptor::GameSettings_Descriptor()
         "PokemonHome:GlobalSettings",
         STRING_POKEMON + " Home", STRING_POKEMON + " Settings",
         "Programs/PokemonHome/PokemonSettings.html",
-        "Global " + STRING_POKEMON + " Settings"
+        "Global " + STRING_POKEMON + " Settings",
+        PanelQualityStanding::OFFICIAL
     )
 {}
 

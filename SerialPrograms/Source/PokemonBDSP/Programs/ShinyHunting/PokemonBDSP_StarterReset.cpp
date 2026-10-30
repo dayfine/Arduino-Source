@@ -15,11 +15,11 @@
 #include "NintendoSwitch/Programs/NintendoSwitch_GameEntry.h"
 #include "Pokemon/Pokemon_Strings.h"
 #include "Pokemon/Pokemon_Notification.h"
-#include "VideoGames/PokemonSwSh/ShinyHuntTracker.h"
 #include "PokemonBDSP/Resources/PokemonBDSP_NameDatabase.h"
 #include "PokemonBDSP/Programs/PokemonBDSP_GameEntry.h"
 #include "PokemonBDSP/Inference/PokemonBDSP_SelectionArrow.h"
 #include "PokemonBDSP/Inference/ShinyDetection/PokemonBDSP_ShinyEncounterDetector.h"
+#include "VideoGames/PokemonSwSh/ShinyHuntTracker.h"
 #include "PokemonBDSP_StarterReset.h"
 
 namespace PokemonAutomation{
@@ -33,6 +33,7 @@ StarterReset_Descriptor::StarterReset_Descriptor()
         STRING_POKEMON + " BDSP", "Starter Reset",
         "Programs/PokemonBDSP/StarterReset.html",
         "Shiny hunt your starter " + STRING_POKEMON + ".",
+        PanelQualityStanding::OFFICIAL,
         ProgramControllerClass::StandardController_NoRestrictions,
         FeedbackType::REQUIRED,
         AllowCommandsWhenRunning::DISABLE_COMMANDS

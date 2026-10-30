@@ -386,6 +386,11 @@ avoid animated tiles; Flash-dark caves are the exception.
 
 ## 5. 2D movement: shared design
 
+**Superseded 2026-10-29** by [AutoStory-Navigation-Stack.md](AutoStory-Navigation-Stack.md): a
+shared core (`nav/core`: grid types, a leg planner over a per-game step model, a leg walker
+with per-game movers and interrupts, the screen machine) with two children, `frlg/brock-mvp`
+and `bdsp/floaroma-mvp`. The sketch below is kept for its reasoning (§5.2 still holds).
+
 ### 5.1 Pieces
 
 Console-free. It lives in `SerialPrograms/Source/Pokemon/Navigation/`
@@ -690,6 +695,8 @@ positions; the decomp is the source of truth.
 | 08 | To Cinnabar (Route 21 by default) → Mansion (Secret Key) → Blaine | Seafoam optional; decline One Island |
 | 09 | Giovanni (Viridian) → Route 22 rival → Victory Road (Strength boulders) | |
 | 10 | Elite Four + Champion | reuse `EliteFourFarmer` pieces |
+| 11 | Sevii post-game: Ruby (Mt. Ember), Sapphire (Dotted Hole), Network Machine | added 2026-10-29 (§9.2) |
+| 12 | Mew | method to settle (§9.2); likely needs the naming typer |
 | opt | Money top-up, leveling loop, gift Pokémon, fossils | config-driven, outside the main order |
 
 Estimate ~90–110 checkpoints. Hardest: 00 (keyboard, intro), 05 (spin
@@ -745,6 +752,11 @@ Consequences:
 - The planner and the table are pure logic, so they get unit tests.
 
 ### 7.7 Earlier PR inventory (ordering superseded by the map-reuse review)
+
+**2026-10-29:** T1 and T2 below become N1–N3 on `nav/core` and the FRLG child
+`frlg/brock-mvp` ([AutoStory-Navigation-Stack.md](AutoStory-Navigation-Stack.md) §4). The
+Elite Four farmer moves onto the walker later, not as part of the pilot. The rest of the table
+stands.
 
 Reviewers should know up front what is coming. Phase A is about 10 PRs,
 touches only FRLG files, and produces something users can run at PR 5.
@@ -873,6 +885,11 @@ among the agents is recorded outside this doc.
    after the FRLG pilot runs and people use it. Until then, BDSP gets only
    the standalone bug comments (phase C).
 2. **Scope:** main story to the Champion. No Sevii or post-game.
+   *Revised 2026-10-29:* the run ends with catching Mew, so it includes the
+   Sevii Islands post-game for the Ruby and Sapphire (Network Machine). Mew
+   has no in-game encounter in FRLG, so how it is obtained (e.g. arbitrary
+   code execution through box names, which needs the FRLG naming typer) is
+   still to be settled and becomes its own segment.
 3. **Shortcuts** (Nugget Bridge money, Retro Mail duplication): available as
    options. They need planning, e.g. catching the right Pokémon at the right
    time, so they feed into the requirements plan (§7.6).

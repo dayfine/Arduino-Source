@@ -18,12 +18,12 @@
 #include "VideoGames/PokemonLZA/Inference/Battles/PokemonLZA_RunFromBattleDetector.h"
 #include "VideoGames/PokemonLZA/Inference/Boxes/PokemonLZA_IvJudgeReader.h"
 #include "VideoGames/PokemonLZA/Inference/PokemonLZA_OverworldPartySelectionDetector.h"
-#include "PokemonLZA_StatsReset.h"
 #include "VideoGames/PokemonLZA/Programs/PokemonLZA_GameEntry.h"
 #include "VideoGames/PokemonLZA/Programs/PokemonLZA_BasicNavigation.h"
 #include "VideoGames/PokemonLZA/Programs/PokemonLZA_FastTravelNavigation.h"
 #include "VideoGames/PokemonLZA/Programs/PokemonLZA_MenuNavigation.h"
 #include "VideoGames/PokemonLZA/Programs/PokemonLZA_TrainerBattle.h"
+#include "PokemonLZA_StatsReset.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -36,6 +36,7 @@ StatsReset_Descriptor::StatsReset_Descriptor()
         STRING_POKEMON + " LZA", "Stats Reset",
         "Programs/PokemonLZA/StatsReset.html",
         "Repeatedly catch/receive " + STRING_POKEMON + " until you get the stats you want.",
+        PanelQualityStanding::OFFICIAL,
         ProgramControllerClass::StandardController_NoRestrictions,
         FeedbackType::REQUIRED,
         AllowCommandsWhenRunning::DISABLE_COMMANDS

@@ -17,8 +17,7 @@ OptionsPanelDescriptor::OptionsPanelDescriptor(
     std::string category, std::string display_name,
     std::string doc_link,
     std::string description,
-    Color color,
-    PanelDeprecation deprecation,
+    PanelQualityStanding standing,
     bool restore_defaults_button
 )
     : PanelDescriptor(
@@ -26,8 +25,7 @@ OptionsPanelDescriptor::OptionsPanelDescriptor(
         std::move(category), std::move(display_name),
         std::move(doc_link),
         std::move(description),
-        color,
-        deprecation,
+        standing,
         restore_defaults_button
     )
 {}

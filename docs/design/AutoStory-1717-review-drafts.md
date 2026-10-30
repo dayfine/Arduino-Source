@@ -5,6 +5,10 @@ user, who decides whether to post them, and when. Each one stands on its own
 and makes no request beyond the fix. None of them proposes shared code or
 asks the BDSP team to restructure anything.
 
+**Stale:** checked against PR head `65094d4cd` (2026-10-25); the head is now `45a206f0d`
+(2026-10-29). Recheck every draft before posting. Lessons Part 1 (§1 to §7) holds the newer
+findings for Butters.
+
 Checked against PR head `65094d4cd` (2026-10-25). Before posting, check that
 the head has not moved (`gh pr view 1717 -R PokemonAutomation/Arduino-Source
 --json headRefOid`), and recheck the line numbers if it has. Paths are under

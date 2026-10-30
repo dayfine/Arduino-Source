@@ -230,4 +230,6 @@ School were found, after whole-run attempts had failed on each.
 - Can tall grass get a stop signal (e.g. the player sprite's position instead of the whole
   view)? That would remove the special case in section 2.
 - How much of the planner and map set is shared with FRLG (same 16 px tiles, same ledges)?
-  The code lives in `Pokemon/Navigation` so it can be.
+  Answered 2026-10-29 in [AutoStory-Navigation-Stack.md](AutoStory-Navigation-Stack.md): the
+  planner and walker are shared through a per-game step model and mover; the tile legend and
+  `TileGrid` stay BDSP's. The BDSP MVP branch is `bdsp/floaroma-mvp`.

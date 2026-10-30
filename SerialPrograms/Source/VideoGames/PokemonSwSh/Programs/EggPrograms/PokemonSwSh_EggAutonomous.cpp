@@ -10,8 +10,6 @@
 #include "CommonFramework/Notifications/ProgramNotifications.h"
 #include "CommonFramework/ProgramStats/StatsTracking.h"
 #include "CommonFramework/Tools/ErrorDumper.h"
-#include "CommonFramework/VideoPipeline/VideoFeed.h"
-#include "CommonFramework/VideoPipeline/VideoOverlay.h"
 #include "CommonTools/Async/InferenceRoutines.h"
 #include "NintendoSwitch/NintendoSwitch_Settings.h"
 #include "NintendoSwitch/Programs/NintendoSwitch_GameEntry.h"
@@ -28,10 +26,10 @@
 #include "VideoGames/PokemonSwSh/Inference/PokemonSwSh_YCommDetector.h"
 #include "VideoGames/PokemonSwSh/Programs/PokemonSwSh_GameEntry.h"
 #include "VideoGames/PokemonSwSh/Programs/PokemonSwSh_BoxHelpers.h"
-#include "PokemonSwSh_EggHelpers.h"
-#include "PokemonSwSh_EggAutonomous.h"
 #include "VideoGames/PokemonSwSh/Commands/PokemonSwSh_Commands_EggRoutines.h"
 #include "VideoGames/PokemonSwSh/Programs/PokemonSwSh_MenuNavigation.h"
+#include "PokemonSwSh_EggHelpers.h"
+#include "PokemonSwSh_EggAutonomous.h"
 
 namespace PokemonAutomation{
 
@@ -52,6 +50,7 @@ EggAutonomous_Descriptor::EggAutonomous_Descriptor()
         STRING_POKEMON + " SwSh", "Egg Autonomous",
         "Programs/PokemonSwSh/EggAutonomous.html",
         "Automatically fetch+hatch eggs and keep all shinies.",
+        PanelQualityStanding::OFFICIAL,
         ProgramControllerClass::StandardController_NoRestrictions,
         FeedbackType::REQUIRED,
         AllowCommandsWhenRunning::DISABLE_COMMANDS
@@ -920,6 +919,12 @@ bool EggAutonomous::process_hatched_pokemon(
                 if (m_num_pokemon_kept >= MAX_KEEPERS){
                     env.log("Max keepers reached. Stopping program...");
                     env.console.overlay().add_log("Max Keepers reached.", COLOR_WHITE);
+                    // Stopping here skips the save at the end of the batch, so save now
+                    // or the last kept pokemon is lost if the game is reset.
+                    if (AUTO_SAVING != AutoSave::NoAutoSave){
+                        menus_to_mainmenu(env.console, context);
+                        save_game(env.console, context);
+                    }
                     return true;
                 }
                 break;

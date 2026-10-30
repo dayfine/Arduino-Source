@@ -10,18 +10,21 @@
 #include "PokemonFRLG_Panels.h"
 
 #include "PokemonFRLG_Settings.h"
+
 #include "Programs/Farming/PokemonFRLG_EliteFourFarmer.h"
 #include "Programs/Farming/PokemonFRLG_HeldItemFarmer-SafariZone.h"
 #include "Programs/Farming/PokemonFRLG_ItemDuplication.h"
 #include "Programs/Farming/PokemonFRLG_NuggetBridgeFarmer.h"
 #include "Programs/Farming/PokemonFRLG_PickupFarmer.h"
 #include "Programs/Farming/PokemonFRLG_EvTrainer.h"
+
 #include "Programs/ShinyHunting/PokemonFRLG_GiftReset.h"
 #include "Programs/ShinyHunting/PokemonFRLG_LegendaryReset.h"
 #include "Programs/ShinyHunting/PokemonFRLG_LegendaryRunAway.h"
 #include "Programs/ShinyHunting/PokemonFRLG_PrizeCornerReset.h"
 #include "Programs/ShinyHunting/PokemonFRLG_ShinyHunt-Fishing.h"
 #include "Programs/ShinyHunting/PokemonFRLG_ShinyHunt-Overworld.h"
+
 #include "Programs/RngManipulation/PokemonFRLG_RngHelper.h"
 #include "Programs/RngManipulation/PokemonFRLG_SidHelper.h"
 #include "Programs/RngManipulation/PokemonFRLG_StarterRng.h"
@@ -30,12 +33,14 @@
 #include "Programs/RngManipulation/PokemonFRLG_WildRng.h"
 #include "Programs/RngManipulation/PokemonFRLG_RoamingLegendaryRng.h"
 #include "Programs/RngManipulation/PokemonFRLG_EggRng.h"
+
 #include "Programs/TestPrograms/PokemonFRLG_SoundListener.h"
 #include "Programs/TestPrograms/PokemonFRLG_ReadStats.h"
 #include "Programs/TestPrograms/PokemonFRLG_ReadBattleLevelUp.h"
 #include "Programs/TestPrograms/PokemonFRLG_ReadTrainerId.h"
 #include "Programs/TestPrograms/PokemonFRLG_ReadEncounter.h"
 #include "Programs/TestPrograms/PokemonFRLG_SafariOptimalActionTest.h"
+#include "Programs/TestPrograms/PokemonFRLG_TestPartyInference.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -62,6 +67,7 @@ std::vector<PanelEntry> PanelListFactory::make_panels() const{
     ret.emplace_back(make_SingleSwitchProgram<EvTrainer>());
     ret.emplace_back(make_SingleSwitchProgram<HeldItemFarmerSafariZone>());
     ret.emplace_back(make_SingleSwitchProgram<ItemDuplication>());
+    ret.emplace_back(make_SingleSwitchProgram<EliteFourFarmer>());
 
     //ret.emplace_back("---- General ----");
 
@@ -84,8 +90,7 @@ std::vector<PanelEntry> PanelListFactory::make_panels() const{
     ret.emplace_back(make_SingleSwitchProgram<EggRng>());
 
     if (IS_BETA_VERSION || STATIC_GLOBALS.DEVELOPER_MODE){
-        ret.emplace_back("---- Untested/Beta/WIP ----");
-        ret.emplace_back(make_SingleSwitchProgram<EliteFourFarmer>());
+//        ret.emplace_back("---- Untested/Beta/WIP ----");
     }
 
     if (STATIC_GLOBALS.DEVELOPER_MODE){
@@ -96,6 +101,7 @@ std::vector<PanelEntry> PanelListFactory::make_panels() const{
         ret.emplace_back(make_SingleSwitchProgram<ReadTrainerId>());
         ret.emplace_back(make_SingleSwitchProgram<ReadEncounter>());
         ret.emplace_back(make_SingleSwitchProgram<SafariOptimalActionTest>());
+        ret.emplace_back(make_SingleSwitchProgram<TestPartyInference>());
     }
 
     return ret;
