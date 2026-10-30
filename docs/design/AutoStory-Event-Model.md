@@ -256,3 +256,18 @@ The checkpoint ends on `screen: battle` and hands off to a catch policy.
 7. **Screen machine vs event runner.** Menu-like stretches (intro, keyboard) stay
    `ScreenMachine` routines invoked as one `menu`/`scene` action. Should dialogues also be
    `ScreenMachine` states (answers as states) rather than a bespoke `dialogue` action?
+
+## 5. Games and movement
+
+The event engine is game-neutral; movement is not. Each game plugs in one way to walk:
+
+| Game | Movement | Camera | Walk primitive |
+|---|---|---|---|
+| FRLG | strict tile grid | fixed, top-down | tile legs to wall/NPC/warp anchors (shared leg planner) |
+| BDSP | grid in practice | fixed, tilted | tile legs, same planner, landmark checks |
+| SwSh | free 3D | fixed behind the player | joystick direction = world direction; steer toward a landmark or along a path, arrival by sight |
+| SV, Legends | free 3D | free, view-dependent | as SwSh plus camera control; the hardest case |
+
+Roadmap after BDSP and FRLG run on the engine: a **SwSh MVP from a new game to the
+train station** (Wedgehurst), as the first 3D game. Upstream has a draft (PokemonAutomation#1207,
+segment 00 by timed presses); offer the engine to its author rather than taking it over.
