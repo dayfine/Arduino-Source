@@ -841,9 +841,16 @@ Checkpoint jubilife_center_checkpoint(JubilifeActions& game){
     checkpoint.events.push_back(wrapped_step("north_to_the_center",
         "north up the east sidewalk until the Pokemon Center stops us", "at_center",
         [&game](RunState&){ return game.walk_until_stopped(Direction::NORTH, 14, "North to the Pokemon Center"); }));
-    checkpoint.events.push_back(wrapped_step("heal",
-        "in, the nurse heals, out onto the doorstep", "healed",
-        [&game](RunState&){ return game.heal_at_center(); }));
+    {
+        Event heal = wrapped_step("heal",
+            "in, the nurse heals, out onto the doorstep", "healed",
+            [&game](RunState&){ return game.heal_at_center(); });
+        //  r143a's heal said it had walked out while still inside.
+        heal.expect.push_back(condition("out of the Pokemon Center, in the overworld", [&game](RunState&){
+            return !game.inside_pokemon_center();
+        }));
+        checkpoint.events.push_back(std::move(heal));
+    }
     return checkpoint;
 }
 
@@ -851,7 +858,7 @@ Checkpoint jubilife_school_checkpoint(JubilifeActions& game){
     Checkpoint checkpoint;
     checkpoint.id = "jubilife_school";
     checkpoint.interrupts.push_back(dialogue_interrupt(game));
-    checkpoint.events.push_back(wrapped_step("into_the_school",
+    Event into = wrapped_step("into_the_school",
         "west from the Center's doorstep, counting tiles, north through the School's door", "in_school",
         [&game](RunState&){
             //  The first press only turns us.
@@ -873,7 +880,12 @@ Checkpoint jubilife_school_checkpoint(JubilifeActions& game){
             return moved.succeeded()
                 ? outcome_failed("door_failed", "no door 8 to 12 tiles west of the Center's doorstep")
                 : moved;
-        }));
+        });
+    //  It starts on the Center's doorstep: outside, in the overworld.
+    into.require.push_back(condition("out of the Pokemon Center, in the overworld", [&game](RunState&){
+        return !game.inside_pokemon_center();
+    }));
+    checkpoint.events.push_back(std::move(into));
     return checkpoint;
 }
 

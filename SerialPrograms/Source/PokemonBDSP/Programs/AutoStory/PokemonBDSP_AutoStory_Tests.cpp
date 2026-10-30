@@ -1181,6 +1181,12 @@ public:
             {.file = "PokemonBDSP/AutoStory/SandgemCenterBelowSign-20261030-053527.png", .inside = false, .doorway = true},
             {.file = "PokemonBDSP/AutoStory/SandgemMartDoorUpRight-20261030-023443.png", .inside = false, .doorway = true},
             {.file = "PokemonBDSP/AutoStory/SandgemMartDoorFarLeft-20261030-024648.png", .inside = false, .doorway = true},
+            //  Jubilife (2026-10-30): inside its Center twice, at its door, and
+            //  on the doorstep after walking out (the banner up).
+            {.file = "PokemonBDSP/AutoStory/JubilifeCenterInside-20261030-c6.png", .inside = true, .doorway = false},
+            {.file = "PokemonBDSP/AutoStory/JubilifeCenterInside-20261030-c4.png", .inside = true, .doorway = false},
+            {.file = "PokemonBDSP/AutoStory/JubilifeCenterFrontDoor-20261030-q2.png", .inside = false, .doorway = true},
+            {.file = "PokemonBDSP/AutoStory/JubilifeCenterDoorstep-20261030-c5.png", .inside = false, .doorway = true},
         };
         for (const Case& c : cases){
             const std::string path = UNIT_TEST_RESOURCE_PATH() + c.file;
@@ -1426,6 +1432,8 @@ class FakeJubilife : public JubilifeActions{
 public:
     size_t door_at = 10;
     bool stuck_on_house = false;
+    bool heal_stays_inside = false;
+    bool inside = false;
     size_t column = 0;          //  tiles west of the doorstep
     bool on_doorstep = false;
     bool in_school = false;
@@ -1442,7 +1450,7 @@ public:
     virtual DialogueRead read_sign(Direction, const std::string&) override{ return {}; }
     virtual std::optional<LitDoorway> lit_doorway() override{ return std::nullopt; }
     virtual Pokemon::Outcome line_up_with_door() override{ return Pokemon::outcome_ok(); }
-    virtual bool inside_pokemon_center() override{ return false; }
+    virtual bool inside_pokemon_center() override{ return inside; }
     virtual Pokemon::Outcome east_then_north_in_sandgem() override{ return Pokemon::outcome_ok(); }
     virtual bool dialogue_showing() override{ return false; }
     virtual Pokemon::Outcome finish_dialogue() override{ return Pokemon::outcome_ok(); }
@@ -1467,6 +1475,7 @@ public:
     }
     virtual Pokemon::Outcome heal_at_center() override{
         trace.push_back("heal");
+        inside = heal_stays_inside;
         on_doorstep = true;
         column = 0;
         return Pokemon::outcome_ok();
@@ -1490,17 +1499,19 @@ public:
         : UnitTest("PokemonBDSP::AutoStory - Jubilife 00.05a/b events")
     {}
     virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
-        struct Case{ const char* name; size_t door_at; bool stuck; bool center_done; bool school_done; size_t tries; };
+        struct Case{ const char* name; size_t door_at; bool stuck; bool stays_inside; bool center_done; bool school_done; size_t tries; };
         const Case cases[] = {
-            {"Door ten tiles west, as measured", 10, false, true, true, 3},
-            {"Door a tile further", 11, false, true, true, 4},
-            {"Door off the counted range", 14, false, true, false, 5},
-            {"The house never stops us", 10, true, false, false, 0},
+            {"Door ten tiles west, as measured", 10, false, false, true, true, 3},
+            {"Door a tile further", 11, false, false, true, true, 4},
+            {"Door off the counted range", 14, false, false, true, false, 5},
+            {"The house never stops us", 10, true, false, false, false, 0},
+            {"The heal leaves us inside (r143a)", 10, false, true, false, false, 0},
         };
         for (const Case& c : cases){
             FakeJubilife game;
             game.door_at = c.door_at;
             game.stuck_on_house = c.stuck;
+            game.heal_stays_inside = c.stays_inside;
             for (size_t which = 0; which < 2; which++){
                 Pokemon::Checkpoint checkpoint = which == 0 ? jubilife_center_checkpoint(game) : jubilife_school_checkpoint(game);
                 const std::vector<std::string> problems = Pokemon::lint_checkpoint(checkpoint);

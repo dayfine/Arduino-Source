@@ -19,6 +19,7 @@
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStoryTools.h"
 #include "PokemonBDSP_AutoStory_Location.h"
 #include "PokemonBDSP_AutoStory_Walk.h"
+#include "PokemonBDSP_AutoStory_PokemonCenter.h"
 #include "PokemonBDSP_AutoStory_RouteWalk.h"
 
 namespace PokemonAutomation{
@@ -593,6 +594,12 @@ void leave_door_south(VideoStream& stream, ProControllerContext& context, const 
         VideoSnapshot now = stream.video().snapshot();
         out = walk.stop == WalkStop::TRANSITION ||
             (inside && now && walk_screen_change(*inside.frame, *now.frame) > WALK_SCENE_CHANGE);
+        //  Walking inside Jubilife's Center changes the screen as much as a
+        //  fade (114, 124 in r143a): still in a Center is not out.
+        if (out && now && pokemon_center_inside(*now.frame)){
+            stream.log("[Route] " + label + ": still inside the Pokemon Center; walking on.");
+            out = false;
+        }
     }
     if (!out){
         OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,

@@ -206,10 +206,16 @@ void log_doorway(VideoStream& stream, const std::string& label, const LitDoorway
 
 
 bool pokemon_center_inside(const ImageViewRGB32& screen){
-    //  The back wall above the bookcase, at the top left.
-    const ImageStats wall = image_stats(extract_box_reference(screen, ImageFloatBox(0.02, 0.02, 0.10, 0.10)));
-    const double r = wall.average.r, g = wall.average.g, b = wall.average.b;
-    if (r < 180 || r < g + 40 || g < b + 40){
+    //  The orange back wall along the top, in two of three places: a plant
+    //  or a bookcase can stand in one (Jubilife's top left), and at night
+    //  it is darker (r 160..200 in Jubilife, 254 in Sandgem by day).
+    size_t wall = 0;
+    for (double x : {0.02, 0.25, 0.65}){
+        const ImageStats box = image_stats(extract_box_reference(screen, ImageFloatBox(x, 0.03, 0.08, 0.06)));
+        const double r = box.average.r, g = box.average.g, b = box.average.b;
+        wall += r >= 140 && r > g + 40 && g > b + 40;
+    }
+    if (wall < 2){
         return false;
     }
     //  Black below the floor, either side of the step out of the door.
@@ -218,8 +224,8 @@ bool pokemon_center_inside(const ImageViewRGB32& screen){
             return false;
         }
     }
-    //  And the floor lit between them: not a fade.
-    return image_stats(extract_box_reference(screen, ImageFloatBox(0.30, 0.55, 0.40, 0.15))).average.sum() > 400;
+    //  And the floor lit between them: not a fade (349 in Jubilife at night).
+    return image_stats(extract_box_reference(screen, ImageFloatBox(0.30, 0.55, 0.40, 0.15))).average.sum() > 250;
 }
 
 std::optional<LitDoorway> find_lit_doorway(const ImageViewRGB32& screen){
