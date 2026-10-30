@@ -14,13 +14,13 @@
 #include "Common/Cpp/Options/TextEditOption.h"
 #include "CommonFramework/Notifications/EventNotificationsTable.h"
 #include "CommonTools/Options/LanguageOCROption.h"
-#include "PokemonFRLG_RngProgram.h"
 #include "NintendoSwitch/Options/NintendoSwitch_GoHomeWhenDoneOption.h"
 #include "Pokemon/Pokemon_StatsCalculation.h"
 #include "Pokemon/Pokemon_AdvRng.h"
 #include "PokemonFRLG_BlindNavigation.h"
 #include "PokemonFRLG_RngCalibration.h"
 #include "PokemonFRLG_RngDisplays.h"
+#include "PokemonFRLG_RngProgram.h"
 #include "PokemonFRLG_SeedsDatabase.h"
 
 namespace PokemonAutomation{
