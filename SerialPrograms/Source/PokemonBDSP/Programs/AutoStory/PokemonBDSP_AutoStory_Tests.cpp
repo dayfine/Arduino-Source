@@ -1633,6 +1633,39 @@ public:
 };
 
 
+//  Out of a building, the town's location banner shows; inside, none
+//  (Jubilife, 2026-10-30): what says a walk out of a door got out.
+class Test_LocationBannerShowing : public UnitTest{
+public:
+    Test_LocationBannerShowing()
+        : UnitTest("PokemonBDSP::AutoStory - location banner showing")
+    {}
+    virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
+        struct Case{ const char* file; bool banner; };
+        const Case cases[] = {
+            {"PokemonBDSP/AutoStory/JubilifeCenterDoorstep-20261030-c5.png", true},
+            {"PokemonBDSP/AutoStory/JubilifeSchoolDoorstep-20261030.png", true},
+            {"PokemonBDSP/AutoStory/JubilifeCenterInside-20261030-c6.png", false},
+            {"PokemonBDSP/AutoStory/JubilifeCenterInside-20261030-c4.png", false},
+            {"PokemonBDSP/AutoStory/JubilifeCenterInsideUpper-20261030-r151a.png", false},
+            {"PokemonBDSP/AutoStory/JubilifeCenterFrontDoor-20261030-q2.png", false},
+        };
+        for (const Case& c : cases){
+            const std::string path = UNIT_TEST_RESOURCE_PATH() + c.file;
+            if (!Filesystem::is_regular_file(path)){
+                return UnitTestResult(UnitTestResult::SKIPPED, "Screenshot not found: " + path);
+            }
+            const bool banner = location_banner_showing(ImageRGB32(path));
+            logger.log(std::string(c.file) + ": banner " + (banner ? "shows" : "none"));
+            if (banner != c.banner){
+                return std::string(c.file) + ": expected " + (c.banner ? "a banner" : "no banner") + ".";
+            }
+        }
+        return true;
+    }
+};
+
+
 void add_tests_AutoStory(UnitTestDatabase& database){
     database.add<Test_IntroDecisions>();
     database.add<Test_TileGridParse>();
@@ -1647,6 +1680,7 @@ void add_tests_AutoStory(UnitTestDatabase& database){
     database.add<Test_MartLadyEvents>();
     database.add<Test_JubilifeEvents>();
     database.add<Test_SchoolLamp>();
+    database.add<Test_LocationBannerShowing>();
 }
 
 

@@ -593,18 +593,28 @@ void leave_door_south(VideoStream& stream, ProControllerContext& context, const 
         if (walk.stop == WalkStop::DIALOG){
             pbf_mash_button(context, BUTTON_B, 2000ms);
         }
-        //  The fade-in finishes after the walk has stopped.
-        pbf_wait(context, 2000ms);
-        context.wait_for_all_requests();
-        VideoSnapshot now = stream.video().snapshot();
-        out = walk.stop == WalkStop::TRANSITION ||
-            (inside && now && walk_screen_change(*inside.frame, *now.frame) > WALK_SCENE_CHANGE);
-        //  Walking inside Jubilife's Center changes the screen as much as a
-        //  fade (114, 124 in r143a): still in a Center is not out.
-        if (out && now && pokemon_center_inside(*now.frame)){
-            stream.log("[Route] " + label + ": still inside the Pokemon Center; walking on.");
-            out = false;
+        //  Out shows the town's location banner for a few seconds after the
+        //  fade; inside a building there is none. The fade guess alone is
+        //  not enough: walking in Jubilife's Center changes the screen as
+        //  much (r143a, r148c), and the inside check only knows the mat
+        //  (r151a walked on inside after both said "out").
+        out = walk.stop == WalkStop::TRANSITION;
+        for (size_t looks = 0; looks < 12 && !out; looks++){
+            context.wait_for_all_requests();
+            VideoSnapshot now = stream.video().snapshot();
+            if (now && location_banner_showing(*now.frame)){
+                stream.log("[Route] " + label + ": out; the location banner shows.");
+                out = true;
+            }
+            if (!out){
+                pbf_wait(context, 300ms);
+            }
         }
+        if (!out){
+            stream.log("[Route] " + label + ": no location banner; still inside, walking on.");
+        }
+        //  Let the fade-in finish.
+        pbf_wait(context, 1500ms);
     }
     if (!out){
         OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,

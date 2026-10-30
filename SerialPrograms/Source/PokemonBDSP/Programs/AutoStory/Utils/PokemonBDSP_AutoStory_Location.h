@@ -26,6 +26,8 @@ std::string normalize_location_name(const std::string& text);
 //  few seconds after the player enters it), read by OCR and normalized;
 //  empty when no banner shows.
 std::string read_location_banner(const ImageViewRGB32& screen);
+//  Whether the location banner's white box shows, without reading it.
+bool location_banner_showing(const ImageViewRGB32& screen);
 
 //  The map named at the top left of the save screen's card ("Sandgem Town",
 //  "Route 202"), read by OCR and normalized; empty if nothing reads.

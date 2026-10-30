@@ -58,9 +58,13 @@ std::string normalize_location_name(const std::string& text){
     return out;
 }
 
-std::string read_location_banner(const ImageViewRGB32& screen){
+bool location_banner_showing(const ImageViewRGB32& screen){
     const ImageStats white = image_stats(extract_box_reference(screen, LOCATION_BANNER_WHITE));
-    if (white.average.sum() < 690 || white.stddev.sum() > 30){
+    return white.average.sum() >= 690 && white.stddev.sum() <= 30;
+}
+
+std::string read_location_banner(const ImageViewRGB32& screen){
+    if (!location_banner_showing(screen)){
         return "";
     }
     return normalize_location_name(OCR::tesseract_ocr_read(Language::English,
