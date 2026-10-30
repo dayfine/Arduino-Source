@@ -63,6 +63,19 @@ struct MapConnection{
     std::string map;
 };
 
+//  Elevations with a meaning of their own in the game's rules
+//  (IsElevationMismatchAt() and ObjectEventUpdateElevation() in
+//  pokefirered).
+//  Stairs and ladders: they join every elevation.
+constexpr uint8_t ELEVATION_ANY = 0;
+//  Bridges and the like: they don't change the player's elevation.
+constexpr uint8_t ELEVATION_IGNORED = 15;
+//  Ordinary ground: most walkable tiles in the decompilation's map layouts.
+//  Surf starts and ends here (CanStopSurfing(), and the Surf field move
+//  checks the player's elevation is 3).
+constexpr uint8_t ELEVATION_GROUND = 3;
+
+
 //  What a tile is, for walking. The map files write each as one character,
 //  shown here.
 enum class Tile : uint8_t{
@@ -156,7 +169,7 @@ void hide_objects(MapData& map, const std::set<std::string>& flags);
 //  What decides where the player's next step can go.
 struct PlayerState{
     TilePos position;
-    uint8_t elevation = 3;
+    uint8_t elevation = ELEVATION_GROUND;
     bool surfing = false;
 };
 

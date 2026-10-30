@@ -13,13 +13,6 @@ namespace NintendoSwitch{
 namespace PokemonFRLG{
 
 
-//  Elevation rules of the game (IsElevationMismatchAt() and
-//  ObjectEventUpdateElevation()).
-constexpr uint8_t ELEVATION_ANY = 0;        //  joins elevations
-constexpr uint8_t ELEVATION_IGNORED = 15;   //  doesn't take part
-constexpr uint8_t ELEVATION_GROUND = 3;     //  where Surf starts and ends
-
-
 std::optional<Tile> tile_from_char(char c){
     switch (c){
     case '#': return Tile::WALL;
