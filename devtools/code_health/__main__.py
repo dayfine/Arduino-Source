@@ -4,6 +4,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+from . import layering
 from .classes import measure_classes
 from .git_files import changed_files, default_base, read_revision
 from .metrics import measure
@@ -22,8 +23,11 @@ def run(root, base_ref=None):
     failures, notes = [], []
     advisory = 0
     for current, original in changes:
-        metrics = analyze(current, (root / current).read_text(encoding='utf-8-sig'))
-        previous = analyze(current, read_revision(root, base_ref, original)) if original else []
+        source = (root / current).read_text(encoding='utf-8-sig')
+        previous_source = read_revision(root, base_ref, original) if original else None
+        metrics = analyze(current, source)
+        previous = analyze(current, previous_source) if original else []
+        failures.extend(layering.check(current, source, previous_source))
         failures.extend(evaluate(metrics, previous))
         notes.extend(advisories(metrics, previous))
         advisory += sum(m.check == 'file_lines' and 500 < m.value <= 1000 for m in metrics)

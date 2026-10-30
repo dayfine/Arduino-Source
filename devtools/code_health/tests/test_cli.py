@@ -146,5 +146,20 @@ class CliTests(unittest.TestCase):
         self.assertIn('std::function', result.stderr)
 
 
+    def test_shared_code_may_not_add_game_includes(self):
+        shared = self.root / 'SerialPrograms/Source/CommonTools/Tool.cpp'
+        shared.parent.mkdir(parents=True)
+        shared.write_text('#include "Pokemon/Pokemon_Strings.h"\n')
+        self.commit()
+        shared.write_text('#include "Pokemon/Pokemon_Strings.h"\n#include "NintendoSwitch/X.h"\n')
+        self.git('add', '.')
+        self.assertEqual(0, self.cli().returncode)
+        shared.write_text('#include "VideoGames/PokemonSV/PokemonSV_Settings.h"\n')
+        self.git('add', '.')
+        result = self.cli()
+        self.assertEqual(1, result.returncode, result.stderr)
+        self.assertIn('Tool.cpp:1: layering', result.stderr)
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -56,6 +56,16 @@ functions. libclang would need a compilation database with Qt include paths
 to parse these headers; the scan only has to tell access sections, member
 functions and data apart. Classes split across `#if` branches are skipped.
 
+## Layering
+
+Files under `Common/`, `SerialPrograms/Source/CommonFramework/` and
+`SerialPrograms/Source/CommonTools/` may not add an `#include` of a game
+module: `Pokemon/`, `PokemonBDSP/` or `VideoGames/` under
+`SerialPrograms/Source`. Consoles, controllers and frameworks (including
+`NintendoSwitch/`) are platform modules games build on, not games; `config.py`
+lists both groups and a test fails when a new top-level directory is in neither.
+Includes already present at the base are not reported.
+
 ## Build and native C++ tests in one command
 
 The existing `.github/workflows/cpp-ci-serial-programs-base.yml` already runs

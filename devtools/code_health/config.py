@@ -15,3 +15,15 @@ HINTS = {
     'single_method_interface': 'prefer a callable (MoveOnlyFunction / std::function) '
                                'over a single-method interface',
 }
+
+# Layering: shared code may not include game modules. Directory names are relative to
+# SOURCE_ROOT, which is also the include root; Common/ lives at the repository root.
+SOURCE_ROOT = 'SerialPrograms/Source/'
+SHARED_DIRS = ('Common/', SOURCE_ROOT + 'CommonFramework/', SOURCE_ROOT + 'CommonTools/')
+# Game-specific programs, inference and data.
+GAME_MODULES = ('Pokemon', 'PokemonBDSP', 'VideoGames')
+# Frameworks, consoles, controllers and tools that games build on. NintendoSwitch is
+# the console layer; shared code including it is not a game dependency.
+PLATFORM_MODULES = ('CommandLine', 'CommonFramework', 'CommonTools', 'ComputerPrograms',
+                    'ControllerInput', 'Controllers', 'GameConsole', 'Integrations',
+                    'Kernels', 'ML', 'NintendoSwitch', 'Tests')
