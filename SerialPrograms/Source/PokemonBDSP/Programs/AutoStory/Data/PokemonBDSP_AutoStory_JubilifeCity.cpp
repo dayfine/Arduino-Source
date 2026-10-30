@@ -76,7 +76,7 @@ const TileGrid& grid(){
         R"(########.#.#.#.#..........#########.......#....#...#########.###)",  //  43
         R"(#########################################........###############)",  //  44
         R"(########################################..........##############)",  //  45
-        R"(################################################################)",  //  46
+        R"(########################################DDDDDDDDDD##############)",  //  46
         R"(################################################################)",  //  47
     });
     return grid;
@@ -84,6 +84,9 @@ const TileGrid& grid(){
 
 //  The top of the stairs from Route 202, where Dawn's scene leaves us: the
 //  bottom of the main road (columns 43..46), above the steps at row 46.
+//  The steps are the way out to Route 202, so row 46 under the open road is
+//  a door, not a wall: r136a planned "south 1 (to wall)" from here and
+//  walked out onto Route 202.
 const std::vector<TilePos>& after_dawn(){
     static const std::vector<TilePos> tiles{{44, 44}, {45, 44}, {46, 44}, {44, 45}, {45, 45}, {46, 45}};
     return tiles;
