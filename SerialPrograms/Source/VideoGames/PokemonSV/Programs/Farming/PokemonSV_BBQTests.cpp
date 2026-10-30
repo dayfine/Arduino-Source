@@ -205,7 +205,7 @@ public:
         }
         return {std::move(doable), std::nullopt};
     }
-    virtual bool do_quest(BBQuests quest, uint8_t&) override{
+    virtual bool do_quest(BBQuests quest, uint8_t&, std::vector<BBQuests>& panel_after) override{
         events.push_back("do");
         attempted_quests.push_back(quest);
         const bool success = !never_completes.contains(quest)
@@ -218,6 +218,7 @@ public:
                 }
             }
         }
+        panel_after = panel;
         return success;
     }
     virtual std::optional<std::vector<BBQuests>> reroll_quest(BBQuests quest) override{
@@ -456,13 +457,13 @@ static void add_tests_BBQFarmerRounds(UnitTestDatabase& database){
             .reuse_rerolled_panel = true,
             .expected_completed = 3,
             .expected_attempted = {BBQuests::catch_fighting, BBQuests::travel_500, BBQuests::make_tm, BBQuests::photo_savanna},
-            .expected_reads = 3,
-            .expected = "read process do reroll end process process do completed read do completed read do completed end",
+            .expected_reads = 2,
+            .expected = "read process do reroll end process process do completed do completed read do completed end",
         },
         {
             // As above, but neither reroll's read is reusable. Only the
             // first dispatch skips a read: 2 reads before the next attempt
-            // instead of 3.
+            // instead of 3. make-tm starts from travel-500's read.
             .name = "failed reroll then table reroll without reusable reads",
             .num_quests = 1,
             .panel = {BBQuests::catch_fighting, BBQuests::make_tm, BBQuests::photo_savanna},
@@ -472,8 +473,8 @@ static void add_tests_BBQFarmerRounds(UnitTestDatabase& database){
             .table_rerolls = {BBQuests::pickup_10},
             .expected_completed = 3,
             .expected_attempted = {BBQuests::catch_fighting, BBQuests::travel_500, BBQuests::make_tm, BBQuests::photo_savanna},
-            .expected_reads = 5,
-            .expected = "read process do reroll end read process read process do completed read do completed read do completed end",
+            .expected_reads = 4,
+            .expected = "read process do reroll end read process read process do completed do completed read do completed end",
         },
         {
             // The save resets the game, so the reroll's read is not reused.
@@ -591,8 +592,9 @@ static void add_tests_BBQFarmerRounds(UnitTestDatabase& database){
         },
         {
             // sneak-up fails, then leaves the panel along with make-tm. Round 2
-            // reads a full panel without it, and its replacement for
-            // photo-canyon brings it back. Round 3 attempts it again.
+            // plans round 2 from a full panel without it (make-tm's read, no
+            // round actions), and its replacement for photo-canyon brings it
+            // back. Round 3 attempts it again.
             .name = "failed quest that leaves a full panel is attempted again",
             .num_quests = 5,
             .panel = {BBQuests::sneak_up, BBQuests::make_tm, BBQuests::pickup_10, BBQuests::catch_flying},
@@ -601,8 +603,8 @@ static void add_tests_BBQFarmerRounds(UnitTestDatabase& database){
             .new_quests = {BBQuests::auto_10, BBQuests::photo_canyon, BBQuests::sneak_up},
             .expected_completed = 5,
             .expected =
-                "read process do read do completed end "
-                "read process do completed read do completed end "
+                "read process do read do completed "
+                "process do completed read do completed end "
                 "read process do completed read do completed end",
         },
         {
@@ -616,8 +618,8 @@ static void add_tests_BBQFarmerRounds(UnitTestDatabase& database){
             .new_quests = {BBQuests::auto_10, BBQuests::photo_canyon, BBQuests::sneak_up},
             .expected_completed = 4,
             .expected =
-                "read process do read do completed end "
-                "read process do completed read do completed end "
+                "read process do read do completed "
+                "process do completed read do completed end "
                 "read process do completed end",
         },
         {
@@ -654,6 +656,64 @@ static void add_tests_BBQFarmerRounds(UnitTestDatabase& database){
             .out_of_retries = BBQOption::OutOfRetries::Stop,
             .expected_completed = 0,
             .expected = "read process do",
+        },
+        {
+            // make-tm ends round 1 back at Central Plaza: its read plans
+            // round 2 with no round actions between it and travel-500.
+            .name = "no-trip quests chain with no round actions between",
+            .num_quests = 5,
+            .panel = {BBQuests::auto_10, BBQuests::sneak_up, BBQuests::make_tm},
+            .new_quests = {BBQuests::travel_500, BBQuests::photo_canyon, BBQuests::photo_coastal, BBQuests::photo_polar},
+            .expected_completed = 6,
+            .expected_attempted = {
+                BBQuests::auto_10, BBQuests::sneak_up, BBQuests::make_tm,
+                BBQuests::travel_500, BBQuests::photo_canyon, BBQuests::photo_coastal,
+            },
+            .expected_reads = 5,
+            .expected =
+                "read process do completed read do completed read do completed "
+                "process do completed read do completed read do completed end",
+        },
+        {
+            // make-tm, travel-500 and photo-canyon on one board: only
+            // travel-500 starts from make-tm's read. The trip quest reads
+            // the panel and ends the round as usual.
+            .name = "no-trip then trip quest keeps the trip's usual steps",
+            .num_quests = 3,
+            .panel = {BBQuests::make_tm, BBQuests::travel_500, BBQuests::photo_canyon},
+            .new_quests = {BBQuests::photo_coastal, BBQuests::photo_polar, BBQuests::photo_savanna},
+            .expected_completed = 3,
+            .expected_reads = 2,
+            .expected = "read process do completed do completed read do completed end",
+        },
+        {
+            .name = "failed no-trip quest ends the round as usual",
+            .num_quests = 3,
+            .panel = {BBQuests::auto_10, BBQuests::sneak_up, BBQuests::make_tm},
+            .outcomes = {true, true, false},
+            .new_quests = {BBQuests::travel_500, BBQuests::photo_canyon, BBQuests::photo_coastal, BBQuests::photo_polar},
+            .expected_completed = 4,
+            .expected =
+                "read process do completed read do completed read do end "
+                "read process do completed read do completed end",
+        },
+        {
+            .name = "no-trip quest does not chain past a save",
+            .num_quests = 6,
+            .save_num_quests = 3,
+            .panel = {BBQuests::auto_10, BBQuests::sneak_up, BBQuests::make_tm},
+            .new_quests = {BBQuests::travel_500, BBQuests::photo_canyon, BBQuests::photo_coastal, BBQuests::photo_polar},
+            .expected_completed = 6,
+            .expected =
+                "read process do completed read do completed read do completed end(save) "
+                "read process do completed read do completed read do completed end(save)",
+        },
+        {
+            .name = "no-trip quest that reaches the goal ends the round",
+            .num_quests = 3,
+            .panel = {BBQuests::auto_10, BBQuests::sneak_up, BBQuests::make_tm},
+            .expected_completed = 3,
+            .expected = "read process do completed read do completed read do completed end",
         },
     };
     for (const BBQRoundsScenario& scenario : scenarios){

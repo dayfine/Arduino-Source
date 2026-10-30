@@ -463,7 +463,8 @@ bool process_and_do_quest(
     ConsoleHandle& console, ProControllerContext& context,
     BBQOption& BBQ_OPTIONS,
     BBQuests current_quest,
-    uint8_t& eggs_hatched
+    uint8_t& eggs_hatched,
+    std::vector<BBQuests>* panel_after
 ){
     bool quest_completed = false;
     int quest_attempts = 0;
@@ -570,6 +571,9 @@ bool process_and_do_quest(
         //Validate quest was completed by checking list
         console.log("Reading quest panel after attempt.");
         std::vector<BBQuests> quest_list = read_quests(env.program_info(), console, context, BBQ_OPTIONS);
+        if (panel_after){
+            *panel_after = quest_list;
+        }
         if (std::find(quest_list.begin(), quest_list.end(), current_quest) != quest_list.end()){
             console.log("Current quest exists on list. Quest did not complete.");
             quest_attempts++;

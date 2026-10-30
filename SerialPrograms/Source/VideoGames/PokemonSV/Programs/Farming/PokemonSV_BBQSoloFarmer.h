@@ -43,8 +43,9 @@ public:
 
     // Attempt one quest that is on the panel, after process_quest_list()
     // chose it. Returns true if it is no longer on the panel afterwards.
-    // Increments `eggs_hatched` when the quest hatches eggs.
-    virtual bool do_quest(BBQuests quest, uint8_t& eggs_hatched) = 0;
+    // Increments `eggs_hatched` when the quest hatches eggs. Sets
+    // `panel_after` to the quest panel read that checked the last attempt.
+    virtual bool do_quest(BBQuests quest, uint8_t& eggs_hatched, std::vector<BBQuests>& panel_after) = 0;
 
     // Reroll a quest that failed all its attempts, if it is still on the
     // panel. Spends BP. Returns the panel read to verify the reroll when
@@ -61,10 +62,16 @@ public:
     virtual void end_round(bool save) = 0;
 };
 
+// Whether a quest is done at Central Plaza with no flight out.
+bool bbq_quest_is_no_trip(BBQuests quest);
+
 // Run rounds of quests until NUM_QUESTS have been completed, or until
 // eggs run out when OUT_OF_EGGS is Stop, or until every doable quest on the
 // panel is one that already failed all its attempts, or until a quest fails
-// all its attempts when OUT_OF_RETRIES is Stop.
+// all its attempts when OUT_OF_RETRIES is Stop. No-trip quests (see
+// bbq_quest_is_no_trip()) are chained: the panel read that checked one is
+// reused for a no-trip quest next or for the next plan, without the round
+// actions between.
 // Throws UserSetupError if the exclusions leave no blue quest to do, or if
 // the panel shows nothing doable for many reads in a row.
 void run_bbq_rounds(Logger& logger, const BBQOption& options, BBQGameActions& game);
