@@ -53,6 +53,8 @@ file(GLOB CORE_LIBRARY_SOURCES
     ../Common/Cpp/Containers/CircularBuffer.h
     ../Common/Cpp/Containers/FixedLimitVector.h
     ../Common/Cpp/Containers/FixedLimitVector.tpp
+    ../Common/Cpp/Containers/GuardPageBuffer.cpp
+    ../Common/Cpp/Containers/GuardPageBuffer.h
     ../Common/Cpp/Containers/Pimpl.h
     ../Common/Cpp/Containers/Pimpl.tpp
     ../Common/Cpp/CpuId/CpuId.cpp
@@ -105,6 +107,7 @@ file(GLOB CORE_LIBRARY_SOURCES
     ../Common/Cpp/LifetimeSanitizer.cpp
     ../Common/Cpp/LifetimeSanitizer.h
     ../Common/Cpp/ListenerSet.h
+    ../Common/Cpp/ListenerSet.cpp
     ../Common/Cpp/Logging/AbstractLogger.h
     ../Common/Cpp/Logging/FileLogger.cpp
     ../Common/Cpp/Logging/FileLogger.h
@@ -402,6 +405,8 @@ file(GLOB LIBRARY_SOURCES
     ../Common/Cpp/StreamConnections/MockDevice.h
     ../Common/Cpp/TestRunners/ParallelUnitTestRunner.cpp
     ../Common/Cpp/TestRunners/ParallelUnitTestRunner.h
+    ../Common/Cpp/TestRunners/TestImageDistortionManager.cpp
+    ../Common/Cpp/TestRunners/TestImageDistortionManager.h
     ../Common/Cpp/TestRunners/UnitTest.h
     ../Common/Cpp/TestRunners/UnitTestDatabase.h
     ../Common/Cpp/ValueDebouncer.h
@@ -419,8 +424,6 @@ file(GLOB LIBRARY_SOURCES
     ../Common/Qt/GlobalThreadPoolsQt.cpp
     ../Common/Qt/GlobalThreadPoolsQt.h
     ../Common/Qt/NoWheelComboBox.h
-    ../Common/Qt/WallpaperWidget.cpp
-    ../Common/Qt/WallpaperWidget.h
     ../Common/Qt/Options/BatchWidget.cpp
     ../Common/Qt/Options/BatchWidget.h
     ../Common/Qt/Options/BooleanCheckBoxWidget.cpp
@@ -492,47 +495,52 @@ file(GLOB LIBRARY_SOURCES
     Source/CommonFramework/AudioPipeline/AudioFeed.h
     Source/CommonFramework/AudioPipeline/AudioInfo.cpp
     Source/CommonFramework/AudioPipeline/AudioInfo.h
-    Source/CommonFramework/AudioPipeline/AudioNormalization.h
+    Source/CommonFramework/AudioPipeline/AudioInfo_Tests.cpp
+    Source/CommonFramework/AudioPipeline/AudioInfo_Tests.h
     Source/CommonFramework/AudioPipeline/AudioOption.cpp
     Source/CommonFramework/AudioPipeline/AudioOption.h
     Source/CommonFramework/AudioPipeline/AudioPassthroughPair.h
     Source/CommonFramework/AudioPipeline/AudioPipelineOptions.h
     Source/CommonFramework/AudioPipeline/AudioSession.cpp
     Source/CommonFramework/AudioPipeline/AudioSession.h
-    Source/CommonFramework/AudioPipeline/AudioStream.cpp
-    Source/CommonFramework/AudioPipeline/AudioStream.h
+    Source/CommonFramework/AudioPipeline/AudioSourceDescriptor.cpp
+    Source/CommonFramework/AudioPipeline/AudioSourceDescriptor.h
+    Source/CommonFramework/AudioPipeline/Sources/AudioSource_Device.cpp
+    Source/CommonFramework/AudioPipeline/Sources/AudioSource_Device.h
+    Source/CommonFramework/AudioPipeline/Sources/AudioSource_File.cpp
+    Source/CommonFramework/AudioPipeline/Sources/AudioSource_File.h
+    Source/CommonFramework/AudioPipeline/Sources/AudioSource_Null.cpp
+    Source/CommonFramework/AudioPipeline/Sources/AudioSource_Null.h
+    Source/CommonFramework/AudioPipeline/AudioSource.h
     Source/CommonFramework/AudioPipeline/AudioTemplate.cpp
     Source/CommonFramework/AudioPipeline/AudioTemplate.h
     Source/CommonFramework/AudioPipeline/Backends/AudioPassthroughPairQt.cpp
     Source/CommonFramework/AudioPipeline/Backends/AudioPassthroughPairQt.h
     Source/CommonFramework/AudioPipeline/Backends/AudioPassthroughPairQtThread.cpp
     Source/CommonFramework/AudioPipeline/Backends/AudioPassthroughPairQtThread.h
-    Source/CommonFramework/AudioPipeline/ChannelMixer.cpp
-    Source/CommonFramework/AudioPipeline/ChannelMixer.h
     Source/CommonFramework/AudioPipeline/IO/AudioFileLoader.cpp
     Source/CommonFramework/AudioPipeline/IO/AudioFileLoader.h
+    Source/CommonFramework/AudioPipeline/IO/AudioFileLoader_Tests.cpp
+    Source/CommonFramework/AudioPipeline/IO/AudioFileLoader_Tests.h
     Source/CommonFramework/AudioPipeline/IO/AudioInputDevice.cpp
     Source/CommonFramework/AudioPipeline/IO/AudioInputDevice.h
     Source/CommonFramework/AudioPipeline/IO/AudioInputFile.cpp
     Source/CommonFramework/AudioPipeline/IO/AudioInputFile.h
-    Source/CommonFramework/AudioPipeline/IO/AudioSink.cpp
-    Source/CommonFramework/AudioPipeline/IO/AudioSink.h
-    Source/CommonFramework/AudioPipeline/IO/AudioSource.cpp
-    Source/CommonFramework/AudioPipeline/IO/AudioSource.h
+    Source/CommonFramework/AudioPipeline/IO/AudioOutputDevice.cpp
+    Source/CommonFramework/AudioPipeline/IO/AudioOutputDevice.h
     Source/CommonFramework/AudioPipeline/Spectrum/AudioSpectrumHolder.cpp
     Source/CommonFramework/AudioPipeline/Spectrum/AudioSpectrumHolder.h
+    Source/CommonFramework/AudioPipeline/SinkPipeline_Tests.cpp
+    Source/CommonFramework/AudioPipeline/SinkPipeline_Tests.h
     Source/CommonFramework/AudioPipeline/Spectrum/FFTStreamer.cpp
     Source/CommonFramework/AudioPipeline/Spectrum/FFTStreamer.h
+    Source/CommonFramework/AudioPipeline/Spectrum/FFTStreamer_Tests.cpp
     Source/CommonFramework/AudioPipeline/Spectrum/Spectrograph.cpp
     Source/CommonFramework/AudioPipeline/Spectrum/Spectrograph.h
     Source/CommonFramework/AudioPipeline/Tools/AudioFormatUtils.cpp
     Source/CommonFramework/AudioPipeline/Tools/AudioFormatUtils.h
-    Source/CommonFramework/AudioPipeline/Tools/AudioNormalization.h
-    Source/CommonFramework/AudioPipeline/Tools/TimeSampleBuffer.cpp
-    Source/CommonFramework/AudioPipeline/Tools/TimeSampleBuffer.h
-    Source/CommonFramework/AudioPipeline/Tools/TimeSampleBufferReader.cpp
-    Source/CommonFramework/AudioPipeline/Tools/TimeSampleBufferReader.h
-    Source/CommonFramework/AudioPipeline/Tools/TimeSampleWriter.h
+    Source/CommonFramework/AudioPipeline/Tools/ChannelMixer.cpp
+    Source/CommonFramework/AudioPipeline/Tools/ChannelMixer.h
     Source/CommonFramework/AudioPipeline/UI/AudioDisplayWidget.cpp
     Source/CommonFramework/AudioPipeline/UI/AudioDisplayWidget.h
     Source/CommonFramework/AudioPipeline/UI/AudioSelectorWidget.cpp
@@ -613,6 +621,8 @@ file(GLOB LIBRARY_SOURCES
     Source/CommonFramework/Options/NestedBoxDrawOption.h
     Source/CommonFramework/Options/QtWidget/LabelCellWidget.cpp
     Source/CommonFramework/Options/QtWidget/LabelCellWidget.h
+    Source/CommonFramework/Options/QtWidget/WallpaperWidget.cpp
+    Source/CommonFramework/Options/QtWidget/WallpaperWidget.h
     Source/CommonFramework/Options/ResolutionOption.cpp
     Source/CommonFramework/Options/ResolutionOption.h
     Source/CommonFramework/Options/ScreenshotFormatOption.h
@@ -743,18 +753,21 @@ file(GLOB LIBRARY_SOURCES
     Source/CommonFramework/VideoPipeline/VideoSession.h
     Source/CommonFramework/VideoPipeline/VideoSource.cpp
     Source/CommonFramework/VideoPipeline/VideoSource.h
-    Source/CommonFramework/VideoPipeline/VideoSourceDescriptor.cpp
     Source/CommonFramework/VideoPipeline/VideoSourceDescriptor.h
-    Source/CommonFramework/VideoPipeline/VideoSources/VideoSource_Camera.cpp
-    Source/CommonFramework/VideoPipeline/VideoSources/VideoSource_Camera.h
-    Source/CommonFramework/VideoPipeline/VideoSources/VideoSource_Null.cpp
-    Source/CommonFramework/VideoPipeline/VideoSources/VideoSource_Null.h
-    Source/CommonFramework/VideoPipeline/VideoSources/VideoSource_StillImage.cpp
-    Source/CommonFramework/VideoPipeline/VideoSources/VideoSource_StillImage.h
+    Source/CommonFramework/VideoPipeline/VideoSourceOption.cpp
+    Source/CommonFramework/VideoPipeline/VideoSourceOption.h
+    Source/CommonFramework/VideoPipeline/Sources/VideoSource_Camera.cpp
+    Source/CommonFramework/VideoPipeline/Sources/VideoSource_Camera.h
+    Source/CommonFramework/VideoPipeline/Sources/VideoSource_Null.cpp
+    Source/CommonFramework/VideoPipeline/Sources/VideoSource_Null.h
+    Source/CommonFramework/VideoPipeline/Sources/VideoSource_StillImage.cpp
+    Source/CommonFramework/VideoPipeline/Sources/VideoSource_StillImage.h
     Source/CommonFramework/Windows/ButtonDiagram.cpp
     Source/CommonFramework/Windows/ButtonDiagram.h
     Source/CommonFramework/Windows/DpiScaler.cpp
     Source/CommonFramework/Windows/DpiScaler.h
+    Source/CommonFramework/Windows/LabControl.cpp
+    Source/CommonFramework/Windows/LabControl.h
     Source/CommonFramework/Windows/MainWindow.cpp
     Source/CommonFramework/Windows/MainWindow.h
     Source/CommonFramework/Windows/WindowTracker.cpp
@@ -881,8 +894,8 @@ file(GLOB LIBRARY_SOURCES
     Source/CommonTools/VisualDetectors/ImageMatchDetector.h
     Source/ComputerPrograms/ComputerProgram.cpp
     Source/ComputerPrograms/ComputerProgram.h
-    Source/ComputerPrograms/UnitTestRunner.cpp
-    Source/ComputerPrograms/UnitTestRunner.h
+    Source/ComputerPrograms/ComputerPrograms_UnitTestRunner.cpp
+    Source/ComputerPrograms/ComputerPrograms_UnitTestRunner.h
     Source/ComputerPrograms/Framework/ComputerProgramSession.cpp
     Source/ComputerPrograms/Framework/ComputerProgramSession.h
     Source/ComputerPrograms/Framework/ComputerProgramWidget.cpp
@@ -1044,6 +1057,8 @@ file(GLOB LIBRARY_SOURCES
     Source/Kernels/AudioPipeline/Kernels_RawAudio2WorkingAudio.h
     Source/Kernels/AudioPipeline/Kernels_WorkingAudio2RawAudio.cpp
     Source/Kernels/AudioPipeline/Kernels_WorkingAudio2RawAudio.h
+    Source/Kernels/AudioPipeline/Kernels_WorkingAudio2WorkingAudio.cpp
+    Source/Kernels/AudioPipeline/Kernels_WorkingAudio2WorkingAudio.h
     Source/Kernels/AudioResampler/Kernels_AudioResampler.cpp
     Source/Kernels/AudioResampler/Kernels_AudioResampler.h
     Source/Kernels/AudioResampler/Kernels_AudioResampler_BlockKernel_Default.cpp
@@ -1057,10 +1072,6 @@ file(GLOB LIBRARY_SOURCES
     Source/Kernels/AudioResampler/Kernels_AudioResampler_Tests.h
     Source/Kernels/AudioResampler/Kernels_AudioResampler_WeightTable.cpp
     Source/Kernels/AudioResampler/Kernels_AudioResampler_WeightTable.h
-    Source/Kernels/AudioStreamConversion/AudioStreamConversion.cpp
-    Source/Kernels/AudioStreamConversion/AudioStreamConversion.h
-    Source/Kernels/AudioStreamConversion/AudioStreamConversion_Core_Default.cpp
-    Source/Kernels/AudioStreamConversion/AudioStreamConversion_Core_x86_SSE41.cpp
     Source/Kernels/AudioStreamConverter/Kernels_AudioStreamConverter.cpp
     Source/Kernels/AudioStreamConverter/Kernels_AudioStreamConverter.h
     Source/Kernels/AudioStreamConverter/Kernels_AudioStreamConverter_Kernels_ARM64_NEON.cpp
@@ -1137,6 +1148,8 @@ file(GLOB LIBRARY_SOURCES
     Source/Kernels/ImageFilters/RGB32_EuclideanDistance/Kernels_ImageFilter_RGB32_Euclidean.h
     Source/Kernels/ImageFilters/RGB32_EuclideanDistance/Kernels_ImageFilter_RGB32_Euclidean_ARM64_NEON.cpp
     Source/Kernels/ImageFilters/RGB32_EuclideanDistance/Kernels_ImageFilter_RGB32_Euclidean_Default.cpp
+    Source/Kernels/ImageFilters/RGB32_EuclideanDistance/Kernels_ImageFilter_RGB32_Euclidean_Tests.cpp
+    Source/Kernels/ImageFilters/RGB32_EuclideanDistance/Kernels_ImageFilter_RGB32_Euclidean_Tests.h
     Source/Kernels/ImageFilters/RGB32_EuclideanDistance/Kernels_ImageFilter_RGB32_Euclidean_x64_AVX2.cpp
     Source/Kernels/ImageFilters/RGB32_EuclideanDistance/Kernels_ImageFilter_RGB32_Euclidean_x64_AVX512.cpp
     Source/Kernels/ImageFilters/RGB32_EuclideanDistance/Kernels_ImageFilter_RGB32_Euclidean_x64_SSE42.cpp
@@ -1336,8 +1349,6 @@ file(GLOB LIBRARY_SOURCES
     Source/NintendoSwitch/Options/NintendoSwitch_StartInGripMenuOption.h
     Source/NintendoSwitch/Options/TurboMacroTable.cpp
     Source/NintendoSwitch/Options/TurboMacroTable.h
-    Source/NintendoSwitch/Options/UI/NintendoSwitch_FriendCodeListWidget.cpp
-    Source/NintendoSwitch/Options/UI/NintendoSwitch_FriendCodeListWidget.h
     Source/NintendoSwitch/Programs/DateManip/NintendoSwitch2_DateSkippers.cpp
     Source/NintendoSwitch/Programs/DateManip/NintendoSwitch_DateManip.cpp
     Source/NintendoSwitch/Programs/DateManip/NintendoSwitch_DateManip.h
@@ -1386,6 +1397,12 @@ file(GLOB LIBRARY_SOURCES
     Source/NintendoSwitch/Programs/NintendoSwitch_TurboButton.h
     Source/NintendoSwitch/Programs/NintendoSwitch_TurboMacro.cpp
     Source/NintendoSwitch/Programs/NintendoSwitch_TurboMacro.h
+    Source/NintendoSwitch/Programs/Typewriter/NintendoSwitch_Typewriter.cpp
+    Source/NintendoSwitch/Programs/Typewriter/NintendoSwitch_Typewriter.h
+    Source/NintendoSwitch/Programs/Typewriter/NintendoSwitch_Typewriter_Tests.cpp
+    Source/NintendoSwitch/Programs/Typewriter/NintendoSwitch_Typewriter_Tests.h
+    Source/NintendoSwitch/Programs/Typewriter/NintendoSwitch_TypewriterTextMapping.cpp
+    Source/NintendoSwitch/Programs/Typewriter/NintendoSwitch_TypewriterTextMapping.h
     Source/PanelLists.cpp
     Source/PanelLists.h
     Source/Pokemon/Inference/Pokemon_AbilityReader.cpp
@@ -1789,6 +1806,8 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonFRLG/Programs/TestPrograms/PokemonFRLG_SafariOptimalActionTest.h
     Source/VideoGames/PokemonFRLG/Programs/TestPrograms/PokemonFRLG_SoundListener.cpp
     Source/VideoGames/PokemonFRLG/Programs/TestPrograms/PokemonFRLG_SoundListener.h
+    Source/VideoGames/PokemonFRLG/Programs/TestPrograms/PokemonFRLG_TestPartyInference.cpp
+    Source/VideoGames/PokemonFRLG/Programs/TestPrograms/PokemonFRLG_TestPartyInference.h
     Source/VideoGames/PokemonFRLG/Resources/PokemonFRLG_PokemonSprites.cpp
     Source/VideoGames/PokemonFRLG/Resources/PokemonFRLG_PokemonSprites.h
     Source/VideoGames/PokemonHome/Inference/PokemonHome_AlphaDetector.cpp
@@ -2370,6 +2389,8 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonSV/Inference/PokemonSV_AuctionItemNameReader.h
     Source/VideoGames/PokemonSV/Inference/PokemonSV_BagDetector.cpp
     Source/VideoGames/PokemonSV/Inference/PokemonSV_BagDetector.h
+    Source/VideoGames/PokemonSV/Inference/PokemonSV_BlueberryPointsReader.cpp
+    Source/VideoGames/PokemonSV/Inference/PokemonSV_BlueberryPointsReader.h
     Source/VideoGames/PokemonSV/Inference/PokemonSV_BlueberryQuestDetector.cpp
     Source/VideoGames/PokemonSV/Inference/PokemonSV_BlueberryQuestDetector.h
     Source/VideoGames/PokemonSV/Inference/PokemonSV_BlueberryQuestReader.cpp
@@ -2425,6 +2446,8 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonSV/Options/PokemonSV_BattleMoveTable.h
     Source/VideoGames/PokemonSV/Options/PokemonSV_BBQOption.cpp
     Source/VideoGames/PokemonSV/Options/PokemonSV_BBQOption.h
+    Source/VideoGames/PokemonSV/Options/PokemonSV_BBQuests.cpp
+    Source/VideoGames/PokemonSV/Options/PokemonSV_BBQuests.h
     Source/VideoGames/PokemonSV/Options/PokemonSV_EggPowerSandwichOption.cpp
     Source/VideoGames/PokemonSV/Options/PokemonSV_EggPowerSandwichOption.h
     Source/VideoGames/PokemonSV/Options/PokemonSV_EncounterActionsTable.cpp
@@ -3088,6 +3111,9 @@ file(GLOB LIBRARY_SOURCES
     Source/StaticRegistrationQt.cpp
     Source/Tests/CommandLineTests.cpp
     Source/Tests/CommandLineTests.h
+    Source/Tests/GuardPageImage.h
+    Source/Tests/ImageUnitTest.cpp
+    Source/Tests/ImageUnitTest.h
     Source/Tests/TestUtils.cpp
     Source/Tests/TestUtils.h
     Source/VideoGames/ZeldaTotK/Programs/ZeldaTotK_BowItemDuper.cpp

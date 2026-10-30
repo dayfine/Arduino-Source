@@ -4,6 +4,7 @@
  *
  */
 
+#include <format>
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
 #include "CommonFramework/ImageTools/ImageBoxes.h"
 #include "CommonFramework/ImageTools/ImageStats.h"
@@ -14,26 +15,23 @@
 #include "CommonFramework/ProgramStats/StatsTracking.h"
 #include "CommonFramework/Notifications/ProgramNotifications.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
-#include "CommonFramework/VideoPipeline/VideoOverlay.h"
 #include "CommonTools/Async/InferenceRoutines.h"
 #include "CommonTools/Images/ImageFilter.h"
 #include "CommonTools/StartupChecks/VideoResolutionCheck.h"
-#include "CommonTools/VisualDetectors/BlackScreenDetector.h"
 #include "ML/Inference/ML_YOLOv5Detector.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_Superscalar.h"
 #include "NintendoSwitch/Inference/NintendoSwitch_ConsoleTypeDetector.h"
 #include "NintendoSwitch/Programs/NintendoSwitch_GameEntry.h"
 #include "Pokemon/Pokemon_Strings.h"
+#include "VideoGames/PokemonLA/Inference/Sounds/PokemonLA_ShinySoundDetector.h"
 #include "VideoGames/PokemonLZA/Inference/PokemonLZA_ButtonDetector.h"
 #include "VideoGames/PokemonLZA/Inference/PokemonLZA_HyperspaceCalorieDetector.h"
-#include "VideoGames/PokemonLA/Inference/Sounds/PokemonLA_ShinySoundDetector.h"
 #include "VideoGames/PokemonLZA/Programs/PokemonLZA_BasicNavigation.h"
 #include "VideoGames/PokemonLZA/Programs/PokemonLZA_GameEntry.h"
 #include "VideoGames/PokemonLZA/Programs/PokemonLZA_HyperspaceNavigation.h"
-#include "PokemonLZA_ShinyHunt_HyperspaceLegendary.h"
 
-#include <format>
+#include "PokemonLZA_ShinyHunt_HyperspaceLegendary.h"
 
 namespace PokemonAutomation {
 namespace NintendoSwitch {
@@ -50,8 +48,9 @@ ShinyHunt_HyperspaceLegendary_Descriptor::ShinyHunt_HyperspaceLegendary_Descript
         "Hyperspace Legendary",
         "Programs/PokemonLZA/ShinyHunt-HyperspaceLegendary.html",
         "Shiny hunt legendary " + STRING_POKEMON + " in Hyperspace.",
+        PanelQualityStanding::OFFICIAL,
         ProgramControllerClass::StandardController_NoRestrictions, FeedbackType::REQUIRED,
-        AllowCommandsWhenRunning::DISABLE_COMMANDS, {}
+        AllowCommandsWhenRunning::DISABLE_COMMANDS
     )
 {}
 
@@ -141,12 +140,12 @@ bool hunt_latias_alt(SingleSwitchProgramEnvironment& env,
     context.wait_for_all_requests();
 
     // Capture an image of the screen region that Latias should spawn in and visually assess whether it's shiny.
-    ImageViewRGB32 full_image = ImageViewRGB32(env.console.video().snapshot());
+    VideoSnapshot full_image = env.console.video().snapshot();
     ImagePixelBox latias_search_zone = ImagePixelBox(
-        static_cast<size_t>(full_image.width() * 0.4),
-        static_cast<size_t>(full_image.height() * 0.2),
-        static_cast<size_t>(full_image.width() * 0.6),
-        static_cast<size_t>(full_image.height() * 0.4)
+        static_cast<size_t>(full_image->width() * 0.4),
+        static_cast<size_t>(full_image->height() * 0.2),
+        static_cast<size_t>(full_image->width() * 0.6),
+        static_cast<size_t>(full_image->height() * 0.4)
     );
     ImageViewRGB32 cropped_image = extract_box_reference(full_image, latias_search_zone);
     ImageHSV32 cropped_hsv_image = ImageHSV32(cropped_image);

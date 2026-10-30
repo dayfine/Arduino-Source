@@ -8,7 +8,9 @@
 #define PokemonAutomation_Kernels_AudioResampler_H
 
 #include <cstddef>
+#include <memory>
 #include <vector>
+#include "Common/Cpp/Logging/AbstractLogger.h"
 #include "Common/Cpp/ListenerSet.h"
 #include "Common/Cpp/Containers/AlignedVector.h"
 #include "Kernels/AudioPipeline/Kernels_AudioPipeline.h"
@@ -31,10 +33,11 @@ namespace AudioResampler{
 //  All channels are operated on identically; the kernels read directly from
 //  the input buffer and write into the internal output buffer.
 //
-class AudioResampler : public AudioPipeline::WorkingAudioStreamListener{
+class AudioResampler : public AudioPipeline::WorkingAudioNode{
 public:
     ~AudioResampler();
     AudioResampler(
+        Logger& logger,
         size_t in_sample_rate,
         size_t out_sample_rate,
         size_t channels,
@@ -43,9 +46,6 @@ public:
         double beta = 9.0
     );
 
-    size_t out_sample_rate() const{
-        return m_out_rate;
-    }
     uint32_t taps() const{
         return m_taps;
     }
@@ -53,8 +53,15 @@ public:
         return m_block.sample_block;
     }
 
-    void add_listener(AudioPipeline::WorkingAudioStreamListener& listener);
-    void remove_listener(AudioPipeline::WorkingAudioStreamListener& listener);
+    virtual void add_listener(AudioPipeline::WorkingAudioStreamListener& listener) override;
+    virtual void remove_listener(AudioPipeline::WorkingAudioStreamListener& listener) override;
+
+    //  The resampler's weight table shifts the output time base past the
+    //  input time base by (taps - 1) / 2 input samples (its median-tap
+    //  alignment); in seconds, via the table.
+    virtual double time_shift() const override{
+        return m_table->time_shift();
+    }
 
     virtual void push_samples(size_t samples, size_t stride, const float* data) override;
 
@@ -78,15 +85,15 @@ private:
 
 
 private:
-    const size_t m_out_rate;
     const uint32_t m_taps;
 
     //  The dispatched block kernel.
     const BlockKernel m_block;
 
-    //  The weight table, built from the block's sizes; it extends its
-    //  allocations for the kernel's implied overshoots.
-    WeightTable m_table;
+    //  The weight table, shared from the process-wide resampler table
+    //  cache (see Kernels_AudioResampler.cpp); it extends its allocations
+    //  for the kernel's implied overshoots.
+    std::shared_ptr<const WeightTable> m_table;
 
     //  Input samples per extended period (m_table.period_in() times the
     //  period extension).

@@ -5,17 +5,15 @@
  *  Run Segment Anything Model (SAM) to segment objects on images
  */
 
-#include <QDir>
-#include <QDirIterator>
 #include <atomic>
 #include <format>
 #include <fstream>
 #include <mutex>
 #include <iostream>
-#include <QMessageBox>
 #include <onnxruntime_cxx_api.h>
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/imgproc.hpp>
+#include <QMessageBox>
 #include "3rdParty/ONNX/OnnxToolsPA.h"
 #include "Common/Cpp/Hardware/FloatingPointMode.h"
 #include "Common/Cpp/Exceptions.h"

@@ -6,13 +6,27 @@
 
 #include <iostream>
 #include <sstream>
+#include <QAudio>
 #include <QAudioFormat>
+#include "Kernels/AudioStreamConverter/Kernels_AudioStreamConverter.h"
 #include "AudioFormatUtils.h"
-#include "AudioNormalization.h"
 
 
 
 namespace PokemonAutomation{
+
+
+float convert_audio_volume_from_slider(double volume){
+    volume = std::max(volume, 0.0);
+    volume = std::min(volume, 1.0);
+    // The slider bar value is in the log scale because log scale matches human sound
+    // perception.
+    float linearVolume = QAudio::convertVolume(
+        (float)volume,
+        QAudio::LogarithmicVolumeScale, QAudio::LinearVolumeScale
+    );
+    return linearVolume;
+}
 
 
 std::string dump_audio_format(const QAudioFormat& format){
@@ -67,13 +81,19 @@ void convert_samples_to_float(const QAudioFormat& format, const char* data, size
         memcpy(out, data, len);
         break;
     case QAudioFormat::SampleFormat::Int16:
-        normalize_audio_le<int16_t>(out, reinterpret_cast<const int16_t*>(data), len/sizeof(int16_t));
+        Kernels::AudioStreamConverter::convert_from<int16_t>(
+            out, reinterpret_cast<const int16_t*>(data), len/sizeof(int16_t), 1.0f
+        );
         break;
     case QAudioFormat::SampleFormat::Int32:
-        normalize_audio_le<int32_t>(out, reinterpret_cast<const int32_t*>(data), len/sizeof(int32_t));
+        Kernels::AudioStreamConverter::convert_from<int32_t>(
+            out, reinterpret_cast<const int32_t*>(data), len/sizeof(int32_t), 1.0f
+        );
         break;
     case QAudioFormat::SampleFormat::UInt8:
-        normalize_audio_le<uint8_t>(out, reinterpret_cast<const uint8_t*>(data), len/sizeof(uint8_t));
+        Kernels::AudioStreamConverter::convert_from<uint8_t>(
+            out, reinterpret_cast<const uint8_t*>(data), len/sizeof(uint8_t), 1.0f
+        );
         break;
     default:
         std::cout << "Error: Unkwnon sample format in convert_samples_to_float()" << std::endl;
@@ -81,21 +101,6 @@ void convert_samples_to_float(const QAudioFormat& format, const char* data, size
 }
 
 
-
-float audio_sample_sum(const QAudioFormat& format, const char* data, size_t len){
-    const size_t frameBytes = format.bytesPerFrame();
-    const size_t numChannels = format.channelCount();
-    const size_t sampleBytes = frameBytes / numChannels;
-    const size_t numSamples = len / sampleBytes;
-    std::vector<float> buffer(numSamples);
-    convert_samples_to_float(format, data, len, buffer.data());
-
-    float sum = 0.0f;
-    for (float v: buffer){
-        sum += v;
-    }
-    return sum;
-}
 
 
 }

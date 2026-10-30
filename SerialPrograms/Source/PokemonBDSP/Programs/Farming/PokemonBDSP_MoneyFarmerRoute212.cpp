@@ -4,6 +4,7 @@
  *
  */
 
+#include "Common/Cpp/ImageResolution.h"
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
 #include "CommonFramework/Notifications/ProgramNotifications.h"
 #include "CommonFramework/ProgramStats/StatsTracking.h"
@@ -33,6 +34,7 @@ MoneyFarmerRoute212_Descriptor::MoneyFarmerRoute212_Descriptor()
         STRING_POKEMON + " BDSP", "Money Farmer (Route 212)",
         "Programs/PokemonBDSP/MoneyFarmerRoute212.html",
         "Farm money by using VS Seeker to rebattle the rich couple on Route 212.",
+        PanelQualityStanding::OFFICIAL,
         ProgramControllerClass::StandardController_RequiresPrecision,
         FeedbackType::REQUIRED,
         AllowCommandsWhenRunning::DISABLE_COMMANDS
@@ -338,7 +340,7 @@ void MoneyFarmerRoute212::program(SingleSwitchProgramEnvironment& env, ProContro
         context.wait_for_all_requests();
         stats.m_searches++;
 
-        QSize dimensions;
+        Resolution dimensions;
         std::vector<ImagePixelBox> bubbles;
         {
             env.console.overlay().add_log("Using Vs. Seeker", COLOR_WHITE);
@@ -366,7 +368,7 @@ void MoneyFarmerRoute212::program(SingleSwitchProgramEnvironment& env, ProContro
         bool man = false;
         bool woman = false;
         for (const ImagePixelBox& box : bubbles){
-            double x_coord = (double)box.min_x / dimensions.width();
+            double x_coord = (double)box.min_x / dimensions.width;
             env.log("Reaction at: " + std::to_string(x_coord), COLOR_BLUE);
             if (x_coord < 0.5){
                 man = true;

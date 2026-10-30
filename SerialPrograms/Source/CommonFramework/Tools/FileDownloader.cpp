@@ -13,9 +13,9 @@
 #include <QNetworkReply>
 #include <QObject>
 #include <QTimer>
-#include <QSaveFile>
-#include <QFileInfo>
-#include <QDir>
+#include <QSslError>
+#include "Common/Cpp/Filesystem/FileIO.h"
+#include "Common/Cpp/Filesystem/Filesystem.h"
 #include "Common/Cpp/Json/JsonValue.h"
 #include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "FileDownloader.h"
@@ -33,21 +33,31 @@ std::string download_file(Logger& logger, const std::string& url, std::chrono::s
     QByteArray downloaded_data;
     std::unique_ptr<QNetworkReply> reply;
     QEventLoop loop;
+    QList<QSslError> ssl_errors;
 
     QObject::connect(
         &network_access_manager, &QNetworkAccessManager::finished,
         &loop, [&downloaded_data, &loop](QNetworkReply* reply){
 //            cout << "QNetworkAccessManager::finished" << endl;
-            downloaded_data = reply->readAll();
+            //  Only read on success: reading from a reply whose connection
+            //  already failed logs a spurious "QIODevice::read ... device
+            //  not open" warning.
+            if (reply->error() == QNetworkReply::NoError){
+                downloaded_data = reply->readAll();
+            }
 //            reply->deleteLater();
             loop.exit();
         }
     );
     QObject::connect(
         &network_access_manager, &QNetworkAccessManager::sslErrors,
-        &loop, [&downloaded_data, &loop](QNetworkReply* reply){
+        &loop, [&ssl_errors, &loop](QNetworkReply* reply, const QList<QSslError>& errors){
 //            cout << "QNetworkAccessManager::sslErrors" << endl;
-            downloaded_data = reply->readAll();
+            //  Record the SSL errors and bail out; the handshake has already
+            //  failed, so don't read from the reply. Note: at this point the
+            //  reply is still marked as running, so this must be reported as
+            //  an SSL error (see below), not as a timeout.
+            ssl_errors = errors;
 //            reply->deleteLater();
             loop.exit();
         }
@@ -67,7 +77,9 @@ std::string download_file(Logger& logger, const std::string& url, std::chrono::s
             &overall_timer, &QTimer::timeout,
             &loop, [&loop]{ loop.exit(); }
         );
-        overall_timer.start((int)overall_timeout.count());
+        overall_timer.start(
+            (int)std::chrono::duration_cast<std::chrono::milliseconds>(overall_timeout).count()
+        );
     }
 
 #if 0
@@ -90,6 +102,21 @@ std::string download_file(Logger& logger, const std::string& url, std::chrono::s
     if (!reply){
         std::string str = "QNetworkReply is null.";
 //        logger.log(str, COLOR_RED);
+        throw_and_log<OperationFailedException>(logger, ErrorReportMode::NO_ERROR_REPORT, str);
+    }else if (!ssl_errors.isEmpty()){
+        //  The TLS handshake failed (missing or expired certificate,
+        //  untrusted root CA, MITM proxy, ...). This branch must come
+        //  before the isRunning() check below: when sslErrors() fires,
+        //  the reply is still marked as running, so without this check an
+        //  SSL failure would be misreported as a timeout.
+        reply->abort();
+        std::string str = "SSL error downloading " + url + ": ";
+        for (int i = 0; i < ssl_errors.size(); i++){
+            if (i != 0){
+                str += "; ";
+            }
+            str += ssl_errors.at(i).errorString().toStdString();
+        }
         throw_and_log<OperationFailedException>(logger, ErrorReportMode::NO_ERROR_REPORT, str);
     }else if (overall_timeout.count() > 0 && reply->isRunning()){
         //  The overall deadline elapsed while the request (typically the
@@ -124,15 +151,15 @@ void download_file_to_disk(
     QNetworkAccessManager network_access_manager;
     QEventLoop loop;
 
-    // ensure the directory exists
-    QString filePath = QString::fromStdString(file_path);
-    QFileInfo fileInfo(filePath);
-    QString dirPath = fileInfo.absolutePath();
-    QDir().mkpath(dirPath);
-    
-    // 1. Initialize QSaveFile
-    QSaveFile file(QString::fromStdString(file_path));
-    if (!file.open(QIODevice::WriteOnly)){
+    //  ensure the directory exists
+    const Filesystem::Path save_path(file_path);
+    Filesystem::create_directories(save_path.parent_path());
+
+    //  1. Write to a unique temporary file in the same directory, then
+    //     rename it onto the destination on success (atomic save).
+    const Filesystem::Path save_temp_path = Filesystem::unique_temp_path(save_path);
+    FileIO file(save_temp_path, FileMode::WRITE | FileMode::BINARY);
+    if (!file.is_open()){
         throw_and_log<OperationFailedException>(logger, ErrorReportMode::NO_ERROR_REPORT, 
             "Could not open save file: " + file_path);
     }
@@ -161,7 +188,8 @@ void download_file_to_disk(
 
     // 3. Stream chunks directly to the temporary file
     QObject::connect(reply, &QNetworkReply::readyRead, [&file, reply](){
-        file.write(reply->readAll());
+        QByteArray data = reply->readAll();
+        file.write(data.constData(), data.size());
     });
 
     // 4. Handle completion and errors
@@ -174,23 +202,28 @@ void download_file_to_disk(
 
     // // Final check for remaining data
     if (reply->bytesAvailable() > 0){
-        file.write(reply->readAll());
+        QByteArray data = reply->readAll();
+        file.write(data.constData(), data.size());
     }
+    file.close();
 
     // 5. Finalize the transaction
     if (reply->error() == QNetworkReply::NoError){
-        // This moves the temporary file to the final destination 'file_path'
-        if (!file.commit()){
+        //  This moves the temporary file to the final destination 'file_path'
+        std::error_code ec;
+        Filesystem::rename(save_temp_path, save_path, ec);
+        if (ec){
+            Filesystem::remove(save_temp_path);
             throw_and_log<OperationFailedException>(logger, ErrorReportMode::NO_ERROR_REPORT, 
                 "Failed to commit file to disk: " + file_path);
         }
     }else{
+        Filesystem::remove(save_temp_path);
         if (scope.cancelled()){
             logger.log("Download cancelled by user.");
             throw OperationCancelledException();
         }else{
             QString error_string = reply->errorString();
-            // QSaveFile automatically deletes the temp file if commit() isn't called
             throw_and_log<OperationFailedException>(logger, ErrorReportMode::NO_ERROR_REPORT, 
                 "Network Error: " + error_string.toStdString());
         }

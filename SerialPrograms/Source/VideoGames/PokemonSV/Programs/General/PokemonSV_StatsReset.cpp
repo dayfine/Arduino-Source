@@ -7,7 +7,6 @@
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
 #include "CommonFramework/Notifications/ProgramNotifications.h"
 #include "CommonFramework/ProgramStats/StatsTracking.h"
-#include "CommonTools/Options/LanguageOCROption.h"
 #include "CommonTools/Async/InferenceRoutines.h"
 #include "CommonTools/StartupChecks/VideoResolutionCheck.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
@@ -38,6 +37,7 @@ StatsReset_Descriptor::StatsReset_Descriptor()
         STRING_POKEMON + " SV", "Stats Reset",
         "Programs/PokemonSV/StatsReset.html",
         "Repeatedly catch static encounters until you get the stats you want.",
+        PanelQualityStanding::OFFICIAL,
         ProgramControllerClass::StandardController_NoRestrictions,
         FeedbackType::REQUIRED,
         AllowCommandsWhenRunning::DISABLE_COMMANDS

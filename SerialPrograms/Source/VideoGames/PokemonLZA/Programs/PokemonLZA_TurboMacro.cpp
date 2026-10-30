@@ -6,13 +6,13 @@
 
 
 #include "Common/Cpp/Exceptions.h"
-#include "CommonTools/Async/InferenceRoutines.h"
-#include "VideoGames/PokemonLA/Inference/Sounds/PokemonLA_ShinySoundDetector.h"
-#include "VideoGames/PokemonLZA/Options/PokemonLZA_ShinyDetectedAction.h"
-#include "NintendoSwitch/Programs/NintendoSwitch_GameEntry.h"
-#include "Pokemon/Pokemon_Strings.h"
 #include "CommonFramework/ProgramStats/StatsTracking.h"
 #include "CommonFramework/Notifications/ProgramNotifications.h"
+#include "CommonTools/Async/InferenceRoutines.h"
+#include "NintendoSwitch/Programs/NintendoSwitch_GameEntry.h"
+#include "Pokemon/Pokemon_Strings.h"
+#include "VideoGames/PokemonLA/Inference/Sounds/PokemonLA_ShinySoundDetector.h"
+#include "VideoGames/PokemonLZA/Options/PokemonLZA_ShinyDetectedAction.h"
 #include "PokemonLZA_TurboMacro.h"
 
 //#include <iostream>
@@ -31,6 +31,7 @@ LZA_TurboMacro_Descriptor::LZA_TurboMacro_Descriptor()
         "Turbo Macro",
         "Programs/NintendoSwitch/TurboMacro.html",
         "Create macros. Stops with specific trigger (e.g. shiny sound).",
+        PanelQualityStanding::OFFICIAL,
         ProgramControllerClass::StandardController_NoRestrictions,
         FeedbackType::NONE,
         AllowCommandsWhenRunning::DISABLE_COMMANDS
