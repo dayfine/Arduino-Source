@@ -282,6 +282,20 @@ std::vector<TilePos> walk_route(
                     replanned = true;
                     break;
                 }
+                //  A leg to the wall that ran out of time is not at its wall:
+                //  the open leg before it stopped short, and it ran along
+                //  another row (r127a went west along Sandgem's row 13 for row
+                //  14, and the next leg north walked into the lab). Out of tall
+                //  grass a stop reads, so walk on: a player still moving is
+                //  not where the plan has him.
+                if (!interrupted && result.stop == WalkStop::LIMIT && route_wall_readable(grid, planned.after)){
+                    const WalkResult check = walk_until(stream, context, x, y, 2000ms, leg_label + ": at the wall?");
+                    if (check.stop != WalkStop::BLOCKED){
+                        OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
+                            leg_label + ": ran out of time short of the wall, and walking on gets " +
+                            walk_stop_name(check.stop) + ": not where the plan has us.", stream);
+                    }
+                }
             }else{
                 //  The hold is timed for a player facing the way to go.
                 if (facing != leg.direction){

@@ -976,15 +976,7 @@ namespace PokemonAutomation {
                 story_door_front(MAP_SANDGEM_TOWN, SandgemTown::POKEMON_CENTER_DOOR), trainers, fight);
         }
 
-        // DIAGNOSTIC ONLY (the Mart lady checkpoint): 00.04's step 5.
-        void walk_route_202_to_jubilife(VideoStream& stream, ProControllerContext& context) {
-            const MapSet& maps = story_maps();
-            std::vector<TrainerSight> trainers = story_trainer_sights();
-            const RouteTrainerFight fight = [&](const std::string& name) { fight_route_trainer(stream, context, name); };
-            walk_route(stream, context, maps, story_save_spots(), story_at_jubilife_exit, trainers, fight, "To Jubilife");
-        }
-
-        void meet_dawn_in_jubilife(VideoStream& stream, ProControllerContext& context) {
+        static void meet_dawn_in_jubilife(VideoStream& stream, ProControllerContext& context) {
             // Jubilife's south edge is a wall with stairs in it, west of where the
             // route may leave us (r78 stood at its east end). Entering starts a
             // scene: Dawn walks over while we stand still. So walk north; if the

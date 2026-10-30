@@ -56,8 +56,16 @@ public:
     virtual std::optional<LitDoorway> lit_doorway() = 0;
 
     //  From the doors' row: lines up with the lit doorway on screen, across,
-    //  and faces it, without going in (line_up_with_lit_door()).
+    //  without going in (line_up_with_lit_door()).
     virtual Pokemon::Outcome line_up_with_door() = 0;
+
+    //  Whether a Pokemon Center's inside shows (pokemon_center_inside()).
+    virtual bool inside_pokemon_center() = 0;
+
+    //  Anywhere in Sandgem Town: east until a wall stops us, then north
+    //  until one does, which ends on the doors' row or above it, and never
+    //  walks into a door.
+    virtual Pokemon::Outcome east_then_north_in_sandgem() = 0;
 
     virtual bool dialogue_showing() = 0;
     virtual Pokemon::Outcome finish_dialogue() = 0;
@@ -86,12 +94,12 @@ bool center_doorway_at_front_row(const LitDoorway& doorway);
 
 
 //  The checkpoint's events, run against `game`, which must outlive it. It
-//  ends in front of the Center's door, facing it, not inside.
+//  ends in front of the Center's door, not inside.
 //  Events:
 //      1. confirm_on_route_202     the save screen reads Route 202
 //      2. walk_to_sandgem          the pose is on Sandgem Town
 //      3. walk_to_center_door      the Center's doorway at the front row
-//      4. at_center_door           the doorway straight ahead, a row up
+//      4. at_center_door           the doorway straight ahead, a row up, outside
 Pokemon::Checkpoint route202_to_sandgem_center_checkpoint(SandgemCenterActions& game);
 
 extern const char* const ROUTE202_TO_SANDGEM_CENTER_NAME;
@@ -122,13 +130,10 @@ public:
     //  box, then presses `next` once per line, 1.5 s apart, while it shows.
     virtual DialogueRead talk(Pokemon::Direction direction, Button next, const std::string& label) = 0;
 
-    //  The rest of 00.04, as Segment 00 walks it: from below the Center's
-    //  door to Route 202's save spot (without saving), north to Jubilife,
-    //  Dawn's scene, and 00.04's save.
+    //  As 00.04 walks it after the Potions: from below the Center's door to
+    //  Route 202's save spot, and the save there, which must read Route 202.
     virtual Pokemon::Outcome walk_to_route_202_save_spot() = 0;
-    virtual Pokemon::Outcome walk_to_jubilife() = 0;
-    virtual Pokemon::Outcome meet_dawn() = 0;
-    virtual Pokemon::Outcome save_in_jubilife() = 0;
+    virtual Pokemon::Outcome save_on_route_202() = 0;
 };
 
 //  West of Route 201's border sign, in world tiles of story_maps(): the
@@ -140,8 +145,8 @@ Pokemon::TilePos route201_row_3_east_end();
 
 //  From in front of Sandgem's Pokemon Center door: to Route 201's border
 //  sign and read it, talk to the Poke Mart lady, read the sign again, back
-//  to the front of the Center's door, then the rest of 00.04 to Dawn in
-//  Jubilife, and save there.
+//  to the front of the Center's door, then to Route 202's save spot, where
+//  the save it starts from stands, and save there, so it can be repeated.
 //  Events:
 //      1. at_center_door               the doorway straight ahead, a row up
 //      2. walk_to_route_201_sign       the pose is the tile west of the sign
@@ -152,9 +157,7 @@ Pokemon::TilePos route201_row_3_east_end();
 //      7. back_to_center_door          the Center's doorway at the front row
 //      8. at_center_door_again         the doorway straight ahead, a row up
 //      9. walk_to_route_202_save_spot  the walk ended there (Segment 00's)
-//     10. walk_to_jubilife             the walk ended at the exit (Segment 00's)
-//     11. meet_dawn                    Dawn's scene went through (Segment 00's)
-//  then 00.04's save, which must read Jubilife City.
+//  then the save, which must read Route 202.
 Pokemon::Checkpoint sandgem_mart_lady_checkpoint(MartLadyActions& game);
 
 extern const char* const SANDGEM_MART_LADY_NAME;

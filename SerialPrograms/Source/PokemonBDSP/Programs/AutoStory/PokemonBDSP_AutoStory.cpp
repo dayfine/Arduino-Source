@@ -163,9 +163,9 @@ BDSPAutoStory::BDSPAutoStory()
           LockMode::LOCK_WHILE_RUNNING, false)
     // DIAGNOSTIC ONLY: Remove before pushing to production.
     , DIAGNOSTIC_SANDGEM_MART_LADY(
-          "<b>Diagnostic only: Sandgem's Pokemon Center to the Poke Mart lady, then the rest of 00.04 (events)</b><br>"
+          "<b>Diagnostic only: Sandgem's Pokemon Center to the Poke Mart lady and back to Route 202 (events)</b><br>"
           "Start in front of Sandgem's Pokemon Center door. Reads Route 201's border sign, talks to the Poke Mart lady, reads the sign "
-          "again, goes back to the Center's door, then walks 00.04's rest to Dawn in Jubilife and saves there. "
+          "again, goes back to the Center's door, then to Route 202's save spot under the south ledge and saves there. "
           "With the Route 202 option too, runs that first, from its Route 202 save. Remove before pushing to production.",
           LockMode::LOCK_WHILE_RUNNING, false)
     , ENABLE_ADVANCED_MODE(
@@ -522,7 +522,7 @@ void BDSPAutoStory::program(
             }
             if (DIAGNOSTIC_SANDGEM_MART_LADY){
                 const std::string name = SANDGEM_MART_LADY_NAME;
-                env.log("[AutoStory] Objective: " + name + ". Ends: " + AutoStory_Checkpoint_0004().end_text() + ", saved.", COLOR_BLUE);
+                env.log("[AutoStory] Objective: " + name + ". Ends: at Route 202's save spot, saved.", COLOR_BLUE);
                 add_wrapped_log(env.console.overlay(), "Now: " + name, COLOR_WHITE);
                 //  The checkpoint before has pinned the clock already.
                 diagnostic_sandgem_mart_lady(env, context, !DIAGNOSTIC_ROUTE202_TO_SANDGEM_CENTER);

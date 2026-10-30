@@ -275,10 +275,13 @@ bool line_up_with_lit_door(
     const std::string& label
 ){
     route_status(stream, label + ": lining up with the door.");
-    bool stepped = false;
     for (size_t tries = 0; tries < 6; tries++){
         context.wait_for_all_requests();
         VideoSnapshot screen = stream.video().snapshot();
+        if (screen && pokemon_center_inside(*screen.frame)){
+            stream.log("[Route] " + label + ": a Pokemon Center's inside shows; not in front of the door.");
+            return false;
+        }
         const std::optional<LitDoorway> doorway = screen ? find_lit_doorway(*screen.frame) : std::nullopt;
         if (!doorway){
             stream.log("[Route] " + label + ": no lit doorway on screen.");
@@ -286,16 +289,11 @@ bool line_up_with_lit_door(
         }
         log_doorway(stream, label, *doorway);
         if (std::abs(doorway->tiles_across) <= 0.25){
-            //  A tap north turns a player who faces across without a step;
-            //  one already facing north (no step taken) would walk in.
-            if (stepped){
-                route_turn(stream, context, Direction::NORTH);
-                context.wait_for_all_requests();
-            }
             return true;
         }
         step_across(stream, context, doorway->tiles_across);
-        stepped = true;
+        //  Let a door that took us in show its inside before looking again.
+        pbf_wait(context, 1000ms);
     }
     stream.log("[Route] " + label + ": not lined up after 6 steps.");
     return false;

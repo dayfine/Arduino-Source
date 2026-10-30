@@ -60,8 +60,9 @@ std::vector<Pokemon::TilePos> tiles_short_of_door(
 
 //  For a player on the row below a building's door, its lit doorway on
 //  screen: steps across by the doorway's offset, looking again after each
-//  step, until it is straight ahead, then faces north. Does not go in.
-//  Returns false if no doorway shows, or after 6 steps.
+//  step, until it is straight ahead. Does not go in, and does not turn north
+//  to face it: a turn there walked us in (r127c). Returns false if no
+//  doorway shows, a Center's inside shows, or after 6 steps.
 bool line_up_with_lit_door(
     VideoStream& stream, ProControllerContext& context,
     const std::string& label

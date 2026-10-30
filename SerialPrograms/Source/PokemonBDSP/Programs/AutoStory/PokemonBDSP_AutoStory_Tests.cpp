@@ -534,6 +534,9 @@ public:
                 [&](const TilePos& pos){ return pos == route201_sign_west(); }, false},
             {"Route 201 sign to the Pokemon Center", {route201_sign_west()},
                 [&](const TilePos& pos){ return pos == below_sign; }, true},
+            //  The Center walk's re-anchor at the trees east of the Mart.
+            {"Trees east of the Mart to the Pokemon Center", {maps.to_world(MAP_SANDGEM_TOWN, SandgemTown::FRONT_ROW_EAST_END)},
+                [&](const TilePos& pos){ return pos == below_sign; }, true},
             //  Its re-anchor after a wild battle in the lady's grass.
             {"East end of the lady's row to the Route 201 sign", {route201_row_3_east_end()},
                 [&](const TilePos& pos){ return pos == route201_sign_west(); }, false},
@@ -903,13 +906,15 @@ public:
 //  game: where the player is, and what goes wrong on the way.
 class FakeSandgemCenter : public SandgemCenterActions{
 public:
-    enum class Where{ ROUTE_202, SANDGEM_ENTRY, SHORT_OF_DOOR, BELOW_SIGN, DOOR_FRONT };
+    enum class Where{ ROUTE_202, SANDGEM_ENTRY, SHORT_OF_DOOR, BELOW_SIGN, DOOR_FRONT, LOST, MART_ROW };
 
     std::string save_location = "Route 202";
     //  Walks to the Center that end three rows short (someone in the way).
     size_t short_walks = 0;
     //  Walks that a townsperson's talk stops, with the dialogue left open.
     size_t talking_walks = 0;
+    //  Walks to the Center that end lost in town (a wall leg short, r127a).
+    size_t lost_walks = 0;
     Where where = Where::ROUTE_202;
     bool dialogue = false;
     std::vector<std::string> trace;
@@ -933,6 +938,11 @@ public:
             return Pokemon::outcome_ok();
         }
         if (goal(below_sandgem_center_sign())){
+            if (lost_walks > 0){
+                lost_walks--;
+                where = Where::LOST;
+                return Pokemon::outcome_failed("walk_failed", "ran out of time short of the wall");
+            }
             at = {below_sandgem_center_sign()};
             where = Where::BELOW_SIGN;
             if (short_walks > 0){
@@ -957,6 +967,8 @@ public:
             return LitDoorway{.x = 0.3, .y = 0.14, .tiles_across = -3.0, .rows_up = 3.0};
         case Where::DOOR_FRONT:
             return LitDoorway{.x = 0.5, .y = 0.38, .tiles_across = 0.1, .rows_up = 1.0};
+        case Where::MART_ROW:
+            return LitDoorway{.x = 0.37, .y = 0.38, .tiles_across = -2.0, .rows_up = 1.0};
         default:
             return std::nullopt;
         }
@@ -967,6 +979,14 @@ public:
             return Pokemon::outcome_failed("not_lined_up", "no lit doorway on screen");
         }
         where = Where::DOOR_FRONT;
+        return Pokemon::outcome_ok();
+    }
+    virtual bool inside_pokemon_center() override{
+        return false;
+    }
+    virtual Pokemon::Outcome east_then_north_in_sandgem() override{
+        trace.push_back("east, then north");
+        where = Where::MART_ROW;
         return Pokemon::outcome_ok();
     }
     virtual bool dialogue_showing() override{
@@ -993,6 +1013,7 @@ public:
             std::string save_location;
             size_t short_walks;
             size_t talking_walks;
+            size_t lost_walks;
             bool completed;
             size_t failed_event;
             std::vector<std::string> trace;
@@ -1003,6 +1024,7 @@ public:
                 .save_location = "Route 202",
                 .short_walks = 0,
                 .talking_walks = 0,
+                .lost_walks = 0,
                 .completed = true,
                 .failed_event = 0,
                 .trace = {"read save screen", SOUTH, CENTER, "line up"},
@@ -1012,6 +1034,7 @@ public:
                 .save_location = "Sandgem Town",
                 .short_walks = 0,
                 .talking_walks = 0,
+                .lost_walks = 0,
                 .completed = false,
                 .failed_event = 1,
                 .trace = {"read save screen", "read save screen"},
@@ -1021,6 +1044,7 @@ public:
                 .save_location = "Route 202",
                 .short_walks = 1,
                 .talking_walks = 0,
+                .lost_walks = 0,
                 .completed = true,
                 .failed_event = 0,
                 .trace = {"read save screen", SOUTH, CENTER, CENTER, "line up"},
@@ -1030,15 +1054,27 @@ public:
                 .save_location = "Route 202",
                 .short_walks = 0,
                 .talking_walks = 1,
+                .lost_walks = 0,
                 .completed = true,
                 .failed_event = 0,
                 .trace = {"read save screen", SOUTH, "finish dialogue", "east, then south", CENTER, "line up"},
+            },
+            {
+                .name = "Lost on the way to the door",
+                .save_location = "Route 202",
+                .short_walks = 0,
+                .talking_walks = 0,
+                .lost_walks = 1,
+                .completed = true,
+                .failed_event = 0,
+                .trace = {"read save screen", SOUTH, CENTER, "east, then north", CENTER, "line up"},
             },
             {
                 .name = "Short of the door every time",
                 .save_location = "Route 202",
                 .short_walks = 5,
                 .talking_walks = 0,
+                .lost_walks = 0,
                 .completed = false,
                 .failed_event = 3,
                 .trace = {"read save screen", SOUTH, CENTER, CENTER, CENTER},
@@ -1049,6 +1085,7 @@ public:
             game.save_location = c.save_location;
             game.short_walks = c.short_walks;
             game.talking_walks = c.talking_walks;
+            game.lost_walks = c.lost_walks;
             Pokemon::Checkpoint checkpoint = route202_to_sandgem_center_checkpoint(game);
             const std::vector<std::string> problems = Pokemon::lint_checkpoint(checkpoint);
             if (!problems.empty()){
@@ -1100,6 +1137,8 @@ public:
         };
         const Case cases[] = {
             {.file = "PokemonBDSP/AutoStory/SandgemCenterInside-20261030-053555.png", .inside = true, .doorway = false},
+            //  r127c: walked in by the turn north at the door, facing north.
+            {.file = "PokemonBDSP/AutoStory/SandgemCenterInsideFacingNorth-r127c.png", .inside = true, .doorway = false},
             {.file = "PokemonBDSP/AutoStory/SandgemCenterBelowSign-20261030-053527.png", .inside = false, .doorway = true},
             {.file = "PokemonBDSP/AutoStory/SandgemMartDoorUpRight-20261030-023443.png", .inside = false, .doorway = true},
             {.file = "PokemonBDSP/AutoStory/SandgemMartDoorFarLeft-20261030-024648.png", .inside = false, .doorway = true},
@@ -1131,7 +1170,7 @@ public:
 //  The Poke Mart lady checkpoint against a scripted game.
 class FakeMartLady : public MartLadyActions{
 public:
-    enum class Where{ CENTER_FRONT, BELOW_SIGN, SHORT_OF_SIGN, SIGN_WEST, ROW_3, LADY, ROUTE_202, JUBILIFE, MET_DAWN };
+    enum class Where{ CENTER_FRONT, BELOW_SIGN, SHORT_OF_SIGN, SIGN_WEST, ROW_3, LADY, ROUTE_202 };
 
     //  Walks to the sign that end a tile short of it.
     size_t short_walks = 0;
@@ -1180,6 +1219,8 @@ public:
         where = Where::CENTER_FRONT;
         return Pokemon::outcome_ok();
     }
+    virtual bool inside_pokemon_center() override{ return false; }
+    virtual Pokemon::Outcome east_then_north_in_sandgem() override{ return Pokemon::outcome_ok(); }
     virtual bool dialogue_showing() override{ return false; }
     virtual Pokemon::Outcome finish_dialogue() override{ return Pokemon::outcome_ok(); }
     virtual Pokemon::Outcome walk_until_stopped(Direction direction, size_t, const std::string& label) override{
@@ -1210,14 +1251,8 @@ public:
     virtual Pokemon::Outcome walk_to_route_202_save_spot() override{
         return step("to Route 202", Where::CENTER_FRONT, Where::ROUTE_202);
     }
-    virtual Pokemon::Outcome walk_to_jubilife() override{
-        return step("to Jubilife", Where::ROUTE_202, Where::JUBILIFE);
-    }
-    virtual Pokemon::Outcome meet_dawn() override{
-        return step("meet Dawn", Where::JUBILIFE, Where::MET_DAWN);
-    }
-    virtual Pokemon::Outcome save_in_jubilife() override{
-        return step("save", Where::MET_DAWN, Where::MET_DAWN);
+    virtual Pokemon::Outcome save_on_route_202() override{
+        return step("save", Where::ROUTE_202, Where::ROUTE_202);
     }
 
 private:
@@ -1242,7 +1277,7 @@ public:
         const std::vector<std::string> SIGN = {"talk: Route 201 sign"};
         const std::vector<std::string> LADY = {"go: North to the trees", "go: West along the lady's row", "talk: Poke Mart lady"};
         const std::vector<std::string> BACK = {"walk: Back to the Route 201 sign", "talk: Route 201 sign",
-            "walk: To the Pokemon Center", "line up", "to Route 202", "to Jubilife", "meet Dawn", "save"};
+            "walk: To the Pokemon Center", "line up", "to Route 202", "save"};
         const auto join = [](std::initializer_list<std::vector<std::string>> parts){
             std::vector<std::string> all;
             for (const std::vector<std::string>& part : parts){

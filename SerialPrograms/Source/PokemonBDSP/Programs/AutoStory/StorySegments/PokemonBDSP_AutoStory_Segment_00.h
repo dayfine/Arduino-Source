@@ -23,15 +23,11 @@ void diagnostic_checkpoint_0004_after_catch(SingleSwitchProgramEnvironment& env,
     AutoStoryStats& stats);
 
 // DIAGNOSTIC ONLY: Remove before pushing to production.
-// 00.04's steps after the Potions, one at a time, for the event-model
-// diagnostic (PokemonBDSP_AutoStory_SandgemCenterEvents.h). Each fails with
+// 00.04's walk after the Potions, for the event-model diagnostic
+// (PokemonBDSP_AutoStory_SandgemCenterEvents.h): from below Sandgem's
+// Pokemon Center door to Route 202's save spot, without saving. Fails with
 // a screenshot as 00.04 does.
-//  From below Sandgem's Pokemon Center door: to Route 202's save spot, without saving.
 void walk_from_sandgem_center_to_route_202_save_spot(VideoStream& stream, ProControllerContext& context);
-//  From Route 202's save spot: north to Jubilife, fighting trainers who see us.
-void walk_route_202_to_jubilife(VideoStream& stream, ProControllerContext& context);
-//  Into Jubilife and through Dawn's scene.
-void meet_dawn_in_jubilife(VideoStream& stream, ProControllerContext& context);
 
 class AutoStory_Segment_00 : public AutoStory_Segment {
 public:
