@@ -4,7 +4,6 @@
  *
  */
 
-#include <opencv2/imgproc.hpp>
 #include "Common/Cpp/Color.h"
 #include "Common/Cpp/Filesystem/Filesystem.h"
 #include "CommonFramework/GlobalSettingsPanel.h"
@@ -16,8 +15,8 @@
 #include "CommonTools/OCR/OCR_NumberReader.h"
 #include "CommonTools/OCR/OCR_Routines.h"
 #include "Tests/TestUtils.h"
-#include "PokemonFRLG_TrainerIdReader.h"
 #include "VideoGames/PokemonFRLG/PokemonFRLG_Settings.h"
+#include "PokemonFRLG_TrainerIdReader.h"
 #include "PokemonFRLG_DigitReader.h"
 namespace PokemonAutomation {
 namespace NintendoSwitch {
