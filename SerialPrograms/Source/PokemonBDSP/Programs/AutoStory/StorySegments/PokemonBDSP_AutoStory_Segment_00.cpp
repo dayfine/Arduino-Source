@@ -1266,15 +1266,40 @@ namespace PokemonAutomation {
 
             step(1);
             const TilePos school = world(JubilifeCity::TRAINERS_SCHOOL_DOOR.next(Pokemon::Direction::SOUTH));
-            // Doors sit in open plaza, which no wall pins down: end anywhere
-            // within a tile of the door's column, and let the door search
-            // step sideways.
             auto by_door = [](const TilePos& front) {
                 return [front](const TilePos& pos) { return pos.y == front.y && pos.x >= front.x - 1 && pos.x <= front.x + 1; };
             };
-            at = walk_route(stream, context, maps, at, by_door(school),
-                trainers, in_the_way, "To the Trainers' School");
-            enter_door_north(stream, context, "Trainers' School door");
+            // To the Pokemon Center first, and heal: going in proves where we
+            // are, and coming out leaves us on its doorstep, the door row's
+            // front, which no wall pins. Measured on the console (2026-10-30):
+            // from the top of the steps, east stops at the house east of the
+            // road, and north from there stops in front of the Center.
+            walk_until(stream, context, 1, 0, 4000ms, "East to the house");
+            walk_until(stream, context, 0, 1, 4000ms, "North to the Pokemon Center");
+            heal_at_pokemon_center(stream, context, "Jubilife Pokemon Center");
+            // From the doorstep the School's door is ten one-tile steps west
+            // (measured). Nothing on that row stops a walk, so count the
+            // steps, and from the eighth on try north: a wall there is the
+            // School's front, the door takes us in.
+            route_turn(stream, context, Pokemon::Direction::WEST);
+            bool in_school = false;
+            for (size_t tiles = 1; tiles <= 12 && !in_school; tiles++) {
+                walk_for(stream, context, -1, 0, 160ms, "West to the School's door");
+                if (tiles < 8) {
+                    continue;
+                }
+                const WalkResult up = walk_until(stream, context, 0, 1, 1200ms, "Trainers' School door");
+                in_school = up.stop == WalkStop::TRANSITION;
+                if (!in_school) {
+                    walk_for(stream, context, 0, -1, 200ms, "Back to the doorsteps' row");
+                    route_turn(stream, context, Pokemon::Direction::WEST);
+                }
+            }
+            if (!in_school) {
+                OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
+                    "Trainers' School door: not found 8 to 12 tiles west of the Center's doorstep.", stream);
+            }
+            context.wait_for(1500ms);
             // Barry stands at the blackboard, a tile west of the door's column:
             // step west, walk north until he stops us, talk.
             route_turn(stream, context, Pokemon::Direction::WEST);

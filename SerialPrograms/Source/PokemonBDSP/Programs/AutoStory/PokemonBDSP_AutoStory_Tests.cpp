@@ -1420,6 +1420,118 @@ public:
 };
 
 
+//  00.05a and 00.05b against a scripted game: the door is `door_at` tiles
+//  west of the Center's doorstep.
+class FakeJubilife : public JubilifeActions{
+public:
+    size_t door_at = 10;
+    bool stuck_on_house = false;
+    size_t column = 0;          //  tiles west of the doorstep
+    bool on_doorstep = false;
+    bool in_school = false;
+    std::vector<std::string> trace;
+
+    virtual std::string save_screen_location() override{ return ""; }
+    virtual Pokemon::Outcome walk(std::vector<TilePos>&, const std::function<bool(const TilePos&)>&, const std::string& label) override{
+        return Pokemon::outcome_failed("no_plan", label);
+    }
+    virtual bool east_then_south_into_sandgem() override{ return false; }
+    virtual Pokemon::Outcome walk_in_town(std::vector<TilePos>&, const std::function<bool(const TilePos&)>&, const std::string& label) override{
+        return Pokemon::outcome_failed("no_plan", label);
+    }
+    virtual DialogueRead read_sign(Direction, const std::string&) override{ return {}; }
+    virtual std::optional<LitDoorway> lit_doorway() override{ return std::nullopt; }
+    virtual Pokemon::Outcome line_up_with_door() override{ return Pokemon::outcome_ok(); }
+    virtual bool inside_pokemon_center() override{ return false; }
+    virtual Pokemon::Outcome east_then_north_in_sandgem() override{ return Pokemon::outcome_ok(); }
+    virtual bool dialogue_showing() override{ return false; }
+    virtual Pokemon::Outcome finish_dialogue() override{ return Pokemon::outcome_ok(); }
+    virtual Pokemon::Outcome walk_until_stopped(Direction, size_t, const std::string& label) override{
+        trace.push_back("go: " + label);
+        return stuck_on_house && label == "East to the house"
+            ? Pokemon::outcome_failed("walk_failed", label)
+            : Pokemon::outcome_ok();
+    }
+    virtual DialogueRead talk(Direction, Button, const std::string&) override{ return {}; }
+    virtual Pokemon::Outcome step(Direction direction, const std::string& label) override{
+        trace.push_back("step: " + label);
+        (void)direction;
+        return Pokemon::outcome_ok();
+    }
+    virtual DialogueRead talk_walking(Direction, size_t, const std::string&) override{ return {}; }
+    virtual Pokemon::Outcome walk_to_route_202_save_spot() override{ return Pokemon::outcome_ok(); }
+    virtual Pokemon::Outcome save_on_route_202() override{ return Pokemon::outcome_ok(); }
+    virtual Pokemon::Outcome climb_the_steps() override{
+        trace.push_back("climb");
+        return Pokemon::outcome_ok();
+    }
+    virtual Pokemon::Outcome heal_at_center() override{
+        trace.push_back("heal");
+        on_doorstep = true;
+        column = 0;
+        return Pokemon::outcome_ok();
+    }
+    virtual Pokemon::Outcome tile(Direction direction, const std::string&) override{
+        if (direction == Direction::WEST){
+            column++;
+        }
+        return Pokemon::outcome_ok();
+    }
+    virtual bool through_door_north(const std::string&) override{
+        trace.push_back("north at " + std::to_string(column));
+        in_school = column == door_at;
+        return in_school;
+    }
+};
+
+class Test_JubilifeEvents : public UnitTest{
+public:
+    Test_JubilifeEvents()
+        : UnitTest("PokemonBDSP::AutoStory - Jubilife 00.05a/b events")
+    {}
+    virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
+        struct Case{ const char* name; size_t door_at; bool stuck; bool center_done; bool school_done; size_t tries; };
+        const Case cases[] = {
+            {"Door ten tiles west, as measured", 10, false, true, true, 3},
+            {"Door a tile further", 11, false, true, true, 4},
+            {"Door off the counted range", 14, false, true, false, 5},
+            {"The house never stops us", 10, true, false, false, 0},
+        };
+        for (const Case& c : cases){
+            FakeJubilife game;
+            game.door_at = c.door_at;
+            game.stuck_on_house = c.stuck;
+            for (size_t which = 0; which < 2; which++){
+                Pokemon::Checkpoint checkpoint = which == 0 ? jubilife_center_checkpoint(game) : jubilife_school_checkpoint(game);
+                const std::vector<std::string> problems = Pokemon::lint_checkpoint(checkpoint);
+                if (!problems.empty()){
+                    return std::string(c.name) + ": lint: " + problems.front();
+                }
+            }
+            Pokemon::EventLogger log = [&](const std::string& line){ logger.log(line); };
+            Pokemon::RunState center_state;
+            Pokemon::Checkpoint center = jubilife_center_checkpoint(game);
+            const bool center_done = Pokemon::run_checkpoint(center_state, center, log).completed;
+            bool school_done = false;
+            if (center_done){
+                Pokemon::RunState school_state;
+                Pokemon::Checkpoint school = jubilife_school_checkpoint(game);
+                school_done = Pokemon::run_checkpoint(school_state, school, log).completed;
+            }
+            size_t tries = 0;
+            for (const std::string& step : game.trace){
+                tries += step.rfind("north at", 0) == 0;
+            }
+            if (center_done != c.center_done || school_done != c.school_done || (school_done && tries != c.tries)){
+                return std::string(c.name) + ": center " + (center_done ? "done" : "failed") +
+                    ", school " + (school_done ? "done" : "failed") + ", " + std::to_string(tries) + " tries north.";
+            }
+        }
+        return true;
+    }
+};
+
+
 void add_tests_AutoStory(UnitTestDatabase& database){
     database.add<Test_IntroDecisions>();
     database.add<Test_TileGridParse>();
@@ -1432,6 +1544,7 @@ void add_tests_AutoStory(UnitTestDatabase& database){
     database.add<Test_SandgemCenterEvents>();
     database.add<Test_PokemonCenterInside>();
     database.add<Test_MartLadyEvents>();
+    database.add<Test_JubilifeEvents>();
 }
 
 

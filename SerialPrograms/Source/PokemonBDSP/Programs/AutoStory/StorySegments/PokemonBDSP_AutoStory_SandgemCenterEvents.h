@@ -200,6 +200,43 @@ extern const char* const SANDGEM_MART_LADY_NAME;
 void diagnostic_sandgem_mart_lady(SingleSwitchProgramEnvironment& env, ProControllerContext& context, bool pin_clock);
 
 
+//  The game steps of 00.05's first two checkpoints, in Jubilife.
+class JubilifeActions : public MartLadyActions{
+public:
+    //  From 00.05's save below the steps, against the wall east of them: a
+    //  tile west and up the steps onto the main road.
+    virtual Pokemon::Outcome climb_the_steps() = 0;
+    //  From in front of a Pokemon Center, its lit doorway on screen: heals
+    //  and walks out. Ends on the Center's doorstep.
+    virtual Pokemon::Outcome heal_at_center() = 0;
+    //  One tile `direction` from standing still, facing that way already.
+    virtual Pokemon::Outcome tile(Pokemon::Direction direction, const std::string& label) = 0;
+    //  Walks north; true if a door took us through.
+    virtual bool through_door_north(const std::string& label) = 0;
+};
+
+//  00.05a: from 00.05's save below Jubilife's steps to the Pokemon Center,
+//  healed, on its doorstep. Measured on the console (2026-10-30):
+//      1. up_the_steps          a tile west, then north up the steps
+//      2. east_to_the_house     east until the house east of the road stops us
+//      3. north_to_the_center   north until the Center stops us
+//      4. heal                  in, the nurse, out onto the doorstep
+//  No save: the save stays below the steps, so it can be repeated.
+Pokemon::Checkpoint jubilife_center_checkpoint(JubilifeActions& game);
+extern const char* const JUBILIFE_CENTER_NAME;
+
+//  00.05b: from the Center's doorstep into the Trainers' School. Nothing on
+//  the doorsteps' row stops a walk, so the School's door is counted: ten
+//  one-tile steps west (measured), trying north from the eighth on.
+//      1. into_the_school       through the School's door
+Pokemon::Checkpoint jubilife_school_checkpoint(JubilifeActions& game);
+extern const char* const JUBILIFE_SCHOOL_NAME;
+
+//  DIAGNOSTIC ONLY: Remove before pushing to production.
+void diagnostic_jubilife_center(SingleSwitchProgramEnvironment& env, ProControllerContext& context);
+void diagnostic_jubilife_school(SingleSwitchProgramEnvironment& env, ProControllerContext& context);
+
+
 
 }
 }

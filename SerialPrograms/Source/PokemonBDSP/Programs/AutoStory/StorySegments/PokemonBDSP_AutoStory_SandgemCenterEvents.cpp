@@ -494,10 +494,12 @@ Event talk_to_mart_lady(MartLadyActions& game){
 }
 
 
-//  The console's side of the Mart lady checkpoint.
-class ConsoleMartLadyActions : public MartLadyActions{
+//  The console's side of the Mart lady checkpoint; Jubilife's actions add
+//  to it.
+template <typename Base>
+class ConsoleMartLadyActionsT : public Base{
 public:
-    ConsoleMartLadyActions(SingleSwitchProgramEnvironment& env, ProControllerContext& context)
+    ConsoleMartLadyActionsT(SingleSwitchProgramEnvironment& env, ProControllerContext& context)
         : m_env(env)
         , m_context(context)
         , m_center(env.console, context)
@@ -641,6 +643,7 @@ private:
     ProControllerContext& m_context;
     ConsoleSandgemCenterActions m_center;
 };
+using ConsoleMartLadyActions = ConsoleMartLadyActionsT<MartLadyActions>;
 
 
 void save_end_screenshot(SingleSwitchProgramEnvironment& env, const std::string& name){
@@ -804,6 +807,123 @@ void diagnostic_sandgem_mart_lady(SingleSwitchProgramEnvironment& env, ProContro
     run_on_console(env, checkpoint, SANDGEM_MART_LADY_NAME);
 }
 
+
+
+
+// ---------------------------------------------------------------------------
+//  Jubilife: 00.05a and 00.05b
+// ---------------------------------------------------------------------------
+
+const char* const JUBILIFE_CENTER_NAME = "00.05a Jubilife: steps to the Pokemon Center (events)";
+const char* const JUBILIFE_SCHOOL_NAME = "00.05b Jubilife: Pokemon Center to the Trainers' School (events)";
+
+Checkpoint jubilife_center_checkpoint(JubilifeActions& game){
+    Checkpoint checkpoint;
+    checkpoint.id = "jubilife_center";
+    checkpoint.interrupts.push_back(dialogue_interrupt(game));
+    checkpoint.events.push_back(wrapped_step("up_the_steps",
+        "a tile west of the save, then up the steps onto the main road", "on_main_road",
+        [&game](RunState&){ return game.climb_the_steps(); }));
+    checkpoint.events.push_back(wrapped_step("east_to_the_house",
+        "east until the house east of the road stops us", "at_east_house",
+        [&game](RunState&){ return game.walk_until_stopped(Direction::EAST, 12, "East to the house"); }));
+    checkpoint.events.push_back(wrapped_step("north_to_the_center",
+        "north until the Pokemon Center stops us", "at_center",
+        [&game](RunState&){ return game.walk_until_stopped(Direction::NORTH, 12, "North to the Pokemon Center"); }));
+    checkpoint.events.push_back(wrapped_step("heal",
+        "in, the nurse heals, out onto the doorstep", "healed",
+        [&game](RunState&){ return game.heal_at_center(); }));
+    return checkpoint;
+}
+
+Checkpoint jubilife_school_checkpoint(JubilifeActions& game){
+    Checkpoint checkpoint;
+    checkpoint.id = "jubilife_school";
+    checkpoint.interrupts.push_back(dialogue_interrupt(game));
+    checkpoint.events.push_back(wrapped_step("into_the_school",
+        "west from the Center's doorstep, counting tiles, north through the School's door", "in_school",
+        [&game](RunState&){
+            //  The first press only turns us.
+            Outcome moved = game.step(Direction::WEST, "Turn west");
+            for (size_t tiles = 1; tiles <= 12 && moved.succeeded(); tiles++){
+                moved = game.tile(Direction::WEST, "West to the School's door");
+                if (!moved.succeeded() || tiles < 8){
+                    continue;
+                }
+                if (game.through_door_north("Trainers' School door")){
+                    return outcome_ok();
+                }
+                //  The School's front stopped us: back down, face west again.
+                moved = game.step(Direction::SOUTH, "Back to the doorsteps' row");
+                if (moved.succeeded()){
+                    moved = game.step(Direction::WEST, "Turn west");
+                }
+            }
+            return moved.succeeded()
+                ? outcome_failed("door_failed", "no door 8 to 12 tiles west of the Center's doorstep")
+                : moved;
+        }));
+    return checkpoint;
+}
+
+class ConsoleJubilifeActions : public ConsoleMartLadyActionsT<JubilifeActions>{
+public:
+    ConsoleJubilifeActions(SingleSwitchProgramEnvironment& env, ProControllerContext& context)
+        : ConsoleMartLadyActionsT<JubilifeActions>(env, context)
+        , m_stream(env.console)
+        , m_context(context)
+    {}
+    virtual Outcome climb_the_steps() override{
+        route_turn(m_stream, m_context, Direction::WEST);
+        walk_for(m_stream, m_context, -1, 0, 200ms, "To the steps");
+        const WalkResult up = walk_for(m_stream, m_context, 0, 1, 480ms, "Up the steps");
+        if (up.stop == WalkStop::DIALOG || up.stop == WalkStop::TRANSITION){
+            return outcome_failed("walk_failed", std::string("up the steps: ") + walk_stop_name(up.stop));
+        }
+        return outcome_ok();
+    }
+    virtual Outcome heal_at_center() override{
+        try{
+            heal_at_pokemon_center(m_stream, m_context, "Jubilife Pokemon Center");
+        }catch (OperationFailedException& e){
+            return outcome_failed("heal_failed", e.message());
+        }
+        return outcome_ok();
+    }
+    virtual Outcome tile(Direction direction, const std::string& label) override{
+        const double x = direction == Direction::EAST ? 1 : direction == Direction::WEST ? -1 : 0;
+        const double y = direction == Direction::NORTH ? 1 : direction == Direction::SOUTH ? -1 : 0;
+        const WalkResult walk = walk_for(m_stream, m_context, x, y, 160ms, label);
+        if (walk.stop == WalkStop::DIALOG || walk.stop == WalkStop::TRANSITION){
+            return outcome_failed("walk_failed", label + ": " + walk_stop_name(walk.stop));
+        }
+        return outcome_ok();
+    }
+    virtual bool through_door_north(const std::string& label) override{
+        const WalkResult up = walk_until(m_stream, m_context, 0, 1, 1200ms, label);
+        if (up.stop != WalkStop::TRANSITION){
+            return false;
+        }
+        m_context.wait_for(1500ms);
+        return true;
+    }
+private:
+    VideoStream& m_stream;
+    ProControllerContext& m_context;
+};
+
+void diagnostic_jubilife_center(SingleSwitchProgramEnvironment& env, ProControllerContext& context){
+    pin_clock(env, context);
+    ConsoleJubilifeActions game(env, context);
+    Checkpoint checkpoint = jubilife_center_checkpoint(game);
+    run_on_console(env, checkpoint, JUBILIFE_CENTER_NAME);
+}
+
+void diagnostic_jubilife_school(SingleSwitchProgramEnvironment& env, ProControllerContext& context){
+    ConsoleJubilifeActions game(env, context);
+    Checkpoint checkpoint = jubilife_school_checkpoint(game);
+    run_on_console(env, checkpoint, JUBILIFE_SCHOOL_NAME);
+}
 
 
 }

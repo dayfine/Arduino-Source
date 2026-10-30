@@ -168,6 +168,18 @@ BDSPAutoStory::BDSPAutoStory()
           "again, goes back to the Center's door, then to Route 202's save spot under the south ledge and saves there. "
           "With the Route 202 option too, runs that first, from its Route 202 save. Remove before pushing to production.",
           LockMode::LOCK_WHILE_RUNNING, false)
+    // DIAGNOSTIC ONLY: Remove before pushing to production.
+    , DIAGNOSTIC_JUBILIFE_CENTER(
+          "<b>Diagnostic only: 00.05a Jubilife, steps to the Pokemon Center (events)</b><br>"
+          "Start at 00.05's save below Jubilife's steps. Walks to the Pokemon Center and heals; no save. "
+          "Remove before pushing to production.",
+          LockMode::LOCK_WHILE_RUNNING, false)
+    // DIAGNOSTIC ONLY: Remove before pushing to production.
+    , DIAGNOSTIC_JUBILIFE_SCHOOL(
+          "<b>Diagnostic only: 00.05b Jubilife, Pokemon Center to the Trainers' School (events)</b><br>"
+          "Start on the Pokemon Center's doorstep (or after 00.05a). Walks into the Trainers' School; no save. "
+          "Remove before pushing to production.",
+          LockMode::LOCK_WHILE_RUNNING, false)
     , ENABLE_ADVANCED_MODE(
           "<b>Advanced mode:</b><br>"
           "Use checkpoints instead of segments.",
@@ -360,6 +372,8 @@ BDSPAutoStory::BDSPAutoStory()
     PA_ADD_OPTION(DIAGNOSTIC_FAKE_CHECKPOINT_SAVE);
     PA_ADD_OPTION(DIAGNOSTIC_ROUTE202_TO_SANDGEM_CENTER);
     PA_ADD_OPTION(DIAGNOSTIC_SANDGEM_MART_LADY);
+    PA_ADD_OPTION(DIAGNOSTIC_JUBILIFE_CENTER);
+    PA_ADD_OPTION(DIAGNOSTIC_JUBILIFE_SCHOOL);
     PA_ADD_OPTION(ENABLE_ADVANCED_MODE);
 
     // Segment UI
@@ -510,6 +524,28 @@ void BDSPAutoStory::program(
     };
     auto run_selected_range = [&](size_t attempt){
         if (attempt > 0) env.log("[Fake saves] Reloaded initial save; restarting the entire selected range from its start.");
+        // DIAGNOSTIC ONLY: Remove this branch before pushing to production.
+        if (DIAGNOSTIC_JUBILIFE_CENTER || DIAGNOSTIC_JUBILIFE_SCHOOL){
+            const std::pair<bool, const char*> parts[] = {
+                {DIAGNOSTIC_JUBILIFE_CENTER, JUBILIFE_CENTER_NAME},
+                {DIAGNOSTIC_JUBILIFE_SCHOOL, JUBILIFE_SCHOOL_NAME},
+            };
+            for (const auto& [on, name] : parts){
+                if (!on){
+                    continue;
+                }
+                env.log(std::string("[AutoStory] Objective: ") + name + ".", COLOR_BLUE);
+                add_wrapped_log(env.console.overlay(), std::string("Now: ") + name, COLOR_WHITE);
+                if (name == JUBILIFE_CENTER_NAME){
+                    diagnostic_jubilife_center(env, context);
+                }else{
+                    diagnostic_jubilife_school(env, context);
+                }
+                env.log(std::string("[AutoStory] Completed: ") + name + ".", COLOR_DARKGREEN);
+                add_wrapped_log(env.console.overlay(), std::string("Done: ") + name, COLOR_GREEN);
+            }
+            return;
+        }
         // DIAGNOSTIC ONLY: Remove this branch before pushing to production.
         if (DIAGNOSTIC_ROUTE202_TO_SANDGEM_CENTER || DIAGNOSTIC_SANDGEM_MART_LADY){
             if (DIAGNOSTIC_ROUTE202_TO_SANDGEM_CENTER){
