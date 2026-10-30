@@ -62,6 +62,10 @@ const OverworldInterrupts& default_overworld_interrupts();
 //  overworld is taken to be the one saying the last Repel wore off.
 OverworldInterrupts overworld_interrupts_with_repel(int max_repel_slot);
 
+//  From the overworld, uses the Max Repel in `slot` (from 0) of the Items
+//  pocket and returns to the overworld.
+void use_max_repel_from_bag(ConsoleHandle& console, ProControllerContext& context, int slot);
+
 
 //  Walks `route` from where it was planned. The player must be standing still
 //  on the overworld, not running and not on the bike. `facing` is the way the
