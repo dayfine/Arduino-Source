@@ -23,65 +23,29 @@ copies of `Resources`.
 A deployment can therefore use a `Resources` folder it doesn't own, without
 any code change.
 
-## Options
+## What works and what doesn't
 
-1. **One `Resources` folder shared by every deployment.** This is the smallest:
-   each build is about 30 MB. The risk is version skew. Resources change between
-   revisions (models, JSON, images), so an older build would silently read newer
-   files. Rejected.
-2. **Content-addressed snapshots.** Hash the `Resources` tree at deploy time and
-   store it once as `builds/resources/<hash>/`, which is never modified. Each
-   deployment's `Resources` is a symlink to its snapshot, so builds with
-   identical resources share one copy and a changed tree gets a new snapshot.
-   Pruning deletes snapshots that no deployment links to.
-3. **APFS clones (`cp -c`).** Each deployment is an independent copy, and
-   identical blocks share disk until written. There is no sharing risk and the
-   change is one flag. Drawbacks: macOS/APFS only, and `du` reports full sizes, so
-   savings show only in `df`.
-4. **Hard links (`rsync --link-dest`).** Unchanged files are shared and changed
-   files are copied. Writing a file in place would change it in every
-   deployment, and nothing guards against that.
-5. **Worktree build directories.** With ccache a full rebuild at a cached
-   revision takes about 40 s, so idle worktrees can drop `build/` entirely
-   instead of keeping 2 GB of objects each.
+Tried on 2026-10-29 with seven lab builds, each with its console-B copy, deployed into a scratch
+folder and measured with `df` (which counts shared blocks once). The seven builds hold two distinct
+`Resources` trees: BDSP's (1,467 files, 300 MB) and upstream's (686 files, 199 MB). A plain copy of
+all 14 deployments took 4,212 MB.
 
-## Trial (2026-10-29)
+| Technique | Works? | Disk for 14 | Why |
+|---|---|---|---|
+| Content-hash `Resources` snapshots, linked from each deployment | **Yes, in use** | 912 MB (500 MB of trees, 420 MB of `.app`) | One copy per distinct tree, whatever the build does; a deployment can only see the tree it was built with |
+| APFS clones (`cp -c`) for the console-B `.app` copy | **Yes, in use** | the second copy is close to free | Clones of a just-made copy share blocks. macOS only, and `du` shows full sizes (use `df`) |
+| APFS clones for `Resources` across deployments | No | ~0 in the trial, a full tree per deploy in practice | Every build re-copies `Resources`, so a clone from a fresh build shares nothing with older deployments |
+| One `Resources` folder for all deployments | No | 718 MB | Version skew: 2 of the 7 builds would silently read the other branch's files |
+| Hard links (`pax -rwl`) | No | 965 MB | Not smaller than snapshots, and writing one file in place changes it in every deployment. macOS's openrsync didn't link with `--link-dest` at all |
+| Dropping idle worktrees' build directories | **Yes, in use** | 2.1 GB each | ccache rebuilds a cached revision in about a minute. Keep the worktree itself (see Pitfalls) |
+| Sharing one `Packages` checkout between worktrees | **Only for the same resource set** | 0.8 to 1.1 GB each | Saves a copy where branches need the same resources; wrong for branches with their own (BDSP), see Pitfalls |
 
-Seven lab builds, each with its console-B copy, deployed five ways into a
-scratch folder. Disk use was measured with `df`, which counts shared blocks
-once. The seven builds hold only two distinct `Resources` trees: BDSP's, with
-1,467 files (300 MB), and upstream's, with 686 files (199 MB).
+## In use now
 
-| Option | Disk for 14 deployments |
-|---|---|
-| Plain copy (today) | 4,212 MB |
-| 1. One shared `Resources` | 718 MB, but 2 of the 7 builds would read the other branch's files |
-| 2. Content-hash snapshots + symlink | 912 MB: 500 MB of trees plus 420 MB of `.app` copies |
-| 3. APFS clones (`cp -c`) | about 0 MB, cloned from existing deployments |
-| 4. Hard links (`pax -rwl`) | 965 MB |
-
-Notes:
-- macOS ships openrsync, which didn't hard-link with `rsync --link-dest`.
-- The clone result is a best case and doesn't hold for real deploys. Every
-  build re-copies the whole `Resources` folder into the build directory: all
-  686 files carry the time of the last link. A clone taken from the build
-  folder after a rebuild therefore shares nothing with older deployments, and
-  each deploy costs a full `Resources` (200-300 MB).
-- Snapshots dedupe by content, so they stay at one copy per distinct tree
-  whatever the build does.
-
-## Adopted (2026-10-29)
-
-- **`Resources`:** content-hash snapshots in `~/BDSPLab/builds/.resources/<hash>/`,
-  linked from each deployment; a prune keeps the 5 newest deployments per build
-  family (`bdsp-r105` and `frlgnav8` are families `bdsp-r` and `frlgnav`) and
-  deletes snapshots nothing links to.
-- **`.app`:** APFS clones for the console-B copy.
-- **Worktrees:** build directories only for worktrees in use; the others are
-  deleted and rebuilt from ccache when needed (about a minute).
-
-Result: 12 deployments (two build families, with console-B copies) take 587 MB,
-199 MB of it the one snapshot they share, against 4.2 GB for 14 before. Three
+`~/BDSPLab/bdsp_deploy.sh` stores `Resources` as snapshots in `builds/.resources/<hash>/` and clones
+the console-B copy; `prune_builds.sh` keeps the 5 newest deployments per build family (`bdsp-r105`
+and `frlgnav8` are families `bdsp-r` and `frlgnav`) and deletes snapshots nothing links to. Result:
+12 deployments take 587 MB (199 MB of it one shared snapshot) instead of 4.2 GB, and the three
 worktree build directories in use take 6.4 GB.
 
 ## Pitfalls found on 2026-10-29
