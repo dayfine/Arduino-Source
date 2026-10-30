@@ -19,6 +19,7 @@
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "CommonTools/Async/InferenceRoutines.h"
 #include "CommonTools/OCR/OCR_RawTesseractOCR.h"
+#include "CommonTools/OCR/OCR_Routines.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "PokemonBDSP/Inference/PokemonBDSP_DialogDetector.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_Route201.h"
@@ -108,6 +109,8 @@ namespace{
 //  Lab's is grey, Route 201's green; opening either changes the area far
 //  more than the overworld behind it moves standing still.
 const ImageFloatBox SIGN_BOX(0.19, 0.80, 0.64, 0.18);
+//  Its text, inside the margins.
+const ImageFloatBox SIGN_TEXT(0.22, 0.82, 0.58, 0.15);
 constexpr double SIGN_BOX_OPENED = 20.0;
 
 //  The pose of a player who may be on any of `tiles`: on their map if they
@@ -564,7 +567,9 @@ public:
         route_turn(stream, m_context, Direction::EAST);
         m_context.wait_for_all_requests();
         VideoSnapshot before = stream.video().snapshot();
-        pbf_press_button(m_context, BUTTON_A, 80ms, 1000ms);
+        //  The text types out over about a second; B before it has finished
+        //  only finishes it (r131a).
+        pbf_press_button(m_context, BUTTON_A, 80ms, 1500ms);
         m_context.wait_for_all_requests();
         VideoSnapshot shown = stream.video().snapshot();
         if (!before || !shown){
@@ -576,12 +581,15 @@ public:
             stream.log("[Sign] " + label + ": no box opened (change " + std::to_string(opened) + ").");
             return read;
         }
-        read.text = OCR::tesseract_ocr_read(Language::English, extract_box_reference(*shown.frame, ImageFloatBox(0.23, 0.80, 0.56, 0.16)));
+        //  Tesseract read the Lab's white-on-grey text as "e R O e IO" (r131a).
+        read.text = OCR::ocr_read(Language::English, extract_box_reference(*shown.frame, SIGN_TEXT), OCR::PageSegMode::SINGLE_BLOCK);
         stream.log("[Sign] " + label + ": reads \"" + read.text + "\" (change " + std::to_string(opened) + ").");
-        pbf_press_button(m_context, BUTTON_B, 80ms, 1000ms);
-        m_context.wait_for_all_requests();
-        VideoSnapshot after = stream.video().snapshot();
-        read.closed = after && walk_screen_change(extract_box_reference(*before.frame, SIGN_BOX), extract_box_reference(*after.frame, SIGN_BOX)) < SIGN_BOX_OPENED;
+        for (size_t presses = 0; presses < 3 && !read.closed; presses++){
+            pbf_press_button(m_context, BUTTON_B, 80ms, 1000ms);
+            m_context.wait_for_all_requests();
+            VideoSnapshot after = stream.video().snapshot();
+            read.closed = after && walk_screen_change(extract_box_reference(*before.frame, SIGN_BOX), extract_box_reference(*after.frame, SIGN_BOX)) < SIGN_BOX_OPENED;
+        }
         stream.log("[Sign] " + label + (read.closed ? ": closed." : ": still open."));
         return read;
     }
@@ -606,7 +614,7 @@ private:
         VideoStream& stream = m_env.console;
         //  The first box's text, inside its white margins.
         if (VideoSnapshot screen = stream.video().snapshot()){
-            read.text = OCR::tesseract_ocr_read(Language::English, extract_box_reference(*screen.frame, ImageFloatBox(0.23, 0.80, 0.56, 0.16)));
+            read.text = OCR::ocr_read(Language::English, extract_box_reference(*screen.frame, SIGN_TEXT), OCR::PageSegMode::SINGLE_BLOCK);
         }
         stream.log("[Talk] " + label + ": the dialogue reads \"" + read.text + "\".");
         size_t quiet = 0;
