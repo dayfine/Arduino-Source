@@ -380,6 +380,7 @@ std::optional<std::vector<BBQuests>> reroll_quest_slot(
             stream
         );
     }
+    throw InternalProgramError(&stream.logger(), PA_CURRENT_FUNCTION, "Invalid enum.");
 }
 
 BBQuestPlan plan_quests(
