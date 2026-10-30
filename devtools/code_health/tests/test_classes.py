@@ -94,7 +94,7 @@ class ClassShapeTests(unittest.TestCase):
     def test_failure_suggests_a_callable(self):
         failures = evaluate(measure_classes('Common/x.h', 'struct L{ virtual void on() = 0; };'), [])
         self.assertEqual(1, len(failures))
-        self.assertIn('MoveOnlyFunction', failures[0])
+        self.assertIn('MoveOnlyFunction', str(failures[0]))
 
     def test_metrics_are_plain_values(self):
         self.assertIsInstance(measure_classes('Common/x.h', methods(1))[0], Metric)
