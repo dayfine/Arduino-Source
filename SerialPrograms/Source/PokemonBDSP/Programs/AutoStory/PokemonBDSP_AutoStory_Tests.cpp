@@ -1452,6 +1452,10 @@ public:
     virtual Pokemon::Outcome line_up_with_door() override{ return Pokemon::outcome_ok(); }
     virtual bool inside_pokemon_center() override{ return inside; }
     virtual bool indoors() override{ return inside; }
+    virtual Pokemon::Outcome hold(Direction, int64_t, const std::string& label) override{
+        trace.push_back("hold: " + label);
+        return Pokemon::outcome_ok();
+    }
     bool president_talks = true;
     virtual DialogueRead walk_until_talked_to(size_t, const std::string& label) override{
         trace.push_back("meet: " + label);
@@ -1468,6 +1472,9 @@ public:
     }
     virtual DialogueRead talk(Direction, Button, const std::string& label) override{
         trace.push_back("talk: " + label);
+        if (label == "Clown by the Poke Mart"){
+            return DialogueRead{.opened = true, .closed = true, .text = "Hi!"};
+        }
         if (label == "Barry" && barry_answers){
             return DialogueRead{.opened = true, .closed = true, .text = "Barry"};
         }
@@ -1593,6 +1600,17 @@ public:
                 }
                 if (!Pokemon::run_checkpoint(president_state, president, log).completed){
                     return std::string(c.name) + ": 00.05d did not complete.";
+                }
+            }
+            if (school_done){
+                Pokemon::RunState clown_state;
+                Pokemon::Checkpoint clown = jubilife_clown_mart_checkpoint(game);
+                const std::vector<std::string> problems = Pokemon::lint_checkpoint(clown);
+                if (!problems.empty()){
+                    return std::string(c.name) + ": 00.05e lint: " + problems.front();
+                }
+                if (!Pokemon::run_checkpoint(clown_state, clown, log).completed){
+                    return std::string(c.name) + ": 00.05e did not complete.";
                 }
             }
             size_t tries = 0;

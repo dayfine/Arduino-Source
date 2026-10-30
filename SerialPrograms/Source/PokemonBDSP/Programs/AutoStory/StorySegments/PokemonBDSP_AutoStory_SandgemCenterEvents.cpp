@@ -977,6 +977,55 @@ Checkpoint jubilife_president_checkpoint(JubilifeActions& game){
     return checkpoint;
 }
 
+const char* const JUBILIFE_CLOWN_MART_NAME = "00.05e Jubilife: the clown by the Poke Mart (events)";
+
+Checkpoint jubilife_clown_mart_checkpoint(JubilifeActions& game){
+    Checkpoint checkpoint;
+    checkpoint.id = "jubilife_clown_mart";
+    checkpoint.interrupts.push_back(dialogue_interrupt(game));
+    checkpoint.events.push_back(wrapped_step("east_to_the_lamp",
+        "east until the lamp by the Pokemon Center stops us", "at_center_lamp",
+        [&game](RunState&){ return game.walk_until_stopped(Direction::EAST, 8, "East to the Center's lamp"); }));
+    checkpoint.events.push_back(wrapped_step("up_to_the_mart_road",
+        "a tile west, then a second north onto the road between the Center and the Mart", "on_mart_road",
+        [&game](RunState&){
+            game.turn(Direction::WEST);
+            const Outcome west = game.tile(Direction::WEST, "West of the lamp");
+            return west.succeeded() ? game.hold(Direction::NORTH, 1000, "North to the Mart's road") : west;
+        }));
+    checkpoint.events.push_back(wrapped_step("east_to_the_building",
+        "east along the road until the tall building stops us", "at_east_building",
+        [&game](RunState&){ return game.walk_until_stopped(Direction::EAST, 14, "East to the building"); }));
+    {
+        std::shared_ptr<DialogueRead> read = std::make_shared<DialogueRead>();
+        Event talk;
+        talk.name = "talk_to_clown";
+        talk.why = "the clown asks a question (Yes is right) and gives Coupon 1";
+        talk.skip_if.push_back(condition("coupon_1", [](RunState& state){ return state.flags.count("coupon_1") > 0; }));
+        talk.act = [&game, read](RunState& state){
+            //  He stands a row south and a tile west: try that row, then one
+            //  more, facing west each time.
+            for (size_t rows = 0; rows < 2 && !read->opened; rows++){
+                const Outcome down = game.step(Direction::SOUTH, "A row south");
+                if (!down.succeeded()){
+                    return down;
+                }
+                game.turn(Direction::WEST);
+                *read = game.talk(Direction::WEST, BUTTON_A, "Clown by the Poke Mart");
+            }
+            if (read->opened && read->closed){
+                state.flags.insert("coupon_1");
+            }
+            return outcome_ok();
+        };
+        talk.expect.push_back(condition("his talk opened and was closed", [read](RunState&){
+            return read->opened && read->closed;
+        }));
+        checkpoint.events.push_back(std::move(talk));
+    }
+    return checkpoint;
+}
+
 class ConsoleJubilifeActions : public ConsoleMartLadyActionsT<JubilifeActions>{
 public:
     ConsoleJubilifeActions(SingleSwitchProgramEnvironment& env, ProControllerContext& context)
@@ -1040,6 +1089,15 @@ public:
         read.closed = true;
         return read;
     }
+    virtual Outcome hold(Direction direction, int64_t ms, const std::string& label) override{
+        const double x = direction == Direction::EAST ? 1 : direction == Direction::WEST ? -1 : 0;
+        const double y = direction == Direction::NORTH ? 1 : direction == Direction::SOUTH ? -1 : 0;
+        const WalkResult walk = walk_for(m_stream, m_context, x, y, Milliseconds(ms), label);
+        if (walk.stop == WalkStop::DIALOG || walk.stop == WalkStop::TRANSITION){
+            return outcome_failed("walk_failed", label + ": " + walk_stop_name(walk.stop));
+        }
+        return outcome_ok();
+    }
     virtual bool indoors() override{
         m_context.wait_for_all_requests();
         VideoSnapshot screen = m_stream.video().snapshot();
@@ -1093,6 +1151,12 @@ void diagnostic_jubilife_center(SingleSwitchProgramEnvironment& env, ProControll
     ConsoleJubilifeActions game(env, context);
     Checkpoint checkpoint = jubilife_center_checkpoint(game);
     run_on_console(env, checkpoint, JUBILIFE_CENTER_NAME);
+}
+
+void diagnostic_jubilife_clown_mart(SingleSwitchProgramEnvironment& env, ProControllerContext& context){
+    ConsoleJubilifeActions game(env, context);
+    Checkpoint checkpoint = jubilife_clown_mart_checkpoint(game);
+    run_on_console(env, checkpoint, JUBILIFE_CLOWN_MART_NAME);
 }
 
 void diagnostic_jubilife_president(SingleSwitchProgramEnvironment& env, ProControllerContext& context){

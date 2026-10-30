@@ -55,6 +55,8 @@ private:
     BooleanCheckBoxOption DIAGNOSTIC_JUBILIFE_BARRY;
     // DIAGNOSTIC ONLY: Remove before pushing to production.
     BooleanCheckBoxOption DIAGNOSTIC_JUBILIFE_PRESIDENT;
+    // DIAGNOSTIC ONLY: Remove before pushing to production.
+    BooleanCheckBoxOption DIAGNOSTIC_JUBILIFE_CLOWN_MART;
     BooleanCheckBoxOption ENABLE_ADVANCED_MODE;
 
     StringSelectOption START_CHECKPOINT_TUTORIAL;

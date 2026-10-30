@@ -221,6 +221,8 @@ public:
     virtual void step_across(double tiles, const std::string& label) = 0;
     //  Whether the screen shows a building's inside.
     virtual bool indoors() = 0;
+    //  Holds the stick `direction` for `ms`, from standing still.
+    virtual Pokemon::Outcome hold(Pokemon::Direction direction, int64_t ms, const std::string& label) = 0;
     //  Walks north for at most `tiles` tiles' time until someone's talk
     //  opens (a person who sees us walks up and talks), then reads it on
     //  with B, which never starts a talk over.
@@ -270,6 +272,21 @@ extern const char* const JUBILIFE_BARRY_NAME;
 //      2. meet_the_president    north until his talk opens; read it with B
 Pokemon::Checkpoint jubilife_president_checkpoint(JubilifeActions& game);
 extern const char* const JUBILIFE_PRESIDENT_NAME;
+
+//  00.05e: from where the president leaves us, the clown by the Poke Mart,
+//  for Coupon 1. Stepped through on the console (2026-10-30): east stops
+//  at the lamp by the Center; a tile west and a second north put us on the
+//  road between the Center and the Mart; east along it stops at the tall
+//  building, a tile east and a row north of the clown.
+//      1. east_to_the_lamp      east until the lamp by the Center stops us
+//      2. up_to_the_mart_road   a tile west, north about four rows
+//      3. east_to_the_building  east until the building stops us
+//      4. talk_to_clown         a row south, face west, A; his question's
+//                               default answer is right; Coupon 1
+Pokemon::Checkpoint jubilife_clown_mart_checkpoint(JubilifeActions& game);
+extern const char* const JUBILIFE_CLOWN_MART_NAME;
+//  DIAGNOSTIC ONLY: Remove before pushing to production.
+void diagnostic_jubilife_clown_mart(SingleSwitchProgramEnvironment& env, ProControllerContext& context);
 //  DIAGNOSTIC ONLY: Remove before pushing to production.
 void diagnostic_jubilife_president(SingleSwitchProgramEnvironment& env, ProControllerContext& context);
 

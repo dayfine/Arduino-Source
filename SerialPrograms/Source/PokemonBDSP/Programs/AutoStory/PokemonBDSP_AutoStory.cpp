@@ -192,6 +192,12 @@ BDSPAutoStory::BDSPAutoStory()
           "Start on the Trainers' School's doorstep (or after 00.05c). Walks into the road until the president talks; no save. "
           "Remove before pushing to production.",
           LockMode::LOCK_WHILE_RUNNING, false)
+    // DIAGNOSTIC ONLY: Remove before pushing to production.
+    , DIAGNOSTIC_JUBILIFE_CLOWN_MART(
+          "<b>Diagnostic only: 00.05e Jubilife, the clown by the Poke Mart (events)</b><br>"
+          "Start where the president leaves us (or after 00.05d). Walks to the clown and gets Coupon 1; no save. "
+          "Remove before pushing to production.",
+          LockMode::LOCK_WHILE_RUNNING, false)
     , ENABLE_ADVANCED_MODE(
           "<b>Advanced mode:</b><br>"
           "Use checkpoints instead of segments.",
@@ -388,6 +394,7 @@ BDSPAutoStory::BDSPAutoStory()
     PA_ADD_OPTION(DIAGNOSTIC_JUBILIFE_SCHOOL);
     PA_ADD_OPTION(DIAGNOSTIC_JUBILIFE_BARRY);
     PA_ADD_OPTION(DIAGNOSTIC_JUBILIFE_PRESIDENT);
+    PA_ADD_OPTION(DIAGNOSTIC_JUBILIFE_CLOWN_MART);
     PA_ADD_OPTION(ENABLE_ADVANCED_MODE);
 
     // Segment UI
@@ -539,12 +546,13 @@ void BDSPAutoStory::program(
     auto run_selected_range = [&](size_t attempt){
         if (attempt > 0) env.log("[Fake saves] Reloaded initial save; restarting the entire selected range from its start.");
         // DIAGNOSTIC ONLY: Remove this branch before pushing to production.
-        if (DIAGNOSTIC_JUBILIFE_CENTER || DIAGNOSTIC_JUBILIFE_SCHOOL || DIAGNOSTIC_JUBILIFE_BARRY || DIAGNOSTIC_JUBILIFE_PRESIDENT){
+        if (DIAGNOSTIC_JUBILIFE_CENTER || DIAGNOSTIC_JUBILIFE_SCHOOL || DIAGNOSTIC_JUBILIFE_BARRY || DIAGNOSTIC_JUBILIFE_PRESIDENT || DIAGNOSTIC_JUBILIFE_CLOWN_MART){
             const std::pair<bool, const char*> parts[] = {
                 {DIAGNOSTIC_JUBILIFE_CENTER, JUBILIFE_CENTER_NAME},
                 {DIAGNOSTIC_JUBILIFE_SCHOOL, JUBILIFE_SCHOOL_NAME},
                 {DIAGNOSTIC_JUBILIFE_BARRY, JUBILIFE_BARRY_NAME},
                 {DIAGNOSTIC_JUBILIFE_PRESIDENT, JUBILIFE_PRESIDENT_NAME},
+                {DIAGNOSTIC_JUBILIFE_CLOWN_MART, JUBILIFE_CLOWN_MART_NAME},
             };
             for (const auto& [on, name] : parts){
                 if (!on){
@@ -558,8 +566,10 @@ void BDSPAutoStory::program(
                     diagnostic_jubilife_school(env, context);
                 }else if (name == JUBILIFE_BARRY_NAME){
                     diagnostic_jubilife_barry(env, context);
-                }else{
+                }else if (name == JUBILIFE_PRESIDENT_NAME){
                     diagnostic_jubilife_president(env, context);
+                }else{
+                    diagnostic_jubilife_clown_mart(env, context);
                 }
                 env.log(std::string("[AutoStory] Completed: ") + name + ".", COLOR_DARKGREEN);
                 add_wrapped_log(env.console.overlay(), std::string("Done: ") + name, COLOR_GREEN);
