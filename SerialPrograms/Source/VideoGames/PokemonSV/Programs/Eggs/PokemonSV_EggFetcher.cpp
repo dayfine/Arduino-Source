@@ -8,7 +8,6 @@
 #include "CommonFramework/Notifications/ProgramNotifications.h"
 #include "CommonFramework/ProgramStats/StatsTracking.h"
 #include "CommonTools/StartupChecks/VideoResolutionCheck.h"
-#include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "NintendoSwitch/Programs/NintendoSwitch_GameEntry.h"
 #include "Pokemon/Pokemon_Strings.h"
 #include "VideoGames/PokemonSV/Inference/Boxes/PokemonSV_IvJudgeReader.h"
@@ -29,6 +28,7 @@ EggFetcher_Descriptor::EggFetcher_Descriptor()
         STRING_POKEMON + " SV", "Egg Fetcher",
         "Programs/PokemonSV/EggFetcher.html",
         "Automatically fetch eggs from a picnic.",
+        PanelQualityStanding::OFFICIAL,
         ProgramControllerClass::StandardController_NoRestrictions,
         FeedbackType::REQUIRED,
         AllowCommandsWhenRunning::DISABLE_COMMANDS

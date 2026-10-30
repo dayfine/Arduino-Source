@@ -4,21 +4,12 @@
  *
  */
 
-#include <float.h>
 #include <chrono>
-#include <map>
 #include <iostream>
-#include <fstream>
-#include <sstream>
 #include "Common/Cpp/Exceptions.h"
-#include "Common/Cpp/Containers/AlignedVector.tpp"
-#include "CommonFramework/AudioPipeline/AudioFeed.h"
-#include "CommonFramework/AudioPipeline/AudioTemplate.h"
-#include "CommonTools/Audio/AudioTemplateCache.h"
-#include "CommonTools/Audio/SpectrogramMatcher.h"
 #include "CommonTools/Async/InferenceSession.h"
-#include "Pokemon/Pokemon_Strings.h"
 #include "NintendoSwitch/Controllers/Joycon/NintendoSwitch_Joycon.h"
+#include "Pokemon/Pokemon_Strings.h"
 #include "VideoGames/PokemonLGPE/Inference/Sounds/PokemonLGPE_ShinySoundDetector.h"
 #include "PokemonLGPE_SoundListener.h"
 
@@ -34,6 +25,7 @@ SoundListener_Descriptor::SoundListener_Descriptor()
         STRING_POKEMON + " LGPE", "Sound Listener",
         "",
         "Test sound detectors listening to audio stream.",
+        PanelQualityStanding::DEVELOPER,
         ProgramControllerClass::SpecializedController,
         FeedbackType::REQUIRED,
         AllowCommandsWhenRunning::ENABLE_COMMANDS

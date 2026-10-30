@@ -4,14 +4,12 @@
  *
  */
 
-#include "CommonFramework/Logging/Logger.h"
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
 #include "CommonFramework/Notifications/ProgramNotifications.h"
 #include "CommonFramework/ProgramStats/StatsTracking.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "CommonTools/Images/ImageFilter.h"
 #include "CommonTools/Async/InferenceRoutines.h"
-#include "CommonTools/VisualDetectors/BlackScreenDetector.h"
 #include "CommonTools/StartupChecks/VideoResolutionCheck.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "NintendoSwitch/Programs/NintendoSwitch_GameEntry.h"
@@ -35,6 +33,7 @@ HyperspaceRewardReset_Descriptor::HyperspaceRewardReset_Descriptor()
         STRING_POKEMON + " LZA", "Hyperspace Reward Reset",
         "Programs/PokemonLZA/HyperspaceRewardReset.html",
         "Reset in front of a Hyperspace Battle Zone trainer to receive a specific reward.",
+        PanelQualityStanding::OFFICIAL,
         ProgramControllerClass::StandardController_NoRestrictions,
         FeedbackType::REQUIRED,
         AllowCommandsWhenRunning::DISABLE_COMMANDS

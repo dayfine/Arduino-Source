@@ -33,6 +33,7 @@ SizeChecker_Descriptor::SizeChecker_Descriptor()
         STRING_POKEMON + " SV", "Size Checker",
         "Programs/PokemonSV/SizeChecker.html",
         "Check boxes of " + STRING_POKEMON + " for size marks.",
+        PanelQualityStanding::OFFICIAL,
         ProgramControllerClass::StandardController_NoRestrictions,
         FeedbackType::REQUIRED,
         AllowCommandsWhenRunning::DISABLE_COMMANDS
