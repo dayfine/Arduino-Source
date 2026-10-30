@@ -16,7 +16,7 @@
 #include "PokemonBDSP/Inference/PokemonBDSP_DialogDetector.h"
 #include "PokemonBDSP/Inference/PokemonBDSP_TransitionWatchers.h"
 #include "PokemonBDSP/Inference/Battles/PokemonBDSP_BattleMenuDetector.h"
-#include "PokemonBDSP_AutoStory_Segment_00_tools.h"
+#include "PokemonBDSP_AutoStory_StoryBattle.h"
 #include "PokemonBDSP_Autostory_Segment_01_tools.h"
 #include "PokemonBDSP_AutoStory_Walk.h"
 

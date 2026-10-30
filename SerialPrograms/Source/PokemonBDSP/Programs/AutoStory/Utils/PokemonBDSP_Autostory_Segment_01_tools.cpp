@@ -29,7 +29,6 @@
 #include "PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_OverworldDetector.h"
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStoryTools.h"
 
-#include "PokemonBDSP_AutoStory_Segment_00_tools.h"
 
 #include "PokemonBDSP_Autostory_Segment_01_tools.h"
 

@@ -23,7 +23,7 @@
 #include "PokemonBDSP/Inference/PokemonBDSP_MarkFinder.h"
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStoryTools.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Battle.h"
-#include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Segment_00_tools.h"
+#include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_StoryBattle.h"
 
 #include "PokemonBDSP_AutoStory_Segment_04.h"
 

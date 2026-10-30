@@ -19,7 +19,7 @@
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "PokemonBDSP_OverworldLightingTest.h"
 #include "../AutoStory/Utils/PokemonBDSP_OverworldMatchers.h"
-#include "../AutoStory/Utils/PokemonBDSP_AutoStory_Segment_00_tools.h"
+#include "../AutoStory/Utils/PokemonBDSP_AutoStory_GameSettings.h"
 namespace PokemonAutomation{ namespace NintendoSwitch{ namespace PokemonBDSP{
 using namespace std::chrono_literals;
 static const StringSelectDatabase& lighting_matcher_database(size_t segment){
