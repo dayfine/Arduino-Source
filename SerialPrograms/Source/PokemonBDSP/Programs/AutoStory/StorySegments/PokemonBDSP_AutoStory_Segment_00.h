@@ -8,6 +8,8 @@
 #ifndef PokemonAutomation_PokemonBDSP_AutoStory_Segment00_H
 #define PokemonAutomation_PokemonBDSP_AutoStory_Segment00_H
 
+#include <vector>
+#include "Pokemon/Navigation/Pokemon_Grid.h"
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStoryTools.h"
 
 namespace PokemonAutomation {
@@ -25,9 +27,12 @@ void diagnostic_checkpoint_0004_after_catch(SingleSwitchProgramEnvironment& env,
 // DIAGNOSTIC ONLY: Remove before pushing to production.
 // 00.04's walk after the Potions, for the event-model diagnostic
 // (PokemonBDSP_AutoStory_SandgemCenterEvents.h): from below Sandgem's
-// Pokemon Center door to Route 202's save spot, without saving. Fails with
-// a screenshot as 00.04 does.
-void walk_from_sandgem_center_to_route_202_save_spot(VideoStream& stream, ProControllerContext& context);
+// Pokemon Center to Route 202's save spot, without saving. Fails with
+// a screenshot as 00.04 does. `at`: the tiles in Sandgem we may stand on.
+void walk_from_sandgem_center_to_route_202_save_spot(
+    VideoStream& stream, ProControllerContext& context,
+    const std::vector<Pokemon::TilePos>& at
+);
 
 class AutoStory_Segment_00 : public AutoStory_Segment {
 public:

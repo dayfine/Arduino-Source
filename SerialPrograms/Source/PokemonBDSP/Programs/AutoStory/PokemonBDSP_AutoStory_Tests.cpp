@@ -537,6 +537,17 @@ public:
             //  The Center walk's re-anchor at the trees east of the Mart.
             {"Trees east of the Mart to the Pokemon Center", {maps.to_world(MAP_SANDGEM_TOWN, SandgemTown::FRONT_ROW_EAST_END)},
                 [&](const TilePos& pos){ return pos == below_sign; }, true},
+            //  From and back to where the Route 202 checkpoint ends: the doors'
+            //  row by the signs' gap.
+            {"Doors' row by the gap to west of the Route 201 sign", doors_row_by_the_gap(),
+                [&](const TilePos& pos){ return pos == route201_sign_west(); }, false},
+            {"Route 201 sign to the doors' row by the gap", {route201_sign_west()},
+                [&](const TilePos& pos){
+                    const std::vector<TilePos> gap = doors_row_by_the_gap();
+                    return std::find(gap.begin(), gap.end(), pos) != gap.end();
+                }, true},
+            {"Doors' row by the gap to the trees east of the Mart", doors_row_by_the_gap(),
+                [&](const TilePos& pos){ return pos == row_end; }, true},
             //  Its re-anchor after a wild battle in the lady's grass.
             {"East end of the lady's row to the Route 201 sign", {route201_row_3_east_end()},
                 [&](const TilePos& pos){ return pos == route201_sign_west(); }, false},
@@ -1055,7 +1066,7 @@ public:
                 .lost_walks = 0,
                 .completed = true,
                 .failed_event = 0,
-                .trace = {"read save screen", SOUTH, ROW, "line up"},
+                .trace = {"read save screen", SOUTH, ROW},
             },
             {
                 .name = "The save is in Sandgem Town",
@@ -1075,7 +1086,7 @@ public:
                 .lost_walks = 0,
                 .completed = true,
                 .failed_event = 0,
-                .trace = {"read save screen", SOUTH, ROW, STEP, "line up"},
+                .trace = {"read save screen", SOUTH, ROW, STEP},
             },
             {
                 .name = "A talk stops the walk south",
@@ -1085,7 +1096,7 @@ public:
                 .lost_walks = 0,
                 .completed = true,
                 .failed_event = 0,
-                .trace = {"read save screen", SOUTH, "finish dialogue", "east, then south", ROW, "line up"},
+                .trace = {"read save screen", SOUTH, "finish dialogue", "east, then south", ROW},
             },
             {
                 .name = "A wall leg in town ends short",
@@ -1139,8 +1150,8 @@ public:
                 }
                 return std::string(c.name) + ": expected steps" + expected + ", read" + read + ".";
             }
-            if (c.completed && game.where != FakeSandgemCenter::Where::DOOR_FRONT){
-                return std::string(c.name) + ": completed, but not in front of the door.";
+            if (c.completed && game.where != FakeSandgemCenter::Where::BELOW_SIGN){
+                return std::string(c.name) + ": completed, but not on the doors' row.";
             }
         }
         return true;
@@ -1279,7 +1290,7 @@ public:
         return DialogueRead{.opened = false, .closed = true, .text = ""};
     }
     virtual Pokemon::Outcome walk_to_route_202_save_spot() override{
-        return step("to Route 202", Where::CENTER_FRONT, Where::ROUTE_202);
+        return step("to Route 202", Where::BELOW_SIGN, Where::ROUTE_202);
     }
     virtual Pokemon::Outcome save_on_route_202() override{
         return step("save", Where::ROUTE_202, Where::ROUTE_202);
@@ -1303,11 +1314,11 @@ public:
     {}
 
     virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
-        const std::vector<std::string> TO_SIGN = {"line up", "walk: West to the Route 201 sign"};
+        const std::vector<std::string> TO_SIGN = {"walk: West to the Route 201 sign"};
         const std::vector<std::string> SIGN = {"talk: Route 201 sign"};
         const std::vector<std::string> LADY = {"go: North to the trees", "go: West along the lady's row", "talk: Poke Mart lady"};
         const std::vector<std::string> BACK = {"walk: Back to the Route 201 sign", "talk: Route 201 sign",
-            "walk: To the Pokemon Center", "line up", "to Route 202", "save"};
+            "walk: Back to the Pokemon Center", "to Route 202", "save"};
         const auto join = [](std::initializer_list<std::vector<std::string>> parts){
             std::vector<std::string> all;
             for (const std::vector<std::string>& part : parts){

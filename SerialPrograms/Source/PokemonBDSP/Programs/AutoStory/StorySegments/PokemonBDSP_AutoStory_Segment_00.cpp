@@ -968,12 +968,14 @@ namespace PokemonAutomation {
 
         // DIAGNOSTIC ONLY (the Mart lady checkpoint): 00.04's walk back to
         // Route 202's save spot, from below Sandgem Center's door, without saving.
-        void walk_from_sandgem_center_to_route_202_save_spot(VideoStream& stream, ProControllerContext& context) {
+        void walk_from_sandgem_center_to_route_202_save_spot(
+            VideoStream& stream, ProControllerContext& context,
+            const std::vector<TilePos>& at
+        ) {
             const MapSet& maps = story_maps();
             std::vector<TrainerSight> trainers = story_trainer_sights();
             const RouteTrainerFight fight = [&](const std::string& name) { fight_route_trainer(stream, context, name); };
-            walk_to_route_202_save_spot(stream, context, maps,
-                story_door_front(MAP_SANDGEM_TOWN, SandgemTown::POKEMON_CENTER_DOOR), trainers, fight);
+            walk_to_route_202_save_spot(stream, context, maps, at, trainers, fight);
         }
 
         static void meet_dawn_in_jubilife(VideoStream& stream, ProControllerContext& context) {
