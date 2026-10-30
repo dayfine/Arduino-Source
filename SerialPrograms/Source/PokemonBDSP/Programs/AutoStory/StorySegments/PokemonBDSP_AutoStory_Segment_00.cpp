@@ -437,6 +437,31 @@ namespace PokemonAutomation {
         // and send the starter to pokemon HOME.
         // ---------------------------------------------------------------------------
 
+        // Inside the player's house, just through the door: Mom watches TV a
+        // column east of the door and two rows north of the mat. The door fixes
+        // our column, but counted taps north lost a row (r108b stood a row below
+        // her). So find her row: face east and press A, and step one tile north
+        // at a time until she answers. A press from a row off talks to nobody,
+        // and the TV stand stops us a row above her.
+        static void talk_to_mom_at_home(VideoStream& stream, ProControllerContext& context) {
+            for (size_t row = 0; row < 4; row++) {
+                route_turn(stream, context, Pokemon::Direction::EAST);
+                pbf_press_button(context, BUTTON_A, 80ms, 0ms);
+                context.wait_for_all_requests();
+                ShortDialogWatcher dialog(COLOR_CYAN);
+                if (wait_until(stream, context, 1500ms, {{dialog}}) == 0) {
+                    stream.log("[00.04] Mom answered after " + std::to_string(row) + " step(s) north.");
+                    return;
+                }
+                // Facing east, a short tap north only turns; facing north, it is one tile.
+                route_turn(stream, context, Pokemon::Direction::NORTH);
+                pbf_press_dpad(context, DPAD_UP, 80ms, 400ms);
+                context.wait_for_all_requests();
+            }
+            OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
+                "Home: Mom did not answer from any of four rows north of the door.", stream);
+        }
+
         static void tutorial_part_3_navigation(SingleSwitchProgramEnvironment& env, VideoStream& stream, ProControllerContext& context) {
             // Arm exit detection before movement and finish the fade before
             // starting the dialogue watcher, which cancels queued commands.
@@ -466,12 +491,7 @@ namespace PokemonAutomation {
             pbf_wait(context, 1655ms);
             pbf_move_left_joystick(context, { 0.000000, 1.000000 }, 640ms, 0ms);
             pbf_wait(context, 3128ms);
-            pbf_press_dpad(context, DPAD_UP, 180ms, 0ms);
-            pbf_wait(context, 472ms);
-            pbf_press_dpad(context, DPAD_UP, 130ms, 0ms);
-            pbf_wait(context, 1621ms);
-            pbf_press_dpad(context, DPAD_RIGHT, 130ms, 0ms);
-            pbf_press_button(context, BUTTON_A, 180ms, 0ms);
+            talk_to_mom_at_home(stream, context);
 
             wait_for_dialogue(stream, context, "Phase 15 (Mom conversation to accept parcel)");
 
