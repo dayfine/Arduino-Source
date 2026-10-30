@@ -4,7 +4,6 @@
  *
  */
 
-#include "CommonFramework/Globals.h"
 #include "NintendoSwitch/Programs/NintendoSwitch_GameEntry.h"
 #include "Pokemon/Pokemon_Strings.h"
 #include "VideoGames/PokemonLA/Programs/PokemonLA_FlagNavigationAir.h"
@@ -22,6 +21,7 @@ FlagNavigationTest_Descriptor::FlagNavigationTest_Descriptor()
         STRING_POKEMON + " LA", "Flag Navigation Test",
         "",
         "Navigate to the flag pin.",
+        PanelQualityStanding::DEVELOPER,
         ProgramControllerClass::StandardController_NoRestrictions,
         FeedbackType::REQUIRED,
         AllowCommandsWhenRunning::DISABLE_COMMANDS

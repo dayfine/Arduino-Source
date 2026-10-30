@@ -11,7 +11,6 @@
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_Superscalar.h"
 #include "NintendoSwitch/Programs/NintendoSwitch_GameEntry.h"
-#include "Pokemon/Pokemon_Strings.h"
 #include "VideoGames/PokemonSwSh/PokemonSwSh_Settings.h"
 #include "VideoGames/PokemonSwSh/Commands/PokemonSwSh_Commands_GameEntry.h"
 #include "VideoGames/PokemonSwSh/Programs/PokemonSwSh_GameEntry.h"
@@ -32,6 +31,7 @@ AutoHostRolling_Descriptor::AutoHostRolling_Descriptor()
         STRING_POKEMON + " SwSh", "Auto-Host Rolling",
         "Programs/PokemonSwSh/AutoHost-Rolling.html",
         "Roll N days, host, SR and repeat. Also supports hard-locks and soft-locks.",
+        PanelQualityStanding::OFFICIAL,
         ProgramControllerClass::StandardController_PerformanceClassSensitive,
         FeedbackType::OPTIONAL_,
         AllowCommandsWhenRunning::DISABLE_COMMANDS

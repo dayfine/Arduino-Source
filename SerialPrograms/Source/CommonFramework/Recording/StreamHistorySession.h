@@ -11,9 +11,9 @@
 
 #include "Common/Cpp/Logging/AbstractLogger.h"
 #include "Common/Cpp/Containers/Pimpl.h"
+#include "Kernels/AudioPipeline/Kernels_AudioPipeline.h"
 #include "CommonFramework/AudioPipeline/AudioSession.h"
 #include "CommonFramework/VideoPipeline/VideoSession.h"
-#include "Kernels/AudioPipeline/Kernels_AudioPipeline.h"
 
 namespace PokemonAutomation{
 
@@ -27,7 +27,11 @@ class StreamHistorySession
 public:
     ~StreamHistorySession();
     StreamHistorySession(Logger& logger);
-    void start(AudioChannelFormat format, bool has_video);
+    //  "device" / "format" are the audio session's active input state:
+    //  the tracker's shape and the working-stream attach shape are derived
+    //  from the resolved input choice (invalid when there is no device
+    //  input, i.e. file input or no input at all).
+    void start(const AudioInputChoice& choice, bool has_video);
     bool save(const std::string& filename) const;
 
     //  The audio session this session's working-stream listener attaches to
@@ -42,7 +46,10 @@ public:
 
 public:
     virtual void pre_input_change() override;
-    virtual void post_input_change(const std::string& file, const AudioDeviceInfo& device, AudioChannelFormat format) override;
+    virtual void post_input_change(
+        const std::shared_ptr<const AudioSourceDescriptor>& source,
+        const AudioInputChoice& choice
+    ) override;
 
     virtual void pre_shutdown() override;
     virtual void post_shutdown() override;

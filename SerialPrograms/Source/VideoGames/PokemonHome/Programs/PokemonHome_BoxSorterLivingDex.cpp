@@ -6,7 +6,6 @@
 
 #include <array>
 #include <cmath>
-#include <map>
 #include <optional>
 #include <sstream>
 #include <vector>
@@ -19,7 +18,6 @@
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
 #include "CommonFramework/Notifications/ProgramNotifications.h"
 #include "CommonFramework/ProgramStats/StatsTracking.h"
-#include "CommonFramework/VideoPipeline/VideoOverlay.h"
 #include "CommonFramework/VideoPipeline/VideoOverlayScopes.h"
 #include "CommonTools/Async/InferenceRoutines.h"
 #include "CommonTools/StartupChecks/StartProgramChecks.h"
@@ -46,6 +44,7 @@ BoxSorterLivingDex_Descriptor::BoxSorterLivingDex_Descriptor()
         STRING_POKEMON + " Home", "Box Sorter Living Dex",
         "Programs/PokemonHome/BoxSorterLivingDex.html",
         "Arrange boxes of " + STRING_POKEMON + " into living dex order.",
+        PanelQualityStanding::OFFICIAL,
         ProgramControllerClass::StandardController_RequiresPrecision,
         FeedbackType::REQUIRED,
         AllowCommandsWhenRunning::DISABLE_COMMANDS

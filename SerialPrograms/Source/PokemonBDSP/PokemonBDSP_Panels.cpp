@@ -6,8 +6,8 @@
 
 #include "CommonFramework/StaticGlobals.h"
 #include "CommonFramework/GlobalAutoPaths.h"
-#include "PokemonBDSP_Panels.h"
 
+#include "PokemonBDSP_Panels.h"
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory.h"
 #include "PokemonBDSP/Programs/TestPrograms/PokemonBDSP_OverworldLightingTest.h"
 #include "PokemonBDSP_Settings.h"
@@ -38,8 +38,6 @@
 #include "Programs/Glitches/PokemonBDSP_ActivateMenuGlitch-1.1.3.h"
 #include "Programs/Glitches/PokemonBDSP_ActivateMenuGlitch-1.1.2.h"
 #include "Programs/Glitches/PokemonBDSP_CloneItemsBoxCopy2.h"
-//#include "Programs/Glitches/PokemonBDSP_CloneItemsBoxCopy.h"
-//#include "Programs/Glitches/PokemonBDSP_CloneItemsMenuOverlap.h"
 
 #include "Programs/RngManipulation/PokemonBDSP_BedroomSeedFinder.h"
 #include "Programs/RngManipulation/PokemonBDSP_IntroSeedFinder.h"

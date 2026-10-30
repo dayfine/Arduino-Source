@@ -5,8 +5,9 @@ For how to write a new automation program, see also `CodingAgentContext/Automati
 
 ## What this project is
 
-Open-source application that automates Pokémon (and other) games on Nintendo Switch using
-Arduino-based controller hardware, computer vision, OCR, and machine learning.
+This is the Pokémon Automation Computer Control (CC) program. It is an open-source
+application that automates Pokémon (and other) games on Nintendo Switch using microcontroller
+controller hardware, computer vision, OCR, and machine learning.
 
 ## Repo layout
 
@@ -52,7 +53,7 @@ from Qt.
 - Qt is **forbidden** in program code (the three program folders above).
 - Qt is **strongly discouraged** in non-UI infra. Use it only when the alternative is a lot
   of new code or would pull in a library the project doesn't already use.
-- Qt is generally **required** for UI code (widgets, panels, windows).
+- Qt is generally **unavoidable** for UI code (widgets, panels, windows).
 
 ### Filesystem
 
@@ -64,7 +65,7 @@ Use the wrappers in `Common/Cpp/Filesystem/` instead: `Filesystem::` functions, 
 
 ### Concurrency (Qt thread-adoption bug on Windows)
 
-Qt > 6.8.3 on Windows can crash when raw `std::thread`s coexist with Qt event loops
+Qt > 6.8.3 on Windows can hang when raw `std::thread`s coexist with Qt event loops
 ("thread adoption" bug: QTBUG-131892, see project issue #570; see
 `Common/Cpp/Concurrency/Qt6.9ThreadBugWorkaround.h`). Therefore:
 
@@ -73,8 +74,8 @@ Qt > 6.8.3 on Windows can crash when raw `std::thread`s coexist with Qt event lo
   workaround), so only the thread pool implementations are allowed to use it. Pools
   reuse their worker threads, which keeps the leaked-thread count down to the peak
   number of concurrent tasks (the pools still leak all of their threads on exit).
-  Run all background work on a thread pool: `Common/Cpp/Concurrency/ThreadPool.h`,
-  or the app-level pools in `SerialPrograms/Source/CommonFramework/Tools/GlobalThreadPools.h`.
+  Run all background work on the app-level pools in
+  `SerialPrograms/Source/CommonFramework/Tools/GlobalThreadPools.h`.
 - Don't use `std::mutex` / `std::condition_variable` directly. Use the
   `PokemonAutomation::Mutex` / `ConditionVariable` wrappers in `Common/Cpp/Concurrency/`.
 - `std::async` is banned (it may spawn a new thread under the hood).
@@ -136,3 +137,29 @@ migrate a file to the wrappers when you're already touching it and it's straight
   `Common/Cpp/CancellableScope.h` (`CancellableScope::throw_if_cancelled()` in loops).
 - File paths: use the macros from `CommonFramework/GlobalAutoPaths.h` (`RESOURCE_PATH()`,
   `USER_FILE_PATH()`, `DOWNLOADED_RESOURCE_PATH()`, ...) rather than hardcoding locations.
+
+### Control flow formatting
+
+- Put the opening brace on the same line as `if`, `else if`, `for`, `while`, or `switch`,
+  with **no space between the closing `)` and `{`**: `if (condition){`, not `if (condition) {`.
+  Write `}else if (condition){` and `}else{` without spaces around `else`'s braces.
+- Always use braces and multiline bodies for conditionals and loops, even for a single
+  statement. Do not write `if (condition) return;` or `if (condition){ return; }`.
+  Put the body on its own indented line and the closing brace on its own line (except when
+  followed by `else` / `else if`). The same rule applies to one-statement loop bodies.
+- Follow these rules in new or edited control flow even when nearby legacy code differs.
+  Avoid reformatting unrelated code.
+
+```cpp
+if (condition){
+    do_something();
+}else if (other_condition){
+    do_something_else();
+}else{
+    handle_default();
+}
+
+for (size_t i = 0; i < count; i++){
+    process(i);
+}
+```

@@ -6,7 +6,6 @@
  *
  */
 
-#include "CommonFramework/Exceptions/ProgramFinishedException.h"
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
 #include "CommonFramework/Notifications/ProgramNotifications.h"
 #include "CommonFramework/ProgramStats/StatsTracking.h"
@@ -46,6 +45,7 @@ DailyHighlightRNG_Descriptor::DailyHighlightRNG_Descriptor()
         STRING_POKEMON + " SwSh", "Daily Highlight RNG",
         "Programs/PokemonSwSh/DailyHighlightRNG.html",
         "Perform RNG manipulation to get rare items from the daily highlight trader.",
+        PanelQualityStanding::OFFICIAL,
         ProgramControllerClass::StandardController_PerformanceClassSensitive,
         FeedbackType::REQUIRED,
         AllowCommandsWhenRunning::DISABLE_COMMANDS

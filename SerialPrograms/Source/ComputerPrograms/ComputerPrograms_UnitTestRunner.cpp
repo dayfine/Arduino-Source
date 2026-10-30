@@ -7,32 +7,37 @@
 #include "Common/Cpp/ListenerSet.h"
 #include "Common/Cpp/ScopeExit.h"
 #include "Common/Cpp/PrettyPrint.h"
+#include "Common/Cpp/TestRunners/TestImageDistortionManager.h"
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "Common/Qt/QtThreadPool_Tests.h"
+#include "Kernels/Kernels_Tests.h"
 #include "CommonFramework/AudioPipeline/AudioInfo_Tests.h"
-#include "CommonFramework/AudioPipeline/ChannelMixer.h"
+#include "CommonFramework/AudioPipeline/Tools/ChannelMixer.h"
 #include "CommonFramework/AudioPipeline/SinkPipeline_Tests.h"
 #include "CommonFramework/AudioPipeline/IO/AudioFileLoader_Tests.h"
 #include "CommonFramework/AudioPipeline/Spectrum/FFTStreamer.h"
 #include "CommonFramework/GlobalAutoPaths.h"
 #include "CommonFramework/ProgramStats/StatsTracking.h"
 #include "CommonFramework/Tools/GlobalThreadPools.h"
+#include "CommonFramework/Windows/LabControl.h"
 #include "CommonTools/VisualDetectors/BlackBorderDetector.h"
+#include "CommonTools/OCR/OCR_Tests.h"
+
 #include "NintendoSwitch/Inference/NintendoSwitch_CheckOnlineDetector.h"
 #include "NintendoSwitch/Inference/NintendoSwitch_FailedToConnectDetector.h"
 #include "NintendoSwitch/Inference/NintendoSwitch_UpdatePopupDetector.h"
-#include "UnitTestRunner.h"
+#include "NintendoSwitch/Programs/Typewriter/NintendoSwitch_Typewriter_Tests.h"
 
-#include "CommonTools/OCR/OCR_Tests.h"
-#include "Kernels/Kernels_Tests.h"
 #include "PokemonBDSP/PokemonBDSP_Tests.h"
-#include "VideoGames/PokemonFRLG/PokemonFRLG_Tests.h"
-#include "VideoGames/PokemonRSE/PokemonRSE_Tests.h"
 #include "VideoGames/PokemonHome/PokemonHome_Tests.h"
 #include "VideoGames/PokemonSwSh/PokemonSwSh_Tests.h"
 #include "VideoGames/PokemonLA/PokemonLA_Tests.h"
 #include "VideoGames/PokemonSV/PokemonSV_Tests.h"
 #include "VideoGames/PokemonLZA/PokemonLZA_Tests.h"
+#include "VideoGames/PokemonFRLG/PokemonFRLG_Tests.h"
+#include "VideoGames/PokemonRSE/PokemonRSE_Tests.h"
+
+#include "ComputerPrograms_UnitTestRunner.h"
 
 namespace PokemonAutomation{
 namespace ComputerPrograms{
@@ -53,11 +58,13 @@ UnitTestDatabase make_UNIT_TESTS_ALL(){
     add_tests_FFTStreamer(ret);
     add_tests_SinkPipeline(ret);
     add_tests_AudioFileLoader(ret);
+    add_tests_LabControl(ret);
     OCR::add_tests(ret);
     Kernels::add_tests(ret);
     NintendoSwitch::add_tests_CheckOnlineDetector(ret);
     NintendoSwitch::add_tests_FailedToConnectDetector(ret);
     NintendoSwitch::add_tests_UpdatePopupDetector(ret);
+    NintendoSwitch::Typewriter::add_tests_TypewriterTextMapping(ret);
     NintendoSwitch::PokemonBDSP::add_tests(ret);
     NintendoSwitch::PokemonFRLG::add_tests(ret);
     NintendoSwitch::PokemonRSE::add_tests(ret);
@@ -98,7 +105,8 @@ UnitTestRunner_Descriptor::UnitTestRunner_Descriptor()
         "Nintendo Switch",
         "Unit Test Runner",
         "",
-        "UI to run unit tests."
+        "UI to run unit tests.",
+        PanelQualityStanding::DEVELOPER
     )
 {}
 class UnitTestRunner_Descriptor::Stats : public StatsTracker{
@@ -345,7 +353,25 @@ void UnitTestRunner::on_test_finished(
 
 
 
-bool CommandLineUnitTestRunner::run(){
+bool CommandLineUnitTestRunner::run(bool augment_color_distortions){
+    if (augment_color_distortions){
+        //  Load the distortion data before any test runs. Each `ImageUnitTest` checks the global
+        //  manager when it runs, and only runs with distortions if it is loaded.
+        try{
+            initialize_test_image_distortions(UNIT_TEST_RESOURCE_PATH());
+        }catch (Exception& e){
+            m_logger.log("Unable to load the test image distortions: " + e.to_str(), COLOR_RED);
+            return true;
+        }
+        const TestImageDistortionManager& manager = *test_image_distortion_manager();
+        std::string labels;
+        for (size_t c = 0; c < manager.num_test_distortions(); c++){
+            labels += c == 0 ? "" : ", ";
+            labels += manager.test_distortion_label(c);
+        }
+        m_logger.log("Color distortion augmentation enabled. Image tests with labeled images also run with: " + labels);
+    }
+
     PokemonAutomation::UnitTestRunner runner(
         m_logger,
         GlobalThreadPools::computation_normal()
@@ -362,7 +388,7 @@ bool CommandLineUnitTestRunner::run(){
         "\n    Failed:  " + tostr_u_commas(m_failed_tests.load(std::memory_order_acquire)) +
         "\n    Skipped: " + tostr_u_commas(m_skipped_tests.load(std::memory_order_acquire))
     );
-    return m_failed_tests.load(std::memory_order_acquire) != 0;
+    return m_failed_tests.load(std::memory_order_acquire) > 0;
 }
 void CommandLineUnitTestRunner::on_test_finished(
     std::shared_ptr<const UnitTest> test,

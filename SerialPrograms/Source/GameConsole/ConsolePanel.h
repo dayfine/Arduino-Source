@@ -27,12 +27,11 @@ class ConsolePanelInstance;
 class ConsolePanelDescriptor : public PanelDescriptor{
 public:
     ConsolePanelDescriptor(
-        Color color,
         std::string identifier,
         std::string category, std::string display_name,
         std::string doc_link,
         std::string description,
-        PanelDeprecation deprecation = PanelDeprecation::NOT_DEPRECATED,
+        PanelQualityStanding standing,
         bool restore_defaults_button = true,
         size_t num_controllers = 1
     );

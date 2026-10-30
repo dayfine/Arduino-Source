@@ -5,7 +5,6 @@
  */
 
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
-#include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "CommonFramework/Notifications/ProgramNotifications.h"
 #include "CommonFramework/ProgramStats/StatsTracking.h"
 #include "CommonTools/Async/InferenceRoutines.h"
@@ -34,6 +33,7 @@ UnownFinder_Descriptor::UnownFinder_Descriptor()
         STRING_POKEMON + " LA", "Unown Hunter",
         "Programs/PokemonLA/UnownHunter.html",
         "Constantly reset to find a Shiny Unown or any Shiny in the path.",
+        PanelQualityStanding::OFFICIAL,
         ProgramControllerClass::StandardController_NoRestrictions,
         FeedbackType::VIDEO_AUDIO,
         AllowCommandsWhenRunning::DISABLE_COMMANDS

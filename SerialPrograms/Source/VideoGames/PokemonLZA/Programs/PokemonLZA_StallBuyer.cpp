@@ -4,6 +4,7 @@
  *
  */
 
+#include <array>
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
 #include "CommonFramework/Notifications/ProgramNotifications.h"
 #include "CommonFramework/ProgramStats/StatsTracking.h"
@@ -18,7 +19,6 @@
 #include "VideoGames/PokemonLZA/Inference/PokemonLZA_SelectionArrowDetector.h"
 #include "VideoGames/PokemonLZA/Inference/PokemonLZA_DialogDetector.h"
 #include "PokemonLZA_StallBuyer.h"
-#include <array>
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -65,6 +65,7 @@ StallBuyer_Descriptor::StallBuyer_Descriptor()
         STRING_POKEMON + " LZA", "Stall Buyer",
         "Programs/PokemonLZA/StallBuyer.html",
         "Buy berries or mints from stall.",
+        PanelQualityStanding::OFFICIAL,
         ProgramControllerClass::StandardController_NoRestrictions,
         FeedbackType::REQUIRED,
         AllowCommandsWhenRunning::DISABLE_COMMANDS

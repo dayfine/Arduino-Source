@@ -6,8 +6,6 @@
 
 #include "Common/Cpp/PrettyPrint.h"
 #include "CommonFramework/Notifications/ProgramNotifications.h"
-#include "CommonFramework/Notifications/EventNotificationsTable.h"
-#include "Controllers/ControllerTypes.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_Superscalar.h"
 #include "NintendoSwitch/Programs/NintendoSwitch_GameEntry.h"
@@ -28,6 +26,7 @@ LotoFarmer_Descriptor::LotoFarmer_Descriptor()
         STRING_POKEMON + " SwSh", "Date Spam - Loto Farmer",
         "Programs/PokemonSwSh/DateSpam-LotoFarmer.html",
         "Farm the Loto ID.",
+        PanelQualityStanding::OFFICIAL,
         ProgramControllerClass::StandardController_PerformanceClassSensitive,
         FeedbackType::NONE,
         AllowCommandsWhenRunning::DISABLE_COMMANDS

@@ -24,18 +24,6 @@ namespace PokemonAutomation{
 
 namespace{
 
-
-Kernels::AudioPipeline::SampleFormat to_sample_format(AudioSampleFormat format){
-    switch (format){
-    case AudioSampleFormat::UINT8:   return Kernels::AudioPipeline::SampleFormat::UINT8;
-    case AudioSampleFormat::SINT16:  return Kernels::AudioPipeline::SampleFormat::SINT16;
-    case AudioSampleFormat::SINT32:  return Kernels::AudioPipeline::SampleFormat::SINT32;
-    case AudioSampleFormat::FLOAT32: return Kernels::AudioPipeline::SampleFormat::FLOAT32;
-    default:
-        throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "Unsupported audio sample format.");
-    }
-}
-
 Kernels::AudioPipeline::SampleFormat sample_format_of(const QAudioFormat& format){
     QAudioFormat copy = format;
     return to_sample_format(get_sample_format(copy));
@@ -61,7 +49,6 @@ bool probe_wav_native_format(const std::string& filename, QAudioFormat& out_form
 }
 
 
-#if QT_VERSION_MAJOR == 6
 bool probe_decoded_native_format(const std::string& filename, QAudioFormat& out_format){
     //  A QAudioDecoder started without a target format decodes in the
     //  source's native format, and the first decoded buffer carries that
@@ -127,16 +114,6 @@ bool probe_decoded_native_format(const std::string& filename, QAudioFormat& out_
     }
     return false;
 }
-#else
-bool probe_decoded_native_format(const std::string& filename, QAudioFormat& out_format){
-    //  Qt 5's QAudioDecoder API does not expose the decoded buffer's
-    //  format, so the probe cannot run there: the caller falls back to
-    //  the legacy 48k stereo float target.
-    (void) filename;
-    (void) out_format;
-    return false;
-}
-#endif
 
 
 

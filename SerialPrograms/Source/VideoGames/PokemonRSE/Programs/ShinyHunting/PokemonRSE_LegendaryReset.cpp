@@ -4,7 +4,6 @@
  *
  */
 
-#include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "CommonFramework/ProgramStats/StatsTracking.h"
 #include "CommonFramework/Notifications/ProgramNotifications.h"
 #include "CommonFramework/ProgramStats/StatsTracking.h"
@@ -26,6 +25,7 @@ LegendaryReset_Descriptor::LegendaryReset_Descriptor()
         Pokemon::STRING_POKEMON + " RSE", "Legendary Reset",
         "Programs/PokemonRSE/LegendaryReset.html",
         "Shiny hunt legendary Pokemon using soft resets.",
+        PanelQualityStanding::OFFICIAL_BETA,
         ProgramControllerClass::StandardController_NoRestrictions,
         FeedbackType::REQUIRED,
         AllowCommandsWhenRunning::DISABLE_COMMANDS

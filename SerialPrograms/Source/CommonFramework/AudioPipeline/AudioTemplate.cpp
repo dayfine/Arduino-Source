@@ -7,16 +7,16 @@
 #include <sstream>
 #include "Common/Cpp/Containers/AlignedVector.tpp"
 #include "Common/Qt/GlobalThreadPoolsQt.h"
-#include "CommonFramework/GlobalSettingsPanel.h"
-#include "CommonFramework/Logging/Logger.h"
-#include "CommonFramework/AudioPipeline/AudioPipelineOptions.h"
 #include "Kernels/Kernels_Alignment.h"
 #include "Kernels/KaiserWindow/Kernels_KaiserWindow.h"
 #include "Kernels/AbsFFT/Kernels_AbsFFT.h"
-#include "AudioConstants.h"
-#include "AudioTemplate.h"
+#include "CommonFramework/GlobalSettingsPanel.h"
+#include "CommonFramework/Logging/Logger.h"
+#include "CommonFramework/AudioPipeline/AudioPipelineOptions.h"
 #include "Tools/AudioFormatUtils.h"
 #include "IO/AudioFileLoader.h"
+#include "AudioConstants.h"
+#include "AudioTemplate.h"
 
 //#include <iostream>
 //using std::cout;
@@ -43,9 +43,6 @@ AudioTemplate::AudioTemplate(size_t frequencies, size_t windows)
 AudioTemplate load_audio_template(const std::string& filename, size_t sample_rate){
     QAudioFormat output_audio_format;
     output_audio_format.setChannelCount(1);
-#if QT_VERSION_MAJOR == 5
-    output_audio_format.setCodec("audio/pcm");
-#endif
     output_audio_format.setSampleRate((int)sample_rate);
     set_sample_format_to_float(output_audio_format);
 
