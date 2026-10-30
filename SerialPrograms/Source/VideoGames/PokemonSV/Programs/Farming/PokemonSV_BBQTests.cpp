@@ -13,6 +13,7 @@
 #include "VideoGames/PokemonSV/Inference/PokemonSV_BlueberryPointsReader.h"
 #include "VideoGames/PokemonSV/Options/PokemonSV_BBQuests.h"
 #include "PokemonSV_BlueberryQuests.h"
+#include "PokemonSV_BBQPointsLedger.h"
 #include "PokemonSV_BBQSoloFarmer.h"
 #include "PokemonSV_BBQTests.h"
 
@@ -1007,6 +1008,109 @@ static void add_tests_BBQReroll(UnitTestDatabase& database){
 
 
 
+namespace{
+
+// Balance reads in order, each at a minute offset from the first, and the
+// ledger they must produce. A negative read is an OCR failure.
+struct BBQPointsLedgerScenario{
+    struct Read{
+        int balance;
+        int minute;
+    };
+    std::string name;
+    std::vector<Read> reads = {};
+    int expected_start = -1;
+    uint64_t expected_earned = 0;
+    uint64_t expected_spent = 0;
+    int64_t expected_net = 0;
+    int64_t expected_per_hour = 0;
+};
+
+class Test_BBQPointsLedger : public UnitTest{
+public:
+    Test_BBQPointsLedger(BBQPointsLedgerScenario scenario)
+        : UnitTest("PokemonSV::BBQPointsLedger - " + scenario.name)
+        , m_scenario(std::move(scenario))
+    {}
+
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        const WallClock start = current_time();
+        BBQPointsLedger ledger;
+        for (const BBQPointsLedgerScenario::Read& read : m_scenario.reads){
+            ledger.record(read.balance, start + std::chrono::minutes(read.minute));
+        }
+        const std::pair<const char*, std::pair<int64_t, int64_t>> checks[] = {
+            {"starting balance", {m_scenario.expected_start, ledger.starting_balance}},
+            {"earned", {(int64_t)m_scenario.expected_earned, (int64_t)ledger.earned}},
+            {"spent", {(int64_t)m_scenario.expected_spent, (int64_t)ledger.spent}},
+            {"net", {m_scenario.expected_net, ledger.net()}},
+            {"net per hour", {m_scenario.expected_per_hour, ledger.net_per_hour()}},
+        };
+        for (const auto& [field, values] : checks){
+            if (values.first != values.second){
+                return std::string("Expected ") + field + " " + std::to_string(values.first)
+                    + ", got " + std::to_string(values.second);
+            }
+        }
+        return true;
+    }
+
+private:
+    const BBQPointsLedgerScenario m_scenario;
+};
+
+}
+
+static void add_tests_BBQPointsLedger(UnitTestDatabase& database){
+    const BBQPointsLedgerScenario scenarios[] = {
+        {
+            .name = "no reads",
+        },
+        {
+            .name = "one read sets the start",
+            .reads = {{6750, 0}},
+            .expected_start = 6750,
+        },
+        {
+            // A quest reward, then a reroll.
+            .name = "rises are earned and drops are spent",
+            .reads = {{6750, 0}, {6780, 10}, {6730, 20}},
+            .expected_start = 6750,
+            .expected_earned = 30,
+            .expected_spent = 50,
+            .expected_net = -20,
+            .expected_per_hour = -60,
+        },
+        {
+            .name = "an unchanged balance adds nothing",
+            .reads = {{6750, 0}, {6750, 30}},
+            .expected_start = 6750,
+        },
+        {
+            .name = "OCR failures are skipped",
+            .reads = {{6750, 0}, {-1, 5}, {6800, 30}},
+            .expected_start = 6750,
+            .expected_earned = 50,
+            .expected_net = 50,
+            .expected_per_hour = 100,
+        },
+        {
+            // The hour starts at the first successful read.
+            .name = "a failed first read does not set the start",
+            .reads = {{-1, 0}, {6750, 10}, {6760, 70}},
+            .expected_start = 6750,
+            .expected_earned = 10,
+            .expected_net = 10,
+            .expected_per_hour = 10,
+        },
+    };
+    for (const BBQPointsLedgerScenario& scenario : scenarios){
+        database.add<Test_BBQPointsLedger>(scenario);
+    }
+}
+
+
+
 void add_tests_BBQ(UnitTestDatabase& database){
     database.add<Test_BBQuestsSlugs>();
 
@@ -1021,6 +1125,7 @@ void add_tests_BBQ(UnitTestDatabase& database){
     add_tests_BBQReroll(database);
     add_tests_BBQuestPlan(database);
     add_tests_BBQFarmerRounds(database);
+    add_tests_BBQPointsLedger(database);
     add_tests_TeraEncounterAction(database);
 }
 

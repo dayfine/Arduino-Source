@@ -106,27 +106,12 @@ bool open_quest_panel(VideoStream& stream, ProControllerContext& context){
 std::vector<BBQuests> read_quests(
     const ProgramInfo& info,
     VideoStream& stream, ProControllerContext& context,
-    const BBQOption& BBQ_OPTIONS
+    const BBQOption& BBQ_OPTIONS,
+    int* BP
 ){
     std::vector<BBQuests> quest_list;
 
-    //Open quest list. Wait for it to open.
-    WhiteButtonWatcher right_panel(COLOR_BLUE, WhiteButton::ButtonB, {0.484, 0.117, 0.022, 0.037});
-    int result = run_until<ProControllerContext>(
-        stream, context,
-        [&](ProControllerContext& context){
-            for (int i = 0; i < 6; i++){ //try 6 times
-                pbf_press_dpad(context, DPAD_RIGHT, 400ms, 160ms);
-                pbf_wait(context, 1600ms);
-                context.wait_for_all_requests();
-            }
-        },
-        {{ right_panel }}
-    );
-    if (result == 0){
-        stream.log("Found quest panel.");
-    }
-    context.wait_for_all_requests();
+    open_quest_panel(stream, context);
 
     //Read in the initial 4 quests.
     stream.log("Reading quests.");
@@ -143,6 +128,11 @@ std::vector<BBQuests> read_quests(
     std::string fourth_quest = fourth_quest_detector.detect_quest(screen);
     if (fourth_quest != ""){
         quest_list.push_back(BBQuests_string_to_enum(fourth_quest));
+    }
+
+    //The balance is on the same panel, so reading it costs no extra button presses.
+    if (BP != nullptr){
+        *BP = read_BP_from_image(stream.logger(), screen);
     }
 
     //Close quest list
@@ -212,9 +202,11 @@ public:
     ConsoleBBQRerollActions(
         const ProgramInfo& info,
         VideoStream& stream, ProControllerContext& context,
-        const BBQOption& BBQ_OPTIONS
+        const BBQOption& BBQ_OPTIONS,
+        BBQPointsLedger* ledger
     )
         : m_info(info), m_stream(stream), m_context(context), m_options(BBQ_OPTIONS)
+        , m_ledger(ledger)
     {}
 
     virtual bool open_panel() override{
@@ -259,7 +251,12 @@ public:
         press_Bs_to_back_to_overworld(m_info, m_stream, m_context);
     }
     virtual std::vector<BBQuests> read_quests() override{
-        return PokemonSV::read_quests(m_info, m_stream, m_context, m_options);
+        int BP = -1;
+        std::vector<BBQuests> quests = PokemonSV::read_quests(m_info, m_stream, m_context, m_options, &BP);
+        if (m_ledger != nullptr){
+            m_ledger->record(BP, current_time());
+        }
+        return quests;
     }
 
 private:
@@ -267,6 +264,7 @@ private:
     VideoStream& m_stream;
     ProControllerContext& m_context;
     const BBQOption& m_options;
+    BBQPointsLedger* m_ledger;
 };
 
 //This does not handle out of BP.
@@ -345,9 +343,10 @@ void reroll_quest_slot(
     VideoStream& stream, ProControllerContext& context,
     const BBQOption& BBQ_OPTIONS,
     std::vector<BBQuests>& quest_list,
-    size_t slot
+    size_t slot,
+    BBQPointsLedger* ledger
 ){
-    ConsoleBBQRerollActions actions(info, stream, context, BBQ_OPTIONS);
+    ConsoleBBQRerollActions actions(info, stream, context, BBQ_OPTIONS, ledger);
     switch (reroll_quest(stream.logger(), actions, quest_list, slot)){
     case BBQRerollResult::Rerolled:
         return;
@@ -462,7 +461,8 @@ std::vector<BBQuests> process_quest_list(
     VideoStream& stream, ProControllerContext& context,
     const BBQOption& BBQ_OPTIONS,
     const std::vector<BBQuests>& quest_list,
-    uint8_t eggs_hatched
+    uint8_t eggs_hatched,
+    BBQPointsLedger* ledger
 ){
     //Read BP only when a quest not possible may be rerolled while others are doable.
     std::optional<int> bp;
@@ -470,6 +470,9 @@ std::vector<BBQuests> process_quest_list(
         return quest != BBQuests::UnableToDetect && not_possible_quests.contains(quest);
     })){
         const int read = read_BP(info, stream, context);
+        if (ledger != nullptr){
+            ledger->record(read, current_time());
+        }
         if (read >= 0){
             bp = read;
         }
@@ -480,7 +483,7 @@ std::vector<BBQuests> process_quest_list(
     //Each reroll updates the panel the next one checks against.
     std::vector<BBQuests> panel = quest_list;
     for (size_t slot : plan.reroll_slots){
-        reroll_quest_slot(info, stream, context, BBQ_OPTIONS, panel, slot);
+        reroll_quest_slot(info, stream, context, BBQ_OPTIONS, panel, slot, ledger);
     }
     if (plan.reroll_all){
         stream.log("No possible quests! Rerolling all quests.");
