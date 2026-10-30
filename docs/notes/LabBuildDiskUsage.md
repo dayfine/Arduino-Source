@@ -84,6 +84,22 @@ Result: 12 deployments (two build families, with console-B copies) take 587 MB,
 199 MB of it the one snapshot they share, against 4.2 GB for 14 before. Three
 worktree build directories in use take 6.4 GB.
 
+## Pitfalls found on 2026-10-29
+
+- **A build's `Resources` come from its worktree's `Packages`.** Sharing one `Packages` checkout
+  between worktrees (a link) saves 0.8 to 1.1 GB each, but only where the branches need the same
+  resources. BDSP AutoStory needs its own set (1,467 files, with #1717's 789 AutoStory templates);
+  a worktree linked to upstream's set (686 files) built fine and then failed at run time with
+  "FileException: Unable to open file" on the first missing template.
+- **`Resources` is copied once.** The copy is a post-build step that runs only when the build
+  directory has no `Resources` yet, so pointing a worktree at another `Packages` doesn't refresh
+  it: delete `<build>/Resources` and rebuild, or copy it by hand.
+- **Deployments aren't self-contained.** The app finds `onnxruntime` through an rpath into the
+  worktree it was built in. Deleting an idle worktree's build directory is safe; deleting the
+  worktree breaks every deployment built from it (dyld "Library not loaded").
+- **Look for links before deleting a folder.** Lab profiles linked their `DownloadedResources` to
+  one profile's copy; deleting that copy broke resource downloads in six profiles.
+
 ## Lab output
 
 What the lab apps write grows faster than the builds and isn't covered above:
