@@ -105,7 +105,7 @@ public:
         };
         const Map maps[] = {
             {MAP_ROUTE_201,     Route201::grid(),       64, 20},
-            {MAP_SANDGEM_TOWN,  SandgemTown::grid(),    34, 23},
+            {MAP_SANDGEM_TOWN,  SandgemTown::grid(),    34, 28},
             {MAP_ROUTE_202,     Route202::grid(),       36, 26},
         };
         for (const Map& map : maps){
@@ -326,6 +326,41 @@ std::string check_plan_stops_readable(
     return "";
 }
 
+//  Checks that no leg of a robust plan from `from` to `goal` can walk into a
+//  door, from any tile the leg before may have left us on, even if an open
+//  leg runs on to twice its length plus two: r123a's legs in Sandgem ran
+//  past where the grid said and the last one entered a house.
+std::string check_plan_avoids_doors(
+    const std::string& name, const Pokemon::MapSet& maps,
+    const std::vector<TilePos>& from, const std::function<bool(const TilePos&)>& goal
+){
+    const TileGrid& grid = maps.world();
+    const auto legs = Pokemon::plan_robust_route(grid, from, goal);
+    if (!legs){
+        return name + ": no robust route found.";
+    }
+    std::vector<TilePos> starts = from;
+    for (const Pokemon::PlannedLeg& planned : *legs){
+        const TileLeg& leg = planned.leg;
+        const size_t reach = leg.ends_at_wall ? (size_t)grid.width() + grid.height() : leg.tiles * 2 + 2;
+        for (TilePos pos : starts){
+            for (size_t i = 0; i < reach; i++){
+                const TilePos next = pos.next(leg.direction);
+                if (grid.at(next) == TileType::DOOR){
+                    return name + ": " + Pokemon::to_string(leg) + " may walk into the door at " + maps.describe(next) + ".";
+                }
+                const std::optional<TilePos> step = grid.step(pos, leg.direction);
+                if (!step){
+                    break;
+                }
+                pos = *step;
+            }
+        }
+        starts = planned.after;
+    }
+    return "";
+}
+
 //  Checks a plan from `from` to `to`: every leg can be walked, ledges are
 //  crossed only southward, and each leg's wall flag matches the grid.
 //  With `maps`, legs are printed with the map tile they end on, and with
@@ -446,6 +481,26 @@ public:
         const TilePos below_sign = maps.to_world(MAP_SANDGEM_TOWN, SandgemTown::POKEMON_CENTER_SIGN.next(Direction::SOUTH));
         const TilePos below_mart = maps.to_world(MAP_SANDGEM_TOWN, SandgemTown::POKE_MART_DOOR.next(Direction::SOUTH));
         const TilePos row_end = maps.to_world(MAP_SANDGEM_TOWN, SandgemTown::FRONT_ROW_EAST_END);
+        //  From the trees east of the Mart, 00.04 walks six tiles west, three
+        //  off at most, and north (north_through_sign_gap()): from every
+        //  column it may reach, north passes no door, and only the gap
+        //  between the signs leads out of town.
+        std::vector<TilePos> above_sign_gap;
+        for (int x = row_end.x - 11; x <= row_end.x - 3; x++){
+            const TilePos pos{x, row_end.y};
+            const Pokemon::WallHit hit = Pokemon::walk_to_wall(maps.world(), pos, Direction::NORTH);
+            if (maps.world().at(hit.wall) == TileType::DOOR){
+                return "North from " + maps.describe(pos) + " walks into a door.";
+            }
+            const std::vector<TilePos> gap = SandgemTown::below_sign_gap();
+            const bool in_gap = std::find(gap.begin(), gap.end(), maps.to_local(pos)->pos) != gap.end();
+            if (in_gap != (hit.tiles > 2)){
+                return "North from " + maps.describe(pos) + " goes " + std::to_string(hit.tiles) + " tiles.";
+            }
+            if (in_gap){
+                above_sign_gap.push_back(hit.stop);
+            }
+        }
         //  The walks that start or end in the catch grass must stop in it;
         //  the Sandgem walks (`readable`) never need to.
         const struct{ const char* name; std::vector<TilePos> from; std::function<bool(const TilePos&)> goal; bool readable; } walks[] = {
@@ -458,12 +513,16 @@ public:
                 [&](const TilePos& pos){ return pos.y == below_mart.y && std::abs(pos.x - below_mart.x) <= 1; }, true},
             {"Poke Mart to the trees east of it", story_door_front(MAP_SANDGEM_TOWN, SandgemTown::POKE_MART_DOOR),
                 [&](const TilePos& pos){ return pos == row_end; }, true},
-            {"Trees east of the Poke Mart to the save spot", {row_end},
+            {"North of the gap between the signs to the save spot", above_sign_gap,
                 [&](const TilePos& pos){ return pos == save_spot; }, true},
             {"Save spots to Jubilife", story_save_spots(), story_at_jubilife_exit, false},
         };
         for (const auto& walk : walks){
             error = check_robust_plan(logger, walk.name, maps, walk.from, walk.goal);
+            if (!error.empty()){
+                return error;
+            }
+            error = check_plan_avoids_doors(walk.name, maps, walk.from, walk.goal);
             if (!error.empty()){
                 return error;
             }

@@ -781,13 +781,54 @@ namespace PokemonAutomation {
             return story_door_front(MAP_SANDGEM_TOWN, SandgemTown::POKE_MART_DOOR);
         }
 
+        // From the trees at the east end of the doors' row, west into the gap
+        // between the Center's sign and the Mart's (below_sign_gap()) and
+        // north through it until a wall stops us. Six tiles west from column
+        // 29 ends on 23, and on 20 to 26 if two tiles off: north from all of
+        // those passes no door, and only the gap lets us through. A walk
+        // north that goes nowhere stood below a sign or the Mart: a tile
+        // west, twice at most, never reaches the Center's door at 17. The
+        // planner would rather go round the south of town on walls, where
+        // townspeople wander. Returns where the walk north may have ended.
+        static std::vector<TilePos> north_through_sign_gap(VideoStream& stream, ProControllerContext& context, const MapSet& maps){
+            using Pokemon::Direction;
+            route_status(stream, "To the gap between the Center's and the Mart's signs: west 6.");
+            route_turn(stream, context, Direction::WEST);
+            walk_for(stream, context, -1, 0, route_open_hold(Direction::WEST, 6), "To the gap between the signs");
+            for (size_t nudges = 0;; nudges++){
+                const WalkResult north = walk_until(stream, context, 0, 1, 8000ms, "North through the gap");
+                if (north.stop == WalkStop::TRANSITION || north.stop == WalkStop::DIALOG || north.wild_battles > 0){
+                    OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
+                        "North through the gap: " + std::string(walk_stop_name(north.stop)) + " instead of a wall.", stream);
+                }
+                //  Blocked at once: the wall reads after about 800ms still.
+                if (north.walked > ROUTE_START_DELAY + 800ms + 2 * ROUTE_MS_PER_TILE_UP_DOWN){
+                    break;
+                }
+                if (nudges == 2){
+                    OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
+                        "North through the gap: still blocked after two tiles west.", stream);
+                }
+                route_status(stream, "North through the gap: blocked at once, below a sign or the Mart; a tile west.");
+                route_turn(stream, context, Direction::WEST);
+                walk_for(stream, context, -1, 0, route_open_hold(Direction::WEST, 1), "A tile west");
+                route_turn(stream, context, Direction::NORTH);
+            }
+            std::vector<TilePos> ends;
+            for (const TilePos& pos : SandgemTown::below_sign_gap()){
+                ends.push_back(Pokemon::walk_to_wall(maps.world(), maps.to_world(MAP_SANDGEM_TOWN, pos), Direction::NORTH).stop);
+            }
+            return ends;
+        }
+
         // Back up to Route 202's save spot under the ledge and save there: it
         // is where a retry may start (story_save_spots()), its walls pin it,
         // and the trainers are north of it. A save in Sandgem would need the
         // training walk to plan from town as well. First east to the trees
         // that end the doors' row, so the way north starts from one known
-        // tile: planned from the door's three, it goes round the south of
-        // town instead.
+        // tile, then north through the gap between the signs: r123a, planned
+        // round the south of town on a map that had it wrong, walked into a
+        // house.
         static void save_at_route_202_save_spot(
             SingleSwitchProgramEnvironment& env, VideoStream& stream, ProControllerContext& context, const MapSet& maps,
             std::vector<TilePos> at, std::vector<TrainerSight>& trainers, const RouteTrainerFight& fight
@@ -796,6 +837,7 @@ namespace PokemonAutomation {
             const TilePos save_spot = maps.to_world(MAP_ROUTE_202, Route202::SAVE_SPOT);
             at = walk_route(stream, context, maps, std::move(at),
                 [&](const TilePos& pos) { return pos == row_end; }, trainers, fight, "To the trees east of the Poke Mart");
+            at = north_through_sign_gap(stream, context, maps);
             walk_route(stream, context, maps, std::move(at),
                 [&](const TilePos& pos) { return pos == save_spot; }, trainers, fight, "Back to Route 202");
             stream.log("[00.04] Saving with the Potions, at the save spot on Route 202.");
