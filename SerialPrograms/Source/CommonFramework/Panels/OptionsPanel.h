@@ -30,8 +30,7 @@ public:
         std::string category, std::string display_name,
         std::string doc_link,
         std::string description,
-        Color color = Color(),
-        PanelDeprecation deprecation = PanelDeprecation::NOT_DEPRECATED,
+        PanelQualityStanding standing,
         bool restore_defaults_button = true
     );
 

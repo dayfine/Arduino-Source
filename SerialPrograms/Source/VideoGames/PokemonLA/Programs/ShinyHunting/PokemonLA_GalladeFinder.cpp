@@ -5,7 +5,6 @@
  */
 
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
-#include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "CommonFramework/Notifications/ProgramNotifications.h"
 #include "CommonFramework/ProgramStats/StatsTracking.h"
 #include "CommonTools/Async/InferenceRoutines.h"
@@ -30,6 +29,7 @@ GalladeFinder_Descriptor::GalladeFinder_Descriptor()
         STRING_POKEMON + " LA", "Alpha Gallade Hunter",
         "Programs/PokemonLA/AlphaGalladeHunter.html",
         "Constantly reset the Snowpoint Temple to find Shiny Alpha Gallade.",
+        PanelQualityStanding::OFFICIAL,
         ProgramControllerClass::StandardController_NoRestrictions,
         FeedbackType::VIDEO_AUDIO,
         AllowCommandsWhenRunning::DISABLE_COMMANDS

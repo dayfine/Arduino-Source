@@ -5,7 +5,6 @@
 */
 
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
-#include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "CommonFramework/Notifications/ProgramNotifications.h"
 #include "CommonFramework/ProgramStats/StatsTracking.h"
 #include "CommonTools/Async/InferenceRoutines.h"
@@ -33,6 +32,7 @@ FroslassFinder_Descriptor::FroslassFinder_Descriptor()
         STRING_POKEMON + " LA", "Alpha Froslass Hunter",
         "Programs/PokemonLA/AlphaFroslassHunter.html",
         "Constantly reset to find a Alpha Froslass or any Shiny in the path.",
+        PanelQualityStanding::OFFICIAL,
         ProgramControllerClass::StandardController_NoRestrictions,
         FeedbackType::VIDEO_AUDIO,
         AllowCommandsWhenRunning::DISABLE_COMMANDS

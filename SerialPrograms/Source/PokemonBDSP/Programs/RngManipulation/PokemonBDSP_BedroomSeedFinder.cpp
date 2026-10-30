@@ -10,7 +10,6 @@
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/PrettyPrint.h"
-#include "CommonFramework/Globals.h"
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "Pokemon/Pokemon_Strings.h"
 #include "PokemonBDSP/Inference/Rng/PokemonBDSP_BlinkScenes.h"
@@ -31,10 +30,10 @@ BedroomSeedFinder_Descriptor::BedroomSeedFinder_Descriptor()
         STRING_POKEMON + " BDSP", "Bedroom Seed Finder",
         "",
         "Recover the RNG seed by watching the player character's blinks in their bedroom.",
+        PanelQualityStanding::OFFICIAL_BETA,
         ProgramControllerClass::StandardController_NoRestrictions,
         FeedbackType::REQUIRED,
-        AllowCommandsWhenRunning::ENABLE_COMMANDS,
-        {}
+        AllowCommandsWhenRunning::ENABLE_COMMANDS
     )
 {}
 

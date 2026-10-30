@@ -10,12 +10,12 @@
 #include "CommonTools/VisualDetectors/FrozenImageDetector.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "NintendoSwitch/Programs/NintendoSwitch_GameEntry.h"
-#include "VideoGames/PokemonSwSh/ShinyHuntTracker.h"
 #include "PokemonBDSP/Inference/PokemonBDSP_SelectionArrow.h"
 #include "PokemonBDSP/Inference/Battles/PokemonBDSP_BattleMenuDetector.h"
 #include "PokemonBDSP/Inference/Battles/PokemonBDSP_EndBattleDetector.h"
 #include "PokemonBDSP/Inference/ShinyDetection/PokemonBDSP_ShinyEncounterDetector.h"
 #include "PokemonBDSP/Programs/PokemonBDSP_EncounterHandler.h"
+#include "VideoGames/PokemonSwSh/ShinyHuntTracker.h"
 #include "PokemonBDSP_DoublesLeveling.h"
 
 namespace PokemonAutomation{
@@ -29,6 +29,7 @@ DoublesLeveling_Descriptor::DoublesLeveling_Descriptor()
         STRING_POKEMON + " BDSP", "Double Battle Leveling",
         "Programs/PokemonBDSP/DoublesLeveling.html",
         "Level up your party by spamming spread moves in a double battle with a partner that heals you forever.",
+        PanelQualityStanding::OFFICIAL,
         ProgramControllerClass::StandardController_NoRestrictions,
         FeedbackType::REQUIRED,
         AllowCommandsWhenRunning::DISABLE_COMMANDS

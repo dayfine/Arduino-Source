@@ -4,17 +4,16 @@
  *
  */
 
+#include "Common/Cpp/Strings/StringTools.h"
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
 #include "CommonFramework/ProgramStats/StatsTracking.h"
 #include "CommonFramework/Notifications/ProgramNotifications.h"
 #include "CommonFramework/ProgramStats/StatsTracking.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "CommonTools/Async/InferenceRoutines.h"
-#include "CommonTools/StartupChecks/StartProgramChecks.h"
-#include "Pokemon/Pokemon_Strings.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_Superscalar.h"
-#include "NintendoSwitch/NintendoSwitch_Settings.h"
+#include "Pokemon/Pokemon_Strings.h"
 #include "VideoGames/PokemonFRLG/Inference/Dialogs/PokemonFRLG_BattleDialogs.h"
 #include "VideoGames/PokemonFRLG/Inference/Dialogs/PokemonFRLG_DialogDetector.h"
 #include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattlePokemonDetector.h"
@@ -36,6 +35,7 @@ StarterRng_Descriptor::StarterRng_Descriptor()
         Pokemon::STRING_POKEMON + " FRLG", "Starter RNG",
         "Programs/PokemonFRLG/StarterRng.html",
         "Automatically calibrate timings to hit a specific RNG target for FRLG starters.",
+        PanelQualityStanding::OFFICIAL,
         ProgramControllerClass::StandardController_RequiresPrecision,
         FeedbackType::REQUIRED,
         AllowCommandsWhenRunning::DISABLE_COMMANDS
@@ -64,6 +64,10 @@ struct StarterRng_Descriptor::Stats : public StatsTracker{
 };
 std::unique_ptr<StatsTracker> StarterRng_Descriptor::make_stats() const{
     return std::unique_ptr<StatsTracker>(new Stats());
+}
+
+StarterRng::~StarterRng(){
+    SEED.remove_listener(*this);
 }
 
 StarterRng::StarterRng()
@@ -122,8 +126,7 @@ StarterRng::StarterRng()
         false,
         "<b>Target Seed:</b>",
         LockMode::LOCK_WHILE_RUNNING,
-        "70FE", "70FE",
-        true
+        "70FE", "70FE"
     )
     , ADVANCES(
         "<b>Advances:</b><br>"
@@ -196,6 +199,15 @@ StarterRng::StarterRng()
     PA_ADD_OPTION(TAKE_VIDEO);
     PA_ADD_OPTION(GO_HOME_WHEN_DONE);
     PA_ADD_OPTION(NOTIFICATIONS);
+
+    SEED.add_listener(*this);
+}
+
+void StarterRng::on_config_value_changed(void* object){
+    if (object == &SEED){
+        SEED.set(StringTools::strip(static_cast<std::string>(SEED)));
+        return;
+    }
 }
 
 

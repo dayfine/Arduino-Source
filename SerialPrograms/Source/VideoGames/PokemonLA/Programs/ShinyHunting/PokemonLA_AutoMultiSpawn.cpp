@@ -35,9 +35,9 @@
 #include "VideoGames/PokemonLA/PokemonLA_WeatherAndTime.h"
 #include "PokemonLA_AutoMultiSpawn.h"
 
-#include <iostream>
-using std::cout;
-using std::endl;
+//#include <iostream>
+//using std::cout;
+//using std::endl;
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -204,6 +204,7 @@ AutoMultiSpawn_Descriptor::AutoMultiSpawn_Descriptor()
         STRING_POKEMON + " LA", "Auto Multi-Spawn",
         "Programs/PokemonLA/AutoMultiSpawn.html",
         "Advance a path in MultiSpawn shiny hunting method.",
+        PanelQualityStanding::UNMAINTAINED,
         ProgramControllerClass::StandardController_RequiresPrecision,
         FeedbackType::REQUIRED,
         AllowCommandsWhenRunning::DISABLE_COMMANDS

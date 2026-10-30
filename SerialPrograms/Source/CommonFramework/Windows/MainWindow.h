@@ -8,12 +8,12 @@
 #define PokemonAutomation_MainWindow_H
 
 #include <QMainWindow>
-#include "Common/Cpp/Logging/GlobalLogger.h"
 #include "Common/Cpp/Options/ConfigOption.h"
+#include "PanelLists.h"
 #include "CommonFramework/Environment/SystemSleep.h"
 #include "CommonFramework/Panels/PanelTools.h"
 #include "CommonFramework/Panels/PanelSession.h"
-#include "PanelLists.h"
+#include "LabControl.h"
 
 class QVBoxLayout;
 class QLabel;
@@ -92,6 +92,8 @@ private:
     bool m_pending_resize = false;
     bool m_pending_move = false;
     bool m_panel_transition = false;
+
+    LabControlStatus m_lab_control_status;
 };
 
 // returns given X value, but bounded by 0 and screen_width

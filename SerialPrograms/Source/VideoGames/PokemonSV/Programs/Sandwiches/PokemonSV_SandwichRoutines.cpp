@@ -27,10 +27,10 @@
 #include "VideoGames/PokemonSV/Inference/Picnics/PokemonSV_SandwichRecipeDetector.h"
 #include "VideoGames/PokemonSV/Resources/PokemonSV_FillingsCoordinates.h"
 #include "VideoGames/PokemonSV/Resources/PokemonSV_Ingredients.h"
-#include "PokemonSV_SandwichRoutines.h"
-#include "PokemonSV_SandwichEatingConsole.h"
 #include "VideoGames/PokemonSV/Programs/Sandwiches/PokemonSV_IngredientSession.h"
 #include "VideoGames/PokemonSV/Inference/Picnics/PokemonSV_SandwichPlateDetector.h"
+#include "PokemonSV_SandwichEatingConsole.h"
+#include "PokemonSV_SandwichRoutines.h"
 
 // #include <iostream>
 // using std::cout;

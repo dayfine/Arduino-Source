@@ -9,7 +9,6 @@
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
 #include "CommonFramework/Notifications/ProgramNotifications.h"
 #include "CommonFramework/ProgramStats/StatsTracking.h"
-#include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "CommonTools/Async/InferenceRoutines.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "NintendoSwitch/Programs/NintendoSwitch_GameEntry.h"
@@ -39,6 +38,7 @@ RamanasCombeeFinder_Descriptor::RamanasCombeeFinder_Descriptor()
         STRING_POKEMON + " LA", "Ramanas Combee Finder",
         "Programs/PokemonLA/RamanasCombeeFinder.html",
         "Check Ramanas Island Tree until a Combee is found.",
+        PanelQualityStanding::OFFICIAL,
         ProgramControllerClass::StandardController_NoRestrictions,
         FeedbackType::REQUIRED,
         AllowCommandsWhenRunning::DISABLE_COMMANDS
