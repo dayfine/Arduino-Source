@@ -22,9 +22,9 @@ const Pokemon::TileGrid& grid();
 
 //  Where the player stands in the tall grass after the catching tutorial.
 extern const Pokemon::TilePos CATCH_SPOT;
-//  Under the south ledge, against the east trees: where 00.04 saves once it
-//  has the Potions. Two walls pin it.
-extern const Pokemon::TilePos POTION_SAVE_SPOT;
+//  Under the south ledge, against the east trees: where the console's 00.04
+//  save stands. Two walls pin it.
+extern const Pokemon::TilePos SAVE_SPOT;
 
 //  The three trainers, south to north. Which one is Tristan, Natalie or
 //  Logan is not known from the map.

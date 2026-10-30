@@ -66,12 +66,15 @@ const TileGrid& grid(){
 }
 
 
-//  Where the post-catch save stands: the bottom row of the tall-grass patch at
-//  (15..20, 20..22), nearest the Sandgem Town entrance at the bottom right.
-//  On the console the sign at (24,20) is 5 columns right and 2 rows up, and
-//  walking east stops at the trees after 11 tiles.
+//  Where 00.03's save after the catch stands: the bottom row of the tall-grass
+//  patch at (15..20, 20..22), nearest the Sandgem Town entrance at the bottom
+//  right. On the console the sign at (24,20) is 5 columns right and 2 rows up,
+//  and walking east stops at the trees after 11 tiles.
 const TilePos CATCH_SPOT{19, 22};
-const TilePos POTION_SAVE_SPOT{30, 19};
+//  Where the console's 00.04 save stands, made by the runs that fetched
+//  Potions from Route 201 (r113a..r117a): under the south ledge, against the
+//  east trees.
+const TilePos SAVE_SPOT{30, 19};
 
 //  Blue-cap trainer, feet at about (128,186), facing south.
 const TilePos TRAINER_A{7, 11};

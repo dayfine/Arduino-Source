@@ -99,10 +99,18 @@ bool story_at_jubilife_exit(const TilePos& world){
     return tile && tile->map == MAP_ROUTE_202 && tile->pos.y <= 3;
 }
 
+std::vector<TilePos> story_save_spots(){
+    const MapSet& maps = story_maps();
+    return {
+        maps.to_world(MAP_ROUTE_202, Route202::CATCH_SPOT),
+        maps.to_world(MAP_ROUTE_202, Route202::SAVE_SPOT),
+    };
+}
+
 std::vector<TilePos> story_potion_giver_row(){
     const MapSet& maps = story_maps();
     const TilePos west = maps.to_world(MAP_ROUTE_201, Route201::POTION_GIVER_ROW_WEST_END);
-    const TilePos east = maps.to_world(MAP_ROUTE_201, Route201::POTION_GIVER_ROW_EAST_END);
+    const TilePos east = maps.to_world(MAP_ROUTE_201, Route201::POTION_GIVER_APPROACH);
     std::vector<TilePos> row;
     for (int x = west.x; x <= east.x; x++){
         row.push_back({x, west.y});
@@ -110,19 +118,9 @@ std::vector<TilePos> story_potion_giver_row(){
     return row;
 }
 
-std::vector<TilePos> story_potion_giver_wander_area(){
-    const MapSet& maps = story_maps();
-    const TilePos west = maps.to_world(MAP_ROUTE_201, Route201::POTION_GIVER_ROW_WEST_END);
-    const TilePos east = maps.to_world(MAP_ROUTE_201, Route201::POTION_GIVER_ROW_EAST_END);
-    std::vector<TilePos> area;
-    for (int y = west.y; y <= west.y + 1; y++){
-        for (int x = west.x + 1; x <= east.x; x++){
-            if (maps.world().standable({x, y})){
-                area.push_back({x, y});
-            }
-        }
-    }
-    return area;
+std::vector<TilePos> story_door_front(const char* map, const TilePos& door){
+    const TilePos below = story_maps().to_world(map, door.next(Direction::SOUTH));
+    return {below.next(Direction::WEST), below, below.next(Direction::EAST)};
 }
 
 std::vector<TilePos> story_after_training_area(){

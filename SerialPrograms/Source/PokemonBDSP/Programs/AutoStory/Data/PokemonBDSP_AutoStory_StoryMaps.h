@@ -48,15 +48,20 @@ bool story_map_plannable(const std::string& map);
 //  any of them enters Jubilife City.
 bool story_at_jubilife_exit(const Pokemon::TilePos& world);
 
-//  Where we may stand after talking to the Potion giver: her row, from the
-//  corner that pins it to its east end, in world tiles. The walk to her goes
-//  east along it from the corner, so it never leaves the row.
+//  Where the post-catch half of 00.04 may start, in world tiles: the catch
+//  spot (00.03 saves there after the catch) and the save spot under the
+//  ledge (the console's save from the runs that fetched Potions).
+std::vector<Pokemon::TilePos> story_save_spots();
+
+//  Where we may stand after talking to the Potion giver, in world tiles: her
+//  row from its west corner to the approach tile. The walk to her goes west
+//  along the row from the approach tile, so it never leaves the row.
 std::vector<Pokemon::TilePos> story_potion_giver_row();
 
-//  Where the Potion giver may stand: her row and the row below, east of the
-//  corner, in world tiles. She wanders there (r113a, r114a); a walk planned
-//  through it may walk into her, which tall grass hides from the walk.
-std::vector<Pokemon::TilePos> story_potion_giver_wander_area();
+//  Where a walk out of the door `door` of `map` may leave us, in world tiles:
+//  the tile below it and its neighbours either side, since the door opening
+//  is not lined up with one tile (Jubilife's Center, r85).
+std::vector<Pokemon::TilePos> story_door_front(const char* map, const Pokemon::TilePos& door);
 
 //  Where we may stand after training in the catch grass, in world tiles: the
 //  training walks up and down the catch spot's column, between the tree walls

@@ -116,13 +116,15 @@ public:
             TileType type;
         };
         const Named named[] = {
-            {MAP_ROUTE_201,     Route201::POTION_GIVER_ROW_EAST,    TileType::WALKABLE},
             {MAP_ROUTE_201,     Route201::POTION_GIVER_ROW_WEST_END, TileType::TALL_GRASS},
-            {MAP_ROUTE_201,     Route201::POTION_GIVER_ROW_EAST_END, TileType::TALL_GRASS},
+            {MAP_ROUTE_201,     Route201::POTION_GIVER_APPROACH,    TileType::WALKABLE},
+            {MAP_ROUTE_201,     Route201::POTION_GIVER_ROW_EAST_END, TileType::WALKABLE},
             {MAP_SANDGEM_TOWN,  SandgemTown::LAB_DOOR,              TileType::DOOR},
             {MAP_SANDGEM_TOWN,  SandgemTown::POKEMON_CENTER_DOOR,   TileType::DOOR},
+            {MAP_SANDGEM_TOWN,  SandgemTown::POKEMON_CENTER_SIGN,   TileType::SIGN},
             {MAP_SANDGEM_TOWN,  SandgemTown::POKE_MART_DOOR,        TileType::DOOR},
             {MAP_ROUTE_202,     Route202::CATCH_SPOT,               TileType::TALL_GRASS},
+            {MAP_ROUTE_202,     Route202::SAVE_SPOT,                TileType::WALKABLE},
             {MAP_ROUTE_202,     Route202::TRAINER_A,                TileType::NPC},
             {MAP_ROUTE_202,     Route202::TRAINER_B,                TileType::NPC},
             {MAP_ROUTE_202,     Route202::TRAINER_C,                TileType::NPC},
@@ -141,8 +143,23 @@ public:
                 return std::string(c.map) + " tile " + Pokemon::to_string(c.pos) + " does not map back.";
             }
         }
-        if (Route201::POTION_GIVER_ROW_EAST.next(Direction::WEST) != Route201::POTION_GIVER_ROW_EAST_END){
-            return "The Potion giver's row does not end next to its east tile.";
+        //  The Poke Mart lady's row: all of row 3 from the corner to the fence,
+        //  and the approach tile pinned by the sign's row and the trees.
+        {
+            const TilePos corner = world.to_world(MAP_ROUTE_201, Route201::POTION_GIVER_ROW_WEST_END);
+            const TilePos approach = world.to_world(MAP_ROUTE_201, Route201::POTION_GIVER_APPROACH);
+            const TilePos row_end = world.to_world(MAP_ROUTE_201, Route201::POTION_GIVER_ROW_EAST_END);
+            if (corner.y != approach.y || approach.y != row_end.y || !(corner.x < approach.x && approach.x < row_end.x)){
+                return "The Poke Mart lady's row is not one row from its corner to the fence.";
+            }
+            if (story_potion_giver_row().size() != (size_t)(approach.x - corner.x + 1)){
+                return "story_potion_giver_row() is not the row from the corner to the approach tile.";
+            }
+            if (world.world().at(approach.next(Direction::NORTH)) != TileType::BLOCKED ||
+                world.world().at(approach.next(Direction::SOUTH).next(Direction::WEST)) != TileType::SIGN
+            ){
+                return "The approach tile is not under the trees, north-east of the sign.";
+            }
         }
 
         //  The maps join where their exits meet.
@@ -221,13 +238,43 @@ public:
             {route, {12, 8}, Direction::SOUTH, {12, 22}, 14, true},  //  hops both ledges
             {route, Route202::EXIT_JUBILIFE, Direction::NORTH, Route202::EXIT_JUBILIFE, 0, false},
         };
-        for (const Case& c : cases){
+        auto check = [](const Case& c) -> std::string{
             const Pokemon::WallHit hit = Pokemon::walk_to_wall(c.grid, c.from, c.direction);
             if (hit.stop != c.stop || hit.tiles != c.tiles || hit.anchored != c.anchored){
                 return "Walking " + std::string(Pokemon::direction_name(c.direction)) + " from " +
                     Pokemon::to_string(c.from) + " stops at " + Pokemon::to_string(hit.stop) + " after " +
                     std::to_string(hit.tiles) + " tiles" + (hit.anchored ? "" : " (not anchored)") +
                     ", expected " + Pokemon::to_string(c.stop) + " after " + std::to_string(c.tiles) + ".";
+            }
+            return "";
+        };
+        for (const Case& c : cases){
+            const std::string error = check(c);
+            if (!error.empty()){
+                return error;
+            }
+        }
+        //  The Poke Mart lady's row on the joined maps (00.04): west along it
+        //  from the approach tile to the corner, east from the corner to
+        //  Sandgem's fence, then south down the open east edge, and the way
+        //  to the approach tile: west along the sign's row and one north.
+        const Pokemon::MapSet& maps = story_maps();
+        const TileGrid& world = maps.world();
+        auto r201 = [&](const TilePos& pos){ return maps.to_world(MAP_ROUTE_201, pos); };
+        const TilePos corner = r201(Route201::POTION_GIVER_ROW_WEST_END);
+        const TilePos approach = r201(Route201::POTION_GIVER_APPROACH);
+        const TilePos row_end = r201(Route201::POTION_GIVER_ROW_EAST_END);
+        const Case lady[] = {
+            {world, approach, Direction::WEST,  corner, 14, true},
+            {world, corner, Direction::EAST,  row_end, 21, true},
+            {world, row_end, Direction::SOUTH, r201({63, 6}), 3, true},
+            {world, r201({63, 4}), Direction::WEST,  approach.next(Direction::SOUTH), 7, true},
+            {world, approach.next(Direction::SOUTH), Direction::NORTH, approach, 1, true},
+        };
+        for (const Case& c : lady){
+            const std::string error = check(c);
+            if (!error.empty()){
+                return error;
             }
         }
         return true;
@@ -264,41 +311,43 @@ std::string check_robust_plan(
     return "";
 }
 
-//  The walk back from the Potion giver (00.04): west along her row to its
-//  corner, away from her, then round her rows to the save spot. Every leg on
-//  Route 201 after the corner must end on a wall the walk can read, out of the
-//  tall grass, so that no leg there that runs out of time is taken as an anchor.
-std::string check_potion_giver_walk_back(Logger& logger){
+//  The Poke Mart lady's talk (00.04): the way to the tile east of her row from
+//  the save spots, and the way back from her row's east end to the save spot.
+//  Every leg on Route 201 must end on a wall the walk can read, out of the
+//  tall grass, so that no leg there that runs out of time is taken as an
+//  anchor; the row itself is walked by hand, east to the fence.
+std::string check_poke_mart_lady_walks(Logger& logger){
     const Pokemon::MapSet& maps = story_maps();
-    const TilePos corner = maps.to_world(MAP_ROUTE_201, Route201::POTION_GIVER_ROW_WEST_END);
-    const auto to_corner = Pokemon::plan_robust_route(maps.world(), story_potion_giver_row(),
-        [&](const TilePos& pos){ return pos == corner; });
-    if (!to_corner || to_corner->size() != 1 || to_corner->front().leg.direction != Direction::WEST){
-        return "Potion giver walk back: her row should reach its corner in one leg west.";
-    }
-    TileGrid grid = maps.world();
-    const std::vector<TilePos> wander = story_potion_giver_wander_area();
-    for (const TilePos& pos : wander){
-        grid.set(pos, TileType::BLOCKED);
-    }
-    const TilePos save_spot = maps.to_world(MAP_ROUTE_202, Route202::POTION_SAVE_SPOT);
-    const auto legs = Pokemon::plan_robust_route(grid, {corner}, [&](const TilePos& pos){ return pos == save_spot; });
-    if (!legs || legs->empty()){
-        return "Potion giver walk back: no plan from the corner round her rows.";
-    }
-    std::string text = "Potion giver corner to the save spot, round her rows:";
-    for (const Pokemon::PlannedLeg& leg : *legs){
-        text += "\n    " + Pokemon::to_string(leg.leg) + " to";
-        for (const TilePos& pos : leg.after){
-            text += " " + maps.describe(pos);
+    const TilePos approach = maps.to_world(MAP_ROUTE_201, Route201::POTION_GIVER_APPROACH);
+    const TilePos row_end = maps.to_world(MAP_ROUTE_201, Route201::POTION_GIVER_ROW_EAST_END);
+    const TilePos save_spot = maps.to_world(MAP_ROUTE_202, Route202::SAVE_SPOT);
+    const struct{ const char* name; std::vector<TilePos> from; TilePos to; } walks[] = {
+        {"Save spots to the tile east of the Poke Mart lady's row", story_save_spots(), approach},
+        {"Poke Mart lady's row end to the save spot", {row_end}, save_spot},
+    };
+    for (const auto& walk : walks){
+        const TilePos to = walk.to;
+        const auto legs = Pokemon::plan_robust_route(maps.world(), walk.from, [&](const TilePos& pos){ return pos == to; });
+        if (!legs || legs->empty()){
+            return std::string(walk.name) + ": no robust plan.";
         }
-        const std::optional<Pokemon::MapTile> tile = maps.to_local(leg.after.front());
-        if (tile && tile->map == MAP_ROUTE_201 && (!leg.leg.ends_at_wall || !route_wall_readable(grid, leg.after))){
-            return "Potion giver walk back: " + Pokemon::to_string(leg.leg) + " ends on Route 201 where a stop cannot be read.";
+        std::string text = std::string(walk.name) + " (robust):";
+        for (const Pokemon::PlannedLeg& leg : *legs){
+            text += "\n    " + Pokemon::to_string(leg.leg) + " to";
+            for (const TilePos& pos : leg.after){
+                text += " " + maps.describe(pos);
+            }
+            const std::optional<Pokemon::MapTile> tile = maps.to_local(leg.after.front());
+            if (tile && tile->map == MAP_ROUTE_201 && (!leg.leg.ends_at_wall || !route_wall_readable(maps.world(), leg.after))){
+                return std::string(walk.name) + ": " + Pokemon::to_string(leg.leg) + " ends on Route 201 where a stop cannot be read.";
+            }
+        }
+        logger.log(text);
+        if (legs->back().after != std::vector<TilePos>{to}){
+            return std::string(walk.name) + ": may not end at " + maps.describe(to) + ".";
         }
     }
-    logger.log(text);
-    return legs->back().after == std::vector<TilePos>{save_spot} ? "" : "Potion giver walk back: may not end at the save spot.";
+    return "";
 }
 
 //  Checks a plan from `from` to `to`: every leg can be walked, ledges are
@@ -406,16 +455,23 @@ public:
             return "A route north over a ledge was found.";
         }
 
+        //  00.04 after the catch: every leg it walks, in order.
         const Pokemon::MapSet& maps = story_maps();
         const std::vector<Pokemon::TrainerSight> trainers = story_trainer_sights();
         const TilePos catch_spot = maps.to_world(MAP_ROUTE_202, Route202::CATCH_SPOT);
-        const TilePos potion = maps.to_world(MAP_ROUTE_201, Route201::POTION_GIVER_ROW_EAST);
         const TilePos jubilife = maps.to_world(MAP_ROUTE_202, Route202::EXIT_JUBILIFE);
-        error = check_plan(logger, "Catch spot to Potion giver", maps.world(), catch_spot, potion, &maps, trainers);
+        error = check_plan(logger, "Catch spot to Jubilife", maps.world(), catch_spot, jubilife, &maps, trainers);
         if (!error.empty()){
             return error;
         }
-        error = check_plan(logger, "Potion giver to Jubilife", maps.world(), potion, jubilife, &maps, trainers);
+        error = check_poke_mart_lady_walks(logger);
+        if (!error.empty()){
+            return error;
+        }
+        const TilePos save_spot = maps.to_world(MAP_ROUTE_202, Route202::SAVE_SPOT);
+        const std::vector<TilePos> grass = story_after_training_area();
+        error = check_robust_plan(logger, "Save spot to the catch grass", maps, {save_spot},
+            [&](const TilePos& pos){ return std::find(grass.begin(), grass.end(), pos) != grass.end(); });
         if (!error.empty()){
             return error;
         }
@@ -425,35 +481,8 @@ public:
         if (!error.empty()){
             return error;
         }
-        const TilePos below_door = maps.to_world(MAP_SANDGEM_TOWN, SandgemTown::POKEMON_CENTER_DOOR.next(Direction::SOUTH));
-        error = check_robust_plan(logger, "Pokemon Center to Jubilife", maps, {below_door}, story_at_jubilife_exit);
-        if (!error.empty()){
-            return error;
-        }
-        error = check_robust_plan(logger, "After training to Jubilife", maps, story_after_training_area(), story_at_jubilife_exit);
-        if (!error.empty()){
-            return error;
-        }
-        error = check_robust_plan(logger, "Catch spot to Potion giver", maps, {catch_spot},
-            [&](const TilePos& pos){ return pos == potion; });
-        if (!error.empty()){
-            return error;
-        }
-        //  To where she is talked to, and back to the catch grass to save.
-        const TilePos corner = maps.to_world(MAP_ROUTE_201, Route201::POTION_GIVER_ROW_WEST_END);
-        error = check_robust_plan(logger, "Catch spot to the Potion giver's corner", maps, {catch_spot},
-            [&](const TilePos& pos){ return pos == corner; });
-        if (!error.empty()){
-            return error;
-        }
-        const TilePos save_spot = maps.to_world(MAP_ROUTE_202, Route202::POTION_SAVE_SPOT);
-        error = check_potion_giver_walk_back(logger);
-        if (!error.empty()){
-            return error;
-        }
-        const std::vector<TilePos> grass = story_after_training_area();
-        error = check_robust_plan(logger, "Save spot to the catch grass", maps, {save_spot},
-            [&](const TilePos& pos){ return std::find(grass.begin(), grass.end(), pos) != grass.end(); });
+        error = check_robust_plan(logger, "Pokemon Center to Jubilife", maps,
+            story_door_front(MAP_SANDGEM_TOWN, SandgemTown::POKEMON_CENTER_DOOR), story_at_jubilife_exit);
         if (!error.empty()){
             return error;
         }

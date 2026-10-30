@@ -19,13 +19,13 @@ namespace Route201{
 
 const Pokemon::TileGrid& grid();
 
-//  The girl who gives Potions stands around the top row of the north-east
-//  tall grass, (42..52, 3), near its west end; she is not on the grid.
-//  The tile east of her row, against the trees: walk west from here to meet her.
-extern const Pokemon::TilePos POTION_GIVER_ROW_EAST;
-//  The first and last tiles of her row. The first is the corner that pins
-//  the row: trees west of it and north of it. Walk east from it to meet her.
+//  The Poke Mart lady's row, (42..63, 3): she wanders its tall-grass part,
+//  (42..52, 3), and is not on the grid. The row's west end is a corner with
+//  trees west and north of it.
 extern const Pokemon::TilePos POTION_GIVER_ROW_WEST_END;
+//  The open tile east of the grass to walk west from, to meet her.
+extern const Pokemon::TilePos POTION_GIVER_APPROACH;
+//  The row's east end, against Sandgem Town's fence.
 extern const Pokemon::TilePos POTION_GIVER_ROW_EAST_END;
 
 

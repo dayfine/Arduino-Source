@@ -625,130 +625,174 @@ namespace PokemonAutomation {
             align_to_tutorial_landmarks(stream, context, match_sandgem_junction, "Sandgem junction");
         }
 
-        // Resumes from the save made after catching the second Pokemon.
-        static void tutorial_part_3_after_catch_navigation(SingleSwitchProgramEnvironment& env, VideoStream& stream, ProControllerContext& context) {
-            // A retry reloads the save at whatever time the clock has reached.
-            // Pin it again so the landmark references see the same lighting.
-            set_time_fast(env, context, DateTime{ 2026, 1, 1, 0, 0, 50 });
+        // What the post-catch half of 00.04 does, logged up front and as each
+        // step starts. A Lv5 Piplup fainted to Route 202's trainers (r72), so:
+        // Potions (they also saved the Barry fight in r85), training, and a
+        // heal at the Center between Route 202's two halves.
+        static const char* const AFTER_CATCH_STEPS[] = {
+            "Get 10 Potions from the Poke Mart lady on Route 201, walk back to Route 202's save spot and save (skipped if the Bag has Potions)",
+            "Train: fight 3 wild Pokemon in the catch grass, with the best move",
+            "Walk south into Sandgem Town and heal at its Pokemon Center",
+            "Walk north up Route 202 to the Jubilife exit, fighting trainers who see us; after each, use a Potion if HP is under half",
+            "Enter Jubilife and get through Dawn's scene",
+        };
+        constexpr size_t AFTER_CATCH_STEP_COUNT = sizeof(AFTER_CATCH_STEPS) / sizeof(AFTER_CATCH_STEPS[0]);
 
-            // What this part of 00.04 does, logged up front and as each step starts.
-            // The Potion on Route 201 is optional, and the starter outclasses the
-            // Route 202 trainers, so we go straight north.
-            static const char* const STEPS[] = {
-                "Get 10 Potions from the Poke Mart lady on Route 201, walk back to Route 202 and save (skipped if the Bag has Potions)",
-                "Train: fight 3 wild Pokemon in the catch grass, with the best move",
-                "Heal to full with Potions from the Bag",
-                "Walk north up Route 202 to the Jubilife exit, fighting trainers who see us; after each, use a Potion if HP is under half",
-                "Enter Jubilife and get through Dawn's scene",
-            };
-            constexpr size_t STEP_COUNT = sizeof(STEPS) / sizeof(STEPS[0]);
-            {
-                std::string text = "[00.04] After the catch, the steps are:";
-                for (size_t i = 0; i < STEP_COUNT; i++) {
-                    text += "\n    " + std::to_string(i + 1) + ". " + STEPS[i];
-                }
-                stream.log(text, COLOR_BLUE);
+        static void log_after_catch_steps(VideoStream& stream) {
+            std::string text = "[00.04] After the catch, the steps are:";
+            for (size_t i = 0; i < AFTER_CATCH_STEP_COUNT; i++) {
+                text += "\n    " + std::to_string(i + 1) + ". " + AFTER_CATCH_STEPS[i];
             }
-            auto step = [&](size_t number) {
-                std::string text = "[00.04 step " + std::to_string(number) + "/" + std::to_string(STEP_COUNT) + "] " + STEPS[number - 1];
-                text += number < STEP_COUNT ? std::string(" -- next: ") + STEPS[number] : std::string(" -- last step");
-                stream.log(text, COLOR_BLUE);
-                add_wrapped_log(stream.overlay(), "00.04 step " + std::to_string(number) + "/" + std::to_string(STEP_COUNT) + ": " + STEPS[number - 1], COLOR_WHITE);
-                if (number < STEP_COUNT) {
-                    add_wrapped_log(stream.overlay(), "Next: " + std::string(STEPS[number]), COLOR_GRAY);
-                }
-            };
+            stream.log(text, COLOR_BLUE);
+        }
 
-            const MapSet& maps = story_maps();
-            std::vector<TrainerSight> trainers = story_trainer_sights();
-            // Fight a trainer whose dialogue has opened, with whatever starter we
-            // have. Someone who only talks leaves no battle to fight.
-            auto fight = [&](const std::string& name) {
-                pbf_mash_button(context, BUTTON_B, 5000ms);
+        static void after_catch_step(VideoStream& stream, size_t number) {
+            const std::string count = std::to_string(number) + "/" + std::to_string(AFTER_CATCH_STEP_COUNT);
+            std::string text = "[00.04 step " + count + "] " + AFTER_CATCH_STEPS[number - 1];
+            text += number < AFTER_CATCH_STEP_COUNT ? std::string(" -- next: ") + AFTER_CATCH_STEPS[number] : std::string(" -- last step");
+            stream.log(text, COLOR_BLUE);
+            add_wrapped_log(stream.overlay(), "00.04 step " + count + ": " + AFTER_CATCH_STEPS[number - 1], COLOR_WHITE);
+            if (number < AFTER_CATCH_STEP_COUNT) {
+                add_wrapped_log(stream.overlay(), "Next: " + std::string(AFTER_CATCH_STEPS[number]), COLOR_GRAY);
+            }
+        }
+
+        // Fights a trainer whose dialogue has opened, with whatever starter we
+        // have. Someone who only talks leaves no battle to fight.
+        static void fight_route_trainer(VideoStream& stream, ProControllerContext& context, const std::string& name) {
+            pbf_mash_button(context, BUTTON_B, 5000ms);
+            context.wait_for_all_requests();
+            BattleMenuWatcher battle_menu(BattleType::TRAINER, COLOR_YELLOW);
+            BattleDialogWatcher battle_dialog(COLOR_YELLOW);
+            if (wait_until(stream, context, 8s, {{battle_menu}, {battle_dialog}}) < 0) {
+                stream.log("[00.04] " + name + ": no battle followed the talk.");
+                pbf_mash_button(context, BUTTON_B, 2000ms);
                 context.wait_for_all_requests();
-                BattleMenuWatcher battle_menu(BattleType::TRAINER, COLOR_YELLOW);
-                BattleDialogWatcher battle_dialog(COLOR_YELLOW);
-                if (wait_until(stream, context, 8s, {{battle_menu}, {battle_dialog}}) < 0) {
-                    stream.log("[00.04] " + name + ": no battle followed the talk.");
-                    pbf_mash_button(context, BUTTON_B, 2000ms);
-                    context.wait_for_all_requests();
+                return;
+            }
+            fight_trainer(stream, context, name);
+            context.wait_for_all_requests();
+            // The next trainer may be a few tiles on: check HP now. With no
+            // Potion in the Bag this only looks.
+            use_potion_first_pokemon(stream, context, 0.5);
+        }
+
+        // To the Poke Mart lady and her talk. She stands in the top row of Route
+        // 201's north-east grass, under the trees, and wanders about it (r113a,
+        // r114a). Come along the open strip east of the grass to the tile on
+        // her row that the trees north and the sign's row pin, and walk west
+        // along the row until she blocks the walk and answers.
+        static void meet_poke_mart_lady(
+            VideoStream& stream, ProControllerContext& context, const MapSet& maps,
+            std::vector<TrainerSight>& trainers, const RouteTrainerFight& fight
+        ) {
+            const TilePos approach = maps.to_world(MAP_ROUTE_201, Route201::POTION_GIVER_APPROACH);
+            const TilePos corner = maps.to_world(MAP_ROUTE_201, Route201::POTION_GIVER_ROW_WEST_END);
+            walk_route(stream, context, maps, story_save_spots(),
+                [&](const TilePos& pos) { return pos == approach; }, trainers, fight, "To the Poke Mart lady");
+            if (!walk_along_row_to_talk(stream, context, Pokemon::Direction::WEST,
+                    (size_t)(approach.x - corner.x), "Poke Mart lady")) {
+                OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
+                    "Poke Mart lady: nobody answered walking west along her row from (56, 3), "
+                    "nor on any side of where the walk stopped.", stream);
+            }
+            // Her talk gives 10 Potions ("obtained" lines): A to the end.
+            finish_dialogue(stream, context, BUTTON_A, "Poke Mart lady");
+            if (!bag_has_item(stream, context, "potion", 1)) {
+                // She gives the Potions once: on a save that already got
+                // (and used) them, she only talks.
+                OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
+                    "Poke Mart lady: she talked, but no Potion is in the Bag. "
+                    "Has this save already had her Potions?", stream);
+            }
+        }
+
+        // East along the Poke Mart lady's row to its end at Sandgem's fence, out
+        // of the grass, where a stop can be read. The grass hides a stop
+        // (r116a: she stood in the way east, and every later leg was off), so a
+        // walk that only runs out of time has not got there: wait for her to
+        // move, and walk east again.
+        static void walk_to_poke_mart_lady_row_end(VideoStream& stream, ProControllerContext& context, size_t tiles) {
+            const Milliseconds limit = ROUTE_START_DELAY + ROUTE_MS_PER_TILE_ACROSS * tiles * 5 / 4 + 1000ms;
+            for (size_t tries = 0; tries < 5; tries++) {
+                route_status(stream, "Poke Mart lady: east along her row to its end");
+                const WalkResult walk = walk_until(stream, context, 1, 0, limit, "east along the Poke Mart lady's row");
+                if (walk.stop == WalkStop::BLOCKED) {
                     return;
                 }
-                fight_trainer(stream, context, name);
-                context.wait_for_all_requests();
-                // The next trainer may be a few tiles on: check HP now.
-                use_potion_first_pokemon(stream, context, 0.5);
-            };
+                if (walk.stop == WalkStop::DIALOG) {
+                    finish_dialogue(stream, context, BUTTON_B, "Poke Mart lady again");
+                }
+                if (walk.stop == WalkStop::TRANSITION) {
+                    OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
+                        "Poke Mart lady: left the map walking east along her row.", stream);
+                }
+                if (walk.wild_battles == 0) {
+                    stream.log("[00.04] Poke Mart lady: the walk east reached no wall it could read; waiting for her to move.", COLOR_ORANGE);
+                    pbf_wait(context, 3000ms);
+                    context.wait_for_all_requests();
+                }
+            }
+            OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
+                "Poke Mart lady: her row's east end was not reached in five walks east.", stream);
+        }
 
-            pbf_wait(context, 1500ms);
-            step(1);
-            // Potions let us heal where we stand, instead of walking back to the
-            // Pokemon Center. A save made after getting them starts at the save
-            // spot with Potions in the Bag; the post-catch save starts at the
-            // catch spot without.
-            const TilePos save_spot = maps.to_world(MAP_ROUTE_202, Route202::POTION_SAVE_SPOT);
+        // Potions let us heal where we stand. A save made after getting them
+        // starts at the save spot with Potions in the Bag; the post-catch save
+        // starts at the catch spot without. From her row's east end the open
+        // east edge of Route 201 leads south into Sandgem and on to Route 202.
+        static void get_potions_from_poke_mart_lady(
+            SingleSwitchProgramEnvironment& env, VideoStream& stream, ProControllerContext& context, const MapSet& maps,
+            std::vector<TrainerSight>& trainers, const RouteTrainerFight& fight
+        ) {
             if (bag_has_item(stream, context, "potion", 1)) {
                 stream.log("[00.04] The Bag has Potions; not visiting the Poke Mart lady.");
-            } else {
-                const TilePos catch_spot = maps.to_world(MAP_ROUTE_202, Route202::CATCH_SPOT);
-                // She moves about near the west end of her row (r113a, r114a),
-                // so go to the corner that pins the row, (42, 3): trees to its
-                // west and north. Then walk east until she blocks the walk and
-                // answers, as done by hand.
-                const TilePos corner = maps.to_world(MAP_ROUTE_201, Route201::POTION_GIVER_ROW_WEST_END);
-                const TilePos row_east_end = maps.to_world(MAP_ROUTE_201, Route201::POTION_GIVER_ROW_EAST_END);
-                walk_route(stream, context, maps, {catch_spot},
-                    [&](const TilePos& pos) { return pos == corner; }, trainers, fight, "To the Poke Mart lady");
-                if (!walk_along_row_to_talk(stream, context, Pokemon::Direction::EAST,
-                        (size_t)(row_east_end.x - corner.x), "Poke Mart lady")) {
-                    OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
-                        "Poke Mart lady: nobody answered walking east along her row from (42, 3), "
-                        "nor on any side of where the walk stopped.", stream);
-                }
-                // Her talk gives 10 Potions ("obtained" lines): A to the end.
-                finish_dialogue(stream, context, BUTTON_A, "Poke Mart lady");
-                if (!bag_has_item(stream, context, "potion", 1)) {
-                    // She gives the Potions once: on a save that already got
-                    // (and used) them, she only talks.
-                    OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
-                        "Poke Mart lady: she talked, but no Potion is in the Bag. "
-                        "Has this save already had her Potions?", stream);
-                }
-                // We stand in her row with her next to us, east. r116a planned
-                // east along the row from here: she stood in the way, the tall
-                // grass hid that the walk had stopped, and every later leg was
-                // off. So go back west to the corner, away from her, then plan
-                // with her rows as walls: south out of the grass and round.
-                const std::vector<TilePos> at_corner = walk_route(stream, context, maps, story_potion_giver_row(),
-                    [&](const TilePos& pos) { return pos == corner; }, trainers, fight, "Back to her row's corner");
-                walk_route(stream, context, maps, at_corner,
-                    [&](const TilePos& pos) { return pos == save_spot; }, trainers, fight, "Back to Route 202",
-                    story_potion_giver_wander_area());
-                stream.log("[00.04] Saving with the Potions, at the save spot on Route 202.");
-                save_game(env, context);
+                return;
             }
-            walk_route(stream, context, maps, {save_spot},
-                [&](const TilePos& pos) {
-                    const std::vector<TilePos> grass = story_after_training_area();
-                    return std::find(grass.begin(), grass.end(), pos) != grass.end();
-                }, trainers, fight, "To the catch grass");
+            meet_poke_mart_lady(stream, context, maps, trainers, fight);
+            const TilePos row_end = maps.to_world(MAP_ROUTE_201, Route201::POTION_GIVER_ROW_EAST_END);
+            const TilePos corner = maps.to_world(MAP_ROUTE_201, Route201::POTION_GIVER_ROW_WEST_END);
+            walk_to_poke_mart_lady_row_end(stream, context, (size_t)(row_end.x - corner.x));
+            const TilePos save_spot = maps.to_world(MAP_ROUTE_202, Route202::SAVE_SPOT);
+            walk_route(stream, context, maps, {row_end},
+                [&](const TilePos& pos) { return pos == save_spot; }, trainers, fight, "Back to Route 202");
+            stream.log("[00.04] Saving with the Potions, at the save spot on Route 202.");
+            save_game(env, context);
+        }
 
-            step(2);
-            // The starter starts around level 5 with only a Normal move; the
-            // Route 202 trainers need a level or two more.
+        // The starter starts around level 5 with only a Normal move; the Route
+        // 202 trainers need a level or two more.
+        static void train_in_catch_grass(
+            VideoStream& stream, ProControllerContext& context, const MapSet& maps,
+            std::vector<TrainerSight>& trainers, const RouteTrainerFight& fight
+        ) {
+            const TilePos save_spot = maps.to_world(MAP_ROUTE_202, Route202::SAVE_SPOT);
+            const std::vector<TilePos> grass = story_after_training_area();
+            walk_route(stream, context, maps, {save_spot},
+                [&](const TilePos& pos) { return std::find(grass.begin(), grass.end(), pos) != grass.end(); },
+                trainers, fight, "To the catch grass");
             for (size_t battle = 0; battle < 3; battle++) {
                 route_status(stream, "Training battle " + std::to_string(battle + 1) + "/3");
                 battle_1_pokemon(stream, context);
             }
+        }
 
-            step(3);
-            use_potion_first_pokemon(stream, context);
-
-            step(4);
+        // South into Sandgem Town, to the tile below the Pokemon Center's sign,
+        // which the house west of its column and the sign pin (r75 walked this
+        // and healed). The Center's door is three tiles west; the heal lines up
+        // with it by sight. Returns where we stand after: below the door.
+        static std::vector<TilePos> heal_at_sandgem_center(
+            VideoStream& stream, ProControllerContext& context, const MapSet& maps,
+            std::vector<TrainerSight>& trainers, const RouteTrainerFight& fight
+        ) {
+            const TilePos below_sign = maps.to_world(MAP_SANDGEM_TOWN, SandgemTown::POKEMON_CENTER_SIGN.next(Pokemon::Direction::SOUTH));
             walk_route(stream, context, maps, story_after_training_area(),
-                story_at_jubilife_exit, trainers, fight, "To Jubilife");
+                [&](const TilePos& pos) { return pos == below_sign; }, trainers, fight, "To the Pokemon Center");
+            heal_at_pokemon_center(stream, context, "Sandgem Town Pokemon Center");
+            return story_door_front(MAP_SANDGEM_TOWN, SandgemTown::POKEMON_CENTER_DOOR);
+        }
 
-            step(5);
+        static void meet_dawn_in_jubilife(VideoStream& stream, ProControllerContext& context) {
             // Jubilife's south edge is a wall with stairs in it, west of where the
             // route may leave us (r78 stood at its east end). Entering starts a
             // scene: Dawn walks over while we stand still. So walk north; if the
@@ -777,6 +821,34 @@ namespace PokemonAutomation {
             wait_for_dialogue(stream, context, "Phase 21 (dawn Jubilife dialog)");
 
             pbf_mash_button(context, BUTTON_B, 5000ms);
+        }
+
+        // Resumes from the save made after catching the second Pokemon.
+        static void tutorial_part_3_after_catch_navigation(SingleSwitchProgramEnvironment& env, VideoStream& stream, ProControllerContext& context) {
+            // A retry reloads the save at whatever time the clock has reached.
+            // Pin it again so the landmark references see the same lighting.
+            set_time_fast(env, context, DateTime{ 2026, 1, 1, 0, 0, 50 });
+            log_after_catch_steps(stream);
+
+            const MapSet& maps = story_maps();
+            std::vector<TrainerSight> trainers = story_trainer_sights();
+            const RouteTrainerFight fight = [&](const std::string& name) { fight_route_trainer(stream, context, name); };
+            pbf_wait(context, 1500ms);
+
+            after_catch_step(stream, 1);
+            get_potions_from_poke_mart_lady(env, stream, context, maps, trainers, fight);
+
+            after_catch_step(stream, 2);
+            train_in_catch_grass(stream, context, maps, trainers, fight);
+
+            after_catch_step(stream, 3);
+            const std::vector<TilePos> at = heal_at_sandgem_center(stream, context, maps, trainers, fight);
+
+            after_catch_step(stream, 4);
+            walk_route(stream, context, maps, at, story_at_jubilife_exit, trainers, fight, "To Jubilife");
+
+            after_catch_step(stream, 5);
+            meet_dawn_in_jubilife(stream, context);
         }
         // ---------------------------------------------------------------------------
         // End of Segment 00 - 04
