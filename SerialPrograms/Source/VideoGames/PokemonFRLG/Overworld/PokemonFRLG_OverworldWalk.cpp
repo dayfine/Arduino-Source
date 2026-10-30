@@ -150,13 +150,10 @@ DpadPosition dpad(Direction direction){
     return DPAD_NONE;
 }
 
-//  Holds the D-pad: FRLG moves exactly a tile per 16 frames.
-class DpadMover : public Pokemon::LegMover<ProControllerContext>{
-public:
-    virtual void hold(ProControllerContext& context, Direction direction, Milliseconds duration) const override{
-        pbf_press_dpad(context, dpad(direction), duration, STEP_RELEASE);
-    }
-};
+//  The leg mover: holds the D-pad. FRLG moves exactly a tile per 16 frames.
+void hold_dpad(ProControllerContext& context, Direction direction, Milliseconds duration){
+    pbf_press_dpad(context, dpad(direction), duration, STEP_RELEASE);
+}
 
 Pokemon::LegSpec leg_spec(const RouteStep& step){
     return Pokemon::LegSpec{step.direction, step.tiles, step.to_wall, step.surfing ? SURF_TILE_TIME : TILE_TIME};
@@ -274,6 +271,7 @@ void walk_overworld_route(
         }
         console.log(std::string("Route: the player faces ") + (facing ? Pokemon::direction_name(*facing) : "an unknown way") + ".");
     }
+    Pokemon::LegMover<ProControllerContext> mover = &hold_dpad;
     for (const RouteStep& step : route){
         console.log("Route: " + to_string(step));
         switch (step.action){
@@ -284,7 +282,7 @@ void walk_overworld_route(
             if (facing != step.direction){
                 pbf_press_dpad(context, dpad(step.direction), TURN_TAP, TURN_SETTLE);
             }
-            Pokemon::walk_leg(console, context, DpadMover(), interrupts, leg_spec(step), MAX_INTERRUPTIONS_PER_LEG);
+            Pokemon::walk_leg(console, context, mover, interrupts, leg_spec(step), MAX_INTERRUPTIONS_PER_LEG);
             if (step.warps){
                 wait_out_warp(console, context, step);
                 pbf_wait(context, AFTER_WARP);
