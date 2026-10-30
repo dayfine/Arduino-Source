@@ -9,6 +9,7 @@
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "VideoGames/PokemonSV/Inference/PokemonSV_BlueberryPointsReader.h"
 #include "VideoGames/PokemonSV/Options/PokemonSV_BBQuests.h"
+#include "PokemonSV_BlueberryCatchPhoto.h"
 #include "PokemonSV_BlueberryQuests.h"
 #include "PokemonSV_BBQTests.h"
 
@@ -121,6 +122,79 @@ static void add_tests_TeraEncounterAction(UnitTestDatabase& database){
 }
 
 
+namespace{
+
+// A catch quest, whether this attempt already battled, and whether a wild
+// battle on the way back to Central Plaza should be caught instead of fled.
+struct BBQCatchOnReturnScenario{
+    std::string name;
+    BBQuests quest;
+    bool battled_this_attempt = false;
+    bool expected_catch = false;
+};
+
+class Test_BBQCatchOnReturn : public UnitTest{
+public:
+    Test_BBQCatchOnReturn(BBQCatchOnReturnScenario scenario)
+        : UnitTest("PokemonSV::BBQCatchOnReturn - " + scenario.name)
+        , m_scenario(std::move(scenario))
+    {}
+
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        const bool got = catch_quest_catches_on_return(m_scenario.quest, m_scenario.battled_this_attempt);
+        if (got != m_scenario.expected_catch){
+            return std::string("Expected ") + (m_scenario.expected_catch ? "catch" : "flee")
+                + ", got " + (got ? "catch" : "flee");
+        }
+        return true;
+    }
+
+private:
+    const BBQCatchOnReturnScenario m_scenario;
+};
+
+}
+
+static void add_tests_BBQCatchOnReturn(UnitTestDatabase& database){
+    using enum BBQuests;
+    const BBQCatchOnReturnScenario scenarios[] = {
+        {
+            // The target spawned late or not at all: any wild Pokemon completes the quest.
+            .name = "catch any without a battle catches",
+            .quest = catch_any,
+            .expected_catch = true,
+        },
+        {
+            // Already caught this attempt: fleeing is faster than a second catch.
+            .name = "catch any after a battle flees",
+            .quest = catch_any,
+            .battled_this_attempt = true,
+        },
+        {
+            // The type of a wild Pokemon is not read in battle.
+            .name = "catch normal without a battle flees",
+            .quest = catch_normal,
+        },
+        {
+            .name = "catch fire without a battle flees",
+            .quest = catch_fire,
+        },
+        {
+            .name = "catch psychic without a battle flees",
+            .quest = catch_psychic,
+        },
+        {
+            .name = "catch fighting after a battle flees",
+            .quest = catch_fighting,
+            .battled_this_attempt = true,
+        },
+    };
+    for (const BBQCatchOnReturnScenario& scenario : scenarios){
+        database.add<Test_BBQCatchOnReturn>(scenario);
+    }
+}
+
+
 void add_tests_BBQ(UnitTestDatabase& database){
     database.add<Test_BBQuestsSlugs>();
 
@@ -133,6 +207,7 @@ void add_tests_BBQ(UnitTestDatabase& database){
     database.add<Test_BlueberryPoints>("PokemonSV/BlueberryPoints/6740.png", 6740, 1280, 720);
 
     add_tests_TeraEncounterAction(database);
+    add_tests_BBQCatchOnReturn(database);
 }
 
 
