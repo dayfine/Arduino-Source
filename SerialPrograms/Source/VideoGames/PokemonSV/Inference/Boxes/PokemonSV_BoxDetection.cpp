@@ -17,9 +17,9 @@
 #include "PokemonSV_BoxShinyDetector.h"
 #include "PokemonSV_BoxDetection.h"
 
-#include <iostream>
-using std::cout;
-using std::endl;;
+//#include <iostream>
+//using std::cout;
+//using std::endl;
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{

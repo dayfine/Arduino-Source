@@ -40,14 +40,11 @@ public:
     using WorkingAudio2WorkingAudio = Kernels::AudioPipeline::WorkingAudio2WorkingAudio;
     using WorkingAudioStreamListener = Kernels::AudioPipeline::WorkingAudioStreamListener;
 
-    virtual void add_listener(AudioFloatStreamListener& listener) override;
-    virtual void remove_listener(AudioFloatStreamListener& listener) override;
+    virtual void add_listener(const AudioFormat& format, WorkingAudioStreamListener& listener) override;
+    virtual void remove_listener(WorkingAudioStreamListener& listener) override;
 
     virtual void add_listener(FFTListener& listener) override;
     virtual void remove_listener(FFTListener& listener) override;
-
-    virtual void add_listener(const AudioFormat& format, WorkingAudioStreamListener& listener) override;
-    virtual void remove_listener(WorkingAudioStreamListener& listener) override;
 
 
 public:
@@ -55,17 +52,17 @@ public:
     AudioPassthroughPairQt(Logger& logger);
 
     virtual void reset(
-        const std::string& file,
-        const AudioDeviceInfo& output, double output_volume
-    ) override;
-    virtual void reset(
-        const AudioDeviceInfo& input, AudioChannelFormat format,
-        const AudioDeviceInfo& output, double output_volume
+        const std::shared_ptr<AudioSourceDescriptor>& descriptor,
+        const AudioInputChoice& format,
+        const AudioDeviceInfo& output,
+        double output_volume
     ) override;
 
     virtual void clear_audio_source() override;
-    virtual void set_audio_source(const std::string& file) override;
-    virtual void set_audio_source(const AudioDeviceInfo& device, AudioChannelFormat format) override;
+    virtual void set_audio_source(
+        const std::shared_ptr<AudioSourceDescriptor>& descriptor,
+        const AudioInputChoice& format
+    ) override;
 
     virtual void clear_audio_sink() override;
     virtual void set_audio_sink(const AudioDeviceInfo& device, double volume) override;
@@ -74,7 +71,6 @@ public:
 
 
 private:
-    class SampleListener;
     class InternalFFTListener;
     class InternalWorkingListener;
 
@@ -117,16 +113,17 @@ private:
     //  Objects lower on this list attach to and hold references to those
     //  higher on the list.
 
-    AudioChannelFormat m_input_format;
+    //  The resolved input choice for the active device source (invalid
+    //  when no device source is attached; file sources have no choice).
+    AudioInputChoice m_input_choice;
     std::unique_ptr<AudioSource> m_reader;
-    std::unique_ptr<SampleListener> m_sample_listener;  //  Attaches to "m_reader".
 
     //  New pipeline tree. The decoder attaches to m_reader's raw stream and
     //  the branch heads attach to the decoder (sink head before FFT head).
     //  Declared after m_reader so the nodes die before the reader does.
-    //  (For the INTERLEAVE_96000 presets, m_reader emits the two 48 kHz
+    //  (For reinterpreted input choices, m_reader emits the two 48 kHz
     //  channels reinterpreted from the physical 1ch x 96000 stream;
-    //  MONO_96000 keeps the physical shape.)
+    //  native choices keep the physical shape.)
     std::unique_ptr<RawAudio2WorkingAudio> m_source_decoder;
     std::unique_ptr<WorkingAudio2WorkingAudio> m_sink_conv;     //  Source shape -> sink shape (mix + resample).
     std::unique_ptr<WorkingAudio2RawAudio> m_sink_encoder;
@@ -140,15 +137,12 @@ private:
     std::map<WorkingAudioStreamListener*, WorkingListenerEntry> m_working_entries;
 
     AudioDeviceInfo m_output_device;
-    float m_file_input_multiplier = 1.0;
-    float m_device_input_multiplier = 1.0;
     double m_output_volume = 1.0;
     std::unique_ptr<AudioOutputDevice> m_sink_device;       //  Attaches to m_sink_encoder.
 
 
     std::unique_ptr<InternalFFTListener> m_fft_listener;    //  Attaches to m_fft_node.
 
-    ListenerSet<AudioFloatStreamListener> m_stream_listeners;
     ListenerSet<FFTListener> m_fft_listeners;
 
     LifetimeSanitizer m_sanitizer;

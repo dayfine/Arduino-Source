@@ -10,8 +10,8 @@
 #include "CommonTools/StartupChecks/VideoResolutionCheck.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "NintendoSwitch/Programs/NintendoSwitch_GameEntry.h"
-#include "VideoGames/PokemonSV/Programs/PokemonSV_SaveGame.h"
 #include "Pokemon/Pokemon_Strings.h"
+#include "VideoGames/PokemonSV/Programs/PokemonSV_SaveGame.h"
 #include "VideoGames/PokemonSV/Inference/Dialogs/PokemonSV_DialogDetector.h"
 #include "VideoGames/PokemonSV/Inference/Overworld/PokemonSV_OverworldDetector.h"
 #include "VideoGames/PokemonSV/Inference/PokemonSV_ESPEmotionDetector.h"
@@ -29,6 +29,7 @@ ESPTraining_Descriptor::ESPTraining_Descriptor()
         STRING_POKEMON + " SV", "ESP Training",
         "Programs/PokemonSV/ESPTraining.html",
         "Clear the ESP Training to farm EV berries.",
+        PanelQualityStanding::OFFICIAL,
         ProgramControllerClass::StandardController_NoRestrictions,
         FeedbackType::REQUIRED,
         AllowCommandsWhenRunning::DISABLE_COMMANDS

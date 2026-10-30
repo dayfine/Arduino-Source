@@ -10,7 +10,6 @@
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_Superscalar.h"
 #include "NintendoSwitch/Programs/NintendoSwitch_GameEntry.h"
-#include "Pokemon/Pokemon_Strings.h"
 #include "VideoGames/PokemonSwSh/Commands/PokemonSwSh_Commands_GameEntry.h"
 #include "VideoGames/PokemonSwSh/Commands/PokemonSwSh_Commands_DateSpam.h"
 #include "VideoGames/PokemonSwSh/Programs/PokemonSwSh_GameEntry.h"
@@ -30,6 +29,7 @@ RaidItemFarmerOHKO_Descriptor::RaidItemFarmerOHKO_Descriptor()
         STRING_POKEMON + " SwSh", "Raid Item Farmer (OHKO)",
         "Programs/PokemonSwSh/RaidItemFarmerOHKO.html",
         "Farm items from raids that can be OHKO'ed. (requires multiple Switches)",
+        PanelQualityStanding::OFFICIAL_BELOW_STANDARDS,
         ProgramControllerClass::StandardController_RequiresPrecision,
         FeedbackType::NONE,
         AllowCommandsWhenRunning::DISABLE_COMMANDS,

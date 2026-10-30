@@ -14,7 +14,6 @@
 #include "3rdParty/QtWavFile/WavFile.h"
 #include "Common/Cpp/Exceptions.h"
 #include "CommonFramework/AudioPipeline/AudioInfo.h"
-#include "CommonFramework/AudioPipeline/AudioStream.h"
 #include "CommonFramework/AudioPipeline/Tools/AudioFormatUtils.h"
 #include "AudioFileLoader.h"
 #include "AudioInputFile.h"
@@ -24,18 +23,6 @@ namespace PokemonAutomation{
 
 
 namespace{
-
-
-Kernels::AudioPipeline::SampleFormat to_sample_format(AudioSampleFormat format){
-    switch (format){
-    case AudioSampleFormat::UINT8:   return Kernels::AudioPipeline::SampleFormat::UINT8;
-    case AudioSampleFormat::SINT16:  return Kernels::AudioPipeline::SampleFormat::SINT16;
-    case AudioSampleFormat::SINT32:  return Kernels::AudioPipeline::SampleFormat::SINT32;
-    case AudioSampleFormat::FLOAT32: return Kernels::AudioPipeline::SampleFormat::FLOAT32;
-    default:
-        throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "Unsupported audio sample format.");
-    }
-}
 
 Kernels::AudioPipeline::SampleFormat sample_format_of(const QAudioFormat& format){
     QAudioFormat copy = format;
@@ -62,7 +49,6 @@ bool probe_wav_native_format(const std::string& filename, QAudioFormat& out_form
 }
 
 
-#if QT_VERSION_MAJOR == 6
 bool probe_decoded_native_format(const std::string& filename, QAudioFormat& out_format){
     //  A QAudioDecoder started without a target format decodes in the
     //  source's native format, and the first decoded buffer carries that
@@ -128,25 +114,14 @@ bool probe_decoded_native_format(const std::string& filename, QAudioFormat& out_
     }
     return false;
 }
-#else
-bool probe_decoded_native_format(const std::string& filename, QAudioFormat& out_format){
-    //  Qt 5's QAudioDecoder API does not expose the decoded buffer's
-    //  format, so the probe cannot run there: the caller falls back to
-    //  the legacy 48k stereo float target.
-    (void) filename;
-    (void) out_format;
-    return false;
-}
-#endif
 
 
 
 AudioInputFile::AudioInputFile(
-    Logger& logger, AudioStreamToFloat& reader,
+    Logger& logger,
     const std::string& file, const QAudioFormat& format
 )
-    : m_reader(reader)
-    , m_source(std::make_unique<AudioFileLoader>(nullptr, file, format))
+    : m_source(std::make_unique<AudioFileLoader>(nullptr, file, format))
     , m_sample_type(sample_format_of(format))
     , m_sample_rate(format.sampleRate())
     , m_channels(format.channelCount())
@@ -154,7 +129,7 @@ AudioInputFile::AudioInputFile(
 {
     logger.log("AudioInputFile(): " + dump_audio_format(format));
     connect(
-        m_source.get(), &AudioFileLoader::bufferReady,
+        m_source.get(), &AudioFileLoader::buffer_ready,
         this, [this](const char* data, size_t len){
             on_buffer_ready(data, len);
         }
@@ -182,8 +157,6 @@ void AudioInputFile::remove_listener(Kernels::AudioPipeline::RawAudioStreamListe
 }
 
 void AudioInputFile::on_buffer_ready(const char* data, size_t len){
-    m_reader.push_bytes(data, len);
-
     //  AudioFileLoader only emits whole multiples of the frame size, so the
     //  raw listeners can take the data as-is.
     m_listeners.run_method(
