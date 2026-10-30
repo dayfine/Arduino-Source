@@ -1,6 +1,7 @@
-
-
-
+#include "PokemonBDSP/Inference/PokemonBDSP_TransitionWatchers.h"
+#include "CommonFramework/GlobalAutoPaths.h"
+#include "Common/Cpp/Filesystem/Filesystem.h"
+#include "Common/Cpp/PrettyPrint.h"
 /*  BDSP AutoStory Tools
  *
  *  From: https://github.com/PokemonAutomation/
@@ -107,7 +108,34 @@ bool fake_save_game(SingleSwitchProgramEnvironment& env, ProControllerContext& c
     return true;
 }
 
-bool save_game(SingleSwitchProgramEnvironment& env, ProControllerContext& context){
+void add_wrapped_log(VideoOverlay& overlay, const std::string& text, Color color){
+    //  The log box is 35% of the video wide at a font 4% of its height: about
+    //  34 characters.
+    constexpr size_t WIDTH = 34;
+    std::string line;
+    size_t start = 0;
+    while (start < text.size()){
+        size_t end = text.find(' ', start);
+        if (end == std::string::npos){
+            end = text.size();
+        }
+        const std::string word = text.substr(start, end - start);
+        if (!line.empty() && line.size() + 1 + word.size() > WIDTH){
+            overlay.add_log(line, color);
+            line = "  ";
+        }
+        line += (line.empty() || line == "  " ? "" : " ") + word;
+        start = end + 1;
+    }
+    if (!line.empty()){
+        overlay.add_log(line, color);
+    }
+}
+
+bool save_game(
+    SingleSwitchProgramEnvironment& env,
+    ProControllerContext& context
+) {
     static constexpr size_t MAX_RETRIES = 3;
 
     for (size_t attempt = 0; attempt < MAX_RETRIES; attempt++){
@@ -120,9 +148,20 @@ bool save_game(SingleSwitchProgramEnvironment& env, ProControllerContext& contex
                 pbf_mash_button(context, BUTTON_B, 1000ms);
             }
 
-            // Reuse existing feedback-based save: opens menu with MenuWatcher
-            // + respects GameSettings::OVERWORLD_TO_MENU_DELAY0 internally.
-            save_game(env.console, context);
+            // The feedback-based save of save_game(VideoStream&, ...), split at the
+            // save prompt to keep a screenshot of it: it shows the play time and
+            // badges, a record of where each checkpoint save stands.
+            overworld_to_menu(env.console, context);
+            pbf_press_button(context, BUTTON_R, 80ms, 2000ms);
+            context.wait_for_all_requests();
+            if (VideoSnapshot screen = env.console.video().snapshot()){
+                const std::string folder = SCREENSHOTS_PATH() + "AutoStory/saves/";
+                Filesystem::create_directories(Filesystem::Path(folder));
+                const std::string path = folder + now_to_filestring() + ".png";
+                screen.frame->save(path);
+                env.console.log("Save prompt screenshot: " + path);
+            }
+            pbf_press_button(context, BUTTON_ZL, 80ms, 5000ms);
 
             // Return to overworld cleanly.
             pbf_mash_button(context, BUTTON_B, 1000ms);
@@ -213,12 +252,17 @@ void checkpoint_reattempt_loop(SingleSwitchProgramEnvironment& env,
             action(i);
             return; // success
 
-        } catch (OperationFailedException& e){
-            if (retry_scope == CheckpointRetryScope::DEFER_TO_SELECTED_RANGE){
-                throw;
+        }catch (OperationFailedException& e){
+            if (retry_scope == CheckpointRetryScope::DEFER_TO_SELECTED_RANGE) throw;
+            env.console.log("checkpoint_reattempt_loop: attempt " + std::to_string(i) + " failed: " + e.message(), COLOR_RED);
+            //  Keep what the screen showed at the failure; the retry below resets the game.
+            if (VideoSnapshot screen = env.console.video().snapshot()){
+                const std::string folder = SCREENSHOTS_PATH() + "AutoStory/failures/";
+                Filesystem::create_directories(Filesystem::Path(folder));
+                const std::string path = folder + now_to_filestring() + "-attempt" + std::to_string(i) + ".png";
+                screen.frame->save(path);
+                env.console.log("Failure screenshot: " + path);
             }
-            env.console.log("checkpoint_reattempt_loop: attempt " + std::to_string(i) + " failed: " + e.message(),
-                COLOR_RED);
             stats.m_reset++;
             env.update_stats();
 
@@ -936,27 +980,43 @@ static double confirmed_potion_hp(VideoStream& stream, ProControllerContext& con
         stream);
 }
 
-void use_potion_first_pokemon(VideoStream& stream, ProControllerContext& context){
+bool bag_has_item(VideoStream& stream, ProControllerContext& context, const std::string& name, int target_pocket) {
+    const bool found = find_bag_item_by_name(stream, context, name, target_pocket, 5);
+    pbf_mash_button(context, BUTTON_B, 2000ms);
+    context.wait_for_all_requests();
+    OverworldWatcher overworld;
+    if (wait_until(stream, context, std::chrono::seconds(10), {{overworld}}) != 0) {
+        OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
+            "Bag: Did not return to the overworld after looking for " + name + ".", stream);
+    }
+    return found;
+}
+
+void use_potion_first_pokemon(VideoStream& stream, ProControllerContext& context, double heal_below) {
     OverlayBoxScope hp_overlay(stream.overlay(), COLOR_GREEN, {0.137, 0.160, 0.202, 0.016}, "");
-    BagItemTemplate potion;
-    potion.reference_path = "PokemonBDSP/Autostory/Bag_Potion.png";
-    potion.label = "Potion";
-    potion.reference_row = 1;
     bool healed = false;
     for (size_t dose = 0; dose < 3; dose++){
         stream.log("[Potion] Finding Bag/Medicine/Potion; dose " + std::to_string(dose + 1) + "/3.");
-        if (!find_bag_item(stream, context, potion, 1, 5, 64, std::chrono::seconds(45))){
+        if (!find_bag_item_by_name(stream, context, "potion", 1, 5)) {
+            if (dose == 0 && heal_below < 1.0) {
+                // Only a check: without Potions there is nothing to do here.
+                stream.log("[Potion] No Potion in the Bag; skipping the HP check.", COLOR_ORANGE);
+                healed = true;
+                break;
+            }
             OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
                 "Potion: Could not verify Potion in the Medicine pocket.",
                 stream);
         }
         const double before = confirmed_potion_hp(stream, context);
         stream.log("[Potion] Slot 1 HP bar before use=" + std::to_string(before * 100) + "%.");
-        if (before >= 0.98){
+        if (before >= 0.98) { healed = true; break; }
+        if (dose == 0 && before >= heal_below) {
+            stream.log("[Potion] Slot 1 HP is at least " + std::to_string(heal_below * 100) + "%; no Potion needed.");
             healed = true;
             break;
         }
-        if (before <= 0.005){
+        if (before <= 0.005) {
             OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
                 "Potion: Slot 1 appears fainted; a Potion cannot revive it.",
                 stream);
@@ -1801,10 +1861,89 @@ bool find_bag_item(VideoStream& stream,
     return false;
 }
 
-bool use_escape_rope(VideoStream& stream, ProControllerContext& context, int num_icons){
-    const BagItemTemplate rope{// "PokemonBDSP/AutoStory/Bag_EscapeRope.png", "escape-rope"
-        "PokemonBDSP/Autostory/Bag_EscapeRope.png",
-        "escape-rope"};
+bool find_bag_item_by_name(
+    VideoStream& stream,
+    ProControllerContext& context,
+    const std::string& name,
+    int target_pocket,
+    int num_icons
+){
+    open_menu(stream, context, MenuCursorPosition::BAG, num_icons);
+    pbf_wait(context, 1000ms);
+    return find_bag_item_in_open_bag(stream, context, name, target_pocket);
+}
+
+bool find_bag_item_in_open_bag(
+    VideoStream& stream,
+    ProControllerContext& context,
+    const std::string& name,
+    int target_pocket
+){
+    context.wait_for_all_requests();
+    if (!bag_navigate_to_pocket(stream, context, target_pocket)) return false;
+
+    //  Walk down the list reading the cursor row. The list does not wrap, so
+    //  turn around once the cursor stops moving.
+    DpadPosition direction = DPAD_DOWN;
+    std::string previous;
+    size_t same = 0;
+    size_t confirmed = 0;
+    size_t unknown_cursor = 0;
+    for (size_t scan = 0; scan < 128; scan++){
+        context.wait_for_all_requests();
+        const VideoSnapshot frame = stream.video().snapshot();
+        if (!frame || bag_list_is_empty(*frame.frame)){
+            stream.log("[Bag search] " + name + ": pocket is empty.", COLOR_ORANGE);
+            return false;
+        }
+        const int cursor = bag_cursor_position(*frame.frame);
+        if (cursor == 0){
+            if (++unknown_cursor >= 3){
+                stream.log("[Bag search] " + name + ": cursor not found.", COLOR_ORANGE);
+                return false;
+            }
+            pbf_wait(context, 200ms);
+            continue;
+        }
+        unknown_cursor = 0;
+        const std::string text = OCR::tesseract_ocr_read(Language::English,
+            extract_box_reference(*frame.frame, bag_list_name_box(cursor)));
+        std::string normalized;
+        for (unsigned char ch : text){
+            if (std::isalpha(ch)) normalized.push_back((char)std::tolower(ch));
+        }
+        stream.log("[Bag search] Row " + std::to_string(cursor) + " reads \"" + normalized + "\".");
+        if (normalized == name){
+            if (++confirmed >= 2){
+                stream.log("[Bag search] " + name + " confirmed in row " + std::to_string(cursor) + ".", COLOR_GREEN);
+                return true;
+            }
+            pbf_wait(context, 150ms);
+            continue;
+        }
+        confirmed = 0;
+        same = normalized == previous ? same + 1 : 0;
+        previous = normalized;
+        if (same >= 2){
+            if (direction == DPAD_UP) break;
+            direction = DPAD_UP;
+            same = 0;
+        }
+        pbf_press_dpad(context, direction, 80ms, 300ms);
+    }
+    stream.log("[Bag search] " + name + " not found.", COLOR_ORANGE);
+    return false;
+}
+
+bool use_escape_rope(
+    VideoStream& stream,
+    ProControllerContext& context,
+    int num_icons
+){
+    const BagItemTemplate rope{
+        // "PokemonBDSP/AutoStory/Bag_EscapeRope.png", "escape-rope"
+        "PokemonBDSP/Autostory/Bag_EscapeRope.png", "escape-rope"
+    };
     if (!find_bag_item(stream, context, rope, 5, num_icons)){
         return false;
     }
