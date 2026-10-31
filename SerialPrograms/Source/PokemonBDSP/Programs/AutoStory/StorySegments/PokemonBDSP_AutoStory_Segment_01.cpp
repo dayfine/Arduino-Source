@@ -796,13 +796,13 @@ bool in_dim_cave(VideoStream& stream, uint64_t below){
 //  cliff, south to the posts, a row up, then 17 tiles east is the gym door's
 //  column. The hold is checked by the door itself: walk north, and if the
 //  gym's wall stops us, try the columns either side.
-//  D-pad moves from the Center's doorstep to below the gym's door: 21, the
-//  same tile every time in 3 runs from the counter save (2026-10-31; each
-//  tap moved 36 to 38 px at 640 px width). By hand that was 22 taps, the
-//  first of which only turned us; dpad_tiles() turns with a tap of its own
-//  (r217d overshot by one with 22). Stick holds drift: 160 ms moved 36 to
-//  48 px, so 18 or 19 of them missed the door by a part of a tile.
-constexpr size_t GYM_DPAD_TAPS_WEST_OF_CENTER = 21;
+//  D-pad moves from the Center's doorstep (as walk_out_of_center() leaves us
+//  there) to below the gym's door: 20. The program's own runs landed 2 tiles
+//  west with 22 and 1 tile west with 21 (r217d, r218d, the same tiles each
+//  time). By hand, after a stick exit, it took 22 taps; the hand exit and
+//  count did not carry over to the program's. Stick holds drift: 160 ms moved
+//  36 to 48 px, so 18 or 19 of them missed the door by a part of a tile.
+constexpr size_t GYM_DPAD_TAPS_WEST_OF_CENTER = 20;
 uint64_t mean_brightness(const ImageViewRGB32& screen);
 
 //  `taps` D-pad taps toward `dpad`, settling between them. On the D-pad the
