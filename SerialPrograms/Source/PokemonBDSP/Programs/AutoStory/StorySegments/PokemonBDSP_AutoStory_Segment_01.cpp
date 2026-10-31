@@ -840,9 +840,13 @@ void dpad_tiles(VideoStream& stream, ProControllerContext& context, DpadPosition
     pbf_press_dpad(context, dpad, 160ms, 700ms);    // turn
     // Count only taps that moved the view: one after the turn was lost and
     // the leg ended a tile short (r215d). A tile's scroll changes the view by
-    // about 100; standing still, under 15.
+    // about 100; standing still, under 15. A tap that does not move is someone
+    // in the way: people walk about these streets (r220g: blocked on tap 9
+    // for 12 s while a passer-by stood in our row). Wait for them to move on,
+    // up to 30 s, before giving up.
     size_t moved = 0;
-    for (size_t tries = 0; moved < taps && tries < taps + 6; tries++){
+    const auto deadline = current_time() + std::chrono::milliseconds(taps * 1000 + 30000);
+    while (moved < taps && current_time() < deadline){
         context.wait_for_all_requests();
         const VideoSnapshot before = stream.video().snapshot();
         pbf_press_dpad(context, dpad, 160ms, 700ms);
@@ -851,12 +855,13 @@ void dpad_tiles(VideoStream& stream, ProControllerContext& context, DpadPosition
         const double change = before && after ? walk_screen_change(*before.frame, *after.frame) : 100;
         if (change > 30){
             moved++;
-        }else{
-            stream.log("[Walk] " + label + ": tap " + std::to_string(moved + 1) + " did not move (view change " + std::to_string(change) + "); again.");
-            if (dialogue_opens(stream, context, 300ms)){
-                talk_or_fight(stream, context, label + ": someone in the way");
-            }
+            continue;
         }
+        stream.log("[Walk] " + label + ": tap " + std::to_string(moved + 1) + " did not move (view change " + std::to_string(change) + "); someone in the way? Waiting.");
+        if (dialogue_opens(stream, context, 300ms)){
+            talk_or_fight(stream, context, label + ": someone in the way");
+        }
+        context.wait_for(1500ms);
     }
     if (moved < taps){
         fail(stream, label + ": only " + std::to_string(moved) + " of " + std::to_string(taps) + " D-pad taps moved us.");
