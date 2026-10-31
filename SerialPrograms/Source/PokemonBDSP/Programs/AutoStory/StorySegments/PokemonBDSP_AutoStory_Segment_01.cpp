@@ -762,72 +762,61 @@ bool in_dim_cave(VideoStream& stream, uint64_t below){
 //  cliff, south to the posts, a row up, then 17 tiles east is the gym door's
 //  column. The hold is checked by the door itself: walk north, and if the
 //  gym's wall stops us, try the columns either side.
-void oreburgh_street_to_gym(VideoStream& stream, ProControllerContext& context){
-    // From just below the Center's door, its row runs west to the gym's
-    // door with nothing in the way: before Roark's scene a walk west along
-    // it from just west of the Center's door stopped at Barry, standing
-    // beside the gym's door, after 3.4 s (by hand, 2026-10-31). The old way (west to the
-    // cliff, south to the posts, 17 east) went elsewhere from this row
-    // (r196d ended at the Poke Mart).
-    // Leaving the Center runs on a row or two during the fade (r198d held
-    // west along the wrong row into a house): a tile east of the door, north
-    // stops against the Center's front on the door's row. From there the
-    // gym's door is about 19 tiles west.
-    // The door takes a tile or so either side of its middle (r199d went
-    // back in from a tile east): if north goes in, out and a tile further.
-    for (size_t attempt = 0; attempt < 3; attempt++){
-        hold_tiles(stream, context, Direction::EAST, 1);
-        walk_until(stream, context, 0, 1, 3000ms, "north to the Center's front beside its door",
-            [](const ImageViewRGB32& screen){ size_t percent = 0; center_floor_on_screen(screen, &percent); return percent >= 45; });
-        size_t percent = 0;
-        if (VideoSnapshot frame = stream.video().snapshot()){
-            center_floor_on_screen(*frame.frame, &percent);
-        }
-        if (percent < 45){
-            break;
-        }
-        leave_center_onto_door_row(stream, context);
+constexpr size_t GYM_TILES_WEST_OF_CENTER = 19;
+
+//  North through a door from just below it: true once the whole scene has
+//  changed, as the door's fade often does not read as a transition (the
+//  Trainers' School's, r146b; Oreburgh's gym, r195d, r203a).
+bool through_door_north(VideoStream& stream, ProControllerContext& context, const std::string& label){
+    context.wait_for_all_requests();
+    const VideoSnapshot before = stream.video().snapshot();
+    const WalkResult up = walk_until(stream, context, 0, 1, 1200ms, label);
+    context.wait_for(1500ms);
+    if (up.stop == WalkStop::TRANSITION){
+        return true;
     }
-    // A timed hold this long is too loose (r201d: 18 tiles ended on the
-    // road east of the gym; 23 ran into the houses beyond it, r198d, r200d).
-    // From this row, west runs past the gym to the cliff (by hand,
-    // 2026-10-31), the old anchor: south from there stops at the posts, and
-    // a row up, 17 tiles east ended 1.5 tiles east of the gym's door (by
-    // hand), so 16.
-    walk_to_wall(stream, context, -1, 0, 10000ms, "west to the cliff");
-    walk_to_wall(stream, context, 0, -1, 3000ms, "south to the posts");
-    hold_tiles(stream, context, Direction::NORTH, 1);
-    hold_tiles(stream, context, Direction::EAST, 16);
-    // A long hold ends a tile or two either side of the door (by hand,
-    // 2026-10-31: 17 tiles from the cliff ended 1.5 east). The gym's front
-    // blocks north there.
-    // Third-of-a-tile nudges barely move us against it (each push north
-    // slides back), and a tile's tap west went in (by hand): look for the
-    // door a tile at a time either side, with no turn taps between.
-    // Both long holds so far ended east of the door (r197d: 0 and -1
-    // blocked, +1 walked up a road east of the gym and met a trainer), so
-    // look west first; a column that walks north freely is not the door:
-    // come back down to the row before the next.
-    const int offsets[] = {0, -1, 1, -2, 2};
-    int shifted = 0;
-    for (int offset : offsets){
-        for (; shifted != offset; shifted += offset > shifted ? 1 : -1){
-            pbf_move_left_joystick(context, {offset > shifted ? 1.0 : -1.0, 0}, ROUTE_MS_PER_TILE_ACROSS, 300ms);
+    const VideoSnapshot after = stream.video().snapshot();
+    const bool through = before && after && walk_screen_change(*before.frame, *after.frame) > WALK_SCENE_CHANGE;
+    if (through){
+        stream.log("[Route] " + label + ": a new scene; through the door.");
+    }else if (up.walked > 600ms){
+        // Walked on without a door: back down to the row.
+        walk_for(stream, context, 0, -1, up.walked, label + ": back down");
+    }
+    return through;
+}
+
+void oreburgh_street_to_gym(VideoStream& stream, ProControllerContext& context){
+    // As at Jubilife's Center and School (00.05b): from the Center's
+    // doorstep, the gym's door is straight west along the row, then north.
+    // On Bulbapedia's map (12 px a tile) the doors are 19.6 tiles apart; by
+    // hand 4-tile holds put it 17 to 18 tiles from a tile west of the door.
+    // A one-tile hold ends a part of a tile off, so if the gym's front
+    // stops us, nudge half a tile each way, then a tile each way.
+    route_turn(stream, context, Direction::WEST);
+    for (size_t tile = 0; tile < GYM_TILES_WEST_OF_CENTER; tile++){
+        const WalkResult step = walk_for(stream, context, -1, 0, 160ms, "west to the gym's door");
+        if (step.stop == WalkStop::DIALOG){
+            talk_or_fight(stream, context, "Someone on the way to the gym");
         }
-        const WalkResult door = walk_dir(stream, context, Direction::NORTH, 4000ms, "north into the gym");
-        // The door's fade can read as the time limit rather than a black
-        // screen (by hand: "limit after 4000ms", and we were inside), and
-        // so can pushing at the gym's front with people walking by (r195d).
-        // Inside is dim: mean brightness 51 against 107 to 109 outside, and
-        // 78 for the Center's dark edge (r199d).
-        if ((door.stop == WalkStop::TRANSITION || door.stop == WalkStop::LIMIT) && in_dim_cave(stream, 65)){
-            context.wait_for(1000ms);
+    }
+    if (through_door_north(stream, context, "Oreburgh Gym door")){
+        return;
+    }
+    const Direction sides[] = {Direction::EAST, Direction::WEST, Direction::WEST, Direction::EAST};
+    for (Direction side : sides){
+        route_turn(stream, context, side);
+        walk_for(stream, context, side == Direction::EAST ? 1 : -1, 0, 80ms, "line up with the gym's door");
+        if (through_door_north(stream, context, "Oreburgh Gym door")){
             return;
         }
-        if (door.stop == WalkStop::DIALOG){
-            talk_or_fight(stream, context, "Someone outside the gym");
-        }else if (door.stop == WalkStop::LIMIT){
-            walk_dir(stream, context, Direction::SOUTH, door.walked, "back down to the gym's row");
+    }
+    for (int shift : {1, -2, 3, -4}){
+        for (int tile = 0; tile < std::abs(shift); tile++){
+            walk_for(stream, context, shift > 0 ? 1 : -1, 0, 160ms, "a tile along the gym's front");
+        }
+        if (through_door_north(stream, context, "Oreburgh Gym door")){
+            return;
         }
     }
     fail(stream, "Oreburgh: no column near the gym's door went in.");
