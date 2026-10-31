@@ -1315,7 +1315,7 @@ void ravaged_path(VideoStream& stream, ProControllerContext& context){
         at = walk_route(stream, context, rocks_out, at,
             [&](const Pokemon::TilePos& pos){ return pos == RavagedPath::EAST_END; },
             no_trainers, in_the_way, "To the corridor's east end");
-        hold_tiles(stream, context, Direction::WEST, 1);
+        dpad_tiles(stream, context, DPAD_LEFT, 1, "west onto the tile above the way out");
         const WalkResult out = walk_dir(stream, context, Direction::SOUTH, 4000ms, "south out of the Ravaged Path");
         if (out.stop != WalkStop::TRANSITION && out.stop != WalkStop::LIMIT){
             fail(stream, "Ravaged Path: the walk south from a tile west of the corridor's end did not leave the cave.");
