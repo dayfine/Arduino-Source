@@ -435,8 +435,10 @@ void oreburgh_to_roark(VideoStream& stream, ProControllerContext& context){
             }
             context.wait_for_all_requests();
         }
+        // The door's fade often reads as the time limit, not a black screen
+        // (r183a went in and on to the counter): look at the floor.
         const WalkResult in = walk_dir(stream, context, Direction::NORTH, 2500ms, "north into the Center's door");
-        if (in.stop == WalkStop::TRANSITION){
+        if (in.stop == WalkStop::TRANSITION || in_pokemon_center(stream)){
             inside = true;
             break;
         }
@@ -451,9 +453,8 @@ void oreburgh_to_roark(VideoStream& stream, ProControllerContext& context){
             context.wait_for(2000ms);    // he runs off
         }
         // Talked in the door's column: the door is free now.
-        if (walk_dir(stream, context, Direction::NORTH, 2500ms, "north into the Center's door").stop == WalkStop::TRANSITION){
-            inside = true;
-        }
+        walk_dir(stream, context, Direction::NORTH, 2500ms, "north into the Center's door");
+        inside = in_pokemon_center(stream);
     }
     if (!inside || !in_pokemon_center(stream)){
         fail(stream, "Oreburgh: no column east of the save went into the Pokemon Center.");
