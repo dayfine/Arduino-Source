@@ -382,7 +382,12 @@ void walk_out_of_center(VideoStream& stream, ProControllerContext& context, cons
         if (shift != 0){
             hold_tiles(stream, context, shift > 0 ? Direction::EAST : Direction::WEST, (size_t)std::abs(shift));
         }
-        if (walk_dir(stream, context, Direction::SOUTH, 8000ms, label + ": out of the Center").stop == WalkStop::TRANSITION){
+        // Stop as soon as the floor is gone, on the tile below the door: the
+        // door's fade often reads as the time limit, and walking on leaves
+        // the door's row (Oreburgh: on down to the mine).
+        const WalkResult out = walk_until(stream, context, 0, -1, 8000ms, label + ": out of the Center",
+            [](const ImageViewRGB32& screen){ size_t percent = 0; center_floor_on_screen(screen, &percent); return percent < 30; });
+        if (out.stop == WalkStop::TRANSITION || out.stop == WalkStop::ARRIVED){
             context.wait_for(2000ms);
             return;
         }
@@ -390,30 +395,11 @@ void walk_out_of_center(VideoStream& stream, ProControllerContext& context, cons
     fail(stream, label + ": could not find the Pokemon Center's door.");
 }
 
-void oreburgh_to_roark(VideoStream& stream, ProControllerContext& context){
-    // What 01.03 does, stepped through on the console before writing it.
-    StepLog step(stream, "01.03", "From the Oreburgh Pokemon Center to Roark in the mine", {
-        "Into the Pokemon Center by its door (talking to Barry if he stands in it) and back out onto the door's column",
-        "Straight south from the door into the mine",
-        "Through the mine's entrance hall to the rocky corridor",
-        "Walk the planned route down the corridor and round the coal block, and talk to Roark",
-        "Walk back to the corridor's top and out of the mine",
-    });
-
-    step(1);
-    // Planned on Bulbapedia's Oreburgh map (devtools/maps/examples/
-    // oreburgh_center_to_mine.png): the column of the Center's door runs
-    // straight south down the yard's stairs, between the conveyors, into
-    // the mine (walked north up it by hand, 2026-10-31). The door is the one
-    // place that pins that column: go in and back out, and we stand on it
-    // facing south. The save stands us two tiles west of the door and a row
-    // down; north stops against the Center's front or its post, then a tile
-    // at a time east until north goes in. Barry stands in the door the first
-    // time: walking into him reads as a wall, so A there; he tells us Roark
-    // went to the mine, which Roark needs before he answers (2026-10-29: he
-    // ignored A in r101 and r104 until then). A save after his talk has him
-    // gone already.
-    //
+//  Oreburgh: from a row or two below the Pokemon Center's front, west of
+//  the fence below its east corner, into the Center by its door, stopping
+//  just inside. Talks to Barry if he stands in the door (01.03, the first
+//  time).
+void enter_oreburgh_center(VideoStream& stream, ProControllerContext& context){
     // The save stands us a row or two below the Center's front, a little
     // west of its door. The posts and the road beside the Center make north
     // from there unreliable (r191a, r192a walked up the road to the city's
@@ -477,6 +463,42 @@ void oreburgh_to_roark(VideoStream& stream, ProControllerContext& context){
     if (!inside || !inside_now()){
         fail(stream, "Oreburgh: no column east of the save went into the Pokemon Center.");
     }
+}
+
+//  Oreburgh: from just inside the Pokemon Center's door, out onto the tile
+//  below it, facing south, on the door's column. Stops as soon as the floor
+//  is gone: walking on runs down the column to the mine.
+void leave_center_onto_door_row(VideoStream& stream, ProControllerContext& context){
+    walk_until(stream, context, 0, -1, 4000ms, "out of the Center's door",
+        [](const ImageViewRGB32& screen){ size_t percent = 0; center_floor_on_screen(screen, &percent); return percent < 30; });
+    context.wait_for(1500ms);
+}
+
+void oreburgh_to_roark(VideoStream& stream, ProControllerContext& context){
+    // What 01.03 does, stepped through on the console before writing it.
+    StepLog step(stream, "01.03", "From the Oreburgh Pokemon Center to Roark in the mine", {
+        "Into the Pokemon Center by its door (talking to Barry if he stands in it) and back out onto the door's column",
+        "Straight south from the door into the mine",
+        "Through the mine's entrance hall to the rocky corridor",
+        "Walk the planned route down the corridor and round the coal block, and talk to Roark",
+        "Walk back to the corridor's top and out of the mine",
+    });
+
+    step(1);
+    // Planned on Bulbapedia's Oreburgh map (devtools/maps/examples/
+    // oreburgh_center_to_mine.png): the column of the Center's door runs
+    // straight south down the yard's stairs, between the conveyors, into
+    // the mine (walked north up it by hand, 2026-10-31). The door is the one
+    // place that pins that column: go in and back out, and we stand on it
+    // facing south. The save stands us two tiles west of the door and a row
+    // down; north stops against the Center's front or its post, then a tile
+    // at a time east until north goes in. Barry stands in the door the first
+    // time: walking into him reads as a wall, so A there; he tells us Roark
+    // went to the mine, which Roark needs before he answers (2026-10-29: he
+    // ignored A in r101 and r104 until then). A save after his talk has him
+    // gone already.
+    //
+    enter_oreburgh_center(stream, context);
     context.wait_for(1000ms);
 
     step(2);
@@ -705,12 +727,16 @@ bool in_dim_cave(VideoStream& stream){
 //  column. The hold is checked by the door itself: walk north, and if the
 //  gym's wall stops us, try the columns either side.
 void oreburgh_street_to_gym(VideoStream& stream, ProControllerContext& context){
-    walk_to_wall(stream, context, -1, 0, 15000ms, "west to the cliff");
-    walk_to_wall(stream, context, 0, -1, 3000ms, "south to the posts");
-    hold_tiles(stream, context, Direction::NORTH, 1);
-    hold_tiles(stream, context, Direction::EAST, 17);
-    // Seventeen tiles of holding end a tile or two either side of the door
-    // (by hand, 2026-10-31: 1.5 east). The gym's front blocks north there.
+    // From the tile below the Center's door, its row runs west to the gym's
+    // door with nothing in the way: before Roark's scene a walk west along
+    // it stopped at Barry, standing beside the gym's door, after 3.4 s (by
+    // hand, 2026-10-31), and the door is a tile on. The old way (west to the
+    // cliff, south to the posts, 17 east) went elsewhere from this row
+    // (r196d ended at the Poke Mart).
+    hold_tiles(stream, context, Direction::WEST, 22);
+    // A long hold ends a tile or two either side of the door (by hand,
+    // 2026-10-31: 17 tiles from the cliff ended 1.5 east). The gym's front
+    // blocks north there.
     // Third-of-a-tile nudges barely move us against it (each push north
     // slides back), and a tile's tap west went in (by hand): look for the
     // door a tile at a time either side, with no turn taps between.
@@ -785,30 +811,31 @@ bool oreburgh_gym_battles(VideoStream& stream, ProControllerContext& context){
 
 void oreburgh_gym(VideoStream& stream, ProControllerContext& context){
     StepLog step(stream, "01.04", "From the Oreburgh Mine to the Coal Badge", {
-        "North to the Pokemon Center's front",
-        "West to the cliff, south to the posts, east along the street into the gym",
+        "North into the Pokemon Center by its door and back out onto its row",
+        "West along the row into the gym",
         "Up the gym, fighting its trainers, and beat Roark (after a loss: from the Center, again)",
         "Out of the gym",
     });
     step(1);
-    // 01.03 leaves us below the mine's sign; a tile east is the column
-    // straight up to the Center (by hand: blocked at its front after 6.4 s).
+    // 01.03 leaves us below the mine's sign; a tile east is the column of
+    // the Center's door, which the walk north usually goes in by (r194d,
+    // r196d; r195d stopped at the post beside it). The door is the anchor:
+    // its row runs west to the gym's door.
     hold_tiles(stream, context, Direction::EAST, 1);
-    // That column is the Center's door's (01.03 walks it south): the walk
-    // may go in (r194d went in and walked the gym's steps inside it). Stop
-    // at the floor and step straight back out; either way we end on the
-    // Center's front rows, where west runs to the cliff.
-    walk_until(stream, context, 0, 1, 12000ms, "north to the Center's front",
+    walk_until(stream, context, 0, 1, 12000ms, "north into the Center's door",
         [](const ImageViewRGB32& screen){ size_t percent = 0; center_floor_on_screen(screen, &percent); return percent >= 45; });
+    size_t percent = 0;
     if (VideoSnapshot frame = stream.video().snapshot()){
-        size_t percent = 0;
-        if (center_floor_on_screen(*frame.frame, &percent), percent >= 45){
-            stream.log("[01.04] Went into the Center by its door; back out.");
-            walk_until(stream, context, 0, -1, 4000ms, "back out of the Center",
-                [](const ImageViewRGB32& screen){ size_t percent = 0; center_floor_on_screen(screen, &percent); return percent < 30; });
-            context.wait_for(1500ms);
-        }
+        center_floor_on_screen(*frame.frame, &percent);
     }
+    if (percent < 45){
+        // Short of the door: down off the front rows, then in the way 01.03
+        // goes in.
+        route_turn(stream, context, Direction::SOUTH);
+        pbf_move_left_joystick(context, {0, -1}, 480ms, 300ms);
+        enter_oreburgh_center(stream, context);
+    }
+    leave_center_onto_door_row(stream, context);
 
     // Losing costs some money and keeps the experience, so each try comes
     // back stronger: Roark won twice by hand against Piplup Lv 10 and 14 and
