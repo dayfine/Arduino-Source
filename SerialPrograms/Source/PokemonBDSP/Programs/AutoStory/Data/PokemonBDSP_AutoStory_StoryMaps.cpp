@@ -7,6 +7,7 @@
 #include "PokemonBDSP_AutoStory_JubilifeCity.h"
 #include "PokemonBDSP_AutoStory_OreburghMine.h"
 #include "PokemonBDSP_AutoStory_RavagedPath.h"
+#include "PokemonBDSP_AutoStory_Route203.h"
 #include "PokemonBDSP_AutoStory_Route204.h"
 #include "PokemonBDSP_AutoStory_Route201.h"
 #include "PokemonBDSP_AutoStory_Route202.h"
@@ -27,6 +28,7 @@ const char* const MAP_JUBILIFE_CITY = "Jubilife City";
 const char* const MAP_OREBURGH_MINE = "Oreburgh Mine";
 const char* const MAP_RAVAGED_PATH = "Ravaged Path";
 const char* const MAP_ROUTE_204 = "Route 204";
+const char* const MAP_ROUTE_203 = "Route 203";
 
 
 //  Offsets come from how the Bulbapedia maps join:
@@ -60,6 +62,24 @@ const MapSet& jubilife_maps(){
         return maps;
     }();
     return maps;
+}
+
+//  Route 203's road (rows 17..19) meets Jubilife's east stairs (rows
+//  16..17 of its grid, 59 px apart on the two images): Route 203's row y
+//  is Jubilife's row y - 1, and its column 0 follows Jubilife's column 63.
+//  Not checked on the console yet (2026-10-31).
+const MapSet& route203_jubilife_maps(){
+    static const MapSet maps = []{
+        MapSet maps;
+        maps.add(MAP_JUBILIFE_CITY, JubilifeCity::grid(), {0, 0});
+        maps.add(MAP_ROUTE_203, Route203::grid(), {64, -1});
+        return maps;
+    }();
+    return maps;
+}
+
+bool on_jubilife_north_road(const TilePos& world){
+    return world.x >= 43 && world.x <= 46 && world.y >= 12 && world.y <= 14;
 }
 
 const MapSet& oreburgh_mine_maps(){

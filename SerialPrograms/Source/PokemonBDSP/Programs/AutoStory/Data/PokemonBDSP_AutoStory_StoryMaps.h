@@ -22,6 +22,7 @@ extern const char* const MAP_JUBILIFE_CITY;
 extern const char* const MAP_OREBURGH_MINE;
 extern const char* const MAP_RAVAGED_PATH;
 extern const char* const MAP_ROUTE_204;
+extern const char* const MAP_ROUTE_203;
 
 //  Route 201, Sandgem Town and Route 202.
 const Pokemon::MapSet& story_maps();
@@ -29,6 +30,12 @@ const Pokemon::MapSet& story_maps();
 //  Jubilife City on its own: 00.05 starts there after Dawn's scene, so it is
 //  not joined to Route 202.
 const Pokemon::MapSet& jubilife_maps();
+//  Route 203 west of the Oreburgh Gate joined to Jubilife City's east edge
+//  (01.06), with Jubilife at its own tile coordinates.
+const Pokemon::MapSet& route203_jubilife_maps();
+//  Whether a tile is on Jubilife's north road, below the plaza: walking
+//  north from here goes up the road to Route 204 (and Rowan's scene).
+bool on_jubilife_north_road(const Pokemon::TilePos& world);
 //  The Oreburgh Mine's coal room on its own (01.03).
 const Pokemon::MapSet& oreburgh_mine_maps();
 

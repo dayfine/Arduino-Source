@@ -14,6 +14,7 @@
 #include "Data/PokemonBDSP_AutoStory_JubilifeCity.h"
 #include "Data/PokemonBDSP_AutoStory_OreburghMine.h"
 #include "Data/PokemonBDSP_AutoStory_RavagedPath.h"
+#include "Data/PokemonBDSP_AutoStory_Route203.h"
 #include "Data/PokemonBDSP_AutoStory_Route204.h"
 #include "Data/PokemonBDSP_AutoStory_Route201.h"
 #include "Data/PokemonBDSP_AutoStory_Route202.h"
@@ -700,6 +701,18 @@ public:
                 ){
                     failed += "Ravaged Path: the way out is not a door a tile west of the corridor's east end. ";
                 }
+            }
+            //  01.06 on Route 203 into Jubilife: from the Oreburgh Gate's west
+            //  exit to the foot of Jubilife's north road.
+            {
+                const Pokemon::MapSet& route = route203_jubilife_maps();
+                std::vector<TilePos> exit;
+                for (const TilePos& pos : Route203::gate_exit()){
+                    exit.push_back(route.to_world(MAP_ROUTE_203, pos));
+                }
+                const std::string leg_error = check_robust_plan(logger, "Route 203: Oreburgh Gate to Jubilife's north road", route, exit,
+                    on_jubilife_north_road);
+                failed += leg_error.empty() ? "" : leg_error + " ";
             }
             //  01.05 on Route 204's north half: from the Ravaged Path's door to
             //  the path between the flower beds into Floaroma.

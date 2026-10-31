@@ -8,6 +8,7 @@
 #include "PokemonBDSP_AutoStory_Segment_01.h"
 #include "../Data/PokemonBDSP_AutoStory_OreburghMine.h"
 #include "../Data/PokemonBDSP_AutoStory_RavagedPath.h"
+#include "../Data/PokemonBDSP_AutoStory_Route203.h"
 #include "../Data/PokemonBDSP_AutoStory_Route204.h"
 #include "../Data/PokemonBDSP_AutoStory_StoryMaps.h"
 #include "../Detect/PokemonBDSP_AutoStory_OverworldDetector.h"
@@ -1154,8 +1155,8 @@ void oreburgh_to_route203(VideoStream& stream, ProControllerContext& context){
 
 void route203_to_floaroma(VideoStream& stream, ProControllerContext& context){
     StepLog step(stream, "01.06", "From the Oreburgh Gate's west exit to Floaroma Town", {
-        "West along Route 203 and Jubilife to the Route 218 gate",
-        "Back east to Jubilife's north road and up it (Rowan, Dawn and two Galactic grunts: a tag battle)",
+        "Route 203 west on its grid into Jubilife, to the foot of the north road",
+        "Up Jubilife's north road (Rowan, Dawn and two Galactic grunts: a tag battle)",
         "North on Route 204 into the Ravaged Path",
         "Through the Ravaged Path, smashing its rocks",
         "Route 204 north on its grid, past the twins, into Floaroma",
@@ -1163,20 +1164,27 @@ void route203_to_floaroma(VideoStream& stream, ProControllerContext& context){
     });
 
     step(1);
-    // Route 203 (trainers stop us) and Jubilife's road all run west; the
-    // first door at the end is the Route 218 gate on Jubilife's west edge
-    // (by hand: twice).
-    west_until_transition(stream, context, "West to the Route 218 gate", 16);
+    // On the traced grid (Data/PokemonBDSP_AutoStory_Route203), joined to
+    // Jubilife's: along the bottom of each stretch, where its stairs west
+    // are (r222g walked north of the pond in the middle stretch and found no
+    // way west), then along Jubilife's street to its north road. Trainers
+    // the map does not list are fought where they stop us.
+    {
+        const Pokemon::MapSet& maps = route203_jubilife_maps();
+        std::vector<Pokemon::TilePos> at;
+        for (const Pokemon::TilePos& pos : Route203::gate_exit()){
+            at.push_back(maps.to_world(MAP_ROUTE_203, pos));
+        }
+        std::vector<Pokemon::TrainerSight> trainers;
+        auto fight = [&](const std::string& who){
+            talk_or_fight(stream, context, "Route 203: " + who);
+        };
+        walk_route(stream, context, maps, at, on_jubilife_north_road, trainers, fight, "Route 203 to Jubilife's north road");
+    }
 
     step(2);
-    // Back out east into Jubilife: its north road is columns 43 to 46 of the
-    // Jubilife grid, about 40 tiles east of the gate. Rowan's scene starts
-    // on the way up it; a wall in a few tiles means we are off its column.
-    if (walk_dir(stream, context, Direction::EAST, 6000ms, "back out of the gate").stop != WalkStop::TRANSITION){
-        fail(stream, "Jubilife: did not leave the Route 218 gate eastwards.");
-    }
-    context.wait_for(2000ms);
-    hold_tiles(stream, context, Direction::EAST, 40);
+    // Rowan's scene starts on the way up the north road (columns 43 to 46 of
+    // the Jubilife grid); a wall in a few tiles means we are off its column.
     const int steps[] = {0, 1, -2, 3, -4, 5, -6};
     bool scene = false;
     for (int s_step : steps){
