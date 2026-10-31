@@ -309,6 +309,17 @@ change a reviewer will notice, so keep it where it clearly pays off.
 - [lab/LAB_BUILDS.md](lab/LAB_BUILDS.md): lab builds base on `lab/main`, which
   holds lab-only tooling; upstream-bound branches never merge it.
 
+### Skills
+
+Shared Claude Code skills live under `skills/<name>/SKILL.md`. Install one into
+a session with `ln -s "$PWD/skills/<name>" ~/.claude/skills/<name>` from a
+checkout of this branch; edit it here and PR the change, not the local copy.
+
+- [skills/console-iteration/SKILL.md](skills/console-iteration/SKILL.md): the
+  dev loop for a console automation segment (define, observe, hypothesize,
+  verify by hand, fix once, rerun), one train on the console, hard stops,
+  learning, escalation and follow-ups.
+
 ## C++ harness and verification (fork issue #40)
 
 Fork PR #41 is merged into `origin/main` at `67ed6141d`. It provides reusable
