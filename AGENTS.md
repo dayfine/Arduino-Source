@@ -319,6 +319,11 @@ checkout of this branch; edit it here and PR the change, not the local copy.
   dev loop for a console automation segment (define, observe, hypothesize,
   verify by hand, fix once, rerun), one train on the console, hard stops,
   learning, escalation and follow-ups.
+- [skills/cpp-style-review/SKILL.md](skills/cpp-style-review/SKILL.md): the
+  judgement-level C++ style pass (sentinels, ownership, output and bool
+  parameters, comments, magic numbers, naming, seams, layering) to run on a
+  PR before handing it over; its references list what the user has flagged
+  in past reviews.
 
 ## C++ harness and verification (fork issue #40)
 
