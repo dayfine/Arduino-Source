@@ -509,10 +509,15 @@ void oreburgh_to_roark(VideoStream& stream, ProControllerContext& context){
     for (size_t attempt = 0; attempt < 3 && west == WalkStop::LIMIT; attempt++){
         west = walk_dir(stream, context, Direction::WEST, 6000ms, "west to the rock beside Roark").stop;
     }
-    if (west != WalkStop::BLOCKED){
+    // His rock and the bottom wall end these legs, so holding on leaves us
+    // against them; Roark swinging his pickaxe beside us keeps the screen
+    // changing (s03c1: 14 against the bottom wall, 8 to 11 at the rock), so
+    // the time limit counts as reached.
+    if (west != WalkStop::BLOCKED && west != WalkStop::LIMIT){
         fail(stream, "Oreburgh Mine: walking west along Roark's row did not stop at his rock.");
     }
-    if (walk_dir(stream, context, Direction::SOUTH, 2000ms, "south to the bottom wall").stop != WalkStop::BLOCKED){
+    const WalkStop bottom = walk_dir(stream, context, Direction::SOUTH, 2000ms, "south to the bottom wall").stop;
+    if (bottom != WalkStop::BLOCKED && bottom != WalkStop::LIMIT){
         fail(stream, "Oreburgh Mine: walking south from Roark's rock did not stop at the bottom wall.");
     }
     route_turn(stream, context, Direction::WEST);
