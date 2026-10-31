@@ -317,102 +317,109 @@ bool process_and_do_quest(
     int quest_attempts = 0;
 
     while (!quest_completed){
-        switch (current_quest){
-        case BBQuests::make_tm:
-            quest_make_tm(env.program_info(), console, context);
-            break;
-        case BBQuests::travel_500:
-            quest_travel_500(env.program_info(), console, context);
-            break;
-        case BBQuests::tera_self_defeat:
-            quest_tera_self_defeat(env.program_info(), console, context, BBQ_OPTIONS);
-            break;
-        case BBQuests::sneak_up:
-            quest_sneak_up(env.program_info(), console, context, BBQ_OPTIONS);
-            break;
-        case BBQuests::wild_tera:
-            quest_wild_tera(env.program_info(), console, context, BBQ_OPTIONS);
-            break;
-        case BBQuests::wash_pokemon:
-            quest_wash_pokemon(env.program_info(), console, context);
-            break;
-        case BBQuests::hatch_egg:
-            quest_hatch_egg(env, console, context, BBQ_OPTIONS);
-            break;
-        case BBQuests::bitter_sandwich:
-        case BBQuests::salty_sandwich:
-        case BBQuests::sour_sandwich:
-        case BBQuests::spicy_sandwich:
-        case BBQuests::sweet_sandwich:
-        case BBQuests::sandwich_three:
-            quest_sandwich(env, console, context, BBQ_OPTIONS, current_quest);
-            break;
-        //case BBQuests::pickup_10:
-        //    quest_pickup(env, env.program_info(), console, context, BBQ_OPTIONS);
-        //    break;
-        case BBQuests::tera_raid:
-            quest_tera_raid(env, console, context, BBQ_OPTIONS);
-            break;
-        case BBQuests::auto_10:
-        case BBQuests::auto_30:
-            quest_auto_battle(env, console, context, BBQ_OPTIONS, current_quest);
-            break;
-        //All involve taking pictures
-        case BBQuests::photo_fly:
-        case BBQuests::photo_swim:
-        case BBQuests::photo_canyon:
-        case BBQuests::photo_coastal:
-        case BBQuests::photo_polar:
-        case BBQuests::photo_savanna:
-        case BBQuests::photo_normal:
-        case BBQuests::photo_fighting:
-        case BBQuests::photo_flying:
-        case BBQuests::photo_poison:
-        case BBQuests::photo_ground:
-        case BBQuests::photo_rock:
-        case BBQuests::photo_bug:
-        case BBQuests::photo_ghost:
-        case BBQuests::photo_steel:
-        case BBQuests::photo_fire:
-        case BBQuests::photo_water:
-        case BBQuests::photo_grass:
-        case BBQuests::photo_electric:
-        case BBQuests::photo_psychic:
-        case BBQuests::photo_ice:
-        case BBQuests::photo_dragon:
-        case BBQuests::photo_dark:
-        case BBQuests::photo_fairy:
-            quest_photo(env.program_info(), console, context, BBQ_OPTIONS, current_quest);
-            break;
-        //All involve catching a pokemon
-        case BBQuests::catch_any:
-        case BBQuests::catch_normal:
-        case BBQuests::catch_fighting:
-        case BBQuests::catch_flying:
-        case BBQuests::catch_poison:
-        case BBQuests::catch_ground:
-        case BBQuests::catch_rock:
-        case BBQuests::catch_bug:
-        case BBQuests::catch_ghost:
-        case BBQuests::catch_steel:
-        case BBQuests::catch_fire:
-        case BBQuests::catch_water:
-        case BBQuests::catch_grass:
-        case BBQuests::catch_electric:
-        case BBQuests::catch_psychic:
-        case BBQuests::catch_ice:
-        case BBQuests::catch_dragon:
-        case BBQuests::catch_dark:
-        case BBQuests::catch_fairy:
-            quest_catch(env.program_info(), console, context, BBQ_OPTIONS, current_quest);
-            break;
-        default:
-            OperationFailedExceptionWithScreenshot::fire(
-                ErrorReportMode::SEND_ERROR_REPORT,
-                "Unknown quest selection.",
-                console
-            );
-            break;
+        //  A failed fly fails this attempt, not the program: the board
+        //  check below counts it, and the retry limit applies as usual.
+        try{
+            switch (current_quest){
+            case BBQuests::make_tm:
+                quest_make_tm(env.program_info(), console, context);
+                break;
+            case BBQuests::travel_500:
+                quest_travel_500(env.program_info(), console, context);
+                break;
+            case BBQuests::tera_self_defeat:
+                quest_tera_self_defeat(env.program_info(), console, context, BBQ_OPTIONS);
+                break;
+            case BBQuests::sneak_up:
+                quest_sneak_up(env.program_info(), console, context, BBQ_OPTIONS);
+                break;
+            case BBQuests::wild_tera:
+                quest_wild_tera(env.program_info(), console, context, BBQ_OPTIONS);
+                break;
+            case BBQuests::wash_pokemon:
+                quest_wash_pokemon(env.program_info(), console, context, BBQ_OPTIONS);
+                break;
+            case BBQuests::hatch_egg:
+                quest_hatch_egg(env, console, context, BBQ_OPTIONS);
+                break;
+            case BBQuests::bitter_sandwich:
+            case BBQuests::salty_sandwich:
+            case BBQuests::sour_sandwich:
+            case BBQuests::spicy_sandwich:
+            case BBQuests::sweet_sandwich:
+            case BBQuests::sandwich_three:
+                quest_sandwich(env, console, context, BBQ_OPTIONS, current_quest);
+                break;
+            //case BBQuests::pickup_10:
+            //    quest_pickup(env, env.program_info(), console, context, BBQ_OPTIONS);
+            //    break;
+            case BBQuests::tera_raid:
+                quest_tera_raid(env, console, context, BBQ_OPTIONS);
+                break;
+            case BBQuests::auto_10:
+            case BBQuests::auto_30:
+                quest_auto_battle(env, console, context, BBQ_OPTIONS, current_quest);
+                break;
+            //All involve taking pictures
+            case BBQuests::photo_fly:
+            case BBQuests::photo_swim:
+            case BBQuests::photo_canyon:
+            case BBQuests::photo_coastal:
+            case BBQuests::photo_polar:
+            case BBQuests::photo_savanna:
+            case BBQuests::photo_normal:
+            case BBQuests::photo_fighting:
+            case BBQuests::photo_flying:
+            case BBQuests::photo_poison:
+            case BBQuests::photo_ground:
+            case BBQuests::photo_rock:
+            case BBQuests::photo_bug:
+            case BBQuests::photo_ghost:
+            case BBQuests::photo_steel:
+            case BBQuests::photo_fire:
+            case BBQuests::photo_water:
+            case BBQuests::photo_grass:
+            case BBQuests::photo_electric:
+            case BBQuests::photo_psychic:
+            case BBQuests::photo_ice:
+            case BBQuests::photo_dragon:
+            case BBQuests::photo_dark:
+            case BBQuests::photo_fairy:
+                quest_photo(env.program_info(), console, context, BBQ_OPTIONS, current_quest);
+                break;
+            //All involve catching a pokemon
+            case BBQuests::catch_any:
+            case BBQuests::catch_normal:
+            case BBQuests::catch_fighting:
+            case BBQuests::catch_flying:
+            case BBQuests::catch_poison:
+            case BBQuests::catch_ground:
+            case BBQuests::catch_rock:
+            case BBQuests::catch_bug:
+            case BBQuests::catch_ghost:
+            case BBQuests::catch_steel:
+            case BBQuests::catch_fire:
+            case BBQuests::catch_water:
+            case BBQuests::catch_grass:
+            case BBQuests::catch_electric:
+            case BBQuests::catch_psychic:
+            case BBQuests::catch_ice:
+            case BBQuests::catch_dragon:
+            case BBQuests::catch_dark:
+            case BBQuests::catch_fairy:
+                quest_catch(env.program_info(), console, context, BBQ_OPTIONS, current_quest);
+                break;
+            default:
+                OperationFailedExceptionWithScreenshot::fire(
+                    ErrorReportMode::SEND_ERROR_REPORT,
+                    "Unknown quest selection.",
+                    console
+                );
+                break;
+            }
+        }catch (TerariumFlyFailedException&){
+            console.log("Quest attempt failed: unable to fly. Returning to Central Plaza.", COLOR_RED);
+            return_to_plaza(env.program_info(), console, context, BBQ_OPTIONS.LANGUAGE);
         }
 
         //Validate quest was completed by checking list
@@ -625,7 +632,7 @@ void quest_tera_self_defeat(
         break;
     }
     pbf_press_button(context, BUTTON_PLUS, 160ms, 840ms);
-    return_to_plaza(info, console, context);
+    return_to_plaza(info, console, context, BBQ_OPTIONS.LANGUAGE);
 
     //Day skip and attempt to respawn fixed encounters
     pbf_press_button(context, BUTTON_HOME, 160ms, GameSettings::instance().GAME_TO_HOME_DELAY1);
@@ -765,7 +772,7 @@ void quest_sneak_up(
             }
         }
     }
-    return_to_plaza(info, console, context);
+    return_to_plaza(info, console, context, BBQ_OPTIONS.LANGUAGE);
 
     //Day skip and attempt to respawn fixed encounters - in case quest failed
     pbf_press_button(context, BUTTON_HOME, 160ms, GameSettings::instance().GAME_TO_HOME_DELAY1);
@@ -848,7 +855,7 @@ void quest_wild_tera(
         console.log("Battle entry not confirmed. Skipping battle handling.");
         break;
     }
-    return_to_plaza(info, console, context);
+    return_to_plaza(info, console, context, BBQ_OPTIONS.LANGUAGE);
 
     //Day skip and attempt to respawn fixed encounters
     pbf_press_button(context, BUTTON_HOME, 160ms, GameSettings::instance().GAME_TO_HOME_DELAY1);
@@ -879,7 +886,7 @@ void quest_wild_tera(
     fly_to_overworld_from_map(info, console, context);
 }
 
-void quest_wash_pokemon(const ProgramInfo& info, VideoStream& stream, ProControllerContext& context){
+void quest_wash_pokemon(const ProgramInfo& info, VideoStream& stream, ProControllerContext& context, const BBQOption& BBQ_OPTIONS){
     stream.log("Quest: Give your pokemon a bath!");
 
     //Fly to savanna plaza
@@ -977,7 +984,7 @@ void quest_wash_pokemon(const ProgramInfo& info, VideoStream& stream, ProControl
 
     leave_picnic(info, stream, context);
 
-    return_to_plaza(info, stream, context);
+    return_to_plaza(info, stream, context, BBQ_OPTIONS.LANGUAGE);
     context.wait_for_all_requests();
 }
 
@@ -1057,7 +1064,7 @@ void quest_hatch_egg(
 
         pbf_press_button(context, BUTTON_PLUS, 160ms, 400ms);
 
-        return_to_plaza(env.program_info(), console, context);
+        return_to_plaza(env.program_info(), console, context, BBQ_OPTIONS.LANGUAGE);
         context.wait_for_all_requests();
     }
 }
@@ -1129,7 +1136,7 @@ void quest_sandwich(
 
     leave_picnic(env.program_info(), stream, context);
 
-    return_to_plaza(env.program_info(), stream, context);
+    return_to_plaza(env.program_info(), stream, context, BBQ_OPTIONS.LANGUAGE);
     context.wait_for_all_requests();
 
 }
@@ -1189,7 +1196,7 @@ void quest_tera_raid(
                     battle_menu.move_to_slot(console, context, 3);
                     pbf_press_button(context, BUTTON_A, 80ms, 400ms);
                     press_Bs_to_back_to_overworld(env.program_info(), console, context);
-                    return_to_plaza(env.program_info(), console, context);
+                    return_to_plaza(env.program_info(), console, context, BBQ_OPTIONS.LANGUAGE);
                 }catch (...){
                     console.log("Unable to flee.");
                     OperationFailedExceptionWithScreenshot::fire(
@@ -1240,7 +1247,7 @@ void quest_tera_raid(
     }
 
     context.wait_for_all_requests();
-    return_to_plaza(env.program_info(), console, context);
+    return_to_plaza(env.program_info(), console, context, BBQ_OPTIONS.LANGUAGE);
     day_skip_from_overworld(console, context);
 }
 
@@ -1291,7 +1298,7 @@ void quest_auto_battle(
             });
 
         context.wait_for_all_requests();
-        return_to_plaza(env.program_info(), stream, context);
+        return_to_plaza(env.program_info(), stream, context, BBQ_OPTIONS.LANGUAGE);
 
         OverworldWatcher done_healing(stream.logger(), COLOR_BLUE);
         pbf_move_left_joystick(context, {0, +1}, 800ms, 160ms);
