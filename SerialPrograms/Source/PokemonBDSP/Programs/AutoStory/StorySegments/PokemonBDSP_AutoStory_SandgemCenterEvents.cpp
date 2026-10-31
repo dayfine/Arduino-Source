@@ -1211,14 +1211,13 @@ Checkpoint jubilife_poketch_checkpoint(JubilifeActions& game){
             const Outcome east = game.walk_until_stopped(Direction::EAST, 8, "East to the Mart's wall");
             return east.succeeded() ? game.walk_until_stopped(Direction::SOUTH, 8, "South to the Center's lamp") : east;
         }));
-    std::shared_ptr<size_t> walked_west = std::make_shared<size_t>(0);
     {
         std::shared_ptr<DialogueRead> read = std::make_shared<DialogueRead>();
         Event talk;
         talk.name = "talk_to_president";
         talk.why = "the president trades the three coupons for the Poketch";
         talk.skip_if.push_back(condition("poketch", [](RunState& state){ return state.flags.count("poketch") > 0; }));
-        talk.act = [&game, read, walked_west](RunState& state){
+        talk.act = [&game, read](RunState& state){
             const Outcome up = game.step(Direction::NORTH, "A row up from the lamp");
             if (!up.succeeded()){
                 return up;
@@ -1241,7 +1240,6 @@ Checkpoint jubilife_poketch_checkpoint(JubilifeActions& game){
                 if (!moved.succeeded()){
                     return moved;
                 }
-                (*walked_west)++;
             }
             if (read->opened){
                 //  His last line asks us to try the R Button; a help panel
@@ -1258,22 +1256,23 @@ Checkpoint jubilife_poketch_checkpoint(JubilifeActions& game){
         }));
         checkpoint.events.push_back(std::move(talk));
     }
-    //  Back the tiles we went west, then south until the lamp stops us: the
-    //  tile above it. Not north (the president walks off that way and stood
-    //  in the way, r164a), and not along the next row south (it passes north
-    //  of the Center, r165a).
+    //  After his talk the president walks off north, up our way back: r164a
+    //  stepped north into him and the walk east passed the Mart. By hand,
+    //  with about 13 s of B presses first, four rows north and east stopped at
+    //  the Mart's wall (2026-10-30). Counting back east instead missed the
+    //  lamp's column (r166a).
     checkpoint.events.push_back(wrapped_step("back_to_the_center_lamp",
-        "back east the tiles we went west, then south until the Center's lamp stops us", "back_at_center_lamp",
-        [&game, walked_west](RunState&){
-            game.turn(Direction::EAST);
-            if (*walked_west > 0){
-                const Outcome east = game.taps(Direction::EAST, *walked_west, "Back east along the road");
-                if (!east.succeeded()){
-                    return east;
-                }
+        "let the president walk off, four rows north, east to the Mart's wall, south to the Center's lamp", "back_at_center_lamp",
+        [&game, steps](RunState&){
+            for (size_t presses = 0; presses < 8; presses++){
+                game.close_panel("Waiting for the president to walk off");
             }
-            game.turn(Direction::SOUTH);
-            return game.walk_until_stopped(Direction::SOUTH, 3, "South to the Center's lamp");
+            const Outcome up = steps(Direction::NORTH, 4, "Up toward the Mart");
+            if (!up.succeeded()){
+                return up;
+            }
+            const Outcome east = game.walk_until_stopped(Direction::EAST, 10, "East to the Mart's wall");
+            return east.succeeded() ? game.walk_until_stopped(Direction::SOUTH, 8, "South to the Center's lamp") : east;
         }));
     checkpoint.events.push_back(wrapped_step("heal",
         "a tile west and four rows south, three tiles east, then in through the lit door and heal", "healed",
