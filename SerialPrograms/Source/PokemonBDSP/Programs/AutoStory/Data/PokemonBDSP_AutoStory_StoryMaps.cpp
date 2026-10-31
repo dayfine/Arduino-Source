@@ -75,8 +75,8 @@ const MapSet& route203_maps(){
     return maps;
 }
 
-bool near_route203_west_end(const TilePos& pos){
-    return pos.x <= 6 && pos.y >= 17 && pos.y <= 19;
+bool on_route203_west_line(const TilePos& pos){
+    return pos.y == 17 && pos.x >= 38 && pos.x <= 42;
 }
 
 //  Columns 40..63, rows 8..20 of the Jubilife grid, as a map of its own:

@@ -30,11 +30,12 @@ const Pokemon::MapSet& story_maps();
 //  Jubilife City on its own: 00.05 starts there after Dawn's scene, so it is
 //  not joined to Route 202.
 const Pokemon::MapSet& jubilife_maps();
-//  Route 203 on its own (01.06), and whether a tile is on its road a few
-//  tiles from Jubilife: the plan ends there, since no leg may leave the map,
-//  and a walk west until Jubilife's banner shows goes on from there.
+//  Route 203 on its own (01.06), and whether a tile is on row 17 just east
+//  of the east stairs: row 17 runs straight west from there over both stairs
+//  into Jubilife, so the plan ends there (no leg may leave the map) and a
+//  walk west until Jubilife's banner shows goes on from there.
 const Pokemon::MapSet& route203_maps();
-bool near_route203_west_end(const Pokemon::TilePos& pos);
+bool on_route203_west_line(const Pokemon::TilePos& pos);
 //  Jubilife City's north-east corner (01.06), at Jubilife's own tile
 //  coordinates: the rest of the city is walled off, so the plan searches only
 //  the part the walk needs. Where Route 203's road enters it, and whether a
