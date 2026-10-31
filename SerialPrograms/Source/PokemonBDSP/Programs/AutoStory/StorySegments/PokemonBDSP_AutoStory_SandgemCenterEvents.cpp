@@ -1199,7 +1199,11 @@ Checkpoint jubilife_poketch_checkpoint(JubilifeActions& game){
         "a row south of the gap, then east along the long road until the main road stops us", "on_main_road",
         [&game](RunState&){
             const Outcome down = game.step(Direction::SOUTH, "Out of the gap");
-            return down.succeeded() ? game.walk_until_stopped(Direction::EAST, 30, "East along the long road") : down;
+            //  A hold, not a walk until still: when the wanderer is what stops
+            //  us, his steps keep the screen moving and the stop is never seen
+            //  (r167a). The stop took 5.9 s; holding on against it is harmless,
+            //  and the Mart's wall puts the column right afterwards.
+            return down.succeeded() ? game.hold(Direction::EAST, 7500, "East along the long road") : down;
         }));
     checkpoint.events.push_back(wrapped_step("to_the_center_lamp",
         "six rows down the main road, east to the Mart's wall, south to the Center's lamp", "at_center_lamp_north",
