@@ -469,7 +469,12 @@ void oreburgh_to_roark(VideoStream& stream, ProControllerContext& context){
     bool in_mine = false;
     for (size_t attempt = 0; attempt < 5 && !in_mine; attempt++){
         const WalkResult down = walk_dir(stream, context, Direction::SOUTH, 15000ms, "south from the Center's door into the mine");
-        if (down.stop == WalkStop::TRANSITION){
+        // The fade into the mine can go unseen too, and the walk runs on
+        // through the hall into the corridor (r184b). The door to the mine is
+        // 8.6 s of walking (by hand), and the worker stops us well before: a
+        // walk this long got there, and step 3 copes with the hall or the
+        // corridor.
+        if (down.stop == WalkStop::TRANSITION || down.walked >= 7000ms){
             in_mine = true;
         }else if (down.stop == WalkStop::DIALOG){
             talk_or_fight(stream, context, "Someone on the way to the mine");
