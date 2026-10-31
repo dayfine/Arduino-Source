@@ -233,7 +233,6 @@ RngHelper::RngHelper()
     PA_ADD_OPTION(USE_TEACHY_TV);
     PA_ADD_OPTION(NUM_RESETS);
     PA_ADD_OPTION(PROFILE);
-    PA_ADD_OPTION(HANDLE_ONLINE_LICENSE);
     PA_ADD_OPTION(TAKE_VIDEO);
     PA_ADD_OPTION(GO_HOME_WHEN_DONE);
     PA_ADD_OPTION(NOTIFICATIONS);
@@ -290,7 +289,7 @@ void RngHelper::program(SingleSwitchProgramEnvironment& env, ProControllerContex
             LANGUAGE, TARGET, 
             SEED_BUTTON, EXTRA_BUTTON, 
             timings, launch_delay,
-            SAFARI_ZONE, PROFILE, HANDLE_ONLINE_LICENSE
+            SAFARI_ZONE, PROFILE
         );
         env.log("Blind button presses complete.");
         stats.resets++;

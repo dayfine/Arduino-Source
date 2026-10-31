@@ -15,7 +15,6 @@
 #include "NintendoSwitch/NintendoSwitch_SingleSwitchProgram.h"
 #include "NintendoSwitch/Options/NintendoSwitch_GoHomeWhenDoneOption.h"
 #include "PokemonFRLG_BlindNavigation.h"
-#include "PokemonFRLG_HardReset.h"
 #include "PokemonFRLG_RngDisplays.h"
 #include "PokemonFRLG_SeedsDatabase.h"
 
@@ -71,7 +70,6 @@ private:
     SimpleIntegerOption<uint64_t> MAX_RARE_CANDIES;
     SimpleIntegerOption<uint64_t> MAX_BALL_THROWS;
     SimpleIntegerOption<uint8_t> PROFILE;
-    HandleOnlineLicenseCheckOption HANDLE_ONLINE_LICENSE;
 
     BooleanCheckBoxOption TAKE_VIDEO;
     GoHomeWhenDoneOption GO_HOME_WHEN_DONE;

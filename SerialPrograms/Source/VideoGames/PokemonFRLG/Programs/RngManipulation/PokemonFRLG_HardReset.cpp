@@ -13,6 +13,7 @@
 #include "NintendoSwitch/Inference/NintendoSwitch_StartGameUserSelectDetector.h"
 #include "NintendoSwitch/Inference/NintendoSwitch_UpdatePopupDetector.h"
 #include "NintendoSwitch/Programs/NintendoSwitch_GameEntry.h"
+#include "VideoGames/PokemonFRLG/PokemonFRLG_Settings.h"
 #include "PokemonFRLG_BlindNavigation.h"
 #include "PokemonFRLG_HardReset.h"
 
@@ -23,17 +24,6 @@ namespace PokemonFRLG{
 //  Where to look for the black screen of a game starting: the middle of the
 //  frame, away from its edges.
 const ImageFloatBox LAUNCH_BLACK_SCREEN_BOX(/* x */ 0.1, /* y */ 0.15, /* width */ 0.8, /* height */ 0.7);
-
-HandleOnlineLicenseCheckOption::HandleOnlineLicenseCheckOption()
-    : BooleanCheckBoxOption(
-        "<b>Handle Online License Check:</b><br>"
-        "Turn this on if your console checks the game's license online when it starts the game: "
-        "the game goes back to the Home menu for a few seconds before it starts. "
-        "The reset then waits for the game to start instead of using a fixed delay.",
-        LockMode::LOCK_WHILE_RUNNING,
-        false // default
-    )
-{}
 
 LaunchWait choose_launch_wait(bool handle_online_license, bool online_license_seen){
     if (!handle_online_license){
@@ -50,7 +40,7 @@ struct GameLaunch{
 //  Press A to start the game, then wait until it is time to go back Home.
 //  Normally that is a fixed delay. With an online license, the console first
 //  returns to the Home menu to check the license, so if the user turned on
-//  `handle_online_license`, wait for the game to actually start instead.
+//  "Handle Online License Check", wait for the game to actually start instead.
 //  Once a launch has shown the license check, pass `online_license` to skip
 //  looking for it again.
 GameLaunch start_game_before_home(
@@ -96,14 +86,14 @@ GameLaunch start_game_before_home(
 void rng_reset_and_return_home(
     ConsoleHandle& console, ProControllerContext& context,
     Milliseconds& launch_delay,
-    uint8_t user_slot,
-    bool handle_online_license
+    uint8_t user_slot
 ){
     // close the game
     go_home(console, context);
     close_game_from_home(console, context);
 
     bool update_popup = false;
+    const bool handle_online_license = GameSettings::instance().HANDLE_ONLINE_LICENSE_CHECK;
     GameLaunch launch;
     WallClock deadline = current_time() + std::chrono::minutes(5);
     while (true){
@@ -194,11 +184,10 @@ void rng_reset_and_return_home(
                 { black_screen, update_menu },
                 /* default_video_period */ 1ms
             );
-            bool black_screen_detected = false;
             switch (ret3){
             case 0:
                 console.log("Black screen detected.");
-                black_screen_detected = true;
+                launch.started = true;
                 break;
             case 1:
                 console.log("Update menu detected.", COLOR_BLUE);
@@ -220,7 +209,7 @@ void rng_reset_and_return_home(
 
             switch (ret4){
             case 0:
-                if (black_screen_detected || launch.started){  //  seen here or while starting the game
+                if (launch.started){  //  seen here or while starting the game
                     console.log("Detected Home screen after black screen.");
                     return;
                 }else{
@@ -263,10 +252,9 @@ void reset_and_perform_blind_sequence(
     const RngTimings& timings,
     Milliseconds& launch_delay,
     bool safari_zone,
-    uint8_t profile,
-    bool handle_online_license
+    uint8_t profile
 ){
-    rng_reset_and_return_home(console, context, launch_delay, profile, handle_online_license);
+    rng_reset_and_return_home(console, context, launch_delay, profile); 
     ConsoleType console_type = console.state().console_type();
 
     // attempt to resume the game and perform the blind sequence

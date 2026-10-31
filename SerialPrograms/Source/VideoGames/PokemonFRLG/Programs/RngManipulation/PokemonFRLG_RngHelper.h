@@ -16,7 +16,6 @@
 #include "NintendoSwitch/NintendoSwitch_SingleSwitchProgram.h"
 #include "NintendoSwitch/Options/NintendoSwitch_GoHomeWhenDoneOption.h"
 #include "PokemonFRLG_BlindNavigation.h"
-#include "PokemonFRLG_HardReset.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -58,7 +57,6 @@ private:
     BooleanCheckBoxOption USE_TEACHY_TV;
     SimpleIntegerOption<uint64_t> NUM_RESETS;
     SimpleIntegerOption<uint8_t> PROFILE;
-    HandleOnlineLicenseCheckOption HANDLE_ONLINE_LICENSE;
 
     BooleanCheckBoxOption TAKE_VIDEO;
     GoHomeWhenDoneOption GO_HOME_WHEN_DONE;
