@@ -21,11 +21,11 @@ template <typename ControllerType>
 struct AsyncCommandSession<ControllerType>::CommandSet{
     CommandSet(
         CancellableScope& parent, ControllerType& controller,
-        std::function<void(ControllerContextType&)>&& lambda
+        MoveOnlyFunction<void(ControllerContextType&)>&& lambda
     );
     CancellableHolder<CancellableScope> scope;
     ControllerContextType context;
-    std::function<void(ControllerContextType&)> commands;
+    MoveOnlyFunction<void(ControllerContextType&)> commands;
 };
 
 
@@ -33,7 +33,7 @@ struct AsyncCommandSession<ControllerType>::CommandSet{
 template <typename ControllerType>
 AsyncCommandSession<ControllerType>::CommandSet::CommandSet(
     CancellableScope& parent, ControllerType& controller,
-    std::function<void(ControllerContextType&)>&& lambda
+    MoveOnlyFunction<void(ControllerContextType&)>&& lambda
 )
     : scope(parent)
     , context(scope, controller)
@@ -97,7 +97,7 @@ void AsyncCommandSession<ControllerType>::stop_command(){
     }
 }
 template <typename ControllerType>
-void AsyncCommandSession<ControllerType>::dispatch(std::function<void(ControllerContextType&)>&& lambda){
+void AsyncCommandSession<ControllerType>::dispatch(MoveOnlyFunction<void(ControllerContextType&)>&& lambda){
     auto scope_check = m_sanitizer.check_scope();
 
     //  Construct the CommandSet outside the lock.
