@@ -413,6 +413,7 @@ std::optional<std::vector<PlannedLeg>> plan_robust_route(
         queue.emplace(cost, std::move(next));
     };
 
+    size_t searched = 0;
     while (!queue.empty()){
         const Entry top = queue.top();
         queue.pop();
@@ -423,6 +424,9 @@ std::optional<std::vector<PlannedLeg>> plan_robust_route(
             continue;
         }
         node.done = true;
+        if (++searched > costs.max_searched){
+            return std::nullopt;
+        }
         if (reached(spread)){
             std::vector<PlannedLeg> legs;
             for (Spread at = spread; at != start; ){

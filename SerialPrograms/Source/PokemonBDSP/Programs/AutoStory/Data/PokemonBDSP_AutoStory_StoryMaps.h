@@ -30,12 +30,19 @@ const Pokemon::MapSet& story_maps();
 //  Jubilife City on its own: 00.05 starts there after Dawn's scene, so it is
 //  not joined to Route 202.
 const Pokemon::MapSet& jubilife_maps();
-//  Route 203 west of the Oreburgh Gate joined to Jubilife City's east edge
-//  (01.06), with Jubilife at its own tile coordinates.
-const Pokemon::MapSet& route203_jubilife_maps();
-//  Whether a tile is on Jubilife's north road, below the plaza: walking
-//  north from here goes up the road to Route 204 (and Rowan's scene).
-bool on_jubilife_north_road(const Pokemon::TilePos& world);
+//  Route 203 on its own (01.06), and whether a tile is on its road a few
+//  tiles from Jubilife: the plan ends there, since no leg may leave the map,
+//  and a walk west until Jubilife's banner shows goes on from there.
+const Pokemon::MapSet& route203_maps();
+bool near_route203_west_end(const Pokemon::TilePos& pos);
+//  Jubilife City's north-east corner (01.06), at Jubilife's own tile
+//  coordinates: the rest of the city is walled off, so the plan searches only
+//  the part the walk needs. Where Route 203's road enters it, and whether a
+//  tile is on the north road below the plaza: walking north from there goes
+//  up the road to Route 204 (and Rowan's scene).
+const Pokemon::MapSet& jubilife_east_maps();
+const std::vector<Pokemon::TilePos>& jubilife_east_entrance();
+bool on_jubilife_north_road(const Pokemon::TilePos& pos);
 //  The Oreburgh Mine's coal room on its own (01.03).
 const Pokemon::MapSet& oreburgh_mine_maps();
 

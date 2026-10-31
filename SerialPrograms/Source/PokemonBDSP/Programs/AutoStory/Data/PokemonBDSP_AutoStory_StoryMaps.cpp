@@ -64,22 +64,71 @@ const MapSet& jubilife_maps(){
     return maps;
 }
 
-//  Route 203's road (rows 17..19) meets Jubilife's east stairs (rows
-//  16..17 of its grid, 59 px apart on the two images): Route 203's row y
-//  is Jubilife's row y - 1, and its column 0 follows Jubilife's column 63.
-//  Not checked on the console yet (2026-10-31).
-const MapSet& route203_jubilife_maps(){
+//  Planned one map at a time: Route 203 and Jubilife joined ran for minutes
+//  without a plan (r224a, 2026-10-31).
+const MapSet& route203_maps(){
     static const MapSet maps = []{
         MapSet maps;
-        maps.add(MAP_JUBILIFE_CITY, JubilifeCity::grid(), {0, 0});
-        maps.add(MAP_ROUTE_203, Route203::grid(), {64, -1});
+        maps.add(MAP_ROUTE_203, Route203::grid(), {0, 0});
         return maps;
     }();
     return maps;
 }
 
-bool on_jubilife_north_road(const TilePos& world){
-    return world.x >= 43 && world.x <= 46 && world.y >= 12 && world.y <= 14;
+bool near_route203_west_end(const TilePos& pos){
+    return pos.x <= 6 && pos.y >= 17 && pos.y <= 19;
+}
+
+//  Columns 40..63, rows 8..20 of the Jubilife grid, as a map of its own:
+//  the cut is the map's edge, which no leg may
+//  cross or stop on, not a wall a plan could walk "to". In this corner the
+//  white curbs either side of the north road (columns 42 and 47) are opened:
+//  the console showed the main road's curbs are not walls (2026-10-30), and
+//  these look the same; not walked yet.
+namespace{
+const TilePos JUBILIFE_EAST_CORNER{40, 8};
+}
+const MapSet& jubilife_east_maps(){
+    static const MapSet maps = []{
+        const TileGrid& city = JubilifeCity::grid();
+        const TilePos corner = JUBILIFE_EAST_CORNER;
+        std::vector<std::string> rows;
+        for (int y = corner.y; y <= 20; y++){
+            std::string row;
+            for (int x = corner.x; x < city.width(); x++){
+                const TileType type = city.at({x, y});
+                const bool curb = (x == 42 || x == 47) && y <= 16 && type == TileType::BLOCKED;
+                row += tile_char(curb ? TileType::WALKABLE : type);
+            }
+            rows.push_back(row);
+        }
+        MapSet maps;
+        maps.add(MAP_JUBILIFE_CITY, TileGrid(rows), {0, 0});
+        return maps;
+    }();
+    return maps;
+}
+
+//  Route 203's road (rows 17..19) meets Jubilife's east stairs, rows 16..17
+//  of its grid, at its east edge; the banner shows a tile or two in. Both
+//  in the corner map's tiles, from the Jubilife grid's.
+const std::vector<TilePos>& jubilife_east_entrance(){
+    static const std::vector<TilePos> tiles = []{
+        std::vector<TilePos> tiles;
+        for (int y = 16; y <= 17; y++){
+            for (int x = 61; x <= 63; x++){
+                tiles.push_back({x - JUBILIFE_EAST_CORNER.x, y - JUBILIFE_EAST_CORNER.y});
+            }
+        }
+        return tiles;
+    }();
+    return tiles;
+}
+
+bool on_jubilife_north_road(const TilePos& pos){
+    const int x = pos.x + JUBILIFE_EAST_CORNER.x;
+    const int y = pos.y + JUBILIFE_EAST_CORNER.y;
+    return x >= 43 && x <= 46 && y >= 12 && y <= 14;
 }
 
 const MapSet& oreburgh_mine_maps(){

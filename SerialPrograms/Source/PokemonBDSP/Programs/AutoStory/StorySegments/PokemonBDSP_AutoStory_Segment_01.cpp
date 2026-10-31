@@ -1169,17 +1169,22 @@ void route203_to_floaroma(VideoStream& stream, ProControllerContext& context){
     // are (r222g walked north of the pond in the middle stretch and found no
     // way west), then along Jubilife's street to its north road. Trainers
     // the map does not list are fought where they stop us.
+    // One map at a time (the planner searches sets of tiles, so joined maps
+    // blow up): Route 203 to its road near Jubilife, west until Jubilife's
+    // banner shows, then Jubilife's north-east corner on town costs.
     {
-        const Pokemon::MapSet& maps = route203_jubilife_maps();
-        std::vector<Pokemon::TilePos> at;
-        for (const Pokemon::TilePos& pos : Route203::gate_exit()){
-            at.push_back(maps.to_world(MAP_ROUTE_203, pos));
-        }
         std::vector<Pokemon::TrainerSight> trainers;
         auto fight = [&](const std::string& who){
             talk_or_fight(stream, context, "Route 203: " + who);
         };
-        walk_route(stream, context, maps, at, on_jubilife_north_road, trainers, fight, "Route 203 to Jubilife's north road");
+        walk_route(stream, context, route203_maps(), Route203::gate_exit(), near_route203_west_end,
+            trainers, fight, "Route 203 to its west end");
+        const WalkResult in = walk_dir(stream, context, Direction::WEST, 8000ms, "west into Jubilife", location_banner_showing);
+        if (in.stop != WalkStop::ARRIVED){
+            fail(stream, "Route 203: the walk west did not show Jubilife's banner.");
+        }
+        walk_route(stream, context, jubilife_east_maps(), jubilife_east_entrance(), on_jubilife_north_road,
+            trainers, fight, "Jubilife to its north road", {}, town_plan_costs());
     }
 
     step(2);
