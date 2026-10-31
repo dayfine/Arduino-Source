@@ -232,6 +232,11 @@ public:
     virtual Pokemon::Outcome leave_south(const std::string& label) = 0;
     //  One tile `direction` from standing still, facing that way already.
     virtual Pokemon::Outcome tile(Pokemon::Direction direction, const std::string& label) = 0;
+    //  `tiles` one-tile taps `direction` in a row, facing that way already,
+    //  without waiting for the screen to settle in between: six of these
+    //  moved exactly six tiles on the console, where six tile() calls moved
+    //  seven (2026-10-30).
+    virtual Pokemon::Outcome taps(Pokemon::Direction direction, size_t tiles, const std::string& label) = 0;
     //  Walks north; true if a door took us through.
     virtual bool through_door_north(const std::string& label) = 0;
 };

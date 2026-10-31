@@ -1497,7 +1497,7 @@ public:
         (void)direction;
         return Pokemon::outcome_ok();
     }
-    //  The clown answers the `clown_answers_at`th ask of the sweep.
+    //  The clown answers the `clown_answers_at`th ask.
     size_t clown_answers_at = 7;
     size_t clown_asks = 0;
     virtual DialogueRead talk_walking(Direction, size_t, const std::string& label) override{
@@ -1547,6 +1547,13 @@ public:
     virtual Pokemon::Outcome tile(Direction direction, const std::string&) override{
         if (direction == Direction::WEST){
             column++;
+        }
+        return Pokemon::outcome_ok();
+    }
+    virtual Pokemon::Outcome taps(Direction direction, size_t tiles, const std::string& label) override{
+        trace.push_back("taps: " + label);
+        if (direction == Direction::WEST){
+            column += tiles;
         }
         return Pokemon::outcome_ok();
     }
@@ -1656,12 +1663,12 @@ public:
 };
 
 
-//  00.05f: the sign gate finds the sign a tile off, and the sweep asks
-//  ahead of every move until the wandering clown answers.
+//  00.05f: the sign gate finds the sign a tile off, and we ask each way
+//  until the wandering clown steps next to us.
 class Test_JubilifeClownCompany : public UnitTest{
 public:
     Test_JubilifeClownCompany()
-        : UnitTest("PokemonBDSP::AutoStory - Jubilife 00.05f clown sweep")
+        : UnitTest("PokemonBDSP::AutoStory - Jubilife 00.05f clown wait")
     {}
     virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
         struct Case{ const char* name; size_t sign_after; size_t clown_at; bool completed; };
@@ -1669,7 +1676,7 @@ public:
             {"Sign in the counted column, clown on the first row", 1, 3, true},
             {"Sign a tile west", 3, 3, true},
             {"Sign nowhere near", 5, 3, false},
-            {"Clown found on the way back", 1, 30, true},
+            {"Clown comes by late", 1, 40, true},
             {"Clown never answers", 1, 1000, false},
         };
         for (const Case& c : cases){

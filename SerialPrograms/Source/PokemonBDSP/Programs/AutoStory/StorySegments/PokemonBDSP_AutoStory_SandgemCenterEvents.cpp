@@ -1085,15 +1085,14 @@ Checkpoint jubilife_clown_company_checkpoint(JubilifeActions& game){
         sign.why = "six tiles east of the lamp, the Poketch Company's sign reads facing north";
         sign.act = [&game, read](RunState&){
             game.turn(Direction::EAST);
-            for (size_t tiles = 0; tiles < 6; tiles++){
-                const Outcome moved = game.tile(Direction::EAST, "East along the hedges");
-                if (!moved.succeeded()){
-                    return moved;
-                }
+            const Outcome moved = game.taps(Direction::EAST, 6, "East along the hedges");
+            if (!moved.succeeded()){
+                return moved;
             }
             *read = game.read_sign(Direction::NORTH, "the Poketch Company's sign");
-            //  A tile off: east first, then west of where we started.
-            for (Direction side : {Direction::EAST, Direction::WEST, Direction::WEST}){
+            //  A tile off: west first (the miss we saw went a tile too far),
+            //  then east of where we started.
+            for (Direction side : {Direction::WEST, Direction::EAST, Direction::EAST}){
                 if (read->opened){
                     break;
                 }
@@ -1113,10 +1112,21 @@ Checkpoint jubilife_clown_company_checkpoint(JubilifeActions& game){
     }
     //  The clown wanders the plaza between the hedges and the building: seen
     //  from one to three tiles east of the sign, on the sign's row and up to
-    //  three rows north of it. We go a tile at a time, asking ahead before
-    //  each move, so he is talked to whether he stands ahead of us or steps
-    //  into our way; a walk could pass him by. East along the sign's row
-    //  first (west there would read the sign), then snake north and back.
+    //  three rows north of it. A walk can pass him by, so we stand in the
+    //  middle of where he goes, a tile east of the sign and two rows up,
+    //  where all four sides are open plaza, and wait for him to step next to
+    //  us, asking each way in turn.
+    checkpoint.events.push_back(wrapped_step("into_the_plaza",
+        "a tile east of the sign, then two rows north, into the clown's patch", "in_the_plaza",
+        [&game](RunState&){
+            game.turn(Direction::EAST);
+            const Outcome east = game.taps(Direction::EAST, 1, "East of the sign");
+            if (!east.succeeded()){
+                return east;
+            }
+            game.turn(Direction::NORTH);
+            return game.taps(Direction::NORTH, 2, "Up into the plaza");
+        }));
     {
         std::shared_ptr<DialogueRead> read = std::make_shared<DialogueRead>();
         Event talk;
@@ -1124,36 +1134,19 @@ Checkpoint jubilife_clown_company_checkpoint(JubilifeActions& game){
         talk.why = "the clown asks a question (Yes is right) and gives Coupon 3";
         talk.skip_if.push_back(condition("coupon_3", [](RunState& state){ return state.flags.count("coupon_3") > 0; }));
         talk.act = [&game, read](RunState& state){
-            const auto ask_then_move = [&](Direction direction) -> Outcome{
-                *read = game.talk(direction, BUTTON_A, "Clown by the Poketch Company");
-                if (read->opened){
-                    return outcome_ok();
-                }
-                switch (direction){
-                case Direction::NORTH: return game.step(direction, "North a row");
-                case Direction::SOUTH: return game.step(direction, "South a row");
-                case Direction::EAST: return game.tile(direction, "East a tile");
-                default: return game.tile(direction, "West a tile");
-                }
-            };
-            std::vector<Direction> sweep{Direction::EAST};
-            for (Direction across : {Direction::EAST, Direction::WEST, Direction::EAST, Direction::WEST}){
-                sweep.push_back(Direction::NORTH);
-                sweep.insert(sweep.end(), 4, across);
-            }
-            //  The second pass goes back the way the first came.
-            std::vector<Direction> back;
-            for (auto it = sweep.rbegin(); it != sweep.rend(); ++it){
-                back.push_back(
-                    *it == Direction::NORTH ? Direction::SOUTH :
-                    *it == Direction::EAST ? Direction::WEST : Direction::EAST
-                );
-            }
-            sweep.insert(sweep.end(), back.begin(), back.end());
-            for (size_t i = 0; i < sweep.size() && !read->opened; i++){
-                const Outcome moved = ask_then_move(sweep[i]);
-                if (!moved.succeeded()){
-                    return moved;
+            //  About ten seconds a round; he moves every few seconds.
+            for (size_t round = 0; round < 12 && !read->opened; round++){
+                for (Direction direction : {Direction::NORTH, Direction::EAST, Direction::SOUTH, Direction::WEST}){
+                    *read = game.talk(direction, BUTTON_A, "Clown by the Poketch Company");
+                    //  If he kept us on the sign's row, west is the sign
+                    //  ("... Watches for the World!"), not him.
+                    if (read->opened && read->text.find("World") != std::string::npos){
+                        *read = DialogueRead();
+                        continue;
+                    }
+                    if (read->opened){
+                        break;
+                    }
                 }
             }
             if (read->opened && read->closed){
@@ -1265,6 +1258,17 @@ public:
         if (walk.stop == WalkStop::DIALOG || walk.stop == WalkStop::TRANSITION){
             return outcome_failed("walk_failed", label + ": " + walk_stop_name(walk.stop));
         }
+        return outcome_ok();
+    }
+    virtual Outcome taps(Direction direction, size_t tiles, const std::string& label) override{
+        const double x = direction == Direction::EAST ? 1 : direction == Direction::WEST ? -1 : 0;
+        const double y = direction == Direction::NORTH ? 1 : direction == Direction::SOUTH ? -1 : 0;
+        m_stream.log("[Walk] " + label + ": " + std::to_string(tiles) + " taps.");
+        for (size_t i = 0; i < tiles; i++){
+            pbf_move_left_joystick(m_context, {x, y}, 160ms, 400ms);
+        }
+        pbf_wait(m_context, 800ms);
+        m_context.wait_for_all_requests();
         return outcome_ok();
     }
     virtual bool through_door_north(const std::string& label) override{
