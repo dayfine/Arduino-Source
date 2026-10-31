@@ -1048,71 +1048,49 @@ std::string AutoStory::end_segment_description(){
 }
 
 size_t AutoStory::get_start_segment_index(){
-    size_t start = 0;
-
-    if (STORY_SECTION == StorySection::TUTORIAL){
-        start = STARTPOINT_TUTORIAL.index();
-    }else if (STORY_SECTION == StorySection::MAIN_STORY){
-        start = (INDEX_OF_LAST_TUTORIAL_SEGMENT + 1) + STARTPOINT_MAINSTORY.index();
-    }
-    
-    return start;
+    const bool main_story = STORY_SECTION == StorySection::MAIN_STORY;
+    return story_index(
+        main_story,
+        main_story ? STARTPOINT_MAINSTORY.index() : STARTPOINT_TUTORIAL.index(),
+        INDEX_OF_LAST_TUTORIAL_SEGMENT + 1
+    );
 }
 
 size_t AutoStory::get_end_segment_index(){
-    size_t end = 0;
-
-    if (STORY_SECTION == StorySection::TUTORIAL){
-        end = ENDPOINT_TUTORIAL.index();
-    }else if (STORY_SECTION == StorySection::MAIN_STORY){
-        end = (INDEX_OF_LAST_TUTORIAL_SEGMENT + 1) + ENDPOINT_MAINSTORY.index();     
-    }
-    
-    return end;
+    const bool main_story = STORY_SECTION == StorySection::MAIN_STORY;
+    return story_index(
+        main_story,
+        main_story ? ENDPOINT_MAINSTORY.index() : ENDPOINT_TUTORIAL.index(),
+        INDEX_OF_LAST_TUTORIAL_SEGMENT + 1
+    );
 }
 
 std::string AutoStory::start_checkpoint_description(){
-    size_t checkpoint_index = 0;
-    if (STORY_SECTION == StorySection::TUTORIAL){
-        checkpoint_index = START_CHECKPOINT_TUTORIAL.index();
-    }else if (STORY_SECTION == StorySection::MAIN_STORY){
-        checkpoint_index = START_CHECKPOINT_MAINSTORY.index() + (INDEX_OF_LAST_TUTORIAL_CHECKPOINT + 1);
-    }
+    const size_t checkpoint_index = get_start_checkpoint_index();
     return "    Start: " + ALL_AUTO_STORY_CHECKPOINT_LIST()[checkpoint_index]->start_text();
 }
 
 std::string AutoStory::end_checkpoint_description(){
-    size_t checkpoint_index = 0;
-    if (STORY_SECTION == StorySection::TUTORIAL){
-        checkpoint_index = END_CHECKPOINT_TUTORIAL.index();
-    }else if (STORY_SECTION == StorySection::MAIN_STORY){
-        checkpoint_index = END_CHECKPOINT_MAINSTORY.index() + (INDEX_OF_LAST_TUTORIAL_CHECKPOINT + 1);
-    }    
+    const size_t checkpoint_index = get_end_checkpoint_index();
     return "    End: " + ALL_AUTO_STORY_CHECKPOINT_LIST()[checkpoint_index]->end_text();
 }
 
 size_t AutoStory::get_start_checkpoint_index(){
-    size_t start = 0;
-
-    if (STORY_SECTION == StorySection::TUTORIAL){
-        start = START_CHECKPOINT_TUTORIAL.index();
-    }else if (STORY_SECTION == StorySection::MAIN_STORY){
-        start = (INDEX_OF_LAST_TUTORIAL_CHECKPOINT + 1) + START_CHECKPOINT_MAINSTORY.index();
-    }
-    
-    return start;
+    const bool main_story = STORY_SECTION == StorySection::MAIN_STORY;
+    return story_index(
+        main_story,
+        main_story ? START_CHECKPOINT_MAINSTORY.index() : START_CHECKPOINT_TUTORIAL.index(),
+        INDEX_OF_LAST_TUTORIAL_CHECKPOINT + 1
+    );
 }
 
 size_t AutoStory::get_end_checkpoint_index(){
-    size_t end = 0;
-
-    if (STORY_SECTION == StorySection::TUTORIAL){
-        end = END_CHECKPOINT_TUTORIAL.index();
-    }else if (STORY_SECTION == StorySection::MAIN_STORY){
-        end = (INDEX_OF_LAST_TUTORIAL_CHECKPOINT + 1) + END_CHECKPOINT_MAINSTORY.index();     
-    }
-    
-    return end;
+    const bool main_story = STORY_SECTION == StorySection::MAIN_STORY;
+    return story_index(
+        main_story,
+        main_story ? END_CHECKPOINT_MAINSTORY.index() : END_CHECKPOINT_TUTORIAL.index(),
+        INDEX_OF_LAST_TUTORIAL_CHECKPOINT + 1
+    );
 }
 
 
