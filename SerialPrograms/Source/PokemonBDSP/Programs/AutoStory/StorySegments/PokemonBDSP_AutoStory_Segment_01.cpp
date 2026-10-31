@@ -414,18 +414,15 @@ void oreburgh_to_roark(VideoStream& stream, ProControllerContext& context){
     // ignored A in r101 and r104 until then). A save after his talk has him
     // gone already.
     //
-    // North from the save stops against the post west of the Center, a row
-    // above its door; east is the Center's side wall there (by hand,
-    // 2026-10-31: pushing north there slides back onto the post's column).
-    // One row south is the door's row. Counted taps east to the door drift
-    // (r191a: a column short, and a shift west walked north up the road
-    // beside the Center to the city's north exit), so walk east along the
-    // row to the fence past the door, which stops a tile east of it (by
-    // hand), and tap back one.
-    walk_to_wall(stream, context, 0, 1, 3000ms, "north to the post beside the Center");
-    route_turn(stream, context, Direction::SOUTH);
-    pbf_move_left_joystick(context, {0, -1}, 240ms, 300ms);
-    walk_to_wall(stream, context, 1, 0, 4000ms, "east along the Center's front to the fence");
+    // The save stands us a row or two below the Center's front, a little
+    // west of its door. The posts and the road beside the Center make north
+    // from there unreliable (r191a, r192a walked up the road to the city's
+    // north exit), and counted taps east drift. The fence running south from
+    // the Center's east corner stops a walk east on these rows a tile east of
+    // the door (by hand): walk to it, north to the Center's front, tap back
+    // one, and shift one tap either side.
+    walk_to_wall(stream, context, 1, 0, 5000ms, "east to the fence below the Center");
+    walk_to_wall(stream, context, 0, 1, 3000ms, "north to the Center's front");
     route_turn(stream, context, Direction::WEST);
     pbf_move_left_joystick(context, {-1, 0}, 160ms, 300ms);
     context.wait_for_all_requests();
