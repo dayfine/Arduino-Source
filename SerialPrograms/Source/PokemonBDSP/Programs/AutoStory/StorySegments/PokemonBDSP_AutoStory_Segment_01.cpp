@@ -423,8 +423,11 @@ void oreburgh_to_roark(VideoStream& stream, ProControllerContext& context){
     // one, and shift one tap either side.
     walk_to_wall(stream, context, 1, 0, 5000ms, "east to the fence below the Center");
     walk_to_wall(stream, context, 0, 1, 3000ms, "north to the Center's front");
+    // The door wants us near its middle: a turn and a tap west (half a tile
+    // too far, by hand) or a turn alone leave north blocked by the facade
+    // beside it. The facade blocks north for two tiles either side of the
+    // door, so look for it in nudges of about a third of a tile.
     route_turn(stream, context, Direction::WEST);
-    pbf_move_left_joystick(context, {-1, 0}, 160ms, 300ms);
     context.wait_for_all_requests();
     auto inside_now = [&](){
         const VideoSnapshot frame = stream.video().snapshot();
@@ -432,13 +435,15 @@ void oreburgh_to_roark(VideoStream& stream, ProControllerContext& context){
         return frame && (center_floor_on_screen(*frame.frame, &percent), percent >= 45);
     };
     bool inside = false;
-    const int shifts[] = {0, -1, 2, -3};        // cumulative: here, -1, +1, -2
-    for (size_t i = 0; i < 4 && !inside; i++){
-        const int shift = shifts[i];
-        if (shift != 0){
-            route_turn(stream, context, shift > 0 ? Direction::EAST : Direction::WEST);
-            for (int tap = 0; tap < std::abs(shift); tap++){
-                pbf_move_left_joystick(context, {shift > 0 ? 1.0 : -1.0, 0}, 160ms, 300ms);
+    const int offsets[] = {0, -1, -2, 1, -3, 2, -4, 3};   //  nudges from here
+    int nudged = 0;
+    for (size_t i = 0; i < 8 && !inside; i++){
+        const int offset = offsets[i];
+        if (offset != nudged){
+            // No turn first: a turn is a tap too and moves us (see
+            // talk_with_nudges()); a nudge both turns and moves a little.
+            for (; nudged != offset; nudged += offset > nudged ? 1 : -1){
+                pbf_move_left_joystick(context, {offset > nudged ? 1.0 : -1.0, 0}, ROUTE_NUDGE_TAP, 300ms);
             }
             context.wait_for_all_requests();
         }
