@@ -118,6 +118,9 @@ file(GLOB CORE_LIBRARY_SOURCES
     ../Common/Cpp/Logging/MultiOutputLogger.h
     ../Common/Cpp/Logging/TaggedLogger.cpp
     ../Common/Cpp/Logging/TaggedLogger.h
+    ../Common/Cpp/MoveOnlyFunction.h
+    ../Common/Cpp/MoveOnlyFunction_Tests.cpp
+    ../Common/Cpp/MoveOnlyFunction_Tests.h
     ../Common/Cpp/Options/BatchOption.cpp
     ../Common/Cpp/Options/BatchOption.h
     ../Common/Cpp/Options/BooleanCheckBoxOption.cpp
