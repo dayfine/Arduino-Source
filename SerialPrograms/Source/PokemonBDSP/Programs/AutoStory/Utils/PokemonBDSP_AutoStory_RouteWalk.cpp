@@ -229,11 +229,14 @@ std::vector<TilePos> walk_route(
     const std::vector<TilePos>& avoid,
     const RobustPlanCosts& costs
 ){
-    //  Our own copy, so things found in the way can be added to it.
+    //  Our own copy, so things found in the way can be added to it. Tiles to
+    //  avoid are ground the game lets us walk on (a trainer's line of sight),
+    //  so they are off the map, not walls: a leg must not end "at" one, or
+    //  the walk would run on through it.
     TileGrid grid = maps.world();
     for (const TilePos& pos : avoid){
         if (std::find(from.begin(), from.end(), pos) == from.end()){
-            grid.set(pos, TileType::BLOCKED);
+            grid.set(pos, TileType::UNKNOWN);
         }
     }
     //  Which way the player faces, once a leg has set it.

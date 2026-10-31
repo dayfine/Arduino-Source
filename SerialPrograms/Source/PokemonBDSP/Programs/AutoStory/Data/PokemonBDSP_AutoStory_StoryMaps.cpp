@@ -9,6 +9,7 @@
 #include "PokemonBDSP_AutoStory_RavagedPath.h"
 #include "PokemonBDSP_AutoStory_Route203.h"
 #include "PokemonBDSP_AutoStory_Route204.h"
+#include "PokemonBDSP_AutoStory_Route204South.h"
 #include "PokemonBDSP_AutoStory_Route201.h"
 #include "PokemonBDSP_AutoStory_Route202.h"
 #include "PokemonBDSP_AutoStory_SandgemTown.h"
@@ -28,6 +29,7 @@ const char* const MAP_JUBILIFE_CITY = "Jubilife City";
 const char* const MAP_OREBURGH_MINE = "Oreburgh Mine";
 const char* const MAP_RAVAGED_PATH = "Ravaged Path";
 const char* const MAP_ROUTE_204 = "Route 204";
+const char* const MAP_ROUTE_204_SOUTH = "Route 204 South";
 const char* const MAP_ROUTE_203 = "Route 203";
 
 
@@ -154,6 +156,15 @@ const MapSet& route204_north_maps(){
     static const MapSet maps = []{
         MapSet maps;
         maps.add(MAP_ROUTE_204, Route204::north_grid(), {0, 0});
+        return maps;
+    }();
+    return maps;
+}
+
+const MapSet& route204_south_maps(){
+    static const MapSet maps = []{
+        MapSet maps;
+        maps.add(MAP_ROUTE_204_SOUTH, Route204South::grid(), {0, 0});
         return maps;
     }();
     return maps;

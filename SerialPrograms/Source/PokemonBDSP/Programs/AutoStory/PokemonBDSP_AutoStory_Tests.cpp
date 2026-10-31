@@ -16,6 +16,7 @@
 #include "Data/PokemonBDSP_AutoStory_RavagedPath.h"
 #include "Data/PokemonBDSP_AutoStory_Route203.h"
 #include "Data/PokemonBDSP_AutoStory_Route204.h"
+#include "Data/PokemonBDSP_AutoStory_Route204South.h"
 #include "Data/PokemonBDSP_AutoStory_Route201.h"
 #include "Data/PokemonBDSP_AutoStory_Route202.h"
 #include "Data/PokemonBDSP_AutoStory_SandgemTown.h"
@@ -723,6 +724,26 @@ public:
                 for (const Pokemon::TrainerSight& twin : Route204::north_trainer_sights()){
                     if (route.world().at(twin.pos) != Pokemon::TileType::NPC){
                         failed += "Route 204: " + twin.name + " is not on an NPC tile. ";
+                    }
+                }
+            }
+            //  01.08 on Route 204's south half: from the top of Jubilife's
+            //  street to the tile below the Ravaged Path's door.
+            {
+                //  Planned as the walker plans it: the sight lines it keeps
+                //  out of are off the map.
+                Pokemon::TileGrid grid = Route204South::grid();
+                for (const TilePos& pos : Route204South::tiles_to_avoid()){
+                    grid.set(pos, Pokemon::TileType::UNKNOWN);
+                }
+                Pokemon::MapSet route;
+                route.add(MAP_ROUTE_204_SOUTH, grid, {0, 0});
+                const std::string leg_error = check_robust_plan(logger, "Route 204 South: Jubilife to the Ravaged Path door", route,
+                    Route204South::jubilife_entry(), [](const TilePos& pos){ return pos == Route204South::BELOW_DOOR; }, town_plan_costs());
+                failed += leg_error.empty() ? "" : leg_error + " ";
+                for (const Pokemon::TrainerSight& trainer : Route204South::trainer_sights()){
+                    if (route.world().at(trainer.pos) != Pokemon::TileType::NPC){
+                        failed += "Route 204 South: " + trainer.name + " is not on an NPC tile. ";
                     }
                 }
             }

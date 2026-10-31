@@ -10,6 +10,7 @@
 #include "../Data/PokemonBDSP_AutoStory_RavagedPath.h"
 #include "../Data/PokemonBDSP_AutoStory_Route203.h"
 #include "../Data/PokemonBDSP_AutoStory_Route204.h"
+#include "../Data/PokemonBDSP_AutoStory_Route204South.h"
 #include "../Data/PokemonBDSP_AutoStory_StoryMaps.h"
 #include "../Detect/PokemonBDSP_AutoStory_OverworldDetector.h"
 #include "../Utils/PokemonBDSP_AutoStory_PokemonCenter.h"
@@ -1230,30 +1231,45 @@ void jubilife_to_rowan(VideoStream& stream, ProControllerContext& context){
 
 void jubilife_to_ravaged_path(VideoStream& stream, ProControllerContext& context){
     StepLog step(stream, "01.08", "From the top of Jubilife's north street into the Ravaged Path", {
-        "North on Route 204 into the Ravaged Path",
+        "North out of Jubilife onto Route 204",
+        "Route 204 South on its grid to below the Ravaged Path's door",
+        "North through the door",
     });
 
     step(1);
-    // Route 204's south half: a trainer just past the sign, then the cave in
-    // the cliff two columns west of where the path meets it (by hand,
-    // 2026-10-31). A boy wanders about the cave's mouth: r233a's stick step
-    // west walked into him five times and the leg count ran out, so the step
-    // west is a D-pad tap that waits for him to move on.
-    for (size_t leg = 0; leg < 6; leg++){
-        const WalkResult up = walk_dir(stream, context, Direction::NORTH, 15000ms, "north on Route 204");
-        if (up.stop == WalkStop::TRANSITION){
-            break;
+    // The street's column 14 carries on as the route's; the location banner
+    // names Route 204 as we cross. A D-pad walk keeps the column; it may
+    // stop a tile or two past the border, which the entry set allows for.
+    const WalkResult out = walk_until_dpad(stream, context, 0, 1, 8000ms, "north out of Jubilife", location_banner_showing);
+    if (out.stop != WalkStop::ARRIVED){
+        fail(stream, "Jubilife: no Route 204 banner walking north up the street.");
+    }
+    context.wait_for(1500ms);
+
+    step(2);
+    // On the grid decoded from the game's data (Data/..._Route204South):
+    // a tile west onto the tall grass column that runs up to the cliff,
+    // north up it, then west along the cliff to the signboard beside the
+    // door (the offline plan: 3 legs). Other trainers' sight lines are kept
+    // out of; town_plan_costs() lets the one-tile step land exactly. Lass Sarah's east line crosses
+    // the street, so she may stop us for a battle on the way; a Youngster
+    // who is not a trainer wanders in front of the door, and the walker
+    // waits for him.
+    {
+        std::vector<Pokemon::TrainerSight> trainers = Route204South::trainer_sights();
+        auto fight = [&](const std::string& who){ talk_or_fight(stream, context, who); };
+        const std::vector<Pokemon::TilePos> at = walk_route(stream, context, route204_south_maps(),
+            Route204South::jubilife_entry(),
+            [](const Pokemon::TilePos& pos){ return pos == Route204South::BELOW_DOOR; },
+            trainers, fight, "Route 204 South to the Ravaged Path", Route204South::tiles_to_avoid(), town_plan_costs());
+        if (at.size() != 1 || !(at[0] == Route204South::BELOW_DOOR)){
+            fail(stream, "Route 204: the walk did not end below the Ravaged Path's door.");
         }
-        if (up.stop == WalkStop::DIALOG){
-            talk_or_fight(stream, context, "Route 204 trainer");
-            continue;
-        }
-        if (up.stop == WalkStop::BLOCKED){
-            dpad_tiles(stream, context, DPAD_LEFT, 1, "west along the cliff to the cave");
-        }
-        if (leg == 5){
-            fail(stream, "Route 204: did not reach the Ravaged Path.");
-        }
+    }
+
+    step(3);
+    if (!dpad_through_door_north(stream, context, "Ravaged Path door")){
+        fail(stream, "Route 204: no dark screen walking north into the Ravaged Path.");
     }
     context.wait_for(2000ms);
 }
