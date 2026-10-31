@@ -1110,22 +1110,15 @@ Checkpoint jubilife_clown_company_checkpoint(JubilifeActions& game){
         }));
         checkpoint.events.push_back(std::move(sign));
     }
-    //  The clown wanders the plaza between the hedges and the building: seen
-    //  from one to three tiles east of the sign, on the sign's row and up to
-    //  three rows north of it. A walk can pass him by, so we stand in the
-    //  middle of where he goes, a tile east of the sign and two rows up,
-    //  where all four sides are open plaza, and wait for him to step next to
-    //  us, asking each way in turn.
-    checkpoint.events.push_back(wrapped_step("into_the_plaza",
-        "a tile east of the sign, then two rows north, into the clown's patch", "in_the_plaza",
+    //  The clown wanders the plaza between the hedges and the building, and
+    //  a walk can pass him by. On the console (2026-10-30) a step north from
+    //  where the sign reads put us beside the sign, in the gap in the hedges,
+    //  and asking there every second or so talked to him within seconds: he
+    //  comes by. West of that tile is the sign, south the road.
+    checkpoint.events.push_back(wrapped_step("into_the_gap",
+        "a step north from where the sign reads, into the gap beside it", "in_the_gap",
         [&game](RunState&){
-            game.turn(Direction::EAST);
-            const Outcome east = game.taps(Direction::EAST, 1, "East of the sign");
-            if (!east.succeeded()){
-                return east;
-            }
-            game.turn(Direction::NORTH);
-            return game.taps(Direction::NORTH, 2, "Up into the plaza");
+            return game.step(Direction::NORTH, "Into the gap beside the sign");
         }));
     {
         std::shared_ptr<DialogueRead> read = std::make_shared<DialogueRead>();
@@ -1134,12 +1127,12 @@ Checkpoint jubilife_clown_company_checkpoint(JubilifeActions& game){
         talk.why = "the clown asks a question (Yes is right) and gives Coupon 3";
         talk.skip_if.push_back(condition("coupon_3", [](RunState& state){ return state.flags.count("coupon_3") > 0; }));
         talk.act = [&game, read](RunState& state){
-            //  About ten seconds a round; he moves every few seconds.
-            for (size_t round = 0; round < 12 && !read->opened; round++){
-                for (Direction direction : {Direction::NORTH, Direction::EAST, Direction::SOUTH, Direction::WEST}){
+            //  Up to about a minute and a half.
+            for (size_t round = 0; round < 18 && !read->opened; round++){
+                for (Direction direction : {Direction::NORTH, Direction::EAST, Direction::WEST}){
                     *read = game.talk(direction, BUTTON_A, "Clown by the Poketch Company");
-                    //  If he kept us on the sign's row, west is the sign
-                    //  ("... Watches for the World!"), not him.
+                    //  West is the sign ("... Watches for the World!") unless
+                    //  he stood in the gap and kept us on the road.
                     if (read->opened && read->text.find("World") != std::string::npos){
                         *read = DialogueRead();
                         continue;
