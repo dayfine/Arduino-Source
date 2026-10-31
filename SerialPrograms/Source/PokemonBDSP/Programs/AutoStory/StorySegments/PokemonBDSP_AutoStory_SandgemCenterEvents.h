@@ -312,7 +312,7 @@ Pokemon::Checkpoint jubilife_clown_company_checkpoint(JubilifeActions& game);
 extern const char* const JUBILIFE_CLOWN_COMPANY_NAME;
 //  00.05g: from where 00.05f leaves us (in the gap beside the Poketch
 //  Company's sign) to the president, who trades the coupons for the Poketch,
-//  then to the Pokemon Center, healed.
+//  then up the main road to the street east to Route 203.
 Pokemon::Checkpoint jubilife_poketch_checkpoint(JubilifeActions& game);
 extern const char* const JUBILIFE_POKETCH_NAME;
 //  DIAGNOSTIC ONLY: Remove before pushing to production.

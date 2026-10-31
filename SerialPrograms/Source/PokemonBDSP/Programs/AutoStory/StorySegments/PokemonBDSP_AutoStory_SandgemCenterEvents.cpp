@@ -1169,7 +1169,7 @@ Checkpoint jubilife_clown_company_checkpoint(JubilifeActions& game){
     return checkpoint;
 }
 
-const char* const JUBILIFE_POKETCH_NAME = "00.05g Jubilife: the Poketch from the president, then the Pokemon Center (events)";
+const char* const JUBILIFE_POKETCH_NAME = "00.05g Jubilife: the Poketch from the president, then up to the street east to Route 203 (events)";
 
 //  Measured on the console (2026-10-30), from the gap beside the Poketch
 //  Company's sign: a row south, then east along the long road stops at the
@@ -1260,45 +1260,20 @@ Checkpoint jubilife_poketch_checkpoint(JubilifeActions& game){
         }));
         checkpoint.events.push_back(std::move(talk));
     }
-    //  After his talk the president walks off north, up our way back: r164a
-    //  stepped north into him and the walk east passed the Mart. By hand,
-    //  with about 13 s of B presses first, four rows north and east stopped at
-    //  the Mart's wall (2026-10-30). Counting back east instead missed the
-    //  lamp's column (r166a).
-    checkpoint.events.push_back(wrapped_step("back_to_the_center_lamp",
-        "let the president walk off, four rows north, east to the Mart's wall, south to the Center's lamp", "back_at_center_lamp",
+    //  00.05 ends here: we healed at the Center on arriving (00.05a) and have
+    //  not fought since. 01.01 starts on the street east to Route 203, about
+    //  ten rows north (the long road's crossing is six rows above the Mart's
+    //  wall, which is four above the talk; r164a, by hand). A row off is
+    //  fine: 01.01 walks east and tries the rows either side at a wall. The
+    //  president walks off north after his talk, up our way (r164a): let him.
+    checkpoint.events.push_back(wrapped_step("up_to_the_route_203_street",
+        "let the president walk off, then ten rows north to the street east to Route 203", "on_route_203_street",
         [&game, steps](RunState&){
             for (size_t presses = 0; presses < 8; presses++){
                 game.close_panel("Waiting for the president to walk off");
             }
-            const Outcome up = steps(Direction::NORTH, 4, "Up toward the Mart");
-            if (!up.succeeded()){
-                return up;
-            }
-            const Outcome east = game.walk_until_stopped(Direction::EAST, 10, "East to the Mart's wall");
-            return east.succeeded() ? game.walk_until_stopped(Direction::SOUTH, 8, "South to the Center's lamp") : east;
+            return steps(Direction::NORTH, 10, "Up the main road");
         }));
-    //  Into the Center as 00.05a does it (3/3): from anywhere on the house
-    //  south of the Center's rows (36 to 42), east stops at the house and
-    //  north from there stops in front of the Center's door. Counted rows
-    //  to the door's own row could not line up (r168a, r169a).
-    checkpoint.events.push_back(wrapped_step("down_to_the_house",
-        "a tile west of the lamp, about twelve rows down the road, east until the house stops us", "at_east_house",
-        [&game, steps](RunState&){
-            game.turn(Direction::WEST);
-            const Outcome west = game.taps(Direction::WEST, 1, "West of the lamp");
-            if (!west.succeeded()){
-                return west;
-            }
-            const Outcome down = steps(Direction::SOUTH, 12, "Down the road to the house's rows");
-            return down.succeeded() ? game.walk_until_stopped(Direction::EAST, 8, "East to the house") : down;
-        }));
-    checkpoint.events.push_back(wrapped_step("north_to_the_center",
-        "north up the east sidewalk until the Pokemon Center stops us", "at_center",
-        [&game](RunState&){ return game.walk_until_stopped(Direction::NORTH, 14, "North to the Pokemon Center"); }));
-    checkpoint.events.push_back(wrapped_step("heal",
-        "in, the nurse heals, out onto the doorstep", "healed",
-        [&game](RunState&){ return game.heal_at_center(); }));
     return checkpoint;
 }
 

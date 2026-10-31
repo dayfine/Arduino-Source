@@ -146,6 +146,16 @@ void jubilife_to_barry(VideoStream& stream, ProControllerContext& context){
         "Walk to Jubilife's east exit and battle Barry at the Route 203 entrance",
     });
 
+    // From 00.05g we are already outdoors on the street east to Route 203,
+    // healed on arriving in Jubilife: straight to the walk east.
+    bool outdoors = false;
+    context.wait_for_all_requests();
+    if (VideoSnapshot screen = stream.video().snapshot()){
+        outdoors = !indoors(*screen.frame);
+    }
+    if (outdoors){
+        stream.log("[Route] 01.01: outdoors; skipping the Pokemon Center.");
+    }else{
     step(1);
     // The save stands us at the PC, right of the counter, facing it; west
     // is the counter's end. Two tiles south clears it, then three west is
@@ -189,6 +199,7 @@ void jubilife_to_barry(VideoStream& stream, ProControllerContext& context){
     route_turn(stream, context, Direction::SOUTH);
     pbf_move_left_joystick(context, {0, -1}, 600ms, 300ms);
     context.wait_for_all_requests();
+    }
     // East along the street. The opening to the route is a few rows high;
     // Barry stops us a little way in. A wall means we are a row off it: try
     // rows to the south, then to the north.

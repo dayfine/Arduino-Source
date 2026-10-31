@@ -208,7 +208,7 @@ BDSPAutoStory::BDSPAutoStory()
     , DIAGNOSTIC_JUBILIFE_POKETCH(
           "<b>Diagnostic only: 00.05g Jubilife, the Poketch from the president (events)</b><br>"
           "Start in the gap beside the Poketch Company's sign, with the three coupons (after 00.05f). "
-          "Gets the Poketch and heals at the Pokemon Center; no save. "
+          "Gets the Poketch and goes up to the street east to Route 203; no save. "
           "Remove before pushing to production.",
           LockMode::LOCK_WHILE_RUNNING, false)
     , ENABLE_ADVANCED_MODE(
