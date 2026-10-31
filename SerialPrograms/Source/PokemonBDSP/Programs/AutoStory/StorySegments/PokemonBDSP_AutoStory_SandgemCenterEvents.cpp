@@ -1279,11 +1279,14 @@ Checkpoint jubilife_poketch_checkpoint(JubilifeActions& game){
             return east.succeeded() ? game.walk_until_stopped(Direction::SOUTH, 8, "South to the Center's lamp") : east;
         }));
     checkpoint.events.push_back(wrapped_step("heal",
-        "a tile west and four rows south, three tiles east, then in through the lit door and heal", "healed",
+        "a tile west and six rows south (below the door's row), three tiles east, then in through the lit door and heal", "healed",
         [&game, steps](RunState&){
             for (const auto& [direction, rows, label] : {
                 std::tuple<Direction, size_t, const char*>{Direction::WEST, 1, "West of the lamp"},
-                {Direction::SOUTH, 4, "Down to the Center's front"},
+                //  Four rows left us beside the Center's west wall, a row
+                //  short of the door's (r168a); a row or two below it, the
+                //  lit door is up the screen and the heal lines up with it.
+                {Direction::SOUTH, 6, "Down below the Center's door"},
                 {Direction::EAST, 3, "Toward the Center's door"},
             }){
                 const Outcome moved = steps(direction, rows, label);
