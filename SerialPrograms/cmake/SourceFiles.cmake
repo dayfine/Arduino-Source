@@ -1716,6 +1716,8 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_TrainerCardDetector.h
     Source/VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleLevelUpReader.cpp
     Source/VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleLevelUpReader.h
+    Source/VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleFlashWatcher.cpp
+    Source/VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleFlashWatcher.h
     Source/VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattlePokemonDetector.cpp
     Source/VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattlePokemonDetector.h
     Source/VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleSelectionArrowDetector.cpp
@@ -1746,6 +1748,17 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonFRLG/Inference/Sounds/PokemonFRLG_CatchFanfareDetector.h
     Source/VideoGames/PokemonFRLG/Inference/Sounds/PokemonFRLG_ShinySoundDetector.cpp
     Source/VideoGames/PokemonFRLG/Inference/Sounds/PokemonFRLG_ShinySoundDetector.h
+    Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMap.cpp
+    Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMap.h
+    Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.cpp
+    Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h
+    Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps_Tests.cpp
+    Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRoute.cpp
+    Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRoute.h
+    Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWalk.cpp
+    Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWalk.h
+    Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_PlayerFacingReader.cpp
+    Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_PlayerFacingReader.h
     Source/VideoGames/PokemonFRLG/PokemonFRLG_Navigation.cpp
     Source/VideoGames/PokemonFRLG/PokemonFRLG_Navigation.h
     Source/VideoGames/PokemonFRLG/PokemonFRLG_Panels.cpp
