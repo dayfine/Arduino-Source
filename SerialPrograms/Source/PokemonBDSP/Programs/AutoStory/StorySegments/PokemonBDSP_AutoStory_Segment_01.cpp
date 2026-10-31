@@ -752,11 +752,16 @@ void oreburgh_street_to_gym(VideoStream& stream, ProControllerContext& context){
         }
         leave_center_onto_door_row(stream, context);
     }
-    // Measured by hand in 4-tile holds (2026-10-31): from just west of the
-    // Center's door, 16 tiles ended a tile east of the gym's door and 20
-    // past it; 23 from a tile east ran into the houses beyond (r198d,
-    // r200d). 18 from here ends about a tile east of it.
-    hold_tiles(stream, context, Direction::WEST, 18);
+    // A timed hold this long is too loose (r201d: 18 tiles ended on the
+    // road east of the gym; 23 ran into the houses beyond it, r198d, r200d).
+    // From this row, west runs past the gym to the cliff (by hand,
+    // 2026-10-31), the old anchor: south from there stops at the posts, and
+    // a row up, 17 tiles east ended 1.5 tiles east of the gym's door (by
+    // hand), so 16.
+    walk_to_wall(stream, context, -1, 0, 10000ms, "west to the cliff");
+    walk_to_wall(stream, context, 0, -1, 3000ms, "south to the posts");
+    hold_tiles(stream, context, Direction::NORTH, 1);
+    hold_tiles(stream, context, Direction::EAST, 16);
     // A long hold ends a tile or two either side of the door (by hand,
     // 2026-10-31: 17 tiles from the cliff ended 1.5 east). The gym's front
     // blocks north there.
@@ -767,7 +772,7 @@ void oreburgh_street_to_gym(VideoStream& stream, ProControllerContext& context){
     // blocked, +1 walked up a road east of the gym and met a trainer), so
     // look west first; a column that walks north freely is not the door:
     // come back down to the row before the next.
-    const int offsets[] = {0, -1, -2, 1, 2, -3};
+    const int offsets[] = {0, -1, 1, -2, 2};
     int shifted = 0;
     for (int offset : offsets){
         for (; shifted != offset; shifted += offset > shifted ? 1 : -1){
