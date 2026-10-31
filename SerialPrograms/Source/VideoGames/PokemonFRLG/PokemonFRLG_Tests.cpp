@@ -281,7 +281,7 @@ public:
 
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
         const LaunchWait wait = choose_launch_wait(
-            m_scenario.handle_online_license, m_scenario.online_license_seen
+            m_scenario.handle_online_license, GameLaunch{.online_license = m_scenario.online_license_seen}
         );
         if (wait != m_scenario.expected){
             return "Expected " + launch_wait_name(m_scenario.expected) + ", got " + launch_wait_name(wait);
