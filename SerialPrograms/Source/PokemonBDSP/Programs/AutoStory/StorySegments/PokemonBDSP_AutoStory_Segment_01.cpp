@@ -919,8 +919,6 @@ void oreburgh_gym(VideoStream& stream, ProControllerContext& context){
         "Out of the Pokemon Center from the counter",
         "West along the row into the gym",
         "Up the gym, fighting its trainers, and beat Roark (after a loss: from the Center, again)",
-        "Out of the gym",
-        "East along the row to the Pokemon Center and heal",
     });
     step(1);
     // 01.03 leaves us at the Center's counter, facing the nurse; the door
@@ -945,57 +943,6 @@ void oreburgh_gym(VideoStream& stream, ProControllerContext& context){
         fail(stream, "Oreburgh Gym: lost to Roark five times.");
     }
 
-    step(4);
-    // Back down the middle, a tile at a time, looking for the door's dark
-    // fade after each: a longer hold runs on past the doorstep, as leaving
-    // the Center did (r205d).
-    bool out = false;
-    for (size_t tile = 0; tile < 40 && !out; tile++){
-        const WalkResult down = walk_for(stream, context, 0, -1, 240ms, "south out of the gym");
-        if (down.stop == WalkStop::DIALOG){
-            finish_dialogue(stream, context, BUTTON_B, "Someone in the gym");
-            continue;
-        }
-        const auto start = current_time();
-        while (current_time() - start < 1500ms){
-            context.wait_for(100ms);
-            const VideoSnapshot frame = stream.video().snapshot();
-            if (frame && mean_brightness(*frame.frame) < 25){
-                out = true;
-                break;
-            }
-        }
-    }
-    if (!out){
-        fail(stream, "Oreburgh Gym: did not leave by its door.");
-    }
-    context.wait_for(2500ms);
-
-    step(5);
-    // Heal at the Center, so 01.05 starts at its counter: the gym's doorstep
-    // row runs east to the Center's door, the way 01.04 came.
-    route_turn(stream, context, Direction::EAST);
-    for (size_t t = 0; t < GYM_TILES_WEST_OF_CENTER; t++){
-        const WalkResult step_east = walk_for(stream, context, 1, 0, 160ms, "east to the Center's door");
-        if (step_east.stop == WalkStop::DIALOG){
-            talk_or_fight(stream, context, "Someone on the way to the Center");
-        }
-    }
-    bool inside = through_door_north(stream, context, "Oreburgh Pokemon Center door");
-    for (int shift : {1, -2}){
-        if (inside){
-            break;
-        }
-        route_turn(stream, context, shift > 0 ? Direction::EAST : Direction::WEST);
-        for (int tile = 0; tile < std::abs(shift); tile++){
-            walk_for(stream, context, shift > 0 ? 1 : -1, 0, 160ms, "a tile along the Center's front");
-        }
-        inside = through_door_north(stream, context, "Oreburgh Pokemon Center door");
-    }
-    if (!inside){
-        fail(stream, "Oreburgh: the Pokemon Center's door did not take us from the gym's row.");
-    }
-    heal_at_oreburgh_counter(stream, context);
 }
 
 //  West until a transition, by the user's rule for a wall in the way: walk
@@ -1037,8 +984,64 @@ void west_until_transition(VideoStream& stream, ProControllerContext& context, c
     fail(stream, label + ": no transition after " + std::to_string(max_legs) + " legs.");
 }
 
+//  Oreburgh: from in front of Roark at the top of the gym, back down and out
+//  of its door a tile at a time, east along the row to the Pokemon Center
+//  and heal; ends at the counter.
+void oreburgh_gym_to_center(VideoStream& stream, ProControllerContext& context){
+    // Back down the middle, a tile at a time, looking for the door's dark
+    // fade after each: a longer hold runs on past the doorstep, as leaving
+    // the Center did (r205d).
+    bool out = false;
+    for (size_t tile = 0; tile < 40 && !out; tile++){
+        const WalkResult down = walk_for(stream, context, 0, -1, 240ms, "south out of the gym");
+        if (down.stop == WalkStop::DIALOG){
+            finish_dialogue(stream, context, BUTTON_B, "Someone in the gym");
+            continue;
+        }
+        const auto start = current_time();
+        while (current_time() - start < 1500ms){
+            context.wait_for(100ms);
+            const VideoSnapshot frame = stream.video().snapshot();
+            if (frame && mean_brightness(*frame.frame) < 25){
+                out = true;
+                break;
+            }
+        }
+    }
+    if (!out){
+        fail(stream, "Oreburgh Gym: did not leave by its door.");
+    }
+    context.wait_for(2500ms);
+
+    // Heal at the Center, so 01.05 starts at its counter: the gym's doorstep
+    // row runs east to the Center's door, the way 01.04 came.
+    route_turn(stream, context, Direction::EAST);
+    for (size_t t = 0; t < GYM_TILES_WEST_OF_CENTER; t++){
+        const WalkResult step_east = walk_for(stream, context, 1, 0, 160ms, "east to the Center's door");
+        if (step_east.stop == WalkStop::DIALOG){
+            talk_or_fight(stream, context, "Someone on the way to the Center");
+        }
+    }
+    bool inside = through_door_north(stream, context, "Oreburgh Pokemon Center door");
+    for (int shift : {1, -2}){
+        if (inside){
+            break;
+        }
+        route_turn(stream, context, shift > 0 ? Direction::EAST : Direction::WEST);
+        for (int tile = 0; tile < std::abs(shift); tile++){
+            walk_for(stream, context, shift > 0 ? 1 : -1, 0, 160ms, "a tile along the Center's front");
+        }
+        inside = through_door_north(stream, context, "Oreburgh Pokemon Center door");
+    }
+    if (!inside){
+        fail(stream, "Oreburgh: the Pokemon Center's door did not take us from the gym's row.");
+    }
+    heal_at_oreburgh_counter(stream, context);
+}
+
 void oreburgh_to_floaroma(VideoStream& stream, ProControllerContext& context){
     StepLog step(stream, "01.05", "From the Oreburgh Gym to Floaroma Town", {
+        "Out of the gym, east to the Pokemon Center and heal",
         "Up to the platform by Oreburgh Gate and into it (Barry bumps into us there)",
         "Through the Gate and west along Route 203 and Jubilife to the Route 218 gate",
         "Back east to Jubilife's north road and up it (Rowan, Dawn and two Galactic grunts: a tag battle)",
@@ -1049,7 +1052,13 @@ void oreburgh_to_floaroma(VideoStream& stream, ProControllerContext& context){
     });
 
     step(1);
-    // 01.04 leaves us at the Center's counter. Out onto its doorstep: its
+    // 01.04 ends in front of Roark, just after his battle: its save at
+    // 01.05's start is right after the win (2026-10-31, at the user's
+    // request), so a failure later never has to beat him again.
+    oreburgh_gym_to_center(stream, context);
+
+    step(2);
+    // Out of the Center onto its doorstep: its
     // row is the gym door's, and west along it reaches the stairs' cliff,
     // as from the gym door (by hand, 2026-10-29 and 2026-10-31).
     walk_out_of_center(stream, context, "Oreburgh");
@@ -1063,13 +1072,13 @@ void oreburgh_to_floaroma(VideoStream& stream, ProControllerContext& context){
     // end with no battle.
     west_until_transition(stream, context, "Into Oreburgh Gate", 8);
 
-    step(2);
+    step(3);
     // The Gate's cave, Route 203 (trainers stop us) and Jubilife's road all
     // run west; the first door at the end is the Route 218 gate on
     // Jubilife's west edge (by hand: twice).
     west_until_transition(stream, context, "West to the Route 218 gate", 16);
 
-    step(3);
+    step(4);
     // Back out east into Jubilife: its north road is columns 43 to 46 of the
     // Jubilife grid, about 40 tiles east of the gate. Rowan's scene starts
     // on the way up it; a wall in a few tiles means we are off its column.
@@ -1102,7 +1111,7 @@ void oreburgh_to_floaroma(VideoStream& stream, ProControllerContext& context){
     }
     finish_dialogue(stream, context, BUTTON_B, "Rowan and Dawn after the battle");
 
-    step(4);
+    step(5);
     // Route 204's south half: a trainer just past the sign, then the cave in
     // the cliff a column west of the path.
     for (size_t leg = 0; leg < 6; leg++){
@@ -1123,7 +1132,7 @@ void oreburgh_to_floaroma(VideoStream& stream, ProControllerContext& context){
     }
     context.wait_for(2000ms);
 
-    step(5);
+    step(6);
     // On the traced grid (Data/PokemonBDSP_AutoStory_RavagedPath): from the
     // south door up the stairs to the tile west of one of the two rocks
     // across the lower corridor, smash it, then east and south to the
@@ -1167,7 +1176,7 @@ void oreburgh_to_floaroma(VideoStream& stream, ProControllerContext& context){
         context.wait_for(2000ms);
     }
 
-    step(6);
+    step(7);
     // On the traced grid (Data/PokemonBDSP_AutoStory_Route204): from the
     // cave's door west and up the stairs, round the pocket the ledge closes,
     // east and north through the tall grass, and west below the flower beds,
@@ -1190,7 +1199,7 @@ void oreburgh_to_floaroma(VideoStream& stream, ProControllerContext& context){
         context.wait_for(2000ms);
     }
 
-    step(7);
+    step(8);
     // We arrive in front of a house; the Center is a few tiles south-east.
     walk_dir(stream, context, Direction::SOUTH, 1500ms, "south off the house's path");
     hold_tiles(stream, context, Direction::EAST, 4);
@@ -1335,7 +1344,7 @@ void AutoStory_Checkpoint_0103::run_checkpoint(
 
 std::string AutoStory_Checkpoint_0104::name()       const { return "01.04 - Oreburgh Gym"; }
 std::string AutoStory_Checkpoint_0104::start_text() const { return AutoStory_Checkpoint_0103().end_text(); }
-std::string AutoStory_Checkpoint_0104::end_text()   const { return "At the Oreburgh Pokemon Center counter, healed, with the Coal Badge."; }
+std::string AutoStory_Checkpoint_0104::end_text()   const { return "In the Oreburgh Gym, in front of Roark, just after beating him (Coal Badge)."; }
 
 void AutoStory_Checkpoint_0104::run_checkpoint(
     SingleSwitchProgramEnvironment& env,
