@@ -264,23 +264,22 @@ with `--comment`, only on fork PRs.
   - nesting (4) and parameters (7)
   - public methods (7), public data in a mutating class, single-method interface
   - layering: shared code must not include game modules
+  - with [#94](https://github.com/dayfine/Arduino-Source/pull/94), on added or changed
+    lines only: the upstream bans (`std::filesystem`, `std::thread`, `std::*mutex`,
+    `std::async`); brace style (`) {`, `} else`, `namespace X {`, single-line bodies);
+    non-const namespace-scope variables and `extern` (TotW #103); `new` / `delete`
+    (TotW #126); `std::bind` (TotW #108); `return std::move(local)` (TotW #120); a
+    top-level `const` by-value parameter in a header declaration (TotW #109); a defaulted
+    `bool` parameter or two `bool` parameters (TotW #94); `using namespace` in a header
+    (TotW #153); forward declarations in a new header
+  - advisory only: a forward declaration added to an existing header, and a function
+    comment that describes a different function
 - **Checked now by CI:**
   - the tabs job
   - clang-query (`std::filesystem::path` built from `std::string`; `ImageViewRGB32` built
     from `VideoSnapshot&&`)
   - `-Werror` / `/WX`: unused variables, `-Wswitch` on clang/GCC (TotW #147), 64-to-32-bit
     narrowing on Apple Clang
-- **Could add to `code_health` (lexical, new lines only):**
-  - non-const namespace-scope variables and non-const `extern` (TotW #103)
-  - `new` / `delete` outside allocators (TotW #126)
-  - `std::bind` (TotW #108), `return std::move(local)` (TotW #120)
-  - a top-level `const` by-value parameter in a header declaration (TotW #109)
-  - a defaulted `bool` parameter, or two or more `bool` parameters (TotW #94)
-  - `using namespace` at namespace scope in a header (TotW #153)
-  - forward class declarations in new headers
-  - `std::thread` / `std::mutex` / `std::async` / `std::filesystem` (upstream bans)
-  - control-flow formatting: `) {`, `} else`, `namespace X {`, single-line `if`
-  - a function comment directly above a different function
 - **Review only:** sentinel values (TotW #171), ownership and lifetimes (TotW #180,
   #188), output parameters (TotW #176), comment content.
 
