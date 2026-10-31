@@ -709,11 +709,16 @@ void oreburgh_street_to_gym(VideoStream& stream, ProControllerContext& context){
     walk_to_wall(stream, context, 0, -1, 3000ms, "south to the posts");
     hold_tiles(stream, context, Direction::NORTH, 1);
     hold_tiles(stream, context, Direction::EAST, 17);
-    // Cumulative steps: here, a tile east, a tile west, two east, two west.
-    const int steps[] = {0, 1, -2, 3, -4};
-    for (int step : steps){
-        if (step != 0){
-            hold_tiles(stream, context, step > 0 ? Direction::EAST : Direction::WEST, (size_t)std::abs(step));
+    // Seventeen tiles of holding end a tile or two either side of the door
+    // (by hand, 2026-10-31: 1.5 east). The gym's front blocks north there.
+    // Third-of-a-tile nudges barely move us against it (each push north
+    // slides back), and a tile's tap west went in (by hand): look for the
+    // door a tile at a time either side, with no turn taps between.
+    const int offsets[] = {0, -1, 1, -2, 2, -3, 3};
+    int shifted = 0;
+    for (int offset : offsets){
+        for (; shifted != offset; shifted += offset > shifted ? 1 : -1){
+            pbf_move_left_joystick(context, {offset > shifted ? 1.0 : -1.0, 0}, ROUTE_MS_PER_TILE_ACROSS, 300ms);
         }
         const WalkResult door = walk_dir(stream, context, Direction::NORTH, 4000ms, "north into the gym");
         // The door's fade can read as the time limit rather than a black
@@ -787,7 +792,21 @@ void oreburgh_gym(VideoStream& stream, ProControllerContext& context){
     // 01.03 leaves us below the mine's sign; a tile east is the column
     // straight up to the Center (by hand: blocked at its front after 6.4 s).
     hold_tiles(stream, context, Direction::EAST, 1);
-    walk_to_wall(stream, context, 0, 1, 12000ms, "north to the Center's front");
+    // That column is the Center's door's (01.03 walks it south): the walk
+    // may go in (r194d went in and walked the gym's steps inside it). Stop
+    // at the floor and step straight back out; either way we end on the
+    // Center's front rows, where west runs to the cliff.
+    walk_until(stream, context, 0, 1, 12000ms, "north to the Center's front",
+        [](const ImageViewRGB32& screen){ size_t percent = 0; center_floor_on_screen(screen, &percent); return percent >= 45; });
+    if (VideoSnapshot frame = stream.video().snapshot()){
+        size_t percent = 0;
+        if (center_floor_on_screen(*frame.frame, &percent), percent >= 45){
+            stream.log("[01.04] Went into the Center by its door; back out.");
+            walk_until(stream, context, 0, -1, 4000ms, "back out of the Center",
+                [](const ImageViewRGB32& screen){ size_t percent = 0; center_floor_on_screen(screen, &percent); return percent < 30; });
+            context.wait_for(1500ms);
+        }
+    }
 
     // Losing costs some money and keeps the experience, so each try comes
     // back stronger: Roark won twice by hand against Piplup Lv 10 and 14 and
