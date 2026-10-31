@@ -110,6 +110,19 @@ public:
 MaxLairStrongBoss::MaxLairStrongBoss()
     : MultiSwitchProgramInstance({"Notifs", "LiveHost"})
     , GO_HOME_WHEN_DONE(false)
+    , PATH_KEEPING(
+        "<b>Path Keeping:</b><br>"
+        "When to reset the host to keep the current path.",
+        {
+            {PathKeepingRule::OBSERVED_WIN_RATE, "observed", "Win rate at least the Minimum Win Rate."},
+            {PathKeepingRule::LIKELY_WIN_RATE, "likely",
+                "Likely at least the Minimum Win Rate: "
+                "keep a path that is probably at least the Minimum Win Rate or clearly better than a new path. "
+                "A short losing streak does not drop a good path."},
+        },
+        LockMode::UNLOCK_WHILE_RUNNING,
+        PathKeepingRule::OBSERVED_WIN_RATE
+    )
     , MIN_WIN_RATE(
         "<b>Minimum Win Rate:</b><br>"
         "Keep the path if the win rate stays above this ratio. This is done by resetting the host.",
@@ -130,6 +143,7 @@ MaxLairStrongBoss::MaxLairStrongBoss()
     PA_ADD_OPTION(START_LOCATION);
     PA_ADD_OPTION(GO_HOME_WHEN_DONE);
 
+    PA_ADD_OPTION(PATH_KEEPING);
     PA_ADD_OPTION(MIN_WIN_RATE);
     PA_ADD_OPTION(BOSS_SLOT);
 
@@ -170,11 +184,13 @@ public:
     EndBattleDecider_StrongBoss(
         Logger& logger,
         const Consoles& consoles, size_t host_index,
+        const EnumDropdownOption<PathKeepingRule>& path_keeping,
         const FloatingPointOption& min_win_ratio
     )
         : m_logger(logger)
         , m_consoles(consoles)
         , m_host_index(host_index)
+        , m_path_keeping(path_keeping)
         , m_min_win_ratio(min_win_ratio)
     {}
     virtual const std::string& normal_ball(
@@ -205,15 +221,32 @@ public:
             }
             action = actions.no_shinies;
         }while (false);
-        if (action != CaughtScreenAction::RESET || console_index != m_host_index){
+        if (console_index != m_host_index){
             return action;
         }
-        double win_ratio = path_stats.win_ratio();
-        if (win_ratio >= m_min_win_ratio){
-            m_logger.log("Win Ratio = " + tostr_default(win_ratio) + ": Resetting to keep path.", COLOR_BLUE);
+
+        //  The first run on each path measures how good a new path is.
+        //  Only the host's thread gets here, so this needs no lock.
+        if (path_stats.runs() == 1){
+            m_new_paths.add_run(path_stats.wins() == 1);
+        }
+        if (action != CaughtScreenAction::RESET){
+            return action;
+        }
+
+        PathPolicySettings settings;
+        settings.rule = m_path_keeping;
+        settings.target_win_rate = m_min_win_ratio;
+        PathPolicyDecision decision = decide_keep_path(
+            settings,
+            WinRecord{.wins = path_stats.wins(), .runs = path_stats.runs()},
+            m_new_paths
+        );
+        if (decision.keep){
+            m_logger.log(decision.reason + ": Resetting to keep path.", COLOR_BLUE);
             return CaughtScreenAction::RESET;
         }else{
-            m_logger.log("Win Ratio = " + tostr_default(win_ratio) + ": Continuing to get new path.", COLOR_BLUE);
+            m_logger.log(decision.reason + ": Continuing to get new path.", COLOR_BLUE);
             return CaughtScreenAction::TAKE_NON_BOSS_SHINY_AND_CONTINUE;
         }
     }
@@ -226,7 +259,11 @@ private:
     Logger& m_logger;
     const Consoles& m_consoles;
     size_t m_host_index;
+    const EnumDropdownOption<PathKeepingRule>& m_path_keeping;
     const FloatingPointOption& m_min_win_ratio;
+
+    //  First runs on new paths this session.
+    mutable WinRecord m_new_paths;
 };
 
 
@@ -251,6 +288,7 @@ void MaxLairStrongBoss::program(MultiSwitchProgramEnvironment& env, CancellableS
     EndBattleDecider_StrongBoss decider(
         env.logger(),
         CONSOLES, host_index,
+        PATH_KEEPING,
         MIN_WIN_RATE
     );
 
