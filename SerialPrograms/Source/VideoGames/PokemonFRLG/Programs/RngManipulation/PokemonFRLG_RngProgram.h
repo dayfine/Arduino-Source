@@ -66,11 +66,12 @@ public:
     }
 
     //  Runs with the game on the overworld where the player saved. May leave a
-    //  menu open: the program's first reset closes the game.
+    //  menu open: the program's first reset closes the game. Final so that
+    //  every RNG program runs the check its party_requirement() asks for.
     virtual void start_program_game_checks(
         SingleSwitchProgramEnvironment& env,
         ProControllerContext& context
-    ) override;
+    ) override final;
 };
 
 

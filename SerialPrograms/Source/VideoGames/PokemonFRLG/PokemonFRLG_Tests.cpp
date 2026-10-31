@@ -5,8 +5,13 @@
  */
 
 #include <fstream>
+#include <functional>
+#include <map>
+#include <memory>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/Filesystem/Filesystem.h"
+#include "Common/Cpp/Json/JsonObject.h"
+#include "Common/Cpp/Json/JsonValue.h"
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "CommonFramework/StaticGlobals.h"
 #include "Tests/ImageUnitTest.h"
@@ -25,7 +30,14 @@
 #include "Inference/PokemonFRLG_StatsReader.h"
 #include "Inference/PokemonFRLG_TrainerIdReader.h"
 #include "Inference/PokemonFRLG_WildEncounterReader.h"
+#include "Programs/RngManipulation/PokemonFRLG_EggRng.h"
+#include "Programs/RngManipulation/PokemonFRLG_GiftRng.h"
+#include "Programs/RngManipulation/PokemonFRLG_RngHelper.h"
 #include "Programs/RngManipulation/PokemonFRLG_RngProgram.h"
+#include "Programs/RngManipulation/PokemonFRLG_RoamingLegendaryRng.h"
+#include "Programs/RngManipulation/PokemonFRLG_StarterRng.h"
+#include "Programs/RngManipulation/PokemonFRLG_StaticRng.h"
+#include "Programs/RngManipulation/PokemonFRLG_WildRng.h"
 #include "PokemonFRLG_Navigation.h"
 
 #include "PokemonFRLG_Tests.h"
@@ -397,6 +409,104 @@ void add_tests_PartyCheck(UnitTestDatabase& database){
     }
 }
 
+
+std::string requirement_name(PartyRequirement requirement){
+    switch (requirement){
+    case PartyRequirement::NONE:        return "NONE";
+    case PartyRequirement::FREE_SLOT:   return "FREE_SLOT";
+    }
+    return "?";
+}
+std::string menu_context_name(StartMenuContext context){
+    switch (context){
+    case StartMenuContext::STANDARD:    return "STANDARD";
+    case StartMenuContext::SAFARI_ZONE: return "SAFARI_ZONE";
+    case StartMenuContext::NO_DEX:      return "NO_DEX";
+    }
+    return "?";
+}
+
+struct RngProgramPartyScenario{
+    std::string name;
+    std::function<std::unique_ptr<RngProgramInstance>()> make_program;
+    // Program settings by option name, as in the saved settings JSON.
+    std::map<std::string, std::string> settings = {};
+    PartyRequirement expected_requirement;
+    StartMenuContext expected_menu_context = StartMenuContext::STANDARD;
+};
+
+// Builds the program with the given settings and checks what its start check asks for. The
+// check itself runs for every RNG program: RngProgramInstance's start hook is final.
+class Test_RngProgramPartyRequirement : public UnitTest{
+public:
+    Test_RngProgramPartyRequirement(RngProgramPartyScenario scenario)
+        : UnitTest("PokemonFRLG::RngProgramPartyRequirement - " + scenario.name)
+        , m_scenario(std::move(scenario))
+    {}
+
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        std::unique_ptr<RngProgramInstance> program = m_scenario.make_program();
+        JsonObject settings;
+        for (const auto& [option, value] : m_scenario.settings){
+            settings[option] = value;
+        }
+        program->load_json(JsonValue(std::move(settings)));
+
+        const PartyRequirement requirement = program->party_requirement();
+        if (requirement != m_scenario.expected_requirement){
+            return "Expected party requirement " + requirement_name(m_scenario.expected_requirement)
+                + ", got " + requirement_name(requirement);
+        }
+        const StartMenuContext menu_context = program->start_menu_context();
+        if (menu_context != m_scenario.expected_menu_context){
+            return "Expected start menu " + menu_context_name(m_scenario.expected_menu_context)
+                + ", got " + menu_context_name(menu_context);
+        }
+        return true;
+    }
+
+private:
+    const RngProgramPartyScenario m_scenario;
+};
+
+template <typename Program>
+std::unique_ptr<RngProgramInstance> make_rng_program(){
+    return std::make_unique<Program>();
+}
+
+void add_tests_RngProgramPartyRequirement(UnitTestDatabase& database){
+    using enum PartyRequirement;
+    const RngProgramPartyScenario scenarios[] = {
+        {.name = "RngHelper", .make_program = make_rng_program<RngHelper>, .expected_requirement = NONE},
+        {.name = "StarterRng", .make_program = make_rng_program<StarterRng>, .expected_requirement = NONE},
+        {.name = "EggRng", .make_program = make_rng_program<EggRng>, .expected_requirement = NONE},
+        {.name = "GiftRng", .make_program = make_rng_program<GiftRng>, .expected_requirement = FREE_SLOT},
+        {.name = "StaticRng", .make_program = make_rng_program<StaticRng>, .expected_requirement = FREE_SLOT},
+        {
+            .name = "RoamingLegendaryRng",
+            .make_program = make_rng_program<RoamingLegendaryRng>,
+            .expected_requirement = FREE_SLOT,
+        },
+        {
+            .name = "WildRng on Route 1",
+            .make_program = make_rng_program<WildRng>,
+            .settings = {{"GAME_LOCATION", "route_1"}},
+            .expected_requirement = FREE_SLOT,
+        },
+        {
+            // The Safari Zone start menu has no POKEMON entry in the usual place.
+            .name = "WildRng in the Safari Zone",
+            .make_program = make_rng_program<WildRng>,
+            .settings = {{"GAME_LOCATION", "safari_zone_entrance"}},
+            .expected_requirement = FREE_SLOT,
+            .expected_menu_context = StartMenuContext::SAFARI_ZONE,
+        },
+    };
+    for (const RngProgramPartyScenario& scenario : scenarios){
+        database.add<Test_RngProgramPartyRequirement>(scenario);
+    }
+}
+
 }
 
 
@@ -422,6 +532,7 @@ void add_tests(UnitTestDatabase& database){
     add_tests_ExitWildBattle(database);
     add_tests_LastOccupiedPartySlot(database);
     add_tests_PartyCheck(database);
+    add_tests_RngProgramPartyRequirement(database);
 }
 
 
