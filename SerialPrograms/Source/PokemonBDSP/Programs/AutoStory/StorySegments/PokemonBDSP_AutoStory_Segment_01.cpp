@@ -1198,25 +1198,44 @@ void jubilife_to_floaroma(VideoStream& stream, ProControllerContext& context){
 
     step(1);
     // Route 203's row 17 carries on as Jubilife's long road. From the first
-    // tile (column 63) to the north road's columns 43 to 46: about 18 taps
-    // (by hand, 2026-10-31; step 2 searches a few columns either way).
-    dpad_tiles(stream, context, DPAD_LEFT, 18, "west along Jubilife's long road");
+    // tile, the street north to Route 204 opens 7 tiles west, by the corner
+    // of the building with the blue door (by hand, 2026-10-31: 7 west and
+    // about 10 north to Rowan's scene; 18 west went past it to the road
+    // south to Route 202, r230b).
+    dpad_tiles(stream, context, DPAD_LEFT, 7, "west along Jubilife's long road");
 
     step(2);
-    // Rowan's scene starts on the way up the north road (columns 43 to 46 of
-    // the Jubilife grid); a wall in a few tiles means we are off its column.
-    const int steps[] = {0, 1, -2, 3, -4, 5, -6};
+    // Rowan's scene starts on the way up that street, about 10 tiles north.
+    // A wall sooner means we are off its column: step back down exactly as
+    // far as we went (walking south until blocked went down the road to
+    // Route 202, r230b) and try the next column.
+    const int steps[] = {0, 1, -2, 3, -4};
     bool scene = false;
     for (int s_step : steps){
         if (s_step != 0){
-            hold_tiles(stream, context, s_step > 0 ? Direction::EAST : Direction::WEST, (size_t)std::abs(s_step));
+            dpad_tiles(stream, context, s_step > 0 ? DPAD_RIGHT : DPAD_LEFT, (size_t)std::abs(s_step), "to the next column");
         }
-        const WalkResult up = walk_dir(stream, context, Direction::NORTH, 15000ms, "north up Jubilife's north road");
-        if (up.stop == WalkStop::DIALOG){
-            scene = true;
+        // The green-haired man walks about this corner and may stand in our
+        // column for a moment: wait for him twice before trying another.
+        size_t went = 0;
+        for (size_t wait = 0; wait < 3; wait++){
+            if (wait > 0){
+                pbf_wait(context, 2500ms);
+            }
+            const WalkResult up = walk_until_dpad(stream, context, 0, 1, 6000ms, "north up the street to Route 204");
+            scene = up.stop == WalkStop::DIALOG;
+            const Milliseconds moving = up.walked - ROUTE_START_DELAY - (up.stop == WalkStop::BLOCKED ? 800ms : 0ms);
+            went += moving.count() <= 0 ? 0 : (size_t)(moving / ROUTE_MS_PER_TILE_UP_DOWN);
+            if (scene || up.stop != WalkStop::BLOCKED){
+                break;
+            }
+        }
+        if (scene){
             break;
         }
-        walk_dir(stream, context, Direction::SOUTH, 15000ms, "back down to the street");
+        if (went > 0){
+            dpad_tiles(stream, context, DPAD_DOWN, went, "back down to the long road");
+        }
     }
     if (!scene){
         fail(stream, "Jubilife: no column led up the north road to Rowan.");
