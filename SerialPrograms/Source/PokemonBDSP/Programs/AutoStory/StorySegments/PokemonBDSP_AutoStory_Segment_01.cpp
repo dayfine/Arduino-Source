@@ -426,6 +426,11 @@ void oreburgh_to_roark(VideoStream& stream, ProControllerContext& context){
     pbf_move_left_joystick(context, {1, 0}, 160ms, 300ms);
     pbf_move_left_joystick(context, {1, 0}, 160ms, 300ms);
     context.wait_for_all_requests();
+    auto inside_now = [&](){
+        const VideoSnapshot frame = stream.video().snapshot();
+        size_t percent = 0;
+        return frame && (center_floor_on_screen(*frame.frame, &percent), percent >= 45);
+    };
     bool inside = false;
     const int shifts[] = {0, 1, -2, 3, -4};     // cumulative: here, +1, -1, +2, -2
     for (size_t i = 0; i < 5 && !inside; i++){
@@ -445,7 +450,7 @@ void oreburgh_to_roark(VideoStream& stream, ProControllerContext& context){
         // 56 to 64 % inside.
         const WalkResult in = walk_until(stream, context, 0, 1, 2500ms, "north into the Center's door",
             [](const ImageViewRGB32& screen){ size_t percent = 0; center_floor_on_screen(screen, &percent); return percent >= 45; });
-        if (in.stop == WalkStop::ARRIVED || ((in.stop == WalkStop::TRANSITION || in.stop == WalkStop::LIMIT) && in_pokemon_center(stream))){
+        if (in.stop == WalkStop::ARRIVED || ((in.stop == WalkStop::TRANSITION || in.stop == WalkStop::LIMIT) && inside_now())){
             inside = true;
             break;
         }
@@ -462,9 +467,9 @@ void oreburgh_to_roark(VideoStream& stream, ProControllerContext& context){
         // Talked in the door's column: the door is free now.
         walk_until(stream, context, 0, 1, 2500ms, "north into the Center's door",
             [](const ImageViewRGB32& screen){ size_t percent = 0; center_floor_on_screen(screen, &percent); return percent >= 45; });
-        inside = in_pokemon_center(stream);
+        inside = inside_now();
     }
-    if (!inside || !in_pokemon_center(stream)){
+    if (!inside || !inside_now()){
         fail(stream, "Oreburgh: no column east of the save went into the Pokemon Center.");
     }
     context.wait_for(1000ms);
