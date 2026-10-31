@@ -31,7 +31,7 @@ public:
 class RngHelper : public RngProgramInstance{
 public:
     using Descriptor = RngHelper_Descriptor;
-    virtual PartyRequirement party_requirement() const override{ return PartyRequirement::NONE; }
+    virtual size_t free_party_slots_needed() const override;
     RngHelper();
     virtual void program(SingleSwitchProgramEnvironment& env, ProControllerContext &context) override;
     virtual void start_program_border_check(

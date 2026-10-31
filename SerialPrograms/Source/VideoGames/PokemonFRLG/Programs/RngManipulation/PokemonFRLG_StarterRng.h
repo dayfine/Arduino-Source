@@ -33,7 +33,7 @@ public:
 class StarterRng : public RngProgramInstance, private ConfigOption::Listener{
 public:
     using Descriptor = StarterRng_Descriptor;
-    virtual PartyRequirement party_requirement() const override{ return PartyRequirement::NONE; }
+    virtual size_t free_party_slots_needed() const override{ return 0; }
     ~StarterRng();
     StarterRng();
     virtual void program(SingleSwitchProgramEnvironment& env, ProControllerContext &context) override;

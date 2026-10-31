@@ -37,7 +37,7 @@ public:
 class StaticRng : public RngProgramInstance, private ConfigOption::Listener{
 public:
     using Descriptor = StaticRng_Descriptor;
-    virtual PartyRequirement party_requirement() const override{ return PartyRequirement::FREE_SLOT; }
+    virtual size_t free_party_slots_needed() const override{ return 1; }
     ~StaticRng();
     StaticRng();
     virtual void program(SingleSwitchProgramEnvironment& env, ProControllerContext &context) override;

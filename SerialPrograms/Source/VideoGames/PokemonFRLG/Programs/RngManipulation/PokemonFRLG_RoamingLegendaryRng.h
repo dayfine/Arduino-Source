@@ -32,7 +32,7 @@ public:
 class RoamingLegendaryRng : public RngProgramInstance, private ConfigOption::Listener{
 public:
     using Descriptor = RoamingLegendaryRng_Descriptor;
-    virtual PartyRequirement party_requirement() const override{ return PartyRequirement::FREE_SLOT; }
+    virtual size_t free_party_slots_needed() const override{ return 1; }
     ~RoamingLegendaryRng();
     RoamingLegendaryRng();
     virtual void program(SingleSwitchProgramEnvironment& env, ProControllerContext &context) override;

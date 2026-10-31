@@ -4,6 +4,7 @@
  *
  */
 
+#include <string>
 #include "Common/Cpp/Exceptions.h"
 #include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "Pokemon/Pokemon_Strings.h"
@@ -42,38 +43,37 @@ private:
     StartMenuContext m_menu_context;
 };
 
-//  Without a free slot, the Pokemon the program catches or receives goes to
-//  the PC and the program reads the wrong Pokemon.
-void check_party_has_free_slot(Logger& logger, PartyCheckActions& actions){
-    logger.log("Checking for a free party slot...");
+std::string not_enough_free_slots_message(size_t party_size, size_t free_slots_needed){
+    if (free_slots_needed == 1){
+        return "Your party is full. Leave a party slot free so the program can check the "
+            + Pokemon::STRING_POKEMON + " it catches.";
+    }
+    return "Your party has " + std::to_string(party_size) + " " + Pokemon::STRING_POKEMON
+        + ". Leave at least " + std::to_string(free_slots_needed)
+        + " party slots free for the " + Pokemon::STRING_POKEMON + " the program catches or receives.";
+}
+
+}
+
+
+void check_party_free_slots(
+    Logger& logger,
+    size_t free_slots_needed,
+    PartyCheckActions& actions
+){
+    if (free_slots_needed == 0){
+        return;
+    }
+    logger.log("Checking for " + std::to_string(free_slots_needed) + " free party slot(s)...");
     if (!actions.open_party_menu()){
         logger.log("Unable to open the party menu. Skipping the free party slot check.", COLOR_RED);
         return;
     }
-    if (actions.read_last_occupied_slot() == PartySlot::SIX){
-        throw UserSetupError(
-            logger,
-            "Your party is full. Leave a party slot free so the program can check the " + Pokemon::STRING_POKEMON + " it catches."
-        );
+    const size_t party_size = static_cast<size_t>(actions.read_last_occupied_slot()) + 1;
+    if (6 - party_size < free_slots_needed){
+        throw UserSetupError(logger, not_enough_free_slots_message(party_size, free_slots_needed));
     }
-    logger.log("Party has a free slot.");
-}
-
-}
-
-
-void check_party_requirement(
-    Logger& logger,
-    PartyRequirement requirement,
-    PartyCheckActions& actions
-){
-    switch (requirement){
-    case PartyRequirement::NONE:
-        break;
-    case PartyRequirement::FREE_SLOT:
-        check_party_has_free_slot(logger, actions);
-        break;
-    }
+    logger.log("Party has enough free slots.");
 }
 
 
@@ -82,7 +82,7 @@ void RngProgramInstance::start_program_game_checks(
     ProControllerContext& context
 ){
     ConsolePartyCheckActions actions(env.console, context, start_menu_context());
-    check_party_requirement(env.console.logger(), party_requirement(), actions);
+    check_party_free_slots(env.console.logger(), free_party_slots_needed(), actions);
 }
 
 }

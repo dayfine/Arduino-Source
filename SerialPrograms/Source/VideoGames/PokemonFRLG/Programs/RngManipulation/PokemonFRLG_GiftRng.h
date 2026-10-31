@@ -32,7 +32,7 @@ public:
 class GiftRng : public RngProgramInstance, private ConfigOption::Listener{
 public:
     using Descriptor = GiftRng_Descriptor;
-    virtual PartyRequirement party_requirement() const override{ return PartyRequirement::FREE_SLOT; }
+    virtual size_t free_party_slots_needed() const override{ return 1; }
     ~GiftRng();
     GiftRng();
     virtual void program(SingleSwitchProgramEnvironment& env, ProControllerContext &context) override;
