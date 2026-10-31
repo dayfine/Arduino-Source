@@ -382,13 +382,24 @@ void walk_out_of_center(VideoStream& stream, ProControllerContext& context, cons
         if (shift != 0){
             hold_tiles(stream, context, shift > 0 ? Direction::EAST : Direction::WEST, (size_t)std::abs(shift));
         }
-        // Stop as soon as the floor is gone, on the tile below the door: the
-        // door's fade often reads as the time limit, and walking on leaves
-        // the door's row (Oreburgh: on down to the mine).
-        const WalkResult out = walk_until(stream, context, 0, -1, 8000ms, label + ": out of the Center",
-            [](const ImageViewRGB32& screen){ size_t percent = 0; center_floor_on_screen(screen, &percent); return percent < 30; });
-        if (out.stop == WalkStop::TRANSITION || out.stop == WalkStop::ARRIVED){
-            context.wait_for(2000ms);
+        // A tile at a time, looking after each, so we stop on the doorstep:
+        // walk_until() looks only between 400 ms holds, and r205d held on
+        // through the fade and stepped a tile further south.
+        bool out = false;
+        for (size_t tile = 0; tile < 8 && !out; tile++){
+            const WalkResult step = walk_for(stream, context, 0, -1, 240ms, label + ": out of the Center");
+            if (step.stop == WalkStop::DIALOG){
+                finish_dialogue(stream, context, BUTTON_B, label + ": someone in the Center");
+            }
+            context.wait_for(1500ms);
+            const VideoSnapshot frame = stream.video().snapshot();
+            size_t percent = 100;
+            if (frame){
+                center_floor_on_screen(*frame.frame, &percent);
+            }
+            out = percent < 30;
+        }
+        if (out){
             return;
         }
     }
