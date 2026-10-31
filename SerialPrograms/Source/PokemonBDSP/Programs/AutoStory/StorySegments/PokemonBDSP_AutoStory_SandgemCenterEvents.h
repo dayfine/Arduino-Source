@@ -285,6 +285,22 @@ extern const char* const JUBILIFE_PRESIDENT_NAME;
 //                               default answer is right; Coupon 1
 Pokemon::Checkpoint jubilife_clown_mart_checkpoint(JubilifeActions& game);
 extern const char* const JUBILIFE_CLOWN_MART_NAME;
+
+//  00.05f: from beside the TV station clown (after 00.05e and his coupon),
+//  the clown in front of the Poketch Company, for Coupon 3. Stepped through
+//  on the console (2026-10-30): west, south and west stop at the lamp at the
+//  long road's west end; north stops a row up; seven tiles east and north
+//  stop at the Poketch Company's front wall, between its doors. The clown
+//  wanders a tile or two by the sign south-west of there: sweep the rows
+//  below, pressing A.
+//      1. to_the_lamp           west, south, west, north: the lamp's corner
+//      2. to_the_company        seven tiles east, north to the front wall
+//      3. talk_to_clown         a row south: east 3, west 6 pressing A; a
+//                               second row the same; Coupon 3
+Pokemon::Checkpoint jubilife_clown_company_checkpoint(JubilifeActions& game);
+extern const char* const JUBILIFE_CLOWN_COMPANY_NAME;
+//  DIAGNOSTIC ONLY: Remove before pushing to production.
+void diagnostic_jubilife_clown_company(SingleSwitchProgramEnvironment& env, ProControllerContext& context);
 //  DIAGNOSTIC ONLY: Remove before pushing to production.
 void diagnostic_jubilife_clown_mart(SingleSwitchProgramEnvironment& env, ProControllerContext& context);
 //  DIAGNOSTIC ONLY: Remove before pushing to production.

@@ -1485,7 +1485,13 @@ public:
         (void)direction;
         return Pokemon::outcome_ok();
     }
-    virtual DialogueRead talk_walking(Direction, size_t, const std::string&) override{ return {}; }
+    virtual DialogueRead talk_walking(Direction direction, size_t, const std::string& label) override{
+        trace.push_back("talk walking: " + label);
+        if (label == "Clown by the Poketch Company" && direction == Direction::WEST){
+            return DialogueRead{.opened = true, .closed = true, .text = "Hi!"};
+        }
+        return {};
+    }
     virtual Pokemon::Outcome walk_to_route_202_save_spot() override{ return Pokemon::outcome_ok(); }
     virtual Pokemon::Outcome save_on_route_202() override{ return Pokemon::outcome_ok(); }
     virtual Pokemon::Outcome climb_the_steps() override{
@@ -1611,6 +1617,17 @@ public:
                 }
                 if (!Pokemon::run_checkpoint(clown_state, clown, log).completed){
                     return std::string(c.name) + ": 00.05e did not complete.";
+                }
+            }
+            if (school_done){
+                Pokemon::RunState clown_state;
+                Pokemon::Checkpoint clown = jubilife_clown_company_checkpoint(game);
+                const std::vector<std::string> problems = Pokemon::lint_checkpoint(clown);
+                if (!problems.empty()){
+                    return std::string(c.name) + ": 00.05f lint: " + problems.front();
+                }
+                if (!Pokemon::run_checkpoint(clown_state, clown, log).completed){
+                    return std::string(c.name) + ": 00.05f did not complete.";
                 }
             }
             size_t tries = 0;

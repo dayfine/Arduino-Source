@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <cmath>
 #include <memory>
+#include <tuple>
 #include <utility>
 #include "Common/Cpp/PrettyPrint.h"
 #include "Common/Cpp/Filesystem/Filesystem.h"
@@ -1028,6 +1029,70 @@ Checkpoint jubilife_clown_mart_checkpoint(JubilifeActions& game){
     return checkpoint;
 }
 
+const char* const JUBILIFE_CLOWN_COMPANY_NAME = "00.05f Jubilife: the clown by the Poketch Company (events)";
+
+Checkpoint jubilife_clown_company_checkpoint(JubilifeActions& game){
+    Checkpoint checkpoint;
+    checkpoint.id = "jubilife_clown_company";
+    checkpoint.interrupts.push_back(dialogue_interrupt(game));
+    checkpoint.events.push_back(wrapped_step("to_the_lamp",
+        "west, south and west to the lamp at the long road's west end, north a row", "at_west_lamp",
+        [&game](RunState&){
+            for (const auto& [direction, tiles, label] : {
+                std::tuple<Direction, size_t, const char*>{Direction::WEST, 14, "West to the hedges"},
+                {Direction::SOUTH, 10, "South to the long road"},
+                {Direction::WEST, 26, "West to the lamp"},
+                {Direction::NORTH, 6, "North by the lamp"},
+            }){
+                const Outcome walked = game.walk_until_stopped(direction, tiles, label);
+                if (!walked.succeeded()){
+                    return walked;
+                }
+            }
+            return outcome_ok();
+        }));
+    checkpoint.events.push_back(wrapped_step("to_the_company",
+        "seven tiles east, then north until the Poketch Company's front wall stops us", "at_company_wall",
+        [&game](RunState&){
+            game.turn(Direction::EAST);
+            for (size_t tiles = 0; tiles < 7; tiles++){
+                const Outcome moved = game.tile(Direction::EAST, "East along the plaza");
+                if (!moved.succeeded()){
+                    return moved;
+                }
+            }
+            return game.walk_until_stopped(Direction::NORTH, 8, "North to the Poketch Company");
+        }));
+    {
+        std::shared_ptr<DialogueRead> read = std::make_shared<DialogueRead>();
+        Event talk;
+        talk.name = "talk_to_clown";
+        talk.why = "the clown asks a question (Yes is right) and gives Coupon 3";
+        talk.skip_if.push_back(condition("coupon_3", [](RunState& state){ return state.flags.count("coupon_3") > 0; }));
+        talk.act = [&game, read](RunState& state){
+            for (size_t rows = 0; rows < 2 && !read->opened; rows++){
+                const Outcome down = game.step(Direction::SOUTH, "A row south");
+                if (!down.succeeded()){
+                    return down;
+                }
+                *read = game.talk_walking(Direction::EAST, 3, "Clown by the Poketch Company");
+                if (!read->opened){
+                    *read = game.talk_walking(Direction::WEST, 6, "Clown by the Poketch Company");
+                }
+            }
+            if (read->opened && read->closed){
+                state.flags.insert("coupon_3");
+            }
+            return outcome_ok();
+        };
+        talk.expect.push_back(condition("his talk opened and was closed", [read](RunState&){
+            return read->opened && read->closed;
+        }));
+        checkpoint.events.push_back(std::move(talk));
+    }
+    return checkpoint;
+}
+
 class ConsoleJubilifeActions : public ConsoleMartLadyActionsT<JubilifeActions>{
 public:
     ConsoleJubilifeActions(SingleSwitchProgramEnvironment& env, ProControllerContext& context)
@@ -1153,6 +1218,12 @@ void diagnostic_jubilife_center(SingleSwitchProgramEnvironment& env, ProControll
     ConsoleJubilifeActions game(env, context);
     Checkpoint checkpoint = jubilife_center_checkpoint(game);
     run_on_console(env, checkpoint, JUBILIFE_CENTER_NAME);
+}
+
+void diagnostic_jubilife_clown_company(SingleSwitchProgramEnvironment& env, ProControllerContext& context){
+    ConsoleJubilifeActions game(env, context);
+    Checkpoint checkpoint = jubilife_clown_company_checkpoint(game);
+    run_on_console(env, checkpoint, JUBILIFE_CLOWN_COMPANY_NAME);
 }
 
 void diagnostic_jubilife_clown_mart(SingleSwitchProgramEnvironment& env, ProControllerContext& context){
