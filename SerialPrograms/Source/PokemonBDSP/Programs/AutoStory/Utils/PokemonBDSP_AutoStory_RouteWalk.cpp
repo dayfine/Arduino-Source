@@ -78,6 +78,30 @@ std::vector<TilePos> leg_path(const TileGrid& grid, TilePos from, Direction dire
     return path;
 }
 
+//  Holding toward a wall with people or Pokemon moving beside us never reads
+//  as blocked (8 to 16 per 400 ms in the Oreburgh Mine, s03d1), but walking
+//  scrolls the view far more (35 to 90). True if holding toward (x, y) for
+//  1.6 s changes the screen less than walking would: we stand at a wall.
+bool holding_against_wall(VideoStream& stream, ProControllerContext& context, double x, double y, const std::string& label){
+    constexpr double WALKING_CHANGE = 25.0;
+    context.wait_for_all_requests();
+    VideoSnapshot before = stream.video().snapshot();
+    double most = 0;
+    for (size_t chunk = 0; chunk < 4 && before; chunk++){
+        pbf_move_left_joystick(context, {x, y}, 400ms, 0ms);
+        context.wait_for_all_requests();
+        VideoSnapshot after = stream.video().snapshot();
+        if (!after){
+            return false;
+        }
+        most = std::max(most, walk_screen_change(*before.frame, *after.frame));
+        before = std::move(after);
+    }
+    stream.log("[Walk] " + label + ": most screen change holding on " + std::to_string(most) +
+        (most < WALKING_CHANGE ? ", less than walking: at the wall." : ", as much as walking: still moving."));
+    return before && most < WALKING_CHANGE;
+}
+
 //  The map all of `tiles` are on, or empty if they are on several or none.
 std::string map_of(const MapSet& maps, const std::vector<TilePos>& tiles){
     std::string name;
@@ -303,7 +327,9 @@ std::vector<TilePos> walk_route(
                 //  not where the plan has him.
                 if (!interrupted && result.stop == WalkStop::LIMIT && route_wall_readable(grid, planned.after)){
                     const WalkResult check = walk_until(stream, context, x, y, 2000ms, leg_label + ": at the wall?");
-                    if (check.stop != WalkStop::BLOCKED){
+                    if (check.stop != WalkStop::BLOCKED &&
+                        !(check.stop == WalkStop::LIMIT && holding_against_wall(stream, context, x, y, leg_label + ": at the wall?"))
+                    ){
                         OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
                             leg_label + ": ran out of time short of the wall, and walking on gets " +
                             walk_stop_name(check.stop) + ": not where the plan has us.", stream);
