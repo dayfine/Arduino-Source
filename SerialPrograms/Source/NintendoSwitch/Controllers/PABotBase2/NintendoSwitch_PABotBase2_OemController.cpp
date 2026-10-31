@@ -122,7 +122,7 @@ PABotBase2_OemController::PABotBase2_OemController(
     RecursiveThrottler& logging_throttler,
     PABotBase2::Connection& connection,
     ControllerType controller_type,
-    std::function<void(double magnitude)> on_rumble
+    MoveOnlyFunction<void(double magnitude)> on_rumble
 )
     : PABotBase2_Controller(logger, logging_throttler, connection)
     , m_controller_type(controller_type)
