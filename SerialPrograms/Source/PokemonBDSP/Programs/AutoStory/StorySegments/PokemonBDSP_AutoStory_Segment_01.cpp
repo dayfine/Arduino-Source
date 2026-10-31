@@ -391,29 +391,24 @@ void oreburgh_to_roark(VideoStream& stream, ProControllerContext& context){
     // (2026-10-29: he ignored A in r101 and r104 and by hand, and answered at
     // once after a talk with Barry). Barry is just east of us.
     route_turn(stream, context, Direction::EAST);
+    // A save made after his talk has him gone (2026-10-31, the save in front
+    // of the Center was remade after it): go on, and if he never told us,
+    // Roark not answering says so.
     pbf_press_button(context, BUTTON_A, 80ms, 200ms);
-    if (!dialogue_opens(stream, context, 3000ms)){
-        fail(stream, "Oreburgh: Barry did not talk at the gym door.");
+    if (dialogue_opens(stream, context, 3000ms)){
+        finish_dialogue(stream, context, BUTTON_B, "Barry at the gym door");
+    }else{
+        stream.log("[01.03] Barry did not talk at the gym door: he has told us already. Going on.", COLOR_ORANGE);
     }
-    finish_dialogue(stream, context, BUTTON_B, "Barry at the gym door");
-    // The ledge and the fence end these legs, so holding on leaves us against
-    // them even when people walking about keep the screen changing and the
-    // stop goes unseen (s03a1: 8 to 16 at the fence, a hiker and a child on
-    // screen): the time limit counts as reached.
-    const WalkStop ledge = walk_dir(stream, context, Direction::SOUTH, 8000ms, "south to the stone ledge").stop;
-    if (ledge != WalkStop::BLOCKED && ledge != WalkStop::LIMIT){
-        fail(stream, "Oreburgh: walking south did not stop at the stone ledge.");
-    }
+    // The ledge and the fence end these legs (see walk_to_wall()).
+    walk_to_wall(stream, context, 0, -1, 8000ms, "south to the stone ledge");
     // A townsperson wandering across the row can stop us a tile or two short
     // (r95): after a pause, hold east again; against the fence that does
     // nothing. Whether that second walk moved cannot be read from the screen
     // with people about (s03b2: 6 to 12 standing still, so "blocked" took
     // 2 s every time), so neither walk is checked for it.
     for (size_t push = 0; push < 2; push++){
-        const WalkResult east = walk_dir(stream, context, Direction::EAST, push == 0 ? 10000ms : 4000ms, "east to the fence below the Poke Mart");
-        if (east.stop != WalkStop::BLOCKED && east.stop != WalkStop::LIMIT){
-            fail(stream, std::string("Oreburgh: walking east to the fence below the Poke Mart ended with ") + walk_stop_name(east.stop) + ".");
-        }
+        walk_to_wall(stream, context, 1, 0, push == 0 ? 10000ms : 4000ms, "east to the fence below the Poke Mart");
         if (push == 0){
             context.wait_for(1500ms);
         }
@@ -503,47 +498,31 @@ void oreburgh_to_roark(VideoStream& stream, ProControllerContext& context){
     at = walk_route(stream, context, maps, at,
         [&](const Pokemon::TilePos& pos){ return pos.y >= roark.y && pos.y <= roark.y + 1 && pos.x >= roark.x + 2 && pos.x <= roark.x + 7; },
         no_trainers, in_the_way, "To the stretch east of Roark");
-    walk_dir(stream, context, Direction::NORTH, 2000ms, "north to the wall on Roark's row");
-    // A wild battle on the way eats into the walk's time (r100): walk again.
-    WalkStop west = WalkStop::LIMIT;
-    for (size_t attempt = 0; attempt < 3 && west == WalkStop::LIMIT; attempt++){
-        west = walk_dir(stream, context, Direction::WEST, 6000ms, "west to the rock beside Roark").stop;
+    walk_to_wall(stream, context, 0, 1, 2000ms, "north to the wall on Roark's row");
+    // His rock and the bottom wall end these legs (see walk_to_wall()). A
+    // wild battle on the way eats into the walk's time (r100): walk again.
+    for (size_t attempt = 0; attempt < 3; attempt++){
+        if (walk_to_wall(stream, context, -1, 0, 6000ms, "west to the rock beside Roark").wild_battles == 0){
+            break;
+        }
     }
-    // His rock and the bottom wall end these legs, so holding on leaves us
-    // against them; Roark swinging his pickaxe beside us keeps the screen
-    // changing (s03c1: 14 against the bottom wall, 8 to 11 at the rock), so
-    // the time limit counts as reached.
-    if (west != WalkStop::BLOCKED && west != WalkStop::LIMIT){
-        fail(stream, "Oreburgh Mine: walking west along Roark's row did not stop at his rock.");
-    }
-    const WalkStop bottom = walk_dir(stream, context, Direction::SOUTH, 2000ms, "south to the bottom wall").stop;
-    if (bottom != WalkStop::BLOCKED && bottom != WalkStop::LIMIT){
-        fail(stream, "Oreburgh Mine: walking south from Roark's rock did not stop at the bottom wall.");
-    }
+    walk_to_wall(stream, context, 0, -1, 2000ms, "south to the bottom wall");
     route_turn(stream, context, Direction::WEST);
     pbf_move_left_joystick(context, {-1, 0}, 120ms, 300ms);
     pbf_move_left_joystick(context, {-1, 0}, 120ms, 300ms);
     route_turn(stream, context, Direction::NORTH);
     context.wait_for_all_requests();
-    // Movement is by whole tiles: a sideways nudge only steps onto his rock's
-    // tile (r105, r106 read the rock's line as his). Turn to him and press A
-    // once; the camera zooms in and his first line, "OK, stand back and watch
-    // this.", can take some seconds (r98).
-    bool talked = false;
-    for (size_t attempt = 0; attempt < 3 && !talked; attempt++){
-        route_turn(stream, context, Direction::EAST);
-        route_turn(stream, context, Direction::NORTH);
-        context.wait_for(500ms);
-        if (VideoSnapshot screen = stream.video().snapshot()){
-            const std::string folder = SCREENSHOTS_PATH() + "AutoStory/route/";
-            Filesystem::create_directories(Filesystem::Path(folder));
-            screen.frame->save(folder + now_to_filestring() + "-below-roark-" + std::to_string(attempt) + ".png");
-        }
-        pbf_press_button(context, BUTTON_A, 80ms, 200ms);
-        talked = dialogue_opens(stream, context, 8000ms);
+    if (VideoSnapshot screen = stream.video().snapshot()){
+        const std::string folder = SCREENSHOTS_PATH() + "AutoStory/route/";
+        Filesystem::create_directories(Filesystem::Path(folder));
+        screen.frame->save(folder + now_to_filestring() + "-below-roark.png");
     }
-    if (!talked){
-        fail(stream, "Oreburgh Mine: no talk opened below Roark.");
+    // The two taps west land within a third of a tile or so of his column
+    // (s03e2 missed him by that much), so look for him with nudges either
+    // side. The camera zooms in and his first line, "OK, stand back and
+    // watch this.", can take some seconds (r98).
+    if (!talk_with_nudges(stream, context, Direction::NORTH, "Roark", 8000ms)){
+        fail(stream, "Oreburgh Mine: no talk opened below Roark (has Barry told us about the mine?).");
     }
     finish_dialogue(stream, context, BUTTON_B, "Roark");
     // His scene ends with him smashing his rock and leaving: his tile is
@@ -629,12 +608,8 @@ void walk_out_of_center(VideoStream& stream, ProControllerContext& context, cons
 //  column. The hold is checked by the door itself: walk north, and if the
 //  gym's wall stops us, try the columns either side.
 void oreburgh_street_to_gym(VideoStream& stream, ProControllerContext& context){
-    if (walk_dir(stream, context, Direction::WEST, 15000ms, "west to the cliff").stop != WalkStop::BLOCKED){
-        fail(stream, "Oreburgh: walking west from the Center did not stop at the cliff.");
-    }
-    if (walk_dir(stream, context, Direction::SOUTH, 3000ms, "south to the posts").stop != WalkStop::BLOCKED){
-        fail(stream, "Oreburgh: walking south did not stop at the posts.");
-    }
+    walk_to_wall(stream, context, -1, 0, 15000ms, "west to the cliff");
+    walk_to_wall(stream, context, 0, -1, 3000ms, "south to the posts");
     hold_tiles(stream, context, Direction::NORTH, 1);
     hold_tiles(stream, context, Direction::EAST, 17);
     // Cumulative steps: here, a tile east, a tile west, two east, two west.
@@ -684,8 +659,8 @@ bool oreburgh_gym_battles(VideoStream& stream, ProControllerContext& context){
             continue;
         }
         // Roark stands at the top facing us; a wall or a stair edge says
-        // nothing to A. Only Roark starts a battle from our A here.
-        route_turn(stream, context, Direction::NORTH);
+        // nothing to A. Only Roark starts a battle from our A here. The walk
+        // left us facing north: a turn tap that way would be a step.
         pbf_press_button(context, BUTTON_A, 80ms, 200ms);
         if (dialogue_opens(stream, context, 3000ms)){
             if (talk_or_fight(stream, context, "Roark")){
@@ -715,9 +690,7 @@ void oreburgh_gym(VideoStream& stream, ProControllerContext& context){
     // 01.03 leaves us below the mine's sign; a tile east is the column
     // straight up to the Center (by hand: blocked at its front after 6.4 s).
     hold_tiles(stream, context, Direction::EAST, 1);
-    if (walk_dir(stream, context, Direction::NORTH, 12000ms, "north to the Center's front").stop != WalkStop::BLOCKED){
-        fail(stream, "Oreburgh: walking north from the mine did not stop at the Pokemon Center.");
-    }
+    walk_to_wall(stream, context, 0, 1, 12000ms, "north to the Center's front");
 
     // Losing costs some money and keeps the experience, so each try comes
     // back stronger: Roark won twice by hand against Piplup Lv 10 and 14 and
@@ -893,8 +866,7 @@ void oreburgh_to_floaroma(VideoStream& stream, ProControllerContext& context){
             },
             no_trainers, in_the_way, "To a rock across the corridor");
         route_turn(stream, context, Direction::EAST);
-        pbf_press_button(context, BUTTON_A, 80ms, 200ms);
-        if (!dialogue_opens(stream, context, 2000ms)){
+        if (!talk_with_nudges(stream, context, Direction::EAST, "the rock east of us", 2000ms)){
             fail(stream, "Ravaged Path: no Rock Smash offer facing the rock east of us.");
         }
         // "Would you like to use Rock Smash?": A for Yes, the animation, then

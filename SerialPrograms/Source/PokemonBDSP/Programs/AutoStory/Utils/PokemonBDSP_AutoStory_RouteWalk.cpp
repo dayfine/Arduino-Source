@@ -161,6 +161,36 @@ std::optional<Direction> talk_to_adjacent_npc(
     return std::nullopt;
 }
 
+bool talk_with_nudges(
+    VideoStream& stream, ProControllerContext& context,
+    Direction facing, const std::string& label, Milliseconds wait
+){
+    const bool vertical = facing == Direction::NORTH || facing == Direction::SOUTH;
+    const Direction minus = vertical ? Direction::WEST : Direction::NORTH;
+    const Direction plus = vertical ? Direction::EAST : Direction::SOUTH;
+    int at = 0;
+    for (int offset : {0, -1, 1, -2, 2}){
+        const Direction side = offset < at ? minus : plus;
+        for (; at != offset; at += offset < at ? -1 : 1){
+            double x, y;
+            stick_for(side, x, y);
+            pbf_move_left_joystick(context, {x, y}, ROUTE_NUDGE_TAP, 300ms);
+        }
+        if (offset != 0){
+            route_turn(stream, context, facing);
+        }
+        pbf_press_button(context, BUTTON_A, 80ms, 0ms);
+        context.wait_for_all_requests();
+        ShortDialogWatcher dialog(COLOR_CYAN);
+        if (wait_until(stream, context, wait, {{dialog}}) == 0){
+            stream.log("[Route] " + label + ": answered " + std::to_string(offset) + " nudge(s) from where we stood.");
+            return true;
+        }
+    }
+    stream.log("[Route] " + label + ": nobody answered within two nudges either side.");
+    return false;
+}
+
 RobustPlanCosts town_plan_costs(){
     RobustPlanCosts costs;
     //  A tile's hold moves exactly a tile; a longer open leg may end a tile

@@ -57,6 +57,21 @@ std::optional<Pokemon::Direction> talk_to_adjacent_npc(
     const std::string& label, Milliseconds wait = Milliseconds(1500)
 );
 
+//  Talks to someone straight ahead in `facing`, where we may stand a little
+//  off their tile: BDSP moves by any distance, and a sideways tap moves about
+//  a third of a tile (a 50ms tap 0.2 to 0.45 tiles, a 100ms turn tap 0.4, on
+//  the console 2026-10-31). Presses A, and while nobody answers shifts by one
+//  such tap at a time to -1, +1, -2, +2 taps from the start and tries again.
+//  Never turns away and back between tries: each turn is a tap that moves us
+//  (s03e2 drifted east of Roark a third of a tile per try). Returns whether a
+//  dialogue opened, left open.
+bool talk_with_nudges(
+    VideoStream& stream, ProControllerContext& context,
+    Pokemon::Direction facing, const std::string& label,
+    Milliseconds wait = Milliseconds(3000)
+);
+constexpr Milliseconds ROUTE_NUDGE_TAP = Milliseconds(50);
+
 //  Whether a walk to the wall that ends on any of `after` can tell it has
 //  stopped: not in tall grass, whose sway keeps the screen changing at a
 //  wall. Elsewhere, a walk to the wall that stops confirms where it ended.

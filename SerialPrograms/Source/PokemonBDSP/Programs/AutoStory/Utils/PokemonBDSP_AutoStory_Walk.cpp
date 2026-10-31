@@ -344,6 +344,21 @@ WalkProbe probe_walk(
     return result;
 }
 
+WalkResult walk_to_wall(
+    VideoStream& stream, ProControllerContext& context,
+    double x, double y, Milliseconds limit, const std::string& label
+){
+    const WalkResult result = walk_until(stream, context, x, y, limit, label);
+    if (result.stop == WalkStop::DIALOG || result.stop == WalkStop::TRANSITION){
+        OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
+            label + ": " + walk_stop_name(result.stop) + " instead of a wall.", stream);
+    }
+    if (result.stop == WalkStop::LIMIT){
+        stream.log("[Walk] " + label + ": held for the whole limit without seeing the stop; taking the wall as reached.");
+    }
+    return result;
+}
+
 WalkResult walk_expecting(
     VideoStream& stream, ProControllerContext& context,
     double x, double y, Milliseconds limit, const std::string& label,

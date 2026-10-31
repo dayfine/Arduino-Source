@@ -65,6 +65,17 @@ WalkResult walk_expecting(
     const std::function<bool(const ImageViewRGB32& screen)>& arrived = nullptr
 );
 
+//  walk_until() toward a wall the route was measured to end at. Seeing the
+//  stop only ends the hold early: holding on for the whole `limit` also
+//  counts as there, as people or animations nearby can keep the screen
+//  changing at a wall (s03a1: a hiker and a child by the Mart fence; s03c1:
+//  Roark's pickaxe; r162a: Jubilife's TV). A wrong place is caught by the
+//  next gate. Fails on a dialog or a transition: we are not where we think.
+WalkResult walk_to_wall(
+    VideoStream& stream, ProControllerContext& context,
+    double x, double y, Milliseconds limit, const std::string& label
+);
+
 //  Walks toward someone to talk to: after each short stretch, presses A and stops
 //  once a dialogue opens. Use it where walking into the person does not read as
 //  BLOCKED, e.g. in tall grass, whose sway keeps the screen changing.
