@@ -614,7 +614,7 @@ public:
         return outcome;
     }
 
-private:
+protected:
     //  After a talk opened: reads the first box, then presses `next` once
     //  per line, 1.5 s apart, and only while a box shows: a press after it
     //  has closed would start the talk over.
@@ -640,6 +640,7 @@ private:
         stream.log("[Talk] " + label + (read.closed ? ": closed." : ": still open."));
     }
 
+private:
     static Outcome wrap(const char* failure, const std::function<void()>& step){
         try{
             step();
@@ -1168,6 +1169,121 @@ Checkpoint jubilife_clown_company_checkpoint(JubilifeActions& game){
     return checkpoint;
 }
 
+const char* const JUBILIFE_POKETCH_NAME = "00.05g Jubilife: the Poketch from the president, then the Pokemon Center (events)";
+
+//  Measured on the console (2026-10-30), from the gap beside the Poketch
+//  Company's sign: a row south, then east along the long road stops at the
+//  main road (on the building north of the Mart, or on the green-haired man
+//  who wanders the crossing; either leaves us in the main road). Six rows
+//  down that road, east stops against the Poke Mart's west wall: the column
+//  between the Mart's lamp and the Center's, so south stops above the
+//  Center's lamp. The president stands still a row or two north of that
+//  row, a few tiles west, so from a row up we go west a tile at a time,
+//  asking ahead and north. Back the same way to the lamp; the Center's lit
+//  door is then on screen a tile west and a few rows south, and the heal
+//  lines up with it.
+Checkpoint jubilife_poketch_checkpoint(JubilifeActions& game){
+    Checkpoint checkpoint;
+    checkpoint.id = "jubilife_poketch";
+    checkpoint.interrupts.push_back(dialogue_interrupt(game));
+    const auto steps = [&game](Direction direction, size_t rows, const char* label){
+        for (size_t i = 0; i < rows; i++){
+            const Outcome moved = game.step(direction, label);
+            if (!moved.succeeded()){
+                return moved;
+            }
+        }
+        return outcome_ok();
+    };
+    checkpoint.events.push_back(wrapped_step("to_the_main_road",
+        "a row south of the gap, then east along the long road until the main road stops us", "on_main_road",
+        [&game](RunState&){
+            const Outcome down = game.step(Direction::SOUTH, "Out of the gap");
+            return down.succeeded() ? game.walk_until_stopped(Direction::EAST, 30, "East along the long road") : down;
+        }));
+    checkpoint.events.push_back(wrapped_step("to_the_center_lamp",
+        "six rows down the main road, east to the Mart's wall, south to the Center's lamp", "at_center_lamp_north",
+        [&game, steps](RunState&){
+            const Outcome down = steps(Direction::SOUTH, 6, "Down the main road");
+            if (!down.succeeded()){
+                return down;
+            }
+            const Outcome east = game.walk_until_stopped(Direction::EAST, 8, "East to the Mart's wall");
+            return east.succeeded() ? game.walk_until_stopped(Direction::SOUTH, 8, "South to the Center's lamp") : east;
+        }));
+    {
+        std::shared_ptr<DialogueRead> read = std::make_shared<DialogueRead>();
+        Event talk;
+        talk.name = "talk_to_president";
+        talk.why = "the president trades the three coupons for the Poketch";
+        talk.skip_if.push_back(condition("poketch", [](RunState& state){ return state.flags.count("poketch") > 0; }));
+        talk.act = [&game, read](RunState& state){
+            const Outcome up = game.step(Direction::NORTH, "A row up from the lamp");
+            if (!up.succeeded()){
+                return up;
+            }
+            game.turn(Direction::WEST);
+            //  Facing west: ask ahead, turn north and ask, turn back, one tile
+            //  on. Turns only ever change the way we face, so none is a step.
+            for (size_t tiles = 0; tiles < 8 && !read->opened; tiles++){
+                *read = game.talk_ahead(BUTTON_B, "The Poketch Company president");
+                if (read->opened){
+                    break;
+                }
+                game.turn(Direction::NORTH);
+                *read = game.talk_ahead(BUTTON_B, "The Poketch Company president");
+                if (read->opened){
+                    break;
+                }
+                game.turn(Direction::WEST);
+                const Outcome moved = game.taps(Direction::WEST, 1, "West along the road");
+                if (!moved.succeeded()){
+                    return moved;
+                }
+            }
+            if (read->opened){
+                //  His last line asks us to try the R Button; a help panel
+                //  about the Poketch follows, closed with B.
+                game.close_panel("The Poketch's help");
+            }
+            if (read->opened && read->closed){
+                state.flags.insert("poketch");
+            }
+            return outcome_ok();
+        };
+        talk.expect.push_back(condition("his talk opened and was closed", [read](RunState&){
+            return read->opened && read->closed;
+        }));
+        checkpoint.events.push_back(std::move(talk));
+    }
+    checkpoint.events.push_back(wrapped_step("back_to_the_center_lamp",
+        "four rows north, east to the Mart's wall, south to the Center's lamp", "back_at_center_lamp",
+        [&game, steps](RunState&){
+            const Outcome up = steps(Direction::NORTH, 4, "Up toward the Mart");
+            if (!up.succeeded()){
+                return up;
+            }
+            const Outcome east = game.walk_until_stopped(Direction::EAST, 10, "East to the Mart's wall");
+            return east.succeeded() ? game.walk_until_stopped(Direction::SOUTH, 8, "South to the Center's lamp") : east;
+        }));
+    checkpoint.events.push_back(wrapped_step("heal",
+        "a tile west and four rows south, three tiles east, then in through the lit door and heal", "healed",
+        [&game, steps](RunState&){
+            for (const auto& [direction, rows, label] : {
+                std::tuple<Direction, size_t, const char*>{Direction::WEST, 1, "West of the lamp"},
+                {Direction::SOUTH, 4, "Down to the Center's front"},
+                {Direction::EAST, 3, "Toward the Center's door"},
+            }){
+                const Outcome moved = steps(direction, rows, label);
+                if (!moved.succeeded()){
+                    return moved;
+                }
+            }
+            return game.heal_at_center();
+        }));
+    return checkpoint;
+}
+
 class ConsoleJubilifeActions : public ConsoleMartLadyActionsT<JubilifeActions>{
 public:
     ConsoleJubilifeActions(SingleSwitchProgramEnvironment& env, ProControllerContext& context)
@@ -1277,6 +1393,24 @@ public:
         m_context.wait_for_all_requests();
         return outcome_ok();
     }
+    virtual DialogueRead talk_ahead(Button next, const std::string& label) override{
+        DialogueRead read;
+        pbf_press_button(m_context, BUTTON_A, 80ms, 0ms);
+        m_context.wait_for_all_requests();
+        ShortDialogWatcher opened(COLOR_CYAN);
+        if (wait_until(m_stream, m_context, 2000ms, {{opened}}) != 0){
+            m_stream.log("[Talk] " + label + ": no dialogue opened.");
+            return read;
+        }
+        read.opened = true;
+        this->finish_talk(read, next, label);
+        return read;
+    }
+    virtual void close_panel(const std::string& label) override{
+        m_stream.log("[Talk] " + label + ": B to close the panel.");
+        pbf_press_button(m_context, BUTTON_B, 80ms, 1500ms);
+        m_context.wait_for_all_requests();
+    }
     virtual bool through_door_north(const std::string& label) override{
         m_context.wait_for_all_requests();
         VideoSnapshot before = m_stream.video().snapshot();
@@ -1310,6 +1444,12 @@ void diagnostic_jubilife_clown_company(SingleSwitchProgramEnvironment& env, ProC
     ConsoleJubilifeActions game(env, context);
     Checkpoint checkpoint = jubilife_clown_company_checkpoint(game);
     run_on_console(env, checkpoint, JUBILIFE_CLOWN_COMPANY_NAME);
+}
+
+void diagnostic_jubilife_poketch(SingleSwitchProgramEnvironment& env, ProControllerContext& context){
+    ConsoleJubilifeActions game(env, context);
+    Checkpoint checkpoint = jubilife_poketch_checkpoint(game);
+    run_on_console(env, checkpoint, JUBILIFE_POKETCH_NAME);
 }
 
 void diagnostic_jubilife_clown_mart(SingleSwitchProgramEnvironment& env, ProControllerContext& context){

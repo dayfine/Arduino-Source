@@ -204,6 +204,13 @@ BDSPAutoStory::BDSPAutoStory()
           "Start beside the TV station clown (after his coupon). Walks to the third clown and gets Coupon 3; no save. "
           "Remove before pushing to production.",
           LockMode::LOCK_WHILE_RUNNING, false)
+    // DIAGNOSTIC ONLY: Remove before pushing to production.
+    , DIAGNOSTIC_JUBILIFE_POKETCH(
+          "<b>Diagnostic only: 00.05g Jubilife, the Poketch from the president (events)</b><br>"
+          "Start in the gap beside the Poketch Company's sign, with the three coupons (after 00.05f). "
+          "Gets the Poketch and heals at the Pokemon Center; no save. "
+          "Remove before pushing to production.",
+          LockMode::LOCK_WHILE_RUNNING, false)
     , ENABLE_ADVANCED_MODE(
           "<b>Advanced mode:</b><br>"
           "Use checkpoints instead of segments.",
@@ -402,6 +409,7 @@ BDSPAutoStory::BDSPAutoStory()
     PA_ADD_OPTION(DIAGNOSTIC_JUBILIFE_PRESIDENT);
     PA_ADD_OPTION(DIAGNOSTIC_JUBILIFE_CLOWN_MART);
     PA_ADD_OPTION(DIAGNOSTIC_JUBILIFE_CLOWN_COMPANY);
+    PA_ADD_OPTION(DIAGNOSTIC_JUBILIFE_POKETCH);
     PA_ADD_OPTION(ENABLE_ADVANCED_MODE);
 
     // Segment UI
@@ -553,7 +561,7 @@ void BDSPAutoStory::program(
     auto run_selected_range = [&](size_t attempt){
         if (attempt > 0) env.log("[Fake saves] Reloaded initial save; restarting the entire selected range from its start.");
         // DIAGNOSTIC ONLY: Remove this branch before pushing to production.
-        if (DIAGNOSTIC_JUBILIFE_CENTER || DIAGNOSTIC_JUBILIFE_SCHOOL || DIAGNOSTIC_JUBILIFE_BARRY || DIAGNOSTIC_JUBILIFE_PRESIDENT || DIAGNOSTIC_JUBILIFE_CLOWN_MART || DIAGNOSTIC_JUBILIFE_CLOWN_COMPANY){
+        if (DIAGNOSTIC_JUBILIFE_CENTER || DIAGNOSTIC_JUBILIFE_SCHOOL || DIAGNOSTIC_JUBILIFE_BARRY || DIAGNOSTIC_JUBILIFE_PRESIDENT || DIAGNOSTIC_JUBILIFE_CLOWN_MART || DIAGNOSTIC_JUBILIFE_CLOWN_COMPANY || DIAGNOSTIC_JUBILIFE_POKETCH){
             const std::pair<bool, const char*> parts[] = {
                 {DIAGNOSTIC_JUBILIFE_CENTER, JUBILIFE_CENTER_NAME},
                 {DIAGNOSTIC_JUBILIFE_SCHOOL, JUBILIFE_SCHOOL_NAME},
@@ -561,6 +569,7 @@ void BDSPAutoStory::program(
                 {DIAGNOSTIC_JUBILIFE_PRESIDENT, JUBILIFE_PRESIDENT_NAME},
                 {DIAGNOSTIC_JUBILIFE_CLOWN_MART, JUBILIFE_CLOWN_MART_NAME},
                 {DIAGNOSTIC_JUBILIFE_CLOWN_COMPANY, JUBILIFE_CLOWN_COMPANY_NAME},
+                {DIAGNOSTIC_JUBILIFE_POKETCH, JUBILIFE_POKETCH_NAME},
             };
             for (const auto& [on, name] : parts){
                 if (!on){
@@ -578,8 +587,10 @@ void BDSPAutoStory::program(
                     diagnostic_jubilife_president(env, context);
                 }else if (name == JUBILIFE_CLOWN_MART_NAME){
                     diagnostic_jubilife_clown_mart(env, context);
-                }else{
+                }else if (name == JUBILIFE_CLOWN_COMPANY_NAME){
                     diagnostic_jubilife_clown_company(env, context);
+                }else{
+                    diagnostic_jubilife_poketch(env, context);
                 }
                 env.log(std::string("[AutoStory] Completed: ") + name + ".", COLOR_DARKGREEN);
                 add_wrapped_log(env.console.overlay(), std::string("Done: ") + name, COLOR_GREEN);

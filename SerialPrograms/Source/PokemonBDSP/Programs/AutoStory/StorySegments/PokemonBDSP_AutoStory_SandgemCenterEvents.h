@@ -237,6 +237,12 @@ public:
     //  moved exactly six tiles on the console, where six tile() calls moved
     //  seven (2026-10-30).
     virtual Pokemon::Outcome taps(Pokemon::Direction direction, size_t tiles, const std::string& label) = 0;
+    //  Presses A the way we face, without the turn talk() taps first: a turn
+    //  tap the way we already face is a step. Reads a talk as talk() does.
+    virtual DialogueRead talk_ahead(Button next, const std::string& label) = 0;
+    //  Presses B once: closes a help panel (the Poketch's) that is not a
+    //  dialogue box. Does nothing in the overworld.
+    virtual void close_panel(const std::string& label) = 0;
     //  Walks north; true if a door took us through.
     virtual bool through_door_north(const std::string& label) = 0;
 };
@@ -304,8 +310,14 @@ extern const char* const JUBILIFE_CLOWN_MART_NAME;
 //                               second row the same; Coupon 3
 Pokemon::Checkpoint jubilife_clown_company_checkpoint(JubilifeActions& game);
 extern const char* const JUBILIFE_CLOWN_COMPANY_NAME;
+//  00.05g: from where 00.05f leaves us (in the gap beside the Poketch
+//  Company's sign) to the president, who trades the coupons for the Poketch,
+//  then to the Pokemon Center, healed.
+Pokemon::Checkpoint jubilife_poketch_checkpoint(JubilifeActions& game);
+extern const char* const JUBILIFE_POKETCH_NAME;
 //  DIAGNOSTIC ONLY: Remove before pushing to production.
 void diagnostic_jubilife_clown_company(SingleSwitchProgramEnvironment& env, ProControllerContext& context);
+void diagnostic_jubilife_poketch(SingleSwitchProgramEnvironment& env, ProControllerContext& context);
 //  DIAGNOSTIC ONLY: Remove before pushing to production.
 void diagnostic_jubilife_clown_mart(SingleSwitchProgramEnvironment& env, ProControllerContext& context);
 //  DIAGNOSTIC ONLY: Remove before pushing to production.

@@ -1550,6 +1550,19 @@ public:
         }
         return Pokemon::outcome_ok();
     }
+    virtual void close_panel(const std::string& label) override{
+        trace.push_back("close: " + label);
+    }
+    //  The president answers the `president_answers_at`th ask ahead.
+    size_t president_answers_at = 5;
+    size_t president_asks = 0;
+    virtual DialogueRead talk_ahead(Button, const std::string& label) override{
+        trace.push_back("ask: " + label);
+        if (label == "The Poketch Company president" && ++president_asks >= president_answers_at){
+            return DialogueRead{.opened = true, .closed = true, .text = "Bravo!"};
+        }
+        return {};
+    }
     virtual Pokemon::Outcome taps(Direction direction, size_t tiles, const std::string& label) override{
         trace.push_back("taps: " + label);
         if (direction == Direction::WEST){
@@ -1647,6 +1660,17 @@ public:
                 }
                 if (!Pokemon::run_checkpoint(clown_state, clown, log).completed){
                     return std::string(c.name) + ": 00.05f did not complete.";
+                }
+            }
+            if (school_done){
+                Pokemon::RunState poketch_state;
+                Pokemon::Checkpoint poketch = jubilife_poketch_checkpoint(game);
+                const std::vector<std::string> problems = Pokemon::lint_checkpoint(poketch);
+                if (!problems.empty()){
+                    return std::string(c.name) + ": 00.05g lint: " + problems.front();
+                }
+                if (!Pokemon::run_checkpoint(poketch_state, poketch, log).completed){
+                    return std::string(c.name) + ": 00.05g did not complete.";
                 }
             }
             size_t tries = 0;
