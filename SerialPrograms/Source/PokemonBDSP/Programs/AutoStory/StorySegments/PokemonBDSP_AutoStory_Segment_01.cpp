@@ -567,17 +567,21 @@ void oreburgh_to_roark(VideoStream& stream, ProControllerContext& context){
     if (!talked){
         fail(stream, "Oreburgh Mine: no talk opened below Roark (has Barry told us about the mine?).");
     }
-    finish_dialogue(stream, context, BUTTON_B, "Roark");
-    // His scene ends with him smashing his rock and leaving: his tile is
-    // free then. The smash plays with no dialogue box, which can end the talk
-    // early, and he is still there (r179a): until his tile is free, finish
-    // any lines that come back and try again.
+    // His scene (by hand, 2026-10-31): the camera zooms in, about eight
+    // lines that each wait for a press ("OK, stand back and watch this.",
+    // Rock Smash, "...That'd be me!"), then he smashes his rock and leaves.
+    // finish_dialogue() ended early on it, and stepping onto his tile could
+    // not tell him from the time the stop takes to read (r184, r186 "passed"
+    // with him still there, and Barry kept the gym shut). Press B through it
+    // on a clock, then ask his tile: once he is gone, A there opens nothing.
+    // B and A in the overworld facing a wall do nothing.
     bool gone = false;
-    for (size_t attempt = 0; attempt < 5 && !gone; attempt++){
-        if (dialogue_opens(stream, context, 3000ms)){
-            finish_dialogue(stream, context, BUTTON_B, "Roark, after the smash");
+    for (size_t round = 0; round < 3 && !gone; round++){
+        for (size_t press = 0; press < 14; press++){
+            pbf_press_button(context, BUTTON_B, 80ms, 2420ms);
         }
-        gone = walk_dir(stream, context, Direction::NORTH, 2000ms, "onto Roark's tile").walked > 800ms;
+        pbf_press_button(context, BUTTON_A, 80ms, 200ms);
+        gone = !dialogue_opens(stream, context, 2500ms);
     }
     if (!gone){
         fail(stream, "Oreburgh Mine: Roark is still there after the talk.");
