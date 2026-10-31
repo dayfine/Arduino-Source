@@ -396,7 +396,12 @@ void oreburgh_to_roark(VideoStream& stream, ProControllerContext& context){
         fail(stream, "Oreburgh: Barry did not talk at the gym door.");
     }
     finish_dialogue(stream, context, BUTTON_B, "Barry at the gym door");
-    if (walk_dir(stream, context, Direction::SOUTH, 8000ms, "south to the stone ledge").stop != WalkStop::BLOCKED){
+    // The ledge and the fence end these legs, so holding on leaves us against
+    // them even when people walking about keep the screen changing and the
+    // stop goes unseen (s03a1: 8 to 16 at the fence, a hiker and a child on
+    // screen): the time limit counts as reached.
+    const WalkStop ledge = walk_dir(stream, context, Direction::SOUTH, 8000ms, "south to the stone ledge").stop;
+    if (ledge != WalkStop::BLOCKED && ledge != WalkStop::LIMIT){
         fail(stream, "Oreburgh: walking south did not stop at the stone ledge.");
     }
     // A townsperson wandering across the row can stop us a tile or two short
@@ -404,6 +409,11 @@ void oreburgh_to_roark(VideoStream& stream, ProControllerContext& context){
     bool at_fence = false;
     for (size_t attempt = 0; attempt < 5 && !at_fence; attempt++){
         const WalkResult east = walk_dir(stream, context, Direction::EAST, 10000ms, "east to the fence below the Poke Mart");
+        if (east.stop == WalkStop::LIMIT){
+            stream.log("[Walk] Held east for 10 s without seeing the stop; taking the fence as reached.");
+            at_fence = true;
+            break;
+        }
         if (east.stop != WalkStop::BLOCKED){
             fail(stream, "Oreburgh: walking east did not stop at the fence below the Poke Mart.");
         }
