@@ -740,7 +740,11 @@ void oreburgh_street_to_gym(VideoStream& stream, ProControllerContext& context){
     // Third-of-a-tile nudges barely move us against it (each push north
     // slides back), and a tile's tap west went in (by hand): look for the
     // door a tile at a time either side, with no turn taps between.
-    const int offsets[] = {0, -1, 1, -2, 2, -3, 3};
+    // Both long holds so far ended east of the door (r197d: 0 and -1
+    // blocked, +1 walked up a road east of the gym and met a trainer), so
+    // look west first; a column that walks north freely is not the door:
+    // come back down to the row before the next.
+    const int offsets[] = {0, -1, -2, -3, -4, 1, 2};
     int shifted = 0;
     for (int offset : offsets){
         for (; shifted != offset; shifted += offset > shifted ? 1 : -1){
@@ -757,6 +761,8 @@ void oreburgh_street_to_gym(VideoStream& stream, ProControllerContext& context){
         }
         if (door.stop == WalkStop::DIALOG){
             talk_or_fight(stream, context, "Someone outside the gym");
+        }else if (door.stop == WalkStop::LIMIT){
+            walk_dir(stream, context, Direction::SOUTH, door.walked, "back down to the gym's row");
         }
     }
     fail(stream, "Oreburgh: no column near the gym's door went in.");
