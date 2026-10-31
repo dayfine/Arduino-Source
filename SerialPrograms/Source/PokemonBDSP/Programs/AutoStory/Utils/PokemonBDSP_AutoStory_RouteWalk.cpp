@@ -314,6 +314,25 @@ std::vector<TilePos> walk_route(
                     return moving.count() <= 0 ? (size_t)0 : (size_t)(moving / ms_per_tile(leg.direction));
                 };
                 size_t walked_tiles = tiles_moved(result);
+                //  A stick walk can catch a corner when we stand part of a tile
+                //  off centre, where a D-pad tap, which moves whole tiles, gets
+                //  through: on Route 203's stairs the walk west stopped nine
+                //  times in a row and two taps crossed (r225a, 2026-10-31).
+                //  Tap twice, then walk on to the wall.
+                if (!interrupted && result.stop == WalkStop::BLOCKED && walked_tiles + 2 < nearest){
+                    const DpadPosition dpad =
+                        leg.direction == Direction::NORTH ? DPAD_UP :
+                        leg.direction == Direction::SOUTH ? DPAD_DOWN :
+                        leg.direction == Direction::WEST ? DPAD_LEFT : DPAD_RIGHT;
+                    stream.log("[Route] " + leg_label + ": stopped after about " + std::to_string(walked_tiles) +
+                        " tiles, short of the wall; two D-pad taps, then on to the wall.", COLOR_ORANGE);
+                    for (size_t tap = 0; tap < 2; tap++){
+                        pbf_press_dpad(context, dpad, 160ms, 640ms);
+                    }
+                    context.wait_for_all_requests();
+                    result = walk_until(stream, context, x, y, limit, leg_label, watch_banner);
+                    walked_tiles += tiles_moved(result);
+                }
                 //  Someone walking about may stand in the way for a moment: wait
                 //  and walk to the wall again before calling it an obstacle.
                 for (size_t again = 0; !interrupted && again < 2 &&
