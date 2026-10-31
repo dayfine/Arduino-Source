@@ -441,9 +441,11 @@ void oreburgh_to_roark(VideoStream& stream, ProControllerContext& context){
         // (r183a went in and on to the counter): look at the floor.
         // Stop as soon as the floor shows: walking on to the counter left the
         // door's column, and the walk back out drifted into the yard (r188b).
+        // Oreburgh's sand reads up to 34 % warm outside (r189a), the floor
+        // 56 to 64 % inside.
         const WalkResult in = walk_until(stream, context, 0, 1, 2500ms, "north into the Center's door",
-            [](const ImageViewRGB32& screen){ return center_floor_on_screen(screen); });
-        if (in.stop == WalkStop::TRANSITION || in.stop == WalkStop::ARRIVED || in_pokemon_center(stream)){
+            [](const ImageViewRGB32& screen){ size_t percent = 0; center_floor_on_screen(screen, &percent); return percent >= 45; });
+        if (in.stop == WalkStop::ARRIVED || ((in.stop == WalkStop::TRANSITION || in.stop == WalkStop::LIMIT) && in_pokemon_center(stream))){
             inside = true;
             break;
         }
@@ -459,7 +461,7 @@ void oreburgh_to_roark(VideoStream& stream, ProControllerContext& context){
         }
         // Talked in the door's column: the door is free now.
         walk_until(stream, context, 0, 1, 2500ms, "north into the Center's door",
-            [](const ImageViewRGB32& screen){ return center_floor_on_screen(screen); });
+            [](const ImageViewRGB32& screen){ size_t percent = 0; center_floor_on_screen(screen, &percent); return percent >= 45; });
         inside = in_pokemon_center(stream);
     }
     if (!inside || !in_pokemon_center(stream)){
