@@ -75,9 +75,10 @@ WalkResult walk_to_talk(
 
 //  How much the screen changed between two frames, 0 for identical. Walking scrolls
 //  the whole view: 16 to 85 per 400ms on Route 202, against about 6 for running in
-//  place against trees.
+//  place against trees, and 7 to 12 against a wall in Jubilife with people
+//  walking about on screen (r167a, r171a read 9.5 to 11.5 and never stopped).
 double walk_screen_change(const ImageViewRGB32& before, const ImageViewRGB32& after);
-constexpr double WALK_BLOCKED_CHANGE = 10.0;
+constexpr double WALK_BLOCKED_CHANGE = 13.0;
 //  More than walking changes in 400ms: a new scene, such as a battle opening.
 constexpr double WALK_SCENE_CHANGE = 120.0;
 
