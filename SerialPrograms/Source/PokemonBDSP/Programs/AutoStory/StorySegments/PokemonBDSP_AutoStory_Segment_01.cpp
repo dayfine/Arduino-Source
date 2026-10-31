@@ -499,29 +499,50 @@ void oreburgh_to_roark(VideoStream& stream, ProControllerContext& context){
         [&](const Pokemon::TilePos& pos){ return pos.y >= roark.y && pos.y <= roark.y + 1 && pos.x >= roark.x + 2 && pos.x <= roark.x + 7; },
         no_trainers, in_the_way, "To the stretch east of Roark");
     walk_to_wall(stream, context, 0, 1, 2000ms, "north to the wall on Roark's row");
-    // His rock and the bottom wall end these legs (see walk_to_wall()). A
-    // wild battle on the way eats into the walk's time (r100): walk again.
-    for (size_t attempt = 0; attempt < 3; attempt++){
-        if (walk_to_wall(stream, context, -1, 0, 6000ms, "west to the rock beside Roark").wild_battles == 0){
-            break;
+    // His rock and the bottom wall end these legs (see walk_to_wall()). The
+    // two taps west from there land within a third of a tile or so of his
+    // column (s03e2 missed him by that much), so look for him with nudges
+    // either side. Any tap here can start a wild battle, which leaves us
+    // off his column (r180a, even on his row west of his rock): then line up
+    // again from the east end of the bottom row, three taps west and north to the wall on his row (Data/
+    // OreburghMine: columns 23 to 25 have that wall above).
+    bool talked = false;
+    for (size_t attempt = 0; attempt < 3 && !talked; attempt++){
+        if (attempt > 0){
+            // The battle may leave us on his row or the bottom one.
+            walk_to_wall(stream, context, 0, -1, 2000ms, "south to the bottom row");
+            walk_to_wall(stream, context, 1, 0, 6000ms, "east along the bottom row");
+            route_turn(stream, context, Direction::WEST);
+            for (size_t tap = 0; tap < 3; tap++){
+                pbf_move_left_joystick(context, {-1, 0}, 120ms, 300ms);
+            }
+            walk_to_wall(stream, context, 0, 1, 2000ms, "north to the wall on Roark's row");
         }
+        // A wild battle on the way eats into the walk's time (r100): walk again.
+        for (size_t walk = 0; walk < 3; walk++){
+            if (walk_to_wall(stream, context, -1, 0, 6000ms, "west to the rock beside Roark").wild_battles == 0){
+                break;
+            }
+        }
+        walk_to_wall(stream, context, 0, -1, 2000ms, "south to the bottom wall");
+        route_turn(stream, context, Direction::WEST);
+        pbf_move_left_joystick(context, {-1, 0}, 120ms, 300ms);
+        pbf_move_left_joystick(context, {-1, 0}, 120ms, 300ms);
+        route_turn(stream, context, Direction::NORTH);
+        context.wait_for_all_requests();
+        if (run_from_late_encounter(stream, context, "below Roark")){
+            continue;
+        }
+        if (VideoSnapshot screen = stream.video().snapshot()){
+            const std::string folder = SCREENSHOTS_PATH() + "AutoStory/route/";
+            Filesystem::create_directories(Filesystem::Path(folder));
+            screen.frame->save(folder + now_to_filestring() + "-below-roark.png");
+        }
+        // The camera zooms in and his first line, "OK, stand back and watch
+        // this.", can take some seconds (r98).
+        talked = talk_with_nudges(stream, context, Direction::NORTH, "Roark", 8000ms);
     }
-    walk_to_wall(stream, context, 0, -1, 2000ms, "south to the bottom wall");
-    route_turn(stream, context, Direction::WEST);
-    pbf_move_left_joystick(context, {-1, 0}, 120ms, 300ms);
-    pbf_move_left_joystick(context, {-1, 0}, 120ms, 300ms);
-    route_turn(stream, context, Direction::NORTH);
-    context.wait_for_all_requests();
-    if (VideoSnapshot screen = stream.video().snapshot()){
-        const std::string folder = SCREENSHOTS_PATH() + "AutoStory/route/";
-        Filesystem::create_directories(Filesystem::Path(folder));
-        screen.frame->save(folder + now_to_filestring() + "-below-roark.png");
-    }
-    // The two taps west land within a third of a tile or so of his column
-    // (s03e2 missed him by that much), so look for him with nudges either
-    // side. The camera zooms in and his first line, "OK, stand back and
-    // watch this.", can take some seconds (r98).
-    if (!talk_with_nudges(stream, context, Direction::NORTH, "Roark", 8000ms)){
+    if (!talked){
         fail(stream, "Oreburgh Mine: no talk opened below Roark (has Barry told us about the mine?).");
     }
     finish_dialogue(stream, context, BUTTON_B, "Roark");

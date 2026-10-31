@@ -178,6 +178,11 @@ bool talk_with_nudges(
         }
         if (offset != 0){
             route_turn(stream, context, facing);
+            //  A tap in a cave or in grass can start a wild battle, after
+            //  which we are not where the nudges think: let the caller line up again.
+            if (run_from_late_encounter(stream, context, label + ": nudge")){
+                return false;
+            }
         }
         pbf_press_button(context, BUTTON_A, 80ms, 0ms);
         context.wait_for_all_requests();

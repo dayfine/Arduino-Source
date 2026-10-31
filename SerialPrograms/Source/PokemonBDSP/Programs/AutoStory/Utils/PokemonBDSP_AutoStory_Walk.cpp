@@ -80,6 +80,8 @@ bool battle_follows(VideoStream& stream, ProControllerContext& context){
     return wait_until(stream, context, 5s, {{battle_menu}, {battle_dialog}}) >= 0;
 }
 
+}
+
 //  A step in tall grass that was started before the stick was released still
 //  finishes, and its encounter starts after the walk has ended. Watch a little
 //  longer, and run from it. Returns whether there was one.
@@ -104,6 +106,7 @@ bool run_from_late_encounter(VideoStream& stream, ProControllerContext& context,
     context.wait_for_all_requests();
     return true;
 }
+namespace{
 
 //  Samples the screen every 100ms for probe_walk() and stops it once the view
 //  has been still for 800ms.

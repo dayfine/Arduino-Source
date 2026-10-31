@@ -65,6 +65,11 @@ WalkResult walk_expecting(
     const std::function<bool(const ImageViewRGB32& screen)>& arrived = nullptr
 );
 
+//  After a move that may have walked onto an encounter tile (a tap in a cave
+//  or in tall grass): waits briefly for a wild battle and runs from it.
+//  Returns whether there was one; we may then be off the place we expected.
+bool run_from_late_encounter(VideoStream& stream, ProControllerContext& context, const std::string& label);
+
 //  walk_until() toward a wall the route was measured to end at. Seeing the
 //  stop only ends the hold early: holding on for the whole `limit` also
 //  counts as there, as people or animations nearby can keep the screen

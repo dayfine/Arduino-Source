@@ -64,7 +64,8 @@ std::optional<Pokemon::Direction> talk_to_adjacent_npc(
 //  such tap at a time to -1, +1, -2, +2 taps from the start and tries again.
 //  Never turns away and back between tries: each turn is a tap that moves us
 //  (s03e2 drifted east of Roark a third of a tile per try). Returns whether a
-//  dialogue opened, left open.
+//  dialogue opened, left open; false also after a wild battle on a nudge,
+//  which leaves us off the place we were.
 bool talk_with_nudges(
     VideoStream& stream, ProControllerContext& context,
     Pokemon::Direction facing, const std::string& label,
