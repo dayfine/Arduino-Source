@@ -21,59 +21,32 @@ namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonFRLG{
 
-//  Where to look for the black screen of a game starting: the middle of the
-//  frame, away from its edges.
-const ImageFloatBox LAUNCH_BLACK_SCREEN_BOX(/* x */ 0.1, /* y */ 0.15, /* width */ 0.8, /* height */ 0.7);
+namespace{
 
-LaunchWait choose_launch_wait(bool handle_online_license, const GameLaunch& previous){
-    if (!handle_online_license){
-        return LaunchWait::FixedDelay;
-    }
-    return previous.online_license ? LaunchWait::UntilGameStarts : LaunchWait::WatchForLicenseCheck;
-}
-
-//  Press A to start the game, then wait until it is time to go back Home.
-//  Normally that is a fixed delay. With an online license, the console first
-//  returns to the Home menu to check the license, so if the user turned on
-//  "Handle Online License Check", wait for the game to actually start instead.
-//  `wait` comes from choose_launch_wait().
-GameLaunch start_game_before_home(
+//  Press A on the selected profile and return whether game startup was observed.
+//  With license handling disabled, preserve the fixed-delay input sequence.
+//  A timeout leaves recovery to the existing reset loop.
+bool start_game_before_home(
     ConsoleHandle& console, ProControllerContext& context,
-    Milliseconds launch_delay, LaunchWait wait
+    Milliseconds launch_delay
 ){
-    if (wait == LaunchWait::FixedDelay){
+    if (!GameSettings::instance().HANDLE_ONLINE_LICENSE_CHECK){
         pbf_press_button(context, BUTTON_A, 50ms, launch_delay);
-        return GameLaunch{};
+        return false;
     }
-
-    //  A on the selected profile starts the game: the screen goes black until
-    //  the game draws its first frame. `launch_delay` counts from the end of
-    //  this press, so keep the press short and fixed.
     pbf_press_button(context, BUTTON_A, 50ms, 0ms);
     context.wait_for_all_requests();
-
-    if (wait == LaunchWait::WatchForLicenseCheck){
-        //  An online license shows itself by the Home menu or the license
-        //  popup coming up during the launch delay. If neither does, the delay
-        //  has passed and it is time to go Home.
-        HomeMenuWatcher home(console);
-        CheckOnlineWatcher check_online;
-        if (wait_until(console, context, launch_delay, { home, check_online }) < 0){
-            return GameLaunch{};
-        }
-        console.log("Back at Home after starting the game. Waiting for the online license check...", COLOR_BLUE);
-    }
-
-    BlackScreenWatcher black_screen(COLOR_BLUE, LAUNCH_BLACK_SCREEN_BOX);
-    if (wait_until(
+    BlackScreenWatcher black_screen(COLOR_BLUE, {0.1, 0.15, 0.8, 0.7});
+    const int result = wait_until(
         console, context, std::chrono::seconds(30), { black_screen },
-        /* default_video_period */ 1ms  //  check every frame, to go Home as soon as the game starts
-    ) < 0){
+        /* default_video_period */ 1ms
+    );
+    if (result < 0){
         console.log("Game did not start within 30 seconds of the online license check.", COLOR_RED);
-        return GameLaunch{.started = false, .online_license = true};
     }
-    console.log("Black screen detected.");
-    return GameLaunch{.started = true, .online_license = true};
+    return result == 0;
+}
+
 }
 
 void rng_reset_and_return_home(
@@ -86,8 +59,6 @@ void rng_reset_and_return_home(
     close_game_from_home(console, context);
 
     bool update_popup = false;
-    const bool handle_online_license = GameSettings::instance().HANDLE_ONLINE_LICENSE_CHECK;
-    GameLaunch launch;
     WallClock deadline = current_time() + std::chrono::minutes(5);
     while (true){
         if (current_time() > deadline){
@@ -102,7 +73,7 @@ void rng_reset_and_return_home(
         HomeMenuWatcher home(console, false, COLOR_RED, std::chrono::milliseconds(2000));
         UpdateMenuWatcher update_menu(console, COLOR_PURPLE);
         CheckOnlineWatcher check_online(COLOR_CYAN);
-        BlackScreenWatcher black_screen(COLOR_BLUE, LAUNCH_BLACK_SCREEN_BOX);
+        BlackScreenWatcher black_screen(COLOR_BLUE, {0.1, 0.15, 0.8, 0.7});
 
         // first, get to the user select screen
         context.wait_for_all_requests();
@@ -165,7 +136,7 @@ void rng_reset_and_return_home(
             pbf_press_button(context, BUTTON_A, 160ms, 840ms);
             pbf_press_dpad(context, DPAD_UP, 40ms, 0ms);
         }
-        launch = start_game_before_home(console, context, launch_delay, choose_launch_wait(handle_online_license, launch));
+        bool black_screen_detected = start_game_before_home(console, context, launch_delay);
         pbf_press_button(context, BUTTON_HOME, 200ms, 1800ms);
 
         while(current_time() < deadline){
@@ -180,7 +151,7 @@ void rng_reset_and_return_home(
             switch (ret3){
             case 0:
                 console.log("Black screen detected.");
-                launch.started = true;
+                black_screen_detected = true;
                 break;
             case 1:
                 console.log("Update menu detected.", COLOR_BLUE);
@@ -202,7 +173,7 @@ void rng_reset_and_return_home(
 
             switch (ret4){
             case 0:
-                if (launch.started){  //  seen here or while starting the game
+                if (black_screen_detected){
                     console.log("Detected Home screen after black screen.");
                     return;
                 }else{
@@ -214,13 +185,13 @@ void rng_reset_and_return_home(
             case 1:
                 console.log("Detected user-select screen. Trying again...", COLOR_BLUE);
                 move_to_user(context, user_slot);
-                launch = start_game_before_home(console, context, launch_delay, choose_launch_wait(handle_online_license, launch));
+                black_screen_detected = start_game_before_home(console, context, launch_delay);
                 pbf_press_button(context, BUTTON_HOME, 200ms, 2800ms);
                 continue;
             case 2:
                 console.log("Detected update menu. Trying again...", COLOR_BLUE);
                 pbf_press_dpad(context, DPAD_UP, 40ms, 0ms);
-                launch = start_game_before_home(console, context, launch_delay, choose_launch_wait(handle_online_license, launch));
+                black_screen_detected = start_game_before_home(console, context, launch_delay);
                 pbf_press_button(context, BUTTON_HOME, 200ms, 2800ms);
                 continue;
             default:

@@ -91,6 +91,18 @@ GameSettings::GameSettings()
         0.80, 0, 1.0
     )
 {
+    add_options();
+
+    GameSettings::on_config_value_changed(this);
+    DEVICE.add_listener(*this);
+    GAME_BOX.add_listener(*this);
+    GAME_BOX.X.add_listener(*this);
+    GAME_BOX.Y.add_listener(*this);
+    GAME_BOX.WIDTH.add_listener(*this);
+    GAME_BOX.HEIGHT.add_listener(*this);
+}
+
+void GameSettings::add_options(){
     PA_ADD_STATIC(m_game_device_settings);
     PA_ADD_OPTION(DEVICE);
     PA_ADD_OPTION(GAME_BOX);
@@ -104,14 +116,6 @@ GameSettings::GameSettings()
     PA_ADD_OPTION(SHINY_SOUND_LOW_FREQUENCY);
     PA_ADD_OPTION(m_catch_audio_settings);
     PA_ADD_OPTION(CATCH_FANFARE_THRESHOLD);
-
-    GameSettings::on_config_value_changed(this);
-    DEVICE.add_listener(*this);
-    GAME_BOX.add_listener(*this);
-    GAME_BOX.X.add_listener(*this);
-    GAME_BOX.Y.add_listener(*this);
-    GAME_BOX.WIDTH.add_listener(*this);
-    GAME_BOX.HEIGHT.add_listener(*this);
 }
 
 void GameSettings::on_config_value_changed(void* object){
