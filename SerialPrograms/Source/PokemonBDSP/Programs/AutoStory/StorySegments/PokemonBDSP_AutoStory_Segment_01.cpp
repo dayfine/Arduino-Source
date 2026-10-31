@@ -804,20 +804,36 @@ uint64_t mean_brightness(const ImageViewRGB32& screen){
 //  black; a scene comparison could not tell a tile's scroll (106 to 119)
 //  from going in (121, r205d, r207d). A miss steps back onto the row.
 bool through_door_north(VideoStream& stream, ProControllerContext& context, const std::string& label){
+    auto went_dark = [&](Milliseconds timeout){
+        const auto start = current_time();
+        while (current_time() - start < timeout){
+            context.wait_for(100ms);
+            const VideoSnapshot frame = stream.video().snapshot();
+            if (frame && mean_brightness(*frame.frame) < 25){
+                return true;
+            }
+        }
+        return false;
+    };
     context.wait_for_all_requests();
     const VideoSnapshot before = stream.video().snapshot();
     const WalkResult up = walk_for(stream, context, 0, 1, 240ms, label);
-    if (up.stop == WalkStop::TRANSITION){
+    // Look for the fade ourselves: the library's black screen check missed it
+    // under the gym's door (r209d), while its frames read 7 against about
+    // 100 outside.
+    if (up.stop == WalkStop::TRANSITION || went_dark(5000ms)){
+        stream.log("[Route] " + label + ": the screen went dark; through the door.");
+        context.wait_for(2000ms);
         return true;
     }
-    // Look for the fade ourselves: the library's black screen check missed it
-    // under the gym's door (r209d: the door opened, view change 172, then
-    // nothing), while its frames read 7 against about 100 outside.
-    const auto start = current_time();
-    while (current_time() - start < 5000ms){
-        context.wait_for(100ms);
-        const VideoSnapshot frame = stream.video().snapshot();
-        if (frame && mean_brightness(*frame.frame) < 25){
+    const VideoSnapshot after = stream.video().snapshot();
+    const double moved = before && after ? walk_screen_change(*before.frame, *after.frame) : 0;
+    // The door opened and the camera zoomed in, but one step did not take us
+    // through (r213d: view change 160, no fade): step on north.
+    if (moved > WALK_SCENE_CHANGE){
+        stream.log("[Route] " + label + ": the door opened (view change " + std::to_string(moved) + "); on north.");
+        walk_for(stream, context, 0, 1, 240ms, label + ": on through");
+        if (went_dark(5000ms)){
             stream.log("[Route] " + label + ": the screen went dark; through the door.");
             context.wait_for(2000ms);
             return true;
@@ -826,9 +842,7 @@ bool through_door_north(VideoStream& stream, ProControllerContext& context, cons
     // Back down only if the step moved us: against the building's front it
     // does not, and stepping south anyway took us a row down each try
     // (r208d drifted south along the gym's front).
-    const VideoSnapshot after = stream.video().snapshot();
-    const double moved = before && after ? walk_screen_change(*before.frame, *after.frame) : 0;
-    stream.log("[Route] " + label + ": no black screen; not the door (view change " + std::to_string(moved) + ").");
+    stream.log("[Route] " + label + ": no dark screen; not the door (view change " + std::to_string(moved) + ").");
     if (moved > WALK_BLOCKED_CHANGE * 2){
         walk_for(stream, context, 0, -1, 240ms, label + ": back down");
     }
