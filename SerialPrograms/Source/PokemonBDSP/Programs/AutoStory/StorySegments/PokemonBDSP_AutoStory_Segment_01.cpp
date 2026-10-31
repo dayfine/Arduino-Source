@@ -70,6 +70,7 @@ bool dialogue_opens(VideoStream& stream, ProControllerContext& context, Millisec
 //  `doubles` for tag and twin battles. A lost battle ends in the last
 //  Pokemon Center; see in_pokemon_center().
 bool in_pokemon_center(VideoStream& stream);
+uint64_t mean_brightness(const ImageViewRGB32& screen);
 bool center_floor_on_screen(const ImageViewRGB32& screen, size_t* percent = nullptr);
 bool in_dim_cave(VideoStream& stream, uint64_t below = 85);
 bool talk_or_fight(VideoStream& stream, ProControllerContext& context, const std::string& label, bool battle_expected = false, bool doubles = false){
@@ -409,6 +410,19 @@ void walk_out_of_center(VideoStream& stream, ProControllerContext& context, cons
             out = percent < 30;
         }
         if (out){
+            // "No floor" also reads true on the door's black fade, and the game
+            // takes no input until it ends: the first D-pad taps after it were
+            // lost and the gym's door ended a tile away (r215d, r216d; a shot
+            // per press by hand showed the black frame). Wait for daylight.
+            const auto start = current_time();
+            while (current_time() - start < 6000ms){
+                context.wait_for(100ms);
+                const VideoSnapshot frame = stream.video().snapshot();
+                if (frame && mean_brightness(*frame.frame) > 40){
+                    break;
+                }
+            }
+            context.wait_for(1000ms);
             return;
         }
     }
