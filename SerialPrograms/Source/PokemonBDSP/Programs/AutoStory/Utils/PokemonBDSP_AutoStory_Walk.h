@@ -47,6 +47,15 @@ WalkResult walk_until(
     const std::function<bool(const ImageViewRGB32& screen)>& arrived = nullptr
 );
 
+//  walk_until() where there are no wild Pokemon (a gym, a building): any
+//  battle that starts is a trainer's, so the walk stops with DIALOG, left in
+//  the battle for the caller to fight, instead of trying to run from it
+//  (r206d tried to run from the second Oreburgh Gym trainer).
+WalkResult walk_until_no_wild(
+    VideoStream& stream, ProControllerContext& context,
+    double x, double y, Milliseconds limit, const std::string& label
+);
+
 //  Holds the left stick at (x, y) for `duration` in one go, for a walk of a
 //  set length: walk_until() checks the screen between short holds, and each
 //  break can cost a step. Stops early for a dialog or a transition. A wild

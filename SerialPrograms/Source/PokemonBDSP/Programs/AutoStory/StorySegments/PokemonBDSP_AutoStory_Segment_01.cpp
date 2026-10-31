@@ -852,7 +852,7 @@ bool oreburgh_gym_battles(VideoStream& stream, ProControllerContext& context){
     }
     size_t stuck = 0;
     for (size_t leg = 0; leg < 10; leg++){
-        const WalkResult up = walk_dir(stream, context, Direction::NORTH, 8000ms, "north up the gym");
+        const WalkResult up = walk_until_no_wild(stream, context, 0, 1, 8000ms, "north up the gym");
         if (up.stop == WalkStop::DIALOG){
             if (talk_or_fight(stream, context, "Gym trainer") && in_pokemon_center(stream)){
                 return false;

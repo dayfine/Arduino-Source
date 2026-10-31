@@ -154,10 +154,36 @@ private:
 }
 
 
+namespace{
+WalkResult walk_until_impl(
+    VideoStream& stream, ProControllerContext& context,
+    double x, double y, Milliseconds limit, const std::string& label,
+    const std::function<bool(const ImageViewRGB32& screen)>& arrived,
+    bool wild
+);
+}
+
 WalkResult walk_until(
     VideoStream& stream, ProControllerContext& context,
     double x, double y, Milliseconds limit, const std::string& label,
     const std::function<bool(const ImageViewRGB32& screen)>& arrived
+){
+    return walk_until_impl(stream, context, x, y, limit, label, arrived, true);
+}
+
+WalkResult walk_until_no_wild(
+    VideoStream& stream, ProControllerContext& context,
+    double x, double y, Milliseconds limit, const std::string& label
+){
+    return walk_until_impl(stream, context, x, y, limit, label, nullptr, false);
+}
+
+namespace{
+WalkResult walk_until_impl(
+    VideoStream& stream, ProControllerContext& context,
+    double x, double y, Milliseconds limit, const std::string& label,
+    const std::function<bool(const ImageViewRGB32& screen)>& arrived,
+    bool wild
 ){
     constexpr Milliseconds CHUNK = 400ms;
     WalkResult result{WalkStop::LIMIT, 0ms, 0};
@@ -167,7 +193,7 @@ WalkResult walk_until(
     VideoSnapshot before = snapshot_or_fail(stream, label);
     auto finish = [&](WalkStop stop){
         result.stop = stop;
-        if ((stop == WalkStop::LIMIT || stop == WalkStop::BLOCKED) &&
+        if (wild && (stop == WalkStop::LIMIT || stop == WalkStop::BLOCKED) &&
             run_from_late_encounter(stream, context, label)
         ){
             result.wild_battles++;
@@ -208,6 +234,10 @@ WalkResult walk_until(
                 return finish(WalkStop::TRANSITION);
             }
         }
+        if (battle && !wild){
+            stream.log("[Walk] " + label + ": a battle started; a trainer's here.");
+            return finish(WalkStop::DIALOG);
+        }
         if (battle){
             result.wild_battles++;
             stream.log("[Walk] " + label + ": wild battle; running.");
@@ -226,6 +256,10 @@ WalkResult walk_until(
         const double change = walk_screen_change(*before.frame, *after.frame);
         stream.log("[Walk] " + label + ": " + std::to_string(result.walked.count()) +
             "ms, screen change " + std::to_string(change) + ".");
+        if (change > WALK_SCENE_CHANGE && !wild && battle_follows(stream, context)){
+            stream.log("[Walk] " + label + ": a battle started; a trainer's here.");
+            return finish(WalkStop::DIALOG);
+        }
         if (change > WALK_SCENE_CHANGE && battle_follows(stream, context)){
             result.wild_battles++;
             stream.log("[Walk] " + label + ": wild battle (leaf opening); running.");
@@ -248,6 +282,7 @@ WalkResult walk_until(
         }
         before = std::move(after);
     }
+}
 }
 
 WalkResult walk_for(
