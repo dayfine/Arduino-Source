@@ -465,6 +465,22 @@ void enter_oreburgh_center(VideoStream& stream, ProControllerContext& context){
     }
 }
 
+//  Oreburgh: from just inside the Pokemon Center's door, up to the nurse
+//  and heal; ends at the counter facing her. The door is straight south of
+//  her (by hand, 2026-10-31: north from the door stopped at the counter).
+void heal_at_oreburgh_counter(VideoStream& stream, ProControllerContext& context){
+    if (walk_to_talk(stream, context, 0, 1, 6000ms, "to the nurse").stop != WalkStop::DIALOG){
+        fail(stream, "Oreburgh Pokemon Center: the nurse did not answer.");
+    }
+    // A throughout: Yes to "rest your Pokemon?" (B would answer No).
+    finish_dialogue(stream, context, BUTTON_A, "Nurse");
+    // Healing shows no text box for a few seconds, which reads as the end;
+    // her "Thank you for waiting" lines follow it.
+    if (dialogue_opens(stream, context, 6000ms)){
+        finish_dialogue(stream, context, BUTTON_B, "Nurse, after healing");
+    }
+}
+
 //  Oreburgh: from just inside the Pokemon Center's door, out onto the tile
 //  below it, facing south, on the door's column. Stops as soon as the floor
 //  is gone: walking on runs down the column to the mine.
@@ -482,6 +498,7 @@ void oreburgh_to_roark(VideoStream& stream, ProControllerContext& context){
         "Through the mine's entrance hall to the rocky corridor",
         "Walk the planned route down the corridor and round the coal block, and talk to Roark",
         "Walk back to the corridor's top and out of the mine",
+        "Into the Pokemon Center and heal at the counter",
     });
 
     step(1);
@@ -663,6 +680,25 @@ void oreburgh_to_roark(VideoStream& stream, ProControllerContext& context){
         fail(stream, "Oreburgh Mine: someone stopped us on the way out of the mine.");
     }
     context.wait_for(1500ms);
+
+    step(6);
+    // End at the nurse, healed: the counter is a fixed start for 01.04,
+    // where the mine's mouth is not (2026-10-31, at the user's request). Out
+    // of the mine we stand below its sign; a tile east is the Center door's
+    // column, and north on it goes in, or stops on the front rows.
+    hold_tiles(stream, context, Direction::EAST, 1);
+    walk_until(stream, context, 0, 1, 12000ms, "north into the Center's door",
+        [](const ImageViewRGB32& screen){ size_t percent = 0; center_floor_on_screen(screen, &percent); return percent >= 45; });
+    size_t floor = 0;
+    if (VideoSnapshot frame = stream.video().snapshot()){
+        center_floor_on_screen(*frame.frame, &floor);
+    }
+    if (floor < 45){
+        route_turn(stream, context, Direction::SOUTH);
+        pbf_move_left_joystick(context, {0, -1}, 480ms, 300ms);
+        enter_oreburgh_center(stream, context);
+    }
+    heal_at_oreburgh_counter(stream, context);
 }
 
 
@@ -846,31 +882,15 @@ bool oreburgh_gym_battles(VideoStream& stream, ProControllerContext& context){
 
 void oreburgh_gym(VideoStream& stream, ProControllerContext& context){
     StepLog step(stream, "01.04", "From the Oreburgh Mine to the Coal Badge", {
-        "North into the Pokemon Center by its door and back out onto its row",
+        "Out of the Pokemon Center from the counter",
         "West along the row into the gym",
         "Up the gym, fighting its trainers, and beat Roark (after a loss: from the Center, again)",
         "Out of the gym",
     });
     step(1);
-    // 01.03 leaves us below the mine's sign; a tile east is the column of
-    // the Center's door, which the walk north usually goes in by (r194d,
-    // r196d; r195d stopped at the post beside it). The door is the anchor:
-    // its row runs west to the gym's door.
-    hold_tiles(stream, context, Direction::EAST, 1);
-    walk_until(stream, context, 0, 1, 12000ms, "north into the Center's door",
-        [](const ImageViewRGB32& screen){ size_t percent = 0; center_floor_on_screen(screen, &percent); return percent >= 45; });
-    size_t percent = 0;
-    if (VideoSnapshot frame = stream.video().snapshot()){
-        center_floor_on_screen(*frame.frame, &percent);
-    }
-    if (percent < 45){
-        // Short of the door: down off the front rows, then in the way 01.03
-        // goes in.
-        route_turn(stream, context, Direction::SOUTH);
-        pbf_move_left_joystick(context, {0, -1}, 480ms, 300ms);
-        enter_oreburgh_center(stream, context);
-    }
-    leave_center_onto_door_row(stream, context);
+    // 01.03 leaves us at the Center's counter, facing the nurse; the door
+    // is straight south.
+    walk_out_of_center(stream, context, "Oreburgh");
 
     // Losing costs some money and keeps the experience, so each try comes
     // back stronger: Roark won twice by hand against Piplup Lv 10 and 14 and
@@ -1226,7 +1246,7 @@ void AutoStory_Checkpoint_0102::run_checkpoint(
 
 std::string AutoStory_Checkpoint_0103::name()       const { return "01.03 - Oreburgh Mine to Roark"; }
 std::string AutoStory_Checkpoint_0103::start_text() const { return AutoStory_Checkpoint_0102().end_text(); }
-std::string AutoStory_Checkpoint_0103::end_text()   const { return "Outside the Oreburgh Mine, after talking to Roark."; }
+std::string AutoStory_Checkpoint_0103::end_text()   const { return "At the Oreburgh Pokemon Center counter, healed, after talking to Roark."; }
 
 void AutoStory_Checkpoint_0103::run_checkpoint(
     SingleSwitchProgramEnvironment& env,
