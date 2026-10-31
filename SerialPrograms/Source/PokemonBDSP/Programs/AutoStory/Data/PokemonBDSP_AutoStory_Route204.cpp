@@ -14,63 +14,72 @@ namespace Route204{
 using namespace Pokemon;
 
 
-//  Traced by hand from Bulbapedia's Sinnoh_Route_204_DP.png (512x848, 16 px
-//  tiles, not squashed), rows 0 to 27 of 53: the north half, above the
-//  cliff the Ravaged Path runs under. Checked against the hand run of
-//  2026-10-29: out of the cave onto the sand below the cliff, west to the
-//  stairs, up them into a pocket closed at the top by a ledge (row 12, 'v',
-//  only crossed southward), back down to the sand, east and north through
-//  the tall grass to the flower beds, the twins below the right-hand bed,
-//  and north between the beds' fences into Floaroma.
-//
-//  Not yet checked tile by tile on the console: the fence and tree edges
-//  fall on tile boundaries in the image, so a column may be off by one.
-//  '?' is the way down the cliff to the south half (not traced).
+//  Decoded from Pokemon Platinum's collision table for this map (the
+//  pret/pokeplatinum decompilation, map_data_031.bin: one cell of the Sinnoh
+//  matrix, column 5, row 21; local (x, y) = world (x - 160, z - 672)) with
+//  the objects from its events file; BDSP keeps the layout. Water and the
+//  items on the ground are '#'. Objects: the Ravaged Path's door, arriving
+//  on (20, 26); the twins (15, 7) and (16, 7) looking south; Aroma Lady
+//  Taylor (17, 20) looking south and east; Bug Catcher Brandon walking back
+//  and forth from (22, 13); the arrow signpost (17, 9); a Youngster who
+//  wanders around (15, 28), off the grid. The path north into Floaroma is
+//  columns 10 to 12 at the top.
+//  The 2026-10-29 hand run went out of the cave, west to the stairs, up them
+//  into the pocket the ledge (row 15) closes, back down, east and north
+//  through the tall grass, and west below the flower beds past the twins.
+//  Before 2026-10-31 this grid was traced from Bulbapedia's DP map image,
+//  whose rows are 12 px to the columns' 16: every row was 3/4 of a tile.
 const TileGrid& north_grid(){
     static const TileGrid grid({
     //     0         1         2         3
-        R"(#########....###################)",  //   0
-        R"(#########....###################)",  //   1
-        R"(#########....#######.###########)",  //   2
-        R"(#########....#######.###########)",  //   3
-        R"(#########....#######.###########)",  //   4
-        R"(#########....#######.###########)",  //   5
-        R"(#########.....NN.....###########)",  //   6
-        R"(#...............S....###########)",  //   7
-        R"(#...#####............###########)",  //   8
-        R"(##########...........###########)",  //   9
-        R"(##########..#####...N..#########)",  //  10
-        R"(##########..######.....#########)",  //  11
-        R"(##########vv#######""""#########)",  //  12
-        R"(##########..#######""""#########)",  //  13
-        R"(##########..#######""""#########)",  //  14
-        R"(##########..#######""""#########)",  //  15
-        R"(##########.......N.""""#########)",  //  16
-        R"(##########...........###########)",  //  17
-        R"(##########..###......###########)",  //  18
-        R"(##########..###....#.###########)",  //  19
-        R"(##########..####################)",  //  20
-        R"(##########..####################)",  //  21
-        R"(##########..########D###########)",  //  22
-        R"(##########....N......###########)",  //  23
-        R"(####..................##########)",  //  24
-        R"(####..................##########)",  //  25
-        R"(##########???###################)",  //  26
-        R"(################################)",  //  27
+        R"(########.#...###################)",  //   0
+        R"(########.#...###################)",  //   1
+        R"(####.....#...########.##########)",  //   2
+        R"(##########...#......#.##########)",  //   3
+        R"(#####....#...#......#..........N)",  //   4
+        R"(#####....#"""#......#...######..)",  //   5
+        R"(#####....#"""###################)",  //   6
+        R"(##########"""..NN.....##########)",  //   7
+        R"(##........""""".......##########)",  //   8
+        R"(##..######.""""..S....##########)",  //   9
+        R"(###.#....#."""........##########)",  //  10
+        R"(##..#....#."".........##########)",  //  11
+        R"(##########..............########)",  //  12
+        R"(##########..............########)",  //  13
+        R"(##########...####"""""""########)",  //  14
+        R"(##########vvv####"""""""########)",  //  15
+        R"(##########...######"""""########)",  //  16
+        R"(##########...######"""""########)",  //  17
+        R"(##########...######"""""########)",  //  18
+        R"(##########...######"."""########)",  //  19
+        R"(##########.......N....""########)",  //  20
+        R"(##########............##########)",  //  21
+        R"(##########............##########)",  //  22
+        R"(##########...##.....#.##########)",  //  23
+        R"(##########...##.......##########)",  //  24
+        R"(##########...###################)",  //  25
+        R"(##########...#######.###########)",  //  26
+        R"(##########............##########)",  //  27
+        R"(##########............##########)",  //  28
+        R"(##########............##########)",  //  29
+        R"(##########............##########)",  //  30
+        R"(##########...###################)",  //  31
     });
     return grid;
 }
 
-const TilePos CAVE_EXIT{20, 23};
+const TilePos CAVE_EXIT{20, 26};
 
 bool in_floaroma_path(const TilePos& pos){
-    return pos.x >= 9 && pos.x <= 12 && pos.y >= 6 && pos.y <= 8;
+    return pos.x >= 10 && pos.x <= 12 && pos.y <= 5;
 }
 
 std::vector<TrainerSight> north_trainer_sights(){
     return {
-        {"Twins (left)",  {14, 6}, Direction::SOUTH, 3},
-        {"Twins (right)", {15, 6}, Direction::SOUTH, 3},
+        {"Twins (left)",  {15, 7}, Direction::SOUTH, 3},
+        {"Twins (right)", {16, 7}, Direction::SOUTH, 4},
+        {"Aroma Lady Taylor", {17, 20}, Direction::SOUTH, 4},
+        {"Aroma Lady Taylor", {17, 20}, Direction::EAST, 4},
     };
 }
 

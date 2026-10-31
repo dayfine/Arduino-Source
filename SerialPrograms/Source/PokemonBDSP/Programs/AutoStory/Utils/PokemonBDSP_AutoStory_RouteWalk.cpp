@@ -207,6 +207,14 @@ bool talk_with_nudges(
     return false;
 }
 
+RobustPlanCosts route_plan_costs(){
+    RobustPlanCosts costs;
+    costs.exact_open_tiles = costs.max_open_tiles;
+    costs.per_open_tile = 2;
+    costs.leg_not_at_wall = 6;
+    return costs;
+}
+
 RobustPlanCosts town_plan_costs(){
     RobustPlanCosts costs;
     //  A tile's hold moves exactly a tile; a longer open leg may end a tile
@@ -417,9 +425,11 @@ std::vector<TilePos> walk_route(
                     context.wait_for_all_requests();
                 }
                 result = walk_tiles_dpad(stream, context, x, y, leg.tiles, leg_label);
+                //  A wild battle starts once the step onto the grass is done,
+                //  so the taps still count; the walk went on after it.
                 if (result.wild_battles > 0){
-                    OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
-                        leg_label + ": a wild battle cut an open leg short; position unknown.", stream);
+                    stream.log("[Route] " + leg_label + ": " + std::to_string(result.wild_battles) +
+                        " wild battle(s) on the way; the tap count holds.", COLOR_ORANGE);
                 }
             }
             facing = leg.direction;

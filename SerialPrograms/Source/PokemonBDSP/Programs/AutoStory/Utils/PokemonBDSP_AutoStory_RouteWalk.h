@@ -31,9 +31,11 @@ constexpr Milliseconds ROUTE_MS_PER_TILE_ACROSS = Milliseconds(160);    //  east
 constexpr Milliseconds ROUTE_MS_PER_TILE_UP_DOWN = Milliseconds(240);   //  north or south
 //  From pressing the stick to the first step, when standing still.
 constexpr Milliseconds ROUTE_START_DELAY = Milliseconds(250);
-//  Running (B held) covers a tile in this fraction of the walking time.
-//  Not yet measured: Gen 4 runs at twice the walking speed.
-constexpr int ROUTE_RUN_SPEEDUP = 2;
+//  Running (B held) covers a tile in this fraction of the walking time. B
+//  held with the D-pad did not run: r238a walked the Ravaged Path's corridor
+//  at 160 ms a tile, and a limit set for twice that speed cut a wall leg
+//  short by two tiles. 1 until running is measured to work.
+constexpr int ROUTE_RUN_SPEEDUP = 1;
 
 //  How long to hold the stick for an open leg of `tiles` tiles, for a player
 //  already facing that way: a step once started is always finished, so stop
@@ -104,6 +106,8 @@ using RouteTrainerFight = std::function<void(const std::string& trainer)>;
 //  the second map's location banner on the way: a walk whose legs all ended
 //  on walls can still end in the wrong place (r124a saved in Sandgem Town
 //  after "arriving" on Route 202).
+Pokemon::RobustPlanCosts route_plan_costs();
+
 std::vector<Pokemon::TilePos> walk_route(
     VideoStream& stream, ProControllerContext& context,
     const Pokemon::MapSet& maps,
@@ -113,7 +117,7 @@ std::vector<Pokemon::TilePos> walk_route(
     const RouteTrainerFight& fight,
     const std::string& label,
     const std::vector<Pokemon::TilePos>& avoid = {},
-    const Pokemon::RobustPlanCosts& costs = Pokemon::RobustPlanCosts()
+    const Pokemon::RobustPlanCosts& costs = route_plan_costs()
 );
 
 //  Plan costs for walking in town: a one-tile step lands exactly, a short
@@ -124,6 +128,11 @@ std::vector<Pokemon::TilePos> walk_route(
 //  r128b walked into the Lab and the Mart). Pair it with a check at the end
 //  (a sign read) for the timed legs.
 Pokemon::RobustPlanCosts town_plan_costs();
+
+//  The costs walk_route() plans with unless told otherwise: open legs are
+//  whole tiles on the D-pad, so they land exactly at any length; a wall at
+//  a leg's end is still worth a little, and each open tile a little more.
+Pokemon::RobustPlanCosts route_plan_costs();
 
 //  Walks next to the NPC on world tile `npc`, faces them and presses A, trying
 //  the sides in `sides` (the side of the NPC to stand on) in order until a
