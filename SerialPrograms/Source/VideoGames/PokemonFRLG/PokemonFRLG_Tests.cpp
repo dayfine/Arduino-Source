@@ -307,7 +307,7 @@ void add_tests_LastOccupiedPartySlot(UnitTestDatabase& database){
     }
     database.add<Test_LastOccupiedPartySlot>("PokemonFRLG/Party/Party_6_With_Held_Items.png", PartySlot::SIX);
     database.add<Test_LastOccupiedPartySlot>("PokemonFRLG/Party/JPN_HeldItem.png", PartySlot::SIX);
-    database.add<Test_LastOccupiedPartySlot>("PokemonFRLG/Party/JPN_Party.png", PartySlot::THREE);
+    database.add<Test_LastOccupiedPartySlot>("PokemonFRLG/Party/JPN_Party.png", PartySlot::FOUR);
     database.add<Test_LastOccupiedPartySlot>("PokemonFRLG/Party/SPA_HeldItem.png", PartySlot::SIX);
 }
 
