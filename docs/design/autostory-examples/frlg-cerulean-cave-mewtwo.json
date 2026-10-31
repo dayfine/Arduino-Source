@@ -1,0 +1,44 @@
+{
+  "checkpoint": "frlg-mewtwo",
+  "game": "FRLG",
+  "summary": "From the Cerulean Pokemon Center PC (after the Hall of Fame) to Mewtwo on Cerulean Cave B1F.",
+  "source": "frlg/brock-mvp OverworldRoute.cpp test_pokemon_center_to_mewtwo, facing_mewtwo; OverworldWalk.h; walked on console B 2026-10-29",
+  "start": {
+    "save": "Cerulean Pokemon Center, at the PC",
+    "requires": [{"flag": "after_hall_of_fame", "source": "save"}, {"party": {"has_move": "Surf"}},
+                 {"bag": {"pocket": "Items", "item": "Max Repel", "min": 1}}],
+    "pose": {"map": "CeruleanCity_PokemonCenter_1F", "point": "pc", "facing": "read", "sure": "tile"}
+  },
+  "world": {"flags": ["after_hall_of_fame"], "why": "the flag removes the cave guard at CeruleanCity (1,13)"},
+  "interrupts": [
+    {"id": "wild_battle_flee", "detect": {"stop": "battle_flash", "lag_ms": 300}, "handle": {"battle": {"policy": "run"}},
+     "then": "rewalk_leg"},
+    {"id": "repel_wore_off", "detect": {"stop": "message"},
+     "handle": {"sequence": [{"press": "B"}, {"menu": {"use_item": "Max Repel", "pocket": "Items"}}]},
+     "then": "rewalk_leg"}
+  ],
+  "events": [
+    {
+      "id": "repel",
+      "do": {"menu": {"use_item": "Max Repel", "pocket": "Items"}},
+      "expect": [{"screen": "overworld", "stable_ms": 1000}]
+    },
+    {
+      "id": "to_mewtwo",
+      "why": "One planned route: city, Surf across to the cave mouth, 1F, B1F; FRLG D-pad walks are exact.",
+      "do": {"route_to": {"map": "CeruleanCave_B1F", "point": "below_mewtwo", "facing": "N"}},
+      "expect": [{"pose": {"map": "CeruleanCave_B1F", "point": "below_mewtwo", "facing": "N"}}],
+      "confirm": [{"facing_reader": "N"}, {"warps_seen": ["CeruleanCave_1F", "CeruleanCave_B1F"]}],
+      "recover": [{"on": "warp_fade_missing", "then": "stop"},
+                  {"on": "too_many_interrupts", "then": "stop"}]
+    },
+    {
+      "id": "talk_mewtwo",
+      "do": {"talk": {"approach": {"face": "N"}, "press": "A", "opens_within_ms": 3000}},
+      "expect": [{"dialogue_opened": true}],
+      "then": {"dialogue": {"advance": "A", "until": {"screen": "battle"}, "max_s": 15}},
+      "verify": [{"screen": "battle"}]
+    }
+  ],
+  "end": {"expect": [{"screen": "battle"}], "handoff": "catch policy (static encounter)", "save": false}
+}
