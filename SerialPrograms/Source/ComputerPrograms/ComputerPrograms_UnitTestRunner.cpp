@@ -5,6 +5,7 @@
  */
 
 #include "Common/Cpp/ListenerSet.h"
+#include "Common/Cpp/MoveOnlyFunction_Tests.h"
 #include "Common/Cpp/ScopeExit.h"
 #include "Common/Cpp/PrettyPrint.h"
 #include "Common/Cpp/TestRunners/TestImageDistortionManager.h"
@@ -19,6 +20,7 @@
 #include "CommonFramework/GlobalAutoPaths.h"
 #include "CommonFramework/ProgramStats/StatsTracking.h"
 #include "CommonFramework/Tools/GlobalThreadPools.h"
+#include "CommonFramework/Windows/LabControl.h"
 #include "CommonTools/VisualDetectors/BlackBorderDetector.h"
 #include "CommonTools/OCR/OCR_Tests.h"
 
@@ -53,11 +55,13 @@ UnitTestDatabase make_UNIT_TESTS_ALL(){
     add_tests_QtEventThreadPool(ret, GlobalThreadPools::computation_normal());
     add_tests_BlackBorderDetector(ret);
     add_tests_ListenerSet(ret);
+    add_tests_MoveOnlyFunction(ret);
     add_tests_AudioInfo(ret);
     add_tests_ChannelMixerMatrix(ret);
     add_tests_FFTStreamer(ret);
     add_tests_SinkPipeline(ret);
     add_tests_AudioFileLoader(ret);
+    add_tests_LabControl(ret);
     OCR::add_tests(ret);
     Kernels::add_tests(ret);
     Pokemon::add_tests_LegPlanner(ret);
