@@ -12,6 +12,7 @@
 #include "../Data/PokemonBDSP_AutoStory_StoryMaps.h"
 #include "../Detect/PokemonBDSP_AutoStory_OverworldDetector.h"
 #include "../Utils/PokemonBDSP_AutoStory_PokemonCenter.h"
+#include "../Utils/PokemonBDSP_AutoStory_Location.h"
 #include "../Utils/PokemonBDSP_AutoStory_RouteWalk.h"
 #include "../Utils/PokemonBDSP_AutoStory_Segment_00_tools.h"
 #include "../Utils/PokemonBDSP_AutoStory_Walk.h"
@@ -379,6 +380,31 @@ WalkResult walk_dir(VideoStream& stream, ProControllerContext& context, Directio
     const double x = dir == Direction::EAST ? 1 : dir == Direction::WEST ? -1 : 0;
     const double y = dir == Direction::NORTH ? 1 : dir == Direction::SOUTH ? -1 : 0;
     return walk_until(stream, context, x, y, limit, label);
+}
+
+//  Out of a building whose door is straight south of us, a D-pad tile at a
+//  time, until the location banner shows: it names the map we step into
+//  (e.g. "Oreburgh City") for a few seconds, and never shows inside. Ends in
+//  the doorway, facing south. Out of the Oreburgh Gym from in front of Roark
+//  (by hand, 2026-10-31): 18 taps inside, 2 taps of black fade, the banner on
+//  the 21st. The door's fade alone was missed between steps (r219g walked on
+//  south to the rocks below the gym).
+bool dpad_out_of_building(VideoStream& stream, ProControllerContext& context, size_t max_taps, const std::string& label){
+    pbf_press_dpad(context, DPAD_DOWN, 160ms, 700ms);    // turn
+    for (size_t tap = 0; tap < max_taps; tap++){
+        pbf_press_dpad(context, DPAD_DOWN, 160ms, 900ms);
+        context.wait_for_all_requests();
+        const VideoSnapshot frame = stream.video().snapshot();
+        if (frame && location_banner_showing(*frame.frame)){
+            stream.log("[Walk] " + label + ": the location banner shows after " + std::to_string(tap + 1) + " taps; outside.");
+            context.wait_for(1000ms);
+            return true;
+        }
+        if (dialogue_opens(stream, context, 100ms)){
+            finish_dialogue(stream, context, BUTTON_B, label + ": someone in the way");
+        }
+    }
+    return false;
 }
 
 //  For a player inside a Pokemon Center after a whiteout, at the counter:
@@ -1057,30 +1083,9 @@ void west_until_transition(VideoStream& stream, ProControllerContext& context, c
 //  of its door a tile at a time, east along the row to the Pokemon Center
 //  and heal; ends at the counter.
 void oreburgh_gym_to_center(VideoStream& stream, ProControllerContext& context){
-    // Back down the middle, a tile at a time, looking for the door's dark
-    // fade after each: a longer hold runs on past the doorstep, as leaving
-    // the Center did (r205d).
-    bool out = false;
-    for (size_t tile = 0; tile < 40 && !out; tile++){
-        const WalkResult down = walk_for(stream, context, 0, -1, 240ms, "south out of the gym");
-        if (down.stop == WalkStop::DIALOG){
-            finish_dialogue(stream, context, BUTTON_B, "Someone in the gym");
-            continue;
-        }
-        const auto start = current_time();
-        while (current_time() - start < 1500ms){
-            context.wait_for(100ms);
-            const VideoSnapshot frame = stream.video().snapshot();
-            if (frame && mean_brightness(*frame.frame) < 25){
-                out = true;
-                break;
-            }
-        }
-    }
-    if (!out){
+    if (!dpad_out_of_building(stream, context, 40, "out of the gym")){
         fail(stream, "Oreburgh Gym: did not leave by its door.");
     }
-    context.wait_for(2500ms);
 
     // Heal at the Center, so 01.05 starts at its counter: the gym's doorstep
     // row runs east to the Center's door, the way 01.04 came.
