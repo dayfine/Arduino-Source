@@ -405,25 +405,18 @@ void oreburgh_to_roark(VideoStream& stream, ProControllerContext& context){
         fail(stream, "Oreburgh: walking south did not stop at the stone ledge.");
     }
     // A townsperson wandering across the row can stop us a tile or two short
-    // (r95), so walk east again until a walk stops without moving.
-    bool at_fence = false;
-    for (size_t attempt = 0; attempt < 5 && !at_fence; attempt++){
-        const WalkResult east = walk_dir(stream, context, Direction::EAST, 10000ms, "east to the fence below the Poke Mart");
-        if (east.stop == WalkStop::LIMIT){
-            stream.log("[Walk] Held east for 10 s without seeing the stop; taking the fence as reached.");
-            at_fence = true;
-            break;
+    // (r95): after a pause, hold east again; against the fence that does
+    // nothing. Whether that second walk moved cannot be read from the screen
+    // with people about (s03b2: 6 to 12 standing still, so "blocked" took
+    // 2 s every time), so neither walk is checked for it.
+    for (size_t push = 0; push < 2; push++){
+        const WalkResult east = walk_dir(stream, context, Direction::EAST, push == 0 ? 10000ms : 4000ms, "east to the fence below the Poke Mart");
+        if (east.stop != WalkStop::BLOCKED && east.stop != WalkStop::LIMIT){
+            fail(stream, std::string("Oreburgh: walking east to the fence below the Poke Mart ended with ") + walk_stop_name(east.stop) + ".");
         }
-        if (east.stop != WalkStop::BLOCKED){
-            fail(stream, "Oreburgh: walking east did not stop at the fence below the Poke Mart.");
-        }
-        at_fence = attempt > 0 && east.walked <= 800ms;
-        if (!at_fence){
+        if (push == 0){
             context.wait_for(1500ms);
         }
-    }
-    if (!at_fence){
-        fail(stream, "Oreburgh: something kept stopping the walk east to the fence below the Poke Mart.");
     }
 
     step(2);
