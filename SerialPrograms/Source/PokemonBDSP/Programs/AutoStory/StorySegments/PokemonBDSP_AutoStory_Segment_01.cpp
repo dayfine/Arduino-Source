@@ -70,6 +70,8 @@ bool dialogue_opens(VideoStream& stream, ProControllerContext& context, Millisec
 //  `doubles` for tag and twin battles. A lost battle ends in the last
 //  Pokemon Center; see in_pokemon_center().
 bool in_pokemon_center(VideoStream& stream);
+bool center_floor_on_screen(const ImageViewRGB32& screen, size_t* percent = nullptr);
+bool in_dim_cave(VideoStream& stream);
 bool talk_or_fight(VideoStream& stream, ProControllerContext& context, const std::string& label, bool battle_expected = false, bool doubles = false){
     ShortDialogDetector dialog;
     OverworldDetector overworld;
@@ -437,8 +439,11 @@ void oreburgh_to_roark(VideoStream& stream, ProControllerContext& context){
         }
         // The door's fade often reads as the time limit, not a black screen
         // (r183a went in and on to the counter): look at the floor.
-        const WalkResult in = walk_dir(stream, context, Direction::NORTH, 2500ms, "north into the Center's door");
-        if (in.stop == WalkStop::TRANSITION || in_pokemon_center(stream)){
+        // Stop as soon as the floor shows: walking on to the counter left the
+        // door's column, and the walk back out drifted into the yard (r188b).
+        const WalkResult in = walk_until(stream, context, 0, 1, 2500ms, "north into the Center's door",
+            [](const ImageViewRGB32& screen){ return center_floor_on_screen(screen); });
+        if (in.stop == WalkStop::TRANSITION || in.stop == WalkStop::ARRIVED || in_pokemon_center(stream)){
             inside = true;
             break;
         }
@@ -453,7 +458,8 @@ void oreburgh_to_roark(VideoStream& stream, ProControllerContext& context){
             context.wait_for(2000ms);    // he runs off
         }
         // Talked in the door's column: the door is free now.
-        walk_dir(stream, context, Direction::NORTH, 2500ms, "north into the Center's door");
+        walk_until(stream, context, 0, 1, 2500ms, "north into the Center's door",
+            [](const ImageViewRGB32& screen){ return center_floor_on_screen(screen); });
         inside = in_pokemon_center(stream);
     }
     if (!inside || !in_pokemon_center(stream)){
@@ -483,7 +489,9 @@ void oreburgh_to_roark(VideoStream& stream, ProControllerContext& context){
         }else if (down.stop == WalkStop::BLOCKED){
             context.wait_for(2000ms);
         }
-        in_mine = transitions >= 2 || walked >= 9500ms;
+        // Counting alone took a walk that drifted into the yard (r188b) for the
+        // mine: it also has to look like the mine.
+        in_mine = (transitions >= 2 || walked >= 9500ms) && in_dim_cave(stream);
     }
     if (!in_mine){
         fail(stream, "Oreburgh: the walk south from the Center's door did not reach the mine.");
@@ -628,12 +636,8 @@ void oreburgh_to_roark(VideoStream& stream, ProControllerContext& context){
 //  half of the screen with warm yellow, where the gym is grey and routes are
 //  green. After a battle it tells a loss (a whiteout ends at the counter)
 //  from a win.
-bool in_pokemon_center(VideoStream& stream){
-    const VideoSnapshot frame = stream.video().snapshot();
-    if (!frame){
-        return false;
-    }
-    const ImageRGB32 small = frame.frame->scale_to(192, 108);
+bool center_floor_on_screen(const ImageViewRGB32& screen, size_t* percent){
+    const ImageRGB32 small = screen.scale_to(192, 108);
     size_t warm = 0, total = 0;
     for (size_t y = 54; y < 108; y++){
         for (size_t x = 0; x < 192; x++){
@@ -645,10 +649,41 @@ bool in_pokemon_center(VideoStream& stream){
             }
         }
     }
-    const bool inside = warm * 10 > total * 3;
-    stream.log("[Center check] warm floor " + std::to_string(warm * 100 / total) + " %: " +
+    if (percent){
+        *percent = warm * 100 / total;
+    }
+    return warm * 10 > total * 3;
+}
+bool in_pokemon_center(VideoStream& stream){
+    const VideoSnapshot frame = stream.video().snapshot();
+    if (!frame){
+        return false;
+    }
+    size_t percent = 0;
+    const bool inside = center_floor_on_screen(*frame.frame, &percent);
+    stream.log("[Center check] warm floor " + std::to_string(percent) + " %: " +
         (inside ? "in a Pokemon Center." : "not in a Pokemon Center."));
     return inside;
+}
+
+//  The Oreburgh Mine's hall and corridors are dim: mean brightness 45 to 64
+//  on the console, against 99 to 116 for the city and its yard (2026-10-31).
+bool in_dim_cave(VideoStream& stream){
+    const VideoSnapshot frame = stream.video().snapshot();
+    if (!frame){
+        return false;
+    }
+    const ImageRGB32 small = frame.frame->scale_to(192, 108);
+    uint64_t sum = 0;
+    for (size_t y = 0; y < 108; y++){
+        for (size_t x = 0; x < 192; x++){
+            const uint32_t pixel = small.pixel(x, y);
+            sum += ((pixel >> 16) & 0xff) + ((pixel >> 8) & 0xff) + (pixel & 0xff);
+        }
+    }
+    const uint64_t mean = sum / (3 * 192 * 108);
+    stream.log("[Cave check] mean brightness " + std::to_string(mean) + ".");
+    return mean < 85;
 }
 
 
