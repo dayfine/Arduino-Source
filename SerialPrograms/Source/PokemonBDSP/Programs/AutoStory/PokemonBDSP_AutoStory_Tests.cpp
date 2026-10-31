@@ -24,6 +24,7 @@
 #include "Utils/PokemonBDSP_AutoStory_PokemonCenter.h"
 #include "Utils/PokemonBDSP_AutoStory_RouteWalk.h"
 #include "StorySegments/PokemonBDSP_AutoStory_SandgemCenterEvents.h"
+#include "PokemonBDSP_AutoStory_Sim.h"
 #include "PokemonBDSP_AutoStory_Tests.h"
 
 namespace PokemonAutomation{
@@ -1700,6 +1701,40 @@ public:
 };
 
 
+//  00.05f in the movement simulator: a thousand seeded runs, scored. The
+//  user's alternative way to the sign is printed beside it, not checked.
+class Test_JubilifeClownCompanySim : public UnitTest{
+public:
+    Test_JubilifeClownCompanySim()
+        : UnitTest("PokemonBDSP::AutoStory - Jubilife 00.05f simulated")
+    {}
+    virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
+        const SimModel model;
+        const SimStats stats = run_monte_carlo(
+            [](JubilifeActions& game){ return jubilife_clown_company_checkpoint(game); },
+            model, 1000, 1
+        );
+        logger.log("00.05f: " + stats.to_string());
+        const SimStats passage = run_monte_carlo(
+            [](JubilifeActions& game){ return sim_clown_company_by_passage_checkpoint(game); },
+            model, 1000, 1
+        );
+        logger.log("By the passage: " + passage.to_string());
+        if (stats.success_rate() < MIN_SUCCESS){
+            return "00.05f: expected at least " + std::to_string(MIN_SUCCESS) + " success, simulated " +
+                std::to_string(stats.success_rate()) + ".";
+        }
+        if (stats.runs_with_turn_steps > 0){
+            return "00.05f: expected no turn to step (r161c), simulated " +
+                std::to_string(stats.runs_with_turn_steps) + " runs with one.";
+        }
+        return true;
+    }
+private:
+    static constexpr double MIN_SUCCESS = 0.55;
+};
+
+
 //  The School's lamp at night, from its doorsteps' row (2026-10-30): where
 //  the door took us in, the lamp reads within half a tile of the door; a
 //  tile either side, more.
@@ -1825,6 +1860,7 @@ void add_tests_AutoStory(UnitTestDatabase& database){
     database.add<Test_MartLadyEvents>();
     database.add<Test_JubilifeEvents>();
     database.add<Test_JubilifeClownCompany>();
+    database.add<Test_JubilifeClownCompanySim>();
     database.add<Test_SchoolLamp>();
     database.add<Test_LocationBannerShowing>();
     database.add<Test_Indoors>();
