@@ -51,11 +51,13 @@ WalkResult walk_until(
 //  ((x, y) is one of the four directions). The D-pad moves whole tiles and
 //  keeps to the row: the stick drifts off it, catches tree corners and slides
 //  a row on stairs (Route 203, r226a and r227b; by hand the D-pad went
-//  through the same places).
+//  through the same places). With `run`, B is held too: twice as fast, and
+//  as tile-true.
 WalkResult walk_until_dpad(
     VideoStream& stream, ProControllerContext& context,
     double x, double y, Milliseconds limit, const std::string& label,
-    const std::function<bool(const ImageViewRGB32& screen)>& arrived = nullptr
+    const std::function<bool(const ImageViewRGB32& screen)>& arrived = nullptr,
+    bool run = false
 );
 
 //  walk_until() where there are no wild Pokemon (a gym, a building): any

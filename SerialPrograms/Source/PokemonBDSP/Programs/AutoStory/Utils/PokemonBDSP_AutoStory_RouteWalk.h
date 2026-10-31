@@ -31,6 +31,9 @@ constexpr Milliseconds ROUTE_MS_PER_TILE_ACROSS = Milliseconds(160);    //  east
 constexpr Milliseconds ROUTE_MS_PER_TILE_UP_DOWN = Milliseconds(240);   //  north or south
 //  From pressing the stick to the first step, when standing still.
 constexpr Milliseconds ROUTE_START_DELAY = Milliseconds(250);
+//  Running (B held) covers a tile in this fraction of the walking time.
+//  Not yet measured: Gen 4 runs at twice the walking speed.
+constexpr int ROUTE_RUN_SPEEDUP = 2;
 
 //  How long to hold the stick for an open leg of `tiles` tiles, for a player
 //  already facing that way: a step once started is always finished, so stop

@@ -1153,9 +1153,42 @@ void oreburgh_to_route203(VideoStream& stream, ProControllerContext& context){
     west_until_transition(stream, context, "West out of Oreburgh Gate", 8, location_banner_showing);
 }
 
-void route203_to_floaroma(VideoStream& stream, ProControllerContext& context){
-    StepLog step(stream, "01.06", "From the Oreburgh Gate's west exit to Floaroma Town", {
-        "Route 203 west on its grid into Jubilife, to the foot of the north road",
+void route203_to_jubilife(VideoStream& stream, ProControllerContext& context){
+    StepLog step(stream, "01.06", "From the Oreburgh Gate's west exit into Jubilife City", {
+        "Route 203 on its grid to row 17, below the blue-haired trainer",
+        "West along row 17 into Jubilife, counting tiles",
+    });
+
+    step(1);
+    // On the grid (Data/PokemonBDSP_AutoStory_Route203, checked by hand):
+    // south from the Gate, west under the beaten girl to the stairs, north
+    // to the ledge, west to the blue-haired trainer, and a row down onto row
+    // 17, which runs straight to Jubilife. Trainers the map does not list
+    // are fought where they stop us.
+    std::vector<Pokemon::TrainerSight> trainers;
+    auto fight = [&](const std::string& who){
+        talk_or_fight(stream, context, "Route 203: " + who);
+    };
+    const std::vector<Pokemon::TilePos> at = walk_route(stream, context, route203_maps(), Route203::gate_exit(),
+        on_route203_west_line, trainers, fight, "Route 203 to row 17");
+    if (at.size() != 1){
+        fail(stream, "Route 203: the walk to row 17 did not end on a known tile.");
+    }
+
+    step(2);
+    // Row 17 has no wall before Jubilife, so count the tiles: from column
+    // `x` it is x + 1 taps to Jubilife's first tile (by hand from (31, 17):
+    // 32 taps, Jubilife's banner on the last one). 01.07 starts there.
+    dpad_tiles(stream, context, DPAD_LEFT, (size_t)at[0].x + 1, "west along row 17 into Jubilife");
+    context.wait_for_all_requests();
+    if (!location_banner_showing(*stream.video().snapshot().frame)){
+        fail(stream, "Route 203: no Jubilife banner after counting the tiles west.");
+    }
+}
+
+void jubilife_to_floaroma(VideoStream& stream, ProControllerContext& context){
+    StepLog step(stream, "01.07", "From Jubilife City's east edge to Floaroma Town", {
+        "West along Jubilife's long road to the foot of the north road",
         "Up Jubilife's north road (Rowan, Dawn and two Galactic grunts: a tag battle)",
         "North on Route 204 into the Ravaged Path",
         "Through the Ravaged Path, smashing its rocks",
@@ -1164,33 +1197,10 @@ void route203_to_floaroma(VideoStream& stream, ProControllerContext& context){
     });
 
     step(1);
-    // On the traced grid (Data/PokemonBDSP_AutoStory_Route203), joined to
-    // Jubilife's: along the bottom of each stretch, where its stairs west
-    // are (r222g walked north of the pond in the middle stretch and found no
-    // way west), then along Jubilife's street to its north road. Trainers
-    // the map does not list are fought where they stop us.
-    // One map at a time (the planner searches sets of tiles, so joined maps
-    // blow up): Route 203 to row 17 between its stairs, west along it until
-    // Jubilife's banner shows (about 38 tiles), then Jubilife's north-east corner on town costs.
-    {
-        std::vector<Pokemon::TrainerSight> trainers;
-        auto fight = [&](const std::string& who){
-            talk_or_fight(stream, context, "Route 203: " + who);
-        };
-        walk_route(stream, context, route203_maps(), Route203::gate_exit(), on_route203_west_line,
-            trainers, fight, "Route 203 to row 17");
-        //  The woman on the road wanders onto row 17 at times: wait for her.
-        WalkResult in = walk_until_dpad(stream, context, -1, 0, 12000ms, "west into Jubilife", location_banner_showing);
-        for (size_t tries = 0; tries < 3 && in.stop == WalkStop::BLOCKED; tries++){
-            context.wait_for(2500ms);
-            in = walk_until_dpad(stream, context, -1, 0, 12000ms, "west into Jubilife", location_banner_showing);
-        }
-        if (in.stop != WalkStop::ARRIVED){
-            fail(stream, "Route 203: the walk west did not show Jubilife's banner.");
-        }
-        walk_route(stream, context, jubilife_east_maps(), jubilife_east_entrance(), on_jubilife_north_road,
-            trainers, fight, "Jubilife to its north road", {}, town_plan_costs());
-    }
+    // Route 203's row 17 carries on as Jubilife's long road. From the first
+    // tile (column 63) to the north road's columns 43 to 46: about 18 taps
+    // (by hand, 2026-10-31; step 2 searches a few columns either way).
+    dpad_tiles(stream, context, DPAD_LEFT, 18, "west along Jubilife's long road");
 
     step(2);
     // Rowan's scene starts on the way up the north road (columns 43 to 46 of
@@ -1392,7 +1402,21 @@ void checkpoint_0106(
 ){
     checkpoint_reattempt_loop(env, context, options, stats,
         [&](size_t /*attempt*/){
-            route203_to_floaroma(env.console, context);
+            route203_to_jubilife(env.console, context);
+        },
+        true
+    );
+}
+
+void checkpoint_0107(
+    SingleSwitchProgramEnvironment& env,
+    ProControllerContext& context,
+    AutoStoryOptions options,
+    AutoStoryStats& stats
+){
+    checkpoint_reattempt_loop(env, context, options, stats,
+        [&](size_t /*attempt*/){
+            jubilife_to_floaroma(env.console, context);
         },
         true
     );
@@ -1419,6 +1443,7 @@ void AutoStory_Segment_01::run_segment(
     AutoStory_Checkpoint_0104().run_checkpoint(env, context, options, stats);
     AutoStory_Checkpoint_0105().run_checkpoint(env, context, options, stats);
     AutoStory_Checkpoint_0106().run_checkpoint(env, context, options, stats);
+    AutoStory_Checkpoint_0107().run_checkpoint(env, context, options, stats);
     env.console.log("End Segment " + name(), COLOR_GREEN);
 }
 
@@ -1491,9 +1516,9 @@ void AutoStory_Checkpoint_0105::run_checkpoint(
     checkpoint_0105(env, context, options, stats);
 }
 
-std::string AutoStory_Checkpoint_0106::name()       const { return "01.06 - Route 203 to Floaroma"; }
+std::string AutoStory_Checkpoint_0106::name()       const { return "01.06 - Route 203 to Jubilife"; }
 std::string AutoStory_Checkpoint_0106::start_text() const { return AutoStory_Checkpoint_0105().end_text(); }
-std::string AutoStory_Checkpoint_0106::end_text()   const { return "In the Floaroma Town Pokemon Center, healed."; }
+std::string AutoStory_Checkpoint_0106::end_text()   const { return "In Jubilife City, on the first tile of its long road in from Route 203."; }
 
 void AutoStory_Checkpoint_0106::run_checkpoint(
     SingleSwitchProgramEnvironment& env,
@@ -1502,6 +1527,19 @@ void AutoStory_Checkpoint_0106::run_checkpoint(
     AutoStoryStats& stats
 ) const{
     checkpoint_0106(env, context, options, stats);
+}
+
+std::string AutoStory_Checkpoint_0107::name()       const { return "01.06 - Route 203 to Floaroma"; }
+std::string AutoStory_Checkpoint_0107::start_text() const { return AutoStory_Checkpoint_0106().end_text(); }
+std::string AutoStory_Checkpoint_0107::end_text()   const { return "In the Floaroma Town Pokemon Center, healed."; }
+
+void AutoStory_Checkpoint_0107::run_checkpoint(
+    SingleSwitchProgramEnvironment& env,
+    ProControllerContext& context,
+    AutoStoryOptions options,
+    AutoStoryStats& stats
+) const{
+    checkpoint_0107(env, context, options, stats);
 }
 
 }

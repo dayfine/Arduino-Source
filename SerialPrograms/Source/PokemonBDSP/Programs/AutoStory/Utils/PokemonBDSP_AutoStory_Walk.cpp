@@ -13,6 +13,7 @@
 #include "CommonTools/InferenceCallbacks/VisualInferenceCallback.h"
 #include "CommonTools/VisualDetectors/BlackScreenDetector.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
+#include "NintendoSwitch/Commands/NintendoSwitch_Commands_Superscalar.h"
 #include "PokemonBDSP/Inference/PokemonBDSP_DialogDetector.h"
 #include "PokemonBDSP/Inference/PokemonBDSP_TransitionWatchers.h"
 #include "PokemonBDSP/Inference/Battles/PokemonBDSP_BattleMenuDetector.h"
@@ -159,7 +160,7 @@ WalkResult walk_until_impl(
     VideoStream& stream, ProControllerContext& context,
     double x, double y, Milliseconds limit, const std::string& label,
     const std::function<bool(const ImageViewRGB32& screen)>& arrived,
-    bool wild, bool dpad
+    bool wild, bool dpad, bool run
 );
 }
 
@@ -168,22 +169,23 @@ WalkResult walk_until(
     double x, double y, Milliseconds limit, const std::string& label,
     const std::function<bool(const ImageViewRGB32& screen)>& arrived
 ){
-    return walk_until_impl(stream, context, x, y, limit, label, arrived, true, false);
+    return walk_until_impl(stream, context, x, y, limit, label, arrived, true, false, false);
 }
 
 WalkResult walk_until_dpad(
     VideoStream& stream, ProControllerContext& context,
     double x, double y, Milliseconds limit, const std::string& label,
-    const std::function<bool(const ImageViewRGB32& screen)>& arrived
+    const std::function<bool(const ImageViewRGB32& screen)>& arrived,
+    bool run
 ){
-    return walk_until_impl(stream, context, x, y, limit, label, arrived, true, true);
+    return walk_until_impl(stream, context, x, y, limit, label, arrived, true, true, run);
 }
 
 WalkResult walk_until_no_wild(
     VideoStream& stream, ProControllerContext& context,
     double x, double y, Milliseconds limit, const std::string& label
 ){
-    return walk_until_impl(stream, context, x, y, limit, label, nullptr, false, false);
+    return walk_until_impl(stream, context, x, y, limit, label, nullptr, false, false, false);
 }
 
 namespace{
@@ -191,7 +193,7 @@ WalkResult walk_until_impl(
     VideoStream& stream, ProControllerContext& context,
     double x, double y, Milliseconds limit, const std::string& label,
     const std::function<bool(const ImageViewRGB32& screen)>& arrived,
-    bool wild, bool dpad
+    bool wild, bool dpad, bool run
 ){
     constexpr Milliseconds CHUNK = 400ms;
     const DpadPosition dpad_direction = x < 0 ? DPAD_LEFT : x > 0 ? DPAD_RIGHT : y > 0 ? DPAD_UP : DPAD_DOWN;
@@ -230,7 +232,10 @@ WalkResult walk_until_impl(
         const int ret = run_until<ProControllerContext>(
             stream, context,
             [&](ProControllerContext& context){
-                if (dpad){
+                if (dpad && run){
+                    ssf_press_button(context, BUTTON_B, 0ms, chunk, 0ms);
+                    ssf_press_dpad(context, dpad_direction, chunk, chunk, 0ms);
+                }else if (dpad){
                     pbf_press_dpad(context, dpad_direction, chunk, 0ms);
                 }else{
                     pbf_move_left_joystick(context, {x, y}, chunk, 0ms);
