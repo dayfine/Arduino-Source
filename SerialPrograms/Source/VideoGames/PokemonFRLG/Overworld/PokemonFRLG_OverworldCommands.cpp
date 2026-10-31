@@ -12,6 +12,8 @@
 #include "PokemonFRLG_OverworldRoute.h"
 #include "PokemonFRLG_OverworldWalk.h"
 #include "PokemonFRLG_OverworldCommands.h"
+#include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
+#include "VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_HardReset.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -81,6 +83,23 @@ void register_overworld_commands(){
                     throw ParseException("frlg_max_repel: expected SLOT");
                 }
                 use_max_repel_from_bag(session.env.console, session.context, std::stoi(words[1]) - 1);
+            }
+        );
+        register_command_file_command(
+            "frlg_rng_reset", "frlg_rng_reset [ingame_ms]   (the RNG programs' reset: close, relaunch through the online license check, Continue, blind presses)",
+            [](CommandFileSession& session, const std::vector<std::string>& words){
+                //  Lab: the reset the RNG programs run, with a short in-game
+                //  wait, so its launch can be watched and recorded.
+                const uint64_t ingame = words.size() > 1 ? std::stoull(words[1]) : 5000;
+                const RngTimings timings{30500, 3333, 0, ingame};
+                Milliseconds launch_delay = INITIAL_LAUNCH_DELAY;
+                reset_and_perform_blind_sequence(
+                    session.env.console, session.context,
+                    Language::English, PokemonFRLG_RngTarget::starters,
+                    SeedButton::A, BlackoutButton::None,
+                    timings, launch_delay, false, 0
+                );
+                session.out << "  reset done\n";
             }
         );
         return true;
