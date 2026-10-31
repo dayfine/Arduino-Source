@@ -722,8 +722,10 @@ void oreburgh_street_to_gym(VideoStream& stream, ProControllerContext& context){
         }
         const WalkResult door = walk_dir(stream, context, Direction::NORTH, 4000ms, "north into the gym");
         // The door's fade can read as the time limit rather than a black
-        // screen (by hand: "limit after 4000ms", and we were inside).
-        if (door.stop == WalkStop::TRANSITION || door.stop == WalkStop::LIMIT){
+        // screen (by hand: "limit after 4000ms", and we were inside), and
+        // so can pushing at the gym's front with people walking by (r195d).
+        // Inside is dim: mean brightness 51 against 107 to 109 outside.
+        if ((door.stop == WalkStop::TRANSITION || door.stop == WalkStop::LIMIT) && in_dim_cave(stream)){
             context.wait_for(1000ms);
             return;
         }
