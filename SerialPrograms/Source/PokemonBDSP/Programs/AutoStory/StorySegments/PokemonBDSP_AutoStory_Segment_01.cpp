@@ -376,10 +376,13 @@ void hold_tiles(VideoStream& stream, ProControllerContext& context, Direction di
     context.wait_for_all_requests();
 }
 
-WalkResult walk_dir(VideoStream& stream, ProControllerContext& context, Direction dir, Milliseconds limit, const std::string& label){
+WalkResult walk_dir(
+    VideoStream& stream, ProControllerContext& context, Direction dir, Milliseconds limit, const std::string& label,
+    const std::function<bool(const ImageViewRGB32& screen)>& arrived = nullptr
+){
     const double x = dir == Direction::EAST ? 1 : dir == Direction::WEST ? -1 : 0;
     const double y = dir == Direction::NORTH ? 1 : dir == Direction::SOUTH ? -1 : 0;
-    return walk_until(stream, context, x, y, limit, label);
+    return walk_until(stream, context, x, y, limit, label, arrived);
 }
 
 //  Out of a building whose door is straight south of us, a D-pad tile at a
@@ -1048,10 +1051,16 @@ void oreburgh_gym(VideoStream& stream, ProControllerContext& context){
 //  West until a transition, by the user's rule for a wall in the way: walk
 //  north to the top wall, which pins the row, then try the rows south of it
 //  one at a time. Trainers who stop us are fought. Returns at the first
-//  transition (a building, a cave, a gate).
-void west_until_transition(VideoStream& stream, ProControllerContext& context, const std::string& label, size_t max_legs){
+//  transition (a building, a cave, a gate), or when `arrived` matches.
+void west_until_transition(
+    VideoStream& stream, ProControllerContext& context, const std::string& label, size_t max_legs,
+    const std::function<bool(const ImageViewRGB32& screen)>& arrived = nullptr
+){
     for (size_t leg = 0; leg < max_legs; leg++){
-        const WalkResult west = walk_dir(stream, context, Direction::WEST, 20000ms, label);
+        const WalkResult west = walk_dir(stream, context, Direction::WEST, 20000ms, label, arrived);
+        if (west.stop == WalkStop::ARRIVED){
+            return;
+        }
         if (west.stop == WalkStop::TRANSITION){
             context.wait_for(2000ms);
             return;
@@ -1067,7 +1076,10 @@ void west_until_transition(VideoStream& stream, ProControllerContext& context, c
         bool moved = false;
         for (size_t row = 0; row < 10 && !moved; row++){
             hold_tiles(stream, context, Direction::SOUTH, 1);
-            const WalkResult probe = walk_dir(stream, context, Direction::WEST, 1500ms, label + ": west on the next row");
+            const WalkResult probe = walk_dir(stream, context, Direction::WEST, 1500ms, label + ": west on the next row", arrived);
+            if (probe.stop == WalkStop::ARRIVED){
+                return;
+            }
             moved = probe.stop != WalkStop::BLOCKED || probe.walked > 1200ms;
             if (probe.stop == WalkStop::TRANSITION){
                 context.wait_for(2000ms);
@@ -1103,18 +1115,12 @@ void oreburgh_gym_to_center(VideoStream& stream, ProControllerContext& context){
     heal_at_oreburgh_counter(stream, context);
 }
 
-void oreburgh_to_floaroma(VideoStream& stream, ProControllerContext& context){
-    StepLog step(stream, "01.05", "From the Oreburgh Gym to Floaroma Town", {
+void oreburgh_to_route203(VideoStream& stream, ProControllerContext& context){
+    StepLog step(stream, "01.05", "From the Oreburgh Gym out of the Oreburgh Gate onto Route 203", {
         "Out of the gym onto its doorstep",
         "Up to the platform by Oreburgh Gate and into it (Barry bumps into us there)",
-        "Through the Gate and west along Route 203 and Jubilife to the Route 218 gate",
-        "Back east to Jubilife's north road and up it (Rowan, Dawn and two Galactic grunts: a tag battle)",
-        "North on Route 204 into the Ravaged Path",
-        "Through the Ravaged Path, smashing its rocks",
-        "Route 204 north on its grid, past the twins, into Floaroma",
-        "Heal at the Floaroma Pokemon Center",
+        "West through the Gate until Route 203's banner shows",
     });
-
     step(1);
     // 01.04 ends in front of Roark, just after his battle: its save at
     // 01.05's start is right after the win (2026-10-31, at the user's
@@ -1140,12 +1146,29 @@ void oreburgh_to_floaroma(VideoStream& stream, ProControllerContext& context){
     west_until_transition(stream, context, "Into Oreburgh Gate", 8);
 
     step(3);
-    // The Gate's cave, Route 203 (trainers stop us) and Jubilife's road all
-    // run west; the first door at the end is the Route 218 gate on
-    // Jubilife's west edge (by hand: twice).
+    // The cave's fade out of the Gate does not always read as a transition
+    // (r89), so the walk west ends on Route 203's location banner, which
+    // shows for a few seconds as we step out. 01.06 starts there, from a save.
+    west_until_transition(stream, context, "West out of Oreburgh Gate", 8, location_banner_showing);
+}
+
+void route203_to_floaroma(VideoStream& stream, ProControllerContext& context){
+    StepLog step(stream, "01.06", "From the Oreburgh Gate's west exit to Floaroma Town", {
+        "West along Route 203 and Jubilife to the Route 218 gate",
+        "Back east to Jubilife's north road and up it (Rowan, Dawn and two Galactic grunts: a tag battle)",
+        "North on Route 204 into the Ravaged Path",
+        "Through the Ravaged Path, smashing its rocks",
+        "Route 204 north on its grid, past the twins, into Floaroma",
+        "Heal at the Floaroma Pokemon Center",
+    });
+
+    step(1);
+    // Route 203 (trainers stop us) and Jubilife's road all run west; the
+    // first door at the end is the Route 218 gate on Jubilife's west edge
+    // (by hand: twice).
     west_until_transition(stream, context, "West to the Route 218 gate", 16);
 
-    step(4);
+    step(2);
     // Back out east into Jubilife: its north road is columns 43 to 46 of the
     // Jubilife grid, about 40 tiles east of the gate. Rowan's scene starts
     // on the way up it; a wall in a few tiles means we are off its column.
@@ -1178,7 +1201,7 @@ void oreburgh_to_floaroma(VideoStream& stream, ProControllerContext& context){
     }
     finish_dialogue(stream, context, BUTTON_B, "Rowan and Dawn after the battle");
 
-    step(5);
+    step(3);
     // Route 204's south half: a trainer just past the sign, then the cave in
     // the cliff a column west of the path.
     for (size_t leg = 0; leg < 6; leg++){
@@ -1199,7 +1222,7 @@ void oreburgh_to_floaroma(VideoStream& stream, ProControllerContext& context){
     }
     context.wait_for(2000ms);
 
-    step(6);
+    step(4);
     // On the traced grid (Data/PokemonBDSP_AutoStory_RavagedPath): from the
     // south door up the stairs to the tile west of one of the two rocks
     // across the lower corridor, smash it, then east and south to the
@@ -1243,7 +1266,7 @@ void oreburgh_to_floaroma(VideoStream& stream, ProControllerContext& context){
         context.wait_for(2000ms);
     }
 
-    step(7);
+    step(5);
     // On the traced grid (Data/PokemonBDSP_AutoStory_Route204): from the
     // cave's door west and up the stairs, round the pocket the ledge closes,
     // east and north through the tall grass, and west below the flower beds,
@@ -1266,7 +1289,7 @@ void oreburgh_to_floaroma(VideoStream& stream, ProControllerContext& context){
         context.wait_for(2000ms);
     }
 
-    step(8);
+    step(6);
     // We arrive in front of a house; the Center is a few tiles south-east.
     walk_dir(stream, context, Direction::SOUTH, 1500ms, "south off the house's path");
     hold_tiles(stream, context, Direction::EAST, 4);
@@ -1337,7 +1360,21 @@ void checkpoint_0105(
 ){
     checkpoint_reattempt_loop(env, context, options, stats,
         [&](size_t /*attempt*/){
-            oreburgh_to_floaroma(env.console, context);
+            oreburgh_to_route203(env.console, context);
+        },
+        true
+    );
+}
+
+void checkpoint_0106(
+    SingleSwitchProgramEnvironment& env,
+    ProControllerContext& context,
+    AutoStoryOptions options,
+    AutoStoryStats& stats
+){
+    checkpoint_reattempt_loop(env, context, options, stats,
+        [&](size_t /*attempt*/){
+            route203_to_floaroma(env.console, context);
         },
         true
     );
@@ -1363,6 +1400,7 @@ void AutoStory_Segment_01::run_segment(
     AutoStory_Checkpoint_0103().run_checkpoint(env, context, options, stats);
     AutoStory_Checkpoint_0104().run_checkpoint(env, context, options, stats);
     AutoStory_Checkpoint_0105().run_checkpoint(env, context, options, stats);
+    AutoStory_Checkpoint_0106().run_checkpoint(env, context, options, stats);
     env.console.log("End Segment " + name(), COLOR_GREEN);
 }
 
@@ -1422,9 +1460,9 @@ void AutoStory_Checkpoint_0104::run_checkpoint(
     checkpoint_0104(env, context, options, stats);
 }
 
-std::string AutoStory_Checkpoint_0105::name()       const { return "01.05 - Oreburgh to Floaroma"; }
+std::string AutoStory_Checkpoint_0105::name()       const { return "01.05 - Oreburgh to Route 203"; }
 std::string AutoStory_Checkpoint_0105::start_text() const { return AutoStory_Checkpoint_0104().end_text(); }
-std::string AutoStory_Checkpoint_0105::end_text()   const { return "In the Floaroma Town Pokemon Center, healed."; }
+std::string AutoStory_Checkpoint_0105::end_text()   const { return "On Route 203, just out of the Oreburgh Gate's west exit."; }
 
 void AutoStory_Checkpoint_0105::run_checkpoint(
     SingleSwitchProgramEnvironment& env,
@@ -1433,6 +1471,19 @@ void AutoStory_Checkpoint_0105::run_checkpoint(
     AutoStoryStats& stats
 ) const{
     checkpoint_0105(env, context, options, stats);
+}
+
+std::string AutoStory_Checkpoint_0106::name()       const { return "01.06 - Route 203 to Floaroma"; }
+std::string AutoStory_Checkpoint_0106::start_text() const { return AutoStory_Checkpoint_0105().end_text(); }
+std::string AutoStory_Checkpoint_0106::end_text()   const { return "In the Floaroma Town Pokemon Center, healed."; }
+
+void AutoStory_Checkpoint_0106::run_checkpoint(
+    SingleSwitchProgramEnvironment& env,
+    ProControllerContext& context,
+    AutoStoryOptions options,
+    AutoStoryStats& stats
+) const{
+    checkpoint_0106(env, context, options, stats);
 }
 
 }
