@@ -28,6 +28,7 @@
 #include "VideoGames/PokemonSV/Programs/ShinyHunting/PokemonSV_LetsGoTools.h"
 #include "VideoGames/PokemonSV/Programs/AutoStory/PokemonSV_AutoStoryTools.h"
 #include "PokemonSV_MaterialFarmerTools.h"
+#include "VideoGames/PokemonSV/Programs/PokemonSV_RegionTravel.h"
 
 // #include <iostream>
 // using std::cout;
@@ -706,55 +707,6 @@ void move_from_material_farming_to_item_printer(const ProgramInfo& info, VideoSt
     move_from_league_club_entrance_to_item_printer(info, stream, context);
 }
 
-void fly_from_paldea_to_blueberry_entrance(const ProgramInfo& info, VideoStream& stream, ProControllerContext& context){
-    int numAttempts = 0;
-    const int maxAttempts = 11;
-    bool isFlySuccessful = false;
-
-    // in order to land on the target fly point semi-consistently, 
-    // the push magnitude can range from 69 to 85 (range of 16). 
-    // On each failure, try increasing/decreasing the push by 1/4 of the max range,
-    // then 1/2 of the range, then the full range, then back to re-attempts with no adjustment
-    const std::array<Milliseconds, maxAttempts + 1> adjustment_table = {
-        0ms, 0ms, 0ms, 32ms, -32ms, 64ms, -64ms, 128ms, -128ms, 0ms, 0ms, 0ms
-    };
-    while (!isFlySuccessful && numAttempts < maxAttempts){
-        // close all menus
-        pbf_mash_button(context, BUTTON_B, 800ms);
-
-        numAttempts++;
-
-        open_map_from_overworld(info, stream, context);
-
-        // change from Paldea map to Blueberry map
-        pbf_press_button(context, BUTTON_L, 400ms, 2400ms);
-
-        // move cursor to bottom right corner
-        pbf_move_left_joystick(context, {+1, -1}, 5000ms, 400ms);
-
-        // move cursor to Blueberry academy fast travel point (up-left)
-        // try different magnitudes of cursor push with each failure.
-//        int push_magnitude_ticks = 105 + adjustment_table[numAttempts];
-//        Milliseconds push_magnitude = push_magnitude_ticks * 8ms;
-        Milliseconds push_magnitude = 840ms + adjustment_table[numAttempts];
-        pbf_move_left_joystick(context, {-0.5, +0.5}, push_magnitude, 400ms);
-
-        // press A to fly to Blueberry academy
-        isFlySuccessful = fly_to_overworld_from_map(info, stream, context, true);
-        if (!isFlySuccessful){
-            stream.log("Failed to fly to Blueberry academy.");
-            // dump_snapshot(stream);
-        }
-    }
-
-    if (!isFlySuccessful){
-        OperationFailedExceptionWithScreenshot::fire(
-            ErrorReportMode::SEND_ERROR_REPORT,
-            "Failed to fly to Blueberry academy, five times in a row.",
-            stream
-        );
-    }
-}
 
 void move_from_blueberry_entrance_to_league_club(const ProgramInfo& info, VideoStream& stream, ProControllerContext& context){
 

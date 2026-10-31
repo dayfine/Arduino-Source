@@ -4,6 +4,7 @@
  *
  */
 
+#include "VideoGames/PokemonSV/Programs/PokemonSV_MarkerNavigation.h"
 #include "Common/Cpp/PrettyPrint.h" 
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
 #include "CommonFramework/Exceptions/UnexpectedBattleException.h"
@@ -299,15 +300,8 @@ void realign_player(const ProgramInfo& info, VideoStream& stream, ProControllerC
     case PlayerRealignMode::REALIGN_OLD_MARKER:
         handle_unexpected_battles(info, stream, context,
         [&](const ProgramInfo& info, VideoStream& stream, ProControllerContext& context){
-            open_map_from_overworld(info, stream, context, false);
+            realign_to_existing_destination(info, stream, context);
         });
-
-        handle_unexpected_battles(info, stream, context,
-        [&](const ProgramInfo& info, VideoStream& stream, ProControllerContext& context){        
-            leave_phone_to_overworld(info, stream, context);
-        });
-
-        pbf_press_button(context, BUTTON_L, 160ms, 840ms);
         return;
     case PlayerRealignMode::REALIGN_NO_MARKER:
         pbf_move_left_joystick(context, {move_x, move_y}, move_duration, 1000ms);
