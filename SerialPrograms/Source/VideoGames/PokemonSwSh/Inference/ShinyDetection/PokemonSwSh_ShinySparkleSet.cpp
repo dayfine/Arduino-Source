@@ -6,6 +6,7 @@
 
 #include <deque>
 #include <sstream>
+#include "Common/Cpp/MoveOnlyFunction.h"
 #include "Common/Cpp/Concurrency/SpinLock.h"
 #include "Common/Cpp/Concurrency/AsyncTask.h"
 #include "Kernels/Waterfill/Kernels_Waterfill_Session.h"
@@ -134,7 +135,7 @@ ShinySparkleSetSwSh find_sparkles(size_t screen_area, WaterfillSession& session)
     auto finder = session.make_iterator(20);
     WaterfillObject object;
     while (finder->find_next(object, true)){
-        std::function<void()> func = [&, screen_area, object = std::move(object)]{
+        MoveOnlyFunction<void()> func = [&, screen_area, object = std::move(object)]{
             find_sparkles(
                 screen_area,
                 lock,

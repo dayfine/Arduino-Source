@@ -49,9 +49,9 @@ public:
 
 
 public:
-    [[nodiscard]] virtual AsyncTask dispatch(std::function<void()>&& func) override;
-    [[nodiscard]] virtual AsyncTask dispatch_now_blocking(std::function<void()>&& func) override;
-    [[nodiscard]] virtual AsyncTask try_dispatch_now(std::function<void()>& func) override;
+    [[nodiscard]] virtual AsyncTask dispatch(MoveOnlyFunction<void()>&& func) override;
+    [[nodiscard]] virtual AsyncTask dispatch_now_blocking(MoveOnlyFunction<void()>&& func) override;
+    [[nodiscard]] virtual AsyncTask try_dispatch_now(MoveOnlyFunction<void()>& func) override;
 
     virtual void run_in_parallel(
         const std::function<void(size_t index)>& func,
