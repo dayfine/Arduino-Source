@@ -1186,14 +1186,10 @@ void route203_to_jubilife(VideoStream& stream, ProControllerContext& context){
     }
 }
 
-void jubilife_to_floaroma(VideoStream& stream, ProControllerContext& context){
-    StepLog step(stream, "01.07", "From Jubilife City's east edge to Floaroma Town", {
+void jubilife_to_rowan(VideoStream& stream, ProControllerContext& context){
+    StepLog step(stream, "01.07", "From Jubilife City's east edge through Rowan's scene", {
         "West along Jubilife's long road to the crossroads",
         "North up the street to Rowan (Dawn and two Galactic grunts: a tag battle)",
-        "North on Route 204 into the Ravaged Path",
-        "Through the Ravaged Path, smashing its rocks",
-        "Route 204 north on its grid, past the twins, into Floaroma",
-        "Heal at the Floaroma Pokemon Center",
     });
 
     step(1);
@@ -1229,8 +1225,15 @@ void jubilife_to_floaroma(VideoStream& stream, ProControllerContext& context){
         fail(stream, "Jubilife: lost the tag battle with Dawn.");
     }
     finish_dialogue(stream, context, BUTTON_B, "Rowan and Dawn after the battle");
+    // 01.08 starts here, from a save at the top of the street.
+}
 
-    step(3);
+void jubilife_to_ravaged_path(VideoStream& stream, ProControllerContext& context){
+    StepLog step(stream, "01.08", "From the top of Jubilife's north street into the Ravaged Path", {
+        "North on Route 204 into the Ravaged Path",
+    });
+
+    step(1);
     // Route 204's south half: a trainer just past the sign, then the cave in
     // the cliff a column west of the path.
     for (size_t leg = 0; leg < 6; leg++){
@@ -1250,8 +1253,14 @@ void jubilife_to_floaroma(VideoStream& stream, ProControllerContext& context){
         }
     }
     context.wait_for(2000ms);
+}
 
-    step(4);
+void ravaged_path(VideoStream& stream, ProControllerContext& context){
+    StepLog step(stream, "01.09", "Through the Ravaged Path", {
+        "Through the Ravaged Path, smashing its rocks",
+    });
+
+    step(1);
     // On the traced grid (Data/PokemonBDSP_AutoStory_RavagedPath): from the
     // south door up the stairs to the tile west of one of the two rocks
     // across the lower corridor, smash it, then east and south to the
@@ -1294,8 +1303,15 @@ void jubilife_to_floaroma(VideoStream& stream, ProControllerContext& context){
         }
         context.wait_for(2000ms);
     }
+}
 
-    step(5);
+void route204_to_floaroma(VideoStream& stream, ProControllerContext& context){
+    StepLog step(stream, "01.10", "From the Ravaged Path's north exit to Floaroma Town", {
+        "Route 204 north on its grid, past the twins, into Floaroma",
+        "Heal at the Floaroma Pokemon Center",
+    });
+
+    step(1);
     // On the traced grid (Data/PokemonBDSP_AutoStory_Route204): from the
     // cave's door west and up the stairs, round the pocket the ledge closes,
     // east and north through the tall grass, and west below the flower beds,
@@ -1318,7 +1334,7 @@ void jubilife_to_floaroma(VideoStream& stream, ProControllerContext& context){
         context.wait_for(2000ms);
     }
 
-    step(6);
+    step(2);
     // We arrive in front of a house; the Center is a few tiles south-east.
     walk_dir(stream, context, Direction::SOUTH, 1500ms, "south off the house's path");
     hold_tiles(stream, context, Direction::EAST, 4);
@@ -1417,7 +1433,49 @@ void checkpoint_0107(
 ){
     checkpoint_reattempt_loop(env, context, options, stats,
         [&](size_t /*attempt*/){
-            jubilife_to_floaroma(env.console, context);
+            jubilife_to_rowan(env.console, context);
+        },
+        true
+    );
+}
+
+void checkpoint_0108(
+    SingleSwitchProgramEnvironment& env,
+    ProControllerContext& context,
+    AutoStoryOptions options,
+    AutoStoryStats& stats
+){
+    checkpoint_reattempt_loop(env, context, options, stats,
+        [&](size_t /*attempt*/){
+            jubilife_to_ravaged_path(env.console, context);
+        },
+        true
+    );
+}
+
+void checkpoint_0109(
+    SingleSwitchProgramEnvironment& env,
+    ProControllerContext& context,
+    AutoStoryOptions options,
+    AutoStoryStats& stats
+){
+    checkpoint_reattempt_loop(env, context, options, stats,
+        [&](size_t /*attempt*/){
+            ravaged_path(env.console, context);
+        },
+        true
+    );
+}
+
+void checkpoint_0110(
+    SingleSwitchProgramEnvironment& env,
+    ProControllerContext& context,
+    AutoStoryOptions options,
+    AutoStoryStats& stats
+){
+    checkpoint_reattempt_loop(env, context, options, stats,
+        [&](size_t /*attempt*/){
+            route204_to_floaroma(env.console, context);
         },
         true
     );
@@ -1445,6 +1503,9 @@ void AutoStory_Segment_01::run_segment(
     AutoStory_Checkpoint_0105().run_checkpoint(env, context, options, stats);
     AutoStory_Checkpoint_0106().run_checkpoint(env, context, options, stats);
     AutoStory_Checkpoint_0107().run_checkpoint(env, context, options, stats);
+    AutoStory_Checkpoint_0108().run_checkpoint(env, context, options, stats);
+    AutoStory_Checkpoint_0109().run_checkpoint(env, context, options, stats);
+    AutoStory_Checkpoint_0110().run_checkpoint(env, context, options, stats);
     env.console.log("End Segment " + name(), COLOR_GREEN);
 }
 
@@ -1530,9 +1591,9 @@ void AutoStory_Checkpoint_0106::run_checkpoint(
     checkpoint_0106(env, context, options, stats);
 }
 
-std::string AutoStory_Checkpoint_0107::name()       const { return "01.06 - Route 203 to Floaroma"; }
+std::string AutoStory_Checkpoint_0107::name()       const { return "01.07 - Jubilife through Rowan's scene"; }
 std::string AutoStory_Checkpoint_0107::start_text() const { return AutoStory_Checkpoint_0106().end_text(); }
-std::string AutoStory_Checkpoint_0107::end_text()   const { return "In the Floaroma Town Pokemon Center, healed."; }
+std::string AutoStory_Checkpoint_0107::end_text()   const { return "In Jubilife City, at the top of the street north to Route 204, after the tag battle with Dawn."; }
 
 void AutoStory_Checkpoint_0107::run_checkpoint(
     SingleSwitchProgramEnvironment& env,
@@ -1541,6 +1602,45 @@ void AutoStory_Checkpoint_0107::run_checkpoint(
     AutoStoryStats& stats
 ) const{
     checkpoint_0107(env, context, options, stats);
+}
+
+std::string AutoStory_Checkpoint_0108::name()       const { return "01.08 - Jubilife to the Ravaged Path"; }
+std::string AutoStory_Checkpoint_0108::start_text() const { return AutoStory_Checkpoint_0107().end_text(); }
+std::string AutoStory_Checkpoint_0108::end_text()   const { return "In the Ravaged Path, just inside its south entrance."; }
+
+void AutoStory_Checkpoint_0108::run_checkpoint(
+    SingleSwitchProgramEnvironment& env,
+    ProControllerContext& context,
+    AutoStoryOptions options,
+    AutoStoryStats& stats
+) const{
+    checkpoint_0108(env, context, options, stats);
+}
+
+std::string AutoStory_Checkpoint_0109::name()       const { return "01.09 - Ravaged Path"; }
+std::string AutoStory_Checkpoint_0109::start_text() const { return AutoStory_Checkpoint_0108().end_text(); }
+std::string AutoStory_Checkpoint_0109::end_text()   const { return "On Route 204, just out of the Ravaged Path's north exit."; }
+
+void AutoStory_Checkpoint_0109::run_checkpoint(
+    SingleSwitchProgramEnvironment& env,
+    ProControllerContext& context,
+    AutoStoryOptions options,
+    AutoStoryStats& stats
+) const{
+    checkpoint_0109(env, context, options, stats);
+}
+
+std::string AutoStory_Checkpoint_0110::name()       const { return "01.10 - Route 204 to Floaroma"; }
+std::string AutoStory_Checkpoint_0110::start_text() const { return AutoStory_Checkpoint_0109().end_text(); }
+std::string AutoStory_Checkpoint_0110::end_text()   const { return "In the Floaroma Town Pokemon Center, healed."; }
+
+void AutoStory_Checkpoint_0110::run_checkpoint(
+    SingleSwitchProgramEnvironment& env,
+    ProControllerContext& context,
+    AutoStoryOptions options,
+    AutoStoryStats& stats
+) const{
+    checkpoint_0110(env, context, options, stats);
 }
 
 }
