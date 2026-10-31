@@ -90,6 +90,11 @@ bool talk_or_fight(VideoStream& stream, ProControllerContext& context, const std
         if (battle_menu.detect(*frame.frame) || battle_menu_standard.detect(*frame.frame) || black.detect(*frame.frame)){
             route_status(stream, "Fighting " + label + ".");
             fight_story_battle(stream, context, label, doubles);
+            // Lines after the battle (Roark's badge, r211d) keep the menu
+            // from opening: finish them before the Potion.
+            if (dialogue_opens(stream, context, 3000ms)){
+                finish_dialogue(stream, context, BUTTON_B, label + " after the battle");
+            }
             if (!in_pokemon_center(stream)){
                 use_potion_first_pokemon(stream, context, 0.5);
             }
