@@ -40,6 +40,7 @@ private:
     void update_ui_state();
 private:
     // DIAGNOSTIC ONLY: Remove before pushing to production.
+    BooleanCheckBoxOption STOP_AT_FIRST_FAILURE;
     BooleanCheckBoxOption DIAGNOSTIC_POST_CATCH_ONLY;
     // DIAGNOSTIC ONLY: Remove before pushing to production.
     BooleanCheckBoxOption DIAGNOSTIC_FAKE_CHECKPOINT_SAVE;

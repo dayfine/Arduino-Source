@@ -212,6 +212,11 @@ void checkpoint_save(SingleSwitchProgramEnvironment& env,
 //  TODO: implement this function.
 void reload_backup_save(SingleSwitchProgramEnvironment& env, ProControllerContext& context);
 
+//  Lab: checkpoint_reattempt_loop() rethrows the first failure after its
+//  screenshot instead of resetting the game, so the game stays where it
+//  failed. Set from the program's option when it starts.
+extern bool g_stop_at_first_failure;
+
 //  If save=true (default): save the game before the first attempt, then run
 //  `action(attempt_number)`. On failure, reset from HOME and retry.
 //  If save=false: skip the hard save. On failure, reload from backup save and retry.

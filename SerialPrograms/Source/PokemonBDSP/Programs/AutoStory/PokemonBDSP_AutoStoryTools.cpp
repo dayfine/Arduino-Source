@@ -271,6 +271,8 @@ void reload_backup_save(SingleSwitchProgramEnvironment& env, ProControllerContex
 }
 
 
+bool g_stop_at_first_failure = false;
+
 void checkpoint_reattempt_loop(SingleSwitchProgramEnvironment& env,
     ProControllerContext& context,
     EventNotificationOption& notif_status_update,
@@ -308,6 +310,10 @@ void checkpoint_reattempt_loop(SingleSwitchProgramEnvironment& env,
             env.update_stats();
 
             if (i + 1 >= MAX_ATTEMPTS){
+                throw;
+            }
+            if (g_stop_at_first_failure){
+                env.console.log("Stopping at the first failure; the game stays where it failed.", COLOR_ORANGE);
                 throw;
             }
 
