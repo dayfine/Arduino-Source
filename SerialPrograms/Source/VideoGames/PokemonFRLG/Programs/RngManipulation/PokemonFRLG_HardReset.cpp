@@ -24,6 +24,24 @@ namespace PokemonFRLG{
 //  frame, away from its edges.
 const ImageFloatBox LAUNCH_BLACK_SCREEN_BOX(/* x */ 0.1, /* y */ 0.15, /* width */ 0.8, /* height */ 0.7);
 
+HandleOnlineLicenseCheckOption::HandleOnlineLicenseCheckOption()
+    : BooleanCheckBoxOption(
+        "<b>Handle Online License Check:</b><br>"
+        "Turn this on if your console checks the game's license online when it starts the game: "
+        "the game goes back to the Home menu for a few seconds before it starts. "
+        "The reset then waits for the game to start instead of using a fixed delay.",
+        LockMode::LOCK_WHILE_RUNNING,
+        false // default
+    )
+{}
+
+LaunchWait choose_launch_wait(bool handle_online_license, bool online_license_seen){
+    if (!handle_online_license){
+        return LaunchWait::FixedDelay;
+    }
+    return online_license_seen ? LaunchWait::UntilGameStarts : LaunchWait::WatchForLicenseCheck;
+}
+
 struct GameLaunch{
     bool started = false;           //  the game was seen starting
     bool online_license = false;    //  the console checked an online license
@@ -31,20 +49,27 @@ struct GameLaunch{
 
 //  Press A to start the game, then wait until it is time to go back Home.
 //  Normally that is a fixed delay. With an online license, the console first
-//  returns to the Home menu to check the license, so wait for the game to
-//  actually start instead. Once a launch has shown the license check, pass
-//  `online_license` to skip looking for it again.
+//  returns to the Home menu to check the license, so if the user turned on
+//  `handle_online_license`, wait for the game to actually start instead.
+//  Once a launch has shown the license check, pass `online_license` to skip
+//  looking for it again.
 GameLaunch start_game_before_home(
     ConsoleHandle& console, ProControllerContext& context,
-    Milliseconds launch_delay, bool online_license
+    Milliseconds launch_delay, bool handle_online_license, bool online_license
 ){
+    const LaunchWait wait = choose_launch_wait(handle_online_license, online_license);
+    if (wait == LaunchWait::FixedDelay){
+        pbf_press_button(context, BUTTON_A, 50ms, launch_delay);
+        return GameLaunch{};
+    }
+
     //  A on the selected profile starts the game: the screen goes black until
     //  the game draws its first frame. `launch_delay` counts from the end of
     //  this press, so keep the press short and fixed.
     pbf_press_button(context, BUTTON_A, 50ms, 0ms);
     context.wait_for_all_requests();
 
-    if (!online_license){
+    if (wait == LaunchWait::WatchForLicenseCheck){
         //  An online license shows itself by the Home menu or the license
         //  popup coming up during the launch delay. If neither does, the delay
         //  has passed and it is time to go Home.
@@ -71,7 +96,8 @@ GameLaunch start_game_before_home(
 void rng_reset_and_return_home(
     ConsoleHandle& console, ProControllerContext& context,
     Milliseconds& launch_delay,
-    uint8_t user_slot
+    uint8_t user_slot,
+    bool handle_online_license
 ){
     // close the game
     go_home(console, context);
@@ -156,7 +182,7 @@ void rng_reset_and_return_home(
             pbf_press_button(context, BUTTON_A, 160ms, 840ms);
             pbf_press_dpad(context, DPAD_UP, 40ms, 0ms);
         }
-        launch = start_game_before_home(console, context, launch_delay, launch.online_license);
+        launch = start_game_before_home(console, context, launch_delay, handle_online_license, launch.online_license);
         pbf_press_button(context, BUTTON_HOME, 200ms, 1800ms);
 
         while(current_time() < deadline){
@@ -168,10 +194,11 @@ void rng_reset_and_return_home(
                 { black_screen, update_menu },
                 /* default_video_period */ 1ms
             );
+            bool black_screen_detected = false;
             switch (ret3){
             case 0:
                 console.log("Black screen detected.");
-                launch.started = true;
+                black_screen_detected = true;
                 break;
             case 1:
                 console.log("Update menu detected.", COLOR_BLUE);
@@ -193,7 +220,7 @@ void rng_reset_and_return_home(
 
             switch (ret4){
             case 0:
-                if (launch.started){  //  seen here or while starting the game
+                if (black_screen_detected || launch.started){  //  seen here or while starting the game
                     console.log("Detected Home screen after black screen.");
                     return;
                 }else{
@@ -205,13 +232,13 @@ void rng_reset_and_return_home(
             case 1:
                 console.log("Detected user-select screen. Trying again...", COLOR_BLUE);
                 move_to_user(context, user_slot);
-                launch = start_game_before_home(console, context, launch_delay, launch.online_license);
+                launch = start_game_before_home(console, context, launch_delay, handle_online_license, launch.online_license);
                 pbf_press_button(context, BUTTON_HOME, 200ms, 2800ms);
                 continue;
             case 2:
                 console.log("Detected update menu. Trying again...", COLOR_BLUE);
                 pbf_press_dpad(context, DPAD_UP, 40ms, 0ms);
-                launch = start_game_before_home(console, context, launch_delay, launch.online_license);
+                launch = start_game_before_home(console, context, launch_delay, handle_online_license, launch.online_license);
                 pbf_press_button(context, BUTTON_HOME, 200ms, 2800ms);
                 continue;
             default:
@@ -236,9 +263,10 @@ void reset_and_perform_blind_sequence(
     const RngTimings& timings,
     Milliseconds& launch_delay,
     bool safari_zone,
-    uint8_t profile
+    uint8_t profile,
+    bool handle_online_license
 ){
-    rng_reset_and_return_home(console, context, launch_delay, profile); 
+    rng_reset_and_return_home(console, context, launch_delay, profile, handle_online_license);
     ConsoleType console_type = console.state().console_type();
 
     // attempt to resume the game and perform the blind sequence

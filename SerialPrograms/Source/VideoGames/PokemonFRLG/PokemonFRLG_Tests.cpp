@@ -24,6 +24,7 @@
 #include "Inference/PokemonFRLG_TrainerIdReader.h"
 #include "Inference/PokemonFRLG_WildEncounterReader.h"
 #include "PokemonFRLG_Navigation.h"
+#include "Programs/RngManipulation/PokemonFRLG_HardReset.h"
 
 #include "PokemonFRLG_Tests.h"
 namespace PokemonAutomation{
@@ -255,6 +256,73 @@ void add_tests_ExitWildBattle(UnitTestDatabase& database){
     }
 }
 
+struct LaunchWaitScenario{
+    std::string name;
+    bool handle_online_license = false;
+    bool online_license_seen = false;
+    LaunchWait expected = LaunchWait::FixedDelay;
+};
+
+std::string launch_wait_name(LaunchWait wait){
+    switch (wait){
+    case LaunchWait::FixedDelay:            return "FixedDelay";
+    case LaunchWait::WatchForLicenseCheck:  return "WatchForLicenseCheck";
+    case LaunchWait::UntilGameStarts:       return "UntilGameStarts";
+    }
+    return "?";
+}
+
+class Test_ChooseLaunchWait : public UnitTest{
+public:
+    Test_ChooseLaunchWait(LaunchWaitScenario scenario)
+        : UnitTest("PokemonFRLG::ChooseLaunchWait - " + scenario.name)
+        , m_scenario(std::move(scenario))
+    {}
+
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        const LaunchWait wait = choose_launch_wait(
+            m_scenario.handle_online_license, m_scenario.online_license_seen
+        );
+        if (wait != m_scenario.expected){
+            return "Expected " + launch_wait_name(m_scenario.expected) + ", got " + launch_wait_name(wait);
+        }
+        return true;
+    }
+
+private:
+    const LaunchWaitScenario m_scenario;
+};
+
+void add_tests_ChooseLaunchWait(UnitTestDatabase& database){
+    const LaunchWaitScenario scenarios[] = {
+        {
+            //  The default: the blind reset, unchanged.
+            .name = "option off",
+            .expected = LaunchWait::FixedDelay,
+        },
+        {
+            //  Off ignores the license check, even one that was seen.
+            .name = "option off, license check seen",
+            .online_license_seen = true,
+            .expected = LaunchWait::FixedDelay,
+        },
+        {
+            .name = "option on",
+            .handle_online_license = true,
+            .expected = LaunchWait::WatchForLicenseCheck,
+        },
+        {
+            .name = "option on, license check seen",
+            .handle_online_license = true,
+            .online_license_seen = true,
+            .expected = LaunchWait::UntilGameStarts,
+        },
+    };
+    for (const LaunchWaitScenario& scenario : scenarios){
+        database.add<Test_ChooseLaunchWait>(scenario);
+    }
+}
+
 }
 
 
@@ -278,6 +346,7 @@ void add_tests(UnitTestDatabase& database){
     add_tests_HallOfFameSavingDetector(database);
     add_tests_BattleMoveSelectionArrow(database);
     add_tests_ExitWildBattle(database);
+    add_tests_ChooseLaunchWait(database);
 }
 
 

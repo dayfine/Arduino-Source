@@ -196,6 +196,7 @@ StarterRng::StarterRng()
     PA_ADD_OPTION(SEED_RADIUS);
     PA_ADD_OPTION(MAX_RESETS);
     PA_ADD_OPTION(PROFILE);
+    PA_ADD_OPTION(HANDLE_ONLINE_LICENSE);
     PA_ADD_OPTION(TAKE_VIDEO);
     PA_ADD_OPTION(GO_HOME_WHEN_DONE);
     PA_ADD_OPTION(NOTIFICATIONS);
@@ -692,7 +693,7 @@ void StarterRng::program(SingleSwitchProgramEnvironment& env, ProControllerConte
             env.console, context, 
             LANGUAGE, PokemonFRLG_RngTarget::starters, 
             SEED_BUTTON, EXTRA_BUTTON, timings,
-            launch_delay, false, PROFILE
+            launch_delay, false, PROFILE, HANDLE_ONLINE_LICENSE
         );
         stats.resets++; 
 

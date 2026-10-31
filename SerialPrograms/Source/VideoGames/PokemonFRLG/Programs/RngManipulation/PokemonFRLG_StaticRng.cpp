@@ -212,6 +212,7 @@ StaticRng::StaticRng()
     PA_ADD_OPTION(MAX_BALL_THROWS);
     PA_ADD_OPTION(MAX_RARE_CANDIES);
     PA_ADD_OPTION(PROFILE);
+    PA_ADD_OPTION(HANDLE_ONLINE_LICENSE);
     PA_ADD_OPTION(TAKE_VIDEO);
     PA_ADD_OPTION(GO_HOME_WHEN_DONE);
     PA_ADD_OPTION(NOTIFICATIONS);
@@ -402,7 +403,7 @@ void StaticRng::program(SingleSwitchProgramEnvironment& env, ProControllerContex
         reset_and_perform_blind_sequence(
             env.console, context, LANGUAGE, TARGET, 
             SEED_BUTTON, EXTRA_BUTTON, timings, 
-            launch_delay, false, PROFILE
+            launch_delay, false, PROFILE, HANDLE_ONLINE_LICENSE
         );
         stats.resets++;
 
