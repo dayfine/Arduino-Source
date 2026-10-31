@@ -1447,7 +1447,16 @@ public:
     virtual Pokemon::Outcome walk_in_town(std::vector<TilePos>&, const std::function<bool(const TilePos&)>&, const std::string& label) override{
         return Pokemon::outcome_failed("no_plan", label);
     }
-    virtual DialogueRead read_sign(Direction, const std::string&) override{ return {}; }
+    //  The Poketch Company's sign reads after `sign_reads_after` tries.
+    size_t sign_reads_after = 1;
+    size_t sign_tries = 0;
+    virtual DialogueRead read_sign(Direction, const std::string& label) override{
+        trace.push_back("sign: " + label);
+        if (label == "the Poketch Company's sign" && ++sign_tries >= sign_reads_after){
+            return DialogueRead{.opened = true, .closed = true, .text = "The Poketch Company"};
+        }
+        return {};
+    }
     virtual std::optional<LitDoorway> lit_doorway() override{ return std::nullopt; }
     virtual Pokemon::Outcome line_up_with_door() override{ return Pokemon::outcome_ok(); }
     virtual bool inside_pokemon_center() override{ return inside; }
@@ -1478,6 +1487,9 @@ public:
         if (label == "Barry" && barry_answers){
             return DialogueRead{.opened = true, .closed = true, .text = "Barry"};
         }
+        if (label == "Clown by the Poketch Company" && ++clown_asks >= clown_answers_at){
+            return DialogueRead{.opened = true, .closed = true, .text = "Hi!"};
+        }
         return {};
     }
     virtual Pokemon::Outcome step(Direction direction, const std::string& label) override{
@@ -1485,11 +1497,11 @@ public:
         (void)direction;
         return Pokemon::outcome_ok();
     }
-    virtual DialogueRead talk_walking(Direction direction, size_t, const std::string& label) override{
+    //  The clown answers the `clown_answers_at`th ask of the sweep.
+    size_t clown_answers_at = 7;
+    size_t clown_asks = 0;
+    virtual DialogueRead talk_walking(Direction, size_t, const std::string& label) override{
         trace.push_back("talk walking: " + label);
-        if (label == "Clown by the Poketch Company" && direction == Direction::WEST){
-            return DialogueRead{.opened = true, .closed = true, .text = "Hi!"};
-        }
         return {};
     }
     virtual Pokemon::Outcome walk_to_route_202_save_spot() override{ return Pokemon::outcome_ok(); }
@@ -1644,6 +1656,43 @@ public:
 };
 
 
+//  00.05f: the sign gate finds the sign a tile off, and the sweep asks
+//  ahead of every move until the wandering clown answers.
+class Test_JubilifeClownCompany : public UnitTest{
+public:
+    Test_JubilifeClownCompany()
+        : UnitTest("PokemonBDSP::AutoStory - Jubilife 00.05f clown sweep")
+    {}
+    virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
+        struct Case{ const char* name; size_t sign_after; size_t clown_at; bool completed; };
+        const Case cases[] = {
+            {"Sign in the counted column, clown on the first row", 1, 3, true},
+            {"Sign a tile west", 3, 3, true},
+            {"Sign nowhere near", 5, 3, false},
+            {"Clown found on the way back", 1, 30, true},
+            {"Clown never answers", 1, 1000, false},
+        };
+        for (const Case& c : cases){
+            FakeJubilife game;
+            game.sign_reads_after = c.sign_after;
+            game.clown_answers_at = c.clown_at;
+            Pokemon::EventLogger log = [&](const std::string& line){ logger.log(line); };
+            Pokemon::RunState state;
+            Pokemon::Checkpoint checkpoint = jubilife_clown_company_checkpoint(game);
+            const std::vector<std::string> problems = Pokemon::lint_checkpoint(checkpoint);
+            if (!problems.empty()){
+                return std::string(c.name) + ": lint: " + problems.front();
+            }
+            const bool completed = Pokemon::run_checkpoint(state, checkpoint, log).completed;
+            if (completed != c.completed){
+                return std::string(c.name) + (completed ? ": completed" : ": did not complete") + ".";
+            }
+        }
+        return true;
+    }
+};
+
+
 //  The School's lamp at night, from its doorsteps' row (2026-10-30): where
 //  the door took us in, the lamp reads within half a tile of the door; a
 //  tile either side, more.
@@ -1768,6 +1817,7 @@ void add_tests_AutoStory(UnitTestDatabase& database){
     database.add<Test_PokemonCenterInside>();
     database.add<Test_MartLadyEvents>();
     database.add<Test_JubilifeEvents>();
+    database.add<Test_JubilifeClownCompany>();
     database.add<Test_SchoolLamp>();
     database.add<Test_LocationBannerShowing>();
     database.add<Test_Indoors>();

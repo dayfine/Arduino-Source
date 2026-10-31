@@ -1075,18 +1075,48 @@ Checkpoint jubilife_clown_company_checkpoint(JubilifeActions& game){
             }
             return outcome_ok();
         }));
-    checkpoint.events.push_back(wrapped_step("to_the_company",
-        "seven tiles east, then north until the Poketch Company's front wall stops us", "at_company_wall",
-        [&game](RunState&){
+    //  Measured on the console (2026-10-30): from the lamp, six tiles east
+    //  is the sign's column; the sign reads facing north. A tile off either
+    //  way reads nothing, so the read is the gate.
+    {
+        std::shared_ptr<DialogueRead> read = std::make_shared<DialogueRead>();
+        Event sign;
+        sign.name = "to_the_sign";
+        sign.why = "six tiles east of the lamp, the Poketch Company's sign reads facing north";
+        sign.act = [&game, read](RunState&){
             game.turn(Direction::EAST);
-            for (size_t tiles = 0; tiles < 7; tiles++){
-                const Outcome moved = game.tile(Direction::EAST, "East along the plaza");
+            for (size_t tiles = 0; tiles < 6; tiles++){
+                const Outcome moved = game.tile(Direction::EAST, "East along the hedges");
                 if (!moved.succeeded()){
                     return moved;
                 }
             }
-            return game.walk_until_stopped(Direction::NORTH, 8, "North to the Poketch Company");
+            *read = game.read_sign(Direction::NORTH, "the Poketch Company's sign");
+            //  A tile off: east first, then west of where we started.
+            for (Direction side : {Direction::EAST, Direction::WEST, Direction::WEST}){
+                if (read->opened){
+                    break;
+                }
+                game.turn(side);
+                const Outcome moved = game.tile(side, "Along the hedges to the sign");
+                if (!moved.succeeded()){
+                    return moved;
+                }
+                *read = game.read_sign(Direction::NORTH, "the Poketch Company's sign");
+            }
+            return outcome_ok();
+        };
+        sign.expect.push_back(condition("the sign's box opened and closed", [read](RunState&){
+            return read->opened && read->closed;
         }));
+        checkpoint.events.push_back(std::move(sign));
+    }
+    //  The clown wanders the plaza between the hedges and the building: seen
+    //  from one to three tiles east of the sign, on the sign's row and up to
+    //  three rows north of it. We go a tile at a time, asking ahead before
+    //  each move, so he is talked to whether he stands ahead of us or steps
+    //  into our way; a walk could pass him by. East along the sign's row
+    //  first (west there would read the sign), then snake north and back.
     {
         std::shared_ptr<DialogueRead> read = std::make_shared<DialogueRead>();
         Event talk;
@@ -1094,14 +1124,36 @@ Checkpoint jubilife_clown_company_checkpoint(JubilifeActions& game){
         talk.why = "the clown asks a question (Yes is right) and gives Coupon 3";
         talk.skip_if.push_back(condition("coupon_3", [](RunState& state){ return state.flags.count("coupon_3") > 0; }));
         talk.act = [&game, read](RunState& state){
-            for (size_t rows = 0; rows < 2 && !read->opened; rows++){
-                const Outcome down = game.step(Direction::SOUTH, "A row south");
-                if (!down.succeeded()){
-                    return down;
+            const auto ask_then_move = [&](Direction direction) -> Outcome{
+                *read = game.talk(direction, BUTTON_A, "Clown by the Poketch Company");
+                if (read->opened){
+                    return outcome_ok();
                 }
-                *read = game.talk_walking(Direction::EAST, 3, "Clown by the Poketch Company");
-                if (!read->opened){
-                    *read = game.talk_walking(Direction::WEST, 6, "Clown by the Poketch Company");
+                switch (direction){
+                case Direction::NORTH: return game.step(direction, "North a row");
+                case Direction::SOUTH: return game.step(direction, "South a row");
+                case Direction::EAST: return game.tile(direction, "East a tile");
+                default: return game.tile(direction, "West a tile");
+                }
+            };
+            std::vector<Direction> sweep{Direction::EAST};
+            for (Direction across : {Direction::EAST, Direction::WEST, Direction::EAST, Direction::WEST}){
+                sweep.push_back(Direction::NORTH);
+                sweep.insert(sweep.end(), 4, across);
+            }
+            //  The second pass goes back the way the first came.
+            std::vector<Direction> back;
+            for (auto it = sweep.rbegin(); it != sweep.rend(); ++it){
+                back.push_back(
+                    *it == Direction::NORTH ? Direction::SOUTH :
+                    *it == Direction::EAST ? Direction::WEST : Direction::EAST
+                );
+            }
+            sweep.insert(sweep.end(), back.begin(), back.end());
+            for (size_t i = 0; i < sweep.size() && !read->opened; i++){
+                const Outcome moved = ask_then_move(sweep[i]);
+                if (!moved.succeeded()){
+                    return moved;
                 }
             }
             if (read->opened && read->closed){
