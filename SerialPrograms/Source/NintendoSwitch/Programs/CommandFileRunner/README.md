@@ -82,6 +82,7 @@ Any other line comes from a command, such as `detect home yes` or the path of a 
 | --- | --- | --- |
 | `shot label` | Saves the current frame as `<file name>_<label>.png` in the outbox. | |
 | `shots label count [interval]` | Saves `count` frames, `<label>_0` to `<label>_<count-1>`, one every `interval`. | interval 500 |
+| `history label` | Saves the console's recent video as `<file name>_<label>.mp4` in the outbox, when Stream History is on. Run it right after a program to keep a recording of that run. | |
 | `detect detector [image]` | Runs a detector once and prints `yes` or `no`. With `image`, it runs on a saved picture instead of the live video: an absolute path, or a file name in the outbox. | |
 | `wait_for detector [timeout]` | Checks the video every 100 ms until the detector fires. Prints how long it took, or `timeout`. | timeout 5000 |
 | `expect detector [timeout]` | The same as `wait_for`, but a timeout fails the line. | timeout 5000 |
