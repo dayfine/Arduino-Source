@@ -62,7 +62,7 @@ void DiscordWebhookSender::send(
     const QUrl& url, std::chrono::milliseconds delay,
     const JsonObject& obj,
     std::shared_ptr<PendingFileSend> file,
-    std::function<void()> finish_callback
+    MoveOnlyFunction<void()> finish_callback
 ){
     cleanup_stuck_requests();
     std::shared_ptr<JsonValue> json(new JsonValue(obj.clone()));
@@ -75,7 +75,7 @@ void DiscordWebhookSender::send(
             json = std::move(json),
             file = std::move(file),
             finish_callback = std::move(finish_callback)
-        ]{
+        ]() mutable{
             throttle();
             std::vector<DiscordFileAttachment> attachments;
             if (file){
@@ -95,7 +95,7 @@ void DiscordWebhookSender::send(
     const QUrl& url, std::chrono::milliseconds delay,
     const JsonObject& obj,
     std::vector<std::shared_ptr<PendingFileSend>> files,
-    std::function<void()> finish_callback
+    MoveOnlyFunction<void()> finish_callback
 ){
     cleanup_stuck_requests();
     std::shared_ptr<JsonValue> json(new JsonValue(obj.clone()));
@@ -108,7 +108,7 @@ void DiscordWebhookSender::send(
             json = std::move(json),
             files = std::move(files),
             finish_callback = std::move(finish_callback)
-        ]{
+        ]() mutable{
             throttle();
             std::vector<DiscordFileAttachment> attachments;
             for (auto& file : files){
