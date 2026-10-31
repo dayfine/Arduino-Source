@@ -684,6 +684,10 @@ void BDSPAutoStory::program(
             run_selected_range(0);
         }
     }catch (OperationFailedException&){
+        if (STOP_AT_FIRST_FAILURE){
+            env.log("AutoStory failed: leaving the game where it failed (lab option).", COLOR_RED);
+            throw;
+        }
         //  Leave the Switch in a known state: on HOME with the game closed, so the next
         //  run (or the user) starts from there. The error already holds its screenshot.
         env.log("AutoStory failed: going to HOME and closing the game.", COLOR_RED);

@@ -775,6 +775,19 @@ bool in_dim_cave(VideoStream& stream, uint64_t below){
 //  gym's wall stops us, try the columns either side.
 constexpr size_t GYM_TILES_WEST_OF_CENTER = 18;     //  19 by hand; the program's exit leaves 19 a tile west (r208d)
 
+//  Mean of the three channels over a small copy of the frame, 0 to 255.
+uint64_t mean_brightness(const ImageViewRGB32& screen){
+    const ImageRGB32 small = screen.scale_to(192, 108);
+    uint64_t sum = 0;
+    for (size_t y = 0; y < 108; y++){
+        for (size_t x = 0; x < 192; x++){
+            const uint32_t pixel = small.pixel(x, y);
+            sum += ((pixel >> 16) & 0xff) + ((pixel >> 8) & 0xff) + (pixel & 0xff);
+        }
+    }
+    return sum / (3 * 192 * 108);
+}
+
 //  North through a door from just below it: one tile's step, then watch
 //  for the door's black fade. Entering the Oreburgh Gym (by hand,
 //  2026-10-31): the door opens and the camera zooms in, and about 2 s after
@@ -789,11 +802,18 @@ bool through_door_north(VideoStream& stream, ProControllerContext& context, cons
     if (up.stop == WalkStop::TRANSITION){
         return true;
     }
-    BlackScreenWatcher black(COLOR_RED);
-    if (wait_until(stream, context, 4000ms, {{black}}) == 0){
-        stream.log("[Route] " + label + ": the screen went black; through the door.");
-        context.wait_for(2000ms);
-        return true;
+    // Look for the fade ourselves: the library's black screen check missed it
+    // under the gym's door (r209d: the door opened, view change 172, then
+    // nothing), while its frames read 7 against about 100 outside.
+    const auto start = current_time();
+    while (current_time() - start < 5000ms){
+        context.wait_for(100ms);
+        const VideoSnapshot frame = stream.video().snapshot();
+        if (frame && mean_brightness(*frame.frame) < 25){
+            stream.log("[Route] " + label + ": the screen went dark; through the door.");
+            context.wait_for(2000ms);
+            return true;
+        }
     }
     // Back down only if the step moved us: against the building's front it
     // does not, and stepping south anyway took us a row down each try
