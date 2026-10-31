@@ -249,6 +249,13 @@ change a reviewer will notice, so keep it where it clearly pays off.
 - **Test the contract through the seam, not internals** (TotW #135). Each case's inputs
   are visible in its row, with no shared mutable fixture (TotW #122).
 
+### Reviewing for style
+
+The `cpp-style-review` skill (`skills/cpp-style-review/` on this branch) reviews a PR's diff
+for the judgement-level rules above and the user's recurring review themes. Install it with
+`cp -R skills/cpp-style-review ~/.claude/skills/`. It reports to the caller, and posts only
+with `--comment`, only on fork PRs.
+
 ### Checkable
 
 - **Checked now by `devtools/code_health`:**
