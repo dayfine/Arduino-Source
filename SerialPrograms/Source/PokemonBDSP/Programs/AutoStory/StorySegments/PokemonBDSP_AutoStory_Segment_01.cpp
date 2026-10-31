@@ -370,101 +370,93 @@ WalkResult walk_dir(VideoStream& stream, ProControllerContext& context, Directio
     return walk_until(stream, context, x, y, limit, label);
 }
 
+//  For a player inside a Pokemon Center after a whiteout, at the counter:
+//  out through the door. The door is straight south of the nurse in most
+//  Centers; in Oreburgh's it was two tiles east of where we stood (by hand).
+void walk_out_of_center(VideoStream& stream, ProControllerContext& context, const std::string& label){
+    finish_dialogue(stream, context, BUTTON_B, label + ": the nurse");
+    const int shifts[] = {0, 2, -4};
+    for (int shift : shifts){
+        if (shift != 0){
+            hold_tiles(stream, context, shift > 0 ? Direction::EAST : Direction::WEST, (size_t)std::abs(shift));
+        }
+        if (walk_dir(stream, context, Direction::SOUTH, 8000ms, label + ": out of the Center").stop == WalkStop::TRANSITION){
+            context.wait_for(2000ms);
+            return;
+        }
+    }
+    fail(stream, label + ": could not find the Pokemon Center's door.");
+}
+
 void oreburgh_to_roark(VideoStream& stream, ProControllerContext& context){
     // What 01.03 does, stepped through on the console before writing it.
     StepLog step(stream, "01.03", "From the Oreburgh Pokemon Center to Roark in the mine", {
-        "Walk past Barry at the Center's door to the stone ledge, then east to the fence below the Poke Mart",
-        "South to the right-hand conveyor pillar, west to the left-hand pillars, then south into the mine",
+        "Into the Pokemon Center by its door (talking to Barry if he stands in it) and back out onto the door's column",
+        "Straight south from the door into the mine",
         "Through the mine's entrance hall to the rocky corridor",
         "Walk the planned route down the corridor and round the coal block, and talk to Roark",
         "Walk back to the corridor's top and out of the mine",
     });
 
     step(1);
-    // The save stands us in front of the Center, two tiles west of Barry at
-    // its door. These are the holds that worked on the console.
-    hold_tiles(stream, context, Direction::EAST, 3);
-    walk_dir(stream, context, Direction::NORTH, 3000ms, "north to the Center's front");
-    hold_tiles(stream, context, Direction::EAST, 2);
-    walk_dir(stream, context, Direction::NORTH, 2500ms, "north beside Barry");
-    // Roark answers in the mine only after Barry has told us he is there
-    // (2026-10-29: he ignored A in r101 and r104 and by hand, and answered at
-    // once after a talk with Barry). Barry is just east of us.
-    route_turn(stream, context, Direction::EAST);
-    // A save made after his talk has him gone (2026-10-31, the save in front
-    // of the Center was remade after it): go on, and if he never told us,
-    // Roark not answering says so.
-    pbf_press_button(context, BUTTON_A, 80ms, 200ms);
-    if (dialogue_opens(stream, context, 3000ms)){
-        finish_dialogue(stream, context, BUTTON_B, "Barry at the gym door");
-    }else{
-        stream.log("[01.03] Barry did not talk at the gym door: he has told us already. Going on.", COLOR_ORANGE);
-    }
-    // The ledge and the fence end these legs (see walk_to_wall()).
-    walk_to_wall(stream, context, 0, -1, 8000ms, "south to the stone ledge");
-    // A townsperson wandering across the row can stop us a tile or two short
-    // (r95): after a pause, hold east again; against the fence that does
-    // nothing. Whether that second walk moved cannot be read from the screen
-    // with people about (s03b2: 6 to 12 standing still, so "blocked" took
-    // 2 s every time), so neither walk is checked for it.
-    for (size_t push = 0; push < 2; push++){
-        walk_to_wall(stream, context, 1, 0, push == 0 ? 10000ms : 4000ms, "east to the fence below the Poke Mart");
-        if (push == 0){
-            context.wait_for(1500ms);
-        }
-    }
-
-    step(2);
-    // The mine's stairs are straight south of here, two columns west of
-    // the fence (Bulbapedia's Oreburgh map: column 46, between the conveyor
-    // pillars at 42-44 and 48-50). One walk south goes down the yard's
-    // stairs, under the conveyors and into the mine; on the console it ran
-    // on through the entrance hall into the rocky corridor. A worker walks
-    // about on the sand path: wait for him, then try the columns beside.
-    // Timed holds of a tile or two move one tile or two unpredictably, so
-    // the column comes from walls. Down the path along its east fence ends
-    // against the right-hand conveyor pillar in the yard (column 48); from
-    // there west stops against the left-hand pillars, on column 45, which
-    // runs clear south into the mine. The belts keep the screen moving, so
-    // these stops read as the walk's time limit, not as a wall.
-    //
-    // The worker by the fence wanders onto the path and stops the walk south
-    // as a wall would (r95, r96): wait for him to move and walk on.
-    WalkResult down{WalkStop::BLOCKED, 0ms, 0};
-    for (size_t attempt = 0; attempt < 5; attempt++){
-        down = walk_dir(stream, context, Direction::SOUTH, 12000ms, "south to the right-hand pillar");
-        if (down.stop == WalkStop::DIALOG){
-            talk_or_fight(stream, context, "Someone on the way to the mine");
-        }else if (down.stop != WalkStop::BLOCKED){
+    // Planned on Bulbapedia's Oreburgh map (devtools/maps/examples/
+    // oreburgh_center_to_mine.png): the column of the Center's door runs
+    // straight south down the yard's stairs, between the conveyors, into
+    // the mine (walked north up it by hand, 2026-10-31). The door is the one
+    // place that pins that column: go in and back out, and we stand on it
+    // facing south. The save stands us two tiles west of the door and a row
+    // down; north stops against the Center's front or its post, then a tile
+    // at a time east until north goes in. Barry stands in the door the first
+    // time: walking into him reads as a wall, so A there; he tells us Roark
+    // went to the mine, which Roark needs before he answers (2026-10-29: he
+    // ignored A in r101 and r104 until then). A save after his talk has him
+    // gone already.
+    walk_to_wall(stream, context, 0, 1, 3000ms, "north to the Center's front");
+    bool inside = false;
+    for (size_t tap = 0; tap < 6 && !inside; tap++){
+        const WalkResult in = walk_dir(stream, context, Direction::NORTH, 2500ms, "north into the Center's door");
+        if (in.stop == WalkStop::TRANSITION){
+            inside = true;
             break;
         }
-        context.wait_for(2000ms);
-    }
-    bool in_mine = down.stop == WalkStop::TRANSITION;   // already in the mine's column
-    if (!in_mine && down.stop != WalkStop::LIMIT){
-        fail(stream, "Oreburgh: something kept stopping the walk south to the conveyor pillars.");
-    }
-    // West stops against the left-hand pillars, on the column of the sign
-    // above the mine's stairs (on the console, r96): the stairs are open a
-    // tile either side of it, so step back one tile east and walk south.
-    auto step_tiles = [&](Direction side, size_t tiles){
-        route_turn(stream, context, side);
-        for (size_t tile = 0; tile < tiles; tile++){
-            pbf_move_left_joystick(context, {side == Direction::EAST ? 1.0 : -1.0, 0}, 120ms, 300ms);
+        if (in.stop == WalkStop::DIALOG){
+            talk_or_fight(stream, context, "Someone at the Center's door");
+            continue;
         }
+        pbf_press_button(context, BUTTON_A, 80ms, 200ms);
+        if (dialogue_opens(stream, context, 2000ms)){
+            finish_dialogue(stream, context, BUTTON_B, "Barry at the Center's door");
+            context.wait_for(2000ms);    // he runs off
+            tap--;
+            continue;
+        }
+        route_turn(stream, context, Direction::EAST);
+        pbf_move_left_joystick(context, {1, 0}, 120ms, 300ms);
         context.wait_for_all_requests();
-    };
-    if (!in_mine){
-        walk_dir(stream, context, Direction::WEST, 2500ms, "west to the left-hand pillars");
-        step_tiles(Direction::EAST, 1);
-        in_mine = walk_dir(stream, context, Direction::SOUTH, 15000ms, "south into the mine").stop == WalkStop::TRANSITION;
+    }
+    if (!inside || !in_pokemon_center(stream)){
+        fail(stream, "Oreburgh: no column east of the save went into the Pokemon Center.");
+    }
+    context.wait_for(1000ms);
+    walk_out_of_center(stream, context, "Oreburgh");
+
+    step(2);
+    // Out of the door facing south: straight on into the mine. A worker
+    // walks about on the sand path and stops the walk as a wall would (r95,
+    // r96): wait for him to move and walk on.
+    bool in_mine = false;
+    for (size_t attempt = 0; attempt < 5 && !in_mine; attempt++){
+        const WalkResult down = walk_dir(stream, context, Direction::SOUTH, 15000ms, "south from the Center's door into the mine");
+        if (down.stop == WalkStop::TRANSITION){
+            in_mine = true;
+        }else if (down.stop == WalkStop::DIALOG){
+            talk_or_fight(stream, context, "Someone on the way to the mine");
+        }else{
+            context.wait_for(2000ms);
+        }
     }
     if (!in_mine){
-        step_tiles(Direction::WEST, 2);     // the sign's other side
-        in_mine = walk_dir(stream, context, Direction::SOUTH, 5000ms, "south down the mine's stairs").stop == WalkStop::TRANSITION;
-    }
-    if (!in_mine){
-        fail(stream, "Oreburgh: no column south of the Center led into the mine.");
+        fail(stream, "Oreburgh: the walk south from the Center's door did not reach the mine.");
     }
     context.wait_for(1500ms);
 
@@ -614,23 +606,6 @@ bool in_pokemon_center(VideoStream& stream){
     return inside;
 }
 
-//  For a player inside a Pokemon Center after a whiteout, at the counter:
-//  out through the door. The door is straight south of the nurse in most
-//  Centers; in Oreburgh's it was two tiles east of where we stood (by hand).
-void walk_out_of_center(VideoStream& stream, ProControllerContext& context, const std::string& label){
-    finish_dialogue(stream, context, BUTTON_B, label + ": the nurse");
-    const int shifts[] = {0, 2, -4};
-    for (int shift : shifts){
-        if (shift != 0){
-            hold_tiles(stream, context, shift > 0 ? Direction::EAST : Direction::WEST, (size_t)std::abs(shift));
-        }
-        if (walk_dir(stream, context, Direction::SOUTH, 8000ms, label + ": out of the Center").stop == WalkStop::TRANSITION){
-            context.wait_for(2000ms);
-            return;
-        }
-    }
-    fail(stream, label + ": could not find the Pokemon Center's door.");
-}
 
 //  Oreburgh, from the street in front of the Pokemon Center (its door or its
 //  front wall) into the gym, as walked by hand on 2026-10-29: west to the
