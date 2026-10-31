@@ -1256,15 +1256,15 @@ Checkpoint jubilife_poketch_checkpoint(JubilifeActions& game){
         }));
         checkpoint.events.push_back(std::move(talk));
     }
+    //  Not back north the way we came: the president walks off north after
+    //  his talk and stood in the way (r164a). A row south is the row above
+    //  the Center's lamp, and east along it the Center stops us on the tile
+    //  above the lamp.
     checkpoint.events.push_back(wrapped_step("back_to_the_center_lamp",
-        "four rows north, east to the Mart's wall, south to the Center's lamp", "back_at_center_lamp",
-        [&game, steps](RunState&){
-            const Outcome up = steps(Direction::NORTH, 4, "Up toward the Mart");
-            if (!up.succeeded()){
-                return up;
-            }
-            const Outcome east = game.walk_until_stopped(Direction::EAST, 10, "East to the Mart's wall");
-            return east.succeeded() ? game.walk_until_stopped(Direction::SOUTH, 8, "South to the Center's lamp") : east;
+        "a row south, then east until the Center stops us above its lamp", "back_at_center_lamp",
+        [&game](RunState&){
+            const Outcome down = game.step(Direction::SOUTH, "Down to the lamp's row");
+            return down.succeeded() ? game.walk_until_stopped(Direction::EAST, 8, "East to the Center's corner") : down;
         }));
     checkpoint.events.push_back(wrapped_step("heal",
         "a tile west and four rows south, three tiles east, then in through the lit door and heal", "healed",
