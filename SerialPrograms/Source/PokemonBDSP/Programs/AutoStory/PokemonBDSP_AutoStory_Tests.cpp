@@ -706,7 +706,7 @@ public:
             //  Oreburgh Gate's west exit to its road near Jubilife, and from
             //  Jubilife's east stairs to the foot of its north road.
             {
-                std::string leg_error = check_robust_plan(logger, "Route 203: Oreburgh Gate to the east stairs", route203_maps(),
+                std::string leg_error = check_robust_plan(logger, "Route 203: Oreburgh Gate to row 17", route203_maps(),
                     Route203::gate_exit(), on_route203_west_line);
                 failed += leg_error.empty() ? "" : leg_error + " ";
                 leg_error = check_robust_plan(logger, "Jubilife: east stairs to the north road", jubilife_east_maps(),
