@@ -1235,7 +1235,10 @@ void jubilife_to_ravaged_path(VideoStream& stream, ProControllerContext& context
 
     step(1);
     // Route 204's south half: a trainer just past the sign, then the cave in
-    // the cliff a column west of the path.
+    // the cliff two columns west of where the path meets it (by hand,
+    // 2026-10-31). A boy wanders about the cave's mouth: r233a's stick step
+    // west walked into him five times and the leg count ran out, so the step
+    // west is a D-pad tap that waits for him to move on.
     for (size_t leg = 0; leg < 6; leg++){
         const WalkResult up = walk_dir(stream, context, Direction::NORTH, 15000ms, "north on Route 204");
         if (up.stop == WalkStop::TRANSITION){
@@ -1246,7 +1249,7 @@ void jubilife_to_ravaged_path(VideoStream& stream, ProControllerContext& context
             continue;
         }
         if (up.stop == WalkStop::BLOCKED){
-            hold_tiles(stream, context, Direction::WEST, 1);
+            dpad_tiles(stream, context, DPAD_LEFT, 1, "west along the cliff to the cave");
         }
         if (leg == 5){
             fail(stream, "Route 204: did not reach the Ravaged Path.");
