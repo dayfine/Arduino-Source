@@ -839,7 +839,10 @@ void open_party_menu_from_overworld(ConsoleHandle& console, ProControllerContext
 }
 
 PartySlot detect_last_occupied_party_slot(ConsoleHandle& console){
-    const auto snapshot = console.video().snapshot();
+    return detect_last_occupied_party_slot(console.video().snapshot());
+}
+
+PartySlot detect_last_occupied_party_slot(const ImageViewRGB32& screen){
     constexpr std::array slots{
         PartySlot::SIX,
         PartySlot::FIVE,
@@ -850,7 +853,7 @@ PartySlot detect_last_occupied_party_slot(ConsoleHandle& console){
 
     for (PartySlot slot : slots){
         PartyEmptySlotDetector empty_slot_detector(COLOR_RED, slot);
-        if (!empty_slot_detector.detect(snapshot)){
+        if (!empty_slot_detector.detect(screen)){
             return slot;
         }
     }
