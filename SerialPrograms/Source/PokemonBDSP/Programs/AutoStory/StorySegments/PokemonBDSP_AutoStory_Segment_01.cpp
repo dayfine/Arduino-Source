@@ -1188,8 +1188,8 @@ void route203_to_jubilife(VideoStream& stream, ProControllerContext& context){
 
 void jubilife_to_floaroma(VideoStream& stream, ProControllerContext& context){
     StepLog step(stream, "01.07", "From Jubilife City's east edge to Floaroma Town", {
-        "West along Jubilife's long road to the foot of the north road",
-        "Up Jubilife's north road (Rowan, Dawn and two Galactic grunts: a tag battle)",
+        "West along Jubilife's long road to the crossroads",
+        "North up the street to Rowan (Dawn and two Galactic grunts: a tag battle)",
         "North on Route 204 into the Ravaged Path",
         "Through the Ravaged Path, smashing its rocks",
         "Route 204 north on its grid, past the twins, into Floaroma",
@@ -1198,47 +1198,29 @@ void jubilife_to_floaroma(VideoStream& stream, ProControllerContext& context){
 
     step(1);
     // Route 203's row 17 carries on as Jubilife's long road. From the first
-    // tile, the street north to Route 204 opens 7 tiles west, by the corner
-    // of the building with the blue door (by hand, 2026-10-31: 7 west and
-    // about 10 north to Rowan's scene; 18 west went past it to the road
-    // south to Route 202, r230b).
-    dpad_tiles(stream, context, DPAD_LEFT, 7, "west along Jubilife's long road");
+    // tile the crossroads with the street north to Route 204 is 14 tiles
+    // west; the street is about 4 tiles wide, so a stick hold does (by hand,
+    // 2026-10-31: 2 x 1120 ms landed mid-street; 7 D-pad taps stopped below
+    // a building, and 18 went on to the road down to Route 202, r230b).
+    route_turn(stream, context, Direction::WEST);
+    pbf_move_left_joystick(context, {-1, 0}, route_open_hold(Direction::WEST, 14), 300ms);
+    context.wait_for_all_requests();
 
     step(2);
-    // Rowan's scene starts on the way up that street, about 10 tiles north.
-    // A wall sooner means we are off its column: step back down exactly as
-    // far as we went (walking south until blocked went down the road to
-    // Route 202, r230b) and try the next column.
-    const int steps[] = {0, 1, -2, 3, -4};
+    // North up the street: Rowan's scene starts a few tiles up (by hand, a
+    // 6 s walk). It opens with a cutscene, not a dialog box, so the walk
+    // reads as stopped; wait for his first line. The green-haired man walks
+    // about the crossroads and may stand in our way: wait and walk again.
     bool scene = false;
-    for (int s_step : steps){
-        if (s_step != 0){
-            dpad_tiles(stream, context, s_step > 0 ? DPAD_RIGHT : DPAD_LEFT, (size_t)std::abs(s_step), "to the next column");
-        }
-        // The green-haired man walks about this corner and may stand in our
-        // column for a moment: wait for him twice before trying another.
-        size_t went = 0;
-        for (size_t wait = 0; wait < 3; wait++){
-            if (wait > 0){
-                pbf_wait(context, 2500ms);
-            }
-            const WalkResult up = walk_until_dpad(stream, context, 0, 1, 6000ms, "north up the street to Route 204");
-            scene = up.stop == WalkStop::DIALOG;
-            const Milliseconds moving = up.walked - ROUTE_START_DELAY - (up.stop == WalkStop::BLOCKED ? 800ms : 0ms);
-            went += moving.count() <= 0 ? 0 : (size_t)(moving / ROUTE_MS_PER_TILE_UP_DOWN);
-            if (scene || up.stop != WalkStop::BLOCKED){
-                break;
-            }
-        }
-        if (scene){
-            break;
-        }
-        if (went > 0){
-            dpad_tiles(stream, context, DPAD_DOWN, went, "back down to the long road");
+    for (size_t tries = 0; tries < 3 && !scene; tries++){
+        const WalkResult up = walk_dir(stream, context, Direction::NORTH, 6000ms, "north up the street to Route 204");
+        scene = up.stop == WalkStop::DIALOG || dialogue_opens(stream, context, 8000ms);
+        if (!scene){
+            pbf_wait(context, 2500ms);
         }
     }
     if (!scene){
-        fail(stream, "Jubilife: no column led up the north road to Rowan.");
+        fail(stream, "Jubilife: Rowan's scene did not start up the street north.");
     }
     if (!talk_or_fight(stream, context, "Galactic grunts with Dawn", true, true)){
         fail(stream, "Jubilife: Rowan's scene ended without the tag battle.");
