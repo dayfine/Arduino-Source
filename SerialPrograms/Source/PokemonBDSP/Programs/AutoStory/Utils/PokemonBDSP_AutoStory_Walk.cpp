@@ -160,7 +160,7 @@ WalkResult walk_until_impl(
     VideoStream& stream, ProControllerContext& context,
     double x, double y, Milliseconds limit, const std::string& label,
     const std::function<bool(const ImageViewRGB32& screen)>& arrived,
-    bool wild, bool dpad, bool run
+    bool wild, bool dpad, bool run, bool taps = false
 );
 }
 
@@ -181,6 +181,13 @@ WalkResult walk_until_dpad(
     return walk_until_impl(stream, context, x, y, limit, label, arrived, true, true, run);
 }
 
+WalkResult walk_tiles_dpad(
+    VideoStream& stream, ProControllerContext& context,
+    double x, double y, size_t tiles, const std::string& label
+){
+    return walk_until_impl(stream, context, x, y, 800ms * tiles, label, nullptr, true, true, false, true);
+}
+
 WalkResult walk_until_no_wild(
     VideoStream& stream, ProControllerContext& context,
     double x, double y, Milliseconds limit, const std::string& label
@@ -193,9 +200,10 @@ WalkResult walk_until_impl(
     VideoStream& stream, ProControllerContext& context,
     double x, double y, Milliseconds limit, const std::string& label,
     const std::function<bool(const ImageViewRGB32& screen)>& arrived,
-    bool wild, bool dpad, bool run
+    bool wild, bool dpad, bool run, bool taps
 ){
-    constexpr Milliseconds CHUNK = 400ms;
+    //  A tile a tap: 160 ms held, the rest released, so each chunk is one tile.
+    const Milliseconds CHUNK = taps ? 800ms : 400ms;
     const DpadPosition dpad_direction = x < 0 ? DPAD_LEFT : x > 0 ? DPAD_RIGHT : y > 0 ? DPAD_UP : DPAD_DOWN;
     WalkResult result{WalkStop::LIMIT, 0ms, 0};
     size_t unchanged = 0;
@@ -232,7 +240,9 @@ WalkResult walk_until_impl(
         const int ret = run_until<ProControllerContext>(
             stream, context,
             [&](ProControllerContext& context){
-                if (dpad && run){
+                if (taps){
+                    pbf_press_dpad(context, dpad_direction, 160ms, chunk - 160ms);
+                }else if (dpad && run){
                     ssf_press_button(context, BUTTON_B, 0ms, chunk, 0ms);
                     ssf_press_dpad(context, dpad_direction, chunk, chunk, 0ms);
                 }else if (dpad){

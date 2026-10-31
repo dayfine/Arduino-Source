@@ -407,11 +407,16 @@ std::vector<TilePos> walk_route(
                     }
                 }
             }else{
-                //  The hold is timed for a player facing the way to go.
+                //  Whole tiles on the D-pad, a tap each: a tap moves exactly
+                //  one tile, while a stick hold timed for three moved one in
+                //  the Ravaged Path (r235b) and the belief drifted four rows.
+                //  A tap for a player facing another way only turns.
                 if (facing != leg.direction){
-                    route_turn(stream, context, leg.direction);
+                    const DpadPosition dpad = x < 0 ? DPAD_LEFT : x > 0 ? DPAD_RIGHT : y > 0 ? DPAD_UP : DPAD_DOWN;
+                    pbf_press_dpad(context, dpad, 160ms, 700ms);
+                    context.wait_for_all_requests();
                 }
-                result = walk_for(stream, context, x, y, route_open_hold(leg.direction, leg.tiles), leg_label);
+                result = walk_tiles_dpad(stream, context, x, y, leg.tiles, leg_label);
                 if (result.wild_battles > 0){
                     OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
                         leg_label + ": a wild battle cut an open leg short; position unknown.", stream);

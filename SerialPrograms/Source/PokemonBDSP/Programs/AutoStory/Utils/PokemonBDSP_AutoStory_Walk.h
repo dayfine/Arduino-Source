@@ -60,6 +60,15 @@ WalkResult walk_until_dpad(
     bool run = false
 );
 
+//  A set number of whole tiles on the D-pad, a tap a tile (a tap moves
+//  exactly one tile; a stick hold timed for n tiles is a tile or two off),
+//  with the same watch for wild battles and dialogue as walk_until(). Ends
+//  LIMIT after `tiles` taps, or BLOCKED when two taps in a row move nothing.
+WalkResult walk_tiles_dpad(
+    VideoStream& stream, ProControllerContext& context,
+    double x, double y, size_t tiles, const std::string& label
+);
+
 //  walk_until() where there are no wild Pokemon (a gym, a building): any
 //  battle that starts is a trainer's, so the walk stops with DIALOG, left in
 //  the battle for the caller to fight, instead of trying to run from it

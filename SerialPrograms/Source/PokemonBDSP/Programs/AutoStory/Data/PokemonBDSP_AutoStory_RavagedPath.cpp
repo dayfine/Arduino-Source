@@ -14,18 +14,18 @@ namespace RavagedPath{
 using namespace Pokemon;
 
 
-//  Traced by hand from Bulbapedia's Ravaged_Path_DP.png. The archive image
-//  is squashed to 528x672; stretched back to 528x864 its tiles sit on 16 px
-//  with an 8 px offset both ways (rocks and the two door lights centre on
-//  that grid). Only the lower corridor and the room below its stairs are
-//  traced; '?' marks where the untraced west chambers continue (they end in
-//  water). Rocks are '#'; see rocks(). Checked against the hand run of
-//  2026-10-29: in from the south door and up the stairs to the corridor, two
-//  rocks across it east of the stairs, and the way out a tile west of the
-//  corridor's east end, walking south.
-//
-//  Not yet checked on the console tile by tile: the rows are measured from
-//  the stretched image, so a row may be off by one.
+//  Rows 30 to 53 are decoded from Pokemon Platinum's collision table for
+//  this map (the pret/pokeplatinum decompilation, land data 435/436 of map
+//  matrix 051) with the objects from its events file; BDSP keeps the layout.
+//  Water and the items on the ground are '#'; the smashable rocks are '#'
+//  too and listed in rocks(). Checked on the console 2026-10-31 (r235b and
+//  D-pad probes): in from the south door onto (19, 50), up the stairs
+//  (rows 45 to 47, columns 18 to 20) and north to the wall at row 39; the
+//  corridor is three wide up to row 41 and opens east on rows 42 to 44,
+//  with the rocks at (22, 42) and (22, 43), the Potion ball at (22, 44) and
+//  a rock at (23, 44). Rows 0 to 29 are still the hand trace from
+//  Bulbapedia's Ravaged_Path_DP.png (stretched from 528x672 to 528x864), with
+//  '?' where the untraced west chambers continue; nothing we walk is there.
 const TileGrid& grid(){
     static const TileGrid grid({
     //     0         1         2         3
@@ -59,42 +59,43 @@ const TileGrid& grid(){
         R"(#################################)",  //  27
         R"(#################################)",  //  28
         R"(#################################)",  //  29
-        R"(#################################)",  //  30
-        R"(#################################)",  //  31
-        R"(#################################)",  //  32
-        R"(#################################)",  //  33
-        R"(#################################)",  //  34
-        R"(#################################)",  //  35
-        R"(############??###################)",  //  36
-        R"(############??###################)",  //  37
-        R"(###########?.####################)",  //  38
-        R"(###########?..###################)",  //  39
-        R"(###########?.....#...############)",  //  40
-        R"(###########?#....#...############)",  //  41
-        R"(##################....#.......###)",  //  42
-        R"(##################....#.......###)",  //  43
-        R"(##################.....#......###)",  //  44
-        R"(##################...#######D####)",  //  45
-        R"(##################...############)",  //  46
-        R"(##################...############)",  //  47
-        R"(##################...############)",  //  48
-        R"(##################...############)",  //  49
-        R"(##################...############)",  //  50
-        R"(##################...############)",  //  51
-        R"(###################D#############)",  //  52
-        R"(#################################)",  //  53
+        R"(..#####################.........#)",  //  30
+        R"(....############................#)",  //  31
+        R"(....############................#)",  //  32
+        R"(....############................#)",  //  33
+        R"(....############................#)",  //  34
+        R"(....############................#)",  //  35
+        R"(....##.#####.###................#)",  //  36
+        R"(....##.#....#.##................#)",  //  37
+        R"(....##.##.#...#########.........#)",  //  38
+        R"(....##....#..##########.........#)",  //  39
+        R"(....##.#.#.......#...############)",  //  40
+        R"(....###.....######...############)",  //  41
+        R"(....##############....#.......###)",  //  42
+        R"(....##############....#.......###)",  //  43
+        R"(..............####....##......###)",  //  44
+        R"(..............####...#######D####)",  //  45
+        R"(..............####...############)",  //  46
+        R"(..............####...####.......#)",  //  47
+        R"(..............####...####.......#)",  //  48
+        R"(..............####...####.......#)",  //  49
+        R"(..............####...####.......#)",  //  50
+        R"(..............#####D#####.......#)",  //  51
+        R"(..............###########.......#)",  //  52
+        R"(..............###########.......#)",  //  53
     });
     return grid;
 }
 
 const std::vector<TilePos>& rocks(){
     static const std::vector<TilePos> tiles{
-        {13, 38}, {17, 40}, {12, 41}, {22, 42}, {22, 43}, {23, 44},
+        {11, 36}, {7, 37}, {12, 37}, {8, 38}, {10, 38}, {10, 39}, {13, 39},
+        {7, 40}, {9, 40}, {17, 40}, {12, 41}, {22, 42}, {22, 43}, {23, 44},
     };
     return tiles;
 }
 
-const TilePos ENTRANCE{19, 51};
+const TilePos ENTRANCE{19, 50};
 
 const std::vector<TilePos>& before_rocks(){
     static const std::vector<TilePos> tiles{{21, 42}, {21, 43}};
