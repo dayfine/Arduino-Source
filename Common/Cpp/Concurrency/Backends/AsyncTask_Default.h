@@ -7,9 +7,9 @@
 #ifndef PokemonAutomation_AsyncTask_Default_H
 #define PokemonAutomation_AsyncTask_Default_H
 
-#include <functional>
 #include <atomic>
 #include <exception>
+#include "Common/Cpp/MoveOnlyFunction.h"
 #include "Common/Cpp/Concurrency/SpinPause.h"
 #include "Common/Cpp/Concurrency/Mutex.h"
 #include "Common/Cpp/Concurrency/ConditionVariable.h"
@@ -50,7 +50,7 @@ public:
             pause();
         }
     }
-    AsyncTask_Cpp(std::function<void()> task)
+    AsyncTask_Cpp(MoveOnlyFunction<void()> task)
         : m_task(std::move(task))
         , m_state(State::NOT_STARTED)
     {}
@@ -102,7 +102,7 @@ public:
 
 
 private:
-    std::function<void()> m_task;
+    MoveOnlyFunction<void()> m_task;
     std::atomic<State> m_state;
 
     std::exception_ptr m_exception;
