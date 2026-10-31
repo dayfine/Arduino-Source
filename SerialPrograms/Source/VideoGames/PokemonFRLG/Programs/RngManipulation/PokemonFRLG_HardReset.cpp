@@ -26,7 +26,7 @@ namespace{
 //  Press A on the selected profile and return whether game startup was observed.
 //  With license handling disabled, preserve the fixed-delay input sequence.
 //  A timeout leaves recovery to the existing reset loop.
-bool start_game_before_home(
+bool start_game_and_wait(
     ConsoleHandle& console, ProControllerContext& context,
     Milliseconds launch_delay
 ){
@@ -136,7 +136,7 @@ void rng_reset_and_return_home(
             pbf_press_button(context, BUTTON_A, 160ms, 840ms);
             pbf_press_dpad(context, DPAD_UP, 40ms, 0ms);
         }
-        bool black_screen_detected = start_game_before_home(console, context, launch_delay);
+        bool black_screen_detected = start_game_and_wait(console, context, launch_delay);
         pbf_press_button(context, BUTTON_HOME, 200ms, 1800ms);
 
         while(current_time() < deadline){
@@ -185,13 +185,13 @@ void rng_reset_and_return_home(
             case 1:
                 console.log("Detected user-select screen. Trying again...", COLOR_BLUE);
                 move_to_user(context, user_slot);
-                black_screen_detected = start_game_before_home(console, context, launch_delay);
+                black_screen_detected = start_game_and_wait(console, context, launch_delay);
                 pbf_press_button(context, BUTTON_HOME, 200ms, 2800ms);
                 continue;
             case 2:
                 console.log("Detected update menu. Trying again...", COLOR_BLUE);
                 pbf_press_dpad(context, DPAD_UP, 40ms, 0ms);
-                black_screen_detected = start_game_before_home(console, context, launch_delay);
+                black_screen_detected = start_game_and_wait(console, context, launch_delay);
                 pbf_press_button(context, BUTTON_HOME, 200ms, 2800ms);
                 continue;
             default:
