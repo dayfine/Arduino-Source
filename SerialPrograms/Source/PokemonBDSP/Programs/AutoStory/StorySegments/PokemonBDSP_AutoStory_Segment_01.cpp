@@ -920,6 +920,7 @@ void oreburgh_gym(VideoStream& stream, ProControllerContext& context){
         "West along the row into the gym",
         "Up the gym, fighting its trainers, and beat Roark (after a loss: from the Center, again)",
         "Out of the gym",
+        "East along the row to the Pokemon Center and heal",
     });
     step(1);
     // 01.03 leaves us at the Center's counter, facing the nurse; the door
@@ -945,18 +946,56 @@ void oreburgh_gym(VideoStream& stream, ProControllerContext& context){
     }
 
     step(4);
-    // Back down the middle and out of the door.
-    for (size_t leg = 0; leg < 4; leg++){
-        const WalkResult down = walk_dir(stream, context, Direction::SOUTH, 10000ms, "south out of the gym");
-        if (down.stop == WalkStop::TRANSITION){
-            context.wait_for(2000ms);
-            return;
-        }
+    // Back down the middle, a tile at a time, looking for the door's dark
+    // fade after each: a longer hold runs on past the doorstep, as leaving
+    // the Center did (r205d).
+    bool out = false;
+    for (size_t tile = 0; tile < 40 && !out; tile++){
+        const WalkResult down = walk_for(stream, context, 0, -1, 240ms, "south out of the gym");
         if (down.stop == WalkStop::DIALOG){
             finish_dialogue(stream, context, BUTTON_B, "Someone in the gym");
+            continue;
+        }
+        const auto start = current_time();
+        while (current_time() - start < 1500ms){
+            context.wait_for(100ms);
+            const VideoSnapshot frame = stream.video().snapshot();
+            if (frame && mean_brightness(*frame.frame) < 25){
+                out = true;
+                break;
+            }
         }
     }
-    fail(stream, "Oreburgh Gym: did not leave by its door.");
+    if (!out){
+        fail(stream, "Oreburgh Gym: did not leave by its door.");
+    }
+    context.wait_for(2500ms);
+
+    step(5);
+    // Heal at the Center, so 01.05 starts at its counter: the gym's doorstep
+    // row runs east to the Center's door, the way 01.04 came.
+    route_turn(stream, context, Direction::EAST);
+    for (size_t t = 0; t < GYM_TILES_WEST_OF_CENTER; t++){
+        const WalkResult step_east = walk_for(stream, context, 1, 0, 160ms, "east to the Center's door");
+        if (step_east.stop == WalkStop::DIALOG){
+            talk_or_fight(stream, context, "Someone on the way to the Center");
+        }
+    }
+    bool inside = through_door_north(stream, context, "Oreburgh Pokemon Center door");
+    for (int shift : {1, -2}){
+        if (inside){
+            break;
+        }
+        route_turn(stream, context, shift > 0 ? Direction::EAST : Direction::WEST);
+        for (int tile = 0; tile < std::abs(shift); tile++){
+            walk_for(stream, context, shift > 0 ? 1 : -1, 0, 160ms, "a tile along the Center's front");
+        }
+        inside = through_door_north(stream, context, "Oreburgh Pokemon Center door");
+    }
+    if (!inside){
+        fail(stream, "Oreburgh: the Pokemon Center's door did not take us from the gym's row.");
+    }
+    heal_at_oreburgh_counter(stream, context);
 }
 
 //  West until a transition, by the user's rule for a wall in the way: walk
@@ -1010,9 +1049,10 @@ void oreburgh_to_floaroma(VideoStream& stream, ProControllerContext& context){
     });
 
     step(1);
-    // From the gym door, as walked by hand on 2026-10-29.
-    hold_tiles(stream, context, Direction::SOUTH, 1);
-    hold_tiles(stream, context, Direction::NORTH, 1);
+    // 01.04 leaves us at the Center's counter. Out onto its doorstep: its
+    // row is the gym door's, and west along it reaches the stairs' cliff,
+    // as from the gym door (by hand, 2026-10-29 and 2026-10-31).
+    walk_out_of_center(stream, context, "Oreburgh");
     walk_dir(stream, context, Direction::WEST, 20000ms, "west to the stairs' cliff");
     walk_dir(stream, context, Direction::NORTH, 10000ms, "north along the cliff");
     hold_tiles(stream, context, Direction::EAST, 2);
@@ -1295,7 +1335,7 @@ void AutoStory_Checkpoint_0103::run_checkpoint(
 
 std::string AutoStory_Checkpoint_0104::name()       const { return "01.04 - Oreburgh Gym"; }
 std::string AutoStory_Checkpoint_0104::start_text() const { return AutoStory_Checkpoint_0103().end_text(); }
-std::string AutoStory_Checkpoint_0104::end_text()   const { return "Outside the Oreburgh Gym's door, with the Coal Badge."; }
+std::string AutoStory_Checkpoint_0104::end_text()   const { return "At the Oreburgh Pokemon Center counter, healed, with the Coal Badge."; }
 
 void AutoStory_Checkpoint_0104::run_checkpoint(
     SingleSwitchProgramEnvironment& env,
