@@ -1075,69 +1075,73 @@ Checkpoint jubilife_clown_company_checkpoint(JubilifeActions& game){
             }
             return outcome_ok();
         }));
-    //  Measured on the console (2026-10-30): from the lamp, six tiles east
-    //  is the sign's column; the sign reads facing north. A tile off either
-    //  way reads nothing, so the read is the gate.
+    //  The clown wanders the plaza behind the hedges, and a walk can pass him
+    //  by. Measured on the console (2026-10-30): from the lamp, the
+    //  Poketch Company's sign is six tiles east along the hedges (taps put us
+    //  there or a tile past it); it reads facing north, and the tile east of
+    //  it is a gap in the hedges into the plaza. A step into the gap, then A
+    //  every second or so, talked to him within seconds: he comes by. So we
+    //  tap four tiles, then go a tile at a time asking north (him, or the
+    //  sign), and wait in the gap. `progress` keeps a rerun after a talk
+    //  interrupt from walking the tiles again.
     {
-        std::shared_ptr<DialogueRead> read = std::make_shared<DialogueRead>();
-        Event sign;
-        sign.name = "to_the_sign";
-        sign.why = "six tiles east of the lamp, the Poketch Company's sign reads facing north";
-        sign.act = [&game, read](RunState&){
-            game.turn(Direction::EAST);
-            const Outcome moved = game.taps(Direction::EAST, 6, "East along the hedges");
-            if (!moved.succeeded()){
-                return moved;
-            }
-            *read = game.read_sign(Direction::NORTH, "the Poketch Company's sign");
-            //  A tile off: west first (the miss we saw went a tile too far),
-            //  then east of where we started.
-            for (Direction side : {Direction::WEST, Direction::EAST, Direction::EAST}){
-                if (read->opened){
-                    break;
-                }
-                game.turn(side);
-                const Outcome moved = game.tile(side, "Along the hedges to the sign");
-                if (!moved.succeeded()){
-                    return moved;
-                }
-                *read = game.read_sign(Direction::NORTH, "the Poketch Company's sign");
-            }
-            return outcome_ok();
-        };
-        sign.expect.push_back(condition("the sign's box opened and closed", [read](RunState&){
-            return read->opened && read->closed;
-        }));
-        checkpoint.events.push_back(std::move(sign));
-    }
-    //  The clown wanders the plaza between the hedges and the building, and
-    //  a walk can pass him by. On the console (2026-10-30) a step north from
-    //  where the sign reads put us beside the sign, in the gap in the hedges,
-    //  and asking there every second or so talked to him within seconds: he
-    //  comes by. West of that tile is the sign, south the road.
-    checkpoint.events.push_back(wrapped_step("into_the_gap",
-        "a step north from where the sign reads, into the gap beside it", "in_the_gap",
-        [&game](RunState&){
-            return game.step(Direction::NORTH, "Into the gap beside the sign");
-        }));
-    {
+        struct Progress{ bool tapped = false; size_t tiles = 0; bool in_gap = false; };
+        std::shared_ptr<Progress> progress = std::make_shared<Progress>();
         std::shared_ptr<DialogueRead> read = std::make_shared<DialogueRead>();
         Event talk;
         talk.name = "talk_to_clown";
         talk.why = "the clown asks a question (Yes is right) and gives Coupon 3";
         talk.skip_if.push_back(condition("coupon_3", [](RunState& state){ return state.flags.count("coupon_3") > 0; }));
-        talk.act = [&game, read](RunState& state){
-            //  Up to about a minute and a half.
-            for (size_t round = 0; round < 18 && !read->opened; round++){
-                for (Direction direction : {Direction::NORTH, Direction::EAST, Direction::WEST}){
-                    *read = game.talk(direction, BUTTON_A, "Clown by the Poketch Company");
-                    //  West is the sign ("... Watches for the World!") unless
-                    //  he stood in the gap and kept us on the road.
-                    if (read->opened && read->text.find("World") != std::string::npos){
-                        *read = DialogueRead();
-                        continue;
+        talk.act = [&game, read, progress](RunState& state){
+            const auto is_sign = [](const DialogueRead& r){
+                return r.text.find("World") != std::string::npos || r.text.find("Company") != std::string::npos;
+            };
+            //  Him north of us, or the sign.
+            const auto ask = [&](Direction direction) -> bool{
+                *read = game.talk(direction, BUTTON_A, "Clown by the Poketch Company");
+                if (read->opened && is_sign(*read)){
+                    *read = DialogueRead();
+                }
+                return read->opened;
+            };
+            if (!progress->tapped){
+                game.turn(Direction::EAST);
+                const Outcome moved = game.taps(Direction::EAST, 4, "East along the hedges");
+                if (!moved.succeeded()){
+                    return moved;
+                }
+                progress->tapped = true;
+            }
+            while (!progress->in_gap && progress->tiles < 5){
+                if (ask(Direction::NORTH)){
+                    break;
+                }
+                const DialogueRead sign = game.read_sign(Direction::NORTH, "the Poketch Company's sign");
+                if (sign.opened && !is_sign(sign) && !sign.text.empty()){
+                    //  Him after all; his talk was closed with B: ask again.
+                    if (ask(Direction::NORTH)){
+                        break;
                     }
-                    if (read->opened){
+                }
+                game.turn(Direction::EAST);
+                const Outcome moved = game.taps(Direction::EAST, 1, "On along the hedges");
+                if (!moved.succeeded()){
+                    return moved;
+                }
+                progress->tiles++;
+                if (sign.opened && is_sign(sign)){
+                    //  East of the sign: north is the gap.
+                    const Outcome up = game.step(Direction::NORTH, "Into the gap beside the sign");
+                    if (!up.succeeded()){
+                        return up;
+                    }
+                    progress->in_gap = true;
+                }
+            }
+            //  Up to about a minute and a half; west of the gap is the sign.
+            for (size_t round = 0; round < 18 && progress->in_gap && !read->opened; round++){
+                for (Direction direction : {Direction::NORTH, Direction::EAST, Direction::WEST}){
+                    if (ask(direction)){
                         break;
                     }
                 }

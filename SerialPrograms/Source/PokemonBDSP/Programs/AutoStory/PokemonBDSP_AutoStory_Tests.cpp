@@ -1663,8 +1663,8 @@ public:
 };
 
 
-//  00.05f: the sign gate finds the sign a tile off, and we ask each way
-//  until the wandering clown steps next to us.
+//  00.05f: a tile at a time along the hedges asking north, then waiting in
+//  the gap beside the sign until the wandering clown steps next to us.
 class Test_JubilifeClownCompany : public UnitTest{
 public:
     Test_JubilifeClownCompany()
@@ -1673,10 +1673,10 @@ public:
     virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
         struct Case{ const char* name; size_t sign_after; size_t clown_at; bool completed; };
         const Case cases[] = {
-            {"Sign in the counted column, clown on the first row", 1, 3, true},
-            {"Sign a tile west", 3, 3, true},
-            {"Sign nowhere near", 5, 3, false},
-            {"Clown comes by late", 1, 40, true},
+            {"Clown north of the hedge walk", 1, 2, true},
+            {"Sign at the first tile, clown comes by in the gap", 1, 5, true},
+            {"Sign at the third tile, clown comes by late", 3, 40, true},
+            {"Sign never reads: never in the gap", 100, 40, false},
             {"Clown never answers", 1, 1000, false},
         };
         for (const Case& c : cases){
