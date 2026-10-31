@@ -17,29 +17,63 @@ namespace PokemonFRLG{
 
 namespace{
 
-//  Starting from the overworld, checks that the party has a free slot for the
-//  Pokemon the program will catch or receive; without one it goes to the PC
-//  and the program reads the wrong Pokemon. Throws UserSetupError if the party
-//  is full. If the party menu can't be opened, logs that and returns. Leaves
-//  the party menu open.
-void check_party_has_free_slot(ConsoleHandle& console, ProControllerContext& context, StartMenuContext menu_context){
-    console.log("Checking for a free party slot...");
-    try{
-        open_party_menu_from_overworld(console, context, menu_context);
-    }catch (OperationFailedException&){
-        console.log("Unable to open the party menu. Skipping the free party slot check.", COLOR_RED);
+class ConsolePartyCheckActions : public PartyCheckActions{
+public:
+    ConsolePartyCheckActions(ConsoleHandle& console, ProControllerContext& context, StartMenuContext menu_context)
+        : m_console(console), m_context(context), m_menu_context(menu_context)
+    {}
+
+    virtual bool open_party_menu() override{
+        try{
+            open_party_menu_from_overworld(m_console, m_context, m_menu_context);
+        }catch (OperationFailedException&){
+            return false;
+        }
+        m_context.wait_for_all_requests();
+        return true;
+    }
+    virtual PartySlot read_last_occupied_slot() override{
+        return detect_last_occupied_party_slot(m_console);
+    }
+
+private:
+    ConsoleHandle& m_console;
+    ProControllerContext& m_context;
+    StartMenuContext m_menu_context;
+};
+
+//  Without a free slot, the Pokemon the program catches or receives goes to
+//  the PC and the program reads the wrong Pokemon.
+void check_party_has_free_slot(Logger& logger, PartyCheckActions& actions){
+    logger.log("Checking for a free party slot...");
+    if (!actions.open_party_menu()){
+        logger.log("Unable to open the party menu. Skipping the free party slot check.", COLOR_RED);
         return;
     }
-    context.wait_for_all_requests();
-    if (detect_last_occupied_party_slot(console) == PartySlot::SIX){
+    if (actions.read_last_occupied_slot() == PartySlot::SIX){
         throw UserSetupError(
-            console,
+            logger,
             "Your party is full. Leave a party slot free so the program can check the " + Pokemon::STRING_POKEMON + " it catches."
         );
     }
-    console.log("Party has a free slot.");
+    logger.log("Party has a free slot.");
 }
 
+}
+
+
+void check_party_requirement(
+    Logger& logger,
+    PartyRequirement requirement,
+    PartyCheckActions& actions
+){
+    switch (requirement){
+    case PartyRequirement::NONE:
+        break;
+    case PartyRequirement::FREE_SLOT:
+        check_party_has_free_slot(logger, actions);
+        break;
+    }
 }
 
 
@@ -47,15 +81,9 @@ void RngProgramInstance::start_program_game_checks(
     SingleSwitchProgramEnvironment& env,
     ProControllerContext& context
 ){
-    switch (party_requirement()){
-    case PartyRequirement::NONE:
-        break;
-    case PartyRequirement::FREE_SLOT:
-        check_party_has_free_slot(env.console, context, start_menu_context());
-        break;
-    }
+    ConsolePartyCheckActions actions(env.console, context, start_menu_context());
+    check_party_requirement(env.console.logger(), party_requirement(), actions);
 }
-
 
 }
 }

@@ -5,9 +5,11 @@
  */
 
 #include <fstream>
+#include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/Filesystem/Filesystem.h"
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "CommonFramework/StaticGlobals.h"
+#include "Tests/ImageUnitTest.h"
 #include "Tests/TestUtils.h"
 #include "Inference/Dialogs/PokemonFRLG_BattleDialogs.h"
 #include "Inference/Dialogs/PokemonFRLG_DialogDetector.h"
@@ -23,6 +25,7 @@
 #include "Inference/PokemonFRLG_StatsReader.h"
 #include "Inference/PokemonFRLG_TrainerIdReader.h"
 #include "Inference/PokemonFRLG_WildEncounterReader.h"
+#include "Programs/RngManipulation/PokemonFRLG_RngProgram.h"
 #include "PokemonFRLG_Navigation.h"
 
 #include "PokemonFRLG_Tests.h"
@@ -255,6 +258,145 @@ void add_tests_ExitWildBattle(UnitTestDatabase& database){
     }
 }
 
+
+std::string slot_name(PartySlot slot){
+    return std::to_string(static_cast<unsigned>(slot) + 1);
+}
+
+// Reads the last occupied slot from a party menu screenshot, as the RNG programs' party check does.
+class Test_LastOccupiedPartySlot : public ImageUnitTest{
+public:
+    Test_LastOccupiedPartySlot(const std::string& image, PartySlot expected)
+        : ImageUnitTest("PokemonFRLG::LastOccupiedPartySlot - " + image, {image})
+        , m_expected(expected)
+    {}
+
+    virtual UnitTestResult run_on_images(
+        Logger&, CancellableScope&,
+        const std::vector<ImageRGB32>& images
+    ) const override{
+        const PartySlot slot = detect_last_occupied_party_slot(images[0]);
+        if (slot != m_expected){
+            return "Expected last occupied slot " + slot_name(m_expected) + ", got " + slot_name(slot);
+        }
+        return true;
+    }
+
+private:
+    const PartySlot m_expected;
+};
+
+void add_tests_LastOccupiedPartySlot(UnitTestDatabase& database){
+    for (unsigned occupied = 1; occupied <= 6; occupied++){
+        database.add<Test_LastOccupiedPartySlot>(
+            "PokemonFRLG/Party/Party_" + std::to_string(occupied) + ".png",
+            static_cast<PartySlot>(occupied - 1)
+        );
+    }
+    database.add<Test_LastOccupiedPartySlot>("PokemonFRLG/Party/Party_6_With_Held_Items.png", PartySlot::SIX);
+    database.add<Test_LastOccupiedPartySlot>("PokemonFRLG/Party/JPN_HeldItem.png", PartySlot::SIX);
+    database.add<Test_LastOccupiedPartySlot>("PokemonFRLG/Party/JPN_Party.png", PartySlot::THREE);
+    database.add<Test_LastOccupiedPartySlot>("PokemonFRLG/Party/SPA_HeldItem.png", PartySlot::SIX);
+}
+
+// Steps that return scripted reads, and record what check_party_requirement() asked for.
+class ScriptedPartyCheck : public PartyCheckActions{
+public:
+    bool menu_opens = true;
+    PartySlot last_occupied = PartySlot::ONE;
+    std::string steps;
+
+    virtual bool open_party_menu() override{
+        steps += steps.empty() ? "open" : " open";
+        return menu_opens;
+    }
+    virtual PartySlot read_last_occupied_slot() override{
+        steps += steps.empty() ? "read" : " read";
+        return last_occupied;
+    }
+};
+
+struct PartyCheckScenario{
+    std::string name;
+    PartyRequirement requirement = PartyRequirement::FREE_SLOT;
+    bool menu_opens = true;
+    PartySlot last_occupied = PartySlot::ONE;
+    std::string expected_steps = "";
+    // Start of the UserSetupError message; empty if the check passes.
+    std::string expected_error = "";
+};
+
+class Test_PartyCheck : public UnitTest{
+public:
+    Test_PartyCheck(PartyCheckScenario scenario)
+        : UnitTest("PokemonFRLG::RngPartyCheck - " + scenario.name)
+        , m_scenario(std::move(scenario))
+    {}
+
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        ScriptedPartyCheck actions;
+        actions.menu_opens = m_scenario.menu_opens;
+        actions.last_occupied = m_scenario.last_occupied;
+
+        NullLogger logger;
+        std::string error;
+        try{
+            check_party_requirement(logger, m_scenario.requirement, actions);
+        }catch (UserSetupError& e){
+            error = e.message();
+        }
+        const bool error_matches = m_scenario.expected_error.empty()
+            ? error.empty()
+            : error.rfind(m_scenario.expected_error, 0) == 0;
+        if (!error_matches){
+            return "Expected error: \"" + m_scenario.expected_error + "\"\nActual error:   \"" + error + "\"";
+        }
+        if (actions.steps != m_scenario.expected_steps){
+            return "Expected steps: " + m_scenario.expected_steps + "\nActual steps:   " + actions.steps;
+        }
+        return true;
+    }
+
+private:
+    const PartyCheckScenario m_scenario;
+};
+
+void add_tests_PartyCheck(UnitTestDatabase& database){
+    const PartyCheckScenario scenarios[] = {
+        {
+            // Programs that don't add a Pokemon to the party don't open the menu.
+            .name = "no requirement, full party",
+            .requirement = PartyRequirement::NONE,
+            .last_occupied = PartySlot::SIX,
+        },
+        {
+            .name = "one Pokemon",
+            .expected_steps = "open read",
+        },
+        {
+            .name = "five Pokemon",
+            .last_occupied = PartySlot::FIVE,
+            .expected_steps = "open read",
+        },
+        {
+            .name = "full party",
+            .last_occupied = PartySlot::SIX,
+            .expected_steps = "open read",
+            .expected_error = "Your party is full. Leave a party slot free",
+        },
+        {
+            // A menu that can't be opened skips the check rather than stopping the program.
+            .name = "party menu not opened",
+            .menu_opens = false,
+            .last_occupied = PartySlot::SIX,
+            .expected_steps = "open",
+        },
+    };
+    for (const PartyCheckScenario& scenario : scenarios){
+        database.add<Test_PartyCheck>(scenario);
+    }
+}
+
 }
 
 
@@ -278,6 +420,8 @@ void add_tests(UnitTestDatabase& database){
     add_tests_HallOfFameSavingDetector(database);
     add_tests_BattleMoveSelectionArrow(database);
     add_tests_ExitWildBattle(database);
+    add_tests_LastOccupiedPartySlot(database);
+    add_tests_PartyCheck(database);
 }
 
 

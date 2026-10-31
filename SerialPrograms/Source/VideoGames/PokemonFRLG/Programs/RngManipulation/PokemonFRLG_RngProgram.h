@@ -12,7 +12,9 @@
 #ifndef PokemonAutomation_PokemonFRLG_RngProgram_H
 #define PokemonAutomation_PokemonFRLG_RngProgram_H
 
+#include "Common/Cpp/Logging/AbstractLogger.h"
 #include "NintendoSwitch/NintendoSwitch_SingleSwitchProgram.h"
+#include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_PartySlot.h"
 #include "VideoGames/PokemonFRLG/PokemonFRLG_Navigation.h"
 
 namespace PokemonAutomation{
@@ -26,6 +28,29 @@ enum class PartyRequirement{
     //  the party. In a full party it would go to the PC instead.
     FREE_SLOT,
 };
+
+
+//  The game steps that check_party_requirement() takes. They are injected so
+//  that its decisions run in tests without a Switch.
+class PartyCheckActions{
+public:
+    virtual ~PartyCheckActions() = default;
+
+    //  Open the party menu from the overworld. Returns false if it can't.
+    virtual bool open_party_menu() = 0;
+
+    //  Read the last occupied slot on the open party menu.
+    virtual PartySlot read_last_occupied_slot() = 0;
+};
+
+//  Checks that the party meets `requirement`, starting from the overworld.
+//  Throws UserSetupError if it doesn't. If the party menu can't be opened,
+//  logs that and returns. May leave the party menu open.
+void check_party_requirement(
+    Logger& logger,
+    PartyRequirement requirement,
+    PartyCheckActions& actions
+);
 
 
 class RngProgramInstance : public SingleSwitchProgramInstance{
