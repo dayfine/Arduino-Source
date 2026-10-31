@@ -46,6 +46,7 @@ private:
 
 void add_tests_BagDetector(UnitTestDatabase& database){
     database.add<Test_BagDetector>("PokemonFRLG/Bag/Items_Top.png", true);
+    database.add<Test_BagDetector>("PokemonFRLG/Bag/KeyItems_Top.png", true);
 
     database.add<Test_BagDetector>("PokemonFRLG/Party/Party_1.png", false);
     database.add<Test_BagDetector>("PokemonFRLG/Box/BoxSelection_White.png", false);
