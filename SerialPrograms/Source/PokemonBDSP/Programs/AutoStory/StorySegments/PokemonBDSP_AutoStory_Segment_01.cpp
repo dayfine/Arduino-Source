@@ -411,9 +411,30 @@ void oreburgh_to_roark(VideoStream& stream, ProControllerContext& context){
     // went to the mine, which Roark needs before he answers (2026-10-29: he
     // ignored A in r101 and r104 until then). A save after his talk has him
     // gone already.
-    walk_to_wall(stream, context, 0, 1, 3000ms, "north to the Center's front");
+    //
+    // North from the save stops against the post west of the Center, a row
+    // above its door; east is the Center's side wall there (by hand,
+    // 2026-10-31: pushing north there slides back onto the post's column).
+    // One row south is the door's row, and three taps east the door. Start
+    // a tap short and try the door with one-tap shifts either side.
+    walk_to_wall(stream, context, 0, 1, 3000ms, "north to the post beside the Center");
+    route_turn(stream, context, Direction::SOUTH);
+    pbf_move_left_joystick(context, {0, -1}, 240ms, 300ms);
+    route_turn(stream, context, Direction::EAST);
+    pbf_move_left_joystick(context, {1, 0}, 160ms, 300ms);
+    pbf_move_left_joystick(context, {1, 0}, 160ms, 300ms);
+    context.wait_for_all_requests();
     bool inside = false;
-    for (size_t tap = 0; tap < 6 && !inside; tap++){
+    const int shifts[] = {0, 1, -2, 3, -4};     // cumulative: here, +1, -1, +2, -2
+    for (size_t i = 0; i < 5 && !inside; i++){
+        const int shift = shifts[i];
+        if (shift != 0){
+            route_turn(stream, context, shift > 0 ? Direction::EAST : Direction::WEST);
+            for (int tap = 0; tap < std::abs(shift); tap++){
+                pbf_move_left_joystick(context, {shift > 0 ? 1.0 : -1.0, 0}, 160ms, 300ms);
+            }
+            context.wait_for_all_requests();
+        }
         const WalkResult in = walk_dir(stream, context, Direction::NORTH, 2500ms, "north into the Center's door");
         if (in.stop == WalkStop::TRANSITION){
             inside = true;
@@ -421,18 +442,18 @@ void oreburgh_to_roark(VideoStream& stream, ProControllerContext& context){
         }
         if (in.stop == WalkStop::DIALOG){
             talk_or_fight(stream, context, "Someone at the Center's door");
-            continue;
-        }
-        pbf_press_button(context, BUTTON_A, 80ms, 200ms);
-        if (dialogue_opens(stream, context, 2000ms)){
+        }else{
+            pbf_press_button(context, BUTTON_A, 80ms, 200ms);
+            if (!dialogue_opens(stream, context, 2000ms)){
+                continue;
+            }
             finish_dialogue(stream, context, BUTTON_B, "Barry at the Center's door");
             context.wait_for(2000ms);    // he runs off
-            tap--;
-            continue;
         }
-        route_turn(stream, context, Direction::EAST);
-        pbf_move_left_joystick(context, {1, 0}, 120ms, 300ms);
-        context.wait_for_all_requests();
+        // Talked in the door's column: the door is free now.
+        if (walk_dir(stream, context, Direction::NORTH, 2500ms, "north into the Center's door").stop == WalkStop::TRANSITION){
+            inside = true;
+        }
     }
     if (!inside || !in_pokemon_center(stream)){
         fail(stream, "Oreburgh: no column east of the save went into the Pokemon Center.");
