@@ -1682,6 +1682,8 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_BagDetector.h
     Source/VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_LoadMenuDetector.cpp
     Source/VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_LoadMenuDetector.h
+    Source/VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_NamingScreenDetector.cpp
+    Source/VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_NamingScreenDetector.h
     Source/VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_PartyEmptySlotDetector.cpp
     Source/VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_PartyEmptySlotDetector.h
     Source/VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_PartyHeldItemDetector.cpp
@@ -1749,6 +1751,10 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonFRLG/Programs/Farming/PokemonFRLG_PickupFarmer.h
     Source/VideoGames/PokemonFRLG/Programs/PokemonFRLG_BattleMenuNavigation.cpp
     Source/VideoGames/PokemonFRLG/Programs/PokemonFRLG_BattleMenuNavigation.h
+    Source/VideoGames/PokemonFRLG/Programs/PokemonFRLG_NamingScreen.cpp
+    Source/VideoGames/PokemonFRLG/Programs/PokemonFRLG_NamingScreen.h
+    Source/VideoGames/PokemonFRLG/Programs/PokemonFRLG_NamingScreenKeyboard.cpp
+    Source/VideoGames/PokemonFRLG/Programs/PokemonFRLG_NamingScreenKeyboard.h
     Source/VideoGames/PokemonFRLG/Programs/PokemonFRLG_SafariOptimalAction.cpp
     Source/VideoGames/PokemonFRLG/Programs/PokemonFRLG_SafariOptimalAction.h
     Source/VideoGames/PokemonFRLG/Programs/PokemonFRLG_StartMenuNavigation.cpp
