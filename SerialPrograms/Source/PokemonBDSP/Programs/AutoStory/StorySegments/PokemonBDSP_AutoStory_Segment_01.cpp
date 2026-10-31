@@ -727,13 +727,19 @@ bool in_dim_cave(VideoStream& stream){
 //  column. The hold is checked by the door itself: walk north, and if the
 //  gym's wall stops us, try the columns either side.
 void oreburgh_street_to_gym(VideoStream& stream, ProControllerContext& context){
-    // From the tile below the Center's door, its row runs west to the gym's
+    // From just below the Center's door, its row runs west to the gym's
     // door with nothing in the way: before Roark's scene a walk west along
-    // it stopped at Barry, standing beside the gym's door, after 3.4 s (by
-    // hand, 2026-10-31), and the door is a tile on. The old way (west to the
+    // it from just west of the Center's door stopped at Barry, standing
+    // beside the gym's door, after 3.4 s (by hand, 2026-10-31). The old way (west to the
     // cliff, south to the posts, 17 east) went elsewhere from this row
     // (r196d ended at the Poke Mart).
-    hold_tiles(stream, context, Direction::WEST, 22);
+    // Leaving the Center runs on a row or two during the fade (r198d held
+    // west along the wrong row into a house): a tile east of the door, north
+    // stops against the Center's front on the door's row. From there the
+    // gym's door is about 24 tiles west.
+    hold_tiles(stream, context, Direction::EAST, 1);
+    walk_to_wall(stream, context, 0, 1, 3000ms, "north to the Center's front beside its door");
+    hold_tiles(stream, context, Direction::WEST, 23);
     // A long hold ends a tile or two either side of the door (by hand,
     // 2026-10-31: 17 tiles from the cliff ended 1.5 east). The gym's front
     // blocks north there.
