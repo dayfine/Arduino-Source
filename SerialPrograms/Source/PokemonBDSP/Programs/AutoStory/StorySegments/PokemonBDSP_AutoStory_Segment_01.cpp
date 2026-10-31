@@ -76,6 +76,9 @@ bool talk_or_fight(VideoStream& stream, ProControllerContext& context, const std
     ShortDialogDetector dialog;
     OverworldDetector overworld;
     BattleMenuDetector battle_menu(BattleType::TRAINER);
+    //  Roark's battle menu read as STANDARD, not TRAINER, and nothing fought
+    //  it (r210d): either counts here, as only a trainer's battle can start.
+    BattleMenuDetector battle_menu_standard(BattleType::STANDARD);
     BlackScreenDetector black;
     auto quiet_since = std::chrono::steady_clock::now();
     for (size_t check = 0; check < 120; check++){
@@ -84,7 +87,7 @@ bool talk_or_fight(VideoStream& stream, ProControllerContext& context, const std
         if (!frame){
             fail(stream, label + ": No video frame.");
         }
-        if (battle_menu.detect(*frame.frame) || black.detect(*frame.frame)){
+        if (battle_menu.detect(*frame.frame) || battle_menu_standard.detect(*frame.frame) || black.detect(*frame.frame)){
             route_status(stream, "Fighting " + label + ".");
             fight_story_battle(stream, context, label, doubles);
             if (!in_pokemon_center(stream)){
@@ -888,7 +891,9 @@ bool oreburgh_gym_battles(VideoStream& stream, ProControllerContext& context){
         // left us facing north: a turn tap that way would be a step.
         pbf_press_button(context, BUTTON_A, 80ms, 200ms);
         if (dialogue_opens(stream, context, 3000ms)){
-            if (talk_or_fight(stream, context, "Roark")){
+            // His lines pause for more than 4 s before the battle (r210d: "only
+            // talked"), so the battle is expected.
+            if (talk_or_fight(stream, context, "Roark", true)){
                 if (in_pokemon_center(stream)){
                     return false;
                 }
