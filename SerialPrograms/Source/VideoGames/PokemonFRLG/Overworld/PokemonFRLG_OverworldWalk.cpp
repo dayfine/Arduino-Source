@@ -43,13 +43,13 @@ constexpr Milliseconds AFTER_WARP = 1500ms;
 //  A message set off by a leg's last step shows after the hold ends. Caught
 //  here, before the next leg's turn tap, which the message would swallow.
 constexpr Milliseconds AFTER_LEG_WATCH = 500ms;
-constexpr int MAX_INTERRUPTIONS_PER_LEG = 5;
+constexpr size_t MAX_INTERRUPTIONS_PER_LEG = 5;
 
 
 //  A wild battle, seen by the flashes it starts with.
 class WildBattleInterrupt : public OverworldInterrupt{
 public:
-    virtual const char* name() const override{
+    virtual std::string name() const override{
         return "a wild battle";
     }
     virtual std::unique_ptr<VisualInferenceCallback> make_watcher() const override{
@@ -69,7 +69,7 @@ public:
 //  appeared!" shows. Where an open leg stopped is then only a rough guess.
 class LateWildBattleInterrupt : public WildBattleInterrupt{
 public:
-    virtual const char* name() const override{
+    virtual std::string name() const override{
         return "a wild battle (seen late)";
     }
     virtual std::unique_ptr<VisualInferenceCallback> make_watcher() const override{
@@ -83,7 +83,7 @@ public:
 
 class MessageInterrupt : public OverworldInterrupt{
 public:
-    virtual const char* name() const override{
+    virtual std::string name() const override{
         return "a message";
     }
     virtual std::unique_ptr<VisualInferenceCallback> make_watcher() const override{
@@ -123,7 +123,7 @@ public:
     explicit RepelWoreOffInterrupt(int max_repel_slot)
         : m_max_repel_slot(max_repel_slot)
     {}
-    virtual const char* name() const override{
+    virtual std::string name() const override{
         return "a message (Repel wore off?)";
     }
     virtual void clear(ConsoleHandle& console, ProControllerContext& context) const override{
@@ -136,123 +136,27 @@ private:
 };
 
 
-DpadPosition dpad(MapDirection direction){
+DpadPosition dpad(Direction direction){
     switch (direction){
-    case MapDirection::NORTH:
+    case Direction::NORTH:
         return DPAD_UP;
-    case MapDirection::EAST:
+    case Direction::EAST:
         return DPAD_RIGHT;
-    case MapDirection::SOUTH:
+    case Direction::SOUTH:
         return DPAD_DOWN;
-    case MapDirection::WEST:
+    case Direction::WEST:
         return DPAD_LEFT;
     }
     return DPAD_NONE;
 }
 
-//  A watcher for each interrupt, in the same order.
-class InterruptWatchers{
-public:
-    explicit InterruptWatchers(const OverworldInterrupts& interrupts){
-        for (const std::unique_ptr<OverworldInterrupt>& interrupt : interrupts){
-            m_watchers.emplace_back(interrupt->make_watcher());
-            m_callbacks.emplace_back(*m_watchers.back());
-        }
-    }
-    const std::vector<PeriodicInferenceCallback>& callbacks() const{
-        return m_callbacks;
-    }
-
-private:
-    std::vector<std::unique_ptr<VisualInferenceCallback>> m_watchers;
-    std::vector<PeriodicInferenceCallback> m_callbacks;
-};
-
-void throw_if_too_many(ConsoleHandle& console, int interruptions, const RouteStep& step){
-    if (interruptions >= MAX_INTERRUPTIONS_PER_LEG){
-        OperationFailedExceptionWithScreenshot::fire(
-            ErrorReportMode::SEND_ERROR_REPORT,
-            "walk_overworld_route(): interrupted " + std::to_string(interruptions) + " times on: " + to_string(step),
-            console
-        );
-    }
+//  The leg mover: holds the D-pad. FRLG moves exactly a tile per 16 frames.
+void hold_dpad(ProControllerContext& context, Direction direction, Milliseconds duration){
+    pbf_press_dpad(context, dpad(direction), duration, STEP_RELEASE);
 }
 
-//  Walks one WALK step, starting from a standstill facing its way.
-//
-//  An open leg is released half a tile before the last step would end: the
-//  step in progress completes and no further step starts. A leg to a wall is
-//  held two tiles longer, since the wall stops the player on its tile however
-//  long the stick is held.
-//
-//  When an interrupt stops the leg, a leg to a wall is simply held again. For
-//  an open leg, the tiles walked are worked out from when the interrupt was
-//  seen: the game only interrupts as a step ends, a whole number of tiles
-//  into the hold.
-void walk_leg(
-    ConsoleHandle& console, ProControllerContext& context,
-    const RouteStep& step, const OverworldInterrupts& interrupts
-){
-    const Milliseconds tile = step.surfing ? SURF_TILE_TIME : TILE_TIME;
-    int remaining = step.tiles;
-    for (int interruptions = 0; ; interruptions++){
-        const Milliseconds hold = step.to_wall
-            ? tile * (remaining + 2)
-            : tile * (remaining - 1) + tile / 2;
-        InterruptWatchers watchers(interrupts);
-        WallClock start = current_time();
-        context.wait_for_all_requests();
-        const int ret = run_until<ProControllerContext>(
-            console, context,
-            [&](ProControllerContext& context){
-                start = current_time();
-                pbf_press_dpad(context, dpad(step.direction), hold, STEP_RELEASE);
-            },
-            watchers.callbacks()
-        );
-        if (ret < 0){
-            return;
-        }
-        const Milliseconds elapsed = std::chrono::duration_cast<Milliseconds>(current_time() - start);
-        const OverworldInterrupt& interrupt = *interrupts[ret];
-        throw_if_too_many(console, interruptions + 1, step);
-        interrupt.clear(console, context);
-        if (step.to_wall){
-            console.log(std::string("Route: ") + interrupt.name() + " after " + std::to_string(elapsed.count()) + "ms, walking to the wall again.", COLOR_ORANGE);
-            continue;
-        }
-        const int walked = std::clamp(
-            (int)((elapsed - interrupt.detection_delay() + tile / 2) / tile),
-            0, remaining
-        );
-        remaining -= walked;
-        console.log(
-            std::string("Route: ") + interrupt.name() + " after " + std::to_string(elapsed.count())
-                + "ms, estimated " + std::to_string(walked) + " tiles walked, " + std::to_string(remaining) + " to go.",
-            COLOR_ORANGE
-        );
-        if (remaining <= 0){
-            return;
-        }
-    }
-}
-
-//  Clears what the last step of a leg set off, if anything shows soon after.
-void clear_late_interrupts(
-    ConsoleHandle& console, ProControllerContext& context,
-    const RouteStep& step, const OverworldInterrupts& interrupts
-){
-    for (int interruptions = 0; ; interruptions++){
-        InterruptWatchers watchers(interrupts);
-        context.wait_for_all_requests();
-        const int ret = wait_until(console, context, AFTER_LEG_WATCH, watchers.callbacks());
-        if (ret < 0){
-            return;
-        }
-        throw_if_too_many(console, interruptions + 1, step);
-        console.log(std::string("Route: ") + interrupts[ret]->name() + " at the end of the leg.", COLOR_ORANGE);
-        interrupts[ret]->clear(console, context);
-    }
+Pokemon::LegSpec leg_spec(const RouteStep& step){
+    return Pokemon::LegSpec{step.direction, step.tiles, step.to_wall, step.surfing ? SURF_TILE_TIME : TILE_TIME};
 }
 
 //  One watcher for the whole fade: a ladder's black is short enough to be
@@ -269,7 +173,7 @@ void wait_out_warp(ConsoleHandle& console, ProControllerContext& context, const 
     }
 }
 
-void start_surf(ConsoleHandle& console, ProControllerContext& context, MapDirection direction, bool facing_water){
+void start_surf(ConsoleHandle& console, ProControllerContext& context, Direction direction, bool facing_water){
     //  "The water is a deep blue... Would you like to SURF?", with YES selected.
     //  An A pressed while the player is still turning is lost.
     if (!facing_water){
@@ -353,7 +257,7 @@ const OverworldInterrupts& default_overworld_interrupts(){
 void walk_overworld_route(
     ConsoleHandle& console, ProControllerContext& context,
     const std::vector<RouteStep>& route,
-    std::optional<MapDirection> facing,
+    std::optional<Direction> facing,
     const OverworldInterrupts& interrupts
 ){
     //  Each leg starts with a turn tap unless it goes the way the player faces.
@@ -365,8 +269,9 @@ void walk_overworld_route(
         if (screen){
             facing = read_player_facing(screen);
         }
-        console.log(std::string("Route: the player faces ") + (facing ? direction_name(*facing) : "an unknown way") + ".");
+        console.log(std::string("Route: the player faces ") + (facing ? Pokemon::direction_name(*facing) : "an unknown way") + ".");
     }
+    Pokemon::LegMover<ProControllerContext> mover = &hold_dpad;
     for (const RouteStep& step : route){
         console.log("Route: " + to_string(step));
         switch (step.action){
@@ -377,7 +282,7 @@ void walk_overworld_route(
             if (facing != step.direction){
                 pbf_press_dpad(context, dpad(step.direction), TURN_TAP, TURN_SETTLE);
             }
-            walk_leg(console, context, step, interrupts);
+            Pokemon::walk_leg(console, context, mover, interrupts, leg_spec(step), MAX_INTERRUPTIONS_PER_LEG);
             if (step.warps){
                 wait_out_warp(console, context, step);
                 pbf_wait(context, AFTER_WARP);
@@ -391,9 +296,9 @@ void walk_overworld_route(
             break;
         }
         if (step.action != RouteAction::FACE){
-            clear_late_interrupts(console, context, step, interrupts);
+            Pokemon::clear_late_interrupts(console, context, interrupts, AFTER_LEG_WATCH, MAX_INTERRUPTIONS_PER_LEG);
         }
-        facing = step.walked_out ? MapDirection::SOUTH : step.direction;
+        facing = step.facing_after;
     }
     context.wait_for_all_requests();
 }

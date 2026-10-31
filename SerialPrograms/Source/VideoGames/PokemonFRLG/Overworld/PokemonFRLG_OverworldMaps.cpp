@@ -2,16 +2,13 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  Generated from pret/pokefirered at ce6406d8c2ea: each map's
- *  data/layouts/<layout>/map.bin (collision and elevation per tile) and
- *  data/maps/<map>/map.json (warps and objects), with tile behaviors from its
- *  tilesets' metatile_attributes.bin, and people's wander ranges from their
- *  movement types. Ledges and other jump tiles are walls for
- *  now; tall grass is '"'. The Cerulean Cave '#' tiles include its one-way edges
- *  (MB_IMPASSABLE_NORTH), which all have collision there as well.
- *
  */
 
+#include "Common/Cpp/Exceptions.h"
+#include "Common/Cpp/Json/JsonArray.h"
+#include "Common/Cpp/Json/JsonObject.h"
+#include "Common/Cpp/Json/JsonValue.h"
+#include "CommonFramework/GlobalAutoPaths.h"
 #include "PokemonFRLG_OverworldMaps.h"
 
 namespace PokemonAutomation{
@@ -21,528 +18,279 @@ namespace PokemonFRLG{
 
 namespace{
 
-const std::vector<OverworldMap>& all_maps(){
-    static const std::vector<OverworldMap> MAPS{
-        //  CeruleanCity_PokemonCenter_1F: 15x10
-        OverworldMap(MapText{
-            "CeruleanCity_PokemonCenter_1F",
-            {
-                "#.#############",
-                "###############",
-                "....###..##....",
-                "....#######....",
-                "...............",
-                "...............",
-                "#L.........##..",
-                "...........##..",
-                ".......v.......",
-                "###############",
-            },
-            {
-                "030000000000000",
-                "000000000000000",
-                "333300033003333",
-                "333300000003333",
-                "333333333333333",
-                "330333333333333",
-                "044033333330033",
-                "330333333330033",
-                "333333333333333",
-                "000000000000000",
-            },
-            {
-                {6, 8, "CeruleanCity", 3},
-                {7, 8, "CeruleanCity", 3},
-                {8, 8, "CeruleanCity", 3},
-                {1, 6, "", 0},  //  MAP_CERULEAN_CITY_POKEMON_CENTER_2F
-            },
-            {
-                {7, 2, "nurse", "", 0, 0},
-                {12, 5, "gentleman", "", 0, 0},
-                {5, 4, "rocker", "", 1, 0},
-                {4, 8, "youngster", "", 1, 0},
-                {3, 3, "lass", "", 0, 0},
-                {2, 1, "0", "FLAG_HIDE_POSTGAME_GOSSIPERS", 0, 0},
-                {3, 1, "0", "FLAG_HIDE_POSTGAME_GOSSIPERS", 0, 0},
-            },
-            {
-            },
-        }),
-        //  CeruleanCity: 48x40
-        OverworldMap(MapText{
-            "CeruleanCity",
-            {
-                "################~~~~~#...#...#~~~~~~~~~~~~~~~~~~",
-                "################~~~~~#...#JJJ#~~~~~~~~~~~~~~~~~~",
-                "####~~~~~~~~~~~~~~~~~#...#...#~~~~~~~~~~~~~~~~~~",
-                "####~~~~~~~~~~~~~~~~~#...#...#~~~~~~~~~~~~~~~~~~",
-                "####~~~~~~~~~~~~~~~~~#...#...###################",
-                "####~~~###############...#...#.........#########",
-                "####~~~#.............#...#...#.........#########",
-                "####~~~#.............#...#...#.........#########",
-                "####~~~##.v.##########.......#.v.##...##########",
-                "####~~~###############......#######...##########",
-                "####~~~###############......#######...##########",
-                "####~~~###D######D####......##D####......#######",
-                "#C##~~~#..........................#......#######",
-                "....~~~#..........................#......#######",
-                "....~~~#..........................#......#######",
-                "....~~~#.....#######..............#......#######",
-                "~~~~~~~#...JJ############.........#......#......",
-                "~~~~~~~#.....##D#########.........#......#######",
-                "~~~~~~~#............#####JJJ#######.............",
-                "########............##D##...#######.............",
-                "............................#######JJJ#..#######",
-                "...........................#..#D#.....#..#......",
-                "......................................#..#######",
-                "#######...............................#..#######",
-                "#######.....####......................#..#######",
-                "#######....#####....#.................#..#######",
-                "#######....#####.....###############..#..#######",
-                "#######....#####.....###############..#..#######",
-                "#######....##CC#.....##D#####D######..#..#######",
-                "#######...............................#..#######",
-                "#######...............................#..#######",
-                "#######...............................#..#######",
-                "##########################.############..#######",
-                "#######..................................#######",
-                "#######..................................#######",
-                "###############....#........#....###############",
-                "###############....#JJJJJJJJ#....###############",
-                "###############....#........#....###############",
-                "###############....#........#....###############",
-                "###############....#........#....###############",
-            },
-            {
-                "000000000000000011111033303330100000000000000000",
-                "000000000000000011111033300000100000000000000000",
-                "000011111111111111111033303330100000000000000000",
-                "000011111111111111111033303330111111111111111111",
-                "000011111111111111111033303330000000000000000000",
-                "000011100000000000000033303330333333333000000000",
-                "000011103333333333333033303330333333333000000000",
-                "000011103333333333333033303330333333333000000000",
-                "000011100333000000000033333330333003330000000000",
-                "000011100000000000000033333300000003330000000000",
-                "000011100000000000000033333300000003330000000000",
-                "000011100000000000000033333300000003333330000000",
-                "030011103333333333333333333333333303333330000000",
-                "333311103333333333333333333333333303333330000000",
-                "333311103333333333333333333333333303333330000000",
-                "333311103333300000003333333333333303333330000000",
-                "111111103330000000000000033333333303333330333333",
-                "111111103333300000000000033333333303333330000000",
-                "111111103333333333330000000000000003333333333333",
-                "000000003333333333330000033300000003333333333333",
-                "333333333333333333333333333300000000000330000000",
-                "333333333333333333333333333033000333330330333333",
-                "333333333333333333333333333333333333330330000000",
-                "000000033333333333333333333333333333330330000000",
-                "000000033333000033333333333333333333330330000000",
-                "000000033330000033330333333333333333330330000000",
-                "000000033330000033333000000000000000330330000000",
-                "000000033330000033333000000000000000330330000000",
-                "000000033330033033333000000000000000330330000000",
-                "000000033333333333333333333333333333330330000000",
-                "000000033333333333333333333333333333330330000000",
-                "000000033333333333333333333333333333330330000000",
-                "000000000000000000000000003000000000000330000000",
-                "000000033333333333333333333333333333333330000000",
-                "000000033333333333333333333333333333333330000000",
-                "000000000000000333303333333303333000000000000000",
-                "000000000000000333300000000003333000000000000000",
-                "000000000000000333303333333303333000000000000000",
-                "000000000000000333303333333303333000000000000000",
-                "000000000000000333303333333303333000000000000000",
-            },
-            {
-                {10, 11, "", 1},  //  MAP_CERULEAN_CITY_HOUSE1
-                {30, 11, "", 1},  //  MAP_CERULEAN_CITY_HOUSE2
-                {15, 17, "", 1},  //  MAP_CERULEAN_CITY_HOUSE3
-                {22, 19, "CeruleanCity_PokemonCenter_1F", 1},
-                {31, 21, "", 1},  //  MAP_CERULEAN_CITY_GYM
-                {13, 28, "", 1},  //  MAP_CERULEAN_CITY_BIKE_SHOP
-                {29, 28, "", 1},  //  MAP_CERULEAN_CITY_MART
-                {1, 12, "CeruleanCave_1F", 0},
-                {10, 8, "", 3},  //  MAP_CERULEAN_CITY_HOUSE1
-                {31, 8, "", 3},  //  MAP_CERULEAN_CITY_HOUSE2
-                {31, 9, "", 3},  //  MAP_CERULEAN_CITY_HOUSE2
-                {14, 28, "", 1},  //  MAP_CERULEAN_CITY_BIKE_SHOP
-                {23, 28, "", 0},  //  MAP_CERULEAN_CITY_HOUSE4
-                {17, 11, "", 0},  //  MAP_CERULEAN_CITY_HOUSE5
-            },
-            {
-                {31, 12, "policeman", "", 0, 0},
-                {33, 6, "rocket_m", "FLAG_HIDE_CERULEAN_ROCKET", 0, 0},
-                {16, 21, "little_boy", "", 0, 3},
-                {9, 23, "balding_man", "", 1, 1},
-                {32, 29, "slowbro", "", 0, 0},
-                {33, 29, "lass", "", 0, 0},
-                {34, 22, "youngster", "", 0, 0},
-                {22, 0, "blue", "FLAG_HIDE_CERULEAN_RIVAL", 0, 0},
-                {26, 32, "cut_tree", "FLAG_TEMP_13", 0, 0},
-                {50, 18, "cut_tree", "", 0, 0},
-                {12, 30, "woman_1", "", 0, 0},
-                {1, 13, "cooltrainer_m", "FLAG_HIDE_CERULEAN_CAVE_GUARD", 0, 0},
-            },
-            {
-                {MapDirection::NORTH, 12, "Route24"},
-            },
-        }),
-        //  Route24: 24x40
-        OverworldMap(MapText{
-            "Route24",
-            {
-                "########################",
-                "########################",
-                "########################",
-                "####.........J...J......",
-                "####.........J...J......",
-                "####.........J...J......",
-                "###JJJJ..JJJJ#...#JJJJJJ",
-                "###.....................",
-                "###.....................",
-                "###.....................",
-                "###..........###########",
-                "###..........#..........",
-                "###..........#...#######",
-                "###..........#...#######",
-                "###..........#...#######",
-                "###..........#...#######",
-                "###...~~~#...#...#######",
-                "###...~~~#...#...#######",
-                "###...~~~#...#...#######",
-                "###\"\"\"~~~#...#...#######",
-                "###\"\"\"~~~#...#...#######",
-                "###\"\"\"~~~#...#...#######",
-                "###\"\"\"~~~#...#...#######",
-                "###\"\"\"~~~#...#...#######",
-                "###\"\"\"~~~#...#...#######",
-                "###\"\"\"~~~#...#...#######",
-                "###\"\"\"~~~#...#...#######",
-                "###\"\"\"~~~#...#...#~~~~~~",
-                "###\"\"\"~~~#...#...#~~~~~~",
-                "###\"\"\"~~~#...#...#~~~~~~",
-                "###\"\"\"~~~#...#...#~~~~~~",
-                "###\"\"\"~~~#...#...#~~~~~~",
-                "####~~~~~#...#...#~~~~~~",
-                "####~~~~~#...#...#~~~~~~",
-                "####~~~~~#...#...#~~~~~~",
-                "####~~~~~#...#...#~~~~~~",
-                "####~~~~~#...#...#~~~~~~",
-                "####~~~~~#...#...#~~~~~~",
-                "####~~~~~#...#...#~~~~~~",
-                "####~~~~~#...#...#~~~~~~",
-            },
-            {
-                "000000000000000000000000",
-                "000000000000000000000000",
-                "000000000000000000000000",
-                "000033333333303330333333",
-                "000033333333303330333333",
-                "000033333333303330333333",
-                "000000033000003330000000",
-                "000333333333333333333333",
-                "000333333333333333333333",
-                "000333333333333333333333",
-                "000333333333300000000000",
-                "000333333333303333333333",
-                "000333333333303330000000",
-                "000333333333303330000000",
-                "000333333333303330000000",
-                "000333333333303330000000",
-                "000333111033303330000000",
-                "000333111033303330000000",
-                "000333111033303330000000",
-                "000333111033303330000000",
-                "000333111033303330000000",
-                "000333111033303330000000",
-                "000333111033303330000000",
-                "000333111033303330000000",
-                "000333111033303330000000",
-                "000333111033303330000000",
-                "000333111033303330000000",
-                "000333111033303330111111",
-                "000333111033303330100000",
-                "000333111033303330100000",
-                "000333111033303330100000",
-                "000333111033303330100000",
-                "000011111033303330100000",
-                "000011111033303330100000",
-                "000011111033303330100000",
-                "000011111033303330100000",
-                "000011111033303330100000",
-                "000011111033303330100000",
-                "000011111033303330100000",
-                "000011111033303330100000",
-            },
-            {
-            },
-            {
-                {12, 15, "man", "FLAG_HIDE_NUGGET_BRIDGE_ROCKET", 0, 0},
-                {12, 19, "camper", "", 0, 0},
-                {10, 22, "lass", "", 0, 0},
-                {12, 25, "youngster", "", 0, 0},
-                {10, 28, "lass", "", 0, 0},
-                {12, 31, "bug_catcher", "", 0, 0},
-                {5, 21, "camper", "", 0, 0},
-                {11, 4, "item_ball", "FLAG_HIDE_ROUTE24_TM45", 0, 0},
-            },
-            {
-                {MapDirection::SOUTH, -12, "CeruleanCity"},
-            },
-        }),
-        //  CeruleanCave_1F: 40x23
-        OverworldMap(MapText{
-            "CeruleanCave_1F",
-            {
-                "########################################",
-                "#######...##.#########~~~~~~~~~#..##..##",
-                "#######...L..#########~~~~~~~~~#..L...##",
-                "#######..##..#~~~~~~~~~~~~~~~~~#......##",
-                "##L####..##..#~~~~~~~~~~#...#~~##.######",
-                "##.#.........#~~~~~~~~~~#...#~~~~~~~~~~#",
-                "#..#....##...#~~~#..........#~~~~~~~~~~#",
-                "#L.#....##...#~~~#..........#~~~~~~~~~~#",
-                "#..#....##...#~~~#.................#~~~#",
-                "####....##.###~~~#...######...#....#~~~#",
-                "##.#....#~~~##~~~#...##.####..L....#~~~#",
-                "##......#~~~##~~~##.###.L.##.......#~~~#",
-                "##......#~~~~~~~~#....#...##...#####~~~#",
-                "##......#~~~~~~~~#..#.##.###...###.....#",
-                "##..##..#~~~~~~~~#.........#...#.......#",
-                "##..#L..#~~~#....##......###...#.....###",
-                "##......#...#....####...####...#...#####",
-                "##......#...#..................#...#####",
-                "#####.###...##.#...............#...#####",
-                "#####..........#...............#...#####",
-                "#####..........#...............#...#####",
-                "#####..........#################.v.#####",
-                "########################################",
-            },
-            {
-                "0000000000000000000000000000000000000000",
-                "0000000333003000000000111111111033003300",
-                "0000000333333000000000111111111033333300",
-                "0000000330033011111111111111111033333300",
-                "0030000330033011111111110444011003000000",
-                "0030333333333011111111110444011111111110",
-                "0330333300333011104444444444011111111110",
-                "0330333300333011104444444444011111111110",
-                "0330333300333011104444444444444444401110",
-                "0000333300300011104440000004440444401110",
-                "0030333301110011104440030000444444401110",
-                "0033333301110011100000033300444444401110",
-                "0033333301111111103333033300444000001110",
-                "0033333301111111103303003000444000333330",
-                "0033003301111111103333333330444033333330",
-                "0033033301110444400333333000444033333000",
-                "0033333303330444400003330000444033300000",
-                "0033333303330444444444444444444033300000",
-                "0000030003330000444444444444444033300000",
-                "0000033333333330444444444444444033300000",
-                "0000033333333330444444444444444033300000",
-                "0000033333333330000000000000000033300000",
-                "0000000000000000000000000000000000000000",
-            },
-            {
-                {33, 21, "CeruleanCity", 7},
-                {34, 2, "CeruleanCave_2F", 0},
-                {1, 7, "CeruleanCave_B1F", 0},
-                {10, 2, "CeruleanCave_2F", 1},
-                {5, 15, "CeruleanCave_2F", 2},
-                {30, 10, "CeruleanCave_2F", 3},
-                {24, 11, "CeruleanCave_2F", 4},
-                {2, 4, "CeruleanCave_2F", 5},
-            },
-            {
-                {7, 3, "item_ball", "FLAG_HIDE_CERULEAN_CAVE_1F_NUGGET", 0, 0},
-                {11, 16, "item_ball", "FLAG_HIDE_CERULEAN_CAVE_1F_FULL_RESTORE", 0, 0},
-                {25, 5, "item_ball", "FLAG_HIDE_CERULEAN_CAVE_1F_MAX_ELIXIR", 0, 0},
-                {7, 21, "rock_smash_rock", "FLAG_TEMP_12", 0, 0},
-                {13, 21, "rock_smash_rock", "FLAG_TEMP_13", 0, 0},
-                {5, 20, "rock_smash_rock", "FLAG_TEMP_14", 0, 0},
-                {14, 20, "rock_smash_rock", "FLAG_TEMP_15", 0, 0},
-                {11, 21, "rock_smash_rock", "FLAG_TEMP_16", 0, 0},
-                {9, 18, "rock_smash_rock", "FLAG_TEMP_17", 0, 0},
-            },
-            {
-            },
-        }),
-        //  CeruleanCave_2F: 40x23
-        OverworldMap(MapText{
-            "CeruleanCave_2F",
-            {
-                "########################################",
-                "########################################",
-                "########################################",
-                "####....####..##.....#............######",
-                "#######......L#..###.#.#########.L######",
-                "####..####.####.##.#.#.........#########",
-                "####.L...#.........###########....######",
-                "#######.############.........####.######",
-                "####.#...............#######....#.######",
-                "####.#################..#.L###.##.######",
-                "####.#....#............L#...#...#.######",
-                "####.#.##.#.#####.#######.#####.#.######",
-                "####.#..#.#.....#.......#.....#.#.######",
-                "####.#..#.#####.#######.#####.#.########",
-                "####.#.L#.#.....#.....#.....#.#.#.######",
-                "####.####.#.#####.###.#.#.#.#.#.#.######",
-                "####.#....#.........#.#.#.#.#.#.#.######",
-                "####.#.####.#########.#.#.#.###.#.######",
-                "####.#....#.....#.....#.#.#.....#.######",
-                "####.############.#####.#.#######.######",
-                "####..............#.....#.........######",
-                "########################################",
-                "########################################",
-            },
-            {
-                "0000000000000000000000000000000000000000",
-                "0000000000000000000000000000000000000000",
-                "0000000000000000000000000000000000000000",
-                "0000333300003300333330333333333333000000",
-                "0000000333333303300030300000000033000000",
-                "0000330000300003003030333333333000000000",
-                "0000333330333333333000000000003333000000",
-                "0000000300000000000033333333300003000000",
-                "0000303333333333333330000000333303000000",
-                "0000300000000000000000330330003003000000",
-                "0000303333033333333333330333033303000000",
-                "0000303003030000030000000300000303000000",
-                "0000303303033333033333330333330303000000",
-                "0000303303000003000000030000030300000000",
-                "0000303303033333033333033333030303000000",
-                "0000300003030000030003030303030303000000",
-                "0000303333033333333303030303030303000000",
-                "0000303000030000000003030303000303000000",
-                "0000303333033333033333030303333303000000",
-                "0000300000000000030000030300000003000000",
-                "0000333333333333330333330333333333000000",
-                "0000000000000000000000000000000000000000",
-                "0000000000000000000000000000000000000000",
-            },
-            {
-                {33, 4, "CeruleanCave_1F", 1},
-                {13, 4, "CeruleanCave_1F", 3},
-                {7, 14, "CeruleanCave_1F", 4},
-                {26, 9, "CeruleanCave_1F", 5},
-                {23, 10, "CeruleanCave_1F", 6},
-                {5, 6, "CeruleanCave_1F", 7},
-            },
-            {
-                {9, 18, "item_ball", "FLAG_HIDE_CERULEAN_CAVE_2F_PP_UP", 0, 0},
-                {29, 16, "item_ball", "FLAG_HIDE_CERULEAN_CAVE_2F_ULTRA_BALL", 0, 0},
-                {33, 12, "item_ball", "FLAG_HIDE_CERULEAN_CAVE_2F_FULL_RESTORE", 0, 0},
-                {33, 10, "rock_smash_rock", "FLAG_TEMP_12", 0, 0},
-                {33, 9, "rock_smash_rock", "FLAG_TEMP_13", 0, 0},
-                {25, 11, "rock_smash_rock", "FLAG_TEMP_14", 0, 0},
-                {28, 20, "rock_smash_rock", "FLAG_TEMP_15", 0, 0},
-                {30, 20, "rock_smash_rock", "FLAG_TEMP_16", 0, 0},
-                {9, 13, "rock_smash_rock", "FLAG_TEMP_17", 0, 0},
-                {23, 16, "rock_smash_rock", "FLAG_TEMP_18", 0, 0},
-                {13, 6, "rock_smash_rock", "FLAG_TEMP_19", 0, 0},
-                {4, 12, "rock_smash_rock", "FLAG_TEMP_1A", 0, 0},
-                {10, 20, "rock_smash_rock", "FLAG_TEMP_1B", 0, 0},
-            },
-            {
-            },
-        }),
-        //  CeruleanCave_B1F: 40x23
-        OverworldMap(MapText{
-            "CeruleanCave_B1F",
-            {
-                "########################################",
-                "##..............##.....############....#",
-                "##..............#........#######.......#",
-                "##..............#..####.....#######....#",
-                "##......#####.###..####.....#######....#",
-                "##......#..........########.#######.#..#",
-                "##..##..##........#########............#",
-                "##..#L..###......##########............#",
-                "##......#~~~~~##................#...####",
-                "#########~~~~~##................#...####",
-                "#~~~############................#...####",
-                "#~~~##############.########.###.#...####",
-                "#~~~#.#.#.########........#.###.#...####",
-                "#~~~#.....########........#.....#...####",
-                "#~~~#.....########........#.....#...####",
-                "#~~~###.###~~~~#......#...#.###.#...####",
-                "#~~~~~~~~~~~~~~#......#...#.###.#...####",
-                "#~~~~~~~~~~~~~~#......#...#.....#...####",
-                "#~~~~~~~~~~~~~~#......#...#.....#...####",
-                "######~~~~~~~~~##.##.##...###.###...####",
-                "######~~~~~~~~~~~~#.......###.......####",
-                "######~~~~~~~~~~~~##.....####.......####",
-                "########################################",
-            },
-            {
-                "0000000000000000000000000000000000000000",
-                "0033333333333333003333300000000000033330",
-                "0033333333333333033333333000000033333330",
-                "0033333333333333033000033333000000033330",
-                "0033333300000300033000033333000000033330",
-                "0033333303333333333000000003000000030330",
-                "0033003300333333330000000003333333333330",
-                "0033033300033333300000000003333333333330",
-                "0033333301111100444444444444444403330000",
-                "0000000001111100444444444444444403330000",
-                "0111000000000000444444444444444403330000",
-                "0111000000000000000000000004000403330000",
-                "0111030303000000003333333304000403330000",
-                "0111033333000000003333333304444403330000",
-                "0111033333000000003333333304444403330000",
-                "0111000300011110444444033304000403330000",
-                "0111111111111110444444033304000403330000",
-                "0111111111111110444444033304444403330000",
-                "0111111111111110404444033304444403330000",
-                "0000001111111110030000033300000003330000",
-                "0000001111111111110333333300033333330000",
-                "0000001111111111110033333000033333330000",
-                "0000000000000000000000000000000000000000",
-            },
-            {
-                {5, 7, "CeruleanCave_1F", 2},
-            },
-            {
-                {31, 9, "item_ball", "FLAG_HIDE_CERULEAN_CAVE_B1F_ULTRA_BALL", 0, 0},
-                {32, 2, "item_ball", "FLAG_HIDE_CERULEAN_CAVE_B1F_MAX_REVIVE", 0, 0},
-                {7, 12, "mewtwo", "FLAG_HIDE_MEWTWO", 0, 0},
-                {37, 1, "rock_smash_rock", "FLAG_TEMP_12", 0, 0},
-                {38, 2, "rock_smash_rock", "FLAG_TEMP_13", 0, 0},
-                {35, 1, "rock_smash_rock", "FLAG_TEMP_14", 0, 0},
-                {37, 4, "rock_smash_rock", "FLAG_TEMP_15", 0, 0},
-                {35, 5, "rock_smash_rock", "FLAG_TEMP_16", 0, 0},
-                {2, 2, "rock_smash_rock", "FLAG_TEMP_17", 0, 0},
-                {4, 1, "rock_smash_rock", "FLAG_TEMP_18", 0, 0},
-                {6, 1, "rock_smash_rock", "FLAG_TEMP_19", 0, 0},
-                {3, 4, "rock_smash_rock", "FLAG_TEMP_1A", 0, 0},
-            },
-            {
-            },
-        }),
-    };
+const char MAP_FOLDER[] = "PokemonFRLG/Maps/";
+
+const char* const MAP_NAMES[] = {
+    //  From a new game to Brock.
+    "PalletTown",
+    "PalletTown_PlayersHouse_1F",
+    "PalletTown_PlayersHouse_2F",
+    "PalletTown_RivalsHouse",
+    "PalletTown_ProfessorOaksLab",
+    "Route1",
+    "ViridianCity",
+    "ViridianCity_Mart",
+    "ViridianCity_PokemonCenter_1F",
+    "Route22",
+    "Route2",
+    "Route2_ViridianForest_SouthEntrance",
+    "ViridianForest",
+    "Route2_ViridianForest_NorthEntrance",
+    "PewterCity",
+    "PewterCity_PokemonCenter_1F",
+    "PewterCity_Mart",
+    "PewterCity_Museum_1F",
+    "PewterCity_Gym",
+    //  Cerulean Cave, for Mewtwo.
+    "CeruleanCity_PokemonCenter_1F",
+    "CeruleanCity",
+    "Route24",
+    "CeruleanCave_1F",
+    "CeruleanCave_2F",
+    "CeruleanCave_B1F",
+};
+
+
+//  The readers below take `where`, the source and the path to the object
+//  being read (e.g. "PokemonFRLG/Maps/CeruleanCity.json: warps[2]."), and
+//  name the field in what they throw.
+
+const JsonObject& as_object(const JsonValue& value, const std::string& where){
+    const JsonObject* object = value.to_object();
+    if (object == nullptr){
+        throw ParseException(where + " is not a JSON object.");
+    }
+    return *object;
+}
+
+const JsonValue& read_field(const JsonObject& object, const std::string& key, const std::string& where){
+    const JsonValue* value = object.get_value(key);
+    if (value == nullptr){
+        throw ParseException(where + key + " is missing.");
+    }
+    return *value;
+}
+
+int read_int(const JsonObject& object, const std::string& key, const std::string& where){
+    const JsonValue& value = read_field(object, key, where);
+    if (!value.is_integer()){
+        throw ParseException(where + key + " is not an integer.");
+    }
+    return (int)value.to_integer_default();
+}
+
+std::string read_string(const JsonObject& object, const std::string& key, const std::string& where){
+    const std::string* text = read_field(object, key, where).to_string();
+    if (text == nullptr){
+        throw ParseException(where + key + " is not a string.");
+    }
+    return *text;
+}
+
+const JsonArray& read_array(const JsonObject& object, const std::string& key, const std::string& where){
+    const JsonArray* array = read_field(object, key, where).to_array();
+    if (array == nullptr){
+        throw ParseException(where + key + " is not an array.");
+    }
+    return *array;
+}
+
+//  The grid `key`: `height` strings of `width` characters, each read by
+//  `read_cell`, which gives nothing for a character it doesn't know.
+template <typename Cell>
+Grid<Cell> read_grid(
+    const JsonObject& object, const std::string& key, const std::string& where,
+    int width, int height, std::optional<Cell> (*read_cell)(char c)
+){
+    const JsonArray& rows = read_array(object, key, where);
+    if ((int)rows.size() != height){
+        throw ParseException(where + key + " has " + std::to_string(rows.size()) + " rows, not " + std::to_string(height) + ".");
+    }
+    Grid<Cell> grid{width, height, {}};
+    for (int y = 0; y < height; y++){
+        const std::string row_where = where + key + "[" + std::to_string(y) + "]";
+        const std::string* row = rows[y].to_string();
+        if (row == nullptr || (int)row->size() != width){
+            throw ParseException(row_where + " is not a string of " + std::to_string(width) + " tiles.");
+        }
+        for (int x = 0; x < width; x++){
+            const std::optional<Cell> cell = read_cell((*row)[x]);
+            if (!cell){
+                throw ParseException(
+                    row_where + " has unknown tile '" + std::string(1, (*row)[x]) + "' at " + to_string(TilePos{x, y}) + "."
+                );
+            }
+            grid.cells.push_back(*cell);
+        }
+    }
+    return grid;
+}
+
+//  An elevation digit's level.
+std::optional<uint8_t> elevation_from_char(char digit){
+    if ('0' <= digit && digit <= '9'){
+        return (uint8_t)(digit - '0');
+    }
+    if ('a' <= digit && digit <= 'f'){
+        return (uint8_t)(digit - 'a' + 10);
+    }
+    return std::nullopt;
+}
+
+MapWarp read_warp(const JsonObject& object, const std::string& where){
+    MapWarp warp;
+    warp.x = read_int(object, "x", where);
+    warp.y = read_int(object, "y", where);
+    warp.dest_map = read_string(object, "dest_map", where);
+    warp.dest_warp = read_int(object, "dest_warp", where);
+    return warp;
+}
+
+MapObject read_map_object(const JsonObject& object, const std::string& where){
+    MapObject map_object;
+    map_object.x = read_int(object, "x", where);
+    map_object.y = read_int(object, "y", where);
+    map_object.kind = read_string(object, "kind", where);
+    map_object.flag = read_string(object, "flag", where);
+    map_object.wander_x = read_int(object, "wander_x", where);
+    map_object.wander_y = read_int(object, "wander_y", where);
+    return map_object;
+}
+
+MapConnection read_connection(const JsonObject& object, const std::string& where){
+    MapConnection connection;
+    const std::string direction = read_string(object, "direction", where);
+    bool known = false;
+    for (Direction candidate : Pokemon::ALL_DIRECTIONS){
+        if (direction == Pokemon::direction_name(candidate)){
+            connection.direction = candidate;
+            known = true;
+        }
+    }
+    if (!known){
+        throw ParseException(where + "direction \"" + direction + "\" is not north, east, south or west.");
+    }
+    connection.offset = read_int(object, "offset", where);
+    connection.map = read_string(object, "map", where);
+    return connection;
+}
+
+std::pair<std::string, TilePos> read_point(const JsonObject& object, const std::string& where){
+    const std::string name = read_string(object, "name", where);
+    return {name, TilePos{read_int(object, "x", where), read_int(object, "y", where)}};
+}
+
+std::pair<std::string, std::set<std::string>> read_flag_set(const JsonObject& object, const std::string& where){
+    const std::string name = read_string(object, "name", where);
+    std::set<std::string> flags;
+    //  Named, since GCC warns of a reference returned for a temporary key.
+    const std::string key = "flags";
+    const JsonArray& array = read_array(object, key, where);
+    for (size_t c = 0; c < array.size(); c++){
+        const std::string* flag = array[c].to_string();
+        if (flag == nullptr){
+            throw ParseException(where + key + "[" + std::to_string(c) + "] is not a string.");
+        }
+        flags.insert(*flag);
+    }
+    return {name, std::move(flags)};
+}
+
+template <typename Item>
+std::vector<Item> read_list(
+    const JsonObject& object, const std::string& key, const std::string& where,
+    Item (*read_item)(const JsonObject& object, const std::string& where)
+){
+    std::vector<Item> items;
+    const JsonArray& array = read_array(object, key, where);
+    for (size_t c = 0; c < array.size(); c++){
+        const std::string item_where = where + key + "[" + std::to_string(c) + "]";
+        items.push_back(read_item(as_object(array[c], item_where), item_where + "."));
+    }
+    return items;
+}
+
+MapData read_map(const JsonValue& json, const std::string& source){
+    const JsonObject& root = as_object(json, source);
+    const std::string where = source + ": ";
+    MapData map;
+    map.name = read_string(root, "name", where);
+    const int width = read_int(root, "width", where);
+    const int height = read_int(root, "height", where);
+    if (width <= 0 || height <= 0){
+        throw ParseException(where + "width and height must be positive.");
+    }
+    map.tiles = read_grid<Tile>(root, "tiles", where, width, height, tile_from_char);
+    map.elevation = read_grid<uint8_t>(root, "elevation", where, width, height, elevation_from_char);
+    map.warps = read_list<MapWarp>(root, "warps", where, read_warp);
+    map.objects = read_list<MapObject>(root, "objects", where, read_map_object);
+    map.connections = read_list<MapConnection>(root, "connections", where, read_connection);
+    for (auto& point : read_list<std::pair<std::string, TilePos>>(root, "points", where, read_point)){
+        map.points.insert(std::move(point));
+    }
+    for (auto& flag_set : read_list<std::pair<std::string, std::set<std::string>>>(root, "flag_sets", where, read_flag_set)){
+        map.flag_sets.insert(std::move(flag_set));
+    }
+    return map;
+}
+
+const std::vector<MapData>& all_maps(){
+    static const std::vector<MapData> MAPS = []{
+        std::vector<MapData> maps;
+        for (const char* name : MAP_NAMES){
+            maps.push_back(load_map(name));
+        }
+        return maps;
+    }();
     return MAPS;
 }
 
 }
 
 
-std::vector<OverworldMap> overworld_maps(const std::set<std::string>& set_flags){
-    std::vector<OverworldMap> maps = all_maps();
-    for (OverworldMap& map : maps){
-        map.hide_objects(set_flags);
+MapData parse_map(const std::string& json, const std::string& source){
+    return read_map(parse_json(json), source);
+}
+
+MapData load_map(const std::string& name){
+    const std::string source = std::string(MAP_FOLDER) + name + ".json";
+    MapData map = read_map(load_json_file(RESOURCE_PATH() + source), source);
+    if (map.name != name){
+        throw ParseException(source + ": name is \"" + map.name + "\", not \"" + name + "\".");
+    }
+    return map;
+}
+
+std::vector<MapData> overworld_maps(const std::set<std::string>& set_flags){
+    std::vector<MapData> maps = all_maps();
+    for (MapData& map : maps){
+        hide_objects(map, set_flags);
     }
     return maps;
 }
 
-const std::set<std::string>& post_game_flags(){
-    static const std::set<std::string> FLAGS{
-        "FLAG_HIDE_CERULEAN_CAVE_GUARD",
-        "FLAG_HIDE_CERULEAN_RIVAL",
-        "FLAG_HIDE_CERULEAN_ROCKET",
-    };
-    return FLAGS;
+TilePos map_point(const std::vector<MapData>& maps, const std::string& map, const std::string& point){
+    for (const MapData& data : maps){
+        if (data.name != map){
+            continue;
+        }
+        const auto iter = data.points.find(point);
+        if (iter != data.points.end()){
+            return iter->second;
+        }
+    }
+    throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "No point \"" + point + "\" on map " + map + ".");
+}
+
+std::set<std::string> map_flag_set(const std::vector<MapData>& maps, const std::string& name){
+    std::set<std::string> flags;
+    for (const MapData& map : maps){
+        const auto iter = map.flag_sets.find(name);
+        if (iter != map.flag_sets.end()){
+            flags.insert(iter->second.begin(), iter->second.end());
+        }
+    }
+    return flags;
 }
 
 

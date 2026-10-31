@@ -4,6 +4,8 @@
  *
  */
 
+#include <set>
+#include <string>
 #include "Common/Cpp/Exceptions.h"
 #include "NintendoSwitch/Programs/CommandFileRunner/NintendoSwitch_CommandFileRunner.h"
 #include "PokemonFRLG_OverworldMaps.h"
@@ -18,8 +20,8 @@ namespace PokemonFRLG{
 
 namespace{
 
-std::optional<MapDirection> parse_direction(const std::string& name){
-    for (MapDirection direction : {MapDirection::NORTH, MapDirection::EAST, MapDirection::SOUTH, MapDirection::WEST}){
+std::optional<Direction> parse_direction(const std::string& name){
+    for (Direction direction : Pokemon::ALL_DIRECTIONS){
         if (name == direction_name(direction)){
             return direction;
         }
@@ -33,7 +35,10 @@ std::vector<RouteStep> plan(const std::vector<std::string>& words, std::ostream&
     }
     const MapPosition start{words[1], {std::stoi(words[2]), std::stoi(words[3])}};
     const RouteGoal goal{{words[4], {std::stoi(words[5]), std::stoi(words[6])}}, words.size() > 7 ? parse_direction(words[7]) : std::nullopt};
-    const std::optional<std::vector<RouteStep>> route = plan_overworld_route(overworld_maps(post_game_flags()), start, goal);
+    //  Plan with the Hall of Fame's flags set, which clear the way to
+    //  Cerulean Cave; they hide no one on the earlier maps.
+    const std::set<std::string> flags = map_flag_set(overworld_maps(), "after_hall_of_fame");
+    const std::optional<std::vector<RouteStep>> route = plan_overworld_route(overworld_maps(flags), start, goal);
     if (!route){
         throw ParseException(words[0] + ": no route from " + to_string(start) + " to " + to_string(goal.position));
     }
@@ -59,7 +64,7 @@ void register_overworld_commands(){
             [](CommandFileSession& session, const std::vector<std::string>& words){
                 //  frlg_route ... [goal facing] [facing the player starts with]
                 //  [Items pocket slot of the Max Repel to use when one wears off, from 1]
-                const std::optional<MapDirection> start = words.size() > 8 ? parse_direction(words[8]) : std::nullopt;
+                const std::optional<Direction> start = words.size() > 8 ? parse_direction(words[8]) : std::nullopt;
                 const std::vector<RouteStep> route = plan(words, session.out);
                 if (words.size() > 9){
                     const OverworldInterrupts interrupts = overworld_interrupts_with_repel(std::stoi(words[9]) - 1);

@@ -6,11 +6,9 @@
 
 #include <algorithm>
 #include <functional>
-#include <limits>
-#include <queue>
-#include <unordered_map>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
+#include "Pokemon/Navigation/Pokemon_LegPlanner.h"
 #include "PokemonFRLG_OverworldMaps.h"
 #include "PokemonFRLG_OverworldRoute.h"
 
@@ -47,15 +45,34 @@ std::string to_string(const RouteStep& step){
 
 
 
+const RouteCosts& default_route_costs(){
+    static const RouteCosts COSTS{
+        {RouteCost::TILE, 1},
+        {RouteCost::TURN, 2},
+        {RouteCost::WARP, 30},
+        {RouteCost::SURF, 40},
+        {RouteCost::GRASS_TILE, 20},
+        {RouteCost::OPEN_STOP, 8},
+    };
+    return COSTS;
+}
+
+int route_cost(const RouteCosts& costs, RouteCost kind){
+    auto iter = costs.find(kind);
+    if (iter == costs.end()){
+        iter = default_route_costs().find(kind);
+    }
+    return iter->second;
+}
+
+
+
 namespace{
 
-constexpr MapDirection DIRECTIONS[] = {
-    MapDirection::NORTH, MapDirection::EAST, MapDirection::SOUTH, MapDirection::WEST,
-};
 
-int find_map(const std::vector<OverworldMap>& maps, const std::string& name){
+int find_map(const std::vector<MapData>& maps, const std::string& name){
     for (size_t c = 0; c < maps.size(); c++){
-        if (maps[c].name() == name){
+        if (maps[c].name == name){
             return (int)c;
         }
     }
@@ -66,6 +83,19 @@ int find_map(const std::vector<OverworldMap>& maps, const std::string& name){
 struct Located{
     int map = 0;
     PlayerState state;
+
+    bool operator==(const Located& other) const{
+        return map == other.map
+            && state.position == other.state.position
+            && state.elevation == other.state.elevation
+            && state.surfing == other.state.surfing;
+    }
+};
+struct LocatedHash{
+    size_t operator()(const Located& player) const{
+        return (((std::hash<TilePos>()(player.state.position) * 31 + player.map) * 16
+            + player.state.elevation) * 2) + (player.state.surfing ? 1 : 0);
+    }
 };
 
 //  What pressing a direction once does to the player.
@@ -78,32 +108,32 @@ struct Transition{
 };
 
 //  The player taking `warp`, or nothing if it leads off the loaded maps.
-std::optional<Transition> take_warp(const std::vector<OverworldMap>& maps, const MapWarp* warp){
+std::optional<Transition> take_warp(const std::vector<MapData>& maps, const MapWarp* warp){
     if (warp == nullptr){
         return std::nullopt;
     }
     const int destination = find_map(maps, warp->dest_map);
-    if (destination < 0 || warp->dest_warp < 0 || warp->dest_warp >= (int)maps[destination].warps().size()){
+    if (destination < 0 || warp->dest_warp < 0 || warp->dest_warp >= (int)maps[destination].warps.size()){
         return std::nullopt;
     }
-    const OverworldMap& map = maps[destination];
-    const MapWarp& arrival = map.warps()[warp->dest_warp];
-    MapPoint position{arrival.x, arrival.y};
+    const MapData& map = maps[destination];
+    const MapWarp& arrival = map.warps[warp->dest_warp];
+    TilePos position{arrival.x, arrival.y};
     Transition transition;
-    if (map.walks_out_on_arrival(position)){
-        position = position.next(MapDirection::SOUTH);
+    if (walks_out_on_arrival(map, position)){
+        position = position.next(Direction::SOUTH);
         transition.walked_out = true;
     }
     transition.next.map = destination;
-    transition.next.state = PlayerState{position, map.elevation(position), false};
+    transition.next.state = PlayerState{position, elevation_at(map, position), false};
     transition.warped = true;
     return transition;
 }
 
 //  Walking off the map's edge onto the map connected there, if it is loaded.
-std::optional<Transition> cross_edge(const std::vector<OverworldMap>& maps, const Located& player, MapDirection direction){
-    const OverworldMap& map = maps[player.map];
-    for (const MapConnection& connection : map.connections()){
+std::optional<Transition> cross_edge(const std::vector<MapData>& maps, const Located& player, Direction direction){
+    const MapData& map = maps[player.map];
+    for (const MapConnection& connection : map.connections){
         if (connection.direction != direction){
             continue;
         }
@@ -111,20 +141,20 @@ std::optional<Transition> cross_edge(const std::vector<OverworldMap>& maps, cons
         if (destination < 0){
             return std::nullopt;
         }
-        const OverworldMap& to = maps[destination];
-        const MapPoint here = player.state.position;
-        MapPoint point;
+        const MapData& to = maps[destination];
+        const TilePos here = player.state.position;
+        TilePos point;
         switch (direction){
-        case MapDirection::NORTH:
-            point = {here.x - connection.offset, to.height() - 1};
+        case Direction::NORTH:
+            point = {here.x - connection.offset, to.tiles.height - 1};
             break;
-        case MapDirection::SOUTH:
+        case Direction::SOUTH:
             point = {here.x - connection.offset, 0};
             break;
-        case MapDirection::WEST:
-            point = {to.width() - 1, here.y - connection.offset};
+        case Direction::WEST:
+            point = {to.tiles.width - 1, here.y - connection.offset};
             break;
-        case MapDirection::EAST:
+        case Direction::EAST:
             point = {0, here.y - connection.offset};
             break;
         }
@@ -145,18 +175,18 @@ std::optional<Transition> cross_edge(const std::vector<OverworldMap>& maps, cons
 //  Pressing `direction` once (field_control_avatar.c): an exit mat or a door
 //  warps without the player moving, a step onto a ladder or cave entrance
 //  warps after it, and anything else is a step by the collision rules.
-std::optional<Transition> press(const std::vector<OverworldMap>& maps, const Located& player, MapDirection direction){
-    const OverworldMap& map = maps[player.map];
-    const MapPoint here = player.state.position;
-    if (map.exit_mat(here) == direction){
-        return take_warp(maps, map.warp_at(here));
+std::optional<Transition> press(const std::vector<MapData>& maps, const Located& player, Direction direction){
+    const MapData& map = maps[player.map];
+    const TilePos here = player.state.position;
+    if (exit_mat(map, here) == direction){
+        return take_warp(maps, warp_at(map, here));
     }
-    const MapPoint ahead = here.next(direction);
-    if (direction == MapDirection::NORTH && map.door(ahead) && !player.state.surfing){
-        return take_warp(maps, map.warp_at(ahead));
+    const TilePos ahead = here.next(direction);
+    if (direction == Direction::NORTH && is_door(map, ahead) && !player.state.surfing){
+        return take_warp(maps, warp_at(map, ahead));
     }
 
-    if (!map.in_bounds(ahead)){
+    if (!in_bounds(map, ahead)){
         return cross_edge(maps, player, direction);
     }
 
@@ -169,9 +199,9 @@ std::optional<Transition> press(const std::vector<OverworldMap>& maps, const Loc
     transition.next.state = after_step(map, player.state, direction, kind);
     transition.action = kind == StepKind::START_SURF ? RouteAction::SURF : RouteAction::WALK;
     transition.dismounted = kind == StepKind::STOP_SURFING;
-    const MapPoint landed = transition.next.state.position;
-    if (transition.action == RouteAction::WALK && map.warps_on_step(landed) && map.warp_at(landed) != nullptr){
-        return take_warp(maps, map.warp_at(landed));
+    const TilePos landed = transition.next.state.position;
+    if (transition.action == RouteAction::WALK && warps_on_step(map, landed) && warp_at(map, landed) != nullptr){
+        return take_warp(maps, warp_at(map, landed));
     }
     return transition;
 }
@@ -181,17 +211,17 @@ std::optional<Transition> press(const std::vector<OverworldMap>& maps, const Loc
 //  held for longer than it takes, and walked again after an interruption. A
 //  person in the way doesn't count, since they may have wandered off, and
 //  neither does an edge to a map that isn't loaded.
-bool stops_at(const std::vector<OverworldMap>& maps, const Located& player, MapDirection direction){
+bool stops_at(const std::vector<MapData>& maps, const Located& player, Direction direction){
     const std::optional<Transition> transition = press(maps, player, direction);
     if (transition){
         return transition->action == RouteAction::SURF;
     }
-    const OverworldMap& map = maps[player.map];
-    const MapPoint ahead = player.state.position.next(direction);
-    if (map.in_bounds(ahead)){
-        return map.object_at(ahead) == nullptr;
+    const MapData& map = maps[player.map];
+    const TilePos ahead = player.state.position.next(direction);
+    if (in_bounds(map, ahead)){
+        return object_at(map, ahead) == nullptr;
     }
-    for (const MapConnection& connection : map.connections()){
+    for (const MapConnection& connection : map.connections){
         if (connection.direction == direction){
             return false;
         }
@@ -202,193 +232,127 @@ bool stops_at(const std::vector<OverworldMap>& maps, const Located& player, MapD
 //  The search state: a player, the way they face (4 stands for "not known
 //  yet", before the first step), and whether they are in the middle of a leg
 //  that could go on, as opposed to just stopped by a warp or Surf.
-struct SearchState{
-    Located player;
-    int facing = 4;
-    bool moving = false;
-};
-
-class StateIndex{
+//  The game's step rules for the shared leg planner.
+class StepModel{
 public:
-    explicit StateIndex(const std::vector<OverworldMap>& maps){
-        for (const OverworldMap& map : maps){
-            m_width = std::max(m_width, map.width());
-            m_height = std::max(m_height, map.height());
+    using State = Located;
+    using StateHash = LocatedHash;
+
+    StepModel(const std::vector<MapData>& maps, const RouteCosts& costs)
+        : m_maps(maps)
+        , m_costs(costs)
+    {}
+
+    std::optional<Pokemon::Step<State>> press(const State& state, Direction direction) const{
+        const std::optional<Transition> transition = PokemonFRLG::press(m_maps, state, direction);
+        if (!transition){
+            return std::nullopt;
         }
+        Pokemon::Step<State> step;
+        step.next = transition->next;
+        step.action = transition->action == RouteAction::SURF ? ACTION_SURF : 0;
+        //  Leaving the water: the player walks at half the speed from here.
+        step.starts_leg = transition->dismounted;
+        step.ends_leg = transition->warped || transition->dismounted;
+        step.warped = transition->warped;
+        step.facing = transition->walked_out ? Direction::SOUTH : direction;
+        if (transition->action == RouteAction::SURF){
+            step.extra_cost += route_cost(m_costs, RouteCost::SURF);
+        }
+        if (transition->warped){
+            step.extra_cost += route_cost(m_costs, RouteCost::WARP);
+        }
+        if (is_tall_grass(m_maps[step.next.map], step.next.state.position)){
+            step.extra_cost += route_cost(m_costs, RouteCost::GRASS_TILE);
+        }
+        return step;
     }
-    size_t operator()(const SearchState& s) const{
-        size_t index = s.player.map;
-        index = index * m_height + s.player.state.position.y;
-        index = index * m_width + s.player.state.position.x;
-        index = index * 16 + s.player.state.elevation;
-        index = index * 2 + (s.player.state.surfing ? 1 : 0);
-        index = index * 5 + s.facing;
-        return index * 2 + (s.moving ? 1 : 0);
+    bool held_at(const State& state, Direction direction) const{
+        return stops_at(m_maps, state, direction);
     }
+
+    static constexpr int ACTION_SURF = 1;
 
 private:
-    int m_width = 0;
-    int m_height = 0;
+    const std::vector<MapData>& m_maps;
+    const RouteCosts& m_costs;
 };
 
-//  One single-tile move of the search.
-struct Move{
-    size_t from = 0;
-    MapDirection direction = MapDirection::NORTH;
-    RouteAction action = RouteAction::WALK;
-    bool warped = false;
-    bool dismounted = false;
-    bool walked_out = false;
-};
+Pokemon::LegCosts to_leg_costs(const RouteCosts& costs){
+    Pokemon::LegCosts leg_costs;
+    leg_costs.per_tile = route_cost(costs, RouteCost::TILE);
+    leg_costs.per_turn = route_cost(costs, RouteCost::TURN);
+    leg_costs.per_open_stop = route_cost(costs, RouteCost::OPEN_STOP);
+    return leg_costs;
+}
+
+RouteStep to_route_step(const std::vector<MapData>& maps, const Pokemon::Leg<Located>& leg){
+    RouteStep step;
+    switch (leg.kind){
+    case Pokemon::LegKind::WALK:
+        step.action = RouteAction::WALK;
+        break;
+    case Pokemon::LegKind::ACTION:
+        step.action = RouteAction::SURF;
+        break;
+    case Pokemon::LegKind::FACE:
+        step.action = RouteAction::FACE;
+        break;
+    }
+    step.direction = leg.direction;
+    step.tiles = leg.kind == Pokemon::LegKind::FACE ? 0 : leg.tiles;
+    step.warps = leg.warps;
+    step.surfing = leg.start.state.surfing;
+    step.to_wall = leg.to_wall;
+    step.facing_after = leg.facing_after;
+    step.end = MapPosition{maps[leg.end.map].name, leg.end.state.position};
+    return step;
+}
 
 }
 
 
 
 std::optional<std::vector<RouteStep>> plan_overworld_route(
-    const std::vector<OverworldMap>& maps,
+    const std::vector<MapData>& maps,
     const MapPosition& start,
     const RouteGoal& goal,
-    const RouteCosts& costs
+    const RouteCosts& costs,
+    std::optional<Direction> start_facing
 ){
     const int start_map = find_map(maps, start.map);
     const int goal_map = find_map(maps, goal.position.map);
     if (start_map < 0 || goal_map < 0){
         throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "Route between maps that aren't loaded.");
     }
+    Located first;
+    first.map = start_map;
+    first.state.position = start.point;
+    first.state.elevation = elevation_at(maps[start_map], start.point);
+    first.state.surfing = is_water(maps[start_map], start.point);
 
-    StateIndex index_of(maps);
-    const int INF = std::numeric_limits<int>::max();
-    std::unordered_map<size_t, int> distance;
-    std::unordered_map<size_t, Move> came_from;
-    std::unordered_map<size_t, SearchState> states;
-    auto distance_of = [&](size_t index){
-        auto iter = distance.find(index);
-        return iter == distance.end() ? INF : iter->second;
-    };
-
-    SearchState first;
-    first.player.map = start_map;
-    first.player.state.position = start.point;
-    first.player.state.elevation = maps[start_map].elevation(start.point);
-    first.player.state.surfing = maps[start_map].water(start.point);
-    const size_t first_index = index_of(first);
-    distance[first_index] = 0;
-    states[first_index] = first;
-
-    using Entry = std::pair<int, size_t>;
-    std::priority_queue<Entry, std::vector<Entry>, std::greater<Entry>> queue;
-    queue.emplace(0, first_index);
-
-    std::optional<size_t> best_end;
-    int best_total = INF;
-    //  Ending a leg where the player could have gone on.
-    auto stop_cost = [&](const SearchState& s){
-        if (!s.moving || stops_at(maps, s.player, (MapDirection)s.facing)){
-            return 0;
-        }
-        return costs.per_open_stop;
-    };
-    auto arrival_cost = [&](const SearchState& s){
-        int cost = stop_cost(s);
-        if (goal.facing && s.facing != (int)*goal.facing){
-            cost += costs.per_turn;
-        }
-        return cost;
-    };
-
-    while (!queue.empty()){
-        const auto [cost, index] = queue.top();
-        queue.pop();
-        if (cost != distance_of(index)){
-            continue;
-        }
-        if (cost >= best_total){
-            break;
-        }
-        const SearchState current = states[index];
-        if (current.player.map == goal_map && current.player.state.position == goal.position.point){
-            const int total = cost + arrival_cost(current);
-            if (total < best_total){
-                best_total = total;
-                best_end = index;
-            }
-            continue;
-        }
-
-        for (MapDirection direction : DIRECTIONS){
-            const std::optional<Transition> transition = press(maps, current.player, direction);
-            if (!transition){
-                continue;
-            }
-            const bool continues = transition->action == RouteAction::WALK && !transition->warped && !transition->dismounted;
-            SearchState next{transition->next, (int)direction, continues};
-            int step_cost = costs.per_tile;
-            if (current.facing != (int)direction){
-                step_cost += costs.per_turn + stop_cost(current);
-            }
-            if (transition->action == RouteAction::SURF){
-                step_cost += costs.per_surf;
-            }
-            if (transition->warped){
-                step_cost += costs.per_warp;
-            }
-            if (maps[next.player.map].tall_grass(next.player.state.position)){
-                step_cost += costs.per_grass_tile;
-            }
-            const Move move{index, direction, transition->action, transition->warped, transition->dismounted, transition->walked_out};
-            const size_t next_index = index_of(next);
-            if (cost + step_cost < distance_of(next_index)){
-                distance[next_index] = cost + step_cost;
-                came_from[next_index] = move;
-                states[next_index] = next;
-                queue.emplace(cost + step_cost, next_index);
-            }
-        }
-    }
-
-    if (!best_end){
+    const StepModel model(maps, costs);
+    const auto legs = Pokemon::plan_legs(
+        model, first, start_facing,
+        std::function<bool(const Located&)>([&](const Located& player){
+            return player.map == goal_map && player.state.position == goal.position.point;
+        }),
+        goal.facing, to_leg_costs(costs)
+    );
+    if (!legs){
         return std::nullopt;
     }
 
-    //  Walk back to the start, then merge single moves into legs.
-    std::vector<std::pair<Move, SearchState>> moves;
-    for (size_t index = *best_end; index != first_index; index = came_from[index].from){
-        moves.emplace_back(came_from[index], states[index]);
-    }
     std::vector<RouteStep> route;
-    bool can_extend = false;
-    bool before_surfing = first.player.state.surfing;
-    for (auto iter = moves.rbegin(); iter != moves.rend(); ++iter){
-        const Move& move = iter->first;
-        const SearchState& after = iter->second;
-        const MapPosition end{maps[after.player.map].name(), after.player.state.position};
-        if (can_extend && move.action == RouteAction::WALK && !move.dismounted
-            && route.back().action == RouteAction::WALK && route.back().direction == move.direction
-        ){
-            route.back().tiles++;
-            route.back().warps = move.warped;
-            route.back().walked_out = move.walked_out;
-            route.back().end = end;
-        }else{
-            route.push_back(RouteStep{move.action, move.direction, 1, move.warped, before_surfing, false, move.walked_out, end});
-        }
-        route.back().to_wall = move.action == RouteAction::WALK && !move.warped
-            && stops_at(maps, after.player, move.direction);
-        //  A warp or a Surf ends the leg: the game stops the player. Landing
-        //  from the water ends it too, since walking is half the speed.
-        can_extend = move.action == RouteAction::WALK && !move.warped && !move.dismounted;
-        before_surfing = after.player.state.surfing;
-    }
-    const SearchState& last = states[*best_end];
-    if (goal.facing && last.facing != (int)*goal.facing){
-        route.push_back(RouteStep{RouteAction::FACE, *goal.facing, 0, false, false, false, false, goal.position});
+    for (const Pokemon::Leg<Located>& leg : *legs){
+        route.push_back(to_route_step(maps, leg));
     }
     return route;
 }
 
+
 MapPosition follow_overworld_route(
-    const std::vector<OverworldMap>& maps,
+    const std::vector<MapData>& maps,
     const MapPosition& start,
     const std::vector<RouteStep>& route
 ){
@@ -398,8 +362,8 @@ MapPosition follow_overworld_route(
         throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "Route from a map that isn't loaded: " + start.map);
     }
     player.state.position = start.point;
-    player.state.elevation = maps[player.map].elevation(start.point);
-    player.state.surfing = maps[player.map].water(start.point);
+    player.state.elevation = elevation_at(maps[player.map], start.point);
+    player.state.surfing = is_water(maps[player.map], start.point);
 
     for (const RouteStep& step : route){
         if (step.action == RouteAction::FACE){
@@ -410,12 +374,12 @@ MapPosition follow_overworld_route(
             if (!transition || transition->action != step.action){
                 throw InternalProgramError(
                     nullptr, PA_CURRENT_FUNCTION,
-                    "Step refused at " + to_string(MapPosition{maps[player.map].name(), player.state.position}) + ": " + to_string(step)
+                    "Step refused at " + to_string(MapPosition{maps[player.map].name, player.state.position}) + ": " + to_string(step)
                 );
             }
             player = transition->next;
         }
-        const MapPosition position{maps[player.map].name(), player.state.position};
+        const MapPosition position{maps[player.map].name, player.state.position};
         if (!(position == step.end)){
             throw InternalProgramError(
                 nullptr, PA_CURRENT_FUNCTION,
@@ -423,7 +387,7 @@ MapPosition follow_overworld_route(
             );
         }
     }
-    return MapPosition{maps[player.map].name(), player.state.position};
+    return MapPosition{maps[player.map].name, player.state.position};
 }
 
 
@@ -439,6 +403,9 @@ public:
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
         try{
             return m_body();
+        }catch (FileException& e){
+            //  CI runs with upstream Packages, which may not have the maps yet.
+            return UnitTestResult(UnitTestResult::SKIPPED, "Map files not found: " + e.message());
         }catch (Exception& e){
             return std::string(e.name()) + ": " + e.message();
         }
@@ -458,76 +425,75 @@ std::string describe(const std::vector<RouteStep>& route){
 
 //  A 5x4 map for the step rules: a pond, a raised ledge reached by a stair
 //  tile, and a tile that can't be entered moving south.
-const OverworldMap& small_map(){
-    static const OverworldMap MAP(MapText{
-        "Small",
-        {
-            "#####",
-            "#.n.#",
-            "#.~.#",
-            "#####",
-        },
-        {
-            "33333",
-            "33403",
-            "33133",
-            "33333",
-        },
-        {},
-        {},
-    });
+const MapData& small_map(){
+    static const MapData MAP = parse_map(R"({
+        "name": "Small", "width": 5, "height": 4,
+        "tiles": ["#####", "#.n.#", "#.~.#", "#####"],
+        "elevation": ["33333", "33403", "33133", "33333"],
+        "warps": [], "objects": [], "connections": [], "points": [], "flag_sets": []
+    })", "Small");
     return MAP;
 }
 
 UnitTestResult test_step_rules(){
-    const OverworldMap& map = small_map();
+    const MapData& map = small_map();
     PlayerState state{{1, 1}, 3, false};
-    if (classify_step(map, state, MapDirection::EAST) != StepKind::BLOCKED){
+    if (classify_step(map, state, Direction::EAST) != StepKind::BLOCKED){
         return "Walked from elevation 3 onto elevation 4.";
     }
-    if (classify_step(map, PlayerState{{2, 0}, 3, false}, MapDirection::SOUTH) != StepKind::BLOCKED){
+    if (classify_step(map, PlayerState{{2, 0}, 3, false}, Direction::SOUTH) != StepKind::BLOCKED){
         return "Entered a north-blocked tile moving south.";
     }
     state = PlayerState{{1, 2}, 3, false};
-    if (classify_step(map, state, MapDirection::EAST) != StepKind::START_SURF){
+    if (classify_step(map, state, Direction::EAST) != StepKind::START_SURF){
         return "Can't start surfing onto the pond.";
     }
-    state = after_step(map, state, MapDirection::EAST, StepKind::START_SURF);
+    state = after_step(map, state, Direction::EAST, StepKind::START_SURF);
     if (!state.surfing || state.elevation != 1){
         return "Surfing didn't put the player on the water.";
     }
-    if (classify_step(map, state, MapDirection::EAST) != StepKind::STOP_SURFING){
+    if (classify_step(map, state, Direction::EAST) != StepKind::STOP_SURFING){
         return "Can't land from the pond.";
     }
-    if (classify_step(map, PlayerState{{3, 2}, 3, false}, MapDirection::NORTH) != StepKind::WALK){
+    if (classify_step(map, PlayerState{{3, 2}, 3, false}, Direction::NORTH) != StepKind::WALK){
         return "Can't step from elevation 3 onto the elevation-0 stair.";
     }
     return true;
 }
 
-const OverworldMap* map_named(const std::vector<OverworldMap>& maps, const std::string& name){
+//  The maps after the Hall of Fame, which clears the way to Cerulean Cave.
+std::vector<MapData> post_game_maps(){
+    return overworld_maps(map_flag_set(overworld_maps(), "after_hall_of_fame"));
+}
+
+MapPosition point_on(const std::vector<MapData>& maps, const std::string& map, const std::string& point){
+    return MapPosition{map, map_point(maps, map, point)};
+}
+
+const MapData* map_named(const std::vector<MapData>& maps, const std::string& name){
     const int index = find_map(maps, name);
     return index < 0 ? nullptr : &maps[index];
 }
 
 UnitTestResult test_maps(){
-    const std::vector<OverworldMap> maps = overworld_maps(post_game_flags());
-    const OverworldMap* b1f = map_named(maps, "CeruleanCave_B1F");
-    const OverworldMap* city = map_named(maps, "CeruleanCity");
+    const std::vector<MapData> maps = post_game_maps();
+    const MapData* b1f = map_named(maps, "CeruleanCave_B1F");
+    const MapData* city = map_named(maps, "CeruleanCity");
     if (b1f == nullptr || city == nullptr || map_named(maps, "CeruleanCity_PokemonCenter_1F") == nullptr){
         return "Missing a map.";
     }
-    if (b1f->width() != 40 || b1f->height() != 23 || city->width() != 48 || city->height() != 40){
+    if (b1f->tiles.width != 40 || b1f->tiles.height != 23 || city->tiles.width != 48 || city->tiles.height != 40){
         return "Unexpected map size.";
     }
-    const MapObject* mewtwo = b1f->object_at(CERULEAN_CAVE_MEWTWO);
-    if (mewtwo == nullptr || mewtwo->name != "mewtwo"){
-        return "Mewtwo is not on B1F at " + to_string(CERULEAN_CAVE_MEWTWO) + ".";
+    const TilePos mewtwo_tile = map_point(maps, "CeruleanCave_B1F", "mewtwo");
+    const MapObject* mewtwo = object_at(*b1f, mewtwo_tile);
+    if (mewtwo == nullptr || mewtwo->kind != "mewtwo"){
+        return "Mewtwo is not on B1F at " + to_string(mewtwo_tile) + ".";
     }
-    if (city->object_at({1, 13}) != nullptr){
+    if (object_at(*city, {1, 13}) != nullptr){
         return "The cave guard is still there after the Hall of Fame.";
     }
-    if (map_named(overworld_maps(), "CeruleanCity")->object_at({1, 13}) == nullptr){
+    if (object_at(*map_named(overworld_maps(), "CeruleanCity"), {1, 13}) == nullptr){
         return "The cave guard is missing before the Hall of Fame.";
     }
     return true;
@@ -535,7 +501,7 @@ UnitTestResult test_maps(){
 
 //  Plans `start` to `goal`, replays it with the step rules and checks where it ends.
 UnitTestResult check_route(
-    const std::vector<OverworldMap>& maps,
+    const std::vector<MapData>& maps,
     const MapPosition& start, const RouteGoal& goal,
     std::vector<RouteStep>& route
 ){
@@ -554,14 +520,16 @@ UnitTestResult check_route(
     return true;
 }
 
-const RouteGoal FACING_MEWTWO{
-    {"CeruleanCave_B1F", CERULEAN_CAVE_MEWTWO.next(MapDirection::SOUTH)}, MapDirection::NORTH
-};
+//  Below Mewtwo, facing it, to talk to it.
+RouteGoal facing_mewtwo(const std::vector<MapData>& maps){
+    const TilePos mewtwo = map_point(maps, "CeruleanCave_B1F", "mewtwo");
+    return RouteGoal{{"CeruleanCave_B1F", mewtwo.next(Direction::SOUTH)}, Direction::NORTH};
+}
 
 UnitTestResult test_entrance_to_mewtwo(){
-    const std::vector<OverworldMap> maps = overworld_maps(post_game_flags());
+    const std::vector<MapData> maps = post_game_maps();
     std::vector<RouteStep> route;
-    UnitTestResult result = check_route(maps, {"CeruleanCave_1F", CERULEAN_CAVE_ENTRANCE}, FACING_MEWTWO, route);
+    UnitTestResult result = check_route(maps, point_on(maps, "CeruleanCave_1F", "entrance"), facing_mewtwo(maps), route);
     if (result.result != UnitTestResult::PASSED){
         return result;
     }
@@ -578,10 +546,10 @@ UnitTestResult test_entrance_to_mewtwo(){
 }
 
 UnitTestResult test_pokemon_center_to_mewtwo(){
-    const std::vector<OverworldMap> maps = overworld_maps(post_game_flags());
+    const std::vector<MapData> maps = post_game_maps();
     std::vector<RouteStep> route;
     UnitTestResult result = check_route(
-        maps, {"CeruleanCity_PokemonCenter_1F", CERULEAN_POKEMON_CENTER_PC}, FACING_MEWTWO, route
+        maps, point_on(maps, "CeruleanCity_PokemonCenter_1F", "pc"), facing_mewtwo(maps), route
     );
     if (result.result != UnitTestResult::PASSED){
         return result;
@@ -605,19 +573,19 @@ UnitTestResult test_pokemon_center_to_mewtwo(){
 
 UnitTestResult test_cave_guard_blocks(){
     //  Before the Hall of Fame the guard stands in the cave entrance.
-    const std::vector<OverworldMap> maps = overworld_maps();
-    if (plan_overworld_route(maps, {"CeruleanCity_PokemonCenter_1F", CERULEAN_POKEMON_CENTER_PC}, FACING_MEWTWO)){
+    const std::vector<MapData> maps = overworld_maps();
+    if (plan_overworld_route(maps, point_on(maps, "CeruleanCity_PokemonCenter_1F", "pc"), facing_mewtwo(maps))){
         return "Planned past the cave guard.";
     }
     return true;
 }
 
 UnitTestResult test_mewtwo_tile_unreachable(){
-    const std::vector<OverworldMap> maps = overworld_maps(post_game_flags());
+    const std::vector<MapData> maps = post_game_maps();
     const std::optional<std::vector<RouteStep>> route = plan_overworld_route(
         maps,
-        {"CeruleanCave_1F", CERULEAN_CAVE_ENTRANCE},
-        {{"CeruleanCave_B1F", CERULEAN_CAVE_MEWTWO}, std::nullopt}
+        point_on(maps, "CeruleanCave_1F", "entrance"),
+        {point_on(maps, "CeruleanCave_B1F", "mewtwo"), std::nullopt}
     );
     if (route){
         return "Planned a route onto Mewtwo itself:" + describe(*route);
@@ -625,9 +593,109 @@ UnitTestResult test_mewtwo_tile_unreachable(){
     return true;
 }
 
+UnitTestResult test_story_maps(){
+    const std::vector<MapData> maps = overworld_maps();
+    for (const char* name : {
+        "PalletTown_PlayersHouse_2F", "PalletTown_ProfessorOaksLab", "Route1", "ViridianCity_Mart",
+        "Route22", "Route2", "ViridianForest", "PewterCity", "PewterCity_Museum_1F", "PewterCity_Gym",
+    }){
+        if (map_named(maps, name) == nullptr){
+            return std::string("Missing map ") + name + ".";
+        }
+    }
+    return true;
+}
+
+//  Which maps `route` warps into, in order.
+std::vector<std::string> maps_warped_into(const std::vector<RouteStep>& route){
+    std::vector<std::string> maps;
+    for (const RouteStep& step : route){
+        if (step.warps){
+            maps.push_back(step.end.map);
+        }
+    }
+    return maps;
+}
+
+UnitTestResult test_bedroom_to_oaks_lab(){
+    const std::vector<MapData> maps = overworld_maps();
+    std::vector<RouteStep> route;
+    UnitTestResult result = check_route(
+        maps, point_on(maps, "PalletTown_PlayersHouse_2F", "start"),
+        {point_on(maps, "PalletTown", "oaks_lab_front"), Direction::NORTH}, route
+    );
+    if (result.result != UnitTestResult::PASSED){
+        return result;
+    }
+    const std::vector<std::string> warped = maps_warped_into(route);
+    if (warped != std::vector<std::string>{"PalletTown_PlayersHouse_1F", "PalletTown"}){
+        return "Expected to take the stairs and leave by the front door:" + describe(route);
+    }
+    return true;
+}
+
+UnitTestResult test_viridian_mart_to_pewter_gym(){
+    const std::vector<MapData> maps = overworld_maps();
+    std::vector<RouteStep> route;
+    UnitTestResult result = check_route(
+        maps, point_on(maps, "ViridianCity_Mart", "clerk_front"),
+        {point_on(maps, "PewterCity", "gym_front"), Direction::NORTH}, route
+    );
+    if (result.result != UnitTestResult::PASSED){
+        return result;
+    }
+    const std::vector<std::string> warped = maps_warped_into(route);
+    if (std::find(warped.begin(), warped.end(), "ViridianForest") == warped.end()){
+        return "Expected to go through Viridian Forest:" + describe(route);
+    }
+    return true;
+}
+
+//  Two small maps that don't need the map files: a room left by the exit mat
+//  at its bottom, onto the door of a yard, out of which the game walks the
+//  player.
+const char* const TEST_ROOM_JSON = R"({
+    "name": "Room", "width": 5, "height": 4,
+    "tiles": ["#####", "#...#", "#...#", "##v##"],
+    "elevation": ["33333", "33333", "33333", "33333"],
+    "warps": [{"x": 2, "y": 3, "dest_map": "Yard", "dest_warp": 0}],
+    "objects": [],
+    "connections": [], "points": [], "flag_sets": []
+})";
+const char* const TEST_YARD_JSON = R"({
+    "name": "Yard", "width": 5, "height": 4,
+    "tiles": ["#####", "##D##", "#...#", "#####"],
+    "elevation": ["33333", "33333", "33333", "33333"],
+    "warps": [{"x": 2, "y": 1, "dest_map": "Room", "dest_warp": 0}],
+    "objects": [],
+    "connections": [], "points": [], "flag_sets": []
+})";
+
+UnitTestResult test_route_through_warp(){
+    const std::vector<MapData> maps{
+        parse_map(TEST_ROOM_JSON, "Room"),
+        parse_map(TEST_YARD_JSON, "Yard"),
+    };
+    std::vector<RouteStep> route;
+    UnitTestResult result = check_route(maps, {"Room", {2, 1}}, {{"Yard", {1, 2}}, std::nullopt}, route);
+    if (result.result != UnitTestResult::PASSED){
+        return result;
+    }
+    for (const RouteStep& step : route){
+        if (step.warps && step.end.map == "Yard"){
+            return true;
+        }
+    }
+    return "Expected to warp into the yard:" + describe(route);
+}
+
 }
 
 void add_tests_OverworldRoute(UnitTestDatabase& database){
+    database.add<Test_OverworldRoute>("route through a warp", test_route_through_warp);
+    database.add<Test_OverworldRoute>("maps to Brock", test_story_maps);
+    database.add<Test_OverworldRoute>("bedroom to Oak's Lab", test_bedroom_to_oaks_lab);
+    database.add<Test_OverworldRoute>("Viridian Mart to Pewter Gym", test_viridian_mart_to_pewter_gym);
     database.add<Test_OverworldRoute>("step rules", test_step_rules);
     database.add<Test_OverworldRoute>("maps", test_maps);
     database.add<Test_OverworldRoute>("Cerulean Cave entrance to Mewtwo", test_entrance_to_mewtwo);

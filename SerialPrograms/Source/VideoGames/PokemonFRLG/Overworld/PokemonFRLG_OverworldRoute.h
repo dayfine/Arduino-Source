@@ -13,6 +13,7 @@
 #ifndef PokemonAutomation_PokemonFRLG_OverworldRoute_H
 #define PokemonAutomation_PokemonFRLG_OverworldRoute_H
 
+#include <map>
 #include <optional>
 #include <string>
 #include <vector>
@@ -26,7 +27,7 @@ namespace PokemonFRLG{
 
 struct MapPosition{
     std::string map;
-    MapPoint point;
+    TilePos point;
 
     bool operator==(const MapPosition& other) const = default;
 };
@@ -41,7 +42,7 @@ enum class RouteAction{
 
 struct RouteStep{
     RouteAction action = RouteAction::WALK;
-    MapDirection direction = MapDirection::NORTH;
+    Direction direction = Direction::NORTH;
     int tiles = 0;
     //  WALK: the last tile is a warp (ladder, stairs), so the screen fades
     //  and the player arrives on another map.
@@ -51,10 +52,9 @@ struct RouteStep{
     //  WALK: a wall stops the player at the end, so the leg can be held for
     //  longer than it takes and still ends on its tile.
     bool to_wall = false;
-    //  WALK with `warps`: the player arrives at a door or cave mouth and the
-    //  game walks them a tile out, so they end facing south. Other warps keep
-    //  the way the player faced.
-    bool walked_out = false;
+    //  Which way the player faces after the step. Arriving at a door or a
+    //  cave mouth, the game walks the player a tile out, facing south.
+    Direction facing_after = Direction::NORTH;
     //  Where the player is after the step.
     MapPosition end;
 };
@@ -64,36 +64,46 @@ std::string to_string(const RouteStep& step);
 struct RouteGoal{
     MapPosition position;
     //  Which way to face on arrival, e.g. towards a Pokemon to talk to.
-    std::optional<MapDirection> facing;
+    std::optional<Direction> facing;
 };
 
-struct RouteCosts{
-    int per_tile = 1;
-    int per_turn = 2;           //  extra for a leg in a new direction
-    int per_warp = 30;          //  the fade in and out
-    int per_surf = 40;          //  the dialog and the animation
-    int per_grass_tile = 20;    //  extra for tall grass, where wild Pokemon appear
+//  What the planner weighs a route by. Each is a cost per occurrence.
+enum class RouteCost{
+    TILE,
+    TURN,           //  extra for a leg in a new direction
+    WARP,           //  the fade in and out
+    SURF,           //  the dialog and the animation
+    GRASS_TILE,     //  extra for tall grass, where wild Pokemon appear
     //  Extra for a leg that ends where the player could keep walking: it has
     //  to be timed, and if a message or a battle stops it part-way, where
     //  the player is can only be estimated. A leg that ends at a wall is
     //  walked again instead.
-    int per_open_stop = 8;
+    OPEN_STOP,
 };
+using RouteCosts = std::map<RouteCost, int>;
+
+//  TILE 1, TURN 2, WARP 30, SURF 40, GRASS_TILE 20, OPEN_STOP 8.
+const RouteCosts& default_route_costs();
+
+//  `costs`'s cost for `kind`, or the default if it has none.
+int route_cost(const RouteCosts& costs, RouteCost kind);
 
 //  The cheapest route from `start`, surfing if it is on water, to
 //  `goal`, or nothing if there is none. `maps` must hold every map the route
-//  may pass through; warps to other maps are not taken.
+//  may pass through; warps to other maps are not taken. Planned with
+//  Pokemon::plan_legs() on the game's step rules.
 std::optional<std::vector<RouteStep>> plan_overworld_route(
-    const std::vector<OverworldMap>& maps,
+    const std::vector<MapData>& maps,
     const MapPosition& start,
     const RouteGoal& goal,
-    const RouteCosts& costs = RouteCosts()
+    const RouteCosts& costs = default_route_costs(),
+    std::optional<Direction> start_facing = std::nullopt
 );
 
 //  Replays `route` from `start` with the game's step rules and returns where
 //  it ends. Throws InternalProgramError if a step can't be taken as planned.
 MapPosition follow_overworld_route(
-    const std::vector<OverworldMap>& maps,
+    const std::vector<MapData>& maps,
     const MapPosition& start,
     const std::vector<RouteStep>& route
 );

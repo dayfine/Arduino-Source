@@ -20,8 +20,7 @@
 #include <memory>
 #include <optional>
 #include <vector>
-#include "Common/Cpp/Time.h"
-#include "CommonTools/InferenceCallbacks/VisualInferenceCallback.h"
+#include "Pokemon/Navigation/Pokemon_LegWalker.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
 #include "PokemonFRLG_OverworldRoute.h"
@@ -31,27 +30,10 @@ namespace NintendoSwitch{
 namespace PokemonFRLG{
 
 
-//  Something that stops the player part-way through a leg.
-class OverworldInterrupt{
-public:
-    virtual ~OverworldInterrupt() = default;
-
-    virtual const char* name() const = 0;
-
-    //  A new watcher for the screen the interruption brings up.
-    virtual std::unique_ptr<VisualInferenceCallback> make_watcher() const = 0;
-
-    //  How long after the step that set it off the watcher fires. The game
-    //  only interrupts between steps, so from this the walker works out how
-    //  many tiles of an open leg were walked.
-    virtual Milliseconds detection_delay() const = 0;
-
-    //  Clears it, leaving the player standing on the overworld, on the same
-    //  tile and facing the same way.
-    virtual void clear(ConsoleHandle& console, ProControllerContext& context) const = 0;
-};
-
-using OverworldInterrupts = std::vector<std::unique_ptr<OverworldInterrupt>>;
+//  Something that stops the player part-way through a leg: a wild battle, a
+//  message. See Pokemon::LegInterrupt.
+using OverworldInterrupt = Pokemon::LegInterrupt<ConsoleHandle, ProControllerContext>;
+using OverworldInterrupts = Pokemon::LegInterrupts<ConsoleHandle, ProControllerContext>;
 
 //  A wild battle, run from, and a message (e.g. "REPEL's effect wore off..."),
 //  closed with B.
@@ -75,7 +57,7 @@ void use_max_repel_from_bag(ConsoleHandle& console, ProControllerContext& contex
 void walk_overworld_route(
     ConsoleHandle& console, ProControllerContext& context,
     const std::vector<RouteStep>& route,
-    std::optional<MapDirection> facing = std::nullopt,
+    std::optional<Direction> facing = std::nullopt,
     const OverworldInterrupts& interrupts = default_overworld_interrupts()
 );
 
