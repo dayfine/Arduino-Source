@@ -1063,7 +1063,10 @@ Checkpoint jubilife_clown_company_checkpoint(JubilifeActions& game){
         "west, south and west to the lamp at the long road's west end, north a row", "at_west_lamp",
         [&game](RunState&){
             for (const auto& [direction, tiles, label] : {
-                std::tuple<Direction, size_t, const char*>{Direction::WEST, 14, "West to the hedges"},
+                //  The TV station's screen keeps the picture moving after we
+                //  stop: r161 saw the stop only at 14 tiles' time, r162a not
+                //  within it.
+                std::tuple<Direction, size_t, const char*>{Direction::WEST, 20, "West to the hedges"},
                 {Direction::SOUTH, 10, "South to the long road"},
                 {Direction::WEST, 26, "West to the lamp"},
                 {Direction::NORTH, 6, "North by the lamp"},
