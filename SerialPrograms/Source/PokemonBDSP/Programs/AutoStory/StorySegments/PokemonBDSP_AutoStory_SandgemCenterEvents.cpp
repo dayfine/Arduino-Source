@@ -1278,24 +1278,27 @@ Checkpoint jubilife_poketch_checkpoint(JubilifeActions& game){
             const Outcome east = game.walk_until_stopped(Direction::EAST, 10, "East to the Mart's wall");
             return east.succeeded() ? game.walk_until_stopped(Direction::SOUTH, 8, "South to the Center's lamp") : east;
         }));
-    checkpoint.events.push_back(wrapped_step("heal",
-        "a tile west and six rows south (below the door's row), three tiles east, then in through the lit door and heal", "healed",
+    //  Into the Center as 00.05a does it (3/3): from anywhere on the house
+    //  south of the Center's rows (36 to 42), east stops at the house and
+    //  north from there stops in front of the Center's door. Counted rows
+    //  to the door's own row could not line up (r168a, r169a).
+    checkpoint.events.push_back(wrapped_step("down_to_the_house",
+        "a tile west of the lamp, about twelve rows down the road, east until the house stops us", "at_east_house",
         [&game, steps](RunState&){
-            for (const auto& [direction, rows, label] : {
-                std::tuple<Direction, size_t, const char*>{Direction::WEST, 1, "West of the lamp"},
-                //  Four rows left us beside the Center's west wall, a row
-                //  short of the door's (r168a); a row or two below it, the
-                //  lit door is up the screen and the heal lines up with it.
-                {Direction::SOUTH, 6, "Down below the Center's door"},
-                {Direction::EAST, 3, "Toward the Center's door"},
-            }){
-                const Outcome moved = steps(direction, rows, label);
-                if (!moved.succeeded()){
-                    return moved;
-                }
+            game.turn(Direction::WEST);
+            const Outcome west = game.taps(Direction::WEST, 1, "West of the lamp");
+            if (!west.succeeded()){
+                return west;
             }
-            return game.heal_at_center();
+            const Outcome down = steps(Direction::SOUTH, 12, "Down the road to the house's rows");
+            return down.succeeded() ? game.walk_until_stopped(Direction::EAST, 8, "East to the house") : down;
         }));
+    checkpoint.events.push_back(wrapped_step("north_to_the_center",
+        "north up the east sidewalk until the Pokemon Center stops us", "at_center",
+        [&game](RunState&){ return game.walk_until_stopped(Direction::NORTH, 14, "North to the Pokemon Center"); }));
+    checkpoint.events.push_back(wrapped_step("heal",
+        "in, the nurse heals, out onto the doorstep", "healed",
+        [&game](RunState&){ return game.heal_at_center(); }));
     return checkpoint;
 }
 
