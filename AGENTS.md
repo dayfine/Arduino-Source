@@ -151,6 +151,8 @@ See [pokemon_sv/PR_WORKFLOW.md](pokemon_sv/PR_WORKFLOW.md). In short:
 - [pokemon_sv/lab/MACOS_LOCAL_SIGNING.md](pokemon_sv/lab/MACOS_LOCAL_SIGNING.md): persistent lab signing, permission troubleshooting and reuse by other agents.
 - [pokemon_sv/lab/CONTROL.md](pokemon_sv/lab/CONTROL.md): how to build, launch
   and control a lab instance and the Switch.
+- [lab/LAB_BUILDS.md](lab/LAB_BUILDS.md): lab builds base on `lab/main`, which
+  holds lab-only tooling; upstream-bound branches never merge it.
 
 ## C++ harness and verification (fork issue #40)
 
