@@ -795,11 +795,30 @@ uint64_t mean_brightness(const ImageViewRGB32& screen);
 //  turns the player, so turn first.
 void dpad_tiles(VideoStream& stream, ProControllerContext& context, DpadPosition dpad, size_t taps, const std::string& label){
     stream.log("[Walk] " + label + ": " + std::to_string(taps) + " D-pad taps.");
-    pbf_press_dpad(context, dpad, 160ms, 500ms);    // turn
-    for (size_t tap = 0; tap < taps; tap++){
+    pbf_press_dpad(context, dpad, 160ms, 700ms);    // turn
+    // Count only taps that moved the view: one after the turn was lost and
+    // the leg ended a tile short (r215d). A tile's scroll changes the view by
+    // about 100; standing still, under 15.
+    size_t moved = 0;
+    for (size_t tries = 0; moved < taps && tries < taps + 6; tries++){
+        context.wait_for_all_requests();
+        const VideoSnapshot before = stream.video().snapshot();
         pbf_press_dpad(context, dpad, 160ms, 700ms);
+        context.wait_for_all_requests();
+        const VideoSnapshot after = stream.video().snapshot();
+        const double change = before && after ? walk_screen_change(*before.frame, *after.frame) : 100;
+        if (change > 30){
+            moved++;
+        }else{
+            stream.log("[Walk] " + label + ": tap " + std::to_string(moved + 1) + " did not move (view change " + std::to_string(change) + "); again.");
+            if (dialogue_opens(stream, context, 300ms)){
+                talk_or_fight(stream, context, label + ": someone in the way");
+            }
+        }
     }
-    context.wait_for_all_requests();
+    if (moved < taps){
+        fail(stream, label + ": only " + std::to_string(moved) + " of " + std::to_string(taps) + " D-pad taps moved us.");
+    }
 }
 
 //  Through a door straight north of us: tap up to face it, hold up into it,
