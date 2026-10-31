@@ -71,7 +71,7 @@ bool dialogue_opens(VideoStream& stream, ProControllerContext& context, Millisec
 //  Pokemon Center; see in_pokemon_center().
 bool in_pokemon_center(VideoStream& stream);
 bool center_floor_on_screen(const ImageViewRGB32& screen, size_t* percent = nullptr);
-bool in_dim_cave(VideoStream& stream);
+bool in_dim_cave(VideoStream& stream, uint64_t below = 85);
 bool talk_or_fight(VideoStream& stream, ProControllerContext& context, const std::string& label, bool battle_expected = false, bool doubles = false){
     ShortDialogDetector dialog;
     OverworldDetector overworld;
@@ -702,7 +702,7 @@ bool in_pokemon_center(VideoStream& stream){
 
 //  The Oreburgh Mine's hall and corridors are dim: mean brightness 45 to 64
 //  on the console, against 99 to 116 for the city and its yard (2026-10-31).
-bool in_dim_cave(VideoStream& stream){
+bool in_dim_cave(VideoStream& stream, uint64_t below){
     const VideoSnapshot frame = stream.video().snapshot();
     if (!frame){
         return false;
@@ -717,7 +717,7 @@ bool in_dim_cave(VideoStream& stream){
     }
     const uint64_t mean = sum / (3 * 192 * 108);
     stream.log("[Cave check] mean brightness " + std::to_string(mean) + ".");
-    return mean < 85;
+    return mean < below;
 }
 
 
@@ -737,8 +737,21 @@ void oreburgh_street_to_gym(VideoStream& stream, ProControllerContext& context){
     // west along the wrong row into a house): a tile east of the door, north
     // stops against the Center's front on the door's row. From there the
     // gym's door is about 24 tiles west.
-    hold_tiles(stream, context, Direction::EAST, 1);
-    walk_to_wall(stream, context, 0, 1, 3000ms, "north to the Center's front beside its door");
+    // The door takes a tile or so either side of its middle (r199d went
+    // back in from a tile east): if north goes in, out and a tile further.
+    for (size_t attempt = 0; attempt < 3; attempt++){
+        hold_tiles(stream, context, Direction::EAST, 1);
+        walk_until(stream, context, 0, 1, 3000ms, "north to the Center's front beside its door",
+            [](const ImageViewRGB32& screen){ size_t percent = 0; center_floor_on_screen(screen, &percent); return percent >= 45; });
+        size_t percent = 0;
+        if (VideoSnapshot frame = stream.video().snapshot()){
+            center_floor_on_screen(*frame.frame, &percent);
+        }
+        if (percent < 45){
+            break;
+        }
+        leave_center_onto_door_row(stream, context);
+    }
     hold_tiles(stream, context, Direction::WEST, 23);
     // A long hold ends a tile or two either side of the door (by hand,
     // 2026-10-31: 17 tiles from the cliff ended 1.5 east). The gym's front
@@ -760,8 +773,9 @@ void oreburgh_street_to_gym(VideoStream& stream, ProControllerContext& context){
         // The door's fade can read as the time limit rather than a black
         // screen (by hand: "limit after 4000ms", and we were inside), and
         // so can pushing at the gym's front with people walking by (r195d).
-        // Inside is dim: mean brightness 51 against 107 to 109 outside.
-        if ((door.stop == WalkStop::TRANSITION || door.stop == WalkStop::LIMIT) && in_dim_cave(stream)){
+        // Inside is dim: mean brightness 51 against 107 to 109 outside, and
+        // 78 for the Center's dark edge (r199d).
+        if ((door.stop == WalkStop::TRANSITION || door.stop == WalkStop::LIMIT) && in_dim_cave(stream, 65)){
             context.wait_for(1000ms);
             return;
         }
