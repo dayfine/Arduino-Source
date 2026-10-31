@@ -1451,6 +1451,9 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/Navigation/Pokemon_MapSet.cpp
     Source/Pokemon/Navigation/Pokemon_MapSet.h
     Source/Pokemon/Navigation/Pokemon_Navigation_Tests.h
+    Source/Pokemon/Navigation/Pokemon_StoryEvents.cpp
+    Source/Pokemon/Navigation/Pokemon_StoryEvents.h
+    Source/Pokemon/Navigation/Pokemon_StoryEvents_Tests.cpp
     Source/Pokemon/Navigation/Pokemon_TileGrid.cpp
     Source/Pokemon/Navigation/Pokemon_TileGrid.h
     Source/Pokemon/Options/Pokemon_BoxSortingTable.cpp
