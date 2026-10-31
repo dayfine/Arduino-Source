@@ -526,8 +526,17 @@ void oreburgh_to_roark(VideoStream& stream, ProControllerContext& context){
     }
     finish_dialogue(stream, context, BUTTON_B, "Roark");
     // His scene ends with him smashing his rock and leaving: his tile is
-    // free now. Step onto it and back, or fail if he is still there.
-    if (walk_dir(stream, context, Direction::NORTH, 2000ms, "onto Roark's tile").walked <= 800ms){
+    // free then. The smash plays with no dialogue box, which can end the talk
+    // early, and he is still there (r179a): until his tile is free, finish
+    // any lines that come back and try again.
+    bool gone = false;
+    for (size_t attempt = 0; attempt < 5 && !gone; attempt++){
+        if (dialogue_opens(stream, context, 3000ms)){
+            finish_dialogue(stream, context, BUTTON_B, "Roark, after the smash");
+        }
+        gone = walk_dir(stream, context, Direction::NORTH, 2000ms, "onto Roark's tile").walked > 800ms;
+    }
+    if (!gone){
         fail(stream, "Oreburgh Mine: Roark is still there after the talk.");
     }
     walk_dir(stream, context, Direction::SOUTH, 2000ms, "back to the bottom wall");
