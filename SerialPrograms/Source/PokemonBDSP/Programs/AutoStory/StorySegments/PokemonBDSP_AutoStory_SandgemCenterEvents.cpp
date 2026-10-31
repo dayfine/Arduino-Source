@@ -1112,13 +1112,18 @@ Checkpoint jubilife_clown_company_checkpoint(JubilifeActions& game){
                 }
                 progress->tapped = true;
             }
+            //  A turn tap the way we already face is a step (r161c walked into
+            //  the plaza so), so we face east between two asks north.
             while (!progress->in_gap && progress->tiles < 5){
                 if (ask(Direction::NORTH)){
                     break;
                 }
+                game.turn(Direction::EAST);
                 const DialogueRead sign = game.read_sign(Direction::NORTH, "the Poketch Company's sign");
-                if (sign.opened && !is_sign(sign) && !sign.text.empty()){
-                    //  Him after all; his talk was closed with B: ask again.
+                if (sign.opened && !is_sign(sign)){
+                    //  Him after all (or text OCR missed); his talk was
+                    //  closed with B: ask again.
+                    game.turn(Direction::EAST);
                     if (ask(Direction::NORTH)){
                         break;
                     }
@@ -1129,7 +1134,7 @@ Checkpoint jubilife_clown_company_checkpoint(JubilifeActions& game){
                     return moved;
                 }
                 progress->tiles++;
-                if (sign.opened && is_sign(sign)){
+                if (sign.opened){
                     //  East of the sign: north is the gap.
                     const Outcome up = game.step(Direction::NORTH, "Into the gap beside the sign");
                     if (!up.succeeded()){
@@ -1139,8 +1144,9 @@ Checkpoint jubilife_clown_company_checkpoint(JubilifeActions& game){
                 }
             }
             //  Up to about a minute and a half; west of the gap is the sign.
+            //  East first: the step into the gap left us facing north.
             for (size_t round = 0; round < 18 && progress->in_gap && !read->opened; round++){
-                for (Direction direction : {Direction::NORTH, Direction::EAST, Direction::WEST}){
+                for (Direction direction : {Direction::EAST, Direction::NORTH, Direction::WEST}){
                     if (ask(direction)){
                         break;
                     }
