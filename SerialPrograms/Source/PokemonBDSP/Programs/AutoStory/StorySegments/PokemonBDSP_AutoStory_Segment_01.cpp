@@ -417,14 +417,17 @@ void oreburgh_to_roark(VideoStream& stream, ProControllerContext& context){
     // North from the save stops against the post west of the Center, a row
     // above its door; east is the Center's side wall there (by hand,
     // 2026-10-31: pushing north there slides back onto the post's column).
-    // One row south is the door's row, and three taps east the door. Start
-    // a tap short and try the door with one-tap shifts either side.
+    // One row south is the door's row. Counted taps east to the door drift
+    // (r191a: a column short, and a shift west walked north up the road
+    // beside the Center to the city's north exit), so walk east along the
+    // row to the fence past the door, which stops a tile east of it (by
+    // hand), and tap back one.
     walk_to_wall(stream, context, 0, 1, 3000ms, "north to the post beside the Center");
     route_turn(stream, context, Direction::SOUTH);
     pbf_move_left_joystick(context, {0, -1}, 240ms, 300ms);
-    route_turn(stream, context, Direction::EAST);
-    pbf_move_left_joystick(context, {1, 0}, 160ms, 300ms);
-    pbf_move_left_joystick(context, {1, 0}, 160ms, 300ms);
+    walk_to_wall(stream, context, 1, 0, 4000ms, "east along the Center's front to the fence");
+    route_turn(stream, context, Direction::WEST);
+    pbf_move_left_joystick(context, {-1, 0}, 160ms, 300ms);
     context.wait_for_all_requests();
     auto inside_now = [&](){
         const VideoSnapshot frame = stream.video().snapshot();
@@ -432,8 +435,8 @@ void oreburgh_to_roark(VideoStream& stream, ProControllerContext& context){
         return frame && (center_floor_on_screen(*frame.frame, &percent), percent >= 45);
     };
     bool inside = false;
-    const int shifts[] = {0, 1, -2, 3, -4};     // cumulative: here, +1, -1, +2, -2
-    for (size_t i = 0; i < 5 && !inside; i++){
+    const int shifts[] = {0, -1, 2, -3};        // cumulative: here, -1, +1, -2
+    for (size_t i = 0; i < 4 && !inside; i++){
         const int shift = shifts[i];
         if (shift != 0){
             route_turn(stream, context, shift > 0 ? Direction::EAST : Direction::WEST);
