@@ -47,6 +47,17 @@ WalkResult walk_until(
     const std::function<bool(const ImageViewRGB32& screen)>& arrived = nullptr
 );
 
+//  walk_until() on the D-pad, for a straight walk along a row or a column
+//  ((x, y) is one of the four directions). The D-pad moves whole tiles and
+//  keeps to the row: the stick drifts off it, catches tree corners and slides
+//  a row on stairs (Route 203, r226a and r227b; by hand the D-pad went
+//  through the same places).
+WalkResult walk_until_dpad(
+    VideoStream& stream, ProControllerContext& context,
+    double x, double y, Milliseconds limit, const std::string& label,
+    const std::function<bool(const ImageViewRGB32& screen)>& arrived = nullptr
+);
+
 //  walk_until() where there are no wild Pokemon (a gym, a building): any
 //  battle that starts is a trainer's, so the walk stops with DIALOG, left in
 //  the battle for the caller to fight, instead of trying to run from it

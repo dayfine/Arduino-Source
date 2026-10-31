@@ -1180,10 +1180,10 @@ void route203_to_floaroma(VideoStream& stream, ProControllerContext& context){
         walk_route(stream, context, route203_maps(), Route203::gate_exit(), on_route203_west_line,
             trainers, fight, "Route 203 to the east stairs");
         //  The woman on the road wanders onto row 17 at times: wait for her.
-        WalkResult in = walk_dir(stream, context, Direction::WEST, 12000ms, "west into Jubilife", location_banner_showing);
+        WalkResult in = walk_until_dpad(stream, context, -1, 0, 12000ms, "west into Jubilife", location_banner_showing);
         for (size_t tries = 0; tries < 3 && in.stop == WalkStop::BLOCKED; tries++){
             context.wait_for(2500ms);
-            in = walk_dir(stream, context, Direction::WEST, 12000ms, "west into Jubilife", location_banner_showing);
+            in = walk_until_dpad(stream, context, -1, 0, 12000ms, "west into Jubilife", location_banner_showing);
         }
         if (in.stop != WalkStop::ARRIVED){
             fail(stream, "Route 203: the walk west did not show Jubilife's banner.");

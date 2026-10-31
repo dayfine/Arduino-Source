@@ -159,7 +159,7 @@ WalkResult walk_until_impl(
     VideoStream& stream, ProControllerContext& context,
     double x, double y, Milliseconds limit, const std::string& label,
     const std::function<bool(const ImageViewRGB32& screen)>& arrived,
-    bool wild
+    bool wild, bool dpad
 );
 }
 
@@ -168,14 +168,22 @@ WalkResult walk_until(
     double x, double y, Milliseconds limit, const std::string& label,
     const std::function<bool(const ImageViewRGB32& screen)>& arrived
 ){
-    return walk_until_impl(stream, context, x, y, limit, label, arrived, true);
+    return walk_until_impl(stream, context, x, y, limit, label, arrived, true, false);
+}
+
+WalkResult walk_until_dpad(
+    VideoStream& stream, ProControllerContext& context,
+    double x, double y, Milliseconds limit, const std::string& label,
+    const std::function<bool(const ImageViewRGB32& screen)>& arrived
+){
+    return walk_until_impl(stream, context, x, y, limit, label, arrived, true, true);
 }
 
 WalkResult walk_until_no_wild(
     VideoStream& stream, ProControllerContext& context,
     double x, double y, Milliseconds limit, const std::string& label
 ){
-    return walk_until_impl(stream, context, x, y, limit, label, nullptr, false);
+    return walk_until_impl(stream, context, x, y, limit, label, nullptr, false, false);
 }
 
 namespace{
@@ -183,9 +191,10 @@ WalkResult walk_until_impl(
     VideoStream& stream, ProControllerContext& context,
     double x, double y, Milliseconds limit, const std::string& label,
     const std::function<bool(const ImageViewRGB32& screen)>& arrived,
-    bool wild
+    bool wild, bool dpad
 ){
     constexpr Milliseconds CHUNK = 400ms;
+    const DpadPosition dpad_direction = x < 0 ? DPAD_LEFT : x > 0 ? DPAD_RIGHT : y > 0 ? DPAD_UP : DPAD_DOWN;
     WalkResult result{WalkStop::LIMIT, 0ms, 0};
     size_t unchanged = 0;
 
@@ -221,7 +230,11 @@ WalkResult walk_until_impl(
         const int ret = run_until<ProControllerContext>(
             stream, context,
             [&](ProControllerContext& context){
-                pbf_move_left_joystick(context, {x, y}, chunk, 0ms);
+                if (dpad){
+                    pbf_press_dpad(context, dpad_direction, chunk, 0ms);
+                }else{
+                    pbf_move_left_joystick(context, {x, y}, chunk, 0ms);
+                }
             },
             {{encounter_flash}, {black}, {battle_menu}, {dialog}, {battle_dialog}}
         );

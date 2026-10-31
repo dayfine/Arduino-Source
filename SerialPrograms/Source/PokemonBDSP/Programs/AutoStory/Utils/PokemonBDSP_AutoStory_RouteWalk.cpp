@@ -291,7 +291,7 @@ std::vector<TilePos> walk_route(
                 //  Long enough to reach the wall from the farthest tile, with room
                 //  for a slow start; past the wall the player stands still.
                 const Milliseconds limit = ROUTE_START_DELAY + ms_per_tile(leg.direction) * leg.tiles * 5 / 4 + 1000ms;
-                result = walk_until(stream, context, x, y, limit, leg_label, watch_banner);
+                result = walk_until_dpad(stream, context, x, y, limit, leg_label, watch_banner);
                 //  A wild battle may end the walk early. Walking to a wall again
                 //  ends in the same place, so finish the leg.
                 const bool interrupted = result.wild_battles > 0;
@@ -299,7 +299,7 @@ std::vector<TilePos> walk_route(
                     (result.stop == WalkStop::LIMIT || result.stop == WalkStop::BLOCKED); again++
                 ){
                     stream.log("[Route] " + leg_label + ": a wild battle on the way; walking to the wall again.");
-                    result = walk_until(stream, context, x, y, limit, leg_label, watch_banner);
+                    result = walk_until_dpad(stream, context, x, y, limit, leg_label, watch_banner);
                 }
                 //  A wall well before the nearest one the map has: something the
                 //  map does not know is in the way. Work out where we stopped from
@@ -330,7 +330,7 @@ std::vector<TilePos> walk_route(
                         pbf_press_dpad(context, dpad, 160ms, 640ms);
                     }
                     context.wait_for_all_requests();
-                    result = walk_until(stream, context, x, y, limit, leg_label, watch_banner);
+                    result = walk_until_dpad(stream, context, x, y, limit, leg_label, watch_banner);
                     walked_tiles += tiles_moved(result);
                 }
                 //  Someone walking about may stand in the way for a moment: wait
@@ -342,7 +342,7 @@ std::vector<TilePos> walk_route(
                         " tiles, short of the wall; waiting for the way to clear.", COLOR_ORANGE);
                     pbf_wait(context, 2500ms);
                     context.wait_for_all_requests();
-                    result = walk_until(stream, context, x, y, limit, leg_label, watch_banner);
+                    result = walk_until_dpad(stream, context, x, y, limit, leg_label, watch_banner);
                     walked_tiles += tiles_moved(result);
                 }
                 if (!interrupted && result.stop == WalkStop::BLOCKED && walked_tiles + 2 < nearest){
@@ -391,7 +391,7 @@ std::vector<TilePos> walk_route(
                 //  grass a stop reads, so walk on: a player still moving is
                 //  not where the plan has him.
                 if (!interrupted && result.stop == WalkStop::LIMIT && route_wall_readable(grid, planned.after)){
-                    const WalkResult check = walk_until(stream, context, x, y, 2000ms, leg_label + ": at the wall?");
+                    const WalkResult check = walk_until_dpad(stream, context, x, y, 2000ms, leg_label + ": at the wall?");
                     if (check.stop != WalkStop::BLOCKED &&
                         !(check.stop == WalkStop::LIMIT && holding_against_wall(stream, context, x, y, leg_label + ": at the wall?"))
                     ){
