@@ -545,6 +545,13 @@ public:
         if (walked.stop == WalkStop::TRANSITION || walked.stop == WalkStop::DIALOG){
             return outcome_failed("walk_failed", label + ": " + walk_stop_name(walked.stop) + " instead of a stop");
         }
+        //  The leg was measured to end against something: running out of
+        //  time means we are not where the route thinks, and the legs after
+        //  would walk blind (r157a swept for a clown from the wrong corner).
+        if (walked.stop == WalkStop::LIMIT){
+            return outcome_failed("off_route", label + ": nothing stopped us within " +
+                std::to_string(tiles) + " tiles' time; not on the measured route");
+        }
         return outcome_ok();
     }
 
@@ -667,9 +674,26 @@ void run_on_console(SingleSwitchProgramEnvironment& env, Checkpoint& checkpoint,
         env.log("[Checkpoint] lint: " + problem, COLOR_RED);
     }
     RunState state;
-    Pokemon::EventLogger log = [&env](const std::string& line){
+    //  A screenshot as each event ends, so a run that passes can be
+    //  checked step by step, not only by its end.
+    Pokemon::EventLogger log = [&env, &checkpoint](const std::string& line){
         env.log(line, COLOR_BLUE);
         add_wrapped_log(env.console.overlay(), line, COLOR_WHITE);
+        const size_t done = line.rfind(": done");
+        const size_t failed = line.find(": failed");
+        if ((done != std::string::npos && done + 6 == line.size()) || failed != std::string::npos){
+            const size_t slash = line.find(checkpoint.id + "/");
+            const size_t colon = line.find(':', slash == std::string::npos ? 0 : slash);
+            const std::string event = slash == std::string::npos || colon == std::string::npos
+                ? "event" : line.substr(slash + checkpoint.id.size() + 1, colon - slash - checkpoint.id.size() - 1);
+            std::string name = "step-" + checkpoint.id + "-" + event;
+            for (char& c : name){
+                if (c == ' ' || c == '/'){
+                    c = '_';
+                }
+            }
+            save_end_screenshot(env, name);
+        }
     };
     const Pokemon::CheckpointReport report = Pokemon::run_checkpoint(state, checkpoint, log);
     //  Where it ended, to check by eye.
