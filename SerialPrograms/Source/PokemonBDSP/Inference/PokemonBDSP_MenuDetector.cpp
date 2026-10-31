@@ -40,8 +40,8 @@ MenuDetector::MenuDetector(Color color, bool skip_new_banner)
     , m_line4(menu_stripe(4, skip_new_banner))
     , m_cross(0.20, 0.15, 0.60, 0.37)
     , m_panel_top(0.150, 0.100, 0.700, 0.015)
-    , m_panel_left(0.150, 0.125, 0.020, 0.460)
-    , m_panel_right(0.835, 0.125, 0.015, 0.460)
+    , m_panel_left(0.156, 0.125, 0.014, 0.460)
+    , m_panel_right(0.835, 0.125, 0.009, 0.460)
     , m_footer(0.050, 0.963, 0.600, 0.025)
     , m_confirm_button(0.736, 0.960, 0.022, 0.038)
     , m_confirm_button_with_swap(0.653, 0.960, 0.022, 0.038)
@@ -95,7 +95,8 @@ static bool has_menu_button(const ImageViewRGB32& patch){
 }
 
 bool MenuDetector::detect_menu_chrome(const ImageViewRGB32& screen) const{
-    // The surrounding panel remains the same with six or eight unlocked icons.
+    // The surrounding panel remains the same with two, six or eight unlocked icons.
+    // Its edges are blue strips, so the side boxes stay inside the white.
     for (const ImageFloatBox& box : {m_panel_top, m_panel_left, m_panel_right}){
         if (!is_white(image_stats(extract_box_reference(screen, box)))){
             return false;

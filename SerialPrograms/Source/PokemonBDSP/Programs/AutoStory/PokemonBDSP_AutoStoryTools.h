@@ -18,6 +18,7 @@
 #include "CommonFramework/GlobalAutoPaths.h"
 #include "CommonFramework/ImageTools/ImageBoxes.h"
 #include "CommonFramework/Language.h"
+#include "CommonFramework/VideoPipeline/VideoOverlay.h"
 #include "CommonFramework/Notifications/EventNotificationsTable.h"
 #include "CommonFramework/ProgramStats/StatsTracking.h"
 #include "CommonFramework/Tools/VideoStream.h"
@@ -44,14 +45,24 @@ struct AutoStoryStats : public StatsTracker {
     AutoStoryStats()
         : m_checkpoint(m_stats["Checkpoint"])
         , m_segment(m_stats["Segment"])
-        , m_reset(m_stats["Reset"]){
+        , m_reset(m_stats["Reset"])
+        , m_current(m_stats["Current Checkpoint (00.0X = X)"])
+        , m_completed(m_stats["Checkpoints Completed"])
+        , m_last_completed(m_stats["Last Completed (00.0X = X)"])
+    {
         m_display_order.emplace_back("Checkpoint");
         m_display_order.emplace_back("Segment");
         m_display_order.emplace_back("Reset");
+        m_display_order.emplace_back("Current Checkpoint (00.0X = X)");
+        m_display_order.emplace_back("Checkpoints Completed");
+        m_display_order.emplace_back("Last Completed (00.0X = X)");
     }
     std::atomic<uint64_t>& m_checkpoint;
     std::atomic<uint64_t>& m_segment;
     std::atomic<uint64_t>& m_reset;
+    std::atomic<uint64_t>& m_current;
+    std::atomic<uint64_t>& m_completed;
+    std::atomic<uint64_t>& m_last_completed;
     bool m_first_run = true;
 };
 
@@ -166,7 +177,24 @@ public:
 
 //  Save the game from the overworld with retries. Returns true if the save was
 //  verified via overworld detection, false if the blind fallback was used.
-bool save_game(SingleSwitchProgramEnvironment& env, ProControllerContext& context);
+// Adds `text` to the video overlay's log, split at spaces into lines short
+// enough for the log box, which draws each line on one row and cuts it off.
+void add_wrapped_log(VideoOverlay& overlay, const std::string& text, Color color);
+
+//  With `expected_location`, the map named on the save screen's card must be
+//  it (compared as a location banner is), or the save is backed out of and
+//  the function fails with a screenshot: r124a saved in Sandgem Town after a
+//  walk that was sure it stood on Route 202.
+bool save_game(
+    SingleSwitchProgramEnvironment& env,
+    ProControllerContext& context,
+    const std::string& expected_location = ""
+);
+
+//  Opens the save screen from the overworld, reads where the game says we
+//  are (read_save_screen_location() in the Location module), and backs out
+//  without saving.
+std::string read_location_from_save_screen(VideoStream& stream, ProControllerContext& context);
 
 // Fake save game to be replaced with save_game when program runs smoothly
 void checkpoint_save(SingleSwitchProgramEnvironment& env, ProControllerContext& context);
@@ -354,6 +382,28 @@ bool find_bag_item(VideoStream& stream,
     size_t max_scrolls_per_pocket = 512,
     std::chrono::milliseconds search_timeout = std::chrono::minutes(10));
 
+// Starts in the overworld, opens the Bag on `target_pocket`, and moves the cursor
+// onto the item whose name reads `name` (letters only, lower case, e.g. "potion").
+// Reads the cursor row's name with OCR, so it does not depend on the capture
+// card's colors or sharpness the way a template match does.
+// Returns false if the pocket is empty or the name is not found.
+bool find_bag_item_by_name(
+    VideoStream& stream,
+    ProControllerContext& context,
+    const std::string& name,
+    int target_pocket,
+    int num_icons = 8
+);
+
+// The same search in a Bag that is already open, such as the one a battle's
+// Bag command opens.
+bool find_bag_item_in_open_bag(
+    VideoStream& stream,
+    ProControllerContext& context,
+    const std::string& name,
+    int target_pocket
+);
+
 // Find Escape Rope, choose Use, and verify a transition back to the overworld.
 bool use_escape_rope(VideoStream& stream, ProControllerContext& context, int num_icons = 8);
 
@@ -406,7 +456,24 @@ bool fly_to(VideoStream& stream, ProControllerContext& context, FlyPoint place);
 // num_icons: 5 (early-game layout) or 8 (late-game layout).
 void open_menu(VideoStream& stream, ProControllerContext& context, MenuCursorPosition target, int num_icons);
 
-void use_potion_first_pokemon(VideoStream& stream, ProControllerContext& context);
+//  Open the Bag from the overworld, look for `name` in the pocket, and close
+//  it again. True if the item is there.
+bool bag_has_item(
+    VideoStream& stream,
+    ProControllerContext& context,
+    const std::string& name,
+    int target_pocket
+);
+
+//  Read the lead's HP bar in the Bag and, if it is below `heal_below` (a
+//  fraction of full), use Potions until it is full. heal_below = 1 always
+//  heals; 0.5 only checks and heals when the lead is under half, and is
+//  skipped when the Bag has no Potion.
+void use_potion_first_pokemon(
+    VideoStream& stream,
+    ProControllerContext& context,
+    double heal_below = 1.0
+);
 
 enum class GearLevel {
     Fast,

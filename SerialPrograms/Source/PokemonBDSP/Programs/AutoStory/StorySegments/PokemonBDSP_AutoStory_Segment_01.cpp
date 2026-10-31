@@ -1,1828 +1,1098 @@
 /*  BDSP AutoStory - Segment 01
- *  From after choosing the starter Pokemon until after acquiring the first badge.
+ *  From the Jubilife Pokemon Center to Oreburgh City.
+ *
  *  From: https://github.com/PokemonAutomation/
+ *
  */
 
-#include <array>
-#include <cmath>
-#include <memory>
+#include "PokemonBDSP_AutoStory_Segment_01.h"
+#include "../Data/PokemonBDSP_AutoStory_OreburghMine.h"
+#include "../Data/PokemonBDSP_AutoStory_RavagedPath.h"
+#include "../Data/PokemonBDSP_AutoStory_Route204.h"
+#include "../Data/PokemonBDSP_AutoStory_StoryMaps.h"
+#include "../Detect/PokemonBDSP_AutoStory_OverworldDetector.h"
+#include "../Utils/PokemonBDSP_AutoStory_PokemonCenter.h"
+#include "../Utils/PokemonBDSP_AutoStory_RouteWalk.h"
+#include "../Utils/PokemonBDSP_AutoStory_Segment_00_tools.h"
+#include "../Utils/PokemonBDSP_AutoStory_Walk.h"
+#include "Common/Cpp/PrettyPrint.h"
+#include "Common/Cpp/Filesystem/Filesystem.h"
+#include "CommonFramework/Globals.h"
+#include "CommonFramework/ImageTypes/ImageRGB32.h"
 
-#include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
-#include "CommonFramework/GlobalAutoPaths.h"
-#include "CommonFramework/ImageTools/ImageDiff.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
-
 #include "CommonTools/Async/InferenceRoutines.h"
 #include "CommonTools/VisualDetectors/BlackScreenDetector.h"
-#include "CommonTools/VisualDetectors/ImageMatchDetector.h"
-
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
-
-#include "PokemonBDSP/Inference/Battles/PokemonBDSP_BattleMenuDetector.h"
-#include "PokemonBDSP/Inference/Battles/PokemonBDSP_EndBattleDetector.h"
 #include "PokemonBDSP/Inference/PokemonBDSP_DialogDetector.h"
-#include "PokemonBDSP/Inference/PokemonBDSP_MenuDetector.h"
-#include "PokemonBDSP/Inference/PokemonBDSP_TransitionWatchers.h"
-#include "PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_OverworldDetector.h"
-#include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStoryTools.h"
-#include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Segment_00_tools.h"
-#include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_Autostory_Segment_01_tools.h"
+#include "PokemonBDSP/Inference/Battles/PokemonBDSP_BattleMenuDetector.h"
 
-#include "PokemonBDSP_AutoStory_Segment_01.h"
+#include <algorithm>
+#include <cstdlib>
 
 using namespace std::chrono_literals;
 
-namespace PokemonAutomation {
-namespace NintendoSwitch {
-namespace PokemonBDSP {
+namespace PokemonAutomation{
+namespace NintendoSwitch{
+namespace PokemonBDSP{
 
-static const std::string& mine_navigation_resource_path(){
-    static const std::string path = RESOURCE_PATH() + "PokemonBDSP/Autostory/Oreburg_mine_nav/";
-    return path;
+using Pokemon::Direction;
+
+
+namespace{
+
+[[noreturn]] void fail(VideoStream& stream, const std::string& message){
+    OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT, message, stream);
 }
 
-enum class MoveDirection {
-    UP,
-    DOWN,
-    LEFT,
-    RIGHT
-};
-
-//  Left joystick vector for a direction (matches the game's joystick convention used in this file).
-static std::pair<double, double> joystick_for(MoveDirection direction){
-    switch (direction){
-    case MoveDirection::UP:
-        return {0.0, 1.0};
-    case MoveDirection::DOWN:
-        return {0.0, -1.0};
-    case MoveDirection::LEFT:
-        return {-1.0, 0.0};
-    case MoveDirection::RIGHT:
-        return {1.0, 0.0};
-    }
-    return {0.0, 0.0};
+//  One tile south, for a player facing another way.
+void step_south(VideoStream& stream, ProControllerContext& context){
+    route_turn(stream, context, Direction::SOUTH);
+    pbf_move_left_joystick(context, {0, -1}, route_open_hold(Direction::SOUTH, 1), 200ms);
+    context.wait_for_all_requests();
 }
 
-//  Runs from a wild battle that is already in progress (menu visible or about to be).
-//  Throws OperationFailedException if it cannot escape within `timeout`.
+//  True if a dialogue opens within `timeout`: someone who stopped us as the
+//  walk ended reads as BLOCKED, and their box comes up a moment later.
+bool dialogue_opens(VideoStream& stream, ProControllerContext& context, Milliseconds timeout){
+    context.wait_for_all_requests();
+    ShortDialogWatcher dialog(COLOR_CYAN);
+    return wait_until(stream, context, timeout, {{dialog}}) == 0;
+}
 
-// The main game menu is independent evidence that battle has ended.
-
-
-//  Watches for a short dialogue box over several attempts. Returns true as soon as one is seen.
-//  Returns false (without throwing) only if every attempt times out, so callers can skip
-//  an optional interaction. Multiple attempts guard against a single missed detection.
-static bool try_detect_dialogue(VideoStream& stream,
-    ProControllerContext& context,
-    const std::string& label,
-    size_t attempts = 3,
-    std::chrono::milliseconds window = 5000ms){
-    for (size_t attempt = 0; attempt < attempts; attempt++){
-        ShortDialogWatcher watcher_cyan(COLOR_CYAN);
-        ShortDialogWatcher watcher_red(COLOR_RED);
-        if (wait_until(stream, context, window, {{watcher_cyan}, {watcher_red}}) >= 0){
-            stream.log(label + " dialogue detected.");
+//  For a dialogue that has opened: B through it. A trainer's ends in a
+//  battle, which is fought with the best move (Potions when HP runs low),
+//  followed by a Potion if HP is under half. Anyone else's ends back in the
+//  overworld. Returns whether there was a battle. Between a trainer's last
+//  line and the battle the overworld shows with no dialogue for a moment,
+//  so "only talked" needs 4 s of it, and never comes when `battle_expected`.
+//  `doubles` for tag and twin battles. A lost battle ends in the last
+//  Pokemon Center; see in_pokemon_center().
+bool in_pokemon_center(VideoStream& stream);
+bool talk_or_fight(VideoStream& stream, ProControllerContext& context, const std::string& label, bool battle_expected = false, bool doubles = false){
+    ShortDialogDetector dialog;
+    OverworldDetector overworld;
+    BattleMenuDetector battle_menu(BattleType::TRAINER);
+    BlackScreenDetector black;
+    auto quiet_since = std::chrono::steady_clock::now();
+    for (size_t check = 0; check < 120; check++){
+        context.wait_for_all_requests();
+        const auto frame = stream.video().snapshot();
+        if (!frame){
+            fail(stream, label + ": No video frame.");
+        }
+        if (battle_menu.detect(*frame.frame) || black.detect(*frame.frame)){
+            route_status(stream, "Fighting " + label + ".");
+            fight_story_battle(stream, context, label, doubles);
+            if (!in_pokemon_center(stream)){
+                use_potion_first_pokemon(stream, context, 0.5);
+            }
             return true;
         }
-        stream.log(label + " dialogue not detected (attempt " + std::to_string(attempt + 1) + "/" +
-            std::to_string(attempts) + ").",
-            COLOR_ORANGE);
-    }
-    return false;
-}
-
-struct DoorwayWalkOptions {
-    BattleType battle_type = BattleType::STANDARD;
-    //  Active movement per step. Time spent in battles or waiting is never counted.
-    std::chrono::milliseconds step = 200ms;
-    //  Extra walking allowed beyond `travel_time` before giving up.
-    std::chrono::milliseconds grace = 1600ms;
-    //  How long to watch for a black screen after each step.
-    std::chrono::milliseconds black_screen_window = 1500ms;
-    //  After a black screen, how long to wait for a battle menu before deciding it was a doorway.
-    std::chrono::milliseconds battle_menu_window = 8000ms;
-    size_t max_battles = 10;
-    //  Also treat a white screen as the doorway transition (e.g. leaving the Oreburgh Gate).
-    bool detect_white_screen = false;
-};
-
-//  Reusable: walk in `direction` for a cumulative `travel_time` of active movement until
-//  a black screen NOT followed by a battle menu (a doorway/area transition) is seen.
-//  Wild battles (black screen followed by the battle menu, e.g. in caves or grass) are
-//  escaped and do not consume the time budget.
-//  Throws OperationFailedException if the doorway is not found within
-//  travel_time + options.grace, if more than options.max_battles occur, or if a battle
-//  cannot be escaped.
-//  Returns the total active walking time used.
-static std::chrono::milliseconds walk_until_doorway(VideoStream& stream,
-    ProControllerContext& context,
-    MoveDirection direction,
-    std::chrono::milliseconds travel_time,
-    const DoorwayWalkOptions& options = DoorwayWalkOptions()){
-    enum class NavState {
-        WALKING,
-        BLACK_SCREEN,
-        IN_BATTLE,
-        DONE
-    };
-
-    const auto [x, y] = joystick_for(direction);
-    const std::chrono::milliseconds max_travel = travel_time + options.grace;
-
-    std::chrono::milliseconds walked = 0ms;
-    size_t battles = 0;
-    NavState state = NavState::WALKING;
-
-    while (state != NavState::DONE){
-        switch (state){
-        case NavState::WALKING: {
-            if (walked >= max_travel){
-                OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
-                    "walk_until_doorway: Doorway not found within time budget.",
-                    stream);
+        const bool talking = dialog.detect(*frame.frame);
+        if (!talking && overworld.detect(*frame.frame)){
+            if (!battle_expected && std::chrono::steady_clock::now() - quiet_since >= 4s){
+                route_status(stream, label + " only talked.");
+                return false;
             }
-            context.wait_for_all_requests();
-            pbf_move_left_joystick(context, {x, y}, options.step, 0ms);
-            context.wait_for_all_requests();
-            walked += options.step;
-
-            BlackScreenWatcher black_screen;
-            WhiteScreenWatcher white_screen;
-            if (options.detect_white_screen){
-                int ret = wait_until(stream, context, options.black_screen_window, {{black_screen}, {white_screen}});
-                if (ret == 0){
-                    state = NavState::BLACK_SCREEN;
-                }else if (ret == 1){
-                    stream.log("[AutoStory] White screen detected.", COLOR_ORANGE);
-                    state = NavState::DONE;
-                }
-            }else if (wait_until(stream, context, options.black_screen_window, {{black_screen}}) == 0){
-                state = NavState::BLACK_SCREEN;
-            }
-            break;
-        }
-        case NavState::BLACK_SCREEN: {
-            stream.log("[AutoStory] Black screen detected. Checking for battle menu.", COLOR_ORANGE);
-            BattleMenuWatcher battle_menu(options.battle_type, COLOR_YELLOW);
-            if (wait_until(stream, context, options.battle_menu_window, {{battle_menu}}) == 0){
-                state = NavState::IN_BATTLE;
-            }else{
-                state = NavState::DONE;
-            }
-            break;
-        }
-        case NavState::IN_BATTLE: {
-            if (++battles > options.max_battles){
-                OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
-                    "walk_until_doorway: Too many battles while walking.",
-                    stream);
-            }
-            stream.log("[AutoStory] Wild battle. Escaping. Walked " + std::to_string(walked.count()) + "ms of " +
-                std::to_string(travel_time.count()) + "ms.",
-                COLOR_ORANGE);
-            escape_wild_battle(stream, context, options.battle_type);
-            state = NavState::WALKING;
-            break;
-        }
-        case NavState::DONE:
-            break;
-        }
-    }
-    stream.log("[AutoStory] Doorway transition detected after " + std::to_string(walked.count()) + "ms of walking.",
-        COLOR_GREEN);
-    return walked;
-}
-
-
-// ----------------------------------------------------------------
-//  Segment 1 Part 1: Jubilife City to Oreburgh Gate
-//  Navigates the player from Jubilife City to the Oreburgh Gate, including the
-//  first Barry fight.
-// ---------------------------------------------------------------------------
-void jubilife_to_oreburgh_gate(SingleSwitchProgramEnvironment& env,
-    VideoStream& stream,
-    ProControllerContext& context){
-    // Wait for game to fully accept input after save/overworld return
-    pbf_wait(context, 2000ms);
-    context.wait_for_all_requests();
-
-    pbf_move_left_joystick(context, {0.000000, -1.000000}, 1465ms, 0ms);
-    pbf_wait(context, 127ms);
-    pbf_move_left_joystick(context, {-1.000000, -0.000000}, 644ms, 0ms);
-    pbf_wait(context, 698ms);
-    leave_pokemon_center_before_barry_1(stream, context);
-    pbf_wait(context, 2340ms);
-    pbf_move_left_joystick(context, {-1.000000, -0.000000}, 742ms, 0ms);
-    pbf_wait(context, 348ms);
-    pbf_move_left_joystick(context, {0.000000, 1.000000}, 2694ms, 0ms);
-    pbf_wait(context, 482ms);
-    pbf_move_left_joystick(context, {1.000000, -0.000000}, 3810ms, 0ms);
-
-    wait_for_dialogue(stream, context, "Phase 1 (Barry 1 fight dialog)");
-    pbf_mash_button(context, BUTTON_B, 5000ms);
-    Barry_1_fight(env, stream, context);
-    pbf_mash_button(context, BUTTON_B, 5000ms);
-    context.wait_for_all_requests();
-    pbf_move_left_joystick(context, {1.000000, -0.000000}, 2761ms, 0ms);
-    pbf_wait(context, 1647ms);
-    walk_through_grass(stream, context, 1, 0, 5, "right through grass");
-    wait_for_dialogue(stream, context, "Dallas fight dialog)");
-    pbf_mash_button(context, BUTTON_B, 5000ms);
-    Barry_1_fight(env, stream, context); //fighting Dallas
-    context.wait_for_all_requests();
-    walk_through_grass(stream, context, 1, 0, 5, "right through grass");
-    pbf_move_left_joystick(context, {1.000000, -0.000000}, 600ms, 0ms);
-    walk_through_grass(stream, context, 1, 0, 10, "right through grass");
-    //there is a small chance that the player dodges sSebastian, so this
-    //function addresses that edge case
-    if (try_detect_dialogue(stream, context, "Sebastian fight")){
-        pbf_mash_button(context, BUTTON_B, 5000ms);
-        Barry_1_fight(env, stream, context); //fighting Sebastian
-        context.wait_for_all_requests();
-    }else{
-        stream.log("Sebastian dialogue never appeared. Skipping fight.", COLOR_ORANGE);
-    }
-    pbf_move_left_joystick(context, {1.000000, -0.000000}, 2000ms, 0ms);
-    pbf_move_left_joystick(context, {0.000000, 1.000000}, 8000ms, 0ms);
-    pbf_wait(context, 200ms);
-    context.wait_for_all_requests();
-    enter_cave_with_down_right_search(stream, context, "jubilife_to_oreburgh_gate", 10000ms);
-}
-void oreburgh_gate_nav(SingleSwitchProgramEnvironment& env, VideoStream& stream, ProControllerContext& context){
-    pbf_wait(context, 2000ms);
-    pbf_move_left_joystick(context, {1.000000, -0.000000}, 879ms, 0ms);
-    wait_for_dialogue(stream, context, "HM Rock Smash Dialog");
-    pbf_mash_button(context, BUTTON_B, 15000ms);
-    walk_through_grass(stream, context, 1, 0, 10, "right through gate");
-    //Similar to sebastian, an edge case exists where we run into too many
-    //wild battles and don't reach curtis or diana. This detect dialog function solves that.
-    while (!try_detect_dialogue(stream, context, "Curtis fight", 1, 3000ms)){
-        walk_through_grass(stream, context, 1, 0, 1, "right through gate");
-    }
-    pbf_mash_button(context, BUTTON_B, 5000ms);
-    Barry_1_fight(env, stream, context); //fighting Curtis
-    walk_through_grass(stream, context, 1, 0, 10, "right through gate");
-    while (!try_detect_dialogue(stream, context, "Diana fight", 1, 3000ms)){
-        walk_through_grass(stream, context, 1, 0, 1, "right through gate");
-    }
-    pbf_mash_button(context, BUTTON_B, 5000ms);
-    Barry_1_fight(env, stream, context); //fighting Diana
-    //  Walk right until the gate exit transition (white screen, or black screen without a battle menu).
-    //  Wild battles are escaped without using up the budget. Throws on failure so the
-    //  checkpoint is retried.
-    DoorwayWalkOptions gate_exit_options;
-    gate_exit_options.detect_white_screen = true;
-    walk_until_doorway(stream, context, MoveDirection::RIGHT, 4000ms, gate_exit_options);
-    context.wait_for_all_requests();
-}
-// ---------------------------------------------------------------------------
-//  Segment 1 Part 2: Oreburgh Gate to Oreburgh Mine
-//  Assumes that the player is standing outside the Oreburgh Gate on the Jubilife City side.
-//  Navigates to the mine.
-//  ----------------------------------------------------------------------------
-void oreburgh_gate_to_mine(SingleSwitchProgramEnvironment& env, VideoStream& stream, ProControllerContext& context){
-    pbf_wait(context, 2000ms);
-    context.wait_for_all_requests();
-    pbf_move_left_joystick(context, {1.000000, -0.000000}, 1056ms, 0ms);
-    while (!try_detect_dialogue(stream, context, "Phase 2 (oreburgh tour)", 1, 3000ms)){
-        pbf_move_left_joystick(context, {1.000000, -0.000000}, 1056ms, 0ms);
-    }
-    pbf_mash_button(context, BUTTON_B, 12000ms);
-    pbf_move_left_joystick(context, {0.000000, -1.000000}, 319ms, 0ms);
-    pbf_move_left_joystick(context, {1.000000, -1.000000}, 332ms, 0ms);
-    pbf_move_left_joystick(context, {1.000000, -0.000000}, 3124ms, 0ms);
-    pbf_wait(context, 23ms);
-    bool black_screen_found = false;
-    for (size_t attempt = 0; attempt < 3 && !black_screen_found; attempt++){
-        BlackScreenWatcher black_screen;
-        int ret = run_until<ProControllerContext>(stream,
-            context,
-            [](ProControllerContext& context){
-                pbf_move_left_joystick(context, {0.000000, -1.000000}, 4740ms, 0ms);
-            },
-            {black_screen});
-        if (ret == 0){
-            stream.log("Black screen detected.");
-            black_screen_found = true;
-        }
-    }
-    context.wait_for_all_requests();
-
-    if (!black_screen_found){
-        OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
-            "oreburgh_gate_to_mine: No black screen after 3 attempts.",
-            stream);
-    }
-
-    //  Let the mine entrance transition fully finish so the next step's black screen
-    //  watcher can't pick up the tail of this one.
-    BlackScreenOverWatcher black_over;
-    wait_until(stream, context, 6000ms, {{black_over}});
-    context.wait_for_all_requests();
-    pbf_wait(context, 2000ms);
-    context.wait_for_all_requests();
-}
-
-// Diagnostic only: identifies the entrance start without moving the player.
-
-
-struct MineCenterOffset {
-    bool valid;
-    double offset;
-    double score;
-};
-
-// Finds the sideways shift of stationary scenery relative to the center picture.
-// Positive offset: scenery shifted right, so the player is left of center.
-static MineCenterOffset measure_mine_center_offset(const ImageViewRGB32& reference, const ImageViewRGB32& live){
-    if (!reference || !live){
-        return {false, 0.0, 1000.0};
-    }
-
-    // Use a fixed working size so the search works at different capture resolutions.
-    const ImageRGB32 reference_scaled = reference.scale_to(960, 540);
-    const ImageRGB32 live_scaled = live.scale_to(960, 540);
-
-    // Entrance beam and both posts. Avoid the player and shadow.
-    const std::array<ImageFloatBox, 3> boxes = {ImageFloatBox(0.35, 0.285, 0.30, 0.07),
-        ImageFloatBox(0.355, 0.37, 0.035, 0.23),
-        ImageFloatBox(0.615, 0.37, 0.035, 0.23)};
-
-    const int search_radius = (int)std::lround(0.10 * live_scaled.width());
-    std::vector<double> scores(2 * search_radius + 1);
-    std::vector<double> worst_regions(2 * search_radius + 1);
-
-    int best_shift = 0;
-    double best_score = 1000.0;
-
-    // Search up to 10% of the screen width in either direction.
-    for (int shift = -search_radius; shift <= search_radius; shift++){
-        double total = 0.0;
-        double worst = 0.0;
-
-        for (const ImageFloatBox& box : boxes){
-            const ImageViewRGB32 reference_crop = extract_box_reference(reference_scaled, box);
-
-            // Translate the same crop horizontally in the live image.
-            const ImageViewRGB32 live_crop = extract_box_reference(live_scaled, box, shift, 0);
-
-            const double score = ImageMatch::pixel_RMSD(reference_crop, live_crop);
-
-            total += score;
-            if (score > worst){
-                worst = score;
-            }
-        }
-
-        const double average = total / boxes.size();
-        const size_t index = static_cast<size_t>(shift + search_radius);
-
-        scores[index] = average;
-        worst_regions[index] = worst;
-
-        if (average < best_score){
-            best_score = average;
-            best_shift = shift;
-        }
-    }
-
-    // Reject another similarly good match well away from the chosen position.
-    double alternative_score = 1000.0;
-
-    for (int shift = -search_radius; shift <= search_radius; shift++){
-        if (std::abs(shift - best_shift) <= std::lround(0.0125 * live_scaled.width())){
+            pbf_wait(context, 300ms);
             continue;
         }
-
-        const double score = scores[static_cast<size_t>(shift + search_radius)];
-        if (score < alternative_score){
-            alternative_score = score;
-        }
-    }
-
-    const size_t best_index = static_cast<size_t>(best_shift + search_radius);
-
-    const bool valid = best_score <= 20.0 && worst_regions[best_index] <= 30.0 &&
-        alternative_score - best_score >= 3.0 && std::abs(best_shift) < search_radius;
-
-    return {valid, static_cast<double>(best_shift) / live_scaled.width(), best_score};
-}
-// Test only: align with the entrance center, then stop.
-static bool oreburgh_mine_alignment_test(VideoStream& stream, ProControllerContext& context){
-    const ImageRGB32 reference(mine_navigation_resource_path() + "mine_start_center.png");
-
-    constexpr size_t MAX_MOVEMENTS = 12;
-    constexpr double CENTER_TOLERANCE = 0.008;
-
-    size_t movements = 0;
-    size_t center_streak = 0;
-
-    context.wait_for_all_requests();
-    pbf_wait(context, 500ms);
-    context.wait_for_all_requests();
-
-    while (true){
-        const VideoSnapshot frame = stream.video().snapshot();
-
-        const MineCenterOffset measurement = measure_mine_center_offset(reference, frame);
-
-        stream.log("[Mine align] Offset=" + std::to_string(measurement.offset) +
-            ", score=" + std::to_string(measurement.score) + (measurement.valid ? ", trusted" : ", unsure"));
-
-        if (!measurement.valid){
-            stream.log("[Mine align] Entrance position unsure. Stopping.", COLOR_ORANGE);
-            return false;
-        }
-
-        if (std::abs(measurement.offset) <= CENTER_TOLERANCE){
-            center_streak++;
-
-            if (center_streak >= 3){
-                stream.log("[Mine align] Center reached. Test complete.", COLOR_GREEN);
-                return true;
-            }
-
-            pbf_wait(context, 250ms);
-            context.wait_for_all_requests();
-            continue;
-        }
-
-        center_streak = 0;
-
-        // Check the latest position before enforcing the movement limit.
-        if (movements >= MAX_MOVEMENTS){
-            stream.log("[Mine align] Movement limit reached. Stopping.", COLOR_ORANGE);
-            return false;
-        }
-
-        const double x = measurement.offset > 0.0 ? 1.0 : -1.0;
-
-        // Smaller movements when close to the center.
-        const auto duration = std::abs(measurement.offset) < 0.025 ? 40ms : 80ms;
-
-        stream.log(x > 0.0 ? "[Mine align] Moving a little right." : "[Mine align] Moving a little left.");
-
-        BlackScreenWatcher black;
-        BattleMenuWatcher menu(BattleType::STANDARD, COLOR_YELLOW);
-        BattleDialogWatcher dialog(COLOR_YELLOW);
-
-        const int result = run_until<ProControllerContext>(stream,
-            context,
-            [x, duration](ProControllerContext& ctx){
-                pbf_move_left_joystick(ctx, {x, 0.0}, duration, 0ms);
-                pbf_wait(ctx, 500ms);
-                ctx.wait_for_all_requests();
-            },
-            {black, menu, dialog});
-
-        if (result >= 0){
-            stream.log("[Mine align] Battle or transition detected. "
-                "Stopping the alignment test.",
-                COLOR_ORANGE);
-            return false;
-        }
-
-        movements++;
-    }
-}
-// Confirm a battle before using the existing escape helper.
-static bool mine_escape_and_settle(VideoStream& stream, ProControllerContext& context){
-    BattleMenuWatcher menu(BattleType::STANDARD, COLOR_YELLOW);
-
-    if (wait_until(stream, context, 12s, {{menu}}) != 0){
-        stream.log("[Mine encounter] Battle menu not confirmed. Stopping.", COLOR_ORANGE);
-        return false;
-    }
-
-    stream.log("[Mine encounter] Battle confirmed. Escaping.");
-    escape_wild_battle(stream, context);
-    context.wait_for_all_requests();
-
-    // Check the return waits instead of ignoring their results.
-    BlackScreenWatcher visible(COLOR_YELLOW,
-        ImageFloatBox(0.1, 0.1, 0.8, 0.8),
-        100,
-        10,
-        BlackScreenWatcher::FinderType::GONE,
-        500ms);
-
-    if (wait_until(stream, context, 8s, {{visible}}) != 0){
-        stream.log("[Mine encounter] Screen did not return. Stopping.", COLOR_ORANGE);
-        return false;
-    }
-
-
-    pbf_wait(context, 800ms);
-    context.wait_for_all_requests();
-
-    stream.log("[Mine encounter] Escaped. Returning to the rock-walking loop.", COLOR_GREEN);
-    return true;
-}
-
-// Temporary test: wiggle along the corridor until a battle is detected.
-static bool mine_force_encounter_test(VideoStream& stream, ProControllerContext& context){
-    stream.log("[Mine encounter] Starting forced encounter wiggle.");
-
-    const auto deadline = std::chrono::steady_clock::now() + 60s;
-
-    size_t pulses = 0;
-
-    while (std::chrono::steady_clock::now() < deadline){
-        // Alternate down and up. Do not move sideways.
-        const double y = pulses % 2 == 0 ? -1.0 : 1.0;
-
-        BlackScreenWatcher black;
-        BattleMenuWatcher menu(BattleType::STANDARD, COLOR_YELLOW);
-        BattleDialogWatcher dialog(COLOR_YELLOW);
-
-        const int result = run_until<ProControllerContext>(stream,
-            context,
-            [y](ProControllerContext& ctx){
-                pbf_move_left_joystick(ctx, {0.0, y}, 120ms, 0ms);
-                pbf_wait(ctx, 400ms);
-                ctx.wait_for_all_requests();
-            },
-            {black, menu, dialog});
-
-        if (result >= 0){
-            stream.log("[Mine encounter] Wiggle interrupted. Checking for battle.");
-            return mine_escape_and_settle(stream, context);
-        }
-
-        pulses++;
-    }
-
-    stream.log("[Mine encounter] No encounter within 60 seconds. "
-        "Test incomplete; stopping.",
-        COLOR_ORANGE);
-    return false;
-}
-
-// Watch throughout an action, including its movement and picture checks.
-// After an encounter, restart the action using fresh watcher state.
-template <typename Action>
-static bool mine_run_with_encounters(VideoStream& stream, ProControllerContext& context, Action action){
-    for (size_t encounters = 0;;){
-        BlackScreenWatcher black;
-        BattleMenuWatcher menu(BattleType::STANDARD, COLOR_YELLOW);
-        BattleDialogWatcher dialog(COLOR_YELLOW);
-        bool completed = false;
-
-        const int result = run_until<ProControllerContext>(stream,
-            context,
-            [&](ProControllerContext& ctx){
-                completed = action(ctx);
-            },
-            {black, menu, dialog});
-
-        if (result < 0){
-            return completed;
-        }
-
-        if (++encounters > 10){
-            stream.log("[Mine encounter] Encounter limit reached.", COLOR_ORANGE);
-            return false;
-        }
-
-        if (!mine_escape_and_settle(stream, context)){
-            return false;
-        }
-
-        stream.log("[Mine encounter] Escaped; resuming interrupted action.");
-    }
-}
-
-static bool mine_timed_walk(VideoStream& stream,
-    ProControllerContext& context,
-    double x,
-    double y,
-    std::chrono::milliseconds duration){
-    auto remaining = duration;
-
-    return mine_run_with_encounters(stream, context, [&](ProControllerContext& ctx){
-        while (remaining > 0ms){
-            const auto pulse = remaining < 100ms ? remaining : 100ms;
-            pbf_move_left_joystick(ctx, {x, y}, pulse, 0ms);
-            pbf_wait(ctx, 700ms);
-            ctx.wait_for_all_requests();
-
-            // An interrupted pulse is retried after escaping.
-            // This is a timing budget, not exact distance tracking.
-            remaining -= pulse;
-        }
-        return true;
-    });
-}
-
-
-struct MinePictureScore {
-    double average = 1000.0;
-    double worst = 1000.0;
-    double horizontal = 0;
-    double vertical = 0;
-};
-
-// Supports four, five, or six regions. Existing four-region callers keep
-// their original search ranges through the default arguments.
-template <size_t Regions>
-static MinePictureScore mine_score_picture(const ImageRGB32& reference,
-    const ImageRGB32& live,
-    const std::array<ImageFloatBox, Regions>& boxes,
-    double horizontal_range = 1.0 / 60,
-    double vertical_range = 2.0 / 135){
-    MinePictureScore best;
-    const int radius_x = (int)std::lround(horizontal_range * live.width());
-    const int radius_y = (int)std::lround(vertical_range * live.height());
-    for (int y = -radius_y; y <= radius_y; y++){
-        for (int x = -radius_x; x <= radius_x; x++){
-            double total = 0.0;
-            double worst = 0.0;
-            for (const ImageFloatBox& box : boxes){
-                const ImageViewRGB32 ref = extract_box_reference(reference, box);
-                const ImageViewRGB32 patch = extract_box_reference(live, box, x, y);
-                const double score = ImageMatch::pixel_RMSD(ref, patch);
-                total += score;
-                if (score > worst){
-                    worst = score;
-                }
-            }
-            const double average = total / boxes.size();
-            if (average < best.average){
-                best.average = average;
-                best.worst = worst;
-                best.horizontal = (double)x / live.width();
-                best.vertical = (double)y / live.height();
-            }
-        }
-    }
-    return best;
-}
-
-
-static bool mine_check_picture(VideoStream& stream,
-    ProControllerContext& context,
-    const char* filename,
-    const std::array<ImageFloatBox, 4>& boxes,
-    const std::string& label,
-    size_t max_attempts = 8,
-    double max_average = 20.0,
-    double max_patch = 30.0){
-    const ImageRGB32 reference(mine_navigation_resource_path() + filename);
-    const ImageRGB32 reference_scaled = reference.scale_to(960, 540);
-
-    const bool confirmed = mine_run_with_encounters(stream, context, [&](ProControllerContext& ctx){
-        // The watcher stays active throughout settling and sampling.
-        // There is no separate 500ms watcher wait before each sample.
-        ctx.wait_for_all_requests();
-        pbf_wait(ctx, 700ms);
-        ctx.wait_for_all_requests();
-
-        // Restart confirmation after a battle; do not reuse old matches.
-        size_t matching_frames = 0;
-
-        for (size_t attempt = 0; attempt < max_attempts; attempt++){
-            const VideoSnapshot frame = stream.video().snapshot();
-            if (!frame){
-                stream.log(label + ": no video frame.", COLOR_ORANGE);
-                return false;
-            }
-
-            const ImageRGB32 live = frame->scale_to(960, 540);
-            const MinePictureScore score = mine_score_picture(reference_scaled, live, boxes);
-
-            stream.log(
-                label + ": average=" + std::to_string(score.average) + ", worst patch=" + std::to_string(score.worst));
-
-            if (score.average <= max_average && score.worst <= max_patch){
-                if (++matching_frames >= 3){
-                    return true;
-                }
-            }else{
-                matching_frames = 0;
-            }
-
-            pbf_wait(ctx, 250ms);
-            ctx.wait_for_all_requests();
-        }
-
-        return false;
-    });
-
-    stream.log(label + (confirmed ? ": confirmed." : ": not confirmed."), confirmed ? COLOR_GREEN : COLOR_ORANGE);
-    return confirmed;
-}
-
-struct MineWalkOptions {
-    double x = 0.0;
-    double y = 0.0;
-    std::chrono::milliseconds pulse = 40ms;
-    std::chrono::milliseconds settle = 500ms;
-    std::chrono::milliseconds initial_settle = 0ms;
-    size_t max_movements = 30;
-    double horizontal_range = 0.0125;
-    double vertical_range = 1.0 / 90;
-    double max_average = 20.0;
-    double max_patch = 30.0;
-};
-
-template <size_t Regions, size_t Endpoints>
-static bool mine_walk_to_endpoints(VideoStream& stream,
-    ProControllerContext& context,
-    const std::array<const char*, Endpoints>& files,
-    const std::array<std::array<ImageFloatBox, Regions>, Endpoints>& boxes,
-    const MineWalkOptions& options,
-    const std::string& label,
-    bool force_encounter = false){
-    std::array<std::unique_ptr<ImageRGB32>, Endpoints> references;
-    for (size_t index = 0; index < Endpoints; index++){
-        const ImageRGB32 image(mine_navigation_resource_path() + files[index]);
-        references[index] = std::make_unique<ImageRGB32>(image.scale_to(960, 540));
-    }
-
-    size_t movements = 0;
-    bool forced_completed = false;
-
-    while (true){
-        bool request_forced_test = false;
-        const bool reached = mine_run_with_encounters(stream, context, [&](ProControllerContext& ctx){
-            if (options.initial_settle > 0ms){
-                pbf_wait(ctx, options.initial_settle);
-                ctx.wait_for_all_requests();
-            }
-            // Reset the match history whenever an encounter interrupts us.
-            size_t matching_frames = 0;
-            int previous_endpoint = -1;
-
-            while (true){
-                ctx.wait_for_all_requests();
-                const VideoSnapshot frame = stream.video().snapshot();
-                if (!frame){
-                    stream.log(label + ": no video frame.", COLOR_ORANGE);
-                    return false;
-                }
-
-                const ImageRGB32 live = frame->scale_to(960, 540);
-                int accepted = -1;
-                double accepted_average = 1000.0;
-
-                for (size_t endpoint = 0; endpoint < Endpoints; endpoint++){
-                    const MinePictureScore score = mine_score_picture(*references[endpoint],
-                        live,
-                        boxes[endpoint],
-                        options.horizontal_range,
-                        options.vertical_range);
-                    stream.log(label + " Endpoint " + std::to_string(endpoint + 1) +
-                        ": average=" + std::to_string(score.average) + ", worst patch=" + std::to_string(score.worst) +
-                        ", screen-relative offset=(" + std::to_string(score.horizontal) + "," +
-                        std::to_string(score.vertical) + ")");
-
-                    if (score.average <= options.max_average && score.worst <= options.max_patch &&
-                        score.average < accepted_average){
-                        accepted = static_cast<int>(endpoint);
-                        accepted_average = score.average;
-                    }
-                }
-
-                if (accepted >= 0){
-                    matching_frames = accepted == previous_endpoint ? matching_frames + 1 : 1;
-                    previous_endpoint = accepted;
-                    if (matching_frames >= 3){
-                        stream.log(label + " Endpoint " + std::to_string(accepted + 1) + " confirmed.", COLOR_GREEN);
-                        return true;
-                    }
-                    pbf_wait(ctx, 250ms);
-                    ctx.wait_for_all_requests();
-                    continue;
-                }
-
-                matching_frames = 0;
-                previous_endpoint = -1;
-
-                // Exit the guard before invoking the diagnostic wiggle:
-                // it has its own encounter watcher and must not be nested.
-                if (force_encounter && !forced_completed && movements >= 4){
-                    request_forced_test = true;
-                    return false;
-                }
-
-                if (movements >= options.max_movements){
-                    stream.log(label + ": movement limit reached.", COLOR_ORANGE);
-                    return false;
-                }
-
-                // Count issued commands, including interrupted commands.
-                movements++;
-                pbf_move_left_joystick(ctx, {options.x, options.y}, options.pulse, 0ms);
-                pbf_wait(ctx, options.settle);
-                ctx.wait_for_all_requests();
-            }
-        });
-
-        if (reached){
-            return true;
-        }
-        if (!request_forced_test){
-            return false;
-        }
-        if (!mine_force_encounter_test(stream, context)){
-            return false;
-        }
-        forced_completed = true;
-        stream.log(label + ": forced encounter completed; resuming.");
-    }
-}
-
-static bool
-oreburgh_mine_walk_to_first_rock(VideoStream& stream, ProControllerContext& context, bool force_encounter = false){
-    const std::array<const char*, 1> files = {"mine_path_01.png"};
-    const std::array<std::array<ImageFloatBox, 6>, 1> boxes = {{{{ImageFloatBox(0.482, 0.585, 0.055, 0.055),
-                    ImageFloatBox(0.335, 0.670, 0.050, 0.055),
-                    ImageFloatBox(0.412, 0.670, 0.050, 0.055),
-                    ImageFloatBox(0.570, 0.752, 0.045, 0.055),
-                    ImageFloatBox(0.645, 0.752, 0.045, 0.055),
-                    ImageFloatBox(0.570, 0.290, 0.080, 0.120)}}}};
-
-    MineWalkOptions options;
-    options.x = 0.0;
-    options.y = -1.0;
-    options.pulse = 80ms;
-    options.max_movements = 40;
-    options.horizontal_range = 0.025;
-    return mine_walk_to_endpoints(stream, context, files, boxes, options, "[Mine path 01]", force_encounter);
-}
-
-static bool oreburgh_mine_move_right(VideoStream& stream, ProControllerContext& context){
-    const std::array<const char*, 2> files = {"mine_path_01_1.png", "mine_path_01_2.png"};
-    const std::array<std::array<ImageFloatBox, 6>, 2> boxes = {{{{ImageFloatBox(0.400, 0.585, 0.055, 0.055),
-                    ImageFloatBox(0.245, 0.670, 0.050, 0.055),
-                    ImageFloatBox(0.322, 0.670, 0.050, 0.055),
-                    ImageFloatBox(0.480, 0.752, 0.045, 0.055),
-                    ImageFloatBox(0.555, 0.752, 0.045, 0.055),
-                    ImageFloatBox(0.485, 0.290, 0.080, 0.090)}},
-            {{ImageFloatBox(0.325, 0.585, 0.055, 0.055),
-                    ImageFloatBox(0.170, 0.670, 0.050, 0.055),
-                    ImageFloatBox(0.244, 0.670, 0.050, 0.055),
-                    ImageFloatBox(0.395, 0.752, 0.045, 0.055),
-                    ImageFloatBox(0.470, 0.752, 0.045, 0.055),
-                    ImageFloatBox(0.415, 0.290, 0.080, 0.090)}}}};
-
-    MineWalkOptions options;
-    options.x = 1.0;
-    options.y = 0.0;
-    options.pulse = 40ms;
-    options.max_movements = 20;
-    options.horizontal_range = 0.0125;
-    return mine_walk_to_endpoints(stream, context, files, boxes, options, "[Mine right]");
-}
-
-static bool oreburgh_mine_down_past_central_rock(VideoStream& stream, ProControllerContext& context){
-    const std::array<const char*, 2> files = {"mine_path_02_1.png", "mine_path_02_2.png"};
-    const std::array<std::array<ImageFloatBox, 6>, 2> boxes = {{{{ImageFloatBox(0.345, 0.420, 0.040, 0.045),
-                    ImageFloatBox(0.195, 0.500, 0.040, 0.045),
-                    ImageFloatBox(0.270, 0.500, 0.040, 0.045),
-                    ImageFloatBox(0.410, 0.590, 0.040, 0.045),
-                    ImageFloatBox(0.480, 0.590, 0.040, 0.045),
-                    ImageFloatBox(0.445, 0.180, 0.060, 0.090)}},
-            {{ImageFloatBox(0.420, 0.420, 0.040, 0.045),
-                    ImageFloatBox(0.270, 0.500, 0.040, 0.045),
-                    ImageFloatBox(0.345, 0.500, 0.040, 0.045),
-                    ImageFloatBox(0.485, 0.590, 0.040, 0.045),
-                    ImageFloatBox(0.555, 0.590, 0.040, 0.045),
-                    ImageFloatBox(0.520, 0.180, 0.060, 0.090)}}}};
-
-    MineWalkOptions options;
-    options.x = 0.0;
-    options.y = -1.0;
-    options.pulse = 40ms;
-    options.max_movements = 30;
-    // options.horizontal_range = 0.0125;
-    // Path 02 can be shifted horizontally after the first right endpoint.
-    // The screenshot regression matches at about -2.08% of screen width.
-    options.horizontal_range = 0.025;
-    return mine_walk_to_endpoints(stream, context, files, boxes, options, "[Mine down 02]");
-}
-
-static bool oreburgh_mine_move_left_to_gap(VideoStream& stream, ProControllerContext& context){
-    const std::array<const char*, 1> files = {"mine_path_03.png"};
-    const std::array<std::array<ImageFloatBox, 5>, 1> boxes = {{{{ImageFloatBox(0.340, 0.495, 0.040, 0.045),
-                    ImageFloatBox(0.410, 0.495, 0.040, 0.045),
-                    ImageFloatBox(0.555, 0.580, 0.040, 0.045),
-                    ImageFloatBox(0.625, 0.580, 0.040, 0.045),
-                    ImageFloatBox(0.580, 0.180, 0.060, 0.090)}}}};
-
-    MineWalkOptions options;
-    options.x = -1.0;
-    options.y = 0.0;
-    options.pulse = 40ms;
-    options.max_movements = 30;
-    options.horizontal_range = 0.0125;
-    return mine_walk_to_endpoints(stream, context, files, boxes, options, "[Mine left 03]");
-}
-
-
-// Confirm we are far enough down before beginning the leftward section.
-
-
-// Each picture stage owns its movement and matching settings.
-struct MinePictureStep {
-    const char* file;
-    const char* label;
-    std::array<ImageFloatBox, 4> boxes;
-    double x;
-    double y;
-    std::chrono::milliseconds pulse = 80ms;
-    size_t max_movements = 30;
-    double max_average = 20.0;
-    double max_patch = 30.0;
-};
-
-static bool mine_run_picture_step(VideoStream& stream, ProControllerContext& context, const MinePictureStep& step){
-    MineWalkOptions options;
-    options.x = step.x;
-    options.y = step.y;
-    options.pulse = step.pulse;
-    options.max_movements = step.max_movements;
-    options.max_average = step.max_average;
-    options.max_patch = step.max_patch;
-    options.horizontal_range = 1.0 / 60;
-    options.vertical_range = 2.0 / 135;
-    options.initial_settle = 700ms;
-    options.settle = 700ms;
-    const std::array<const char*, 1> files = {step.file};
-    const std::array<std::array<ImageFloatBox, 4>, 1> boxes = {{step.boxes}};
-    return mine_walk_to_endpoints(stream, context, files, boxes, options, step.label);
-}
-
-static bool oreburgh_mine_confirm_05(VideoStream& stream, ProControllerContext& context){
-    const MinePictureStep step = {"mine_path_05.png",
-        "[Mine endpoint 05]",
-        {ImageFloatBox(0.240, 0.240, 0.055, 0.080),
-            ImageFloatBox(0.390, 0.220, 0.050, 0.090),
-            ImageFloatBox(0.360, 0.090, 0.030, 0.030),
-            ImageFloatBox(0.550, 0.140, 0.040, 0.040)},
-        0.0,
-        -1.0,
-        60ms,
-        10,
-        20.0,
-        30.0};
-    return mine_run_picture_step(stream, context, step);
-}
-
-// Timed movement through paths 6 and 7, with picture checks.
-static bool oreburgh_mine_timed_to_07(VideoStream& stream, ProControllerContext& context){
-    stream.log("[Mine 04-07] Walking down for 1500ms.");
-
-    if (!mine_timed_walk(stream, context, 0.0, -1.0, 1500ms)){
-        return false;
-    }
-
-    if (!oreburgh_mine_confirm_05(stream, context)){
-        return false;
-    }
-
-    stream.log("[Mine 04-07] Walking left for 3000ms.");
-
-    if (!mine_timed_walk(stream, context, -1.0, 0.0, 3000ms)){
-        return false;
-    }
-
-    // Path 6: crate, nearby small rock, large rock, upper-right small rock.
-    const std::array<ImageFloatBox, 4> path6_boxes = {ImageFloatBox(0.350, 0.250, 0.085, 0.075),
-        ImageFloatBox(0.405, 0.510, 0.035, 0.040),
-        ImageFloatBox(0.520, 0.300, 0.050, 0.080),
-        ImageFloatBox(0.620, 0.350, 0.030, 0.040)};
-
-    if (!mine_check_picture(stream, context, "mine_path_06.png", path6_boxes, "[Mine midpoint 06]")){
-        return false;
-    }
-
-    stream.log("[Mine 04-07] Path 6 confirmed; walking down for 600ms.");
-
-    if (!mine_timed_walk(stream, context, 0.0, -1.0, 600ms)){
-        return false;
-    }
-
-    // Path 7: crate and three visible rock surfaces.
-    const std::array<ImageFloatBox, 4> path7_boxes = {ImageFloatBox(0.365, 0.025, 0.070, 0.055),
-        ImageFloatBox(0.420, 0.270, 0.035, 0.040),
-        ImageFloatBox(0.560, 0.415, 0.025, 0.040),
-        ImageFloatBox(0.530, 0.650, 0.060, 0.090)};
-
-    return mine_check_picture(stream, context, "mine_path_07.png", path7_boxes, "[Mine endpoint 07]");
-}
-
-// Move left from path 7 to the position shown in path 8.
-static bool oreburgh_mine_left_to_08(VideoStream& stream, ProControllerContext& context){
-    const MinePictureStep step = {"mine_path_08.png",
-        "[Mine endpoint 08]",
-        {ImageFloatBox(0.495, 0.035, 0.070, 0.055),
-            ImageFloatBox(0.550, 0.270, 0.035, 0.040),
-            ImageFloatBox(0.695, 0.420, 0.030, 0.040),
-            ImageFloatBox(0.555, 0.585, 0.035, 0.040)},
-        -1.0,
-        0.0,
-        40ms,
-        20,
-        20.0,
-        30.0};
-    return mine_run_picture_step(stream, context, step);
-}
-
-// Walk down along the left wall to path 9.
-
-static bool oreburgh_mine_down_to_09(VideoStream& stream, ProControllerContext& context){
-    const MinePictureStep step = {"mine_path_09.png",
-        "[Mine endpoint 09]",
-        {ImageFloatBox(0.550, 0.115, 0.030, 0.040),
-            ImageFloatBox(0.550, 0.390, 0.035, 0.040),
-            ImageFloatBox(0.620, 0.390, 0.025, 0.035),
-            ImageFloatBox(0.500, 0.720, 0.085, 0.080)},
-        0.0,
-        -1.0,
-        40ms,
-        25,
-        25.0,
-        35.0};
-    return mine_run_picture_step(stream, context, step);
-}
-
-
-// Require dialogue to appear first.
-// Then finish only after it has been absent for one continuous second.
-static bool mine_finish_item_dialogue(VideoStream& stream, ProControllerContext& context){
-    ShortDialogDetector dialogue(COLOR_YELLOW);
-
-    bool saw_dialogue = false;
-    auto absent_since = std::chrono::steady_clock::now();
-
-    const auto start = std::chrono::steady_clock::now();
-    const auto deadline = start + 30s;
-
-    stream.log("[Mine item] Starting interaction.");
-
-    while (std::chrono::steady_clock::now() < deadline){
-        context.wait_for_all_requests();
-        const VideoSnapshot frame = stream.video().snapshot();
-
-        if (!frame){
-            stream.log("[Mine item] No video frame. Stopping.", COLOR_ORANGE);
-            return false;
-        }
-
-        const auto now = std::chrono::steady_clock::now();
-        const bool visible = dialogue.detect(frame);
-
-        if (visible){
-            if (!saw_dialogue){
-                stream.log("[Mine item] Dialogue detected.");
-            }
-
-            saw_dialogue = true;
-            absent_since = now;
-
-            // Short mash bursts allow frequent checks.
-            pbf_mash_button(context, BUTTON_A, 100ms);
-        }else if (!saw_dialogue){
-            if (now - start >= 10s){
-                stream.log("[Mine item] No dialogue appeared. Stopping.", COLOR_ORANGE);
-                return false;
-            }
-
-            // Try to start the interaction.
-            pbf_press_button(context, BUTTON_A, 60ms, 100ms);
-        }else if (now - absent_since >= 1s){
-            stream.log("[Mine item] Dialogue absent for one second. Finished.", COLOR_GREEN);
-            return true;
-        }
-
-        pbf_wait(context, 100ms);
-        context.wait_for_all_requests();
-    }
-
-    stream.log("[Mine item] Dialogue timeout. Stopping.", COLOR_ORANGE);
-    return false;
-}
-
-
-static bool oreburgh_mine_09_to_14(VideoStream& stream, ProControllerContext& context){
-    const std::array<ImageFloatBox, 4> path10_boxes = {
-        ImageFloatBox(0.405, 0.720, 0.085, 0.080), // Crate
-        ImageFloatBox(0.480, 0.120, 0.030, 0.040), // Upper rock
-        ImageFloatBox(0.575, 0.420, 0.045, 0.080), // Large right rock
-        ImageFloatBox(0.550, 0.720, 0.030, 0.040)  // Lower small rock
-    };
-
-    const MinePictureStep path10_boxes_step =
-        {"mine_path_10.png", "[Mine endpoint 10]", path10_boxes, 1.0, 0.0, 80ms, 30, 20.0, 30.0};
-    if (!mine_run_picture_step(stream, context, path10_boxes_step)){
-        return false;
-    }
-
-    const std::array<ImageFloatBox, 4> path11_boxes = {ImageFloatBox(0.405, 0.560, 0.070, 0.080),
-        ImageFloatBox(0.475, 0.270, 0.030, 0.040),
-        ImageFloatBox(0.575, 0.290, 0.045, 0.080),
-        ImageFloatBox(0.550, 0.575, 0.030, 0.040)};
-
-    const MinePictureStep path11_boxes_step =
-        {"mine_path_11.png", "[Mine endpoint 11]", path11_boxes, 0.0, -1.0, 80ms, 30, 20.0, 30.0};
-    if (!mine_run_picture_step(stream, context, path11_boxes_step)){
-        return false;
-    }
-
-    const std::array<ImageFloatBox, 4> path12_boxes = {ImageFloatBox(0.260, 0.560, 0.080, 0.080),
-        ImageFloatBox(0.355, 0.270, 0.025, 0.035),
-        ImageFloatBox(0.435, 0.290, 0.040, 0.070),
-        ImageFloatBox(0.415, 0.585, 0.025, 0.035)};
-
-    const MinePictureStep path12_boxes_step =
-        {"mine_path_12.png", "[Mine endpoint 12]", path12_boxes, 1.0, 0.0, 80ms, 30, 20.0, 30.0};
-    if (!mine_run_picture_step(stream, context, path12_boxes_step)){
-        return false;
-    }
-
-    const std::array<ImageFloatBox, 4> path13_boxes = {
-        ImageFloatBox(0.290, 0.230, 0.070, 0.060), // Upper crate
-        ImageFloatBox(0.285, 0.390, 0.070, 0.060), // Lower crate
-        ImageFloatBox(0.425, 0.265, 0.025, 0.035), // Upper small rock
-        ImageFloatBox(0.405, 0.580, 0.030, 0.040)  // Bottom-left small rock
-    };
-
-    const MinePictureStep path13_boxes_step =
-        {"mine_path_13.png", "[Mine endpoint 13]", path13_boxes, 0.0, -1.0, 80ms, 30, 20.0, 30.0};
-    if (!mine_run_picture_step(stream, context, path13_boxes_step)){
-        return false;
-    }
-
-    // Turn left, then verify position before starting the interaction.
-    pbf_move_left_joystick(context, {-1.0, 0.0}, 40ms, 0ms);
-    pbf_wait(context, 500ms);
-    context.wait_for_all_requests();
-
-    if (!mine_check_picture(stream, context, "mine_path_14.png", path13_boxes, "[Mine position 14]", 3)){
-        return false;
-    }
-    stream.log("[Mine item] Position confirmed. Pressing A.");
-
-    pbf_press_button(context, BUTTON_A, 80ms, 200ms);
-    context.wait_for_all_requests();
-
-    return mine_finish_item_dialogue(stream, context);
-}
-
-// Compare a reference patch with a shifted live patch using the same
-// brightness adjustment as the native ImageMatchDetector.
-static double mine_offset_patch_score(const ImageRGB32& reference,
-    const ImageRGB32& live,
-    const ImageFloatBox& box,
-    double horizontal,
-    double vertical){
-    const ImageViewRGB32 reference_crop = extract_box_reference(reference, box);
-    ImageFloatBox shifted = box;
-    shifted.x += horizontal;
-    shifted.y += vertical;
-    const ImageViewRGB32 live_crop = extract_box_reference(live, shifted);
-    ImageRGB32 adjusted = live_crop.scale_to(reference_crop.width(), reference_crop.height());
-
-    const auto reference_average = ImageMatch::pixel_average(reference_crop, reference_crop);
-    const auto live_average = ImageMatch::pixel_average(adjusted, reference_crop);
-    auto scale = reference_average / live_average;
-    if (std::isnan(scale.r)){
-        scale.r = 1.0;
-    }
-    if (std::isnan(scale.g)){
-        scale.g = 1.0;
-    }
-    if (std::isnan(scale.b)){
-        scale.b = 1.0;
-    }
-    scale.bound(0.8, 1.2);
-    ImageMatch::scale_brightness(adjusted, scale);
-
-    return ImageMatch::pixel_RMSD(reference_crop, adjusted);
-}
-
-struct MineRoarkOffsetScore {
-    double left = 1000.0;
-    double right = 1000.0;
-    double helmet = 1000.0;
-    double horizontal = 0;
-    double vertical = 0;
-    double helmet_horizontal = 0;
-    double helmet_vertical = 0;
-};
-
-static MineRoarkOffsetScore mine_score_roark_offsets(const ImageRGB32& reference, const ImageRGB32& live){
-    const ImageFloatBox left_box(0.415, 0.400, 0.050, 0.095);
-    const ImageFloatBox right_box(0.555, 0.400, 0.055, 0.095);
-    const ImageFloatBox helmet_box(0.485, 0.335, 0.035, 0.045);
-
-    MineRoarkOffsetScore best;
-    double best_worst_rock = 1000.0;
-    double best_total = 2000.0;
-
-    // Both rocks must use the SAME offset. They cannot match independently.
-    // Search ranges are screen fractions; enumerate pixels only for scoring.
-    const int radius_x = (int)std::lround(live.width() / 60.0);
-    const int radius_y = (int)std::lround(live.height() * 2.0 / 135);
-    for (int y = -radius_y; y <= radius_y; y++){
-        for (int x = -radius_x; x <= radius_x; x++){
-            const double dx = (double)x / live.width(), dy = (double)y / live.height();
-            const double left = mine_offset_patch_score(reference, live, left_box, dx, dy);
-            const double right = mine_offset_patch_score(reference, live, right_box, dx, dy);
-            const double worst = left > right ? left : right;
-            const double total = left + right;
-
-            if (worst < best_worst_rock || (worst == best_worst_rock && total < best_total)){
-                best_worst_rock = worst;
-                best_total = total;
-                best.left = left;
-                best.right = right;
-                best.horizontal = (double)x / live.width();
-                best.vertical = (double)y / live.height();
-            }
-        }
-    }
-
-    // Roark's helmet may move slightly relative to the stationary rocks.
-    // Keep this extra search small so another red object cannot match far away.
-    const int helmet_radius_x = (int)std::lround(live.width() * 0.00625);
-    const int helmet_radius_y = (int)std::lround(live.height() / 90.0);
-    for (int extra_y = -helmet_radius_y; extra_y <= helmet_radius_y; extra_y++){
-        for (int extra_x = -helmet_radius_x; extra_x <= helmet_radius_x; extra_x++){
-            const double score = mine_offset_patch_score(reference,
-                live,
-                helmet_box,
-                best.horizontal + (double)extra_x / live.width(),
-                best.vertical + (double)extra_y / live.height());
-            if (score < best.helmet){
-                best.helmet = score;
-                best.helmet_horizontal = (double)extra_x / live.width();
-                best.helmet_vertical = (double)extra_y / live.height();
-            }
-        }
-    }
-
-    return best;
-}
-
-static bool oreburgh_mine_align_to_18(VideoStream& stream, ProControllerContext& context){
-    const ImageRGB32 reference(mine_navigation_resource_path() + "Mine_path_18.png");
-    const ImageRGB32 reference_scaled = reference.scale_to(960, 540);
-    const double max_rmsd = 65.0;
-    size_t movements = 0;
-
-    return mine_run_with_encounters(stream, context, [&](ProControllerContext& ctx){
-        // Fresh confirmation after any encounter.
-        size_t matching_frames = 0;
-        pbf_wait(ctx, 500ms);
-        ctx.wait_for_all_requests();
-
-        while (true){
-            const VideoSnapshot frame = stream.video().snapshot();
-            if (!frame){
-                stream.log("[Mine endpoint 18] No video frame.", COLOR_ORANGE);
-                return false;
-            }
-
-            const ImageRGB32 live = frame->scale_to(960, 540);
-            const MineRoarkOffsetScore score = mine_score_roark_offsets(reference_scaled, live);
-
-            stream.log("[Mine endpoint 18] Left rock=" + std::to_string(score.left) +
-                ", Right rock=" + std::to_string(score.right) + ", Helmet=" + std::to_string(score.helmet) +
-                ", shared screen-relative offset=(" + std::to_string(score.horizontal) + "," +
-                std::to_string(score.vertical) + "), helmet screen-relative extra=(" +
-                std::to_string(score.helmet_horizontal) + "," + std::to_string(score.helmet_vertical) + ")");
-
-            if (score.left <= max_rmsd && score.right <= max_rmsd && score.helmet <= max_rmsd){
-                if (++matching_frames >= 3){
-                    stream.log("[Mine endpoint 18] Rocks and helmet confirmed.", COLOR_GREEN);
-                    return true;
-                }
-                pbf_wait(ctx, 250ms);
-                ctx.wait_for_all_requests();
-                continue;
-            }
-
-            matching_frames = 0;
-            if (movements >= 80){
-                stream.log("[Mine endpoint 18] Movement limit reached.", COLOR_ORANGE);
-                return false;
-            }
-
-            const bool approaching = score.left <= 120.0 && score.right <= 120.0 && score.helmet <= 150.0;
-            const bool near = score.left <= 100.0 && score.right <= 100.0 && score.helmet <= 100.0;
-            const auto pulse = near ? 20ms : approaching ? 40ms : 60ms;
-
-            // Use the outer encounter watcher; do not nest mine_timed_walk.
-            // Count issued pulses, including any interrupted by a battle.
-            movements++;
-            pbf_move_left_joystick(ctx, {1.0, 0.0}, pulse, 0ms);
-            pbf_wait(ctx, 700ms);
-            ctx.wait_for_all_requests();
-        }
-    });
-}
-
-static bool oreburgh_mine_14_to_19(VideoStream& stream, ProControllerContext& context){
-    const std::array<ImageFloatBox, 4> path15_boxes = {
-        ImageFloatBox(0.140, 0.220, 0.080, 0.070), // Upper crate
-        ImageFloatBox(0.125, 0.370, 0.080, 0.070), // Lower crate
-        ImageFloatBox(0.285, 0.250, 0.035, 0.045), // Small upper rock
-        ImageFloatBox(0.325, 0.560, 0.035, 0.045)  // Lower rock
-    };
-
-    const MinePictureStep path15_boxes_step =
-        {"mine_path_15_actual.png", "[Mine endpoint 15]", path15_boxes, 1.0, 0.0, 80ms, 30, 20.0, 30.0};
-    if (!mine_run_picture_step(stream, context, path15_boxes_step)){
-        return false;
-    }
-
-    // Move below the worker before continuing right.
-    const std::array<ImageFloatBox, 4> path16_boxes = {
-        ImageFloatBox(0.145, 0.160, 0.080, 0.070), // Upper crate
-        ImageFloatBox(0.135, 0.305, 0.080, 0.070), // Lower crate
-        ImageFloatBox(0.290, 0.195, 0.035, 0.045), // Small upper rock
-        ImageFloatBox(0.330, 0.495, 0.035, 0.045)  // Lower rock
-    };
-
-    const MinePictureStep path16_boxes_step =
-        {"mine_path_16.png", "[Mine endpoint 16]", path16_boxes, 0.0, -1.0, 80ms, 30, 20.0, 30.0};
-    if (!mine_run_picture_step(stream, context, path16_boxes_step)){
-        return false;
-    }
-
-    // Skip 17 and find the actual stopping point at 18.
-    if (!oreburgh_mine_align_to_18(stream, context)){
-        return false;
-    }
-
-    // Position 19 is the upward turn toward Roark.
-    pbf_move_left_joystick(context, {0.0, 1.0}, 40ms, 0ms);
-    pbf_wait(context, 500ms);
-    context.wait_for_all_requests();
-
-    stream.log("[Mine endpoint 19] Position 18 confirmed; north turn sent.", COLOR_GREEN);
-    return true;
-}
-
-bool oreburgh_mine_route(VideoStream& stream, ProControllerContext& context, const MineRouteTestOptions& options){
-    stream.log("[Mine resources] " + mine_navigation_resource_path());
-    struct Step {
-        const char* name;
-        bool (*run)(VideoStream&, ProControllerContext&);
-    };
-
-    const std::array<Step, 10> steps = {{{"Align entrance", oreburgh_mine_alignment_test},
-            {"Walk to first rock",
-                [](VideoStream& video, ProControllerContext& controller){
-                    return oreburgh_mine_walk_to_first_rock(video, controller, false);
-                }},
-            {"Move right of first rock", oreburgh_mine_move_right},
-            {"Move below first rock", oreburgh_mine_down_past_central_rock},
-            {"Move left into center gap", oreburgh_mine_move_left_to_gap},
-            {"Reach position 07", oreburgh_mine_timed_to_07},
-            {"Reach position 08", oreburgh_mine_left_to_08},
-            {"Reach position 09", oreburgh_mine_down_to_09},
-            {"Reach 14 and collect item", oreburgh_mine_09_to_14},
-            {"Reach 18 and turn north for 19", oreburgh_mine_14_to_19}}};
-
-    const size_t first = static_cast<size_t>(options.first);
-    const size_t last = static_cast<size_t>(options.last);
-
-    if (first > last || last >= steps.size()){
-        stream.log("[Mine route] Invalid stage range.", COLOR_ORANGE);
-        return false;
-    }
-
-    for (size_t index = first; index <= last; index++){
-        const Step& step = steps[index];
-
-        stream.log(std::string("[Mine route] Starting: ") + step.name);
-
-        bool succeeded = false;
-
-        try {
-            succeeded = step.run(stream, context);
-        } catch (OperationFailedException& error){
-            stream.log(std::string("[Mine route] Failed during ") + step.name + ": " + error.message(), COLOR_ORANGE);
-
-            if (options.reset_on_failure){
-                throw;
-            }
-
-            stream.log("[Mine route] Test stopped without requesting a reset.", COLOR_ORANGE);
-            return false;
-        }
-
-        if (!succeeded){
-            stream.log(std::string("[Mine route] Stage failed: ") + step.name, COLOR_ORANGE);
-
-            if (options.reset_on_failure){
-                OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
-                    std::string("Mine route failed during: ") + step.name,
-                    stream);
-            }
-
-            return false;
-        }
-
-        stream.log(std::string("[Mine route] Completed: ") + step.name, COLOR_GREEN);
-    }
-
-    stream.log("[Mine route] Selected stages completed.", COLOR_GREEN);
-    return true;
-}
-
-// Start Roark's conversation once, then advance it with B.
-// Require dialogue to be seen before accepting its disappearance.
-
-static bool mine_talk_to_roark(VideoStream& stream, ProControllerContext& context){
-    stream.log("[Mine Roark] Pressing A to start conversation.");
-    pbf_press_button(context, BUTTON_A, 80ms, 100ms);
-    context.wait_for_all_requests();
-
-    // The opening cutscene precedes the first dialogue box.
-    // Do not mash B or measure dialogue absence during that cutscene.
-    wait_for_dialogue(stream, context, "[Mine Roark] First box", 30s);
-
-    ShortDialogDetector dialogue(COLOR_YELLOW);
-    const auto deadline = std::chrono::steady_clock::now() + 60s;
-    bool timing_absence = false;
-    auto absent_since = std::chrono::steady_clock::now();
-    while (std::chrono::steady_clock::now() < deadline){
-        const VideoSnapshot frame = stream.video().snapshot();
-        if (!frame){
-            stream.log("[Mine Roark] No video frame.", COLOR_ORANGE);
-            return false;
-        }
-        const auto now = std::chrono::steady_clock::now();
-        if (dialogue.detect(frame)){
-            timing_absence = false;
+        quiet_since = std::chrono::steady_clock::now();
+        if (talking){
+            pbf_press_button(context, BUTTON_B, 80ms, 1100ms);
         }else{
-            if (!timing_absence){
-                timing_absence = true;
-                absent_since = now;
-            }
-            if (now - absent_since >= 4s){
-                stream.log("[Mine Roark] Dialogue absent for 4 seconds. Finished.", COLOR_GREEN);
-                return true;
-            }
+            pbf_wait(context, 300ms);
         }
-        pbf_mash_button(context, BUTTON_B, 100ms);
-        context.wait_for_all_requests();
     }
-    stream.log("[Mine Roark] Conversation timed out.", COLOR_ORANGE);
-    return false;
+    fail(stream, label + ": neither a battle nor the overworld after the dialogue.");
 }
 
-// Retain the developer test entry point; both callers share the same route.
-bool oreburgh_mine_first_leg_test(VideoStream& stream,
-    ProControllerContext& context,
-    const MineRouteTestOptions& options){
-    return oreburgh_mine_route(stream, context, options);
-}
-
-// Shared final step for the live route and the entrance-start test.
-static bool mine_talk_and_escape(VideoStream& stream, ProControllerContext& context){
-    if (!mine_talk_to_roark(stream, context)){
-        return false;
-    }
-    stream.log("[Mine exit] Finding Escape Rope in the Bag.");
-    if (!use_escape_rope(stream, context, 8)){
-        return false;
-    }
-    stream.log("[Mine exit] Roark conversation and Escape Rope exit succeeded.", COLOR_GREEN);
-    return true;
-}
-
-bool oreburgh_mine_route_and_escape_test(VideoStream& stream, ProControllerContext& context){
-    MineRouteTestOptions route;
-    route.reset_on_failure = false;
-    if (!oreburgh_mine_first_leg_test(stream, context, route)){
-        return false;
-    }
-    try {
-        if (!mine_talk_and_escape(stream, context)){
-            stream.log("[Mine exit test] Failed. Stopping without resetting.", COLOR_ORANGE);
-            return false;
+//  Logs a checkpoint's steps up front, then each step as it starts, with the
+//  one after it, in the log and the overlay.
+class StepLog{
+public:
+    StepLog(VideoStream& stream, std::string checkpoint, std::string intro, std::vector<std::string> steps)
+        : m_stream(stream), m_checkpoint(std::move(checkpoint)), m_steps(std::move(steps))
+    {
+        std::string text = "[" + m_checkpoint + "] " + intro + ", the steps are:";
+        for (size_t i = 0; i < m_steps.size(); i++){
+            text += "\n    " + std::to_string(i + 1) + ". " + m_steps[i];
         }
-    } catch (OperationFailedException& error){
-        stream.log("[Mine exit test] " + error.message(), COLOR_ORANGE);
-        stream.log("[Mine exit test] Stopped without requesting a reset.", COLOR_ORANGE);
-        return false;
+        m_stream.log(text, COLOR_BLUE);
     }
-    return true;
-}
-
-void oreburgh_mine_nav(VideoStream& stream, ProControllerContext& context){
-    walk_through_grass(stream, context, 0, -1, 1, "down into mine");
-    context.wait_for_all_requests();
-    walk_until_doorway(stream, context, MoveDirection::DOWN, 4350ms);
-    context.wait_for_all_requests();
-    pbf_wait(context, 1824ms);
-
-    MineRouteTestOptions route;
-    route.reset_on_failure = true;
-
-    if (!oreburgh_mine_route(stream, context, route)){
-        OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
-            "Mine route did not complete.",
-            stream);
-    }
-
-
-    if (!mine_talk_and_escape(stream, context)){
-        OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
-            "Mine route: Roark conversation or Escape Rope exit failed.",
-            stream);
-    }
-}
-// ---------------------------------------------------------------------------
-//  Segment 1 Part 3: Oreburgh Mine to Gym
-//  Assumes that escape rope was picked up and used to exit the mine.
-//  Follows the validated blind route into the gym.
-//  ----------------------------------------------------------------------------
-void oreburgh_mine_to_gym(SingleSwitchProgramEnvironment& env, VideoStream& stream, ProControllerContext& context){
-
-    stream.log("[Mine to gym] Following recorded route from the mine exit.");
-    pbf_wait(context, 700ms);
-    context.wait_for_all_requests();
-    pbf_move_left_joystick(context, {0.000000, 1.000000}, 3995ms, 0ms);
-    pbf_wait(context, 672ms);
-    pbf_move_left_joystick(context, {-1.000000, -0.000000}, 681ms, 0ms);
-    pbf_wait(context, 468ms);
-    pbf_move_left_joystick(context, {0.000000, 1.000000}, 1081ms, 0ms);
-    pbf_wait(context, 420ms);
-    pbf_move_left_joystick(context, {-1.000000, -0.000000}, 2445ms, 0ms);
-    pbf_wait(context, 1056ms);
-    pbf_move_left_joystick(context, {-1.000000, -0.000000}, 95ms, 0ms);
-    pbf_wait(context, 4787ms);
-    pbf_move_left_joystick(context, {0.000000, 1.000000}, 1309ms, 0ms);
-
-    //pbf_move_left_joystick(context, { 0.000000, 1.000000 }, 4450ms, 0ms);
-    //pbf_wait(context, 3635ms);
-    //pbf_move_left_joystick(context, { -1.000000, -0.000000 }, 640ms, 0ms);
-    //pbf_wait(context, 3795ms);
-    context.wait_for_all_requests();
-
-    //stream.log("[Mine to gym] Staying west of the hiker; moving north along the left fence.");
-    //pbf_move_left_joystick(context, { 0.000000, 1.000000 }, 2000ms, 0ms);
-    //pbf_wait(context, 602ms);
-    //pbf_move_left_joystick(context, { -1.000000, -0.000000 }, 2364ms, 0ms);
-    //pbf_wait(context, 5069ms);
-    //pbf_move_left_joystick(context, { 0.000000, -1.000000 }, 1079ms, 0ms);
-    //pbf_wait(context, 605ms);
-    //pbf_move_left_joystick(context, { -1.000000, -0.000000 }, 728ms, 0ms);
-    //pbf_wait(context, 1081ms);
-    //pbf_move_left_joystick(context, { 1.000000, -0.000000 }, 155ms, 0ms);
-    //pbf_wait(context, 2642ms);
-    //pbf_move_left_joystick(context, { 1.000000, -0.000000 }, 64ms, 0ms);
-    //pbf_wait(context, 5340ms);
-    //context.wait_for_all_requests();
-
-    //pbf_move_left_joystick(context, { 0.000000, 1.000000 }, 541ms, 0ms);
-    //pbf_wait(context, 140ms);
-    //pbf_move_left_joystick(context, { 0.000000, 1.000000 }, 47ms, 0ms);
-    //context.wait_for_all_requests();
-    //stream.log("[Mine to gym] Recorded movement finished; waiting for gym entry to settle.");
-    // walk_until_doorway(stream, context, MoveDirection::UP, 5s);
-    // Finish entering the doorway with a bounded blind input.
-    //pbf_move_left_joystick(context, { 0.000000, 1.000000 }, 1000ms, 0ms);
-    //context.wait_for_all_requests();
-    //pbf_wait(context, 1500ms);
-    //context.wait_for_all_requests();
-    stream.log("[Mine to gym] Blind mine-to-gym sequence completed.", COLOR_GREEN);
-}
-
-// ---------------------------------------------------------------------------
-//  Segment 1 Part 4: Gym navigation
-//  Navigates the player through the first Gym in Oreburgh City and completes the Gym battle.
-// ---------------------------------------------------------------------------
-
-void gym_Puzzle_01(SingleSwitchProgramEnvironment& env, VideoStream& stream, ProControllerContext& context){
-
-    //Upon entering the Gym.
-    // The entry camera sequence lasts about 7.5 seconds in the reference
-    // video. Allow another 500ms before sending puzzle movement inputs.
-    context.wait_for_all_requests();
-    env.log("[Gym puzzle] Waiting for the entry cutscene to finish.");
-    pbf_wait(context, 8000ms);
-    context.wait_for_all_requests();
-
-    struct Move {
-        DpadPosition dir;
-        int count;
-    };
-    const Move sequence[] = {
-        {DPAD_UP, 3},
-        {DPAD_LEFT, 4},
-        {DPAD_UP, 5},
-        {DPAD_RIGHT, 8},
-        {DPAD_UP, 11},
-        {DPAD_LEFT, 5},
-        {DPAD_UP, 4},
-    };
-
-    for (const auto& move : sequence){
-        for (int i = 0; i < move.count; i++){
-            pbf_press_dpad(context, move.dir, 80ms, 300ms);
+    void operator()(size_t number){
+        const std::string count = std::to_string(number) + "/" + std::to_string(m_steps.size());
+        const bool last = number >= m_steps.size();
+        m_stream.log("[" + m_checkpoint + " step " + count + "] " + m_steps[number - 1] +
+            (last ? std::string(" -- last step") : " -- next: " + m_steps[number]), COLOR_BLUE);
+        add_wrapped_log(m_stream.overlay(), m_checkpoint + " step " + count + ": " + m_steps[number - 1], COLOR_WHITE);
+        if (!last){
+            add_wrapped_log(m_stream.overlay(), "Next: " + m_steps[number], COLOR_GRAY);
         }
     }
 
-    //Button presses to initiate the Gym battle.
-    pbf_press_button(context, BUTTON_A, 180ms, 0ms);
-    wait_for_dialogue(stream, context, "Phase 3 (Roark fight dialog)");
-    pbf_mash_button(context, BUTTON_B, 5000ms);
-    //Barry 1 battle logic can be used here since the moves don't matter this early.
-    Barry_1_fight(env, stream, context);
+private:
+    VideoStream& m_stream;
+    std::string m_checkpoint;
+    std::vector<std::string> m_steps;
+};
 
-    context.wait_for_all_requests();
-    wait_for_dialogue(stream, context, "Phase 4 (Roark post battle dialog)");
-    ShortDialogDetector post_battle_dialogue(COLOR_YELLOW);
-    const auto dialogue_deadline = std::chrono::steady_clock::now() + 180s;
-    auto dialogue_absent_since = std::chrono::steady_clock::now();
-    bool dialogue_finished = false;
-    stream.log("[Gym post battle] Clearing dialogue until absent for 4 seconds.");
-    while (std::chrono::steady_clock::now() < dialogue_deadline){
-        const VideoSnapshot frame = stream.video().snapshot();
-        if (!frame){
-            OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
-                "Gym post battle: No video frame while clearing dialogue.",
-                stream);
-        }
-        const auto now = std::chrono::steady_clock::now();
-        if (post_battle_dialogue.detect(frame)){
-            dialogue_absent_since = now;
-        }else if (now - dialogue_absent_since >= 4s){
-            dialogue_finished = true;
+void jubilife_to_barry(VideoStream& stream, ProControllerContext& context){
+    // What 01.01 does, stepped through on the console before writing it.
+    StepLog step(stream, "01.01", "From the Jubilife Pokemon Center to Barry", {
+        "Heal at the nurse, then walk out of the Pokemon Center",
+        "Walk to Jubilife's east exit and battle Barry at the Route 203 entrance",
+    });
+
+    step(1);
+    // The save stands us at the PC, right of the counter, facing it; west
+    // is the counter's end. Two tiles south clears it, then three west is
+    // the floor emblem's column, with the nurse north and the door south.
+    route_turn(stream, context, Direction::SOUTH);
+    pbf_move_left_joystick(context, {0, -1}, route_open_hold(Direction::SOUTH, 2), 200ms);
+    route_turn(stream, context, Direction::WEST);
+    pbf_move_left_joystick(context, {-1, 0}, route_open_hold(Direction::WEST, 3), 200ms);
+    if (walk_to_talk(stream, context, 0, 1, 3000ms, "to the nurse").stop != WalkStop::DIALOG){
+        fail(stream, "Jubilife Pokemon Center: the nurse did not answer.");
+    }
+    // A throughout: Yes to "rest your Pokemon?" (B would answer No).
+    finish_dialogue(stream, context, BUTTON_A, "Nurse");
+    // Healing shows no text box for a few seconds, which reads as the end;
+    // her "Thank you for waiting" lines follow it.
+    if (dialogue_opens(stream, context, 6000ms)){
+        finish_dialogue(stream, context, BUTTON_B, "Nurse, after healing");
+    }
+    // South through the door until a girl standing below it stops us. The
+    // door's fade may or may not read as a transition.
+    WalkResult out{WalkStop::LIMIT, 0ms, 0};
+    for (size_t walk = 0; walk < 3 && out.stop != WalkStop::BLOCKED; walk++){
+        out = walk_until(stream, context, 0, -1, 8000ms, "out of the Pokemon Center");
+        if (out.stop == WalkStop::DIALOG || out.stop == WalkStop::ARRIVED){
             break;
         }
-        pbf_mash_button(context, BUTTON_B, 100ms);
+    }
+    if (out.stop != WalkStop::BLOCKED){
+        fail(stream, std::string("Jubilife Pokemon Center: walking out ended with ") + walk_stop_name(out.stop) + ", not at the girls below the door.");
+    }
+
+    step(2);
+    // Jubilife's plaza has too few walls the grid gets right to plan on (a
+    // leg to a wall the map shows walked on 19 tiles). These are the holds
+    // that worked on the console: west onto the main road, north to the
+    // street east to Route 203, and back a couple of tiles.
+    route_turn(stream, context, Direction::WEST);
+    pbf_move_left_joystick(context, {-1, 0}, 720ms, 300ms);
+    route_turn(stream, context, Direction::NORTH);
+    pbf_move_left_joystick(context, {0, 1}, 3960ms, 300ms);
+    route_turn(stream, context, Direction::SOUTH);
+    pbf_move_left_joystick(context, {0, -1}, 600ms, 300ms);
+    context.wait_for_all_requests();
+    // East along the street. The opening to the route is a few rows high;
+    // Barry stops us a little way in. A wall means we are a row off it: try
+    // rows to the south, then to the north.
+    static const int ROW_CHANGES[] = {0, 1, 1, -3, -1};
+    bool barry = false;
+    for (int change : ROW_CHANGES){
+        if (barry){
+            break;
+        }
+        for (int i = 0; i < std::abs(change); i++){
+            const Direction dir = change > 0 ? Direction::SOUTH : Direction::NORTH;
+            route_turn(stream, context, dir);
+            pbf_move_left_joystick(context, {0, change > 0 ? -1.0 : 1.0}, route_open_hold(dir, 1), 200ms);
+        }
         context.wait_for_all_requests();
+        WalkResult walk{WalkStop::LIMIT, 0ms, 0};
+        for (size_t stretch = 0; stretch < 3 && walk.stop == WalkStop::LIMIT; stretch++){
+            walk = walk_until(stream, context, 1, 0, 9000ms, "east to Route 203");
+        }
+        barry = walk.stop == WalkStop::DIALOG;
     }
-    if (!dialogue_finished){
-        OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
-            "Gym post battle: Dialogue did not finish within 180 seconds.",
-            stream);
+    if (!barry){
+        fail(stream, "Route 203: Barry did not stop us at the entrance.");
     }
-    stream.log("[Gym post battle] Dialogue absent for 4 seconds. Walking down.");
+    if (!talk_or_fight(stream, context, "Barry", true)){
+        fail(stream, "Route 203: Barry talked but did not battle.");
+    }
+}
 
-    for (int i = 0; i < 21; i++){
-        pbf_press_dpad(context, DPAD_DOWN, 80ms, 300ms);
+void route203_to_oreburgh(VideoStream& stream, ProControllerContext& context){
+    StepLog step(stream, "01.02", "From Barry on Route 203 to Oreburgh City", {
+        "Walk east along Route 203 into the Oreburgh Gate, fighting the trainers who see us",
+        "Listen to the Hiker, who gives HM Rock Smash",
+        "Walk east through the Gate past Curtis and Diana, out to Oreburgh City",
+        "Listen to the man who meets us at the city's entrance",
+    });
+
+    step(1);
+    // Route 203 only goes east, over three stretches joined by stairs, and
+    // the Gate's opening is in the cliff at its north-east end. Who stops us
+    // differs from run to run (a trainer's sight depends on our row), so
+    // there is no fixed list: walk east, talk or fight whoever stops us, and
+    // at a wall find a row from which east goes on.
+    size_t fights = 0;
+    bool inside = false;
+    //  On Route 203 only trainers start a talk; one with no battle is the
+    //  Hiker, who meets us inside the Gate (whose fade may not read as a
+    //  transition).
+    bool met_hiker = false;
+    auto stopped_by = [&](){
+        if (talk_or_fight(stream, context, "Route 203 trainer " + std::to_string(fights + 1))){
+            fights++;
+        }else{
+            route_status(stream, "No battle: that was the Hiker, inside the Oreburgh Gate.");
+            met_hiker = true;
+            inside = true;
+        }
+    };
+    for (size_t leg = 0; leg < 40 && !inside; leg++){
+        const WalkResult walk = walk_until(stream, context, 1, 0, 10000ms, "east along Route 203");
+        if (walk.stop == WalkStop::TRANSITION){
+            inside = true;
+            break;
+        }
+        if (walk.stop == WalkStop::LIMIT){
+            continue;
+        }
+        if (walk.stop == WalkStop::DIALOG || dialogue_opens(stream, context, 1500ms)){
+            stopped_by();
+            continue;
+        }
+        // A wall. Find the row from which east goes on: north to the top wall
+        // first (a step north there does not move us, so rows are counted
+        // from it), then a row at a time south. At the route's end this is the
+        // corner by the second sign, with the Gate's opening two rows down.
+        walk_until(stream, context, 0, 1, 6000ms, "north to the top wall");
+        bool moved_on = false;
+        for (size_t row = 1; row <= 10 && !moved_on; row++){
+            step_south(stream, context);
+            const WalkResult next = walk_until(stream, context, 1, 0, 10000ms, "east along Route 203, row " + std::to_string(row) + " below the top");
+            if (next.stop == WalkStop::TRANSITION){
+                inside = true;
+            }
+            if (next.stop == WalkStop::DIALOG || (next.stop == WalkStop::BLOCKED && dialogue_opens(stream, context, 1500ms))){
+                stopped_by();
+            }
+            //  Two still chunks are the least a wall takes; more is progress.
+            moved_on = inside || next.stop != WalkStop::BLOCKED || next.walked > 1200ms;
+        }
+        if (!moved_on){
+            fail(stream, "Route 203: walls east on every row down to ten below the top wall.");
+        }
+    }
+    if (!inside){
+        fail(stream, "Route 203: did not reach the Oreburgh Gate.");
+    }
+    route_status(stream, "Route 203: " + std::to_string(fights) + " trainer battle(s) on the way.");
+    context.wait_for(1500ms);
+
+    step(2);
+    // The Hiker steps up to us as we walk east.
+    if (!met_hiker){
+        const WalkResult to_hiker = walk_until(stream, context, 1, 0, 4000ms, "to the Hiker");
+        if (to_hiker.stop != WalkStop::DIALOG && !dialogue_opens(stream, context, 2000ms)){
+            fail(stream, "Oreburgh Gate: the Hiker did not stop us.");
+        }
+        finish_dialogue(stream, context, BUTTON_B, "Hiker");
+    }
+    // Then a "Hidden Moves" tutorial card, closed with B. It is no dialogue
+    // box, and it can come up a moment after his last line.
+    pbf_wait(context, 1500ms);
+    pbf_press_button(context, BUTTON_B, 80ms, 1500ms);
+    pbf_press_button(context, BUTTON_B, 80ms, 1000ms);
+    context.wait_for_all_requests();
+
+    step(3);
+    // East: Camper Curtis and Picnicker Diana see us; past them the exit's
+    // white fade, and the man in Oreburgh stops us right outside.
+    fights = 0;
+    bool city = false;
+    size_t stuck = 0;
+    for (size_t leg = 0; leg < 12 && !city; leg++){
+        const WalkResult walk = walk_until(stream, context, 1, 0, 10000ms, "east through the Oreburgh Gate");
+        if (walk.stop == WalkStop::LIMIT || walk.stop == WalkStop::TRANSITION){
+            continue;
+        }
+        if (walk.stop != WalkStop::DIALOG && !dialogue_opens(stream, context, 2000ms)){
+            // A card or menu left up holds the screen still: B once, then retry.
+            if (++stuck > 1){
+                fail(stream, "Oreburgh Gate: a wall stopped us walking east.");
+            }
+            pbf_press_button(context, BUTTON_B, 80ms, 1500ms);
+            continue;
+        }
+        stuck = 0;
+        if (fights >= 2){
+            city = true;
+            break;
+        }
+        fights += talk_or_fight(stream, context, "Oreburgh Gate trainer " + std::to_string(fights + 1)) ? 1 : 0;
+    }
+    if (!city){
+        fail(stream, "Oreburgh Gate: did not reach Oreburgh City.");
     }
 
-    // Exit the building.
-    pbf_wait(context, 1000ms);
+    step(4);
+    // He walks us to the Pokemon Center between his lines, and Barry joins
+    // there: more lines after each walk.
+    finish_dialogue(stream, context, BUTTON_B, "Man at Oreburgh's entrance");
+    for (size_t scene = 0; scene < 6 && dialogue_opens(stream, context, 6000ms); scene++){
+        finish_dialogue(stream, context, BUTTON_B, "Oreburgh scene");
+    }
+    context.wait_for_all_requests();
+}
+
+//  Holds the stick toward `dir` for `tiles` tiles, turning first.
+void hold_tiles(VideoStream& stream, ProControllerContext& context, Direction dir, size_t tiles){
+    route_turn(stream, context, dir);
+    const double x = dir == Direction::EAST ? 1 : dir == Direction::WEST ? -1 : 0;
+    const double y = dir == Direction::NORTH ? 1 : dir == Direction::SOUTH ? -1 : 0;
+    pbf_move_left_joystick(context, {x, y}, route_open_hold(dir, tiles), 200ms);
+    context.wait_for_all_requests();
+}
+
+WalkResult walk_dir(VideoStream& stream, ProControllerContext& context, Direction dir, Milliseconds limit, const std::string& label){
+    const double x = dir == Direction::EAST ? 1 : dir == Direction::WEST ? -1 : 0;
+    const double y = dir == Direction::NORTH ? 1 : dir == Direction::SOUTH ? -1 : 0;
+    return walk_until(stream, context, x, y, limit, label);
+}
+
+void oreburgh_to_roark(VideoStream& stream, ProControllerContext& context){
+    // What 01.03 does, stepped through on the console before writing it.
+    StepLog step(stream, "01.03", "From the Oreburgh Pokemon Center to Roark in the mine", {
+        "Walk past Barry at the Center's door to the stone ledge, then east to the fence below the Poke Mart",
+        "South to the right-hand conveyor pillar, west to the left-hand pillars, then south into the mine",
+        "Through the mine's entrance hall to the rocky corridor",
+        "Walk the planned route down the corridor and round the coal block, and talk to Roark",
+        "Walk back to the corridor's top and out of the mine",
+    });
+
+    step(1);
+    // The save stands us in front of the Center, two tiles west of Barry at
+    // its door. These are the holds that worked on the console.
+    hold_tiles(stream, context, Direction::EAST, 3);
+    walk_dir(stream, context, Direction::NORTH, 3000ms, "north to the Center's front");
+    hold_tiles(stream, context, Direction::EAST, 2);
+    walk_dir(stream, context, Direction::NORTH, 2500ms, "north beside Barry");
+    // Roark answers in the mine only after Barry has told us he is there
+    // (2026-10-29: he ignored A in r101 and r104 and by hand, and answered at
+    // once after a talk with Barry). Barry is just east of us.
+    route_turn(stream, context, Direction::EAST);
+    pbf_press_button(context, BUTTON_A, 80ms, 200ms);
+    if (!dialogue_opens(stream, context, 3000ms)){
+        fail(stream, "Oreburgh: Barry did not talk at the gym door.");
+    }
+    finish_dialogue(stream, context, BUTTON_B, "Barry at the gym door");
+    if (walk_dir(stream, context, Direction::SOUTH, 8000ms, "south to the stone ledge").stop != WalkStop::BLOCKED){
+        fail(stream, "Oreburgh: walking south did not stop at the stone ledge.");
+    }
+    // A townsperson wandering across the row can stop us a tile or two short
+    // (r95), so walk east again until a walk stops without moving.
+    bool at_fence = false;
+    for (size_t attempt = 0; attempt < 5 && !at_fence; attempt++){
+        const WalkResult east = walk_dir(stream, context, Direction::EAST, 10000ms, "east to the fence below the Poke Mart");
+        if (east.stop != WalkStop::BLOCKED){
+            fail(stream, "Oreburgh: walking east did not stop at the fence below the Poke Mart.");
+        }
+        at_fence = attempt > 0 && east.walked <= 800ms;
+        if (!at_fence){
+            context.wait_for(1500ms);
+        }
+    }
+    if (!at_fence){
+        fail(stream, "Oreburgh: something kept stopping the walk east to the fence below the Poke Mart.");
+    }
+
+    step(2);
+    // The mine's stairs are straight south of here, two columns west of
+    // the fence (Bulbapedia's Oreburgh map: column 46, between the conveyor
+    // pillars at 42-44 and 48-50). One walk south goes down the yard's
+    // stairs, under the conveyors and into the mine; on the console it ran
+    // on through the entrance hall into the rocky corridor. A worker walks
+    // about on the sand path: wait for him, then try the columns beside.
+    // Timed holds of a tile or two move one tile or two unpredictably, so
+    // the column comes from walls. Down the path along its east fence ends
+    // against the right-hand conveyor pillar in the yard (column 48); from
+    // there west stops against the left-hand pillars, on column 45, which
+    // runs clear south into the mine. The belts keep the screen moving, so
+    // these stops read as the walk's time limit, not as a wall.
+    //
+    // The worker by the fence wanders onto the path and stops the walk south
+    // as a wall would (r95, r96): wait for him to move and walk on.
+    WalkResult down{WalkStop::BLOCKED, 0ms, 0};
+    for (size_t attempt = 0; attempt < 5; attempt++){
+        down = walk_dir(stream, context, Direction::SOUTH, 12000ms, "south to the right-hand pillar");
+        if (down.stop == WalkStop::DIALOG){
+            talk_or_fight(stream, context, "Someone on the way to the mine");
+        }else if (down.stop != WalkStop::BLOCKED){
+            break;
+        }
+        context.wait_for(2000ms);
+    }
+    bool in_mine = down.stop == WalkStop::TRANSITION;   // already in the mine's column
+    if (!in_mine && down.stop != WalkStop::LIMIT){
+        fail(stream, "Oreburgh: something kept stopping the walk south to the conveyor pillars.");
+    }
+    // West stops against the left-hand pillars, on the column of the sign
+    // above the mine's stairs (on the console, r96): the stairs are open a
+    // tile either side of it, so step back one tile east and walk south.
+    auto step_tiles = [&](Direction side, size_t tiles){
+        route_turn(stream, context, side);
+        for (size_t tile = 0; tile < tiles; tile++){
+            pbf_move_left_joystick(context, {side == Direction::EAST ? 1.0 : -1.0, 0}, 120ms, 300ms);
+        }
+        context.wait_for_all_requests();
+    };
+    if (!in_mine){
+        walk_dir(stream, context, Direction::WEST, 2500ms, "west to the left-hand pillars");
+        step_tiles(Direction::EAST, 1);
+        in_mine = walk_dir(stream, context, Direction::SOUTH, 15000ms, "south into the mine").stop == WalkStop::TRANSITION;
+    }
+    if (!in_mine){
+        step_tiles(Direction::WEST, 2);     // the sign's other side
+        in_mine = walk_dir(stream, context, Direction::SOUTH, 5000ms, "south down the mine's stairs").stop == WalkStop::TRANSITION;
+    }
+    if (!in_mine){
+        fail(stream, "Oreburgh: no column south of the Center led into the mine.");
+    }
+    context.wait_for(1500ms);
+
+    step(3);
+    // If the fade into the mine was missed, we are already in the corridor
+    // and this walk stops at its boulder; otherwise it crosses the hall.
+    const WalkResult hall = walk_dir(stream, context, Direction::SOUTH, 10000ms, "through the mine's entrance hall");
+    if (hall.stop == WalkStop::TRANSITION){
+        context.wait_for(1500ms);
+    }
+
+    step(4);
+    // Planned on the coal room's tile grid (Data/OreburghMine): the
+    // corridor's rocks zigzag a row at a time, the room's second row passes
+    // under the worker on the first, and the east side leads down to the
+    // bottom row below Roark.
+    const Pokemon::MapSet& maps = oreburgh_mine_maps();
+    auto world = [&](const Pokemon::TilePos& pos){ return maps.to_world(MAP_OREBURGH_MINE, pos); };
+    std::vector<Pokemon::TrainerSight> no_trainers;
+    auto in_the_way = [&](const std::string& who){ talk_or_fight(stream, context, who); };
+    std::vector<Pokemon::TilePos> at;
+    for (const Pokemon::TilePos& pos : OreburghMine::corridor_top()){
+        at.push_back(world(pos));
+    }
+    // Roark stands with a rock on each side, so the rock east of him is the
+    // anchor: plan to his row's open stretch east of the rock, walk north to
+    // the wall above it and west until the rock stops us, two tiles east of
+    // him (on the console, r97). Then south to the bottom wall and two tiles
+    // west puts us below him.
+    const Pokemon::TilePos roark = world(OreburghMine::ROARK);
+    at = walk_route(stream, context, maps, at,
+        [&](const Pokemon::TilePos& pos){ return pos.y >= roark.y && pos.y <= roark.y + 1 && pos.x >= roark.x + 2 && pos.x <= roark.x + 7; },
+        no_trainers, in_the_way, "To the stretch east of Roark");
+    walk_dir(stream, context, Direction::NORTH, 2000ms, "north to the wall on Roark's row");
+    // A wild battle on the way eats into the walk's time (r100): walk again.
+    WalkStop west = WalkStop::LIMIT;
+    for (size_t attempt = 0; attempt < 3 && west == WalkStop::LIMIT; attempt++){
+        west = walk_dir(stream, context, Direction::WEST, 6000ms, "west to the rock beside Roark").stop;
+    }
+    if (west != WalkStop::BLOCKED){
+        fail(stream, "Oreburgh Mine: walking west along Roark's row did not stop at his rock.");
+    }
+    if (walk_dir(stream, context, Direction::SOUTH, 2000ms, "south to the bottom wall").stop != WalkStop::BLOCKED){
+        fail(stream, "Oreburgh Mine: walking south from Roark's rock did not stop at the bottom wall.");
+    }
+    route_turn(stream, context, Direction::WEST);
+    pbf_move_left_joystick(context, {-1, 0}, 120ms, 300ms);
+    pbf_move_left_joystick(context, {-1, 0}, 120ms, 300ms);
+    route_turn(stream, context, Direction::NORTH);
+    context.wait_for_all_requests();
+    // Movement is by whole tiles: a sideways nudge only steps onto his rock's
+    // tile (r105, r106 read the rock's line as his). Turn to him and press A
+    // once; the camera zooms in and his first line, "OK, stand back and watch
+    // this.", can take some seconds (r98).
+    bool talked = false;
+    for (size_t attempt = 0; attempt < 3 && !talked; attempt++){
+        route_turn(stream, context, Direction::EAST);
+        route_turn(stream, context, Direction::NORTH);
+        context.wait_for(500ms);
+        if (VideoSnapshot screen = stream.video().snapshot()){
+            const std::string folder = SCREENSHOTS_PATH() + "AutoStory/route/";
+            Filesystem::create_directories(Filesystem::Path(folder));
+            screen.frame->save(folder + now_to_filestring() + "-below-roark-" + std::to_string(attempt) + ".png");
+        }
+        pbf_press_button(context, BUTTON_A, 80ms, 200ms);
+        talked = dialogue_opens(stream, context, 8000ms);
+    }
+    if (!talked){
+        fail(stream, "Oreburgh Mine: no talk opened below Roark.");
+    }
+    finish_dialogue(stream, context, BUTTON_B, "Roark");
+    // His scene ends with him smashing his rock and leaving: his tile is
+    // free now. Step onto it and back, or fail if he is still there.
+    if (walk_dir(stream, context, Direction::NORTH, 2000ms, "onto Roark's tile").walked <= 800ms){
+        fail(stream, "Oreburgh Mine: Roark is still there after the talk.");
+    }
+    walk_dir(stream, context, Direction::SOUTH, 2000ms, "back to the bottom wall");
+    at = {roark.next(Direction::SOUTH)};
+
+    step(5);
+    // Back up the corridor, then north out through the hall. A route leg
+    // north to the top's wall walks on through it into the hall (r99), and
+    // no wall stops us a row short of it, so the route ends on the corner
+    // at (14,11), where that leg started, and the walk does the rest.
+    const Pokemon::TilePos exit = world(OreburghMine::CORRIDOR_EXIT_START);
+    at = walk_route(stream, context, maps, at,
+        [&](const Pokemon::TilePos& pos){ return pos == exit; },
+        no_trainers, in_the_way, "Back to the corridor's top");
+    // Up into the entrance hall (a transition, as on the way in), then on
+    // north out of the mine: in r103 that walk left the mine without a
+    // transition we saw and ended against the sign above the stairs, which
+    // the moving belts make read as the time limit.
+    if (walk_dir(stream, context, Direction::NORTH, 10000ms, "into the entrance hall").stop != WalkStop::TRANSITION){
+        fail(stream, "Oreburgh Mine: walking north from the corridor did not reach the entrance hall.");
+    }
+    context.wait_for(1500ms);
+    if (walk_dir(stream, context, Direction::NORTH, 10000ms, "out of the mine").stop == WalkStop::DIALOG){
+        fail(stream, "Oreburgh Mine: someone stopped us on the way out of the mine.");
+    }
+    context.wait_for(1500ms);
 }
 
 
-std::string AutoStory_Segment_01::name() const {
-    return "01: Jubilife City to First Badge";
-}
-std::string AutoStory_Segment_01::start_text() const {
-    return "Start: Received Starter back from Pokemon Home. Max leveled pokemon should have the moveset in the wiki.";
-}
-std::string AutoStory_Segment_01::end_text() const {
-    return "End: First Gym Badge acquired (Oreburgh City).";
+//  A rough check that we stand in a Pokemon Center: its floor fills the lower
+//  half of the screen with warm yellow, where the gym is grey and routes are
+//  green. After a battle it tells a loss (a whiteout ends at the counter)
+//  from a win.
+bool in_pokemon_center(VideoStream& stream){
+    const VideoSnapshot frame = stream.video().snapshot();
+    if (!frame){
+        return false;
+    }
+    const ImageRGB32 small = frame.frame->scale_to(192, 108);
+    size_t warm = 0, total = 0;
+    for (size_t y = 54; y < 108; y++){
+        for (size_t x = 0; x < 192; x++){
+            const uint32_t pixel = small.pixel(x, y);
+            const int r = (pixel >> 16) & 0xff, g = (pixel >> 8) & 0xff, b = pixel & 0xff;
+            total++;
+            if (r > 200 && g > 150 && b < 150 && r - b > 70){
+                warm++;
+            }
+        }
+    }
+    const bool inside = warm * 10 > total * 3;
+    stream.log("[Center check] warm floor " + std::to_string(warm * 100 / total) + " %: " +
+        (inside ? "in a Pokemon Center." : "not in a Pokemon Center."));
+    return inside;
 }
 
-void AutoStory_Segment_01::run_segment(SingleSwitchProgramEnvironment& env,
+//  For a player inside a Pokemon Center after a whiteout, at the counter:
+//  out through the door. The door is straight south of the nurse in most
+//  Centers; in Oreburgh's it was two tiles east of where we stood (by hand).
+void walk_out_of_center(VideoStream& stream, ProControllerContext& context, const std::string& label){
+    finish_dialogue(stream, context, BUTTON_B, label + ": the nurse");
+    const int shifts[] = {0, 2, -4};
+    for (int shift : shifts){
+        if (shift != 0){
+            hold_tiles(stream, context, shift > 0 ? Direction::EAST : Direction::WEST, (size_t)std::abs(shift));
+        }
+        if (walk_dir(stream, context, Direction::SOUTH, 8000ms, label + ": out of the Center").stop == WalkStop::TRANSITION){
+            context.wait_for(2000ms);
+            return;
+        }
+    }
+    fail(stream, label + ": could not find the Pokemon Center's door.");
+}
+
+//  Oreburgh, from the street in front of the Pokemon Center (its door or its
+//  front wall) into the gym, as walked by hand on 2026-10-29: west to the
+//  cliff, south to the posts, a row up, then 17 tiles east is the gym door's
+//  column. The hold is checked by the door itself: walk north, and if the
+//  gym's wall stops us, try the columns either side.
+void oreburgh_street_to_gym(VideoStream& stream, ProControllerContext& context){
+    if (walk_dir(stream, context, Direction::WEST, 15000ms, "west to the cliff").stop != WalkStop::BLOCKED){
+        fail(stream, "Oreburgh: walking west from the Center did not stop at the cliff.");
+    }
+    if (walk_dir(stream, context, Direction::SOUTH, 3000ms, "south to the posts").stop != WalkStop::BLOCKED){
+        fail(stream, "Oreburgh: walking south did not stop at the posts.");
+    }
+    hold_tiles(stream, context, Direction::NORTH, 1);
+    hold_tiles(stream, context, Direction::EAST, 17);
+    // Cumulative steps: here, a tile east, a tile west, two east, two west.
+    const int steps[] = {0, 1, -2, 3, -4};
+    for (int step : steps){
+        if (step != 0){
+            hold_tiles(stream, context, step > 0 ? Direction::EAST : Direction::WEST, (size_t)std::abs(step));
+        }
+        const WalkResult door = walk_dir(stream, context, Direction::NORTH, 4000ms, "north into the gym");
+        // The door's fade can read as the time limit rather than a black
+        // screen (by hand: "limit after 4000ms", and we were inside).
+        if (door.stop == WalkStop::TRANSITION || door.stop == WalkStop::LIMIT){
+            context.wait_for(1000ms);
+            return;
+        }
+        if (door.stop == WalkStop::DIALOG){
+            talk_or_fight(stream, context, "Someone outside the gym");
+        }
+    }
+    fail(stream, "Oreburgh: no column near the gym's door went in.");
+}
+
+//  Inside the Oreburgh Gym: straight up the middle, fighting the trainers
+//  who stop us, to Roark on the top tier. Returns whether Roark was beaten;
+//  false after a whiteout, which leaves us in the Pokemon Center.
+//  Walking straight up meets both gym trainers (one at the entrance, one on
+//  the second tier); their experience helps an under-levelled team, and
+//  after a whiteout they stay beaten. Butters' route goes round them.
+bool oreburgh_gym_battles(VideoStream& stream, ProControllerContext& context){
+    // The entry camera pans for about 7.5 s (Butters' reference video).
+    context.wait_for(8000ms);
+    if (dialogue_opens(stream, context, 3000ms)){
+        if (talk_or_fight(stream, context, "Gym trainer at the entrance") && in_pokemon_center(stream)){
+            return false;
+        }
+    }
+    size_t stuck = 0;
+    for (size_t leg = 0; leg < 10; leg++){
+        const WalkResult up = walk_dir(stream, context, Direction::NORTH, 8000ms, "north up the gym");
+        if (up.stop == WalkStop::DIALOG){
+            if (talk_or_fight(stream, context, "Gym trainer") && in_pokemon_center(stream)){
+                return false;
+            }
+            continue;
+        }
+        if (up.stop != WalkStop::BLOCKED){
+            continue;
+        }
+        // Roark stands at the top facing us; a wall or a stair edge says
+        // nothing to A. Only Roark starts a battle from our A here.
+        route_turn(stream, context, Direction::NORTH);
+        pbf_press_button(context, BUTTON_A, 80ms, 200ms);
+        if (dialogue_opens(stream, context, 3000ms)){
+            if (talk_or_fight(stream, context, "Roark")){
+                if (in_pokemon_center(stream)){
+                    return false;
+                }
+                finish_dialogue(stream, context, BUTTON_B, "Roark after the battle");
+                return true;
+            }
+            continue;
+        }
+        if (up.walked <= 800ms && ++stuck >= 3){
+            fail(stream, "Oreburgh Gym: stuck on the way up, and nobody answers A.");
+        }
+    }
+    fail(stream, "Oreburgh Gym: did not reach Roark.");
+}
+
+void oreburgh_gym(VideoStream& stream, ProControllerContext& context){
+    StepLog step(stream, "01.04", "From the Oreburgh Mine to the Coal Badge", {
+        "North to the Pokemon Center's front",
+        "West to the cliff, south to the posts, east along the street into the gym",
+        "Up the gym, fighting its trainers, and beat Roark (after a loss: from the Center, again)",
+        "Out of the gym",
+    });
+    step(1);
+    // 01.03 leaves us below the mine's sign; a tile east is the column
+    // straight up to the Center (by hand: blocked at its front after 6.4 s).
+    hold_tiles(stream, context, Direction::EAST, 1);
+    if (walk_dir(stream, context, Direction::NORTH, 12000ms, "north to the Center's front").stop != WalkStop::BLOCKED){
+        fail(stream, "Oreburgh: walking north from the mine did not stop at the Pokemon Center.");
+    }
+
+    // Losing costs some money and keeps the experience, so each try comes
+    // back stronger: Roark won twice by hand against Piplup Lv 10 and 14 and
+    // lost the third time.
+    bool won = false;
+    for (size_t attempt = 0; attempt < 5 && !won; attempt++){
+        step(2);
+        oreburgh_street_to_gym(stream, context);
+        step(3);
+        won = oreburgh_gym_battles(stream, context);
+        if (!won){
+            stream.log("[01.04] Lost in the gym (try " + std::to_string(attempt + 1) + "); back from the Center.", COLOR_ORANGE);
+            walk_out_of_center(stream, context, "Oreburgh");
+        }
+    }
+    if (!won){
+        fail(stream, "Oreburgh Gym: lost to Roark five times.");
+    }
+
+    step(4);
+    // Back down the middle and out of the door.
+    for (size_t leg = 0; leg < 4; leg++){
+        const WalkResult down = walk_dir(stream, context, Direction::SOUTH, 10000ms, "south out of the gym");
+        if (down.stop == WalkStop::TRANSITION){
+            context.wait_for(2000ms);
+            return;
+        }
+        if (down.stop == WalkStop::DIALOG){
+            finish_dialogue(stream, context, BUTTON_B, "Someone in the gym");
+        }
+    }
+    fail(stream, "Oreburgh Gym: did not leave by its door.");
+}
+
+//  West until a transition, by the user's rule for a wall in the way: walk
+//  north to the top wall, which pins the row, then try the rows south of it
+//  one at a time. Trainers who stop us are fought. Returns at the first
+//  transition (a building, a cave, a gate).
+void west_until_transition(VideoStream& stream, ProControllerContext& context, const std::string& label, size_t max_legs){
+    for (size_t leg = 0; leg < max_legs; leg++){
+        const WalkResult west = walk_dir(stream, context, Direction::WEST, 20000ms, label);
+        if (west.stop == WalkStop::TRANSITION){
+            context.wait_for(2000ms);
+            return;
+        }
+        if (west.stop == WalkStop::DIALOG){
+            talk_or_fight(stream, context, label + ": someone in the way");
+            continue;
+        }
+        if (west.stop != WalkStop::BLOCKED){
+            continue;
+        }
+        walk_dir(stream, context, Direction::NORTH, 4000ms, label + ": north to the top wall");
+        bool moved = false;
+        for (size_t row = 0; row < 10 && !moved; row++){
+            hold_tiles(stream, context, Direction::SOUTH, 1);
+            const WalkResult probe = walk_dir(stream, context, Direction::WEST, 1500ms, label + ": west on the next row");
+            moved = probe.stop != WalkStop::BLOCKED || probe.walked > 1200ms;
+            if (probe.stop == WalkStop::TRANSITION){
+                context.wait_for(2000ms);
+                return;
+            }
+            if (probe.stop == WalkStop::DIALOG){
+                talk_or_fight(stream, context, label + ": someone in the way");
+            }
+        }
+        if (!moved){
+            fail(stream, label + ": no row below the top wall leads west.");
+        }
+    }
+    fail(stream, label + ": no transition after " + std::to_string(max_legs) + " legs.");
+}
+
+void oreburgh_to_floaroma(VideoStream& stream, ProControllerContext& context){
+    StepLog step(stream, "01.05", "From the Oreburgh Gym to Floaroma Town", {
+        "Up to the platform by Oreburgh Gate and into it (Barry bumps into us there)",
+        "Through the Gate and west along Route 203 and Jubilife to the Route 218 gate",
+        "Back east to Jubilife's north road and up it (Rowan, Dawn and two Galactic grunts: a tag battle)",
+        "North on Route 204 into the Ravaged Path",
+        "Through the Ravaged Path, smashing its rocks",
+        "Route 204 north on its grid, past the twins, into Floaroma",
+        "Heal at the Floaroma Pokemon Center",
+    });
+
+    step(1);
+    // From the gym door, as walked by hand on 2026-10-29.
+    hold_tiles(stream, context, Direction::SOUTH, 1);
+    hold_tiles(stream, context, Direction::NORTH, 1);
+    walk_dir(stream, context, Direction::WEST, 20000ms, "west to the stairs' cliff");
+    walk_dir(stream, context, Direction::NORTH, 10000ms, "north along the cliff");
+    hold_tiles(stream, context, Direction::EAST, 2);
+    walk_dir(stream, context, Direction::NORTH, 5000ms, "north up the stairs");
+    walk_dir(stream, context, Direction::WEST, 6000ms, "west along the platform");
+    hold_tiles(stream, context, Direction::SOUTH, 1);
+    // Barry runs into us on the platform ("*thud*") the first time; his lines
+    // end with no battle.
+    west_until_transition(stream, context, "Into Oreburgh Gate", 8);
+
+    step(2);
+    // The Gate's cave, Route 203 (trainers stop us) and Jubilife's road all
+    // run west; the first door at the end is the Route 218 gate on
+    // Jubilife's west edge (by hand: twice).
+    west_until_transition(stream, context, "West to the Route 218 gate", 16);
+
+    step(3);
+    // Back out east into Jubilife: its north road is columns 43 to 46 of the
+    // Jubilife grid, about 40 tiles east of the gate. Rowan's scene starts
+    // on the way up it; a wall in a few tiles means we are off its column.
+    if (walk_dir(stream, context, Direction::EAST, 6000ms, "back out of the gate").stop != WalkStop::TRANSITION){
+        fail(stream, "Jubilife: did not leave the Route 218 gate eastwards.");
+    }
+    context.wait_for(2000ms);
+    hold_tiles(stream, context, Direction::EAST, 40);
+    const int steps[] = {0, 1, -2, 3, -4, 5, -6};
+    bool scene = false;
+    for (int s_step : steps){
+        if (s_step != 0){
+            hold_tiles(stream, context, s_step > 0 ? Direction::EAST : Direction::WEST, (size_t)std::abs(s_step));
+        }
+        const WalkResult up = walk_dir(stream, context, Direction::NORTH, 15000ms, "north up Jubilife's north road");
+        if (up.stop == WalkStop::DIALOG){
+            scene = true;
+            break;
+        }
+        walk_dir(stream, context, Direction::SOUTH, 15000ms, "back down to the street");
+    }
+    if (!scene){
+        fail(stream, "Jubilife: no column led up the north road to Rowan.");
+    }
+    if (!talk_or_fight(stream, context, "Galactic grunts with Dawn", true, true)){
+        fail(stream, "Jubilife: Rowan's scene ended without the tag battle.");
+    }
+    if (in_pokemon_center(stream)){
+        fail(stream, "Jubilife: lost the tag battle with Dawn.");
+    }
+    finish_dialogue(stream, context, BUTTON_B, "Rowan and Dawn after the battle");
+
+    step(4);
+    // Route 204's south half: a trainer just past the sign, then the cave in
+    // the cliff a column west of the path.
+    for (size_t leg = 0; leg < 6; leg++){
+        const WalkResult up = walk_dir(stream, context, Direction::NORTH, 15000ms, "north on Route 204");
+        if (up.stop == WalkStop::TRANSITION){
+            break;
+        }
+        if (up.stop == WalkStop::DIALOG){
+            talk_or_fight(stream, context, "Route 204 trainer");
+            continue;
+        }
+        if (up.stop == WalkStop::BLOCKED){
+            hold_tiles(stream, context, Direction::WEST, 1);
+        }
+        if (leg == 5){
+            fail(stream, "Route 204: did not reach the Ravaged Path.");
+        }
+    }
+    context.wait_for(2000ms);
+
+    step(5);
+    // On the traced grid (Data/PokemonBDSP_AutoStory_RavagedPath): from the
+    // south door up the stairs to the tile west of one of the two rocks
+    // across the lower corridor, smash it, then east and south to the
+    // corridor's east end; the way out is a tile west of it, south.
+    {
+        std::vector<Pokemon::TrainerSight> no_trainers;
+        auto in_the_way = [&](const std::string& who){ talk_or_fight(stream, context, who); };
+        std::vector<Pokemon::TilePos> at{RavagedPath::ENTRANCE};
+        const Pokemon::MapSet rocks_in = ravaged_path_maps();
+        at = walk_route(stream, context, rocks_in, at,
+            [&](const Pokemon::TilePos& pos){
+                const auto& before = RavagedPath::before_rocks();
+                return std::find(before.begin(), before.end(), pos) != before.end();
+            },
+            no_trainers, in_the_way, "To a rock across the corridor");
+        route_turn(stream, context, Direction::EAST);
+        pbf_press_button(context, BUTTON_A, 80ms, 200ms);
+        if (!dialogue_opens(stream, context, 2000ms)){
+            fail(stream, "Ravaged Path: no Rock Smash offer facing the rock east of us.");
+        }
+        // "Would you like to use Rock Smash?": A for Yes, the animation, then
+        // B for anything left (by hand, 2026-10-29).
+        pbf_press_button(context, BUTTON_A, 80ms, 1500ms);
+        pbf_press_button(context, BUTTON_A, 80ms, 4000ms);
+        pbf_press_button(context, BUTTON_B, 80ms, 1500ms);
+        context.wait_for_all_requests();
+        // We may be on either row; the rock east of the other stays, but no
+        // leg from our row crosses it.
+        std::vector<Pokemon::TilePos> smashed;
+        for (const Pokemon::TilePos& pos : RavagedPath::before_rocks()){
+            smashed.push_back(pos.next(Direction::EAST));
+        }
+        const Pokemon::MapSet rocks_out = ravaged_path_maps(smashed);
+        at = walk_route(stream, context, rocks_out, at,
+            [&](const Pokemon::TilePos& pos){ return pos == RavagedPath::EAST_END; },
+            no_trainers, in_the_way, "To the corridor's east end");
+        hold_tiles(stream, context, Direction::WEST, 1);
+        const WalkResult out = walk_dir(stream, context, Direction::SOUTH, 4000ms, "south out of the Ravaged Path");
+        if (out.stop != WalkStop::TRANSITION && out.stop != WalkStop::LIMIT){
+            fail(stream, "Ravaged Path: the walk south from a tile west of the corridor's end did not leave the cave.");
+        }
+        context.wait_for(2000ms);
+    }
+
+    step(6);
+    // On the traced grid (Data/PokemonBDSP_AutoStory_Route204): from the
+    // cave's door west and up the stairs, round the pocket the ledge closes,
+    // east and north through the tall grass, and west below the flower beds,
+    // where the twins see us; then north between the beds into Floaroma.
+    {
+        std::vector<Pokemon::TrainerSight> twins = Route204::north_trainer_sights();
+        auto fight = [&](const std::string& who){
+            const bool doubles = who.find("Twins") != std::string::npos || who.find("someone") != std::string::npos;
+            talk_or_fight(stream, context, who, false, doubles);
+        };
+        std::vector<Pokemon::TilePos> at{Route204::CAVE_EXIT};
+        at = walk_route(stream, context, route204_north_maps(), at, Route204::in_floaroma_path,
+            twins, fight, "To the path into Floaroma");
+        // Floaroma's arrival did not read as a black screen by hand ("limit
+        // after 20000ms", and we stood in the town), so either will do.
+        const WalkResult in = walk_dir(stream, context, Direction::NORTH, 20000ms, "north into Floaroma");
+        if (in.stop == WalkStop::BLOCKED || in.stop == WalkStop::DIALOG){
+            fail(stream, "Route 204: the walk north into Floaroma was stopped.");
+        }
+        context.wait_for(2000ms);
+    }
+
+    step(7);
+    // We arrive in front of a house; the Center is a few tiles south-east.
+    walk_dir(stream, context, Direction::SOUTH, 1500ms, "south off the house's path");
+    hold_tiles(stream, context, Direction::EAST, 4);
+    heal_at_pokemon_center(stream, context, "Floaroma Pokemon Center");
+}
+
+void checkpoint_0101(
+    SingleSwitchProgramEnvironment& env,
     ProControllerContext& context,
     AutoStoryOptions options,
-    AutoStoryStats& stats) const {
+    AutoStoryStats& stats
+){
+    checkpoint_reattempt_loop(env, context, options, stats,
+        [&](size_t /*attempt*/){
+            jubilife_to_barry(env.console, context);
+        },
+        true
+    );
+}
+
+void checkpoint_0103(
+    SingleSwitchProgramEnvironment& env,
+    ProControllerContext& context,
+    AutoStoryOptions options,
+    AutoStoryStats& stats
+){
+    checkpoint_reattempt_loop(env, context, options, stats,
+        [&](size_t /*attempt*/){
+            oreburgh_to_roark(env.console, context);
+        },
+        true
+    );
+}
+
+void checkpoint_0102(
+    SingleSwitchProgramEnvironment& env,
+    ProControllerContext& context,
+    AutoStoryOptions options,
+    AutoStoryStats& stats
+){
+    checkpoint_reattempt_loop(env, context, options, stats,
+        [&](size_t /*attempt*/){
+            route203_to_oreburgh(env.console, context);
+        },
+        true
+    );
+}
+
+void checkpoint_0104(
+    SingleSwitchProgramEnvironment& env,
+    ProControllerContext& context,
+    AutoStoryOptions options,
+    AutoStoryStats& stats
+){
+    checkpoint_reattempt_loop(env, context, options, stats,
+        [&](size_t /*attempt*/){
+            oreburgh_gym(env.console, context);
+        },
+        true
+    );
+}
+
+void checkpoint_0105(
+    SingleSwitchProgramEnvironment& env,
+    ProControllerContext& context,
+    AutoStoryOptions options,
+    AutoStoryStats& stats
+){
+    checkpoint_reattempt_loop(env, context, options, stats,
+        [&](size_t /*attempt*/){
+            oreburgh_to_floaroma(env.console, context);
+        },
+        true
+    );
+}
+}
+
+
+std::string AutoStory_Segment_01::name()       const { return "01: Jubilife to Floaroma"; }
+std::string AutoStory_Segment_01::start_text() const { return "Start: Standing in front of the Jubilife City Pokemon Center PC."; }
+std::string AutoStory_Segment_01::end_text()   const { return "End: In the Floaroma Town Pokemon Center, with the Coal Badge."; }
+
+void AutoStory_Segment_01::run_segment(
+    SingleSwitchProgramEnvironment& env,
+    ProControllerContext& context,
+    AutoStoryOptions options,
+    AutoStoryStats& stats
+) const{
     stats.m_segment++;
     env.update_stats();
-    context.wait_for_all_requests();
     env.console.log("Start Segment " + name(), COLOR_ORANGE);
-
-    AutoStory_checkpoint_0101().run_checkpoint(env, context, options, stats);
-    AutoStory_checkpoint_0102().run_checkpoint(env, context, options, stats);
-    AutoStory_checkpoint_0103().run_checkpoint(env, context, options, stats);
-    context.wait_for_all_requests();
+    AutoStory_Checkpoint_0101().run_checkpoint(env, context, options, stats);
+    AutoStory_Checkpoint_0102().run_checkpoint(env, context, options, stats);
+    AutoStory_Checkpoint_0103().run_checkpoint(env, context, options, stats);
+    AutoStory_Checkpoint_0104().run_checkpoint(env, context, options, stats);
+    AutoStory_Checkpoint_0105().run_checkpoint(env, context, options, stats);
     env.console.log("End Segment " + name(), COLOR_GREEN);
 }
 
+std::string AutoStory_Checkpoint_0101::name()       const { return "01.01 - Jubilife to Barry"; }
+std::string AutoStory_Checkpoint_0101::start_text() const { return "Standing in front of the Jubilife City Pokemon Center PC."; }
+std::string AutoStory_Checkpoint_0101::end_text()   const { return "On Route 203 by its sign, after beating Barry."; }
 
-std::string AutoStory_checkpoint_0101::name() const {
-    return "01.01 - Maxed Starter from Home";
-}
-std::string AutoStory_checkpoint_0101::start_text() const {
-    return "Received Starter back from Pokemon Home. Max leveled pokemon should have the moveset in the wiki.";
-}
-std::string AutoStory_checkpoint_0101::end_text() const {
-    return "Standing outside the Oreburgh Gate on the Jubilife City side.";
-}
-// ========================
-// Checkpoint 0101 Wrapper
-// ========================
-void AutoStory_checkpoint_0101::run_checkpoint(SingleSwitchProgramEnvironment& env,
+void AutoStory_Checkpoint_0101::run_checkpoint(
+    SingleSwitchProgramEnvironment& env,
     ProControllerContext& context,
     AutoStoryOptions options,
-    AutoStoryStats& stats) const {
+    AutoStoryStats& stats
+) const{
     checkpoint_0101(env, context, options, stats);
 }
 
+std::string AutoStory_Checkpoint_0102::name()       const { return "01.02 - Route 203 to Oreburgh"; }
+std::string AutoStory_Checkpoint_0102::start_text() const { return AutoStory_Checkpoint_0101().end_text(); }
+std::string AutoStory_Checkpoint_0102::end_text()   const { return "In front of the Oreburgh Pokemon Center, after the man's tour and Barry."; }
 
-void checkpoint_0101(SingleSwitchProgramEnvironment& env,
+void AutoStory_Checkpoint_0102::run_checkpoint(
+    SingleSwitchProgramEnvironment& env,
     ProControllerContext& context,
     AutoStoryOptions options,
-    AutoStoryStats& stats){
-    checkpoint_reattempt_loop(
-        env,
-        context,
-        options,
-        stats,
-        [&](size_t /*attempt*/){
-            jubilife_to_oreburgh_gate(env, env.console, context);
-            oreburgh_gate_nav(env, env.console, context);
-        },
-        true);
-}
-
-// ========================
-// Checkpoint 0102 Wrapper
-// ========================
-
-std::string AutoStory_checkpoint_0102::name() const {
-    return "01.02 - Oreburgh Mine";
-}
-std::string AutoStory_checkpoint_0102::start_text() const {
-    return AutoStory_checkpoint_0101().end_text();
-}
-std::string AutoStory_checkpoint_0102::end_text() const {
-    return "Inside Oreburgh Gym, ready to navigate to Roark.";
-}
-
-void AutoStory_checkpoint_0102::run_checkpoint(SingleSwitchProgramEnvironment& env,
-    ProControllerContext& context,
-    AutoStoryOptions options,
-    AutoStoryStats& stats) const {
+    AutoStoryStats& stats
+) const{
     checkpoint_0102(env, context, options, stats);
 }
 
 
-void checkpoint_0102(SingleSwitchProgramEnvironment& env,
+
+std::string AutoStory_Checkpoint_0103::name()       const { return "01.03 - Oreburgh Mine to Roark"; }
+std::string AutoStory_Checkpoint_0103::start_text() const { return AutoStory_Checkpoint_0102().end_text(); }
+std::string AutoStory_Checkpoint_0103::end_text()   const { return "Outside the Oreburgh Mine, after talking to Roark."; }
+
+void AutoStory_Checkpoint_0103::run_checkpoint(
+    SingleSwitchProgramEnvironment& env,
     ProControllerContext& context,
     AutoStoryOptions options,
-    AutoStoryStats& stats){
-    checkpoint_reattempt_loop(
-        env,
-        context,
-        options,
-        stats,
-        [&](size_t /*attempt*/){
-            oreburgh_gate_to_mine(env, env.console, context);
-            oreburgh_mine_nav(env.console, context);
-            // Standalone test entry points are not part of the checkpoint route.
-            // oreburgh_mine_first_leg_test(env.console, context);
-            // oreburgh_mine_route_and_escape_test(env.console, context);
-            oreburgh_mine_to_gym(env, env.console, context);
-        },
-
-        true);
-}
-
-// ========================
-// Checkpoint 0103 Wrapper
-// ========================
-
-std::string AutoStory_checkpoint_0103::name() const {
-    return "01.03 - Oreburgh Gym";
-}
-std::string AutoStory_checkpoint_0103::start_text() const {
-    return AutoStory_checkpoint_0102().end_text();
-}
-std::string AutoStory_checkpoint_0103::end_text() const {
-    return "Standing at Roark after defeating him and acquiring the first badge.";
-}
-
-void AutoStory_checkpoint_0103::run_checkpoint(SingleSwitchProgramEnvironment& env,
-    ProControllerContext& context,
-    AutoStoryOptions options,
-    AutoStoryStats& stats) const {
+    AutoStoryStats& stats
+) const{
     checkpoint_0103(env, context, options, stats);
 }
 
 
-void checkpoint_0103(SingleSwitchProgramEnvironment& env,
+
+std::string AutoStory_Checkpoint_0104::name()       const { return "01.04 - Oreburgh Gym"; }
+std::string AutoStory_Checkpoint_0104::start_text() const { return AutoStory_Checkpoint_0103().end_text(); }
+std::string AutoStory_Checkpoint_0104::end_text()   const { return "Outside the Oreburgh Gym's door, with the Coal Badge."; }
+
+void AutoStory_Checkpoint_0104::run_checkpoint(
+    SingleSwitchProgramEnvironment& env,
     ProControllerContext& context,
     AutoStoryOptions options,
-    AutoStoryStats& stats){
-    checkpoint_reattempt_loop(
-        env,
-        context,
-        options,
-        stats,
-        [&](size_t /*attempt*/){
-            //#. Oreburgh Gym navigation and battle
-            gym_Puzzle_01(env, env.console, context);
-        },
-
-        true);
+    AutoStoryStats& stats
+) const{
+    checkpoint_0104(env, context, options, stats);
 }
 
+std::string AutoStory_Checkpoint_0105::name()       const { return "01.05 - Oreburgh to Floaroma"; }
+std::string AutoStory_Checkpoint_0105::start_text() const { return AutoStory_Checkpoint_0104().end_text(); }
+std::string AutoStory_Checkpoint_0105::end_text()   const { return "In the Floaroma Town Pokemon Center, healed."; }
+
+void AutoStory_Checkpoint_0105::run_checkpoint(
+    SingleSwitchProgramEnvironment& env,
+    ProControllerContext& context,
+    AutoStoryOptions options,
+    AutoStoryStats& stats
+) const{
+    checkpoint_0105(env, context, options, stats);
+}
 
 }
 }
