@@ -545,12 +545,15 @@ public:
         if (walked.stop == WalkStop::TRANSITION || walked.stop == WalkStop::DIALOG){
             return outcome_failed("walk_failed", label + ": " + walk_stop_name(walked.stop) + " instead of a stop");
         }
-        //  The leg was measured to end against something: running out of
-        //  time means we are not where the route thinks, and the legs after
-        //  would walk blind (r157a swept for a clown from the wrong corner).
+        //  The leg was measured to end against a wall, so holding toward it
+        //  for every tile's time leaves us there whatever the screen shows:
+        //  people walking or a TV screen nearby kept it changing and the stop
+        //  went unseen (r162a, r167a, r171a). Seeing the stop only ends the
+        //  hold early; a wrong place is caught by the next gate (a sign, a
+        //  door, someone who answers).
         if (walked.stop == WalkStop::LIMIT){
-            return outcome_failed("off_route", label + ": nothing stopped us within " +
-                std::to_string(tiles) + " tiles' time; not on the measured route");
+            m_env.console.log("[Walk] " + label + ": held for " + std::to_string(tiles) +
+                " tiles' time without seeing the stop; taking the wall as reached.");
         }
         return outcome_ok();
     }
