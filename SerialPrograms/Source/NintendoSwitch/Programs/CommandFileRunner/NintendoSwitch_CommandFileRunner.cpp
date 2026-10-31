@@ -162,6 +162,7 @@ private:
             {"wait",        {"wait ms", &LineRunner::wait}},
             {"shot",        {"shot label", &LineRunner::shot}},
             {"shots",       {"shots label count [interval_ms]", &LineRunner::shots}},
+            {"history",     {"history label   (save the console's recent video, if Stream History is on)", &LineRunner::history}},
             {"detect",      {"detect detector [image]   (image: a path, or a file in the outbox)", &LineRunner::detect}},
             {"wait_for",    {"wait_for detector [timeout_ms]   (reports a timeout)", &LineRunner::wait_for}},
             {"expect",      {"expect detector [timeout_ms]   (fails on a timeout)", &LineRunner::wait_for}},
@@ -231,6 +232,13 @@ private:
             }
             out() << "shot " << save_screenshot(label + "_" + std::to_string(c)) << "\n";
         }
+    }
+    void history(const CommandLine& line){
+        const std::string path = m_session.outbox + m_name + "_" + line.arg(1) + ".mp4";
+        if (!console().save_stream_history(path)){
+            throw ParseException("history: no video saved (is Stream History on?)");
+        }
+        out() << "video " << path << "\n";
     }
     void detect(const CommandLine& line){
         const std::string& name = line.arg(1);
