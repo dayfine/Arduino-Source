@@ -163,7 +163,8 @@ std::optional<Direction> talk_to_adjacent_npc(
 
 bool talk_with_nudges(
     VideoStream& stream, ProControllerContext& context,
-    Direction facing, const std::string& label, Milliseconds wait
+    Direction facing, const std::string& label, Milliseconds wait,
+    const std::function<bool(const ImageViewRGB32& before, const ImageViewRGB32& after)>& accept
 ){
     const bool vertical = facing == Direction::NORTH || facing == Direction::SOUTH;
     const Direction minus = vertical ? Direction::WEST : Direction::NORTH;
@@ -184,12 +185,22 @@ bool talk_with_nudges(
                 return false;
             }
         }
+        context.wait_for_all_requests();
+        const VideoSnapshot before = stream.video().snapshot();
         pbf_press_button(context, BUTTON_A, 80ms, 0ms);
         context.wait_for_all_requests();
         ShortDialogWatcher dialog(COLOR_CYAN);
         if (wait_until(stream, context, wait, {{dialog}}) == 0){
-            stream.log("[Route] " + label + ": answered " + std::to_string(offset) + " nudge(s) from where we stood.");
-            return true;
+            const VideoSnapshot after = stream.video().snapshot();
+            if (!accept || (before && after && accept(*before.frame, *after.frame))){
+                stream.log("[Route] " + label + ": answered " + std::to_string(offset) + " nudge(s) from where we stood.");
+                return true;
+            }
+            stream.log("[Route] " + label + ": something else answered " + std::to_string(offset) + " nudge(s) from where we stood; closing it.");
+            for (size_t press = 0; press < 3; press++){
+                pbf_press_button(context, BUTTON_B, 80ms, 700ms);
+            }
+            context.wait_for_all_requests();
         }
     }
     stream.log("[Route] " + label + ": nobody answered within two nudges either side.");

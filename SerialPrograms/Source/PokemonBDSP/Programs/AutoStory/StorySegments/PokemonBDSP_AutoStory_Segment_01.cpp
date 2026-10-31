@@ -562,7 +562,18 @@ void oreburgh_to_roark(VideoStream& stream, ProControllerContext& context){
         }
         // The camera zooms in and his first line, "OK, stand back and watch
         // this.", can take some seconds (r98).
-        talked = talk_with_nudges(stream, context, Direction::NORTH, "Roark", 8000ms);
+        // His rocks answer A too ("It's a rugged rock..."): his talk is the
+        // one that zooms the camera in on us (by hand), which the rock's
+        // message does not. Compare the view above the dialogue box.
+        talked = talk_with_nudges(stream, context, Direction::NORTH, "Roark", 8000ms,
+            [&](const ImageViewRGB32& before, const ImageViewRGB32& after){
+                const ImageFloatBox above_box{0.0, 0.0, 1.0, 0.6};
+                const double change = walk_screen_change(
+                    extract_box_reference(before, above_box), extract_box_reference(after, above_box)
+                );
+                stream.log("[01.03] View change when the talk opened: " + std::to_string(change) + " (Roark zooms in).");
+                return change > 35;     //  by hand: 50 for his zoom
+            });
     }
     if (!talked){
         fail(stream, "Oreburgh Mine: no talk opened below Roark (has Barry told us about the mine?).");

@@ -66,10 +66,15 @@ std::optional<Pokemon::Direction> talk_to_adjacent_npc(
 //  (s03e2 drifted east of Roark a third of a tile per try). Returns whether a
 //  dialogue opened, left open; false also after a wild battle on a nudge,
 //  which leaves us off the place we were.
+//  `accept`, if given, looks at the screen before A and once the dialogue
+//  is open, and says whether it is the one wanted: a rock or a sign next to
+//  someone answers A too (r187a read "It's a rugged rock" beside Roark). A
+//  dialogue it turns down is closed with B and the nudges go on.
 bool talk_with_nudges(
     VideoStream& stream, ProControllerContext& context,
     Pokemon::Direction facing, const std::string& label,
-    Milliseconds wait = Milliseconds(3000)
+    Milliseconds wait = Milliseconds(3000),
+    const std::function<bool(const ImageViewRGB32& before, const ImageViewRGB32& after)>& accept = nullptr
 );
 constexpr Milliseconds ROUTE_NUDGE_TAP = Milliseconds(50);
 
