@@ -12,7 +12,6 @@
 #include "CommonFramework/ImageTools/ImageBoxes.h"
 #include "CommonFramework/VideoPipeline/VideoOverlayScopes.h"
 #include "CommonTools/VisualDetector.h"
-#include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "CommonTools/InferenceCallbacks/VisualInferenceCallback.h"
 #include "VideoGames/PokemonFRLG/PokemonFRLG_Settings.h"
 
@@ -41,9 +40,6 @@ public:
         : DetectorToFinder("BagWatcher", std::chrono::milliseconds(250), color)
     {}
 };
-
-
-void add_tests_BagDetector(UnitTestDatabase& database);
 
 
 
