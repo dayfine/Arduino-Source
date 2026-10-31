@@ -1105,7 +1105,7 @@ void oreburgh_gym_to_center(VideoStream& stream, ProControllerContext& context){
 
 void oreburgh_to_floaroma(VideoStream& stream, ProControllerContext& context){
     StepLog step(stream, "01.05", "From the Oreburgh Gym to Floaroma Town", {
-        "Out of the gym, east to the Pokemon Center and heal",
+        "Out of the gym onto its doorstep",
         "Up to the platform by Oreburgh Gate and into it (Barry bumps into us there)",
         "Through the Gate and west along Route 203 and Jubilife to the Route 218 gate",
         "Back east to Jubilife's north road and up it (Rowan, Dawn and two Galactic grunts: a tag battle)",
@@ -1119,13 +1119,16 @@ void oreburgh_to_floaroma(VideoStream& stream, ProControllerContext& context){
     // 01.04 ends in front of Roark, just after his battle: its save at
     // 01.05's start is right after the win (2026-10-31, at the user's
     // request), so a failure later never has to beat him again.
-    oreburgh_gym_to_center(stream, context);
+    // No trip back to the Oreburgh Center (2026-10-31, the user): talk_or_fight()
+    // gives a Potion after Roark when HP is low, and Jubilife's Center is on
+    // the way. Out of the gym onto its doorstep, which is on the Center door's
+    // row: west along it reaches the stairs' cliff.
+    if (!dpad_out_of_building(stream, context, 40, "out of the gym")){
+        fail(stream, "Oreburgh Gym: did not leave by its door.");
+    }
 
     step(2);
-    // Out of the Center onto its doorstep: its
-    // row is the gym door's, and west along it reaches the stairs' cliff,
-    // as from the gym door (by hand, 2026-10-29 and 2026-10-31).
-    walk_out_of_center(stream, context, "Oreburgh");
+    // From the gym's doorstep, as walked by hand on 2026-10-29.
     walk_dir(stream, context, Direction::WEST, 20000ms, "west to the stairs' cliff");
     walk_dir(stream, context, Direction::NORTH, 10000ms, "north along the cliff");
     hold_tiles(stream, context, Direction::EAST, 2);
