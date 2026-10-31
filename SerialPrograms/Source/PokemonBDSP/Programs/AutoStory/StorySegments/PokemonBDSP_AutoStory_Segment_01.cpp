@@ -460,27 +460,30 @@ void oreburgh_to_roark(VideoStream& stream, ProControllerContext& context){
         fail(stream, "Oreburgh: no column east of the save went into the Pokemon Center.");
     }
     context.wait_for(1000ms);
-    walk_out_of_center(stream, context, "Oreburgh");
 
     step(2);
-    // Out of the door facing south: straight on into the mine. A worker
-    // walks about on the sand path and stops the walk as a wall would (r95,
-    // r96): wait for him to move and walk on.
+    // Straight back south: out of the door and on into the mine. Fades go
+    // unseen at times (r184b missed the mine's, r185a the Center's and walked
+    // on into the mine hall), so count: the Center's door and the mine are
+    // two transitions, or about 1 s inside and 8.6 s outside of walking (by
+    // hand). A worker walks about on the sand path and stops the walk as a
+    // wall would (r95, r96): wait for him to move and walk on. Step 3 copes
+    // with ending in the hall or in the corridor.
     bool in_mine = false;
-    for (size_t attempt = 0; attempt < 5 && !in_mine; attempt++){
-        const WalkResult down = walk_dir(stream, context, Direction::SOUTH, 15000ms, "south from the Center's door into the mine");
-        // The fade into the mine can go unseen too, and the walk runs on
-        // through the hall into the corridor (r184b). The door to the mine is
-        // 8.6 s of walking (by hand), and the worker stops us well before: a
-        // walk this long got there, and step 3 copes with the hall or the
-        // corridor.
-        if (down.stop == WalkStop::TRANSITION || down.walked >= 7000ms){
-            in_mine = true;
+    size_t transitions = 0;
+    Milliseconds walked = 0ms;
+    for (size_t attempt = 0; attempt < 6 && !in_mine; attempt++){
+        const WalkResult down = walk_dir(stream, context, Direction::SOUTH, 15000ms, "south out of the Center and into the mine");
+        walked += down.walked;
+        if (down.stop == WalkStop::TRANSITION){
+            transitions++;
+            context.wait_for(1000ms);
         }else if (down.stop == WalkStop::DIALOG){
             talk_or_fight(stream, context, "Someone on the way to the mine");
-        }else{
+        }else if (down.stop == WalkStop::BLOCKED){
             context.wait_for(2000ms);
         }
+        in_mine = transitions >= 2 || walked >= 9500ms;
     }
     if (!in_mine){
         fail(stream, "Oreburgh: the walk south from the Center's door did not reach the mine.");
