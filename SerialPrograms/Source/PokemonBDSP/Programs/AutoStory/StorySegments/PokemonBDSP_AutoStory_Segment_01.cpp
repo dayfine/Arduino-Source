@@ -773,7 +773,7 @@ bool in_dim_cave(VideoStream& stream, uint64_t below){
 //  cliff, south to the posts, a row up, then 17 tiles east is the gym door's
 //  column. The hold is checked by the door itself: walk north, and if the
 //  gym's wall stops us, try the columns either side.
-constexpr size_t GYM_TILES_WEST_OF_CENTER = 19;
+constexpr size_t GYM_TILES_WEST_OF_CENTER = 18;     //  19 by hand; the program's exit leaves 19 a tile west (r208d)
 
 //  North through a door from just below it: one tile's step, then watch
 //  for the door's black fade. Entering the Oreburgh Gym (by hand,
@@ -783,6 +783,8 @@ constexpr size_t GYM_TILES_WEST_OF_CENTER = 19;
 //  black; a scene comparison could not tell a tile's scroll (106 to 119)
 //  from going in (121, r205d, r207d). A miss steps back onto the row.
 bool through_door_north(VideoStream& stream, ProControllerContext& context, const std::string& label){
+    context.wait_for_all_requests();
+    const VideoSnapshot before = stream.video().snapshot();
     const WalkResult up = walk_for(stream, context, 0, 1, 240ms, label);
     if (up.stop == WalkStop::TRANSITION){
         return true;
@@ -793,8 +795,15 @@ bool through_door_north(VideoStream& stream, ProControllerContext& context, cons
         context.wait_for(2000ms);
         return true;
     }
-    stream.log("[Route] " + label + ": no black screen; not the door.");
-    walk_for(stream, context, 0, -1, 240ms, label + ": back down");
+    // Back down only if the step moved us: against the building's front it
+    // does not, and stepping south anyway took us a row down each try
+    // (r208d drifted south along the gym's front).
+    const VideoSnapshot after = stream.video().snapshot();
+    const double moved = before && after ? walk_screen_change(*before.frame, *after.frame) : 0;
+    stream.log("[Route] " + label + ": no black screen; not the door (view change " + std::to_string(moved) + ").");
+    if (moved > WALK_BLOCKED_CHANGE * 2){
+        walk_for(stream, context, 0, -1, 240ms, label + ": back down");
+    }
     return false;
 }
 
@@ -815,15 +824,9 @@ void oreburgh_street_to_gym(VideoStream& stream, ProControllerContext& context){
     if (through_door_north(stream, context, "Oreburgh Gym door")){
         return;
     }
-    const Direction sides[] = {Direction::EAST, Direction::WEST, Direction::WEST, Direction::EAST};
-    for (Direction side : sides){
-        route_turn(stream, context, side);
-        walk_for(stream, context, side == Direction::EAST ? 1 : -1, 0, 80ms, "line up with the gym's door");
-        if (through_door_north(stream, context, "Oreburgh Gym door")){
-            return;
-        }
-    }
-    for (int shift : {1, -2, 3, -4}){
+    // A tile either side, then ask for help: a wider search wanders.
+    for (int shift : {1, -2}){
+        route_turn(stream, context, shift > 0 ? Direction::EAST : Direction::WEST);
         for (int tile = 0; tile < std::abs(shift); tile++){
             walk_for(stream, context, shift > 0 ? 1 : -1, 0, 160ms, "a tile along the gym's front");
         }
