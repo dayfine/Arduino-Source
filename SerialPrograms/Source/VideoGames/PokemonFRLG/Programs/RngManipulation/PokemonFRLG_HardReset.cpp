@@ -23,9 +23,11 @@ namespace PokemonFRLG{
 
 namespace{
 
-//  Press A on the selected profile and return whether game startup was observed.
-//  With license handling disabled, preserve the fixed-delay input sequence.
-//  A timeout leaves recovery to the existing reset loop.
+//  Press A on the selected profile. Return true only if the startup black screen
+//  was observed here. False means no observation: either license handling is
+//  disabled (the fixed delay is used without checking video), or the wait timed
+//  out. False does not by itself mean launch failed; the caller still checks
+//  startup and the resulting screen after pressing HOME.
 bool start_game_and_wait(
     ConsoleHandle& console, ProControllerContext& context,
     Milliseconds launch_delay
@@ -131,11 +133,11 @@ void rng_reset_and_return_home(
         // Waiting for all requests and using inference should be avoided for any button presses that happen *while the game is open*, 
         // but we can make sure we've gotten back to the home screen and pause there
 
-        // open the game and go back home ASAP
         if (update_popup){
             pbf_press_button(context, BUTTON_A, 160ms, 840ms);
             pbf_press_dpad(context, DPAD_UP, 40ms, 0ms);
         }
+        // Preserve startup seen before HOME: the later watcher may only see HOME.
         bool black_screen_detected = start_game_and_wait(console, context, launch_delay);
         pbf_press_button(context, BUTTON_HOME, 200ms, 1800ms);
 
