@@ -775,29 +775,27 @@ bool in_dim_cave(VideoStream& stream, uint64_t below){
 //  gym's wall stops us, try the columns either side.
 constexpr size_t GYM_TILES_WEST_OF_CENTER = 19;
 
-//  North through a door from just below it: true once the whole scene has
-//  changed, as the door's fade often does not read as a transition (the
-//  Trainers' School's, r146b; Oreburgh's gym, r195d, r203a).
+//  North through a door from just below it: one tile's step, then watch
+//  for the door's black fade. Entering the Oreburgh Gym (by hand,
+//  2026-10-31): the door opens and the camera zooms in, and about 2 s after
+//  the step the screen is black (brightness 7) for 1 to 1.5 s. The step's
+//  own walk stops watching when the stick is let go, so it missed that
+//  black; a scene comparison could not tell a tile's scroll (106 to 119)
+//  from going in (121, r205d, r207d). A miss steps back onto the row.
 bool through_door_north(VideoStream& stream, ProControllerContext& context, const std::string& label){
-    context.wait_for_all_requests();
-    const VideoSnapshot before = stream.video().snapshot();
-    // One tile's step only: under the door it goes in, anywhere else it
-    // moves a tile, which the scene check tells apart, and steps back. A
-    // longer walk north up an open column also changed the whole view and
-    // passed for the door (r204d walked up the road east of the gym).
     const WalkResult up = walk_for(stream, context, 0, 1, 240ms, label);
-    context.wait_for(2000ms);
     if (up.stop == WalkStop::TRANSITION){
         return true;
     }
-    const VideoSnapshot after = stream.video().snapshot();
-    const double change = before && after ? walk_screen_change(*before.frame, *after.frame) : 0;
-    const bool through = change > WALK_SCENE_CHANGE;
-    stream.log("[Route] " + label + ": view change " + std::to_string(change) + (through ? ", a new scene; through the door." : ", not a door."));
-    if (!through){
-        walk_for(stream, context, 0, -1, 240ms, label + ": back down");
+    BlackScreenWatcher black(COLOR_RED);
+    if (wait_until(stream, context, 4000ms, {{black}}) == 0){
+        stream.log("[Route] " + label + ": the screen went black; through the door.");
+        context.wait_for(2000ms);
+        return true;
     }
-    return through;
+    stream.log("[Route] " + label + ": no black screen; not the door.");
+    walk_for(stream, context, 0, -1, 240ms, label + ": back down");
+    return false;
 }
 
 void oreburgh_street_to_gym(VideoStream& stream, ProControllerContext& context){
