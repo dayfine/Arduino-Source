@@ -176,6 +176,132 @@ std::vector<Leg<State>> join_legs(const Model& model, const State& start, const 
     return legs;
 }
 
+//  The search's working set. Nodes are kept in a list and queued by index,
+//  so State needs no ordering.
+template <typename Model>
+struct Search{
+    using State = typename Model::State;
+    using Hash = NodeHash<State, typename Model::StateHash>;
+    using Entry = std::pair<int, size_t>;
+
+    std::unordered_map<Node<State>, int, Hash> distance;
+    std::unordered_map<Node<State>, Move<State>, Hash> came_from;
+    std::vector<Node<State>> nodes;
+    std::priority_queue<Entry, std::vector<Entry>, std::greater<Entry>> queue;
+};
+
+template <typename Model, typename State>
+int distance_of(const Search<Model>& search, const Node<State>& node){
+    auto iter = search.distance.find(node);
+    return iter == search.distance.end() ? std::numeric_limits<int>::max() : iter->second;
+}
+
+//  Records `cost` as the way to `node` if it is cheaper than any so far.
+template <typename Model, typename State>
+void relax(Search<Model>& search, const Node<State>& node, int cost, const Move<State>& move){
+    if (cost >= distance_of(search, node)){
+        return;
+    }
+    search.distance[node] = cost;
+    search.came_from.insert_or_assign(node, move);
+    search.nodes.push_back(node);
+    search.queue.emplace(cost, search.nodes.size() - 1);
+}
+
+//  Queues every press from `current`, reached at `cost`.
+template <typename Model, typename State>
+void expand(
+    const Model& model, Search<Model>& search,
+    const Node<State>& current, int cost, const LegCosts& costs
+){
+    for (Direction direction : ALL_DIRECTIONS){
+        std::optional<Step<State>> step = model.press(current.state, direction);
+        if (!step){
+            continue;
+        }
+        const bool continues = step->action == 0 && !step->ends_leg;
+        const Node<State> next{step->next, (int)step->facing, continues};
+        int step_cost = costs.per_tile + step->extra_cost;
+        if (current.facing != (int)direction){
+            step_cost += costs.per_turn + stop_cost(model, current, costs);
+        }
+        relax(search, next, cost + step_cost, Move<State>{current, direction, *step});
+    }
+}
+
+//  What it costs to end at `node`: stopping there, then turning to
+//  `goal_facing`.
+template <typename Model, typename State>
+int arrival_cost(
+    const Model& model, const Node<State>& node,
+    std::optional<Direction> goal_facing, const LegCosts& costs
+){
+    int cost = stop_cost(model, node, costs);
+    if (goal_facing && node.facing != (int)*goal_facing){
+        cost += costs.per_turn;
+    }
+    return cost;
+}
+
+//  Runs the search from `first` and returns the goal node cheapest to end
+//  at, or nothing if no goal can be reached.
+template <typename Model, typename State>
+std::optional<Node<State>> search_goal(
+    const Model& model, Search<Model>& search, const Node<State>& first,
+    const std::function<bool(const State&)>& at_goal,
+    std::optional<Direction> goal_facing, const LegCosts& costs
+){
+    search.distance[first] = 0;
+    search.nodes.push_back(first);
+    search.queue.emplace(0, 0);
+
+    std::optional<Node<State>> best_end;
+    int best_total = std::numeric_limits<int>::max();
+    while (!search.queue.empty()){
+        const auto [cost, index] = search.queue.top();
+        search.queue.pop();
+        const Node<State> current = search.nodes[index];
+        if (cost != distance_of(search, current)){
+            continue;
+        }
+        if (cost >= best_total){
+            break;
+        }
+        if (!at_goal(current.state)){
+            expand(model, search, current, cost, costs);
+            continue;
+        }
+        const int total = cost + arrival_cost(model, current, goal_facing, costs);
+        if (total < best_total){
+            best_total = total;
+            best_end = current;
+        }
+    }
+    return best_end;
+}
+
+//  The moves from `first` to `end`, in order.
+template <typename Model, typename State>
+std::vector<Move<State>> trace_moves(const Search<Model>& search, const Node<State>& first, const Node<State>& end){
+    std::vector<Move<State>> moves;
+    for (Node<State> node = end; !(node == first); node = search.came_from.at(node).from){
+        moves.push_back(search.came_from.at(node));
+    }
+    std::reverse(moves.begin(), moves.end());
+    return moves;
+}
+
+template <typename State>
+Leg<State> face_leg(const State& state, Direction direction){
+    Leg<State> face;
+    face.kind = LegKind::FACE;
+    face.direction = direction;
+    face.facing_after = direction;
+    face.start = state;
+    face.end = state;
+    return face;
+}
+
 }
 
 
@@ -190,90 +316,18 @@ std::optional<std::vector<Leg<typename Model::State>>> plan_legs(
 ){
     using State = typename Model::State;
     using Node = LegPlannerInternal::Node<State>;
-    using Move = LegPlannerInternal::Move<State>;
-    using Hash = LegPlannerInternal::NodeHash<State, typename Model::StateHash>;
-    const int INF = std::numeric_limits<int>::max();
-
-    std::unordered_map<Node, int, Hash> distance;
-    std::unordered_map<Node, Move, Hash> came_from;
-    auto distance_of = [&](const Node& node){
-        auto iter = distance.find(node);
-        return iter == distance.end() ? INF : iter->second;
-    };
-    auto arrival_cost = [&](const Node& node){
-        int cost = LegPlannerInternal::stop_cost(model, node, costs);
-        if (goal_facing && node.facing != (int)*goal_facing){
-            cost += costs.per_turn;
-        }
-        return cost;
-    };
 
     const Node first{start, start_facing ? (int)*start_facing : 4, false};
-    distance[first] = 0;
-
-    //  Nodes are kept in a list and queued by index, so State needs no ordering.
-    std::vector<Node> nodes{first};
-    using Entry = std::pair<int, size_t>;
-    std::priority_queue<Entry, std::vector<Entry>, std::greater<Entry>> queue;
-    queue.emplace(0, 0);
-
-    std::optional<Node> best_end;
-    int best_total = INF;
-    while (!queue.empty()){
-        const auto [cost, index] = queue.top();
-        queue.pop();
-        const Node current = nodes[index];
-        if (cost != distance_of(current)){
-            continue;
-        }
-        if (cost >= best_total){
-            break;
-        }
-        if (at_goal(current.state)){
-            const int total = cost + arrival_cost(current);
-            if (total < best_total){
-                best_total = total;
-                best_end = current;
-            }
-            continue;
-        }
-        for (Direction direction : ALL_DIRECTIONS){
-            std::optional<Step<State>> step = model.press(current.state, direction);
-            if (!step){
-                continue;
-            }
-            const bool continues = step->action == 0 && !step->ends_leg;
-            const Node next{step->next, (int)step->facing, continues};
-            int step_cost = costs.per_tile + step->extra_cost;
-            if (current.facing != (int)direction){
-                step_cost += costs.per_turn + LegPlannerInternal::stop_cost(model, current, costs);
-            }
-            if (cost + step_cost < distance_of(next)){
-                distance[next] = cost + step_cost;
-                came_from.insert_or_assign(next, Move{current, direction, *step});
-                nodes.push_back(next);
-                queue.emplace(cost + step_cost, nodes.size() - 1);
-            }
-        }
-    }
-    if (!best_end){
+    LegPlannerInternal::Search<Model> search;
+    const std::optional<Node> end = LegPlannerInternal::search_goal(model, search, first, at_goal, goal_facing, costs);
+    if (!end){
         return std::nullopt;
     }
-
-    std::vector<Move> moves;
-    for (Node node = *best_end; !(node == first); node = came_from.at(node).from){
-        moves.push_back(came_from.at(node));
-    }
-    std::reverse(moves.begin(), moves.end());
-    std::vector<Leg<State>> legs = LegPlannerInternal::join_legs(model, start, moves);
-    if (goal_facing && best_end->facing != (int)*goal_facing){
-        Leg<State> face;
-        face.kind = LegKind::FACE;
-        face.direction = *goal_facing;
-        face.facing_after = *goal_facing;
-        face.start = best_end->state;
-        face.end = best_end->state;
-        legs.push_back(face);
+    std::vector<Leg<State>> legs = LegPlannerInternal::join_legs(
+        model, start, LegPlannerInternal::trace_moves(search, first, *end)
+    );
+    if (goal_facing && end->facing != (int)*goal_facing){
+        legs.push_back(LegPlannerInternal::face_leg(end->state, *goal_facing));
     }
     return legs;
 }
