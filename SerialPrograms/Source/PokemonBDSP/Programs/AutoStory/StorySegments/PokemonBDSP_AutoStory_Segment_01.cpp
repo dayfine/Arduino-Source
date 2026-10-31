@@ -394,12 +394,13 @@ void walk_out_of_center(VideoStream& stream, ProControllerContext& context, cons
         // walk_until() looks only between 400 ms holds, and r205d held on
         // through the fade and stepped a tile further south.
         bool out = false;
-        for (size_t tile = 0; tile < 8 && !out; tile++){
-            const WalkResult step = walk_for(stream, context, 0, -1, 240ms, label + ": out of the Center");
-            if (step.stop == WalkStop::DIALOG){
+        for (size_t tile = 0; tile < 10 && !out; tile++){
+            // D-pad taps: whole tiles (the first only turns us from the nurse).
+            pbf_press_dpad(context, DPAD_DOWN, 160ms, 0ms);
+            context.wait_for(1500ms);
+            if (dialogue_opens(stream, context, 100ms)){
                 finish_dialogue(stream, context, BUTTON_B, label + ": someone in the Center");
             }
-            context.wait_for(1500ms);
             const VideoSnapshot frame = stream.video().snapshot();
             size_t percent = 100;
             if (frame){
@@ -781,7 +782,45 @@ bool in_dim_cave(VideoStream& stream, uint64_t below){
 //  cliff, south to the posts, a row up, then 17 tiles east is the gym door's
 //  column. The hold is checked by the door itself: walk north, and if the
 //  gym's wall stops us, try the columns either side.
-constexpr size_t GYM_TILES_WEST_OF_CENTER = 18;     //  19 by hand; the program's exit leaves 19 a tile west (r208d)
+//  D-pad taps from the Center's doorstep to below the gym's door: 22, the
+//  same tile every time in 3 runs from the counter save (2026-10-31; each
+//  tap moved 36 to 38 px at 640 px width). Stick holds drift: 160 ms moved
+//  36 to 48 px, so 18 or 19 of them missed the door by a part of a tile.
+constexpr size_t GYM_DPAD_TAPS_WEST_OF_CENTER = 22;
+uint64_t mean_brightness(const ImageViewRGB32& screen);
+
+//  `taps` D-pad taps toward `dpad`, settling between them. On the D-pad the
+//  player moves a whole tile per tap (measured above), so counted legs do
+//  not drift the way stick holds do. The first tap toward a new way only
+//  turns the player, so turn first.
+void dpad_tiles(VideoStream& stream, ProControllerContext& context, DpadPosition dpad, size_t taps, const std::string& label){
+    stream.log("[Walk] " + label + ": " + std::to_string(taps) + " D-pad taps.");
+    pbf_press_dpad(context, dpad, 160ms, 500ms);    // turn
+    for (size_t tap = 0; tap < taps; tap++){
+        pbf_press_dpad(context, dpad, 160ms, 700ms);
+    }
+    context.wait_for_all_requests();
+}
+
+//  Through a door straight north of us: tap up to face it, hold up into it,
+//  and wait for its dark fade (by hand: brightness 7, about 1 s after).
+bool dpad_through_door_north(VideoStream& stream, ProControllerContext& context, const std::string& label){
+    pbf_press_dpad(context, DPAD_UP, 160ms, 300ms);
+    pbf_press_dpad(context, DPAD_UP, 300ms, 0ms);
+    context.wait_for_all_requests();
+    const auto start = current_time();
+    while (current_time() - start < 5000ms){
+        context.wait_for(100ms);
+        const VideoSnapshot frame = stream.video().snapshot();
+        if (frame && mean_brightness(*frame.frame) < 25){
+            stream.log("[Route] " + label + ": the screen went dark; through the door.");
+            context.wait_for(2000ms);
+            return true;
+        }
+    }
+    stream.log("[Route] " + label + ": no dark screen after the D-pad step north.");
+    return false;
+}
 
 //  Mean of the three channels over a small copy of the frame, 0 to 255.
 uint64_t mean_brightness(const ImageViewRGB32& screen){
@@ -850,31 +889,12 @@ bool through_door_north(VideoStream& stream, ProControllerContext& context, cons
 }
 
 void oreburgh_street_to_gym(VideoStream& stream, ProControllerContext& context){
-    // As at Jubilife's Center and School (00.05b): from the Center's
-    // doorstep, the gym's door is straight west along the row, then north.
-    // On Bulbapedia's map (12 px a tile) the doors are 19.6 tiles apart; by
-    // hand 4-tile holds put it 17 to 18 tiles from a tile west of the door.
-    // A one-tile hold ends a part of a tile off, so if the gym's front
-    // stops us, nudge half a tile each way, then a tile each way.
-    route_turn(stream, context, Direction::WEST);
-    for (size_t tile = 0; tile < GYM_TILES_WEST_OF_CENTER; tile++){
-        const WalkResult step = walk_for(stream, context, -1, 0, 160ms, "west to the gym's door");
-        if (step.stop == WalkStop::DIALOG){
-            talk_or_fight(stream, context, "Someone on the way to the gym");
-        }
-    }
-    if (through_door_north(stream, context, "Oreburgh Gym door")){
+    // From the Center's doorstep, straight west along its row to below the
+    // gym's door, then north through it, all on the D-pad (whole tiles; see
+    // GYM_DPAD_TAPS_WEST_OF_CENTER).
+    dpad_tiles(stream, context, DPAD_LEFT, GYM_DPAD_TAPS_WEST_OF_CENTER, "west to the gym's door");
+    if (dpad_through_door_north(stream, context, "Oreburgh Gym door")){
         return;
-    }
-    // A tile either side, then ask for help: a wider search wanders.
-    for (int shift : {1, -2}){
-        route_turn(stream, context, shift > 0 ? Direction::EAST : Direction::WEST);
-        for (int tile = 0; tile < std::abs(shift); tile++){
-            walk_for(stream, context, shift > 0 ? 1 : -1, 0, 160ms, "a tile along the gym's front");
-        }
-        if (through_door_north(stream, context, "Oreburgh Gym door")){
-            return;
-        }
     }
     fail(stream, "Oreburgh: no column near the gym's door went in.");
 }
@@ -1029,25 +1049,10 @@ void oreburgh_gym_to_center(VideoStream& stream, ProControllerContext& context){
 
     // Heal at the Center, so 01.05 starts at its counter: the gym's doorstep
     // row runs east to the Center's door, the way 01.04 came.
-    route_turn(stream, context, Direction::EAST);
-    for (size_t t = 0; t < GYM_TILES_WEST_OF_CENTER; t++){
-        const WalkResult step_east = walk_for(stream, context, 1, 0, 160ms, "east to the Center's door");
-        if (step_east.stop == WalkStop::DIALOG){
-            talk_or_fight(stream, context, "Someone on the way to the Center");
-        }
-    }
-    bool inside = through_door_north(stream, context, "Oreburgh Pokemon Center door");
-    for (int shift : {1, -2}){
-        if (inside){
-            break;
-        }
-        route_turn(stream, context, shift > 0 ? Direction::EAST : Direction::WEST);
-        for (int tile = 0; tile < std::abs(shift); tile++){
-            walk_for(stream, context, shift > 0 ? 1 : -1, 0, 160ms, "a tile along the Center's front");
-        }
-        inside = through_door_north(stream, context, "Oreburgh Pokemon Center door");
-    }
-    if (!inside){
+    // The way 01.04 came, reversed, on the D-pad. Untested on the console:
+    // the gym's doorstep is assumed to be the tile below its door.
+    dpad_tiles(stream, context, DPAD_RIGHT, GYM_DPAD_TAPS_WEST_OF_CENTER, "east to the Center's door");
+    if (!dpad_through_door_north(stream, context, "Oreburgh Pokemon Center door")){
         fail(stream, "Oreburgh: the Pokemon Center's door did not take us from the gym's row.");
     }
     heal_at_oreburgh_counter(stream, context);
