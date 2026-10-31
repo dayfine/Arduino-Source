@@ -11,6 +11,7 @@
 #include "../Data/PokemonBDSP_AutoStory_Route203.h"
 #include "../Data/PokemonBDSP_AutoStory_Route204.h"
 #include "../Data/PokemonBDSP_AutoStory_Route204South.h"
+#include "PokemonBDSP/Inference/PokemonBDSP_SelectionArrow.h"
 #include "../Data/PokemonBDSP_AutoStory_StoryMaps.h"
 #include "../Detect/PokemonBDSP_AutoStory_OverworldDetector.h"
 #include "../Utils/PokemonBDSP_AutoStory_PokemonCenter.h"
@@ -1274,6 +1275,35 @@ void jubilife_to_ravaged_path(VideoStream& stream, ProControllerContext& context
     context.wait_for(2000ms);
 }
 
+//  "This rock seems breakable with a hidden move. Would you like to use Rock
+//  Smash?" is open, from an A at a smashable rock. Its Yes/No box comes only
+//  once the text is advanced again (by hand, 2026-10-31: the text complete
+//  1.2 s after the first A, the box 1.2 s after a second), and r237a's timed
+//  A, A, B put its B on that box: No. So press A until the box's cursor
+//  shows, then once more for Yes, and wait out the move. False if no box
+//  shows: whatever is open is not this prompt.
+bool answer_rock_smash_prompt(VideoStream& stream, ProControllerContext& context, const std::string& label){
+    static const ImageFloatBox YES_NO_ARROW_BOX{0.700, 0.620, 0.070, 0.120};
+    SelectionArrowFinder yes_no(stream.overlay(), YES_NO_ARROW_BOX, COLOR_GREEN);
+    for (size_t press = 0; press < 5; press++){
+        context.wait_for(1200ms);
+        context.wait_for_all_requests();
+        const VideoSnapshot screen = stream.video().snapshot();
+        if (screen && yes_no.detect(*screen.frame)){
+            stream.log("[Route] " + label + ": Rock Smash offered; Yes.");
+            pbf_press_button(context, BUTTON_A, 80ms, 0ms);
+            context.wait_for(5000ms);
+            if (dialogue_opens(stream, context, 500ms)){
+                finish_dialogue(stream, context, BUTTON_B, label + ": after Rock Smash");
+            }
+            return true;
+        }
+        pbf_press_button(context, BUTTON_A, 80ms, 0ms);
+    }
+    stream.log("[Route] " + label + ": no Yes/No box for Rock Smash.", COLOR_RED);
+    return false;
+}
+
 void ravaged_path(VideoStream& stream, ProControllerContext& context){
     StepLog step(stream, "01.09", "Through the Ravaged Path", {
         "Through the Ravaged Path, smashing its rocks",
@@ -1286,7 +1316,13 @@ void ravaged_path(VideoStream& stream, ProControllerContext& context){
     // corridor's east end; the way out is a tile west of it, south.
     {
         std::vector<Pokemon::TrainerSight> no_trainers;
-        auto in_the_way = [&](const std::string& who){ talk_or_fight(stream, context, who); };
+        //  Blocked short of a wall in here, it is a rock the plan counted on
+        //  being gone (r237a: the walker took one for a person and said No).
+        auto in_the_way = [&](const std::string& who){
+            if (!answer_rock_smash_prompt(stream, context, who)){
+                talk_or_fight(stream, context, who);
+            }
+        };
         std::vector<Pokemon::TilePos> at{RavagedPath::ENTRANCE};
         const Pokemon::MapSet rocks_in = ravaged_path_maps();
         at = walk_route(stream, context, rocks_in, at,
@@ -1297,14 +1333,11 @@ void ravaged_path(VideoStream& stream, ProControllerContext& context){
             no_trainers, in_the_way, "To a rock across the corridor");
         route_turn(stream, context, Direction::EAST);
         if (!talk_with_nudges(stream, context, Direction::EAST, "the rock east of us", 2000ms)){
+            fail(stream, "Ravaged Path: nothing answered facing the rock east of us.");
+        }
+        if (!answer_rock_smash_prompt(stream, context, "the rock east of us")){
             fail(stream, "Ravaged Path: no Rock Smash offer facing the rock east of us.");
         }
-        // "Would you like to use Rock Smash?": A for Yes, the animation, then
-        // B for anything left (by hand, 2026-10-29).
-        pbf_press_button(context, BUTTON_A, 80ms, 1500ms);
-        pbf_press_button(context, BUTTON_A, 80ms, 4000ms);
-        pbf_press_button(context, BUTTON_B, 80ms, 1500ms);
-        context.wait_for_all_requests();
         // We may be on either row; the rock east of the other stays, but no
         // leg from our row crosses it.
         std::vector<Pokemon::TilePos> smashed;
