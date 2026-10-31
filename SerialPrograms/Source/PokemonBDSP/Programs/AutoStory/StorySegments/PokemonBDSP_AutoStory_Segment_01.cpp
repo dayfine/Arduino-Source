@@ -770,18 +770,21 @@ constexpr size_t GYM_TILES_WEST_OF_CENTER = 19;
 bool through_door_north(VideoStream& stream, ProControllerContext& context, const std::string& label){
     context.wait_for_all_requests();
     const VideoSnapshot before = stream.video().snapshot();
-    const WalkResult up = walk_until(stream, context, 0, 1, 1200ms, label);
-    context.wait_for(1500ms);
+    // One tile's step only: under the door it goes in, anywhere else it
+    // moves a tile, which the scene check tells apart, and steps back. A
+    // longer walk north up an open column also changed the whole view and
+    // passed for the door (r204d walked up the road east of the gym).
+    const WalkResult up = walk_for(stream, context, 0, 1, 240ms, label);
+    context.wait_for(2000ms);
     if (up.stop == WalkStop::TRANSITION){
         return true;
     }
     const VideoSnapshot after = stream.video().snapshot();
-    const bool through = before && after && walk_screen_change(*before.frame, *after.frame) > WALK_SCENE_CHANGE;
-    if (through){
-        stream.log("[Route] " + label + ": a new scene; through the door.");
-    }else if (up.walked > 600ms){
-        // Walked on without a door: back down to the row.
-        walk_for(stream, context, 0, -1, up.walked, label + ": back down");
+    const double change = before && after ? walk_screen_change(*before.frame, *after.frame) : 0;
+    const bool through = change > WALK_SCENE_CHANGE;
+    stream.log("[Route] " + label + ": view change " + std::to_string(change) + (through ? ", a new scene; through the door." : ", not a door."));
+    if (!through){
+        walk_for(stream, context, 0, -1, 240ms, label + ": back down");
     }
     return through;
 }
