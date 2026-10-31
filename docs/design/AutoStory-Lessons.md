@@ -264,3 +264,71 @@ What this round adds to the design:
 - **Overworld screens belong in the screen machine.** The new-game intro runs on
   `ScreenMachine`; walking, dialogue and battle interrupts should be states of the same loop,
   so a dropped input shows up as an unexpected screen instead of a later timeout.
+
+## 14. Oreburgh 01.03 and 01.04 on console B, and what movement really is (2026-10-31, r178 to r215)
+
+Run 1 (English, Lucas, Piplup) went from 01.03 through beating Roark. It took about 40 builds,
+most of them spent guessing at timed walks before measuring.
+
+**Movement physics, measured** (screenshots from a wall anchor; background shift at 640 px width):
+
+| Input | Distance per tap | Spread |
+|---|---|---|
+| D-pad tap, 160 ms | 40 to 42 px (one tile) | about ±1 px |
+| Stick hold, 160 ms | 36 to 48 px | about ±6 px (±0.15 tile) |
+| Stick, 2 and 4 holds | 80 to 84 px, 144 to 152 px | the errors add up |
+| D-pad, 22 taps from the Oreburgh Center's doorstep | the same tile, under the gym's door, in 3 runs | 0 px |
+
+- **The D-pad moves in whole tiles; the stick doesn't.** Counted stick legs drift about half a
+  tile over 18 steps, which missed the gym's door again and again (r204 to r214). The D-pad
+  landed on the same tile every run.
+- **A tap toward a new way only turns.** It moves nobody, so a door north of us takes a tap to
+  face it and then a hold into it.
+- **Leaving a Pokemon Center lands on the same doorstep every time** (3 exits from the counter
+  save, pixel-identical). The tile-a-time drift we blamed on the exit was the stick.
+- **Holding past an event overshoots.** Walks are held in 400 ms chunks and only look between
+  chunks: holding through a door's fade walked a tile past the doorstep (r205), and out of the
+  gym down to the rocks (r212). Stop on the event (the dark fade, the floor gone), a tile at a
+  time.
+
+**How to plan a robust route** (the user's model): each leg is **clip to a wall, then an
+offset**.
+- **The clip** is a walk until stopped, with the stick: it pins one axis exactly, whatever the
+  start was, even with people moving nearby (the time limit counts as reached).
+- **The offset** is a count of D-pad taps from that pinned point: exact, as long as nothing
+  stands in the way.
+- Don't use stick holds for counted legs, and use stick nudges only for a last line-up with a
+  person (Roark) or a lit door.
+- Start checkpoints at fixed points: a Pokemon Center counter (heal there), a doorstep, a save
+  right after a battle that is hard to repeat (01.04 now ends just after Roark).
+
+**Seeing where we are:**
+- **Door fades** are often missed by the black-screen watcher: it stops watching when the step
+  ends, and the fade comes about 2 s later. Poll mean brightness for a few seconds instead
+  (fade 7, outdoors about 100).
+- **Inside a Center:** at least 45% warm floor (Oreburgh's sand reads up to 34%).
+- **In a cave or gym:** mean brightness under 65 to 85 (Oreburgh Mine 45 to 64, the street 99 to 116).
+- **A one-tile scroll can't be told from a scene change** by the view change (106 to 119 vs
+  121): don't use the view change for doors.
+- **Rocks and signs answer A too.** Check the talk is the one wanted: Roark's zooms the
+  camera (view change 86 vs under 10).
+- **Battles where there are no wild Pokemon** (gyms, towns, buildings) are trainers': fight,
+  never run (r206). Roark's battle menu reads as STANDARD, not TRAINER (r210). The map should
+  say where wild battles can happen (PokemonNavigation #11).
+- **Lines after a battle** (Roark's badge) keep the menu shut: finish them before a Potion (r211).
+
+**Process:**
+- Blind run, patch, rerun cost about 4 hours on 01.03 and 01.04. One hand measurement (4-tile
+  chunks with shots, or 10 D-pad taps) settled what several runs didn't. This is now the
+  `console-iteration` skill: measure by hand before fixing; stop after 2 same-step failures,
+  3 builds or 45 minutes.
+- A "pass" proved by timing alone was false twice: Roark's scene never finished (r186 "3/3"),
+  and a walk long enough counted as the mine. Prove a pass with something only the right
+  outcome shows.
+- Keep the game open on failure (the lab option `STOP_AT_FIRST_FAILURE`), so the failure can be
+  seen.
+- A lab script that starts "whatever program is selected" saved over the only save (01.03's
+  start, 03:05). `cf.sh` now refuses unless the Command File Runner is selected.
+
+**TODO:** audit every earlier route (00.04 to 01.05) for counted stick legs and redo them as
+"clip to a wall, then D-pad taps", measured on the console.
