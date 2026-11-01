@@ -25,7 +25,17 @@ if [ "$1" = -c ]; then console=$2; shift 2; fi
 L=${LAB_DIR:-$HOME/.lab}/locks/$console
 mkdir -p "$(dirname "$L")" || exit 2
 
-held(){ [ -d "$L" ] && kill -0 "$(cat "$L/pid" 2>/dev/null)" 2>/dev/null; }
+# Publishing the lock is mkdir (atomic), writing its pid file is a second
+# step. A lock without a pid is therefore either an owner still writing it
+# or an owner that died in between; the age tells them apart.
+INIT_GRACE=5
+age(){ echo $(( $(date +%s) - $(stat -f %m "$1" 2>/dev/null || stat -c %Y "$1" 2>/dev/null || date +%s) )); }
+held(){
+    [ -d "$L" ] || return 1
+    pid=$(cat "$L/pid" 2>/dev/null)
+    if [ -n "$pid" ]; then kill -0 "$pid" 2>/dev/null; return $?; fi
+    [ "$(age "$L")" -lt $INIT_GRACE ]
+}
 clear_stale(){ [ -d "$L" ] && ! held && rm -rf "$L"; }
 holder(){ echo "$(cat "$L/name" 2>/dev/null) (pid $(cat "$L/pid" 2>/dev/null), since $(cat "$L/since" 2>/dev/null))"; }
 own(){ [ -n "$LABLOCK_TOKEN" ] && [ -d "$L" ] && [ "$LABLOCK_TOKEN" = "$(cat "$L/token" 2>/dev/null)" ]; }
@@ -54,8 +64,9 @@ run)
         sleep 2
     done
     tok=$$-$(date +%s)-$(od -An -N4 -tu4 /dev/urandom 2>/dev/null | tr -d ' ')
-    echo "$name" > "$L/name"; echo $$ > "$L/pid"; date '+%Y-%m-%d %H:%M:%S' > "$L/since"; echo "$tok" > "$L/token"
-    trap 'rm -rf "$L"' EXIT INT TERM HUP
+    echo "$tok" > "$L/token"; echo "$name" > "$L/name"; date '+%Y-%m-%d %H:%M:%S' > "$L/since"; echo $$ > "$L/pid"
+    # Release only our own lock: a stale-cleared lock may have been retaken.
+    trap '[ "$(cat "$L/token" 2>/dev/null)" = "$tok" ] && rm -rf "$L"' EXIT INT TERM HUP
     LABLOCK_TOKEN=$tok "$@"
     exit $?;;
 *)
