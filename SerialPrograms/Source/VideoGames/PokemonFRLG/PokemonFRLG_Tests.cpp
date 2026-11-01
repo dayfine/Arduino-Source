@@ -26,6 +26,7 @@
 #include "Inference/PokemonFRLG_TrainerIdReader.h"
 #include "Inference/PokemonFRLG_WildEncounterReader.h"
 #include "Overworld/PokemonFRLG_OverworldMaps.h"
+#include "Overworld/PokemonFRLG_OverworldRoute.h"
 #include "PokemonFRLG_Navigation.h"
 #include "Tests/TestUtils.h"
 
@@ -286,6 +287,7 @@ void add_tests(UnitTestDatabase& database){
     add_tests_BagDetector(database);
     add_tests_ExitWildBattle(database);
     add_tests_OverworldMaps(database);
+    add_tests_OverworldRoute(database);
 }
 
 
