@@ -2,6 +2,8 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
+ *  Adapted from PokemonAutomation/Arduino-Source#1717 by Developer-Butters.
+ *
  *  Detects which icon the cursor is hovering over in the X-menu.
  *
  *  Two independent detection approaches are provided for testing:
