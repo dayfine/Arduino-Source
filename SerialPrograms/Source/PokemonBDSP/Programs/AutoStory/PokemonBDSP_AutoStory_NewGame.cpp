@@ -37,14 +37,16 @@ namespace{
 //  BDSP's dialogue box. ShortDialogDetector also wants something busy at the
 //  box's right end, which the "more text" arrow gives; a speaker's last line
 //  has no arrow and read as "other" (r2, 2026-11-01: Rowan's "Now, go on, and
-//  leap into the world of Pokemon!"). Without the arrow: white at both ends
-//  and along the bottom of the text area, and the box's edge on the left.
+//  leap into the world of Pokemon!"). Without the arrow: white at the text
+//  area's left end, along its bottom and at its right end below the first
+//  line, and the box's edge on the left.
 bool intro_dialog_showing(const ImageViewRGB32& screen){
     if (ShortDialogDetector().detect(screen)){
         return true;
     }
     const ImageStats left_white = image_stats(extract_box_reference(screen, ImageFloatBox(0.21, 0.835, 0.008, 0.12)));
-    const ImageStats right_white = image_stats(extract_box_reference(screen, ImageFloatBox(0.785, 0.835, 0.008, 0.12)));
+    //  Below the first line's end: a long line reaches it (r2's ran to 0.79).
+    const ImageStats right_white = image_stats(extract_box_reference(screen, ImageFloatBox(0.785, 0.915, 0.008, 0.04)));
     const ImageStats bottom = image_stats(extract_box_reference(screen, ImageFloatBox(0.50, 0.91, 0.29, 0.05)));
     const ImageStats left_edge = image_stats(extract_box_reference(screen, ImageFloatBox(0.18, 0.835, 0.02, 0.12)));
     return is_white(left_white) && is_white(right_white) && is_white(bottom) && left_edge.stddev.sum() >= 30;
