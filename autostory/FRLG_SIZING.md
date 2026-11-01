@@ -97,6 +97,56 @@ less (tests and map data not counted), one concern each.
 
 Tooling splits too: [#107](https://github.com/dayfine/Arduino-Source/pull/107) into about 3, [#116](https://github.com/dayfine/Arduino-Source/pull/116) into about 3, [#125](https://github.com/dayfine/Arduino-Source/pull/125) into 1–2, [#131](https://github.com/dayfine/Arduino-Source/pull/131) into about 7.
 
+
+## Upstream PR tree and queue for the FRLG path
+
+Each upstream PR is cut from the fork collector named in brackets. Upstream allows two open PRs
+from us at a time, so the queue runs about two deep. Sizes are code lines, with tests in brackets.
+
+```
+upstream main
+U1  AutoStory: shared start/end select database (+ its test)        [#43]  ~60 (+40)
+└ U2  AutoStory: shared story index                                  [#44]  ~35 (+60)
+  └ U3  AutoStory: AutoStoryStats to Pokemon/AutoStory (move)        [#45]  ~40
+    └ U4  Pokemon navigation: grid types + leg planner               [#114] ~600 (+370)
+      ├ U5  ScreenMachine + StepTrace                                [#114] ~330
+      └ U6  Map data: JSON maps, schema, loader, CMake embedding     [#114] ~450 (+240, test maps)
+        └ U7  LegWalker + shared route log                           [#114] ~430 (+370)
+          └ U8  Story events and segments (checkpoint/event log)     [#114] ~1,000 (+970)  split 2 if asked
+            └ U9  Story steps + builder + executor interface         [#122] ~500 (+400)
+              └ U10 Story run options: dropdowns, stats, checks, language [#122] ~340 (+240)
+                └ U11 FRLG: map generator + 25 JSON maps (data)      [#117] ~200 (+3.2k data)
+                  └ U12 FRLG: route planning + facing reader         [#117] ~3,000 (+820)  split 2-3
+                    └ U13 FRLG: walker (steps, warps, grass, signs, ledges) [#118] ~690
+                      └ U14 FRLG: find the player again              [#119] ~740 (+440)
+                        └ U15 Walker simulator (believed vs real tile) [new, [#114](https://github.com/dayfine/Arduino-Source/pull/114)] ~400 (+400)
+                          └ U16 Walker fixes: drift, short wall steps  [new, [#119](https://github.com/dayfine/Arduino-Source/pull/119)] ~150 (+200)
+                            └ U17 FRLG AutoStory: program, table, simulation  [#120] ~1,600 (+500)
+                              ├ U18 FRLG: Mart and bag checks         [#120] ~800 (+200)
+                              └ U19 FRLG: save-card check, language-free reads [#120] ~700 (+140)
+side branch from main:
+U20 Run records: recorder (framework half of [#116](https://github.com/dayfine/Arduino-Source/pull/116))                  [new] ~450 (+180)
+└ U21 Run-event hooks in story events and FRLG                      [new] ~150 (+100)
+```
+
+U12 is the one PR far over the ~400-line target. It should split into the planner and the
+facing reader, maybe three PRs, once its code is reviewed. U8 may need the same.
+
+**Queue** (two open at a time; the next opens when one merges):
+
+| Slot | Order | Notes |
+|---|---|---|
+| 1 | U1 → U2 → U3 | small, refactor-only, SV-only: the first handoff |
+| 2 | U20 alongside U1–U3 | independent of the AutoStory chain |
+| then | U4 → U5/U6 → U7 → U8 | the navigation core; U5 can go in parallel with U6 |
+| then | U9 → U10 | the shared story steps |
+| then | U11 → U12 → U13 → U14 | FRLG navigation |
+| then | U15 → U16 | the walker simulator and fixes (needs the forest drift found first) |
+| last | U17 → U18/U19, U21 | the FRLG MVP program; U18 and U19 can go in parallel |
+
+That's 21 PRs, at roughly one merged per week if review keeps up: a few months of queue. The
+shape lets each PR be reviewed alone, and the FRLG MVP only lands at the end.
+
 ## Tooling, used by both games
 
 | PR | What | Size |
