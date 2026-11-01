@@ -21,6 +21,7 @@
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "Pokemon/Navigation/Pokemon_MapSet.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_PlanCosts.h"
+#include "PokemonBDSP_AutoStory_Walk.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -78,7 +79,7 @@ std::optional<Pokemon::Direction> talk_to_adjacent_npc(
 //  someone answers A too (r187a read "It's a rugged rock" beside Roark). A
 //  dialogue it turns down is closed with B and the nudges go on.
 bool talk_with_nudges(
-    VideoStream& stream, ProControllerContext& context,
+    VideoStream& stream, ProControllerContext& context, const WildBattleEscape& escape,
     Pokemon::Direction facing, const std::string& label,
     Milliseconds wait = Milliseconds(3000),
     const std::function<bool(const ImageViewRGB32& before, const ImageViewRGB32& after)>& accept = nullptr
@@ -109,7 +110,7 @@ using RouteTrainerFight = std::function<void(const std::string& trainer)>;
 //  on walls can still end in the wrong place (r124a saved in Sandgem Town
 //  after "arriving" on Route 202).
 std::vector<Pokemon::TilePos> walk_route(
-    VideoStream& stream, ProControllerContext& context,
+    VideoStream& stream, ProControllerContext& context, const WildBattleEscape& escape,
     const Pokemon::MapSet& maps,
     std::vector<Pokemon::TilePos> from,
     const std::function<bool(const Pokemon::TilePos&)>& goal,
@@ -125,7 +126,7 @@ std::vector<Pokemon::TilePos> walk_route(
 //  human walked, so the plan is that line, with the walker's handling of
 //  trainers and blocks on each stretch (Route 204 North, 2026-10-31).
 std::vector<Pokemon::TilePos> walk_waypoints(
-    VideoStream& stream, ProControllerContext& context,
+    VideoStream& stream, ProControllerContext& context, const WildBattleEscape& escape,
     const Pokemon::MapSet& maps,
     std::vector<Pokemon::TilePos> from,
     const std::vector<Pokemon::TilePos>& waypoints,
@@ -141,7 +142,7 @@ std::vector<Pokemon::TilePos> walk_waypoints(
 //  a screenshot if no side starts a dialogue. A press from a diagonal tile,
 //  or from a tile a row off, talks to nobody, so each side is tried in turn.
 void talk_to_npc(
-    VideoStream& stream, ProControllerContext& context,
+    VideoStream& stream, ProControllerContext& context, const WildBattleEscape& escape,
     const Pokemon::MapSet& maps,
     std::vector<Pokemon::TilePos>& at,
     const Pokemon::TilePos& npc,
@@ -166,7 +167,7 @@ void finish_dialogue(
 //  For a player on the tile below a door: walks north through it. If a wall
 //  stops the walk (the door frame, a tile off the opening), steps a tile east,
 //  then west, and tries again. Fails with a screenshot if no step goes in.
-void enter_door_north(VideoStream& stream, ProControllerContext& context, const std::string& label);
+void enter_door_north(VideoStream& stream, ProControllerContext& context, const WildBattleEscape& escape, const std::string& label);
 
 //  For a player inside a building whose door is straight south: closes any
 //  talk still up and walks south out of it, stopping at the door's fade or
@@ -174,7 +175,7 @@ void enter_door_north(VideoStream& stream, ProControllerContext& context, const 
 //  then three standing looks in a row that are not a room: one look of a lit
 //  Center can miss its black edge (r259). Fails with a screenshot if five
 //  walks south get nowhere.
-void leave_door_south(VideoStream& stream, ProControllerContext& context, const std::string& label);
+void leave_door_south(VideoStream& stream, ProControllerContext& context, const WildBattleEscape& escape, const std::string& label);
 
 //  Brightness (mean r + g + b) below which a look is the door's fade, and
 //  above which a look that is not a room is outside.

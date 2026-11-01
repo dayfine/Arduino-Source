@@ -23,6 +23,11 @@ namespace NintendoSwitch{
 namespace PokemonBDSP{
 
 
+//  Runs from a wild battle that has interrupted a walk, and returns once the
+//  player stands on the overworld again. The walker only sees that a battle
+//  started; how to leave it is the program's battle code, passed in.
+using WildBattleEscape = std::function<void(VideoStream& stream, ProControllerContext& context)>;
+
 enum class WalkStop{
     ARRIVED,        //  `arrived` matched.
     DIALOG,         //  A dialogue box opened: an NPC or a trainer stopped us.
@@ -47,7 +52,7 @@ struct WalkResult{
 //  the way are run from, and walking resumes. Does not throw for any WalkStop; the
 //  caller decides which ones are expected.
 WalkResult walk_until(
-    VideoStream& stream, ProControllerContext& context,
+    VideoStream& stream, ProControllerContext& context, const WildBattleEscape& escape,
     double x, double y, Milliseconds limit, const std::string& label,
     const std::function<bool(const ImageViewRGB32& screen)>& arrived = nullptr
 );
@@ -59,7 +64,7 @@ WalkResult walk_until(
 //  through the same places). With `run`, B is held too: twice as fast, and
 //  as tile-true.
 WalkResult walk_until_dpad(
-    VideoStream& stream, ProControllerContext& context,
+    VideoStream& stream, ProControllerContext& context, const WildBattleEscape& escape,
     double x, double y, Milliseconds limit, const std::string& label,
     const std::function<bool(const ImageViewRGB32& screen)>& arrived = nullptr,
     bool run = false
@@ -70,7 +75,7 @@ WalkResult walk_until_dpad(
 //  with the same watch for wild battles and dialogue as walk_until(). Ends
 //  LIMIT after `tiles` taps, or BLOCKED when two taps in a row move nothing.
 WalkResult walk_tiles_dpad(
-    VideoStream& stream, ProControllerContext& context,
+    VideoStream& stream, ProControllerContext& context, const WildBattleEscape& escape,
     double x, double y, size_t tiles, const std::string& label
 );
 
@@ -89,13 +94,13 @@ WalkResult walk_until_no_wild(
 //  battle is run from and ends the walk with `wild_battles` 1, at a place the
 //  caller cannot know.
 WalkResult walk_for(
-    VideoStream& stream, ProControllerContext& context,
+    VideoStream& stream, ProControllerContext& context, const WildBattleEscape& escape,
     double x, double y, Milliseconds duration, const std::string& label
 );
 
 //  walk_until() that requires `expected`. Fails with the screenshot otherwise.
 WalkResult walk_expecting(
-    VideoStream& stream, ProControllerContext& context,
+    VideoStream& stream, ProControllerContext& context, const WildBattleEscape& escape,
     double x, double y, Milliseconds limit, const std::string& label,
     WalkStop expected,
     const std::function<bool(const ImageViewRGB32& screen)>& arrived = nullptr
@@ -104,7 +109,7 @@ WalkResult walk_expecting(
 //  After a move that may have walked onto an encounter tile (a tap in a cave
 //  or in tall grass): waits briefly for a wild battle and runs from it.
 //  Returns whether there was one; we may then be off the place we expected.
-bool run_from_late_encounter(VideoStream& stream, ProControllerContext& context, const std::string& label);
+bool run_from_late_encounter(VideoStream& stream, ProControllerContext& context, const WildBattleEscape& escape, const std::string& label);
 
 //  walk_until() toward a wall the route was measured to end at. Seeing the
 //  stop only ends the hold early: holding on for the whole `limit` also
@@ -113,7 +118,7 @@ bool run_from_late_encounter(VideoStream& stream, ProControllerContext& context,
 //  Roark's pickaxe; r162a: Jubilife's TV). A wrong place is caught by the
 //  next gate. Fails on a dialog or a transition: we are not where we think.
 WalkResult walk_to_wall(
-    VideoStream& stream, ProControllerContext& context,
+    VideoStream& stream, ProControllerContext& context, const WildBattleEscape& escape,
     double x, double y, Milliseconds limit, const std::string& label
 );
 
@@ -121,7 +126,7 @@ WalkResult walk_to_wall(
 //  once a dialogue opens. Use it where walking into the person does not read as
 //  BLOCKED, e.g. in tall grass, whose sway keeps the screen changing.
 WalkResult walk_to_talk(
-    VideoStream& stream, ProControllerContext& context,
+    VideoStream& stream, ProControllerContext& context, const WildBattleEscape& escape,
     double x, double y, Milliseconds limit, const std::string& label
 );
 

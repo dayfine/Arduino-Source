@@ -19,10 +19,10 @@
 #include "Pokemon/Navigation/Pokemon_RouteLog.h"
 #include "PokemonBDSP/Inference/PokemonBDSP_DialogDetector.h"
 #include "PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_OverworldDetector.h"
-#include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStoryTools.h"
 #include "PokemonBDSP_AutoStory_Location.h"
 #include "PokemonBDSP_AutoStory_Walk.h"
-#include "PokemonBDSP_AutoStory_PokemonCenter.h"
+#include "PokemonBDSP_AutoStory_Indoors.h"
+#include "PokemonBDSP_AutoStory_OverlayLog.h"
 #include "PokemonBDSP_AutoStory_RouteWalk.h"
 
 namespace PokemonAutomation{
@@ -198,7 +198,7 @@ std::optional<Direction> talk_to_adjacent_npc(
 }
 
 bool talk_with_nudges(
-    VideoStream& stream, ProControllerContext& context,
+    VideoStream& stream, ProControllerContext& context, const WildBattleEscape& escape,
     Direction facing, const std::string& label, Milliseconds wait,
     const std::function<bool(const ImageViewRGB32& before, const ImageViewRGB32& after)>& accept
 ){
@@ -217,7 +217,7 @@ bool talk_with_nudges(
             route_turn(stream, context, facing);
             //  A tap in a cave or in grass can start a wild battle, after
             //  which we are not where the nudges think: let the caller line up again.
-            if (run_from_late_encounter(stream, context, label + ": nudge")){
+            if (run_from_late_encounter(stream, context, escape, label + ": nudge")){
                 return false;
             }
         }
@@ -244,7 +244,7 @@ bool talk_with_nudges(
 }
 
 std::vector<TilePos> walk_route(
-    VideoStream& stream, ProControllerContext& context,
+    VideoStream& stream, ProControllerContext& context, const WildBattleEscape& escape,
     const MapSet& maps,
     std::vector<TilePos> from,
     const std::function<bool(const TilePos&)>& goal,
@@ -327,7 +327,7 @@ std::vector<TilePos> walk_route(
                 //  Long enough to reach the wall from the farthest tile, with room
                 //  for a slow start; past the wall the player stands still.
                 const Milliseconds limit = ROUTE_START_DELAY + per_tile * leg.tiles * 5 / 4 + 1000ms;
-                result = walk_until_dpad(stream, context, x, y, limit, leg_label, watch_banner, true);
+                result = walk_until_dpad(stream, context, escape, x, y, limit, leg_label, watch_banner, true);
                 //  A wild battle may end the walk early. Walking to a wall again
                 //  ends in the same place, so finish the leg.
                 const bool interrupted = result.wild_battles > 0;
@@ -335,7 +335,7 @@ std::vector<TilePos> walk_route(
                     (result.stop == WalkStop::LIMIT || result.stop == WalkStop::BLOCKED); again++
                 ){
                     stream.log("[Route] " + leg_label + ": a wild battle on the way; walking to the wall again.");
-                    result = walk_until_dpad(stream, context, x, y, limit, leg_label, watch_banner, true);
+                    result = walk_until_dpad(stream, context, escape, x, y, limit, leg_label, watch_banner, true);
                 }
                 //  A wall well before the nearest one the map has: something the
                 //  map does not know is in the way. Work out where we stopped from
@@ -366,7 +366,7 @@ std::vector<TilePos> walk_route(
                         pbf_press_dpad(context, dpad, 160ms, 640ms);
                     }
                     context.wait_for_all_requests();
-                    result = walk_until_dpad(stream, context, x, y, limit, leg_label, watch_banner, true);
+                    result = walk_until_dpad(stream, context, escape, x, y, limit, leg_label, watch_banner, true);
                     walked_tiles += tiles_moved(result);
                 }
                 //  Someone walking about may stand in the way for a moment: wait
@@ -378,7 +378,7 @@ std::vector<TilePos> walk_route(
                         " tiles, short of the wall; waiting for the way to clear.", COLOR_ORANGE);
                     pbf_wait(context, 2500ms);
                     context.wait_for_all_requests();
-                    result = walk_until_dpad(stream, context, x, y, limit, leg_label, watch_banner, true);
+                    result = walk_until_dpad(stream, context, escape, x, y, limit, leg_label, watch_banner, true);
                     walked_tiles += tiles_moved(result);
                 }
                 //  Any stop short of the wall's distance: someone who stays put
@@ -433,7 +433,7 @@ std::vector<TilePos> walk_route(
                 //  grass a stop reads, so walk on: a player still moving is
                 //  not where the plan has him.
                 if (!interrupted && result.stop == WalkStop::LIMIT && route_wall_readable(grid, planned.after)){
-                    const WalkResult check = walk_until_dpad(stream, context, x, y, 2000ms, leg_label + ": at the wall?", nullptr, true);
+                    const WalkResult check = walk_until_dpad(stream, context, escape, x, y, 2000ms, leg_label + ": at the wall?", nullptr, true);
                     if (check.stop == WalkStop::DIALOG){
                         //  A trainer who saw us froze the walk (the "!") until
                         //  its time ran out, then walked over (r241a: Aroma Lady
@@ -446,7 +446,7 @@ std::vector<TilePos> walk_route(
                         //  guess the tile: a leg to a wall ends at its wall however
                         //  far it got. Walk on to it.
                         stream.log("[Route] " + leg_label + ": on to the wall after the battle.", COLOR_ORANGE);
-                        result = walk_until_dpad(stream, context, x, y, limit, leg_label + ": on to the wall", watch_banner, true);
+                        result = walk_until_dpad(stream, context, escape, x, y, limit, leg_label + ": on to the wall", watch_banner, true);
                     }
                     if (check.stop != WalkStop::BLOCKED &&
                         !(check.stop == WalkStop::LIMIT && holding_against_wall(stream, context, x, y, leg_label + ": at the wall?"))
@@ -478,7 +478,7 @@ std::vector<TilePos> walk_route(
                     }
                 }
                 if (leg.tiles > turn_moved){
-                    result = walk_tiles_dpad(stream, context, x, y, leg.tiles - turn_moved, leg_label);
+                    result = walk_tiles_dpad(stream, context, escape, x, y, leg.tiles - turn_moved, leg_label);
                 }else{
                     result = WalkResult{WalkStop::LIMIT, 0ms, 0};
                 }
@@ -505,7 +505,7 @@ std::vector<TilePos> walk_route(
                         std::to_string(leg.tiles) + " tiles; waiting for the way to clear.", COLOR_ORANGE);
                     pbf_wait(context, 2500ms);
                     context.wait_for_all_requests();
-                    const WalkResult rest = walk_tiles_dpad(stream, context, x, y, leg.tiles - moved, leg_label + ": the rest");
+                    const WalkResult rest = walk_tiles_dpad(stream, context, escape, x, y, leg.tiles - moved, leg_label + ": the rest");
                     moved = std::min(leg.tiles, moved + taps_moved(rest));
                     result.stop = rest.stop;
                     result.walked += rest.walked;
@@ -627,7 +627,7 @@ std::vector<TilePos> walk_route(
                     const Milliseconds limit = ROUTE_START_DELAY +
                         ms_per_tile(leg.direction) / ROUTE_RUN_SPEEDUP * leg.tiles * 5 / 4 + 1000ms;
                     stream.log("[Route] " + leg_label + ": on to the wall after the battle.", COLOR_ORANGE);
-                    walk_until_dpad(stream, context, x, y, limit, leg_label + ": on to the wall", watch_banner, true);
+                    walk_until_dpad(stream, context, escape, x, y, limit, leg_label + ": on to the wall", watch_banner, true);
                     from = planned.after;
                     log_leg_done(stream, maps, label, planned, 0);
                     continue;
@@ -669,7 +669,7 @@ std::vector<TilePos> walk_route(
                 const Milliseconds limit = ROUTE_START_DELAY +
                     ms_per_tile(leg.direction) / ROUTE_RUN_SPEEDUP * leg.tiles * 5 / 4 + 1000ms;
                 stream.log("[Route] " + leg_label + ": on to the wall after the battle.", COLOR_ORANGE);
-                walk_until_dpad(stream, context, x, y, limit, leg_label + ": on to the wall", watch_banner, true);
+                walk_until_dpad(stream, context, escape, x, y, limit, leg_label + ": on to the wall", watch_banner, true);
                 from = planned.after;
                 log_leg_done(stream, maps, label, planned, 0);
                 continue;
@@ -722,7 +722,7 @@ std::vector<TilePos> walk_route(
 
 
 std::vector<TilePos> walk_waypoints(
-    VideoStream& stream, ProControllerContext& context,
+    VideoStream& stream, ProControllerContext& context, const WildBattleEscape& escape,
     const MapSet& maps,
     std::vector<TilePos> from,
     const std::vector<TilePos>& waypoints,
@@ -733,7 +733,7 @@ std::vector<TilePos> walk_waypoints(
 ){
     for (size_t i = 0; i < waypoints.size(); i++){
         const TilePos goal = waypoints[i];
-        from = walk_route(stream, context, maps, from,
+        from = walk_route(stream, context, escape, maps, from,
             [&](const TilePos& pos){ return pos == goal; },
             trainers, fight,
             label + " (" + std::to_string(i + 1) + "/" + std::to_string(waypoints.size()) + ", to " + maps.describe(goal) + ")",
@@ -743,7 +743,7 @@ std::vector<TilePos> walk_waypoints(
 }
 
 void talk_to_npc(
-    VideoStream& stream, ProControllerContext& context,
+    VideoStream& stream, ProControllerContext& context, const WildBattleEscape& escape,
     const MapSet& maps,
     std::vector<TilePos>& at,
     const TilePos& npc,
@@ -757,7 +757,7 @@ void talk_to_npc(
         if (!maps.world().standable(stand)){
             continue;
         }
-        at = walk_route(stream, context, maps, at, [&](const TilePos& pos){ return pos == stand; },
+        at = walk_route(stream, context, escape, maps, at, [&](const TilePos& pos){ return pos == stand; },
             trainers, fight, label);
         //  Face the NPC: the opposite of the side we stand on.
         const Direction face =
@@ -824,12 +824,12 @@ void finish_dialogue(
         std::to_string(std::chrono::duration_cast<std::chrono::seconds>(timeout).count()) + " s.", stream);
 }
 
-void enter_door_north(VideoStream& stream, ProControllerContext& context, const std::string& label){
+void enter_door_north(VideoStream& stream, ProControllerContext& context, const WildBattleEscape& escape, const std::string& label){
     //  Sideways steps to try after a blocked walk: east, then back west and
     //  one more.
     const Direction steps[] = {Direction::EAST, Direction::WEST, Direction::WEST};
     for (size_t attempt = 0; attempt <= 3; attempt++){
-        const WalkResult walk = walk_until(stream, context, 0, 1, 2500ms, label);
+        const WalkResult walk = walk_until(stream, context, escape, 0, 1, 2500ms, label);
         if (walk.stop == WalkStop::TRANSITION){
             context.wait_for(1500ms);
             return;
@@ -882,7 +882,7 @@ bool outside_for_three_looks(VideoStream& stream, ProControllerContext& context,
 
 }
 
-void leave_door_south(VideoStream& stream, ProControllerContext& context, const std::string& label){
+void leave_door_south(VideoStream& stream, ProControllerContext& context, const WildBattleEscape& escape, const std::string& label){
     //  A last line of talk may still be up, and it would stop the walk.
     pbf_mash_button(context, BUTTON_B, 2000ms);
     context.wait_for_all_requests();
@@ -900,7 +900,7 @@ void leave_door_south(VideoStream& stream, ProControllerContext& context, const 
     };
     bool out = false;
     for (size_t tries = 0; tries < 5 && !out; tries++){
-        const WalkResult walk = walk_until(stream, context, 0, -1, 6000ms, label, out_of_door);
+        const WalkResult walk = walk_until(stream, context, escape, 0, -1, 6000ms, label, out_of_door);
         if (walk.stop == WalkStop::DIALOG){
             pbf_mash_button(context, BUTTON_B, 2000ms);
         }

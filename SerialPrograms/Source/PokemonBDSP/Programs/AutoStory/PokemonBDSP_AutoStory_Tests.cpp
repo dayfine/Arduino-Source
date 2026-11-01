@@ -831,39 +831,6 @@ public:
 }
 
 
-class Test_LocationBanner : public UnitTest{
-public:
-    Test_LocationBanner()
-        : UnitTest("PokemonBDSP::AutoStory - location banner match")
-    {}
-
-    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        struct Case{
-            const char* read;
-            const char* expected;
-            bool match;
-        };
-        const Case cases[] = {
-            {"sandgemtown",     "Sandgem Town",     true},
-            {"andgemltown",     "Sandgem Town",     true},     //  r109's OCR
-            {"Route 202",       "Route 202",        true},
-            {"route2o2",        "Route 202",        false},    //  a digit read as a letter is not trusted
-            {"route201",        "Route 202",        false},
-            {"jubilifecity",    "Sandgem Town",     false},
-            {"twinleaftown",    "Sandgem Town",     false},
-            {"",                "Sandgem Town",     false},
-        };
-        for (const Case& c : cases){
-            if (location_banner_matches(c.read, c.expected) != c.match){
-                return std::string("Banner \"") + c.read + "\" for " + c.expected +
-                    (c.match ? " should match." : " should not match.");
-            }
-        }
-        return true;
-    }
-};
-
-
 //  The walk to the Poke Mart may be stopped short by someone in the way, and
 //  is then made again from the tiles the doorway on screen puts us on, give
 //  01.10 on Route 204's north half: the line a human walked (2026-10-31),
@@ -2010,73 +1977,6 @@ public:
 //  Out of a building, the town's location banner shows; inside, none
 //  (Jubilife, 2026-10-30): what says a walk out of a door got out.
 //  Indoors or out, wherever the camera is (2026-10-30 screenshots).
-class Test_Indoors : public UnitTest{
-public:
-    Test_Indoors()
-        : UnitTest("PokemonBDSP::AutoStory - indoors")
-    {}
-    virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
-        struct Case{ const char* file; bool inside; };
-        const Case cases[] = {
-            {"PokemonBDSP/AutoStory/JubilifeCenterInside-20261030-c6.png", true},
-            {"PokemonBDSP/AutoStory/JubilifeCenterInside-20261030-c4.png", true},
-            {"PokemonBDSP/AutoStory/JubilifeCenterInsideUpper-20261030-r151a.png", true},
-            {"PokemonBDSP/AutoStory/SandgemCenterInside-20261030-053555.png", true},
-            {"PokemonBDSP/AutoStory/JubilifeSchoolInside-20261030.png", true},
-            {"PokemonBDSP/AutoStory/JubilifeCenterDoorstep-20261030-c5.png", false},
-            {"PokemonBDSP/AutoStory/JubilifeSchoolDoorstep-20261030.png", false},
-            {"PokemonBDSP/AutoStory/JubilifeSchoolDoorstep2-20261030.png", false},
-            {"PokemonBDSP/AutoStory/JubilifeCenterFrontDoor-20261030-q2.png", false},
-            {"PokemonBDSP/AutoStory/SandgemCenterBelowSign-20261030-053527.png", false},
-            {"PokemonBDSP/AutoStory/SandgemMartDoorUpRight-20261030-023443.png", false},
-        };
-        for (const Case& c : cases){
-            const std::string path = UNIT_TEST_RESOURCE_PATH() + c.file;
-            if (!Filesystem::is_regular_file(path)){
-                return UnitTestResult(UnitTestResult::SKIPPED, "Screenshot not found: " + path);
-            }
-            const bool inside = indoors(ImageRGB32(path));
-            logger.log(std::string(c.file) + ": " + (inside ? "indoors" : "outside"));
-            if (inside != c.inside){
-                return std::string(c.file) + ": expected " + (c.inside ? "indoors" : "outside") + ".";
-            }
-        }
-        return true;
-    }
-};
-
-
-class Test_LocationBannerShowing : public UnitTest{
-public:
-    Test_LocationBannerShowing()
-        : UnitTest("PokemonBDSP::AutoStory - location banner showing")
-    {}
-    virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
-        struct Case{ const char* file; bool banner; };
-        const Case cases[] = {
-            {"PokemonBDSP/AutoStory/JubilifeCenterDoorstep-20261030-c5.png", true},
-            {"PokemonBDSP/AutoStory/JubilifeSchoolDoorstep-20261030.png", true},
-            {"PokemonBDSP/AutoStory/JubilifeCenterInside-20261030-c6.png", false},
-            {"PokemonBDSP/AutoStory/JubilifeCenterInside-20261030-c4.png", false},
-            {"PokemonBDSP/AutoStory/JubilifeCenterInsideUpper-20261030-r151a.png", false},
-            {"PokemonBDSP/AutoStory/JubilifeCenterFrontDoor-20261030-q2.png", false},
-        };
-        for (const Case& c : cases){
-            const std::string path = UNIT_TEST_RESOURCE_PATH() + c.file;
-            if (!Filesystem::is_regular_file(path)){
-                return UnitTestResult(UnitTestResult::SKIPPED, "Screenshot not found: " + path);
-            }
-            const bool banner = location_banner_showing(ImageRGB32(path));
-            logger.log(std::string(c.file) + ": banner " + (banner ? "shows" : "none"));
-            if (banner != c.banner){
-                return std::string(c.file) + ": expected " + (c.banner ? "a banner" : "no banner") + ".";
-            }
-        }
-        return true;
-    }
-};
-
-
 void add_tests_AutoStory(UnitTestDatabase& database){
     database.add<Test_IntroDecisions>();
     database.add<Test_TileGridParse>();
@@ -2085,7 +1985,6 @@ void add_tests_AutoStory(UnitTestDatabase& database){
     database.add<Test_PokeMartShortWalks>();
     database.add<Test_Route204NorthLine>();
     database.add<Test_RouteRecords>();
-    database.add<Test_LocationBanner>();
     database.add<Test_LitDoorwayScreenshots>();
     database.add<Test_SaveScreenLocation>();
     database.add<Test_SandgemCenterEvents>();
@@ -2094,8 +1993,6 @@ void add_tests_AutoStory(UnitTestDatabase& database){
     database.add<Test_JubilifeEvents>();
     database.add<Test_JubilifeClownCompany>();
     database.add<Test_SchoolLamp>();
-    database.add<Test_LocationBannerShowing>();
-    database.add<Test_Indoors>();
 }
 
 

@@ -33,6 +33,7 @@
 #include "PokemonBDSP/Inference/PokemonBDSP_SelectionArrow.h"
 
 #include "Detect/PokemonBDSP_AutoStory_MenuCursorDetector.h"
+#include "Utils/PokemonBDSP_AutoStory_OverlayLog.h"
 
 namespace PokemonAutomation {
 namespace NintendoSwitch {
@@ -183,10 +184,6 @@ public:
 
 //  Save the game from the overworld with retries. Returns true if the save was
 //  verified via overworld detection, false if the blind fallback was used.
-// Adds `text` to the video overlay's log, split at spaces into lines short
-// enough for the log box, which draws each line on one row and cuts it off.
-void add_wrapped_log(VideoOverlay& overlay, const std::string& text, Color color);
-
 //  With `expected_location`, the map named on the save screen's card must be
 //  it (compared as a location banner is), or the save is backed out of and
 //  the function fails with a screenshot: r124a saved in Sandgem Town after a

@@ -5,6 +5,7 @@
  */
 
 #include <algorithm>
+#include "Common/Cpp/Exceptions.h"
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
 #include "CommonFramework/ImageTools/ImageDiff.h"
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
@@ -17,8 +18,6 @@
 #include "PokemonBDSP/Inference/PokemonBDSP_DialogDetector.h"
 #include "PokemonBDSP/Inference/PokemonBDSP_TransitionWatchers.h"
 #include "PokemonBDSP/Inference/Battles/PokemonBDSP_BattleMenuDetector.h"
-#include "PokemonBDSP_AutoStory_Segment_00_tools.h"
-#include "PokemonBDSP_Autostory_Segment_01_tools.h"
 #include "PokemonBDSP_AutoStory_Walk.h"
 
 namespace PokemonAutomation{
@@ -46,6 +45,14 @@ double walk_screen_change(const ImageViewRGB32& before, const ImageViewRGB32& af
 
 
 namespace{
+
+//  The battle's text box, held for 250ms.
+class BattleDialogWatcher : public DetectorToFinder<BattleDialogDetector>{
+public:
+    explicit BattleDialogWatcher(Color color)
+        : DetectorToFinder("BattleDialogWatcher", std::chrono::milliseconds(250), color)
+    {}
+};
 
 VideoSnapshot snapshot_or_fail(VideoStream& stream, const std::string& label){
     VideoSnapshot frame = stream.video().snapshot();
@@ -86,7 +93,7 @@ bool battle_follows(VideoStream& stream, ProControllerContext& context){
 //  A step in tall grass that was started before the stick was released still
 //  finishes, and its encounter starts after the walk has ended. Watch a little
 //  longer, and run from it. Returns whether there was one.
-bool run_from_late_encounter(VideoStream& stream, ProControllerContext& context, const std::string& label){
+bool run_from_late_encounter(VideoStream& stream, ProControllerContext& context, const WildBattleEscape& escape, const std::string& label){
     VideoSnapshot before = stream.video().snapshot();
     WhiteScreenOverWatcher encounter_flash(COLOR_YELLOW, {0.1, 0.1, 0.8, 0.8});
     BlackScreenWatcher black(COLOR_RED);
@@ -103,7 +110,7 @@ bool run_from_late_encounter(VideoStream& stream, ProControllerContext& context,
         return false;
     }
     stream.log("[Walk] " + label + ": wild battle after the walk; running.");
-    escape_wild_battle(stream, context, BattleType::STANDARD);
+    escape(stream, context);
     context.wait_for_all_requests();
     return true;
 }
@@ -157,7 +164,7 @@ private:
 
 namespace{
 WalkResult walk_until_impl(
-    VideoStream& stream, ProControllerContext& context,
+    VideoStream& stream, ProControllerContext& context, const WildBattleEscape& escape,
     double x, double y, Milliseconds limit, const std::string& label,
     const std::function<bool(const ImageViewRGB32& screen)>& arrived,
     bool wild, bool dpad, bool run, bool taps = false
@@ -165,39 +172,44 @@ WalkResult walk_until_impl(
 }
 
 WalkResult walk_until(
-    VideoStream& stream, ProControllerContext& context,
+    VideoStream& stream, ProControllerContext& context, const WildBattleEscape& escape,
     double x, double y, Milliseconds limit, const std::string& label,
     const std::function<bool(const ImageViewRGB32& screen)>& arrived
 ){
-    return walk_until_impl(stream, context, x, y, limit, label, arrived, true, false, false);
+    return walk_until_impl(stream, context, escape, x, y, limit, label, arrived, true, false, false);
 }
 
 WalkResult walk_until_dpad(
-    VideoStream& stream, ProControllerContext& context,
+    VideoStream& stream, ProControllerContext& context, const WildBattleEscape& escape,
     double x, double y, Milliseconds limit, const std::string& label,
     const std::function<bool(const ImageViewRGB32& screen)>& arrived,
     bool run
 ){
-    return walk_until_impl(stream, context, x, y, limit, label, arrived, true, true, run);
+    return walk_until_impl(stream, context, escape, x, y, limit, label, arrived, true, true, run);
 }
 
 WalkResult walk_tiles_dpad(
-    VideoStream& stream, ProControllerContext& context,
+    VideoStream& stream, ProControllerContext& context, const WildBattleEscape& escape,
     double x, double y, size_t tiles, const std::string& label
 ){
-    return walk_until_impl(stream, context, x, y, 800ms * tiles, label, nullptr, true, true, false, true);
+    return walk_until_impl(stream, context, escape, x, y, 800ms * tiles, label, nullptr, true, true, false, true);
 }
 
 WalkResult walk_until_no_wild(
     VideoStream& stream, ProControllerContext& context,
     double x, double y, Milliseconds limit, const std::string& label
 ){
-    return walk_until_impl(stream, context, x, y, limit, label, nullptr, false, false, false);
+    //  With no wild Pokemon any battle is a trainer's, and the walk stops at
+    //  it (DIALOG) without running.
+    const WildBattleEscape no_wild = [](VideoStream& stream, ProControllerContext&){
+        throw InternalProgramError(&stream.logger(), PA_CURRENT_FUNCTION, "walk_until_no_wild() ran from a battle.");
+    };
+    return walk_until_impl(stream, context, no_wild, x, y, limit, label, nullptr, false, false, false);
 }
 
 namespace{
 WalkResult walk_until_impl(
-    VideoStream& stream, ProControllerContext& context,
+    VideoStream& stream, ProControllerContext& context, const WildBattleEscape& escape,
     double x, double y, Milliseconds limit, const std::string& label,
     const std::function<bool(const ImageViewRGB32& screen)>& arrived,
     bool wild, bool dpad, bool run, bool taps
@@ -218,7 +230,7 @@ WalkResult walk_until_impl(
     auto finish = [&](WalkStop stop){
         result.stop = stop;
         if (wild && (stop == WalkStop::LIMIT || stop == WalkStop::BLOCKED) &&
-            run_from_late_encounter(stream, context, label)
+            run_from_late_encounter(stream, context, escape, label)
         ){
             result.wild_battles++;
         }
@@ -274,7 +286,7 @@ WalkResult walk_until_impl(
         if (battle){
             result.wild_battles++;
             stream.log("[Walk] " + label + ": wild battle; running.");
-            escape_wild_battle(stream, context, BattleType::STANDARD);
+            escape(stream, context);
             context.wait_for_all_requests();
             before = snapshot_or_fail(stream, label);
             unchanged = 0;
@@ -296,7 +308,7 @@ WalkResult walk_until_impl(
         if (change > WALK_SCENE_CHANGE && battle_follows(stream, context)){
             result.wild_battles++;
             stream.log("[Walk] " + label + ": wild battle (leaf opening); running.");
-            escape_wild_battle(stream, context, BattleType::STANDARD);
+            escape(stream, context);
             context.wait_for_all_requests();
             before = snapshot_or_fail(stream, label);
             unchanged = 0;
@@ -325,7 +337,7 @@ WalkResult walk_until_impl(
 }
 
 WalkResult walk_for(
-    VideoStream& stream, ProControllerContext& context,
+    VideoStream& stream, ProControllerContext& context, const WildBattleEscape& escape,
     double x, double y, Milliseconds duration, const std::string& label
 ){
     WalkResult result{WalkStop::LIMIT, duration, 0};
@@ -352,7 +364,7 @@ WalkResult walk_for(
     if (battle){
         result.wild_battles = 1;
         stream.log("[Walk] " + label + ": wild battle; running.");
-        escape_wild_battle(stream, context, BattleType::STANDARD);
+        escape(stream, context);
         context.wait_for_all_requests();
     }
     if (ret == 3){
@@ -361,7 +373,7 @@ WalkResult walk_for(
     //  An encounter after the hold leaves us where the walk ended, so it does
     //  not count as cutting the walk short.
     if (ret < 0){
-        run_from_late_encounter(stream, context, label);
+        run_from_late_encounter(stream, context, escape, label);
     }
     stream.log("[Walk] " + label + ": " + walk_stop_name(result.stop) + " after a " +
         std::to_string(duration.count()) + "ms hold, " + std::to_string(result.wild_battles) + " wild battle(s).");
@@ -369,12 +381,12 @@ WalkResult walk_for(
 }
 
 WalkResult walk_to_talk(
-    VideoStream& stream, ProControllerContext& context,
+    VideoStream& stream, ProControllerContext& context, const WildBattleEscape& escape,
     double x, double y, Milliseconds limit, const std::string& label
 ){
     WalkResult total{WalkStop::LIMIT, 0ms, 0};
     while (total.walked < limit){
-        const WalkResult step = walk_until(stream, context, x, y,
+        const WalkResult step = walk_until(stream, context, escape, x, y,
             std::min<Milliseconds>(400ms, limit - total.walked), label);
         total.walked += step.walked;
         total.wild_battles += step.wild_battles;
@@ -422,10 +434,10 @@ WalkProbe probe_walk(
 }
 
 WalkResult walk_to_wall(
-    VideoStream& stream, ProControllerContext& context,
+    VideoStream& stream, ProControllerContext& context, const WildBattleEscape& escape,
     double x, double y, Milliseconds limit, const std::string& label
 ){
-    const WalkResult result = walk_until(stream, context, x, y, limit, label);
+    const WalkResult result = walk_until(stream, context, escape, x, y, limit, label);
     if (result.stop == WalkStop::DIALOG || result.stop == WalkStop::TRANSITION){
         OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
             label + ": " + walk_stop_name(result.stop) + " instead of a wall.", stream);
@@ -437,12 +449,12 @@ WalkResult walk_to_wall(
 }
 
 WalkResult walk_expecting(
-    VideoStream& stream, ProControllerContext& context,
+    VideoStream& stream, ProControllerContext& context, const WildBattleEscape& escape,
     double x, double y, Milliseconds limit, const std::string& label,
     WalkStop expected,
     const std::function<bool(const ImageViewRGB32& screen)>& arrived
 ){
-    const WalkResult result = walk_until(stream, context, x, y, limit, label, arrived);
+    const WalkResult result = walk_until(stream, context, escape, x, y, limit, label, arrived);
     if (result.stop != expected){
         OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
             label + ": expected " + walk_stop_name(expected) + ", got " +

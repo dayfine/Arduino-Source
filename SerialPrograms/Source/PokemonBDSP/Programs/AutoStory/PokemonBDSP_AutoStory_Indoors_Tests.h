@@ -15,8 +15,7 @@ namespace PokemonBDSP{
 
 
 
-//  indoors() on synthetic screens under any light: the evening outside,
-//  a room, a fade, a thin shadow, grass.
+//  00.04c's walk to the Poke Mart lady and back, leg by leg on the grid.
 void add_tests_AutoStory_Indoors(UnitTestDatabase& database);
 
 

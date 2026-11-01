@@ -15,6 +15,7 @@
 #include "CommonFramework/Tools/VideoStream.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "Pokemon/Navigation/Pokemon_TileGrid.h"
+#include "PokemonBDSP_AutoStory_Indoors.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -40,16 +41,6 @@ bool pokemon_center_inside(const ImageViewRGB32& screen);
 //  two thirds of `screen`, the pale yellow-white of its open door. Nothing if
 //  none shows there, or inside a Pokemon Center, whose floor is that colour.
 std::optional<LitDoorway> find_lit_doorway(const ImageViewRGB32& screen);
-
-//  Whether the screen shows a building's inside: its warm walls and floor
-//  fill much of the view (Pokemon Centers, the Trainers' School: 42..65% of
-//  the screen), and the room floats in black, which shows along at least one
-//  edge (15% or more of a strip 12% deep). Warmth alone is not enough: the
-//  evening tint makes outside 50..72% warm (r256, r257, Sandgem), and
-//  Oreburgh's ground 58..69% by day. Of 1412 lab screenshots, the rule calls
-//  every outside one outside, at all hours, and the rooms rooms. A fade is
-//  dark everywhere but not warm, so it is not inside.
-bool indoors(const ImageViewRGB32& screen);
 
 //  After a wild battle out of doors: fails with a screenshot if the screen
 //  turns into a room within 10 s, which means the party fainted and the

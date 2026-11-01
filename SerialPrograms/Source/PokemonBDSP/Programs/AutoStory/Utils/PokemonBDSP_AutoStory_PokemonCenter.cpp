@@ -17,6 +17,7 @@
 #include "PokemonBDSP/Inference/PokemonBDSP_DialogDetector.h"
 #include "PokemonBDSP_AutoStory_RouteWalk.h"
 #include "PokemonBDSP_AutoStory_Walk.h"
+#include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_Autostory_Segment_01_tools.h"
 #include "PokemonBDSP_AutoStory_PokemonCenter.h"
 
 namespace PokemonAutomation{
@@ -173,7 +174,7 @@ bool walk_into_door(
     //  The Center's fade is too light to read as black (r126 runs 2 and 3: a
     //  screen change of 49 at 400 ms), so its inside, once it shows, stops
     //  the walk too.
-    const WalkStop stop = walk_until(stream, context, 0, 1, limit, label + ": into the door",
+    const WalkStop stop = walk_until(stream, context, run_from_wild_battle, 0, 1, limit, label + ": into the door",
         [](const ImageViewRGB32& screen){ return pokemon_center_inside(screen); }).stop;
     if (stop == WalkStop::TRANSITION || stop == WalkStop::ARRIVED){
         pbf_wait(context, 2000ms);
@@ -226,47 +227,6 @@ bool pokemon_center_inside(const ImageViewRGB32& screen){
     }
     //  And the floor lit between them: not a fade (349 in Jubilife at night).
     return image_stats(extract_box_reference(screen, ImageFloatBox(0.30, 0.55, 0.40, 0.15))).average.sum() > 250;
-}
-
-namespace{
-
-//  Near-black pixels in one edge strip of the screen, out of all its pixels.
-struct EdgeDark{
-    size_t dark = 0;
-    size_t count = 0;
-};
-void add_pixel(EdgeDark& edge, bool dark){
-    edge.dark += dark;
-    edge.count++;
-}
-bool mostly_dark(const EdgeDark& edge){
-    return edge.count > 0 && edge.dark * 100 >= edge.count * 15;
-}
-
-}
-
-bool indoors(const ImageViewRGB32& screen){
-    const size_t width = screen.width(), height = screen.height();
-    const size_t strip_h = height * 12 / 100, strip_w = width * 12 / 100;
-    size_t warm = 0;
-    size_t count = 0;
-    EdgeDark top, bottom, left, right;
-    for (size_t y = 0; y < height; y += 8){
-        for (size_t x = 0; x < width; x += 8){
-            const Color pixel(screen.pixel(x, y));
-            count++;
-            warm += pixel.red() > 150 && pixel.red() > pixel.blue() + 70 && pixel.green() > pixel.blue() + 20;
-            const bool dark = pixel.red() + pixel.green() + pixel.blue() < 60;
-            if (y < strip_h){ add_pixel(top, dark); }
-            if (y >= height - strip_h){ add_pixel(bottom, dark); }
-            if (x < strip_w){ add_pixel(left, dark); }
-            if (x >= width - strip_w){ add_pixel(right, dark); }
-        }
-    }
-    if (count == 0 || warm * 4 <= count){
-        return false;
-    }
-    return mostly_dark(top) || mostly_dark(bottom) || mostly_dark(left) || mostly_dark(right);
 }
 
 void fail_if_blacked_out(VideoStream& stream, ProControllerContext& context, const std::string& label){
@@ -451,7 +411,7 @@ void heal_at_pokemon_center(
 
     //  The nurse's counter is straight ahead of the door.
     route_status(stream, label + ": talking to the nurse.");
-    if (walk_to_talk(stream, context, 0, 1, 6000ms, label + ": to the nurse").stop != WalkStop::DIALOG){
+    if (walk_to_talk(stream, context, run_from_wild_battle, 0, 1, 6000ms, label + ": to the nurse").stop != WalkStop::DIALOG){
         OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
             label + ": nurse not reached.", stream);
     }
@@ -470,7 +430,7 @@ void heal_at_pokemon_center(
     context.wait_for_all_requests();
 
     route_status(stream, label + ": healed; walking out.");
-    leave_door_south(stream, context, label + ": out the door");
+    leave_door_south(stream, context, run_from_wild_battle, label + ": out the door");
 }
 
 
