@@ -19,8 +19,7 @@ STYLE = {
 
 
 def _tile_box(source, x, y):
-    ox, oy = source.origin
-    return ox + source.tile_px * x, oy + source.tile_px * y
+    return source.tile_px_box(x, y)
 
 
 def _centre(source, places):
@@ -31,7 +30,7 @@ def _centre(source, places):
     x = sum(p[0] for p in mine) / len(mine)
     y = sum(p[1] for p in mine) / len(mine)
     px, py = _tile_box(source, x, y)
-    return px + source.tile_px / 2, py + source.tile_px / 2
+    return px + source.tile_px / 2, py + source.row_height / 2
 
 
 def _text(x, y, label, colour):
@@ -41,19 +40,19 @@ def _text(x, y, label, colour):
 
 def render(source, image_png=None, walks=(), title=''):
     w = source.image_size[0] or source.origin[0] * 2 + source.tile_px * source.width
-    h = source.image_size[1] or source.tile_px * len(source.rows)
+    h = source.image_size[1] or _tile_box(source, 0, len(source.rows))[1]
     parts = [f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -26 {w} {h + 26}" width="{w * 2}" height="{(h + 26) * 2}" style="background:#fff">']
     if image_png:
         data = base64.b64encode(image_png).decode()
         parts.append(f'<image href="data:image/png;base64,{data}" x="0" y="0" width="{w}" height="{h}" preserveAspectRatio="none"/>')
-    t = source.tile_px
+    t, rh = source.tile_px, source.row_height
     for y, row in enumerate(source.rows):
         for x, ch in enumerate(row):
             if ch not in STYLE:
                 continue
             colour, opacity = STYLE[ch]
             px, py = _tile_box(source, x, y)
-            parts.append(f'<rect x="{px}" y="{py}" width="{t}" height="{t}" fill="{colour}" fill-opacity="{opacity}"/>')
+            parts.append(f'<rect x="{px}" y="{py}" width="{t}" height="{rh}" fill="{colour}" fill-opacity="{opacity}"/>')
     #  Every fifth line, numbered, to read coordinates off the picture.
     for x in range(0, source.width + 1, 5):
         px, _ = _tile_box(source, x, 0)
@@ -65,7 +64,7 @@ def render(source, image_png=None, walks=(), title=''):
         parts.append(_text(1, py + 8, str(y), '#000'))
     for name, (x, y) in source.tiles.items():
         px, py = _tile_box(source, x, y)
-        parts.append(f'<rect x="{px}" y="{py}" width="{t}" height="{t}" fill="none" stroke="#000" stroke-width="1.5"/>')
+        parts.append(f'<rect x="{px}" y="{py}" width="{t}" height="{rh}" fill="none" stroke="#000" stroke-width="1.5"/>')
         parts.append(_text(px, py - 2, name, '#036'))
     palette = ['#e00', '#06c', '#c60', '#090', '#90c']
     for i, walk in enumerate(walks):

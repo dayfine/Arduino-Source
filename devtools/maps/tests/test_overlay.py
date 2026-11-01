@@ -50,6 +50,21 @@ class GridSourceTest(unittest.TestCase):
         self.assertEqual(grid_source.map_label('Route202'), 'Route 202')
         self.assertEqual(grid_source.map_label('JubilifeCity'), 'Jubilife City')
 
+    def test_bare_rows(self):
+        source = grid_source.parse_text('##D#\n..S.\n\n"".v\n', 'r204n')
+        self.assertEqual(source.rows, ['##D#', '..S.', '"".v'])
+        self.assertEqual(source.name, 'r204n')
+
+    def test_row_height_and_levels(self):
+        source = grid_source.parse_text('....\n....\n....\n....\n', 'x')
+        source.origin = (8, 0)
+        source.row_px = 12
+        source.levels = [(2, 24)]
+        self.assertEqual(source.tile_px_box(1, 1), (24, 12))
+        #  Rows from 2 down sit a cliff level (24 px) lower.
+        self.assertEqual(source.tile_px_box(0, 2), (8, 48))
+        self.assertEqual(source.tile_px_box(0, 3), (8, 60))
+
 
 class RouteLogTest(unittest.TestCase):
     def test_legs_and_how_they_stopped(self):
@@ -80,6 +95,14 @@ class SvgTest(unittest.TestCase):
         #  The west leg ends on Route 201, off this map: only the east leg is drawn.
         self.assertIn('1 east 9 (blocked)', out)
         self.assertNotIn('2 west 40', out)
+
+    def test_rows_take_the_row_height(self):
+        source = grid_source.parse_text('#.\n.#\n', 'x')
+        source.row_px = 12
+        source.levels = [(1, 24)]
+        out = svg.render(source, None, [])
+        self.assertIn('<rect x="0" y="0" width="16" height="12"', out)
+        self.assertIn('<rect x="16" y="36" width="16" height="12"', out)
 
 
 if __name__ == '__main__':

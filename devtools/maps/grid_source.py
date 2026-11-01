@@ -29,10 +29,25 @@ class GridSource:
     image_size: tuple = (0, 0)
     origin: tuple = (0, 0)
     tile_px: int = 16
+    #  Rows are tile_px tall unless set: Bulbapedia's DP route images draw
+    #  12 px rows under 16 px columns. Levels are (row, px): rows from `row`
+    #  down sit `px` lower, as a cliff's upper level is painted taller.
+    row_px: int = 0
+    levels: list = field(default_factory=list)
 
     @property
     def width(self):
         return max((len(r) for r in self.rows), default=0)
+
+    @property
+    def row_height(self):
+        return self.row_px or self.tile_px
+
+    def tile_px_box(self, x, y):
+        """The image pixel of tile (x, y)'s top-left corner; x and y may be fractional."""
+        ox, oy = self.origin
+        py = oy + self.row_height * y + sum(px for row, px in self.levels if y >= row)
+        return ox + self.tile_px * x, py
 
 
 def map_label(namespace):
@@ -58,6 +73,14 @@ def parse(text, name=''):
     )
 
 
+def parse_text(text, name):
+    """Bare rows, one per line (what `decomp --text` prints); blank lines are skipped."""
+    return GridSource(name=name, rows=[line.rstrip('\r') for line in text.splitlines() if line.strip()])
+
+
 def load(path):
     path = Path(path)
-    return parse(path.read_text(encoding='utf-8'), path.stem)
+    text = path.read_text(encoding='utf-8')
+    if ROW.search(text):
+        return parse(text, path.stem)
+    return parse_text(text, path.stem)

@@ -1,16 +1,149 @@
 # Map tools for AutoStory routes
 
-Offline helpers that turn Bulbapedia's DP map images into something a route
-planner can use. Map images stay out of the repo; fetch them from
-`https://archives.bulbagarden.net/media/upload/<h0>/<h0h1>/<File>`, where `h` is
-the md5 of the file name (e.g. `Veilstone_City_DP.png`).
+Offline helpers that give a route planner its tile grid (standard library
+only, Python 3.8+): a decoder for the Pokemon Platinum and Diamond
+decompilations, an overlay that draws a grid and a run's routes over the map
+image, and a colour parser for the few maps no decompilation covers.
 
-## `levels.py`: walkable tiles, by level
+## Decomp first
 
-Towns and caves have levels: terraces and ledges bordered by rock rims, joined
-only by stairs. Judging each 16 px tile by its colours alone walks a route off
-one level onto another wherever a rim stripe is thin, so `levels.py` works at
-pixel resolution first:
+A map grid has two kinds of facts, from two sources:
+
+- **Terrain** (walls, tall grass, ledges, doors, warps) comes from the
+  decompilation: `decomp` below decodes it tile for tile. BDSP keeps
+  Diamond/Pearl's layout; at every anchor probed so far the decoded grid
+  matched the console.
+- **People and the few BDSP differences** come from the console: trainers who
+  wander in BDSP but stand still in Platinum, a tile blocked by a prop BDSP
+  added, a sign a row off. These are hand edits, written down in the data
+  file's header with the run that found them.
+
+A route is coded only over tiles a human or a probe has walked. Bulbapedia's
+DP map images are what humans read, so routes are still drawn and checked on
+them, but they are no longer traced for terrain: their rows are 12 px to the
+columns' 16 (3/4 of a tile per row) and cliffs are painted taller than their
+tiles, so no single offset fixes a traced grid.
+
+### `decomp`: the grid and objects of one map
+
+```sh
+python3 -m devtools.maps decomp ROUTE_204_NORTH                 # C++ rows and header comment
+python3 -m devtools.maps decomp ROUTE_204_NORTH --text          # bare rows
+python3 -m devtools.maps decomp RAVAGED_PATH                    # a cave: its own matrix
+python3 -m devtools.maps decomp ROUTE_204_NORTH --rect 160 660 32 46   # any world rectangle
+python3 -m devtools.maps decomp ROUTE_204_NORTH --repo pret/pokediamond
+```
+
+The map is named by its header constant (`MAP_HEADER_<name>` in pokeplatinum,
+`MAP_<name>` in pokediamond). Files are fetched once with
+`gh api repos/<repo>/contents/<path>` into `~/.cache/maps/decomp/<repo>/`
+(`--cache` moves it, `--local DIR` reads a checkout instead). What is read:
+
+- `include/data/map_headers.h` (Platinum) or `arm9/src/map_header.c` and
+  `include/constants/maps.h` (Diamond): the map's matrix and events file.
+- the matrix, `res/field/matrices/map_matrix_NNN.json` or
+  `files/fielddata/mapmatrix/map_matrix/narc_NNNN.bin`: 32 x 32 cells, the
+  overworld's is 30 x 30 (matrix 000); caves have their own (the Ravaged Path
+  is matrix 051, two cells tall). World x = 32 * column + lx, z = 32 * row + lz.
+  Without `--rect`, the rectangle is the cell(s) carrying the map's header.
+- land data per cell, `res/field/maps/data/map_data_NNN.bin` or
+  `files/fielddata/land_data/land_data_release/narc_NNNN.bin`: a 16-byte header
+  of four u32 sizes, then 1024 little-endian u16 attributes, row-major,
+  index z * 32 + x. Bit 0x8000 blocks the tile; the low byte is the behaviour:
+  0x02 tall grass `"`; 0x38..0x3b jump east/west/north/south, where only the
+  south ledge has a legend character (`v`), the others are `#` with a note;
+  0x69 door and 0x62..0x65 cave mouths (blocked, walked into) `D`; 0x6c..0x6f
+  warp tiles (stood on) and 0x5e/0x5f warp stairs `W`; water `#`; cave floor
+  0x08, sand 0x21 and anything else unblocked `.`.
+- events, `res/field/events/events_<map>.json` or
+  `files/fielddata/eventdata/zone_event_release/narc_NNNN.bin`: standing people
+  `N`, signposts `S`, items on the ground and cut trees, smashable rocks and
+  boulders `#`; a wanderer (`WANDER_*`, `WALK_*` movement) is left off the grid
+  and listed with its range, the walker waits for him. Warp events are listed
+  with their destination (a cave mouth's sits on the arrival tile in front of
+  it). Trainers come with their facing and sight range. Diamond's files give
+  these by number; pokeplatinum's `generated/*.txt` tables name them (the
+  numbering is shared: Route 204 North's twelve objects come out the same).
+
+The C++ output is a header comment ready to paste, then the rows:
+
+```
+//  Map source: the decomp (map_data_031, 2026-10-31) with the objects from
+//      its events file.
+//  Console checks: none yet.
+//  Status: no checkpoint passes on this grid yet.
+//
+//  Decoded from Pokemon Platinum's collision table for this map (the
+//  pret/pokeplatinum decompilation, map_data_031: one cell of the Sinnoh
+//  matrix at column 5, row 21), with the objects from its events file
+//  (events_route_204_north.json); BDSP keeps Diamond/Pearl's layout. Local
+//  (x, y) = world (x - 160, z - 672); 32 x 32 tiles.
+//  Water and the items on the ground are '#'. Objects, from the events file:
+//    warp tile (20, 26) to Ravaged Path;
+//    Aroma Lady Taylor (17, 20), looks south and east, sees 4;
+//    Twin Liv (15, 7), looks south, sees 3;
+//    ...
+//    Bug Catcher Brandon walk back and forth from (22, 13), columns 18 to 26,
+//    row 13, sees 1: off the grid;
+    //     0         1         2         3
+        R"(########.#...###################)",  //   0
+        R"(########.#...###################)",  //   1
+        ...
+```
+
+The first three lines are the annotation `Data/MAPS.md` asks every map file to
+keep current; fill in the console checks and status as runs happen. Against
+`PokemonBDSP_AutoStory_Route204.cpp` the decoded rows differ only where that
+file's header records a hand edit (Brandon placed where the console met him,
+the cave's arrival tile kept open, a tile blocked on the console). Platinum
+and Diamond decode Route 204 North identically.
+
+Platinum moved a few things after Diamond/Pearl; where the two decompilations
+disagree, `--repo pret/pokediamond` is the one BDSP follows.
+
+## Overlay: a grid, and a run's routes, over the map image
+
+Map images stay out of the repo; `fetch` gets one from
+`https://archives.bulbagarden.net/media/upload/<h0>/<h0h1>/<File>`, where `h`
+is the md5 of the file name (e.g. `Sinnoh_Route_204_DP.png`), into
+`~/.cache/maps`. `overlay` draws a navigation data file's grid over the map
+image it was read from, as SVG, and optionally the walks a console run planned
+and walked:
+
+```sh
+python3 -m devtools.maps fetch Sandgem_Town_DP.png
+python3 -m devtools.maps overlay path/to/Data/..._SandgemTown.cpp -o sandgem.svg
+python3 -m devtools.maps overlay path/to/Data/..._SandgemTown.cpp \
+    --log "$HOME/Library/Application Support/SerialPrograms/Profiles/<profile>/SerialPrograms.log" \
+    --last 3 -o sandgem-run.svg
+python3 -m devtools.maps decomp ROUTE_204_NORTH --text > r204n.txt
+python3 -m devtools.maps overlay r204n.txt --image ~/.cache/maps/Sinnoh_Route_204_DP.png \
+    --origin 0,0 --row-px 12 --level 12:24 -o r204n.svg
+python3 -m unittest discover -s devtools/maps/tests -t .
+```
+
+The source is a C++ data file (its `R"(...)"` rows, `const TilePos NAME{x, y};`
+tiles, and from its header the image `(Name.png, W x H px)` and where tile
+(0, 0) starts, `starts 8 px in from the left edge`) or a text file of bare
+rows such as `decomp --text` prints, with `--image` and `--origin X,Y` given.
+Walls are red, tall grass green, ledges purple, signs orange, doors blue,
+every fifth row and column numbered. With `--log`, a leg planned "to wall"
+that stopped on anything but `blocked` is marked yellow: the grid has a wall
+where the game doesn't.
+
+A decomp grid over a DP image needs the image's geometry: `--row-px 12` for
+its 12 px rows, and `--level ROW:PX` for each cliff, meaning rows from `ROW`
+down sit `PX` lower than the rows above (about 24 px per level; repeat the
+option per cliff, reading the rows off the picture). Town maps drawn at 16 px
+rows need neither.
+
+## Maps without a decomp: `levels.py`
+
+For a map the decompilations don't cover, `levels.py` reads walkable tiles off
+the image by colour, level by level. Towns and caves have terraces and ledges
+bordered by rock rims, joined only by stairs; judging each 16 px tile by its
+colours alone walks a route off one level onto another wherever a rim stripe
+is thin, so it works at pixel resolution first:
 
 1. Each pixel is walkable (paving, road, grass, curb), stairs, or blocked
    (rims, roofs, trees, water).
@@ -63,28 +196,8 @@ Check per map:
 - **Stairs** are given by hand, one pixel inside each.
 - **Not modelled:** one-way ledges and people. Static NPCs are added from
   what the console shows.
-
-## Overlay: a data file's grid, and a run's routes, over the map
-
-`python3 -m devtools.maps` (standard library only) draws a navigation data
-file's grid over the map image it was read from, as SVG, and optionally the
-walks a console run planned and walked:
-
-```sh
-python3 -m devtools.maps fetch Sandgem_Town_DP.png          # into ~/.cache/maps
-python3 -m devtools.maps overlay path/to/Data/..._SandgemTown.cpp -o sandgem.svg
-python3 -m devtools.maps overlay path/to/Data/..._SandgemTown.cpp \
-    --log "$HOME/Library/Application Support/SerialPrograms/Profiles/<profile>/SerialPrograms.log" \
-    --last 3 -o sandgem-run.svg
-python3 -m unittest discover -s devtools/maps/tests -t .
-```
-
-It reads the file's `R"(...)"` rows and `const TilePos NAME{x, y};` tiles, and
-its header comment for the image (`(Name.png, W x H px)`) and where tile (0, 0)
-starts (`starts 8 px in from the left edge`). Walls are red, tall grass green,
-ledges purple, signs orange, doors blue, every fifth row and column numbered.
-With `--log`, a leg planned "to wall" that stopped on anything but `blocked`
-is marked yellow: the grid has a wall where the game doesn't.
+- **Row height**: a DP image's rows are 3/4 of a tile; a traced grid drifts
+  by the map's height differences. Prefer the decomp wherever it has the map.
 
 Sandgem Town, levels.py against the console-checked grid: with `sandtown`
 and `--objects on`, rows 0..7 agree but for two lit door fronts read as
@@ -100,7 +213,7 @@ which one before changing anything, and fix that layer:
 
 | Layer | What it is | How it is checked |
 | --- | --- | --- |
-| Map | the tile grid: walls, signs, doors, exits, NPCs | only by measuring on the console |
+| Map | the tile grid: walls, signs, doors, exits, NPCs | terrain from the decomp; people and BDSP's differences by measuring on the console |
 | Route | the legs a checkpoint walks | offline, by the plan tests, before any console run |
 | Walk | holding the stick until something stops us | console runs; the route absorbs its error |
 
@@ -115,11 +228,11 @@ which one before changing anything, and fix that layer:
 
 ### Measuring a map
 
-The images above give a first grid. Before a route depends on it, measure it
-with the Command File Runner's `walk x y`, which holds the stick until the
-screen stops changing and prints how long it moved. Don't use timed `stick`
-holds for this: on BDSP the same 300 ms hold moved one row on one try and two
-on the next. Write down:
+Decode the grid first; the console then confirms its anchors and finds the
+people. Measure with the Command File Runner's `walk x y`, which holds the
+stick until the screen stops changing and prints how long it moved. Don't use
+timed `stick` holds for this: on BDSP the same 300 ms hold moved one row on
+one try and two on the next. Write down:
 
 - borders and exits: where each edge stops you or takes you elsewhere;
 - anchors: tiles a walk can prove it stands on (two walls, a door, the tile
@@ -133,7 +246,7 @@ Decide rows by stops and sign reads, never by eye: at the overworld camera's
 angle an NPC on your row looks a row higher, and a sign a row below the trees
 can look right under them. Mark exits (steps, walkable edges) `D`, never `#`;
 a `#` there is a wall the planner will walk "to", and off the map. Put what
-was measured in the data file's header ("Checked on the console: ...").
+was measured in the data file's header ("Console checks: ...").
 
 ### Planning the route
 
