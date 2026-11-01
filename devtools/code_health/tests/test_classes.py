@@ -31,6 +31,20 @@ class ClassShapeTests(unittest.TestCase):
             with self.subTest(source=source):
                 self.assertEqual(0, values(source)['single_method_interface'])
 
+    def test_single_method_interface_skips_implementation_details(self):
+        nested = ('class F{\nprivate:\n    class Callable{\n    public:\n        virtual ~Callable() = default;\n'
+                  '        virtual void call() = 0;\n    };\n    Callable* m_impl;\n};')
+        self.assertEqual(0, values(nested, 'F::Callable')['single_method_interface'])
+        for source in ('namespace{ struct L{ virtual void on() = 0; }; }',
+                       'namespace a{ namespace detail{ struct L{ virtual void on() = 0; }; } }',
+                       'namespace a::detail{ struct L{ virtual void on() = 0; }; }'):
+            with self.subTest(source=source):
+                self.assertEqual(0, values(source)['single_method_interface'])
+        for source in ('namespace a{ struct L{ virtual void on() = 0; }; }',
+                       'namespace a::b{ struct L{ virtual void on() = 0; }; }'):
+            with self.subTest(source=source):
+                self.assertEqual(1, values(source)['single_method_interface'])
+
     def test_public_method_count_excludes_special_members(self):
         extra = ('    A();\n    A(const A&) = delete;\n    ~A();\n    A& operator=(A&&);\n'
                  '    operator bool() const;\n    void gone() = delete;\nprivate:\n    void hidden();\npublic:\n')
