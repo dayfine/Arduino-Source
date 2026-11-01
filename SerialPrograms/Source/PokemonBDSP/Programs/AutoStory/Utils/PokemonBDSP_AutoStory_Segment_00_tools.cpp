@@ -1,20 +1,31 @@
 /*  BDSP AutoStory - Segment 00 Tools
  *
  *  Helper implementations for Segment 00.
- * 
+ *
  *  From: https://github.com/PokemonAutomation/
  *
  */
 
+
+#include "PokemonBDSP/Inference/PokemonBDSP_TransitionWatchers.h"
+#include "CommonFramework/GlobalAutoPaths.h"
 #include <algorithm>
-#include <cctype>
-#include <chrono>
 #include <cmath>
+#include <chrono>
+#include <array>
+#include <cctype>
+
+#include "PokemonBDSP_AutoStory_RouteWalk.h"
+#include "PokemonBDSP_AutoStory_Segment_00_tools.h"
+#include "PokemonBDSP_Autostory_Segment_01_tools.h"
+#include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStoryTools.h"
 
 #include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
-#include "CommonFramework/GlobalAutoPaths.h"
+#include "Common/Cpp/PrettyPrint.h"
+#include "Common/Cpp/Filesystem/Filesystem.h"
 #include "CommonFramework/ImageTools/ImageBoxes.h"
+#include "CommonTools/OCR/OCR_RawTesseractOCR.h"
 #include "CommonFramework/Tools/ErrorDumper.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "CommonFramework/VideoPipeline/VideoOverlayScopes.h"
@@ -25,26 +36,25 @@
 
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "NintendoSwitch/NintendoSwitch_Settings.h"
+
 #include "NintendoSwitch/Programs/DateManip/NintendoSwitch_DateManip.h"
 #include "NintendoSwitch/Programs/DateSpam/NintendoSwitch_HomeToDateTime.h"
 #include "NintendoSwitch/Programs/NintendoSwitch_GameEntry.h"
 
-#include "PokemonBDSP/Inference/Battles/PokemonBDSP_BattleMenuDetector.h"
-#include "PokemonBDSP/Inference/Battles/PokemonBDSP_EndBattleDetector.h"
-#include "PokemonBDSP/Inference/Battles/PokemonBDSP_ExperienceGainDetector.h"
-#include "PokemonBDSP/Inference/PokemonBDSP_DialogDetector.h"
 #include "PokemonBDSP/Inference/PokemonBDSP_MenuDetector.h"
-#include "PokemonBDSP/Inference/PokemonBDSP_ReceivePokemonDetector.h"
+#include "PokemonBDSP/Inference/PokemonBDSP_DialogDetector.h"
 #include "PokemonBDSP/Inference/PokemonBDSP_SelectionArrow.h"
-#include "PokemonBDSP/Inference/PokemonBDSP_TransitionWatchers.h"
+
+#include "PokemonBDSP/Inference/Battles/PokemonBDSP_EndBattleDetector.h"
+#include "PokemonBDSP/Inference/PokemonBDSP_ReceivePokemonDetector.h"
+#include "PokemonBDSP/Inference/Battles/PokemonBDSP_BattleMenuDetector.h"
+#include "PokemonBDSP/Inference/Battles/PokemonBDSP_ExperienceGainDetector.h"
+
 #include "PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_OverworldDetector.h"
+
+#include "PokemonBDSP/Programs/PokemonBDSP_GameNavigation.h"
 #include "PokemonBDSP/Programs/PokemonBDSP_BasicCatcher.h"
 #include "PokemonBDSP/Programs/PokemonBDSP_GameEntry.h"
-#include "PokemonBDSP/Programs/PokemonBDSP_GameNavigation.h"
-
-#include "PokemonBDSP_Autostory_Segment_01_tools.h"
-
-#include "PokemonBDSP_AutoStory_Segment_00_tools.h"
 
 using namespace std::chrono_literals;
 
@@ -57,33 +67,57 @@ namespace PokemonBDSP {
 // ---------------------------------------------------------------------------
 
 BattleDialogWatcher::BattleDialogWatcher(Color color)
-    : DetectorToFinder("BattleDialogWatcher", std::chrono::milliseconds(250), color){
+    : DetectorToFinder(
+        "BattleDialogWatcher",
+        std::chrono::milliseconds(250),
+        color
+    )
+{
 }
 
 // ---------------------------------------------------------------------------
 // Poketech Clown dialog helper
 // ---------------------------------------------------------------------------
 
-int detect_clown_choice_arrow(VideoOverlay& overlay, VideoSnapshot snapshot){
-    SelectionArrowFinder top_arrow(overlay, {0.62, 0.37, 0.08, 0.10}, COLOR_RED);
+int detect_clown_choice_arrow(
+    VideoOverlay& overlay,
+    VideoSnapshot snapshot
+) {
+    SelectionArrowFinder top_arrow(
+        overlay,
+        { 0.62, 0.37, 0.08, 0.10 },
+        COLOR_RED
+    );
 
-    SelectionArrowFinder bottom_arrow(overlay, {0.62, 0.48, 0.08, 0.10}, COLOR_RED);
+    SelectionArrowFinder bottom_arrow(
+        overlay,
+        { 0.62, 0.48, 0.08, 0.10 },
+        COLOR_RED
+    );
 
-    if (top_arrow.detect(snapshot)){
+    if (top_arrow.detect(snapshot)) {
         return 0;
     }
 
-    if (bottom_arrow.detect(snapshot)){
+    if (bottom_arrow.detect(snapshot)) {
         return 1;
     }
 
     return -1;
 }
 
-void clown_dialog_helper(VideoStream& stream, ProControllerContext& context, DpadPosition direction){
-    stream.log("[AutoStory] Starting clown dialog helper...", COLOR_BLUE);
+void clown_dialog_helper(
+    VideoStream& stream,
+    ProControllerContext& context,
+    DpadPosition direction
+) {
+    stream.log(
+        "[AutoStory] Starting clown dialog helper...",
+        COLOR_BLUE
+    );
 
-    const auto overall_deadline = std::chrono::steady_clock::now() + 30s;
+    const auto overall_deadline =
+        std::chrono::steady_clock::now() + 30s;
 
     // -------------------------------------------------
     // Phase 1: Move + interact until dialog is detected.
@@ -91,20 +125,22 @@ void clown_dialog_helper(VideoStream& stream, ProControllerContext& context, Dpa
     ShortDialogWatcher dialog(COLOR_YELLOW);
     bool dialog_started = false;
 
-    while (!dialog_started){
+    while (!dialog_started) {
 
-        if (std::chrono::steady_clock::now() > overall_deadline){
-            stream.log("[AutoStory] Clown helper timed out finding dialog.", COLOR_RED);
-            OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
+        if (std::chrono::steady_clock::now() > overall_deadline) {
+            stream.log(
                 "[AutoStory] Clown helper timed out finding dialog.",
-                stream);
+                COLOR_RED
+            );
+            OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
+                "[AutoStory] Clown helper timed out finding dialog.", stream);
         }
 
         context.wait_for_all_requests();
         pbf_press_dpad(context, direction, 80ms, 200ms);
         pbf_press_button(context, BUTTON_A, 80ms, 500ms);
 
-        if (wait_until(stream, context, 1500ms, {{dialog}}) == 0){
+        if (wait_until(stream, context, 1500ms, { {dialog} }) == 0) {
             dialog_started = true;
             stream.log("[AutoStory] Dialog detected.", COLOR_GREEN);
         }
@@ -124,7 +160,10 @@ void clown_dialog_helper(VideoStream& stream, ProControllerContext& context, Dpa
 
     context.wait_for_all_requests();
 
-    stream.log("[AutoStory] Clown dialog helper complete.", COLOR_GREEN);
+    stream.log(
+        "[AutoStory] Clown dialog helper complete.",
+        COLOR_GREEN
+    );
 }
 // ---------------------------------------------------------------------------
 // Time helper
@@ -136,30 +175,39 @@ public:
     bool detect(const ImageViewRGB32& screen) const {
         ImageViewRGB32 panel = extract_box_reference(screen, ImageFloatBox{0.04, 0.065, 0.93, 0.70});
         size_t white = 0;
-        for (size_t y = 0; y < panel.height(); y += 4){
-            for (size_t x = 0; x < panel.width(); x += 4){
+        for (size_t y = 0; y < panel.height(); y += 4)
+            for (size_t x = 0; x < panel.width(); x += 4) {
                 uint32_t p = panel.pixel(x, y);
-                if (((p >> 16) & 255) > 225 && ((p >> 8) & 255) > 225 && (p & 255) > 225){
-                    white++;
-                }
+                if (((p >> 16) & 255) > 225 && ((p >> 8) & 255) > 225 && (p & 255) > 225) white++;
             }
-        }
         double samples = (double)(((panel.width() + 3) / 4) * ((panel.height() + 3) / 4));
         // Distinguish Options from the icon menu and bag using its
         // blue heading and full-width white settings panel.
         ImageViewRGB32 heading = extract_box_reference(screen, ImageFloatBox{0.01, 0.005, 0.20, 0.025});
         size_t blue = 0, total = 0;
-        for (size_t y = 0; y < heading.height(); y++){
-            for (size_t x = 0; x < heading.width(); x++){
+        for (size_t y = 0; y < heading.height(); y++)
+            for (size_t x = 0; x < heading.width(); x++) {
                 uint32_t p = heading.pixel(x, y);
                 int r = (p >> 16) & 255, g = (p >> 8) & 255, b = p & 255;
                 blue += b > r + 20 && g > r + 10;
                 total++;
             }
-        }
         return samples > 0 && white / samples > 0.70 && total > 0 && blue > total / 4;
     }
 };
+
+// Options fades in after A on its icon: poll instead of judging one frame.
+static bool wait_for_options_screen(VideoStream& stream, ProControllerContext& context,
+    const TutorialOptionsDetector& options_screen, Milliseconds timeout) {
+    context.wait_for_all_requests();
+    const WallClock deadline = current_time() + timeout;
+    while (current_time() < deadline) {
+        auto frame = stream.video().snapshot();
+        if (frame && options_screen.detect(frame)) return true;
+        context.wait_for(100ms);
+    }
+    return false;
+}
 
 class TutorialOptionPositionDetector {
 public:
@@ -167,37 +215,32 @@ public:
     // selected row. Scrolling changes their position automatically.
     double selected_row(const ImageViewRGB32& screen) const {
         int first = -1, last = -1;
-        for (size_t y = (size_t)(screen.height() * 0.08); y < screen.height() * 0.75; y++){
+        for (size_t y = (size_t)(screen.height() * 0.08); y < screen.height() * 0.75; y++) {
             size_t red = 0, total = 0;
-            for (size_t x = (size_t)(screen.width() * 0.08); x < screen.width() * 0.90; x += 2){
+            for (size_t x = (size_t)(screen.width() * 0.08); x < screen.width() * 0.90; x += 2) {
                 uint32_t p = screen.pixel(x, y);
                 int r = (p >> 16) & 255, g = (p >> 8) & 255, b = p & 255;
                 red += r > 150 && r > g + 40 && r > b + 40;
                 total++;
             }
-            if (total && red > total * 0.70){
-                if (first < 0){
-                    first = (int)y;
-                }
+            if (total && red > total * 0.70) {
+                if (first < 0) first = (int)y;
                 last = (int)y;
             }
         }
-        if (first < 0 || last - first < screen.height() * 0.04 || last - first > screen.height() * 0.12){
-            return -1;
-        }
+        if (first < 0 || last - first < screen.height() * 0.04 || last - first > screen.height() * 0.12) return -1;
         return (first + last) / (2.0 * screen.height());
     }
     // Locate selected red value text separately from the row border.
     bool selected_value(const ImageViewRGB32& screen, double y) const {
         ImageViewRGB32 value = extract_box_reference(screen, ImageFloatBox{0.33, y - 0.025, 0.54, 0.05});
         size_t red = 0;
-        for (size_t py = 0; py < value.height(); py++){
-            for (size_t px = 0; px < value.width(); px++){
+        for (size_t py = 0; py < value.height(); py++)
+            for (size_t px = 0; px < value.width(); px++) {
                 uint32_t p = value.pixel(px, py);
                 int r = (p >> 16) & 255, g = (p >> 8) & 255, b = p & 255;
                 red += r > g + 20 && r > b + 20;
             }
-        }
         return red > value.width() * value.height() * 0.0005;
     }
 };
@@ -205,8 +248,8 @@ public:
 
 // Compare binary visual shapes with small alignment tolerance.
 // No text recognition is needed for fixed English option labels.
-static double
-option_image_score(const ImageViewRGB32& screen, const ImageFloatBox& box, const ImageRGB32& reference, bool red_only){
+static double option_image_score(const ImageViewRGB32& screen,
+    const ImageFloatBox& box, const ImageRGB32& reference, bool red_only) {
     ImageRGB32 actual = extract_box_reference(screen, box).scale_to(384, 32);
     ImageRGB32 expected = reference.scale_to(384, 32);
     auto ink = [red_only](uint32_t p){
@@ -214,36 +257,29 @@ option_image_score(const ImageViewRGB32& screen, const ImageFloatBox& box, const
         return red_only ? r > g + 20 && r > b + 20 : r + g + b < 500;
     };
     double best = 0;
-    for (int dy = -2; dy <= 2; dy++){
-        for (int dx = -2; dx <= 2; dx++){
-            size_t overlap = 0, count = 0;
-            for (int y = 2; y < 30; y++){
-                for (int x = 2; x < 382; x++){
-                    bool a = ink(actual.pixel(x + dx, y + dy));
-                    bool b = ink(expected.pixel(x, y));
-                    overlap += a && b;
-                    count += a + b;
-                }
-            }
-            if (count){
-                best = std::max(best, 2.0 * overlap / count);
-            }
+    for (int dy = -2; dy <= 2; dy++) for (int dx = -2; dx <= 2; dx++) {
+        size_t overlap = 0, count = 0;
+        for (int y = 2; y < 30; y++) for (int x = 2; x < 382; x++) {
+            bool a = ink(actual.pixel(x + dx, y + dy));
+            bool b = ink(expected.pixel(x, y));
+            overlap += a && b;
+            count += a + b;
         }
+        if (count) best = std::max(best, 2.0 * overlap / count);
     }
     return best;
 }
 
-static bool autosave_off_highlight(const ImageViewRGB32& screen, double y){
+static bool autosave_off_highlight(const ImageViewRGB32& screen, double y) {
     auto red_count = [&](const ImageFloatBox& box){
         ImageViewRGB32 image = extract_box_reference(screen, box);
         size_t red = 0;
-        for (size_t py = 0; py < image.height(); py++){
-            for (size_t px = 0; px < image.width(); px++){
+        for (size_t py = 0; py < image.height(); py++)
+            for (size_t px = 0; px < image.width(); px++) {
                 uint32_t p = image.pixel(px, py);
                 int r = (p >> 16) & 255, g = (p >> 8) & 255, b = p & 255;
                 red += r > g + 30 && r > b + 30;
             }
-        }
         return red;
     };
     size_t off = red_count({0.63, y - 0.022, 0.055, 0.044});
@@ -252,7 +288,7 @@ static bool autosave_off_highlight(const ImageViewRGB32& screen, double y){
     return off >= 10 && on * 10 < off;
 }
 
-static void verify_tutorial_settings_once(VideoStream& stream, ProControllerContext& context){
+static void verify_tutorial_settings_once(VideoStream& stream, ProControllerContext& context) {
     context.wait_for_all_requests();
     MenuDetector menu;
     VideoOverlaySet detector_overlays(stream.overlay());
@@ -261,15 +297,14 @@ static void verify_tutorial_settings_once(VideoStream& stream, ProControllerCont
     detector_overlays.add(COLOR_BLUE, {0.01, 0.005, 0.20, 0.025}, "");
     detector_overlays.add(COLOR_RED, {0.08, 0.08, 0.82, 0.67}, "");
     auto initial = stream.video().snapshot();
-    if (!initial || !menu.detect(initial)){
+    if (!initial || !menu.detect(initial)) {
         pbf_press_button(context, BUTTON_X, 80ms, 1000ms);
         context.wait_for_all_requests();
     }
     MenuWatcher menu_open;
-    if (wait_until(stream, context, 5s, {{menu_open}}) != 0){
+    if (wait_until(stream, context, 5s, {{menu_open}}) != 0) {
         OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
-            "Settings checkpoint: Main menu not detected.",
-            stream);
+            "Settings checkpoint: Main menu not detected.", stream);
     }
     stream.log("[Tutorial settings] Main menu detected; settling for 500ms before Options navigation.");
     pbf_wait(context, 500ms);
@@ -279,48 +314,35 @@ static void verify_tutorial_settings_once(VideoStream& stream, ProControllerCont
     // Only two icons are available at this initial checkpoint.
     // Verify the main menu before navigating to the neighboring icon.
     bool options_open = false;
-    for (size_t attempt = 0; attempt < 2; attempt++){
+    for (size_t attempt = 0; attempt < 2; attempt++) {
         pbf_press_dpad(context, attempt == 0 ? DPAD_RIGHT : DPAD_LEFT, 80ms, 350ms);
-        pbf_press_button(context, BUTTON_A, 80ms, 1000ms);
-        context.wait_for_all_requests();
-        auto frame = stream.video().snapshot();
-        if (frame && options_screen.detect(frame)){
+        pbf_press_button(context, BUTTON_A, 80ms, 0ms);
+        if (wait_for_options_screen(stream, context, options_screen, 5s)) {
             options_open = true;
             break;
         }
         pbf_press_button(context, BUTTON_B, 80ms, 1000ms);
         context.wait_for_all_requests();
         MenuWatcher back_to_menu;
-        if (wait_until(stream, context, 5s, {{back_to_menu}}) != 0){
-            break;
-        }
+        if (wait_until(stream, context, 5s, {{back_to_menu}}) != 0) break;
     }
-    if (!options_open){
+    if (!options_open) {
         OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
-            "Settings checkpoint: Options screen not detected.",
-            stream);
+            "Settings checkpoint: Options screen not detected.", stream);
     }
     stream.log("[Tutorial settings] Options screen detected.");
     pbf_wait(context, 500ms);
     context.wait_for_all_requests();
-    struct Setting {
-        const char* label;
-        const char* value;
-    };
+    struct Setting { const char* label; const char* value; };
     const Setting settings[] = {
-        {"textspeed", "fast"},
-        {"changewindow", "type1"},
-        {"battleeffects", "off"},
-        {"battlestyle", "set"},
-        {"sendtoboxes", "automatic"},
-        {"givenicknames", "dontgive"},
-        {"gyroscope", "use"},
-        {"autosave", "off"},
-        {"shownicknames", "show"},
-        {"backgroundmusic", "8"},
+        {"textspeed", "fast"}, {"changewindow", "type1"},
+        {"battleeffects", "off"}, {"battlestyle", "set"},
+        {"sendtoboxes", "automatic"}, {"givenicknames", "dontgive"},
+        {"gyroscope", "use"}, {"autosave", "off"},
+        {"shownicknames", "show"}, {"backgroundmusic", "8"},
         {"soundeffects", "8"},
     };
-    for (size_t row = 0; row < sizeof(settings) / sizeof(settings[0]); row++){
+    for (size_t row = 0; row < sizeof(settings) / sizeof(settings[0]); row++) {
         // Detect the selected row afresh after every navigation/correction.
         double y = -1;
         const std::string base = RESOURCE_PATH() + "PokemonBDSP/Autostory/Options/" + settings[row].label;
@@ -328,103 +350,98 @@ static void verify_tutorial_settings_once(VideoStream& stream, ProControllerCont
         const ImageRGB32 value_reference(base + "_value.png");
         bool slider_reset = false;
         bool correct = false;
-        for (size_t attempt = 0; attempt < 30; attempt++){
+        for (size_t attempt = 0; attempt < 30; attempt++) {
             context.wait_for_all_requests();
             auto frame = stream.video().snapshot();
-            if (frame && options_screen.detect(frame)){
-                y = position.selected_row(frame);
-            }else{
-                y = -1;
-            }
+            if (frame && options_screen.detect(frame)) y = position.selected_row(frame);
+            else y = -1;
             const bool value_visible = y >= 0 && position.selected_value(frame, y);
-            const double label_score =
-                y >= 0 ? option_image_score(frame, {0.08, y - 0.025, 0.24, 0.05}, label_reference, false) : 0;
+            const double label_score = y >= 0 ? option_image_score(frame,
+                {0.08, y - 0.025, 0.24, 0.05}, label_reference, false) : 0;
             stream.log("[Tutorial settings] Expected row=" + std::string(settings[row].label) +
                 " row_y=" + std::to_string(y) + " highlighted_value=" + std::to_string(value_visible) +
                 " label_match=" + std::to_string(label_score));
-            if (y < 0 || !value_visible || label_score < 0.80){
+            if (y < 0 || !value_visible || label_score < 0.80) {
                 // A menu can be detected while its row/text is still
                 // fading in. Re-read without directional inputs first.
-                if (attempt < 4){
+                if (attempt < 4) {
                     pbf_wait(context, 200ms);
                     context.wait_for_all_requests();
                     continue;
                 }
                 OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
-                    "Settings checkpoint: Unable to confirm expected row " + std::string(settings[row].label),
-                    stream);
+                    "Settings checkpoint: Unable to confirm expected row " + std::string(settings[row].label), stream);
             }
             // These are regular video-overlay boxes, so the existing
             // overlay display control can show/hide every active ROI.
-            OverlayBoxScope row_overlay(stream.overlay(), COLOR_RED, {0.07, y - 0.04, 0.84, 0.08}, "");
-            OverlayBoxScope label_overlay(stream.overlay(), COLOR_YELLOW, {0.08, y - 0.025, 0.24, 0.05}, "");
-            OverlayBoxScope value_overlay(stream.overlay(), COLOR_GREEN, {0.33, y - 0.025, 0.54, 0.05}, "");
+            OverlayBoxScope row_overlay(stream.overlay(), COLOR_RED,
+                {0.07, y - 0.04, 0.84, 0.08}, "");
+            OverlayBoxScope label_overlay(stream.overlay(), COLOR_YELLOW,
+                {0.08, y - 0.025, 0.24, 0.05}, "");
+            OverlayBoxScope value_overlay(stream.overlay(), COLOR_GREEN,
+                {0.33, y - 0.025, 0.54, 0.05}, "");
             VideoOverlaySet autosave_rois(stream.overlay());
-            if (row == 7){
+            if (row == 7) {
                 autosave_rois.add(COLOR_GREEN, {0.63, y - 0.022, 0.055, 0.044});
                 autosave_rois.add(COLOR_RED, {0.34, y - 0.022, 0.055, 0.044});
             }
             double score;
-            if (row >= 9){
+            if (row >= 9) {
                 // Compare the numeric value rather than the long slider:
                 // neighboring slider levels otherwise look too similar.
-                ImageViewRGB32 number = value_reference.sub_image(value_reference.width() * 82 / 100,
-                    0,
+                ImageViewRGB32 number = value_reference.sub_image(
+                    value_reference.width() * 82 / 100, 0,
                     value_reference.width() - value_reference.width() * 82 / 100,
                     value_reference.height());
                 ImageRGB32 number_reference = number.scale_to(96, 32);
-                score = option_image_score(frame, {0.7728, y - 0.025, 0.0972, 0.05}, number_reference, true);
-            }else{
-                score = option_image_score(frame, {0.33, y - 0.025, 0.54, 0.05}, value_reference, true);
+                score = option_image_score(frame,
+                    {0.7728, y - 0.025, 0.0972, 0.05}, number_reference, true);
+            } else {
+                score = option_image_score(frame,
+                    {0.33, y - 0.025, 0.54, 0.05}, value_reference, true);
             }
-            stream.log(
-                "[Tutorial settings] " + std::string(settings[row].label) + " target match=" + std::to_string(score));
+            stream.log("[Tutorial settings] " + std::string(settings[row].label) +
+                " target match=" + std::to_string(score));
             // The reference recording uses inactive pale-red text;
             // the focused live row has a thicker dark-red glyph mask.
             // Verified Fast scores 0.734 while Slow/Normal score 0.
-            if (score >= 0.65 && (row != 7 || autosave_off_highlight(frame, y))){
-                if (row == 7){
-                    for (size_t confirmation = 0; confirmation < 3; confirmation++){
+            if (score >= 0.65 && (row != 7 || autosave_off_highlight(frame, y))) {
+                if (row == 7) {
+                    for (size_t confirmation = 0; confirmation < 3; confirmation++) {
                         pbf_wait(context, 200ms);
                         context.wait_for_all_requests();
                         auto check = stream.video().snapshot();
                         double check_y = check ? position.selected_row(check) : -1;
                         if (!check || !options_screen.detect(check) || check_y < 0 ||
-                            option_image_score(check, {0.08, check_y - 0.025, 0.24, 0.05}, label_reference, false) <
-                            0.80 ||
-                            !autosave_off_highlight(check, check_y)){
+                            option_image_score(check, {0.08, check_y - 0.025, 0.24, 0.05}, label_reference, false) < 0.80 ||
+                            !autosave_off_highlight(check, check_y)) {
                             OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
-                                "Autosave Off could not be confirmed. Stopping before movement.",
-                                stream);
+                                "Autosave Off could not be confirmed. Stopping before movement.", stream);
                         }
                     }
                 }
-                stream.log(
-                    "[Tutorial settings] Verified " + std::string(settings[row].label) + "=" + settings[row].value);
+                stream.log("[Tutorial settings] Verified " + std::string(settings[row].label) + "=" + settings[row].value);
                 correct = true;
                 break;
             }
             stream.log("[Tutorial settings] Correcting " + std::string(settings[row].label));
-            if (row >= 9 && !slider_reset){
+            if (row >= 9 && !slider_reset) {
                 // Sliders clamp at zero. Establish a known endpoint,
                 // then increment; verify the target image afterward.
-                for (size_t step = 0; step < 12; step++){
+                for (size_t step = 0; step < 12; step++)
                     pbf_press_dpad(context, DPAD_LEFT, 80ms, 100ms);
-                }
                 slider_reset = true;
-            }else{
+            } else {
                 pbf_press_dpad(context, DPAD_RIGHT, 80ms, 350ms);
             }
             context.wait_for_all_requests();
         }
-        if (!correct){
+        if (!correct) {
             OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
-                "Settings checkpoint: Could not apply " + std::string(settings[row].label),
-                stream);
+                "Settings checkpoint: Could not apply " + std::string(settings[row].label), stream);
         }
-        if (row + 1 < sizeof(settings) / sizeof(settings[0])){
+        if (row + 1 < sizeof(settings) / sizeof(settings[0]))
             pbf_press_dpad(context, DPAD_DOWN, 80ms, 350ms);
-        }
     }
     // Confirm settings before exiting: A A A A B B.
     pbf_press_button(context, BUTTON_A, 80ms, 1000ms);
@@ -435,58 +452,46 @@ static void verify_tutorial_settings_once(VideoStream& stream, ProControllerCont
     pbf_press_button(context, BUTTON_B, 80ms, 1000ms);
     context.wait_for_all_requests();
     OverworldWatcher overworld;
-    if (wait_until(stream, context, 10s, {{overworld}}) != 0){
+    if (wait_until(stream, context, 10s, {{overworld}}) != 0) {
         OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
-            "Settings checkpoint: Did not return to the overworld after saving options.",
-            stream);
+            "Settings checkpoint: Did not return to the overworld after saving options.", stream);
     }
     // Reopen the saved Options screen and independently verify Autosave.
     // No route movement is permitted until this persisted-value check passes.
     pbf_press_button(context, BUTTON_X, 80ms, 1000ms);
     context.wait_for_all_requests();
     MenuWatcher verify_menu;
-    if (wait_until(stream, context, 5s, {{verify_menu}}) != 0){
+    if (wait_until(stream, context, 5s, {{verify_menu}}) != 0) {
         OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
-            "Autosave verification: Main menu not detected.",
-            stream);
+            "Autosave verification: Main menu not detected.", stream);
     }
     bool reopened = false;
-    for (size_t attempt = 0; attempt < 2; attempt++){
-        pbf_press_button(context, BUTTON_A, 80ms, 1000ms);
-        context.wait_for_all_requests();
-        auto check = stream.video().snapshot();
-        if (check && options_screen.detect(check)){
-            reopened = true;
-            break;
-        }
+    for (size_t attempt = 0; attempt < 2; attempt++) {
+        pbf_press_button(context, BUTTON_A, 80ms, 0ms);
+        if (wait_for_options_screen(stream, context, options_screen, 5s)) { reopened = true; break; }
         pbf_press_button(context, BUTTON_B, 80ms, 1000ms);
         context.wait_for_all_requests();
         MenuWatcher return_menu;
-        if (wait_until(stream, context, 5s, {{return_menu}}) != 0){
-            break;
-        }
+        if (wait_until(stream, context, 5s, {{return_menu}}) != 0) break;
         pbf_press_dpad(context, DPAD_RIGHT, 80ms, 350ms);
     }
-    if (!reopened){
+    if (!reopened) {
         OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
-            "Autosave verification: Could not reopen saved Options.",
-            stream);
+            "Autosave verification: Could not reopen saved Options.", stream);
     }
     // Options starts on Text Speed; Autosave is seven rows below it.
-    for (size_t step = 0; step < 7; step++){
+    for (size_t step = 0; step < 7; step++)
         pbf_press_dpad(context, DPAD_DOWN, 80ms, 350ms);
-    }
     context.wait_for_all_requests();
     const ImageRGB32 autosave_label(RESOURCE_PATH() + "PokemonBDSP/Autostory/Options/autosave_label.png");
-    for (size_t confirmation = 0; confirmation < 3; confirmation++){
+    for (size_t confirmation = 0; confirmation < 3; confirmation++) {
         auto check = stream.video().snapshot();
         double check_y = check ? position.selected_row(check) : -1;
         if (!check || !options_screen.detect(check) || check_y < 0 ||
             option_image_score(check, {0.08, check_y - 0.025, 0.24, 0.05}, autosave_label, false) < 0.80 ||
-            !autosave_off_highlight(check, check_y)){
+            !autosave_off_highlight(check, check_y)) {
             OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
-                "Saved Autosave setting is not verified Off. Stopping before movement.",
-                stream);
+                "Saved Autosave setting is not verified Off. Stopping before movement.", stream);
         }
         pbf_wait(context, 200ms);
         context.wait_for_all_requests();
@@ -501,33 +506,31 @@ static void verify_tutorial_settings_once(VideoStream& stream, ProControllerCont
     pbf_press_button(context, BUTTON_B, 80ms, 1000ms);
     context.wait_for_all_requests();
     OverworldWatcher verified_exit;
-    if (wait_until(stream, context, 10s, {{verified_exit}}) != 0){
+    if (wait_until(stream, context, 10s, {{verified_exit}}) != 0) {
         OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
-            "Autosave verification: Could not return to the overworld.",
-            stream);
+            "Autosave verification: Could not return to the overworld.", stream);
     }
     // Report inferred values explicitly: these are visual matches,
     // allowing the user to compare our conclusions with the screen.
     stream.log("[Tutorial settings] Completed. Values believed applied (visual matches before saving):");
-    stream.log(
-        "[Tutorial settings] Text Speed = Fast; Change Window = Type 1; Battle Effects = Off; Battle Style = Set.");
+    stream.log("[Tutorial settings] Text Speed = Fast; Change Window = Type 1; Battle Effects = Off; Battle Style = Set.");
     stream.log("[Tutorial settings] Send to Boxes = Automatic; Give Nicknames = Don't give; Gyroscope = Use.");
     stream.log("[Tutorial settings] Autosave = Off; Show Nicknames = Show; Background Music = 8; Sound Effects = 8.");
 }
 
 
-void verify_tutorial_settings(VideoStream& stream, ProControllerContext& context){
+void verify_tutorial_settings(VideoStream& stream, ProControllerContext& context) {
     // Settings-only recovery: initial attempt plus three retries.
     // Never permit route movement unless the complete check succeeds.
     constexpr size_t MAX_RETRIES = 3;
-    for (size_t attempt = 0; attempt <= MAX_RETRIES; attempt++){
+    for (size_t attempt = 0; attempt <= MAX_RETRIES; attempt++) {
         stream.log("[Tutorial settings] Attempt " + std::to_string(attempt + 1) + "/4.");
         try {
             verify_tutorial_settings_once(stream, context);
             return;
-        } catch (OperationFailedException& error){
+        } catch (OperationFailedException& error) {
             stream.log("[Tutorial settings] Attempt failed: " + error.message(), COLOR_ORANGE);
-            if (attempt == MAX_RETRIES){
+            if (attempt == MAX_RETRIES) {
                 stream.log("[Tutorial settings] All three retries exhausted; stopping before movement.", COLOR_RED);
                 throw;
             }
@@ -537,13 +540,12 @@ void verify_tutorial_settings(VideoStream& stream, ProControllerContext& context
             context.wait_for_all_requests();
             TutorialOptionsDetector options_screen;
             const auto failed_frame = stream.video().snapshot();
-            if (failed_frame && options_screen.detect(failed_frame)){
+            if (failed_frame && options_screen.detect(failed_frame)) {
                 // Finish the known Options save/exit sequence before
                 // observing state; never cancel it on an Options frame
                 // misclassified as overworld by the generic detector.
-                for (size_t press = 0; press < 4; press++){
+                for (size_t press = 0; press < 4; press++)
                     pbf_press_button(context, BUTTON_A, 80ms, 1000ms);
-                }
             }
             pbf_mash_button(context, BUTTON_B, 3000ms);
             context.wait_for_all_requests();
@@ -552,17 +554,14 @@ void verify_tutorial_settings(VideoStream& stream, ProControllerContext& context
             BlackScreenDetector black;
             bool recovered = false;
             size_t confirmations = 0;
-            for (size_t check = 0; check < 15; check++){
+            for (size_t check = 0; check < 15; check++) {
                 const auto frame = stream.video().snapshot();
-                const bool clear = frame && !options_screen.detect(frame) && !menu.detect(frame) &&
-                    !black.detect(frame) && bag_pocket_position(frame) == 0 && overworld.detect(frame);
-                if (clear){
-                    if (++confirmations >= 3){
-                        recovered = true;
-                        break;
-                    }
+                const bool clear = frame && !options_screen.detect(frame) &&
+                    !menu.detect(frame) && !black.detect(frame) && bag_pocket_position(frame) == 0 && overworld.detect(frame);
+                if (clear) {
+                    if (++confirmations >= 3) { recovered = true; break; }
                     pbf_wait(context, 200ms);
-                }else{
+                } else {
                     confirmations = 0;
                     pbf_mash_button(context, BUTTON_B, 500ms);
                 }
@@ -576,10 +575,12 @@ void verify_tutorial_settings(VideoStream& stream, ProControllerContext& context
     }
 }
 
-void set_time_fast(SingleSwitchProgramEnvironment& env,
+void set_time_fast(
+    SingleSwitchProgramEnvironment& env,
     ProControllerContext& context,
     const DateTime& target,
-    bool preserve_date){
+    bool preserve_date
+) {
     env.log("[AutoStory] Fast date set starting...", COLOR_ORANGE);
 
     // 1) Home
@@ -593,32 +594,32 @@ void set_time_fast(SingleSwitchProgramEnvironment& env,
 
     // 4) Wait for date screen and set exact time.
     NintendoSwitch::DateChangeWatcher date_reader(env.console);
-    int ret = wait_until(env.console, context, 10s, {date_reader});
-    if (ret < 0){
-        OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
+    int ret = wait_until(
+        env.console, context, 10s,
+        { date_reader }
+    );
+    if (ret < 0) {
+        OperationFailedExceptionWithScreenshot::fire(
+            ErrorReportMode::SEND_ERROR_REPORT,
             "Failed to enter Date Change screen.",
-            env.console);
+            env.console
+        );
     }
 
     {
         VideoOverlaySet overlays(env.console.overlay());
         date_reader.make_overlays(overlays);
         DateTime effective_target = target;
-        if (preserve_date){
+        if (preserve_date) {
             context.wait_for_all_requests();
             const auto snapshot = env.console.video().snapshot();
-            if (!snapshot){
-                OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
-                    "Clock-only setup: No date-editor frame.",
-                    env.console);
-            }
+            if (!snapshot) OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
+                "Clock-only setup: No date-editor frame.", env.console);
             const DateTime current = date_reader.read_date(env.console, snapshot.frame).second;
             if (current.year < 2000 || current.year > 2060 || current.month < 1 || current.month > 12 ||
-                current.day < 1 || current.day > 31){
+                current.day < 1 || current.day > 31)
                 OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
-                    "Clock-only setup: Could not reliably read the current console date.",
-                    env.console);
-            }
+                    "Clock-only setup: Could not reliably read the current console date.", env.console);
             effective_target.year = current.year;
             effective_target.month = current.month;
             effective_target.day = current.day;
@@ -633,7 +634,10 @@ void set_time_fast(SingleSwitchProgramEnvironment& env,
     pbf_press_button(context, BUTTON_A, 160ms, 240ms);
 
     // 6) Back to game.
-    pbf_press_button(context, BUTTON_HOME, 160ms, ConsoleSettings::instance().SETTINGS_TO_HOME_DELAY0);
+    pbf_press_button(
+        context, BUTTON_HOME, 160ms,
+        ConsoleSettings::instance().SETTINGS_TO_HOME_DELAY0
+    );
     NintendoSwitch::resume_game_from_home(env.console, context, false);
 
     context.wait_for_all_requests();
@@ -644,238 +648,270 @@ void set_time_fast(SingleSwitchProgramEnvironment& env,
 // ---------------------------------------------------------------------------
 // Natalie battle
 // ---------------------------------------------------------------------------
-static void select_battle_move_slot(VideoStream& stream,
-    ProControllerContext& context,
-    BattleType battle_type,
-    size_t target,
-    const std::string& label,
-    bool confirm_default_target = false,
-    size_t current_move = 1){
+// Early moves the starters and their foes have, as type, power and
+// most PP. A status move has power 0.
+struct KnownMove { const char* name; const char* type; int power; int pp; };
+static const KnownMove KNOWN_MOVES[] = {
+    {"pound", "normal", 40, 35}, {"tackle", "normal", 40, 35}, {"scratch", "normal", 40, 35},
+    {"quickattack", "normal", 40, 30}, {"headbutt", "normal", 70, 15},
+    {"watergun", "water", 40, 25}, {"bubble", "water", 40, 30}, {"bubblebeam", "water", 65, 20},
+    {"ember", "fire", 40, 25}, {"flamewheel", "fire", 60, 25}, {"machpunch", "fighting", 40, 30},
+    {"absorb", "grass", 20, 25}, {"razorleaf", "grass", 55, 25}, {"bite", "dark", 60, 25},
+    {"peck", "flying", 35, 35}, {"wingattack", "flying", 60, 35}, {"metalclaw", "steel", 50, 35},
+    {"growl", "normal", 0, 40}, {"leer", "normal", 0, 30}, {"tailwhip", "normal", 0, 30},
+    {"withdraw", "water", 0, 40}, {"taunt", "dark", 0, 20},
+};
+
+// A move button's PP left, "8/25" at its right end; -1 if it cannot be
+// read. The text is dark, or yellow to red as PP runs low, so text is
+// whatever differs from the button's own color. `max_pp` helps when
+// the OCR reads the slash as a digit.
+static int read_move_pp(const ImageViewRGB32& screen, const ImageFloatBox& button, int max_pp) {
+    const ImageViewRGB32 box = extract_box_reference(screen, ImageFloatBox{
+        button.x + button.width * 0.75, button.y + button.height * 0.10,
+        button.width * 0.21, button.height * 0.80});
+    if (box.width() == 0 || box.height() == 0) return -1;
+    std::vector<uint32_t> pixels;
+    for (size_t y = 0; y < box.height(); y++) for (size_t x = 0; x < box.width(); x++) pixels.push_back(box.pixel(x, y));
+    auto brightness = [](uint32_t p) { return ((p >> 16) & 255) + ((p >> 8) & 255) + (p & 255); };
+    std::vector<uint32_t> sorted = pixels;
+    std::nth_element(sorted.begin(), sorted.begin() + sorted.size() / 2, sorted.end(),
+        [&](uint32_t a, uint32_t b) { return brightness(a) < brightness(b); });
+    const uint32_t background = sorted[sorted.size() / 2];
+    const size_t pad = 8;
+    ImageRGB32 text(box.width() + 2 * pad, box.height() + 2 * pad);
+    text.fill(0xffffffff);
+    for (size_t y = 0; y < box.height(); y++) {
+        for (size_t x = 0; x < box.width(); x++) {
+            const uint32_t p = box.pixel(x, y);
+            int distance = 0;
+            for (int shift : {16, 8, 0}) distance += std::abs((int)((p >> shift) & 255) - (int)((background >> shift) & 255));
+            if (distance > 120) text.pixel(x + pad, y + pad) = 0xff000000;
+        }
+    }
+    const std::string read = OCR::tesseract_ocr_read(Language::English, text);
+    const size_t slash = read.find('/');
+    std::string digits;
+    for (size_t i = 0; i < read.size() && i < slash; i++) if (std::isdigit((unsigned char)read[i])) digits.push_back(read[i]);
+    if (slash == std::string::npos && max_pp > 0) {
+        // "29135" for 29/35: drop the most PP and the misread slash.
+        const std::string max = std::to_string(max_pp);
+        if (digits.size() > max.size() + 1 && digits.compare(digits.size() - max.size(), max.size(), max) == 0) {
+            digits.resize(digits.size() - max.size() - 1);
+        } else {
+            return -1;
+        }
+    }
+    if (digits.empty() || digits.size() > 2) return -1;
+    return std::stoi(digits);
+}
+
+// The best move on the move menu: the most powerful one we know, and
+// on a tie one that is not Normal (an early starter's own type).
+// Reads the names with OCR; 1 if none is known.
+static size_t pick_best_move(VideoStream& stream, const ImageViewRGB32& screen,
+    const BattleMoveMenuState& moves, const std::string& label) {
+    // Keep the menu as it looked, to check the reads against.
+    {
+        const std::string folder = SCREENSHOTS_PATH() + "AutoStory/moves/";
+        Filesystem::create_directories(Filesystem::Path(folder));
+        screen.save(folder + now_to_filestring() + "-" + label + ".png");
+    }
+    size_t best = 1;
+    int best_score = -1;
+    bool any_attack = false;
+    size_t last_not_status = 1;
+    for (size_t i = 0; i < moves.move_count; i++) {
+        // The name is dark text on a light button (grey, or light blue under the
+        // cursor). Take the box right of the type icon and left of the PP, tall
+        // enough for a status move's name, which sits lower: it has no "Effective"
+        // line under it.
+        const ImageFloatBox& button = moves.buttons[i];
+        const ImageFloatBox name_box{button.x + button.width * 0.17, button.y + button.height * 0.08,
+            button.width * 0.53, button.height * 0.80};
+        const ImageViewRGB32 box = extract_box_reference(screen, name_box);
+        // Text is darker than halfway between the background and the darkest pixel;
+        // a fixed cut thins the strokes on the blue button.
+        std::vector<int> gray(box.width() * box.height());
+        for (size_t y = 0; y < box.height(); y++) {
+            for (size_t x = 0; x < box.width(); x++) {
+                const uint32_t pixel = box.pixel(x, y);
+                gray[y * box.width() + x] = (int)(((pixel >> 16) & 0xff) + ((pixel >> 8) & 0xff) + (pixel & 0xff)) / 3;
+            }
+        }
+        std::vector<int> sorted = gray;
+        std::nth_element(sorted.begin(), sorted.begin() + sorted.size() / 2, sorted.end());
+        const int background = sorted[sorted.size() / 2];
+        const int darkest = *std::min_element(gray.begin(), gray.end());
+        const int threshold = (background + darkest) / 2;
+        // The name is the tallest band of text rows; "Effective" is smaller.
+        size_t band_top = 0, band_bottom = 0;
+        for (size_t y = 0; y < box.height();) {
+            auto has_text = [&](size_t row) {
+                for (size_t x = 0; x < box.width(); x++) if (gray[row * box.width() + x] < threshold) return true;
+                return false;
+            };
+            if (!has_text(y)) { y++; continue; }
+            size_t end = y;
+            while (end < box.height() && has_text(end)) end++;
+            if (end - y > band_bottom - band_top) { band_top = y; band_bottom = end; }
+            y = end;
+        }
+        // Black text on white, with a margin, for the OCR.
+        const size_t pad = 6;
+        const size_t top = band_top >= 4 ? band_top - 4 : 0;
+        const size_t bottom = std::min(box.height(), band_bottom + 4);
+        ImageRGB32 text(box.width() + 2 * pad, bottom - top + 2 * pad);
+        text.fill(0xffffffff);
+        for (size_t y = top; y < bottom; y++) {
+            for (size_t x = 0; x < box.width(); x++) {
+                if (gray[y * box.width() + x] < threshold) text.pixel(x + pad, y - top + pad) = 0xff000000;
+            }
+        }
+        std::string name;
+        for (unsigned char ch : OCR::tesseract_ocr_read(Language::English, text)) {
+            if (std::isalpha(ch)) name.push_back((char)std::tolower(ch));
+        }
+        // A slot read well once keeps its name when a later read fails.
+        static std::array<std::string, 4> last_read;
+        const KnownMove* known = nullptr;
+        for (int pass = 0; pass < 2 && !known; pass++) {
+        if (pass == 1) name = last_read[i];
+        for (const KnownMove& move : KNOWN_MOVES) {
+            //  The longest name that appears wins: "bubblebeam" over "bubble".
+            if (name.find(move.name) != std::string::npos &&
+                (!known || std::string(move.name).size() > std::string(known->name).size())) {
+                known = &move;
+            }
+        }
+        }
+        if (known) last_read[i] = known->name;
+        // A move with no PP left cannot be chosen; the game says so and
+        // keeps the menu up.
+        const int pp = read_move_pp(screen, button, known ? known->pp : 0);
+        stream.log("[" + label + "] Move " + std::to_string(i + 1) + " PP left: " + (pp < 0 ? std::string("unread") : std::to_string(pp)) + ".");
+        if (pp == 0) {
+            continue;
+        }
+        // An unreadable move counts as a plain attack, ahead of known
+        // status moves.
+        const int score = known ? known->power * 2 + (std::string(known->type) != "normal" ? 1 : 0) : 40 * 2 - 1;
+        stream.log("[" + label + "] Move " + std::to_string(i + 1) + " reads \"" + name + "\"" +
+            (known ? std::string(" = ") + known->name + " (" + known->type + ", " + std::to_string(known->power) + ")" : " (unknown)") + ".");
+        if (score > best_score) { best_score = score; best = i + 1; }
+        if (known && known->power > 0) any_attack = true;
+        if (!known || known->power > 0) last_not_status = i + 1;
+    }
+    // No attack read: the newest move is the starter's own-type attack
+    // (Water Gun, Ember, Absorb), unless it is a status move.
+    if (!any_attack) best = last_not_status;
+    stream.log("[" + label + "] Best move: " + std::to_string(best) + ".");
+    return best;
+}
+
+static void select_battle_move_slot(VideoStream& stream, ProControllerContext& context,
+    BattleType battle_type, size_t target, const std::string& label,
+    bool confirm_default_target = false, size_t current_move = 1) {
     BattleMenuDetector commands(battle_type);
     VideoOverlaySet overlays(stream.overlay());
     commands.make_overlays(overlays);
     overlays.add(COLOR_GREEN, {0.90, 0.48, 0.075, 0.505});
     // Reenter Fight from an already-open list without assuming
     // that this resets the remembered move cursor.
-    if (confirm_default_target){
+    if (confirm_default_target) {
         context.wait_for_all_requests();
-        const auto frame = stream.video().snapshot();
-        if (frame && detect_battle_move_menu(frame).move_count){
-            pbf_press_button(context, BUTTON_B, 80ms, 500ms);
+        const auto frame=stream.video().snapshot();
+        if (frame && detect_battle_move_menu(frame).move_count) {
+            pbf_press_button(context,BUTTON_B,80ms,500ms);
         }
     }
     bool fight = false;
     size_t confirmed = 0;
-    for (size_t check = 0; check < 30; check++){
+    for (size_t check = 0; check < 30; check++) {
         context.wait_for_all_requests();
         auto frame = stream.video().snapshot();
         BattleMenuOption selected = frame ? commands.selected_option(frame) : BattleMenuOption::UNKNOWN;
         stream.log("[" + label + "] Command cursor=" + std::to_string((int)selected + 1) + "; target Battle=1.");
-        if (selected == BattleMenuOption::BATTLE){
-            if (++confirmed >= 3){
-                fight = true;
-                break;
-            }
+        if (selected == BattleMenuOption::BATTLE) {
+            if (++confirmed >= 3) { fight = true; break; }
             pbf_wait(context, 100ms);
-        }else{
+        } else {
             confirmed = 0;
-            if (selected == BattleMenuOption::UNKNOWN){
-                pbf_wait(context, 150ms);
-            }else{
-                pbf_press_dpad(context, DPAD_UP, 80ms, 250ms);
-            }
+            if (selected == BattleMenuOption::UNKNOWN) pbf_wait(context, 150ms);
+            else pbf_press_dpad(context, DPAD_UP, 80ms, 250ms);
         }
     }
-    if (!fight){
-        OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
-            label + ": Could not confirm Battle command; A not pressed.",
-            stream);
-    }
-    pbf_press_button(context, BUTTON_A, 80ms, confirm_default_target ? 1000ms : 500ms);
-    if (confirm_default_target){
+    if (!fight) OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
+        label + ": Could not confirm Battle command; A not pressed.", stream);
+    pbf_press_button(context,BUTTON_A,80ms,confirm_default_target ? 1000ms : 500ms);
+    if (confirm_default_target) {
         // Reuse the farming move/target confirmation sequence, but
         // navigate relative to this battle's retained move cursor.
         // Reopening Fight does not reset it to move 1.
-        size_t available = 0, stable = 0;
-        for (size_t check = 0; check < 20 && stable < 3; check++){
+        size_t available=0,stable=0;
+        for (size_t check=0;check<20 && stable<3;check++) {
             context.wait_for_all_requests();
-            const auto frame = stream.video().snapshot();
-            const auto moves = frame ? detect_battle_move_menu(frame) : BattleMoveMenuState{};
-            if (moves.move_count && moves.move_count == available){
-                stable++;
-            }else{
-                available = moves.move_count;
-                stable = moves.move_count ? 1 : 0;
-            }
-            if (stable < 3){
-                pbf_wait(context, 100ms);
-            }
+            const auto frame=stream.video().snapshot();
+            const auto moves=frame ? detect_battle_move_menu(frame) : BattleMoveMenuState{};
+            if (moves.move_count && moves.move_count==available) stable++;
+            else {available=moves.move_count;stable=moves.move_count ? 1:0;}
+            if (stable<3) pbf_wait(context,100ms);
         }
-        if (stable < 3 || available < target || available < current_move){
-            OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
-                label + ": Requested move position is not available.",
-                stream);
-        }
-        stream.log("[" + label + "] Retained move cursor " + std::to_string(current_move) + " -> " +
-            std::to_string(target) + ".");
-        for (size_t slot = current_move; slot < target; slot++){
-            pbf_press_dpad(context, DPAD_DOWN, 80ms, 400ms);
-        }
-        for (size_t slot = current_move; slot > target; slot--){
-            pbf_press_dpad(context, DPAD_UP, 80ms, 400ms);
-        }
-        pbf_press_button(context, BUTTON_A, 80ms, 1000ms);
-        pbf_press_button(context, BUTTON_A, 80ms, 3000ms);
+        if (stable<3 || available<target || available<current_move) OperationFailedExceptionWithScreenshot::fire(
+            ErrorReportMode::SEND_ERROR_REPORT,label+": Requested move position is not available.",stream);
+        stream.log("["+label+"] Retained move cursor "+std::to_string(current_move)+
+            " -> "+std::to_string(target)+".");
+        for (size_t slot=current_move;slot<target;slot++) pbf_press_dpad(context,DPAD_DOWN,80ms,400ms);
+        for (size_t slot=current_move;slot>target;slot--) pbf_press_dpad(context,DPAD_UP,80ms,400ms);
+        pbf_press_button(context,BUTTON_A,80ms,1000ms);
+        pbf_press_button(context,BUTTON_A,80ms,3000ms);
         return;
     }
     confirmed = 0;
     size_t previous_move_count = 0, stable_move_count = 0;
-    for (size_t check = 0; check < 30; check++){
+    for (size_t check = 0; check < 30; check++) {
         context.wait_for_all_requests();
         auto frame = stream.video().snapshot();
         const BattleMoveMenuState moves = frame ? detect_battle_move_menu(frame) : BattleMoveMenuState{};
         const int slot = (int)moves.selected_slot;
         VideoOverlaySet move_overlays(stream.overlay());
-        for (size_t i = 0; i < moves.move_count; i++){
+        for (size_t i = 0; i < moves.move_count; i++)
             move_overlays.add(moves.selected_slot == i + 1 ? COLOR_GREEN : COLOR_YELLOW, moves.buttons[i]);
-        }
         stream.log("[" + label + "] Available moves=" + std::to_string(moves.move_count) +
             "; selected slot=" + std::to_string(slot) + "/4; target=" + std::to_string(target) + ".");
-        if (moves.move_count == previous_move_count && moves.move_count > 0){
-            stable_move_count++;
-        }else{
-            previous_move_count = moves.move_count;
-            stable_move_count = 1;
-            confirmed = 0;
+        if (moves.move_count == previous_move_count && moves.move_count > 0) stable_move_count++;
+        else { previous_move_count = moves.move_count; stable_move_count = 1; confirmed = 0; }
+        // Target 0: pick the best move once the menu has settled.
+        if (target == 0 && stable_move_count >= 3 && frame) {
+            target = pick_best_move(stream, *frame.frame, moves, label);
         }
-        if (moves.move_count > 0 && moves.move_count < target && stable_move_count >= 3){
+        if (moves.move_count > 0 && moves.move_count < target && stable_move_count >= 3) {
             OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
-                label + ": Move slot " + std::to_string(target) + " is absent; no move confirmed.",
-                stream);
+                label + ": Move slot " + std::to_string(target) + " is absent; no move confirmed.", stream);
         }
-        if (slot == (int)target && stable_move_count >= 3){
-            if (++confirmed >= 3){
+        if (slot == (int)target && stable_move_count >= 3) {
+            if (++confirmed >= 3) {
                 stream.log("[" + label + "] Move " + std::to_string(target) + " confirmed; using it.");
                 pbf_press_button(context, BUTTON_A, 80ms, 3000ms);
                 return;
             }
             pbf_wait(context, 100ms);
-        }else{
+        } else {
             confirmed = 0;
-            if (slot == 0 || slot == (int)target){
-                pbf_wait(context, 150ms);
-            }else{
-                pbf_press_dpad(context, slot < (int)target ? DPAD_DOWN : DPAD_UP, 80ms, 250ms);
-            }
+            if (slot == 0 || slot == (int)target) pbf_wait(context, 150ms);
+            else pbf_press_dpad(context, slot < (int)target ? DPAD_DOWN : DPAD_UP, 80ms, 250ms);
         }
         context.wait_for_all_requests();
     }
     OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
-        label + ": Could not confirm move " + std::to_string(target) + "; A not pressed.",
-        stream);
-}
-
-static void select_natalie_move_three(VideoStream& stream, ProControllerContext& context){
-    select_battle_move_slot(stream, context, BattleType::TRAINER, 3, "Natalie");
-}
-
-void fight_Natalie(VideoStream& stream, ProControllerContext& context){
-    stream.log("[AutoStory] Starting Natalie battle...", COLOR_BLUE);
-
-    // Allow battle transition to finish.
-    pbf_wait(context, 5000ms);
-
-    bool battle_menu_seen = false;
-
-    // State machine loop.
-    while (true){
-
-        context.wait_for_all_requests();
-
-        BattleMenuWatcher battle_menu(BattleType::TRAINER);
-        EndBattleWatcher end_battle;
-
-        // Detect move-learning arrows.
-        SelectionArrowFinder learn_move(stream.overlay(), {0.50, 0.62, 0.40, 0.18}, COLOR_YELLOW);
-
-        int ret = run_until<ProControllerContext>(stream,
-            context,
-            [](ProControllerContext& context){
-                // Continuously clear:
-                // EXP gain
-                // level up
-                // faint text
-                // send-out text
-                // battle narration
-                pbf_mash_button(context, BUTTON_B, 120000ms);
-            },
-            {
-                {battle_menu},
-                battle_menu_seen ? PeriodicInferenceCallback{end_battle} : PeriodicInferenceCallback{},
-                {learn_move},
-            });
-
-        switch (ret){
-
-            // -------------------------------------------------
-            // Battle menu detected.
-            // -------------------------------------------------
-        case 0: {
-            stream.log("[AutoStory] Battle menu detected.", COLOR_BLUE);
-
-            battle_menu_seen = true;
-
-            select_natalie_move_three(stream, context);
-
-            break;
-        }
-
-        // -------------------------------------------------
-        // Battle finished.
-        // -------------------------------------------------
-        case 1: {
-            stream.log("[AutoStory] Natalie battle complete.", COLOR_GREEN);
-
-            pbf_mash_button(context, BUTTON_B, 5000ms);
-
-            return;
-        }
-
-        // -------------------------------------------------
-        // Move learning detected.
-        // -------------------------------------------------
-        case 2: {
-            stream.log("[AutoStory] Learn move detected.", COLOR_ORANGE);
-
-            // Always refuse move learning.
-            pbf_move_right_joystick(context, {0, -1}, 160ms, 840ms);
-
-            pbf_press_button(context, BUTTON_A, 160ms, 840ms);
-
-            break;
-        }
-
-        // -------------------------------------------------
-        // Timeout.
-        // -------------------------------------------------
-        default: {
-            stream.log("[AutoStory] Natalie battle timed out.", COLOR_RED);
-
-            pbf_mash_button(context, BUTTON_B, 5000ms);
-
-            OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
-                "[AutoStory] Natalie battle timed out.",
-                stream);
-        }
-        }
-    }
+        label + ": Could not confirm move " + std::to_string(target) + "; A not pressed.", stream);
 }
 
 // ---------------------------------------------------------------------------
 // Starly battle
 // ---------------------------------------------------------------------------
 
-void fight_starly(VideoStream& stream, ProControllerContext& context){
+void fight_starly(VideoStream& stream, ProControllerContext& context) {
     stream.log("[AutoStory] Starting Starly battle...", COLOR_BLUE);
 
     // Declare OUTSIDE the loop so accumulated detector state
@@ -884,24 +920,26 @@ void fight_starly(VideoStream& stream, ProControllerContext& context){
     // be white. STARTER skips that check and only verifies status bars
     // and the Fight button color.
     BattleMenuWatcher battle_menu(BattleType::STARTER, COLOR_YELLOW);
-    EndBattleWatcher end_battle;
+    EndBattleWatcher  end_battle;
 
-    while (true){
+    while (true) {
         context.wait_for_all_requests();
 
         // Phase 1: wait for either battle menu or battle end.
-        int ret = run_until<ProControllerContext>(stream,
-            context,
-            [](ProControllerContext& ctx){
+        int ret = run_until<ProControllerContext>(
+            stream, context,
+            [](ProControllerContext& ctx) {
                 pbf_mash_button(ctx, BUTTON_B, 120000ms);
             },
-            {
-                {battle_menu},
-                {end_battle},
-            });
+{
+    {battle_menu},
+    {end_battle},
+}
+);
 
-        switch (ret){
-        case 0: {
+        switch (ret) {
+        case 0:
+        {
             stream.log("[AutoStory] Battle menu detected. Selecting move...", COLOR_BLUE);
 
             // Select Fight, then move slot 1.
@@ -910,28 +948,28 @@ void fight_starly(VideoStream& stream, ProControllerContext& context){
             // Loop back - mash B through animations until next menu or end.
             break;
         }
-        case 1: {
+        case 1:
+        {
             stream.log("[AutoStory] Starly battle complete.", COLOR_GREEN);
 
             // Mash through XP / level-up / dialog screens back to overworld.
             OverworldWatcher overworld;
-            int cleanup_ret = run_until<ProControllerContext>(stream,
-                context,
-                [](ProControllerContext& ctx){
+            int cleanup_ret = run_until<ProControllerContext>(
+                stream, context,
+                [](ProControllerContext& ctx) {
                     pbf_mash_button(ctx, BUTTON_B, 120000ms);
                 },
-                {{overworld}});
-            if (cleanup_ret != 0){
+                { {overworld} }
+            );
+            if (cleanup_ret != 0) {
                 OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
-                    "Starly battle: Overworld cleanup timed out.",
-                    stream);
+                    "Starly battle: Overworld cleanup timed out.", stream);
             }
             return;
         }
         default:
             OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
-                "Starly battle timed out.",
-                stream);
+                "Starly battle timed out.", stream);
         }
     }
 }
@@ -939,87 +977,100 @@ void fight_starly(VideoStream& stream, ProControllerContext& context){
 // ---------------------------------------------------------------------------
 // Tristan battle
 // ---------------------------------------------------------------------------
-static void encounter_one_wild_pokemon(VideoStream& stream, ProControllerContext& context){
+// Two grass rows at 240 ms each, with room to spare: the wall stops us.
+static constexpr Milliseconds CATCH_GRASS_WALK = 900ms;
+
+static void encounter_one_wild_pokemon(VideoStream& stream, ProControllerContext& context) {
     context.wait_for_all_requests();
     pbf_wait(context, 1000ms);
 
     bool encounter_found = false;
     const auto deadline = std::chrono::steady_clock::now() + 180s;
 
-    // Wiggle left/right until battle starts.
-    while (!encounter_found && std::chrono::steady_clock::now() < deadline){
+    // Walk up and down the catch grass until a battle starts. Its three rows
+    // sit between tree walls, so each walk ends at a wall, on the same tile
+    // every time, after two new grass tiles. Short sideways steps drift and
+    // can rock across one tile edge without entering new grass.
+    while (!encounter_found && std::chrono::steady_clock::now() < deadline) {
         BlackScreenWatcher battle_start;
         BattleMenuWatcher battle_menu(BattleType::STANDARD, COLOR_YELLOW);
         BattleDialogWatcher battle_dialog(COLOR_YELLOW);
 
-        // Turn left.
-        pbf_move_left_joystick(context, {-1, 0}, 120ms, 200ms);
+        route_turn(stream, context, Pokemon::Direction::NORTH);
+        pbf_move_left_joystick(context, {0, 1}, CATCH_GRASS_WALK, 200ms);
         context.wait_for_all_requests();
 
-        int ret = wait_until(stream,
+        int ret = wait_until(
+            stream,
             context,
             1500ms,
             {
                 {battle_start},
                 {battle_menu},
                 {battle_dialog},
-            });
+            }
+        );
 
-        if (ret >= 0){
+        if (ret >= 0) {
             encounter_found = true;
             break;
         }
 
-        // Turn right.
-        pbf_move_left_joystick(context, {1, 0}, 120ms, 200ms);
+        route_turn(stream, context, Pokemon::Direction::SOUTH);
+        pbf_move_left_joystick(context, {0, -1}, CATCH_GRASS_WALK, 200ms);
         context.wait_for_all_requests();
 
-        ret = wait_until(stream,
+        ret = wait_until(
+            stream,
             context,
             1500ms,
             {
                 {battle_start},
                 {battle_menu},
                 {battle_dialog},
-            });
+            }
+        );
 
-        if (ret >= 0){
+        if (ret >= 0) {
             encounter_found = true;
             break;
         }
     }
 
-    if (!encounter_found){
-        OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
-            "Wild encounter: Left/right wiggle did not find a battle within three minutes.",
-            stream);
-    }
+    if (!encounter_found) OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
+        "Wild encounter: walking up and down the grass found no battle within three minutes.", stream);
     stream.log("[AutoStory] Wild battle detected!", COLOR_GREEN);
 
     // Wait until the actual battle menu appears.
     BattleMenuWatcher confirm_menu(BattleType::STANDARD);
 
-    int menu_ret = wait_until(stream,
+    int menu_ret = wait_until(
+        stream,
         context,
         15s,
         {
             {confirm_menu},
-        });
+        }
+    );
 
-    if (menu_ret < 0){
-        stream.log("[AutoStory] Failed to detect battle menu.", COLOR_RED);
-        OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
+    if (menu_ret < 0) {
+        stream.log(
             "[AutoStory] Failed to detect battle menu.",
-            stream);
+            COLOR_RED
+        );
+        OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
+                "[AutoStory] Failed to detect battle menu.", stream);
     }
 
     stream.log("[AutoStory] Battle menu detected.", COLOR_GREEN);
 
     context.wait_for_all_requests();
     pbf_wait(context, 500ms);
+
 }
 
-static void confirm_battle_overworld(VideoStream& stream, ProControllerContext& context, const std::string& label){
+static void confirm_battle_overworld(VideoStream& stream, ProControllerContext& context,
+    const std::string& label) {
     OverworldDetector overworld;
     ShortDialogDetector dialogue(COLOR_YELLOW);
     BlackScreenDetector black;
@@ -1030,172 +1081,261 @@ static void confirm_battle_overworld(VideoStream& stream, ProControllerContext& 
     const auto deadline = std::chrono::steady_clock::now() + 180s;
     auto quiet_since = std::chrono::steady_clock::now();
     bool finished = false;
-    while (std::chrono::steady_clock::now() < deadline){
+    while (std::chrono::steady_clock::now() < deadline) {
         const auto frame = stream.video().snapshot();
-        if (!frame){
-            OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
-                label + ": No video frame.",
-                stream);
-        }
+        if (!frame) OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
+            label + ": No video frame.", stream);
         const auto now = std::chrono::steady_clock::now();
-        if (dialogue.detect(frame) || black.detect(frame) || !overworld.detect(frame)){
+        if (dialogue.detect(frame) || black.detect(frame) || !overworld.detect(frame)) {
             quiet_since = now;
-        }else if (now - quiet_since >= 4s){
+        } else if (now - quiet_since >= 4s) {
             finished = true;
             break;
         }
         pbf_mash_button(context, BUTTON_B, 100ms);
         context.wait_for_all_requests();
     }
-    if (!finished){
-        OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
-            label + ": Dialogue-free overworld not confirmed for four seconds.",
-            stream);
-    }
+    if (!finished) OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
+        label + ": Dialogue-free overworld not confirmed for four seconds.", stream);
     context.wait_for_all_requests();
 }
 
-static void fight_using_move_list(VideoStream& stream,
-    ProControllerContext& context,
-    BattleType battle_type,
-    const std::vector<size_t>& move_slots,
-    const std::string& label,
-    bool confirm_default_target,
-    bool post_battle_dialogue_cleanup,
-    std::array<size_t, 4>* remaining_pp = nullptr){
-    if (move_slots.empty() || std::any_of(move_slots.begin(), move_slots.end(), [](size_t slot){
-            return slot < 1 || slot > 4;
-        })){
-        OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
-            label + ": Supply a nonempty move list containing only positions 1 through 4.",
-            stream);
+// Our HP bar in the battle's bottom-left panel, as a fraction; -1 if
+// no bar is there. Measured on 1920x1080 frames: the bar runs from
+// x 88 to 466 on rows 961 to 965.
+static double battle_player_hp(const ImageViewRGB32& frame) {
+    const ImageViewRGB32 bar = extract_box_reference(frame, ImageFloatBox{0.046, 0.890, 0.197, 0.004});
+    size_t filled = 0;
+    for (size_t x = 0; x < bar.width(); x++) {
+        size_t color = 0;
+        for (size_t y = 0; y < bar.height(); y++) {
+            const uint32_t p = bar.pixel(x, y);
+            const int r = (p >> 16) & 255, g = (p >> 8) & 255, b = p & 255;
+            const bool green = g > r + 30 && g > b + 20;
+            const bool yellow = r > 150 && g > 120 && b < 100;
+            const bool red = r > 150 && r > g + 50 && r > b + 50;
+            color += green || yellow || red;
+        }
+        filled += color > bar.height() / 2;
     }
-    size_t move_index = 0;
+    return bar.width() && filled ? (double)filled / bar.width() : -1;
+}
+
+enum class BattleHeal { NOT_NEEDED, USED, NONE_LEFT };
+
+// At the battle menu: if our HP is under `heal_below`, use a Potion
+// from the Bag on the lead, which takes the turn. Otherwise the
+// battle menu is left up.
+static BattleHeal battle_heal_if_low(VideoStream& stream, ProControllerContext& context,
+    BattleType battle_type, double heal_below, const std::string& label) {
+    context.wait_for_all_requests();
+    double hp = -1;
+    for (size_t check = 0; check < 5 && hp < 0; check++) {
+        const auto frame = stream.video().snapshot();
+        if (frame) hp = battle_player_hp(*frame.frame);
+        if (hp < 0) pbf_wait(context, 150ms);
+        context.wait_for_all_requests();
+    }
+    stream.log("[" + label + "] Our HP bar reads " + std::to_string((int)(hp * 100)) + "%.");
+    if (hp < 0 || hp >= heal_below) return BattleHeal::NOT_NEEDED;
+    BattleMenuDetector commands(battle_type);
+    bool on_bag = false;
+    for (size_t check = 0; check < 30 && !on_bag; check++) {
+        context.wait_for_all_requests();
+        const auto frame = stream.video().snapshot();
+        const BattleMenuOption selected = frame ? commands.selected_option(frame) : BattleMenuOption::UNKNOWN;
+        if (selected == BattleMenuOption::BAG) on_bag = true;
+        else if (selected == BattleMenuOption::UNKNOWN) pbf_wait(context, 150ms);
+        else pbf_press_dpad(context, (int)selected < (int)BattleMenuOption::BAG ? DPAD_DOWN : DPAD_UP, 80ms, 300ms);
+    }
+    if (!on_bag) {
+        stream.log("[" + label + "] Could not reach the Bag command; fighting on.", COLOR_ORANGE);
+        return BattleHeal::NONE_LEFT;
+    }
+    pbf_press_button(context, BUTTON_A, 80ms, 2000ms);
+    if (!find_bag_item_in_open_bag(stream, context, "potion", 1)) {
+        stream.log("[" + label + "] No Potion left; fighting on.", COLOR_ORANGE);
+        pbf_press_button(context, BUTTON_B, 80ms, 1500ms);
+        pbf_press_button(context, BUTTON_B, 80ms, 1500ms);
+        context.wait_for_all_requests();
+        return BattleHeal::NONE_LEFT;
+    }
+    // Potion, then the lead in the party list, then Use.
+    stream.log("[" + label + "] Using a Potion on the lead.", COLOR_BLUE);
+    pbf_press_button(context, BUTTON_A, 80ms, 1500ms);
+    pbf_press_button(context, BUTTON_A, 80ms, 1500ms);
+    pbf_press_button(context, BUTTON_A, 80ms, 2500ms);
+    context.wait_for_all_requests();
+    return BattleHeal::USED;
+}
+
+static void fight_using_move_list(
+    VideoStream& stream, ProControllerContext& context,
+    BattleType battle_type, const std::vector<size_t>& move_slots,
+    const std::string& label, bool confirm_default_target, bool post_battle_dialogue_cleanup,
+    bool doubles = false, bool switch_on_faint = false,
+    std::array<size_t, 4>* remaining_pp = nullptr
+) {
+    if (move_slots.empty() || std::any_of(move_slots.begin(),move_slots.end(),
+        [](size_t slot) { return slot>4; })) {
+        OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
+            label+": Supply a nonempty move list containing only positions 0 (best) through 4.",stream);
+    }
+    size_t move_index=0;
     // The first Fight menu starts at move 1. Later turns retain
     // this Pokemon's previous selection; a new battle resets it.
-    size_t current_move = 1;
-    stream.log("[AutoStory] Starting " + label + " battle...", COLOR_BLUE);
+    size_t current_move=1;
+    stream.log(
+        "[AutoStory] Starting " + label + " battle...",
+        COLOR_BLUE
+    );
 
     // Scripted battles wait on the menu detector below, so no
     // extra fixed delay is needed after a caller confirms it.
     // Preserve the existing early-game transition delay.
-    if (!confirm_default_target){
-        pbf_wait(context, 5000ms);
-    }
+    if (!confirm_default_target) pbf_wait(context,5000ms);
 
     bool battle_menu_seen = false;
+    bool out_of_potions = false;
+    size_t potions_used = 0;
+    size_t turns = 0;
+    size_t faint_switches = 0;
+    const bool watch_learn_move = confirm_default_target || doubles || switch_on_faint;
     EndBattleWatcher end_battle;
 
-    while (true){
+    while (true) {
 
         context.wait_for_all_requests();
 
         BattleMenuWatcher battle_menu(battle_type);
         // Reuse the farming handlers' move-learning prompt recovery.
-        SelectionArrowFinder learn_move(stream.overlay(), {0.50, 0.62, 0.40, 0.18}, COLOR_YELLOW);
+        SelectionArrowFinder learn_move(stream.overlay(),{0.50,0.62,0.40,0.18},COLOR_YELLOW);
 
-        int ret = run_until<ProControllerContext>(stream,
+        int ret = run_until<ProControllerContext>(
+            stream,
             context,
-            [](ProControllerContext& context){
+            [&](ProControllerContext& context) {
                 // Clear narration with B while watching for commands.
                 // A here can open Fight before selection begins.
-                pbf_mash_button(context, BUTTON_B, 120000ms);
+                // With faint switching, a quiet 30 s means the party
+                // screen after a faint, which B cannot leave.
+                pbf_mash_button(context,BUTTON_B,switch_on_faint ? 30000ms : 120000ms);
             },
             {
                 {battle_menu},
-                battle_menu_seen ? PeriodicInferenceCallback{end_battle} : PeriodicInferenceCallback{},
-                confirm_default_target ? PeriodicInferenceCallback{learn_move} : PeriodicInferenceCallback{},
-            });
+                battle_menu_seen
+                    ? PeriodicInferenceCallback{end_battle}
+                    : PeriodicInferenceCallback{},
+                watch_learn_move ? PeriodicInferenceCallback{learn_move} : PeriodicInferenceCallback{},
+            }
+        );
 
-        switch (ret){
+        switch (ret) {
 
             // -------------------------------------------------
             // Battle menu detected.
             // -------------------------------------------------
-        case 0: {
+        case 0:
             battle_menu_seen = true;
-            size_t selected_move = move_slots[move_index];
-            if (remaining_pp){
-                selected_move = 0;
-                for (size_t slot : move_slots){
-                    if ((*remaining_pp)[slot - 1] > 0){
-                        selected_move = slot;
-                        break;
+            // Early battles take a few turns; this many means the chosen
+            // move is not being used (no PP, a misread menu).
+            if (++turns > 25) {
+                OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
+                    label + ": still at the battle menu after 25 turns.", stream);
+            }
+
+            stream.log(
+                "[AutoStory] Battle menu detected.",
+                COLOR_BLUE
+            );
+
+            // A trainer battle we may lose: a Potion when HP is low.
+            if (battle_type == BattleType::TRAINER && !out_of_potions && potions_used < 4) {
+                const BattleHeal heal = battle_heal_if_low(stream, context, battle_type, 0.35, label);
+                if (heal == BattleHeal::USED) {
+                    potions_used++;
+                    break;
+                }
+                out_of_potions = heal == BattleHeal::NONE_LEFT;
+            }
+            {
+                size_t selected_move = move_slots[move_index];
+                if (remaining_pp){
+                    // With a PP budget, `move_slots` are priorities: the first
+                    // slot with PP left is used, whatever the turn.
+                    selected_move = 0;
+                    for (size_t slot : move_slots){
+                        if ((*remaining_pp)[slot - 1] > 0){
+                            selected_move = slot;
+                            break;
+                        }
+                    }
+                    if (selected_move == 0){
+                        OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
+                            label + ": Allowed move PP budgets exhausted; heal before continuing.",
+                            stream);
+                    }
+                    stream.log("[" + label + "] Using available move slot " + std::to_string(selected_move) +
+                        " from this battle's priority list.");
+                }else{
+                    stream.log("["+label+"] Move list position "+std::to_string(move_index+1)+
+                        ": use move "+std::to_string(selected_move)+".");
+                }
+                select_battle_move_slot(stream, context, battle_type, selected_move, label,
+                    confirm_default_target,current_move);
+                // A disabled move leaves the Fight list open and consumes no PP.
+                // The single-slot policy has no legal alternative: retry the checkpoint
+                // rather than repeatedly charging an input the game rejected.
+                if (remaining_pp && move_slots.size() == 1){
+                    context.wait_for_all_requests();
+                    const auto frame = stream.video().snapshot();
+                    if (frame && detect_battle_move_menu(frame).move_count){
+                        OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
+                            label + ": Move selection was rejected; PP budget unchanged. Retrying from the saved checkpoint.",
+                            stream);
                     }
                 }
-                if (selected_move == 0){
-                    OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
-                        label + ": Allowed move PP budgets exhausted; heal before continuing.",
-                        stream);
+                current_move=selected_move;
+                if (remaining_pp){
+                    --(*remaining_pp)[selected_move - 1];
+                    stream.log("[Move PP] Slot " + std::to_string(selected_move) + ": " +
+                        std::to_string((*remaining_pp)[selected_move - 1]) + " remaining in the current budget.");
                 }
-            }
-
-            stream.log("[AutoStory] Battle menu detected.", COLOR_BLUE);
-
-            if (remaining_pp){
-                stream.log("[" + label + "] Using available move slot " + std::to_string(selected_move) +
-                    " from this battle's priority list.");
-            }else{
-                stream.log("[" + label + "] Move list position " + std::to_string(move_index + 1) + ": use move " +
-                    std::to_string(selected_move) + ".");
-            }
-            select_battle_move_slot(stream,
-                context,
-                battle_type,
-                selected_move,
-                label,
-                confirm_default_target,
-                current_move);
-            // A disabled move leaves the Fight list open and consumes no PP.
-            // The single-slot policy has no legal alternative: retry the checkpoint
-            // rather than repeatedly charging an input the game rejected.
-            if (remaining_pp && move_slots.size() == 1){
-                context.wait_for_all_requests();
-                const auto frame = stream.video().snapshot();
-                if (frame && detect_battle_move_menu(frame).move_count){
-                    OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
-                        label + ": Move selection was rejected; PP budget unchanged. Retrying from the saved checkpoint.",
-                        stream);
+                // A double battle asks for the target next; B would
+                // back out of it. The default target is an opponent.
+                if (doubles) {
+                    pbf_wait(context,1200ms);
+                    pbf_press_button(context,BUTTON_A,80ms,1500ms);
                 }
+                // Advance once per move selection; retain the final entry.
+                if (!remaining_pp && move_index+1<move_slots.size()) move_index++;
             }
-            current_move = selected_move;
-            if (remaining_pp){
-                --(*remaining_pp)[selected_move - 1];
-                stream.log("[Move PP] Slot " + std::to_string(selected_move) + ": " +
-                    std::to_string((*remaining_pp)[selected_move - 1]) + " remaining in the current budget.");
-            }
-            // Advance once per move selection; retain the final entry.
-            if (!remaining_pp && move_index + 1 < move_slots.size()){
-                move_index++;
-            }
-
             break;
-        }
 
             // -------------------------------------------------
             // End battle detected.
             // -------------------------------------------------
         case 1: {
-            stream.log("[AutoStory] " + label + " battle complete.", COLOR_GREEN);
+            stream.log(
+                "[AutoStory] " + label + " battle complete.",
+                COLOR_GREEN
+            );
 
             // EndBattleWatcher has confirmed the completed exit transition.
             // Ordinary trainers need no scene-wide dialogue-free gate.
-            if (!post_battle_dialogue_cleanup){
+            if (!post_battle_dialogue_cleanup) {
                 context.wait_for_all_requests();
                 return;
             }
             // Story NPCs and gym leaders opt into the existing cleanup.
             OverworldWatcher overworld;
-            int cleanup_ret = run_until<ProControllerContext>(stream,
-                context,
-                [](ProControllerContext& ctx){
+            int cleanup_ret = run_until<ProControllerContext>(stream, context,
+                [](ProControllerContext& ctx) {
                     pbf_mash_button(ctx, BUTTON_B, 120000ms);
-                },
-                {{overworld}});
-            if (cleanup_ret != 0){
+                }, {{overworld}});
+            if (cleanup_ret != 0) {
                 OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
-                    label + ": Post-battle cleanup timed out.",
-                    stream);
+                    label + ": Post-battle cleanup timed out.", stream);
             }
             context.wait_for_all_requests();
             confirm_battle_overworld(stream, context, label + " cleanup");
@@ -1203,42 +1343,48 @@ static void fight_using_move_list(VideoStream& stream,
         }
 
         case 2:
-            stream.log("[" + label + "] Declining move learning; preserving scripted move positions.");
-            pbf_move_right_joystick(context, {0, -1}, 160ms, 840ms);
-            pbf_press_button(context, BUTTON_ZL, 160ms, 840ms);
+            stream.log("["+label+"] Declining move learning; preserving scripted move positions.");
+            pbf_move_right_joystick(context,{0,-1},160ms,840ms);
+            pbf_press_button(context,BUTTON_ZL,160ms,840ms);
             break;
 
         default:
-            stream.log("[AutoStory] " + label + " battle timeout.", COLOR_RED);
+            // After a faint the game shows the party: Down to the
+            // next Pokemon, A, then A on "Send out" (by hand,
+            // 2026-10-29 against Roark).
+            if (switch_on_faint && faint_switches < 5) {
+                faint_switches++;
+                stream.log("[" + label + "] No battle menu for 30 s: a faint; sending out the next Pokemon.", COLOR_ORANGE);
+                pbf_press_dpad(context, DPAD_DOWN, 80ms, 500ms);
+                pbf_press_button(context, BUTTON_A, 80ms, 1200ms);
+                pbf_press_button(context, BUTTON_A, 80ms, 2000ms);
+                break;
+            }
+            stream.log(
+                "[AutoStory] " + label + " battle timeout.",
+                COLOR_RED
+            );
 
             OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
-                "[AutoStory] " + label + " battle timeout.",
-                stream);
+                "[AutoStory] " + label + " battle timeout.", stream);
         }
     }
 }
 
 // Preserve the existing early-game callers and their B text cleanup.
-static void fight_using_move_slot(VideoStream& stream,
-    ProControllerContext& context,
-    BattleType battle_type,
-    size_t move_slot,
-    const std::string& label){
-    fight_using_move_list(stream, context, battle_type, {move_slot}, label, false, true);
+static void fight_using_move_slot(VideoStream& stream, ProControllerContext& context,
+    BattleType battle_type, size_t move_slot, const std::string& label) {
+    fight_using_move_list(stream,context,battle_type,{move_slot},label,false,true);
 }
 
-void clear_post_battle_dialogue(VideoStream& stream,
-    ProControllerContext& context,
-    Button button,
-    Milliseconds quiet_period,
-    const char* instruction_card){
+void clear_post_battle_dialogue(VideoStream& stream, ProControllerContext& context,
+    Button button, Milliseconds quiet_period,
+    const char* instruction_card) {
     context.wait_for_all_requests();
     std::unique_ptr<ImageMatchDetector> card;
-    if (instruction_card){
-        card = std::make_unique<ImageMatchDetector>(std::make_shared<ImageRGB32>(RESOURCE_PATH() + instruction_card),
-            ImageFloatBox{.04, .32, .92, .34},
-            30.0);
-    }
+    if (instruction_card) card = std::make_unique<ImageMatchDetector>(
+        std::make_shared<ImageRGB32>(RESOURCE_PATH()+instruction_card),
+        ImageFloatBox{.04,.32,.92,.34},30.0);
     ShortDialogDetector dialogue(COLOR_YELLOW);
     BlackScreenDetector black;
     VideoOverlaySet overlays(stream.overlay());
@@ -1246,170 +1392,113 @@ void clear_post_battle_dialogue(VideoStream& stream,
     black.make_overlays(overlays);
     const auto deadline = std::chrono::steady_clock::now() + 120s;
     auto absent_since = std::chrono::steady_clock::now();
-    while (std::chrono::steady_clock::now() < deadline){
+    while (std::chrono::steady_clock::now() < deadline) {
         const auto frame = stream.video().snapshot();
-        if (!frame){
-            OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
-                "Post-battle dialogue: No video frame.",
-                stream);
-        }
+        if (!frame) OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
+            "Post-battle dialogue: No video frame.", stream);
         const auto now = std::chrono::steady_clock::now();
         const bool dialogue_visible = dialogue.detect(*frame.frame);
         const bool card_visible = card && card->detect(*frame.frame);
-        if (dialogue_visible || card_visible || black.detect(*frame.frame)){
-            absent_since = now;
-        }else if (now - absent_since >= quiet_period){
-            stream.log(
-                "[Post-battle dialogue] " + std::to_string(quiet_period.count()) + "ms without dialogue confirmed.");
+        if (dialogue_visible || card_visible || black.detect(*frame.frame)) absent_since = now;
+        else if (now - absent_since >= quiet_period) {
+            stream.log("[Post-battle dialogue] " + std::to_string(quiet_period.count()) +
+                "ms without dialogue confirmed.");
             return;
         }
         // A can interact again once dialogue disappears. Only confirm
         // visible prompts; B retains the existing post-battle behavior.
-        if (card_visible){
-            pbf_press_button(context, BUTTON_B, 80ms, 100ms);
-        }else if (button == BUTTON_A && !dialogue_visible){
-            pbf_wait(context, 100ms);
-        }else{
-            pbf_mash_button(context, button, 100ms);
-        }
+        if (card_visible) pbf_press_button(context, BUTTON_B, 80ms, 100ms);
+        else if (button == BUTTON_A && !dialogue_visible) pbf_wait(context, 100ms);
+        else pbf_mash_button(context, button, 100ms);
         context.wait_for_all_requests();
     }
     OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
-        "Post-battle dialogue: Three clear seconds not confirmed.",
-        stream);
+        "Post-battle dialogue: Three clear seconds not confirmed.", stream);
 }
 
-void align_to_overworld_landmarks(VideoStream& stream,
-    ProControllerContext& context,
-    OverworldMatchResult (*matcher)(const ImageRGB32&),
-    const std::string& label,
-    bool allow_story_start,
-    bool horizontal_first,
+void align_to_overworld_landmarks(VideoStream& stream, ProControllerContext& context,
+    OverworldMatchResult (*matcher)(const ImageRGB32&), const std::string& label, bool allow_story_start, bool horizontal_first,
     bool search_down_first,
     OverworldMatchResult (*entry_matcher)(const ImageRGB32&),
     bool* entry_detected,
-    double arrival_tolerance_x,
-    double arrival_tolerance_y,
-    double moderate_entry_confidence,
-    bool* rock_acquisition_timed_out){
-    if (rock_acquisition_timed_out){
-        *rock_acquisition_timed_out = false;
-    }
-    auto missing_rocks_since = std::chrono::steady_clock::time_point::max();
-    if (entry_detected){
-        *entry_detected = false;
-    }
+    double arrival_tolerance_x, double arrival_tolerance_y,
+    double moderate_entry_confidence, bool* rock_acquisition_timed_out) {
+    if (rock_acquisition_timed_out) *rock_acquisition_timed_out=false;
+    auto missing_rocks_since=std::chrono::steady_clock::time_point::max();
+    if (entry_detected) *entry_detected=false;
     context.wait_for_all_requests();
     pbf_wait(context, 500ms);
     context.wait_for_all_requests();
     ShortDialogDetector dialogue(COLOR_YELLOW);
     BattleMenuDetector battle(BattleType::TRAINER, COLOR_GREEN);
     size_t confirmations = 0, missing = 0;
-    bool ace_bypass = false;
-    const bool route215_renewal = matcher == match_route215_bridge_renewal || matcher == match_route215_ace_renewal ||
-        matcher == match_route215_derek_stairs_renewal || matcher == match_route215_derek_stair_top_renewal;
-    Milliseconds correction_movement = 0ms;
-    for (size_t attempt = 0; attempt < 80; attempt++){
+    for (size_t attempt = 0; attempt < 80; attempt++) {
         const auto frame = stream.video().snapshot();
-        if (!frame){
-            OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
-                label + ": No video frame.",
-                stream);
-        }
+        if (!frame) OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
+            label + ": No video frame.", stream);
         if (entry_matcher){
             BlackScreenDetector transition;
             if (entry_matcher(*frame.frame).located || transition.detect(*frame.frame)){
-                BlackScreenWatcher visible(COLOR_RED,
-                    {0.1, 0.1, 0.8, 0.8},
-                    100,
-                    10,
-                    BlackScreenWatcher::FinderType::GONE,
-                    500ms);
-                if (wait_until(stream, context, 30s, {{visible}}) != 0){
+                BlackScreenWatcher visible(COLOR_RED,{0.1,0.1,0.8,0.8},
+                    100,10,BlackScreenWatcher::FinderType::GONE,500ms);
+                if (wait_until(stream,context,30s,{{visible}})!=0)
                     OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
-                        label + ": Building transition did not finish.",
-                        stream);
-                }
-                const auto inside = stream.video().snapshot();
-                if (!inside || !entry_matcher(*inside.frame).located){
+                        label+": Building transition did not finish.",stream);
+                const auto inside=stream.video().snapshot();
+                if (!inside || !entry_matcher(*inside.frame).located)
                     OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
-                        label + ": Expected interior not confirmed after transition.",
-                        stream);
-                }
-                if (entry_detected){
-                    *entry_detected = true;
-                }
-                stream.log("[" + label + "] Expected interior confirmed; ending outdoor alignment.", COLOR_GREEN);
+                        label+": Expected interior not confirmed after transition.",stream);
+                if(entry_detected)*entry_detected=true;
+                stream.log("["+label+"] Expected interior confirmed; ending outdoor alignment.",COLOR_GREEN);
                 return;
             }
         }
         // The story can start before the exact reference point. Hand off
         // to battle preparation instead of steering during dialogue.
-        if (dialogue.detect(*frame.frame) || battle.detect(*frame.frame)){
-            if (allow_story_start){
+        if (dialogue.detect(*frame.frame) || battle.detect(*frame.frame)) {
+            if (allow_story_start) {
                 stream.log("[" + label + "] Story dialogue/battle started; handing off without further movement.");
                 return;
             }
             OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
-                label + ": Unexpected dialogue/battle during alignment.",
-                stream);
+                label + ": Unexpected dialogue/battle during alignment.", stream);
         }
         const auto result = matcher(*frame.frame);
-        if (result.located){
-            missing_rocks_since = std::chrono::steady_clock::time_point::max();
-        }
+        if (result.located)
+            missing_rocks_since=std::chrono::steady_clock::time_point::max();
         VideoOverlaySet overlays(stream.overlay());
-        for (const auto& landmark : result.landmarks){
+        for (const auto& landmark : result.landmarks) {
             overlays.add(COLOR_CYAN, landmark.search);
-            if (landmark.accepted){
-                overlays.add(COLOR_GREEN, landmark.found);
-            }
-            stream.log("[" + label + "] " + landmark.name + " score=" + std::to_string(landmark.score) +
-                ", margin=" + std::to_string(landmark.margin) + ", offset=(" + std::to_string(landmark.dx) + "," +
-                std::to_string(landmark.dy) + ")");
+            if (landmark.accepted) overlays.add(COLOR_GREEN, landmark.found);
+            stream.log("[" + label + "] " + landmark.name + " score=" +
+                std::to_string(landmark.score) + ", margin=" + std::to_string(landmark.margin) +
+                ", offset=(" + std::to_string(landmark.dx) + "," + std::to_string(landmark.dy) + ")");
         }
         stream.log("[" + label + "] located=" + std::to_string(result.located) +
             ", coarse=" + std::to_string(result.coarse) + ", at_target=" + std::to_string(result.at_target) +
             ", consensus offset=(" + std::to_string(result.dx) + "," + std::to_string(result.dy) + ")");
-        // The blue-haired NPC patrols the narrow eastern row. Shift
-        // one tile north on the clear road before crossing west;
-        // return to the original row only after clearing his column.
-        if (matcher == match_route215_ace_renewal && result.located){
-            if (result.dx < -1.0 / 12){
-                ace_bypass = true;
-            }else if (result.dx >= -1.0 / 32){
-                ace_bypass = false;
-            }
-        }
-        const bool ace_row_recovery = ace_bypass && std::abs(result.dy - 70.0 / 1080) > 1.0 / 108;
-        const bool ace_central_row = matcher == match_route215_ace_renewal && !ace_bypass && result.coarse &&
-            std::abs(result.dx) <= 1.0 / 12 && std::abs(result.dy) > 1.0 / 54;
-        const double entry_confidence = moderate_entry_confidence > 0 ? overworld_entry_confidence(result) : 0;
-        const bool moderate_arrival = moderate_entry_confidence > 0 && entry_confidence >= moderate_entry_confidence;
-        if (moderate_entry_confidence > 0){
-            stream.log("[" + label + "] Exterior entry confidence=" + std::to_string(entry_confidence) +
-                ", moderate threshold=" + std::to_string(moderate_entry_confidence) +
-                ", strict target=" + std::to_string(result.at_target));
-        }
+        const double entry_confidence=moderate_entry_confidence>0 ? overworld_entry_confidence(result) : 0;
+        const bool moderate_arrival=moderate_entry_confidence>0 && entry_confidence>=moderate_entry_confidence;
+        if(moderate_entry_confidence>0) stream.log("["+label+"] Exterior entry confidence="+
+            std::to_string(entry_confidence)+", moderate threshold="+std::to_string(moderate_entry_confidence)+
+            ", strict target="+std::to_string(result.at_target));
         // Explicit loose bounds are for non-interacting route handoffs.
         // Default callers still require the matcher's precise arrival.
-        const bool rough_arrival = arrival_tolerance_x > 0 && arrival_tolerance_y > 0 && result.located &&
-            std::abs(result.dx) <= arrival_tolerance_x && std::abs(result.dy) <= arrival_tolerance_y;
-        if (result.at_target || rough_arrival || moderate_arrival){
-            if (++confirmations >= 3){
-                stream.log("[" + label + "] Position confirmed.");
-                return;
-            }
+        const bool rough_arrival=arrival_tolerance_x>0 && arrival_tolerance_y>0 &&
+            result.located && std::abs(result.dx)<=arrival_tolerance_x &&
+            std::abs(result.dy)<=arrival_tolerance_y;
+        if (result.at_target || rough_arrival || moderate_arrival) {
+            if (++confirmations >= 3) { stream.log("[" + label + "] Position confirmed."); return; }
             pbf_wait(context, 250ms);
-        }else if (result.located){
+        } else if (result.located) {
             confirmations = 0;
             missing = 0;
             // Wait at an aligned pose while strict visual support
             // recovers, rather than stepping away under a cloud.
-            if ((matcher == match_galactic_hq_jupiter || matcher == match_route208_hannah_departure ||
-                matcher == match_route208_stair_top) &&
-                result.coarse && std::abs(result.dx) <= 1.0 / 128 && std::abs(result.dy) <= 1.0 / 54){
-                pbf_wait(context, 500ms);
+            if ((matcher==match_galactic_hq_jupiter ||
+                matcher==match_route208_hannah_departure || matcher==match_route208_stair_top) && result.coarse &&
+                std::abs(result.dx)<=1.0/128 && std::abs(result.dy)<=1.0/54){
+                pbf_wait(context,500ms);
                 context.wait_for_all_requests();
                 continue;
             }
@@ -1417,142 +1506,104 @@ void align_to_overworld_landmarks(VideoStream& stream,
             // anchors can establish a safe horizontal direction when both
             // offsets are well outside the uncertainty in their spacing.
             bool coarse_horizontal = false;
-            if (horizontal_first && result.coarse && result.landmarks.size() == 2){
+            if (horizontal_first && result.coarse && result.landmarks.size() == 2) {
                 const auto& a = result.landmarks[0];
                 const auto& b = result.landmarks[1];
                 const double nearest = std::min(std::abs(a.dx), std::abs(b.dx));
-                coarse_horizontal = a.accepted && b.accepted && a.dx * b.dx > 0 && nearest > 1.0 / 64 &&
-                    nearest > 2 * std::abs(a.dx - b.dx);
+                coarse_horizontal = a.accepted && b.accepted && a.dx*b.dx > 0 &&
+                    nearest > 1.0/64 && nearest > 2*std::abs(a.dx-b.dx);
             }
-            const bool plaza_anchor_horizontal = matcher == match_jubilife_plaza_approach && result.coarse &&
-                std::abs(result.dx) > 1.0 / 50 && std::abs(result.dy) <= 1.0 / 54;
+            const bool plaza_anchor_horizontal = matcher == match_jubilife_plaza_approach &&
+                result.coarse && std::abs(result.dx)>1.0/50 && std::abs(result.dy)<=1.0/54;
             // A uniquely matched Eterna ball may correct the door
             // column while the sign/bush enter the frame. Arrival
             // still requires the matcher's full three-anchor check.
-            const bool eterna_anchor_horizontal =
-                (matcher == match_eterna_center_entrance || matcher == match_eterna_underground_house ||
-                    matcher == match_eterna_underground_man) &&
-                result.coarse && std::abs(result.dx) > 1.0 / 128;
+            const bool eterna_anchor_horizontal = (matcher == match_eterna_center_entrance ||
+                matcher == match_eterna_underground_house || matcher == match_eterna_underground_man) &&
+                result.coarse && std::abs(result.dx)>1.0/128;
             // Recover the gym's doorway row before moving right if
             // the south approach overshot toward the fence/cliff.
-            const bool gym_anchor_horizontal = matcher == match_eterna_gym_entrance && result.coarse &&
-                std::abs(result.dx) > 1.0 / 128 && std::abs(result.dy) <= .06;
-            const bool gym_row_recovery =
-                matcher == match_eterna_gym_entrance && result.coarse && std::abs(result.dy) > .06;
+            const bool gym_anchor_horizontal=matcher==match_eterna_gym_entrance &&
+                result.coarse && std::abs(result.dx)>1.0/128 && std::abs(result.dy)<=.06;
+            const bool gym_row_recovery=matcher==match_eterna_gym_entrance &&
+                result.coarse && std::abs(result.dy)>.06;
             // Reach the row north of Jupiter before entering her
             // column. From above that row, align sideways before
             // moving south so the NPC cannot block the correction.
-            const bool jupiter_row_recovery = matcher == match_galactic_hq_jupiter && result.dy < -1.0 / 54;
-            const bool jupiter_anchor_horizontal = matcher == match_galactic_hq_jupiter && !jupiter_row_recovery &&
-                result.coarse && std::abs(result.dx) > 1.0 / 128;
+            const bool jupiter_row_recovery=matcher==match_galactic_hq_jupiter &&
+                result.dy < -1.0/54;
+            const bool jupiter_anchor_horizontal=matcher==match_galactic_hq_jupiter &&
+                !jupiter_row_recovery && result.coarse && std::abs(result.dx)>1.0/128;
             // Stay south of the Contest Hall wall/sign before crossing to Fantina.
-            const bool contest_row_recovery = matcher == match_hearthome_contest_fantina && result.dy > 1.0 / 54;
+            const bool contest_row_recovery=matcher==match_hearthome_contest_fantina && result.dy>1.0/54;
             // Keep the stair approach horizontal-first until close to
             // its column. Recorded fine poses otherwise spent repeated
             // 16ms sideways turns while a larger vertical error waited.
             // Fine correction changes axis priority, never arrival gates.
-            const bool stair_fine_correction =
-                matcher == match_route208_stair_top && !result.coarse && std::abs(result.dx) <= 1.0 / 64;
-            const bool horizontal = !ace_row_recovery && !ace_central_row &&
-                (ace_bypass ||
-                    (!contest_row_recovery && !gym_row_recovery && !jupiter_row_recovery &&
-                        (jupiter_anchor_horizontal || coarse_horizontal || plaza_anchor_horizontal ||
-                            eterna_anchor_horizontal || gym_anchor_horizontal ||
-                            (!result.coarse &&
-                                ((horizontal_first && !stair_fine_correction && std::abs(result.dx) > 1.0 / 128) ||
-                                    std::abs(result.dx) >= std::abs(result.dy) * 9.0 / 16)))));
-            if (stair_fine_correction && horizontal_first && !horizontal && std::abs(result.dx) > 1.0 / 128){
-                stream.log("[" + label + "] Near stair column; correcting the larger vertical error first.");
-            }
-            if (ace_row_recovery){
-                stream.log("[" + label + "] Clearing the NPC row before crossing west.");
-            }else if (ace_central_row){
-                stream.log("[" + label + "] Both road bends support restoring the arrival row.");
-            }else if (coarse_horizontal && horizontal){
-                stream.log("[" + label +
-                    "] Both landmarks agree on a large horizontal offset; correcting the street lane first.");
-            }
-            const double error = horizontal ? result.dx : (result.dy - (ace_bypass ? 70.0 / 1080 : 0.0)) * 9.0 / 16;
-            auto duration = std::abs(error) > 1.0 / 24 ? 80ms : std::abs(error) > 1.0 / 64 ? 40ms : 16ms;
+            const bool stair_fine_correction=matcher==match_route208_stair_top &&
+                !result.coarse && std::abs(result.dx)<=1.0/64;
+            const bool horizontal = !contest_row_recovery && !gym_row_recovery && !jupiter_row_recovery && (jupiter_anchor_horizontal || coarse_horizontal || plaza_anchor_horizontal || eterna_anchor_horizontal || gym_anchor_horizontal || (!result.coarse &&
+                ((horizontal_first && !stair_fine_correction && std::abs(result.dx)>1.0/128) ||
+                 std::abs(result.dx)>=std::abs(result.dy)*9.0/16)));
+            if (stair_fine_correction && horizontal_first && !horizontal && std::abs(result.dx)>1.0/128)
+                stream.log("["+label+"] Near stair column; correcting the larger vertical error first.");
+            if (coarse_horizontal) stream.log("[" + label +
+                "] Both landmarks agree on a large horizontal offset; correcting the street lane first.");
+            const double error = horizontal ? result.dx : result.dy*9.0/16;
+            auto duration = std::abs(error) > 1.0/24 ? 80ms : std::abs(error) > 1.0/64 ? 40ms : 16ms;
             // A 16ms turn may not complete a step. Use a bounded
             // full correction while reacquiring the second plaza anchor.
-            if (matcher == match_jubilife_plaza_approach && result.coarse){
+            if (matcher == match_jubilife_plaza_approach && result.coarse)
                 duration = std::max(duration, 60ms);
-            }
-            if (matcher == match_galactic_hq_jupiter){
-                for (const auto& landmark : result.landmarks){
+            if (matcher==match_galactic_hq_jupiter){
+                for (const auto& landmark:result.landmarks){
                     // The player stands around y=.74. Do not steer
                     // sideways/north when the stair opening is close
                     // to that row; a southward correction moves away.
-                    if (landmark.name == "StairBoundary" && landmark.accepted &&
-                        landmark.found.y + landmark.found.height > .60 && (horizontal || result.dy < 0)){
+                    if (landmark.name=="StairBoundary" && landmark.accepted &&
+                        landmark.found.y+landmark.found.height>.60 &&
+                        (horizontal || result.dy<0))
                         OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
-                            label + ": Correction would approach the stair boundary.",
-                            stream);
-                    }
+                            label+": Correction would approach the stair boundary.",stream);
                 }
-            }
-            if (route215_renewal){
-                if (correction_movement + duration > 1500ms){
-                    OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
-                        label + ": Renewal alignment movement budget exhausted.",
-                        stream);
-                }
-                correction_movement += duration;
             }
             pbf_move_left_joystick(context,
-                {horizontal ? (result.dx > 0 ? 1.0 : -1.0) : 0.0, horizontal ? 0.0 : (error < 0 ? 1.0 : -1.0)},
-                duration,
-                0ms);
+                {horizontal ? (result.dx > 0 ? 1.0 : -1.0) : 0.0,
+                 horizontal ? 0.0 : (result.dy < 0 ? 1.0 : -1.0)}, duration, 0ms);
             pbf_wait(context, 500ms);
-        }else{
+        } else {
             confirmations = 0;
-            if (matcher == match_hearthome_center_entrance || matcher == match_hearthome_contest_fantina ||
-                matcher == match_veilstone_city_passage || matcher == match_veilstone_dawn_stairs || route215_renewal){
+            if (matcher==match_hearthome_center_entrance || matcher==match_hearthome_contest_fantina){
                 // Do not sweep into a different doorway or around the Hall's
-                // side, or onto a Veilstone terrace, while required anchors are hidden.
-                if (++missing > 20){
-                    OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
-                        label + ": Scene anchors missing; stationary reacquisition exhausted.",
-                        stream);
-                }
-                // Recorded expiry endpoints can be north of the passage.
-                // Acquire its buildings along the clear south-only strip;
-                // cap total search motion, then remain stationary.
-                if (matcher == match_veilstone_city_passage && search_down_first && correction_movement < 1800ms){
-                    pbf_move_left_joystick(context, {0.0, -1.0}, 100ms, 0ms);
-                    correction_movement += 100ms;
-                }
-                pbf_wait(context, 500ms);
+                // side when a cloud, NPC or fade hides the required anchors.
+                if (++missing>20) OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
+                    label+": Scene anchors missing; stationary reacquisition exhausted.",stream);
+                pbf_wait(context,500ms);
                 context.wait_for_all_requests();
                 continue;
             }
-            if (matcher == match_galactic_hq_jupiter || matcher == match_route208_stair_top){
+            if (matcher==match_galactic_hq_jupiter || matcher==match_route208_stair_top){
                 // Keep generic missing-anchor behavior unchanged. Route208's
                 // explicit caller can instead request its recorded recovery.
-                const bool stair_rocks = matcher == match_route208_stair_top;
-                if (stair_rocks && rock_acquisition_timed_out){
-                    const auto now = std::chrono::steady_clock::now();
-                    if (missing_rocks_since == std::chrono::steady_clock::time_point::max()){
-                        missing_rocks_since = now;
-                    }
+                const bool stair_rocks=matcher==match_route208_stair_top;
+                if (stair_rocks && rock_acquisition_timed_out) {
+                    const auto now=std::chrono::steady_clock::now();
+                    if (missing_rocks_since==std::chrono::steady_clock::time_point::max())
+                        missing_rocks_since=now;
                     // Matcher processing can take seconds per observation;
                     // measure real elapsed time rather than counting waits.
-                    if (now - missing_rocks_since >= 10s){
+                    if (now-missing_rocks_since>=10s) {
                         context.wait_for_all_requests();
-                        *rock_acquisition_timed_out = true;
-                        stream.log("[" + label +
-                            "] Rock acquisition timed out after 10s; handing off to the requested cliff recovery.");
+                        *rock_acquisition_timed_out=true;
+                        stream.log("["+label+"] Rock acquisition timed out after 10s; handing off to the requested cliff recovery.");
                         return;
                     }
-                }else if (++missing > (stair_rocks ? 20 : 6)){
+                } else if (++missing>(stair_rocks ? 20 : 6)) {
                     OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
-                        label +
-                        (stair_rocks ? ": Rock anchors missing; no blind search near stairs."
-                            : ": Chair/stair anchors missing; no blind search near stairs."),
-                        stream);
+                        label+(stair_rocks ? ": Rock anchors missing; no blind search near stairs." :
+                            ": Chair/stair anchors missing; no blind search near stairs."),stream);
                 }
-                pbf_wait(context, 500ms);
+                pbf_wait(context,500ms);
                 context.wait_for_all_requests();
                 continue;
             }
@@ -1560,15 +1611,12 @@ void align_to_overworld_landmarks(VideoStream& stream,
             // left and back. Each complete sweep returns to its origin.
             // Try that sweep at the initial height, above it, and below it;
             // no missing/weak landmark ever confirms the destination.
-            if (++missing > (search_down_first ? 78 : 74)){
-                OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
-                    label + ": Landmarks missing during bounded bidirectional search.",
-                    stream);
-            }
-            if (search_down_first && missing <= 4){
+            if (++missing > (search_down_first ? 78 : 74)) OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
+                label + ": Landmarks missing during bounded bidirectional search.", stream);
+            if (search_down_first && missing <= 4) {
                 stream.log("[" + label + "] Post-battle acquisition: moving down before lateral search.");
                 pbf_move_left_joystick(context, {0.0, -1.0}, 100ms, 0ms);
-            }else{
+            } else {
                 const size_t search_step = missing - 1 - (search_down_first ? 4 : 0);
                 const size_t level = search_step / 25;
                 const size_t slot = search_step % 25;
@@ -1576,46 +1624,33 @@ void align_to_overworld_landmarks(VideoStream& stream,
                 const double direction = slot < 6 || slot >= 18 ? 1.0 : -1.0;
                 const auto search_duration = lateral ? 100ms : level == 0 ? 600ms : 1200ms;
                 stream.log("[" + label + "] Acquisition search step=" + std::to_string(missing) +
-                    ", direction=" + (lateral ? (direction > 0 ? "right" : "left") : (level == 0 ? "up" : "down")));
+                    ", direction=" + (lateral ? (direction>0 ? "right" : "left") : (level==0 ? "up" : "down")));
                 // On the street, a northward search from the east
                 // edge can stop at the building/NPC collision row.
                 // Step west around it before changing height, then
                 // return to the same lane for the next bounded sweep.
-                const bool street_height_search = !lateral && matcher == match_jubilife_street_approach;
-                if (street_height_search){
-                    pbf_move_left_joystick(context, {-1.0, 0.0}, 150ms, 0ms);
-                }
+                const bool street_height_search=!lateral && matcher==match_jubilife_street_approach;
+                if (street_height_search) pbf_move_left_joystick(context,{-1.0,0.0},150ms,0ms);
                 pbf_move_left_joystick(context,
-                    {lateral ? direction : 0.0, lateral ? 0.0 : (level == 0 ? 1.0 : -1.0)},
-                    search_duration,
-                    0ms);
-                if (street_height_search){
-                    pbf_move_left_joystick(context, {1.0, 0.0}, 150ms, 0ms);
-                }
+                    {lateral ? direction : 0.0, lateral ? 0.0 : (level == 0 ? 1.0 : -1.0)}, search_duration, 0ms);
+                if (street_height_search) pbf_move_left_joystick(context,{1.0,0.0},150ms,0ms);
             }
             pbf_wait(context, 500ms);
         }
         context.wait_for_all_requests();
     }
     OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
-        label + ": Could not confirm the reference position.",
-        stream);
+        label + ": Could not confirm the reference position.", stream);
 }
 
-void fight_trainer_using_moves(VideoStream& stream,
-    ProControllerContext& context,
-    const std::vector<size_t>& moves,
-    const std::string& label,
-    bool post_battle_dialogue_cleanup){
-    fight_using_move_list(stream, context, BattleType::TRAINER, moves, label, true, post_battle_dialogue_cleanup);
+void fight_trainer_using_moves(VideoStream& stream, ProControllerContext& context,
+    const std::vector<size_t>& moves, const std::string& label, bool post_battle_dialogue_cleanup) {
+    fight_using_move_list(stream,context,BattleType::TRAINER,moves,label,true,post_battle_dialogue_cleanup);
 }
 
-void fight_trainer_using_moves(VideoStream& stream,
-    ProControllerContext& context,
-    size_t move,
-    const std::string& label,
-    bool post_battle_dialogue_cleanup){
-    fight_trainer_using_moves(stream, context, std::vector<size_t>{move}, label, post_battle_dialogue_cleanup);
+void fight_trainer_using_moves(VideoStream& stream, ProControllerContext& context,
+    size_t move, const std::string& label, bool post_battle_dialogue_cleanup) {
+    fight_trainer_using_moves(stream,context,std::vector<size_t>{move},label,post_battle_dialogue_cleanup);
 }
 
 void fight_trainer_using_moves(VideoStream& stream,
@@ -1677,45 +1712,42 @@ void fight_trainer_using_moves(VideoStream& stream,
         }
         break;
     }
-    fight_using_move_list(stream,
-        context,
-        BattleType::TRAINER,
-        priorities,
-        label,
-        true,
-        post_battle_dialogue_cleanup,
-        &stats.move_pp_remaining);
+    fight_using_move_list(stream, context, BattleType::TRAINER, priorities, label, true,
+        post_battle_dialogue_cleanup, false, false, &stats.move_pp_remaining);
 }
 
-void fight_trainer_using_move_slot(VideoStream& stream,
-    ProControllerContext& context,
-    size_t move_slot,
-    const std::string& label){
-    fight_using_move_slot(stream, context, BattleType::TRAINER, move_slot, label);
+void fight_trainer_using_move_slot(VideoStream& stream, ProControllerContext& context,
+    size_t move_slot, const std::string& label) {
+    fight_using_move_slot(stream,context,BattleType::TRAINER,move_slot,label);
 }
 
-void fight_tristan(VideoStream& stream, ProControllerContext& context){
-    // All starters use move slot 3. Confirm its cursor position
-    // visually without reading the move name; fail if slot 3 is absent.
-    fight_trainer_using_move_slot(stream, context, 3, "Tristan (move slot 3)");
+void fight_story_battle(VideoStream& stream, ProControllerContext& context, const std::string& label, bool doubles) {
+    // The best move each turn; the next Pokemon after a faint; no new moves.
+    fight_using_move_list(stream, context, BattleType::TRAINER, {0}, label, false, true, doubles, true);
 }
 
-void battle_1_pokemon(VideoStream& stream, ProControllerContext& context){
+void fight_trainer(VideoStream& stream, ProControllerContext& context, const std::string& label) {
+    // Move 0: the best move on the menu each turn, whatever the starter.
+    fight_using_move_slot(stream, context, BattleType::TRAINER, 0, label);
+}
+
+void battle_1_pokemon(VideoStream& stream, ProControllerContext& context) {
     stream.log("[Training] Finding one wild Pokemon using the catch encounter wiggle.", COLOR_BLUE);
     encounter_one_wild_pokemon(stream, context);
-    // Use the same battle loop as Tristan with move slot 1.
-    fight_using_move_slot(stream, context, BattleType::STANDARD, 1, "Training (move slot 1)");
-    stream.log("[Training] Fight and level-up cleanup complete; verifying Potion healing.");
-    use_potion_first_pokemon(stream, context);
+    // The best move on the menu, whatever the starter.
+    fight_using_move_slot(stream, context, BattleType::STANDARD, 0, "Training");
     context.wait_for_all_requests();
-    stream.log("[Training] One wild battle completed; slot 1 healing verified.", COLOR_GREEN);
+    stream.log("[Training] One wild battle completed.", COLOR_GREEN);
 }
 
 // ---------------------------------------------------------------------------
 // Catch 1 Pokemon
 // ---------------------------------------------------------------------------
 
-void catch_1_pokemon(VideoStream& stream, ProControllerContext& context){
+void catch_1_pokemon(
+    VideoStream& stream,
+    ProControllerContext& context
+) {
     stream.log("[AutoStory] Starting catch_1_pokemon helper...", COLOR_BLUE);
 
     encounter_one_wild_pokemon(stream, context);
@@ -1728,7 +1760,7 @@ void catch_1_pokemon(VideoStream& stream, ProControllerContext& context){
     EndBattleWatcher battle_ended;
     bool caught = false;
     bool exit_seen = false;
-    for (int throw_attempt = 0; throw_attempt < 10; throw_attempt++){
+    for (int throw_attempt = 0; throw_attempt < 10; throw_attempt++) {
         // Open bag from battle menu (X), confirm first slot (ZL).
         pbf_press_button(context, BUTTON_X, 160ms, 840ms);
         context.wait_for_all_requests();
@@ -1738,57 +1770,53 @@ void catch_1_pokemon(VideoStream& stream, ProControllerContext& context){
         // Wait to see if the battle menu comes back (ball failed)
         // or if the battle ends (caught or fainted).
         BattleMenuWatcher menu_back(BattleType::STANDARD, COLOR_YELLOW);
-        int throw_ret = run_until<ProControllerContext>(stream,
-            context,
-            [](ProControllerContext& ctx){
+        int throw_ret = run_until<ProControllerContext>(
+            stream, context,
+            [](ProControllerContext& ctx) {
                 pbf_mash_button(ctx, BUTTON_B, 120000ms);
             },
-            {{menu_back}, {received_pokemon}, {battle_ended}});
+            {{menu_back}, {received_pokemon}, {battle_ended}}
+        );
 
-        if (throw_ret == 1 || (throw_ret == 2 && received_pokemon.received())){
+        if (throw_ret == 1 || (throw_ret == 2 && received_pokemon.received())) {
             caught = true;
             exit_seen = throw_ret == 2;
             stream.log("[AutoStory] Pokemon receipt verified.", COLOR_GREEN);
             break;
         }
-        if (throw_ret < 0 || throw_ret == 2){
+        if (throw_ret < 0 || throw_ret == 2) {
             OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
-                "Catch failed: No verified Pokemon receipt before battle ended or timed out.",
-                stream);
+                "Catch failed: No verified Pokemon receipt before battle ended or timed out.", stream);
         }
-        stream.log("[AutoStory] Ball failed, retrying (attempt " + std::to_string(throw_attempt + 2) + ")...",
-            COLOR_ORANGE);
+        stream.log(
+            "[AutoStory] Ball failed, retrying (attempt " + std::to_string(throw_attempt + 2) + ")...",
+            COLOR_ORANGE
+        );
     }
 
     context.wait_for_all_requests();
 
-    if (!caught){
+    if (!caught) {
         OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
-            "Catch failed: Exhausted ten ball attempts.",
-            stream);
+            "Catch failed: Exhausted ten ball attempts.", stream);
     }
     // Receipt alone is not an overworld return: clear experience,
     // automatic move learning, dex registration and nickname screens
     // until the same completed-black-transition watcher used in battles fires.
-    if (!exit_seen){
+    if (!exit_seen) {
         stream.log("[Catch cleanup] Receipt confirmed; waiting for battle exit transition.");
-        const int cleanup_ret = run_until<ProControllerContext>(stream,
-            context,
-            [](ProControllerContext& ctx){
-                pbf_mash_button(ctx, BUTTON_B, 120000ms);
-            },
+        const int cleanup_ret = run_until<ProControllerContext>(stream, context,
+            [](ProControllerContext& ctx) { pbf_mash_button(ctx, BUTTON_B, 120000ms); },
             {{battle_ended}});
-        if (cleanup_ret != 0){
+        if (cleanup_ret != 0) {
             OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
-                "Catch cleanup: Battle exit transition did not finish.",
-                stream);
+                "Catch cleanup: Battle exit transition did not finish.", stream);
         }
     }
     context.wait_for_all_requests();
     stream.log("[Catch cleanup] Battle exit transition confirmed; checking stable overworld.");
     confirm_battle_overworld(stream, context, "Catch cleanup");
-    stream.log("[Catch cleanup] Verified receipt, completed battle exit, and four seconds of clear overworld.",
-        COLOR_GREEN);
+    stream.log("[Catch cleanup] Verified receipt, completed battle exit, and four seconds of clear overworld.", COLOR_GREEN);
 }
 
 // ---------------------------------------------------------------------------
@@ -2001,98 +2029,103 @@ void catch_1_pokemon(VideoStream& stream, ProControllerContext& context){
 // Movement Helpers
 // ---------------------------------------------------------------------------
 
-bool detect_black_screen_after_movement(VideoStream& stream, ProControllerContext& context, Milliseconds timeout){
+bool detect_black_screen_after_movement(
+    VideoStream& stream,
+    ProControllerContext& context,
+    Milliseconds timeout
+) {
     BlackScreenWatcher black_screen;
     return wait_until(stream, context, timeout, {{black_screen}}) == 0;
 }
 
-bool try_right_down_exit_search(VideoStream& stream, ProControllerContext& context, size_t iterations){
-    for (size_t i = 0; i < iterations; i++){
-        pbf_move_left_joystick(context, {1.0, 0.0}, 80ms, 0ms);
-        pbf_move_left_joystick(context, {0.0, -1.0}, 220ms, 0ms);
+bool try_right_down_exit_search(
+    VideoStream& stream,
+    ProControllerContext& context,
+    size_t iterations
+) {
+    for (size_t i = 0; i < iterations; i++) {
+        pbf_move_left_joystick(context, { 1.0, 0.0 }, 80ms, 0ms);
+        pbf_move_left_joystick(context, { 0.0, -1.0 }, 220ms, 0ms);
 
-        if (detect_black_screen_after_movement(stream, context, 1000ms)){
+        if (detect_black_screen_after_movement(stream, context, 1000ms)) {
             return true;
         }
     }
     return false;
 }
 
-void leave_pokemon_center_before_barry_1(VideoStream& stream, ProControllerContext& context){
+void leave_pokemon_center_before_barry_1(
+    VideoStream& stream,
+    ProControllerContext& context
+) {
     // Original down movement to leave Pokemon Center.
-    pbf_move_left_joystick(context, {0.0, -1.0}, 814ms, 0ms);
+    pbf_move_left_joystick(context, { 0.0, -1.0 }, 814ms, 0ms);
 
-    if (detect_black_screen_after_movement(stream, context, 1200ms)){
+    if (detect_black_screen_after_movement(stream, context, 1200ms)) {
         pbf_wait(context, 2340ms);
         return;
     }
 
-    stream.log("[AutoStory] Pokemon Center exit black screen not detected. Searching with right/down movement.",
-        COLOR_ORANGE);
+    stream.log("[AutoStory] Pokemon Center exit black screen not detected. Searching with right/down movement.", COLOR_ORANGE);
 
-    if (try_right_down_exit_search(stream, context, 20)){
+    if (try_right_down_exit_search(stream, context, 20)) {
         pbf_wait(context, 2340ms);
         return;
     }
 
     stream.log("[AutoStory] First exit search failed. Repositioning left and retrying.", COLOR_ORANGE);
-    pbf_move_left_joystick(context, {-1.0, 0.0}, 5000ms, 0ms);
+    pbf_move_left_joystick(context, { -1.0, 0.0 }, 5000ms, 0ms);
 
-    if (try_right_down_exit_search(stream, context, 30)){
+    if (try_right_down_exit_search(stream, context, 30)) {
         pbf_wait(context, 2340ms);
         return;
     }
 
-    OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
+    OperationFailedExceptionWithScreenshot::fire(
+        ErrorReportMode::SEND_ERROR_REPORT,
         "Failed to find Pokemon Center exit black screen before Barry 1. Triggering checkpoint retry.",
-        stream);
+        stream
+    );
 }
 
 // ---------------------------------------------------------------------------
 // Generic Movement Helper - Walk through grass in specified direction for
 // specified steps, attempting to run from any battles that are encountered.
 // ---------------------------------------------------------------------------
-void walk_through_grass(VideoStream& stream,
-    ProControllerContext& context,
-    int8_t x,
-    int8_t y,
-    size_t steps,
-    const std::string& direction_name,
-    BattleType battle_type,
-    Milliseconds movement_duration,
-    OverworldMatchResult (*destination)(const ImageRGB32&)){
+void walk_through_grass(
+    VideoStream& stream, ProControllerContext& context,
+    int8_t x, int8_t y, size_t steps, const std::string& direction_name,
+    BattleType battle_type, Milliseconds movement_duration,
+    OverworldMatchResult (*destination)(const ImageRGB32&)
+) {
     size_t movements = 0, confirmations = 0;
-    while (true){
+    while (true) {
         context.wait_for_all_requests();
         // Destination checks happen before input and after each step/escape.
         // With no matcher, retain the original fixed-step behavior.
         VideoOverlaySet overlays(stream.overlay());
         OverworldMatchResult location;
-        if (destination){
+        if (destination) {
             const auto frame = stream.video().snapshot();
-            if (!frame){
-                OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
-                    "Grass destination: No video frame.",
-                    stream);
-            }
+            if (!frame) OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
+                "Grass destination: No video frame.", stream);
             location = destination(*frame.frame);
-            for (const auto& landmark : location.landmarks){
+            for (const auto& landmark : location.landmarks) {
                 overlays.add(COLOR_CYAN, landmark.search);
-                if (landmark.accepted){
-                    overlays.add(COLOR_GREEN, landmark.found);
-                }
+                if (landmark.accepted) overlays.add(COLOR_GREEN, landmark.found);
                 stream.log("[Grass destination] " + direction_name + " " + landmark.name +
-                    " score=" + std::to_string(landmark.score) + " margin=" + std::to_string(landmark.margin) +
+                    " score=" + std::to_string(landmark.score) +
+                    " margin=" + std::to_string(landmark.margin) +
                     " accepted=" + std::to_string(landmark.accepted));
             }
             stream.log("[Grass destination] located=" + std::to_string(location.located) +
-                " at_target=" + std::to_string(location.at_target) + " screen-relative offset=(" +
-                std::to_string(location.dx) + "," + std::to_string(location.dy) + ")");
-            if (location.at_target){
-                if (++confirmations >= 3){
-                    stream.log("[Grass] Destination confirmed; stopped " + direction_name + " after " +
-                        std::to_string(movements) + "/" + std::to_string(steps) + " movements.",
-                        COLOR_GREEN);
+                " at_target=" + std::to_string(location.at_target) +
+                " screen-relative offset=(" + std::to_string(location.dx) +
+                "," + std::to_string(location.dy) + ")");
+            if (location.at_target) {
+                if (++confirmations >= 3) {
+                    stream.log("[Grass] Destination confirmed; stopped " + direction_name +
+                        " after " + std::to_string(movements) + "/" + std::to_string(steps) + " movements.", COLOR_GREEN);
                     return;
                 }
                 pbf_wait(context, 250ms);
@@ -2100,25 +2133,23 @@ void walk_through_grass(VideoStream& stream,
             }
             confirmations = 0;
         }
-        if (movements >= steps){
-            if (destination){
-                OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
-                    "Grass destination not confirmed within movement limit: " + direction_name,
-                    stream);
-            }
+        if (movements >= steps) {
+            if (destination) OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
+                "Grass destination not confirmed within movement limit: " + direction_name, stream);
             stream.log("[Grass] Completed " + direction_name + " (" + std::to_string(steps) + " steps).", COLOR_GREEN);
             return;
         }
-        int8_t move_x = x, move_y = y;
-        Milliseconds duration = movement_duration;
-        if (destination && location.located && !location.coarse && std::abs(location.dx) <= 0.10 &&
-            std::abs(location.dy) <= 0.12){
+        int8_t move_x=x, move_y=y;
+        Milliseconds duration=movement_duration;
+        if (destination && location.located && !location.coarse &&
+            std::abs(location.dx)<=0.10 && std::abs(location.dy)<=0.12) {
             // Small corrections prevent stepping past a narrow stop target.
-            const bool horizontal = std::abs(location.dx) >= std::abs(location.dy) * 9.0 / 16;
-            const double error = horizontal ? location.dx : location.dy * 9.0 / 16;
-            duration = std::min(duration, std::abs(error) > 0.03125 ? 80ms : std::abs(error) > 0.015625 ? 40ms : 16ms);
-            move_x = horizontal ? (location.dx > 0 ? 1 : -1) : 0;
-            move_y = horizontal ? 0 : (location.dy < 0 ? 1 : -1);
+            const bool horizontal=std::abs(location.dx)>=std::abs(location.dy)*9.0/16;
+            const double error=horizontal ? location.dx : location.dy*9.0/16;
+            duration=std::min(duration, std::abs(error)>0.03125 ? 80ms :
+                std::abs(error)>0.015625 ? 40ms : 16ms);
+            move_x=horizontal ? (location.dx>0 ? 1 : -1) : 0;
+            move_y=horizontal ? 0 : (location.dy<0 ? 1 : -1);
             stream.log("[Grass destination] Correcting " + std::string(horizontal ? "horizontal" : "vertical") +
                 " axis for " + std::to_string(duration.count()) + "ms.");
         }
@@ -2131,11 +2162,12 @@ void walk_through_grass(VideoStream& stream,
         pbf_move_left_joystick(context, {(double)move_x, (double)move_y}, duration, 0ms);
         movements++;
         context.wait_for_all_requests();
-        int ret = wait_until(stream, context, 2500ms, {{white_screen}, {battle_start}, {battle_dialog}, {battle_menu}});
-        if (ret >= 0){
+        int ret = wait_until(stream, context, 2500ms,
+            {{white_screen}, {battle_start}, {battle_dialog}, {battle_menu}});
+        if (ret >= 0) {
             confirmations = 0;
-            stream.log("[Grass] " + direction_name + " step " + std::to_string(movements) + "/" +
-                std::to_string(steps) + ": encounter trigger=" + std::to_string(ret) +
+            stream.log("[Grass] " + direction_name + " step " + std::to_string(movements) +
+                "/" + std::to_string(steps) + ": encounter trigger=" + std::to_string(ret) +
                 "; using shared confirmed-Run escape.");
             escape_wild_battle(stream, context, battle_type);
             context.wait_for_all_requests();
