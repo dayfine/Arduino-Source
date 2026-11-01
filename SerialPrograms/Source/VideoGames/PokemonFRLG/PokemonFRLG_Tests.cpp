@@ -32,6 +32,7 @@
 #include "Overworld/PokemonFRLG_OverworldRoute.h"
 #include "Overworld/PokemonFRLG_PlayerFacingReader.h"
 #include "PokemonFRLG_Navigation.h"
+#include "Programs/AutoStory/PokemonFRLG_AutoStoryBattle.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryTable.h"
 #include "Tests/TestUtils.h"
 
@@ -298,6 +299,7 @@ void add_tests(UnitTestDatabase& database){
     add_tests_OverworldRecovery(database);
     add_tests_PlayerFacingReader(database);
     add_tests_AutoStory(database);
+    add_tests_AutoStoryItems(database);
 }
 
 
