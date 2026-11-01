@@ -9,6 +9,7 @@
 
 #include "Common/Compiler.h"
 #include "Common/Cpp/Logging/AbstractLogger.h"
+#include "CommonFramework/RunRecord.h"
 
 namespace PokemonAutomation{
 
@@ -40,6 +41,12 @@ public:
     void log(const std::string& msg, Color color = Color()){ m_logger.log(msg, color); }
 
     virtual void log_to_ui(const std::string& msg, Color color = Color()){}
+
+
+public:
+    //  Progress reporting (RunRecord.h): what the program says about its
+    //  checkpoints, steps and attempts goes to this run's record.
+    RunRecorder& run_recorder();
 
 
 public:

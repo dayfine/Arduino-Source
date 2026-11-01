@@ -17,6 +17,7 @@
 #define PokemonAutomation_CommonFramework_ProgramSession_H
 
 #include <atomic>
+#include <functional>
 #include <vector>
 #include <string>
 #include "Common/Cpp/Logging/TaggedLogger.h"
@@ -29,6 +30,7 @@
 #include "CommonFramework/Globals.h"
 //#include "CommonFramework/Logging/Logger.h"
 #include "CommonFramework/Panels/ProgramDescriptor.h"
+#include "CommonFramework/RunRecord.h"
 #include "CommonFramework/Tools/ProgramEnvironment.h"
 // #include "CommonFramework/ResourceDownload/ProgramMissingResourceTracker.h"
 #include "Integrations/ProgramTrackerInterfaces.h"
@@ -66,7 +68,12 @@ public:
 public:
     //  Setup
 
-    ProgramSession(const ProgramDescriptor& descriptor);
+    //  `run_records` is where this session's runs are recorded (RunRecord.h);
+    //  a test passes its own store.
+    ProgramSession(
+        const ProgramDescriptor& descriptor,
+        RunRecordStore& run_records = RunRecordStore::instance()
+    );
 
     //  Before the child-most class begins destruction, you must first:
     //      1.  Stop the program.
@@ -105,6 +112,21 @@ public:
 
 
 public:
+    //  Run records (RunRecord.h)
+
+    //  The run the last accepted start opened, active or finished; "" before
+    //  the first start.
+    std::string last_run_id() const{ return m_run_recorder.last_run_id(); }
+
+    //  The program's progress hook. Events go to the active run's record.
+    RunRecorder& run_recorder(){ return m_run_recorder; }
+
+    //  The logger the session's consoles chain off, so that their lines land
+    //  in the active run's log tail.
+    Logger& run_logger(){ return m_run_recorder; }
+
+
+public:
     //  Program Control
 
     //  Returns empty string on success. Otherwise returns error string.
@@ -114,14 +136,21 @@ public:
     std::string stop_program();     //  Returns before the program is completely stopped.
 
     //  Temporary
-    virtual void async_start() override{ start_program(); }
-    virtual void async_stop() override{ stop_program(); }
+    virtual std::string async_start() override{ return start_program(); }
+    virtual std::string async_stop() override{ return stop_program(); }
 
 
 protected:
     virtual std::unique_ptr<ProgramEnvironment> make_env(const ProgramInfo& program_info) = 0;
     virtual void internal_run_program(ProgramEnvironment& env) = 0;
     virtual void internal_stop_program();
+
+    //  Starts the program thread. A test fake makes this fail.
+    virtual AsyncTask dispatch_program_thread(std::function<void()> body);
+
+    //  The program's settings as JSON text, recorded with each run: what the
+    //  settings file stores for it. "" for a session without settings.
+    virtual std::string settings_json() const{ return ""; }
 
 //    virtual void restore_defaults(){ return; }
 
@@ -153,13 +182,18 @@ private:
 
 
 private:
-    void run_program();
+    //  The program thread: runs the program and closes its run record with
+    //  exactly one result, whichever way run_program() ends.
+    void run_program_and_record();
+    RunResult run_program();
+    std::string abandon_run(std::string message);
 
 
 private:
     const ProgramDescriptor& m_descriptor;
 
     uint64_t m_instance_id = 0;
+    SessionRunRecorder m_run_recorder;  //  Before m_logger, which chains off it.
     TaggedLogger m_logger;
 
 

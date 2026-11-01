@@ -33,6 +33,10 @@ const ProgramInfo& ProgramEnvironment::program_info() const{
     return m_program_info;
 }
 
+RunRecorder& ProgramEnvironment::run_recorder(){
+    return m_session.run_recorder();
+}
+
 
 void ProgramEnvironment::update_stats(){
     m_session.report_stats_changed();
