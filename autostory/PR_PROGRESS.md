@@ -5,7 +5,7 @@ Live status of [PR_PLAN.md](PR_PLAN.md). Update whenever a PR changes state.
 Legend: ✅ merged upstream · 🔵 open upstream · 🟢 fork draft, CI green · 🟡 fork draft,
 CI pending or red · 🛠 branch in progress · ⬜ not started · ❌ closed
 
-Last updated: 2026-11-01 05:40 (collector 1 open as #114, CI green; FRLG collector waits for the user's look at #114).
+Last updated: 2026-11-01 06:30 (user accepted #114; frlg/mvp being built; #115 and #110 merged into the BDSP lab branch, #111 being merged with the base, #112 next).
 
 ```
 base/upstream-main
@@ -14,10 +14,10 @@ base/upstream-main
 │     S3 c246d3d56 ScreenMachine (#108, +333) · S4 f3a8943a3 story events (#79, +1204)
 │     std::format pass applied inside S2/S4 (9 sites). Sources to close once accepted:
 │     #72 (87071ad59) · #66 nav/core (dc9f1682f) · #108 (6c8c83473) · #79 (70e10070c)
-├── ⬜ frlg/mvp  collector 3 ............................. source 🟡 #67 frlg/brock-mvp (CI green)
-└── ⬜ base/bdsp-1717 → ⬜ bdsp/mvp  collector 2 ........ sources #68, #109, #110, #111,
-      lab branch bdsp/event-sandgem-center (7b24d871e; Ubuntu gcc and Windows clang red,
-      three pre-existing failures listed in PR_PLAN.md)
+├── 🛠 frlg/mvp  collector 3 (on nav/shared) ............. F0–F6 being cut from 🟢 #67 frlg/brock-mvp
+└── ⬜ base/bdsp-1717 → ⬜ bdsp/mvp  collector 2 ........ sources #68, #109 and the lab branch
+      bdsp/event-sandgem-center: ✅ #115 ci-fixes and ✅ #110 plan cap merged; 🟡 #111 decomp
+      grids (merging the base in); 🟡 #112 00.01–00.03 lines waits for #111
 
 Open fork PRs that stay as they are: #107 lab tooling (channel work landing), #103 lab/main,
 #81, #62, #61, #86, #100, #78, #56, #85.
@@ -38,3 +38,6 @@ To close as superseded once each collector is accepted: #72 #66 #108 #79 → #11
 
 Already upstream from this work: #1798 (AGENTS.md docs-site note), #1791, #1754 (BBQ). That is
 three open; the shared queue starts when one of them merges or is closed.
+
+Lab branches (no PRs): `lab/main` = main + #107; `lab/bdsp` = bdsp/event-sandgem-center + #115 +
+lab/main; `lab/frlg` = frlg/brock-mvp + lab/main. Rebuilt on the collectors when they exist.
