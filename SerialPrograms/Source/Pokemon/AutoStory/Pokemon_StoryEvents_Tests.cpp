@@ -17,7 +17,7 @@
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "Pokemon_StoryEvents.h"
 #include "Pokemon_TilePose.h"
-#include "Pokemon_Navigation_Tests.h"
+#include "Pokemon_AutoStory_Tests.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
