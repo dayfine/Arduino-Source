@@ -798,7 +798,7 @@ UnitTestResult test_no_hold_into_ledge(){
         }
     }
     route.clear();
-    const std::vector<MapData> world = overworld_maps();
+    const std::vector<MapData> world = test_overworld_maps();
     result = check_route(world, {"ViridianCity", {26, 27}}, {{"ViridianCity", {26, 29}}, std::nullopt}, route);
     if (result.result != UnitTestResult::PASSED){
         return result;
