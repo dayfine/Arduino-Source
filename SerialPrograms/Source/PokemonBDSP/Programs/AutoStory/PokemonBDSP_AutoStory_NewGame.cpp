@@ -22,7 +22,7 @@
 #include "NintendoSwitch/Inference/NintendoSwitch_SystemKeyboardDetector.h"
 #include "NintendoSwitch/Programs/NintendoSwitch_GameEntry.h"
 #include "PokemonBDSP/Inference/PokemonBDSP_DialogDetector.h"
-#include "PokemonBDSP/Inference/PokemonBDSP_MenuDetector.h"
+#include "PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_XMenuDetector.h"
 #include "PokemonBDSP/Inference/PokemonBDSP_NameListDetector.h"
 #include "PokemonBDSP_AutoStory_NewGame.h"
 
@@ -75,7 +75,7 @@ std::string classify_intro_screen(ConsoleHandle* console, const ImageViewRGB32& 
     default:
         return "rival-list-preset";
     }
-    if (MenuDetector().detect(screen)){
+    if (XMenuDetector().detect(screen)){
         return "menu";
     }
     //  Includes the appearance grid, whose prompt sits in a dialogue box.
@@ -144,6 +144,10 @@ void note_intro_screen(IntroProgress& progress, const std::string& screen, std::
     if (!progress.game_confirmed){
         progress.unconfirmed_for = since_start - *progress.first_shown;
     }
+}
+
+bool intro_in_control_without_menu(const XProbe& probe){
+    return probe.still_change <= INTRO_STILL_CHANGE && probe.x_change > INTRO_X_CHANGE && probe.b_change <= INTRO_B_RESTORE;
 }
 
 void record_intro_step(IntroProgress& progress, IntroStep step){
@@ -258,6 +262,8 @@ struct IntroRun{
     WallClock start;
     IntroProgress progress;
     size_t x_without_menu = 0;
+    //  X opened something and B closed it, from a still screen.
+    bool in_control = false;
 };
 
 void press(IntroRun& run, Button button){
@@ -270,19 +276,59 @@ void close_menu_and_finish(IntroRun& run){
     pbf_wait(run.context, 1000ms);
     run.context.wait_for_all_requests();
     VideoSnapshot screen_now = run.env.console.video().snapshot();
-    if (!screen_now || MenuDetector().detect(screen_now)){
+    if (!screen_now || XMenuDetector().detect(screen_now)){
         run.trace.fail("The main menu did not close.");
     }
 }
 
-//  X, then the menu or B presses again: whatever X opened instead, B closes.
-void probe_for_menu(IntroRun& run){
+//  The menu's area, which X changes when the menu opens.
+const ImageFloatBox INTRO_MENU_AREA(0.12, 0.08, 0.76, 0.56);
+
+double menu_area_change(const VideoSnapshot& before, const VideoSnapshot& after){
+    if (!before || !after){
+        return 1000;
+    }
+    return ImageMatch::pixel_RMSD(
+        extract_box_reference(*before.frame, INTRO_MENU_AREA), extract_box_reference(*after.frame, INTRO_MENU_AREA)
+    );
+}
+
+enum class XProbeResult{
+    MENU,           //  the menu showed
+    IN_CONTROL,     //  something X opened and B closed, from a still screen
+    NOTHING,
+};
+//  X from a screen that held still; B after it if no menu showed.
+XProbeResult x_from_still_screen(IntroRun& run){
     VideoStream& stream = run.env.console;
+    run.context.wait_for_all_requests();
+    const VideoSnapshot first = stream.video().snapshot();
+    run.context.wait_for(INTRO_STILL_TIME);
+    const VideoSnapshot before = stream.video().snapshot();
     press(run, BUTTON_X);
     run.context.wait_for_all_requests();
-    MenuWatcher menu;
+    XMenuWatcher menu;
     if (wait_until(stream, run.context, 3s, {{menu}}) == 0){
-        return;     //  The next read sees the menu and finishes.
+        return XProbeResult::MENU;
+    }
+    const VideoSnapshot after_x = stream.video().snapshot();
+    pbf_press_button(run.context, BUTTON_B, 80ms, 1000ms);
+    run.context.wait_for_all_requests();
+    const VideoSnapshot after_b = stream.video().snapshot();
+    const XProbe probe{menu_area_change(first, before), menu_area_change(before, after_x), menu_area_change(before, after_b)};
+    run.trace.action("X probe: still " + std::to_string(probe.still_change) + ", X " + std::to_string(probe.x_change) +
+        ", after B " + std::to_string(probe.b_change) + ".");
+    return intro_in_control_without_menu(probe) ? XProbeResult::IN_CONTROL : XProbeResult::NOTHING;
+}
+
+//  X, then the menu or B presses again: whatever X opened instead, B closes.
+//  X opening something unrecognized from a still screen, which B closes
+//  again, is the player in control too.
+void probe_for_menu(IntroRun& run){
+    const XProbeResult result = x_from_still_screen(run);
+    run.in_control = result == XProbeResult::IN_CONTROL;
+    if (result != XProbeResult::NOTHING){
+        return;     //  The next read sees the menu, or the in-control state, and finishes.
     }
     run.trace.action("X opened no menu; B again before the next X.");
     if (++run.x_without_menu >= INTRO_X_WITHOUT_MENU){
@@ -364,6 +410,10 @@ std::vector<ScreenState> intro_states(IntroRun& run){
         return classify_intro_screen(&run.env.console, screen) == name;
     };
     return {
+        {"in-control",
+            [&run](const ImageViewRGB32&){ return run.in_control; },
+            [&run]{ run.trace.action("X opened and B closed the menu from a still bedroom: the player is in control."); },
+            {}, 1, true},
         {"user-select",
             [=](const ImageViewRGB32& s){ return screen_is(s, "user-select"); },
             [&run]{ act(run, "user-select"); }, {}, 3},
