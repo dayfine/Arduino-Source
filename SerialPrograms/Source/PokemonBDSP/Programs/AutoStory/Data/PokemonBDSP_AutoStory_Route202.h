@@ -2,8 +2,8 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  Route 202 (Sandgem Town to Jubilife City) as a tile grid. BDSP keeps the
- *  tile layout of DP, so the grid is read from Bulbapedia's DP map.
+ *  Route 202 (Sandgem Town to Jubilife City) as a tile grid, from the
+ *  Diamond decompilation's collision table; BDSP keeps DP's tile layout.
  */
 
 #ifndef PokemonAutomation_PokemonBDSP_AutoStory_Route202_H
@@ -26,12 +26,12 @@ extern const Pokemon::TilePos CATCH_SPOT;
 //  save stands. Two walls pin it.
 extern const Pokemon::TilePos SAVE_SPOT;
 
-//  The three trainers, south to north. Which one is Tristan, Natalie or
-//  Logan is not known from the map.
-extern const Pokemon::TilePos TRAINER_A;
-extern const Pokemon::TilePos TRAINER_B;
-extern const Pokemon::TilePos TRAINER_C;
-extern const Pokemon::TilePos TRAINER_D;
+//  The three trainers, from the events file: Youngster Tristan in the west
+//  field, Lass Natalie above the south ledge, Youngster Logan by the east
+//  grass. All face south.
+extern const Pokemon::TilePos TRAINER_TRISTAN;
+extern const Pokemon::TilePos TRAINER_NATALIE;
+extern const Pokemon::TilePos TRAINER_LOGAN;
 
 //  Their sight lines, in this map's tiles. The story wants these battles.
 const std::vector<Pokemon::TrainerSight>& trainer_sights();

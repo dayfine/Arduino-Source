@@ -31,20 +31,20 @@ const TileGrid* none(){ return nullptr; }
 //  PokemonBDSP_AutoStory_Tests.cpp; these are the rest.
 const std::vector<RouteRecord>& all(){
     static const std::vector<RouteRecord> records{
-        {"01.01", "Jubilife Pokemon Center to Barry on Route 203", "Jubilife City", jubilife, false, std::nullopt, {
+        {"01.01", "Jubilife Pokemon Center to Barry on Route 203", "Jubilife City", jubilife, true, std::nullopt, {
             {Direction::SOUTH, 0, LegEnd::NPC, "out of the Center's door; a girl below it stops us"},
             {Direction::WEST, 4, LegEnd::COUNT, "stick 720 ms: onto the main road", false},
             {Direction::NORTH, 16, LegEnd::COUNT, "stick 3960 ms: up to the street east to Route 203", false},
             {Direction::SOUTH, 2, LegEnd::COUNT, "stick 600 ms: back onto the street", false},
             {Direction::EAST, 0, LegEnd::NPC, "along the street onto Route 203 until Barry stops us; rows retried 0, +1, +1, -3, -1 when a wall comes first"},
-        }, "jubilife_to_barry(); stick holds from the console, 2026-10-29; the Jubilife grid's rows are 3/4 of a tile, so the counts are not traceable on it (task #21)"},
-        {"01.02", "Barry to Oreburgh City through the Oreburgh Gate", "Route 203", route203, false, std::nullopt, {
+        }, "jubilife_to_barry(); stick holds from the console, 2026-10-29, counted in tiles on the image grid's 3/4 rows: recount in taps before giving this record a start tile (task #21)"},
+        {"01.02", "Barry to Oreburgh City through the Oreburgh Gate", "Route 203", route203, true, std::nullopt, {
             {Direction::EAST, 0, LegEnd::WALL, "along the row Barry stopped us on"},
             {Direction::NORTH, 0, LegEnd::WALL, "to the top wall, then a row south at a time until east goes on (up to ten)"},
             {Direction::EAST, 0, LegEnd::NPC, "to the Hiker"},
             {Direction::EAST, 0, LegEnd::TRANSITION, "into the Oreburgh Gate"},
             {Direction::EAST, 0, LegEnd::TRANSITION, "through the Gate into Oreburgh City"},
-        }, "route203_to_oreburgh(); the west and middle of Route 203's grid are image-traced, the east stretch console-corrected (r227)"},
+        }, "route203_to_oreburgh(); no start tile: Barry stops us on whichever row we came along"},
         {"01.04", "Oreburgh Pokemon Center doorstep to the Gym", "Oreburgh City", none, false, std::nullopt, {
             {Direction::WEST, 20, LegEnd::COUNT, "D-pad taps along the Center's row to below the Gym's door"},
             {Direction::NORTH, 1, LegEnd::DOOR, "into the Gym (the fade)"},
@@ -61,11 +61,11 @@ const std::vector<RouteRecord>& all(){
             {Direction::WEST, 0, LegEnd::TRANSITION, "into the Oreburgh Gate (a row probed when a wall comes first)"},
             {Direction::WEST, 0, LegEnd::BANNER, "through the Gate until Route 203's banner"},
         }, "oreburgh_gym_to_center(), oreburgh_to_route203(); no Oreburgh City grid yet (decomp cells pending)"},
-        {"01.07", "Jubilife's east edge to Rowan's scene", "Jubilife City", jubilife, false, std::nullopt, {
+        {"01.07", "Jubilife's east edge to Rowan's scene", "Jubilife City", jubilife, true, std::nullopt, {
             {Direction::WEST, 14, LegEnd::COUNT, "stick 2 x 1120 ms along the long road to the crossroads with the north street", false},
             {Direction::NORTH, 0, LegEnd::SCENE, "up the street until Rowan's scene starts (about 6 s); the green-haired man may stand in the way"},
-        }, "jubilife_to_rowan(); by hand 2026-10-31 (18 presses), r230b; Jubilife grid not traceable (rows 3/4)"},
-        {"01.08", "Jubilife's north street onto Route 204", "Jubilife City", jubilife, false, std::nullopt, {
+        }, "jubilife_to_rowan(); by hand 2026-10-31 (18 presses), r230b; the stick hold's count was taken on the image grid's 3/4 rows, so no start tile yet"},
+        {"01.08", "Jubilife's north street onto Route 204", "Jubilife City", jubilife, true, std::nullopt, {
             {Direction::NORTH, 0, LegEnd::BANNER, "up the street until Route 204's banner; the planned walk to the Ravaged Path door follows"},
         }, "jubilife_to_ravaged_path() step 1"},
         {"01.09", "Ravaged Path's east end out onto Route 204 North", "Ravaged Path", ravaged_path, true, RavagedPath::EAST_END, {

@@ -31,8 +31,8 @@ const Pokemon::MapSet& story_maps();
 //  Jubilife City on its own: 00.05 starts there after Dawn's scene, so it is
 //  not joined to Route 202.
 const Pokemon::MapSet& jubilife_maps();
-//  Route 203 on its own (01.06), and whether a tile is on row 17 between the
-//  two stairs: row 17 runs straight west from there over the west stairs
+//  Route 203 on its own (01.06), and whether a tile is on row 18 between the
+//  two cliffs: row 18 runs straight west from there under the west cliff
 //  into Jubilife, so the plan ends there (no leg may leave the map) and a
 //  walk west until Jubilife's banner shows goes on from there.
 const Pokemon::MapSet& route203_maps();
@@ -80,7 +80,7 @@ std::vector<Pokemon::TilePos> story_door_front(const char* map, const Pokemon::T
 
 //  Where we may stand after training in the catch grass, in world tiles: the
 //  training walks up and down the catch spot's column, between the tree walls
-//  north and south of the grass, so a battle may stop us on any of its three
+//  north and south of the grass, so a battle may stop us on any of its five
 //  rows. A column either side allows for where the catch left us.
 std::vector<Pokemon::TilePos> story_after_training_area();
 
