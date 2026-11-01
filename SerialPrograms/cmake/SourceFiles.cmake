@@ -1652,8 +1652,6 @@ file(GLOB LIBRARY_SOURCES
     Source/PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_MenuCursorDetector.h
     Source/PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_OverworldDetector.cpp
     Source/PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_OverworldDetector.h
-    Source/PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_XMenuDetector.cpp
-    Source/PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_XMenuDetector.h
     Source/PokemonBDSP/PokemonBDSP_Tests.cpp
     Source/PokemonBDSP/PokemonBDSP_Tests.h
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_Actions.cpp
