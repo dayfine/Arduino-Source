@@ -342,7 +342,7 @@ std::vector<TilePos> walk_route(
                 //  the time walked, put it on our map and plan again from there.
                 size_t nearest = SIZE_MAX;
                 for (const TilePos& pos : from){
-                    nearest = std::min(nearest, walk_to_wall(grid, pos, leg.direction).tiles);
+                    nearest = std::min(nearest, slide_to_wall(grid, pos, leg.direction).tiles);
                 }
                 auto tiles_moved = [&](const WalkResult& walk){
                     const Milliseconds moving = walk.walked - ROUTE_START_DELAY -

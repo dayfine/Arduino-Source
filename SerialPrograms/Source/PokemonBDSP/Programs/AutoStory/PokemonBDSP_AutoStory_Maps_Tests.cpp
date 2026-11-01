@@ -243,6 +243,74 @@ public:
 };
 
 
+//  Route 202's regions are the tiles the story code computed before they
+//  were data: each case is the old helper's loop, over the map's tiles.
+struct RegionCase{
+    std::string region;
+    std::function<std::vector<TilePos>(const MapData& map)> old_helper;
+};
+
+//  The tiles of a box, both corners inclusive, row by row, that someone
+//  can stand on: ground with nobody standing still there.
+std::vector<TilePos> standable_in_box(const MapData& map, const TilePos& low, const TilePos& high){
+    std::vector<TilePos> tiles;
+    for (int y = low.y; y <= high.y; y++){
+        for (int x = low.x; x <= high.x; x++){
+            if (map.tiles.contains({x, y}) && is_ground(map.tiles.at({x, y})) && standing_object(map, {x, y}) == nullptr){
+                tiles.push_back({x, y});
+            }
+        }
+    }
+    return tiles;
+}
+
+std::vector<TilePos> after_training_area(const MapData& map){
+    const TilePos catch_spot = map_point(map.name, "catch_spot");
+    return standable_in_box(map, {catch_spot.x - 1, catch_spot.y - 2}, {catch_spot.x + 1, catch_spot.y + 2});
+}
+
+class Test_Route202Regions : public UnitTest{
+public:
+    Test_Route202Regions()
+        : UnitTest("PokemonBDSP::AutoStory - Maps: Route 202's regions are what the story computed")
+    {}
+    virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
+        const std::vector<RegionCase> cases{
+            {
+                .region = "catch_save_area",    //  story_catch_save_area()
+                .old_helper = [](const MapData& map){ return standable_in_box(map, {15, 25}, {21, 29}); },
+            },
+            {
+                .region = "after_training_area",    //  story_after_training_area()
+                .old_helper = after_training_area,
+            },
+            {
+                .region = "catch_grass",    //  the story table's catch_grass()
+                .old_helper = [](const MapData& map){
+                    std::vector<TilePos> grass = after_training_area(map);
+                    std::erase_if(grass, [&](const TilePos& pos){ return map.tiles.at(pos) != TileKind::TALL_GRASS; });
+                    return grass;
+                },
+            },
+            {
+                .region = "jubilife_exit",  //  the story table's jubilife_exit()
+                .old_helper = [](const MapData& map){ return standable_in_box(map, {0, 0}, {map.tiles.width - 1, 3}); },
+            },
+        };
+        const MapData& map = story_map("Route202");
+        for (const RegionCase& item : cases){
+            const std::vector<TilePos> region = map_region("Route202", item.region);
+            const std::vector<TilePos> expected = item.old_helper(map);
+            if (region != expected){
+                return std::format("Route202 {}: {} tiles, the old helper computes {}.", item.region, region.size(), expected.size());
+            }
+            logger.log(std::format("Route202 {}: {} tiles.", item.region, region.size()));
+        }
+        return true;
+    }
+};
+
+
 //  map_point() and map_region() find what the story asks for, regions in
 //  order, and throw for what a map does not have.
 struct LookupCase{
@@ -316,6 +384,7 @@ void add_tests_AutoStory_Maps(UnitTestDatabase& database){
     database.add<Test_StoryMapPoints>();
     database.add<Test_StoryMapObjects>();
     database.add<Test_StoryMapLookups>();
+    database.add<Test_Route202Regions>();
 }
 
 

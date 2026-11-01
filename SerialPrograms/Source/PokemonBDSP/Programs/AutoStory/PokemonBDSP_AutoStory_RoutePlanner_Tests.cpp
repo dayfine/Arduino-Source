@@ -74,7 +74,7 @@ public:
                 .stop = {0, 2}, .tiles = 2, .anchored = true},
         };
         for (const WallCase& item : cases){
-            const WallHit hit = walk_to_wall(make_world(item.rows), item.from, item.direction);
+            const WallHit hit = slide_to_wall(make_world(item.rows), item.from, item.direction);
             if (!(hit.stop == item.stop) || hit.tiles != item.tiles || hit.anchored != item.anchored){
                 return std::format("{}: stops at {} after {} tiles, anchored {}; expected {} after {}, anchored {}.", item.name,
                     Pokemon::to_string(hit.stop), hit.tiles, hit.anchored, Pokemon::to_string(item.stop), item.tiles, item.anchored);
