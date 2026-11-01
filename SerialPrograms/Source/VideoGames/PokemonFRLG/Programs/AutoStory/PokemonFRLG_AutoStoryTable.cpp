@@ -124,12 +124,12 @@ StoryCheckpoint pokedex(){
     StoryCheckpoint cp{"00.06", "Oak's Parcel to the Pokedex", at(VIRIDIAN_MART, 4, 3, WEST), {}, StartMenu::FULL, {}};
     cp.steps.push_back(route("below_oak", at(LAB, 6, 4, NORTH), "back down Route 1 to Oak"));
     cp.steps.push_back(make(StoryStepKind::TALK, "give_parcel", "Oak takes the parcel"));
-    cp.steps.push_back(scene("pokedex_scene", at(LAB, 6, 4), "the rival comes in, Pokedexes from the desk; turns the player"));
+    cp.steps.push_back(scene("pokedex_scene", at(LAB, 6, 4, SOUTH), "the rival comes in, Pokedexes from the desk; the player ends facing south (console B, 2026-11-01)"));
     return cp;
 }
 
 StoryCheckpoint forest(){
-    StoryCheckpoint cp{"00.07", "Viridian shopping to Pewter Center", at(LAB, 6, 4), {}, StartMenu::FULL, {}};
+    StoryCheckpoint cp{"00.07", "Viridian shopping to Pewter Center", at(LAB, 6, 4, SOUTH), {}, StartMenu::FULL, {}};
     cp.steps.push_back(route("mart_clerk", at(VIRIDIAN_MART, 4, 3, WEST), "Route 1 again"));
     cp.steps.push_back(make(StoryStepKind::SHOP, "potions_and_antidotes", "4 Potions, 2 Antidotes"));
     cp.steps.push_back(route("viridian_nurse", at(VIRIDIAN_CENTER, 7, 4, NORTH), "heal before the forest"));
