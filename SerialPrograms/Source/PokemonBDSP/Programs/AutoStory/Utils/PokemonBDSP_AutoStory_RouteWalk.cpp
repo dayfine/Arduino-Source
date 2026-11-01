@@ -16,6 +16,7 @@
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "CommonTools/Async/InferenceRoutines.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
+#include "Pokemon/Navigation/Pokemon_RouteLog.h"
 #include "PokemonBDSP/Inference/PokemonBDSP_DialogDetector.h"
 #include "PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_OverworldDetector.h"
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStoryTools.h"
@@ -55,12 +56,45 @@ void stick_for(Direction direction, double& x, double& y){
     }
 }
 
-std::string describe(const MapSet& maps, const std::vector<TilePos>& tiles){
-    std::string out;
+//  World tiles as tiles of the named maps, for the shared route log
+//  (Pokemon_RouteLog.h); a tile no map holds is a "world" tile.
+std::vector<RouteTile> route_tiles(const MapSet& maps, const std::vector<TilePos>& tiles){
+    std::vector<RouteTile> out;
     for (const TilePos& pos : tiles){
-        out += (out.empty() ? "" : ", ") + maps.describe(pos);
+        const std::optional<MapTile> local = maps.to_local(pos);
+        out.push_back(local ? RouteTile{local->map, local->pos} : RouteTile{"world", pos});
     }
     return out;
+}
+
+std::string describe(const MapSet& maps, const std::vector<TilePos>& tiles){
+    return Pokemon::describe(route_tiles(maps, tiles));
+}
+
+RouteLogLeg route_log_leg(const TileLeg& leg){
+    return {.action = RouteLegAction::WALK, .direction = leg.direction, .tiles = leg.tiles,
+        .end = leg.ends_at_wall ? RouteLegEnd::WALL : RouteLegEnd::OPEN};
+}
+
+PlannedRouteLeg planned_route_leg(const MapSet& maps, const PlannedLeg& leg){
+    return {.leg = route_log_leg(leg.leg), .after = route_tiles(maps, leg.after)};
+}
+
+void log_plan(VideoStream& stream, const MapSet& maps, const std::string& label, const std::vector<TilePos>& from, const std::vector<PlannedLeg>& legs){
+    std::vector<PlannedRouteLeg> logged;
+    for (const PlannedLeg& leg : legs){
+        logged.push_back(planned_route_leg(maps, leg));
+    }
+    stream.log(ROUTE_LOG_TAG + route_plan_line(label, route_tiles(maps, from), logged));
+}
+
+//  Logs a leg that ended on its planned tiles, and how that is known: an
+//  open leg counts its taps through a wild battle, so its end is assumed; a
+//  leg to a wall is walked again to its wall.
+void log_leg_done(VideoStream& stream, const MapSet& maps, const std::string& label, const PlannedLeg& planned, size_t wild_battles){
+    const bool assumed = !planned.leg.ends_at_wall && wild_battles > 0;
+    stream.log(ROUTE_LOG_TAG + route_leg_end_line(label, route_log_leg(planned.leg), route_tiles(maps, planned.after),
+        assumed ? EndBasis::ASSUMED : EndBasis::WALKED, assumed ? std::to_string(wild_battles) + " wild battle(s) on the way" : ""));
 }
 
 //  The tiles the player passes when walking `tiles` tiles from `from`, the
@@ -277,19 +311,14 @@ std::vector<TilePos> walk_route(
                 label + ": no plan from " + describe(maps, from) + ".", stream);
         }
         route_status(stream, label + ": " + std::to_string(legs->size()) + " legs planned");
-        std::string text = "[Route] " + label + ": plan from " + describe(maps, from) + ":";
-        for (const PlannedLeg& leg : *legs){
-            text += "\n    " + to_string(leg.leg) + " to " + describe(maps, leg.after);
-        }
-        stream.log(text);
+        log_plan(stream, maps, label, from, *legs);
 
         bool replanned = false;
         size_t leg_number = 0;
         for (const PlannedLeg& planned : *legs){
             const TileLeg& leg = planned.leg;
             leg_number++;
-            route_status(stream, "Leg " + std::to_string(leg_number) + "/" + std::to_string(legs->size()) + ": " +
-                to_string(leg) + " to " + describe(maps, planned.after));
+            route_status(stream, route_leg_line(leg_number, legs->size(), planned_route_leg(maps, planned)));
             double x, y;
             stick_for(leg.direction, x, y);
             const std::string leg_label = label + ": " + to_string(leg);
@@ -417,8 +446,8 @@ std::vector<TilePos> walk_route(
                         stream.log("[Route] " + leg_label + ": something the map lacks is at " +
                             maps.describe(blocker) + "; marked it.", COLOR_ORANGE);
                     }
-                    stream.log("[Route] " + leg_label + ": stopped early after about " + std::to_string(walked_tiles) +
-                        " tiles, at " + describe(maps, stopped) + "; planning again.", COLOR_ORANGE);
+                    stream.log(ROUTE_LOG_TAG + route_replan_line(label, route_log_leg(leg),
+                        "stopped early after about " + std::to_string(walked_tiles) + " tiles", route_tiles(maps, stopped)), COLOR_ORANGE);
                     facing = leg.direction;
                     from = stopped;
                     replanned = true;
@@ -533,8 +562,8 @@ std::vector<TilePos> walk_route(
                         stream.log("[Route] " + leg_label + ": something the map lacks is at " +
                             maps.describe(blocker) + "; marked it.", COLOR_ORANGE);
                     }
-                    stream.log("[Route] " + leg_label + ": blocked after " + std::to_string(moved) + " of " +
-                        std::to_string(leg.tiles) + " tiles, at " + describe(maps, stopped) + "; planning again.", COLOR_ORANGE);
+                    stream.log(ROUTE_LOG_TAG + route_replan_line(label, route_log_leg(leg),
+                        "blocked after " + std::to_string(moved) + " of " + std::to_string(leg.tiles) + " tiles", route_tiles(maps, stopped)), COLOR_ORANGE);
                     facing = leg.direction;
                     from = stopped;
                     replanned = true;
@@ -604,6 +633,7 @@ std::vector<TilePos> walk_route(
             }
             if (!talking){
                 from = planned.after;
+                log_leg_done(stream, maps, label, planned, result.wild_battles);
                 continue;
             }
 
@@ -626,6 +656,7 @@ std::vector<TilePos> walk_route(
                     stream.log("[Route] " + leg_label + ": on to the wall after the battle.", COLOR_ORANGE);
                     walk_until_dpad(stream, context, x, y, limit, leg_label + ": on to the wall", watch_banner, true);
                     from = planned.after;
+                    log_leg_done(stream, maps, label, planned, 0);
                     continue;
                 }
                 from = anywhere;
@@ -653,7 +684,7 @@ std::vector<TilePos> walk_route(
                 OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
                     leg_label + ": " + trainer.name + " talked, but no path enters their sight.", stream);
             }
-            stream.log("[Route] " + label + ": " + trainer.name + " stopped us about " + describe(maps, stopped) + ".");
+            stream.log(ROUTE_LOG_TAG + route_trainer_line(label, trainer.name, route_tiles(maps, stopped)));
             route_status(stream, "Fighting " + trainer.name + ".");
             fight(trainer.name);
             trainers.erase(trainers.begin() + watching[0]);
@@ -667,6 +698,7 @@ std::vector<TilePos> walk_route(
                 stream.log("[Route] " + leg_label + ": on to the wall after the battle.", COLOR_ORANGE);
                 walk_until_dpad(stream, context, x, y, limit, leg_label + ": on to the wall", watch_banner, true);
                 from = planned.after;
+                log_leg_done(stream, maps, label, planned, 0);
                 continue;
             }
             //  Only the taps that moved count: the trainer freezes the player
@@ -684,8 +716,8 @@ std::vector<TilePos> walk_route(
                 return a.y != b.y ? a.y < b.y : a.x < b.x;
             });
             by_taps.erase(std::unique(by_taps.begin(), by_taps.end()), by_taps.end());
-            stream.log("[Route] " + leg_label + ": " + std::to_string(taps) + " taps before the battle; at " +
-                describe(maps, by_taps) + "; planning again.", COLOR_ORANGE);
+            stream.log(ROUTE_LOG_TAG + route_replan_line(label, route_log_leg(leg),
+                std::to_string(taps) + " taps before the battle", route_tiles(maps, by_taps)), COLOR_ORANGE);
             from = by_taps;
             replanned = true;
             break;
@@ -706,7 +738,7 @@ std::vector<TilePos> walk_route(
                     label + ": arrived at " + describe(maps, from) + " on the map, but " + map_end +
                     "'s location banner never showed (read " + (seen.empty() ? "nothing" : seen) + ").", stream);
             }
-            stream.log("[Route] " + label + ": arrived at " + describe(maps, from) + ".");
+            stream.log(ROUTE_LOG_TAG + route_arrived_line(label, route_tiles(maps, from)));
             return from;
         }
     }
