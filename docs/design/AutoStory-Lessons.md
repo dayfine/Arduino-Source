@@ -282,7 +282,7 @@ most of them spent guessing at timed walks before measuring.
 - **The D-pad moves in whole tiles; the stick doesn't.** Counted stick legs drift about half a
   tile over 18 steps, which missed the gym's door again and again (r204 to r214). The D-pad
   landed on the same tile every run.
-- **A tap toward a new way only turns.** It moves nobody, so a door north of us takes a tap to
+- **A 100 ms stick tap toward a new way only turns; a 160 ms D-pad tap turns and steps whichever way the player faced** (r248a, 2026-10-31: all seven first taps moved). It moves nobody, so a door north of us takes a tap to
   face it and then a hold into it.
 - **Leaving a Pokemon Center lands on the same doorstep every time** (3 exits from the counter
   save, pixel-identical). The tile-a-time drift we blamed on the exit was the stick.
