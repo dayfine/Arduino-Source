@@ -652,6 +652,10 @@ file(GLOB LIBRARY_SOURCES
     Source/CommonFramework/PersistentSettings.h
     Source/CommonFramework/ProgramSession.cpp
     Source/CommonFramework/ProgramSession.h
+    Source/CommonFramework/RunRecord.cpp
+    Source/CommonFramework/RunRecord.h
+    Source/CommonFramework/RunRecord_Tests.cpp
+    Source/CommonFramework/RunRecord_Tests.h
     Source/CommonFramework/ProgramStats/StatsDatabase.cpp
     Source/CommonFramework/ProgramStats/StatsDatabase.h
     Source/CommonFramework/ProgramStats/StatsTracking.cpp
