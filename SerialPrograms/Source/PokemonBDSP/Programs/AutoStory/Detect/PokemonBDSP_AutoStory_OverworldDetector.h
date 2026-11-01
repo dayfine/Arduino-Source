@@ -31,9 +31,9 @@
 #include "PokemonBDSP/Inference/PokemonBDSP_DialogDetector.h"
 #include "PokemonBDSP/Inference/PokemonBDSP_MenuDetector.h"
 
-namespace PokemonAutomation {
-namespace NintendoSwitch {
-namespace PokemonBDSP {
+namespace PokemonAutomation{
+namespace NintendoSwitch{
+namespace PokemonBDSP{
 
 
 //  Static (single-frame) version — use when you already have a frame.

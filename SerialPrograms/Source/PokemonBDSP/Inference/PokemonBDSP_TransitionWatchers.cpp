@@ -1,15 +1,9 @@
 #include "PokemonBDSP_TransitionWatchers.h"
 namespace PokemonAutomation{ namespace NintendoSwitch{ namespace PokemonBDSP{
-WhiteScreenOverWatcher::WhiteScreenOverWatcher(
-    Color color, const ImageFloatBox& box,
-    double min_rgb_sum,
-    double max_stddev_sum,
-    std::chrono::milliseconds hold_duration,
-    std::chrono::milliseconds release_duration
-)
+WhiteScreenOverWatcher::WhiteScreenOverWatcher(Color color, const ImageFloatBox& box)
     : VisualInferenceCallback("WhiteScreenOverWatcher")
-    , m_on(color, box, min_rgb_sum, max_stddev_sum, WhiteScreenWatcher::FinderType::PRESENT, hold_duration)
-    , m_off(color, box, min_rgb_sum, max_stddev_sum, WhiteScreenWatcher::FinderType::GONE, release_duration)
+    , m_on(color, box, WhiteScreenWatcher::FinderType::PRESENT, std::chrono::milliseconds(100))
+    , m_off(color, box, WhiteScreenWatcher::FinderType::GONE, std::chrono::milliseconds(100))
 {}
 void WhiteScreenOverWatcher::make_overlays(VideoOverlaySet& items) const{
     m_on.make_overlays(items);

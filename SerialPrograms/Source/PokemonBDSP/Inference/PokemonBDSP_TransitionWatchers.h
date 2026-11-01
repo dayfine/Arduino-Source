@@ -2,44 +2,20 @@
 #include "CommonTools/VisualDetectors/BlackScreenDetector.h"
 namespace PokemonAutomation{ namespace NintendoSwitch{ namespace PokemonBDSP{
 // AutoStory-specific transition handling; shared watchers retain upstream behavior.
+//  A white screen (RGB sum over 500, stddev sum under 10) in `box`,
+//  present or gone for `duration`.
 class WhiteScreenWatcher : public DetectorToFinder<WhiteScreenDetector>{
 public:
-    WhiteScreenWatcher(
-        Color color = COLOR_RED,
-        const ImageFloatBox& box = {0.1, 0.1, 0.8, 0.8},
-        double min_rgb_sum = 500,
-        double max_stddev_sum = 10,
-        FinderType finder_type = FinderType::PRESENT,
-        std::chrono::milliseconds duration = std::chrono::milliseconds(100)
-    )
-        : DetectorToFinder("WhiteScreenWatcher", finder_type, duration, color, box, min_rgb_sum, max_stddev_sum)
+    WhiteScreenWatcher(Color color, const ImageFloatBox& box, FinderType finder_type, std::chrono::milliseconds duration)
+        : DetectorToFinder("WhiteScreenWatcher", finder_type, duration, color, box, 500, 10)
     {}
 };
 
-class BlackScreenFlashWatcher : public BlackScreenOverWatcher{
-public:
-    BlackScreenFlashWatcher(
-        Color color = COLOR_RED,
-        const ImageFloatBox& box = {0.1, 0.1, 0.8, 0.8},
-        double max_rgb_sum = 100,
-        double max_stddev_sum = 10,
-        std::chrono::milliseconds hold_duration = std::chrono::milliseconds(20),
-        std::chrono::milliseconds release_duration = std::chrono::milliseconds(100)
-    )
-        : BlackScreenOverWatcher(color, box, max_rgb_sum, max_stddev_sum, hold_duration, release_duration)
-    {}
-};
-
+//  The screen in `box` went white for 100 ms, then stopped being white for
+//  100 ms: an encounter's flash.
 class WhiteScreenOverWatcher : public VisualInferenceCallback{
 public:
-    WhiteScreenOverWatcher(
-        Color color = COLOR_RED,
-        const ImageFloatBox& box = {0.1, 0.1, 0.8, 0.8},
-        double min_rgb_sum = 500,
-        double max_stddev_sum = 10,
-        std::chrono::milliseconds hold_duration = std::chrono::milliseconds(100),
-        std::chrono::milliseconds release_duration = std::chrono::milliseconds(100)
-    );
+    WhiteScreenOverWatcher(Color color, const ImageFloatBox& box);
 
     bool white_is_over(const ImageViewRGB32& frame);
 

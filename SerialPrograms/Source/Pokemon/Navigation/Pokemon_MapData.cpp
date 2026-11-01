@@ -328,7 +328,7 @@ MapData parse_map(const JsonValue& json, const std::string& source_name){
     map.patches = read_list<MapPatch>(root, "patches", where, read_patch);
     check_places(map, where);
     for (const MapPatch& patch : map.patches){
-        map.tiles.at(TilePos{patch.x, patch.y}) = patch.glyph;
+        cell_at(map.tiles, TilePos{patch.x, patch.y}) = patch.glyph;
     }
     return map;
 }
