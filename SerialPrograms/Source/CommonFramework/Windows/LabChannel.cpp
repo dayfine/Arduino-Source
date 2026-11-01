@@ -95,23 +95,20 @@ std::string option_keys(const JsonValue& json){
 }
 
 //  "set KEY JSON": sets one option of the panel, as editing its entry in the
-//  settings file would, but live. Returns an error message, or "".
-//  `result` is the value the panel then holds, so a script can see whether
-//  the panel took it (an out-of-range number is clamped, a bad enum ignored).
-std::string set_option(PanelSession* panel, const std::vector<std::string>& words, std::string& result){
+//  settings file would, but live. `text` is the JSON as written on the line.
+//  Returns an error message, or "". `result` is the value the panel then
+//  holds, so a script can see whether the panel took it (an out-of-range
+//  number is clamped, a bad enum ignored).
+std::string set_option(PanelSession* panel, const std::string& key, const std::string& text, std::string& result){
     if (panel == nullptr){
         return "No panel is selected.";
     }
-    if (words.size() < 3){
+    if (key.empty() || text.empty()){
         return "set: expected set KEY JSON";
     }
     const ProgramSession* program = dynamic_cast<const ProgramSession*>(panel);
     if (program != nullptr && program->current_state() != ProgramState::STOPPED){
         return "Program is " + program_state_name(program->current_state()) + "; stop it before changing options.";
-    }
-    std::string text;
-    for (size_t c = 2; c < words.size(); c++){
-        text += (c == 2 ? "" : " ") + words[c];
     }
     JsonValue value = parse_json(text);
     if (value.is_null() && text != "null"){
@@ -119,15 +116,15 @@ std::string set_option(PanelSession* panel, const std::vector<std::string>& word
     }
 
     JsonValue json = panel->to_json();
-    JsonValue* slot = find_key_path(json, words[1]);
+    JsonValue* slot = find_key_path(json, key);
     if (slot == nullptr){
-        return "set: no option \"" + words[1] + "\"; options: " + option_keys(json);
+        return "set: no option \"" + key + "\"; options: " + option_keys(json);
     }
     *slot = std::move(value);
 
     //  A console program's "ConsoleSetup" (camera, controller, audio) reloads
     //  the devices when loaded, so leave it out unless that is what is being set.
-    if (words[1].rfind("ConsoleSetup", 0) != 0){
+    if (key.rfind("ConsoleSetup", 0) != 0){
         JsonObject without;
         for (auto& item : *json.to_object()){
             if (item.first != "ConsoleSetup"){
@@ -140,7 +137,7 @@ std::string set_option(PanelSession* panel, const std::vector<std::string>& word
     panel->save_settings();
 
     JsonValue after = panel->to_json();
-    const JsonValue* now = find_key_path(after, words[1]);
+    const JsonValue* now = find_key_path(after, key);
     result = now == nullptr ? "" : now->dump(-1);
     return "";
 }
@@ -328,7 +325,7 @@ std::string LabChannel::run_line(const LabRequest& request, const LabRequestLine
         }
     }
     if (command == "select" || command == "set" || command == "start" || command == "stop"){
-        return run_ui_command(words, output.out);
+        return run_ui_command(line, output.out);
     }
     if (command == "keepawake"){
         return m_keep_awake.set(words, current_time());
@@ -389,7 +386,8 @@ std::string LabChannel::run_on_console(const std::function<void(PanelSession& pa
     return "";
 }
 
-std::string LabChannel::run_ui_command(const std::vector<std::string>& words, std::ostream& out){
+std::string LabChannel::run_ui_command(const LabRequestLine& line, std::ostream& out){
+    const std::vector<std::string>& words = line.words;
     const std::string& command = words[0];
     if (command == "select"){
         if (words.size() < 2){
@@ -409,12 +407,16 @@ std::string LabChannel::run_ui_command(const std::vector<std::string>& words, st
         });
     }
     if (command == "set"){
+        //  The JSON is taken from the line as written: words would lose the
+        //  spaces and '#' inside a string.
+        const std::string key = words.size() > 1 ? words[1] : "";
+        const std::string text = line_after_words(line.text, 2);
         std::string result;
         std::string error = run_on_ui([&]{
-            return set_option(m_host.lab_current_panel(), words, result);
+            return set_option(m_host.lab_current_panel(), key, text, result);
         });
         if (error.empty()){
-            out << "set " << words[1] << " = " << result << "\n";
+            out << "set " << key << " = " << result << "\n";
         }
         return error;
     }
