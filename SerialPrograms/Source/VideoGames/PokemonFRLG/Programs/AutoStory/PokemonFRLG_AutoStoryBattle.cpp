@@ -188,6 +188,13 @@ private:
             if (m_seen_battle && m_turns > 0 && now - m_last_battle > BATTLE_GONE){
                 return true;
             }
+            //  Oak's white text box in the rival's battle reads as no battle screen:
+            //  B moves it on, and B does nothing on the overworld once the battle is over.
+            if (m_seen_battle && now - m_last_press > 1500ms){
+                pbf_press_button(m_context, BUTTON_B, 160ms, 200ms);
+                m_last_press = now;
+                return false;
+            }
             pbf_wait(m_context, POLL);
             return false;
         }
