@@ -98,10 +98,24 @@ UnitTestResult test_valid_map(){
 
 UnitTestResult test_missing_field(){
     std::string json = VALID_MAP;
-    json.replace(json.find("\"elevation\""), 11, "\"heights\"");
+    json.replace(json.find("\"warps\""), 7, "\"exits\"");
     const std::string error = parse_error(json);
-    if (!mentions(error, {"Test.json", "elevation", "missing"})){
-        return "Expected an error naming the missing elevation, got: \"" + error + "\"";
+    if (!mentions(error, {"Test.json", "warps", "missing"})){
+        return "Expected an error naming the missing warps, got: \"" + error + "\"";
+    }
+    return true;
+}
+
+UnitTestResult test_elevation_left_out(){
+    std::string json = VALID_MAP;
+    json.erase(json.find("\"elevation\""), std::string("\"elevation\": [\"031\", \"3f3\"],").size());
+    const MapData map = parse_map(json, "Test.json");
+    for (int y = 0; y < 2; y++){
+        for (int x = 0; x < 3; x++){
+            if (elevation_at(map, {x, y}) != ELEVATION_GROUND){
+                return "Expected ground everywhere without an elevation grid.";
+            }
+        }
     }
     return true;
 }
@@ -150,6 +164,7 @@ UnitTestResult test_not_json(){
 void add_tests_OverworldMaps(UnitTestDatabase& database){
     database.add<Test_OverworldMaps>("valid map", test_valid_map);
     database.add<Test_OverworldMaps>("missing field", test_missing_field);
+    database.add<Test_OverworldMaps>("elevation left out", test_elevation_left_out);
     database.add<Test_OverworldMaps>("field of the wrong type", test_bad_field_type);
     database.add<Test_OverworldMaps>("row of the wrong length", test_bad_row_length);
     database.add<Test_OverworldMaps>("unknown tile", test_unknown_tile);

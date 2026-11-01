@@ -15,7 +15,8 @@
  *      {
  *          "name": "CeruleanCity", "width": 48, "height": 40,
  *          "tiles": ["####~~~...", ...],       //  `height` rows of `width` tiles
- *          "elevation": ["0033333...", ...],   //  the same, one hex digit per tile
+ *          "elevation": ["0033333...", ...],   //  the same, one hex digit per tile;
+ *                                              //  left out if all ground (3)
  *          "warps": [{"x": 22, "y": 19, "dest_map": "...", "dest_warp": 1}, ...],
  *          "objects": [{"x": 1, "y": 13, "kind": "cooltrainer_m",
  *                       "flag": "FLAG_...", "wander_x": 0, "wander_y": 0}, ...],
