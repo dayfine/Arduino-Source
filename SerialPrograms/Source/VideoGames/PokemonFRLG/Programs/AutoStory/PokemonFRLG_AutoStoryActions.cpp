@@ -10,6 +10,7 @@
 #include <limits>
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
 #include "CommonFramework/ImageTools/ImageBoxes.h"
+#include "CommonFramework/Tools/DebugDumper.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "CommonTools/Async/InferenceRoutines.h"
 #include "CommonTools/Images/SolidColorTest.h"
@@ -418,25 +419,43 @@ void heal_at_center(ConsoleHandle& console, ProControllerContext& context){
     mash_until_overworld(console, context, 30000ms);
 }
 
+//  A picture of the Mart screen for the run's record: the list with the
+//  cursor, the quantity, the bag after.
+static void mart_shot(ConsoleHandle& console, ProControllerContext& context, const std::string& label){
+    context.wait_for_all_requests();
+    dump_debug_image(console, "AutoStory/mart", label, console.video().snapshot());
+}
+
 void buy_items(ConsoleHandle& console, ProControllerContext& context, const std::vector<MartOrder>& orders){
     //  "May I help you?" with BUY on top, then the list, cursor on its top.
     press(context, BUTTON_A, 2000ms);
     press(context, BUTTON_A, 2000ms);
+    //  After a purchase the cursor stays on the item bought (run on console B,
+    //  2026-11-01: rows {1, 2, 3} counted from the top each time bought
+    //  Parlyz Heals instead of Antidotes, and the third order hit CANCEL).
+    int cursor = 0;
     for (const MartOrder& order : orders){
-        console.log(std::format("Mart: buying {} of row {}.", order.quantity, order.row + 1));
-        for (int c = 0; c < order.row; c++){
+        console.log(std::format("Mart: buying {} of row {} (cursor on row {}).", order.quantity, order.row + 1, cursor + 1));
+        for (int c = cursor; c < order.row; c++){
             tap(context, DPAD_DOWN, 300ms);
         }
+        for (int c = order.row; c < cursor; c++){
+            tap(context, DPAD_UP, 300ms);
+        }
+        cursor = order.row;
+        mart_shot(console, context, std::format("row{}-list", order.row + 1));
         //  "How many?" drops presses while its text prints.
         press(context, BUTTON_A, 2500ms);
         for (int c = 1; c < order.quantity; c++){
             tap(context, DPAD_UP, 340ms);
         }
-        //  "That will be..." YES/NO, YES, "Here you are!"; the cursor
-        //  goes back to the top.
+        mart_shot(console, context, std::format("row{}-quantity", order.row + 1));
+        //  "That will be..." YES/NO, YES, "Here you are!"; the cursor stays
+        //  on the row.
         press(context, BUTTON_A, 3500ms);
         press(context, BUTTON_A, 2000ms);
         press(context, BUTTON_A, 1500ms);
+        mart_shot(console, context, std::format("row{}-bought", order.row + 1));
     }
     press(context, BUTTON_B, 1500ms);
     press(context, BUTTON_B, 1500ms);
