@@ -215,6 +215,14 @@ RobustPlanCosts route_plan_costs(){
     return costs;
 }
 
+RobustPlanCosts waypoint_plan_costs(){
+    RobustPlanCosts costs;
+    costs.exact_open_tiles = costs.max_open_tiles;
+    costs.per_open_tile = 0;
+    costs.leg_not_at_wall = 0;
+    return costs;
+}
+
 RobustPlanCosts town_plan_costs(){
     RobustPlanCosts costs;
     //  A tile's hold moves exactly a tile; a longer open leg may end a tile

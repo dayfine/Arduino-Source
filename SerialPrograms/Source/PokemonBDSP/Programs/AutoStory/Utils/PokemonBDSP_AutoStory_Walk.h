@@ -125,6 +125,11 @@ WalkResult walk_to_talk(
 //  place against trees.
 double walk_screen_change(const ImageViewRGB32& before, const ImageViewRGB32& after);
 constexpr double WALK_BLOCKED_CHANGE = 10.0;
+//  For whole-tile D-pad taps: a tap that moves changes the screen by 21 to 50
+//  (r244a: 40 per tap along Route 204's row 27); a tap into a wall or an NPC
+//  bumps for 10 to 13.4, and an NPC walking past does the same, so 10 counted
+//  bumps as steps (r244a, 2026-10-31).
+constexpr double WALK_TAP_BLOCKED_CHANGE = 16.0;
 //  More than walking changes in 400ms: a new scene, such as a battle opening.
 constexpr double WALK_SCENE_CHANGE = 120.0;
 

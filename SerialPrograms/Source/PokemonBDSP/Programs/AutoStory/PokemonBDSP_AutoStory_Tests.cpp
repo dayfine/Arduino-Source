@@ -721,7 +721,7 @@ public:
                 std::vector<TilePos> at{Route204::CAVE_EXIT};
                 for (const TilePos& goal : Route204::floaroma_waypoints()){
                     const std::string leg_error = check_robust_plan(logger, "Route 204: to " + route.describe(goal), route, at,
-                        [&](const TilePos& pos){ return pos == goal; });
+                        [&](const TilePos& pos){ return pos == goal; }, waypoint_plan_costs());
                     failed += leg_error.empty() ? "" : leg_error + " ";
                     at = {goal};
                 }

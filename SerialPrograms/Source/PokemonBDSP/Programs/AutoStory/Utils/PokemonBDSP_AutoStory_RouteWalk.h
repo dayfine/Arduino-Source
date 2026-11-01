@@ -120,6 +120,13 @@ std::vector<Pokemon::TilePos> walk_route(
     const Pokemon::RobustPlanCosts& costs = route_plan_costs()
 );
 
+//  Plan costs between two corners of a walked line: whole tiles on the D-pad
+//  land exactly, so an open leg costs nothing extra and the straight leg to
+//  the corner beats a run to a wall and a tap back (r244a: "west 10 to the
+//  wall, east 1" through the wandering Youngster lost the count; "west 9"
+//  in taps keeps it).
+Pokemon::RobustPlanCosts waypoint_plan_costs();
+
 //  Walks `from` to each of `waypoints` in turn, with walk_route() for every
 //  stretch, and returns where the last one ended. The corners of a line a
 //  human walked, so the plan is that line, with the walker's handling of
@@ -132,7 +139,7 @@ std::vector<Pokemon::TilePos> walk_waypoints(
     std::vector<Pokemon::TrainerSight>& trainers,
     const RouteTrainerFight& fight,
     const std::string& label,
-    const Pokemon::RobustPlanCosts& costs = route_plan_costs()
+    const Pokemon::RobustPlanCosts& costs = waypoint_plan_costs()
 );
 
 //  Plan costs for walking in town: a one-tile step lands exactly, a short

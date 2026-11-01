@@ -304,7 +304,7 @@ WalkResult walk_until_impl(
             before = std::move(after);
             continue;
         }
-        unchanged = change < WALK_BLOCKED_CHANGE ? unchanged + 1 : 0;
+        unchanged = change < (taps ? WALK_TAP_BLOCKED_CHANGE : WALK_BLOCKED_CHANGE) ? unchanged + 1 : 0;
         if (unchanged >= 2){
             return finish(WalkStop::BLOCKED);
         }
