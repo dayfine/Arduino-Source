@@ -11,7 +11,7 @@
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "Pokemon/Navigation/Pokemon_LegPlanner.h"
 #include "PokemonFRLG_OverworldMaps.h"
-#include "PokemonFRLG_OverworldMapsTestData.h"
+#include "PokemonFRLG_OverworldTestMaps.h"
 #include "PokemonFRLG_OverworldRoute.h"
 
 namespace PokemonAutomation{
