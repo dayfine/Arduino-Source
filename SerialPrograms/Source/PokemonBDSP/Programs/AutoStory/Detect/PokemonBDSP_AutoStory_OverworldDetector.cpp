@@ -2,6 +2,7 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
+ *  Adapted from PokemonAutomation/Arduino-Source#1717 by Developer-Butters.
  */
 
 #include "CommonFramework/ImageTools/ImageStats.h"
