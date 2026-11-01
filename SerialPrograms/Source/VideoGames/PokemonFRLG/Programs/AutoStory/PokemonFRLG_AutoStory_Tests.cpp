@@ -70,6 +70,15 @@ std::string describe(const StoryPose& pose){
         + (pose.facing ? std::string(" facing ") + direction_name(*pose.facing) : "");
 }
 
+//  A table pose as a StoryPose; FRLG's table has one-tile poses only.
+StoryPose one_tile(const Pokemon::Pose& pose){
+    const std::optional<StoryPose> ret = story_pose(pose);
+    if (!ret){
+        throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "Not a one-tile pose: " + Pokemon::to_string(pose));
+    }
+    return *ret;
+}
+
 Direction reverse(Direction direction){
     switch (direction){
     case Direction::NORTH:
@@ -141,7 +150,11 @@ UnitTestResult check_route(StoryPose& pose, const StoryStep& step){
             return step.name + ": the facing is unknown at " + describe(pose) + " and no wall is beside it.";
         }
     }
-    const RouteGoal goal{{step.target.map, step.target.tile}, step.target.facing};
+    if (!step.target){
+        return step.name + ": no target.";
+    }
+    const StoryPose target = one_tile(*step.target);
+    const RouteGoal goal{{target.map, target.tile}, target.facing};
     const std::optional<std::vector<RouteStep>> route = plan_overworld_route(test_story_maps(), start, goal, default_route_costs(), facing);
     if (!route){
         return step.name + ": no route from " + to_string(start) + " to " + to_string(goal.position) + ".";
@@ -166,7 +179,7 @@ UnitTestResult check_route(StoryPose& pose, const StoryStep& step){
             }
         }
     }
-    pose = StoryPose{step.target.map, step.target.tile, route->empty() ? facing : route->back().facing_after};
+    pose = StoryPose{target.map, target.tile, route->empty() ? facing : route->back().facing_after};
     return true;
 }
 
@@ -191,7 +204,7 @@ UnitTestResult check_checkpoint(const StoryCheckpoint& checkpoint, StoryPose& po
             pose = StoryPose{pose.map, pose.tile.next(step.direction), step.direction};
         }
         if (step.pose_after){
-            pose = *step.pose_after;
+            pose = one_tile(*step.pose_after);
         }
     }
     return true;
@@ -206,7 +219,7 @@ UnitTestResult test_routes_and_chain(){
     for (size_t c = 0; c < checkpoints.size(); c++){
         const StoryCheckpoint& checkpoint = checkpoints[c];
         if (c > 0){
-            const StoryPose& start = *checkpoint.start;
+            const StoryPose start = one_tile(*checkpoint.start);
             const bool same_facing = !start.facing || start.facing == pose.facing;
             if (start.map != pose.map || !(start.tile == pose.tile) || !same_facing){
                 return checkpoint.id + " starts at " + describe(start) + ", but " + checkpoints[c - 1].id + " ends at " + describe(pose) + ".";
@@ -286,6 +299,16 @@ UnitTestResult test_pewter_gym_walks(){
     );
 }
 
+UnitTestResult test_lint(){
+    for (const StoryCheckpoint& checkpoint : story_checkpoints()){
+        const std::vector<std::string> problems = Pokemon::lint_story_checkpoint(checkpoint);
+        if (!problems.empty()){
+            return problems[0];
+        }
+    }
+    return true;
+}
+
 UnitTestResult test_unique_names(){
     for (const StoryCheckpoint& checkpoint : story_checkpoints()){
         for (size_t i = 0; i < checkpoint.steps.size(); i++){
@@ -305,6 +328,7 @@ UnitTestResult test_unique_names(){
 void add_tests_AutoStory(UnitTestDatabase& database){
     database.add<Test_AutoStory>("every route plans, and checkpoints chain", test_routes_and_chain);
     database.add<Test_AutoStory>("step names are unique per checkpoint", test_unique_names);
+    database.add<Test_AutoStory>("every checkpoint lints clean", test_lint);
     database.add<Test_AutoStory>("Pewter Gym walks", test_pewter_gym_walks);
 }
 

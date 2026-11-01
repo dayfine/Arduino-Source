@@ -4,12 +4,13 @@
  *
  *  The FRLG story as data for the shared story engine
  *  (Pokemon/Navigation/Pokemon_StoryEvents.h, Pokemon_StorySegments.h).
- *  A checkpoint is a list of StorySteps, each one kind of FRLG event (a
+ *  A checkpoint is a list of the shared StorySteps
+ *  (Pokemon/Navigation/Pokemon_StorySteps.h), each one kind of event (a
  *  route, a talk, text read to its end, a YES/NO, a battle, the nurse, the
- *  Mart); make_story_segment() turns the table into engine checkpoints whose
- *  events run them on the console. Routes plan from the pose the run
- *  carries and return where they leave the player; scenes that move the
- *  player say where in the table.
+ *  Mart); StoryExecutor does each kind on the console, and
+ *  make_story_segment() turns the table into engine checkpoints. Routes
+ *  plan from the pose the run carries and return where they leave the
+ *  player; scenes that move the player say where in the table.
  *
  *  The table itself is in PokemonFRLG_AutoStoryTable.h; it is plain data,
  *  so its routes are planned in unit tests without a console.
@@ -26,6 +27,7 @@
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
 #include "Pokemon/Navigation/Pokemon_StoryEvents.h"
 #include "Pokemon/Navigation/Pokemon_StorySegments.h"
+#include "Pokemon/Navigation/Pokemon_StorySteps.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMap.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRoute.h"
 #include "PokemonFRLG_AutoStoryActions.h"
@@ -36,65 +38,25 @@ namespace NintendoSwitch{
 namespace PokemonFRLG{
 
 
-//  Where the player stands and faces. An unknown facing (after a scene that
-//  turns the player) is set before the next route by turning to a wall.
+using Pokemon::StoryLeg;
+using Pokemon::StoryStep;
+using Pokemon::StoryStepKind;
+
+//  Where the player stands and faces: the one-tile poses of FRLG's table
+//  and routes. An unknown facing (after a scene that turns the player) is
+//  set before the next route by turning to a wall.
 struct StoryPose{
     std::string map;
     TilePos tile;
     std::optional<Direction> facing;
 };
 
-enum class StoryStepKind{
-    NEW_GAME,       //  title screen (no save) to the bedroom
-    SET_OPTIONS,    //  text speed FAST, battle style SET
-    ROUTE,          //  plan and walk to `target`
-    LEGS,           //  walk `legs` as given, on one map
-    STEP,           //  one step `direction`: onto a trigger, into a door
-    TALK,           //  A at what the player faces
-    ANSWER,         //  text with B to a YES/NO, then `yes`
-    MASH,           //  text with B until the overworld is back
-    BATTLE,         //  text with B into a battle, fight it, text to the overworld
-    HEAL,           //  facing the nurse
-    SHOP,           //  facing the Viridian Mart clerk: Potions and Antidotes
-    READY,          //  before a big battle: items for status and HP, the nurse at `target` if they can't
-};
-
-//  A straight leg of a fixed walk.
-struct StoryLeg{
-    Direction direction = Direction::NORTH;
-    int tiles = 0;
-};
-
-struct StoryStep{
-    StoryStepKind kind = StoryStepKind::TALK;
-    std::string name;
-    std::string why;
-    //  ROUTE: the goal, and the way to face there if set. READY: the nurse.
-    StoryPose target;
-    //  STEP
-    Direction direction = Direction::NORTH;
-    //  LEGS
-    std::vector<StoryLeg> legs;
-    //  ROUTE, LEGS: fight wild battles for EXP instead of running.
-    bool fight_wild = false;
-    //  ANSWER
-    bool yes = true;
-    //  BATTLE: the starter may faint without a blackout (the lab's rival).
-    bool may_lose = false;
-    //  Where a scene leaves the player.
-    std::optional<StoryPose> pose_after;
-};
-
-struct StoryCheckpoint{
-    std::string id;
-    std::string title;
-    //  Where its starting save leaves the player; none for the new game.
-    std::optional<StoryPose> start;
+//  A shared checkpoint with what FRLG adds to it.
+struct StoryCheckpoint : public Pokemon::StoryCheckpoint{
     //  The healing items at its start, for a run that loads its save.
     Supplies supplies;
     //  The START menu at its end, when it saves.
     StartMenu menu = StartMenu::FULL;
-    std::vector<StoryStep> steps;
 };
 
 
@@ -103,6 +65,8 @@ struct StoryCheckpoint{
 const std::vector<MapData>& story_maps();
 
 Pokemon::Pose to_pose(const StoryPose& pose);
+//  `pose` as a StoryPose: nothing unless it is on one tile.
+std::optional<StoryPose> story_pose(const Pokemon::Pose& pose);
 
 //  `legs` from `start` as route steps for the walker, each checked against
 //  the map: nothing if a step is blocked or leaves the map. A leg ends "to
@@ -128,11 +92,48 @@ struct StoryEnv{
     bool has_save = false;
 };
 
+//  Does FRLG's kinds of story step on the console. A console step that
+//  fails is a failed Outcome, which the segment answers by reloading.
+class StoryExecutor : public Pokemon::StoryStepExecutor{
+public:
+    explicit StoryExecutor(StoryEnv& env);
+
+    StoryEnv& env(){
+        return m_env;
+    }
+    //  The START menu SET_OPTIONS leaves: the checkpoint's being built.
+    void set_menu(StartMenu menu){
+        m_menu = menu;
+    }
+
+    virtual Pokemon::Outcome run(Pokemon::RunState& state, const StoryStep& step) override;
+    //  FRLG's table skips nothing.
+    virtual bool holds(const std::string& condition, Pokemon::RunState& state) override;
+
+    virtual Pokemon::Outcome new_game(Pokemon::RunState& state, const StoryStep& step) override;
+    virtual Pokemon::Outcome options(Pokemon::RunState& state, const StoryStep& step) override;
+    virtual Pokemon::Outcome route(Pokemon::RunState& state, const StoryStep& step) override;
+    virtual Pokemon::Outcome legs(Pokemon::RunState& state, const StoryStep& step) override;
+    virtual Pokemon::Outcome step(Pokemon::RunState& state, const StoryStep& step) override;
+    virtual Pokemon::Outcome talk(Pokemon::RunState& state, const StoryStep& step) override;
+    virtual Pokemon::Outcome answer(Pokemon::RunState& state, const StoryStep& step) override;
+    virtual Pokemon::Outcome mash(Pokemon::RunState& state, const StoryStep& step) override;
+    virtual Pokemon::Outcome battle(Pokemon::RunState& state, const StoryStep& step) override;
+    virtual Pokemon::Outcome heal(Pokemon::RunState& state, const StoryStep& step) override;
+    //  The Viridian Mart, before the Boulder Badge: Potions, Antidotes and Parlyz Heals.
+    virtual Pokemon::Outcome shop(Pokemon::RunState& state, const StoryStep& step) override;
+    virtual Pokemon::Outcome ready(Pokemon::RunState& state, const StoryStep& step) override;
+
+private:
+    StoryEnv& m_env;
+    StartMenu m_menu = StartMenu::FULL;
+};
+
 //  The checkpoint `data` as events, saving at its end.
-Pokemon::Checkpoint build_checkpoint(const StoryCheckpoint& data, StoryEnv& env);
+Pokemon::Checkpoint build_checkpoint(const StoryCheckpoint& data, StoryExecutor& executor);
 
 //  `checkpoints` (kept alive by the caller) as a segment for run_segment().
-Pokemon::Segment make_story_segment(const std::vector<StoryCheckpoint>& checkpoints, StoryEnv& env);
+Pokemon::Segment make_story_segment(const std::vector<StoryCheckpoint>& checkpoints, StoryExecutor& executor);
 
 
 
