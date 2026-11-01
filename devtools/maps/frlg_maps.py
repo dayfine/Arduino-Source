@@ -164,6 +164,19 @@ def wander(obj):
     return x, y
 
 
+#   Tiles the player never walks onto: their elevation only matters for doors,
+#   which the player is put on by a warp and leaves at once.
+UNWALKABLE = '#JDS'
+GROUND = '3'
+
+
+def ground_only(tiles, elevation):
+    """Whether every walkable tile is at ground level, so that the map can
+    leave out its elevation grid (the loader reads ground everywhere)."""
+    return all(level == GROUND for row, levels in zip(tiles, elevation)
+               for tile, level in zip(row, levels) if tile not in UNWALKABLE)
+
+
 def map_json(decomp, name, layouts, names, loaded, unhandled):
     source = json.loads(decomp.read(f'data/maps/{name}/map.json'))
     signs = frozenset((e['x'], e['y']) for e in source.get('bg_events', []) if e.get('type') == 'sign')
@@ -178,7 +191,7 @@ def map_json(decomp, name, layouts, names, loaded, unhandled):
             'flag': '' if flag == '0' else flag,
             'wander_x': wander_x, 'wander_y': wander_y,
         })
-    return {
+    data = {
         'name': name, 'width': width, 'height': height,
         'tiles': tiles, 'elevation': elevation,
         'warps': [
@@ -193,6 +206,9 @@ def map_json(decomp, name, layouts, names, loaded, unhandled):
         'points': [{'name': n, 'x': x, 'y': y} for n, (x, y) in POINTS.get(name, {}).items()],
         'flag_sets': [{'name': n, 'flags': flags} for n, flags in FLAG_SETS.get(name, {}).items()],
     }
+    if ground_only(tiles, elevation):
+        del data['elevation']
+    return data
 
 
 def json_text(data):
