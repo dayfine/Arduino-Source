@@ -18,6 +18,7 @@
 #include "VideoGames/PokemonFRLG/Inference/Dialogs/PokemonFRLG_DialogDetector.h"
 #include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_NamingScreenDetector.h"
 #include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_StartMenuDetector.h"
+#include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleScreenDetector.h"
 #include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_SelectionArrowDetector.h"
 #include "VideoGames/PokemonFRLG/PokemonFRLG_Settings.h"
 #include "VideoGames/PokemonFRLG/Programs/PokemonFRLG_StartMenuNavigation.h"
@@ -290,7 +291,7 @@ TextEnd advance_text(ConsoleHandle& console, ProControllerContext& context, Mill
     //  back to the first, for good (console B, 2026-11-01).
     WallClock last_no = WallClock::min();
     while (current_time() < deadline){
-        BattleDialogWatcher battle(COLOR_RED);
+        BattleScreenWatcher battle(COLOR_RED);
         BattleMenuWatcher battle_menu(COLOR_RED);
         SelectionArrowWatcher yes(COLOR_RED, &console.overlay(), SelectionArrowPositionConfirmationMenu::YES);
         SelectionArrowWatcher no(COLOR_RED, &console.overlay(), SelectionArrowPositionConfirmationMenu::NO);

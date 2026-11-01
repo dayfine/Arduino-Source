@@ -15,6 +15,7 @@
 #include "VideoGames/PokemonFRLG/Inference/Dialogs/PokemonFRLG_DialogDetector.h"
 #include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleFlashWatcher.h"
 #include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattlePokemonDetector.h"
+#include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleScreenDetector.h"
 #include "VideoGames/PokemonFRLG/PokemonFRLG_Navigation.h"
 #include "VideoGames/PokemonFRLG/PokemonFRLG_Settings.h"
 #include "PokemonFRLG_AutoStoryActions.h"
@@ -51,6 +52,9 @@ constexpr Milliseconds NO_MENU_NEAR = 10000ms;
 constexpr Milliseconds OVERWORLD_CHECK = 3000ms;
 //  RUN this many times ("Can't escape!") before fighting instead.
 constexpr int RUN_TRIES = 4;
+//  No battle menu or HP box this long after a battle was seen: there was
+//  none (console B, 2026-11-01, Viridian Forest's north gate mat).
+constexpr Milliseconds NOT_A_BATTLE = 15000ms;
 //  PSN read at this many turns in a row before an Antidote.
 constexpr int PSN_READS = 2;
 //  Text and the move learn prompts after a battle, on the overworld.
@@ -120,12 +124,17 @@ const char* screen_name(BattleScreen screen){
     return "?";
 }
 
-BattleScreen read_battle_screen(const ImageViewRGB32& screen){
+//  Until `confirmed`, the battle text box alone counts for nothing: it also
+//  reads on the black below a small indoor map.
+BattleScreen read_battle_screen(const ImageViewRGB32& screen, bool confirmed){
     if (BattleMenuDetector(COLOR_RED).detect(screen)){
         return BattleScreen::MENU;
     }
     if (BattleLearnDialogDetector(COLOR_RED).detect(screen)){
         return BattleScreen::LEARN;
+    }
+    if (!confirmed && !BattleScreenDetector(COLOR_RED).detect(screen)){
+        return BattleScreen::NONE;
     }
     if (AdvanceBattleDialogDetector(COLOR_RED).detect(screen)){
         return BattleScreen::ADVANCE;
@@ -226,7 +235,15 @@ private:
             pbf_wait(m_context, POLL);
             return false;
         }
-        const BattleScreen seen = read_battle_screen(screen);
+        if (!m_confirmed && BattleScreenDetector(COLOR_RED).detect(screen)){
+            m_console.log("Battle: the battle menu or an HP box shows.");
+            m_confirmed = true;
+        }
+        if (!m_confirmed && now - m_start > NOT_A_BATTLE){
+            m_console.log("Battle: no battle menu or HP box in 15 s: not a battle.", COLOR_ORANGE);
+            return true;
+        }
+        const BattleScreen seen = read_battle_screen(screen, m_confirmed);
         if (seen != m_last_seen){
             m_console.log(std::format("Battle: {} (turn {}).", screen_name(seen), m_turns));
             m_last_seen = seen;
@@ -381,6 +398,7 @@ private:
     WallClock m_last_overworld_check;
     BattleScreen m_last_seen = BattleScreen::NONE;
     bool m_seen_battle = false;
+    bool m_confirmed = false;
     bool m_lost = false;
     bool m_press_a = true;
     bool m_antidote_used = false;
@@ -415,7 +433,7 @@ public:
     }
     virtual std::unique_ptr<VisualInferenceCallback> make_watcher() const override{
         if (m_late){
-            return std::make_unique<BattleDialogWatcher>(COLOR_RED);
+            return std::make_unique<BattleScreenWatcher>(COLOR_RED);
         }
         return std::make_unique<BattleFlashWatcher>(COLOR_RED);
     }
