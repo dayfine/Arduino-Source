@@ -74,16 +74,6 @@ void tap(ProControllerContext& context, DpadPosition position, Milliseconds afte
 }
 
 
-//  Which of the standard YES/NO box's rows the arrow is on, if it shows.
-std::optional<bool> yes_no_cursor(const ImageViewRGB32& screen){
-    if (SelectionArrowDetector(COLOR_RED, nullptr, SelectionArrowPositionConfirmationMenu::YES).detect(screen)){
-        return true;
-    }
-    if (SelectionArrowDetector(COLOR_RED, nullptr, SelectionArrowPositionConfirmationMenu::NO).detect(screen)){
-        return false;
-    }
-    return std::nullopt;
-}
 
 bool wait_for_yes_no(ConsoleHandle& console, ProControllerContext& context, Milliseconds timeout){
     SelectionArrowWatcher yes(COLOR_RED, &console.overlay(), SelectionArrowPositionConfirmationMenu::YES);
@@ -271,6 +261,16 @@ int start_menu_option_row(StartMenu menu){
 }
 
 
+std::optional<bool> yes_no_cursor(const ImageViewRGB32& screen){
+    if (SelectionArrowDetector(COLOR_RED, nullptr, SelectionArrowPositionConfirmationMenu::YES).detect(screen)){
+        return true;
+    }
+    if (SelectionArrowDetector(COLOR_RED, nullptr, SelectionArrowPositionConfirmationMenu::NO).detect(screen)){
+        return false;
+    }
+    return std::nullopt;
+}
+
 bool overworld_shows(ConsoleHandle& console, ProControllerContext& context){
     press(context, BUTTON_PLUS, 1200ms);
     context.wait_for_all_requests();
@@ -285,9 +285,16 @@ bool overworld_shows(ConsoleHandle& console, ProControllerContext& context){
 
 TextEnd advance_text(ConsoleHandle& console, ProControllerContext& context, Milliseconds timeout, bool stop_at_battle){
     const WallClock deadline = current_time() + timeout;
+    //  A YES/NO here is a move to learn: "Delete a move to make room?" NO,
+    //  then, right after, "Stop learning?" YES. B to "Stop learning?" goes
+    //  back to the first, for good (console B, 2026-11-01).
+    WallClock last_no = WallClock::min();
     while (current_time() < deadline){
         BattleDialogWatcher battle(COLOR_RED);
         BattleMenuWatcher battle_menu(COLOR_RED);
+        SelectionArrowWatcher yes(COLOR_RED, &console.overlay(), SelectionArrowPositionConfirmationMenu::YES);
+        SelectionArrowWatcher no(COLOR_RED, &console.overlay(), SelectionArrowPositionConfirmationMenu::NO);
+        BattleLearnDialogWatcher learn(COLOR_RED);
         context.wait_for_all_requests();
         const int ret = run_until<ProControllerContext>(
             console, context,
@@ -296,8 +303,15 @@ TextEnd advance_text(ConsoleHandle& console, ProControllerContext& context, Mill
                     pbf_press_button(context, BUTTON_B, 160ms, 340ms);
                 }
             },
-            {battle, battle_menu}
+            {battle, battle_menu, yes, no, learn}
         );
+        if (ret >= 2){
+            const bool stop_learning = current_time() - last_no < 10000ms;
+            console.log(stop_learning ? "Text: YES/NO, YES (stop learning)." : "Text: YES/NO, NO.");
+            press(context, stop_learning ? BUTTON_A : BUTTON_B, 1500ms);
+            last_no = stop_learning ? WallClock::min() : current_time();
+            continue;
+        }
         if (ret >= 0 && stop_at_battle){
             return TextEnd::BATTLE;
         }

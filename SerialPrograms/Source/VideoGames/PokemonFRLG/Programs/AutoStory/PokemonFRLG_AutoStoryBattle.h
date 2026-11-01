@@ -37,6 +37,12 @@ struct Supplies{
     int antidotes = 0;
 };
 
+enum class BattleKind{
+    WILD_RUN,       //  RUN, or fight after a few "Can't escape!"
+    WILD_FIGHT,     //  fight for EXP
+    TRAINER,
+};
+
 enum class BattleEnd{
     WON,
     //  The starter fainted: a blackout, except in the lab's rival battle,
@@ -52,12 +58,11 @@ struct PartyStatus{
 };
 PartyStatus read_party_status(const ImageViewRGB32& screen);
 
-//  From anywhere in a battle (or its opening), fights it to the end, using
-//  `supplies` as needed. `trainer` uses a Potion earlier. Returns once the
-//  battle's screens are gone; text after it (a gym leader's speech) is left
-//  for the caller. Throws OperationFailedException if it runs over
-//  10 minutes.
-BattleEnd fight_battle(ConsoleHandle& console, ProControllerContext& context, Supplies& supplies, bool trainer);
+//  From anywhere in a battle (or its opening), plays it to the end as
+//  `kind` says, using `supplies` as needed. Returns once START opens the
+//  menu on the overworld: text after the battle (a gym leader's speech) is
+//  read with B on the way. Throws OperationFailedException if it runs over 10 minutes.
+BattleEnd fight_battle(ConsoleHandle& console, ProControllerContext& context, Supplies& supplies, BattleKind kind);
 
 
 //  The interrupts for walking story routes. Wild battles are run from, or

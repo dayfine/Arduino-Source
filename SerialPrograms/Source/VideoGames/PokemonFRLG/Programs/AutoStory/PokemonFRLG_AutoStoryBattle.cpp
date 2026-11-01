@@ -33,19 +33,24 @@ constexpr Milliseconds POLL = 300ms;
 constexpr Milliseconds BATTLE_TIMEOUT = 600000ms;
 //  To see the battle at all, from its first flash.
 constexpr Milliseconds BATTLE_START_TIMEOUT = 20000ms;
-//  No battle screen for this long: the battle is over.
-constexpr Milliseconds BATTLE_GONE = 4000ms;
+//  No battle screen for this long: check for the overworld with START.
+constexpr Milliseconds BATTLE_GONE = 2000ms;
 //  A battle screen with neither an arrow nor a menu for this long: B, for
 //  a prompt the detectors miss.
 constexpr Milliseconds STUCK = 8000ms;
 //  Seen this many polls in a row: the starter fainted.
 constexpr int FAINT_POLLS = 3;
 //  No battle menu for this long: A and B in turn, for a prompt nothing reads.
+//  Only near battle screens: A on the overworld after a gym leader's speech
+//  would talk to them again.
 constexpr Milliseconds NO_MENU = 60000ms;
+constexpr Milliseconds NO_MENU_NEAR = 10000ms;
 //  No battle screen yet and no turn taken: whether the overworld is back
 //  is checked by START this often (a trainer's battle that never started,
 //  console B, 2026-11-01: 10 minutes of B on the overworld).
-constexpr Milliseconds OVERWORLD_CHECK = 5000ms;
+constexpr Milliseconds OVERWORLD_CHECK = 3000ms;
+//  RUN this many times ("Can't escape!") before fighting instead.
+constexpr int RUN_TRIES = 4;
 //  PSN read at this many turns in a row before an Antidote.
 constexpr int PSN_READS = 2;
 //  Text and the move learn prompts after a battle, on the overworld.
@@ -164,6 +169,15 @@ void use_item(ConsoleHandle& console, ProControllerContext& context, int row){
     pbf_press_button(context, BUTTON_A, 160ms, 1000ms);
 }
 
+//  RUN, bottom right of the battle menu.
+void run_away(ProControllerContext& context){
+    tap(context, DPAD_LEFT);
+    tap(context, DPAD_UP);
+    tap(context, DPAD_RIGHT);
+    tap(context, DPAD_DOWN);
+    pbf_press_button(context, BUTTON_A, 160ms, 500ms);
+}
+
 //  FIGHT, then the bottom left move (Bubble), or Tackle while that slot is
 //  empty: the cursor doesn't move onto an empty slot.
 void use_move(ProControllerContext& context){
@@ -179,11 +193,11 @@ void use_move(ProControllerContext& context){
 
 class BattleLoop{
 public:
-    BattleLoop(ConsoleHandle& console, ProControllerContext& context, Supplies& supplies, bool trainer)
+    BattleLoop(ConsoleHandle& console, ProControllerContext& context, Supplies& supplies, BattleKind kind)
         : m_console(console)
         , m_context(context)
         , m_supplies(supplies)
-        , m_trainer(trainer)
+        , m_kind(kind)
         , m_start(current_time())
         , m_last_battle(m_start)
         , m_last_press(m_start)
@@ -192,7 +206,10 @@ public:
     {}
 
     BattleEnd run(){
-        m_console.log(m_trainer ? "Battle: fighting a trainer." : "Battle: fighting a wild Pokemon.");
+        m_console.log(
+            m_kind == BattleKind::TRAINER ? "Battle: fighting a trainer." :
+            m_kind == BattleKind::WILD_FIGHT ? "Battle: fighting a wild Pokemon." : "Battle: running from a wild Pokemon."
+        );
         while (!step()){}
         m_console.log(std::format("Battle: over after {} turns{}.", m_turns, m_lost ? ", the starter fainted" : ""));
         return m_lost ? BattleEnd::LOST : BattleEnd::WON;
@@ -216,7 +233,7 @@ private:
         }
         if (seen == BattleScreen::MENU){
             m_last_menu = now;
-        }else if (now - m_last_menu > NO_MENU && now - m_last_press > 1500ms){
+        }else if (now - m_last_menu > NO_MENU && now - m_last_battle < NO_MENU_NEAR && now - m_last_press > 1500ms){
             //  Something waits that none of the battle screens knows.
             m_console.log(std::format("Battle: no battle menu for {} s, pressing {}.",
                 std::chrono::duration_cast<std::chrono::seconds>(now - m_last_menu).count(), m_press_a ? "A" : "B"));
@@ -226,7 +243,7 @@ private:
             return false;
         }
         if (seen == BattleScreen::NONE){
-            return no_battle_screen(now);
+            return no_battle_screen(screen, now);
         }
         m_seen_battle = true;
         m_last_battle = now;
@@ -234,22 +251,23 @@ private:
         return false;
     }
 
-    //  True once the battle is over.
-    bool no_battle_screen(WallClock now){
-        if (!m_seen_battle || now - m_last_battle <= BATTLE_GONE){
+    //  True once the battle is over: only when START opens the menu. The
+    //  battle screens are gone during the opening slide-in (console B: "over
+    //  after 0 turns" at the rival) and under a move prompt's YES/NO (console
+    //  B, 2026-11-01, Viridian Forest: called over, then stuck at "Stop
+    //  learning?").
+    bool no_battle_screen(const ImageViewRGB32& screen, WallClock now){
+        if (!m_seen_battle){
             pbf_wait(m_context, POLL);
             return false;
         }
-        //  After a turn, the battle screens gone for a while is the end. Before
-        //  one, the opening slide-in shows none for a while (console B: "over
-        //  after 0 turns" at the rival), so only START opening is.
-        if (m_turns > 0){
-            return true;
+        if (m_turns > 0 && yes_no_cursor(screen)){
+            answer_learn_prompt(now);
+            return false;
         }
-        if (now - m_last_overworld_check > OVERWORLD_CHECK){
+        if (now - m_last_battle > BATTLE_GONE && now - m_last_overworld_check > OVERWORLD_CHECK){
             m_last_overworld_check = now;
             if (overworld_shows(m_console, m_context)){
-                m_console.log("Battle: the overworld is back before any turn.", COLOR_ORANGE);
                 return true;
             }
         }
@@ -288,11 +306,7 @@ private:
                 //  The learn prompts come after a turn; before one it is a misread.
                 break;
             }
-            //  "Delete a move to make room?" NO, then "Stop learning?" YES.
-            m_console.log(m_learn_prompts % 2 == 0 ? "Battle: not deleting a move." : "Battle: stop learning.");
-            pbf_press_button(m_context, m_learn_prompts % 2 == 0 ? BUTTON_B : BUTTON_A, 160ms, 1500ms);
-            m_learn_prompts++;
-            m_last_press = now;
+            answer_learn_prompt(now);
             return;
         case BattleScreen::ADVANCE:
             pbf_press_button(m_context, BUTTON_B, 160ms, 200ms);
@@ -309,9 +323,23 @@ private:
         pbf_wait(m_context, POLL);
     }
 
+    //  "Delete a move to make room?" NO, then "Stop learning?" YES.
+    void answer_learn_prompt(WallClock now){
+        m_console.log(m_learn_prompts % 2 == 0 ? "Battle: not deleting a move." : "Battle: stop learning.");
+        pbf_press_button(m_context, m_learn_prompts % 2 == 0 ? BUTTON_B : BUTTON_A, 160ms, 1500ms);
+        m_learn_prompts++;
+        m_last_press = now;
+    }
+
     void take_turn(const ImageViewRGB32& screen){
         m_turns++;
         m_faint_polls = 0;
+        if (m_kind == BattleKind::WILD_RUN && m_run_tries < RUN_TRIES){
+            m_run_tries++;
+            m_console.log(std::format("Battle: RUN (try {}).", m_run_tries));
+            run_away(m_context);
+            return;
+        }
         const PartyStatus status = read_party_status(screen);
         m_psn_reads = status.poisoned ? m_psn_reads + 1 : 0;
         m_console.log(std::format(
@@ -345,7 +373,7 @@ private:
     ConsoleHandle& m_console;
     ProControllerContext& m_context;
     Supplies& m_supplies;
-    const bool m_trainer;
+    const BattleKind m_kind;
     const WallClock m_start;
     WallClock m_last_battle;
     WallClock m_last_press;
@@ -357,6 +385,7 @@ private:
     bool m_press_a = true;
     bool m_antidote_used = false;
     int m_psn_reads = 0;
+    int m_run_tries = 0;
     size_t m_turns = 0;
     size_t m_learn_prompts = 0;
     int m_faint_polls = 0;
@@ -394,14 +423,12 @@ public:
     virtual Milliseconds detection_delay() const override{
         return m_late ? 2000ms : 300ms;
     }
+    //  Run from or fought by the battle loop, which returns only once START
+    //  opens on the overworld, so nothing of the battle is left before the
+    //  next leg.
     virtual void clear(ConsoleHandle& console, ProControllerContext& context) const override{
-        if (!m_fight){
-            flee_battle(console, context);
-            return;
-        }
-        fail_on_blackout(console, fight_battle(console, context, m_supplies, false));
-        pbf_wait(context, 1000ms);
-        context.wait_for_all_requests();
+        const BattleKind kind = m_fight ? BattleKind::WILD_FIGHT : BattleKind::WILD_RUN;
+        fail_on_blackout(console, fight_battle(console, context, m_supplies, kind));
     }
 
 private:
@@ -430,7 +457,7 @@ public:
             return;
         }
         console.log("Story: a trainer's battle after a message on the overworld.");
-        fail_on_blackout(console, fight_battle(console, context, m_supplies, true));
+        fail_on_blackout(console, fight_battle(console, context, m_supplies, BattleKind::TRAINER));
         mash_until_overworld(console, context, AFTER_BATTLE_TEXT);
     }
 
@@ -454,8 +481,8 @@ PartyStatus read_party_status(const ImageViewRGB32& screen){
     return status;
 }
 
-BattleEnd fight_battle(ConsoleHandle& console, ProControllerContext& context, Supplies& supplies, bool trainer){
-    return BattleLoop(console, context, supplies, trainer).run();
+BattleEnd fight_battle(ConsoleHandle& console, ProControllerContext& context, Supplies& supplies, BattleKind kind){
+    return BattleLoop(console, context, supplies, kind).run();
 }
 
 OverworldInterruptSet story_interrupts(Supplies& supplies, bool fight_wild){

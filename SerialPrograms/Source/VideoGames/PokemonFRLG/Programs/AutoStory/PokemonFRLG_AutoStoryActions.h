@@ -17,6 +17,7 @@
 #include <optional>
 #include <vector>
 #include "Common/Cpp/Time.h"
+#include "CommonFramework/ImageTypes/ImageViewRGB32.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
 #include "Pokemon/Navigation/Pokemon_Grid.h"
@@ -42,6 +43,11 @@ int start_menu_option_row(StartMenu menu);
 //  Whether the overworld is up: START opens the menu only there, with no
 //  scene running. If it opened, it is closed again.
 bool overworld_shows(ConsoleHandle& console, ProControllerContext& context);
+
+
+//  Which row of the standard YES/NO box the arrow is on (true: YES), if
+//  one shows.
+std::optional<bool> yes_no_cursor(const ImageViewRGB32& screen);
 
 
 enum class TextEnd{

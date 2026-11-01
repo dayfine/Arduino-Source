@@ -110,7 +110,7 @@ Outcome battle(StoryEnv& env, const StoryStep& step){
     if (advance_text(env.console, env.context, BATTLE_TEXT_TIMEOUT, true) != TextEnd::BATTLE){
         return Pokemon::outcome_failed("no_battle");
     }
-    const BattleEnd end = fight_battle(env.console, env.context, env.supplies, true);
+    const BattleEnd end = fight_battle(env.console, env.context, env.supplies, BattleKind::TRAINER);
     if (end == BattleEnd::LOST && !step.may_lose){
         return Pokemon::outcome_failed("blackout");
     }
