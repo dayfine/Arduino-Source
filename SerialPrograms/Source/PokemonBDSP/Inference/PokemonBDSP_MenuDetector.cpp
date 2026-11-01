@@ -7,6 +7,8 @@
 #include "CommonFramework/ImageTools/ImageStats.h"
 #include "CommonFramework/VideoPipeline/VideoOverlayScopes.h"
 #include "CommonTools/Images/SolidColorTest.h"
+#include "Common/Cpp/TestRunners/UnitTestDatabase.h"
+#include "Tests/ImageUnitTest.h"
 #include "PokemonBDSP_MenuDetector.h"
 
 namespace PokemonAutomation{
@@ -41,25 +43,21 @@ void MenuDetector::make_overlays(VideoOverlaySet& items) const{
     items.add(m_color, m_line4);
     items.add(m_color, m_cross);
 }
+//  Whether the five columns between the icons are white from `top` down.
+static bool stripes_white(const ImageViewRGB32& screen, double top){
+    for (size_t index = 0; index < 5; index++){
+        const ImageFloatBox stripe(0.160 + 0.166 * (double)index, top, 0.015, STRIPE_BOTTOM - top);
+        if (!is_white(image_stats(extract_box_reference(screen, stripe)))){
+            return false;
+        }
+    }
+    return true;
+}
 bool MenuDetector::detect(const ImageViewRGB32& screen){
-    ImageStats stats0 = image_stats(extract_box_reference(screen, m_line0));
-    if (!is_white(stats0)){
-        return false;
-    }
-    ImageStats stats1 = image_stats(extract_box_reference(screen, m_line1));
-    if (!is_white(stats1)){
-        return false;
-    }
-    ImageStats stats2 = image_stats(extract_box_reference(screen, m_line2));
-    if (!is_white(stats2)){
-        return false;
-    }
-    ImageStats stats3 = image_stats(extract_box_reference(screen, m_line3));
-    if (!is_white(stats3)){
-        return false;
-    }
-    ImageStats stats4 = image_stats(extract_box_reference(screen, m_line4));
-    if (!is_white(stats4)){
+    //  A "NEW" tag above an icon (a new game's OPTIONS, next to the third
+    //  column) breaks a column at the top; below the tags the columns are
+    //  white either way.
+    if (!stripes_white(screen, m_line0.y) && !stripes_white(screen, STRIPE_TOP_BELOW_BANNER)){
         return false;
     }
     ImageStats cross = image_stats(extract_box_reference(screen, m_cross));
@@ -82,6 +80,35 @@ bool MenuWatcher::process_frame(const ImageViewRGB32& frame, WallClock timestamp
     return detect(frame);
 }
 
+
+
+
+class Test_MenuDetector : public ImageUnitTest{
+public:
+    Test_MenuDetector(const std::string& image, bool expected)
+        : ImageUnitTest("PokemonBDSP::MenuDetector - " + image, {image})
+        , m_expected(expected)
+    {}
+
+    virtual UnitTestResult run_on_images(
+        Logger&, CancellableScope&,
+        const std::vector<ImageRGB32>& images
+    ) const override{
+        return MenuDetector().detect(images[0]) == m_expected;
+    }
+
+private:
+    bool m_expected;
+};
+
+void add_tests_MenuDetector(UnitTestDatabase& database){
+    database.add<Test_MenuDetector>("PokemonBDSP/MenuDetector/NewGameBagOptions_True.png", true);
+    database.add<Test_MenuDetector>("PokemonBDSP/MenuDetector/Home_False.png", false);
+    database.add<Test_MenuDetector>("PokemonBDSP/MenuDetector/OverworldSandgemMart_False.png", false);
+    database.add<Test_MenuDetector>("PokemonBDSP/MenuDetector/OverworldOreburghMine_False.png", false);
+    database.add<Test_MenuDetector>("PokemonBDSP/MenuDetector/IntroDialog_False.png", false);
+    database.add<Test_MenuDetector>("PokemonBDSP/MenuDetector/IntroBarry_False.png", false);
+}
 
 
 }

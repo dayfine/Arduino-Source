@@ -119,10 +119,6 @@ bool intro_in_control_without_menu(const XProbe& probe);
 //  Counts `step` in `progress`.
 void record_intro_step(IntroProgress& progress, IntroStep step);
 
-//  Checks classify_intro_screen() on <folder>/<expected name>/*.png at 1920 and
-//  1280 px wide. Logs each mismatch; returns the number of them.
-size_t run_intro_screen_tests(Logger& logger, const std::string& folder);
-
 //  From the title screen or any intro screen of a game with no save, with BDSP
 //  running in front: from HOME it throws UserSetupError, since the restart would
 //  launch whatever tile HOME's cursor is on. Restarts the game first, so it
