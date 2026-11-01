@@ -14,6 +14,7 @@
 #include "VideoGames/PokemonFRLG/Inference/Dialogs/PokemonFRLG_DialogDetector.h"
 #include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_StartMenuDetector.h"
 #include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleFlashWatcher.h"
+#include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleScreenDetector.h"
 #include "VideoGames/PokemonFRLG/PokemonFRLG_Navigation.h"
 #include "PokemonFRLG_PlayerFacingReader.h"
 #include "PokemonFRLG_OverworldWalk.h"
@@ -42,6 +43,9 @@ constexpr Milliseconds SURF_ANIMATION = 3000ms;
 //  on its own, and a leg started before that ends loses tiles (on the console a
 //  600ms wait cost 2 tiles).
 constexpr Milliseconds AFTER_WARP = 1500ms;
+//  After a warp's fade, which a wild battle's flashes and wipe can pass for:
+//  a battle's HP box shows within this long (console B, 2026-11-01).
+constexpr Milliseconds AFTER_WARP_BATTLE_WATCH = 5000ms;
 //  A message set off by a leg's last step shows after the hold ends. Caught
 //  here, before the next leg's turn tap, which the message would swallow.
 constexpr Milliseconds AFTER_LEG_WATCH = 500ms;
@@ -84,7 +88,7 @@ public:
         return "a wild battle (seen late)";
     }
     virtual std::unique_ptr<VisualInferenceCallback> make_watcher() const override{
-        return std::make_unique<BattleDialogWatcher>(COLOR_RED);
+        return std::make_unique<BattleScreenWatcher>(COLOR_RED);
     }
     //  The flashes, the wipe and the opening animation: 3.7s after the step's
     //  press, twice on Route 1 (console B, 2026-11-01). Other maps open
@@ -133,7 +137,7 @@ private:
     //  A trainer's battle can't be fled, and the walker must not try (console
     //  B, 2026-11-01, Viridian Forest): it stops here for the caller.
     static void check_no_trainer_battle(ConsoleHandle& console, ProControllerContext& context){
-        BattleDialogWatcher battle(COLOR_RED);
+        BattleScreenWatcher battle(COLOR_RED);
         context.wait_for_all_requests();
         if (wait_until(console, context, TRAINER_BATTLE_WATCH, {battle}) >= 0){
             OperationFailedExceptionWithScreenshot::fire(
@@ -230,6 +234,25 @@ void check_overworld(ConsoleHandle& console, ProControllerContext& context, cons
             console
         );
     }
+}
+
+//  After a warp's fade: fails, once the battle is fled, if it was a wild
+//  battle's. In run 7 (console B, 2026-11-01) the player had drifted onto
+//  Route 1's grass, and the step meant for Oak's Lab's door set off a
+//  battle; its flashes and wipe passed for the warp's fade, the route went
+//  on as if inside, and the next screen was the battle's FIGHT menu.
+void check_warp_was_no_battle(ConsoleHandle& console, ProControllerContext& context, const RouteStep& step){
+    BattleScreenWatcher battle(COLOR_RED);
+    context.wait_for_all_requests();
+    if (wait_until(console, context, AFTER_WARP_BATTLE_WATCH, {battle}) < 0){
+        return;
+    }
+    flee_battle(console, context);
+    OperationFailedExceptionWithScreenshot::fire(
+        ErrorReportMode::SEND_ERROR_REPORT,
+        "walk_overworld_route(): a wild battle, not the warp to " + step.end.map + ": the player is off the route.",
+        console
+    );
 }
 
 void start_surf(ConsoleHandle& console, ProControllerContext& context, Direction direction, bool facing_water){
@@ -347,7 +370,8 @@ void walk_overworld_route(
             Pokemon::walk_leg(console, context, mover, step.wild ? interrupts.wild : interrupts.other, leg_spec(step), MAX_INTERRUPTIONS_PER_LEG);
             if (step.warps){
                 wait_out_warp(console, context, step);
-                pbf_wait(context, AFTER_WARP);
+                static_assert(AFTER_WARP_BATTLE_WATCH >= AFTER_WARP);
+                check_warp_was_no_battle(console, context, step);
             }
             break;
         case RouteAction::SURF:
