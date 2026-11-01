@@ -53,6 +53,12 @@ bool wait_until(const std::function<bool()>& done, Milliseconds timeout = 5000ms
 
 
 
+//  The run the store opened last, "" when none.
+std::string newest_run(const RunRecordStore& store){
+    const std::vector<std::string> ids = store.run_ids();
+    return ids.empty() ? "" : ids.back();
+}
+
 UnitTestResult test_store_ids(){
     RunRecordStore store(2);
     const std::string a = store.begin("Test:A", R"({"START": 3})");
@@ -113,7 +119,7 @@ UnitTestResult test_store_one_result(){
     return true;
 }
 
-UnitTestResult test_store_events_and_log(){
+UnitTestResult test_store_events(){
     RunRecordStore store;
     const std::string id = store.begin("Test:A");
     store.event(id, {.kind = "checkpoint", .checkpoint = "00.01", .text = "ok"});
@@ -139,6 +145,13 @@ UnitTestResult test_store_events_and_log(){
     if (record.events.size() != RunRecordStore::MAX_EVENTS || record.dropped_events != 5){
         return std::format("Events past the cap are counted, not kept: {} events, {} dropped.", record.events.size(), record.dropped_events);
     }
+    return true;
+}
+
+UnitTestResult test_store_log(){
+    RunRecordStore store;
+    const std::string id = store.begin("Test:A");
+    RunRecord record;
 
     //  Lines of 1000 bytes, numbered: 300 are more than the tail holds.
     const std::string line(995, 'x');
@@ -178,8 +191,9 @@ UnitTestResult test_store_disabled(){
         size_t lines = 0;
         virtual void log(const std::string&, Color) override{ lines++; }
     };
-    RunRecordStore store(4, false);
-    if (store.enabled() || !store.begin("Test:A").empty() || !store.run_ids().empty()){
+    std::atomic<bool> enabled{false};
+    RunRecordStore store(4, &enabled);
+    if (!store.begin("Test:A").empty() || !store.run_ids().empty()){
         return "A disabled store opens no record.";
     }
     CountingLogger base;
@@ -193,7 +207,7 @@ UnitTestResult test_store_disabled(){
     if (base.lines != 1 || !store.run_ids().empty()){
         return "Lines still reach the base logger; nothing is recorded.";
     }
-    store.set_enabled(true);
+    enabled.store(true);
     const std::string id = recorder.begin("Test:A");
     recorder.log("line");
     if (id.empty() || store.get(id)->log_lines != 1){
@@ -355,7 +369,7 @@ UnitTestResult run_to_end(FakeProgram& program, RunRecordStore& store, RunRecord
     if (!program.wait_until_stopped()){
         return "The program did not stop.";
     }
-    const std::optional<RunRecord> found = store.get(program.last_run_id());
+    const std::optional<RunRecord> found = store.get(newest_run(store));
     if (!found){
         return "The run has no record.";
     }
@@ -373,7 +387,7 @@ UnitTestResult test_rejection(){
     if (program.start_program() != "Pick a save."){
         return "A start refused by check_validity() returns its message.";
     }
-    if (!store.run_ids().empty() || !program.last_run_id().empty()){
+    if (!store.run_ids().empty() || !newest_run(store).empty()){
         return "A refused start opens no run.";
     }
     return true;
@@ -384,7 +398,7 @@ UnitTestResult test_immediate_completion(){
     FakeDescriptor descriptor;
     FakeProgram program(descriptor, store, {
         .body = [](ProgramSession&, ProgramEnvironment& env, CancellableScope&){
-            env.run_recorder().event({.kind = "checkpoint", .checkpoint = "00.01", .step = "3/3", .attempt = 1, .text = "ok", .pose = "home (2, 4) N"});
+            record_run_event(env, {.kind = "checkpoint", .checkpoint = "00.01", .step = "3/3", .attempt = 1, .text = "ok", .pose = "home (2, 4) N"});
         },
         .settings = R"({"START": 1})",
     });
@@ -477,7 +491,7 @@ UnitTestResult test_cancellation(){
     if (!program.start_program().empty() || !wait_until([&]{ return program.running(); })){
         return "The program should start and run.";
     }
-    const std::string id = program.last_run_id();
+    const std::string id = newest_run(store);
     if (!program.stop_program().empty() || !program.wait_until_stopped()){
         return "The program should stop.";
     }
@@ -501,7 +515,7 @@ UnitTestResult run_racing_a_stop(const std::function<void()>& ending, RunOutcome
     if (!program.start_program().empty() || !wait_until([&]{ return program.running(); })){
         return "The program should start and run.";
     }
-    const std::string id = program.last_run_id();
+    const std::string id = newest_run(store);
     program.stop_program();
     if (!program.wait_until_stopped()){
         return "The program should stop.";
@@ -533,7 +547,7 @@ UnitTestResult test_dispatch_failure(){
     if (error.find("could not be started") == std::string::npos){
         return "A start whose thread cannot be dispatched returns an error: <" + error + ">";
     }
-    const std::optional<RunRecord> record = store.get(program.last_run_id());
+    const std::optional<RunRecord> record = store.get(newest_run(store));
     if (!record || record->status != RunStatus::TERMINAL || record->result->outcome != RunOutcome::FAILED){
         return "The accepted run is closed as failed.";
     }
@@ -601,7 +615,8 @@ private:
 void add_tests_RunRecord(UnitTestDatabase& database){
     database.add<Test_RunRecord>("store: ids and capacity", test_store_ids);
     database.add<Test_RunRecord>("store: one result per run", test_store_one_result);
-    database.add<Test_RunRecord>("store: events, frames and log tail", test_store_events_and_log);
+    database.add<Test_RunRecord>("store: events and frames", test_store_events);
+    database.add<Test_RunRecord>("store: numbered log and its cap", test_store_log);
     database.add<Test_RunRecord>("store: old runs release frames", test_store_releases_old_frames);
     database.add<Test_RunRecord>("store: disabled", test_store_disabled);
     database.add<Test_RunRecord>("session recorder", test_session_recorder);

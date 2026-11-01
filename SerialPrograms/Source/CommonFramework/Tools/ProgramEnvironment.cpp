@@ -33,8 +33,8 @@ const ProgramInfo& ProgramEnvironment::program_info() const{
     return m_program_info;
 }
 
-RunRecorder& ProgramEnvironment::run_recorder(){
-    return m_session.run_recorder();
+void record_run_event(ProgramEnvironment& env, RunEvent event){
+    env.m_session.m_run_recorder.event(std::move(event));
 }
 
 
