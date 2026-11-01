@@ -8,13 +8,16 @@
  */
 
 #include <atomic>
+#include <deque>
 #include <format>
 #include <functional>
 #include <stdexcept>
 #include <thread>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
+#include "CommonFramework/BuildCommit.h"
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
+#include "CommonFramework/Globals.h"
 #include "CommonFramework/Notifications/ProgramInfo.h"
 #include "CommonFramework/Panels/PanelSession.h"
 #include "CommonFramework/Panels/ProgramDescriptor.h"
@@ -52,7 +55,7 @@ bool wait_until(const std::function<bool()>& done, Milliseconds timeout = 5000ms
 
 UnitTestResult test_store_ids(){
     RunRecordStore store(2);
-    const std::string a = store.begin("Test:A");
+    const std::string a = store.begin("Test:A", R"({"START": 3})");
     const std::string b = store.begin("Test:B");
     if (a.empty() || a == b || !(a < b)){
         return std::format("Run IDs should be distinct and sort in start order: <{}>, <{}>", a, b);
@@ -66,6 +69,12 @@ UnitTestResult test_store_ids(){
     }
     if (record->start_time == WallClock::min() || record->end_time){
         return "A new record has a start time and no end time.";
+    }
+    if (record->version != PROGRAM_VERSION || record->commit != PROGRAM_COMMIT || record->commit.empty()){
+        return std::format("A record names the build: version <{}>, commit <{}>.", record->version, record->commit);
+    }
+    if (record->settings != R"({"START": 3})" || !store.get(b)->settings.empty()){
+        return "A record keeps the settings it was begun with.";
     }
     const std::string c = store.begin("Test:C");
     if (store.get(a) || store.run_ids() != std::vector<std::string>{b, c}){
@@ -131,17 +140,64 @@ UnitTestResult test_store_events_and_log(){
         return std::format("Events past the cap are counted, not kept: {} events, {} dropped.", record.events.size(), record.dropped_events);
     }
 
-    const std::string line(1000, 'x');
-    for (size_t c = 0; c < 100; c++){
-        store.log_line(id, std::format("{} {}", c, line));
+    //  Lines of 1000 bytes, numbered: 300 are more than the tail holds.
+    const std::string line(995, 'x');
+    for (size_t c = 0; c < 300; c++){
+        store.log_line(id, std::format("{:04} {}", c, line));
     }
     record = *store.get(id);
     size_t bytes = 0;
     for (const std::string& l : record.log_tail){
         bytes += l.size() + 1;
     }
-    if (!record.log_truncated || bytes > RunRecordStore::MAX_LOG_BYTES || record.log_tail.back().rfind("99 ", 0) != 0){
-        return std::format("The log tail keeps the newest {} bytes: {} lines, {} bytes.", RunRecordStore::MAX_LOG_BYTES, record.log_tail.size(), bytes);
+    if (record.log_lines != 300 || record.log_bytes != 300 * 1001 || record.dropped_log_lines != 0){
+        return std::format("Every line is counted: {} lines, {} bytes.", record.log_lines, record.log_bytes);
+    }
+    if (bytes != record.log_tail_bytes || bytes > RunRecordStore::MAX_LOG_TAIL_BYTES || record.log_tail.size() == 300){
+        return std::format("The tail keeps at most {} bytes: {} lines, {} bytes.", RunRecordStore::MAX_LOG_TAIL_BYTES, record.log_tail.size(), bytes);
+    }
+    const size_t first = record.log_lines - record.log_tail.size();
+    if (record.log_tail.front().rfind(std::format("{:04} ", first), 0) != 0 || record.log_tail.back().rfind("0299 ", 0) != 0){
+        return "The tail holds the newest lines, from line log_lines - log_tail.size().";
+    }
+
+    //  Past MAX_LOG_BYTES in all, lines are counted and not kept.
+    const size_t fit = RunRecordStore::MAX_LOG_BYTES / 1001;
+    for (size_t c = 300; c < fit + 10; c++){
+        store.log_line(id, std::format("{:04} {}", c % 10000, line));
+    }
+    record = *store.get(id);
+    if (record.log_lines != fit || record.dropped_log_lines != 10 || record.log_bytes > RunRecordStore::MAX_LOG_BYTES){
+        return std::format("A run records at most {} bytes of log: {} lines, {} dropped.", RunRecordStore::MAX_LOG_BYTES, record.log_lines, record.dropped_log_lines);
+    }
+    return true;
+}
+
+UnitTestResult test_store_disabled(){
+    struct CountingLogger : public Logger{
+        size_t lines = 0;
+        virtual void log(const std::string&, Color) override{ lines++; }
+    };
+    RunRecordStore store(4, false);
+    if (store.enabled() || !store.begin("Test:A").empty() || !store.run_ids().empty()){
+        return "A disabled store opens no record.";
+    }
+    CountingLogger base;
+    SessionRunRecorder recorder(store, base);
+    if (!recorder.begin("Test:A").empty() || !recorder.last_run_id().empty()){
+        return "A recorder over a disabled store has no run.";
+    }
+    recorder.log("line");
+    recorder.event({.kind = "checkpoint"});
+    recorder.finish({.outcome = RunOutcome::COMPLETED});
+    if (base.lines != 1 || !store.run_ids().empty()){
+        return "Lines still reach the base logger; nothing is recorded.";
+    }
+    store.set_enabled(true);
+    const std::string id = recorder.begin("Test:A");
+    recorder.log("line");
+    if (id.empty() || store.get(id)->log_lines != 1){
+        return "Once enabled, the store records.";
     }
     return true;
 }
@@ -195,7 +251,7 @@ UnitTestResult test_session_recorder(){
     if (base.lines != 3){
         return std::format("Every line reaches the base logger: {} of 3.", base.lines);
     }
-    if (record.log_tail != std::vector<std::string>{"during"} || record.events.size() != 1){
+    if (record.log_tail != std::deque<std::string>{"during"} || record.events.size() != 1){
         return "Only lines and events during the run are recorded.";
     }
     if (record.result->outcome != RunOutcome::COMPLETED || recorder.last_run_id() != id){
@@ -212,6 +268,7 @@ struct FakeScript{
     bool fail_dispatch = false;     //  The program thread cannot be started.
     std::function<void(ProgramEnvironment& env)> start_checks = {};
     std::function<void(ProgramSession& program, ProgramEnvironment& env, CancellableScope& scope)> body = {};
+    std::string settings = {};      //  settings_json().
 };
 
 class FakeDescriptor : public ProgramDescriptor{
@@ -276,6 +333,7 @@ protected:
             m_script.body(*this, env, *m_scope);
         }
     }
+    virtual std::string settings_json() const override{ return m_script.settings; }
     virtual AsyncTask dispatch_program_thread(std::function<void()> body) override{
         if (m_script.fail_dispatch){
             throw std::runtime_error("no thread");
@@ -328,6 +386,7 @@ UnitTestResult test_immediate_completion(){
         .body = [](ProgramSession&, ProgramEnvironment& env, CancellableScope&){
             env.run_recorder().event({.kind = "checkpoint", .checkpoint = "00.01", .step = "3/3", .attempt = 1, .text = "ok", .pose = "home (2, 4) N"});
         },
+        .settings = R"({"START": 1})",
     });
     RunRecord record;
     UnitTestResult result = run_to_end(program, store, record);
@@ -339,6 +398,9 @@ UnitTestResult test_immediate_completion(){
     }
     if (record.program != "Test:RunRecordFake" || record.start_time > *record.end_time){
         return "The record names the program and its times.";
+    }
+    if (record.settings != R"({"START": 1})" || record.commit != PROGRAM_COMMIT){
+        return "The record has the session's settings and the build's commit.";
     }
     if (record.events.size() != 1 || record.events[0].checkpoint != "00.01" || record.events[0].attempt != size_t(1) || record.events[0].pose != "home (2, 4) N"){
         return std::format("The program's event is in the record: {} events.", record.events.size());
@@ -541,6 +603,7 @@ void add_tests_RunRecord(UnitTestDatabase& database){
     database.add<Test_RunRecord>("store: one result per run", test_store_one_result);
     database.add<Test_RunRecord>("store: events, frames and log tail", test_store_events_and_log);
     database.add<Test_RunRecord>("store: old runs release frames", test_store_releases_old_frames);
+    database.add<Test_RunRecord>("store: disabled", test_store_disabled);
     database.add<Test_RunRecord>("session recorder", test_session_recorder);
     database.add<Test_RunRecord>("lifecycle: rejected start", test_rejection);
     database.add<Test_RunRecord>("lifecycle: immediate completion", test_immediate_completion);

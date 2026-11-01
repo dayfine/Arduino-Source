@@ -257,7 +257,7 @@ std::string ProgramSession::start_program(){
         //  exists before the program thread can report anything.
         m_logger.log("Starting program...");
         m_last_state_change.store(current_time(), std::memory_order_relaxed);
-        m_run_recorder.begin(identifier());
+        m_run_recorder.begin(identifier(), settings_json());
         set_state(ProgramState::RUNNING);
         try{
             m_program_thread = dispatch_program_thread([this]{

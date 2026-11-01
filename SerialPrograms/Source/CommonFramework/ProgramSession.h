@@ -148,6 +148,10 @@ protected:
     //  Starts the program thread. A test fake makes this fail.
     virtual AsyncTask dispatch_program_thread(std::function<void()> body);
 
+    //  The program's settings as JSON text, recorded with each run: what the
+    //  settings file stores for it. "" for a session without settings.
+    virtual std::string settings_json() const{ return ""; }
+
 //    virtual void restore_defaults(){ return; }
 
 public:
