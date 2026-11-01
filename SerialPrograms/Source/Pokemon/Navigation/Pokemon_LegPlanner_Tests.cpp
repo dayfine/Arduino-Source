@@ -7,6 +7,7 @@
  *
  */
 
+#include <format>
 #include <functional>
 #include <string>
 #include <vector>
@@ -85,7 +86,7 @@ std::string describe(const std::vector<Leg<TilePos>>& legs){
         text += leg.kind == LegKind::FACE ? "face " : "walk ";
         text += direction_name(leg.direction);
         if (leg.kind == LegKind::WALK){
-            text += " " + std::to_string(leg.tiles);
+            text += std::format(" {}", leg.tiles);
         }
         if (leg.to_wall){
             text += " (to wall)";
@@ -194,7 +195,7 @@ UnitTestResult test_warp_ends_leg(){
         if (leg.warps){
             warped = true;
             if (!(leg.end == TilePos{4, 1})){
-                return "The warp leg ends at " + to_string(leg.end) + ":" + describe(*legs);
+                return std::format("The warp leg ends at {}:{}", to_string(leg.end), describe(*legs));
             }
         }
     }
