@@ -10,7 +10,9 @@
 #ifndef PokemonAutomation_PokemonBDSP_AutoStory_NewGame_H
 #define PokemonAutomation_PokemonBDSP_AutoStory_NewGame_H
 
+#include <chrono>
 #include <cstddef>
+#include <optional>
 #include <string>
 #include "CommonFramework/ImageTypes/ImageViewRGB32.h"
 #include "NintendoSwitch/NintendoSwitch_SingleSwitchProgram.h"
@@ -23,8 +25,8 @@ namespace PokemonBDSP{
 //  Which intro screen `screen` shows, as the intro's steps tell them apart:
 //  "user-select", "home", "keyboard", "rival-list-tell" (the rival's name list on
 //  "I'll tell you..."), "rival-list-preset" (on a preset name), "menu", "dialog" or
-//  "other". The Switch's own screens need `console`; without it they read as
-//  whatever else they look like.
+//  "black" (the boot, fades) or "other". The Switch's own screens need
+//  `console`; without it they read as whatever else they look like.
 std::string classify_intro_screen(ConsoleHandle* console, const ImageViewRGB32& screen);
 
 //  What the intro does on a screen. Decided from the screen and how far the intro has
@@ -32,7 +34,7 @@ std::string classify_intro_screen(ConsoleHandle* console, const ImageViewRGB32& 
 enum class IntroStep{
     SELECT_USER,            //  A on the Switch's user select
     FAIL_NOT_IN_GAME,       //  HOME is showing
-    FAIL_NOT_BDSP,          //  no BDSP screen after INTRO_PRESSES_BEFORE_BDSP presses
+    FAIL_NOT_BDSP,          //  no BDSP screen within INTRO_TIME_BEFORE_BDSP
     ENTER_PLAYER_NAME,      //  type the name on the first keyboard
     CANCEL_RIVAL_KEYBOARD,  //  X: back to the rival's name list
     MOVE_TO_PRESET,         //  Down: off "I'll tell you..."
@@ -42,21 +44,30 @@ enum class IntroStep{
     ADVANCE_WITH_B,         //  B: dialogue once the rival is named
     CLEAR_WITH_B,           //  B: an unknown screen once the rival is named
     PROBE_FOR_MENU,         //  X, to see whether the player is in control
+    WAIT,                   //  nothing: a black screen (the boot, a fade)
 };
 struct IntroProgress{
     bool player_named = false;
     bool rival_named = false;
     //  A screen only BDSP shows has been seen (intro_screen_confirms_bdsp()).
     bool game_confirmed = false;
-    //  A presses on unknown screens before that: the title, the language.
-    size_t unconfirmed_presses = 0;
+    //  When the first screen that is not black showed, since the intro
+    //  started; none yet while the game boots.
+    std::optional<std::chrono::milliseconds> first_shown = std::nullopt;
+    //  How long screens have shown without one only BDSP shows: the logos,
+    //  the title, the language select.
+    std::chrono::milliseconds unconfirmed_for = std::chrono::milliseconds(0);
     //  B presses on unknown screens since the last X.
     size_t b_presses = 0;
 };
-//  Unknown screens pressed through before a BDSP screen must show: the title
-//  and the language select take a few. Another game launched by mistake
-//  (r1, 2026-11-01: FireRed) fails here instead of being played.
-inline constexpr size_t INTRO_PRESSES_BEFORE_BDSP = 20;
+//  How long the intro presses A on unknown screens, from the first screen
+//  that is not black, before a BDSP screen must show: the logos, the title
+//  and the language select. Another game launched by mistake (r1,
+//  2026-11-01: FireRed) fails here instead of being played. Black screens
+//  take no presses: BDSP boots on black for about 25 s (r3, 2026-11-01).
+inline constexpr std::chrono::milliseconds INTRO_TIME_BEFORE_BDSP = std::chrono::seconds(60);
+//  How long the boot may stay black after the restart.
+inline constexpr std::chrono::milliseconds INTRO_BOOT_LIMIT = std::chrono::seconds(60);
 //  Whether `screen` (classify_intro_screen()) is one only BDSP's intro shows:
 //  its dialogue box, the rival's name list, its main menu. The keyboard and
 //  the user select are the Switch's.
@@ -72,9 +83,12 @@ inline constexpr size_t INTRO_B_BEFORE_X = 5;
 //  INTRO_B_BEFORE_X B presses between them, about two minutes.
 inline constexpr size_t INTRO_X_WITHOUT_MENU = 20;
 
+//  Notes `screen`, read `since_start` into the intro, in `progress`: the
+//  game is confirmed on a BDSP screen; black screens leave the clock alone.
+void note_intro_screen(IntroProgress& progress, const std::string& screen, std::chrono::milliseconds since_start);
 IntroStep decide_intro_step(const std::string& screen, const IntroProgress& progress);
-//  Counts `step`, taken on `screen`, in `progress`.
-void record_intro_step(IntroProgress& progress, const std::string& screen, IntroStep step);
+//  Counts `step` in `progress`.
+void record_intro_step(IntroProgress& progress, IntroStep step);
 
 //  Checks classify_intro_screen() on <folder>/<expected name>/*.png at 1920 and
 //  1280 px wide. Logs each mismatch; returns the number of them.
@@ -83,8 +97,9 @@ size_t run_intro_screen_tests(Logger& logger, const std::string& folder);
 //  From the title screen or any intro screen of a game with no save, with BDSP
 //  running in front: from HOME it throws UserSetupError, since the restart would
 //  launch whatever tile HOME's cursor is on. Restarts the game first, so it
-//  always starts from the title, and fails if no BDSP screen shows within
-//  INTRO_PRESSES_BEFORE_BDSP presses. Names the player `player_name`
+//  always starts from the title, waits out the black boot (up to
+//  INTRO_BOOT_LIMIT) without pressing anything, and fails if no BDSP screen shows within
+//  INTRO_TIME_BEFORE_BDSP of screens. Names the player `player_name`
 //  and picks the rival's default name (Barry) from the list. Each step reads the
 //  screen and waits for the expected next one; an unexpected screen fails with a
 //  screenshot and the recent screens.
