@@ -57,6 +57,9 @@ constexpr Milliseconds STEP_WINDOW = 900ms;
 //  <Pokemon> appeared!", about 2s on: the route had returned by then
 //  (console B, 2026-11-01, Viridian Forest, "west 11 (to wall)").
 constexpr Milliseconds AFTER_WILD_ROUTE_WATCH = 2500ms;
+//  After a message closes: a trainer who saw the player speaks first, then
+//  the battle starts, with "<Trainer> would like to battle!" seconds later.
+constexpr Milliseconds TRAINER_BATTLE_WATCH = 6000ms;
 constexpr size_t MAX_INTERRUPTIONS_PER_LEG = 5;
 
 
@@ -124,6 +127,22 @@ public:
             OperationFailedExceptionWithScreenshot::fire(
                 ErrorReportMode::SEND_ERROR_REPORT,
                 "walk_overworld_route(): a message on the overworld didn't close.",
+                console
+            );
+        }
+        check_no_trainer_battle(console, context);
+    }
+
+private:
+    //  A trainer's battle can't be fled, and the walker must not try (console
+    //  B, 2026-11-01, Viridian Forest): it stops here for the caller.
+    static void check_no_trainer_battle(ConsoleHandle& console, ProControllerContext& context){
+        BattleDialogWatcher battle(COLOR_RED);
+        context.wait_for_all_requests();
+        if (wait_until(console, context, TRAINER_BATTLE_WATCH, {battle}) >= 0){
+            OperationFailedExceptionWithScreenshot::fire(
+                ErrorReportMode::NO_ERROR_REPORT,
+                "walk_overworld_route(): trainer battle: a battle started after a message on the overworld.",
                 console
             );
         }
