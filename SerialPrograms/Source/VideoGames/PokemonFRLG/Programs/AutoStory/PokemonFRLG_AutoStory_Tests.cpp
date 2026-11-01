@@ -153,13 +153,6 @@ UnitTestResult check_route(StoryPose& pose, const StoryStep& step){
             return result;
         }
     }
-    if (step.name == "gym_east_side"){
-        for (const TilePos& tile : tiles_walked_on(*route, "PewterCity_Gym")){
-            if (tile.y == 8 && 4 <= tile.x && tile.x <= 7){
-                return step.name + ": walks into Camper Liam's line at " + to_string(tile) + ":" + describe(*route);
-            }
-        }
-    }
     if (step.name == "below_old_man_trigger"){
         for (const TilePos& tile : tiles_walked_on(*route, "ViridianCity")){
             if (tile == TilePos{20, 8} || tile == TilePos{22, 8}){

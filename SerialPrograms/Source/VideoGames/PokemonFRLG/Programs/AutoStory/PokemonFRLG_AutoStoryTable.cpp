@@ -187,17 +187,13 @@ StoryCheckpoint brock(){
     //  The by-hand save: 2 Potions and 1 Antidote left after the forest.
     return StoryCheckpoint{"00.08", "Pewter Gym: Camper Liam, then Brock", at(PEWTER_CENTER, 7, 4, NORTH), {2, 1}, StartMenu::FULL, {
         //  Camper Liam (3, 8) always faces east (MOVEMENT_TYPE_FACE_RIGHT, sight
-        //  4): he sees (4..7, 8). Walked through, he stopped the player only
-        //  some of the time (console B, 2026-11-01), and the leg he stopped
-        //  couldn't be found again. He is fought on purpose instead, from
-        //  (4, 8) beside him, so he doesn't walk and the player stays put
-        //  (FRLG doesn't turn the player to a trainer). The way there keeps
-        //  off row 8 west of column 8: planned from (10, 9), crossing row 8 at
-        //  column 10 or along it costs the same, so the legs are fixed.
-        route("gym_east_side", at(GYM, 10, 9, NORTH), "up the gym's east side, below Liam's row"),
-        legs("above_liam_line", {{NORTH, 3}, {WEST, 6}, {SOUTH, 1}}, "up column 10, along row 6, then above (4, 8)"),
-        step_into("liam_line", SOUTH, "beside Liam, in his line"),
-        battle("camper_liam", at(GYM, 4, 8, SOUTH), false, "Geodude and Sandshrew; EXP before Brock"),
+        //  4) and sees (4..7, 8): walking north up column 6 from the door,
+        //  the step onto (6, 8) starts his battle. He walks up to the player,
+        //  who stays put and keeps facing north (FRLG doesn't turn the player
+        //  to a trainer). That step is taken on its own, so no leg is cut.
+        route("below_liam_line", at(GYM, 6, 9, NORTH), "in by the door, up column 6 to below Liam's row"),
+        step_into("liam_line", NORTH, "onto (6, 8), in Liam's line"),
+        battle("camper_liam", at(GYM, 6, 8, NORTH), false, "Geodude and Sandshrew; EXP before Brock"),
         route("back_to_nurse", at(PEWTER_CENTER, 7, 4, NORTH), "heal after Liam"),
         heal("heal_before_brock"),
         route("before_brock", at(GYM, 6, 6, NORTH), "below Brock (6, 5)"),
