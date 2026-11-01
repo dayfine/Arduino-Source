@@ -52,10 +52,16 @@ OBJECTS = False   # --objects on: rocks, people and crates on the floor block th
 EDITS = []        # --edits FILE: tiles opened or blocked from what the console showed
 MIN_TILE = 128    # walkable pixels a tile needs (of 256); caves use more, for small rocks
 
+#  Tall grass on the DP route maps: the tufts' greens, measured on Route 204
+#  (the block east of the stairs). Walkable; a tile mostly these is marked '"'.
+TALL_GRASS = {(48, 184, 8), (32, 152, 0), (24, 176, 88), (104, 216, 56), (16, 224, 120)}
+
 def classify(c, stair_colours):
     r, g, b = c
     if c in stair_colours:
         return STAIR
+    if c in TALL_GRASS:
+        return WALK
     if PROFILE == 'cave':
         # Oreburgh Mine floor browns; rocks, boulders, coal and walls differ.
         if c in ((120, 96, 72), (128, 104, 80), (104, 80, 56), (96, 80, 48), (136, 120, 80), (112, 88, 64)):
@@ -187,15 +193,18 @@ def main():
     # A last row cut short by the image (at least half a tile) still counts.
     cols, rows = (w - ox) // 16, (h - oy + 8) // 16
     tile = [[None] * cols for _ in range(rows)]   # ('R', region) | ('S', set) | None
+    grass = [[False] * cols for _ in range(rows)]
     for ty in range(rows):
         for tx in range(cols):
-            cnt = Counter(); stairs = Counter()
+            cnt = Counter(); stairs = Counter(); tall = 0
             ys = range(oy + ty * 16, min(h, oy + ty * 16 + 16))
             for y in ys:
                 for x in range(ox + tx * 16, ox + tx * 16 + 16):
                     p = y * w + x
+                    if px[p] in TALL_GRASS: tall += 1
                     if kind[p] == WALK and sizes[region[p]] >= 2048: cnt[region[p]] += 1
                     elif kind[p] == STAIR: stairs[stair_region[p]] += 1
+            grass[ty][tx] = tall * 16 >= 5 * len(ys) * 16 // 16 * 16 // 16 and tall >= 5 * len(ys)
             if stairs and sum(stairs.values()) >= 96:
                 tile[ty][tx] = ('S', set().union(*(blobs[bid] for bid in stairs)))
             elif cnt:
@@ -236,6 +245,7 @@ def main():
             t = tile[ty][tx]
             if t is None: s += '#'
             elif t[0] == 'S': s += '='
+            elif grass[ty][tx]: s += '"'
             else:
                 if t[1] not in letters: letters[t[1]] = alpha[len(letters) % len(alpha)]
                 s += letters[t[1]]
