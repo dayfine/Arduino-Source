@@ -1,0 +1,82 @@
+{
+    "name": "ViridianCity_Mart",
+    "width": 11,
+    "height": 9,
+    "tiles": [
+        "###########",
+        "###########",
+        "##.#......#",
+        "...#.......",
+        "####...##.#",
+        ".......##.#",
+        ".##....##.#",
+        "....v......",
+        "###########"
+    ],
+    "elevation": [
+        "00000000000",
+        "00000000000",
+        "00303333330",
+        "33003333333",
+        "00003330030",
+        "33333330030",
+        "30033330030",
+        "33333333333",
+        "00000000000"
+    ],
+    "warps": [
+        {
+            "x": 3,
+            "y": 7,
+            "dest_map": "ViridianCity",
+            "dest_warp": 4
+        },
+        {
+            "x": 4,
+            "y": 7,
+            "dest_map": "ViridianCity",
+            "dest_warp": 4
+        },
+        {
+            "x": 5,
+            "y": 7,
+            "dest_map": "ViridianCity",
+            "dest_warp": 4
+        }
+    ],
+    "objects": [
+        {
+            "x": 2,
+            "y": 3,
+            "kind": "clerk",
+            "flag": "",
+            "wander_x": 0,
+            "wander_y": 0
+        },
+        {
+            "x": 6,
+            "y": 2,
+            "kind": "youngster",
+            "flag": "",
+            "wander_x": 1,
+            "wander_y": 1
+        },
+        {
+            "x": 9,
+            "y": 5,
+            "kind": "woman_1",
+            "flag": "",
+            "wander_x": 0,
+            "wander_y": 1
+        }
+    ],
+    "connections": [],
+    "points": [
+        {
+            "name": "clerk_front",
+            "x": 4,
+            "y": 3
+        }
+    ],
+    "flag_sets": []
+}

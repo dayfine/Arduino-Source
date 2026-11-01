@@ -1,0 +1,76 @@
+{
+    "name": "PewterCity_Mart",
+    "width": 11,
+    "height": 9,
+    "tiles": [
+        "###########",
+        "###########",
+        "##.#......#",
+        "...#.......",
+        "####...##.#",
+        ".......##.#",
+        ".##....##.#",
+        "....v......",
+        "###########"
+    ],
+    "elevation": [
+        "00000000000",
+        "00000000000",
+        "00303333330",
+        "33003333333",
+        "00003330030",
+        "33333330030",
+        "30033330030",
+        "33333333333",
+        "00000000000"
+    ],
+    "warps": [
+        {
+            "x": 3,
+            "y": 7,
+            "dest_map": "PewterCity",
+            "dest_warp": 3
+        },
+        {
+            "x": 4,
+            "y": 7,
+            "dest_map": "PewterCity",
+            "dest_warp": 3
+        },
+        {
+            "x": 5,
+            "y": 7,
+            "dest_map": "PewterCity",
+            "dest_warp": 3
+        }
+    ],
+    "objects": [
+        {
+            "x": 8,
+            "y": 2,
+            "kind": "youngster",
+            "flag": "",
+            "wander_x": 0,
+            "wander_y": 0
+        },
+        {
+            "x": 6,
+            "y": 4,
+            "kind": "boy",
+            "flag": "",
+            "wander_x": 0,
+            "wander_y": 0
+        },
+        {
+            "x": 2,
+            "y": 3,
+            "kind": "clerk",
+            "flag": "",
+            "wander_x": 0,
+            "wander_y": 0
+        }
+    ],
+    "connections": [],
+    "points": [],
+    "flag_sets": []
+}

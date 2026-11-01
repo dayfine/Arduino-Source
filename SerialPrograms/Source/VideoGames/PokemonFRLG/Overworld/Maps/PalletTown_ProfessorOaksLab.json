@@ -1,0 +1,142 @@
+{
+    "name": "PalletTown_ProfessorOaksLab",
+    "width": 13,
+    "height": 14,
+    "tiles": [
+        "#############",
+        "######SS#####",
+        ".............",
+        "#............",
+        "###.....###..",
+        ".##..........",
+        ".............",
+        ".............",
+        "#####...#####",
+        ".............",
+        ".............",
+        ".............",
+        "#.....v.....#",
+        "#############"
+    ],
+    "elevation": [
+        "0000000000000",
+        "0000000000000",
+        "3333333333333",
+        "0333333333333",
+        "0003333300033",
+        "3003333333333",
+        "3333333333333",
+        "3333333333333",
+        "0000033300000",
+        "3333333333333",
+        "3333333333333",
+        "3333333333333",
+        "0333333333330",
+        "0000000000000"
+    ],
+    "warps": [
+        {
+            "x": 6,
+            "y": 12,
+            "dest_map": "PalletTown",
+            "dest_warp": 2
+        },
+        {
+            "x": 7,
+            "y": 12,
+            "dest_map": "PalletTown",
+            "dest_warp": 2
+        },
+        {
+            "x": 5,
+            "y": 12,
+            "dest_map": "PalletTown",
+            "dest_warp": 2
+        }
+    ],
+    "objects": [
+        {
+            "x": 3,
+            "y": 11,
+            "kind": "scientist",
+            "flag": "",
+            "wander_x": 0,
+            "wander_y": 0
+        },
+        {
+            "x": 2,
+            "y": 10,
+            "kind": "worker_f",
+            "flag": "",
+            "wander_x": 0,
+            "wander_y": 4
+        },
+        {
+            "x": 11,
+            "y": 10,
+            "kind": "scientist",
+            "flag": "",
+            "wander_x": 0,
+            "wander_y": 0
+        },
+        {
+            "x": 6,
+            "y": 3,
+            "kind": "prof_oak",
+            "flag": "FLAG_HIDE_OAK_IN_HIS_LAB",
+            "wander_x": 0,
+            "wander_y": 0
+        },
+        {
+            "x": 8,
+            "y": 4,
+            "kind": "item_ball",
+            "flag": "FLAG_HIDE_BULBASAUR_BALL",
+            "wander_x": 0,
+            "wander_y": 0
+        },
+        {
+            "x": 9,
+            "y": 4,
+            "kind": "item_ball",
+            "flag": "FLAG_HIDE_SQUIRTLE_BALL",
+            "wander_x": 0,
+            "wander_y": 0
+        },
+        {
+            "x": 10,
+            "y": 4,
+            "kind": "item_ball",
+            "flag": "FLAG_HIDE_CHARMANDER_BALL",
+            "wander_x": 0,
+            "wander_y": 0
+        },
+        {
+            "x": 5,
+            "y": 4,
+            "kind": "blue",
+            "flag": "FLAG_HIDE_RIVAL_IN_LAB",
+            "wander_x": 0,
+            "wander_y": 0
+        },
+        {
+            "x": 4,
+            "y": 1,
+            "kind": "pokedex",
+            "flag": "FLAG_HIDE_POKEDEX",
+            "wander_x": 0,
+            "wander_y": 0
+        },
+        {
+            "x": 5,
+            "y": 1,
+            "kind": "pokedex",
+            "flag": "FLAG_HIDE_POKEDEX",
+            "wander_x": 0,
+            "wander_y": 0
+        }
+    ],
+    "connections": [],
+    "points": [],
+    "flag_sets": []
+}

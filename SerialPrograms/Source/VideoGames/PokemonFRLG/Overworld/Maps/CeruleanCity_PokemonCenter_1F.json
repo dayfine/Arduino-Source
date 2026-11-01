@@ -1,0 +1,127 @@
+{
+    "name": "CeruleanCity_PokemonCenter_1F",
+    "width": 15,
+    "height": 10,
+    "tiles": [
+        "#.#############",
+        "###############",
+        "....###..##....",
+        "....#######....",
+        "...............",
+        "...............",
+        "#L.........##..",
+        "...........##..",
+        ".......v.......",
+        "###############"
+    ],
+    "elevation": [
+        "030000000000000",
+        "000000000000000",
+        "333300033003333",
+        "333300000003333",
+        "333333333333333",
+        "330333333333333",
+        "044033333330033",
+        "330333333330033",
+        "333333333333333",
+        "000000000000000"
+    ],
+    "warps": [
+        {
+            "x": 6,
+            "y": 8,
+            "dest_map": "CeruleanCity",
+            "dest_warp": 3
+        },
+        {
+            "x": 7,
+            "y": 8,
+            "dest_map": "CeruleanCity",
+            "dest_warp": 3
+        },
+        {
+            "x": 8,
+            "y": 8,
+            "dest_map": "CeruleanCity",
+            "dest_warp": 3
+        },
+        {
+            "x": 1,
+            "y": 6,
+            "dest_map": "",
+            "dest_warp": 0
+        }
+    ],
+    "objects": [
+        {
+            "x": 7,
+            "y": 2,
+            "kind": "nurse",
+            "flag": "",
+            "wander_x": 0,
+            "wander_y": 0
+        },
+        {
+            "x": 12,
+            "y": 5,
+            "kind": "gentleman",
+            "flag": "",
+            "wander_x": 0,
+            "wander_y": 0
+        },
+        {
+            "x": 5,
+            "y": 4,
+            "kind": "rocker",
+            "flag": "",
+            "wander_x": 1,
+            "wander_y": 0
+        },
+        {
+            "x": 4,
+            "y": 8,
+            "kind": "youngster",
+            "flag": "",
+            "wander_x": 1,
+            "wander_y": 0
+        },
+        {
+            "x": 3,
+            "y": 3,
+            "kind": "lass",
+            "flag": "",
+            "wander_x": 0,
+            "wander_y": 0
+        },
+        {
+            "x": 2,
+            "y": 1,
+            "kind": "0",
+            "flag": "FLAG_HIDE_POSTGAME_GOSSIPERS",
+            "wander_x": 0,
+            "wander_y": 0
+        },
+        {
+            "x": 3,
+            "y": 1,
+            "kind": "0",
+            "flag": "FLAG_HIDE_POSTGAME_GOSSIPERS",
+            "wander_x": 0,
+            "wander_y": 0
+        }
+    ],
+    "connections": [],
+    "points": [
+        {
+            "name": "pc",
+            "x": 11,
+            "y": 2
+        },
+        {
+            "name": "nurse_front",
+            "x": 7,
+            "y": 4
+        }
+    ],
+    "flag_sets": []
+}
