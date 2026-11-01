@@ -85,6 +85,20 @@ std::string describe(const std::vector<RouteStep>& route){
     return text;
 }
 
+//  Passes if each of `parts` is in some line of `logs`.
+UnitTestResult expect_logged(const std::vector<std::string>& logs, const std::vector<std::string>& parts){
+    for (const std::string& part : parts){
+        bool found = false;
+        for (const std::string& line : logs){
+            found = found || line.find(part) != std::string::npos;
+        }
+        if (!found){
+            return "Expected a log line with \"" + part + "\".";
+        }
+    }
+    return true;
+}
+
 bool same(const RouteStep& a, const RouteStep& b){
     return to_string(a) == to_string(b);
 }
@@ -134,20 +148,10 @@ UnitTestResult test_stop_recover_resume(){
     if (!match){
         return "Walked:" + describe(script.walked) + "\nexpected:" + describe(expected);
     }
-    const std::vector<std::string> logged_parts{
+    return expect_logged(script.logs, {
         "): ended at an unknown tile (unknown: stopped part-way).",
         ": found again at " + anchor->end.map + " " + Pokemon::to_string(anchor->end.point),
-    };
-    for (const std::string& part : logged_parts){
-        bool found = false;
-        for (const std::string& line : script.logs){
-            found = found || line.find(part) != std::string::npos;
-        }
-        if (!found){
-            return "Expected a log line with \"" + part + "\".";
-        }
-    }
-    return true;
+    });
 }
 
 //  A corridor with a person at each end: nothing finds the player again.
