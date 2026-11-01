@@ -7,6 +7,8 @@ work.
 
 Sizes per PR, and estimates for what remains: [FRLG_SIZING.md](FRLG_SIZING.md).
 
+The approach (map-based, story as event tables, checks, interrupts, tests) is in [AutoStory-Architecture.md](https://github.com/dayfine/Arduino-Source/blob/docs/autostory-architecture/docs/design/AutoStory-Architecture.md) ([#133](https://github.com/dayfine/Arduino-Source/pull/133)).
+
 ## Where we are
 
 - **FRLG proof of concept.** New game to the Boulder Badge on console B, in pieces:
