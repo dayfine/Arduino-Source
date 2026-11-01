@@ -207,11 +207,11 @@ std::optional<Transition> press(const std::vector<MapData>& maps, const Located&
     return transition;
 }
 
-//  Whether holding `direction` stops the player where they are: a wall, a
-//  ledge, or water they'd need to Surf onto. A leg that ends there can be
-//  held for longer than it takes, and walked again after an interruption. A
-//  person in the way doesn't count, since they may have wandered off, and
-//  neither does an edge to a map that isn't loaded.
+//  Whether holding `direction` stops the player where they are: a wall, or
+//  water they'd need to Surf onto. A leg that ends there can be held for
+//  longer than it takes, and walked again after an interruption. A person in
+//  the way doesn't count, since they may have wandered off, and neither does
+//  an edge to a map that isn't loaded.
 bool stops_at(const std::vector<MapData>& maps, const Located& player, Direction direction){
     const std::optional<Transition> transition = press(maps, player, direction);
     if (transition){
@@ -223,6 +223,13 @@ bool stops_at(const std::vector<MapData>& maps, const Located& player, Direction
     //  message: the player stops, but the walk is interrupted (console B,
     //  2026-11-01, the poster on the bedroom's wall).
     if (tile_at(map, ahead) == Tile::SIGN && (direction == Direction::NORTH || direction == Direction::SOUTH)){
+        return false;
+    }
+    //  Held into a ledge the way it faces, the player hops down it. The maps
+    //  don't keep which way a ledge faces, so none is held into (console B,
+    //  2026-11-01, Viridian City: "south 2 (to wall)" from the Pokemon
+    //  Center hopped the ledge two rows down).
+    if (is_ledge(map, ahead)){
         return false;
     }
     if (in_bounds(map, ahead)){
@@ -703,6 +710,43 @@ UnitTestResult test_no_hold_into_sign(){
     return true;
 }
 
+//  A yard with a row of ledges across it.
+const char* const TEST_LEDGE_YARD_JSON = R"({
+    "name": "LedgeYard", "width": 5, "height": 6,
+    "tiles": ["#####", "#...#", "#...#", "#JJJ#", "#...#", "#####"],
+    "elevation": ["33333", "33333", "33333", "33333", "33333", "33333"],
+    "warps": [], "objects": [],
+    "connections": [], "points": [], "flag_sets": []
+})";
+
+//  A ledge isn't a wall to hold into: the player would hop it. Viridian City,
+//  from the Pokemon Center's door south to the row above the ledge.
+UnitTestResult test_no_hold_into_ledge(){
+    const std::vector<MapData> maps{parse_map(TEST_LEDGE_YARD_JSON, "LedgeYard")};
+    std::vector<RouteStep> route;
+    UnitTestResult result = check_route(maps, {"LedgeYard", {2, 1}}, {{"LedgeYard", {2, 2}}, std::nullopt}, route);
+    if (result.result != UnitTestResult::PASSED){
+        return result;
+    }
+    for (const RouteStep& step : route){
+        if (step.to_wall){
+            return "Expected no hold into the ledge:" + describe(route);
+        }
+    }
+    route.clear();
+    const std::vector<MapData> world = overworld_maps();
+    result = check_route(world, {"ViridianCity", {26, 27}}, {{"ViridianCity", {26, 29}}, std::nullopt}, route);
+    if (result.result != UnitTestResult::PASSED){
+        return result;
+    }
+    for (const RouteStep& step : route){
+        if (step.to_wall && step.end.point == TilePos{26, 29}){
+            return "Expected no hold into the ledge below the Pokemon Center:" + describe(route);
+        }
+    }
+    return true;
+}
+
 //  Two small maps that don't need the map files: a room left by the exit mat
 //  at its bottom, onto the door of a yard, out of which the game walks the
 //  player.
@@ -783,6 +827,7 @@ void add_tests_OverworldRoute(UnitTestDatabase& database){
     database.add<Test_OverworldRoute>("Viridian Mart to Pewter Gym", test_viridian_mart_to_pewter_gym);
     database.add<Test_OverworldRoute>("wild steps", test_wild_steps);
     database.add<Test_OverworldRoute>("no hold into a sign", test_no_hold_into_sign);
+    database.add<Test_OverworldRoute>("no hold into a ledge", test_no_hold_into_ledge);
     database.add<Test_OverworldRoute>("step rules", test_step_rules);
     database.add<Test_OverworldRoute>("maps", test_maps);
     database.add<Test_OverworldRoute>("Cerulean Cave entrance to Mewtwo", test_entrance_to_mewtwo);
