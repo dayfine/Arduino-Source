@@ -18,8 +18,11 @@ PR tree and sizes: [FRLG_SIZING.md](FRLG_SIZING.md), [DEMO_PLAN.md](DEMO_PLAN.md
 > - [ ] M5 Game simulator
 > - [ ] M6 Run modes, trainer sight and level targets
 > - [ ] M7 Names and starter RNG
-> - [ ] M8 FireRed beyond Brock
+> - [ ] M8 FireRed end to end: new game → Hall of Fame
 > - [ ] M9 Other games: grid-free routes for 3D titles (later)
+> - [ ] M10 FireRed end to end with options: other starters, choices, optional tasks
+> - [ ] M11 FireRed end to end with the Sevii Islands and Mewtwo
+> - [ ] M12 Full RNG integration
 
 ## M1 Shared AutoStory and navigation core
 - **Scope:** shared select database, story index and stats (SV refactors), grid and route planner, ScreenMachine/StepTrace, JSON maps and loader, LegWalker and the route log, story events and segments, story steps and run options (checkpoint dropdowns, Checks, language, attempts).
@@ -58,11 +61,27 @@ PR tree and sizes: [FRLG_SIZING.md](FRLG_SIZING.md), [DEMO_PLAN.md](DEMO_PLAN.md
 - **PRs:** about 4–5. Can start now; it joins the story program after M2.
 - **Done when:** AutoStory names the player and gets an RNG'd starter, then continues to Brock.
 
-## M8 FireRed beyond Brock
+## M8 FireRed end to end: new game → Hall of Fame
 - **Scope:** segments from Pewter to the Hall of Fame, following the outline in [#130](https://github.com/dayfine/Arduino-Source/pull/130) (92 rows). Needs HMs and field moves, puzzles, party management, and the Silph Scope and Poke Flute events.
 - **PRs:** about 10–15, one per segment. About 8–12k code, 3–4k tests.
-- **Done when:** each segment passes 3/3 on the console; the Hall of Fame closes the milestone.
+- **Reuse:** the Elite Four and Champion segment builds on `EliteFourFarmer` and `PokemonLeagueDetectors`.
+- **Done when:** each segment passes 3/3 on the console, and one run goes from a new game to the Hall of Fame with default choices.
 
 ## M9 Other games (later)
-- **Scope:** a grid-free route log and position type, and adapters for 3D games (SV, LA) on the same story engine.
+- **Scope:** a grid-free route log and position type, and adapters for 3D games (SwSh, LA) on the same story engine.
 - **Done when:** one 3D-game segment runs on the shared steps.
+
+## M10 FireRed end to end with options
+- **Scope:** table rows that branch on a choice: the other two starters (rival teams change), gift picks such as the Mt. Moon fossil, and optional tasks (extra catches, items, side areas) a run can switch on.
+- **PRs:** about 4–6, after M8.
+- **Done when:** a new game → Hall of Fame run passes with each starter, and each optional task passes 3/3 in its segment.
+
+## M11 FireRed end to end with the Sevii Islands and Mewtwo
+- **Scope:** the post-game story (Islands One to Seven, the Ruby and Sapphire, the Network Machine) and Cerulean Cave up to Mewtwo.
+- **PRs:** about 6–8, after M8. Sevii maps come from the same pret/pokefirered generator.
+- **Done when:** one run goes from the Hall of Fame save to Mewtwo caught, with each segment 3/3.
+
+## M12 Full RNG integration
+- **Scope:** every RNG-able Pokemon on the way can be RNG'd in place: starter (M7), gifts (Lapras, Eevee, fossils), statics (Snorlax, legendary birds, Mewtwo) and the roaming dog, through `StarterRng`, `GiftRng`, `StaticRng`, `RoamingLegendaryRng` and the RNG navigation. AutoStory walks there and saves, the RNG program runs, AutoStory continues. Routines locked in program classes move to callable functions in small upstream PRs first.
+- **PRs:** about 5–8, after M7; the post-game targets after M11.
+- **Done when:** a full run with RNG switched on ends with each targeted Pokemon matching its RNG target.
