@@ -51,6 +51,13 @@ std::optional<LitDoorway> find_lit_doorway(const ImageViewRGB32& screen);
 //  dark everywhere but not warm, so it is not inside.
 bool indoors(const ImageViewRGB32& screen);
 
+//  After a wild battle out of doors: fails with a screenshot if the screen
+//  turns into a room within 10 s, which means the party fainted and the
+//  game took us home (r258 lost its third training battle in Route 202's
+//  grass, woke in Twinleaf, and walked the Sandgem plan there). Returns
+//  once the outside shows, not black and not a room.
+void fail_if_blacked_out(VideoStream& stream, ProControllerContext& context, const std::string& label);
+
 //  A lit street lamp's head inside `box` (0 to 1 of the screen): the mean
 //  x of its white core, or nothing if fewer than a lamp's worth of white
 //  pixels show there (by day the lamps are not lit).

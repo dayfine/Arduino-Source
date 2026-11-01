@@ -683,10 +683,8 @@ namespace PokemonAutomation {
             VideoStream& stream, ProControllerContext& context, const MapSet& maps,
             std::vector<TrainerSight>& trainers, const RouteTrainerFight& fight
         ) {
-            // From where the catch's save may stand (not the save spot under
-            // the ledge: a save there has Potions and resumes past training),
-            // into the grass of the training column: north to the trees, east
-            // to the 202 sign, and taps back west.
+            // From where the catch's save may stand (a save on the save spot
+            // has Potions and skips training) into the training column's grass.
             const std::vector<TilePos> grass = story_after_training_area();
             walk_route(stream, context, maps, story_catch_save_area(),
                 [&](const TilePos& pos) {
@@ -697,6 +695,7 @@ namespace PokemonAutomation {
             for (size_t battle = 0; battle < 3; battle++) {
                 route_status(stream, "Training battle " + std::to_string(battle + 1) + "/3");
                 battle_1_pokemon(stream, context);
+                fail_if_blacked_out(stream, context, "Training battle " + std::to_string(battle + 1));
             }
         }
 
