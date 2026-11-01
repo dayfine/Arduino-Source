@@ -12,6 +12,7 @@
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "VideoGames/PokemonFRLG/Inference/Dialogs/PokemonFRLG_BattleDialogs.h"
 #include "VideoGames/PokemonFRLG/Inference/Dialogs/PokemonFRLG_DialogDetector.h"
+#include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_StartMenuDetector.h"
 #include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleFlashWatcher.h"
 #include "VideoGames/PokemonFRLG/PokemonFRLG_Navigation.h"
 #include "PokemonFRLG_PlayerFacingReader.h"
@@ -44,6 +45,9 @@ constexpr Milliseconds AFTER_WARP = 1500ms;
 //  A message set off by a leg's last step shows after the hold ends. Caught
 //  here, before the next leg's turn tap, which the message would swallow.
 constexpr Milliseconds AFTER_LEG_WATCH = 500ms;
+//  After a message closes: a trainer who saw the player speaks first, then
+//  the battle starts, with "<Trainer> would like to battle!" seconds later.
+constexpr Milliseconds TRAINER_BATTLE_WATCH = 6000ms;
 constexpr size_t MAX_INTERRUPTIONS_PER_LEG = 5;
 
 
@@ -114,6 +118,22 @@ public:
                 console
             );
         }
+        check_no_trainer_battle(console, context);
+    }
+
+private:
+    //  A trainer's battle can't be fled, and the walker must not try (console
+    //  B, 2026-11-01, Viridian Forest): it stops here for the caller.
+    static void check_no_trainer_battle(ConsoleHandle& console, ProControllerContext& context){
+        BattleDialogWatcher battle(COLOR_RED);
+        context.wait_for_all_requests();
+        if (wait_until(console, context, TRAINER_BATTLE_WATCH, {battle}) >= 0){
+            OperationFailedExceptionWithScreenshot::fire(
+                ErrorReportMode::NO_ERROR_REPORT,
+                "walk_overworld_route(): trainer battle: a battle started after a message on the overworld.",
+                console
+            );
+        }
     }
 };
 
@@ -172,6 +192,33 @@ void wait_out_warp(ConsoleHandle& console, ProControllerContext& context, const 
         OperationFailedExceptionWithScreenshot::fire(
             ErrorReportMode::SEND_ERROR_REPORT,
             "walk_overworld_route(): no fade in and out after walking onto the warp to " + step.end.map + ".",
+            console
+        );
+    }
+}
+
+//  Fails unless the overworld is up. Under the START menu or a message the
+//  D-pad only moves a cursor, and legs to a wall seem to go fine: three
+//  "walked" that way in Viridian Forest without the player moving (console B,
+//  2026-11-01).
+void check_overworld(ConsoleHandle& console, ProControllerContext& context, const RouteStep& step){
+    context.wait_for_all_requests();
+    VideoSnapshot screen = console.video().snapshot();
+    if (!screen){
+        return;
+    }
+    const char* open = nullptr;
+    if (StartMenuDetector(COLOR_RED).detect(screen)){
+        open = "the START menu";
+    }else if (SelectionDialogDetector(COLOR_RED).detect(screen)){
+        open = "a menu";
+    }else if (WhiteDialogDetector(COLOR_RED).detect(screen)){
+        open = "a message";
+    }
+    if (open != nullptr){
+        OperationFailedExceptionWithScreenshot::fire(
+            ErrorReportMode::SEND_ERROR_REPORT,
+            std::string("walk_overworld_route(): ") + open + " is open, before: " + to_string(step),
             console
         );
     }
@@ -280,6 +327,7 @@ void walk_overworld_route(
     const DpadMover mover;
     for (const RouteStep& step : route){
         console.log("Route: " + to_string(step));
+        check_overworld(console, context, step);
         switch (step.action){
         case RouteAction::WALK:
             //  Turning first, with a tap, makes the hold start from a standstill
