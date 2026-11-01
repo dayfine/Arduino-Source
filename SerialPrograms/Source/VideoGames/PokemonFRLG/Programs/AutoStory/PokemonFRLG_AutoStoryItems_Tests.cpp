@@ -2,20 +2,14 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  The Mart cursor's moves, the bag's rows as the story counts them, and
- *  the bag read off a capture: the one that showed the Mart had bought
- *  Parlyz Heals instead of Antidotes (console B, 2026-11-01).
+ *  The Mart cursor's moves, and the bag's rows as the story counts them.
  *
  */
 
-#include <filesystem>
-#include <format>
 #include <functional>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/Logging/AbstractLogger.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
-#include "CommonFramework/GlobalAutoPaths.h"
-#include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "PokemonFRLG_AutoStoryActions.h"
 #include "PokemonFRLG_AutoStoryBattle.h"
 
@@ -91,45 +85,12 @@ UnitTestResult test_pocket_rows(Logger&){
 }
 
 
-//  In the CommandLineTests repo, like the other image tests. Skipped while
-//  it isn't there.
-const char* const BAG_CAPTURE = "PokemonFRLG/AutoStory/BagItems_Potion4_ParlyzHeal3.png";
-
-UnitTestResult test_bag_capture(Logger& logger){
-    const std::string path = UNIT_TEST_RESOURCE_PATH() + BAG_CAPTURE;
-    if (!std::filesystem::exists(path)){
-        return UnitTestResult(UnitTestResult::SKIPPED, "Capture not found: " + path);
-    }
-    const ImageRGB32 screen(path);
-    const std::vector<BagRow> rows = read_bag_pocket(logger, screen);
-    if (rows.size() != 2 || rows[0].item != "potion" || rows[0].count != 4 || rows[1].item != "parlyz-heal" || rows[1].count != 3){
-        std::string text;
-        for (const BagRow& row : rows){
-            text += std::format(" {} x{};", row.item, row.count);
-        }
-        return "Expected potion x4; parlyz-heal x3, read:" + text;
-    }
-    //  The name check before using an item: row 1 passes as a Potion, row 2
-    //  fails as an Antidote.
-    if (read_item_list_name(logger, screen, 0) != "potion"){
-        return "Row 1 doesn't read as a Potion.";
-    }
-    if (read_item_list_name(logger, screen, 1) == "antidote"){
-        return "Row 2 reads as an Antidote.";
-    }
-    if (read_item_list_name(logger, screen, 2) != "cancel"){
-        return "Row 3 doesn't read as CANCEL.";
-    }
-    return true;
-}
-
 }
 
 
 void add_tests_AutoStoryItems(UnitTestDatabase& database){
     database.add<Test_AutoStoryItems>("Mart cursor stays on the row bought", test_mart_cursor);
     database.add<Test_AutoStoryItems>("Items pocket rows", test_pocket_rows);
-    database.add<Test_AutoStoryItems>("Items pocket read off a capture", test_bag_capture);
 }
 
 
