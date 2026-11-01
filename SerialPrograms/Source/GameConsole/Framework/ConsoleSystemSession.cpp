@@ -50,6 +50,7 @@ ConsoleSystemSession::~ConsoleSystemSession(){
     );
 }
 ConsoleSystemSession::ConsoleSystemSession(
+    Logger& base_logger,
     ConsoleSystemOption& option,
     bool allow_commands_while_locked,
     size_t console_number,
@@ -57,7 +58,7 @@ ConsoleSystemSession::ConsoleSystemSession(
 )
     : m_allow_commands_while_locked(allow_commands_while_locked)
     , m_console_number(console_number)
-    , m_logger(global_logger_raw(), "Console " + std::to_string(console_number))
+    , m_logger(base_logger, "Console " + std::to_string(console_number))
     , m_option(option)
     , m_video(m_logger, option.m_video)
     , m_audio(m_logger, option.m_audio)
@@ -78,10 +79,7 @@ ConsoleSystemSession::ConsoleSystemSession(
 
     update_status();
     m_history.set_audio_session(m_audio);
-    m_history.start(
-        m_audio.input_choice(),
-        m_video.current_source() != nullptr
-    );
+    m_history.start(m_audio.input_choice(), m_video.current_source() != nullptr);
 
     try{
         m_overlay.add_stat(m_memory_usage->m_system);

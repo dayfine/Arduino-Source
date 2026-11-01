@@ -40,11 +40,13 @@ MultiConsoleSystemSession::~MultiConsoleSystemSession(){
 }
 
 MultiConsoleSystemSession::MultiConsoleSystemSession(
+    Logger& base_logger,
     MultiConsoleSystemOption& option,
     bool allow_commands_while_locked,
     std::optional<uint64_t> program_tracking_id
 )
     : m_logger(global_logger_tagged())
+    , m_base_logger(base_logger)
     , m_option(option)
     , m_allow_commands_while_locked(allow_commands_while_locked)
     , m_program_tracking_id(program_tracking_id)
@@ -54,6 +56,7 @@ MultiConsoleSystemSession::MultiConsoleSystemSession(
     for (size_t c = 0; c < count; c++){
         m_consoles.emplace_back(
             std::make_unique<ConsoleSystemSession>(
+                m_base_logger,
                 option[c],
                 allow_commands_while_locked,
                 c,
@@ -121,6 +124,7 @@ void MultiConsoleSystemSession::set_active_consoles(size_t count){
         for (size_t c = 0; c < count; c++){
             m_consoles.emplace_back(
                 std::make_unique<ConsoleSystemSession>(
+                    m_base_logger,
                     m_option[c],
                     m_allow_commands_while_locked,
                     c,

@@ -20,6 +20,7 @@
 #include "CommonFramework/AudioPipeline/Spectrum/FFTStreamer.h"
 #include "CommonFramework/GlobalAutoPaths.h"
 #include "CommonFramework/ProgramStats/StatsTracking.h"
+#include "CommonFramework/RunRecord_Tests.h"
 #include "CommonFramework/Tools/GlobalThreadPools.h"
 #include "CommonFramework/Windows/LabControl.h"
 #include "CommonTools/VisualDetectors/BlackBorderDetector.h"
@@ -62,6 +63,7 @@ UnitTestDatabase make_UNIT_TESTS_ALL(){
     add_tests_SinkPipeline(ret);
     add_tests_AudioFileLoader(ret);
     add_tests_LabControl(ret);
+    add_tests_RunRecord(ret);
     OCR::add_tests(ret);
     Kernels::add_tests(ret);
     NintendoSwitch::add_tests_CheckOnlineDetector(ret);
