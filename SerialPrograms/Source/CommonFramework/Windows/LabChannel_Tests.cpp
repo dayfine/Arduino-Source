@@ -15,6 +15,7 @@
 #include "Common/Cpp/Json/JsonObject.h"
 #include "Common/Cpp/Json/JsonValue.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
+#include "CommonFramework/BuildCommit.h"
 #include "LabRequest.h"
 #include "LabRunFiles.h"
 #include "LabChannel_Tests.h"
@@ -339,13 +340,14 @@ UnitTestResult test_result_json(){
 UnitTestResult test_meta_json(){
     RunRecord record{
         .run_id = "20261101-153012123456-007", .program = "PokemonFRLG:AutoStory",
-        .version = "v0.72.1-beta", .commit = "0123456789ab-dirty",
+        .version = "v0.72.1-beta", .executable = "/lab/builds/bdsp-r259/SerialPrograms",
         .settings = R"({"START_CHECKPOINT": 8})",
     };
     const std::string text = run_meta_json(record);
     if (!has_json_line(text, 4, "program", "\"PokemonFRLG:AutoStory\"") ||
         !has_json_line(text, 4, "version", "\"v0.72.1-beta\"") ||
-        !has_json_line(text, 4, "commit", "\"0123456789ab-dirty\"") ||
+        !has_json_line(text, 4, "executable", "\"/lab/builds/bdsp-r259/SerialPrograms\"") ||
+        !has_json_line(text, 4, "commit", std::format("\"{}\"", PROGRAM_COMMIT)) ||
         !has_json_line(text, 8, "START_CHECKPOINT", "8")
     ){
         return "meta.json names the program and build and embeds the settings as JSON:\n" + text;

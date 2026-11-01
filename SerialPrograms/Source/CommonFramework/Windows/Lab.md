@@ -158,7 +158,7 @@ folders are kept; older ones go when a run starts.
 
 | File | Content |
 |---|---|
-| `meta.json` | What ran: `run_id`, `program`, `version`, `commit` (the git commit the app was built from, `-dirty` with local changes) and `settings` (the program's settings as the settings file stores them). Written when the run starts. |
+| `meta.json` | What ran: `run_id`, `program`, `version`, `executable` (the app's path), `commit` (the git commit the build was made from, `-dirty` with local changes) and `settings` (the program's settings as the settings file stores them). Written when the run starts. |
 | `result.json` | What the run did, without its events and log (below). Rewritten as the run goes; final once `status` is `terminal`. Poll it, or let `labctl.sh wait RUN_ID` do it. |
 | `events.jsonl` | One JSON object per line: the events the program reports (checkpoint, step, attempt, pose, ...), the errors it reported (`"kind":"error"`), and the console probes taken during the run or within two minutes after it ended (`"kind":"probe"`). Appended as they happen. |
 | `log.txt` | The run's own log: the program's and its console's lines, nothing from before or after. Appended as the run goes, up to 8 MiB; a last line says how many lines were left out past that. |
