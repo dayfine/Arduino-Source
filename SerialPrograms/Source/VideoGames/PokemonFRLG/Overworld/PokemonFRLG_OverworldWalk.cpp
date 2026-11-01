@@ -12,6 +12,7 @@
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "VideoGames/PokemonFRLG/Inference/Dialogs/PokemonFRLG_BattleDialogs.h"
 #include "VideoGames/PokemonFRLG/Inference/Dialogs/PokemonFRLG_DialogDetector.h"
+#include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_StartMenuDetector.h"
 #include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleFlashWatcher.h"
 #include "VideoGames/PokemonFRLG/PokemonFRLG_Navigation.h"
 #include "PokemonFRLG_PlayerFacingReader.h"
@@ -177,6 +178,33 @@ void wait_out_warp(ConsoleHandle& console, ProControllerContext& context, const 
     }
 }
 
+//  Fails unless the overworld is up. Under the START menu or a message the
+//  D-pad only moves a cursor, and legs to a wall seem to go fine: three
+//  "walked" that way in Viridian Forest without the player moving (console B,
+//  2026-11-01).
+void check_overworld(ConsoleHandle& console, ProControllerContext& context, const RouteStep& step){
+    context.wait_for_all_requests();
+    VideoSnapshot screen = console.video().snapshot();
+    if (!screen){
+        return;
+    }
+    const char* open = nullptr;
+    if (StartMenuDetector(COLOR_RED).detect(screen)){
+        open = "the START menu";
+    }else if (SelectionDialogDetector(COLOR_RED).detect(screen)){
+        open = "a menu";
+    }else if (WhiteDialogDetector(COLOR_RED).detect(screen)){
+        open = "a message";
+    }
+    if (open != nullptr){
+        OperationFailedExceptionWithScreenshot::fire(
+            ErrorReportMode::SEND_ERROR_REPORT,
+            std::string("walk_overworld_route(): ") + open + " is open, before: " + to_string(step),
+            console
+        );
+    }
+}
+
 void start_surf(ConsoleHandle& console, ProControllerContext& context, Direction direction, bool facing_water){
     //  "The water is a deep blue... Would you like to SURF?", with YES selected.
     //  An A pressed while the player is still turning is lost.
@@ -278,6 +306,7 @@ void walk_overworld_route(
     const DpadMover mover;
     for (const RouteStep& step : route){
         console.log("Route: " + to_string(step));
+        check_overworld(console, context, step);
         switch (step.action){
         case RouteAction::WALK:
             //  Turning first, with a tap, makes the hold start from a standstill
