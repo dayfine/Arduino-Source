@@ -91,8 +91,8 @@ Goals:
    - A story simulation runs the whole table against a fake game (failure injection, reloads,
      the Mart cursor) in English and Japanese.
    - The console runs that remain verify the result.
-   - Planned: a walker simulator with a grid world and seeded fake battles, which checks that every
-     route either ends on the planned tile or fails loudly.
+   - Planned: a game simulator (section 6a), which checks that every route ends on the planned
+     tile or fails loudly, and exercises battles, items and whiteouts.
 8. **Evidence by default.**
    - One log format for checkpoints, events and routes across games.
    - Run records (planned, [#116](https://github.com/dayfine/Arduino-Source/pull/116)/#132) keep each run's log, events and the frames of failed attempts.
@@ -138,6 +138,49 @@ Strategy and checking are separate options:
 SPEEDRUN follows a known speedrun route (pokeguy's LeafGreen 1:59:34 notes). SAFE heals early and
 trains to level targets per checkpoint. Tables name the choices a mode switches. Trainer sight
 from the decomp lets the planner avoid or seek trainers.
+
+## 6a. Game simulator (planned; runs alongside the MVP, doesn't block it)
+
+A seeded fake game that the story engine and walker run against, with odds taken from the decomp
+so it behaves like the real game.
+
+- **Tracked state.**
+  - Party: species, level, HP, EXP, status, moves with PP.
+  - Bag (Potions, Antidotes, Parlyz Heals, Repels, Poke Balls) and money.
+  - Repel steps left.
+  - The real tile and facing, beside the tile the walker believes.
+  - The last Pokemon Center.
+- **Encounters.** Each map's grass tiles, encounter rate and slots (species, levels) from the
+  decomp, e.g. pokefirered `wild_encounters.json`. Each grass step rolls for an encounter.
+  A Repel blocks encounters below the lead's level, counts down per step and wears off with its
+  message.
+- **Battles.** A simplified damage model: base stats, move power, type chart and dice. It produces
+  HP loss per turn, status from the opponent's moves (e.g. Weedle's Poison Sting), turns to win,
+  and the chance of a flee succeeding.
+- **Battle aftermath.**
+  - EXP and level-ups follow the decomp's yields and growth rates.
+  - A new move from the learnset, with a full move set, raises the learn-move prompts.
+  - A trainer starts its battle when the player steps into its line of sight.
+  - Fainting with the whole party means a whiteout: the player goes back to the last Pokemon
+    Center with half the money.
+- **Timing.** The program notices a battle 2–5 s late while still holding the D-pad; the
+  simulator reproduces that.
+- **Uses.**
+  1. Walk every story route across thousands of seeds and compare the believed tile with the real
+     one. That's the drift bug.
+  2. Exercise the rare paths the console seldom hits: Potions and status cures, the heal
+     threshold, a Repel wearing off, learn-move prompts, whiteout recovery.
+  3. Statistics per checkpoint (success rate, time, Potions used) under each run mode. These set
+     the level targets and the trainer plan.
+- **Placement.** The core is shared (#114 / #122). Each game supplies a data generator from its
+  decomp (encounters, species, learnsets, trainer parties, type chart) and a fake executor.
+- **Size.** About 1.2k code and 0.6k tests for the core, plus about 0.5k and generated data per
+  game.
+- **Steps.**
+  1. Encounters, Repel and position: enough for the drift bug.
+  2. HP, status, EXP, moves, whiteouts and run-mode statistics.
+
+  Both run in parallel with the MVP; neither blocks it.
 
 ## 7. Known limits and open problems
 
