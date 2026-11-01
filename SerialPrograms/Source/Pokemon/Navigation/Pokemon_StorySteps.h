@@ -36,8 +36,10 @@
 #include <string>
 #include <vector>
 #include "CommonFramework/Language.h"
+#include "Pokemon/AutoStory/Pokemon_AutoStoryStats.h"
 #include "Pokemon_Grid.h"
 #include "Pokemon_StoryEvents.h"
+#include "Pokemon_StorySegments.h"
 #include "Pokemon_TilePose.h"
 
 namespace PokemonAutomation{
@@ -211,6 +213,11 @@ Checkpoint build_story_checkpoint(const StoryCheckpoint& data, StoryStepExecutor
 //  repeated steps, a route or READY without a target, empty legs, a GAME
 //  step without a variant, TRAIN without battles, SHOP without items.
 std::vector<std::string> lint_story_checkpoint(const StoryCheckpoint& data);
+
+
+//  Adds a segment's run to the program's stats: the segment, each checkpoint
+//  that passed, each reload.
+void record_story_stats(AutoStoryStats& stats, const SegmentReport& report);
 
 
 //  A pose on one of `tiles` of `map`, facing `facing` if set: TILE for one

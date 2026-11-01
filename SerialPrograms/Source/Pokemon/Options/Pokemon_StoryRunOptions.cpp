@@ -34,8 +34,25 @@ const EnumDropdownDatabase<Language>& StoryLanguage_Database(){
 }
 
 
-StoryRunOptions::StoryRunOptions()
-    : GroupOption("Checkpoint Retries", LockMode::LOCK_WHILE_RUNNING)
+std::string story_checkpoint_label(const StoryCheckpoint& checkpoint){
+    return checkpoint.title.empty() ? checkpoint.id : checkpoint.id + " " + checkpoint.title;
+}
+
+
+StoryRunOptions::StoryRunOptions(const StringSelectDatabase& checkpoints)
+    : GroupOption("Story Run", LockMode::LOCK_WHILE_RUNNING)
+    , START_CHECKPOINT(
+        "<b>Start checkpoint:</b><br>The program starts from this checkpoint's save.",
+        checkpoints,
+        LockMode::LOCK_WHILE_RUNNING,
+        0
+    )
+    , END_CHECKPOINT(
+        "<b>End checkpoint:</b><br>The program stops after this checkpoint.",
+        checkpoints,
+        LockMode::LOCK_WHILE_RUNNING,
+        checkpoints.size() == 0 ? 0 : checkpoints.size() - 1
+    )
     , ATTEMPTS_PER_CHECKPOINT(
         "<b>Attempts per checkpoint:</b><br>A failed checkpoint reloads its save and runs again, up to this many times in all.",
         LockMode::LOCK_WHILE_RUNNING,
@@ -60,10 +77,27 @@ StoryRunOptions::StoryRunOptions()
         Language::English
     )
 {
+    PA_ADD_OPTION(START_CHECKPOINT);
+    PA_ADD_OPTION(END_CHECKPOINT);
     PA_ADD_OPTION(ATTEMPTS_PER_CHECKPOINT);
     PA_ADD_OPTION(STOP_AT_FIRST_FAILURE);
     PA_ADD_OPTION(CHECKS);
     PA_ADD_OPTION(LANGUAGE);
+}
+
+size_t StoryRunOptions::start_index() const{
+    return START_CHECKPOINT.index();
+}
+
+size_t StoryRunOptions::end_index() const{
+    return END_CHECKPOINT.index();
+}
+
+std::string StoryRunOptions::check_validity() const{
+    if (start_index() > end_index()){
+        return "The start checkpoint comes after the end checkpoint.";
+    }
+    return GroupOption::check_validity();
 }
 
 SegmentPolicy StoryRunOptions::policy() const{
