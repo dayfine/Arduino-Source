@@ -23,7 +23,9 @@ using namespace Pokemon;
 //      along the row above the ledge stops at column 30 and column 30 runs
 //      north to row 4 (r75), the catch spot's walls (2026-10-29/30); trees,
 //      not grass, at (15..20, 28..29) below the catch patch (r253: west
-//      along row 29 stopped at column 21, beside the trees).
+//      along row 29 stopped at column 21, beside the trees); a tree at
+//      (21, 30), south of the pocket at (21, 29) where the catch's save
+//      loads (r254: south from there was blocked at once).
 //  Status: no checkpoint has run on this grid yet. 00.04 passed on the
 //      image-traced grid it replaces (26 rows for 32) and must be re-run;
 //      its legs south of the catch spot are three rows longer here.
@@ -88,7 +90,7 @@ const TileGrid& grid(){
         R"(###""""""......""""""..........#####)",  //  27
         R"(###""""""......######..........#####)",  //  28
         R"(###""""""......######..........#####)",  //  29
-        R"(#####################..........#####)",  //  30
+        R"(######################.........#####)",  //  30
         R"(#####################..........#####)",  //  31
     });
     return grid;
