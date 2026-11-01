@@ -51,7 +51,6 @@ public:
     FloatingPointOption CATCH_FANFARE_THRESHOLD;
 
 private:
-    void add_options();
     virtual void on_config_value_changed(void* object) override;
 };
 
