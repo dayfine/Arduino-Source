@@ -8,6 +8,7 @@
 #include "Common/Cpp/Exceptions.h"
 #include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "CommonFramework/Notifications/ProgramNotifications.h"
+#include "CommonFramework/VideoPipeline/VideoOverlay.h"
 #include "Pokemon/AutoStory/Pokemon_AutoStoryStats.h"
 #include "Pokemon/AutoStory/Pokemon_StorySegments.h"
 #include "Pokemon/Pokemon_Strings.h"
@@ -118,6 +119,10 @@ Pokemon::SegmentHooks story_hooks(SingleSwitchProgramEnvironment& env, StoryEnv&
     };
     hooks.log = [&env](const std::string& line){
         env.console.log(line);
+    };
+    //  The checkpoint and the step under way, for whoever watches the stream.
+    hooks.status = [&env](const std::string& line){
+        env.console.overlay().add_log(line);
     };
     return hooks;
 }
