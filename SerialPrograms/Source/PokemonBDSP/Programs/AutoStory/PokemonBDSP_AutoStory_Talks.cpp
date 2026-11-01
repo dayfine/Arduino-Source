@@ -69,7 +69,7 @@ bool talk_or_fight(VideoStream& stream, ProControllerContext& context, const std
         }
         if (battle_menu.detect(*frame.frame) || battle_menu_standard.detect(*frame.frame) || black.detect(*frame.frame)){
             route_status(stream, "Fighting " + label + ".");
-            fight_story_battle(stream, context, label, doubles);
+            fight_story_battle(stream, context, label, doubles ? BattleFormat::DOUBLES : BattleFormat::SINGLES);
             // Lines after the battle (Roark's badge, r211d) keep the menu
             // from opening: finish them before the Potion.
             if (dialogue_opens(stream, context, 3000ms)){
