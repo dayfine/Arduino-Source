@@ -194,7 +194,9 @@ struct Simulation{
     std::vector<std::pair<std::string, Pokemon::Pose>> saves;
     Pokemon::SegmentPolicy policy;
 
+    //  A language no reader supports, so a step that needed text would show.
     Pokemon::SegmentReport run(const Pokemon::SegmentRange& range){
+        game.set_language(Language::Japanese);
         Pokemon::Segment segment;
         segment.id = "00";
         for (const StoryCheckpoint& data : story_checkpoints()){

@@ -84,6 +84,9 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
 
     StoryExecutor executor(story);
     executor.set_checks(RETRIES.checks());
+    //  For #120's item-name reads (read_item_list_name()), which still read
+    //  English; no other step reads text.
+    executor.set_language(RETRIES.language());
     Pokemon::Segment segment = make_story_segment(checkpoints, executor);
     Pokemon::SegmentHooks hooks;
     hooks.reload = [&story](Pokemon::RunState&){
