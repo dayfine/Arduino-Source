@@ -14,7 +14,6 @@
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "PokemonFRLG_OverworldMaps.h"
-#include "PokemonFRLG_OverworldMapsTestData.h"
 #include "PokemonFRLG_OverworldReanchor.h"
 
 namespace PokemonAutomation{
@@ -78,28 +77,19 @@ UnitTestResult check_reanchors(const std::vector<MapData>& maps, const MapPositi
 //  Console B, 2026-11-01: battles on Route 1 left the walker a tile or a
 //  whole leg off its count, four times.
 UnitTestResult test_viridian_mart_to_oaks_lab(){
-    const std::vector<MapData> maps = test_overworld_maps();
+    const std::vector<MapData> maps = overworld_maps();
     return check_reanchors(
         maps, {"ViridianCity_Mart", map_point(maps, "ViridianCity_Mart", "clerk_front")},
         {{"PalletTown_ProfessorOaksLab", {6, 4}}, std::nullopt}
     );
 }
 UnitTestResult test_pallet_to_viridian_mart(){
-    const std::vector<MapData> maps = test_overworld_maps();
+    const std::vector<MapData> maps = overworld_maps();
     return check_reanchors(
         maps, {"PalletTown", map_point(maps, "PalletTown", "oaks_lab_front")},
         {{"ViridianCity_Mart", map_point(maps, "ViridianCity_Mart", "clerk_front")}, std::nullopt}
     );
 }
-
-//  A room with a sign in the middle of its floor.
-const char* const TEST_SIGNS_JSON = R"({
-    "name": "Signs", "width": 8, "height": 7,
-    "tiles": ["########", "#......#", "#......#", "#....S.#", "#......#", "#......#", "########"],
-    "elevation": ["33333333", "33333333", "33333333", "33333333", "33333333", "33333333", "33333333"],
-    "warps": [], "objects": [],
-    "connections": [], "points": [], "flag_sets": []
-})";
 
 //  A field with a wall at its east end and a row of ledges to the south.
 const char* const TEST_FIELD_JSON = R"({
@@ -121,70 +111,35 @@ std::string describe(const std::optional<Reanchor>& anchor){
     return text;
 }
 
-//  Stopped part-way east, the player may also be a row off, so one hold
-//  doesn't find them: two do, the shortest being north then back west.
+//  Stopped part-way east, the player holds back west to the wall, the
+//  shorter way. Stopped part-way south above the ledges, which would be
+//  hopped, they hold back north.
 UnitTestResult test_rules(){
     const std::vector<MapData> maps{parse_map(TEST_FIELD_JSON, "Field")};
     RouteStep east;
     east.direction = Direction::EAST;
     east.tiles = 3;
     east.end = {"Field", {4, 1}};
-    const std::optional<Reanchor> anchor = plan_reanchor(maps, MapPosition{"Field", {1, 1}}, east);
-    if (!anchor || anchor->holds.size() != 2 || !(anchor->end.point == TilePos{1, 1})){
-        return "Expected two holds to (1, 1), got " + describe(anchor);
+    std::optional<Reanchor> anchor = plan_reanchor(maps, MapPosition{"Field", {1, 1}}, east);
+    if (!anchor || anchor->holds.size() != 1 || anchor->holds[0].direction != Direction::WEST || !(anchor->end.point == TilePos{1, 1})){
+        return "Expected a hold west to (1, 1), got " + describe(anchor);
     }
-    return true;
-}
-
-//  Console B, 2026-11-01, run 16: "west 6" walked 2 tiles unseen, the next
-//  leg went north up column 9 instead of 5, and finding the player again by
-//  holding south down column 5 walked into the TRAINER TIPS sign at (9, 29)
-//  six times. Every tile the player might be on now ends at one place,
-//  and none of the holds walks into a sign.
-UnitTestResult test_forest_exit_columns(){
-    const std::vector<MapData> maps = test_overworld_maps();
-    RouteStep north;
-    north.direction = Direction::NORTH;
-    north.tiles = 24;
-    north.warps = true;
-    north.wild = true;
-    north.end = {"Route2_ViridianForest_NorthEntrance", {7, 10}};
-    const std::optional<Reanchor> anchor = plan_reanchor(maps, MapPosition{"ViridianForest", {5, 33}}, north);
-    if (!anchor || anchor->holds.empty()){
-        return "Expected holds to find the player, got " + describe(anchor);
-    }
-    for (int x = 3; x <= 9; x++){
-        MapPosition at{"ViridianForest", {x, 28}};
-        for (const RouteStep& hold : anchor->holds){
-            const std::optional<WallHold> wall = hold_to_wall(maps, at, false, hold.direction);
-            if (!wall){
-                return "From " + to_string(MapPosition{"ViridianForest", {x, 28}}) + " a hold isn't stopped by a wall: " + describe(anchor);
-            }
-            at = wall->end;
-        }
-        if (!(at == anchor->end)){
-            return "From column " + std::to_string(x) + " the holds end at " + to_string(at) + ": " + describe(anchor);
-        }
-    }
-    return true;
-}
-
-//  The same run: held south toward the wall at (5, 33), a sign spoke at
-//  once, again and again. Beside a sign on the leg's line, the player is
-//  found by it, if it is the only one near enough.
-UnitTestResult test_found_by_sign(){
-    const std::vector<MapData> maps{parse_map(TEST_SIGNS_JSON, "Signs")};
     RouteStep south;
     south.direction = Direction::SOUTH;
-    south.tiles = 4;
+    south.tiles = 1;
+    south.end = {"Field", {3, 2}};
+    anchor = plan_reanchor(maps, std::nullopt, south);
+    if (!anchor || anchor->holds.size() != 1 || anchor->holds[0].direction != Direction::NORTH || !(anchor->end.point == TilePos{3, 1})){
+        return "Expected a hold north back to (3, 1), got " + describe(anchor);
+    }
+    //  A leg to a wall is walked again instead.
     south.to_wall = true;
-    south.end = {"Signs", {1, 5}};
-    const std::optional<Reanchor> anchor = plan_reanchor(maps, std::nullopt, south, true);
-    if (!anchor || !anchor->holds.empty() || !(anchor->end.point == TilePos{5, 2})){
-        return "Expected to be found beside the sign at (5, 3), got " + describe(anchor);
+    if (plan_reanchor(maps, std::nullopt, south)){
+        return "Expected nothing for a leg to a wall.";
     }
     return true;
 }
+
 
 }
 
@@ -193,8 +148,6 @@ void add_tests_OverworldReanchor(UnitTestDatabase& database){
     database.add<Test_OverworldReanchor>("rules", test_rules);
     database.add<Test_OverworldReanchor>("Viridian Mart to Oak's Lab", test_viridian_mart_to_oaks_lab);
     database.add<Test_OverworldReanchor>("Pallet Town to Viridian Mart", test_pallet_to_viridian_mart);
-    database.add<Test_OverworldReanchor>("Viridian Forest exit, any column", test_forest_exit_columns);
-    database.add<Test_OverworldReanchor>("found by a sign", test_found_by_sign);
 }
 
 

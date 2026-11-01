@@ -1,0 +1,122 @@
+{
+    "name": "PewterCity_PokemonCenter_1F",
+    "width": 15,
+    "height": 10,
+    "tiles": [
+        "#.#############",
+        "###############",
+        "....###..##....",
+        "....#######....",
+        "...............",
+        "...............",
+        "#L.........##..",
+        "...........##..",
+        ".......v.......",
+        "###############"
+    ],
+    "elevation": [
+        "030000000000000",
+        "000000000000000",
+        "333300033003333",
+        "333300000003333",
+        "333333333333333",
+        "330333333333333",
+        "044033333330033",
+        "330333333330033",
+        "333333333333333",
+        "000000000000000"
+    ],
+    "warps": [
+        {
+            "x": 6,
+            "y": 8,
+            "dest_map": "PewterCity",
+            "dest_warp": 5
+        },
+        {
+            "x": 7,
+            "y": 8,
+            "dest_map": "PewterCity",
+            "dest_warp": 5
+        },
+        {
+            "x": 8,
+            "y": 8,
+            "dest_map": "PewterCity",
+            "dest_warp": 5
+        },
+        {
+            "x": 1,
+            "y": 6,
+            "dest_map": "",
+            "dest_warp": 0
+        }
+    ],
+    "objects": [
+        {
+            "x": 2,
+            "y": 2,
+            "kind": "jigglypuff",
+            "flag": "",
+            "wander_x": 0,
+            "wander_y": 0
+        },
+        {
+            "x": 4,
+            "y": 8,
+            "kind": "gentleman",
+            "flag": "",
+            "wander_x": 0,
+            "wander_y": 0
+        },
+        {
+            "x": 7,
+            "y": 2,
+            "kind": "nurse",
+            "flag": "",
+            "wander_x": 0,
+            "wander_y": 0
+        },
+        {
+            "x": 1,
+            "y": 2,
+            "kind": "youngster",
+            "flag": "",
+            "wander_x": 0,
+            "wander_y": 0
+        },
+        {
+            "x": 13,
+            "y": 2,
+            "kind": "woman_1",
+            "flag": "",
+            "wander_x": 0,
+            "wander_y": 0
+        },
+        {
+            "x": 10,
+            "y": 7,
+            "kind": "gba_kid",
+            "flag": "",
+            "wander_x": 0,
+            "wander_y": 0
+        },
+        {
+            "x": 14,
+            "y": 6,
+            "kind": "gba_kid",
+            "flag": "",
+            "wander_x": 0,
+            "wander_y": 0
+        }
+    ],
+    "connections": [],
+    "points": [
+        {
+            "name": "nurse_front",
+            "x": 7,
+            "y": 4
+        }
+    ],
+    "flag_sets": []
+}

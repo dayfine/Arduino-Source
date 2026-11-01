@@ -4,12 +4,12 @@
  *
  */
 
+#include <algorithm>
 #include <format>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/Json/JsonArray.h"
 #include "Common/Cpp/Json/JsonObject.h"
 #include "Common/Cpp/Json/JsonValue.h"
-#include "CommonFramework/GlobalAutoPaths.h"
 #include "PokemonFRLG_OverworldMaps.h"
 
 namespace PokemonAutomation{
@@ -18,8 +18,6 @@ namespace PokemonFRLG{
 
 
 namespace{
-
-const char MAP_FOLDER[] = "PokemonFRLG/Maps/";
 
 const char* const MAP_NAMES[] = {
     //  From a new game to Brock.
@@ -53,7 +51,7 @@ const char* const MAP_NAMES[] = {
 
 
 //  The readers below take `where`, the source and the path to the object
-//  being read (e.g. "PokemonFRLG/Maps/CeruleanCity.json: warps[2]."), and
+//  being read (e.g. "Maps/CeruleanCity.json: warps[2]."), and
 //  name the field in what they throw.
 
 const JsonObject& as_object(const JsonValue& value, const std::string& where){
@@ -254,8 +252,13 @@ MapData parse_map(const std::string& json, const std::string& source){
 }
 
 MapData load_map(const std::string& name){
-    const std::string source = std::string(MAP_FOLDER) + name + ".json";
-    MapData map = read_map(load_json_file(RESOURCE_PATH() + source), source);
+    const std::string source = "Maps/" + name + ".json";
+    const std::vector<std::pair<std::string, std::string>>& files = overworld_map_json();
+    const auto file = std::find_if(files.begin(), files.end(), [&](const auto& item){ return item.first == name; });
+    if (file == files.end()){
+        throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, source + " is not built into the program.");
+    }
+    MapData map = read_map(parse_json(file->second), source);
     if (map.name != name){
         throw ParseException(source + ": name is \"" + map.name + "\", not \"" + name + "\".");
     }

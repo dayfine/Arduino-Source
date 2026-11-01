@@ -11,7 +11,6 @@
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "Pokemon/Navigation/Pokemon_LegPlanner.h"
 #include "PokemonFRLG_OverworldMaps.h"
-#include "PokemonFRLG_OverworldMapsTestData.h"
 #include "PokemonFRLG_OverworldRoute.h"
 
 namespace PokemonAutomation{
@@ -210,10 +209,10 @@ std::optional<Transition> press(const std::vector<MapData>& maps, const Located&
 }
 
 //  Whether holding `direction` stops the player where they are: a wall, or
-//  water they'd need to Surf onto. A leg that ends there can be held for
-//  longer than it takes, and walked again after an interruption. A person in
-//  the way doesn't count, since they may have wandered off, and neither does
-//  an edge to a map that isn't loaded.
+//  water they'd need to Surf onto. A leg that ends there can be
+//  held for longer than it takes, and walked again after an interruption. A
+//  person in the way doesn't count, since they may have wandered off, and
+//  neither does an edge to a map that isn't loaded.
 bool stops_at(const std::vector<MapData>& maps, const Located& player, Direction direction){
     const std::optional<Transition> transition = press(maps, player, direction);
     if (transition){
@@ -230,11 +229,9 @@ bool stops_at(const std::vector<MapData>& maps, const Located& player, Direction
     //  Held into a ledge the way it faces, the player hops down it (console
     //  B, 2026-11-01, Viridian City: "south 2 (to wall)" from the Pokemon
     //  Center hopped the ledge two rows down). The maps don't keep which way
-    //  a ledge faces, but none faces north (pokefirered has no
-    //  MB_JUMP_NORTH on any map loaded here), so it stops a player moving
-    //  north.
+    //  a ledge faces, so none is held into.
     if (is_ledge(map, ahead)){
-        return direction == Direction::NORTH;
+        return false;
     }
     if (in_bounds(map, ahead)){
         return object_at(map, ahead) == nullptr;
@@ -330,7 +327,9 @@ RouteStep to_route_step(const std::vector<MapData>& maps, const Pokemon::Leg<Loc
     step.facing_after = leg.facing_after;
     step.end = MapPosition{maps[leg.end.map].name, leg.end.state.position};
     if (leg.kind != Pokemon::LegKind::FACE){
-        //  Through tall grass, on any map the leg crosses, or on the water.
+        //  Tall grass on any map the leg crosses, or the water. Counted on the
+        //  start map only, "north 22" from Pallet Town through Route 1's grass
+        //  wasn't watched for battles (console B, 2026-11-01).
         step.wild = leg.wild || leg.start.state.surfing || leg.kind == Pokemon::LegKind::ACTION;
     }
     return step;
@@ -406,6 +405,18 @@ std::optional<Located> plain_step(const std::vector<MapData>& maps, const Locate
 }
 
 
+namespace{
+
+//  Holding north into a ledge stops the player: the maps don't keep which way
+//  a ledge faces, but FRLG's face south, east or west (pokefirered has no
+//  MB_JUMP_NORTH on any map these load). Only finding the player again
+//  relies on this; routes never hold into a ledge (stops_at()).
+bool ledge_stops_north(const std::vector<MapData>& maps, const Located& player, Direction direction){
+    return direction == Direction::NORTH && is_ledge(maps[player.map], player.state.position.next(direction));
+}
+
+}
+
 std::optional<WallHold> hold_to_wall(
     const std::vector<MapData>& maps,
     const MapPosition& from, bool surfing, Direction direction
@@ -413,7 +424,7 @@ std::optional<WallHold> hold_to_wall(
     std::optional<Located> player = locate(maps, from, surfing);
     WallHold hold;
     for (int c = 0; player && c <= MAX_HOLD_TILES; c++){
-        if (stops_at(maps, *player, direction)){
+        if (stops_at(maps, *player, direction) || ledge_stops_north(maps, *player, direction)){
             hold.end = MapPosition{maps[player->map].name, player->state.position};
             hold.tiles = c;
             return hold;
@@ -552,7 +563,7 @@ UnitTestResult test_step_rules(){
 
 //  The maps after the Hall of Fame, which clears the way to Cerulean Cave.
 std::vector<MapData> post_game_maps(){
-    return test_overworld_maps(map_flag_set(test_overworld_maps(), "after_hall_of_fame"));
+    return overworld_maps(map_flag_set(overworld_maps(), "after_hall_of_fame"));
 }
 
 MapPosition point_on(const std::vector<MapData>& maps, const std::string& map, const std::string& point){
@@ -582,7 +593,7 @@ UnitTestResult test_maps(){
     if (object_at(*city, {1, 13}) != nullptr){
         return "The cave guard is still there after the Hall of Fame.";
     }
-    if (object_at(*map_named(test_overworld_maps(), "CeruleanCity"), {1, 13}) == nullptr){
+    if (object_at(*map_named(overworld_maps(), "CeruleanCity"), {1, 13}) == nullptr){
         return "The cave guard is missing before the Hall of Fame.";
     }
     return true;
@@ -662,7 +673,7 @@ UnitTestResult test_pokemon_center_to_mewtwo(){
 
 UnitTestResult test_cave_guard_blocks(){
     //  Before the Hall of Fame the guard stands in the cave entrance.
-    const std::vector<MapData> maps = test_overworld_maps();
+    const std::vector<MapData> maps = overworld_maps();
     if (plan_overworld_route(maps, point_on(maps, "CeruleanCity_PokemonCenter_1F", "pc"), facing_mewtwo(maps))){
         return "Planned past the cave guard.";
     }
@@ -683,7 +694,7 @@ UnitTestResult test_mewtwo_tile_unreachable(){
 }
 
 UnitTestResult test_story_maps(){
-    const std::vector<MapData> maps = test_overworld_maps();
+    const std::vector<MapData> maps = overworld_maps();
     for (const char* name : {
         "PalletTown_PlayersHouse_2F", "PalletTown_ProfessorOaksLab", "Route1", "ViridianCity_Mart",
         "Route22", "Route2", "ViridianForest", "PewterCity", "PewterCity_Museum_1F", "PewterCity_Gym",
@@ -707,7 +718,7 @@ std::vector<std::string> maps_warped_into(const std::vector<RouteStep>& route){
 }
 
 UnitTestResult test_bedroom_to_oaks_lab(){
-    const std::vector<MapData> maps = test_overworld_maps();
+    const std::vector<MapData> maps = overworld_maps();
     std::vector<RouteStep> route;
     UnitTestResult result = check_route(
         maps, point_on(maps, "PalletTown_PlayersHouse_2F", "start"),
@@ -724,7 +735,7 @@ UnitTestResult test_bedroom_to_oaks_lab(){
 }
 
 UnitTestResult test_viridian_mart_to_pewter_gym(){
-    const std::vector<MapData> maps = test_overworld_maps();
+    const std::vector<MapData> maps = overworld_maps();
     std::vector<RouteStep> route;
     UnitTestResult result = check_route(
         maps, point_on(maps, "ViridianCity_Mart", "clerk_front"),
@@ -783,7 +794,8 @@ const char* const TEST_LEDGE_YARD_JSON = R"({
     "connections": [], "points": [], "flag_sets": []
 })";
 
-//  A ledge isn't a wall to hold into: the player would hop it. Viridian City,
+//  A ledge isn't a wall to hold into: moving the way it faces the player
+//  would hop it, and the maps don't say which way that is. Viridian City,
 //  from the Pokemon Center's door south to the row above the ledge.
 UnitTestResult test_no_hold_into_ledge(){
     const std::vector<MapData> maps{parse_map(TEST_LEDGE_YARD_JSON, "LedgeYard")};
@@ -798,7 +810,7 @@ UnitTestResult test_no_hold_into_ledge(){
         }
     }
     route.clear();
-    const std::vector<MapData> world = test_overworld_maps();
+    const std::vector<MapData> world = overworld_maps();
     result = check_route(world, {"ViridianCity", {26, 27}}, {{"ViridianCity", {26, 29}}, std::nullopt}, route);
     if (result.result != UnitTestResult::PASSED){
         return result;
@@ -817,7 +829,7 @@ UnitTestResult test_no_hold_into_ledge(){
 //  No wild battle can start between the bedroom and Oak's Lab: Pallet Town's
 //  streets have no tall grass. Route 2 and Viridian Forest do.
 UnitTestResult test_wild_steps(){
-    const std::vector<MapData> maps = test_overworld_maps();
+    const std::vector<MapData> maps = overworld_maps();
     std::vector<RouteStep> route;
     UnitTestResult result = check_route(
         maps, point_on(maps, "PalletTown_PlayersHouse_2F", "start"),
@@ -839,12 +851,29 @@ UnitTestResult test_wild_steps(){
     if (result.result != UnitTestResult::PASSED){
         return result;
     }
+    bool forest = false;
     for (const RouteStep& step : route){
-        if (step.wild && step.end.map == "ViridianForest"){
-            return true;
+        forest = forest || (step.wild && step.end.map == "ViridianForest");
+    }
+    if (!forest){
+        return "Expected a wild step in Viridian Forest:" + describe(route);
+    }
+    //  The leg from Pallet Town north onto Route 1 crosses Route 1's grass
+    //  after the map's edge.
+    route.clear();
+    result = check_route(
+        maps, point_on(maps, "PalletTown", "oaks_lab_front"),
+        {point_on(maps, "ViridianCity_Mart", "clerk_front"), std::nullopt}, route
+    );
+    if (result.result != UnitTestResult::PASSED){
+        return result;
+    }
+    for (const RouteStep& step : route){
+        if (step.end.map == "Route1" && step.direction == Direction::NORTH && step.tiles > 14 && !step.wild){
+            return "Expected the leg from Pallet Town onto Route 1 to be wild, got " + to_string(step) + ":" + describe(route);
         }
     }
-    return "Expected a wild step in Viridian Forest:" + describe(route);
+    return true;
 }
 
 const char* const TEST_ROOM_JSON = R"({
