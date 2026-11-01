@@ -15,8 +15,8 @@ namespace PokemonBDSP{
 
 
 
-//  Offline checks of Segment 00's walked lines against the grids and the
-//  scenes' trigger rectangles, and of the Oreburgh Gym's inside.
+//  Offline checks of Segment 00's walked lines against the maps and the
+//  scenes' trigger rectangles.
 void add_tests_AutoStory_Segment00(UnitTestDatabase& database);
 
 

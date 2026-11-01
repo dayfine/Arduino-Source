@@ -19,7 +19,8 @@
 #include "CommonFramework/ImageTypes/ImageViewRGB32.h"
 #include "CommonFramework/Tools/VideoStream.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
-#include "Pokemon/Navigation/Pokemon_MapSet.h"
+#include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_RoutePlanner.h"
+#include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_StoryWorld.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_PlanCosts.h"
 #include "PokemonBDSP_AutoStory_Walk.h"
 
@@ -89,7 +90,7 @@ constexpr Milliseconds ROUTE_NUDGE_TAP = Milliseconds(50);
 //  Whether a walk to the wall that ends on any of `after` can tell it has
 //  stopped: not in tall grass, whose sway keeps the screen changing at a
 //  wall. Elsewhere, a walk to the wall that stops confirms where it ended.
-bool route_wall_readable(const Pokemon::TileGrid& grid, const std::vector<Pokemon::TilePos>& after);
+bool route_wall_readable(const StoryWorld& grid, const std::vector<Pokemon::TilePos>& after);
 
 //  Shows what the route walk is doing in the log and the video overlay.
 void route_status(VideoStream& stream, const std::string& text);
@@ -111,14 +112,14 @@ using RouteTrainerFight = std::function<void(const std::string& trainer)>;
 //  after "arriving" on Route 202).
 std::vector<Pokemon::TilePos> walk_route(
     VideoStream& stream, ProControllerContext& context, const WildBattleEscape& escape,
-    const Pokemon::MapSet& maps,
+    const StoryWorld& maps,
     std::vector<Pokemon::TilePos> from,
     const std::function<bool(const Pokemon::TilePos&)>& goal,
-    std::vector<Pokemon::TrainerSight>& trainers,
+    std::vector<TrainerSight>& trainers,
     const RouteTrainerFight& fight,
     const std::string& label,
     const std::vector<Pokemon::TilePos>& avoid = {},
-    const Pokemon::RobustPlanCosts& costs = route_plan_costs()
+    const RobustPlanCosts& costs = route_plan_costs()
 );
 
 //  Walks `from` to each of `waypoints` in turn, with walk_route() for every
@@ -127,13 +128,13 @@ std::vector<Pokemon::TilePos> walk_route(
 //  trainers and blocks on each stretch (Route 204 North, 2026-10-31).
 std::vector<Pokemon::TilePos> walk_waypoints(
     VideoStream& stream, ProControllerContext& context, const WildBattleEscape& escape,
-    const Pokemon::MapSet& maps,
+    const StoryWorld& maps,
     std::vector<Pokemon::TilePos> from,
     const std::vector<Pokemon::TilePos>& waypoints,
-    std::vector<Pokemon::TrainerSight>& trainers,
+    std::vector<TrainerSight>& trainers,
     const RouteTrainerFight& fight,
     const std::string& label,
-    const Pokemon::RobustPlanCosts& costs = waypoint_plan_costs()
+    const RobustPlanCosts& costs = waypoint_plan_costs()
 );
 
 //  Walks next to the NPC on world tile `npc`, faces them and presses A, trying
@@ -143,11 +144,11 @@ std::vector<Pokemon::TilePos> walk_waypoints(
 //  or from a tile a row off, talks to nobody, so each side is tried in turn.
 void talk_to_npc(
     VideoStream& stream, ProControllerContext& context, const WildBattleEscape& escape,
-    const Pokemon::MapSet& maps,
+    const StoryWorld& maps,
     std::vector<Pokemon::TilePos>& at,
     const Pokemon::TilePos& npc,
     const std::vector<Pokemon::Direction>& sides,
-    std::vector<Pokemon::TrainerSight>& trainers,
+    std::vector<TrainerSight>& trainers,
     const RouteTrainerFight& fight,
     const std::string& label
 );

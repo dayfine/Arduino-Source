@@ -1,0 +1,29 @@
+{
+    "name": "PlayerHouse1F",
+    "source": {"decomp_file": "pret/pokeplatinum: res/field/maps/data/map_data_186.bin; events_twinleaf_town_player_house_1f.json; decomp only, not checked on the console", "revision": "c6689696d5fb", "date": "2026-11-01"},
+    "tiles": [
+        "#############",
+        "#############",
+        "#############",
+        "#SS..S####..#",
+        "#.....####..#",
+        "#SSS..SS....#",
+        "#...........#",
+        "#...........#",
+        "#..##.......#",
+        "##.##......##",
+        "##....D....##",
+        "#############"
+    ],
+    "points": {
+        "stairs": [10, 3],
+        "mom": [7, 8],
+        "door": [6, 10]
+    },
+    "warps": [
+        {"x": 6, "y": 10, "to_map": "TwinleafTown", "to_point": "player_house_door"}
+    ],
+    "objects": [
+        {"name": "mom_0", "kind": "npc", "x": 7, "y": 8, "facing": "north"}
+    ]
+}

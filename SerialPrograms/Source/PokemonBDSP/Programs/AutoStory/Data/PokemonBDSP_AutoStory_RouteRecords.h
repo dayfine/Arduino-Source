@@ -16,7 +16,7 @@
 #include <optional>
 #include <string>
 #include <vector>
-#include "Pokemon/Navigation/Pokemon_TileGrid.h"
+#include "Pokemon/Navigation/Pokemon_Grid.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -49,10 +49,10 @@ struct RouteLeg{
 struct RouteRecord{
     std::string checkpoint;         //  "01.05"
     std::string title;
-    std::string map;                //  the map the legs are on ("" when none exists yet)
-    const Pokemon::TileGrid* (*grid)();     //  that map's grid, nullptr when none
-    bool traceable;                 //  the grid's rows are the game's (decomp or console), so legs can be traced
-    std::optional<Pokemon::TilePos> start;  //  where the record starts on that grid
+    std::string map;                //  the map the legs are on
+    std::string map_file;           //  that map's JSON map (story_map())
+    bool traceable;                 //  the map's tiles are the game's (decomp or console), so legs can be traced
+    std::optional<Pokemon::TilePos> start;  //  where the record starts on that map
     std::vector<RouteLeg> legs;
     std::string source;             //  the code and the console runs behind it
 };

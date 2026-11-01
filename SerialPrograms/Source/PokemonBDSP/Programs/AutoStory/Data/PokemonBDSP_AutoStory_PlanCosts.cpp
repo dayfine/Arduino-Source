@@ -10,7 +10,6 @@ namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonBDSP{
 
-using Pokemon::RobustPlanCosts;
 
 
 RobustPlanCosts route_plan_costs(){

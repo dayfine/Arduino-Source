@@ -58,7 +58,7 @@ void stick_for(Direction direction, double& x, double& y){
 
 //  World tiles as tiles of the named maps, for the shared route log
 //  (Pokemon_RouteLog.h); a tile no map holds is a "world" tile.
-std::vector<RouteTile> route_tiles(const MapSet& maps, const std::vector<TilePos>& tiles){
+std::vector<RouteTile> route_tiles(const StoryWorld& maps, const std::vector<TilePos>& tiles){
     std::vector<RouteTile> out;
     for (const TilePos& pos : tiles){
         const std::optional<MapTile> local = maps.to_local(pos);
@@ -67,7 +67,7 @@ std::vector<RouteTile> route_tiles(const MapSet& maps, const std::vector<TilePos
     return out;
 }
 
-std::string describe(const MapSet& maps, const std::vector<TilePos>& tiles){
+std::string describe(const StoryWorld& maps, const std::vector<TilePos>& tiles){
     return Pokemon::describe(route_tiles(maps, tiles));
 }
 
@@ -76,11 +76,11 @@ RouteLogLeg route_log_leg(const TileLeg& leg){
         .end = leg.ends_at_wall ? RouteLegEnd::WALL : RouteLegEnd::OPEN};
 }
 
-PlannedRouteLeg planned_route_leg(const MapSet& maps, const PlannedLeg& leg){
+PlannedRouteLeg planned_route_leg(const StoryWorld& maps, const PlannedLeg& leg){
     return {.leg = route_log_leg(leg.leg), .after = route_tiles(maps, leg.after)};
 }
 
-void log_plan(VideoStream& stream, const MapSet& maps, const std::string& label, const std::vector<TilePos>& from, const std::vector<PlannedLeg>& legs){
+void log_plan(VideoStream& stream, const StoryWorld& maps, const std::string& label, const std::vector<TilePos>& from, const std::vector<PlannedLeg>& legs){
     std::vector<PlannedRouteLeg> logged;
     for (const PlannedLeg& leg : legs){
         logged.push_back(planned_route_leg(maps, leg));
@@ -91,7 +91,7 @@ void log_plan(VideoStream& stream, const MapSet& maps, const std::string& label,
 //  Logs a leg that ended on its planned tiles, and how that is known: an
 //  open leg counts its taps through a wild battle, so its end is assumed; a
 //  leg to a wall is walked again to its wall.
-void log_leg_done(VideoStream& stream, const MapSet& maps, const std::string& label, const PlannedLeg& planned, size_t wild_battles){
+void log_leg_done(VideoStream& stream, const StoryWorld& maps, const std::string& label, const PlannedLeg& planned, size_t wild_battles){
     const bool assumed = !planned.leg.ends_at_wall && wild_battles > 0;
     stream.log(ROUTE_LOG_TAG + route_leg_end_line(label, route_log_leg(planned.leg), route_tiles(maps, planned.after),
         assumed ? EndBasis::ASSUMED : EndBasis::WALKED, assumed ? std::to_string(wild_battles) + " wild battle(s) on the way" : ""));
@@ -99,7 +99,7 @@ void log_leg_done(VideoStream& stream, const MapSet& maps, const std::string& la
 
 //  The tiles the player passes when walking `tiles` tiles from `from`, the
 //  first one after `from` first. Stops early where the player is stopped.
-std::vector<TilePos> leg_path(const TileGrid& grid, TilePos from, Direction direction, size_t tiles){
+std::vector<TilePos> leg_path(const StoryWorld& grid, TilePos from, Direction direction, size_t tiles){
     std::vector<TilePos> path;
     size_t travelled = 0;
     while (travelled < tiles){
@@ -139,7 +139,7 @@ bool holding_against_wall(VideoStream& stream, ProControllerContext& context, do
 }
 
 //  The map all of `tiles` are on, or empty if they are on several or none.
-std::string map_of(const MapSet& maps, const std::vector<TilePos>& tiles){
+std::string map_of(const StoryWorld& maps, const std::vector<TilePos>& tiles){
     std::string name;
     for (const TilePos& pos : tiles){
         const std::optional<MapTile> tile = maps.to_local(pos);
@@ -154,9 +154,9 @@ std::string map_of(const MapSet& maps, const std::vector<TilePos>& tiles){
 }
 
 
-bool route_wall_readable(const TileGrid& grid, const std::vector<TilePos>& after){
+bool route_wall_readable(const StoryWorld& grid, const std::vector<TilePos>& after){
     return std::none_of(after.begin(), after.end(), [&](const TilePos& pos){
-        return grid.at(pos) == TileType::TALL_GRASS;
+        return grid.tile(pos) == TileKind::TALL_GRASS;
     });
 }
 
@@ -245,7 +245,7 @@ bool talk_with_nudges(
 
 std::vector<TilePos> walk_route(
     VideoStream& stream, ProControllerContext& context, const WildBattleEscape& escape,
-    const MapSet& maps,
+    const StoryWorld& maps,
     std::vector<TilePos> from,
     const std::function<bool(const TilePos&)>& goal,
     std::vector<TrainerSight>& trainers,
@@ -258,10 +258,10 @@ std::vector<TilePos> walk_route(
     //  avoid are ground the game lets us walk on (a trainer's line of sight),
     //  so they are off the map, not walls: a leg must not end "at" one, or
     //  the walk would run on through it.
-    TileGrid grid = maps.world();
+    StoryWorld grid = maps;
     for (const TilePos& pos : avoid){
         if (std::find(from.begin(), from.end(), pos) == from.end()){
-            grid.set(pos, TileType::UNKNOWN);
+            grid.uncover(pos);
         }
     }
     //  Which way the player faces, once a leg has set it.
@@ -415,7 +415,7 @@ std::vector<TilePos> walk_route(
                     }
                     if (stopped.size() == 1){
                         const TilePos blocker = stopped[0].next(leg.direction);
-                        grid.set(blocker, TileType::BLOCKED);
+                        grid.block(blocker);
                         stream.log("[Route] " + leg_label + ": something the map lacks is at " +
                             maps.describe(blocker) + "; marked it.", COLOR_ORANGE);
                     }
@@ -531,7 +531,7 @@ std::vector<TilePos> walk_route(
                     stopped.erase(std::unique(stopped.begin(), stopped.end()), stopped.end());
                     if (stopped.size() == 1){
                         const TilePos blocker = stopped[0].next(leg.direction);
-                        grid.set(blocker, TileType::BLOCKED);
+                        grid.block(blocker);
                         stream.log("[Route] " + leg_label + ": something the map lacks is at " +
                             maps.describe(blocker) + "; marked it.", COLOR_ORANGE);
                     }
@@ -723,7 +723,7 @@ std::vector<TilePos> walk_route(
 
 std::vector<TilePos> walk_waypoints(
     VideoStream& stream, ProControllerContext& context, const WildBattleEscape& escape,
-    const MapSet& maps,
+    const StoryWorld& maps,
     std::vector<TilePos> from,
     const std::vector<TilePos>& waypoints,
     std::vector<TrainerSight>& trainers,
@@ -744,7 +744,7 @@ std::vector<TilePos> walk_waypoints(
 
 void talk_to_npc(
     VideoStream& stream, ProControllerContext& context, const WildBattleEscape& escape,
-    const MapSet& maps,
+    const StoryWorld& maps,
     std::vector<TilePos>& at,
     const TilePos& npc,
     const std::vector<Direction>& sides,
@@ -754,7 +754,7 @@ void talk_to_npc(
 ){
     for (Direction side : sides){
         const TilePos stand = npc.next(side);
-        if (!maps.world().standable(stand)){
+        if (!maps.standable(stand)){
             continue;
         }
         at = walk_route(stream, context, escape, maps, at, [&](const TilePos& pos){ return pos == stand; },

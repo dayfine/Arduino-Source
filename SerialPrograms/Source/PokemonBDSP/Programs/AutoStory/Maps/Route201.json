@@ -1,10 +1,6 @@
 {
     "name": "Route201",
-    "source": {
-        "decomp_file": "SerialPrograms/Source/PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_Route201.cpp",
-        "revision": "ddcbdb21c1dc",
-        "date": "2026-11-01"
-    },
+    "source": {"decomp_file": "pret/pokediamond: files/fielddata/land_data/land_data_release/narc_0005.bin, files/fielddata/land_data/land_data_release/narc_0006.bin; zone_event narc_0327", "revision": "default branch", "date": "2026-10-31"},
     "tiles": [
         "################################################################",
         "################################################################",
@@ -32,12 +28,19 @@
         "##############....##############################################",
         "##############....##############################################"
     ],
+    "points": {
+        "border_sign": [55, 4],
+        "potion_giver": [43, 3],
+        "potion_giver_talk_from": [44, 3],
+        "route_201_arrival": [15, 24],
+        "barry_warning": [15, 18],
+        "route_201_return": [0, 14],
+        "rowan_stop": [5, 14],
+        "route_201_east_end": [63, 5]
+    },
     "objects": [
-        {
-            "name": "npc_57_8",
-            "kind": "npc",
-            "x": 57,
-            "y": 8
-        }
+        {"name": "pokemon_breeder_m_0", "kind": "npc", "x": 27, "y": 15, "wander": {"x0": 26, "y0": 14, "x1": 28, "y1": 16}},
+        {"name": "school_kid_m_9", "kind": "npc", "x": 57, "y": 8, "facing": "west"},
+        {"name": "lass_11", "kind": "npc", "x": 46, "y": 16, "wander": {"x0": 44, "y0": 16, "x1": 48, "y1": 16}}
     ]
 }

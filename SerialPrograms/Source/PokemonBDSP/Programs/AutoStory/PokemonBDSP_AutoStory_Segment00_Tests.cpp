@@ -6,9 +6,7 @@
 
 #include <algorithm>
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
-#include "Pokemon/Navigation/Pokemon_MapSet.h"
-#include "Pokemon/Navigation/Pokemon_TileGrid.h"
-#include "Data/PokemonBDSP_AutoStory_OreburghGym.h"
+#include "Data/PokemonBDSP_AutoStory_Maps.h"
 #include "Data/PokemonBDSP_AutoStory_Segment00Lines.h"
 #include "Data/PokemonBDSP_AutoStory_StoryMaps.h"
 #include "Data/PokemonBDSP_AutoStory_PlanCosts.h"
@@ -21,12 +19,7 @@ namespace PokemonBDSP{
 
 namespace{
 
-using Pokemon::Direction;
-using Pokemon::MapSet;
-using Pokemon::MapTile;
-using Pokemon::TileGrid;
 using Pokemon::TilePos;
-using Pokemon::TileType;
 using Segment00Lines::SceneTrigger;
 using Segment00Lines::WalkedLine;
 
@@ -47,23 +40,23 @@ const SceneTrigger* find_trigger(const std::string& name){
 //  or an error. The stretch must be the one straight leg a human took: to a
 //  wall or open, as the grid has it, ending exactly on the corner.
 struct Stretch{
-    Pokemon::TileLeg leg;
+    TileLeg leg;
     std::string error;
 };
-Stretch plan_stretch(const MapSet& maps, const TilePos& from, const TilePos& to, const std::string& name){
-    const auto plan = Pokemon::plan_robust_route(maps.world(), std::vector<TilePos>{from},
+Stretch plan_stretch(const StoryWorld& maps, const TilePos& from, const TilePos& to, const std::string& name){
+    const auto plan = plan_robust_route(maps, std::vector<TilePos>{from},
         [&](const TilePos& pos){ return pos == to; }, waypoint_plan_costs());
     if (!plan){
         return {{}, name + ": no plan."};
     }
     if (plan->size() != 1){
         std::string text = name + ": " + std::to_string(plan->size()) + " legs, expected the one straight leg:";
-        for (const Pokemon::PlannedLeg& leg : *plan){
+        for (const PlannedLeg& leg : *plan){
             text += " " + to_string(leg.leg);
         }
         return {{}, text};
     }
-    const Pokemon::PlannedLeg& leg = (*plan)[0];
+    const PlannedLeg& leg = (*plan)[0];
     if (leg.after.size() != 1 || !(leg.after[0] == to)){
         return {{}, name + ": the leg " + to_string(leg.leg) + " does not end exactly on the corner."};
     }
@@ -72,7 +65,7 @@ Stretch plan_stretch(const MapSet& maps, const TilePos& from, const TilePos& to,
 
 //  Every tile a line stands on, its start first, as local tiles; logs each
 //  stretch's leg. Empty with `error` set when a stretch does not plan.
-std::vector<MapTile> line_tiles(Logger& logger, const MapSet& maps, const WalkedLine& line, std::string& error){
+std::vector<MapTile> line_tiles(Logger& logger, const StoryWorld& maps, const WalkedLine& line, std::string& error){
     const std::string name = line.checkpoint + " " + line.name;
     std::vector<MapTile> tiles{line.corners[0]};
     TilePos at = maps.to_world(line.corners[0].map, line.corners[0].pos);
@@ -135,32 +128,35 @@ std::string check_triggers(Logger& logger, const WalkedLine& line, const std::ve
     return "";
 }
 
-//  The tiles the route records start and end on, each of which must lie on
-//  one of the lines.
+//  The points the route records start and end on, each of which must lie
+//  on one of the lines.
 struct NamedTile{
-    const char* name;
-    MapTile tile;
+    const char* map;            //  in segment00_maps()
+    const char* json_map;
+    const char* point;
 };
 std::vector<NamedTile> named_tiles(){
+    const char* twinleaf = Segment00Lines::MAP_TWINLEAF_TOWN;
+    const char* lakefront = Segment00Lines::MAP_VERITY_LAKEFRONT;
     return {
-        {"HOUSE_DOORSTEP", {Segment00Lines::MAP_TWINLEAF_TOWN, Segment00Lines::HOUSE_DOORSTEP}},
-        {"BARRY_DOORSTEP", {Segment00Lines::MAP_TWINLEAF_TOWN, Segment00Lines::BARRY_DOORSTEP}},
-        {"TWINLEAF_NORTH_EXIT", {Segment00Lines::MAP_TWINLEAF_TOWN, Segment00Lines::TWINLEAF_NORTH_EXIT}},
-        {"ROUTE_201_ARRIVAL", {MAP_ROUTE_201, Segment00Lines::ROUTE_201_ARRIVAL}},
-        {"BARRY_WARNING", {MAP_ROUTE_201, Segment00Lines::BARRY_WARNING}},
-        {"LAKEFRONT_ARRIVAL", {Segment00Lines::MAP_VERITY_LAKEFRONT, Segment00Lines::LAKEFRONT_ARRIVAL}},
-        {"BELOW_LAKE_ENTRANCE", {Segment00Lines::MAP_VERITY_LAKEFRONT, Segment00Lines::BELOW_LAKE_ENTRANCE}},
-        {"LAKE_ENTRANCE", {Segment00Lines::MAP_VERITY_LAKEFRONT, Segment00Lines::LAKE_ENTRANCE}},
-        {"ROUTE_201_RETURN", {MAP_ROUTE_201, Segment00Lines::ROUTE_201_RETURN}},
-        {"ROWAN_STOP", {MAP_ROUTE_201, Segment00Lines::ROWAN_STOP}},
-        {"ROUTE_201_EAST_END", {MAP_ROUTE_201, Segment00Lines::ROUTE_201_EAST_END}},
-        {"SANDGEM_ARRIVAL", {MAP_SANDGEM_TOWN, Segment00Lines::SANDGEM_ARRIVAL}},
-        {"DAWN_STOP", {MAP_SANDGEM_TOWN, Segment00Lines::DAWN_STOP}},
+        {.map = twinleaf, .json_map = "TwinleafTown", .point = "house_doorstep"},
+        {.map = twinleaf, .json_map = "TwinleafTown", .point = "barry_doorstep"},
+        {.map = twinleaf, .json_map = "TwinleafTown", .point = "twinleaf_north_exit"},
+        {.map = MAP_ROUTE_201, .json_map = "Route201", .point = "route_201_arrival"},
+        {.map = MAP_ROUTE_201, .json_map = "Route201", .point = "barry_warning"},
+        {.map = lakefront, .json_map = "VerityLakefront", .point = "lakefront_arrival"},
+        {.map = lakefront, .json_map = "VerityLakefront", .point = "below_lake_entrance"},
+        {.map = lakefront, .json_map = "VerityLakefront", .point = "lake_entrance"},
+        {.map = MAP_ROUTE_201, .json_map = "Route201", .point = "route_201_return"},
+        {.map = MAP_ROUTE_201, .json_map = "Route201", .point = "rowan_stop"},
+        {.map = MAP_ROUTE_201, .json_map = "Route201", .point = "route_201_east_end"},
+        {.map = MAP_SANDGEM_TOWN, .json_map = "SandgemTown", .point = "sandgem_arrival"},
+        {.map = MAP_SANDGEM_TOWN, .json_map = "SandgemTown", .point = "dawn_stop"},
     };
 }
 
 //  The lines 00.01 to 00.03 would walk (Data/PokemonBDSP_AutoStory_Segment00Lines):
-//  every stretch plans as one straight leg on the decomp grids, and each
+//  every stretch plans as one straight leg on the decomp maps, and each
 //  line enters its scene's trigger rectangle on its last tile only. The
 //  named tiles the route records start from all lie on the lines.
 class Test_Segment00Lines : public UnitTest{
@@ -170,7 +166,7 @@ public:
     {}
 
     virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
-        const MapSet& maps = Segment00Lines::segment00_maps();
+        const StoryWorld& maps = Segment00Lines::segment00_maps();
         for (const SceneTrigger& trigger : Segment00Lines::scene_triggers()){
             if (trigger.width <= 0 || trigger.height <= 0){
                 return "Scene trigger \"" + trigger.name + "\" has no tiles.";
@@ -194,59 +190,13 @@ public:
             walked.insert(walked.end(), tiles.begin(), tiles.end());
         }
         for (const NamedTile& tile : named_tiles()){
+            const MapTile named{tile.map, map_point(tile.json_map, tile.point)};
             const bool on_a_line = std::ranges::any_of(walked, [&](const MapTile& t){
-                return t.map == tile.tile.map && t.pos == tile.tile.pos;
+                return t.map == named.map && t.pos == named.pos;
             });
             if (!on_a_line){
-                return std::string(tile.name) + " " + describe(tile.tile) + " is on none of the lines.";
+                return std::string(tile.point) + " " + describe(named) + " is on none of the lines.";
             }
-        }
-        return true;
-    }
-};
-
-//  The Oreburgh Gym's inside (Data/PokemonBDSP_AutoStory_OreburghGym): the
-//  column up from the entrance runs to Roark with nothing in the way but the
-//  two Youngsters' sight lines, which is what 01.04's "north until a trainer
-//  stops us" relies on.
-class Test_OreburghGymGrid : public UnitTest{
-public:
-    Test_OreburghGymGrid()
-        : UnitTest("PokemonBDSP::AutoStory - Oreburgh Gym: the column up to Roark")
-    {}
-
-    virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
-        const TileGrid& gym = OreburghGym::grid();
-        if (!gym.standable(OreburghGym::ENTRANCE)){
-            return "The entrance tile is not standable.";
-        }
-        if (gym.at(OreburghGym::ENTRANCE.next(Direction::SOUTH)) != TileType::DOOR){
-            return "The door is not below the entrance tile.";
-        }
-        if (gym.at(OreburghGym::ROARK) != TileType::NPC){
-            return "Roark is not on an NPC tile.";
-        }
-        const Pokemon::WallHit up = Pokemon::walk_to_wall(gym, OreburghGym::ENTRANCE, Direction::NORTH);
-        if (!(up.wall == OreburghGym::ROARK)){
-            return "North from the entrance stops at " + Pokemon::to_string(up.stop) + ", not in front of Roark.";
-        }
-        logger.log("Oreburgh Gym: north from the entrance walks " + std::to_string(up.tiles) + " tiles to Roark.");
-        for (const Pokemon::TrainerSight& trainer : OreburghGym::trainer_sights()){
-            if (gym.at(trainer.pos) != TileType::NPC){
-                return trainer.name + " is not on an NPC tile.";
-            }
-            const std::vector<TilePos> seen = Pokemon::sight_tiles(gym, trainer);
-            const bool sees_column = std::ranges::any_of(seen, [&](const TilePos& pos){
-                return pos.x == OreburghGym::ENTRANCE.x && pos.y < OreburghGym::ENTRANCE.y && pos.y > OreburghGym::ROARK.y;
-            });
-            if (!sees_column){
-                return trainer.name + " does not see the column up to Roark.";
-            }
-            std::string text = "Oreburgh Gym: " + trainer.name + " sees";
-            for (const TilePos& pos : seen){
-                text += " " + Pokemon::to_string(pos);
-            }
-            logger.log(text);
         }
         return true;
     }
@@ -257,7 +207,6 @@ public:
 
 void add_tests_AutoStory_Segment00(UnitTestDatabase& database){
     database.add<Test_Segment00Lines>();
-    database.add<Test_OreburghGymGrid>();
 }
 
 

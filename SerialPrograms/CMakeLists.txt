@@ -198,7 +198,7 @@ include(cmake/EmbedTextFiles.cmake)
 pa_embed_text_files(SerialProgramsLib Source/Pokemon/Navigation/TestMaps
     Pokemon/Navigation/Pokemon_Navigation_Tests.h PokemonAutomation::Pokemon navigation_test_map_json)
 pa_embed_text_files(SerialProgramsLib Source/PokemonBDSP/Programs/AutoStory/Maps
-    PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_MapGrids.h PokemonAutomation::NintendoSwitch::PokemonBDSP bdsp_map_json)
+    PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_Maps.h PokemonAutomation::NintendoSwitch::PokemonBDSP bdsp_map_json)
 
 
 # Create binary target

@@ -1,10 +1,6 @@
 {
     "name": "FloaromaTown",
-    "source": {
-        "decomp_file": "SerialPrograms/Source/PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_FloaromaTown.cpp",
-        "revision": "ddcbdb21c1dc",
-        "date": "2026-11-01"
-    },
+    "source": {"decomp_file": "pret/pokediamond: files/fielddata/land_data/land_data_release/narc_0032.bin; zone_event narc_0404", "revision": "default branch", "date": "2026-10-31"},
     "tiles": [
         "######........................##",
         "##..##........................##",
@@ -39,54 +35,22 @@
         "########.#...###################",
         "########.#...###################"
     ],
+    "points": {
+        "route_204_arrival": [11, 29],
+        "old_woman": [3, 25],
+        "old_man": [2, 25],
+        "pokemon_center_door": [16, 26]
+    },
     "objects": [
-        {
-            "name": "npc_2_1",
-            "kind": "npc",
-            "x": 2,
-            "y": 1
-        },
-        {
-            "name": "npc_3_1",
-            "kind": "npc",
-            "x": 3,
-            "y": 1
-        },
-        {
-            "name": "npc_6_10",
-            "kind": "npc",
-            "x": 6,
-            "y": 10
-        },
-        {
-            "name": "npc_23_11",
-            "kind": "npc",
-            "x": 23,
-            "y": 11
-        },
-        {
-            "name": "npc_19_21",
-            "kind": "npc",
-            "x": 19,
-            "y": 21
-        },
-        {
-            "name": "npc_2_23",
-            "kind": "npc",
-            "x": 2,
-            "y": 23
-        },
-        {
-            "name": "npc_3_23",
-            "kind": "npc",
-            "x": 3,
-            "y": 23
-        },
-        {
-            "name": "npc_11_26",
-            "kind": "npc",
-            "x": 11,
-            "y": 26
-        }
+        {"name": "pokemon_breeder_f_0", "kind": "npc", "x": 19, "y": 21},
+        {"name": "lass_1", "kind": "npc", "x": 10, "y": 5, "wander": {"x0": 9, "y0": 5, "x1": 11, "y1": 5}},
+        {"name": "school_kid_m_2", "kind": "npc", "x": 16, "y": 16, "wander": {"x0": 15, "y0": 15, "x1": 17, "y1": 17}},
+        {"name": "cyrus_3", "kind": "npc", "x": 11, "y": 26},
+        {"name": "lass_4", "kind": "npc", "x": 23, "y": 11, "facing": "west"},
+        {"name": "grunt_m_7", "kind": "npc", "x": 2, "y": 1, "facing": "east"},
+        {"name": "grunt_m_8", "kind": "npc", "x": 3, "y": 1, "facing": "west"},
+        {"name": "camper_12", "kind": "npc", "x": 6, "y": 10},
+        {"name": "old_woman", "kind": "npc", "x": 3, "y": 25},
+        {"name": "old_man", "kind": "npc", "x": 2, "y": 25}
     ]
 }

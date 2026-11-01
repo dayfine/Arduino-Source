@@ -1,0 +1,22 @@
+{
+    "name": "PlayerHouse2F",
+    "source": {"decomp_file": "pret/pokeplatinum: res/field/maps/data/map_data_187.bin; events_twinleaf_town_player_house_2f.json; decomp only, not checked on the console", "revision": "c6689696d5fb", "date": "2026-11-01"},
+    "tiles": [
+        "############",
+        "############",
+        "############",
+        "#######S####",
+        "#S#SSS...###",
+        "#........###",
+        "#..........#",
+        "#..........#",
+        "#........#.#",
+        "##.........#",
+        "##.......#.#",
+        "############"
+    ],
+    "points": {
+        "stairs": [8, 4],
+        "start": [4, 6]
+    }
+}
