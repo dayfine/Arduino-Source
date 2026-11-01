@@ -20,9 +20,18 @@
 namespace PokemonAutomation{
 
 
-//  The words of one command line. A word starting with '#' starts a comment
-//  that runs to the end of the line. Word 0 is the command name.
+//  `line` without its comment: a '#' outside a quoted string starts a
+//  comment that runs to the end of the line. Quotes are JSON's, with '\'
+//  escapes.
+std::string strip_comment(const std::string& line);
+
+//  The words of one command line, split on spaces after strip_comment().
+//  Word 0 is the command name.
 std::vector<std::string> split_command_line(const std::string& line);
+
+//  What follows the first `count` words of `line`, without the comment and
+//  the surrounding spaces: the JSON of "set KEY JSON", spaces and '#' intact.
+std::string line_after_words(const std::string& line, size_t count);
 
 //  The ".txt" file in `inbox` whose name sorts first, if any.
 std::optional<Filesystem::Path> next_request_file(const std::string& inbox);

@@ -13,9 +13,11 @@ needed on the script side.
 
 Create the folder `Lab/` inside the profile's user-files folder (the folder
 that holds `SerialPrograms.log`, `Screenshots/` and the settings; with
-`--profile NAME` that is `Profiles/NAME/`). While it exists the app polls it
-every 500 ms from a worker thread and creates `inbox/`, `outbox/` and `done/`
-inside it. Without it the app behaves as before: normal users see no change.
+`--profile NAME` that is `Profiles/NAME/`) **before launching the app**. An
+app that finds it at startup polls it every 500 ms from a worker and creates
+`inbox/`, `outbox/` and `done/` inside it; an app that does not find it
+starts nothing, so normal users see no change. Creating the folder later
+takes effect at the next launch.
 
 ## Files
 

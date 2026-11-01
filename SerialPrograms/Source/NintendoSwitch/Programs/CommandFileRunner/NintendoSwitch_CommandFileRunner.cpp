@@ -234,7 +234,9 @@ private:
     std::ostream& out(){ return m_session.out; }
 
     VideoSnapshot current_frame(){
-        context().wait_for_all_requests();
+        if (m_session.sync_controller){
+            context().wait_for_all_requests();
+        }
         return console().video().snapshot();
     }
 
@@ -387,7 +389,9 @@ private:
         const std::string& name = required_arg(words, 1);
         const Milliseconds timeout = optional_duration(words, 2, WAIT_FOR_TIMEOUT);
         std::unique_ptr<StaticScreenDetector> detector = make_detector(name, console());
-        context().wait_for_all_requests();
+        if (m_session.sync_controller){
+            context().wait_for_all_requests();
+        }
         const WallClock start = current_time();
         while (current_time() - start < timeout){
             VideoSnapshot screen = console().video().snapshot();
@@ -523,7 +527,7 @@ bool run_command_file(
     env.log("Command File Runner: running " + name);
 
     std::ostringstream out;
-    CommandFileSession session{env.console, context, out, folder + "outbox/", name};
+    CommandFileSession session{env.console, context, out, folder + "outbox/", name, true};
     const std::string out_path = session.outbox + name;
 
     std::istringstream lines(script);
