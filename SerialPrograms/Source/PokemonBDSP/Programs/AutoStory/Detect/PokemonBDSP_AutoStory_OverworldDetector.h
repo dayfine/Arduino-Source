@@ -2,6 +2,8 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
+ *  Adapted from PokemonAutomation/Arduino-Source#1717 by Developer-Butters.
+ *
  *  Detects that the player is in the free-roaming overworld state:
  *  no dialog box, no battle menu, and no in-game menu open.
  *

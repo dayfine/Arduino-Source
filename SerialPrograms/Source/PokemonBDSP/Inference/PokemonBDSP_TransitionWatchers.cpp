@@ -1,5 +1,17 @@
+/*  BDSP Transition Watchers
+ *
+ *  From: https://github.com/PokemonAutomation/
+ *
+ *  Adapted from PokemonAutomation/Arduino-Source#1717 by Developer-Butters.
+ */
+
 #include "PokemonBDSP_TransitionWatchers.h"
-namespace PokemonAutomation{ namespace NintendoSwitch{ namespace PokemonBDSP{
+
+namespace PokemonAutomation{
+namespace NintendoSwitch{
+namespace PokemonBDSP{
+
+
 WhiteScreenOverWatcher::WhiteScreenOverWatcher(Color color, const ImageFloatBox& box)
     : VisualInferenceCallback("WhiteScreenOverWatcher")
     , m_on(color, box, WhiteScreenWatcher::FinderType::PRESENT, std::chrono::milliseconds(100))
@@ -27,4 +39,7 @@ bool WhiteScreenOverWatcher::white_is_over(const ImageViewRGB32& frame){
     return m_white_is_over.load(std::memory_order_acquire);
 }
 
-}}}
+
+}
+}
+}

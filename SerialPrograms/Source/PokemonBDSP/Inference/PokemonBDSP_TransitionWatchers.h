@@ -1,6 +1,20 @@
-#pragma once
+/*  BDSP Transition Watchers
+ *
+ *  From: https://github.com/PokemonAutomation/
+ *
+ *  Adapted from PokemonAutomation/Arduino-Source#1717 by Developer-Butters.
+ */
+
+#ifndef PokemonAutomation_PokemonBDSP_TransitionWatchers_H
+#define PokemonAutomation_PokemonBDSP_TransitionWatchers_H
+
 #include "CommonTools/VisualDetectors/BlackScreenDetector.h"
-namespace PokemonAutomation{ namespace NintendoSwitch{ namespace PokemonBDSP{
+
+namespace PokemonAutomation{
+namespace NintendoSwitch{
+namespace PokemonBDSP{
+
+
 // AutoStory-specific transition handling; shared watchers retain upstream behavior.
 //  A white screen (RGB sum over 500, stddev sum under 10) in `box`,
 //  present or gone for `duration`.
@@ -29,4 +43,9 @@ private:
     bool m_has_been_white = false;
     std::atomic<bool> m_white_is_over = false;
 };
-}}}
+
+
+}
+}
+}
+#endif
