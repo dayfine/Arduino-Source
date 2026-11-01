@@ -93,6 +93,44 @@ bool system_keyboard_field_has_text(const ImageViewRGB32& screen){
 }
 
 
+namespace{
+
+//  Moves the keyboard's cursor onto (target_row, target_col). A button
+//  pressed while the keyboard slides in is ignored, so read the cursor again
+//  after each move until it is on the target. Whether it got there.
+bool move_keyboard_cursor(VideoStream& stream, ProControllerContext& context, int target_row, int target_col){
+    for (size_t attempt = 0; attempt < 10; attempt++){
+        context.wait_for_all_requests();
+        int row = -1;
+        int col = -1;
+        VideoSnapshot screen = stream.video().snapshot();
+        if (!screen || !find_system_keyboard_cursor(screen, row, col)){
+            pbf_wait(context, 300ms);
+            continue;
+        }
+        if (row == target_row && col == target_col){
+            return true;
+        }
+        for (; row < target_row; row++){
+            pbf_press_dpad(context, DPAD_DOWN, 100ms, 200ms);
+        }
+        for (; row > target_row; row--){
+            pbf_press_dpad(context, DPAD_UP, 100ms, 200ms);
+        }
+        for (; col < target_col; col++){
+            pbf_press_dpad(context, DPAD_RIGHT, 100ms, 200ms);
+        }
+        for (; col > target_col; col--){
+            pbf_press_dpad(context, DPAD_LEFT, 100ms, 200ms);
+        }
+        pbf_wait(context, 300ms);
+    }
+    return false;
+}
+
+}
+
+
 void type_on_system_keyboard(VideoStream& stream, ProControllerContext& context, const std::string& text){
     for (char ch : text){
         const char key = (char)std::tolower((unsigned char)ch);
@@ -112,38 +150,7 @@ void type_on_system_keyboard(VideoStream& stream, ProControllerContext& context,
                 stream
             );
         }
-
-        //  A button pressed while the keyboard slides in is ignored, so read the cursor
-        //  again after each move until it is on the target.
-        bool arrived = false;
-        for (size_t attempt = 0; attempt < 10 && !arrived; attempt++){
-            context.wait_for_all_requests();
-            int row = -1;
-            int col = -1;
-            VideoSnapshot screen = stream.video().snapshot();
-            if (!screen || !find_system_keyboard_cursor(screen, row, col)){
-                pbf_wait(context, 300ms);
-                continue;
-            }
-            if (row == target_row && col == target_col){
-                arrived = true;
-                break;
-            }
-            for (; row < target_row; row++){
-                pbf_press_dpad(context, DPAD_DOWN, 100ms, 200ms);
-            }
-            for (; row > target_row; row--){
-                pbf_press_dpad(context, DPAD_UP, 100ms, 200ms);
-            }
-            for (; col < target_col; col++){
-                pbf_press_dpad(context, DPAD_RIGHT, 100ms, 200ms);
-            }
-            for (; col > target_col; col--){
-                pbf_press_dpad(context, DPAD_LEFT, 100ms, 200ms);
-            }
-            pbf_wait(context, 300ms);
-        }
-        if (!arrived){
+        if (!move_keyboard_cursor(stream, context, target_row, target_col)){
             OperationFailedExceptionWithScreenshot::fire(
                 ErrorReportMode::SEND_ERROR_REPORT,
                 std::string("System keyboard: the cursor did not reach '") + key + "'.",
