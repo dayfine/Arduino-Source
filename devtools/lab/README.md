@@ -139,7 +139,7 @@ who holds it: `error 2 (start): owned by lab-B`.
 ## Run records
 
 Every run gets a folder `Lab/runs/<run_id>/` with `meta.json` (program,
-version, git commit, settings), `result.json` (status, outcome, error, last
+version, executable, git commit, settings), `result.json` (status, outcome, error, last
 event, frame), `events.jsonl` (what the program reported, plus the `shot`s
 and `detect`s taken during the run or within two minutes after), `log.txt`
 (the run's own log, appended as it goes, up to 8 MiB) and the frames. The

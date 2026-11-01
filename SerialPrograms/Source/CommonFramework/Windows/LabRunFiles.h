@@ -5,8 +5,9 @@
  *  The lab channel's copy of the run records (CommonFramework/RunRecord.h)
  *  as files, one folder per run under "Lab/runs/<run_id>/":
  *
- *      meta.json       What ran: the program, the app's version, the git
- *                      commit it was built from, the program's settings.
+ *      meta.json       What ran: the program, the app's version and
+ *                      executable, the git commit this build was made
+ *                      from (BuildCommit.h), the program's settings.
  *                      Written when the run starts.
  *      result.json     The record without its events and log: status,
  *                      outcome, error, times, the frame's file name and the

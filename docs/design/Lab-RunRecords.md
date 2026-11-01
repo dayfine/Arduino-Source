@@ -33,7 +33,8 @@ In scope:
   `Lab/` folder.
 - The run's own log lines, the frames of failed attempts, and the probes
   (`shot`, `detect`) taken during or right after the run.
-- The build (version and git commit) and the program's settings.
+- The build (version and executable path; the git commit in lab builds) and
+  the program's settings.
 - Structured progress events from programs: checkpoints, steps, attempts,
   route plans and legs (**proposed** hooks; the API exists).
 - A script to list runs, show one, and write a Markdown report (**proposed**).
@@ -163,16 +164,18 @@ are counted in `dropped_events`), frames kept for a run's newest 8 events and
 only for the active run and the newest 4 finished ones, log lines numbered
 with a 256 KiB tail in memory and at most 8 MiB per run (more are counted in
 `dropped_log_lines`). Each record carries `version` (`PROGRAM_VERSION`),
-`commit` (`PROGRAM_COMMIT`) and `settings`. `SessionRunRecorder` takes the events a program
+`executable` (the app's path, which names a lab build) and `settings`. `SessionRunRecorder` takes the events a program
 reports and is the `Logger` that copies the session's lines into the record.
 The app's store is `app_run_records()`; it records only after
 `enable_app_run_records()`, which the Lab channel calls. No UI, JSON or game dependency.
 
-**Build commit** (today, #132, `CommonFramework/BuildCommit.h`,
+**Build commit** (today, #116 only, `CommonFramework/BuildCommit.h`,
 `SerialPrograms/cmake/BuildCommit.cmake`). A custom target runs
 `git describe --always --dirty --abbrev=12` on every build and rewrites
 `<build>/generated/BuildCommit.cpp` only when the text changes, so a new
-commit recompiles one file. Without git the commit is `unknown`.
+commit recompiles one file. Without git the commit is `unknown`. It lives in
+the lab half so `main` takes no CMake change; `meta.json` adds it beside the
+record's version and executable.
 
 **Execution boundary** (today, #132, `CommonFramework/ProgramSession.cpp`). A
 run opens in `start_program()` once `check_validity()` passes, with the
@@ -252,8 +255,8 @@ the first slice is two PRs:
 
 | # | PR | Base / depends on | Scope | Size (excl. tests) |
 |---|---|---|---|---|
-| 1 | #132 `common/run-records` (done) | `main` | the framework half of the old #116, unchanged in its first commit; then the build commit, settings, the 8 MiB numbered log and the disabled-by-default store | ~700 |
-| 2 | #116 (done) | `lab/run-records-base` (#107 + `main` + #132) | the Lab half: `LabRunFiles`, `LabChannel` enabling the store, `meta.json`, `log.txt` appended as it goes, `Lab.md`, README, `labctl.sh wait` | ~600 |
+| 1 | #132 `common/run-records` (done) | `main` | the framework half of the old #116, unchanged in its first commit; then the version and executable path, settings, the 8 MiB numbered log and the disabled-by-default store | ~650 |
+| 2 | #116 (done) | `lab/run-records-base` (#107 + `main` + #132) | the Lab half: `LabRunFiles`, `LabChannel` enabling the store, `meta.json`, the build commit (`cmake/BuildCommit.cmake`), `log.txt` appended as it goes, `Lab.md`, README, `labctl.sh wait` | ~600 |
 | 3 | new `lab/runs-cli` | #116 | `devtools/lab/runs.py` list/show/report | ~250 |
 | 4 | commits on #114, #120, #128 | #132 | `SegmentHooks.event`, route log events, per-game forwarding with attempt frames | ~80 shared, ~40 per game |
 | 5 | commit on #125 | 4 | `route_trace.py` reads `events.jsonl` | ~80 |
@@ -284,7 +287,13 @@ the failure filed in the same folder, and #125 drawing the walk from
 
 1. #116 is split: the framework half is #132 on `main`; #116 keeps the Lab
    half.
-2. `log.txt` is appended as the run goes, capped at 8 MiB.
-3. Runs are recorded only in an app whose profile has a `Lab/` folder.
-4. The build carries its git commit (`cmake/BuildCommit.cmake`).
-5. 32 run folders are kept.
+2. `log.txt` is appended as the run goes, capped at 8 MiB, so a crash or a
+   kill still leaves the log.
+3. Runs are recorded only in an app whose profile has a `Lab/` folder:
+   release users see no change and #132 stays inert unless something opts in.
+4. The framework records the version and the executable path. The git
+   commit (`cmake/BuildCommit.cmake`) is in the lab half only, so `main`
+   takes no CMake change.
+5. 32 run folders are kept. `~/BDSPLab/disk_gc.sh` already removes files
+   under the lab profiles' `Lab/runs/` by age (7 days, 3 when short on
+   space), so there is no second cap.

@@ -16,6 +16,7 @@
 #include "Common/Cpp/Json/JsonArray.h"
 #include "Common/Cpp/Json/JsonObject.h"
 #include "Common/Cpp/Json/JsonValue.h"
+#include "CommonFramework/BuildCommit.h"
 #include "LabRunFiles.h"
 
 namespace PokemonAutomation{
@@ -156,7 +157,8 @@ std::string run_meta_json(const RunRecord& record){
     json["run_id"] = record.run_id;
     json["program"] = record.program;
     json["version"] = record.version;
-    json["commit"] = record.commit;
+    json["executable"] = record.executable;
+    json["commit"] = PROGRAM_COMMIT;
     if (!record.settings.empty()){
         try{
             json["settings"] = parse_json(record.settings);
