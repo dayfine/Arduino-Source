@@ -269,29 +269,60 @@ class RenderTest(unittest.TestCase):
         self.assertEqual(pic.pixel(10, 9), (255, 255, 255))
         self.assertIn('<line', pic.svg())
 
-    def test_run_writes_pictures_trace_and_index(self):
+    def test_run_writes_map_pictures_first_then_walks(self):
         run = route_trace.parse(FRLG_LOG, maps())[0]
         with tempfile.TemporaryDirectory() as d:
             pictures = route_render.render_run(run, maps(), d)
             names = [p[3] for p in pictures]
             self.assertEqual(names, ['001_00_05_2_to_route_TestTown', '001_00_05_2_to_route_Route9',
                                      '002_00_05_3_house_TestTown', '002_00_05_3_house_TestHouse'])
-            data = Path(d, names[0] + '.png').read_bytes()
-            width, height = png_size(data)
-            self.assertEqual(height, route_render.HEADER + 6 * route_render.TILE + route_render.FOOTER)
+            overview = 'map_01_00_05_a1_TestTown'
+            self.assertTrue(Path(d, overview + '.png').exists())
+            png_size(Path(d, names[0] + '.png').read_bytes())
             index = Path(d, 'index.html').read_text()
+            self.assertLess(index.index(overview), index.index(names[0]))
             self.assertLess(index.index(names[0]), index.index(names[2]))
             self.assertIn('failed', index)
             self.assertEqual(json.loads(Path(d, 'trace.json').read_text())[0]['run_id'], run.run_id)
 
+    def test_attempts_group_walks_by_checkpoint_and_attempt(self):
+        run = route_trace.parse(FRLG_LOG, maps())[0]
+        groups = route_render.attempts(run)
+        self.assertEqual([(c, a, [n for n, _ in w]) for c, a, w in groups], [('00.05', 1, [1, 2])])
+
+    def test_view_crops_to_the_walk_and_zooms(self):
+        big = route_maps.TileMap('Big', ['.' * 60] * 50, route_maps.SHARED_LEGEND)
+        view = route_render.View(big, [(30, 20), (33, 20)])
+        self.assertTrue(view.contains(30, 20) and view.contains(37, 20) and not view.contains(10, 20))
+        self.assertEqual((view.w, view.h), (14, 10))
+        self.assertEqual(view.tile, 40)  # the most it zooms
+
     def test_walked_edge_is_drawn_red(self):
         run = route_trace.parse(FRLG_LOG, maps())[0]
         pic = route_render.draw(run.walks[0], 'TestTown', maps()['testtown'], maps(), run.run_id, 1)
-        x0, y = route_render._centre(5, 1)
-        x1, _ = route_render._centre(6, 1)
-        r, g, b = pic.pixel(int((x0 + x1) / 2), int(y) + 1)
+        view = route_render.View(maps()['testtown'], route_render._tiles_of(maps(), [run.walks[0]], 'TestTown'))
+        x0, y = view.centre(5, 1)
+        x1, _ = view.centre(6, 1)
+        r, g, b = pic.pixel(int((x0 + x1) / 2), int(y + view.tile * 0.12))
         self.assertGreater(r, 200)
         self.assertLess(g, 80)
+
+    def test_a_leg_finished_after_a_battle_is_assumed(self):
+        log = stamp([
+            '<b>Starting Program: PokemonFRLG:AutoStory</b>',
+            '[Event] 00.05/2 grass: start',
+            'Route: walk north 2 (to wall) -> TestTown (4, 1)',
+            'Leg: a wild battle after 700ms, walking to the wall again.',
+            'Route: walk east 3 -> TestTown (7, 1)',
+            '[Event] 00.05/2 grass: done',
+        ])
+        walk = route_trace.parse(log, maps())[0].walks[0]
+        self.assertEqual([(s.basis, s.why) for s in walk.steps],
+                         [('assumed', 'assumed after battle'), ('walked', '')])
+        paths, _, _ = route_render.walked_paths(maps(), walk)
+        self.assertEqual(route_render.edge_counts(paths, 'TestTown', 'assumed'), {((4, 2), (4, 3)): 1, ((4, 1), (4, 2)): 1})
+        pic = route_render.draw(walk, 'TestTown', maps()['testtown'], maps(), 'r', 1)
+        self.assertIn('assumed after battle', pic.svg())
 
     def test_map_without_a_file(self):
         run = route_trace.parse(FRLG_LOG, {})[0]

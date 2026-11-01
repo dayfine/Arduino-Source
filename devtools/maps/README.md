@@ -151,17 +151,34 @@ python3 -m devtools.maps routes SerialPrograms.log --run -1 \
     --maps SerialPrograms/Source/PokemonBDSP/Programs/AutoStory/Maps -o routes/
 ```
 
-Per run it writes `routes/<run_id>/`: one PNG and one SVG per walk and map it
-touched, numbered in order, an `index.html` showing them in order, and
-`trace.json`, the walks as data (plans, steps with where they started and
-ended, and marks), the same shape for both games. On a picture the plan is
-thin, dashed and blue (a BDSP replan purple); the walk is red and as wide as
-the times that tile edge was walked, so back and forth shows as a fat line;
-it is dotted orange where the player's tile wasn't known (an FRLG leg stopped
-by a battle, the holds that found the player again). S marks the start, E
-the plan's end, A an arrival, R where the player was found again, B a wild
-battle, M a message, T a trainer, and a red X the failure. Standard library
-only: the PNG is drawn by `picture.py`.
+Per run it writes `routes/<run_id>/`, with `index.html` showing, in order:
+
+- **per checkpoint attempt, one picture per map** (`map_NN_<checkpoint>_a<attempt>_<map>`)
+  joining all the walks of that attempt on that map, e.g. the whole Viridian
+  Forest of 00.07's first attempt, each walk in its own colour, numbered at
+  its start, and listed in a legend. Walks over the same tiles lie side by side;
+- **one picture per walk and map** (`NNN_<event or label>_<map>`).
+
+Each picture is cropped to the walked area plus four tiles and zoomed to fit
+(up to 40 px a tile), so a four-tile walk is as easy to see as a long one.
+`trace.json` has the walks as data (plans, steps with where they started and
+ended and how that is known, and marks), the same shape for both games.
+
+How a line is drawn says how it is known:
+
+- **solid**: walked as planned, or seen (BDSP's stop and arrival tiles); as
+  wide as the times that tile edge was walked, so back and forth is a fat line;
+- **pale and striped, labelled "assumed after battle"** (or message, dialog,
+  stall): something interrupted the leg and the walker went on taking it to
+  have ended as planned (FRLG walks to the wall again; BDSP counts the battle);
+- **orange dotted, labelled**: the tile isn't known: an FRLG leg stopped by a
+  battle, the hold that found the player again, a step the walk failed on;
+- **dashed, beside the walked line**: the plan (a BDSP replan in purple).
+
+Badges sit at a tile's corner so they don't hide the line: S (or the walk's
+number) the start, E the plan's end, A an arrival, R where the player was
+found again, B a wild battle, M a message, T a trainer, a red X the failure.
+Standard library only: the PNG is drawn by `picture.py`.
 
 What each walker logs, and so what can be drawn:
 

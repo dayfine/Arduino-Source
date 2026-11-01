@@ -93,6 +93,10 @@ class Step:
     end: list = field(default_factory=list)     # where it ended, if known
     outcome: str = ''           # done, stopped, blocked, limit, dialog, ...
     certain: bool = True        # False: where it went isn't known (a hold from an unknown tile)
+    #  How its line is known: walked (as planned, or seen), assumed (taken to
+    #  have ended as planned after something interrupted it), unknown.
+    basis: str = 'walked'
+    why: str = ''               # for assumed and unknown: what happened
     time: str = ''
 
 
@@ -218,6 +222,7 @@ class _Parser:
         if walk is self.walk and last is not None and last.outcome == '' and 'walk_overworld_route' in text:
             #  The walker failed on its step (e.g. no warp fade): it didn't end as planned.
             last.outcome = 'failed'
+            last.basis, last.why = 'unknown', 'failed on this step'
             self.pos = list(last.start)
         elif walk is self.walk:
             self.finish_step()
@@ -261,6 +266,7 @@ class _Parser:
             self.holds.pop(0)
             step.role = 'hold'
             step.certain = not self.holds       # only the last hold ends on a known tile
+            step.basis, step.why = 'unknown', 'found again here' if step.certain else 'hold from an unknown tile'
             if not step.certain:
                 step.end = []
         elif self.back_to is not None:
@@ -295,12 +301,15 @@ class _Parser:
         text = what + (' (seen late)' if late else '') + ', ' + how
         if how == 'stopping the leg':
             step.outcome = 'stopped'
+            step.basis, step.why = 'unknown', f'stopped by {kind}: tile unknown'
             self.mark(kind, step.start, text)
         elif how == 'at the end of the leg':
             if late and step.leg.to_wall:
                 step.outcome = 'late'
+            step.basis, step.why = 'assumed', f'assumed: {kind} at leg end'
             self.mark(kind, step.leg.ends, text)
         else:
+            step.basis, step.why = 'assumed', f'assumed after {kind}'
             self.mark(kind, step.start, text)
 
     def implicit_plan(self, walk):
@@ -357,19 +366,23 @@ class _Parser:
             if how in ('blocked', 'limit', 'arrived', 'transition') and step.outcome != 'stopped':
                 step.outcome = how
             if how == 'dialog':
+                step.basis, step.why = 'assumed', 'assumed after a dialog'
                 self.mark('message', step.start, 'a dialog stopped the leg')
             if battles:
+                step.basis, step.why = 'assumed', f'assumed after {battles} battle(s)'
                 self.mark('battle', step.leg.ends, f'{battles} wild battle(s) on {step.leg.describe()}')
             return
         m = B_STOPPED.match(text)
         if m and m.group(1) == walk.label and step is not None:
             at = places(m.group(2))
             step.outcome, step.end = 'stopped', at
+            step.basis, step.why = 'walked', ''
             self.pos = at
             self.mark('stop', at, text.split(': ', 1)[1])
             return
         m = B_WAIT.match(text)
         if m and m.group(1) == walk.label and step is not None:
+            step.basis, step.why = 'assumed', 'assumed after a stall'
             self.mark('wait', step.start, m.group(2))
             return
         m = B_ARRIVED.match(text)
