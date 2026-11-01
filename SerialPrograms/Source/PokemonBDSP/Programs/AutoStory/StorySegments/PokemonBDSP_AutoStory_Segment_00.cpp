@@ -1033,7 +1033,14 @@ namespace PokemonAutomation {
             }
 
             after_catch_step(stream, 5);
-            walk_route(stream, context, maps, story_save_spots(), story_at_jubilife_exit, trainers, fight, "To Jubilife");
+            // From the save spot under the ledge, where every way here ends:
+            // step 4 saves on it, and a resume with Potions is either that
+            // save or walks back to it first. From both save spots at once
+            // the planner gives up: the route costs' exact open legs move the
+            // pair in step without ever joining it, so the sets of two tiles
+            // run past its cap (no plan within 400000 sets; 1300 from here).
+            const TilePos save_spot = maps.to_world(MAP_ROUTE_202, Route202::SAVE_SPOT);
+            walk_route(stream, context, maps, {save_spot}, story_at_jubilife_exit, trainers, fight, "To Jubilife");
 
             after_catch_step(stream, 6);
             meet_dawn_in_jubilife(stream, context);
