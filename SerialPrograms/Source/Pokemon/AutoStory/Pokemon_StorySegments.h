@@ -50,6 +50,11 @@ struct SegmentHooks{
     Act save;
     Act reload;
     EventLogger log;
+    //  Optional: each [Segment], [Checkpoint] and [Event] line again,
+    //  without its tag ("00.03/2 below_oaks_trigger: start"), for the video
+    //  overlay, so whoever watches the stream sees the step under way; and,
+    //  once run records land (#132), for the run's events.
+    EventLogger status;
 };
 
 struct SegmentPolicy{

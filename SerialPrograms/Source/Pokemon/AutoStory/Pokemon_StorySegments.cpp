@@ -14,6 +14,25 @@ namespace Pokemon{
 
 namespace{
 
+//  "[Event] 00.03/2 x: start" as "00.03/2 x: start", for the status sink.
+std::string without_tag(const std::string& line){
+    if (line.empty() || line[0] != '['){
+        return line;
+    }
+    const size_t end = line.find("] ");
+    return end == std::string::npos ? line : line.substr(end + 2);
+}
+
+//  A line for the log, and without its tag for the status sink, if set.
+void say(SegmentHooks& hooks, const std::string& line){
+    if (hooks.log){
+        hooks.log(line);
+    }
+    if (hooks.status){
+        hooks.status(without_tag(line));
+    }
+}
+
 std::optional<size_t> index_of(const Segment& segment, const std::string& id){
     for (size_t c = 0; c < segment.checkpoints.size(); c++){
         if (segment.checkpoints[c].id == id){
@@ -96,11 +115,12 @@ CheckpointReport run_row(
                 return hooks.save ? hooks.save(state) : outcome_failed("no_save_hook");
             };
         }
-        CheckpointReport result = run_checkpoint(state, checkpoint, hooks.log);
+        EventLogger log = [&hooks](const std::string& line){ say(hooks, line); };
+        CheckpointReport result = run_checkpoint(state, checkpoint, log);
         if (result.completed || attempt >= policy.attempts_per_checkpoint){
             return result;
         }
-        hooks.log(std::format(
+        say(hooks, std::format(
             "[Segment] {}: {} failed, reloading for attempt {}/{}",
             segment.id, spec.id, attempt + 1, policy.attempts_per_checkpoint
         ));
@@ -120,7 +140,7 @@ SegmentReport stop_segment(SegmentReport& report, SegmentHooks& hooks, const std
             where += " " + report.failed_event;
         }
     }
-    hooks.log(std::format("[Segment] {}: failed{}: {}", id, where, to_string(failure)));
+    say(hooks, std::format("[Segment] {}: failed{}: {}", id, where, to_string(failure)));
     report.failure = std::move(failure);
     return report;
 }
@@ -137,7 +157,7 @@ SegmentReport run_segment(
     if (!selected.failure.succeeded()){
         return stop_segment(report, hooks, segment.id, selected.failure);
     }
-    hooks.log(std::format("[Segment] {}: start, {} checkpoints", segment.id, selected.last - selected.first + 1));
+    say(hooks, std::format("[Segment] {}: start, {} checkpoints", segment.id, selected.last - selected.first + 1));
     for (size_t c = selected.first; c <= selected.last; c++){
         CheckpointSpec& spec = segment.checkpoints[c];
         report.checkpoints_run++;
@@ -149,7 +169,7 @@ SegmentReport run_segment(
         }
     }
     report.completed = true;
-    hooks.log(std::format("[Segment] {}: done, {} checkpoints", segment.id, report.checkpoints_run));
+    say(hooks, std::format("[Segment] {}: done, {} checkpoints", segment.id, report.checkpoints_run));
     return report;
 }
 
