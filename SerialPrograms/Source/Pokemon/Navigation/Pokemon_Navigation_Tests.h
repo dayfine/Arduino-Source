@@ -20,7 +20,6 @@ void add_tests_LegPlanner(UnitTestDatabase& database);
 void add_tests_LegWalker(UnitTestDatabase& database);
 void add_tests_MapData(UnitTestDatabase& database);
 void add_tests_RouteLog(UnitTestDatabase& database);
-void add_tests_StorySteps(UnitTestDatabase& database);
 
 //  (name, JSON text) of each map in Pokemon/Navigation/TestMaps/, built into
 //  the program by pa_embed_text_files() (cmake/EmbedTextFiles.cmake).

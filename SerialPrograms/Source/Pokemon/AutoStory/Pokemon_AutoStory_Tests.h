@@ -17,6 +17,7 @@ namespace Pokemon{
 
 void add_tests_StoryEvents(UnitTestDatabase& database);
 void add_tests_StorySegments(UnitTestDatabase& database);
+void add_tests_StorySteps(UnitTestDatabase& database);
 
 
 
