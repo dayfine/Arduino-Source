@@ -114,7 +114,13 @@ Write one hypothesis with a prediction that only it makes: "if the feature
 is 3 rows, a tap south from this row will move; if 2, it will not." Two
 hypotheses at once means you have not looked hard enough.
 
-## 4. Verify by hand before fixing
+## 4. Verify interactively with CFR before fixing
+
+Use the Command File Runner (CFR) commands through the lab channel to test
+the hypothesis on the live console. Send a small batch of presses, walks,
+screenshots and detector checks with `cfrun.sh NAME < batch.txt`. Inspect
+the journal and screenshots before choosing the fix. This is agent-driven
+verification; ask the human to play the sequence when that would be faster.
 
 - **One batch per question**, 5 to 15 lines, one command per line, a
   `shot` after every move that matters, a `shot` at the end. Name the batch
