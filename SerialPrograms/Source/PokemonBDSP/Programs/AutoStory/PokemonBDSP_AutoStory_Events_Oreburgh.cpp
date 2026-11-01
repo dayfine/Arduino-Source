@@ -263,7 +263,7 @@ void mine_hall(VideoStream& stream, ProControllerContext& context){
 
 //  01.03: the planned route down the corridor to Roark, his talk, and back out of the mine.
 void roark_in_the_mine(VideoStream& stream, ProControllerContext& context){
-    // Planned on the coal room's tile grid (Data/OreburghMine): the
+    // Planned on the coal room's tile grid (Maps/OreburghMine.json): the
     // corridor's rocks zigzag a row at a time, the room's second row passes
     // under the worker on the first, and the east side leads down to the
     // bottom row below Roark.
@@ -290,8 +290,8 @@ void roark_in_the_mine(VideoStream& stream, ProControllerContext& context){
     // column (s03e2 missed him by that much), so look for him with nudges
     // either side. Any tap here can start a wild battle, which leaves us
     // off his column (r180a, even on his row west of his rock): then line up
-    // again from the east end of the bottom row, three taps west and north to the wall on his row (Data/
-    // OreburghMine: columns 23 to 25 have that wall above).
+    // again from the east end of the bottom row, three taps west and north to the wall on his row
+    // (Maps/OreburghMine.json: columns 23 to 25 have that wall above).
     bool talked = false;
     for (size_t attempt = 0; attempt < 3 && !talked; attempt++){
         if (attempt > 0){

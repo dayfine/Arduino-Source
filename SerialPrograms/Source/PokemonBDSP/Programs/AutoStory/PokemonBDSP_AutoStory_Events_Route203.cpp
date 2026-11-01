@@ -175,7 +175,7 @@ void oreburgh_welcome(VideoStream& stream, ProControllerContext& context){
 Pokemon::Outcome route_203_to_row_18(StoryExecutor& executor, Pokemon::RunState& state, const Pokemon::StoryStep&){
     VideoStream& stream = executor.stream();
     ProControllerContext& context = executor.context();
-    // On the grid (Data/PokemonBDSP_AutoStory_Route203, from the decomp,
+    // On the grid (Maps/Route203.json, from the decomp,
     // its east stretch checked by hand): south from the Gate down the sand,
     // west along the sand's bottom row and on under the girl's row, which
     // runs straight to Jubilife as row 18. Trainers the map does not list

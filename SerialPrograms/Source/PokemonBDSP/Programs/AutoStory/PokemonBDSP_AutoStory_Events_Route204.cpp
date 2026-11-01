@@ -80,7 +80,7 @@ void north_out_of_jubilife(VideoStream& stream, ProControllerContext& context){
 
 //  01.08: Route 204 South on its grid to below the Ravaged Path's door.
 void route_204_south_to_the_door(VideoStream& stream, ProControllerContext& context){
-    // On the grid decoded from the game's data (Data/..._Route204South):
+    // On the grid decoded from the game's data (Maps/Route204South.json):
     // a tile west onto the tall grass column that runs up to the cliff,
     // north up it, then west along the cliff to the signboard beside the
     // door (the offline plan: 3 legs). Other trainers' sight lines are kept
@@ -111,7 +111,7 @@ void into_the_ravaged_path(VideoStream& stream, ProControllerContext& context){
 
 //  01.09: through the Ravaged Path, smashing its rocks.
 void through_the_ravaged_path(VideoStream& stream, ProControllerContext& context){
-    // On the traced grid (Data/PokemonBDSP_AutoStory_RavagedPath): from the
+    // On the traced grid (Maps/RavagedPath.json): from the
     // south door up the stairs to the tile west of one of the two rocks
     // across the lower corridor, smash it, then east and south to the
     // corridor's east end; the way out is a tile west of it, south.
@@ -160,8 +160,8 @@ void through_the_ravaged_path(VideoStream& stream, ProControllerContext& context
 
 //  01.10: Route 204 north on the human's line, into Floaroma.
 void route_204_to_floaroma(VideoStream& stream, ProControllerContext& context){
-    // The line a human walked (Data/PokemonBDSP_AutoStory_Route204,
-    // floaroma_waypoints()): a tile south out of the cave's mouth, west along
+    // The line a human walked (Maps/Route204North.json,
+    // the region floaroma_waypoints): a tile south out of the cave's mouth, west along
     // the row under the cliff past the Youngster who wanders there, up the
     // stairs, east along the corridor into Aroma Lady Taylor's battle, north
     // through the tall grass, west below the flower beds, and north between
