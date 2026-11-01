@@ -7,6 +7,7 @@
  */
 
 #include <functional>
+#include <format>
 #include <string>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
@@ -110,9 +111,11 @@ UnitTestResult test_taps(){
             return c.line + ": wrong direction, count or all flag.";
         }
         if (taps.hold != c.expected.hold || taps.release != c.expected.release || taps.still != c.expected.still){
-            return c.line + ": expected hold " + std::to_string(c.expected.hold.count())
-                + ", release " + std::to_string(c.expected.release.count()) + ", still " + std::to_string(c.expected.still)
-                + "; read " + std::to_string(taps.hold.count()) + ", " + std::to_string(taps.release.count()) + ", " + std::to_string(taps.still);
+            return std::format(
+                "{}: expected hold {}, release {}, still {:f}; read {}, {}, {:f}",
+                c.line, c.expected.hold.count(), c.expected.release.count(), c.expected.still,
+                taps.hold.count(), taps.release.count(), taps.still
+            );
         }
     }
     for (const char* line : {"taps UP", "taps UP x", "taps UP 0", "taps UP 2.5", "taps NORTH 2", "taps UP 2 all soon"}){

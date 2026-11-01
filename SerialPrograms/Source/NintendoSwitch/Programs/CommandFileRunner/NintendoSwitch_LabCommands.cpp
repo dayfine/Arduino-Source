@@ -4,6 +4,7 @@
  *
  */
 
+#include <format>
 #include "Common/Cpp/Exceptions.h"
 #include "GameConsole/Framework/ConsoleProgramSession.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
@@ -78,7 +79,7 @@ void SwitchLabCommands::run(
         throw;
     }catch (...){
         //  What the screen showed when the command failed.
-        output.out << "shot " << save_command_file_screenshot(session, "error_L" + std::to_string(output.line)) << "\n";
+        output.out << "shot " << save_command_file_screenshot(session, std::format("error_L{}", output.line)) << "\n";
         throw;
     }
 }

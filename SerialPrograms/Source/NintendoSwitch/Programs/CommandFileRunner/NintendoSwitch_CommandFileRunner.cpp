@@ -5,6 +5,7 @@
  */
 
 #include <algorithm>
+#include <format>
 #include <map>
 #include <optional>
 #include <sstream>
@@ -326,7 +327,7 @@ private:
         Milliseconds walked = 0ms;
         Milliseconds moving = 0ms;
         int quiet = 0;
-        std::ostringstream changes;
+        std::string changes;
         while (walked < limit && quiet < 2){
             pbf_move_left_joystick(context(), position, WALK_SLICE, 0ms);
             VideoSnapshot after = current_frame();
@@ -335,7 +336,7 @@ private:
             }
             const double change = screen_change(before, after);
             walked += WALK_SLICE;
-            changes << " " << (int)change;
+            changes += std::format(" {}", (int)change);
             if (change < still){
                 quiet++;
             }else{
@@ -346,7 +347,7 @@ private:
         }
         pbf_wait(context(), STICK_RELEASE);
         out() << "walk " << (quiet >= 2 ? "still" : "limit") << " after " << walked.count()
-            << "ms, moving " << moving.count() << "ms; changes" << changes.str() << "\n";
+            << "ms, moving " << moving.count() << "ms; changes" << changes << "\n";
     }
     void shot(const std::vector<std::string>& words){
         out() << "shot " << save_screenshot(required_arg(words, 1)) << "\n";
@@ -359,7 +360,7 @@ private:
             if (c > 0){
                 context().wait_for(interval);
             }
-            out() << "shot " << save_screenshot(label + "_" + std::to_string(c)) << "\n";
+            out() << "shot " << save_screenshot(std::format("{}_{}", label, c)) << "\n";
         }
     }
     void history(const std::vector<std::string>& words){
@@ -400,7 +401,7 @@ private:
         if (words[0] == "expect"){
             throw OperationFailedException(
                 ErrorReportMode::NO_ERROR_REPORT,
-                "expect " + name + ": not seen within " + std::to_string(timeout.count()) + "ms."
+                std::format("expect {}: not seen within {}ms.", name, timeout.count())
             );
         }
         out() << words[0] << " " << name << " timeout\n";
@@ -497,7 +498,7 @@ LineResult run_line(CommandFileSession& session, const std::string& text, size_t
     }
     if (!error.empty()){
         session.out << journal_error(number, text, error);
-        session.out << "shot " << save_command_file_screenshot(session, "error_L" + std::to_string(number)) << "\n";
+        session.out << "shot " << save_command_file_screenshot(session, std::format("error_L{}", number)) << "\n";
         return LineResult::FAILED;
     }
     session.out << journal_ok(

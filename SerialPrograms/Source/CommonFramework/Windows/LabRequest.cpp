@@ -6,6 +6,7 @@
 
 #include <cerrno>
 #include <cstdlib>
+#include <format>
 #include <sstream>
 #include "LabRequest.h"
 
@@ -64,11 +65,10 @@ LabRequest parse_lab_request(const std::string& text){
 
 
 std::string journal_ok(size_t number, const std::string& command, Milliseconds start, Milliseconds end){
-    return "ok " + std::to_string(number) + " " + command
-        + " @" + std::to_string(start.count()) + "-" + std::to_string(end.count()) + "ms\n";
+    return std::format("ok {} {} @{}-{}ms\n", number, command, start.count(), end.count());
 }
 std::string journal_error(size_t number, const std::string& command, const std::string& reason){
-    return "error " + std::to_string(number) + " (" + command + "): " + reason + "\n";
+    return std::format("error {} ({}): {}\n", number, command, reason);
 }
 
 

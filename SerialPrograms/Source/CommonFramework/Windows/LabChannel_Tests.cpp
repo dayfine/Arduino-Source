@@ -8,6 +8,7 @@
  */
 
 #include <functional>
+#include <format>
 #include <string>
 #include "Common/Cpp/Filesystem/FileIO.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
@@ -74,7 +75,7 @@ UnitTestResult test_parse_request(){
         return "The owner line should be read: got \"" + request.owner + "\".";
     }
     if (request.lines.size() != 3){
-        return "Expected 3 command lines, got " + std::to_string(request.lines.size()) + ".";
+        return std::format("Expected 3 command lines, got {}.", request.lines.size());
     }
     if (request.lines[0].number != 4 || request.lines[0].text != "select PokemonBDSP:AutoStory   # pick it"){
         return "A line keeps its number in the file and its text.";

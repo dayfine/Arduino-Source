@@ -6,6 +6,7 @@
 
 #include <cerrno>
 #include <cstdlib>
+#include <format>
 #include <map>
 #include <sstream>
 #include "Common/Cpp/Exceptions.h"
@@ -17,7 +18,7 @@ namespace NintendoSwitch{
 
 const std::string& required_arg(const std::vector<std::string>& words, size_t index){
     if (index >= words.size()){
-        throw ParseException(words[0] + ": missing argument " + std::to_string(index));
+        throw ParseException(std::format("{}: missing argument {}", words[0], index));
     }
     return words[index];
 }
@@ -34,7 +35,7 @@ double optional_number(const std::vector<std::string>& words, size_t index, doub
     errno = 0;
     const double value = std::strtod(begin, &end);
     if (end == begin || errno == ERANGE){
-        throw ParseException(words[0] + ": argument " + std::to_string(index) + " is not a number: " + words[index]);
+        throw ParseException(std::format("{}: argument {} is not a number: {}", words[0], index, words[index]));
     }
     return value;
 }
