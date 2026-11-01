@@ -45,19 +45,35 @@ base/upstream-main (copy of upstream main; refreshed to b3673f2a9 on 2026-11-01)
 │     S3 ScreenMachine + StepTrace                       (#108, +333,  5 files)
 │     S4 Pokemon navigation: story checkpoints as events (#79,  ~+1200, 6 files; its
 │                                                         MoveOnlyFunction is upstream now)
-├── frlg/mvp (on nav/shared) ... collector 3, supersedes #67 (22 files, +3302)
-│     F1 devtools: generate FRLG overworld maps as JSON; the JSON maps (pokefirered)
-│     F2 FRLG: OverworldMap, Tile/Grid, named points and flag sets
-│     F3 FRLG: route planning on the shared leg planner (route costs, steps)
-│     F4 FRLG: LegWalker + overworld walk (D-pad legs, battle flash watcher)
-│     F5 FRLG: player facing reader (standing sprites from the sheet)
-└── base/bdsp-1717 = base/upstream-main + upstream #1717 head + nav/shared
-      └── bdsp/mvp ............ collector 2, supersedes #68 #109 #110 #111 (and the
-            B1 Pokemon navigation: TileGrid + MapSet       lab branch bdsp/event-sandgem-center)
-            B2 BDSP AutoStory: walker (Walk, RouteWalk, waypoints, blocked taps)
-            B3 BDSP AutoStory: map data from the Diamond decomp (35 files) + MAPS.md
-            B4 BDSP AutoStory: segments 00/01, Sandgem Center events, route records
-            B5 BDSP AutoStory: tests (plans, records, detectors)
+├── frlg/mvp = fork #117 (on nav/shared) ... collector 3, supersedes #67; 6 commits, +3304, CI green
+│     F0 BagDetector fix: dropped, already upstream (#1771)
+│     F1 cc3450b8a devtools: generate FRLG overworld maps as JSON from pokefirered   (+203)
+│     F2 e770e3fa7 FRLG: overworld maps as plain data (tiles, grid, named points, flags) (+978)
+│     F3 d0bb032e7 FRLG: plan overworld routes with the shared leg planner           (+835)
+│     F4 b734805ce Pokemon navigation: leg walker with game-supplied movers/interrupts (+465)
+│     F5 6952e6c5a FRLG: read which way the standing player faces                    (+314)
+│     F6 ab9a22e0b FRLG: walk overworld routes with the leg walker (+ BattleFlashWatcher) (+509)
+│     (facing reader before the walk: the walk includes it. 19 to_string → std::format)
+│     └── frlg/walk-wild-legs (on frlg/mvp) ... fixes from the console B MVP run, to collect
+│           43ac578a0 watch for wild battles only on steps where one can start (grass/water)
+│           f11a56672 never plan a hold into a sign moving north or south (maps get 'S' signs)
+└── base/bdsp-1717 = base/upstream-main + upstream #1717 head 381c055ac + nav/shared
+      └── bdsp/mvp ............ collector 2, supersedes #68 #109 #110 #111 #112 and the lab
+            branch bdsp/event-sandgem-center; kit ready, waits for #111/#112 to merge (phase 3)
+            B1 Pokemon navigation: TileGrid + MapSet (+859; from the lab branch, ~700 lines
+               newer than #109; MapSet written LF; no tests here, they use BDSP data → B5)
+            B2 BDSP AutoStory: walker (Walk, RouteWalk + costs, Location banner, PokemonCenter,
+               NameListDetector, Menu/SelectionArrow tweaks) (+2,289)
+            B3 BDSP AutoStory: map data from the Diamond decomp (StoryMaps, RouteRecords, 15 maps,
+               MAPS.md) (+2,893)
+            B4 BDSP AutoStory: segments 00/01, Sandgem Center events, NewGame (+ SystemKeyboard-
+               Detector), AutoStory/Tools merged with Butters' newer #1717 head (~+9k/−6.5k):
+               our Segment 01 (Jubilife→Floaroma) replaces his 01 (user, 2026-11-01); his
+               PP budget kept; GCC fixes; DIAGNOSTIC options kept for run 3
+            B5 BDSP AutoStory: tests (18: TileGrid parse/wall/plans, records, events, screenshots
+               skip when absent) (+2,088)
+            Rehearsal on the current tip: 5 commits, 71 files, +15,386/−4,189; Windows clang
+            builds and passes our tests; the only failures are #1717's two screenshot tests
             (Command File Runner and lab control stay in #107)
 ```
 
@@ -68,7 +84,8 @@ a finer split than B1–B5 once rebuilt; decide after the shared and FRLG collec
 ## Order of work
 
 1. `nav/shared`: refresh the base, apply S1–S4, fork CI on three platforms, draft PR. Show.
-2. `frlg/mvp`: from #67's 20 commits, regrouped as F1–F5, on `nav/shared`. Show.
+2. ✅ `frlg/mvp` = fork #117: from #67, regrouped as F1–F6 on `nav/shared`. Console fixes go on
+   branches off it (`frlg/walk-wild-legs`) and are collected later.
 3. `bdsp/mvp`: after fork #110 and #111 merge into `bdsp/event-sandgem-center` and its three
    pre-existing CI failures are fixed (`std::lround` without `<cmath>` in
    `PokemonBDSP_AutoStory_Tests.cpp`, `int-in-bool-context` in `PokemonBDSP_AutoStoryTools.cpp`,
@@ -93,5 +110,8 @@ a finer split than B1–B5 once rebuilt; decide after the shared and FRLG collec
   rebuilt from the lab branch, not from #109.
 - Upstream #1717 is Butters' open PR. B1–B5 cannot go upstream before it merges; the
   alternative is PRs against Butters' branch. Decide with the user when the BDSP collector exists.
+- Butters notes for the BDSP collector (in its PR body): Segment 01 clash, his 0006, program
+  options not adopted, PP budget kept, save-prompt check, two GCC errors, two screenshot tests.
+  Pre-upstream: strip DIAGNOSTIC options, #1717 merges first, close #62.
 - Not part of the MVPs, stay separate: #81 naming screen, #62 system keyboard, #61 party check,
   #86 bag detector tests, #107 lab tooling, #103 lab/main, #100/#78/#56 design notes, #85 notes.
