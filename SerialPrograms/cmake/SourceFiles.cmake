@@ -1715,6 +1715,8 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_BagDetector.h
     Source/VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_LoadMenuDetector.cpp
     Source/VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_LoadMenuDetector.h
+    Source/VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_NamingScreenDetector.cpp
+    Source/VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_NamingScreenDetector.h
     Source/VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_PartyEmptySlotDetector.cpp
     Source/VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_PartyEmptySlotDetector.h
     Source/VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_PartyHeldItemDetector.cpp

@@ -16,6 +16,7 @@
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "VideoGames/PokemonFRLG/Inference/Dialogs/PokemonFRLG_BattleDialogs.h"
 #include "VideoGames/PokemonFRLG/Inference/Dialogs/PokemonFRLG_DialogDetector.h"
+#include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_NamingScreenDetector.h"
 #include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_StartMenuDetector.h"
 #include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_SelectionArrowDetector.h"
 #include "VideoGames/PokemonFRLG/PokemonFRLG_Settings.h"
@@ -36,8 +37,12 @@ constexpr Milliseconds POLL = 300ms;
 //  Text without an arrow or a prompt this long: press anyway, for a last
 //  line that waits without an arrow (Oak's "Here, come with me!").
 constexpr Milliseconds TEXT_STILL = 4000ms;
-//  Once a dialog closes in the intro, this long without one is a keyboard.
+//  In the intro: A this often on a message box; how long with no box
+//  before checking for the bedroom; and before pressing A on a screen
+//  nothing reads.
+constexpr Milliseconds INTRO_A_EVERY = 1500ms;
 constexpr Milliseconds INTRO_QUIET = 3000ms;
+constexpr Milliseconds INTRO_STUCK = 15000ms;
 constexpr Milliseconds INTRO_TIMEOUT = 600000ms;
 //  "Wait about 8 s" after YES at the nurse (console B, 2026-11-01): 1.5 s
 //  between presses did not heal.
@@ -139,10 +144,14 @@ void open_start_menu_row(ConsoleHandle& console, ProControllerContext& context, 
 }
 
 
-//  The new game's intro, from the title screen. Text is advanced with A
-//  (B may go back a question); a keyboard is told by the dialog box being
-//  gone for a while, and given an empty name: B deletes whatever a stray A
-//  typed, START jumps to OK.
+//  The new game's intro, from the title screen. Everything but the keyboard
+//  is advanced with A, which never hurts there (BOY is the default, YES to
+//  GREEN); B is never pressed outside the keyboard, since in the intro it
+//  goes back to the controls pages (console B, 2026-11-01). The controls
+//  pages read as a message box without an arrow, and the arrow at the end
+//  of Oak's lines may be missed, so a message box gets A every 1.5 s
+//  whatever it shows. On the keyboard, B deletes whatever a stray A typed
+//  and START jumps to OK, which confirms the empty name as the default.
 class NewGameIntro{
 public:
     NewGameIntro(ConsoleHandle& console, ProControllerContext& context)
@@ -167,7 +176,7 @@ public:
     }
 
 private:
-    //  The title, then the controls pages, which A turns, up to Oak's first box.
+    //  The title, then the controls pages, which A turns, up to a message box.
     void press_a_until_dialog(){
         WhiteDialogWatcher dialog(COLOR_RED);
         m_context.wait_for_all_requests();
@@ -196,70 +205,54 @@ private:
             pbf_wait(m_context, POLL);
             return false;
         }
-        if (yes_no_cursor(screen)){
-            //  "...Er, was it GREEN?" YES.
-            m_console.log("New game: YES.");
-            press_a(now, 1000ms);
+        if (NamingScreenDetector(COLOR_RED).detect(screen)){
+            enter_empty_name();
+            m_last_dialog = current_time();
             return false;
         }
-        if (WhiteDialogDetector(COLOR_RED).detect(screen)){
+        if (yes_no_cursor(screen) || WhiteDialogDetector(COLOR_RED).detect(screen)){
             m_dialog_seen = true;
             m_last_dialog = now;
-            if (AdvanceWhiteDialogDetector(COLOR_RED).detect(screen)){
-                m_still_presses = 0;
-                press_a(now, 400ms);
-            }else if (now - m_last_press > TEXT_STILL){
-                still_dialog(now);
+            if (now - m_last_press >= INTRO_A_EVERY){
+                press(m_context, BUTTON_A, 200ms);
+                m_last_press = now;
             }else{
                 pbf_wait(m_context, POLL);
             }
             return false;
         }
-        m_still_presses = 0;
         return quiet(screen, now);
     }
 
-    //  A box with no arrow that A doesn't move on (BOY/GIRL takes one A):
-    //  if the keyboard's frame reads as a message box, it is this.
-    void still_dialog(WallClock now){
-        if (m_still_presses < 2){
-            m_still_presses++;
-            press_a(now, 400ms);
-            return;
-        }
-        m_still_presses = 0;
-        enter_empty_name();
-        m_last_press = current_time();
-    }
-
-    void enter_empty_name(){
-        m_console.log("New game: a keyboard, confirming an empty name.");
-        for (int c = 0; c < 8; c++){
-            press(m_context, BUTTON_B, 340ms);
-        }
-        press(m_context, BUTTON_PLUS, 500ms);
-        press(m_context, BUTTON_A, 1500ms);
-    }
-
-    //  No message box: a fade, a pause in the speech, a keyboard, or the bedroom.
+    //  No message box and no keyboard: a fade, a pause in the speech, or
+    //  the bedroom.
     bool quiet(const ImageViewRGB32& screen, WallClock now){
         const ImageViewRGB32 game = extract_box_reference(screen, GameSettings::instance().GAME_BOX);
         if (is_black(game) || !m_dialog_seen || now - m_last_dialog < INTRO_QUIET){
             pbf_wait(m_context, POLL);
             return false;
         }
+        //  START does nothing in the intro.
         if (overworld_shows(m_console, m_context)){
             return true;
         }
-        enter_empty_name();
-        m_dialog_seen = false;
-        m_last_dialog = current_time();
+        //  A screen still waiting for A that none of the detectors knows.
+        if (now - m_last_press > INTRO_STUCK){
+            m_console.log("New game: nothing known on screen, pressing A.");
+            press(m_context, BUTTON_A, 200ms);
+            m_last_press = current_time();
+        }
         return false;
     }
 
-    void press_a(WallClock now, Milliseconds after){
-        press(m_context, BUTTON_A, after);
-        m_last_press = now;
+    void enter_empty_name(){
+        m_console.log("New game: the keyboard, confirming an empty name.");
+        for (int c = 0; c < 8; c++){
+            press(m_context, BUTTON_B, 340ms);
+        }
+        press(m_context, BUTTON_PLUS, 500ms);
+        press(m_context, BUTTON_A, 2000ms);
+        m_context.wait_for_all_requests();
     }
 
     ConsoleHandle& m_console;
@@ -267,7 +260,6 @@ private:
     WallClock m_last_dialog;
     WallClock m_last_press;
     bool m_dialog_seen = false;
-    int m_still_presses = 0;
 };
 
 }
