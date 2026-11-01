@@ -151,15 +151,17 @@ with the same token (e.g. after a script restart).
 ## Run records
 
 Every run of the program gets a folder `Lab/runs/<run_id>/`, whether a
-request or the window started it. The run ID is opaque; IDs sort in the
+request or the window started it. Runs are recorded only in an app that
+found the `Lab/` folder at startup. The run ID is opaque; IDs sort in the
 order the runs started, and a restarted app never reuses one. The newest 32
 folders are kept; older ones go when a run starts.
 
 | File | Content |
 |---|---|
+| `meta.json` | What ran: `run_id`, `program`, `version`, `commit` (the git commit the app was built from, `-dirty` with local changes) and `settings` (the program's settings as the settings file stores them). Written when the run starts. |
 | `result.json` | What the run did, without its events and log (below). Rewritten as the run goes; final once `status` is `terminal`. Poll it, or let `labctl.sh wait RUN_ID` do it. |
 | `events.jsonl` | One JSON object per line: the events the program reports (checkpoint, step, attempt, pose, ...), the errors it reported (`"kind":"error"`), and the console probes taken during the run or within two minutes after it ended (`"kind":"probe"`). Appended as they happen. |
-| `log.txt` | The last 64 KiB of the run's own log: the program's and its console's lines, nothing from before or after. Written when the run ends. |
+| `log.txt` | The run's own log: the program's and its console's lines, nothing from before or after. Appended as the run goes, up to 8 MiB; a last line says how many lines were left out past that. |
 | `frame-*.png` | `frame-failure.png` (or `frame-end.png` for a finished run) is the frame the exception carried, when it carried one. `frame-<n>[-<checkpoint>][-s<step>][-a<attempt>].png` is the frame of event `n`. |
 | `probe-*.png` | Copies of the `shot`s taken during or right after the run. |
 
@@ -183,7 +185,8 @@ folders are kept; older ones go when a run starts.
         "text": "the sign's box did not open",
         "time": "2026-11-01 15:41:02.400"
     },
-    "log_truncated": false,
+    "dropped_log_lines": 0,
+    "log_lines": 2210,
     "outcome": "failed",
     "program": "PokemonBDSP:AutoStory",
     "run_id": "20261101-153012123456-003",
@@ -208,6 +211,8 @@ folders are kept; older ones go when a run starts.
 - `last_event` is the newest event the program reported, with the same
   fields as a line of `events.jsonl`. For a program that retries a checkpoint
   and reports each attempt, it is the failing attempt.
+- `log_lines` counts the run's log lines so far; `dropped_log_lines` the
+  lines past the 8 MiB cap, which are only in `SerialPrograms.log`.
 - `end_time`, `duration_ms`, `outcome`, `error` and `frame` appear once the
   run is terminal; `last_event` once there is an event.
 

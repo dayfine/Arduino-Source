@@ -154,6 +154,9 @@ std::unique_ptr<LabChannel> LabChannel::start_if_enabled(
     if (!Filesystem::is_directory(Filesystem::Path(folder()))){
         return nullptr;
     }
+    //  Runs are recorded only in an app that has the channel, which writes
+    //  them to Lab/runs/.
+    RunRecordStore::instance().set_enabled(true);
     return std::unique_ptr<LabChannel>(new LabChannel(std::move(callbacks), std::move(console)));
 }
 LabChannel::LabChannel(LabChannelCallbacks callbacks, std::unique_ptr<LabConsoleCommands> console)

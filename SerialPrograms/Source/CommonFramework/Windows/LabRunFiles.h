@@ -5,6 +5,9 @@
  *  The lab channel's copy of the run records (CommonFramework/RunRecord.h)
  *  as files, one folder per run under "Lab/runs/<run_id>/":
  *
+ *      meta.json       What ran: the program, the app's version, the git
+ *                      commit it was built from, the program's settings.
+ *                      Written when the run starts.
  *      result.json     The record without its events and log: status,
  *                      outcome, error, times, the frame's file name and the
  *                      last event. Rewritten as the run goes; final once
@@ -12,7 +15,8 @@
  *      events.jsonl    One JSON object per line, appended as the program
  *                      reports events; console probes (shot, detect) taken
  *                      during or right after the run are appended too.
- *      log.txt         The run's log tail, written when the run ends.
+ *      log.txt         The run's own log lines, appended as they come,
+ *                      up to RunRecordStore::MAX_LOG_BYTES.
  *      frame-*.png     The frames of events and of the result.
  *      probe-*.png     Screenshots of probes attached to the run.
  *
@@ -45,6 +49,10 @@ std::string run_result_json(
     const std::optional<std::string>& frame_file,
     const std::map<size_t, std::string>& event_frames
 );
+
+//  The text of meta.json. The settings are embedded as JSON when they
+//  parse, else as a string.
+std::string run_meta_json(const RunRecord& record);
 
 //  One line of events.jsonl, without the newline.
 std::string run_event_json_line(const RunEvent& event, const std::optional<std::string>& frame_file);
@@ -88,12 +96,14 @@ public:
 private:
     struct Written{
         size_t events = 0;              //  Events written to events.jsonl so far.
+        size_t log_lines = 0;           //  Log lines written to log.txt so far.
         std::map<size_t, std::string> event_frames = {};
         std::string result_text = {};   //  The last result.json written.
         bool finished = false;
     };
 
     void write_run(const RunRecord& record, Written& written);
+    void append_log(const RunRecord& record, Written& written);
     void prune();
 
     const std::string m_folder;

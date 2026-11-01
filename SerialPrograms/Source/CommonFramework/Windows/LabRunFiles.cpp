@@ -35,6 +35,18 @@ std::string file_name_part(const std::string& text){
     return part;
 }
 
+//  Saves the frame a terminal run ended with. Returns its file name.
+std::optional<std::string> save_result_frame(const RunRecord& record, const std::string& folder){
+    if (record.status != RunStatus::TERMINAL || !record.result || !record.result->frame){
+        return std::nullopt;
+    }
+    std::string name = record.result->outcome == RunOutcome::FAILED ? "frame-failure.png" : "frame-end.png";
+    if (!record.result->frame->save(folder + name)){
+        return std::nullopt;
+    }
+    return name;
+}
+
 JsonObject event_json(const RunEvent& event, const std::optional<std::string>& frame_file){
     JsonObject json;
     json["time"] = lab_time_text(event.time);
@@ -126,7 +138,8 @@ std::string run_result_json(
     }
     json["event_count"] = record.events.size();
     json["dropped_events"] = record.dropped_events;
-    json["log_truncated"] = record.log_truncated;
+    json["log_lines"] = record.log_lines;
+    json["dropped_log_lines"] = record.dropped_log_lines;
     if (!record.events.empty()){
         const size_t last = record.events.size() - 1;
         std::optional<std::string> last_frame;
@@ -134,6 +147,22 @@ std::string run_result_json(
             last_frame = it->second;
         }
         json["last_event"] = event_json(record.events[last], last_frame);
+    }
+    return JsonValue(std::move(json)).dump(4) + "\n";
+}
+
+std::string run_meta_json(const RunRecord& record){
+    JsonObject json;
+    json["run_id"] = record.run_id;
+    json["program"] = record.program;
+    json["version"] = record.version;
+    json["commit"] = record.commit;
+    if (!record.settings.empty()){
+        try{
+            json["settings"] = parse_json(record.settings);
+        }catch (std::exception&){
+            json["settings"] = record.settings;
+        }
     }
     return JsonValue(std::move(json)).dump(4) + "\n";
 }
@@ -205,6 +234,7 @@ void LabRunWriter::write_run(const RunRecord& record, Written& written){
     if (written.result_text.empty()){
         Filesystem::create_directories(Filesystem::Path(folder));
         prune();
+        write_lab_file_atomically(Filesystem::Path(folder + "meta.json"), run_meta_json(record));
     }
 
     std::string lines;
@@ -226,23 +256,8 @@ void LabRunWriter::write_run(const RunRecord& record, Written& written){
     }
     written.events = record.events.size();
 
-    std::optional<std::string> frame_file;
-    if (record.status == RunStatus::TERMINAL){
-        if (record.result && record.result->frame){
-            frame_file = record.result->outcome == RunOutcome::FAILED ? "frame-failure.png" : "frame-end.png";
-            if (!record.result->frame->save(folder + *frame_file)){
-                frame_file.reset();
-            }
-        }
-        std::string log;
-        if (record.log_truncated){
-            log += "[older lines dropped]\n";
-        }
-        for (const std::string& line : record.log_tail){
-            log += line + "\n";
-        }
-        write_lab_file_atomically(Filesystem::Path(folder + "log.txt"), log);
-    }
+    const std::optional<std::string> frame_file = save_result_frame(record, folder);
+    append_log(record, written);
 
     const std::string text = run_result_json(record, frame_file, written.event_frames);
     if (text != written.result_text){
@@ -254,6 +269,30 @@ void LabRunWriter::write_run(const RunRecord& record, Written& written){
         if (record.run_id == m_last_run){
             m_last_end = record.end_time;
         }
+    }
+}
+
+//  Appends the lines the store has that log.txt doesn't. Lines that left the
+//  store's tail before this poll got to them are marked, not lost silently.
+void LabRunWriter::append_log(const RunRecord& record, Written& written){
+    const size_t first_held = record.log_lines - record.log_tail.size();
+    std::string text;
+    if (written.log_lines < first_held){
+        text += std::format("[{} lines not copied: the writer fell behind]\n", first_held - written.log_lines);
+        written.log_lines = first_held;
+    }
+    for (size_t i = written.log_lines - first_held; i < record.log_tail.size(); i++){
+        text += record.log_tail[i] + "\n";
+    }
+    written.log_lines = record.log_lines;
+    if (record.status == RunStatus::TERMINAL && record.dropped_log_lines > 0){
+        text += std::format(
+            "[log.txt stops at {} bytes: {} more lines are in SerialPrograms.log]\n",
+            RunRecordStore::MAX_LOG_BYTES, record.dropped_log_lines
+        );
+    }
+    if (!text.empty()){
+        append_file(run_folder(record.run_id) + "log.txt", text);
     }
 }
 

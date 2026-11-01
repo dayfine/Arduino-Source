@@ -33,7 +33,8 @@ printf '%s\n' '{' '    "event_count": 3,' '    "program": "PokemonBDSP:AutoStory
         "text": "the sign's box did not open",
         "time": "2026-11-01 15:41:02.400"
     },
-    "log_truncated": false,
+    "dropped_log_lines": 0,
+    "log_lines": 2210,
     "outcome": "failed",
     "program": "PokemonBDSP:AutoStory",
     "run_id": "$r",

@@ -302,7 +302,8 @@ UnitTestResult test_result_json(){
     record.status = RunStatus::TERMINAL;
     record.end_time = t0 + std::chrono::seconds(90);
     record.result = RunResult{.outcome = RunOutcome::FAILED, .error = "expect_failed: the Route 204 sign's box did not open"};
-    record.log_truncated = true;
+    record.log_lines = 12;
+    record.dropped_log_lines = 3;
     text = run_result_json(record, "frame-failure.png", {{1, "frame-001-01.08-s4_7-a2.png"}});
     const JsonValue json = parse_json(text);
     const JsonObject* object = json.to_object();
@@ -315,7 +316,8 @@ UnitTestResult test_result_json(){
         !has_json_line(text, 4, "frame", "\"frame-failure.png\"") ||
         !has_json_line(text, 4, "duration_ms", "90000") ||
         !has_json_line(text, 4, "event_count", "2") ||
-        !has_json_line(text, 4, "log_truncated", "true") ||
+        !has_json_line(text, 4, "log_lines", "12") ||
+        !has_json_line(text, 4, "dropped_log_lines", "3") ||
         !has_json_line(text, 4, "run_id", "\"20261101-153012123456-007\"")
     ){
         return "Unexpected top-level fields:\n" + text;
@@ -329,6 +331,31 @@ UnitTestResult test_result_json(){
     }
     if (object->get_string_throw("end_time") != lab_time_text(*record.end_time)){
         return "end_time is the record's end.";
+    }
+    return true;
+}
+
+UnitTestResult test_meta_json(){
+    RunRecord record{
+        .run_id = "20261101-153012123456-007", .program = "PokemonFRLG:AutoStory",
+        .version = "v0.72.1-beta", .commit = "0123456789ab-dirty",
+        .settings = R"({"START_CHECKPOINT": 8})",
+    };
+    const std::string text = run_meta_json(record);
+    if (!has_json_line(text, 4, "program", "\"PokemonFRLG:AutoStory\"") ||
+        !has_json_line(text, 4, "version", "\"v0.72.1-beta\"") ||
+        !has_json_line(text, 4, "commit", "\"0123456789ab-dirty\"") ||
+        !has_json_line(text, 8, "START_CHECKPOINT", "8")
+    ){
+        return "meta.json names the program and build and embeds the settings as JSON:\n" + text;
+    }
+    record.settings = "not json";
+    if (!has_json_line(run_meta_json(record), 4, "settings", "\"not json\"")){
+        return "Settings that don't parse are kept as a string.";
+    }
+    record.settings.clear();
+    if (run_meta_json(record).find("settings") != std::string::npos){
+        return "No settings, no field.";
     }
     return true;
 }
@@ -348,13 +375,20 @@ UnitTestResult test_run_writer(){
         if (writer.run_for_probe(t0)){
             error = "No run, no probe target.";
         }
-        const std::string a = store.begin("Test:A");
+        const std::string a = store.begin("Test:A", R"({"K": 1})");
         store.event(a, {.kind = "checkpoint", .checkpoint = "00.01", .text = "ok", .frame = test_frame()});
+        store.log_line(a, "line 0");
         writer.sync(store);
         const std::string folder = writer.run_folder(a);
         std::string text;
         if (error.empty() && (!file_to_string(folder + "result.json", text) || !has_json_line(text, 4, "status", "\"running\""))){
             error = "After the first sync the run has a folder with a running result.json: " + text;
+        }
+        if (error.empty() && (!file_to_string(folder + "meta.json", text) || !has_json_line(text, 4, "program", "\"Test:A\"") || !has_json_line(text, 8, "K", "1"))){
+            error = "The run's meta.json is written when it starts: " + text;
+        }
+        if (error.empty() && (!file_to_string(folder + "log.txt", text) || text != "line 0\n")){
+            error = "log.txt grows while the run is going: " + text;
         }
         if (error.empty() && !Filesystem::is_regular_file(Filesystem::Path(folder + "frame-000-00.01.png"))){
             error = "The event's frame is saved under its event name.";
@@ -378,8 +412,8 @@ UnitTestResult test_run_writer(){
         if (error.empty() && !Filesystem::is_regular_file(Filesystem::Path(folder + "frame-failure.png"))){
             error = "The failure frame is saved.";
         }
-        if (error.empty() && (!file_to_string(folder + "log.txt", text) || text != "line 1\nline 2\n")){
-            error = "log.txt is the run's log tail: " + text;
+        if (error.empty() && (!file_to_string(folder + "log.txt", text) || text != "line 0\nline 1\nline 2\n")){
+            error = "log.txt has each of the run's lines once: " + text;
         }
         if (error.empty() && file_to_string(folder + "events.jsonl", text)){
             size_t lines = 0;
@@ -404,7 +438,16 @@ UnitTestResult test_run_writer(){
 
         //  The newest `keep` folders stay.
         const std::string b = store.begin("Test:B");
+        //  More lines than the store's tail holds between two polls: the gap is marked.
+        const std::string line(1000, 'x');
+        for (size_t c = 0; c < 300; c++){
+            store.log_line(b, line);
+        }
+        store.log_line(b, "last");
         writer.sync(store);
+        if (error.empty() && (!file_to_string(writer.run_folder(b) + "log.txt", text) || text.rfind("[", 0) != 0 || text.find("lines not copied") == std::string::npos || !text.ends_with("\nlast\n"))){
+            error = "Lines the writer missed are marked at the start of log.txt.";
+        }
         const std::string c = store.begin("Test:C");
         writer.sync(store);
         if (error.empty() && (Filesystem::is_directory(Filesystem::Path(folder)) || !Filesystem::is_directory(Filesystem::Path(writer.run_folder(b))) || !Filesystem::is_directory(Filesystem::Path(writer.run_folder(c))))){
@@ -451,6 +494,7 @@ void add_tests_LabChannel(UnitTestDatabase& database){
     database.add<Test_LabChannel>("run files: time text", test_time_text);
     database.add<Test_LabChannel>("run files: event line and frame name", test_event_json);
     database.add<Test_LabChannel>("run files: result.json", test_result_json);
+    database.add<Test_LabChannel>("run files: meta.json", test_meta_json);
     database.add<Test_LabChannel>("run files: writer, probes and pruning", test_run_writer);
 }
 
