@@ -103,7 +103,7 @@ std::vector<TilePos> leg_path(const StoryWorld& grid, TilePos from, Direction di
     std::vector<TilePos> path;
     size_t travelled = 0;
     while (travelled < tiles){
-        const std::optional<TilePos> next = grid.step(from, direction);
+        const std::optional<TilePos> next = step(grid, from, direction);
         if (!next){
             break;
         }
@@ -417,7 +417,7 @@ std::vector<TilePos> walk_route(
                         const TilePos blocker = stopped[0].next(leg.direction);
                         grid.block(blocker);
                         stream.log("[Route] " + leg_label + ": something the map lacks is at " +
-                            maps.describe(blocker) + "; marked it.", COLOR_ORANGE);
+                            describe(maps, blocker) + "; marked it.", COLOR_ORANGE);
                     }
                     stream.log(ROUTE_LOG_TAG + route_replan_line(label, route_log_leg(leg),
                         "stopped early after about " + std::to_string(walked_tiles) + " tiles", route_tiles(maps, stopped)), COLOR_ORANGE);
@@ -533,7 +533,7 @@ std::vector<TilePos> walk_route(
                         const TilePos blocker = stopped[0].next(leg.direction);
                         grid.block(blocker);
                         stream.log("[Route] " + leg_label + ": something the map lacks is at " +
-                            maps.describe(blocker) + "; marked it.", COLOR_ORANGE);
+                            describe(maps, blocker) + "; marked it.", COLOR_ORANGE);
                     }
                     stream.log(ROUTE_LOG_TAG + route_replan_line(label, route_log_leg(leg),
                         "blocked after " + std::to_string(moved) + " of " + std::to_string(leg.tiles) + " tiles", route_tiles(maps, stopped)), COLOR_ORANGE);
@@ -736,7 +736,7 @@ std::vector<TilePos> walk_waypoints(
         from = walk_route(stream, context, escape, maps, from,
             [&](const TilePos& pos){ return pos == goal; },
             trainers, fight,
-            label + " (" + std::to_string(i + 1) + "/" + std::to_string(waypoints.size()) + ", to " + maps.describe(goal) + ")",
+            label + " (" + std::to_string(i + 1) + "/" + std::to_string(waypoints.size()) + ", to " + describe(maps, goal) + ")",
             {}, costs);
     }
     return from;
@@ -754,7 +754,7 @@ void talk_to_npc(
 ){
     for (Direction side : sides){
         const TilePos stand = npc.next(side);
-        if (!maps.standable(stand)){
+        if (!standable(maps, stand)){
             continue;
         }
         at = walk_route(stream, context, escape, maps, at, [&](const TilePos& pos){ return pos == stand; },
@@ -769,13 +769,13 @@ void talk_to_npc(
         context.wait_for_all_requests();
         ShortDialogWatcher dialog(COLOR_CYAN);
         if (wait_until(stream, context, 2000ms, {{dialog}}) == 0){
-            route_status(stream, label + ": talking from " + maps.describe(stand) + ".");
+            route_status(stream, label + ": talking from " + describe(maps, stand) + ".");
             return;
         }
-        route_status(stream, label + ": nobody answered from " + maps.describe(stand) + "; trying another side.");
+        route_status(stream, label + ": nobody answered from " + describe(maps, stand) + "; trying another side.");
     }
     OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
-        label + ": no side of " + maps.describe(npc) + " started a dialogue.", stream);
+        label + ": no side of " + describe(maps, npc) + " started a dialogue.", stream);
 }
 
 void finish_dialogue(
