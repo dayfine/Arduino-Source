@@ -58,7 +58,7 @@ generator and maps from the planner is an option.
 
 | # | PR | Where | Size (code + tests) |
 |---|---|---|---|
-| a | Walker simulator: grid world, fake battles, believed vs real tile | [#114](https://github.com/dayfine/Arduino-Source/pull/114) | ~400 + 400 |
+| a | (moved to a parallel track: the game simulator) | [#114](https://github.com/dayfine/Arduino-Source/pull/114) | ~400 + 400 |
 | b | Walker fixes: drift after battles; fail a wall step that stops far short | [#119](https://github.com/dayfine/Arduino-Source/pull/119) | ~150 + 200 |
 | c | Run-record recorder (framework half of [#116](https://github.com/dayfine/Arduino-Source/pull/116)) | new PR on main | ~630 incl. tests |
 | d | Run-event hooks: shared code and FRLG | [#114](https://github.com/dayfine/Arduino-Source/pull/114), [#120](https://github.com/dayfine/Arduino-Source/pull/120) | ~150 + 100 |
@@ -141,7 +141,7 @@ facing reader, maybe three PRs, once its code is reviewed. U8 may need the same.
 | then | U4 → U5/U6 → U7 → U8 | the navigation core; U5 can go in parallel with U6 |
 | then | U9 → U10 | the shared story steps |
 | then | U11 → U12 → U13 → U14 | FRLG navigation |
-| then | U15 → U16 | the walker simulator and fixes (needs the forest drift found first) |
+| then | U16 | the walker check (fails a wall step that stopped short) and fixes |
 | last | U17 → U18/U19, U21 | the FRLG MVP program; U18 and U19 can go in parallel |
 
 That's 21 PRs, at roughly one merged per week if review keeps up: a few months of queue. The
@@ -155,6 +155,7 @@ These are based on main, not on the AutoStory chain, so they can be worked on an
 |---|---|---|---|
 | Naming / keyboards | [#81](https://github.com/dayfine/Arduino-Source/pull/81) FRLG naming-screen typer (722 code, 345 tests); [#62](https://github.com/dayfine/Arduino-Source/pull/62) Switch on-screen keyboard (BDSP names) | Type "Kosmos" and nicknames instead of picking a preset name | FRLG 00.01 (player and rival names) after U17; BDSP intro on [#128](https://github.com/dayfine/Arduino-Source/pull/128) |
 | Starter RNG | [#61](https://github.com/dayfine/Arduino-Source/pull/61) party check (240 code, 263 tests) + a starter-RNG entry point (~300) | Use the existing FRLG GiftRng (starters are gifts) from AutoStory's save in front of Oak's table | a hand-off after 00.03/00.04 once U17 lands; the RNG program itself can be built and tested now from a manual save |
+| Game simulator | 2 PRs: (1) encounters, Repel, position; (2) HP, status, EXP, moves, whiteout, run-mode statistics | Seeded fake game with odds from the decomp; catches drift, exercises rare paths, sets level targets (architecture doc section 6a) | not blocking; core ~1.2k + 0.6k tests, per game ~0.5k + data |
 | Run records | U20 [#132](https://github.com/dayfine/Arduino-Source/pull/132) → U21 | Recorder, then hooks | U21 needs U8 and U17 |
 | Tooling | [#107](https://github.com/dayfine/Arduino-Source/pull/107) → [#116](https://github.com/dayfine/Arduino-Source/pull/116), [#125](https://github.com/dayfine/Arduino-Source/pull/125), [#131](https://github.com/dayfine/Arduino-Source/pull/131) | Lab channel, run records, route pictures, lab CLI | none (dev only) |
 | BDSP | maps-v4 → [#127](https://github.com/dayfine/Arduino-Source/pull/127) → [#129](https://github.com/dayfine/Arduino-Source/pull/129) → [#128](https://github.com/dayfine/Arduino-Source/pull/128) | BDSP AutoStory v4 | after U10 |
