@@ -17,6 +17,7 @@
 #include <optional>
 #include <vector>
 #include "Common/Cpp/Time.h"
+#include "CommonFramework/Language.h"
 #include "CommonFramework/ImageTypes/ImageViewRGB32.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
@@ -114,7 +115,12 @@ int mart_cursor_moves(int cursor, int row);
 //  THOROUGH: each row's item is read before buying; one that reads as
 //  another item fails with a screenshot, one that can't be read is only
 //  logged.
-void buy_items(ConsoleHandle& console, ProControllerContext& context, const std::vector<MartOrder>& orders, StoryChecks checks);
+//  `language` is the game's: in one the reader has no names for, rows are
+//  bought by position only.
+void buy_items(
+    ConsoleHandle& console, ProControllerContext& context,
+    const std::vector<MartOrder>& orders, StoryChecks checks, Language language
+);
 
 //  From the title screen of a game with no save, to the bedroom: the
 //  controls pages, Oak's speech, BOY, and the default names for the player

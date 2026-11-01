@@ -433,10 +433,10 @@ int mart_cursor_moves(int cursor, int row){
 }
 
 //  THOROUGH: the item on the cursor's row is `order.item`.
-static void check_mart_row(ConsoleHandle& console, ProControllerContext& context, const MartOrder& order){
+static void check_mart_row(ConsoleHandle& console, ProControllerContext& context, const MartOrder& order, Language language){
     context.wait_for_all_requests();
     VideoSnapshot screen = console.video().snapshot();
-    const std::string item = screen ? read_item_list_name(console, screen, order.row) : "";
+    const std::string item = screen ? read_item_list_name(console, language, screen, order.row) : "";
     if (item == order.item){
         console.log(std::format("Mart: row {} is {}.", order.row + 1, item));
         return;
@@ -453,7 +453,10 @@ static void check_mart_row(ConsoleHandle& console, ProControllerContext& context
     );
 }
 
-void buy_items(ConsoleHandle& console, ProControllerContext& context, const std::vector<MartOrder>& orders, StoryChecks checks){
+void buy_items(
+    ConsoleHandle& console, ProControllerContext& context,
+    const std::vector<MartOrder>& orders, StoryChecks checks, Language language
+){
     //  "May I help you?" with BUY on top, then the list, cursor on its top.
     press(context, BUTTON_A, 2000ms);
     press(context, BUTTON_A, 2000ms);
@@ -470,7 +473,7 @@ void buy_items(ConsoleHandle& console, ProControllerContext& context, const std:
         cursor = order.row;
         mart_shot(console, context, std::format("row{}-list", order.row + 1));
         if (checks == StoryChecks::THOROUGH){
-            check_mart_row(console, context, order);
+            check_mart_row(console, context, order, language);
         }
         //  "How many?" drops presses while its text prints.
         press(context, BUTTON_A, 2500ms);

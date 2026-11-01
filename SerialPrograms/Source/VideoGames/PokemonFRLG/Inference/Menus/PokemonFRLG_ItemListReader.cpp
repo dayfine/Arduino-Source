@@ -38,10 +38,13 @@ public:
         return matcher;
     }
 
-    std::string read(Logger& logger, const ImageViewRGB32& image) const{
+    std::string read(Logger& logger, Language language, const ImageViewRGB32& image) const{
+        if (!languages()[language]){
+            return "";
+        }
         const ImageRGB32 ready = preprocess_for_ocr(image);
         const OCR::StringMatchResult result = match_substring_from_image_multifiltered(
-            &logger, Language::English, ready, DARK_TEXT_FILTERS(),
+            &logger, language, ready, DARK_TEXT_FILTERS(),
             MAX_LOG10P, MAX_LOG10P_SPREAD, 0.01, 0.50
         );
         return result.results.empty() ? "" : result.results.begin()->second.token;
@@ -85,14 +88,14 @@ ImageFloatBox bag_item_count_box(int row){
     return ImageFloatBox(208.0 / 240, (ROW_TOP + ROW_STEP * row) / 160, 15.0 / 240, ROW_HEIGHT / 160);
 }
 
-std::string read_item_list_name(Logger& logger, const ImageViewRGB32& screen, int row){
-    return ItemNameMatcher::instance().read(logger, extract_box_reference(game_box(screen), item_list_name_box(row)));
+std::string read_item_list_name(Logger& logger, Language language, const ImageViewRGB32& screen, int row){
+    return ItemNameMatcher::instance().read(logger, language, extract_box_reference(game_box(screen), item_list_name_box(row)));
 }
 
-std::vector<BagRow> read_bag_pocket(Logger& logger, const ImageViewRGB32& screen){
+std::vector<BagRow> read_bag_pocket(Logger& logger, Language language, const ImageViewRGB32& screen){
     std::vector<BagRow> rows;
     for (int row = 0; row < ITEM_LIST_ROWS; row++){
-        const std::string item = read_item_list_name(logger, screen, row);
+        const std::string item = read_item_list_name(logger, language, screen, row);
         if (item.empty() || item == "cancel"){
             break;
         }

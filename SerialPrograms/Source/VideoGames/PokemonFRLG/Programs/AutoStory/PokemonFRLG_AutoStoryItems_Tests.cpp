@@ -10,6 +10,8 @@
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/Logging/AbstractLogger.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
+#include "CommonFramework/ImageTypes/ImageRGB32.h"
+#include "CommonFramework/Language.h"
 #include "PokemonFRLG_AutoStoryActions.h"
 #include "PokemonFRLG_AutoStoryBattle.h"
 
@@ -84,6 +86,19 @@ UnitTestResult test_pocket_rows(Logger&){
     return true;
 }
 
+//  In a language the reader has no names for, nothing is read, so the
+//  checks fall back to positions instead of failing.
+UnitTestResult test_unread_language(Logger& logger){
+    const ImageRGB32 screen(1920, 1080);
+    if (!read_item_list_name(logger, Language::Japanese, screen, 0).empty()){
+        return "Read an item name in Japanese.";
+    }
+    if (!read_bag_pocket(logger, Language::Japanese, screen).empty()){
+        return "Read bag rows in Japanese.";
+    }
+    return true;
+}
+
 
 }
 
@@ -91,6 +106,7 @@ UnitTestResult test_pocket_rows(Logger&){
 void add_tests_AutoStoryItems(UnitTestDatabase& database){
     database.add<Test_AutoStoryItems>("Mart cursor stays on the row bought", test_mart_cursor);
     database.add<Test_AutoStoryItems>("Items pocket rows", test_pocket_rows);
+    database.add<Test_AutoStoryItems>("no item names read in a language without them", test_unread_language);
 }
 
 

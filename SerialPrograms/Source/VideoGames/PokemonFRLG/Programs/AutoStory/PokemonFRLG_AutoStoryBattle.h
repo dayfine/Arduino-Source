@@ -89,7 +89,7 @@ void set_from_bag(Supplies& supplies, const std::vector<BagRow>& rows);
 
 //  From the overworld: opens the Items pocket, reads it, and closes the
 //  bag again. Empty if nothing could be read.
-std::vector<BagRow> read_items_pocket(ConsoleHandle& console, ProControllerContext& context);
+std::vector<BagRow> read_items_pocket(ConsoleHandle& console, ProControllerContext& context, Language language);
 
 
 //  What the HP bar and the status badge of the player's Pokemon show, on a
@@ -111,20 +111,26 @@ PartyStatus read_party_status(const ImageViewRGB32& screen);
 //  read with B on the way. Throws OperationFailedException if it runs over 10 minutes.
 //  THOROUGH: an item's name is read in the bag before it is used, and a
 //  different one isn't used.
-BattleEnd fight_battle(ConsoleHandle& console, ProControllerContext& context, Supplies& supplies, BattleKind kind, StoryChecks checks);
+BattleEnd fight_battle(
+    ConsoleHandle& console, ProControllerContext& context,
+    Supplies& supplies, BattleKind kind, StoryChecks checks, Language language
+);
 
 
 //  From the overworld, after a battle: an Antidote for PSN, a Parlyz Heal
 //  for PAR, then a Potion if the HP bar wasn't green, each if one is left.
 //  The bag's inputs are not checked on the console yet.
-void recover_after_battle(ConsoleHandle& console, ProControllerContext& context, Supplies& supplies, StoryChecks checks);
+void recover_after_battle(
+    ConsoleHandle& console, ProControllerContext& context,
+    Supplies& supplies, StoryChecks checks, Language language
+);
 
 
 //  The interrupts for walking story routes. Wild battles are run from, or
 //  fought if `fight_wild`. A message is advanced until the overworld is
 //  back; a battle that starts after it (a trainer who saw the player) is
 //  fought. A battle lost (a blackout) throws OperationFailedException.
-OverworldInterruptSet story_interrupts(Supplies& supplies, bool fight_wild, StoryChecks checks);
+OverworldInterruptSet story_interrupts(Supplies& supplies, bool fight_wild, StoryChecks checks, Language language);
 
 
 void add_tests_AutoStoryItems(UnitTestDatabase& database);

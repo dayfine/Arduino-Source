@@ -127,6 +127,9 @@ struct StoryEnv{
     //  Whether the game has a save to reload.
     bool has_save = false;
     StoryChecks checks = StoryChecks::THOROUGH;
+    //  The game's language, for reading item names. In one the readers have
+    //  no names for, the checks fall back to positions and counts.
+    Language language = Language::English;
 };
 
 //  The checkpoint `data` as events, saving at its end.
