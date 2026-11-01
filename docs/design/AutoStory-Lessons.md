@@ -397,3 +397,29 @@ walk into Floaroma) is the last checkpoint and took eight builds; what they taug
   overlay errors in an hour.
 - **An image parser is a check, not a source.** Each of its mistakes is a hand rule per map
   for an approximation of what the decomp states exactly.
+
+**After r246 (r247 to r251, 2026-10-31/11-01):**
+- **A 160 ms D-pad tap in a new direction turns and steps.** Probed by hand: there is no
+  turn-only tap. The walker measures the turn tap's screen change like any other tap and counts
+  its step; before that, every tap leg after a corner was one tile long (r246a).
+- **One NPC bump read 17.2, above the 16 threshold** (r250a). A fixed threshold alone is not
+  enough: a tap is "still" when its change is under 16 or under 40% of the walk's largest
+  change, and a walk ended by a bump is accepted when the leg was meant to run until stopped.
+- **"Until stopped" beats a counted leg when a person is the stop.** 01.11's north legs run
+  until the old woman or the old man blocks; the counted version was one row short twice
+  (r249a, "we were in the right position" but the condition was stricter than the game).
+- **End a checkpoint on a signal the game gives, not on a place.** 01.10 ends when the Floaroma
+  banner reads "Floaroma Town", then saves; the Pokémon Center visit it used to continue into
+  was not needed and overshot the town (user: "forget about PC").
+- **Name NPCs the way the data does.** "The youngest boy outside the cave" was Youngster
+  Tyler/Brandon in different sources; the route records name the tile and the sight line, the
+  prose names the trainer class and the position.
+- **Routes are data now** (`RouteRecords`): each leg says direction, tiles and what ends it
+  (count, wall, NPC, door, banner, transition, scene); a test traces every traceable record on
+  its grid. 00.01 to 00.03 (#112), the decomp grids for Routes 201 to 203 and Jubilife (#111)
+  and the 00.04 plan fix (#110) all came with such tests and no console run: run 3 verifies
+  the batch (user, 2026-11-01).
+- **Diamond's own data exists** (pret/pokediamond): the collision block is byte-identical to
+  Platinum's for Route 204 North, and its coord-event binaries give the story triggers'
+  rectangles and flag values, which Platinum's JSON confirms. Diamond is the primary source
+  now, Platinum the readable cross-check.
