@@ -16,7 +16,7 @@
 #include "CommonTools/Async/InferenceRoutines.h"
 #include "CommonTools/VisualDetectors/BlackScreenDetector.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
-#include "PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_XMenuDetector.h"
+#include "PokemonBDSP/Inference/PokemonBDSP_MenuDetector.h"
 #include "PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_OverworldDetector.h"
 #include "PokemonBDSP_AutoStory_Bag.h"
 #include "PokemonBDSP_AutoStory_Settings.h"
@@ -195,7 +195,7 @@ struct OptionReferences{
 //  From the overworld (or the main menu): the main menu, settled.
 void open_main_menu(VideoStream& stream, ProControllerContext& context){
     context.wait_for_all_requests();
-    XMenuDetector menu;
+    MenuDetector menu;
     VideoOverlaySet detector_overlays(stream.overlay());
     menu.make_overlays(detector_overlays);
     detector_overlays.add(COLOR_CYAN, {0.04, 0.065, 0.93, 0.70}, "");
@@ -206,7 +206,7 @@ void open_main_menu(VideoStream& stream, ProControllerContext& context){
         pbf_press_button(context, BUTTON_X, 80ms, 1000ms);
         context.wait_for_all_requests();
     }
-    XMenuWatcher menu_open;
+    MenuWatcher menu_open;
     if (wait_until(stream, context, 5s, {{menu_open}}) != 0){
         OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
             "Settings checkpoint: Main menu not detected.", stream);
@@ -229,7 +229,7 @@ void open_options(VideoStream& stream, ProControllerContext& context, const Tuto
         }
         pbf_press_button(context, BUTTON_B, 80ms, 1000ms);
         context.wait_for_all_requests();
-        XMenuWatcher back_to_menu;
+        MenuWatcher back_to_menu;
         if (wait_until(stream, context, 5s, {{back_to_menu}}) != 0){
             break;
         }
@@ -399,7 +399,7 @@ void save_options(VideoStream& stream, ProControllerContext& context, const std:
 void reopen_options(VideoStream& stream, ProControllerContext& context, const TutorialOptionsDetector& options_screen){
     pbf_press_button(context, BUTTON_X, 80ms, 1000ms);
     context.wait_for_all_requests();
-    XMenuWatcher verify_menu;
+    MenuWatcher verify_menu;
     if (wait_until(stream, context, 5s, {{verify_menu}}) != 0){
         OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
             "Autosave verification: Main menu not detected.", stream);
@@ -413,7 +413,7 @@ void reopen_options(VideoStream& stream, ProControllerContext& context, const Tu
         }
         pbf_press_button(context, BUTTON_B, 80ms, 1000ms);
         context.wait_for_all_requests();
-        XMenuWatcher return_menu;
+        MenuWatcher return_menu;
         if (wait_until(stream, context, 5s, {{return_menu}}) != 0){
             break;
         }
@@ -490,7 +490,7 @@ void back_to_overworld(VideoStream& stream, ProControllerContext& context){
     pbf_mash_button(context, BUTTON_B, 3000ms);
     context.wait_for_all_requests();
     OverworldDetector overworld;
-    XMenuDetector menu;
+    MenuDetector menu;
     BlackScreenDetector black;
     bool recovered = false;
     size_t confirmations = 0;

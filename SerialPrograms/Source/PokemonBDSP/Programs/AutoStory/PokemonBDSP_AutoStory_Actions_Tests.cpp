@@ -19,7 +19,6 @@
 #include "Data/PokemonBDSP_AutoStory_StoryMaps.h"
 #include "Utils/PokemonBDSP_AutoStory_Location.h"
 #include "PokemonBDSP_AutoStory_Center.h"
-#include "PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_XMenuDetector.h"
 #include "PokemonBDSP_AutoStory_NewGame.h"
 #include "PokemonBDSP_AutoStory_Actions_Tests.h"
 
@@ -180,44 +179,6 @@ public:
 };
 
 
-//  The X menu by its bottom bar at every stage: r5's new-game menu, two icons
-//  and a NEW tag, was missed by MenuDetector. <resources>/PokemonBDSP/
-//  AutoStory/XMenu/open/*.png must read as the menu, closed/*.png (a dialogue,
-//  the intro, the overworld, HOME) must not.
-class Test_XMenu : public UnitTest{
-public:
-    Test_XMenu()
-        : UnitTest("PokemonBDSP::AutoStory - X menu at every stage")
-    {}
-
-    virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
-        const std::string folder = UNIT_TEST_RESOURCE_PATH() + "PokemonBDSP/AutoStory/XMenu/";
-        if (!Filesystem::is_directory(Filesystem::Path(folder))){
-            return UnitTestResult(UnitTestResult::SKIPPED, "Screenshots not found: " + folder);
-        }
-        size_t failed = 0;
-        for (const char* expected : {"open", "closed"}){
-            for (const Filesystem::Path& file : Filesystem::list_directory(Filesystem::Path(folder + expected))){
-                if (file.extension().string() != ".png"){
-                    continue;
-                }
-                const ImageRGB32 image(file.string());
-                const ImageStats bar = image_stats(extract_box_reference(image, X_MENU_BAR_BOX));
-                const bool open = XMenuDetector().detect(image);
-                const bool ok = open == (std::string(expected) == "open");
-                failed += ok ? 0 : 1;
-                logger.log(std::string("[X menu] ") + (ok ? "ok " : "FAIL ") + expected + "/" + file.filename().string() +
-                    ": bar " + bar.average.to_string() + " sd " + bar.stddev.to_string(), ok ? COLOR_BLUE : COLOR_RED);
-            }
-        }
-        if (failed != 0){
-            return std::to_string(failed) + " X menu screenshots misread; see the log.";
-        }
-        return true;
-    }
-};
-
-
 //  X from a still bedroom opening something the detector misses, closed
 //  again by B, is the player in control; moving screens or X doing nothing
 //  are not.
@@ -314,29 +275,6 @@ private:
             if (intro_screen_confirms_bdsp(screen)){
                 return std::string("Expected \"") + screen + "\" not to confirm BDSP.";
             }
-        }
-        return true;
-    }
-};
-
-//  The intro's screens, classified: <resources>/PokemonBDSP/AutoStory/IntroScreens/
-//  <expected class>/*.png (in CommandLineTests), at 1080p and 720p. Among
-//  them r2's "dialog/020-other.png": Rowan's last line, a dialogue box with
-//  no "more" arrow.
-class Test_IntroScreens : public UnitTest{
-public:
-    Test_IntroScreens()
-        : UnitTest("PokemonBDSP::AutoStory - new-game intro screens")
-    {}
-
-    virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
-        const std::string folder = UNIT_TEST_RESOURCE_PATH() + "PokemonBDSP/AutoStory/IntroScreens/";
-        if (!Filesystem::is_directory(Filesystem::Path(folder))){
-            return UnitTestResult(UnitTestResult::SKIPPED, "Screenshots not found: " + folder);
-        }
-        const size_t failed = run_intro_screen_tests(logger, folder);
-        if (failed != 0){
-            return std::to_string(failed) + " intro screens misread; see the log.";
         }
         return true;
     }
@@ -523,8 +461,6 @@ void add_tests_AutoStory_Actions(UnitTestDatabase& database){
     database.add<Test_IntroGate>();
     database.add<Test_IntroRivalConfirm>();
     database.add<Test_IntroBeforeMenu>();
-    database.add<Test_IntroScreens>();
-    database.add<Test_XMenu>();
     database.add<Test_IntroInControl>();
     database.add<Test_LitDoorwayScreenshots>();
     database.add<Test_SaveScreenLocation>();

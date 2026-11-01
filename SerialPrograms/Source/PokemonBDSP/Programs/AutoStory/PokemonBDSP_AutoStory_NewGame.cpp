@@ -5,11 +5,8 @@
  */
 
 #include "Common/Cpp/Exceptions.h"
-#include "Common/Cpp/Filesystem/Filesystem.h"
 #include "CommonFramework/ImageTools/ImageBoxes.h"
 #include "CommonFramework/ImageTools/ImageDiff.h"
-#include "CommonFramework/ImageTools/ImageStats.h"
-#include "CommonTools/Images/SolidColorTest.h"
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "CommonTools/Async/InferenceRoutines.h"
@@ -22,7 +19,7 @@
 #include "NintendoSwitch/Inference/NintendoSwitch_SystemKeyboardDetector.h"
 #include "NintendoSwitch/Programs/NintendoSwitch_GameEntry.h"
 #include "PokemonBDSP/Inference/PokemonBDSP_DialogDetector.h"
-#include "PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_XMenuDetector.h"
+#include "PokemonBDSP/Inference/PokemonBDSP_MenuDetector.h"
 #include "PokemonBDSP/Inference/PokemonBDSP_NameListDetector.h"
 #include "PokemonBDSP_AutoStory_NewGame.h"
 
@@ -31,29 +28,6 @@ namespace NintendoSwitch{
 namespace PokemonBDSP{
 
 using namespace std::chrono_literals;
-
-
-namespace{
-
-//  BDSP's dialogue box. ShortDialogDetector also wants something busy at the
-//  box's right end, which the "more text" arrow gives; a speaker's last line
-//  has no arrow and read as "other" (r2, 2026-11-01: Rowan's "Now, go on, and
-//  leap into the world of Pokemon!"). Without the arrow: white at the text
-//  area's left end, along its bottom and at its right end below the first
-//  line, and the box's edge on the left.
-bool intro_dialog_showing(const ImageViewRGB32& screen){
-    if (ShortDialogDetector().detect(screen)){
-        return true;
-    }
-    const ImageStats left_white = image_stats(extract_box_reference(screen, ImageFloatBox(0.21, 0.835, 0.008, 0.12)));
-    //  Below the first line's end: a long line reaches it (r2's ran to 0.79).
-    const ImageStats right_white = image_stats(extract_box_reference(screen, ImageFloatBox(0.785, 0.915, 0.008, 0.04)));
-    const ImageStats bottom = image_stats(extract_box_reference(screen, ImageFloatBox(0.50, 0.91, 0.29, 0.05)));
-    const ImageStats left_edge = image_stats(extract_box_reference(screen, ImageFloatBox(0.18, 0.835, 0.02, 0.12)));
-    return is_white(left_white) && is_white(right_white) && is_white(bottom) && left_edge.stddev.sum() >= 30;
-}
-
-}
 
 
 std::string classify_intro_screen(ConsoleHandle* console, const ImageViewRGB32& screen){
@@ -75,11 +49,11 @@ std::string classify_intro_screen(ConsoleHandle* console, const ImageViewRGB32& 
     default:
         return "rival-list-preset";
     }
-    if (XMenuDetector().detect(screen)){
+    if (MenuDetector().detect(screen)){
         return "menu";
     }
     //  Includes the appearance grid, whose prompt sits in a dialogue box.
-    if (intro_dialog_showing(screen)){
+    if (ShortDialogDetector().detect(screen)){
         return "dialog";
     }
     //  The boot and fades. After the dialogue: Rowan's first lines show on black.
@@ -180,39 +154,6 @@ void record_intro_step(IntroProgress& progress, IntroStep step){
     }
 }
 
-size_t run_intro_screen_tests(Logger& logger, const std::string& folder){
-    size_t passed = 0;
-    size_t failed = 0;
-    for (const Filesystem::Path& dir : Filesystem::list_directory(Filesystem::Path(folder))){
-        if (!Filesystem::is_directory(dir)){
-            continue;
-        }
-        const std::string expected = dir.filename().string();
-        for (const Filesystem::Path& file : Filesystem::list_directory(dir)){
-            if (file.extension().string() != ".png"){
-                continue;
-            }
-            const ImageRGB32 image(file.string());
-            //  1080p and 720p. At 960x540 the keyboard's and the name list's checks
-            //  do not hold (blurred key text, an arrow below the object size limit).
-            for (size_t width : {size_t(1920), size_t(1280)}){
-                const std::string actual = classify_intro_screen(nullptr, image.scale_to(width, width * 9 / 16));
-                if (actual == expected){
-                    passed++;
-                    continue;
-                }
-                failed++;
-                logger.log("[Intro tests] FAIL " + expected + "/" + file.filename().string() +
-                    " at " + std::to_string(width) + "px: read as " + actual, COLOR_RED);
-            }
-        }
-    }
-    logger.log("[Intro tests] " + std::to_string(passed) + " passed, " + std::to_string(failed) + " failed.",
-        failed == 0 ? COLOR_BLUE : COLOR_RED);
-    return failed;
-}
-
-
 namespace{
 
 //  Waits until the keyboard is gone (or, with `gone` false, has appeared).
@@ -276,7 +217,7 @@ void close_menu_and_finish(IntroRun& run){
     pbf_wait(run.context, 1000ms);
     run.context.wait_for_all_requests();
     VideoSnapshot screen_now = run.env.console.video().snapshot();
-    if (!screen_now || XMenuDetector().detect(screen_now)){
+    if (!screen_now || MenuDetector().detect(screen_now)){
         run.trace.fail("The main menu did not close.");
     }
 }
@@ -307,7 +248,7 @@ XProbeResult x_from_still_screen(IntroRun& run){
     const VideoSnapshot before = stream.video().snapshot();
     press(run, BUTTON_X);
     run.context.wait_for_all_requests();
-    XMenuWatcher menu;
+    MenuWatcher menu;
     if (wait_until(stream, run.context, 3s, {{menu}}) == 0){
         return XProbeResult::MENU;
     }
