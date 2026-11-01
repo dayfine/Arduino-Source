@@ -393,8 +393,13 @@ void set_options(ConsoleHandle& console, ProControllerContext& context, StartMen
 
 void heal_at_center(ConsoleHandle& console, ProControllerContext& context){
     console.log("Healing at the Pokemon Center.");
+    //  The nurse's YES/NO isn't seen by the selection detector (console B,
+    //  2026-11-01); YES is the default, so A after her lines is YES.
+    //  "Welcome ... We heal your POKEMON ... Shall we heal?" is 3 lines.
+    press(context, BUTTON_A, 1500ms);
+    press(context, BUTTON_A, 1500ms);
+    press(context, BUTTON_A, 2500ms);
     press(context, BUTTON_A, 1000ms);
-    answer_yes_no(console, context, true, BUTTON_A, 20000ms);
     pbf_wait(context, HEAL_TIME);
     mash_until_overworld(console, context, 30000ms);
 }
