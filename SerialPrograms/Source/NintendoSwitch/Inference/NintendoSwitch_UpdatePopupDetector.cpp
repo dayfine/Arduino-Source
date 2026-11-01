@@ -6,6 +6,7 @@
 
 #include "Common/Compiler.h"
 #include "Common/Cpp/Exceptions.h"
+#include "Common/Cpp/Logging/GlobalLogger.h"
 #include "CommonFramework/GlobalAutoPaths.h"
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "CommonFramework/ImageTypes/ImageViewRGB32.h"
@@ -272,7 +273,7 @@ public:
 
     virtual UnitTestResult run(Logger& logger, CancellableScope& scope) const override{
         GameConsole::ConsoleSystemOption option(1);
-        GameConsole::ConsoleSystemSession session(option, false, 0, {});
+        GameConsole::ConsoleSystemSession session(global_logger_raw(), option, false, 0, {});
         ConsoleHandle console(session);
 
         UpdatePopupDetector detector(console);
