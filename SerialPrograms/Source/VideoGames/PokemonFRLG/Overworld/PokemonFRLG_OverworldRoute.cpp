@@ -272,6 +272,10 @@ public:
         }
         if (is_tall_grass(m_maps[step.next.map], step.next.state.position)){
             step.extra_cost += route_cost(m_costs, RouteCost::GRASS_TILE);
+            step.wild = true;
+        }
+        if (step.next.state.surfing){
+            step.wild = true;
         }
         return step;
     }
@@ -315,15 +319,10 @@ RouteStep to_route_step(const std::vector<MapData>& maps, const Pokemon::Leg<Loc
     step.facing_after = leg.facing_after;
     step.end = MapPosition{maps[leg.end.map].name, leg.end.state.position};
     if (leg.kind != Pokemon::LegKind::FACE){
-        //  Every tile the step enters on its start map: a step through a
-        //  warp or off the map's edge leaves the map after its last tile.
-        const MapData& map = maps[leg.start.map];
-        step.wild = leg.start.state.surfing || leg.kind == Pokemon::LegKind::ACTION;
-        TilePos at = leg.start.state.position;
-        for (int i = 0; i < leg.tiles && !step.wild; i++){
-            at = at.next(leg.direction);
-            step.wild = is_tall_grass(map, at) || is_water(map, at);
-        }
+        //  Tall grass on any map the leg crosses, or the water. Counted on the
+        //  start map only, "north 22" from Pallet Town through Route 1's grass
+        //  wasn't watched for battles (console B, 2026-11-01).
+        step.wild = leg.wild || leg.start.state.surfing || leg.kind == Pokemon::LegKind::ACTION;
     }
     return step;
 }
@@ -729,12 +728,29 @@ UnitTestResult test_wild_steps(){
     if (result.result != UnitTestResult::PASSED){
         return result;
     }
+    bool forest = false;
     for (const RouteStep& step : route){
-        if (step.wild && step.end.map == "ViridianForest"){
-            return true;
+        forest = forest || (step.wild && step.end.map == "ViridianForest");
+    }
+    if (!forest){
+        return "Expected a wild step in Viridian Forest:" + describe(route);
+    }
+    //  The leg from Pallet Town north onto Route 1 crosses Route 1's grass
+    //  after the map's edge.
+    route.clear();
+    result = check_route(
+        maps, point_on(maps, "PalletTown", "oaks_lab_front"),
+        {point_on(maps, "ViridianCity_Mart", "clerk_front"), std::nullopt}, route
+    );
+    if (result.result != UnitTestResult::PASSED){
+        return result;
+    }
+    for (const RouteStep& step : route){
+        if (step.end.map == "Route1" && step.direction == Direction::NORTH && step.tiles > 14 && !step.wild){
+            return "Expected the leg from Pallet Town onto Route 1 to be wild, got " + to_string(step) + ":" + describe(route);
         }
     }
-    return "Expected a wild step in Viridian Forest:" + describe(route);
+    return true;
 }
 
 const char* const TEST_ROOM_JSON = R"({
