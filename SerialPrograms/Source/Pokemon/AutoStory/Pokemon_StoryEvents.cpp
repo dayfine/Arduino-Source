@@ -4,8 +4,10 @@
  *
  */
 
+#include <exception>
 #include <format>
 #include <utility>
+#include "Common/Cpp/Exceptions.h"
 #include "Pokemon_StoryEvents.h"
 
 namespace PokemonAutomation{
@@ -336,6 +338,33 @@ Outcome run_event(EventRun& run){
 }
 
 
+//  What the exception being handled says, for a log line.
+std::string current_exception_text(){
+    try{
+        throw;
+    }catch (Exception& e){
+        return std::string(e.name()) + ": " + e.message();
+    }catch (std::exception& e){
+        return e.what();
+    }catch (...){
+        return "unknown exception";
+    }
+}
+
+//  run_event(), logging the event and its checkpoint as failed before an
+//  exception from the game's steps leaves the runner. The exception goes
+//  on: the game decides what it means.
+Outcome run_event_logging_throws(EventRun& run){
+    try{
+        return run_event(run);
+    }catch (...){
+        const std::string what = current_exception_text();
+        log_status(run, "failed: " + what);
+        run.log(std::format("[Checkpoint] {}: failed at {} {}: {}", run.checkpoint.id, run.number, run.event.name, what));
+        throw;
+    }
+}
+
 CheckpointReport stop_checkpoint(CheckpointReport& report, EventLogger& log, const std::string& id, Outcome failure){
     std::string where = report.failed_event == 0
         ? ""
@@ -377,7 +406,7 @@ CheckpointReport run_checkpoint(RunState& state, Checkpoint& checkpoint, EventLo
             continue;
         }
         report.events_run++;
-        Outcome outcome = run_event(run);
+        Outcome outcome = run_event_logging_throws(run);
         if (!outcome.succeeded()){
             report.failed_event = c + 1;
             report.failed_name = event.name;
