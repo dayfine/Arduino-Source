@@ -31,11 +31,9 @@ class MainWindow
     , public PanelHolder
     , public ConfigOption::Listener
     , public SystemSleepController::Listener
-    , public LabChannelHost
 {
 public:
-    //  `lab_console` runs the lab channel's console commands (see LabChannel.h).
-    MainWindow(std::unique_ptr<LabConsoleCommands> lab_console);
+    MainWindow(QWidget* parent = nullptr);
     ~MainWindow();
 
 
@@ -64,9 +62,6 @@ private:
     virtual void on_idle() override;
     virtual void on_config_value_changed(void* object) override;
     virtual void sleep_suppress_state_changed(SleepSuppress new_state) override;
-
-    virtual PanelSession* lab_current_panel() override{ return m_current_panel.get(); }
-    virtual std::string lab_select_program(const std::string& identifier) override;
 
     void update_wallpaper();
 
@@ -98,6 +93,7 @@ private:
     bool m_pending_move = false;
     bool m_panel_transition = false;
 
+    //  The lab channel, when "<user files>/Lab/" existed at startup (LabChannel.h).
     std::unique_ptr<LabChannel> m_lab_channel;
 };
 
