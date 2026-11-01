@@ -55,6 +55,16 @@ enum class StoryStepKind{
 };
 const char* story_step_kind_name(StoryStepKind kind);
 
+//  How much a step reads the screen to confirm what it did. Each game
+//  decides what its steps check at each level.
+enum class StoryChecks{
+    //  Confirm on screen: purchases, the Bag, status after battles, position.
+    THOROUGH,
+    //  In a rush: trust counts and timings.
+    FAST,
+};
+const char* story_checks_name(StoryChecks checks);
+
 
 //  A straight leg of a fixed walk.
 struct StoryLeg{
@@ -124,6 +134,15 @@ public:
     //  who can see us again, the row's own settings). Does nothing by default.
     virtual void begin_attempt(const StoryCheckpoint& data);
 
+    //  The checks level the program's options chose (StoryRunOptions);
+    //  THOROUGH unless set. Steps read it to decide what to confirm.
+    StoryChecks checks() const{
+        return m_checks;
+    }
+    void set_checks(StoryChecks checks){
+        m_checks = checks;
+    }
+
     //  Runs `step`: dispatch_story_step() by default. A game overrides it
     //  to wrap every step, e.g. to turn a failed console step into a failed
     //  Outcome.
@@ -148,6 +167,9 @@ public:
     virtual Outcome save(RunState& state, const StoryStep& step);
     virtual Outcome ready(RunState& state, const StoryStep& step);
     virtual Outcome game(RunState& state, const StoryStep& step);
+
+private:
+    StoryChecks m_checks = StoryChecks::THOROUGH;
 };
 
 //  Calls the executor's method for the step's kind.
