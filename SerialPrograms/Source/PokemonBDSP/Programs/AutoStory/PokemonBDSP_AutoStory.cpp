@@ -550,6 +550,7 @@ void BDSPAutoStory::program(
         DIAGNOSTIC_FAKE_CHECKPOINT_SAVE ? CheckpointSaveMode::FAKE : CheckpointSaveMode::REAL
     };
     options.policy = RETRIES.policy();
+    options.checks = RETRIES.checks();
 
     const bool fake_saves = options.checkpoint_save_mode == CheckpointSaveMode::FAKE;
     if (fake_saves) options.checkpoint_retry_scope = CheckpointRetryScope::DEFER_TO_SELECTED_RANGE;
