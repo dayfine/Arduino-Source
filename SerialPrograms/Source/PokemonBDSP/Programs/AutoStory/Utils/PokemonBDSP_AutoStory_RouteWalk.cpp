@@ -427,32 +427,12 @@ std::vector<TilePos> walk_route(
                         //  then plan again from where a sight line crosses the leg.
                         route_status(stream, leg_label + ": a trainer stopped us on the way; battling.");
                         fight("a trainer on the way");
-                        std::vector<TilePos> stopped;
-                        for (const TilePos& pos : from){
-                            const std::vector<TilePos> path = leg_path(grid, pos, leg.direction, SIZE_MAX);
-                            for (const TrainerSight& trainer : trainers){
-                                const std::vector<TilePos> sight = sight_tiles(grid, trainer);
-                                for (const TilePos& tile : path){
-                                    if (std::find(sight.begin(), sight.end(), tile) != sight.end()){
-                                        stopped.push_back(tile);
-                                    }
-                                }
-                            }
-                        }
-                        std::sort(stopped.begin(), stopped.end(), [](const TilePos& a, const TilePos& b){
-                            return a.y != b.y ? a.y < b.y : a.x < b.x;
-                        });
-                        stopped.erase(std::unique(stopped.begin(), stopped.end()), stopped.end());
-                        if (stopped.empty()){
-                            OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
-                                leg_label + ": a trainer stopped us, and no sight line crosses this leg.", stream);
-                        }
-                        stream.log("[Route] " + leg_label + ": stopped by a trainer at " + describe(maps, stopped) +
-                            "; planning again.", COLOR_ORANGE);
-                        facing = leg.direction;
-                        from = stopped;
-                        replanned = true;
-                        break;
+                        //  Where they saw us from is not reliable (BDSP's trainers
+                        //  stand a few tiles from Platinum's, r242a), so do not
+                        //  guess the tile: a leg to a wall ends at its wall however
+                        //  far it got. Walk on to it.
+                        stream.log("[Route] " + leg_label + ": on to the wall after the battle.", COLOR_ORANGE);
+                        result = walk_until_dpad(stream, context, x, y, limit, leg_label + ": on to the wall", watch_banner, true);
                     }
                     if (check.stop != WalkStop::BLOCKED &&
                         !(check.stop == WalkStop::LIMIT && holding_against_wall(stream, context, x, y, leg_label + ": at the wall?"))
@@ -559,6 +539,14 @@ std::vector<TilePos> walk_route(
                 anywhere.erase(std::unique(anywhere.begin(), anywhere.end()), anywhere.end());
                 route_status(stream, label + ": a trainer the map lacks stopped us; fighting.");
                 fight("unknown trainer");
+                if (leg.ends_at_wall){
+                    const Milliseconds limit = ROUTE_START_DELAY +
+                        ms_per_tile(leg.direction) / ROUTE_RUN_SPEEDUP * leg.tiles * 5 / 4 + 1000ms;
+                    stream.log("[Route] " + leg_label + ": on to the wall after the battle.", COLOR_ORANGE);
+                    walk_until_dpad(stream, context, x, y, limit, leg_label + ": on to the wall", watch_banner, true);
+                    from = planned.after;
+                    continue;
+                }
                 from = anywhere;
                 replanned = true;
                 break;
@@ -584,11 +572,37 @@ std::vector<TilePos> walk_route(
                 OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
                     leg_label + ": " + trainer.name + " talked, but no path enters their sight.", stream);
             }
-            stream.log("[Route] " + label + ": " + trainer.name + " stopped us at " + describe(maps, stopped) + ".");
+            stream.log("[Route] " + label + ": " + trainer.name + " stopped us about " + describe(maps, stopped) + ".");
             route_status(stream, "Fighting " + trainer.name + ".");
             fight(trainer.name);
             trainers.erase(trainers.begin() + watching[0]);
-            from = stopped;
+            //  Their sight line only says roughly where: BDSP's trainers stand a
+            //  few tiles from Platinum's (r242a). A leg to a wall ends at its
+            //  wall however far it got: walk on to it and carry on. An open leg
+            //  counts its taps: the step that brought us into sight was complete.
+            if (leg.ends_at_wall){
+                const Milliseconds limit = ROUTE_START_DELAY +
+                    ms_per_tile(leg.direction) / ROUTE_RUN_SPEEDUP * leg.tiles * 5 / 4 + 1000ms;
+                stream.log("[Route] " + leg_label + ": on to the wall after the battle.", COLOR_ORANGE);
+                walk_until_dpad(stream, context, x, y, limit, leg_label + ": on to the wall", watch_banner, true);
+                from = planned.after;
+                continue;
+            }
+            const size_t taps = (size_t)(result.walked / 800ms);
+            std::vector<TilePos> by_taps;
+            for (const TilePos& pos : from){
+                const std::vector<TilePos> path = leg_path(grid, pos, leg.direction, leg.tiles);
+                for (size_t k = taps == 0 ? 0 : taps - 1; k <= taps && k <= path.size(); k++){
+                    by_taps.push_back(k == 0 ? pos : path[k - 1]);
+                }
+            }
+            std::sort(by_taps.begin(), by_taps.end(), [](const TilePos& a, const TilePos& b){
+                return a.y != b.y ? a.y < b.y : a.x < b.x;
+            });
+            by_taps.erase(std::unique(by_taps.begin(), by_taps.end()), by_taps.end());
+            stream.log("[Route] " + leg_label + ": " + std::to_string(taps) + " taps before the battle; at " +
+                describe(maps, by_taps) + "; planning again.", COLOR_ORANGE);
+            from = by_taps;
             replanned = true;
             break;
         }
