@@ -9,6 +9,9 @@ This prototype adds four JSON methods and a lab-channel adapter. It reuses
 dispatcher can be driven in a hardware-free terminal demo. Delete or absorb
 this prototype once the interface decision is made.
 
+For the proposed next step, see [the run results and failure evidence design](DESIGN.md).
+It adds per-run outcomes to Lab's shared backend; it is not implemented here.
+
 ## Try the terminal demo
 
 From the repo root, with a C++23 compiler:
