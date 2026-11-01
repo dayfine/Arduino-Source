@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <format>
+#include "CommonFramework/Tools/DebugDumper.h"
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
 #include "CommonTools/Async/InferenceRoutines.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
@@ -480,8 +481,13 @@ void walk_overworld_route(
     RouteCalls calls;
     calls.walk = [&](const RouteStep& step, std::optional<Direction> from_facing){
         console.log("Route: " + to_string(step));
+        context.wait_for_all_requests();
+        dump_debug_image(console, "AutoStory/legs", "before-" + to_string(step), console.video().snapshot());
         check_overworld(console, context, step);
-        return walk_and_watch(console, context, step, from_facing, interrupts);
+        auto lab_ret = walk_and_watch(console, context, step, from_facing, interrupts);
+        context.wait_for_all_requests();
+        dump_debug_image(console, "AutoStory/legs", "after-" + to_string(step), console.video().snapshot());
+        return lab_ret;
     };
     calls.hold_to_warp = [&](const RouteStep& step){
         hold_to_warp(console, context, step, interrupts.other);
