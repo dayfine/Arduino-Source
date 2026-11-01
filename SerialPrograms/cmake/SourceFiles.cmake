@@ -1462,6 +1462,9 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/Navigation/Pokemon_StorySegments.cpp
     Source/Pokemon/Navigation/Pokemon_StorySegments.h
     Source/Pokemon/Navigation/Pokemon_StorySegments_Tests.cpp
+    Source/Pokemon/Navigation/Pokemon_StorySteps.cpp
+    Source/Pokemon/Navigation/Pokemon_StorySteps.h
+    Source/Pokemon/Navigation/Pokemon_StorySteps_Tests.cpp
     Source/Pokemon/Navigation/Pokemon_TilePose.cpp
     Source/Pokemon/Navigation/Pokemon_TilePose.h
     Source/Pokemon/Options/Pokemon_BoxSortingTable.cpp
@@ -1477,6 +1480,8 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/Options/Pokemon_NameSelectWidget.h
     Source/Pokemon/Options/Pokemon_StatsHuntFilter.cpp
     Source/Pokemon/Options/Pokemon_StatsHuntFilter.h
+    Source/Pokemon/Options/Pokemon_StoryRunOptions.cpp
+    Source/Pokemon/Options/Pokemon_StoryRunOptions.h
     Source/Pokemon/Pokemon_AdvRng.cpp
     Source/Pokemon/Pokemon_AdvRng.h
     Source/Pokemon/Pokemon_BdspRng.cpp
