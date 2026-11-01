@@ -30,10 +30,6 @@ using namespace std::chrono_literals;
 
 namespace{
 
-ImageFloatBox bag_list_icon_box(size_t row){
-    return ImageFloatBox(0.449, 0.212 + (row - 1) * 0.075, 0.033, 0.050);
-}
-
 ImageFloatBox bag_list_name_box(size_t row){
     // Previous height included the faint lower selection border in rows 2/6.
     // return ImageFloatBox(0.492, 0.213 + (row - 1) * 0.075, 0.335, 0.052);
