@@ -76,6 +76,12 @@ void log_arrival(StoryEnv& env, const std::string& label, const std::string& map
     env.console.log(Pokemon::ROUTE_LOG_TAG + Pokemon::route_arrived_line(label, {{map, tile}}));
 }
 
+//  The walker's check that each leg to a wall ended at it (a diagnostic):
+//  with Thorough checks only, as Fast trusts the walk.
+WallCheck wall_check(const StoryEnv& env){
+    return env.checks == StoryChecks::THOROUGH ? WallCheck::TAP : WallCheck::SKIP;
+}
+
 Outcome walk_route(StoryEnv& env, RunState& state, const StoryStep& step){
     const std::vector<TilePos> tiles = Pokemon::tiles_of(state.pose);
     if (tiles.size() != 1 || state.pose.certainty != Pokemon::PoseCertainty::TILE){
@@ -103,7 +109,7 @@ Outcome walk_route(StoryEnv& env, RunState& state, const StoryStep& step){
     const OverworldInterruptSet interrupts = story_interrupts(env.supplies, step.fight_wild, env.checks, env.language);
     //  Planning lets the walker recover a stopped open leg: it plans back to
     //  the leg's end, then walks the rest as given.
-    const RoutePlanning planning{.maps = &story_maps(), .costs = default_route_costs(), .start = start, .label = step.name};
+    const RoutePlanning planning{.maps = &story_maps(), .costs = default_route_costs(), .start = start, .label = step.name, .wall_check = wall_check(env)};
     walk_overworld_route(env.console, env.context, *route, facing, interrupts, &planning);
     log_arrival(env, step.name, target->map, target->tile);
     const std::optional<Direction> end_facing = route->empty() ? facing : std::optional<Direction>(route->back().facing_after);
@@ -127,7 +133,7 @@ Outcome walk_legs(StoryEnv& env, RunState& state, const StoryStep& step){
     const OverworldInterruptSet interrupts = story_interrupts(env.supplies, step.fight_wild, env.checks, env.language);
     //  Planning lets the walker recover a stopped open leg: it plans back to
     //  the leg's end, then walks the rest as given.
-    const RoutePlanning planning{.maps = &story_maps(), .costs = default_route_costs(), .start = start, .label = step.name};
+    const RoutePlanning planning{.maps = &story_maps(), .costs = default_route_costs(), .start = start, .label = step.name, .wall_check = wall_check(env)};
     walk_overworld_route(env.console, env.context, *route, facing, interrupts, &planning);
     log_arrival(env, step.name, route->back().end.map, route->back().end.point);
     return Pokemon::outcome_ok(to_pose(StoryPose{route->back().end.map, route->back().end.point, route->back().facing_after}));
