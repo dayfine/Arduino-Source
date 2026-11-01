@@ -17,6 +17,7 @@
 #include "CommonFramework/Logging/Logger.h"
 #include "CommonFramework/ProgramSession.h"
 #include "CommonFramework/Tools/GlobalThreadPools.h"
+#include "Integrations/SessionAgentPrototype/SessionAgentPrototype.h"
 #include "LabChannel.h"
 
 namespace PokemonAutomation{
@@ -46,6 +47,16 @@ void write_file_atomically(const Filesystem::Path& path, const std::string& text
     write_file(temp, text);
     std::error_code ec;
     Filesystem::rename(temp, path, ec);
+}
+
+//  The prototype runs through the same owner check as other channel writes.
+std::string run_session_agent_request(const LabRequestLine& line, LabCommandOutput& output){
+    const size_t begin = line.text.find_first_not_of(" \t");
+    const size_t space = line.text.find_first_of(" \t", begin);
+    const std::string text = space == std::string::npos ? "" : line.text.substr(space + 1);
+    const auto reply = SessionAgentPrototype::handle_live_request(text);
+    output.out << reply.dump() << "\n";
+    return reply.at("ok").get<bool>() ? "" : reply.at("error").at("message").get<std::string>();
 }
 
 //  Returns the error message of the start or stop, or empty on success.
@@ -342,10 +353,10 @@ std::string LabChannel::run_line(const LabRequest& request, const LabRequestLine
     if (command == "keepawake"){
         return m_keep_awake.set(words, current_time());
     }
-    if (kind == LabConsoleCommands::Kind::UNKNOWN){
+    if (kind == LabConsoleCommands::Kind::UNKNOWN && command != "session_agent"){
         return "Unknown command: " + command + " (try \"help\")";
     }
-    return run_console_command(words, output);
+    return command == "session_agent" ? run_session_agent_request(line, output) : run_console_command(words, output);
 }
 
 std::string LabChannel::run_console_command(const std::vector<std::string>& words, LabCommandOutput& output){

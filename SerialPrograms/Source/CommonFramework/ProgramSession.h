@@ -114,8 +114,8 @@ public:
     std::string stop_program();     //  Returns before the program is completely stopped.
 
     //  Temporary
-    virtual void async_start() override{ start_program(); }
-    virtual void async_stop() override{ stop_program(); }
+    virtual std::string async_start() override{ return start_program(); }
+    virtual std::string async_stop() override{ return stop_program(); }
 
 
 protected:
