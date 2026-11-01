@@ -18,6 +18,22 @@ const EnumDropdownDatabase<StoryChecks>& StoryChecks_Database(){
     return database;
 }
 
+const EnumDropdownDatabase<Language>& StoryLanguage_Database(){
+    static const EnumDropdownDatabase<Language> database({
+        {Language::English,            "en",      "English"},
+        {Language::Japanese,           "ja",      "Japanese"},
+        {Language::Spanish,            "es",      "Spanish"},
+        {Language::French,             "fr",      "French"},
+        {Language::German,             "de",      "German"},
+        {Language::Italian,            "it",      "Italian"},
+        {Language::Korean,             "ko",      "Korean"},
+        {Language::ChineseSimplified,  "zh-Hans", "Chinese (Simplified)"},
+        {Language::ChineseTraditional, "zh-Hant", "Chinese (Traditional)"},
+    });
+    return database;
+}
+
+
 StoryRunOptions::StoryRunOptions()
     : GroupOption("Checkpoint Retries", LockMode::LOCK_WHILE_RUNNING)
     , ATTEMPTS_PER_CHECKPOINT(
@@ -36,10 +52,18 @@ StoryRunOptions::StoryRunOptions()
         LockMode::LOCK_WHILE_RUNNING,
         StoryChecks::THOROUGH
     )
+    , LANGUAGE(
+        "<b>Game language:</b><br>For the few reads that need text (item names in a shop or the Bag). "
+        "Story steps never match dialogue text; with no reader for this language they check positions, digits and the screen instead.",
+        StoryLanguage_Database(),
+        LockMode::LOCK_WHILE_RUNNING,
+        Language::English
+    )
 {
     PA_ADD_OPTION(ATTEMPTS_PER_CHECKPOINT);
     PA_ADD_OPTION(STOP_AT_FIRST_FAILURE);
     PA_ADD_OPTION(CHECKS);
+    PA_ADD_OPTION(LANGUAGE);
 }
 
 SegmentPolicy StoryRunOptions::policy() const{
@@ -51,6 +75,10 @@ SegmentPolicy StoryRunOptions::policy() const{
 
 StoryChecks StoryRunOptions::checks() const{
     return CHECKS;
+}
+
+Language StoryRunOptions::language() const{
+    return LANGUAGE;
 }
 
 
