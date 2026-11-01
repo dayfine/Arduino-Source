@@ -89,7 +89,7 @@ const int JUBILIFE_EAST_BOTTOM = 25;
 }
 const MapSet& jubilife_east_maps(){
     static const MapSet maps = []{
-        const TileGrid& city = story_grid("JubilifeCity");
+        const TileGrid city = story_grid("JubilifeCity");
         const TilePos corner = JUBILIFE_EAST_CORNER;
         std::vector<std::string> rows;
         for (int y = corner.y; y <= JUBILIFE_EAST_BOTTOM; y++){
