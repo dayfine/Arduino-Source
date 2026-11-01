@@ -83,10 +83,15 @@ enum class RouteCost{
     //  the player is can only be estimated. A leg that ends at a wall is
     //  walked again instead.
     OPEN_STOP,
+    //  Extra again when that leg crosses tall grass or water, where a wild
+    //  battle is likely to stop it: the walker can't tell where it did
+    //  (console B, 2026-11-01, Route 1, four runs).
+    OPEN_WILD_STOP,
 };
 using RouteCosts = std::map<RouteCost, int>;
 
-//  TILE 1, TURN 2, WARP 30, SURF 40, GRASS_TILE 20, OPEN_STOP 8.
+//  TILE 1, TURN 2, WARP 30, SURF 40, GRASS_TILE 20, OPEN_STOP 8,
+//  OPEN_WILD_STOP 300.
 const RouteCosts& default_route_costs();
 
 //  `costs`'s cost for `kind`, or the default if it has none.
@@ -104,6 +109,18 @@ std::optional<std::vector<RouteStep>> plan_overworld_route(
     std::optional<Direction> start_facing = std::nullopt
 );
 
+//  After `step`, an open walk, stopped part-way (a battle, a message): a leg
+//  to a wall that ends on the same tile from anywhere the player may be
+//  along it, ahead or back, so where they are is known again. `start` is
+//  where `step` started, if known; else it is worked back from its end.
+//  Nothing if no such wall lies along it: a warp, a ledge, a person or the
+//  edge of the loaded maps is in the way.
+std::optional<RouteStep> plan_reanchor(
+    const std::vector<MapData>& maps,
+    const std::optional<MapPosition>& start,
+    const RouteStep& step
+);
+
 //  Replays `route` from `start` with the game's step rules and returns where
 //  it ends. Throws InternalProgramError if a step can't be taken as planned.
 MapPosition follow_overworld_route(
@@ -114,6 +131,7 @@ MapPosition follow_overworld_route(
 
 
 void add_tests_OverworldRoute(UnitTestDatabase& database);
+void add_tests_OverworldReanchor(UnitTestDatabase& database);
 
 
 

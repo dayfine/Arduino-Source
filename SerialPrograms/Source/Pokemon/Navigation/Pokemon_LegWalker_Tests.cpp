@@ -29,6 +29,8 @@ constexpr Milliseconds TILE = 267ms;
 constexpr Milliseconds DELAY = 300ms;
 constexpr Milliseconds WINDOW = 900ms;
 constexpr Milliseconds NO_WINDOW = 0ms;
+constexpr Milliseconds SETTLE = 3400ms;
+constexpr Milliseconds LATE_DELAY = 3700ms;
 
 //  Holds that report the scripted outcomes in order, then run out.
 struct ScriptedLeg{
@@ -264,6 +266,41 @@ UnitTestResult test_tile_by_tile_slow_interrupt(){
     return true;
 }
 
+//  Console B, 2026-11-01, run 7: a battle on the last step of "south 3"
+//  whose flashes were missed showed by its dialog 3.7s on, after the next
+//  leg had been walked into the battle. The last step's window now runs
+//  until the dialog would show, and places the battle on that step.
+UnitTestResult test_tile_by_tile_settle_last_step(){
+    ScriptedLeg script;
+    script.delay = LATE_DELAY;
+    script.outcomes = {std::nullopt, std::nullopt, HoldOutcome{0, TILE + LATE_DELAY}};
+    LegSpec leg{Direction::SOUTH, 3, false, TILE, WINDOW};
+    leg.settle = SETTLE;
+    const LegResult result = walk_leg_with(leg, script.calls(), 5);
+    if (script.holds.size() != 3 || result.interruptions != 1){
+        return std::format("Expected the leg done in 3 presses, got {}.", script.holds.size());
+    }
+    if (script.windows[1] != WINDOW || script.windows[2] != WINDOW + SETTLE){
+        return "Only the last step should be watched longer.";
+    }
+    return true;
+}
+
+//  A missed battle on the 2nd step of 3, seen by its dialog in the last
+//  step's longer window: the 3rd press was swallowed and is pressed again.
+UnitTestResult test_tile_by_tile_settle_earlier_step(){
+    ScriptedLeg script;
+    script.delay = LATE_DELAY;
+    script.outcomes = {std::nullopt, std::nullopt, HoldOutcome{0, TILE + LATE_DELAY - WINDOW}};
+    LegSpec leg{Direction::SOUTH, 3, false, TILE, WINDOW};
+    leg.settle = SETTLE;
+    walk_leg_with(leg, script.calls(), 5);
+    if (script.holds.size() != 4 || script.windows[3] != WINDOW + SETTLE){
+        return std::format("Expected the last tile pressed again (4 presses), got {}.", script.holds.size());
+    }
+    return true;
+}
+
 //  The step onto a warp isn't watched: its fade looks like a flash.
 UnitTestResult test_tile_by_tile_warp_not_watched(){
     ScriptedLeg script;
@@ -272,6 +309,19 @@ UnitTestResult test_tile_by_tile_warp_not_watched(){
     walk_leg_with(leg, script.calls(), 5);
     if (script.holds.size() != 4 || script.unwatched != 1 || script.windows.back() != NO_WINDOW){
         return std::format("Expected 3 watched presses and an unwatched one, got {} and {}.", script.holds.size() - script.unwatched, script.unwatched);
+    }
+    return true;
+}
+
+//  An open leg set to stop at an interrupt doesn't walk on from a guess.
+UnitTestResult test_open_leg_stops(){
+    ScriptedLeg script;
+    script.outcomes = {after_step(2)};
+    LegSpec leg{Direction::NORTH, 6, false, TILE, NO_WINDOW};
+    leg.stop_on_interrupt = true;
+    const LegResult result = walk_leg_with(leg, script.calls(), 5);
+    if (script.holds.size() != 1 || !result.stopped || result.exact || script.cleared.size() != 1){
+        return "Expected one hold, the interrupt cleared, and the leg stopped.";
     }
     return true;
 }
@@ -319,7 +369,10 @@ void add_tests_LegWalker(UnitTestDatabase& database){
     database.add<Test_LegWalker>("tile by tile: a battle on the last tile", test_tile_by_tile_battle_on_last_tile);
     database.add<Test_LegWalker>("tile by tile: an interrupt slower than the window", test_tile_by_tile_slow_interrupt);
     database.add<Test_LegWalker>("a wall leg is held through", test_wall_leg_held_through);
+    database.add<Test_LegWalker>("an open leg stops at an interrupt", test_open_leg_stops);
     database.add<Test_LegWalker>("tile by tile: the step onto a warp isn't watched", test_tile_by_tile_warp_not_watched);
+    database.add<Test_LegWalker>("tile by tile: the last step settles", test_tile_by_tile_settle_last_step);
+    database.add<Test_LegWalker>("tile by tile: a late battle before the last step", test_tile_by_tile_settle_earlier_step);
 }
 
 

@@ -292,6 +292,7 @@ void add_tests(UnitTestDatabase& database){
     add_tests_ExitWildBattle(database);
     add_tests_OverworldMaps(database);
     add_tests_OverworldRoute(database);
+    add_tests_OverworldReanchor(database);
     add_tests_PlayerFacingReader(database);
     add_tests_AutoStory(database);
 }
