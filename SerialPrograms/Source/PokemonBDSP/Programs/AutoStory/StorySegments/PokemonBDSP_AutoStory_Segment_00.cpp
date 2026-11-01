@@ -7,6 +7,7 @@
 
 #include "CommonFramework/GlobalAutoPaths.h"
 #include "PokemonBDSP_AutoStory_Segment_00.h"
+#include "PokemonBDSP_AutoStory_SandgemCenterEvents.h"
 #include "../Data/PokemonBDSP_AutoStory_JubilifeCity.h"
 #include "../Data/PokemonBDSP_AutoStory_Route202.h"
 #include "../Data/PokemonBDSP_AutoStory_SandgemTown.h"
@@ -622,14 +623,12 @@ namespace PokemonAutomation {
         // What the post-catch half of 00.04 does, logged up front and as each
         // step starts. A Lv5 Piplup fainted to Route 202's trainers (r72), so:
         // training, a heal at the Center, and Potions (they also saved the
-        // Barry fight in r85) before Route 202's trainers. The Poke Mart lady
-        // on Route 201 gives 10 for free, but she wanders between her grass
-        // row and the open ground above it, and eight runs (r113a..r120a)
-        // never got her talk; the Mart's clerk stays put.
+        // Barry fight in r85) before Route 202's trainers: the Poke Mart lady's
+        // 10 on Route 201 (she stands still, as in the decomp), the clerk's 5 after two misses.
         static const char* const AFTER_CATCH_STEPS[] = {
             "Train: fight 3 wild Pokemon in the catch grass, with the best move",
             "Walk south into Sandgem Town and heal at its Pokemon Center",
-            "Buy 5 Potions at the Poke Mart next door, and check the Bag has them",
+            "Get 10 Potions from the Poke Mart lady on Route 201 (the clerk's 5 after two misses), and check the Bag",
             "Walk back to Route 202's save spot and save",
             "Walk north up Route 202 to the Jubilife exit, fighting trainers who see us; after each, use a Potion if HP is under half",
             "Enter Jubilife and get through Dawn's scene",
@@ -699,16 +698,10 @@ namespace PokemonAutomation {
             }
         }
 
-        // South into Sandgem Town, to the tile below the Pokemon Center's sign,
-        // then three taps west to below its door, where the heal lines up with
-        // it by sight. Returns where we stand after: below the door. In two walks:
-        // down the road to where it stops above the Mart, then the Sandgem
-        // Center events' town plan from there, which ends walking north into
-        // the sign. From the catch grass in one walk the route costs find no
-        // plan within the cap, and the default costs' plan went round the
-        // houses south of the Mart, where townspeople wander, and its last
-        // leg west 9 along the doors' row ended two tiles short, halfway
-        // between the Center's and the Mart's doors (r252, 2026-11-01).
+        // South into Sandgem Town in two walks (down the road to where it stops
+        // above the Mart, then the town plan into the Center's sign; one walk
+        // went round the houses and ended two tiles short, r252), three taps
+        // west below the door, and in by sight. Returns: below the door.
         static std::vector<TilePos> heal_at_sandgem_center(
             VideoStream& stream, ProControllerContext& context, const MapSet& maps,
             std::vector<TrainerSight>& trainers, const RouteTrainerFight& fight
@@ -1035,6 +1028,8 @@ namespace PokemonAutomation {
         // them, with the starter trained and healed, so Potions in the Bag
         // mean steps 1 to 4 are done; where that save stands is read off the
         // save screen (resume_with_potions()).
+        // Mart lady runs that failed this program run; the clerk after two.
+        static size_t g_mart_lady_misses = 0;
         static void tutorial_part_3_after_catch_navigation(SingleSwitchProgramEnvironment& env, VideoStream& stream, ProControllerContext& context) {
             log_after_catch_steps(stream);
 
@@ -1053,10 +1048,17 @@ namespace PokemonAutomation {
                 heal_at_sandgem_center(stream, context, maps, trainers, fight);
 
                 after_catch_step(stream, 3);
-                const std::vector<TilePos> at = buy_potions_in_sandgem(stream, context, maps, trainers, fight);
-
-                after_catch_step(stream, 4);
-                save_at_route_202_save_spot(env, stream, context, maps, at, trainers, fight);
+                if (g_mart_lady_misses < 2) {
+                    // Her events walk on to Route 202's save spot and save there (step 4).
+                    try { diagnostic_sandgem_mart_lady(env, context); } catch (OperationFailedException&) { g_mart_lady_misses++; throw; }
+                } else {
+                    const std::vector<TilePos> at = buy_potions_in_sandgem(stream, context, maps, trainers, fight);
+                    after_catch_step(stream, 4);
+                    save_at_route_202_save_spot(env, stream, context, maps, at, trainers, fight);
+                }
+                if (!bag_has_item(stream, context, "potion", 1)) {
+                    OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT, "00.04: no Potions in the Bag after step 3.", stream);
+                }
             }
 
             after_catch_step(stream, 5);
