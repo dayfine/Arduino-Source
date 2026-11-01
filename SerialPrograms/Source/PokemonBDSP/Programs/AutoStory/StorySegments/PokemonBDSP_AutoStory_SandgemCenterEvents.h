@@ -196,6 +196,11 @@ Pokemon::Checkpoint sandgem_mart_lady_checkpoint(MartLadyActions& game);
 
 extern const char* const SANDGEM_MART_LADY_NAME;
 
+//  00.04c's Potions: the Mart lady checkpoint, from the doors' row in front
+//  of Sandgem's Pokemon Center, without its save: it ends on Route 202's
+//  save spot, where 00.04d saves.
+void mart_lady_without_save(SingleSwitchProgramEnvironment& env, ProControllerContext& context);
+
 //  DIAGNOSTIC ONLY: Remove before pushing to production.
 //  Runs the Mart lady checkpoint on the console, from in front of Sandgem's
 //  Pokemon Center door.

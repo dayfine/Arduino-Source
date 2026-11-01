@@ -51,7 +51,7 @@ const std::vector<TableCase>& table_cases(){
             .name = "Segment 00",
             .make = make_segment_00,
             .segment_id = "00",
-            .checkpoint_ids = {"00.00", "00.01", "00.02", "00.03", "00.04", "00.04b", "00.05"},
+            .checkpoint_ids = {"00.00", "00.01", "00.02", "00.03", "00.04", "00.04b", "00.04c", "00.04d", "00.05"},
             .unsaved = {"00.00"},
         },
         {

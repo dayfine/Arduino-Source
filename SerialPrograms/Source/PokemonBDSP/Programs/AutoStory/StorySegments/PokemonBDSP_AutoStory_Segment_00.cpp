@@ -629,7 +629,7 @@ namespace PokemonAutomation {
             "Train: fight 3 wild Pokemon in the catch grass, with the best move",
             "Walk south into Sandgem Town and heal at its Pokemon Center",
             "Get 10 Potions from the Poke Mart lady on Route 201 (the clerk's 5 after two misses), and check the Bag",
-            "Walk back to Route 202's save spot and save",
+            "Walk back to Route 202's save spot (00.04d saves there)",
             "Walk north up Route 202 to the Jubilife exit, fighting trainers who see us; after each, use a Potion if HP is under half",
             "Enter Jubilife and get through Dawn's scene",
         };
@@ -903,83 +903,6 @@ namespace PokemonAutomation {
                 [&](const TilePos& pos) { return pos == save_spot; }, trainers, fight, "Back to Route 202");
         }
 
-        // Step 4: the walk above, then the save, which the save screen's own
-        // location must confirm (r124a saved beside the Mart, sure it stood
-        // on Route 202). A save in Sandgem would need the training walk to
-        // plan from town as well.
-        static void save_at_route_202_save_spot(
-            SingleSwitchProgramEnvironment& env, VideoStream& stream, ProControllerContext& context, const MapSet& maps,
-            std::vector<TilePos> at, std::vector<TrainerSight>& trainers, const RouteTrainerFight& fight
-        ) {
-            walk_to_route_202_save_spot(stream, context, maps, std::move(at), trainers, fight);
-            stream.log("[00.04] Saving with the Potions, at the save spot on Route 202.");
-            save_game(env, context, MAP_ROUTE_202);
-        }
-
-        // From anywhere on Sandgem Town's open ground, to tiles the map can
-        // confirm: east until the trees or a wall stop us, then north until a
-        // wall. The columns under the north exit run on to Route 202, whose
-        // banner then says so; the others end on the Mart's row, where its
-        // lit doorway says which tile (r124a's save stands beside its door).
-        static std::vector<TilePos> anchor_in_sandgem(VideoStream& stream, ProControllerContext& context, const MapSet& maps) {
-            using Pokemon::Direction;
-            route_status(stream, "Sandgem Town: east to the trees, then north to the Mart's row.");
-            std::vector<std::string> banners;
-            const WalkResult east = walk_until(stream, context, 1, 0, 6000ms, "Sandgem: east to the trees");
-            const WalkResult north = walk_until(stream, context, 0, 1, 9000ms, "Sandgem: north to the Mart's row", banner_keeper(banners));
-            for (const WalkResult& walk : {east, north}) {
-                if (walk.stop == WalkStop::TRANSITION || walk.stop == WalkStop::DIALOG) {
-                    OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
-                        "Sandgem Town: " + std::string(walk_stop_name(walk.stop)) + " instead of a wall.", stream);
-                }
-            }
-            context.wait_for_all_requests();
-            VideoSnapshot screen = stream.video().snapshot();
-            if (!screen) {
-                OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT, "Sandgem Town: no video frame.", stream);
-            }
-            banner_keeper(banners)(*screen.frame);
-            if (any_banner_names(banners, MAP_ROUTE_202)) {
-                std::vector<TilePos> ends;
-                for (int x : {25, 29}) {
-                    ends.push_back(Pokemon::walk_to_wall(maps.world(), maps.to_world(MAP_SANDGEM_TOWN, {x, 0}), Direction::NORTH).stop);
-                }
-                route_status(stream, "Sandgem Town: Route 202's banner showed on the way north; on Route 202.");
-                return ends;
-            }
-            const TilePos door = maps.to_world(MAP_SANDGEM_TOWN, SandgemTown::POKE_MART_DOOR);
-            const std::optional<LitDoorway> doorway = find_lit_doorway(*screen.frame);
-            const std::vector<TilePos> at = doorway ? tiles_by_lit_doorway(*doorway, maps.world(), door) : std::vector<TilePos>{};
-            if (at.empty()) {
-                OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
-                    "Sandgem Town: no Route 202 banner and no lit doorway in sight; cannot place the player.", stream);
-            }
-            route_status(stream, "Sandgem Town: the Mart's doorway is " + std::to_string(doorway->tiles_across) +
-                " tiles across and " + std::to_string(doorway->rows_up) + " rows up.");
-            return at;
-        }
-
-        // With Potions in the Bag, steps 1 to 4 are done, but where the save
-        // stands is the save screen's to say: step 4's at Route 202's save
-        // spot, or r124a's in Sandgem Town. From town, walk back to the save
-        // spot first, without saving again.
-        static void resume_with_potions(
-            VideoStream& stream, ProControllerContext& context, const MapSet& maps,
-            std::vector<TrainerSight>& trainers, const RouteTrainerFight& fight
-        ) {
-            const std::string where = read_location_from_save_screen(stream, context);
-            if (location_banner_matches(where, MAP_ROUTE_202)) {
-                stream.log("[00.04] The Bag has Potions and the save is on Route 202: step 4's save; on to Route 202's trainers.", COLOR_BLUE);
-                return;
-            }
-            if (!location_banner_matches(where, MAP_SANDGEM_TOWN)) {
-                OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
-                    "The Bag has Potions, but the save screen reads \"" + where + "\": neither Route 202 nor Sandgem Town.", stream);
-            }
-            stream.log("[00.04] The Bag has Potions, but the save is in Sandgem Town: back to Route 202's save spot first, without saving.", COLOR_BLUE);
-            walk_to_route_202_save_spot(stream, context, maps, anchor_in_sandgem(stream, context, maps), trainers, fight);
-        }
-
         // DIAGNOSTIC ONLY (the Mart lady checkpoint): 00.04's walk back to
         // Route 202's save spot, from below Sandgem Center's door, without saving.
         void walk_from_sandgem_center_to_route_202_save_spot(
@@ -1023,54 +946,59 @@ namespace PokemonAutomation {
             pbf_mash_button(context, BUTTON_B, 5000ms);
         }
 
-        // Resumes from the save made after catching the second Pokemon, or
-        // from step 4's save. The catch save has no Potions; step 4's has
-        // them, with the starter trained and healed, so Potions in the Bag
-        // mean steps 1 to 4 are done; where that save stands is read off the
-        // save screen (resume_with_potions()).
-        // Mart lady runs that failed this program run; the clerk after two.
+        // 00.04b, 00.04c and 00.04d: the post-catch steps as three rows, each
+        // starting from the save the one before ends on. Mart lady runs that
+        // failed this program run: the clerk after two.
         static size_t g_mart_lady_misses = 0;
-        static void tutorial_part_3_after_catch_navigation(SingleSwitchProgramEnvironment& env, VideoStream& stream, ProControllerContext& context) {
+        // 00.04b, from the catch's save: steps 1 and 2.
+        static void after_catch_train_and_heal(VideoStream& stream, ProControllerContext& context) {
             log_after_catch_steps(stream);
-
             const MapSet& maps = story_maps();
             std::vector<TrainerSight> trainers = story_trainer_sights();
             const RouteTrainerFight fight = [&](const std::string& name) { fight_route_trainer(stream, context, name); };
             pbf_wait(context, 1500ms);
-
-            if (bag_has_item(stream, context, "potion", 1)) {
-                resume_with_potions(stream, context, maps, trainers, fight);
+            after_catch_step(stream, 1);
+            train_in_catch_grass(stream, context, maps, trainers, fight);
+            after_catch_step(stream, 2);
+            heal_at_sandgem_center(stream, context, maps, trainers, fight);
+        }
+        // 00.04c, from the save out of Sandgem's Center: steps 3 and 4, up to
+        // Route 202's save spot, where 00.04d's save goes.
+        static void after_catch_potions(SingleSwitchProgramEnvironment& env, VideoStream& stream, ProControllerContext& context) {
+            const MapSet& maps = story_maps();
+            std::vector<TrainerSight> trainers = story_trainer_sights();
+            const RouteTrainerFight fight = [&](const std::string& name) { fight_route_trainer(stream, context, name); };
+            after_catch_step(stream, 3);
+            if (g_mart_lady_misses < 2) {
+                // Onto the doors' row first: out of the door we stand a tile to
+                // three below it (r261 walked west into the trees from three).
+                route_turn(stream, context, Pokemon::Direction::EAST);
+                walk_tiles_dpad(stream, context, 1, 0, 1, "east under the Center's wall");
+                const WalkResult up = walk_until(stream, context, 0, 1, 3000ms, "north to the Center's front");
+                if (up.stop != WalkStop::BLOCKED) {
+                    OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
+                        std::string("Sandgem: north to the Center's front ended ") + walk_stop_name(up.stop) + ".", stream);
+                }
+                try { mart_lady_without_save(env, context); } catch (OperationFailedException&) { g_mart_lady_misses++; throw; }
             } else {
-                after_catch_step(stream, 1);
-                train_in_catch_grass(stream, context, maps, trainers, fight);
-
-                after_catch_step(stream, 2);
-                heal_at_sandgem_center(stream, context, maps, trainers, fight);
-
-                after_catch_step(stream, 3);
-                if (g_mart_lady_misses < 2) {
-                    // Her events walk on to Route 202's save spot and save there (step 4).
-                    try { diagnostic_sandgem_mart_lady(env, context); } catch (OperationFailedException&) { g_mart_lady_misses++; throw; }
-                } else {
-                    const std::vector<TilePos> at = buy_potions_in_sandgem(stream, context, maps, trainers, fight);
-                    after_catch_step(stream, 4);
-                    save_at_route_202_save_spot(env, stream, context, maps, at, trainers, fight);
-                }
-                if (!bag_has_item(stream, context, "potion", 1)) {
-                    OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT, "00.04: no Potions in the Bag after step 3.", stream);
-                }
+                const std::vector<TilePos> at = buy_potions_in_sandgem(stream, context, maps, trainers, fight);
+                after_catch_step(stream, 4);
+                walk_to_route_202_save_spot(stream, context, maps, at, trainers, fight);
             }
-
+            if (!bag_has_item(stream, context, "potion", 1)) {
+                OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT, "00.04: no Potions in the Bag after step 3.", stream);
+            }
+        }
+        // 00.04d, from the save on Route 202's save spot: steps 5 and 6. From
+        // both save spots at once the planner gives up (no plan within 400000
+        // sets; 1300 from the one).
+        static void after_catch_to_jubilife(VideoStream& stream, ProControllerContext& context) {
+            const MapSet& maps = story_maps();
+            std::vector<TrainerSight> trainers = story_trainer_sights();
+            const RouteTrainerFight fight = [&](const std::string& name) { fight_route_trainer(stream, context, name); };
             after_catch_step(stream, 5);
-            // From the save spot under the ledge, where every way here ends:
-            // step 4 saves on it, and a resume with Potions is either that
-            // save or walks back to it first. From both save spots at once
-            // the planner gives up: the route costs' exact open legs move the
-            // pair in step without ever joining it, so the sets of two tiles
-            // run past its cap (no plan within 400000 sets; 1300 from here).
             const TilePos save_spot = maps.to_world(MAP_ROUTE_202, Route202::SAVE_SPOT);
             walk_route(stream, context, maps, {save_spot}, story_at_jubilife_exit, trainers, fight, "To Jubilife");
-
             after_catch_step(stream, 6);
             meet_dawn_in_jubilife(stream, context);
         }
@@ -1490,9 +1418,17 @@ namespace PokemonAutomation {
                     {"tutorial_part_3_navigation", "out of the lab, home to Mom, and the catch on Route 202",
                         [](StoryConsole& c) { tutorial_part_3_navigation(c.env, c.env.console, c.context); }},
                 }),
-                segment_00_row("00.04b", "After the catch, to Dawn in Jubilife", retry, {
-                    {"tutorial_part_3_after_catch_navigation", "train, heal and buy Potions in Sandgem, save on Route 202, walk to Jubilife and meet Dawn",
-                        [](StoryConsole& c) { tutorial_part_3_after_catch_navigation(c.env, c.env.console, c.context); }},
+                segment_00_row("00.04b", "After the catch: train and heal in Sandgem", retry, {
+                    {"train_and_heal", "three wild battles in the catch grass, then Sandgem's Pokemon Center",
+                        [](StoryConsole& c) { after_catch_train_and_heal(c.env.console, c.context); }},
+                }),
+                segment_00_row("00.04c", "Potions, back to Route 202's save spot", retry, {
+                    {"potions", "the Poke Mart lady's (the clerk's after two misses), then Route 202's save spot",
+                        [](StoryConsole& c) { after_catch_potions(c.env, c.env.console, c.context); }},
+                }),
+                segment_00_row("00.04d", "Route 202's trainers, Dawn in Jubilife", retry, {
+                    {"to_jubilife", "north up Route 202 past its trainers, into Jubilife and Dawn's scene",
+                        [](StoryConsole& c) { after_catch_to_jubilife(c.env.console, c.context); }},
                 }),
                 segment_00_row("00.05", "Jubilife After Dawn", retry, {
                     {"tutorial_part_4_navigation", "the Town Map, the president, the coupons, the Poketch and the Center's PC",
@@ -1514,7 +1450,7 @@ namespace PokemonAutomation {
             SingleSwitchProgramEnvironment& env, ProControllerContext& context,
             AutoStoryOptions options, AutoStoryStats& stats
         ) {
-            run_story_table(env, context, options, stats, make_segment_00, {"00.04b", "00.04b"});
+            run_story_table(env, context, options, stats, make_segment_00, {"00.04b", "00.04d"});
         }
 
         // ========================
@@ -1581,7 +1517,7 @@ namespace PokemonAutomation {
             AutoStoryOptions options,
             AutoStoryStats& stats
         ) const {
-            run_story_table(env, context, options, stats, make_segment_00, {"00.04", "00.04b"});
+            run_story_table(env, context, options, stats, make_segment_00, {"00.04", "00.04d"});
         }
         // ========================
         // Checkpoint 0005 Wrapper
