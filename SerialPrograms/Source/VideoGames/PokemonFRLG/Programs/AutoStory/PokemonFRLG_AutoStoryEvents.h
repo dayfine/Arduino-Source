@@ -107,8 +107,6 @@ public:
     }
 
     virtual Pokemon::Outcome run(Pokemon::RunState& state, const StoryStep& step) override;
-    //  FRLG's table skips nothing.
-    virtual bool holds(const std::string& condition, Pokemon::RunState& state) override;
 
     virtual Pokemon::Outcome new_game(Pokemon::RunState& state, const StoryStep& step) override;
     virtual Pokemon::Outcome options(Pokemon::RunState& state, const StoryStep& step) override;

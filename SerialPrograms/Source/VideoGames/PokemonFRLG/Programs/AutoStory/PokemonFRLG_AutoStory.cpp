@@ -51,11 +51,6 @@ AutoStory::AutoStory()
         LockMode::LOCK_WHILE_RUNNING,
         true
     )
-    , ATTEMPTS_PER_CHECKPOINT(
-        "<b>Attempts per checkpoint:</b><br>A failed checkpoint reloads its save and runs again, up to this many times in all.",
-        LockMode::LOCK_WHILE_RUNNING,
-        1, 5, 2, 2
-    )
     , NOTIFICATIONS({
         &NOTIFICATION_PROGRAM_FINISH,
         &NOTIFICATION_ERROR_FATAL,
@@ -64,7 +59,7 @@ AutoStory::AutoStory()
     PA_ADD_OPTION(START_CHECKPOINT);
     PA_ADD_OPTION(END_CHECKPOINT);
     PA_ADD_OPTION(NEW_GAME_FROM_TITLE);
-    PA_ADD_OPTION(ATTEMPTS_PER_CHECKPOINT);
+    PA_ADD_OPTION(RETRIES);
     PA_ADD_OPTION(NOTIFICATIONS);
 }
 
@@ -105,8 +100,7 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
     hooks.log = [&env](const std::string& line){
         env.console.log(line);
     };
-    Pokemon::SegmentPolicy policy;
-    policy.attempts_per_checkpoint = ATTEMPTS_PER_CHECKPOINT;
+    const Pokemon::SegmentPolicy policy = RETRIES.policy();
 
     Pokemon::RunState state;
     const Pokemon::SegmentReport report = run_segment(

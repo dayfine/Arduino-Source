@@ -272,10 +272,6 @@ Outcome StoryExecutor::run(RunState& state, const StoryStep& step){
     return guarded([&]{ return Pokemon::StoryStepExecutor::run(state, step); });
 }
 
-bool StoryExecutor::holds(const std::string&, RunState&){
-    return false;
-}
-
 Outcome StoryExecutor::new_game(RunState&, const StoryStep&){
     play_new_game_intro(m_env.console, m_env.context);
     return Pokemon::outcome_ok();
