@@ -14,7 +14,6 @@
 
 #include "Common/Cpp/Options/BooleanCheckBoxOption.h"
 #include "Common/Cpp/Options/EnumDropdownOption.h"
-#include "Common/Cpp/Options/SimpleIntegerOption.h"
 #include "CommonFramework/Notifications/EventNotificationsTable.h"
 #include "NintendoSwitch/NintendoSwitch_SingleSwitchProgram.h"
 #include "Pokemon/Options/Pokemon_StoryRunOptions.h"
@@ -28,6 +27,7 @@ namespace PokemonFRLG{
 class AutoStory_Descriptor : public SingleSwitchProgramDescriptor{
 public:
     AutoStory_Descriptor();
+    virtual std::unique_ptr<StatsTracker> make_stats() const override;
 };
 
 class AutoStory : public SingleSwitchProgramInstance{
@@ -41,10 +41,10 @@ public:
     ) override{}
 
 private:
-    SimpleIntegerOption<uint8_t> START_CHECKPOINT;
-    SimpleIntegerOption<uint8_t> END_CHECKPOINT;
+    //  The start and end checkpoints, attempts, checks and language, as in
+    //  every game's AutoStory.
+    Pokemon::StoryRunOptions RUN;
     BooleanCheckBoxOption NEW_GAME_FROM_TITLE;
-    Pokemon::StoryRunOptions RETRIES;
     EventNotificationsOption NOTIFICATIONS;
 };
 

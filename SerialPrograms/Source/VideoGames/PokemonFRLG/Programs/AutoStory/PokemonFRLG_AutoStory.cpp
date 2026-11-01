@@ -9,6 +9,7 @@
 #include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "CommonFramework/Notifications/ProgramNotifications.h"
 #include "Pokemon/Pokemon_Strings.h"
+#include "Pokemon/AutoStory/Pokemon_AutoStoryStats.h"
 #include "Pokemon/Navigation/Pokemon_StorySegments.h"
 #include "VideoGames/PokemonFRLG/PokemonFRLG_Navigation.h"
 #include "PokemonFRLG_AutoStoryEvents.h"
@@ -33,21 +34,27 @@ AutoStory_Descriptor::AutoStory_Descriptor()
     )
 {}
 
+std::unique_ptr<StatsTracker> AutoStory_Descriptor::make_stats() const{
+    return std::make_unique<Pokemon::AutoStoryStats>();
+}
+
+
+namespace{
+
+//  The start and end dropdowns' entries: the table's checkpoints, 00.01 to
+//  00.09. The options hold a reference to it.
+const StringSelectDatabase& checkpoint_database(){
+    static const StringSelectDatabase database = Pokemon::story_checkpoint_database(story_checkpoints());
+    return database;
+}
+
+}
+
 AutoStory::AutoStory()
-    : START_CHECKPOINT(
-        "<b>Start at checkpoint 00.0N:</b><br>1: new game, 2: bedroom, 3: Pallet Town, 4: Oak's Lab, "
-        "5: after the rival's battle, 6: Viridian Mart, 7: Pokedex, 8: Viridian Forest's entrance, 9: Pewter Center.",
-        LockMode::LOCK_WHILE_RUNNING,
-        1, 9, 1, 1
-    )
-    , END_CHECKPOINT(
-        "<b>End after checkpoint 00.0N:</b><br>9 ends with the Boulder Badge.",
-        LockMode::LOCK_WHILE_RUNNING,
-        1, 9, 9, 9
-    )
+    : RUN(checkpoint_database())
     , NEW_GAME_FROM_TITLE(
         "<b>New game from the title screen:</b><br>The game is on its title screen with no save data. "
-        "Needed to start at 1. Otherwise the program loads the save, which must be the one the start checkpoint begins from.",
+        "Needed to start at 00.01. Otherwise the program loads the save, which must be the one the start checkpoint begins from.",
         LockMode::LOCK_WHILE_RUNNING,
         true
     )
@@ -56,10 +63,8 @@ AutoStory::AutoStory()
         &NOTIFICATION_ERROR_FATAL,
     })
 {
-    PA_ADD_OPTION(START_CHECKPOINT);
-    PA_ADD_OPTION(END_CHECKPOINT);
+    PA_ADD_OPTION(RUN);
     PA_ADD_OPTION(NEW_GAME_FROM_TITLE);
-    PA_ADD_OPTION(RETRIES);
     PA_ADD_OPTION(NOTIFICATIONS);
 }
 
@@ -93,31 +98,11 @@ static void check_save_place(
     env.console.log("The save is in " + place + ", where " + checkpoint.id + " starts.");
 }
 
-void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContext& context){
-    const std::vector<StoryCheckpoint>& checkpoints = story_checkpoints();
-    const size_t first = START_CHECKPOINT - 1;
-    const size_t last = END_CHECKPOINT - 1;
-    if (first > last || last >= checkpoints.size()){
-        throw UserSetupError(env.console, "The start checkpoint must not come after the end checkpoint.");
-    }
-    if (first == 0 && !NEW_GAME_FROM_TITLE){
-        throw UserSetupError(env.console, "Checkpoint 00.01 starts a new game: start on the title screen with no save.");
-    }
+namespace{
 
-    StoryEnv story{env.console, context, checkpoints[first].supplies, checkpoints[first].supplies, false, RETRIES.checks()};
-    if (!(first == 0 && NEW_GAME_FROM_TITLE)){
-        env.console.log("Loading the save for " + checkpoints[first].id + ".");
-        soft_reset(env.console, context);
-        story.has_save = true;
-        check_save_place(env, context, checkpoints, first, story.language);
-    }
-
-    StoryExecutor executor(story);
-    executor.set_checks(RETRIES.checks());
-    //  For #120's item-name reads (read_item_list_name()), which still read
-    //  English; no other step reads text.
-    executor.set_language(RETRIES.language());
-    Pokemon::Segment segment = make_story_segment(checkpoints, executor);
+//  A failed attempt reloads the last save, with the supplies it had; the
+//  engine's lines go to the console's log.
+Pokemon::SegmentHooks story_hooks(SingleSwitchProgramEnvironment& env, StoryEnv& story){
     Pokemon::SegmentHooks hooks;
     hooks.reload = [&story](Pokemon::RunState&){
         if (!story.has_save){
@@ -134,12 +119,53 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
     hooks.log = [&env](const std::string& line){
         env.console.log(line);
     };
-    const Pokemon::SegmentPolicy policy = RETRIES.policy();
+    return hooks;
+}
+
+//  The shared AutoStory stats for one run: a segment, the checkpoints it
+//  passed and the reloads after failed attempts.
+void count_run(SingleSwitchProgramEnvironment& env, const Pokemon::SegmentReport& report){
+    Pokemon::AutoStoryStats& stats = env.current_stats<Pokemon::AutoStoryStats>();
+    stats.m_segment++;
+    for (const Pokemon::CheckpointRun& run : report.runs){
+        stats.m_checkpoint += run.passed ? 1 : 0;
+    }
+    stats.m_reset += report.reloads;
+    env.update_stats();
+}
+
+}
+
+void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContext& context){
+    const std::vector<StoryCheckpoint>& checkpoints = story_checkpoints();
+    const size_t first = RUN.start_index();
+    const size_t last = RUN.end_index();
+    if (first > last || last >= checkpoints.size()){
+        throw UserSetupError(env.console, "The start checkpoint must not come after the end checkpoint.");
+    }
+    if (first == 0 && !NEW_GAME_FROM_TITLE){
+        throw UserSetupError(env.console, "Checkpoint 00.01 starts a new game: start on the title screen with no save.");
+    }
+
+    StoryEnv story{env.console, context, checkpoints[first].supplies, checkpoints[first].supplies, false, RUN.checks()};
+    if (!(first == 0 && NEW_GAME_FROM_TITLE)){
+        env.console.log("Loading the save for " + checkpoints[first].id + ".");
+        soft_reset(env.console, context);
+        story.has_save = true;
+        check_save_place(env, context, checkpoints, first, story.language);
+    }
+
+    StoryExecutor executor(story);
+    executor.set_checks(RUN.checks());
+    executor.set_language(RUN.language());
+    Pokemon::Segment segment = make_story_segment(checkpoints, executor);
+    Pokemon::SegmentHooks hooks = story_hooks(env, story);
 
     Pokemon::RunState state;
     const Pokemon::SegmentReport report = run_segment(
-        state, segment, Pokemon::SegmentRange{checkpoints[first].id, checkpoints[last].id}, policy, hooks
+        state, segment, Pokemon::SegmentRange{checkpoints[first].id, checkpoints[last].id}, RUN.policy(), hooks
     );
+    count_run(env, report);
     if (!report.completed){
         throw OperationFailedException(
             ErrorReportMode::NO_ERROR_REPORT,
