@@ -38,6 +38,13 @@ Renamed function signatures have a new identity and must meet the limits.
 There is no repository-wide scan, generated baseline or exceptions registry.
 Fix/extract code instead of raising limits.
 
+With `--github` (CI passes it; also the default when `GITHUB_ACTIONS=true`) each
+failure is also printed as an `::error` annotation and each advisory as a
+`::warning` at its file and line, so they show inline in the PR diff: changed files
+over 500 lines at line 1, functions over 25 lines at their start, classes with 6-7
+public methods at the class. At most 50 of each level are annotated per run;
+advisories never fail the job.
+
 The CI job runs on PRs (including drafts) and pushes to main, comparing the
 current tree with the PR base / previous main revision. An initial push uses
 Git's empty tree as its base. The tests generate X-line sources in memory or
@@ -65,6 +72,31 @@ module: `Pokemon/`, `PokemonBDSP/` or `VideoGames/` under
 `NintendoSwitch/`) are platform modules games build on, not games; `config.py`
 lists both groups and a test fails when a new top-level directory is in neither.
 Includes already present at the base are not reported.
+
+## Style (added lines only)
+
+`style.py` checks only the lines a change adds or edits (a line diff against the
+base; every line of a new file), so legacy code in a touched file is not reported.
+Comments, string/character literals and preprocessor lines are blanked first, and
+a brace-scope stack tells namespace, class and function scope apart. It is a
+lexer, not a parser: rules that need types stay in review.
+
+| Check | Level | Rule |
+| --- | --- | --- |
+| `std::filesystem` (outside `Common/Cpp/Filesystem/`) | error | upstream AGENTS.md "Filesystem" |
+| `std::thread`/`jthread`, `std::*mutex`, `std::condition_variable`, `std::async` (outside `Common/Cpp/Concurrency/`) | error | upstream AGENTS.md "Concurrency"; TotW #197 |
+| Control flow: `) {`, `} else`, `else {`, `namespace X {`, brace on the next line, one-line `if`/`for`/`while`/`else` bodies | error | upstream AGENTS.md "Control flow formatting" |
+| Non-const namespace-scope variable or `extern` | error | TotW #103 |
+| `new` / `delete` expressions (exempt: paths containing `alloc`, files including Qt headers, `operator new/delete`, `= delete`) | error | TotW #126 |
+| `std::bind` | error | TotW #108 |
+| `return std::move(name);` of a local or by-value/`&&` parameter (not `m_` members or `T&` names) | error | TotW #120 |
+| Top-level `const` on a by-value parameter in a header declaration | error | TotW #109 |
+| A defaulted `bool` parameter, or 2+ `bool` parameters (not `override`/`final`, not an unchanged signature) | error | TotW #94 |
+| `using namespace` at namespace scope in a header | error | TotW #153 |
+| Forward `class`/`struct` declaration in a header: new header / existing header | error / advisory | fork AGENTS.md "Forward declarations" |
+| A comment whose first sentence describes the neighbouring function, none of its own | advisory | CONTRIBUTING; Google "Function Comments" |
+
+Advisories print as `Advisory:` lines and `::warning` annotations and never fail.
 
 ## Build and native C++ tests in one command
 
