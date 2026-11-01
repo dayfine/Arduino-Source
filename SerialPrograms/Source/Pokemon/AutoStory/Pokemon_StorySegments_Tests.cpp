@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <functional>
 #include <memory>
+#include <stdexcept>
 #include <string>
 #include <utility>
 #include <vector>
@@ -251,6 +252,63 @@ UnitTestResult test_range(){
     return true;
 }
 
+//  The status sink gets every log line again, without its tag, for the
+//  video overlay.
+UnitTestResult test_status_lines(){
+    Lab lab;
+    Segment segment = twinleaf_to_sandgem(lab.world);
+    SegmentHooks hooks = lab.hooks();
+    std::vector<std::string> status;
+    hooks.status = [&status](const std::string& line){ status.push_back(line); };
+    RunState state;
+    run_segment(state, segment, SegmentRange{}, SegmentPolicy{}, hooks);
+    if (status.size() != lab.lines.size() || status.empty()){
+        return "Expected a status line per log line:" + lab.all();
+    }
+    for (size_t c = 0; c < status.size(); c++){
+        const std::string& line = lab.lines[c];
+        if (line.size() <= status[c].size() || line.compare(line.size() - status[c].size(), status[c].size(), status[c]) != 0){
+            return "Status \"" + status[c] + "\" isn't log line \"" + line + "\" without its tag.";
+        }
+    }
+    if (std::find(status.begin(), status.end(), "00.01/1 walk_out: start") == status.end()){
+        return "Expected \"00.01/1 walk_out: start\" on the overlay.";
+    }
+    return true;
+}
+
+//  An event that throws (a console step failing deep down) is logged as
+//  failed, with its checkpoint, and the exception goes on to the game.
+UnitTestResult test_throwing_event_is_logged(){
+    Lab lab;
+    Segment segment;
+    segment.id = "00";
+    CheckpointSpec spec;
+    spec.id = "00.09";
+    spec.build = []{
+        Checkpoint checkpoint;
+        checkpoint.id = "00.09";
+        checkpoint.events.push_back(make_event("brock", [](RunState&) -> Outcome{
+            throw std::runtime_error("the console vanished");
+        }));
+        return checkpoint;
+    };
+    segment.checkpoints.push_back(std::move(spec));
+    SegmentHooks hooks = lab.hooks();
+    RunState state;
+    try{
+        run_segment(state, segment, SegmentRange{}, SegmentPolicy{}, hooks);
+    }catch (std::runtime_error&){
+        if (!lab.has("[Event] 00.09/1 brock: failed: the console vanished")
+            || !lab.has("[Checkpoint] 00.09: failed at 1 brock: the console vanished")
+        ){
+            return "Expected the event and checkpoint logged as failed:" + lab.all();
+        }
+        return true;
+    }
+    return "Expected the exception to go on to the game.";
+}
+
 UnitTestResult test_describe(){
     Lab lab;
     Segment segment = twinleaf_to_sandgem(lab.world);
@@ -306,6 +364,8 @@ void add_tests_StorySegments(UnitTestDatabase& database){
     database.add<Test_StorySegments>("gives up and names the failure", test_gives_up_and_names_the_failure);
     database.add<Test_StorySegments>("a range of checkpoints", test_range);
     database.add<Test_StorySegments>("describe", test_describe);
+    database.add<Test_StorySegments>("status lines for the overlay", test_status_lines);
+    database.add<Test_StorySegments>("a throwing event is logged, then goes on", test_throwing_event_is_logged);
 }
 
 
