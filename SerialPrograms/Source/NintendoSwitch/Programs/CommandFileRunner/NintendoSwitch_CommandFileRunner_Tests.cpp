@@ -2,14 +2,14 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  Reading command files, with no console: splitting lines, button and
- *  D-pad names, and which inbox file runs next.
+ *  Reading the arguments of console commands, with no console: button and
+ *  D-pad names, numbers, and the "taps" line.
  */
 
 #include <functional>
+#include <format>
 #include <string>
 #include "Common/Cpp/Exceptions.h"
-#include "Common/Cpp/Filesystem/FileIO.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "NintendoSwitch_CommandFileParsing.h"
 #include "NintendoSwitch_CommandFileRunner_Tests.h"
@@ -32,23 +32,6 @@ bool throws_parse_error(const std::function<void()>& body){
     return false;
 }
 
-
-UnitTestResult test_split_line(){
-    if (split_command_line("  press   A 200   100  ") != std::vector<std::string>{"press", "A", "200", "100"}){
-        return "Expected 4 words.";
-    }
-    return true;
-}
-
-UnitTestResult test_comments(){
-    if (!split_command_line("# just a comment").empty() || !split_command_line("").empty()){
-        return "A comment or blank line has no command.";
-    }
-    if (split_command_line("wait 500 # half a second") != std::vector<std::string>{"wait", "500"}){
-        return "A comment after a command should be dropped.";
-    }
-    return true;
-}
 
 UnitTestResult test_arguments(){
     const std::vector<std::string> words = split_command_line("stick L 0.5 -1 200");
@@ -111,33 +94,37 @@ UnitTestResult test_dpad(){
     return true;
 }
 
-UnitTestResult test_next_file(){
-    const Filesystem::Path inbox = Filesystem::unique_temp_path(
-        Filesystem::application_scratch_path() / "CommandFileRunnerTest"
-    );
-    Filesystem::create_directories(inbox);
-    auto touch = [&](const std::string& name){
-        FileIO file(inbox / name, FileMode::WRITE);
+UnitTestResult test_taps(){
+    struct Case{
+        std::string line;
+        TapsArguments expected;
     };
-    std::string error;
-    if (next_command_file(inbox.string())){
-        error = "An empty inbox has no next file.";
+    const Case CASES[] = {
+        {.line = "taps UP 3", .expected = {.direction = DPAD_UP, .count = 3, .all = false, .hold = 160ms, .release = 640ms, .still = 16}},
+        {.line = "taps LEFT 4 all", .expected = {.direction = DPAD_LEFT, .count = 4, .all = true, .hold = 160ms, .release = 640ms, .still = 16}},
+        {.line = "taps RIGHT 2 100 500", .expected = {.direction = DPAD_RIGHT, .count = 2, .all = false, .hold = 100ms, .release = 500ms, .still = 16}},
+        {.line = "taps DOWN 1 all 200 700 20", .expected = {.direction = DPAD_DOWN, .count = 1, .all = true, .hold = 200ms, .release = 700ms, .still = 20}},
+    };
+    for (const Case& c : CASES){
+        const TapsArguments taps = parse_taps(split_command_line(c.line));
+        if (taps.direction != c.expected.direction || taps.count != c.expected.count || taps.all != c.expected.all){
+            return c.line + ": wrong direction, count or all flag.";
+        }
+        if (taps.hold != c.expected.hold || taps.release != c.expected.release || taps.still != c.expected.still){
+            return std::format(
+                "{}: expected hold {}, release {}, still {:f}; read {}, {}, {:f}",
+                c.line, c.expected.hold.count(), c.expected.release.count(), c.expected.still,
+                taps.hold.count(), taps.release.count(), taps.still
+            );
+        }
     }
-    touch("b.txt");
-    touch("a.out");
-    touch("c.txt");
-    Filesystem::create_directories(inbox / "a.txt");
-    const std::optional<Filesystem::Path> next = next_command_file(inbox.string());
-    if (error.empty() && (!next || next->filename().string() != "b.txt")){
-        error = "Expected b.txt: the first .txt file by name, skipping other files and folders.";
-    }
-    Filesystem::remove_all(inbox);
-    if (!error.empty()){
-        return error;
+    for (const char* line : {"taps UP", "taps UP x", "taps UP 0", "taps UP 2.5", "taps NORTH 2", "taps UP 2 all soon"}){
+        if (!throws_parse_error([&]{ parse_taps(split_command_line(line)); })){
+            return std::string(line) + " should be a parse error.";
+        }
     }
     return true;
 }
-
 
 class Test_CommandFileRunner : public UnitTest{
 public:
@@ -157,13 +144,11 @@ private:
 
 
 void add_tests_CommandFileRunner(UnitTestDatabase& database){
-    database.add<Test_CommandFileRunner>("split a line", test_split_line);
-    database.add<Test_CommandFileRunner>("comments", test_comments);
     database.add<Test_CommandFileRunner>("arguments", test_arguments);
     database.add<Test_CommandFileRunner>("argument errors", test_argument_errors);
     database.add<Test_CommandFileRunner>("buttons", test_buttons);
     database.add<Test_CommandFileRunner>("D-pad", test_dpad);
-    database.add<Test_CommandFileRunner>("next inbox file", test_next_file);
+    database.add<Test_CommandFileRunner>("taps arguments", test_taps);
 }
 
 

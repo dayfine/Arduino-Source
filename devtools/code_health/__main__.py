@@ -5,7 +5,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from . import layering
+from . import layering, style
 from .classes import measure_classes
 from .findings import annotations
 from .git_files import changed_files, default_base, read_revision
@@ -32,6 +32,9 @@ def run(root, base_ref=None, github=False):
         failures.extend(layering.check(current, source, previous_source))
         failures.extend(evaluate(metrics, previous))
         notes.extend(advisories(metrics, previous))
+        style_errors, style_notes = style.check(current, source, previous_source)
+        failures.extend(style_errors)
+        notes.extend(style_notes)
         advisory += sum(m.check == 'file_lines' and 500 < m.value <= 1000 for m in metrics)
     print(f'Scanned {len(changes)} changed C++ files against {base_ref}.')
     print(f'Advisory: {advisory} changed files exceed 500 lines; prefer functions <=25 lines.')
