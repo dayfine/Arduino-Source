@@ -7,6 +7,8 @@
 #include <algorithm>
 #include <format>
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
+#include "CommonFramework/ImageTools/ImageBoxes.h"
+#include "CommonFramework/ImageTools/ImageDiff.h"
 #include "CommonTools/Async/InferenceRoutines.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
@@ -16,6 +18,7 @@
 #include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleFlashWatcher.h"
 #include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleScreenDetector.h"
 #include "VideoGames/PokemonFRLG/PokemonFRLG_Navigation.h"
+#include "VideoGames/PokemonFRLG/PokemonFRLG_Settings.h"
 #include "PokemonFRLG_OverworldMaps.h"
 #include "PokemonFRLG_OverworldRecovery.h"
 #include "PokemonFRLG_PlayerFacingReader.h"
@@ -397,6 +400,32 @@ void hold_to_warp(
     );
 }
 
+//  TODO(forest drift, 2026-11-01): diagnostic; remove or turn into a recovery once the cause is known.
+//  How much the game screen's top quarter, clear of the player in the
+//  middle, may change when a tap toward a wall only bumps the player (the
+//  player's own animation, an animated tile). A step scrolls the whole map
+//  by a tile. Not yet measured on the console: a guess on the safe side.
+constexpr double WALL_TAP_MOVED_RMSD = 20.0;
+
+//  Taps once toward the wall `step` ended at (the player faces it, so a tap
+//  steps if it can) and says whether the map scrolled: whether the player
+//  moved instead of bumping into the wall.
+bool moved_past_wall(ConsoleHandle& console, ProControllerContext& context, const RouteStep& step){
+    context.wait_for_all_requests();
+    VideoSnapshot before = console.video().snapshot();
+    pbf_press_dpad(context, dpad(step.direction), TURN_TAP, TILE_TIME + TURN_SETTLE);
+    context.wait_for_all_requests();
+    VideoSnapshot after = console.video().snapshot();
+    if (!before || !after){
+        return false;
+    }
+    const ImageFloatBox game = GameSettings::instance().GAME_BOX;
+    const ImageFloatBox band(game.x, game.y, game.width, game.height * 0.25);
+    const double change = ImageMatch::pixel_RMSD(extract_box_reference(before, band), extract_box_reference(after, band));
+    console.log(std::format("Position check: a tap toward the wall of {} changed the screen by {:.1f}.", to_string(step), change));
+    return change > WALL_TAP_MOVED_RMSD;
+}
+
 //  Each leg starts with a turn tap unless it goes the way the player faces.
 //  A tap while already facing that way takes a step, so a facing not given
 //  is read from the screen. If that fails too it taps anyway.
@@ -488,6 +517,9 @@ void walk_overworld_route(
     calls.log = [&](const std::string& message){ console.log(message, COLOR_ORANGE); };
     calls.fail = [&](const std::string& message){
         OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT, message, console);
+    };
+    calls.moved_past_wall = [&](const RouteStep& step){
+        return moved_past_wall(console, context, step);
     };
     run_route(route, facing, planning, calls);
     context.wait_for_all_requests();

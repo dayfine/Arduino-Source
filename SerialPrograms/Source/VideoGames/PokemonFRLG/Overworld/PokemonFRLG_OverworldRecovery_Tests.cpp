@@ -6,6 +6,7 @@
  *
  */
 
+#include <format>
 #include <functional>
 #include <map>
 #include <optional>
@@ -50,6 +51,9 @@ struct ScriptedRoute{
     std::vector<RouteStep> held_to_warp;
     std::vector<std::string> logs;
     std::string failure;
+    //  Whether the tap past a leg's wall moves the player, and the taps made.
+    bool moves_past_wall = false;
+    size_t wall_taps = 0;
 
     RouteCalls calls(){
         RouteCalls calls;
@@ -60,6 +64,10 @@ struct ScriptedRoute{
         };
         calls.hold_to_warp = [this](const RouteStep& step){ held_to_warp.push_back(step); };
         calls.log = [this](const std::string& message){ logs.push_back(message); };
+        calls.moved_past_wall = [this](const RouteStep&){
+            wall_taps++;
+            return moves_past_wall;
+        };
         calls.fail = [this](const std::string& message){
             failure = message;
             throw std::runtime_error(message);
@@ -124,7 +132,7 @@ UnitTestResult test_stop_recover_resume(){
     }
     ScriptedRoute script;
     script.ends[stopped] = StepEnd::STOPPED;
-    const RoutePlanning planning{.maps = &maps, .costs = default_route_costs(), .start = std::nullopt, .label = "Route"};
+    const RoutePlanning planning{.maps = &maps, .costs = default_route_costs(), .start = std::nullopt, .label = "Route", .wall_check = WallCheck::TAP};
     if (script.run(*route, &planning)){
         return "Failed: " + script.failure;
     }
@@ -188,7 +196,7 @@ UnitTestResult test_no_recovery(){
     }
     ScriptedRoute without_walls;
     without_walls.ends[0] = StepEnd::STOPPED;
-    const RoutePlanning planning{.maps = &maps, .costs = default_route_costs(), .start = std::nullopt, .label = "Route"};
+    const RoutePlanning planning{.maps = &maps, .costs = default_route_costs(), .start = std::nullopt, .label = "Route", .wall_check = WallCheck::TAP};
     if (!without_walls.run(route, &planning) || without_walls.failure.find("no walls") == std::string::npos){
         return "Expected a failure without walls, got: " + without_walls.failure;
     }
@@ -227,6 +235,41 @@ UnitTestResult test_warp_leg(){
     return true;
 }
 
+//  After a leg to a wall, a tap toward it that moves the player fails the
+//  route (the forest drift diagnostic); one that doesn't, or with the check
+//  off, goes on. Open legs aren't tapped.
+UnitTestResult test_wall_check(){
+    RouteStep wall = walk(Direction::NORTH, 3, {"Corridor", {1, 1}});
+    wall.to_wall = true;
+    const RouteStep open = walk(Direction::EAST, 2, {"Corridor", {3, 1}});
+    struct Case{
+        const char* name;
+        bool moves;
+        WallCheck check;
+        bool fails;
+        size_t taps;
+    };
+    const Case cases[] = {
+        {.name = "the tap moves", .moves = true, .check = WallCheck::TAP, .fails = true, .taps = 1},
+        {.name = "the tap bumps", .moves = false, .check = WallCheck::TAP, .fails = false, .taps = 1},
+        {.name = "the check is off", .moves = true, .check = WallCheck::SKIP, .fails = false, .taps = 0},
+    };
+    for (const Case& c : cases){
+        const RoutePlanning planning{.maps = nullptr, .costs = default_route_costs(), .start = std::nullopt, .label = "Route", .wall_check = c.check};
+        ScriptedRoute script;
+        script.moves_past_wall = c.moves;
+        const bool failed = script.run({wall, open}, &planning);
+        if (failed != c.fails || script.wall_taps != c.taps){
+            return std::format("{}: expected {} after {} tap(s), got {} after {}: {}",
+                c.name, c.fails ? "a failure" : "no failure", c.taps, failed ? "a failure" : "none", script.wall_taps, script.failure);
+        }
+        if (c.fails && script.failure != "position check: " + to_string(wall) + " did not end at its wall"){
+            return std::string(c.name) + ": wrong failure: " + script.failure;
+        }
+    }
+    return true;
+}
+
 //  The route log lines the games share (Pokemon_RouteLog.h): the plan from
 //  the caller's start under its label, then each leg and how it ended.
 UnitTestResult test_route_logged(){
@@ -234,7 +277,7 @@ UnitTestResult test_route_logged(){
         walk(Direction::EAST, 2, {"Corridor", {4, 1}}),
         walk(Direction::WEST, 1, {"Corridor", {3, 1}}),
     };
-    const RoutePlanning planning{.maps = nullptr, .costs = default_route_costs(), .start = MapPosition{"Corridor", {2, 1}}, .label = "test walk"};
+    const RoutePlanning planning{.maps = nullptr, .costs = default_route_costs(), .start = MapPosition{"Corridor", {2, 1}}, .label = "test walk", .wall_check = WallCheck::TAP};
     ScriptedRoute script;
     if (script.run(route, &planning)){
         return "Failed: " + script.failure;
@@ -266,6 +309,7 @@ void add_tests_OverworldRecovery(UnitTestDatabase& database){
     database.add<Test_OverworldRecovery>("legs to a wall", test_wall_legs);
     database.add<Test_OverworldRecovery>("a leg to a warp", test_warp_leg);
     database.add<Test_OverworldRecovery>("the route is logged", test_route_logged);
+    database.add<Test_OverworldRecovery>("a leg to a wall ends at it", test_wall_check);
 }
 
 

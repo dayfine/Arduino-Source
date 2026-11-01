@@ -69,6 +69,10 @@ void use_max_repel_from_bag(ConsoleHandle& console, ProControllerContext& contex
 //  is isn't guessed: see run_route(). Finding them again needs `planning`,
 //  what the route was planned with; without it the route fails instead.
 //
+//  After each leg to a wall it taps once more toward the wall, and fails if
+//  the player moves (a diagnostic; RoutePlanning::wall_check SKIP turns it
+//  off, as the Fast checks level does).
+//
 //  Throws OperationFailedException if a menu or message is open before a
 //  step, a warp's fade or the Surf prompt doesn't show, a warp's fade turns
 //  out to be a wild battle's, a leg is interrupted too many times, or the
