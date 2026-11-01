@@ -151,8 +151,19 @@ void record_intro_step(IntroProgress& progress, IntroStep step){
     case IntroStep::ENTER_PLAYER_NAME:
         progress.player_named = true;
         return;
+    case IntroStep::MOVE_TO_PRESET:
+        //  The list again: the name was not confirmed.
+        progress.rival_picked = false;
+        progress.screens_after_pick = 0;
+        return;
     case IntroStep::PICK_PRESET:
-        progress.rival_named = true;
+        progress.rival_picked = true;
+        progress.screens_after_pick = 0;
+        return;
+    case IntroStep::ADVANCE:
+        if (progress.rival_picked && ++progress.screens_after_pick >= INTRO_SCREENS_AFTER_RIVAL_PICK){
+            progress.rival_named = true;
+        }
         return;
     case IntroStep::CLEAR_WITH_B:
         progress.b_presses++;
@@ -370,7 +381,7 @@ std::vector<ScreenState> intro_states(IntroRun& run){
             [&run]{ act(run, "rival-list-tell"); }, {"rival-list-preset", "black", "other"}, 6},
         {"rival-list-preset",
             [=](const ImageViewRGB32& s){ return screen_is(s, "rival-list-preset"); },
-            [&run]{ act(run, "rival-list-preset"); }, {"dialog", "black", "other"}, 3},
+            [&run]{ act(run, "rival-list-preset"); }, {"dialog", "black", "other"}, 6},
         {"menu",
             [=](const ImageViewRGB32& s){ return screen_is(s, "menu"); },
             [&run]{ act(run, "menu"); }, {}, 2, true},

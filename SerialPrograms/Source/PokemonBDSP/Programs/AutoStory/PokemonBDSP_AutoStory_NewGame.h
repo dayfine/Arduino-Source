@@ -48,6 +48,14 @@ enum class IntroStep{
 };
 struct IntroProgress{
     bool player_named = false;
+    //  A preset name was picked from the rival's list, and how many screens
+    //  have shown since without the list coming back. "Barry, is it?" and
+    //  its Yes/No follow, and A (Yes, where the cursor starts) confirms it;
+    //  B would answer No and bring the list back (r4, 2026-11-01).
+    bool rival_picked = false;
+    size_t screens_after_pick = 0;
+    //  The name is final: INTRO_SCREENS_AFTER_RIVAL_PICK screens passed
+    //  without the list.
     bool rival_named = false;
     //  A screen only BDSP shows has been seen (intro_screen_confirms_bdsp()).
     bool game_confirmed = false;
@@ -72,6 +80,11 @@ inline constexpr std::chrono::milliseconds INTRO_BOOT_LIMIT = std::chrono::secon
 //  its dialogue box, the rival's name list, its main menu. The keyboard and
 //  the user select are the Switch's.
 bool intro_screen_confirms_bdsp(const std::string& screen);
+
+//  Screens after the rival's name is picked, each taking A, before the name
+//  counts as confirmed and B takes over: "Barry, is it?", the box closing
+//  (Barry alone), the Yes/No, and a few of Rowan's lines after it.
+inline constexpr size_t INTRO_SCREENS_AFTER_RIVAL_PICK = 8;
 
 //  Once the rival is named, the intro only has dialogue and cutscenes left
 //  before the bedroom, and screens the classifier misses (r2: a dialogue box
