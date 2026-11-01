@@ -21,23 +21,33 @@ work.
   - A wall-ending leg never checks how far it walked.
 - **Story simulations pass on both games** but don't model the walker; see "Walker simulator".
 
-## Target shape: three stacks on one shared core
+## Target shape (user approved 2026-11-01): one linear shared stack, then the games
 
 ```
-base/upstream-main
-└─ #114 nav/shared  Pokemon navigation core: grid, leg planner, LegWalker (moving in from #117/#119),
-   │                shared route log, MapData/JSON maps, story events, ScreenMachine
-   ├─ #122 nav/story-steps  shared story steps, retry policy, run options (Checks, language)
-   ├─ FRLG: #117 maps + planner → #118 walk interrupts → #119 recovery → #120 AutoStory to Brock
-   │        (#123 folds into #120: the table is written on the shared steps from the start)
-   └─ BDSP: #127 nav-v4 (maps, grids, StoryMaps, walker with injected battle handling)
-            → #128 autostory-v4 (program, segment 00/01 table on the shared steps, simulation)
-tooling (separate): #107 lab tooling → #116 run records; #125 route pictures (devtools/maps)
+upstream main (= fork main)
+├─ #43 AutoStory: shared start/end select databases (SV refactor)
+│  └─ #44 AutoStory: shared story index
+│     └─ #45 AutoStory: AutoStoryStats to Pokemon/AutoStory
+│        └─ #114 Pokemon navigation core: grid, leg planner, LegWalker, route log, JSON maps,
+│           │     story events, ScreenMachine; walker simulator
+│           └─ #122 shared story steps, retry policy, run options (checkpoint dropdowns from
+│              │     #43/#44, stats from #45, Checks, language)
+│              ├─ FRLG: #117 maps + planner → #118 walker → #119 recovery
+│              │        → #120 FRLG AutoStory MVP, new game → Brock (#123 folded in)
+│              └─ BDSP: maps-v4 (JSON maps only) → #127 story maps, route records
+│                       → #129 walker → [#128 split: actions, battle, inference]
+│                       → #128 BDSP AutoStory MVP, new game → Floaroma (table like FRLG's)
+├─ #107 lab tooling → #116 run records
+├─ #125 route pictures (devtools/maps)
+└─ docs: #100 design → #130 FRLG events after Brock; #113 notes (this plan)
 ```
 
-Superseded once the new ones are in shape; the user closes them, with branches kept:
+Superseded; the user closes them, with branches kept:
 - BDSP: #111, #112, #121, #124, #68, #109, #54 (the #1717 mirror).
-- FRLG: #67.
+- FRLG: #67, #123 (folded into #120).
+- Docs: #126 (moved to #130).
+
+Upstream order: #43, #44, #45 (small SV refactors, a good first handoff), #114's parts, #122, FRLG, BDSP, then tooling.
 
 ## What "good shape" means for each PR
 
