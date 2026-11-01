@@ -149,15 +149,29 @@ struct RobustPlanCosts : TilePlanCosts{
     //  short or long: on the console 7 tiles went 9.
     int open_error = 1;
     int open_error_per = 5;
+    //  Open legs this many tiles or shorter land exactly: a short hold moves
+    //  whole tiles. 0 keeps every open leg uncertain.
+    int exact_open_tiles = 0;
+    //  Extra per tile of an open leg: its timing error grows with its length,
+    //  so a short step after a wall beats a long open leg.
+    int per_open_tile = 0;
     int max_open_tiles = 12;    //  longest open leg to consider
     size_t max_spread = 5;      //  most tiles the player may be on after a leg
+    //  Most sets of possible tiles to search before giving up. The search is
+    //  over sets, not tiles, so it grows far faster than the map: all of
+    //  Jubilife City from six start tiles ran for minutes with no plan
+    //  (r224a, 2026-10-31); 200000 sets took 31 s there, so this gives up
+    //  after about 3. Use town costs in towns (a whole-Jubilife plan then
+    //  takes 1 s) and crop the map to the part a leg needs rather than
+    //  raising this.
+    size_t max_searched = 20000;
 };
 
 //  Cheapest legs that take the player from any of the tiles in `from` to tiles
 //  that are all `goal`, even if every open leg ends up to `open_error` tiles
 //  off: the walls of later legs must bring the possible positions together.
 //  Legs that would leave the map or enter a door are not used. Nothing if no
-//  such plan exists.
+//  such plan exists, or none is found within `costs.max_searched` sets.
 std::optional<std::vector<PlannedLeg>> plan_robust_route(
     const TileGrid& grid,
     const std::vector<TilePos>& from, const std::function<bool(const TilePos&)>& goal,
