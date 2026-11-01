@@ -22,7 +22,7 @@
 #include "Pokemon_StorySegments.h"
 #include "Pokemon_StorySteps.h"
 #include "Pokemon_TilePose.h"
-#include "Pokemon_Navigation_Tests.h"
+#include "Pokemon_AutoStory_Tests.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
