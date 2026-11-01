@@ -9,6 +9,7 @@
 #include "Pokemon/Navigation/Pokemon_MapSet.h"
 #include "Pokemon/Navigation/Pokemon_TileGrid.h"
 #include "Data/PokemonBDSP_AutoStory_OreburghGym.h"
+#include "Data/PokemonBDSP_AutoStory_Route202.h"
 #include "Data/PokemonBDSP_AutoStory_Segment00Lines.h"
 #include "Data/PokemonBDSP_AutoStory_StoryMaps.h"
 #include "Utils/PokemonBDSP_AutoStory_RouteWalk.h"
@@ -252,12 +253,53 @@ public:
     }
 };
 
+//  00.04's training walks up and down the catch patch, three grass rows
+//  between tree rows, and needs the walk there to end in its grass: r253
+//  planned onto (20, 29), a tree in BDSP, stopped a tile short on the path
+//  and walked up and down it for three minutes without a battle.
+class Test_Route202CatchGrass : public UnitTest{
+public:
+    Test_Route202CatchGrass()
+        : UnitTest("PokemonBDSP::AutoStory - Route 202: the catch patch and the walk to it")
+    {}
+    virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
+        const TileGrid& route = Route202::grid();
+        for (int x = 15; x <= 20; x++){
+            const Pokemon::WallHit up = Pokemon::walk_to_wall(route, {x, 27}, Direction::NORTH);
+            const Pokemon::WallHit down = Pokemon::walk_to_wall(route, {x, 25}, Direction::SOUTH);
+            if (!(up.stop == TilePos{x, 25}) || !(down.stop == TilePos{x, 27})){
+                return "Catch patch column " + std::to_string(x) + ": north from row 27 stops at " +
+                    Pokemon::to_string(up.stop) + ", south from row 25 at " + Pokemon::to_string(down.stop) +
+                    "; expected rows 25 and 27, between tree rows.";
+            }
+        }
+        const MapSet& maps = story_maps();
+        const std::vector<TilePos> area = story_after_training_area();
+        const auto in_area = [&](const TilePos& pos){ return std::find(area.begin(), area.end(), pos) != area.end(); };
+        auto legs = Pokemon::plan_robust_route(maps.world(), story_save_spots(), in_area, route_plan_costs());
+        if (!legs){
+            legs = Pokemon::plan_robust_route(maps.world(), story_save_spots(), in_area, Pokemon::RobustPlanCosts());
+        }
+        if (!legs || legs->empty()){
+            return std::string("Save spots to the catch grass: no plan.");
+        }
+        for (const TilePos& pos : legs->back().after){
+            if (maps.world().at(pos) != TileType::TALL_GRASS){
+                return "Save spots to the catch grass: the walk may end on " + maps.describe(pos) + ", not in the grass.";
+            }
+        }
+        logger.log("Save spots to the catch grass: " + std::to_string(legs->size()) + " legs, ending in the grass.");
+        return true;
+    }
+};
+
 }
 
 
 void add_tests_AutoStory_Segment00(UnitTestDatabase& database){
     database.add<Test_Segment00Lines>();
     database.add<Test_OreburghGymGrid>();
+    database.add<Test_Route202CatchGrass>();
 }
 
 
