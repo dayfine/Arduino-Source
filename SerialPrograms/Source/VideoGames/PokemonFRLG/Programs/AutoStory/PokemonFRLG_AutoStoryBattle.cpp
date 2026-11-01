@@ -183,7 +183,9 @@ private:
         }
         const BattleScreen seen = read_battle_screen(screen);
         if (seen == BattleScreen::NONE){
-            if (m_seen_battle && now - m_last_battle > BATTLE_GONE){
+            //  Not before the first turn: the opening slide-in shows none of the battle
+            //  screens for a while (console B: "over after 0 turns" at the rival).
+            if (m_seen_battle && m_turns > 0 && now - m_last_battle > BATTLE_GONE){
                 return true;
             }
             pbf_wait(m_context, POLL);
@@ -215,6 +217,10 @@ private:
             m_last_press = now;
             return;
         case BattleScreen::LEARN:
+            if (m_turns == 0){
+                //  The learn prompts come after a turn; before one it is a misread.
+                break;
+            }
             //  "Delete a move to make room?" NO, then "Stop learning?" YES.
             m_console.log(m_learn_prompts % 2 == 0 ? "Battle: not deleting a move." : "Battle: stop learning.");
             pbf_press_button(m_context, m_learn_prompts % 2 == 0 ? BUTTON_B : BUTTON_A, 160ms, 1500ms);
