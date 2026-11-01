@@ -1438,7 +1438,11 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/Navigation/Pokemon_Grid.h
     Source/Pokemon/Navigation/Pokemon_LegPlanner.h
     Source/Pokemon/Navigation/Pokemon_LegPlanner_Tests.cpp
+    Source/Pokemon/Navigation/Pokemon_MapSet.cpp
+    Source/Pokemon/Navigation/Pokemon_MapSet.h
     Source/Pokemon/Navigation/Pokemon_Navigation_Tests.h
+    Source/Pokemon/Navigation/Pokemon_TileGrid.cpp
+    Source/Pokemon/Navigation/Pokemon_TileGrid.h
     Source/Pokemon/Options/Pokemon_BoxSortingTable.cpp
     Source/Pokemon/Options/Pokemon_BoxSortingTable.h
     Source/Pokemon/Options/Pokemon_EncounterBotOptions.h
