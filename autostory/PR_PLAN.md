@@ -123,6 +123,27 @@ a finer split than B1–B5 once rebuilt; decide after the shared and FRLG collec
    `base/bdsp-1717`. Show.
 4. The user closes the superseded PRs and publishes upstream from the queue in PR_PROGRESS.md.
 
+## Where the maps live (2026-11-01)
+
+- **Program data: Packages.** `Resources/PokemonFRLG/Maps/*.json` (25) and
+  `Resources/PokemonBDSP/Maps/*.json` (16), each folder with a README (generated, how to
+  regenerate, schema). No fork of Packages exists, so the branch `autostory/maps` (3e5c46f)
+  is local, in a worktree of `~/Projects/Arduino-Source/Packages`; the user opens the
+  upstream PokemonAutomation/Packages PR. Plain `Resources/` files are not versioned
+  (`ResourceDownloadList.json` and `version.json` cover only the downloaded zips), so no
+  version bump is needed; the release takes Packages master when it is built, so the maps
+  must be on Packages master before the program PRs that load them ship. The BDSP files
+  are refreshed from the BDSP agent's final files after the C++-table → JSON migration.
+- **Test data: one generated C++ file per game, in the code PR.** CI has no Packages maps.
+  Each generator writes the same JSON text, byte for byte, into a C++ file of raw string
+  literals (`--cpp <file>`) and checks it against a fresh generation (`--cpp <file> --check`).
+  FRLG: `frlg_maps.py --cpp` is in #117 (b2e6af2de); the file
+  `Overworld/PokemonFRLG_OverworldMapsTestData.{cpp,h}` (`test_overworld_maps()`) is in #118,
+  the first PR whose generator writes sign tiles, so it is added and regenerated only there.
+  #117's own route tests stay skipped in CI until the #118 → #117 fold is decided; #118's,
+  #119's and #120's map tests run in CI. BDSP: the same mechanism in `bdsp_maps.py`,
+  placed by the BDSP agent.
+
 ## Decisions (user, 2026-11-01)
 
 - #72 MoveOnlyFunction stays and is the shared collector's first commit (#79 keeps using it).
