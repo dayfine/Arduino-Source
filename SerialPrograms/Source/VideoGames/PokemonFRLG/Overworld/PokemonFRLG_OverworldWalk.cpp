@@ -14,6 +14,7 @@
 #include "VideoGames/PokemonFRLG/Inference/Dialogs/PokemonFRLG_DialogDetector.h"
 #include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_StartMenuDetector.h"
 #include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleFlashWatcher.h"
+#include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleScreenDetector.h"
 #include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattlePokemonDetector.h"
 #include "VideoGames/PokemonFRLG/PokemonFRLG_Navigation.h"
 #include "PokemonFRLG_OverworldMaps.h"
@@ -92,7 +93,7 @@ public:
         return "a wild battle (seen late)";
     }
     virtual std::unique_ptr<VisualInferenceCallback> make_watcher() const override{
-        return std::make_unique<BattleDialogWatcher>(COLOR_RED);
+        return std::make_unique<BattleScreenWatcher>(COLOR_RED);
     }
     //  The flashes, the wipe and the opening animation: 3.7s after the step's
     //  press, twice on Route 1 (console B, 2026-11-01). Other maps open
@@ -141,7 +142,7 @@ private:
     //  A trainer's battle can't be fled, and the walker must not try (console
     //  B, 2026-11-01, Viridian Forest): it stops here for the caller.
     static void check_no_trainer_battle(ConsoleHandle& console, ProControllerContext& context){
-        BattleDialogWatcher battle(COLOR_RED);
+        BattleScreenWatcher battle(COLOR_RED);
         context.wait_for_all_requests();
         if (wait_until(console, context, TRAINER_BATTLE_WATCH, {battle}) >= 0){
             OperationFailedExceptionWithScreenshot::fire(

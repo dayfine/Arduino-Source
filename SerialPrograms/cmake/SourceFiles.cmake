@@ -1736,6 +1736,8 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleFlashWatcher.h
     Source/VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattlePokemonDetector.cpp
     Source/VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattlePokemonDetector.h
+    Source/VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleScreenDetector.cpp
+    Source/VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleScreenDetector.h
     Source/VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleSelectionArrowDetector.cpp
     Source/VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleSelectionArrowDetector.h
     Source/VideoGames/PokemonFRLG/Inference/PokemonFRLG_DaycareManDetector.cpp
