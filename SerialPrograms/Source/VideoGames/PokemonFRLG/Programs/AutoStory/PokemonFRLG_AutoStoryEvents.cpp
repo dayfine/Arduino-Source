@@ -4,6 +4,7 @@
  *
  */
 
+#include <format>
 #include <memory>
 #include <set>
 #include "CommonFramework/Exceptions/OperationFailedException.h"
@@ -137,6 +138,36 @@ Outcome battle(StoryEnv& env, const StoryStep& step){
     return Pokemon::outcome_ok();
 }
 
+//  HP is the battle loop's last reading. One Potion (20 HP) takes a starter
+//  of the levels here (max HP about 30) from red to green, so one is used
+//  and the bar is taken to be green after it; it can't be read again on the
+//  overworld.
+Outcome get_ready(StoryEnv& env, RunState& state, const StoryStep& step){
+    Supplies& supplies = env.supplies;
+    env.console.log(std::format(
+        "Story: before the battle, HP {}, {} Potions.",
+        supplies.hp_red ? "red" : supplies.hurt ? "yellow" : "green", supplies.potions
+    ));
+    if (!supplies.hurt){
+        return Pokemon::outcome_ok();
+    }
+    if (supplies.potions > 0){
+        use_potion_from_bag(env.console, env.context, supplies);
+        return Pokemon::outcome_ok();
+    }
+    if (!supplies.hp_red){
+        return Pokemon::outcome_ok();
+    }
+    Outcome walked = walk_route(env, state, step);
+    if (!walked.succeeded()){
+        return walked;
+    }
+    heal_at_center(env.console, env.context);
+    supplies.hurt = false;
+    supplies.hp_red = false;
+    return walked;
+}
+
 Outcome shop(StoryEnv& env){
     //  Viridian Mart before the Boulder Badge: POKE BALL, POTION, ANTIDOTE, PARLYZ HEAL.
     buy_items(env.console, env.context, {{1, 4}, {2, 2}});
@@ -172,7 +203,11 @@ Outcome run_step(StoryEnv& env, RunState& state, const StoryStep& step, StartMen
         return battle(env, step);
     case StoryStepKind::HEAL:
         heal_at_center(env.console, env.context);
+        env.supplies.hurt = false;
+        env.supplies.hp_red = false;
         return Pokemon::outcome_ok();
+    case StoryStepKind::READY:
+        return get_ready(env, state, step);
     case StoryStepKind::SHOP:
         return shop(env);
     }

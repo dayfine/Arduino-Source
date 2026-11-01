@@ -35,9 +35,10 @@ namespace PokemonFRLG{
 struct Supplies{
     int potions = 0;
     int antidotes = 0;
-    //  The starter's HP bar wasn't green at the last battle turn, and no
-    //  Potion was used since.
+    //  The starter's HP bar wasn't green (or was red) at the last battle
+    //  screen that showed it, and no Potion or nurse healed it since.
     bool hurt = false;
+    bool hp_red = false;
 };
 
 enum class BattleKind{
@@ -66,6 +67,11 @@ PartyStatus read_party_status(const ImageViewRGB32& screen);
 //  menu on the overworld: text after the battle (a gym leader's speech) is
 //  read with B on the way. Throws OperationFailedException if it runs over 10 minutes.
 BattleEnd fight_battle(ConsoleHandle& console, ProControllerContext& context, Supplies& supplies, BattleKind kind);
+
+
+//  From the overworld: a Potion from the top row of the Items pocket, on
+//  the starter. The bag's inputs are not checked on the console yet.
+void use_potion_from_bag(ConsoleHandle& console, ProControllerContext& context, Supplies& supplies);
 
 
 //  The interrupts for walking story routes. Wild battles are run from, or

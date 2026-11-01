@@ -56,6 +56,7 @@ enum class StoryStepKind{
     BATTLE,         //  text with B into a battle, fight it, text to the overworld
     HEAL,           //  facing the nurse
     SHOP,           //  facing the Viridian Mart clerk: Potions and Antidotes
+    READY,          //  before a big battle: a Potion if hurt, the nurse at `target` if red with none
 };
 
 //  A straight leg of a fixed walk.
@@ -68,7 +69,7 @@ struct StoryStep{
     StoryStepKind kind = StoryStepKind::TALK;
     std::string name;
     std::string why;
-    //  ROUTE: the goal, and the way to face there if set.
+    //  ROUTE: the goal, and the way to face there if set. READY: the nurse.
     StoryPose target;
     //  STEP
     Direction direction = Direction::NORTH;

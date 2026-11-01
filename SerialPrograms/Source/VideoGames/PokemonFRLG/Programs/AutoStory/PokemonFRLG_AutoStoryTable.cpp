@@ -90,6 +90,12 @@ StoryStep talk(std::string name, std::string why){
     return make(StoryStepKind::TALK, std::move(name), std::move(why));
 }
 
+StoryStep ready(std::string name, StoryPose nurse, std::string why){
+    StoryStep step = make(StoryStepKind::READY, std::move(name), std::move(why));
+    step.target = std::move(nurse);
+    return step;
+}
+
 StoryStep heal(std::string name){
     return make(StoryStepKind::HEAL, std::move(name), "full HP");
 }
@@ -194,9 +200,9 @@ StoryCheckpoint brock(){
         route("below_liam_line", at(GYM, 6, 9, NORTH), "in by the door, up column 6 to below Liam's row"),
         step_into("liam_line", NORTH, "onto (6, 8), in Liam's line"),
         battle("camper_liam", at(GYM, 6, 8, NORTH), false, "Geodude and Sandshrew; EXP before Brock"),
-        route("back_to_nurse", at(PEWTER_CENTER, 7, 4, NORTH), "heal after Liam"),
-        heal("heal_before_brock"),
-        route("before_brock", at(GYM, 6, 6, NORTH), "below Brock (6, 5)"),
+        //  On to Brock unless the starter's HP is red with no Potion left.
+        ready("ready_for_brock", at(PEWTER_CENTER, 7, 4, NORTH), "a Potion if hurt; the nurse only if red with none"),
+        route("before_brock", at(GYM, 6, 6, NORTH), "below Brock (6, 5); Liam, beaten, stands at (5, 8)"),
         talk("challenge_brock", "Brock's speech"),
         battle("brock", at(GYM, 6, 6, NORTH), false, "Geodude and Onix, with Bubble; Boulder Badge and TM39"),
     }};

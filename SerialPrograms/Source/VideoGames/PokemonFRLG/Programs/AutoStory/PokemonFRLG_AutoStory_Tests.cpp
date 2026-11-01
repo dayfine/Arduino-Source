@@ -172,6 +172,15 @@ UnitTestResult check_checkpoint(const StoryCheckpoint& checkpoint, StoryPose& po
             if (result.result != UnitTestResult::PASSED){
                 return checkpoint.id + " " + result.message;
             }
+        }else if (step.kind == StoryStepKind::READY){
+            //  The nurse may be needed: that way must plan too, but the pose
+            //  goes on from where the player stands.
+            StoryPose nurse_pose = pose;
+            StoryStep to_nurse = step;
+            UnitTestResult result = check_route(nurse_pose, to_nurse);
+            if (result.result != UnitTestResult::PASSED){
+                return checkpoint.id + " " + result.message;
+            }
         }else if (step.kind == StoryStepKind::STEP){
             pose = StoryPose{pose.map, pose.tile.next(step.direction), step.direction};
         }

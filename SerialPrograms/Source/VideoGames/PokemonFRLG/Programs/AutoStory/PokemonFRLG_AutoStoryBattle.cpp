@@ -267,6 +267,7 @@ private:
         }
         m_seen_battle = true;
         m_last_battle = now;
+        read_hp(screen);
         act(seen, screen, now);
         return false;
     }
@@ -343,6 +344,17 @@ private:
         pbf_wait(m_context, POLL);
     }
 
+    //  The HP bar whenever the starter's box shows, so the last reading
+    //  includes the battle's last hit.
+    void read_hp(const ImageViewRGB32& screen){
+        if (!BattlePokemonDetector(COLOR_RED).detect(screen)){
+            return;
+        }
+        const PartyStatus status = read_party_status(screen);
+        m_supplies.hurt = status.hp_red || status.hp_yellow;
+        m_supplies.hp_red = status.hp_red;
+    }
+
     //  "Delete a move to make room?" NO, then "Stop learning?" YES.
     void answer_learn_prompt(WallClock now){
         m_console.log(m_learn_prompts % 2 == 0 ? "Battle: not deleting a move." : "Battle: stop learning.");
@@ -377,6 +389,7 @@ private:
         if (hurt && m_supplies.potions > 0){
             m_supplies.potions--;
             m_supplies.hurt = false;
+            m_supplies.hp_red = false;
             use_item(m_console, m_context, 0);
         }else if (m_psn_reads >= PSN_READS && !m_antidote_used && m_supplies.antidotes > 0){
             m_antidote_used = true;
@@ -441,6 +454,7 @@ void use_potion_on_overworld(ConsoleHandle& console, ProControllerContext& conte
     pbf_press_button(context, BUTTON_B, 160ms, 1500ms);
     supplies.potions--;
     supplies.hurt = false;
+    supplies.hp_red = false;
     mash_until_overworld(console, context, AFTER_BATTLE_TEXT);
 }
 
@@ -541,6 +555,10 @@ PartyStatus read_party_status(const ImageViewRGB32& screen){
     status.hp_red = !green && !status.hp_yellow && counts.red > seen;
     status.poisoned = counts.purple > seen;
     return status;
+}
+
+void use_potion_from_bag(ConsoleHandle& console, ProControllerContext& context, Supplies& supplies){
+    use_potion_on_overworld(console, context, supplies);
 }
 
 BattleEnd fight_battle(ConsoleHandle& console, ProControllerContext& context, Supplies& supplies, BattleKind kind){
