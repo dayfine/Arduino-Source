@@ -35,12 +35,41 @@ std::optional<Filesystem::Path> next_request_file(const std::string& inbox){
 }
 
 
+LabRequest parse_lab_request(const std::string& text){
+    LabRequest request;
+    std::istringstream lines(text);
+    std::string line;
+    size_t number = 0;
+    while (std::getline(lines, line)){
+        number++;
+        if (!line.empty() && line.back() == '\r'){
+            line.pop_back();
+        }
+        std::vector<std::string> words = split_command_line(line);
+        if (words.empty()){
+            continue;
+        }
+        request.lines.push_back({number, line, std::move(words)});
+    }
+    return request;
+}
+
+
 std::string journal_ok(size_t number, const std::string& command, Milliseconds start, Milliseconds end){
     return "ok " + std::to_string(number) + " " + command
         + " @" + std::to_string(start.count()) + "-" + std::to_string(end.count()) + "ms\n";
 }
 std::string journal_error(size_t number, const std::string& command, const std::string& reason){
     return "error " + std::to_string(number) + " (" + command + "): " + reason + "\n";
+}
+
+
+std::string lab_state_text(const LabState& state){
+    return
+        "seq=" + state.seq + "\n" +
+        "state=" + state.state + "\n" +
+        "program=" + state.program + "\n" +
+        "error=" + state.error + "\n";
 }
 
 

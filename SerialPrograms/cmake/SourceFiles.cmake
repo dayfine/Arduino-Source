@@ -766,8 +766,10 @@ file(GLOB LIBRARY_SOURCES
     Source/CommonFramework/Windows/ButtonDiagram.h
     Source/CommonFramework/Windows/DpiScaler.cpp
     Source/CommonFramework/Windows/DpiScaler.h
-    Source/CommonFramework/Windows/LabControl.cpp
-    Source/CommonFramework/Windows/LabControl.h
+    Source/CommonFramework/Windows/LabChannel.cpp
+    Source/CommonFramework/Windows/LabChannel.h
+    Source/CommonFramework/Windows/LabChannel_Tests.cpp
+    Source/CommonFramework/Windows/LabChannel_Tests.h
     Source/CommonFramework/Windows/LabRequest.cpp
     Source/CommonFramework/Windows/LabRequest.h
     Source/CommonFramework/Windows/MainWindow.cpp
@@ -1357,6 +1359,8 @@ file(GLOB LIBRARY_SOURCES
     Source/NintendoSwitch/Programs/CommandFileRunner/NintendoSwitch_CommandFileRunner.h
     Source/NintendoSwitch/Programs/CommandFileRunner/NintendoSwitch_CommandFileRunner_Tests.cpp
     Source/NintendoSwitch/Programs/CommandFileRunner/NintendoSwitch_CommandFileRunner_Tests.h
+    Source/NintendoSwitch/Programs/CommandFileRunner/NintendoSwitch_LabCommands.cpp
+    Source/NintendoSwitch/Programs/CommandFileRunner/NintendoSwitch_LabCommands.h
     Source/NintendoSwitch/Programs/DateManip/NintendoSwitch2_DateSkippers.cpp
     Source/NintendoSwitch/Programs/DateManip/NintendoSwitch_DateManip.cpp
     Source/NintendoSwitch/Programs/DateManip/NintendoSwitch_DateManip.h

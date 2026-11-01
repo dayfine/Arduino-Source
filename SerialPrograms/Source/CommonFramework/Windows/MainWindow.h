@@ -13,7 +13,7 @@
 #include "CommonFramework/Environment/SystemSleep.h"
 #include "CommonFramework/Panels/PanelTools.h"
 #include "CommonFramework/Panels/PanelSession.h"
-#include "LabControl.h"
+#include "LabChannel.h"
 
 class QVBoxLayout;
 class QLabel;
@@ -31,9 +31,11 @@ class MainWindow
     , public PanelHolder
     , public ConfigOption::Listener
     , public SystemSleepController::Listener
+    , public LabChannelHost
 {
 public:
-    MainWindow(QWidget* parent = nullptr);
+    //  `lab_console` runs the lab channel's console commands (see LabChannel.h).
+    MainWindow(std::unique_ptr<LabConsoleCommands> lab_console);
     ~MainWindow();
 
 
@@ -62,6 +64,8 @@ private:
     virtual void on_idle() override;
     virtual void on_config_value_changed(void* object) override;
     virtual void sleep_suppress_state_changed(SleepSuppress new_state) override;
+
+    virtual PanelSession* lab_current_panel() override{ return m_current_panel.get(); }
 
     void update_wallpaper();
 
@@ -93,7 +97,7 @@ private:
     bool m_pending_move = false;
     bool m_panel_transition = false;
 
-    LabControlStatus m_lab_control_status;
+    std::unique_ptr<LabChannel> m_lab_channel;
 };
 
 // returns given X value, but bounded by 0 and screen_width

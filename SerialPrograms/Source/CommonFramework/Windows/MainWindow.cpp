@@ -15,7 +15,6 @@
 #include <QLabel>
 #include <QPushButton>
 #include <QMessageBox>
-#include <QTimer>
 #include "Common/Cpp/ScopeExit.h"
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/Logging/MultiOutputLogger.h"
@@ -46,8 +45,8 @@
 namespace PokemonAutomation{
 
 
-MainWindow::MainWindow(QWidget* parent)
-    : QMainWindow(parent)
+MainWindow::MainWindow(std::unique_ptr<LabConsoleCommands> lab_console)
+    : QMainWindow(nullptr)
     , m_current_panel_widget(nullptr)
 {
     global_panel_holder() = this;
@@ -290,19 +289,14 @@ MainWindow::MainWindow(QWidget* parent)
     SystemSleepController::instance().add_listener(*this);
     update_wallpaper();
 
-    //  Let lab scripts start/stop the selected program. See LabControl.h.
-    QTimer* lab_control_timer = new QTimer(this);
-    connect(
-        lab_control_timer, &QTimer::timeout,
-        this, [this]{
-            poll_lab_control(m_current_panel.get(), m_lab_control_status);
-        }
-    );
-    lab_control_timer->start(500);
+    //  Let lab scripts drive the app through files. See LabChannel.h.
+    m_lab_channel = std::make_unique<LabChannel>(*this, std::move(lab_console));
+    m_lab_channel->set_panel(m_current_panel.get());
 //    cout << "Done constructing" << endl;
 }
 MainWindow::~MainWindow(){
     close_panel();
+    m_lab_channel.reset();
     SystemSleepController::instance().remove_listener(*this);
     GlobalSettings::instance().WINDOW_SIZE->WIDTH.remove_listener(*this);
     GlobalSettings::instance().WINDOW_SIZE->HEIGHT.remove_listener(*this);
@@ -370,6 +364,9 @@ void MainWindow::close_panel() noexcept{
     if (m_current_panel == nullptr){
         return;
     }
+    if (m_lab_channel){
+        m_lab_channel->set_panel(nullptr);
+    }
 
     try{
         m_current_panel->save_settings();
@@ -421,6 +418,9 @@ void MainWindow::load_panel(
         m_current_panel_descriptor = std::move(descriptor);
         m_current_panel = std::move(panel);
         m_right_panel_layout->addWidget(m_current_panel_widget);
+        if (m_lab_channel){
+            m_lab_channel->set_panel(m_current_panel.get());
+        }
         return;
     }catch (Exception& e){
         e.log(global_logger_tagged());

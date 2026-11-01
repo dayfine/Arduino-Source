@@ -2,14 +2,13 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  Reading command files, with no console: splitting lines, button and
- *  D-pad names, the "taps" line, and which inbox file runs next.
+ *  Reading the arguments of console commands, with no console: button and
+ *  D-pad names, numbers, and the "taps" line.
  */
 
 #include <functional>
 #include <string>
 #include "Common/Cpp/Exceptions.h"
-#include "Common/Cpp/Filesystem/FileIO.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "NintendoSwitch_CommandFileParsing.h"
 #include "NintendoSwitch_CommandFileRunner_Tests.h"
@@ -32,23 +31,6 @@ bool throws_parse_error(const std::function<void()>& body){
     return false;
 }
 
-
-UnitTestResult test_split_line(){
-    if (split_command_line("  press   A 200   100  ") != std::vector<std::string>{"press", "A", "200", "100"}){
-        return "Expected 4 words.";
-    }
-    return true;
-}
-
-UnitTestResult test_comments(){
-    if (!split_command_line("# just a comment").empty() || !split_command_line("").empty()){
-        return "A comment or blank line has no command.";
-    }
-    if (split_command_line("wait 500 # half a second") != std::vector<std::string>{"wait", "500"}){
-        return "A comment after a command should be dropped.";
-    }
-    return true;
-}
 
 UnitTestResult test_arguments(){
     const std::vector<std::string> words = split_command_line("stick L 0.5 -1 200");
@@ -141,34 +123,6 @@ UnitTestResult test_taps(){
     return true;
 }
 
-UnitTestResult test_next_file(){
-    const Filesystem::Path inbox = Filesystem::unique_temp_path(
-        Filesystem::application_scratch_path() / "CommandFileRunnerTest"
-    );
-    Filesystem::create_directories(inbox);
-    auto touch = [&](const std::string& name){
-        FileIO file(inbox / name, FileMode::WRITE);
-    };
-    std::string error;
-    if (next_request_file(inbox.string())){
-        error = "An empty inbox has no next file.";
-    }
-    touch("b.txt");
-    touch("a.out");
-    touch("c.txt");
-    Filesystem::create_directories(inbox / "a.txt");
-    const std::optional<Filesystem::Path> next = next_request_file(inbox.string());
-    if (error.empty() && (!next || next->filename().string() != "b.txt")){
-        error = "Expected b.txt: the first .txt file by name, skipping other files and folders.";
-    }
-    Filesystem::remove_all(inbox);
-    if (!error.empty()){
-        return error;
-    }
-    return true;
-}
-
-
 class Test_CommandFileRunner : public UnitTest{
 public:
     Test_CommandFileRunner(std::string name, std::function<UnitTestResult()> body)
@@ -187,14 +141,11 @@ private:
 
 
 void add_tests_CommandFileRunner(UnitTestDatabase& database){
-    database.add<Test_CommandFileRunner>("split a line", test_split_line);
-    database.add<Test_CommandFileRunner>("comments", test_comments);
     database.add<Test_CommandFileRunner>("arguments", test_arguments);
     database.add<Test_CommandFileRunner>("argument errors", test_argument_errors);
     database.add<Test_CommandFileRunner>("buttons", test_buttons);
     database.add<Test_CommandFileRunner>("D-pad", test_dpad);
     database.add<Test_CommandFileRunner>("taps arguments", test_taps);
-    database.add<Test_CommandFileRunner>("next inbox file", test_next_file);
 }
 
 
