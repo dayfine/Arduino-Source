@@ -93,7 +93,7 @@ Outcome walk_route(StoryEnv& env, RunState& state, const StoryStep& step){
     if (!route){
         return Pokemon::outcome_failed("no_route", to_string(start) + " to " + to_string(goal.position));
     }
-    const OverworldInterruptSet interrupts = story_interrupts(env.supplies, step.fight_wild);
+    const OverworldInterruptSet interrupts = story_interrupts(env.supplies, step.fight_wild, env.checks);
     //  Planning lets the walker recover a stopped open leg: it plans back to
     //  the leg's end, then walks the rest as given.
     const RoutePlanning planning{&story_maps(), default_route_costs()};
@@ -116,7 +116,7 @@ Outcome walk_legs(StoryEnv& env, RunState& state, const StoryStep& step){
     if (!facing || !route || route->empty()){
         return Pokemon::outcome_failed("bad_legs", to_string(start));
     }
-    const OverworldInterruptSet interrupts = story_interrupts(env.supplies, step.fight_wild);
+    const OverworldInterruptSet interrupts = story_interrupts(env.supplies, step.fight_wild, env.checks);
     //  Planning lets the walker recover a stopped open leg: it plans back to
     //  the leg's end, then walks the rest as given.
     const RoutePlanning planning{&story_maps(), default_route_costs()};
@@ -137,7 +137,7 @@ Outcome battle(StoryEnv& env, const StoryStep& step){
     if (advance_text(env.console, env.context, BATTLE_TEXT_TIMEOUT, true) != TextEnd::BATTLE){
         return Pokemon::outcome_failed("no_battle");
     }
-    const BattleEnd end = fight_battle(env.console, env.context, env.supplies, BattleKind::TRAINER);
+    const BattleEnd end = fight_battle(env.console, env.context, env.supplies, BattleKind::TRAINER, env.checks);
     if (end == BattleEnd::LOST && !step.may_lose){
         return Pokemon::outcome_failed("blackout");
     }
@@ -154,7 +154,7 @@ Outcome get_ready(StoryEnv& env, RunState& state, const StoryStep& step){
         "Story: before the battle, HP {}, {}, {} Potions.",
         supplies.hp_red ? "red" : supplies.hurt ? "yellow" : "green", status_name(supplies.status), supplies.potions
     ));
-    recover_after_battle(env.console, env.context, supplies);
+    recover_after_battle(env.console, env.context, supplies, env.checks);
     if (!supplies.hp_red && supplies.status == StatusCondition::NONE){
         return Pokemon::outcome_ok();
     }
@@ -176,11 +176,13 @@ struct MartItem{
     const char* item;
     int row;
     int Supplies::* count;
+    //  The name the item list reader reads (read_item_list_name()).
+    const char* slug;
 };
 constexpr MartItem VIRIDIAN_MART_ITEMS[] = {
-    {.item = "potion", .row = 1, .count = &Supplies::potions},
-    {.item = "antidote", .row = 2, .count = &Supplies::antidotes},
-    {.item = "parlyz_heal", .row = 3, .count = &Supplies::parlyz_heals},
+    {.item = "potion", .row = 1, .count = &Supplies::potions, .slug = "potion"},
+    {.item = "antidote", .row = 2, .count = &Supplies::antidotes, .slug = "antidote"},
+    {.item = "parlyz_heal", .row = 3, .count = &Supplies::parlyz_heals, .slug = "parlyz-heal"},
 };
 
 const MartItem* viridian_mart_item(const std::string& name){
@@ -197,10 +199,22 @@ Outcome shop(StoryEnv& env, const StoryStep& step){
     if (!orders){
         return Pokemon::outcome_failed("unknown_item", step.name);
     }
-    buy_items(env.console, env.context, *orders);
+    //  2000 of the 3000 a new game starts with, plus the rival's prize.
+    buy_items(env.console, env.context, *orders, env.checks);
     for (const Pokemon::StoryItem& item : step.items){
         env.supplies.*viridian_mart_item(item.item)->count += (int)item.quantity;
     }
+    if (env.checks == StoryChecks::FAST){
+        return Pokemon::outcome_ok();
+    }
+    //  The counts from the bag, not from the orders: a wrong row once bought
+    //  Parlyz Heals for Antidotes unnoticed (console B, 2026-11-01).
+    const std::vector<BagRow> rows = read_items_pocket(env.console, env.context);
+    if (rows.empty()){
+        env.console.log("Story: couldn't read the Items pocket; keeping the counts ordered.", COLOR_ORANGE);
+        return Pokemon::outcome_ok();
+    }
+    set_from_bag(env.supplies, rows);
     return Pokemon::outcome_ok();
 }
 
@@ -214,7 +228,7 @@ std::optional<std::vector<MartOrder>> viridian_mart_orders(const std::vector<Pok
         if (found == nullptr){
             return std::nullopt;
         }
-        orders.push_back(MartOrder{found->row, (int)wanted.quantity});
+        orders.push_back(MartOrder{found->row, (int)wanted.quantity, found->slug});
     }
     return orders;
 }

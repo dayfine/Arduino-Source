@@ -11,6 +11,7 @@
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
 #include "CommonFramework/ImageTools/ImageBoxes.h"
 #include "CommonFramework/ImageTools/ImageStats.h"
+#include "CommonFramework/Tools/DebugDumper.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "VideoGames/PokemonFRLG/Inference/Dialogs/PokemonFRLG_BattleDialogs.h"
@@ -175,11 +176,29 @@ void tap(ProControllerContext& context, DpadPosition position){
     pbf_press_dpad(context, position, 160ms, 240ms);
 }
 
-//  From the battle menu: the item in `row` (from 0) of the Items pocket, on
+//  In the bag, with the cursor on `row`: whether that row is `item`. FAST
+//  doesn't look. One that can't be read counts as a mismatch.
+bool bag_row_is(ConsoleHandle& console, ProControllerContext& context, int row, const std::string& item, StoryChecks checks){
+    if (checks == StoryChecks::FAST){
+        return true;
+    }
+    context.wait_for_all_requests();
+    VideoSnapshot screen = console.video().snapshot();
+    const std::string read = screen ? read_item_list_name(console, screen, row) : "";
+    if (read == item){
+        return true;
+    }
+    console.log(std::format("Bag: row {} reads \"{}\", not {}: not using it.", row + 1, read, item), COLOR_RED);
+    dump_debug_image(console, "AutoStory/bag", std::format("row{}-not-{}", row + 1, item), screen);
+    return false;
+}
+
+//  From the battle menu: `item`, in `row` (from 0) of the Items pocket, on
 //  the starter. The bag opens on the pocket used last; Items is the first.
-//  Not run on the console yet.
-void use_item(ConsoleHandle& console, ProControllerContext& context, int row){
-    console.log(std::format("Battle: using the item in row {} of the Items pocket.", row + 1));
+//  Returns whether it was used; if the row holds something else (THOROUGH),
+//  backs out to the battle menu. Not run on the console yet.
+bool use_item(ConsoleHandle& console, ProControllerContext& context, int row, const std::string& item, StoryChecks checks){
+    console.log(std::format("Battle: using the {} in row {} of the Items pocket.", item, row + 1));
     tap(context, DPAD_LEFT);
     tap(context, DPAD_UP);
     tap(context, DPAD_RIGHT);
@@ -193,10 +212,15 @@ void use_item(ConsoleHandle& console, ProControllerContext& context, int row){
     for (int c = 0; c < row; c++){
         tap(context, DPAD_DOWN);
     }
+    if (!bag_row_is(console, context, row, item, checks)){
+        pbf_press_button(context, BUTTON_B, 160ms, 1500ms);
+        return false;
+    }
     //  The item, USE, then the starter in the party list.
     pbf_press_button(context, BUTTON_A, 160ms, 800ms);
     pbf_press_button(context, BUTTON_A, 160ms, 1500ms);
     pbf_press_button(context, BUTTON_A, 160ms, 1000ms);
+    return true;
 }
 
 //  RUN, bottom right of the battle menu.
@@ -223,11 +247,12 @@ void use_move(ProControllerContext& context){
 
 class BattleLoop{
 public:
-    BattleLoop(ConsoleHandle& console, ProControllerContext& context, Supplies& supplies, BattleKind kind)
+    BattleLoop(ConsoleHandle& console, ProControllerContext& context, Supplies& supplies, BattleKind kind, StoryChecks checks)
         : m_console(console)
         , m_context(context)
         , m_supplies(supplies)
         , m_kind(kind)
+        , m_checks(checks)
         , m_start(current_time())
         , m_last_battle(m_start)
         , m_last_press(m_start)
@@ -408,15 +433,21 @@ private:
             run_away(m_context);
             return;
         }
-        if (hurt && m_supplies.potions > 0){
-            m_supplies.potions--;
-            m_supplies.hurt = false;
-            m_supplies.hp_red = false;
-            use_item(m_console, m_context, 0);
-        }else if (m_psn_reads >= PSN_READS && !m_antidote_used && m_supplies.antidotes > 0){
+        if (!m_items_off && hurt && m_supplies.potions > 0){
+            if (use_item(m_console, m_context, item_row(m_supplies, "potion"), "potion", m_checks)){
+                m_supplies.potions--;
+                m_supplies.hurt = false;
+                m_supplies.hp_red = false;
+            }else{
+                m_items_off = true;
+            }
+        }else if (!m_items_off && m_psn_reads >= PSN_READS && !m_antidote_used && m_supplies.antidotes > 0){
             m_antidote_used = true;
-            m_supplies.antidotes--;
-            use_item(m_console, m_context, m_supplies.potions > 0 ? 1 : 0);
+            if (use_item(m_console, m_context, item_row(m_supplies, "antidote"), "antidote", m_checks)){
+                m_supplies.antidotes--;
+            }else{
+                m_items_off = true;
+            }
         }else{
             use_move(m_context);
         }
@@ -437,6 +468,9 @@ private:
     ProControllerContext& m_context;
     Supplies& m_supplies;
     const BattleKind m_kind;
+    const StoryChecks m_checks;
+    //  An item read as another in the bag: none is used again this battle.
+    bool m_items_off = false;
     const WallClock m_start;
     WallClock m_last_battle;
     WallClock m_last_press;
@@ -456,10 +490,8 @@ private:
 };
 
 
-//  From the overworld: the item in `row` (from 0) of the Items pocket, on
-//  the starter. Not run on the console yet.
-void use_item_on_overworld(ConsoleHandle& console, ProControllerContext& context, int row, const char* item){
-    console.log(std::format("Story: using a {} from the bag (Items pocket, row {}).", item, row + 1));
+//  From the overworld: the bag open on the Items pocket, cursor on its top.
+void open_items_pocket(ConsoleHandle& console, ProControllerContext& context){
     open_bag_from_overworld(console, context);
     //  The bag ignores presses while it slides in.
     pbf_wait(context, 1000ms);
@@ -469,8 +501,20 @@ void use_item_on_overworld(ConsoleHandle& console, ProControllerContext& context
     for (int c = 0; c < 20; c++){
         pbf_press_dpad(context, DPAD_UP, 100ms, 100ms);
     }
+}
+
+//  From the overworld: `item`, in `row` (from 0) of the Items pocket, on
+//  the starter. Returns whether it was used (THOROUGH reads the row first).
+//  Not run on the console yet.
+bool use_item_on_overworld(ConsoleHandle& console, ProControllerContext& context, int row, const std::string& item, StoryChecks checks){
+    console.log(std::format("Story: using a {} from the bag (Items pocket, row {}).", item, row + 1));
+    open_items_pocket(console, context);
     for (int c = 0; c < row; c++){
         pbf_press_dpad(context, DPAD_DOWN, 100ms, 300ms);
+    }
+    if (!bag_row_is(console, context, row, item, checks)){
+        mash_until_overworld(console, context, AFTER_BATTLE_TEXT);
+        return false;
     }
     //  The item, USE, the starter, then its message.
     pbf_press_button(context, BUTTON_A, 160ms, 800ms);
@@ -478,6 +522,7 @@ void use_item_on_overworld(ConsoleHandle& console, ProControllerContext& context
     pbf_press_button(context, BUTTON_A, 160ms, 2500ms);
     pbf_press_button(context, BUTTON_B, 160ms, 1500ms);
     mash_until_overworld(console, context, AFTER_BATTLE_TEXT);
+    return true;
 }
 
 void fail_on_blackout(ConsoleHandle& console, BattleEnd end){
@@ -493,8 +538,9 @@ void fail_on_blackout(ConsoleHandle& console, BattleEnd end){
 //  <Pokemon> appeared!".
 class StoryWildBattle : public OverworldInterrupt{
 public:
-    StoryWildBattle(Supplies& supplies, bool fight, bool late)
+    StoryWildBattle(Supplies& supplies, bool fight, bool late, StoryChecks checks)
         : m_supplies(supplies)
+        , m_checks(checks)
         , m_fight(fight)
         , m_late(late)
     {}
@@ -516,12 +562,13 @@ public:
     //  next leg.
     virtual void clear(ConsoleHandle& console, ProControllerContext& context) const override{
         const BattleKind kind = m_fight ? BattleKind::WILD_FIGHT : BattleKind::WILD_RUN;
-        fail_on_blackout(console, fight_battle(console, context, m_supplies, kind));
-        recover_after_battle(console, context, m_supplies);
+        fail_on_blackout(console, fight_battle(console, context, m_supplies, kind, m_checks));
+        recover_after_battle(console, context, m_supplies, m_checks);
     }
 
 private:
     Supplies& m_supplies;
+    const StoryChecks m_checks;
     const bool m_fight;
     const bool m_late;
 };
@@ -529,8 +576,9 @@ private:
 //  A message: read to its end, then a trainer's battle if one starts.
 class StoryMessage : public OverworldInterrupt{
 public:
-    explicit StoryMessage(Supplies& supplies)
+    StoryMessage(Supplies& supplies, StoryChecks checks)
         : m_supplies(supplies)
+        , m_checks(checks)
     {}
     virtual std::string name() const override{
         return "a message";
@@ -546,13 +594,14 @@ public:
             return;
         }
         console.log("Story: a trainer's battle after a message on the overworld.");
-        fail_on_blackout(console, fight_battle(console, context, m_supplies, BattleKind::TRAINER));
+        fail_on_blackout(console, fight_battle(console, context, m_supplies, BattleKind::TRAINER, m_checks));
         mash_until_overworld(console, context, AFTER_BATTLE_TEXT);
-        recover_after_battle(console, context, m_supplies);
+        recover_after_battle(console, context, m_supplies, m_checks);
     }
 
 private:
     Supplies& m_supplies;
+    const StoryChecks m_checks;
 };
 
 }
@@ -587,40 +636,110 @@ PartyStatus read_party_status(const ImageViewRGB32& screen){
     return status;
 }
 
-void recover_after_battle(ConsoleHandle& console, ProControllerContext& context, Supplies& supplies){
-    //  Rows in the order bought: Potions, Antidotes, Parlyz Heals.
-    const int antidote_row = supplies.potions > 0 ? 1 : 0;
-    const int parlyz_row = antidote_row + (supplies.antidotes > 0 ? 1 : 0);
+//  The count the story keeps for `item`, or null for an item it doesn't count.
+static int* count_slot(Supplies& supplies, const std::string& item){
+    if (item == "potion"){
+        return &supplies.potions;
+    }
+    if (item == "antidote"){
+        return &supplies.antidotes;
+    }
+    if (item == "parlyz-heal"){
+        return &supplies.parlyz_heals;
+    }
+    return nullptr;
+}
+
+int item_count(const Supplies& supplies, const std::string& item){
+    if (item == "potion"){
+        return supplies.potions;
+    }
+    if (item == "antidote"){
+        return supplies.antidotes;
+    }
+    if (item == "parlyz-heal"){
+        return supplies.parlyz_heals;
+    }
+    return 0;
+}
+
+int item_row(const Supplies& supplies, const std::string& item){
+    int row = 0;
+    for (const std::string& slot : supplies.pocket){
+        if (item_count(supplies, slot) <= 0){
+            continue;
+        }
+        if (slot == item){
+            return row;
+        }
+        row++;
+    }
+    return -1;
+}
+
+void set_from_bag(Supplies& supplies, const std::vector<BagRow>& rows){
+    supplies.potions = 0;
+    supplies.antidotes = 0;
+    supplies.parlyz_heals = 0;
+    supplies.pocket.clear();
+    for (const BagRow& row : rows){
+        supplies.pocket.push_back(row.item);
+        int* slot = count_slot(supplies, row.item);
+        if (slot != nullptr){
+            *slot = std::max(row.count, 0);
+        }
+    }
+}
+
+std::vector<BagRow> read_items_pocket(ConsoleHandle& console, ProControllerContext& context){
+    open_items_pocket(console, context);
+    context.wait_for_all_requests();
+    VideoSnapshot screen = console.video().snapshot();
+    dump_debug_image(console, "AutoStory/bag", "items-pocket", screen);
+    std::vector<BagRow> rows = screen ? read_bag_pocket(console, screen) : std::vector<BagRow>{};
+    std::string text;
+    for (const BagRow& row : rows){
+        text += std::format(" {} x{};", row.item, row.count);
+    }
+    console.log("Bag: Items pocket:" + (text.empty() ? std::string(" nothing read.") : text));
+    mash_until_overworld(console, context, AFTER_BATTLE_TEXT);
+    return rows;
+}
+
+void recover_after_battle(ConsoleHandle& console, ProControllerContext& context, Supplies& supplies, StoryChecks checks){
     if (supplies.status == StatusCondition::POISON && supplies.antidotes > 0){
-        use_item_on_overworld(console, context, antidote_row, "Antidote");
-        supplies.antidotes--;
-        supplies.status = StatusCondition::NONE;
+        if (use_item_on_overworld(console, context, item_row(supplies, "antidote"), "antidote", checks)){
+            supplies.antidotes--;
+            supplies.status = StatusCondition::NONE;
+        }
     }else if (supplies.status == StatusCondition::PARALYSIS && supplies.parlyz_heals > 0){
-        use_item_on_overworld(console, context, parlyz_row, "Parlyz Heal");
-        supplies.parlyz_heals--;
-        supplies.status = StatusCondition::NONE;
+        if (use_item_on_overworld(console, context, item_row(supplies, "parlyz-heal"), "parlyz-heal", checks)){
+            supplies.parlyz_heals--;
+            supplies.status = StatusCondition::NONE;
+        }
     }
     //  One Potion (20 HP) takes a starter of these levels (about 30 HP)
     //  from red to green; the bar can't be read again on the overworld.
     if (supplies.hurt && supplies.potions > 0){
-        use_item_on_overworld(console, context, 0, "Potion");
-        supplies.potions--;
-        supplies.hurt = false;
-        supplies.hp_red = false;
+        if (use_item_on_overworld(console, context, item_row(supplies, "potion"), "potion", checks)){
+            supplies.potions--;
+            supplies.hurt = false;
+            supplies.hp_red = false;
+        }
     }
 }
 
-BattleEnd fight_battle(ConsoleHandle& console, ProControllerContext& context, Supplies& supplies, BattleKind kind){
-    return BattleLoop(console, context, supplies, kind).run();
+BattleEnd fight_battle(ConsoleHandle& console, ProControllerContext& context, Supplies& supplies, BattleKind kind, StoryChecks checks){
+    return BattleLoop(console, context, supplies, kind, checks).run();
 }
 
-OverworldInterruptSet story_interrupts(Supplies& supplies, bool fight_wild){
+OverworldInterruptSet story_interrupts(Supplies& supplies, bool fight_wild, StoryChecks checks){
     //  Battles first: their screens are checked before the message box's.
     OverworldInterruptSet ret;
-    ret.wild.emplace_back(std::make_unique<StoryWildBattle>(supplies, fight_wild, false));
-    ret.wild.emplace_back(std::make_unique<StoryWildBattle>(supplies, fight_wild, true));
-    ret.wild.emplace_back(std::make_unique<StoryMessage>(supplies));
-    ret.other.emplace_back(std::make_unique<StoryMessage>(supplies));
+    ret.wild.emplace_back(std::make_unique<StoryWildBattle>(supplies, fight_wild, false, checks));
+    ret.wild.emplace_back(std::make_unique<StoryWildBattle>(supplies, fight_wild, true, checks));
+    ret.wild.emplace_back(std::make_unique<StoryMessage>(supplies, checks));
+    ret.other.emplace_back(std::make_unique<StoryMessage>(supplies, checks));
     return ret;
 }
 

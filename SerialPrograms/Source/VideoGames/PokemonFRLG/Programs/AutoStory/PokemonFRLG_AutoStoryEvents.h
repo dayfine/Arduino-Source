@@ -95,6 +95,7 @@ struct StoryEnv{
     Supplies saved_supplies;
     //  Whether the game has a save to reload.
     bool has_save = false;
+    StoryChecks checks = StoryChecks::THOROUGH;
 };
 
 //  Does FRLG's kinds of story step on the console. A console step that

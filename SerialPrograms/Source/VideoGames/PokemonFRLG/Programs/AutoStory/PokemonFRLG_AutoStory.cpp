@@ -75,7 +75,7 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
         throw UserSetupError(env.console, "Checkpoint 00.01 starts a new game: start on the title screen with no save.");
     }
 
-    StoryEnv story{env.console, context, checkpoints[first].supplies, checkpoints[first].supplies, false};
+    StoryEnv story{env.console, context, checkpoints[first].supplies, checkpoints[first].supplies, false, RETRIES.checks()};
     if (!(first == 0 && NEW_GAME_FROM_TITLE)){
         env.console.log("Loading the save for " + checkpoints[first].id + ".");
         soft_reset(env.console, context);

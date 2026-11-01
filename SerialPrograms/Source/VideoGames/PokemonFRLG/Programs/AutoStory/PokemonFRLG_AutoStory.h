@@ -13,10 +13,12 @@
 #define PokemonAutomation_PokemonFRLG_AutoStory_H
 
 #include "Common/Cpp/Options/BooleanCheckBoxOption.h"
+#include "Common/Cpp/Options/EnumDropdownOption.h"
 #include "Common/Cpp/Options/SimpleIntegerOption.h"
 #include "CommonFramework/Notifications/EventNotificationsTable.h"
 #include "NintendoSwitch/NintendoSwitch_SingleSwitchProgram.h"
 #include "Pokemon/Options/Pokemon_StoryRunOptions.h"
+#include "PokemonFRLG_AutoStoryActions.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{

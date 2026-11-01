@@ -21,10 +21,15 @@
 #ifndef PokemonAutomation_PokemonFRLG_AutoStoryBattle_H
 #define PokemonAutomation_PokemonFRLG_AutoStoryBattle_H
 
+#include <string>
+#include <vector>
+#include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "CommonFramework/ImageTypes/ImageViewRGB32.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
+#include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_ItemListReader.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWalk.h"
+#include "PokemonFRLG_AutoStoryActions.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -47,6 +52,10 @@ struct Supplies{
     int potions = 0;
     int antidotes = 0;
     int parlyz_heals = 0;
+    //  The Items pocket's order, by slug (see read_item_list_name()): the
+    //  order bought, or as read from the bag. An item with none left takes
+    //  no row.
+    std::vector<std::string> pocket = {"potion", "antidote", "parlyz-heal"};
     //  The starter's status at the last battle screen that showed it, and
     //  not cured since.
     StatusCondition status = StatusCondition::NONE;
@@ -69,6 +78,20 @@ enum class BattleEnd{
     LOST,
 };
 
+//  How many of `item` (a slug) the bag holds, as far as known.
+int item_count(const Supplies& supplies, const std::string& item);
+
+//  The row (from 0) of `item` in the Items pocket, or -1 if none is left.
+int item_row(const Supplies& supplies, const std::string& item);
+
+//  Sets the counts and the pocket's order from the Items pocket as read.
+void set_from_bag(Supplies& supplies, const std::vector<BagRow>& rows);
+
+//  From the overworld: opens the Items pocket, reads it, and closes the
+//  bag again. Empty if nothing could be read.
+std::vector<BagRow> read_items_pocket(ConsoleHandle& console, ProControllerContext& context);
+
+
 //  What the HP bar and the status badge of the player's Pokemon show, on a
 //  battle screen with its box. Colors measured on console B's captures
 //  (2026-11-01): the bar's fill green (100, 251, 171), yellow
@@ -86,20 +109,25 @@ PartyStatus read_party_status(const ImageViewRGB32& screen);
 //  `kind` says, using `supplies` as needed. Returns once START opens the
 //  menu on the overworld: text after the battle (a gym leader's speech) is
 //  read with B on the way. Throws OperationFailedException if it runs over 10 minutes.
-BattleEnd fight_battle(ConsoleHandle& console, ProControllerContext& context, Supplies& supplies, BattleKind kind);
+//  THOROUGH: an item's name is read in the bag before it is used, and a
+//  different one isn't used.
+BattleEnd fight_battle(ConsoleHandle& console, ProControllerContext& context, Supplies& supplies, BattleKind kind, StoryChecks checks);
 
 
 //  From the overworld, after a battle: an Antidote for PSN, a Parlyz Heal
 //  for PAR, then a Potion if the HP bar wasn't green, each if one is left.
 //  The bag's inputs are not checked on the console yet.
-void recover_after_battle(ConsoleHandle& console, ProControllerContext& context, Supplies& supplies);
+void recover_after_battle(ConsoleHandle& console, ProControllerContext& context, Supplies& supplies, StoryChecks checks);
 
 
 //  The interrupts for walking story routes. Wild battles are run from, or
 //  fought if `fight_wild`. A message is advanced until the overworld is
 //  back; a battle that starts after it (a trainer who saw the player) is
 //  fought. A battle lost (a blackout) throws OperationFailedException.
-OverworldInterruptSet story_interrupts(Supplies& supplies, bool fight_wild);
+OverworldInterruptSet story_interrupts(Supplies& supplies, bool fight_wild, StoryChecks checks);
+
+
+void add_tests_AutoStoryItems(UnitTestDatabase& database);
 
 
 

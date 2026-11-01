@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdlib>
 #include <format>
 #include <limits>
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
@@ -17,6 +18,7 @@
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "VideoGames/PokemonFRLG/Inference/Dialogs/PokemonFRLG_BattleDialogs.h"
 #include "VideoGames/PokemonFRLG/Inference/Dialogs/PokemonFRLG_DialogDetector.h"
+#include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_ItemListReader.h"
 #include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_NamingScreenDetector.h"
 #include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_StartMenuDetector.h"
 #include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleScreenDetector.h"
@@ -426,7 +428,32 @@ static void mart_shot(ConsoleHandle& console, ProControllerContext& context, con
     dump_debug_image(console, "AutoStory/mart", label, console.video().snapshot());
 }
 
-void buy_items(ConsoleHandle& console, ProControllerContext& context, const std::vector<MartOrder>& orders){
+int mart_cursor_moves(int cursor, int row){
+    return row - cursor;
+}
+
+//  THOROUGH: the item on the cursor's row is `order.item`.
+static void check_mart_row(ConsoleHandle& console, ProControllerContext& context, const MartOrder& order){
+    context.wait_for_all_requests();
+    VideoSnapshot screen = console.video().snapshot();
+    const std::string item = screen ? read_item_list_name(console, screen, order.row) : "";
+    if (item == order.item){
+        console.log(std::format("Mart: row {} is {}.", order.row + 1, item));
+        return;
+    }
+    if (item.empty()){
+        console.log(std::format("Mart: couldn't read row {}, expected {}; buying anyway.", order.row + 1, order.item), COLOR_ORANGE);
+        dump_debug_image(console, "AutoStory/mart", std::format("row{}-unread", order.row + 1), screen);
+        return;
+    }
+    OperationFailedExceptionWithScreenshot::fire(
+        ErrorReportMode::SEND_ERROR_REPORT,
+        std::format("buy_items(): row {} is {}, not {}.", order.row + 1, item, order.item),
+        console
+    );
+}
+
+void buy_items(ConsoleHandle& console, ProControllerContext& context, const std::vector<MartOrder>& orders, StoryChecks checks){
     //  "May I help you?" with BUY on top, then the list, cursor on its top.
     press(context, BUTTON_A, 2000ms);
     press(context, BUTTON_A, 2000ms);
@@ -436,14 +463,15 @@ void buy_items(ConsoleHandle& console, ProControllerContext& context, const std:
     int cursor = 0;
     for (const MartOrder& order : orders){
         console.log(std::format("Mart: buying {} of row {} (cursor on row {}).", order.quantity, order.row + 1, cursor + 1));
-        for (int c = cursor; c < order.row; c++){
-            tap(context, DPAD_DOWN, 300ms);
-        }
-        for (int c = order.row; c < cursor; c++){
-            tap(context, DPAD_UP, 300ms);
+        const int moves = mart_cursor_moves(cursor, order.row);
+        for (int c = 0; c < std::abs(moves); c++){
+            tap(context, moves > 0 ? DPAD_DOWN : DPAD_UP, 300ms);
         }
         cursor = order.row;
         mart_shot(console, context, std::format("row{}-list", order.row + 1));
+        if (checks == StoryChecks::THOROUGH){
+            check_mart_row(console, context, order);
+        }
         //  "How many?" drops presses while its text prints.
         press(context, BUTTON_A, 2500ms);
         for (int c = 1; c < order.quantity; c++){
