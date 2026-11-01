@@ -83,6 +83,19 @@ std::vector<TrainerSight> north_trainer_sights(){
     };
 }
 
+std::vector<TilePos> wander_tiles(){
+    //  Platinum's data has him wandering a tile either side of (15, 28);
+    //  on the console (r239a, r240a) he stood in the row above too, between
+    //  columns 12 and 15, and twice stopped a walk west along row 27.
+    std::vector<TilePos> tiles;
+    for (int x = 12; x <= 17; x++){
+        for (int y = 27; y <= 28; y++){
+            tiles.push_back({x, y});
+        }
+    }
+    return tiles;
+}
+
 
 }
 }

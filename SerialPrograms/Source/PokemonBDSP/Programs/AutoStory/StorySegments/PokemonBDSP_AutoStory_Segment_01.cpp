@@ -1364,10 +1364,11 @@ void route204_to_floaroma(VideoStream& stream, ProControllerContext& context){
     });
 
     step(1);
-    // On the traced grid (Data/PokemonBDSP_AutoStory_Route204): from the
-    // cave's door west and up the stairs, round the pocket the ledge closes,
-    // east and north through the tall grass, and west below the flower beds,
-    // where the twins see us; then north between the beds into Floaroma.
+    // On the grid from the game's data (Data/PokemonBDSP_AutoStory_Route204):
+    // south to the bottom row, clear of the Youngster who wanders below the
+    // cave, west to the wall and up the stairs, east along the corridor and
+    // north through the tall grass, west below the flower beds, and north
+    // between the beds into Floaroma (offline plan: 7 legs).
     {
         std::vector<Pokemon::TrainerSight> twins = Route204::north_trainer_sights();
         auto fight = [&](const std::string& who){
@@ -1376,7 +1377,7 @@ void route204_to_floaroma(VideoStream& stream, ProControllerContext& context){
         };
         std::vector<Pokemon::TilePos> at{Route204::CAVE_EXIT};
         at = walk_route(stream, context, route204_north_maps(), at, Route204::in_floaroma_path,
-            twins, fight, "To the path into Floaroma");
+            twins, fight, "To the path into Floaroma", Route204::wander_tiles());
         // Floaroma's arrival did not read as a black screen by hand ("limit
         // after 20000ms", and we stood in the town), so either will do.
         const WalkResult in = walk_dir(stream, context, Direction::NORTH, 20000ms, "north into Floaroma");

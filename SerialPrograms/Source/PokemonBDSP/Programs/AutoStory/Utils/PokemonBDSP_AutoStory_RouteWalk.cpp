@@ -253,7 +253,15 @@ std::vector<TilePos> walk_route(
     const std::string map_start = map_of(maps, from);
     std::vector<std::string> all_banners;
     for (size_t plans = 0; plans < 8; plans++){
-        const std::optional<std::vector<PlannedLeg>> legs = plan_robust_route(grid, from, goal, costs);
+        std::optional<std::vector<PlannedLeg>> legs = plan_robust_route(grid, from, goal, costs);
+        if (!legs){
+            //  From a few possible tiles the exact-open-leg costs found no
+            //  plan where the default ones did (r240a, three tiles on Route
+            //  204's row 27); the default plan is longer but sound.
+            stream.log("[Route] " + label + ": no plan with the route costs from " + describe(maps, from) +
+                "; trying the default costs.", COLOR_ORANGE);
+            legs = plan_robust_route(grid, from, goal, RobustPlanCosts());
+        }
         if (!legs){
             OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
                 label + ": no plan from " + describe(maps, from) + ".", stream);
