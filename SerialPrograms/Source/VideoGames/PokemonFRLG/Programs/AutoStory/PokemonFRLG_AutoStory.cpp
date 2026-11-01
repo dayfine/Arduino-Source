@@ -36,14 +36,14 @@ AutoStory_Descriptor::AutoStory_Descriptor()
 AutoStory::AutoStory()
     : START_CHECKPOINT(
         "<b>Start at checkpoint 00.0N:</b><br>1: new game, 2: bedroom, 3: Pallet Town, 4: Oak's Lab, "
-        "5: after the rival's battle, 6: Viridian Mart, 7: Pokedex, 8: Pewter Center.",
+        "5: after the rival's battle, 6: Viridian Mart, 7: Pokedex, 8: Viridian Forest's entrance, 9: Pewter Center.",
         LockMode::LOCK_WHILE_RUNNING,
-        1, 8, 1, 1
+        1, 9, 1, 1
     )
     , END_CHECKPOINT(
-        "<b>End after checkpoint 00.0N:</b><br>8 ends with the Boulder Badge.",
+        "<b>End after checkpoint 00.0N:</b><br>9 ends with the Boulder Badge.",
         LockMode::LOCK_WHILE_RUNNING,
-        1, 8, 8, 8
+        1, 9, 9, 9
     )
     , NEW_GAME_FROM_TITLE(
         "<b>New game from the title screen:</b><br>The game is on its title screen with no save data. "

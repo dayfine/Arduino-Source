@@ -155,8 +155,8 @@ StoryCheckpoint pokedex(){
     }};
 }
 
-StoryCheckpoint forest(){
-    return StoryCheckpoint{"00.07", "Viridian shopping to Pewter Center", at(LAB, 6, 4, SOUTH), {}, StartMenu::FULL, {
+StoryCheckpoint shopping(){
+    return StoryCheckpoint{"00.07", "Viridian shopping, then into Viridian Forest", at(LAB, 6, 4, SOUTH), {}, StartMenu::FULL, {
         route("mart_clerk", at(VIRIDIAN_MART, 4, 3, WEST), "Route 1 again"),
         make(StoryStepKind::SHOP, "potions_and_antidotes", "5 Potions, 3 Antidotes, 1 Parlyz Heal"),
         route("viridian_nurse", at(VIRIDIAN_CENTER, 7, 4, NORTH), "heal before the forest"),
@@ -169,7 +169,15 @@ StoryCheckpoint forest(){
         //  the map doesn't have him: "east 2" from there didn't move, and the walk north
         //  ended under Route 2's ledge in column 8 (console B, 2026-11-01). Go north first.
         route("past_old_man", at(VIRIDIAN, 20, 5, NORTH), "north along column 20, clear of the old man"),
-        route("forest_entrance", at(FOREST, 29, 61), "Route 2, running from wild battles"),
+        //  The gate's north warp lands on the forest's exit mat (29, 62), facing
+        //  north. The save there keeps a forest failure from going back to Pallet.
+        route("forest_entrance", at(FOREST, 29, 62, NORTH), "Route 2 and the south gate, running from wild battles"),
+    }};
+}
+
+StoryCheckpoint forest(){
+    //  The supplies bought in 00.07.
+    return StoryCheckpoint{"00.08", "Viridian Forest to Pewter Center", at(FOREST, 29, 62, NORTH), {5, 3, 1}, StartMenu::FULL, {
         //  The forest legs walked by hand; wild battles are fought for EXP.
         route("forest_west", at(FOREST, 13, 46), "west side of the forest", true),
         route("forest_east", at(FOREST, 42, 44), "east path, past a Bug Catcher", true),
@@ -191,7 +199,7 @@ StoryCheckpoint forest(){
 
 StoryCheckpoint brock(){
     //  The by-hand save: 2 Potions and 1 Antidote left after the forest.
-    return StoryCheckpoint{"00.08", "Pewter Gym: Camper Liam, then Brock", at(PEWTER_CENTER, 7, 4, NORTH), {2, 1}, StartMenu::FULL, {
+    return StoryCheckpoint{"00.09", "Pewter Gym: Camper Liam, then Brock", at(PEWTER_CENTER, 7, 4, NORTH), {2, 1}, StartMenu::FULL, {
         //  Camper Liam (3, 8) always faces east (MOVEMENT_TYPE_FACE_RIGHT, sight
         //  4) and sees (4..7, 8): walking north up column 6 from the door,
         //  the step onto (6, 8) starts his battle. He walks up to the player,
@@ -213,7 +221,7 @@ StoryCheckpoint brock(){
 
 const std::vector<StoryCheckpoint>& story_checkpoints(){
     static const std::vector<StoryCheckpoint> checkpoints{
-        new_game(), leave_house(), oaks_trigger(), starter(), parcel(), pokedex(), forest(), brock(),
+        new_game(), leave_house(), oaks_trigger(), starter(), parcel(), pokedex(), shopping(), forest(), brock(),
     };
     return checkpoints;
 }

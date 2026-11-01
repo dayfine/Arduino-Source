@@ -191,8 +191,8 @@ UnitTestResult check_checkpoint(const StoryCheckpoint& checkpoint, StoryPose& po
 
 UnitTestResult test_routes_and_chain(){
     const std::vector<StoryCheckpoint>& checkpoints = story_checkpoints();
-    if (checkpoints.size() != 8 || checkpoints[0].start){
-        return "Expected 8 checkpoints, the first from a new game.";
+    if (checkpoints.size() != 9 || checkpoints[0].start){
+        return "Expected 9 checkpoints, the first from a new game.";
     }
     StoryPose pose;
     for (size_t c = 0; c < checkpoints.size(); c++){
@@ -247,7 +247,7 @@ UnitTestResult check_legs_on(
     return true;
 }
 
-//  00.08, each walk from where the one before leaves the player.
+//  00.09, each walk from where the one before leaves the player.
 UnitTestResult test_pewter_gym_walks(){
     const MapPosition nurse{"PewterCity_PokemonCenter_1F", {7, 4}};
     //  In by the door's mat (6, 14), straight up column 6 to below Liam's row.
