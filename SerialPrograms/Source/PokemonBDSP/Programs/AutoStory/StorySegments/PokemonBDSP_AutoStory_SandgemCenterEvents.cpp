@@ -761,14 +761,8 @@ Event on_doors_row(SandgemCenterActions& game){
 }
 
 Checkpoint sandgem_mart_lady_checkpoint(MartLadyActions& game){
-    //  Measured on the console (2026-10-30) with walks that stop on their
-    //  own: from below the Center's sign, west stops at the Lab's sign, which
-    //  reads facing west. A row south is the path; west along it runs about
-    //  22 tiles to her grass's west edge. North from there stops at the trees
-    //  2 rows up, on her row. Back: a row south of her row is the signs' row,
-    //  and east along it stops at Route 201's sign, which reads facing east.
-    //  A row south again is the path; east along it stops at the trees east
-    //  of the Mart, a row below the front row's east end.
+    //  Walks that stop on their own, measured on the console (2026-10-30) and
+    //  traced on the grid by Test_MartLadyWalk.
     Checkpoint checkpoint;
     checkpoint.id = "mart_lady";
     checkpoint.interrupts.push_back(dialogue_interrupt(game));
@@ -820,6 +814,12 @@ Checkpoint sandgem_mart_lady_checkpoint(MartLadyActions& game){
     return checkpoint;
 }
 
+void mart_lady_without_save(SingleSwitchProgramEnvironment& env, ProControllerContext& context){
+    ConsoleMartLadyActions game(env, context);
+    Checkpoint checkpoint = sandgem_mart_lady_checkpoint(game);
+    checkpoint.save = {};
+    run_on_console(env, checkpoint, SANDGEM_MART_LADY_NAME);
+}
 void diagnostic_sandgem_mart_lady(SingleSwitchProgramEnvironment& env, ProControllerContext& context){
     ConsoleMartLadyActions game(env, context);
     Checkpoint checkpoint = sandgem_mart_lady_checkpoint(game);

@@ -875,28 +875,27 @@ void leave_door_south(VideoStream& stream, ProControllerContext& context, const 
     //  A last line of talk may still be up, and it would stop the walk.
     pbf_mash_button(context, BUTTON_B, 2000ms);
     context.wait_for_all_requests();
-    //  Stop the walk at the fade: a stick held through the fade-in walks on
-    //  outside (r124a stood ten rows south of the Mart's door; r257 walked
-    //  into a house).
+    //  Stop the walk at the fade or at the first look that is not a room: a
+    //  stick held on walks on outside (r124a ten rows south of the Mart's
+    //  door, r257 into a house, r261 three rows). Standing looks then confirm.
     DoorFadeWatch watch;
     auto out_of_door = [&](const ImageViewRGB32& screen){
         const double brightness = image_stats(screen).average.sum();
         const bool room = indoors(screen);
-        const bool out = door_fade_look(watch, brightness, room);
+        const bool out = door_fade_look(watch, brightness, room) || !room;
         stream.log(std::format("[Route] {}: look: brightness {:.0f}, {}, fade {}.", label, brightness,
             room ? "a room" : "not a room", watch.saw_dark ? "seen" : "not seen"));
         return out;
     };
     bool out = false;
-    for (size_t tries = 0; tries < 3 && !out; tries++){
+    for (size_t tries = 0; tries < 5 && !out; tries++){
         const WalkResult walk = walk_until(stream, context, 0, -1, 6000ms, label, out_of_door);
         if (walk.stop == WalkStop::DIALOG){
             pbf_mash_button(context, BUTTON_B, 2000ms);
         }
         //  Let the fade-in finish, then look again standing still.
         pbf_wait(context, 1500ms);
-        out = walk.stop == WalkStop::TRANSITION || walk.stop == WalkStop::ARRIVED ||
-            outside_for_three_looks(stream, context, label);
+        out = walk.stop == WalkStop::TRANSITION || outside_for_three_looks(stream, context, label);
         if (!out){
             stream.log("[Route] " + label + ": still indoors; walking on.");
         }
