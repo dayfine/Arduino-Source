@@ -35,14 +35,11 @@ The legend is the schema's: '#' wall, '.' open, '~' tall grass, 'w' water,
 facing it; a sign script on a wall too). Items on the ground are objects of
 kind "item"; rocks, cut trees, berry soil and steam vents are '#'.
 
-Rules carried over from the maps' history: terrain from the decomp, people
-and BDSP's edits from the console; a route is coded only over tiles a human
-or a probe has walked; a map change re-runs every checkpoint that walks it.
-Bulbapedia's DP map images have 12 px rows for 16 px columns (3/4 of a tile
-per row) and paint cliffs taller than their tiles, so they are for drawing
-routes over (`python3 -m devtools.maps overlay`), not for terrain. Scenes'
-trigger rectangles (the events files' coord events) have no place in the
-schema; Segment00Lines lists those it needs in C++.
+Rules: terrain from the decomp, people and BDSP's edits from the console;
+a route is coded only over tiles a human or a probe has walked; a map change
+re-runs every checkpoint that walks it. Bulbapedia's DP images (12 px rows
+for 16 px columns, cliffs painted tall) are for drawing routes over, not for
+terrain. Scenes' coord events have no place in the schema (Segment00Lines).
 """
 import argparse
 import json
@@ -96,10 +93,8 @@ MAPS = {
     #   (14, 17); column 13 is grass to the cliff (13, 2); Sarah walked up and
     #   fought on row 21 (r233a, r234a). 01.08 passed once (r235a).
     'Route204South': {'header': 'ROUTE_204_SOUTH', 'rect': (160, 704, 32, 32), 'read': '2026-11-01'},
-    #   Cell (5, 26). Console (2026-10-29/30): all three doors, five signs,
-    #   the doors' front row east to the trees and north from it, the Lab's
-    #   sign read facing west, the walk south from Route 202 stopping above
-    #   the Mart at (29, 5).
+    #   Cell (5, 26). Console (2026-10-29/30): the three doors, five signs,
+    #   the doors' front row, the Lab's sign, the stop above the Mart (29, 5).
     'SandgemTown': {'header': 'SANDGEM', 'rect': (160, 832, 34, 32)},
     #   Cells (4..5, 23..24). Console (2026-10-30/31): the lamps (43, 53) and
     #   (49, 53), north from (52, 53) to the Center's door, the School's door
@@ -112,8 +107,7 @@ MAPS = {
     'OreburghCity': {'header': 'OREBURGH', 'rect': (256, 736, 64, 64)},
     #   The only cell of matrix 003; Platinum identical.
     'OreburghGate': {'header': 'OREBURGH_GATE_1F', 'rect': (0, 0, 32, 32)},
-    #   The only cell of matrix 113. 01.04 walks it as a record: north up
-    #   column 5 until a trainer stops us.
+    #   The only cell of matrix 113. 01.04 walks north up column 5.
     'OreburghGym': {'header': 'OREBURGH_GYM', 'rect': (0, 0, 32, 32)},
     #   B2F, the coal room: matrix 006. Console (2026-10-28, r99): the
     #   corridor's rocks zigzag a row at a time, the room's second row passes
@@ -188,6 +182,15 @@ POINTS = {
         'trainer_logan': (26, 4),
         #   The middle of the gap to Jubilife, below its 3-wide neck.
         'exit_jubilife': (15, 0),
+        #   The open rows at the top: north from any of them is Jubilife.
+        'jubilife_exit': box(11, 0, 18, 3),
+        #   Where 00.04b's save after the catch may stand: the patch and the
+        #   lawn column east of it, down to the pocket where r252 saved.
+        'catch_save_area': box(15, 25, 21, 27) + [(21, 28), (21, 29)],
+        #   Where training may leave us (the catch spot's column and one either
+        #   side, between the tree rows), and its grass: all of it.
+        'after_training_area': box(18, 25, 20, 27),
+        'catch_grass': box(18, 25, 20, 27),
     },
     'Route203': {
         #   The warp tile the Gate puts us on, and its open neighbours.
