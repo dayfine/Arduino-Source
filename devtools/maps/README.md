@@ -182,11 +182,11 @@ Options for harder maps:
   E.g. rows the coal block's edge is drawn over are walkable, and people
   touching the coal block are not found as objects.
 
-`examples/` has Veilstone City's levels and two routes to the Gym (from the
-Pokémon Center and from Route 215). Both reach the Gym's terrace only by its
-south-west stairs. Oreburgh: the Pokémon Center to the mine is one column
-straight south (checked on the console), and Mine B2F's route to Roark
-with its edits file.
+`examples/` keeps the grids levels.py read for Veilstone City, Oreburgh City
+and Oreburgh Mine B2F, with the mine's edits file, as text. They were traced
+from DP images before the decomp was in use, so they carry the 3/4-row
+drift; take the terrain of those maps from `decomp` and use these only to
+see what the colour rules make of a town.
 
 Check per map:
 
