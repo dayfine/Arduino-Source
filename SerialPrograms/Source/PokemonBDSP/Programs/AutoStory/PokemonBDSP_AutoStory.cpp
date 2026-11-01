@@ -10,6 +10,7 @@
 #include <set>
 #include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "CommonFramework/Notifications/ProgramNotifications.h"
+#include "CommonFramework/VideoPipeline/VideoOverlay.h"
 #include "NintendoSwitch/Programs/NintendoSwitch_GameEntry.h"
 #include "Pokemon/AutoStory/Pokemon_AutoStoryStats.h"
 #include "Pokemon/AutoStory/Pokemon_StorySegments.h"
@@ -79,6 +80,9 @@ Pokemon::SegmentHooks story_hooks(SingleSwitchProgramEnvironment& env, ProContro
     };
     hooks.log = [&env](const std::string& line){
         env.log(line, COLOR_BLUE);
+    };
+    hooks.status = [&env](const std::string& line){
+        env.console.overlay().add_log(line);
     };
     return hooks;
 }
