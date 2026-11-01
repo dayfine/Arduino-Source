@@ -143,9 +143,11 @@ std::vector<Item> read_list(
 
 
 MapSource read_source(const JsonObject& root, const std::string& where){
+    //  Named, since GCC warns of a reference returned for a temporary path.
     const std::string key = "source";
-    const JsonObject& object = as_object(read_field(root, key, where), where + key);
-    const std::string source_where = where + key + ".";
+    const std::string path = where + key;
+    const JsonObject& object = as_object(read_field(root, key, where), path);
+    const std::string source_where = path + ".";
     MapSource source;
     source.decomp_file = read_string(object, "decomp_file", source_where);
     source.revision = read_string(object, "revision", source_where);
