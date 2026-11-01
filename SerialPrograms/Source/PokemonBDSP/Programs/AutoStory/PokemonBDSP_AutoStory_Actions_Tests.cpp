@@ -11,6 +11,7 @@
 
 #include <optional>
 #include <string>
+#include <vector>
 #include "Common/Cpp/Filesystem/Filesystem.h"
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "CommonFramework/GlobalAutoPaths.h"
@@ -41,9 +42,9 @@ public:
             IntroProgress progress;
             IntroStep expected;
         };
-        const IntroProgress start{.player_named = false, .rival_named = false, .game_confirmed = true, .unconfirmed_presses = 0};
-        const IntroProgress named{.player_named = true, .rival_named = false, .game_confirmed = true, .unconfirmed_presses = 0};
-        const IntroProgress done{.player_named = true, .rival_named = true, .game_confirmed = true, .unconfirmed_presses = 0};
+        const IntroProgress start{.player_named = false, .rival_named = false, .game_confirmed = true, .unconfirmed_presses = 0, .b_presses = 0};
+        const IntroProgress named{.player_named = true, .rival_named = false, .game_confirmed = true, .unconfirmed_presses = 0, .b_presses = 0};
+        const IntroProgress done{.player_named = true, .rival_named = true, .game_confirmed = true, .unconfirmed_presses = 0, .b_presses = 0};
         const Case cases[] = {
             {"user-select",         start,  IntroStep::SELECT_USER},
             {"home",                done,   IntroStep::FAIL_NOT_IN_GAME},
@@ -54,11 +55,11 @@ public:
             {"menu",                done,   IntroStep::CLOSE_MENU_AND_FINISH},
             //  The appearance grid has its prompt in a dialogue box.
             {"dialog",              start,  IntroStep::ADVANCE},
-            {"dialog",              done,   IntroStep::ADVANCE},
+            {"dialog",              done,   IntroStep::ADVANCE_WITH_B},
             //  Language and the appearance preview: no X before the bedroom is possible.
             {"other",               start,  IntroStep::ADVANCE},
             {"other",               named,  IntroStep::ADVANCE},
-            {"other",               done,   IntroStep::PROBE_FOR_MENU},
+            {"other",               done,   IntroStep::CLEAR_WITH_B},
         };
         for (const Case& c : cases){
             const IntroStep actual = decide_intro_step(c.screen, c.progress);
@@ -69,11 +70,47 @@ public:
                     std::to_string((int)actual) + ", expected " + std::to_string((int)c.expected) + ".";
             }
         }
-        if (advance_after_probe(true)){
-            return "A after X changed the screen would pick from whatever X opened.";
+        return true;
+    }
+};
+
+
+//  After the rival is named, unknown screens take INTRO_B_BEFORE_X B presses,
+//  then X; only the menu ends the intro (r2: Rowan's last line, misread).
+class Test_IntroBeforeMenu : public UnitTest{
+public:
+    Test_IntroBeforeMenu()
+        : UnitTest("PokemonBDSP::AutoStory - new-game intro: B on unknown screens, then X for the menu")
+    {}
+
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        IntroProgress progress{.player_named = true, .rival_named = false, .game_confirmed = true, .unconfirmed_presses = 0, .b_presses = 0};
+        record_intro_step(progress, "rival-list-preset", decide_intro_step("rival-list-preset", progress));
+        if (!progress.rival_named){
+            return "Picking the preset name must count the rival as named.";
         }
-        if (!advance_after_probe(false)){
-            return "A must advance a screen X left unchanged.";
+        std::vector<IntroStep> expected;
+        for (size_t round = 0; round < 2; round++){
+            expected.insert(expected.end(), INTRO_B_BEFORE_X, IntroStep::CLEAR_WITH_B);
+            expected.push_back(IntroStep::PROBE_FOR_MENU);
+        }
+        //  A dialogue line in between takes B without counting.
+        expected.push_back(IntroStep::ADVANCE_WITH_B);
+        expected.push_back(IntroStep::CLEAR_WITH_B);
+        expected.push_back(IntroStep::CLOSE_MENU_AND_FINISH);
+        const size_t others = 2 * (INTRO_B_BEFORE_X + 1);
+        for (size_t c = 0; c < expected.size(); c++){
+            const char* screen = c < others ? "other" : c == others ? "dialog" : c == others + 1 ? "other" : "menu";
+            const IntroStep step = decide_intro_step(screen, progress);
+            record_intro_step(progress, screen, step);
+            if (step != expected[c]){
+                return "Screen " + std::to_string(c) + " (\"" + screen + "\"): step " +
+                    std::to_string((int)step) + ", expected " + std::to_string((int)expected[c]) + ".";
+            }
+        }
+        if (decide_intro_step("other", IntroProgress{.player_named = true, .rival_named = true, .game_confirmed = true,
+            .unconfirmed_presses = 0, .b_presses = INTRO_B_BEFORE_X}) != IntroStep::PROBE_FOR_MENU){
+            return "X must follow INTRO_B_BEFORE_X B presses.";
         }
         return true;
     }
@@ -94,11 +131,11 @@ public:
             IntroProgress progress;
             IntroStep expected;
         };
-        const IntroProgress unconfirmed{.player_named = false, .rival_named = false, .game_confirmed = false, .unconfirmed_presses = 3};
+        const IntroProgress unconfirmed{.player_named = false, .rival_named = false, .game_confirmed = false, .unconfirmed_presses = 3, .b_presses = 0};
         const IntroProgress exhausted{.player_named = false, .rival_named = false, .game_confirmed = false,
-            .unconfirmed_presses = INTRO_PRESSES_BEFORE_BDSP};
+            .unconfirmed_presses = INTRO_PRESSES_BEFORE_BDSP, .b_presses = 0};
         const IntroProgress confirmed{.player_named = false, .rival_named = false, .game_confirmed = true,
-            .unconfirmed_presses = INTRO_PRESSES_BEFORE_BDSP};
+            .unconfirmed_presses = INTRO_PRESSES_BEFORE_BDSP, .b_presses = 0};
         const Case cases[] = {
             {"other", unconfirmed, IntroStep::ADVANCE},
             {"other", exhausted, IntroStep::FAIL_NOT_BDSP},
@@ -326,6 +363,7 @@ public:
 void add_tests_AutoStory_Actions(UnitTestDatabase& database){
     database.add<Test_IntroDecisions>();
     database.add<Test_IntroGate>();
+    database.add<Test_IntroBeforeMenu>();
     database.add<Test_IntroScreens>();
     database.add<Test_LitDoorwayScreenshots>();
     database.add<Test_SaveScreenLocation>();
