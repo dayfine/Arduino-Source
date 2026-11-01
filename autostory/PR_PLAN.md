@@ -38,46 +38,73 @@ they would go upstream.
 
 ```
 base/upstream-main (copy of upstream main; refreshed to b3673f2a9 on 2026-11-01)
-├── nav/shared ............ collector 1, supersedes #72 #66 #108 #79
+├── nav/shared = fork #114 (7008f8c67) ... collector 1, supersedes #72 #66 #108 #79
 │     S1 Common: MoveOnlyFunction  ✅ merged upstream as #1810 (2026-11-01); nav/shared
 │                                  merges the base back in, so S1 drops out of the diff
 │     S2 Pokemon navigation: grid types + leg planner    (#66,  +733,  7 files)
 │     S3 ScreenMachine + StepTrace                       (#108, +333,  5 files)
-│     S4 Pokemon navigation: story checkpoints as events (#79,  ~+1200, 6 files; its
-│                                                         MoveOnlyFunction is upstream now)
-├── frlg/mvp = fork #117 (on nav/shared) ... collector 3, supersedes #67; 6 commits, +3304, CI green
-│     F0 BagDetector fix: dropped, already upstream (#1771)
-│     F1 cc3450b8a devtools: generate FRLG overworld maps as JSON from pokefirered   (+203)
-│     F2 e770e3fa7 FRLG: overworld maps as plain data (tiles, grid, named points, flags) (+978)
-│     F3 d0bb032e7 FRLG: plan overworld routes with the shared leg planner           (+835)
-│     F4 b734805ce Pokemon navigation: leg walker with game-supplied movers/interrupts (+465)
-│     F5 6952e6c5a FRLG: read which way the standing player faces                    (+314)
-│     F6 ab9a22e0b FRLG: walk overworld routes with the leg walker (+ BattleFlashWatcher) (+509)
-│     (facing reader before the walk: the walk includes it. 19 to_string → std::format)
-│     └── #118 frlg/walk-wild-legs (on frlg/mvp; wild legs 43ac578a0, signs f11a56672; CI green) ... fixes from the console B MVP run, to collect
-│        └── #119 frlg/walk-interrupt-recount (on #118): open wild legs a tile at a time (90ac25d3d); follow-ups: ledge stops, overworld check, warp fade vs battle, trainer battles
-│              └── frlg/autostory-mvp (on #119, in progress): PokemonFRLG AutoStory program, 00.01–00.08 new game → Brock, from the by-hand run notes
-│           43ac578a0 watch for wild battles only on steps where one can start (grass/water)
-│           f11a56672 never plan a hold into a sign moving north or south (maps get 'S' signs)
+│     S4 Pokemon navigation: story checkpoints as events (#79,  ~+1200, 6 files)
+│        + story events take a game-defined position, a segment is a table of event
+│          checkpoints, one JSON map schema and loader for both games (MapData,
+│          StorySegments, TilePose)
+│     S5 7008f8c67 Pokemon navigation: weigh open stops after a wild step (Step::wild,
+│        Leg::wild, LegCosts::per_open_wild_stop, default 0; 4 toy-grid tests). Moved
+│        from #119 (b4d1976a3) on 2026-11-01
+│
+│  ├── frlg/mvp = fork #117 (20291b6c8, merges nav/shared 7008f8c67) ... collector 3,
+│  │     supersedes #67; F1–F6 as before, +3304 over nav/shared, 21 files
+│  │     F0 BagDetector fix: dropped, already upstream (#1771)
+│  │     F1 cc3450b8a devtools: generate FRLG overworld maps as JSON from pokefirered   (+203)
+│  │     F2 e770e3fa7 FRLG: overworld maps as plain data (tiles, grid, named points, flags) (+978)
+│  │     F3 d0bb032e7 FRLG: plan overworld routes with the shared leg planner           (+835)
+│  │     F4 b734805ce Pokemon navigation: leg walker with game-supplied movers/interrupts (+465)
+│  │     F5 6952e6c5a FRLG: read which way the standing player faces                    (+314)
+│  │     F6 ab9a22e0b FRLG: walk overworld routes with the leg walker (+ BattleFlashWatcher) (+509)
+│  │  └── #118 frlg/walk-wild-legs (d1afca983) ... wild legs 43ac578a0, signs f11a56672;
+│  │        7 FRLG Overworld files + frlg_maps.py, +139/−23
+│  │     └── #119 frlg/walk-interrupt-recount (08829d226) ... walker fixes from the Viridian
+│  │           runs: open wild legs a tile at a time, ledge stops, overworld check, warp fade
+│  │           vs battle, trainer battles, re-anchoring after a stopped leg. 12 files,
+│  │           +1322/−78: FRLG Overworld + LegWalker (see "Who owns which file")
+│  │        └── #120 frlg/autostory-mvp ... PokemonFRLG AutoStory, 00.01–00.08 new game →
+│  │              Brock. Diff is PokemonFRLG only (19 files, AutoStory + BattleScreenDetector,
+│  │              NamingScreenDetector, Panels, Tests, OverworldWalk 5 lines, cmake)
+│
 └── base/bdsp-1717 = base/upstream-main + upstream #1717 head 381c055ac + nav/shared
-      └── bdsp/mvp ............ collector 2, supersedes #68 #109 #110 #111 #112 and the lab
-            branch bdsp/event-sandgem-center; kit ready, waits for #111/#112 to merge (phase 3)
-            B1 Pokemon navigation: TileGrid + MapSet (+859; from the lab branch, ~700 lines
-               newer than #109; MapSet written LF; no tests here, they use BDSP data → B5)
-            B2 BDSP AutoStory: walker (Walk, RouteWalk + costs, Location banner, PokemonCenter,
-               NameListDetector, Menu/SelectionArrow tweaks) (+2,289)
-            B3 BDSP AutoStory: map data from the Diamond decomp (StoryMaps, RouteRecords, 15 maps,
-               MAPS.md) (+2,893)
-            B4 BDSP AutoStory: segments 00/01, Sandgem Center events, NewGame (+ SystemKeyboard-
-               Detector), AutoStory/Tools merged with Butters' newer #1717 head (~+9k/−6.5k):
-               our Segment 01 (Jubilife→Floaroma) replaces his 01 (user, 2026-11-01); his
-               PP budget kept; GCC fixes; DIAGNOSTIC options kept for run 3
-            B5 BDSP AutoStory: tests (18: TileGrid parse/wall/plans, records, events, screenshots
-               skip when absent) (+2,088)
-            Rehearsal on the current tip: 5 commits, 71 files, +15,386/−4,189; Windows clang
-            builds and passes our tests; the only failures are #1717's two screenshot tests
-            (Command File Runner and lab control stay in #107)
+      └── bdsp/event-sandgem-center (lab line) ── #111 bdsp/maps-rederive
+            └── #121 bdsp/mvp-v3 (50edfb0e9) ... segments 00 and 01 as event tables, maps as
+                  JSON; merges nav/shared at 5e3150565, #111 and #112. Its own 14 commits
+                  change only PokemonBDSP files, SourceFiles.cmake and the new
+                  devtools/maps/bdsp_maps.py. The shared files in its diff against #111
+                  (LegPlanner.h, Grid, StoryEvents, MapData, StorySegments, TilePose, the
+                  removed old LegWalker copy, base/upstream-main's dpp/sockets/FRLG box) are
+                  nav/shared's versions arriving through that merge: they leave #121's diff
+                  once #111 has nav/shared. Not restructured yet; needs nav/shared 7008f8c67
+                  merged in (compiles: TileGrid.cpp and the BDSP planner tests checked with
+                  -fsyntax-only)
+            └── bdsp/mvp collector (B1–B5), kit as before, waits for #111/#112
 ```
+
+### Who owns which file (user, 2026-11-01)
+
+A file is changed only in the PR that added it, so a child PR shows only its own files.
+Changes a child needs in a parent's file go to the parent as new commits, with tests there,
+and are merged back down (merges only; no rebase, no force-push).
+
+| Files | Owner |
+| --- | --- |
+| Pokemon/Navigation: Grid, LegPlanner, MapData, StoryEvents, StorySegments, TilePose, Navigation_Tests.h; CommonTools/ScreenMachine | #114 nav/shared |
+| Pokemon/Navigation: LegWalker (+ tests) | #117 frlg/mvp (added in F4; only FRLG uses it) |
+| Pokemon/Navigation: TileGrid, MapSet | BDSP line (#109 → bdsp collector B1) |
+| PokemonFRLG Overworld, BattleFlashWatcher, frlg_maps.py | #117, changed by #118/#119 as walker fixes |
+| PokemonFRLG Programs/AutoStory, BattleScreenDetector, NamingScreenDetector | #120 |
+
+Open: #119 still changes LegWalker.{h,cpp,_Tests.cpp} (+390, all game-agnostic: tile-at-a-time
+open legs, stop_on_interrupt, stop_if_blocked, settle, warps). Under the rule they go to
+#117 (or to #114 if LegWalker moves there; proposal in the 2026-11-01 restack report:
+keep it in #117 until BDSP adopts it, as with TileGrid/MapSet). #120's 5-line OverworldWalk
+change (BattleDialogWatcher → BattleScreenWatcher) uses #120's new detector; it moves with
+the detector if that goes down to #119.
 
 Sizes from 2026-11-01. BDSP's delta over #1717's current head (381c055ac): AutoStory
 +23.6k/−11.2k (StorySegments 20 files, Utils 12, Data 35 files +2.7k, Tests +2k). It will need
