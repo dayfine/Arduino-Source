@@ -9,6 +9,8 @@
 #include "PokemonBDSP_AutoStory_Route203.h"
 #include "PokemonBDSP_AutoStory_Route204.h"
 #include "PokemonBDSP_AutoStory_RavagedPath.h"
+#include "PokemonBDSP_AutoStory_OreburghCity.h"
+#include "PokemonBDSP_AutoStory_FloaromaTown.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -22,6 +24,8 @@ const TileGrid* jubilife(){ return &JubilifeCity::grid(); }
 const TileGrid* route203(){ return &Route203::grid(); }
 const TileGrid* ravaged_path(){ return &RavagedPath::grid(); }
 const TileGrid* route204_north(){ return &Route204::north_grid(); }
+const TileGrid* oreburgh_city(){ return &OreburghCity::grid(); }
+const TileGrid* floaroma(){ return &FloaromaTown::grid(); }
 const TileGrid* none(){ return nullptr; }
 }
 
@@ -29,6 +33,15 @@ const TileGrid* none(){ return nullptr; }
 //  Mine legs, 01.06's Route 203 and Jubilife legs, 01.08's Route 204 South,
 //  01.09's Ravaged Path, 01.10's waypoints) are data already, tested in
 //  PokemonBDSP_AutoStory_Tests.cpp; these are the rest.
+//
+//  Not recorded, because they are not routes: 00.01 to 00.03 (the house,
+//  Twinleaf, Route 201, the Lakefront and the lake) replay the stick inputs
+//  Butters recorded for #1717 (tutorial_part_1_navigation, entry_visible,
+//  tutorial_part_2_navigation, starter_nav: timed holds, diagonals among
+//  them, and "move until transition"). No tile count can be read off them.
+//  They get redone as planned walks on the Twinleaf, Verity Lakefront and
+//  Lake Verity grids (decoded 2026-11-01) in the compact series; until then
+//  those grids carry no route and no trace.
 const std::vector<RouteRecord>& all(){
     static const std::vector<RouteRecord> records{
         {"01.01", "Jubilife Pokemon Center to Barry on Route 203", "Jubilife City", jubilife, true, std::nullopt, {
@@ -45,12 +58,14 @@ const std::vector<RouteRecord>& all(){
             {Direction::EAST, 0, LegEnd::TRANSITION, "into the Oreburgh Gate"},
             {Direction::EAST, 0, LegEnd::TRANSITION, "through the Gate into Oreburgh City"},
         }, "route203_to_oreburgh(); no start tile: Barry stops us on whichever row we came along"},
-        {"01.04", "Oreburgh Pokemon Center doorstep to the Gym", "Oreburgh City", none, false, std::nullopt, {
+        {"01.04", "Oreburgh Pokemon Center doorstep to the Gym", "Oreburgh City", oreburgh_city, true, OreburghCity::POKEMON_CENTER_DOORSTEP, {
             {Direction::WEST, 20, LegEnd::COUNT, "D-pad taps along the Center's row to below the Gym's door"},
             {Direction::NORTH, 1, LegEnd::DOOR, "into the Gym (the fade)"},
+        }, "oreburgh_street_to_gym(); 20 taps measured on the console (r204 to r215, 3 runs on the same tile); the decomp's Center door is at x 47, the taps say the doorstep is x 46"},
+        {"01.04", "Inside the Oreburgh Gym", "", none, false, std::nullopt, {
             {Direction::NORTH, 0, LegEnd::NPC, "up the Gym to its trainers and Roark"},
-        }, "oreburgh_street_to_gym(), oreburgh_gym_battles(); 20 taps measured on the console (r204 to r215, 3 runs on the same tile)"},
-        {"01.05", "Oreburgh Gym to the Gate and out onto Route 203", "Oreburgh City", none, false, std::nullopt, {
+        }, "oreburgh_gym_battles(); no grid for the Gym's inside"},
+        {"01.05", "Oreburgh Gym to the Gate and out onto Route 203", "Oreburgh City", oreburgh_city, true, OreburghCity::GYM_DOORSTEP, {
             {Direction::EAST, 20, LegEnd::COUNT, "D-pad taps from the Gym's doorstep back to the Center's door"},
             {Direction::WEST, 0, LegEnd::WALL, "to the stairs' cliff"},
             {Direction::NORTH, 0, LegEnd::WALL, "along the cliff"},
@@ -60,7 +75,7 @@ const std::vector<RouteRecord>& all(){
             {Direction::SOUTH, 1, LegEnd::COUNT, "onto the Gate's row"},
             {Direction::WEST, 0, LegEnd::TRANSITION, "into the Oreburgh Gate (a row probed when a wall comes first)"},
             {Direction::WEST, 0, LegEnd::BANNER, "through the Gate until Route 203's banner"},
-        }, "oreburgh_gym_to_center(), oreburgh_to_route203(); no Oreburgh City grid yet (decomp cells pending)"},
+        }, "oreburgh_gym_to_center(), oreburgh_to_route203(); the Center visit between the two taps legs is not a walk"},
         {"01.07", "Jubilife's east edge to Rowan's scene", "Jubilife City", jubilife, true, std::nullopt, {
             {Direction::WEST, 14, LegEnd::COUNT, "stick 2 x 1120 ms along the long road to the crossroads with the north street", false},
             {Direction::NORTH, 0, LegEnd::SCENE, "up the street until Rowan's scene starts (about 6 s); the green-haired man may stand in the way"},
@@ -75,12 +90,12 @@ const std::vector<RouteRecord>& all(){
         {"01.10", "Route 204 North's path into Floaroma", "Route 204 North", route204_north, true, TilePos{11, 5}, {
             {Direction::NORTH, 0, LegEnd::BANNER, "from (11, 5) until Floaroma Town's banner; the waypoint line before it is tested as plans"},
         }, "route204_to_floaroma(); r248a"},
-        {"01.11", "Floaroma's old couple", "Floaroma Town", none, false, std::nullopt, {
+        {"01.11", "Floaroma's old couple", "Floaroma Town", floaroma, true, FloaromaTown::ROUTE_204_ARRIVAL, {
             {Direction::WEST, 8, LegEnd::COUNT, "D-pad taps along the flower field's bottom row"},
             {Direction::NORTH, 0, LegEnd::NPC, "until the old woman stops us (3 tiles on r251a)"},
             {Direction::WEST, 1, LegEnd::COUNT, "below the old man"},
             {Direction::NORTH, 0, LegEnd::NPC, "until the old man stops us (a turn)"},
-        }, "floaroma_old_couple(); by hand 2026-10-31 (batches m1 to m9), r251a; Floaroma grid pending (decomp)"},
+        }, "floaroma_old_couple(); by hand 2026-10-31 (batches m1 to m9), r251a"},
     };
     return records;
 }

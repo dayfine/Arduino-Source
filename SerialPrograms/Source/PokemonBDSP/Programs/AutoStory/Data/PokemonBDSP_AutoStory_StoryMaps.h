@@ -58,6 +58,12 @@ const Pokemon::MapSet& route204_north_maps();
 //  through the Ravaged Path, so the two are separate maps.
 const Pokemon::MapSet& route204_south_maps();
 
+//  Oreburgh City alone (01.04, 01.05), and Floaroma Town alone (01.11).
+extern const char* const MAP_OREBURGH_CITY;
+extern const char* const MAP_FLOAROMA_TOWN;
+const Pokemon::MapSet& oreburgh_city_maps();
+const Pokemon::MapSet& floaroma_maps();
+
 //  Whether a plan may cross this map. Routes are traced from the DP maps and
 //  their tree walls carried over to BDSP; towns changed more in the remake, so
 //  a town is crossed by screen-driven legs until the console has confirmed its
