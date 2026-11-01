@@ -88,6 +88,10 @@ enum class Tile : uint8_t{
     TALL_GRASS,     //  '"'  floor with wild encounters
     WATER,          //  '~'  entered only by starting to Surf
     DOOR,           //  'D'  a wall that warps the player who walks north into it
+    SIGN,           //  'S'  a wall that shows its message to the player who
+                    //       walks into it moving north or south (signposts,
+                    //       Center and Mart signs; pokefirered
+                    //       TrySetUpWalkIntoSignpostScript())
     CAVE_ENTRANCE,  //  'C'  floor that warps the player who steps onto it
     LADDER,         //  'L'  ladder or escalator: floor that warps the player
                     //       who steps onto it

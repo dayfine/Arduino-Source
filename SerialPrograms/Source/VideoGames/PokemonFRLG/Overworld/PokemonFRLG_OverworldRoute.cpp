@@ -219,6 +219,12 @@ bool stops_at(const std::vector<MapData>& maps, const Located& player, Direction
     }
     const MapData& map = maps[player.map];
     const TilePos ahead = player.state.position.next(direction);
+    //  Held into a sign moving north or south, the game shows the sign's
+    //  message: the player stops, but the walk is interrupted (console B,
+    //  2026-11-01, the poster on the bedroom's wall).
+    if (tile_at(map, ahead) == Tile::SIGN && (direction == Direction::NORTH || direction == Direction::SOUTH)){
+        return false;
+    }
     if (in_bounds(map, ahead)){
         return object_at(map, ahead) == nullptr;
     }
@@ -663,6 +669,40 @@ UnitTestResult test_viridian_mart_to_pewter_gym(){
     return true;
 }
 
+//  A room with a sign on its north wall, above the third column.
+const char* const TEST_SIGN_ROOM_JSON = R"({
+    "name": "SignRoom", "width": 5, "height": 5,
+    "tiles": ["##S##", "#...#", "#...#", "#...#", "#####"],
+    "elevation": ["33333", "33333", "33333", "33333", "33333"],
+    "warps": [], "objects": [],
+    "connections": [], "points": [], "flag_sets": []
+})";
+
+//  Walking north under a sign stops by counting tiles, never by holding into
+//  the sign; under the wall beside it, the wall stops the player.
+UnitTestResult test_no_hold_into_sign(){
+    const std::vector<MapData> maps{parse_map(TEST_SIGN_ROOM_JSON, "SignRoom")};
+    std::vector<RouteStep> route;
+    UnitTestResult result = check_route(maps, {"SignRoom", {2, 3}}, {{"SignRoom", {2, 1}}, std::nullopt}, route);
+    if (result.result != UnitTestResult::PASSED){
+        return result;
+    }
+    for (const RouteStep& step : route){
+        if (step.to_wall && step.end.point == TilePos{2, 1}){
+            return "Expected no hold into the sign:" + describe(route);
+        }
+    }
+    route.clear();
+    result = check_route(maps, {"SignRoom", {1, 3}}, {{"SignRoom", {1, 1}}, std::nullopt}, route);
+    if (result.result != UnitTestResult::PASSED){
+        return result;
+    }
+    if (route.empty() || !route.back().to_wall){
+        return "Expected the wall to stop the player beside the sign:" + describe(route);
+    }
+    return true;
+}
+
 //  Two small maps that don't need the map files: a room left by the exit mat
 //  at its bottom, onto the door of a yard, out of which the game walks the
 //  player.
@@ -742,6 +782,7 @@ void add_tests_OverworldRoute(UnitTestDatabase& database){
     database.add<Test_OverworldRoute>("bedroom to Oak's Lab", test_bedroom_to_oaks_lab);
     database.add<Test_OverworldRoute>("Viridian Mart to Pewter Gym", test_viridian_mart_to_pewter_gym);
     database.add<Test_OverworldRoute>("wild steps", test_wild_steps);
+    database.add<Test_OverworldRoute>("no hold into a sign", test_no_hold_into_sign);
     database.add<Test_OverworldRoute>("step rules", test_step_rules);
     database.add<Test_OverworldRoute>("maps", test_maps);
     database.add<Test_OverworldRoute>("Cerulean Cave entrance to Mewtwo", test_entrance_to_mewtwo);

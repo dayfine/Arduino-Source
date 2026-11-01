@@ -101,7 +101,15 @@ def tileset_attributes(decomp, symbol, kind):
     return [struct.unpack_from('<I', data, i)[0] for i in range(0, len(data), 4)]
 
 
-def tile_character(behavior, collision, unhandled):
+#   Signs the player reads by walking into them moving north or south
+#   (TrySetUpWalkIntoSignpostScript() in src/field_control_avatar.c). A
+#   signpost needs a sign event on its tile; the others don't.
+SIGN_BEHAVIORS = ('MB_POKEMON_CENTER_SIGN', 'MB_POKEMART_SIGN', 'MB_INDIGO_PLATEAU_SIGN_1', 'MB_INDIGO_PLATEAU_SIGN_2')
+
+
+def tile_character(behavior, collision, unhandled, sign_event=False):
+    if behavior in SIGN_BEHAVIORS or (behavior == 'MB_SIGNPOST' and sign_event):
+        return 'S'
     if behavior == 'MB_WARP_DOOR':
         return 'D'      # doors have collision
     if behavior.startswith('MB_JUMP_'):
@@ -117,7 +125,7 @@ def tile_character(behavior, collision, unhandled):
     return '.'
 
 
-def grid(decomp, layout, names, unhandled):
+def grid(decomp, layout, names, unhandled, signs=frozenset()):
     width, height = layout['width'], layout['height']
     blocks = decomp.read(layout['blockdata_filepath'])
     primary = tileset_attributes(decomp, layout['primary_tileset'], 'primary')
@@ -130,7 +138,7 @@ def grid(decomp, layout, names, unhandled):
             metatile, collision, level = value & 0x3ff, (value >> 10) & 3, value >> 12
             attributes = primary[metatile] if metatile < 640 else secondary[metatile - 640]
             behavior = names.get(attributes & 0x1ff, hex(attributes & 0x1ff))
-            row += tile_character(behavior, collision, unhandled)
+            row += tile_character(behavior, collision, unhandled, (x, y) in signs)
             levels += '%x' % level
         tiles.append(row)
         elevation.append(levels)
@@ -148,7 +156,8 @@ def wander(obj):
 
 def map_json(decomp, name, layouts, names, loaded, unhandled):
     source = json.loads(decomp.read(f'data/maps/{name}/map.json'))
-    width, height, tiles, elevation = grid(decomp, layouts[source['layout']], names, unhandled)
+    signs = frozenset((e['x'], e['y']) for e in source.get('bg_events', []) if e.get('type') == 'sign')
+    width, height, tiles, elevation = grid(decomp, layouts[source['layout']], names, unhandled, signs)
     objects = []
     for obj in source.get('object_events', []):
         flag = obj.get('flag') or ''
