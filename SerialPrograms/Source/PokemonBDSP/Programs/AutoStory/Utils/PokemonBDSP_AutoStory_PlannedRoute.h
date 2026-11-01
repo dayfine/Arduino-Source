@@ -31,57 +31,72 @@ namespace PokemonBDSP{
 //  overworld either way.
 using RouteTrainerFight = std::function<void(const std::string& trainer)>;
 
+//  The trainers a route walk may meet, and how to fight them. A trainer who
+//  is fought is taken off `sights`.
+struct RouteTrainers{
+    std::vector<TrainerSight> sights;
+    RouteTrainerFight fight;
+};
+
+//  Where walk_route() goes: until every tile the player may be on is
+//  `goal`. Tiles in `avoid` (where someone wanders, a trainer's sight) are
+//  planned as off the map.
+struct RouteWalkPlan{
+    std::function<bool(const Pokemon::TilePos&)> goal;
+    std::string label;
+    std::vector<Pokemon::TilePos> avoid = {};
+    RobustPlanCosts costs = route_plan_costs();
+};
+
 //  Walks from any of the world tiles `from` of `maps` until every tile the
-//  player may be on is `goal`, and returns those tiles. Trainers in
-//  `trainers` who see the player are fought with `fight` and taken off the
-//  list. Tiles in `avoid` (where someone wanders) are planned as walls.
-//  Fails with a screenshot
-//  on a transition, a dialogue no trainer explains, a wild battle during an
-//  open leg, or when no plan exists. A walk from one map to another must see
-//  the second map's location banner on the way: a walk whose legs all ended
-//  on walls can still end in the wrong place (r124a saved in Sandgem Town
-//  after "arriving" on Route 202).
+//  player may be on is `plan.goal`, and returns those tiles. Trainers who
+//  see the player are fought and taken off `trainers`. Fails with a
+//  screenshot on a transition, a dialogue no trainer explains, or when no
+//  plan exists. A walk from one map to another must see the second map's
+//  location banner on the way: a walk whose legs all ended on walls can
+//  still end in the wrong place (r124a saved in Sandgem Town after
+//  "arriving" on Route 202).
 std::vector<Pokemon::TilePos> walk_route(
     VideoStream& stream, ProControllerContext& context, const WildBattleEscape& escape,
-    const StoryWorld& maps,
-    std::vector<Pokemon::TilePos> from,
-    const std::function<bool(const Pokemon::TilePos&)>& goal,
-    std::vector<TrainerSight>& trainers,
-    const RouteTrainerFight& fight,
-    const std::string& label,
-    const std::vector<Pokemon::TilePos>& avoid = {},
-    const RobustPlanCosts& costs = route_plan_costs()
+    const StoryWorld& maps, std::vector<Pokemon::TilePos> from,
+    RouteTrainers& trainers, const RouteWalkPlan& plan
 );
 
-//  Walks `from` to each of `waypoints` in turn, with walk_route() for every
-//  stretch, and returns where the last one ended. The corners of a line a
-//  human walked, so the plan is that line, with the walker's handling of
-//  trainers and blocks on each stretch (Route 204 North, 2026-10-31).
+//  The corners of a line a human walked, and the costs to plan each
+//  stretch with.
+struct WaypointWalkPlan{
+    std::vector<Pokemon::TilePos> waypoints;
+    std::string label;
+    RobustPlanCosts costs = waypoint_plan_costs();
+};
+
+//  Walks `from` to each of `plan.waypoints` in turn, with walk_route() for
+//  every stretch, and returns where the last one ended: the plan is the
+//  line, with the walker's handling of trainers and blocks on each stretch
+//  (Route 204 North, 2026-10-31).
 std::vector<Pokemon::TilePos> walk_waypoints(
     VideoStream& stream, ProControllerContext& context, const WildBattleEscape& escape,
-    const StoryWorld& maps,
-    std::vector<Pokemon::TilePos> from,
-    const std::vector<Pokemon::TilePos>& waypoints,
-    std::vector<TrainerSight>& trainers,
-    const RouteTrainerFight& fight,
-    const std::string& label,
-    const RobustPlanCosts& costs = waypoint_plan_costs()
+    const StoryWorld& maps, std::vector<Pokemon::TilePos> from,
+    RouteTrainers& trainers, const WaypointWalkPlan& plan
 );
 
-//  Walks next to the NPC on world tile `npc`, faces them and presses A, trying
-//  the sides in `sides` (the side of the NPC to stand on) in order until a
-//  dialogue opens. `at` is where the player may be, and is updated. Fails with
-//  a screenshot if no side starts a dialogue. A press from a diagonal tile,
-//  or from a tile a row off, talks to nobody, so each side is tried in turn.
+//  Whom talk_to_npc() talks to: the NPC on world tile `npc`, from the sides
+//  in `sides` (the side of the NPC to stand on), in order.
+struct NpcTalk{
+    Pokemon::TilePos npc;
+    std::vector<Pokemon::Direction> sides;
+    std::string label;
+};
+
+//  Walks next to `talk.npc`, faces them and presses A, trying each side
+//  until a dialogue opens. `at` is where the player may be, and is updated.
+//  Fails with a screenshot if no side starts a dialogue. A press from a
+//  diagonal tile, or from a tile a row off, talks to nobody, so each side is
+//  tried in turn.
 void talk_to_npc(
     VideoStream& stream, ProControllerContext& context, const WildBattleEscape& escape,
-    const StoryWorld& maps,
-    std::vector<Pokemon::TilePos>& at,
-    const Pokemon::TilePos& npc,
-    const std::vector<Pokemon::Direction>& sides,
-    std::vector<TrainerSight>& trainers,
-    const RouteTrainerFight& fight,
-    const std::string& label
+    const StoryWorld& maps, std::vector<Pokemon::TilePos>& at,
+    RouteTrainers& trainers, const NpcTalk& talk
 );
 
 
