@@ -27,7 +27,6 @@
 
 #include <atomic>
 #include <memory>
-#include <mutex>
 #include <optional>
 #include <set>
 #include <string>
@@ -250,7 +249,7 @@ private:
     //  and from the keyboard tracker thread (`run_controller_input()`), so all
     //  the entry points that touch it take this lock. It is recursive because
     //  changing an option value re-enters us through `on_config_value_changed()`.
-    mutable std::recursive_mutex m_lock;
+    mutable RecursiveMutex m_lock;
 
     // manages overlay rendering that shows annotations overlayed on the image
     std::unique_ptr<LabelImages_OverlayManager> m_overlay_manager;
