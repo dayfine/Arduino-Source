@@ -441,9 +441,7 @@ void fight_using_move_list(
 
         switch (ret) {
 
-            // -------------------------------------------------
             // Battle menu detected.
-            // -------------------------------------------------
         case 0:
             battle_menu_seen = true;
             // Early battles take a few turns; this many means the chosen
@@ -483,9 +481,7 @@ void fight_using_move_list(
 
             break;
 
-            // -------------------------------------------------
             // End battle detected.
-            // -------------------------------------------------
         case 1: {
             stream.log(
                 "[AutoStory] " + label + " battle complete.",
@@ -594,7 +590,6 @@ void fight_trainer(VideoStream& stream, ProControllerContext& context, const std
 void fight_wild_battle(VideoStream& stream, ProControllerContext& context, const std::string& label){
     fight_using_move_slot(stream, context, BattleType::STANDARD, 0, label);
 }
-
 
 
 }
