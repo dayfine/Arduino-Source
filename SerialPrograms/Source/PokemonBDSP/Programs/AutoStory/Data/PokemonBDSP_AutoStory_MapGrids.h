@@ -14,6 +14,8 @@
 #include <map>
 #include <optional>
 #include <string>
+#include <utility>
+#include <vector>
 #include "Pokemon/Navigation/Pokemon_MapData.h"
 #include "Pokemon/Navigation/Pokemon_TileGrid.h"
 
@@ -21,6 +23,11 @@ namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonBDSP{
 
+
+//  (name, JSON text) of each map in PokemonBDSP/Programs/AutoStory/Maps/,
+//  the same files as Packages' Resources/PokemonBDSP/Maps, built into the
+//  program by pa_embed_text_files() (cmake/EmbedTextFiles.cmake).
+const std::vector<std::pair<std::string, std::string>>& bdsp_map_json();
 
 //  A map's tiles as a tile grid: walls, open ground, tall grass, south
 //  ledges, doors and signs; a standing person ("npc" object) is an NPC tile.
@@ -32,7 +39,7 @@ Pokemon::TileGrid tile_grid_from_map(const Pokemon::MapData& map);
 //  size and equal cell for cell.
 std::optional<std::string> grid_difference(const Pokemon::TileGrid& here, const Pokemon::TileGrid& there);
 
-//  The built-in copy of the map `name` (test_map_json()), parsed once.
+//  The built-in copy of the map `name` (bdsp_map_json()), parsed once.
 //  Throws InternalProgramError for a name it does not have.
 const Pokemon::TileGrid& built_in_grid(const std::string& name);
 

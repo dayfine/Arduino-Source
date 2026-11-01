@@ -8,7 +8,6 @@
 #include <map>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/Json/JsonValue.h"
-#include "PokemonBDSP_AutoStory_Maps_TestData.h"
 #include "PokemonBDSP_AutoStory_MapGrids.h"
 
 namespace PokemonAutomation{
@@ -92,7 +91,7 @@ std::map<std::string, TileGrid>& installed_grids(){
 const std::map<std::string, TileGrid>& built_in_grids(){
     static const std::map<std::string, TileGrid> grids = []{
         std::map<std::string, TileGrid> parsed;
-        for (const auto& [name, json] : test_map_json()){
+        for (const auto& [name, json] : bdsp_map_json()){
             const MapData map = Pokemon::parse_map(parse_json(json), name + ".json (built in)");
             if (map.name != name){
                 throw ParseException(std::format("{}.json (built in): name is \"{}\".", name, map.name));
