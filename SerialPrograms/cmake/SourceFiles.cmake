@@ -118,9 +118,6 @@ file(GLOB CORE_LIBRARY_SOURCES
     ../Common/Cpp/Logging/MultiOutputLogger.h
     ../Common/Cpp/Logging/TaggedLogger.cpp
     ../Common/Cpp/Logging/TaggedLogger.h
-    ../Common/Cpp/MoveOnlyFunction.h
-    ../Common/Cpp/MoveOnlyFunction_Tests.cpp
-    ../Common/Cpp/MoveOnlyFunction_Tests.h
     ../Common/Cpp/Options/BatchOption.cpp
     ../Common/Cpp/Options/BatchOption.h
     ../Common/Cpp/Options/BooleanCheckBoxOption.cpp
@@ -886,10 +883,6 @@ file(GLOB LIBRARY_SOURCES
     Source/CommonTools/Options/TrainOCRModeOption.h
     Source/CommonTools/Resources/SpriteDatabase.cpp
     Source/CommonTools/Resources/SpriteDatabase.h
-    Source/CommonTools/ScreenMachine/ScreenMachine.cpp
-    Source/CommonTools/ScreenMachine/ScreenMachine.h
-    Source/CommonTools/ScreenMachine/StepTrace.cpp
-    Source/CommonTools/ScreenMachine/StepTrace.h
     Source/CommonTools/StartupChecks/StartProgramChecks.cpp
     Source/CommonTools/StartupChecks/StartProgramChecks.h
     Source/CommonTools/StartupChecks/VideoResolutionCheck.cpp
@@ -1445,17 +1438,10 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/Navigation/Pokemon_Grid.h
     Source/Pokemon/Navigation/Pokemon_LegPlanner.h
     Source/Pokemon/Navigation/Pokemon_LegPlanner_Tests.cpp
-    Source/Pokemon/Navigation/Pokemon_LegWalker.cpp
-    Source/Pokemon/Navigation/Pokemon_LegWalker.h
-    Source/Pokemon/Navigation/Pokemon_LegWalker_Tests.cpp
-    Source/Pokemon/Navigation/Pokemon_MapSet.cpp
-    Source/Pokemon/Navigation/Pokemon_MapSet.h
     Source/Pokemon/Navigation/Pokemon_Navigation_Tests.h
     Source/Pokemon/Navigation/Pokemon_StoryEvents.cpp
     Source/Pokemon/Navigation/Pokemon_StoryEvents.h
     Source/Pokemon/Navigation/Pokemon_StoryEvents_Tests.cpp
-    Source/Pokemon/Navigation/Pokemon_TileGrid.cpp
-    Source/Pokemon/Navigation/Pokemon_TileGrid.h
     Source/Pokemon/Options/Pokemon_BoxSortingTable.cpp
     Source/Pokemon/Options/Pokemon_BoxSortingTable.h
     Source/Pokemon/Options/Pokemon_EncounterBotOptions.h
