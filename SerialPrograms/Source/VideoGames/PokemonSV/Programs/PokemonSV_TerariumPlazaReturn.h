@@ -40,8 +40,9 @@ public:
     //  Fly toward Central Plaza the way return_to_plaza() always has: map
     //  cursor to the top-left corner, back toward the center, then the
     //  closest Pokecenter. "overshoot" moves the cursor back further, which
-    //  helps when the game lags.
-    virtual void fly_to_plaza(bool overshoot) = 0;
+    //  helps when the game lags. Tries once: returns false if it didn't fly
+    //  (no Pokecenter to fly to, or a battle interrupted it).
+    virtual bool fly_to_plaza(bool overshoot) = 0;
 
     //  Watch the place-name banner shown after landing. Returns the first
     //  text read that `matches` accepts, else the last non-empty text read
@@ -57,7 +58,8 @@ enum class PlazaReturnResult{
 std::string plaza_return_result_to_string(PlazaReturnResult result);
 
 //  Fly toward Central Plaza and check the landing banner, up to
-//  `max_attempts` times. `expected_banner` comes from
+//  `max_attempts` times. A fly that didn't happen uses up an attempt too, so
+//  the return is bounded. `expected_banner` comes from
 //  central_plaza_banner_to_check(); when it is empty the first landing is
 //  accepted unchecked.
 PlazaReturnResult return_to_plaza_checked(

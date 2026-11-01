@@ -270,8 +270,10 @@ public:
         : m_landings(std::move(landings))
     {}
 
-    virtual void fly_to_plaza(bool overshoot) override{
+    virtual bool fly_to_plaza(bool overshoot) override{
+        const size_t flight = overshoots.size();
         overshoots.push_back(overshoot);
+        return flight >= fly_results.size() || fly_results[flight];
     }
     virtual std::string read_landing_banner(const std::function<bool(const std::string& text)>& matches) override{
         const size_t landing = banner_reads++;
@@ -291,6 +293,8 @@ public:
     }
 
 public:
+    // Whether each fly happened; flies past the end do.
+    std::vector<bool> fly_results;
     std::vector<bool> overshoots;
     size_t banner_reads = 0;
 
@@ -308,6 +312,7 @@ struct PlazaReturnCase{
     std::string name;
     std::string expected_banner;
     std::vector<std::vector<std::string>> landings = {};
+    std::vector<bool> fly_results = {};
     PlazaReturnResult result;
     std::vector<bool> overshoots;
     size_t banner_reads;
@@ -323,6 +328,7 @@ public:
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
         NullLogger logger;
         ScriptedPlazaReturnActions actions(m_case.landings);
+        actions.fly_results = m_case.fly_results;
         const PlazaReturnResult result = return_to_plaza_checked(logger, actions, m_case.expected_banner, 3);
         if (result != m_case.result){
             return "Expected result " + plaza_return_result_to_string(m_case.result)
@@ -385,6 +391,44 @@ void add_tests_BBQPlazaReturn(UnitTestDatabase& database){
             .landings = {{"Coastal Plaza"}},
             .result = PlazaReturnResult::NOT_CHECKED,
             .overshoots = {false},
+            .banner_reads = 0,
+        },
+        {
+            // No Pokecenter to fly to, or a battle on the way: no landing to
+            // read, and the next attempt overshoots.
+            .name = "a fly that didn't happen uses an attempt, then arrives",
+            .expected_banner = "中心廣場",
+            .landings = {{"中心廣場"}},
+            .fly_results = {false},
+            .result = PlazaReturnResult::ARRIVED,
+            .overshoots = {false, true},
+            .banner_reads = 1,
+        },
+        {
+            // bbq-m5 11:20: the fly kept failing and the return looped for
+            // minutes. Now it fails after 3 flies.
+            .name = "flies that never happen fail the return",
+            .expected_banner = "中心廣場",
+            .fly_results = {false, false, false},
+            .result = PlazaReturnResult::FAILED,
+            .overshoots = {false, true, true},
+            .banner_reads = 0,
+        },
+        {
+            .name = "a failed fly and a wrong landing both count",
+            .expected_banner = "Central Plaza",
+            .landings = {{"Coastal Plaza"}},
+            .fly_results = {false, true, false},
+            .result = PlazaReturnResult::FAILED,
+            .overshoots = {false, true, true},
+            .banner_reads = 1,
+        },
+        {
+            .name = "nothing to check retries a fly that didn't happen",
+            .expected_banner = "",
+            .fly_results = {false},
+            .result = PlazaReturnResult::NOT_CHECKED,
+            .overshoots = {false, true},
             .banner_reads = 0,
         },
     };

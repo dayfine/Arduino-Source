@@ -119,7 +119,8 @@ bool fly_to_visible_closest_flypoint_cur_zoom_level(
 //  While on map (default zoom), move to the closest PokeCenter and fly there.
 //  The PokeCenter must be already visited before (so having the little wing icon with it) and not occluded
 //  by other map icons on the most zoomed-in level of the map.
-void fly_to_closest_pokecenter_on_map(const ProgramInfo& info, VideoStream& stream, ProControllerContext& context);
+//  Each of its two searches gives up after `max_tries` failed flies (at most 17).
+void fly_to_closest_pokecenter_on_map(const ProgramInfo& info, VideoStream& stream, ProControllerContext& context, int max_tries = 17);
 
 // Attempt to escape being stuck on a wall.
 // Repeatedly center camera and try to backwards jump off.
