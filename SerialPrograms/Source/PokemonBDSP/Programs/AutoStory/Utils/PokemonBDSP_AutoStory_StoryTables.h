@@ -8,7 +8,8 @@
  *  checkpoint saves first, as checkpoint_reattempt_loop() did before its
  *  first attempt; a step that fails is answered the way that loop answered
  *  it: a screenshot, a reset to the save, and the checkpoint again from its
- *  first step, up to the same 20 attempts.
+ *  first step, up to the attempts of the shared policy the program's retry
+ *  options set (AutoStoryOptions::policy; 3 by default, where the loop had 20).
  *
  */
 

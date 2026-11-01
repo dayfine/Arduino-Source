@@ -10,6 +10,7 @@
 #include "CommonTools/Options/StringSelectOption.h"
 #include "NintendoSwitch/NintendoSwitch_SingleSwitchProgram.h"
 #include "PokemonBDSP_AutoStoryTools.h"
+#include "Pokemon/Options/Pokemon_StoryRunOptions.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -39,8 +40,8 @@ private:
     virtual void on_config_value_changed(void* object) override;
     void update_ui_state();
 private:
-    // DIAGNOSTIC ONLY: Remove before pushing to production.
-    BooleanCheckBoxOption STOP_AT_FIRST_FAILURE;
+    //  Attempts per checkpoint and stop at the first failure, as in FRLG.
+    Pokemon::StoryRunOptions RETRIES;
     BooleanCheckBoxOption DIAGNOSTIC_POST_CATCH_ONLY;
     // DIAGNOSTIC ONLY: Remove before pushing to production.
     BooleanCheckBoxOption DIAGNOSTIC_FAKE_CHECKPOINT_SAVE;

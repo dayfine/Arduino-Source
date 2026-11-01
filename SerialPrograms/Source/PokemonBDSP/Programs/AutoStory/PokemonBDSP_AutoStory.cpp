@@ -142,14 +142,6 @@ BDSPAutoStory::~BDSPAutoStory(){
 
 BDSPAutoStory::BDSPAutoStory()
     : SingleSwitchProgramInstance()
-    // DIAGNOSTIC ONLY: Remove before pushing to production.
-    , STOP_AT_FIRST_FAILURE(
-          "<b>Lab: Stop at the first failure</b><br>"
-          "Save the failure screenshot and stop, leaving the game where it failed for a look, "
-          "instead of closing it and retrying. Remove before pushing to production.",
-          LockMode::LOCK_WHILE_RUNNING,
-          false
-      )
     , DIAGNOSTIC_POST_CATCH_ONLY(
           "<b>Diagnostic only: Run 00.04 after catch through 00.05</b><br>"
           "Start at the saved position immediately after catching the second Pokemon. "
@@ -412,7 +404,7 @@ BDSPAutoStory::BDSPAutoStory()
     //  Options
     // -----------------------------------------------------------------------
 
-    PA_ADD_OPTION(STOP_AT_FIRST_FAILURE);
+    PA_ADD_OPTION(RETRIES);
     PA_ADD_OPTION(DIAGNOSTIC_POST_CATCH_ONLY);
     PA_ADD_OPTION(DIAGNOSTIC_FAKE_CHECKPOINT_SAVE);
     PA_ADD_OPTION(DIAGNOSTIC_ROUTE202_TO_SANDGEM_CENTER);
@@ -538,7 +530,8 @@ void BDSPAutoStory::program(
     ProControllerContext& context
 ){
     AutoStoryStats& stats = env.current_stats<AutoStoryStats>();
-    g_stop_at_first_failure = STOP_AT_FIRST_FAILURE;
+    //  The checkpoints not yet in tables still run checkpoint_reattempt_loop().
+    g_stop_at_first_failure = RETRIES.STOP_AT_FIRST_FAILURE;
 
     AutoStoryOptions options{
         Language::English,
@@ -556,6 +549,7 @@ void BDSPAutoStory::program(
         },
         DIAGNOSTIC_FAKE_CHECKPOINT_SAVE ? CheckpointSaveMode::FAKE : CheckpointSaveMode::REAL
     };
+    options.policy = RETRIES.policy();
 
     const bool fake_saves = options.checkpoint_save_mode == CheckpointSaveMode::FAKE;
     if (fake_saves) options.checkpoint_retry_scope = CheckpointRetryScope::DEFER_TO_SELECTED_RANGE;
@@ -690,7 +684,7 @@ void BDSPAutoStory::program(
             run_selected_range(0);
         }
     }catch (OperationFailedException&){
-        if (STOP_AT_FIRST_FAILURE){
+        if (RETRIES.STOP_AT_FIRST_FAILURE){
             env.log("AutoStory failed: leaving the game where it failed (lab option).", COLOR_RED);
             throw;
         }

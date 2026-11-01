@@ -14,6 +14,7 @@
 #include <vector>
 
 #include "Common/Cpp/Options/EnumDropdownOption.h"
+#include "Pokemon/Navigation/Pokemon_StorySegments.h"
 
 #include "CommonFramework/GlobalAutoPaths.h"
 #include "CommonFramework/ImageTools/ImageBoxes.h"
@@ -139,6 +140,8 @@ struct AutoStoryOptions {
     OutsideHelpConfig outside_help;
     CheckpointSaveMode checkpoint_save_mode = CheckpointSaveMode::REAL;
     CheckpointRetryScope checkpoint_retry_scope = CheckpointRetryScope::CHECKPOINT;
+    //  How the story tables retry a checkpoint (StoryRunOptions).
+    Pokemon::SegmentPolicy policy;
 };
 
 

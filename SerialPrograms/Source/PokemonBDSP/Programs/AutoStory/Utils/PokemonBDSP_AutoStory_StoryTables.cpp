@@ -29,9 +29,6 @@ using Pokemon::RunState;
 
 namespace{
 
-//  The attempts checkpoint_reattempt_loop() gives a checkpoint.
-constexpr size_t STORY_ATTEMPTS = 20;
-
 Event save_event(StoryStepRunner& runner, const std::string& id){
     Event event;
     event.name = "save";
@@ -119,8 +116,9 @@ Outcome ConsoleStoryRunner::run_step(const std::string& id, StoryFailure on_fail
         if (m_console.options.checkpoint_retry_scope == CheckpointRetryScope::DEFER_TO_SELECTED_RANGE){
             throw;
         }
+        //  Attempts are the segment's policy (AutoStoryOptions::policy); this
+        //  only counts them for the log line the lab's run watcher reads.
         const size_t attempt = m_failures[id]++;
-        //  The lab's run watcher reads this line as a failed attempt.
         env.console.log(std::format("checkpoint_reattempt_loop: attempt {} failed: {}: {}", attempt, id, e.message()), COLOR_RED);
         //  Keep what the screen showed at the failure; the retry resets the game.
         if (VideoSnapshot screen = env.console.video().snapshot()){
@@ -132,13 +130,6 @@ Outcome ConsoleStoryRunner::run_step(const std::string& id, StoryFailure on_fail
         }
         m_console.stats.m_reset++;
         env.update_stats();
-        if (attempt + 1 >= STORY_ATTEMPTS){
-            throw;
-        }
-        if (g_stop_at_first_failure){
-            env.console.log("Stopping at the first failure; the game stays where it failed.", COLOR_ORANGE);
-            throw;
-        }
         return Pokemon::outcome_failed("operation_failed", e.message());
     }
 }
@@ -168,8 +159,7 @@ void ConsoleStoryRunner::run(Pokemon::Segment& segment, const Pokemon::SegmentRa
     hooks.log = [&env](const std::string& line){
         env.log(line, COLOR_BLUE);
     };
-    Pokemon::SegmentPolicy policy;
-    policy.attempts_per_checkpoint = STORY_ATTEMPTS;
+    const Pokemon::SegmentPolicy& policy = m_console.options.policy;
     RunState state;
     const Pokemon::SegmentReport report = Pokemon::run_segment(state, segment, range, policy, hooks);
     if (!report.completed){
