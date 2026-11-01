@@ -191,10 +191,26 @@ void finish_dialogue(
 void enter_door_north(VideoStream& stream, ProControllerContext& context, const std::string& label);
 
 //  For a player inside a building whose door is straight south: closes any
-//  talk still up and walks south out of it. The door's fade is not always
-//  black enough to read as a transition, so a whole new scene also counts.
-//  Fails with a screenshot if three walks south get nowhere.
+//  talk still up and walks south out of it. Out is the door's fade: a dark
+//  look, then a bright one that is not a room; or, after a walk, three looks
+//  in a row that are not a room. A big screen change alone is not: turning
+//  round in a lit Center reads as much (r259). Fails with a screenshot if
+//  three walks south get nowhere.
 void leave_door_south(VideoStream& stream, ProControllerContext& context, const std::string& label);
+
+//  Brightness (mean r + g + b) below which a look is the door's fade, and
+//  above which a look that is not a room is outside.
+inline constexpr double DOOR_FADE_DARK = 120.0;
+inline constexpr double DOOR_OUTSIDE_BRIGHT = 200.0;
+
+//  What leave_door_south() has seen of the door's fade so far.
+struct DoorFadeWatch{
+    bool saw_dark = false;
+};
+//  Takes one look (its brightness, and whether indoors() read a room) and
+//  returns whether we are out: a dark look seen, and now a bright one that
+//  is not a room.
+bool door_fade_look(DoorFadeWatch& watch, double brightness, bool room);
 
 
 

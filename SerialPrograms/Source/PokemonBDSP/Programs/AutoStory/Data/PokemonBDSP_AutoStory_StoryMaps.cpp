@@ -15,7 +15,6 @@
 #include "PokemonBDSP_AutoStory_Route201.h"
 #include "PokemonBDSP_AutoStory_Route202.h"
 #include "PokemonBDSP_AutoStory_SandgemTown.h"
-#include "PokemonBDSP_AutoStory_MapFiles.h"
 #include "PokemonBDSP_AutoStory_StoryMaps.h"
 
 namespace PokemonAutomation{
@@ -38,9 +37,6 @@ const char* const MAP_ROUTE_204_SOUTH = "Route 204 South";
 const char* const MAP_ROUTE_203 = "Route 203";
 
 
-//  The grids are story_grid()'s: the JSON map files once the program has
-//  loaded them, the C++ tables in the offline tests.
-//
 //  Offsets are the maps' places in the game's world grid (the decomp's
 //  cells): Route 201 at world (96,839), Sandgem Town at (160,832), Route 202
 //  at (159,800). Route 201's row 4 is Sandgem's row 11, below the doors, and
@@ -48,9 +44,9 @@ const char* const MAP_ROUTE_203 = "Route 203";
 const MapSet& story_maps(){
     static const MapSet maps = []{
         MapSet maps;
-        maps.add(MAP_ROUTE_201, story_grid("Route201"), {0, 0});
-        maps.add(MAP_SANDGEM_TOWN, story_grid("SandgemTown"), {64, -7});
-        maps.add(MAP_ROUTE_202, story_grid("Route202"), {63, -39});
+        maps.add(MAP_ROUTE_201, Route201::grid(), {0, 0});
+        maps.add(MAP_SANDGEM_TOWN, SandgemTown::grid(), {64, -7});
+        maps.add(MAP_ROUTE_202, Route202::grid(), {63, -39});
         return maps;
     }();
     return maps;
@@ -59,7 +55,7 @@ const MapSet& story_maps(){
 const MapSet& jubilife_maps(){
     static const MapSet maps = []{
         MapSet maps;
-        maps.add(MAP_JUBILIFE_CITY, story_grid("JubilifeCity"), {0, 0});
+        maps.add(MAP_JUBILIFE_CITY, JubilifeCity::grid(), {0, 0});
         return maps;
     }();
     return maps;
@@ -70,7 +66,7 @@ const MapSet& jubilife_maps(){
 const MapSet& route203_maps(){
     static const MapSet maps = []{
         MapSet maps;
-        maps.add(MAP_ROUTE_203, story_grid("Route203"), {0, 0});
+        maps.add(MAP_ROUTE_203, Route203::grid(), {0, 0});
         return maps;
     }();
     return maps;
@@ -89,7 +85,7 @@ const int JUBILIFE_EAST_BOTTOM = 25;
 }
 const MapSet& jubilife_east_maps(){
     static const MapSet maps = []{
-        const TileGrid city = story_grid("JubilifeCity");
+        const TileGrid& city = JubilifeCity::grid();
         const TilePos corner = JUBILIFE_EAST_CORNER;
         std::vector<std::string> rows;
         for (int y = corner.y; y <= JUBILIFE_EAST_BOTTOM; y++){
@@ -132,14 +128,14 @@ bool on_jubilife_north_road(const TilePos& pos){
 const MapSet& oreburgh_mine_maps(){
     static const MapSet maps = []{
         MapSet maps;
-        maps.add(MAP_OREBURGH_MINE, story_grid("OreburghMine"), {0, 0});
+        maps.add(MAP_OREBURGH_MINE, OreburghMine::grid(), {0, 0});
         return maps;
     }();
     return maps;
 }
 
 MapSet ravaged_path_maps(const std::vector<TilePos>& smashed){
-    TileGrid grid = story_grid("RavagedPath");
+    TileGrid grid = RavagedPath::grid();
     for (const TilePos& rock : smashed){
         grid.set(rock, TileType::WALKABLE);
     }
@@ -151,7 +147,7 @@ MapSet ravaged_path_maps(const std::vector<TilePos>& smashed){
 const MapSet& oreburgh_city_maps(){
     static const MapSet maps = []{
         MapSet maps;
-        maps.add(MAP_OREBURGH_CITY, story_grid("OreburghCity"), {0, 0});
+        maps.add(MAP_OREBURGH_CITY, OreburghCity::grid(), {0, 0});
         return maps;
     }();
     return maps;
@@ -160,7 +156,7 @@ const MapSet& oreburgh_city_maps(){
 const MapSet& floaroma_maps(){
     static const MapSet maps = []{
         MapSet maps;
-        maps.add(MAP_FLOAROMA_TOWN, story_grid("FloaromaTown"), {0, 0});
+        maps.add(MAP_FLOAROMA_TOWN, FloaromaTown::grid(), {0, 0});
         return maps;
     }();
     return maps;
@@ -169,7 +165,7 @@ const MapSet& floaroma_maps(){
 const MapSet& route204_north_maps(){
     static const MapSet maps = []{
         MapSet maps;
-        maps.add(MAP_ROUTE_204, story_grid("Route204North"), {0, 0});
+        maps.add(MAP_ROUTE_204, Route204::north_grid(), {0, 0});
         return maps;
     }();
     return maps;
@@ -178,7 +174,7 @@ const MapSet& route204_north_maps(){
 const MapSet& route204_south_maps(){
     static const MapSet maps = []{
         MapSet maps;
-        maps.add(MAP_ROUTE_204_SOUTH, story_grid("Route204South"), {0, 0});
+        maps.add(MAP_ROUTE_204_SOUTH, Route204South::grid(), {0, 0});
         return maps;
     }();
     return maps;

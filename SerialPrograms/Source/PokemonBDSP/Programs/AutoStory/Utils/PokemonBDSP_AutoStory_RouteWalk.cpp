@@ -6,10 +6,12 @@
 
 #include <algorithm>
 #include <cctype>
+#include <format>
 #include "Common/Cpp/PrettyPrint.h"
 #include "Common/Cpp/Filesystem/Filesystem.h"
 #include "CommonFramework/GlobalAutoPaths.h"
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
+#include "CommonFramework/ImageTools/ImageStats.h"
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "CommonTools/Async/InferenceRoutines.h"
@@ -841,55 +843,70 @@ void enter_door_north(VideoStream& stream, ProControllerContext& context, const 
         label + ": could not go through the door.", stream);
 }
 
+bool door_fade_look(DoorFadeWatch& watch, double brightness, bool room){
+    if (brightness < DOOR_FADE_DARK){
+        watch.saw_dark = true;
+    }
+    return watch.saw_dark && !room && brightness >= DOOR_OUTSIDE_BRIGHT;
+}
+
+namespace{
+
+//  Three looks half a second apart, none a room: outside, whatever the fade
+//  did. A look of a lit Center can miss its black edge (r259 at 800 ms),
+//  three in a row standing still do not.
+bool outside_for_three_looks(VideoStream& stream, ProControllerContext& context, const std::string& label){
+    for (size_t look = 0; look < 3; look++){
+        context.wait_for_all_requests();
+        VideoSnapshot now = stream.video().snapshot();
+        const bool room = !now || indoors(*now.frame);
+        stream.log("[Route] " + label + ": standing look " + std::to_string(look + 1) + ": " + (room ? "a room" : "not a room") + ".");
+        if (room){
+            return false;
+        }
+        pbf_wait(context, 500ms);
+    }
+    return true;
+}
+
+}
+
 void leave_door_south(VideoStream& stream, ProControllerContext& context, const std::string& label){
     //  A last line of talk may still be up, and it would stop the walk.
     pbf_mash_button(context, BUTTON_B, 2000ms);
     context.wait_for_all_requests();
-    VideoSnapshot inside = stream.video().snapshot();
-    //  The door's fade changes the whole screen between two looks, as walking
-    //  never does (16 to 102 per look inside a Center; the fades read 121 to
-    //  192). Stop the walk there: a stick held through the fade-in walks on
-    //  outside, and r124a stood ten rows south of the Mart's door after
-    //  "walking out" until a wall stopped it.
-    ImageRGB32 last;
-    bool have_last = false;
-    //  A fade, and not a Pokemon Center's inside: walking in Jubilife's
-    //  Center changes the screen as much (r148c stopped on the mat twice).
-    auto fading = [&](const ImageViewRGB32& screen){
-        const bool fade = have_last && walk_screen_change(last, screen) > WALK_SCENE_CHANGE &&
-            !indoors(screen);
-        last = screen.copy();
-        have_last = true;
-        return fade;
+    //  Stop the walk at the fade: a stick held through the fade-in walks on
+    //  outside (r124a stood ten rows south of the Mart's door; r257 walked
+    //  into a house).
+    DoorFadeWatch watch;
+    auto out_of_door = [&](const ImageViewRGB32& screen){
+        const double brightness = image_stats(screen).average.sum();
+        const bool room = indoors(screen);
+        const bool out = door_fade_look(watch, brightness, room);
+        stream.log(std::format("[Route] {}: look: brightness {:.0f}, {}, fade {}.", label, brightness,
+            room ? "a room" : "not a room", watch.saw_dark ? "seen" : "not seen"));
+        return out;
     };
     bool out = false;
     for (size_t tries = 0; tries < 3 && !out; tries++){
-        //  Compare within this walk only.
-        have_last = false;
-        const WalkResult walk = walk_until(stream, context, 0, -1, 6000ms, label, fading);
+        const WalkResult walk = walk_until(stream, context, 0, -1, 6000ms, label, out_of_door);
         if (walk.stop == WalkStop::DIALOG){
             pbf_mash_button(context, BUTTON_B, 2000ms);
         }
-        //  Out is a black transition, or a fade after which the screen is no
-        //  longer a building's inside. A fade guess alone fires on walking in
-        //  Jubilife's Center (r143a, r148c), the Center check knew only the
-        //  entrance mat (r151a), and no location banner shows after a door
-        //  (r153, 6 s of looks).
+        //  Let the fade-in finish, then look again standing still.
         pbf_wait(context, 1500ms);
-        context.wait_for_all_requests();
-        VideoSnapshot now = stream.video().snapshot();
-        //  The fade the walk stopped on is the door (r257 walked on past it).
-        out = walk.stop == WalkStop::TRANSITION || walk.stop == WalkStop::ARRIVED || (now && !indoors(*now.frame));
+        out = walk.stop == WalkStop::TRANSITION || walk.stop == WalkStop::ARRIVED ||
+            outside_for_three_looks(stream, context, label);
         if (!out){
             stream.log("[Route] " + label + ": still indoors; walking on.");
         }
-        //  Let the fade-in finish.
-        pbf_wait(context, 1500ms);
     }
     if (!out){
         OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
             label + ": did not get back out.", stream);
     }
+    //  Let the fade-in finish.
+    pbf_wait(context, 1500ms);
 }
 
 
