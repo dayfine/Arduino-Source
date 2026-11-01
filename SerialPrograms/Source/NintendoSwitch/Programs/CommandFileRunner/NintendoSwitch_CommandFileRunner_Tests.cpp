@@ -3,7 +3,7 @@
  *  From: https://github.com/PokemonAutomation/
  *
  *  Reading command files, with no console: splitting lines, button and
- *  D-pad names, and which inbox file runs next.
+ *  D-pad names, the "taps" line, and which inbox file runs next.
  */
 
 #include <functional>
@@ -111,6 +111,36 @@ UnitTestResult test_dpad(){
     return true;
 }
 
+UnitTestResult test_taps(){
+    struct Case{
+        std::string line;
+        TapsArguments expected;
+    };
+    const Case CASES[] = {
+        {.line = "taps UP 3", .expected = {.direction = DPAD_UP, .count = 3, .all = false, .hold = 160ms, .release = 640ms, .still = 16}},
+        {.line = "taps LEFT 4 all", .expected = {.direction = DPAD_LEFT, .count = 4, .all = true, .hold = 160ms, .release = 640ms, .still = 16}},
+        {.line = "taps RIGHT 2 100 500", .expected = {.direction = DPAD_RIGHT, .count = 2, .all = false, .hold = 100ms, .release = 500ms, .still = 16}},
+        {.line = "taps DOWN 1 all 200 700 20", .expected = {.direction = DPAD_DOWN, .count = 1, .all = true, .hold = 200ms, .release = 700ms, .still = 20}},
+    };
+    for (const Case& c : CASES){
+        const TapsArguments taps = parse_taps(split_command_line(c.line));
+        if (taps.direction != c.expected.direction || taps.count != c.expected.count || taps.all != c.expected.all){
+            return c.line + ": wrong direction, count or all flag.";
+        }
+        if (taps.hold != c.expected.hold || taps.release != c.expected.release || taps.still != c.expected.still){
+            return c.line + ": expected hold " + std::to_string(c.expected.hold.count())
+                + ", release " + std::to_string(c.expected.release.count()) + ", still " + std::to_string(c.expected.still)
+                + "; read " + std::to_string(taps.hold.count()) + ", " + std::to_string(taps.release.count()) + ", " + std::to_string(taps.still);
+        }
+    }
+    for (const char* line : {"taps UP", "taps UP x", "taps UP 0", "taps UP 2.5", "taps NORTH 2", "taps UP 2 all soon"}){
+        if (!throws_parse_error([&]{ parse_taps(split_command_line(line)); })){
+            return std::string(line) + " should be a parse error.";
+        }
+    }
+    return true;
+}
+
 UnitTestResult test_next_file(){
     const Filesystem::Path inbox = Filesystem::unique_temp_path(
         Filesystem::application_scratch_path() / "CommandFileRunnerTest"
@@ -120,14 +150,14 @@ UnitTestResult test_next_file(){
         FileIO file(inbox / name, FileMode::WRITE);
     };
     std::string error;
-    if (next_command_file(inbox.string())){
+    if (next_request_file(inbox.string())){
         error = "An empty inbox has no next file.";
     }
     touch("b.txt");
     touch("a.out");
     touch("c.txt");
     Filesystem::create_directories(inbox / "a.txt");
-    const std::optional<Filesystem::Path> next = next_command_file(inbox.string());
+    const std::optional<Filesystem::Path> next = next_request_file(inbox.string());
     if (error.empty() && (!next || next->filename().string() != "b.txt")){
         error = "Expected b.txt: the first .txt file by name, skipping other files and folders.";
     }
@@ -163,6 +193,7 @@ void add_tests_CommandFileRunner(UnitTestDatabase& database){
     database.add<Test_CommandFileRunner>("argument errors", test_argument_errors);
     database.add<Test_CommandFileRunner>("buttons", test_buttons);
     database.add<Test_CommandFileRunner>("D-pad", test_dpad);
+    database.add<Test_CommandFileRunner>("taps arguments", test_taps);
     database.add<Test_CommandFileRunner>("next inbox file", test_next_file);
 }
 

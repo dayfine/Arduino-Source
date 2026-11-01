@@ -768,6 +768,8 @@ file(GLOB LIBRARY_SOURCES
     Source/CommonFramework/Windows/DpiScaler.h
     Source/CommonFramework/Windows/LabControl.cpp
     Source/CommonFramework/Windows/LabControl.h
+    Source/CommonFramework/Windows/LabRequest.cpp
+    Source/CommonFramework/Windows/LabRequest.h
     Source/CommonFramework/Windows/MainWindow.cpp
     Source/CommonFramework/Windows/MainWindow.h
     Source/CommonFramework/Windows/WindowTracker.cpp
