@@ -16,6 +16,7 @@
 #include "CommonFramework/GlobalAutoPaths.h"
 #include "CommonFramework/Logging/Logger.h"
 #include "CommonFramework/ProgramSession.h"
+#include "CommonFramework/Tools/GlobalThreadPools.h"
 #include "LabChannel.h"
 
 namespace PokemonAutomation{
@@ -162,11 +163,22 @@ std::string program_state_name(ProgramState state){
 
 
 
-LabChannel::LabChannel(LabChannelHost& host, std::unique_ptr<LabConsoleCommands> console)
-    : m_host(host)
+std::unique_ptr<LabChannel> LabChannel::start_if_enabled(
+    LabChannelCallbacks callbacks, std::unique_ptr<LabConsoleCommands> console
+){
+    if (!Filesystem::is_directory(Filesystem::Path(folder()))){
+        return nullptr;
+    }
+    return std::unique_ptr<LabChannel>(new LabChannel(std::move(callbacks), std::move(console)));
+}
+LabChannel::LabChannel(LabChannelCallbacks callbacks, std::unique_ptr<LabConsoleCommands> console)
+    : m_callbacks(std::move(callbacks))
     , m_console(std::move(console))
 {
-    m_thread = Thread([this]{ run(); });
+    //  A pool task rather than a Thread: Thread::join() does not wait under
+    //  the Qt thread-adoption workaround, and the worker must be gone before
+    //  the members it uses are.
+    m_worker = GlobalThreadPools::unlimited_normal().dispatch([this]{ run(); });
 }
 LabChannel::~LabChannel(){
     m_stopping.store(true, std::memory_order_release);
@@ -175,7 +187,7 @@ LabChannel::~LabChannel(){
         m_idle_cv.notify_all();
     }
     set_panel(nullptr);
-    m_thread.join();
+    m_worker.wait_and_ignore_exceptions();
 }
 
 const std::string& LabChannel::folder(){
@@ -395,11 +407,11 @@ std::string LabChannel::run_ui_command(const LabRequestLine& line, std::ostream&
         }
         const std::string& identifier = words[1];
         return run_on_ui([&]{
-            std::string error = m_host.lab_select_program(identifier);
+            std::string error = m_callbacks.select_program(identifier);
             if (!error.empty()){
                 return error;
             }
-            PanelSession* panel = m_host.lab_current_panel();
+            PanelSession* panel = m_callbacks.current_panel();
             if (panel == nullptr || panel->descriptor().identifier() != identifier){
                 return "select: the window did not switch to " + identifier;
             }
@@ -413,7 +425,7 @@ std::string LabChannel::run_ui_command(const LabRequestLine& line, std::ostream&
         const std::string text = line_after_words(line.text, 2);
         std::string result;
         std::string error = run_on_ui([&]{
-            return set_option(m_host.lab_current_panel(), key, text, result);
+            return set_option(m_callbacks.current_panel(), key, text, result);
         });
         if (error.empty()){
             out << "set " << key << " = " << result << "\n";
@@ -422,7 +434,7 @@ std::string LabChannel::run_ui_command(const LabRequestLine& line, std::ostream&
     }
     const bool start = command == "start";
     return run_on_ui([&]{
-        return start_or_stop(m_host.lab_current_panel(), start);
+        return start_or_stop(m_callbacks.current_panel(), start);
     });
 }
 

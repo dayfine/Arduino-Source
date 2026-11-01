@@ -14,10 +14,11 @@
  *  "Lab/state" is rewritten after every request and whenever the program
  *  state changes.
  *
- *  The channel owns the worker thread and the files. Anything that touches
- *  the window (select, start, stop, set) runs on the UI thread through the
- *  LabChannelHost; console commands run on the worker through the
- *  LabConsoleCommands of the console type (NintendoSwitch_LabCommands.h).
+ *  The channel owns the worker and the files. Anything that touches the
+ *  window (select, start, stop, set) runs on the UI thread through the
+ *  LabChannelCallbacks the window gives it; console commands run on the
+ *  worker through the LabConsoleCommands of the console type
+ *  (NintendoSwitch_LabCommands.h).
  *
  */
 
@@ -31,9 +32,9 @@
 #include <string>
 #include <vector>
 #include "Common/Cpp/CancellableScope.h"
+#include "Common/Cpp/Concurrency/AsyncTask.h"
 #include "Common/Cpp/Concurrency/Mutex.h"
 #include "Common/Cpp/Concurrency/ConditionVariable.h"
-#include "Common/Cpp/Concurrency/Thread.h"
 #include "CommonFramework/Globals.h"
 #include "CommonFramework/Panels/PanelSession.h"
 #include "LabRequest.h"
@@ -44,17 +45,14 @@ namespace PokemonAutomation{
 std::string program_state_name(ProgramState state);
 
 
-//  The window, as the channel sees it. Called on the UI thread only.
-class LabChannelHost{
-public:
-    virtual ~LabChannelHost() = default;
-
+//  The window, as the channel sees it. Both are called on the UI thread only.
+struct LabChannelCallbacks{
     //  The panel the window shows, or nullptr.
-    virtual PanelSession* lab_current_panel() = 0;
+    std::function<PanelSession*()> current_panel;
 
     //  Shows the program with this identifier ("<game>:<program>"), as
     //  clicking it in the program list does. Returns an error message, or "".
-    virtual std::string lab_select_program(const std::string& identifier) = 0;
+    std::function<std::string(const std::string& identifier)> select_program;
 };
 
 
@@ -97,7 +95,14 @@ public:
 
 class LabChannel{
 public:
-    LabChannel(LabChannelHost& host, std::unique_ptr<LabConsoleCommands> console);
+    //  The channel, if "<user files>/Lab/" exists when the app starts;
+    //  nullptr otherwise, and nothing runs. Create the folder before
+    //  launching the app.
+    static std::unique_ptr<LabChannel> start_if_enabled(
+        LabChannelCallbacks callbacks, std::unique_ptr<LabConsoleCommands> console
+    );
+
+    //  Stops the worker and waits for it.
     ~LabChannel();
 
     //  The panel the window shows now, or nullptr. Call from the UI thread
@@ -107,6 +112,8 @@ public:
 
 
 private:
+    LabChannel(LabChannelCallbacks callbacks, std::unique_ptr<LabConsoleCommands> console);
+
     static const std::string& folder();
 
     void run();
@@ -125,7 +132,7 @@ private:
 
 
 private:
-    LabChannelHost& m_host;
+    LabChannelCallbacks m_callbacks;
     std::unique_ptr<LabConsoleCommands> m_console;
 
     //  The selected panel, read on the worker under this lock. The UI thread
@@ -146,7 +153,7 @@ private:
     Mutex m_idle_lock;
     ConditionVariable m_idle_cv;
     std::atomic<bool> m_stopping{false};
-    Thread m_thread;
+    AsyncTask m_worker;     //  Waited for in the destructor, before the members above go.
 };
 
 

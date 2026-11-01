@@ -95,7 +95,10 @@ send)
     request "$1"; exit $?;;
 start|stop|select|set|owner|keepawake)
     sh "$here/lablock.sh" check || exit 3
-    [ -f "$D/state" ] || mkdir -p "$D" || exit 1;;
+    if [ ! -d "$D" ]; then
+        mkdir -p "$D" || exit 1
+        echo "labctl: created $D; the app reads it from its next launch" >&2
+    fi;;
 *) echo "labctl: unknown command $cmd" >&2; exit 2;;
 esac
 
