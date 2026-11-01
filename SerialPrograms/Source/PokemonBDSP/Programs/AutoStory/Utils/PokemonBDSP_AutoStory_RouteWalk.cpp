@@ -359,7 +359,13 @@ std::vector<TilePos> walk_route(
                     result = walk_until_dpad(stream, context, x, y, limit, leg_label, watch_banner, true);
                     walked_tiles += tiles_moved(result);
                 }
-                if (!interrupted && result.stop == WalkStop::BLOCKED && walked_tiles + 2 < nearest){
+                //  Any stop short of the wall's distance: someone who stays put
+                //  is talked to, and the leg is planned again from where we are.
+                //  Within the time count's slack this may be the wall itself,
+                //  where A does nothing and the new plan walks no further (r239a:
+                //  a wanderer 3 tiles short passed as "about 8 of 10", and every
+                //  later leg was off by those tiles).
+                if (!interrupted && result.stop == WalkStop::BLOCKED && walked_tiles < nearest){
                     //  Someone who stays put: talk to them. A trainer we walked up
                     //  to from the side starts the battle this way.
                     pbf_press_button(context, BUTTON_A, 80ms, 200ms);
