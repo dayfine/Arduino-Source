@@ -4,6 +4,7 @@
  *
  */
 
+#include <cmath>
 #include <functional>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/Filesystem/Filesystem.h"
