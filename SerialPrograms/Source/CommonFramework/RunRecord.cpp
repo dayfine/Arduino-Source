@@ -42,12 +42,22 @@ std::string run_outcome_name(RunOutcome outcome){
 
 
 
-RunRecordStore& RunRecordStore::instance(){
-    static RunRecordStore store(DEFAULT_CAPACITY, false);
-    return store;
+namespace{
+std::atomic<bool>& app_run_records_enabled(){
+    static std::atomic<bool> enabled{false};
+    return enabled;
+}
 }
 
-RunRecordStore::RunRecordStore(size_t capacity, bool enabled)
+RunRecordStore& app_run_records(){
+    static RunRecordStore store(RunRecordStore::DEFAULT_CAPACITY, &app_run_records_enabled());
+    return store;
+}
+void enable_app_run_records(){
+    app_run_records_enabled().store(true, std::memory_order_release);
+}
+
+RunRecordStore::RunRecordStore(size_t capacity, const std::atomic<bool>* enabled)
     //  The app's start time, to the microsecond: two instances started in
     //  the same second still get different IDs.
     : m_app_token(now_to_filestring())
@@ -56,7 +66,7 @@ RunRecordStore::RunRecordStore(size_t capacity, bool enabled)
 {}
 
 std::string RunRecordStore::begin(std::string program, std::string settings){
-    if (!enabled()){
+    if (m_enabled != nullptr && !m_enabled->load(std::memory_order_acquire)){
         return "";
     }
     std::lock_guard<Mutex> lg(m_lock);
