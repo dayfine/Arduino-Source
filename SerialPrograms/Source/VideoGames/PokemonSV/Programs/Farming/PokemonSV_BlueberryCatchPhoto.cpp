@@ -26,6 +26,7 @@
 #include "VideoGames/PokemonSV/Programs/PokemonSV_WorldNavigation.h"
 #include "VideoGames/PokemonSV/Programs/Battles/PokemonSV_BasicCatcher.h"
 #include "VideoGames/PokemonSV/Programs/PokemonSV_Terarium.h"
+#include "VideoGames/PokemonSV/Programs/Farming/PokemonSV_BlueberryQuests.h"
 #include "PokemonSV_BlueberryCatchPhoto.h"
 
 namespace PokemonAutomation{
@@ -917,6 +918,8 @@ void quest_catch(
             );
             if (ret2 != 0){
                 console.log("Did not enter battle. Did target spawn?");
+                console.log("BBQ quest=" + BBQuests_enum_to_string(current_quest) + " event=battle_entry outcome=timeout");
+                log_bbq_snapshot(console, BBQuests_enum_to_string(current_quest) + "-battle-entry-timeout");
             }
         },
         {

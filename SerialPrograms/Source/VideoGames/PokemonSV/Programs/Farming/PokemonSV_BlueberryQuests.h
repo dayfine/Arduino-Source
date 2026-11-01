@@ -18,6 +18,8 @@ namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonSV{
 
+// Save local diagnostic evidence under DEBUG_PATH()/BBQ, without telemetry.
+void log_bbq_snapshot(VideoStream& stream, const std::string& label);
 //Basic blue quests
 const std::set<BBQuests> blue_quests = {
     BBQuests::auto_10, BBQuests::make_tm, BBQuests::pickup_10, BBQuests::sneak_up, BBQuests::photo_fly, BBQuests::photo_swim, BBQuests::photo_canyon, BBQuests::photo_coastal, BBQuests::photo_polar, BBQuests::photo_savanna, BBQuests::tera_self_defeat, 

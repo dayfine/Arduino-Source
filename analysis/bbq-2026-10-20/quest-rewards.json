@@ -1,0 +1,406 @@
+{
+  "source": "https://bulbapedia.bulbagarden.net/wiki/Blueberry_Quest",
+  "cross_check": "https://www.serebii.net/scarletviolet/blueberryquests.shtml",
+  "notes": [
+    "Serebii disagrees on make-tm (40 vs 20), wild-tera (150 vs 100), washing (20 vs 100), and biome group photos (300 vs 400). Canonical values follow Bulbapedia; report sensitivity for affected observed quests.",
+    "Gold reroll cost is unspecified; null does not mean free.",
+    "Ditto variants reward 500/550/600 for 3/4/5 blocks respectively."
+  ],
+  "quests": {
+    "auto-10": {
+      "reward_bp": 20,
+      "tier": "blue",
+      "reroll_bp": 10
+    },
+    "make-tm": {
+      "reward_bp": 20,
+      "tier": "blue",
+      "reroll_bp": 10
+    },
+    "pickup-10": {
+      "reward_bp": 20,
+      "tier": "blue",
+      "reroll_bp": 10
+    },
+    "sneak-up": {
+      "reward_bp": 20,
+      "tier": "blue",
+      "reroll_bp": 10
+    },
+    "photo-fly": {
+      "reward_bp": 30,
+      "tier": "blue",
+      "reroll_bp": 10
+    },
+    "photo-swim": {
+      "reward_bp": 30,
+      "tier": "blue",
+      "reroll_bp": 10
+    },
+    "photo-canyon": {
+      "reward_bp": 30,
+      "tier": "blue",
+      "reroll_bp": 10
+    },
+    "photo-coastal": {
+      "reward_bp": 30,
+      "tier": "blue",
+      "reroll_bp": 10
+    },
+    "photo-polar": {
+      "reward_bp": 30,
+      "tier": "blue",
+      "reroll_bp": 10
+    },
+    "photo-savanna": {
+      "reward_bp": 30,
+      "tier": "blue",
+      "reroll_bp": 10
+    },
+    "tera-self-defeat": {
+      "reward_bp": 30,
+      "tier": "blue",
+      "reroll_bp": 10
+    },
+    "travel-500": {
+      "reward_bp": 20,
+      "tier": "blue",
+      "reroll_bp": 10
+    },
+    "catch-any": {
+      "reward_bp": 20,
+      "tier": "blue",
+      "reroll_bp": 10
+    },
+    "catch-normal": {
+      "reward_bp": 40,
+      "tier": "blue",
+      "reroll_bp": 10
+    },
+    "catch-fighting": {
+      "reward_bp": 40,
+      "tier": "blue",
+      "reroll_bp": 10
+    },
+    "catch-flying": {
+      "reward_bp": 40,
+      "tier": "blue",
+      "reroll_bp": 10
+    },
+    "catch-poison": {
+      "reward_bp": 40,
+      "tier": "blue",
+      "reroll_bp": 10
+    },
+    "catch-ground": {
+      "reward_bp": 40,
+      "tier": "blue",
+      "reroll_bp": 10
+    },
+    "catch-rock": {
+      "reward_bp": 40,
+      "tier": "blue",
+      "reroll_bp": 10
+    },
+    "catch-bug": {
+      "reward_bp": 40,
+      "tier": "blue",
+      "reroll_bp": 10
+    },
+    "catch-ghost": {
+      "reward_bp": 40,
+      "tier": "blue",
+      "reroll_bp": 10
+    },
+    "catch-steel": {
+      "reward_bp": 40,
+      "tier": "blue",
+      "reroll_bp": 10
+    },
+    "catch-fire": {
+      "reward_bp": 40,
+      "tier": "blue",
+      "reroll_bp": 10
+    },
+    "catch-water": {
+      "reward_bp": 40,
+      "tier": "blue",
+      "reroll_bp": 10
+    },
+    "catch-grass": {
+      "reward_bp": 40,
+      "tier": "blue",
+      "reroll_bp": 10
+    },
+    "catch-electric": {
+      "reward_bp": 40,
+      "tier": "blue",
+      "reroll_bp": 10
+    },
+    "catch-psychic": {
+      "reward_bp": 40,
+      "tier": "blue",
+      "reroll_bp": 10
+    },
+    "catch-ice": {
+      "reward_bp": 40,
+      "tier": "blue",
+      "reroll_bp": 10
+    },
+    "catch-dragon": {
+      "reward_bp": 40,
+      "tier": "blue",
+      "reroll_bp": 10
+    },
+    "catch-dark": {
+      "reward_bp": 40,
+      "tier": "blue",
+      "reroll_bp": 10
+    },
+    "catch-fairy": {
+      "reward_bp": 40,
+      "tier": "blue",
+      "reroll_bp": 10
+    },
+    "wash-pokemon": {
+      "reward_bp": 100,
+      "tier": "red",
+      "reroll_bp": 50
+    },
+    "wild-tera": {
+      "reward_bp": 100,
+      "tier": "red",
+      "reroll_bp": 50
+    },
+    "auto-30": {
+      "reward_bp": 130,
+      "tier": "red",
+      "reroll_bp": 50
+    },
+    "tera-raid": {
+      "reward_bp": 150,
+      "tier": "red",
+      "reroll_bp": 50
+    },
+    "sandwich-three": {
+      "reward_bp": 130,
+      "tier": "red",
+      "reroll_bp": 50
+    },
+    "bitter-sandwich": {
+      "reward_bp": 150,
+      "tier": "red",
+      "reroll_bp": 50
+    },
+    "sweet-sandwich": {
+      "reward_bp": 150,
+      "tier": "red",
+      "reroll_bp": 50
+    },
+    "salty-sandwich": {
+      "reward_bp": 150,
+      "tier": "red",
+      "reroll_bp": 50
+    },
+    "sour-sandwich": {
+      "reward_bp": 150,
+      "tier": "red",
+      "reroll_bp": 50
+    },
+    "spicy-sandwich": {
+      "reward_bp": 150,
+      "tier": "red",
+      "reroll_bp": 50
+    },
+    "hatch-egg": {
+      "reward_bp": 200,
+      "tier": "red",
+      "reroll_bp": 50
+    },
+    "photo-normal": {
+      "reward_bp": 150,
+      "tier": "red",
+      "reroll_bp": 50
+    },
+    "photo-fighting": {
+      "reward_bp": 150,
+      "tier": "red",
+      "reroll_bp": 50
+    },
+    "photo-flying": {
+      "reward_bp": 150,
+      "tier": "red",
+      "reroll_bp": 50
+    },
+    "photo-poison": {
+      "reward_bp": 150,
+      "tier": "red",
+      "reroll_bp": 50
+    },
+    "photo-ground": {
+      "reward_bp": 150,
+      "tier": "red",
+      "reroll_bp": 50
+    },
+    "photo-rock": {
+      "reward_bp": 150,
+      "tier": "red",
+      "reroll_bp": 50
+    },
+    "photo-bug": {
+      "reward_bp": 150,
+      "tier": "red",
+      "reroll_bp": 50
+    },
+    "photo-ghost": {
+      "reward_bp": 150,
+      "tier": "red",
+      "reroll_bp": 50
+    },
+    "photo-steel": {
+      "reward_bp": 150,
+      "tier": "red",
+      "reroll_bp": 50
+    },
+    "photo-fire": {
+      "reward_bp": 150,
+      "tier": "red",
+      "reroll_bp": 50
+    },
+    "photo-water": {
+      "reward_bp": 150,
+      "tier": "red",
+      "reroll_bp": 50
+    },
+    "photo-grass": {
+      "reward_bp": 150,
+      "tier": "red",
+      "reroll_bp": 50
+    },
+    "photo-electric": {
+      "reward_bp": 150,
+      "tier": "red",
+      "reroll_bp": 50
+    },
+    "photo-psychic": {
+      "reward_bp": 150,
+      "tier": "red",
+      "reroll_bp": 50
+    },
+    "photo-ice": {
+      "reward_bp": 150,
+      "tier": "red",
+      "reroll_bp": 50
+    },
+    "photo-dragon": {
+      "reward_bp": 150,
+      "tier": "red",
+      "reroll_bp": 50
+    },
+    "photo-dark": {
+      "reward_bp": 150,
+      "tier": "red",
+      "reroll_bp": 50
+    },
+    "photo-fairy": {
+      "reward_bp": 150,
+      "tier": "red",
+      "reroll_bp": 50
+    },
+    "ditto-central": {
+      "reward_bp": [
+        500,
+        550,
+        600
+      ],
+      "tier": "gold",
+      "reroll_bp": null
+    },
+    "ditto-canyon": {
+      "reward_bp": [
+        500,
+        550,
+        600
+      ],
+      "tier": "gold",
+      "reroll_bp": null
+    },
+    "ditto-coastal": {
+      "reward_bp": [
+        500,
+        550,
+        600
+      ],
+      "tier": "gold",
+      "reroll_bp": null
+    },
+    "ditto-polar": {
+      "reward_bp": [
+        500,
+        550,
+        600
+      ],
+      "tier": "gold",
+      "reroll_bp": null
+    },
+    "ditto-savanna": {
+      "reward_bp": [
+        500,
+        550,
+        600
+      ],
+      "tier": "gold",
+      "reroll_bp": null
+    },
+    "group-canyon": {
+      "reward_bp": 400,
+      "tier": "gold",
+      "reroll_bp": null
+    },
+    "group-coastal": {
+      "reward_bp": 400,
+      "tier": "gold",
+      "reroll_bp": null
+    },
+    "group-polar": {
+      "reward_bp": 400,
+      "tier": "gold",
+      "reroll_bp": null
+    },
+    "group-savanna": {
+      "reward_bp": 400,
+      "tier": "gold",
+      "reroll_bp": null
+    },
+    "group-eyewear": {
+      "reward_bp": 400,
+      "tier": "gold",
+      "reroll_bp": null
+    },
+    "group-nonuniform": {
+      "reward_bp": 400,
+      "tier": "gold",
+      "reroll_bp": null
+    },
+    "group-masks": {
+      "reward_bp": 400,
+      "tier": "gold",
+      "reroll_bp": null
+    },
+    "sandwich-four": {
+      "reward_bp": 500,
+      "tier": "gold",
+      "reroll_bp": null
+    },
+    "catch-hint": {
+      "reward_bp": 500,
+      "tier": "gold",
+      "reroll_bp": null
+    },
+    "catch-hint2": {
+      "reward_bp": 600,
+      "tier": "gold",
+      "reroll_bp": null
+    }
+  }
+}
