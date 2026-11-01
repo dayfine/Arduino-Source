@@ -27,12 +27,18 @@ Each map file's header starts with the same three lines, kept current with the c
 | Oreburgh City | decomp (pokediamond) | none yet (01.04, 01.05 run as records) | probe the Center doorstep (x 46 or 47) |
 | Oreburgh Gate | decomp (pokediamond) | none yet | |
 | Floaroma Town | decomp (pokediamond), the old couple from the console | 01.11 (1x, as a record) | |
-| Twinleaf Town | decomp (pokediamond) | none: 00.01 to 00.03 replay recorded stick inputs (#1717), no route on the grid | redo 00.01 to 00.03 as planned walks |
-| Verity Lakefront, Lake Verity | decomp (pokediamond) | none: 00.02, 00.03 replay recorded stick inputs (#1717) | redo as planned walks |
+| Twinleaf Town | decomp (pokediamond) | none: 00.01 replays recorded stick inputs (#1717); its lines and records are on the grid (Segment00Lines, task #22), tested offline | a new-game run of the lines, then switch 00.01 to them |
+| Verity Lakefront | decomp (pokediamond) | none: 00.01 to 00.03 replay recorded stick inputs (#1717); lines and records on the grid, tested offline | the run must say which entrance tile the lake's scene leaves us on |
+| Lake Verity | decomp (pokediamond) | none, and no walk: the scene carries us in and the game warps us out | none |
+| Oreburgh Gym | decomp (pokediamond) | none: 01.04 walks it as a record (north until a trainer stops us), traced on the grid | a plan on it if the record ever fails |
 
 Rules: terrain from the decomp, people and Platinum-only edits from the console;
 a route is coded only over tiles a human or a probe has walked; a map change
-re-runs every checkpoint listed on it. The decomp comparison that found the 3/4
+re-runs every checkpoint listed on it. Scenes' trigger rectangles come from the
+decomp too (the events files' coord events: Diamond's binaries parsed by hand,
+Platinum's JSON readable), listed in `Segment00Lines::scene_triggers()` for
+00.01 to 00.03; a line into a scene must step into its rectangle on its last
+tile only, which the Segment 00 tests check. The decomp comparison that found the 3/4
 rows is the 2026-10-31 report (`compare.md`, with the decoded grids); the
 re-derivation of 2026-10-31 took every grid above from `devtools/maps decomp
 --repo pret/pokediamond` and translated each file's named tiles with its
