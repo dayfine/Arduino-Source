@@ -7,6 +7,7 @@
  *
  */
 
+#include <format>
 #include <functional>
 #include <string>
 #include <vector>
@@ -51,6 +52,7 @@ public:
         step.facing = direction;
         if (tile == '"'){
             step.extra_cost = 5;
+            step.wild = true;
         }
         if (tile == 'W'){
             step.next = m_warp_to;
@@ -85,10 +87,13 @@ std::string describe(const std::vector<Leg<TilePos>>& legs){
         text += leg.kind == LegKind::FACE ? "face " : "walk ";
         text += direction_name(leg.direction);
         if (leg.kind == LegKind::WALK){
-            text += " " + std::to_string(leg.tiles);
+            text += std::format(" {}", leg.tiles);
         }
         if (leg.to_wall){
             text += " (to wall)";
+        }
+        if (leg.wild){
+            text += " (wild)";
         }
         if (leg.warps){
             text += " (warp)";
@@ -101,9 +106,18 @@ std::string describe(const std::vector<Leg<TilePos>>& legs){
 std::optional<std::vector<Leg<TilePos>>> plan(
     const ToyGame& game, TilePos from, TilePos to,
     std::optional<Direction> start_facing = std::nullopt,
-    std::optional<Direction> goal_facing = std::nullopt
+    std::optional<Direction> goal_facing = std::nullopt,
+    const LegCosts& costs = LegCosts()
 ){
-    return plan_legs(game, from, start_facing, std::function<bool(const TilePos&)>([to](const TilePos& pos){ return pos == to; }), goal_facing);
+    return plan_legs(game, from, start_facing, std::function<bool(const TilePos&)>([to](const TilePos& pos){ return pos == to; }), goal_facing, costs);
+}
+
+//  The open-stop weight after a wild step, high enough to outweigh any detour
+//  in these grids.
+LegCosts wild_stop_costs(){
+    LegCosts costs;
+    costs.per_open_wild_stop = 300;
+    return costs;
 }
 
 
@@ -194,7 +208,7 @@ UnitTestResult test_warp_ends_leg(){
         if (leg.warps){
             warped = true;
             if (!(leg.end == TilePos{4, 1})){
-                return "The warp leg ends at " + to_string(leg.end) + ":" + describe(*legs);
+                return std::format("The warp leg ends at {}:{}", to_string(leg.end), describe(*legs));
             }
         }
     }
@@ -211,6 +225,95 @@ UnitTestResult test_goal_facing(){
     const auto legs = plan(game, {0, 0}, {2, 0}, std::nullopt, Direction::NORTH);
     if (!legs || legs->back().kind != LegKind::FACE || legs->back().direction != Direction::NORTH){
         return "Expected to end facing north:" + (legs ? describe(*legs) : std::string(" none"));
+    }
+    return true;
+}
+
+UnitTestResult test_wild_leg(){
+    //  The only way crosses the grass: that leg is wild. One that doesn't isn't.
+    const ToyGame grass({
+        ".\"\".",
+    });
+    const auto through = plan(grass, {0, 0}, {3, 0});
+    if (!through || through->size() != 1 || !(*through)[0].wild){
+        return "Expected one wild leg:" + (through ? describe(*through) : std::string(" none"));
+    }
+    const ToyGame floor({
+        "....",
+    });
+    const auto across = plan(floor, {0, 0}, {3, 0});
+    if (!across || across->size() != 1 || (*across)[0].wild){
+        return "Expected one leg that isn't wild:" + (across ? describe(*across) : std::string(" none"));
+    }
+    return true;
+}
+
+UnitTestResult test_open_wild_stop(){
+    //  Two ways down to the goal at (3, 2): turn south right after the
+    //  grass, stopping in the open, or walk on to the wall and come back
+    //  along the bottom row. The first is shorter by more than an open stop
+    //  costs, but its open stop follows grass, so with the open-wild-stop
+    //  weight the second wins.
+    const ToyGame game({
+        ".\"\"..........",
+        "###.########.",
+        "###..........",
+    });
+    const auto plain = plan(game, {0, 0}, {3, 2});
+    if (!plain || plain->empty() || (*plain)[0].to_wall || !(*plain)[0].wild || (*plain)[0].end.x != 3){
+        return "Without the weight, expected a wild leg east to stop in the open at x = 3:" + (plain ? describe(*plain) : std::string(" none"));
+    }
+    const auto weighed = plan(game, {0, 0}, {3, 2}, std::nullopt, std::nullopt, wild_stop_costs());
+    if (!weighed || weighed->empty() || !(*weighed)[0].to_wall){
+        return "With the weight, expected to walk east to the wall:" + (weighed ? describe(*weighed) : std::string(" none"));
+    }
+    return true;
+}
+
+UnitTestResult test_open_stop_without_grass(){
+    //  The same map without grass: the weight changes nothing.
+    const ToyGame game({
+        ".............",
+        "###.########.",
+        "###..........",
+    });
+    const auto legs = plan(game, {0, 0}, {3, 2}, std::nullopt, std::nullopt, wild_stop_costs());
+    if (!legs || legs->empty() || (*legs)[0].to_wall || (*legs)[0].wild || (*legs)[0].end.x != 3){
+        return "Expected to stop in the open at x = 3:" + (legs ? describe(*legs) : std::string(" none"));
+    }
+    return true;
+}
+
+UnitTestResult test_wild_ends_with_leg(){
+    //  East through the grass to the wall, then south. The south leg has no
+    //  wild step, so it still stops in the open at (2, 2) to turn east to
+    //  the goal at (4, 2), rather than going around by the bottom row.
+    const ToyGame game({
+        ".\"\"###",
+        "##.###",
+        "##...#",
+        "##.#.#",
+        "##.#.#",
+        "##.#.#",
+        "##.#.#",
+        "##.#.#",
+        "##.#.#",
+        "##.#.#",
+        "##.#.#",
+        "##.#.#",
+        "##...#",
+    });
+    const auto legs = plan(game, {0, 0}, {4, 2}, std::nullopt, std::nullopt, wild_stop_costs());
+    if (!legs || legs->size() != 3){
+        return "Expected 3 legs:" + (legs ? describe(*legs) : std::string(" none"));
+    }
+    const Leg<TilePos>& east = (*legs)[0];
+    const Leg<TilePos>& south = (*legs)[1];
+    if (!east.wild || !east.to_wall){
+        return "Expected a wild leg east to the wall:" + describe(*legs);
+    }
+    if (south.wild || south.to_wall || !(south.end == TilePos{2, 2})){
+        return "Expected the south leg to stop in the open at (2, 2):" + describe(*legs);
     }
     return true;
 }
@@ -251,6 +354,10 @@ void add_tests_LegPlanner(UnitTestDatabase& database){
     database.add<Test_LegPlanner>("a warp ends the leg", test_warp_ends_leg);
     database.add<Test_LegPlanner>("turns to face the goal", test_goal_facing);
     database.add<Test_LegPlanner>("nothing through a wall", test_unreachable);
+    database.add<Test_LegPlanner>("a leg through grass is wild", test_wild_leg);
+    database.add<Test_LegPlanner>("an open stop after grass is weighed", test_open_wild_stop);
+    database.add<Test_LegPlanner>("the weight needs a wild step", test_open_stop_without_grass);
+    database.add<Test_LegPlanner>("a new leg is not wild", test_wild_ends_with_leg);
 }
 
 
