@@ -535,18 +535,20 @@ void BDSPAutoStory::on_config_value_changed(void*){
 //  Program logic
 // ---------------------------------------------------------------------------
 
+//  The maps every walk plans on, from their JSON files: stop here, before
+//  the game is touched, if one is missing or differs from its C++ table.
+static void load_story_maps(SingleSwitchProgramEnvironment& env){
+    load_story_map_files(story_map_folder());
+    env.log(std::format("[AutoStory] Maps: {} JSON files from {}", story_map_files().size(), story_map_folder()));
+}
+
 void BDSPAutoStory::program(
     SingleSwitchProgramEnvironment& env,
     ProControllerContext& context
 ){
     AutoStoryStats& stats = env.current_stats<AutoStoryStats>();
     g_stop_at_first_failure = STOP_AT_FIRST_FAILURE;
-
-    //  The maps every walk plans on, from their JSON files: stop here, before
-    //  the game is touched, if one is missing or differs from its C++ table.
-    load_story_map_files(story_map_folder());
-    env.log(std::format("[AutoStory] Maps: {} JSON files from {}", story_map_files().size(), story_map_folder()));
-
+    load_story_maps(env);
     AutoStoryOptions options{
         Language::English,
         STARTERCHOICE,

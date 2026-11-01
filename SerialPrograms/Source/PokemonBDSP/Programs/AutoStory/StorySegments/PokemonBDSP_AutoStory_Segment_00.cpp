@@ -1409,75 +1409,75 @@ namespace PokemonAutomation {
             run_story_table(env, context, options, stats, make_segment_00, {"00.00", "00.00"});
         }
 
-        Pokemon::Segment make_segment_00(StoryStepRunner& runner) {
-            Pokemon::Segment segment{"00", {}};
-            auto row = [&](StoryCheckpointSpec spec) {
-                segment.checkpoints.push_back(story_checkpoint(runner, std::move(spec)));
-            };
-            row({
-                .id = "00.00", .title = "Verify Settings", .on_failure = StoryFailure::STOP,
-                .steps = {
-                    {"verify_settings", "before any route movement or checkpoint save: fail visibly if options cannot be read, rather than navigate with unknown settings",
-                        [](StoryConsole& c) {
-                            verify_tutorial_settings(c.env.console, c.context);
-                            c.context.wait_for_all_requests();
-                        }},
-                },
-            });
-            row({
-                .id = "00.01", .title = "After TV", .on_failure = StoryFailure::RELOAD_AND_RETRY,
-                .steps = {
+        static void verify_settings_step(StoryConsole& c) {
+            verify_tutorial_settings(c.env.console, c.context);
+            c.context.wait_for_all_requests();
+        }
+        static void select_starter_step(StoryConsole& c) {
+            switch (c.options.starter_choice) {
+            case StarterChoice::TURTWIG:  select_turtwig(c.env.console, c.context);  break;
+            case StarterChoice::CHIMCHAR: select_chimchar(c.env.console, c.context); break;
+            case StarterChoice::PIPLUP:   select_piplup(c.env.console, c.context);   break;
+            }
+        }
+
+        static StoryCheckpointSpec segment_00_row(
+            std::string id, std::string title, StoryFailure on_failure, std::vector<StoryStepSpec> steps
+        ) {
+            return {.id = std::move(id), .title = std::move(title), .on_failure = on_failure, .steps = std::move(steps)};
+        }
+
+        // 00.00 to 00.03: the settings, the lake and the Pokedex.
+        static std::vector<StoryCheckpointSpec> segment_00_intro_rows() {
+            const StoryFailure retry = StoryFailure::RELOAD_AND_RETRY;
+            return {
+                segment_00_row("00.00", "Verify Settings", StoryFailure::STOP, {
+                    {"verify_settings", "before any route movement or checkpoint save: fail visibly if options cannot be read, rather than navigate with unknown settings", verify_settings_step},
+                }),
+                segment_00_row("00.01", "After TV", retry, {
                     {"tutorial_part_1_navigation", "intro and starter selection: Butters' recorded stick holds to the lake",
                         [](StoryConsole& c) { tutorial_part_1_navigation(c.env, c.env.console, c.context); }},
-                },
-            });
-            row({
-                .id = "00.02", .title = "Outside Verity before starter", .on_failure = StoryFailure::RELOAD_AND_RETRY,
-                .steps = {
+                }),
+                segment_00_row("00.02", "Outside Verity before starter", retry, {
                     {"starter_nav", "into the lake's scene", [](StoryConsole& c) { starter_nav(c.env.console, c.context); }},
-                    {"select_starter", "the starter from the program's option",
-                        [](StoryConsole& c) {
-                            switch (c.options.starter_choice) {
-                            case StarterChoice::TURTWIG:  select_turtwig(c.env.console, c.context);  break;
-                            case StarterChoice::CHIMCHAR: select_chimchar(c.env.console, c.context); break;
-                            case StarterChoice::PIPLUP:   select_piplup(c.env.console, c.context);   break;
-                            }
-                        }},
+                    {"select_starter", "the starter from the program's option", select_starter_step},
                     {"fight_starly", "the Starly battle", [](StoryConsole& c) { fight_starly(c.env.console, c.context); }},
                     {"post_starly_cleanup", "the scene after the battle", [](StoryConsole& c) { post_starly_clenaup(c.env.console, c.context); }},
-                },
-            });
-            row({
-                .id = "00.03", .title = "Outside Verity after starter", .on_failure = StoryFailure::RELOAD_AND_RETRY,
-                .steps = {
+                }),
+                segment_00_row("00.03", "Outside Verity after starter", retry, {
                     {"tutorial_part_2_navigation", "Pokedex acquisition: back through Route 201 to Rowan's lab",
                         [](StoryConsole& c) { tutorial_part_2_navigation(c.env, c.env.console, c.context); }},
-                },
-            });
-            //  00.04 saves twice: a retry after the catch starts from the
-            //  caught-Pokemon save, not the old route, so it is two rows.
-            row({
-                .id = "00.04", .title = "After Pokedex, to the catch", .on_failure = StoryFailure::RELOAD_AND_RETRY,
-                .steps = {
+                }),
+            };
+        }
+
+        // 00.04 and 00.05: the catch, Sandgem, and Jubilife to the Poketch.
+        // 00.04 saves twice: a retry after the catch starts from the
+        // caught-Pokemon save, not the old route, so it is two rows.
+        static std::vector<StoryCheckpointSpec> segment_00_town_rows() {
+            const StoryFailure retry = StoryFailure::RELOAD_AND_RETRY;
+            return {
+                segment_00_row("00.04", "After Pokedex, to the catch", retry, {
                     {"tutorial_part_3_navigation", "out of the lab, home to Mom, and the catch on Route 202",
                         [](StoryConsole& c) { tutorial_part_3_navigation(c.env, c.env.console, c.context); }},
-                },
-            });
-            row({
-                .id = "00.04b", .title = "After the catch, to Dawn in Jubilife", .on_failure = StoryFailure::RELOAD_AND_RETRY,
-                .steps = {
+                }),
+                segment_00_row("00.04b", "After the catch, to Dawn in Jubilife", retry, {
                     {"tutorial_part_3_after_catch_navigation", "train, heal and buy Potions in Sandgem, save on Route 202, walk to Jubilife and meet Dawn",
                         [](StoryConsole& c) { tutorial_part_3_after_catch_navigation(c.env, c.env.console, c.context); }},
-                },
-            });
-            row({
-                .id = "00.05", .title = "Jubilife After Dawn", .on_failure = StoryFailure::RELOAD_AND_RETRY,
-                .steps = {
+                }),
+                segment_00_row("00.05", "Jubilife After Dawn", retry, {
                     {"tutorial_part_4_navigation", "the Town Map, the president, the coupons, the Poketch and the Center's PC",
                         [](StoryConsole& c) { tutorial_part_4_navigation(c.env, c.env.console, c.context); }},
-                },
-            });
-            return segment;
+                }),
+            };
+        }
+
+        Pokemon::Segment make_segment_00(StoryStepRunner& runner) {
+            std::vector<StoryCheckpointSpec> rows = segment_00_intro_rows();
+            for (StoryCheckpointSpec& row : segment_00_town_rows()) {
+                rows.push_back(std::move(row));
+            }
+            return story_segment(runner, "00", std::move(rows));
         }
 
         // DIAGNOSTIC ONLY: Remove before pushing to production.

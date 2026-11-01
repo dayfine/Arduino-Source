@@ -77,6 +77,16 @@ Pokemon::CheckpointSpec story_checkpoint(StoryStepRunner& runner, StoryCheckpoin
 }
 
 
+Pokemon::Segment story_segment(StoryStepRunner& runner, std::string id, std::vector<StoryCheckpointSpec> rows){
+    Pokemon::Segment segment;
+    segment.id = std::move(id);
+    for (StoryCheckpointSpec& row : rows){
+        segment.checkpoints.push_back(story_checkpoint(runner, std::move(row)));
+    }
+    return segment;
+}
+
+
 ConsoleStoryRunner::ConsoleStoryRunner(StoryConsole console)
     : m_console(console)
 {}

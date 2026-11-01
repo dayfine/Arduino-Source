@@ -74,6 +74,9 @@ public:
 //  A row of a segment table: builds the checkpoint's events from `spec`.
 Pokemon::CheckpointSpec story_checkpoint(StoryStepRunner& runner, StoryCheckpointSpec spec);
 
+//  A segment table of `rows`, in order.
+Pokemon::Segment story_segment(StoryStepRunner& runner, std::string id, std::vector<StoryCheckpointSpec> rows);
+
 using StorySegmentFactory = std::function<Pokemon::Segment(StoryStepRunner& runner)>;
 
 
