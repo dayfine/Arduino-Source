@@ -44,26 +44,11 @@ public:
     //  maps together.
     void add(std::string name, const Pokemon::MapData& map, const Pokemon::TilePos& offset);
 
-    int width() const{ return m_cells.width; }
-    int height() const{ return m_cells.height; }
-
-    //  Whether a map holds this world tile.
-    bool covered(const Pokemon::TilePos& pos) const;
     //  The tile, or nothing off the maps.
     std::optional<Pokemon::TileKind> tile(const Pokemon::TilePos& pos) const;
     //  Whether someone or something stands still on this tile, or it was
     //  blocked with block().
     bool occupied(const Pokemon::TilePos& pos) const;
-
-    //  Whether the player can stand on this tile.
-    bool standable(const Pokemon::TilePos& pos) const;
-    //  Where one step from `from` lands, or nothing if the player is stopped.
-    //  A step onto a ledge the arrow's way hops to the tile past it.
-    std::optional<Pokemon::TilePos> step(const Pokemon::TilePos& from, Pokemon::Direction direction) const;
-    //  Whether a step from `pos` is refused by a tile that holds the player
-    //  in place. Doors and tiles off the maps are not walls: walking into a
-    //  door enters the building, and ground off the maps may be an exit.
-    bool at_wall(const Pokemon::TilePos& pos, Pokemon::Direction direction) const;
 
     //  Blocks a tile found in the way on the console. Tiles off the maps
     //  are left alone.
@@ -76,8 +61,6 @@ public:
     Pokemon::TilePos to_world(const std::string& map, const Pokemon::TilePos& local) const;
     //  The map that holds a world tile, or nothing between maps.
     std::optional<MapTile> to_local(const Pokemon::TilePos& world) const;
-    //  "Route 201 (45, 3)", or "world (x, y)" if no map holds it.
-    std::string describe(const Pokemon::TilePos& world) const;
 
 private:
     struct Placed{
@@ -92,8 +75,12 @@ private:
         bool occupied = false;
     };
 
-    void check_overlap(const std::string& name, const Placed& map) const;
+    void check_overlap(const Placed& map) const;
+    //  The first tile of `map` that `placed` holds as anything but a wall
+    //  with nobody on it, or nothing.
+    static std::optional<Pokemon::TilePos> conflict(const Placed& map, const Placed& placed);
     void rebuild();
+    void paint(const Placed& placed, const Pokemon::TilePos& corner);
     const Cell* cell(const Pokemon::TilePos& pos) const;
     Cell* cell(const Pokemon::TilePos& pos);
 
@@ -103,6 +90,23 @@ private:
     std::vector<Pokemon::TilePos> m_blocked;    //  world tiles, kept across add()
     std::vector<Pokemon::TilePos> m_uncovered;
 };
+
+
+//  The rules of walking on a story world, from its tiles.
+
+//  Whether a map holds this world tile.
+bool covered(const StoryWorld& world, const Pokemon::TilePos& pos);
+//  Whether the player can stand on this tile.
+bool standable(const StoryWorld& world, const Pokemon::TilePos& pos);
+//  Where one step from `from` lands, or nothing if the player is stopped.
+//  A step onto a ledge the arrow's way hops to the tile past it.
+std::optional<Pokemon::TilePos> step(const StoryWorld& world, const Pokemon::TilePos& from, Pokemon::Direction direction);
+//  Whether a step from `pos` is refused by a tile that holds the player
+//  in place. Doors and tiles off the maps are not walls: walking into a
+//  door enters the building, and ground off the maps may be an exit.
+bool at_wall(const StoryWorld& world, const Pokemon::TilePos& pos, Pokemon::Direction direction);
+//  "Route 201 (45, 3)", or "world (x, y)" if no map holds it.
+std::string describe(const StoryWorld& world, const Pokemon::TilePos& pos);
 
 
 
