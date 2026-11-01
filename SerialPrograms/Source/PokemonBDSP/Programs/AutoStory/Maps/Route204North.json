@@ -1,10 +1,6 @@
 {
     "name": "Route204North",
-    "source": {
-        "decomp_file": "SerialPrograms/Source/PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_Route204.cpp",
-        "revision": "ddcbdb21c1dc",
-        "date": "2026-11-01"
-    },
+    "source": {"decomp_file": "pret/pokediamond: files/fielddata/land_data/land_data_release/narc_0031.bin; zone_event narc_0331", "revision": "default branch", "date": "2026-10-31"},
     "tiles": [
         "########.#...###################",
         "########.#...###################",
@@ -12,11 +8,11 @@
         "##########...#......#.##########",
         "#####....#...#......#...........",
         "#####....#~~~#......#...######..",
-        "#####....#~~####################",
+        "#####....#~~~###################",
         "##########~~~.........##########",
         "##........~~~~~.......##########",
         "##..######.~~~~..S....##########",
-        "###.#....#.~~~........##########",
+        "##..#....#.~~~........##########",
         "##..#....#.~~.........##########",
         "##########..............########",
         "##########..............########",
@@ -29,7 +25,7 @@
         "##########............~~########",
         "##########............##########",
         "##########............##########",
-        "##########...##.....#.##########",
+        "##########...##.......##########",
         "##########...##.......##########",
         "##########...###################",
         "##########...#######.###########",
@@ -39,36 +35,49 @@
         "##########............##########",
         "##########...###################"
     ],
+    "points": {
+        "cave_exit": [20, 26],
+        "floaroma_waypoints.1": [20, 27],
+        "floaroma_waypoints.2": [11, 27],
+        "floaroma_waypoints.3": [11, 22],
+        "floaroma_waypoints.4": [19, 22],
+        "floaroma_waypoints.5": [19, 12],
+        "floaroma_waypoints.6": [11, 12],
+        "floaroma_waypoints.7": [11, 5],
+        "floaroma_path.1": [10, 0],
+        "floaroma_path.2": [11, 0],
+        "floaroma_path.3": [12, 0],
+        "floaroma_path.4": [10, 1],
+        "floaroma_path.5": [11, 1],
+        "floaroma_path.6": [12, 1],
+        "floaroma_path.7": [10, 2],
+        "floaroma_path.8": [11, 2],
+        "floaroma_path.9": [12, 2],
+        "floaroma_path.10": [10, 3],
+        "floaroma_path.11": [11, 3],
+        "floaroma_path.12": [12, 3],
+        "floaroma_path.13": [10, 4],
+        "floaroma_path.14": [11, 4],
+        "floaroma_path.15": [12, 4],
+        "floaroma_path.16": [10, 5],
+        "floaroma_path.17": [11, 5],
+        "floaroma_path.18": [12, 5],
+        "trainer_twin_left": [15, 7],
+        "trainer_twin_right": [16, 7],
+        "trainer_taylor": [17, 20],
+        "trainer_brandon": [20, 12]
+    },
     "objects": [
-        {
-            "name": "npc_31_4",
-            "kind": "npc",
-            "x": 31,
-            "y": 4
-        },
-        {
-            "name": "npc_15_7",
-            "kind": "npc",
-            "x": 15,
-            "y": 7
-        },
-        {
-            "name": "npc_16_7",
-            "kind": "npc",
-            "x": 16,
-            "y": 7
-        },
-        {
-            "name": "npc_20_12",
-            "kind": "npc",
-            "x": 20,
-            "y": 12
-        },
-        {
-            "name": "npc_17_20",
-            "kind": "npc",
-            "x": 17,
-            "y": 20
-        }
+        {"name": "bug_catcher_brandon", "kind": "npc", "x": 20, "y": 12},
+        {"name": "pokemon_breeder_f_1", "kind": "npc", "x": 17, "y": 20},
+        {"name": "twin_2", "kind": "npc", "x": 15, "y": 7, "facing": "south"},
+        {"name": "twin_3", "kind": "npc", "x": 16, "y": 7, "facing": "south"},
+        {"name": "youngster_4", "kind": "npc", "x": 15, "y": 28, "wander": {"x0": 14, "y0": 28, "x1": 16, "y1": 28}},
+        {"name": "item_9", "kind": "item", "x": 2, "y": 10},
+        {"name": "ace_trainer_f_10", "kind": "npc", "x": 31, "y": 4, "facing": "west"},
+        {"name": "item_11", "kind": "item", "x": 20, "y": 23}
+    ],
+    "patches": [
+        {"x": 12, "y": 6, "glyph": "#", "measured_by": "r248a, 2026-10-31"}
     ]
 }

@@ -1,10 +1,6 @@
 {
     "name": "OreburghGym",
-    "source": {
-        "decomp_file": "SerialPrograms/Source/PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_OreburghGym.cpp",
-        "revision": "ce701d495c94",
-        "date": "2026-11-01"
-    },
+    "source": {"decomp_file": "pret/pokediamond: files/fielddata/land_data/land_data_release/narc_0228.bin; zone_event narc_0046", "revision": "default branch", "date": "2026-10-31"},
     "tiles": [
         "################################",
         "################################",
@@ -39,30 +35,16 @@
         "################################",
         "################################"
     ],
+    "points": {
+        "entrance": [5, 23],
+        "roark": [5, 3],
+        "trainer_first_tier": [4, 18],
+        "trainer_second_tier": [7, 11]
+    },
     "objects": [
-        {
-            "name": "npc_5_3",
-            "kind": "npc",
-            "x": 5,
-            "y": 3
-        },
-        {
-            "name": "npc_7_11",
-            "kind": "npc",
-            "x": 7,
-            "y": 11
-        },
-        {
-            "name": "npc_4_18",
-            "kind": "npc",
-            "x": 4,
-            "y": 18
-        },
-        {
-            "name": "npc_6_23",
-            "kind": "npc",
-            "x": 6,
-            "y": 23
-        }
+        {"name": "roark_0", "kind": "npc", "x": 5, "y": 3, "facing": "south"},
+        {"name": "gym_guide_1", "kind": "npc", "x": 6, "y": 23, "facing": "south"},
+        {"name": "youngster_2", "kind": "npc", "x": 4, "y": 18, "facing": "east"},
+        {"name": "youngster_3", "kind": "npc", "x": 7, "y": 11, "facing": "west"}
     ]
 }
