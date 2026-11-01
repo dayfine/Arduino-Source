@@ -147,6 +147,20 @@ facing reader, maybe three PRs, once its code is reviewed. U8 may need the same.
 That's 21 PRs, at roughly one merged per week if review keeps up: a few months of queue. The
 shape lets each PR be reviewed alone, and the FRLG MVP only lands at the end.
 
+### Parallel tracks (independent of the U1–U19 chain)
+
+These are based on main, not on the AutoStory chain, so they can be worked on and sent upstream in parallel:
+
+| Track | PRs | What | Joins the chain at |
+|---|---|---|---|
+| Naming / keyboards | [#81](https://github.com/dayfine/Arduino-Source/pull/81) FRLG naming-screen typer (722 code, 345 tests); [#62](https://github.com/dayfine/Arduino-Source/pull/62) Switch on-screen keyboard (BDSP names) | Type "Kosmos" and nicknames instead of picking a preset name | FRLG 00.01 (player and rival names) after U17; BDSP intro on [#128](https://github.com/dayfine/Arduino-Source/pull/128) |
+| Starter RNG | [#61](https://github.com/dayfine/Arduino-Source/pull/61) party check (240 code, 263 tests) + a starter-RNG entry point (~300) | Use the existing FRLG GiftRng (starters are gifts) from AutoStory's save in front of Oak's table | a hand-off after 00.03/00.04 once U17 lands; the RNG program itself can be built and tested now from a manual save |
+| Run records | U20 [#132](https://github.com/dayfine/Arduino-Source/pull/132) → U21 | Recorder, then hooks | U21 needs U8 and U17 |
+| Tooling | [#107](https://github.com/dayfine/Arduino-Source/pull/107) → [#116](https://github.com/dayfine/Arduino-Source/pull/116), [#125](https://github.com/dayfine/Arduino-Source/pull/125), [#131](https://github.com/dayfine/Arduino-Source/pull/131) | Lab channel, run records, route pictures, lab CLI | none (dev only) |
+| BDSP | maps-v4 → [#127](https://github.com/dayfine/Arduino-Source/pull/127) → [#129](https://github.com/dayfine/Arduino-Source/pull/129) → [#128](https://github.com/dayfine/Arduino-Source/pull/128) | BDSP AutoStory v4 | after U10 |
+
+With 3–4 upstream slots, a sensible mix is one slot for the chain, one for naming/RNG, and one for tooling or run records.
+
 ## Tooling, used by both games
 
 | PR | What | Size |
