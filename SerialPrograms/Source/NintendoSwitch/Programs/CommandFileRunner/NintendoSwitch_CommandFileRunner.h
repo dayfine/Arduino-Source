@@ -53,6 +53,7 @@ struct CommandFileSession{
     ProControllerContext& context;
     std::ostream& out;      //  Text printed here goes into the .out file.
     std::string outbox;     //  Folder for files a command saves, ending in '/'.
+    std::string name;       //  The command file's name: the prefix of the screenshots it saves.
 };
 
 //  A command. `words` is its line split on spaces; words[0] is the command name.
@@ -65,6 +66,10 @@ using CommandFileDetectorFactory = std::function<std::unique_ptr<StaticScreenDet
 //  `usage` is the line "help" prints, e.g. "walk DIR steps".
 void register_command_file_command(const std::string& name, const std::string& usage, CommandFileCommand command);
 void register_command_file_detector(const std::string& name, CommandFileDetectorFactory factory);
+
+//  Runs one command line, built-in or registered, from inside a command: a
+//  game command can start with {"close_game"} and end with {"state"}.
+void run_command_file_line(CommandFileSession& session, const std::vector<std::string>& words);
 
 
 

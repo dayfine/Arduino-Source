@@ -86,6 +86,32 @@ DpadPosition parse_dpad(const std::string& text){
     return iter->second;
 }
 
+TapsArguments parse_taps(const std::vector<std::string>& words){
+    //  160 ms is a whole step in BDSP; 640 ms lets the step animation finish
+    //  before the next frame is compared. A step there measures 21 to 50, a
+    //  bump into a wall or an NPC brushing past 4 to 13.
+    constexpr Milliseconds TAP_HOLD(160);
+    constexpr Milliseconds TAP_RELEASE(640);
+    constexpr double TAP_STILL_RMSD = 16;
+
+    TapsArguments taps;
+    taps.direction = parse_dpad(required_arg(words, 1));
+    const double count = optional_number(words, 2, 0);
+    if (words.size() < 3 || count < 1 || count != (size_t)count){
+        throw ParseException(words[0] + ": argument 2 must be a whole number of taps, got " + (words.size() < 3 ? "nothing" : words[2]));
+    }
+    taps.count = (size_t)count;
+    size_t next = 3;
+    if (words.size() > next && words[next] == "all"){
+        taps.all = true;
+        next++;
+    }
+    taps.hold = optional_duration(words, next, TAP_HOLD);
+    taps.release = optional_duration(words, next + 1, TAP_RELEASE);
+    taps.still = optional_number(words, next + 2, TAP_STILL_RMSD);
+    return taps;
+}
+
 std::optional<Filesystem::Path> next_command_file(const std::string& inbox){
     std::optional<Filesystem::Path> next;
     for (const Filesystem::Path& path : Filesystem::list_directory(Filesystem::Path(inbox))){

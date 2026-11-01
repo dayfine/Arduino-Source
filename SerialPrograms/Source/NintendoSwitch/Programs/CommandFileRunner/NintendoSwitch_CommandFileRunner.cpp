@@ -50,6 +50,15 @@ constexpr Milliseconds WALK_SLICE = 200ms;
 constexpr Milliseconds WALK_LIMIT = 5000ms;
 constexpr double WALK_STILL_RMSD = 10;
 
+//  "walk" and "taps" compare frames scaled to this size, so the change
+//  measures movement rather than noise.
+constexpr size_t CHANGE_WIDTH = 192;
+constexpr size_t CHANGE_HEIGHT = 108;
+
+//  "taps": two taps in a row that don't move the screen mean a wall, unless
+//  the line says "all".
+constexpr int TAPS_STILL_LIMIT = 2;
+
 //  How often "wait_for" and "expect" check a new frame.
 constexpr Milliseconds DETECTOR_POLL_INTERVAL = 100ms;
 
@@ -100,6 +109,13 @@ std::optional<CommandFileCommand> find_registered_command(const std::string& nam
     return iter->second.second;
 }
 
+//  How much the screen changed between two frames: RMSD at 192x108.
+double screen_change(const VideoSnapshot& before, const VideoSnapshot& after){
+    return ImageMatch::pixel_RMSD(
+        before.frame->scale_to(CHANGE_WIDTH, CHANGE_HEIGHT), after.frame->scale_to(CHANGE_WIDTH, CHANGE_HEIGHT)
+    );
+}
+
 }
 
 
@@ -122,9 +138,8 @@ namespace{
 //  Runs the lines of one command file.
 class LineRunner{
 public:
-    LineRunner(CommandFileSession& session, std::string name)
+    explicit LineRunner(CommandFileSession& session)
         : m_session(session)
-        , m_name(std::move(name))
     {}
 
     //  Runs one line. Returns false for "stop". Throws to fail the line.
@@ -151,7 +166,7 @@ public:
         if (!screen){
             return "(no video frame)";
         }
-        const std::string path = m_session.outbox + m_name + "_" + label + ".png";
+        const std::string path = m_session.outbox + m_session.name + "_" + label + ".png";
         screen.frame->save(path);
         return path;
     }
@@ -169,6 +184,7 @@ private:
             {"stick",       {"stick L|R x y [hold_ms] [release_ms]   (x, y from -1 to 1)", &LineRunner::stick}},
             {"wait",        {"wait ms", &LineRunner::wait}},
             {"walk",        {"walk x y [max_ms] [still_rmsd]   (left stick until the screen holds still)", &LineRunner::walk}},
+            {"taps",        {"taps DIR N [all] [hold_ms] [release_ms] [still_rmsd]   (D-pad taps, each reported moved or still)", &LineRunner::taps}},
             {"shot",        {"shot label", &LineRunner::shot}},
             {"shots",       {"shots label count [interval_ms]", &LineRunner::shots}},
             {"detect",      {"detect detector [image]   (image: a path, or a file in the outbox)", &LineRunner::detect}},
@@ -249,9 +265,7 @@ private:
             if (!after){
                 break;
             }
-            const double change = ImageMatch::pixel_RMSD(
-                before.frame->scale_to(192, 108), after.frame->scale_to(192, 108)
-            );
+            const double change = screen_change(before, after);
             walked += WALK_SLICE;
             changes << " " << (int)change;
             if (change < still){
@@ -265,6 +279,43 @@ private:
         pbf_wait(context(), STICK_RELEASE);
         out() << "walk " << (quiet >= 2 ? "still" : "limit") << " after " << walked.count()
             << "ms, moving " << moving.count() << "ms; changes" << changes.str() << "\n";
+    }
+    //  Taps the D-pad N times and reports, for each tap, whether the screen
+    //  changed more than `still` between the frame before and after it: a step
+    //  moves the screen, a bump into a wall doesn't. Stops after two still
+    //  taps in a row unless the line says "all". A tap toward a new direction
+    //  only turns the player, so the first tap of a new direction is still.
+    void taps(const std::vector<std::string>& words){
+        const TapsArguments args = parse_taps(words);
+        VideoSnapshot before = current_frame();
+        if (!before){
+            throw OperationFailedException(ErrorReportMode::NO_ERROR_REPORT, "taps: no video frame");
+        }
+        size_t moved = 0;
+        size_t tapped = 0;
+        int quiet = 0;
+        while (tapped < args.count && (args.all || quiet < TAPS_STILL_LIMIT)){
+            pbf_press_dpad(context(), args.direction, args.hold, args.release);
+            VideoSnapshot after = current_frame();
+            if (!after){
+                throw OperationFailedException(ErrorReportMode::NO_ERROR_REPORT, "taps: lost the video frame");
+            }
+            const double change = screen_change(before, after);
+            tapped++;
+            if (change < args.still){
+                quiet++;
+            }else{
+                quiet = 0;
+                moved++;
+            }
+            out() << "tap " << tapped << ": change " << (int)change << (change < args.still ? " still" : " moved") << "\n";
+            before = std::move(after);
+        }
+        out() << "moved " << moved << " of " << args.count;
+        if (tapped < args.count){
+            out() << ", stopped after " << tapped << " taps: " << TAPS_STILL_LIMIT << " still in a row";
+        }
+        out() << "\n";
     }
     void shot(const std::vector<std::string>& words){
         out() << "shot " << save_screenshot(required_arg(words, 1)) << "\n";
@@ -358,7 +409,6 @@ private:
     }
 
     CommandFileSession& m_session;
-    std::string m_name;
 };
 
 
@@ -422,8 +472,8 @@ bool run_command_file(
     env.log("Command File Runner: running " + name);
 
     std::ostringstream out;
-    CommandFileSession session{env, context, out, folder + "outbox/"};
-    LineRunner runner(session, name);
+    CommandFileSession session{env, context, out, folder + "outbox/", name};
+    LineRunner runner(session);
     const std::string out_path = session.outbox + name;
 
     std::istringstream lines(script);
@@ -446,6 +496,15 @@ bool run_command_file(
     return result != LineResult::STOP;
 }
 
+}
+
+
+
+void run_command_file_line(CommandFileSession& session, const std::vector<std::string>& words){
+    if (words.empty()){
+        throw ParseException("run_command_file_line: empty line");
+    }
+    LineRunner(session).run(words);
 }
 
 

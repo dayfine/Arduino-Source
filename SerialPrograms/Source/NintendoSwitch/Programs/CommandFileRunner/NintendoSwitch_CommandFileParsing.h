@@ -44,6 +44,18 @@ Button parse_buttons(const std::string& text);
 //  "UP", "DOWN", "LEFT" or "RIGHT". Throws ParseException otherwise.
 DpadPosition parse_dpad(const std::string& text);
 
+//  The arguments of "taps DIR N [all] [hold_ms] [release_ms] [still_rmsd]":
+//  N D-pad taps, each measured against the frame before it.
+struct TapsArguments{
+    DpadPosition direction = DPAD_NONE;
+    size_t count = 0;
+    bool all = false;           //  Keep tapping after two still taps in a row.
+    Milliseconds hold = Milliseconds(0);
+    Milliseconds release = Milliseconds(0);
+    double still = 0;           //  A tap changing the screen less than this (RMSD at 192x108) didn't move.
+};
+TapsArguments parse_taps(const std::vector<std::string>& words);
+
 //  The ".txt" file in `inbox` whose name sorts first, if any.
 std::optional<Filesystem::Path> next_command_file(const std::string& inbox);
 

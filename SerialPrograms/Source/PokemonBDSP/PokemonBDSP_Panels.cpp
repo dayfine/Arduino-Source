@@ -9,6 +9,7 @@
 
 #include "PokemonBDSP_Panels.h"
 #include "PokemonBDSP_Settings.h"
+#include "Programs/PokemonBDSP_CommandFileCommands.h"
 
 #include "Programs/General/PokemonBDSP_MassRelease.h"
 #include "Programs/General/PokemonBDSP_AutonomousBallThrower.h"
@@ -55,7 +56,11 @@ PanelListFactory::PanelListFactory()
         Pokemon::STRING_POKEMON + " Brilliant Diamond and Shining Pearl",
         RESOURCE_PATH() + "CategoryIcons/PokemonBDSP.png"
     )
-{}
+{
+    //  At startup, so the Command File Runner (under Nintendo Switch) can
+    //  probe BDSP screens without BDSP's program list being opened first.
+    register_command_file_commands();
+}
 
 std::vector<PanelEntry> PanelListFactory::make_panels() const{
     std::vector<PanelEntry> ret;

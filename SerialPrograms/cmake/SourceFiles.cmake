@@ -1618,6 +1618,8 @@ file(GLOB LIBRARY_SOURCES
     Source/PokemonBDSP/Programs/PokemonBDSP_BasicCatcher.h
     Source/PokemonBDSP/Programs/PokemonBDSP_BoxRelease.cpp
     Source/PokemonBDSP/Programs/PokemonBDSP_BoxRelease.h
+    Source/PokemonBDSP/Programs/PokemonBDSP_CommandFileCommands.cpp
+    Source/PokemonBDSP/Programs/PokemonBDSP_CommandFileCommands.h
     Source/PokemonBDSP/Programs/PokemonBDSP_EncounterDetection.cpp
     Source/PokemonBDSP/Programs/PokemonBDSP_EncounterDetection.h
     Source/PokemonBDSP/Programs/PokemonBDSP_EncounterHandler.cpp
