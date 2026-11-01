@@ -48,6 +48,7 @@ struct ScriptedRoute{
     std::map<size_t, StepEnd> ends;
     std::vector<RouteStep> walked;
     std::vector<RouteStep> held_to_warp;
+    std::vector<std::string> logs;
     std::string failure;
 
     RouteCalls calls(){
@@ -58,7 +59,7 @@ struct ScriptedRoute{
             return iter == ends.end() ? StepEnd::DONE : iter->second;
         };
         calls.hold_to_warp = [this](const RouteStep& step){ held_to_warp.push_back(step); };
-        calls.log = [](const std::string&){};
+        calls.log = [this](const std::string& message){ logs.push_back(message); };
         calls.fail = [this](const std::string& message){
             failure = message;
             throw std::runtime_error(message);
@@ -209,6 +210,24 @@ UnitTestResult test_warp_leg(){
     return true;
 }
 
+//  The plan is logged whole before the first step, for the run's log.
+UnitTestResult test_plan_logged(){
+    const std::vector<RouteStep> route{
+        walk(Direction::EAST, 2, {"Corridor", {4, 1}}),
+        walk(Direction::WEST, 1, {"Corridor", {3, 1}}),
+    };
+    ScriptedRoute script;
+    if (script.run(route, nullptr)){
+        return "Failed: " + script.failure;
+    }
+    const std::string expected = "Route: plan, 2 steps: " + to_string(route[0]) + "; " + to_string(route[1]);
+    if (script.logs.empty() || script.logs[0] != expected){
+        return "Expected the first log line \"" + expected + "\", got: "
+            + (script.logs.empty() ? std::string("nothing") : "\"" + script.logs[0] + "\"");
+    }
+    return true;
+}
+
 }
 
 
@@ -217,6 +236,7 @@ void add_tests_OverworldRecovery(UnitTestDatabase& database){
     database.add<Test_OverworldRecovery>("no recovery", test_no_recovery);
     database.add<Test_OverworldRecovery>("legs to a wall", test_wall_legs);
     database.add<Test_OverworldRecovery>("a leg to a warp", test_warp_leg);
+    database.add<Test_OverworldRecovery>("the plan is logged", test_plan_logged);
 }
 
 

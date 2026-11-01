@@ -60,8 +60,8 @@ struct RouteCalls{
 //  How often a route may stop part-way before it gives up.
 constexpr size_t MAX_ROUTE_STOPS = 8;
 
-//  Walks `route` from `facing`. Without `planning`, a stop that needs the
-//  player found again fails instead.
+//  Walks `route` from `facing`, after logging it whole. Without `planning`,
+//  a stop that needs the player found again fails instead.
 void run_route(
     const std::vector<RouteStep>& route, std::optional<Direction> facing,
     const RoutePlanning* planning, const RouteCalls& calls
