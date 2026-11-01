@@ -176,9 +176,9 @@ std::vector<StoryCheckpoint> intro(){
             make(StoryStepKind::OPTIONS, "settings", "fast text, Send to Boxes automatic, no nickname prompt, Autosave off"),
         }, StoryFailure::STOP),
         row("00.01", "Bedroom to the Verity Lakefront", at(BEDROOM, "start", NORTH), {
-            route("above_the_stairs", at(BEDROOM, 8, 5, EAST), "the mat west of the stairs"),
-            //  On the console the stairs are entered moving east from the mat at (8, 5),
-            //  not north (r8); the decomp's stairs point (8, 4) is a row off.
+            route("above_the_stairs", at(BEDROOM, "stairs", EAST), "the top of the mat, west of the stairs"),
+            //  The stairs are entered moving east from the top of the two-tile mat,
+            //  the decomp's stairs point (8, 4); east from (8, 5) or north are walls (r8, r9).
             //  The stairs' warp lands on 1F's stairs; a tile below is allowed (assumed).
             step_into("down_the_stairs", EAST, "onto the stairs", at_or_next_to(HOME, "stairs", SOUTH)),
             //  Butters' recording walked 1.1 s south before her first line.
