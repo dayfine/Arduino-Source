@@ -454,13 +454,29 @@ std::vector<TilePos> walk_route(
                 //  Whole tiles on the D-pad, a tap each: a tap moves exactly
                 //  one tile, while a stick hold timed for three moved one in
                 //  the Ravaged Path (r235b) and the belief drifted four rows.
-                //  A tap for a player facing another way only turns.
+                //  A tap for a player facing another way only turns; one for
+                //  a player already facing that way is a step. A walk's first
+                //  leg does not know the facing (r246a: "south 1" out of the
+                //  cave went two tiles, onto the Youngster's row), so the tap
+                //  is measured like any other and a step counts for the leg.
+                size_t turn_moved = 0;
                 if (facing != leg.direction){
                     const DpadPosition dpad = x < 0 ? DPAD_LEFT : x > 0 ? DPAD_RIGHT : y > 0 ? DPAD_UP : DPAD_DOWN;
+                    context.wait_for_all_requests();
+                    VideoSnapshot before = stream.video().snapshot();
                     pbf_press_dpad(context, dpad, 160ms, 700ms);
                     context.wait_for_all_requests();
+                    VideoSnapshot after = stream.video().snapshot();
+                    if (before && after && walk_screen_change(*before.frame, *after.frame) > WALK_TAP_BLOCKED_CHANGE){
+                        turn_moved = 1;
+                        stream.log("[Route] " + leg_label + ": the turn tap moved a tile (already facing that way); it counts.", COLOR_ORANGE);
+                    }
                 }
-                result = walk_tiles_dpad(stream, context, x, y, leg.tiles, leg_label);
+                if (leg.tiles > turn_moved){
+                    result = walk_tiles_dpad(stream, context, x, y, leg.tiles - turn_moved, leg_label);
+                }else{
+                    result = WalkResult{WalkStop::LIMIT, 0ms, 0};
+                }
                 //  A wild battle starts once the step onto the grass is done,
                 //  so the taps still count; the walk went on after it.
                 if (result.wild_battles > 0){
@@ -478,8 +494,11 @@ std::vector<TilePos> walk_route(
                     const size_t taps = (size_t)(walk.walked / 800ms);
                     return walk.stop == WalkStop::BLOCKED ? (taps < 2 ? 0 : taps - 2) : taps;
                 };
-                size_t moved = std::min(leg.tiles, taps_moved(result));
-                for (size_t again = 0; again < 3 && result.stop == WalkStop::BLOCKED && moved < leg.tiles; again++){
+                size_t moved = std::min(leg.tiles, taps_moved(result) + turn_moved);
+                //  One wait: a wanderer in the way steps off in a few seconds;
+                //  anything still there after that is talked to (r246a lost
+                //  20 s per block on three waits).
+                for (size_t again = 0; again < 1 && result.stop == WalkStop::BLOCKED && moved < leg.tiles; again++){
                     stream.log("[Route] " + leg_label + ": blocked after " + std::to_string(moved) + " of " +
                         std::to_string(leg.tiles) + " tiles; waiting for the way to clear.", COLOR_ORANGE);
                     pbf_wait(context, 2500ms);

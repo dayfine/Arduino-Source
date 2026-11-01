@@ -30,7 +30,8 @@ using namespace Pokemon;
 //  items on the ground are '#'. Objects: the Ravaged Path's door, arriving
 //  on (20, 26); the twins (15, 7) and (16, 7) looking south; Aroma Lady
 //  Taylor (17, 20) looking south and east; Bug Catcher Brandon walking back
-//  and forth from (22, 13), not seen on the console yet; the arrow signpost
+//  and forth, on row 12 on the console (r246a), drawn at (20, 12) by the DP
+//  map, (22, 13) in Platinum's data; the arrow signpost
 //  (17, 9); a Youngster who is not a trainer wanders rows 27 and 28 below
 //  the cave, off the grid. The path north into Floaroma is columns 10 to 12
 //  at the top.
@@ -54,7 +55,7 @@ const TileGrid& north_grid(){
         R"(##..######.""""..S....##########)",  //   9
         R"(###.#....#."""........##########)",  //  10
         R"(##..#....#."".........##########)",  //  11
-        R"(##########..............########)",  //  12
+        R"(##########..........N...########)",  //  12
         R"(##########..............########)",  //  13
         R"(##########...####"""""""########)",  //  14
         R"(##########vvv####"""""""########)",  //  15
@@ -90,6 +91,12 @@ std::vector<TrainerSight> north_trainer_sights(){
         {"Twins (right)", {16, 7}, Direction::SOUTH, 4},
         {"Aroma Lady Taylor", {17, 20}, Direction::SOUTH, 4},
         {"Aroma Lady Taylor", {17, 20}, Direction::EAST, 4},
+        //  Bug Catcher Brandon paces east and west below the flower beds
+        //  and stopped us on row 12 (r246a: "Say, what's your opinion on bug
+        //  Pokemon?"); the DP map draws him at (20, 12), Platinum's data
+        //  has him at (22, 13). The tile is a guess until a shot fixes it.
+        {"Bug Catcher Brandon", {20, 12}, Direction::WEST, 4},
+        {"Bug Catcher Brandon", {20, 12}, Direction::EAST, 4},
     };
 }
 
