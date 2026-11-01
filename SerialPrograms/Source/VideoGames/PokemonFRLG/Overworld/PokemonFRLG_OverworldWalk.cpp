@@ -189,12 +189,9 @@ DpadPosition dpad(Direction direction){
 }
 
 //  The leg mover: holds the D-pad. FRLG moves exactly a tile per 16 frames.
-class DpadMover : public Pokemon::LegMover<ProControllerContext>{
-public:
-    virtual void hold(ProControllerContext& context, Direction direction, Milliseconds duration) const override{
-        pbf_press_dpad(context, dpad(direction), duration, STEP_RELEASE);
-    }
-};
+void hold_dpad(ProControllerContext& context, Direction direction, Milliseconds duration){
+    pbf_press_dpad(context, dpad(direction), duration, STEP_RELEASE);
+}
 
 //  An open leg stops at its first interruption: how far it got isn't
 //  counted (that went wrong too often on the console), the route finds the
@@ -270,6 +267,20 @@ void check_warp_was_no_battle(ConsoleHandle& console, ProControllerContext& cont
     );
 }
 
+//  Each leg starts with a turn tap unless it goes the way the player faces.
+//  A tap while already facing that way takes a step, so a facing not given
+//  is read from the screen. If that fails too it taps anyway.
+std::optional<Direction> read_facing(ConsoleHandle& console, ProControllerContext& context){
+    context.wait_for_all_requests();
+    VideoSnapshot screen = console.video().snapshot();
+    std::optional<Direction> facing;
+    if (screen){
+        facing = read_player_facing(screen);
+    }
+    console.log(std::string("Route: the player faces ") + (facing ? Pokemon::direction_name(*facing) : "an unknown way") + ".");
+    return facing;
+}
+
 void start_surf(ConsoleHandle& console, ProControllerContext& context, Direction direction, bool facing_water){
     //  "The water is a deep blue... Would you like to SURF?", with YES selected.
     //  An A pressed while the player is still turning is lost.
@@ -315,7 +326,7 @@ bool walk_step(
         if (facing != step.direction){
             pbf_press_dpad(context, dpad(step.direction), TURN_TAP, TURN_SETTLE);
         }
-        if (Pokemon::walk_leg(console, context, DpadMover(), step.wild ? interrupts.wild : interrupts.other, leg_spec(step), MAX_INTERRUPTIONS_PER_LEG).stopped){
+        if (Pokemon::walk_leg(console, context, hold_dpad, step.wild ? interrupts.wild : interrupts.other, leg_spec(step), MAX_INTERRUPTIONS_PER_LEG).stopped){
             return false;
         }
         if (step.warps){
@@ -424,20 +435,6 @@ bool moved_past_wall(ConsoleHandle& console, ProControllerContext& context, cons
     const double change = ImageMatch::pixel_RMSD(extract_box_reference(before, band), extract_box_reference(after, band));
     console.log(std::format("Position check: a tap toward the wall of {} changed the screen by {:.1f}.", to_string(step), change));
     return change > WALL_TAP_MOVED_RMSD;
-}
-
-//  Each leg starts with a turn tap unless it goes the way the player faces.
-//  A tap while already facing that way takes a step, so a facing not given
-//  is read from the screen. If that fails too it taps anyway.
-std::optional<Direction> read_facing(ConsoleHandle& console, ProControllerContext& context){
-    context.wait_for_all_requests();
-    VideoSnapshot screen = console.video().snapshot();
-    std::optional<Direction> facing;
-    if (screen){
-        facing = read_player_facing(screen);
-    }
-    console.log(std::string("Route: the player faces ") + (facing ? Pokemon::direction_name(*facing) : "an unknown way") + ".");
-    return facing;
 }
 
 }
