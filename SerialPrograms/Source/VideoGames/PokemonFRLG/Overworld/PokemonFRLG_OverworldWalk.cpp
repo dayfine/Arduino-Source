@@ -60,6 +60,10 @@ constexpr Milliseconds STEP_WINDOW = 900ms;
 //  and a leg to a wall is watched this long after it.
 constexpr Milliseconds STEP_SETTLE = 3400ms;
 constexpr Milliseconds AFTER_WILD_LEG_WATCH = 3500ms;
+//  After a warp's fade. A wild battle's flashes and wipe pass for one, and
+//  its dialog shows within this long; a warp's doesn't (run 7: a "warp" into
+//  Oak's Lab from the grass of Route 1, where the player had drifted).
+constexpr Milliseconds AFTER_WARP_BATTLE_WATCH = 3000ms;
 //  After a message closes: a trainer who saw the player speaks first, then
 //  the battle starts, with "<Trainer> would like to battle!" seconds later.
 constexpr Milliseconds TRAINER_BATTLE_WATCH = 6000ms;
@@ -220,6 +224,22 @@ void wait_out_warp(ConsoleHandle& console, ProControllerContext& context, const 
     }
 }
 
+//  After a warp's fade, which a wild battle's can pass for: fails, once the
+//  battle is fled, if it was one.
+void check_warp_was_no_battle(ConsoleHandle& console, ProControllerContext& context, const RouteStep& step){
+    BattleDialogWatcher battle(COLOR_RED);
+    context.wait_for_all_requests();
+    if (wait_until(console, context, AFTER_WARP_BATTLE_WATCH, {battle}) < 0){
+        return;
+    }
+    flee_battle(console, context);
+    OperationFailedExceptionWithScreenshot::fire(
+        ErrorReportMode::SEND_ERROR_REPORT,
+        "walk_overworld_route(): a wild battle, not the warp to " + step.end.map + ": the player is off the route.",
+        console
+    );
+}
+
 //  Fails unless the overworld is up. Under the START menu or a message the
 //  D-pad only moves a cursor, and legs to a wall seem to go fine: three
 //  "walked" that way in Viridian Forest without the player moving (console B,
@@ -294,7 +314,8 @@ void walk_step(
         Pokemon::walk_leg(console, context, DpadMover(), step.wild ? interrupts.wild : interrupts.other, leg_spec(step), MAX_INTERRUPTIONS_PER_LEG);
         if (step.warps){
             wait_out_warp(console, context, step);
-            pbf_wait(context, AFTER_WARP);
+            static_assert(AFTER_WARP_BATTLE_WATCH >= AFTER_WARP);
+            check_warp_was_no_battle(console, context, step);
         }
         break;
     case RouteAction::SURF:
