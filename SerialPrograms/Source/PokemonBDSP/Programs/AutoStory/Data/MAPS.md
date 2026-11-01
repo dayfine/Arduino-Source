@@ -27,8 +27,8 @@ Each map file's header starts with the same three lines, kept current with the c
 | Oreburgh City | decomp (pokediamond) | none yet (01.04, 01.05 run as records) | probe the Center doorstep (x 46 or 47) |
 | Oreburgh Gate | decomp (pokediamond) | none yet | |
 | Floaroma Town | decomp (pokediamond), the old couple from the console | 01.11 (1x, as a record) | |
-| Twinleaf Town | decomp (pokediamond) | none yet (00.01 to 00.03 run as code) | |
-| Verity Lakefront, Lake Verity | decomp (pokediamond) | none yet (00.02, 00.03 run as code) | |
+| Twinleaf Town | decomp (pokediamond) | none: 00.01 to 00.03 replay recorded stick inputs (#1717), no route on the grid | redo 00.01 to 00.03 as planned walks |
+| Verity Lakefront, Lake Verity | decomp (pokediamond) | none: 00.02, 00.03 replay recorded stick inputs (#1717) | redo as planned walks |
 
 Rules: terrain from the decomp, people and Platinum-only edits from the console;
 a route is coded only over tiles a human or a probe has walked; a map change

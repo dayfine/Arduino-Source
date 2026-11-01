@@ -33,6 +33,15 @@ const TileGrid* none(){ return nullptr; }
 //  Mine legs, 01.06's Route 203 and Jubilife legs, 01.08's Route 204 South,
 //  01.09's Ravaged Path, 01.10's waypoints) are data already, tested in
 //  PokemonBDSP_AutoStory_Tests.cpp; these are the rest.
+//
+//  Not recorded, because they are not routes: 00.01 to 00.03 (the house,
+//  Twinleaf, Route 201, the Lakefront and the lake) replay the stick inputs
+//  Butters recorded for #1717 (tutorial_part_1_navigation, entry_visible,
+//  tutorial_part_2_navigation, starter_nav: timed holds, diagonals among
+//  them, and "move until transition"). No tile count can be read off them.
+//  They get redone as planned walks on the Twinleaf, Verity Lakefront and
+//  Lake Verity grids (decoded 2026-11-01) in the compact series; until then
+//  those grids carry no route and no trace.
 const std::vector<RouteRecord>& all(){
     static const std::vector<RouteRecord> records{
         {"01.01", "Jubilife Pokemon Center to Barry on Route 203", "Jubilife City", jubilife, false, std::nullopt, {
