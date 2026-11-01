@@ -284,7 +284,7 @@ private:
     //  changed more than `still` between the frame before and after it: a step
     //  moves the screen, a bump into a wall doesn't. Stops after two still
     //  taps in a row unless the line says "all". A tap toward a new direction
-    //  only turns the player, so the first tap of a new direction is still.
+    //  turns and steps, so every tap is a step unless something blocks it.
     void taps(const std::vector<std::string>& words){
         const TapsArguments args = parse_taps(words);
         VideoSnapshot before = current_frame();
