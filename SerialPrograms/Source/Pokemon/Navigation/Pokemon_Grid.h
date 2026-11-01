@@ -13,6 +13,7 @@
 #include <cstddef>
 #include <functional>
 #include <string>
+#include <vector>
 
 namespace PokemonAutomation{
 namespace Pokemon{
@@ -39,6 +40,26 @@ struct TilePos{
     bool operator==(const TilePos& other) const = default;
 };
 std::string to_string(const TilePos& pos);
+
+
+//  One value per tile of a map, row by row from the top.
+template <typename Cell>
+struct Grid{
+    int width = 0;
+    int height = 0;
+    std::vector<Cell> cells;
+
+    bool contains(const TilePos& pos) const{
+        return 0 <= pos.x && pos.x < width && 0 <= pos.y && pos.y < height;
+    }
+    //  `pos` must be inside the grid.
+    const Cell& at(const TilePos& pos) const{
+        return cells[(size_t)pos.y * width + pos.x];
+    }
+    Cell& at(const TilePos& pos){
+        return cells[(size_t)pos.y * width + pos.x];
+    }
+};
 
 
 
