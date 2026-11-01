@@ -25,6 +25,7 @@ const char* const VIRIDIAN = "ViridianCity";
 const char* const VIRIDIAN_MART = "ViridianCity_Mart";
 const char* const VIRIDIAN_CENTER = "ViridianCity_PokemonCenter_1F";
 const char* const FOREST = "ViridianForest";
+const char* const FOREST_GATE = "Route2_ViridianForest_NorthEntrance";
 const char* const PEWTER_CENTER = "PewterCity_PokemonCenter_1F";
 const char* const GYM = "PewterCity_Gym";
 
@@ -147,7 +148,9 @@ StoryCheckpoint forest(){
     cp.steps.push_back(route("forest_west", at(FOREST, 13, 46), "west side of the forest", true));
     cp.steps.push_back(route("forest_east", at(FOREST, 42, 44), "east path, past a Bug Catcher", true));
     cp.steps.push_back(route("forest_north", at(FOREST, 39, 25), "north part", true));
-    cp.steps.push_back(route("pewter_nurse", at(PEWTER_CENTER, 7, 4, NORTH), "out of the forest to Pewter's Center", true));
+    cp.steps.push_back(route("forest_exit", at(FOREST_GATE, 7, 8, NORTH), "into the north gate, fighting in the forest", true));
+    //  Out of the forest, wild battles are run from; trainers are still fought.
+    cp.steps.push_back(route("pewter_nurse", at(PEWTER_CENTER, 7, 4, NORTH), "Route 2 north to Pewter's Center"));
     cp.steps.push_back(make(StoryStepKind::HEAL, "heal_pewter", "full HP"));
     return cp;
 }
