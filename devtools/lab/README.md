@@ -86,7 +86,7 @@ mkdir -p "$LAB_PROFILE/Lab"                      # turns the channel on
 open -n -a SerialPrograms-B.app --args --profile lab-B
 until sh labctl.sh state >/dev/null 2>&1; do sleep 1; done
 
-sh labctl.sh owner claim lab-B                   # ok 1 owner claim lab-B @0-0ms / end
+sh labctl.sh owner claim lab-B                   # ok 2 owner claim lab-B @0-0ms / end
 sh labctl.sh select PokemonBDSP:AutoStory        # ok 2 select PokemonBDSP:AutoStory @0-412ms / end
 sh labctl.sh set START_CHECKPOINT_TUTORIAL '"15"'
 #   set START_CHECKPOINT_TUTORIAL = "15"
