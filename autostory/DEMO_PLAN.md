@@ -5,6 +5,8 @@ is to have demo PRs in good shape and have a full fledged plan". [PR_PLAN.md](PR
 the older collector plan and the file-ownership rules; this file replaces its tree and order of
 work.
 
+Sizes per PR, and estimates for what remains: [FRLG_SIZING.md](FRLG_SIZING.md).
+
 ## Where we are
 
 - **FRLG proof of concept.** New game to the Boulder Badge on console B, in pieces:
