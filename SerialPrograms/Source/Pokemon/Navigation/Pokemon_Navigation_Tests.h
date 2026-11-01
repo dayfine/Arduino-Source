@@ -14,7 +14,6 @@ namespace Pokemon{
 
 
 void add_tests_LegPlanner(UnitTestDatabase& database);
-void add_tests_LegWalker(UnitTestDatabase& database);
 
 
 
