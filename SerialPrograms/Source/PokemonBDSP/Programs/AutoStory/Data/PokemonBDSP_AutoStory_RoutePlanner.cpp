@@ -40,10 +40,10 @@ WallHit slide_to_wall(const StoryWorld& world, const TilePos& from, Direction di
     hit.stop = from;
     while (true){
         const TilePos before = hit.stop;
-        const std::optional<TilePos> next = world.step(before, direction);
+        const std::optional<TilePos> next = step(world, before, direction);
         if (!next){
             hit.wall = before.next(direction);
-            hit.anchored = world.at_wall(before, direction);
+            hit.anchored = at_wall(world, before, direction);
             return hit;
         }
         hit.tiles += distance(*next, before);
@@ -72,7 +72,7 @@ public:
     {}
 
     std::optional<Pokemon::Step<State>> press(const State& pos, Direction direction) const{
-        const std::optional<TilePos> next = m_world.step(pos, direction);
+        const std::optional<TilePos> next = step(m_world, pos, direction);
         if (!next){
             return std::nullopt;
         }
@@ -86,7 +86,7 @@ public:
         return step;
     }
     bool held_at(const State& pos, Direction direction) const{
-        return m_world.at_wall(pos, direction);
+        return at_wall(m_world, pos, direction);
     }
 
 private:
@@ -95,7 +95,7 @@ private:
 };
 
 void check_standable(const StoryWorld& world, const TilePos& from, const TilePos& to){
-    if (!world.standable(from) || !world.standable(to)){
+    if (!standable(world, from) || !standable(world, to)){
         throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, std::format(
             "Route ends must be standable: {} -> {}.", Pokemon::to_string(from), Pokemon::to_string(to)
         ));
@@ -137,7 +137,7 @@ std::vector<TilePos> sight_tiles(const StoryWorld& world, const TrainerSight& tr
     TilePos pos = trainer.pos;
     for (int i = 0; i < trainer.range; i++){
         pos = pos.next(trainer.facing);
-        if (!world.standable(pos)){
+        if (!standable(world, pos)){
             break;
         }
         tiles.push_back(pos);
@@ -184,7 +184,7 @@ std::vector<TilePos> trace_legs(
         size_t travelled = 0;
         while (travelled < leg.tiles){
             const TilePos pos = tiles.back();
-            const std::optional<TilePos> next = world.step(pos, leg.direction);
+            const std::optional<TilePos> next = step(world, pos, leg.direction);
             if (!next){
                 throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, std::format(
                     "Leg {} is stopped at {}.", to_string(leg), Pokemon::to_string(pos)
@@ -223,9 +223,9 @@ std::optional<Stepped> step_tiles(const StoryWorld& world, TilePos from, Directi
     Stepped stepped;
     int travelled = 0;
     while (travelled < tiles){
-        const std::optional<TilePos> next = world.step(from, direction);
+        const std::optional<TilePos> next = step(world, from, direction);
         if (!next){
-            if (!world.at_wall(from, direction)){
+            if (!at_wall(world, from, direction)){
                 return std::nullopt;
             }
             break;
@@ -420,7 +420,7 @@ std::optional<std::vector<PlannedLeg>> plan_robust_route(
     const RobustPlanCosts& costs
 ){
     for (const TilePos& pos : from){
-        if (!world.standable(pos)){
+        if (!standable(world, pos)){
             throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "Route starts must be standable: " + Pokemon::to_string(pos) + ".");
         }
     }

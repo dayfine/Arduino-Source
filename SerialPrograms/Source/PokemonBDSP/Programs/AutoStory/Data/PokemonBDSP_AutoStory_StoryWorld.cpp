@@ -57,28 +57,35 @@ void StoryWorld::add(std::string name, const Pokemon::MapData& map, const TilePo
             placed.occupied.push_back({object.x, object.y});
         }
     }
-    check_overlap(placed.name, placed);
+    check_overlap(placed);
     m_maps.push_back(std::move(placed));
     rebuild();
 }
 
 //  Map images show a border of trees past their edges, so two maps may
 //  share walls with nobody on them, but nothing else.
-void StoryWorld::check_overlap(const std::string& name, const Placed& map) const{
-    const auto free_wall = [](const Placed& placed, const TilePos& pos){
-        return placed.tiles.at(pos) == TileKind::WALL &&
-            std::find(placed.occupied.begin(), placed.occupied.end(), pos) == placed.occupied.end();
+std::optional<TilePos> StoryWorld::conflict(const Placed& map, const Placed& placed){
+    const auto free_wall = [](const Placed& in, const TilePos& pos){
+        return in.tiles.at(pos) == TileKind::WALL &&
+            std::find(in.occupied.begin(), in.occupied.end(), pos) == in.occupied.end();
     };
-    for (const Placed& placed : m_maps){
-        for (int y = 0; y < map.tiles.height; y++){
-            for (int x = 0; x < map.tiles.width; x++){
-                const TilePos other{map.offset.x + x - placed.offset.x, map.offset.y + y - placed.offset.y};
-                if (placed.tiles.contains(other) && (!free_wall(map, {x, y}) || !free_wall(placed, other))){
-                    throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, std::format(
-                        "Map {} overlaps {} at its tile {}.", name, placed.name, Pokemon::to_string(TilePos{x, y})
-                    ));
-                }
+    for (int y = 0; y < map.tiles.height; y++){
+        for (int x = 0; x < map.tiles.width; x++){
+            const TilePos other{map.offset.x + x - placed.offset.x, map.offset.y + y - placed.offset.y};
+            if (placed.tiles.contains(other) && (!free_wall(map, {x, y}) || !free_wall(placed, other))){
+                return TilePos{x, y};
             }
+        }
+    }
+    return std::nullopt;
+}
+
+void StoryWorld::check_overlap(const Placed& map) const{
+    for (const Placed& placed : m_maps){
+        if (const std::optional<TilePos> at = conflict(map, placed)){
+            throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, std::format(
+                "Map {} overlaps {} at its tile {}.", map.name, placed.name, Pokemon::to_string(*at)
+            ));
         }
     }
 }
@@ -103,15 +110,7 @@ void StoryWorld::rebuild(){
     m_cells = Pokemon::Grid<Cell>{high.x - low.x, high.y - low.y, {}};
     m_cells.cells.resize((size_t)m_cells.width * m_cells.height);
     for (auto iter = m_maps.rbegin(); iter != m_maps.rend(); ++iter){
-        const TilePos corner{iter->offset.x - low.x, iter->offset.y - low.y};
-        for (int y = 0; y < iter->tiles.height; y++){
-            for (int x = 0; x < iter->tiles.width; x++){
-                m_cells.at({corner.x + x, corner.y + y}) = Cell{true, iter->tiles.at({x, y}), false};
-            }
-        }
-        for (const TilePos& pos : iter->occupied){
-            m_cells.at({corner.x + pos.x, corner.y + pos.y}).occupied = true;
-        }
+        paint(*iter, {iter->offset.x - low.x, iter->offset.y - low.y});
     }
     for (const TilePos& pos : m_blocked){
         if (Cell* blocked = cell(pos)){
@@ -125,6 +124,17 @@ void StoryWorld::rebuild(){
     }
 }
 
+void StoryWorld::paint(const Placed& placed, const TilePos& corner){
+    for (int y = 0; y < placed.tiles.height; y++){
+        for (int x = 0; x < placed.tiles.width; x++){
+            Pokemon::cell_at(m_cells, {corner.x + x, corner.y + y}) = Cell{true, placed.tiles.at({x, y}), false};
+        }
+    }
+    for (const TilePos& pos : placed.occupied){
+        Pokemon::cell_at(m_cells, {corner.x + pos.x, corner.y + pos.y}).occupied = true;
+    }
+}
+
 const StoryWorld::Cell* StoryWorld::cell(const TilePos& pos) const{
     if (!m_cells.contains(pos) || !m_cells.at(pos).covered){
         return nullptr;
@@ -135,13 +145,9 @@ StoryWorld::Cell* StoryWorld::cell(const TilePos& pos){
     if (!m_cells.contains(pos) || !m_cells.at(pos).covered){
         return nullptr;
     }
-    return &m_cells.at(pos);
+    return &Pokemon::cell_at(m_cells, pos);
 }
 
-
-bool StoryWorld::covered(const TilePos& pos) const{
-    return cell(pos) != nullptr;
-}
 
 std::optional<TileKind> StoryWorld::tile(const TilePos& pos) const{
     const Cell* found = cell(pos);
@@ -154,33 +160,6 @@ std::optional<TileKind> StoryWorld::tile(const TilePos& pos) const{
 bool StoryWorld::occupied(const TilePos& pos) const{
     const Cell* found = cell(pos);
     return found != nullptr && found->occupied;
-}
-
-bool StoryWorld::standable(const TilePos& pos) const{
-    const Cell* found = cell(pos);
-    return found != nullptr && !found->occupied &&
-        (found->tile == TileKind::OPEN || found->tile == TileKind::TALL_GRASS);
-}
-
-std::optional<TilePos> StoryWorld::step(const TilePos& from, Direction direction) const{
-    const TilePos next = from.next(direction);
-    if (standable(next)){
-        return next;
-    }
-    const Cell* found = cell(next);
-    if (found == nullptr || found->occupied || ledge_direction(found->tile) != direction){
-        return std::nullopt;
-    }
-    const TilePos landing = next.next(direction);
-    if (standable(landing)){
-        return landing;
-    }
-    return std::nullopt;
-}
-
-bool StoryWorld::at_wall(const TilePos& pos, Direction direction) const{
-    const std::optional<TileKind> next = tile(pos.next(direction));
-    return next && *next != TileKind::DOOR && !step(pos, direction).has_value();
 }
 
 void StoryWorld::block(const TilePos& pos){
@@ -217,10 +196,42 @@ std::optional<MapTile> StoryWorld::to_local(const TilePos& world) const{
     return std::nullopt;
 }
 
-std::string StoryWorld::describe(const TilePos& world) const{
-    const std::optional<MapTile> local = to_local(world);
+
+
+bool covered(const StoryWorld& world, const TilePos& pos){
+    return world.tile(pos).has_value();
+}
+
+bool standable(const StoryWorld& world, const TilePos& pos){
+    const std::optional<TileKind> tile = world.tile(pos);
+    return tile && (*tile == TileKind::OPEN || *tile == TileKind::TALL_GRASS) && !world.occupied(pos);
+}
+
+std::optional<TilePos> step(const StoryWorld& world, const TilePos& from, Direction direction){
+    const TilePos next = from.next(direction);
+    if (standable(world, next)){
+        return next;
+    }
+    const std::optional<TileKind> tile = world.tile(next);
+    if (!tile || world.occupied(next) || ledge_direction(*tile) != direction){
+        return std::nullopt;
+    }
+    const TilePos landing = next.next(direction);
+    if (standable(world, landing)){
+        return landing;
+    }
+    return std::nullopt;
+}
+
+bool at_wall(const StoryWorld& world, const TilePos& pos, Direction direction){
+    const std::optional<TileKind> next = world.tile(pos.next(direction));
+    return next && *next != TileKind::DOOR && !step(world, pos, direction).has_value();
+}
+
+std::string describe(const StoryWorld& world, const TilePos& pos){
+    const std::optional<MapTile> local = world.to_local(pos);
     if (!local){
-        return "world " + Pokemon::to_string(world);
+        return "world " + Pokemon::to_string(pos);
     }
     return local->map + " " + Pokemon::to_string(local->pos);
 }

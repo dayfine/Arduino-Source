@@ -30,6 +30,7 @@
 #include "NintendoSwitch/Inference/NintendoSwitch_UpdatePopupDetector.h"
 #include "NintendoSwitch/Programs/Typewriter/NintendoSwitch_Typewriter_Tests.h"
 
+#include "Pokemon/AutoStory/Pokemon_AutoStory_Tests.h"
 #include "Pokemon/Navigation/Pokemon_Navigation_Tests.h"
 #include "PokemonBDSP/PokemonBDSP_Tests.h"
 #include "VideoGames/PokemonHome/PokemonHome_Tests.h"
