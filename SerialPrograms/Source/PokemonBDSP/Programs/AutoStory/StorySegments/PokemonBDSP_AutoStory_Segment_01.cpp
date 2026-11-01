@@ -1359,8 +1359,7 @@ void ravaged_path(VideoStream& stream, ProControllerContext& context){
 
 void route204_to_floaroma(VideoStream& stream, ProControllerContext& context){
     StepLog step(stream, "01.10", "From the Ravaged Path's north exit to Floaroma Town", {
-        "Route 204 north on its grid, past the twins, into Floaroma",
-        "Heal at the Floaroma Pokemon Center",
+        "Route 204 north on the human's line, into Floaroma",
     });
 
     step(1);
@@ -1382,20 +1381,21 @@ void route204_to_floaroma(VideoStream& stream, ProControllerContext& context){
         if (!std::all_of(at.begin(), at.end(), Route204::in_floaroma_path)){
             fail(stream, "Route 204: the walk did not end in the path into Floaroma.");
         }
-        // Floaroma's arrival did not read as a black screen by hand ("limit
-        // after 20000ms", and we stood in the town), so either will do.
-        const WalkResult in = walk_dir(stream, context, Direction::NORTH, 20000ms, "north into Floaroma");
-        if (in.stop == WalkStop::BLOCKED || in.stop == WalkStop::DIALOG){
-            fail(stream, "Route 204: the walk north into Floaroma was stopped.");
+        // North until the town's banner shows: the checkpoint ends right
+        // there, where the save goes (r247a walked 20 s on and overshot).
+        const WalkResult in = walk_until_dpad(stream, context, 0, 1, 12000ms, "north into Floaroma", location_banner_showing);
+        if (in.stop != WalkStop::ARRIVED){
+            fail(stream, "Route 204: no location banner walking north into Floaroma.");
         }
-        context.wait_for(2000ms);
+        context.wait_for(500ms);
+        const VideoSnapshot banner = stream.video().snapshot();
+        const std::string read = banner ? read_location_banner(*banner.frame) : "";
+        if (!location_banner_matches(read, "Floaroma Town")){
+            fail(stream, "Route 204: the banner read \"" + read + "\", not Floaroma Town.");
+        }
+        stream.log("[01.10] In Floaroma Town; the banner read \"" + read + "\".", COLOR_GREEN);
     }
 
-    step(2);
-    // We arrive in front of a house; the Center is a few tiles south-east.
-    walk_dir(stream, context, Direction::SOUTH, 1500ms, "south off the house's path");
-    hold_tiles(stream, context, Direction::EAST, 4);
-    heal_at_pokemon_center(stream, context, "Floaroma Pokemon Center");
 }
 
 void checkpoint_0101(
@@ -1533,6 +1533,9 @@ void checkpoint_0110(
     checkpoint_reattempt_loop(env, context, options, stats,
         [&](size_t /*attempt*/){
             route204_to_floaroma(env.console, context);
+            //  The run's last checkpoint: its end is where run 2 starts, so
+            //  save here, just inside the town.
+            checkpoint_save(env, context, options.notif_status_update, stats, options.checkpoint_save_mode);
         },
         true
     );
@@ -1542,7 +1545,7 @@ void checkpoint_0110(
 
 std::string AutoStory_Segment_01::name()       const { return "01: Jubilife to Floaroma"; }
 std::string AutoStory_Segment_01::start_text() const { return "Start: Standing in front of the Jubilife City Pokemon Center PC."; }
-std::string AutoStory_Segment_01::end_text()   const { return "End: In the Floaroma Town Pokemon Center, with the Coal Badge."; }
+std::string AutoStory_Segment_01::end_text()   const { return "End: Just inside Floaroma Town from Route 204, with the Coal Badge, saved."; }
 
 void AutoStory_Segment_01::run_segment(
     SingleSwitchProgramEnvironment& env,
@@ -1689,7 +1692,7 @@ void AutoStory_Checkpoint_0109::run_checkpoint(
 
 std::string AutoStory_Checkpoint_0110::name()       const { return "01.10 - Route 204 to Floaroma"; }
 std::string AutoStory_Checkpoint_0110::start_text() const { return AutoStory_Checkpoint_0109().end_text(); }
-std::string AutoStory_Checkpoint_0110::end_text()   const { return "In the Floaroma Town Pokemon Center, healed."; }
+std::string AutoStory_Checkpoint_0110::end_text()   const { return "Just inside Floaroma Town from Route 204, saved."; }
 
 void AutoStory_Checkpoint_0110::run_checkpoint(
     SingleSwitchProgramEnvironment& env,
