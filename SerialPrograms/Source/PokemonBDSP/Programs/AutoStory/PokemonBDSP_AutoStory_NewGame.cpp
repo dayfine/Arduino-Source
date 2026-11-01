@@ -15,6 +15,7 @@
 #include "CommonTools/Async/InferenceRoutines.h"
 #include "CommonTools/ScreenMachine/ScreenMachine.h"
 #include "CommonTools/ScreenMachine/StepTrace.h"
+#include "CommonTools/VisualDetectors/BlackScreenDetector.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "NintendoSwitch/Inference/NintendoSwitch_HomeMenuDetector.h"
 #include "NintendoSwitch/Inference/NintendoSwitch_StartGameUserSelectDetector.h"
@@ -81,7 +82,11 @@ std::string classify_intro_screen(ConsoleHandle* console, const ImageViewRGB32& 
     if (intro_dialog_showing(screen)){
         return "dialog";
     }
-    //  Language, cutscenes, fades, the bedroom with no menu open.
+    //  The boot and fades. After the dialogue: Rowan's first lines show on black.
+    if (BlackScreenDetector().detect(screen)){
+        return "black";
+    }
+    //  Logos, the title, language, cutscenes, the bedroom with no menu open.
     return "other";
 }
 
@@ -104,16 +109,20 @@ IntroStep decide_intro_step(const std::string& screen, const IntroProgress& prog
     if (screen == "menu"){
         return IntroStep::CLOSE_MENU_AND_FINISH;
     }
+    if (screen == "black"){
+        return IntroStep::WAIT;
+    }
     if (screen == "dialog"){
         return progress.rival_named ? IntroStep::ADVANCE_WITH_B : IntroStep::ADVANCE;
     }
     //  The bedroom comes only after the rival is named. Before that, every unknown
-    //  screen (language, the appearance preview, cutscenes) takes A, but only so
-    //  many before a screen only BDSP shows: past those it is another game.
+    //  screen (logos, the title, language, the appearance preview, cutscenes)
+    //  takes A, but only for so long before a screen only BDSP shows: past that
+    //  it is another game.
     if (progress.rival_named){
         return progress.b_presses < INTRO_B_BEFORE_X ? IntroStep::CLEAR_WITH_B : IntroStep::PROBE_FOR_MENU;
     }
-    if (!progress.game_confirmed && progress.unconfirmed_presses >= INTRO_PRESSES_BEFORE_BDSP){
+    if (!progress.game_confirmed && progress.unconfirmed_for >= INTRO_TIME_BEFORE_BDSP){
         return IntroStep::FAIL_NOT_BDSP;
     }
     return IntroStep::ADVANCE;
@@ -122,18 +131,25 @@ bool intro_screen_confirms_bdsp(const std::string& screen){
     return screen == "dialog" || screen == "rival-list-tell" || screen == "rival-list-preset" || screen == "menu";
 }
 
-void record_intro_step(IntroProgress& progress, const std::string& screen, IntroStep step){
+void note_intro_screen(IntroProgress& progress, const std::string& screen, std::chrono::milliseconds since_start){
     if (intro_screen_confirms_bdsp(screen)){
         progress.game_confirmed = true;
     }
+    if (screen == "black"){
+        return;
+    }
+    if (!progress.first_shown){
+        progress.first_shown = since_start;
+    }
+    if (!progress.game_confirmed){
+        progress.unconfirmed_for = since_start - *progress.first_shown;
+    }
+}
+
+void record_intro_step(IntroProgress& progress, IntroStep step){
     switch (step){
     case IntroStep::ENTER_PLAYER_NAME:
         progress.player_named = true;
-        return;
-    case IntroStep::ADVANCE:
-        if (!progress.game_confirmed){
-            progress.unconfirmed_presses++;
-        }
         return;
     case IntroStep::PICK_PRESET:
         progress.rival_named = true;
@@ -228,6 +244,7 @@ struct IntroRun{
     ProControllerContext& context;
     StepTrace& trace;
     const std::string& player_name;
+    WallClock start;
     IntroProgress progress;
     size_t x_without_menu = 0;
 };
@@ -264,8 +281,10 @@ void probe_for_menu(IntroRun& run){
 
 //  Carries out what decide_intro_step() chose for `screen`.
 void act(IntroRun& run, const char* screen){
+    note_intro_screen(run.progress, screen,
+        std::chrono::duration_cast<std::chrono::milliseconds>(current_time() - run.start));
     const IntroStep step = decide_intro_step(screen, run.progress);
-    record_intro_step(run.progress, screen, step);
+    record_intro_step(run.progress, step);
     switch (step){
     case IntroStep::SELECT_USER:
         //  The cursor starts on the user that launched the game.
@@ -275,8 +294,8 @@ void act(IntroRun& run, const char* screen){
     case IntroStep::FAIL_NOT_IN_GAME:
         run.trace.fail("The Switch HOME menu is showing: the game is not running in front.");
     case IntroStep::FAIL_NOT_BDSP:
-        run.trace.fail("The game in front is not BDSP: no BDSP screen after " +
-            std::to_string(run.progress.unconfirmed_presses) + " presses on unknown screens.");
+        run.trace.fail("The game in front is not BDSP: no BDSP screen in " +
+            std::to_string(run.progress.unconfirmed_for.count() / 1000) + " s of unknown screens.");
     case IntroStep::ENTER_PLAYER_NAME:
         enter_player_name(run.env.console, run.context, run.trace, run.player_name);
         return;
@@ -305,7 +324,26 @@ void act(IntroRun& run, const char* screen){
     case IntroStep::PROBE_FOR_MENU:
         probe_for_menu(run);
         return;
+    case IntroStep::WAIT:
+        pbf_wait(run.context, 500ms);
+        return;
     }
+}
+
+//  After the restart BDSP boots on black for about 25 s (r3); presses then
+//  would count against the wrong-game guard, so none until it ends.
+void wait_out_boot(VideoStream& stream, ProControllerContext& context, StepTrace& trace){
+    context.wait_for_all_requests();
+    const WallClock deadline = current_time() + INTRO_BOOT_LIMIT;
+    while (current_time() < deadline){
+        VideoSnapshot screen = stream.video().snapshot();
+        if (screen && !BlackScreenDetector().detect(screen)){
+            trace.action("The boot's black screen ended.");
+            return;
+        }
+        context.wait_for(500ms);
+    }
+    trace.fail("The screen stayed black for " + std::to_string(INTRO_BOOT_LIMIT.count() / 1000) + " s after the restart.");
 }
 
 //  The machine's states: the screens classify_intro_screen() tells apart, with
@@ -323,22 +361,26 @@ std::vector<ScreenState> intro_states(IntroRun& run){
             [&run]{ act(run, "home"); }, {}, 1},
         {"player-keyboard",
             [=, &run](const ImageViewRGB32& s){ return !run.progress.player_named && screen_is(s, "keyboard"); },
-            [&run]{ act(run, "keyboard"); }, {"dialog", "other"}, 1},
+            [&run]{ act(run, "keyboard"); }, {"dialog", "black", "other"}, 1},
         {"rival-keyboard",
             [=, &run](const ImageViewRGB32& s){ return run.progress.player_named && screen_is(s, "keyboard"); },
-            [&run]{ act(run, "keyboard"); }, {"rival-list-tell", "dialog", "other"}, 3},
+            [&run]{ act(run, "keyboard"); }, {"rival-list-tell", "dialog", "black", "other"}, 3},
         {"rival-list-tell",
             [=](const ImageViewRGB32& s){ return screen_is(s, "rival-list-tell"); },
-            [&run]{ act(run, "rival-list-tell"); }, {"rival-list-preset", "other"}, 6},
+            [&run]{ act(run, "rival-list-tell"); }, {"rival-list-preset", "black", "other"}, 6},
         {"rival-list-preset",
             [=](const ImageViewRGB32& s){ return screen_is(s, "rival-list-preset"); },
-            [&run]{ act(run, "rival-list-preset"); }, {"dialog", "other"}, 3},
+            [&run]{ act(run, "rival-list-preset"); }, {"dialog", "black", "other"}, 3},
         {"menu",
             [=](const ImageViewRGB32& s){ return screen_is(s, "menu"); },
             [&run]{ act(run, "menu"); }, {}, 2, true},
         {"dialog",
             [=](const ImageViewRGB32& s){ return screen_is(s, "dialog"); },
             [&run]{ act(run, "dialog"); }, {}, 400},
+        //  The boot is waited out before the machine starts; this is fades.
+        {"black",
+            [=](const ImageViewRGB32& s){ return screen_is(s, "black"); },
+            [&run]{ act(run, "black"); }, {}, 300, false, 60},
         {"other",
             [](const ImageViewRGB32&){ return true; },
             [&run]{ act(run, "other"); }, {}, 300, false, 60},
@@ -378,7 +420,8 @@ void play_new_game_intro(
     go_home(env.console, context);
     from_home_close_and_reopen_game(env.console, context, true);
 
-    IntroRun run{env, context, trace, player_name, {}, 0};
+    wait_out_boot(stream, context, trace);
+    IntroRun run{env, context, trace, player_name, current_time(), {}, 0};
     const std::vector<ScreenState> states = intro_states(run);
     run_screen_machine(stream, context, trace, states, std::chrono::minutes(15));
     trace.action("Intro done.");
