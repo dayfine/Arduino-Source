@@ -44,6 +44,13 @@ constexpr Milliseconds AFTER_WARP = 1500ms;
 //  A message set off by a leg's last step shows after the hold ends. Caught
 //  here, before the next leg's turn tap, which the message would swallow.
 constexpr Milliseconds AFTER_LEG_WATCH = 500ms;
+//  An open leg where a wild battle can start is walked a tile at a time, each
+//  press watched this long. Held through, a battle's flash came too late to
+//  tell which step set it off: one on the 3rd tile of 4 was seen after the
+//  hold and taken for the 4th, and one on the 1st for none (console B,
+//  2026-11-01, Route 1). From that log the flash was seen roughly 600ms
+//  after its step landed.
+constexpr Milliseconds STEP_WINDOW = 900ms;
 constexpr size_t MAX_INTERRUPTIONS_PER_LEG = 5;
 
 
@@ -160,7 +167,11 @@ public:
 };
 
 Pokemon::LegSpec leg_spec(const RouteStep& step){
-    return Pokemon::LegSpec{step.direction, step.tiles, step.to_wall, step.surfing ? SURF_TILE_TIME : TILE_TIME};
+    return Pokemon::LegSpec{
+        step.direction, step.tiles, step.to_wall,
+        step.surfing ? SURF_TILE_TIME : TILE_TIME,
+        step.wild ? STEP_WINDOW : 0ms,
+    };
 }
 
 //  One watcher for the whole fade: a ladder's black is short enough to be

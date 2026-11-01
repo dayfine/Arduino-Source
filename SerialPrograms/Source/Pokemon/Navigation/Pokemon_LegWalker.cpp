@@ -31,12 +31,62 @@ int tiles_before_interrupt(const LegSpec& leg, Milliseconds elapsed, Millisecond
     return std::clamp((int)(since_first_step / leg.tile_time), 0, remaining);
 }
 
+int steps_back_to_interrupt(const LegSpec& leg, Milliseconds elapsed, Milliseconds detection_delay){
+    const int whole_windows = (int)(detection_delay / leg.step_window);
+    return whole_windows + (elapsed < leg.tile_time ? 1 : 0);
+}
+
+
+namespace{
+
+//  An open leg walked a tile at a time. Since each interrupt is placed on the
+//  step that set it off, the leg ends on its last tile even when an interrupt
+//  is only seen after that step.
+LegResult walk_leg_tile_by_tile(const LegSpec& leg, const LegCalls& calls, size_t max_interruptions){
+    LegResult result;
+    int walked = 0;
+    //  Presses since the last interrupt: an interrupt can't reach back past
+    //  one already cleared.
+    int pressed = 0;
+    while (walked < leg.tiles){
+        const std::optional<HoldOutcome> outcome = calls.hold_watching(leg_hold(leg, 1), leg.step_window);
+        walked++;
+        pressed++;
+        if (!outcome){
+            continue;
+        }
+        result.interruptions++;
+        if (result.interruptions > max_interruptions){
+            calls.fail(std::format("Interrupted {} times on: {}", result.interruptions, to_string(leg)));
+        }
+        calls.clear(outcome->interrupt);
+        const Milliseconds delay = calls.detection_delay(outcome->interrupt);
+        walked -= std::min(steps_back_to_interrupt(leg, outcome->elapsed, delay), pressed);
+        pressed = 0;
+        if (delay >= leg.step_window){
+            result.exact = false;
+        }
+        calls.log(std::format(
+            "{} {}ms after a press, {} of {} tiles walked.",
+            calls.name(outcome->interrupt), outcome->elapsed.count(), walked, leg.tiles
+        ));
+    }
+    result.tiles = leg.tiles;
+    return result;
+}
+
+}
+
 
 LegResult walk_leg_with(const LegSpec& leg, const LegCalls& calls, size_t max_interruptions){
+    if (!leg.to_wall && leg.step_window > Milliseconds::zero()){
+        return walk_leg_tile_by_tile(leg, calls, max_interruptions);
+    }
     LegResult result;
     int remaining = leg.tiles;
     while (true){
-        const std::optional<HoldOutcome> outcome = calls.hold_watching(leg_hold(leg, remaining));
+        const Milliseconds hold = leg_hold(leg, remaining);
+        const std::optional<HoldOutcome> outcome = calls.hold_watching(hold, hold);
         if (!outcome){
             result.tiles = leg.tiles;
             return result;

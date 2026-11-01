@@ -10,7 +10,8 @@
  *  A message or a wild battle can stop the player part-way through a leg.
  *  Each kind is an OverworldInterrupt: the walker watches for all of them
  *  while it holds the D-pad, and when one shows it stops, has it cleared and
- *  walks the rest of the leg.
+ *  walks the rest of the leg. Open legs where a wild battle can start are
+ *  walked a tile at a time, so that the battle is placed on its step.
  *
  */
 

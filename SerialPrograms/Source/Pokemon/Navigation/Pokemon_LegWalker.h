@@ -7,8 +7,10 @@
  *  message, a trainer). Each of those is a LegInterrupt the game supplies.
  *  When one shows, the hold stops, the game clears it, and the rest of the
  *  leg is walked: a leg to a wall is simply held again, since the wall stops
- *  the player on its tile; for an open leg, how far the player got is worked
- *  out from when the interrupt was seen.
+ *  the player on its tile. An open leg can't be checked like that, so where
+ *  an interrupt is likely it is walked a tile at a time, each step watched
+ *  long enough to see what it set off; elsewhere how far the player got is
+ *  worked out from when the interrupt was seen.
  *
  *  How a direction is held (D-pad or stick) and how long a tile takes are
  *  the game's too, through LegMover. Templated on the console and the
@@ -80,6 +82,11 @@ struct LegSpec{
     bool to_wall = false;
     //  How long one tile takes, for this leg's direction and way of moving.
     Milliseconds tile_time{0};
+    //  If set, an open leg is walked a tile at a time: one short press per
+    //  step, watched for this long from the press before the next. It must be
+    //  longer than the interrupts' detection delays. See
+    //  steps_back_to_interrupt().
+    Milliseconds step_window{0};
 };
 std::string to_string(const LegSpec& leg);
 
@@ -102,6 +109,16 @@ Milliseconds leg_hold(const LegSpec& leg, int tiles);
 //  a whole number of tiles into the hold, so this rounds to the nearest.
 int tiles_before_interrupt(const LegSpec& leg, Milliseconds elapsed, Milliseconds detection_delay, int remaining);
 
+//  For a leg walked a tile at a time: how many steps before the one just
+//  pressed set off an interrupt seen `elapsed` after that press. A step's
+//  interrupt shows after the step lands, a tile into its window, and so
+//  within its window when the delay is shorter than the window, or else
+//  before the next press lands, which it then swallows. So one seen less than
+//  a tile after a press is the previous step's. This needs no measured delay,
+//  only one shorter than the window. An interrupt slower than that (whole
+//  windows of `detection_delay`) is counted back further, which is a guess.
+int steps_back_to_interrupt(const LegSpec& leg, Milliseconds elapsed, Milliseconds detection_delay);
+
 
 //  What one hold reported: nothing if it ran out, or which interrupt showed
 //  and how long into the hold.
@@ -111,12 +128,13 @@ struct HoldOutcome{
 };
 
 //  The leg's bookkeeping, with the console side passed in, so it can be
-//  tested with scripted outcomes. `hold_watching` holds for the duration and
-//  reports the first interrupt seen; `clear` clears interrupt i;
+//  tested with scripted outcomes. `hold_watching` holds for `hold`, watches
+//  until at least `window` after the hold started, and reports the first
+//  interrupt seen; `clear` clears interrupt i;
 //  `detection_delay` is interrupt i's delay; `log` reports progress; `fail`
 //  throws, and is called after more than `max_interruptions`.
 struct LegCalls{
-    std::function<std::optional<HoldOutcome>(Milliseconds hold)> hold_watching;
+    std::function<std::optional<HoldOutcome>(Milliseconds hold, Milliseconds window)> hold_watching;
     std::function<void(size_t interrupt)> clear;
     std::function<Milliseconds(size_t interrupt)> detection_delay;
     std::function<std::string(size_t interrupt)> name;
@@ -136,7 +154,7 @@ LegResult walk_leg(
     const LegSpec& leg,
     size_t max_interruptions = 5
 ){
-    auto hold_watching = [&](Milliseconds hold) -> std::optional<HoldOutcome>{
+    auto hold_watching = [&](Milliseconds hold, Milliseconds window) -> std::optional<HoldOutcome>{
         std::vector<std::unique_ptr<VisualInferenceCallback>> watchers;
         std::vector<PeriodicInferenceCallback> callbacks;
         for (const auto& interrupt : interrupts){
@@ -150,6 +168,8 @@ LegResult walk_leg(
             [&](Context& context){
                 start = current_time();
                 mover.hold(context, leg.direction, hold);
+                context.wait_for_all_requests();
+                context.wait_until(start + window);
             },
             callbacks
         );
