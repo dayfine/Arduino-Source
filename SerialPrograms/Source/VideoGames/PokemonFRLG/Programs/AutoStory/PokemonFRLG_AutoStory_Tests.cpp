@@ -95,7 +95,7 @@ std::vector<TilePos> tiles_walked_on(const std::vector<RouteStep>& route, const 
 //  Steps that must reach Viridian Forest's gate by legs the walker can hold
 //  again after a battle: each ends on a wall or a warp, or is one step.
 bool held_legs_only(const std::string& name){
-    return name == "forest_exit" || name == "forest_gate";
+    return name == "forest_east" || name == "forest_exit" || name == "forest_gate";
 }
 UnitTestResult check_held_legs(const std::string& name, const std::vector<RouteStep>& route){
     for (const RouteStep& step : route){

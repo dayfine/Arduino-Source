@@ -178,9 +178,12 @@ StoryCheckpoint shopping(){
 StoryCheckpoint forest(){
     //  The supplies bought in 00.07.
     return StoryCheckpoint{"00.08", "Viridian Forest to Pewter Center", at(FOREST, 29, 62, NORTH), {5, 3, 1}, StartMenu::FULL, {
-        //  The forest legs walked by hand; wild battles are fought for EXP.
-        route("forest_west", at(FOREST, 13, 46), "west side of the forest", true),
-        route("forest_east", at(FOREST, 42, 44), "east path, past a Bug Catcher", true),
+        //  Wild battles are fought for EXP. Straight up the east side from the
+        //  entrance, each leg ending on a wall (the Boy at (45, 58) stops the
+        //  east one). Rick (47, 45) sees (42..46, 45), so the last leg meets
+        //  his battle and is held on to its wall after it. The by-hand run's
+        //  detour west to (13, 46) and back is dropped.
+        legs("forest_east", {{EAST, 1}, {NORTH, 4}, {EAST, 14}, {NORTH, 15}}, "up the east side to (44, 43)", true),
         route("forest_north", at(FOREST, 39, 25), "north part", true),
         //  To the gate by legs that end on walls, which the walker holds again
         //  after a battle instead of estimating where it stopped: planned
