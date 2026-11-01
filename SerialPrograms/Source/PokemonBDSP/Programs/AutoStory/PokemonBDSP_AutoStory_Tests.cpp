@@ -515,9 +515,9 @@ public:
         //  for 00.04's walks, the Sandgem Center events' default costs for
         //  walk() and town costs for walk_in_town(). The planner gives up
         //  after costs.max_searched sets, and the costs decide whether a
-        //  walk gets a plan: after training to the Center the route costs
-        //  find none on the game's grid and walk_route() falls back to the
-        //  default costs, so that is the plan that runs and is checked here.
+        //  walk gets a plan: after training, 00.04 walks to Sandgem's entry
+        //  with the default costs (the route costs find none within the cap),
+        //  then to the Center with the town costs, checked leg by leg below.
         const struct{
             const char* name;
             std::vector<TilePos> from;
@@ -527,8 +527,8 @@ public:
         } walks[] = {
             {"Save spots to the catch grass", story_save_spots(),
                 [&](const TilePos& pos){ return std::find(grass.begin(), grass.end(), pos) != grass.end(); }, false, route_plan_costs()},
-            {"After training to the Pokemon Center", story_after_training_area(),
-                [&](const TilePos& pos){ return pos == below_sign; }, false, Pokemon::RobustPlanCosts()},
+            {"After training to Sandgem's entry", story_after_training_area(),
+                [&](const TilePos& pos){ return pos == sandgem_entry_stop(); }, false, Pokemon::RobustPlanCosts()},
             //  The Mart's door takes a tile either side: enter_lit_door() lines up by sight.
             {"Pokemon Center to the Poke Mart", story_door_front(MAP_SANDGEM_TOWN, SandgemTown::POKEMON_CENTER_DOOR),
                 [&](const TilePos& pos){ return pos.y == below_mart.y && std::abs(pos.x - below_mart.x) <= 1; }, true, route_plan_costs()},
