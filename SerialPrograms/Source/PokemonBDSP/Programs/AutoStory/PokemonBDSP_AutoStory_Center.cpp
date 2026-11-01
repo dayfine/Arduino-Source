@@ -174,7 +174,7 @@ bool walk_into_door(
     //  The Center's fade is too light to read as black (r126 runs 2 and 3: a
     //  screen change of 49 at 400 ms), so its inside, once it shows, stops
     //  the walk too.
-    const WalkStop stop = walk_until(stream, context, run_from_wild_battle, 0, 1, limit, label + ": into the door",
+    const WalkStop stop = walk_until(stream, context, run_from_wild_battle, {0, 1}, limit, label + ": into the door",
         [](const ImageViewRGB32& screen){ return pokemon_center_inside(screen); }).stop;
     if (stop == WalkStop::TRANSITION || stop == WalkStop::ARRIVED){
         pbf_wait(context, 2000ms);
@@ -310,7 +310,7 @@ std::vector<TilePos> tiles_by_lit_doorway(const LitDoorway& doorway, const Story
     std::vector<TilePos> tiles;
     for (int y = guess.y - 1; y <= guess.y + 1; y++){
         for (int x = guess.x - 1; x <= guess.x + 1; x++){
-            if (grid.standable(TilePos{x, y})){
+            if (standable(grid, TilePos{x, y})){
                 tiles.push_back(TilePos{x, y});
             }
         }
@@ -420,7 +420,7 @@ void heal_at_pokemon_center(
 
     //  The nurse's counter is straight ahead of the door.
     route_status(stream, label + ": talking to the nurse.");
-    if (walk_to_talk(stream, context, run_from_wild_battle, 0, 1, 6000ms, label + ": to the nurse").stop != WalkStop::DIALOG){
+    if (walk_to_talk(stream, context, run_from_wild_battle, {0, 1}, 6000ms, label + ": to the nurse").stop != WalkStop::DIALOG){
         OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
             label + ": nurse not reached.", stream);
     }

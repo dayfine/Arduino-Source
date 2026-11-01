@@ -188,7 +188,7 @@ std::string read_move_name(const ImageViewRGB32& screen, const ImageFloatBox& bu
         }
     }
     std::string name;
-    for (unsigned char ch : story_reads_text() ? OCR::tesseract_ocr_read(g_story_language, text) : std::string()){
+    for (unsigned char ch : story_reads_text() ? OCR::tesseract_ocr_read(story_language(), text) : std::string()){
         if (std::isalpha(ch)){
             name.push_back((char)std::tolower(ch));
         }
