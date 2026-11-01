@@ -26,6 +26,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <type_traits>
 #include <vector>
 #include "Common/Cpp/Time.h"
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
@@ -62,14 +63,10 @@ template <typename Console, typename Context>
 using LegInterrupts = std::vector<std::unique_ptr<LegInterrupt<Console, Context>>>;
 
 
-//  How the game moves the player.
+//  How the game moves the player: holds `direction` for `duration`, then
+//  lets go.
 template <typename Context>
-class LegMover{
-public:
-    virtual ~LegMover() = default;
-    //  Holds `direction` for `duration`, then lets go.
-    virtual void hold(Context& context, Direction direction, Milliseconds duration) const = 0;
-};
+using LegMover = std::function<void(Context& context, Direction direction, Milliseconds duration)>;
 
 
 //  A straight leg, for a player standing still and facing its way.
@@ -141,7 +138,7 @@ LegResult walk_leg_with(const LegSpec& leg, const LegCalls& calls, size_t max_in
 template <typename Console, typename Context>
 LegResult walk_leg(
     Console& console, Context& context,
-    const LegMover<Context>& mover,
+    const std::type_identity_t<LegMover<Context>>& mover,
     const LegInterrupts<Console, Context>& interrupts,
     const LegSpec& leg,
     size_t max_interruptions = 5
@@ -159,7 +156,7 @@ LegResult walk_leg(
             console, context,
             [&](Context& context){
                 start = current_time();
-                mover.hold(context, leg.direction, hold);
+                mover(context, leg.direction, hold);
             },
             callbacks
         );
