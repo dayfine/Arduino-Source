@@ -1,5 +1,7 @@
 # AutoStory work → upstream PRs: the three collectors
 
+> **Superseded on 2026-11-01 13:00 by [DEMO_PLAN.md](DEMO_PLAN.md)** for the tree and order of work. The file-ownership rules and map notes below still hold.
+
 Written 2026-11-01 (user decisions of that day are in "Decisions"). Live status is in
 [PR_PROGRESS.md](PR_PROGRESS.md). The BBQ equivalent is
 [../pokemon_sv/PR_PLAN.md](../pokemon_sv/PR_PLAN.md); the rules for where PRs live are in

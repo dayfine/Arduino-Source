@@ -1,0 +1,107 @@
+# AutoStory: from proof of concept to demo PRs
+
+Written 2026-11-01 13:00. The user paused console work after FRLG's proof of concept: "next step
+is to have demo PRs in good shape and have a full fledged plan". [PR_PLAN.md](PR_PLAN.md) has
+the older collector plan and the file-ownership rules; this file replaces its tree and order of
+work.
+
+## Where we are
+
+- **FRLG proof of concept.** New game to the Boulder Badge on console B, in pieces:
+  - 00.01–00.06 in the morning run;
+  - 00.07, 00.08 and 00.09 on 2026-11-01 between 11:15 and 12:05.
+  - Brock was beaten in 4 turns with HP green and no Potions used.
+  - It is not yet 3/3 from a new game in one run.
+- **BDSP.** New game to Floaroma passed on the v3 line earlier, with #1717 underneath. It is
+  being rebuilt without #1717 as #127 and #128.
+- **Known walker bug, FRLG.** A wild battle in the middle of a leg can leave the player a tile
+  off the leg's line. "Walking to the wall again" then stops at the wrong wall, and nothing
+  notices. This failed the forest gate 4 times.
+  - On the passing run, the battles happened on the line, so nothing went wrong.
+  - A wall-ending leg never checks how far it walked.
+- **Story simulations pass on both games** but don't model the walker; see "Walker simulator".
+
+## Target shape: three stacks on one shared core
+
+```
+base/upstream-main
+└─ #114 nav/shared  Pokemon navigation core: grid, leg planner, LegWalker (moving in from #117/#119),
+   │                shared route log, MapData/JSON maps, story events, ScreenMachine
+   ├─ #122 nav/story-steps  shared story steps, retry policy, run options (Checks, language)
+   ├─ FRLG: #117 maps + planner → #118 walk interrupts → #119 recovery → #120 AutoStory to Brock
+   │        (#123 folds into #120: the table is written on the shared steps from the start)
+   └─ BDSP: #127 nav-v4 (maps, grids, StoryMaps, walker with injected battle handling)
+            → #128 autostory-v4 (program, segment 00/01 table on the shared steps, simulation)
+tooling (separate): #107 lab tooling → #116 run records; #125 route pictures (devtools/maps)
+```
+
+Superseded once the new ones are in shape; the user closes them, with branches kept:
+- BDSP: #111, #112, #121, #124, #68, #109, #54 (the #1717 mirror).
+- FRLG: #67.
+
+## What "good shape" means for each PR
+
+1. **Only its own files.** `git diff parent...child --stat` shows nothing from a parent. Shared
+   code lives in #114 or #122.
+2. **Reviewable size.** One concern per PR, about 400 changed lines excluding map data and tests.
+   Data tables are initializer lists. `std::format` for messages.
+3. **Tests.**
+   - Unit tests for the new code.
+   - The story simulation for the program PRs.
+   - The walker simulator for the nav PRs, once it exists.
+   - Fork CI green on Mac, Windows clang and Ubuntu.
+4. **Description.** 2–5 sentences, "Depends on #N" at the top, and one sentence on what was
+   checked on the console.
+5. **Console evidence.** The last console run that covers the PR, recorded in PR_PROGRESS.md.
+
+## Work, in order
+
+1. **Shared core settles (#114, #122).** In progress, agent:
+   - LegWalker and the shared route log move into #114 and merge down the FRLG stack.
+   - Decide: keep #122 separate or fold it into #114. Recommend separate: it is a different
+     concern and can go upstream after #114.
+2. **Walker simulator (#114) and the walker fixes (#119).**
+   - A grid world from the JSON maps that tracks the player's real tile and facing.
+   - Holds move one tile per tile time; walls, NPCs and warps stop the player.
+   - Seeded wild encounters on grass, with a detection lag; trainer sight from pokefirered.
+   - Assertion: every story route, across many seeds, ends on its planned tile or fails loudly.
+   - Model it on the measured behaviour: the m28 run's before/after screenshots of every step,
+     `DebugDumps/AutoStory/legs`.
+   - Then fix #119 against the failing simulated cases:
+     - the drift after a battle;
+     - a wall leg that stops far short of its length fails with a screenshot.
+3. **FRLG stack in shape (#117–#120).**
+   - Fold #123 into #120.
+   - #120 keeps the 00.07/00.08 split, the save-card check on load, the Checks level and
+     language-free reads.
+   - Review each PR against "good shape". Check that #117's route tests run in CI (maps are
+     built in from #118; decide whether to fold #118's maps into #117).
+4. **BDSP stack in shape (#127, #128).** In progress, agent:
+   - The walker moves to #127 with battle handling injected.
+   - Recorded stick holds are replaced by planned walks where maps exist.
+   - The simulation runs 00.00 → Floaroma in English and in Japanese.
+5. **Console verification, after 2–4.** One train at a time on console B:
+   - FRLG 3/3 new game → Brock in one run each.
+   - BDSP v4 new game → Floaroma, 3/3, first on the replaced 00.00–00.05 walks.
+   - Each run gets route pictures (#125) and a run record (#116).
+6. **Tooling PRs.**
+   - #116: retitle it as run records, attach route pictures to failed runs.
+   - #125: render route pictures as CI artifacts from the offline route tests. Not goldens.
+7. **Gameplay plan (design; the user decides the targets).**
+   - Trainer sight, facing and type in the map schema; the planner scores sight lines and grass.
+   - Level targets per checkpoint. FRLG Squirtle, from the 2015 speedrun guide: 6 after Route 1,
+     8 after the forest, 10 for Liam, 11 for Brock.
+   - Sammy is the only planned forest trainer.
+8. **Upstream handoff (the user publishes; at most two open upstream).**
+   - Order: #114's parts (grid and planner, ScreenMachine, story events and maps), then #122,
+     then FRLG #117 → #120, then BDSP #127 → #128, then the tooling.
+   - Each is folded to one commit per upstream PR when handed over.
+
+## Decisions needed from the user
+
+- Fold #123 into #120 (recommended), or keep it as its own PR.
+- Keep #122 separate from #114 (recommended), or fold it in.
+- Fold #118's built-in maps into #117 so #117's route tests run in CI.
+- Close the superseded PRs listed above once #127/#128 and the FRLG stack are in shape.
+- Level targets and the trainer list per checkpoint.
+- When to resume console runs: after steps 2–4, as proposed.
