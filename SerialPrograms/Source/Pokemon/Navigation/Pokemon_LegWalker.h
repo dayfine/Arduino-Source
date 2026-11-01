@@ -90,6 +90,10 @@ struct LegSpec{
     //  The last step lands on a warp. Walked a tile at a time, that step
     //  isn't watched: the warp's fade looks like a battle's flash.
     bool warps = false;
+    //  Walked a tile at a time, the last watched step is watched this much
+    //  longer, for an interrupt whose first sign was missed and that shows
+    //  only later: it is then placed before the leg ends, not after.
+    Milliseconds settle{0};
 };
 std::string to_string(const LegSpec& leg);
 
@@ -118,8 +122,9 @@ int tiles_before_interrupt(const LegSpec& leg, Milliseconds elapsed, Millisecond
 //  within its window when the delay is shorter than the window, or else
 //  before the next press lands, which it then swallows. So one seen less than
 //  a tile after a press is the previous step's. This needs no measured delay,
-//  only one shorter than the window. An interrupt slower than that (whole
-//  windows of `detection_delay`) is counted back further, which is a guess.
+//  only one shorter than the window. An interrupt slower than that is placed
+//  on the step that landed nearest `detection_delay` before it was seen,
+//  which is only as good as the delay.
 int steps_back_to_interrupt(const LegSpec& leg, Milliseconds elapsed, Milliseconds detection_delay);
 
 

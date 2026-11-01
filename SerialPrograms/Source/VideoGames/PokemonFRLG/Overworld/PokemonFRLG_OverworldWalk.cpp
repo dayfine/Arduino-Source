@@ -52,11 +52,14 @@ constexpr Milliseconds AFTER_LEG_WATCH = 500ms;
 //  2026-11-01, Route 1). From that log the flash was seen roughly 600ms
 //  after its step landed.
 constexpr Milliseconds STEP_WINDOW = 900ms;
-//  After a route whose last leg can meet a wild battle. A battle can start on
-//  its last step, and one whose flash is missed is only seen by its "Wild
-//  <Pokemon> appeared!", about 2s on: the route had returned by then
-//  (console B, 2026-11-01, Viridian Forest, "west 11 (to wall)").
-constexpr Milliseconds AFTER_WILD_ROUTE_WATCH = 2500ms;
+//  A battle whose flashes are missed is seen only by its "Wild <Pokemon>
+//  appeared!", 3.7s after its step's press (twice on Route 1, console B,
+//  2026-11-01, run 7). Unless the walker waits that long after a leg's last
+//  step, the next leg is walked into the battle and lost: there, "east 4"
+//  and "west 4". So the last step of an open leg is watched this much longer,
+//  and a leg to a wall is watched this long after it.
+constexpr Milliseconds STEP_SETTLE = 3400ms;
+constexpr Milliseconds AFTER_WILD_LEG_WATCH = 3500ms;
 //  After a message closes: a trainer who saw the player speaks first, then
 //  the battle starts, with "<Trainer> would like to battle!" seconds later.
 constexpr Milliseconds TRAINER_BATTLE_WATCH = 6000ms;
@@ -92,9 +95,11 @@ public:
     virtual std::unique_ptr<VisualInferenceCallback> make_watcher() const override{
         return std::make_unique<BattleDialogWatcher>(COLOR_RED);
     }
-    //  The flashes, the wipe and the opening animation. Not calibrated yet.
+    //  The flashes, the wipe and the opening animation: 3.7s after the step's
+    //  press, twice on Route 1 (console B, 2026-11-01). Other maps open
+    //  battles with other wipes, so elsewhere this is a guess.
     virtual Milliseconds detection_delay() const override{
-        return 2000ms;
+        return 3700ms;
     }
 };
 
@@ -197,6 +202,7 @@ Pokemon::LegSpec leg_spec(const RouteStep& step){
         step.surfing ? SURF_TILE_TIME : TILE_TIME,
         step.wild ? STEP_WINDOW : 0ms,
         step.warps,
+        step.wild ? STEP_SETTLE : 0ms,
     };
 }
 
@@ -370,19 +376,16 @@ void walk_overworld_route(
         }
         console.log(std::string("Route: the player faces ") + (facing ? Pokemon::direction_name(*facing) : "an unknown way") + ".");
     }
-    bool last_leg_wild = false;
     for (const RouteStep& step : route){
         console.log("Route: " + to_string(step));
         check_overworld(console, context, step);
         walk_step(console, context, step, facing, interrupts);
         if (step.action != RouteAction::FACE){
-            Pokemon::clear_late_interrupts(console, context, step.wild ? interrupts.wild : interrupts.other, AFTER_LEG_WATCH, MAX_INTERRUPTIONS_PER_LEG);
-            last_leg_wild = step.wild;
+            //  An open leg through grass has already waited on its last step.
+            const Milliseconds watch = step.wild && step.to_wall ? AFTER_WILD_LEG_WATCH : AFTER_LEG_WATCH;
+            Pokemon::clear_late_interrupts(console, context, step.wild ? interrupts.wild : interrupts.other, watch, MAX_INTERRUPTIONS_PER_LEG);
         }
         facing = step.facing_after;
-    }
-    if (last_leg_wild){
-        Pokemon::clear_late_interrupts(console, context, interrupts.wild, AFTER_WILD_ROUTE_WATCH, MAX_INTERRUPTIONS_PER_LEG);
     }
     context.wait_for_all_requests();
 }
