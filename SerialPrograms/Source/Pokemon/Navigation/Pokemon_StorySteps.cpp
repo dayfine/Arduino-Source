@@ -51,6 +51,17 @@ const char* story_step_kind_name(StoryStepKind kind){
 }
 
 
+const char* story_checks_name(StoryChecks checks){
+    switch (checks){
+    case StoryChecks::THOROUGH:
+        return "thorough";
+    case StoryChecks::FAST:
+        return "fast";
+    }
+    return "?";
+}
+
+
 Outcome unsupported_step(const StoryStep& step){
     return outcome_failed("unsupported_step", std::format("{} {}", story_step_kind_name(step.kind), step.name));
 }
