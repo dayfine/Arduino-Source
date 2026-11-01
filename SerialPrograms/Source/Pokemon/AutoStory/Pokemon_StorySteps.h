@@ -36,8 +36,8 @@
 #include <string>
 #include <vector>
 #include "CommonFramework/Language.h"
-#include "Pokemon/AutoStory/Pokemon_AutoStoryStats.h"
-#include "Pokemon_Grid.h"
+#include "Pokemon/Navigation/Pokemon_Grid.h"
+#include "Pokemon_AutoStoryStats.h"
 #include "Pokemon_StoryEvents.h"
 #include "Pokemon_StorySegments.h"
 #include "Pokemon_TilePose.h"
