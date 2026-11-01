@@ -338,6 +338,8 @@ file(GLOB CORE_LIBRARY_SOURCES
     Source/NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController_from_Keyboard.h
     Source/NintendoSwitch/Controllers/Procon/NintendoSwitch_ProControllerState.cpp
     Source/NintendoSwitch/Controllers/Procon/NintendoSwitch_ProControllerState.h
+    Source/NintendoSwitch/Inference/NintendoSwitch_SystemKeyboardDetector.cpp
+    Source/NintendoSwitch/Inference/NintendoSwitch_SystemKeyboardDetector.h
     Source/NintendoSwitch/NintendoSwitch_Settings.cpp
     Source/NintendoSwitch/NintendoSwitch_Settings.h
     Source/NintendoSwitch/Options/NintendoSwitch_CodeEntrySettingsOption.cpp
@@ -1535,6 +1537,8 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/Resources/Pokemon_PokemonNames.h
     Source/Pokemon/Resources/Pokemon_PokemonSlugs.cpp
     Source/Pokemon/Resources/Pokemon_PokemonSlugs.h
+    Source/PokemonBDSP/Inference/PokemonBDSP_NameListDetector.cpp
+    Source/PokemonBDSP/Inference/PokemonBDSP_NameListDetector.h
     Source/PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_JubilifeCity.cpp
     Source/PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_JubilifeCity.h
     Source/PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_OreburghMine.cpp
@@ -1581,6 +1585,8 @@ file(GLOB LIBRARY_SOURCES
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_MapGrid_Tests.h
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_Segment00_Tests.cpp
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_Segment00_Tests.h
+    Source/PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_OverworldMatchers.cpp
+    Source/PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_OverworldMatchers.h
     Source/PokemonBDSP/Inference/Battles/PokemonBDSP_BattleBallReader.cpp
     Source/PokemonBDSP/Inference/Battles/PokemonBDSP_BattleBallReader.h
     Source/PokemonBDSP/Inference/Battles/PokemonBDSP_BattleMenuDetector.cpp
@@ -1591,6 +1597,8 @@ file(GLOB LIBRARY_SOURCES
     Source/PokemonBDSP/Inference/Battles/PokemonBDSP_ExperienceGainDetector.h
     Source/PokemonBDSP/Inference/Battles/PokemonBDSP_StartBattleDetector.cpp
     Source/PokemonBDSP/Inference/Battles/PokemonBDSP_StartBattleDetector.h
+    Source/PokemonBDSP/Inference/Battles/PokemonBDSP_BattleOpponentNameReader.cpp
+    Source/PokemonBDSP/Inference/Battles/PokemonBDSP_BattleOpponentNameReader.h
     Source/PokemonBDSP/Inference/BoxSystem/PokemonBDSP_BoxDetector.cpp
     Source/PokemonBDSP/Inference/BoxSystem/PokemonBDSP_BoxDetector.h
     Source/PokemonBDSP/Inference/BoxSystem/PokemonBDSP_BoxGenderDetector.cpp
@@ -1607,6 +1615,8 @@ file(GLOB LIBRARY_SOURCES
     Source/PokemonBDSP/Inference/PokemonBDSP_MapDetector.h
     Source/PokemonBDSP/Inference/PokemonBDSP_MarkFinder.cpp
     Source/PokemonBDSP/Inference/PokemonBDSP_MarkFinder.h
+    Source/PokemonBDSP/Inference/PokemonBDSP_TransitionWatchers.cpp
+    Source/PokemonBDSP/Inference/PokemonBDSP_TransitionWatchers.h
     Source/PokemonBDSP/Inference/PokemonBDSP_MenuDetector.cpp
     Source/PokemonBDSP/Inference/PokemonBDSP_MenuDetector.h
     Source/PokemonBDSP/Inference/PokemonBDSP_PokeballSpriteMatcher.cpp
@@ -1615,6 +1625,12 @@ file(GLOB LIBRARY_SOURCES
     Source/PokemonBDSP/Inference/PokemonBDSP_ReceivePokemonDetector.h
     Source/PokemonBDSP/Inference/PokemonBDSP_SelectionArrow.cpp
     Source/PokemonBDSP/Inference/PokemonBDSP_SelectionArrow.h
+    Source/PokemonBDSP/Inference/PokemonBDSP_ShopDetectors.cpp
+    Source/PokemonBDSP/Inference/PokemonBDSP_ShopDetectors.h
+    Source/PokemonBDSP/Inference/PokemonBDSP_ShopItemNameReader.cpp
+    Source/PokemonBDSP/Inference/PokemonBDSP_ShopItemNameReader.h
+    Source/PokemonBDSP/Inference/PokemonBDSP_ShopItemPriceReader.cpp
+    Source/PokemonBDSP/Inference/PokemonBDSP_ShopItemPriceReader.h
     Source/PokemonBDSP/Inference/PokemonBDSP_VSSeekerReaction.cpp
     Source/PokemonBDSP/Inference/PokemonBDSP_VSSeekerReaction.h
     Source/PokemonBDSP/Inference/Rng/PokemonBDSP_BlinkExtraction.cpp
@@ -1657,6 +1673,14 @@ file(GLOB LIBRARY_SOURCES
     Source/PokemonBDSP/PokemonBDSP_Panels.h
     Source/PokemonBDSP/PokemonBDSP_Settings.cpp
     Source/PokemonBDSP/PokemonBDSP_Settings.h
+    Source/PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_BDSPData.cpp
+    Source/PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_BDSPData.h
+    Source/PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_BattleMenuReader.cpp
+    Source/PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_BattleMenuReader.h
+    Source/PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_MenuCursorDetector.cpp
+    Source/PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_MenuCursorDetector.h
+    Source/PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_OverworldDetector.cpp
+    Source/PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_OverworldDetector.h
     Source/PokemonBDSP/PokemonBDSP_Tests.cpp
     Source/PokemonBDSP/PokemonBDSP_Tests.h
     Source/PokemonBDSP/Programs/Eggs/PokemonBDSP_EggAutonomous.cpp
