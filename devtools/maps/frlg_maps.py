@@ -1,7 +1,9 @@
 """Writes FRLG overworld maps as JSON, from the pret/pokefirered decompilation.
 
+TODO: move the maps to PokemonAutomation/Packages (Resources/PokemonFRLG/Maps) when ready.
+
 Usage:
-    python3 devtools/maps/frlg_maps.py --out Packages/Resources/PokemonFRLG/Maps \
+    python3 devtools/maps/frlg_maps.py --out SerialPrograms/Source/VideoGames/PokemonFRLG/Overworld/Maps \
         CeruleanCity_PokemonCenter_1F CeruleanCity Route24 \
         CeruleanCave_1F CeruleanCave_2F CeruleanCave_B1F
     python3 devtools/maps/frlg_maps.py --out <folder>
@@ -9,14 +11,15 @@ Usage:
 
 Downloads each map's data/maps/<map>/map.json, its layout's map.bin and its
 tilesets' metatile_attributes.bin at --commit into --cache, then writes
-<out>/<map>.json in the schema of Packages/Resources/PokemonFRLG/Maps/README.md.
+<out>/<map>.json in the schema given in PokemonFRLG_OverworldMaps.h.
 Warps and connections lead only to maps in the same run: others get an empty
 dest_map, or are left out. Named points and flag sets come from POINTS and
 FLAG_SETS below.
 
 Without map names, the maps are the ones already in --out. --check writes
-nothing: it regenerates them and fails if any file differs, e.g. for the
-copies the unit tests build into the program.
+nothing: it regenerates them and fails if any file differs. The program
+builds in the files of SerialPrograms/Source/VideoGames/PokemonFRLG/
+Overworld/Maps, the folder to write and check.
 """
 import argparse
 import json
