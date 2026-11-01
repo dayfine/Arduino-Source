@@ -15,10 +15,9 @@
 #include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_StartMenuDetector.h"
 #include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleFlashWatcher.h"
 #include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleScreenDetector.h"
-#include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattlePokemonDetector.h"
 #include "VideoGames/PokemonFRLG/PokemonFRLG_Navigation.h"
 #include "PokemonFRLG_OverworldMaps.h"
-#include "PokemonFRLG_OverworldReanchor.h"
+#include "PokemonFRLG_OverworldRecovery.h"
 #include "PokemonFRLG_PlayerFacingReader.h"
 #include "PokemonFRLG_OverworldWalk.h"
 
@@ -46,6 +45,9 @@ constexpr Milliseconds SURF_ANIMATION = 3000ms;
 //  on its own, and a leg started before that ends loses tiles (on the console a
 //  600ms wait cost 2 tiles).
 constexpr Milliseconds AFTER_WARP = 1500ms;
+//  After a warp's fade, which a wild battle's flashes and wipe can pass for:
+//  a battle's HP box shows within this long (console B, 2026-11-01).
+constexpr Milliseconds AFTER_WARP_BATTLE_WATCH = 5000ms;
 //  A message set off by a leg's last step shows after the hold ends. Caught
 //  here, before the next leg's turn tap, which the message would swallow.
 constexpr Milliseconds AFTER_LEG_WATCH = 500ms;
@@ -55,12 +57,6 @@ constexpr Milliseconds AFTER_LEG_WATCH = 500ms;
 //  the next leg is walked into the battle and lost: there, "east 4" and
 //  "west 4".
 constexpr Milliseconds AFTER_WILD_LEG_WATCH = 3500ms;
-//  How often a route may stop to find the player again before giving up.
-constexpr size_t MAX_REANCHORS = 8;
-//  After a warp's fade. A wild battle's flashes and wipe pass for one, and
-//  its dialog shows within this long; a warp's doesn't (run 7: a "warp" into
-//  Oak's Lab from the grass of Route 1, where the player had drifted).
-constexpr Milliseconds AFTER_WARP_BATTLE_WATCH = 5000ms;
 //  After a message closes: a trainer who saw the player speaks first, then
 //  the battle starts, with "<Trainer> would like to battle!" seconds later.
 constexpr Milliseconds TRAINER_BATTLE_WATCH = 6000ms;
@@ -206,7 +202,6 @@ Pokemon::LegSpec leg_spec(const RouteStep& step){
     leg.tiles = step.tiles;
     leg.to_wall = step.to_wall;
     leg.tile_time = step.surfing ? SURF_TILE_TIME : TILE_TIME;
-    leg.warps = step.warps;
     leg.stop_on_interrupt = !step.to_wall;
     leg.stop_if_blocked = step.to_wall;
     return leg;
@@ -224,25 +219,6 @@ void wait_out_warp(ConsoleHandle& console, ProControllerContext& context, const 
             console
         );
     }
-}
-
-//  After a warp's fade, which a wild battle's can pass for: fails, once the
-//  battle is fled, if it was one.
-void check_warp_was_no_battle(ConsoleHandle& console, ProControllerContext& context, const RouteStep& step){
-    //  Watch for the opponent's HP box, not the battle text box: in small rooms
-    //  the black below the map reads as that box (Oak's Lab mat, console B,
-    //  2026-11-01: "Failed to flee" with no battle on screen).
-    DetectorToFinder<BattleOpponentDetector> battle("WarpBattleOpponent", DetectorToFinder<BattleOpponentDetector>::FinderType::PRESENT, std::chrono::milliseconds(300), COLOR_RED);
-    context.wait_for_all_requests();
-    if (wait_until(console, context, AFTER_WARP_BATTLE_WATCH, {battle}) < 0){
-        return;
-    }
-    flee_battle(console, context);
-    OperationFailedExceptionWithScreenshot::fire(
-        ErrorReportMode::SEND_ERROR_REPORT,
-        "walk_overworld_route(): a wild battle, not the warp to " + step.end.map + ": the player is off the route.",
-        console
-    );
 }
 
 //  Fails unless the overworld is up. Under the START menu or a message the
@@ -270,6 +246,25 @@ void check_overworld(ConsoleHandle& console, ProControllerContext& context, cons
             console
         );
     }
+}
+
+//  After a warp's fade: fails, once the battle is fled, if it was a wild
+//  battle's. In run 7 (console B, 2026-11-01) the player had drifted onto
+//  Route 1's grass, and the step meant for Oak's Lab's door set off a
+//  battle; its flashes and wipe passed for the warp's fade, the route went
+//  on as if inside, and the next screen was the battle's FIGHT menu.
+void check_warp_was_no_battle(ConsoleHandle& console, ProControllerContext& context, const RouteStep& step){
+    BattleScreenWatcher battle(COLOR_RED);
+    context.wait_for_all_requests();
+    if (wait_until(console, context, AFTER_WARP_BATTLE_WATCH, {battle}) < 0){
+        return;
+    }
+    flee_battle(console, context);
+    OperationFailedExceptionWithScreenshot::fire(
+        ErrorReportMode::SEND_ERROR_REPORT,
+        "walk_overworld_route(): a wild battle, not the warp to " + step.end.map + ": the player is off the route.",
+        console
+    );
 }
 
 void start_surf(ConsoleHandle& console, ProControllerContext& context, Direction direction, bool facing_water){
@@ -340,12 +335,6 @@ bool walk_step(
 //  if the player may have stopped short of the step's end: an open leg
 //  stopped, or something seen after the hold, which may have stopped it
 //  before the end (after a warp, it was checked for already).
-enum class StepEnd{
-    DONE,
-    STOPPED,    //  walk_step() returned false
-    LATE,       //  something was seen after the hold, which may have
-                //  stopped the player before the end
-};
 StepEnd walk_and_watch(
     ConsoleHandle& console, ProControllerContext& context,
     const RouteStep& step, std::optional<Direction> facing,
@@ -408,17 +397,6 @@ void hold_to_warp(
     );
 }
 
-//  How many times a route has stopped part-way; throws past MAX_REANCHORS.
-void count_stop(ConsoleHandle& console, size_t& stops){
-    if (++stops > MAX_REANCHORS){
-        OperationFailedExceptionWithScreenshot::fire(
-            ErrorReportMode::SEND_ERROR_REPORT,
-            std::format("walk_overworld_route(): stopped part-way {} times.", stops),
-            console
-        );
-    }
-}
-
 //  Each leg starts with a turn tap unless it goes the way the player faces.
 //  A tap while already facing that way takes a step, so a facing not given
 //  is read from the screen. If that fails too it taps anyway.
@@ -431,52 +409,6 @@ std::optional<Direction> read_facing(ConsoleHandle& console, ProControllerContex
     }
     console.log(std::string("Route: the player faces ") + (facing ? Pokemon::direction_name(*facing) : "an unknown way") + ".");
     return facing;
-}
-
-//  Where the route ends, and which way the player faces there.
-RouteGoal route_goal(const std::vector<RouteStep>& route){
-    RouteGoal goal;
-    goal.position = route.back().end;
-    if (route.back().action == RouteAction::FACE){
-        goal.facing = route.back().direction;
-    }
-    return goal;
-}
-
-//  After `step`, from `start`, stopped part-way: holds to walls that put the
-//  player on a known tile, then a new route from there to `goal`. A leg to a
-//  wall only stops when interrupted at once, hold after hold: by a sign it
-//  walked into, so `at_sign`.
-std::vector<RouteStep> reanchor_route(
-    ConsoleHandle& console,
-    const std::vector<MapData>& maps,
-    const std::optional<MapPosition>& start, const RouteStep& step, bool at_sign,
-    const RouteGoal& goal
-){
-    const std::optional<Reanchor> anchor = plan_reanchor(maps, start, step, at_sign);
-    if (!anchor){
-        OperationFailedExceptionWithScreenshot::fire(
-            ErrorReportMode::SEND_ERROR_REPORT,
-            "walk_overworld_route(): stopped part-way on " + to_string(step) + ", with no walls near it to find the player again.",
-            console
-        );
-    }
-    const Direction facing = anchor->holds.empty() ? step.direction : anchor->holds.back().direction;
-    std::optional<std::vector<RouteStep>> rest = plan_overworld_route(maps, anchor->end, goal, default_route_costs(), facing);
-    if (!rest){
-        OperationFailedExceptionWithScreenshot::fire(
-            ErrorReportMode::SEND_ERROR_REPORT,
-            "walk_overworld_route(): no route from " + to_string(anchor->end) + " to " + to_string(goal.position) + ".",
-            console
-        );
-    }
-    std::string holds;
-    for (const RouteStep& hold : anchor->holds){
-        holds += "; " + to_string(hold);
-    }
-    console.log("Route: stopped part-way, finding the player again at " + to_string(anchor->end) + holds, COLOR_ORANGE);
-    rest->insert(rest->begin(), anchor->holds.begin(), anchor->holds.end());
-    return std::move(*rest);
 }
 
 }
@@ -537,7 +469,7 @@ void walk_overworld_route(
     const std::vector<RouteStep>& route,
     std::optional<Direction> facing,
     const OverworldInterruptSet& interrupts,
-    const std::vector<MapData>* maps
+    const RoutePlanning* planning
 ){
     if (route.empty()){
         return;
@@ -545,41 +477,20 @@ void walk_overworld_route(
     if (!facing){
         facing = read_facing(console, context);
     }
-    std::vector<MapData> loaded;
-    std::vector<RouteStep> plan = route;
-    std::optional<MapPosition> at;
-    size_t reanchors = 0;
-    for (size_t i = 0; i < plan.size();){
-        const RouteStep step = plan[i];
+    RouteCalls calls;
+    calls.walk = [&](const RouteStep& step, std::optional<Direction> from_facing){
         console.log("Route: " + to_string(step));
         check_overworld(console, context, step);
-        const StepEnd end = walk_and_watch(console, context, step, facing, interrupts);
-        if (end == StepEnd::DONE){
-            at = step.end;
-            facing = step.facing_after;
-            i++;
-            continue;
-        }
-        facing = std::nullopt;     //  a trainer turns the player to face them
-        count_stop(console, reanchors);
-        if (step.to_wall && end == StepEnd::LATE){
-            //  Walking it again ends at its wall.
-            continue;
-        }
-        if (end == StepEnd::STOPPED && step.warps && !step.wild){
-            hold_to_warp(console, context, step, interrupts.other);
-            at = step.end;
-            facing = step.facing_after;
-            i++;
-            continue;
-        }
-        if (maps == nullptr){
-            loaded = overworld_maps();
-            maps = &loaded;
-        }
-        plan = reanchor_route(console, *maps, at, step, step.to_wall, route_goal(route));
-        i = 0;
-    }
+        return walk_and_watch(console, context, step, from_facing, interrupts);
+    };
+    calls.hold_to_warp = [&](const RouteStep& step){
+        hold_to_warp(console, context, step, interrupts.other);
+    };
+    calls.log = [&](const std::string& message){ console.log(message, COLOR_ORANGE); };
+    calls.fail = [&](const std::string& message){
+        OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT, message, console);
+    };
+    run_route(route, facing, planning, calls);
     context.wait_for_all_requests();
 }
 

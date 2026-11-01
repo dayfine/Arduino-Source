@@ -12,7 +12,6 @@
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
-#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMapsTestData.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRoute.h"
 #include "PokemonFRLG_AutoStoryTable.h"
 
@@ -41,15 +40,8 @@ private:
     std::function<UnitTestResult()> m_body;
 };
 
-//  story_maps(), from the maps compiled into the program, so the routes
-//  are planned in CI, which has no map files.
-const std::vector<MapData>& test_story_maps(){
-    static const std::vector<MapData> maps = test_overworld_maps(map_flag_set(test_overworld_maps(), "after_hall_of_fame"));
-    return maps;
-}
-
 const MapData* find_map_named(const std::string& name){
-    for (const MapData& map : test_story_maps()){
+    for (const MapData& map : story_maps()){
         if (map.name == name){
             return &map;
         }
@@ -125,7 +117,7 @@ UnitTestResult check_held_legs(const std::string& name, const std::vector<RouteS
 
 //  Walks `step`'s fixed legs from `pose` and moves `pose` to their end.
 UnitTestResult check_legs(StoryPose& pose, const StoryStep& step){
-    const std::optional<std::vector<RouteStep>> route = fixed_route(test_story_maps(), MapPosition{pose.map, pose.tile}, step.legs);
+    const std::optional<std::vector<RouteStep>> route = fixed_route(story_maps(), MapPosition{pose.map, pose.tile}, step.legs);
     if (!route || route->empty()){
         return step.name + ": the legs can't be walked from " + describe(pose) + ".";
     }
@@ -155,11 +147,11 @@ UnitTestResult check_route(StoryPose& pose, const StoryStep& step){
     }
     const StoryPose target = one_tile(*step.target);
     const RouteGoal goal{{target.map, target.tile}, target.facing};
-    const std::optional<std::vector<RouteStep>> route = plan_overworld_route(test_story_maps(), start, goal, default_route_costs(), facing);
+    const std::optional<std::vector<RouteStep>> route = plan_overworld_route(story_maps(), start, goal, default_route_costs(), facing);
     if (!route){
         return step.name + ": no route from " + to_string(start) + " to " + to_string(goal.position) + ".";
     }
-    const MapPosition end = follow_overworld_route(test_story_maps(), start, *route);
+    const MapPosition end = follow_overworld_route(story_maps(), start, *route);
     if (!(end == goal.position)){
         return step.name + ": the route ends at " + to_string(end) + ":" + describe(*route);
     }
@@ -247,7 +239,7 @@ UnitTestResult check_legs_on(
     const std::string& map, const std::vector<ExpectedLeg>& expected
 ){
     const std::optional<std::vector<RouteStep>> route = plan_overworld_route(
-        test_story_maps(), start, goal, default_route_costs(), start_facing
+        story_maps(), start, goal, default_route_costs(), start_facing
     );
     if (!route){
         return "No route from " + to_string(start) + " to " + to_string(goal.position) + ".";

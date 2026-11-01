@@ -11,6 +11,7 @@
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "Pokemon/Navigation/Pokemon_TilePose.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
+#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRecovery.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRoute.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWalk.h"
 #include "PokemonFRLG_AutoStoryEvents.h"
@@ -93,7 +94,10 @@ Outcome walk_route(StoryEnv& env, RunState& state, const StoryStep& step){
         return Pokemon::outcome_failed("no_route", to_string(start) + " to " + to_string(goal.position));
     }
     const OverworldInterruptSet interrupts = story_interrupts(env.supplies, step.fight_wild);
-    walk_overworld_route(env.console, env.context, *route, facing, interrupts);
+    //  Planning lets the walker recover a stopped open leg: it plans back to
+    //  the leg's end, then walks the rest as given.
+    const RoutePlanning planning{&story_maps(), default_route_costs()};
+    walk_overworld_route(env.console, env.context, *route, facing, interrupts, &planning);
     const std::optional<Direction> end_facing = route->empty() ? facing : std::optional<Direction>(route->back().facing_after);
     return Pokemon::outcome_ok(to_pose(StoryPose{target->map, target->tile, end_facing}));
 }
@@ -113,7 +117,10 @@ Outcome walk_legs(StoryEnv& env, RunState& state, const StoryStep& step){
         return Pokemon::outcome_failed("bad_legs", to_string(start));
     }
     const OverworldInterruptSet interrupts = story_interrupts(env.supplies, step.fight_wild);
-    walk_overworld_route(env.console, env.context, *route, facing, interrupts);
+    //  Planning lets the walker recover a stopped open leg: it plans back to
+    //  the leg's end, then walks the rest as given.
+    const RoutePlanning planning{&story_maps(), default_route_costs()};
+    walk_overworld_route(env.console, env.context, *route, facing, interrupts, &planning);
     return Pokemon::outcome_ok(to_pose(StoryPose{route->back().end.map, route->back().end.point, route->back().facing_after}));
 }
 

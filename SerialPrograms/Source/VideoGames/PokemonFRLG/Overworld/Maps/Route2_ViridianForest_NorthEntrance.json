@@ -1,0 +1,74 @@
+{
+    "name": "Route2_ViridianForest_NorthEntrance",
+    "width": 15,
+    "height": 12,
+    "tiles": [
+        "###############",
+        "#######C#######",
+        "##...#...#...##",
+        "#.............#",
+        "#..........##.#",
+        "###........##.#",
+        "#.............#",
+        "#..........##.#",
+        "###........##.#",
+        "#.............#",
+        "#......v......#",
+        "###############"
+    ],
+    "warps": [
+        {
+            "x": 6,
+            "y": 10,
+            "dest_map": "ViridianForest",
+            "dest_warp": 2
+        },
+        {
+            "x": 7,
+            "y": 10,
+            "dest_map": "ViridianForest",
+            "dest_warp": 2
+        },
+        {
+            "x": 8,
+            "y": 10,
+            "dest_map": "ViridianForest",
+            "dest_warp": 2
+        },
+        {
+            "x": 7,
+            "y": 1,
+            "dest_map": "Route2",
+            "dest_warp": 0
+        }
+    ],
+    "objects": [
+        {
+            "x": 5,
+            "y": 4,
+            "kind": "youngster",
+            "flag": "",
+            "wander_x": 0,
+            "wander_y": 0
+        },
+        {
+            "x": 4,
+            "y": 7,
+            "kind": "old_man_1",
+            "flag": "",
+            "wander_x": 0,
+            "wander_y": 0
+        },
+        {
+            "x": 10,
+            "y": 5,
+            "kind": "cooltrainer_f",
+            "flag": "",
+            "wander_x": 0,
+            "wander_y": 0
+        }
+    ],
+    "connections": [],
+    "points": [],
+    "flag_sets": []
+}

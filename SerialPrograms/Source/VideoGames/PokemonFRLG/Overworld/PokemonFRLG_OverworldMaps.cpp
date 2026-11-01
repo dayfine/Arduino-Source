@@ -4,12 +4,12 @@
  *
  */
 
+#include <algorithm>
 #include <format>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/Json/JsonArray.h"
 #include "Common/Cpp/Json/JsonObject.h"
 #include "Common/Cpp/Json/JsonValue.h"
-#include "CommonFramework/GlobalAutoPaths.h"
 #include "PokemonFRLG_OverworldMaps.h"
 
 namespace PokemonAutomation{
@@ -18,8 +18,6 @@ namespace PokemonFRLG{
 
 
 namespace{
-
-const char MAP_FOLDER[] = "PokemonFRLG/Maps/";
 
 const char* const MAP_NAMES[] = {
     //  From a new game to Brock.
@@ -53,7 +51,7 @@ const char* const MAP_NAMES[] = {
 
 
 //  The readers below take `where`, the source and the path to the object
-//  being read (e.g. "PokemonFRLG/Maps/CeruleanCity.json: warps[2]."), and
+//  being read (e.g. "Maps/CeruleanCity.json: warps[2]."), and
 //  name the field in what they throw.
 
 const JsonObject& as_object(const JsonValue& value, const std::string& where){
@@ -222,7 +220,10 @@ MapData read_map(const JsonValue& json, const std::string& source){
         throw ParseException(where + "width and height must be positive.");
     }
     map.tiles = read_grid<Tile>(root, "tiles", where, width, height, tile_from_char);
-    map.elevation = read_grid<uint8_t>(root, "elevation", where, width, height, elevation_from_char);
+    //  Left out of maps where every tile the player can stand on is ground.
+    map.elevation = root.get_value("elevation") == nullptr
+        ? Grid<uint8_t>{width, height, std::vector<uint8_t>((size_t)width * height, ELEVATION_GROUND)}
+        : read_grid<uint8_t>(root, "elevation", where, width, height, elevation_from_char);
     map.warps = read_list<MapWarp>(root, "warps", where, read_warp);
     map.objects = read_list<MapObject>(root, "objects", where, read_map_object);
     map.connections = read_list<MapConnection>(root, "connections", where, read_connection);
@@ -254,8 +255,13 @@ MapData parse_map(const std::string& json, const std::string& source){
 }
 
 MapData load_map(const std::string& name){
-    const std::string source = std::string(MAP_FOLDER) + name + ".json";
-    MapData map = read_map(load_json_file(RESOURCE_PATH() + source), source);
+    const std::string source = "Maps/" + name + ".json";
+    const std::vector<std::pair<std::string, std::string>>& files = overworld_map_json();
+    const auto file = std::find_if(files.begin(), files.end(), [&](const auto& item){ return item.first == name; });
+    if (file == files.end()){
+        throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, source + " is not built into the program.");
+    }
+    MapData map = read_map(parse_json(file->second), source);
     if (map.name != name){
         throw ParseException(source + ": name is \"" + map.name + "\", not \"" + name + "\".");
     }
