@@ -103,7 +103,7 @@ StoryCheckpoint starter(){
     cp.steps.push_back(make(StoryStepKind::TALK, "squirtle_ball", "\"So, you want the WATER POKEMON SQUIRTLE?\""));
     cp.steps.push_back(answer("choose_squirtle", true, "take Squirtle"));
     cp.steps.push_back(answer("no_nickname", false, "\"give a nickname?\" NO"));
-    cp.steps.push_back(scene("rival_takes_bulbasaur", at(LAB, 9, 5), "the rival picks his ball; he may turn the player"));
+    cp.steps.push_back(scene("rival_takes_bulbasaur", at(LAB, 9, 5, NORTH), "the rival picks his ball; the player still faces the table (console B, 2026-11-01)"));
     cp.steps.push_back(route("above_rival_trigger", at(LAB, 7, 7, SOUTH), "short of the rival's trigger row 8"));
     cp.steps.push_back(step_into("rival_trigger", SOUTH, "\"Wait, let's check out our POKEMON!\""));
     //  The rival leaves; PlayerWatchRivalExitAfterBattleRight ends facing down.
