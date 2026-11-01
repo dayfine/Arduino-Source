@@ -22,8 +22,8 @@
 #include "CommonFramework/ImageTypes/ImageViewRGB32.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
+#include "Pokemon/AutoStory/Pokemon_StorySteps.h"
 #include "Pokemon/Navigation/Pokemon_Grid.h"
-#include "Pokemon/Navigation/Pokemon_StorySteps.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{

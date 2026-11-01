@@ -3,9 +3,9 @@
  *  From: https://github.com/PokemonAutomation/
  *
  *  The FRLG story as data for the shared story engine
- *  (Pokemon/Navigation/Pokemon_StoryEvents.h, Pokemon_StorySegments.h).
+ *  (Pokemon/AutoStory/Pokemon_StoryEvents.h, Pokemon_StorySegments.h).
  *  A checkpoint is a list of the shared StorySteps
- *  (Pokemon/Navigation/Pokemon_StorySteps.h), each one kind of event (a
+ *  (Pokemon/AutoStory/Pokemon_StorySteps.h), each one kind of event (a
  *  route, a talk, text read to its end, a YES/NO, a battle, the nurse, the
  *  Mart); StoryExecutor does each kind on the console, and
  *  make_story_segment() turns the table into engine checkpoints. Routes
@@ -25,9 +25,9 @@
 #include <vector>
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
-#include "Pokemon/Navigation/Pokemon_StoryEvents.h"
-#include "Pokemon/Navigation/Pokemon_StorySegments.h"
-#include "Pokemon/Navigation/Pokemon_StorySteps.h"
+#include "Pokemon/AutoStory/Pokemon_StoryEvents.h"
+#include "Pokemon/AutoStory/Pokemon_StorySegments.h"
+#include "Pokemon/AutoStory/Pokemon_StorySteps.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMap.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRoute.h"
 #include "PokemonFRLG_AutoStoryActions.h"

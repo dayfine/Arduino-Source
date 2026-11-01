@@ -21,8 +21,8 @@
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
-#include "Pokemon/Navigation/Pokemon_StorySegments.h"
-#include "Pokemon/Navigation/Pokemon_StorySteps.h"
+#include "Pokemon/AutoStory/Pokemon_StorySegments.h"
+#include "Pokemon/AutoStory/Pokemon_StorySteps.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRoute.h"
 #include "PokemonFRLG_AutoStoryTable.h"
 
