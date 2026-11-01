@@ -12,6 +12,7 @@
 #include "Pokemon/Navigation/Pokemon_TileGrid.h"
 #include "Data/PokemonBDSP_AutoStory_OreburghGym.h"
 #include "Data/PokemonBDSP_AutoStory_Route202.h"
+#include "Data/PokemonBDSP_AutoStory_SandgemTown.h"
 #include "Data/PokemonBDSP_AutoStory_Segment00Lines.h"
 #include "Data/PokemonBDSP_AutoStory_StoryMaps.h"
 #include "Utils/PokemonBDSP_AutoStory_RouteWalk.h"
@@ -309,6 +310,43 @@ public:
     }
 };
 
+//  00.04's way to Sandgem's Pokemon Center ends below the Center's sign,
+//  walking north into it, then taps west along the doors' row to below the
+//  door: the row must be open there, the door straight north of where the
+//  taps end, and nothing else (a sign, the Mart's door) on the way.
+class Test_SandgemCenterApproach : public UnitTest{
+public:
+    Test_SandgemCenterApproach()
+        : UnitTest("PokemonBDSP::AutoStory - Sandgem Town: below the Center's sign to below its door")
+    {}
+    virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
+        const TileGrid& town = SandgemTown::grid();
+        const TilePos sign = SandgemTown::POKEMON_CENTER_SIGN;
+        const TilePos door = SandgemTown::POKEMON_CENTER_DOOR;
+        if (town.at(sign) != TileType::SIGN || town.at(door) != TileType::DOOR || door.y != sign.y || door.x >= sign.x){
+            return "The Center's sign " + Pokemon::to_string(sign) + " and door " + Pokemon::to_string(door) +
+                " are not a sign and a door west of it on one row.";
+        }
+        TilePos pos = sign.next(Direction::SOUTH);
+        for (int tap = 0; tap < sign.x - door.x; tap++){
+            const std::optional<TilePos> next = town.step(pos, Direction::WEST);
+            if (!next){
+                return "West from " + Pokemon::to_string(pos) + " is blocked.";
+            }
+            if (town.at(next->next(Direction::NORTH)) != TileType::BLOCKED && *next != door.next(Direction::SOUTH)){
+                return "Above " + Pokemon::to_string(*next) + " is not the Center's wall.";
+            }
+            pos = *next;
+        }
+        if (!(pos == door.next(Direction::SOUTH))){
+            return "The taps end at " + Pokemon::to_string(pos) + ", not below the door " + Pokemon::to_string(door) + ".";
+        }
+        logger.log("Sandgem: below the sign " + Pokemon::to_string(sign.next(Direction::SOUTH)) + ", " +
+            std::to_string(sign.x - door.x) + " taps west to below the door " + Pokemon::to_string(door) + ".");
+        return true;
+    }
+};
+
 }
 
 
@@ -316,6 +354,7 @@ void add_tests_AutoStory_Segment00(UnitTestDatabase& database){
     database.add<Test_Segment00Lines>();
     database.add<Test_OreburghGymGrid>();
     database.add<Test_Route202CatchGrass>();
+    database.add<Test_SandgemCenterApproach>();
 }
 
 
