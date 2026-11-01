@@ -18,6 +18,7 @@
 
 #include <atomic>
 #include <functional>
+#include <optional>
 #include <vector>
 #include <string>
 #include "Common/Cpp/Logging/TaggedLogger.h"
@@ -72,7 +73,7 @@ public:
     //  a test passes its own store.
     ProgramSession(
         const ProgramDescriptor& descriptor,
-        RunRecordStore& run_records = RunRecordStore::instance()
+        RunRecordStore& run_records = app_run_records()
     );
 
     //  Before the child-most class begins destruction, you must first:
@@ -111,19 +112,8 @@ public:
     Mutex& program_lock() const{ return m_lock; }
 
 
-public:
-    //  Run records (RunRecord.h)
-
-    //  The run the last accepted start opened, active or finished; "" before
-    //  the first start.
-    std::string last_run_id() const{ return m_run_recorder.last_run_id(); }
-
-    //  The program's progress hook. Events go to the active run's record.
-    RunRecorder& run_recorder(){ return m_run_recorder; }
-
-    //  The logger the session's consoles chain off, so that their lines land
-    //  in the active run's log tail.
-    Logger& run_logger(){ return m_run_recorder; }
+    //  The program's progress hook writes to this session's active run.
+    friend void record_run_event(ProgramEnvironment& env, RunEvent event);
 
 
 public:
@@ -151,6 +141,10 @@ protected:
     //  The program's settings as JSON text, recorded with each run: what the
     //  settings file stores for it. "" for a session without settings.
     virtual std::string settings_json() const{ return ""; }
+
+    //  The logger the session's consoles chain off, so that their lines land
+    //  in the active run's log (RunRecord.h).
+    Logger& run_logger(){ return m_run_recorder; }
 
 //    virtual void restore_defaults(){ return; }
 
@@ -186,6 +180,10 @@ private:
     //  exactly one result, whichever way run_program() ends.
     void run_program_and_record();
     RunResult run_program();
+    std::string start_accepted_run();
+    bool prepare_run();
+    std::optional<RunResult> download_resources();
+    void end_run();
     std::string abandon_run(std::string message);
 
 

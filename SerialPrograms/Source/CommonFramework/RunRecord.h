@@ -91,20 +91,13 @@ struct RunRecord{
 };
 
 
-//  The program's progress hook, reachable as ProgramEnvironment::run_recorder().
-class RunRecorder{
-public:
-    virtual ~RunRecorder() = default;
-    virtual void event(RunEvent event) = 0;
-};
-
-
 //  The last few runs of this app instance. Thread-safe; every call is short
 //  and copies, so a reader never holds a lock while writing files.
 //
-//  Disabled, the store records nothing: begin() returns "" and every call
-//  about that run is a no-op. The app's instance() starts disabled; whoever
-//  reads the records (e.g. the lab channel) enables it.
+//  A store given an `enabled` flag records only while the flag holds:
+//  otherwise begin() returns "" and every call about that run is a no-op.
+//  The app's store (app_run_records()) records once enable_app_run_records()
+//  was called, by whoever reads the records, e.g. the lab channel.
 //
 //  Run IDs are opaque strings unique to this app instance: a restart cannot
 //  resolve an old ID to a new run. They sort in the order the runs started.
@@ -123,18 +116,13 @@ public:
     static constexpr size_t MAX_LOG_TAIL_BYTES = 256 * 1024;
     static constexpr size_t MAX_LOG_BYTES = 8 * 1024 * 1024;
 
-    //  The app's store. Disabled until someone enables it.
-    static RunRecordStore& instance();
-
-    explicit RunRecordStore(size_t capacity = DEFAULT_CAPACITY, bool enabled = true);
+    //  `enabled`, when given, must outlive the store.
+    explicit RunRecordStore(size_t capacity = DEFAULT_CAPACITY, const std::atomic<bool>* enabled = nullptr);
     RunRecordStore(const RunRecordStore&) = delete;
     void operator=(const RunRecordStore&) = delete;
 
-    void set_enabled(bool enabled){ m_enabled.store(enabled, std::memory_order_release); }
-    bool enabled() const{ return m_enabled.load(std::memory_order_acquire); }
-
     //  Opens a record for an accepted start and returns its run ID, or ""
-    //  when the store is disabled. The oldest record goes when the store is
+    //  while the store is disabled. The oldest record goes when the store is
     //  full. `settings` is the program's settings as JSON text.
     std::string begin(std::string program, std::string settings = "");
 
@@ -163,17 +151,25 @@ private:
     mutable Mutex m_lock;
     const std::string m_app_token;
     const size_t m_capacity;
-    std::atomic<bool> m_enabled;
+    const std::atomic<bool>* m_enabled;
     uint64_t m_counter = 0;
     std::deque<RunRecord> m_records;
 };
 
 
-//  One session's end of the store: a RunRecorder for the run active now and
-//  a Logger that copies what passes through it into that run's log tail.
-//  The session's loggers chain off `log()`, so a run's tail holds the lines
+//  The app's store, and the switch that makes it record. Until the switch
+//  is thrown, no run is recorded, so an app nobody reads records from keeps
+//  nothing.
+RunRecordStore& app_run_records();
+void enable_app_run_records();
+
+
+//  One session's end of the store: the run active now, the events the
+//  program reports about it (ProgramEnvironment.h, record_run_event()), and
+//  a Logger that copies what passes through it into that run's log.
+//  The session's loggers chain off `log()`, so a run's log holds the lines
 //  the program and its consoles logged, and nothing from other sessions.
-class SessionRunRecorder : public RunRecorder, public Logger{
+class SessionRunRecorder : public Logger{
 public:
     SessionRunRecorder(RunRecordStore& store, Logger& base_logger);
 
@@ -187,7 +183,8 @@ public:
     //  The run the last begin() opened, active or finished; "" before the first.
     std::string last_run_id() const;
 
-    virtual void event(RunEvent event) override;
+    //  Adds to the active run; dropped when none is active.
+    void event(RunEvent event);
     virtual void log(const std::string& msg, Color color = Color()) override;
 
 private:

@@ -243,36 +243,8 @@ std::string ProgramSession::start_program(){
         m_logger.log("Program is not ready.", COLOR_RED);
         return "Program is not ready.";
 
-    case ProgramState::STOPPED:{
-        std::string error = check_validity();
-        if (!error.empty()){
-            m_logger.log(error, COLOR_RED);
-            return error;
-        }
-
-        //  Wait for previous program thread to finish.
-        join_program_thread();
-
-        //  Now start the program. The run is accepted here: its record
-        //  exists before the program thread can report anything.
-        m_logger.log("Starting program...");
-        m_last_state_change.store(current_time(), std::memory_order_relaxed);
-        m_run_recorder.begin(identifier(), settings_json());
-        set_state(ProgramState::RUNNING);
-        try{
-            m_program_thread = dispatch_program_thread([this]{
-                run_with_catch(
-                    "ProgramSession::start_program()",
-                    [this]{ run_program_and_record(); }
-                );
-            });
-        }catch (Exception& e){
-            return abandon_run(std::format("The program thread could not be started: {}", e.message()));
-        }catch (std::exception& e){
-            return abandon_run(std::format("The program thread could not be started: {}", e.what()));
-        }
-        return "";
-    }
+    case ProgramState::STOPPED:
+        return start_accepted_run();
     case ProgramState::RUNNING:
         m_logger.log("Program is already running.", COLOR_RED);
         return "Program is already running.";
@@ -324,6 +296,38 @@ std::string ProgramSession::stop_program(){
 
 
 
+//  Under the lock, for a stopped session: checks the settings, then starts
+//  the program thread. The run is accepted here: its record exists before
+//  the program thread can report anything.
+std::string ProgramSession::start_accepted_run(){
+    std::string error = check_validity();
+    if (!error.empty()){
+        m_logger.log(error, COLOR_RED);
+        return error;
+    }
+
+    //  Wait for previous program thread to finish.
+    join_program_thread();
+
+    m_logger.log("Starting program...");
+    m_last_state_change.store(current_time(), std::memory_order_relaxed);
+    m_run_recorder.begin(identifier(), settings_json());
+    set_state(ProgramState::RUNNING);
+    try{
+        m_program_thread = dispatch_program_thread([this]{
+            run_with_catch(
+                "ProgramSession::start_program()",
+                [this]{ run_program_and_record(); }
+            );
+        });
+    }catch (Exception& e){
+        return abandon_run(std::format("The program thread could not be started: {}", e.message()));
+    }catch (std::exception& e){
+        return abandon_run(std::format("The program thread could not be started: {}", e.what()));
+    }
+    return "";
+}
+
 //  No thread, so no run: closes the record and leaves the session stopped,
 //  so the next start can try again. Returns `message` for start_program().
 std::string ProgramSession::abandon_run(std::string message){
@@ -360,25 +364,51 @@ void ProgramSession::run_program_and_record(){
     }
 }
 
+//  Under the lock: false when the run was stopped before the thread got
+//  going. Throws when the settings are no longer valid. Loads the stats.
+bool ProgramSession::prepare_run(){
+    std::lock_guard<Mutex> lg(m_lock);
+    if (current_state() != ProgramState::RUNNING){
+        return false;
+    }
+
+    std::string error = check_validity();
+    if (!error.empty()){
+        throw UserSetupError(logger(), std::move(error));
+    }
+
+    m_current_stats = m_descriptor.make_stats();
+    load_historical_stats();
+    push_stats();
+    return true;
+}
+
+//  The run's result when the resources it needs could not be downloaded.
+std::optional<RunResult> ProgramSession::download_resources(){
+    if (download_prereqs(*m_scope)){
+        return std::nullopt;
+    }
+    //  The details were reported as "error" events. A stop during the
+    //  download is a cancellation, not a failure.
+    if (current_state() == ProgramState::STOPPING){
+        return RunResult{.outcome = RunOutcome::CANCELLED};
+    }
+    return RunResult{.outcome = RunOutcome::FAILED, .error = "A required resource could not be downloaded."};
+}
+
+void ProgramSession::end_run(){
+    std::lock_guard<Mutex> lg(m_lock);
+    push_stats();
+    update_historical_stats_with_current();
+    set_state(ProgramState::STOPPED);
+}
+
 RunResult ProgramSession::run_program(){
     SleepSuppressScope sleep_scope(GlobalSettings::instance().SLEEP_SUPPRESS->PROGRAM_RUNNING);
     RunResult result;
 
-    {
-        std::lock_guard<Mutex> lg(m_lock);
-        if (current_state() != ProgramState::RUNNING){
-            //  Stopped before the thread got going.
-            return {.outcome = RunOutcome::CANCELLED};
-        }
-
-        std::string error = check_validity();
-        if (!error.empty()){
-            throw UserSetupError(logger(), std::move(error));
-        }
-
-        m_current_stats = m_descriptor.make_stats();
-        load_historical_stats();
-        push_stats();
+    if (!prepare_run()){
+        return {.outcome = RunOutcome::CANCELLED};
     }
 
     m_instance->options().reset_state();
@@ -392,13 +422,8 @@ RunResult ProgramSession::run_program(){
 
     {
         RunningProgramScope running_scope(*this);
-        if (!download_prereqs(*m_scope)){
-            //  The details were reported as "error" events. A stop during
-            //  the download is a cancellation, not a failure.
-            if (current_state() == ProgramState::STOPPING){
-                return {.outcome = RunOutcome::CANCELLED};
-            }
-            return {.outcome = RunOutcome::FAILED, .error = "A required resource could not be downloaded."};
+        if (std::optional<RunResult> failed = download_resources()){
+            return *failed;
         }
         std::unique_ptr<ProgramEnvironment> env = make_env(program_info);
         try{
@@ -507,12 +532,7 @@ RunResult ProgramSession::run_program(){
         }
     }
 
-    {
-        std::lock_guard<Mutex> lg(m_lock);
-        push_stats();
-        update_historical_stats_with_current();
-        set_state(ProgramState::STOPPED);
-    }
+    end_run();
     return result;
 }
 
