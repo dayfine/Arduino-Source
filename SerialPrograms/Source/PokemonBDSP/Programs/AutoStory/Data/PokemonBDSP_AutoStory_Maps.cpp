@@ -38,7 +38,7 @@ const std::map<std::string, MapData, std::less<>>& story_maps_by_name(){
 }
 
 
-const MapData& story_map(const std::string& name){
+const MapData& story_map(std::string_view name){
     const auto& maps = story_maps_by_name();
     if (auto iter = maps.find(name); iter != maps.end()){
         return iter->second;
@@ -46,15 +46,15 @@ const MapData& story_map(const std::string& name){
     throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, std::format("No BDSP story map named \"{}\".", name));
 }
 
-TilePos map_point(const std::string& map, const std::string& point){
+TilePos map_point(std::string_view map, std::string_view point){
     const MapData& data = story_map(map);
-    if (auto iter = data.points.find(point); iter != data.points.end()){
+    if (auto iter = data.points.find(std::string(point)); iter != data.points.end()){
         return iter->second;
     }
     throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, std::format("{} has no point \"{}\".", map, point));
 }
 
-std::vector<TilePos> map_region(const std::string& map, const std::string& region){
+std::vector<TilePos> map_region(std::string_view map, std::string_view region){
     const MapData& data = story_map(map);
     std::vector<TilePos> tiles;
     while (true){

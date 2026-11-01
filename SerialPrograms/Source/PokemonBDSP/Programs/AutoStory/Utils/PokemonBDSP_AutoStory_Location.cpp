@@ -58,10 +58,23 @@ std::string normalize_location_name(const std::string& text){
     return out;
 }
 
-Language g_story_language = Language::English;
+namespace{
+Language& story_language_setting(){
+    static Language language = Language::English;
+    return language;
+}
+}
+
+Language story_language(){
+    return story_language_setting();
+}
+
+void set_story_language(Language language){
+    story_language_setting() = language;
+}
 
 bool story_reads_text(){
-    return story_reads_text(g_story_language);
+    return story_reads_text(story_language());
 }
 
 bool story_reads_text(Language language){

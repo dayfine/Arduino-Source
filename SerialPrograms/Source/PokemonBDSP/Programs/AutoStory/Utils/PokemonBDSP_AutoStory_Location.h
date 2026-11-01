@@ -24,12 +24,14 @@ namespace PokemonBDSP{
 std::string normalize_location_name(const std::string& text);
 
 //  The game's language, for the reads that still use text (item names, the
-//  location banner, a sign's or talk's first box), set from the program's
-//  options (StoryRunOptions). story_reads_text() says whether those reads
-//  have a model and dictionary for it (English only, so far); when not,
-//  callers use language-free checks: the banner's box showing, a sign's box
-//  opening, the first row of a Bag pocket.
-extern Language g_story_language;
+//  location banner, a sign's or talk's first box), set once from the
+//  program's options (StoryRunOptions) before the story runs; English until
+//  then. story_reads_text() says whether those reads have a model and
+//  dictionary for it (English only, so far); when not, callers use
+//  language-free checks: the banner's box showing, a sign's box opening, the
+//  first row of a Bag pocket.
+Language story_language();
+void set_story_language(Language language);
 bool story_reads_text();
 bool story_reads_text(Language language);
 

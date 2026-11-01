@@ -146,7 +146,7 @@ StoryWorld ravaged_path_maps(const std::vector<TilePos>& smashed){
     MapData map = story_map("RavagedPath");
     for (const TilePos& rock : smashed){
         if (map.tiles.contains(rock)){
-            map.tiles.at(rock) = Pokemon::TileKind::OPEN;
+            Pokemon::cell_at(map.tiles, rock) = Pokemon::TileKind::OPEN;
         }
     }
     StoryWorld maps;

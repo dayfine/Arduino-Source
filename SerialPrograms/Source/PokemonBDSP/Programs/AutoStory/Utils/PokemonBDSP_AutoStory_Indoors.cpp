@@ -41,10 +41,18 @@ bool indoors(const ImageViewRGB32& screen){
             count++;
             warm += pixel.red() > 150 && pixel.red() > pixel.blue() + 70 && pixel.green() > pixel.blue() + 20;
             const bool dark = pixel.red() + pixel.green() + pixel.blue() < 60;
-            if (y < strip_h){ add_pixel(top, dark); }
-            if (y >= height - strip_h){ add_pixel(bottom, dark); }
-            if (x < strip_w){ add_pixel(left, dark); }
-            if (x >= width - strip_w){ add_pixel(right, dark); }
+            if (y < strip_h){
+                add_pixel(top, dark);
+            }
+            if (y >= height - strip_h){
+                add_pixel(bottom, dark);
+            }
+            if (x < strip_w){
+                add_pixel(left, dark);
+            }
+            if (x >= width - strip_w){
+                add_pixel(right, dark);
+            }
         }
     }
     if (count == 0 || warm * 4 <= count){

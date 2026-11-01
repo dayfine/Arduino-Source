@@ -43,10 +43,16 @@ MapData make_map(
         }
     }
     for (const TilePos& pos : standing){
-        map.objects.push_back({.name = "standing", .x = pos.x, .y = pos.y});
+        map.objects.push_back({
+            .name = "standing", .kind = Pokemon::ObjectKind::NPC, .x = pos.x, .y = pos.y,
+            .facing = std::nullopt, .wander = std::nullopt,
+        });
     }
     for (const TilePos& pos : wandering){
-        map.objects.push_back({.name = "wandering", .x = pos.x, .y = pos.y, .wander = Pokemon::WanderBox{pos.x, pos.y, pos.x, pos.y}});
+        map.objects.push_back({
+            .name = "wandering", .kind = Pokemon::ObjectKind::NPC, .x = pos.x, .y = pos.y,
+            .facing = std::nullopt, .wander = Pokemon::WanderBox{pos.x, pos.y, pos.x, pos.y},
+        });
     }
     return map;
 }
@@ -63,11 +69,11 @@ StoryWorld make_world(const MapData& map){
 struct StepCase{
     std::string name;
     std::vector<std::string> rows;
-    std::vector<TilePos> standing;
-    std::vector<TilePos> wandering;
-    TilePos from;
+    std::vector<TilePos> standing = {};
+    std::vector<TilePos> wandering = {};
+    TilePos from = {};
     Direction direction = Direction::NORTH;
-    std::optional<TilePos> lands;
+    std::optional<TilePos> lands = std::nullopt;
     bool at_wall = false;
 };
 
@@ -95,12 +101,12 @@ public:
         };
         for (const StepCase& item : cases){
             const StoryWorld world = make_world(make_map(item.rows, item.standing, item.wandering));
-            const std::optional<TilePos> lands = world.step(item.from, item.direction);
+            const std::optional<TilePos> lands = step(world, item.from, item.direction);
             if (lands != item.lands){
                 return std::format("{}: lands on {}, expected {}.", item.name,
                     lands ? Pokemon::to_string(*lands) : "nothing", item.lands ? Pokemon::to_string(*item.lands) : "nothing");
             }
-            if (world.at_wall(item.from, item.direction) != item.at_wall){
+            if (at_wall(world, item.from, item.direction) != item.at_wall){
                 return std::format("{}: at_wall() is {}, expected {}.", item.name, !item.at_wall, item.at_wall);
             }
         }
@@ -127,11 +133,11 @@ public:
             {{2, 2}, "world (2, 2)"},
         };
         for (const auto& [pos, text] : described){
-            if (world.describe(pos) != text){
-                return std::format("{}: described as \"{}\", expected \"{}\".", Pokemon::to_string(pos), world.describe(pos), text);
+            if (describe(world, pos) != text){
+                return std::format("{}: described as \"{}\", expected \"{}\".", Pokemon::to_string(pos), describe(world, pos), text);
             }
         }
-        if (world.width() != 3 || world.height() != 3 || world.covered({2, 2}) || !world.standable({2, 1})){
+        if (!covered(world, {0, 2}) || covered(world, {3, 0}) || covered(world, {0, 3}) || covered(world, {2, 2}) || !standable(world, {2, 1})){
             return std::string("The joined world is not 3 x 3 with East's grass at (2, 1) and nothing at (2, 2).");
         }
         if (!(world.to_world("East", {0, 0}) == TilePos{1, 0})){
@@ -162,16 +168,16 @@ public:
         world.add("Road", make_map({"...."}), {0, 0});
         world.block({1, 0});
         world.uncover({2, 0});
-        if (world.step({0, 0}, Direction::EAST) || !world.at_wall({0, 0}, Direction::EAST)){
+        if (step(world, {0, 0}, Direction::EAST) || !at_wall(world, {0, 0}, Direction::EAST)){
             return std::string("A blocked tile is not a wall.");
         }
-        if (world.covered({2, 0}) || world.at_wall({3, 0}, Direction::WEST)){
+        if (covered(world, {2, 0}) || at_wall(world, {3, 0}, Direction::WEST)){
             return std::string("An uncovered tile is still on the map, or a wall.");
         }
         world.add("North", make_map({"#"}), {0, -1});
         const TilePos blocked = world.to_world("Road", {1, 0});
         const TilePos uncovered = world.to_world("Road", {2, 0});
-        if (!world.occupied(blocked) || world.covered(uncovered) || !world.standable(world.to_world("Road", {3, 0}))){
+        if (!world.occupied(blocked) || covered(world, uncovered) || !standable(world, world.to_world("Road", {3, 0}))){
             return std::string("Adding a map lost the blocked or uncovered tile.");
         }
         return true;

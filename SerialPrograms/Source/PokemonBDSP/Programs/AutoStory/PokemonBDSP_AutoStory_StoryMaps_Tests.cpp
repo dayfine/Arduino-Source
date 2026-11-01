@@ -81,7 +81,7 @@ public:
             }
             for (const TilePos& pos : legs->back().after){
                 if (!in_grass(pos)){
-                    return "From " + name + " to the catch grass: the walk may end on " + maps.describe(pos) + ", not in the grass.";
+                    return "From " + name + " to the catch grass: the walk may end on " + describe(maps, pos) + ", not in the grass.";
                 }
             }
             logger.log(std::format("From {} to the catch grass: {} legs, ending in the grass.", name, legs->size()));
@@ -109,7 +109,7 @@ public:
         }
         TilePos pos = sign.next(Direction::SOUTH);
         for (int tap = 0; tap < sign.x - door.x; tap++){
-            const std::optional<TilePos> next = town.step(pos, Direction::WEST);
+            const std::optional<TilePos> next = step(town, pos, Direction::WEST);
             if (!next){
                 return "West from " + Pokemon::to_string(pos) + " is blocked.";
             }
@@ -146,12 +146,12 @@ public:
         }
         for (const std::vector<TilePos>& from : starts){
             const auto legs = plan_robust_route(maps, from, [&](const TilePos& pos){ return pos == entry; }, RobustPlanCosts());
-            const std::string name = from.size() == 1 ? maps.describe(from[0]) : "the whole training area";
+            const std::string name = from.size() == 1 ? describe(maps, from[0]) : "the whole training area";
             if (!legs || legs->empty()){
                 return "From " + name + " into Sandgem: no plan.";
             }
             if (legs->back().after.size() != 1 || !(legs->back().after[0] == entry)){
-                return "From " + name + " into Sandgem: the plan does not end on " + maps.describe(entry) + ".";
+                return "From " + name + " into Sandgem: the plan does not end on " + describe(maps, entry) + ".";
             }
             logger.log(std::format("From {} into Sandgem: {} legs.", name, legs->size()));
         }
@@ -171,7 +171,7 @@ public:
         const StoryWorld gym = alone("OreburghGym");
         const TilePos entrance = map_point("OreburghGym", "entrance");
         const TilePos roark = map_point("OreburghGym", "roark");
-        if (!gym.standable(entrance) || gym.tile(entrance.next(Direction::SOUTH)) != TileKind::DOOR){
+        if (!standable(gym, entrance) || gym.tile(entrance.next(Direction::SOUTH)) != TileKind::DOOR){
             return std::string("The entrance tile is not standable above the door.");
         }
         if (!gym.occupied(roark)){
@@ -213,7 +213,7 @@ public:
             if (!record.traceable || !record.start){
                 continue;
             }
-            if (!world.standable(*record.start)){
+            if (!standable(world, *record.start)){
                 return name + ": starts on " + Pokemon::to_string(*record.start) + ", where nobody can stand.";
             }
             std::vector<TileLeg> counted;
@@ -225,7 +225,7 @@ public:
             }
             try{
                 const TilePos end = trace_legs(world, *record.start, counted).back();
-                logger.log(std::format("{}: {} counted legs to {}.", name, counted.size(), world.describe(end)));
+                logger.log(std::format("{}: {} counted legs to {}.", name, counted.size(), describe(world, end)));
             }catch (InternalProgramError& e){
                 return name + ": " + e.message();
             }
