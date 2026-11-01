@@ -55,6 +55,8 @@ base/upstream-main (copy of upstream main; refreshed to b3673f2a9 on 2026-11-01)
 │     F6 ab9a22e0b FRLG: walk overworld routes with the leg walker (+ BattleFlashWatcher) (+509)
 │     (facing reader before the walk: the walk includes it. 19 to_string → std::format)
 │     └── #118 frlg/walk-wild-legs (on frlg/mvp; wild legs 43ac578a0, signs f11a56672; CI green) ... fixes from the console B MVP run, to collect
+│        └── #119 frlg/walk-interrupt-recount (on #118): open wild legs a tile at a time (90ac25d3d); follow-ups: ledge stops, overworld check, warp fade vs battle, trainer battles
+│              └── frlg/autostory-mvp (on #119, in progress): PokemonFRLG AutoStory program, 00.01–00.08 new game → Brock, from the by-hand run notes
 │           43ac578a0 watch for wild battles only on steps where one can start (grass/water)
 │           f11a56672 never plan a hold into a sign moving north or south (maps get 'S' signs)
 └── base/bdsp-1717 = base/upstream-main + upstream #1717 head 381c055ac + nav/shared
