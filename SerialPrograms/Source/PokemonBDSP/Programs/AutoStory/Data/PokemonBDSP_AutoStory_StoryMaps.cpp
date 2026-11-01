@@ -10,6 +10,8 @@
 #include "PokemonBDSP_AutoStory_Route203.h"
 #include "PokemonBDSP_AutoStory_Route204.h"
 #include "PokemonBDSP_AutoStory_Route204South.h"
+#include "PokemonBDSP_AutoStory_OreburghCity.h"
+#include "PokemonBDSP_AutoStory_FloaromaTown.h"
 #include "PokemonBDSP_AutoStory_Route201.h"
 #include "PokemonBDSP_AutoStory_Route202.h"
 #include "PokemonBDSP_AutoStory_SandgemTown.h"
@@ -29,6 +31,8 @@ const char* const MAP_JUBILIFE_CITY = "Jubilife City";
 const char* const MAP_OREBURGH_MINE = "Oreburgh Mine";
 const char* const MAP_RAVAGED_PATH = "Ravaged Path";
 const char* const MAP_ROUTE_204 = "Route 204";
+const char* const MAP_OREBURGH_CITY = "Oreburgh City";
+const char* const MAP_FLOAROMA_TOWN = "Floaroma Town";
 const char* const MAP_ROUTE_204_SOUTH = "Route 204 South";
 const char* const MAP_ROUTE_203 = "Route 203";
 
@@ -149,6 +153,24 @@ MapSet ravaged_path_maps(const std::vector<TilePos>& smashed){
     }
     MapSet maps;
     maps.add(MAP_RAVAGED_PATH, grid, {0, 0});
+    return maps;
+}
+
+const MapSet& oreburgh_city_maps(){
+    static const MapSet maps = []{
+        MapSet maps;
+        maps.add(MAP_OREBURGH_CITY, OreburghCity::grid(), {0, 0});
+        return maps;
+    }();
+    return maps;
+}
+
+const MapSet& floaroma_maps(){
+    static const MapSet maps = []{
+        MapSet maps;
+        maps.add(MAP_FLOAROMA_TOWN, FloaromaTown::grid(), {0, 0});
+        return maps;
+    }();
     return maps;
 }
 
