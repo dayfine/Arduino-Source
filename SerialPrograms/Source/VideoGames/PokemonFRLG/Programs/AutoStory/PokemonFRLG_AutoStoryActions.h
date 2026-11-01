@@ -15,6 +15,7 @@
 #define PokemonAutomation_PokemonFRLG_AutoStoryActions_H
 
 #include <optional>
+#include <string>
 #include <vector>
 #include "Common/Cpp/Time.h"
 #include "CommonFramework/Language.h"
@@ -90,6 +91,11 @@ void face_wall(ProControllerContext& context, Pokemon::Direction direction);
 //  The menu's cursor is read, since the game remembers it and the menu
 //  grows. Returns to the overworld.
 void save_game(ConsoleHandle& console, ProControllerContext& context, StartMenu menu);
+
+//  From the overworld: the place the START menu's SAVE card names (see
+//  read_save_card_location()), then NO, back to the overworld. Empty if it
+//  can't be read.
+std::string read_save_place(ConsoleHandle& console, ProControllerContext& context, StartMenu menu, Language language);
 
 //  From the overworld: OPTION, text speed FAST, battle style SET (no
 //  "Will you switch?" between a trainer's Pokemon). Returns to the

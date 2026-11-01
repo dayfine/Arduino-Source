@@ -278,6 +278,26 @@ UnitTestResult test_pewter_gym_walks(){
     );
 }
 
+//  Every checkpoint that starts from a save has a place the save card
+//  names, so a save left elsewhere is caught before it runs; and the
+//  places of the starts that matter differ.
+UnitTestResult test_save_places(){
+    for (const StoryCheckpoint& checkpoint : story_checkpoints()){
+        if (checkpoint.start && save_card_place(checkpoint.start->map).empty()){
+            return checkpoint.id + " starts on " + checkpoint.start->map + ", which has no save card place.";
+        }
+    }
+    if (save_card_place("ViridianForest") != "viridian-forest" || save_card_place("ViridianCity_Mart") != "viridian-city"
+        || save_card_place("PewterCity_PokemonCenter_1F") != "pewter-city" || save_card_place("PalletTown_ProfessorOaksLab") != "pallet-town"
+    ){
+        return "Wrong save card places.";
+    }
+    if (!save_card_place("Route22").empty()){
+        return "A place for a map the table doesn't use.";
+    }
+    return true;
+}
+
 UnitTestResult test_unique_names(){
     for (const StoryCheckpoint& checkpoint : story_checkpoints()){
         for (size_t i = 0; i < checkpoint.steps.size(); i++){
@@ -297,6 +317,7 @@ UnitTestResult test_unique_names(){
 void add_tests_AutoStory(UnitTestDatabase& database){
     database.add<Test_AutoStory>("every route plans, and checkpoints chain", test_routes_and_chain);
     database.add<Test_AutoStory>("step names are unique per checkpoint", test_unique_names);
+    database.add<Test_AutoStory>("every save has a place on the save card", test_save_places);
     database.add<Test_AutoStory>("Pewter Gym walks", test_pewter_gym_walks);
 }
 

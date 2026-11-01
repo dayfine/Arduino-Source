@@ -12,6 +12,7 @@
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "CommonFramework/Language.h"
+#include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_SaveCardReader.h"
 #include "PokemonFRLG_AutoStoryActions.h"
 #include "PokemonFRLG_AutoStoryBattle.h"
 
@@ -95,6 +96,9 @@ UnitTestResult test_unread_language(Logger& logger){
     }
     if (!read_bag_pocket(logger, Language::Japanese, screen).empty()){
         return "Read bag rows in Japanese.";
+    }
+    if (!read_save_card_location(logger, Language::Japanese, screen).empty()){
+        return "Read a save card's place in Japanese.";
     }
     return true;
 }

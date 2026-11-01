@@ -81,6 +81,35 @@ AutoStory::AutoStory()
 }
 
 
+//  The save loaded must be the one checkpoint `first` starts from: one left
+//  by an earlier checkpoint (a run that failed before saving) would start
+//  it in the wrong place (console B, 2026-11-01: 00.09 on the forest's
+//  save). Checked on the SAVE card; a card that can't be read is let pass.
+static void check_save_place(
+    SingleSwitchProgramEnvironment& env, ProControllerContext& context,
+    const std::vector<StoryCheckpoint>& checkpoints, size_t first, Language language
+){
+    const StoryCheckpoint& checkpoint = checkpoints[first];
+    const std::string expected = checkpoint.start ? save_card_place(checkpoint.start->map) : "";
+    if (expected.empty()){
+        return;
+    }
+    //  The START menu as the checkpoint before left it.
+    const std::string place = read_save_place(env.console, context, checkpoints[first - 1].menu, language);
+    if (place.empty()){
+        env.console.log("Couldn't read the save card's place; starting " + checkpoint.id + " anyway.", COLOR_ORANGE);
+        return;
+    }
+    if (place != expected){
+        throw UserSetupError(
+            env.console,
+            "The save is in " + place + ", but checkpoint " + checkpoint.id + " starts in " + expected +
+            " (" + checkpoint.start->map + "). Start at the checkpoint the save is for."
+        );
+    }
+    env.console.log("The save is in " + place + ", where " + checkpoint.id + " starts.");
+}
+
 void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContext& context){
     const std::vector<StoryCheckpoint>& checkpoints = story_checkpoints();
     const size_t first = START_CHECKPOINT - 1;
@@ -97,6 +126,7 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
         env.console.log("Loading the save for " + checkpoints[first].id + ".");
         soft_reset(env.console, context);
         story.has_save = true;
+        check_save_place(env, context, checkpoints, first, story.language);
     }
 
     Pokemon::Segment segment = make_story_segment(checkpoints, story);

@@ -279,6 +279,22 @@ Pokemon::Pose to_pose(const StoryPose& pose){
     return ret;
 }
 
+std::string save_card_place(const std::string& map){
+    //  The longer names first: "ViridianForest" before "ViridianCity".
+    static const std::pair<const char*, const char*> PLACES[] = {
+        {"PalletTown", "pallet-town"},
+        {"ViridianForest", "viridian-forest"},
+        {"ViridianCity", "viridian-city"},
+        {"PewterCity", "pewter-city"},
+    };
+    for (const auto& [prefix, place] : PLACES){
+        if (map.rfind(prefix, 0) == 0){
+            return place;
+        }
+    }
+    return "";
+}
+
 std::optional<std::vector<RouteStep>> fixed_route(
     const std::vector<MapData>& maps, const MapPosition& start, const std::vector<StoryLeg>& legs
 ){

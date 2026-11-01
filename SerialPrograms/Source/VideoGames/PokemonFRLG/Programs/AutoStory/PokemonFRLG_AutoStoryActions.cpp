@@ -20,6 +20,7 @@
 #include "VideoGames/PokemonFRLG/Inference/Dialogs/PokemonFRLG_DialogDetector.h"
 #include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_ItemListReader.h"
 #include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_NamingScreenDetector.h"
+#include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_SaveCardReader.h"
 #include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_StartMenuDetector.h"
 #include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleScreenDetector.h"
 #include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_SelectionArrowDetector.h"
@@ -394,6 +395,21 @@ void save_game(ConsoleHandle& console, ProControllerContext& context, StartMenu 
     pbf_wait(context, 4000ms);
     mash_until_overworld(console, context, 30000ms);
     console.log("Saved.");
+}
+
+std::string read_save_place(ConsoleHandle& console, ProControllerContext& context, StartMenu menu, Language language){
+    open_start_menu_row(console, context, menu, start_menu_save_row(menu));
+    std::string place;
+    if (wait_for_yes_no(console, context, 5000ms)){
+        context.wait_for_all_requests();
+        VideoSnapshot screen = console.video().snapshot();
+        place = screen ? read_save_card_location(console, language, screen) : "";
+        dump_debug_image(console, "AutoStory/save", "card-" + (place.empty() ? std::string("unread") : place), screen);
+    }
+    //  NO, then out of the menu.
+    press(context, BUTTON_B, 1000ms);
+    mash_until_overworld(console, context, 20000ms);
+    return place;
 }
 
 void set_options(ConsoleHandle& console, ProControllerContext& context, StartMenu menu){

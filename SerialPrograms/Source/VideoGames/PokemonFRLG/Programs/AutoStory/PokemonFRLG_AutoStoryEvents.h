@@ -104,6 +104,10 @@ const std::vector<MapData>& story_maps();
 
 Pokemon::Pose to_pose(const StoryPose& pose);
 
+//  The place the save card names for a save on `map` (see
+//  read_save_card_location()), or empty for a map whose place isn't known.
+std::string save_card_place(const std::string& map);
+
 //  `legs` from `start` as route steps for the walker, each checked against
 //  the map: nothing if a step is blocked or leaves the map. A leg ends "to
 //  wall" if the next step its way is blocked.
