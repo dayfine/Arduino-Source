@@ -81,6 +81,61 @@ private:
     std::string m_label;
 };
 
+//  Walks each step through `calls`; logs a leg to a wall seen interrupted
+//  after its hold, which run_route() walks again, and checks a leg to a wall
+//  that ended did end at its wall.
+class CheckedSteps{
+public:
+    CheckedSteps(const RouteCalls& calls, const RouteLogLines& lines, WallCheck wall_check)
+        : m_calls(calls)
+        , m_lines(lines)
+        , m_wall_check(wall_check)
+    {}
+    StepEnd walk(const RouteStep& step, std::optional<Direction> facing){
+        const std::string leg = to_string(step);
+        m_reholds = m_last_late && leg == m_last ? m_reholds + 1 : 0;
+        const StepEnd end = m_calls.walk(step, facing);
+        m_last = leg;
+        m_last_late = end == StepEnd::LATE;
+        if (step.to_wall && end == StepEnd::LATE){
+            m_lines.end(step, std::nullopt, EndBasis::UNKNOWN, "something seen after the hold; walking it again");
+        }
+        if (end == StepEnd::DONE){
+            check_wall(step);
+        }
+        return end;
+    }
+
+private:
+    //  TODO(forest drift, 2026-11-01): diagnostic; remove or turn into a recovery once the cause is known.
+    //  Four runs ended the walk to Viridian Forest's north gate off its
+    //  column, which 52 legs walked by hand didn't reproduce: one more tap
+    //  toward a leg's wall moves nobody who stands at it.
+    void check_wall(const RouteStep& step) const{
+        if (!step.to_wall || step.warps || step.action != RouteAction::WALK
+            || m_wall_check == WallCheck::SKIP || !m_calls.moved_past_wall
+        ){
+            return;
+        }
+        if (!m_calls.moved_past_wall(step)){
+            return;
+        }
+        m_calls.log(std::format(
+            "Position check: {} moved on past where its wall should be; believed at {}, after {} re-hold(s) "
+            "for something seen late (the leg's interrupts are the \"Leg:\" lines above).",
+            to_string(step), to_string(step.end), m_reholds
+        ));
+        m_calls.fail("position check: " + to_string(step) + " did not end at its wall");
+    }
+
+    const RouteCalls& m_calls;
+    const RouteLogLines& m_lines;
+    WallCheck m_wall_check = WallCheck::TAP;
+    std::string m_last;
+    bool m_last_late = false;
+    size_t m_reholds = 0;
+};
+
 //  A route rejoined after a stop: `holds` holds to walls, then the rest.
 struct Rejoined{
     std::vector<RouteStep> steps;
@@ -126,6 +181,7 @@ void run_route(
     const RoutePlanning* planning, const RouteCalls& calls
 ){
     const RouteLogLines lines(calls, planning);
+    CheckedSteps steps(calls, lines, planning != nullptr ? planning->wall_check : WallCheck::TAP);
     std::vector<RouteStep> plan = route;
     std::optional<MapPosition> at = planning != nullptr ? planning->start : std::nullopt;
     lines.plan(at, plan);
@@ -134,7 +190,7 @@ void run_route(
     for (size_t i = 0; i < plan.size();){
         const RouteStep step = plan[i];
         lines.leg(i, plan);
-        const StepEnd end = calls.walk(step, facing);
+        const StepEnd end = steps.walk(step, facing);
         if (end == StepEnd::DONE){
             at = step.end;
             facing = step.facing_after;
@@ -147,7 +203,6 @@ void run_route(
             return;
         }
         if (step.to_wall && end == StepEnd::LATE){
-            lines.end(step, std::nullopt, EndBasis::UNKNOWN, "something seen after the hold; walking it again");
             continue;   //  walking it again ends at its wall
         }
         if (step.to_wall){
