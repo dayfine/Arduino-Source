@@ -19,6 +19,16 @@ git show origin/agents:AGENTS.md
 git show origin/agents:pokemon_sv/PR_WORKFLOW.md
 ```
 
+Once per clone, install the pre-push code-health gate (it covers every worktree):
+
+```sh
+sh <(git show origin/agents:tools/install_hooks.sh)
+```
+
+A push of a branch that fails `devtools/code_health` against its fork PR base is refused, the same
+check as CI's "C++ Code Health" job. Fix the failures in that PR's own commits; `--no-verify` only
+with the user's OK. A PR is not "CI green" while Code Health is red.
+
 All linked worktrees share these remote refs. Re-read the PR rule before any
 GitHub PR mutation. If fetching fails, report that the cached rules may be
 stale; the user's explicit restrictions still apply. Keep the dedicated notes
