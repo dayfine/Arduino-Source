@@ -27,6 +27,7 @@
 #include "Pokemon/Navigation/Pokemon_StoryEvents.h"
 #include "Pokemon/Navigation/Pokemon_StorySegments.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMap.h"
+#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRoute.h"
 #include "PokemonFRLG_AutoStoryActions.h"
 #include "PokemonFRLG_AutoStoryBattle.h"
 
@@ -47,6 +48,7 @@ enum class StoryStepKind{
     NEW_GAME,       //  title screen (no save) to the bedroom
     SET_OPTIONS,    //  text speed FAST, battle style SET
     ROUTE,          //  plan and walk to `target`
+    LEGS,           //  walk `legs` as given, on one map
     STEP,           //  one step `direction`: onto a trigger, into a door
     TALK,           //  A at what the player faces
     ANSWER,         //  text with B to a YES/NO, then `yes`
@@ -54,6 +56,12 @@ enum class StoryStepKind{
     BATTLE,         //  text with B into a battle, fight it, text to the overworld
     HEAL,           //  facing the nurse
     SHOP,           //  facing the Viridian Mart clerk: Potions and Antidotes
+};
+
+//  A straight leg of a fixed walk.
+struct StoryLeg{
+    Direction direction = Direction::NORTH;
+    int tiles = 0;
 };
 
 struct StoryStep{
@@ -64,7 +72,9 @@ struct StoryStep{
     StoryPose target;
     //  STEP
     Direction direction = Direction::NORTH;
-    //  ROUTE: fight wild battles for EXP instead of running.
+    //  LEGS
+    std::vector<StoryLeg> legs;
+    //  ROUTE, LEGS: fight wild battles for EXP instead of running.
     bool fight_wild = false;
     //  ANSWER
     bool yes = true;
@@ -92,6 +102,13 @@ struct StoryCheckpoint{
 const std::vector<MapData>& story_maps();
 
 Pokemon::Pose to_pose(const StoryPose& pose);
+
+//  `legs` from `start` as route steps for the walker, each checked against
+//  the map: nothing if a step is blocked or leaves the map. A leg ends "to
+//  wall" if the next step its way is blocked.
+std::optional<std::vector<RouteStep>> fixed_route(
+    const std::vector<MapData>& maps, const MapPosition& start, const std::vector<StoryLeg>& legs
+);
 
 //  A way the player at `tile` can turn to without stepping: a wall there,
 //  with no one standing in it. West and east first: walking north or south

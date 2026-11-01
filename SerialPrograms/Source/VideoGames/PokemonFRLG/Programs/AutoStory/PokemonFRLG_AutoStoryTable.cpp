@@ -148,7 +148,18 @@ StoryCheckpoint forest(){
     cp.steps.push_back(route("forest_west", at(FOREST, 13, 46), "west side of the forest", true));
     cp.steps.push_back(route("forest_east", at(FOREST, 42, 44), "east path, past a Bug Catcher", true));
     cp.steps.push_back(route("forest_north", at(FOREST, 39, 25), "north part", true));
-    cp.steps.push_back(route("forest_exit", at(FOREST_GATE, 7, 8, NORTH), "into the north gate, fighting in the forest", true));
+    //  To the gate by legs that end on walls, which the walker holds again
+    //  after a battle instead of estimating where it stopped: planned
+    //  routes with open legs lost the player in the north of the forest
+    //  (console B, 2026-11-01). The two 1-tile legs are single steps.
+    StoryStep exit_legs = make(StoryStepKind::LEGS, "forest_exit", "walls all the way to the gate's column");
+    exit_legs.legs = {
+        {NORTH, 10}, {WEST, 12}, {SOUTH, 10}, {WEST, 6}, {NORTH, 20},
+        {SOUTH, 1}, {WEST, 10}, {SOUTH, 27}, {WEST, 8}, {NORTH, 20}, {EAST, 1},
+    };
+    exit_legs.fight_wild = true;
+    cp.steps.push_back(exit_legs);
+    cp.steps.push_back(route("forest_gate", at(FOREST_GATE, 7, 10, NORTH), "north onto the exit, arriving on the gate's mat", true));
     //  Out of the forest, wild battles are run from; trainers are still fought.
     cp.steps.push_back(route("pewter_nurse", at(PEWTER_CENTER, 7, 4, NORTH), "Route 2 north to Pewter's Center"));
     cp.steps.push_back(make(StoryStepKind::HEAL, "heal_pewter", "full HP"));

@@ -97,6 +97,25 @@ Outcome walk_route(StoryEnv& env, RunState& state, const StoryStep& step){
     return Pokemon::outcome_ok(to_pose(StoryPose{step.target.map, step.target.tile, end_facing}));
 }
 
+Outcome walk_legs(StoryEnv& env, RunState& state, const StoryStep& step){
+    const std::vector<TilePos> tiles = Pokemon::tiles_of(state.pose);
+    if (tiles.size() != 1 || state.pose.certainty != Pokemon::PoseCertainty::TILE){
+        return Pokemon::outcome_failed("no_pose", Pokemon::to_string(state.pose));
+    }
+    const MapPosition start{state.pose.map, tiles[0]};
+    std::optional<Direction> facing = facing_of(state.pose);
+    if (!facing){
+        facing = face_a_wall(env, start);
+    }
+    const std::optional<std::vector<RouteStep>> route = fixed_route(story_maps(), start, step.legs);
+    if (!facing || !route || route->empty()){
+        return Pokemon::outcome_failed("bad_legs", to_string(start));
+    }
+    const OverworldInterruptSet interrupts = story_interrupts(env.supplies, step.fight_wild);
+    walk_overworld_route(env.console, env.context, *route, facing, interrupts);
+    return Pokemon::outcome_ok(to_pose(StoryPose{route->back().end.map, route->back().end.point, route->back().facing_after}));
+}
+
 Outcome take_step(StoryEnv& env, RunState& state, const StoryStep& step){
     step_once(env.context, step.direction, facing_of(state.pose));
     const std::vector<TilePos> tiles = Pokemon::tiles_of(state.pose);
@@ -136,6 +155,8 @@ Outcome run_step(StoryEnv& env, RunState& state, const StoryStep& step, StartMen
         return Pokemon::outcome_ok();
     case StoryStepKind::ROUTE:
         return walk_route(env, state, step);
+    case StoryStepKind::LEGS:
+        return walk_legs(env, state, step);
     case StoryStepKind::STEP:
         return take_step(env, state, step);
     case StoryStepKind::TALK:
@@ -196,6 +217,41 @@ Pokemon::Pose to_pose(const StoryPose& pose){
     ret.certainty = Pokemon::PoseCertainty::TILE;
     ret.where = std::make_shared<Pokemon::TilePose>(std::vector<TilePos>{pose.tile}, pose.facing);
     return ret;
+}
+
+std::optional<std::vector<RouteStep>> fixed_route(
+    const std::vector<MapData>& maps, const MapPosition& start, const std::vector<StoryLeg>& legs
+){
+    const MapData* map = nullptr;
+    for (const MapData& candidate : maps){
+        if (candidate.name == start.map){
+            map = &candidate;
+        }
+    }
+    if (map == nullptr || !in_bounds(*map, start.point)){
+        return std::nullopt;
+    }
+    std::vector<RouteStep> route;
+    PlayerState player{start.point, elevation_at(*map, start.point), false};
+    for (const StoryLeg& leg : legs){
+        RouteStep step;
+        step.direction = leg.direction;
+        step.tiles = leg.tiles;
+        step.facing_after = leg.direction;
+        for (int c = 0; c < leg.tiles; c++){
+            const StepKind kind = classify_step(*map, player, leg.direction);
+            const TilePos next = player.position.next(leg.direction);
+            if (kind != StepKind::WALK || !in_bounds(*map, next) || warps_on_step(*map, next)){
+                return std::nullopt;
+            }
+            step.wild |= is_tall_grass(*map, next);
+            player = after_step(*map, player, leg.direction, kind);
+        }
+        step.to_wall = classify_step(*map, player, leg.direction) == StepKind::BLOCKED;
+        step.end = MapPosition{map->name, player.position};
+        route.push_back(step);
+    }
+    return route;
 }
 
 std::optional<Direction> wall_beside(const MapData& map, const TilePos& tile){

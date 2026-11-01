@@ -35,11 +35,14 @@ namespace PokemonFRLG{
 struct Supplies{
     int potions = 0;
     int antidotes = 0;
+    //  The starter's HP bar wasn't green at the last battle turn, and no
+    //  Potion was used since.
+    bool hurt = false;
 };
 
 enum class BattleKind{
     WILD_RUN,       //  RUN, or fight after a few "Can't escape!"
-    WILD_FIGHT,     //  fight for EXP
+    WILD_FIGHT,     //  fight for EXP with green HP and 2 Potions, else RUN
     TRAINER,
 };
 

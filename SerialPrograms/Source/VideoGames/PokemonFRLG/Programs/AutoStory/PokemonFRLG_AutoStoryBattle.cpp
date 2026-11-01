@@ -50,6 +50,9 @@ constexpr Milliseconds NO_MENU_NEAR = 10000ms;
 //  is checked by START this often (a trainer's battle that never started,
 //  console B, 2026-11-01: 10 minutes of B on the overworld).
 constexpr Milliseconds OVERWORLD_CHECK = 3000ms;
+//  A wild Pokemon is fought (WILD_FIGHT) only with green HP and this many
+//  Potions left; otherwise it is run from.
+constexpr int MIN_POTIONS_TO_FIGHT = 2;
 //  RUN this many times ("Can't escape!") before fighting instead.
 constexpr int RUN_TRIES = 4;
 //  No battle menu or HP box this long after a battle was seen: there was
@@ -351,21 +354,29 @@ private:
     void take_turn(const ImageViewRGB32& screen){
         m_turns++;
         m_faint_polls = 0;
-        if (m_kind == BattleKind::WILD_RUN && m_run_tries < RUN_TRIES){
-            m_run_tries++;
-            m_console.log(std::format("Battle: RUN (try {}).", m_run_tries));
-            run_away(m_context);
-            return;
-        }
         const PartyStatus status = read_party_status(screen);
+        const bool hurt = status.hp_red || status.hp_yellow;
+        m_supplies.hurt = hurt;
         m_psn_reads = status.poisoned ? m_psn_reads + 1 : 0;
         m_console.log(std::format(
             "Battle: turn {}, HP {}{}, {} Potions, {} Antidotes.",
             m_turns, status.hp_red ? "red" : status.hp_yellow ? "yellow" : "green",
             status.poisoned ? ", PSN read" : "", m_supplies.potions, m_supplies.antidotes
         ));
-        if ((status.hp_red || status.hp_yellow) && m_supplies.potions > 0){
+        //  A wild Pokemon is fought for EXP only at full strength: fighting
+        //  every one in Viridian Forest used up all 4 Potions and then the
+        //  starter (console B, 2026-11-01).
+        const bool run = m_kind == BattleKind::WILD_RUN
+            || (m_kind == BattleKind::WILD_FIGHT && (hurt || m_supplies.potions < MIN_POTIONS_TO_FIGHT));
+        if (run && m_run_tries < RUN_TRIES){
+            m_run_tries++;
+            m_console.log(std::format("Battle: RUN (try {}).", m_run_tries));
+            run_away(m_context);
+            return;
+        }
+        if (hurt && m_supplies.potions > 0){
             m_supplies.potions--;
+            m_supplies.hurt = false;
             use_item(m_console, m_context, 0);
         }else if (m_psn_reads >= PSN_READS && !m_antidote_used && m_supplies.antidotes > 0){
             m_antidote_used = true;
@@ -410,6 +421,37 @@ private:
 };
 
 
+//  From the overworld: a Potion from the Items pocket, top row, on the
+//  starter. Not run on the console yet.
+void use_potion_on_overworld(ConsoleHandle& console, ProControllerContext& context, Supplies& supplies){
+    console.log(std::format("Story: HP below green after the battle, using a Potion ({} left).", supplies.potions));
+    open_bag_from_overworld(console, context);
+    //  The bag ignores presses while it slides in.
+    pbf_wait(context, 1000ms);
+    for (int c = 0; c < 3; c++){
+        pbf_press_dpad(context, DPAD_LEFT, 100ms, 500ms);
+    }
+    for (int c = 0; c < 20; c++){
+        pbf_press_dpad(context, DPAD_UP, 100ms, 100ms);
+    }
+    //  The Potion, USE, the starter, then "...HP was restored".
+    pbf_press_button(context, BUTTON_A, 160ms, 800ms);
+    pbf_press_button(context, BUTTON_A, 160ms, 1500ms);
+    pbf_press_button(context, BUTTON_A, 160ms, 2500ms);
+    pbf_press_button(context, BUTTON_B, 160ms, 1500ms);
+    supplies.potions--;
+    supplies.hurt = false;
+    mash_until_overworld(console, context, AFTER_BATTLE_TEXT);
+}
+
+//  After a battle on the way: heal between battles if the last HP read
+//  wasn't green.
+void heal_if_hurt(ConsoleHandle& console, ProControllerContext& context, Supplies& supplies){
+    if (supplies.hurt && supplies.potions > 0){
+        use_potion_on_overworld(console, context, supplies);
+    }
+}
+
 void fail_on_blackout(ConsoleHandle& console, BattleEnd end){
     if (end == BattleEnd::LOST){
         OperationFailedExceptionWithScreenshot::fire(
@@ -447,6 +489,7 @@ public:
     virtual void clear(ConsoleHandle& console, ProControllerContext& context) const override{
         const BattleKind kind = m_fight ? BattleKind::WILD_FIGHT : BattleKind::WILD_RUN;
         fail_on_blackout(console, fight_battle(console, context, m_supplies, kind));
+        heal_if_hurt(console, context, m_supplies);
     }
 
 private:
@@ -477,6 +520,7 @@ public:
         console.log("Story: a trainer's battle after a message on the overworld.");
         fail_on_blackout(console, fight_battle(console, context, m_supplies, BattleKind::TRAINER));
         mash_until_overworld(console, context, AFTER_BATTLE_TEXT);
+        heal_if_hurt(console, context, m_supplies);
     }
 
 private:

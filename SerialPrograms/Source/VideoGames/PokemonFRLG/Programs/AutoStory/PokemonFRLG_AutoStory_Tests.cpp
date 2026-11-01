@@ -94,6 +94,36 @@ std::vector<TilePos> tiles_walked_on(const std::vector<RouteStep>& route, const 
     return tiles;
 }
 
+//  Steps that must reach Viridian Forest's gate by legs the walker can hold
+//  again after a battle: each ends on a wall or a warp, or is one step.
+bool held_legs_only(const std::string& name){
+    return name == "forest_exit" || name == "forest_gate";
+}
+UnitTestResult check_held_legs(const std::string& name, const std::vector<RouteStep>& route){
+    for (const RouteStep& step : route){
+        if (step.action == RouteAction::WALK && !step.to_wall && !step.warps && step.tiles != 1){
+            return name + ": an open leg, " + to_string(step) + ":" + describe(route);
+        }
+    }
+    return true;
+}
+
+//  Walks `step`'s fixed legs from `pose` and moves `pose` to their end.
+UnitTestResult check_legs(StoryPose& pose, const StoryStep& step){
+    const std::optional<std::vector<RouteStep>> route = fixed_route(story_maps(), MapPosition{pose.map, pose.tile}, step.legs);
+    if (!route || route->empty()){
+        return step.name + ": the legs can't be walked from " + describe(pose) + ".";
+    }
+    if (held_legs_only(step.name)){
+        UnitTestResult result = check_held_legs(step.name, *route);
+        if (result.result != UnitTestResult::PASSED){
+            return result;
+        }
+    }
+    pose = StoryPose{route->back().end.map, route->back().end.point, route->back().facing_after};
+    return true;
+}
+
 //  Plans `step` from `pose` and moves `pose` to its end.
 UnitTestResult check_route(StoryPose& pose, const StoryStep& step){
     const MapPosition start{pose.map, pose.tile};
@@ -117,6 +147,12 @@ UnitTestResult check_route(StoryPose& pose, const StoryStep& step){
     if (goal.facing && !route->empty() && route->back().facing_after != *goal.facing){
         return step.name + ": the route doesn't end facing " + direction_name(*goal.facing) + ":" + describe(*route);
     }
+    if (held_legs_only(step.name)){
+        UnitTestResult result = check_held_legs(step.name, *route);
+        if (result.result != UnitTestResult::PASSED){
+            return result;
+        }
+    }
     if (step.name == "below_old_man_trigger"){
         for (const TilePos& tile : tiles_walked_on(*route, "ViridianCity")){
             if (tile == TilePos{20, 8} || tile == TilePos{22, 8}){
@@ -131,8 +167,8 @@ UnitTestResult check_route(StoryPose& pose, const StoryStep& step){
 //  Follows `checkpoint` from its start; `pose` ends where it leaves the player.
 UnitTestResult check_checkpoint(const StoryCheckpoint& checkpoint, StoryPose& pose){
     for (const StoryStep& step : checkpoint.steps){
-        if (step.kind == StoryStepKind::ROUTE){
-            UnitTestResult result = check_route(pose, step);
+        if (step.kind == StoryStepKind::ROUTE || step.kind == StoryStepKind::LEGS){
+            UnitTestResult result = step.kind == StoryStepKind::ROUTE ? check_route(pose, step) : check_legs(pose, step);
             if (result.result != UnitTestResult::PASSED){
                 return checkpoint.id + " " + result.message;
             }
