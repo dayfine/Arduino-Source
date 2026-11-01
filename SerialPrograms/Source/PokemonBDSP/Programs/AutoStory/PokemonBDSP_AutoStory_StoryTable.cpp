@@ -16,7 +16,7 @@
 #include <string>
 #include <utility>
 #include <vector>
-#include "PokemonBDSP_AutoStory_StoryPlaces.h"
+#include "Data/PokemonBDSP_AutoStory_Maps.h"
 #include "PokemonBDSP_AutoStory_StoryTable.h"
 
 namespace PokemonAutomation{
@@ -54,15 +54,15 @@ Pose at(const char* map, int x, int y, std::optional<Direction> facing = std::nu
     return Pokemon::tile_pose(map, {TilePos{x, y}}, facing);
 }
 Pose at(const char* map, const char* point, std::optional<Direction> facing = std::nullopt){
-    return Pokemon::tile_pose(map, {story_point(map, point)}, facing);
+    return Pokemon::tile_pose(map, {map_point(map, point)}, facing);
 }
 Pose on(const char* map, const char* region){
-    return Pokemon::tile_pose(map, story_region(map, region));
+    return Pokemon::tile_pose(map, map_region(map, region));
 }
 //  The tile below the door `door` of `map` and its neighbours either side:
 //  a door is not lined up with one tile (Jubilife's Center, r85).
 Pose door_front(const char* map, const char* door){
-    const TilePos below = story_point(map, door).next(SOUTH);
+    const TilePos below = map_point(map, door).next(SOUTH);
     return Pokemon::tile_pose(map, {below.next(WEST), below, below.next(EAST)});
 }
 
@@ -102,6 +102,8 @@ StoryStep legs(std::string name, std::vector<StoryLeg> legs, std::string why, st
 StoryStep to_walls(std::string name, std::vector<StoryLeg> legs, std::string why){
     return PokemonBDSP::legs(std::move(name), std::move(legs), std::move(why), "to_wall");
 }
+//  TODO(#114 coord events): the map schema has no scene triggers yet, so
+//  each row steps onto the decomp's trigger tile, named in its reason.
 StoryStep step_into(std::string name, Direction direction, std::string why, std::optional<Pose> pose_after = std::nullopt){
     StoryStep step = make(StoryStepKind::STEP, std::move(name), std::move(why));
     step.direction = direction;
@@ -156,9 +158,9 @@ std::vector<StoryCheckpoint> intro(){
         row("00.01", "Bedroom to the Verity Lakefront", at(BEDROOM, "start", NORTH), {
             route("above_the_stairs", at(BEDROOM, 8, 5, NORTH), "the stairs (8, 4) east of the bed"),
             //  The stairs' warp lands on 1F's stairs; a tile below is allowed (assumed).
-            step_into("down_the_stairs", NORTH, "onto the stairs", Pokemon::tile_pose(HOME, {story_point(HOME, "stairs"), story_point(HOME, "stairs").next(SOUTH)})),
+            step_into("down_the_stairs", NORTH, "onto the stairs", Pokemon::tile_pose(HOME, {map_point(HOME, "stairs"), map_point(HOME, "stairs").next(SOUTH)})),
             //  Butters' recording walked 1.1 s south before her first line.
-            scene("mom_calls", Pokemon::tile_pose(HOME, {story_point(HOME, "stairs"), story_point(HOME, "stairs").next(SOUTH)}),
+            scene("mom_calls", Pokemon::tile_pose(HOME, {map_point(HOME, "stairs"), map_point(HOME, "stairs").next(SOUTH)}),
                 "Mom calls the player over as they come down; we stay put (assumed)"),
             route("above_the_door", at(HOME, 6, 9, SOUTH), "past Mom at (7, 8) to above the door"),
             step_into("mom_warning", SOUTH, "the door's tile (6, 10): Mom's warning (coord event, VAR_PLAYER_HOUSE_STATE 1)"),
@@ -250,12 +252,12 @@ std::vector<StoryCheckpoint> to_the_catch(){
             //  One walk round the houses ended two tiles short (r252): down
             //  the road first, then the town plan.
             route("into_sandgem", at(SANDGEM, "route_202_entry_stop"), "south down the road to above the Mart", "robust"),
-            route("to_center_sign", at(SANDGEM, story_point(SANDGEM, "pokemon_center_sign").x, story_point(SANDGEM, "pokemon_center_sign").y + 1),
+            route("to_center_sign", at(SANDGEM, map_point(SANDGEM, "pokemon_center_sign").x, map_point(SANDGEM, "pokemon_center_sign").y + 1),
                 "below the Center's sign, its doorway in sight", "town"),
             //  From below the sign the finder read the signs' panels as
             //  doorways (r252, r255): taps instead. One tile short is fine.
             legs("below_center_door", {{.direction = WEST,
-                .tiles = story_point(SANDGEM, "pokemon_center_sign").x - story_point(SANDGEM, "pokemon_center_door").x}},
+                .tiles = map_point(SANDGEM, "pokemon_center_sign").x - map_point(SANDGEM, "pokemon_center_door").x}},
                 "taps west below the Center's door", "one_short_ok"),
             heal("heal_sandgem", "Sandgem Town Pokemon Center", door_front(SANDGEM, "pokemon_center_door")),
         }),

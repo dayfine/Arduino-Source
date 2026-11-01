@@ -131,7 +131,7 @@ private:
     static std::string follow(const StoryWorld& maps, const std::vector<LadyLeg>& legs, TilePos at, Logger& logger){
         for (const LadyLeg& leg : legs){
             if (leg.tiles == 0){
-                at = walk_to_wall(maps, at, leg.direction).stop;
+                at = slide_to_wall(maps, at, leg.direction).stop;
             }else{
                 const std::optional<TilePos> next = maps.step(at, leg.direction);
                 if (!next){

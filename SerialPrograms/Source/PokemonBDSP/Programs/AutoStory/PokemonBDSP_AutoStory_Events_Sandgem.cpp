@@ -183,7 +183,7 @@ std::vector<TilePos> north_through_sign_gap(VideoStream& stream, ProControllerCo
     const bool on_route = walk_north_through_gap(stream, context);
     std::vector<TilePos> ends;
     for (const TilePos& pos : map_region("SandgemTown", "below_sign_gap")){
-        const TilePos end = walk_to_wall(maps, maps.to_world(MAP_SANDGEM_TOWN, pos), Direction::NORTH).stop;
+        const TilePos end = slide_to_wall(maps, maps.to_world(MAP_SANDGEM_TOWN, pos), Direction::NORTH).stop;
         if (all_on_map(maps, {end}, MAP_ROUTE_202) == on_route){
             ends.push_back(end);
         }

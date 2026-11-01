@@ -2,9 +2,8 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  Where the story's table and steps stand: tiles of the JSON maps
- *  ("Route202"), by map and point name (map_point(), map_region()). A walk
- *  from one map to another is planned on a story world that holds both: the
+ *  Where the story's steps walk: poses are tiles of the JSON maps
+ *  ("Route202"), named by map_point() and map_region(). A walk from one map to another is planned on a story world that holds both: the
  *  outdoors from Twinleaf to Route 202, Jubilife, and each interior of
  *  00.01 to 00.04 on its own.
  *
@@ -23,15 +22,6 @@ namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonBDSP{
 
-
-//  The point `point` of the map `map` (map_point()).
-Pokemon::TilePos story_point(const std::string& map, const std::string& point);
-
-//  The tiles of the region `region` of the map `map`: map_region(), and
-//  the areas of Route 202 that the maps have no region for yet (where the
-//  catch may leave us, the training grass, the exit to Jubilife). Throws
-//  InternalProgramError for an unknown map or region.
-std::vector<Pokemon::TilePos> story_region(const std::string& map, const std::string& region);
 
 //  The story world a walk from `from` to `to` is planned on, or nothing if
 //  no world holds both. Its maps are named as the game's location banners

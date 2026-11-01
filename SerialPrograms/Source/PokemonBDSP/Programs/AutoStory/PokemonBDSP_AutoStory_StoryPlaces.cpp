@@ -42,6 +42,7 @@ const std::string& banner_name(const std::string& map){
     return map;
 }
 
+//  TODO(#114 multi-map view): MapData has no joined view of maps yet.
 //  Twinleaf to Route 202 in one world, at the decomp's world tiles (its
 //  cells are 32 tiles square; Route 201's map starts 7 rows into its cell
 //  and Route 202's a column west of its own).
@@ -78,63 +79,8 @@ bool on_world(const StoryWorld& world, const std::string& map){
     return false;
 }
 
-//  The tiles of Route 202 we can stand on in the box (x0, y0) to (x1, y1).
-std::vector<TilePos> route202_open(int x0, int y0, int x1, int y1){
-    const StoryWorld& world = south_world();
-    std::vector<TilePos> tiles;
-    for (int y = y0; y <= y1; y++){
-        for (int x = x0; x <= x1; x++){
-            if (world.standable(story_to_world(world, "Route202", {x, y}))){
-                tiles.push_back({x, y});
-            }
-        }
-    }
-    return tiles;
 }
 
-std::vector<TilePos> route202_region(const std::string& region){
-    const TilePos catch_spot = map_point("Route202", "catch_spot");
-    if (region == "catch_save_area"){
-        //  Wherever the catch's walks in the grass ended (story_catch_save_area()).
-        return route202_open(15, 25, 21, 29);
-    }
-    if (region == "after_training_area"){
-        //  The catch spot's column and one either side, two rows up and down.
-        return route202_open(catch_spot.x - 1, catch_spot.y - 2, catch_spot.x + 1, catch_spot.y + 2);
-    }
-    if (region == "catch_grass"){
-        //  The training area's tall grass, which training walks into.
-        std::vector<TilePos> grass;
-        for (const TilePos& pos : route202_region("after_training_area")){
-            if (story_map("Route202").tiles.at(pos) == Pokemon::TileKind::TALL_GRASS){
-                grass.push_back(pos);
-            }
-        }
-        return grass;
-    }
-    if (region == "jubilife_exit"){
-        //  The open rows at the top: north from any of them is Jubilife.
-        return route202_open(0, 0, story_map("Route202").tiles.width - 1, 3);
-    }
-    return {};
-}
-
-}
-
-
-TilePos story_point(const std::string& map, const std::string& point){
-    return map_point(map, point);
-}
-
-std::vector<TilePos> story_region(const std::string& map, const std::string& region){
-    if (map == "Route202"){
-        std::vector<TilePos> tiles = route202_region(region);
-        if (!tiles.empty()){
-            return tiles;
-        }
-    }
-    return map_region(map, region);
-}
 
 const StoryWorld* story_plan_world(const std::string& from, const std::string& to){
     if (on_world(south_world(), from) && on_world(south_world(), to)){
