@@ -280,7 +280,10 @@ public:
             m_kind == BattleKind::TRAINER ? "Battle: fighting a trainer." :
             m_kind == BattleKind::WILD_FIGHT ? "Battle: fighting a wild Pokemon." : "Battle: running from a wild Pokemon."
         );
-        while (!step()){}
+        bool over = false;
+        while (!over){
+            over = step();
+        }
         m_console.log(std::format("Battle: over after {} turns{}.", m_turns, m_lost ? ", the starter fainted" : ""));
         return m_lost ? BattleEnd::LOST : BattleEnd::WON;
     }

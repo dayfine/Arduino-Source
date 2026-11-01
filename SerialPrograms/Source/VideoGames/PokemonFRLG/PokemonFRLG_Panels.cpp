@@ -59,7 +59,6 @@ PanelListFactory::PanelListFactory()
 
 std::vector<PanelEntry> PanelListFactory::make_panels() const{
     std::vector<PanelEntry> ret;
-    
     ret.emplace_back("---- Settings ----");
     ret.emplace_back(make_OptionsPanel<GameSettingsPanel>());
 

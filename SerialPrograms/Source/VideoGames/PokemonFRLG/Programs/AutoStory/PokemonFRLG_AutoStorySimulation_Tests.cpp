@@ -101,6 +101,7 @@ public:
         }
         return Pokemon::StoryStepExecutor::run(state, step);
     }
+protected:
     virtual Outcome route(RunState& state, const StoryStep& step) override{
         return walk_to(state.pose, step);
     }

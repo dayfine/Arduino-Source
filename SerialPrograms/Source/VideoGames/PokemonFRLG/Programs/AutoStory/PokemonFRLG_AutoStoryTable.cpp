@@ -47,6 +47,12 @@ StoryCheckpoint row(
     return checkpoint;
 }
 
+//  What a walk does about wild Pokemon: runs, or fights them for EXP.
+enum class WildBattles{
+    RUN,
+    FIGHT,
+};
+
 StoryStep make(StoryStepKind kind, std::string name, std::string why){
     StoryStep step;
     step.kind = kind;
@@ -55,10 +61,10 @@ StoryStep make(StoryStepKind kind, std::string name, std::string why){
     return step;
 }
 
-StoryStep route(std::string name, Pokemon::Pose target, std::string why, bool fight_wild = false){
+StoryStep route(std::string name, Pokemon::Pose target, std::string why, WildBattles wild = WildBattles::RUN){
     StoryStep step = make(StoryStepKind::ROUTE, std::move(name), std::move(why));
     step.target = std::move(target);
-    step.fight_wild = fight_wild;
+    step.fight_wild = wild == WildBattles::FIGHT;
     return step;
 }
 
@@ -87,10 +93,10 @@ StoryStep battle(std::string name, Pokemon::Pose pose_after, bool may_lose, std:
     return step;
 }
 
-StoryStep legs(std::string name, std::vector<StoryLeg> legs, std::string why, bool fight_wild = false){
+StoryStep legs(std::string name, std::vector<StoryLeg> legs, std::string why, WildBattles wild = WildBattles::RUN){
     StoryStep step = make(StoryStepKind::LEGS, std::move(name), std::move(why));
     step.legs = std::move(legs);
-    step.fight_wild = fight_wild;
+    step.fight_wild = wild == WildBattles::FIGHT;
     return step;
 }
 
@@ -204,8 +210,8 @@ StoryCheckpoint forest(){
         //  east one). Rick (47, 45) sees (42..46, 45), so the last leg meets
         //  his battle and is held on to its wall after it. The by-hand run's
         //  detour west to (13, 46) and back is dropped.
-        legs("forest_east", {{EAST, 1}, {NORTH, 4}, {EAST, 14}, {NORTH, 15}}, "up the east side to (44, 43)", true),
-        route("forest_north", at(FOREST, 39, 25), "north part", true),
+        legs("forest_east", {{EAST, 1}, {NORTH, 4}, {EAST, 14}, {NORTH, 15}}, "up the east side to (44, 43)", WildBattles::FIGHT),
+        route("forest_north", at(FOREST, 39, 25), "north part", WildBattles::FIGHT),
         //  To the gate by legs that end on walls, which the walker holds again
         //  after a battle instead of estimating where it stopped: planned
         //  routes with open legs lost the player in the north of the forest
@@ -213,8 +219,8 @@ StoryCheckpoint forest(){
         legs("forest_exit", {
             {NORTH, 10}, {WEST, 12}, {SOUTH, 10}, {WEST, 6}, {NORTH, 20},
             {SOUTH, 1}, {WEST, 10}, {SOUTH, 27}, {WEST, 8}, {NORTH, 20}, {EAST, 1},
-        }, "walls all the way to the gate's column", true),
-        route("forest_gate", at(FOREST_GATE, 7, 10, NORTH), "north onto the exit, arriving on the gate's mat", true),
+        }, "walls all the way to the gate's column", WildBattles::FIGHT),
+        route("forest_gate", at(FOREST_GATE, 7, 10, NORTH), "north onto the exit, arriving on the gate's mat", WildBattles::FIGHT),
         //  Out of the forest, wild battles are run from; trainers are still fought.
         route("pewter_nurse", at(PEWTER_CENTER, 7, 4, NORTH), "Route 2 north to Pewter's Center"),
         heal("heal_pewter"),

@@ -121,6 +121,7 @@ public:
 
     virtual Pokemon::Outcome run(Pokemon::RunState& state, const StoryStep& step) override;
 
+protected:
     virtual Pokemon::Outcome new_game(Pokemon::RunState& state, const StoryStep& step) override;
     virtual Pokemon::Outcome options(Pokemon::RunState& state, const StoryStep& step) override;
     virtual Pokemon::Outcome route(Pokemon::RunState& state, const StoryStep& step) override;
