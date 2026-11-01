@@ -1453,6 +1453,9 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/Navigation/Pokemon_MapData.h
     Source/Pokemon/Navigation/Pokemon_MapData_Tests.cpp
     Source/Pokemon/Navigation/Pokemon_Navigation_Tests.h
+    Source/Pokemon/Navigation/Pokemon_RouteLog.cpp
+    Source/Pokemon/Navigation/Pokemon_RouteLog.h
+    Source/Pokemon/Navigation/Pokemon_RouteLog_Tests.cpp
     Source/Pokemon/Navigation/Pokemon_StoryEvents.cpp
     Source/Pokemon/Navigation/Pokemon_StoryEvents.h
     Source/Pokemon/Navigation/Pokemon_StoryEvents_Tests.cpp
