@@ -96,7 +96,8 @@ struct StoryStep{
     std::string variant;
 
     //  Skipped when all of these hold (and there is at least one): names
-    //  the game's executor answers (StoryStepExecutor::holds()).
+    //  the game's executor answers (StoryStepExecutor::holds()), run flags
+    //  unless the game reads them off the screen.
     std::vector<std::string> skip_if;
     //  Where the step leaves the player, when its action does not say: the
     //  end of a scene that moves the player.
@@ -123,8 +124,9 @@ public:
     //  Outcome.
     virtual Outcome run(RunState& state, const StoryStep& step);
 
-    //  Whether the condition named in a step's skip_if holds.
-    virtual bool holds(const std::string& condition, RunState& state) = 0;
+    //  Whether the condition named in a step's skip_if holds: by default,
+    //  whether the run has the flag (set by an earlier step's action).
+    virtual bool holds(const std::string& condition, RunState& state);
 
     virtual Outcome new_game(RunState& state, const StoryStep& step);
     virtual Outcome options(RunState& state, const StoryStep& step);

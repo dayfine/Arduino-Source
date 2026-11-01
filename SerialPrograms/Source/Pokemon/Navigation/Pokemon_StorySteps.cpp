@@ -59,6 +59,10 @@ Outcome StoryStepExecutor::run(RunState& state, const StoryStep& step){
     return dispatch_story_step(*this, state, step);
 }
 
+bool StoryStepExecutor::holds(const std::string& condition, RunState& state){
+    return state.flags.contains(condition);
+}
+
 Outcome StoryStepExecutor::new_game(RunState&, const StoryStep& step){
     return unsupported_step(step);
 }
