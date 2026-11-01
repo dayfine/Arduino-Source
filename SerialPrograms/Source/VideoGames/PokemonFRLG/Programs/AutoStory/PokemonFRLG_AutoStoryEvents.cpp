@@ -9,6 +9,7 @@
 #include <set>
 #include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
+#include "Pokemon/Navigation/Pokemon_RouteLog.h"
 #include "Pokemon/Navigation/Pokemon_TilePose.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRecovery.h"
@@ -73,6 +74,12 @@ std::optional<Direction> face_a_wall(StoryEnv& env, const MapPosition& position)
     return wall;
 }
 
+//  The shared route log's arrival line (Pokemon_RouteLog.h), as BDSP's walker
+//  writes it: where the route was walked to.
+void log_arrival(StoryEnv& env, const std::string& label, const std::string& map, const TilePos& tile){
+    env.console.log(Pokemon::ROUTE_LOG_TAG + Pokemon::route_arrived_line(label, {{map, tile}}));
+}
+
 Outcome walk_route(StoryEnv& env, RunState& state, const StoryStep& step){
     const std::vector<TilePos> tiles = Pokemon::tiles_of(state.pose);
     if (tiles.size() != 1 || state.pose.certainty != Pokemon::PoseCertainty::TILE){
@@ -96,8 +103,9 @@ Outcome walk_route(StoryEnv& env, RunState& state, const StoryStep& step){
     const OverworldInterruptSet interrupts = story_interrupts(env.supplies, step.fight_wild, env.checks);
     //  Planning lets the walker recover a stopped open leg: it plans back to
     //  the leg's end, then walks the rest as given.
-    const RoutePlanning planning{&story_maps(), default_route_costs()};
+    const RoutePlanning planning{.maps = &story_maps(), .costs = default_route_costs(), .start = start, .label = step.name};
     walk_overworld_route(env.console, env.context, *route, facing, interrupts, &planning);
+    log_arrival(env, step.name, step.target.map, step.target.tile);
     const std::optional<Direction> end_facing = route->empty() ? facing : std::optional<Direction>(route->back().facing_after);
     return Pokemon::outcome_ok(to_pose(StoryPose{step.target.map, step.target.tile, end_facing}));
 }
@@ -119,8 +127,9 @@ Outcome walk_legs(StoryEnv& env, RunState& state, const StoryStep& step){
     const OverworldInterruptSet interrupts = story_interrupts(env.supplies, step.fight_wild, env.checks);
     //  Planning lets the walker recover a stopped open leg: it plans back to
     //  the leg's end, then walks the rest as given.
-    const RoutePlanning planning{&story_maps(), default_route_costs()};
+    const RoutePlanning planning{.maps = &story_maps(), .costs = default_route_costs(), .start = start, .label = step.name};
     walk_overworld_route(env.console, env.context, *route, facing, interrupts, &planning);
+    log_arrival(env, step.name, route->back().end.map, route->back().end.point);
     return Pokemon::outcome_ok(to_pose(StoryPose{route->back().end.map, route->back().end.point, route->back().facing_after}));
 }
 
