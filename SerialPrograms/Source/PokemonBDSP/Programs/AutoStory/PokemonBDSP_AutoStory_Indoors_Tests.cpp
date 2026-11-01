@@ -9,6 +9,7 @@
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "Utils/PokemonBDSP_AutoStory_PokemonCenter.h"
+#include "Utils/PokemonBDSP_AutoStory_RouteWalk.h"
 #include "PokemonBDSP_AutoStory_Indoors_Tests.h"
 
 namespace PokemonAutomation{
@@ -59,11 +60,54 @@ public:
     }
 };
 
+//  door_fade_look(): out of a door is a dark look, then a bright one that is
+//  not a room. r259 turned round in Sandgem's lit Center, read "not a room"
+//  once at full brightness, and walked east inside it as if outside.
+struct DoorLook{
+    double brightness;
+    bool room;
+};
+struct DoorCase{
+    std::string name;
+    std::vector<DoorLook> looks;
+    //  The look (1-based) that reads out, or 0 for none.
+    size_t out_at;
+};
+
+class Test_DoorFade : public UnitTest{
+public:
+    Test_DoorFade()
+        : UnitTest("PokemonBDSP::AutoStory - out of a door needs its fade")
+    {}
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        const std::vector<DoorCase> cases{
+            {.name = "r259: a bright look in the Center that misses the room", .looks = {{458, true}, {440, false}, {457, true}}, .out_at = 0},
+            {.name = "the fade, then the town", .looks = {{458, true}, {300, true}, {60, false}, {310, false}}, .out_at = 4},
+            {.name = "the fade, then the room again", .looks = {{458, true}, {60, false}, {420, true}}, .out_at = 0},
+            {.name = "the fade, still dim", .looks = {{60, false}, {150, false}, {320, false}}, .out_at = 3},
+        };
+        for (const DoorCase& item : cases){
+            DoorFadeWatch watch;
+            size_t out_at = 0;
+            for (size_t i = 0; i < item.looks.size() && out_at == 0; i++){
+                if (door_fade_look(watch, item.looks[i].brightness, item.looks[i].room)){
+                    out_at = i + 1;
+                }
+            }
+            if (out_at != item.out_at){
+                return item.name + ": out at look " + std::to_string(out_at) + ", expected " + std::to_string(item.out_at) + ".";
+            }
+        }
+        return true;
+    }
+};
+
 }
 
 
 void add_tests_AutoStory_Indoors(UnitTestDatabase& database){
     database.add<Test_IndoorsAnyLight>();
+    database.add<Test_DoorFade>();
 }
 
 
