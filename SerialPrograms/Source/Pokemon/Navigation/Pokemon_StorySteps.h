@@ -14,6 +14,13 @@
  *  implements the kinds it uses, and a step the game has no way of doing
  *  fails by name instead of doing something else.
  *
+ *  Steps never match dialogue or menu text: they look for screen state (a
+ *  dialogue box, an arrow, a fade, a battle menu, colours, positions). The
+ *  few reads that need text (item names in a shop or the Bag) take the
+ *  game's language from the executor, and with no reader for it fall back
+ *  to checks that need none (a row's position, digits, a changed screen),
+ *  so a run never fails because its language is not supported.
+ *
  *  Poses are the game's own (Pose, with a TilePose for these games): a
  *  checkpoint's start, a scene's end and a route's target are poses, and
  *  an executor that knows where a step left the player says so in its
@@ -28,6 +35,7 @@
 #include <optional>
 #include <string>
 #include <vector>
+#include "CommonFramework/Language.h"
 #include "Pokemon_Grid.h"
 #include "Pokemon_StoryEvents.h"
 #include "Pokemon_TilePose.h"
@@ -142,6 +150,15 @@ public:
     void set_checks(StoryChecks checks){
         m_checks = checks;
     }
+    //  The game's language (StoryRunOptions), for the reads that need text;
+    //  English unless set. A game with no reader for it uses language-free
+    //  checks instead.
+    Language language() const{
+        return m_language;
+    }
+    void set_language(Language language){
+        m_language = language;
+    }
 
     //  Runs `step`: dispatch_story_step() by default. A game overrides it
     //  to wrap every step, e.g. to turn a failed console step into a failed
@@ -170,6 +187,7 @@ public:
 
 private:
     StoryChecks m_checks = StoryChecks::THOROUGH;
+    Language m_language = Language::English;
 };
 
 //  Calls the executor's method for the step's kind.
