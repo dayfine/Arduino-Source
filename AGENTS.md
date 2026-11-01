@@ -286,6 +286,9 @@ change a reviewer will notice, so keep it where it clearly pays off.
 
 ### Plans and state: where to look first
 
+- [autostory/PR_PLAN.md](autostory/PR_PLAN.md): how the AutoStory work (shared
+  navigation core, BDSP MVP, FRLG MVP) becomes three collector PRs and then upstream
+  PRs; live status in [autostory/PR_PROGRESS.md](autostory/PR_PROGRESS.md).
 - [pokemon_sv/MILESTONE_STATE.md](pokemon_sv/MILESTONE_STATE.md): current
   state of each milestone and the active lab run (owned by Codex).
 - [pokemon_sv/ROADMAP.md](pokemon_sv/ROADMAP.md): milestones ordered by payoff
