@@ -720,14 +720,15 @@ namespace PokemonAutomation {
                 [&](const TilePos& pos) { return pos == entry; }, trainers, fight, "Into Sandgem Town", {}, Pokemon::RobustPlanCosts());
             walk_route(stream, context, maps, at,
                 [&](const TilePos& pos) { return pos == below_sign; }, trainers, fight, "To the Pokemon Center", {}, town_plan_costs());
-            // Below the door by whole D-pad taps before lining up by sight:
-            // from below the sign, the lit-doorway finder read the signs'
-            // white panels as doorways, the Mart's 5 tiles east ("doorway 4.6
-            // tiles across") and the Center's, and stepped between them, and
-            // walked into the signs (r252, r255).
+            // Below the door by D-pad taps before lining up by sight: from below
+            // the sign, the finder read the signs' white panels as doorways and
+            // stepped between them (r252, r255). We face north, and a tap the
+            // other way only turns (r256): turn first. One tile short is fine.
+            route_turn(stream, context, Pokemon::Direction::WEST);
             const size_t to_door = (size_t)(SandgemTown::POKEMON_CENTER_SIGN.x - SandgemTown::POKEMON_CENTER_DOOR.x);
             const WalkResult west = walk_tiles_dpad(stream, context, -1, 0, to_door, "west below the Center's door");
-            if (west.moved_chunks < to_door) {
+            stream.log("[00.04] Taps west below the Center's door moved " + std::to_string(west.moved_chunks) + " of " + std::to_string(to_door) + " tiles.");
+            if (west.moved_chunks + 1 < to_door) {
                 OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
                     "Sandgem Town: the taps west below the Center's door moved " + std::to_string(west.moved_chunks) + " tiles.", stream);
             }
