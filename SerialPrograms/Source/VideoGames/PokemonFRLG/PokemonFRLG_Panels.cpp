@@ -43,6 +43,7 @@
 #include "Programs/TestPrograms/PokemonFRLG_ReadEncounter.h"
 #include "Programs/TestPrograms/PokemonFRLG_SafariOptimalActionTest.h"
 #include "Programs/TestPrograms/PokemonFRLG_TestPartyInference.h"
+#include "Overworld/PokemonFRLG_OverworldCommands.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -55,7 +56,12 @@ PanelListFactory::PanelListFactory()
         Pokemon::STRING_POKEMON + " FireRed and LeafGreen",
         RESOURCE_PATH() + "CategoryIcons/PokemonFRLG.png"
     )
-{}
+{
+    //  At startup, so the Command File Runner (under Nintendo Switch) and the
+    //  lab channel can walk FRLG routes without FRLG's program list being
+    //  opened first.
+    register_overworld_commands();
+}
 
 std::vector<PanelEntry> PanelListFactory::make_panels() const{
     std::vector<PanelEntry> ret;
