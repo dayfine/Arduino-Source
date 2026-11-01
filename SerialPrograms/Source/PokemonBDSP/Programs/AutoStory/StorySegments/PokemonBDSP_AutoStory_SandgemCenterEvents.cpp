@@ -364,7 +364,11 @@ public:
             return read;
         }
         //  Tesseract read the Lab's white-on-grey text as "e R O e IO" (r131a).
-        read.text = OCR::ocr_read(Language::English, extract_box_reference(*shown.frame, SIGN_TEXT), OCR::PageSegMode::SINGLE_BLOCK);
+        //  Only to say which sign, when there is a reader for the game's
+        //  language; the box opening and closing is the check.
+        if (story_reads_text()){
+            read.text = OCR::ocr_read(g_story_language, extract_box_reference(*shown.frame, SIGN_TEXT), OCR::PageSegMode::SINGLE_BLOCK);
+        }
         stream.log("[Sign] " + label + ": reads \"" + read.text + "\" (change " + std::to_string(opened) + ").");
         for (size_t presses = 0; presses < 3 && !read.closed; presses++){
             pbf_press_button(m_context, BUTTON_B, 80ms, 1000ms);
@@ -625,8 +629,10 @@ protected:
     void finish_talk(DialogueRead& read, Button next, const std::string& label){
         VideoStream& stream = m_env.console;
         //  The first box's text, inside its white margins.
-        if (VideoSnapshot screen = stream.video().snapshot()){
-            read.text = OCR::ocr_read(Language::English, extract_box_reference(*screen.frame, SIGN_TEXT), OCR::PageSegMode::SINGLE_BLOCK);
+        //  For the log only; a talk is checked by its box opening and closing.
+        VideoSnapshot screen = stream.video().snapshot();
+        if (screen && story_reads_text()){
+            read.text = OCR::ocr_read(g_story_language, extract_box_reference(*screen.frame, SIGN_TEXT), OCR::PageSegMode::SINGLE_BLOCK);
         }
         stream.log("[Talk] " + label + ": the dialogue reads \"" + read.text + "\".");
         size_t quiet = 0;

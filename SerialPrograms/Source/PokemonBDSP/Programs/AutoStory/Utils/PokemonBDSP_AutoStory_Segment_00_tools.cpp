@@ -15,6 +15,7 @@
 #include <array>
 #include <cctype>
 
+#include "PokemonBDSP_AutoStory_Location.h"
 #include "PokemonBDSP_AutoStory_RouteWalk.h"
 #include "PokemonBDSP_AutoStory_Segment_00_tools.h"
 #include "PokemonBDSP_Autostory_Segment_01_tools.h"
@@ -768,7 +769,9 @@ namespace PokemonAutomation {
                         }
                     }
                     std::string name;
-                    for (unsigned char ch : OCR::tesseract_ocr_read(Language::English, text)) {
+                    // Move names only where there is a reader for the game's
+                    // language; an unread move counts as a plain attack.
+                    for (unsigned char ch : story_reads_text() ? OCR::tesseract_ocr_read(g_story_language, text) : std::string()) {
                         if (std::isalpha(ch)) name.push_back((char)std::tolower(ch));
                     }
                     // A slot read well once keeps its name when a later read fails.

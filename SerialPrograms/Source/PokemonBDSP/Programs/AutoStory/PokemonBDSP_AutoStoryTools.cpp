@@ -1932,6 +1932,17 @@ bool find_bag_item_in_open_bag(
     context.wait_for_all_requests();
     if (!bag_navigate_to_pocket(stream, context, target_pocket)) return false;
 
+    //  No reader for the game's language: the cursor's row, the pocket's
+    //  first, if the pocket has one. Early in the story the pocket holds only
+    //  what was bought or given (Potions in Medicine).
+    if (!story_reads_text()){
+        const VideoSnapshot frame = stream.video().snapshot();
+        const bool any = frame && !bag_list_is_empty(*frame.frame) && bag_cursor_position(*frame.frame) != 0;
+        stream.log("[Bag search] " + name + ": no text reader for the game's language; " +
+            (any ? "taking the pocket's cursor row." : "the pocket is empty."), COLOR_ORANGE);
+        return any;
+    }
+
     //  Walk down the list reading the cursor row. The list does not wrap, so
     //  turn around once the cursor stops moving.
     DpadPosition direction = DPAD_DOWN;

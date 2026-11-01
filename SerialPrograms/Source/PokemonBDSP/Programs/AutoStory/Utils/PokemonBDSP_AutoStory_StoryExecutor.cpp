@@ -92,6 +92,7 @@ Outcome ConsoleStoryExecutor::run(RunState& state, const Pokemon::StoryStep& ste
     const Outcome ran = m_runner.run_step(m_checkpoint, on_failure, [&](StoryConsole& console){
         m_console = &console;
         set_checks(console.options.checks);
+        set_language(console.options.language);
         const auto variant = m_variants.find(step.variant);
         result = variant == m_variants.end()
             ? Pokemon::StoryStepExecutor::run(state, step)

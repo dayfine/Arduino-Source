@@ -58,6 +58,16 @@ std::string normalize_location_name(const std::string& text){
     return out;
 }
 
+Language g_story_language = Language::English;
+
+bool story_reads_text(){
+    return story_reads_text(g_story_language);
+}
+
+bool story_reads_text(Language language){
+    return language == Language::English;
+}
+
 bool location_banner_showing(const ImageViewRGB32& screen){
     const ImageStats white = image_stats(extract_box_reference(screen, LOCATION_BANNER_WHITE));
     return white.average.sum() >= 690 && white.stddev.sum() <= 30;
@@ -72,17 +82,28 @@ std::string read_location_banner(const ImageViewRGB32& screen){
     if (!location_banner_showing(screen)){
         return "";
     }
+    if (!story_reads_text()){
+        return UNREAD_LOCATION;
+    }
     return normalize_location_name(OCR::tesseract_ocr_read(Language::English,
         extract_box_reference(screen, LOCATION_BANNER_TEXT)));
 }
 
 std::string read_save_screen_location(const ImageViewRGB32& screen){
+    if (!story_reads_text()){
+        return UNREAD_LOCATION;
+    }
     const ImageRGB32 text = to_blackwhite_rgb32_range(
         extract_box_reference(screen, SAVE_SCREEN_LOCATION), true, SAVE_SCREEN_TEXT_MIN, SAVE_SCREEN_TEXT_MAX);
     return normalize_location_name(OCR::tesseract_ocr_read(Language::English, text));
 }
 
 bool location_banner_matches(const std::string& read, const std::string& expected){
+    //  No reader for the game's language: a banner (or the save card) that
+    //  showed is all there is; where we stand is the walk's to say.
+    if (read == UNREAD_LOCATION){
+        return true;
+    }
     const std::string a = normalize_location_name(read);
     const std::string b = normalize_location_name(expected);
     if (a.empty() || b.empty()){

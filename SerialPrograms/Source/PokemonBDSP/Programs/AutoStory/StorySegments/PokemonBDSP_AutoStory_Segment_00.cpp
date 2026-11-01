@@ -866,7 +866,9 @@ namespace PokemonAutomation {
         ) {
             VideoStream& stream = c.env.console;
             ProControllerContext& context = c.context;
-            if (g_mart_lady_misses < 2) {
+            // The clerk's list is found by reading item names, which needs a
+            // reader for the game's language; without one, the lady every time.
+            if (g_mart_lady_misses < 2 || !story_reads_text()) {
                 // Onto the doors' row first: out of the door we stand a tile to
                 // three below it (r261 walked west into the trees from three).
                 route_turn(stream, context, Pokemon::Direction::EAST);

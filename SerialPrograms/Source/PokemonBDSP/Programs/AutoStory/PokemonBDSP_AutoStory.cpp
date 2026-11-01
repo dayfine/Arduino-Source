@@ -2,6 +2,7 @@
 #include <memory>
 
 #include "PokemonBDSP_AutoStory.h"
+#include "Utils/PokemonBDSP_AutoStory_Location.h"
 #include "Utils/PokemonBDSP_AutoStory_NewGame.h"
 
 #include "CommonFramework/Globals.h"
@@ -532,9 +533,10 @@ void BDSPAutoStory::program(
     AutoStoryStats& stats = env.current_stats<AutoStoryStats>();
     //  The checkpoints not yet in tables still run checkpoint_reattempt_loop().
     g_stop_at_first_failure = RETRIES.STOP_AT_FIRST_FAILURE;
+    g_story_language = RETRIES.language();
 
     AutoStoryOptions options{
-        Language::English,
+        RETRIES.language(),
         STARTERCHOICE,
         NOTIFICATION_STATUS_UPDATE,
         (HelpMode)HELP_MODE,

@@ -30,6 +30,7 @@
 #include "Data/PokemonBDSP_AutoStory_StoryMaps.h"
 #include "StorySegments/PokemonBDSP_AutoStory_Segment_00.h"
 #include "StorySegments/PokemonBDSP_AutoStory_Segment_01.h"
+#include "Utils/PokemonBDSP_AutoStory_Location.h"
 #include "Utils/PokemonBDSP_AutoStory_RouteWalk.h"
 #include "Utils/PokemonBDSP_AutoStory_StoryExecutor.h"
 #include "Utils/PokemonBDSP_AutoStory_StoryTables.h"
@@ -214,7 +215,10 @@ private:
 };
 
 
-//  One simulated run of both segments, as the program runs them.
+//  One simulated run of both segments, as the program runs them. Its
+//  executor has a language no reader supports (Japanese), so a step that
+//  needed text would show. (The console's global language is left alone:
+//  tests run in parallel.)
 struct Simulation{
     std::vector<std::string> trace;
     std::vector<std::string> lines;
@@ -223,6 +227,7 @@ struct Simulation{
     Pokemon::SegmentPolicy policy;
 
     Pokemon::SegmentReport run(const std::string& id, const std::vector<StoryRow>& table, const Pokemon::SegmentRange& range){
+        game->set_language(Language::Japanese);
         Pokemon::Segment segment = story_table_segment(runner, id, table, game);
         Pokemon::SegmentHooks hooks;
         hooks.reload = [this](RunState&){
@@ -420,6 +425,24 @@ UnitTestResult test_variants_registered(Logger&){
     return true;
 }
 
+//  With no reader for the game's language, the reads that used text give
+//  way: a banner or save card that showed matches any map, so walks check
+//  where they stand by the grid.
+UnitTestResult test_no_text_reader(Logger&){
+    for (Language language : {Language::Japanese, Language::Korean, Language::French}){
+        if (story_reads_text(language)){
+            return std::string("Expected no text reader for ") + language_data(language).name + ".";
+        }
+    }
+    if (!location_banner_matches(UNREAD_LOCATION, MAP_ROUTE_202) || location_banner_matches("", MAP_ROUTE_202)){
+        return "Expected a shown, unread banner to match and no banner not to.";
+    }
+    if (!story_reads_text(Language::English) || location_banner_matches("sandgemtown", MAP_ROUTE_202)){
+        return "Expected English banners read and compared.";
+    }
+    return true;
+}
+
 //  r261: out of the Center the walk saw no dark fade and walked on three
 //  rows. The walk stops at the first look that is not a room, fade or not.
 UnitTestResult test_door_exit_looks(Logger&){
@@ -475,6 +498,7 @@ void add_tests_AutoStory_StorySimulation(UnitTestDatabase& database){
     database.add<Test_StorySimulation>("each start pose is where the row before ends; routes plan on the maps", test_poses_chain);
     database.add<Test_StorySimulation>("every called function is registered; tables lint", test_variants_registered);
     database.add<Test_StorySimulation>("out of a door: the first look that is not a room", test_door_exit_looks);
+    database.add<Test_StorySimulation>("no text reader for the game's language", test_no_text_reader);
 }
 
 

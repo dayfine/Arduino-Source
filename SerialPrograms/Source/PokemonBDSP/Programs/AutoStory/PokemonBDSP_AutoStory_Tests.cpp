@@ -1424,6 +1424,8 @@ public:
     size_t short_walks = 0;
     //  Walks west along the doors' row that a townsperson ends short of the Lab's sign.
     size_t short_lab_walks = 0;
+    //  No text reader for the game's language: boxes open and close, unread.
+    bool unread = false;
     //  Talks to the lady before she is there to answer.
     size_t lady_away = 0;
     Where where = Where::DOORS_ROW;
@@ -1500,10 +1502,10 @@ public:
     virtual DialogueRead read_sign(Direction facing, const std::string& label) override{
         trace.push_back("read: " + label);
         if (where == Where::LAB_EAST && facing == Direction::WEST){
-            return DialogueRead{.opened = true, .closed = true, .text = "Pokemon Research Lab"};
+            return DialogueRead{.opened = true, .closed = true, .text = unread ? "" : "Pokemon Research Lab"};
         }
         if (where == Where::ROUTE_201_WEST && facing == Direction::EAST){
-            return DialogueRead{.opened = true, .closed = true, .text = "Route 201 Sandgem Town"};
+            return DialogueRead{.opened = true, .closed = true, .text = unread ? "" : "Route 201 Sandgem Town"};
         }
         return DialogueRead{};
     }
@@ -1517,7 +1519,7 @@ public:
             lady_away--;
             return DialogueRead{};
         }
-        return DialogueRead{.opened = true, .closed = true, .text = "Did you know"};
+        return DialogueRead{.opened = true, .closed = true, .text = unread ? "" : "Did you know"};
     }
     virtual Pokemon::Outcome walk_to_route_202_save_spot() override{
         trace.push_back("to Route 202");
@@ -1562,6 +1564,7 @@ public:
             size_t short_walks;
             size_t short_lab_walks = 0;
             size_t lady_away;
+            bool unread = false;
             bool completed;
             size_t failed_event;
             std::vector<std::string> trace;
@@ -1572,6 +1575,7 @@ public:
                 .short_walks = 0,
                 .short_lab_walks = 0,
                 .lady_away = 0,
+                .unread = false,
                 .completed = true,
                 .failed_event = 0,
                 .trace = join({TO_LADY, LADY, TO_SIGN, SIGN, HOME}),
@@ -1581,6 +1585,7 @@ public:
                 .short_walks = 1,
                 .short_lab_walks = 0,
                 .lady_away = 0,
+                .unread = false,
                 .completed = true,
                 .failed_event = 0,
                 .trace = join({TO_LADY, LADY, TO_SIGN, SIGN, {"go: On to the sign"}, SIGN, HOME}),
@@ -1590,15 +1595,27 @@ public:
                 .short_walks = 0,
                 .short_lab_walks = 1,
                 .lady_away = 0,
+                .unread = false,
                 .completed = true,
                 .failed_event = 0,
                 .trace = join({TO_LAB, {"go: On to the sign", "read: the Lab's sign"}, LAB_TO_LADY, LADY, TO_SIGN, SIGN, HOME}),
+            },
+            {
+                .name = "No text reader for the game's language: boxes open and close, unread",
+                .short_walks = 1,
+                .short_lab_walks = 1,
+                .lady_away = 0,
+                .unread = true,
+                .completed = true,
+                .failed_event = 0,
+                .trace = join({TO_LAB, {"go: On to the sign", "read: the Lab's sign"}, LAB_TO_LADY, LADY, TO_SIGN, SIGN, {"go: On to the sign"}, SIGN, HOME}),
             },
             {
                 .name = "The lady answers the second time",
                 .short_walks = 0,
                 .short_lab_walks = 0,
                 .lady_away = 1,
+                .unread = false,
                 .completed = true,
                 .failed_event = 0,
                 .trace = join({TO_LADY, LADY, RETRY, LADY, TO_SIGN, SIGN, HOME}),
@@ -1608,6 +1625,7 @@ public:
                 .short_walks = 0,
                 .short_lab_walks = 0,
                 .lady_away = 5,
+                .unread = false,
                 .completed = false,
                 .failed_event = 6,
                 .trace = join({TO_LADY, LADY, RETRY, LADY, RETRY, LADY}),
@@ -1617,6 +1635,7 @@ public:
             FakeMartLady game;
             game.short_walks = c.short_walks;
             game.short_lab_walks = c.short_lab_walks;
+            game.unread = c.unread;
             game.lady_away = c.lady_away;
             Pokemon::Checkpoint checkpoint = sandgem_mart_lady_checkpoint(game);
             const std::vector<std::string> problems = Pokemon::lint_checkpoint(checkpoint);
