@@ -11,6 +11,7 @@
 
 #include <algorithm>
 #include <functional>
+#include <map>
 #include <set>
 #include <string>
 #include <utility>
@@ -35,8 +36,10 @@ class FakeExecutor : public StoryStepExecutor{
 public:
     std::vector<std::string> trace;
     std::set<std::string> conditions;
-    //  Steps by name that fail, and how.
+    //  Steps by name that always fail, and how.
     std::set<std::string> failing;
+    //  Steps by name that fail this many more times, then pass.
+    std::map<std::string, size_t> failures_left;
     //  The pose each step started from, by name.
     std::vector<std::pair<std::string, std::string>> poses_seen;
 
@@ -46,10 +49,15 @@ public:
         if (failing.contains(step.name)){
             return outcome_failed("blocked", step.name + " was blocked");
         }
+        size_t& left = failures_left[step.name];
+        if (left > 0){
+            left--;
+            return outcome_failed("blocked", step.name + " was blocked");
+        }
         return StoryStepExecutor::run(state, step);
     }
-    virtual bool holds(const std::string& condition, RunState&) override{
-        return conditions.contains(condition);
+    virtual bool holds(const std::string& condition, RunState& state) override{
+        return conditions.contains(condition) || StoryStepExecutor::holds(condition, state);
     }
     virtual Outcome route(RunState&, const StoryStep& step) override{
         return outcome_ok(*step.target);
@@ -77,8 +85,10 @@ public:
         }
         return outcome_ok();
     }
-    virtual Outcome game(RunState&, const StoryStep& step) override{
+    //  A game step sets a run flag named for its variant.
+    virtual Outcome game(RunState& state, const StoryStep& step) override{
         trace.push_back("  game " + step.variant);
+        state.flags.insert(step.variant);
         return outcome_ok();
     }
 };
@@ -196,6 +206,18 @@ UnitTestResult test_skip_if(){
     if (std::find(executor.trace.begin(), executor.trace.end(), "TALK talk_oak") == executor.trace.end()){
         return "Expected the talk run, one of its conditions not holding:" + joined(executor.trace);
     }
+
+    //  By default a condition is a run flag: the game step "dance" sets
+    //  one, and a talk after it that needs it is skipped.
+    StoryStep after = make(StoryStepKind::TALK, "talk_after_dance");
+    after.skip_if = {"dance"};
+    data = lab_checkpoint();
+    data.steps.push_back(after);
+    FakeExecutor plain;
+    const Run flagged = run(data, plain);
+    if (!flagged.report.completed || flagged.report.events_skipped != 1 || plain.trace.back() != "  game dance"){
+        return "Expected the talk after the dance skipped on its flag:" + joined(plain.trace);
+    }
     return true;
 }
 
@@ -307,6 +329,120 @@ UnitTestResult test_segment_of_tables(){
     if (!report.completed || report.reloads != 1 || !tail_matches){
         return "Expected 00.04 reloaded once and passed:" + joined(executor.trace) + joined(lines);
     }
+    //  The report and the log tell a one-shot pass from a retried one.
+    const bool runs_ok = report.runs.size() == 2
+        && report.runs[0].one_shot() && report.runs[0].attempts == 1
+        && !report.runs[1].one_shot() && report.runs[1].attempts == 2 && report.runs[1].passed
+        && report.one_shot_passes() == 1;
+    const auto has = [&lines](const std::string& line){
+        return std::find(lines.begin(), lines.end(), line) != lines.end();
+    };
+    if (!runs_ok
+        || !has("[Checkpoint] 00.03: passed on attempt 1 (one-shot)")
+        || !has("[Checkpoint] 00.04: passed on attempt 2 (1 reset)")
+        || !has("[Segment] 00: 1 of 2 checkpoints one-shot")
+    ){
+        return "Expected 00.03 one-shot and 00.04 passed on attempt 2:" + joined(lines);
+    }
+    return true;
+}
+
+
+//  The two tables of test_segment_of_tables() as a segment run by `executor`,
+//  with hooks that write saves, reloads and recoveries into its trace.
+struct PolicyLab{
+    std::vector<StoryCheckpoint> tables{
+        lab_checkpoint(),
+        StoryCheckpoint{
+            .id = "00.04",
+            .title = "the parcel",
+            .start = tile_pose("Lab", {{6, 4}}, Direction::NORTH),
+            .steps = {make(StoryStepKind::TALK, "give_parcel")},
+        },
+    };
+    FakeExecutor executor;
+    std::vector<std::string> lines;
+
+    SegmentReport run(const SegmentPolicy& policy){
+        Segment segment;
+        segment.id = "00";
+        for (const StoryCheckpoint& data : tables){
+            segment.checkpoints.push_back(CheckpointSpec{
+                .id = data.id, .title = data.title, .saves = true,
+                .build = [&data, this]{ return build_story_checkpoint(data, executor); },
+            });
+        }
+        SegmentHooks hooks;
+        hooks.save = [this](RunState&){
+            executor.trace.push_back("save");
+            return outcome_ok();
+        };
+        hooks.reload = [this](RunState&){
+            executor.trace.push_back("reload");
+            return outcome_ok();
+        };
+        hooks.recover = [this](RunState&, const std::string& event){
+            executor.trace.push_back("recover " + event);
+            return outcome_ok();
+        };
+        hooks.log = [this](const std::string& line){ lines.push_back(line); };
+        RunState state;
+        return run_segment(state, segment, SegmentRange{}, policy, hooks);
+    }
+    bool has(const std::string& line) const{
+        return std::find(lines.begin(), lines.end(), line) != lines.end();
+    }
+    size_t count(const std::string& item) const{
+        return (size_t)std::count(executor.trace.begin(), executor.trace.end(), item);
+    }
+};
+
+UnitTestResult test_policy_attempts_then_fail(){
+    //  Three attempts by default, then the segment stops on the last one's failure.
+    PolicyLab lab;
+    lab.executor.failing = {"give_parcel"};
+    const SegmentReport report = lab.run(SegmentPolicy{});
+    if (report.completed || report.reloads != 2 || lab.count("TALK give_parcel") != 3
+        || report.runs.size() != 2 || report.runs[1].passed || report.runs[1].attempts != 3
+        || report.failed_checkpoint != "00.04" || report.failure.failure != "blocked"
+    ){
+        return "Expected 00.04 tried 3 times, then failed:" + joined(lab.executor.trace) + joined(lab.lines);
+    }
+    return true;
+}
+
+UnitTestResult test_policy_stop_at_first_failure(){
+    PolicyLab lab;
+    lab.executor.failing = {"give_parcel"};
+    const SegmentReport report = lab.run(SegmentPolicy{.stop_at_first_failure = true});
+    if (report.completed || !report.stopped_at_first_failure || report.reloads != 0 || lab.count("reload") != 0
+        || lab.count("TALK give_parcel") != 1
+        || !lab.has("[Segment] 00: 00.04 failed; stopping at the first failure, the game stays where it failed")
+    ){
+        return "Expected a stop at the first failure, with no reload:" + joined(lab.executor.trace) + joined(lab.lines);
+    }
+    return true;
+}
+
+UnitTestResult test_policy_recovers_in_place(){
+    //  The talk fails twice; two recoveries in place get it through
+    //  without a reload, but not one-shot.
+    PolicyLab lab;
+    lab.executor.failures_left = {{"give_parcel", 2}};
+    const SegmentReport report = lab.run(SegmentPolicy{.recoveries_per_event = 2});
+    if (!report.completed || report.reloads != 0 || lab.count("recover give_parcel") != 2
+        || report.runs.size() != 2 || report.runs[1].recoveries != 2 || report.runs[1].one_shot()
+        || !lab.has("[Checkpoint] 00.04: passed on attempt 1 (one-shot), 2 in place")
+    ){
+        return "Expected 00.04 recovered in place twice:" + joined(lab.executor.trace) + joined(lab.lines);
+    }
+    //  Past the budget, the checkpoint is reloaded as before.
+    PolicyLab reloaded;
+    reloaded.executor.failures_left = {{"give_parcel", 2}};
+    const SegmentReport second = reloaded.run(SegmentPolicy{.recoveries_per_event = 1});
+    if (!second.completed || second.reloads != 1 || second.runs[1].attempts != 2){
+        return "Expected a reload once the in-place budget was used:" + joined(reloaded.executor.trace) + joined(reloaded.lines);
+    }
     return true;
 }
 
@@ -361,6 +497,9 @@ void add_tests_StorySteps(UnitTestDatabase& database){
     database.add<Test_StorySteps>("unsupported kinds and lost battles", test_unsupported_and_lost_battles);
     database.add<Test_StorySteps>("tables as a segment, with a reload", test_segment_of_tables);
     database.add<Test_StorySteps>("lint", test_lint);
+    database.add<Test_StorySteps>("policy: attempts per checkpoint, then fail", test_policy_attempts_then_fail);
+    database.add<Test_StorySteps>("policy: stop at the first failure", test_policy_stop_at_first_failure);
+    database.add<Test_StorySteps>("policy: recover in place before reloading", test_policy_recovers_in_place);
 }
 
 
