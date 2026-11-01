@@ -88,6 +88,56 @@ public:
 };
 
 
+//  Runs `screens` through decide_intro_step() and record_intro_step() from
+//  `progress`; the steps taken.
+std::vector<IntroStep> intro_steps(IntroProgress& progress, const std::vector<std::string>& screens){
+    std::vector<IntroStep> steps;
+    for (const std::string& screen : screens){
+        steps.push_back(decide_intro_step(screen, progress));
+        record_intro_step(progress, steps.back());
+    }
+    return steps;
+}
+
+//  The rival's preset name is confirmed with A on "Barry, is it?" and its
+//  Yes/No; B there answers No and the list comes back (r4). Only
+//  INTRO_SCREENS_AFTER_RIVAL_PICK screens after the pick does B take over.
+class Test_IntroRivalConfirm : public UnitTest{
+public:
+    Test_IntroRivalConfirm()
+        : UnitTest("PokemonBDSP::AutoStory - new-game intro: the rival's name confirmed with A")
+    {}
+
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        IntroProgress progress = intro_progress(1);
+        //  r4's frames 029 to 032: the pick, "Barry, is it?", Barry alone
+        //  as the Yes/No comes up, the Yes/No.
+        const std::vector<IntroStep> confirm = intro_steps(progress, {"rival-list-preset", "dialog", "other", "dialog"});
+        const std::vector<IntroStep> expected{IntroStep::PICK_PRESET, IntroStep::ADVANCE, IntroStep::ADVANCE, IntroStep::ADVANCE};
+        if (confirm != expected){
+            return "The pick and its confirmation must take A, never B.";
+        }
+        if (progress.rival_named){
+            return "The name is not final until INTRO_SCREENS_AFTER_RIVAL_PICK screens after the pick.";
+        }
+        //  The list back (No was answered): pick again, the count restarts.
+        if (intro_steps(progress, {"rival-list-tell", "rival-list-preset"}) !=
+            std::vector<IntroStep>{IntroStep::MOVE_TO_PRESET, IntroStep::PICK_PRESET}){
+            return "The list coming back after a pick must be picked from again.";
+        }
+        for (size_t c = 0; c < INTRO_SCREENS_AFTER_RIVAL_PICK; c++){
+            if (intro_steps(progress, {c % 2 ? "other" : "dialog"}) != std::vector<IntroStep>{IntroStep::ADVANCE}){
+                return "Screen " + std::to_string(c) + " after the pick must take A.";
+            }
+        }
+        if (!progress.rival_named){
+            return "INTRO_SCREENS_AFTER_RIVAL_PICK screens after the pick, the name is final.";
+        }
+        return true;
+    }
+};
+
+
 //  After the rival is named, unknown screens take INTRO_B_BEFORE_X B presses,
 //  then X; only the menu ends the intro (r2: Rowan's last line, misread).
 class Test_IntroBeforeMenu : public UnitTest{
@@ -98,27 +148,25 @@ public:
 
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
         IntroProgress progress = intro_progress(1);
-        record_intro_step(progress, decide_intro_step("rival-list-preset", progress));
-        if (!progress.rival_named){
-            return "Picking the preset name must count the rival as named.";
+        std::vector<std::string> screens{"rival-list-preset", "dialog", "other"};
+        std::vector<IntroStep> expected{IntroStep::PICK_PRESET, IntroStep::ADVANCE, IntroStep::ADVANCE};
+        for (size_t c = 2; c < INTRO_SCREENS_AFTER_RIVAL_PICK; c++){
+            screens.push_back("dialog");
+            expected.push_back(IntroStep::ADVANCE);
         }
-        std::vector<IntroStep> expected;
         for (size_t round = 0; round < 2; round++){
+            screens.insert(screens.end(), INTRO_B_BEFORE_X + 1, "other");
             expected.insert(expected.end(), INTRO_B_BEFORE_X, IntroStep::CLEAR_WITH_B);
             expected.push_back(IntroStep::PROBE_FOR_MENU);
         }
         //  A dialogue line in between takes B without counting.
-        expected.push_back(IntroStep::ADVANCE_WITH_B);
-        expected.push_back(IntroStep::CLEAR_WITH_B);
-        expected.push_back(IntroStep::CLOSE_MENU_AND_FINISH);
-        const size_t others = 2 * (INTRO_B_BEFORE_X + 1);
-        for (size_t c = 0; c < expected.size(); c++){
-            const char* screen = c < others ? "other" : c == others ? "dialog" : c == others + 1 ? "other" : "menu";
-            const IntroStep step = decide_intro_step(screen, progress);
-            record_intro_step(progress, step);
-            if (step != expected[c]){
-                return "Screen " + std::to_string(c) + " (\"" + screen + "\"): step " +
-                    std::to_string((int)step) + ", expected " + std::to_string((int)expected[c]) + ".";
+        screens.insert(screens.end(), {"dialog", "other", "menu"});
+        expected.insert(expected.end(), {IntroStep::ADVANCE_WITH_B, IntroStep::CLEAR_WITH_B, IntroStep::CLOSE_MENU_AND_FINISH});
+        const std::vector<IntroStep> steps = intro_steps(progress, screens);
+        for (size_t c = 0; c < steps.size(); c++){
+            if (steps[c] != expected[c]){
+                return "Screen " + std::to_string(c) + " (\"" + screens[c] + "\"): step " +
+                    std::to_string((int)steps[c]) + ", expected " + std::to_string((int)expected[c]) + ".";
             }
         }
         IntroProgress pressed = intro_progress(2);
@@ -403,6 +451,7 @@ public:
 void add_tests_AutoStory_Actions(UnitTestDatabase& database){
     database.add<Test_IntroDecisions>();
     database.add<Test_IntroGate>();
+    database.add<Test_IntroRivalConfirm>();
     database.add<Test_IntroBeforeMenu>();
     database.add<Test_IntroScreens>();
     database.add<Test_LitDoorwayScreenshots>();
