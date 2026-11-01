@@ -42,6 +42,12 @@ public:
     std::map<std::string, size_t> failures_left;
     //  The pose each step started from, by name.
     std::vector<std::pair<std::string, std::string>> poses_seen;
+    //  The checkpoints begun, one per attempt.
+    std::vector<std::string> attempts;
+
+    virtual void begin_attempt(const StoryCheckpoint& data) override{
+        attempts.push_back(data.id);
+    }
 
     virtual Outcome run(RunState& state, const StoryStep& step) override{
         poses_seen.emplace_back(step.name, to_string(state.pose));
@@ -328,6 +334,10 @@ UnitTestResult test_segment_of_tables(){
         && std::equal(tail.begin(), tail.end(), executor.trace.end() - (std::ptrdiff_t)tail.size());
     if (!report.completed || report.reloads != 1 || !tail_matches){
         return "Expected 00.04 reloaded once and passed:" + joined(executor.trace) + joined(lines);
+    }
+    //  Each attempt is begun anew: 00.03 once, 00.04 twice.
+    if (executor.attempts != std::vector<std::string>{"00.03", "00.04", "00.04"}){
+        return "Expected the executor told of each attempt:" + joined(executor.attempts);
     }
     //  The report and the log tell a one-shot pass from a retried one.
     const bool runs_ok = report.runs.size() == 2

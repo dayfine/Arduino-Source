@@ -119,6 +119,11 @@ class StoryStepExecutor{
 public:
     virtual ~StoryStepExecutor() = default;
 
+    //  A checkpoint is being built for a new attempt: build_story_checkpoint()
+    //  calls this first, so a game can start the attempt afresh (trainers
+    //  who can see us again, the row's own settings). Does nothing by default.
+    virtual void begin_attempt(const StoryCheckpoint& data);
+
     //  Runs `step`: dispatch_story_step() by default. A game overrides it
     //  to wrap every step, e.g. to turn a failed console step into a failed
     //  Outcome.
