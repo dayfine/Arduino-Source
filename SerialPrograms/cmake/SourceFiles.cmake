@@ -776,6 +776,8 @@ file(GLOB LIBRARY_SOURCES
     Source/CommonFramework/Windows/LabChannel_Tests.h
     Source/CommonFramework/Windows/LabRequest.cpp
     Source/CommonFramework/Windows/LabRequest.h
+    Source/CommonFramework/Windows/LabRunFiles.cpp
+    Source/CommonFramework/Windows/LabRunFiles.h
     Source/CommonFramework/Windows/MainWindow.cpp
     Source/CommonFramework/Windows/MainWindow.h
     Source/CommonFramework/Windows/WindowTracker.cpp
@@ -954,8 +956,6 @@ file(GLOB LIBRARY_SOURCES
     Source/Integrations/IntegrationsAPI.h
     Source/Integrations/ProgramTracker.cpp
     Source/Integrations/ProgramTracker.h
-    Source/Integrations/SessionAgentPrototype/SessionAgentPrototype.cpp
-    Source/Integrations/SessionAgentPrototype/SessionAgentPrototype.h
     Source/GameConsole/ConsoleHandle.cpp
     Source/GameConsole/ConsoleHandle.h
     Source/GameConsole/ConsolePanel.cpp

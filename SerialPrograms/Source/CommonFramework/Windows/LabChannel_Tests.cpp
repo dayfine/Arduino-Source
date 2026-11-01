@@ -3,7 +3,7 @@
  *  From: https://github.com/PokemonAutomation/
  *
  *  The channel's text formats, with no app: request files, the journal, the
- *  "state" file, the owner lock and the keep-awake schedule.
+ *  "state" file, the owner lock, the keep-awake schedule and the run files.
  *
  */
 
@@ -11,8 +11,11 @@
 #include <format>
 #include <string>
 #include "Common/Cpp/Filesystem/FileIO.h"
+#include "Common/Cpp/Json/JsonObject.h"
+#include "Common/Cpp/Json/JsonValue.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "LabRequest.h"
+#include "LabRunFiles.h"
 #include "LabChannel_Tests.h"
 
 namespace PokemonAutomation{
@@ -139,12 +142,15 @@ UnitTestResult test_journal(){
 }
 
 UnitTestResult test_state_text(){
-    LabState state{"r1", "RUNNING", "PokemonBDSP:AutoStory", "lab-B", ""};
-    if (lab_state_text(state) != "seq=r1\nstate=RUNNING\nprogram=PokemonBDSP:AutoStory\nowner=lab-B\nerror=\n"){
+    LabState state{
+        .seq = "r1", .state = "RUNNING", .program = "PokemonBDSP:AutoStory",
+        .run = "20261101-153012123456-007", .owner = "lab-B", .error = "",
+    };
+    if (lab_state_text(state) != "seq=r1\nstate=RUNNING\nprogram=PokemonBDSP:AutoStory\nrun=20261101-153012123456-007\nowner=lab-B\nerror=\n"){
         return "Unexpected state text: " + lab_state_text(state);
     }
-    state = {"", "NO_PROGRAM", "", "", "The selected panel is not a program."};
-    if (lab_state_text(state) != "seq=\nstate=NO_PROGRAM\nprogram=\nowner=\nerror=The selected panel is not a program.\n"){
+    state = {.state = "NO_PROGRAM", .error = "The selected panel is not a program."};
+    if (lab_state_text(state) != "seq=\nstate=NO_PROGRAM\nprogram=\nrun=\nowner=\nerror=The selected panel is not a program.\n"){
         return "Unexpected state text: " + lab_state_text(state);
     }
     return true;
@@ -227,6 +233,195 @@ UnitTestResult test_keep_awake(){
 }
 
 
+std::shared_ptr<const ImageRGB32> test_frame(){
+    ImageRGB32 image(4, 4);
+    image.fill(0xff0000ff);
+    return std::make_shared<const ImageRGB32>(std::move(image));
+}
+
+//  Whether `text` has the line `"key": value,` at `indent` spaces, as the
+//  4-space result.json puts a top-level (4) or last_event (8) field, which is
+//  what labctl.sh's "wait" greps for.
+bool has_json_line(const std::string& text, size_t indent, const std::string& key, const std::string& value){
+    const std::string line = std::format("\n{}\"{}\": {}", std::string(indent, ' '), key, value);
+    return text.find(line + ",\n") != std::string::npos || text.find(line + "\n") != std::string::npos;
+}
+
+UnitTestResult test_time_text(){
+    const std::string text = lab_time_text(current_time());
+    if (text.size() != 23 || text[4] != '-' || text[7] != '-' || text[10] != ' ' || text[13] != ':' || text[16] != ':' || text[19] != '.'){
+        return "Expected \"YYYY-MM-DD HH:MM:SS.mmm\", got " + text;
+    }
+    return true;
+}
+
+UnitTestResult test_event_json(){
+    const WallClock t0 = current_time();
+    RunEvent event{
+        .time = t0, .kind = "attempt", .checkpoint = "01.08", .step = "4/7", .attempt = 2,
+        .text = "the sign's box did not open", .frame = test_frame(), .pose = "route_204 (12, 41) N",
+    };
+    const std::string frame = event_frame_file(4, event);
+    if (frame != "frame-004-01.08-s4_7-a2.png"){
+        return "Unexpected frame file name: " + frame;
+    }
+    const std::string expected = std::format(
+        "{{\"attempt\":2,\"checkpoint\":\"01.08\",\"frame\":\"{}\",\"kind\":\"attempt\",\"pose\":\"route_204 (12, 41) N\","
+        "\"step\":\"4/7\",\"text\":\"the sign's box did not open\",\"time\":\"{}\"}}",
+        frame, lab_time_text(t0)
+    );
+    if (run_event_json_line(event, frame) != expected){
+        return "Unexpected event line: " + run_event_json_line(event, frame);
+    }
+    const RunEvent bare{.time = t0, .kind = "checkpoint", .text = "00.01 ok"};
+    if (event_frame_file(0, bare) != "frame-000.png"){
+        return "A bare event's frame is named by its index alone: " + event_frame_file(0, bare);
+    }
+    const std::string line = run_event_json_line(bare, std::nullopt);
+    if (line != std::format("{{\"kind\":\"checkpoint\",\"text\":\"00.01 ok\",\"time\":\"{}\"}}", lab_time_text(t0))){
+        return "Fields an event does not have are left out: " + line;
+    }
+    return true;
+}
+
+UnitTestResult test_result_json(){
+    const WallClock t0 = current_time();
+    RunRecord record{
+        .run_id = "20261101-153012123456-007", .program = "PokemonBDSP:AutoStory",
+        .start_time = t0, .status = RunStatus::RUNNING,
+    };
+    std::string text = run_result_json(record, std::nullopt, {});
+    if (!has_json_line(text, 4, "status", "\"running\"") || !has_json_line(text, 4, "event_count", "0") ||
+        text.find("outcome") != std::string::npos || text.find("last_event") != std::string::npos
+    ){
+        return "A running record has a status and no outcome or last event:\n" + text;
+    }
+
+    record.events.push_back({.time = t0, .kind = "checkpoint", .checkpoint = "01.07", .text = "ok"});
+    record.events.push_back({.time = t0, .kind = "attempt", .checkpoint = "01.08", .step = "4/7", .attempt = 2, .text = "failed"});
+    record.status = RunStatus::TERMINAL;
+    record.end_time = t0 + std::chrono::seconds(90);
+    record.result = RunResult{.outcome = RunOutcome::FAILED, .error = "expect_failed: the Route 204 sign's box did not open"};
+    record.log_truncated = true;
+    text = run_result_json(record, "frame-failure.png", {{1, "frame-001-01.08-s4_7-a2.png"}});
+    const JsonValue json = parse_json(text);
+    const JsonObject* object = json.to_object();
+    if (object == nullptr){
+        return "result.json should parse:\n" + text;
+    }
+    if (!has_json_line(text, 4, "status", "\"terminal\"") ||
+        !has_json_line(text, 4, "outcome", "\"failed\"") ||
+        !has_json_line(text, 4, "error", "\"expect_failed: the Route 204 sign's box did not open\"") ||
+        !has_json_line(text, 4, "frame", "\"frame-failure.png\"") ||
+        !has_json_line(text, 4, "duration_ms", "90000") ||
+        !has_json_line(text, 4, "event_count", "2") ||
+        !has_json_line(text, 4, "log_truncated", "true") ||
+        !has_json_line(text, 4, "run_id", "\"20261101-153012123456-007\"")
+    ){
+        return "Unexpected top-level fields:\n" + text;
+    }
+    if (!has_json_line(text, 8, "checkpoint", "\"01.08\"") ||
+        !has_json_line(text, 8, "step", "\"4/7\"") ||
+        !has_json_line(text, 8, "attempt", "2") ||
+        !has_json_line(text, 8, "frame", "\"frame-001-01.08-s4_7-a2.png\"")
+    ){
+        return "last_event should be the newest event, with its frame, at 8 spaces:\n" + text;
+    }
+    if (object->get_string_throw("end_time") != lab_time_text(*record.end_time)){
+        return "end_time is the record's end.";
+    }
+    return true;
+}
+
+UnitTestResult test_run_writer(){
+    const Filesystem::Path root = Filesystem::unique_temp_path(
+        Filesystem::application_scratch_path() / "LabRunWriterTest"
+    );
+    const std::string runs = root.string() + "/runs/";
+    Filesystem::create_directories(root);
+    std::string error;
+    {
+        RunRecordStore store;
+        LabRunWriter writer(runs, 2);
+        const WallClock t0 = current_time();
+
+        if (writer.run_for_probe(t0)){
+            error = "No run, no probe target.";
+        }
+        const std::string a = store.begin("Test:A");
+        store.event(a, {.kind = "checkpoint", .checkpoint = "00.01", .text = "ok", .frame = test_frame()});
+        writer.sync(store);
+        const std::string folder = writer.run_folder(a);
+        std::string text;
+        if (error.empty() && (!file_to_string(folder + "result.json", text) || !has_json_line(text, 4, "status", "\"running\""))){
+            error = "After the first sync the run has a folder with a running result.json: " + text;
+        }
+        if (error.empty() && !Filesystem::is_regular_file(Filesystem::Path(folder + "frame-000-00.01.png"))){
+            error = "The event's frame is saved under its event name.";
+        }
+        if (error.empty() && writer.run_for_probe(t0) != a){
+            error = "A probe during the run belongs to it.";
+        }
+
+        //  A probe: its text goes into events.jsonl and its shot is copied.
+        const std::string shot = root.string() + "/probe_after_a.png";
+        test_frame()->save(shot);
+        writer.attach_probe(a, "shot after_a", "shot " + shot + "\n");
+        store.event(a, {.kind = "step", .step = "2/3", .text = "walk"});
+        store.log_line(a, "line 1");
+        store.log_line(a, "line 2");
+        store.finish(a, {.outcome = RunOutcome::FAILED, .error = "the box did not open", .frame = test_frame()});
+        writer.sync(store);
+        if (error.empty() && (!file_to_string(folder + "result.json", text) || !has_json_line(text, 4, "outcome", "\"failed\"") || !has_json_line(text, 4, "frame", "\"frame-failure.png\""))){
+            error = "After the run ends result.json is terminal with the outcome and the frame: " + text;
+        }
+        if (error.empty() && !Filesystem::is_regular_file(Filesystem::Path(folder + "frame-failure.png"))){
+            error = "The failure frame is saved.";
+        }
+        if (error.empty() && (!file_to_string(folder + "log.txt", text) || text != "line 1\nline 2\n")){
+            error = "log.txt is the run's log tail: " + text;
+        }
+        if (error.empty() && file_to_string(folder + "events.jsonl", text)){
+            size_t lines = 0;
+            for (char ch : text){
+                lines += ch == '\n';
+            }
+            if (lines != 3 || text.find("\"kind\":\"probe\"") == std::string::npos || text.find("\"frame\":\"probe-probe_after_a.png\"") == std::string::npos){
+                error = "events.jsonl has the two events and the probe between them, naming the copied shot:\n" + text;
+            }
+        }else if (error.empty()){
+            error = "events.jsonl should exist.";
+        }
+        if (error.empty() && !Filesystem::is_regular_file(Filesystem::Path(folder + "probe-probe_after_a.png"))){
+            error = "The probe's shot is copied into the run's folder.";
+        }
+        if (error.empty() && writer.run_for_probe(current_time()) != a){
+            error = "A probe right after the run ended still belongs to it.";
+        }
+        if (error.empty() && writer.run_for_probe(current_time() + LabRunWriter::PROBE_WINDOW + std::chrono::seconds(1))){
+            error = "A probe long after the run ended belongs to no run.";
+        }
+
+        //  The newest `keep` folders stay.
+        const std::string b = store.begin("Test:B");
+        writer.sync(store);
+        const std::string c = store.begin("Test:C");
+        writer.sync(store);
+        if (error.empty() && (Filesystem::is_directory(Filesystem::Path(folder)) || !Filesystem::is_directory(Filesystem::Path(writer.run_folder(b))) || !Filesystem::is_directory(Filesystem::Path(writer.run_folder(c))))){
+            error = "With keep=2, the third run removes the first run's folder and keeps the other two.";
+        }
+        if (error.empty() && writer.run_for_probe(current_time()) != c){
+            error = "A probe belongs to the newest run.";
+        }
+    }
+    Filesystem::remove_all(root);
+    if (!error.empty()){
+        return error;
+    }
+    return true;
+}
+
+
 class Test_LabChannel : public UnitTest{
 public:
     Test_LabChannel(std::string name, std::function<UnitTestResult()> body)
@@ -253,6 +448,10 @@ void add_tests_LabChannel(UnitTestDatabase& database){
     database.add<Test_LabChannel>("state text", test_state_text);
     database.add<Test_LabChannel>("owner lock", test_owner);
     database.add<Test_LabChannel>("keep-awake schedule", test_keep_awake);
+    database.add<Test_LabChannel>("run files: time text", test_time_text);
+    database.add<Test_LabChannel>("run files: event line and frame name", test_event_json);
+    database.add<Test_LabChannel>("run files: result.json", test_result_json);
+    database.add<Test_LabChannel>("run files: writer, probes and pruning", test_run_writer);
 }
 
 
