@@ -1661,6 +1661,8 @@ file(GLOB LIBRARY_SOURCES
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_Bag.h
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_Battle.cpp
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_Battle.h
+    Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_BattleMoves.cpp
+    Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_BattleMoves.h
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_Center.cpp
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_Center.h
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_Events.cpp

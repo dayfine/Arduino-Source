@@ -126,6 +126,133 @@ double confirmed_potion_hp(VideoStream& stream, ProControllerContext& context){
         stream);
 }
 
+//  A walk down a pocket's list, reading the cursor's row.
+struct BagScan{
+    DpadPosition direction = DPAD_DOWN;
+    std::string previous;
+    size_t same = 0;
+    size_t confirmed = 0;
+    size_t unknown_cursor = 0;
+};
+enum class BagLook{ GO_ON, FOUND, NOT_FOUND };
+
+//  The name on the cursor's row `cursor`, as lower-case letters.
+std::string read_bag_row(const ImageViewRGB32& frame, int cursor){
+    const std::string text = OCR::tesseract_ocr_read(Language::English,
+        extract_box_reference(frame, bag_list_name_box(cursor)));
+    std::string normalized;
+    for (unsigned char ch : text){
+        if (std::isalpha(ch)){
+            normalized.push_back((char)std::tolower(ch));
+        }
+    }
+    return normalized;
+}
+
+//  One look at the list: the row under the cursor is `name` (twice in a
+//  row), or the list ran out both ways, or the cursor moves on.
+BagLook bag_scan_step(VideoStream& stream, ProControllerContext& context, BagScan& scan, const std::string& name){
+    context.wait_for_all_requests();
+    const VideoSnapshot frame = stream.video().snapshot();
+    if (!frame || bag_list_is_empty(*frame.frame)){
+        stream.log("[Bag search] " + name + ": pocket is empty.", COLOR_ORANGE);
+        return BagLook::NOT_FOUND;
+    }
+    const int cursor = bag_cursor_position(*frame.frame);
+    if (cursor == 0){
+        if (++scan.unknown_cursor >= 3){
+            stream.log("[Bag search] " + name + ": cursor not found.", COLOR_ORANGE);
+            return BagLook::NOT_FOUND;
+        }
+        pbf_wait(context, 200ms);
+        return BagLook::GO_ON;
+    }
+    scan.unknown_cursor = 0;
+    const std::string normalized = read_bag_row(*frame.frame, cursor);
+    stream.log("[Bag search] Row " + std::to_string(cursor) + " reads \"" + normalized + "\".");
+    if (normalized == name){
+        if (++scan.confirmed >= 2){
+            stream.log("[Bag search] " + name + " confirmed in row " + std::to_string(cursor) + ".", COLOR_GREEN);
+            return BagLook::FOUND;
+        }
+        pbf_wait(context, 150ms);
+        return BagLook::GO_ON;
+    }
+    scan.confirmed = 0;
+    scan.same = normalized == scan.previous ? scan.same + 1 : 0;
+    scan.previous = normalized;
+    if (scan.same >= 2){
+        if (scan.direction == DPAD_UP){
+            stream.log("[Bag search] " + name + " not found.", COLOR_ORANGE);
+            return BagLook::NOT_FOUND;
+        }
+        scan.direction = DPAD_UP;
+        scan.same = 0;
+    }
+    pbf_press_dpad(context, scan.direction, 80ms, 300ms);
+    return BagLook::GO_ON;
+}
+
+//  B out of the Bag to the overworld; fails with `failure` if it does not show.
+void bag_back_to_overworld(VideoStream& stream, ProControllerContext& context, const std::string& failure){
+    pbf_mash_button(context, BUTTON_B, 2000ms);
+    context.wait_for_all_requests();
+    OverworldWatcher overworld;
+    if (wait_until(stream, context, std::chrono::seconds(10), {{overworld}}) != 0){
+        OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT, failure, stream);
+    }
+}
+
+enum class Dose{ HEALED, GIVEN };
+
+//  One Potion on the lead, from the overworld, its HP read before and after
+//  in the Bag. HEALED when no dose is needed (HP full, or above
+//  `heal_below` on the first look, or no Potion when only checking) or the
+//  dose filled it; GIVEN when HP rose but is not full yet.
+Dose potion_dose(VideoStream& stream, ProControllerContext& context, size_t dose, double heal_below){
+    stream.log("[Potion] Finding Bag/Medicine/Potion; dose " + std::to_string(dose + 1) + "/3.");
+    if (!find_bag_item_by_name(stream, context, "potion", 1, 5)){
+        if (dose == 0 && heal_below < 1.0){
+            // Only a check: without Potions there is nothing to do here.
+            stream.log("[Potion] No Potion in the Bag; skipping the HP check.", COLOR_ORANGE);
+            return Dose::HEALED;
+        }
+        OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
+            "Potion: Could not verify Potion in the Medicine pocket.",
+            stream);
+    }
+    const double before = confirmed_potion_hp(stream, context);
+    stream.log("[Potion] Slot 1 HP bar before use=" + std::to_string(before * 100) + "%.");
+    if (before >= 0.98){
+        return Dose::HEALED;
+    }
+    if (dose == 0 && before >= heal_below){
+        stream.log("[Potion] Slot 1 HP is at least " + std::to_string(heal_below * 100) + "%; no Potion needed.");
+        return Dose::HEALED;
+    }
+    if (before <= 0.005){
+        OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
+            "Potion: Slot 1 appears fainted; a Potion cannot revive it.",
+            stream);
+    }
+    pbf_press_button(context, BUTTON_A, 80ms, 500ms);
+    pbf_press_button(context, BUTTON_A, 80ms, 500ms);
+    pbf_press_button(context, BUTTON_A, 80ms, 1000ms);
+    bag_back_to_overworld(stream, context, "Potion: Did not return to the overworld after use.");
+    // Reopen Bag to verify the result, including when the last Potion was used.
+    open_menu(stream, context, MenuCursorPosition::BAG, 5);
+    pbf_wait(context, 750ms);
+    context.wait_for_all_requests();
+    const double after = confirmed_potion_hp(stream, context);
+    stream.log("[Potion] Slot 1 HP bar after use=" + std::to_string(after * 100) + "%.");
+    if (after <= before + 0.005){
+        OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
+            "Potion: Slot 1 HP did not increase; refusing to continue movement.",
+            stream);
+    }
+    return after >= 0.98 ? Dose::HEALED : Dose::GIVEN;
+}
+
 }
 
 int bag_pocket_position(const ImageViewRGB32& frame){
@@ -240,7 +367,9 @@ bool find_bag_item_in_open_bag(
     int target_pocket
 ){
     context.wait_for_all_requests();
-    if (!bag_navigate_to_pocket(stream, context, target_pocket)) return false;
+    if (!bag_navigate_to_pocket(stream, context, target_pocket)){
+        return false;
+    }
 
     //  No reader for the game's language: the cursor's row, the pocket's
     //  first, if the pocket has one. Early in the story the pocket holds only
@@ -255,140 +384,39 @@ bool find_bag_item_in_open_bag(
 
     //  Walk down the list reading the cursor row. The list does not wrap, so
     //  turn around once the cursor stops moving.
-    DpadPosition direction = DPAD_DOWN;
-    std::string previous;
-    size_t same = 0;
-    size_t confirmed = 0;
-    size_t unknown_cursor = 0;
-    for (size_t scan = 0; scan < 128; scan++){
-        context.wait_for_all_requests();
-        const VideoSnapshot frame = stream.video().snapshot();
-        if (!frame || bag_list_is_empty(*frame.frame)){
-            stream.log("[Bag search] " + name + ": pocket is empty.", COLOR_ORANGE);
-            return false;
+    BagScan scan;
+    for (size_t look = 0; look < 128; look++){
+        const BagLook result = bag_scan_step(stream, context, scan, name);
+        if (result != BagLook::GO_ON){
+            return result == BagLook::FOUND;
         }
-        const int cursor = bag_cursor_position(*frame.frame);
-        if (cursor == 0){
-            if (++unknown_cursor >= 3){
-                stream.log("[Bag search] " + name + ": cursor not found.", COLOR_ORANGE);
-                return false;
-            }
-            pbf_wait(context, 200ms);
-            continue;
-        }
-        unknown_cursor = 0;
-        const std::string text = OCR::tesseract_ocr_read(Language::English,
-            extract_box_reference(*frame.frame, bag_list_name_box(cursor)));
-        std::string normalized;
-        for (unsigned char ch : text){
-            if (std::isalpha(ch)) normalized.push_back((char)std::tolower(ch));
-        }
-        stream.log("[Bag search] Row " + std::to_string(cursor) + " reads \"" + normalized + "\".");
-        if (normalized == name){
-            if (++confirmed >= 2){
-                stream.log("[Bag search] " + name + " confirmed in row " + std::to_string(cursor) + ".", COLOR_GREEN);
-                return true;
-            }
-            pbf_wait(context, 150ms);
-            continue;
-        }
-        confirmed = 0;
-        same = normalized == previous ? same + 1 : 0;
-        previous = normalized;
-        if (same >= 2){
-            if (direction == DPAD_UP) break;
-            direction = DPAD_UP;
-            same = 0;
-        }
-        pbf_press_dpad(context, direction, 80ms, 300ms);
     }
     stream.log("[Bag search] " + name + " not found.", COLOR_ORANGE);
     return false;
 }
 
-bool bag_has_item(VideoStream& stream, ProControllerContext& context, const std::string& name, int target_pocket) {
+bool bag_has_item(VideoStream& stream, ProControllerContext& context, const std::string& name, int target_pocket){
     const bool found = find_bag_item_by_name(stream, context, name, target_pocket, 5);
-    pbf_mash_button(context, BUTTON_B, 2000ms);
-    context.wait_for_all_requests();
-    OverworldWatcher overworld;
-    if (wait_until(stream, context, std::chrono::seconds(10), {{overworld}}) != 0) {
-        OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
-            "Bag: Did not return to the overworld after looking for " + name + ".", stream);
-    }
+    bag_back_to_overworld(stream, context, "Bag: Did not return to the overworld after looking for " + name + ".");
     return found;
 }
 
-void use_potion_first_pokemon(VideoStream& stream, ProControllerContext& context, double heal_below) {
+void use_potion_first_pokemon(VideoStream& stream, ProControllerContext& context, double heal_below){
     OverlayBoxScope hp_overlay(stream.overlay(), COLOR_GREEN, {0.137, 0.160, 0.202, 0.016}, "");
     bool healed = false;
-    for (size_t dose = 0; dose < 3; dose++){
-        stream.log("[Potion] Finding Bag/Medicine/Potion; dose " + std::to_string(dose + 1) + "/3.");
-        if (!find_bag_item_by_name(stream, context, "potion", 1, 5)) {
-            if (dose == 0 && heal_below < 1.0) {
-                // Only a check: without Potions there is nothing to do here.
-                stream.log("[Potion] No Potion in the Bag; skipping the HP check.", COLOR_ORANGE);
-                healed = true;
-                break;
-            }
-            OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
-                "Potion: Could not verify Potion in the Medicine pocket.",
-                stream);
+    for (size_t dose = 0; dose < 3 && !healed; dose++){
+        healed = potion_dose(stream, context, dose, heal_below) == Dose::HEALED;
+        if (!healed){
+            pbf_mash_button(context, BUTTON_B, 2000ms);
+            context.wait_for_all_requests();
         }
-        const double before = confirmed_potion_hp(stream, context);
-        stream.log("[Potion] Slot 1 HP bar before use=" + std::to_string(before * 100) + "%.");
-        if (before >= 0.98) { healed = true; break; }
-        if (dose == 0 && before >= heal_below) {
-            stream.log("[Potion] Slot 1 HP is at least " + std::to_string(heal_below * 100) + "%; no Potion needed.");
-            healed = true;
-            break;
-        }
-        if (before <= 0.005) {
-            OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
-                "Potion: Slot 1 appears fainted; a Potion cannot revive it.",
-                stream);
-        }
-        pbf_press_button(context, BUTTON_A, 80ms, 500ms);
-        pbf_press_button(context, BUTTON_A, 80ms, 500ms);
-        pbf_press_button(context, BUTTON_A, 80ms, 1000ms);
-        pbf_mash_button(context, BUTTON_B, 2000ms);
-        context.wait_for_all_requests();
-        OverworldWatcher overworld;
-        if (wait_until(stream, context, std::chrono::seconds(10), {{overworld}}) != 0){
-            OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
-                "Potion: Did not return to the overworld after use.",
-                stream);
-        }
-        // Reopen Bag to verify the result, including when the last Potion was used.
-        open_menu(stream, context, MenuCursorPosition::BAG, 5);
-        pbf_wait(context, 750ms);
-        context.wait_for_all_requests();
-        const double after = confirmed_potion_hp(stream, context);
-        stream.log("[Potion] Slot 1 HP bar after use=" + std::to_string(after * 100) + "%.");
-        if (after <= before + 0.005){
-            OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
-                "Potion: Slot 1 HP did not increase; refusing to continue movement.",
-                stream);
-        }
-        if (after >= 0.98){
-            healed = true;
-            break;
-        }
-        pbf_mash_button(context, BUTTON_B, 2000ms);
-        context.wait_for_all_requests();
     }
     if (!healed){
         OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
             "Potion: Full HP not confirmed after three uses.",
             stream);
     }
-    pbf_mash_button(context, BUTTON_B, 2000ms);
-    context.wait_for_all_requests();
-    OverworldWatcher overworld;
-    if (wait_until(stream, context, std::chrono::seconds(10), {{overworld}}) != 0){
-        OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
-            "Potion: Final overworld return not confirmed.",
-            stream);
-    }
+    bag_back_to_overworld(stream, context, "Potion: Final overworld return not confirmed.");
     stream.log("[Potion] Slot 1 HP bar full and overworld confirmed.");
 }
 

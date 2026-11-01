@@ -4,8 +4,12 @@
  *
  */
 
+#include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/Filesystem/Filesystem.h"
+#include "CommonFramework/ImageTools/ImageBoxes.h"
 #include "CommonFramework/ImageTools/ImageDiff.h"
+#include "CommonFramework/ImageTools/ImageStats.h"
+#include "CommonTools/Images/SolidColorTest.h"
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "CommonTools/Async/InferenceRoutines.h"
@@ -26,6 +30,34 @@ namespace NintendoSwitch{
 namespace PokemonBDSP{
 
 using namespace std::chrono_literals;
+
+
+namespace{
+
+//  BDSP's dialogue box. ShortDialogDetector also wants something busy at the
+//  box's right end, which the "more text" arrow gives; a speaker's last line
+//  has no arrow and read as "other" (r2, 2026-11-01: Rowan's "Now, go on, and
+//  leap into the world of Pokemon!"). Without the arrow: white at the text
+//  area's left end, along its bottom and at its right end below the first
+//  line, and the box's edge on the left.
+bool intro_dialog_showing(const ImageViewRGB32& screen){
+    if (ShortDialogDetector().detect(screen)){
+        return true;
+    }
+    const ImageStats left_white = image_stats(extract_box_reference(screen, ImageFloatBox(0.21, 0.835, 0.008, 0.12)));
+    //  Below the first line's end: a long line reaches it (r2's ran to 0.79).
+    const ImageStats right_white = image_stats(extract_box_reference(screen, ImageFloatBox(0.785, 0.915, 0.008, 0.04)));
+    const ImageStats bottom = image_stats(extract_box_reference(screen, ImageFloatBox(0.50, 0.91, 0.29, 0.05)));
+    const ImageStats left_edge = image_stats(extract_box_reference(screen, ImageFloatBox(0.18, 0.835, 0.02, 0.12)));
+    return is_white(left_white) && is_white(right_white) && is_white(bottom) && left_edge.stddev.sum() >= 30;
+}
+
+//  The part of the screen the probe compares before and after X: the
+//  dialogue box's area. The intro's background sparkles everywhere above
+//  it, which read as X having changed the screen (r2).
+const ImageFloatBox PROBE_AREA(0.15, 0.75, 0.70, 0.25);
+
+}
 
 
 std::string classify_intro_screen(ConsoleHandle* console, const ImageViewRGB32& screen){
@@ -51,7 +83,7 @@ std::string classify_intro_screen(ConsoleHandle* console, const ImageViewRGB32& 
         return "menu";
     }
     //  Includes the appearance grid, whose prompt sits in a dialogue box.
-    if (ShortDialogDetector().detect(screen)){
+    if (intro_dialog_showing(screen)){
         return "dialog";
     }
     //  Language, cutscenes, fades, the bedroom with no menu open.
@@ -59,19 +91,42 @@ std::string classify_intro_screen(ConsoleHandle* console, const ImageViewRGB32& 
 }
 
 IntroStep decide_intro_step(const std::string& screen, const IntroProgress& progress){
-    if (screen == "user-select")        return IntroStep::SELECT_USER;
-    if (screen == "home")               return IntroStep::FAIL_NOT_IN_GAME;
+    if (screen == "user-select"){
+        return IntroStep::SELECT_USER;
+    }
+    if (screen == "home"){
+        return IntroStep::FAIL_NOT_IN_GAME;
+    }
     if (screen == "keyboard"){
         return progress.player_named ? IntroStep::CANCEL_RIVAL_KEYBOARD : IntroStep::ENTER_PLAYER_NAME;
     }
-    if (screen == "rival-list-tell")    return IntroStep::MOVE_TO_PRESET;
-    if (screen == "rival-list-preset")  return IntroStep::PICK_PRESET;
-    if (screen == "menu")               return IntroStep::CLOSE_MENU_AND_FINISH;
-    if (screen == "dialog")             return IntroStep::ADVANCE;
+    if (screen == "rival-list-tell"){
+        return IntroStep::MOVE_TO_PRESET;
+    }
+    if (screen == "rival-list-preset"){
+        return IntroStep::PICK_PRESET;
+    }
+    if (screen == "menu"){
+        return IntroStep::CLOSE_MENU_AND_FINISH;
+    }
+    if (screen == "dialog"){
+        return IntroStep::ADVANCE;
+    }
     //  The bedroom comes only after the rival is named. Before that, every unknown
-    //  screen (language, the appearance preview, cutscenes) takes A.
-    return progress.rival_named ? IntroStep::PROBE_FOR_MENU : IntroStep::ADVANCE;
+    //  screen (language, the appearance preview, cutscenes) takes A, but only so
+    //  many before a screen only BDSP shows: past those it is another game.
+    if (progress.rival_named){
+        return IntroStep::PROBE_FOR_MENU;
+    }
+    if (!progress.game_confirmed && progress.unconfirmed_presses >= INTRO_PRESSES_BEFORE_BDSP){
+        return IntroStep::FAIL_NOT_BDSP;
+    }
+    return IntroStep::ADVANCE;
 }
+bool intro_screen_confirms_bdsp(const std::string& screen){
+    return screen == "dialog" || screen == "rival-list-tell" || screen == "rival-list-preset" || screen == "menu";
+}
+
 bool advance_after_probe(bool screen_changed){
     return !screen_changed;
 }
@@ -149,6 +204,141 @@ void enter_player_name(VideoStream& stream, ProControllerContext& context, StepT
     trace.action("Name confirmed.");
 }
 
+//  A run of the intro: what its steps act on and how far it has got.
+struct IntroRun{
+    SingleSwitchProgramEnvironment& env;
+    ProControllerContext& context;
+    StepTrace& trace;
+    const std::string& player_name;
+    IntroProgress progress;
+    size_t x_without_menu = 0;
+};
+
+void press(IntroRun& run, Button button){
+    pbf_press_button(run.context, button, 80ms, 0ms);
+}
+
+void close_menu_and_finish(IntroRun& run){
+    run.trace.action("Main menu is open: the player is in control in the bedroom. Closing it.");
+    press(run, BUTTON_B);
+    pbf_wait(run.context, 1000ms);
+    run.context.wait_for_all_requests();
+    VideoSnapshot screen_now = run.env.console.video().snapshot();
+    if (!screen_now || MenuDetector().detect(screen_now)){
+        run.trace.fail("The main menu did not close.");
+    }
+}
+
+void probe_for_menu(IntroRun& run){
+    VideoStream& stream = run.env.console;
+    run.context.wait_for_all_requests();
+    VideoSnapshot before = stream.video().snapshot();
+    press(run, BUTTON_X);
+    run.context.wait_for_all_requests();
+    MenuWatcher menu;
+    if (wait_until(stream, run.context, 3s, {{menu}}) == 0){
+        return;     //  The next read sees the menu and finishes.
+    }
+    VideoSnapshot after = stream.video().snapshot();
+    const bool changed = !before || !after || ImageMatch::pixel_RMSD(
+        extract_box_reference(*before.frame, PROBE_AREA), extract_box_reference(*after.frame, PROBE_AREA)
+    ) > 10;
+    if (!advance_after_probe(changed)){
+        run.trace.action("X changed the screen but no known menu opened; not pressing A.");
+        if (++run.x_without_menu >= 10){
+            run.trace.fail("X keeps changing the screen without a known menu opening.");
+        }
+        return;
+    }
+    run.x_without_menu = 0;
+    pbf_press_button(run.context, BUTTON_A, 60ms, 400ms);
+}
+
+//  Carries out what decide_intro_step() chose for `screen`.
+void act(IntroRun& run, const char* screen){
+    if (intro_screen_confirms_bdsp(screen)){
+        run.progress.game_confirmed = true;
+    }
+    switch (decide_intro_step(screen, run.progress)){
+    case IntroStep::SELECT_USER:
+        //  The cursor starts on the user that launched the game.
+        press(run, BUTTON_A);
+        pbf_wait(run.context, 1000ms);
+        return;
+    case IntroStep::FAIL_NOT_IN_GAME:
+        run.trace.fail("The Switch HOME menu is showing: the game is not running in front.");
+    case IntroStep::FAIL_NOT_BDSP:
+        run.trace.fail("The game in front is not BDSP: no BDSP screen after " +
+            std::to_string(run.progress.unconfirmed_presses) + " presses on unknown screens.");
+    case IntroStep::ENTER_PLAYER_NAME:
+        enter_player_name(run.env.console, run.context, run.trace, run.player_name);
+        run.progress.player_named = true;
+        return;
+    case IntroStep::CANCEL_RIVAL_KEYBOARD:
+        //  Opened from "I'll tell you..."; inputs during the slide-in are dropped.
+        pbf_wait(run.context, 800ms);
+        press(run, BUTTON_X);
+        return;
+    case IntroStep::MOVE_TO_PRESET:
+        pbf_press_dpad(run.context, DPAD_DOWN, 100ms, 300ms);
+        return;
+    case IntroStep::PICK_PRESET:
+        press(run, BUTTON_A);
+        pbf_wait(run.context, 500ms);
+        run.progress.rival_named = true;
+        return;
+    case IntroStep::CLOSE_MENU_AND_FINISH:
+        close_menu_and_finish(run);
+        return;
+    case IntroStep::ADVANCE:
+        if (!run.progress.game_confirmed){
+            run.progress.unconfirmed_presses++;
+        }
+        pbf_press_button(run.context, BUTTON_A, 60ms, 400ms);
+        return;
+    case IntroStep::PROBE_FOR_MENU:
+        probe_for_menu(run);
+        return;
+    }
+}
+
+//  The machine's states: the screens classify_intro_screen() tells apart, with
+//  the keyboard split by whose name it asks for. Each state's step is act().
+std::vector<ScreenState> intro_states(IntroRun& run){
+    auto screen_is = [&run](const ImageViewRGB32& screen, const char* name){
+        return classify_intro_screen(&run.env.console, screen) == name;
+    };
+    return {
+        {"user-select",
+            [=](const ImageViewRGB32& s){ return screen_is(s, "user-select"); },
+            [&run]{ act(run, "user-select"); }, {}, 3},
+        {"home",
+            [=](const ImageViewRGB32& s){ return screen_is(s, "home"); },
+            [&run]{ act(run, "home"); }, {}, 1},
+        {"player-keyboard",
+            [=, &run](const ImageViewRGB32& s){ return !run.progress.player_named && screen_is(s, "keyboard"); },
+            [&run]{ act(run, "keyboard"); }, {"dialog", "other"}, 1},
+        {"rival-keyboard",
+            [=, &run](const ImageViewRGB32& s){ return run.progress.player_named && screen_is(s, "keyboard"); },
+            [&run]{ act(run, "keyboard"); }, {"rival-list-tell", "dialog", "other"}, 3},
+        {"rival-list-tell",
+            [=](const ImageViewRGB32& s){ return screen_is(s, "rival-list-tell"); },
+            [&run]{ act(run, "rival-list-tell"); }, {"rival-list-preset", "other"}, 6},
+        {"rival-list-preset",
+            [=](const ImageViewRGB32& s){ return screen_is(s, "rival-list-preset"); },
+            [&run]{ act(run, "rival-list-preset"); }, {"dialog", "other"}, 3},
+        {"menu",
+            [=](const ImageViewRGB32& s){ return screen_is(s, "menu"); },
+            [&run]{ act(run, "menu"); }, {}, 2, true},
+        {"dialog",
+            [=](const ImageViewRGB32& s){ return screen_is(s, "dialog"); },
+            [&run]{ act(run, "dialog"); }, {}, 400},
+        {"other",
+            [](const ImageViewRGB32&){ return true; },
+            [&run]{ act(run, "other"); }, {}, 300, false, 60},
+    };
+}
+
 }
 
 
@@ -161,6 +351,19 @@ void play_new_game_intro(
     VideoStream& stream = env.console;
     StepTrace trace(stream, "Intro");
 
+    //  The restart below reopens the game HOME's cursor is on, which is the
+    //  game running in front only while it runs: with none running (r1,
+    //  2026-11-01), closing it fails, HOME is pressed again, the cursor goes
+    //  to the first tile, and another game was launched. So BDSP must be
+    //  running in front when the intro starts.
+    context.wait_for_all_requests();
+    VideoSnapshot start = stream.video().snapshot();
+    if (start && HomeMenuDetector(env.console, COLOR_RED).detect(start)){
+        throw UserSetupError(env.console,
+            "Start a new game with BDSP running in front, not from the Switch's HOME menu: "
+            "the intro restarts the game in front.");
+    }
+
     //  Only close and reopen the game: the states below take it from the user select
     //  on. reset_game_from_home() waits for a loaded save's black screen to end, and a
     //  new game's first screen is a dialog on black, so it would sit there until its
@@ -169,112 +372,8 @@ void play_new_game_intro(
     go_home(env.console, context);
     from_home_close_and_reopen_game(env.console, context, true);
 
-    IntroProgress progress;
-    size_t x_without_menu = 0;
-    auto press = [&](Button button){
-        pbf_press_button(context, button, 80ms, 0ms);
-    };
-
-    //  Carries out what decide_intro_step() chose for `screen`.
-    auto act = [&](const char* screen){
-        switch (decide_intro_step(screen, progress)){
-        case IntroStep::SELECT_USER:
-            //  The cursor starts on the user that launched the game.
-            press(BUTTON_A);
-            pbf_wait(context, 1000ms);
-            return;
-        case IntroStep::FAIL_NOT_IN_GAME:
-            trace.fail("The Switch HOME menu is showing: the game is not running in front.");
-        case IntroStep::ENTER_PLAYER_NAME:
-            enter_player_name(stream, context, trace, player_name);
-            progress.player_named = true;
-            return;
-        case IntroStep::CANCEL_RIVAL_KEYBOARD:
-            //  Opened from "I'll tell you..."; inputs during the slide-in are dropped.
-            pbf_wait(context, 800ms);
-            press(BUTTON_X);
-            return;
-        case IntroStep::MOVE_TO_PRESET:
-            pbf_press_dpad(context, DPAD_DOWN, 100ms, 300ms);
-            return;
-        case IntroStep::PICK_PRESET:
-            press(BUTTON_A);
-            pbf_wait(context, 500ms);
-            progress.rival_named = true;
-            return;
-        case IntroStep::CLOSE_MENU_AND_FINISH:{
-            trace.action("Main menu is open: the player is in control in the bedroom. Closing it.");
-            press(BUTTON_B);
-            pbf_wait(context, 1000ms);
-            context.wait_for_all_requests();
-            VideoSnapshot screen_now = stream.video().snapshot();
-            if (!screen_now || MenuDetector().detect(screen_now)){
-                trace.fail("The main menu did not close.");
-            }
-            return;
-        }
-        case IntroStep::ADVANCE:
-            pbf_press_button(context, BUTTON_A, 60ms, 400ms);
-            return;
-        case IntroStep::PROBE_FOR_MENU:{
-            context.wait_for_all_requests();
-            VideoSnapshot before = stream.video().snapshot();
-            press(BUTTON_X);
-            context.wait_for_all_requests();
-            MenuWatcher menu;
-            if (wait_until(stream, context, 3s, {{menu}}) == 0){
-                return;     //  The next read sees the menu and finishes.
-            }
-            VideoSnapshot after = stream.video().snapshot();
-            const bool changed = !before || !after || ImageMatch::pixel_RMSD(before, after) > 10;
-            if (!advance_after_probe(changed)){
-                trace.action("X changed the screen but no known menu opened; not pressing A.");
-                if (++x_without_menu >= 10){
-                    trace.fail("X keeps changing the screen without a known menu opening.");
-                }
-                return;
-            }
-            x_without_menu = 0;
-            pbf_press_button(context, BUTTON_A, 60ms, 400ms);
-            return;
-        }
-        }
-    };
-
-    auto screen_is = [&](const ImageViewRGB32& screen, const char* name){
-        return classify_intro_screen(&env.console, screen) == name;
-    };
-    //  The machine's states: the screens classify_intro_screen() tells apart, with the
-    //  keyboard split by whose name it asks for. Each state's step is act().
-    const std::vector<ScreenState> states{
-        {"user-select",
-            [&](const ImageViewRGB32& s){ return screen_is(s, "user-select"); },
-            [&]{ act("user-select"); }, {}, 3},
-        {"home",
-            [&](const ImageViewRGB32& s){ return screen_is(s, "home"); },
-            [&]{ act("home"); }, {}, 1},
-        {"player-keyboard",
-            [&](const ImageViewRGB32& s){ return !progress.player_named && screen_is(s, "keyboard"); },
-            [&]{ act("keyboard"); }, {"dialog", "other"}, 1},
-        {"rival-keyboard",
-            [&](const ImageViewRGB32& s){ return progress.player_named && screen_is(s, "keyboard"); },
-            [&]{ act("keyboard"); }, {"rival-list-tell", "dialog", "other"}, 3},
-        {"rival-list-tell",
-            [&](const ImageViewRGB32& s){ return screen_is(s, "rival-list-tell"); },
-            [&]{ act("rival-list-tell"); }, {"rival-list-preset", "other"}, 6},
-        {"rival-list-preset",
-            [&](const ImageViewRGB32& s){ return screen_is(s, "rival-list-preset"); },
-            [&]{ act("rival-list-preset"); }, {"dialog", "other"}, 3},
-        {"menu",
-            [&](const ImageViewRGB32& s){ return screen_is(s, "menu"); },
-            [&]{ act("menu"); }, {}, 2, true},
-        {"dialog",
-            [&](const ImageViewRGB32& s){ return screen_is(s, "dialog"); },
-            [&]{ act("dialog"); }, {}, 400},
-        {"other",
-            [](const ImageViewRGB32&){ return true; },
-            [&]{ act("other"); }, {}, 300, false, 60},
-    };
+    IntroRun run{env, context, trace, player_name, {}, 0};
+    const std::vector<ScreenState> states = intro_states(run);
     run_screen_machine(stream, context, trace, states, std::chrono::minutes(15));
     trace.action("Intro done.");
 }

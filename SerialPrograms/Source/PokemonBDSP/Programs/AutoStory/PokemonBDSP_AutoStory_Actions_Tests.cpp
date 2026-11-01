@@ -41,9 +41,9 @@ public:
             IntroProgress progress;
             IntroStep expected;
         };
-        const IntroProgress start{false, false};
-        const IntroProgress named{true, false};
-        const IntroProgress done{true, true};
+        const IntroProgress start{.player_named = false, .rival_named = false, .game_confirmed = true, .unconfirmed_presses = 0};
+        const IntroProgress named{.player_named = true, .rival_named = false, .game_confirmed = true, .unconfirmed_presses = 0};
+        const IntroProgress done{.player_named = true, .rival_named = true, .game_confirmed = true, .unconfirmed_presses = 0};
         const Case cases[] = {
             {"user-select",         start,  IntroStep::SELECT_USER},
             {"home",                done,   IntroStep::FAIL_NOT_IN_GAME},
@@ -79,6 +79,73 @@ public:
     }
 };
 
+
+//  The intro gates its A presses on a BDSP screen: past the limit it is
+//  another game (r1, 2026-11-01, launched FireRed).
+class Test_IntroGate : public UnitTest{
+public:
+    Test_IntroGate()
+        : UnitTest("PokemonBDSP::AutoStory - new-game intro: BDSP or stop")
+    {}
+
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        struct Case{
+            const char* screen;
+            IntroProgress progress;
+            IntroStep expected;
+        };
+        const IntroProgress unconfirmed{.player_named = false, .rival_named = false, .game_confirmed = false, .unconfirmed_presses = 3};
+        const IntroProgress exhausted{.player_named = false, .rival_named = false, .game_confirmed = false,
+            .unconfirmed_presses = INTRO_PRESSES_BEFORE_BDSP};
+        const IntroProgress confirmed{.player_named = false, .rival_named = false, .game_confirmed = true,
+            .unconfirmed_presses = INTRO_PRESSES_BEFORE_BDSP};
+        const Case cases[] = {
+            {"other", unconfirmed, IntroStep::ADVANCE},
+            {"other", exhausted, IntroStep::FAIL_NOT_BDSP},
+            {"other", confirmed, IntroStep::ADVANCE},
+        };
+        for (const Case& c : cases){
+            if (decide_intro_step(c.screen, c.progress) != c.expected){
+                return std::string("Screen \"") + c.screen + "\" after " + std::to_string(c.progress.unconfirmed_presses) +
+                    " unconfirmed presses: unexpected step.";
+            }
+        }
+        for (const char* screen : {"dialog", "rival-list-tell", "rival-list-preset", "menu"}){
+            if (!intro_screen_confirms_bdsp(screen)){
+                return std::string("Expected \"") + screen + "\" to confirm BDSP.";
+            }
+        }
+        for (const char* screen : {"user-select", "home", "keyboard", "other"}){
+            if (intro_screen_confirms_bdsp(screen)){
+                return std::string("Expected \"") + screen + "\" not to confirm BDSP.";
+            }
+        }
+        return true;
+    }
+};
+
+//  The intro's screens, classified: <resources>/PokemonBDSP/AutoStory/IntroScreens/
+//  <expected class>/*.png (in CommandLineTests), at 1080p and 720p. Among
+//  them r2's "dialog/020-other.png": Rowan's last line, a dialogue box with
+//  no "more" arrow.
+class Test_IntroScreens : public UnitTest{
+public:
+    Test_IntroScreens()
+        : UnitTest("PokemonBDSP::AutoStory - new-game intro screens")
+    {}
+
+    virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
+        const std::string folder = UNIT_TEST_RESOURCE_PATH() + "PokemonBDSP/AutoStory/IntroScreens/";
+        if (!Filesystem::is_directory(Filesystem::Path(folder))){
+            return UnitTestResult(UnitTestResult::SKIPPED, "Screenshots not found: " + folder);
+        }
+        const size_t failed = run_intro_screen_tests(logger, folder);
+        if (failed != 0){
+            return std::to_string(failed) + " intro screens misread; see the log.";
+        }
+        return true;
+    }
+};
 
 //  The Mart's doorway on the failure screenshots of r121a and r122a, kept in
 //  the unit test resources (the CommandLineTests checkout): where it is
@@ -258,6 +325,8 @@ public:
 
 void add_tests_AutoStory_Actions(UnitTestDatabase& database){
     database.add<Test_IntroDecisions>();
+    database.add<Test_IntroGate>();
+    database.add<Test_IntroScreens>();
     database.add<Test_LitDoorwayScreenshots>();
     database.add<Test_SaveScreenLocation>();
     database.add<Test_PokemonCenterInside>();

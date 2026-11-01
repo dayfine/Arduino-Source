@@ -15,9 +15,9 @@
 
 #include "PokemonBDSP_AutoStory_MenuCursorDetector.h"
 
-namespace PokemonAutomation {
-namespace NintendoSwitch {
-namespace PokemonBDSP {
+namespace PokemonAutomation{
+namespace NintendoSwitch{
+namespace PokemonBDSP{
 
 
 std::string menu_cursor_to_string(MenuCursorPosition pos){
@@ -46,13 +46,7 @@ std::string menu_cursor_to_string(MenuCursorPosition pos){
 
 MenuCursorDetector::MenuCursorDetector(Color color) :
     m_color(color)
-    // -------------------------------------------------------------------------
-    //  Top row — left to right
-    // -------------------------------------------------------------------------
-    // TODO: replace each ImageFloatBox(0,0,0,0) with the real normalized
-    // (x, y, width, height) for a small region that gains dark pixels when
-    // that icon is hovered. Use the test program overlays to tune coordinates.
-    // -------------------------------------------------------------------------
+    //  Top row, left to right.
     , m_pokedex_box{
         ImageFloatBox(0.180000, 0.115000, 0.135000, 0.195000),
     },
@@ -64,13 +58,12 @@ MenuCursorDetector::MenuCursorDetector(Color color) :
     },
     m_card_box{
         ImageFloatBox(0.682500, 0.115000, 0.135000, 0.195000),
-    } // -------------------------------------------------------------------------
+    }
     //  Bottom row — left to right
     //  5-icon layout: OPTIONS is the only bottom icon (far-left position).
     //  8-icon layout: MAP, CAPSULES, OPTIONS, MYSTERYGIFT from left to right.
     //  OPTIONS sits at a different x-position in each layout — use a separate
     //  MenuCursorDetector instance if you need to detect OPTIONS in both.
-    // -------------------------------------------------------------------------
     , m_options_box{
         ImageFloatBox(0.515000, 0.364000, 0.135000, 0.195000),
     },
@@ -82,10 +75,9 @@ MenuCursorDetector::MenuCursorDetector(Color color) :
     },
     m_mysterygift_box{
         ImageFloatBox(0.682500, 0.364000, 0.135000, 0.195000),
-    } // -------------------------------------------------------------------------
+    }
     //  Approach 2 search boxes — one per icon, same area as the dark-pixel box.
     //  The template PNG is slid across this area at its native size.
-    // -------------------------------------------------------------------------
     , m_icon_match_box{
         ImageFloatBox(0.180000, 0.115000, 0.135000, 0.195000), // 0 POKEDEX
         ImageFloatBox(0.347500, 0.115000, 0.135000, 0.195000), // 1 POKEMON
@@ -124,7 +116,7 @@ void MenuCursorDetector::make_overlays(VideoOverlaySet& items) const {
 }
 
 
-namespace {
+namespace{
 
 // Count how many of `n` boxes contain >= MIN_DARK_PIXEL_COUNT pixels with
 // R, G, B all <= BLACK_CHANNEL_MAX. Boxes with zero width are skipped.
