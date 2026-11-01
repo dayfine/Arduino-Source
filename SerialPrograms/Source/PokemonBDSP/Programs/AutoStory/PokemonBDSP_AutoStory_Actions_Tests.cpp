@@ -30,6 +30,16 @@ namespace PokemonBDSP{
 namespace{
 
 
+//  How far the intro has got, with BDSP confirmed: 1, the player named;
+//  2, the rival too.
+IntroProgress intro_progress(size_t names_given){
+    IntroProgress progress;
+    progress.player_named = names_given >= 1;
+    progress.rival_named = names_given >= 2;
+    progress.game_confirmed = true;
+    return progress;
+}
+
 class Test_IntroDecisions : public UnitTest{
 public:
     Test_IntroDecisions()
@@ -42,9 +52,9 @@ public:
             IntroProgress progress;
             IntroStep expected;
         };
-        const IntroProgress start{.player_named = false, .rival_named = false, .game_confirmed = true, .unconfirmed_presses = 0, .b_presses = 0};
-        const IntroProgress named{.player_named = true, .rival_named = false, .game_confirmed = true, .unconfirmed_presses = 0, .b_presses = 0};
-        const IntroProgress done{.player_named = true, .rival_named = true, .game_confirmed = true, .unconfirmed_presses = 0, .b_presses = 0};
+        const IntroProgress start = intro_progress(0);
+        const IntroProgress named = intro_progress(1);
+        const IntroProgress done = intro_progress(2);
         const Case cases[] = {
             {"user-select",         start,  IntroStep::SELECT_USER},
             {"home",                done,   IntroStep::FAIL_NOT_IN_GAME},
@@ -56,10 +66,13 @@ public:
             //  The appearance grid has its prompt in a dialogue box.
             {"dialog",              start,  IntroStep::ADVANCE},
             {"dialog",              done,   IntroStep::ADVANCE_WITH_B},
-            //  Language and the appearance preview: no X before the bedroom is possible.
+            //  Logos, the title, language and the appearance preview: no X
+            //  before the bedroom is possible.
             {"other",               start,  IntroStep::ADVANCE},
             {"other",               named,  IntroStep::ADVANCE},
             {"other",               done,   IntroStep::CLEAR_WITH_B},
+            {"black",               start,  IntroStep::WAIT},
+            {"black",               done,   IntroStep::WAIT},
         };
         for (const Case& c : cases){
             const IntroStep actual = decide_intro_step(c.screen, c.progress);
@@ -84,8 +97,8 @@ public:
     {}
 
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        IntroProgress progress{.player_named = true, .rival_named = false, .game_confirmed = true, .unconfirmed_presses = 0, .b_presses = 0};
-        record_intro_step(progress, "rival-list-preset", decide_intro_step("rival-list-preset", progress));
+        IntroProgress progress = intro_progress(1);
+        record_intro_step(progress, decide_intro_step("rival-list-preset", progress));
         if (!progress.rival_named){
             return "Picking the preset name must count the rival as named.";
         }
@@ -102,14 +115,15 @@ public:
         for (size_t c = 0; c < expected.size(); c++){
             const char* screen = c < others ? "other" : c == others ? "dialog" : c == others + 1 ? "other" : "menu";
             const IntroStep step = decide_intro_step(screen, progress);
-            record_intro_step(progress, screen, step);
+            record_intro_step(progress, step);
             if (step != expected[c]){
                 return "Screen " + std::to_string(c) + " (\"" + screen + "\"): step " +
                     std::to_string((int)step) + ", expected " + std::to_string((int)expected[c]) + ".";
             }
         }
-        if (decide_intro_step("other", IntroProgress{.player_named = true, .rival_named = true, .game_confirmed = true,
-            .unconfirmed_presses = 0, .b_presses = INTRO_B_BEFORE_X}) != IntroStep::PROBE_FOR_MENU){
+        IntroProgress pressed = intro_progress(2);
+        pressed.b_presses = INTRO_B_BEFORE_X;
+        if (decide_intro_step("other", pressed) != IntroStep::PROBE_FOR_MENU){
             return "X must follow INTRO_B_BEFORE_X B presses.";
         }
         return true;
@@ -117,8 +131,10 @@ public:
 };
 
 
-//  The intro gates its A presses on a BDSP screen: past the limit it is
-//  another game (r1, 2026-11-01, launched FireRed).
+//  The intro gates its A presses on a BDSP screen within a time from the
+//  first screen that is not black: past it, it is another game (r1,
+//  2026-11-01, launched FireRed). The boot's black screens, about 25 s of
+//  them (r3), neither take presses nor count.
 class Test_IntroGate : public UnitTest{
 public:
     Test_IntroGate()
@@ -126,33 +142,57 @@ public:
     {}
 
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        struct Case{
-            const char* screen;
-            IntroProgress progress;
-            IntroStep expected;
-        };
-        const IntroProgress unconfirmed{.player_named = false, .rival_named = false, .game_confirmed = false, .unconfirmed_presses = 3, .b_presses = 0};
-        const IntroProgress exhausted{.player_named = false, .rival_named = false, .game_confirmed = false,
-            .unconfirmed_presses = INTRO_PRESSES_BEFORE_BDSP, .b_presses = 0};
-        const IntroProgress confirmed{.player_named = false, .rival_named = false, .game_confirmed = true,
-            .unconfirmed_presses = INTRO_PRESSES_BEFORE_BDSP, .b_presses = 0};
-        const Case cases[] = {
-            {"other", unconfirmed, IntroStep::ADVANCE},
-            {"other", exhausted, IntroStep::FAIL_NOT_BDSP},
-            {"other", confirmed, IntroStep::ADVANCE},
-        };
-        for (const Case& c : cases){
-            if (decide_intro_step(c.screen, c.progress) != c.expected){
-                return std::string("Screen \"") + c.screen + "\" after " + std::to_string(c.progress.unconfirmed_presses) +
-                    " unconfirmed presses: unexpected step.";
+        using std::chrono::milliseconds;
+        IntroProgress progress;
+        const std::string boot = check_boot(progress);
+        if (!boot.empty()){
+            return boot;
+        }
+        const milliseconds shown = 2 * INTRO_TIME_BEFORE_BDSP + milliseconds(500);
+        note_intro_screen(progress, "other", shown);
+        if (decide_intro_step("other", progress) != IntroStep::ADVANCE){
+            return "The first logo must take A.";
+        }
+        note_intro_screen(progress, "black", shown + INTRO_TIME_BEFORE_BDSP / 2);
+        note_intro_screen(progress, "other", shown + INTRO_TIME_BEFORE_BDSP - milliseconds(1));
+        if (decide_intro_step("other", progress) != IntroStep::ADVANCE){
+            return "Unknown screens take A until INTRO_TIME_BEFORE_BDSP has passed.";
+        }
+        IntroProgress other_game = progress;
+        note_intro_screen(other_game, "other", shown + INTRO_TIME_BEFORE_BDSP);
+        if (decide_intro_step("other", other_game) != IntroStep::FAIL_NOT_BDSP){
+            return "Past INTRO_TIME_BEFORE_BDSP of unknown screens, it is another game.";
+        }
+        note_intro_screen(progress, "dialog", shown + INTRO_TIME_BEFORE_BDSP - milliseconds(1));
+        note_intro_screen(progress, "other", shown + 10 * INTRO_TIME_BEFORE_BDSP);
+        if (decide_intro_step("other", progress) != IntroStep::ADVANCE){
+            return "Once BDSP's dialogue has shown, the clock stops.";
+        }
+        return check_confirming_screens();
+    }
+
+private:
+    //  Black from the restart until the first logo, well past the limit.
+    static std::string check_boot(IntroProgress& progress){
+        using std::chrono::milliseconds;
+        for (milliseconds t(0); t <= 2 * INTRO_TIME_BEFORE_BDSP; t += milliseconds(500)){
+            note_intro_screen(progress, "black", t);
+            if (decide_intro_step("black", progress) != IntroStep::WAIT){
+                return "A black screen must take no press.";
             }
         }
+        if (progress.first_shown || progress.unconfirmed_for != milliseconds(0)){
+            return "Black screens must not start the wrong-game clock.";
+        }
+        return "";
+    }
+    static UnitTestResult check_confirming_screens(){
         for (const char* screen : {"dialog", "rival-list-tell", "rival-list-preset", "menu"}){
             if (!intro_screen_confirms_bdsp(screen)){
                 return std::string("Expected \"") + screen + "\" to confirm BDSP.";
             }
         }
-        for (const char* screen : {"user-select", "home", "keyboard", "other"}){
+        for (const char* screen : {"user-select", "home", "keyboard", "black", "other"}){
             if (intro_screen_confirms_bdsp(screen)){
                 return std::string("Expected \"") + screen + "\" not to confirm BDSP.";
             }
