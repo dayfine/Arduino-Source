@@ -56,10 +56,13 @@ struct Grid{
     const Cell& at(const TilePos& pos) const{
         return cells[(size_t)pos.y * width + pos.x];
     }
-    Cell& at(const TilePos& pos){
-        return cells[(size_t)pos.y * width + pos.x];
-    }
 };
+//  The cell at `pos` of `grid`, to change it; `pos` must be inside the grid.
+//  A free function, so that Grid stays a plain value whose methods only read.
+template <typename Cell>
+Cell& cell_at(Grid<Cell>& grid, const TilePos& pos){
+    return grid.cells[(size_t)pos.y * grid.width + pos.x];
+}
 
 
 
