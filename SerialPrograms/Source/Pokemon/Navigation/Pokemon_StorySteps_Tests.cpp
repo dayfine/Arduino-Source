@@ -472,7 +472,11 @@ UnitTestResult test_checks_level(){
     CheckingExecutor executor;
     run(data, executor);
     executor.set_checks(StoryChecks::FAST);
+    executor.set_language(Language::Korean);
     run(data, executor);
+    if (executor.language() != Language::Korean){
+        return "Expected the language set on the executor.";
+    }
     if (executor.seen != std::vector<std::string>{"talk_oak thorough", "talk_oak fast"}){
         return "Expected the talk to read thorough, then fast:" + joined(executor.seen);
     }
@@ -490,6 +494,14 @@ UnitTestResult test_run_options(){
     options.CHECKS.set(StoryChecks::FAST);
     if (options.checks() != StoryChecks::FAST){
         return "Expected Fast checks once chosen.";
+    }
+    //  Every game language can be chosen, read or not.
+    if (options.language() != Language::English){
+        return "Expected English by default.";
+    }
+    options.LANGUAGE.set(Language::Japanese);
+    if (options.language() != Language::Japanese || !options.check_validity().empty()){
+        return "Expected Japanese to be chosen and valid, reader or not.";
     }
     return true;
 }
