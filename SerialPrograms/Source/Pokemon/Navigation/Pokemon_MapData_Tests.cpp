@@ -194,6 +194,32 @@ private:
     std::function<UnitTestResult()> m_body;
 };
 
+//  The maps in TestMaps/, read back from the program: the small one, and one
+//  longer than a string literal may be, which the build splits.
+UnitTestResult test_built_in_maps(){
+    const std::vector<std::pair<std::string, std::string>>& files = navigation_test_map_json();
+    if (files.size() != 2 || files[0].first != "BigField" || files[1].first != "Cave"){
+        return "Expected BigField and Cave, sorted by name.";
+    }
+    const MapData big = parse_map(parse_json(files[0].second), "BigField.json");
+    if (files[0].second.size() <= 16000 || big.tiles.width != 130 || big.tiles.height != 130){
+        return "Expected BigField's 130x130 tiles, over 16000 bytes of text.";
+    }
+    for (int y = 0; y < 130; y++){
+        for (int x = 0; x < 130; x++){
+            const bool border = x == 0 || y == 0 || x == 129 || y == 129;
+            if (big.tiles.at(TilePos{x, y}) != (border ? TileKind::WALL : TileKind::OPEN)){
+                return "BigField's tile (" + std::to_string(x) + ", " + std::to_string(y) + ") is wrong.";
+            }
+        }
+    }
+    const MapData cave = parse_map(parse_json(files[1].second), "Cave.json");
+    if (cave.tiles.width != 3 || cave.tiles.height != 1){
+        return "Expected Cave's 3x1 tiles.";
+    }
+    return true;
+}
+
 }
 
 
@@ -202,6 +228,7 @@ void add_tests_MapData(UnitTestDatabase& database){
     database.add<Test_MapData>("lists may be left out", test_lists_may_be_left_out);
     database.add<Test_MapData>("glyphs round-trip", test_glyphs_round_trip);
     database.add<Test_MapData>("each error class", test_each_error_class);
+    database.add<Test_MapData>("maps built into the program", test_built_in_maps);
 }
 
 
