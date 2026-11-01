@@ -83,10 +83,15 @@ enum class RouteCost{
     //  the player is can only be estimated. A leg that ends at a wall is
     //  walked again instead.
     OPEN_STOP,
+    //  Extra again when that leg crosses tall grass or water, where a wild
+    //  battle is likely to stop it: the walker can't tell where it did
+    //  (console B, 2026-11-01, Route 1, four runs).
+    OPEN_WILD_STOP,
 };
 using RouteCosts = std::map<RouteCost, int>;
 
-//  TILE 1, TURN 2, WARP 30, SURF 40, GRASS_TILE 20, OPEN_STOP 8.
+//  TILE 1, TURN 2, WARP 30, SURF 40, GRASS_TILE 20, OPEN_STOP 8,
+//  OPEN_WILD_STOP 300.
 const RouteCosts& default_route_costs();
 
 //  `costs`'s cost for `kind`, or the default if it has none.

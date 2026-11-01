@@ -54,6 +54,7 @@ const RouteCosts& default_route_costs(){
         {RouteCost::SURF, 40},
         {RouteCost::GRASS_TILE, 20},
         {RouteCost::OPEN_STOP, 8},
+        {RouteCost::OPEN_WILD_STOP, 300},
     };
     return COSTS;
 }
@@ -225,12 +226,14 @@ bool stops_at(const std::vector<MapData>& maps, const Located& player, Direction
     if (tile_at(map, ahead) == Tile::SIGN && (direction == Direction::NORTH || direction == Direction::SOUTH)){
         return false;
     }
-    //  Held into a ledge the way it faces, the player hops down it. The maps
-    //  don't keep which way a ledge faces, so none is held into (console B,
-    //  2026-11-01, Viridian City: "south 2 (to wall)" from the Pokemon
-    //  Center hopped the ledge two rows down).
+    //  Held into a ledge the way it faces, the player hops down it (console
+    //  B, 2026-11-01, Viridian City: "south 2 (to wall)" from the Pokemon
+    //  Center hopped the ledge two rows down). The maps don't keep which way
+    //  a ledge faces, but none faces north (pokefirered has no
+    //  MB_JUMP_NORTH on any map loaded here), so it stops a player moving
+    //  north.
     if (is_ledge(map, ahead)){
-        return false;
+        return direction == Direction::NORTH;
     }
     if (in_bounds(map, ahead)){
         return object_at(map, ahead) == nullptr;
@@ -278,6 +281,10 @@ public:
         }
         if (is_tall_grass(m_maps[step.next.map], step.next.state.position)){
             step.extra_cost += route_cost(m_costs, RouteCost::GRASS_TILE);
+            step.wild = true;
+        }
+        if (step.next.state.surfing){
+            step.wild = true;
         }
         return step;
     }
@@ -297,6 +304,7 @@ Pokemon::LegCosts to_leg_costs(const RouteCosts& costs){
     leg_costs.per_tile = route_cost(costs, RouteCost::TILE);
     leg_costs.per_turn = route_cost(costs, RouteCost::TURN);
     leg_costs.per_open_stop = route_cost(costs, RouteCost::OPEN_STOP);
+    leg_costs.per_open_wild_stop = route_cost(costs, RouteCost::OPEN_WILD_STOP);
     return leg_costs;
 }
 
@@ -321,15 +329,8 @@ RouteStep to_route_step(const std::vector<MapData>& maps, const Pokemon::Leg<Loc
     step.facing_after = leg.facing_after;
     step.end = MapPosition{maps[leg.end.map].name, leg.end.state.position};
     if (leg.kind != Pokemon::LegKind::FACE){
-        //  Every tile the step enters on its start map: a step through a
-        //  warp or off the map's edge leaves the map after its last tile.
-        const MapData& map = maps[leg.start.map];
-        step.wild = leg.start.state.surfing || leg.kind == Pokemon::LegKind::ACTION;
-        TilePos at = leg.start.state.position;
-        for (int i = 0; i < leg.tiles && !step.wild; i++){
-            at = at.next(leg.direction);
-            step.wild = is_tall_grass(map, at) || is_water(map, at);
-        }
+        //  Through tall grass, on any map the leg crosses, or on the water.
+        step.wild = leg.wild || leg.start.state.surfing || leg.kind == Pokemon::LegKind::ACTION;
     }
     return step;
 }
