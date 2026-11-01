@@ -2,6 +2,8 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
+ *  BattleDialogWatcher adapted from PokemonAutomation/Arduino-Source#1717 by
+ *  Developer-Butters.
  */
 
 #include <algorithm>
