@@ -24,19 +24,19 @@
 #define PokemonAutomation_Pokemon_StoryEvents_H
 
 #include <cstddef>
+#include <memory>
 #include <optional>
 #include <set>
 #include <string>
 #include <vector>
 #include "Common/Cpp/MoveOnlyFunction.h"
-#include "Pokemon_Grid.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
 
 
 //  How much of the pose is known. COLUMN and ROW pin one axis (a wall, a
-//  door); SET means one of `tiles`.
+//  door); SET means one of the positions the pose holds.
 enum class PoseCertainty{
     TILE,
     COLUMN,
@@ -49,14 +49,25 @@ const char* certainty_name(PoseCertainty certainty);
 //  Whether a pose known to `have` is good enough for an event that needs `need`.
 bool certainty_covers(PoseCertainty have, PoseCertainty need);
 
+//  Where on a map the player is, in the game's own terms: tiles and a
+//  facing in a 2D game (Pokemon_TilePose.h), a map point or a fly point in
+//  an open-world one. The engine only carries and prints it; the game's
+//  actions read it back.
+struct Position{
+    virtual ~Position() = default;
+    //  The text after the map in a log line, e.g. "(10, 20) facing north".
+    virtual std::string describe() const = 0;
+};
+
 //  Where the player is believed to be. The screen is read; the pose is
 //  tracked, and only an anchor (a wall, a door, an NPC who answered) makes
-//  it certain.
+//  it certain. `where` is null until the game learns a position and after
+//  the pose is lost; it is shared because poses are copied (an event's
+//  learned pose into the run) and never changed in place.
 struct Pose{
     std::string map;
-    std::vector<TilePos> tiles;
-    std::optional<Direction> facing;
     PoseCertainty certainty = PoseCertainty::UNKNOWN;
+    std::shared_ptr<const Position> where;
 };
 std::string to_string(const Pose& pose);
 
@@ -134,7 +145,7 @@ struct Event{
 
 enum class InterruptPose{
     UNCHANGED,  //  Cleared where we stood (a talk-only trainer).
-    INEXACT,    //  Moved an unknown part of a leg: one of the tiles we had.
+    WITHIN_SET, //  Moved an unknown part of a leg: still within the position we had, no longer exactly where.
     LOST,       //  Anywhere.
 };
 enum class ResumePolicy{

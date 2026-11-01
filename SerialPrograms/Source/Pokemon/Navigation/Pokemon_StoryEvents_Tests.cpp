@@ -8,12 +8,15 @@
  */
 
 #include <algorithm>
+#include <format>
 #include <functional>
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "Pokemon_StoryEvents.h"
+#include "Pokemon_TilePose.h"
 #include "Pokemon_Navigation_Tests.h"
 
 namespace PokemonAutomation{
@@ -276,7 +279,7 @@ Interrupt wild_battle(World& world, ResumePolicy resume){
         world.battle_showing = false;
         return outcome_ok();
     };
-    interrupt.pose = InterruptPose::INEXACT;
+    interrupt.pose = InterruptPose::WITHIN_SET;
     interrupt.resume = resume;
     return interrupt;
 }
@@ -297,8 +300,8 @@ Event walk_through_grass(World& world){
     event.expect.push_back(condition("on Route 201", [&world](RunState&){ return world.map == "Route 201"; }));
     Pose corner;
     corner.map = "Route 201";
-    corner.tiles = {TilePos{42, 3}};
     corner.certainty = PoseCertainty::TILE;
+    corner.where = std::make_shared<const TilePose>(std::vector<TilePos>{TilePos{42, 3}});
     event.pose_learned = corner;
     event.recoveries.push_back(recovery("require_failed", RecoveryKind::REANCHOR, 1, [&world](RunState& state){
         world.trace.push_back("anchor");
@@ -308,11 +311,11 @@ Event walk_through_grass(World& world){
     return event;
 }
 
-RunState at_catch_spot(){
+RunState at_catch_spot(std::optional<Direction> facing = std::nullopt){
     RunState state;
     state.pose.map = "Route 202";
-    state.pose.tiles = {TilePos{10, 20}};
     state.pose.certainty = PoseCertainty::TILE;
+    state.pose.where = std::make_shared<const TilePose>(std::vector<TilePos>{TilePos{10, 20}}, facing);
     return state;
 }
 
@@ -334,7 +337,7 @@ UnitTestResult test_interrupt_mid_event(){
     if (!lines.has("[Event] 00.04/1 walk_to_corner: interrupt: wild_battle")){
         return "Expected the interrupt logged:" + lines.all();
     }
-    if (state.pose.map != "Route 201" || state.pose.tiles.size() != 1 || state.pose.tiles[0] != TilePos{42, 3}){
+    if (state.pose.map != "Route 201" || tiles_of(state.pose) != std::vector<TilePos>{TilePos{42, 3}}){
         return "Expected the learned pose: " + to_string(state.pose);
     }
     return true;
@@ -476,14 +479,75 @@ UnitTestResult test_pose_certainty(){
     ){
         return "Wrong certainty order.";
     }
-    RunState state = at_catch_spot();
-    state.pose.facing = Direction::NORTH;
+    RunState state = at_catch_spot(Direction::NORTH);
     if (to_string(state.pose) != "Route 202 (10, 20) facing north (tile)"){
         return "Unexpected pose text: " + to_string(state.pose);
     }
     Condition known = pose_known("Route 201", PoseCertainty::SET);
     if (known.check(state)){
         return "The pose is on another map.";
+    }
+    return true;
+}
+
+//  A game without tiles: a point on its map, as Scarlet/Violet would give.
+struct PointPose : public Position{
+    int x = 0;
+    int y = 0;
+
+    PointPose(int x, int y) : x(x), y(y){}
+    virtual std::string describe() const override{
+        return std::format("({}, {})", x, y);
+    }
+};
+
+Pose at_point(std::string map, int x, int y){
+    Pose pose;
+    pose.map = std::move(map);
+    pose.certainty = PoseCertainty::TILE;
+    pose.where = std::make_shared<const PointPose>(x, y);
+    return pose;
+}
+
+//  The engine carries whatever position the game gives it: a battle leaves
+//  it within the set, a lost pose drops it, a learned pose replaces it.
+UnitTestResult test_position_is_the_games(){
+    World world;
+    world.walk_failures = 1;
+    Checkpoint checkpoint = make_checkpoint();
+    checkpoint.interrupts.push_back(wild_battle(world, ResumePolicy::RETRY_EVENT));
+    Event ride = make_event("ride_to_mesagoza", [&world](RunState&){
+        world.trace.push_back("ride");
+        if (world.walk_failures > 0){
+            world.walk_failures--;
+            world.battle_showing = true;
+            return outcome_failed("walk_stopped");
+        }
+        return outcome_ok();
+    });
+    ride.require.push_back(pose_known("South Province", PoseCertainty::SET));
+    ride.pose_learned = at_point("Mesagoza", 7, 8);
+    checkpoint.events.push_back(std::move(ride));
+    RunState state;
+    state.pose = at_point("South Province", 3, 4);
+    Lines lines;
+    EventLogger log = lines.logger();
+    const CheckpointReport report = run_checkpoint(state, checkpoint, log);
+    if (!report.completed || world.trace != std::vector<std::string>{"ride", "flee", "ride"}){
+        return "Expected the ride retried after the battle:" + lines.all();
+    }
+    if (to_string(state.pose) != "Mesagoza (7, 8) (tile)"){
+        return "Expected the learned point: " + to_string(state.pose);
+    }
+    Interrupt lost = wild_battle(world, ResumePolicy::RETRY_EVENT);
+    lost.pose = InterruptPose::LOST;
+    checkpoint.interrupts[0] = std::move(lost);
+    world.walk_failures = 1;
+    checkpoint.events[0].pose_learned.reset();
+    checkpoint.events[0].require.clear();
+    run_checkpoint(state, checkpoint, log);
+    if (state.pose.where || to_string(state.pose) != "Mesagoza (unknown)"){
+        return "Expected the lost pose to drop its position: " + to_string(state.pose);
     }
     return true;
 }
@@ -541,6 +605,7 @@ void add_tests_StoryEvents(UnitTestDatabase& database){
     database.add<Test_StoryEvents>("resume after a reload", test_resume_after_reload);
     database.add<Test_StoryEvents>("start, end and save", test_start_end_and_save);
     database.add<Test_StoryEvents>("pose certainty", test_pose_certainty);
+    database.add<Test_StoryEvents>("the position is the game's", test_position_is_the_games);
     database.add<Test_StoryEvents>("lint", test_lint);
 }
 

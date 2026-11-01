@@ -45,11 +45,11 @@ bool certainty_covers(PoseCertainty have, PoseCertainty need){
 
 std::string to_string(const Pose& pose){
     std::string text = pose.map.empty() ? "?" : pose.map;
-    for (const TilePos& tile : pose.tiles){
-        text += " " + to_string(tile);
-    }
-    if (pose.facing){
-        text += std::string(" facing ") + direction_name(*pose.facing);
+    if (pose.where){
+        const std::string where = pose.where->describe();
+        if (!where.empty()){
+            text += " " + where;
+        }
     }
     return text + " (" + certainty_name(pose.certainty) + ")";
 }
@@ -141,14 +141,13 @@ void apply_interrupt_pose(Pose& pose, InterruptPose effect){
     switch (effect){
     case InterruptPose::UNCHANGED:
         return;
-    case InterruptPose::INEXACT:
+    case InterruptPose::WITHIN_SET:
         if (pose.certainty != PoseCertainty::UNKNOWN){
             pose.certainty = PoseCertainty::SET;
         }
         return;
     case InterruptPose::LOST:
-        pose.tiles.clear();
-        pose.facing.reset();
+        pose.where.reset();
         pose.certainty = PoseCertainty::UNKNOWN;
         return;
     }
