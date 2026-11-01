@@ -138,6 +138,10 @@ StoryCheckpoint forest(){
     cp.steps.push_back(step_into("old_man_trigger", NORTH, "the old man's catching tutorial can't be walked around"));
     //  TutorialTriggerLeft turns the player right, to the old man.
     cp.steps.push_back(scene("old_man_tutorial", at(VIRIDIAN, 20, 8, EAST), "about 60 lines and his demo battle; TEACHY TV"));
+    //  After his demo the old man stands east of the player, beside (20, 8), where
+    //  the map doesn't have him: "east 2" from there didn't move, and the walk north
+    //  ended under Route 2's ledge in column 8 (console B, 2026-11-01). Go north first.
+    cp.steps.push_back(route("past_old_man", at(VIRIDIAN, 20, 5, NORTH), "north along column 20, clear of the old man"));
     cp.steps.push_back(route("forest_entrance", at(FOREST, 29, 61), "Route 2, running from wild battles"));
     //  The forest legs walked by hand; wild battles are fought for EXP.
     cp.steps.push_back(route("forest_west", at(FOREST, 13, 46), "west side of the forest", true));
