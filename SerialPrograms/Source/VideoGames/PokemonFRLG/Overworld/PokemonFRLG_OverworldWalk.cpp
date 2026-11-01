@@ -12,6 +12,7 @@
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "VideoGames/PokemonFRLG/Inference/Dialogs/PokemonFRLG_BattleDialogs.h"
 #include "VideoGames/PokemonFRLG/Inference/Dialogs/PokemonFRLG_DialogDetector.h"
+#include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_StartMenuDetector.h"
 #include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleFlashWatcher.h"
 #include "VideoGames/PokemonFRLG/PokemonFRLG_Navigation.h"
 #include "PokemonFRLG_PlayerFacingReader.h"
@@ -51,6 +52,11 @@ constexpr Milliseconds AFTER_LEG_WATCH = 500ms;
 //  2026-11-01, Route 1). From that log the flash was seen roughly 600ms
 //  after its step landed.
 constexpr Milliseconds STEP_WINDOW = 900ms;
+//  After a route whose last leg can meet a wild battle. A battle can start on
+//  its last step, and one whose flash is missed is only seen by its "Wild
+//  <Pokemon> appeared!", about 2s on: the route had returned by then
+//  (console B, 2026-11-01, Viridian Forest, "west 11 (to wall)").
+constexpr Milliseconds AFTER_WILD_ROUTE_WATCH = 2500ms;
 constexpr size_t MAX_INTERRUPTIONS_PER_LEG = 5;
 
 
@@ -188,6 +194,33 @@ void wait_out_warp(ConsoleHandle& console, ProControllerContext& context, const 
     }
 }
 
+//  Fails unless the overworld is up. Under the START menu or a message the
+//  D-pad only moves a cursor, and legs to a wall seem to go fine: three
+//  "walked" that way in Viridian Forest without the player moving (console B,
+//  2026-11-01).
+void check_overworld(ConsoleHandle& console, ProControllerContext& context, const RouteStep& step){
+    context.wait_for_all_requests();
+    VideoSnapshot screen = console.video().snapshot();
+    if (!screen){
+        return;
+    }
+    const char* open = nullptr;
+    if (StartMenuDetector(COLOR_RED).detect(screen)){
+        open = "the START menu";
+    }else if (SelectionDialogDetector(COLOR_RED).detect(screen)){
+        open = "a menu";
+    }else if (WhiteDialogDetector(COLOR_RED).detect(screen)){
+        open = "a message";
+    }
+    if (open != nullptr){
+        OperationFailedExceptionWithScreenshot::fire(
+            ErrorReportMode::SEND_ERROR_REPORT,
+            std::string("walk_overworld_route(): ") + open + " is open, before: " + to_string(step),
+            console
+        );
+    }
+}
+
 void start_surf(ConsoleHandle& console, ProControllerContext& context, Direction direction, bool facing_water){
     //  "The water is a deep blue... Would you like to SURF?", with YES selected.
     //  An A pressed while the player is still turning is lost.
@@ -216,6 +249,35 @@ void start_surf(ConsoleHandle& console, ProControllerContext& context, Direction
         pbf_press_button(context, BUTTON_A, 160ms, 1000ms);
     }
     pbf_wait(context, SURF_ANIMATION);
+}
+
+//  One step of a route, for a player facing `facing`.
+void walk_step(
+    ConsoleHandle& console, ProControllerContext& context,
+    const RouteStep& step, std::optional<Direction> facing,
+    const OverworldInterruptSet& interrupts
+){
+    switch (step.action){
+    case RouteAction::WALK:
+        //  Turning first, with a tap, makes the hold start from a standstill
+        //  facing the right way: holding through a turn lost a tile on the
+        //  console, while holds from a standstill were exact over 15 tiles.
+        if (facing != step.direction){
+            pbf_press_dpad(context, dpad(step.direction), TURN_TAP, TURN_SETTLE);
+        }
+        Pokemon::walk_leg(console, context, DpadMover(), step.wild ? interrupts.wild : interrupts.other, leg_spec(step), MAX_INTERRUPTIONS_PER_LEG);
+        if (step.warps){
+            wait_out_warp(console, context, step);
+            pbf_wait(context, AFTER_WARP);
+        }
+        break;
+    case RouteAction::SURF:
+        start_surf(console, context, step.direction, facing == step.direction);
+        break;
+    case RouteAction::FACE:
+        pbf_press_dpad(context, dpad(step.direction), FACE_HOLD, STEP_RELEASE);
+        break;
+    }
 }
 
 }
@@ -288,34 +350,19 @@ void walk_overworld_route(
         }
         console.log(std::string("Route: the player faces ") + (facing ? Pokemon::direction_name(*facing) : "an unknown way") + ".");
     }
-    const DpadMover mover;
+    bool last_leg_wild = false;
     for (const RouteStep& step : route){
         console.log("Route: " + to_string(step));
-        switch (step.action){
-        case RouteAction::WALK:
-            //  Turning first, with a tap, makes the hold start from a standstill
-            //  facing the right way: holding through a turn lost a tile on the
-            //  console, while holds from a standstill were exact over 15 tiles.
-            if (facing != step.direction){
-                pbf_press_dpad(context, dpad(step.direction), TURN_TAP, TURN_SETTLE);
-            }
-            Pokemon::walk_leg(console, context, mover, step.wild ? interrupts.wild : interrupts.other, leg_spec(step), MAX_INTERRUPTIONS_PER_LEG);
-            if (step.warps){
-                wait_out_warp(console, context, step);
-                pbf_wait(context, AFTER_WARP);
-            }
-            break;
-        case RouteAction::SURF:
-            start_surf(console, context, step.direction, facing == step.direction);
-            break;
-        case RouteAction::FACE:
-            pbf_press_dpad(context, dpad(step.direction), FACE_HOLD, STEP_RELEASE);
-            break;
-        }
+        check_overworld(console, context, step);
+        walk_step(console, context, step, facing, interrupts);
         if (step.action != RouteAction::FACE){
             Pokemon::clear_late_interrupts(console, context, step.wild ? interrupts.wild : interrupts.other, AFTER_LEG_WATCH, MAX_INTERRUPTIONS_PER_LEG);
+            last_leg_wild = step.wild;
         }
         facing = step.facing_after;
+    }
+    if (last_leg_wild){
+        Pokemon::clear_late_interrupts(console, context, interrupts.wild, AFTER_WILD_ROUTE_WATCH, MAX_INTERRUPTIONS_PER_LEG);
     }
     context.wait_for_all_requests();
 }

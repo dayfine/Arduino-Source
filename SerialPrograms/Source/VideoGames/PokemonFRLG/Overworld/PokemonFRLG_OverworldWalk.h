@@ -63,8 +63,9 @@ void use_max_repel_from_bag(ConsoleHandle& console, ProControllerContext& contex
 //  Walks `route` from where it was planned. The player must be standing still
 //  on the overworld, not running and not on the bike. `facing` is the way the
 //  player faces at the start; if not given, it is read from the screen. Throws OperationFailedException if a
-//  warp's fade or the Surf prompt doesn't show, or a leg is interrupted too
-//  many times.
+//  menu or message is open before a step, a warp's fade or the Surf prompt
+//  doesn't show, or a leg is interrupted too many times. A wild battle that
+//  starts as the last leg ends is cleared before it returns.
 void walk_overworld_route(
     ConsoleHandle& console, ProControllerContext& context,
     const std::vector<RouteStep>& route,
