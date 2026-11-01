@@ -1,0 +1,162 @@
+/*  Lab Channel
+ *
+ *  From: https://github.com/PokemonAutomation/
+ *
+ *  Lets scripts drive a running SerialPrograms app through files, so a lab
+ *  can select a program, set its options, start and stop it, and press
+ *  buttons or check detectors on the console without clicking the window.
+ *  Only active when the folder "<user files>/Lab/" exists, so normal users
+ *  see no change. Lab.md in this folder documents the commands and files.
+ *
+ *  A request is a file "Lab/inbox/<name>.txt", one command per line, run in
+ *  order from a worker thread and then moved to "Lab/done/". Its journal
+ *  "Lab/outbox/<name>.out" has one line per command and ends with "end".
+ *  "Lab/state" is rewritten after every request and whenever the program
+ *  state changes.
+ *
+ *  The channel owns the worker and the files. Anything that touches the
+ *  window (select, start, stop, set) runs on the UI thread through the
+ *  LabChannelCallbacks the window gives it; console commands run on the
+ *  worker through the LabConsoleCommands of the console type
+ *  (NintendoSwitch_LabCommands.h).
+ *
+ */
+
+#ifndef PokemonAutomation_LabChannel_H
+#define PokemonAutomation_LabChannel_H
+
+#include <atomic>
+#include <functional>
+#include <memory>
+#include <ostream>
+#include <string>
+#include <vector>
+#include "Common/Cpp/CancellableScope.h"
+#include "Common/Cpp/Concurrency/AsyncTask.h"
+#include "Common/Cpp/Concurrency/Mutex.h"
+#include "Common/Cpp/Concurrency/ConditionVariable.h"
+#include "CommonFramework/Globals.h"
+#include "CommonFramework/Panels/PanelSession.h"
+#include "LabRequest.h"
+
+namespace PokemonAutomation{
+
+
+std::string program_state_name(ProgramState state);
+
+
+//  The window, as the channel sees it. Both are called on the UI thread only.
+struct LabChannelCallbacks{
+    //  The panel the window shows, or nullptr.
+    std::function<PanelSession*()> current_panel;
+
+    //  Shows the program with this identifier ("<game>:<program>"), as
+    //  clicking it in the program list does. Returns an error message, or "".
+    std::function<std::string(const std::string& identifier)> select_program;
+};
+
+
+//  Where a console command writes: its text goes to the journal, its files
+//  to the outbox, named "<request>_<label>".
+struct LabCommandOutput{
+    std::ostream& out;
+    std::string outbox;     //  Ends in '/'.
+    std::string request;
+    size_t line = 0;        //  The command's line in the request.
+};
+
+//  The console commands of one console type: presses, screenshots,
+//  detectors. Called on the worker thread.
+class LabConsoleCommands{
+public:
+    enum class Kind{
+        UNKNOWN,
+        READS_STREAM,       //  Screenshots and detectors: allowed while a program runs.
+        DRIVES_CONSOLE,     //  Presses: only while no program runs, and only for the owner.
+    };
+
+    virtual ~LabConsoleCommands() = default;
+    virtual Kind kind(const std::string& command) const = 0;
+
+    //  Runs one command line for the console of `panel`, a stopped program.
+    //  Throws (e.g. ParseException, OperationFailedException) to fail the line.
+    virtual void run(
+        PanelSession& panel, CancellableScope& scope,
+        const std::vector<std::string>& words, LabCommandOutput& output
+    ) = 0;
+
+    //  The press that keeps the console awake ("keepawake on").
+    virtual void keep_awake(PanelSession& panel, CancellableScope& scope) = 0;
+
+    //  The lines "help" prints for these commands.
+    virtual void help(std::ostream& out) = 0;
+};
+
+
+class LabChannel{
+public:
+    //  The channel, if "<user files>/Lab/" exists when the app starts;
+    //  nullptr otherwise, and nothing runs. Create the folder before
+    //  launching the app.
+    static std::unique_ptr<LabChannel> start_if_enabled(
+        LabChannelCallbacks callbacks, std::unique_ptr<LabConsoleCommands> console
+    );
+
+    //  Stops the worker and waits for it.
+    ~LabChannel();
+
+    //  The panel the window shows now, or nullptr. Call from the UI thread
+    //  whenever it changes, before the old panel is destroyed: a console
+    //  command running on the old panel is cancelled and finished first.
+    void set_panel(PanelSession* panel);
+
+
+private:
+    LabChannel(LabChannelCallbacks callbacks, std::unique_ptr<LabConsoleCommands> console);
+
+    static const std::string& folder();
+
+    void run();
+    void poll();
+    void handle_request(const Filesystem::Path& file);
+    std::string run_line(const LabRequest& request, const LabRequestLine& line, LabCommandOutput& output);
+    std::string run_console_command(const std::vector<std::string>& words, LabCommandOutput& output);
+    std::string run_on_console(const std::function<void(PanelSession& panel, CancellableScope& scope)>& body);
+    std::string run_ui_command(const LabRequestLine& line, std::ostream& out);
+    std::string run_on_ui(const std::function<std::string()>& body);
+    void keep_awake();
+    void write_state();
+
+    //  The state of the selected program. Call under m_panel_lock.
+    void read_program_state(std::string& state, std::string& program, bool& running) const;
+
+
+private:
+    LabChannelCallbacks m_callbacks;
+    std::unique_ptr<LabConsoleCommands> m_console;
+
+    //  The selected panel, read on the worker under this lock. The UI thread
+    //  changes it with set_panel(), which first cancels m_active_scope.
+    Mutex m_panel_lock;
+    PanelSession* m_panel = nullptr;
+    Mutex m_scope_lock;
+    CancellableScope* m_active_scope = nullptr;
+    bool m_panel_changing = false;
+
+    //  Owned by the worker thread.
+    LabOwner m_owner;
+    KeepAwakeSchedule m_keep_awake;
+    LabState m_state;
+    std::string m_written_state;
+    bool m_folder_ready = false;
+
+    Mutex m_idle_lock;
+    ConditionVariable m_idle_cv;
+    std::atomic<bool> m_stopping{false};
+    AsyncTask m_worker;     //  Waited for in the destructor, before the members above go.
+};
+
+
+
+}
+#endif

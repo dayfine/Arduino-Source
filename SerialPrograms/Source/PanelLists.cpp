@@ -151,6 +151,23 @@ void ProgramSelect::load_persistent_panel(){
     }
 }
 
+std::string ProgramSelect::select_program(const std::string& identifier){
+    for (size_t c = 0; c < m_lists.size(); c++){
+        for (const PanelEntry& entry : m_lists[c]->panels()){
+            if (entry.descriptor == nullptr || entry.descriptor->identifier() != identifier){
+                continue;
+            }
+            if (m_locked){
+                return "A program is running.";
+            }
+            change_list((int)c);
+            m_active_list->set_panel(entry.display_name);
+            return "";
+        }
+    }
+    return "No program with identifier \"" + identifier + "\".";
+}
+
 void ProgramSelect::change_list(int index){
     if (m_active_index == index && m_active_list != nullptr){
         return;

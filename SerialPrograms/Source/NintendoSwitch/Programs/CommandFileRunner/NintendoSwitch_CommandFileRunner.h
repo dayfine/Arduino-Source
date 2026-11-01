@@ -2,30 +2,29 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  A developer tool that drives the console from plain-text command files, so
- *  a question like "does this detector fire on that screen?" can be answered
- *  in seconds on live video instead of with a rebuild and a full program run.
+ *  The console commands of the lab channel (CommonFramework/Windows/Lab.md):
+ *  press buttons, take screenshots, check detectors on the live console, so
+ *  a question like "does this detector fire on that screen?" is answered in
+ *  seconds instead of with a rebuild and a full program run.
  *
- *  Drop <name>.txt into <folder>/inbox. Files run one at a time in name order,
- *  one command per line ('#' starts a comment), and are moved to <folder>/done.
- *  Each file's results go to <folder>/outbox/<name>.out, which appears only
- *  once the file has finished (<name>.tmp shows progress until then):
+ *  The channel runs these for the selected program while it is stopped, from
+ *  requests in "<user files>/Lab/inbox". This file also holds the Command
+ *  File Runner, a program that runs the same command files from a folder of
+ *  its own while it runs, for batches that should keep going when the lab
+ *  channel is off.
+ *
+ *  A command file has one command per line ('#' starts a comment). Its
+ *  journal has one line per command:
  *
  *      ok <line> <command> @<start>-<end>ms    a command that succeeded
- *      error line <line> (<command>): <why>    the first failure; the file stops here
+ *      error <line> (<command>): <why>         the first failure; the file stops here
  *      end                                     always the last line
  *
  *  plus whatever the commands print, such as detector results and the paths
  *  of saved screenshots. A failure also saves a screenshot of the moment.
  *
- *  Example:
- *      press HOME
- *      expect home 3000
- *      shot home_menu
- *
- *  README.md in this folder documents every command. Games add their own
- *  commands and detectors with register_command_file_command() and
- *  register_command_file_detector().
+ *  Games add their own commands and detectors with
+ *  register_command_file_command() and register_command_file_detector().
  *
  */
 
@@ -49,10 +48,17 @@ namespace NintendoSwitch{
 
 //  What a command gets to work with.
 struct CommandFileSession{
-    SingleSwitchProgramEnvironment& env;
+    ConsoleHandle& console;
     ProControllerContext& context;
-    std::ostream& out;      //  Text printed here goes into the .out file.
+    std::ostream& out;      //  Text printed here goes into the journal.
     std::string outbox;     //  Folder for files a command saves, ending in '/'.
+    std::string name;       //  The command file's name: saved files start with it.
+
+    //  Whether a frame is taken only after the controller's queue has run
+    //  dry, so a screenshot shows the state after the presses before it.
+    //  False for a command that only reads the screen while a program drives
+    //  the controller: it must not wait for the program's presses.
+    bool sync_controller = true;
 };
 
 //  A command. `words` is its line split on spaces; words[0] is the command name.
@@ -62,9 +68,29 @@ using CommandFileCommand = std::function<void(CommandFileSession& session, const
 //  A screen detector, by name, for "detect", "wait_for", "expect" and "state".
 using CommandFileDetectorFactory = std::function<std::unique_ptr<StaticScreenDetector>(ConsoleHandle& console)>;
 
-//  `usage` is the line "help" prints, e.g. "walk DIR steps".
+//  `usage` is the line "help" prints, e.g. "walk DIR steps". A registered
+//  command counts as driving the console: the lab channel runs it only while
+//  no program runs.
 void register_command_file_command(const std::string& name, const std::string& usage, CommandFileCommand command);
 void register_command_file_detector(const std::string& name, CommandFileDetectorFactory factory);
+
+
+enum class CommandFileCommandKind{
+    UNKNOWN,
+    READS_STREAM,       //  Screenshots and detectors.
+    DRIVES_CONSOLE,     //  Presses and waits.
+};
+CommandFileCommandKind command_file_command_kind(const std::string& name);
+
+//  Runs one command line. Returns false for "stop". Throws to fail the line.
+bool run_command_file_line(CommandFileSession& session, const std::vector<std::string>& words);
+
+//  Saves the current frame as <outbox>/<name>_<label>.png and returns its
+//  path, or "(no video frame)".
+std::string save_command_file_screenshot(CommandFileSession& session, const std::string& label);
+
+//  The lines "help" prints: every command and detector.
+void print_command_file_help(std::ostream& out);
 
 
 

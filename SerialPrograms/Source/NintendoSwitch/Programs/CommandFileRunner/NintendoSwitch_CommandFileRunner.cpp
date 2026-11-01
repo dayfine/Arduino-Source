@@ -5,6 +5,7 @@
  */
 
 #include <algorithm>
+#include <format>
 #include <map>
 #include <optional>
 #include <sstream>
@@ -17,6 +18,7 @@
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
+#include "CommonFramework/Windows/LabRequest.h"
 #include "CommonTools/VisualDetectors/BlackScreenDetector.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "NintendoSwitch/Inference/NintendoSwitch_HomeMenuDetector.h"
@@ -44,11 +46,20 @@ constexpr Milliseconds SHOTS_INTERVAL = 500ms;
 constexpr Milliseconds WAIT_FOR_TIMEOUT = 5000ms;
 
 //  "walk": the stick is held in slices this long, and the frames between
-//  slices are compared (RMSD at 192x108). Two slices in a row under the
-//  threshold count as standing still against something.
+//  slices are compared. Two slices in a row under the threshold count as
+//  standing still against something.
 constexpr Milliseconds WALK_SLICE = 200ms;
 constexpr Milliseconds WALK_LIMIT = 5000ms;
 constexpr double WALK_STILL_RMSD = 10;
+
+//  "walk" and "taps" compare frames scaled to this size, so the change
+//  measures movement rather than noise.
+constexpr size_t CHANGE_WIDTH = 192;
+constexpr size_t CHANGE_HEIGHT = 108;
+
+//  "taps": two taps in a row that don't move the screen mean a wall, unless
+//  the line says "all".
+constexpr int TAPS_STILL_LIMIT = 2;
 
 //  How often "wait_for" and "expect" check a new frame.
 constexpr Milliseconds DETECTOR_POLL_INTERVAL = 100ms;
@@ -100,6 +111,12 @@ std::optional<CommandFileCommand> find_registered_command(const std::string& nam
     return iter->second.second;
 }
 
+double screen_change(const VideoSnapshot& before, const VideoSnapshot& after){
+    return ImageMatch::pixel_RMSD(
+        before.frame->scale_to(CHANGE_WIDTH, CHANGE_HEIGHT), after.frame->scale_to(CHANGE_WIDTH, CHANGE_HEIGHT)
+    );
+}
+
 }
 
 
@@ -122,9 +139,8 @@ namespace{
 //  Runs the lines of one command file.
 class LineRunner{
 public:
-    LineRunner(CommandFileSession& session, std::string name)
+    LineRunner(CommandFileSession& session)
         : m_session(session)
-        , m_name(std::move(name))
     {}
 
     //  Runs one line. Returns false for "stop". Throws to fail the line.
@@ -151,43 +167,76 @@ public:
         if (!screen){
             return "(no video frame)";
         }
-        const std::string path = m_session.outbox + m_name + "_" + label + ".png";
+        const std::string path = m_session.outbox + m_session.name + "_" + label + ".png";
         screen.frame->save(path);
         return path;
+    }
+
+    static CommandFileCommandKind kind(const std::string& name){
+        auto iter = builtins().find(name);
+        if (iter != builtins().end()){
+            return iter->second.kind;
+        }
+        if (find_registered_command(name)){
+            return CommandFileCommandKind::DRIVES_CONSOLE;
+        }
+        return CommandFileCommandKind::UNKNOWN;
+    }
+
+    static void print_help(std::ostream& out){
+        out << "commands:\n  stop\n";
+        for (const auto& item : builtins()){
+            out << "  " << item.second.usage << "\n";
+        }
+        Registry& r = registry();
+        LockGuard<Mutex> lg(r.lock);
+        for (const auto& item : r.commands){
+            out << "  " << item.second.first << "\n";
+        }
+        out << "detectors:";
+        for (const auto& item : r.detectors){
+            out << " " << item.first;
+        }
+        out << "\n";
     }
 
 private:
     using Handler = void (LineRunner::*)(const std::vector<std::string>&);
     struct Builtin{
         std::string usage;
+        CommandFileCommandKind kind;
         Handler handler;
     };
     static const std::map<std::string, Builtin>& builtins(){
+        using enum CommandFileCommandKind;
         static const std::map<std::string, Builtin> BUILTINS{
-            {"press",       {"press BTN[+BTN] [hold_ms] [release_ms]", &LineRunner::press}},
-            {"dpad",        {"dpad UP|DOWN|LEFT|RIGHT [hold_ms] [release_ms]", &LineRunner::dpad}},
-            {"stick",       {"stick L|R x y [hold_ms] [release_ms]   (x, y from -1 to 1)", &LineRunner::stick}},
-            {"wait",        {"wait ms", &LineRunner::wait}},
-            {"walk",        {"walk x y [max_ms] [still_rmsd]   (left stick until the screen holds still)", &LineRunner::walk}},
-            {"shot",        {"shot label", &LineRunner::shot}},
-            {"shots",       {"shots label count [interval_ms]", &LineRunner::shots}},
-            {"history",     {"history label   (save the console's recent video, if Stream History is on)", &LineRunner::history}},
-            {"detect",      {"detect detector [image]   (image: a path, or a file in the outbox)", &LineRunner::detect}},
-            {"wait_for",    {"wait_for detector [timeout_ms]   (reports a timeout)", &LineRunner::wait_for}},
-            {"expect",      {"expect detector [timeout_ms]   (fails on a timeout)", &LineRunner::wait_for}},
-            {"state",       {"state [image]   (every detector that fires)", &LineRunner::state}},
-            {"close_game",  {"close_game   (from anywhere to Home with the game closed)", &LineRunner::close_game}},
-            {"help",        {"help", &LineRunner::help}},
+            {"press",       {"press BTN[+BTN] [hold_ms] [release_ms]", DRIVES_CONSOLE, &LineRunner::press}},
+            {"dpad",        {"dpad UP|DOWN|LEFT|RIGHT [hold_ms] [release_ms]", DRIVES_CONSOLE, &LineRunner::dpad}},
+            {"taps",        {"taps DIR N [all] [hold_ms] [release_ms] [still_rmsd]   (D-pad taps, each reported moved or still)", DRIVES_CONSOLE, &LineRunner::taps}},
+            {"stick",       {"stick L|R x y [hold_ms] [release_ms]   (x, y from -1 to 1)", DRIVES_CONSOLE, &LineRunner::stick}},
+            {"wait",        {"wait ms", DRIVES_CONSOLE, &LineRunner::wait}},
+            {"walk",        {"walk x y [max_ms] [still_rmsd]   (left stick until the screen holds still)", DRIVES_CONSOLE, &LineRunner::walk}},
+            {"shot",        {"shot label", READS_STREAM, &LineRunner::shot}},
+            {"shots",       {"shots label count [interval_ms]", READS_STREAM, &LineRunner::shots}},
+            {"history",     {"history label   (save the console's recent video, if Stream History is on)", READS_STREAM, &LineRunner::history}},
+            {"detect",      {"detect detector [image]   (image: a path, or a file in the outbox)", READS_STREAM, &LineRunner::detect}},
+            {"wait_for",    {"wait_for detector [timeout_ms]   (reports a timeout)", READS_STREAM, &LineRunner::wait_for}},
+            {"expect",      {"expect detector [timeout_ms]   (fails on a timeout)", READS_STREAM, &LineRunner::wait_for}},
+            {"state",       {"state [image]   (every detector that fires)", READS_STREAM, &LineRunner::state}},
+            {"close_game",  {"close_game   (from anywhere to Home with the game closed)", DRIVES_CONSOLE, &LineRunner::close_game}},
+            {"help",        {"help", READS_STREAM, &LineRunner::help}},
         };
         return BUILTINS;
     }
 
     ProControllerContext& context(){ return m_session.context; }
-    ConsoleHandle& console(){ return m_session.env.console; }
+    ConsoleHandle& console(){ return m_session.console; }
     std::ostream& out(){ return m_session.out; }
 
     VideoSnapshot current_frame(){
-        context().wait_for_all_requests();
+        if (m_session.sync_controller){
+            context().wait_for_all_requests();
+        }
         return console().video().snapshot();
     }
 
@@ -211,6 +260,43 @@ private:
             context(), parse_dpad(required_arg(words, 1)),
             optional_duration(words, 2, DPAD_HOLD), optional_duration(words, 3, DPAD_RELEASE)
         );
+    }
+    //  Taps the D-pad N times and reports, for each tap, whether the screen
+    //  changed more than `still` between the frame before and after it: a step
+    //  moves the screen, a bump into a wall doesn't. Stops after two still
+    //  taps in a row unless the line says "all". A tap toward a new direction
+    //  turns and steps, so every tap is a step unless something blocks it.
+    void taps(const std::vector<std::string>& words){
+        const TapsArguments args = parse_taps(words);
+        VideoSnapshot before = current_frame();
+        if (!before){
+            throw OperationFailedException(ErrorReportMode::NO_ERROR_REPORT, "taps: no video frame");
+        }
+        size_t moved = 0;
+        size_t tapped = 0;
+        int quiet = 0;
+        while (tapped < args.count && (args.all || quiet < TAPS_STILL_LIMIT)){
+            pbf_press_dpad(context(), args.direction, args.hold, args.release);
+            VideoSnapshot after = current_frame();
+            if (!after){
+                throw OperationFailedException(ErrorReportMode::NO_ERROR_REPORT, "taps: lost the video frame");
+            }
+            const double change = screen_change(before, after);
+            tapped++;
+            if (change < args.still){
+                quiet++;
+            }else{
+                quiet = 0;
+                moved++;
+            }
+            out() << "tap " << tapped << ": change " << (int)change << (change < args.still ? " still" : " moved") << "\n";
+            before = std::move(after);
+        }
+        out() << "moved " << moved << " of " << args.count;
+        if (tapped < args.count){
+            out() << ", stopped after " << tapped << " taps: " << TAPS_STILL_LIMIT << " still in a row";
+        }
+        out() << "\n";
     }
     void stick(const std::vector<std::string>& words){
         const std::string& side = required_arg(words, 1);
@@ -243,18 +329,16 @@ private:
         Milliseconds walked = 0ms;
         Milliseconds moving = 0ms;
         int quiet = 0;
-        std::ostringstream changes;
+        std::string changes;
         while (walked < limit && quiet < 2){
             pbf_move_left_joystick(context(), position, WALK_SLICE, 0ms);
             VideoSnapshot after = current_frame();
             if (!after){
                 break;
             }
-            const double change = ImageMatch::pixel_RMSD(
-                before.frame->scale_to(192, 108), after.frame->scale_to(192, 108)
-            );
+            const double change = screen_change(before, after);
             walked += WALK_SLICE;
-            changes << " " << (int)change;
+            changes += std::format(" {}", (int)change);
             if (change < still){
                 quiet++;
             }else{
@@ -265,7 +349,7 @@ private:
         }
         pbf_wait(context(), STICK_RELEASE);
         out() << "walk " << (quiet >= 2 ? "still" : "limit") << " after " << walked.count()
-            << "ms, moving " << moving.count() << "ms; changes" << changes.str() << "\n";
+            << "ms, moving " << moving.count() << "ms; changes" << changes << "\n";
     }
     void shot(const std::vector<std::string>& words){
         out() << "shot " << save_screenshot(required_arg(words, 1)) << "\n";
@@ -278,11 +362,11 @@ private:
             if (c > 0){
                 context().wait_for(interval);
             }
-            out() << "shot " << save_screenshot(label + "_" + std::to_string(c)) << "\n";
+            out() << "shot " << save_screenshot(std::format("{}_{}", label, c)) << "\n";
         }
     }
     void history(const std::vector<std::string>& words){
-        const std::string path = m_session.outbox + m_name + "_" + required_arg(words, 1) + ".mp4";
+        const std::string path = m_session.outbox + m_session.name + "_" + required_arg(words, 1) + ".mp4";
         if (!console().save_stream_history(path)){
             throw ParseException("history: no video saved (is Stream History on?)");
         }
@@ -305,7 +389,9 @@ private:
         const std::string& name = required_arg(words, 1);
         const Milliseconds timeout = optional_duration(words, 2, WAIT_FOR_TIMEOUT);
         std::unique_ptr<StaticScreenDetector> detector = make_detector(name, console());
-        context().wait_for_all_requests();
+        if (m_session.sync_controller){
+            context().wait_for_all_requests();
+        }
         const WallClock start = current_time();
         while (current_time() - start < timeout){
             VideoSnapshot screen = console().video().snapshot();
@@ -319,7 +405,7 @@ private:
         if (words[0] == "expect"){
             throw OperationFailedException(
                 ErrorReportMode::NO_ERROR_REPORT,
-                "expect " + name + ": not seen within " + std::to_string(timeout.count()) + "ms."
+                std::format("expect {}: not seen within {}ms.", name, timeout.count())
             );
         }
         out() << words[0] << " " << name << " timeout\n";
@@ -337,20 +423,7 @@ private:
         close_game_from_home(console(), context());
     }
     void help(const std::vector<std::string>&){
-        out() << "commands:\n  stop\n";
-        for (const auto& item : builtins()){
-            out() << "  " << item.second.usage << "\n";
-        }
-        Registry& r = registry();
-        LockGuard<Mutex> lg(r.lock);
-        for (const auto& item : r.commands){
-            out() << "  " << item.second.first << "\n";
-        }
-        out() << "detectors:";
-        for (const auto& item : r.detectors){
-            out() << " " << item.first;
-        }
-        out() << "\n";
+        print_help(out());
     }
 
     std::string detectors_firing(const ImageViewRGB32& screen){
@@ -366,10 +439,32 @@ private:
     }
 
     CommandFileSession& m_session;
-    std::string m_name;
 };
 
+}
 
+
+
+CommandFileCommandKind command_file_command_kind(const std::string& name){
+    return LineRunner::kind(name);
+}
+bool run_command_file_line(CommandFileSession& session, const std::vector<std::string>& words){
+    register_builtin_detectors();
+    LineRunner runner(session);
+    return runner.run(words);
+}
+std::string save_command_file_screenshot(CommandFileSession& session, const std::string& label){
+    LineRunner runner(session);
+    return runner.save_screenshot(label);
+}
+void print_command_file_help(std::ostream& out){
+    register_builtin_detectors();
+    LineRunner::print_help(out);
+}
+
+
+
+namespace{
 
 void write_file(const std::string& path, const std::string& text){
     FileIO file(Filesystem::Path(path), FileMode::WRITE);
@@ -385,7 +480,7 @@ enum class LineResult{
 };
 
 //  Runs one line and adds its "ok" or "error" result to `session.out`.
-LineResult run_line(LineRunner& runner, CommandFileSession& session, const std::string& text, size_t number, WallClock file_start){
+LineResult run_line(CommandFileSession& session, const std::string& text, size_t number, WallClock file_start){
     const std::vector<std::string> words = split_command_line(text);
     if (words.empty()){
         return LineResult::NEXT_LINE;
@@ -394,7 +489,7 @@ LineResult run_line(LineRunner& runner, CommandFileSession& session, const std::
     bool keep_going = true;
     std::string error;
     try{
-        keep_going = runner.run(words);
+        keep_going = run_command_file_line(session, words);
         session.context.wait_for_all_requests();
     }catch (ProgramCancelledException&){
         throw;
@@ -406,13 +501,15 @@ LineResult run_line(LineRunner& runner, CommandFileSession& session, const std::
         error = e.what();
     }
     if (!error.empty()){
-        session.out << "error line " << number << " (" << text << "): " << error << "\n";
-        session.out << "shot " << runner.save_screenshot("error_L" + std::to_string(number)) << "\n";
+        session.out << journal_error(number, text, error);
+        session.out << "shot " << save_command_file_screenshot(session, std::format("error_L{}", number)) << "\n";
         return LineResult::FAILED;
     }
-    const auto t0 = std::chrono::duration_cast<Milliseconds>(start - file_start).count();
-    const auto t1 = std::chrono::duration_cast<Milliseconds>(current_time() - file_start).count();
-    session.out << "ok " << number << " " << text << " @" << t0 << "-" << t1 << "ms\n";
+    session.out << journal_ok(
+        number, text,
+        std::chrono::duration_cast<Milliseconds>(start - file_start),
+        std::chrono::duration_cast<Milliseconds>(current_time() - file_start)
+    );
     return keep_going ? LineResult::NEXT_LINE : LineResult::STOP;
 }
 
@@ -430,8 +527,7 @@ bool run_command_file(
     env.log("Command File Runner: running " + name);
 
     std::ostringstream out;
-    CommandFileSession session{env, context, out, folder + "outbox/"};
-    LineRunner runner(session, name);
+    CommandFileSession session{env.console, context, out, folder + "outbox/", name, true};
     const std::string out_path = session.outbox + name;
 
     std::istringstream lines(script);
@@ -444,7 +540,7 @@ bool run_command_file(
         if (!text.empty() && text.back() == '\r'){
             text.pop_back();
         }
-        result = run_line(runner, session, text, number, file_start);
+        result = run_line(session, text, number, file_start);
         write_file(out_path + ".tmp", out.str());
     }
     out << "end\n";
@@ -475,12 +571,14 @@ CommandFileRunner::CommandFileRunner()
     : DESCRIPTION(
         "Put command files (.txt, one command per line) in the inbox folder. Each runs once, "
         "then moves to \"done\"; its results and screenshots go to \"outbox\". "
-        "A file containing \"help\" lists every command and detector."
+        "A file containing \"help\" lists every command and detector. "
+        "The lab channel (Lab.md) runs the same commands without a program running."
     )
     , FOLDER(
         false,
         "<b>Command Folder:</b><br>Holds the inbox, outbox and done folders. "
-        "Leave empty to use \"CommandFiles\" in the settings folder.",
+        "Leave empty to use \"CommandFiles\" in the settings folder. "
+        "Do not point it at the lab channel's folder: the channel reads that one.",
         LockMode::LOCK_WHILE_RUNNING,
         "",
         "CommandFiles"
@@ -509,8 +607,6 @@ std::string CommandFileRunner::folder() const{
 }
 
 void CommandFileRunner::program(SingleSwitchProgramEnvironment& env, ProControllerContext& context){
-    register_builtin_detectors();
-
     const std::string root = folder();
     for (const char* sub : {"inbox", "outbox", "done"}){
         Filesystem::create_directories(Filesystem::Path(root + sub));
@@ -518,7 +614,7 @@ void CommandFileRunner::program(SingleSwitchProgramEnvironment& env, ProControll
     env.log("Command File Runner: waiting for command files in " + root + "inbox");
 
     while (true){
-        std::optional<Filesystem::Path> file = next_command_file(root + "inbox");
+        std::optional<Filesystem::Path> file = next_request_file(root + "inbox");
         if (!file){
             if (STOP_WHEN_INBOX_EMPTY){
                 env.log("Command File Runner: inbox is empty.");
