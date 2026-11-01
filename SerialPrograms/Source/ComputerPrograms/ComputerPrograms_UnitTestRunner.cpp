@@ -20,12 +20,14 @@
 #include "CommonFramework/GlobalAutoPaths.h"
 #include "CommonFramework/ProgramStats/StatsTracking.h"
 #include "CommonFramework/Tools/GlobalThreadPools.h"
+#include "CommonFramework/Windows/LabChannel_Tests.h"
 #include "CommonTools/VisualDetectors/BlackBorderDetector.h"
 #include "CommonTools/OCR/OCR_Tests.h"
 
 #include "NintendoSwitch/Inference/NintendoSwitch_CheckOnlineDetector.h"
 #include "NintendoSwitch/Inference/NintendoSwitch_FailedToConnectDetector.h"
 #include "NintendoSwitch/Inference/NintendoSwitch_UpdatePopupDetector.h"
+#include "NintendoSwitch/Programs/CommandFileRunner/NintendoSwitch_CommandFileRunner_Tests.h"
 #include "NintendoSwitch/Programs/Typewriter/NintendoSwitch_Typewriter_Tests.h"
 
 #include "VideoGames/PokemonHome/PokemonHome_Tests.h"
@@ -58,11 +60,13 @@ UnitTestDatabase make_UNIT_TESTS_ALL(){
     add_tests_FFTStreamer(ret);
     add_tests_SinkPipeline(ret);
     add_tests_AudioFileLoader(ret);
+    add_tests_LabChannel(ret);
     OCR::add_tests(ret);
     Kernels::add_tests(ret);
     NintendoSwitch::add_tests_CheckOnlineDetector(ret);
     NintendoSwitch::add_tests_FailedToConnectDetector(ret);
     NintendoSwitch::add_tests_UpdatePopupDetector(ret);
+    NintendoSwitch::add_tests_CommandFileRunner(ret);
     NintendoSwitch::Typewriter::add_tests_TypewriterTextMapping(ret);
     NintendoSwitch::PokemonFRLG::add_tests(ret);
     NintendoSwitch::PokemonRSE::add_tests(ret);
