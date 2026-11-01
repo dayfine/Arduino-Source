@@ -1450,6 +1450,9 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/Navigation/Pokemon_StoryEvents.cpp
     Source/Pokemon/Navigation/Pokemon_StoryEvents.h
     Source/Pokemon/Navigation/Pokemon_StoryEvents_Tests.cpp
+    Source/Pokemon/Navigation/Pokemon_StorySegments.cpp
+    Source/Pokemon/Navigation/Pokemon_StorySegments.h
+    Source/Pokemon/Navigation/Pokemon_StorySegments_Tests.cpp
     Source/Pokemon/Navigation/Pokemon_TilePose.cpp
     Source/Pokemon/Navigation/Pokemon_TilePose.h
     Source/Pokemon/Options/Pokemon_BoxSortingTable.cpp
