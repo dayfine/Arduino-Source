@@ -24,6 +24,7 @@ public:
         PanelSession& panel, CancellableScope& scope,
         const std::vector<std::string>& words, LabCommandOutput& output
     ) override;
+    virtual void keep_awake(PanelSession& panel, CancellableScope& scope) override;
     virtual void help(std::ostream& out) override;
 };
 

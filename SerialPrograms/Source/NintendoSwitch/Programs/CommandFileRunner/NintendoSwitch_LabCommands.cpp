@@ -6,6 +6,7 @@
 
 #include "Common/Cpp/Exceptions.h"
 #include "GameConsole/Framework/ConsoleProgramSession.h"
+#include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
 #include "NintendoSwitch_CommandFileRunner.h"
@@ -13,6 +14,9 @@
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
+
+using namespace std::chrono_literals;
+
 
 namespace{
 
@@ -77,6 +81,12 @@ void SwitchLabCommands::run(
         output.out << "shot " << save_command_file_screenshot(session, "error_L" + std::to_string(output.line)) << "\n";
         throw;
     }
+}
+
+void SwitchLabCommands::keep_awake(PanelSession& panel, CancellableScope& scope){
+    LabConsole console(panel, scope);
+    pbf_press_button(console.context(), BUTTON_B, 80ms, 0ms);
+    console.context().wait_for_all_requests();
 }
 
 void SwitchLabCommands::help(std::ostream& out){

@@ -3,8 +3,8 @@
  *  From: https://github.com/PokemonAutomation/
  *
  *  Lets scripts drive a running SerialPrograms app through files, so a lab
- *  can start and stop the selected program, and press buttons or check
- *  detectors on the console, without clicking the window.
+ *  can select a program, set its options, start and stop it, and press
+ *  buttons or check detectors on the console without clicking the window.
  *  Only active when the folder "<user files>/Lab/" exists, so normal users
  *  see no change. Lab.md in this folder documents the commands and files.
  *
@@ -74,7 +74,7 @@ public:
     enum class Kind{
         UNKNOWN,
         READS_STREAM,       //  Screenshots and detectors: allowed while a program runs.
-        DRIVES_CONSOLE,     //  Presses: only while no program runs.
+        DRIVES_CONSOLE,     //  Presses: only while no program runs, and only for the owner.
     };
 
     virtual ~LabConsoleCommands() = default;
@@ -86,6 +86,9 @@ public:
         PanelSession& panel, CancellableScope& scope,
         const std::vector<std::string>& words, LabCommandOutput& output
     ) = 0;
+
+    //  The press that keeps the console awake ("keepawake on").
+    virtual void keep_awake(PanelSession& panel, CancellableScope& scope) = 0;
 
     //  The lines "help" prints for these commands.
     virtual void help(std::ostream& out) = 0;
@@ -109,15 +112,16 @@ private:
     void run();
     void poll();
     void handle_request(const Filesystem::Path& file);
-    std::string run_line(const LabRequestLine& line, LabCommandOutput& output);
+    std::string run_line(const LabRequest& request, const LabRequestLine& line, LabCommandOutput& output);
     std::string run_console_command(const std::vector<std::string>& words, LabCommandOutput& output);
     std::string run_on_console(const std::function<void(PanelSession& panel, CancellableScope& scope)>& body);
     std::string run_ui_command(const std::vector<std::string>& words, std::ostream& out);
     std::string run_on_ui(const std::function<std::string()>& body);
+    void keep_awake();
     void write_state();
 
     //  The state of the selected program. Call under m_panel_lock.
-    void read_program_state(std::string& state, std::string& program) const;
+    void read_program_state(std::string& state, std::string& program, bool& running) const;
 
 
 private:
@@ -133,6 +137,8 @@ private:
     bool m_panel_changing = false;
 
     //  Owned by the worker thread.
+    LabOwner m_owner;
+    KeepAwakeSchedule m_keep_awake;
     LabState m_state;
     std::string m_written_state;
     bool m_folder_ready = false;

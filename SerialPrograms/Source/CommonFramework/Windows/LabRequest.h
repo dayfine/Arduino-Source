@@ -35,8 +35,10 @@ struct LabRequestLine{
     std::vector<std::string> words;
 };
 
-//  A request file: its commands. Blank lines and comments are dropped.
+//  A request file: an optional "owner <token>" line first, then commands.
+//  Blank lines and comments are dropped.
 struct LabRequest{
+    std::string owner;
     std::vector<LabRequestLine> lines;
 };
 LabRequest parse_lab_request(const std::string& text);
@@ -52,11 +54,49 @@ struct LabState{
     std::string seq;        //  Name of the last request handled.
     std::string state;      //  STOPPED, RUNNING, STOPPING, NOT_READY or NO_PROGRAM.
     std::string program;    //  The selected program's identifier, or "".
+    std::string owner;      //  The owner token, or "".
     std::string error;      //  The last error; "" once a request succeeds.
 };
 std::string lab_state_text(const LabState& state);
 
 
+//  The owner lock: once claimed, requests that drive the console must carry
+//  the token. The lock lives in memory, so it dies with the app.
+class LabOwner{
+public:
+    const std::string& token() const{ return m_token; }
+
+    //  Each returns an error message, or "" on success. `request_owner` is the
+    //  token on the request's "owner" line, "" if it has none.
+    std::string claim(const std::string& request_owner, const std::string& token);
+    std::string release(const std::string& request_owner);
+    std::string check(const std::string& request_owner) const;
+
+private:
+    std::string m_token;
+};
+
+
+//  "keepawake on|off [seconds]": while no program runs, press a button every
+//  `interval` so the console does not sleep.
+class KeepAwakeSchedule{
+public:
+    static constexpr Seconds DEFAULT_INTERVAL = Seconds(15);
+
+    bool on() const{ return m_on; }
+    Seconds interval() const{ return m_interval; }
+
+    //  Reads the words of a "keepawake" line. Returns an error message, or "".
+    std::string set(const std::vector<std::string>& words, WallClock now);
+
+    //  Whether a press is due now. Marks it done when it is.
+    bool due(WallClock now, bool program_running);
+
+private:
+    bool m_on = false;
+    Seconds m_interval = DEFAULT_INTERVAL;
+    WallClock m_last_press = WallClock::min();
+};
 
 
 

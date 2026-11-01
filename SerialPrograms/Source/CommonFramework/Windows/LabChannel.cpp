@@ -242,6 +242,7 @@ void LabChannel::poll(){
     while (!m_stopping.load(std::memory_order_acquire) && (file = next_request_file(folder() + "inbox"))){
         handle_request(*file);
     }
+    keep_awake();
     write_state();
 }
 
@@ -265,7 +266,7 @@ void LabChannel::handle_request(const Filesystem::Path& file){
     for (const LabRequestLine& line : request.lines){
         const WallClock line_start = current_time();
         output.line = line.number;
-        error = run_line(line, output);
+        error = run_line(request, line, output);
         if (!error.empty()){
             out << journal_error(line.number, line.text, error);
             break;
@@ -287,17 +288,29 @@ void LabChannel::handle_request(const Filesystem::Path& file){
     m_written_state.clear();
 }
 
-std::string LabChannel::run_line(const LabRequestLine& line, LabCommandOutput& output){
+std::string LabChannel::run_line(const LabRequest& request, const LabRequestLine& line, LabCommandOutput& output){
     const std::vector<std::string>& words = line.words;
     const std::string& command = words[0];
 
+    //  Anyone may look. Everything else needs the owner's token once claimed.
+    if (command == "owner"){
+        if (words.size() >= 3 && words[1] == "claim"){
+            return m_owner.claim(request.owner, words[2]);
+        }
+        if (words.size() == 2 && words[1] == "release"){
+            return m_owner.release(request.owner);
+        }
+        return "owner: expected owner claim TOKEN, or owner release";
+    }
     if (command == "help"){
         output.out <<
             "channel:\n"
+            "  owner claim TOKEN | owner release   (then start with a line \"owner TOKEN\")\n"
             "  select GAME:PROGRAM\n"
             "  set OPTION_KEY JSON\n"
             "  start | stop\n"
             "  state\n"
+            "  keepawake on|off [seconds]\n"
             "  help\n";
         m_console->help(output.out);
         return "";
@@ -308,8 +321,17 @@ std::string LabChannel::run_line(const LabRequestLine& line, LabCommandOutput& o
         return "";
     }
     const LabConsoleCommands::Kind kind = m_console->kind(command);
+    if (kind != LabConsoleCommands::Kind::READS_STREAM){
+        std::string error = m_owner.check(request.owner);
+        if (!error.empty()){
+            return error;
+        }
+    }
     if (command == "select" || command == "set" || command == "start" || command == "stop"){
         return run_ui_command(words, output.out);
+    }
+    if (command == "keepawake"){
+        return m_keep_awake.set(words, current_time());
     }
     if (kind == LabConsoleCommands::Kind::UNKNOWN){
         return "Unknown command: " + command + " (try \"help\")";
@@ -443,17 +465,44 @@ std::string LabChannel::run_on_ui(const std::function<std::string()>& body){
     return call->result;
 }
 
-void LabChannel::read_program_state(std::string& state, std::string& program) const{
+void LabChannel::keep_awake(){
+    bool running = false;
+    {
+        std::lock_guard<Mutex> lg(m_panel_lock);
+        std::string state, program;
+        read_program_state(state, program, running);
+    }
+    if (!m_keep_awake.due(current_time(), running)){
+        return;
+    }
+    const std::string error = run_on_console([this](PanelSession& panel, CancellableScope& scope){
+        m_console->keep_awake(panel, scope);
+    });
+    if (!error.empty()){
+        global_logger_tagged().log("Lab: keepawake: " + error, COLOR_RED);
+    }
+}
+
+void LabChannel::read_program_state(std::string& state, std::string& program, bool& running) const{
     const ProgramSession* session = dynamic_cast<const ProgramSession*>(m_panel);
     program = m_panel == nullptr ? "" : m_panel->descriptor().identifier();
-    state = session == nullptr ? "NO_PROGRAM" : program_state_name(session->current_state());
+    if (session == nullptr){
+        state = "NO_PROGRAM";
+        running = false;
+        return;
+    }
+    const ProgramState current = session->current_state();
+    state = program_state_name(current);
+    running = current != ProgramState::STOPPED;
 }
 
 void LabChannel::write_state(){
     {
         std::lock_guard<Mutex> lg(m_panel_lock);
-        read_program_state(m_state.state, m_state.program);
+        bool running;
+        read_program_state(m_state.state, m_state.program, running);
     }
+    m_state.owner = m_owner.token();
     std::string text = lab_state_text(m_state);
     const Filesystem::Path path(folder() + "state");
     if (text != m_written_state || !Filesystem::exists(path)){
