@@ -83,6 +83,7 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
     }
 
     StoryExecutor executor(story);
+    executor.set_checks(RETRIES.checks());
     Pokemon::Segment segment = make_story_segment(checkpoints, executor);
     Pokemon::SegmentHooks hooks;
     hooks.reload = [&story](Pokemon::RunState&){
