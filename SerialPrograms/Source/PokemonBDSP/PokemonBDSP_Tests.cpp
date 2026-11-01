@@ -18,6 +18,7 @@
 #include "Programs/AutoStory/PokemonBDSP_AutoStoryTools.h"
 #include "PokemonBDSP_Tests.h"
 #include "Inference/PokemonBDSP_MenuDetector.h"
+#include "Programs/AutoStory/PokemonBDSP_AutoStory_MapGrid_Tests.h"
 #include "Programs/AutoStory/PokemonBDSP_AutoStory_Tests.h"
 #include "Programs/AutoStory/PokemonBDSP_AutoStory_Segment00_Tests.h"
 #include "Programs/AutoStory/PokemonBDSP_AutoStory_StoryTables_Tests.h"
@@ -292,6 +293,7 @@ bool run_bag_screenshot_tests(Logger& logger, const std::string& folder){
 void add_tests(UnitTestDatabase& database){
     database.add<Test_BagScreenshots>();
     add_tests_MenuDetector(database);
+    add_tests_AutoStory_MapGrids(database);
     add_tests_AutoStory(database);
     add_tests_AutoStory_Segment00(database);
     add_tests_AutoStory_StoryTables(database);

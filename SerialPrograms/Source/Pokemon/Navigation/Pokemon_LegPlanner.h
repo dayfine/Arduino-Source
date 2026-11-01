@@ -6,7 +6,11 @@
  *  game decides what a single press does through its step model; the
  *  planner searches, joins steps into legs, and prefers legs that end
  *  against a wall, because the player stops there however long the button
- *  is held, while a leg that ends in the open depends on timing.
+ *  is held, while a leg that ends in the open depends on timing. It can
+ *  weigh more heavily a leg ending in the open that went through tiles
+ *  where the walk is likely to be interrupted (tall grass): after an
+ *  interruption a leg to a wall is simply walked again, while how far an
+ *  open one got is a guess.
  *
  *  A step model is a class with:
  *
@@ -60,6 +64,9 @@ struct Step{
     Direction facing = Direction::NORTH;
     //  Cost on top of LegCosts::per_tile: tall grass, a warp's fade, a dialog.
     int extra_cost = 0;
+    //  The walk can be interrupted on this step, e.g. by a wild battle in
+    //  tall grass. See LegCosts::per_open_wild_stop.
+    bool wild = false;
 };
 
 
@@ -80,6 +87,8 @@ struct Leg{
     //  WALK: holding on keeps the player on the last tile, so the leg can be
     //  held for longer than it takes and walked again after an interruption.
     bool to_wall = false;
+    //  A step of the leg is wild (Step::wild).
+    bool wild = false;
     Direction facing_after = Direction::NORTH;
     State start;
     State end;
@@ -93,6 +102,9 @@ struct LegCosts{
     //  Extra for ending a leg where the player could keep going: it has to
     //  be timed, and where an interruption leaves the player is a guess.
     int per_open_stop = 8;
+    //  Extra again when that leg has a wild step, where an interruption is
+    //  likely.
+    int per_open_wild_stop = 0;
 };
 
 
@@ -112,13 +124,15 @@ std::optional<std::vector<Leg<typename Model::State>>> plan_legs(
 
 namespace LegPlannerInternal{
 
-//  A search node: the player, the way they face (4: not known), and whether
-//  they are in the middle of a leg that could go on.
+//  A search node: the player, the way they face (4: not known), whether
+//  they are in the middle of a leg that could go on, and whether that leg
+//  had a wild step.
 template <typename State>
 struct Node{
     State state;
     int facing = 4;
     bool moving = false;
+    bool wild = false;
 
     bool operator==(const Node& other) const = default;
 };
@@ -126,7 +140,7 @@ struct Node{
 template <typename State, typename StateHash>
 struct NodeHash{
     size_t operator()(const Node<State>& node) const{
-        return StateHash()(node.state) * 10 + node.facing * 2 + (node.moving ? 1 : 0);
+        return StateHash()(node.state) * 20 + node.facing * 4 + (node.moving ? 2 : 0) + (node.wild ? 1 : 0);
     }
 };
 
@@ -142,7 +156,7 @@ int stop_cost(const Model& model, const Node<State>& node, const LegCosts& costs
     if (!node.moving || model.held_at(node.state, (Direction)node.facing)){
         return 0;
     }
-    return costs.per_open_stop;
+    return costs.per_open_stop + (node.wild ? costs.per_open_wild_stop : 0);
 }
 
 template <typename Model, typename State>
@@ -156,12 +170,14 @@ std::vector<Leg<State>> join_legs(const Model& model, const State& start, const 
             && legs.back().kind == LegKind::WALK && legs.back().direction == move.direction;
         if (extends){
             legs.back().tiles++;
+            legs.back().wild |= step.wild;
         }else{
             Leg<State> leg;
             leg.kind = step.action == 0 ? LegKind::WALK : LegKind::ACTION;
             leg.action = step.action;
             leg.direction = move.direction;
             leg.tiles = 1;
+            leg.wild = step.wild;
             leg.start = before;
             legs.push_back(leg);
         }
@@ -220,7 +236,9 @@ void expand(
             continue;
         }
         const bool continues = step->action == 0 && !step->ends_leg;
-        const Node<State> next{step->next, (int)step->facing, continues};
+        const bool extends = current.moving && current.facing == (int)direction
+            && step->action == 0 && !step->starts_leg;
+        const Node<State> next{step->next, (int)step->facing, continues, (extends && current.wild) || step->wild};
         int step_cost = costs.per_tile + step->extra_cost;
         if (current.facing != (int)direction){
             step_cost += costs.per_turn + stop_cost(model, current, costs);
@@ -317,7 +335,7 @@ std::optional<std::vector<Leg<typename Model::State>>> plan_legs(
     using State = typename Model::State;
     using Node = LegPlannerInternal::Node<State>;
 
-    const Node first{start, start_facing ? (int)*start_facing : 4, false};
+    const Node first{start, start_facing ? (int)*start_facing : 4, false, false};
     LegPlannerInternal::Search<Model> search;
     const std::optional<Node> end = LegPlannerInternal::search_goal(model, search, first, at_goal, goal_facing, costs);
     if (!end){
