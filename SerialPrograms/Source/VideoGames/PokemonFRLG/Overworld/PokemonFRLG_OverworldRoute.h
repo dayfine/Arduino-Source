@@ -52,6 +52,10 @@ struct RouteStep{
     //  WALK: a wall stops the player at the end, so the leg can be held for
     //  longer than it takes and still ends on its tile.
     bool to_wall = false;
+    //  WALK, SURF: a wild Pokemon can appear on the way: the step crosses
+    //  tall grass or water. Elsewhere (indoors, streets) no wild battle can
+    //  start, so the walker doesn't watch for one.
+    bool wild = false;
     //  Which way the player faces after the step. Arriving at a door or a
     //  cave mouth, the game walks the player a tile out, facing south.
     Direction facing_after = Direction::NORTH;

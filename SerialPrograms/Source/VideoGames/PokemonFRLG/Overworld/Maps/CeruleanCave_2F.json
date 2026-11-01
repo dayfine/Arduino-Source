@@ -1,0 +1,177 @@
+{
+    "name": "CeruleanCave_2F",
+    "width": 40,
+    "height": 23,
+    "tiles": [
+        "########################################",
+        "########################################",
+        "########################################",
+        "####....####..##.....#............######",
+        "#######......L#..###.#.#########.L######",
+        "####..####.####.##.#.#.........#########",
+        "####.L...#.........###########....######",
+        "#######.############.........####.######",
+        "####.#...............#######....#.######",
+        "####.#################..#.L###.##.######",
+        "####.#....#............L#...#...#.######",
+        "####.#.##.#.#####.#######.#####.#.######",
+        "####.#..#.#.....#.......#.....#.#.######",
+        "####.#..#.#####.#######.#####.#.########",
+        "####.#.L#.#.....#.....#.....#.#.#.######",
+        "####.####.#.#####.###.#.#.#.#.#.#.######",
+        "####.#....#.........#.#.#.#.#.#.#.######",
+        "####.#.####.#########.#.#.#.###.#.######",
+        "####.#....#.....#.....#.#.#.....#.######",
+        "####.############.#####.#.#######.######",
+        "####..............#.....#.........######",
+        "########################################",
+        "########################################"
+    ],
+    "warps": [
+        {
+            "x": 33,
+            "y": 4,
+            "dest_map": "CeruleanCave_1F",
+            "dest_warp": 1
+        },
+        {
+            "x": 13,
+            "y": 4,
+            "dest_map": "CeruleanCave_1F",
+            "dest_warp": 3
+        },
+        {
+            "x": 7,
+            "y": 14,
+            "dest_map": "CeruleanCave_1F",
+            "dest_warp": 4
+        },
+        {
+            "x": 26,
+            "y": 9,
+            "dest_map": "CeruleanCave_1F",
+            "dest_warp": 5
+        },
+        {
+            "x": 23,
+            "y": 10,
+            "dest_map": "CeruleanCave_1F",
+            "dest_warp": 6
+        },
+        {
+            "x": 5,
+            "y": 6,
+            "dest_map": "CeruleanCave_1F",
+            "dest_warp": 7
+        }
+    ],
+    "objects": [
+        {
+            "x": 9,
+            "y": 18,
+            "kind": "item_ball",
+            "flag": "FLAG_HIDE_CERULEAN_CAVE_2F_PP_UP",
+            "wander_x": 0,
+            "wander_y": 0
+        },
+        {
+            "x": 29,
+            "y": 16,
+            "kind": "item_ball",
+            "flag": "FLAG_HIDE_CERULEAN_CAVE_2F_ULTRA_BALL",
+            "wander_x": 0,
+            "wander_y": 0
+        },
+        {
+            "x": 33,
+            "y": 12,
+            "kind": "item_ball",
+            "flag": "FLAG_HIDE_CERULEAN_CAVE_2F_FULL_RESTORE",
+            "wander_x": 0,
+            "wander_y": 0
+        },
+        {
+            "x": 33,
+            "y": 10,
+            "kind": "rock_smash_rock",
+            "flag": "FLAG_TEMP_12",
+            "wander_x": 0,
+            "wander_y": 0
+        },
+        {
+            "x": 33,
+            "y": 9,
+            "kind": "rock_smash_rock",
+            "flag": "FLAG_TEMP_13",
+            "wander_x": 0,
+            "wander_y": 0
+        },
+        {
+            "x": 25,
+            "y": 11,
+            "kind": "rock_smash_rock",
+            "flag": "FLAG_TEMP_14",
+            "wander_x": 0,
+            "wander_y": 0
+        },
+        {
+            "x": 28,
+            "y": 20,
+            "kind": "rock_smash_rock",
+            "flag": "FLAG_TEMP_15",
+            "wander_x": 0,
+            "wander_y": 0
+        },
+        {
+            "x": 30,
+            "y": 20,
+            "kind": "rock_smash_rock",
+            "flag": "FLAG_TEMP_16",
+            "wander_x": 0,
+            "wander_y": 0
+        },
+        {
+            "x": 9,
+            "y": 13,
+            "kind": "rock_smash_rock",
+            "flag": "FLAG_TEMP_17",
+            "wander_x": 0,
+            "wander_y": 0
+        },
+        {
+            "x": 23,
+            "y": 16,
+            "kind": "rock_smash_rock",
+            "flag": "FLAG_TEMP_18",
+            "wander_x": 0,
+            "wander_y": 0
+        },
+        {
+            "x": 13,
+            "y": 6,
+            "kind": "rock_smash_rock",
+            "flag": "FLAG_TEMP_19",
+            "wander_x": 0,
+            "wander_y": 0
+        },
+        {
+            "x": 4,
+            "y": 12,
+            "kind": "rock_smash_rock",
+            "flag": "FLAG_TEMP_1A",
+            "wander_x": 0,
+            "wander_y": 0
+        },
+        {
+            "x": 10,
+            "y": 20,
+            "kind": "rock_smash_rock",
+            "flag": "FLAG_TEMP_1B",
+            "wander_x": 0,
+            "wander_y": 0
+        }
+    ],
+    "connections": [],
+    "points": [],
+    "flag_sets": []
+}

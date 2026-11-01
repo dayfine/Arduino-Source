@@ -1,0 +1,58 @@
+{
+    "name": "PalletTown_RivalsHouse",
+    "width": 13,
+    "height": 10,
+    "tiles": [
+        "#############",
+        "#############",
+        ".............",
+        ".............",
+        "......##.....",
+        "......##.....",
+        ".............",
+        ".............",
+        "#...v.......#",
+        "#############"
+    ],
+    "warps": [
+        {
+            "x": 4,
+            "y": 8,
+            "dest_map": "PalletTown",
+            "dest_warp": 1
+        },
+        {
+            "x": 5,
+            "y": 8,
+            "dest_map": "PalletTown",
+            "dest_warp": 1
+        },
+        {
+            "x": 3,
+            "y": 8,
+            "dest_map": "PalletTown",
+            "dest_warp": 1
+        }
+    ],
+    "objects": [
+        {
+            "x": 10,
+            "y": 6,
+            "kind": "daisy",
+            "flag": "",
+            "wander_x": 1,
+            "wander_y": 3
+        },
+        {
+            "x": 6,
+            "y": 4,
+            "kind": "town_map",
+            "flag": "FLAG_HIDE_TOWN_MAP",
+            "wander_x": 0,
+            "wander_y": 0
+        }
+    ],
+    "connections": [],
+    "points": [],
+    "flag_sets": []
+}

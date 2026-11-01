@@ -1,0 +1,56 @@
+{
+    "name": "PalletTown_PlayersHouse_1F",
+    "width": 13,
+    "height": 10,
+    "tiles": [
+        "#############",
+        "#############",
+        "#.........>##",
+        "#............",
+        "#.....##.....",
+        "#.....##.....",
+        "#............",
+        "##..........#",
+        "#...v........",
+        "#############"
+    ],
+    "warps": [
+        {
+            "x": 5,
+            "y": 8,
+            "dest_map": "PalletTown",
+            "dest_warp": 0
+        },
+        {
+            "x": 4,
+            "y": 8,
+            "dest_map": "PalletTown",
+            "dest_warp": 0
+        },
+        {
+            "x": 10,
+            "y": 2,
+            "dest_map": "PalletTown_PlayersHouse_2F",
+            "dest_warp": 0
+        },
+        {
+            "x": 3,
+            "y": 9,
+            "dest_map": "PalletTown",
+            "dest_warp": 0
+        }
+    ],
+    "objects": [
+        {
+            "x": 8,
+            "y": 4,
+            "kind": "mom",
+            "flag": "",
+            "wander_x": 0,
+            "wander_y": 0
+        }
+    ],
+    "connections": [],
+    "points": [],
+    "flag_sets": []
+}

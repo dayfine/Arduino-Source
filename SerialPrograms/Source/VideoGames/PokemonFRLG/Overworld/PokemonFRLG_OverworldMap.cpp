@@ -21,6 +21,7 @@ std::optional<Tile> tile_from_char(char c){
     case '"': return Tile::TALL_GRASS;
     case '~': return Tile::WATER;
     case 'D': return Tile::DOOR;
+    case 'S': return Tile::SIGN;
     case 'C': return Tile::CAVE_ENTRANCE;
     case 'L': return Tile::LADDER;
     case '^': return Tile::MAT_NORTH;
@@ -48,7 +49,7 @@ uint8_t elevation_at(const MapData& map, const TilePos& point){
 
 bool is_wall(const MapData& map, const TilePos& point){
     const Tile tile = tile_at(map, point);
-    return tile == Tile::WALL || tile == Tile::DOOR || tile == Tile::LEDGE;
+    return tile == Tile::WALL || tile == Tile::DOOR || tile == Tile::SIGN || tile == Tile::LEDGE;
 }
 bool is_ledge(const MapData& map, const TilePos& point){
     return tile_at(map, point) == Tile::LEDGE;
