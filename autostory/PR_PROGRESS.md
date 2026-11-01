@@ -5,12 +5,12 @@ Live status of [PR_PLAN.md](PR_PLAN.md). Update whenever a PR changes state.
 Legend: ✅ merged upstream · 🔵 open upstream · 🟢 fork draft, CI green · 🟡 fork draft,
 CI pending or red · 🛠 branch in progress · ⬜ not started · ❌ closed
 
-Last updated: 2026-11-01 06:30 (user accepted #114; frlg/mvp being built; #115 and #110 merged into the BDSP lab branch, #111 being merged with the base, #112 next).
+Last updated: 2026-11-01 07:10 (S1 MoveOnlyFunction merged upstream as #1810; nav/shared gets a game-agnostic Pose commit and merges the new base in; frlg/mvp CI running; #115 and #110 merged into the BDSP lab branch; #111 carries #115's two missed fixes, #112 next).
 
 ```
 base/upstream-main
-├── 🟢 nav/shared  collector 1 = fork #114 ............... 4 commits, CI green on Mac/Windows Clang/Ubuntu
-│     S1 823f5318d MoveOnlyFunction (#72, +334) · S2 3209523a9 grid + leg planner (#66, +735)
+├── 🟢 nav/shared  collector 1 = fork #114 ............... S2–S4 + Pose commit 19a030374 + base merge
+│     S1 823f5318d MoveOnlyFunction (#72) ✅ upstream #1810 · S2 3209523a9 grid + leg planner (#66, +735)
 │     S3 c246d3d56 ScreenMachine (#108, +333) · S4 f3a8943a3 story events (#79, +1204)
 │     std::format pass applied inside S2/S4 (9 sites). Sources to close once accepted:
 │     #72 (87071ad59) · #66 nav/core (dc9f1682f) · #108 (6c8c83473) · #79 (70e10070c)
@@ -29,15 +29,15 @@ To close as superseded once each collector is accepted: #72 #66 #108 #79 → #11
 
 | # | PR | Source | State |
 |---|---|---|---|
-| 1 | S1 Common: MoveOnlyFunction | #72 | 🟢 #114 S1 |
+| 1 | S1 Common: MoveOnlyFunction | #72 | ✅ upstream #1810, merged 2026-11-01 |
 | 2 | S2 Pokemon navigation: grid types and leg planner | #66 | 🟢 #114 S2 |
 | 3 | S3 ScreenMachine + StepTrace | #108 | 🟢 #114 S3 |
 | 4 | S4 Pokemon navigation: story checkpoints as events | #79 | 🟢 #114 S4 |
 | 5–9 | F1–F5 FRLG overworld navigation | #67 | ⬜ |
 | 10+ | B1–B5 BDSP AutoStory MVP | #68 and the lab branch | ⬜ blocked on upstream #1717 |
 
-Already upstream from this work: #1798 (AGENTS.md docs-site note), #1791, #1754 (BBQ). That is
-three open; the shared queue starts when one of them merges or is closed.
+Already upstream from this work: #1810 (S1), #1798 (AGENTS.md docs-site note), #1791 all merged;
+#1754 (BBQ) still open. One slot is free for the shared queue (S2 next), the user publishes.
 
 Lab branches (no PRs): `lab/main` = main + #107; `lab/bdsp` = bdsp/event-sandgem-center + #115 +
 lab/main; `lab/frlg` = frlg/brock-mvp + lab/main. Rebuilt on the collectors when they exist.

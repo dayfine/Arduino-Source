@@ -37,13 +37,14 @@ they would go upstream.
 ## Tree
 
 ```
-base/upstream-main (copy of upstream main; refreshed to 147c0dbd8 on 2026-11-01)
+base/upstream-main (copy of upstream main; refreshed to b3673f2a9 on 2026-11-01)
 ├── nav/shared ............ collector 1, supersedes #72 #66 #108 #79
-│     S1 Common: MoveOnlyFunction                        (#72,  +334,  5 files)
+│     S1 Common: MoveOnlyFunction  ✅ merged upstream as #1810 (2026-11-01); nav/shared
+│                                  merges the base back in, so S1 drops out of the diff
 │     S2 Pokemon navigation: grid types + leg planner    (#66,  +733,  7 files)
 │     S3 ScreenMachine + StepTrace                       (#108, +333,  5 files)
 │     S4 Pokemon navigation: story checkpoints as events (#79,  ~+1200, 6 files; its
-│                                                         MoveOnlyFunction copy is S1)
+│                                                         MoveOnlyFunction is upstream now)
 ├── frlg/mvp (on nav/shared) ... collector 3, supersedes #67 (22 files, +3302)
 │     F1 devtools: generate FRLG overworld maps as JSON; the JSON maps (pokefirered)
 │     F2 FRLG: OverworldMap, Tile/Grid, named points and flag sets
