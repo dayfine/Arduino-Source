@@ -53,9 +53,9 @@ std::string describe(const std::vector<PlannedLeg>& legs){
 struct WallCase{
     std::string name;
     std::vector<std::string> rows;
-    TilePos from;
+    TilePos from = {};
     Direction direction = Direction::EAST;
-    TilePos stop;
+    TilePos stop = {};
     size_t tiles = 0;
     bool anchored = false;
 };
@@ -117,7 +117,7 @@ struct RobustCase{
     std::string name;
     std::vector<TilePos> from;
     TilePos goal;
-    RobustPlanCosts costs;
+    RobustPlanCosts costs = {};
     //  The plan as to_string() writes it, or empty when there is none.
     std::string legs;
 };

@@ -43,10 +43,16 @@ MapData make_map(
         }
     }
     for (const TilePos& pos : standing){
-        map.objects.push_back({.name = "standing", .x = pos.x, .y = pos.y});
+        map.objects.push_back({
+            .name = "standing", .kind = Pokemon::ObjectKind::NPC, .x = pos.x, .y = pos.y,
+            .facing = std::nullopt, .wander = std::nullopt,
+        });
     }
     for (const TilePos& pos : wandering){
-        map.objects.push_back({.name = "wandering", .x = pos.x, .y = pos.y, .wander = Pokemon::WanderBox{pos.x, pos.y, pos.x, pos.y}});
+        map.objects.push_back({
+            .name = "wandering", .kind = Pokemon::ObjectKind::NPC, .x = pos.x, .y = pos.y,
+            .facing = std::nullopt, .wander = Pokemon::WanderBox{pos.x, pos.y, pos.x, pos.y},
+        });
     }
     return map;
 }
@@ -63,11 +69,11 @@ StoryWorld make_world(const MapData& map){
 struct StepCase{
     std::string name;
     std::vector<std::string> rows;
-    std::vector<TilePos> standing;
-    std::vector<TilePos> wandering;
-    TilePos from;
+    std::vector<TilePos> standing = {};
+    std::vector<TilePos> wandering = {};
+    TilePos from = {};
     Direction direction = Direction::NORTH;
-    std::optional<TilePos> lands;
+    std::optional<TilePos> lands = std::nullopt;
     bool at_wall = false;
 };
 
