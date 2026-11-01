@@ -96,3 +96,59 @@ rejection, accepted-but-still-stopping, and stale IDs. The remaining experiment
 is to exercise the live adapter with a deliberately invalid configuration and
 a suitable short program, then decide whether to add per-run results and events
 before attaching MCP. No live-console validation is claimed for this draft.
+
+## Concrete target: investigating the Sandgem failure
+
+In BDSP AutoStory run r109, the player reached Sandgem correctly, but OCR read
+the location banner as `andgemltown`, so the location check failed. See the
+[AutoStory lessons, section 13](https://github.com/dayfine/Arduino-Source/blob/bdsp/floaroma-mvp/docs/design/AutoStory-Lessons.md#13-floaroma-mvp-from-a-new-game-and-the-lab-around-it-2026-10-29-r107-to-r109).
+
+Lab can already start the program and report that it stopped. The agent must
+then find the corresponding error and screenshot, associate them with this
+attempt, and distinguish the original failure from later retries. The current
+four-method prototype does not remove that work.
+
+The useful next slice would support this investigation:
+
+1. Start the configured checkpoint and receive a unique run ID.
+2. Wait for that run's outcome, rather than polling whether the session is stopped.
+3. Retrieve its error and failure evidence together.
+4. Inspect the frame and log: the location is visibly correct, but its OCR
+   comparison rejected it.
+5. Investigate the matcher with saved-image cases, including a different town
+   that must still be rejected, then rerun the checkpoint under a new run ID.
+
+An illustrative future result, **not implemented by this prototype**, is:
+
+```json
+{
+  "run_id": "run-109",
+  "outcome": "failed",
+  "checkpoint": "00.04",
+  "error": "Location verification failed",
+  "failure_screenshot": "...",
+  "log_excerpt": "..."
+}
+```
+
+The error text above is illustrative too. The interface should preserve the
+actual program error and capture the failure evidence before a retry changes
+the screen. The matcher fix remains in AutoStory; the interface makes its
+investigation dependable and automatable. Run identity, outcome and error
+capture belong near `ProgramSession`. Checkpoint details require connecting
+the program's progress reporting to that run.
+
+Other recorded failures show the boundary:
+
+| Failure | What an agent interface could contribute | What the program still must do |
+|---|---|---|
+| r84: selecting Water Gun at 0 PP for four minutes | Progress reports and recent captures let the agent recognize repetition and stop the identified run. | Read PP, skip exhausted moves and bound retries. A generic session cannot infer PP without observation or program reporting. |
+| r105/r106: reported a pass after talking to the rock beside Roark | Expose a story-effect verification failure, once the program checks it. | Verify that Roark actually left. Lifecycle completion alone cannot establish story success. |
+| r109a: the Start click missed after the window resized | Lab's existing explicit start/stop commands already address this. | No new benefit should be attributed to this prototype for removing GUI clicks. |
+
+The intended unlock is an agent that can run a bounded automation experiment,
+identify its first failure, inspect the associated evidence, probe the cause,
+change the code and repeat. Structured start/stop alone is groundwork, not
+that outcome. A concrete next proof should demonstrate: **a checkpoint fails;
+one request returns that run's outcome, error and failure screenshot**. MCP
+can expose the same operations afterward; changing transport alone adds little.
