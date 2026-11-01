@@ -59,8 +59,11 @@ bool certainty_covers(PoseCertainty have, PoseCertainty need);
 //  actions read it back.
 struct Position{
     virtual ~Position() = default;
-    //  The text after the map in a log line, e.g. "(10, 20) facing north".
-    virtual std::string describe() const = 0;
+    //  The text after the map in a log line, e.g. "(10, 20) facing north";
+    //  none for a game that has nothing to say beyond the map.
+    virtual std::string describe() const{
+        return "";
+    }
 };
 
 //  Where the player is believed to be. The screen is read; the pose is
