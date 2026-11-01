@@ -420,6 +420,40 @@ std::vector<TilePos> walk_route(
                 //  not where the plan has him.
                 if (!interrupted && result.stop == WalkStop::LIMIT && route_wall_readable(grid, planned.after)){
                     const WalkResult check = walk_until_dpad(stream, context, x, y, 2000ms, leg_label + ": at the wall?", nullptr, true);
+                    if (check.stop == WalkStop::DIALOG){
+                        //  A trainer who saw us froze the walk (the "!") until
+                        //  its time ran out, then walked over (r241a: Aroma Lady
+                        //  Taylor's line crosses Route 204's corridor). Battle,
+                        //  then plan again from where a sight line crosses the leg.
+                        route_status(stream, leg_label + ": a trainer stopped us on the way; battling.");
+                        fight("a trainer on the way");
+                        std::vector<TilePos> stopped;
+                        for (const TilePos& pos : from){
+                            const std::vector<TilePos> path = leg_path(grid, pos, leg.direction, SIZE_MAX);
+                            for (const TrainerSight& trainer : trainers){
+                                const std::vector<TilePos> sight = sight_tiles(grid, trainer);
+                                for (const TilePos& tile : path){
+                                    if (std::find(sight.begin(), sight.end(), tile) != sight.end()){
+                                        stopped.push_back(tile);
+                                    }
+                                }
+                            }
+                        }
+                        std::sort(stopped.begin(), stopped.end(), [](const TilePos& a, const TilePos& b){
+                            return a.y != b.y ? a.y < b.y : a.x < b.x;
+                        });
+                        stopped.erase(std::unique(stopped.begin(), stopped.end()), stopped.end());
+                        if (stopped.empty()){
+                            OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
+                                leg_label + ": a trainer stopped us, and no sight line crosses this leg.", stream);
+                        }
+                        stream.log("[Route] " + leg_label + ": stopped by a trainer at " + describe(maps, stopped) +
+                            "; planning again.", COLOR_ORANGE);
+                        facing = leg.direction;
+                        from = stopped;
+                        replanned = true;
+                        break;
+                    }
                     if (check.stop != WalkStop::BLOCKED &&
                         !(check.stop == WalkStop::LIMIT && holding_against_wall(stream, context, x, y, leg_label + ": at the wall?"))
                     ){
