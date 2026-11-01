@@ -122,17 +122,6 @@ Pokemon::SegmentHooks story_hooks(SingleSwitchProgramEnvironment& env, StoryEnv&
     return hooks;
 }
 
-//  The shared AutoStory stats for one run: a segment, the checkpoints it
-//  passed and the reloads after failed attempts.
-void count_run(SingleSwitchProgramEnvironment& env, const Pokemon::SegmentReport& report){
-    Pokemon::AutoStoryStats& stats = env.current_stats<Pokemon::AutoStoryStats>();
-    stats.m_segment++;
-    for (const Pokemon::CheckpointRun& run : report.runs){
-        stats.m_checkpoint += run.passed ? 1 : 0;
-    }
-    stats.m_reset += report.reloads;
-    env.update_stats();
-}
 
 }
 
@@ -165,7 +154,8 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
     const Pokemon::SegmentReport report = run_segment(
         state, segment, Pokemon::SegmentRange{checkpoints[first].id, checkpoints[last].id}, RUN.policy(), hooks
     );
-    count_run(env, report);
+    Pokemon::record_story_stats(env.current_stats<Pokemon::AutoStoryStats>(), report);
+    env.update_stats();
     if (!report.completed){
         throw OperationFailedException(
             ErrorReportMode::NO_ERROR_REPORT,
