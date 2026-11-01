@@ -99,7 +99,7 @@ and fails again (run r15 in the FRLG notes, when the forest was part of 00.07).
 - **Today**, `wait` prints `outcome=failed` and the error
   `AutoStory stopped at 00.08 <event>: ...`; `frame:` is missing because
   the exception carried none, and no event names the attempt, because the
-  game code does not call `run_recorder()` yet. `log.txt` has the whole run,
+  game code does not call `record_run_event()` yet. `log.txt` has the whole run,
   both attempts' route lines included, and `meta.json` names the commit and
   the settings. The agent reads `log.txt` instead of filtering
   `SerialPrograms.log` by date, but still finds the attempt by hand.
@@ -157,15 +157,16 @@ and are never reused (`RunRecord.cpp`).
 `CommonFramework/RunRecord.h`). The typed model (`RunRecord`, `RunEvent`,
 `RunResult`) and a thread-safe in-memory store of the last 32 runs; every
 call is short and copies, so the writer never holds the lock while writing
-files. The app's store starts disabled (`set_enabled()`); disabled,
+files. A store given an `enabled` flag records only while it holds; off,
 `begin()` returns `""` and nothing is kept. Limits: 4096 events per run (more
 are counted in `dropped_events`), frames kept for a run's newest 8 events and
 only for the active run and the newest 4 finished ones, log lines numbered
 with a 256 KiB tail in memory and at most 8 MiB per run (more are counted in
 `dropped_log_lines`). Each record carries `version` (`PROGRAM_VERSION`),
-`commit` (`PROGRAM_COMMIT`) and `settings`. `SessionRunRecorder` is both the
-`RunRecorder` a program calls and the `Logger` that copies the session's
-lines into the record. No UI, JSON or game dependency.
+`commit` (`PROGRAM_COMMIT`) and `settings`. `SessionRunRecorder` takes the events a program
+reports and is the `Logger` that copies the session's lines into the record.
+The app's store is `app_run_records()`; it records only after
+`enable_app_run_records()`, which the Lab channel calls. No UI, JSON or game dependency.
 
 **Build commit** (today, #132, `CommonFramework/BuildCommit.h`,
 `SerialPrograms/cmake/BuildCommit.cmake`). A custom target runs
@@ -186,13 +187,14 @@ becomes an `error` event. Tested through a scripted fake program in
 `RunRecord_Tests.cpp`.
 
 **Program hook** (API today in `Tools/ProgramEnvironment.h`; callers
-**proposed**). `env.run_recorder().event({.kind = "attempt", .checkpoint =
-..., .step = ..., .attempt = ..., .text = ..., .frame = ..., .pose = ...})`.
+**proposed**). `record_run_event(env, {.kind = "attempt", .checkpoint = ...,
+.step = ..., .attempt = ..., .text = ..., .frame = ..., .pose = ...})`, a free
+function so the session and environment gain no public method.
 Nothing in game code calls it yet. Proposed callers:
 `Pokemon::SegmentHooks` (`Pokemon/Navigation/Pokemon_StorySegments.h`, owned
 by #114) gains an `event` callback beside `log`, with a nav-local struct so
 the shared code does not depend on `CommonFramework`; each game's AutoStory
-program (FRLG #120, BDSP #128) forwards it to `run_recorder()` and attaches a
+program (FRLG #120, BDSP #128) forwards it to `record_run_event()` and attaches a
 fresh frame to failed attempts. The shared route log
 (`Pokemon/Navigation/Pokemon_RouteLog.h`, #114) emits `route_plan` and `leg`
 events through the same callback.
@@ -245,7 +247,7 @@ for notes and PR evidence.
 ## 5. Milestones
 
 The framework half does not depend on Lab, and the AutoStory programs on
-#120 and #128 need `run_recorder()` without pulling in the lab-only #107, so
+#120 and #128 need `record_run_event()` without pulling in the lab-only #107, so
 the first slice is two PRs:
 
 | # | PR | Base / depends on | Scope | Size (excl. tests) |
