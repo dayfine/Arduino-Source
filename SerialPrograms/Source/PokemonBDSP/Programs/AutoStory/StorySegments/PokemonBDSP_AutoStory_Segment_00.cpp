@@ -175,9 +175,9 @@ namespace PokemonAutomation {
                 stream.log("[DEBUG] Piplup Selection: Selection complete");
             }
 
-        // Navigation functions for each part of the tutorial. These functions are meant to be used
-        // in order and rely on the state of the game being what it is at the end of the previous function.
-        // They may also be modified or removed without warning.
+        // Navigation functions for each part of the tutorial, used in order; each relies on the game state the one before left.
+        // TODO (task #22): they replay Butters' recorded stick holds; the same walks are lines on the decomp grids in Data/PokemonBDSP_AutoStory_Segment00Lines,
+        // tested offline with the route records. Swap in walk_waypoints() over Segment00Lines::lines() only after a new-game run has confirmed where each scene leaves the player, with walk_through_grass()'s battle handling on the Route 201 grass.
 
         // ---------------------------------------------------------------------------
         // Segment 00-01 begins
