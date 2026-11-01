@@ -7,9 +7,9 @@
 #include <algorithm>
 #include <format>
 #include <ranges>
+#include <QCoreApplication>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/PrettyPrint.h"
-#include "CommonFramework/BuildCommit.h"
 #include "CommonFramework/Globals.h"
 #include "RunRecord.h"
 
@@ -77,7 +77,9 @@ std::string RunRecordStore::begin(std::string program, std::string settings){
     record.run_id = std::format("{}-{:03}", m_app_token, ++m_counter);
     record.program = std::move(program);
     record.version = PROGRAM_VERSION;
-    record.commit = PROGRAM_COMMIT;
+    record.executable = QCoreApplication::instance() == nullptr
+        ? ""
+        : QCoreApplication::applicationFilePath().toStdString();
     record.settings = std::move(settings);
     record.start_time = current_time();
     return record.run_id;

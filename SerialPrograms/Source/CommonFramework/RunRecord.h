@@ -5,7 +5,7 @@
  *  What one run of a program did, as the framework saw it: when it started,
  *  how it ended (exactly one outcome per accepted run), the error and the
  *  frame it died with, the events the program reported on the way, and the
- *  lines of its log, and the build and settings it ran with.
+ *  lines of its log, and the app and settings it ran with.
  *  ProgramSession writes these at its execution boundary; RunRecordStore
  *  keeps the last few for whoever asks, such as a tool that writes them to
  *  files. The store records nothing until it is enabled. Nothing here
@@ -70,7 +70,7 @@ struct RunRecord{
     std::string run_id = {};
     std::string program = {};           //  The program's identifier, "<game>:<program>".
     std::string version = {};           //  PROGRAM_VERSION of the app that ran it.
-    std::string commit = {};            //  PROGRAM_COMMIT (BuildCommit.h): the git commit it was built from.
+    std::string executable = {};        //  The path of the app's executable, which names a lab build.
     std::string settings = {};          //  The program's settings as JSON text, as the settings file stores them.
     WallClock start_time = WallClock::min();
     std::optional<WallClock> end_time = {};
