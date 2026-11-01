@@ -16,6 +16,7 @@
 #include "Common/Cpp/Time.h"
 #include "CommonFramework/ImageTypes/ImageViewRGB32.h"
 #include "CommonFramework/Tools/VideoStream.h"
+#include "Controllers/Joystick.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 
 namespace PokemonAutomation{
@@ -37,6 +38,9 @@ enum class WalkStop{
 };
 const char* walk_stop_name(WalkStop stop);
 
+//  Whether the walk has arrived, from the screen after each chunk.
+using WalkArrived = std::function<bool(const ImageViewRGB32& screen)>;
+
 struct WalkResult{
     WalkStop stop;
     Milliseconds walked;
@@ -48,26 +52,35 @@ struct WalkResult{
     size_t moved_chunks = 0;
 };
 
-//  Holds the left stick at (x, y) until one of the WalkStop events. Wild battles on
+//  Holds the left stick at `stick` until one of the WalkStop events. Wild battles on
 //  the way are run from, and walking resumes. Does not throw for any WalkStop; the
 //  caller decides which ones are expected.
 WalkResult walk_until(
     VideoStream& stream, ProControllerContext& context, const WildBattleEscape& escape,
-    double x, double y, Milliseconds limit, const std::string& label,
-    const std::function<bool(const ImageViewRGB32& screen)>& arrived = nullptr
+    JoystickPosition stick, Milliseconds limit, const std::string& label,
+    const WalkArrived& arrived = nullptr
 );
 
+//  How walk_until_dpad() presses: RUN holds B too, twice as fast and as
+//  tile-true.
+enum class DpadPace{
+    WALK,
+    RUN,
+};
+struct DpadWalkOptions{
+    WalkArrived arrived = nullptr;
+    DpadPace pace = DpadPace::WALK;
+};
+
 //  walk_until() on the D-pad, for a straight walk along a row or a column
-//  ((x, y) is one of the four directions). The D-pad moves whole tiles and
+//  (`stick` is one of the four directions). The D-pad moves whole tiles and
 //  keeps to the row: the stick drifts off it, catches tree corners and slides
 //  a row on stairs (Route 203, r226a and r227b; by hand the D-pad went
-//  through the same places). With `run`, B is held too: twice as fast, and
-//  as tile-true.
+//  through the same places).
 WalkResult walk_until_dpad(
     VideoStream& stream, ProControllerContext& context, const WildBattleEscape& escape,
-    double x, double y, Milliseconds limit, const std::string& label,
-    const std::function<bool(const ImageViewRGB32& screen)>& arrived = nullptr,
-    bool run = false
+    JoystickPosition stick, Milliseconds limit, const std::string& label,
+    const DpadWalkOptions& options = {}
 );
 
 //  A set number of whole tiles on the D-pad, a tap a tile (a tap moves
@@ -76,7 +89,7 @@ WalkResult walk_until_dpad(
 //  LIMIT after `tiles` taps, or BLOCKED when two taps in a row move nothing.
 WalkResult walk_tiles_dpad(
     VideoStream& stream, ProControllerContext& context, const WildBattleEscape& escape,
-    double x, double y, size_t tiles, const std::string& label
+    JoystickPosition stick, size_t tiles, const std::string& label
 );
 
 //  walk_until() where there are no wild Pokemon (a gym, a building): any
@@ -85,25 +98,29 @@ WalkResult walk_tiles_dpad(
 //  (r206d tried to run from the second Oreburgh Gym trainer).
 WalkResult walk_until_no_wild(
     VideoStream& stream, ProControllerContext& context,
-    double x, double y, Milliseconds limit, const std::string& label
+    JoystickPosition stick, Milliseconds limit, const std::string& label
 );
 
-//  Holds the left stick at (x, y) for `duration` in one go, for a walk of a
+//  Holds the left stick at `stick` for `duration` in one go, for a walk of a
 //  set length: walk_until() checks the screen between short holds, and each
 //  break can cost a step. Stops early for a dialog or a transition. A wild
 //  battle is run from and ends the walk with `wild_battles` 1, at a place the
 //  caller cannot know.
 WalkResult walk_for(
     VideoStream& stream, ProControllerContext& context, const WildBattleEscape& escape,
-    double x, double y, Milliseconds duration, const std::string& label
+    JoystickPosition stick, Milliseconds duration, const std::string& label
 );
 
-//  walk_until() that requires `expected`. Fails with the screenshot otherwise.
+//  The stop walk_expecting() requires, and what counts as arrived.
+struct WalkExpectation{
+    WalkStop stop = WalkStop::ARRIVED;
+    WalkArrived arrived = nullptr;
+};
+//  walk_until() that requires `expected.stop`. Fails with the screenshot otherwise.
 WalkResult walk_expecting(
     VideoStream& stream, ProControllerContext& context, const WildBattleEscape& escape,
-    double x, double y, Milliseconds limit, const std::string& label,
-    WalkStop expected,
-    const std::function<bool(const ImageViewRGB32& screen)>& arrived = nullptr
+    JoystickPosition stick, Milliseconds limit, const std::string& label,
+    const WalkExpectation& expected
 );
 
 //  After a move that may have walked onto an encounter tile (a tap in a cave
@@ -119,7 +136,7 @@ bool run_from_late_encounter(VideoStream& stream, ProControllerContext& context,
 //  next gate. Fails on a dialog or a transition: we are not where we think.
 WalkResult walk_to_wall(
     VideoStream& stream, ProControllerContext& context, const WildBattleEscape& escape,
-    double x, double y, Milliseconds limit, const std::string& label
+    JoystickPosition stick, Milliseconds limit, const std::string& label
 );
 
 //  Walks toward someone to talk to: after each short stretch, presses A and stops
@@ -127,7 +144,7 @@ WalkResult walk_to_wall(
 //  BLOCKED, e.g. in tall grass, whose sway keeps the screen changing.
 WalkResult walk_to_talk(
     VideoStream& stream, ProControllerContext& context, const WildBattleEscape& escape,
-    double x, double y, Milliseconds limit, const std::string& label
+    JoystickPosition stick, Milliseconds limit, const std::string& label
 );
 
 //  How much the screen changed between two frames, 0 for identical. Walking scrolls
@@ -145,7 +162,7 @@ constexpr double WALK_SCENE_CHANGE = 120.0;
 
 
 //  One straight walk timed finely, to check a map against the game: holds the
-//  stick at (x, y) and samples the screen every 100ms until the view has been
+//  stick at `stick` and samples the screen every 100ms until the view has been
 //  still for 800ms or `limit` runs out. Times count from the start of the hold.
 //  A sample moved if it changed by at least `moving_change`: still is 4 to 7,
 //  walking 16 to 85. Handles no battles or dialogs: use it on open ground,
@@ -161,7 +178,7 @@ struct WalkProbe{
 };
 WalkProbe probe_walk(
     VideoStream& stream, ProControllerContext& context,
-    double x, double y, Milliseconds limit,
+    JoystickPosition stick, Milliseconds limit,
     double moving_change, const std::string& label
 );
 
