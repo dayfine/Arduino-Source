@@ -32,4 +32,4 @@ jobs:
           if [[ -z "$base" || "$base" == 0000000000000000000000000000000000000000 ]]; then
             base=$(git hash-object -w -t tree --stdin </dev/null)
           fi
-          python -m devtools.code_health --base-ref "$base"
+          python -m devtools.code_health --base-ref "$base" --github

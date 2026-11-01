@@ -18,7 +18,7 @@ class LayeringTests(unittest.TestCase):
             with self.subTest(include=include):
                 failures = check(SHARED, f'#include "{include}"\n', '')
                 self.assertEqual(1, len(failures))
-                self.assertIn(f'{SHARED}:1: layering', failures[0])
+                self.assertIn(f'{SHARED}:1: layering', str(failures[0]))
 
     def test_platform_includes_and_game_code_pass(self):
         self.assertEqual([], check(SHARED, '#include "NintendoSwitch/Controllers/X.h"\n'
