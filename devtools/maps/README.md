@@ -137,6 +137,47 @@ down sit `PX` lower than the rows above (about 24 px per level; repeat the
 option per cliff, reading the rows off the picture). Town maps drawn at 16 px
 rows need neither.
 
+## Routes: a run's walks, planned and walked, on the JSON maps
+
+`routes` reads a SerialPrograms log (or a `Lab/runs/<run_id>/` run record,
+from its `log.txt`), finds every AutoStory route walk of both games, and draws
+each on the maps the walkers plan on (the JSON files: FRLG's
+`PokemonFRLG/Overworld/Maps/`, BDSP's `PokemonBDSP/.../AutoStory/Maps/`):
+
+```sh
+python3 -m devtools.maps routes SerialPrograms.log --list
+python3 -m devtools.maps routes SerialPrograms.log --run -1 \
+    --maps SerialPrograms/Source/VideoGames/PokemonFRLG/Overworld/Maps \
+    --maps SerialPrograms/Source/PokemonBDSP/Programs/AutoStory/Maps -o routes/
+```
+
+Per run it writes `routes/<run_id>/`: one PNG and one SVG per walk and map it
+touched, numbered in order, an `index.html` showing them in order, and
+`trace.json`, the walks as data (plans, steps with where they started and
+ended, and marks), the same shape for both games. On a picture the plan is
+thin, dashed and blue (a BDSP replan purple); the walk is red and as wide as
+the times that tile edge was walked, so back and forth shows as a fat line;
+it is dotted orange where the player's tile wasn't known (an FRLG leg stopped
+by a battle, the holds that found the player again). S marks the start, E
+the plan's end, A an arrival, R where the player was found again, B a wild
+battle, M a message, T a trainer, and a red X the failure. Standard library
+only: the PNG is drawn by `picture.py`.
+
+What each walker logs, and so what can be drawn:
+
+- **FRLG** logs each step as it starts (`Route: walk north 8 -> Route1 (12, 21)`),
+  how a leg was interrupted (`Leg: a wild battle after 1253ms, stopping the
+  leg.`) and the re-anchor (`Route: stopped part-way, finding the player
+  again at ...; <holds>`). Where the walker also logs the plan up front
+  (`Route: plan, N steps: ...`), the plan is drawn whole even when the walk
+  fails; otherwise a walk is one story event's steps, its plan those less the
+  holds and the way back. A walk's start is worked back from its first step,
+  or is where the last walk ended (after a warp). Only the last hold of a
+  re-anchor ends on a known tile, so the others aren't drawn.
+- **BDSP** logs the plan from a set of start tiles with its legs, each leg as
+  it starts, how it ended (`blocked`, `limit`), where it stopped and replanned
+  from, and where it arrived. The picture follows the first tile of each set.
+
 ## Maps without a decomp: `levels.py`
 
 For a map the decompilations don't cover, `levels.py` reads walkable tiles off
