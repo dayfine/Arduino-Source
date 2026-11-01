@@ -221,11 +221,15 @@ std::vector<TilePos> story_catch_save_area(){
 }
 
 std::vector<TilePos> story_after_training_area(){
-    const TilePos catch_spot = story_maps().to_world(MAP_ROUTE_202, Route202::CATCH_SPOT);
+    const MapSet& maps = story_maps();
+    const TilePos catch_spot = maps.to_world(MAP_ROUTE_202, Route202::CATCH_SPOT);
     std::vector<TilePos> area;
     for (int y = catch_spot.y - 2; y <= catch_spot.y + 2; y++){
         for (int x = catch_spot.x - 1; x <= catch_spot.x + 1; x++){
-            area.push_back({x, y});
+            //  The rows below the catch spot are trees in BDSP.
+            if (maps.world().standable({x, y})){
+                area.push_back({x, y});
+            }
         }
     }
     return area;

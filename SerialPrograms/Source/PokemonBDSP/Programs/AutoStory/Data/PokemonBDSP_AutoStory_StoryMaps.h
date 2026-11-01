@@ -93,8 +93,8 @@ std::vector<Pokemon::TilePos> story_door_front(const char* map, const Pokemon::T
 
 //  Where we may stand after training in the catch grass, in world tiles: the
 //  training walks up and down the catch spot's column, between the tree walls
-//  north and south of the grass, so a battle may stop us on any of its five
-//  rows. A column either side allows for where the catch left us.
+//  north and south of the grass, so a battle may stop us on any of its
+//  three rows. A column either side allows for where the catch left us.
 std::vector<Pokemon::TilePos> story_after_training_area();
 
 //  Route 202's trainers, in world tiles of story_maps().
