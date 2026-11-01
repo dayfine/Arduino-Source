@@ -180,7 +180,12 @@ number) the start, E the plan's end, A an arrival, R where the player was
 found again, B a wild battle, M a message, T a trainer, a red X the failure.
 Standard library only: the PNG is drawn by `picture.py`.
 
-What each walker logs, and so what can be drawn:
+What each walker logs, and so what can be drawn: both games' walkers write
+the shared route log lines (`Pokemon/Navigation/Pokemon_RouteLog.h`, lifted
+from BDSP's walker): the plan from one tile or a set, each leg as it starts
+and where it ended (walked, assumed or unknown), replans, where the player
+was found again, trainers and the arrival. `route_trace.py` reads those, and
+the older lines below for older logs:
 
 - **FRLG** logs each step as it starts (`Route: walk north 8 -> Route1 (12, 21)`),
   how a leg was interrupted (`Leg: a wild battle after 1253ms, stopping the

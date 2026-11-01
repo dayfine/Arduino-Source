@@ -6,7 +6,19 @@ and where they ended, and marks for what happened on the way. `to_json()`
 gives the same thing as plain data, which is the format agents should read
 (`trace.json` next to the pictures).
 
-FireRed (PokemonFRLG_OverworldWalk.cpp, PokemonFRLG_OverworldRecovery.cpp):
+Both games' walkers now write the shared route log lines
+(Pokemon/Navigation/Pokemon_RouteLog.h), lifted from BDSP's walker:
+    [Route] <label>: plan from Route 202 (15, 25), Route 202 (16, 25):     ("an unknown tile" after a stop)
+        east 15 (to wall) to Route 202 (23, 25), Route 202 (30, 26)        (continuation lines)
+    [Route] Leg 1/5: east 15 (to wall) to Route 202 (23, 25), ...
+    [Route] <label>: east 15 (to wall): ended at Route 202 (23, 25) (walked).     (or "assumed: ...", "unknown: ...")
+    [Route] <label>: west 8 (to wall): stopped early after about 3 tiles, at Route 202 (25, 24); planning again.
+    [Route] <label>: found again at Route1 (12, 21), after 2 hold(s).
+    [Route] <label>: Youngster Tristan stopped us about Route 202 (20, 10).
+    [Route] <label>: arrived at Route 202 (20, 25).
+The formats below are older, and read only for older logs.
+
+FireRed, before the shared lines (PokemonFRLG_OverworldWalk.cpp, PokemonFRLG_OverworldRecovery.cpp):
     Route: plan, 3 steps: walk east 4 -> PalletTown (10, 6); walk north 4 (to wall) -> ...; face west -> ...
     Route: walk north 8 -> Route1 (12, 21)                  one per step, as it starts
     Leg: a wild battle after 1253ms, stopping the leg.      the step stopped part-way
@@ -17,7 +29,7 @@ The plan line is newer than most logs: without it a walk is the steps of one
 story event, and its plan is those steps less the re-anchor holds and the
 way back to the stopped step's end.
 
-BDSP (PokemonBDSP_AutoStory_RouteWalk.cpp):
+BDSP, before the leg end lines (PokemonBDSP_AutoStory_RouteWalk.cpp):
     [Route] <label>: plan from Route 202 (15, 25), Route 202 (16, 25):
         east 15 (to wall) to Route 202 (23, 25), Route 202 (30, 26)      (continuation lines)
     [Route] Leg 1/5: east 15 (to wall) to Route 202 (23, 25), ...
@@ -48,13 +60,18 @@ F_ANCHOR = re.compile(r'^Route: stopped part-way, finding the player again at (\
 F_LEG = re.compile(r'^Leg: (.+?)( \(seen late\))?(?: after \d+ms,)? (stopping the leg|walking to the wall again|at the end of the leg)')
 F_WARP_HOLD = re.compile(r'^Route: (.+) on the way to the warp\.')
 
-#  BDSP.
+#  The shared route log (Pokemon/Navigation/Pokemon_RouteLog.h), lifted from
+#  BDSP's walker, which FRLG's walker writes too. A leg: "east 15 (to wall)",
+#  "south 1 (warp)", "north 8 (open)", "surf east", "face west".
+LEG_TEXT = r'(?:(?:north|south|east|west) \d+ \((?:to wall|open|warp)\)|(?:surf|face) (?:north|south|east|west))'
 B_PLAN = re.compile(r'^\[Route\] (.+?): plan from (.+?):\s*$')
-B_PLAN_LEG = re.compile(r'^\s+(north|south|east|west) (\d+) \((to wall|open)\) to (.+?)\s*$')
-B_LEG = re.compile(r'^\[Route\] Leg (\d+)/(\d+): (north|south|east|west) (\d+) \((to wall|open)\) to (.+?)\s*$')
+B_PLAN_LEG = re.compile(r'^\s+(' + LEG_TEXT + r') to (.+?)\s*$')
+B_LEG = re.compile(r'^\[Route\] Leg (\d+)/(\d+): (' + LEG_TEXT + r') to (.+?)\s*$')
+B_END = re.compile(r'^\[Route\] (.+?): (' + LEG_TEXT + r'): ended at (.+?) \((walked|assumed|unknown)(?:: (.*))?\)\.\s*$')
+B_FOUND = re.compile(r'^\[Route\] (.+?): found again at (.+?), after (\d+) hold')
 B_WALK = re.compile(r'^\[Walk\] (.+?): (?:(?:north|south|east|west) \d+ \((?:to wall|open)\)(?:: [^:]+?)?: )?'
                     r'(blocked|limit|dialog|transition|arrived)(?: after (?:a )?\d+ms(?: hold)?)?, (\d+) wild battle')
-B_STOPPED = re.compile(r'^\[Route\] (.+?): (?:north|south|east|west) \d+: (?:stopped early after about \d+ tiles|blocked after \d+ of \d+ tiles), at (.+?); planning again')
+B_STOPPED = re.compile(r'^\[Route\] (.+?): (?:north|south|east|west) \d+(?: \([a-z ]+\))?: (.+?)[,;] at (.+?); planning again')
 B_WAIT = re.compile(r'^\[Route\] (.+?): (?:north|south|east|west) \d+: (stopped after about \d+ tiles, short of the wall|blocked after \d+ of \d+ tiles); ')
 B_ARRIVED = re.compile(r'^\[Route\] (.+?): arrived at (.+?)\.\s*$')
 B_TRAINER = re.compile(r'^\[Route\] (.+?): (.+?) stopped us about (.+?)\.\s*$')
@@ -136,6 +153,14 @@ def _leg_from_frlg(match):
     return Leg(action, direction, int(tiles or 0), '(to wall)' in flags, '(warp)' in flags, [(name, int(x), int(y))])
 
 
+def leg_from_text(text, ends):
+    """A Leg from the route log's leg text ("east 15 (to wall)", "face west", ...)."""
+    words = text.split()
+    if words[0] in ('surf', 'face'):
+        return Leg(words[0], words[1], 0, False, False, ends)
+    return Leg('walk', words[0], int(words[1]), '(to wall)' in text, '(warp)' in text, ends)
+
+
 def step_back(place, direction, tiles):
     dx, dy = DIRECTIONS[direction]
     return (place[0], place[1] - dx * tiles, place[2] - dy * tiles)
@@ -157,6 +182,7 @@ class _Parser:
         self.back_to = None     # the stopped step's end, while walking back to it
         self.explicit_plan = False
         self.plan_pending = None    # BDSP: the plan whose continuation lines are being read
+        self.replan_expected = False    # the last leg stopped, and the walker plans again
 
     #  Runs and walks.
     def start_run(self, game, program):
@@ -321,7 +347,9 @@ class _Parser:
     def bdsp_plan(self, label, start_text):
         self.ensure_run('PokemonBDSP')
         start = places(start_text)
-        if self.walk is not None and self.walk.label == label and self.walk.outcome == 'open':
+        replan = self.replan_expected or self.run.game != 'PokemonFRLG'
+        self.replan_expected = False
+        if self.walk is not None and self.walk.label == label and self.walk.outcome == 'open' and replan:
             self.finish_step()
             plan = Plan(start, [], 'replan')
         else:
@@ -332,19 +360,34 @@ class _Parser:
         self.plan_pending = plan
         self.pos = list(start)
 
-    def bdsp_leg(self, direction, tiles, to_wall, ends_text):
+    def bdsp_leg(self, leg_text, ends_text):
         if self.walk is None:
             self.ensure_run('PokemonBDSP')
             self.new_walk(self.event or 'route')
             self.explicit_plan = True
             self.walk.plans.append(Plan(list(self.pos), [], 'plan'))
         self.finish_step()
-        leg = Leg('walk', direction, tiles, to_wall, False, places(ends_text))
+        leg = leg_from_text(leg_text, places(ends_text))
         plan = self.walk.plans[-1] if self.walk.plans else None
         if plan is not None and not any(_same_leg(leg, l) for l in plan.legs):
             plan.legs.append(leg)
         role = 'plan' if plan is None or plan.reason == 'plan' else 'replan'
         self.walk.steps.append(Step(leg, role, list(self.pos), time=self.time))
+
+    def leg_end(self, step, at, basis, why):
+        """The route log's line for how a leg ended (newer logs of both games)."""
+        step.basis = basis
+        step.why = f'{basis}: {why}' if why and basis != 'walked' else why
+        if basis == 'unknown':
+            step.outcome, step.end = 'stopped', []
+            self.pos = []
+            self.replan_expected = 'stopped' in why
+            if not step.start:
+                step.role = 'hold'      # from an unknown tile, to one that depends on it
+                step.certain = False
+            return
+        step.outcome, step.end = 'done', at
+        self.pos = list(at)
 
     def bdsp_line(self, text):
         m = B_PLAN.match(text)
@@ -354,7 +397,7 @@ class _Parser:
         self.plan_pending = None
         m = B_LEG.match(text)
         if m:
-            self.bdsp_leg(m.group(3), int(m.group(4)), m.group(5) == 'to wall', m.group(6))
+            self.bdsp_leg(m.group(3), m.group(4))
             return
         walk = self.walk
         if walk is None:
@@ -372,13 +415,24 @@ class _Parser:
                 step.basis, step.why = 'assumed', f'assumed after {battles} battle(s)'
                 self.mark('battle', step.leg.ends, f'{battles} wild battle(s) on {step.leg.describe()}')
             return
+        m = B_END.match(text)
+        if m and m.group(1) == walk.label and step is not None:
+            self.leg_end(step, places(m.group(3)), m.group(4), m.group(5) or '')
+            return
+        m = B_FOUND.match(text)
+        if m and m.group(1) == walk.label:
+            at = places(m.group(2))
+            self.pos = at
+            self.mark('reanchor', at, f'found again after {m.group(3)} hold(s)')
+            return
         m = B_STOPPED.match(text)
         if m and m.group(1) == walk.label and step is not None:
-            at = places(m.group(2))
+            at = places(m.group(3))
             step.outcome, step.end = 'stopped', at
             step.basis, step.why = 'walked', ''
             self.pos = at
-            self.mark('stop', at, text.split(': ', 1)[1])
+            self.replan_expected = True
+            self.mark('stop', at, m.group(2))
             return
         m = B_WAIT.match(text)
         if m and m.group(1) == walk.label and step is not None:
@@ -411,8 +465,7 @@ class _Parser:
             if self.plan_pending is not None:
                 leg = B_PLAN_LEG.match(raw)
                 if leg:
-                    self.plan_pending.legs.append(Leg('walk', leg.group(1), int(leg.group(2)), leg.group(3) == 'to wall',
-                                                      False, places(leg.group(4))))
+                    self.plan_pending.legs.append(leg_from_text(leg.group(1), places(leg.group(2))))
             return
         self.time, text = m.group(1), m.group(2)
         p = PROGRAM.search(text)

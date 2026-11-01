@@ -90,6 +90,48 @@ BDSP_LOG = stamp([
 ])
 
 
+#  The shared route log lines (Pokemon/Navigation/Pokemon_RouteLog.h), as
+#  FRLG's walker writes them: one tile, a stop, holds that find the player.
+SHARED_FRLG_LOG = stamp([
+    '<b>Starting Program: PokemonFRLG:AutoStory</b>',
+    '[Event] 00.05/2 to_route: start',
+    '[Route] to_route: plan from TestTown (8, 1):',
+    '    west 4 (open) to TestTown (4, 1)',
+    '    south 3 (open) to TestTown (4, 4)',
+    '    north 4 (open) to Route9 (4, 3)',
+    '[Route] Leg 1/3: west 4 (open) to TestTown (4, 1)',
+    '[Route] to_route: west 4 (open): ended at TestTown (4, 1) (walked).',
+    '[Route] Leg 2/3: south 3 (open) to TestTown (4, 4)',
+    'Leg: a wild battle after 900ms, stopping the leg.',
+    '[Route] to_route: south 3 (open): ended at an unknown tile (unknown: stopped part-way).',
+    '[Route] to_route: plan from an unknown tile:',
+    '    east 6 (to wall) to TestTown (6, 2)',
+    '    south 9 (to wall) to TestTown (8, 3)',
+    '    west 4 (open) to TestTown (4, 3)',
+    '    south 1 (open) to TestTown (4, 4)',
+    '    north 4 (open) to Route9 (4, 3)',
+    '[Route] Leg 1/5: east 6 (to wall) to TestTown (6, 2)',
+    '[Route] to_route: east 6 (to wall): ended at an unknown tile (unknown: a hold from an unknown tile).',
+    '[Route] Leg 2/5: south 9 (to wall) to TestTown (8, 3)',
+    '[Route] to_route: south 9 (to wall): ended at TestTown (8, 3) (walked).',
+    '[Route] to_route: found again at TestTown (8, 3), after 2 hold(s).',
+    '[Route] Leg 3/5: west 4 (open) to TestTown (4, 3)',
+    '[Route] to_route: west 4 (open): ended at TestTown (4, 3) (walked).',
+    '[Route] Leg 4/5: south 1 (open) to TestTown (4, 4)',
+    '[Route] to_route: south 1 (open): ended at TestTown (4, 4) (walked).',
+    '[Route] Leg 5/5: north 4 (open) to Route9 (4, 3)',
+    '[Route] to_route: north 4 (open): ended at Route9 (4, 3) (assumed: 1 wild battle(s) on the way).',
+    '[Route] to_route: arrived at Route9 (4, 3).',
+    '[Event] 00.05/2 to_route: done',
+    '[Event] 00.05/3 house: start',
+    '[Route] house: plan from TestTown (4, 4):',
+    '    east 3 (open) to TestTown (7, 4)',
+    '    south 1 (warp) to TestHouse (3, 3)',
+    '    face west to TestHouse (3, 3)',
+    '[Route] Leg 1/3: east 3 (open) to TestTown (7, 4)',
+])
+
+
 def maps():
     return {route_maps.key(m['name']): route_maps.parse(m) for m in (FRLG_TOWN, FRLG_ROUTE, FRLG_HOUSE, BDSP_TOWN)}
 
@@ -215,6 +257,43 @@ class BdspTraceTest(unittest.TestCase):
     def test_json_round_trip(self):
         data = json.loads(json.dumps(route_trace.to_json([self.run])))
         self.assertEqual(data[0]['walks'][0]['steps'][0]['leg']['direction'], 'east')
+
+
+class SharedLogTest(unittest.TestCase):
+    """The route log lines both games' walkers now write."""
+
+    def setUp(self):
+        self.walks = route_trace.parse(SHARED_FRLG_LOG, maps())[0].walks
+
+    def test_walks_plans_and_replans(self):
+        self.assertEqual([(w.label, w.outcome) for w in self.walks], [('to_route', 'done'), ('house', 'open')])
+        walk = self.walks[0]
+        self.assertEqual([(p.reason, p.start) for p in walk.plans], [('plan', [('TestTown', 8, 1)]), ('replan', [])])
+        self.assertEqual([l.describe() for l in self.walks[1].plans[0].legs],
+                         ['walk east 3', 'walk south 1 (warp)', 'face west'])
+
+    def test_how_each_leg_ended(self):
+        walk = self.walks[0]
+        self.assertEqual([(s.leg.describe(), s.basis, s.end) for s in walk.steps], [
+            ('walk west 4', 'walked', [('TestTown', 4, 1)]),
+            ('walk south 3', 'unknown', []),
+            ('walk east 6 (to wall)', 'unknown', []),
+            ('walk south 9 (to wall)', 'walked', [('TestTown', 8, 3)]),
+            ('walk west 4', 'walked', [('TestTown', 4, 3)]),
+            ('walk south 1', 'walked', [('TestTown', 4, 4)]),
+            ('walk north 4', 'assumed', [('Route9', 4, 3)]),
+        ])
+        self.assertEqual(walk.steps[-1].why, 'assumed: 1 wild battle(s) on the way')
+        self.assertIn(('reanchor', [('TestTown', 8, 3)]), [(m.kind, m.at) for m in walk.marks])
+
+    def test_drawn_like_the_old_lines(self):
+        paths, first, last = route_render.walked_paths(maps(), self.walks[0])
+        walked = route_render.edge_counts(paths, 'TestTown')
+        self.assertEqual(walked[((4, 3), (4, 4))], 1)
+        self.assertEqual(walked[((4, 1), (5, 1))], 1)
+        self.assertNotIn(((4, 1), (4, 2)), walked)    # the stopped leg, and the assumed walk north
+        self.assertEqual(route_render.edge_counts(paths, 'TestTown', 'assumed')[((4, 3), (4, 4))], 1)
+        self.assertEqual((first, last), (('TestTown', 8, 1), ('Route9', 4, 3)))
 
 
 class PathTest(unittest.TestCase):
