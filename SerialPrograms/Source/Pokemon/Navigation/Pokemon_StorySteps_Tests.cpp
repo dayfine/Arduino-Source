@@ -17,6 +17,7 @@
 #include <utility>
 #include <vector>
 #include "Common/Cpp/TestRunners/UnitTest.h"
+#include "Pokemon/Options/Pokemon_StoryRunOptions.h"
 #include "Pokemon_StoryEvents.h"
 #include "Pokemon_StorySegments.h"
 #include "Pokemon_StorySteps.h"
@@ -456,6 +457,43 @@ UnitTestResult test_policy_recovers_in_place(){
     return true;
 }
 
+//  The checks level: THOROUGH by default, and what the program sets is
+//  what a step reads.
+UnitTestResult test_checks_level(){
+    class CheckingExecutor : public FakeExecutor{
+    public:
+        std::vector<std::string> seen;
+        virtual Outcome talk(RunState&, const StoryStep& step) override{
+            seen.push_back(step.name + " " + story_checks_name(checks()));
+            return outcome_ok();
+        }
+    };
+    StoryCheckpoint data = lab_checkpoint();
+    CheckingExecutor executor;
+    run(data, executor);
+    executor.set_checks(StoryChecks::FAST);
+    run(data, executor);
+    if (executor.seen != std::vector<std::string>{"talk_oak thorough", "talk_oak fast"}){
+        return "Expected the talk to read thorough, then fast:" + joined(executor.seen);
+    }
+    return true;
+}
+
+//  The program's option group: 3 attempts, no stop, Thorough, by default;
+//  Fast when chosen.
+UnitTestResult test_run_options(){
+    StoryRunOptions options;
+    const SegmentPolicy policy = options.policy();
+    if (policy.attempts_per_checkpoint != 3 || policy.stop_at_first_failure || options.checks() != StoryChecks::THOROUGH){
+        return "Expected 3 attempts, no stop at the first failure, and Thorough checks by default.";
+    }
+    options.CHECKS.set(StoryChecks::FAST);
+    if (options.checks() != StoryChecks::FAST){
+        return "Expected Fast checks once chosen.";
+    }
+    return true;
+}
+
 UnitTestResult test_lint(){
     StoryStep no_target = make(StoryStepKind::ROUTE, "walk");
     StoryStep again = make(StoryStepKind::TALK, "walk");
@@ -507,6 +545,8 @@ void add_tests_StorySteps(UnitTestDatabase& database){
     database.add<Test_StorySteps>("unsupported kinds and lost battles", test_unsupported_and_lost_battles);
     database.add<Test_StorySteps>("tables as a segment, with a reload", test_segment_of_tables);
     database.add<Test_StorySteps>("lint", test_lint);
+    database.add<Test_StorySteps>("the checks level reaches the steps", test_checks_level);
+    database.add<Test_StorySteps>("the run options' defaults", test_run_options);
     database.add<Test_StorySteps>("policy: attempts per checkpoint, then fail", test_policy_attempts_then_fail);
     database.add<Test_StorySteps>("policy: stop at the first failure", test_policy_stop_at_first_failure);
     database.add<Test_StorySteps>("policy: recover in place before reloading", test_policy_recovers_in_place);

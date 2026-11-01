@@ -10,6 +10,14 @@ namespace PokemonAutomation{
 namespace Pokemon{
 
 
+const EnumDropdownDatabase<StoryChecks>& StoryChecks_Database(){
+    static const EnumDropdownDatabase<StoryChecks> database({
+        {StoryChecks::THOROUGH, "thorough", "Thorough: confirm purchases, the Bag, status and position on screen"},
+        {StoryChecks::FAST,     "fast",     "Fast: trust counts and timings"},
+    });
+    return database;
+}
+
 StoryRunOptions::StoryRunOptions()
     : GroupOption("Checkpoint Retries", LockMode::LOCK_WHILE_RUNNING)
     , ATTEMPTS_PER_CHECKPOINT(
@@ -22,9 +30,16 @@ StoryRunOptions::StoryRunOptions()
         LockMode::LOCK_WHILE_RUNNING,
         false
     )
+    , CHECKS(
+        "<b>Checks:</b><br>Thorough reads the screen to confirm what each step did; Fast trusts counts and timings, for a run in a rush.",
+        StoryChecks_Database(),
+        LockMode::LOCK_WHILE_RUNNING,
+        StoryChecks::THOROUGH
+    )
 {
     PA_ADD_OPTION(ATTEMPTS_PER_CHECKPOINT);
     PA_ADD_OPTION(STOP_AT_FIRST_FAILURE);
+    PA_ADD_OPTION(CHECKS);
 }
 
 SegmentPolicy StoryRunOptions::policy() const{
@@ -32,6 +47,10 @@ SegmentPolicy StoryRunOptions::policy() const{
     policy.attempts_per_checkpoint = ATTEMPTS_PER_CHECKPOINT;
     policy.stop_at_first_failure = STOP_AT_FIRST_FAILURE;
     return policy;
+}
+
+StoryChecks StoryRunOptions::checks() const{
+    return CHECKS;
 }
 
 
