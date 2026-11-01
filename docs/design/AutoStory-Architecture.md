@@ -77,6 +77,11 @@ Goals:
    - the overworld coming back.
    The Checks level chooses how much: Thorough (the default) also reads the Mart row, the bag
    counts and the item before it's used; Fast trusts counts and timings.
+   **Room for error.** A step judges by the end state, not by naming every screen on the way.
+   It gets a bounded number of safe inputs for anything it doesn't recognise (B advances a line
+   but never starts a talk), then confirms the end state (menu, overworld, pose, banner), and
+   fails only if that never comes. One extra dialog line or an unclassified screen must not fail
+   a run. The bounds and the choice of safe input are explicit and unit-tested.
 5. **Interrupts are expected.** A walk watches for wild battles, trainers, signs and messages:
    - It handles them through game callbacks (fight or flee, mash B back to the overworld).
    - It then resumes. A leg to a wall is simply held again; an open leg counts the tiles walked.
