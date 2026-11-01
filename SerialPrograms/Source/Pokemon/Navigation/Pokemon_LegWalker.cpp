@@ -126,6 +126,12 @@ LegResult walk_leg_with(const LegSpec& leg, const LegCalls& calls, size_t max_in
             result.stopped = true;
             return result;
         }
+        if (leg.to_wall && leg.stop_if_blocked && result.interruptions > 1 && outcome->elapsed < leg.tile_time * 3){
+            calls.log(seen + ", again at once: something on the way stops every hold.");
+            result.exact = false;
+            result.stopped = true;
+            return result;
+        }
         if (leg.to_wall){
             //  The wall stops the player on the leg's last tile however far
             //  they got, so the leg is simply held again.

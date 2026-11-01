@@ -27,6 +27,7 @@
 #include "Inference/PokemonFRLG_TrainerIdReader.h"
 #include "Inference/PokemonFRLG_WildEncounterReader.h"
 #include "Overworld/PokemonFRLG_OverworldMaps.h"
+#include "Overworld/PokemonFRLG_OverworldReanchor.h"
 #include "Overworld/PokemonFRLG_OverworldRoute.h"
 #include "Overworld/PokemonFRLG_PlayerFacingReader.h"
 #include "PokemonFRLG_Navigation.h"

@@ -97,6 +97,10 @@ struct LegSpec{
     //  An open leg stops at its first interrupt, once cleared, instead of
     //  walking on from an estimate; the caller finds the player again.
     bool stop_on_interrupt = false;
+    //  A leg to a wall stops when, held again after an interrupt, it is
+    //  interrupted again right away: something on the way, like a sign,
+    //  interrupts every hold, so the wall is never reached.
+    bool stop_if_blocked = false;
 };
 std::string to_string(const LegSpec& leg);
 

@@ -65,8 +65,9 @@ void use_max_repel_from_bag(ConsoleHandle& console, ProControllerContext& contex
 //  player faces at the start; if not given, it is read from the screen.
 //
 //  When a battle or a message stops an open leg part-way, where the player
-//  is isn't guessed: they hold on to a wall along that leg (plan_reanchor()),
-//  and a new route to the same end is planned from there on `maps`, or on
+//  is isn't guessed. Off the grass, on a leg to a warp, they hold on to the
+//  warp. Otherwise they hold to walls that find them (plan_reanchor()), and
+//  a new route to the same end is planned from there on `maps`, or on
 //  overworld_maps() if not given.
 //
 //  Throws OperationFailedException if a menu or message is open before a

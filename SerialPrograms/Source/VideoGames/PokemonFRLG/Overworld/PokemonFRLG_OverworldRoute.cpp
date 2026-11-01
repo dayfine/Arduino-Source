@@ -380,11 +380,7 @@ std::optional<std::vector<RouteStep>> plan_overworld_route(
 namespace{
 
 //  Further than any straight line on a map.
-constexpr int MAX_ANCHOR_TILES = 128;
-
-Direction opposite(Direction direction){
-    return (Direction)(((int)direction + 2) % 4);
-}
+constexpr int MAX_HOLD_TILES = 128;
 
 std::optional<Located> locate(const std::vector<MapData>& maps, const MapPosition& position, bool surfing){
     const int map = find_map(maps, position.map);
@@ -397,91 +393,54 @@ std::optional<Located> locate(const std::vector<MapData>& maps, const MapPositio
     return player;
 }
 
-//  Presses `direction` from `player` until holding it keeps them on their
-//  tile, and returns how many steps that took, or nothing if one on the way
-//  is anything but a plain walk (a warp, Surf, a ledge, a person).
-std::optional<int> presses_to_stop(const std::vector<MapData>& maps, Located& player, Direction direction){
-    for (int c = 0; c <= MAX_ANCHOR_TILES; c++){
-        if (stops_at(maps, player, direction)){
-            return c;
-        }
-        const std::optional<Transition> transition = press(maps, player, direction);
-        if (!transition || transition->warped || transition->dismounted || transition->action != RouteAction::WALK){
-            return std::nullopt;
-        }
-        player = transition->next;
+//  A plain step: no warp, no Surf, no getting off the water.
+std::optional<Located> plain_step(const std::vector<MapData>& maps, const Located& player, Direction direction){
+    const std::optional<Transition> transition = press(maps, player, direction);
+    if (!transition || transition->warped || transition->dismounted || transition->action != RouteAction::WALK){
+        return std::nullopt;
     }
-    return std::nullopt;
-}
-
-//  Where `step` started: `tiles` presses back from its end.
-std::optional<Located> walk_back(const std::vector<MapData>& maps, const RouteStep& step){
-    std::optional<Located> player = locate(maps, step.end, step.surfing);
-    for (int c = 0; player && c < step.tiles; c++){
-        const std::optional<Transition> transition = press(maps, *player, opposite(step.direction));
-        if (!transition || transition->warped || transition->action != RouteAction::WALK){
-            return std::nullopt;
-        }
-        player = transition->next;
-    }
-    return player;
-}
-
-RouteStep anchor_step(const std::vector<MapData>& maps, const RouteStep& step, Direction direction, int tiles, const Located& end){
-    RouteStep anchor;
-    anchor.direction = direction;
-    anchor.tiles = tiles;
-    anchor.surfing = step.surfing;
-    anchor.to_wall = true;
-    anchor.wild = step.wild;
-    anchor.facing_after = direction;
-    anchor.end = MapPosition{maps[end.map].name, end.state.position};
-    return anchor;
+    return transition->next;
 }
 
 }
 
 
-std::optional<RouteStep> plan_reanchor(
+std::optional<WallHold> hold_to_wall(
     const std::vector<MapData>& maps,
-    const std::optional<MapPosition>& start,
-    const RouteStep& step
+    const MapPosition& from, bool surfing, Direction direction
 ){
-    if (step.action != RouteAction::WALK || step.to_wall){
-        return std::nullopt;
-    }
-    std::optional<Located> from = start ? locate(maps, *start, step.surfing) : std::nullopt;
-    if (!start && !step.warps){
-        from = walk_back(maps, step);
-    }
-    if (!from){
-        return std::nullopt;
-    }
-    //  The tiles the player may be on, short of a warp at the end.
-    const int along = step.tiles - (step.warps ? 1 : 0);
-    Located last = *from;
-    for (int c = 0; c < along; c++){
-        const std::optional<Transition> transition = press(maps, last, step.direction);
-        if (!transition || transition->warped || transition->action != RouteAction::WALK){
-            return std::nullopt;
+    std::optional<Located> player = locate(maps, from, surfing);
+    WallHold hold;
+    for (int c = 0; player && c <= MAX_HOLD_TILES; c++){
+        if (stops_at(maps, *player, direction)){
+            hold.end = MapPosition{maps[player->map].name, player->state.position};
+            hold.tiles = c;
+            return hold;
         }
-        last = transition->next;
-    }
-    //  On to the next wall ahead, or else back past the start to the one
-    //  behind: from any of those tiles the hold ends there.
-    Located ahead = last;
-    if (!step.warps){
-        if (const std::optional<int> more = presses_to_stop(maps, ahead, step.direction)){
-            return anchor_step(maps, step, step.direction, along + *more, ahead);
+        player = plain_step(maps, *player, direction);
+        if (player){
+            const MapData& map = maps[player->map];
+            hold.wild = hold.wild || is_tall_grass(map, player->state.position) || player->state.surfing;
         }
-    }
-    Located behind = *from;
-    if (const std::optional<int> more = presses_to_stop(maps, behind, opposite(step.direction))){
-        return anchor_step(maps, step, opposite(step.direction), along + *more, behind);
     }
     return std::nullopt;
 }
 
+std::vector<MapPosition> leg_tiles(
+    const std::vector<MapData>& maps,
+    const MapPosition& start, const RouteStep& step
+){
+    std::vector<MapPosition> tiles{start};
+    std::optional<Located> player = locate(maps, start, step.surfing);
+    const int along = step.tiles - (step.warps ? 1 : 0);
+    for (int c = 0; player && c < along; c++){
+        player = plain_step(maps, *player, step.direction);
+        if (player){
+            tiles.push_back(MapPosition{maps[player->map].name, player->state.position});
+        }
+    }
+    return tiles;
+}
 
 MapPosition follow_overworld_route(
     const std::vector<MapData>& maps,
