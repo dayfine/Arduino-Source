@@ -332,3 +332,68 @@ offset**.
 
 **TODO:** audit every earlier route (00.04 to 01.05) for counted stick legs and redo them as
 "clip to a wall, then D-pad taps", measured on the console.
+
+## 15. Jubilife to Route 204, and where maps come from (2026-10-31, r216 to r246)
+
+Run 1 went on from Roark through the Oreburgh Gate, Route 203, Jubilife's north street,
+Route 204 South, the Ravaged Path (Rock Smash) and out onto Route 204 North. 01.10 (the
+walk into Floaroma) is the last checkpoint and took eight builds; what they taught is below.
+
+**Maps:**
+- **Bulbapedia's DP map images have 12 px rows for 16 px columns.** Every grid traced from
+  them (Jubilife, Routes 201 to 204) has 3/4 of a tile per row, and no single offset fixes
+  it: a cliff is painted about 24 px tall (two rows) above its tiles, so the lower level
+  under the Ravaged Path sits two rows below a flat 12 px grid. Vertical legs planned on such
+  a grid are 25 to 35% short. An image parser with tall grass, shadows and stairs fixed still
+  called half the open tiles walls (Route 204 North: 80% of tiles exact, 177 false walls).
+- **The Pokemon Platinum decompilation (pret/pokeplatinum) gives the real tiles**: each
+  32x32 cell's collision bit and behaviour (tall grass, ledges and their direction, warps,
+  doors), plus an events file with every NPC, their facing and wander range. Route 204 North,
+  Route 204 South and the Ravaged Path were rebuilt from it and matched the console at every
+  anchor probed. BDSP differs in spots: trainers stand a few tiles from Platinum's, one
+  column of the grass block's east edge is a wall on the console, the Potion lady on Route 201
+  wanders. Terrain from the decomp, people and such edits from the console.
+- **Say where each map comes from.** Every map file now opens with its source, its console
+  checks and the checkpoints that pass on it (`Data/MAPS.md`); a map change re-runs them.
+- **A wandering NPC is not a wall.** Marking the Youngster's two rows under the cliff as
+  tiles to avoid took away the only straight row to the stairs. The map stays true; the walker
+  waits for him or talks to him.
+- **One map is one connected component.** Route 204's halves meet only through the cave:
+  split (fork #97, PokemonNavigation #27). A ledge is one way (0x3b, jump south).
+
+**Routes:**
+- **The planner's cheapest route is not a human's.** It ran to a wall and tapped back
+  (cost 35) instead of nine taps (41), hugged the grass block's corner through tiles nobody
+  had walked, and bounced off walls. The human did it in 18 presses: south 1, west along the
+  row under the cliff, up the middle of the stairs, east into Aroma Lady Taylor's battle,
+  north through the grass, west under the flower beds, north into town. That line, as
+  waypoints (`walk_waypoints()`), with costs that let a straight tap leg win, is the route.
+- **Verify every tile a route touches** by a human walk or a D-pad probe before coding. The
+  corner at column 23 and the fourth row under the cave were planner choices never walked.
+- **Record the human.** A shot a second of the lab window plus the app log is enough; the
+  keyboard shows in the log only as `controller_state`, so the shots carry the moves.
+- **Draw the route on the image only with the cliffs accounted for**; a flat overlay put the
+  row under the cliff across the cave mouth and looked right.
+
+**Walker:**
+- **Time-counted legs break when something blocks them.** "West 10 to the wall" met the
+  Youngster, counted 8 tiles for 4, and every later leg was five columns off (r244a). Open
+  legs are whole-tile D-pad taps now; stretches between a line's corners plan as taps.
+- **A tap's screen change: a step 21 to 50, a bump into a wall or an NPC brushing past 4 to
+  13.** The old threshold of 10 counted bumps as steps up the cliff and "arrived" (r244a);
+  tap legs use 16. Measured from the logged per-tap values and the recording.
+- **A blocked tap leg waits 2.5 s and taps the rest**, three times, then talks (the Youngster
+  answers), marks the blocker and plans again from the exact tile the taps give.
+- **Rock Smash's prompt is answered by its Yes/No cursor**, not timed presses (r237a said
+  No); "someone in the way" in a cave tries the prompt before a talk.
+
+**Process:**
+- **A stale build ran twice.** A background build failed on a header I had broken, a grep
+  filtered the error out, the tests ran on the old binary, and the deploy copied the 18:29
+  app for the 18:57 fix (r245a was r244a again). Check the binary's time against the source
+  edit before any console run; build in the foreground when the result decides the run.
+- **The three-build stop exists to force a hand measurement.** 01.10 went to eight builds;
+  the measurement, once made (the human's walk), gave the route in 30 s and the parser and
+  overlay errors in an hour.
+- **An image parser is a check, not a source.** Each of its mistakes is a hand rule per map
+  for an approximation of what the decomp states exactly.
