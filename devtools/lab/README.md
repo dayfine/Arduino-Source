@@ -10,7 +10,7 @@ request is a text file in `inbox/`, its journal appears in `outbox/`, and
 | Script | Does | Parameters |
 |---|---|---|
 | `lablock.sh` | One user of a console at a time: `run [-w] NAME -- CMD...`, `check`, `status`. | `-c CONSOLE` or `LAB_CONSOLE` (default `default`); `LAB_DIR` for the lock folder (default `~/.lab`); `LABLOCK_TOKEN` passed to the command. |
-| `labctl.sh` | One channel command per call: `state`, `start`, `stop`, `select ID`, `set KEY JSON`, `owner claim TOKEN`, `owner release`, `keepawake on\|off [S]`, `send NAME` (any request from stdin); `supports PATH` tells whether a build has the channel. | `-p PROFILE` or `LAB_PROFILE`; `LAB_OWNER` for the owner line; `LABCTL_WAIT` seconds per request and for start/stop to settle (default 60). |
+| `labctl.sh` | One channel command per call: `state`, `start`, `stop`, `wait RUN_ID` (for a run to end; prints what it did), `select ID`, `set KEY JSON`, `owner claim TOKEN`, `owner release`, `keepawake on\|off [S]`, `send NAME` (any request from stdin); `supports PATH` tells whether a build has the channel. | `-p PROFILE` or `LAB_PROFILE`; `LAB_OWNER` for the owner line; `LABCTL_WAIT` seconds per request and for start/stop to settle (default 60); `LABCTL_RUN_WAIT` seconds for `wait` (default 7200). |
 | `cfrun.sh` | Send one batch of console commands (stdin) under the console's lock and print its journal. | `-p PROFILE` or `LAB_PROFILE`; `LAB_OWNER`; `CFRUN_WAIT` seconds per batch (default 600). |
 
 Each script's header comment has the full usage and exit codes.
@@ -94,12 +94,14 @@ sh labctl.sh set START_CHECKPOINT_TUTORIAL '"15"'
 #   end
 sh labctl.sh set END_CHECKPOINT_TUTORIAL '"15"'
 sh labctl.sh start                               # RUNNING (PokemonBDSP:AutoStory)
+                                                 # run=20261101-153012123456-003
 
-until sh labctl.sh state | grep -q '^state=STOPPED'; do sleep 2; done
+sh labctl.sh wait 20261101-153012123456-003      # see "Run records" below
 sh labctl.sh state
 #   seq=labctl-4242-1762000000
 #   state=STOPPED
 #   program=PokemonBDSP:AutoStory
+#   run=20261101-153012123456-003
 #   owner=lab-B
 #   error=
 
@@ -133,6 +135,50 @@ end
 
 A request from a script without the token is refused and its journal says
 who holds it: `error 2 (start): owned by lab-B`.
+
+## Run records
+
+Every run gets a folder `Lab/runs/<run_id>/` with `meta.json` (program,
+version, executable, git commit, settings), `result.json` (status, outcome, error, last
+event, frame), `events.jsonl` (what the program reported, plus the `shot`s
+and `detect`s taken during the run or within two minutes after), `log.txt`
+(the run's own log, appended as it goes, up to 8 MiB) and the frames. The
+outcome comes from the program thread's exit, never from the state file or
+the log, so there is no UNKNOWN verdict: a run is `completed`, `cancelled`
+or `failed`. Shapes: [Lab.md, "Run records"](../../SerialPrograms/Source/CommonFramework/Windows/Lab.md#run-records).
+
+One iteration of the `console-iteration` loop, in place of `run_watch.sh`:
+
+```sh
+sh labctl.sh send run15 <<'REQ'      # select, set, bdsp_load_save, start
+select PokemonBDSP:AutoStory
+set START_CHECKPOINT_TUTORIAL "15"
+set END_CHECKPOINT_TUTORIAL "15"
+start
+REQ
+#   ...
+#   run=20261101-153012123456-003
+#   ok 5 start @423-431ms
+#   end
+run=$(sh labctl.sh state | sed -n 's/^run=//p')
+sh labctl.sh wait "$run"             # polls Lab/runs/$run/result.json
+#   outcome=failed  checkpoint=01.08  step=4/7  attempt=2
+#   error: expect_failed: the Route 204 sign's box did not open
+#   frame: .../Lab/runs/20261101-153012123456-003/frame-failure.png
+#   pose: route_204_south (12, 41) facing N
+#   events: .../Lab/runs/20261101-153012123456-003/events.jsonl   log: .../log.txt
+```
+
+`wait` exits 0 for `completed`, 1 for `failed` or `cancelled`, 2 when the
+run is still going after `LABCTL_RUN_WAIT` seconds (the run is not stopped).
+The agent opens the frame, draws the pose on the grid, probes with CFR (the
+`shot`s land in the same run folder as `probe-*.png` and `probe` lines of
+`events.jsonl`), fixes once, and reruns under a new run ID. A run that
+covers many checkpoints reads `events.jsonl` for its checkpoint list.
+
+The checkpoint, step, attempt and pose lines come from the program's own
+events (`record_run_event(env, event)`); a program that reports none
+still gets its outcome, error, frame and log.
 
 ## Probing the console between runs
 

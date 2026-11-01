@@ -3,16 +3,21 @@
  *  From: https://github.com/PokemonAutomation/
  *
  *  The channel's text formats, with no app: request files, the journal, the
- *  "state" file, the owner lock and the keep-awake schedule.
+ *  "state" file, the owner lock, the keep-awake schedule and the run files.
  *
  */
 
+#include <algorithm>
 #include <functional>
 #include <format>
 #include <string>
 #include "Common/Cpp/Filesystem/FileIO.h"
+#include "Common/Cpp/Json/JsonObject.h"
+#include "Common/Cpp/Json/JsonValue.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
+#include "CommonFramework/BuildCommit.h"
 #include "LabRequest.h"
+#include "LabRunFiles.h"
 #include "LabChannel_Tests.h"
 
 namespace PokemonAutomation{
@@ -139,12 +144,15 @@ UnitTestResult test_journal(){
 }
 
 UnitTestResult test_state_text(){
-    LabState state{"r1", "RUNNING", "PokemonBDSP:AutoStory", "lab-B", ""};
-    if (lab_state_text(state) != "seq=r1\nstate=RUNNING\nprogram=PokemonBDSP:AutoStory\nowner=lab-B\nerror=\n"){
+    LabState state{
+        .seq = "r1", .state = "RUNNING", .program = "PokemonBDSP:AutoStory",
+        .run = "20261101-153012123456-007", .owner = "lab-B", .error = "",
+    };
+    if (lab_state_text(state) != "seq=r1\nstate=RUNNING\nprogram=PokemonBDSP:AutoStory\nrun=20261101-153012123456-007\nowner=lab-B\nerror=\n"){
         return "Unexpected state text: " + lab_state_text(state);
     }
-    state = {"", "NO_PROGRAM", "", "", "The selected panel is not a program."};
-    if (lab_state_text(state) != "seq=\nstate=NO_PROGRAM\nprogram=\nowner=\nerror=The selected panel is not a program.\n"){
+    state = {.state = "NO_PROGRAM", .error = "The selected panel is not a program."};
+    if (lab_state_text(state) != "seq=\nstate=NO_PROGRAM\nprogram=\nrun=\nowner=\nerror=The selected panel is not a program.\n"){
         return "Unexpected state text: " + lab_state_text(state);
     }
     return true;
@@ -227,6 +235,257 @@ UnitTestResult test_keep_awake(){
 }
 
 
+std::shared_ptr<const ImageRGB32> test_frame(){
+    ImageRGB32 image(4, 4);
+    image.fill(0xff0000ff);
+    return std::make_shared<const ImageRGB32>(std::move(image));
+}
+
+//  Whether `text` has the line `"key": value,` at `indent` spaces, as the
+//  4-space result.json puts a top-level (4) or last_event (8) field, which is
+//  what labctl.sh's "wait" greps for.
+bool has_json_line(const std::string& text, size_t indent, const std::string& key, const std::string& value){
+    const std::string line = std::format("\n{}\"{}\": {}", std::string(indent, ' '), key, value);
+    return text.find(line + ",\n") != std::string::npos || text.find(line + "\n") != std::string::npos;
+}
+
+UnitTestResult test_time_text(){
+    const std::string text = lab_time_text(current_time());
+    if (text.size() != 23 || text[4] != '-' || text[7] != '-' || text[10] != ' ' || text[13] != ':' || text[16] != ':' || text[19] != '.'){
+        return "Expected \"YYYY-MM-DD HH:MM:SS.mmm\", got " + text;
+    }
+    return true;
+}
+
+UnitTestResult test_event_json(){
+    const WallClock t0 = current_time();
+    RunEvent event{
+        .time = t0, .kind = "attempt", .checkpoint = "01.08", .step = "4/7", .attempt = 2,
+        .text = "the sign's box did not open", .frame = test_frame(), .pose = "route_204 (12, 41) N",
+    };
+    const std::string frame = event_frame_file(4, event);
+    if (frame != "frame-004-01.08-s4_7-a2.png"){
+        return "Unexpected frame file name: " + frame;
+    }
+    const std::string expected = std::format(
+        "{{\"attempt\":2,\"checkpoint\":\"01.08\",\"frame\":\"{}\",\"kind\":\"attempt\",\"pose\":\"route_204 (12, 41) N\","
+        "\"step\":\"4/7\",\"text\":\"the sign's box did not open\",\"time\":\"{}\"}}",
+        frame, lab_time_text(t0)
+    );
+    if (run_event_json_line(event, frame) != expected){
+        return "Unexpected event line: " + run_event_json_line(event, frame);
+    }
+    const RunEvent bare{.time = t0, .kind = "checkpoint", .text = "00.01 ok"};
+    if (event_frame_file(0, bare) != "frame-000.png"){
+        return "A bare event's frame is named by its index alone: " + event_frame_file(0, bare);
+    }
+    const std::string line = run_event_json_line(bare, std::nullopt);
+    if (line != std::format("{{\"kind\":\"checkpoint\",\"text\":\"00.01 ok\",\"time\":\"{}\"}}", lab_time_text(t0))){
+        return "Fields an event does not have are left out: " + line;
+    }
+    return true;
+}
+
+UnitTestResult test_result_json(){
+    const WallClock t0 = current_time();
+    RunRecord record{
+        .run_id = "20261101-153012123456-007", .program = "PokemonBDSP:AutoStory",
+        .start_time = t0, .status = RunStatus::RUNNING,
+    };
+    std::string text = run_result_json(record, std::nullopt, {});
+    if (!has_json_line(text, 4, "status", "\"running\"") || !has_json_line(text, 4, "event_count", "0") ||
+        text.find("outcome") != std::string::npos || text.find("last_event") != std::string::npos
+    ){
+        return "A running record has a status and no outcome or last event:\n" + text;
+    }
+
+    record.events.push_back({.time = t0, .kind = "checkpoint", .checkpoint = "01.07", .text = "ok"});
+    record.events.push_back({.time = t0, .kind = "attempt", .checkpoint = "01.08", .step = "4/7", .attempt = 2, .text = "failed"});
+    record.status = RunStatus::TERMINAL;
+    record.end_time = t0 + std::chrono::seconds(90);
+    record.result = RunResult{.outcome = RunOutcome::FAILED, .error = "expect_failed: the Route 204 sign's box did not open"};
+    record.log_lines = 12;
+    record.dropped_log_lines = 3;
+    text = run_result_json(record, "frame-failure.png", {{1, "frame-001-01.08-s4_7-a2.png"}});
+    const JsonValue json = parse_json(text);
+    const JsonObject* object = json.to_object();
+    if (object == nullptr){
+        return "result.json should parse:\n" + text;
+    }
+    if (!has_json_line(text, 4, "status", "\"terminal\"") ||
+        !has_json_line(text, 4, "outcome", "\"failed\"") ||
+        !has_json_line(text, 4, "error", "\"expect_failed: the Route 204 sign's box did not open\"") ||
+        !has_json_line(text, 4, "frame", "\"frame-failure.png\"") ||
+        !has_json_line(text, 4, "duration_ms", "90000") ||
+        !has_json_line(text, 4, "event_count", "2") ||
+        !has_json_line(text, 4, "log_lines", "12") ||
+        !has_json_line(text, 4, "dropped_log_lines", "3") ||
+        !has_json_line(text, 4, "run_id", "\"20261101-153012123456-007\"")
+    ){
+        return "Unexpected top-level fields:\n" + text;
+    }
+    if (!has_json_line(text, 8, "checkpoint", "\"01.08\"") ||
+        !has_json_line(text, 8, "step", "\"4/7\"") ||
+        !has_json_line(text, 8, "attempt", "2") ||
+        !has_json_line(text, 8, "frame", "\"frame-001-01.08-s4_7-a2.png\"")
+    ){
+        return "last_event should be the newest event, with its frame, at 8 spaces:\n" + text;
+    }
+    if (object->get_string_throw("end_time") != lab_time_text(*record.end_time)){
+        return "end_time is the record's end.";
+    }
+    return true;
+}
+
+UnitTestResult test_meta_json(){
+    RunRecord record{
+        .run_id = "20261101-153012123456-007", .program = "PokemonFRLG:AutoStory",
+        .version = "v0.72.1-beta", .executable = "/lab/builds/bdsp-r259/SerialPrograms",
+        .settings = R"({"START_CHECKPOINT": 8})",
+    };
+    const std::string text = run_meta_json(record);
+    if (!has_json_line(text, 4, "program", "\"PokemonFRLG:AutoStory\"") ||
+        !has_json_line(text, 4, "version", "\"v0.72.1-beta\"") ||
+        !has_json_line(text, 4, "executable", "\"/lab/builds/bdsp-r259/SerialPrograms\"") ||
+        !has_json_line(text, 4, "commit", std::format("\"{}\"", PROGRAM_COMMIT)) ||
+        !has_json_line(text, 8, "START_CHECKPOINT", "8")
+    ){
+        return "meta.json names the program and build and embeds the settings as JSON:\n" + text;
+    }
+    record.settings = "not json";
+    if (!has_json_line(run_meta_json(record), 4, "settings", "\"not json\"")){
+        return "Settings that don't parse are kept as a string.";
+    }
+    record.settings.clear();
+    if (run_meta_json(record).find("settings") != std::string::npos){
+        return "No settings, no field.";
+    }
+    return true;
+}
+
+//  A writer over a temporary runs/ folder, removed at the end.
+struct WriterFixture{
+    explicit WriterFixture(size_t keep = LabRunWriter::DEFAULT_KEEP)
+        : root(Filesystem::unique_temp_path(Filesystem::application_scratch_path() / "LabRunWriterTest"))
+        , writer(root.string() + "/runs/", keep)
+    {
+        Filesystem::create_directories(root);
+    }
+    ~WriterFixture(){
+        Filesystem::remove_all(root);
+    }
+    //  The text of a file in the run's folder, "" when there is none.
+    std::string read(const std::string& run_id, const std::string& file) const{
+        std::string text;
+        return file_to_string(writer.run_folder(run_id) + file, text) ? text : "";
+    }
+    bool exists(const std::string& run_id, const std::string& file) const{
+        return Filesystem::is_regular_file(Filesystem::Path(writer.run_folder(run_id) + file));
+    }
+
+    const Filesystem::Path root;
+    RunRecordStore store;
+    LabRunWriter writer;
+};
+
+UnitTestResult test_writer_running_run(){
+    WriterFixture f;
+    if (f.writer.run_for_probe(current_time())){
+        return "No run, no probe target.";
+    }
+    const std::string a = f.store.begin("Test:A", R"({"K": 1})");
+    f.store.event(a, {.kind = "checkpoint", .checkpoint = "00.01", .text = "ok", .frame = test_frame()});
+    f.store.log_line(a, "line 0");
+    f.writer.sync(f.store);
+    if (!has_json_line(f.read(a, "result.json"), 4, "status", "\"running\"")){
+        return "After the first sync the run has a folder with a running result.json: " + f.read(a, "result.json");
+    }
+    const std::string meta = f.read(a, "meta.json");
+    if (!has_json_line(meta, 4, "program", "\"Test:A\"") || !has_json_line(meta, 8, "K", "1")){
+        return "The run's meta.json is written when it starts: " + meta;
+    }
+    if (f.read(a, "log.txt") != "line 0\n"){
+        return "log.txt grows while the run is going: " + f.read(a, "log.txt");
+    }
+    if (!f.exists(a, "frame-000-00.01.png")){
+        return "The event's frame is saved under its event name.";
+    }
+    if (f.writer.run_for_probe(current_time()) != a){
+        return "A probe during the run belongs to it.";
+    }
+    return true;
+}
+
+UnitTestResult test_writer_ended_run(){
+    WriterFixture f;
+    const std::string a = f.store.begin("Test:A");
+    f.store.log_line(a, "line 0");
+    f.writer.sync(f.store);
+
+    //  A probe: its text goes into events.jsonl and its shot is copied.
+    const std::string shot = f.root.string() + "/probe_after_a.png";
+    test_frame()->save(shot);
+    f.writer.attach_probe(a, "shot after_a", "shot " + shot + "\n");
+    f.store.event(a, {.kind = "step", .step = "2/3", .text = "walk"});
+    f.store.log_line(a, "line 1");
+    f.store.finish(a, {.outcome = RunOutcome::FAILED, .error = "the box did not open", .frame = test_frame()});
+    f.writer.sync(f.store);
+
+    const std::string result = f.read(a, "result.json");
+    if (!has_json_line(result, 4, "outcome", "\"failed\"") || !has_json_line(result, 4, "frame", "\"frame-failure.png\"") || !f.exists(a, "frame-failure.png")){
+        return "After the run ends result.json is terminal with the outcome and the saved frame: " + result;
+    }
+    if (f.read(a, "log.txt") != "line 0\nline 1\n"){
+        return "log.txt has each of the run's lines once: " + f.read(a, "log.txt");
+    }
+    const std::string events = f.read(a, "events.jsonl");
+    if (std::ranges::count(events, '\n') != 2 || events.find("\"frame\":\"probe-probe_after_a.png\"") == std::string::npos || !f.exists(a, "probe-probe_after_a.png")){
+        return "events.jsonl has the probe, naming its copied shot, then the event:\n" + events;
+    }
+    if (f.writer.run_for_probe(current_time()) != a){
+        return "A probe right after the run ended still belongs to it.";
+    }
+    if (f.writer.run_for_probe(current_time() + LabRunWriter::PROBE_WINDOW + std::chrono::seconds(1))){
+        return "A probe long after the run ended belongs to no run.";
+    }
+    return true;
+}
+
+UnitTestResult test_writer_log_gap(){
+    WriterFixture f;
+    const std::string a = f.store.begin("Test:A");
+    //  More lines than the store's tail holds between two polls.
+    const std::string line(1000, 'x');
+    for (size_t c = 0; c < 300; c++){
+        f.store.log_line(a, line);
+    }
+    f.store.log_line(a, "last");
+    f.writer.sync(f.store);
+    const std::string log = f.read(a, "log.txt");
+    if (!log.starts_with("[") || log.find("lines not copied") == std::string::npos || !log.ends_with("\nlast\n")){
+        return "Lines the writer missed are marked at the start of log.txt.";
+    }
+    return true;
+}
+
+UnitTestResult test_writer_pruning(){
+    WriterFixture f(2);
+    const std::string a = f.store.begin("Test:A");
+    f.writer.sync(f.store);
+    const std::string b = f.store.begin("Test:B");
+    f.writer.sync(f.store);
+    const std::string c = f.store.begin("Test:C");
+    f.writer.sync(f.store);
+    if (f.exists(a, "result.json") || !f.exists(b, "result.json") || !f.exists(c, "result.json")){
+        return "With keep=2, the third run removes the first run's folder and keeps the other two.";
+    }
+    if (f.writer.run_for_probe(current_time()) != c){
+        return "A probe belongs to the newest run.";
+    }
+    return true;
+}
+
+
 class Test_LabChannel : public UnitTest{
 public:
     Test_LabChannel(std::string name, std::function<UnitTestResult()> body)
@@ -253,6 +512,14 @@ void add_tests_LabChannel(UnitTestDatabase& database){
     database.add<Test_LabChannel>("state text", test_state_text);
     database.add<Test_LabChannel>("owner lock", test_owner);
     database.add<Test_LabChannel>("keep-awake schedule", test_keep_awake);
+    database.add<Test_LabChannel>("run files: time text", test_time_text);
+    database.add<Test_LabChannel>("run files: event line and frame name", test_event_json);
+    database.add<Test_LabChannel>("run files: result.json", test_result_json);
+    database.add<Test_LabChannel>("run files: meta.json", test_meta_json);
+    database.add<Test_LabChannel>("run files: a running run", test_writer_running_run);
+    database.add<Test_LabChannel>("run files: an ended run and its probe", test_writer_ended_run);
+    database.add<Test_LabChannel>("run files: lines the writer missed", test_writer_log_gap);
+    database.add<Test_LabChannel>("run files: pruning", test_writer_pruning);
 }
 
 
