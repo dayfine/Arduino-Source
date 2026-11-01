@@ -9,11 +9,15 @@
 #define PokemonAutomation_PokemonBDSP_AutoStory_Segment01_H
 
 #include "../PokemonBDSP_AutoStoryTools.h"
+#include "../Utils/PokemonBDSP_AutoStory_StoryTables.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonBDSP{
 
+
+//  Segment 01 as a table of checkpoints: 01.01 to 01.11.
+Pokemon::Segment make_segment_01(StoryStepRunner& runner);
 
 class AutoStory_Segment_01 : public AutoStory_Segment{
 public:

@@ -1398,132 +1398,6 @@ void route204_to_floaroma(VideoStream& stream, ProControllerContext& context){
 
 }
 
-void checkpoint_0101(
-    SingleSwitchProgramEnvironment& env,
-    ProControllerContext& context,
-    AutoStoryOptions options,
-    AutoStoryStats& stats
-){
-    checkpoint_reattempt_loop(env, context, options, stats,
-        [&](size_t /*attempt*/){
-            jubilife_to_barry(env.console, context);
-        },
-        true
-    );
-}
-
-void checkpoint_0103(
-    SingleSwitchProgramEnvironment& env,
-    ProControllerContext& context,
-    AutoStoryOptions options,
-    AutoStoryStats& stats
-){
-    checkpoint_reattempt_loop(env, context, options, stats,
-        [&](size_t /*attempt*/){
-            oreburgh_to_roark(env.console, context);
-        },
-        true
-    );
-}
-
-void checkpoint_0102(
-    SingleSwitchProgramEnvironment& env,
-    ProControllerContext& context,
-    AutoStoryOptions options,
-    AutoStoryStats& stats
-){
-    checkpoint_reattempt_loop(env, context, options, stats,
-        [&](size_t /*attempt*/){
-            route203_to_oreburgh(env.console, context);
-        },
-        true
-    );
-}
-
-void checkpoint_0104(
-    SingleSwitchProgramEnvironment& env,
-    ProControllerContext& context,
-    AutoStoryOptions options,
-    AutoStoryStats& stats
-){
-    checkpoint_reattempt_loop(env, context, options, stats,
-        [&](size_t /*attempt*/){
-            oreburgh_gym(env.console, context);
-        },
-        true
-    );
-}
-
-void checkpoint_0105(
-    SingleSwitchProgramEnvironment& env,
-    ProControllerContext& context,
-    AutoStoryOptions options,
-    AutoStoryStats& stats
-){
-    checkpoint_reattempt_loop(env, context, options, stats,
-        [&](size_t /*attempt*/){
-            oreburgh_to_route203(env.console, context);
-        },
-        true
-    );
-}
-
-void checkpoint_0106(
-    SingleSwitchProgramEnvironment& env,
-    ProControllerContext& context,
-    AutoStoryOptions options,
-    AutoStoryStats& stats
-){
-    checkpoint_reattempt_loop(env, context, options, stats,
-        [&](size_t /*attempt*/){
-            route203_to_jubilife(env.console, context);
-        },
-        true
-    );
-}
-
-void checkpoint_0107(
-    SingleSwitchProgramEnvironment& env,
-    ProControllerContext& context,
-    AutoStoryOptions options,
-    AutoStoryStats& stats
-){
-    checkpoint_reattempt_loop(env, context, options, stats,
-        [&](size_t /*attempt*/){
-            jubilife_to_rowan(env.console, context);
-        },
-        true
-    );
-}
-
-void checkpoint_0108(
-    SingleSwitchProgramEnvironment& env,
-    ProControllerContext& context,
-    AutoStoryOptions options,
-    AutoStoryStats& stats
-){
-    checkpoint_reattempt_loop(env, context, options, stats,
-        [&](size_t /*attempt*/){
-            jubilife_to_ravaged_path(env.console, context);
-        },
-        true
-    );
-}
-
-void checkpoint_0109(
-    SingleSwitchProgramEnvironment& env,
-    ProControllerContext& context,
-    AutoStoryOptions options,
-    AutoStoryStats& stats
-){
-    checkpoint_reattempt_loop(env, context, options, stats,
-        [&](size_t /*attempt*/){
-            ravaged_path(env.console, context);
-        },
-        true
-    );
-}
-
 //  01.11: the old couple in Floaroma's flower field, left of the path in
 //  from Route 204. Walked by hand on 2026-10-31 from 01.10's save: west 8
 //  along the row (the field's bottom, purple flowers), north until the old
@@ -1581,38 +1455,60 @@ void floaroma_old_couple(VideoStream& stream, ProControllerContext& context){
     talk("the old man");
 }
 
-void checkpoint_0110(
-    SingleSwitchProgramEnvironment& env,
-    ProControllerContext& context,
-    AutoStoryOptions options,
-    AutoStoryStats& stats
-){
-    checkpoint_reattempt_loop(env, context, options, stats,
-        [&](size_t /*attempt*/){
-            route204_to_floaroma(env.console, context);
-            //  Save on arrival: 01.11 starts here, and so does run 2's
-            //  Floaroma work.
-            checkpoint_save(env, context, options.notif_status_update, stats, options.checkpoint_save_mode);
-        },
-        true
-    );
 }
 
-void checkpoint_0111(
-    SingleSwitchProgramEnvironment& env,
-    ProControllerContext& context,
-    AutoStoryOptions options,
-    AutoStoryStats& stats
-){
-    checkpoint_reattempt_loop(env, context, options, stats,
-        [&](size_t /*attempt*/){
-            floaroma_old_couple(env.console, context);
-            //  The run's last checkpoint: save where it ends.
-            checkpoint_save(env, context, options.notif_status_update, stats, options.checkpoint_save_mode);
-        },
-        true
-    );
-}
+
+//  Segment 01 as a table of checkpoints, each saving at its start.
+Pokemon::Segment make_segment_01(StoryStepRunner& runner){
+    Pokemon::Segment segment{"01", {}};
+    auto row = [&](std::string id, std::string title, std::vector<StoryStepSpec> steps){
+        segment.checkpoints.push_back(story_checkpoint(runner, StoryCheckpointSpec{
+            .id = std::move(id), .title = std::move(title),
+            .on_failure = StoryFailure::RELOAD_AND_RETRY, .steps = std::move(steps),
+        }));
+    };
+    //  Saves where a checkpoint ends, inside its attempt: a failed save is
+    //  a failed attempt.
+    const StoryStepSpec save_here{"save_here", "the next checkpoint starts here",
+        [](StoryConsole& c){
+            checkpoint_save(c.env, c.context, c.options.notif_status_update, c.stats, c.options.checkpoint_save_mode);
+        }};
+    row("01.01", "Jubilife to Barry", {
+        {"jubilife_to_barry", "from the Center's PC out to Barry on Route 203", [](StoryConsole& c){ jubilife_to_barry(c.env.console, c.context); }},
+    });
+    row("01.02", "Route 203 to Oreburgh", {
+        {"route203_to_oreburgh", "east through the Oreburgh Gate into Oreburgh City", [](StoryConsole& c){ route203_to_oreburgh(c.env.console, c.context); }},
+    });
+    row("01.03", "Oreburgh Mine to Roark", {
+        {"oreburgh_to_roark", "into the Mine to Roark and back to the Center", [](StoryConsole& c){ oreburgh_to_roark(c.env.console, c.context); }},
+    });
+    row("01.04", "Oreburgh Gym", {
+        {"oreburgh_gym", "the Gym's trainers and Roark for the Coal Badge", [](StoryConsole& c){ oreburgh_gym(c.env.console, c.context); }},
+    });
+    row("01.05", "Oreburgh to Route 203", {
+        {"oreburgh_to_route203", "heal, then west out of the Oreburgh Gate", [](StoryConsole& c){ oreburgh_to_route203(c.env.console, c.context); }},
+    });
+    row("01.06", "Route 203 to Jubilife", {
+        {"route203_to_jubilife", "west along Route 203 into Jubilife", [](StoryConsole& c){ route203_to_jubilife(c.env.console, c.context); }},
+    });
+    row("01.07", "Jubilife through Rowan's scene", {
+        {"jubilife_to_rowan", "to the north street, Rowan's scene and the tag battle", [](StoryConsole& c){ jubilife_to_rowan(c.env.console, c.context); }},
+    });
+    row("01.08", "Jubilife to the Ravaged Path", {
+        {"jubilife_to_ravaged_path", "up Route 204's south half into the Ravaged Path", [](StoryConsole& c){ jubilife_to_ravaged_path(c.env.console, c.context); }},
+    });
+    row("01.09", "Ravaged Path", {
+        {"ravaged_path", "through the cave with Rock Smash, out onto Route 204 North", [](StoryConsole& c){ ravaged_path(c.env.console, c.context); }},
+    });
+    row("01.10", "Route 204 to Floaroma", {
+        {"route204_to_floaroma", "the human's line north into Floaroma", [](StoryConsole& c){ route204_to_floaroma(c.env.console, c.context); }},
+        save_here,
+    });
+    row("01.11", "Floaroma's old couple", {
+        {"floaroma_old_couple", "the old woman and the old man in the flower field", [](StoryConsole& c){ floaroma_old_couple(c.env.console, c.context); }},
+        save_here,
+    });
+    return segment;
 }
 
 
@@ -1629,17 +1525,7 @@ void AutoStory_Segment_01::run_segment(
     stats.m_segment++;
     env.update_stats();
     env.console.log("Start Segment " + name(), COLOR_ORANGE);
-    AutoStory_Checkpoint_0101().run_checkpoint(env, context, options, stats);
-    AutoStory_Checkpoint_0102().run_checkpoint(env, context, options, stats);
-    AutoStory_Checkpoint_0103().run_checkpoint(env, context, options, stats);
-    AutoStory_Checkpoint_0104().run_checkpoint(env, context, options, stats);
-    AutoStory_Checkpoint_0105().run_checkpoint(env, context, options, stats);
-    AutoStory_Checkpoint_0106().run_checkpoint(env, context, options, stats);
-    AutoStory_Checkpoint_0107().run_checkpoint(env, context, options, stats);
-    AutoStory_Checkpoint_0108().run_checkpoint(env, context, options, stats);
-    AutoStory_Checkpoint_0109().run_checkpoint(env, context, options, stats);
-    AutoStory_Checkpoint_0110().run_checkpoint(env, context, options, stats);
-    AutoStory_Checkpoint_0111().run_checkpoint(env, context, options, stats);
+    run_story_table(env, context, options, stats, make_segment_01, {});
     env.console.log("End Segment " + name(), COLOR_GREEN);
 }
 
@@ -1653,7 +1539,7 @@ void AutoStory_Checkpoint_0101::run_checkpoint(
     AutoStoryOptions options,
     AutoStoryStats& stats
 ) const{
-    checkpoint_0101(env, context, options, stats);
+    run_story_table(env, context, options, stats, make_segment_01, {"01.01", "01.01"});
 }
 
 std::string AutoStory_Checkpoint_0102::name()       const { return "01.02 - Route 203 to Oreburgh"; }
@@ -1666,7 +1552,7 @@ void AutoStory_Checkpoint_0102::run_checkpoint(
     AutoStoryOptions options,
     AutoStoryStats& stats
 ) const{
-    checkpoint_0102(env, context, options, stats);
+    run_story_table(env, context, options, stats, make_segment_01, {"01.02", "01.02"});
 }
 
 
@@ -1681,7 +1567,7 @@ void AutoStory_Checkpoint_0103::run_checkpoint(
     AutoStoryOptions options,
     AutoStoryStats& stats
 ) const{
-    checkpoint_0103(env, context, options, stats);
+    run_story_table(env, context, options, stats, make_segment_01, {"01.03", "01.03"});
 }
 
 
@@ -1696,7 +1582,7 @@ void AutoStory_Checkpoint_0104::run_checkpoint(
     AutoStoryOptions options,
     AutoStoryStats& stats
 ) const{
-    checkpoint_0104(env, context, options, stats);
+    run_story_table(env, context, options, stats, make_segment_01, {"01.04", "01.04"});
 }
 
 std::string AutoStory_Checkpoint_0105::name()       const { return "01.05 - Oreburgh to Route 203"; }
@@ -1709,7 +1595,7 @@ void AutoStory_Checkpoint_0105::run_checkpoint(
     AutoStoryOptions options,
     AutoStoryStats& stats
 ) const{
-    checkpoint_0105(env, context, options, stats);
+    run_story_table(env, context, options, stats, make_segment_01, {"01.05", "01.05"});
 }
 
 std::string AutoStory_Checkpoint_0106::name()       const { return "01.06 - Route 203 to Jubilife"; }
@@ -1722,7 +1608,7 @@ void AutoStory_Checkpoint_0106::run_checkpoint(
     AutoStoryOptions options,
     AutoStoryStats& stats
 ) const{
-    checkpoint_0106(env, context, options, stats);
+    run_story_table(env, context, options, stats, make_segment_01, {"01.06", "01.06"});
 }
 
 std::string AutoStory_Checkpoint_0107::name()       const { return "01.07 - Jubilife through Rowan's scene"; }
@@ -1735,7 +1621,7 @@ void AutoStory_Checkpoint_0107::run_checkpoint(
     AutoStoryOptions options,
     AutoStoryStats& stats
 ) const{
-    checkpoint_0107(env, context, options, stats);
+    run_story_table(env, context, options, stats, make_segment_01, {"01.07", "01.07"});
 }
 
 std::string AutoStory_Checkpoint_0108::name()       const { return "01.08 - Jubilife to the Ravaged Path"; }
@@ -1748,7 +1634,7 @@ void AutoStory_Checkpoint_0108::run_checkpoint(
     AutoStoryOptions options,
     AutoStoryStats& stats
 ) const{
-    checkpoint_0108(env, context, options, stats);
+    run_story_table(env, context, options, stats, make_segment_01, {"01.08", "01.08"});
 }
 
 std::string AutoStory_Checkpoint_0109::name()       const { return "01.09 - Ravaged Path"; }
@@ -1761,7 +1647,7 @@ void AutoStory_Checkpoint_0109::run_checkpoint(
     AutoStoryOptions options,
     AutoStoryStats& stats
 ) const{
-    checkpoint_0109(env, context, options, stats);
+    run_story_table(env, context, options, stats, make_segment_01, {"01.09", "01.09"});
 }
 
 std::string AutoStory_Checkpoint_0110::name()       const { return "01.10 - Route 204 to Floaroma"; }
@@ -1774,7 +1660,7 @@ void AutoStory_Checkpoint_0110::run_checkpoint(
     AutoStoryOptions options,
     AutoStoryStats& stats
 ) const{
-    checkpoint_0110(env, context, options, stats);
+    run_story_table(env, context, options, stats, make_segment_01, {"01.10", "01.10"});
 }
 
 std::string AutoStory_Checkpoint_0111::name()       const { return "01.11 - Floaroma's old couple"; }
@@ -1787,7 +1673,7 @@ void AutoStory_Checkpoint_0111::run_checkpoint(
     AutoStoryOptions options,
     AutoStoryStats& stats
 ) const{
-    checkpoint_0111(env, context, options, stats);
+    run_story_table(env, context, options, stats, make_segment_01, {"01.11", "01.11"});
 }
 
 }

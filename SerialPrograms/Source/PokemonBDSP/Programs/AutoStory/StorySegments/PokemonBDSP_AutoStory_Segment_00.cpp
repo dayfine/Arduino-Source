@@ -1393,12 +1393,7 @@ namespace PokemonAutomation {
             context.wait_for_all_requests();
             env.console.log("Start Segment " + name(), COLOR_ORANGE);
 
-            AutoStory_Checkpoint_0000().run_checkpoint(env, context, options, stats);
-            AutoStory_Checkpoint_0001().run_checkpoint(env, context, options, stats);
-            AutoStory_Checkpoint_0002().run_checkpoint(env, context, options, stats);
-            AutoStory_Checkpoint_0003().run_checkpoint(env, context, options, stats);
-            AutoStory_Checkpoint_0004().run_checkpoint(env, context, options, stats);
-            AutoStory_Checkpoint_0005().run_checkpoint(env, context, options, stats);
+            run_story_table(env, context, options, stats, make_segment_00, {});
 
             context.wait_for_all_requests();
             env.console.log("End Segment " + name(), COLOR_GREEN);
@@ -1411,111 +1406,86 @@ namespace PokemonAutomation {
             SingleSwitchProgramEnvironment& env, ProControllerContext& context,
             AutoStoryOptions options, AutoStoryStats& stats
         ) const {
-            // Before any route movement or checkpoint save: fail visibly if
-            // options cannot be read, rather than navigate with unknown settings.
-            verify_tutorial_settings(env.console, context);
-            context.wait_for_all_requests();
+            run_story_table(env, context, options, stats, make_segment_00, {"00.00", "00.00"});
         }
 
-        static void checkpoint_0001(
-            SingleSwitchProgramEnvironment& env,
-            ProControllerContext& context,
-            AutoStoryOptions options,
-            AutoStoryStats& stats
-        ) {
-            checkpoint_reattempt_loop(env, context, options, stats,
-                [&](size_t /*attempt*/) {
-                    // Segment 00-00: Intro and starter selection
-                    tutorial_part_1_navigation(env, env.console, context);
+        Pokemon::Segment make_segment_00(StoryStepRunner& runner) {
+            Pokemon::Segment segment{"00", {}};
+            auto row = [&](StoryCheckpointSpec spec) {
+                segment.checkpoints.push_back(story_checkpoint(runner, std::move(spec)));
+            };
+            row({
+                .id = "00.00", .title = "Verify Settings", .on_failure = StoryFailure::STOP,
+                .steps = {
+                    {"verify_settings", "before any route movement or checkpoint save: fail visibly if options cannot be read, rather than navigate with unknown settings",
+                        [](StoryConsole& c) {
+                            verify_tutorial_settings(c.env.console, c.context);
+                            c.context.wait_for_all_requests();
+                        }},
                 },
-                true
-            );
+            });
+            row({
+                .id = "00.01", .title = "After TV", .on_failure = StoryFailure::RELOAD_AND_RETRY,
+                .steps = {
+                    {"tutorial_part_1_navigation", "intro and starter selection: Butters' recorded stick holds to the lake",
+                        [](StoryConsole& c) { tutorial_part_1_navigation(c.env, c.env.console, c.context); }},
+                },
+            });
+            row({
+                .id = "00.02", .title = "Outside Verity before starter", .on_failure = StoryFailure::RELOAD_AND_RETRY,
+                .steps = {
+                    {"starter_nav", "into the lake's scene", [](StoryConsole& c) { starter_nav(c.env.console, c.context); }},
+                    {"select_starter", "the starter from the program's option",
+                        [](StoryConsole& c) {
+                            switch (c.options.starter_choice) {
+                            case StarterChoice::TURTWIG:  select_turtwig(c.env.console, c.context);  break;
+                            case StarterChoice::CHIMCHAR: select_chimchar(c.env.console, c.context); break;
+                            case StarterChoice::PIPLUP:   select_piplup(c.env.console, c.context);   break;
+                            }
+                        }},
+                    {"fight_starly", "the Starly battle", [](StoryConsole& c) { fight_starly(c.env.console, c.context); }},
+                    {"post_starly_cleanup", "the scene after the battle", [](StoryConsole& c) { post_starly_clenaup(c.env.console, c.context); }},
+                },
+            });
+            row({
+                .id = "00.03", .title = "Outside Verity after starter", .on_failure = StoryFailure::RELOAD_AND_RETRY,
+                .steps = {
+                    {"tutorial_part_2_navigation", "Pokedex acquisition: back through Route 201 to Rowan's lab",
+                        [](StoryConsole& c) { tutorial_part_2_navigation(c.env, c.env.console, c.context); }},
+                },
+            });
+            //  00.04 saves twice: a retry after the catch starts from the
+            //  caught-Pokemon save, not the old route, so it is two rows.
+            row({
+                .id = "00.04", .title = "After Pokedex, to the catch", .on_failure = StoryFailure::RELOAD_AND_RETRY,
+                .steps = {
+                    {"tutorial_part_3_navigation", "out of the lab, home to Mom, and the catch on Route 202",
+                        [](StoryConsole& c) { tutorial_part_3_navigation(c.env, c.env.console, c.context); }},
+                },
+            });
+            row({
+                .id = "00.04b", .title = "After the catch, to Dawn in Jubilife", .on_failure = StoryFailure::RELOAD_AND_RETRY,
+                .steps = {
+                    {"tutorial_part_3_after_catch_navigation", "train, heal and buy Potions in Sandgem, save on Route 202, walk to Jubilife and meet Dawn",
+                        [](StoryConsole& c) { tutorial_part_3_after_catch_navigation(c.env, c.env.console, c.context); }},
+                },
+            });
+            row({
+                .id = "00.05", .title = "Jubilife After Dawn", .on_failure = StoryFailure::RELOAD_AND_RETRY,
+                .steps = {
+                    {"tutorial_part_4_navigation", "the Town Map, the president, the coupons, the Poketch and the Center's PC",
+                        [](StoryConsole& c) { tutorial_part_4_navigation(c.env, c.env.console, c.context); }},
+                },
+            });
+            return segment;
         }
-        static void checkpoint_0002(
-            SingleSwitchProgramEnvironment& env,
-            ProControllerContext& context,
-            AutoStoryOptions options,
-            AutoStoryStats& stats
-        ) {
-            checkpoint_reattempt_loop(env, context, options, stats,
-                [&](size_t /*attempt*/) {
-                    // Segment 00-01: Starter acquisition
-                    starter_nav(env.console, context);
-                    // Segment 00-00 starter selection
-                    switch (options.starter_choice) {
-                    case StarterChoice::TURTWIG:  select_turtwig(env.console, context);  break;
-                    case StarterChoice::CHIMCHAR: select_chimchar(env.console, context); break;
-                    case StarterChoice::PIPLUP:   select_piplup(env.console, context);   break;
-                    }
-                    fight_starly(env.console, context);
-                    post_starly_clenaup(env.console, context);
-                },
-                true
-            );
-        }
-        static void checkpoint_0003(
-            SingleSwitchProgramEnvironment& env,
-            ProControllerContext& context,
-            AutoStoryOptions options,
-            AutoStoryStats& stats
-        ) {
-            checkpoint_reattempt_loop(env, context, options, stats,
-                [&](size_t /*attempt*/) {
-                    // Segment 00-002: Pokedex acquisition
-                    tutorial_part_2_navigation(env, env.console, context);
-                },
-                true
-            );
-        }
-        static void checkpoint_0004(
-            SingleSwitchProgramEnvironment& env,
-            ProControllerContext& context,
-            AutoStoryOptions options,
-            AutoStoryStats& stats
-        ) {
-            checkpoint_reattempt_loop(env, context, options, stats,
-                [&](size_t /*attempt*/) {
-                    // Segment 00-003: Poketech acquisition
-                    tutorial_part_3_navigation(env, env.console, context);
-                },
-                true
-            );
 
-            // Save and advance progress at the catch boundary. Retries of this
-            // section must start from the caught-Pokemon save, not the old route.
-            checkpoint_reattempt_loop(env, context, options, stats,
-                [&](size_t /*attempt*/) {
-                    tutorial_part_3_after_catch_navigation(env, env.console, context);
-                },
-                true
-            );
-        }
         // DIAGNOSTIC ONLY: Remove before pushing to production.
         void diagnostic_checkpoint_0004_after_catch(
             SingleSwitchProgramEnvironment& env, ProControllerContext& context,
             AutoStoryOptions options, AutoStoryStats& stats
         ) {
-            checkpoint_reattempt_loop(env, context, options, stats,
-                [&](size_t /*attempt*/) {
-                    tutorial_part_3_after_catch_navigation(env, env.console, context);
-                },
-                true
-            );
-        }
-
-        static void checkpoint_0005(
-            SingleSwitchProgramEnvironment& env,
-            ProControllerContext& context,
-            AutoStoryOptions options,
-            AutoStoryStats& stats
-        ) {
-            checkpoint_reattempt_loop(env, context, options, stats,
-                [&](size_t /*attempt*/) {
-                    // Segment 00-004: Poketech acquisition
-                    tutorial_part_4_navigation(env, env.console, context);
-                },
-                true
-            );
+            run_story_table(env, context, options, stats, make_segment_00, {"00.04b", "00.04b"});
         }
 
         // ========================
@@ -1531,7 +1501,7 @@ namespace PokemonAutomation {
             AutoStoryOptions options,
             AutoStoryStats& stats
         ) const {
-            checkpoint_0001(env, context, options, stats);
+            run_story_table(env, context, options, stats, make_segment_00, {"00.01", "00.01"});
         }
 
         // ========================
@@ -1548,7 +1518,7 @@ namespace PokemonAutomation {
             AutoStoryOptions options,
             AutoStoryStats& stats
         ) const {
-            checkpoint_0002(env, context, options, stats);
+            run_story_table(env, context, options, stats, make_segment_00, {"00.02", "00.02"});
         }
 
 
@@ -1566,7 +1536,7 @@ namespace PokemonAutomation {
             AutoStoryOptions options,
             AutoStoryStats& stats
         ) const {
-            checkpoint_0003(env, context, options, stats);
+            run_story_table(env, context, options, stats, make_segment_00, {"00.03", "00.03"});
         }
         // ========================
         // Checkpoint 0004 Wrapper
@@ -1582,7 +1552,7 @@ namespace PokemonAutomation {
             AutoStoryOptions options,
             AutoStoryStats& stats
         ) const {
-            checkpoint_0004(env, context, options, stats);
+            run_story_table(env, context, options, stats, make_segment_00, {"00.04", "00.04b"});
         }
         // ========================
         // Checkpoint 0005 Wrapper
@@ -1598,7 +1568,7 @@ namespace PokemonAutomation {
             AutoStoryOptions options,
             AutoStoryStats& stats
         ) const {
-            checkpoint_0005(env, context, options, stats);
+            run_story_table(env, context, options, stats, make_segment_00, {"00.05", "00.05"});
         }
         
         }

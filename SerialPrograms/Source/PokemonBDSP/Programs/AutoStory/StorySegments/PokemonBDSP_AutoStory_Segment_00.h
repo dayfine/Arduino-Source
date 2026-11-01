@@ -11,11 +11,16 @@
 #include <vector>
 #include "Pokemon/Navigation/Pokemon_Grid.h"
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStoryTools.h"
+#include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_StoryTables.h"
 
 namespace PokemonAutomation {
 namespace NintendoSwitch {
 namespace PokemonBDSP {
 
+
+// Segment 00 as a table of checkpoints: 00.00 to 00.05, with 00.04 in two
+// rows (00.04 to the catch, 00.04b after it), each saving at its start.
+Pokemon::Segment make_segment_00(StoryStepRunner& runner);
 
 // DIAGNOSTIC ONLY: Remove before pushing to production.
 // Starts at the post-catch save and runs only the rest of checkpoint 00.04.
