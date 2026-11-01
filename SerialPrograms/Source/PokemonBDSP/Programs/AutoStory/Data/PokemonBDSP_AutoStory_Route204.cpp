@@ -49,7 +49,7 @@ const TileGrid& north_grid(){
         R"(##########...#......#.##########)",  //   3
         R"(#####....#...#......#..........N)",  //   4
         R"(#####....#"""#......#...######..)",  //   5
-        R"(#####....#"""###################)",  //   6
+        R"(#####....#""####################)",  //   6
         R"(##########"""..NN.....##########)",  //   7
         R"(##........""""".......##########)",  //   8
         R"(##..######.""""..S....##########)",  //   9
@@ -112,7 +112,10 @@ std::vector<TilePos> floaroma_waypoints(){
     //  (20, 12), by the corner where the line turns west: not seen yet on
     //  the console. The ledge on row 15 closes the stairs' column going
     //  north, so the line goes round through the grass.
-    return {{20, 27}, {11, 27}, {11, 22}, {19, 22}, {19, 12}, {12, 12}, {12, 5}};
+    //  Column 11 for the last stretch: (12, 6) is blocked on the console
+    //  (r248a, twice), grass in Platinum's data; the detour through (11, 6)
+    //  passed.
+    return {{20, 27}, {11, 27}, {11, 22}, {19, 22}, {19, 12}, {11, 12}, {11, 5}};
 }
 
 

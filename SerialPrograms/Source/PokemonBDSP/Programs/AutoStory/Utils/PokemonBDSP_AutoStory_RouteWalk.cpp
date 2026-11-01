@@ -314,6 +314,8 @@ std::vector<TilePos> walk_route(
             };
 
             WalkResult result;
+            //  Tiles the first tap of an open leg moved (see below).
+            size_t turn_moved = 0;
             if (leg.ends_at_wall){
                 //  Run (B held) on the D-pad: a leg to a wall ends at the wall
                 //  however fast we get there, and the D-pad keeps to the row.
@@ -454,12 +456,11 @@ std::vector<TilePos> walk_route(
                 //  Whole tiles on the D-pad, a tap each: a tap moves exactly
                 //  one tile, while a stick hold timed for three moved one in
                 //  the Ravaged Path (r235b) and the belief drifted four rows.
-                //  A tap for a player facing another way only turns; one for
-                //  a player already facing that way is a step. A walk's first
-                //  leg does not know the facing (r246a: "south 1" out of the
-                //  cave went two tiles, onto the Youngster's row), so the tap
-                //  is measured like any other and a step counts for the leg.
-                size_t turn_moved = 0;
+                //  The first tap of a leg was meant to turn, but a 160 ms
+                //  D-pad tap turns and steps whichever way the player faced
+                //  (r248a: all seven did; r246a: "south 1" out of the cave
+                //  went two tiles, onto the Youngster's row), so the tap is
+                //  measured like any other and a step counts for the leg.
                 if (facing != leg.direction){
                     const DpadPosition dpad = x < 0 ? DPAD_LEFT : x > 0 ? DPAD_RIGHT : y > 0 ? DPAD_UP : DPAD_DOWN;
                     context.wait_for_all_requests();
@@ -490,10 +491,7 @@ std::vector<TilePos> walk_route(
                 //  them to move on and tap the rest; someone who stays is
                 //  talked to, put on the map, and the leg planned again from
                 //  the tile we stand on, which the taps give exactly.
-                auto taps_moved = [](const WalkResult& walk){
-                    const size_t taps = (size_t)(walk.walked / 800ms);
-                    return walk.stop == WalkStop::BLOCKED ? (taps < 2 ? 0 : taps - 2) : taps;
-                };
+                auto taps_moved = [](const WalkResult& walk){ return walk.moved_chunks; };
                 size_t moved = std::min(leg.tiles, taps_moved(result) + turn_moved);
                 //  One wait: a wanderer in the way steps off in a few seconds;
                 //  anything still there after that is talked to (r246a lost
@@ -669,13 +667,16 @@ std::vector<TilePos> walk_route(
                 from = planned.after;
                 continue;
             }
-            const size_t taps = (size_t)(result.walked / 800ms);
+            //  Only the taps that moved count: the trainer freezes the player
+            //  on the tile they saw, and the taps pressed while they walk over
+            //  move nobody (r248a: "4 taps" were 2 steps; the belief of two
+            //  tiles then cost a 12-tile run to a wall and 5 back).
+            const size_t taps = std::min(leg.tiles, result.moved_chunks + turn_moved);
             std::vector<TilePos> by_taps;
             for (const TilePos& pos : from){
                 const std::vector<TilePos> path = leg_path(grid, pos, leg.direction, leg.tiles);
-                for (size_t k = taps == 0 ? 0 : taps - 1; k <= taps && k <= path.size(); k++){
-                    by_taps.push_back(k == 0 ? pos : path[k - 1]);
-                }
+                const size_t k = std::min(taps, path.size());
+                by_taps.push_back(k == 0 ? pos : path[k - 1]);
             }
             std::sort(by_taps.begin(), by_taps.end(), [](const TilePos& a, const TilePos& b){
                 return a.y != b.y ? a.y < b.y : a.x < b.x;

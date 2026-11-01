@@ -36,6 +36,11 @@ struct WalkResult{
     WalkStop stop;
     Milliseconds walked;
     size_t wild_battles;
+    //  Chunks whose screen change passed the blocked threshold: on a tap
+    //  walk, the taps that moved a tile. A trainer's freeze and a bump do
+    //  not count (r248a: "4 taps before the battle" were 2 steps and 2
+    //  taps into Taylor's freeze).
+    size_t moved_chunks = 0;
 };
 
 //  Holds the left stick at (x, y) until one of the WalkStop events. Wild battles on

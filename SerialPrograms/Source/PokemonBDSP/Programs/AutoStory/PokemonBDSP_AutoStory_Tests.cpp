@@ -714,26 +714,6 @@ public:
                     jubilife_east_entrance(), on_jubilife_north_road, town_plan_costs());
                 failed += leg_error.empty() ? "" : leg_error + " ";
             }
-            //  01.05 on Route 204's north half: from the Ravaged Path's door to
-            //  the path between the flower beds into Floaroma.
-            {
-                const Pokemon::MapSet& route = route204_north_maps();
-                std::vector<TilePos> at{Route204::CAVE_EXIT};
-                for (const TilePos& goal : Route204::floaroma_waypoints()){
-                    const std::string leg_error = check_robust_plan(logger, "Route 204: to " + route.describe(goal), route, at,
-                        [&](const TilePos& pos){ return pos == goal; }, waypoint_plan_costs());
-                    failed += leg_error.empty() ? "" : leg_error + " ";
-                    at = {goal};
-                }
-                if (!Route204::in_floaroma_path(at[0])){
-                    failed += "Route 204: the last waypoint is not in the path into Floaroma. ";
-                }
-                for (const Pokemon::TrainerSight& twin : Route204::north_trainer_sights()){
-                    if (route.world().at(twin.pos) != Pokemon::TileType::NPC){
-                        failed += "Route 204: " + twin.name + " is not on an NPC tile. ";
-                    }
-                }
-            }
             //  01.08 on Route 204's south half: from the top of Jubilife's
             //  street to the tile below the Ravaged Path's door.
             {
@@ -859,6 +839,66 @@ public:
 
 //  The walk to the Poke Mart may be stopped short by someone in the way, and
 //  is then made again from the tiles the doorway on screen puts us on, give
+//  01.10 on Route 204's north half: the line a human walked (2026-10-31),
+//  corner to corner, from the Ravaged Path's exit into Floaroma. Each
+//  stretch must plan as the one straight tap leg the human took, on the
+//  grid as it is: a detour here means the grid or the line changed.
+class Test_Route204NorthLine : public UnitTest{
+public:
+    Test_Route204NorthLine()
+        : UnitTest("PokemonBDSP::AutoStory - Route 204 North: the line into Floaroma")
+    {}
+
+    virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
+        const Pokemon::MapSet& route = route204_north_maps();
+        const std::vector<TilePos> waypoints = Route204::floaroma_waypoints();
+        struct Expected{ Direction direction; size_t tiles; };
+        const std::vector<Expected> expected{
+            {Direction::SOUTH, 1}, {Direction::WEST, 9}, {Direction::NORTH, 5}, {Direction::EAST, 8},
+            {Direction::NORTH, 10}, {Direction::WEST, 8}, {Direction::NORTH, 7},
+        };
+        if (waypoints.size() != expected.size()){
+            return "Route 204 North: " + std::to_string(waypoints.size()) + " waypoints, expected " + std::to_string(expected.size()) + ".";
+        }
+        std::vector<TilePos> at{Route204::CAVE_EXIT};
+        for (size_t i = 0; i < waypoints.size(); i++){
+            const TilePos goal = waypoints[i];
+            const std::string name = "Route 204 North stretch " + std::to_string(i + 1) + " to " + route.describe(goal);
+            const auto plan = Pokemon::plan_robust_route(route.world(), at,
+                [&](const TilePos& pos){ return pos == goal; }, waypoint_plan_costs());
+            if (!plan){
+                return name + ": no plan.";
+            }
+            std::string text = name + ":";
+            for (const Pokemon::PlannedLeg& leg : *plan){
+                text += " " + to_string(leg.leg);
+            }
+            logger.log(text);
+            if (plan->size() != 1){
+                return name + ": " + std::to_string(plan->size()) + " legs, expected the one straight leg.";
+            }
+            const Pokemon::TileLeg& leg = (*plan)[0].leg;
+            if (leg.ends_at_wall || leg.direction != expected[i].direction || leg.tiles != expected[i].tiles){
+                return name + ": planned " + to_string(leg) + ", expected an open leg of " +
+                    std::to_string(expected[i].tiles) + " tiles.";
+            }
+            if ((*plan)[0].after.size() != 1 || !((*plan)[0].after[0] == goal)){
+                return name + ": the leg does not end exactly on the waypoint.";
+            }
+            at = {goal};
+        }
+        if (!Route204::in_floaroma_path(at[0])){
+            return "Route 204 North: the last waypoint is not in the path into Floaroma.";
+        }
+        for (const Pokemon::TrainerSight& trainer : Route204::north_trainer_sights()){
+            if (route.world().at(trainer.pos) != Pokemon::TileType::NPC){
+                return "Route 204 North: " + trainer.name + " is not on an NPC tile.";
+            }
+        }
+        return true;
+    }
+};
+
 //  or take one each way: from every such block of tiles south of the Mart,
 //  a robust plan to the row below its door must exist.
 class Test_PokeMartShortWalks : public UnitTest{
@@ -1881,6 +1921,7 @@ void add_tests_AutoStory(UnitTestDatabase& database){
     database.add<Test_TileGridWallHit>();
     database.add<Test_TileGridPlans>();
     database.add<Test_PokeMartShortWalks>();
+    database.add<Test_Route204NorthLine>();
     database.add<Test_LocationBanner>();
     database.add<Test_LitDoorwayScreenshots>();
     database.add<Test_SaveScreenLocation>();
