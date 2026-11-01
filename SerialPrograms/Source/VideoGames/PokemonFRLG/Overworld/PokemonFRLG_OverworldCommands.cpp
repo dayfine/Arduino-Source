@@ -73,7 +73,7 @@ void register_overworld_commands(){
                 const std::optional<Direction> start = words.size() > 8 ? parse_direction(words[8]) : std::nullopt;
                 const std::vector<RouteStep> route = plan(words, session.out);
                 if (words.size() > 9){
-                    const OverworldInterrupts interrupts = overworld_interrupts_with_repel(std::stoi(words[9]) - 1);
+                    const OverworldInterruptSet interrupts = overworld_interrupts_with_repel(std::stoi(words[9]) - 1);
                     walk_overworld_route(session.console, session.context, route, start, interrupts);
                 }else{
                     walk_overworld_route(session.console, session.context, route, start);
