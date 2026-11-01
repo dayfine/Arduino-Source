@@ -14,7 +14,7 @@
 #include <optional>
 #include <string>
 #include <vector>
-#include "Pokemon_Grid.h"
+#include "Pokemon/Navigation/Pokemon_Grid.h"
 #include "Pokemon_StoryEvents.h"
 
 namespace PokemonAutomation{
