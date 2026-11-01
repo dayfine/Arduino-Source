@@ -21,6 +21,11 @@ void escape_wild_battle(VideoStream& stream,
     BattleType battle_type = BattleType::STANDARD,
     std::chrono::seconds timeout = std::chrono::seconds(30));
 
+// escape_wild_battle() for a standard wild battle, as the walker takes it
+// (WildBattleEscape): how the story's walks leave the battles that
+// interrupt them.
+void run_from_wild_battle(VideoStream& stream, ProControllerContext& context);
+
 // Shared legacy first-move battle routine; consolidation remains preliminary.
 void Barry_1_fight(SingleSwitchProgramEnvironment& env, VideoStream& stream, ProControllerContext& context);
 }

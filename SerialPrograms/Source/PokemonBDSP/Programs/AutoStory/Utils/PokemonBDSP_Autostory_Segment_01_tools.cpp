@@ -222,6 +222,10 @@ void escape_wild_battle(VideoStream& stream,
         stream);
 }
 
+void run_from_wild_battle(VideoStream& stream, ProControllerContext& context){
+    escape_wild_battle(stream, context, BattleType::STANDARD);
+}
+
 void Barry_1_fight(SingleSwitchProgramEnvironment& env, VideoStream& stream, ProControllerContext& context){
     stream.log("Starting Barry 1 battle...");
 

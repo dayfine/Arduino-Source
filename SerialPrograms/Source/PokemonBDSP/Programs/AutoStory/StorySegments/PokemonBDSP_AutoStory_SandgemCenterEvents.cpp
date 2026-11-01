@@ -34,6 +34,7 @@
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Segment_00_tools.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Walk.h"
 #include "PokemonBDSP/Programs/AutoStory/StorySegments/PokemonBDSP_AutoStory_Segment_00.h"
+#include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_Autostory_Segment_01_tools.h"
 #include "PokemonBDSP_AutoStory_SandgemCenterEvents.h"
 #include "Pokemon/Navigation/Pokemon_TilePose.h"
 
@@ -306,7 +307,7 @@ public:
                 "Trainer " + trainer + " saw us on a way no trainer should see.", m_stream);
         };
         try{
-            at = walk_route(m_stream, m_context, story_maps(), at, goal, m_trainers, fight, label, {}, costs);
+            at = walk_route(m_stream, m_context, run_from_wild_battle, story_maps(), at, goal, m_trainers, fight, label, {}, costs);
             return outcome_ok();
         }catch (OperationFailedException& e){
             //  Through a door: nothing to re-anchor on in there.
@@ -321,8 +322,8 @@ public:
             saw_sandgem = saw_sandgem || location_banner_matches(read_location_banner(screen), MAP_SANDGEM_TOWN);
             return false;
         };
-        const WalkResult east = walk_until(m_stream, m_context, 1, 0, 6000ms, "East to the trees");
-        const WalkResult south = walk_until(m_stream, m_context, 0, -1, 9000ms, "South to the wall", banner);
+        const WalkResult east = walk_until(m_stream, m_context, run_from_wild_battle, 1, 0, 6000ms, "East to the trees");
+        const WalkResult south = walk_until(m_stream, m_context, run_from_wild_battle, 0, -1, 9000ms, "South to the wall", banner);
         for (const WalkResult& walk : {east, south}){
             if (walk.stop == WalkStop::TRANSITION || walk.stop == WalkStop::DIALOG){
                 route_status(m_stream, std::string("Re-anchor: ") + walk_stop_name(walk.stop) + " instead of a wall.");
@@ -400,8 +401,8 @@ public:
     }
 
     virtual Outcome east_then_north_in_sandgem() override{
-        const WalkResult east = walk_until(m_stream, m_context, 1, 0, 6000ms, "Sandgem: east to a wall");
-        const WalkResult north = walk_until(m_stream, m_context, 0, 1, 6000ms, "Sandgem: north to a wall");
+        const WalkResult east = walk_until(m_stream, m_context, run_from_wild_battle, 1, 0, 6000ms, "Sandgem: east to a wall");
+        const WalkResult north = walk_until(m_stream, m_context, run_from_wild_battle, 0, 1, 6000ms, "Sandgem: north to a wall");
         for (const WalkResult& walk : {east, north}){
             if (walk.stop != WalkStop::BLOCKED){
                 return outcome_failed("not_anchored", std::string("Sandgem: ") + walk_stop_name(walk.stop) + " instead of a wall");
@@ -545,7 +546,7 @@ public:
         //  holds still meanwhile, and that read as a wall two tiles into the
         //  walk west to the Lab's sign (r132a).
         route_turn(m_env.console, m_context, direction);
-        const WalkResult walked = walk_until(m_env.console, m_context, x, y, limit, label);
+        const WalkResult walked = walk_until(m_env.console, m_context, run_from_wild_battle, x, y, limit, label);
         m_env.console.log("[Walk] " + label + ": stopped on " + walk_stop_name(walked.stop) + ".");
         if (walked.stop == WalkStop::TRANSITION || walked.stop == WalkStop::DIALOG){
             return outcome_failed("walk_failed", label + ": " + walk_stop_name(walked.stop) + " instead of a stop");
@@ -585,7 +586,7 @@ public:
         const double y = direction == Direction::NORTH ? 1 : direction == Direction::SOUTH ? -1 : 0;
         const bool across = direction == Direction::EAST || direction == Direction::WEST;
         const Milliseconds limit = (int64_t)tiles * (across ? ROUTE_MS_PER_TILE_ACROSS : ROUTE_MS_PER_TILE_UP_DOWN) + 800ms;
-        const WalkResult walked = walk_to_talk(m_env.console, m_context, x, y, limit, label);
+        const WalkResult walked = walk_to_talk(m_env.console, m_context, run_from_wild_battle, x, y, limit, label);
         if (walked.stop != WalkStop::DIALOG){
             m_env.console.log("[Talk] " + label + ": nobody answered.");
             return read;
@@ -600,7 +601,7 @@ public:
         //  took one or two (2026-10-30).
         const double x = direction == Direction::EAST ? 1 : direction == Direction::WEST ? -1 : 0;
         const double y = direction == Direction::NORTH ? 1 : direction == Direction::SOUTH ? -1 : 0;
-        const WalkResult walk = walk_for(m_env.console, m_context, x, y, 200ms, label);
+        const WalkResult walk = walk_for(m_env.console, m_context, run_from_wild_battle, x, y, 200ms, label);
         if (walk.stop == WalkStop::DIALOG || walk.stop == WalkStop::TRANSITION){
             return outcome_failed("walk_failed", label + ": " + walk_stop_name(walk.stop));
         }
@@ -1295,8 +1296,8 @@ public:
     {}
     virtual Outcome climb_the_steps() override{
         route_turn(m_stream, m_context, Direction::WEST);
-        walk_for(m_stream, m_context, -1, 0, 200ms, "To the steps");
-        const WalkResult up = walk_for(m_stream, m_context, 0, 1, 480ms, "Up the steps");
+        walk_for(m_stream, m_context, run_from_wild_battle, -1, 0, 200ms, "To the steps");
+        const WalkResult up = walk_for(m_stream, m_context, run_from_wild_battle, 0, 1, 480ms, "Up the steps");
         if (up.stop == WalkStop::DIALOG || up.stop == WalkStop::TRANSITION){
             return outcome_failed("walk_failed", std::string("up the steps: ") + walk_stop_name(up.stop));
         }
@@ -1337,7 +1338,7 @@ public:
     virtual DialogueRead walk_until_talked_to(size_t tiles, const std::string& label) override{
         DialogueRead read;
         const Milliseconds limit = (int64_t)tiles * ROUTE_MS_PER_TILE_UP_DOWN + 800ms;
-        walk_until(m_stream, m_context, 0, 1, limit, label);
+        walk_until(m_stream, m_context, run_from_wild_battle, 0, 1, limit, label);
         //  He walks up after the "!" and only then talks.
         ShortDialogWatcher opened(COLOR_CYAN);
         if (wait_until(m_stream, m_context, 5000ms, {{opened}}) != 0){
@@ -1352,7 +1353,7 @@ public:
     virtual Outcome hold(Direction direction, int64_t ms, const std::string& label) override{
         const double x = direction == Direction::EAST ? 1 : direction == Direction::WEST ? -1 : 0;
         const double y = direction == Direction::NORTH ? 1 : direction == Direction::SOUTH ? -1 : 0;
-        const WalkResult walk = walk_for(m_stream, m_context, x, y, Milliseconds(ms), label);
+        const WalkResult walk = walk_for(m_stream, m_context, run_from_wild_battle, x, y, Milliseconds(ms), label);
         if (walk.stop == WalkStop::DIALOG || walk.stop == WalkStop::TRANSITION){
             return outcome_failed("walk_failed", label + ": " + walk_stop_name(walk.stop));
         }
@@ -1365,7 +1366,7 @@ public:
     }
     virtual Outcome leave_south(const std::string& label) override{
         try{
-            leave_door_south(m_stream, m_context, label);
+            leave_door_south(m_stream, m_context, run_from_wild_battle, label);
         }catch (OperationFailedException& e){
             return outcome_failed("walk_failed", e.message());
         }
@@ -1373,12 +1374,12 @@ public:
     }
     virtual void nudge(Direction direction, const std::string& label) override{
         route_turn(m_stream, m_context, direction);
-        walk_for(m_stream, m_context, direction == Direction::EAST ? 1 : -1, 0, 80ms, label);
+        walk_for(m_stream, m_context, run_from_wild_battle, direction == Direction::EAST ? 1 : -1, 0, 80ms, label);
     }
     virtual Outcome tile(Direction direction, const std::string& label) override{
         const double x = direction == Direction::EAST ? 1 : direction == Direction::WEST ? -1 : 0;
         const double y = direction == Direction::NORTH ? 1 : direction == Direction::SOUTH ? -1 : 0;
-        const WalkResult walk = walk_for(m_stream, m_context, x, y, 160ms, label);
+        const WalkResult walk = walk_for(m_stream, m_context, run_from_wild_battle, x, y, 160ms, label);
         if (walk.stop == WalkStop::DIALOG || walk.stop == WalkStop::TRANSITION){
             return outcome_failed("walk_failed", label + ": " + walk_stop_name(walk.stop));
         }
@@ -1416,7 +1417,7 @@ public:
     virtual bool through_door_north(const std::string& label) override{
         m_context.wait_for_all_requests();
         VideoSnapshot before = m_stream.video().snapshot();
-        const WalkResult up = walk_until(m_stream, m_context, 0, 1, 1200ms, label);
+        const WalkResult up = walk_until(m_stream, m_context, run_from_wild_battle, 0, 1, 1200ms, label);
         m_context.wait_for(1500ms);
         if (up.stop == WalkStop::TRANSITION){
             return true;

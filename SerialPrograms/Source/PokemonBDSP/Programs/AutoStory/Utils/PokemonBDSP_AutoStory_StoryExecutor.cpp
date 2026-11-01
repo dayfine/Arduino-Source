@@ -13,6 +13,7 @@
 #include "PokemonBDSP_AutoStory_PokemonCenter.h"
 #include "PokemonBDSP_AutoStory_Segment_00_tools.h"
 #include "PokemonBDSP_AutoStory_Walk.h"
+#include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_Autostory_Segment_01_tools.h"
 #include "PokemonBDSP_AutoStory_StoryExecutor.h"
 
 namespace PokemonAutomation{
@@ -115,7 +116,7 @@ Outcome ConsoleStoryExecutor::route(RunState& state, const Pokemon::StoryStep& s
     const std::vector<TilePos> goal = Pokemon::tiles_of(*step.target);
     StoryConsole& c = console();
     const std::vector<TilePos> at = walk_route(
-        c.env.console, c.context, m_maps, from,
+        c.env.console, c.context, run_from_wild_battle, m_maps, from,
         [&](const TilePos& pos){ return std::find(goal.begin(), goal.end(), pos) != goal.end(); },
         m_trainers, fight(c), step.name, {}, *costs
     );
@@ -134,7 +135,7 @@ Outcome ConsoleStoryExecutor::legs(RunState& state, const Pokemon::StoryStep& st
         route_turn(c.env.console, c.context, leg.direction);
         const auto [x, y] = dpad_of(leg.direction);
         const size_t tiles = (size_t)leg.tiles;
-        const WalkResult walk = walk_tiles_dpad(c.env.console, c.context, x, y, tiles, step.name);
+        const WalkResult walk = walk_tiles_dpad(c.env.console, c.context, run_from_wild_battle, x, y, tiles, step.name);
         c.env.console.log(std::format("[{}] {}: taps {} moved {} of {} tiles.", m_checkpoint, step.name, direction_name(leg.direction), walk.moved_chunks, tiles));
         if (walk.moved_chunks + (one_short_ok ? 1 : 0) < tiles){
             return Pokemon::outcome_failed("short_leg", std::format("{} {} moved {}", direction_name(leg.direction), tiles, walk.moved_chunks));

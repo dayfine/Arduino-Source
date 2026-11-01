@@ -31,6 +31,7 @@
 #include "CommonTools/VisualDetectors/BlackScreenDetector.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "PokemonBDSP/Inference/PokemonBDSP_DialogDetector.h"
+#include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_Autostory_Segment_01_tools.h"
 #include "PokemonBDSP/Inference/Battles/PokemonBDSP_BattleMenuDetector.h"
 
 #include <algorithm>
@@ -180,7 +181,7 @@ void jubilife_to_barry(VideoStream& stream, ProControllerContext& context){
     pbf_move_left_joystick(context, {0, -1}, route_open_hold(Direction::SOUTH, 2), 200ms);
     route_turn(stream, context, Direction::WEST);
     pbf_move_left_joystick(context, {-1, 0}, route_open_hold(Direction::WEST, 3), 200ms);
-    if (walk_to_talk(stream, context, 0, 1, 3000ms, "to the nurse").stop != WalkStop::DIALOG){
+    if (walk_to_talk(stream, context, run_from_wild_battle, 0, 1, 3000ms, "to the nurse").stop != WalkStop::DIALOG){
         fail(stream, "Jubilife Pokemon Center: the nurse did not answer.");
     }
     // A throughout: Yes to "rest your Pokemon?" (B would answer No).
@@ -194,7 +195,7 @@ void jubilife_to_barry(VideoStream& stream, ProControllerContext& context){
     // door's fade may or may not read as a transition.
     WalkResult out{WalkStop::LIMIT, 0ms, 0};
     for (size_t walk = 0; walk < 3 && out.stop != WalkStop::BLOCKED; walk++){
-        out = walk_until(stream, context, 0, -1, 8000ms, "out of the Pokemon Center");
+        out = walk_until(stream, context, run_from_wild_battle, 0, -1, 8000ms, "out of the Pokemon Center");
         if (out.stop == WalkStop::DIALOG || out.stop == WalkStop::ARRIVED){
             break;
         }
@@ -233,7 +234,7 @@ void jubilife_to_barry(VideoStream& stream, ProControllerContext& context){
         context.wait_for_all_requests();
         WalkResult walk{WalkStop::LIMIT, 0ms, 0};
         for (size_t stretch = 0; stretch < 3 && walk.stop == WalkStop::LIMIT; stretch++){
-            walk = walk_until(stream, context, 1, 0, 9000ms, "east to Route 203");
+            walk = walk_until(stream, context, run_from_wild_battle, 1, 0, 9000ms, "east to Route 203");
         }
         barry = walk.stop == WalkStop::DIALOG;
     }
@@ -275,7 +276,7 @@ void route203_to_oreburgh(VideoStream& stream, ProControllerContext& context){
         }
     };
     for (size_t leg = 0; leg < 40 && !inside; leg++){
-        const WalkResult walk = walk_until(stream, context, 1, 0, 10000ms, "east along Route 203");
+        const WalkResult walk = walk_until(stream, context, run_from_wild_battle, 1, 0, 10000ms, "east along Route 203");
         if (walk.stop == WalkStop::TRANSITION){
             inside = true;
             break;
@@ -291,11 +292,11 @@ void route203_to_oreburgh(VideoStream& stream, ProControllerContext& context){
         // first (a step north there does not move us, so rows are counted
         // from it), then a row at a time south. At the route's end this is the
         // corner by the second sign, with the Gate's opening two rows down.
-        walk_until(stream, context, 0, 1, 6000ms, "north to the top wall");
+        walk_until(stream, context, run_from_wild_battle, 0, 1, 6000ms, "north to the top wall");
         bool moved_on = false;
         for (size_t row = 1; row <= 10 && !moved_on; row++){
             step_south(stream, context);
-            const WalkResult next = walk_until(stream, context, 1, 0, 10000ms, "east along Route 203, row " + std::to_string(row) + " below the top");
+            const WalkResult next = walk_until(stream, context, run_from_wild_battle, 1, 0, 10000ms, "east along Route 203, row " + std::to_string(row) + " below the top");
             if (next.stop == WalkStop::TRANSITION){
                 inside = true;
             }
@@ -318,7 +319,7 @@ void route203_to_oreburgh(VideoStream& stream, ProControllerContext& context){
     step(2);
     // The Hiker steps up to us as we walk east.
     if (!met_hiker){
-        const WalkResult to_hiker = walk_until(stream, context, 1, 0, 4000ms, "to the Hiker");
+        const WalkResult to_hiker = walk_until(stream, context, run_from_wild_battle, 1, 0, 4000ms, "to the Hiker");
         if (to_hiker.stop != WalkStop::DIALOG && !dialogue_opens(stream, context, 2000ms)){
             fail(stream, "Oreburgh Gate: the Hiker did not stop us.");
         }
@@ -338,7 +339,7 @@ void route203_to_oreburgh(VideoStream& stream, ProControllerContext& context){
     bool city = false;
     size_t stuck = 0;
     for (size_t leg = 0; leg < 12 && !city; leg++){
-        const WalkResult walk = walk_until(stream, context, 1, 0, 10000ms, "east through the Oreburgh Gate");
+        const WalkResult walk = walk_until(stream, context, run_from_wild_battle, 1, 0, 10000ms, "east through the Oreburgh Gate");
         if (walk.stop == WalkStop::LIMIT || walk.stop == WalkStop::TRANSITION){
             continue;
         }
@@ -386,7 +387,7 @@ WalkResult walk_dir(
 ){
     const double x = dir == Direction::EAST ? 1 : dir == Direction::WEST ? -1 : 0;
     const double y = dir == Direction::NORTH ? 1 : dir == Direction::SOUTH ? -1 : 0;
-    return walk_until(stream, context, x, y, limit, label, arrived);
+    return walk_until(stream, context, run_from_wild_battle, x, y, limit, label, arrived);
 }
 
 //  Out of a building whose door is straight south of us, a D-pad tile at a
@@ -474,8 +475,8 @@ void enter_oreburgh_center(VideoStream& stream, ProControllerContext& context){
     // the Center's east corner stops a walk east on these rows a tile east of
     // the door (by hand): walk to it, north to the Center's front, tap back
     // one, and shift one tap either side.
-    walk_to_wall(stream, context, 1, 0, 5000ms, "east to the fence below the Center");
-    walk_to_wall(stream, context, 0, 1, 3000ms, "north to the Center's front");
+    walk_to_wall(stream, context, run_from_wild_battle, 1, 0, 5000ms, "east to the fence below the Center");
+    walk_to_wall(stream, context, run_from_wild_battle, 0, 1, 3000ms, "north to the Center's front");
     // The door wants us near its middle: a turn and a tap west (half a tile
     // too far, by hand) or a turn alone leave north blocked by the facade
     // beside it. The facade blocks north for two tiles either side of the
@@ -506,7 +507,7 @@ void enter_oreburgh_center(VideoStream& stream, ProControllerContext& context){
         // door's column, and the walk back out drifted into the yard (r188b).
         // Oreburgh's sand reads up to 34 % warm outside (r189a), the floor
         // 56 to 64 % inside.
-        const WalkResult in = walk_until(stream, context, 0, 1, 2500ms, "north into the Center's door",
+        const WalkResult in = walk_until(stream, context, run_from_wild_battle, 0, 1, 2500ms, "north into the Center's door",
             [](const ImageViewRGB32& screen){ size_t percent = 0; center_floor_on_screen(screen, &percent); return percent >= 45; });
         if (in.stop == WalkStop::ARRIVED || ((in.stop == WalkStop::TRANSITION || in.stop == WalkStop::LIMIT) && inside_now())){
             inside = true;
@@ -523,7 +524,7 @@ void enter_oreburgh_center(VideoStream& stream, ProControllerContext& context){
             context.wait_for(2000ms);    // he runs off
         }
         // Talked in the door's column: the door is free now.
-        walk_until(stream, context, 0, 1, 2500ms, "north into the Center's door",
+        walk_until(stream, context, run_from_wild_battle, 0, 1, 2500ms, "north into the Center's door",
             [](const ImageViewRGB32& screen){ size_t percent = 0; center_floor_on_screen(screen, &percent); return percent >= 45; });
         inside = inside_now();
     }
@@ -536,7 +537,7 @@ void enter_oreburgh_center(VideoStream& stream, ProControllerContext& context){
 //  and heal; ends at the counter facing her. The door is straight south of
 //  her (by hand, 2026-10-31: north from the door stopped at the counter).
 void heal_at_oreburgh_counter(VideoStream& stream, ProControllerContext& context){
-    if (walk_to_talk(stream, context, 0, 1, 6000ms, "to the nurse").stop != WalkStop::DIALOG){
+    if (walk_to_talk(stream, context, run_from_wild_battle, 0, 1, 6000ms, "to the nurse").stop != WalkStop::DIALOG){
         fail(stream, "Oreburgh Pokemon Center: the nurse did not answer.");
     }
     // A throughout: Yes to "rest your Pokemon?" (B would answer No).
@@ -552,7 +553,7 @@ void heal_at_oreburgh_counter(VideoStream& stream, ProControllerContext& context
 //  below it, facing south, on the door's column. Stops as soon as the floor
 //  is gone: walking on runs down the column to the mine.
 void leave_center_onto_door_row(VideoStream& stream, ProControllerContext& context){
-    walk_until(stream, context, 0, -1, 4000ms, "out of the Center's door",
+    walk_until(stream, context, run_from_wild_battle, 0, -1, 4000ms, "out of the Center's door",
         [](const ImageViewRGB32& screen){ size_t percent = 0; center_floor_on_screen(screen, &percent); return percent < 30; });
     context.wait_for(1500ms);
 }
@@ -643,10 +644,10 @@ void oreburgh_to_roark(VideoStream& stream, ProControllerContext& context){
     // him (on the console, r97). Then south to the bottom wall and two tiles
     // west puts us below him.
     const Pokemon::TilePos roark = world(OreburghMine::ROARK);
-    at = walk_route(stream, context, maps, at,
+    at = walk_route(stream, context, run_from_wild_battle, maps, at,
         [&](const Pokemon::TilePos& pos){ return pos.y >= roark.y && pos.y <= roark.y + 1 && pos.x >= roark.x + 2 && pos.x <= roark.x + 7; },
         no_trainers, in_the_way, "To the stretch east of Roark");
-    walk_to_wall(stream, context, 0, 1, 2000ms, "north to the wall on Roark's row");
+    walk_to_wall(stream, context, run_from_wild_battle, 0, 1, 2000ms, "north to the wall on Roark's row");
     // His rock and the bottom wall end these legs (see walk_to_wall()). The
     // two taps west from there land within a third of a tile or so of his
     // column (s03e2 missed him by that much), so look for him with nudges
@@ -658,27 +659,27 @@ void oreburgh_to_roark(VideoStream& stream, ProControllerContext& context){
     for (size_t attempt = 0; attempt < 3 && !talked; attempt++){
         if (attempt > 0){
             // The battle may leave us on his row or the bottom one.
-            walk_to_wall(stream, context, 0, -1, 2000ms, "south to the bottom row");
-            walk_to_wall(stream, context, 1, 0, 6000ms, "east along the bottom row");
+            walk_to_wall(stream, context, run_from_wild_battle, 0, -1, 2000ms, "south to the bottom row");
+            walk_to_wall(stream, context, run_from_wild_battle, 1, 0, 6000ms, "east along the bottom row");
             route_turn(stream, context, Direction::WEST);
             for (size_t tap = 0; tap < 3; tap++){
                 pbf_move_left_joystick(context, {-1, 0}, 120ms, 300ms);
             }
-            walk_to_wall(stream, context, 0, 1, 2000ms, "north to the wall on Roark's row");
+            walk_to_wall(stream, context, run_from_wild_battle, 0, 1, 2000ms, "north to the wall on Roark's row");
         }
         // A wild battle on the way eats into the walk's time (r100): walk again.
         for (size_t walk = 0; walk < 3; walk++){
-            if (walk_to_wall(stream, context, -1, 0, 6000ms, "west to the rock beside Roark").wild_battles == 0){
+            if (walk_to_wall(stream, context, run_from_wild_battle, -1, 0, 6000ms, "west to the rock beside Roark").wild_battles == 0){
                 break;
             }
         }
-        walk_to_wall(stream, context, 0, -1, 2000ms, "south to the bottom wall");
+        walk_to_wall(stream, context, run_from_wild_battle, 0, -1, 2000ms, "south to the bottom wall");
         route_turn(stream, context, Direction::WEST);
         pbf_move_left_joystick(context, {-1, 0}, 120ms, 300ms);
         pbf_move_left_joystick(context, {-1, 0}, 120ms, 300ms);
         route_turn(stream, context, Direction::NORTH);
         context.wait_for_all_requests();
-        if (run_from_late_encounter(stream, context, "below Roark")){
+        if (run_from_late_encounter(stream, context, run_from_wild_battle, "below Roark")){
             continue;
         }
         if (VideoSnapshot screen = stream.video().snapshot()){
@@ -691,7 +692,7 @@ void oreburgh_to_roark(VideoStream& stream, ProControllerContext& context){
         // His rocks answer A too ("It's a rugged rock..."): his talk is the
         // one that zooms the camera in on us (by hand), which the rock's
         // message does not. Compare the view above the dialogue box.
-        talked = talk_with_nudges(stream, context, Direction::NORTH, "Roark", 8000ms,
+        talked = talk_with_nudges(stream, context, run_from_wild_battle, Direction::NORTH, "Roark", 8000ms,
             [&](const ImageViewRGB32& before, const ImageViewRGB32& after){
                 const ImageFloatBox above_box{0.0, 0.0, 1.0, 0.6};
                 const double change = walk_screen_change(
@@ -732,7 +733,7 @@ void oreburgh_to_roark(VideoStream& stream, ProControllerContext& context){
     // no wall stops us a row short of it, so the route ends on the corner
     // at (14,10), where that leg started, and the walk does the rest.
     const Pokemon::TilePos exit = world(OreburghMine::CORRIDOR_EXIT_START);
-    at = walk_route(stream, context, maps, at,
+    at = walk_route(stream, context, run_from_wild_battle, maps, at,
         [&](const Pokemon::TilePos& pos){ return pos == exit; },
         no_trainers, in_the_way, "Back to the corridor's top");
     // Up into the entrance hall (a transition, as on the way in), then on
@@ -754,7 +755,7 @@ void oreburgh_to_roark(VideoStream& stream, ProControllerContext& context){
     // of the mine we stand below its sign; a tile east is the Center door's
     // column, and north on it goes in, or stops on the front rows.
     hold_tiles(stream, context, Direction::EAST, 1);
-    walk_until(stream, context, 0, 1, 12000ms, "north into the Center's door",
+    walk_until(stream, context, run_from_wild_battle, 0, 1, 12000ms, "north into the Center's door",
         [](const ImageViewRGB32& screen){ size_t percent = 0; center_floor_on_screen(screen, &percent); return percent >= 45; });
     size_t floor = 0;
     if (VideoSnapshot frame = stream.video().snapshot()){
@@ -929,7 +930,7 @@ bool through_door_north(VideoStream& stream, ProControllerContext& context, cons
     };
     context.wait_for_all_requests();
     const VideoSnapshot before = stream.video().snapshot();
-    const WalkResult up = walk_for(stream, context, 0, 1, 240ms, label);
+    const WalkResult up = walk_for(stream, context, run_from_wild_battle, 0, 1, 240ms, label);
     // Look for the fade ourselves: the library's black screen check missed it
     // under the gym's door (r209d), while its frames read 7 against about
     // 100 outside.
@@ -944,7 +945,7 @@ bool through_door_north(VideoStream& stream, ProControllerContext& context, cons
     // through (r213d: view change 160, no fade): step on north.
     if (moved > WALK_SCENE_CHANGE){
         stream.log("[Route] " + label + ": the door opened (view change " + std::to_string(moved) + "); on north.");
-        walk_for(stream, context, 0, 1, 240ms, label + ": on through");
+        walk_for(stream, context, run_from_wild_battle, 0, 1, 240ms, label + ": on through");
         if (went_dark(5000ms)){
             stream.log("[Route] " + label + ": the screen went dark; through the door.");
             context.wait_for(2000ms);
@@ -956,7 +957,7 @@ bool through_door_north(VideoStream& stream, ProControllerContext& context, cons
     // (r208d drifted south along the gym's front).
     stream.log("[Route] " + label + ": no dark screen; not the door (view change " + std::to_string(moved) + ").");
     if (moved > WALK_BLOCKED_CHANGE * 2){
-        walk_for(stream, context, 0, -1, 240ms, label + ": back down");
+        walk_for(stream, context, run_from_wild_battle, 0, -1, 240ms, label + ": back down");
     }
     return false;
 }
@@ -1172,7 +1173,7 @@ void route203_to_jubilife(VideoStream& stream, ProControllerContext& context){
     auto fight = [&](const std::string& who){
         talk_or_fight(stream, context, "Route 203: " + who);
     };
-    const std::vector<Pokemon::TilePos> at = walk_route(stream, context, route203_maps(), Route203::gate_exit(),
+    const std::vector<Pokemon::TilePos> at = walk_route(stream, context, run_from_wild_battle, route203_maps(), Route203::gate_exit(),
         on_route203_west_line, trainers, fight, "Route 203 to row 18");
     if (at.size() != 1){
         fail(stream, "Route 203: the walk to row 18 did not end on a known tile.");
@@ -1242,7 +1243,7 @@ void jubilife_to_ravaged_path(VideoStream& stream, ProControllerContext& context
     // The street's column 14 carries on as the route's; the location banner
     // names Route 204 as we cross. A D-pad walk keeps the column; it may
     // stop a tile or two past the border, which the entry set allows for.
-    const WalkResult out = walk_until_dpad(stream, context, 0, 1, 8000ms, "north out of Jubilife", location_banner_showing);
+    const WalkResult out = walk_until_dpad(stream, context, run_from_wild_battle, 0, 1, 8000ms, "north out of Jubilife", location_banner_showing);
     if (out.stop != WalkStop::ARRIVED){
         fail(stream, "Jubilife: no Route 204 banner walking north up the street.");
     }
@@ -1260,7 +1261,7 @@ void jubilife_to_ravaged_path(VideoStream& stream, ProControllerContext& context
     {
         std::vector<Pokemon::TrainerSight> trainers = Route204South::trainer_sights();
         auto fight = [&](const std::string& who){ talk_or_fight(stream, context, who); };
-        const std::vector<Pokemon::TilePos> at = walk_route(stream, context, route204_south_maps(),
+        const std::vector<Pokemon::TilePos> at = walk_route(stream, context, run_from_wild_battle, route204_south_maps(),
             Route204South::jubilife_entry(),
             [](const Pokemon::TilePos& pos){ return pos == Route204South::BELOW_DOOR; },
             trainers, fight, "Route 204 South to the Ravaged Path", Route204South::tiles_to_avoid(), town_plan_costs());
@@ -1326,14 +1327,14 @@ void ravaged_path(VideoStream& stream, ProControllerContext& context){
         };
         std::vector<Pokemon::TilePos> at{RavagedPath::ENTRANCE};
         const Pokemon::MapSet rocks_in = ravaged_path_maps();
-        at = walk_route(stream, context, rocks_in, at,
+        at = walk_route(stream, context, run_from_wild_battle, rocks_in, at,
             [&](const Pokemon::TilePos& pos){
                 const auto& before = RavagedPath::before_rocks();
                 return std::find(before.begin(), before.end(), pos) != before.end();
             },
             no_trainers, in_the_way, "To a rock across the corridor");
         route_turn(stream, context, Direction::EAST);
-        if (!talk_with_nudges(stream, context, Direction::EAST, "the rock east of us", 2000ms)){
+        if (!talk_with_nudges(stream, context, run_from_wild_battle, Direction::EAST, "the rock east of us", 2000ms)){
             fail(stream, "Ravaged Path: nothing answered facing the rock east of us.");
         }
         if (!answer_rock_smash_prompt(stream, context, "the rock east of us")){
@@ -1346,7 +1347,7 @@ void ravaged_path(VideoStream& stream, ProControllerContext& context){
             smashed.push_back(pos.next(Direction::EAST));
         }
         const Pokemon::MapSet rocks_out = ravaged_path_maps(smashed);
-        at = walk_route(stream, context, rocks_out, at,
+        at = walk_route(stream, context, run_from_wild_battle, rocks_out, at,
             [&](const Pokemon::TilePos& pos){ return pos == RavagedPath::EAST_END; },
             no_trainers, in_the_way, "To the corridor's east end");
         dpad_tiles(stream, context, DPAD_LEFT, 1, "west onto the tile above the way out");
@@ -1377,14 +1378,14 @@ void route204_to_floaroma(VideoStream& stream, ProControllerContext& context){
             talk_or_fight(stream, context, who, false, doubles);
         };
         std::vector<Pokemon::TilePos> at{Route204::CAVE_EXIT};
-        at = walk_waypoints(stream, context, route204_north_maps(), at, Route204::floaroma_waypoints(),
+        at = walk_waypoints(stream, context, run_from_wild_battle, route204_north_maps(), at, Route204::floaroma_waypoints(),
             trainers, fight, "To the path into Floaroma");
         if (!std::all_of(at.begin(), at.end(), Route204::in_floaroma_path)){
             fail(stream, "Route 204: the walk did not end in the path into Floaroma.");
         }
         // North until the town's banner shows: the checkpoint ends right
         // there, where the save goes (r247a walked 20 s on and overshot).
-        const WalkResult in = walk_until_dpad(stream, context, 0, 1, 12000ms, "north into Floaroma", location_banner_showing);
+        const WalkResult in = walk_until_dpad(stream, context, run_from_wild_battle, 0, 1, 12000ms, "north into Floaroma", location_banner_showing);
         if (in.stop != WalkStop::ARRIVED){
             fail(stream, "Route 204: no location banner walking north into Floaroma.");
         }
@@ -1417,13 +1418,13 @@ void floaroma_old_couple(VideoStream& stream, ProControllerContext& context){
 
     step(1);
     {
-        const WalkResult west = walk_tiles_dpad(stream, context, -1, 0, 8, "west 8 to the flower field");
+        const WalkResult west = walk_tiles_dpad(stream, context, run_from_wild_battle, -1, 0, 8, "west 8 to the flower field");
         if (west.stop != WalkStop::LIMIT || west.moved_chunks < 7){
             fail(stream, "Floaroma: west 8 to the flower field moved " + std::to_string(west.moved_chunks) + " tiles.");
         }
         //  Blocked, or out of taps with the last ones bumping: either way
         //  she is in front of us (r250a: 3 steps, 2 bumps, "limit").
-        const WalkResult north = walk_tiles_dpad(stream, context, 0, 1, 5, "north until the old woman");
+        const WalkResult north = walk_tiles_dpad(stream, context, run_from_wild_battle, 0, 1, 5, "north until the old woman");
         if (north.stop != WalkStop::BLOCKED && north.moved_chunks >= 5){
             fail(stream, "Floaroma: nothing stopped the walk north to the old woman.");
         }
@@ -1445,11 +1446,11 @@ void floaroma_old_couple(VideoStream& stream, ProControllerContext& context){
     step(3);
     //  One tile west, then a tap north: the old man stands there, so the
     //  tap only turns.
-    const WalkResult west = walk_tiles_dpad(stream, context, -1, 0, 1, "west 1 below the old man");
+    const WalkResult west = walk_tiles_dpad(stream, context, run_from_wild_battle, -1, 0, 1, "west 1 below the old man");
     if (west.moved_chunks < 1){
         fail(stream, "Floaroma: the step west below the old man did not move.");
     }
-    const WalkResult north = walk_tiles_dpad(stream, context, 0, 1, 3, "north until the old man");
+    const WalkResult north = walk_tiles_dpad(stream, context, run_from_wild_battle, 0, 1, 3, "north until the old man");
     if (north.stop != WalkStop::BLOCKED && north.moved_chunks >= 3){
         fail(stream, "Floaroma: nothing stopped the walk north to the old man.");
     }

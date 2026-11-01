@@ -43,6 +43,7 @@
 
 #include "NintendoSwitch/Programs/DateManip/NintendoSwitch_DateManip.h"
 
+#include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_Autostory_Segment_01_tools.h"
 #include "PokemonBDSP/Programs/PokemonBDSP_GameNavigation.h"
 
 using namespace std::chrono_literals;
@@ -663,12 +664,12 @@ namespace PokemonAutomation {
             const TilePos door = maps.to_world(MAP_SANDGEM_TOWN, SandgemTown::POKE_MART_DOOR);
             const TilePos front = door.next(Pokemon::Direction::SOUTH);
             const auto at_front = [&](const TilePos& pos) { return pos.y == front.y && std::abs(pos.x - front.x) <= 1; };
-            walk_route(stream, context, maps, story_door_front(MAP_SANDGEM_TOWN, SandgemTown::POKEMON_CENTER_DOOR),
+            walk_route(stream, context, run_from_wild_battle, maps, story_door_front(MAP_SANDGEM_TOWN, SandgemTown::POKEMON_CENTER_DOOR),
                 at_front, trainers, fight, "To the Poke Mart");
             const std::vector<TilePos> short_of_door = tiles_short_of_door(stream, context, maps.world(), door, "To the Poke Mart");
             if (!short_of_door.empty()) {
                 route_status(stream, "To the Poke Mart: stopped short of the door; walking again.");
-                walk_route(stream, context, maps, short_of_door, at_front, trainers, fight, "To the Poke Mart again");
+                walk_route(stream, context, run_from_wild_battle, maps, short_of_door, at_front, trainers, fight, "To the Poke Mart again");
             }
             enter_lit_door(stream, context, "Sandgem Poke Mart: through the door");
         }
@@ -680,7 +681,7 @@ namespace PokemonAutomation {
         // name and price; the quantity is counted out blind.
         static void buy_potions_at_the_counter(VideoStream& stream, ProControllerContext& context) {
             route_status(stream, "Poke Mart: to the clerk.");
-            const WalkResult walk = walk_until(stream, context, 0, 1, 6000ms, "Poke Mart: to the clerk");
+            const WalkResult walk = walk_until(stream, context, run_from_wild_battle, 0, 1, 6000ms, "Poke Mart: to the clerk");
             if (walk.stop != WalkStop::BLOCKED && walk.stop != WalkStop::DIALOG) {
                 OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
                     "Poke Mart: the counter was not reached (" + std::string(walk_stop_name(walk.stop)) + ").", stream);
@@ -690,7 +691,7 @@ namespace PokemonAutomation {
                 OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
                     "Poke Mart: could not buy " + std::to_string(POTIONS_TO_BUY) + " Potions.", stream);
             }
-            leave_door_south(stream, context, "Poke Mart: out the door");
+            leave_door_south(stream, context, run_from_wild_battle, "Poke Mart: out the door");
         }
 
         // Potions let us heal where we stand. Sandgem's Poke Mart is next
@@ -742,7 +743,7 @@ namespace PokemonAutomation {
             using Pokemon::Direction;
             std::vector<std::string> banners;
             for (size_t nudges = 0;; nudges++){
-                const WalkResult north = walk_until(stream, context, 0, 1, 8000ms, "North through the gap", banner_keeper(banners));
+                const WalkResult north = walk_until(stream, context, run_from_wild_battle, 0, 1, 8000ms, "North through the gap", banner_keeper(banners));
                 if (north.stop == WalkStop::TRANSITION || north.stop == WalkStop::DIALOG || north.wild_battles > 0){
                     OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
                         "North through the gap: " + std::string(walk_stop_name(north.stop)) + " instead of a wall.", stream);
@@ -757,7 +758,7 @@ namespace PokemonAutomation {
                 }
                 route_status(stream, "North through the gap: blocked at once, below a sign or the Mart; a tile west.");
                 route_turn(stream, context, Direction::WEST);
-                walk_for(stream, context, -1, 0, route_open_hold(Direction::WEST, 1), "A tile west");
+                walk_for(stream, context, run_from_wild_battle, -1, 0, route_open_hold(Direction::WEST, 1), "A tile west");
                 route_turn(stream, context, Direction::NORTH);
             }
             context.wait_for_all_requests();
@@ -782,7 +783,7 @@ namespace PokemonAutomation {
             using Pokemon::Direction;
             route_status(stream, "To the gap between the Center's and the Mart's signs: west 6.");
             route_turn(stream, context, Direction::WEST);
-            walk_for(stream, context, -1, 0, route_open_hold(Direction::WEST, 6), "To the gap between the signs");
+            walk_for(stream, context, run_from_wild_battle, -1, 0, route_open_hold(Direction::WEST, 6), "To the gap between the signs");
             const bool on_route = walk_north_through_gap(stream, context);
             std::vector<TilePos> ends;
             for (const TilePos& pos : SandgemTown::below_sign_gap()){
@@ -809,11 +810,11 @@ namespace PokemonAutomation {
             const TilePos row_end = maps.to_world(MAP_SANDGEM_TOWN, SandgemTown::FRONT_ROW_EAST_END);
             const TilePos save_spot = maps.to_world(MAP_ROUTE_202, Route202::SAVE_SPOT);
             if (!all_on_map(maps, at, MAP_ROUTE_202)) {
-                at = walk_route(stream, context, maps, std::move(at),
+                at = walk_route(stream, context, run_from_wild_battle, maps, std::move(at),
                     [&](const TilePos& pos) { return pos == row_end; }, trainers, fight, "To the trees east of the Poke Mart");
                 at = north_through_sign_gap(stream, context, maps);
             }
-            walk_route(stream, context, maps, std::move(at),
+            walk_route(stream, context, run_from_wild_battle, maps, std::move(at),
                 [&](const TilePos& pos) { return pos == save_spot; }, trainers, fight, "Back to Route 202");
         }
 
@@ -837,7 +838,7 @@ namespace PokemonAutomation {
         // are further west. The scene itself is the next step.
         static void up_jubilife_stairs(VideoStream& stream, ProControllerContext& context) {
             for (size_t attempt = 0; attempt < 6; attempt++) {
-                const WalkResult walk = walk_until(stream, context, 0, 1, 4000ms, "to Dawn in Jubilife");
+                const WalkResult walk = walk_until(stream, context, run_from_wild_battle, 0, 1, 4000ms, "to Dawn in Jubilife");
                 if (walk.stop == WalkStop::TRANSITION) {
                     OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
                         "Jubilife: left the area instead of meeting Dawn.", stream);
@@ -872,8 +873,8 @@ namespace PokemonAutomation {
                 // Onto the doors' row first: out of the door we stand a tile to
                 // three below it (r261 walked west into the trees from three).
                 route_turn(stream, context, Pokemon::Direction::EAST);
-                walk_tiles_dpad(stream, context, 1, 0, 1, "east under the Center's wall");
-                const WalkResult up = walk_until(stream, context, 0, 1, 3000ms, "north to the Center's front");
+                walk_tiles_dpad(stream, context, run_from_wild_battle, 1, 0, 1, "east under the Center's wall");
+                const WalkResult up = walk_until(stream, context, run_from_wild_battle, 0, 1, 3000ms, "north to the Center's front");
                 if (up.stop != WalkStop::BLOCKED) {
                     OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
                         std::string("Sandgem: north to the Center's front ended ") + walk_stop_name(up.stop) + ".", stream);
@@ -1098,8 +1099,8 @@ namespace PokemonAutomation {
             // From the save below the steps, against the wall east of them:
             // a tile west (the first press only turns), then up the steps.
             route_turn(stream, context, Pokemon::Direction::WEST);
-            walk_for(stream, context, -1, 0, 200ms, "To the steps");
-            walk_for(stream, context, 0, 1, 480ms, "Up the steps");
+            walk_for(stream, context, run_from_wild_battle, -1, 0, 200ms, "To the steps");
+            walk_for(stream, context, run_from_wild_battle, 0, 1, 480ms, "Up the steps");
             std::vector<TilePos> at;
             for (const TilePos& pos : JubilifeCity::up_the_steps()) {
                 at.push_back(world(pos));
@@ -1115,8 +1116,8 @@ namespace PokemonAutomation {
             // front, which no wall pins. Measured on the console (2026-10-30):
             // from the top of the steps, east stops at the house east of the
             // road, and north from there stops in front of the Center.
-            walk_until(stream, context, 1, 0, 4000ms, "East to the house");
-            walk_until(stream, context, 0, 1, 4000ms, "North to the Pokemon Center");
+            walk_until(stream, context, run_from_wild_battle, 1, 0, 4000ms, "East to the house");
+            walk_until(stream, context, run_from_wild_battle, 0, 1, 4000ms, "North to the Pokemon Center");
             heal_at_pokemon_center(stream, context, "Jubilife Pokemon Center");
             // From the doorstep the School's door is ten one-tile steps west
             // (measured). Nothing on that row stops a walk, so count the
@@ -1125,14 +1126,14 @@ namespace PokemonAutomation {
             route_turn(stream, context, Pokemon::Direction::WEST);
             bool in_school = false;
             for (size_t tiles = 1; tiles <= 12 && !in_school; tiles++) {
-                walk_for(stream, context, -1, 0, 160ms, "West to the School's door");
+                walk_for(stream, context, run_from_wild_battle, -1, 0, 160ms, "West to the School's door");
                 if (tiles < 8) {
                     continue;
                 }
-                const WalkResult up = walk_until(stream, context, 0, 1, 1200ms, "Trainers' School door");
+                const WalkResult up = walk_until(stream, context, run_from_wild_battle, 0, 1, 1200ms, "Trainers' School door");
                 in_school = up.stop == WalkStop::TRANSITION;
                 if (!in_school) {
-                    walk_for(stream, context, 0, -1, 200ms, "Back to the doorsteps' row");
+                    walk_for(stream, context, run_from_wild_battle, 0, -1, 200ms, "Back to the doorsteps' row");
                     route_turn(stream, context, Pokemon::Direction::WEST);
                 }
             }
@@ -1145,7 +1146,7 @@ namespace PokemonAutomation {
             // step west, walk north until he stops us, talk.
             route_turn(stream, context, Pokemon::Direction::WEST);
             pbf_move_left_joystick(context, {-1, 0}, route_open_hold(Pokemon::Direction::WEST, 1), 200ms);
-            walk_until(stream, context, 0, 1, 3000ms, "to Barry");
+            walk_until(stream, context, run_from_wild_battle, 0, 1, 3000ms, "to Barry");
             pbf_press_button(context, BUTTON_A, 80ms, 200ms);
             context.wait_for_all_requests();
             {
@@ -1158,10 +1159,10 @@ namespace PokemonAutomation {
             // His scene ends with "You obtained a Town Map!", which A closes.
             finish_dialogue(stream, context, BUTTON_A, "Barry");
             // Out: south to the front wall, a tile east (the door's column), out.
-            walk_until(stream, context, 0, -1, 4000ms, "to the school's front wall");
+            walk_until(stream, context, run_from_wild_battle, 0, -1, 4000ms, "to the school's front wall");
             route_turn(stream, context, Pokemon::Direction::EAST);
             pbf_move_left_joystick(context, {1, 0}, route_open_hold(Pokemon::Direction::EAST, 1), 200ms);
-            if (walk_until(stream, context, 0, -1, 2500ms, "out of the Trainers' School").stop != WalkStop::TRANSITION) {
+            if (walk_until(stream, context, run_from_wild_battle, 0, -1, 2500ms, "out of the Trainers' School").stop != WalkStop::TRANSITION) {
                 OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
                     "Trainers' School: did not leave by the door.", stream);
             }
@@ -1172,42 +1173,42 @@ namespace PokemonAutomation {
             // The president talks on with A after each last line; B moves his
             // lines on and never starts a new talk.
             const TilePos president = world(JubilifeCity::POKETCH_PRESIDENT);
-            talk_to_npc(stream, context, maps, at, president,
+            talk_to_npc(stream, context, run_from_wild_battle, maps, at, president,
                 {Pokemon::Direction::EAST, Pokemon::Direction::SOUTH}, trainers, in_the_way, "Poketch president");
             finish_dialogue(stream, context, BUTTON_B, "Poketch president");
 
             step(3);
             // Each clown asks a question whose default answer, Yes, is right,
             // and hands over a coupon with an "obtained" message A closes.
-            talk_to_npc(stream, context, maps, at, world(JubilifeCity::CLOWN_MART),
+            talk_to_npc(stream, context, run_from_wild_battle, maps, at, world(JubilifeCity::CLOWN_MART),
                 {Pokemon::Direction::SOUTH, Pokemon::Direction::WEST, Pokemon::Direction::EAST},
                 trainers, in_the_way, "Clown by the Poke Mart");
             finish_dialogue(stream, context, BUTTON_A, "Clown by the Poke Mart");
-            talk_to_npc(stream, context, maps, at, world(JubilifeCity::CLOWN_TV_STATION),
+            talk_to_npc(stream, context, run_from_wild_battle, maps, at, world(JubilifeCity::CLOWN_TV_STATION),
                 {Pokemon::Direction::EAST, Pokemon::Direction::SOUTH, Pokemon::Direction::WEST},
                 trainers, in_the_way, "Clown by the TV station");
             finish_dialogue(stream, context, BUTTON_A, "Clown by the TV station");
-            talk_to_npc(stream, context, maps, at, world(JubilifeCity::CLOWN_POKETCH_COMPANY),
+            talk_to_npc(stream, context, run_from_wild_battle, maps, at, world(JubilifeCity::CLOWN_POKETCH_COMPANY),
                 {Pokemon::Direction::EAST, Pokemon::Direction::SOUTH, Pokemon::Direction::WEST},
                 trainers, in_the_way, "Clown by the Poketch Company");
             finish_dialogue(stream, context, BUTTON_A, "Clown by the Poketch Company");
 
             step(4);
-            talk_to_npc(stream, context, maps, at, president,
+            talk_to_npc(stream, context, run_from_wild_battle, maps, at, president,
                 {Pokemon::Direction::EAST, Pokemon::Direction::SOUTH}, trainers, in_the_way, "Poketch president");
             finish_dialogue(stream, context, BUTTON_B, "Poketch president");
 
             step(5);
             const TilePos center = world(JubilifeCity::POKEMON_CENTER_DOOR.next(Pokemon::Direction::SOUTH));
-            at = walk_route(stream, context, maps, at, by_door(center),
+            at = walk_route(stream, context, run_from_wild_battle, maps, at, by_door(center),
                 trainers, in_the_way, "To the Pokemon Center");
-            enter_door_north(stream, context, "Pokemon Center door");
+            enter_door_north(stream, context, run_from_wild_battle, "Pokemon Center door");
             // Inside: north to the counter, three tiles east, north to the PC
             // at the back wall right of the counter.
-            walk_until(stream, context, 0, 1, 2500ms, "to the counter");
+            walk_until(stream, context, run_from_wild_battle, 0, 1, 2500ms, "to the counter");
             route_turn(stream, context, Pokemon::Direction::EAST);
             pbf_move_left_joystick(context, {1, 0}, route_open_hold(Pokemon::Direction::EAST, 3), 200ms);
-            walk_until(stream, context, 0, 1, 1500ms, "to the PC");
+            walk_until(stream, context, run_from_wild_battle, 0, 1, 1500ms, "to the PC");
             context.wait_for_all_requests();
         }
         // ---------------------------------------------------------------------------
