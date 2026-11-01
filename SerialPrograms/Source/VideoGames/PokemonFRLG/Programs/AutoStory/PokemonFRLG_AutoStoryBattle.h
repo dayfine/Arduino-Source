@@ -8,7 +8,8 @@
  *  game remembers both; the move is the bottom left one (Bubble), which the
  *  cursor can't reach while that slot is empty, so before Bubble it stays on
  *  Tackle. A Potion is used when the HP bar turns yellow or red, an Antidote
- *  (once a battle) when the status reads PSN at two turns in a row.
+ *  (once a battle) when the status reads PSN at two turns in a row; after
+ *  the battle, PSN and PAR are cured from the bag.
  *  "Delete a move to make room?" is answered NO and "Stop learning?" YES.
  *
  *  Also the overworld interrupts the story walks routes with: wild battles
@@ -30,11 +31,25 @@ namespace NintendoSwitch{
 namespace PokemonFRLG{
 
 
+//  A status condition, as far as the story treats them: the two it carries
+//  items for, and the rest, which only a nurse cures.
+enum class StatusCondition{
+    NONE,
+    POISON,
+    PARALYSIS,
+    OTHER,      //  SLP, BRN, FRZ
+};
+const char* status_name(StatusCondition status);
+
 //  The healing items in the Items pocket, in the order they were bought:
-//  Potions first, then Antidotes.
+//  Potions, Antidotes, then Parlyz Heals.
 struct Supplies{
     int potions = 0;
     int antidotes = 0;
+    int parlyz_heals = 0;
+    //  The starter's status at the last battle screen that showed it, and
+    //  not cured since.
+    StatusCondition status = StatusCondition::NONE;
     //  The starter's HP bar wasn't green (or was red) at the last battle
     //  screen that showed it, and no Potion or nurse healed it since.
     bool hurt = false;
@@ -43,7 +58,7 @@ struct Supplies{
 
 enum class BattleKind{
     WILD_RUN,       //  RUN, or fight after a few "Can't escape!"
-    WILD_FIGHT,     //  fight for EXP with green HP and 2 Potions, else RUN
+    WILD_FIGHT,     //  fight for EXP with green HP, no status and 2 Potions, else RUN
     TRAINER,
 };
 
@@ -54,11 +69,16 @@ enum class BattleEnd{
     LOST,
 };
 
-//  What the HP bar and the status of the player's Pokemon show.
+//  What the HP bar and the status badge of the player's Pokemon show, on a
+//  battle screen with its box. Colors measured on console B's captures
+//  (2026-11-01): the bar's fill green (100, 251, 171), yellow
+//  (255, 228, 23), red (255, 113, 68); the badge's place off-white
+//  (255, 255, 217) with no status, (228, 168, 212) for PSN.
 struct PartyStatus{
+    bool hp_seen = false;
     bool hp_yellow = false;
     bool hp_red = false;
-    bool poisoned = false;
+    StatusCondition status = StatusCondition::NONE;
 };
 PartyStatus read_party_status(const ImageViewRGB32& screen);
 
@@ -69,9 +89,10 @@ PartyStatus read_party_status(const ImageViewRGB32& screen);
 BattleEnd fight_battle(ConsoleHandle& console, ProControllerContext& context, Supplies& supplies, BattleKind kind);
 
 
-//  From the overworld: a Potion from the top row of the Items pocket, on
-//  the starter. The bag's inputs are not checked on the console yet.
-void use_potion_from_bag(ConsoleHandle& console, ProControllerContext& context, Supplies& supplies);
+//  From the overworld, after a battle: an Antidote for PSN, a Parlyz Heal
+//  for PAR, then a Potion if the HP bar wasn't green, each if one is left.
+//  The bag's inputs are not checked on the console yet.
+void recover_after_battle(ConsoleHandle& console, ProControllerContext& context, Supplies& supplies);
 
 
 //  The interrupts for walking story routes. Wild battles are run from, or

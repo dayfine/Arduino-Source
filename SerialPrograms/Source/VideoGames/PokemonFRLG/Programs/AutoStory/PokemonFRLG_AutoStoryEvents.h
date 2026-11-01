@@ -56,7 +56,7 @@ enum class StoryStepKind{
     BATTLE,         //  text with B into a battle, fight it, text to the overworld
     HEAL,           //  facing the nurse
     SHOP,           //  facing the Viridian Mart clerk: Potions and Antidotes
-    READY,          //  before a big battle: a Potion if hurt, the nurse at `target` if red with none
+    READY,          //  before a big battle: items for status and HP, the nurse at `target` if they can't
 };
 
 //  A straight leg of a fixed walk.

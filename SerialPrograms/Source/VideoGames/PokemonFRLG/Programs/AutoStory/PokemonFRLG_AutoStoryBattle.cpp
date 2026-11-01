@@ -4,11 +4,13 @@
  *
  */
 
+#include <algorithm>
 #include <cstdlib>
 #include <format>
 #include <memory>
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
 #include "CommonFramework/ImageTools/ImageBoxes.h"
+#include "CommonFramework/ImageTools/ImageStats.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "VideoGames/PokemonFRLG/Inference/Dialogs/PokemonFRLG_BattleDialogs.h"
@@ -63,23 +65,22 @@ constexpr int PSN_READS = 2;
 //  Text and the move learn prompts after a battle, on the overworld.
 constexpr Milliseconds AFTER_BATTLE_TEXT = 60000ms;
 
-//  Inside the player's status box (name, level, HP bar, status), which
-//  BattlePokemonDetector frames. Not calibrated on the console yet.
-const ImageFloatBox PLAYER_STATUS_BOX(0.600, 0.500, 0.340, 0.165);
+//  In the player's box, as fractions of the 240x160 screen: the HP bar's
+//  fill, which grows from its left end, and the status badge left of the
+//  HP numbers. The box bobs by a pixel; these keep a pixel inside.
+const ImageFloatBox HP_BAR_BOX(174.0 / 240, 91.0 / 160, 48.0 / 240, 2.0 / 160);
+const ImageFloatBox STATUS_BADGE_BOX(146.0 / 240, 99.0 / 160, 12.0 / 240, 4.0 / 160);
 
 
-struct ColorCounts{
+struct HpCounts{
     size_t green = 0;
     size_t yellow = 0;
     size_t red = 0;
-    size_t purple = 0;
     size_t total = 0;
 };
 
-//  The HP bar's three colors and the PSN badge's purple. Guessed from the
-//  game's palette, not measured.
-ColorCounts count_colors(const ImageViewRGB32& image){
-    ColorCounts counts;
+HpCounts count_hp_colors(const ImageViewRGB32& image){
+    HpCounts counts;
     for (size_t y = 0; y < image.height(); y++){
         for (size_t x = 0; x < image.width(); x++){
             const uint32_t pixel = image.pixel(x, y);
@@ -87,18 +88,35 @@ ColorCounts count_colors(const ImageViewRGB32& image){
             const int g = (pixel >> 8) & 0xff;
             const int b = pixel & 0xff;
             counts.total++;
-            if (g > 180 && r < 150 && b > 90 && b < 210){
+            if (g > 200 && r < 160 && b > 120 && b < 210){
                 counts.green++;
-            }else if (r > 190 && g > 160 && b < 90){
+            }else if (r > 220 && g > 180 && b < 80){
                 counts.yellow++;
-            }else if (r > 190 && g < 110 && b < 90){
+            }else if (r > 220 && g > 80 && g < 150 && b < 110){
                 counts.red++;
-            }else if (r > 150 && b > 150 && g < 100 && std::abs(r - b) < 60){
-                counts.purple++;
             }
         }
     }
     return counts;
+}
+
+StatusCondition read_status_badge(const ImageViewRGB32& badge){
+    const ImageStats stats = image_stats(badge);
+    const double r = stats.average.r;
+    const double g = stats.average.g;
+    const double b = stats.average.b;
+    const double off_white = std::abs(r - 255) + std::abs(g - 255) + std::abs(b - 217);
+    if (off_white < 60){
+        return StatusCondition::NONE;
+    }
+    if (r > 200 && g < 200 && b > 180){
+        return StatusCondition::POISON;
+    }
+    //  Not measured yet: PAR's badge is taken to be the yellow one.
+    if (r > 180 && g > 150 && b < 140){
+        return StatusCondition::PARALYSIS;
+    }
+    return StatusCondition::OTHER;
 }
 
 
@@ -351,8 +369,11 @@ private:
             return;
         }
         const PartyStatus status = read_party_status(screen);
-        m_supplies.hurt = status.hp_red || status.hp_yellow;
-        m_supplies.hp_red = status.hp_red;
+        if (status.hp_seen){
+            m_supplies.hurt = status.hp_red || status.hp_yellow;
+            m_supplies.hp_red = status.hp_red;
+        }
+        m_supplies.status = status.status;
     }
 
     //  "Delete a move to make room?" NO, then "Stop learning?" YES.
@@ -369,17 +390,18 @@ private:
         const PartyStatus status = read_party_status(screen);
         const bool hurt = status.hp_red || status.hp_yellow;
         m_supplies.hurt = hurt;
-        m_psn_reads = status.poisoned ? m_psn_reads + 1 : 0;
+        m_supplies.status = status.status;
+        m_psn_reads = status.status == StatusCondition::POISON ? m_psn_reads + 1 : 0;
         m_console.log(std::format(
-            "Battle: turn {}, HP {}{}, {} Potions, {} Antidotes.",
+            "Battle: turn {}, HP {}, {}, {} Potions, {} Antidotes, {} Parlyz Heals.",
             m_turns, status.hp_red ? "red" : status.hp_yellow ? "yellow" : "green",
-            status.poisoned ? ", PSN read" : "", m_supplies.potions, m_supplies.antidotes
+            status_name(status.status), m_supplies.potions, m_supplies.antidotes, m_supplies.parlyz_heals
         ));
         //  A wild Pokemon is fought for EXP only at full strength: fighting
         //  every one in Viridian Forest used up all 4 Potions and then the
-        //  starter (console B, 2026-11-01).
-        const bool run = m_kind == BattleKind::WILD_RUN
-            || (m_kind == BattleKind::WILD_FIGHT && (hurt || m_supplies.potions < MIN_POTIONS_TO_FIGHT));
+        //  starter (console B, 2026-11-01). With a status, it is run from too.
+        const bool weak = hurt || status.status != StatusCondition::NONE || m_supplies.potions < MIN_POTIONS_TO_FIGHT;
+        const bool run = m_kind == BattleKind::WILD_RUN || (m_kind == BattleKind::WILD_FIGHT && weak);
         if (run && m_run_tries < RUN_TRIES){
             m_run_tries++;
             m_console.log(std::format("Battle: RUN (try {}).", m_run_tries));
@@ -434,10 +456,10 @@ private:
 };
 
 
-//  From the overworld: a Potion from the Items pocket, top row, on the
-//  starter. Not run on the console yet.
-void use_potion_on_overworld(ConsoleHandle& console, ProControllerContext& context, Supplies& supplies){
-    console.log(std::format("Story: HP below green after the battle, using a Potion ({} left).", supplies.potions));
+//  From the overworld: the item in `row` (from 0) of the Items pocket, on
+//  the starter. Not run on the console yet.
+void use_item_on_overworld(ConsoleHandle& console, ProControllerContext& context, int row, const char* item){
+    console.log(std::format("Story: using a {} from the bag (Items pocket, row {}).", item, row + 1));
     open_bag_from_overworld(console, context);
     //  The bag ignores presses while it slides in.
     pbf_wait(context, 1000ms);
@@ -447,23 +469,15 @@ void use_potion_on_overworld(ConsoleHandle& console, ProControllerContext& conte
     for (int c = 0; c < 20; c++){
         pbf_press_dpad(context, DPAD_UP, 100ms, 100ms);
     }
-    //  The Potion, USE, the starter, then "...HP was restored".
+    for (int c = 0; c < row; c++){
+        pbf_press_dpad(context, DPAD_DOWN, 100ms, 300ms);
+    }
+    //  The item, USE, the starter, then its message.
     pbf_press_button(context, BUTTON_A, 160ms, 800ms);
     pbf_press_button(context, BUTTON_A, 160ms, 1500ms);
     pbf_press_button(context, BUTTON_A, 160ms, 2500ms);
     pbf_press_button(context, BUTTON_B, 160ms, 1500ms);
-    supplies.potions--;
-    supplies.hurt = false;
-    supplies.hp_red = false;
     mash_until_overworld(console, context, AFTER_BATTLE_TEXT);
-}
-
-//  After a battle on the way: heal between battles if the last HP read
-//  wasn't green.
-void heal_if_hurt(ConsoleHandle& console, ProControllerContext& context, Supplies& supplies){
-    if (supplies.hurt && supplies.potions > 0){
-        use_potion_on_overworld(console, context, supplies);
-    }
 }
 
 void fail_on_blackout(ConsoleHandle& console, BattleEnd end){
@@ -503,7 +517,7 @@ public:
     virtual void clear(ConsoleHandle& console, ProControllerContext& context) const override{
         const BattleKind kind = m_fight ? BattleKind::WILD_FIGHT : BattleKind::WILD_RUN;
         fail_on_blackout(console, fight_battle(console, context, m_supplies, kind));
-        heal_if_hurt(console, context, m_supplies);
+        recover_after_battle(console, context, m_supplies);
     }
 
 private:
@@ -534,7 +548,7 @@ public:
         console.log("Story: a trainer's battle after a message on the overworld.");
         fail_on_blackout(console, fight_battle(console, context, m_supplies, BattleKind::TRAINER));
         mash_until_overworld(console, context, AFTER_BATTLE_TEXT);
-        heal_if_hurt(console, context, m_supplies);
+        recover_after_battle(console, context, m_supplies);
     }
 
 private:
@@ -544,21 +558,56 @@ private:
 }
 
 
+const char* status_name(StatusCondition status){
+    switch (status){
+    case StatusCondition::NONE:
+        return "no status";
+    case StatusCondition::POISON:
+        return "PSN";
+    case StatusCondition::PARALYSIS:
+        return "PAR";
+    case StatusCondition::OTHER:
+        return "a status";
+    }
+    return "?";
+}
+
 PartyStatus read_party_status(const ImageViewRGB32& screen){
     const ImageViewRGB32 game = extract_box_reference(screen, GameSettings::instance().GAME_BOX);
-    const ColorCounts counts = count_colors(extract_box_reference(game, PLAYER_STATUS_BOX));
-    //  A full bar fills a few percent of the box; a sliver of one, much less.
-    const size_t seen = counts.total / 1000 + 1;
+    const HpCounts counts = count_hp_colors(extract_box_reference(game, HP_BAR_BOX));
+    //  At 1 HP the red sliver was 32 of the box's 4000 pixels (console B,
+    //  2026-11-01, 1/25 HP).
+    const size_t seen = counts.total / 200 + 1;
     PartyStatus status;
-    const bool green = counts.green > seen;
-    status.hp_yellow = !green && counts.yellow > seen;
-    status.hp_red = !green && !status.hp_yellow && counts.red > seen;
-    status.poisoned = counts.purple > seen;
+    const size_t most = std::max({counts.green, counts.yellow, counts.red});
+    status.hp_seen = most >= seen;
+    status.hp_yellow = status.hp_seen && counts.yellow == most;
+    status.hp_red = status.hp_seen && !status.hp_yellow && counts.red == most;
+    status.status = read_status_badge(extract_box_reference(game, STATUS_BADGE_BOX));
     return status;
 }
 
-void use_potion_from_bag(ConsoleHandle& console, ProControllerContext& context, Supplies& supplies){
-    use_potion_on_overworld(console, context, supplies);
+void recover_after_battle(ConsoleHandle& console, ProControllerContext& context, Supplies& supplies){
+    //  Rows in the order bought: Potions, Antidotes, Parlyz Heals.
+    const int antidote_row = supplies.potions > 0 ? 1 : 0;
+    const int parlyz_row = antidote_row + (supplies.antidotes > 0 ? 1 : 0);
+    if (supplies.status == StatusCondition::POISON && supplies.antidotes > 0){
+        use_item_on_overworld(console, context, antidote_row, "Antidote");
+        supplies.antidotes--;
+        supplies.status = StatusCondition::NONE;
+    }else if (supplies.status == StatusCondition::PARALYSIS && supplies.parlyz_heals > 0){
+        use_item_on_overworld(console, context, parlyz_row, "Parlyz Heal");
+        supplies.parlyz_heals--;
+        supplies.status = StatusCondition::NONE;
+    }
+    //  One Potion (20 HP) takes a starter of these levels (about 30 HP)
+    //  from red to green; the bar can't be read again on the overworld.
+    if (supplies.hurt && supplies.potions > 0){
+        use_item_on_overworld(console, context, 0, "Potion");
+        supplies.potions--;
+        supplies.hurt = false;
+        supplies.hp_red = false;
+    }
 }
 
 BattleEnd fight_battle(ConsoleHandle& console, ProControllerContext& context, Supplies& supplies, BattleKind kind){

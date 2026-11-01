@@ -158,7 +158,7 @@ StoryCheckpoint pokedex(){
 StoryCheckpoint forest(){
     return StoryCheckpoint{"00.07", "Viridian shopping to Pewter Center", at(LAB, 6, 4, SOUTH), {}, StartMenu::FULL, {
         route("mart_clerk", at(VIRIDIAN_MART, 4, 3, WEST), "Route 1 again"),
-        make(StoryStepKind::SHOP, "potions_and_antidotes", "4 Potions, 2 Antidotes"),
+        make(StoryStepKind::SHOP, "potions_and_antidotes", "5 Potions, 3 Antidotes, 1 Parlyz Heal"),
         route("viridian_nurse", at(VIRIDIAN_CENTER, 7, 4, NORTH), "heal before the forest"),
         heal("heal_viridian"),
         route("below_old_man_trigger", at(VIRIDIAN, 20, 9, NORTH), "short of the tutorial trigger (20, 8)"),
@@ -200,8 +200,8 @@ StoryCheckpoint brock(){
         route("below_liam_line", at(GYM, 6, 9, NORTH), "in by the door, up column 6 to below Liam's row"),
         step_into("liam_line", NORTH, "onto (6, 8), in Liam's line"),
         battle("camper_liam", at(GYM, 6, 8, NORTH), false, "Geodude and Sandshrew; EXP before Brock"),
-        //  On to Brock unless the starter's HP is red with no Potion left.
-        ready("ready_for_brock", at(PEWTER_CENTER, 7, 4, NORTH), "a Potion if hurt; the nurse only if red with none"),
+        //  On to Brock unless red HP or a status is left that no item cures.
+        ready("ready_for_brock", at(PEWTER_CENTER, 7, 4, NORTH), "items for a status or low HP; the nurse only if they can't"),
         route("before_brock", at(GYM, 6, 6, NORTH), "below Brock (6, 5); Liam, beaten, stands at (5, 8)"),
         talk("challenge_brock", "Brock's speech"),
         battle("brock", at(GYM, 6, 6, NORTH), false, "Geodude and Onix, with Bubble; Boulder Badge and TM39"),
