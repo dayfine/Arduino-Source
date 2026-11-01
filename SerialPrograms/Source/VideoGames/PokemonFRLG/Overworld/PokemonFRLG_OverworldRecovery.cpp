@@ -5,6 +5,7 @@
  */
 
 #include <format>
+#include "Pokemon/Navigation/Pokemon_RouteLog.h"
 #include "PokemonFRLG_OverworldReanchor.h"
 #include "PokemonFRLG_OverworldRecovery.h"
 
@@ -15,22 +16,83 @@ namespace PokemonFRLG{
 
 namespace{
 
-//  "Route: plan, 2 steps: walk east 4 -> ...; face north -> ...": the whole
-//  route before any of it is walked, so that a run's log has the plan even
-//  when the walk fails part-way (devtools/maps draws it next to the walk).
-std::string plan_line(const std::vector<RouteStep>& route){
-    std::string text = std::format("Route: plan, {} steps:", route.size());
-    for (size_t c = 0; c < route.size(); c++){
-        text += (c == 0 ? " " : "; ") + to_string(route[c]);
+using Pokemon::EndBasis;
+using Pokemon::ROUTE_LOG_TAG;
+
+std::vector<Pokemon::RouteTile> route_tiles(const std::optional<MapPosition>& position){
+    if (!position){
+        return {};
     }
-    return text;
+    return {{position->map, position->point}};
 }
+
+Pokemon::RouteLogLeg route_log_leg(const RouteStep& step){
+    Pokemon::RouteLogLeg leg{.action = Pokemon::RouteLegAction::WALK, .direction = step.direction, .tiles = (size_t)step.tiles, .end = Pokemon::RouteLegEnd::OPEN};
+    if (step.action == RouteAction::SURF){
+        leg.action = Pokemon::RouteLegAction::SURF;
+    }else if (step.action == RouteAction::FACE){
+        leg.action = Pokemon::RouteLegAction::FACE;
+    }else if (step.warps){
+        leg.end = Pokemon::RouteLegEnd::WARP;
+    }else if (step.to_wall){
+        leg.end = Pokemon::RouteLegEnd::WALL;
+    }
+    return leg;
+}
+
+//  The route's lines in the route log the games share, as BDSP's walker
+//  writes them, under the caller's label.
+class RouteLogLines{
+public:
+    RouteLogLines(const RouteCalls& calls, const RoutePlanning* planning)
+        : m_calls(calls)
+        , m_label(planning != nullptr ? planning->label : "Route")
+    {}
+    void plan(const std::optional<MapPosition>& from, const std::vector<RouteStep>& steps) const{
+        std::vector<Pokemon::PlannedRouteLeg> legs;
+        for (const RouteStep& step : steps){
+            legs.push_back({.leg = route_log_leg(step), .after = route_tiles(step.end)});
+        }
+        m_calls.log(ROUTE_LOG_TAG + Pokemon::route_plan_line(m_label, route_tiles(from), legs));
+    }
+    void leg(size_t index, const std::vector<RouteStep>& steps) const{
+        const RouteStep& step = steps[index];
+        m_calls.log(ROUTE_LOG_TAG + Pokemon::route_leg_line(index + 1, steps.size(), {.leg = route_log_leg(step), .after = route_tiles(step.end)}));
+    }
+    void end(const RouteStep& step, const std::optional<MapPosition>& at, EndBasis basis, const std::string& why) const{
+        m_calls.log(ROUTE_LOG_TAG + Pokemon::route_leg_end_line(m_label, route_log_leg(step), route_tiles(at), basis, why));
+    }
+    //  Step `number` (from 1) of a plan whose first `holds` steps are holds
+    //  to walls, walked to its end.
+    void done(const RouteStep& step, size_t number, size_t holds) const{
+        if (number < holds){
+            //  Where a hold but the last ends depends on where it started.
+            end(step, std::nullopt, EndBasis::UNKNOWN, "a hold from an unknown tile");
+            return;
+        }
+        end(step, step.end, EndBasis::WALKED, "");
+        if (number == holds){
+            m_calls.log(ROUTE_LOG_TAG + Pokemon::route_found_line(m_label, route_tiles(step.end), holds));
+        }
+    }
+
+private:
+    const RouteCalls& m_calls;
+    std::string m_label;
+};
+
+//  A route rejoined after a stop: `holds` holds to walls, then the rest.
+struct Rejoined{
+    std::vector<RouteStep> steps;
+    size_t holds = 0;
+};
 
 //  The route from `plan[stopped]`, stopped part-way from `start`: holds that
 //  find the player, a way back to that step's end, then the rest as planned.
-std::vector<RouteStep> rejoin(
+//  Logs it as a new plan, from a tile not known.
+Rejoined rejoin(
     const std::vector<RouteStep>& plan, size_t stopped, const std::optional<MapPosition>& start,
-    const RoutePlanning* planning, const RouteCalls& calls
+    const RoutePlanning* planning, const RouteCalls& calls, const RouteLogLines& lines
 ){
     const RouteStep& step = plan[stopped];
     if (planning == nullptr || planning->maps == nullptr){
@@ -49,14 +111,10 @@ std::vector<RouteStep> rejoin(
         calls.fail("walk_overworld_route(): no route from " + to_string(anchor->end) + " back to " + to_string(step.end) + ".");
         return {};
     }
-    std::string holds;
-    for (const RouteStep& hold : anchor->holds){
-        holds += "; " + to_string(hold);
-    }
-    calls.log("Route: stopped part-way, finding the player again at " + to_string(anchor->end) + holds);
-    std::vector<RouteStep> ret = anchor->holds;
-    ret.insert(ret.end(), back->begin(), back->end());
-    ret.insert(ret.end(), plan.begin() + stopped + 1, plan.end());
+    Rejoined ret{.steps = anchor->holds, .holds = anchor->holds.size()};
+    ret.steps.insert(ret.steps.end(), back->begin(), back->end());
+    ret.steps.insert(ret.steps.end(), plan.begin() + stopped + 1, plan.end());
+    lines.plan(std::nullopt, ret.steps);
     return ret;
 }
 
@@ -67,17 +125,20 @@ void run_route(
     const std::vector<RouteStep>& route, std::optional<Direction> facing,
     const RoutePlanning* planning, const RouteCalls& calls
 ){
-    calls.log(plan_line(route));
+    const RouteLogLines lines(calls, planning);
     std::vector<RouteStep> plan = route;
-    std::optional<MapPosition> at;
+    std::optional<MapPosition> at = planning != nullptr ? planning->start : std::nullopt;
+    lines.plan(at, plan);
     size_t stops = 0;
+    size_t holds = 0;   //  of the plan, holds to walls that find the player
     for (size_t i = 0; i < plan.size();){
         const RouteStep step = plan[i];
+        lines.leg(i, plan);
         const StepEnd end = calls.walk(step, facing);
         if (end == StepEnd::DONE){
             at = step.end;
             facing = step.facing_after;
-            i++;
+            lines.done(step, ++i, holds);
             continue;
         }
         facing = std::nullopt;     //  a trainer turns the player to face them
@@ -86,6 +147,7 @@ void run_route(
             return;
         }
         if (step.to_wall && end == StepEnd::LATE){
+            lines.end(step, std::nullopt, EndBasis::UNKNOWN, "something seen after the hold; walking it again");
             continue;   //  walking it again ends at its wall
         }
         if (step.to_wall){
@@ -99,9 +161,13 @@ void run_route(
             at = step.end;
             facing = step.facing_after;
             i++;
+            lines.end(step, at, EndBasis::ASSUMED, "stopped, then held on to the warp");
             continue;
         }
-        plan = rejoin(plan, i, at, planning, calls);
+        lines.end(step, std::nullopt, EndBasis::UNKNOWN, "stopped part-way");
+        Rejoined rejoined = rejoin(plan, i, at, planning, calls, lines);
+        plan = std::move(rejoined.steps);
+        holds = rejoined.holds;
         i = 0;
     }
 }

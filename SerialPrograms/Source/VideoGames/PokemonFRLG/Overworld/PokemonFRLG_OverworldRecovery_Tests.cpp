@@ -110,7 +110,7 @@ UnitTestResult test_stop_recover_resume(){
     }
     ScriptedRoute script;
     script.ends[stopped] = StepEnd::STOPPED;
-    const RoutePlanning planning{&maps, default_route_costs()};
+    const RoutePlanning planning{.maps = &maps, .costs = default_route_costs(), .start = std::nullopt, .label = "Route"};
     if (script.run(*route, &planning)){
         return "Failed: " + script.failure;
     }
@@ -133,6 +133,19 @@ UnitTestResult test_stop_recover_resume(){
     }
     if (!match){
         return "Walked:" + describe(script.walked) + "\nexpected:" + describe(expected);
+    }
+    const std::vector<std::string> logged_parts{
+        "): ended at an unknown tile (unknown: stopped part-way).",
+        ": found again at " + anchor->end.map + " " + Pokemon::to_string(anchor->end.point),
+    };
+    for (const std::string& part : logged_parts){
+        bool found = false;
+        for (const std::string& line : script.logs){
+            found = found || line.find(part) != std::string::npos;
+        }
+        if (!found){
+            return "Expected a log line with \"" + part + "\".";
+        }
     }
     return true;
 }
@@ -171,7 +184,7 @@ UnitTestResult test_no_recovery(){
     }
     ScriptedRoute without_walls;
     without_walls.ends[0] = StepEnd::STOPPED;
-    const RoutePlanning planning{&maps, default_route_costs()};
+    const RoutePlanning planning{.maps = &maps, .costs = default_route_costs(), .start = std::nullopt, .label = "Route"};
     if (!without_walls.run(route, &planning) || without_walls.failure.find("no walls") == std::string::npos){
         return "Expected a failure without walls, got: " + without_walls.failure;
     }
@@ -210,20 +223,32 @@ UnitTestResult test_warp_leg(){
     return true;
 }
 
-//  The plan is logged whole before the first step, for the run's log.
-UnitTestResult test_plan_logged(){
+//  The route log lines the games share (Pokemon_RouteLog.h): the plan from
+//  the caller's start under its label, then each leg and how it ended.
+UnitTestResult test_route_logged(){
     const std::vector<RouteStep> route{
         walk(Direction::EAST, 2, {"Corridor", {4, 1}}),
         walk(Direction::WEST, 1, {"Corridor", {3, 1}}),
     };
+    const RoutePlanning planning{.maps = nullptr, .costs = default_route_costs(), .start = MapPosition{"Corridor", {2, 1}}, .label = "test walk"};
     ScriptedRoute script;
-    if (script.run(route, nullptr)){
+    if (script.run(route, &planning)){
         return "Failed: " + script.failure;
     }
-    const std::string expected = "Route: plan, 2 steps: " + to_string(route[0]) + "; " + to_string(route[1]);
-    if (script.logs.empty() || script.logs[0] != expected){
-        return "Expected the first log line \"" + expected + "\", got: "
-            + (script.logs.empty() ? std::string("nothing") : "\"" + script.logs[0] + "\"");
+    const std::vector<std::string> expected{
+        "[Route] test walk: plan from Corridor (2, 1):\n"
+        "    east 2 (open) to Corridor (4, 1)\n"
+        "    west 1 (open) to Corridor (3, 1)",
+        "[Route] Leg 1/2: east 2 (open) to Corridor (4, 1)",
+        "[Route] test walk: east 2 (open): ended at Corridor (4, 1) (walked).",
+        "[Route] Leg 2/2: west 1 (open) to Corridor (3, 1)",
+        "[Route] test walk: west 1 (open): ended at Corridor (3, 1) (walked).",
+    };
+    for (size_t c = 0; c < expected.size(); c++){
+        const std::string got = c < script.logs.size() ? "\"" + script.logs[c] + "\"" : std::string("nothing");
+        if (c >= script.logs.size() || script.logs[c] != expected[c]){
+            return "Log line " + std::to_string(c) + ": expected \"" + expected[c] + "\", got " + got + ".";
+        }
     }
     return true;
 }
@@ -236,7 +261,7 @@ void add_tests_OverworldRecovery(UnitTestDatabase& database){
     database.add<Test_OverworldRecovery>("no recovery", test_no_recovery);
     database.add<Test_OverworldRecovery>("legs to a wall", test_wall_legs);
     database.add<Test_OverworldRecovery>("a leg to a warp", test_warp_leg);
-    database.add<Test_OverworldRecovery>("the plan is logged", test_plan_logged);
+    database.add<Test_OverworldRecovery>("the route is logged", test_route_logged);
 }
 
 

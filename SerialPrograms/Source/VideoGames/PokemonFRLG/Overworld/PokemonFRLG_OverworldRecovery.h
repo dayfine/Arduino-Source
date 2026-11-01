@@ -41,10 +41,13 @@ enum class StepEnd{
 };
 
 //  What the route was planned with, to plan the way back onto it: the maps
-//  (with the event flags the caller set) and the costs.
+//  (with the event flags the caller set) and the costs; and, for the route
+//  log (Pokemon_RouteLog.h), where it starts and what the caller calls it.
 struct RoutePlanning{
     const std::vector<MapData>* maps = nullptr;
     RouteCosts costs = default_route_costs();
+    std::optional<MapPosition> start;
+    std::string label = "Route";
 };
 
 //  The console side. `walk` walks one step from `facing` (unknown after a
@@ -60,8 +63,10 @@ struct RouteCalls{
 //  How often a route may stop part-way before it gives up.
 constexpr size_t MAX_ROUTE_STOPS = 8;
 
-//  Walks `route` from `facing`, after logging it whole. Without `planning`,
-//  a stop that needs the player found again fails instead.
+//  Walks `route` from `facing`, logging it in the shared route log lines:
+//  the plan, each leg as it starts and how it ended, and where the player
+//  was found again. Without `planning`, a stop that needs the player found
+//  again fails instead.
 void run_route(
     const std::vector<RouteStep>& route, std::optional<Direction> facing,
     const RoutePlanning* planning, const RouteCalls& calls

@@ -479,7 +479,6 @@ void walk_overworld_route(
     }
     RouteCalls calls;
     calls.walk = [&](const RouteStep& step, std::optional<Direction> from_facing){
-        console.log("Route: " + to_string(step));
         check_overworld(console, context, step);
         return walk_and_watch(console, context, step, from_facing, interrupts);
     };
