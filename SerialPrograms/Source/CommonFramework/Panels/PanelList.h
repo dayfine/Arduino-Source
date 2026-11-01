@@ -35,6 +35,9 @@ public:
 
     PanelListWidget* make_QWidget(QWidget& parent, PanelHolder& holder) const;
 
+    //  The entries of the list, as the widget shows them.
+    std::vector<PanelEntry> panels() const{ return make_panels(); }
+
 protected:
     virtual std::vector<PanelEntry> make_panels() const = 0;
 

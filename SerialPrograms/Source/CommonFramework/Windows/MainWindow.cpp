@@ -433,6 +433,10 @@ void MainWindow::load_panel(
         delete m_current_panel_widget;
     }
 }
+std::string MainWindow::lab_select_program(const std::string& identifier){
+    return m_program_list->select_program(identifier);
+}
+
 void MainWindow::on_busy(){
     if (m_program_list){
         m_program_list->lock();

@@ -66,6 +66,7 @@ private:
     virtual void sleep_suppress_state_changed(SleepSuppress new_state) override;
 
     virtual PanelSession* lab_current_panel() override{ return m_current_panel.get(); }
+    virtual std::string lab_select_program(const std::string& identifier) override;
 
     void update_wallpaper();
 

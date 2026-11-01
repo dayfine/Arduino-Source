@@ -15,7 +15,7 @@
  *  state changes.
  *
  *  The channel owns the worker thread and the files. Anything that touches
- *  the window (start, stop) runs on the UI thread through the
+ *  the window (select, start, stop, set) runs on the UI thread through the
  *  LabChannelHost; console commands run on the worker through the
  *  LabConsoleCommands of the console type (NintendoSwitch_LabCommands.h).
  *
@@ -51,6 +51,10 @@ public:
 
     //  The panel the window shows, or nullptr.
     virtual PanelSession* lab_current_panel() = 0;
+
+    //  Shows the program with this identifier ("<game>:<program>"), as
+    //  clicking it in the program list does. Returns an error message, or "".
+    virtual std::string lab_select_program(const std::string& identifier) = 0;
 };
 
 
@@ -108,7 +112,7 @@ private:
     std::string run_line(const LabRequestLine& line, LabCommandOutput& output);
     std::string run_console_command(const std::vector<std::string>& words, LabCommandOutput& output);
     std::string run_on_console(const std::function<void(PanelSession& panel, CancellableScope& scope)>& body);
-    std::string run_ui_command(const std::vector<std::string>& words);
+    std::string run_ui_command(const std::vector<std::string>& words, std::ostream& out);
     std::string run_on_ui(const std::function<std::string()>& body);
     void write_state();
 

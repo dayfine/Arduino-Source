@@ -11,6 +11,8 @@
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/ScopeExit.h"
 #include "Common/Cpp/Filesystem/FileIO.h"
+#include "Common/Cpp/Json/JsonObject.h"
+#include "Common/Cpp/Json/JsonValue.h"
 #include "CommonFramework/GlobalAutoPaths.h"
 #include "CommonFramework/Logging/Logger.h"
 #include "CommonFramework/ProgramSession.h"
@@ -58,6 +60,88 @@ std::string start_or_stop(PanelSession* panel, bool start){
         return "Program is " + program_state_name(state) + ".";
     }
     start_or_stop_program(*program);
+    return "";
+}
+
+//  The value at a dotted key path ("NOTIFICATIONS.Enabled") in a JSON
+//  object, or nullptr.
+JsonValue* find_key_path(JsonValue& json, const std::string& path){
+    JsonValue* value = &json;
+    size_t start = 0;
+    while (true){
+        JsonObject* object = value->to_object();
+        if (object == nullptr){
+            return nullptr;
+        }
+        const size_t dot = path.find('.', start);
+        value = object->get_value(path.substr(start, dot == std::string::npos ? dot : dot - start));
+        if (value == nullptr || dot == std::string::npos){
+            return value;
+        }
+        start = dot + 1;
+    }
+}
+
+std::string option_keys(const JsonValue& json){
+    std::string keys;
+    const JsonObject* object = json.to_object();
+    if (object == nullptr){
+        return keys;
+    }
+    for (const auto& item : *object){
+        keys += (keys.empty() ? "" : " ") + item.first;
+    }
+    return keys;
+}
+
+//  "set KEY JSON": sets one option of the panel, as editing its entry in the
+//  settings file would, but live. Returns an error message, or "".
+//  `result` is the value the panel then holds, so a script can see whether
+//  the panel took it (an out-of-range number is clamped, a bad enum ignored).
+std::string set_option(PanelSession* panel, const std::vector<std::string>& words, std::string& result){
+    if (panel == nullptr){
+        return "No panel is selected.";
+    }
+    if (words.size() < 3){
+        return "set: expected set KEY JSON";
+    }
+    const ProgramSession* program = dynamic_cast<const ProgramSession*>(panel);
+    if (program != nullptr && program->current_state() != ProgramState::STOPPED){
+        return "Program is " + program_state_name(program->current_state()) + "; stop it before changing options.";
+    }
+    std::string text;
+    for (size_t c = 2; c < words.size(); c++){
+        text += (c == 2 ? "" : " ") + words[c];
+    }
+    JsonValue value = parse_json(text);
+    if (value.is_null() && text != "null"){
+        return "set: not JSON: " + text;
+    }
+
+    JsonValue json = panel->to_json();
+    JsonValue* slot = find_key_path(json, words[1]);
+    if (slot == nullptr){
+        return "set: no option \"" + words[1] + "\"; options: " + option_keys(json);
+    }
+    *slot = std::move(value);
+
+    //  A console program's "ConsoleSetup" (camera, controller, audio) reloads
+    //  the devices when loaded, so leave it out unless that is what is being set.
+    if (words[1].rfind("ConsoleSetup", 0) != 0){
+        JsonObject without;
+        for (auto& item : *json.to_object()){
+            if (item.first != "ConsoleSetup"){
+                without[item.first] = std::move(item.second);
+            }
+        }
+        json = std::move(without);
+    }
+    panel->load_json(json);
+    panel->save_settings();
+
+    JsonValue after = panel->to_json();
+    const JsonValue* now = find_key_path(after, words[1]);
+    result = now == nullptr ? "" : now->dump(-1);
     return "";
 }
 
@@ -210,6 +294,8 @@ std::string LabChannel::run_line(const LabRequestLine& line, LabCommandOutput& o
     if (command == "help"){
         output.out <<
             "channel:\n"
+            "  select GAME:PROGRAM\n"
+            "  set OPTION_KEY JSON\n"
             "  start | stop\n"
             "  state\n"
             "  help\n";
@@ -222,8 +308,8 @@ std::string LabChannel::run_line(const LabRequestLine& line, LabCommandOutput& o
         return "";
     }
     const LabConsoleCommands::Kind kind = m_console->kind(command);
-    if (command == "start" || command == "stop"){
-        return run_ui_command(words);
+    if (command == "select" || command == "set" || command == "start" || command == "stop"){
+        return run_ui_command(words, output.out);
     }
     if (kind == LabConsoleCommands::Kind::UNKNOWN){
         return "Unknown command: " + command + " (try \"help\")";
@@ -281,8 +367,35 @@ std::string LabChannel::run_on_console(const std::function<void(PanelSession& pa
     return "";
 }
 
-std::string LabChannel::run_ui_command(const std::vector<std::string>& words){
+std::string LabChannel::run_ui_command(const std::vector<std::string>& words, std::ostream& out){
     const std::string& command = words[0];
+    if (command == "select"){
+        if (words.size() < 2){
+            return "select: expected select GAME:PROGRAM";
+        }
+        const std::string& identifier = words[1];
+        return run_on_ui([&]{
+            std::string error = m_host.lab_select_program(identifier);
+            if (!error.empty()){
+                return error;
+            }
+            PanelSession* panel = m_host.lab_current_panel();
+            if (panel == nullptr || panel->descriptor().identifier() != identifier){
+                return "select: the window did not switch to " + identifier;
+            }
+            return std::string();
+        });
+    }
+    if (command == "set"){
+        std::string result;
+        std::string error = run_on_ui([&]{
+            return set_option(m_host.lab_current_panel(), words, result);
+        });
+        if (error.empty()){
+            out << "set " << words[1] << " = " << result << "\n";
+        }
+        return error;
+    }
     const bool start = command == "start";
     return run_on_ui([&]{
         return start_or_stop(m_host.lab_current_panel(), start);
