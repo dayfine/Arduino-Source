@@ -14,7 +14,6 @@
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "PokemonFRLG_OverworldMaps.h"
-#include "PokemonFRLG_OverworldMapsTestData.h"
 #include "PokemonFRLG_OverworldReanchor.h"
 
 namespace PokemonAutomation{
@@ -78,14 +77,14 @@ UnitTestResult check_reanchors(const std::vector<MapData>& maps, const MapPositi
 //  Console B, 2026-11-01: battles on Route 1 left the walker a tile or a
 //  whole leg off its count, four times.
 UnitTestResult test_viridian_mart_to_oaks_lab(){
-    const std::vector<MapData> maps = test_overworld_maps();
+    const std::vector<MapData> maps = overworld_maps();
     return check_reanchors(
         maps, {"ViridianCity_Mart", map_point(maps, "ViridianCity_Mart", "clerk_front")},
         {{"PalletTown_ProfessorOaksLab", {6, 4}}, std::nullopt}
     );
 }
 UnitTestResult test_pallet_to_viridian_mart(){
-    const std::vector<MapData> maps = test_overworld_maps();
+    const std::vector<MapData> maps = overworld_maps();
     return check_reanchors(
         maps, {"PalletTown", map_point(maps, "PalletTown", "oaks_lab_front")},
         {{"ViridianCity_Mart", map_point(maps, "ViridianCity_Mart", "clerk_front")}, std::nullopt}

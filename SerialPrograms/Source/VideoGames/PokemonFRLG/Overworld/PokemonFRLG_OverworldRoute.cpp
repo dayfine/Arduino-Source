@@ -11,7 +11,6 @@
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "Pokemon/Navigation/Pokemon_LegPlanner.h"
 #include "PokemonFRLG_OverworldMaps.h"
-#include "PokemonFRLG_OverworldMapsTestData.h"
 #include "PokemonFRLG_OverworldRoute.h"
 
 namespace PokemonAutomation{
@@ -564,7 +563,7 @@ UnitTestResult test_step_rules(){
 
 //  The maps after the Hall of Fame, which clears the way to Cerulean Cave.
 std::vector<MapData> post_game_maps(){
-    return test_overworld_maps(map_flag_set(test_overworld_maps(), "after_hall_of_fame"));
+    return overworld_maps(map_flag_set(overworld_maps(), "after_hall_of_fame"));
 }
 
 MapPosition point_on(const std::vector<MapData>& maps, const std::string& map, const std::string& point){
@@ -594,7 +593,7 @@ UnitTestResult test_maps(){
     if (object_at(*city, {1, 13}) != nullptr){
         return "The cave guard is still there after the Hall of Fame.";
     }
-    if (object_at(*map_named(test_overworld_maps(), "CeruleanCity"), {1, 13}) == nullptr){
+    if (object_at(*map_named(overworld_maps(), "CeruleanCity"), {1, 13}) == nullptr){
         return "The cave guard is missing before the Hall of Fame.";
     }
     return true;
@@ -674,7 +673,7 @@ UnitTestResult test_pokemon_center_to_mewtwo(){
 
 UnitTestResult test_cave_guard_blocks(){
     //  Before the Hall of Fame the guard stands in the cave entrance.
-    const std::vector<MapData> maps = test_overworld_maps();
+    const std::vector<MapData> maps = overworld_maps();
     if (plan_overworld_route(maps, point_on(maps, "CeruleanCity_PokemonCenter_1F", "pc"), facing_mewtwo(maps))){
         return "Planned past the cave guard.";
     }
@@ -695,7 +694,7 @@ UnitTestResult test_mewtwo_tile_unreachable(){
 }
 
 UnitTestResult test_story_maps(){
-    const std::vector<MapData> maps = test_overworld_maps();
+    const std::vector<MapData> maps = overworld_maps();
     for (const char* name : {
         "PalletTown_PlayersHouse_2F", "PalletTown_ProfessorOaksLab", "Route1", "ViridianCity_Mart",
         "Route22", "Route2", "ViridianForest", "PewterCity", "PewterCity_Museum_1F", "PewterCity_Gym",
@@ -719,7 +718,7 @@ std::vector<std::string> maps_warped_into(const std::vector<RouteStep>& route){
 }
 
 UnitTestResult test_bedroom_to_oaks_lab(){
-    const std::vector<MapData> maps = test_overworld_maps();
+    const std::vector<MapData> maps = overworld_maps();
     std::vector<RouteStep> route;
     UnitTestResult result = check_route(
         maps, point_on(maps, "PalletTown_PlayersHouse_2F", "start"),
@@ -736,7 +735,7 @@ UnitTestResult test_bedroom_to_oaks_lab(){
 }
 
 UnitTestResult test_viridian_mart_to_pewter_gym(){
-    const std::vector<MapData> maps = test_overworld_maps();
+    const std::vector<MapData> maps = overworld_maps();
     std::vector<RouteStep> route;
     UnitTestResult result = check_route(
         maps, point_on(maps, "ViridianCity_Mart", "clerk_front"),
@@ -811,7 +810,7 @@ UnitTestResult test_no_hold_into_ledge(){
         }
     }
     route.clear();
-    const std::vector<MapData> world = test_overworld_maps();
+    const std::vector<MapData> world = overworld_maps();
     result = check_route(world, {"ViridianCity", {26, 27}}, {{"ViridianCity", {26, 29}}, std::nullopt}, route);
     if (result.result != UnitTestResult::PASSED){
         return result;
@@ -830,7 +829,7 @@ UnitTestResult test_no_hold_into_ledge(){
 //  No wild battle can start between the bedroom and Oak's Lab: Pallet Town's
 //  streets have no tall grass. Route 2 and Viridian Forest do.
 UnitTestResult test_wild_steps(){
-    const std::vector<MapData> maps = test_overworld_maps();
+    const std::vector<MapData> maps = overworld_maps();
     std::vector<RouteStep> route;
     UnitTestResult result = check_route(
         maps, point_on(maps, "PalletTown_PlayersHouse_2F", "start"),
