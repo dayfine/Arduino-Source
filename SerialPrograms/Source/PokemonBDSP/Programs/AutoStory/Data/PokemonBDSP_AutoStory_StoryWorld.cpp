@@ -106,11 +106,11 @@ void StoryWorld::rebuild(){
         const TilePos corner{iter->offset.x - low.x, iter->offset.y - low.y};
         for (int y = 0; y < iter->tiles.height; y++){
             for (int x = 0; x < iter->tiles.width; x++){
-                m_cells.at({corner.x + x, corner.y + y}) = Cell{true, iter->tiles.at({x, y}), false};
+                Pokemon::cell_at(m_cells, {corner.x + x, corner.y + y}) = Cell{true, iter->tiles.at({x, y}), false};
             }
         }
         for (const TilePos& pos : iter->occupied){
-            m_cells.at({corner.x + pos.x, corner.y + pos.y}).occupied = true;
+            Pokemon::cell_at(m_cells, {corner.x + pos.x, corner.y + pos.y}).occupied = true;
         }
     }
     for (const TilePos& pos : m_blocked){
@@ -135,7 +135,7 @@ StoryWorld::Cell* StoryWorld::cell(const TilePos& pos){
     if (!m_cells.contains(pos) || !m_cells.at(pos).covered){
         return nullptr;
     }
-    return &m_cells.at(pos);
+    return &Pokemon::cell_at(m_cells, pos);
 }
 
 
