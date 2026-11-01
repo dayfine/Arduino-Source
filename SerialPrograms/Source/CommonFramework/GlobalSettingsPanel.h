@@ -91,6 +91,7 @@ public:
     Pimpl<ResolutionOption> WINDOW_SIZE;
     Pimpl<ResolutionOption> LOG_WINDOW_SIZE;
     BooleanCheckBoxOption LOG_WINDOW_STARTUP;
+    BooleanCheckBoxOption CONSOLE_SETTINGS_COLLAPSED;
 
     Pimpl<KeyboardLayoutOption> KEYBOARD_CONTROLS_LAYOUT;
 
