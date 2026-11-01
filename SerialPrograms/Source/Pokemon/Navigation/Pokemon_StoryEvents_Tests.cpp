@@ -66,6 +66,13 @@ Event make_event(std::string name, Act act){
     return event;
 }
 
+//  The pose, confirmed on a landmark.
+Pose anchored(const Pose& pose){
+    Pose anchored = pose;
+    anchored.certainty = PoseCertainty::TILE;
+    return anchored;
+}
+
 Act record(World& world, std::string what){
     return [&world, what = std::move(what)](RunState&){
         world.trace.push_back(what);
@@ -193,8 +200,7 @@ Event talk_to_mom(World& world){
     event.recoveries.push_back(recovery("expect_failed", RecoveryKind::REANCHOR, 1, [&world](RunState& state){
         world.trace.push_back("anchor");
         world.rows_off = 0;
-        state.pose.certainty = PoseCertainty::TILE;
-        return outcome_ok();
+        return outcome_ok(anchored(state.pose));
     }));
     event.recoveries.push_back(recovery("", RecoveryKind::STOP, 0));
     event.recoveries.back().why = "four rows cover the mat to the TV";
@@ -305,8 +311,7 @@ Event walk_through_grass(World& world){
     event.pose_learned = corner;
     event.recoveries.push_back(recovery("require_failed", RecoveryKind::REANCHOR, 1, [&world](RunState& state){
         world.trace.push_back("anchor");
-        state.pose.certainty = PoseCertainty::TILE;
-        return outcome_ok();
+        return outcome_ok(anchored(state.pose));
     }));
     return event;
 }
@@ -552,6 +557,37 @@ UnitTestResult test_position_is_the_games(){
     return true;
 }
 
+//  An action that learns where it ends up returns the pose; the runner
+//  writes it before the expects, and only when the action succeeded.
+UnitTestResult test_outcome_pose(){
+    World world;
+    Checkpoint checkpoint = make_checkpoint();
+    Event probe = make_event("probe_for_mom", [&world](RunState&){
+        world.trace.push_back("probe");
+        Pose found;
+        found.map = "Player's House";
+        found.certainty = PoseCertainty::ROW;
+        found.where = std::make_shared<const TilePose>(std::vector<TilePos>{TilePos{4, 6}, TilePos{5, 6}});
+        return world.rows_off == 0 ? outcome_ok(found) : outcome_failed("probe_exhausted", "4 rows");
+    });
+    probe.expect.push_back(pose_known("Player's House", PoseCertainty::ROW));
+    checkpoint.events.push_back(std::move(probe));
+    RunState state = at_catch_spot();
+    Lines lines;
+    EventLogger log = lines.logger();
+    CheckpointReport report = run_checkpoint(state, checkpoint, log);
+    if (!report.completed || to_string(state.pose) != "Player's House (4, 6) (5, 6) (row)"){
+        return "Expected the found pose written before the expect: " + to_string(state.pose) + lines.all();
+    }
+    world.rows_off = 1;
+    state = at_catch_spot();
+    report = run_checkpoint(state, checkpoint, log);
+    if (report.completed || state.pose.map != "Route 202"){
+        return "A failed action should leave the pose alone: " + to_string(state.pose);
+    }
+    return true;
+}
+
 UnitTestResult test_lint(){
     World world;
     Checkpoint checkpoint = make_checkpoint();
@@ -606,6 +642,7 @@ void add_tests_StoryEvents(UnitTestDatabase& database){
     database.add<Test_StoryEvents>("start, end and save", test_start_end_and_save);
     database.add<Test_StoryEvents>("pose certainty", test_pose_certainty);
     database.add<Test_StoryEvents>("the position is the game's", test_position_is_the_games);
+    database.add<Test_StoryEvents>("an action returns its pose", test_outcome_pose);
     database.add<Test_StoryEvents>("lint", test_lint);
 }
 

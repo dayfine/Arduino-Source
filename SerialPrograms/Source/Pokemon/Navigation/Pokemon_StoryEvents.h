@@ -14,6 +14,10 @@
  *  checkpoint: after each action the runner asks whether one is showing,
  *  clears it, marks what it did to the pose and resumes as it says.
  *
+ *  The run state is the runner's to change. An action that knows where it
+ *  left the player says so in its Outcome, and the runner writes that into
+ *  the pose once the action has succeeded.
+ *
  *  Observation and actuation are callables the game supplies, so this file
  *  knows nothing of any one game or console, and the runner can be tested
  *  against a scripted world. See docs/design/AutoStory-Event-Model.md.
@@ -81,15 +85,21 @@ struct RunState{
 
 
 //  How an action or a check ended: empty `failure` is success; otherwise a
-//  name that recoveries match (e.g. "probe_exhausted").
+//  name that recoveries match (e.g. "probe_exhausted"). A succeeded action
+//  that knows where it left the player sets `pose`; the runner writes it
+//  into the run before the event's expects are checked.
 struct Outcome{
     std::string failure;
     std::string detail;
+    std::optional<Pose> pose;
 
     bool succeeded() const;
 };
 Outcome outcome_ok();
+Outcome outcome_ok(Pose pose);
 Outcome outcome_failed(std::string failure, std::string detail = "");
+//  "probe_exhausted: 4 rows": the failure and its detail, if any.
+std::string to_string(const Outcome& outcome);
 
 
 using Act = MoveOnlyFunction<Outcome(RunState& state)>;
@@ -136,7 +146,8 @@ struct Event{
     //  Must hold after `act`; a failure is "expect_failed".
     std::vector<Condition> expect;
     //  Written to the run's pose once the event succeeds. An action that
-    //  learns its pose as it goes (the row that answered) writes it itself.
+    //  learns its pose as it goes (the row that answered) returns it in
+    //  its Outcome instead.
     std::optional<Pose> pose_learned;
     //  In order of escalation.
     std::vector<Recovery> recoveries;
@@ -200,6 +211,11 @@ std::string event_log_line(const std::string& checkpoint, size_t number, const s
 //  Problems an author should fix before running: unnamed or empty events,
 //  missing actions, recoveries out of escalation order.
 std::vector<std::string> lint_checkpoint(const Checkpoint& checkpoint);
+
+//  A readable dump for review, one line per item: the checkpoint's start,
+//  interrupts and end by name, each event with its why, its conditions'
+//  names, its learned pose and its recoveries. Nothing runs.
+std::string describe(const Checkpoint& checkpoint);
 
 //  Runs the checkpoint's events in order, from the first. Events whose
 //  effect is already showing are skipped, so after a reload this resumes.

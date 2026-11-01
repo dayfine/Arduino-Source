@@ -4,6 +4,7 @@
  *
  */
 
+#include <format>
 #include <memory>
 #include <string>
 #include <type_traits>
@@ -25,8 +26,7 @@ static_assert(std::is_nothrow_move_constructible_v<MoveOnlyFunction<void()>>);
 
 
 std::string expected_int(const char* what, int expected, int actual){
-    return std::string(what) + ": expected " + std::to_string(expected) +
-        ", got " + std::to_string(actual);
+    return std::format("{}: expected {}, got {}", what, expected, actual);
 }
 
 

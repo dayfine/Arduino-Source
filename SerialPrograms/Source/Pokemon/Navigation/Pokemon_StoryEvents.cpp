@@ -61,8 +61,19 @@ bool Outcome::succeeded() const{
 Outcome outcome_ok(){
     return Outcome{};
 }
+Outcome outcome_ok(Pose pose){
+    Outcome outcome;
+    outcome.pose = std::move(pose);
+    return outcome;
+}
 Outcome outcome_failed(std::string failure, std::string detail){
-    return Outcome{std::move(failure), std::move(detail)};
+    Outcome outcome;
+    outcome.failure = std::move(failure);
+    outcome.detail = std::move(detail);
+    return outcome;
+}
+std::string to_string(const Outcome& outcome){
+    return outcome.detail.empty() ? outcome.failure : outcome.failure + ": " + outcome.detail;
 }
 
 Condition condition(std::string name, Check check){
@@ -96,8 +107,14 @@ std::string event_log_line(const std::string& checkpoint, size_t number, const s
 
 namespace{
 
-std::string describe(const Outcome& outcome){
-    return outcome.detail.empty() ? outcome.failure : outcome.failure + ": " + outcome.detail;
+//  Runs an action; if it succeeded knowing where it left the player, that
+//  becomes the run's pose.
+Outcome run_act(Act& act, RunState& state){
+    Outcome outcome = act(state);
+    if (outcome.succeeded() && outcome.pose){
+        state.pose = *outcome.pose;
+    }
+    return outcome;
 }
 
 //  The name of the first condition that does not hold.
@@ -130,7 +147,7 @@ Outcome attempt_event(Event& event, RunState& state){
     if (failing){
         return outcome_failed("require_failed", *failing);
     }
-    Outcome outcome = event.act(state);
+    Outcome outcome = run_act(event.act, state);
     if (!outcome.succeeded()){
         return outcome;
     }
@@ -202,9 +219,9 @@ InterruptResult clear_interrupts(EventRun& run){
             return result;
         }
         if (interrupt.handle){
-            Outcome handled = interrupt.handle(run.state);
+            Outcome handled = run_act(interrupt.handle, run.state);
             if (!handled.succeeded()){
-                result.outcome = outcome_failed("interrupt_failed", interrupt.name + ": " + describe(handled));
+                result.outcome = outcome_failed("interrupt_failed", interrupt.name + ": " + to_string(handled));
                 return result;
             }
         }
@@ -250,7 +267,7 @@ std::optional<Outcome> recover(EventRun& run, Outcome failure){
         if (!recovery->prepare){
             return std::nullopt;
         }
-        Outcome prepared = recovery->prepare(run.state);
+        Outcome prepared = run_act(recovery->prepare, run.state);
         if (prepared.succeeded()){
             return std::nullopt;
         }
@@ -313,7 +330,7 @@ Outcome run_event(EventRun& run){
             }
             outcome = std::move(*stop);
         }
-        log_status(run, "failed: " + describe(outcome));
+        log_status(run, "failed: " + to_string(outcome));
         return outcome;
     }
 }
@@ -323,7 +340,7 @@ CheckpointReport stop_checkpoint(CheckpointReport& report, EventLogger& log, con
     std::string where = report.failed_event == 0
         ? ""
         : std::format(" at {} {}", report.failed_event, report.failed_name);
-    log(std::format("[Checkpoint] {}: failed{}: {}", id, where, describe(failure)));
+    log(std::format("[Checkpoint] {}: failed{}: {}", id, where, to_string(failure)));
     report.failure = std::move(failure);
     return report;
 }
@@ -336,8 +353,8 @@ Outcome finish_checkpoint(RunState& state, Checkpoint& checkpoint){
     if (!checkpoint.save){
         return outcome_ok();
     }
-    Outcome saved = checkpoint.save(state);
-    return saved.succeeded() ? saved : outcome_failed("save_failed", describe(saved));
+    Outcome saved = run_act(checkpoint.save, state);
+    return saved.succeeded() ? saved : outcome_failed("save_failed", to_string(saved));
 }
 
 }
@@ -438,6 +455,63 @@ std::vector<std::string> lint_checkpoint(const Checkpoint& checkpoint){
     lint_conditions(problems, checkpoint.id + " start", checkpoint.start);
     lint_conditions(problems, checkpoint.id + " end", checkpoint.end);
     return problems;
+}
+
+
+namespace{
+
+std::string names_of(const std::vector<Condition>& conditions){
+    std::string text;
+    for (const Condition& item : conditions){
+        text += (text.empty() ? "" : ", ") + item.name;
+    }
+    return text;
+}
+
+void describe_line(std::string& text, const std::string& indent, const std::string& label, const std::string& value){
+    if (!value.empty()){
+        text += std::format("{}{}: {}\n", indent, label, value);
+    }
+}
+
+void describe_event(std::string& text, size_t number, const Event& event){
+    text += std::format("  event {} {}{}\n", number, event.name, event.why.empty() ? "" : ": " + event.why);
+    describe_line(text, "    ", "skip_if", names_of(event.skip_if));
+    describe_line(text, "    ", "require", names_of(event.require));
+    describe_line(text, "    ", "expect", names_of(event.expect));
+    if (event.pose_learned){
+        describe_line(text, "    ", "pose_learned", to_string(*event.pose_learned));
+    }
+    for (const Recovery& recovery : event.recoveries){
+        text += std::format(
+            "    recovery: {} on {}{}{}\n",
+            recovery_name(recovery.kind),
+            recovery.on.empty() ? "any failure" : recovery.on,
+            recovery.kind == RecoveryKind::STOP ? "" : std::format(" x{}", recovery.attempts),
+            recovery.why.empty() ? "" : ": " + recovery.why
+        );
+    }
+}
+
+}
+
+
+std::string describe(const Checkpoint& checkpoint){
+    std::string text = std::format("checkpoint {}: {} events\n", checkpoint.id, checkpoint.events.size());
+    describe_line(text, "  ", "start", names_of(checkpoint.start));
+    std::string interrupts;
+    for (const Interrupt& interrupt : checkpoint.interrupts){
+        interrupts += (interrupts.empty() ? "" : ", ") + interrupt.name;
+    }
+    describe_line(text, "  ", "interrupts", interrupts);
+    for (size_t c = 0; c < checkpoint.events.size(); c++){
+        describe_event(text, c + 1, checkpoint.events[c]);
+    }
+    describe_line(text, "  ", "end", names_of(checkpoint.end));
+    if (checkpoint.save){
+        text += "  saves\n";
+    }
+    return text;
 }
 
 
