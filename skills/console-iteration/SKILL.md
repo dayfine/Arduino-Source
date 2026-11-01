@@ -108,7 +108,7 @@ Two hypotheses at once means you have not looked hard enough.
 | Move | When | Error |
 |---|---|---|
 | **Clip to a wall** (stick or D-pad hold until stopped) | whenever a wall, fence, sign or counter ends the leg; pins one axis for free | ±0 on that axis |
-| **D-pad taps** (160 ms, settle 640 to 700 ms) | counted offsets to a door, a person, a corridor row; stairs and 1-wide corridors | ±0 (whole tiles); first tap toward a new direction only turns |
+| **D-pad taps** (160 ms, settle 640 to 700 ms) | counted offsets to a door, a person, a corridor row; stairs and 1-wide corridors | ±0 (whole tiles); every tap steps, the first one toward a new direction too (r248a) |
 | **Stick hold** (160 ms/tile across, 240 up/down) | open legs into a target wider than the error: 14 tiles into a 4-wide street | about ±0.15 tile per tile; drifts a row on stairs and corridors |
 | **Run** (B + D-pad) | legs that end at a wall; speed assumed 2x, not measured | as D-pad |
 | **Walk until event** | a scene or talk ends the leg; a cutscene may open with no dialog box, so wait for the first line | needs its own end check |
@@ -217,6 +217,83 @@ Fixing it inline is how one checkpoint eats an afternoon.
   always cost 8; a 14-tile stick hold into a 4-wide street is safe).
 - **Inherited steps**: check the story needs each one (the Oreburgh heal
   trip did not).
+
+## 12. CFR recipes (copy, adapt, send)
+
+The Command File Runner takes a text file, one command per line (the full
+table: `SerialPrograms/Source/NintendoSwitch/Programs/CommandFileRunner/README.md`).
+Send a batch with `printf '...' | sh cfrun.sh NAME`: it waits for the lab lock,
+stops keep-awake, prints the `.out`, and shots land in
+`.../lab-B/CommandFiles/outbox/NAME_label.png`. Name batches by their question
+(`probe-stairs1`), keep them to 5 to 15 lines, end every batch with `shot`.
+
+**Launch the game to its save, from HOME.** HOME puts its highlight back on
+the last game played every time it opens, and `close_game` opens it: move the
+highlight after the close, never before (2026-10-31: two launches of Pokemon
+Violet into its new-game screens).
+
+    close_game
+    dpad RIGHT 100 800
+    shot home
+
+Read the label in the shot (`Pokemon Brilliant Diamond`); one more `dpad` per
+tile if not. Then, as a second batch:
+
+    press A 100 3000
+    press A 100 3000
+    wait 35000
+    press A 100 3000
+    wait 3000
+    press A 100 3000
+    press A 100 6000
+    wait 8000
+    shot here
+
+`seg01.sh ... reload` does the close and the launch at once on whatever is
+highlighted: use it only when nobody touched the console since our last run.
+
+**Count tiles.** D-pad taps move whole tiles; a 160 ms hold:
+
+    dpad LEFT 160 640
+    shot l1
+    dpad LEFT 160 640
+    shot l2
+
+A tap that moved changes the screen by 21 to 50 (RMSD at 192x108); a bump into
+a wall, or an NPC brushing past, 4 to 13. `moves.sh` prints the PSNR between
+consecutive shots (about 20 dB moved, 38 and up still). A 160 ms D-pad tap
+turns and steps whichever way the player faced (r248a: all seven first taps
+moved a tile), so every tap counts; only a 100 ms stick tap turns without a
+step.
+
+**Find a wall.** `walk -1 0 6000` holds the stick until two slices in a row
+stay still, then `shot`: the player ends against the wall whatever the start
+was (the "clip" of clip-then-offset). Not on fixed-camera stretches.
+
+**Talk, read a sign, answer a prompt.** Face the tile with a tap toward it,
+`press A 100 1500`, `shot`, `detect bdsp_dialog`. Rocks and signs answer too:
+read the shot. `press B 100 800` advances lines and never starts a talk; `A`
+takes Yes on a prompt, so read the prompt's cursor in the shot first.
+
+**Where am I.** `state` prints every detector firing on the frame. Read
+positions from the feet and ground features, never roofs or heads; take a
+shot with a landmark in view (sign, banner, door, stairs) before naming a map.
+"Did I enter": `wait_for bdsp_overworld 8000`, `detect black`.
+
+**Record a human.** CFR stopped, keyboard to the lab app; `watch/rec.sh`
+screencaptures the lab window every second (cropped to the game area, or
+4 MB a frame), plus the app log. The keyboard shows in the log only as
+`controller_state`, so the shots carry the moves. Montage them 3 or 4 wide
+(`mont.py`) to read a walk in one picture.
+
+**Measure a threshold.** `shots label 10 400` gives ten frames 400 ms apart.
+Compute the metric on the true and the false case (a still player with an NPC
+walking by; a moving player; a bump) and keep a margin before choosing the
+number. Write the numbers and the batch name in the code comment.
+
+**Recover.** On an unknown screen: `shot` first, then `close_game` (HOME, X,
+confirm: nothing is saved), then the launch recipe. Never press A blind on an
+unknown screen: a new game's first screens accept it.
 
 ## Known BDSP physics and perception traps (2026-10-31)
 
