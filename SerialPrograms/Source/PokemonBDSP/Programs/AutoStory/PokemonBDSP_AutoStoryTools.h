@@ -141,7 +141,7 @@ struct AutoStoryOptions {
     CheckpointSaveMode checkpoint_save_mode = CheckpointSaveMode::REAL;
     CheckpointRetryScope checkpoint_retry_scope = CheckpointRetryScope::CHECKPOINT;
     //  How the story tables retry a checkpoint (StoryRunOptions).
-    Pokemon::SegmentPolicy policy;
+    Pokemon::SegmentPolicy policy = {};
 };
 
 
