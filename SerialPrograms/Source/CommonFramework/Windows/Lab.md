@@ -80,6 +80,7 @@ error=
 | `stop` | What clicking Stop Program does. Refused unless the program is `RUNNING`. The request goes on; the program stops in the background. |
 | `state` | Prints the state file's lines into the journal. (In the Command File Runner program, `state [image]` prints the detectors that fire instead; from the channel use `detect` per detector.) |
 | `keepawake on\|off [seconds]` | While it is on and no program runs, presses B every `seconds` (default 15) so the console does not sleep. A running program pauses it. Off by default; off again when the app restarts. |
+| `popups [close]` | Lists the app's open message boxes (title and text), such as the "Error" box a failed program leaves. `close` presses each one's default button. |
 | `owner claim TOKEN`, `owner release` | The owner lock, below. |
 | `help` | Prints every command and detector, including the ones games add. |
 
@@ -136,7 +137,7 @@ Games add their own commands and detectors with
 
 Two scripts driving one console would interleave their presses. A script
 claims the channel with `owner claim TOKEN`; from then on every request that
-changes anything (`select`, `set`, `start`, `stop`, `keepawake`, presses)
+changes anything (`select`, `set`, `start`, `stop`, `keepawake`, `popups`, presses)
 must start with the line `owner TOKEN`, or it is refused with
 `owned by TOKEN`. Requests that only read (`state`, `help`, `shot`, `detect`,
 ...) need no token. `owner release`, with the owner line, frees the channel.
