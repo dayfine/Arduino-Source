@@ -108,7 +108,7 @@ Two hypotheses at once means you have not looked hard enough.
 | Move | When | Error |
 |---|---|---|
 | **Clip to a wall** (stick or D-pad hold until stopped) | whenever a wall, fence, sign or counter ends the leg; pins one axis for free | ±0 on that axis |
-| **D-pad taps** (160 ms, settle 640 to 700 ms) | counted offsets to a door, a person, a corridor row; stairs and 1-wide corridors | ±0 (whole tiles); first tap toward a new direction only turns |
+| **D-pad taps** (160 ms, settle 640 to 700 ms) | counted offsets to a door, a person, a corridor row; stairs and 1-wide corridors | ±0 (whole tiles); every tap steps, the first one toward a new direction too (r248a) |
 | **Stick hold** (160 ms/tile across, 240 up/down) | open legs into a target wider than the error: 14 tiles into a 4-wide street | about ±0.15 tile per tile; drifts a row on stairs and corridors |
 | **Run** (B + D-pad) | legs that end at a wall; speed assumed 2x, not measured | as D-pad |
 | **Walk until event** | a scene or talk ends the leg; a cutscene may open with no dialog box, so wait for the first line | needs its own end check |
@@ -261,9 +261,10 @@ highlighted: use it only when nobody touched the console since our last run.
 
 A tap that moved changes the screen by 21 to 50 (RMSD at 192x108); a bump into
 a wall, or an NPC brushing past, 4 to 13. `moves.sh` prints the PSNR between
-consecutive shots (about 20 dB moved, 38 and up still). A tap toward a new
-way only turns; a tap toward the way faced is a step: face first with one tap,
-then count.
+consecutive shots (about 20 dB moved, 38 and up still). A 160 ms D-pad tap
+turns and steps whichever way the player faced (r248a: all seven first taps
+moved a tile), so every tap counts; only a 100 ms stick tap turns without a
+step.
 
 **Find a wall.** `walk -1 0 6000` holds the stick until two slices in a row
 stay still, then `shot`: the player ends against the wall whatever the start
