@@ -4,10 +4,16 @@
  *
  */
 
+#include <memory>
 #include <set>
 #include <string>
 #include "Common/Cpp/Exceptions.h"
 #include "NintendoSwitch/Programs/CommandFileRunner/NintendoSwitch_CommandFileRunner.h"
+#include "VideoGames/PokemonFRLG/Inference/Dialogs/PokemonFRLG_BattleDialogs.h"
+#include "VideoGames/PokemonFRLG/Inference/Dialogs/PokemonFRLG_DialogDetector.h"
+#include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_NamingScreenDetector.h"
+#include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_StartMenuDetector.h"
+#include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_SelectionArrowDetector.h"
 #include "PokemonFRLG_OverworldMaps.h"
 #include "PokemonFRLG_OverworldRoute.h"
 #include "PokemonFRLG_OverworldWalk.h"
@@ -83,6 +89,19 @@ void register_overworld_commands(){
                 use_max_repel_from_bag(session.console, session.context, std::stoi(words[1]) - 1);
             }
         );
+        //  Screen checks the FRLG story uses, for "detect", "wait_for" and "expect".
+        register_command_file_detector("frlg_dialog", [](ConsoleHandle&){ return std::make_unique<WhiteDialogDetector>(COLOR_RED); });
+        register_command_file_detector("frlg_dialog_arrow", [](ConsoleHandle&){ return std::make_unique<AdvanceWhiteDialogDetector>(COLOR_RED); });
+        register_command_file_detector("frlg_selection_dialog", [](ConsoleHandle&){ return std::make_unique<SelectionDialogDetector>(COLOR_RED); });
+        register_command_file_detector("frlg_yes", [](ConsoleHandle&){
+            return std::make_unique<SelectionArrowDetector>(COLOR_RED, nullptr, SelectionArrowPositionConfirmationMenu::YES);
+        });
+        register_command_file_detector("frlg_keyboard", [](ConsoleHandle&){ return std::make_unique<NamingScreenDetector>(COLOR_RED); });
+        register_command_file_detector("frlg_start_menu", [](ConsoleHandle&){ return std::make_unique<StartMenuDetector>(COLOR_RED); });
+        register_command_file_detector("frlg_battle_dialog", [](ConsoleHandle&){ return std::make_unique<BattleDialogDetector>(COLOR_RED); });
+        register_command_file_detector("frlg_battle_arrow", [](ConsoleHandle&){ return std::make_unique<AdvanceBattleDialogDetector>(COLOR_RED); });
+        register_command_file_detector("frlg_battle_menu", [](ConsoleHandle&){ return std::make_unique<BattleMenuDetector>(COLOR_RED); });
+        register_command_file_detector("frlg_battle_learn", [](ConsoleHandle&){ return std::make_unique<BattleLearnDialogDetector>(COLOR_RED); });
         return true;
     }();
     (void)registered;
