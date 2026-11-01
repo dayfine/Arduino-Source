@@ -52,7 +52,7 @@ bool dialogue_opens(VideoStream& stream, ProControllerContext& context, Millisec
     return wait_until(stream, context, timeout, {{dialog}}) == 0;
 }
 
-bool talk_or_fight(VideoStream& stream, ProControllerContext& context, const std::string& label, bool battle_expected, bool doubles){
+bool talk_or_fight(VideoStream& stream, ProControllerContext& context, const std::string& label, TalkExpect expect, BattleFormat format){
     ShortDialogDetector dialog;
     OverworldDetector overworld;
     BattleMenuDetector battle_menu(BattleType::TRAINER);
@@ -69,7 +69,7 @@ bool talk_or_fight(VideoStream& stream, ProControllerContext& context, const std
         }
         if (battle_menu.detect(*frame.frame) || battle_menu_standard.detect(*frame.frame) || black.detect(*frame.frame)){
             route_status(stream, "Fighting " + label + ".");
-            fight_story_battle(stream, context, label, doubles ? BattleFormat::DOUBLES : BattleFormat::SINGLES);
+            fight_story_battle(stream, context, label, format);
             // Lines after the battle (Roark's badge, r211d) keep the menu
             // from opening: finish them before the Potion.
             if (dialogue_opens(stream, context, 3000ms)){
@@ -82,7 +82,7 @@ bool talk_or_fight(VideoStream& stream, ProControllerContext& context, const std
         }
         const bool talking = dialog.detect(*frame.frame);
         if (!talking && overworld.detect(*frame.frame)){
-            if (!battle_expected && std::chrono::steady_clock::now() - quiet_since >= 4s){
+            if (expect != TalkExpect::BATTLE && std::chrono::steady_clock::now() - quiet_since >= 4s){
                 route_status(stream, label + " only talked.");
                 return false;
             }
@@ -169,12 +169,12 @@ uint64_t mean_brightness(const ImageViewRGB32& screen){
 
 // Fights a trainer whose dialogue has opened, with whatever starter we
 // have. Someone who only talks leaves no battle to fight.
-void fight_route_trainer(VideoStream& stream, ProControllerContext& context, const std::string& name) {
+void fight_route_trainer(VideoStream& stream, ProControllerContext& context, const std::string& name){
     pbf_mash_button(context, BUTTON_B, 5000ms);
     context.wait_for_all_requests();
     BattleMenuWatcher battle_menu(BattleType::TRAINER, COLOR_YELLOW);
     BattleDialogWatcher battle_dialog(COLOR_YELLOW);
-    if (wait_until(stream, context, 8s, {{battle_menu}, {battle_dialog}}) < 0) {
+    if (wait_until(stream, context, 8s, {{battle_menu}, {battle_dialog}}) < 0){
         stream.log("[Route] " + name + ": no battle followed the talk.");
         pbf_mash_button(context, BUTTON_B, 2000ms);
         context.wait_for_all_requests();

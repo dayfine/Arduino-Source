@@ -301,19 +301,9 @@ void rowan_after_the_battle(VideoStream& stream, ProControllerContext& context){
     finish_dialogue(stream, context, BUTTON_B, "Rowan and Dawn after the battle");
 }
 
-//  01.01: from the Center's PC, the nurse and out, then the holds to the street east to Route 203;
-//  nothing when 00.05 has left us outdoors on that street.
-void jubilife_center_to_street(VideoStream& stream, ProControllerContext& context){
-    // From 00.05g we are already outdoors on the street east to Route 203,
-    // healed on arriving in Jubilife: straight to the walk east.
-    bool outdoors = false;
-    context.wait_for_all_requests();
-    if (VideoSnapshot screen = stream.video().snapshot()){
-        outdoors = !indoors(*screen.frame);
-    }
-    if (outdoors){
-        stream.log("[Route] 01.01: outdoors; skipping the Pokemon Center.");
-    }else{
+//  01.01 from the save at the Jubilife Center's PC: healed at the nurse,
+//  out of the door and through the plaza to the street east to Route 203.
+void jubilife_heal_and_out_to_street(VideoStream& stream, ProControllerContext& context){
     // The save stands us at the PC, right of the counter, facing it; west
     // is the counter's end. Two tiles south clears it, then three west is
     // the floor emblem's column, with the nurse north and the door south.
@@ -355,6 +345,22 @@ void jubilife_center_to_street(VideoStream& stream, ProControllerContext& contex
     route_turn(stream, context, Direction::SOUTH);
     pbf_move_left_joystick(context, {0, -1}, 600ms, 300ms);
     context.wait_for_all_requests();
+}
+
+//  01.01: from the Center's PC, the nurse and out, then the holds to the street east to Route 203;
+//  nothing when 00.05 has left us outdoors on that street.
+void jubilife_center_to_street(VideoStream& stream, ProControllerContext& context){
+    // From 00.05g we are already outdoors on the street east to Route 203,
+    // healed on arriving in Jubilife: straight to the walk east.
+    bool outdoors = false;
+    context.wait_for_all_requests();
+    if (VideoSnapshot screen = stream.video().snapshot()){
+        outdoors = !indoors(*screen.frame);
+    }
+    if (outdoors){
+        stream.log("[Route] 01.01: outdoors; skipping the Pokemon Center.");
+    }else{
+        jubilife_heal_and_out_to_street(stream, context);
     }
 }
 

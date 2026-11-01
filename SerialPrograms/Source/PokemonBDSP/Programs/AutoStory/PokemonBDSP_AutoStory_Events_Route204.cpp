@@ -164,7 +164,7 @@ void route_204_to_floaroma(VideoStream& stream, ProControllerContext& context){
     {
         RouteTrainers trainers{route204_north_trainer_sights(), [&](const std::string& who){
             const bool doubles = who.find("Twins") != std::string::npos || who.find("someone") != std::string::npos;
-            talk_or_fight(stream, context, who, false, doubles);
+            talk_or_fight(stream, context, who, TalkExpect::TALK_OR_BATTLE, doubles ? BattleFormat::DOUBLES : BattleFormat::SINGLES);
         }};
         std::vector<Pokemon::TilePos> at{map_point("Route204North", "cave_exit")};
         at = walk_waypoints(stream, context, run_from_wild_battle, route204_north_maps(), at, trainers, WaypointWalkPlan{map_region("Route204North", "floaroma_waypoints"), "To the path into Floaroma", waypoint_plan_costs()});

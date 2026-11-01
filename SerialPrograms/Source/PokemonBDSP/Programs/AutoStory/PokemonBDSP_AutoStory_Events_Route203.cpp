@@ -39,6 +39,56 @@ using Pokemon::Direction;
 
 namespace{
 
+//  The walk east along Route 203: who has stopped us so far.
+struct Route203Walk{
+    VideoStream& stream;
+    ProControllerContext& context;
+    size_t fights = 0;
+    bool inside = false;
+    //  On Route 203 only trainers start a talk; one with no battle is the
+    //  Hiker, who meets us inside the Gate (whose fade may not read as a
+    //  transition).
+    bool met_hiker = false;
+};
+
+//  Whoever stopped the walk: a trainer to fight, or the Hiker.
+void route_203_stopped_by(Route203Walk& walk){
+    if (talk_or_fight(walk.stream, walk.context, "Route 203 trainer " + std::to_string(walk.fights + 1))){
+        walk.fights++;
+    }else{
+        route_status(walk.stream, "No battle: that was the Hiker, inside the Oreburgh Gate.");
+        walk.met_hiker = true;
+        walk.inside = true;
+    }
+}
+
+//  At a wall: the row from which east goes on. North to the top wall first
+//  (a step north there does not move us, so rows are counted from it), then
+//  a row at a time south. At the route's end this is the corner by the
+//  second sign, with the Gate's opening two rows down.
+void route_203_row_east_on(Route203Walk& walk){
+    VideoStream& stream = walk.stream;
+    ProControllerContext& context = walk.context;
+    walk_until(stream, context, run_from_wild_battle, {0, 1}, 6000ms, "north to the top wall");
+    bool moved_on = false;
+    for (size_t row = 1; row <= 10 && !moved_on; row++){
+        step_south(stream, context);
+        const WalkResult next = walk_until(stream, context, run_from_wild_battle, {1, 0}, 10000ms, "east along Route 203, row " + std::to_string(row) + " below the top");
+        if (next.stop == WalkStop::TRANSITION){
+            walk.inside = true;
+        }
+        if (next.stop == WalkStop::DIALOG || (next.stop == WalkStop::BLOCKED && dialogue_opens(stream, context, 1500ms))){
+            route_203_stopped_by(walk);
+        }
+        //  Two still chunks are the least a wall takes; more is progress.
+        moved_on = walk.inside || next.stop != WalkStop::BLOCKED || next.walked > 1200ms;
+    }
+    if (!moved_on){
+        fail_step(stream, "Route 203: walls east on every row down to ten below the top wall.");
+    }
+}
+
+
 //  01.02: east along Route 203 into the Oreburgh Gate, fighting whoever stops us.
 Pokemon::Outcome route_203_east_to_the_gate(StoryExecutor& executor, Pokemon::RunState& state, const Pokemon::StoryStep&){
     VideoStream& stream = executor.stream();
@@ -48,62 +98,28 @@ Pokemon::Outcome route_203_east_to_the_gate(StoryExecutor& executor, Pokemon::Ru
     // differs from run to run (a trainer's sight depends on our row), so
     // there is no fixed list: walk east, talk or fight whoever stops us, and
     // at a wall find a row from which east goes on.
-    size_t fights = 0;
-    bool inside = false;
-    //  On Route 203 only trainers start a talk; one with no battle is the
-    //  Hiker, who meets us inside the Gate (whose fade may not read as a
-    //  transition).
-    bool met_hiker = false;
-    auto stopped_by = [&](){
-        if (talk_or_fight(stream, context, "Route 203 trainer " + std::to_string(fights + 1))){
-            fights++;
-        }else{
-            route_status(stream, "No battle: that was the Hiker, inside the Oreburgh Gate.");
-            met_hiker = true;
-            inside = true;
-        }
-    };
-    for (size_t leg = 0; leg < 40 && !inside; leg++){
-        const WalkResult walk = walk_until(stream, context, run_from_wild_battle, {1, 0}, 10000ms, "east along Route 203");
-        if (walk.stop == WalkStop::TRANSITION){
-            inside = true;
+    Route203Walk walk{stream, context};
+    for (size_t leg = 0; leg < 40 && !walk.inside; leg++){
+        const WalkResult east = walk_until(stream, context, run_from_wild_battle, {1, 0}, 10000ms, "east along Route 203");
+        if (east.stop == WalkStop::TRANSITION){
+            walk.inside = true;
             break;
         }
-        if (walk.stop == WalkStop::LIMIT){
+        if (east.stop == WalkStop::LIMIT){
             continue;
         }
-        if (walk.stop == WalkStop::DIALOG || dialogue_opens(stream, context, 1500ms)){
-            stopped_by();
+        if (east.stop == WalkStop::DIALOG || dialogue_opens(stream, context, 1500ms)){
+            route_203_stopped_by(walk);
             continue;
         }
-        // A wall. Find the row from which east goes on: north to the top wall
-        // first (a step north there does not move us, so rows are counted
-        // from it), then a row at a time south. At the route's end this is the
-        // corner by the second sign, with the Gate's opening two rows down.
-        walk_until(stream, context, run_from_wild_battle, {0, 1}, 6000ms, "north to the top wall");
-        bool moved_on = false;
-        for (size_t row = 1; row <= 10 && !moved_on; row++){
-            step_south(stream, context);
-            const WalkResult next = walk_until(stream, context, run_from_wild_battle, {1, 0}, 10000ms, "east along Route 203, row " + std::to_string(row) + " below the top");
-            if (next.stop == WalkStop::TRANSITION){
-                inside = true;
-            }
-            if (next.stop == WalkStop::DIALOG || (next.stop == WalkStop::BLOCKED && dialogue_opens(stream, context, 1500ms))){
-                stopped_by();
-            }
-            //  Two still chunks are the least a wall takes; more is progress.
-            moved_on = inside || next.stop != WalkStop::BLOCKED || next.walked > 1200ms;
-        }
-        if (!moved_on){
-            fail_step(stream, "Route 203: walls east on every row down to ten below the top wall.");
-        }
+        route_203_row_east_on(walk);
     }
-    if (!inside){
+    if (!walk.inside){
         fail_step(stream, "Route 203: did not reach the Oreburgh Gate.");
     }
-    route_status(stream, "Route 203: " + std::to_string(fights) + " trainer battle(s) on the way.");
+    route_status(stream, "Route 203: " + std::to_string(walk.fights) + " trainer battle(s) on the way.");
     context.wait_for(1500ms);
-    if (met_hiker){
+    if (walk.met_hiker){
         state.flags.insert("met_hiker");
     }
     return Pokemon::outcome_ok();

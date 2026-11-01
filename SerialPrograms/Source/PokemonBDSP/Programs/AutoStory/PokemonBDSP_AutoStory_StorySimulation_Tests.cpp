@@ -106,6 +106,26 @@ Walked plan_route(const Pose& from, const StoryStep& step){
     return walked;
 }
 
+//  `leg` of `step` from `pos`: adds where it ends to `next` (and a tile
+//  short where the step allows it). Returns why it is blocked, or "".
+std::string walk_leg_from(
+    const StoryWorld& world, TilePos pos, const Pokemon::StoryLeg& leg, const StoryStep& step,
+    std::vector<TilePos>& next
+){
+    for (int i = 0; i < leg.tiles; i++){
+        const std::optional<TilePos> stepped = PokemonBDSP::step(world, pos, leg.direction);
+        if (!stepped){
+            return step.name + ": " + direction_name(leg.direction) + " is blocked at " + describe(world, pos) + ".";
+        }
+        if (step.variant == "one_short_ok" && i + 1 == leg.tiles){
+            next.push_back(pos);
+        }
+        pos = *stepped;
+    }
+    next.push_back(pos);
+    return "";
+}
+
 //  A LEGS step from `from`, walked tile by tile on its map, a tile short too
 //  where the step allows it. Walks to walls end where nothing is known.
 Walked walk_legs(const Pose& from, const StoryStep& step){
@@ -122,18 +142,11 @@ Walked walk_legs(const Pose& from, const StoryStep& step){
     }
     for (const Pokemon::StoryLeg& leg : step.legs){
         std::vector<TilePos> next;
-        for (TilePos pos : at){
-            for (int i = 0; i < leg.tiles; i++){
-                const std::optional<TilePos> stepped = PokemonBDSP::step(*world, pos, leg.direction);
-                if (!stepped){
-                    return {std::nullopt, step.name + ": " + direction_name(leg.direction) + " is blocked at " + describe(*world, pos) + ".", ""};
-                }
-                if (step.variant == "one_short_ok" && i + 1 == leg.tiles){
-                    next.push_back(pos);
-                }
-                pos = *stepped;
+        for (const TilePos& pos : at){
+            const std::string blocked = walk_leg_from(*world, pos, leg, step, next);
+            if (!blocked.empty()){
+                return {std::nullopt, blocked, ""};
             }
-            next.push_back(pos);
         }
         at = std::move(next);
     }

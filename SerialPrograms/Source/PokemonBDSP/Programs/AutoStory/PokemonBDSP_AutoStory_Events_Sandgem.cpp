@@ -40,24 +40,24 @@ using Pokemon::TilePos;
 namespace{
 
 // A walk_until() callback that keeps every location banner it sees.
-std::function<bool(const ImageViewRGB32&)> banner_keeper(std::vector<std::string>& banners) {
-    return [&banners](const ImageViewRGB32& screen) {
+std::function<bool(const ImageViewRGB32&)> banner_keeper(std::vector<std::string>& banners){
+    return [&banners](const ImageViewRGB32& screen){
         const std::string read = read_location_banner(screen);
-        if (!read.empty() && (banners.empty() || banners.back() != read)) {
+        if (!read.empty() && (banners.empty() || banners.back() != read)){
             banners.push_back(read);
         }
         return false;
     };
 }
 
-bool any_banner_names(const std::vector<std::string>& banners, const char* map) {
+bool any_banner_names(const std::vector<std::string>& banners, const char* map){
     return std::any_of(banners.begin(), banners.end(),
-        [&](const std::string& read) { return location_banner_matches(read, map); });
+        [&](const std::string& read){ return location_banner_matches(read, map); });
 }
 
 // Whether all of `tiles` are on `map`.
-bool all_on_map(const StoryWorld& maps, const std::vector<TilePos>& tiles, const char* map) {
-    return !tiles.empty() && std::all_of(tiles.begin(), tiles.end(), [&](const TilePos& pos) {
+bool all_on_map(const StoryWorld& maps, const std::vector<TilePos>& tiles, const char* map){
+    return !tiles.empty() && std::all_of(tiles.begin(), tiles.end(), [&](const TilePos& pos){
         const std::optional<MapTile> tile = maps.to_local(pos);
         return tile && tile->map == map;
     });
@@ -67,7 +67,7 @@ bool all_on_map(const StoryWorld& maps, const std::vector<TilePos>& tiles, const
 // nudging a tile west, twice at most, when blocked at once (below a
 // sign or the Mart). Returns whether Route 202's banner showed: only
 // one of the gap's columns leads out of town before a wall.
-bool walk_north_through_gap(VideoStream& stream, ProControllerContext& context) {
+bool walk_north_through_gap(VideoStream& stream, ProControllerContext& context){
     using Pokemon::Direction;
     std::vector<std::string> banners;
     for (size_t nudges = 0;; nudges++){
@@ -134,14 +134,14 @@ std::vector<TilePos> north_through_sign_gap(VideoStream& stream, ProControllerCo
 void walk_to_route_202_save_spot(
     VideoStream& stream, ProControllerContext& context, const StoryWorld& maps,
     std::vector<TilePos> at, RouteTrainers& trainers
-) {
+){
     const TilePos row_end = maps.to_world(MAP_SANDGEM_TOWN, map_point("SandgemTown", "front_row_east_end"));
     const TilePos save_spot = maps.to_world(MAP_ROUTE_202, map_point("Route202", "save_spot"));
-    if (!all_on_map(maps, at, MAP_ROUTE_202)) {
-        at = walk_route(stream, context, run_from_wild_battle, maps, std::move(at), trainers, RouteWalkPlan{[&](const TilePos& pos) { return pos == row_end; }, "To the trees east of the Poke Mart", {}, route_plan_costs()});
+    if (!all_on_map(maps, at, MAP_ROUTE_202)){
+        at = walk_route(stream, context, run_from_wild_battle, maps, std::move(at), trainers, RouteWalkPlan{[&](const TilePos& pos){ return pos == row_end; }, "To the trees east of the Poke Mart", {}, route_plan_costs()});
         at = north_through_sign_gap(stream, context, maps);
     }
-    walk_route(stream, context, run_from_wild_battle, maps, std::move(at), trainers, RouteWalkPlan{[&](const TilePos& pos) { return pos == save_spot; }, "Back to Route 202", {}, route_plan_costs()});
+    walk_route(stream, context, run_from_wild_battle, maps, std::move(at), trainers, RouteWalkPlan{[&](const TilePos& pos){ return pos == save_spot; }, "Back to Route 202", {}, route_plan_costs()});
 }
 
 // North into Jubilife until Dawn's scene starts (00.04d's
@@ -150,15 +150,15 @@ void walk_to_route_202_save_spot(
 // Entering starts a scene: Dawn walks over while we stand still. So
 // walk north; if the wall stops us and no dialogue follows, the stairs
 // are further west. The scene itself is the next step.
-void up_jubilife_stairs(VideoStream& stream, ProControllerContext& context) {
-    for (size_t attempt = 0; attempt < 6; attempt++) {
+void up_jubilife_stairs(VideoStream& stream, ProControllerContext& context){
+    for (size_t attempt = 0; attempt < 6; attempt++){
         const WalkResult walk = walk_until(stream, context, run_from_wild_battle, {0, 1}, 4000ms, "to Dawn in Jubilife");
-        if (walk.stop == WalkStop::TRANSITION) {
+        if (walk.stop == WalkStop::TRANSITION){
             OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
                 "Jubilife: left the area instead of meeting Dawn.", stream);
         }
         ShortDialogWatcher dialog(COLOR_CYAN);
-        if (walk.stop == WalkStop::DIALOG || wait_until(stream, context, 6s, {{dialog}}) == 0) {
+        if (walk.stop == WalkStop::DIALOG || wait_until(stream, context, 6s, {{dialog}}) == 0){
             return;
         }
         stream.log("[00.04] Jubilife: the wall stopped us; looking for the stairs one tile west.");

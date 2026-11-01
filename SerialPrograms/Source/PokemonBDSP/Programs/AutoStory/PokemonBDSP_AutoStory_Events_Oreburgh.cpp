@@ -39,6 +39,47 @@ using Pokemon::Direction;
 
 namespace{
 
+//  The Center's floor: Oreburgh's sand reads up to 34 % warm outside
+//  (r189a), the floor 56 to 64 % inside.
+bool oreburgh_center_floor(const ImageViewRGB32& screen){
+    size_t percent = 0;
+    center_floor_on_screen(screen, &percent);
+    return percent >= 45;
+}
+bool oreburgh_center_inside_now(VideoStream& stream){
+    const VideoSnapshot frame = stream.video().snapshot();
+    return frame && oreburgh_center_floor(*frame.frame);
+}
+
+//  North into the Center's door from this column: whether we are inside.
+//  Someone in the door (Barry, the first time) is talked to and the walk
+//  tried again.
+bool into_oreburgh_center_door(VideoStream& stream, ProControllerContext& context){
+    // The door's fade often reads as the time limit, not a black screen
+    // (r183a went in and on to the counter): look at the floor.
+    // Stop as soon as the floor shows: walking on to the counter left the
+    // door's column, and the walk back out drifted into the yard (r188b).
+    const WalkResult in = walk_until(stream, context, run_from_wild_battle, {0, 1}, 2500ms, "north into the Center's door",
+        oreburgh_center_floor);
+    if (in.stop == WalkStop::ARRIVED || ((in.stop == WalkStop::TRANSITION || in.stop == WalkStop::LIMIT) && oreburgh_center_inside_now(stream))){
+        return true;
+    }
+    if (in.stop == WalkStop::DIALOG){
+        talk_or_fight(stream, context, "Someone at the Center's door");
+    }else{
+        pbf_press_button(context, BUTTON_A, 80ms, 200ms);
+        if (!dialogue_opens(stream, context, 2000ms)){
+            return false;
+        }
+        finish_dialogue(stream, context, BUTTON_B, "Barry at the Center's door");
+        context.wait_for(2000ms);    // he runs off
+    }
+    // Talked in the door's column: the door is free now.
+    walk_until(stream, context, run_from_wild_battle, {0, 1}, 2500ms, "north into the Center's door",
+        oreburgh_center_floor);
+    return oreburgh_center_inside_now(stream);
+}
+
 //  Oreburgh: from a row or two below the Pokemon Center's front, west of
 //  the fence below its east corner, into the Center by its door, stopping
 //  just inside. Talks to Barry if he stands in the door (01.03, the first
@@ -59,11 +100,6 @@ void enter_oreburgh_center(VideoStream& stream, ProControllerContext& context){
     // door, so look for it in nudges of about a third of a tile.
     route_turn(stream, context, Direction::WEST);
     context.wait_for_all_requests();
-    auto inside_now = [&](){
-        const VideoSnapshot frame = stream.video().snapshot();
-        size_t percent = 0;
-        return frame && (center_floor_on_screen(*frame.frame, &percent), percent >= 45);
-    };
     bool inside = false;
     const int offsets[] = {0, -1, -2, 1, -3, 2, -4, 3};   //  nudges from here
     int nudged = 0;
@@ -77,34 +113,9 @@ void enter_oreburgh_center(VideoStream& stream, ProControllerContext& context){
             }
             context.wait_for_all_requests();
         }
-        // The door's fade often reads as the time limit, not a black screen
-        // (r183a went in and on to the counter): look at the floor.
-        // Stop as soon as the floor shows: walking on to the counter left the
-        // door's column, and the walk back out drifted into the yard (r188b).
-        // Oreburgh's sand reads up to 34 % warm outside (r189a), the floor
-        // 56 to 64 % inside.
-        const WalkResult in = walk_until(stream, context, run_from_wild_battle, {0, 1}, 2500ms, "north into the Center's door",
-            [](const ImageViewRGB32& screen){ size_t percent = 0; center_floor_on_screen(screen, &percent); return percent >= 45; });
-        if (in.stop == WalkStop::ARRIVED || ((in.stop == WalkStop::TRANSITION || in.stop == WalkStop::LIMIT) && inside_now())){
-            inside = true;
-            break;
-        }
-        if (in.stop == WalkStop::DIALOG){
-            talk_or_fight(stream, context, "Someone at the Center's door");
-        }else{
-            pbf_press_button(context, BUTTON_A, 80ms, 200ms);
-            if (!dialogue_opens(stream, context, 2000ms)){
-                continue;
-            }
-            finish_dialogue(stream, context, BUTTON_B, "Barry at the Center's door");
-            context.wait_for(2000ms);    // he runs off
-        }
-        // Talked in the door's column: the door is free now.
-        walk_until(stream, context, run_from_wild_battle, {0, 1}, 2500ms, "north into the Center's door",
-            [](const ImageViewRGB32& screen){ size_t percent = 0; center_floor_on_screen(screen, &percent); return percent >= 45; });
-        inside = inside_now();
+        inside = into_oreburgh_center_door(stream, context);
     }
-    if (!inside || !inside_now()){
+    if (!inside || !oreburgh_center_inside_now(stream)){
         fail_step(stream, "Oreburgh: no column east of the save went into the Pokemon Center.");
     }
 }
@@ -184,7 +195,7 @@ bool oreburgh_gym_battles(VideoStream& stream, ProControllerContext& context){
         if (dialogue_opens(stream, context, 3000ms)){
             // His lines pause for more than 4 s before the battle (r210d: "only
             // talked"), so the battle is expected.
-            if (talk_or_fight(stream, context, "Roark", true)){
+            if (talk_or_fight(stream, context, "Roark", TalkExpect::BATTLE)){
                 if (in_pokemon_center(stream)){
                     return false;
                 }
@@ -262,6 +273,104 @@ void mine_hall(VideoStream& stream, ProControllerContext& context){
     }
 }
 
+//  After a wild battle on the way: back to the east end of the bottom row,
+//  three taps west and north to the wall on his row (Maps/OreburghMine.json:
+//  columns 23 to 25 have that wall above).
+void line_up_below_roark_again(VideoStream& stream, ProControllerContext& context){
+    // The battle may leave us on his row or the bottom one.
+    walk_to_wall(stream, context, run_from_wild_battle, {0, -1}, 2000ms, "south to the bottom row");
+    walk_to_wall(stream, context, run_from_wild_battle, {1, 0}, 6000ms, "east along the bottom row");
+    route_turn(stream, context, Direction::WEST);
+    for (size_t tap = 0; tap < 3; tap++){
+        pbf_move_left_joystick(context, {-1, 0}, 120ms, 300ms);
+    }
+    walk_to_wall(stream, context, run_from_wild_battle, {0, 1}, 2000ms, "north to the wall on Roark's row");
+}
+
+//  From his row east of his rock: west to the rock, down and two taps west
+//  below him, and A with nudges. Whether his talk opened.
+bool talk_to_roark_from_his_row(VideoStream& stream, ProControllerContext& context){
+    // A wild battle on the way eats into the walk's time (r100): walk again.
+    for (size_t walk = 0; walk < 3; walk++){
+        if (walk_to_wall(stream, context, run_from_wild_battle, {-1, 0}, 6000ms, "west to the rock beside Roark").wild_battles == 0){
+            break;
+        }
+    }
+    walk_to_wall(stream, context, run_from_wild_battle, {0, -1}, 2000ms, "south to the bottom wall");
+    route_turn(stream, context, Direction::WEST);
+    pbf_move_left_joystick(context, {-1, 0}, 120ms, 300ms);
+    pbf_move_left_joystick(context, {-1, 0}, 120ms, 300ms);
+    route_turn(stream, context, Direction::NORTH);
+    context.wait_for_all_requests();
+    if (run_from_late_encounter(stream, context, run_from_wild_battle, "below Roark")){
+        return false;
+    }
+    if (VideoSnapshot screen = stream.video().snapshot()){
+        const std::string folder = SCREENSHOTS_PATH() + "AutoStory/route/";
+        Filesystem::create_directories(Filesystem::Path(folder));
+        screen.frame->save(folder + now_to_filestring() + "-below-roark.png");
+    }
+    // The camera zooms in and his first line, "OK, stand back and watch
+    // this.", can take some seconds (r98).
+    // His rocks answer A too ("It's a rugged rock..."): his talk is the
+    // one that zooms the camera in on us (by hand), which the rock's
+    // message does not. Compare the view above the dialogue box.
+    return talk_with_nudges(stream, context, run_from_wild_battle, Direction::NORTH, "Roark", 8000ms,
+        [&](const ImageViewRGB32& before, const ImageViewRGB32& after){
+            const ImageFloatBox above_box{0.0, 0.0, 1.0, 0.6};
+            const double change = walk_screen_change(
+                extract_box_reference(before, above_box), extract_box_reference(after, above_box)
+            );
+            stream.log("[01.03] View change when the talk opened: " + std::to_string(change) + " (Roark zooms in).");
+            return change > 35;     //  by hand: 50 for his zoom
+        });
+}
+
+//  His scene (by hand, 2026-10-31): see roark_in_the_mine(). Fails if he
+//  is still there after it.
+void wait_out_roarks_scene(VideoStream& stream, ProControllerContext& context){
+    bool gone = false;
+    for (size_t round = 0; round < 3 && !gone; round++){
+        for (size_t press = 0; press < 14; press++){
+            pbf_press_button(context, BUTTON_B, 80ms, 2420ms);
+        }
+        pbf_press_button(context, BUTTON_A, 80ms, 200ms);
+        gone = !dialogue_opens(stream, context, 2500ms);
+    }
+    if (!gone){
+        fail_step(stream, "Oreburgh Mine: Roark is still there after the talk.");
+    }
+}
+
+//  From below Roark, back up the corridor and out of the mine.
+void out_of_oreburgh_mine(
+    VideoStream& stream, ProControllerContext& context, const StoryWorld& maps,
+    RouteTrainers& no_trainers, const Pokemon::TilePos& roark
+){
+    const auto world = [&](const Pokemon::TilePos& pos){ return maps.to_world(MAP_OREBURGH_MINE, pos); };
+    walk_dir(stream, context, Direction::SOUTH, 2000ms, "back to the bottom wall");
+    std::vector<Pokemon::TilePos> at{roark.next(Direction::SOUTH)};
+
+    // Back up the corridor, then north out through the hall. A route leg
+    // north to the top's wall walks on through it into the hall (r99), and
+    // no wall stops us a row short of it, so the route ends on the corner
+    // at (14,10), where that leg started, and the walk does the rest.
+    const Pokemon::TilePos exit = world(map_point("OreburghMine", "corridor_exit_start"));
+    at = walk_route(stream, context, run_from_wild_battle, maps, at, no_trainers, RouteWalkPlan{[&](const Pokemon::TilePos& pos){ return pos == exit; }, "Back to the corridor's top", {}, route_plan_costs()});
+    // Up into the entrance hall (a transition, as on the way in), then on
+    // north out of the mine: in r103 that walk left the mine without a
+    // transition we saw and ended against the sign above the stairs, which
+    // the moving belts make read as the time limit.
+    if (walk_dir(stream, context, Direction::NORTH, 10000ms, "into the entrance hall").stop != WalkStop::TRANSITION){
+        fail_step(stream, "Oreburgh Mine: walking north from the corridor did not reach the entrance hall.");
+    }
+    context.wait_for(1500ms);
+    if (walk_dir(stream, context, Direction::NORTH, 10000ms, "out of the mine").stop == WalkStop::DIALOG){
+        fail_step(stream, "Oreburgh Mine: someone stopped us on the way out of the mine.");
+    }
+    context.wait_for(1500ms);
+}
+
 //  01.03: the planned route down the corridor to Roark, his talk, and back out of the mine.
 void roark_in_the_mine(VideoStream& stream, ProControllerContext& context){
     // Planned on the coal room's tile grid (Maps/OreburghMine.json): the
@@ -294,48 +403,9 @@ void roark_in_the_mine(VideoStream& stream, ProControllerContext& context){
     for (size_t attempt = 0; attempt < 3 && !talked; attempt++){
         if (attempt > 0){
             // The battle may leave us on his row or the bottom one.
-            walk_to_wall(stream, context, run_from_wild_battle, {0, -1}, 2000ms, "south to the bottom row");
-            walk_to_wall(stream, context, run_from_wild_battle, {1, 0}, 6000ms, "east along the bottom row");
-            route_turn(stream, context, Direction::WEST);
-            for (size_t tap = 0; tap < 3; tap++){
-                pbf_move_left_joystick(context, {-1, 0}, 120ms, 300ms);
-            }
-            walk_to_wall(stream, context, run_from_wild_battle, {0, 1}, 2000ms, "north to the wall on Roark's row");
+            line_up_below_roark_again(stream, context);
         }
-        // A wild battle on the way eats into the walk's time (r100): walk again.
-        for (size_t walk = 0; walk < 3; walk++){
-            if (walk_to_wall(stream, context, run_from_wild_battle, {-1, 0}, 6000ms, "west to the rock beside Roark").wild_battles == 0){
-                break;
-            }
-        }
-        walk_to_wall(stream, context, run_from_wild_battle, {0, -1}, 2000ms, "south to the bottom wall");
-        route_turn(stream, context, Direction::WEST);
-        pbf_move_left_joystick(context, {-1, 0}, 120ms, 300ms);
-        pbf_move_left_joystick(context, {-1, 0}, 120ms, 300ms);
-        route_turn(stream, context, Direction::NORTH);
-        context.wait_for_all_requests();
-        if (run_from_late_encounter(stream, context, run_from_wild_battle, "below Roark")){
-            continue;
-        }
-        if (VideoSnapshot screen = stream.video().snapshot()){
-            const std::string folder = SCREENSHOTS_PATH() + "AutoStory/route/";
-            Filesystem::create_directories(Filesystem::Path(folder));
-            screen.frame->save(folder + now_to_filestring() + "-below-roark.png");
-        }
-        // The camera zooms in and his first line, "OK, stand back and watch
-        // this.", can take some seconds (r98).
-        // His rocks answer A too ("It's a rugged rock..."): his talk is the
-        // one that zooms the camera in on us (by hand), which the rock's
-        // message does not. Compare the view above the dialogue box.
-        talked = talk_with_nudges(stream, context, run_from_wild_battle, Direction::NORTH, "Roark", 8000ms,
-            [&](const ImageViewRGB32& before, const ImageViewRGB32& after){
-                const ImageFloatBox above_box{0.0, 0.0, 1.0, 0.6};
-                const double change = walk_screen_change(
-                    extract_box_reference(before, above_box), extract_box_reference(after, above_box)
-                );
-                stream.log("[01.03] View change when the talk opened: " + std::to_string(change) + " (Roark zooms in).");
-                return change > 35;     //  by hand: 50 for his zoom
-            });
+        talked = talk_to_roark_from_his_row(stream, context);
     }
     if (!talked){
         fail_step(stream, "Oreburgh Mine: no talk opened below Roark (has Barry told us about the mine?).");
@@ -348,38 +418,8 @@ void roark_in_the_mine(VideoStream& stream, ProControllerContext& context){
     // with him still there, and Barry kept the gym shut). Press B through it
     // on a clock, then ask his tile: once he is gone, A there opens nothing.
     // B and A in the overworld facing a wall do nothing.
-    bool gone = false;
-    for (size_t round = 0; round < 3 && !gone; round++){
-        for (size_t press = 0; press < 14; press++){
-            pbf_press_button(context, BUTTON_B, 80ms, 2420ms);
-        }
-        pbf_press_button(context, BUTTON_A, 80ms, 200ms);
-        gone = !dialogue_opens(stream, context, 2500ms);
-    }
-    if (!gone){
-        fail_step(stream, "Oreburgh Mine: Roark is still there after the talk.");
-    }
-    walk_dir(stream, context, Direction::SOUTH, 2000ms, "back to the bottom wall");
-    at = {roark.next(Direction::SOUTH)};
-
-    // Back up the corridor, then north out through the hall. A route leg
-    // north to the top's wall walks on through it into the hall (r99), and
-    // no wall stops us a row short of it, so the route ends on the corner
-    // at (14,10), where that leg started, and the walk does the rest.
-    const Pokemon::TilePos exit = world(map_point("OreburghMine", "corridor_exit_start"));
-    at = walk_route(stream, context, run_from_wild_battle, maps, at, no_trainers, RouteWalkPlan{[&](const Pokemon::TilePos& pos){ return pos == exit; }, "Back to the corridor's top", {}, route_plan_costs()});
-    // Up into the entrance hall (a transition, as on the way in), then on
-    // north out of the mine: in r103 that walk left the mine without a
-    // transition we saw and ended against the sign above the stairs, which
-    // the moving belts make read as the time limit.
-    if (walk_dir(stream, context, Direction::NORTH, 10000ms, "into the entrance hall").stop != WalkStop::TRANSITION){
-        fail_step(stream, "Oreburgh Mine: walking north from the corridor did not reach the entrance hall.");
-    }
-    context.wait_for(1500ms);
-    if (walk_dir(stream, context, Direction::NORTH, 10000ms, "out of the mine").stop == WalkStop::DIALOG){
-        fail_step(stream, "Oreburgh Mine: someone stopped us on the way out of the mine.");
-    }
-    context.wait_for(1500ms);
+    wait_out_roarks_scene(stream, context);
+    out_of_oreburgh_mine(stream, context, maps, no_trainers, roark);
 }
 
 //  01.03: into the Pokemon Center and heal at the counter.

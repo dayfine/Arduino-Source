@@ -258,7 +258,7 @@ Outcome StoryExecutor::mash(RunState&, const StoryStep& step){
 }
 
 Outcome StoryExecutor::battle(RunState&, const StoryStep& step){
-    if (!talk_or_fight(stream(), context(), label_of(step), true, step.variant == "doubles")){
+    if (!talk_or_fight(stream(), context(), label_of(step), TalkExpect::BATTLE, step.variant == "doubles" ? BattleFormat::DOUBLES : BattleFormat::SINGLES)){
         fail_step(stream(), label_of(step) + ": talked but did not battle.");
     }
     if (!step.may_lose && in_pokemon_center(stream())){
