@@ -1483,10 +1483,13 @@ size_t bag_clear_tab_count(const ImageViewRGB32& frame){
             for (size_t bx = 0; bx < badge.width(); bx++){
                 const uint32_t pixel = badge.pixel(bx, y);
                 int rr = (pixel >> 16) & 255, gg = (pixel >> 8) & 255, bb = pixel & 255;
-                red += rr > 150 && rr > gg + 60 && rr > bb + 60;
+                if (rr > 150 && rr > gg + 60 && rr > bb + 60){
+                    red++;
+                }
             }
         }
-        if (badge.width() * badge.height() && (double)red / (badge.width() * badge.height()) > .45){
+        const size_t badge_area = badge.width() * badge.height();
+        if (badge_area > 0 && (double)red / badge_area > .45){
             continue;
         }
         const ImageFloatBox box{x, .06, .038, .072};
