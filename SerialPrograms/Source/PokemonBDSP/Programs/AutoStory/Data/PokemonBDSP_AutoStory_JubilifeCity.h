@@ -2,8 +2,8 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  Jubilife City as a tile grid, read from Bulbapedia's DP map, with the
- *  places and people of checkpoint 00.05.
+ *  Jubilife City as a tile grid, from the Diamond decompilation's collision
+ *  table, with the places and people of checkpoint 00.05.
  */
 
 #ifndef PokemonAutomation_PokemonBDSP_AutoStory_JubilifeCity_H
@@ -21,8 +21,8 @@ namespace JubilifeCity{
 const Pokemon::TileGrid& grid();
 
 //  Where we may stand after climbing the steps from where 00.05 starts:
-//  below them, against the wall just east of them (off this map's bottom
-//  edge), then a tile west and about two tiles north.
+//  below them, against the wall just east of them, then a tile west and
+//  about two tiles north.
 const std::vector<Pokemon::TilePos>& up_the_steps();
 
 //  Doors: walk north from the tile below to enter.

@@ -31,8 +31,8 @@ const Pokemon::MapSet& story_maps();
 //  Jubilife City on its own: 00.05 starts there after Dawn's scene, so it is
 //  not joined to Route 202.
 const Pokemon::MapSet& jubilife_maps();
-//  Route 203 on its own (01.06), and whether a tile is on row 17 between the
-//  two stairs: row 17 runs straight west from there over the west stairs
+//  Route 203 on its own (01.06), and whether a tile is on row 18 between the
+//  two cliffs: row 18 runs straight west from there under the west cliff
 //  into Jubilife, so the plan ends there (no leg may leave the map) and a
 //  walk west until Jubilife's banner shows goes on from there.
 const Pokemon::MapSet& route203_maps();
@@ -79,6 +79,13 @@ bool story_at_jubilife_exit(const Pokemon::TilePos& world);
 //  ledge (00.04 saves there once it has Potions, before Route 202's trainers).
 std::vector<Pokemon::TilePos> story_save_spots();
 
+//  Where 00.04b's save after the catch may stand, in world tiles: wherever
+//  the catch's walks in the grass ended, the patch (15..20, 25..27) and the
+//  lawn column east of it, (21, 25..29), down to the pocket behind the tree
+//  row where r252's catch ended and saved (the save loads there: (21, 29)
+//  by the screen, the 202 sign 3 columns right and 4 rows up).
+std::vector<Pokemon::TilePos> story_catch_save_area();
+
 //  Where a walk out of the door `door` of `map` may leave us, in world tiles:
 //  the tile below it and its neighbours either side, since the door opening
 //  is not lined up with one tile (Jubilife's Center, r85).
@@ -86,8 +93,8 @@ std::vector<Pokemon::TilePos> story_door_front(const char* map, const Pokemon::T
 
 //  Where we may stand after training in the catch grass, in world tiles: the
 //  training walks up and down the catch spot's column, between the tree walls
-//  north and south of the grass, so a battle may stop us on any of its three
-//  rows. A column either side allows for where the catch left us.
+//  north and south of the grass, so a battle may stop us on any of its
+//  three rows. A column either side allows for where the catch left us.
 std::vector<Pokemon::TilePos> story_after_training_area();
 
 //  Route 202's trainers, in world tiles of story_maps().

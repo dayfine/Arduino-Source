@@ -35,6 +35,7 @@
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Walk.h"
 #include "PokemonBDSP/Programs/AutoStory/StorySegments/PokemonBDSP_AutoStory_Segment_00.h"
 #include "PokemonBDSP_AutoStory_SandgemCenterEvents.h"
+#include "Pokemon/Navigation/Pokemon_TilePose.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -48,6 +49,8 @@ using Pokemon::Event;
 using Pokemon::Interrupt;
 using Pokemon::Outcome;
 using Pokemon::Pose;
+using Pokemon::TilePose;
+using Pokemon::tiles_of;
 using Pokemon::PoseCertainty;
 using Pokemon::Recovery;
 using Pokemon::RecoveryKind;
@@ -62,7 +65,7 @@ using Pokemon::pose_known;
 const char* const ROUTE202_TO_SANDGEM_CENTER_NAME = "Route 202 to Sandgem's Pokemon Center (events)";
 
 TilePos sandgem_entry_stop(){
-    return story_maps().to_world(MAP_SANDGEM_TOWN, {29, 2});
+    return story_maps().to_world(MAP_SANDGEM_TOWN, SandgemTown::ROUTE_202_ENTRY_STOP);
 }
 
 TilePos below_sandgem_center_sign(){
@@ -70,7 +73,7 @@ TilePos below_sandgem_center_sign(){
 }
 
 TilePos east_of_lab_sign(){
-    return story_maps().to_world(MAP_SANDGEM_TOWN, {6, 7});
+    return story_maps().to_world(MAP_SANDGEM_TOWN, {6, 11});
 }
 
 bool sign_text_matches(const std::string& text, const std::string& key){
@@ -112,8 +115,7 @@ constexpr double SIGN_BOX_OPENED = 20.0;
 Pose pose_on(const std::vector<TilePos>& tiles, std::optional<Direction> facing = std::nullopt){
     const Pokemon::MapSet& maps = story_maps();
     Pose pose;
-    pose.tiles = tiles;
-    pose.facing = facing;
+    pose.where = std::make_shared<TilePose>(tiles, facing);
     if (tiles.empty()){
         return pose;
     }
@@ -149,8 +151,8 @@ Condition outside(SandgemCenterActions& game){
 Condition center_doorway_ahead(SandgemCenterActions& game){
     return condition("the Center's doorway at the front row", [&game](RunState& state){
         const TilePos door = story_maps().to_world(MAP_SANDGEM_TOWN, SandgemTown::POKEMON_CENTER_DOOR);
-        const bool near = state.pose.map == MAP_SANDGEM_TOWN && !state.pose.tiles.empty() &&
-            std::all_of(state.pose.tiles.begin(), state.pose.tiles.end(), [&](const TilePos& pos){
+        const bool near = state.pose.map == MAP_SANDGEM_TOWN && !tiles_of(state.pose).empty() &&
+            std::all_of(tiles_of(state.pose).begin(), tiles_of(state.pose).end(), [&](const TilePos& pos){
                 return std::abs(pos.x - door.x) <= 4 && pos.y > door.y && pos.y <= door.y + 4;
             });
         if (!near){
@@ -191,11 +193,11 @@ Event walk_to_sandgem(SandgemCenterActions& game){
     event.skip_if.push_back(pose_known(MAP_SANDGEM_TOWN, PoseCertainty::SET));
     event.require.push_back(pose_known(MAP_ROUTE_202, PoseCertainty::SET));
     event.act = [&game](RunState& state){
-        std::vector<TilePos> at = state.pose.tiles;
+        std::vector<TilePos> at = tiles_of(state.pose);
         const TilePos stop = sandgem_entry_stop();
         const Outcome walked = game.walk(at, [stop](const TilePos& pos){ return pos == stop; }, "Route 202 to Sandgem Town");
         if (walked.succeeded()){
-            state.pose = pose_on(at, Direction::SOUTH);
+            return outcome_ok(pose_on(at, Direction::SOUTH));
         }
         return walked;
     };
@@ -206,8 +208,7 @@ Event walk_to_sandgem(SandgemCenterActions& game){
         if (!game.east_then_south_into_sandgem()){
             return outcome_failed("no_sandgem_banner", "east to the trees and south showed no Sandgem Town banner");
         }
-        state.pose = pose_on({sandgem_entry_stop()}, Direction::SOUTH);
-        return outcome_ok();
+        return outcome_ok(pose_on({sandgem_entry_stop()}, Direction::SOUTH));
     }, "east to the trees and south to the wall, watching for Sandgem's banner"));
     return event;
 }
@@ -225,11 +226,11 @@ Event walk_to_center_sign(SandgemCenterActions& game){
     event.why = "through the signs' gap to below the Center's sign";
     event.require.push_back(pose_known(MAP_SANDGEM_TOWN, PoseCertainty::SET));
     event.act = [&game](RunState& state){
-        std::vector<TilePos> at = state.pose.tiles;
+        std::vector<TilePos> at = tiles_of(state.pose);
         const TilePos goal = below_sandgem_center_sign();
         const Outcome walked = game.walk_in_town(at, [goal](const TilePos& pos){ return pos == goal; }, "To below the Center's sign");
         if (walked.succeeded()){
-            state.pose = pose_on(at);
+            return outcome_ok(pose_on(at));
         }
         return walked;
     };
@@ -752,9 +753,8 @@ Event on_doors_row(SandgemCenterActions& game){
     Event event;
     event.name = "on_doors_row";
     event.why = "below the Center's sign, where the Route 202 checkpoint ends";
-    event.act = [](RunState& state){
-        state.pose = pose_on({below_sandgem_center_sign()}, Direction::NORTH);
-        return outcome_ok();
+    event.act = [](RunState&){
+        return outcome_ok(pose_on({below_sandgem_center_sign()}, Direction::NORTH));
     };
     event.expect.push_back(outside(game));
     return event;
@@ -811,7 +811,7 @@ Checkpoint sandgem_mart_lady_checkpoint(MartLadyActions& game){
         [&game](RunState& state){
             const Outcome walked = game.walk_to_route_202_save_spot();
             if (walked.succeeded()){
-                state.pose = pose_on({story_maps().to_world(MAP_ROUTE_202, Route202::SAVE_SPOT)});
+                return outcome_ok(pose_on({story_maps().to_world(MAP_ROUTE_202, Route202::SAVE_SPOT)}));
             }
             return walked;
         }));

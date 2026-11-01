@@ -403,8 +403,11 @@ file(GLOB LIBRARY_SOURCES
     ../Common/Cpp/Sockets/AbstractClientSocket.h
     ../Common/Cpp/Sockets/ClientSocket.cpp
     ../Common/Cpp/Sockets/ClientSocket.h
+    ../Common/Cpp/Sockets/ClientSocket_POSIX.cpp
     ../Common/Cpp/Sockets/ClientSocket_POSIX.h
+    ../Common/Cpp/Sockets/ClientSocket_Qt.cpp
     ../Common/Cpp/Sockets/ClientSocket_Qt.h
+    ../Common/Cpp/Sockets/ClientSocket_WinSocket.cpp
     ../Common/Cpp/Sockets/ClientSocket_WinSocket.h
     ../Common/Cpp/StreamConnections/MockDevice.cpp
     ../Common/Cpp/StreamConnections/MockDevice.h
@@ -1453,9 +1456,9 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/Navigation/Pokemon_Grid.h
     Source/Pokemon/Navigation/Pokemon_LegPlanner.h
     Source/Pokemon/Navigation/Pokemon_LegPlanner_Tests.cpp
-    Source/Pokemon/Navigation/Pokemon_LegWalker.cpp
-    Source/Pokemon/Navigation/Pokemon_LegWalker.h
-    Source/Pokemon/Navigation/Pokemon_LegWalker_Tests.cpp
+    Source/Pokemon/Navigation/Pokemon_MapData.cpp
+    Source/Pokemon/Navigation/Pokemon_MapData.h
+    Source/Pokemon/Navigation/Pokemon_MapData_Tests.cpp
     Source/Pokemon/Navigation/Pokemon_MapSet.cpp
     Source/Pokemon/Navigation/Pokemon_MapSet.h
     Source/Pokemon/Navigation/Pokemon_Navigation_Tests.h
@@ -1464,6 +1467,11 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/Navigation/Pokemon_StoryEvents_Tests.cpp
     Source/Pokemon/Navigation/Pokemon_TileGrid.cpp
     Source/Pokemon/Navigation/Pokemon_TileGrid.h
+    Source/Pokemon/Navigation/Pokemon_StorySegments.cpp
+    Source/Pokemon/Navigation/Pokemon_StorySegments.h
+    Source/Pokemon/Navigation/Pokemon_StorySegments_Tests.cpp
+    Source/Pokemon/Navigation/Pokemon_TilePose.cpp
+    Source/Pokemon/Navigation/Pokemon_TilePose.h
     Source/Pokemon/Options/Pokemon_BoxSortingTable.cpp
     Source/Pokemon/Options/Pokemon_BoxSortingTable.h
     Source/Pokemon/Options/Pokemon_EncounterBotOptions.h
@@ -1566,6 +1574,8 @@ file(GLOB LIBRARY_SOURCES
     Source/PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_SandgemTown.h
     Source/PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_StoryMaps.cpp
     Source/PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_StoryMaps.h
+    Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_MapGrid_Tests.cpp
+    Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_MapGrid_Tests.h
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_Tests.cpp
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_Tests.h
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_Segment00_Tests.cpp
@@ -1806,6 +1816,12 @@ file(GLOB LIBRARY_SOURCES
     Source/PokemonBDSP/Programs/Trading/PokemonBDSP_TradeRoutines.h
     Source/PokemonBDSP/Resources/PokemonBDSP_NameDatabase.cpp
     Source/PokemonBDSP/Resources/PokemonBDSP_NameDatabase.h
+    Source/VideoGames/PokemonFRLG/Inference/Box/PokemonFRLG_BoxCellOccupiedDetector.cpp
+    Source/VideoGames/PokemonFRLG/Inference/Box/PokemonFRLG_BoxCellOccupiedDetector.h
+    Source/VideoGames/PokemonFRLG/Inference/Box/PokemonFRLG_BoxGenderReader.cpp
+    Source/VideoGames/PokemonFRLG/Inference/Box/PokemonFRLG_BoxGenderReader.h
+    Source/VideoGames/PokemonFRLG/Inference/Box/PokemonFRLG_BoxSelectionModeDetector.cpp
+    Source/VideoGames/PokemonFRLG/Inference/Box/PokemonFRLG_BoxSelectionModeDetector.h
     Source/VideoGames/PokemonFRLG/Inference/Dialogs/PokemonFRLG_BattleDialogs.cpp
     Source/VideoGames/PokemonFRLG/Inference/Dialogs/PokemonFRLG_BattleDialogs.h
     Source/VideoGames/PokemonFRLG/Inference/Dialogs/PokemonFRLG_DialogDetector.cpp

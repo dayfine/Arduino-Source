@@ -6,6 +6,7 @@
 
 #include "PokemonBDSP_AutoStory_RouteRecords.h"
 #include "PokemonBDSP_AutoStory_JubilifeCity.h"
+#include "PokemonBDSP_AutoStory_Route201.h"
 #include "PokemonBDSP_AutoStory_Route203.h"
 #include "PokemonBDSP_AutoStory_Route204.h"
 #include "PokemonBDSP_AutoStory_RavagedPath.h"
@@ -26,7 +27,7 @@ using namespace Pokemon;
 
 namespace{
 const TileGrid* twinleaf(){ return &TwinleafTown::grid(); }
-const TileGrid* route201_decomp(){ return &Segment00Lines::route201_decomp_grid(); }
+const TileGrid* route201(){ return &Route201::grid(); }
 const TileGrid* lakefront(){ return &VerityLakefront::grid(); }
 const TileGrid* sandgem(){ return &SandgemTown::grid(); }
 const TileGrid* jubilife(){ return &JubilifeCity::grid(); }
@@ -51,13 +52,13 @@ std::vector<RouteRecord> checkpoint_0001_records(){
             {Direction::NORTH, 12, LegEnd::COUNT, "up column 15 to (15, 0), the last tile in town; the guitarist's stop on row 3 is inert once Barry has talked upstairs"},
             {Direction::NORTH, 0, LegEnd::BANNER, "on north onto Route 201"},
         }, "Segment00Lines line 2, not walked by the program yet"},
-        {"00.01", "Route 201: Barry's tall-grass warning, then west to the Lakefront", "Route 201", route201_decomp, true, Segment00Lines::ROUTE_201_ARRIVAL, {
-            {Direction::NORTH, 6, LegEnd::COUNT, "up the exit path to (15, 25): Barry's warning fires on that row"},
-            {Direction::WEST, 3, LegEnd::COUNT, "after the scene, along row 25 to column 12"},
-            {Direction::NORTH, 2, LegEnd::COUNT, "to row 23, the lower level's row to the Lakefront"},
-            {Direction::WEST, 12, LegEnd::COUNT, "to (0, 23), the route's last tile"},
+        {"00.01", "Route 201: Barry's tall-grass warning, then west to the Lakefront", "Route 201", route201, true, Segment00Lines::ROUTE_201_ARRIVAL, {
+            {Direction::NORTH, 6, LegEnd::COUNT, "up the exit path to (15, 18): Barry's warning fires on that row"},
+            {Direction::WEST, 3, LegEnd::COUNT, "after the scene, along row 18 to column 12"},
+            {Direction::NORTH, 2, LegEnd::COUNT, "to row 16, the lower level's row to the Lakefront"},
+            {Direction::WEST, 12, LegEnd::COUNT, "to (0, 16), the route's last tile"},
             {Direction::WEST, 0, LegEnd::BANNER, "on west onto the Verity Lakefront"},
-        }, "Segment00Lines lines 2 and 3, not walked by the program yet; traced on the decomp's Route 201 (route201_decomp_grid), not Route201::grid(), whose rows are the image's"},
+        }, "Segment00Lines lines 2 and 3, not walked by the program yet; traced on Route201::grid(), the decomp's since #111"},
         {"00.01", "Verity Lakefront: to below the lake's entrance", "Verity Lakefront", lakefront, true, Segment00Lines::LAKEFRONT_ARRIVAL, {
             {Direction::WEST, 11, LegEnd::COUNT, "along row 23 to column 20"},
             {Direction::NORTH, 2, LegEnd::COUNT, "to row 21"},
@@ -79,42 +80,42 @@ std::vector<RouteRecord> checkpoints_0002_0003_records(){
             {Direction::EAST, 12, LegEnd::COUNT, "along row 21 to column 29"},
             {Direction::EAST, 0, LegEnd::BANNER, "on east onto Route 201"},
         }, "Segment00Lines line 4, not walked by the program yet; which of the two entrance tiles the scene leaves us on is for the console"},
-        {"00.03", "Route 201: Rowan's scene, then east through the grass to Sandgem", "Route 201", route201_decomp, true, Segment00Lines::ROUTE_201_RETURN, {
-            {Direction::EAST, 5, LegEnd::COUNT, "to (5, 21): Rowan and Dawn's scene fires on that column"},
-            {Direction::EAST, 12, LegEnd::COUNT, "after the scene, along row 21 to column 17"},
-            {Direction::EAST, 12, LegEnd::COUNT, "through the tall grass to column 29; the Breeder wanders rows 21 to 23 there"},
+        {"00.03", "Route 201: Rowan's scene, then east through the grass to Sandgem", "Route 201", route201, true, Segment00Lines::ROUTE_201_RETURN, {
+            {Direction::EAST, 5, LegEnd::COUNT, "to (5, 14): Rowan and Dawn's scene fires on that column"},
+            {Direction::EAST, 12, LegEnd::COUNT, "after the scene, along row 14 to column 17"},
+            {Direction::EAST, 12, LegEnd::COUNT, "through the tall grass to column 29; the Breeder wanders rows 14 to 16 there"},
             {Direction::EAST, 12, LegEnd::COUNT, "to column 41"},
-            {Direction::NORTH, 7, LegEnd::COUNT, "up column 41 to row 14, beside the north-east grass"},
+            {Direction::NORTH, 7, LegEnd::COUNT, "up column 41 to row 7, beside the north-east grass"},
             {Direction::EAST, 1, LegEnd::COUNT, "into the grass"},
-            {Direction::NORTH, 2, LegEnd::COUNT, "to row 12"},
-            {Direction::EAST, 10, LegEnd::COUNT, "through the grass to (52, 12), its last tile"},
-            {Direction::EAST, 11, LegEnd::COUNT, "to (63, 12), the route's last tile"},
+            {Direction::NORTH, 2, LegEnd::COUNT, "to row 5"},
+            {Direction::EAST, 10, LegEnd::COUNT, "through the grass to (52, 5), its last tile"},
+            {Direction::EAST, 11, LegEnd::COUNT, "to (63, 5), the route's last tile"},
             {Direction::EAST, 0, LegEnd::BANNER, "on east into Sandgem Town"},
-        }, "Segment00Lines lines 4 and 5, not walked by the program yet; the grass legs need the wild-battle handling of the replay's walk_through_grass(); traced on route201_decomp_grid"},
+        }, "Segment00Lines lines 4 and 5, not walked by the program yet; the grass legs need the wild-battle handling of the replay's walk_through_grass(); traced on Route201::grid()"},
         {"00.03", "Sandgem Town: Dawn at the entrance", "Sandgem Town", sandgem, true, Segment00Lines::SANDGEM_ARRIVAL, {
-            {Direction::EAST, 4, LegEnd::COUNT, "along row 8 to (4, 8): Dawn's scene, which leads us into Rowan's lab for the Pokedex"},
+            {Direction::EAST, 4, LegEnd::COUNT, "along row 12 to (4, 12): Dawn's scene, which leads us into Rowan's lab for the Pokedex"},
             {Direction::EAST, 0, LegEnd::SCENE, "the lab is the game's; 00.03 ends in front of Rowan"},
-        }, "Segment00Lines line 5, not walked by the program yet; Sandgem's row 8 is the decomp's row 12, where its coord event (zone_event 0396) is"},
+        }, "Segment00Lines line 5, not walked by the program yet; on Sandgem's row 12, where its coord event (zone_event 0396) is"},
     };
 }
 
 //  01.01 to 01.05: Jubilife to Oreburgh and back out.
 std::vector<RouteRecord> segment01_records_to_oreburgh(){
     return {
-        {"01.01", "Jubilife Pokemon Center to Barry on Route 203", "Jubilife City", jubilife, false, std::nullopt, {
+        {"01.01", "Jubilife Pokemon Center to Barry on Route 203", "Jubilife City", jubilife, true, std::nullopt, {
             {Direction::SOUTH, 0, LegEnd::NPC, "out of the Center's door; a girl below it stops us"},
             {Direction::WEST, 4, LegEnd::COUNT, "stick 720 ms: onto the main road", false},
             {Direction::NORTH, 16, LegEnd::COUNT, "stick 3960 ms: up to the street east to Route 203", false},
             {Direction::SOUTH, 2, LegEnd::COUNT, "stick 600 ms: back onto the street", false},
             {Direction::EAST, 0, LegEnd::NPC, "along the street onto Route 203 until Barry stops us; rows retried 0, +1, +1, -3, -1 when a wall comes first"},
-        }, "jubilife_to_barry(); stick holds from the console, 2026-10-29; the Jubilife grid's rows are 3/4 of a tile, so the counts are not traceable on it (task #21)"},
-        {"01.02", "Barry to Oreburgh City through the Oreburgh Gate", "Route 203", route203, false, std::nullopt, {
+        }, "jubilife_to_barry(); stick holds from the console, 2026-10-29, counted in tiles on the image grid's 3/4 rows: recount in taps before giving this record a start tile (task #21)"},
+        {"01.02", "Barry to Oreburgh City through the Oreburgh Gate", "Route 203", route203, true, std::nullopt, {
             {Direction::EAST, 0, LegEnd::WALL, "along the row Barry stopped us on"},
             {Direction::NORTH, 0, LegEnd::WALL, "to the top wall, then a row south at a time until east goes on (up to ten)"},
             {Direction::EAST, 0, LegEnd::NPC, "to the Hiker"},
             {Direction::EAST, 0, LegEnd::TRANSITION, "into the Oreburgh Gate"},
             {Direction::EAST, 0, LegEnd::TRANSITION, "through the Gate into Oreburgh City"},
-        }, "route203_to_oreburgh(); the west and middle of Route 203's grid are image-traced, the east stretch console-corrected (r227)"},
+        }, "route203_to_oreburgh(); no start tile: Barry stops us on whichever row we came along"},
         {"01.04", "Oreburgh Pokemon Center doorstep to the Gym", "Oreburgh City", oreburgh_city, true, OreburghCity::POKEMON_CENTER_DOORSTEP, {
             {Direction::WEST, 20, LegEnd::COUNT, "D-pad taps along the Center's row to below the Gym's door"},
             {Direction::NORTH, 1, LegEnd::DOOR, "into the Gym (the fade)"},
@@ -139,11 +140,11 @@ std::vector<RouteRecord> segment01_records_to_oreburgh(){
 //  01.07 to 01.11: Jubilife north to Floaroma.
 std::vector<RouteRecord> segment01_records_from_jubilife(){
     return {
-        {"01.07", "Jubilife's east edge to Rowan's scene", "Jubilife City", jubilife, false, std::nullopt, {
+        {"01.07", "Jubilife's east edge to Rowan's scene", "Jubilife City", jubilife, true, std::nullopt, {
             {Direction::WEST, 14, LegEnd::COUNT, "stick 2 x 1120 ms along the long road to the crossroads with the north street", false},
             {Direction::NORTH, 0, LegEnd::SCENE, "up the street until Rowan's scene starts (about 6 s); the green-haired man may stand in the way"},
-        }, "jubilife_to_rowan(); by hand 2026-10-31 (18 presses), r230b; Jubilife grid not traceable (rows 3/4)"},
-        {"01.08", "Jubilife's north street onto Route 204", "Jubilife City", jubilife, false, std::nullopt, {
+        }, "jubilife_to_rowan(); by hand 2026-10-31 (18 presses), r230b; the stick hold's count was taken on the image grid's 3/4 rows, so no start tile yet"},
+        {"01.08", "Jubilife's north street onto Route 204", "Jubilife City", jubilife, true, std::nullopt, {
             {Direction::NORTH, 0, LegEnd::BANNER, "up the street until Route 204's banner; the planned walk to the Ravaged Path door follows"},
         }, "jubilife_to_ravaged_path() step 1"},
         {"01.09", "Ravaged Path's east end out onto Route 204 North", "Ravaged Path", ravaged_path, true, RavagedPath::EAST_END, {

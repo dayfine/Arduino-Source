@@ -95,7 +95,9 @@ public:
 
 //  Where the walk south stops in Sandgem Town, in world tiles of
 //  story_maps(): Route 202's column 30 runs into Sandgem's column 29, and
-//  walking south from Route 202 stops at (29,2), above the Poke Mart.
+//  walking south from Route 202 stops at (29,5), above the Poke Mart, where
+//  the road narrows (the console counted it as two rows above the signs' row
+//  on the image grid; the decomp has three, with (29,6) a wall).
 Pokemon::TilePos sandgem_entry_stop();
 
 //  Below the Center's sign, three tiles east of its door: where 00.04's

@@ -31,12 +31,6 @@ namespace Segment00Lines{
 extern const char* const MAP_TWINLEAF_TOWN;
 extern const char* const MAP_VERITY_LAKEFRONT;
 
-//  Route 201 as the Diamond decomp has it. A stand-in for Route201::grid(),
-//  which is traced from the DP image (rows 3/4 of a tile) and is being
-//  re-derived; the lines here need the game's rows. Drop it for
-//  Route201::grid() once that file is the decomp's.
-const Pokemon::TileGrid& route201_decomp_grid();
-
 //  Twinleaf Town, Route 201, the Verity Lakefront and Sandgem Town joined on
 //  one grid at their world offsets from the decomp. Lake Verity is not in
 //  it: its own matrix, and the scene walks us in and the game warps us out,

@@ -21,7 +21,7 @@ namespace OreburghMine{
 const Pokemon::TileGrid& grid();
 
 //  Where the walk in from the entrance hall leaves us: the top of the rocky
-//  corridor, below its timber frame.
+//  corridor, the first open row below the warp tile.
 const std::vector<Pokemon::TilePos>& corridor_top();
 
 //  Roark, between two rocks a row above the room's bottom row. Talked to from

@@ -21,7 +21,7 @@ namespace Route203{
 const Pokemon::TileGrid& grid();
 
 //  Where stepping out of the Oreburgh Gate may leave us when Route 203's
-//  banner shows: the tiles west of the cave's mouth.
+//  banner shows: the warp tile west of the cave's mouth and its neighbours.
 const std::vector<Pokemon::TilePos>& gate_exit();
 
 

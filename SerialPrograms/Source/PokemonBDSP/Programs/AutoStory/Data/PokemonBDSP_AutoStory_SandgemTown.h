@@ -2,8 +2,8 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  Sandgem Town as a tile grid, read from Bulbapedia's DP map; BDSP keeps
- *  DP's tile layout.
+ *  Sandgem Town as a tile grid, from the Diamond decompilation's collision
+ *  table; BDSP keeps DP's tile layout.
  */
 
 #ifndef PokemonAutomation_PokemonBDSP_AutoStory_SandgemTown_H
@@ -20,9 +20,12 @@ namespace SandgemTown{
 
 const Pokemon::TileGrid& grid();
 
+//  Where the walk south from Route 202 down the road's east side stops,
+//  above the Poke Mart where the road narrows.
+extern const Pokemon::TilePos ROUTE_202_ENTRY_STOP;
 extern const Pokemon::TilePos LAB_DOOR;
 extern const Pokemon::TilePos POKEMON_CENTER_DOOR;
-//  The sign east of the Pokemon Center's door. Walking north from row 10 in
+//  The sign east of the Pokemon Center's door. Walking north from row 14 in
 //  its column stops on the tile below it.
 extern const Pokemon::TilePos POKEMON_CENTER_SIGN;
 extern const Pokemon::TilePos POKE_MART_DOOR;

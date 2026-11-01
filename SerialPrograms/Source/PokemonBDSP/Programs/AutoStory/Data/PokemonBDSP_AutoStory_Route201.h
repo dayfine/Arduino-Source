@@ -2,8 +2,8 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  Route 201 (Twinleaf Town to Sandgem Town) as a tile grid, read from
- *  Bulbapedia's DP map; BDSP keeps DP's tile layout.
+ *  Route 201 (Twinleaf Town to Sandgem Town) as a tile grid, from the
+ *  Diamond decompilation's collision table; BDSP keeps DP's tile layout.
  */
 
 #ifndef PokemonAutomation_PokemonBDSP_AutoStory_Route201_H

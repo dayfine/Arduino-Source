@@ -110,9 +110,9 @@ public:
             int height;
         };
         const Map maps[] = {
-            {MAP_ROUTE_201,     Route201::grid(),       64, 20},
-            {MAP_SANDGEM_TOWN,  SandgemTown::grid(),    34, 28},
-            {MAP_ROUTE_202,     Route202::grid(),       36, 26},
+            {MAP_ROUTE_201,     Route201::grid(),       64, 25},
+            {MAP_SANDGEM_TOWN,  SandgemTown::grid(),    34, 32},
+            {MAP_ROUTE_202,     Route202::grid(),       36, 32},
         };
         for (const Map& map : maps){
             if (map.grid.width() != map.width || map.grid.height() != map.height){
@@ -133,10 +133,9 @@ public:
             {MAP_SANDGEM_TOWN,  SandgemTown::FRONT_ROW_EAST_END,    TileType::WALKABLE},
             {MAP_ROUTE_202,     Route202::CATCH_SPOT,               TileType::TALL_GRASS},
             {MAP_ROUTE_202,     Route202::SAVE_SPOT,                TileType::WALKABLE},
-            {MAP_ROUTE_202,     Route202::TRAINER_A,                TileType::NPC},
-            {MAP_ROUTE_202,     Route202::TRAINER_B,                TileType::NPC},
-            {MAP_ROUTE_202,     Route202::TRAINER_C,                TileType::NPC},
-            {MAP_ROUTE_202,     Route202::TRAINER_D,                TileType::NPC},
+            {MAP_ROUTE_202,     Route202::TRAINER_TRISTAN,          TileType::NPC},
+            {MAP_ROUTE_202,     Route202::TRAINER_NATALIE,          TileType::NPC},
+            {MAP_ROUTE_202,     Route202::TRAINER_LOGAN,            TileType::NPC},
             {MAP_ROUTE_202,     Route202::EXIT_JUBILIFE,            TileType::WALKABLE},
         };
         const Pokemon::MapSet& world = story_maps();
@@ -166,7 +165,7 @@ public:
             }
         }
 
-        //  The maps join where their exits meet.
+        //  The maps join where their exits meet: the grids are the game's cells.
         struct Join{
             const char* from_map;
             TilePos from;
@@ -175,10 +174,10 @@ public:
             TilePos to;
         };
         const Join joins[] = {
-            {MAP_ROUTE_201,     {63, 4},    Direction::EAST,    MAP_SANDGEM_TOWN,   {0, 7}},
-            {MAP_ROUTE_201,     {63, 6},    Direction::EAST,    MAP_SANDGEM_TOWN,   {0, 9}},
-            {MAP_SANDGEM_TOWN,  {24, 0},    Direction::NORTH,   MAP_ROUTE_202,      {25, 25}},
-            {MAP_SANDGEM_TOWN,  {29, 0},    Direction::NORTH,   MAP_ROUTE_202,      {30, 25}},
+            {MAP_ROUTE_201,     {63, 4},    Direction::EAST,    MAP_SANDGEM_TOWN,   {0, 11}},
+            {MAP_ROUTE_201,     {63, 6},    Direction::EAST,    MAP_SANDGEM_TOWN,   {0, 13}},
+            {MAP_SANDGEM_TOWN,  {24, 0},    Direction::NORTH,   MAP_ROUTE_202,      {25, 31}},
+            {MAP_SANDGEM_TOWN,  {29, 0},    Direction::NORTH,   MAP_ROUTE_202,      {30, 31}},
         };
         for (const Join& join : joins){
             const TilePos from = world.to_world(join.from_map, join.from);
@@ -224,22 +223,21 @@ public:
             {small, {4, 3}, Direction::EAST,  {5, 3}, 1, true},
             {small, {4, 4}, Direction::EAST,  {4, 4}, 0, false},    //  into the door
             {small, {2, 0}, Direction::EAST,  {2, 0}, 0, false},    //  off the map
-            {route, Route202::CATCH_SPOT, Direction::WEST,  {3, 22}, 16, true},
-            {route, Route202::CATCH_SPOT, Direction::NORTH, {19, 20}, 2, true},
-            {route, Route202::CATCH_SPOT, Direction::EAST,  {30, 22}, 11, true},
+            {route, Route202::CATCH_SPOT, Direction::WEST,  {3, 27}, 16, true},
+            {route, Route202::CATCH_SPOT, Direction::NORTH, {19, 25}, 2, true},
+            {route, Route202::CATCH_SPOT, Direction::EAST,  {30, 27}, 11, true},
             //  Measured on the console from the post-catch save.
-            {route, {30, 22}, Direction::NORTH, {30, 19}, 3, true},
-            {route, {30, 19}, Direction::WEST,  {22, 19}, 8, true},
-            {route, {22, 19}, Direction::SOUTH, {22, 24}, 5, true},
-            {route, {7, 12}, Direction::NORTH, {7, 12}, 0, true},  //  trainer_a holds the player
-            //  After trainer_d, as measured in r75: the east wall is at column 31
-            //  on row 16, and column 30 is open up to the trees above row 4.
-            {route, {22, 16}, Direction::EAST,  {30, 16}, 8, true},
-            {route, {30, 16}, Direction::NORTH, {30, 4}, 12, true},
+            {route, {30, 27}, Direction::NORTH, {30, 24}, 3, true},
+            {route, {30, 24}, Direction::WEST,  {22, 24}, 8, true},
+            {route, Route202::TRAINER_TRISTAN.next(Direction::SOUTH), Direction::NORTH, {7, 14}, 0, true},  //  Tristan holds the player
+            //  After Natalie, as measured in r75: on the row right above the south
+            //  ledge the east wall is at column 31; column 30 is open up to row 4.
+            {route, {22, 22}, Direction::EAST,  {30, 22}, 8, true},
+            {route, {30, 22}, Direction::NORTH, {30, 4}, 18, true},
             //  Through the gap east of the north ledge, over the south ledge
             //  and off the bottom edge to Sandgem Town.
-            {route, {29, 4}, Direction::SOUTH, {29, 25}, 21, false},
-            {route, {12, 8}, Direction::SOUTH, {12, 22}, 14, true},  //  hops both ledges
+            {route, {29, 4}, Direction::SOUTH, {29, 31}, 27, false},
+            {route, {12, 8}, Direction::SOUTH, {12, 29}, 21, true},  //  hops both ledges
             {route, Route202::EXIT_JUBILIFE, Direction::NORTH, Route202::EXIT_JUBILIFE, 0, false},
         };
         auto check = [](const Case& c) -> std::string{
@@ -267,6 +265,7 @@ public:
         const TilePos below_mart = town(SandgemTown::POKE_MART_DOOR.next(Direction::SOUTH));
         const TilePos row_end = town(SandgemTown::FRONT_ROW_EAST_END);
         const Case sandgem[] = {
+            {world, maps.to_world(MAP_ROUTE_202, {22, 24}), Direction::SOUTH, maps.to_world(MAP_ROUTE_202, {22, 31}), 7, true},  //  under the ledge, down to Sandgem's trees (a timed count said 5)
             {world, town(SandgemTown::POKEMON_CENTER_DOOR.next(Direction::SOUTH)), Direction::EAST, row_end, 12, true},
             {world, below_mart, Direction::EAST, row_end, 2, true},
             {world, below_mart, Direction::NORTH, below_mart, 0, false},
@@ -515,9 +514,10 @@ public:
         //  the costs the program plans it with: walk_route()'s route costs
         //  for 00.04's walks, the Sandgem Center events' default costs for
         //  walk() and town costs for walk_in_town(). The planner gives up
-        //  after costs.max_searched sets, and the costs decide how many a
-        //  walk needs: after training to the Center the route costs find a
-        //  plan within 17000 sets, the default costs none within the cap.
+        //  after costs.max_searched sets, and the costs decide whether a
+        //  walk gets a plan: after training to the Center the route costs
+        //  find none on the game's grid and walk_route() falls back to the
+        //  default costs, so that is the plan that runs and is checked here.
         const struct{
             const char* name;
             std::vector<TilePos> from;
@@ -528,7 +528,7 @@ public:
             {"Save spots to the catch grass", story_save_spots(),
                 [&](const TilePos& pos){ return std::find(grass.begin(), grass.end(), pos) != grass.end(); }, false, route_plan_costs()},
             {"After training to the Pokemon Center", story_after_training_area(),
-                [&](const TilePos& pos){ return pos == below_sign; }, false, route_plan_costs()},
+                [&](const TilePos& pos){ return pos == below_sign; }, false, Pokemon::RobustPlanCosts()},
             //  The Mart's door takes a tile either side: enter_lit_door() lines up by sight.
             {"Pokemon Center to the Poke Mart", story_door_front(MAP_SANDGEM_TOWN, SandgemTown::POKEMON_CENTER_DOOR),
                 [&](const TilePos& pos){ return pos.y == below_mart.y && std::abs(pos.x - below_mart.x) <= 1; }, true, route_plan_costs()},
@@ -546,30 +546,31 @@ public:
             {"Sandgem's entry to the Pokemon Center", {sandgem_entry_stop()},
                 [&](const TilePos& pos){ return pos == below_sign; }, true, town_plan_costs()},
             //  The Mart lady test checkpoint: out of the Center to the tile west
-            //  of Route 201's border sign, from the lady back to it, and back.
-            //  Those to the sign end with a leg south to the trees in the grass
-            //  west of the sign, which cannot be read; reading the sign after it says
-            //  where we are, and a tile short is walked east to it.
+            //  of Route 201's border sign, from the lady back to it, and back. The
+            //  sign's row has no wall west of it: a step onto it, then east to it.
+            //  These legs are walked by hand (walk_until_stopped), so the plan is
+            //  only a check of the grid; the one-tile steps need the town costs,
+            //  the default costs find no plan.
             {"Pokemon Center to west of the Route 201 sign", story_door_front(MAP_SANDGEM_TOWN, SandgemTown::POKEMON_CENTER_DOOR),
-                [&](const TilePos& pos){ return pos == route201_sign_west(); }, false, Pokemon::RobustPlanCosts()},
+                [&](const TilePos& pos){ return pos == route201_sign_west(); }, false, town_plan_costs()},
             {"Poke Mart lady to west of the Route 201 sign", {maps.to_world(MAP_ROUTE_201, Route201::POTION_GIVER_TALK_FROM)},
-                [&](const TilePos& pos){ return pos == route201_sign_west(); }, false, Pokemon::RobustPlanCosts()},
+                [&](const TilePos& pos){ return pos == route201_sign_west(); }, false, town_plan_costs()},
             {"Route 201 sign to the Pokemon Center", {route201_sign_west()},
                 [&](const TilePos& pos){ return pos == below_sign; }, true, Pokemon::RobustPlanCosts()},
             //  The Center walk's re-anchor at the trees east of the Mart.
             {"Trees east of the Mart to the Pokemon Center", {maps.to_world(MAP_SANDGEM_TOWN, SandgemTown::FRONT_ROW_EAST_END)},
                 [&](const TilePos& pos){ return pos == below_sign; }, true, Pokemon::RobustPlanCosts()},
             //  From and back to where the Route 202 checkpoint ends: the doors'
-            //  row by the signs' gap.
-            {"Below the Center's sign to west of the Route 201 sign", {below_sandgem_center_sign()},
-                [&](const TilePos& pos){ return pos == route201_sign_west(); }, false, Pokemon::RobustPlanCosts()},
+            //  row by the signs' gap; westward it first walks to the Lab's sign.
+            {"East of the Lab's sign to west of the Route 201 sign", {east_of_lab_sign()},
+                [&](const TilePos& pos){ return pos == route201_sign_west(); }, false, town_plan_costs()},
             {"Below the Center's sign to the trees east of the Mart", {below_sandgem_center_sign()},
                 [&](const TilePos& pos){ return pos == row_end; }, true, Pokemon::RobustPlanCosts()},
             {"East of the Lab's sign to the trees east of the Mart", {east_of_lab_sign()},
                 [&](const TilePos& pos){ return pos == row_end; }, true, Pokemon::RobustPlanCosts()},
             //  Its re-anchor after a wild battle in the lady's grass.
             {"East end of the lady's row to the Route 201 sign", {route201_row_3_east_end()},
-                [&](const TilePos& pos){ return pos == route201_sign_west(); }, false, Pokemon::RobustPlanCosts()},
+                [&](const TilePos& pos){ return pos == route201_sign_west(); }, false, town_plan_costs()},
         };
         for (const auto& walk : walks){
             error = check_robust_plan(logger, walk.name, maps, walk.from, walk.goal, walk.costs);
@@ -592,7 +593,7 @@ public:
         //  the plan is the user's (2026-10-30): west to the wall, a tile east
         //  into the gap's column, straight south through the gap between the
         //  signs, a tile west, then north until the Center's sign stops us
-        //  (r134a: "south 5" went 6). Not round the town.
+        //  (r134a: "south 5" went 6; seven rows on the game's grid). Not round the town.
         {
             const auto legs = Pokemon::plan_robust_route(maps.world(), {sandgem_entry_stop()},
                 [&](const TilePos& pos){ return pos == below_sign; }, town_plan_costs());
@@ -601,14 +602,14 @@ public:
                 read += " [" + Pokemon::to_string(planned.leg) + "]";
             }
             const std::vector<std::pair<Direction, size_t>> expected{
-                {Direction::WEST, 9}, {Direction::EAST, 1}, {Direction::SOUTH, 6}, {Direction::WEST, 1}, {Direction::NORTH, 2},
+                {Direction::WEST, 9}, {Direction::EAST, 1}, {Direction::SOUTH, 7}, {Direction::WEST, 1}, {Direction::NORTH, 2},
             };
             bool same = legs && legs->size() == expected.size();
             for (size_t i = 0; same && i < expected.size(); i++){
                 same = (*legs)[i].leg.direction == expected[i].first && (*legs)[i].leg.tiles == expected[i].second;
             }
             if (!same){
-                return "Sandgem's entry to below the Center's sign, town costs: expected west 9, east 1, south 6, west 1, north 2; planned" +
+                return "Sandgem's entry to below the Center's sign, town costs: expected west 9, east 1, south 7, west 1, north 2; planned" +
                     (read.empty() ? std::string(" nothing") : read) + ".";
             }
             logger.log("Sandgem's entry to below the Center's sign, town costs:" + read);
@@ -641,7 +642,7 @@ public:
         }
 
         //  00.05 in Jubilife: every leg the segment walks, from where the one
-        //  before it may have left us.
+        //  before it may have left us, with route_plan_costs() as talk_to_npc() plans.
         {
             using namespace JubilifeCity;
             const Pokemon::MapSet& town = jubilife_maps();
@@ -733,7 +734,7 @@ public:
             //  Oreburgh Gate's west exit to its road near Jubilife, and from
             //  Jubilife's east stairs to the foot of its north road.
             {
-                std::string leg_error = check_robust_plan(logger, "Route 203: Oreburgh Gate to row 17", route203_maps(),
+                std::string leg_error = check_robust_plan(logger, "Route 203: Oreburgh Gate to row 18", route203_maps(),
                     Route203::gate_exit(), on_route203_west_line);
                 failed += leg_error.empty() ? "" : leg_error + " ";
                 leg_error = check_robust_plan(logger, "Jubilife: east stairs to the north road", jubilife_east_maps(),
