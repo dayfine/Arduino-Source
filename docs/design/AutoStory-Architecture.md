@@ -23,7 +23,7 @@ Goals:
 2. **Data, not code.** A story is a table of beats a reviewer can read; places come from map data,
    not from timed holds.
 3. **Shared.** FRLG (2D, tiles) and BDSP (3D camera, tile movement) use one engine, and later 3D
-   games (SV, LA) can plug in.
+   games (SwSh, LA) can plug in.
 4. **Testable without a console.** The tables, routes and retry policy run in unit tests and
    simulations; the console confirms.
 
@@ -104,12 +104,16 @@ Goals:
 |---|---|---|---|
 | Story select database, story index, stats | shared (with SV) | `Pokemon/AutoStory/` | [#43](https://github.com/dayfine/Arduino-Source/pull/43), [#44](https://github.com/dayfine/Arduino-Source/pull/44), [#45](https://github.com/dayfine/Arduino-Source/pull/45) |
 | Grid, leg planner, LegWalker, route log, JSON maps (MapData) | shared | `Pokemon/Navigation/` | [#114](https://github.com/dayfine/Arduino-Source/pull/114) |
-| Story events and segments: checkpoints, retry, the `[Checkpoint]`/`[Event]` log | shared | `Pokemon/Navigation/Pokemon_StoryEvents*` | [#114](https://github.com/dayfine/Arduino-Source/pull/114) |
-| Story steps, builder, executor interface; run options (dropdowns, Checks, language, attempts) | shared | `Pokemon/Navigation/Pokemon_StorySteps*`, `Pokemon/Options/` | [#122](https://github.com/dayfine/Arduino-Source/pull/122) |
+| Story events and segments: checkpoints, retry, the `[Checkpoint]`/`[Event]` log | shared | `Pokemon/AutoStory/Pokemon_StoryEvents*` | [#114](https://github.com/dayfine/Arduino-Source/pull/114) |
+| Story steps, builder, executor interface; run options (dropdowns, Checks, language, attempts) | shared | `Pokemon/AutoStory/Pokemon_StorySteps*`, `Pokemon/Options/` | [#122](https://github.com/dayfine/Arduino-Source/pull/122) |
 | Maps from the decomp, route planning | per game | FRLG `Overworld/`; BDSP `Maps/` + `Data/` | FRLG [#117](https://github.com/dayfine/Arduino-Source/pull/117); BDSP maps-v4, [#127](https://github.com/dayfine/Arduino-Source/pull/127) |
 | Walker: movers, interrupts, recovery | per game, on the shared LegWalker | FRLG `Overworld/`; BDSP `Walk/` | FRLG [#118](https://github.com/dayfine/Arduino-Source/pull/118), [#119](https://github.com/dayfine/Arduino-Source/pull/119); BDSP [#129](https://github.com/dayfine/Arduino-Source/pull/129) |
 | Program, story table, executor, actions, battle, screen readers | per game | `Programs/AutoStory/` | FRLG [#120](https://github.com/dayfine/Arduino-Source/pull/120); BDSP [#128](https://github.com/dayfine/Arduino-Source/pull/128) |
 | Lab channel, run records, route pictures, lab CLI | dev tooling | `CommonFramework/Windows/Lab*`, `devtools/` | [#107](https://github.com/dayfine/Arduino-Source/pull/107), [#116](https://github.com/dayfine/Arduino-Source/pull/116)/#132, [#125](https://github.com/dayfine/Arduino-Source/pull/125), [#131](https://github.com/dayfine/Arduino-Source/pull/131) |
+
+`Pokemon/Navigation/` holds what moves the player (grids, maps, legs, the walker); `Pokemon/AutoStory/`
+holds what the story is made of (events, segments, steps, the select database). Navigation never
+includes AutoStory.
 
 A game adds: maps (a generator from its decomp), movers (how one tile is walked), interrupt
 handlers, an executor for the step kinds, and its table. Everything else is shared.
@@ -124,7 +128,7 @@ handlers, an executor for the step kinds, and its table. Everything else is shar
 | Text reading | item names only (Mart, bag) | Mart items, location banners |
 | State | proof of concept: new game → Brock, passed in pieces | v3 reached Floaroma on #1717's code; v4 without #1717 is being written |
 
-A 3D game (SV, LA) would keep the story engine and steps, and supply its own position type: a
+A 3D game (SwSh, LA) would keep the story engine and steps, and supply its own position type: a
 map point or a fly point instead of tiles. That's why `Position` in the engine is opaque, and why
 the route log is being made grid-free (planned).
 
@@ -181,6 +185,40 @@ so it behaves like the real game.
   2. HP, status, EXP, moves, whiteouts and run-mode statistics.
 
   Both run in parallel with the MVP; neither blocks it.
+
+## 6b. Reusing the existing programs (planned)
+
+The repo already automates many of the moments a story run passes through. AutoStory calls them
+as steps instead of copying them; where a routine lives inside a program class, a small upstream
+PR first moves it into a function both can call.
+
+| Story moment | Existing FRLG code | How AutoStory uses it |
+|---|---|---|
+| Starter choice | `StarterRng` | Hit the RNG'd starter at Oak's table, then continue the story |
+| Gift and static Pokemon (Lapras, Eevee, Snorlax, Mewtwo, legendary birds) | `GiftRng`, `StaticRng`, `LegendaryReset`, `RngNavigation`, `RngCalibration` | An optional RNG step at that story row; plain catch otherwise |
+| Roaming dog | `RoamingLegendaryRng` | Optional, post-game |
+| Elite Four and Champion | `EliteFourFarmer`, `PokemonLeagueDetectors`, `BattleMenuNavigation` | Its battle loop and League detectors run the last segment |
+| Healing, party and box checks | `PartyMenuDetector`, `PartyEmptySlotDetector`, box readers | Pre-checks before RNG steps (an RNG program needs an empty party slot) |
+
+An RNG step is a hand-off: AutoStory walks to the spot and saves, the RNG program runs with its
+own options (seed, target, calibration), and AutoStory takes over again when the program reports
+the Pokemon in the party. Both sides log to the same run record.
+
+## 6c. Milestones after the MVPs
+
+The MVPs (FRLG to Brock, BDSP to Floaroma) prove the engine. The larger goals, in order:
+
+1. **End to end: new game → Hall of Fame.** Every badge, the Elite Four and the Champion in one
+   run, with the default choices.
+2. **End to end with options.** A different starter, different story choices and the steps they
+   change (rival teams, gift picks such as the fossil), and optional tasks (extra catches, items,
+   side areas).
+3. **End to end with the Sevii Islands and Mewtwo.** The post-game story (Ruby, Sapphire, the
+   Network Machine) and Cerulean Cave.
+4. **Full RNG integration.** Every RNG-able Pokemon on the way (starter, gifts, statics, legendary
+   birds, Mewtwo) can be RNG'd in place through the existing programs (section 6b).
+
+Issue drafts per milestone are on the notes branch: `autostory/MILESTONES.md`.
 
 ## 7. Known limits and open problems
 
