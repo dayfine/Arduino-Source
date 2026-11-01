@@ -1526,14 +1526,16 @@ void checkpoint_0109(
 
 //  01.11: the old couple in Floaroma's flower field, left of the path in
 //  from Route 204. Walked by hand on 2026-10-31 from 01.10's save: west 8
-//  along the row (the field's bottom, purple flowers), north 2 to the tile
-//  below the old woman, talk (she gives Mew when a Let's Go save is on the
-//  console; otherwise she only talks), one tile west, face the old man
-//  above, talk (Jirachi with a Sword/Shield save). B advances their lines
-//  and never re-talks; A at the end re-opens the talk (m5, m6).
+//  along the row (the field's bottom, purple flowers), north until the old
+//  woman stops us (r249a counted two and stood a row short: no count, a
+//  clip), talk (she gives Mew when a Let's Go save is on the console;
+//  otherwise she only talks), one tile west, north until the old man stops
+//  us (a tap that cannot step still turns), talk (Jirachi with a
+//  Sword/Shield save). B advances their lines and never re-talks; A at the
+//  end re-opens the talk (m5, m6).
 void floaroma_old_couple(VideoStream& stream, ProControllerContext& context){
     StepLog step(stream, "01.11", "Floaroma's old couple in the flower field", {
-        "West 8, north 2 to the old woman",
+        "West 8, north until the old woman stops us",
         "Talk to the old woman",
         "Talk to the old man",
     });
@@ -1544,9 +1546,9 @@ void floaroma_old_couple(VideoStream& stream, ProControllerContext& context){
         if (west.stop != WalkStop::LIMIT || west.moved_chunks < 7){
             fail(stream, "Floaroma: west 8 to the flower field moved " + std::to_string(west.moved_chunks) + " tiles.");
         }
-        const WalkResult north = walk_tiles_dpad(stream, context, 0, 1, 2, "north 2 to the old woman");
-        if (north.moved_chunks < 2){
-            fail(stream, "Floaroma: north 2 to the old woman moved " + std::to_string(north.moved_chunks) + " tiles.");
+        const WalkResult north = walk_tiles_dpad(stream, context, 0, 1, 5, "north until the old woman");
+        if (north.stop != WalkStop::BLOCKED){
+            fail(stream, "Floaroma: nothing stopped the walk north to the old woman.");
         }
     }
 
@@ -1570,8 +1572,10 @@ void floaroma_old_couple(VideoStream& stream, ProControllerContext& context){
     if (west.moved_chunks < 1){
         fail(stream, "Floaroma: the step west below the old man did not move.");
     }
-    pbf_press_dpad(context, DPAD_UP, 160ms, 700ms);
-    context.wait_for_all_requests();
+    const WalkResult north = walk_tiles_dpad(stream, context, 0, 1, 3, "north until the old man");
+    if (north.stop != WalkStop::BLOCKED){
+        fail(stream, "Floaroma: nothing stopped the walk north to the old man.");
+    }
     talk("the old man");
 }
 
