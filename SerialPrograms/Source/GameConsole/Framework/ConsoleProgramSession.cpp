@@ -39,6 +39,7 @@ ConsoleProgramSession::ConsoleProgramSession(
     , m_descriptor(descriptor)
     , m_system_option(1, std::move(extra_option))
     , m_system(
+        run_logger(),
         m_system_option,
         descriptor.allow_commands_while_running(),
         0,
