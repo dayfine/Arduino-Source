@@ -120,6 +120,21 @@ std::vector<Pokemon::TilePos> walk_route(
     const Pokemon::RobustPlanCosts& costs = route_plan_costs()
 );
 
+//  Walks `from` to each of `waypoints` in turn, with walk_route() for every
+//  stretch, and returns where the last one ended. The corners of a line a
+//  human walked, so the plan is that line, with the walker's handling of
+//  trainers and blocks on each stretch (Route 204 North, 2026-10-31).
+std::vector<Pokemon::TilePos> walk_waypoints(
+    VideoStream& stream, ProControllerContext& context,
+    const Pokemon::MapSet& maps,
+    std::vector<Pokemon::TilePos> from,
+    const std::vector<Pokemon::TilePos>& waypoints,
+    std::vector<Pokemon::TrainerSight>& trainers,
+    const RouteTrainerFight& fight,
+    const std::string& label,
+    const Pokemon::RobustPlanCosts& costs = route_plan_costs()
+);
+
 //  Plan costs for walking in town: a one-tile step lands exactly, a short
 //  open leg a tile either way, and both cost little more than a leg to a
 //  wall, so a plan

@@ -718,9 +718,16 @@ public:
             //  the path between the flower beds into Floaroma.
             {
                 const Pokemon::MapSet& route = route204_north_maps();
-                const std::string leg_error = check_robust_plan(logger, "Route 204: Ravaged Path to the Floaroma path", route, {Route204::CAVE_EXIT},
-                    Route204::in_floaroma_path);
-                failed += leg_error.empty() ? "" : leg_error + " ";
+                std::vector<TilePos> at{Route204::CAVE_EXIT};
+                for (const TilePos& goal : Route204::floaroma_waypoints()){
+                    const std::string leg_error = check_robust_plan(logger, "Route 204: to " + route.describe(goal), route, at,
+                        [&](const TilePos& pos){ return pos == goal; });
+                    failed += leg_error.empty() ? "" : leg_error + " ";
+                    at = {goal};
+                }
+                if (!Route204::in_floaroma_path(at[0])){
+                    failed += "Route 204: the last waypoint is not in the path into Floaroma. ";
+                }
                 for (const Pokemon::TrainerSight& twin : Route204::north_trainer_sights()){
                     if (route.world().at(twin.pos) != Pokemon::TileType::NPC){
                         failed += "Route 204: " + twin.name + " is not on an NPC tile. ";

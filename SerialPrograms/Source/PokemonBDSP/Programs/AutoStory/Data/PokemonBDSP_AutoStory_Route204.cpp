@@ -21,9 +21,10 @@ using namespace Pokemon;
 //  items on the ground are '#'. Objects: the Ravaged Path's door, arriving
 //  on (20, 26); the twins (15, 7) and (16, 7) looking south; Aroma Lady
 //  Taylor (17, 20) looking south and east; Bug Catcher Brandon walking back
-//  and forth from (22, 13); the arrow signpost (17, 9); a Youngster who
-//  wanders around (15, 28), off the grid. The path north into Floaroma is
-//  columns 10 to 12 at the top.
+//  and forth from (22, 13), not seen on the console yet; the arrow signpost
+//  (17, 9); a Youngster who is not a trainer wanders rows 27 and 28 below
+//  the cave, off the grid. The path north into Floaroma is columns 10 to 12
+//  at the top.
 //  The 2026-10-29 hand run went out of the cave, west to the stairs, up them
 //  into the pocket the ledge (row 15) closes, back down, east and north
 //  through the tall grass, and west below the flower beds past the twins.
@@ -83,17 +84,19 @@ std::vector<TrainerSight> north_trainer_sights(){
     };
 }
 
-std::vector<TilePos> wander_tiles(){
-    //  Platinum's data has him wandering a tile either side of (15, 28);
-    //  on the console (r239a, r240a) he stood in the row above too, between
-    //  columns 12 and 15, and twice stopped a walk west along row 27.
-    std::vector<TilePos> tiles;
-    for (int x = 12; x <= 17; x++){
-        for (int y = 27; y <= 28; y++){
-            tiles.push_back({x, y});
-        }
-    }
-    return tiles;
+std::vector<TilePos> floaroma_waypoints(){
+    //  The line a human walked on 2026-10-31 (recorded; drawn over the DP
+    //  map image): a tile south out of the cave's mouth; west along the row
+    //  under the cliff, where the Youngster wanders (he stood a row below
+    //  as we passed; the walker waits for him when he is in the way); north
+    //  up the middle of the stairs; east along the corridor, where Aroma
+    //  Lady Taylor sees us at column 17 and walks over for her battle; north
+    //  up column 19 through the tall grass; west below the flower beds;
+    //  north between the beds. The DP image shows a trainer sprite at
+    //  (20, 12), by the corner where the line turns west: not seen yet on
+    //  the console. The ledge on row 15 closes the stairs' column going
+    //  north, so the line goes round through the grass.
+    return {{20, 27}, {11, 27}, {11, 22}, {19, 22}, {19, 12}, {12, 12}, {12, 5}};
 }
 
 

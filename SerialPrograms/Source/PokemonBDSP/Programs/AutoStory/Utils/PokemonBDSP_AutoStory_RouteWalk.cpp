@@ -459,6 +459,60 @@ std::vector<TilePos> walk_route(
                     stream.log("[Route] " + leg_label + ": " + std::to_string(result.wild_battles) +
                         " wild battle(s) on the way; the tap count holds.", COLOR_ORANGE);
                 }
+                //  Taps that moved nothing: someone stands in the way (the
+                //  Youngster below the Ravaged Path wanders across the row
+                //  under the cliff, r239a, r240a). Two still taps end the walk,
+                //  so the tiles moved are the taps less those two. Wait for
+                //  them to move on and tap the rest; someone who stays is
+                //  talked to, put on the map, and the leg planned again from
+                //  the tile we stand on, which the taps give exactly.
+                auto taps_moved = [](const WalkResult& walk){
+                    const size_t taps = (size_t)(walk.walked / 800ms);
+                    return walk.stop == WalkStop::BLOCKED ? (taps < 2 ? 0 : taps - 2) : taps;
+                };
+                size_t moved = std::min(leg.tiles, taps_moved(result));
+                for (size_t again = 0; again < 3 && result.stop == WalkStop::BLOCKED && moved < leg.tiles; again++){
+                    stream.log("[Route] " + leg_label + ": blocked after " + std::to_string(moved) + " of " +
+                        std::to_string(leg.tiles) + " tiles; waiting for the way to clear.", COLOR_ORANGE);
+                    pbf_wait(context, 2500ms);
+                    context.wait_for_all_requests();
+                    const WalkResult rest = walk_tiles_dpad(stream, context, x, y, leg.tiles - moved, leg_label + ": the rest");
+                    moved = std::min(leg.tiles, moved + taps_moved(rest));
+                    result.stop = rest.stop;
+                    result.walked += rest.walked;
+                    result.wild_battles += rest.wild_battles;
+                }
+                if (result.stop == WalkStop::BLOCKED && moved < leg.tiles){
+                    pbf_press_button(context, BUTTON_A, 80ms, 200ms);
+                    {
+                        ShortDialogWatcher dialog(COLOR_YELLOW);
+                        if (wait_until(stream, context, 2000ms, {{dialog}}) == 0){
+                            route_status(stream, leg_label + ": someone is in the way; talking to them.");
+                            fight("someone in the way");
+                        }
+                    }
+                    std::vector<TilePos> stopped;
+                    for (const TilePos& pos : from){
+                        const std::vector<TilePos> path = leg_path(grid, pos, leg.direction, moved);
+                        stopped.push_back(moved == 0 || path.empty() ? pos : path[std::min(moved, path.size()) - 1]);
+                    }
+                    std::sort(stopped.begin(), stopped.end(), [](const TilePos& a, const TilePos& b){
+                        return a.y != b.y ? a.y < b.y : a.x < b.x;
+                    });
+                    stopped.erase(std::unique(stopped.begin(), stopped.end()), stopped.end());
+                    if (stopped.size() == 1){
+                        const TilePos blocker = stopped[0].next(leg.direction);
+                        grid.set(blocker, TileType::BLOCKED);
+                        stream.log("[Route] " + leg_label + ": something the map lacks is at " +
+                            maps.describe(blocker) + "; marked it.", COLOR_ORANGE);
+                    }
+                    stream.log("[Route] " + leg_label + ": blocked after " + std::to_string(moved) + " of " +
+                        std::to_string(leg.tiles) + " tiles, at " + describe(maps, stopped) + "; planning again.", COLOR_ORANGE);
+                    facing = leg.direction;
+                    from = stopped;
+                    replanned = true;
+                    break;
+                }
             }
             facing = leg.direction;
             {
@@ -631,6 +685,27 @@ std::vector<TilePos> walk_route(
 }
 
 
+
+std::vector<TilePos> walk_waypoints(
+    VideoStream& stream, ProControllerContext& context,
+    const MapSet& maps,
+    std::vector<TilePos> from,
+    const std::vector<TilePos>& waypoints,
+    std::vector<TrainerSight>& trainers,
+    const RouteTrainerFight& fight,
+    const std::string& label,
+    const RobustPlanCosts& costs
+){
+    for (size_t i = 0; i < waypoints.size(); i++){
+        const TilePos goal = waypoints[i];
+        from = walk_route(stream, context, maps, from,
+            [&](const TilePos& pos){ return pos == goal; },
+            trainers, fight,
+            label + " (" + std::to_string(i + 1) + "/" + std::to_string(waypoints.size()) + ", to " + maps.describe(goal) + ")",
+            {}, costs);
+    }
+    return from;
+}
 
 void talk_to_npc(
     VideoStream& stream, ProControllerContext& context,

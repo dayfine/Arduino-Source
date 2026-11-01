@@ -31,8 +31,9 @@ bool in_floaroma_path(const Pokemon::TilePos& pos);
 //  us walk past below them.
 std::vector<Pokemon::TrainerSight> north_trainer_sights();
 
-//  Where the Youngster below the cave wanders: a route keeps out of it.
-std::vector<Pokemon::TilePos> wander_tiles();
+//  The corners of the line into Floaroma from the cave's exit, as a human
+//  walked it (2026-10-31): the last is in the path into Floaroma.
+std::vector<Pokemon::TilePos> floaroma_waypoints();
 
 
 }

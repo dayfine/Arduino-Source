@@ -1364,20 +1364,24 @@ void route204_to_floaroma(VideoStream& stream, ProControllerContext& context){
     });
 
     step(1);
-    // On the grid from the game's data (Data/PokemonBDSP_AutoStory_Route204):
-    // south to the bottom row, clear of the Youngster who wanders below the
-    // cave, west to the wall and up the stairs, east along the corridor and
-    // north through the tall grass, west below the flower beds, and north
-    // between the beds into Floaroma (offline plan: 7 legs).
+    // The line a human walked (Data/PokemonBDSP_AutoStory_Route204,
+    // floaroma_waypoints()): a tile south out of the cave's mouth, west along
+    // the row under the cliff past the Youngster who wanders there, up the
+    // stairs, east along the corridor into Aroma Lady Taylor's battle, north
+    // through the tall grass, west below the flower beds, and north between
+    // the beds into Floaroma. Whole tiles on the D-pad, corner to corner.
     {
-        std::vector<Pokemon::TrainerSight> twins = Route204::north_trainer_sights();
+        std::vector<Pokemon::TrainerSight> trainers = Route204::north_trainer_sights();
         auto fight = [&](const std::string& who){
             const bool doubles = who.find("Twins") != std::string::npos || who.find("someone") != std::string::npos;
             talk_or_fight(stream, context, who, false, doubles);
         };
         std::vector<Pokemon::TilePos> at{Route204::CAVE_EXIT};
-        at = walk_route(stream, context, route204_north_maps(), at, Route204::in_floaroma_path,
-            twins, fight, "To the path into Floaroma", Route204::wander_tiles());
+        at = walk_waypoints(stream, context, route204_north_maps(), at, Route204::floaroma_waypoints(),
+            trainers, fight, "To the path into Floaroma");
+        if (!std::all_of(at.begin(), at.end(), Route204::in_floaroma_path)){
+            fail(stream, "Route 204: the walk did not end in the path into Floaroma.");
+        }
         // Floaroma's arrival did not read as a black screen by hand ("limit
         // after 20000ms", and we stood in the town), so either will do.
         const WalkResult in = walk_dir(stream, context, Direction::NORTH, 20000ms, "north into Floaroma");
