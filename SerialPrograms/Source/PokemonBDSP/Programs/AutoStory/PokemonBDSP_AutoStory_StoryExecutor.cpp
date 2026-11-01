@@ -17,10 +17,11 @@
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "CommonTools/Async/InferenceRoutines.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
-#include "Pokemon/Navigation/Pokemon_TilePose.h"
+#include "Pokemon/AutoStory/Pokemon_TilePose.h"
 #include "PokemonBDSP/Inference/PokemonBDSP_DialogDetector.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_PlanCosts.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Indoors.h"
+#include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_PlannedRoute.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_RouteWalk.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Walk.h"
 #include "PokemonBDSP_AutoStory_Actions.h"
@@ -138,15 +139,21 @@ Pose StoryExecutor::walk_to(const Pose& from, const Pose& goal, const StoryStep&
     for (const TilePos& pos : Pokemon::tiles_of(goal)){
         targets.push_back(story_to_world(*maps, goal.map, pos));
     }
-    std::vector<TrainerSight> no_trainers;
+    //  Only Route 202's trainers are known; the ones fought stay off
+    //  m_trainers until the next attempt.
     const bool south = maps == story_plan_world("Route202", "Route202");
-    const std::vector<TilePos> at = walk_route(
-        stream(), context(), run_from_wild_battle, *maps, start,
+    RouteTrainers trainers{
+        south ? m_trainers : std::vector<TrainerSight>{},
+        [this](const std::string& trainer){ fight_route_trainer(stream(), context(), trainer); }
+    };
+    const RouteWalkPlan plan{
         [&](const TilePos& pos){ return std::find(targets.begin(), targets.end(), pos) != targets.end(); },
-        south ? m_trainers : no_trainers,
-        [this](const std::string& trainer){ fight_route_trainer(stream(), context(), trainer); },
         label_of(step), {}, *costs
-    );
+    };
+    const std::vector<TilePos> at = walk_route(stream(), context(), run_from_wild_battle, *maps, start, trainers, plan);
+    if (south){
+        m_trainers = std::move(trainers.sights);
+    }
     std::vector<TilePos> local;
     for (const TilePos& pos : at){
         const std::optional<TilePos> tile = story_to_local(*maps, goal.map, pos);
@@ -193,7 +200,7 @@ Outcome StoryExecutor::legs(RunState& state, const StoryStep& step){
         route_turn(stream(), context(), leg.direction);
         const auto [x, y] = dpad_of(leg.direction);
         const size_t tiles = (size_t)leg.tiles;
-        const WalkResult walk = walk_tiles_dpad(stream(), context(), run_from_wild_battle, x, y, tiles, step.name);
+        const WalkResult walk = walk_tiles_dpad(stream(), context(), run_from_wild_battle, {x, y}, tiles, step.name);
         stream().log(std::format("[{}] {}: taps {} moved {} of {} tiles.", m_checkpoint, step.name, direction_name(leg.direction), walk.moved_chunks, tiles));
         if (walk.moved_chunks + (one_short_ok ? 1 : 0) < tiles){
             return Pokemon::outcome_failed("short_leg", std::format("{} {} moved {}", direction_name(leg.direction), tiles, walk.moved_chunks));
@@ -218,7 +225,7 @@ Outcome StoryExecutor::legs(RunState& state, const StoryStep& step){
 Outcome StoryExecutor::step(RunState& state, const StoryStep& step){
     route_turn(stream(), context(), step.direction);
     const auto [x, y] = dpad_of(step.direction);
-    const WalkResult walk = walk_tiles_dpad(stream(), context(), run_from_wild_battle, x, y, 1, step.name);
+    const WalkResult walk = walk_tiles_dpad(stream(), context(), run_from_wild_battle, {x, y}, 1, step.name);
     stream().log(std::format("[{}] {}: a step {}, {}.", m_checkpoint, step.name, direction_name(step.direction), walk_stop_name(walk.stop)));
     std::vector<TilePos> at;
     for (const TilePos& pos : Pokemon::tiles_of(state.pose)){

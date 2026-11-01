@@ -12,7 +12,7 @@
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
-#include "Pokemon/Navigation/Pokemon_StorySteps.h"
+#include "Pokemon/AutoStory/Pokemon_StorySteps.h"
 #include "Data/PokemonBDSP_AutoStory_Maps.h"
 #include "Data/PokemonBDSP_AutoStory_PlanCosts.h"
 #include "Data/PokemonBDSP_AutoStory_RoutePlanner.h"
@@ -133,17 +133,17 @@ private:
             if (leg.tiles == 0){
                 at = slide_to_wall(maps, at, leg.direction).stop;
             }else{
-                const std::optional<TilePos> next = maps.step(at, leg.direction);
+                const std::optional<TilePos> next = PokemonBDSP::step(maps, at, leg.direction);
                 if (!next){
-                    return leg.name + ": blocked at " + maps.describe(at) + ".";
+                    return leg.name + ": blocked at " + describe(maps, at) + ".";
                 }
                 at = *next;
             }
             //  The tap east lands on whichever row we stood on.
             if (&leg != &legs.front() && !(at == leg.end)){
-                return leg.name + ": ends at " + maps.describe(at) + ", not " + maps.describe(leg.end) + ".";
+                return leg.name + ": ends at " + describe(maps, at) + ", not " + describe(maps, leg.end) + ".";
             }
-            logger.log(leg.name + ": " + maps.describe(at));
+            logger.log(leg.name + ": " + describe(maps, at));
         }
         return "";
     }
@@ -172,7 +172,7 @@ public:
         std::vector<TilePos> at{map_point("Route204North", "cave_exit")};
         for (size_t i = 0; i < waypoints.size(); i++){
             const TilePos goal = waypoints[i];
-            const std::string name = std::format("Route 204 North stretch {} to {}", i + 1, route.describe(goal));
+            const std::string name = std::format("Route 204 North stretch {} to {}", i + 1, describe(route, goal));
             const auto plan = plan_robust_route(route, at, [&](const TilePos& pos){ return pos == goal; }, waypoint_plan_costs());
             if (!plan){
                 return name + ": no plan.";

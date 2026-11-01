@@ -18,6 +18,7 @@
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_Maps.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_StoryMaps.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Location.h"
+#include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_PlannedRoute.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_RouteWalk.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Walk.h"
 #include "PokemonBDSP_AutoStory_Bag.h"
@@ -70,7 +71,7 @@ bool walk_north_through_gap(VideoStream& stream, ProControllerContext& context) 
     using Pokemon::Direction;
     std::vector<std::string> banners;
     for (size_t nudges = 0;; nudges++){
-        const WalkResult north = walk_until(stream, context, run_from_wild_battle, 0, 1, 8000ms, "North through the gap", banner_keeper(banners));
+        const WalkResult north = walk_until(stream, context, run_from_wild_battle, {0, 1}, 8000ms, "North through the gap", banner_keeper(banners));
         if (north.stop == WalkStop::TRANSITION || north.stop == WalkStop::DIALOG || north.wild_battles > 0){
             OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
                 "North through the gap: " + std::string(walk_stop_name(north.stop)) + " instead of a wall.", stream);
@@ -85,7 +86,7 @@ bool walk_north_through_gap(VideoStream& stream, ProControllerContext& context) 
         }
         route_status(stream, "North through the gap: blocked at once, below a sign or the Mart; a tile west.");
         route_turn(stream, context, Direction::WEST);
-        walk_for(stream, context, run_from_wild_battle, -1, 0, route_open_hold(Direction::WEST, 1), "A tile west");
+        walk_for(stream, context, run_from_wild_battle, {-1, 0}, route_open_hold(Direction::WEST, 1), "A tile west");
         route_turn(stream, context, Direction::NORTH);
     }
     context.wait_for_all_requests();
@@ -110,7 +111,7 @@ std::vector<TilePos> north_through_sign_gap(VideoStream& stream, ProControllerCo
     using Pokemon::Direction;
     route_status(stream, "To the gap between the Center's and the Mart's signs: west 6.");
     route_turn(stream, context, Direction::WEST);
-    walk_for(stream, context, run_from_wild_battle, -1, 0, route_open_hold(Direction::WEST, 6), "To the gap between the signs");
+    walk_for(stream, context, run_from_wild_battle, {-1, 0}, route_open_hold(Direction::WEST, 6), "To the gap between the signs");
     const bool on_route = walk_north_through_gap(stream, context);
     std::vector<TilePos> ends;
     for (const TilePos& pos : map_region("SandgemTown", "below_sign_gap")){
@@ -132,17 +133,15 @@ std::vector<TilePos> north_through_sign_gap(VideoStream& stream, ProControllerCo
 // of town on a map that had it wrong, walked into a house.
 void walk_to_route_202_save_spot(
     VideoStream& stream, ProControllerContext& context, const StoryWorld& maps,
-    std::vector<TilePos> at, std::vector<TrainerSight>& trainers, const RouteTrainerFight& fight
+    std::vector<TilePos> at, RouteTrainers& trainers
 ) {
     const TilePos row_end = maps.to_world(MAP_SANDGEM_TOWN, map_point("SandgemTown", "front_row_east_end"));
     const TilePos save_spot = maps.to_world(MAP_ROUTE_202, map_point("Route202", "save_spot"));
     if (!all_on_map(maps, at, MAP_ROUTE_202)) {
-        at = walk_route(stream, context, run_from_wild_battle, maps, std::move(at),
-            [&](const TilePos& pos) { return pos == row_end; }, trainers, fight, "To the trees east of the Poke Mart");
+        at = walk_route(stream, context, run_from_wild_battle, maps, std::move(at), trainers, RouteWalkPlan{[&](const TilePos& pos) { return pos == row_end; }, "To the trees east of the Poke Mart", {}, route_plan_costs()});
         at = north_through_sign_gap(stream, context, maps);
     }
-    walk_route(stream, context, run_from_wild_battle, maps, std::move(at),
-        [&](const TilePos& pos) { return pos == save_spot; }, trainers, fight, "Back to Route 202");
+    walk_route(stream, context, run_from_wild_battle, maps, std::move(at), trainers, RouteWalkPlan{[&](const TilePos& pos) { return pos == save_spot; }, "Back to Route 202", {}, route_plan_costs()});
 }
 
 // North into Jubilife until Dawn's scene starts (00.04d's
@@ -153,7 +152,7 @@ void walk_to_route_202_save_spot(
 // are further west. The scene itself is the next step.
 void up_jubilife_stairs(VideoStream& stream, ProControllerContext& context) {
     for (size_t attempt = 0; attempt < 6; attempt++) {
-        const WalkResult walk = walk_until(stream, context, run_from_wild_battle, 0, 1, 4000ms, "to Dawn in Jubilife");
+        const WalkResult walk = walk_until(stream, context, run_from_wild_battle, {0, 1}, 4000ms, "to Dawn in Jubilife");
         if (walk.stop == WalkStop::TRANSITION) {
             OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
                 "Jubilife: left the area instead of meeting Dawn.", stream);
@@ -219,9 +218,8 @@ void mart_lady(VideoStream& stream, ProControllerContext& context){
     walk_until_stopped(stream, context, Direction::EAST, 40, "East along the path");
     walk_until_stopped(stream, context, Direction::NORTH, 2, "North to the front row");
     const StoryWorld& maps = story_maps();
-    std::vector<TrainerSight> trainers = story_trainer_sights();
-    const RouteTrainerFight fight = [&](const std::string& name){ fight_route_trainer(stream, context, name); };
-    walk_to_route_202_save_spot(stream, context, maps, {maps.to_world(MAP_SANDGEM_TOWN, map_point("SandgemTown", "front_row_east_end"))}, trainers, fight);
+    RouteTrainers trainers{story_trainer_sights(), [&](const std::string& name){ fight_route_trainer(stream, context, name); }};
+    walk_to_route_202_save_spot(stream, context, maps, {maps.to_world(MAP_SANDGEM_TOWN, map_point("SandgemTown", "front_row_east_end"))}, trainers);
 }
 
 //  00.04c's potions step, from the save out of Sandgem's Center: the Poke
@@ -231,8 +229,8 @@ void sandgem_potions(VideoStream& stream, ProControllerContext& context){
     // Onto the doors' row first: out of the door we stand a tile to
     // three below it (r261 walked west into the trees from three).
     route_turn(stream, context, Direction::EAST);
-    walk_tiles_dpad(stream, context, run_from_wild_battle, 1, 0, 1, "east under the Center's wall");
-    const WalkResult up = walk_until(stream, context, run_from_wild_battle, 0, 1, 3000ms, "north to the Center's front");
+    walk_tiles_dpad(stream, context, run_from_wild_battle, {1, 0}, 1, "east under the Center's wall");
+    const WalkResult up = walk_until(stream, context, run_from_wild_battle, {0, 1}, 3000ms, "north to the Center's front");
     if (up.stop != WalkStop::BLOCKED){
         fail_step(stream, std::string("Sandgem: north to the Center's front ended ") + walk_stop_name(up.stop) + ".");
     }

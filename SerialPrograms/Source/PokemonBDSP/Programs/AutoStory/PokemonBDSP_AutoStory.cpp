@@ -12,7 +12,7 @@
 #include "CommonFramework/Notifications/ProgramNotifications.h"
 #include "NintendoSwitch/Programs/NintendoSwitch_GameEntry.h"
 #include "Pokemon/AutoStory/Pokemon_AutoStoryStats.h"
-#include "Pokemon/Navigation/Pokemon_StorySegments.h"
+#include "Pokemon/AutoStory/Pokemon_StorySegments.h"
 #include "PokemonBDSP/Programs/PokemonBDSP_GameEntry.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Location.h"
 #include "PokemonBDSP_AutoStory_StoryTable.h"
@@ -138,7 +138,7 @@ void BDSPAutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerCo
         throw UserSetupError(env.console, "The start checkpoint must not come after the end checkpoint.");
     }
     //  The reads that use text (Location.h) take the game's language from here.
-    g_story_language = RUN.language();
+    set_story_language(RUN.language());
 
     StoryEnv story{env, context, STARTER, PLAYER_NAME};
     StoryExecutor executor(story);

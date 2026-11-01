@@ -38,8 +38,8 @@ namespace{
 //  them: a tile west (the first press only turns), then up the steps.
 void up_the_steps(VideoStream& stream, ProControllerContext& context){
     route_turn(stream, context, Direction::WEST);
-    walk_for(stream, context, run_from_wild_battle, -1, 0, 200ms, "To the steps");
-    const WalkResult up = walk_for(stream, context, run_from_wild_battle, 0, 1, 480ms, "Up the steps");
+    walk_for(stream, context, run_from_wild_battle, {-1, 0}, 200ms, "To the steps");
+    const WalkResult up = walk_for(stream, context, run_from_wild_battle, {0, 1}, 480ms, "Up the steps");
     if (up.stop == WalkStop::DIALOG || up.stop == WalkStop::TRANSITION){
         fail_step(stream, std::string("Up the steps: ") + walk_stop_name(up.stop) + ".");
     }
@@ -127,7 +127,7 @@ void meet_the_president(VideoStream& stream, ProControllerContext& context){
     for (size_t tiles = 0; tiles < 4; tiles++){
         hold_for(stream, context, Direction::EAST, 160ms, "East into the road");
     }
-    walk_until(stream, context, run_from_wild_battle, 0, 1, 6 * ROUTE_MS_PER_TILE_UP_DOWN + 800ms, "The Poketch Company president");
+    walk_until(stream, context, run_from_wild_battle, {0, 1}, 6 * ROUTE_MS_PER_TILE_UP_DOWN + 800ms, "The Poketch Company president");
     //  He walks up after the "!" and only then talks.
     ShortDialogWatcher opened(COLOR_CYAN);
     if (wait_until(stream, context, 5000ms, {{opened}}) != 0){
@@ -321,7 +321,7 @@ void jubilife_center_to_street(VideoStream& stream, ProControllerContext& contex
     pbf_move_left_joystick(context, {0, -1}, route_open_hold(Direction::SOUTH, 2), 200ms);
     route_turn(stream, context, Direction::WEST);
     pbf_move_left_joystick(context, {-1, 0}, route_open_hold(Direction::WEST, 3), 200ms);
-    if (walk_to_talk(stream, context, run_from_wild_battle, 0, 1, 3000ms, "to the nurse").stop != WalkStop::DIALOG){
+    if (walk_to_talk(stream, context, run_from_wild_battle, {0, 1}, 3000ms, "to the nurse").stop != WalkStop::DIALOG){
         fail_step(stream, "Jubilife Pokemon Center: the nurse did not answer.");
     }
     // A throughout: Yes to "rest your Pokemon?" (B would answer No).
@@ -335,7 +335,7 @@ void jubilife_center_to_street(VideoStream& stream, ProControllerContext& contex
     // door's fade may or may not read as a transition.
     WalkResult out{WalkStop::LIMIT, 0ms, 0};
     for (size_t walk = 0; walk < 3 && out.stop != WalkStop::BLOCKED; walk++){
-        out = walk_until(stream, context, run_from_wild_battle, 0, -1, 8000ms, "out of the Pokemon Center");
+        out = walk_until(stream, context, run_from_wild_battle, {0, -1}, 8000ms, "out of the Pokemon Center");
         if (out.stop == WalkStop::DIALOG || out.stop == WalkStop::ARRIVED){
             break;
         }
@@ -377,7 +377,7 @@ void east_to_barry(VideoStream& stream, ProControllerContext& context){
         context.wait_for_all_requests();
         WalkResult walk{WalkStop::LIMIT, 0ms, 0};
         for (size_t stretch = 0; stretch < 3 && walk.stop == WalkStop::LIMIT; stretch++){
-            walk = walk_until(stream, context, run_from_wild_battle, 1, 0, 9000ms, "east to Route 203");
+            walk = walk_until(stream, context, run_from_wild_battle, {1, 0}, 9000ms, "east to Route 203");
         }
         barry = walk.stop == WalkStop::DIALOG;
     }

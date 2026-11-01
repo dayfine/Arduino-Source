@@ -3,7 +3,7 @@
  *  From: https://github.com/PokemonAutomation/
  *
  *  The story from a new game to Floaroma, 00.00 to 01.11, as rows of the
- *  shared story steps (Pokemon/Navigation/Pokemon_StorySteps.h): plain
+ *  shared story steps (Pokemon/AutoStory/Pokemon_StorySteps.h): plain
  *  data, as FRLG's table is, so the tests plan its routes and run it
  *  against a fake game. Each row but 00.00 saves at its start, which is
  *  where the row before it ends.

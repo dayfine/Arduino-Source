@@ -20,6 +20,8 @@
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_Maps.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_StoryMaps.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Location.h"
+#include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_PlanCosts.h"
+#include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_PlannedRoute.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_RouteWalk.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Walk.h"
 #include "PokemonBDSP_AutoStory_Talks.h"
@@ -71,7 +73,7 @@ void north_out_of_jubilife(VideoStream& stream, ProControllerContext& context){
     // The street's column 14 carries on as the route's; the location banner
     // names Route 204 as we cross. A D-pad walk keeps the column; it may
     // stop a tile or two past the border, which the entry set allows for.
-    const WalkResult out = walk_until_dpad(stream, context, run_from_wild_battle, 0, 1, 8000ms, "north out of Jubilife", location_banner_showing);
+    const WalkResult out = walk_until_dpad(stream, context, run_from_wild_battle, {0, 1}, 8000ms, "north out of Jubilife", {.arrived = location_banner_showing});
     if (out.stop != WalkStop::ARRIVED){
         fail_step(stream, "Jubilife: no Route 204 banner walking north up the street.");
     }
@@ -89,12 +91,9 @@ void route_204_south_to_the_door(VideoStream& stream, ProControllerContext& cont
     // who is not a trainer wanders in front of the door, and the walker
     // waits for him.
     {
-        std::vector<TrainerSight> trainers = route204_south_trainer_sights();
-        auto fight = [&](const std::string& who){ talk_or_fight(stream, context, who); };
+        RouteTrainers trainers{route204_south_trainer_sights(), [&](const std::string& who){ talk_or_fight(stream, context, who); }};
         const std::vector<Pokemon::TilePos> at = walk_route(stream, context, run_from_wild_battle, route204_south_maps(),
-            map_region("Route204South", "jubilife_entry"),
-            [](const Pokemon::TilePos& pos){ return pos == map_point("Route204South", "below_door"); },
-            trainers, fight, "Route 204 South to the Ravaged Path", route204_south_tiles_to_avoid(), town_plan_costs());
+            map_region("Route204South", "jubilife_entry"), trainers, RouteWalkPlan{[](const Pokemon::TilePos& pos){ return pos == map_point("Route204South", "below_door"); }, "Route 204 South to the Ravaged Path", route204_south_tiles_to_avoid(), town_plan_costs()});
         if (at.size() != 1 || !(at[0] == map_point("Route204South", "below_door"))){
             fail_step(stream, "Route 204: the walk did not end below the Ravaged Path's door.");
         }
@@ -116,7 +115,6 @@ void through_the_ravaged_path(VideoStream& stream, ProControllerContext& context
     // across the lower corridor, smash it, then east and south to the
     // corridor's east end; the way out is a tile west of it, south.
     {
-        std::vector<TrainerSight> no_trainers;
         //  Blocked short of a wall in here, it is a rock the plan counted on
         //  being gone (r237a: the walker took one for a person and said No).
         auto in_the_way = [&](const std::string& who){
@@ -124,14 +122,13 @@ void through_the_ravaged_path(VideoStream& stream, ProControllerContext& context
                 talk_or_fight(stream, context, who);
             }
         };
+        RouteTrainers no_trainers{{}, in_the_way};
         std::vector<Pokemon::TilePos> at{map_point("RavagedPath", "entrance")};
         const StoryWorld rocks_in = ravaged_path_maps();
-        at = walk_route(stream, context, run_from_wild_battle, rocks_in, at,
-            [&](const Pokemon::TilePos& pos){
+        at = walk_route(stream, context, run_from_wild_battle, rocks_in, at, no_trainers, RouteWalkPlan{[&](const Pokemon::TilePos& pos){
                 const auto& before = map_region("RavagedPath", "before_rocks");
                 return std::find(before.begin(), before.end(), pos) != before.end();
-            },
-            no_trainers, in_the_way, "To a rock across the corridor");
+            }, "To a rock across the corridor", {}, route_plan_costs()});
         route_turn(stream, context, Direction::EAST);
         if (!talk_with_nudges(stream, context, run_from_wild_battle, Direction::EAST, "the rock east of us", 2000ms)){
             fail_step(stream, "Ravaged Path: nothing answered facing the rock east of us.");
@@ -146,9 +143,7 @@ void through_the_ravaged_path(VideoStream& stream, ProControllerContext& context
             smashed.push_back(pos.next(Direction::EAST));
         }
         const StoryWorld rocks_out = ravaged_path_maps(smashed);
-        at = walk_route(stream, context, run_from_wild_battle, rocks_out, at,
-            [&](const Pokemon::TilePos& pos){ return pos == map_point("RavagedPath", "east_end"); },
-            no_trainers, in_the_way, "To the corridor's east end");
+        at = walk_route(stream, context, run_from_wild_battle, rocks_out, at, no_trainers, RouteWalkPlan{[&](const Pokemon::TilePos& pos){ return pos == map_point("RavagedPath", "east_end"); }, "To the corridor's east end", {}, route_plan_costs()});
         dpad_tiles(stream, context, DPAD_LEFT, 1, "west onto the tile above the way out");
         const WalkResult out = walk_dir(stream, context, Direction::SOUTH, 4000ms, "south out of the Ravaged Path");
         if (out.stop != WalkStop::TRANSITION && out.stop != WalkStop::LIMIT){
@@ -167,20 +162,18 @@ void route_204_to_floaroma(VideoStream& stream, ProControllerContext& context){
     // through the tall grass, west below the flower beds, and north between
     // the beds into Floaroma. Whole tiles on the D-pad, corner to corner.
     {
-        std::vector<TrainerSight> trainers = route204_north_trainer_sights();
-        auto fight = [&](const std::string& who){
+        RouteTrainers trainers{route204_north_trainer_sights(), [&](const std::string& who){
             const bool doubles = who.find("Twins") != std::string::npos || who.find("someone") != std::string::npos;
             talk_or_fight(stream, context, who, false, doubles);
-        };
+        }};
         std::vector<Pokemon::TilePos> at{map_point("Route204North", "cave_exit")};
-        at = walk_waypoints(stream, context, run_from_wild_battle, route204_north_maps(), at, map_region("Route204North", "floaroma_waypoints"),
-            trainers, fight, "To the path into Floaroma");
+        at = walk_waypoints(stream, context, run_from_wild_battle, route204_north_maps(), at, trainers, WaypointWalkPlan{map_region("Route204North", "floaroma_waypoints"), "To the path into Floaroma", waypoint_plan_costs()});
         if (!std::all_of(at.begin(), at.end(), in_floaroma_path)){
             fail_step(stream, "Route 204: the walk did not end in the path into Floaroma.");
         }
         // North until the town's banner shows: the checkpoint ends right
         // there, where the save goes (r247a walked 20 s on and overshot).
-        const WalkResult in = walk_until_dpad(stream, context, run_from_wild_battle, 0, 1, 12000ms, "north into Floaroma", location_banner_showing);
+        const WalkResult in = walk_until_dpad(stream, context, run_from_wild_battle, {0, 1}, 12000ms, "north into Floaroma", {.arrived = location_banner_showing});
         if (in.stop != WalkStop::ARRIVED){
             fail_step(stream, "Route 204: no location banner walking north into Floaroma.");
         }
@@ -197,13 +190,13 @@ void route_204_to_floaroma(VideoStream& stream, ProControllerContext& context){
 //  01.11: west 8 along the flower field's bottom row, north until the old woman stops us.
 void west_8_north_to_the_old_woman(VideoStream& stream, ProControllerContext& context){
     {
-        const WalkResult west = walk_tiles_dpad(stream, context, run_from_wild_battle, -1, 0, 8, "west 8 to the flower field");
+        const WalkResult west = walk_tiles_dpad(stream, context, run_from_wild_battle, {-1, 0}, 8, "west 8 to the flower field");
         if (west.stop != WalkStop::LIMIT || west.moved_chunks < 7){
             fail_step(stream, "Floaroma: west 8 to the flower field moved " + std::to_string(west.moved_chunks) + " tiles.");
         }
         //  Blocked, or out of taps with the last ones bumping: either way
         //  she is in front of us (r250a: 3 steps, 2 bumps, "limit").
-        const WalkResult north = walk_tiles_dpad(stream, context, run_from_wild_battle, 0, 1, 5, "north until the old woman");
+        const WalkResult north = walk_tiles_dpad(stream, context, run_from_wild_battle, {0, 1}, 5, "north until the old woman");
         if (north.stop != WalkStop::BLOCKED && north.moved_chunks >= 5){
             fail_step(stream, "Floaroma: nothing stopped the walk north to the old woman.");
         }
@@ -212,11 +205,11 @@ void west_8_north_to_the_old_woman(VideoStream& stream, ProControllerContext& co
 
 //  01.11: one tile west, then a tap north: the old man stands there, so the tap only turns.
 void below_the_old_man(VideoStream& stream, ProControllerContext& context){
-    const WalkResult west = walk_tiles_dpad(stream, context, run_from_wild_battle, -1, 0, 1, "west 1 below the old man");
+    const WalkResult west = walk_tiles_dpad(stream, context, run_from_wild_battle, {-1, 0}, 1, "west 1 below the old man");
     if (west.moved_chunks < 1){
         fail_step(stream, "Floaroma: the step west below the old man did not move.");
     }
-    const WalkResult north = walk_tiles_dpad(stream, context, run_from_wild_battle, 0, 1, 3, "north until the old man");
+    const WalkResult north = walk_tiles_dpad(stream, context, run_from_wild_battle, {0, 1}, 3, "north until the old man");
     if (north.stop != WalkStop::BLOCKED && north.moved_chunks >= 3){
         fail_step(stream, "Floaroma: nothing stopped the walk north to the old man.");
     }

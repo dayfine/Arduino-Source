@@ -219,7 +219,7 @@ void finish_talk(VideoStream& stream, ProControllerContext& context, DialogueRea
     //  For the log only; a talk is checked by its box opening and closing.
     VideoSnapshot screen = stream.video().snapshot();
     if (screen && story_reads_text()){
-        read.text = OCR::ocr_read(g_story_language, extract_box_reference(*screen.frame, SIGN_TEXT), OCR::PageSegMode::SINGLE_BLOCK);
+        read.text = OCR::ocr_read(story_language(), extract_box_reference(*screen.frame, SIGN_TEXT), OCR::PageSegMode::SINGLE_BLOCK);
     }
     stream.log("[Talk] " + label + ": the dialogue reads \"" + read.text + "\".");
     size_t quiet = 0;
@@ -263,7 +263,7 @@ DialogueRead talk_walking(VideoStream& stream, ProControllerContext& context, Di
     const auto [x, y] = dpad_of(direction);
     const bool across = direction == Direction::EAST || direction == Direction::WEST;
     const Milliseconds limit = (int64_t)tiles * (across ? ROUTE_MS_PER_TILE_ACROSS : ROUTE_MS_PER_TILE_UP_DOWN) + 800ms;
-    const WalkResult walked = walk_to_talk(stream, context, run_from_wild_battle, x, y, limit, label);
+    const WalkResult walked = walk_to_talk(stream, context, run_from_wild_battle, {x, y}, limit, label);
     if (walked.stop != WalkStop::DIALOG){
         stream.log("[Talk] " + label + ": nobody answered.");
         return read;
@@ -299,7 +299,7 @@ DialogueRead read_sign(VideoStream& stream, ProControllerContext& context, Direc
     //  Only to say which sign, when there is a reader for the game's
     //  language; the box opening and closing is the check.
     if (story_reads_text()){
-        read.text = OCR::ocr_read(g_story_language, extract_box_reference(*shown.frame, SIGN_TEXT), OCR::PageSegMode::SINGLE_BLOCK);
+        read.text = OCR::ocr_read(story_language(), extract_box_reference(*shown.frame, SIGN_TEXT), OCR::PageSegMode::SINGLE_BLOCK);
     }
     stream.log("[Sign] " + label + ": reads \"" + read.text + "\" (change " + std::to_string(opened) + ").");
     for (size_t presses = 0; presses < 3 && !read.closed; presses++){

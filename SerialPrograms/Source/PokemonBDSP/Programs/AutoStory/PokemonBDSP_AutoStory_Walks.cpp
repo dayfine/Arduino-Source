@@ -50,7 +50,7 @@ void walk_until_stopped(VideoStream& stream, ProControllerContext& context, Dire
     //  holds still meanwhile, and that read as a wall two tiles into the
     //  walk west to the Lab's sign (r132a).
     route_turn(stream, context, direction);
-    const WalkResult walked = walk_until(stream, context, run_from_wild_battle, x, y, limit, label);
+    const WalkResult walked = walk_until(stream, context, run_from_wild_battle, {x, y}, limit, label);
     stream.log("[Walk] " + label + ": stopped on " + walk_stop_name(walked.stop) + ".");
     if (walked.stop == WalkStop::TRANSITION || walked.stop == WalkStop::DIALOG){
         fail_step(stream, label + ": " + walk_stop_name(walked.stop) + " instead of a stop.");
@@ -69,7 +69,7 @@ void walk_until_stopped(VideoStream& stream, ProControllerContext& context, Dire
 
 void hold_for(VideoStream& stream, ProControllerContext& context, Direction direction, Milliseconds hold, const std::string& label){
     const auto [x, y] = dpad_of(direction);
-    const WalkResult walk = walk_for(stream, context, run_from_wild_battle, x, y, hold, label);
+    const WalkResult walk = walk_for(stream, context, run_from_wild_battle, {x, y}, hold, label);
     if (walk.stop == WalkStop::DIALOG || walk.stop == WalkStop::TRANSITION){
         fail_step(stream, label + ": " + walk_stop_name(walk.stop) + ".");
     }
@@ -87,13 +87,13 @@ void tap_tiles(VideoStream& stream, ProControllerContext& context, Direction dir
 
 void nudge(VideoStream& stream, ProControllerContext& context, Direction direction, const std::string& label){
     route_turn(stream, context, direction);
-    walk_for(stream, context, run_from_wild_battle, direction == Direction::EAST ? 1 : -1, 0, 80ms, label);
+    walk_for(stream, context, run_from_wild_battle, {direction == Direction::EAST ? 1.0 : -1.0, 0.0}, 80ms, label);
 }
 
 bool door_north_by_scene(VideoStream& stream, ProControllerContext& context, const std::string& label){
     context.wait_for_all_requests();
     VideoSnapshot before = stream.video().snapshot();
-    const WalkResult up = walk_until(stream, context, run_from_wild_battle, 0, 1, 1200ms, label);
+    const WalkResult up = walk_until(stream, context, run_from_wild_battle, {0, 1}, 1200ms, label);
     context.wait_for(1500ms);
     if (up.stop == WalkStop::TRANSITION){
         return true;
@@ -131,7 +131,7 @@ WalkResult walk_dir(
 ){
     const double x = dir == Direction::EAST ? 1 : dir == Direction::WEST ? -1 : 0;
     const double y = dir == Direction::NORTH ? 1 : dir == Direction::SOUTH ? -1 : 0;
-    return walk_until(stream, context, run_from_wild_battle, x, y, limit, label, arrived);
+    return walk_until(stream, context, run_from_wild_battle, {x, y}, limit, label, arrived);
 }
 
 //  `taps` D-pad taps toward `dpad`, settling between them. On the D-pad the

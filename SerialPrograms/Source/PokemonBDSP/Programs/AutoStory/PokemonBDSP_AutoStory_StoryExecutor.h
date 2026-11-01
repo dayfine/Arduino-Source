@@ -3,7 +3,7 @@
  *  From: https://github.com/PokemonAutomation/
  *
  *  BDSP's way of doing the shared story steps
- *  (Pokemon/Navigation/Pokemon_StorySteps.h) on the console. A route is
+ *  (Pokemon/AutoStory/Pokemon_StorySteps.h) on the console. A route is
  *  planned on the joined maps that hold its start and its target
  *  (story_plan_world()), from the tiles the run's pose holds, and walked by
  *  the walker, which fights the trainers who see us and runs from wild
@@ -31,8 +31,8 @@
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "NintendoSwitch/NintendoSwitch_SingleSwitchProgram.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_StoryWorld.h"
-#include "Pokemon/Navigation/Pokemon_StorySegments.h"
-#include "Pokemon/Navigation/Pokemon_StorySteps.h"
+#include "Pokemon/AutoStory/Pokemon_StorySegments.h"
+#include "Pokemon/AutoStory/Pokemon_StorySteps.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_RoutePlanner.h"
 
 namespace PokemonAutomation{
@@ -90,23 +90,24 @@ public:
     ProControllerContext& context(){
         return m_env.context;
     }
-    //  The row running now.
-    const std::string& checkpoint() const{
-        return m_checkpoint;
-    }
     //  The rows whose failure ends the program (StoryFailure::STOP): a
     //  failed step there throws on instead of failing the step.
     void set_stop_rows(std::set<std::string> rows){
         m_stop_rows = std::move(rows);
     }
+    //  A new attempt of a row: every trainer can see us again.
+    virtual void begin_attempt(const Pokemon::StoryCheckpoint& data) override;
+    virtual Pokemon::Outcome run(Pokemon::RunState& state, const Pokemon::StoryStep& step) override;
+
+protected:
+    //  The row running now.
+    const std::string& checkpoint() const{
+        return m_checkpoint;
+    }
     //  Walks from the tiles of `from` on its map to any of `goal`'s tiles,
     //  fighting the trainers who see us this attempt. Returns where it left
     //  us, as a pose on `goal`'s map.
     Pokemon::Pose walk_to(const Pokemon::Pose& from, const Pokemon::Pose& goal, const Pokemon::StoryStep& step);
-
-    //  A new attempt of a row: every trainer can see us again.
-    virtual void begin_attempt(const Pokemon::StoryCheckpoint& data) override;
-    virtual Pokemon::Outcome run(Pokemon::RunState& state, const Pokemon::StoryStep& step) override;
 
     //  The intro of a new game, from the title screen to the bedroom.
     virtual Pokemon::Outcome new_game(Pokemon::RunState& state, const Pokemon::StoryStep& step) override;

@@ -20,6 +20,7 @@
 #include "PokemonBDSP/Inference/PokemonBDSP_DialogDetector.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_StoryMaps.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Location.h"
+#include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_PlannedRoute.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_RouteWalk.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Walk.h"
 #include "PokemonBDSP_AutoStory_Talks.h"
@@ -63,7 +64,7 @@ Pokemon::Outcome route_203_east_to_the_gate(StoryExecutor& executor, Pokemon::Ru
         }
     };
     for (size_t leg = 0; leg < 40 && !inside; leg++){
-        const WalkResult walk = walk_until(stream, context, run_from_wild_battle, 1, 0, 10000ms, "east along Route 203");
+        const WalkResult walk = walk_until(stream, context, run_from_wild_battle, {1, 0}, 10000ms, "east along Route 203");
         if (walk.stop == WalkStop::TRANSITION){
             inside = true;
             break;
@@ -79,11 +80,11 @@ Pokemon::Outcome route_203_east_to_the_gate(StoryExecutor& executor, Pokemon::Ru
         // first (a step north there does not move us, so rows are counted
         // from it), then a row at a time south. At the route's end this is the
         // corner by the second sign, with the Gate's opening two rows down.
-        walk_until(stream, context, run_from_wild_battle, 0, 1, 6000ms, "north to the top wall");
+        walk_until(stream, context, run_from_wild_battle, {0, 1}, 6000ms, "north to the top wall");
         bool moved_on = false;
         for (size_t row = 1; row <= 10 && !moved_on; row++){
             step_south(stream, context);
-            const WalkResult next = walk_until(stream, context, run_from_wild_battle, 1, 0, 10000ms, "east along Route 203, row " + std::to_string(row) + " below the top");
+            const WalkResult next = walk_until(stream, context, run_from_wild_battle, {1, 0}, 10000ms, "east along Route 203, row " + std::to_string(row) + " below the top");
             if (next.stop == WalkStop::TRANSITION){
                 inside = true;
             }
@@ -111,7 +112,7 @@ Pokemon::Outcome route_203_east_to_the_gate(StoryExecutor& executor, Pokemon::Ru
 //  01.02: the Hiker, who gives HM Rock Smash, when the walk east has not met him.
 void the_hiker(VideoStream& stream, ProControllerContext& context){
     // The Hiker steps up to us as we walk east.
-    const WalkResult to_hiker = walk_until(stream, context, run_from_wild_battle, 1, 0, 4000ms, "to the Hiker");
+    const WalkResult to_hiker = walk_until(stream, context, run_from_wild_battle, {1, 0}, 4000ms, "to the Hiker");
     if (to_hiker.stop != WalkStop::DIALOG && !dialogue_opens(stream, context, 2000ms)){
         fail_step(stream, "Oreburgh Gate: the Hiker did not stop us.");
     }
@@ -136,7 +137,7 @@ void gate_east_to_oreburgh(VideoStream& stream, ProControllerContext& context){
     bool city = false;
     size_t stuck = 0;
     for (size_t leg = 0; leg < 12 && !city; leg++){
-        const WalkResult walk = walk_until(stream, context, run_from_wild_battle, 1, 0, 10000ms, "east through the Oreburgh Gate");
+        const WalkResult walk = walk_until(stream, context, run_from_wild_battle, {1, 0}, 10000ms, "east through the Oreburgh Gate");
         if (walk.stop == WalkStop::LIMIT || walk.stop == WalkStop::TRANSITION){
             continue;
         }
@@ -180,12 +181,10 @@ Pokemon::Outcome route_203_to_row_18(StoryExecutor& executor, Pokemon::RunState&
     // west along the sand's bottom row and on under the girl's row, which
     // runs straight to Jubilife as row 18. Trainers the map does not list
     // are fought where they stop us.
-    std::vector<TrainerSight> trainers;
-    auto fight = [&](const std::string& who){
+    RouteTrainers trainers{{}, [&](const std::string& who){
         talk_or_fight(stream, context, "Route 203: " + who);
-    };
-    const std::vector<Pokemon::TilePos> at = walk_route(stream, context, run_from_wild_battle, route203_maps(), map_region("Route203", "gate_exit"),
-        on_route203_west_line, trainers, fight, "Route 203 to row 18");
+    }};
+    const std::vector<Pokemon::TilePos> at = walk_route(stream, context, run_from_wild_battle, route203_maps(), map_region("Route203", "gate_exit"), trainers, RouteWalkPlan{on_route203_west_line, "Route 203 to row 18", {}, route_plan_costs()});
     if (at.size() != 1){
         fail_step(stream, "Route 203: the walk to row 18 did not end on a known tile.");
     }

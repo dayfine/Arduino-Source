@@ -21,9 +21,9 @@
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
-#include "Pokemon/Navigation/Pokemon_StorySegments.h"
-#include "Pokemon/Navigation/Pokemon_StorySteps.h"
-#include "Pokemon/Navigation/Pokemon_TilePose.h"
+#include "Pokemon/AutoStory/Pokemon_StorySegments.h"
+#include "Pokemon/AutoStory/Pokemon_StorySteps.h"
+#include "Pokemon/AutoStory/Pokemon_TilePose.h"
 #include "Utils/PokemonBDSP_AutoStory_Location.h"
 #include "PokemonBDSP_AutoStory_StoryPlaces.h"
 #include "PokemonBDSP_AutoStory_StoryTable.h"
@@ -98,7 +98,7 @@ Walked plan_route(const Pose& from, const StoryStep& step){
     for (const TilePos& pos : plan->empty() ? start : plan->back().after){
         const std::optional<TilePos> tile = story_to_local(*world, goal.map, pos);
         if (!tile || !contains(Pokemon::tiles_of(goal), *tile)){
-            return {std::nullopt, step.name + ": the plan may end off the target, at " + world->describe(pos) + ".", walked.plan};
+            return {std::nullopt, step.name + ": the plan may end off the target, at " + describe(*world, pos) + ".", walked.plan};
         }
         local.push_back(*tile);
     }
@@ -124,9 +124,9 @@ Walked walk_legs(const Pose& from, const StoryStep& step){
         std::vector<TilePos> next;
         for (TilePos pos : at){
             for (int i = 0; i < leg.tiles; i++){
-                const std::optional<TilePos> stepped = world->step(pos, leg.direction);
+                const std::optional<TilePos> stepped = PokemonBDSP::step(*world, pos, leg.direction);
                 if (!stepped){
-                    return {std::nullopt, step.name + ": " + direction_name(leg.direction) + " is blocked at " + world->describe(pos) + ".", ""};
+                    return {std::nullopt, step.name + ": " + direction_name(leg.direction) + " is blocked at " + describe(*world, pos) + ".", ""};
                 }
                 if (step.variant == "one_short_ok" && i + 1 == leg.tiles){
                     next.push_back(pos);
@@ -185,6 +185,7 @@ public:
         }
         return Pokemon::StoryStepExecutor::run(state, step);
     }
+protected:
     virtual Outcome route(RunState& state, const StoryStep& step) override{
         return moved(plan_route(state.pose, step), "no_plan");
     }
