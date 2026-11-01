@@ -77,6 +77,25 @@ obviously safe.
   lab commits plus a run record. Neither agent pushes to a branch the other
   owns.
 
+## Dispatching subagents
+
+Dispatched agents follow [agent-harness](https://github.com/dayfine/agent-harness)'s liveness and
+long-chain rules: [.agents/rules/agent-liveness.md](.agents/rules/agent-liveness.md) and
+[.agents/rules/long-chain-ownership.md](.agents/rules/long-chain-ownership.md). In short, a subagent
+never waits on anything outside its own turn: it pushes, opens or updates the draft fork PR, reports
+the PR number and tip SHA, and stops. The main session waits on CI with
+`sh dev/lib/wait-pr-checks.sh <PR> -R dayfine/Arduino-Source` as a tracked background task (0
+green, 10 a check failed, 1 still pending at the cap), and `dev/lib/chain-runner.sh` runs longer
+chains.
+
+Each role has a definition under `.agents/agents/`, carrying its standing rules (build, test,
+checkout and finish commands): `autostory-code`, `pr-maintenance`, `run-records` and `reviewer`.
+A dispatch brief points at the definition (`git show origin/agents:.agents/agents/<name>.md`, or
+`subagent_type: <name>` once linked into `~/.claude/agents/` from a checkout of this branch, as for
+skills) and carries only the task: PR or branch, tip SHA, scope, prior review, rework round. Don't
+restate the standing rules in a brief. `sh bin/agent-standing-rules-check.sh` and
+`sh bin/agent-harness-check.sh` must pass; the Harness Check workflow runs them on PRs into `agents`.
+
 ## Where PRs live
 
 See [pokemon_sv/PR_WORKFLOW.md](pokemon_sv/PR_WORKFLOW.md). In short:
