@@ -109,16 +109,27 @@ std::optional<std::vector<RouteStep>> plan_overworld_route(
     std::optional<Direction> start_facing = std::nullopt
 );
 
-//  After `step`, an open walk, stopped part-way (a battle, a message): a leg
-//  to a wall that ends on the same tile from anywhere the player may be
-//  along it, ahead or back, so where they are is known again. `start` is
-//  where `step` started, if known; else it is worked back from its end.
-//  Nothing if no such wall lies along it: a warp, a ledge, a person or the
-//  edge of the loaded maps is in the way.
-std::optional<RouteStep> plan_reanchor(
+//  Holding `direction` from `from`, on the water if `surfing`: where a wall
+//  stops the player, how many tiles on, and whether any tile on the way is
+//  tall grass or water.
+struct WallHold{
+    MapPosition end;
+    int tiles = 0;
+    bool wild = false;
+};
+//  Nothing unless every step on the way is a plain walk: a warp, Surf, a
+//  ledge, a person, a sign that would speak, or the edge of the loaded maps
+//  comes first.
+std::optional<WallHold> hold_to_wall(
     const std::vector<MapData>& maps,
-    const std::optional<MapPosition>& start,
-    const RouteStep& step
+    const MapPosition& from, bool surfing, Direction direction
+);
+
+//  The tiles a WALK `step` from `start` passes through, `start` first, short
+//  of a warp at its end.
+std::vector<MapPosition> leg_tiles(
+    const std::vector<MapData>& maps,
+    const MapPosition& start, const RouteStep& step
 );
 
 //  Replays `route` from `start` with the game's step rules and returns where
@@ -131,7 +142,6 @@ MapPosition follow_overworld_route(
 
 
 void add_tests_OverworldRoute(UnitTestDatabase& database);
-void add_tests_OverworldReanchor(UnitTestDatabase& database);
 
 
 
