@@ -169,7 +169,20 @@ StoryCheckpoint forest(){
 StoryCheckpoint brock(){
     //  The by-hand save: 2 Potions and 1 Antidote left after the forest.
     StoryCheckpoint cp{"00.08", "Pewter Gym: Camper Liam, then Brock", at(PEWTER_CENTER, 7, 4, NORTH), {2, 1}, StartMenu::FULL, {}};
-    cp.steps.push_back(route("past_camper_liam", at(GYM, 6, 6, NORTH), "Liam (3, 8) stops the player at (6, 8): fought on the way"));
+    //  Camper Liam (3, 8) always faces east (MOVEMENT_TYPE_FACE_RIGHT, sight
+    //  4): he sees (4..7, 8). Walked through, he stopped the player only
+    //  some of the time (console B, 2026-11-01), and the leg he stopped
+    //  couldn't be found again. He is fought on purpose instead, from
+    //  (4, 8) beside him, so he doesn't walk and the player stays put
+    //  (FRLG doesn't turn the player to a trainer). The way there keeps
+    //  off row 8 west of column 8: planned from (10, 9), crossing row 8 at
+    //  column 10 or along it costs the same, so the legs are fixed.
+    cp.steps.push_back(route("gym_east_side", at(GYM, 10, 9, NORTH), "up the gym's east side, below Liam's row"));
+    StoryStep to_liam = make(StoryStepKind::LEGS, "above_liam_line", "up column 10, along row 6, then above (4, 8)");
+    to_liam.legs = {{NORTH, 3}, {WEST, 6}, {SOUTH, 1}};
+    cp.steps.push_back(to_liam);
+    cp.steps.push_back(step_into("liam_line", SOUTH, "beside Liam, in his line"));
+    cp.steps.push_back(battle("camper_liam", at(GYM, 4, 8, SOUTH), false, "Geodude and Sandshrew; EXP before Brock"));
     cp.steps.push_back(route("back_to_nurse", at(PEWTER_CENTER, 7, 4, NORTH), "heal after Liam"));
     cp.steps.push_back(make(StoryStepKind::HEAL, "heal_before_brock", "full HP"));
     cp.steps.push_back(route("before_brock", at(GYM, 6, 6, NORTH), "below Brock (6, 5)"));
