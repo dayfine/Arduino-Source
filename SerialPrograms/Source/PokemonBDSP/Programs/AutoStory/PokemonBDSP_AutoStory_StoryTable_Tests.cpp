@@ -19,6 +19,7 @@
 #include "Data/PokemonBDSP_AutoStory_StoryMaps.h"
 #include "PokemonBDSP_AutoStory_Events.h"
 #include "PokemonBDSP_AutoStory_StoryTable.h"
+#include "PokemonBDSP_AutoStory_StoryVariants.h"
 #include "PokemonBDSP_AutoStory_StoryTable_Tests.h"
 
 namespace PokemonAutomation{
@@ -32,16 +33,50 @@ using Pokemon::Direction;
 using Pokemon::StoryStepKind;
 using Pokemon::TilePos;
 
-//  The variants each kind does itself, besides the story's events.
-const std::map<StoryStepKind, std::set<std::string>>& built_in_variants(){
-    static const std::map<StoryStepKind, std::set<std::string>> variants{
-        {StoryStepKind::ROUTE, {"", "town", "robust"}},
-        {StoryStepKind::LEGS, {"", "one_short_ok", "to_wall"}},
-        {StoryStepKind::MASH, {"", "a"}},
-        {StoryStepKind::BATTLE, {"", "doubles"}},
-    };
-    return variants;
+//  Each way of `Way`: its name reads back as itself, names are distinct,
+//  and the usual way is "".
+template <typename Way>
+std::string check_ways(const char* type){
+    std::set<std::string> names;
+    for (Way way : all_variants<Way>()){
+        const std::string name = variant_name(way);
+        if (parse_variant<Way>(name) != way || !names.insert(name).second){
+            return std::format("{} \"{}\" does not read back as itself.", type, name);
+        }
+    }
+    if (!names.contains("") || parse_variant<Way>("no_such_way")){
+        return std::format("{}: no usual way \"\", or an unknown name read as a way.", type);
+    }
+    return "";
 }
+
+//  The typed ways each kind does: names round trip, and the table's lint
+//  takes exactly them.
+class Test_StoryVariants : public UnitTest{
+public:
+    Test_StoryVariants()
+        : UnitTest("PokemonBDSP::AutoStory - Story step ways: names round trip")
+    {}
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        for (const std::string& problem : {
+            check_ways<RouteCosts>("RouteCosts"), check_ways<LegsWay>("LegsWay"), check_ways<MashWay>("MashWay"),
+            check_ways<StepWay>("StepWay"), check_ways<TalkWay>("TalkWay"), check_ways<BattleFormat>("BattleFormat"),
+        }){
+            if (!problem.empty()){
+                return problem;
+            }
+        }
+        if (!built_in_variant(StoryStepKind::LEGS, "hold_taps") || built_in_variant(StoryStepKind::LEGS, "doubles") ||
+            !built_in_variant(StoryStepKind::MASH, "wait_out") || built_in_variant(StoryStepKind::GAME, "") ||
+            !built_in_variant(StoryStepKind::HEAL, "") || built_in_variant(StoryStepKind::HEAL, "a")){
+            return "built_in_variant() takes the wrong ways.";
+        }
+        if (MASH_WAIT_OUT_PRESSES != 8){
+            return "MASH_WAIT_OUT_PRESSES is the 12 s (8 presses 1.5 s apart) the president took on the console.";
+        }
+        return true;
+    }
+};
 
 //  The table: unique ids in order, each row lints, and every step's variant
 //  is one its kind does or one of the story's events.
@@ -64,10 +99,8 @@ public:
                 return row.id + ": " + problems[0];
             }
             for (const Pokemon::StoryStep& step : row.steps){
-                const auto built_in = built_in_variants().find(step.kind);
                 const bool known = events.contains(step.variant) ||
-                    (step.kind != StoryStepKind::GAME && step.variant.empty()) ||
-                    (built_in != built_in_variants().end() && built_in->second.contains(step.variant));
+                    built_in_variant(step.kind, step.variant);
                 if (!known){
                     return std::format("{} {}: no event or {} way named \"{}\".",
                         row.id, step.name, Pokemon::story_step_kind_name(step.kind), step.variant);
@@ -201,6 +234,7 @@ public:
 
 
 void add_tests_AutoStory_StoryTable(UnitTestDatabase& database){
+    database.add<Test_StoryVariants>();
     database.add<Test_StoryTableLints>();
     database.add<Test_Route204NorthLine>();
     database.add<Test_MartLadyWalk>();

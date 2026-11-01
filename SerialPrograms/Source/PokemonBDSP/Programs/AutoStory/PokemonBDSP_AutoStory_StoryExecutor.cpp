@@ -20,6 +20,7 @@
 #include "Pokemon/AutoStory/Pokemon_TilePose.h"
 #include "PokemonBDSP/Inference/PokemonBDSP_DialogDetector.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_PlanCosts.h"
+#include "PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_OverworldDetector.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Indoors.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_PlannedRoute.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_RouteWalk.h"
@@ -30,6 +31,7 @@
 #include "PokemonBDSP_AutoStory_NewGame.h"
 #include "PokemonBDSP_AutoStory_Settings.h"
 #include "PokemonBDSP_AutoStory_StoryPlaces.h"
+#include "PokemonBDSP_AutoStory_StoryVariants.h"
 #include "PokemonBDSP_AutoStory_Talks.h"
 #include "PokemonBDSP_AutoStory_Walks.h"
 #include "PokemonBDSP_AutoStory_WildBattle.h"
@@ -49,16 +51,18 @@ using Pokemon::TilePos;
 
 
 std::optional<RobustPlanCosts> story_route_costs(const std::string& variant){
-    if (variant.empty()){
+    const std::optional<RouteCosts> costs = parse_variant<RouteCosts>(variant);
+    if (!costs){
+        return std::nullopt;
+    }
+    switch (*costs){
+    case RouteCosts::TOWN:
+        return town_plan_costs();
+    case RouteCosts::ROBUST:
+        return RobustPlanCosts();
+    default:
         return route_plan_costs();
     }
-    if (variant == "town"){
-        return town_plan_costs();
-    }
-    if (variant == "robust"){
-        return RobustPlanCosts();
-    }
-    return std::nullopt;
 }
 
 
@@ -82,6 +86,87 @@ void save_failure_screenshot(VideoStream& stream, size_t attempt){
     const std::string path = std::format("{}{}-attempt{}.png", folder, now_to_filestring(), attempt);
     screen.frame->save(path);
     stream.log("Failure screenshot: " + path);
+}
+
+
+//  Walks `leg` until someone stops us and talks, for at most its tiles'
+//  time; their dialogue must open.
+void walk_until_someone_talks(VideoStream& stream, ProControllerContext& context, const Pokemon::StoryLeg& leg, const std::string& label){
+    const auto [x, y] = dpad_of(leg.direction);
+    walk_until(stream, context, run_from_wild_battle, {x, y}, leg.tiles * route_ms_per_tile(leg.direction) + 800ms, label);
+    ShortDialogWatcher opened(COLOR_CYAN);
+    if (wait_until(stream, context, 5000ms, {{opened}}) != 0){
+        fail_step(stream, label + ": nobody talked to us.");
+    }
+}
+
+//  MASH_WAIT_OUT_PRESSES B presses 1.5 s apart, then up to as many more
+//  until the overworld shows: fails only if it never does.
+void wait_out_with_b(VideoStream& stream, ProControllerContext& context, const std::string& label){
+    for (size_t press = 0; press < 2 * MASH_WAIT_OUT_PRESSES; press++){
+        if (press >= MASH_WAIT_OUT_PRESSES){
+            context.wait_for_all_requests();
+            const VideoSnapshot screen = stream.video().snapshot();
+            if (screen && OverworldDetector().detect(*screen.frame)){
+                return;
+            }
+        }
+        pbf_press_button(context, BUTTON_B, 80ms, 1500ms);
+    }
+    context.wait_for_all_requests();
+    const VideoSnapshot screen = stream.video().snapshot();
+    if (!screen || !OverworldDetector().detect(*screen.frame)){
+        fail_step(stream, label + ": no overworld after " + std::to_string(2 * MASH_WAIT_OUT_PRESSES) + " B presses.");
+    }
+}
+
+//  One stick hold per tile of a hold leg: an east or west tile in 160 ms, a
+//  north or south one in 200 ms, as the Jubilife walks were measured.
+Milliseconds hold_per_tile(Direction direction){
+    return direction == Direction::EAST || direction == Direction::WEST ? 160ms : 200ms;
+}
+void hold_leg(VideoStream& stream, ProControllerContext& context, const Pokemon::StoryLeg& leg, LegsWay way, const std::string& label){
+    route_turn(stream, context, leg.direction);
+    if (way == LegsWay::HOLD){
+        hold_for(stream, context, leg.direction, leg.tiles * hold_per_tile(leg.direction), label);
+        return;
+    }
+    for (int tile = 0; tile < leg.tiles; tile++){
+        hold_for(stream, context, leg.direction, hold_per_tile(leg.direction), label);
+    }
+}
+
+//  `step`'s legs in counted D-pad taps from `from`: where we may be after.
+Outcome walk_dpad_legs(
+    VideoStream& stream, ProControllerContext& context, const std::string& checkpoint,
+    const Pose& from, const StoryStep& step, bool one_short_ok
+){
+    std::vector<TilePos> at = Pokemon::tiles_of(from);
+    for (const Pokemon::StoryLeg& leg : step.legs){
+        //  Facing another way, a tap only turns (r256): turn first.
+        route_turn(stream, context, leg.direction);
+        const auto [x, y] = dpad_of(leg.direction);
+        const size_t tiles = (size_t)leg.tiles;
+        const WalkResult walk = walk_tiles_dpad(stream, context, run_from_wild_battle, {x, y}, tiles, step.name);
+        stream.log(std::format("[{}] {}: taps {} moved {} of {} tiles.", checkpoint, step.name, direction_name(leg.direction), walk.moved_chunks, tiles));
+        if (walk.moved_chunks + (one_short_ok ? 1 : 0) < tiles){
+            return Pokemon::outcome_failed("short_leg", std::format("{} {} moved {}", direction_name(leg.direction), tiles, walk.moved_chunks));
+        }
+        //  Where we may be: the end, or a tile short of it.
+        std::vector<TilePos> next;
+        for (const TilePos& start : at){
+            TilePos end = start;
+            for (size_t i = 0; i < tiles; i++){
+                if (one_short_ok && i + 1 == tiles){
+                    next.push_back(end);
+                }
+                end = end.next(leg.direction);
+            }
+            next.push_back(end);
+        }
+        at = std::move(next);
+    }
+    return Pokemon::outcome_ok(Pokemon::tile_pose(from.map, at, step.legs.back().direction));
 }
 
 }
@@ -184,45 +269,36 @@ Outcome StoryExecutor::route(RunState& state, const StoryStep& step){
 }
 
 Outcome StoryExecutor::legs(RunState& state, const StoryStep& step){
-    if (step.variant == "to_wall"){
+    const std::optional<LegsWay> way = parse_variant<LegsWay>(step.variant);
+    if (!way){
+        return Pokemon::outcome_failed("unknown_variant", step.variant);
+    }
+    switch (*way){
+    case LegsWay::TO_WALL:
         for (const Pokemon::StoryLeg& leg : step.legs){
             walk_until_stopped(stream(), context(), leg.direction, (size_t)leg.tiles, label_of(step));
         }
         return Pokemon::outcome_ok();
-    }
-    const bool one_short_ok = step.variant == "one_short_ok";
-    if (!one_short_ok && !step.variant.empty()){
-        return Pokemon::outcome_failed("unknown_variant", step.variant);
-    }
-    std::vector<TilePos> at = Pokemon::tiles_of(state.pose);
-    for (const Pokemon::StoryLeg& leg : step.legs){
-        //  Facing another way, a tap only turns (r256): turn first.
-        route_turn(stream(), context(), leg.direction);
-        const auto [x, y] = dpad_of(leg.direction);
-        const size_t tiles = (size_t)leg.tiles;
-        const WalkResult walk = walk_tiles_dpad(stream(), context(), run_from_wild_battle, {x, y}, tiles, step.name);
-        stream().log(std::format("[{}] {}: taps {} moved {} of {} tiles.", m_checkpoint, step.name, direction_name(leg.direction), walk.moved_chunks, tiles));
-        if (walk.moved_chunks + (one_short_ok ? 1 : 0) < tiles){
-            return Pokemon::outcome_failed("short_leg", std::format("{} {} moved {}", direction_name(leg.direction), tiles, walk.moved_chunks));
+    case LegsWay::HOLD:
+    case LegsWay::HOLD_TAPS:
+        for (const Pokemon::StoryLeg& leg : step.legs){
+            hold_leg(stream(), context(), leg, *way, label_of(step));
         }
-        //  Where we may be: the end, or a tile short of it.
-        std::vector<TilePos> next;
-        for (const TilePos& start : at){
-            TilePos end = start;
-            for (size_t i = 0; i < tiles; i++){
-                if (one_short_ok && i + 1 == tiles){
-                    next.push_back(end);
-                }
-                end = end.next(leg.direction);
-            }
-            next.push_back(end);
-        }
-        at = std::move(next);
+        return Pokemon::outcome_ok();
+    default:
+        return walk_dpad_legs(stream(), context(), m_checkpoint, state.pose, step, *way == LegsWay::DPAD_ONE_SHORT_OK);
     }
-    return Pokemon::outcome_ok(Pokemon::tile_pose(state.pose.map, at, step.legs.back().direction));
 }
 
 Outcome StoryExecutor::step(RunState& state, const StoryStep& step){
+    const std::optional<StepWay> way = parse_variant<StepWay>(step.variant);
+    if (!way){
+        return Pokemon::outcome_failed("unknown_variant", step.variant);
+    }
+    if (*way == StepWay::OUT_SOUTH){
+        leave_door_south(stream(), context(), run_from_wild_battle, label_of(step));
+        return Pokemon::outcome_ok();
+    }
     route_turn(stream(), context(), step.direction);
     const auto [x, y] = dpad_of(step.direction);
     const WalkResult walk = walk_tiles_dpad(stream(), context(), run_from_wild_battle, {x, y}, 1, step.name);
@@ -235,6 +311,14 @@ Outcome StoryExecutor::step(RunState& state, const StoryStep& step){
 }
 
 Outcome StoryExecutor::talk(RunState&, const StoryStep& step){
+    const std::optional<TalkWay> way = parse_variant<TalkWay>(step.variant);
+    if (!way){
+        return Pokemon::outcome_failed("unknown_variant", step.variant);
+    }
+    if (*way == TalkWay::WALKING){
+        walk_until_someone_talks(stream(), context(), step.legs.front(), label_of(step));
+        return Pokemon::outcome_ok();
+    }
     pbf_press_button(context(), BUTTON_A, 80ms, 200ms);
     context().wait_for_all_requests();
     ShortDialogWatcher dialog(COLOR_YELLOW);
@@ -252,13 +336,25 @@ Outcome StoryExecutor::answer(RunState&, const StoryStep& step){
 }
 
 Outcome StoryExecutor::mash(RunState&, const StoryStep& step){
+    const std::optional<MashWay> way = parse_variant<MashWay>(step.variant);
+    if (!way){
+        return Pokemon::outcome_failed("unknown_variant", step.variant);
+    }
+    if (*way == MashWay::WAIT_OUT){
+        wait_out_with_b(stream(), context(), label_of(step));
+        return Pokemon::outcome_ok();
+    }
     wait_for_dialogue(stream(), context(), label_of(step));
-    finish_dialogue(stream(), context(), step.variant == "a" ? BUTTON_A : BUTTON_B, label_of(step));
+    finish_dialogue(stream(), context(), *way == MashWay::A ? BUTTON_A : BUTTON_B, label_of(step));
     return Pokemon::outcome_ok();
 }
 
 Outcome StoryExecutor::battle(RunState&, const StoryStep& step){
-    if (!talk_or_fight(stream(), context(), label_of(step), TalkExpect::BATTLE, step.variant == "doubles" ? BattleFormat::DOUBLES : BattleFormat::SINGLES)){
+    const std::optional<BattleFormat> format = parse_variant<BattleFormat>(step.variant);
+    if (!format){
+        return Pokemon::outcome_failed("unknown_variant", step.variant);
+    }
+    if (!talk_or_fight(stream(), context(), label_of(step), TalkExpect::BATTLE, *format)){
         fail_step(stream(), label_of(step) + ": talked but did not battle.");
     }
     if (!step.may_lose && in_pokemon_center(stream())){

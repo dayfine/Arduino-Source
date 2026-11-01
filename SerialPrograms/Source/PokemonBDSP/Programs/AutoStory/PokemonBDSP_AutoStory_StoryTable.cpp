@@ -17,6 +17,7 @@
 #include <utility>
 #include <vector>
 #include "Data/PokemonBDSP_AutoStory_Maps.h"
+#include "PokemonBDSP_AutoStory_StoryVariants.h"
 #include "PokemonBDSP_AutoStory_StoryTable.h"
 
 namespace PokemonAutomation{
@@ -99,21 +100,49 @@ StoryStep make(StoryStepKind kind, std::string name, std::string why){
     step.why = std::move(why);
     return step;
 }
-StoryStep route(std::string name, Pose target, std::string why, std::string costs = ""){
+StoryStep route(std::string name, Pose target, std::string why, RouteCosts costs = RouteCosts::ROUTE){
     StoryStep step = make(StoryStepKind::ROUTE, std::move(name), std::move(why));
     step.target = std::move(target);
-    step.variant = std::move(costs);
+    step.variant = variant_name(costs);
     return step;
 }
-StoryStep legs(std::string name, std::vector<StoryLeg> legs, std::string why, std::string variant = ""){
+StoryStep legs(std::string name, std::vector<StoryLeg> legs, std::string why, LegsWay way = LegsWay::DPAD){
     StoryStep step = make(StoryStepKind::LEGS, std::move(name), std::move(why));
     step.legs = std::move(legs);
-    step.variant = std::move(variant);
+    step.variant = variant_name(way);
     return step;
 }
 //  Legs that each walk until something stops them, as measured on the console.
 StoryStep to_walls(std::string name, std::vector<StoryLeg> legs, std::string why){
-    return PokemonBDSP::legs(std::move(name), std::move(legs), std::move(why), "to_wall");
+    return PokemonBDSP::legs(std::move(name), std::move(legs), std::move(why), LegsWay::TO_WALL);
+}
+//  Legs held on the stick, a tile's time per tile (LegsWay::HOLD), or a
+//  hold per tile (HOLD_TAPS): the measured Jubilife walks, no walls to end them.
+StoryStep holds(std::string name, std::vector<StoryLeg> legs, std::string why){
+    return PokemonBDSP::legs(std::move(name), std::move(legs), std::move(why), LegsWay::HOLD);
+}
+StoryStep hold_taps(std::string name, std::vector<StoryLeg> legs, std::string why){
+    return PokemonBDSP::legs(std::move(name), std::move(legs), std::move(why), LegsWay::HOLD_TAPS);
+}
+//  Out of a building's door, south.
+StoryStep out_south(std::string name, std::string why){
+    StoryStep step = make(StoryStepKind::STEP, std::move(name), std::move(why));
+    step.direction = SOUTH;
+    step.variant = variant_name(StepWay::OUT_SOUTH);
+    return step;
+}
+//  Walks `tiles` `direction` until someone stops us and talks.
+StoryStep talk_walking(std::string name, Direction direction, int tiles, std::string why){
+    StoryStep step = make(StoryStepKind::TALK, std::move(name), std::move(why));
+    step.legs = {{.direction = direction, .tiles = tiles}};
+    step.variant = variant_name(TalkWay::WALKING);
+    return step;
+}
+//  B on a clock while someone walks off, then the overworld must show.
+StoryStep wait_out(std::string name, std::string why){
+    StoryStep step = make(StoryStepKind::MASH, std::move(name), std::move(why));
+    step.variant = variant_name(MashWay::WAIT_OUT);
+    return step;
 }
 //  TODO(#114 coord events): the map schema has no scene triggers yet, so
 //  each row steps onto the decomp's trigger tile, named in its reason.
@@ -126,17 +155,17 @@ StoryStep step_into(std::string name, Direction direction, std::string why, std:
 StoryStep talk(std::string name, std::string why){
     return make(StoryStepKind::TALK, std::move(name), std::move(why));
 }
-//  Text to the overworld, with B; with A ("a") for lines that give an item.
-StoryStep scene(std::string name, std::optional<Pose> pose_after, std::string why, std::string button = ""){
+//  Text to the overworld, with B; with A for lines that give an item.
+StoryStep scene(std::string name, std::optional<Pose> pose_after, std::string why, MashWay button = MashWay::B){
     StoryStep step = make(StoryStepKind::MASH, std::move(name), std::move(why));
     step.pose_after = std::move(pose_after);
-    step.variant = std::move(button);
+    step.variant = variant_name(button);
     return step;
 }
-StoryStep battle(std::string name, bool may_lose, std::string why, std::string variant = ""){
+StoryStep battle(std::string name, bool may_lose, std::string why, BattleFormat format = BattleFormat::SINGLES){
     StoryStep step = make(StoryStepKind::BATTLE, std::move(name), std::move(why));
     step.may_lose = may_lose;
-    step.variant = std::move(variant);
+    step.variant = variant_name(format);
     return step;
 }
 //  One of the story's events (PokemonBDSP_AutoStory_Events.h), by name.
@@ -188,15 +217,15 @@ std::vector<StoryCheckpoint> intro(){
             step_into("out_of_the_house", SOUTH, "out of the door", at(TWINLEAF, "house_doorstep", SOUTH)),
             route("short_of_barrys_door", at(TWINLEAF, 10, 12, WEST), "a tile east of Barry's doorstep"),
             step_into("barrys_door", WEST, "the trigger on his doorstep (9, 12)"),
-            scene("barry_bursts_out", at(TWINLEAF, "barry_doorstep"), "Barry runs out, bumps into us and runs back in", "a"),
-            scene("barry_goes_home", at(TWINLEAF, "barry_doorstep"), "his second lines (Butters waited for two)", "a"),
+            scene("barry_bursts_out", at(TWINLEAF, "barry_doorstep"), "Barry runs out, bumps into us and runs back in", MashWay::A),
+            scene("barry_goes_home", at(TWINLEAF, "barry_doorstep"), "his second lines (Butters waited for two)", MashWay::A),
             step_into("into_barrys_house", NORTH, "his door", at(BARRYS_HOUSE, "door", NORTH)),
             legs("off_barrys_mat", {{.direction = NORTH, .tiles = 1}}, "off the door's mat, which no route starts on"),
             route("below_barrys_stairs", at(BARRYS_HOUSE, 2, 4, NORTH), "past his mother at (4, 6)"),
             step_into("up_barrys_stairs", NORTH, "onto the stairs", at(BARRYS_ROOM, "stairs")),
             route("beside_barry", at(BARRYS_ROOM, "barry_talk", EAST), "west of Barry, who faces his PC (assumed talk tile)"),
             talk("barry", "Barry in his room"),
-            scene("barry_heads_for_the_lake", at(BARRYS_ROOM, "barry_talk", EAST), "he runs off to the lake", "a"),
+            scene("barry_heads_for_the_lake", at(BARRYS_ROOM, "barry_talk", EAST), "he runs off to the lake", MashWay::A),
             route("above_barrys_stairs", at(BARRYS_ROOM, 3, 5, NORTH), "back to the stairs (3, 4)"),
             step_into("down_barrys_stairs", NORTH, "onto the stairs", at(BARRYS_HOUSE, "stairs")),
             route("above_barrys_door", at(BARRYS_HOUSE, 6, 9, SOUTH), "back to his door"),
@@ -243,7 +272,7 @@ std::vector<StoryCheckpoint> to_the_catch(){
             //  Dawn shows us the Center and the Mart; she leaves us by the Mart's door (assumed).
             scene("dawn_shows_us_sandgem", door_front(SANDGEM, "poke_mart_door"), "Dawn's tour of Sandgem"),
             //  First to one known tile: the trees that end the doors' row.
-            route("to_the_row_end", at(SANDGEM, "front_row_east_end"), "east along the doors' row to the trees", "town"),
+            route("to_the_row_end", at(SANDGEM, "front_row_east_end"), "east along the doors' row to the trees", RouteCosts::TOWN),
             route("to_route_201", at(ROUTE_201, "route_201_east_end"), "west along the doors' row out of Sandgem"),
             route("home", at(TWINLEAF, "house_doorstep", NORTH), "west along Route 201 to Twinleaf, running from wild battles"),
             step_into("into_the_house", NORTH, "the house's door", at(HOME, "door", NORTH)),
@@ -266,11 +295,11 @@ std::vector<StoryCheckpoint> to_the_catch(){
             train(3, on(ROUTE_202, "after_training_area"), "three wild battles with the best move"),
             //  One walk round the houses ended two tiles short (r252): down
             //  the road first, then the town plan.
-            route("into_sandgem", at(SANDGEM, "route_202_entry_stop"), "south down the road to above the Mart", "robust"),
-            route("to_center_sign", next_to(SANDGEM, "pokemon_center_sign", SOUTH), "below the Center's sign, its doorway in sight", "town"),
+            route("into_sandgem", at(SANDGEM, "route_202_entry_stop"), "south down the road to above the Mart", RouteCosts::ROBUST),
+            route("to_center_sign", next_to(SANDGEM, "pokemon_center_sign", SOUTH), "below the Center's sign, its doorway in sight", RouteCosts::TOWN),
             //  From below the sign the finder read the signs' panels as
             //  doorways (r252, r255): taps instead. One tile short is fine.
-            legs("below_center_door", {{.direction = WEST, .tiles = sandgem_sign_to_center_door()}}, "taps west below the Center's door", "one_short_ok"),
+            legs("below_center_door", {{.direction = WEST, .tiles = sandgem_sign_to_center_door()}}, "taps west below the Center's door", LegsWay::DPAD_ONE_SHORT_OK),
             heal("heal_sandgem", "Sandgem Town Pokemon Center", door_front(SANDGEM, "pokemon_center_door")),
         }),
     };
@@ -314,12 +343,15 @@ std::vector<StoryCheckpoint> jubilife(){
             event("into_the_school", "eleven tiles west of the Center's doorstep, north through the School's door"),
             to_walls("up_to_barry", {{.direction = NORTH, .tiles = 10}}, "the door's column to the back wall, beside Barry"),
             event("barry_town_map", "Barry gives the Town Map"),
-            event("out_of_the_school", "straight down the door's column and out"),
+            out_south("out_of_the_school", "straight down the door's column and out"),
         }),
         row("00.05b", "Jubilife: the president and the clowns' coupons", std::nullopt, {
-            event("meet_the_president", "four tiles east into the road; the president walks up and talks"),
+            hold_taps("into_the_road", {{.direction = EAST, .tiles = 4}}, "four tiles east into the road"),
+            talk_walking("meet_the_president", NORTH, 6, "north until the president walks up and talks"),
+            scene("the_president_talks", std::nullopt, "his lines"),
             to_walls("east_to_the_lamp", {{.direction = EAST, .tiles = 8}}, "east until the lamp by the Center"),
-            event("up_to_the_mart_road", "a tile west, then north onto the road between the Center and the Mart"),
+            holds("up_to_the_mart_road", {{.direction = WEST, .tiles = 1}, {.direction = NORTH, .tiles = 5}},
+                "a tile west, then north onto the road between the Center and the Mart"),
             to_walls("east_to_the_building", {{.direction = EAST, .tiles = 14}}, "east along it until the tall building"),
             event("clown_by_the_mart", "his question, Yes, and a coupon"),
             //  The TV station's screen keeps the picture moving after we stop:
@@ -330,10 +362,14 @@ std::vector<StoryCheckpoint> jubilife(){
             event("clown_by_the_company", "along the hedges to the gap by the Poketch Company's sign; he comes by"),
         }),
         row("00.05c", "Jubilife: the Poketch, up to the street east to Route 203", std::nullopt, {
-            event("to_the_main_road", "a row south of the gap, east along the long road to the main road"),
-            event("to_the_center_lamp", "six rows down, east to the Mart's wall, south to the Center's lamp"),
+            holds("to_the_main_road", {{.direction = SOUTH, .tiles = 1}, {.direction = EAST, .tiles = 47}},
+                "a row south of the gap, east along the long road to the main road"),
+            hold_taps("down_the_main_road", {{.direction = SOUTH, .tiles = 6}}, "six rows down the main road"),
+            to_walls("to_the_center_lamp", {{.direction = EAST, .tiles = 8}, {.direction = SOUTH, .tiles = 8}},
+                "east to the Mart's wall, south to the Center's lamp"),
             event("poketch_from_the_president", "he trades the coupons for the Poketch"),
-            event("up_to_the_route_203_street", "let him walk off, then ten rows north"),
+            wait_out("president_walks_off", "B on a clock while he walks off"),
+            hold_taps("up_to_the_route_203_street", {{.direction = NORTH, .tiles = 10}}, "ten rows north"),
         }),
     };
 }
@@ -380,7 +416,7 @@ std::vector<StoryCheckpoint> to_floaroma(){
         row("01.07", "Jubilife through Rowan's scene", std::nullopt, {
             event("west_to_the_crossroads", "west along the long road"),
             event("north_to_rowan", "north up the street until Rowan's scene"),
-            battle("galactic_grunts", false, "the tag battle with Dawn", "doubles"),
+            battle("galactic_grunts", false, "the tag battle with Dawn", BattleFormat::DOUBLES),
             event("rowan_after_the_battle", "Rowan's and Dawn's lines"),
         }),
         row("01.08", "Jubilife to the Ravaged Path", std::nullopt, {

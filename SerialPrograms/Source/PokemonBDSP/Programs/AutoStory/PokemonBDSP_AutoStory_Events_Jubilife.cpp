@@ -119,31 +119,6 @@ void barry_town_map(VideoStream& stream, ProControllerContext& context){
     fail_step(stream, "Trainers' School: Barry did not answer from beside the back wall.");
 }
 
-//  00.05: four tiles east is the main road; a couple of tiles north the
-//  Poketch Company's president sees us, walks up and talks (2026-10-30).
-//  He sends us for the clowns' coupons; B moves his lines on.
-void meet_the_president(VideoStream& stream, ProControllerContext& context){
-    route_turn(stream, context, Direction::EAST);
-    for (size_t tiles = 0; tiles < 4; tiles++){
-        hold_for(stream, context, Direction::EAST, 160ms, "East into the road");
-    }
-    walk_until(stream, context, run_from_wild_battle, {0, 1}, 6 * ROUTE_MS_PER_TILE_UP_DOWN + 800ms, "The Poketch Company president");
-    //  He walks up after the "!" and only then talks.
-    ShortDialogWatcher opened(COLOR_CYAN);
-    if (wait_until(stream, context, 5000ms, {{opened}}) != 0){
-        fail_step(stream, "Jubilife: the Poketch Company president did not talk to us.");
-    }
-    finish_dialogue(stream, context, BUTTON_B, "The Poketch Company president");
-}
-
-//  00.05: a tile west of the lamp by the Center, then a second north onto
-//  the road between the Center and the Mart.
-void up_to_the_mart_road(VideoStream& stream, ProControllerContext& context){
-    route_turn(stream, context, Direction::WEST);
-    hold_for(stream, context, Direction::WEST, 160ms, "West of the lamp");
-    hold_for(stream, context, Direction::NORTH, 1000ms, "North to the Mart's road");
-}
-
 //  00.05: the clown at the east end of the road between the Center and the
 //  Mart. He may be what stopped the walk east (r155c, 2.8 s against 2.2):
 //  ask ahead first. Else he stands a row south and a tile west: try that
@@ -223,28 +198,6 @@ void clown_by_the_company(VideoStream& stream, ProControllerContext& context){
     }
 }
 
-//  00.05: from the gap beside the Poketch Company's sign, a row south, then
-//  east along the long road until the main road. A hold, not a walk until
-//  still: when the green-haired man who wanders the crossing is what stops
-//  us, his steps keep the screen moving and the stop is never seen (r167a).
-//  The stop took 5.9 s; holding on against it is harmless, and the Mart's
-//  wall puts the column right afterwards.
-void to_the_main_road(VideoStream& stream, ProControllerContext& context){
-    hold_for(stream, context, Direction::SOUTH, 200ms, "Out of the gap");
-    hold_for(stream, context, Direction::EAST, 7500ms, "East along the long road");
-}
-
-//  00.05: six rows down the main road, east stops against the Poke Mart's
-//  west wall: the column between the Mart's lamp and the Center's, so south
-//  stops above the Center's lamp (2026-10-30).
-void to_the_center_lamp(VideoStream& stream, ProControllerContext& context){
-    for (size_t row = 0; row < 6; row++){
-        hold_for(stream, context, Direction::SOUTH, 200ms, "Down the main road");
-    }
-    walk_until_stopped(stream, context, Direction::EAST, 8, "East to the Mart's wall");
-    walk_until_stopped(stream, context, Direction::SOUTH, 8, "South to the Center's lamp");
-}
-
 //  00.05: the president stands still a row or two north of the lamp's row,
 //  a few tiles west: from a row up, west a tile at a time, asking ahead and
 //  north. Turns only ever change the way we face, so none is a step. His
@@ -273,26 +226,6 @@ void poketch_from_the_president(VideoStream& stream, ProControllerContext& conte
     stream.log("[Talk] The Poketch's help: B to close the panel.");
     pbf_press_button(context, BUTTON_B, 80ms, 1500ms);
     context.wait_for_all_requests();
-}
-
-//  00.05 ends on the street east to Route 203, about ten rows north (the
-//  long road's crossing is six rows above the Mart's wall, which is four
-//  above the talk; r164a, by hand). A row off is fine: 01.01 walks east and
-//  tries the rows either side at a wall. The president walks off north after
-//  his talk, up our way (r164a): let him.
-void up_to_the_route_203_street(VideoStream& stream, ProControllerContext& context){
-    for (size_t presses = 0; presses < 8; presses++){
-        pbf_press_button(context, BUTTON_B, 80ms, 1500ms);
-    }
-    context.wait_for_all_requests();
-    for (size_t row = 0; row < 10; row++){
-        hold_for(stream, context, Direction::NORTH, 200ms, "Up the main road");
-    }
-}
-
-//  00.05: straight south down the School door's column and out.
-void out_of_the_school(VideoStream& stream, ProControllerContext& context){
-    leave_door_south(stream, context, run_from_wild_battle, "Out of the Trainers' School");
 }
 
 //  01.07: Rowan's and Dawn's lines after the tag battle. 01.08 starts here,
@@ -430,15 +363,9 @@ void add_jubilife_events(StoryEvents& events){
     events.emplace("up_the_steps", console_event(up_the_steps));
     events.emplace("into_the_school", console_event(into_the_school));
     events.emplace("barry_town_map", console_event(barry_town_map));
-    events.emplace("meet_the_president", console_event(meet_the_president));
-    events.emplace("up_to_the_mart_road", console_event(up_to_the_mart_road));
     events.emplace("clown_by_the_mart", console_event(clown_by_the_mart));
     events.emplace("clown_by_the_company", console_event(clown_by_the_company));
-    events.emplace("to_the_main_road", console_event(to_the_main_road));
-    events.emplace("to_the_center_lamp", console_event(to_the_center_lamp));
     events.emplace("poketch_from_the_president", console_event(poketch_from_the_president));
-    events.emplace("up_to_the_route_203_street", console_event(up_to_the_route_203_street));
-    events.emplace("out_of_the_school", console_event(out_of_the_school));
     events.emplace("rowan_after_the_battle", console_event(rowan_after_the_battle));
     events.emplace("jubilife_center_to_street", console_event(jubilife_center_to_street));
     events.emplace("east_to_barry", console_event(east_to_barry));

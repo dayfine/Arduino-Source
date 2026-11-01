@@ -27,6 +27,7 @@
 #include "Utils/PokemonBDSP_AutoStory_Location.h"
 #include "PokemonBDSP_AutoStory_StoryPlaces.h"
 #include "PokemonBDSP_AutoStory_StoryTable.h"
+#include "PokemonBDSP_AutoStory_StoryVariants.h"
 #include "PokemonBDSP_AutoStory_StorySimulation_Tests.h"
 
 namespace PokemonAutomation{
@@ -126,10 +127,24 @@ std::string walk_leg_from(
     return "";
 }
 
+//  Whether `step` moves by the map (a plan, D-pad taps, one step), so its
+//  end is known from where it starts. Walks to walls, stick holds and the
+//  way out of a door end where nothing is known.
+bool walks_on_the_map(const StoryStep& step){
+    if (step.kind == StoryStepKind::LEGS){
+        const std::optional<LegsWay> way = parse_variant<LegsWay>(step.variant);
+        return way == LegsWay::DPAD || way == LegsWay::DPAD_ONE_SHORT_OK;
+    }
+    if (step.kind == StoryStepKind::STEP){
+        return parse_variant<StepWay>(step.variant) == StepWay::DPAD;
+    }
+    return true;
+}
+
 //  A LEGS step from `from`, walked tile by tile on its map, a tile short too
 //  where the step allows it. Walks to walls end where nothing is known.
 Walked walk_legs(const Pose& from, const StoryStep& step){
-    if (step.variant == "to_wall"){
+    if (!walks_on_the_map(step)){
         return {std::nullopt, "", ""};
     }
     const StoryWorld* world = story_plan_world(from.map, from.map);
@@ -159,6 +174,9 @@ Walked walk_legs(const Pose& from, const StoryStep& step){
 
 //  A STEP onto the next tile of the same map.
 Walked step_on(const Pose& from, const StoryStep& step){
+    if (!walks_on_the_map(step)){
+        return {std::nullopt, "", ""};
+    }
     std::vector<TilePos> at;
     for (const TilePos& pos : Pokemon::tiles_of(from)){
         at.push_back(pos.next(step.direction));
@@ -396,7 +414,7 @@ UnitTestResult test_poses_chain(Logger&){
         }
         for (const StoryStep& step : row.steps){
             if (step.kind == StoryStepKind::ROUTE || step.kind == StoryStepKind::LEGS || step.kind == StoryStepKind::STEP){
-                if (!at && step.variant != "to_wall" && step.variant != "jubilife_stairs"){
+                if (!at && walks_on_the_map(step) && step.variant != "jubilife_stairs"){
                     return row.id + " " + step.name + ": walks from an unknown pose.";
                 }
                 const Walked walked = !at ? Walked{} : step.kind == StoryStepKind::ROUTE ? plan_route(*at, step)
