@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <format>
 #include <functional>
+#include <string>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "Pokemon/Navigation/Pokemon_LegPlanner.h"
@@ -832,10 +833,47 @@ UnitTestResult test_route_through_warp(){
     return "Expected to warp into the yard:" + describe(route);
 }
 
+//  `json` with its elevation grid replaced by `rows`, or left out if empty.
+std::string with_elevation(std::string json, const std::string& rows){
+    const size_t begin = json.find("\"elevation\"");
+    const size_t end = json.find("\n", begin);
+    json.erase(begin, end - begin + 1);
+    if (!rows.empty()){
+        json.insert(begin, "\"elevation\": " + rows + ",\n");
+    }
+    return json;
+}
+
+//  Room and yard as the decompilation writes them, their walls and the
+//  door at elevation 0, plan the same as with no elevation grid, which
+//  frlg_maps.py leaves out when every tile the player can stand on is ground.
+UnitTestResult test_ground_only_elevation_left_out(){
+    const std::vector<MapData> written{
+        parse_map(with_elevation(TEST_ROOM_JSON, R"(["00000", "03330", "03330", "00300"])"), "Room"),
+        parse_map(with_elevation(TEST_YARD_JSON, R"(["00000", "00000", "03330", "00000"])"), "Yard"),
+    };
+    const std::vector<MapData> left_out{
+        parse_map(with_elevation(TEST_ROOM_JSON, ""), "Room"),
+        parse_map(with_elevation(TEST_YARD_JSON, ""), "Yard"),
+    };
+    for (const MapPosition& start : {MapPosition{"Room", {1, 1}}, MapPosition{"Room", {3, 2}}}){
+        for (const MapPosition& goal : {MapPosition{"Yard", {1, 2}}, MapPosition{"Yard", {3, 2}}, MapPosition{"Room", {2, 2}}}){
+            const std::optional<std::vector<RouteStep>> a = plan_overworld_route(written, start, {goal, std::nullopt});
+            const std::optional<std::vector<RouteStep>> b = plan_overworld_route(left_out, start, {goal, std::nullopt});
+            if (!a || !b || describe(*a) != describe(*b)){
+                return "Plans differ from " + to_string(start) + " to " + to_string(goal) + ":"
+                    + (a ? describe(*a) : " none") + "\nwithout elevation:" + (b ? describe(*b) : " none");
+            }
+        }
+    }
+    return true;
+}
+
 }
 
 void add_tests_OverworldRoute(UnitTestDatabase& database){
     database.add<Test_OverworldRoute>("route through a warp", test_route_through_warp);
+    database.add<Test_OverworldRoute>("ground-only elevation left out", test_ground_only_elevation_left_out);
     database.add<Test_OverworldRoute>("maps to Brock", test_story_maps);
     database.add<Test_OverworldRoute>("bedroom to Oak's Lab", test_bedroom_to_oaks_lab);
     database.add<Test_OverworldRoute>("Viridian Mart to Pewter Gym", test_viridian_mart_to_pewter_gym);
