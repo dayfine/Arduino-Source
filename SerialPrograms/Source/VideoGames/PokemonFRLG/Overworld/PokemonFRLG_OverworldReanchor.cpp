@@ -14,18 +14,10 @@ namespace PokemonFRLG{
 
 namespace{
 
-//  How far to the side of a leg the player may be: an earlier open leg can
-//  leave them tiles off (console B, 2026-11-01, Viridian Forest: "west 6"
-//  walked 2 of its 6 tiles, unseen, and the next leg went up a column 4
-//  tiles over).
-constexpr int MAX_SPREAD = 4;
 constexpr size_t MAX_HOLDS = 3;
 
 Direction opposite(Direction direction){
     return (Direction)(((int)direction + 2) % 4);
-}
-Direction across(Direction direction){
-    return (Direction)(((int)direction + 1) % 4);
 }
 
 const MapData* map_named(const std::vector<MapData>& maps, const std::string& name){
@@ -61,26 +53,6 @@ std::optional<MapPosition> walk_back(const std::vector<MapData>& maps, const Rou
         }
     }
     return position;
-}
-
-//  Every tile the player may be on: along the leg, and up to `spread` to
-//  either side of it.
-std::vector<MapPosition> candidates(
-    const std::vector<MapData>& maps, const MapPosition& start, const RouteStep& step, int spread
-){
-    std::vector<MapPosition> positions;
-    for (const MapPosition& tile : leg_tiles(maps, start, step)){
-        for (int side = -spread; side <= spread; side++){
-            MapPosition position = tile;
-            for (int c = 0; c < std::abs(side); c++){
-                position.point = position.point.next(side < 0 ? opposite(across(step.direction)) : across(step.direction));
-            }
-            if (standable(maps, position, step.surfing)){
-                add_unique(positions, position);
-            }
-        }
-    }
-    return positions;
 }
 
 //  Holding `direction` from each of `positions`: where they end up, as a leg
@@ -140,60 +112,30 @@ void search(
     }
 }
 
-//  Held toward a sign moving north or south, the player stops beside it and
-//  it speaks: if only one of `positions` is beside one, that's where they are.
-std::optional<MapPosition> beside_sign(
-    const std::vector<MapData>& maps, const std::vector<MapPosition>& positions, Direction direction
-){
-    if (direction != Direction::NORTH && direction != Direction::SOUTH){
-        return std::nullopt;
-    }
-    std::optional<MapPosition> found;
-    for (const MapPosition& position : positions){
-        const MapData* map = map_named(maps, position.map);
-        if (map != nullptr && tile_at(*map, position.point.next(direction)) == Tile::SIGN){
-            if (found){
-                return std::nullopt;
-            }
-            found = position;
-        }
-    }
-    return found;
-}
-
 }
 
 
 std::optional<Reanchor> plan_reanchor(
     const std::vector<MapData>& maps,
     const std::optional<MapPosition>& start,
-    const RouteStep& step,
-    bool at_sign
+    const RouteStep& step
 ){
-    if (step.action != RouteAction::WALK){
+    if (step.action != RouteAction::WALK || step.to_wall){
         return std::nullopt;
     }
-    //  A leg to a wall may have been held from anywhere along its line.
-    const std::optional<MapPosition> from = start && !step.to_wall ? start : walk_back(maps, step);
+    const std::optional<MapPosition> from = start ? start : walk_back(maps, step);
     if (!from){
         return std::nullopt;
     }
-    for (int spread = MAX_SPREAD; spread >= 0; spread--){
-        const std::vector<MapPosition> positions = candidates(maps, *from, step, spread);
-        //  Only with every tile counted: a sign beside one of fewer could be
-        //  the wrong sign.
-        if (at_sign && spread == MAX_SPREAD){
-            if (const std::optional<MapPosition> beside = beside_sign(maps, positions, step.direction)){
-                return Reanchor{{}, *beside};
-            }
-        }
-        for (size_t depth = 1; depth <= MAX_HOLDS; depth++){
-            std::vector<RouteStep> holds;
-            std::optional<Reanchor> best;
-            search(maps, positions, step.surfing, depth, holds, best);
-            if (best){
-                return best;
-            }
+    //  Every tile the player may be on. Fixed: that no holds find them from
+    //  all of these is no reason to think they are on fewer.
+    const std::vector<MapPosition> positions = leg_tiles(maps, *from, step);
+    for (size_t depth = 1; depth <= MAX_HOLDS; depth++){
+        std::vector<RouteStep> holds;
+        std::optional<Reanchor> best;
+        search(maps, positions, step.surfing, depth, holds, best);
+        if (best){
+            return best;
         }
     }
     return std::nullopt;

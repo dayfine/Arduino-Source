@@ -406,6 +406,18 @@ std::optional<Located> plain_step(const std::vector<MapData>& maps, const Locate
 }
 
 
+namespace{
+
+//  Holding north into a ledge stops the player: the maps don't keep which way
+//  a ledge faces, but FRLG's face south, east or west (pokefirered has no
+//  MB_JUMP_NORTH on any map these load). Only finding the player again
+//  relies on this; routes never hold into a ledge (stops_at()).
+bool ledge_stops_north(const std::vector<MapData>& maps, const Located& player, Direction direction){
+    return direction == Direction::NORTH && is_ledge(maps[player.map], player.state.position.next(direction));
+}
+
+}
+
 std::optional<WallHold> hold_to_wall(
     const std::vector<MapData>& maps,
     const MapPosition& from, bool surfing, Direction direction
@@ -413,7 +425,7 @@ std::optional<WallHold> hold_to_wall(
     std::optional<Located> player = locate(maps, from, surfing);
     WallHold hold;
     for (int c = 0; player && c <= MAX_HOLD_TILES; c++){
-        if (stops_at(maps, *player, direction)){
+        if (stops_at(maps, *player, direction) || ledge_stops_north(maps, *player, direction)){
             hold.end = MapPosition{maps[player->map].name, player->state.position};
             hold.tiles = c;
             return hold;
