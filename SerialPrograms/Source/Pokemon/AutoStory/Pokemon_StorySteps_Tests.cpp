@@ -66,6 +66,8 @@ public:
     virtual bool holds(const std::string& condition, RunState& state) override{
         return conditions.contains(condition) || StoryStepExecutor::holds(condition, state);
     }
+
+protected:
     virtual Outcome route(RunState&, const StoryStep& step) override{
         return outcome_ok(*step.target);
     }
@@ -292,6 +294,33 @@ UnitTestResult test_unsupported_and_lost_battles(){
     return true;
 }
 
+//  Runs `tables` as one segment whose saves and reloads go into the
+//  executor's trace and whose log lines go into `lines`. Whatever blocked a
+//  step has gone by the reload.
+SegmentReport run_tables(const std::vector<StoryCheckpoint>& tables, FakeExecutor& executor, std::vector<std::string>& lines){
+    Segment segment;
+    segment.id = "00";
+    for (const StoryCheckpoint& data : tables){
+        segment.checkpoints.push_back(CheckpointSpec{
+            .id = data.id, .title = data.title, .saves = true,
+            .build = [&data, &executor]{ return build_story_checkpoint(data, executor); },
+        });
+    }
+    SegmentHooks hooks;
+    hooks.save = [&executor](RunState&){
+        executor.trace.push_back("save");
+        return outcome_ok();
+    };
+    hooks.reload = [&executor](RunState&){
+        executor.trace.push_back("reload");
+        executor.failing.clear();
+        return outcome_ok();
+    };
+    hooks.log = [&lines](const std::string& line){ lines.push_back(line); };
+    RunState state;
+    return run_segment(state, segment, SegmentRange{}, SegmentPolicy{}, hooks);
+}
+
 UnitTestResult test_segment_of_tables(){
     //  Two rows built into a segment, run with saves and a reload from the
     //  game's hooks: the second row's first attempt fails, its retry starts
@@ -306,30 +335,9 @@ UnitTestResult test_segment_of_tables(){
         },
     };
     FakeExecutor executor;
-    Segment segment;
-    segment.id = "00";
-    for (const StoryCheckpoint& data : tables){
-        segment.checkpoints.push_back(CheckpointSpec{
-            .id = data.id, .title = data.title, .saves = true,
-            .build = [&data, &executor]{ return build_story_checkpoint(data, executor); },
-        });
-    }
-    std::vector<std::string> lines;
-    SegmentHooks hooks;
-    hooks.save = [&executor](RunState&){
-        executor.trace.push_back("save");
-        return outcome_ok();
-    };
-    //  Whatever blocked the talk has gone by the reload.
-    hooks.reload = [&executor](RunState&){
-        executor.trace.push_back("reload");
-        executor.failing.clear();
-        return outcome_ok();
-    };
-    hooks.log = [&lines](const std::string& line){ lines.push_back(line); };
     executor.failing = {"give_parcel"};
-    RunState state;
-    const SegmentReport report = run_segment(state, segment, SegmentRange{}, SegmentPolicy{}, hooks);
+    std::vector<std::string> lines;
+    const SegmentReport report = run_tables(tables, executor, lines);
     const std::vector<std::string> tail{"save", "TALK give_parcel", "reload", "TALK give_parcel", "save"};
     const bool tail_matches = executor.trace.size() >= tail.size()
         && std::equal(tail.begin(), tail.end(), executor.trace.end() - (std::ptrdiff_t)tail.size());
