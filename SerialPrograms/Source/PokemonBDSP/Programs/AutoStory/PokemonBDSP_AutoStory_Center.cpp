@@ -350,6 +350,22 @@ bool line_up_with_lit_door(
     return false;
 }
 
+namespace{
+
+//  No lit doorway shows: the door may have taken us in after all, more
+//  slowly than we watched. Fails unless the scene changed since `last_outside`.
+void confirm_inside_without_doorway(VideoStream& stream, ProControllerContext& context, const VideoSnapshot& last_outside, const std::string& label){
+    pbf_wait(context, 1500ms);
+    if (!scene_changed_since(stream, context, last_outside)){
+        OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
+            label + ": no lit doorway on screen.", stream);
+    }
+    stream.log("[Route] " + label + ": the scene changed; inside.");
+    pbf_wait(context, 1500ms);
+}
+
+}
+
 void enter_lit_door(
     VideoStream& stream, ProControllerContext& context,
     const std::string& label
@@ -373,14 +389,7 @@ void enter_lit_door(
         }
         const std::optional<LitDoorway> doorway = find_lit_doorway(*outside.frame);
         if (!doorway){
-            //  The door may have taken us in after all, more slowly than we watched.
-            pbf_wait(context, 1500ms);
-            if (!scene_changed_since(stream, context, last_outside)){
-                OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
-                    label + ": no lit doorway on screen.", stream);
-            }
-            stream.log("[Route] " + label + ": the scene changed; inside.");
-            pbf_wait(context, 1500ms);
+            confirm_inside_without_doorway(stream, context, last_outside, label);
             return;
         }
         last_outside = outside;

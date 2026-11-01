@@ -92,6 +92,164 @@ IconGrid icon_to_grid(MenuCursorPosition pos, int num_icons){
     }
 }
 
+enum class SaveOutcome{ SAVED, WRONG_PLACE, FAILED };
+struct SaveAttempt{
+    SaveOutcome outcome = SaveOutcome::FAILED;
+    std::string wrong_place;
+};
+
+//  One feedback-checked save: the save prompt, its card checked against
+//  `expected_location` if given, then the save and back to the overworld.
+SaveAttempt save_once(
+    SingleSwitchProgramEnvironment& env, ProControllerContext& context,
+    const std::string& expected_location, size_t attempt
+){
+    try{
+        env.console.log("Checkpoint save attempt: " + std::to_string(attempt + 1));
+
+        // Only mash B on retries - no need to on first attempt
+        // if already cleanly in the overworld.
+        if (attempt > 0){
+            pbf_mash_button(context, BUTTON_B, 1000ms);
+        }
+
+        // The feedback-based save of save_game(VideoStream&, ...), split at the
+        // save prompt to check where it stands.
+        const std::string location = open_save_prompt(env.console, context);
+        if (!expected_location.empty() && !location_banner_matches(location, expected_location)){
+            SaveAttempt wrong{SaveOutcome::WRONG_PLACE,
+                "About to save in \"" + location + "\", expected " + expected_location + "; not saving."};
+            env.console.log(wrong.wrong_place, COLOR_RED);
+            leave_save_prompt(env.console, context);
+            return wrong;
+        }
+        pbf_press_button(context, BUTTON_ZL, 80ms, 5000ms);
+
+        // Return to overworld cleanly.
+        pbf_mash_button(context, BUTTON_B, 1000ms);
+
+        // Drain R/confirm/B before detection; an earlier overworld frame
+        // must not report success while saving commands are still queued.
+        context.wait_for_all_requests();
+
+        // Verify overworld. Generous timeout: save animation + fade can be slow.
+        OverworldWatcher overworld;
+        if (wait_until(env.console, context, std::chrono::seconds(15), {overworld}) < 0){
+            throw OperationFailedExceptionWithScreenshot(ErrorReportMode::SEND_ERROR_REPORT,
+                "Failed to detect overworld after save.",
+                env.console);
+        }
+
+        env.console.log("Checkpoint save verified.");
+        return {SaveOutcome::SAVED, ""};
+    }catch (OperationFailedException& e){
+        env.console.log("Checkpoint save failed: " + e.message(), COLOR_RED);
+        context.wait_for(1000ms);
+        return {SaveOutcome::FAILED, ""};
+    }
+}
+
+//  The X menu's icons as hovered, where packaged: the cursor detector's
+//  template match. Without them the dark-pixel detector still works.
+void load_menu_icon_references(MenuCursorDetector& detector){
+    static const char* ICON_NAMES[MENU_CURSOR_NUM_ICONS] = {
+        "POKEDEX",
+        "POKEMON",
+        "BAG",
+        "CARD",
+        "OPTIONS",
+        "MAP",
+        "CAPSULES",
+        "MYSTERYGIFT",
+    };
+    const std::string ref_dir = RESOURCE_PATH() + "PokemonBDSP/Autostory";
+    for (int i = 0; i < MENU_CURSOR_NUM_ICONS; i++){
+        const std::string path = ref_dir + "/" + ICON_NAMES[i] + ".png";
+        if (!Filesystem::is_regular_file(path)){
+            continue;
+        }
+        ImageRGB32 img(path);
+        if (img){
+            detector.set_icon_reference(static_cast<MenuCursorPosition>(i), std::move(img));
+        }
+    }
+}
+
+//  The cursor on the open menu, from up to ten frames; UNKNOWN if none reads.
+MenuCursorPosition read_menu_cursor(VideoStream& stream, ProControllerContext& context, const MenuCursorDetector& detector){
+    MenuCursorPosition cur = MenuCursorPosition::UNKNOWN;
+    for (int frame = 0; frame < 10 && cur == MenuCursorPosition::UNKNOWN; frame++){
+        context.wait_for(50ms);
+        const VideoSnapshot snapshot = stream.video().snapshot();
+        if (snapshot){
+            cur = detector.detect(snapshot);
+        }
+    }
+    return cur;
+}
+
+//  Opens the menu unless it is already open: a late-opening menu may show
+//  after a timeout, and X would close it.
+void open_menu_unless_open(VideoStream& stream, ProControllerContext& context){
+    MenuWatcher already_open;
+    if (wait_until(stream, context, 300ms, {{already_open}}) < 0){
+        overworld_to_menu(stream, context);
+    }else{
+        stream.log("[Open menu] Menu already visible; skipping X.");
+    }
+}
+
+//  Opens the menu and reads its cursor, in three attempts. Once the menu
+//  is confirmed open, retries only look: no input that could close it.
+MenuCursorPosition open_menu_and_find_cursor(VideoStream& stream, ProControllerContext& context, const MenuCursorDetector& detector){
+    MenuCursorPosition cur = MenuCursorPosition::UNKNOWN;
+    bool menu_confirmed_open = false;
+    for (size_t attempt = 1; attempt <= 3 && cur == MenuCursorPosition::UNKNOWN; attempt++){
+        stream.log("[Open menu] Open and detect attempt " + std::to_string(attempt) + "/3.");
+        try{
+            if (!menu_confirmed_open){
+                open_menu_unless_open(stream, context);
+                menu_confirmed_open = true;
+            }else{
+                stream.log("[Open menu] Retrying cursor detection in the open menu.");
+            }
+            pbf_wait(context, 1000ms);
+            context.wait_for_all_requests();
+            cur = read_menu_cursor(stream, context, detector);
+            stream.log("[Open menu] Menu cursor " + std::string(cur == MenuCursorPosition::UNKNOWN ? "not detected" : "detected") +
+                " on attempt " + std::to_string(attempt) + ".", cur == MenuCursorPosition::UNKNOWN ? COLOR_ORANGE : COLOR_GREEN);
+        }catch (OperationFailedException& error){
+            stream.log("[Open menu] Attempt " + std::to_string(attempt) + " failed: " + error.message(), COLOR_ORANGE);
+        }
+    }
+    if (cur == MenuCursorPosition::UNKNOWN){
+        OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
+            "Menu or cursor detection failed after 3 opening attempts.",
+            stream);
+    }
+    return cur;
+}
+
+//  From the icon `cur` to `target`: a row up or down, then across.
+void move_menu_cursor(VideoStream& stream, ProControllerContext& context, MenuCursorPosition cur, MenuCursorPosition target, int num_icons){
+    const IconGrid cur_g = icon_to_grid(cur, num_icons);
+    const IconGrid tgt_g = icon_to_grid(target, num_icons);
+    if (tgt_g.row == -1){
+        OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
+            "Unknown target menu icon.",
+            stream);
+    }
+    if (cur_g.row != tgt_g.row){
+        pbf_press_dpad(context, cur_g.row < tgt_g.row ? DPAD_DOWN : DPAD_UP, 80ms, 300ms);
+        context.wait_for_all_requests();
+    }
+    const int col_diff = tgt_g.col - cur_g.col;
+    for (int i = 0; i < std::abs(col_diff); i++){
+        pbf_press_dpad(context, col_diff > 0 ? DPAD_RIGHT : DPAD_LEFT, 80ms, 300ms);
+        context.wait_for_all_requests();
+    }
+}
+
 }
 
 std::string read_location_from_save_screen(VideoStream& stream, ProControllerContext& context){
@@ -104,58 +262,18 @@ bool save_game(
     SingleSwitchProgramEnvironment& env,
     ProControllerContext& context,
     const std::string& expected_location
-) {
+){
     static constexpr size_t MAX_RETRIES = 3;
 
-    std::string wrong_place;
-    for (size_t attempt = 0; attempt < MAX_RETRIES && wrong_place.empty(); attempt++){
-        try {
-            env.console.log("Checkpoint save attempt: " + std::to_string(attempt + 1));
-
-            // Only mash B on retries - no need to on first attempt
-            // if already cleanly in the overworld.
-            if (attempt > 0){
-                pbf_mash_button(context, BUTTON_B, 1000ms);
-            }
-
-            // The feedback-based save of save_game(VideoStream&, ...), split at the
-            // save prompt to check where it stands.
-            const std::string location = open_save_prompt(env.console, context);
-            if (!expected_location.empty() && !location_banner_matches(location, expected_location)){
-                wrong_place = "About to save in \"" + location + "\", expected " + expected_location + "; not saving.";
-                env.console.log(wrong_place, COLOR_RED);
-                leave_save_prompt(env.console, context);
-                break;
-            }
-            pbf_press_button(context, BUTTON_ZL, 80ms, 5000ms);
-
-            // Return to overworld cleanly.
-            pbf_mash_button(context, BUTTON_B, 1000ms);
-
-            // Drain R/confirm/B before detection; an earlier overworld frame
-            // must not report success while saving commands are still queued.
-            context.wait_for_all_requests();
-
-            // Verify overworld. Generous timeout: save animation + fade can be slow.
-            OverworldWatcher overworld;
-            int ret = wait_until(env.console, context, std::chrono::seconds(15), {overworld});
-            if (ret < 0){
-                throw OperationFailedExceptionWithScreenshot(ErrorReportMode::SEND_ERROR_REPORT,
-                    "Failed to detect overworld after save.",
-                    env.console);
-            }
-
-            env.console.log("Checkpoint save verified.");
+    for (size_t attempt = 0; attempt < MAX_RETRIES; attempt++){
+        const SaveAttempt result = save_once(env, context, expected_location, attempt);
+        if (result.outcome == SaveOutcome::SAVED){
             return true;
-
-        } catch (OperationFailedException& e){
-            env.console.log("Checkpoint save failed: " + e.message(), COLOR_RED);
-            context.wait_for(1000ms);
         }
-    }
-    //  No blind fallback for the wrong place: it would save there.
-    if (!wrong_place.empty()){
-        OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT, wrong_place, env.console);
+        //  No blind fallback for the wrong place: it would save there.
+        if (result.outcome == SaveOutcome::WRONG_PLACE){
+            OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT, result.wrong_place, env.console);
+        }
     }
 
     // Blind fallback: reuse the non-feedback save_game(context) from GameNavigation
@@ -209,127 +327,11 @@ void wait_for_dialogue(VideoStream& stream,
 }
 
 void open_menu(VideoStream& stream, ProControllerContext& context, MenuCursorPosition target, int num_icons){
-    using namespace std::chrono_literals;
-
-    // Previous single opening attempt:
-    // context.wait_for_all_requests();
-    // overworld_to_menu(stream, context);
-    // pbf_wait(context, 1000ms);
-    // context.wait_for_all_requests();
     context.wait_for_all_requests();
-
     MenuCursorDetector detector;
-    {
-        static const char* ICON_NAMES[MENU_CURSOR_NUM_ICONS] = {
-            "POKEDEX",
-            "POKEMON",
-            "BAG",
-            "CARD",
-            "OPTIONS",
-            "MAP",
-            "CAPSULES",
-            "MYSTERYGIFT",
-        };
-        // Previous optional template directory: PokemonBDSP/AutoStory.
-        std::string ref_dir = RESOURCE_PATH() + "PokemonBDSP/Autostory";
-        for (int i = 0; i < MENU_CURSOR_NUM_ICONS; i++){
-            std::string path = ref_dir + "/" + ICON_NAMES[i] + ".png";
-            // These templates are optional. The dark-pixel cursor detector
-            // remains available when a template is not packaged.
-            if (!Filesystem::is_regular_file(path)){
-                continue;
-            }
-            // Previously constructed the image before checking its availability.
-            ImageRGB32 img(path);
-            if (img){
-                detector.set_icon_reference(static_cast<MenuCursorPosition>(i), std::move(img));
-            }
-        }
-    }
-    // Previous single detection attempt retained for comparison.
-    // MenuCursorPosition cur = MenuCursorPosition::UNKNOWN;
-    // for (int i = 0; i < 10 && cur == MenuCursorPosition::UNKNOWN; i++){
-    //     context.wait_for(50ms);
-    //     VideoSnapshot snap = stream.video().snapshot();
-    //     if (snap) cur = detector.detect(snap);
-    // }
-    // if (cur == MenuCursorPosition::UNKNOWN){
-    //     OperationFailedExceptionWithScreenshot::fire(
-    //         ErrorReportMode::SEND_ERROR_REPORT,
-    //         "Menu cursor not detected after opening menu.",
-    //         stream
-    //     );
-    // }
-
-    MenuCursorPosition cur = MenuCursorPosition::UNKNOWN;
-    bool menu_confirmed_open = false;
-    for (size_t attempt = 1; attempt <= 3; attempt++){
-        stream.log("[Open menu] Open and detect attempt " + std::to_string(attempt) + "/3.");
-        try {
-            // A late-opening menu may already be visible after a timeout.
-            // Check before pressing X again, since X would close that menu.
-            if (!menu_confirmed_open){
-                MenuWatcher already_open;
-                if (wait_until(stream, context, 300ms, {{already_open}}) < 0){
-                    overworld_to_menu(stream, context);
-                }else{
-                    stream.log("[Open menu] Menu already visible; skipping X.");
-                }
-                menu_confirmed_open = true;
-            }else{
-                // Cursor detection retries send no input that could close the
-                // confirmed menu. Keep observing it instead of toggling X.
-                stream.log("[Open menu] Retrying cursor detection in the open menu.");
-            }
-            pbf_wait(context, 1000ms);
-            context.wait_for_all_requests();
-            for (int frame = 0; frame < 10 && cur == MenuCursorPosition::UNKNOWN; frame++){
-                context.wait_for(50ms);
-                const VideoSnapshot snapshot = stream.video().snapshot();
-                if (snapshot){
-                    cur = detector.detect(snapshot);
-                }
-            }
-            if (cur != MenuCursorPosition::UNKNOWN){
-                stream.log("[Open menu] Menu and cursor detected on attempt " + std::to_string(attempt) + ".",
-                    COLOR_GREEN);
-                break;
-            }
-            stream.log("[Open menu] Menu cursor not detected on attempt " + std::to_string(attempt) + ".",
-                COLOR_ORANGE);
-        } catch (OperationFailedException& error){
-            stream.log("[Open menu] Attempt " + std::to_string(attempt) + " failed: " + error.message(), COLOR_ORANGE);
-        }
-    }
-    if (cur == MenuCursorPosition::UNKNOWN){
-        OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
-            "Menu or cursor detection failed after 3 opening attempts.",
-            stream);
-    }
-
-    IconGrid cur_g = icon_to_grid(cur, num_icons);
-    IconGrid tgt_g = icon_to_grid(target, num_icons);
-    if (tgt_g.row == -1){
-        OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
-            "Unknown target menu icon.",
-            stream);
-    }
-
-    if (cur_g.row != tgt_g.row){
-        DpadPosition vert = (cur_g.row < tgt_g.row) ? DPAD_DOWN : DPAD_UP;
-        pbf_press_dpad(context, vert, 80ms, 300ms);
-        context.wait_for_all_requests();
-    }
-
-    int col_diff = tgt_g.col - cur_g.col;
-    if (col_diff != 0){
-        DpadPosition horiz = (col_diff > 0) ? DPAD_RIGHT : DPAD_LEFT;
-        for (int i = 0; i < std::abs(col_diff); i++){
-            pbf_press_dpad(context, horiz, 80ms, 300ms);
-            context.wait_for_all_requests();
-        }
-    }
-
+    load_menu_icon_references(detector);
+    const MenuCursorPosition cur = open_menu_and_find_cursor(stream, context, detector);
+    move_menu_cursor(stream, context, cur, target, num_icons);
     pbf_press_button(context, BUTTON_A, 80ms, 200ms);
 }
 

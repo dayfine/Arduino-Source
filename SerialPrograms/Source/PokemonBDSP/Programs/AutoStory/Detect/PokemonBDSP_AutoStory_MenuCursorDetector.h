@@ -53,9 +53,9 @@
 
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 
-namespace PokemonAutomation {
-namespace NintendoSwitch {
-namespace PokemonBDSP {
+namespace PokemonAutomation{
+namespace NintendoSwitch{
+namespace PokemonBDSP{
 
 
 enum class MenuCursorPosition {

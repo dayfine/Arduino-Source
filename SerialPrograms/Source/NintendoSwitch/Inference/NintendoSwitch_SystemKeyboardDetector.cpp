@@ -129,10 +129,18 @@ void type_on_system_keyboard(VideoStream& stream, ProControllerContext& context,
                 arrived = true;
                 break;
             }
-            for (; row < target_row; row++) pbf_press_dpad(context, DPAD_DOWN, 100ms, 200ms);
-            for (; row > target_row; row--) pbf_press_dpad(context, DPAD_UP, 100ms, 200ms);
-            for (; col < target_col; col++) pbf_press_dpad(context, DPAD_RIGHT, 100ms, 200ms);
-            for (; col > target_col; col--) pbf_press_dpad(context, DPAD_LEFT, 100ms, 200ms);
+            for (; row < target_row; row++){
+                pbf_press_dpad(context, DPAD_DOWN, 100ms, 200ms);
+            }
+            for (; row > target_row; row--){
+                pbf_press_dpad(context, DPAD_UP, 100ms, 200ms);
+            }
+            for (; col < target_col; col++){
+                pbf_press_dpad(context, DPAD_RIGHT, 100ms, 200ms);
+            }
+            for (; col > target_col; col--){
+                pbf_press_dpad(context, DPAD_LEFT, 100ms, 200ms);
+            }
             pbf_wait(context, 300ms);
         }
         if (!arrived){
