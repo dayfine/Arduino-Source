@@ -28,6 +28,8 @@ MAPS = [
     'Route202', 'JubilifeCity', 'Route203', 'OreburghGate', 'OreburghCity',
     'OreburghMine', 'Route204South', 'RavagedPath', 'Route204North',
     'FloaromaTown',
+    #   #112
+    'OreburghGym',
 ]
 
 MAX_LITERAL = 16000

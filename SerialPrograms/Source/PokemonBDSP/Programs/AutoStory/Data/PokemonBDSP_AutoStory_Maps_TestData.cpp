@@ -28,6 +28,7 @@ extern const char* const TEST_MAP_JSON_Route204South;
 extern const char* const TEST_MAP_JSON_RavagedPath;
 extern const char* const TEST_MAP_JSON_Route204North;
 extern const char* const TEST_MAP_JSON_FloaromaTown;
+extern const char* const TEST_MAP_JSON_OreburghGym;
 
 
 const std::vector<std::pair<std::string, const char*>>& test_map_json(){
@@ -47,6 +48,7 @@ const std::vector<std::pair<std::string, const char*>>& test_map_json(){
         {"RavagedPath", TEST_MAP_JSON_RavagedPath},
         {"Route204North", TEST_MAP_JSON_Route204North},
         {"FloaromaTown", TEST_MAP_JSON_FloaromaTown},
+        {"OreburghGym", TEST_MAP_JSON_OreburghGym},
     };
     return maps;
 }
