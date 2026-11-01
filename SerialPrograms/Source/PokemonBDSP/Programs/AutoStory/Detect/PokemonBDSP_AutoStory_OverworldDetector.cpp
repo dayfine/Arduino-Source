@@ -14,9 +14,9 @@
 
 using namespace std::chrono_literals;
 
-namespace PokemonAutomation {
-namespace NintendoSwitch {
-namespace PokemonBDSP {
+namespace PokemonAutomation{
+namespace NintendoSwitch{
+namespace PokemonBDSP{
 
 
 // ---------------------------------------------------------------------------
