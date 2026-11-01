@@ -35,7 +35,7 @@ bool tall_grass(const StoryWorld& world, const TilePos& pos){
 }
 
 
-WallHit walk_to_wall(const StoryWorld& world, const TilePos& from, Direction direction){
+WallHit slide_to_wall(const StoryWorld& world, const TilePos& from, Direction direction){
     WallHit hit;
     hit.stop = from;
     while (true){
@@ -269,7 +269,7 @@ std::optional<Expansion> to_wall_leg(const StoryWorld& world, const Spread& spre
     size_t longest = 0;
     int grass = 0;
     for (const TilePos& pos : spread){
-        const WallHit hit = walk_to_wall(world, pos, direction);
+        const WallHit hit = slide_to_wall(world, pos, direction);
         if (!hit.anchored){
             return std::nullopt;
         }

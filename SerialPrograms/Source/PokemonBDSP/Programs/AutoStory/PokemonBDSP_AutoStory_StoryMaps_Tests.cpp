@@ -52,8 +52,8 @@ public:
     virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
         const StoryWorld route = alone("Route202");
         for (int x = 15; x <= 20; x++){
-            const WallHit up = walk_to_wall(route, {x, 27}, Direction::NORTH);
-            const WallHit down = walk_to_wall(route, {x, 25}, Direction::SOUTH);
+            const WallHit up = slide_to_wall(route, {x, 27}, Direction::NORTH);
+            const WallHit down = slide_to_wall(route, {x, 25}, Direction::SOUTH);
             if (!(up.stop == TilePos{x, 25}) || !(down.stop == TilePos{x, 27})){
                 return std::format("Catch patch column {}: north from row 27 stops at {}, south from row 25 at {}; expected rows 25 and 27, between tree rows.",
                     x, Pokemon::to_string(up.stop), Pokemon::to_string(down.stop));
@@ -177,7 +177,7 @@ public:
         if (!gym.occupied(roark)){
             return std::string("Nobody stands on Roark's tile.");
         }
-        const WallHit up = walk_to_wall(gym, entrance, Direction::NORTH);
+        const WallHit up = slide_to_wall(gym, entrance, Direction::NORTH);
         if (!(up.wall == roark)){
             return "North from the entrance stops at " + Pokemon::to_string(up.stop) + ", not in front of Roark.";
         }
