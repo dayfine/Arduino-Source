@@ -64,6 +64,7 @@ UnitTestDatabase make_UNIT_TESTS_ALL(){
     Pokemon::add_tests_LegPlanner(ret);
     Pokemon::add_tests_LegWalker(ret);
     Pokemon::add_tests_MapData(ret);
+    Pokemon::add_tests_RouteLog(ret);
     Pokemon::add_tests_StoryEvents(ret);
     Pokemon::add_tests_StorySegments(ret);
     NintendoSwitch::add_tests_CheckOnlineDetector(ret);
