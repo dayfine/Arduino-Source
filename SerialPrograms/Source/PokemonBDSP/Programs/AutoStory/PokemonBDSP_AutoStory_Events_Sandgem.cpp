@@ -2,7 +2,7 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  00.04's Potions in Sandgem (the Poke Mart lady, or the clerk) and the
+ *  00.04's Potions from the Poke Mart lady on Route 201's east end, the
  *  way back to Route 202's save spot, and the stairs into Jubilife.
  *
  */
@@ -22,7 +22,6 @@
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Walk.h"
 #include "PokemonBDSP_AutoStory_Bag.h"
 #include "PokemonBDSP_AutoStory_Center.h"
-#include "PokemonBDSP_AutoStory_Mart.h"
 #include "PokemonBDSP_AutoStory_Talks.h"
 #include "PokemonBDSP_AutoStory_Walks.h"
 #include "PokemonBDSP_AutoStory_WildBattle.h"
@@ -38,74 +37,6 @@ using Pokemon::TilePos;
 
 
 namespace{
-
-// How many Potions to buy. A Potion is 300 and a new game starts with
-// 3000; the money on screen cannot be read yet. Five heal the starter
-// through Route 202's four trainers and leave half the money.
-constexpr int POTIONS_TO_BUY = 5;
-
-// From below the Center's door to below the Poke Mart's, ten tiles
-// east along the same row, and in. The last leg is open and movement
-// is not locked to tiles, so we may stand part of a tile off the door:
-// whole-tile steps either side missed it in r121a. The Mart's doorway
-// is lit like the Center's, so it is lined up with by sight the same
-// way. Two townspeople wander the dirt south of the Mart and stop a
-// leg short without the walk knowing (r122a counted to the door's
-// row from three rows south of it): where the doorway shows on screen
-// says so, and the walk is made once more from there.
-void enter_sandgem_poke_mart(
-    VideoStream& stream, ProControllerContext& context, const StoryWorld& maps,
-    std::vector<TrainerSight>& trainers, const RouteTrainerFight& fight
-) {
-    const TilePos door = maps.to_world(MAP_SANDGEM_TOWN, map_point("SandgemTown", "poke_mart_door"));
-    const TilePos front = door.next(Pokemon::Direction::SOUTH);
-    const auto at_front = [&](const TilePos& pos) { return pos.y == front.y && std::abs(pos.x - front.x) <= 1; };
-    walk_route(stream, context, run_from_wild_battle, maps, story_door_front(MAP_SANDGEM_TOWN, map_point("SandgemTown", "pokemon_center_door")),
-        at_front, trainers, fight, "To the Poke Mart");
-    const std::vector<TilePos> short_of_door = tiles_short_of_door(stream, context, maps, door, "To the Poke Mart");
-    if (!short_of_door.empty()) {
-        route_status(stream, "To the Poke Mart: stopped short of the door; walking again.");
-        walk_route(stream, context, run_from_wild_battle, maps, short_of_door, at_front, trainers, fight, "To the Poke Mart again");
-    }
-    enter_lit_door(stream, context, "Sandgem Poke Mart: through the door");
-}
-
-// Inside the Mart, the clerk's counter is straight ahead of the door
-// (every Mart is laid out so; Oreburgh's and Eterna's are walked the
-// same way). Walk up to it, buy the Potions, and walk back out.
-// buy_items() opens the talk and finds the Potion row by OCR of its
-// name and price; the quantity is counted out blind.
-void buy_potions_at_the_counter(VideoStream& stream, ProControllerContext& context) {
-    route_status(stream, "Poke Mart: to the clerk.");
-    const WalkResult walk = walk_until(stream, context, run_from_wild_battle, 0, 1, 6000ms, "Poke Mart: to the clerk");
-    if (walk.stop != WalkStop::BLOCKED && walk.stop != WalkStop::DIALOG) {
-        OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
-            "Poke Mart: the counter was not reached (" + std::string(walk_stop_name(walk.stop)) + ").", stream);
-    }
-    route_status(stream, "Poke Mart: buying " + std::to_string(POTIONS_TO_BUY) + " Potions.");
-    if (!buy_items(stream, context, {{ShopItem::Potion, POTIONS_TO_BUY}})) {
-        OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
-            "Poke Mart: could not buy " + std::to_string(POTIONS_TO_BUY) + " Potions.", stream);
-    }
-    leave_door_south(stream, context, run_from_wild_battle, "Poke Mart: out the door");
-}
-
-// Potions let us heal where we stand. Sandgem's Poke Mart is next
-// door east of its Center. The purchase is checked in the Bag after,
-// since buy_items() counts the quantity out without reading it.
-// Returns where we stand after: below the Mart's door.
-std::vector<TilePos> buy_potions_in_sandgem(
-    VideoStream& stream, ProControllerContext& context, const StoryWorld& maps,
-    std::vector<TrainerSight>& trainers, const RouteTrainerFight& fight
-) {
-    enter_sandgem_poke_mart(stream, context, maps, trainers, fight);
-    buy_potions_at_the_counter(stream, context);
-    if (!bag_has_item(stream, context, "potion", 1)) {
-        OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
-            "Poke Mart: the purchase went through, but no Potion is in the Bag.", stream);
-    }
-    return story_door_front(MAP_SANDGEM_TOWN, map_point("SandgemTown", "poke_mart_door"));
-}
 
 // A walk_until() callback that keeps every location banner it sees.
 std::function<bool(const ImageViewRGB32&)> banner_keeper(std::vector<std::string>& banners) {
@@ -294,47 +225,28 @@ void mart_lady(VideoStream& stream, ProControllerContext& context){
 }
 
 //  00.04c's potions step, from the save out of Sandgem's Center: the Poke
-//  Mart lady's, or the clerk's after two misses this run, on to Route 202's
-//  save spot, where 00.04d's save goes. The Bag must have Potions after.
-//  The clerk's list is found by reading item names, which needs a reader
-//  for the game's language; without one, the lady every time.
-Pokemon::Outcome sandgem_potions(StoryExecutor& executor, Pokemon::RunState&, const Pokemon::StoryStep&){
-    VideoStream& stream = executor.stream();
-    ProControllerContext& context = executor.context();
-    size_t& misses = executor.run_count("mart_lady_misses");
-    if (misses < 2 || !story_reads_text()){
-        // Onto the doors' row first: out of the door we stand a tile to
-        // three below it (r261 walked west into the trees from three).
-        route_turn(stream, context, Direction::EAST);
-        walk_tiles_dpad(stream, context, run_from_wild_battle, 1, 0, 1, "east under the Center's wall");
-        const WalkResult up = walk_until(stream, context, run_from_wild_battle, 0, 1, 3000ms, "north to the Center's front");
-        if (up.stop != WalkStop::BLOCKED){
-            fail_step(stream, std::string("Sandgem: north to the Center's front ended ") + walk_stop_name(up.stop) + ".");
-        }
-        try{
-            mart_lady(stream, context);
-        }catch (OperationFailedException&){
-            misses++;
-            throw;
-        }
-    }else{
-        const StoryWorld& maps = story_maps();
-        std::vector<TrainerSight> trainers = story_trainer_sights();
-        const RouteTrainerFight fight = [&](const std::string& name){ fight_route_trainer(stream, context, name); };
-        const std::vector<TilePos> at = buy_potions_in_sandgem(stream, context, maps, trainers, fight);
-        walk_to_route_202_save_spot(stream, context, maps, at, trainers, fight);
+//  Mart lady's 10, on to Route 202's save spot, where 00.04d's save goes.
+//  The Bag must have Potions after.
+void sandgem_potions(VideoStream& stream, ProControllerContext& context){
+    // Onto the doors' row first: out of the door we stand a tile to
+    // three below it (r261 walked west into the trees from three).
+    route_turn(stream, context, Direction::EAST);
+    walk_tiles_dpad(stream, context, run_from_wild_battle, 1, 0, 1, "east under the Center's wall");
+    const WalkResult up = walk_until(stream, context, run_from_wild_battle, 0, 1, 3000ms, "north to the Center's front");
+    if (up.stop != WalkStop::BLOCKED){
+        fail_step(stream, std::string("Sandgem: north to the Center's front ended ") + walk_stop_name(up.stop) + ".");
     }
+    mart_lady(stream, context);
     if (!bag_has_item(stream, context, "potion", 1)){
         fail_step(stream, "00.04: no Potions in the Bag after the shop.");
     }
-    return Pokemon::outcome_ok();
 }
 
 }
 
 
 void add_sandgem_events(StoryEvents& events){
-    events.emplace("sandgem_potions", sandgem_potions);
+    events.emplace("sandgem_potions", console_event(sandgem_potions));
     events.emplace("jubilife_stairs", console_event(up_jubilife_stairs));
 }
 

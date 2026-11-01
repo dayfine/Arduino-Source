@@ -266,7 +266,7 @@ std::vector<StoryCheckpoint> to_the_catch(){
 
 std::vector<StoryCheckpoint> to_jubilife(){
     StoryStep potions = make(StoryStepKind::SHOP, "potions",
-        "Potions before Route 202's trainers: the Poke Mart lady's 10 (she stands still, as in the decomp), the clerk's 5 after two misses");
+        "Potions before Route 202's trainers: the Poke Mart lady's 10 (she stands still, as in the decomp)");
     potions.items = {{.item = "potion", .quantity = 10}};
     potions.variant = "sandgem_potions";
     potions.pose_after = at(ROUTE_202, "save_spot");

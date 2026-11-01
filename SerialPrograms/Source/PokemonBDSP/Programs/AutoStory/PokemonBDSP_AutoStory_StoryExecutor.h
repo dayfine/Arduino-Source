@@ -99,11 +99,6 @@ public:
     void set_stop_rows(std::set<std::string> rows){
         m_stop_rows = std::move(rows);
     }
-    //  A count that lasts the whole program run, across reloads (e.g. the
-    //  Poke Mart lady's misses, after which the clerk sells the Potions).
-    size_t& run_count(const std::string& name){
-        return m_run_counts[name];
-    }
     //  Walks from the tiles of `from` on its map to any of `goal`'s tiles,
     //  fighting the trainers who see us this attempt. Returns where it left
     //  us, as a pose on `goal`'s map.

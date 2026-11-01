@@ -1603,12 +1603,6 @@ file(GLOB LIBRARY_SOURCES
     Source/PokemonBDSP/Inference/PokemonBDSP_ReceivePokemonDetector.h
     Source/PokemonBDSP/Inference/PokemonBDSP_SelectionArrow.cpp
     Source/PokemonBDSP/Inference/PokemonBDSP_SelectionArrow.h
-    Source/PokemonBDSP/Inference/PokemonBDSP_ShopDetectors.cpp
-    Source/PokemonBDSP/Inference/PokemonBDSP_ShopDetectors.h
-    Source/PokemonBDSP/Inference/PokemonBDSP_ShopItemNameReader.cpp
-    Source/PokemonBDSP/Inference/PokemonBDSP_ShopItemNameReader.h
-    Source/PokemonBDSP/Inference/PokemonBDSP_ShopItemPriceReader.cpp
-    Source/PokemonBDSP/Inference/PokemonBDSP_ShopItemPriceReader.h
     Source/PokemonBDSP/Inference/PokemonBDSP_VSSeekerReaction.cpp
     Source/PokemonBDSP/Inference/PokemonBDSP_VSSeekerReaction.h
     Source/PokemonBDSP/Inference/Rng/PokemonBDSP_BlinkExtraction.cpp
@@ -1677,8 +1671,6 @@ file(GLOB LIBRARY_SOURCES
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_Events_Route203.cpp
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_Events_Route204.cpp
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_Events_Sandgem.cpp
-    Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_Mart.cpp
-    Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_Mart.h
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_NewGame.cpp
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_NewGame.h
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_Settings.cpp
