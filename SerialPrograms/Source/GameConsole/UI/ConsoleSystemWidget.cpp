@@ -8,6 +8,7 @@
 #include <QVBoxLayout>
 #include "CommandRowWidget.h"
 #include "ConsoleSystemWidget.h"
+#include "CommonFramework/GlobalSettingsPanel.h"
 
 namespace PokemonAutomation{
 
@@ -37,7 +38,10 @@ ConsoleSystemWidget::ConsoleSystemWidget(
     layout->setContentsMargins(0, 0, 0, 0);
     layout->setAlignment(Qt::AlignTop);
 
-    m_group_box = new CollapsibleGroupBox(*this, "Console " + QString::number(m_session.console_number()) + " Settings");
+    m_group_box = new CollapsibleGroupBox(
+        *this, "Console " + QString::number(m_session.console_number()) + " Settings",
+        !GlobalSettings::instance().CONSOLE_SETTINGS_COLLAPSED
+    );
     layout->addWidget(m_group_box);
 
     {

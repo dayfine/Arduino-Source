@@ -9,11 +9,14 @@
 #include "Common/Cpp/Filesystem/Filesystem.h"
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "CommonFramework/StaticGlobals.h"
-#include "Tests/TestUtils.h"
+#include "Inference/Box/PokemonFRLG_BoxCellOccupiedDetector.h"
+#include "Inference/Box/PokemonFRLG_BoxGenderReader.h"
+#include "Inference/Box/PokemonFRLG_BoxSelectionModeDetector.h"
 #include "Inference/Dialogs/PokemonFRLG_BattleDialogs.h"
 #include "Inference/Dialogs/PokemonFRLG_DialogDetector.h"
 #include "Inference/Dialogs/PokemonFRLG_PrizeSelectDetector.h"
 #include "Inference/Map/PokemonFRLG_PokemonLeagueDetectors.h"
+#include "Inference/Menus/PokemonFRLG_BagDetector.h"
 #include "Inference/Menus/PokemonFRLG_PartyEmptySlotDetector.h"
 #include "Inference/Menus/PokemonFRLG_PartyHeldItemDetector.h"
 #include "Inference/Menus/PokemonFRLG_PartyMenuDetector.h"
@@ -26,6 +29,7 @@
 #include "Inference/PokemonFRLG_WildEncounterReader.h"
 #include "Programs/PokemonFRLG_NamingScreenKeyboard.h"
 #include "PokemonFRLG_Navigation.h"
+#include "Tests/TestUtils.h"
 
 #include "PokemonFRLG_Tests.h"
 namespace PokemonAutomation{
@@ -602,6 +606,9 @@ void add_tests_NamingText(UnitTestDatabase& database){
 
 void add_tests(UnitTestDatabase& database){
     add_tests_AdvanceWhiteDialogDetector(database);
+    add_tests_BoxCellOccupiedDetector(database);
+    add_tests_BoxGenderReader(database);
+    add_tests_BoxSelectionModeDetector(database);
     add_tests_SelectionDialogDetector(database);
     add_tests_ShinySymbolDetector(database);
     add_tests_PrizeSelectDetector(database);
@@ -619,6 +626,7 @@ void add_tests(UnitTestDatabase& database){
     add_tests_EliteFourRoomDetector(database);
     add_tests_HallOfFameSavingDetector(database);
     add_tests_BattleMoveSelectionArrow(database);
+    add_tests_BagDetector(database);
     add_tests_ExitWildBattle(database);
     add_tests_NamingCursor(database);
     add_tests_NamingPlan(database);
