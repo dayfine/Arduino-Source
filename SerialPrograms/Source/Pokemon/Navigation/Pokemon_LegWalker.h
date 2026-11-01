@@ -26,7 +26,6 @@
 #include <optional>
 #include <string>
 #include <vector>
-#include "Common/Cpp/MoveOnlyFunction.h"
 #include "Common/Cpp/Time.h"
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
 #include "CommonTools/Async/InferenceRoutines.h"
@@ -62,10 +61,14 @@ template <typename Console, typename Context>
 using LegInterrupts = std::vector<std::unique_ptr<LegInterrupt<Console, Context>>>;
 
 
-//  How the game moves the player: holds `direction` for `duration`, then
-//  lets go.
+//  How the game moves the player.
 template <typename Context>
-using LegMover = MoveOnlyFunction<void(Context& context, Direction direction, Milliseconds duration)>;
+class LegMover{
+public:
+    virtual ~LegMover() = default;
+    //  Holds `direction` for `duration`, then lets go.
+    virtual void hold(Context& context, Direction direction, Milliseconds duration) const = 0;
+};
 
 
 //  A straight leg, for a player standing still and facing its way.
@@ -127,7 +130,7 @@ LegResult walk_leg_with(const LegSpec& leg, const LegCalls& calls, size_t max_in
 template <typename Console, typename Context>
 LegResult walk_leg(
     Console& console, Context& context,
-    LegMover<Context>& mover,
+    const LegMover<Context>& mover,
     const LegInterrupts<Console, Context>& interrupts,
     const LegSpec& leg,
     size_t max_interruptions = 5
@@ -145,7 +148,7 @@ LegResult walk_leg(
             console, context,
             [&](Context& context){
                 start = current_time();
-                mover(context, leg.direction, hold);
+                mover.hold(context, leg.direction, hold);
             },
             callbacks
         );
