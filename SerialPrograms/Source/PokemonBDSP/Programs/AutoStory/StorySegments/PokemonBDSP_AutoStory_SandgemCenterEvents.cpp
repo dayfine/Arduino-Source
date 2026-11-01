@@ -65,7 +65,7 @@ using Pokemon::pose_known;
 const char* const ROUTE202_TO_SANDGEM_CENTER_NAME = "Route 202 to Sandgem's Pokemon Center (events)";
 
 TilePos sandgem_entry_stop(){
-    return story_maps().to_world(MAP_SANDGEM_TOWN, {29, 2});
+    return story_maps().to_world(MAP_SANDGEM_TOWN, {29, 5});
 }
 
 TilePos below_sandgem_center_sign(){
@@ -73,7 +73,7 @@ TilePos below_sandgem_center_sign(){
 }
 
 TilePos east_of_lab_sign(){
-    return story_maps().to_world(MAP_SANDGEM_TOWN, {6, 7});
+    return story_maps().to_world(MAP_SANDGEM_TOWN, {6, 11});
 }
 
 bool sign_text_matches(const std::string& text, const std::string& key){

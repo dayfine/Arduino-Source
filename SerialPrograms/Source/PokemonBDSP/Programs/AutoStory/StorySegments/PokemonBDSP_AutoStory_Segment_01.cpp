@@ -729,7 +729,7 @@ void oreburgh_to_roark(VideoStream& stream, ProControllerContext& context){
     // Back up the corridor, then north out through the hall. A route leg
     // north to the top's wall walks on through it into the hall (r99), and
     // no wall stops us a row short of it, so the route ends on the corner
-    // at (14,11), where that leg started, and the walk does the rest.
+    // at (14,10), where that leg started, and the walk does the rest.
     const Pokemon::TilePos exit = world(OreburghMine::CORRIDOR_EXIT_START);
     at = walk_route(stream, context, maps, at,
         [&](const Pokemon::TilePos& pos){ return pos == exit; },
@@ -1157,31 +1157,31 @@ void oreburgh_to_route203(VideoStream& stream, ProControllerContext& context){
 
 void route203_to_jubilife(VideoStream& stream, ProControllerContext& context){
     StepLog step(stream, "01.06", "From the Oreburgh Gate's west exit into Jubilife City", {
-        "Route 203 on its grid to row 17, below the blue-haired trainer",
-        "West along row 17 into Jubilife, counting tiles",
+        "Route 203 on its grid to row 18, below the girl",
+        "West along row 18 into Jubilife, counting tiles",
     });
 
     step(1);
-    // On the grid (Data/PokemonBDSP_AutoStory_Route203, checked by hand):
-    // south from the Gate, west under the beaten girl to the stairs, north
-    // to the ledge, west to the blue-haired trainer, and a row down onto row
-    // 17, which runs straight to Jubilife. Trainers the map does not list
+    // On the grid (Data/PokemonBDSP_AutoStory_Route203, from the decomp,
+    // its east stretch checked by hand): south from the Gate down the sand,
+    // west along the sand's bottom row and on under the girl's row, which
+    // runs straight to Jubilife as row 18. Trainers the map does not list
     // are fought where they stop us.
     std::vector<Pokemon::TrainerSight> trainers;
     auto fight = [&](const std::string& who){
         talk_or_fight(stream, context, "Route 203: " + who);
     };
     const std::vector<Pokemon::TilePos> at = walk_route(stream, context, route203_maps(), Route203::gate_exit(),
-        on_route203_west_line, trainers, fight, "Route 203 to row 17");
+        on_route203_west_line, trainers, fight, "Route 203 to row 18");
     if (at.size() != 1){
-        fail(stream, "Route 203: the walk to row 17 did not end on a known tile.");
+        fail(stream, "Route 203: the walk to row 18 did not end on a known tile.");
     }
 
     step(2);
-    // Row 17 has no wall before Jubilife, so count the tiles: from column
-    // `x` it is x + 1 taps to Jubilife's first tile (by hand from (31, 17):
+    // Row 18 has no wall before Jubilife, so count the tiles: from column
+    // `x` it is x + 1 taps to Jubilife's first tile (by hand from column 31:
     // 32 taps, Jubilife's banner on the last one). 01.07 starts there.
-    dpad_tiles(stream, context, DPAD_LEFT, (size_t)at[0].x + 1, "west along row 17 into Jubilife");
+    dpad_tiles(stream, context, DPAD_LEFT, (size_t)at[0].x + 1, "west along row 18 into Jubilife");
     context.wait_for_all_requests();
     if (!location_banner_showing(*stream.video().snapshot().frame)){
         fail(stream, "Route 203: no Jubilife banner after counting the tiles west.");
@@ -1195,7 +1195,7 @@ void jubilife_to_rowan(VideoStream& stream, ProControllerContext& context){
     });
 
     step(1);
-    // Route 203's row 17 carries on as Jubilife's long road. From the first
+    // Route 203's row 18 carries on as Jubilife's long road. From the first
     // tile the crossroads with the street north to Route 204 is 14 tiles
     // west; the street is about 4 tiles wide, so a stick hold does (by hand,
     // 2026-10-31: 2 x 1120 ms landed mid-street; 7 D-pad taps stopped below

@@ -631,7 +631,8 @@ static BattlePlan build_expert_plan(Logger& logger,
     // Iterate through all listed trainers in sequence order.
     // For current_trainer, populate move_for_species.
     for (Trainer t : all_trainers){
-        const BDSPTrainerData& tdata = bdsp_trainer(trainer_slug(t));
+        const std::string slug = trainer_slug(t);
+        const BDSPTrainerData& tdata = bdsp_trainer(slug);
         bool is_current = (t == current_trainer);
         bool doubles = (tdata.battle_type == BDSPBattleType::DOUBLES);
 
@@ -758,7 +759,8 @@ void handle_expert_battle(const ProgramInfo& /*info*/,
     using namespace Pokemon;
 
     Logger& logger = stream.logger();
-    const BDSPTrainerData& trainer_data = bdsp_trainer(trainer_slug(current_trainer));
+    const std::string current_slug = trainer_slug(current_trainer);
+    const BDSPTrainerData& trainer_data = bdsp_trainer(current_slug);
     const OutsideHelpConfig& help = options.outside_help;
     bool doubles = (trainer_data.battle_type == BDSPBattleType::DOUBLES);
 
@@ -769,7 +771,8 @@ void handle_expert_battle(const ProgramInfo& /*info*/,
     }
 
     // Helper stats — 0IV/0EV at level 100, neutral nature
-    const BDSPPokemonData& helper_base = bdsp_pokemon("torterra");
+    const std::string helper_base_slug = "torterra";
+    const BDSPPokemonData& helper_base = bdsp_pokemon(helper_base_slug);
     int base_atk = (int)calc_stats_nonhp(helper_base.attack, 100, 0, 0, NatureAdjustment::NEUTRAL);
     int base_spatk = (int)calc_stats_nonhp(helper_base.spatk, 100, 0, 0, NatureAdjustment::NEUTRAL);
 
