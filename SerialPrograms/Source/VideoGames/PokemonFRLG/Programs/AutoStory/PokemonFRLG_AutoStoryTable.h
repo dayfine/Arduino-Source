@@ -25,6 +25,8 @@ const std::vector<StoryCheckpoint>& story_checkpoints();
 
 
 void add_tests_AutoStory(UnitTestDatabase& database);
+//  The table run end to end against a fake game (PokemonFRLG_AutoStorySimulation_Tests.cpp).
+void add_tests_AutoStorySimulation(UnitTestDatabase& database);
 
 
 

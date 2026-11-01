@@ -23,21 +23,20 @@
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
 #include "Pokemon/Navigation/Pokemon_Grid.h"
+#include "Pokemon/Navigation/Pokemon_StorySteps.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonFRLG{
 
 
-//  How much the story checks the screen before and after it acts.
-//  THOROUGH: reads a Mart row's item before buying it, the bag's Items
+//  How much the story checks the screen before and after it acts: the
+//  shared level (Pokemon_StorySteps.h, set by StoryRunOptions). For FRLG,
+//  THOROUGH reads a Mart row's item before buying it, the bag's Items
 //  pocket after shopping (the counts the story then keeps), and an item's
 //  name in the bag before using it. FAST trusts the counts it keeps and the
 //  timings.
-enum class StoryChecks{
-    THOROUGH,
-    FAST,
-};
+using StoryChecks = Pokemon::StoryChecks;
 
 //  The START menu as the story grows it. Before the starter: BAG, the
 //  player, SAVE, OPTION, EXIT; the starter adds POKEMON on top, the Pokedex

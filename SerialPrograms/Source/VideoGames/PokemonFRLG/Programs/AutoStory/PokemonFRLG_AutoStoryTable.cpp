@@ -29,8 +29,22 @@ const char* const FOREST_GATE = "Route2_ViridianForest_NorthEntrance";
 const char* const PEWTER_CENTER = "PewterCity_PokemonCenter_1F";
 const char* const GYM = "PewterCity_Gym";
 
-StoryPose at(const char* map, int x, int y, std::optional<Direction> facing = std::nullopt){
-    return StoryPose{map, {x, y}, facing};
+Pokemon::Pose at(const char* map, int x, int y, std::optional<Direction> facing = std::nullopt){
+    return to_pose(StoryPose{map, {x, y}, facing});
+}
+
+StoryCheckpoint row(
+    std::string id, std::string title, std::optional<Pokemon::Pose> start,
+    Supplies supplies, StartMenu menu, std::vector<StoryStep> steps
+){
+    StoryCheckpoint checkpoint;
+    checkpoint.id = std::move(id);
+    checkpoint.title = std::move(title);
+    checkpoint.start = std::move(start);
+    checkpoint.steps = std::move(steps);
+    checkpoint.supplies = supplies;
+    checkpoint.menu = menu;
+    return checkpoint;
 }
 
 StoryStep make(StoryStepKind kind, std::string name, std::string why){
@@ -41,7 +55,7 @@ StoryStep make(StoryStepKind kind, std::string name, std::string why){
     return step;
 }
 
-StoryStep route(std::string name, StoryPose target, std::string why, bool fight_wild = false){
+StoryStep route(std::string name, Pokemon::Pose target, std::string why, bool fight_wild = false){
     StoryStep step = make(StoryStepKind::ROUTE, std::move(name), std::move(why));
     step.target = std::move(target);
     step.fight_wild = fight_wild;
@@ -60,13 +74,13 @@ StoryStep answer(std::string name, bool yes, std::string why){
     return step;
 }
 
-StoryStep scene(std::string name, std::optional<StoryPose> pose_after, std::string why){
+StoryStep scene(std::string name, std::optional<Pokemon::Pose> pose_after, std::string why){
     StoryStep step = make(StoryStepKind::MASH, std::move(name), std::move(why));
     step.pose_after = std::move(pose_after);
     return step;
 }
 
-StoryStep battle(std::string name, StoryPose pose_after, bool may_lose, std::string why){
+StoryStep battle(std::string name, Pokemon::Pose pose_after, bool may_lose, std::string why){
     StoryStep step = make(StoryStepKind::BATTLE, std::move(name), std::move(why));
     step.pose_after = std::move(pose_after);
     step.may_lose = may_lose;
@@ -80,7 +94,7 @@ StoryStep legs(std::string name, std::vector<StoryLeg> legs, std::string why, bo
     return step;
 }
 
-StoryStep new_game_intro(StoryPose pose_after, std::string why){
+StoryStep new_game_intro(Pokemon::Pose pose_after, std::string why){
     StoryStep step = make(StoryStepKind::NEW_GAME, "intro", std::move(why));
     step.pose_after = std::move(pose_after);
     return step;
@@ -90,7 +104,7 @@ StoryStep talk(std::string name, std::string why){
     return make(StoryStepKind::TALK, std::move(name), std::move(why));
 }
 
-StoryStep ready(std::string name, StoryPose nurse, std::string why){
+StoryStep ready(std::string name, Pokemon::Pose nurse, std::string why){
     StoryStep step = make(StoryStepKind::READY, std::move(name), std::move(why));
     step.target = std::move(nurse);
     return step;
@@ -100,32 +114,38 @@ StoryStep heal(std::string name){
     return make(StoryStepKind::HEAL, std::move(name), "full HP");
 }
 
+StoryStep shop(std::string name, std::vector<Pokemon::StoryItem> items, std::string why){
+    StoryStep step = make(StoryStepKind::SHOP, std::move(name), std::move(why));
+    step.items = std::move(items);
+    return step;
+}
+
 
 StoryCheckpoint new_game(){
-    return StoryCheckpoint{"00.01", "new game to the bedroom", std::nullopt, {}, StartMenu::BEFORE_POKEMON, {
+    return row("00.01", "new game to the bedroom", std::nullopt, {}, StartMenu::BEFORE_POKEMON, {
         //  new_game.c: the bedroom at (6, 6), facing the TV.
         new_game_intro(at(BEDROOM, 6, 6, NORTH), "Oak's speech, BOY, default names, rival GREEN"),
-        make(StoryStepKind::SET_OPTIONS, "options", "fast text; no switch prompt between a trainer's Pokemon"),
-    }};
+        make(StoryStepKind::OPTIONS, "options", "fast text; no switch prompt between a trainer's Pokemon"),
+    });
 }
 
 StoryCheckpoint leave_house(){
-    return StoryCheckpoint{"00.02", "bedroom to Pallet Town", at(BEDROOM, 6, 6, NORTH), {}, StartMenu::BEFORE_POKEMON, {
+    return row("00.02", "bedroom to Pallet Town", at(BEDROOM, 6, 6, NORTH), {}, StartMenu::BEFORE_POKEMON, {
         route("front_door", at(PALLET, 6, 8), "down the stairs and out of the house"),
-    }};
+    });
 }
 
 StoryCheckpoint oaks_trigger(){
-    return StoryCheckpoint{"00.03", "Oak stops the player and walks them to the lab", at(PALLET, 6, 8, SOUTH), {}, StartMenu::BEFORE_POKEMON, {
+    return row("00.03", "Oak stops the player and walks them to the lab", at(PALLET, 6, 8, SOUTH), {}, StartMenu::BEFORE_POKEMON, {
         route("below_oaks_trigger", at(PALLET, 12, 2, NORTH), "below the north exit, short of Oak's trigger at (12, 1)"),
         step_into("oaks_trigger", NORTH, "the trigger: \"Don't go out!\""),
         //  PlayerEnter walks the player up 8 tiles from the lab's door.
         scene("to_the_lab", at(LAB, 6, 4, NORTH), "Oak walks the player into the lab; the scene ends at the table"),
-    }};
+    });
 }
 
 StoryCheckpoint starter(){
-    return StoryCheckpoint{"00.04", "Squirtle, then the rival's battle", at(LAB, 6, 4, NORTH), {}, StartMenu::BEFORE_POKEDEX, {
+    return row("00.04", "Squirtle, then the rival's battle", at(LAB, 6, 4, NORTH), {}, StartMenu::BEFORE_POKEDEX, {
         route("below_squirtle", at(LAB, 9, 5, NORTH), "under Squirtle's ball (9, 4)"),
         talk("squirtle_ball", "\"So, you want the WATER POKEMON SQUIRTLE?\""),
         answer("choose_squirtle", true, "take Squirtle"),
@@ -135,30 +155,31 @@ StoryCheckpoint starter(){
         step_into("rival_trigger", SOUTH, "\"Wait, let's check out our POKEMON!\""),
         //  The rival leaves; PlayerWatchRivalExitAfterBattleRight ends facing down.
         battle("rival_battle", at(LAB, 7, 8, SOUTH), true, "the tutorial battle; losing goes on too"),
-    }};
+    });
 }
 
 StoryCheckpoint parcel(){
-    return StoryCheckpoint{"00.05", "Route 1 to Viridian Mart: Oak's Parcel", at(LAB, 7, 8, SOUTH), {}, StartMenu::BEFORE_POKEDEX, {
+    return row("00.05", "Route 1 to Viridian Mart: Oak's Parcel", at(LAB, 7, 8, SOUTH), {}, StartMenu::BEFORE_POKEDEX, {
         route("below_mart_door", at(VIRIDIAN, 36, 20, NORTH), "Route 1, running from wild battles"),
         step_into("mart_door", NORTH, "the clerk's scene starts on entering"),
         //  ApproachCounter: up 4 from the mat, then faces the clerk.
         scene("parcel_from_clerk", at(VIRIDIAN_MART, 4, 3, WEST), "the clerk gives OAK'S PARCEL"),
-    }};
+    });
 }
 
 StoryCheckpoint pokedex(){
-    return StoryCheckpoint{"00.06", "Oak's Parcel to the Pokedex", at(VIRIDIAN_MART, 4, 3, WEST), {}, StartMenu::FULL, {
+    return row("00.06", "Oak's Parcel to the Pokedex", at(VIRIDIAN_MART, 4, 3, WEST), {}, StartMenu::FULL, {
         route("below_oak", at(LAB, 6, 4, NORTH), "back down Route 1 to Oak"),
         talk("give_parcel", "Oak takes the parcel"),
         scene("pokedex_scene", at(LAB, 6, 4, SOUTH), "the rival comes in, Pokedexes from the desk; the player ends facing south (console B, 2026-11-01)"),
-    }};
+    });
 }
 
 StoryCheckpoint shopping(){
-    return StoryCheckpoint{"00.07", "Viridian shopping, then into Viridian Forest", at(LAB, 6, 4, SOUTH), {}, StartMenu::FULL, {
+    return row("00.07", "Viridian shopping, then into Viridian Forest", at(LAB, 6, 4, SOUTH), {}, StartMenu::FULL, {
         route("mart_clerk", at(VIRIDIAN_MART, 4, 3, WEST), "Route 1 again"),
-        make(StoryStepKind::SHOP, "potions_and_antidotes", "5 Potions, 3 Antidotes, 1 Parlyz Heal"),
+        //  2000 of the 3000 a new game starts with, plus the rival's prize.
+        shop("potions_and_antidotes", {{"potion", 5}, {"antidote", 3}, {"parlyz_heal", 1}}, "5 Potions, 3 Antidotes, 1 Parlyz Heal"),
         route("viridian_nurse", at(VIRIDIAN_CENTER, 7, 4, NORTH), "heal before the forest"),
         heal("heal_viridian"),
         route("below_old_man_trigger", at(VIRIDIAN, 20, 9, NORTH), "short of the tutorial trigger (20, 8)"),
@@ -172,12 +193,12 @@ StoryCheckpoint shopping(){
         //  The gate's north warp lands on the forest's exit mat (29, 62), facing
         //  north. The save there keeps a forest failure from going back to Pallet.
         route("forest_entrance", at(FOREST, 29, 62, NORTH), "Route 2 and the south gate, running from wild battles"),
-    }};
+    });
 }
 
 StoryCheckpoint forest(){
     //  The supplies bought in 00.07.
-    return StoryCheckpoint{"00.08", "Viridian Forest to Pewter Center", at(FOREST, 29, 62, NORTH), {5, 3, 1}, StartMenu::FULL, {
+    return row("00.08", "Viridian Forest to Pewter Center", at(FOREST, 29, 62, NORTH), {5, 3, 1}, StartMenu::FULL, {
         //  Wild battles are fought for EXP. Straight up the east side from the
         //  entrance, each leg ending on a wall (the Boy at (45, 58) stops the
         //  east one). Rick (47, 45) sees (42..46, 45), so the last leg meets
@@ -197,12 +218,12 @@ StoryCheckpoint forest(){
         //  Out of the forest, wild battles are run from; trainers are still fought.
         route("pewter_nurse", at(PEWTER_CENTER, 7, 4, NORTH), "Route 2 north to Pewter's Center"),
         heal("heal_pewter"),
-    }};
+    });
 }
 
 StoryCheckpoint brock(){
     //  The by-hand save: 2 Potions and 1 Antidote left after the forest.
-    return StoryCheckpoint{"00.09", "Pewter Gym: Camper Liam, then Brock", at(PEWTER_CENTER, 7, 4, NORTH), {2, 1}, StartMenu::FULL, {
+    return row("00.09", "Pewter Gym: Camper Liam, then Brock", at(PEWTER_CENTER, 7, 4, NORTH), {2, 1}, StartMenu::FULL, {
         //  Camper Liam (3, 8) always faces east (MOVEMENT_TYPE_FACE_RIGHT, sight
         //  4) and sees (4..7, 8): walking north up column 6 from the door,
         //  the step onto (6, 8) starts his battle. He walks up to the player,
@@ -216,7 +237,7 @@ StoryCheckpoint brock(){
         route("before_brock", at(GYM, 6, 6, NORTH), "below Brock (6, 5); Liam, beaten, stands at (5, 8)"),
         talk("challenge_brock", "Brock's speech"),
         battle("brock", at(GYM, 6, 6, NORTH), false, "Geodude and Onix, with Bubble; Boulder Badge and TM39"),
-    }};
+    });
 }
 
 }

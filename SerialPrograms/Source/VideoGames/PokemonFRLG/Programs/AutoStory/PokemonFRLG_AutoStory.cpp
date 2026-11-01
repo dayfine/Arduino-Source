@@ -51,22 +51,6 @@ AutoStory::AutoStory()
         LockMode::LOCK_WHILE_RUNNING,
         true
     )
-    , ATTEMPTS_PER_CHECKPOINT(
-        "<b>Attempts per checkpoint:</b><br>A failed checkpoint reloads its save and runs again, up to this many times in all.",
-        LockMode::LOCK_WHILE_RUNNING,
-        1, 5, 2, 2
-    )
-    , CHECKS(
-        "<b>Checks:</b><br>Thorough reads the screen before acting and confirms after: the item on a Mart row "
-        "before buying it, the bag's Items pocket after shopping (its counts are the ones kept), and an item's name "
-        "in the bag before using it. Fast trusts the counts it keeps and the timings.",
-        {
-            {StoryChecks::THOROUGH, "thorough", "Thorough"},
-            {StoryChecks::FAST, "fast", "Fast"},
-        },
-        LockMode::LOCK_WHILE_RUNNING,
-        StoryChecks::THOROUGH
-    )
     , NOTIFICATIONS({
         &NOTIFICATION_PROGRAM_FINISH,
         &NOTIFICATION_ERROR_FATAL,
@@ -75,8 +59,7 @@ AutoStory::AutoStory()
     PA_ADD_OPTION(START_CHECKPOINT);
     PA_ADD_OPTION(END_CHECKPOINT);
     PA_ADD_OPTION(NEW_GAME_FROM_TITLE);
-    PA_ADD_OPTION(ATTEMPTS_PER_CHECKPOINT);
-    PA_ADD_OPTION(CHECKS);
+    PA_ADD_OPTION(RETRIES);
     PA_ADD_OPTION(NOTIFICATIONS);
 }
 
@@ -121,7 +104,7 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
         throw UserSetupError(env.console, "Checkpoint 00.01 starts a new game: start on the title screen with no save.");
     }
 
-    StoryEnv story{env.console, context, checkpoints[first].supplies, checkpoints[first].supplies, false, CHECKS};
+    StoryEnv story{env.console, context, checkpoints[first].supplies, checkpoints[first].supplies, false, RETRIES.checks()};
     if (!(first == 0 && NEW_GAME_FROM_TITLE)){
         env.console.log("Loading the save for " + checkpoints[first].id + ".");
         soft_reset(env.console, context);
@@ -129,7 +112,12 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
         check_save_place(env, context, checkpoints, first, story.language);
     }
 
-    Pokemon::Segment segment = make_story_segment(checkpoints, story);
+    StoryExecutor executor(story);
+    executor.set_checks(RETRIES.checks());
+    //  For #120's item-name reads (read_item_list_name()), which still read
+    //  English; no other step reads text.
+    executor.set_language(RETRIES.language());
+    Pokemon::Segment segment = make_story_segment(checkpoints, executor);
     Pokemon::SegmentHooks hooks;
     hooks.reload = [&story](Pokemon::RunState&){
         if (!story.has_save){
@@ -146,8 +134,7 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
     hooks.log = [&env](const std::string& line){
         env.console.log(line);
     };
-    Pokemon::SegmentPolicy policy;
-    policy.attempts_per_checkpoint = ATTEMPTS_PER_CHECKPOINT;
+    const Pokemon::SegmentPolicy policy = RETRIES.policy();
 
     Pokemon::RunState state;
     const Pokemon::SegmentReport report = run_segment(

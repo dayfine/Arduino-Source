@@ -5,7 +5,7 @@
  *  Plays FireRed from a new game to the Boulder Badge, as the story
  *  checkpoints of PokemonFRLG_AutoStoryTable.h run by the shared story
  *  engine. Each checkpoint saves at its end; one that fails is retried from
- *  that save.
+ *  that save, as the shared retry options say.
  *
  */
 
@@ -17,6 +17,7 @@
 #include "Common/Cpp/Options/SimpleIntegerOption.h"
 #include "CommonFramework/Notifications/EventNotificationsTable.h"
 #include "NintendoSwitch/NintendoSwitch_SingleSwitchProgram.h"
+#include "Pokemon/Options/Pokemon_StoryRunOptions.h"
 #include "PokemonFRLG_AutoStoryActions.h"
 
 namespace PokemonAutomation{
@@ -43,8 +44,7 @@ private:
     SimpleIntegerOption<uint8_t> START_CHECKPOINT;
     SimpleIntegerOption<uint8_t> END_CHECKPOINT;
     BooleanCheckBoxOption NEW_GAME_FROM_TITLE;
-    SimpleIntegerOption<uint8_t> ATTEMPTS_PER_CHECKPOINT;
-    EnumDropdownOption<StoryChecks> CHECKS;
+    Pokemon::StoryRunOptions RETRIES;
     EventNotificationsOption NOTIFICATIONS;
 };
 

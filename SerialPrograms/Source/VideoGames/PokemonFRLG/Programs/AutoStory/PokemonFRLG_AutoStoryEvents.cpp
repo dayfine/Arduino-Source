@@ -22,6 +22,7 @@ namespace NintendoSwitch{
 namespace PokemonFRLG{
 
 using namespace std::chrono_literals;
+using Pokemon::facing_of;
 using Pokemon::Outcome;
 using Pokemon::RunState;
 
@@ -43,11 +44,6 @@ Outcome guarded(Body&& body){
     }catch (OperationFailedException& e){
         return Pokemon::outcome_failed("operation_failed", e.message());
     }
-}
-
-std::optional<Direction> facing_of(const Pokemon::Pose& pose){
-    const Pokemon::TilePose* tile_pose = dynamic_cast<const Pokemon::TilePose*>(pose.where.get());
-    return tile_pose ? tile_pose->facing : std::nullopt;
 }
 
 const MapData* find_story_map(const std::string& name){
@@ -93,7 +89,11 @@ Outcome walk_route(StoryEnv& env, RunState& state, const StoryStep& step){
     if (!facing){
         return Pokemon::outcome_failed("unknown_facing", to_string(start));
     }
-    const RouteGoal goal{{step.target.map, step.target.tile}, step.target.facing};
+    const std::optional<StoryPose> target = step.target ? story_pose(*step.target) : std::nullopt;
+    if (!target){
+        return Pokemon::outcome_failed("bad_target", step.target ? Pokemon::to_string(*step.target) : "none");
+    }
+    const RouteGoal goal{{target->map, target->tile}, target->facing};
     const std::optional<std::vector<RouteStep>> route = plan_overworld_route(
         story_maps(), start, goal, default_route_costs(), facing
     );
@@ -105,9 +105,9 @@ Outcome walk_route(StoryEnv& env, RunState& state, const StoryStep& step){
     //  the leg's end, then walks the rest as given.
     const RoutePlanning planning{.maps = &story_maps(), .costs = default_route_costs(), .start = start, .label = step.name};
     walk_overworld_route(env.console, env.context, *route, facing, interrupts, &planning);
-    log_arrival(env, step.name, step.target.map, step.target.tile);
+    log_arrival(env, step.name, target->map, target->tile);
     const std::optional<Direction> end_facing = route->empty() ? facing : std::optional<Direction>(route->back().facing_after);
-    return Pokemon::outcome_ok(to_pose(StoryPose{step.target.map, step.target.tile, end_facing}));
+    return Pokemon::outcome_ok(to_pose(StoryPose{target->map, target->tile, end_facing}));
 }
 
 Outcome walk_legs(StoryEnv& env, RunState& state, const StoryStep& step){
@@ -178,14 +178,41 @@ Outcome get_ready(StoryEnv& env, RunState& state, const StoryStep& step){
     return walked;
 }
 
-Outcome shop(StoryEnv& env){
-    //  Viridian Mart before the Boulder Badge (pokefirered ViridianCity_Mart_Items):
-    //  POKE BALL, POTION (300), ANTIDOTE (100), PARLYZ HEAL (200). 2000 of the
-    //  3000 a new game starts with, plus the rival's prize.
-    buy_items(env.console, env.context, {{1, 5, "potion"}, {2, 3, "antidote"}, {3, 1, "parlyz-heal"}}, env.checks, env.language);
-    env.supplies.potions += 5;
-    env.supplies.antidotes += 3;
-    env.supplies.parlyz_heals += 1;
+//  Viridian Mart before the Boulder Badge (pokefirered ViridianCity_Mart_Items):
+//  POKE BALL, POTION (300), ANTIDOTE (100), PARLYZ HEAL (200). Each item
+//  the story buys: its row, and where the bag's count is kept.
+struct MartItem{
+    const char* item;
+    int row;
+    int Supplies::* count;
+    //  The name the item list reader reads (read_item_list_name()).
+    const char* slug;
+};
+constexpr MartItem VIRIDIAN_MART_ITEMS[] = {
+    {.item = "potion", .row = 1, .count = &Supplies::potions, .slug = "potion"},
+    {.item = "antidote", .row = 2, .count = &Supplies::antidotes, .slug = "antidote"},
+    {.item = "parlyz_heal", .row = 3, .count = &Supplies::parlyz_heals, .slug = "parlyz-heal"},
+};
+
+const MartItem* viridian_mart_item(const std::string& name){
+    for (const MartItem& item : VIRIDIAN_MART_ITEMS){
+        if (name == item.item){
+            return &item;
+        }
+    }
+    return nullptr;
+}
+
+Outcome shop(StoryEnv& env, const StoryStep& step){
+    const std::optional<std::vector<MartOrder>> orders = viridian_mart_orders(step.items);
+    if (!orders){
+        return Pokemon::outcome_failed("unknown_item", step.name);
+    }
+    //  2000 of the 3000 a new game starts with, plus the rival's prize.
+    buy_items(env.console, env.context, *orders, env.checks, env.language);
+    for (const Pokemon::StoryItem& item : step.items){
+        env.supplies.*viridian_mart_item(item.item)->count += (int)item.quantity;
+    }
     if (env.checks == StoryChecks::FAST){
         return Pokemon::outcome_ok();
     }
@@ -200,71 +227,20 @@ Outcome shop(StoryEnv& env){
     return Pokemon::outcome_ok();
 }
 
-Outcome run_step(StoryEnv& env, RunState& state, const StoryStep& step, StartMenu menu){
-    switch (step.kind){
-    case StoryStepKind::NEW_GAME:
-        play_new_game_intro(env.console, env.context);
-        return Pokemon::outcome_ok();
-    case StoryStepKind::SET_OPTIONS:
-        set_options(env.console, env.context, menu);
-        return Pokemon::outcome_ok();
-    case StoryStepKind::ROUTE:
-        return walk_route(env, state, step);
-    case StoryStepKind::LEGS:
-        return walk_legs(env, state, step);
-    case StoryStepKind::STEP:
-        return take_step(env, state, step);
-    case StoryStepKind::TALK:
-        pbf_press_button(env.context, BUTTON_A, 160ms, 800ms);
-        return Pokemon::outcome_ok();
-    case StoryStepKind::ANSWER:
-        answer_yes_no(env.console, env.context, step.yes, BUTTON_B, YES_NO_TIMEOUT);
-        return Pokemon::outcome_ok();
-    case StoryStepKind::MASH:
-        mash_until_overworld(env.console, env.context, SCENE_TIMEOUT);
-        return Pokemon::outcome_ok();
-    case StoryStepKind::BATTLE:
-        return battle(env, step);
-    case StoryStepKind::HEAL:
-        heal_at_center(env.console, env.context);
-        env.supplies.hurt = false;
-        env.supplies.hp_red = false;
-        env.supplies.status = StatusCondition::NONE;
-        return Pokemon::outcome_ok();
-    case StoryStepKind::READY:
-        return get_ready(env, state, step);
-    case StoryStepKind::SHOP:
-        return shop(env);
+}
+
+
+std::optional<std::vector<MartOrder>> viridian_mart_orders(const std::vector<Pokemon::StoryItem>& items){
+    std::vector<MartOrder> orders;
+    for (const Pokemon::StoryItem& wanted : items){
+        const MartItem* found = viridian_mart_item(wanted.item);
+        if (found == nullptr){
+            return std::nullopt;
+        }
+        orders.push_back(MartOrder{found->row, (int)wanted.quantity, found->slug});
     }
-    return Pokemon::outcome_failed("unknown_step");
+    return orders;
 }
-
-Pokemon::Event make_event(const StoryStep& step, StoryEnv& env, StartMenu menu){
-    Pokemon::Event event;
-    event.name = step.name;
-    event.why = step.why;
-    event.act = [&env, &step, menu](RunState& state){
-        return guarded([&]{ return run_step(env, state, step, menu); });
-    };
-    if (step.pose_after){
-        event.pose_learned = to_pose(*step.pose_after);
-    }
-    return event;
-}
-
-//  The first event of a checkpoint that starts from a save: where the save
-//  leaves the player, for a run that reloaded it.
-Pokemon::Event from_save_event(const StoryPose& start){
-    Pokemon::Event event;
-    event.name = "from_save";
-    event.why = "where the checkpoint's save leaves the player";
-    event.act = [](RunState&){ return Pokemon::outcome_ok(); };
-    event.pose_learned = to_pose(start);
-    return event;
-}
-
-}
-
 
 const std::vector<MapData>& story_maps(){
     static const std::vector<MapData> maps = overworld_maps(map_flag_set(overworld_maps(), "after_hall_of_fame"));
@@ -272,11 +248,15 @@ const std::vector<MapData>& story_maps(){
 }
 
 Pokemon::Pose to_pose(const StoryPose& pose){
-    Pokemon::Pose ret;
-    ret.map = pose.map;
-    ret.certainty = Pokemon::PoseCertainty::TILE;
-    ret.where = std::make_shared<Pokemon::TilePose>(std::vector<TilePos>{pose.tile}, pose.facing);
-    return ret;
+    return Pokemon::tile_pose(pose.map, {pose.tile}, pose.facing);
+}
+
+std::optional<StoryPose> story_pose(const Pokemon::Pose& pose){
+    const std::vector<TilePos> tiles = Pokemon::tiles_of(pose);
+    if (tiles.size() != 1){
+        return std::nullopt;
+    }
+    return StoryPose{pose.map, tiles[0], facing_of(pose)};
 }
 
 std::string save_card_place(const std::string& map){
@@ -340,15 +320,76 @@ std::optional<Direction> wall_beside(const MapData& map, const TilePos& tile){
     return std::nullopt;
 }
 
-Pokemon::Checkpoint build_checkpoint(const StoryCheckpoint& data, StoryEnv& env){
-    Pokemon::Checkpoint checkpoint;
-    checkpoint.id = data.id;
-    if (data.start){
-        checkpoint.events.push_back(from_save_event(*data.start));
-    }
-    for (const StoryStep& step : data.steps){
-        checkpoint.events.push_back(make_event(step, env, data.menu));
-    }
+StoryExecutor::StoryExecutor(StoryEnv& env)
+    : m_env(env)
+{}
+
+Outcome StoryExecutor::run(RunState& state, const StoryStep& step){
+    return guarded([&]{ return Pokemon::StoryStepExecutor::run(state, step); });
+}
+
+Outcome StoryExecutor::new_game(RunState&, const StoryStep&){
+    play_new_game_intro(m_env.console, m_env.context);
+    return Pokemon::outcome_ok();
+}
+
+Outcome StoryExecutor::options(RunState&, const StoryStep&){
+    set_options(m_env.console, m_env.context, m_menu);
+    return Pokemon::outcome_ok();
+}
+
+Outcome StoryExecutor::route(RunState& state, const StoryStep& step){
+    return walk_route(m_env, state, step);
+}
+
+Outcome StoryExecutor::legs(RunState& state, const StoryStep& step){
+    return walk_legs(m_env, state, step);
+}
+
+Outcome StoryExecutor::step(RunState& state, const StoryStep& step){
+    return take_step(m_env, state, step);
+}
+
+Outcome StoryExecutor::talk(RunState&, const StoryStep&){
+    pbf_press_button(m_env.context, BUTTON_A, 160ms, 800ms);
+    return Pokemon::outcome_ok();
+}
+
+Outcome StoryExecutor::answer(RunState&, const StoryStep& step){
+    answer_yes_no(m_env.console, m_env.context, step.yes, BUTTON_B, YES_NO_TIMEOUT);
+    return Pokemon::outcome_ok();
+}
+
+Outcome StoryExecutor::mash(RunState&, const StoryStep&){
+    mash_until_overworld(m_env.console, m_env.context, SCENE_TIMEOUT);
+    return Pokemon::outcome_ok();
+}
+
+Outcome StoryExecutor::battle(RunState&, const StoryStep& step){
+    return PokemonFRLG::battle(m_env, step);
+}
+
+Outcome StoryExecutor::heal(RunState&, const StoryStep&){
+    heal_at_center(m_env.console, m_env.context);
+    m_env.supplies.hurt = false;
+    m_env.supplies.hp_red = false;
+    m_env.supplies.status = StatusCondition::NONE;
+    return Pokemon::outcome_ok();
+}
+
+Outcome StoryExecutor::shop(RunState&, const StoryStep& step){
+    return PokemonFRLG::shop(m_env, step);
+}
+
+Outcome StoryExecutor::ready(RunState& state, const StoryStep& step){
+    return get_ready(m_env, state, step);
+}
+
+
+Pokemon::Checkpoint build_checkpoint(const StoryCheckpoint& data, StoryExecutor& executor){
+    executor.set_menu(data.menu);
+    Pokemon::Checkpoint checkpoint = Pokemon::build_story_checkpoint(data, executor);
+    StoryEnv& env = executor.env();
     const StartMenu menu = data.menu;
     checkpoint.save = [&env, menu](RunState&){
         return guarded([&]{
@@ -361,13 +402,13 @@ Pokemon::Checkpoint build_checkpoint(const StoryCheckpoint& data, StoryEnv& env)
     return checkpoint;
 }
 
-Pokemon::Segment make_story_segment(const std::vector<StoryCheckpoint>& checkpoints, StoryEnv& env){
+Pokemon::Segment make_story_segment(const std::vector<StoryCheckpoint>& checkpoints, StoryExecutor& executor){
     Pokemon::Segment segment;
     segment.id = "00";
     for (const StoryCheckpoint& data : checkpoints){
         segment.checkpoints.push_back(Pokemon::CheckpointSpec{
             data.id, data.title, false,
-            [&data, &env]{ return build_checkpoint(data, env); }
+            [&data, &executor]{ return build_checkpoint(data, executor); }
         });
     }
     return segment;
