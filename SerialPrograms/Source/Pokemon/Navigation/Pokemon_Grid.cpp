@@ -4,6 +4,7 @@
  *
  */
 
+#include <format>
 #include "Pokemon_Grid.h"
 
 namespace PokemonAutomation{
@@ -40,7 +41,7 @@ TilePos TilePos::next(Direction direction) const{
 }
 
 std::string to_string(const TilePos& pos){
-    return "(" + std::to_string(pos.x) + ", " + std::to_string(pos.y) + ")";
+    return std::format("({}, {})", pos.x, pos.y);
 }
 
 
