@@ -5,6 +5,7 @@
  */
 
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
+#include "Pokemon/AutoStory/Pokemon_AutoStorySelect.h"
 #include "Inference/PokemonSV_WhiteButtonDetector.h"
 #include "Inference/Boxes/PokemonSV_BoxDetection.h"
 #include "Inference/Boxes/PokemonSV_BoxEggDetector.h"
@@ -148,7 +149,46 @@ private:
 
 }
 
+namespace{
+
+// A stand-in for a story segment or checkpoint: only its name is read.
+struct NamedEntry{
+    std::string label;
+    std::string name() const{ return label; }
+};
+
+class Test_AutoStorySelectDatabase : public UnitTest{
+public:
+    Test_AutoStorySelectDatabase()
+        : UnitTest("Pokemon::AutoStorySelectDatabase - a section keeps whole-list slugs")
+    {}
+
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        std::vector<std::unique_ptr<NamedEntry>> list;
+        for (const char* label : {"a", "b", "c", "d"}){
+            list.emplace_back(std::make_unique<NamedEntry>(NamedEntry{label}));
+        }
+        const StringSelectDatabase database = Pokemon::make_story_select_database(list, 2, 10);
+        const std::vector<StringSelectEntry>& entries = database.case_list();
+        if (entries.size() != 2){
+            return "Expected 2 entries (the end is clamped to the list), got " + std::to_string(entries.size());
+        }
+        if (entries[0].slug != "2" || entries[0].display_name != "c" || entries[1].slug != "3" || entries[1].display_name != "d"){
+            return "Expected slugs 2, 3 labeled c, d; got " + entries[0].slug + " " + entries[0].display_name
+                + ", " + entries[1].slug + " " + entries[1].display_name;
+        }
+        return true;
+    }
+};
+
+void add_tests_AutoStory(UnitTestDatabase& database){
+    database.add<Test_AutoStorySelectDatabase>();
+}
+
+}
+
 void add_tests(UnitTestDatabase& database){
+    add_tests_AutoStory(database);
     database.add<Test_BBQuestsSlugs>();
 
     // Full-frame references, in the CommandLineTests repo: they exercise the production
