@@ -207,6 +207,11 @@ WalkResult walk_until_impl(
     const DpadPosition dpad_direction = x < 0 ? DPAD_LEFT : x > 0 ? DPAD_RIGHT : y > 0 ? DPAD_UP : DPAD_DOWN;
     WalkResult result{WalkStop::LIMIT, 0ms, 0};
     size_t unchanged = 0;
+    //  The largest change a chunk of this walk made: a step. A bump into an
+    //  NPC measured 17.2 after steps of 63 to 65 (r250a, Floaroma's old
+    //  woman), over the fixed line of 16, so "still" is also anything under
+    //  40% of the walk's own steps.
+    double largest = 0;
 
     context.wait_for_all_requests();
     VideoSnapshot before = snapshot_or_fail(stream, label);
@@ -304,7 +309,9 @@ WalkResult walk_until_impl(
             before = std::move(after);
             continue;
         }
-        const bool still = change < (taps ? WALK_TAP_BLOCKED_CHANGE : WALK_BLOCKED_CHANGE);
+        largest = std::max(largest, change);
+        const double line = taps ? std::max(WALK_TAP_BLOCKED_CHANGE, 0.4 * largest) : WALK_BLOCKED_CHANGE;
+        const bool still = change < line;
         if (!still){
             result.moved_chunks++;
         }

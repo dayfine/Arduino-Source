@@ -1546,8 +1546,10 @@ void floaroma_old_couple(VideoStream& stream, ProControllerContext& context){
         if (west.stop != WalkStop::LIMIT || west.moved_chunks < 7){
             fail(stream, "Floaroma: west 8 to the flower field moved " + std::to_string(west.moved_chunks) + " tiles.");
         }
+        //  Blocked, or out of taps with the last ones bumping: either way
+        //  she is in front of us (r250a: 3 steps, 2 bumps, "limit").
         const WalkResult north = walk_tiles_dpad(stream, context, 0, 1, 5, "north until the old woman");
-        if (north.stop != WalkStop::BLOCKED){
+        if (north.stop != WalkStop::BLOCKED && north.moved_chunks >= 5){
             fail(stream, "Floaroma: nothing stopped the walk north to the old woman.");
         }
     }
@@ -1573,7 +1575,7 @@ void floaroma_old_couple(VideoStream& stream, ProControllerContext& context){
         fail(stream, "Floaroma: the step west below the old man did not move.");
     }
     const WalkResult north = walk_tiles_dpad(stream, context, 0, 1, 3, "north until the old man");
-    if (north.stop != WalkStop::BLOCKED){
+    if (north.stop != WalkStop::BLOCKED && north.moved_chunks >= 3){
         fail(stream, "Floaroma: nothing stopped the walk north to the old man.");
     }
     talk("the old man");
