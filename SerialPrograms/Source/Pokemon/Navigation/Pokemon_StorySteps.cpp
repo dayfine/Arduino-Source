@@ -258,6 +258,17 @@ std::vector<std::string> lint_story_checkpoint(const StoryCheckpoint& data){
 }
 
 
+void record_story_stats(AutoStoryStats& stats, const SegmentReport& report){
+    stats.m_segment++;
+    for (const CheckpointRun& run : report.runs){
+        if (run.passed){
+            stats.m_checkpoint++;
+        }
+    }
+    stats.m_reset += report.reloads;
+}
+
+
 Pose tile_pose(std::string map, std::vector<TilePos> tiles, std::optional<Direction> facing){
     Pose pose;
     pose.map = std::move(map);
