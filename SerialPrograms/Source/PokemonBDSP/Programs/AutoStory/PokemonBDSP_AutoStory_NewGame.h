@@ -100,6 +100,22 @@ inline constexpr size_t INTRO_X_WITHOUT_MENU = 20;
 //  game is confirmed on a BDSP screen; black screens leave the clock alone.
 void note_intro_screen(IntroProgress& progress, const std::string& screen, std::chrono::milliseconds since_start);
 IntroStep decide_intro_step(const std::string& screen, const IntroProgress& progress);
+
+//  When X opens nothing the menu detector knows, the player is still in
+//  control if the screen held still for INTRO_STILL_TIME before X (no
+//  dialogue, no fade, no intro sparkles), X changed the menu's area by more
+//  than INTRO_X_CHANGE, and B put it back within INTRO_B_RESTORE: the menu
+//  opened and closed. Changes are pixel RMSD.
+inline constexpr std::chrono::milliseconds INTRO_STILL_TIME = std::chrono::seconds(2);
+inline constexpr double INTRO_STILL_CHANGE = 4;
+inline constexpr double INTRO_X_CHANGE = 25;
+inline constexpr double INTRO_B_RESTORE = 10;
+struct XProbe{
+    double still_change;    //  over INTRO_STILL_TIME before X
+    double x_change;        //  from before X to after it
+    double b_change;        //  from before X to after the B that follows
+};
+bool intro_in_control_without_menu(const XProbe& probe);
 //  Counts `step` in `progress`.
 void record_intro_step(IntroProgress& progress, IntroStep step);
 

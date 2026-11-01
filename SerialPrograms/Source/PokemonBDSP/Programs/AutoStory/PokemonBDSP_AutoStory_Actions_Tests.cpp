@@ -19,6 +19,7 @@
 #include "Data/PokemonBDSP_AutoStory_StoryMaps.h"
 #include "Utils/PokemonBDSP_AutoStory_Location.h"
 #include "PokemonBDSP_AutoStory_Center.h"
+#include "PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_XMenuDetector.h"
 #include "PokemonBDSP_AutoStory_NewGame.h"
 #include "PokemonBDSP_AutoStory_Actions_Tests.h"
 
@@ -173,6 +174,75 @@ public:
         pressed.b_presses = INTRO_B_BEFORE_X;
         if (decide_intro_step("other", pressed) != IntroStep::PROBE_FOR_MENU){
             return "X must follow INTRO_B_BEFORE_X B presses.";
+        }
+        return true;
+    }
+};
+
+
+//  The X menu by its bottom bar at every stage: r5's new-game menu, two icons
+//  and a NEW tag, was missed by MenuDetector. <resources>/PokemonBDSP/
+//  AutoStory/XMenu/open/*.png must read as the menu, closed/*.png (a dialogue,
+//  the intro, the overworld, HOME) must not.
+class Test_XMenu : public UnitTest{
+public:
+    Test_XMenu()
+        : UnitTest("PokemonBDSP::AutoStory - X menu at every stage")
+    {}
+
+    virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
+        const std::string folder = UNIT_TEST_RESOURCE_PATH() + "PokemonBDSP/AutoStory/XMenu/";
+        if (!Filesystem::is_directory(Filesystem::Path(folder))){
+            return UnitTestResult(UnitTestResult::SKIPPED, "Screenshots not found: " + folder);
+        }
+        size_t failed = 0;
+        for (const char* expected : {"open", "closed"}){
+            for (const Filesystem::Path& file : Filesystem::list_directory(Filesystem::Path(folder + expected))){
+                if (file.extension().string() != ".png"){
+                    continue;
+                }
+                const ImageRGB32 image(file.string());
+                const ImageStats bar = image_stats(extract_box_reference(image, X_MENU_BAR_BOX));
+                const bool open = XMenuDetector().detect(image);
+                const bool ok = open == (std::string(expected) == "open");
+                failed += ok ? 0 : 1;
+                logger.log(std::string("[X menu] ") + (ok ? "ok " : "FAIL ") + expected + "/" + file.filename().string() +
+                    ": bar " + bar.average.to_string() + " sd " + bar.stddev.to_string(), ok ? COLOR_BLUE : COLOR_RED);
+            }
+        }
+        if (failed != 0){
+            return std::to_string(failed) + " X menu screenshots misread; see the log.";
+        }
+        return true;
+    }
+};
+
+
+//  X from a still bedroom opening something the detector misses, closed
+//  again by B, is the player in control; moving screens or X doing nothing
+//  are not.
+class Test_IntroInControl : public UnitTest{
+public:
+    Test_IntroInControl()
+        : UnitTest("PokemonBDSP::AutoStory - new-game intro: in control without the menu read")
+    {}
+
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        struct Case{
+            XProbe probe;
+            bool expected;
+            const char* what;
+        };
+        const Case cases[] = {
+            {{1, 60, 2}, true, "still, X opened, B closed"},
+            {{12, 60, 2}, false, "moving before X (sparkles, a cutscene)"},
+            {{1, 5, 2}, false, "X changed nothing"},
+            {{1, 60, 40}, false, "B did not put it back"},
+        };
+        for (const Case& c : cases){
+            if (intro_in_control_without_menu(c.probe) != c.expected){
+                return std::string("Wrong for: ") + c.what + ".";
+            }
         }
         return true;
     }
@@ -454,6 +524,8 @@ void add_tests_AutoStory_Actions(UnitTestDatabase& database){
     database.add<Test_IntroRivalConfirm>();
     database.add<Test_IntroBeforeMenu>();
     database.add<Test_IntroScreens>();
+    database.add<Test_XMenu>();
+    database.add<Test_IntroInControl>();
     database.add<Test_LitDoorwayScreenshots>();
     database.add<Test_SaveScreenLocation>();
     database.add<Test_PokemonCenterInside>();
