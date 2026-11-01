@@ -1,0 +1,25 @@
+{
+    "name": "RivalHouse2F",
+    "source": {"decomp_file": "pret/pokeplatinum: res/field/maps/data/map_data_185.bin; events_twinleaf_town_rival_house_2f.json; decomp only, not checked on the console", "revision": "c6689696d5fb", "date": "2026-11-01"},
+    "tiles": [
+        "############",
+        "############",
+        "############",
+        "############",
+        "###...S##S##",
+        "###........#",
+        "#..........#",
+        "#..........#",
+        "#.#........#",
+        "#.........##",
+        "#.#.......##",
+        "############"
+    ],
+    "points": {
+        "stairs": [3, 4],
+        "barry_talk": [8, 5]
+    },
+    "objects": [
+        {"name": "barry", "kind": "npc", "x": 9, "y": 5, "facing": "north"}
+    ]
+}
