@@ -100,6 +100,7 @@ const TileGrid& grid(){
 }
 
 
+const TilePos ROUTE_202_ENTRY_STOP{29, 5};
 //  The lab's door, between its two front windows.
 const TilePos LAB_DOOR{8, 10};
 //  The Pokemon Center's glass door.

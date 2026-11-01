@@ -65,7 +65,7 @@ using Pokemon::pose_known;
 const char* const ROUTE202_TO_SANDGEM_CENTER_NAME = "Route 202 to Sandgem's Pokemon Center (events)";
 
 TilePos sandgem_entry_stop(){
-    return story_maps().to_world(MAP_SANDGEM_TOWN, {29, 5});
+    return story_maps().to_world(MAP_SANDGEM_TOWN, SandgemTown::ROUTE_202_ENTRY_STOP);
 }
 
 TilePos below_sandgem_center_sign(){

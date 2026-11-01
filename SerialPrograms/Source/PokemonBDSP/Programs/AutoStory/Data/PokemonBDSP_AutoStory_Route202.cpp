@@ -21,7 +21,11 @@ using namespace Pokemon;
 //      trees at (21,24), the sign a row below at (24,25), the save spot
 //      (30,24) against the east trees, Natalie's challenge at (22,22), east
 //      along the row above the ledge stops at column 30 and column 30 runs
-//      north to row 4 (r75), the catch spot's walls (2026-10-29/30).
+//      north to row 4 (r75), the catch spot's walls (2026-10-29/30); trees,
+//      not grass, at (15..20, 28..29) below the catch patch (r253: west
+//      along row 29 stopped at column 21, beside the trees); a tree at
+//      (21, 30), south of the pocket at (21, 29) where the catch's save
+//      loads (r254: south from there was blocked at once).
 //  Status: no checkpoint has run on this grid yet. 00.04 passed on the
 //      image-traced grid it replaces (26 rows for 32) and must be re-run;
 //      its legs south of the catch spot are three rows longer here.
@@ -46,7 +50,9 @@ using namespace Pokemon;
 //  Tristan (7,13), Lass Natalie (22,18) and Youngster Logan (26,4), all
 //  facing south, with the sight ranges the events give; a Potion ball (3,6),
 //  a wall until picked up; the signs (17,4) to Jubilife, (15,16) Trainer Tips
-//  and (24,25) to Sandgem. A Youngster who is not a trainer wanders along row
+//  and (24,25) to Sandgem. BDSP has trees where Diamond's catch patch has
+//  its two bottom rows, (15..20, 28..29): the console's patch is three rows
+//  between tree rows, as the image-traced grid had it. A Youngster who is not a trainer wanders along row
 //  8, columns 9..11, and is left off the grid (the image-traced grid had him
 //  as a fourth trainer facing east). Dawn's tile (15,27) is hidden by a
 //  story flag.
@@ -82,20 +88,20 @@ const TileGrid& grid(){
         R"(###""""""......""""""...S......#####)",  //  25
         R"(###""""""......""""""..........#####)",  //  26
         R"(###""""""......""""""..........#####)",  //  27
-        R"(###""""""......""""""..........#####)",  //  28
-        R"(###""""""......""""""..........#####)",  //  29
-        R"(#####################..........#####)",  //  30
+        R"(###""""""......######..........#####)",  //  28
+        R"(###""""""......######..........#####)",  //  29
+        R"(######################.........#####)",  //  30
         R"(#####################..........#####)",  //  31
     });
     return grid;
 }
 
 
-//  Where 00.03's save after the catch stands: the middle row of the
-//  tall-grass patch at (15..20, 25..29), world (178,827). On the console the
+//  Where 00.03's save after the catch stands: the bottom row of the
+//  tall-grass patch at (15..20, 25..27), world (178,827). On the console the
 //  sign at (24,25) is 5 columns right and 2 rows up, walking east stops at
-//  the trees after 11 tiles and north at the trees after 2; the patch goes
-//  on two rows below.
+//  the trees after 11 tiles and north at the trees after 2; south are trees
+//  (the decomp's two more grass rows are trees in BDSP, r253).
 const TilePos CATCH_SPOT{19, 27};
 //  Where 00.04 saves once it has Potions, before Route 202's trainers (the
 //  console's saves from r113a..r117a stand here too): under the south ledge,

@@ -79,6 +79,13 @@ bool story_at_jubilife_exit(const Pokemon::TilePos& world);
 //  ledge (00.04 saves there once it has Potions, before Route 202's trainers).
 std::vector<Pokemon::TilePos> story_save_spots();
 
+//  Where 00.04b's save after the catch may stand, in world tiles: wherever
+//  the catch's walks in the grass ended, the patch (15..20, 25..27) and the
+//  lawn column east of it, (21, 25..29), down to the pocket behind the tree
+//  row where r252's catch ended and saved (the save loads there: (21, 29)
+//  by the screen, the 202 sign 3 columns right and 4 rows up).
+std::vector<Pokemon::TilePos> story_catch_save_area();
+
 //  Where a walk out of the door `door` of `map` may leave us, in world tiles:
 //  the tile below it and its neighbours either side, since the door opening
 //  is not lined up with one tile (Jubilife's Center, r85).
@@ -86,8 +93,8 @@ std::vector<Pokemon::TilePos> story_door_front(const char* map, const Pokemon::T
 
 //  Where we may stand after training in the catch grass, in world tiles: the
 //  training walks up and down the catch spot's column, between the tree walls
-//  north and south of the grass, so a battle may stop us on any of its five
-//  rows. A column either side allows for where the catch left us.
+//  north and south of the grass, so a battle may stop us on any of its
+//  three rows. A column either side allows for where the catch left us.
 std::vector<Pokemon::TilePos> story_after_training_area();
 
 //  Route 202's trainers, in world tiles of story_maps().
