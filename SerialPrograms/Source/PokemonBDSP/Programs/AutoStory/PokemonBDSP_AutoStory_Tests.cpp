@@ -514,9 +514,10 @@ public:
         //  the costs the program plans it with: walk_route()'s route costs
         //  for 00.04's walks, the Sandgem Center events' default costs for
         //  walk() and town costs for walk_in_town(). The planner gives up
-        //  after costs.max_searched sets, and the costs decide how many a
-        //  walk needs: after training to the Center the route costs find a
-        //  plan within 17000 sets, the default costs none within the cap.
+        //  after costs.max_searched sets, and the costs decide whether a
+        //  walk gets a plan: after training to the Center the route costs
+        //  find none on the game's grid and walk_route() falls back to the
+        //  default costs, so that is the plan that runs and is checked here.
         const struct{
             const char* name;
             std::vector<TilePos> from;
@@ -527,7 +528,7 @@ public:
             {"Save spots to the catch grass", story_save_spots(),
                 [&](const TilePos& pos){ return std::find(grass.begin(), grass.end(), pos) != grass.end(); }, false, route_plan_costs()},
             {"After training to the Pokemon Center", story_after_training_area(),
-                [&](const TilePos& pos){ return pos == below_sign; }, false, route_plan_costs()},
+                [&](const TilePos& pos){ return pos == below_sign; }, false, Pokemon::RobustPlanCosts()},
             //  The Mart's door takes a tile either side: enter_lit_door() lines up by sight.
             {"Pokemon Center to the Poke Mart", story_door_front(MAP_SANDGEM_TOWN, SandgemTown::POKEMON_CENTER_DOOR),
                 [&](const TilePos& pos){ return pos.y == below_mart.y && std::abs(pos.x - below_mart.x) <= 1; }, true, route_plan_costs()},
@@ -547,10 +548,13 @@ public:
             //  The Mart lady test checkpoint: out of the Center to the tile west
             //  of Route 201's border sign, from the lady back to it, and back. The
             //  sign's row has no wall west of it: a step onto it, then east to it.
+            //  These legs are walked by hand (walk_until_stopped), so the plan is
+            //  only a check of the grid; the one-tile steps need the town costs,
+            //  the default costs find no plan.
             {"Pokemon Center to west of the Route 201 sign", story_door_front(MAP_SANDGEM_TOWN, SandgemTown::POKEMON_CENTER_DOOR),
-                [&](const TilePos& pos){ return pos == route201_sign_west(); }, false, Pokemon::RobustPlanCosts()},
+                [&](const TilePos& pos){ return pos == route201_sign_west(); }, false, town_plan_costs()},
             {"Poke Mart lady to west of the Route 201 sign", {maps.to_world(MAP_ROUTE_201, Route201::POTION_GIVER_TALK_FROM)},
-                [&](const TilePos& pos){ return pos == route201_sign_west(); }, false, Pokemon::RobustPlanCosts()},
+                [&](const TilePos& pos){ return pos == route201_sign_west(); }, false, town_plan_costs()},
             {"Route 201 sign to the Pokemon Center", {route201_sign_west()},
                 [&](const TilePos& pos){ return pos == below_sign; }, true, Pokemon::RobustPlanCosts()},
             //  The Center walk's re-anchor at the trees east of the Mart.
@@ -559,14 +563,14 @@ public:
             //  From and back to where the Route 202 checkpoint ends: the doors'
             //  row by the signs' gap; westward it first walks to the Lab's sign.
             {"East of the Lab's sign to west of the Route 201 sign", {east_of_lab_sign()},
-                [&](const TilePos& pos){ return pos == route201_sign_west(); }, false, Pokemon::RobustPlanCosts()},
+                [&](const TilePos& pos){ return pos == route201_sign_west(); }, false, town_plan_costs()},
             {"Below the Center's sign to the trees east of the Mart", {below_sandgem_center_sign()},
                 [&](const TilePos& pos){ return pos == row_end; }, true, Pokemon::RobustPlanCosts()},
             {"East of the Lab's sign to the trees east of the Mart", {east_of_lab_sign()},
                 [&](const TilePos& pos){ return pos == row_end; }, true, Pokemon::RobustPlanCosts()},
             //  Its re-anchor after a wild battle in the lady's grass.
             {"East end of the lady's row to the Route 201 sign", {route201_row_3_east_end()},
-                [&](const TilePos& pos){ return pos == route201_sign_west(); }, false, Pokemon::RobustPlanCosts()},
+                [&](const TilePos& pos){ return pos == route201_sign_west(); }, false, town_plan_costs()},
         };
         for (const auto& walk : walks){
             error = check_robust_plan(logger, walk.name, maps, walk.from, walk.goal, walk.costs);
