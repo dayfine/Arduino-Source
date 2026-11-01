@@ -1524,6 +1524,57 @@ void checkpoint_0109(
     );
 }
 
+//  01.11: the old couple in Floaroma's flower field, left of the path in
+//  from Route 204. Walked by hand on 2026-10-31 from 01.10's save: west 8
+//  along the row (the field's bottom, purple flowers), north 2 to the tile
+//  below the old woman, talk (she gives Mew when a Let's Go save is on the
+//  console; otherwise she only talks), one tile west, face the old man
+//  above, talk (Jirachi with a Sword/Shield save). B advances their lines
+//  and never re-talks; A at the end re-opens the talk (m5, m6).
+void floaroma_old_couple(VideoStream& stream, ProControllerContext& context){
+    StepLog step(stream, "01.11", "Floaroma's old couple in the flower field", {
+        "West 8, north 2 to the old woman",
+        "Talk to the old woman",
+        "Talk to the old man",
+    });
+
+    step(1);
+    {
+        const WalkResult west = walk_tiles_dpad(stream, context, -1, 0, 8, "west 8 to the flower field");
+        if (west.stop != WalkStop::LIMIT || west.moved_chunks < 7){
+            fail(stream, "Floaroma: west 8 to the flower field moved " + std::to_string(west.moved_chunks) + " tiles.");
+        }
+        const WalkResult north = walk_tiles_dpad(stream, context, 0, 1, 2, "north 2 to the old woman");
+        if (north.moved_chunks < 2){
+            fail(stream, "Floaroma: north 2 to the old woman moved " + std::to_string(north.moved_chunks) + " tiles.");
+        }
+    }
+
+    auto talk = [&](const std::string& who){
+        pbf_press_button(context, BUTTON_A, 80ms, 200ms);
+        context.wait_for_all_requests();
+        ShortDialogWatcher dialog(COLOR_YELLOW);
+        if (wait_until(stream, context, 3000ms, {{dialog}}) != 0){
+            fail(stream, "Floaroma: " + who + " did not answer.");
+        }
+        finish_dialogue(stream, context, BUTTON_B, who);
+    };
+
+    step(2);
+    talk("the old woman");
+
+    step(3);
+    //  One tile west, then a tap north: the old man stands there, so the
+    //  tap only turns.
+    const WalkResult west = walk_tiles_dpad(stream, context, -1, 0, 1, "west 1 below the old man");
+    if (west.moved_chunks < 1){
+        fail(stream, "Floaroma: the step west below the old man did not move.");
+    }
+    pbf_press_dpad(context, DPAD_UP, 160ms, 700ms);
+    context.wait_for_all_requests();
+    talk("the old man");
+}
+
 void checkpoint_0110(
     SingleSwitchProgramEnvironment& env,
     ProControllerContext& context,
@@ -1533,8 +1584,24 @@ void checkpoint_0110(
     checkpoint_reattempt_loop(env, context, options, stats,
         [&](size_t /*attempt*/){
             route204_to_floaroma(env.console, context);
-            //  The run's last checkpoint: its end is where run 2 starts, so
-            //  save here, just inside the town.
+            //  Save on arrival: 01.11 starts here, and so does run 2's
+            //  Floaroma work.
+            checkpoint_save(env, context, options.notif_status_update, stats, options.checkpoint_save_mode);
+        },
+        true
+    );
+}
+
+void checkpoint_0111(
+    SingleSwitchProgramEnvironment& env,
+    ProControllerContext& context,
+    AutoStoryOptions options,
+    AutoStoryStats& stats
+){
+    checkpoint_reattempt_loop(env, context, options, stats,
+        [&](size_t /*attempt*/){
+            floaroma_old_couple(env.console, context);
+            //  The run's last checkpoint: save where it ends.
             checkpoint_save(env, context, options.notif_status_update, stats, options.checkpoint_save_mode);
         },
         true
@@ -1545,7 +1612,7 @@ void checkpoint_0110(
 
 std::string AutoStory_Segment_01::name()       const { return "01: Jubilife to Floaroma"; }
 std::string AutoStory_Segment_01::start_text() const { return "Start: Standing in front of the Jubilife City Pokemon Center PC."; }
-std::string AutoStory_Segment_01::end_text()   const { return "End: Just inside Floaroma Town from Route 204, with the Coal Badge, saved."; }
+std::string AutoStory_Segment_01::end_text()   const { return "End: In Floaroma's flower field below the old couple, with the Coal Badge, saved."; }
 
 void AutoStory_Segment_01::run_segment(
     SingleSwitchProgramEnvironment& env,
@@ -1566,6 +1633,7 @@ void AutoStory_Segment_01::run_segment(
     AutoStory_Checkpoint_0108().run_checkpoint(env, context, options, stats);
     AutoStory_Checkpoint_0109().run_checkpoint(env, context, options, stats);
     AutoStory_Checkpoint_0110().run_checkpoint(env, context, options, stats);
+    AutoStory_Checkpoint_0111().run_checkpoint(env, context, options, stats);
     env.console.log("End Segment " + name(), COLOR_GREEN);
 }
 
@@ -1701,6 +1769,19 @@ void AutoStory_Checkpoint_0110::run_checkpoint(
     AutoStoryStats& stats
 ) const{
     checkpoint_0110(env, context, options, stats);
+}
+
+std::string AutoStory_Checkpoint_0111::name()       const { return "01.11 - Floaroma's old couple"; }
+std::string AutoStory_Checkpoint_0111::start_text() const { return AutoStory_Checkpoint_0110().end_text(); }
+std::string AutoStory_Checkpoint_0111::end_text()   const { return "In Floaroma's flower field below the old couple, both talked to (Mew and Jirachi when the console has the saves), saved."; }
+
+void AutoStory_Checkpoint_0111::run_checkpoint(
+    SingleSwitchProgramEnvironment& env,
+    ProControllerContext& context,
+    AutoStoryOptions options,
+    AutoStoryStats& stats
+) const{
+    checkpoint_0111(env, context, options, stats);
 }
 
 }
