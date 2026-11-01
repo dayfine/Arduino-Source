@@ -204,7 +204,6 @@ Pokemon::LegSpec leg_spec(const RouteStep& step){
     leg.tiles = step.tiles;
     leg.to_wall = step.to_wall;
     leg.tile_time = step.surfing ? SURF_TILE_TIME : TILE_TIME;
-    leg.warps = step.warps;
     leg.stop_on_interrupt = !step.to_wall;
     leg.stop_if_blocked = step.to_wall;
     return leg;
