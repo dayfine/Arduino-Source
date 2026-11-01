@@ -40,6 +40,10 @@ struct RouteLeg{
     size_t tiles;
     LegEnd end;
     std::string note;
+    //  A counted leg walked by D-pad taps (or a leg the map ends) is exact;
+    //  a count from a timed stick hold is an estimate, a tile or two either
+    //  way, until someone counts it on the console in taps.
+    bool exact = true;
 };
 
 struct RouteRecord{

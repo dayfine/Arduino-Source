@@ -33,9 +33,9 @@ const std::vector<RouteRecord>& all(){
     static const std::vector<RouteRecord> records{
         {"01.01", "Jubilife Pokemon Center to Barry on Route 203", "Jubilife City", jubilife, false, std::nullopt, {
             {Direction::SOUTH, 0, LegEnd::NPC, "out of the Center's door; a girl below it stops us"},
-            {Direction::WEST, 4, LegEnd::COUNT, "stick 720 ms: onto the main road"},
-            {Direction::NORTH, 16, LegEnd::COUNT, "stick 3960 ms: up to the street east to Route 203"},
-            {Direction::SOUTH, 2, LegEnd::COUNT, "stick 600 ms: back onto the street"},
+            {Direction::WEST, 4, LegEnd::COUNT, "stick 720 ms: onto the main road", false},
+            {Direction::NORTH, 16, LegEnd::COUNT, "stick 3960 ms: up to the street east to Route 203", false},
+            {Direction::SOUTH, 2, LegEnd::COUNT, "stick 600 ms: back onto the street", false},
             {Direction::EAST, 0, LegEnd::NPC, "along the street onto Route 203 until Barry stops us; rows retried 0, +1, +1, -3, -1 when a wall comes first"},
         }, "jubilife_to_barry(); stick holds from the console, 2026-10-29; the Jubilife grid's rows are 3/4 of a tile, so the counts are not traceable on it (task #21)"},
         {"01.02", "Barry to Oreburgh City through the Oreburgh Gate", "Route 203", route203, false, std::nullopt, {
@@ -62,7 +62,7 @@ const std::vector<RouteRecord>& all(){
             {Direction::WEST, 0, LegEnd::BANNER, "through the Gate until Route 203's banner"},
         }, "oreburgh_gym_to_center(), oreburgh_to_route203(); no Oreburgh City grid yet (decomp cells pending)"},
         {"01.07", "Jubilife's east edge to Rowan's scene", "Jubilife City", jubilife, false, std::nullopt, {
-            {Direction::WEST, 14, LegEnd::COUNT, "stick 2 x 1120 ms along the long road to the crossroads with the north street"},
+            {Direction::WEST, 14, LegEnd::COUNT, "stick 2 x 1120 ms along the long road to the crossroads with the north street", false},
             {Direction::NORTH, 0, LegEnd::SCENE, "up the street until Rowan's scene starts (about 6 s); the green-haired man may stand in the way"},
         }, "jubilife_to_rowan(); by hand 2026-10-31 (18 presses), r230b; Jubilife grid not traceable (rows 3/4)"},
         {"01.08", "Jubilife's north street onto Route 204", "Jubilife City", jubilife, false, std::nullopt, {

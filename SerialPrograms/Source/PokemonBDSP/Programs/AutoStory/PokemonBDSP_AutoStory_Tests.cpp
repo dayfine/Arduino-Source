@@ -923,6 +923,9 @@ public:
                 if (leg.end == RouteRecords::LegEnd::COUNT && leg.tiles == 0){
                     return name + ": a counted leg of 0 tiles.";
                 }
+                if (!leg.exact && leg.end != RouteRecords::LegEnd::COUNT){
+                    return name + ": only a counted leg can be an estimate.";
+                }
             }
             const TileGrid* grid = record.grid ? record.grid() : nullptr;
             if (!record.traceable || grid == nullptr || !record.start){
@@ -976,7 +979,12 @@ public:
                     break;
                 }
             }
-            logger.log(name + ": traced " + std::to_string(record.legs.size()) + " legs.");
+            size_t estimates = 0;
+            for (const RouteRecords::RouteLeg& leg : record.legs){
+                estimates += leg.exact ? 0 : 1;
+            }
+            logger.log(name + ": traced " + std::to_string(record.legs.size()) + " legs" +
+                (estimates ? ", " + std::to_string(estimates) + " of them stick-timed estimates" : "") + ".");
             traced++;
         }
         logger.log("Route records: " + std::to_string(traced) + " traced, " + std::to_string(documented) + " documented only.");
