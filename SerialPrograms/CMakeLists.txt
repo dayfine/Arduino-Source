@@ -193,24 +193,6 @@ include(cmake/CoreLib.cmake)
 # Create the GUI library
 add_library(SerialProgramsLib STATIC ${CORE_LIBRARY_SOURCES} ${LIBRARY_SOURCES})
 
-# PROGRAM_COMMIT (Source/CommonFramework/BuildCommit.h): the git commit the app is
-# built from. BuildCommit.cpp is written at configure time and checked on every
-# build; it changes, and recompiles, only when the commit does.
-set(PA_BUILD_COMMIT_CPP "${CMAKE_CURRENT_BINARY_DIR}/generated/BuildCommit.cpp")
-set(PA_BUILD_COMMIT_COMMAND
-    "${CMAKE_COMMAND}" "-DSOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}" "-DOUTPUT=${PA_BUILD_COMMIT_CPP}"
-    -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/BuildCommit.cmake"
-)
-execute_process(COMMAND ${PA_BUILD_COMMIT_COMMAND})
-add_custom_target(BuildCommit
-    COMMAND ${PA_BUILD_COMMIT_COMMAND}
-    BYPRODUCTS "${PA_BUILD_COMMIT_CPP}"
-    COMMENT "Checking the git commit for PROGRAM_COMMIT"
-    VERBATIM
-)
-target_sources(SerialProgramsLib PRIVATE "${PA_BUILD_COMMIT_CPP}")
-add_dependencies(SerialProgramsLib BuildCommit)
-
 
 # Create binary target
 if (APPLE)

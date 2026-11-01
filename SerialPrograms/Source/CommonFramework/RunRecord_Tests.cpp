@@ -13,9 +13,9 @@
 #include <functional>
 #include <stdexcept>
 #include <thread>
+#include <QCoreApplication>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
-#include "CommonFramework/BuildCommit.h"
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
 #include "CommonFramework/Globals.h"
 #include "CommonFramework/Notifications/ProgramInfo.h"
@@ -76,8 +76,8 @@ UnitTestResult test_store_ids(){
     if (record->start_time == WallClock::min() || record->end_time){
         return "A new record has a start time and no end time.";
     }
-    if (record->version != PROGRAM_VERSION || record->commit != PROGRAM_COMMIT || record->commit.empty()){
-        return std::format("A record names the build: version <{}>, commit <{}>.", record->version, record->commit);
+    if (record->version != PROGRAM_VERSION || (QCoreApplication::instance() != nullptr && record->executable.empty())){
+        return std::format("A record names the app: version <{}>, executable <{}>.", record->version, record->executable);
     }
     if (record->settings != R"({"START": 3})" || !store.get(b)->settings.empty()){
         return "A record keeps the settings it was begun with.";
@@ -413,8 +413,8 @@ UnitTestResult test_immediate_completion(){
     if (record.program != "Test:RunRecordFake" || record.start_time > *record.end_time){
         return "The record names the program and its times.";
     }
-    if (record.settings != R"({"START": 1})" || record.commit != PROGRAM_COMMIT){
-        return "The record has the session's settings and the build's commit.";
+    if (record.settings != R"({"START": 1})" || record.version != PROGRAM_VERSION){
+        return "The record has the session's settings and the app's version.";
     }
     if (record.events.size() != 1 || record.events[0].checkpoint != "00.01" || record.events[0].attempt != size_t(1) || record.events[0].pose != "home (2, 4) N"){
         return std::format("The program's event is in the record: {} events.", record.events.size());
