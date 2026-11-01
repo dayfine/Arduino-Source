@@ -4,6 +4,7 @@
  *
  */
 
+#include <cstdlib>
 #include <format>
 #include <memory>
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
@@ -39,6 +40,14 @@ constexpr Milliseconds BATTLE_GONE = 4000ms;
 constexpr Milliseconds STUCK = 8000ms;
 //  Seen this many polls in a row: the starter fainted.
 constexpr int FAINT_POLLS = 3;
+//  No battle menu for this long: A and B in turn, for a prompt nothing reads.
+constexpr Milliseconds NO_MENU = 60000ms;
+//  No battle screen yet and no turn taken: whether the overworld is back
+//  is checked by START this often (a trainer's battle that never started,
+//  console B, 2026-11-01: 10 minutes of B on the overworld).
+constexpr Milliseconds OVERWORLD_CHECK = 5000ms;
+//  PSN read at this many turns in a row before an Antidote.
+constexpr int PSN_READS = 2;
 //  Text and the move learn prompts after a battle, on the overworld.
 constexpr Milliseconds AFTER_BATTLE_TEXT = 60000ms;
 
@@ -72,7 +81,7 @@ ColorCounts count_colors(const ImageViewRGB32& image){
                 counts.yellow++;
             }else if (r > 190 && g < 110 && b < 90){
                 counts.red++;
-            }else if (r > 140 && b > 140 && g < 110){
+            }else if (r > 150 && b > 150 && g < 100 && std::abs(r - b) < 60){
                 counts.purple++;
             }
         }
@@ -82,12 +91,29 @@ ColorCounts count_colors(const ImageViewRGB32& image){
 
 
 enum class BattleScreen{
+    //  Keep in step with screen_name().
     MENU,       //  "What will <Pokemon> do?" with FIGHT/BAG/POKEMON/RUN
     LEARN,      //  a YES/NO about a move to learn
     ADVANCE,    //  battle text waiting for a button
     OTHER,      //  the battle, busy
     NONE,       //  no battle on screen
 };
+
+const char* screen_name(BattleScreen screen){
+    switch (screen){
+    case BattleScreen::MENU:
+        return "battle menu";
+    case BattleScreen::LEARN:
+        return "move prompt";
+    case BattleScreen::ADVANCE:
+        return "battle text with arrow";
+    case BattleScreen::OTHER:
+        return "battle text box";
+    case BattleScreen::NONE:
+        return "no battle screen";
+    }
+    return "?";
+}
 
 BattleScreen read_battle_screen(const ImageViewRGB32& screen){
     if (BattleMenuDetector(COLOR_RED).detect(screen)){
@@ -161,6 +187,8 @@ public:
         , m_start(current_time())
         , m_last_battle(m_start)
         , m_last_press(m_start)
+        , m_last_menu(m_start)
+        , m_last_overworld_check(m_start)
     {}
 
     BattleEnd run(){
@@ -182,25 +210,57 @@ private:
             return false;
         }
         const BattleScreen seen = read_battle_screen(screen);
-        if (seen == BattleScreen::NONE){
-            //  Not before the first turn: the opening slide-in shows none of the battle
-            //  screens for a while (console B: "over after 0 turns" at the rival).
-            if (m_seen_battle && m_turns > 0 && now - m_last_battle > BATTLE_GONE){
-                return true;
-            }
-            //  Oak's white text box in the rival's battle reads as no battle screen:
-            //  B moves it on, and B does nothing on the overworld once the battle is over.
-            if (m_seen_battle && now - m_last_press > 1500ms){
-                pbf_press_button(m_context, BUTTON_B, 160ms, 200ms);
-                m_last_press = now;
-                return false;
-            }
-            pbf_wait(m_context, POLL);
+        if (seen != m_last_seen){
+            m_console.log(std::format("Battle: {} (turn {}).", screen_name(seen), m_turns));
+            m_last_seen = seen;
+        }
+        if (seen == BattleScreen::MENU){
+            m_last_menu = now;
+        }else if (now - m_last_menu > NO_MENU && now - m_last_press > 1500ms){
+            //  Something waits that none of the battle screens knows.
+            m_console.log(std::format("Battle: no battle menu for {} s, pressing {}.",
+                std::chrono::duration_cast<std::chrono::seconds>(now - m_last_menu).count(), m_press_a ? "A" : "B"));
+            pbf_press_button(m_context, m_press_a ? BUTTON_A : BUTTON_B, 160ms, 200ms);
+            m_press_a = !m_press_a;
+            m_last_press = now;
             return false;
+        }
+        if (seen == BattleScreen::NONE){
+            return no_battle_screen(now);
         }
         m_seen_battle = true;
         m_last_battle = now;
         act(seen, screen, now);
+        return false;
+    }
+
+    //  True once the battle is over.
+    bool no_battle_screen(WallClock now){
+        if (!m_seen_battle || now - m_last_battle <= BATTLE_GONE){
+            pbf_wait(m_context, POLL);
+            return false;
+        }
+        //  After a turn, the battle screens gone for a while is the end. Before
+        //  one, the opening slide-in shows none for a while (console B: "over
+        //  after 0 turns" at the rival), so only START opening is.
+        if (m_turns > 0){
+            return true;
+        }
+        if (now - m_last_overworld_check > OVERWORLD_CHECK){
+            m_last_overworld_check = now;
+            if (overworld_shows(m_console, m_context)){
+                m_console.log("Battle: the overworld is back before any turn.", COLOR_ORANGE);
+                return true;
+            }
+        }
+        //  Oak's white text box in the rival's battle reads as no battle screen:
+        //  B moves it on, and B does nothing on the overworld once the battle is over.
+        if (now - m_last_press > 1500ms){
+            pbf_press_button(m_context, BUTTON_B, 160ms, 200ms);
+            m_last_press = now;
+            return false;
+        }
+        pbf_wait(m_context, POLL);
         return false;
     }
 
@@ -253,11 +313,17 @@ private:
         m_turns++;
         m_faint_polls = 0;
         const PartyStatus status = read_party_status(screen);
-        const bool hurt = status.hp_red || (m_trainer && status.hp_yellow);
-        if (hurt && m_supplies.potions > 0){
+        m_psn_reads = status.poisoned ? m_psn_reads + 1 : 0;
+        m_console.log(std::format(
+            "Battle: turn {}, HP {}{}, {} Potions, {} Antidotes.",
+            m_turns, status.hp_red ? "red" : status.hp_yellow ? "yellow" : "green",
+            status.poisoned ? ", PSN read" : "", m_supplies.potions, m_supplies.antidotes
+        ));
+        if ((status.hp_red || status.hp_yellow) && m_supplies.potions > 0){
             m_supplies.potions--;
             use_item(m_console, m_context, 0);
-        }else if (status.poisoned && m_supplies.antidotes > 0){
+        }else if (m_psn_reads >= PSN_READS && !m_antidote_used && m_supplies.antidotes > 0){
+            m_antidote_used = true;
             m_supplies.antidotes--;
             use_item(m_console, m_context, m_supplies.potions > 0 ? 1 : 0);
         }else{
@@ -283,8 +349,14 @@ private:
     const WallClock m_start;
     WallClock m_last_battle;
     WallClock m_last_press;
+    WallClock m_last_menu;
+    WallClock m_last_overworld_check;
+    BattleScreen m_last_seen = BattleScreen::NONE;
     bool m_seen_battle = false;
     bool m_lost = false;
+    bool m_press_a = true;
+    bool m_antidote_used = false;
+    int m_psn_reads = 0;
     size_t m_turns = 0;
     size_t m_learn_prompts = 0;
     int m_faint_polls = 0;

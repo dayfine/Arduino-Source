@@ -73,19 +73,6 @@ void tap(ProControllerContext& context, DpadPosition position, Milliseconds afte
     pbf_press_dpad(context, position, 160ms, after);
 }
 
-//  START opens the menu only on the overworld, with no scene running. If
-//  it opened, it is closed again.
-bool overworld_shows(ConsoleHandle& console, ProControllerContext& context){
-    press(context, BUTTON_PLUS, 1200ms);
-    context.wait_for_all_requests();
-    VideoSnapshot screen = console.video().snapshot();
-    if (!screen || !StartMenuDetector(COLOR_RED).detect(screen)){
-        return false;
-    }
-    press(context, BUTTON_B, 600ms);
-    context.wait_for_all_requests();
-    return true;
-}
 
 //  Which of the standard YES/NO box's rows the arrow is on, if it shows.
 std::optional<bool> yes_no_cursor(const ImageViewRGB32& screen){
@@ -283,6 +270,18 @@ int start_menu_option_row(StartMenu menu){
     return start_menu_rows(menu) - 2;
 }
 
+
+bool overworld_shows(ConsoleHandle& console, ProControllerContext& context){
+    press(context, BUTTON_PLUS, 1200ms);
+    context.wait_for_all_requests();
+    VideoSnapshot screen = console.video().snapshot();
+    if (!screen || !StartMenuDetector(COLOR_RED).detect(screen)){
+        return false;
+    }
+    press(context, BUTTON_B, 600ms);
+    context.wait_for_all_requests();
+    return true;
+}
 
 TextEnd advance_text(ConsoleHandle& console, ProControllerContext& context, Milliseconds timeout, bool stop_at_battle){
     const WallClock deadline = current_time() + timeout;

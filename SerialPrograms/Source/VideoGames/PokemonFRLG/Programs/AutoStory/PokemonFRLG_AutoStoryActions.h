@@ -39,6 +39,11 @@ int start_menu_save_row(StartMenu menu);
 int start_menu_option_row(StartMenu menu);
 
 
+//  Whether the overworld is up: START opens the menu only there, with no
+//  scene running. If it opened, it is closed again.
+bool overworld_shows(ConsoleHandle& console, ProControllerContext& context);
+
+
 enum class TextEnd{
     OVERWORLD,
     BATTLE,

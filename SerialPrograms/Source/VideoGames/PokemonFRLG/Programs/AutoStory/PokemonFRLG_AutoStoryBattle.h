@@ -7,9 +7,9 @@
  *  the cursor is put back on FIGHT and the move list's top left, since the
  *  game remembers both; the move is the bottom left one (Bubble), which the
  *  cursor can't reach while that slot is empty, so before Bubble it stays on
- *  Tackle. A Potion is used when the HP bar turns red (or yellow, against a
- *  trainer), an Antidote when the status shows PSN. "Delete a move to make
- *  room?" is answered NO and "Stop learning?" YES.
+ *  Tackle. A Potion is used when the HP bar turns yellow or red, an Antidote
+ *  (once a battle) when the status reads PSN at two turns in a row.
+ *  "Delete a move to make room?" is answered NO and "Stop learning?" YES.
  *
  *  Also the overworld interrupts the story walks routes with: wild battles
  *  run from (or fought, for EXP), and messages, after which a trainer's
