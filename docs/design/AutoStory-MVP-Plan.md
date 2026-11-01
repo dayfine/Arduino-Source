@@ -110,3 +110,57 @@ notes, `pret/route_impact.md`):
 - **Side finding**: with the planner's 20000-set cap, "To Jubilife" from the two 00.04 save
   spots finds no plan on our own grid in the harness; the unit test's earlier failure ("After
   training to the Center") hides it. Check before the segment 00 sweep.
+
+## PR chain review (2026-10-31): what goes to the core, what stays per game
+
+The chain: #66 `nav/core` (Grid, TileGrid, MapSet, LegPlanner, LegWalker) -> #79 event model
+and #67 FRLG overworld nav (maps generated from pokefirered); #68 BDSP MVP on
+`base/bdsp-1717-nav`, with run 1's work on `bdsp/event-sandgem-center` (130 commits past
+#68's head, not on `nav/core`). Everything run 1 taught about walking went into
+`PokemonBDSP/.../Utils/RouteWalk` and `Walk` because that branch has no core; the series
+moves it where it belongs.
+
+**Core (#66 and follow-ups), game-agnostic:**
+- **Waypoint walks**: `walk_waypoints()` (plan to each corner of a recorded line) and
+  `waypoint_plan_costs()`; later the human-like preferences in the planner itself (straight
+  legs, few turns, corridor middles, no run-to-a-wall-and-back).
+- **Tap legs as the open-leg default** in LegWalker (LegMover supplies the tap), with the
+  blocked-tap handling: wait, tap the rest, then talk / mark / re-plan from the exact tile.
+- **Movement observation as a game-supplied step observer** ("did that tap move us?"): BDSP
+  gives screen change with its thresholds (step 21 to 50, bump 4 to 13), FRLG its own reader;
+  later a background-shift measurement both can share.
+- **Trainer stops** (sight lines, re-walk to the wall or count taps, fight, drop the trainer)
+  and the time-slack rule "a block short of the wall is never the wall".
+- **TileGrid legend aligned with PokemonNavigation's behaviors**: ledge by direction, door,
+  warp, water, tall grass, sign, counter, rock (Rock Smash), unknown; a loader for the
+  `pokenav-map/1` JSON so maps are data, not C++ rows.
+- **Map annotation** (source, console checks, status) as part of the map data, not a comment.
+
+**BDSP only (#68 and the compact series):**
+- Map data generated from pokediamond (pokeplatinum as the cross-check), the per-map console
+  anchors and known BDSP differences, Route 204 South/North and the Ravaged Path as they are.
+- BDSP detectors and timings: dialog, battle menu, overworld, location banner, door fades,
+  the Rock Smash prompt, tap thresholds, `talk_or_fight`, the Center heal.
+- The segments and their waypoint lines (01.10's `floaroma_waypoints()`), checkpoint saves.
+
+**FRLG (#67, the Brock MVP) takes the same plan:**
+- It already generates maps from pokefirered (collision, elevation, warps, objects, metatile
+  behaviors, wander ranges): the pattern BDSP copies. Add: ledges as one-way tiles instead of
+  walls; the source/checks/status annotation per map; a probe batch per map before its first
+  checkpoint.
+- Story scenes from pokefirered's scripts (trigger rectangles, flags, side effects) are exact
+  there, so FRLG starts with "plan into the rectangle" rather than searching; the human plays
+  once only where a scene's trigger is unclear.
+- Walk on taps with a step observer from the start; no time-counted legs.
+- Keep #56's demo order (verified post-rival save, parcel trip) and its RNG handoffs.
+
+**PokemonNavigation:**
+- The image parser (`devtools/maps` in Arduino-Source #83) stops being a source: maps are
+  generated from the decomps (pokediamond for BDSP, pokefirered for FRLG) into
+  `pokenav-map/1` JSON. The `image` key and the parser stay for maps no decomp covers.
+- The schema already holds what the decomps give (blocked, elevation, behaviors, npcs with
+  facing/sight/wander, warps, connections, notes with sources). Add `rock` to the behaviors,
+  an `encounters` default from tall grass / cave / water tiles, and `source`/`status`
+  fields matching the per-map annotation.
+- The four BDSP maps checked in (Jubilife, Route 201, Route 202, Sandgem) are image-traced,
+  3/4 rows: regenerate them; one map = one connected component (#27).
