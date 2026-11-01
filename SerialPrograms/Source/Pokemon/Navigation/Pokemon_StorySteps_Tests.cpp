@@ -483,10 +483,74 @@ UnitTestResult test_checks_level(){
     return true;
 }
 
+//  Two sections of a story, as BDSP has segments 00 and 01.
+const std::vector<StoryCheckpoint>& two_sections(){
+    static const std::vector<StoryCheckpoint> rows{
+        StoryCheckpoint{.id = "00.01", .title = "Leave the house", .start = std::nullopt, .steps = {}},
+        StoryCheckpoint{.id = "00.02", .title = "Walk to Sandgem Town", .start = std::nullopt, .steps = {}},
+        StoryCheckpoint{.id = "01.01", .title = "Jubilife to Barry", .start = std::nullopt, .steps = {}},
+    };
+    return rows;
+}
+const StringSelectDatabase& two_sections_database(){
+    static const StringSelectDatabase database = story_checkpoint_database(two_sections());
+    return database;
+}
+
+//  The dropdowns list the checkpoints as "id title", slugged by their index
+//  in the whole story, which is story_index() of a section's own index.
+UnitTestResult test_checkpoint_dropdowns(){
+    const StringSelectDatabase& database = two_sections_database();
+    const std::vector<std::string> expected{"00.01 Leave the house", "00.02 Walk to Sandgem Town", "01.01 Jubilife to Barry"};
+    if (database.size() != expected.size()){
+        return "Expected 3 entries, got " + std::to_string(database.size());
+    }
+    for (size_t c = 0; c < expected.size(); c++){
+        if (database[c].display_name != expected[c] || database[c].slug != std::to_string(c)){
+            return "Unexpected entry " + std::to_string(c) + ": " + database[c].slug + " " + database[c].display_name;
+        }
+    }
+    if (database[story_index(true, 0, 2)].display_name != "01.01 Jubilife to Barry"){
+        return "Expected the second section's first entry at story_index(true, 0, 2).";
+    }
+    if (story_checkpoint_label(StoryCheckpoint{.id = "00.09", .title = "Pewter Gym: Camper Liam, then Brock", .start = std::nullopt, .steps = {}})
+        != "00.09 Pewter Gym: Camper Liam, then Brock"
+    ){
+        return "Unexpected label.";
+    }
+    StoryRunOptions options(database);
+    if (options.start_index() != 0 || options.end_index() != 2 || !options.check_validity().empty()){
+        return "Expected the whole story by default.";
+    }
+    options.START_CHECKPOINT.set_by_index(2);
+    options.END_CHECKPOINT.set_by_index(1);
+    if (options.check_validity().empty()){
+        return "Expected a start after the end to be refused.";
+    }
+    return true;
+}
+
+//  A segment's report in the shared AutoStory stats.
+UnitTestResult test_story_stats(){
+    SegmentReport report;
+    report.reloads = 2;
+    report.runs = {
+        CheckpointRun{.id = "00.03", .passed = true, .attempts = 1, .recoveries = 0},
+        CheckpointRun{.id = "00.04", .passed = true, .attempts = 3, .recoveries = 0},
+        CheckpointRun{.id = "00.05", .passed = false, .attempts = 1, .recoveries = 0},
+    };
+    AutoStoryStats stats;
+    record_story_stats(stats, report);
+    if (stats.m_segment != 1 || stats.m_checkpoint != 2 || stats.m_reset != 2){
+        return "Expected 1 segment, 2 checkpoints and 2 resets.";
+    }
+    return true;
+}
+
 //  The program's option group: 3 attempts, no stop, Thorough, by default;
 //  Fast when chosen.
 UnitTestResult test_run_options(){
-    StoryRunOptions options;
+    StoryRunOptions options(two_sections_database());
     const SegmentPolicy policy = options.policy();
     if (policy.attempts_per_checkpoint != 3 || policy.stop_at_first_failure || options.checks() != StoryChecks::THOROUGH){
         return "Expected 3 attempts, no stop at the first failure, and Thorough checks by default.";
@@ -559,6 +623,8 @@ void add_tests_StorySteps(UnitTestDatabase& database){
     database.add<Test_StorySteps>("lint", test_lint);
     database.add<Test_StorySteps>("the checks level reaches the steps", test_checks_level);
     database.add<Test_StorySteps>("the run options' defaults", test_run_options);
+    database.add<Test_StorySteps>("start and end checkpoint dropdowns", test_checkpoint_dropdowns);
+    database.add<Test_StorySteps>("a segment's run in the AutoStory stats", test_story_stats);
     database.add<Test_StorySteps>("policy: attempts per checkpoint, then fail", test_policy_attempts_then_fail);
     database.add<Test_StorySteps>("policy: stop at the first failure", test_policy_stop_at_first_failure);
     database.add<Test_StorySteps>("policy: recover in place before reloading", test_policy_recovers_in_place);
