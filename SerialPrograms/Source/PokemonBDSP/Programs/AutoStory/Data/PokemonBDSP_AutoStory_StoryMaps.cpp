@@ -206,6 +206,20 @@ std::vector<TilePos> story_door_front(const char* map, const TilePos& door){
     return {below.next(Direction::WEST), below, below.next(Direction::EAST)};
 }
 
+std::vector<TilePos> story_catch_save_area(){
+    const MapSet& maps = story_maps();
+    std::vector<TilePos> area;
+    for (int y = 25; y <= 29; y++){
+        for (int x = 15; x <= 21; x++){
+            const TilePos pos = maps.to_world(MAP_ROUTE_202, {x, y});
+            if (maps.world().standable(pos)){
+                area.push_back(pos);
+            }
+        }
+    }
+    return area;
+}
+
 std::vector<TilePos> story_after_training_area(){
     const TilePos catch_spot = story_maps().to_world(MAP_ROUTE_202, Route202::CATCH_SPOT);
     std::vector<TilePos> area;

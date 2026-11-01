@@ -5,6 +5,8 @@
  */
 
 #include <algorithm>
+#include <optional>
+#include <utility>
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "Pokemon/Navigation/Pokemon_MapSet.h"
 #include "Pokemon/Navigation/Pokemon_TileGrid.h"
@@ -255,8 +257,9 @@ public:
 
 //  00.04's training walks up and down the catch patch, three grass rows
 //  between tree rows, and needs the walk there to end in its grass: r253
-//  planned onto (20, 29), a tree in BDSP, stopped a tile short on the path
-//  and walked up and down it for three minutes without a battle.
+//  and r254 loaded the catch's save in the pocket behind the trees at
+//  (21, 29), planned from the catch spot instead, and walked up and down
+//  the lawn east of the grass for three minutes without a battle.
 class Test_Route202CatchGrass : public UnitTest{
 public:
     Test_Route202CatchGrass()
@@ -275,20 +278,33 @@ public:
         }
         const MapSet& maps = story_maps();
         const std::vector<TilePos> area = story_after_training_area();
-        const auto in_area = [&](const TilePos& pos){ return std::find(area.begin(), area.end(), pos) != area.end(); };
-        auto legs = Pokemon::plan_robust_route(maps.world(), story_save_spots(), in_area, route_plan_costs());
-        if (!legs){
-            legs = Pokemon::plan_robust_route(maps.world(), story_save_spots(), in_area, Pokemon::RobustPlanCosts());
-        }
-        if (!legs || legs->empty()){
-            return std::string("Save spots to the catch grass: no plan.");
-        }
-        for (const TilePos& pos : legs->back().after){
-            if (maps.world().at(pos) != TileType::TALL_GRASS){
-                return "Save spots to the catch grass: the walk may end on " + maps.describe(pos) + ", not in the grass.";
+        const auto in_grass = [&](const TilePos& pos){
+            return maps.world().at(pos) == TileType::TALL_GRASS && std::find(area.begin(), area.end(), pos) != area.end();
+        };
+        //  As walk_route() plans: the route costs, else the default costs.
+        //  From the whole area the catch's save may stand in, and from the
+        //  pocket behind the trees alone, where r252 saved.
+        const TilePos pocket = maps.to_world(MAP_ROUTE_202, {21, 29});
+        const std::vector<std::pair<std::string, std::vector<TilePos>>> starts{
+            {"the catch's save area", story_catch_save_area()},
+            {"the pocket behind the trees", {pocket}},
+        };
+        std::optional<std::vector<Pokemon::PlannedLeg>> legs;
+        for (const auto& [name, from] : starts){
+            legs = Pokemon::plan_robust_route(maps.world(), from, in_grass, route_plan_costs());
+            if (!legs){
+                legs = Pokemon::plan_robust_route(maps.world(), from, in_grass, Pokemon::RobustPlanCosts());
             }
+            if (!legs || legs->empty()){
+                return "From " + name + " to the catch grass: no plan.";
+            }
+            for (const TilePos& pos : legs->back().after){
+                if (!in_grass(pos)){
+                    return "From " + name + " to the catch grass: the walk may end on " + maps.describe(pos) + ", not in the grass.";
+                }
+            }
+            logger.log("From " + name + " to the catch grass: " + std::to_string(legs->size()) + " legs, ending in the grass.");
         }
-        logger.log("Save spots to the catch grass: " + std::to_string(legs->size()) + " legs, ending in the grass.");
         return true;
     }
 };
