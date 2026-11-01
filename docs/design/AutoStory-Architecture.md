@@ -5,7 +5,13 @@ This is the current design. The older docs in this folder still hold useful deta
 they disagree, this one wins:
 - `AutoStory.md` and `AutoStory-Design.md`: first principles, the screen machine.
 - `AutoStory-Navigation-Stack.md`: the first shared core.
-- `AutoStory-MVP-Plan.md`: BDSP's plan.
+- `AutoStory-MVP-Plan.md`: BDSP's plan after run 1.
+- `AutoStory-Lessons.md`: what each console round taught; it stays the log.
+
+Two earlier proposals are folded into section 8 and their PRs closed: the event model
+([#78](https://github.com/dayfine/Arduino-Source/pull/78)) and the FRLG demo plan with its
+map-reuse review ([#56](https://github.com/dayfine/Arduino-Source/pull/56)). FRLG's events after
+Brock stay in their own doc ([#130](https://github.com/dayfine/Arduino-Source/pull/130)).
 
 PR order and sizes are on the notes branch: `autostory/DEMO_PLAN.md` and `autostory/FRLG_SIZING.md`.
 
@@ -137,6 +143,17 @@ A 3D game (SwSh, LA) would keep the story engine and steps, and supply its own p
 map point or a fly point instead of tiles. That's why `Position` in the engine is opaque, and why
 the route log is being made grid-free (planned).
 
+| Game | Movement | Camera | Walk primitive |
+|---|---|---|---|
+| FRLG | strict tile grid | fixed, top-down | tile legs to wall, NPC or warp anchors |
+| BDSP | tiles in practice | fixed, tilted | the same legs; D-pad taps for exact offsets |
+| SwSh | free 3D | behind the player | stick direction = world direction; steer to a landmark, arrival by sight |
+| LA | free 3D | free | as SwSh, plus camera control |
+
+The first 3D target would be a SwSh run from a new game to the Wedgehurst station. Upstream
+has a timed draft of its first segment ([PokemonAutomation#1207](https://github.com/PokemonAutomation/Arduino-Source/pull/1207));
+offer the engine to its author rather than take it over.
+
 ## 6. Run modes (planned)
 
 Strategy and checking are separate options:
@@ -223,7 +240,9 @@ The MVPs (FRLG to Brock, BDSP to Floaroma) prove the engine. The larger goals, i
 4. **Full RNG integration.** Every RNG-able Pokemon on the way (starter, gifts, statics, legendary
    birds, Mewtwo) can be RNG'd in place through the existing programs (section 6b).
 
-Issue drafts per milestone are on the notes branch: `autostory/MILESTONES.md`.
+Issue drafts per milestone are on the notes branch: `autostory/MILESTONES.md`. FRLG's events
+from Brock to the Hall of Fame, the Sevii Islands and Mewtwo are drafted as table rows in
+`AutoStory-FRLG-FutureEvents.md` ([#130](https://github.com/dayfine/Arduino-Source/pull/130)).
 
 ## 7. Known limits and open problems
 
@@ -234,5 +253,86 @@ Issue drafts per milestone are on the notes branch: `autostory/MILESTONES.md`.
 - **BDSP 00.01–00.05** are still recorded stick holds until the v4 table rewrite lands. Once it
   does, they need a console run from a new game.
 - **Long upstream queue.** About 21 PRs for FRLG alone, at two open at a time.
+- **The planner has no search limits.** A search over sets of possible tiles has no cap on
+  stored states, queue entries or time. It needs finite limits with cancellation checks, and
+  distinct results: route found, no route, limit hit (naming which one), cancelled. A limit hit
+  doesn't mean the place is unreachable: re-localise against a nearer anchor or stop, never
+  retry the same search with bigger limits. Plan between regions through connections and
+  warps, so no map set becomes one huge canvas.
 - **Not covered yet:** HMs and field moves, puzzles, the party beyond the starter, RNG hand-offs,
   naming with a keyboard ([#81](https://github.com/dayfine/Arduino-Source/pull/81), [#62](https://github.com/dayfine/Arduino-Source/pull/62)).
+
+## 8. Detail kept from earlier proposals
+
+### 8.1 Steps: conditions, anchors, talks and dialogues (from the event model, #78)
+
+The event model proposed checkpoints as data before the story tables existed. The tables
+(section 3, principle 2) took its shape; these rules still apply to how each step works.
+
+- **What we took from prior art.** Pre- and post-conditions with "skip if already true"
+  (behaviour trees' PPA pattern, BehaviorTree.CPP's `_skipIf`, GOAP), so resuming is
+  re-checking, not re-counting. Wait for something observable, never sleep (Playwright's
+  auto-waiting assertions, Screenplay's "questions"). Re-localise on landmarks, then re-plan
+  (Nav2's recoveries). A route as data in a small fixed vocabulary interpreted by code
+  (Honorbuddy quest profiles, pokebot-gen3's modes). Not taken: a general planner (GOAP, HTN)
+  or a behaviour-tree runtime. The story is a fixed order; the only search is the tile planner.
+- **Rows are C++, maps are JSON.** The event model left open whether checkpoints are JSON
+  files or C++ literals. They are initializer-list rows: reviewers read them in the diff, the
+  compiler checks them, and upstream ships no data files for programs. Maps stay JSON because
+  they are generated from the decomp.
+- **Anchors fix the position**, whatever happened before them:
+
+  | Anchor | Pins | Example |
+  |---|---|---|
+  | walk until blocked by a wall | one axis | Route 201's corner: north, then west |
+  | walk until a still NPC blocks | one axis, next to the NPC | Barry in the Trainers' School |
+  | warp or transition, then the location banner | map and arrival tile | Sandgem's banner, a house door |
+  | the NPC who answered a talk | next to that NPC | Mom's row is the row that answered |
+  | facing reader | facing | FRLG's player sprite |
+
+  A step that needs an exact tile comes after an anchor that gives one. In tall grass a wall
+  doesn't show as blocked, so the leg presses A each step and stops on the talk instead.
+- **Talks: an approach rule, then proof.**
+  - Face a direction from an anchored tile (a still NPC).
+  - Walk into a line, pressing A each step (an NPC that wanders along a known line).
+  - Probe: face, press A, step sideways, up to N times (one axis known).
+  - Each NPC has its own wait for the talk to open (story NPCs zoom first: 8 s for Roark).
+  - An opened dialog isn't proof for a story NPC: a rock answers A too (r105). Check the
+    effect (the camera zoom, the item, the NPC gone).
+  - Advance with B where another A would start the talk again, with A where B would answer No.
+- **Dialogs end on a screen, never on a count.** The end is the overworld held for a while (4 s
+  covers a trainer's pause before the battle) or the battle menu. The time cap fails the step;
+  it isn't the plan. Yes/No prompts are answered by their cursor, not by presses counted.
+- **Interrupts say what they do to the position**: unchanged, somewhere on the trainer's sight
+  line, or unknown. Never chain two unknown positions; after one, the next exact step needs an
+  anchor.
+- **Recoveries are named and bounded.** Each names the failure it handles (blocked for no
+  reason, probe exhausted, expected screen missing, effect missing) and how often it may run.
+  A transient cause (a wanderer, a wild battle) gets retries; a deterministic one doesn't.
+  Anything else stops with a screenshot.
+- **Resume is a re-check.** After a reload, a step whose skip condition holds on screen is
+  skipped (Potions already in the bag: skip the Potion lady). A story flag is set only by a
+  confirmed effect and is lost on reload, so either a save follows the step that sets it, or the
+  flag can be observed again.
+
+### 8.2 FRLG startup and RNG hand-offs (from the FRLG demo plan, #56)
+
+The demo plan's map slices are done: the FRLG proof of concept walks Pallet to Pewter on maps
+generated from pokefirered. Its rules for the RNG programs still apply to section 6b's hand-offs.
+
+- **SID Helper** needs the game stopped on the naming screen with the name typed, before OK.
+  Keep its input timing unchanged: observe before and after it, never insert waits into it. It
+  doesn't save, so AutoStory must not reset the new identity before its first verified save.
+- **Starter RNG** needs a save south of Oak's table facing the chosen ball, stopping before
+  the ball is picked. It can end early on a shiny, or after rival battles and levelling during
+  calibration: read the screen and party before resuming, and don't take the program finishing
+  as proof of a saved starter. Keep the pre-starter save until the user keeps the result.
+- **Record** the TID, the candidate SIDs, the chosen one and whether it is confirmed, with the
+  game language and sound setting. A candidate SID is not a confirmed one, and a new game
+  invalidates the list.
+- **Keep the settings the RNG programs need** (Help button mode, the sound setting) the same
+  between preparing and running.
+- **A hand-off ends without input.** No A press, game close or reset after it. Failing before a
+  verified save stops in place; it never reloads an assumed checkpoint.
+- **Call, don't embed.** Where AutoStory needs part of an RNG program, a small PR first moves
+  that routine into a function with an explicit result; one program never runs another.
