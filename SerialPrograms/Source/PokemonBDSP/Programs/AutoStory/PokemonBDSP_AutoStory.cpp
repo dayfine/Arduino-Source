@@ -1,7 +1,9 @@
 #include <algorithm>
+#include <format>
 #include <memory>
 
 #include "PokemonBDSP_AutoStory.h"
+#include "Data/PokemonBDSP_AutoStory_MapFiles.h"
 #include "Utils/PokemonBDSP_AutoStory_NewGame.h"
 
 #include "CommonFramework/Globals.h"
@@ -539,6 +541,11 @@ void BDSPAutoStory::program(
 ){
     AutoStoryStats& stats = env.current_stats<AutoStoryStats>();
     g_stop_at_first_failure = STOP_AT_FIRST_FAILURE;
+
+    //  The maps every walk plans on, from their JSON files: stop here, before
+    //  the game is touched, if one is missing or differs from its C++ table.
+    load_story_map_files(story_map_folder());
+    env.log(std::format("[AutoStory] Maps: {} JSON files from {}", story_map_files().size(), story_map_folder()));
 
     AutoStoryOptions options{
         Language::English,
