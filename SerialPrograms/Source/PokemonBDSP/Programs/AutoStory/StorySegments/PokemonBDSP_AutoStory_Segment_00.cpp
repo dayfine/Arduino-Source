@@ -724,10 +724,16 @@ namespace PokemonAutomation {
             // from below the sign, the lit-doorway finder read the signs'
             // white panels as doorways, the Mart's 5 tiles east ("doorway 4.6
             // tiles across") and the Center's, and stepped between them, and
-            // walked into the signs (r252, r255).
+            // walked into the signs (r252, r255). The walk north into the sign
+            // leaves us facing north, and a tap the other way only turns: turn
+            // west first (r256's first tap turned, and its three taps moved
+            // two). One tile short still leaves the door a tile off and dead
+            // ahead, which the lining up below takes from there.
+            route_turn(stream, context, Pokemon::Direction::WEST);
             const size_t to_door = (size_t)(SandgemTown::POKEMON_CENTER_SIGN.x - SandgemTown::POKEMON_CENTER_DOOR.x);
             const WalkResult west = walk_tiles_dpad(stream, context, -1, 0, to_door, "west below the Center's door");
-            if (west.moved_chunks < to_door) {
+            stream.log("[00.04] Taps west below the Center's door moved " + std::to_string(west.moved_chunks) + " of " + std::to_string(to_door) + " tiles.");
+            if (west.moved_chunks + 1 < to_door) {
                 OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
                     "Sandgem Town: the taps west below the Center's door moved " + std::to_string(west.moved_chunks) + " tiles.", stream);
             }
