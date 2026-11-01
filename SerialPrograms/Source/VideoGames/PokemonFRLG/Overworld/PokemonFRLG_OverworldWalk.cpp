@@ -14,6 +14,7 @@
 #include "VideoGames/PokemonFRLG/Inference/Dialogs/PokemonFRLG_DialogDetector.h"
 #include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_StartMenuDetector.h"
 #include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleFlashWatcher.h"
+#include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattlePokemonDetector.h"
 #include "VideoGames/PokemonFRLG/PokemonFRLG_Navigation.h"
 #include "PokemonFRLG_PlayerFacingReader.h"
 #include "PokemonFRLG_OverworldWalk.h"
@@ -63,7 +64,7 @@ constexpr Milliseconds AFTER_WILD_LEG_WATCH = 3500ms;
 //  After a warp's fade. A wild battle's flashes and wipe pass for one, and
 //  its dialog shows within this long; a warp's doesn't (run 7: a "warp" into
 //  Oak's Lab from the grass of Route 1, where the player had drifted).
-constexpr Milliseconds AFTER_WARP_BATTLE_WATCH = 3000ms;
+constexpr Milliseconds AFTER_WARP_BATTLE_WATCH = 5000ms;
 //  After a message closes: a trainer who saw the player speaks first, then
 //  the battle starts, with "<Trainer> would like to battle!" seconds later.
 constexpr Milliseconds TRAINER_BATTLE_WATCH = 6000ms;
@@ -227,7 +228,10 @@ void wait_out_warp(ConsoleHandle& console, ProControllerContext& context, const 
 //  After a warp's fade, which a wild battle's can pass for: fails, once the
 //  battle is fled, if it was one.
 void check_warp_was_no_battle(ConsoleHandle& console, ProControllerContext& context, const RouteStep& step){
-    BattleDialogWatcher battle(COLOR_RED);
+    //  Watch for the opponent's HP box, not the battle text box: in small rooms
+    //  the black below the map reads as that box (Oak's Lab mat, console B,
+    //  2026-11-01: "Failed to flee" with no battle on screen).
+    DetectorToFinder<BattleOpponentDetector> battle("WarpBattleOpponent", DetectorToFinder<BattleOpponentDetector>::FinderType::PRESENT, std::chrono::milliseconds(300), COLOR_RED);
     context.wait_for_all_requests();
     if (wait_until(console, context, AFTER_WARP_BATTLE_WATCH, {battle}) < 0){
         return;
