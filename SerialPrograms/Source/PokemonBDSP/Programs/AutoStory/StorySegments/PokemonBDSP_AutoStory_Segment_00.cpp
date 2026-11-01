@@ -693,17 +693,17 @@ namespace PokemonAutomation {
             }
         }
 
-        // South into Sandgem Town, to the tile below the Pokemon Center's sign,
-        // which the house west of its column and the sign pin (r75 walked this
-        // and healed). The Center's door is three tiles west; the heal lines up
-        // with it by sight. Returns where we stand after: below the door.
+        // Into Sandgem down the road, then the town plan into the Center's sign (one walk
+        // found no plan, r252 ended two tiles short), and in by sight. Returns: below the door.
         static std::vector<TilePos> heal_at_sandgem_center(
             VideoStream& stream, ProControllerContext& context, const MapSet& maps,
             std::vector<TrainerSight>& trainers, const RouteTrainerFight& fight
         ) {
+            const TilePos entry = maps.to_world(MAP_SANDGEM_TOWN, SandgemTown::ROUTE_202_ENTRY_STOP);
             const TilePos below_sign = maps.to_world(MAP_SANDGEM_TOWN, SandgemTown::POKEMON_CENTER_SIGN.next(Pokemon::Direction::SOUTH));
-            walk_route(stream, context, maps, story_after_training_area(),
-                [&](const TilePos& pos) { return pos == below_sign; }, trainers, fight, "To the Pokemon Center");
+            walk_route(stream, context, maps, walk_route(stream, context, maps, story_after_training_area(),
+                [&](const TilePos& pos) { return pos == entry; }, trainers, fight, "Into Sandgem Town", {}, Pokemon::RobustPlanCosts()),
+                [&](const TilePos& pos) { return pos == below_sign; }, trainers, fight, "To the Pokemon Center", {}, town_plan_costs());
             heal_at_pokemon_center(stream, context, "Sandgem Town Pokemon Center");
             return story_door_front(MAP_SANDGEM_TOWN, SandgemTown::POKEMON_CENTER_DOOR);
         }
