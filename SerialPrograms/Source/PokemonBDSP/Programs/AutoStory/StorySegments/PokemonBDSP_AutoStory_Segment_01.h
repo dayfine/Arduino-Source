@@ -9,6 +9,9 @@
 #define PokemonAutomation_PokemonBDSP_AutoStory_Segment01_H
 
 #include "../PokemonBDSP_AutoStoryTools.h"
+#include <map>
+#include <string>
+#include "../Utils/PokemonBDSP_AutoStory_StoryExecutor.h"
 #include "../Utils/PokemonBDSP_AutoStory_StoryTables.h"
 
 namespace PokemonAutomation{
@@ -16,8 +19,12 @@ namespace NintendoSwitch{
 namespace PokemonBDSP{
 
 
-//  Segment 01 as a table of checkpoints: 01.01 to 01.11.
+//  Segment 01 as a table of checkpoints, segment_01_table(): 01.01 to 01.11.
 Pokemon::Segment make_segment_01(StoryStepRunner& runner);
+
+//  How segment_01_table()'s steps that call an old function run on the
+//  console, by their variants.
+std::map<std::string, ConsoleStoryExecutor::Variant> segment_01_variants();
 
 class AutoStory_Segment_01 : public AutoStory_Segment{
 public:

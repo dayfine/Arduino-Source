@@ -19,6 +19,7 @@
 #include "../Utils/PokemonBDSP_AutoStory_RouteWalk.h"
 #include "../Utils/PokemonBDSP_AutoStory_Segment_00_tools.h"
 #include "../Utils/PokemonBDSP_AutoStory_Walk.h"
+#include "../PokemonBDSP_AutoStory_StoryTable.h"
 #include "Common/Cpp/PrettyPrint.h"
 #include "Common/Cpp/Filesystem/Filesystem.h"
 #include "CommonFramework/Globals.h"
@@ -1458,75 +1459,30 @@ void floaroma_old_couple(VideoStream& stream, ProControllerContext& context){
 }
 
 
-namespace{
-
-//  Saves where a checkpoint ends, inside its attempt: a failed save is a
-//  failed attempt.
-StoryStepSpec save_here(){
-    return {"save_here", "the next checkpoint starts here", [](StoryConsole& c){
-        checkpoint_save(c.env, c.context, c.options.notif_status_update, c.stats, c.options.checkpoint_save_mode);
-    }};
-}
-
-StoryCheckpointSpec segment_01_row(std::string id, std::string title, std::vector<StoryStepSpec> steps){
-    return {.id = std::move(id), .title = std::move(title), .on_failure = StoryFailure::RELOAD_AND_RETRY, .steps = std::move(steps)};
-}
-
-//  01.01 to 01.05: Jubilife to Oreburgh, the Mine, the Gym and back out.
-std::vector<StoryCheckpointSpec> segment_01_oreburgh_rows(){
+std::map<std::string, ConsoleStoryExecutor::Variant> segment_01_variants(){
     return {
-        segment_01_row("01.01", "Jubilife to Barry", {
-            {"jubilife_to_barry", "from the Center's PC out to Barry on Route 203", [](StoryConsole& c){ jubilife_to_barry(c.env.console, c.context); }},
-        }),
-        segment_01_row("01.02", "Route 203 to Oreburgh", {
-            {"route203_to_oreburgh", "east through the Oreburgh Gate into Oreburgh City", [](StoryConsole& c){ route203_to_oreburgh(c.env.console, c.context); }},
-        }),
-        segment_01_row("01.03", "Oreburgh Mine to Roark", {
-            {"oreburgh_to_roark", "into the Mine to Roark and back to the Center", [](StoryConsole& c){ oreburgh_to_roark(c.env.console, c.context); }},
-        }),
-        segment_01_row("01.04", "Oreburgh Gym", {
-            {"oreburgh_gym", "the Gym's trainers and Roark for the Coal Badge", [](StoryConsole& c){ oreburgh_gym(c.env.console, c.context); }},
-        }),
-        segment_01_row("01.05", "Oreburgh to Route 203", {
-            {"oreburgh_to_route203", "heal, then west out of the Oreburgh Gate", [](StoryConsole& c){ oreburgh_to_route203(c.env.console, c.context); }},
-        }),
+        {"jubilife_to_barry", story_call([](StoryConsole& c){ jubilife_to_barry(c.env.console, c.context); })},
+        {"route203_to_oreburgh", story_call([](StoryConsole& c){ route203_to_oreburgh(c.env.console, c.context); })},
+        {"oreburgh_to_roark", story_call([](StoryConsole& c){ oreburgh_to_roark(c.env.console, c.context); })},
+        {"oreburgh_gym", story_call([](StoryConsole& c){ oreburgh_gym(c.env.console, c.context); })},
+        {"oreburgh_to_route203", story_call([](StoryConsole& c){ oreburgh_to_route203(c.env.console, c.context); })},
+        {"route203_to_jubilife", story_call([](StoryConsole& c){ route203_to_jubilife(c.env.console, c.context); })},
+        {"jubilife_to_rowan", story_call([](StoryConsole& c){ jubilife_to_rowan(c.env.console, c.context); })},
+        {"jubilife_to_ravaged_path", story_call([](StoryConsole& c){ jubilife_to_ravaged_path(c.env.console, c.context); })},
+        {"ravaged_path", story_call([](StoryConsole& c){ ravaged_path(c.env.console, c.context); })},
+        {"route204_to_floaroma", story_call([](StoryConsole& c){ route204_to_floaroma(c.env.console, c.context); })},
+        {"floaroma_old_couple", story_call([](StoryConsole& c){ floaroma_old_couple(c.env.console, c.context); })},
     };
 }
 
-//  01.06 to 01.11: back through Jubilife, north to Floaroma.
-std::vector<StoryCheckpointSpec> segment_01_floaroma_rows(){
-    return {
-        segment_01_row("01.06", "Route 203 to Jubilife", {
-            {"route203_to_jubilife", "west along Route 203 into Jubilife", [](StoryConsole& c){ route203_to_jubilife(c.env.console, c.context); }},
-        }),
-        segment_01_row("01.07", "Jubilife through Rowan's scene", {
-            {"jubilife_to_rowan", "to the north street, Rowan's scene and the tag battle", [](StoryConsole& c){ jubilife_to_rowan(c.env.console, c.context); }},
-        }),
-        segment_01_row("01.08", "Jubilife to the Ravaged Path", {
-            {"jubilife_to_ravaged_path", "up Route 204's south half into the Ravaged Path", [](StoryConsole& c){ jubilife_to_ravaged_path(c.env.console, c.context); }},
-        }),
-        segment_01_row("01.09", "Ravaged Path", {
-            {"ravaged_path", "through the cave with Rock Smash, out onto Route 204 North", [](StoryConsole& c){ ravaged_path(c.env.console, c.context); }},
-        }),
-        segment_01_row("01.10", "Route 204 to Floaroma", {
-            {"route204_to_floaroma", "the human's line north into Floaroma", [](StoryConsole& c){ route204_to_floaroma(c.env.console, c.context); }},
-            save_here(),
-        }),
-        segment_01_row("01.11", "Floaroma's old couple", {
-            {"floaroma_old_couple", "the old woman and the old man in the flower field", [](StoryConsole& c){ floaroma_old_couple(c.env.console, c.context); }},
-            save_here(),
-        }),
-    };
-}
-
-}
-
+//  The table is segment_01_table() (PokemonBDSP_AutoStory_StoryTable.h). Its
+//  steps only call functions, so the executor plans nothing itself.
 Pokemon::Segment make_segment_01(StoryStepRunner& runner){
-    std::vector<StoryCheckpointSpec> rows = segment_01_oreburgh_rows();
-    for (StoryCheckpointSpec& row : segment_01_floaroma_rows()){
-        rows.push_back(std::move(row));
-    }
-    return story_segment(runner, "01", std::move(rows));
+    const std::vector<StoryRow>& table = segment_01_table();
+    return story_table_segment(runner, "01", table, std::make_shared<ConsoleStoryExecutor>(
+        runner, rows_that_stop(table), story_maps(), std::vector<Pokemon::TrainerSight>{},
+        [](StoryConsole&, const std::string&){}, segment_01_variants()
+    ));
 }
 
 

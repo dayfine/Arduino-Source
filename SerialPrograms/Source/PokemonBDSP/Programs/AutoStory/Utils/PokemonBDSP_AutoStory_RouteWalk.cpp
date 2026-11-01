@@ -850,6 +850,12 @@ bool door_fade_look(DoorFadeWatch& watch, double brightness, bool room){
     return watch.saw_dark && !room && brightness >= DOOR_OUTSIDE_BRIGHT;
 }
 
+bool door_walk_stops(DoorFadeWatch& watch, double brightness, bool room){
+    //  Both are asked: the fade watch keeps what it has seen.
+    const bool faded = door_fade_look(watch, brightness, room);
+    return faded || !room;
+}
+
 namespace{
 
 //  Three looks half a second apart, none a room: outside, whatever the fade
@@ -882,7 +888,7 @@ void leave_door_south(VideoStream& stream, ProControllerContext& context, const 
     auto out_of_door = [&](const ImageViewRGB32& screen){
         const double brightness = image_stats(screen).average.sum();
         const bool room = indoors(screen);
-        const bool out = door_fade_look(watch, brightness, room) || !room;
+        const bool out = door_walk_stops(watch, brightness, room);
         stream.log(std::format("[Route] {}: look: brightness {:.0f}, {}, fade {}.", label, brightness,
             room ? "a room" : "not a room", watch.saw_dark ? "seen" : "not seen"));
         return out;

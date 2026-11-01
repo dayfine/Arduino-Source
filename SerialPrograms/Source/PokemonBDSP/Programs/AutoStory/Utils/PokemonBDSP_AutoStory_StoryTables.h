@@ -18,10 +18,12 @@
 
 #include <functional>
 #include <map>
+#include <memory>
 #include <set>
 #include <string>
 #include <vector>
 #include "Pokemon/Navigation/Pokemon_StorySegments.h"
+#include "Pokemon/Navigation/Pokemon_StorySteps.h"
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStoryTools.h"
 
 namespace PokemonAutomation{
@@ -29,20 +31,15 @@ namespace NintendoSwitch{
 namespace PokemonBDSP{
 
 
-//  What a step runs on.
+//  What a step runs on on the console.
 struct StoryConsole{
     SingleSwitchProgramEnvironment& env;
     ProControllerContext& context;
     const AutoStoryOptions& options;
     AutoStoryStats& stats;
 };
-using StoryStep = std::function<void(StoryConsole& console)>;
-
-struct StoryStepSpec{
-    std::string name;
-    std::string why;
-    StoryStep step;
-};
+//  A console action: what a step that calls an old function runs.
+using StoryAction = std::function<void(StoryConsole& console)>;
 
 //  What a checkpoint does when a step fails.
 enum class StoryFailure{
@@ -53,15 +50,13 @@ enum class StoryFailure{
     STOP,
 };
 
-struct StoryCheckpointSpec{
-    std::string id;
-    std::string title;
+//  A row of a story table: the shared checkpoint, and what a failure does.
+struct StoryRow : public Pokemon::StoryCheckpoint{
     StoryFailure on_failure = StoryFailure::RELOAD_AND_RETRY;
-    std::vector<StoryStepSpec> steps;
 };
 
-//  How a table's events reach the game: the console runner below, or a
-//  fake in the tests, which only describe the tables.
+//  How a table saves at a row's start and runs a console action: the
+//  console runner below, or a fake in the tests.
 class StoryStepRunner{
 public:
     virtual ~StoryStepRunner() = default;
@@ -69,14 +64,20 @@ public:
     //  starts from that save and does not save again.
     virtual bool saved_at_start(const std::string& id) const = 0;
     virtual Pokemon::Outcome save_at_start(const std::string& id) = 0;
-    virtual Pokemon::Outcome run_step(const std::string& id, StoryFailure on_failure, const StoryStep& step) = 0;
+    virtual Pokemon::Outcome run_step(const std::string& id, StoryFailure on_failure, const StoryAction& step) = 0;
 };
 
-//  A row of a segment table: builds the checkpoint's events from `spec`.
-Pokemon::CheckpointSpec story_checkpoint(StoryStepRunner& runner, StoryCheckpointSpec spec);
+//  The table `rows` (kept alive by the caller) as segment `id`: each row
+//  that retries saves first, through `runner`, unless this run has saved it
+//  already (a retry starts from that save); then its steps run with
+//  `executor`, which the segment keeps.
+Pokemon::Segment story_table_segment(
+    StoryStepRunner& runner, std::string id, const std::vector<StoryRow>& rows,
+    std::shared_ptr<Pokemon::StoryStepExecutor> executor
+);
 
-//  A segment table of `rows`, in order.
-Pokemon::Segment story_segment(StoryStepRunner& runner, std::string id, std::vector<StoryCheckpointSpec> rows);
+//  The ids of the rows that stop on a failure instead of retrying.
+std::set<std::string> rows_that_stop(const std::vector<StoryRow>& rows);
 
 using StorySegmentFactory = std::function<Pokemon::Segment(StoryStepRunner& runner)>;
 
@@ -88,7 +89,7 @@ public:
 
     virtual bool saved_at_start(const std::string& id) const override;
     virtual Pokemon::Outcome save_at_start(const std::string& id) override;
-    virtual Pokemon::Outcome run_step(const std::string& id, StoryFailure on_failure, const StoryStep& step) override;
+    virtual Pokemon::Outcome run_step(const std::string& id, StoryFailure on_failure, const StoryAction& step) override;
 
     //  Runs the rows of `segment` in `range`; throws as the checkpoint
     //  loop did once a checkpoint has used up its attempts.

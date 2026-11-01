@@ -42,45 +42,44 @@ Event save_event(StoryStepRunner& runner, const std::string& id){
     return event;
 }
 
-Event step_event(StoryStepRunner& runner, const std::string& id, StoryFailure on_failure, StoryStepSpec step){
-    Event event;
-    event.name = std::move(step.name);
-    event.why = std::move(step.why);
-    event.act = [&runner, id, on_failure, run = std::move(step.step)](RunState&){
-        return runner.run_step(id, on_failure, run);
-    };
-    return event;
-}
-
 }
 
 
-Pokemon::CheckpointSpec story_checkpoint(StoryStepRunner& runner, StoryCheckpointSpec spec){
-    Pokemon::CheckpointSpec row;
-    row.id = spec.id;
-    row.title = spec.title;
-    row.build = [&runner, spec = std::move(spec)](){
-        Checkpoint checkpoint;
-        checkpoint.id = spec.id;
-        if (spec.on_failure == StoryFailure::RELOAD_AND_RETRY){
-            checkpoint.events.push_back(save_event(runner, spec.id));
-        }
-        for (const StoryStepSpec& step : spec.steps){
-            checkpoint.events.push_back(step_event(runner, spec.id, spec.on_failure, step));
-        }
-        return checkpoint;
-    };
-    return row;
-}
-
-
-Pokemon::Segment story_segment(StoryStepRunner& runner, std::string id, std::vector<StoryCheckpointSpec> rows){
+Pokemon::Segment story_table_segment(
+    StoryStepRunner& runner, std::string id, const std::vector<StoryRow>& rows,
+    std::shared_ptr<Pokemon::StoryStepExecutor> executor
+){
     Pokemon::Segment segment;
     segment.id = std::move(id);
-    for (StoryCheckpointSpec& row : rows){
-        segment.checkpoints.push_back(story_checkpoint(runner, std::move(row)));
+    for (const StoryRow& row : rows){
+        segment.checkpoints.push_back(Pokemon::CheckpointSpec{
+            .id = row.id, .title = row.title, .saves = false,
+            .build = [&runner, &row, executor]{
+                Checkpoint steps = Pokemon::build_story_checkpoint(row, *executor);
+                if (row.on_failure != StoryFailure::RELOAD_AND_RETRY){
+                    return steps;
+                }
+                Checkpoint checkpoint;
+                checkpoint.id = row.id;
+                checkpoint.events.push_back(save_event(runner, row.id));
+                for (Event& event : steps.events){
+                    checkpoint.events.push_back(std::move(event));
+                }
+                return checkpoint;
+            },
+        });
     }
     return segment;
+}
+
+std::set<std::string> rows_that_stop(const std::vector<StoryRow>& rows){
+    std::set<std::string> ids;
+    for (const StoryRow& row : rows){
+        if (row.on_failure == StoryFailure::STOP){
+            ids.insert(row.id);
+        }
+    }
+    return ids;
 }
 
 
@@ -102,7 +101,7 @@ Outcome ConsoleStoryRunner::save_at_start(const std::string& id){
     });
 }
 
-Outcome ConsoleStoryRunner::run_step(const std::string& id, StoryFailure on_failure, const StoryStep& step){
+Outcome ConsoleStoryRunner::run_step(const std::string& id, StoryFailure on_failure, const StoryAction& step){
     if (on_failure == StoryFailure::STOP){
         step(m_console);
         return Pokemon::outcome_ok();

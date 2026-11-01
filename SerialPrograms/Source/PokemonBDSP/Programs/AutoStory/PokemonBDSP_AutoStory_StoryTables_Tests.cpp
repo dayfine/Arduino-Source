@@ -31,7 +31,7 @@ public:
     virtual Pokemon::Outcome save_at_start(const std::string&) override{
         return Pokemon::outcome_failed("not_run");
     }
-    virtual Pokemon::Outcome run_step(const std::string&, StoryFailure, const StoryStep&) override{
+    virtual Pokemon::Outcome run_step(const std::string&, StoryFailure, const StoryAction&) override{
         return Pokemon::outcome_failed("not_run");
     }
 };

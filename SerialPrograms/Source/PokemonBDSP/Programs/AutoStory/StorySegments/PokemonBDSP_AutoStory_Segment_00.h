@@ -8,9 +8,12 @@
 #ifndef PokemonAutomation_PokemonBDSP_AutoStory_Segment00_H
 #define PokemonAutomation_PokemonBDSP_AutoStory_Segment00_H
 
+#include <map>
+#include <string>
 #include <vector>
 #include "Pokemon/Navigation/Pokemon_Grid.h"
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStoryTools.h"
+#include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_StoryExecutor.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_StoryTables.h"
 
 namespace PokemonAutomation {
@@ -18,9 +21,14 @@ namespace NintendoSwitch {
 namespace PokemonBDSP {
 
 
-// Segment 00 as a table of checkpoints: 00.00 to 00.05, with 00.04 in two
-// rows (00.04 to the catch, 00.04b after it), each saving at its start.
+// Segment 00 as a table of checkpoints, segment_00_table(): 00.00 to 00.05,
+// with 00.04 in four rows (to the catch, then 00.04b to 00.04d as story
+// steps), each saving at its start.
 Pokemon::Segment make_segment_00(StoryStepRunner& runner);
+
+// How segment_00_table()'s steps that call an old function run on the
+// console, by their variants.
+std::map<std::string, ConsoleStoryExecutor::Variant> segment_00_variants();
 
 // DIAGNOSTIC ONLY: Remove before pushing to production.
 // Starts at the post-catch save and runs only the rest of checkpoint 00.04.

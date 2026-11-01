@@ -55,12 +55,12 @@ std::pair<double, double> dpad_of(Direction direction){
 
 
 ConsoleStoryExecutor::ConsoleStoryExecutor(
-    StoryStepRunner& runner, std::string checkpoint,
+    StoryStepRunner& runner, std::set<std::string> stop_rows,
     const Pokemon::MapSet& maps, std::vector<Pokemon::TrainerSight> trainers,
     TrainerFight fight, std::map<std::string, Variant> variants
 )
     : m_runner(runner)
-    , m_checkpoint(std::move(checkpoint))
+    , m_stop_rows(std::move(stop_rows))
     , m_maps(maps)
     , m_all_trainers(std::move(trainers))
     , m_trainers(m_all_trainers)
@@ -68,7 +68,8 @@ ConsoleStoryExecutor::ConsoleStoryExecutor(
     , m_variants(std::move(variants))
 {}
 
-void ConsoleStoryExecutor::begin_attempt(){
+void ConsoleStoryExecutor::begin_attempt(const Pokemon::StoryCheckpoint& data){
+    m_checkpoint = data.id;
     m_trainers = m_all_trainers;
 }
 
@@ -87,7 +88,8 @@ StoryConsole& ConsoleStoryExecutor::console(){
 
 Outcome ConsoleStoryExecutor::run(RunState& state, const Pokemon::StoryStep& step){
     Outcome result = Pokemon::outcome_ok();
-    const Outcome ran = m_runner.run_step(m_checkpoint, StoryFailure::RELOAD_AND_RETRY, [&](StoryConsole& console){
+    const StoryFailure on_failure = m_stop_rows.contains(m_checkpoint) ? StoryFailure::STOP : StoryFailure::RELOAD_AND_RETRY;
+    const Outcome ran = m_runner.run_step(m_checkpoint, on_failure, [&](StoryConsole& console){
         m_console = &console;
         const auto variant = m_variants.find(step.variant);
         result = variant == m_variants.end()
@@ -169,10 +171,9 @@ Outcome ConsoleStoryExecutor::heal(RunState&, const Pokemon::StoryStep& step){
     return Pokemon::outcome_ok();
 }
 
-Outcome ConsoleStoryExecutor::save(RunState&, const Pokemon::StoryStep& step){
+Outcome ConsoleStoryExecutor::save(RunState&, const Pokemon::StoryStep&){
     StoryConsole& c = console();
-    c.env.console.log(std::format("[{}] Saving: {}.", m_checkpoint, step.why));
-    save_game(c.env, c.context, step.target ? step.target->map : "");
+    checkpoint_save(c.env, c.context, c.options.notif_status_update, c.stats, c.options.checkpoint_save_mode);
     return Pokemon::outcome_ok();
 }
 
@@ -185,24 +186,11 @@ Outcome ConsoleStoryExecutor::mash(RunState&, const Pokemon::StoryStep& step){
 }
 
 
-Pokemon::CheckpointSpec story_steps_checkpoint(
-    StoryStepRunner& runner, const Pokemon::StoryCheckpoint& data,
-    std::shared_ptr<ConsoleStoryExecutor> executor
-){
-    //  The table's own row with no steps: its save at the start.
-    Pokemon::CheckpointSpec row = story_checkpoint(runner, StoryCheckpointSpec{
-        .id = data.id, .title = data.title, .on_failure = StoryFailure::RELOAD_AND_RETRY, .steps = {},
-    });
-    row.build = [save = std::move(row.build), &data, executor = std::move(executor)]() mutable{
-        executor->begin_attempt();
-        Pokemon::Checkpoint checkpoint = save();
-        Pokemon::Checkpoint steps = Pokemon::build_story_checkpoint(data, *executor);
-        for (Pokemon::Event& event : steps.events){
-            checkpoint.events.push_back(std::move(event));
-        }
-        return checkpoint;
+ConsoleStoryExecutor::Variant story_call(StoryAction action){
+    return [action = std::move(action)](ConsoleStoryExecutor&, StoryConsole& console, RunState&, const Pokemon::StoryStep&){
+        action(console);
+        return Pokemon::outcome_ok();
     };
-    return row;
 }
 
 

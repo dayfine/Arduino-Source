@@ -24,6 +24,7 @@
 #include <map>
 #include <memory>
 #include <optional>
+#include <set>
 #include <string>
 #include <vector>
 #include "Pokemon/Navigation/Pokemon_MapSet.h"
@@ -59,14 +60,15 @@ public:
     //  Fights a trainer whose dialogue has opened.
     using TrainerFight = std::function<void(StoryConsole& console, const std::string& trainer)>;
 
+    //  `stop_rows`: the rows whose failure ends the program (rows_that_stop()).
     ConsoleStoryExecutor(
-        StoryStepRunner& runner, std::string checkpoint,
+        StoryStepRunner& runner, std::set<std::string> stop_rows,
         const Pokemon::MapSet& maps, std::vector<Pokemon::TrainerSight> trainers,
         TrainerFight fight, std::map<std::string, Variant> variants
     );
 
-    //  A new attempt of the checkpoint: every trainer can see us again.
-    void begin_attempt();
+    //  A new attempt of a row: every trainer can see us again.
+    virtual void begin_attempt(const Pokemon::StoryCheckpoint& data) override;
 
     const Pokemon::MapSet& maps() const{
         return m_maps;
@@ -88,7 +90,7 @@ public:
     //  In front of a Pokemon Center, its lit doorway on screen: in, the
     //  nurse, and out (heal_at_pokemon_center()).
     virtual Pokemon::Outcome heal(Pokemon::RunState& state, const Pokemon::StoryStep& step) override;
-    //  Saves; the save screen must read the target's map, if there is one.
+    //  The checkpoint save (checkpoint_save(), real or fake as the options say).
     virtual Pokemon::Outcome save(Pokemon::RunState& state, const Pokemon::StoryStep& step) override;
     //  A dialogue opens (or has), then B through it.
     virtual Pokemon::Outcome mash(Pokemon::RunState& state, const Pokemon::StoryStep& step) override;
@@ -97,6 +99,7 @@ private:
     StoryConsole& console();
 
     StoryStepRunner& m_runner;
+    std::set<std::string> m_stop_rows;
     std::string m_checkpoint;
     const Pokemon::MapSet& m_maps;
     std::vector<Pokemon::TrainerSight> m_all_trainers;
@@ -108,14 +111,9 @@ private:
 };
 
 
-//  `data` as a row of a story table: it saves at its start like the
-//  table's other rows, then runs its steps with `executor`, which starts a
-//  new attempt each time the row is built. `data` must outlive the
-//  segment; the row keeps the executor.
-Pokemon::CheckpointSpec story_steps_checkpoint(
-    StoryStepRunner& runner, const Pokemon::StoryCheckpoint& data,
-    std::shared_ptr<ConsoleStoryExecutor> executor
-);
+//  A variant that calls an old console function, for a step that has no
+//  declarative form yet.
+ConsoleStoryExecutor::Variant story_call(StoryAction action);
 
 
 

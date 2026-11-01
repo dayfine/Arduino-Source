@@ -1416,12 +1416,14 @@ public:
 class FakeMartLady : public MartLadyActions{
 public:
     enum class Where{
-        DOORS_ROW, LAB_EAST, PATH_WEST, GRASS_EDGE, TOP_EDGE, LADY,
+        DOORS_ROW, SHORT_OF_LAB, LAB_EAST, PATH_WEST, GRASS_EDGE, TOP_EDGE, LADY,
         SIGNS_ROW, SHORT_OF_201, ROUTE_201_WEST, PATH_EAST, MART_TREES_LOW, MART_TREES, ROUTE_202,
     };
 
     //  Walks back east that a wild battle ends short of the sign.
     size_t short_walks = 0;
+    //  Walks west along the doors' row that a townsperson ends short of the Lab's sign.
+    size_t short_lab_walks = 0;
     //  Talks to the lady before she is there to answer.
     size_t lady_away = 0;
     Where where = Where::DOORS_ROW;
@@ -1451,6 +1453,7 @@ public:
         trace.push_back("go: " + label);
         const struct{ Where from; Direction direction; Where to; } walks[] = {
             {Where::DOORS_ROW, Direction::WEST, Where::LAB_EAST},
+            {Where::SHORT_OF_LAB, Direction::WEST, Where::LAB_EAST},
             {Where::PATH_WEST, Direction::WEST, Where::GRASS_EDGE},
             {Where::GRASS_EDGE, Direction::NORTH, Where::TOP_EDGE},
             {Where::LADY, Direction::WEST, Where::TOP_EDGE},
@@ -1466,6 +1469,10 @@ public:
                 if (where == Where::ROUTE_201_WEST && short_walks > 0 && walk.from == Where::SIGNS_ROW){
                     short_walks--;
                     where = Where::SHORT_OF_201;
+                }
+                if (where == Where::LAB_EAST && short_lab_walks > 0 && walk.from == Where::DOORS_ROW){
+                    short_lab_walks--;
+                    where = Where::SHORT_OF_LAB;
                 }
                 break;
             }
@@ -1548,9 +1555,12 @@ public:
             }
             return all;
         };
+        const std::vector<std::string> TO_LAB = {"go: West to the Lab's sign", "read: the Lab's sign"};
+        const std::vector<std::string> LAB_TO_LADY = {"step: South onto the path", "go: West along the path", "go: North to the trees"};
         struct Case{
             const char* name;
             size_t short_walks;
+            size_t short_lab_walks = 0;
             size_t lady_away;
             bool completed;
             size_t failed_event;
@@ -1560,6 +1570,7 @@ public:
             {
                 .name = "Straight through",
                 .short_walks = 0,
+                .short_lab_walks = 0,
                 .lady_away = 0,
                 .completed = true,
                 .failed_event = 0,
@@ -1568,14 +1579,25 @@ public:
             {
                 .name = "Back east, a tile short of the sign",
                 .short_walks = 1,
+                .short_lab_walks = 0,
                 .lady_away = 0,
                 .completed = true,
                 .failed_event = 0,
                 .trace = join({TO_LADY, LADY, TO_SIGN, SIGN, {"go: On to the sign"}, SIGN, HOME}),
             },
             {
+                .name = "West, a tile short of the Lab's sign: re-anchored on it",
+                .short_walks = 0,
+                .short_lab_walks = 1,
+                .lady_away = 0,
+                .completed = true,
+                .failed_event = 0,
+                .trace = join({TO_LAB, {"go: On to the sign", "read: the Lab's sign"}, LAB_TO_LADY, LADY, TO_SIGN, SIGN, HOME}),
+            },
+            {
                 .name = "The lady answers the second time",
                 .short_walks = 0,
+                .short_lab_walks = 0,
                 .lady_away = 1,
                 .completed = true,
                 .failed_event = 0,
@@ -1584,6 +1606,7 @@ public:
             {
                 .name = "The lady never answers",
                 .short_walks = 0,
+                .short_lab_walks = 0,
                 .lady_away = 5,
                 .completed = false,
                 .failed_event = 6,
@@ -1593,6 +1616,7 @@ public:
         for (const Case& c : cases){
             FakeMartLady game;
             game.short_walks = c.short_walks;
+            game.short_lab_walks = c.short_lab_walks;
             game.lady_away = c.lady_away;
             Pokemon::Checkpoint checkpoint = sandgem_mart_lady_checkpoint(game);
             const std::vector<std::string> problems = Pokemon::lint_checkpoint(checkpoint);

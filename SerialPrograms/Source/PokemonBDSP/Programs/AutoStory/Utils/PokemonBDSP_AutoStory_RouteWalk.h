@@ -211,6 +211,10 @@ struct DoorFadeWatch{
 //  returns whether we are out: a dark look seen, and now a bright one that
 //  is not a room.
 bool door_fade_look(DoorFadeWatch& watch, double brightness, bool room);
+//  Whether leave_door_south()'s walk stops at this look: at the door's fade
+//  out (door_fade_look()), or at the first look that is not a room, so a
+//  held stick does not walk on outside (r261 three rows).
+bool door_walk_stops(DoorFadeWatch& watch, double brightness, bool room);
 
 
 
