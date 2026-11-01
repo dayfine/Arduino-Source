@@ -1447,6 +1447,9 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/Navigation/Pokemon_LegPlanner.h
     Source/Pokemon/Navigation/Pokemon_LegPlanner_Tests.cpp
     Source/Pokemon/Navigation/Pokemon_Navigation_Tests.h
+    Source/Pokemon/Navigation/Pokemon_StoryEvents.cpp
+    Source/Pokemon/Navigation/Pokemon_StoryEvents.h
+    Source/Pokemon/Navigation/Pokemon_StoryEvents_Tests.cpp
     Source/Pokemon/Options/Pokemon_BoxSortingTable.cpp
     Source/Pokemon/Options/Pokemon_BoxSortingTable.h
     Source/Pokemon/Options/Pokemon_EncounterBotOptions.h
