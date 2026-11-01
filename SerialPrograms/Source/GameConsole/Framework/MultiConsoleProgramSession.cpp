@@ -47,7 +47,7 @@ MultiConsoleProgramSession::MultiConsoleProgramSession(
                 descriptor.default_consoles()
             )
     )
-    , m_system(*m_system_option, descriptor.allow_commands_while_running(), instance_id())
+    , m_system(run_logger(), *m_system_option, descriptor.allow_commands_while_running(), instance_id())
 {
     auto instance = descriptor.make_instance(m_system);
     instance->update_active_consoles(m_system_option->active_consoles());
