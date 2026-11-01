@@ -92,6 +92,15 @@ Superseded once the new ones are in shape; the user closes them, with branches k
    - Level targets per checkpoint. FRLG Squirtle, from the 2015 speedrun guide: 6 after Route 1,
      8 after the forest, 10 for Liam, 11 for Brock.
    - Sammy is the only planned forest trainer.
+   - **Run modes (user, 2026-11-01):** SPEEDRUN / DEFAULT / SAFE. Strategy only (which
+     battles to take, flee or fight wild Pokémon, heal threshold, what to buy and when); the Checks
+     level (Thorough/Fast, screen verification) stays a separate option. SPEEDRUN follows
+     pokeguy's LeafGreen 1:59:34 (`pokemon_sv/FRLG_POKEGUY_15934_VIDEO_NOTES.md` on agents):
+     no Viridian shopping, flee every forest wild battle, Sammy L7→8, Liam to L11, Brock at
+     L11 with no Potion (survives at 1 HP), Water Gun at L13, first shopping in Pewter.
+     DEFAULT is today's table. SAFE heals at a threshold and takes extra wild battles to reach
+     the level targets. Not built now; the table should name these choices so a mode can
+     switch them.
 8. **Upstream handoff (the user publishes; at most two open upstream).**
    - Order: #114's parts (grid and planner, ScreenMachine, story events and maps), then #122,
      then FRLG #117 → #120, then BDSP #127 → #128, then the tooling.
