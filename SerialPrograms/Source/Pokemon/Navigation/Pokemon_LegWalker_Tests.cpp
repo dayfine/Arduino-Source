@@ -313,6 +313,19 @@ UnitTestResult test_tile_by_tile_warp_not_watched(){
     return true;
 }
 
+//  An open leg set to stop at an interrupt doesn't walk on from a guess.
+UnitTestResult test_open_leg_stops(){
+    ScriptedLeg script;
+    script.outcomes = {after_step(2)};
+    LegSpec leg{Direction::NORTH, 6, false, TILE, NO_WINDOW};
+    leg.stop_on_interrupt = true;
+    const LegResult result = walk_leg_with(leg, script.calls(), 5);
+    if (script.holds.size() != 1 || !result.stopped || result.exact || script.cleared.size() != 1){
+        return "Expected one hold, the interrupt cleared, and the leg stopped.";
+    }
+    return true;
+}
+
 //  A leg to a wall is still held through, window or not.
 UnitTestResult test_wall_leg_held_through(){
     ScriptedLeg script;
@@ -356,6 +369,7 @@ void add_tests_LegWalker(UnitTestDatabase& database){
     database.add<Test_LegWalker>("tile by tile: a battle on the last tile", test_tile_by_tile_battle_on_last_tile);
     database.add<Test_LegWalker>("tile by tile: an interrupt slower than the window", test_tile_by_tile_slow_interrupt);
     database.add<Test_LegWalker>("a wall leg is held through", test_wall_leg_held_through);
+    database.add<Test_LegWalker>("an open leg stops at an interrupt", test_open_leg_stops);
     database.add<Test_LegWalker>("tile by tile: the step onto a warp isn't watched", test_tile_by_tile_warp_not_watched);
     database.add<Test_LegWalker>("tile by tile: the last step settles", test_tile_by_tile_settle_last_step);
     database.add<Test_LegWalker>("tile by tile: a late battle before the last step", test_tile_by_tile_settle_earlier_step);

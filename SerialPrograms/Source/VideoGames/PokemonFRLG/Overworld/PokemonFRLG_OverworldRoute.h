@@ -109,6 +109,18 @@ std::optional<std::vector<RouteStep>> plan_overworld_route(
     std::optional<Direction> start_facing = std::nullopt
 );
 
+//  After `step`, an open walk, stopped part-way (a battle, a message): a leg
+//  to a wall that ends on the same tile from anywhere the player may be
+//  along it, ahead or back, so where they are is known again. `start` is
+//  where `step` started, if known; else it is worked back from its end.
+//  Nothing if no such wall lies along it: a warp, a ledge, a person or the
+//  edge of the loaded maps is in the way.
+std::optional<RouteStep> plan_reanchor(
+    const std::vector<MapData>& maps,
+    const std::optional<MapPosition>& start,
+    const RouteStep& step
+);
+
 //  Replays `route` from `start` with the game's step rules and returns where
 //  it ends. Throws InternalProgramError if a step can't be taken as planned.
 MapPosition follow_overworld_route(
@@ -119,6 +131,7 @@ MapPosition follow_overworld_route(
 
 
 void add_tests_OverworldRoute(UnitTestDatabase& database);
+void add_tests_OverworldReanchor(UnitTestDatabase& database);
 
 
 

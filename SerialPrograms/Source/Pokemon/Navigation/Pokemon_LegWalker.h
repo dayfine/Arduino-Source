@@ -94,6 +94,9 @@ struct LegSpec{
     //  longer, for an interrupt whose first sign was missed and that shows
     //  only later: it is then placed before the leg ends, not after.
     Milliseconds settle{0};
+    //  An open leg stops at its first interrupt, once cleared, instead of
+    //  walking on from an estimate; the caller finds the player again.
+    bool stop_on_interrupt = false;
 };
 std::string to_string(const LegSpec& leg);
 
@@ -103,6 +106,9 @@ struct LegResult{
     //  Whether `tiles` is certain: an interrupted open leg is an estimate.
     bool exact = true;
     size_t interruptions = 0;
+    //  The leg stopped at an interrupt (LegSpec::stop_on_interrupt): the
+    //  player is somewhere along it, and `tiles` is not known.
+    bool stopped = false;
 };
 
 
@@ -205,10 +211,11 @@ LegResult walk_leg(
 
 
 //  After a leg: waits `watch` for an interrupt the last step set off, which
-//  shows after the hold has ended, and clears it. Throws
-//  OperationFailedException after `max_interruptions` in a row.
+//  shows after the hold has ended, and clears it. Returns how many it
+//  cleared. Throws OperationFailedException after `max_interruptions` in a
+//  row.
 template <typename Console, typename Context>
-void clear_late_interrupts(
+size_t clear_late_interrupts(
     Console& console, Context& context,
     const LegInterrupts<Console, Context>& interrupts,
     Milliseconds watch,
@@ -224,7 +231,7 @@ void clear_late_interrupts(
         context.wait_for_all_requests();
         const int ret = wait_until(console, context, watch, callbacks);
         if (ret < 0){
-            return;
+            return count;
         }
         if (count >= max_interruptions){
             OperationFailedExceptionWithScreenshot::fire(

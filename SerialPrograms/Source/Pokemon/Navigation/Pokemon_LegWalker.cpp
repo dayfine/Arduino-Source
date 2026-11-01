@@ -77,6 +77,12 @@ LegResult walk_leg_tile_by_tile(const LegSpec& leg, const LegCalls& calls, size_
             calls.fail(std::format("Interrupted {} times on: {}", result.interruptions, to_string(leg)));
         }
         calls.clear(outcome->interrupt);
+        if (leg.stop_on_interrupt){
+            calls.log(std::format("{} {}ms after a press, stopping the leg.", calls.name(outcome->interrupt), outcome->elapsed.count()));
+            result.exact = false;
+            result.stopped = true;
+            return result;
+        }
         const Milliseconds delay = calls.detection_delay(outcome->interrupt);
         walked -= std::min(steps_back_to_interrupt(leg, outcome->elapsed, delay), pressed);
         pressed = 0;
@@ -114,6 +120,12 @@ LegResult walk_leg_with(const LegSpec& leg, const LegCalls& calls, size_t max_in
         }
         calls.clear(outcome->interrupt);
         const std::string seen = std::format("{} after {}ms", calls.name(outcome->interrupt), outcome->elapsed.count());
+        if (!leg.to_wall && leg.stop_on_interrupt){
+            calls.log(seen + ", stopping the leg.");
+            result.exact = false;
+            result.stopped = true;
+            return result;
+        }
         if (leg.to_wall){
             //  The wall stops the player on the leg's last tile however far
             //  they got, so the leg is simply held again.

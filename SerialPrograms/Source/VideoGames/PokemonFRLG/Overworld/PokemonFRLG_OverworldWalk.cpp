@@ -16,6 +16,7 @@
 #include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleFlashWatcher.h"
 #include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattlePokemonDetector.h"
 #include "VideoGames/PokemonFRLG/PokemonFRLG_Navigation.h"
+#include "PokemonFRLG_OverworldMaps.h"
 #include "PokemonFRLG_PlayerFacingReader.h"
 #include "PokemonFRLG_OverworldWalk.h"
 
@@ -46,21 +47,14 @@ constexpr Milliseconds AFTER_WARP = 1500ms;
 //  A message set off by a leg's last step shows after the hold ends. Caught
 //  here, before the next leg's turn tap, which the message would swallow.
 constexpr Milliseconds AFTER_LEG_WATCH = 500ms;
-//  An open leg where a wild battle can start is walked a tile at a time, each
-//  press watched this long. Held through, a battle's flash came too late to
-//  tell which step set it off: one on the 3rd tile of 4 was seen after the
-//  hold and taken for the 4th, and one on the 1st for none (console B,
-//  2026-11-01, Route 1). From that log the flash was seen roughly 600ms
-//  after its step landed.
-constexpr Milliseconds STEP_WINDOW = 900ms;
-//  A battle whose flashes are missed is seen only by its "Wild <Pokemon>
-//  appeared!", 3.7s after its step's press (twice on Route 1, console B,
-//  2026-11-01, run 7). Unless the walker waits that long after a leg's last
-//  step, the next leg is walked into the battle and lost: there, "east 4"
-//  and "west 4". So the last step of an open leg is watched this much longer,
-//  and a leg to a wall is watched this long after it.
-constexpr Milliseconds STEP_SETTLE = 3400ms;
+//  After a leg through grass. A battle whose flashes are missed is seen only
+//  by its "Wild <Pokemon> appeared!", 3.7s after its step's press (twice on
+//  Route 1, console B, 2026-11-01, run 7). Unless the walker waits that long,
+//  the next leg is walked into the battle and lost: there, "east 4" and
+//  "west 4".
 constexpr Milliseconds AFTER_WILD_LEG_WATCH = 3500ms;
+//  How often a route may stop to find the player again before giving up.
+constexpr size_t MAX_REANCHORS = 8;
 //  After a warp's fade. A wild battle's flashes and wipe pass for one, and
 //  its dialog shows within this long; a warp's doesn't (run 7: a "warp" into
 //  Oak's Lab from the grass of Route 1, where the player had drifted).
@@ -201,14 +195,18 @@ public:
     }
 };
 
+//  An open leg stops at its first interruption: how far it got isn't
+//  counted (that went wrong too often on the console), the route finds the
+//  player again at a wall instead. See walk_overworld_route().
 Pokemon::LegSpec leg_spec(const RouteStep& step){
-    return Pokemon::LegSpec{
-        step.direction, step.tiles, step.to_wall,
-        step.surfing ? SURF_TILE_TIME : TILE_TIME,
-        step.wild ? STEP_WINDOW : 0ms,
-        step.warps,
-        step.wild ? STEP_SETTLE : 0ms,
-    };
+    Pokemon::LegSpec leg;
+    leg.direction = step.direction;
+    leg.tiles = step.tiles;
+    leg.to_wall = step.to_wall;
+    leg.tile_time = step.surfing ? SURF_TILE_TIME : TILE_TIME;
+    leg.warps = step.warps;
+    leg.stop_on_interrupt = !step.to_wall;
+    return leg;
 }
 
 //  One watcher for the whole fade: a ladder's black is short enough to be
@@ -301,8 +299,9 @@ void start_surf(ConsoleHandle& console, ProControllerContext& context, Direction
     pbf_wait(context, SURF_ANIMATION);
 }
 
-//  One step of a route, for a player facing `facing`.
-void walk_step(
+//  One step of a route, for a player facing `facing`. Returns false if an
+//  open leg stopped part-way, so where the player is isn't known.
+bool walk_step(
     ConsoleHandle& console, ProControllerContext& context,
     const RouteStep& step, std::optional<Direction> facing,
     const OverworldInterruptSet& interrupts
@@ -315,7 +314,9 @@ void walk_step(
         if (facing != step.direction){
             pbf_press_dpad(context, dpad(step.direction), TURN_TAP, TURN_SETTLE);
         }
-        Pokemon::walk_leg(console, context, DpadMover(), step.wild ? interrupts.wild : interrupts.other, leg_spec(step), MAX_INTERRUPTIONS_PER_LEG);
+        if (Pokemon::walk_leg(console, context, DpadMover(), step.wild ? interrupts.wild : interrupts.other, leg_spec(step), MAX_INTERRUPTIONS_PER_LEG).stopped){
+            return false;
+        }
         if (step.warps){
             wait_out_warp(console, context, step);
             static_assert(AFTER_WARP_BATTLE_WATCH >= AFTER_WARP);
@@ -329,6 +330,80 @@ void walk_step(
         pbf_press_dpad(context, dpad(step.direction), FACE_HOLD, STEP_RELEASE);
         break;
     }
+    return true;
+}
+
+//  walk_step(), then a watch for what its last step set off. Returns false
+//  if the player may have stopped short of the step's end: an open leg
+//  stopped, or something seen after the hold, which may have stopped it
+//  before the end (after a warp, it was checked for already).
+bool walk_and_watch(
+    ConsoleHandle& console, ProControllerContext& context,
+    const RouteStep& step, std::optional<Direction> facing,
+    const OverworldInterruptSet& interrupts
+){
+    if (!walk_step(console, context, step, facing, interrupts)){
+        return false;
+    }
+    if (step.action == RouteAction::FACE){
+        return true;
+    }
+    const Milliseconds watch = step.wild ? AFTER_WILD_LEG_WATCH : AFTER_LEG_WATCH;
+    const size_t late = Pokemon::clear_late_interrupts(console, context, step.wild ? interrupts.wild : interrupts.other, watch, MAX_INTERRUPTIONS_PER_LEG);
+    return late == 0 || step.warps || step.action != RouteAction::WALK;
+}
+
+//  Each leg starts with a turn tap unless it goes the way the player faces.
+//  A tap while already facing that way takes a step, so a facing not given
+//  is read from the screen. If that fails too it taps anyway.
+std::optional<Direction> read_facing(ConsoleHandle& console, ProControllerContext& context){
+    context.wait_for_all_requests();
+    VideoSnapshot screen = console.video().snapshot();
+    std::optional<Direction> facing;
+    if (screen){
+        facing = read_player_facing(screen);
+    }
+    console.log(std::string("Route: the player faces ") + (facing ? Pokemon::direction_name(*facing) : "an unknown way") + ".");
+    return facing;
+}
+
+//  Where the route ends, and which way the player faces there.
+RouteGoal route_goal(const std::vector<RouteStep>& route){
+    RouteGoal goal;
+    goal.position = route.back().end;
+    if (route.back().action == RouteAction::FACE){
+        goal.facing = route.back().direction;
+    }
+    return goal;
+}
+
+//  After `step`, from `start`, stopped part-way: a leg to a wall that puts
+//  the player on a known tile, then a new route from there to `goal`.
+std::vector<RouteStep> reanchor_route(
+    ConsoleHandle& console,
+    const std::vector<MapData>& maps,
+    const std::optional<MapPosition>& start, const RouteStep& step,
+    const RouteGoal& goal
+){
+    const std::optional<RouteStep> anchor = plan_reanchor(maps, start, step);
+    if (!anchor){
+        OperationFailedExceptionWithScreenshot::fire(
+            ErrorReportMode::SEND_ERROR_REPORT,
+            "walk_overworld_route(): stopped part-way on " + to_string(step) + ", with no wall along it to find the player again.",
+            console
+        );
+    }
+    std::optional<std::vector<RouteStep>> rest = plan_overworld_route(maps, anchor->end, goal, default_route_costs(), anchor->direction);
+    if (!rest){
+        OperationFailedExceptionWithScreenshot::fire(
+            ErrorReportMode::SEND_ERROR_REPORT,
+            "walk_overworld_route(): no route from " + to_string(anchor->end) + " to " + to_string(goal.position) + ".",
+            console
+        );
+    }
+    console.log("Route: stopped part-way, finding the player again: " + to_string(*anchor), COLOR_ORANGE);
+    rest->insert(rest->begin(), *anchor);
+    return std::move(*rest);
 }
 
 }
@@ -388,29 +463,47 @@ void walk_overworld_route(
     ConsoleHandle& console, ProControllerContext& context,
     const std::vector<RouteStep>& route,
     std::optional<Direction> facing,
-    const OverworldInterruptSet& interrupts
+    const OverworldInterruptSet& interrupts,
+    const std::vector<MapData>* maps
 ){
-    //  Each leg starts with a turn tap unless it goes the way the player faces.
-    //  A tap while already facing that way takes a step, so a facing not
-    //  given is read from the screen. If that fails too it taps anyway.
-    if (!facing){
-        context.wait_for_all_requests();
-        VideoSnapshot screen = console.video().snapshot();
-        if (screen){
-            facing = read_player_facing(screen);
-        }
-        console.log(std::string("Route: the player faces ") + (facing ? Pokemon::direction_name(*facing) : "an unknown way") + ".");
+    if (route.empty()){
+        return;
     }
-    for (const RouteStep& step : route){
+    if (!facing){
+        facing = read_facing(console, context);
+    }
+    std::vector<MapData> loaded;
+    std::vector<RouteStep> plan = route;
+    std::optional<MapPosition> at;
+    size_t reanchors = 0;
+    for (size_t i = 0; i < plan.size();){
+        const RouteStep step = plan[i];
         console.log("Route: " + to_string(step));
         check_overworld(console, context, step);
-        walk_step(console, context, step, facing, interrupts);
-        if (step.action != RouteAction::FACE){
-            //  An open leg through grass has already waited on its last step.
-            const Milliseconds watch = step.wild && step.to_wall ? AFTER_WILD_LEG_WATCH : AFTER_LEG_WATCH;
-            Pokemon::clear_late_interrupts(console, context, step.wild ? interrupts.wild : interrupts.other, watch, MAX_INTERRUPTIONS_PER_LEG);
+        if (walk_and_watch(console, context, step, facing, interrupts)){
+            at = step.end;
+            facing = step.facing_after;
+            i++;
+            continue;
         }
-        facing = step.facing_after;
+        facing = step.direction;
+        if (++reanchors > MAX_REANCHORS){
+            OperationFailedExceptionWithScreenshot::fire(
+                ErrorReportMode::SEND_ERROR_REPORT,
+                std::format("walk_overworld_route(): stopped part-way {} times.", reanchors),
+                console
+            );
+        }
+        if (step.to_wall){
+            //  Walking it again ends at its wall.
+            continue;
+        }
+        if (maps == nullptr){
+            loaded = overworld_maps();
+            maps = &loaded;
+        }
+        plan = reanchor_route(console, *maps, at, step, route_goal(route));
+        i = 0;
     }
     context.wait_for_all_requests();
 }

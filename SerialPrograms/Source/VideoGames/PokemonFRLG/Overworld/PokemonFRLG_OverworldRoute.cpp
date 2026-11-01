@@ -377,6 +377,112 @@ std::optional<std::vector<RouteStep>> plan_overworld_route(
 }
 
 
+namespace{
+
+//  Further than any straight line on a map.
+constexpr int MAX_ANCHOR_TILES = 128;
+
+Direction opposite(Direction direction){
+    return (Direction)(((int)direction + 2) % 4);
+}
+
+std::optional<Located> locate(const std::vector<MapData>& maps, const MapPosition& position, bool surfing){
+    const int map = find_map(maps, position.map);
+    if (map < 0){
+        return std::nullopt;
+    }
+    Located player;
+    player.map = map;
+    player.state = PlayerState{position.point, elevation_at(maps[map], position.point), surfing};
+    return player;
+}
+
+//  Presses `direction` from `player` until holding it keeps them on their
+//  tile, and returns how many steps that took, or nothing if one on the way
+//  is anything but a plain walk (a warp, Surf, a ledge, a person).
+std::optional<int> presses_to_stop(const std::vector<MapData>& maps, Located& player, Direction direction){
+    for (int c = 0; c <= MAX_ANCHOR_TILES; c++){
+        if (stops_at(maps, player, direction)){
+            return c;
+        }
+        const std::optional<Transition> transition = press(maps, player, direction);
+        if (!transition || transition->warped || transition->dismounted || transition->action != RouteAction::WALK){
+            return std::nullopt;
+        }
+        player = transition->next;
+    }
+    return std::nullopt;
+}
+
+//  Where `step` started: `tiles` presses back from its end.
+std::optional<Located> walk_back(const std::vector<MapData>& maps, const RouteStep& step){
+    std::optional<Located> player = locate(maps, step.end, step.surfing);
+    for (int c = 0; player && c < step.tiles; c++){
+        const std::optional<Transition> transition = press(maps, *player, opposite(step.direction));
+        if (!transition || transition->warped || transition->action != RouteAction::WALK){
+            return std::nullopt;
+        }
+        player = transition->next;
+    }
+    return player;
+}
+
+RouteStep anchor_step(const std::vector<MapData>& maps, const RouteStep& step, Direction direction, int tiles, const Located& end){
+    RouteStep anchor;
+    anchor.direction = direction;
+    anchor.tiles = tiles;
+    anchor.surfing = step.surfing;
+    anchor.to_wall = true;
+    anchor.wild = step.wild;
+    anchor.facing_after = direction;
+    anchor.end = MapPosition{maps[end.map].name, end.state.position};
+    return anchor;
+}
+
+}
+
+
+std::optional<RouteStep> plan_reanchor(
+    const std::vector<MapData>& maps,
+    const std::optional<MapPosition>& start,
+    const RouteStep& step
+){
+    if (step.action != RouteAction::WALK || step.to_wall){
+        return std::nullopt;
+    }
+    std::optional<Located> from = start ? locate(maps, *start, step.surfing) : std::nullopt;
+    if (!start && !step.warps){
+        from = walk_back(maps, step);
+    }
+    if (!from){
+        return std::nullopt;
+    }
+    //  The tiles the player may be on, short of a warp at the end.
+    const int along = step.tiles - (step.warps ? 1 : 0);
+    Located last = *from;
+    for (int c = 0; c < along; c++){
+        const std::optional<Transition> transition = press(maps, last, step.direction);
+        if (!transition || transition->warped || transition->action != RouteAction::WALK){
+            return std::nullopt;
+        }
+        last = transition->next;
+    }
+    //  On to the next wall ahead, or else back past the start to the one
+    //  behind: from any of those tiles the hold ends there.
+    Located ahead = last;
+    if (!step.warps){
+        if (const std::optional<int> more = presses_to_stop(maps, ahead, step.direction)){
+            return anchor_step(maps, step, step.direction, along + *more, ahead);
+        }
+    }
+    Located behind = *from;
+    if (const std::optional<int> more = presses_to_stop(maps, behind, opposite(step.direction))){
+        return anchor_step(maps, step, opposite(step.direction), along + *more, behind);
+    }
+    return std::nullopt;
+}
+
+
 MapPosition follow_overworld_route(
     const std::vector<MapData>& maps,
     const MapPosition& start,
