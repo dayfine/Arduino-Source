@@ -54,6 +54,11 @@ struct SegmentHooks{
     Act reload;
     EventLogger log;
     MoveOnlyFunction<Outcome(RunState& state, const std::string& event)> recover;
+    //  Optional: each [Segment], [Checkpoint] and [Event] line again,
+    //  without its tag ("00.03/2 below_oaks_trigger: start"), for the video
+    //  overlay, so whoever watches the stream sees the step under way; and,
+    //  once run records land (#132), for the run's events.
+    EventLogger status;
 };
 
 //  How hard a segment tries, for every game: the one place retries are set.
