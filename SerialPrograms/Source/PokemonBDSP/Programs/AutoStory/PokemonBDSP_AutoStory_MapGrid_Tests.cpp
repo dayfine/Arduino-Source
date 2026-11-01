@@ -17,7 +17,6 @@
 #include "Pokemon/Navigation/Pokemon_MapSet.h"
 #include "Pokemon/Navigation/Pokemon_TileGrid.h"
 #include "Data/PokemonBDSP_AutoStory_MapGrids.h"
-#include "Data/PokemonBDSP_AutoStory_Maps_TestData.h"
 #include "Data/PokemonBDSP_AutoStory_Route202.h"
 #include "Data/PokemonBDSP_AutoStory_SandgemTown.h"
 #include "Data/PokemonBDSP_AutoStory_StoryMaps.h"
@@ -161,20 +160,20 @@ public:
     }
 };
 
-//  The built-in maps (the JSON files' text, test_map_json()) all parse
-//  through the shared loader into tile grids, each named as its file.
+//  The maps (the JSON files built in, bdsp_map_json()) all parse through
+//  the shared loader into tile grids, each named as its file.
 class Test_BuiltInMaps : public UnitTest{
 public:
     Test_BuiltInMaps()
         : UnitTest("PokemonBDSP::AutoStory - Map grids: the built-in JSON maps load")
     {}
     virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
-        if (test_map_json().empty()){
+        if (bdsp_map_json().empty()){
             return std::string("No built-in maps.");
         }
-        for (const auto& [name, json] : test_map_json()){
+        for (const auto& [name, json] : bdsp_map_json()){
             try{
-                const TileGrid& grid = built_in_grid(name);
+                const TileGrid& grid = story_grid(name);
                 logger.log(std::format("{}: {} x {}", name, grid.width(), grid.height()));
             }catch (Exception& e){
                 return std::format("{}: {}: {}", name, e.name(), e.message());

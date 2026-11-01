@@ -20,7 +20,7 @@ using namespace Pokemon;
 //      Platinum's map_data_005/006 have the same terrain.
 //  Console checks: the border sign read from (54,4) facing east, row 3 open
 //      east of the grass to Sandgem's fence, row 5 to Sandgem without a stop,
-//      the Potion lady on row 3, wandering (2026-10-28 to 30, CFR "walk").
+//      the Potion lady on row 3 (2026-10-28 to 30, CFR "walk").
 //  Status: no checkpoint has run on this grid yet. 00.02 to 00.04 and the
 //      mart_lady checkpoint passed on the image-traced grid it replaces (3/4
 //      of a tile per row) and must be re-run.
@@ -44,11 +44,11 @@ using namespace Pokemon;
 //  stands at (57,8) looking west (not yet seen on the console). Route 201
 //  has no trainers and no items on the ground. Wanderers, left off the grid:
 //  a Breeder around (27,15), columns 26..28, rows 14..16; a Lass along row
-//  16, columns 44..48. The Poke Mart lady, who gives 10 Potions, stands still
-//  at (44,3) in Diamond but wanders in BDSP (eight runs, r113a..r120a, never
-//  got her talk), so she is left off too and 00.04 buys its Potions in
-//  Sandgem. Rowan, Barry and the briefcase by the lake are hidden by story
-//  flags and left off.
+//  16, columns 44..48. The Poke Mart lady, who gives 10 Potions, stands
+//  still at (44,3) in Diamond's events file and on the console (the user,
+//  2026-11-01): left off the grid, since her talk is walked to, not planned
+//  (r113a..r120a missed her by the walk, not by her moving). Rowan, Barry
+//  and the briefcase by the lake are hidden by story flags and left off.
 const TileGrid& grid(){
     return story_grid("Route201");
 }
@@ -66,8 +66,8 @@ const TilePos BORDER_SIGN{55, 4};
 //  On the console (by hand, then through the Lab Console; 99715d5d6 and
 //  f823453e9 on bdsp/new-game-intro-v2) she stood at (43,3), and walking
 //  west along row 3 from the trees at its east end stopped at (44,3), facing
-//  her; her lines need one A each, 1.5 s apart. Later runs (r113a..r120a)
-//  found her wandering.
+//  her; her lines need one A each, 1.5 s apart. r113a..r120a
+//  missed her talk walking to her, not because she moved.
 //  Checked on the console (2026-10-30, CFR "walk"), twice: from the grass's
 //  west edge on row 5, north stops at the trees 2 rows up, and east from
 //  there stops at her. r135a missed her walking west along row 4.
