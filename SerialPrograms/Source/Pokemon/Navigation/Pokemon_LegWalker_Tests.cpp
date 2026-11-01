@@ -326,6 +326,20 @@ UnitTestResult test_open_leg_stops(){
     return true;
 }
 
+//  Console B, 2026-11-01, run 16: held south into a sign, the leg to a wall
+//  was interrupted by its message 600ms into every hold, six times.
+UnitTestResult test_wall_leg_blocked(){
+    ScriptedLeg script;
+    script.outcomes = {HoldOutcome{0, 2200ms}, HoldOutcome{0, 600ms}, HoldOutcome{0, 600ms}};
+    LegSpec leg{Direction::SOUTH, 23, true, TILE, NO_WINDOW};
+    leg.stop_if_blocked = true;
+    const LegResult result = walk_leg_with(leg, script.calls(), 5);
+    if (script.holds.size() != 2 || !result.stopped){
+        return std::format("Expected the leg stopped after 2 holds, got {}.", script.holds.size());
+    }
+    return true;
+}
+
 //  A leg to a wall is still held through, window or not.
 UnitTestResult test_wall_leg_held_through(){
     ScriptedLeg script;
@@ -370,6 +384,7 @@ void add_tests_LegWalker(UnitTestDatabase& database){
     database.add<Test_LegWalker>("tile by tile: an interrupt slower than the window", test_tile_by_tile_slow_interrupt);
     database.add<Test_LegWalker>("a wall leg is held through", test_wall_leg_held_through);
     database.add<Test_LegWalker>("an open leg stops at an interrupt", test_open_leg_stops);
+    database.add<Test_LegWalker>("a wall leg blocked by a sign stops", test_wall_leg_blocked);
     database.add<Test_LegWalker>("tile by tile: the step onto a warp isn't watched", test_tile_by_tile_warp_not_watched);
     database.add<Test_LegWalker>("tile by tile: the last step settles", test_tile_by_tile_settle_last_step);
     database.add<Test_LegWalker>("tile by tile: a late battle before the last step", test_tile_by_tile_settle_earlier_step);
