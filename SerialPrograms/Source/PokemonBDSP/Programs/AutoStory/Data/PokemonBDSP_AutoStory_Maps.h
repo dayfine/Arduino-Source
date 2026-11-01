@@ -19,6 +19,7 @@
 #define PokemonAutomation_PokemonBDSP_AutoStory_Maps_H
 
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 #include "Pokemon/Navigation/Pokemon_Grid.h"
@@ -36,15 +37,17 @@ const std::vector<std::pair<std::string, std::string>>& bdsp_map_json();
 //  The map `name`, read from bdsp_map_json() on first use, with its patches
 //  applied. Throws InternalProgramError for a name it does not have, and
 //  ParseException if a map does not parse or is not named as its file.
-const Pokemon::MapData& story_map(const std::string& name);
+//  The name is a string_view so that a temporary string argument is not
+//  mistaken (by GCC's -Wdangling-reference) for what the result refers to.
+const Pokemon::MapData& story_map(std::string_view name);
 
 //  The point `point` of the map `map`. Throws InternalProgramError for an
 //  unknown map or point.
-Pokemon::TilePos map_point(const std::string& map, const std::string& point);
+Pokemon::TilePos map_point(std::string_view map, std::string_view point);
 
 //  The tiles of the region `region` of the map `map`, in order. Throws
 //  InternalProgramError for an unknown map, or a region with no tiles.
-std::vector<Pokemon::TilePos> map_region(const std::string& map, const std::string& region);
+std::vector<Pokemon::TilePos> map_region(std::string_view map, std::string_view region);
 
 
 
