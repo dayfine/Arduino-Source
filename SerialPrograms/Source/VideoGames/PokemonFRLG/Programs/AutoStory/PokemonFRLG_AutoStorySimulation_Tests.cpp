@@ -84,6 +84,8 @@ public:
 
     std::vector<std::string> trace;
     std::map<std::string, Failure> failures;
+    //  What the Mart sold, by its list's names.
+    std::map<std::string, int> bag;
 
     virtual void begin_attempt(const Pokemon::StoryCheckpoint& data) override{
         m_row = data.id;
@@ -132,7 +134,30 @@ public:
     virtual Outcome mash(RunState&, const StoryStep&) override{ return Pokemon::outcome_ok(); }
     virtual Outcome battle(RunState&, const StoryStep&) override{ return Pokemon::outcome_ok(); }
     virtual Outcome heal(RunState&, const StoryStep&) override{ return Pokemon::outcome_ok(); }
-    virtual Outcome shop(RunState&, const StoryStep&) override{ return Pokemon::outcome_ok(); }
+    //  The Viridian Mart's list as the game shows it. After a purchase the
+    //  cursor stays on the row bought (console B, 2026-11-01), so each
+    //  order moves it from there, as buy_items() does since ad5d40885.
+    virtual Outcome shop(RunState&, const StoryStep& step) override{
+        static const std::vector<std::string> LIST{"poke_ball", "potion", "antidote", "parlyz_heal", "cancel"};
+        const std::optional<std::vector<MartOrder>> orders = viridian_mart_orders(step.items);
+        if (!orders){
+            return Pokemon::outcome_failed("unknown_item", step.name);
+        }
+        int cursor = 0;
+        for (size_t c = 0; c < orders->size(); c++){
+            const MartOrder& order = (*orders)[c];
+            //  The presses: down or up from where the cursor is.
+            cursor += order.row - cursor;
+            if (cursor < 0 || cursor >= (int)LIST.size() || LIST[cursor] == "cancel"){
+                return Pokemon::outcome_failed("mart_cancel", std::format("order {} ends on row {}", c + 1, cursor + 1));
+            }
+            if (LIST[cursor] != step.items[c].item){
+                return Pokemon::outcome_failed("wrong_item", std::format("{} instead of {}", LIST[cursor], step.items[c].item));
+            }
+            bag[LIST[cursor]] += order.quantity;
+        }
+        return Pokemon::outcome_ok();
+    }
 
 private:
     Outcome walk_to(const Pokemon::Pose& pose, const StoryStep& step){
@@ -261,6 +286,15 @@ UnitTestResult test_whole_story(){
     }
     if (report.one_shot_passes() != report.checkpoints_run){
         return "Expected every checkpoint one-shot:" + joined(sim.lines);
+    }
+    //  00.07's shopping, with the cursor staying on each row bought.
+    const std::map<std::string, int> bought{{"potion", 5}, {"antidote", 3}, {"parlyz_heal", 1}};
+    if (sim.game.bag != bought){
+        std::string text;
+        for (const auto& item : sim.game.bag){
+            text += std::format(" {} {}", item.second, item.first);
+        }
+        return "Expected 5 Potions, 3 Antidotes and 1 Parlyz Heal; bought" + text + ".";
     }
     return true;
 }

@@ -183,31 +183,41 @@ constexpr MartItem VIRIDIAN_MART_ITEMS[] = {
     {.item = "parlyz_heal", .row = 3, .count = &Supplies::parlyz_heals},
 };
 
-Outcome shop(StoryEnv& env, const StoryStep& step){
-    std::vector<MartOrder> orders;
-    std::vector<int Supplies::*> counts;
-    for (const Pokemon::StoryItem& wanted : step.items){
-        const MartItem* found = nullptr;
-        for (const MartItem& item : VIRIDIAN_MART_ITEMS){
-            if (wanted.item == item.item){
-                found = &item;
-            }
+const MartItem* viridian_mart_item(const std::string& name){
+    for (const MartItem& item : VIRIDIAN_MART_ITEMS){
+        if (name == item.item){
+            return &item;
         }
-        if (found == nullptr){
-            return Pokemon::outcome_failed("unknown_item", wanted.item);
-        }
-        orders.push_back(MartOrder{found->row, (int)wanted.quantity});
-        counts.push_back(found->count);
     }
-    buy_items(env.console, env.context, orders);
-    for (size_t c = 0; c < orders.size(); c++){
-        env.supplies.*counts[c] += orders[c].quantity;
+    return nullptr;
+}
+
+Outcome shop(StoryEnv& env, const StoryStep& step){
+    const std::optional<std::vector<MartOrder>> orders = viridian_mart_orders(step.items);
+    if (!orders){
+        return Pokemon::outcome_failed("unknown_item", step.name);
+    }
+    buy_items(env.console, env.context, *orders);
+    for (const Pokemon::StoryItem& item : step.items){
+        env.supplies.*viridian_mart_item(item.item)->count += (int)item.quantity;
     }
     return Pokemon::outcome_ok();
 }
 
 }
 
+
+std::optional<std::vector<MartOrder>> viridian_mart_orders(const std::vector<Pokemon::StoryItem>& items){
+    std::vector<MartOrder> orders;
+    for (const Pokemon::StoryItem& wanted : items){
+        const MartItem* found = viridian_mart_item(wanted.item);
+        if (found == nullptr){
+            return std::nullopt;
+        }
+        orders.push_back(MartOrder{found->row, (int)wanted.quantity});
+    }
+    return orders;
+}
 
 const std::vector<MapData>& story_maps(){
     static const std::vector<MapData> maps = overworld_maps(map_flag_set(overworld_maps(), "after_hall_of_fame"));
