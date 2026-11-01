@@ -32,7 +32,7 @@ struct WallHit{
     Pokemon::TilePos wall;      //  the first tile the player could not enter
     bool anchored = false;      //  the player is held at `stop` (see StoryWorld::at_wall())
 };
-WallHit walk_to_wall(const StoryWorld& world, const Pokemon::TilePos& from, Pokemon::Direction direction);
+WallHit slide_to_wall(const StoryWorld& world, const Pokemon::TilePos& from, Pokemon::Direction direction);
 
 
 //  A straight run in one direction.

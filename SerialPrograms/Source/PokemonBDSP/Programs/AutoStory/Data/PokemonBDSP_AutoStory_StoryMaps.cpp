@@ -200,33 +200,23 @@ std::vector<TilePos> story_door_front(const char* map, const TilePos& door){
     return {below.next(Direction::WEST), below, below.next(Direction::EAST)};
 }
 
-std::vector<TilePos> story_catch_save_area(){
-    const StoryWorld& maps = story_maps();
-    std::vector<TilePos> area;
-    for (int y = 25; y <= 29; y++){
-        for (int x = 15; x <= 21; x++){
-            const TilePos pos = maps.to_world(MAP_ROUTE_202, {x, y});
-            if (maps.standable(pos)){
-                area.push_back(pos);
-            }
-        }
+namespace{
+//  A region of Route 202, in world tiles of story_maps().
+std::vector<TilePos> route202_region(const char* region){
+    std::vector<TilePos> tiles;
+    for (const TilePos& pos : map_region("Route202", region)){
+        tiles.push_back(story_maps().to_world(MAP_ROUTE_202, pos));
     }
-    return area;
+    return tiles;
+}
+}
+
+std::vector<TilePos> story_catch_save_area(){
+    return route202_region("catch_save_area");
 }
 
 std::vector<TilePos> story_after_training_area(){
-    const StoryWorld& maps = story_maps();
-    const TilePos catch_spot = maps.to_world(MAP_ROUTE_202, map_point("Route202", "catch_spot"));
-    std::vector<TilePos> area;
-    for (int y = catch_spot.y - 2; y <= catch_spot.y + 2; y++){
-        for (int x = catch_spot.x - 1; x <= catch_spot.x + 1; x++){
-            //  The rows below the catch spot are trees in BDSP.
-            if (maps.standable({x, y})){
-                area.push_back({x, y});
-            }
-        }
-    }
-    return area;
+    return route202_region("after_training_area");
 }
 
 std::vector<TrainerSight> story_trainer_sights(){
