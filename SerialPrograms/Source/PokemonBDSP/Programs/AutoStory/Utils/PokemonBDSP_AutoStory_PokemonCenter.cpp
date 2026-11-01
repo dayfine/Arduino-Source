@@ -269,6 +269,22 @@ bool indoors(const ImageViewRGB32& screen){
     return mostly_dark(top) || mostly_dark(bottom) || mostly_dark(left) || mostly_dark(right);
 }
 
+void fail_if_blacked_out(VideoStream& stream, ProControllerContext& context, const std::string& label){
+    for (size_t look = 0; look < 10; look++){
+        context.wait_for_all_requests();
+        VideoSnapshot screen = stream.video().snapshot();
+        if (screen && indoors(*screen.frame)){
+            OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
+                label + ": the party fainted; the game took us home (a room shows after the battle).", stream);
+        }
+        //  The blackout's text and fade are dark; the grass is not.
+        if (screen && image_stats(*screen.frame).average.sum() > 150){
+            return;
+        }
+        pbf_wait(context, 1000ms);
+    }
+}
+
 std::optional<double> find_lit_lamp_x(const ImageViewRGB32& screen, const ImageFloatBox& box){
     const size_t x0 = (size_t)(box.x * screen.width()), x1 = (size_t)((box.x + box.width) * screen.width());
     const size_t y0 = (size_t)(box.y * screen.height()), y1 = (size_t)((box.y + box.height) * screen.height());
