@@ -59,6 +59,8 @@ Outcome StoryStepExecutor::run(RunState& state, const StoryStep& step){
     return dispatch_story_step(*this, state, step);
 }
 
+void StoryStepExecutor::begin_attempt(const StoryCheckpoint&){}
+
 bool StoryStepExecutor::holds(const std::string& condition, RunState& state){
     return state.flags.contains(condition);
 }
@@ -178,6 +180,7 @@ Event from_save_event(const Pose& start){
 }
 
 Checkpoint build_story_checkpoint(const StoryCheckpoint& data, StoryStepExecutor& executor){
+    executor.begin_attempt(data);
     Checkpoint checkpoint;
     checkpoint.id = data.id;
     if (data.start){
