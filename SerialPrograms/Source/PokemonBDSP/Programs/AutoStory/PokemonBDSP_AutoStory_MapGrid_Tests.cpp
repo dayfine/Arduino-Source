@@ -160,8 +160,8 @@ public:
     }
 };
 
-//  The built-in maps (the JSON files' text, bdsp_map_json()) all parse
-//  through the shared loader into tile grids, each named as its file.
+//  The maps (the JSON files built in, bdsp_map_json()) all parse through
+//  the shared loader into tile grids, each named as its file.
 class Test_BuiltInMaps : public UnitTest{
 public:
     Test_BuiltInMaps()
@@ -173,7 +173,7 @@ public:
         }
         for (const auto& [name, json] : bdsp_map_json()){
             try{
-                const TileGrid& grid = built_in_grid(name);
+                const TileGrid& grid = story_grid(name);
                 logger.log(std::format("{}: {} x {}", name, grid.width(), grid.height()));
             }catch (Exception& e){
                 return std::format("{}: {}: {}", name, e.name(), e.message());

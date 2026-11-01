@@ -6,11 +6,13 @@ Usage:
 The maps are JSON files in the shared map schema
 (SerialPrograms/Source/Pokemon/Navigation/Pokemon_MapData.h). They live in
 SerialPrograms/Source/PokemonBDSP/Programs/AutoStory/Maps, where CMake builds
-them into the program for the unit tests (pa_embed_text_files()), and the
-program loads Packages' copies, Resources/PokemonBDSP/Maps, when it starts.
-The two must be the same files: --check exits 1, naming the first that
-differs, if they are not. Edit the repository's files and copy them to
-Packages.
+them into the program (pa_embed_text_files()). Once Packages has copies in
+Resources/PokemonBDSP/Maps, the two must be the same files: --check exits
+1, naming the first that differs, if they are not.
+
+TODO: move the maps to PokemonAutomation/Packages (Resources/PokemonBDSP/Maps) when ready.
+Until then the program reads only the repository's copies, and this check
+is for that move.
 
 The files were converted once (at ddcbdb21c) from the C++ tables that
 pret/pokediamond's maps had been decoded into; nothing builds them now.

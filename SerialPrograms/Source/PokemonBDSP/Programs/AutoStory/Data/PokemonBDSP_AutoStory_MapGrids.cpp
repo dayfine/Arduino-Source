@@ -83,18 +83,13 @@ std::optional<std::string> grid_difference(const TileGrid& here, const TileGrid&
 
 namespace{
 
-std::map<std::string, TileGrid>& installed_grids(){
-    static std::map<std::string, TileGrid> grids;
-    return grids;
-}
-
-const std::map<std::string, TileGrid>& built_in_grids(){
+const std::map<std::string, TileGrid>& story_grids(){
     static const std::map<std::string, TileGrid> grids = []{
         std::map<std::string, TileGrid> parsed;
         for (const auto& [name, json] : bdsp_map_json()){
-            const MapData map = Pokemon::parse_map(parse_json(json), name + ".json (built in)");
+            const MapData map = Pokemon::parse_map(parse_json(json), name + ".json");
             if (map.name != name){
-                throw ParseException(std::format("{}.json (built in): name is \"{}\".", name, map.name));
+                throw ParseException(std::format("{}.json: name is \"{}\".", name, map.name));
             }
             parsed.emplace(name, tile_grid_from_map(map));
         }
@@ -105,26 +100,12 @@ const std::map<std::string, TileGrid>& built_in_grids(){
 
 }
 
-const TileGrid& built_in_grid(const std::string& name){
-    const std::map<std::string, TileGrid>& grids = built_in_grids();
+const TileGrid& story_grid(const std::string& name){
+    const std::map<std::string, TileGrid>& grids = story_grids();
     if (auto iter = grids.find(name); iter != grids.end()){
         return iter->second;
     }
     throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "No BDSP story map named \"" + name + "\".");
-}
-
-const TileGrid& story_grid(const std::string& name){
-    const std::map<std::string, TileGrid>& grids = installed_grids();
-    if (auto iter = grids.find(name); iter != grids.end()){
-        return iter->second;
-    }
-    return built_in_grid(name);
-}
-
-void install_story_grids(std::map<std::string, TileGrid> grids){
-    if (installed_grids().empty()){
-        installed_grids() = std::move(grids);
-    }
 }
 
 
