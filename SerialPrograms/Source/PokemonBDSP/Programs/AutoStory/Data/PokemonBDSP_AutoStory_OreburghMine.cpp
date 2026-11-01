@@ -14,6 +14,14 @@ namespace OreburghMine{
 using namespace Pokemon;
 
 
+//  Map source: Bulbapedia DP map image through devtools/maps/levels.py
+//      (stretched to 16 px tiles), then the console (2026-10-28).
+//  Console checks: corridor zigzag, the coal block row, Roark a row above the
+//      bottom (2026-10-28).
+//  Status: 01.02 and 01.03 pass 3x on it. Next: the decomp has row 18 open, a
+//      west ledge, and one more top-corridor row (compare.md 2.6); apply and
+//      re-run.
+//
 //  Read from Bulbapedia's DP map Oreburgh_Mine_B2F_DP.png with
 //  devtools/maps/levels.py (--profile cave --height 512 --offset 0,4
 //  --objects on --edits oreburgh_mine_b2f_edits.txt). The archive image is

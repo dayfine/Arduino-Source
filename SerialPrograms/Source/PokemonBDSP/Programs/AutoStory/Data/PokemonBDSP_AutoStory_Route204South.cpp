@@ -14,6 +14,12 @@ namespace Route204South{
 using namespace Pokemon;
 
 
+//  Map source: the decomp (map_data_021, 2026-10-31) with the objects from
+//      its events file.
+//  Console checks: column 14 stops at the signpost (14,17), column 13 is
+//      grass to the cliff, Sarah fights on row 21 (r233a, r234a, probes).
+//  Status: 01.08 passes once (r235a).
+//
 //  Decoded from Pokemon Platinum's collision table for this map (the
 //  pret/pokeplatinum decompilation, res/field/maps/data/map_data_021.bin:
 //  32 x 32 tiles, one cell of the Sinnoh matrix at column 5, row 22), with

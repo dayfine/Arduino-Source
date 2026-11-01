@@ -14,6 +14,13 @@ namespace Route203{
 using namespace Pokemon;
 
 
+//  Map source: Bulbapedia DP map image, traced by hand, then the east stretch
+//      corrected on the console (r227 hand pass, 2026-10-31).
+//  Console checks: gate warp column, ledge row 15, three sand rows, row 17
+//      straight to Jubilife (2026-10-31).
+//  Status: 01.06 passes on it (r230a). Next: re-derive the west and middle
+//      stretches from the decomp (cells (23,6), (23,7)).
+//
 //  Traced by hand from Bulbapedia's Sinnoh_Route_203_DP.png (976 x 368 px,
 //  16 px tiles from the top-left corner; three panels joined by stairs).
 //  Checked on the console with D-pad taps (2026-10-31, r227 hand pass);

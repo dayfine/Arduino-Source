@@ -14,6 +14,15 @@ namespace JubilifeCity{
 using namespace Pokemon;
 
 
+//  Map source: Bulbapedia DP map image, classified by colour (2026-10-28);
+//      rows are 3/4 of a tile (64 real rows in 48). The story NPCs are placed
+//      from the console.
+//  Console checks: lamps' row and the Center door (00.05), east stairs to
+//      Route 203 (01.06, r230a), the north street (01.07). The decomp puts
+//      the traced door columns one column east of the console's.
+//  Status: 00.05, 01.01, 01.06 and 01.07 pass on it. Next: re-derive from the
+//      decomp (cells (23..24, 4..5)); re-check door spacing.
+//
 //  Read from Bulbapedia's DP map of Jubilife City (1024 x 772 px): 16 px tiles
 //  from the top-left corner; the last 4 px rows are left out. Road and paved
 //  plaza are walkable; buildings, roofs, trees, planters, lamps, signs, fences

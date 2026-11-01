@@ -14,6 +14,14 @@ namespace Route201{
 using namespace Pokemon;
 
 
+//  Map source: Bulbapedia DP map image, traced by hand (2026-10-28). The
+//      image has 12 px rows for 16 px columns, so every row is 3/4 of a tile
+//      (decomp comparison, 2026-10-31).
+//  Console checks: north-east ledge row, Twinleaf and Sandgem gaps, the
+//      Potion lady wandering (2026-10-28/29).
+//  Status: 00.02 to 00.04 pass on it. Next: re-derive from the decomp (cells
+//      (26,3), (26,4)), keep the console anchors.
+//
 //  Read from Bulbapedia's DP map of Route 201 (1040 x 320 px). As on the
 //  Route 202 map, the tile grid starts 8 px in from the left edge: tile
 //  (x, y) covers pixels [8 + 16x, 24 + 16x) x [16y, 16y + 16). The trees sit

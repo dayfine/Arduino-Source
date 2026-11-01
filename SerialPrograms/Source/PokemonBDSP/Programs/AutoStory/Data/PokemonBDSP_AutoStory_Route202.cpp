@@ -14,6 +14,13 @@ namespace Route202{
 using namespace Pokemon;
 
 
+//  Map source: Bulbapedia DP map image, traced by hand (2026-10-28); rows are
+//      3/4 of a tile (34 real rows in 26).
+//  Console checks: south ledge on row 18, east wall at column 30 on row 16
+//      (r75), sign (24,20).
+//  Status: 00.04 passes on it. Next: re-derive from the decomp (cell (25,5));
+//      re-check the column-31 wall.
+//
 //  Read from Bulbapedia's DP map of Route 202 (592 x 416 px). Its tile grid
 //  starts 8 px in from the left edge, so tile (x, y) covers pixels
 //  [8 + 16x, 24 + 16x) x [16y, 16y + 16). The half tiles at both side edges

@@ -14,6 +14,15 @@ namespace Route204{
 using namespace Pokemon;
 
 
+//  Map source: the decomp (map_data_031, 2026-10-31) with the objects from
+//      its events file; before that the DP image, 3/4 rows.
+//  Console checks: row 27 open under the cliff, the stairs, Taylor's sight at
+//      column 17 (recorded human walk, 2026-10-31). Suspects: column 23 rows
+//      12 to 19 blocked on the console (r242a); three open rows under the
+//      cave, not four (r241a, r243a).
+//  Status: 01.10 not passed yet; the route is the recorded human line
+//      (floaroma_waypoints()).
+//
 //  Decoded from Pokemon Platinum's collision table for this map (the
 //  pret/pokeplatinum decompilation, map_data_031.bin: one cell of the Sinnoh
 //  matrix, column 5, row 21; local (x, y) = world (x - 160, z - 672)) with

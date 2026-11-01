@@ -14,6 +14,13 @@ namespace SandgemTown{
 using namespace Pokemon;
 
 
+//  Map source: rows 0 to 6 from Bulbapedia's DP map image; rows 7 and on from
+//      the decomp (map_data_007), signs and doors from its events.
+//  Console checks: all three doors, five signs, the north road stop at (29,2)
+//      (2026-10-29).
+//  Status: 00.04 and 00.05 pass on it. Next: open the Lab-Center gap on row 6
+//      ((11,6), (14,6)); re-check where the north road narrows (row 2 or 3).
+//
 //  Read from Bulbapedia's DP map of Sandgem Town (Sandgem_Town_DP.png,
 //  560 x 368 px). The tile grid starts 8 px in from the left edge, as on the
 //  route maps: tile (x, y) covers pixels [8 + 16x, 24 + 16x) x [16y, 16y + 16).

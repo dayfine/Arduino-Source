@@ -14,6 +14,12 @@ namespace RavagedPath{
 using namespace Pokemon;
 
 
+//  Map source: rows 30 to 53 from the decomp (map_data_435/436, 2026-10-31);
+//      the rows above from the DP image, unused by any route.
+//  Console checks: entrance (19,50), the stairs, the three-wide corridor, the
+//      rocks, the east end and the exit tile (2026-10-31 probes).
+//  Status: 01.09 reaches the exit by hand; no program pass yet.
+//
 //  Rows 30 to 53 are decoded from Pokemon Platinum's collision table for
 //  this map (the pret/pokeplatinum decompilation, land data 435/436 of map
 //  matrix 051) with the objects from its events file; BDSP keeps the layout.
