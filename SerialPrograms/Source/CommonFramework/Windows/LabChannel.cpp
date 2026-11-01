@@ -9,6 +9,7 @@
 #include <QApplication>
 #include <QCoreApplication>
 #include <QMessageBox>
+#include <QPushButton>
 #include "Common/Cpp/Color.h"
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/ScopeExit.h"
@@ -464,7 +465,7 @@ std::string LabChannel::run_popups(const std::vector<std::string>& words, std::o
             count++;
             out << "popup: " << box->windowTitle().toStdString() << ": " << box->text().toStdString() << "\n";
             if (close){
-                QAbstractButton* button = box->defaultButton();
+                QPushButton* button = box->defaultButton();
                 if (button != nullptr){
                     button->click();
                 }else{
