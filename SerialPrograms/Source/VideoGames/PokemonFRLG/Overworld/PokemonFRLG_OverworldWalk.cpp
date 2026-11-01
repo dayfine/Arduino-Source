@@ -184,12 +184,9 @@ DpadPosition dpad(Direction direction){
 }
 
 //  The leg mover: holds the D-pad. FRLG moves exactly a tile per 16 frames.
-class DpadMover : public Pokemon::LegMover<ProControllerContext>{
-public:
-    virtual void hold(ProControllerContext& context, Direction direction, Milliseconds duration) const override{
-        pbf_press_dpad(context, dpad(direction), duration, STEP_RELEASE);
-    }
-};
+void hold_dpad(ProControllerContext& context, Direction direction, Milliseconds duration){
+    pbf_press_dpad(context, dpad(direction), duration, STEP_RELEASE);
+}
 
 Pokemon::LegSpec leg_spec(const RouteStep& step){
     return Pokemon::LegSpec{step.direction, step.tiles, step.to_wall, step.surfing ? SURF_TILE_TIME : TILE_TIME};
@@ -253,6 +250,20 @@ void check_warp_was_no_battle(ConsoleHandle& console, ProControllerContext& cont
         "walk_overworld_route(): a wild battle, not the warp to " + step.end.map + ": the player is off the route.",
         console
     );
+}
+
+//  Each leg starts with a turn tap unless it goes the way the player faces.
+//  A tap while already facing that way takes a step, so a facing not given
+//  is read from the screen. If that fails too it taps anyway.
+std::optional<Direction> read_facing(ConsoleHandle& console, ProControllerContext& context){
+    context.wait_for_all_requests();
+    VideoSnapshot screen = console.video().snapshot();
+    std::optional<Direction> facing;
+    if (screen){
+        facing = read_player_facing(screen);
+    }
+    console.log(std::string("Route: the player faces ") + (facing ? Pokemon::direction_name(*facing) : "an unknown way") + ".");
+    return facing;
 }
 
 void start_surf(ConsoleHandle& console, ProControllerContext& context, Direction direction, bool facing_water){
@@ -344,18 +355,10 @@ void walk_overworld_route(
     std::optional<Direction> facing,
     const OverworldInterruptSet& interrupts
 ){
-    //  Each leg starts with a turn tap unless it goes the way the player faces.
-    //  A tap while already facing that way takes a step, so a facing not
-    //  given is read from the screen. If that fails too it taps anyway.
     if (!facing){
-        context.wait_for_all_requests();
-        VideoSnapshot screen = console.video().snapshot();
-        if (screen){
-            facing = read_player_facing(screen);
-        }
-        console.log(std::string("Route: the player faces ") + (facing ? Pokemon::direction_name(*facing) : "an unknown way") + ".");
+        facing = read_facing(console, context);
     }
-    const DpadMover mover;
+    const Pokemon::LegMover<ProControllerContext> mover = hold_dpad;
     for (const RouteStep& step : route){
         console.log("Route: " + to_string(step));
         check_overworld(console, context, step);
