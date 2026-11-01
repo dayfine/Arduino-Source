@@ -49,6 +49,14 @@ LegResult walk_leg_tile_by_tile(const LegSpec& leg, const LegCalls& calls, size_
     //  one already cleared.
     int pressed = 0;
     while (walked < leg.tiles){
+        if (leg.warps && walked == leg.tiles - 1){
+            //  Onto the warp, whose fade would be taken for a battle's flash
+            //  (console B, 2026-11-01: the player, already in Viridian
+            //  Forest's north gate, tried to flee a battle).
+            calls.hold(leg_hold(leg, 1));
+            walked++;
+            break;
+        }
         const std::optional<HoldOutcome> outcome = calls.hold_watching(leg_hold(leg, 1), leg.step_window);
         walked++;
         pressed++;

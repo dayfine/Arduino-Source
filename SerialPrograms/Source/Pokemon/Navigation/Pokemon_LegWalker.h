@@ -87,6 +87,9 @@ struct LegSpec{
     //  longer than the interrupts' detection delays. See
     //  steps_back_to_interrupt().
     Milliseconds step_window{0};
+    //  The last step lands on a warp. Walked a tile at a time, that step
+    //  isn't watched: the warp's fade looks like a battle's flash.
+    bool warps = false;
 };
 std::string to_string(const LegSpec& leg);
 
@@ -130,11 +133,12 @@ struct HoldOutcome{
 //  The leg's bookkeeping, with the console side passed in, so it can be
 //  tested with scripted outcomes. `hold_watching` holds for `hold`, watches
 //  until at least `window` after the hold started, and reports the first
-//  interrupt seen; `clear` clears interrupt i;
+//  interrupt seen; `hold` only holds; `clear` clears interrupt i;
 //  `detection_delay` is interrupt i's delay; `log` reports progress; `fail`
 //  throws, and is called after more than `max_interruptions`.
 struct LegCalls{
     std::function<std::optional<HoldOutcome>(Milliseconds hold, Milliseconds window)> hold_watching;
+    std::function<void(Milliseconds hold)> hold;
     std::function<void(size_t interrupt)> clear;
     std::function<Milliseconds(size_t interrupt)> detection_delay;
     std::function<std::string(size_t interrupt)> name;
@@ -180,6 +184,10 @@ LegResult walk_leg(
     };
     LegCalls calls;
     calls.hold_watching = hold_watching;
+    calls.hold = [&](Milliseconds hold){
+        mover.hold(context, leg.direction, hold);
+        context.wait_for_all_requests();
+    };
     calls.clear = [&](size_t index){ interrupts[index]->clear(console, context); };
     calls.detection_delay = [&](size_t index){ return interrupts[index]->detection_delay(); };
     calls.name = [&](size_t index){ return interrupts[index]->name(); };

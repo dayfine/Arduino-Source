@@ -37,9 +37,15 @@ struct ScriptedLeg{
     std::vector<Milliseconds> holds;
     std::vector<Milliseconds> windows;
     std::vector<size_t> cleared;
+    size_t unwatched = 0;
 
     LegCalls calls(){
         LegCalls calls;
+        calls.hold = [this](Milliseconds hold){
+            holds.push_back(hold);
+            windows.push_back(NO_WINDOW);
+            unwatched++;
+        };
         calls.hold_watching = [this](Milliseconds hold, Milliseconds window) -> std::optional<HoldOutcome>{
             holds.push_back(hold);
             windows.push_back(window);
@@ -258,6 +264,18 @@ UnitTestResult test_tile_by_tile_slow_interrupt(){
     return true;
 }
 
+//  The step onto a warp isn't watched: its fade looks like a flash.
+UnitTestResult test_tile_by_tile_warp_not_watched(){
+    ScriptedLeg script;
+    LegSpec leg{Direction::NORTH, 4, false, TILE, WINDOW};
+    leg.warps = true;
+    walk_leg_with(leg, script.calls(), 5);
+    if (script.holds.size() != 4 || script.unwatched != 1 || script.windows.back() != NO_WINDOW){
+        return std::format("Expected 3 watched presses and an unwatched one, got {} and {}.", script.holds.size() - script.unwatched, script.unwatched);
+    }
+    return true;
+}
+
 //  A leg to a wall is still held through, window or not.
 UnitTestResult test_wall_leg_held_through(){
     ScriptedLeg script;
@@ -301,6 +319,7 @@ void add_tests_LegWalker(UnitTestDatabase& database){
     database.add<Test_LegWalker>("tile by tile: a battle on the last tile", test_tile_by_tile_battle_on_last_tile);
     database.add<Test_LegWalker>("tile by tile: an interrupt slower than the window", test_tile_by_tile_slow_interrupt);
     database.add<Test_LegWalker>("a wall leg is held through", test_wall_leg_held_through);
+    database.add<Test_LegWalker>("tile by tile: the step onto a warp isn't watched", test_tile_by_tile_warp_not_watched);
 }
 
 

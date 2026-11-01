@@ -177,6 +177,7 @@ Pokemon::LegSpec leg_spec(const RouteStep& step){
         step.direction, step.tiles, step.to_wall,
         step.surfing ? SURF_TILE_TIME : TILE_TIME,
         step.wild ? STEP_WINDOW : 0ms,
+        step.warps,
     };
 }
 
