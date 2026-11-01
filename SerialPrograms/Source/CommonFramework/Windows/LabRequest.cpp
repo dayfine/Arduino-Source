@@ -14,14 +14,55 @@ namespace PokemonAutomation{
 
 
 
+std::string strip_comment(const std::string& line){
+    bool quoted = false;
+    for (size_t c = 0; c < line.size(); c++){
+        const char ch = line[c];
+        if (quoted){
+            if (ch == '\\'){
+                c++;
+            }else if (ch == '"'){
+                quoted = false;
+            }
+        }else if (ch == '"'){
+            quoted = true;
+        }else if (ch == '#'){
+            return line.substr(0, c);
+        }
+    }
+    return line;
+}
+
 std::vector<std::string> split_command_line(const std::string& line){
     std::vector<std::string> words;
-    std::istringstream in(line);
+    std::istringstream in(strip_comment(line));
     std::string word;
-    while (in >> word && word[0] != '#'){
+    while (in >> word){
         words.push_back(word);
     }
     return words;
+}
+
+std::string line_after_words(const std::string& line, size_t count){
+    const std::string text = strip_comment(line);
+    const char* const SPACES = " \t";
+    size_t pos = 0;
+    for (size_t c = 0; c < count; c++){
+        pos = text.find_first_not_of(SPACES, pos);
+        if (pos == std::string::npos){
+            return "";
+        }
+        pos = text.find_first_of(SPACES, pos);
+        if (pos == std::string::npos){
+            return "";
+        }
+    }
+    const size_t begin = text.find_first_not_of(SPACES, pos);
+    if (begin == std::string::npos){
+        return "";
+    }
+    const size_t end = text.find_last_not_of(SPACES);
+    return text.substr(begin, end + 1 - begin);
 }
 
 std::optional<Filesystem::Path> next_request_file(const std::string& inbox){

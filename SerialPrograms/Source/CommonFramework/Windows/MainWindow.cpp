@@ -34,6 +34,7 @@
 #include "CommonFramework/Options/Environment/ThemeSelectorOption.h"
 #include "CommonFramework/Options/QtWidget/WallpaperWidget.h"
 #include "CommonFramework/Windows/DpiScaler.h"
+#include "NintendoSwitch/Programs/CommandFileRunner/NintendoSwitch_LabCommands.h"
 #include "WindowTracker.h"
 #include "ButtonDiagram.h"
 #include "MainWindow.h"
@@ -45,8 +46,8 @@
 namespace PokemonAutomation{
 
 
-MainWindow::MainWindow(std::unique_ptr<LabConsoleCommands> lab_console)
-    : QMainWindow(nullptr)
+MainWindow::MainWindow(QWidget* parent)
+    : QMainWindow(parent)
     , m_current_panel_widget(nullptr)
 {
     global_panel_holder() = this;
@@ -289,9 +290,20 @@ MainWindow::MainWindow(std::unique_ptr<LabConsoleCommands> lab_console)
     SystemSleepController::instance().add_listener(*this);
     update_wallpaper();
 
-    //  Let lab scripts drive the app through files. See LabChannel.h.
-    m_lab_channel = std::make_unique<LabChannel>(*this, std::move(lab_console));
-    m_lab_channel->set_panel(m_current_panel.get());
+    //  Let lab scripts drive the app through files, if the lab folder exists.
+    //  See LabChannel.h. Nothing runs otherwise.
+    m_lab_channel = LabChannel::start_if_enabled(
+        LabChannelCallbacks{
+            .current_panel = [this]{ return m_current_panel.get(); },
+            .select_program = [this](const std::string& identifier){
+                return m_program_list->select_program(identifier);
+            },
+        },
+        std::make_unique<NintendoSwitch::SwitchLabCommands>()
+    );
+    if (m_lab_channel){
+        m_lab_channel->set_panel(m_current_panel.get());
+    }
 //    cout << "Done constructing" << endl;
 }
 MainWindow::~MainWindow(){
@@ -433,10 +445,6 @@ void MainWindow::load_panel(
         delete m_current_panel_widget;
     }
 }
-std::string MainWindow::lab_select_program(const std::string& identifier){
-    return m_program_list->select_program(identifier);
-}
-
 void MainWindow::on_busy(){
     if (m_program_list){
         m_program_list->lock();

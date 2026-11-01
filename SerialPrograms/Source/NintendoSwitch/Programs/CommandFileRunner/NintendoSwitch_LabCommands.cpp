@@ -71,10 +71,15 @@ void SwitchLabCommands::run(
     const std::vector<std::string>& words, LabCommandOutput& output
 ){
     LabConsole console(panel, scope);
-    CommandFileSession session{console.console(), console.context(), output.out, output.outbox, output.request};
+    //  A command that only reads the screen may run while a program drives
+    //  the controller; it must not wait for that program's presses.
+    const bool drives = command_file_command_kind(words[0]) == CommandFileCommandKind::DRIVES_CONSOLE;
+    CommandFileSession session{console.console(), console.context(), output.out, output.outbox, output.request, drives};
     try{
         run_command_file_line(session, words);
-        session.context.wait_for_all_requests();
+        if (drives){
+            session.context.wait_for_all_requests();
+        }
     }catch (OperationCancelledException&){
         throw;
     }catch (...){

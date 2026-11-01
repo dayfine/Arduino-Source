@@ -1,17 +1,56 @@
 ---
 name: console-iteration
-description: The dev loop for getting a console automation segment (a story checkpoint, a navigation leg, a talk, a door, a menu sequence) from idea to a repeatable pass - define, code, observe, hypothesize, verify by hand, fix once, rerun - with the console as an external machine, one train on it at a time, hard stops, and rules for learning, escalating and filing follow-ups. Use whenever a console run fails, before writing the next fix, and whenever starting a new segment.
+description: Develop and debug console automation through a focused loop - define an observable outcome, run, inspect evidence, test one hypothesis, change the cause, and validate. Applies to menus, detectors, battles, farming, navigation and timing-sensitive programs. Use when a console run fails or when developing a new behavior; game-specific examples state their assumptions.
 ---
 
 # Console iteration: define, measure, change one thing
 
-A program run costs minutes (build, deploy, reload, run) and shows one
-failure. A hand batch on the Command File Runner costs seconds and shows the
-whole picture. A human playing the stretch once costs a minute and shows the
-answer. So the loop is: **define from a hand pass, run, look, name the
-layer, verify the guess by hand, change one thing, rerun.** Never run to
-"see what happens", and never rerun to "confirm" something a hand batch can
-show.
+Use this loop for behavior that depends on a live console: menus, visual or
+audio inference, battles, farming, navigation and timing-sensitive programs.
+The loop is: **define the outcome, run, inspect the evidence, name the layer,
+test a hypothesis, change the cause, validate.** Choose the smallest experiment
+that can answer the question: a saved capture, unit test, CFR batch, focused
+program run or human demonstration.
+
+Examples below come partly from BDSP AutoStory. Tile movement, walls, map
+banners and story checkpoints apply only where the game's controls and
+observations support them. They are examples of the loop, not requirements
+for every console program.
+
+## How to use
+
+This skill lives in the repo at `skills/console-iteration/SKILL.md`; install
+it with `ln -s "$PWD/skills/console-iteration" ~/.claude/skills/console-iteration`
+and it loads when a console run fails or a new behavior starts. Everything it
+asks of the console goes through the lab channel (`Lab/` folder of the lab
+app's profile) and the three scripts in `devtools/lab/`:
+
+Example setup on macOS, using BDSP AutoStory as the program under test:
+
+```sh
+# Open a shell that holds the console lock for this session.
+sh devtools/lab/lablock.sh -c B run console-iteration -- sh
+export LAB_CONSOLE=B                                   # the lock's name
+export LAB_PROFILE="$HOME/Library/Application Support/SerialPrograms/Profiles/lab-B"
+export LAB_OWNER=lab-B                                 # the channel's owner token
+cd devtools/lab
+sh labctl.sh state                                     # first: what runs? never stop a program to find out
+sh labctl.sh owner claim lab-B                         # once per session
+sh labctl.sh select PokemonBDSP:AutoStory              # the program under test
+sh labctl.sh set START_SEGMENT '"0"'                   # one option, JSON value
+sh labctl.sh start                                     # the run; then read the log and shots
+# Wait for the run to finish; check `labctl.sh state` reports STOPPED
+# before sending a batch that presses buttons.
+if sh labctl.sh state | grep -qx 'state=STOPPED'; then
+    printf '%s\n' "dpad UP" "shot after_up" "detect home" | sh cfrun.sh probe-up
+fi
+sh labctl.sh owner release
+exit                                                  # release the session lock
+```
+
+`Lab.md` (path below) has every command and the file formats; the lab
+README has the scripts' parameters and how to run a lab app beside the live
+one.
 
 The tools this loop leans on, by path:
 
@@ -23,27 +62,33 @@ The tools this loop leans on, by path:
 - `devtools/lab/README.md`: the scripts that wrap it (`lablock.sh`,
   `labctl.sh`, `cfrun.sh`) and the one-train rule.
 
-## 1. Define a segment, then code it
+## 1. Define a step, then code it
 
-A segment is **one map, or one story event**, never both. A map boundary is
-a free anchor (the location banner), a story event is a free save point.
-Splitting this way turned a segment that failed five builds into a pass,
-because a problem in its second half no longer replayed the first.
+A step has **one outcome that can be checked**. Examples: the selected menu
+option changed, an item count increased, a battle ended, a detector recognized
+its target, or the player entered a map. Use screen, audio, controller or log
+evidence appropriate to the claim. An input being sent proves only that it
+was sent; confirm its effect where the next action depends on it.
 
-- **Start at a save on a fixed tile** (a doorstep, a map's first tile after
-  a banner, the spot after a scene). Never a loose spot like a cave mouth.
-- **End on something the screen proves**: a banner, a dialog, a healed
-  party, a menu. "Walked long enough" is not an end.
-- **At most 5 steps.** More means it is two segments.
-- **Hand pass first.** Walk the segment once on the CFR with a `shot` after
-  every leg, or ask the user to play it while you record. Write down, per
-  leg: the move, how far it really went, what stopped it.
-- **Code from the recording**, not from the map or the grid. Every number
-  gets a comment naming the measurement (date, run or batch). A number you
-  did not measure is a guess and must say so.
-- **Pick the move per leg** by its margin (section 5): clip to a wall,
-  exact taps for counted offsets, a hold only into a target wider than its
-  error.
+- **State the starting conditions and success check.** Include the menu,
+  inventory, party, position or timing state that matters to this behavior.
+- **Keep the experiment small enough to explain a failure.** Split at
+  observable boundaries; choose the number of actions for the task rather
+  than imposing a fixed move count.
+- **Establish the expected behavior first.** Use a CFR batch, saved capture,
+  documented game data or a human demonstration. Record the actions and the
+  observations that justify the implementation.
+- **Identify the source of important constants.** Cite the measurement or
+  trusted data; label estimates and their uncertainty. A map or decompilation
+  can supply facts, while the target game still needs to confirm applicability.
+- **Choose controls and checks for the required tolerance** (section 5).
+  For example, a menu tap must avoid auto-repeat; an RNG sequence may require
+  a continuous frame-timed action that interactive stepping cannot reproduce.
+
+For AutoStory, a checkpoint can bound a step. A location banner can confirm
+the map, but does not by itself establish the player's tile. A story event
+is a useful checkpoint boundary only when its completion and save behavior
+are known.
 
 ## 2. Observe
 
@@ -51,113 +96,155 @@ After a run, before anything else:
 
 1. **Read the log tags** (step counters, leg lines, walk results, attempt
    failures). Build the timeline: what the code believed at each step.
-2. **Open the failure screenshot and say in one sentence where the player
-   really is**, from landmarks you can name: a sign, a banner, a building.
-   Naming a map from its trees alone once cost a whole cycle. If you
-   cannot name the screen from the shot, take another by hand with a
-   landmark in view (`shot`, or `state` for every detector that fires)
-   before concluding anything.
-3. **Compare belief and reality.** The gap is the bug: "the code thought it
-   was still in town; the shot shows the route."
-4. **Check the story state**: a pass needs a flag that moved (someone
-   answered, a scene played, a banner), checked by something the next step
-   depends on.
-5. **Check the save state**: did the run save, and where? A run's
-   checkpoint save overwrites the console's save; know what it holds now.
+2. **Inspect the capture and identify the actual state.** Which screen,
+   menu, battle phase or location is visible? Use named evidence: prompt
+   text, cursor, HP, inventory count or a landmark. If the screenshot is
+   ambiguous, get another capture (`shot`), check a specific detector
+   (`detect`), or inspect the recording before concluding anything.
+3. **Compare belief and reality.** Identify the first disagreement. Menu
+   example: the code assumed the confirmation prompt had closed, but it is
+   still visible. Navigation example: it assumed town, but the banner shows
+   a route.
+4. **Check the claimed outcome**, including negative cases. A detector may
+   correctly report absence, and waiting may correctly leave the screen
+   unchanged. Use the success condition defined for this step.
+5. **Check persistent effects when relevant**: saves, inventory consumption,
+   clock changes, account settings or other state that affects the next run.
+   Record what changed and whether the experiment can be repeated.
 6. **Read what runs from the channel's `state` file**, never by stopping a
    program to find out: stopping one to probe, then starting "whatever is
-   selected", once started a second run that saved over the checkpoint.
+   selected", once started a second run that saved over the save under test.
 
 ## 3. Hypothesize: name the layer, one hypothesis, one prediction
 
-Layers, in the order they have actually been the cause:
+Classify the failure by the evidence. These layers are candidates, not a
+fixed order of likelihood; the map and route layers apply to navigation.
 
 | Layer | Looks like |
 |---|---|
 | **lab process** | the run stopped, restarted or reloaded without a program reason (a leftover loop, a second train on the console) |
-| **story** | walked the right path, nothing happened (the trigger was assumed, not known) |
+| **game rules/state** | an action has no expected effect because a prerequisite, resource, battle phase or story trigger differs |
+| **input/timing** | a press was dropped, repeated or delivered in the wrong phase; a timed sequence drifts |
 | **map** | a wall where the grid has floor, or the reverse (a feature with more rows on the console than in the trace) |
 | **route** | right on paper, fragile in play (a 1-wide corridor on the stick; a search that walks until blocked) |
 | **walk/physics** | moves land short, long, or a row off (drift on stairs; time-to-tiles wrong for the move used) |
-| **perception** | the detector read the screen wrong (a stop read as a wall in a fixed-camera area; a cutscene with no dialog box) |
+| **perception** | visual or audio inference reports the wrong state (a cursor missed; a sound confused; a cutscene mistaken for overworld) |
 
-Write one hypothesis with a prediction that only it makes: "if the feature
-is 3 rows, a tap south from this row will move; if 2, it will not." Two
-hypotheses at once means you have not looked hard enough.
+Choose one hypothesis to test and state a distinguishing prediction. For a
+menu: "if auto-repeat caused the skip, a shorter hold advances one entry."
+For a tile map: "if the feature is 3 rows, a tap south from this row will
+move; if 2, it will not." Keep alternative explanations recorded, but vary
+one factor at a time so the result distinguishes them.
 
-## 4. Verify by hand before fixing
+## 4. Verify interactively with CFR before fixing
 
-- **One CFR batch per question**, 5 to 15 lines, one command per line, a
+Use the Command File Runner (CFR) commands through the lab channel to test
+the hypothesis on the live console. Send a small batch of presses, walks,
+screenshots and detector checks with `cfrun.sh NAME < batch.txt`. Inspect
+the journal and screenshots before choosing the fix. This is agent-driven
+verification; ask the human to play the sequence when that would be faster.
+
+- **One batch per question**, 5 to 15 lines, one command per line, a
   `shot` after every move that matters, a `shot` at the end. Name the batch
   by its question. Send it with `cfrun.sh NAME < batch.txt` and read the
   `.out`. Show the user the batch text before sending when pairing; they
   catch wrong assumptions in the command list.
-- **Count in taps (`dpad`), not time**: a tap moves a whole tile; a timed
-  stick hold moves a different count from try to try.
-- **Find a wall with `walk`**: it holds the stick until the screen stops
-  changing and reports how long it moved, so the player ends against the
-  wall whatever the start was. Not where the camera is fixed.
-- **Check a reading with `detect`** and see everything that fires with
-  `state`; both also run on a saved image, so the console need not be on
-  that screen again.
-- **Symmetric batches**: a probe that goes 3 up must come 3 down. An
-  asymmetric probe drifted the player a row per repetition and wrecked the
-  measurement.
+- **Use controls whose effect is established for this screen.** A D-pad
+  tap may move a menu cursor, turn a player, take a tile step or do nothing.
+  Calibrate hold/release times for the game and mode being tested.
+- **Navigation example: probe a wall with `walk`** only where player
+  movement changes the captured view and an early stop has been ruled out.
+  It reports low screen change, which can also mean a fixed camera, dialog
+  or NPC obstruction. Confirm the wall before using it as a position anchor.
+- **Check a reading with `detect NAME [image]`.** Saved-image checks avoid
+  recreating a visual state. The channel's `state` reports the app/program;
+  the legacy CFR program's `state [image]` lists detectors that fire.
+- **Restore the starting conditions between comparisons.** Reverse a probe
+  only if its actions are reversible; menu wrapping, encounters and item
+  consumption can prevent a symmetric input sequence from restoring state.
 - **Measure a threshold with `shots`** (N frames at an interval) on both
   the true and the false screen, and keep a margin. Write the numbers and
   the batch name in the code comment.
-- **Never verify by rerunning the program.** A rerun is minutes for one
-  bit; a batch is seconds for ten.
+- **Use a focused program run when the hypothesis needs it.** CFR is useful
+  for isolated controls and detector checks; asynchronous behavior, battles,
+  RNG timing and complete recovery paths may need the real program. State
+  the prediction before running, then use the full run for integration validation.
 - **If the human can show it faster, ask them to play it once** while you
-  record (CFR stopped, keyboard to the app). Then measure from the recording.
+  record (no program running, keyboard to the app). Then measure from the
+  recording.
 
-## 5. Fix: one change, the simplest that fits the margin
+## 5. Fix the measured cause with the smallest sufficient change
 
-- **Change the one thing the measurement points at.** Not two.
-- **Prefer removing a mechanism over adding one.** A multi-column search
-  with time-to-tiles and step-back became "hold into the wide street, walk
-  until the scene". When a mechanism keeps needing patches, it is fighting
-  the game; replace it.
-- **Pick the move by its margin**, not by habit:
+- **Keep one causal change per experiment.** Include the code and checks
+  that change requires; defer unrelated tuning so the result remains attributable.
+- **Choose a mechanism that matches the observed behavior.** Simplify when
+  fewer assumptions achieve the required outcome. Extra recovery or state
+  handling can be necessary; judge it by the failure it handles and how it
+  will be verified.
+- **State the tolerance and how the fix handles variation.** Examples:
+
+| Context | What to establish | Example fix and validation |
+|---|---|---|
+| Menu input | hold/release range that advances one entry | shorten a repeating press; check several starting entries |
+| Visual/audio detector | separation between target and confusing cases | adjust the feature or threshold; replay positive and negative captures |
+| Battle or farming loop | expected phase and resource changes | handle a missed prompt; confirm the outcome before continuing |
+| Timing-sensitive/RNG sequence | frame or latency tolerance | correct the measured timing source; test with the actual execution path |
+| Navigation | position uncertainty, control semantics and target width | use a verified anchor or wider target; check the resulting pose |
+
+Repeated contradictions mean revisiting the hypothesis. Check alternative
+causes before deciding which mechanism to replace. Comment the reason for
+the fix and the evidence that supports its constants.
+
+### Navigation example: BDSP AutoStory
+
+In one BDSP route, a multi-column search with time-to-tiles and step-back
+was replaced by moving into a wider street and walking until a scene began.
+That worked because the destination tolerated the measured movement error
+and the scene supplied an observable end condition. It is not a general
+prescription to use timed holds.
+
+The following options require validation in the target game, movement mode
+and camera view. BDSP measurements do not establish FRLG or 3D-game behavior:
 
 | Move | When | Error |
 |---|---|---|
-| **Clip to a wall** (hold until stopped) | whenever a wall, fence, sign or counter ends the leg; pins one axis for free | none on that axis |
-| **D-pad taps** | counted offsets to a door, a person, a corridor row; stairs and 1-wide corridors | whole tiles; every tap steps, including the first one toward a new direction |
-| **Stick hold** | open legs into a target wider than the error | grows with distance; drifts a row on stairs and corridors |
-| **Run** | legs that end at a wall; speed assumed, not measured | as taps |
-| **Walk until event** | a scene or talk ends the leg; a cutscene may open with no dialog box, so wait for the first line | needs its own end check |
+| **Hold toward a wall** | a known static obstacle stops the player and the stop can be confirmed | can constrain one axis; NPCs and early stops must be distinguished |
+| **D-pad taps** | the mode's turn/step behavior and timings have been measured | count only confirmed steps; a direction change may only turn |
+| **Stick hold** | the destination is wider than the measured arrival uncertainty | drift depends on duration, terrain and control mode |
+| **Run** | speed and stopping behavior are measured and the endpoint remains reliable | separate calibration from walking; do not assume identical error |
+| **Walk until event** | the trigger region and event's observable completion are known | the event may move the player; update the pose after it |
 
-- **A new idea is due when the old one contradicts a measurement twice.**
-  Two "blocked, 0 tiles" on a leg the hand pass walked means the stop
-  detector is wrong there, not the grid.
-- **Comment the why**: the run that failed, the batch that measured, the
-  number.
+In this navigation example, a failed wall detector is one explanation for
+a traversable leg reporting "blocked"; check the start pose and input too
+before deciding.
 
 ## 6. Iterate with the console as an external machine
 
 The console is a shared, stateful, slow peripheral. Treat every run as a
 transaction:
 
-1. **Reload the save** before every run, so the start is the segment's
-   start and not wherever the last run died.
-2. **Build, deploy, run** under one name, one change per build, logged in
-   the run notes line.
+1. **Restore or confirm the required starting conditions** before each
+   comparison. Reload a save only when appropriate; other tests may need a
+   menu reset, resource replenishment or a specific clock/RNG state.
+2. **Run the smallest sufficient check** under one name and record the
+   revision, configuration and change. Build/deploy when code changed; a
+   saved-capture replay or CFR probe may not need a new build.
 3. **Read the result** (section 2), then decide (3), measure (4), fix (5).
-4. **Keep the console at a known save between cycles.** If a run dies
-   elsewhere, reload before the next, or walk back and save deliberately,
-   and say which save the console holds.
+4. **Record the state left between cycles.** For save-backed tests, identify
+   the save and current screen separately. Do not create a new save merely
+   to normalize an experiment; it may destroy the starting fixture.
 5. **One train on the console at a time** (section 7). A second thing
    started on it is how runs get stopped and saves overwritten.
-6. **Budget**: a cycle is a few minutes of console time plus the fix.
-   Three cycles without a pass is the hard stop (section 9).
+6. **Budget for the behavior being tested.** Set the expected run duration
+   and stop condition before starting; section 9 bounds unsuccessful iteration.
 
 ## 7. Keep it safe
 
 **Processes**
 - **Hold the lock** (`lablock.sh run NAME -- CMD`) for anything that drives
-  the console; `labctl.sh` and `cfrun.sh` refuse a caller without it. Never
-  start or stop the app's program by another path while a run holds it.
+  the console. Keep the whole experiment under one lock; the scripts check
+  whether another train holds it. Never start or stop the app's program by
+  another path while a run holds it.
 - **Read the channel's `state` file to learn what runs**; never stop a
   program to find out.
 - **Never press while a program is RUNNING**, by hand or by batch: the
@@ -173,67 +260,75 @@ transaction:
 - Never quit an app running a program you did not start; a console that is
   not the lab's is not yours.
 
-**Save state and the HOME screen**
-- A checkpoint run **saves at its start**. Starting checkpoint N moves the
-  console's save to N's start. Start a checkpoint only from its own save,
-  and never start one to "take a screenshot".
-- Hand batches never save unless the batch is named a save and the user
-  asked.
-- Before any deliberate save, screenshot the save prompt (location, play
-  time) and keep it with the run notes.
-- **Before a reload, check which tile HOME highlights.** HOME puts its
-  highlight back on the last game played every time it opens, and
-  `close_game` opens it: move the highlight after the close, never before,
-  and read the title in a `shot` before pressing A, or the wrong game
-  launches into its new-game screens.
-- **Never press A blind on an unknown screen**: a new game's first screens
-  accept it. `shot` first, then `close_game` (nothing is saved), then the
-  launch recipe.
-- Never start a new game without the user's OK.
+**Persistent state and recovery**
+- Know whether the program under test **saves, and when**. One that saves at
+  its start (some AutoStory checkpoints do) moves the console's save
+  the moment it starts: start it only from the state it expects, and never
+  start one to "take a screenshot".
+- Keep deliberate saves and other persistent changes within the user's
+  authorized scope. Name save batches explicitly and record the resulting save
+  using the game's available evidence (for example, location and play time).
+- **Switch example: verify the HOME selection before launching.** After
+  `close_game`, inspect a `shot` and confirm the intended title before A;
+  do not assume a previously selected tile is still highlighted.
+- **Inspect an unknown screen before input.** Use the game's known recovery
+  path. Closing or restarting can discard progress; autosave may already have
+  changed the save. Do not treat `close_game` as a universal safe reset.
+- Start a new game only when it is within the user's authorized scope.
 
 ## 8. Keep track of learning
 
 - **Run notes line per run**: build, change, hypothesis, result, layer.
-- **Measurements go where the number lives**: the data file header for map
-  facts (rows, stairs, wandering NPCs), the code comment for a tap count or
-  hold, the physics notes for movement error.
-- **Mechanism findings go to the component they change**, as a PR comment
-  on its PR (drift, event-leg ends, fixed-camera stops), so the owner
-  applies them.
+- **Measurements go where the number lives**: detector fixtures for capture
+  cases, comments for input timings, data-source notes for game facts. Map
+  rows and wandering NPCs belong with navigation data; movement error belongs
+  with its game/mode calibration.
+- **Mechanism findings go with the component they change**: detector,
+  controller, battle policy or navigation helper. Record the evidence and
+  intended owner; post it on the component's PR when authorized.
 - **Process findings go to this skill** and a memory note with the why.
 - **A lessons file** only when asked.
 
 ## 9. When to escalate to the human
 
-- **Hard stops**: the same step fails twice in a row; three builds for one
-  segment without a pass; 45 minutes on one segment. Stop, send one line
-  (problem, what was measured, plan) and the route drawing.
-- **Story knowledge is missing**: where a scene triggers, which NPC to talk
-  to, whether a flag is set. Ask, or ask the user to play it once. Do not
-  search the map with code.
-- **A save would be overwritten** or the console's save is not where the
-  next run expects.
-- **The screen cannot be read with certainty** (which map, which menu).
-- **Anything outward-facing**: upstream comments, PR descriptions on repos
-  the user does not own, replies to maintainers.
+- **Hard stops**: the same attempted fix fails twice without new evidence;
+  three implementation cycles for one outcome without a pass; or 45 minutes
+  without resolving the question. Stop and report the problem, measurements
+  and next experiment. Include context appropriate to the task: a route
+  drawing, menu sequence, detector captures or timing trace.
+- **Required game knowledge remains missing** after checking available
+  code, documentation, game data and bounded probes. Ask a specific question
+  or request a demonstration: where a trigger lies, which battle phase is
+  active, or what a menu option does. Avoid an unbounded exploratory run.
+- **An unexpected persistent change would be required**, such as overwriting
+  the starting save or consuming resources outside the authorized experiment.
+- **The evidence cannot distinguish states that require different actions**
+  (which map, menu, battle phase or timing window).
+- **Outward-facing actions outside the authorized scope**: upstream comments,
+  PR descriptions on repos the user does not own, replies to maintainers.
 - **The user is driving.** When they say they are doing it, send nothing to
   the console until they hand it back.
 
 ## 10. When to file a follow-up instead of fixing now
 
-Anything found that is not on the critical path to the current pass: a
-detector that misreads one area, an unmeasured speed, a helper's missing
-fail-fast. File it (task list, PR comment, issue) with the run that showed
-it, and keep going. Fixing it inline is how one segment eats an afternoon.
+Defer findings outside the current outcome when they do not invalidate its
+result or make continuing unsafe. Examples: a detector case outside the
+target screen, an unused movement mode's speed, or an unrelated helper.
+Record the evidence in the task list or notes; use PR comments or issues
+when authorized by the task. A missing guard needed for this experiment
+belongs in the current fix rather than a deferred follow-up.
 
 ## 11. When to question existing decisions and code
 
-- **A mechanism needed its third patch**: the plan is wrong, not the
-  constants.
-- **The code assumes a fact nobody measured** ("18 taps from the grid",
-  "the scene is up the north road"). Measure it or ask.
-- **The human would do it differently.** If the user's hand route is three
-  moves and the code's is thirty, the code is wrong.
-- **A cost or rule in the planner contradicts a measurement.**
-- **Inherited steps**: check the story needs each one; a heal trip carried
-  over from an older plan did not.
+- **Repeated patches do not explain the observations.** Revisit the model
+  before tuning another constant; repeated failure alone does not identify
+  which assumption is wrong.
+- **A critical assumption has no evidence.** Examples: a menu delay, an HP
+  threshold, or a navigation offset. Measure it or find an applicable source.
+- **A simpler demonstrated approach achieves the same outcome.** Compare
+  its reliability and observability, not just the action count. Automation
+  may need extra checks that a human supplies visually.
+- **A policy contradicts a measurement**, such as a detector threshold,
+  battle decision, timeout or route-planning cost.
+- **Inherited actions lack a current purpose.** Check why each remains:
+  a heal trip may be unnecessary for one party and essential for another.

@@ -53,6 +53,12 @@ struct CommandFileSession{
     std::ostream& out;      //  Text printed here goes into the journal.
     std::string outbox;     //  Folder for files a command saves, ending in '/'.
     std::string name;       //  The command file's name: saved files start with it.
+
+    //  Whether a frame is taken only after the controller's queue has run
+    //  dry, so a screenshot shows the state after the presses before it.
+    //  False for a command that only reads the screen while a program drives
+    //  the controller: it must not wait for the program's presses.
+    bool sync_controller = true;
 };
 
 //  A command. `words` is its line split on spaces; words[0] is the command name.

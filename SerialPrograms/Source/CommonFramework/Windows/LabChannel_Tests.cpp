@@ -32,6 +32,32 @@ UnitTestResult test_split_line(){
     if (split_command_line("wait 500 # half a second") != std::vector<std::string>{"wait", "500"}){
         return "A comment after a command should be dropped.";
     }
+    if (split_command_line("set KEY \"a # b\" # c") != std::vector<std::string>{"set", "KEY", "\"a", "#", "b\""}){
+        return "A '#' inside a quoted string is not a comment.";
+    }
+    return true;
+}
+
+UnitTestResult test_line_after_words(){
+    struct Case{
+        std::string line;
+        std::string json;
+    };
+    const Case CASES[] = {
+        {.line = "set KEY \"a  b\"", .json = "\"a  b\""},
+        {.line = "  set   KEY   \"a # b\"   # a comment", .json = "\"a # b\""},
+        {.line = "set KEY \"q\\\"#\\\"\" # c", .json = "\"q\\\"#\\\"\""},
+        {.line = "set KEY {\"a\": [1, 2]}", .json = "{\"a\": [1, 2]}"},
+        {.line = "set KEY", .json = ""},
+        {.line = "set KEY # nothing", .json = ""},
+        {.line = "set", .json = ""},
+    };
+    for (const Case& c : CASES){
+        const std::string json = line_after_words(c.line, 2);
+        if (json != c.json){
+            return std::format("{}: expected <{}>, got <{}>", c.line, c.json, json);
+        }
+    }
     return true;
 }
 
@@ -220,6 +246,7 @@ private:
 
 void add_tests_LabChannel(UnitTestDatabase& database){
     database.add<Test_LabChannel>("split a line", test_split_line);
+    database.add<Test_LabChannel>("line after words", test_line_after_words);
     database.add<Test_LabChannel>("next inbox file", test_next_file);
     database.add<Test_LabChannel>("parse a request", test_parse_request);
     database.add<Test_LabChannel>("journal lines", test_journal);

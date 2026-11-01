@@ -38,7 +38,6 @@
 #include "Startup/SetupSettings.h"
 #include "Startup/NewVersionCheck.h"
 #include "Windows/MainWindow.h"
-#include "NintendoSwitch/Programs/CommandFileRunner/NintendoSwitch_LabCommands.h"
 #include "GlobalSettingsPanel.h"
 #include "GlobalServices.h"
 #include "PersistentSettings.h"
@@ -212,7 +211,7 @@ int run_program(int argc, char *argv[]){
 #endif
 
 
-    MainWindow w(std::make_unique<NintendoSwitch::SwitchLabCommands>());
+    MainWindow w;
     w.show();
     w.raise(); // bring the window to front on macOS
     set_permissions(w);
