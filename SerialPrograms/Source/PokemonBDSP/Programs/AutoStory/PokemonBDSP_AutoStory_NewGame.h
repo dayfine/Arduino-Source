@@ -39,6 +39,8 @@ enum class IntroStep{
     PICK_PRESET,            //  A on a preset name
     CLOSE_MENU_AND_FINISH,  //  B: the menu opened in the bedroom, the intro is over
     ADVANCE,                //  A: dialogue, language, appearance, cutscenes
+    ADVANCE_WITH_B,         //  B: dialogue once the rival is named
+    CLEAR_WITH_B,           //  B: an unknown screen once the rival is named
     PROBE_FOR_MENU,         //  X, to see whether the player is in control
 };
 struct IntroProgress{
@@ -48,6 +50,8 @@ struct IntroProgress{
     bool game_confirmed = false;
     //  A presses on unknown screens before that: the title, the language.
     size_t unconfirmed_presses = 0;
+    //  B presses on unknown screens since the last X.
+    size_t b_presses = 0;
 };
 //  Unknown screens pressed through before a BDSP screen must show: the title
 //  and the language select take a few. Another game launched by mistake
@@ -57,11 +61,20 @@ inline constexpr size_t INTRO_PRESSES_BEFORE_BDSP = 20;
 //  its dialogue box, the rival's name list, its main menu. The keyboard and
 //  the user select are the Switch's.
 bool intro_screen_confirms_bdsp(const std::string& screen);
-IntroStep decide_intro_step(const std::string& screen, const IntroProgress& progress);
 
-//  After PROBE_FOR_MENU found no menu: whether A may follow. Only when X changed
-//  nothing, since A on something X opened would pick from it (the Bag).
-bool advance_after_probe(bool screen_changed);
+//  Once the rival is named, the intro only has dialogue and cutscenes left
+//  before the bedroom, and screens the classifier misses (r2: a dialogue box
+//  without its arrow). Each unknown screen takes B, which advances dialogue,
+//  never starts a talk and does nothing in the bedroom; after this many, X
+//  checks for the menu, and only the menu ends the intro.
+inline constexpr size_t INTRO_B_BEFORE_X = 5;
+//  X presses that opened no menu before the intro gives up: with
+//  INTRO_B_BEFORE_X B presses between them, about two minutes.
+inline constexpr size_t INTRO_X_WITHOUT_MENU = 20;
+
+IntroStep decide_intro_step(const std::string& screen, const IntroProgress& progress);
+//  Counts `step`, taken on `screen`, in `progress`.
+void record_intro_step(IntroProgress& progress, const std::string& screen, IntroStep step);
 
 //  Checks classify_intro_screen() on <folder>/<expected name>/*.png at 1920 and
 //  1280 px wide. Logs each mismatch; returns the number of them.

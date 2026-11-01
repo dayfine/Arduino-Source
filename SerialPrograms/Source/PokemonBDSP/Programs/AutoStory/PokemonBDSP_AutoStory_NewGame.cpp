@@ -52,11 +52,6 @@ bool intro_dialog_showing(const ImageViewRGB32& screen){
     return is_white(left_white) && is_white(right_white) && is_white(bottom) && left_edge.stddev.sum() >= 30;
 }
 
-//  The part of the screen the probe compares before and after X: the
-//  dialogue box's area. The intro's background sparkles everywhere above
-//  it, which read as X having changed the screen (r2).
-const ImageFloatBox PROBE_AREA(0.15, 0.75, 0.70, 0.25);
-
 }
 
 
@@ -110,13 +105,13 @@ IntroStep decide_intro_step(const std::string& screen, const IntroProgress& prog
         return IntroStep::CLOSE_MENU_AND_FINISH;
     }
     if (screen == "dialog"){
-        return IntroStep::ADVANCE;
+        return progress.rival_named ? IntroStep::ADVANCE_WITH_B : IntroStep::ADVANCE;
     }
     //  The bedroom comes only after the rival is named. Before that, every unknown
     //  screen (language, the appearance preview, cutscenes) takes A, but only so
     //  many before a screen only BDSP shows: past those it is another game.
     if (progress.rival_named){
-        return IntroStep::PROBE_FOR_MENU;
+        return progress.b_presses < INTRO_B_BEFORE_X ? IntroStep::CLEAR_WITH_B : IntroStep::PROBE_FOR_MENU;
     }
     if (!progress.game_confirmed && progress.unconfirmed_presses >= INTRO_PRESSES_BEFORE_BDSP){
         return IntroStep::FAIL_NOT_BDSP;
@@ -127,8 +122,31 @@ bool intro_screen_confirms_bdsp(const std::string& screen){
     return screen == "dialog" || screen == "rival-list-tell" || screen == "rival-list-preset" || screen == "menu";
 }
 
-bool advance_after_probe(bool screen_changed){
-    return !screen_changed;
+void record_intro_step(IntroProgress& progress, const std::string& screen, IntroStep step){
+    if (intro_screen_confirms_bdsp(screen)){
+        progress.game_confirmed = true;
+    }
+    switch (step){
+    case IntroStep::ENTER_PLAYER_NAME:
+        progress.player_named = true;
+        return;
+    case IntroStep::ADVANCE:
+        if (!progress.game_confirmed){
+            progress.unconfirmed_presses++;
+        }
+        return;
+    case IntroStep::PICK_PRESET:
+        progress.rival_named = true;
+        return;
+    case IntroStep::CLEAR_WITH_B:
+        progress.b_presses++;
+        return;
+    case IntroStep::PROBE_FOR_MENU:
+        progress.b_presses = 0;
+        return;
+    default:
+        return;
+    }
 }
 
 size_t run_intro_screen_tests(Logger& logger, const std::string& folder){
@@ -229,37 +247,26 @@ void close_menu_and_finish(IntroRun& run){
     }
 }
 
+//  X, then the menu or B presses again: whatever X opened instead, B closes.
 void probe_for_menu(IntroRun& run){
     VideoStream& stream = run.env.console;
-    run.context.wait_for_all_requests();
-    VideoSnapshot before = stream.video().snapshot();
     press(run, BUTTON_X);
     run.context.wait_for_all_requests();
     MenuWatcher menu;
     if (wait_until(stream, run.context, 3s, {{menu}}) == 0){
         return;     //  The next read sees the menu and finishes.
     }
-    VideoSnapshot after = stream.video().snapshot();
-    const bool changed = !before || !after || ImageMatch::pixel_RMSD(
-        extract_box_reference(*before.frame, PROBE_AREA), extract_box_reference(*after.frame, PROBE_AREA)
-    ) > 10;
-    if (!advance_after_probe(changed)){
-        run.trace.action("X changed the screen but no known menu opened; not pressing A.");
-        if (++run.x_without_menu >= 10){
-            run.trace.fail("X keeps changing the screen without a known menu opening.");
-        }
-        return;
+    run.trace.action("X opened no menu; B again before the next X.");
+    if (++run.x_without_menu >= INTRO_X_WITHOUT_MENU){
+        run.trace.fail("No menu after " + std::to_string(run.x_without_menu) + " X presses: the player never got control.");
     }
-    run.x_without_menu = 0;
-    pbf_press_button(run.context, BUTTON_A, 60ms, 400ms);
 }
 
 //  Carries out what decide_intro_step() chose for `screen`.
 void act(IntroRun& run, const char* screen){
-    if (intro_screen_confirms_bdsp(screen)){
-        run.progress.game_confirmed = true;
-    }
-    switch (decide_intro_step(screen, run.progress)){
+    const IntroStep step = decide_intro_step(screen, run.progress);
+    record_intro_step(run.progress, screen, step);
+    switch (step){
     case IntroStep::SELECT_USER:
         //  The cursor starts on the user that launched the game.
         press(run, BUTTON_A);
@@ -272,7 +279,6 @@ void act(IntroRun& run, const char* screen){
             std::to_string(run.progress.unconfirmed_presses) + " presses on unknown screens.");
     case IntroStep::ENTER_PLAYER_NAME:
         enter_player_name(run.env.console, run.context, run.trace, run.player_name);
-        run.progress.player_named = true;
         return;
     case IntroStep::CANCEL_RIVAL_KEYBOARD:
         //  Opened from "I'll tell you..."; inputs during the slide-in are dropped.
@@ -285,16 +291,16 @@ void act(IntroRun& run, const char* screen){
     case IntroStep::PICK_PRESET:
         press(run, BUTTON_A);
         pbf_wait(run.context, 500ms);
-        run.progress.rival_named = true;
         return;
     case IntroStep::CLOSE_MENU_AND_FINISH:
         close_menu_and_finish(run);
         return;
     case IntroStep::ADVANCE:
-        if (!run.progress.game_confirmed){
-            run.progress.unconfirmed_presses++;
-        }
         pbf_press_button(run.context, BUTTON_A, 60ms, 400ms);
+        return;
+    case IntroStep::ADVANCE_WITH_B:
+    case IntroStep::CLEAR_WITH_B:
+        pbf_press_button(run.context, BUTTON_B, 60ms, 400ms);
         return;
     case IntroStep::PROBE_FOR_MENU:
         probe_for_menu(run);
