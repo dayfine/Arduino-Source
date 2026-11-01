@@ -5,6 +5,7 @@
  */
 
 #include "Common/Cpp/ListenerSet.h"
+#include "Common/Cpp/MoveOnlyFunction_Tests.h"
 #include "Common/Cpp/ScopeExit.h"
 #include "Common/Cpp/PrettyPrint.h"
 #include "Common/Cpp/TestRunners/TestImageDistortionManager.h"
@@ -27,6 +28,7 @@
 #include "NintendoSwitch/Inference/NintendoSwitch_UpdatePopupDetector.h"
 #include "NintendoSwitch/Programs/Typewriter/NintendoSwitch_Typewriter_Tests.h"
 
+#include "Pokemon/Navigation/Pokemon_Navigation_Tests.h"
 #include "PokemonBDSP/PokemonBDSP_Tests.h"
 #include "VideoGames/PokemonHome/PokemonHome_Tests.h"
 #include "VideoGames/PokemonSwSh/PokemonSwSh_Tests.h"
@@ -52,6 +54,7 @@ UnitTestDatabase make_UNIT_TESTS_ALL(){
     add_tests_QtEventThreadPool(ret, GlobalThreadPools::computation_normal());
     add_tests_BlackBorderDetector(ret);
     add_tests_ListenerSet(ret);
+    add_tests_MoveOnlyFunction(ret);
     add_tests_AudioInfo(ret);
     add_tests_ChannelMixerMatrix(ret);
     add_tests_FFTStreamer(ret);
@@ -59,6 +62,8 @@ UnitTestDatabase make_UNIT_TESTS_ALL(){
     add_tests_AudioFileLoader(ret);
     OCR::add_tests(ret);
     Kernels::add_tests(ret);
+    Pokemon::add_tests_LegPlanner(ret);
+    Pokemon::add_tests_StoryEvents(ret);
     NintendoSwitch::add_tests_CheckOnlineDetector(ret);
     NintendoSwitch::add_tests_FailedToConnectDetector(ret);
     NintendoSwitch::add_tests_UpdatePopupDetector(ret);
