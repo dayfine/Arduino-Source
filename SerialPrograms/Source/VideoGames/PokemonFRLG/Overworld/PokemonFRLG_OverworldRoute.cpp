@@ -210,10 +210,10 @@ std::optional<Transition> press(const std::vector<MapData>& maps, const Located&
 }
 
 //  Whether holding `direction` stops the player where they are: a wall, or
-//  water they'd need to Surf onto. A leg that ends there can be held for
-//  longer than it takes, and walked again after an interruption. A person in
-//  the way doesn't count, since they may have wandered off, and neither does
-//  an edge to a map that isn't loaded.
+//  water they'd need to Surf onto. A leg that ends there can be
+//  held for longer than it takes, and walked again after an interruption. A
+//  person in the way doesn't count, since they may have wandered off, and
+//  neither does an edge to a map that isn't loaded.
 bool stops_at(const std::vector<MapData>& maps, const Located& player, Direction direction){
     const std::optional<Transition> transition = press(maps, player, direction);
     if (transition){
@@ -230,11 +230,9 @@ bool stops_at(const std::vector<MapData>& maps, const Located& player, Direction
     //  Held into a ledge the way it faces, the player hops down it (console
     //  B, 2026-11-01, Viridian City: "south 2 (to wall)" from the Pokemon
     //  Center hopped the ledge two rows down). The maps don't keep which way
-    //  a ledge faces, but none faces north (pokefirered has no
-    //  MB_JUMP_NORTH on any map loaded here), so it stops a player moving
-    //  north.
+    //  a ledge faces, so none is held into.
     if (is_ledge(map, ahead)){
-        return direction == Direction::NORTH;
+        return false;
     }
     if (in_bounds(map, ahead)){
         return object_at(map, ahead) == nullptr;
@@ -330,7 +328,9 @@ RouteStep to_route_step(const std::vector<MapData>& maps, const Pokemon::Leg<Loc
     step.facing_after = leg.facing_after;
     step.end = MapPosition{maps[leg.end.map].name, leg.end.state.position};
     if (leg.kind != Pokemon::LegKind::FACE){
-        //  Through tall grass, on any map the leg crosses, or on the water.
+        //  Tall grass on any map the leg crosses, or the water. Counted on the
+        //  start map only, "north 22" from Pallet Town through Route 1's grass
+        //  wasn't watched for battles (console B, 2026-11-01).
         step.wild = leg.wild || leg.start.state.surfing || leg.kind == Pokemon::LegKind::ACTION;
     }
     return step;
@@ -783,7 +783,8 @@ const char* const TEST_LEDGE_YARD_JSON = R"({
     "connections": [], "points": [], "flag_sets": []
 })";
 
-//  A ledge isn't a wall to hold into: the player would hop it. Viridian City,
+//  A ledge isn't a wall to hold into: moving the way it faces the player
+//  would hop it, and the maps don't say which way that is. Viridian City,
 //  from the Pokemon Center's door south to the row above the ledge.
 UnitTestResult test_no_hold_into_ledge(){
     const std::vector<MapData> maps{parse_map(TEST_LEDGE_YARD_JSON, "LedgeYard")};
@@ -839,12 +840,29 @@ UnitTestResult test_wild_steps(){
     if (result.result != UnitTestResult::PASSED){
         return result;
     }
+    bool forest = false;
     for (const RouteStep& step : route){
-        if (step.wild && step.end.map == "ViridianForest"){
-            return true;
+        forest = forest || (step.wild && step.end.map == "ViridianForest");
+    }
+    if (!forest){
+        return "Expected a wild step in Viridian Forest:" + describe(route);
+    }
+    //  The leg from Pallet Town north onto Route 1 crosses Route 1's grass
+    //  after the map's edge.
+    route.clear();
+    result = check_route(
+        maps, point_on(maps, "PalletTown", "oaks_lab_front"),
+        {point_on(maps, "ViridianCity_Mart", "clerk_front"), std::nullopt}, route
+    );
+    if (result.result != UnitTestResult::PASSED){
+        return result;
+    }
+    for (const RouteStep& step : route){
+        if (step.end.map == "Route1" && step.direction == Direction::NORTH && step.tiles > 14 && !step.wild){
+            return "Expected the leg from Pallet Town onto Route 1 to be wild, got " + to_string(step) + ":" + describe(route);
         }
     }
-    return "Expected a wild step in Viridian Forest:" + describe(route);
+    return true;
 }
 
 const char* const TEST_ROOM_JSON = R"({
