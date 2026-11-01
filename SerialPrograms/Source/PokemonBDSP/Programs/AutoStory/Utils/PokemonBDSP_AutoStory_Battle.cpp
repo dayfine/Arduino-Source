@@ -771,7 +771,8 @@ void handle_expert_battle(const ProgramInfo& /*info*/,
     }
 
     // Helper stats — 0IV/0EV at level 100, neutral nature
-    const BDSPPokemonData& helper_base = bdsp_pokemon("torterra");
+    const std::string helper_base_slug = "torterra";
+    const BDSPPokemonData& helper_base = bdsp_pokemon(helper_base_slug);
     int base_atk = (int)calc_stats_nonhp(helper_base.attack, 100, 0, 0, NatureAdjustment::NEUTRAL);
     int base_spatk = (int)calc_stats_nonhp(helper_base.spatk, 100, 0, 0, NatureAdjustment::NEUTRAL);
 
