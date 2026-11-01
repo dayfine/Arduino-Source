@@ -33,21 +33,6 @@ constexpr Milliseconds POLL_INTERVAL = 500ms;
 constexpr Milliseconds UI_WAIT_SLICE = 100ms;
 
 
-void write_file(const Filesystem::Path& path, const std::string& text){
-    FileIO file;
-    if (file.open(path, FileMode::WRITE | FileMode::BINARY)){
-        file.write(text);
-    }
-}
-
-//  Writes `text` to `path` in one step, so a reader never sees a partial file.
-void write_file_atomically(const Filesystem::Path& path, const std::string& text){
-    const Filesystem::Path temp = Filesystem::unique_temp_path(path);
-    write_file(temp, text);
-    std::error_code ec;
-    Filesystem::rename(temp, path, ec);
-}
-
 //  Returns the error message of the start or stop, or empty on success.
 //  Unlike the Start/Stop button, a refused start (e.g. an option that fails
 //  check_validity()) goes to the journal, so the request stops there.
@@ -169,11 +154,15 @@ std::unique_ptr<LabChannel> LabChannel::start_if_enabled(
     if (!Filesystem::is_directory(Filesystem::Path(folder()))){
         return nullptr;
     }
+    //  Runs are recorded only in an app that has the channel, which writes
+    //  them to Lab/runs/.
+    RunRecordStore::instance().set_enabled(true);
     return std::unique_ptr<LabChannel>(new LabChannel(std::move(callbacks), std::move(console)));
 }
 LabChannel::LabChannel(LabChannelCallbacks callbacks, std::unique_ptr<LabConsoleCommands> console)
     : m_callbacks(std::move(callbacks))
     , m_console(std::move(console))
+    , m_runs(folder() + "runs/")
 {
     //  A pool task rather than a Thread: Thread::join() does not wait under
     //  the Qt thread-adoption workaround, and the worker must be gone before
@@ -252,6 +241,7 @@ void LabChannel::poll(){
         handle_request(*file);
     }
     keep_awake();
+    m_runs.sync(RunRecordStore::instance());
     write_state();
 }
 
@@ -275,7 +265,9 @@ void LabChannel::handle_request(const Filesystem::Path& file){
     for (const LabRequestLine& line : request.lines){
         const WallClock line_start = current_time();
         output.line = line.number;
+        const size_t journal_before = out.str().size();
         error = run_line(request, line, output);
+        record_probe(line, out.str().substr(journal_before), error);
         if (!error.empty()){
             out << journal_error(line.number, line.text, error);
             break;
@@ -285,10 +277,10 @@ void LabChannel::handle_request(const Filesystem::Path& file){
             std::chrono::duration_cast<Milliseconds>(line_start - start),
             std::chrono::duration_cast<Milliseconds>(current_time() - start)
         );
-        write_file(tmp_path, out.str());
+        write_lab_file(tmp_path, out.str());
     }
     out << "end\n";
-    write_file(tmp_path, out.str());
+    write_lab_file(tmp_path, out.str());
     Filesystem::remove(out_path);
     Filesystem::rename(tmp_path, out_path);
 
@@ -346,6 +338,21 @@ std::string LabChannel::run_line(const LabRequest& request, const LabRequestLine
         return "Unknown command: " + command + " (try \"help\")";
     }
     return run_console_command(words, output);
+}
+
+//  A screen read (shot, detect, ...) taken during a run, or right after one,
+//  goes into that run's folder too, so a probe of a failure sits beside the
+//  failure.
+void LabChannel::record_probe(const LabRequestLine& line, const std::string& output, const std::string& error){
+    if (m_console->kind(line.words[0]) != LabConsoleCommands::Kind::READS_STREAM){
+        return;
+    }
+    m_runs.sync(RunRecordStore::instance());
+    const std::optional<std::string> run = m_runs.run_for_probe(current_time());
+    if (!run){
+        return;
+    }
+    m_runs.attach_probe(*run, line.text, error.empty() ? output : output + "error: " + error + "\n");
 }
 
 std::string LabChannel::run_console_command(const std::vector<std::string>& words, LabCommandOutput& output){
@@ -433,9 +440,20 @@ std::string LabChannel::run_ui_command(const LabRequestLine& line, std::ostream&
         return error;
     }
     const bool start = command == "start";
-    return run_on_ui([&]{
-        return start_or_stop(m_callbacks.current_panel(), start);
+    std::string run_id;
+    const std::string error = run_on_ui([&]{
+        PanelSession* panel = m_callbacks.current_panel();
+        std::string error = start_or_stop(panel, start);
+        if (error.empty() && start){
+            run_id = dynamic_cast<ProgramSession*>(panel)->last_run_id();
+        }
+        return error;
     });
+    if (error.empty() && start){
+        //  The run's ID, for Lab/runs/<run_id>/ and "labctl.sh wait".
+        out << "run=" << run_id << "\n";
+    }
+    return error;
 }
 
 //  Runs `body` on the UI thread and returns what it returns: "" or an error.
@@ -483,8 +501,7 @@ void LabChannel::keep_awake(){
     bool running = false;
     {
         std::lock_guard<Mutex> lg(m_panel_lock);
-        std::string state, program;
-        read_program_state(state, program, running);
+        running = read_program_state().running;
     }
     if (!m_keep_awake.due(current_time(), running)){
         return;
@@ -497,30 +514,34 @@ void LabChannel::keep_awake(){
     }
 }
 
-void LabChannel::read_program_state(std::string& state, std::string& program, bool& running) const{
+LabChannel::SelectedProgram LabChannel::read_program_state() const{
     const ProgramSession* session = dynamic_cast<const ProgramSession*>(m_panel);
-    program = m_panel == nullptr ? "" : m_panel->descriptor().identifier();
+    SelectedProgram selected;
+    selected.program = m_panel == nullptr ? "" : m_panel->descriptor().identifier();
     if (session == nullptr){
-        state = "NO_PROGRAM";
-        running = false;
-        return;
+        selected.state = "NO_PROGRAM";
+        return selected;
     }
     const ProgramState current = session->current_state();
-    state = program_state_name(current);
-    running = current != ProgramState::STOPPED;
+    selected.state = program_state_name(current);
+    selected.run = session->last_run_id();
+    selected.running = current != ProgramState::STOPPED;
+    return selected;
 }
 
 void LabChannel::write_state(){
     {
         std::lock_guard<Mutex> lg(m_panel_lock);
-        bool running;
-        read_program_state(m_state.state, m_state.program, running);
+        const SelectedProgram selected = read_program_state();
+        m_state.state = selected.state;
+        m_state.program = selected.program;
+        m_state.run = selected.run;
     }
     m_state.owner = m_owner.token();
     std::string text = lab_state_text(m_state);
     const Filesystem::Path path(folder() + "state");
     if (text != m_written_state || !Filesystem::exists(path)){
-        write_file_atomically(path, text);
+        write_lab_file_atomically(path, text);
         m_written_state = std::move(text);
     }
 }

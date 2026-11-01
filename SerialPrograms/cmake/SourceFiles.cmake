@@ -399,6 +399,7 @@ file(GLOB LIBRARY_SOURCES
     ../Common/Cpp/Rectangle.tpp
     ../Common/Cpp/SIMDDebuggers.h
     ../Common/Cpp/Sockets/AbstractClientSocket.h
+    ../Common/Cpp/Sockets/AbstractServerSocket.h
     ../Common/Cpp/Sockets/ClientSocket.cpp
     ../Common/Cpp/Sockets/ClientSocket.h
     ../Common/Cpp/Sockets/ClientSocket_POSIX.cpp
@@ -407,6 +408,12 @@ file(GLOB LIBRARY_SOURCES
     ../Common/Cpp/Sockets/ClientSocket_Qt.h
     ../Common/Cpp/Sockets/ClientSocket_WinSocket.cpp
     ../Common/Cpp/Sockets/ClientSocket_WinSocket.h
+    ../Common/Cpp/Sockets/ServerSocket_WinSocket.cpp
+    ../Common/Cpp/Sockets/ServerSocket_Qt.cpp
+    ../Common/Cpp/Sockets/ServerSocket_WinSocket.h
+    ../Common/Cpp/Sockets/ServerSocket_Qt.h
+    ../Common/Cpp/Sockets/Sockets_Tests.cpp
+    ../Common/Cpp/Sockets/Sockets_Tests.h
     ../Common/Cpp/StreamConnections/MockDevice.cpp
     ../Common/Cpp/StreamConnections/MockDevice.h
     ../Common/Cpp/TestRunners/ParallelUnitTestRunner.cpp
@@ -558,6 +565,7 @@ file(GLOB LIBRARY_SOURCES
     Source/CommonFramework/AudioPipeline/UI/AudioDisplayWidget.h
     Source/CommonFramework/AudioPipeline/UI/AudioSelectorWidget.cpp
     Source/CommonFramework/AudioPipeline/UI/AudioSelectorWidget.h
+    Source/CommonFramework/BuildCommit.h
     Source/CommonFramework/Environment/HardwareValidation.cpp
     Source/CommonFramework/Environment/HardwareValidation.h
     Source/CommonFramework/Environment/HardwareValidation_arm64.tpp
@@ -665,6 +673,10 @@ file(GLOB LIBRARY_SOURCES
     Source/CommonFramework/PersistentSettings.h
     Source/CommonFramework/ProgramSession.cpp
     Source/CommonFramework/ProgramSession.h
+    Source/CommonFramework/RunRecord.cpp
+    Source/CommonFramework/RunRecord.h
+    Source/CommonFramework/RunRecord_Tests.cpp
+    Source/CommonFramework/RunRecord_Tests.h
     Source/CommonFramework/ProgramStats/StatsDatabase.cpp
     Source/CommonFramework/ProgramStats/StatsDatabase.h
     Source/CommonFramework/ProgramStats/StatsTracking.cpp
@@ -785,6 +797,8 @@ file(GLOB LIBRARY_SOURCES
     Source/CommonFramework/Windows/LabChannel_Tests.h
     Source/CommonFramework/Windows/LabRequest.cpp
     Source/CommonFramework/Windows/LabRequest.h
+    Source/CommonFramework/Windows/LabRunFiles.cpp
+    Source/CommonFramework/Windows/LabRunFiles.h
     Source/CommonFramework/Windows/MainWindow.cpp
     Source/CommonFramework/Windows/MainWindow.h
     Source/CommonFramework/Windows/WindowTracker.cpp

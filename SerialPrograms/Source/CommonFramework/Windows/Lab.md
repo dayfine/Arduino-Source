@@ -28,6 +28,7 @@ takes effect at the next launch.
 | `Lab/outbox/<name>.out` | app writes | The request's journal (below). It appears only once the request has finished; `<name>.tmp` shows the progress so far. |
 | `Lab/outbox/<name>_<label>.png`, `.mp4` | app writes | Files that `shot`, `shots` and `history` save. |
 | `Lab/state` | app writes | The channel's state, rewritten after every request and whenever the program state changes. |
+| `Lab/runs/<run_id>/` | app writes | One folder per run of the program: `result.json`, `events.jsonl`, `log.txt`, `frame-*.png`. See [Run records](#run-records). |
 
 Write a request somewhere else and then move it into `inbox`, so the app
 never reads a half-written file. Only `.txt` files are read.
@@ -56,6 +57,7 @@ START_SEGMENT = "0"` or the path of a saved screenshot.
 seq=r3
 state=RUNNING
 program=PokemonBDSP:AutoStory
+run=20261101-153012123456-003
 owner=lab-B
 error=
 ```
@@ -65,6 +67,9 @@ error=
   while the panel loads, `NO_PROGRAM` when the selected panel is not a
   program (the settings page).
 - `program` is the selected program's identifier (`<game>:<program>`).
+- `run` is the ID of the selected program's last run, running or finished,
+  whether a request or the window's Start button started it; empty before
+  the first run. Its folder is `Lab/runs/<run>/`.
 - `owner` is the owner token, empty when the channel is unclaimed.
 - `error` is the error of the last request, empty once a request succeeds.
 
@@ -76,7 +81,7 @@ error=
 |---|---|
 | `select GAME:PROGRAM` | Shows that program, as clicking it in the program list does. The identifier is the one in `state` and in the settings file's `99-Panels` section, e.g. `PokemonBDSP:AutoStory`, `NintendoSwitch:CommandFileRunner`. Refused while a program runs. |
 | `set KEY JSON` | Sets one option of the selected program by its key in the settings file, live: `set START_SEGMENT "0"`, `set NEW_GAME_INTRO true`, `set NOTIFICATIONS.Enabled false` (dots walk into groups). The value is JSON, so strings need quotes. Prints `set KEY = <value the program now holds>`, which differs from what was sent when the program clamped or refused it. Refused while the program runs. |
-| `start` | What clicking Start Program does. Refused unless the program is `STOPPED`. |
+| `start` | What clicking Start Program does. Refused unless the program is `STOPPED`. Prints `run=<run_id>`, the ID of the run it started. |
 | `stop` | What clicking Stop Program does. Refused unless the program is `RUNNING`. The request goes on; the program stops in the background. |
 | `state` | Prints the state file's lines into the journal. (In the Command File Runner program, `state [image]` prints the detectors that fire instead; from the channel use `detect` per detector.) |
 | `keepawake on\|off [seconds]` | While it is on and no program runs, presses B every `seconds` (default 15) so the console does not sleep. A running program pauses it. Off by default; off again when the app restarts. |
@@ -143,6 +148,92 @@ must start with the line `owner TOKEN`, or it is refused with
 The lock lives in memory: it dies with the app. The holder may claim again
 with the same token (e.g. after a script restart).
 
+## Run records
+
+Every run of the program gets a folder `Lab/runs/<run_id>/`, whether a
+request or the window started it. Runs are recorded only in an app that
+found the `Lab/` folder at startup. The run ID is opaque; IDs sort in the
+order the runs started, and a restarted app never reuses one. The newest 32
+folders are kept; older ones go when a run starts.
+
+| File | Content |
+|---|---|
+| `meta.json` | What ran: `run_id`, `program`, `version`, `commit` (the git commit the app was built from, `-dirty` with local changes) and `settings` (the program's settings as the settings file stores them). Written when the run starts. |
+| `result.json` | What the run did, without its events and log (below). Rewritten as the run goes; final once `status` is `terminal`. Poll it, or let `labctl.sh wait RUN_ID` do it. |
+| `events.jsonl` | One JSON object per line: the events the program reports (checkpoint, step, attempt, pose, ...), the errors it reported (`"kind":"error"`), and the console probes taken during the run or within two minutes after it ended (`"kind":"probe"`). Appended as they happen. |
+| `log.txt` | The run's own log: the program's and its console's lines, nothing from before or after. Appended as the run goes, up to 8 MiB; a last line says how many lines were left out past that. |
+| `frame-*.png` | `frame-failure.png` (or `frame-end.png` for a finished run) is the frame the exception carried, when it carried one. `frame-<n>[-<checkpoint>][-s<step>][-a<attempt>].png` is the frame of event `n`. |
+| `probe-*.png` | Copies of the `shot`s taken during or right after the run. |
+
+`result.json` of a failed run:
+
+```json
+{
+    "dropped_events": 0,
+    "duration_ms": 650333,
+    "end_time": "2026-11-01 15:41:02.456",
+    "error": "expect_failed: the Route 204 sign's box did not open",
+    "event_count": 42,
+    "frame": "frame-failure.png",
+    "last_event": {
+        "attempt": 2,
+        "checkpoint": "01.08",
+        "frame": "frame-041-01.08-s4_7-a2.png",
+        "kind": "attempt",
+        "pose": "route_204_south (12, 41) facing N",
+        "step": "4/7",
+        "text": "the sign's box did not open",
+        "time": "2026-11-01 15:41:02.400"
+    },
+    "dropped_log_lines": 0,
+    "log_lines": 2210,
+    "outcome": "failed",
+    "program": "PokemonBDSP:AutoStory",
+    "run_id": "20261101-153012123456-003",
+    "start_time": "2026-11-01 15:30:12.123",
+    "status": "terminal"
+}
+```
+
+- `status` is `running`, `stopping` (a stop was asked for) or `terminal`.
+- `outcome`, once terminal, is exactly one of `completed` (the program
+  returned, or declared itself finished), `cancelled` (it ended through the
+  stop path) or `failed` (a setup, download, connection or execution error).
+  It comes from the program thread's own exit, never from the state file or
+  the log: a stop asked for after a failure was seen does not turn the
+  failure into a cancellation, and a program that returns while a stop is
+  pending completed. `completed` means the program said so; it does not
+  verify the story moved.
+- `error` is the primary error of a failed run, the exception's message.
+  Errors the program reported on the way (a stats-save failure, a download
+  warning) are `error` events, not the outcome.
+- `frame` names the frame the exception carried. Absent when it carried none.
+- `last_event` is the newest event the program reported, with the same
+  fields as a line of `events.jsonl`. For a program that retries a checkpoint
+  and reports each attempt, it is the failing attempt.
+- `log_lines` counts the run's log lines so far; `dropped_log_lines` the
+  lines past the 8 MiB cap, which are only in `SerialPrograms.log`.
+- `end_time`, `duration_ms`, `outcome`, `error` and `frame` appear once the
+  run is terminal; `last_event` once there is an event.
+
+Lines of `events.jsonl`:
+
+```json
+{"checkpoint":"01.07","kind":"checkpoint","text":"ok","time":"2026-11-01 15:38:10.001"}
+{"attempt":2,"checkpoint":"01.08","frame":"frame-041-01.08-s4_7-a2.png","kind":"attempt","pose":"route_204_south (12, 41) facing N","step":"4/7","text":"the sign's box did not open","time":"2026-11-01 15:41:02.400"}
+{"frame":"probe-r16_after.png","kind":"probe","output":"shot .../Lab/outbox/r16_after.png\n","text":"shot after","time":"2026-11-01 15:42:30.120"}
+```
+
+`time` and `kind` are always there; a program fills `checkpoint`, `step`,
+`attempt`, `text`, `pose` and `frame` as it has them (a run holds the frames
+of its newest eight events, so a frame is written within a poll of its
+event). A `probe` line's `text` is the console command as sent and `output`
+what it printed; its `frame` is the copied shot, when the command took one.
+
+Programs report events through `ProgramEnvironment::run_recorder()`
+(`CommonFramework/RunRecord.h`). The run model, the one-result rule and the
+frame capture live in `ProgramSession`; this channel only writes the files.
+
 ## Running a program from the shell
 
 Nothing is clicked. The app is launched with its own profile, so its
@@ -173,9 +264,10 @@ set END_CHECKPOINT_TUTORIAL "15"
 start
 EOF
 
-# Wait for the run to end.
-until grep -q '^state=STOPPED' "$P/Lab/state"; do sleep 2; done
-cat "$P/Lab/state"
+# Wait for the run to end and read what it did.
+run=$(sed -n 's/^run=//p' "$P/Lab/state")
+until grep -q '"status": "terminal"' "$P/Lab/runs/$run/result.json"; do sleep 2; done
+cat "$P/Lab/runs/$run/result.json"
 ```
 
 `r2.out`, the journal of the second request:
@@ -186,6 +278,7 @@ set START_CHECKPOINT_TUTORIAL = "15"
 ok 3 set START_CHECKPOINT_TUTORIAL "15" @412-418ms
 set END_CHECKPOINT_TUTORIAL = "15"
 ok 4 set END_CHECKPOINT_TUTORIAL "15" @418-423ms
+run=20261101-153012123456-003
 ok 5 start @423-431ms
 end
 ```
@@ -196,6 +289,7 @@ The state file while it runs, and after:
 seq=r2                      seq=r2
 state=RUNNING               state=STOPPED
 program=PokemonBDSP:AutoStory
+run=20261101-153012123456-003
 owner=lab-B
 error=
 ```
@@ -267,7 +361,11 @@ two-line `state`) is gone. `start` and `stop` are lines in a request, and
 ## Tests
 
 `add_tests_LabChannel()` covers the request format, the journal lines, the
-state text, the owner lock and the keep-awake schedule (`LabChannel - ...`
-unit tests); `add_tests_CommandFileRunner()` covers the console commands'
-arguments. Run them with the app's `--command-line-test-mode`. Selecting,
-setting, starting and the presses need a live app and console.
+state text, the owner lock, the keep-awake schedule and the run files
+(`result.json`, `events.jsonl`, frames, probes, pruning) (`LabChannel - ...`
+unit tests); `add_tests_RunRecord()` covers the run model and the run
+lifecycle through a scripted fake program; `add_tests_CommandFileRunner()`
+covers the console commands' arguments. Run them with the app's
+`--command-line-test-mode`. `devtools/lab/labctl_wait_test.sh` checks
+`labctl.sh wait` against hand-written result files. Selecting, setting,
+starting and the presses need a live app and console.
