@@ -29,6 +29,9 @@ they would go upstream.
 - **CRLF files stay CRLF** (`SerialPrograms/cmake/SourceFiles.cmake`,
   `ComputerPrograms_UnitTestRunner.cpp`, most of CommonFramework). A diff the length of the
   file is a line-ending accident.
+- **`std::format` for multi-part messages** (AGENTS.md C++ style). Our code had none and
+  ~130 `std::to_string` chains; each collector commit converts its own sites with identical
+  output text (user, 2026-11-01). Butters' #1717 code is left as is.
 - **Go slowly**: each collector is shown to the user before the next one starts.
 
 ## Tree
