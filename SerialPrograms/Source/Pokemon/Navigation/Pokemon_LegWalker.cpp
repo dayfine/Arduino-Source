@@ -32,6 +32,21 @@ int tiles_before_interrupt(const LegSpec& leg, Milliseconds elapsed, Millisecond
 }
 
 
+namespace{
+
+//  Whether `leg` stops at the interrupt just cleared: an open leg asked to
+//  stop at any, or a leg to a wall interrupted again within three tiles of
+//  being held again (a message there lags the step by about two tiles).
+bool stops_here(const LegSpec& leg, const LegResult& result, const HoldOutcome& outcome){
+    if (!leg.to_wall){
+        return leg.stop_on_interrupt;
+    }
+    return leg.stop_if_blocked && result.interruptions > 1 && outcome.elapsed < leg.tile_time * 3;
+}
+
+}
+
+
 LegResult walk_leg_with(const LegSpec& leg, const LegCalls& calls, size_t max_interruptions){
     LegResult result;
     int remaining = leg.tiles;
@@ -47,6 +62,12 @@ LegResult walk_leg_with(const LegSpec& leg, const LegCalls& calls, size_t max_in
         }
         calls.clear(outcome->interrupt);
         const std::string seen = std::format("{} after {}ms", calls.name(outcome->interrupt), outcome->elapsed.count());
+        if (stops_here(leg, result, *outcome)){
+            calls.log(seen + ", stopping the leg.");
+            result.exact = false;
+            result.stopped = true;
+            return result;
+        }
         if (leg.to_wall){
             //  The wall stops the player on the leg's last tile however far
             //  they got, so the leg is simply held again.

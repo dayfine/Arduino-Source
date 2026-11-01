@@ -130,6 +130,33 @@ UnitTestResult test_open_leg_interrupted_at_end(){
     return true;
 }
 
+//  An open leg set to stop at an interrupt doesn't walk on from a guess.
+UnitTestResult test_open_leg_stops(){
+    ScriptedLeg script;
+    script.outcomes = {after_step(2)};
+    LegSpec leg{Direction::NORTH, 6, false, TILE};
+    leg.stop_on_interrupt = true;
+    const LegResult result = walk_leg_with(leg, script.calls(), 5);
+    if (script.holds.size() != 1 || !result.stopped || result.exact || script.cleared.size() != 1){
+        return "Expected one hold, the interrupt cleared, and the leg stopped.";
+    }
+    return true;
+}
+
+//  Console B, 2026-11-01, run 16: held south into a sign, the leg to a wall
+//  was interrupted by its message 600ms into every hold, six times.
+UnitTestResult test_wall_leg_blocked(){
+    ScriptedLeg script;
+    script.outcomes = {HoldOutcome{0, 2200ms}, HoldOutcome{0, 600ms}, HoldOutcome{0, 600ms}};
+    LegSpec leg{Direction::SOUTH, 23, true, TILE};
+    leg.stop_if_blocked = true;
+    const LegResult result = walk_leg_with(leg, script.calls(), 5);
+    if (script.holds.size() != 2 || !result.stopped){
+        return std::format("Expected the leg stopped after 2 holds, got {}.", script.holds.size());
+    }
+    return true;
+}
+
 UnitTestResult test_too_many_interruptions(){
     ScriptedLeg script;
     for (int c = 0; c < 4; c++){
@@ -169,6 +196,8 @@ void add_tests_LegWalker(UnitTestDatabase& database){
     database.add<Test_LegWalker>("an open leg walks the rest", test_open_leg_rest_walked);
     database.add<Test_LegWalker>("an open leg interrupted at its end", test_open_leg_interrupted_at_end);
     database.add<Test_LegWalker>("gives up after too many interruptions", test_too_many_interruptions);
+    database.add<Test_LegWalker>("an open leg stops at an interrupt", test_open_leg_stops);
+    database.add<Test_LegWalker>("a wall leg blocked by a sign stops", test_wall_leg_blocked);
 }
 
 
