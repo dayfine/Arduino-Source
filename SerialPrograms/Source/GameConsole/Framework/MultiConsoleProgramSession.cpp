@@ -72,6 +72,9 @@ void MultiConsoleProgramSession::restore_defaults(){
     logger().log("Restoring settings to defaults...");
     m_instance->restore_defaults();
 }
+std::string MultiConsoleProgramSession::settings_json() const{
+    return to_json().dump();
+}
 JsonValue MultiConsoleProgramSession::to_json() const{
     JsonObject obj = std::move(*m_instance->to_json().to_object());
     obj["ConsoleSetup"] = m_system_option->to_json();

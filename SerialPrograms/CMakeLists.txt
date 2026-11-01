@@ -193,6 +193,24 @@ include(cmake/CoreLib.cmake)
 # Create the GUI library
 add_library(SerialProgramsLib STATIC ${CORE_LIBRARY_SOURCES} ${LIBRARY_SOURCES})
 
+# PROGRAM_COMMIT (Source/CommonFramework/BuildCommit.h): the git commit the app is
+# built from. BuildCommit.cpp is written at configure time and checked on every
+# build; it changes, and recompiles, only when the commit does.
+set(PA_BUILD_COMMIT_CPP "${CMAKE_CURRENT_BINARY_DIR}/generated/BuildCommit.cpp")
+set(PA_BUILD_COMMIT_COMMAND
+    "${CMAKE_COMMAND}" "-DSOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}" "-DOUTPUT=${PA_BUILD_COMMIT_CPP}"
+    -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/BuildCommit.cmake"
+)
+execute_process(COMMAND ${PA_BUILD_COMMIT_COMMAND})
+add_custom_target(BuildCommit
+    COMMAND ${PA_BUILD_COMMIT_COMMAND}
+    BYPRODUCTS "${PA_BUILD_COMMIT_CPP}"
+    COMMENT "Checking the git commit for PROGRAM_COMMIT"
+    VERBATIM
+)
+target_sources(SerialProgramsLib PRIVATE "${PA_BUILD_COMMIT_CPP}")
+add_dependencies(SerialProgramsLib BuildCommit)
+
 
 # Create binary target
 if (APPLE)
@@ -597,7 +615,7 @@ else() # macOS and Linux
         target_link_libraries(SerialProgramsLib PUBLIC ${LEPTONICA_LINK_LIBRARIES})
     endif()
 
-    pkg_search_module(DPP dpp=10.1.5)
+    pkg_search_module(DPP dpp=10.1.6)
     if (DPP_FOUND) # enable dpp integration
         message(STATUS "Compiling with DPP integration enabled")
         target_compile_definitions(SerialProgramsLib PUBLIC PA_DPP)
@@ -642,8 +660,9 @@ else() # macOS and Linux
 
     if(APPLE)
         target_compile_options(SerialProgramsLib PRIVATE -Wall -Wextra -Wpedantic -Werror -Wshorten-64-to-32)
-        # on macOS, need this framework to query OS API to control display sleep and system sleep behavior
-        target_link_libraries(SerialProgramsLib PRIVATE "-framework IOKit -framework CoreFoundation")
+        # on macOS, need these frameworks to query OS APIs: IOKit to control display sleep and system
+        # sleep behavior, CoreAudio to read the formats audio devices natively run in
+        target_link_libraries(SerialProgramsLib PRIVATE "-framework IOKit -framework CoreFoundation -framework CoreAudio")
     else() # Linux
         # Assume GCC
         target_compile_options(SerialProgramsLib PRIVATE -Wall -Wextra -Wpedantic -Werror -fno-strict-aliasing)
@@ -859,6 +878,22 @@ if (WIN32)
         VERBATIM
     )
 endif() # end WIN32
+
+if (WIN32 OR DPP_FOUND)
+    # Deploy the CA bundle beside the executable for DPP certificate verification.
+    if (WIN32)
+        set(DPP_CERT_DIR "${WIN_DEPLOY_DIR}")
+    else()
+        set(DPP_CERT_DIR "$<TARGET_FILE_DIR:SerialPrograms>")
+    endif()
+    add_custom_command(
+        TARGET SerialPrograms POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${REPO_ROOT_DIR}/3rdPartyBinaries/dpp-cacert.pem"
+            "${DPP_CERT_DIR}/dpp-cacert.pem"
+        VERBATIM
+    )
+endif()
 
 set_target_properties(SerialPrograms PROPERTIES QT_QML_IMPORT_DEPENDENCIES "QtMultimedia")
 

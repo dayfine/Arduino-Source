@@ -9,6 +9,8 @@
 #include <ranges>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/PrettyPrint.h"
+#include "CommonFramework/BuildCommit.h"
+#include "CommonFramework/Globals.h"
 #include "RunRecord.h"
 
 namespace PokemonAutomation{
@@ -41,18 +43,22 @@ std::string run_outcome_name(RunOutcome outcome){
 
 
 RunRecordStore& RunRecordStore::instance(){
-    static RunRecordStore store;
+    static RunRecordStore store(DEFAULT_CAPACITY, false);
     return store;
 }
 
-RunRecordStore::RunRecordStore(size_t capacity)
+RunRecordStore::RunRecordStore(size_t capacity, bool enabled)
     //  The app's start time, to the microsecond: two instances started in
     //  the same second still get different IDs.
     : m_app_token(now_to_filestring())
     , m_capacity(std::max<size_t>(capacity, 1))
+    , m_enabled(enabled)
 {}
 
-std::string RunRecordStore::begin(std::string program){
+std::string RunRecordStore::begin(std::string program, std::string settings){
+    if (!enabled()){
+        return "";
+    }
     std::lock_guard<Mutex> lg(m_lock);
     while (m_records.size() >= m_capacity){
         m_records.pop_front();
@@ -60,6 +66,9 @@ std::string RunRecordStore::begin(std::string program){
     RunRecord& record = m_records.emplace_back();
     record.run_id = std::format("{}-{:03}", m_app_token, ++m_counter);
     record.program = std::move(program);
+    record.version = PROGRAM_VERSION;
+    record.commit = PROGRAM_COMMIT;
+    record.settings = std::move(settings);
     record.start_time = current_time();
     return record.run_id;
 }
@@ -105,19 +114,18 @@ void RunRecordStore::log_line(const std::string& run_id, const std::string& text
     if (record == nullptr){
         return;
     }
+    const size_t bytes = text.size() + 1;
+    if (record->log_bytes + bytes > MAX_LOG_BYTES){
+        record->dropped_log_lines++;
+        return;
+    }
+    record->log_lines++;
+    record->log_bytes += bytes;
     record->log_tail.emplace_back(text);
-    size_t bytes = 0;
-    for (const std::string& line : record->log_tail){
-        bytes += line.size() + 1;
-    }
-    size_t drop = 0;
-    while (bytes > MAX_LOG_BYTES && drop + 1 < record->log_tail.size()){
-        bytes -= record->log_tail[drop].size() + 1;
-        drop++;
-    }
-    if (drop > 0){
-        record->log_tail.erase(record->log_tail.begin(), record->log_tail.begin() + drop);
-        record->log_truncated = true;
+    record->log_tail_bytes += bytes;
+    while (record->log_tail_bytes > MAX_LOG_TAIL_BYTES && record->log_tail.size() > 1){
+        record->log_tail_bytes -= record->log_tail.front().size() + 1;
+        record->log_tail.pop_front();
     }
 }
 
@@ -182,10 +190,10 @@ SessionRunRecorder::SessionRunRecorder(RunRecordStore& store, Logger& base_logge
     , m_base_logger(base_logger)
 {}
 
-std::string SessionRunRecorder::begin(std::string program){
+std::string SessionRunRecorder::begin(std::string program, std::string settings){
     std::lock_guard<Mutex> lg(m_lock);
-    m_run_id = m_store.begin(std::move(program));
-    m_active = true;
+    m_run_id = m_store.begin(std::move(program), std::move(settings));
+    m_active = !m_run_id.empty();
     return m_run_id;
 }
 void SessionRunRecorder::stopping(){
