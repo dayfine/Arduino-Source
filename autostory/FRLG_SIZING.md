@@ -22,7 +22,13 @@ Outside the chain but related: [#86](https://github.com/dayfine/Arduino-Source/p
 |---|---|---|
 | Grid, route planner, LegWalker, MapData/JSON maps, route log, tile poses, map embedding | 1,813 | 1,010 |
 | ScreenMachine / StepTrace | 329 | 0 |
+| Shared route log (`Pokemon_RouteLog`: plan, step results, stops, re-anchors, arrivals; BDSP's lines lifted as they were) | incl. above | incl. above |
 | **[#114](https://github.com/dayfine/Arduino-Source/pull/114) navigation part** | **~2,140** | **~1,010** (+151 lines of test maps) |
+
+Logging is split across the two halves:
+- **Route log** (`Pokemon_RouteLog` in [#114](https://github.com/dayfine/Arduino-Source/pull/114)): one line format for a route walk in both games. FRLG calls it from 4 files on [#120](https://github.com/dayfine/Arduino-Source/pull/120)'s branch, BDSP from its walker in [#129](https://github.com/dayfine/Arduino-Source/pull/129).
+- **Checkpoint and event log** (`[Segment]`, `[Checkpoint]`, `[Event]` in [#114](https://github.com/dayfine/Arduino-Source/pull/114)'s StoryEvents): shared by both games already.
+- **Gap:** the route log is grid-bound: tiles, directions, tile counts. 3D games (SV, LA) have route legs too, but no tiles. Planned fix: a grid-free core (leg label, target, how it ended, how the end is known, and an optional position the game formats) with the grid lines as one form of it. The same records become [#116](https://github.com/dayfine/Arduino-Source/pull/116)'s run events, so the log and the run record carry one format.
 
 ## 3. Shared AutoStory infrastructure
 
@@ -70,6 +76,26 @@ Then the console check: FRLG 3/3, new game → Brock, in one run each.
 | RNG program integration | 2–3 | ~0.8k + 0.4k | AutoStory stops at a checkpoint and hands off to the RNG programs ([#61](https://github.com/dayfine/Arduino-Source/pull/61), Ten Lines seeds), then resumes the story |
 | Mail glitch / ACE and detours | 3–4 | ~1.5k + 0.6k | Builds on [#81](https://github.com/dayfine/Arduino-Source/pull/81)'s naming-screen typer (722 code, 345 tests): mail-screen typing, the payload with verification, story detours to get the mail |
 | Story after Brock ([#130](https://github.com/dayfine/Arduino-Source/pull/130)'s outline, 92 rows) | ~10–15 | ~8–12k + 3–4k | About one PR per segment, 500–1,000 lines each, plus new event types (HMs, puzzles, the Silph Scope) |
+
+
+## How the current PRs break up for upstream
+
+Each fork PR above is a collector; upstream gets smaller PRs of about 400 changed lines of code or
+less (tests and map data not counted), one concern each.
+
+| Fork PR | Upstream PRs | Split |
+|---|---|---|
+| [#43](https://github.com/dayfine/Arduino-Source/pull/43)–[#45](https://github.com/dayfine/Arduino-Source/pull/45) | 2–3 | [#43](https://github.com/dayfine/Arduino-Source/pull/43) with its own test; [#44](https://github.com/dayfine/Arduino-Source/pull/44); [#45](https://github.com/dayfine/Arduino-Source/pull/45) (or [#43](https://github.com/dayfine/Arduino-Source/pull/43)+[#44](https://github.com/dayfine/Arduino-Source/pull/44) as one) |
+| [#114](https://github.com/dayfine/Arduino-Source/pull/114) | 5 | grid and route planner; ScreenMachine/StepTrace; MapData, JSON maps and embedding; LegWalker and the route log; story events and segments |
+| [#122](https://github.com/dayfine/Arduino-Source/pull/122) | 2 | story steps and their builder; run options (dropdowns, stats, Checks, language) |
+| [#117](https://github.com/dayfine/Arduino-Source/pull/117) | 2 | FRLG map generator and JSON maps (data); FRLG route planning and the facing reader |
+| [#118](https://github.com/dayfine/Arduino-Source/pull/118) | 1 | the FRLG walker |
+| [#119](https://github.com/dayfine/Arduino-Source/pull/119) | 1 | finding the player again |
+| [#120](https://github.com/dayfine/Arduino-Source/pull/120) | 3 | program and story table with the simulation; Mart and bag checks; save-card check and language-free reads |
+| MVP remainder (section 5) | 3–4 | walker simulator; walker fixes; run-record recorder; run-event hooks |
+| **FRLG path total** | **~19–21** | upstream allows two open at a time, so this is a long serial queue |
+
+Tooling splits too: [#107](https://github.com/dayfine/Arduino-Source/pull/107) into about 3, [#116](https://github.com/dayfine/Arduino-Source/pull/116) into about 3, [#125](https://github.com/dayfine/Arduino-Source/pull/125) into 1–2, [#131](https://github.com/dayfine/Arduino-Source/pull/131) into about 7.
 
 ## Tooling, used by both games
 
