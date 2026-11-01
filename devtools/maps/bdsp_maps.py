@@ -24,6 +24,7 @@ The tables below add what the decompilation doesn't say or BDSP changed:
   adds someone the console found that Diamond doesn't have.
 - WARP_DOORS: warp tiles written 'D' so that no plan steps onto them; the
   other warp tiles are written '.', since the story arrives on them.
+- WARPS: doors that lead to a point of another map in OUT.
 - PATCHES: tiles measured on the console that differ from Diamond's, with
   the run that measured them. The map's tiles stay the decompilation's; the
   loader applies the patches.
@@ -62,6 +63,9 @@ SIGN_GFX = ('MAILBOX',)
 OBSTACLE_GFX = ('CUT_TREE', 'ROCK_SMASH', 'STRENGTH_BOULDER', 'BERRY_SOIL', 'VENT')
 FACING = {'LOOK_NORTH': 'north', 'LOOK_SOUTH': 'south', 'LOOK_WEST': 'west', 'LOOK_EAST': 'east'}
 
+
+#   Decoded from pokeplatinum at this revision, not yet checked on the console.
+INTERIOR = {'repo': decomp.Platinum.REPO, 'revision': 'c6689696d5fb', 'read': '2026-11-01', 'unverified': True}
 
 #   Each map: its header constant, the world rectangle (x0, z0, width,
 #   height), and the decompilation when not Diamond. Local (x, y) = world
@@ -137,6 +141,15 @@ MAPS = {
     #   Cell (1, 1) of the lake's matrix 101: the shore where the starter
     #   scene plays. Only this cell is reached on foot.
     'LakeVerity': {'header': 'LAKE_VERITY', 'rect': (32, 32, 32, 32)},
+    #   00.01 to 00.03's interiors, from pokeplatinum (c6689696d5fb), each
+    #   the only cell of its own matrix: decomp only, not yet checked on the
+    #   console. Mom's warning on the way out is a coord event on the
+    #   player's door tile (6, 10), which the schema has no place for.
+    'PlayerHouse1F': {'header': 'TWINLEAF_TOWN_PLAYER_HOUSE_1F', 'rect': (0, 0, 13, 12), **INTERIOR},
+    'PlayerHouse2F': {'header': 'TWINLEAF_TOWN_PLAYER_HOUSE_2F', 'rect': (0, 0, 12, 12), **INTERIOR},
+    'RivalHouse1F': {'header': 'TWINLEAF_TOWN_RIVAL_HOUSE_1F', 'rect': (0, 0, 13, 12), **INTERIOR},
+    'RivalHouse2F': {'header': 'TWINLEAF_TOWN_RIVAL_HOUSE_2F', 'rect': (0, 0, 12, 12), **INTERIOR},
+    'RowansLab': {'header': 'SANDGEM_TOWN_POKEMON_RESEARCH_LAB', 'rect': (0, 0, 22, 18), **INTERIOR},
 }
 
 
@@ -290,6 +303,8 @@ POINTS = {
         #   Barry's scene fires here, below his door.
         'barry_doorstep': (9, 12),
         'twinleaf_north_exit': (15, 0),
+        'player_house_door': (20, 21),
+        'rival_house_door': (9, 11),
     },
     'VerityLakefront': {
         'lakefront_arrival': (31, 23),
@@ -297,6 +312,14 @@ POINTS = {
         #   The lake's scene fires here; it is assumed to leave us here too.
         'lake_entrance': (17, 12),
     },
+    'PlayerHouse1F': {'stairs': (10, 3), 'mom': (7, 8), 'door': (6, 10)},
+    #   A new game starts on (4, 6); the TV is the signs at (3, 4) and (4, 4).
+    'PlayerHouse2F': {'stairs': (8, 4), 'start': (4, 6)},
+    'RivalHouse1F': {'door': (6, 10), 'stairs': (2, 3)},
+    #   Barry stands at (9, 5) facing his PC; he is talked to from the west.
+    'RivalHouse2F': {'stairs': (3, 4), 'barry_talk': (8, 5)},
+    #   Rowan is talked to from below, facing north.
+    'RowansLab': {'door': (7, 15), 'rowan_talk': (7, 6)},
 }
 
 
@@ -350,6 +373,14 @@ OBJECTS = {
         #   Hidden once his scene here is over; the story walks to him.
         0: {'show': '01.03', 'name': 'roark'},
     },
+    'RivalHouse2F': {
+        #   Barry in his room, until he leaves for the lake.
+        0: {'show': '00.01', 'name': 'barry'},
+    },
+    'RowansLab': {
+        #   Rowan at his desk when the story walks in.
+        0: {'show': '00.03', 'name': 'rowan'},
+    },
     'LakeVerity': {
         #   The starter scene's actors, where the walk in ends.
         0: {'show': 'the starter scene', 'name': 'rowan'},
@@ -367,6 +398,14 @@ WARP_DOORS = {
     'JubilifeCity': [(0, 22), (0, 23), (40, 40), (21, 42)],
     #   The way up to the entrance hall: stepping on it leaves the room.
     'OreburghMine': [(15, 1)],
+}
+
+
+#   Stepping onto (x, y) puts the player at a point of another map.
+WARPS = {
+    'PlayerHouse1F': [(6, 10, 'TwinleafTown', 'player_house_door')],
+    'RivalHouse1F': [(6, 10, 'TwinleafTown', 'rival_house_door')],
+    'RowansLab': [(7, 15, 'SandgemTown', 'lab_door')],
 }
 
 
@@ -477,10 +516,11 @@ def decode_map(name):
                 row[x] = 'D' if (x, y) in doors else '.'
     lands = sorted({world.land_id(x, z) for z in range(z0, z0 + height, decomp.CELL)
                     for x in range(x0, x0 + width, decomp.CELL)} - {None})
+    unverified = '; decomp only, not checked on the console' if spec.get('unverified') else ''
     source = {
         'decomp_file': f'{repo}: ' + ', '.join(game.land_path(land) for land in lands)
-                       + f'; {game.events_name(header.events_id)}',
-        'revision': 'default branch',
+                       + f'; {game.events_name(header.events_id)}{unverified}',
+        'revision': spec.get('revision', 'default branch'),
         'date': spec.get('read', READ),
     }
     return [''.join(row) for row in rows], objects, source
@@ -515,6 +555,7 @@ def map_text(name):
         lines.append('    ' + ('}' if key == 'points' else ']'))
 
     section('points', [f'{json.dumps(p)}: [{x}, {y}]' for p, (x, y) in points_of(name).items()])
+    section('warps', [json.dumps({'x': x, 'y': y, 'to_map': m, 'to_point': p}) for x, y, m, p in WARPS.get(name, [])])
     section('objects', [json.dumps(o) for o in objects])
     section('patches', [json.dumps({'x': x, 'y': y, 'glyph': g, 'measured_by': m})
                         for x, y, g, m in PATCHES.get(name, [])])

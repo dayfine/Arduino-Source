@@ -133,6 +133,12 @@ const std::vector<PointCase>& point_cases(){
         {.map = "FloaromaTown", .point = "old_woman", .on = PointOn::PERSON},
         {.map = "FloaromaTown", .point = "old_man", .on = PointOn::PERSON},
         {.map = "FloaromaTown", .point = "pokemon_center_door", .on = PointOn::DOOR},
+        {.map = "TwinleafTown", .point = "player_house_door", .on = PointOn::DOOR},
+        {.map = "TwinleafTown", .point = "rival_house_door", .on = PointOn::DOOR},
+        {.map = "PlayerHouse1F", .point = "mom", .on = PointOn::PERSON},
+        {.map = "PlayerHouse1F", .point = "door", .on = PointOn::DOOR},
+        {.map = "RivalHouse1F", .point = "door", .on = PointOn::DOOR},
+        {.map = "RowansLab", .point = "door", .on = PointOn::DOOR},
     };
     return cases;
 }
@@ -164,7 +170,7 @@ std::string check_ground(const MapData& map, const TilePos& pos){
 
 //  Every point is ground with nobody on it, unless point_cases() says
 //  otherwise; every numbered region runs from 1 with no gap; every case
-//  names a point the map has.
+//  names a point the map has; every warp leads to a point that exists.
 class Test_StoryMapPoints : public UnitTest{
 public:
     Test_StoryMapPoints()
@@ -194,6 +200,13 @@ public:
                     return std::format("{}: {} {}: {}.", name, point, Pokemon::to_string(pos), error);
                 }
                 checked++;
+            }
+            for (const Pokemon::MapWarp& warp : map.warps){
+                try{
+                    map_point(warp.to_map, warp.to_point);
+                }catch (InternalProgramError& e){
+                    return std::format("{}: the warp at {}: {}", name, Pokemon::to_string(TilePos{warp.x, warp.y}), e.message());
+                }
             }
         }
         logger.log(std::format("{} points checked.", checked));
