@@ -1,125 +1,139 @@
-"""Writes the BDSP AutoStory maps as JSON, from their C++ tile tables.
+"""Embeds the BDSP AutoStory maps (JSON) in a C++ test-data file.
 
 Usage:
-    python3 devtools/maps/bdsp_maps.py --out Packages/Resources/PokemonBDSP/Maps
+    python3 devtools/maps/bdsp_maps.py --json-dir Packages/Resources/PokemonBDSP/Maps \
+        --cpp SerialPrograms/Source/PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_Maps_TestData.cpp
+    ... --check    (regenerate in memory; exit 1 if the file's bytes differ)
 
-Reads each map's rows from SerialPrograms/Source/PokemonBDSP/Programs/
-AutoStory/Data/PokemonBDSP_AutoStory_<file>.cpp (the R"(...)" rows, in file
-order) and writes <out>/<name>.json in the shared map schema
-(SerialPrograms/Source/Pokemon/Navigation/Pokemon_MapData.h). The C++ tables
-were derived from pret/pokediamond (each file's header says how); `source`
-names the table and the commit it was read at, until this script reads the
-decompilation itself.
-
-Glyphs: the tables' '"' (tall grass) is the schema's '~'; a table's 'N' (a
-person standing still) is an open tile with an "npc" object on it, which
-the program's loader turns back into 'N'. The other glyphs ('#', '.', 'v',
-'S', 'D') are the same in both.
+The maps are JSON files in the shared map schema
+(SerialPrograms/Source/Pokemon/Navigation/Pokemon_MapData.h), in Packages'
+Resources/PokemonBDSP/Maps; the program loads them from there. They are the
+source: this script does not build them, it copies each one's text,
+byte for byte, into one R"json(...)json" literal per map (adjacent literals
+under 16000 bytes each, split at line breaks, for MSVC's literal limit), so
+the unit tests read the same maps without Packages. The literals go in parts
+<cpp stem>_1.cpp, _2.cpp, ... of at most 900 lines (the code-health file
+limit is 1000); --cpp itself holds test_map_json(), which the matching .h
+declares. The C++ tables the files were first written from (in
+pret/pokediamond's terms, see each map's .cpp) were converted once, at
+ddcbdb21c, with json.dump(indent=4).
 """
 import argparse
-import datetime
-import json
 import os
-import re
-import subprocess
+import sys
 
-DATA = 'SerialPrograms/Source/PokemonBDSP/Programs/AutoStory/Data'
-
-#   (file name, C++ source file stem): the map files the program loads, in
-#   the order of story_map_files() in PokemonBDSP_AutoStory_MapFiles.cpp.
+#   The maps embedded, in order. Each PR that adds a map adds it here.
 MAPS = [
-    ('TwinleafTown', 'TwinleafTown'),
-    ('VerityLakefront', 'VerityLakefront'),
-    ('LakeVerity', 'LakeVerity'),
-    ('Route201', 'Route201'),
-    ('SandgemTown', 'SandgemTown'),
-    ('Route202', 'Route202'),
-    ('JubilifeCity', 'JubilifeCity'),
-    ('Route203', 'Route203'),
-    ('OreburghGate', 'OreburghGate'),
-    ('OreburghCity', 'OreburghCity'),
-    ('OreburghMine', 'OreburghMine'),
-    ('OreburghGym', 'OreburghGym'),
-    ('Route204South', 'Route204South'),
-    ('RavagedPath', 'RavagedPath'),
-    ('Route204North', 'Route204'),
-    ('FloaromaTown', 'FloaromaTown'),
+    'TwinleafTown', 'VerityLakefront', 'LakeVerity', 'Route201', 'SandgemTown',
+    'Route202', 'JubilifeCity', 'Route203', 'OreburghGate', 'OreburghCity',
+    'OreburghMine', 'Route204South', 'RavagedPath', 'Route204North',
+    'FloaromaTown',
+    #   #112
+    'OreburghGym',
 ]
 
-ROW = re.compile(r'R"\((.*?)\)"')
-TABLE_GLYPHS = set('#."vNSD')
+MAX_LITERAL = 16000
 
 
-def read_rows(path):
-    with open(path, encoding='utf-8') as f:
-        rows = ROW.findall(f.read())
-    if not rows:
-        raise SystemExit(f'{path}: no rows')
-    width = len(rows[0])
-    for y, row in enumerate(rows):
-        if len(row) != width:
-            raise SystemExit(f'{path}: row {y} is {len(row)} wide, not {width}')
-        unknown = set(row) - TABLE_GLYPHS
-        if unknown:
-            raise SystemExit(f'{path}: row {y} has glyphs {sorted(unknown)}')
-    return rows
+def literals(text):
+    """The text as adjacent raw literals, each under MAX_LITERAL bytes."""
+    parts, current = [], ''
+    for line in text.splitlines(keepends=True):
+        if current and len(current) + len(line) > MAX_LITERAL:
+            parts.append(current)
+            current = ''
+        current += line
+    if current:
+        parts.append(current)
+    for part in parts:
+        if 'json)' in part or len(part.encode('utf-8')) > MAX_LITERAL:
+            raise SystemExit('a map does not fit the literals')
+    return parts
 
 
-def to_map(name, rows, source):
-    tiles = []
-    objects = []
-    for y, row in enumerate(rows):
-        line = ''
-        for x, glyph in enumerate(row):
-            if glyph == 'N':
-                objects.append({'name': f'npc_{x}_{y}', 'kind': 'npc', 'x': x, 'y': y})
-                glyph = '.'
-            elif glyph == '"':
-                glyph = '~'
-            line += glyph
-        tiles.append(line)
-    data = {'name': name, 'source': source, 'tiles': tiles}
-    if objects:
-        data['objects'] = objects
-    return data
+#   Lines per generated file: the code-health check stops a file at 1000.
+MAX_FILE_LINES = 900
 
 
-def write_map(path, data):
-    #   One row per line, so a diff of two versions shows the changed rows.
-    lines = ['{']
-    lines.append(f'    "name": {json.dumps(data["name"])},')
-    lines.append(f'    "source": {json.dumps(data["source"])},')
-    lines.append('    "tiles": [')
-    lines += [f'        {json.dumps(row)},' for row in data['tiles']]
-    lines[-1] = lines[-1].rstrip(',')
-    objects = data.get('objects', [])
-    lines.append('    ]' + (',' if objects else ''))
-    if objects:
-        lines.append('    "objects": [')
-        lines += [f'        {json.dumps(item)},' for item in objects]
-        lines[-1] = lines[-1].rstrip(',')
-        lines.append('    ]')
-    lines.append('}')
-    with open(path, 'w', encoding='utf-8', newline='\n') as f:
-        f.write('\n'.join(lines) + '\n')
+def header(args_text):
+    return [
+        '/*  BDSP AutoStory - Maps test data',
+        ' *',
+        ' *  From: https://github.com/PokemonAutomation/',
+        ' *',
+        ' *  generated by devtools/maps/bdsp_maps.py ' + args_text + ', do not edit',
+        ' *',
+        ' */',
+        '',
+    ]
+
+
+def namespaces(lines):
+    return ['namespace PokemonAutomation{', 'namespace NintendoSwitch{', 'namespace PokemonBDSP{', '', ''] + \
+        lines + ['', '', '', '}', '}', '}', '']
+
+
+def symbol(name):
+    return 'TEST_MAP_JSON_' + name
+
+
+def generate(json_dir, args_text, cpp):
+    """{path: text} for the index file `cpp` and its parts. Each map's text
+    is a namespace-scope literal in a part, filled to MAX_FILE_LINES; the
+    index's test_map_json() lists them in MAPS order."""
+    stem = cpp[:-len('.cpp')]
+    parts, current = [], []
+    for name in MAPS:
+        with open(os.path.join(json_dir, name + '.json'), encoding='utf-8', newline='') as f:
+            text = f.read()
+        block = ['extern const char* const ' + symbol(name) + ' ='] + \
+            ['R"json(' + part + ')json"' for part in literals(text)]
+        block[-1] += ';'
+        block += ['']
+        block_lines = sum(line.count('\n') + 1 for line in block)
+        size = sum(line.count('\n') + 1 for line in current)
+        if current and size + block_lines > MAX_FILE_LINES - 30:
+            parts.append(current)
+            current = []
+        current += block
+    parts.append(current)
+    files = {}
+    for number, body in enumerate(parts, 1):
+        files[stem + '_' + str(number) + '.cpp'] = '\n'.join(header(args_text) + namespaces(body))
+    index = []
+    for name in MAPS:
+        index.append('extern const char* const ' + symbol(name) + ';')
+    index += ['', '', 'const std::vector<std::pair<std::string, const char*>>& test_map_json(){',
+              '    static const std::vector<std::pair<std::string, const char*>> maps{']
+    index += ['        {"' + name + '", ' + symbol(name) + '},' for name in MAPS]
+    index += ['    };', '    return maps;', '}']
+    files[cpp] = '\n'.join(header(args_text) + ['#include "' + os.path.basename(stem) + '.h"', ''] + namespaces(index))
+    return files
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__.split('\n')[0])
-    parser.add_argument('--out', required=True, help='folder for the .json files')
-    parser.add_argument('--repo', default='.', help='Arduino-Source checkout')
+    parser.add_argument('--json-dir', required=True, help='folder of the map .json files')
+    parser.add_argument('--cpp', required=True, help='the test-data .cpp to write')
+    parser.add_argument('--check', action='store_true', help='exit 1 if --cpp differs from what would be written')
     args = parser.parse_args()
-    revision = subprocess.run(['git', '-C', args.repo, 'rev-parse', '--short=12', 'HEAD'],
-                              capture_output=True, text=True, check=True).stdout.strip()
-    date = datetime.date.today().isoformat()
-    os.makedirs(args.out, exist_ok=True)
-    for name, stem in MAPS:
-        cpp = f'{DATA}/PokemonBDSP_AutoStory_{stem}.cpp'
-        rows = read_rows(os.path.join(args.repo, cpp))
-        source = {'decomp_file': cpp, 'revision': revision, 'date': date}
-        write_map(os.path.join(args.out, f'{name}.json'), to_map(name, rows, source))
-        print(f'{name}: {len(rows[0])} x {len(rows)}')
-
+    args_text = '--json-dir ' + args.json_dir + ' --cpp ' + args.cpp
+    files = generate(args.json_dir, args_text, args.cpp)
+    if args.check:
+        for path, text in files.items():
+            if not os.path.exists(path):
+                print(path + ': missing; run without --check.')
+                sys.exit(1)
+            with open(path, encoding='utf-8', newline='') as f:
+                if f.read() != text:
+                    print(path + ': differs from the JSON files; run without --check.')
+                    sys.exit(1)
+        print(args.cpp + ': up to date (' + str(len(files)) + ' files).')
+        return
+    for path, text in files.items():
+        with open(path, 'w', encoding='utf-8', newline='\n') as f:
+            f.write(text)
+        print(path + ': ' + str(text.count('\n')) + ' lines.')
 
 if __name__ == '__main__':
     main()

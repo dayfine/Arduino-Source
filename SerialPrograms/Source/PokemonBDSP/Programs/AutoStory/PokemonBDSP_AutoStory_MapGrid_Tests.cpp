@@ -5,14 +5,19 @@
  */
 
 #include <algorithm>
+#include <format>
 #include <optional>
 #include <string>
 #include <utility>
 #include <vector>
+#include "Common/Cpp/Exceptions.h"
+#include "Common/Cpp/Json/JsonValue.h"
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "CommonFramework/ImageTypes/ImageViewRGB32.h"
 #include "Pokemon/Navigation/Pokemon_MapSet.h"
 #include "Pokemon/Navigation/Pokemon_TileGrid.h"
+#include "Data/PokemonBDSP_AutoStory_MapGrids.h"
+#include "Data/PokemonBDSP_AutoStory_Maps_TestData.h"
 #include "Data/PokemonBDSP_AutoStory_Route202.h"
 #include "Data/PokemonBDSP_AutoStory_SandgemTown.h"
 #include "Data/PokemonBDSP_AutoStory_StoryMaps.h"
@@ -156,10 +161,91 @@ public:
     }
 };
 
+//  The built-in maps (the JSON files' text, test_map_json()) all parse
+//  through the shared loader into tile grids, each named as its file.
+class Test_BuiltInMaps : public UnitTest{
+public:
+    Test_BuiltInMaps()
+        : UnitTest("PokemonBDSP::AutoStory - Map grids: the built-in JSON maps load")
+    {}
+    virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
+        if (test_map_json().empty()){
+            return std::string("No built-in maps.");
+        }
+        for (const auto& [name, json] : test_map_json()){
+            try{
+                const TileGrid& grid = built_in_grid(name);
+                logger.log(std::format("{}: {} x {}", name, grid.width(), grid.height()));
+            }catch (Exception& e){
+                return std::format("{}: {}: {}", name, e.name(), e.message());
+            }
+        }
+        return true;
+    }
+};
+
+//  The JSON glyphs as BDSP tiles: every BDSP tile and a person standing;
+//  water and a wanderer have none.
+struct GlyphCase{
+    std::string name;
+    std::string json;
+    //  The grid's rows, or empty when reading it must throw.
+    std::vector<std::string> rows;
+};
+
+class Test_MapGlyphs : public UnitTest{
+public:
+    Test_MapGlyphs()
+        : UnitTest("PokemonBDSP::AutoStory - Map grids: JSON glyphs as tile grids")
+    {}
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        const std::vector<GlyphCase> cases{
+            {
+                .name = "every BDSP tile, and a person standing",
+                .json = R"({"name": "T", "source": {"decomp_file": "f", "revision": "r", "date": "d"},
+                    "tiles": ["#.~", "vDS"],
+                    "objects": [{"name": "npc_1_0", "kind": "npc", "x": 1, "y": 0}]})",
+                .rows = {"#N\"", "vDS"},
+            },
+            {
+                .name = "water has no BDSP tile",
+                .json = R"({"name": "T", "source": {"decomp_file": "f", "revision": "r", "date": "d"}, "tiles": ["#w"]})",
+                .rows = {},
+            },
+            {
+                .name = "a wanderer has no BDSP tile",
+                .json = R"({"name": "T", "source": {"decomp_file": "f", "revision": "r", "date": "d"}, "tiles": ["#.."],
+                    "objects": [{"name": "lass", "kind": "npc", "x": 1, "y": 0, "wander": {"x0": 1, "y0": 0, "x1": 2, "y1": 0}}]})",
+                .rows = {},
+            },
+        };
+        for (const GlyphCase& item : cases){
+            std::optional<TileGrid> grid;
+            std::string error;
+            try{
+                grid = tile_grid_from_map(Pokemon::parse_map(parse_json(item.json), item.name));
+            }catch (ParseException& e){
+                error = e.message();
+            }
+            if (item.rows.empty() != !grid){
+                return item.name + (grid ? ": read a grid, expected a ParseException." : ": expected a grid, read: " + error);
+            }
+            if (grid){
+                if (const std::optional<std::string> difference = grid_difference(*grid, TileGrid(item.rows))){
+                    return item.name + ": differs from the expected rows at " + *difference + ".";
+                }
+            }
+        }
+        return true;
+    }
+};
+
 }
 
 
 void add_tests_AutoStory_MapGrids(UnitTestDatabase& database){
+    database.add<Test_BuiltInMaps>();
+    database.add<Test_MapGlyphs>();
     database.add<Test_Route202CatchGrass>();
     database.add<Test_SandgemCenterApproach>();
     database.add<Test_TrainingToSandgem>();
