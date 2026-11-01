@@ -17,6 +17,7 @@
 #include "Data/PokemonBDSP_AutoStory_Route203.h"
 #include "Data/PokemonBDSP_AutoStory_Route204.h"
 #include "Data/PokemonBDSP_AutoStory_Route204South.h"
+#include "Data/PokemonBDSP_AutoStory_RouteRecords.h"
 #include "Data/PokemonBDSP_AutoStory_Route201.h"
 #include "Data/PokemonBDSP_AutoStory_Route202.h"
 #include "Data/PokemonBDSP_AutoStory_SandgemTown.h"
@@ -895,6 +896,90 @@ public:
                 return "Route 204 North: " + trainer.name + " is not on an NPC tile.";
             }
         }
+        return true;
+    }
+};
+
+//  Every walk a checkpoint makes without a plan is written down as legs
+//  (Data/PokemonBDSP_AutoStory_RouteRecords). A record with a start tile on
+//  a grid whose rows are the game's is traced leg by leg: counted legs stay
+//  on standable tiles, a leg to a wall finds one, a leg to a person or a
+//  door ends in front of one. The others are checked for shape and logged
+//  as documented, not traced, with why.
+class Test_RouteRecords : public UnitTest{
+public:
+    Test_RouteRecords()
+        : UnitTest("PokemonBDSP::AutoStory - route records")
+    {}
+
+    virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
+        size_t traced = 0, documented = 0;
+        for (const RouteRecords::RouteRecord& record : RouteRecords::all()){
+            const std::string name = record.checkpoint + " " + record.title;
+            if (record.legs.empty() || record.source.empty() || record.title.empty()){
+                return name + ": a record needs legs, a title and a source.";
+            }
+            for (const RouteRecords::RouteLeg& leg : record.legs){
+                if (leg.end == RouteRecords::LegEnd::COUNT && leg.tiles == 0){
+                    return name + ": a counted leg of 0 tiles.";
+                }
+            }
+            const TileGrid* grid = record.grid ? record.grid() : nullptr;
+            if (!record.traceable || grid == nullptr || !record.start){
+                logger.log(name + ": documented, not traced (" +
+                    (grid == nullptr ? "no grid" : !record.traceable ? "grid rows not the game's" : "no start tile") + ").");
+                documented++;
+                continue;
+            }
+            TilePos pos = *record.start;
+            if (!grid->standable(pos)){
+                return name + ": the start tile is not standable.";
+            }
+            for (size_t i = 0; i < record.legs.size(); i++){
+                const RouteRecords::RouteLeg& leg = record.legs[i];
+                const std::string leg_name = name + " leg " + std::to_string(i + 1);
+                switch (leg.end){
+                case RouteRecords::LegEnd::COUNT:
+                    for (size_t k = 0; k < leg.tiles; k++){
+                        pos = pos.next(leg.direction);
+                        if (!grid->standable(pos)){
+                            return leg_name + ": tile " + std::to_string(k + 1) + " is not standable.";
+                        }
+                    }
+                    break;
+                case RouteRecords::LegEnd::WALL:{
+                    const Pokemon::WallHit hit = Pokemon::walk_to_wall(*grid, pos, leg.direction);
+                    if (hit.tiles == 0){
+                        return leg_name + ": already at the wall.";
+                    }
+                    if (leg.tiles != 0 && hit.tiles != leg.tiles){
+                        return leg_name + ": the wall is " + std::to_string(hit.tiles) + " tiles away, the record says " + std::to_string(leg.tiles) + ".";
+                    }
+                    pos = hit.stop;
+                    break;
+                }
+                case RouteRecords::LegEnd::NPC:
+                case RouteRecords::LegEnd::DOOR:{
+                    const Pokemon::WallHit hit = Pokemon::walk_to_wall(*grid, pos, leg.direction);
+                    pos = hit.stop;
+                    const Pokemon::TileType next = grid->at(pos.next(leg.direction));
+                    const Pokemon::TileType wanted = leg.end == RouteRecords::LegEnd::NPC ? Pokemon::TileType::NPC : Pokemon::TileType::DOOR;
+                    if (next != wanted){
+                        return leg_name + ": does not end in front of " + (wanted == Pokemon::TileType::NPC ? "a person." : "a door.");
+                    }
+                    break;
+                }
+                case RouteRecords::LegEnd::BANNER:
+                case RouteRecords::LegEnd::TRANSITION:
+                case RouteRecords::LegEnd::SCENE:
+                    //  Leaves the map or the game takes over: nothing to trace.
+                    break;
+                }
+            }
+            logger.log(name + ": traced " + std::to_string(record.legs.size()) + " legs.");
+            traced++;
+        }
+        logger.log("Route records: " + std::to_string(traced) + " traced, " + std::to_string(documented) + " documented only.");
         return true;
     }
 };
@@ -1922,6 +2007,7 @@ void add_tests_AutoStory(UnitTestDatabase& database){
     database.add<Test_TileGridPlans>();
     database.add<Test_PokeMartShortWalks>();
     database.add<Test_Route204NorthLine>();
+    database.add<Test_RouteRecords>();
     database.add<Test_LocationBanner>();
     database.add<Test_LitDoorwayScreenshots>();
     database.add<Test_SaveScreenLocation>();
