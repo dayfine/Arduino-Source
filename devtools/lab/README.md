@@ -177,7 +177,7 @@ The agent opens the frame, draws the pose on the grid, probes with CFR (the
 covers many checkpoints reads `events.jsonl` for its checkpoint list.
 
 The checkpoint, step, attempt and pose lines come from the program's own
-events (`ProgramEnvironment::run_recorder()`); a program that reports none
+events (`record_run_event(env, event)`); a program that reports none
 still gets its outcome, error, frame and log.
 
 ## Probing the console between runs

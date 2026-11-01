@@ -26,6 +26,13 @@ using namespace std::chrono_literals;
 
 namespace{
 
+//  The run the app opened last, "" before the first. A lab app runs one
+//  program at a time, so it is the selected program's.
+std::string newest_run_id(){
+    const std::vector<std::string> ids = app_run_records().run_ids();
+    return ids.empty() ? "" : ids.back();
+}
+
 //  How often the inbox and the program state are checked.
 constexpr Milliseconds POLL_INTERVAL = 500ms;
 
@@ -156,7 +163,7 @@ std::unique_ptr<LabChannel> LabChannel::start_if_enabled(
     }
     //  Runs are recorded only in an app that has the channel, which writes
     //  them to Lab/runs/.
-    RunRecordStore::instance().set_enabled(true);
+    enable_app_run_records();
     return std::unique_ptr<LabChannel>(new LabChannel(std::move(callbacks), std::move(console)));
 }
 LabChannel::LabChannel(LabChannelCallbacks callbacks, std::unique_ptr<LabConsoleCommands> console)
@@ -241,7 +248,7 @@ void LabChannel::poll(){
         handle_request(*file);
     }
     keep_awake();
-    m_runs.sync(RunRecordStore::instance());
+    m_runs.sync(app_run_records());
     write_state();
 }
 
@@ -347,7 +354,7 @@ void LabChannel::record_probe(const LabRequestLine& line, const std::string& out
     if (m_console->kind(line.words[0]) != LabConsoleCommands::Kind::READS_STREAM){
         return;
     }
-    m_runs.sync(RunRecordStore::instance());
+    m_runs.sync(app_run_records());
     const std::optional<std::string> run = m_runs.run_for_probe(current_time());
     if (!run){
         return;
@@ -445,7 +452,7 @@ std::string LabChannel::run_ui_command(const LabRequestLine& line, std::ostream&
         PanelSession* panel = m_callbacks.current_panel();
         std::string error = start_or_stop(panel, start);
         if (error.empty() && start){
-            run_id = dynamic_cast<ProgramSession*>(panel)->last_run_id();
+            run_id = newest_run_id();
         }
         return error;
     });
@@ -524,7 +531,7 @@ LabChannel::SelectedProgram LabChannel::read_program_state() const{
     }
     const ProgramState current = session->current_state();
     selected.state = program_state_name(current);
-    selected.run = session->last_run_id();
+    selected.run = newest_run_id();
     selected.running = current != ProgramState::STOPPED;
     return selected;
 }

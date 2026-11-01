@@ -230,7 +230,7 @@ of its newest eight events, so a frame is written within a poll of its
 event). A `probe` line's `text` is the console command as sent and `output`
 what it printed; its `frame` is the copied shot, when the command took one.
 
-Programs report events through `ProgramEnvironment::run_recorder()`
+Programs report events through `record_run_event(env, event)`
 (`CommonFramework/RunRecord.h`). The run model, the one-result rule and the
 frame capture live in `ProgramSession`; this channel only writes the files.
 

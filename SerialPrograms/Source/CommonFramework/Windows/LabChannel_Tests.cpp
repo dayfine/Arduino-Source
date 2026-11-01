@@ -7,6 +7,7 @@
  *
  */
 
+#include <algorithm>
 #include <functional>
 #include <format>
 #include <string>
@@ -360,106 +361,124 @@ UnitTestResult test_meta_json(){
     return true;
 }
 
-UnitTestResult test_run_writer(){
-    const Filesystem::Path root = Filesystem::unique_temp_path(
-        Filesystem::application_scratch_path() / "LabRunWriterTest"
-    );
-    const std::string runs = root.string() + "/runs/";
-    Filesystem::create_directories(root);
-    std::string error;
+//  A writer over a temporary runs/ folder, removed at the end.
+struct WriterFixture{
+    explicit WriterFixture(size_t keep = LabRunWriter::DEFAULT_KEEP)
+        : root(Filesystem::unique_temp_path(Filesystem::application_scratch_path() / "LabRunWriterTest"))
+        , writer(root.string() + "/runs/", keep)
     {
-        RunRecordStore store;
-        LabRunWriter writer(runs, 2);
-        const WallClock t0 = current_time();
-
-        if (writer.run_for_probe(t0)){
-            error = "No run, no probe target.";
-        }
-        const std::string a = store.begin("Test:A", R"({"K": 1})");
-        store.event(a, {.kind = "checkpoint", .checkpoint = "00.01", .text = "ok", .frame = test_frame()});
-        store.log_line(a, "line 0");
-        writer.sync(store);
-        const std::string folder = writer.run_folder(a);
-        std::string text;
-        if (error.empty() && (!file_to_string(folder + "result.json", text) || !has_json_line(text, 4, "status", "\"running\""))){
-            error = "After the first sync the run has a folder with a running result.json: " + text;
-        }
-        if (error.empty() && (!file_to_string(folder + "meta.json", text) || !has_json_line(text, 4, "program", "\"Test:A\"") || !has_json_line(text, 8, "K", "1"))){
-            error = "The run's meta.json is written when it starts: " + text;
-        }
-        if (error.empty() && (!file_to_string(folder + "log.txt", text) || text != "line 0\n")){
-            error = "log.txt grows while the run is going: " + text;
-        }
-        if (error.empty() && !Filesystem::is_regular_file(Filesystem::Path(folder + "frame-000-00.01.png"))){
-            error = "The event's frame is saved under its event name.";
-        }
-        if (error.empty() && writer.run_for_probe(t0) != a){
-            error = "A probe during the run belongs to it.";
-        }
-
-        //  A probe: its text goes into events.jsonl and its shot is copied.
-        const std::string shot = root.string() + "/probe_after_a.png";
-        test_frame()->save(shot);
-        writer.attach_probe(a, "shot after_a", "shot " + shot + "\n");
-        store.event(a, {.kind = "step", .step = "2/3", .text = "walk"});
-        store.log_line(a, "line 1");
-        store.log_line(a, "line 2");
-        store.finish(a, {.outcome = RunOutcome::FAILED, .error = "the box did not open", .frame = test_frame()});
-        writer.sync(store);
-        if (error.empty() && (!file_to_string(folder + "result.json", text) || !has_json_line(text, 4, "outcome", "\"failed\"") || !has_json_line(text, 4, "frame", "\"frame-failure.png\""))){
-            error = "After the run ends result.json is terminal with the outcome and the frame: " + text;
-        }
-        if (error.empty() && !Filesystem::is_regular_file(Filesystem::Path(folder + "frame-failure.png"))){
-            error = "The failure frame is saved.";
-        }
-        if (error.empty() && (!file_to_string(folder + "log.txt", text) || text != "line 0\nline 1\nline 2\n")){
-            error = "log.txt has each of the run's lines once: " + text;
-        }
-        if (error.empty() && file_to_string(folder + "events.jsonl", text)){
-            size_t lines = 0;
-            for (char ch : text){
-                lines += ch == '\n';
-            }
-            if (lines != 3 || text.find("\"kind\":\"probe\"") == std::string::npos || text.find("\"frame\":\"probe-probe_after_a.png\"") == std::string::npos){
-                error = "events.jsonl has the two events and the probe between them, naming the copied shot:\n" + text;
-            }
-        }else if (error.empty()){
-            error = "events.jsonl should exist.";
-        }
-        if (error.empty() && !Filesystem::is_regular_file(Filesystem::Path(folder + "probe-probe_after_a.png"))){
-            error = "The probe's shot is copied into the run's folder.";
-        }
-        if (error.empty() && writer.run_for_probe(current_time()) != a){
-            error = "A probe right after the run ended still belongs to it.";
-        }
-        if (error.empty() && writer.run_for_probe(current_time() + LabRunWriter::PROBE_WINDOW + std::chrono::seconds(1))){
-            error = "A probe long after the run ended belongs to no run.";
-        }
-
-        //  The newest `keep` folders stay.
-        const std::string b = store.begin("Test:B");
-        //  More lines than the store's tail holds between two polls: the gap is marked.
-        const std::string line(1000, 'x');
-        for (size_t c = 0; c < 300; c++){
-            store.log_line(b, line);
-        }
-        store.log_line(b, "last");
-        writer.sync(store);
-        if (error.empty() && (!file_to_string(writer.run_folder(b) + "log.txt", text) || text.rfind("[", 0) != 0 || text.find("lines not copied") == std::string::npos || !text.ends_with("\nlast\n"))){
-            error = "Lines the writer missed are marked at the start of log.txt.";
-        }
-        const std::string c = store.begin("Test:C");
-        writer.sync(store);
-        if (error.empty() && (Filesystem::is_directory(Filesystem::Path(folder)) || !Filesystem::is_directory(Filesystem::Path(writer.run_folder(b))) || !Filesystem::is_directory(Filesystem::Path(writer.run_folder(c))))){
-            error = "With keep=2, the third run removes the first run's folder and keeps the other two.";
-        }
-        if (error.empty() && writer.run_for_probe(current_time()) != c){
-            error = "A probe belongs to the newest run.";
-        }
+        Filesystem::create_directories(root);
     }
-    Filesystem::remove_all(root);
-    if (!error.empty()){
-        return error;
+    ~WriterFixture(){
+        Filesystem::remove_all(root);
+    }
+    //  The text of a file in the run's folder, "" when there is none.
+    std::string read(const std::string& run_id, const std::string& file) const{
+        std::string text;
+        return file_to_string(writer.run_folder(run_id) + file, text) ? text : "";
+    }
+    bool exists(const std::string& run_id, const std::string& file) const{
+        return Filesystem::is_regular_file(Filesystem::Path(writer.run_folder(run_id) + file));
+    }
+
+    const Filesystem::Path root;
+    RunRecordStore store;
+    LabRunWriter writer;
+};
+
+UnitTestResult test_writer_running_run(){
+    WriterFixture f;
+    if (f.writer.run_for_probe(current_time())){
+        return "No run, no probe target.";
+    }
+    const std::string a = f.store.begin("Test:A", R"({"K": 1})");
+    f.store.event(a, {.kind = "checkpoint", .checkpoint = "00.01", .text = "ok", .frame = test_frame()});
+    f.store.log_line(a, "line 0");
+    f.writer.sync(f.store);
+    if (!has_json_line(f.read(a, "result.json"), 4, "status", "\"running\"")){
+        return "After the first sync the run has a folder with a running result.json: " + f.read(a, "result.json");
+    }
+    const std::string meta = f.read(a, "meta.json");
+    if (!has_json_line(meta, 4, "program", "\"Test:A\"") || !has_json_line(meta, 8, "K", "1")){
+        return "The run's meta.json is written when it starts: " + meta;
+    }
+    if (f.read(a, "log.txt") != "line 0\n"){
+        return "log.txt grows while the run is going: " + f.read(a, "log.txt");
+    }
+    if (!f.exists(a, "frame-000-00.01.png")){
+        return "The event's frame is saved under its event name.";
+    }
+    if (f.writer.run_for_probe(current_time()) != a){
+        return "A probe during the run belongs to it.";
+    }
+    return true;
+}
+
+UnitTestResult test_writer_ended_run(){
+    WriterFixture f;
+    const std::string a = f.store.begin("Test:A");
+    f.store.log_line(a, "line 0");
+    f.writer.sync(f.store);
+
+    //  A probe: its text goes into events.jsonl and its shot is copied.
+    const std::string shot = f.root.string() + "/probe_after_a.png";
+    test_frame()->save(shot);
+    f.writer.attach_probe(a, "shot after_a", "shot " + shot + "\n");
+    f.store.event(a, {.kind = "step", .step = "2/3", .text = "walk"});
+    f.store.log_line(a, "line 1");
+    f.store.finish(a, {.outcome = RunOutcome::FAILED, .error = "the box did not open", .frame = test_frame()});
+    f.writer.sync(f.store);
+
+    const std::string result = f.read(a, "result.json");
+    if (!has_json_line(result, 4, "outcome", "\"failed\"") || !has_json_line(result, 4, "frame", "\"frame-failure.png\"") || !f.exists(a, "frame-failure.png")){
+        return "After the run ends result.json is terminal with the outcome and the saved frame: " + result;
+    }
+    if (f.read(a, "log.txt") != "line 0\nline 1\n"){
+        return "log.txt has each of the run's lines once: " + f.read(a, "log.txt");
+    }
+    const std::string events = f.read(a, "events.jsonl");
+    if (std::ranges::count(events, '\n') != 2 || events.find("\"frame\":\"probe-probe_after_a.png\"") == std::string::npos || !f.exists(a, "probe-probe_after_a.png")){
+        return "events.jsonl has the probe, naming its copied shot, then the event:\n" + events;
+    }
+    if (f.writer.run_for_probe(current_time()) != a){
+        return "A probe right after the run ended still belongs to it.";
+    }
+    if (f.writer.run_for_probe(current_time() + LabRunWriter::PROBE_WINDOW + std::chrono::seconds(1))){
+        return "A probe long after the run ended belongs to no run.";
+    }
+    return true;
+}
+
+UnitTestResult test_writer_log_gap(){
+    WriterFixture f;
+    const std::string a = f.store.begin("Test:A");
+    //  More lines than the store's tail holds between two polls.
+    const std::string line(1000, 'x');
+    for (size_t c = 0; c < 300; c++){
+        f.store.log_line(a, line);
+    }
+    f.store.log_line(a, "last");
+    f.writer.sync(f.store);
+    const std::string log = f.read(a, "log.txt");
+    if (!log.starts_with("[") || log.find("lines not copied") == std::string::npos || !log.ends_with("\nlast\n")){
+        return "Lines the writer missed are marked at the start of log.txt.";
+    }
+    return true;
+}
+
+UnitTestResult test_writer_pruning(){
+    WriterFixture f(2);
+    const std::string a = f.store.begin("Test:A");
+    f.writer.sync(f.store);
+    const std::string b = f.store.begin("Test:B");
+    f.writer.sync(f.store);
+    const std::string c = f.store.begin("Test:C");
+    f.writer.sync(f.store);
+    if (f.exists(a, "result.json") || !f.exists(b, "result.json") || !f.exists(c, "result.json")){
+        return "With keep=2, the third run removes the first run's folder and keeps the other two.";
+    }
+    if (f.writer.run_for_probe(current_time()) != c){
+        return "A probe belongs to the newest run.";
     }
     return true;
 }
@@ -495,7 +514,10 @@ void add_tests_LabChannel(UnitTestDatabase& database){
     database.add<Test_LabChannel>("run files: event line and frame name", test_event_json);
     database.add<Test_LabChannel>("run files: result.json", test_result_json);
     database.add<Test_LabChannel>("run files: meta.json", test_meta_json);
-    database.add<Test_LabChannel>("run files: writer, probes and pruning", test_run_writer);
+    database.add<Test_LabChannel>("run files: a running run", test_writer_running_run);
+    database.add<Test_LabChannel>("run files: an ended run and its probe", test_writer_ended_run);
+    database.add<Test_LabChannel>("run files: lines the writer missed", test_writer_log_gap);
+    database.add<Test_LabChannel>("run files: pruning", test_writer_pruning);
 }
 
 
