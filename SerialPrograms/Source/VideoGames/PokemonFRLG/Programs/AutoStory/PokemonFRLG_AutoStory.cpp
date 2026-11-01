@@ -56,6 +56,17 @@ AutoStory::AutoStory()
         LockMode::LOCK_WHILE_RUNNING,
         1, 5, 2, 2
     )
+    , CHECKS(
+        "<b>Checks:</b><br>Thorough reads the screen before acting and confirms after: the item on a Mart row "
+        "before buying it, the bag's Items pocket after shopping (its counts are the ones kept), and an item's name "
+        "in the bag before using it. Fast trusts the counts it keeps and the timings.",
+        {
+            {StoryChecks::THOROUGH, "thorough", "Thorough"},
+            {StoryChecks::FAST, "fast", "Fast"},
+        },
+        LockMode::LOCK_WHILE_RUNNING,
+        StoryChecks::THOROUGH
+    )
     , NOTIFICATIONS({
         &NOTIFICATION_PROGRAM_FINISH,
         &NOTIFICATION_ERROR_FATAL,
@@ -65,6 +76,7 @@ AutoStory::AutoStory()
     PA_ADD_OPTION(END_CHECKPOINT);
     PA_ADD_OPTION(NEW_GAME_FROM_TITLE);
     PA_ADD_OPTION(ATTEMPTS_PER_CHECKPOINT);
+    PA_ADD_OPTION(CHECKS);
     PA_ADD_OPTION(NOTIFICATIONS);
 }
 
@@ -80,7 +92,7 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
         throw UserSetupError(env.console, "Checkpoint 00.01 starts a new game: start on the title screen with no save.");
     }
 
-    StoryEnv story{env.console, context, checkpoints[first].supplies, checkpoints[first].supplies, false};
+    StoryEnv story{env.console, context, checkpoints[first].supplies, checkpoints[first].supplies, false, CHECKS};
     if (!(first == 0 && NEW_GAME_FROM_TITLE)){
         env.console.log("Loading the save for " + checkpoints[first].id + ".");
         soft_reset(env.console, context);

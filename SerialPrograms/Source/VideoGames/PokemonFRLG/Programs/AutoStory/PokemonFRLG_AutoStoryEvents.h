@@ -126,6 +126,7 @@ struct StoryEnv{
     Supplies saved_supplies;
     //  Whether the game has a save to reload.
     bool has_save = false;
+    StoryChecks checks = StoryChecks::THOROUGH;
 };
 
 //  The checkpoint `data` as events, saving at its end.

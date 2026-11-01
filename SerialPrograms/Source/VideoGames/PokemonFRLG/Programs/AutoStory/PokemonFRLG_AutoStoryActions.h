@@ -27,6 +27,16 @@ namespace NintendoSwitch{
 namespace PokemonFRLG{
 
 
+//  How much the story checks the screen before and after it acts.
+//  THOROUGH: reads a Mart row's item before buying it, the bag's Items
+//  pocket after shopping (the counts the story then keeps), and an item's
+//  name in the bag before using it. FAST trusts the counts it keeps and the
+//  timings.
+enum class StoryChecks{
+    THOROUGH,
+    FAST,
+};
+
 //  The START menu as the story grows it. Before the starter: BAG, the
 //  player, SAVE, OPTION, EXIT; the starter adds POKEMON on top, the Pokedex
 //  POKEDEX above that.
@@ -92,10 +102,19 @@ void heal_at_center(ConsoleHandle& console, ProControllerContext& context);
 struct MartOrder{
     int row = 0;
     int quantity = 1;
+    //  The item's slug for the check (see read_item_list_name()).
+    const char* item = "";
 };
 
+//  Down (positive) or up (negative) presses to move a Mart list's cursor
+//  from `cursor` to `row`. After a purchase the cursor stays on its row.
+int mart_cursor_moves(int cursor, int row);
+
 //  Facing a Mart clerk: BUY each order, then out to the overworld.
-void buy_items(ConsoleHandle& console, ProControllerContext& context, const std::vector<MartOrder>& orders);
+//  THOROUGH: each row's item is read before buying; one that reads as
+//  another item fails with a screenshot, one that can't be read is only
+//  logged.
+void buy_items(ConsoleHandle& console, ProControllerContext& context, const std::vector<MartOrder>& orders, StoryChecks checks);
 
 //  From the title screen of a game with no save, to the bedroom: the
 //  controls pages, Oak's speech, BOY, and the default names for the player

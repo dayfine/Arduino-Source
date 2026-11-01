@@ -93,7 +93,7 @@ Outcome walk_route(StoryEnv& env, RunState& state, const StoryStep& step){
     if (!route){
         return Pokemon::outcome_failed("no_route", to_string(start) + " to " + to_string(goal.position));
     }
-    const OverworldInterruptSet interrupts = story_interrupts(env.supplies, step.fight_wild);
+    const OverworldInterruptSet interrupts = story_interrupts(env.supplies, step.fight_wild, env.checks);
     //  Planning lets the walker recover a stopped open leg: it plans back to
     //  the leg's end, then walks the rest as given.
     const RoutePlanning planning{&story_maps(), default_route_costs()};
@@ -116,7 +116,7 @@ Outcome walk_legs(StoryEnv& env, RunState& state, const StoryStep& step){
     if (!facing || !route || route->empty()){
         return Pokemon::outcome_failed("bad_legs", to_string(start));
     }
-    const OverworldInterruptSet interrupts = story_interrupts(env.supplies, step.fight_wild);
+    const OverworldInterruptSet interrupts = story_interrupts(env.supplies, step.fight_wild, env.checks);
     //  Planning lets the walker recover a stopped open leg: it plans back to
     //  the leg's end, then walks the rest as given.
     const RoutePlanning planning{&story_maps(), default_route_costs()};
@@ -137,7 +137,7 @@ Outcome battle(StoryEnv& env, const StoryStep& step){
     if (advance_text(env.console, env.context, BATTLE_TEXT_TIMEOUT, true) != TextEnd::BATTLE){
         return Pokemon::outcome_failed("no_battle");
     }
-    const BattleEnd end = fight_battle(env.console, env.context, env.supplies, BattleKind::TRAINER);
+    const BattleEnd end = fight_battle(env.console, env.context, env.supplies, BattleKind::TRAINER, env.checks);
     if (end == BattleEnd::LOST && !step.may_lose){
         return Pokemon::outcome_failed("blackout");
     }
@@ -154,7 +154,7 @@ Outcome get_ready(StoryEnv& env, RunState& state, const StoryStep& step){
         "Story: before the battle, HP {}, {}, {} Potions.",
         supplies.hp_red ? "red" : supplies.hurt ? "yellow" : "green", status_name(supplies.status), supplies.potions
     ));
-    recover_after_battle(env.console, env.context, supplies);
+    recover_after_battle(env.console, env.context, supplies, env.checks);
     if (!supplies.hp_red && supplies.status == StatusCondition::NONE){
         return Pokemon::outcome_ok();
     }
@@ -173,10 +173,21 @@ Outcome shop(StoryEnv& env){
     //  Viridian Mart before the Boulder Badge (pokefirered ViridianCity_Mart_Items):
     //  POKE BALL, POTION (300), ANTIDOTE (100), PARLYZ HEAL (200). 2000 of the
     //  3000 a new game starts with, plus the rival's prize.
-    buy_items(env.console, env.context, {{1, 5}, {2, 3}, {3, 1}});
+    buy_items(env.console, env.context, {{1, 5, "potion"}, {2, 3, "antidote"}, {3, 1, "parlyz-heal"}}, env.checks);
     env.supplies.potions += 5;
     env.supplies.antidotes += 3;
     env.supplies.parlyz_heals += 1;
+    if (env.checks == StoryChecks::FAST){
+        return Pokemon::outcome_ok();
+    }
+    //  The counts from the bag, not from the orders: a wrong row once bought
+    //  Parlyz Heals for Antidotes unnoticed (console B, 2026-11-01).
+    const std::vector<BagRow> rows = read_items_pocket(env.console, env.context);
+    if (rows.empty()){
+        env.console.log("Story: couldn't read the Items pocket; keeping the counts ordered.", COLOR_ORANGE);
+        return Pokemon::outcome_ok();
+    }
+    set_from_bag(env.supplies, rows);
     return Pokemon::outcome_ok();
 }
 
