@@ -878,7 +878,8 @@ void leave_door_south(VideoStream& stream, ProControllerContext& context, const 
         pbf_wait(context, 1500ms);
         context.wait_for_all_requests();
         VideoSnapshot now = stream.video().snapshot();
-        out = walk.stop == WalkStop::TRANSITION || (now && !indoors(*now.frame));
+        //  The fade the walk stopped on is the door (r257 walked on past it).
+        out = walk.stop == WalkStop::TRANSITION || walk.stop == WalkStop::ARRIVED || (now && !indoors(*now.frame));
         if (!out){
             stream.log("[Route] " + label + ": still indoors; walking on.");
         }

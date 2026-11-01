@@ -42,9 +42,13 @@ bool pokemon_center_inside(const ImageViewRGB32& screen);
 std::optional<LitDoorway> find_lit_doorway(const ImageViewRGB32& screen);
 
 //  Whether the screen shows a building's inside: its warm walls and floor
-//  fill much of the view wherever the camera is (Pokemon Centers, the
-//  Trainers' School: 42..65% of the screen), and outside, by day or by
-//  night, almost none (1..7%).
+//  fill much of the view (Pokemon Centers, the Trainers' School: 42..65% of
+//  the screen), and the room floats in black, which shows along at least one
+//  edge (15% or more of a strip 12% deep). Warmth alone is not enough: the
+//  evening tint makes outside 50..72% warm (r256, r257, Sandgem), and
+//  Oreburgh's ground 58..69% by day. Of 1412 lab screenshots, the rule calls
+//  every outside one outside, at all hours, and the rooms rooms. A fade is
+//  dark everywhere but not warm, so it is not inside.
 bool indoors(const ImageViewRGB32& screen);
 
 //  A lit street lamp's head inside `box` (0 to 1 of the screen): the mean
