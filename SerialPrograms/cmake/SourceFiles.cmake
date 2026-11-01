@@ -1583,10 +1583,18 @@ file(GLOB LIBRARY_SOURCES
     Source/PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_StoryMaps.h
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_MapGrid_Tests.cpp
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_MapGrid_Tests.h
+    Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_Tests.cpp
+    Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_Tests.h
+    Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_Indoors_Tests.cpp
+    Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_Indoors_Tests.h
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_Segment00_Tests.cpp
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_Segment00_Tests.h
+    Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryTables_Tests.cpp
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryTable.cpp
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryTable.h
+    Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryTables_Tests.h
+    Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StorySimulation_Tests.cpp
+    Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StorySimulation_Tests.h
     Source/PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Location.cpp
     Source/PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Location.h
     Source/PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_NewGame.cpp
