@@ -16,7 +16,6 @@
 #include "CommonFramework/GlobalAutoPaths.h"
 #include "CommonFramework/Logging/Logger.h"
 #include "CommonFramework/ProgramSession.h"
-#include "CommonFramework/Panels/UI/PanelElements.h"
 #include "LabChannel.h"
 
 namespace PokemonAutomation{
@@ -48,7 +47,9 @@ void write_file_atomically(const Filesystem::Path& path, const std::string& text
     Filesystem::rename(temp, path, ec);
 }
 
-//  Returns an error message, or empty on success.
+//  Returns the error message of the start or stop, or empty on success.
+//  Unlike the Start/Stop button, a refused start (e.g. an option that fails
+//  check_validity()) goes to the journal, so the request stops there.
 std::string start_or_stop(PanelSession* panel, bool start){
     ProgramSession* program = dynamic_cast<ProgramSession*>(panel);
     if (program == nullptr){
@@ -59,8 +60,7 @@ std::string start_or_stop(PanelSession* panel, bool start){
     if (state != from){
         return "Program is " + program_state_name(state) + ".";
     }
-    start_or_stop_program(*program);
-    return "";
+    return start ? program->start_program() : program->stop_program();
 }
 
 //  The value at a dotted key path ("NOTIFICATIONS.Enabled") in a JSON
