@@ -390,6 +390,39 @@ public:
     }
 };
 
+//  After training, 00.04 walks from wherever the training left us into
+//  Sandgem, to where the road stops above the Mart, with the default costs
+//  (heal_at_sandgem_center()): from the whole area and from each of its
+//  tiles alone, a plan must exist and end there.
+class Test_TrainingToSandgem : public UnitTest{
+public:
+    Test_TrainingToSandgem()
+        : UnitTest("PokemonBDSP::AutoStory - Route 202: from every tile of the training area into Sandgem")
+    {}
+    virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
+        const MapSet& maps = story_maps();
+        const TilePos entry = maps.to_world(MAP_SANDGEM_TOWN, SandgemTown::ROUTE_202_ENTRY_STOP);
+        const std::vector<TilePos> area = story_after_training_area();
+        std::vector<std::vector<TilePos>> starts{area};
+        for (const TilePos& pos : area){
+            starts.push_back({pos});
+        }
+        for (const std::vector<TilePos>& from : starts){
+            const auto legs = Pokemon::plan_robust_route(maps.world(), from,
+                [&](const TilePos& pos){ return pos == entry; }, Pokemon::RobustPlanCosts());
+            const std::string name = from.size() == 1 ? maps.describe(from[0]) : "the whole training area";
+            if (!legs || legs->empty()){
+                return "From " + name + " into Sandgem: no plan.";
+            }
+            if (legs->back().after.size() != 1 || !(legs->back().after[0] == entry)){
+                return "From " + name + " into Sandgem: the plan does not end on " + maps.describe(entry) + ".";
+            }
+            logger.log("From " + name + " into Sandgem: " + std::to_string(legs->size()) + " legs.");
+        }
+        return true;
+    }
+};
+
 }
 
 
@@ -399,6 +432,7 @@ void add_tests_AutoStory_Segment00(UnitTestDatabase& database){
     database.add<Test_Route202CatchGrass>();
     database.add<Test_SandgemCenterApproach>();
     database.add<Test_IndoorsAnyLight>();
+    database.add<Test_TrainingToSandgem>();
 }
 
 
