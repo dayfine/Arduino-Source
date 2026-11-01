@@ -15,6 +15,17 @@ namespace PokemonFRLG{
 
 namespace{
 
+//  "Route: plan, 2 steps: walk east 4 -> ...; face north -> ...": the whole
+//  route before any of it is walked, so that a run's log has the plan even
+//  when the walk fails part-way (devtools/maps draws it next to the walk).
+std::string plan_line(const std::vector<RouteStep>& route){
+    std::string text = std::format("Route: plan, {} steps:", route.size());
+    for (size_t c = 0; c < route.size(); c++){
+        text += (c == 0 ? " " : "; ") + to_string(route[c]);
+    }
+    return text;
+}
+
 //  The route from `plan[stopped]`, stopped part-way from `start`: holds that
 //  find the player, a way back to that step's end, then the rest as planned.
 std::vector<RouteStep> rejoin(
@@ -56,6 +67,7 @@ void run_route(
     const std::vector<RouteStep>& route, std::optional<Direction> facing,
     const RoutePlanning* planning, const RouteCalls& calls
 ){
+    calls.log(plan_line(route));
     std::vector<RouteStep> plan = route;
     std::optional<MapPosition> at;
     size_t stops = 0;
