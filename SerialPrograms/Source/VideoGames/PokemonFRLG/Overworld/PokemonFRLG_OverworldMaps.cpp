@@ -220,7 +220,10 @@ MapData read_map(const JsonValue& json, const std::string& source){
         throw ParseException(where + "width and height must be positive.");
     }
     map.tiles = read_grid<Tile>(root, "tiles", where, width, height, tile_from_char);
-    map.elevation = read_grid<uint8_t>(root, "elevation", where, width, height, elevation_from_char);
+    //  Left out of maps where every tile the player can stand on is ground.
+    map.elevation = root.get_value("elevation") == nullptr
+        ? Grid<uint8_t>{width, height, std::vector<uint8_t>((size_t)width * height, ELEVATION_GROUND)}
+        : read_grid<uint8_t>(root, "elevation", where, width, height, elevation_from_char);
     map.warps = read_list<MapWarp>(root, "warps", where, read_warp);
     map.objects = read_list<MapObject>(root, "objects", where, read_map_object);
     map.connections = read_list<MapConnection>(root, "connections", where, read_connection);
