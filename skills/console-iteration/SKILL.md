@@ -15,13 +15,12 @@ show.
 
 The tools this loop leans on, by path:
 
-- `SerialPrograms/Source/CommonFramework/Windows/LabControl.md`: the folder
-  protocol for starting, stopping and reading the state of the selected
-  program without a click.
-- `SerialPrograms/Source/NintendoSwitch/Programs/CommandFileRunner/README.md`
-  (the CFR): text batches of presses, screenshots and detector checks run
-  against the live console; the full command table lives there.
-- `devtools/lab/README.md`: the scripts that wrap both (`lablock.sh`,
+- `SerialPrograms/Source/CommonFramework/Windows/Lab.md`: the lab channel,
+  the `Lab/` folder through which a script selects a program, sets its
+  options, starts and stops it, reads its state, and sends text batches of
+  presses, screenshots and detector checks (the CFR commands) to the live
+  console; the full command table lives there.
+- `devtools/lab/README.md`: the scripts that wrap it (`lablock.sh`,
   `labctl.sh`, `cfrun.sh`) and the one-train rule.
 
 ## 1. Define a segment, then code it
@@ -65,7 +64,7 @@ After a run, before anything else:
    depends on.
 5. **Check the save state**: did the run save, and where? A run's
    checkpoint save overwrites the console's save; know what it holds now.
-6. **Read what runs from the LabControl `state` file**, never by stopping a
+6. **Read what runs from the channel's `state` file**, never by stopping a
    program to find out: stopping one to probe, then starting "whatever is
    selected", once started a second run that saved over the checkpoint.
 
@@ -159,7 +158,7 @@ transaction:
 - **Hold the lock** (`lablock.sh run NAME -- CMD`) for anything that drives
   the console; `labctl.sh` and `cfrun.sh` refuse a caller without it. Never
   start or stop the app's program by another path while a run holds it.
-- **Read the LabControl `state` file to learn what runs**; never stop a
+- **Read the channel's `state` file to learn what runs**; never stop a
   program to find out.
 - **Never press while a program is RUNNING**, by hand or by batch: the
   state file says RUNNING, the console is not yours.
