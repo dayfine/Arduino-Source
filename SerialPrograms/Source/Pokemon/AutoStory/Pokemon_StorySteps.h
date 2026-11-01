@@ -171,6 +171,10 @@ public:
     //  whether the run has the flag (set by an earlier step's action).
     virtual bool holds(const std::string& condition, RunState& state);
 
+protected:
+    //  One per step kind, called by dispatch_story_step(); each fails as
+    //  unsupported unless the game overrides it.
+    friend Outcome dispatch_story_step(StoryStepExecutor& executor, RunState& state, const StoryStep& step);
     virtual Outcome new_game(RunState& state, const StoryStep& step);
     virtual Outcome options(RunState& state, const StoryStep& step);
     virtual Outcome route(RunState& state, const StoryStep& step);
