@@ -307,6 +307,17 @@ RouteStep to_route_step(const std::vector<MapData>& maps, const Pokemon::Leg<Loc
     step.to_wall = leg.to_wall;
     step.facing_after = leg.facing_after;
     step.end = MapPosition{maps[leg.end.map].name, leg.end.state.position};
+    if (leg.kind != Pokemon::LegKind::FACE){
+        //  Every tile the step enters on its start map: a step through a
+        //  warp or off the map's edge leaves the map after its last tile.
+        const MapData& map = maps[leg.start.map];
+        step.wild = leg.start.state.surfing || leg.kind == Pokemon::LegKind::ACTION;
+        TilePos at = leg.start.state.position;
+        for (int i = 0; i < leg.tiles && !step.wild; i++){
+            at = at.next(leg.direction);
+            step.wild = is_tall_grass(map, at) || is_water(map, at);
+        }
+    }
     return step;
 }
 
@@ -655,6 +666,39 @@ UnitTestResult test_viridian_mart_to_pewter_gym(){
 //  Two small maps that don't need the map files: a room left by the exit mat
 //  at its bottom, onto the door of a yard, out of which the game walks the
 //  player.
+//  No wild battle can start between the bedroom and Oak's Lab: Pallet Town's
+//  streets have no tall grass. Route 2 and Viridian Forest do.
+UnitTestResult test_wild_steps(){
+    const std::vector<MapData> maps = overworld_maps();
+    std::vector<RouteStep> route;
+    UnitTestResult result = check_route(
+        maps, point_on(maps, "PalletTown_PlayersHouse_2F", "start"),
+        {point_on(maps, "PalletTown", "oaks_lab_front"), Direction::NORTH}, route
+    );
+    if (result.result != UnitTestResult::PASSED){
+        return result;
+    }
+    for (const RouteStep& step : route){
+        if (step.wild){
+            return "Expected no wild step from the bedroom to Oak's Lab, got " + to_string(step) + ":" + describe(route);
+        }
+    }
+    route.clear();
+    result = check_route(
+        maps, point_on(maps, "ViridianCity_Mart", "clerk_front"),
+        {point_on(maps, "PewterCity", "gym_front"), Direction::NORTH}, route
+    );
+    if (result.result != UnitTestResult::PASSED){
+        return result;
+    }
+    for (const RouteStep& step : route){
+        if (step.wild && step.end.map == "ViridianForest"){
+            return true;
+        }
+    }
+    return "Expected a wild step in Viridian Forest:" + describe(route);
+}
+
 const char* const TEST_ROOM_JSON = R"({
     "name": "Room", "width": 5, "height": 4,
     "tiles": ["#####", "#...#", "#...#", "##v##"],
@@ -697,6 +741,7 @@ void add_tests_OverworldRoute(UnitTestDatabase& database){
     database.add<Test_OverworldRoute>("maps to Brock", test_story_maps);
     database.add<Test_OverworldRoute>("bedroom to Oak's Lab", test_bedroom_to_oaks_lab);
     database.add<Test_OverworldRoute>("Viridian Mart to Pewter Gym", test_viridian_mart_to_pewter_gym);
+    database.add<Test_OverworldRoute>("wild steps", test_wild_steps);
     database.add<Test_OverworldRoute>("step rules", test_step_rules);
     database.add<Test_OverworldRoute>("maps", test_maps);
     database.add<Test_OverworldRoute>("Cerulean Cave entrance to Mewtwo", test_entrance_to_mewtwo);

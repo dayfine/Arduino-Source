@@ -211,11 +211,12 @@ void start_surf(ConsoleHandle& console, ProControllerContext& context, Direction
 
 
 
-OverworldInterrupts overworld_interrupts_with_repel(int max_repel_slot){
-    OverworldInterrupts ret;
-    ret.emplace_back(std::make_unique<WildBattleInterrupt>());
-    ret.emplace_back(std::make_unique<LateWildBattleInterrupt>());
-    ret.emplace_back(std::make_unique<RepelWoreOffInterrupt>(max_repel_slot));
+OverworldInterruptSet overworld_interrupts_with_repel(int max_repel_slot){
+    OverworldInterruptSet ret;
+    ret.wild.emplace_back(std::make_unique<WildBattleInterrupt>());
+    ret.wild.emplace_back(std::make_unique<LateWildBattleInterrupt>());
+    ret.wild.emplace_back(std::make_unique<RepelWoreOffInterrupt>(max_repel_slot));
+    ret.other.emplace_back(std::make_unique<RepelWoreOffInterrupt>(max_repel_slot));
     return ret;
 }
 
@@ -245,13 +246,14 @@ void use_max_repel_from_bag(ConsoleHandle& console, ProControllerContext& contex
     context.wait_for_all_requests();
 }
 
-const OverworldInterrupts& default_overworld_interrupts(){
+const OverworldInterruptSet& default_overworld_interrupts(){
     //  Battles first: their screens are checked before the message box's.
-    static const OverworldInterrupts interrupts = []{
-        OverworldInterrupts ret;
-        ret.emplace_back(std::make_unique<WildBattleInterrupt>());
-        ret.emplace_back(std::make_unique<LateWildBattleInterrupt>());
-        ret.emplace_back(std::make_unique<MessageInterrupt>());
+    static const OverworldInterruptSet interrupts = []{
+        OverworldInterruptSet ret;
+        ret.wild.emplace_back(std::make_unique<WildBattleInterrupt>());
+        ret.wild.emplace_back(std::make_unique<LateWildBattleInterrupt>());
+        ret.wild.emplace_back(std::make_unique<MessageInterrupt>());
+        ret.other.emplace_back(std::make_unique<MessageInterrupt>());
         return ret;
     }();
     return interrupts;
@@ -262,7 +264,7 @@ void walk_overworld_route(
     ConsoleHandle& console, ProControllerContext& context,
     const std::vector<RouteStep>& route,
     std::optional<Direction> facing,
-    const OverworldInterrupts& interrupts
+    const OverworldInterruptSet& interrupts
 ){
     //  Each leg starts with a turn tap unless it goes the way the player faces.
     //  A tap while already facing that way takes a step, so a facing not
@@ -286,7 +288,7 @@ void walk_overworld_route(
             if (facing != step.direction){
                 pbf_press_dpad(context, dpad(step.direction), TURN_TAP, TURN_SETTLE);
             }
-            Pokemon::walk_leg(console, context, mover, interrupts, leg_spec(step), MAX_INTERRUPTIONS_PER_LEG);
+            Pokemon::walk_leg(console, context, mover, step.wild ? interrupts.wild : interrupts.other, leg_spec(step), MAX_INTERRUPTIONS_PER_LEG);
             if (step.warps){
                 wait_out_warp(console, context, step);
                 pbf_wait(context, AFTER_WARP);
@@ -300,7 +302,7 @@ void walk_overworld_route(
             break;
         }
         if (step.action != RouteAction::FACE){
-            Pokemon::clear_late_interrupts(console, context, interrupts, AFTER_LEG_WATCH, MAX_INTERRUPTIONS_PER_LEG);
+            Pokemon::clear_late_interrupts(console, context, step.wild ? interrupts.wild : interrupts.other, AFTER_LEG_WATCH, MAX_INTERRUPTIONS_PER_LEG);
         }
         facing = step.facing_after;
     }

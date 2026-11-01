@@ -35,14 +35,24 @@ namespace PokemonFRLG{
 using OverworldInterrupt = Pokemon::LegInterrupt<ConsoleHandle, ProControllerContext>;
 using OverworldInterrupts = Pokemon::LegInterrupts<ConsoleHandle, ProControllerContext>;
 
+//  What to watch for on a route's steps: `wild` on steps where a wild
+//  Pokemon can appear (RouteStep::wild), `other` on the rest. Watching for a
+//  battle where none can start only risks a false one: walking to the edge
+//  of a small room, the screen darkens like a battle's flash (console B,
+//  2026-11-01, the bedroom's east wall).
+struct OverworldInterruptSet{
+    OverworldInterrupts wild;
+    OverworldInterrupts other;
+};
+
 //  A wild battle, run from, and a message (e.g. "REPEL's effect wore off..."),
-//  closed with B.
-const OverworldInterrupts& default_overworld_interrupts();
+//  closed with B. See OverworldInterruptSet.
+const OverworldInterruptSet& default_overworld_interrupts();
 
 //  The same, except that after a message another Max Repel is used, from
 //  slot `max_repel_slot` (from 0) of the Items pocket. Any message on the
 //  overworld is taken to be the one saying the last Repel wore off.
-OverworldInterrupts overworld_interrupts_with_repel(int max_repel_slot);
+OverworldInterruptSet overworld_interrupts_with_repel(int max_repel_slot);
 
 //  From the overworld, uses the Max Repel in `slot` (from 0) of the Items
 //  pocket and returns to the overworld.
@@ -58,7 +68,7 @@ void walk_overworld_route(
     ConsoleHandle& console, ProControllerContext& context,
     const std::vector<RouteStep>& route,
     std::optional<Direction> facing = std::nullopt,
-    const OverworldInterrupts& interrupts = default_overworld_interrupts()
+    const OverworldInterruptSet& interrupts = default_overworld_interrupts()
 );
 
 
