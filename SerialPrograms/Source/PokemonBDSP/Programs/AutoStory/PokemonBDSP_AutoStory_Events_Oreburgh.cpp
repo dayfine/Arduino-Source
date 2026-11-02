@@ -155,7 +155,14 @@ constexpr size_t GYM_DPAD_TAPS_WEST_OF_CENTER = 20;
 void oreburgh_street_to_gym(VideoStream& stream, ProControllerContext& context){
     // From the Center's doorstep, straight west along its row to below the
     // gym's door, then north through it, all on the D-pad (whole tiles; see
-    // GYM_DPAD_TAPS_WEST_OF_CENTER).
+    // GYM_DPAD_TAPS_WEST_OF_CENTER). A save inside the gym: already there.
+    context.wait_for_all_requests();
+    if (VideoSnapshot screen = stream.video().snapshot()){
+        if (indoors(*screen.frame)){
+            stream.log("[Route] 01.04: already in the gym.");
+            return;
+        }
+    }
     dpad_tiles(stream, context, DPAD_LEFT, GYM_DPAD_TAPS_WEST_OF_CENTER, "west to the gym's door");
     if (dpad_through_door_north(stream, context, "Oreburgh Gym door")){
         return;
@@ -465,7 +472,15 @@ void oreburgh_center_heal(VideoStream& stream, ProControllerContext& context){
 //  01.04: out of the Pokemon Center from the counter.
 void out_of_the_center(VideoStream& stream, ProControllerContext& context){
     // 01.03 leaves us at the Center's counter, facing the nurse; the door
-    // is straight south.
+    // is straight south. Not on the Center's floor (a save in the gym):
+    // nothing to leave.
+    context.wait_for_all_requests();
+    if (VideoSnapshot screen = stream.video().snapshot()){
+        if (!center_floor_on_screen(*screen.frame)){
+            stream.log("[Route] 01.04: not in the Center.");
+            return;
+        }
+    }
     walk_out_of_center(stream, context, "Oreburgh");
 }
 
