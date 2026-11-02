@@ -19,6 +19,7 @@
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_PlanCosts.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_RoutePlanner.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_StoryWorld.h"
+#include "PokemonBDSP_AutoStory_RouteWalk.h"
 #include "PokemonBDSP_AutoStory_Walk.h"
 
 namespace PokemonAutomation{
@@ -46,6 +47,8 @@ struct RouteWalkPlan{
     std::string label;
     std::vector<Pokemon::TilePos> avoid = {};
     RobustPlanCosts costs = route_plan_costs();
+    //  The pace of legs to a wall, which their tile counts are timed by.
+    MoveSpeed speed = MoveSpeed::WALK;
 };
 
 //  Walks from any of the world tiles `from` of `maps` until every tile the

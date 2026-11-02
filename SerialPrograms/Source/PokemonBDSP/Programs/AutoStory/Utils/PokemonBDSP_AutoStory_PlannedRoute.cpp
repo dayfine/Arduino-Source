@@ -150,8 +150,10 @@ std::string quoted_list(const std::vector<std::string>& reads){
 
 //  Long enough to reach the wall from the farthest tile, with room for a
 //  slow start; past the wall the player stands still.
+//  At a run the limit is still timed at a walk: a pace measured too fast
+//  must not cut a long leg short.
 Milliseconds wall_limit(const TileLeg& leg){
-    const Milliseconds per_tile = route_ms_per_tile(leg.direction) / ROUTE_RUN_SPEEDUP;
+    const Milliseconds per_tile = route_ms_per_tile(leg.direction, MoveSpeed::WALK);
     return ROUTE_START_DELAY + per_tile * leg.tiles * 5 / 4 + 1000ms;
 }
 
@@ -385,7 +387,13 @@ LegNext RouteWalker::wall_leg(LegWalk& walk){
     for (const TilePos& pos : m_from){
         nearest = std::min(nearest, slide_to_wall(m_grid, pos, leg.direction).tiles);
     }
-    size_t walked_tiles = tiles_moved(walk.result, route_ms_per_tile(leg.direction) / ROUTE_RUN_SPEEDUP);
+    size_t walked_tiles = tiles_moved(walk.result, route_ms_per_tile(leg.direction, m_plan.speed));
+    //  Every leg that reaches its wall measures the pace: the tiles are known.
+    if (walk.result.stop == WalkStop::BLOCKED && nearest != SIZE_MAX && walked_tiles >= nearest){
+        m_stream.log("[Speed] " + std::string(m_plan.speed == MoveSpeed::RUN ? "run" : "walk") + " " +
+            direction_name(leg.direction) + ": " + std::to_string(nearest) + " tiles in " +
+            std::to_string(walk.result.walked.count()) + " ms to the wall.");
+    }
     walked_tiles = unstick_wall_leg(walk, walked_tiles, nearest);
     //  Any stop short of the wall's distance: someone who stays put is
     //  talked to, and the leg is planned again from where we are. Within the
@@ -409,7 +417,7 @@ LegNext RouteWalker::wall_leg(LegWalk& walk){
 //  A walk to the wall that stopped well short of it: tap through a corner,
 //  then wait for someone in the way. Returns the tiles walked by then.
 size_t RouteWalker::unstick_wall_leg(LegWalk& walk, size_t walked_tiles, size_t nearest){
-    const Milliseconds per_tile = route_ms_per_tile(walk.planned.leg.direction) / ROUTE_RUN_SPEEDUP;
+    const Milliseconds per_tile = route_ms_per_tile(walk.planned.leg.direction, m_plan.speed);
     const Milliseconds limit = wall_limit(walk.planned.leg);
     //  A stick walk can catch a corner when we stand part of a tile off
     //  centre, where a D-pad tap, which moves whole tiles, gets through: on
