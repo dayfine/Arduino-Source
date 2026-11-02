@@ -301,26 +301,32 @@ StoryStep route_201_by_the_path(){
 std::vector<StoryCheckpoint> to_the_catch(){
     return {
         row("00.04", "Home to Mom, then Dawn's catching tutorial on Route 202", at(LAB, "rowan_talk", NORTH), {
-            route("above_the_lab_door", at(LAB, 7, 14, SOUTH), "down the lab to its door (7, 15)"),
-            step_into("out_of_the_lab", SOUTH, "out of the lab", door_front(SANDGEM, "lab_door")),
-            //  Automatic on arrival, so out_of_the_lab's settle plays it. She leaves us
-            //  below the Mart's door (27, 10), a row or two down: r39's walk west
-            //  from "row 11" ran on along row 12, which is open to Route 201.
-            scene("dawn_shows_us_sandgem", Pokemon::tile_pose(SANDGEM, {
+            //  Rowan's spot is in the door's column: run south out of the door. Dawn's
+            //  tour plays on arrival, inside the step's settle (r43: a scene row after
+            //  it waited 20 s for lines already played). She leaves us below the Mart's
+            //  door (27, 10), a row or two down: r39's walk west from "row 11" ran on
+            //  along row 12, which is open to Route 201.
+            step_into("out_of_the_lab", SOUTH, "out of the lab; Dawn's tour of Sandgem", Pokemon::tile_pose(SANDGEM, {
                     TilePos{26, 11}, TilePos{27, 11}, TilePos{28, 11}, TilePos{26, 12}, TilePos{27, 12}, TilePos{28, 12}
-                }, NORTH), "Dawn's tour of Sandgem"),
+                }, NORTH)),
             //  Not west along the doors' row: running it took us into the lab at its
             //  mat (8, 11) (r41, r42). Row 12 is open into Route 201: run it until
             //  Route 201's banner shows, a few tiles in.
             route("onto_the_path", at(SANDGEM, 29, 12, WEST), "to the east end of the path below the doors' row", "town"),
             route_201_by_the_path(),
-            route("home", at(TWINLEAF, "house_doorstep", NORTH), "west along Route 201 to Twinleaf, running from wild battles"),
+            //  Anywhere in the door's column: the step runs north into the door, so the
+            //  route can end where the south run along x 14 stops (row 26) and go east.
+            route("home", Pokemon::tile_pose(TWINLEAF, {
+                    TilePos{20, 22}, TilePos{20, 23}, TilePos{20, 24}, TilePos{20, 25}, TilePos{20, 26}
+                }, NORTH), "west along Route 201 to Twinleaf, running from wild battles"),
             //  The game sets us a tile inside, off the mat: (6, 9) (r40: the old extra
             //  step north put us beside the TV, above Mom).
             step_into("into_the_house", NORTH, "the house's door", at(HOME, 6, 9, NORTH)),
-            route("beside_mom", at(HOME, 6, 8, EAST), "west of Mom at (7, 8)"),
+            //  Mom stands at (7, 7) now, a row above the decomp's (7, 8): from (6, 8)
+            //  she was up and to the right; a tap north, east and A answered (r43).
+            route("beside_mom", at(HOME, 6, 7, EAST), "west of Mom at (7, 7)"),
             talk("mom", "Mom"),
-            scene("mom_running_shoes", at(HOME, 6, 8, EAST), "her lines"),
+            scene("mom_heals_us", at(HOME, 6, 7, EAST), "her lines; she heals the party"),
             route("back_above_the_door", at(HOME, 6, 9, SOUTH), "Barry's mother stands in the door"),
             event("barrys_mother", "she gives us Barry's parcel", at(HOME, 6, 9, SOUTH)),
             step_into("out_of_the_house_again", SOUTH, "out of the door", at(TWINLEAF, "house_doorstep", SOUTH)),

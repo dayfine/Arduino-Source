@@ -336,17 +336,17 @@ void settle(VideoStream& stream, ProControllerContext& context, Button button, c
 
 Outcome StoryExecutor::step(RunState& state, const StoryStep& step){
     route_turn(stream(), context(), step.direction);
-    //  A step through a door: one tap, then settle, which must see the fade
-    //  (3 to 5 s) and then any scene on arrival (Mom's, 00.01). A walk's
-    //  window could swallow the fade unseen (r33 was outside, "no fade").
+    //  A step through a door: walk (or run) on until the screen goes black,
+    //  from next to the door or from anywhere in its line (r43: tapping 8 tiles
+    //  down the lab took 7 s), then settle for any scene on arrival (Mom's,
+    //  00.01; Dawn's tour, 00.04). Without a black screen, settle must see the
+    //  fade itself (r33 was outside, "no fade").
     if (step.pose_after && step.pose_after->map != state.pose.map){
-        const DpadPosition dpad =
-            step.direction == Direction::NORTH ? DPAD_UP :
-            step.direction == Direction::SOUTH ? DPAD_DOWN :
-            step.direction == Direction::WEST ? DPAD_LEFT : DPAD_RIGHT;
-        pbf_press_dpad(context(), dpad, 160ms, 0ms);
-        stream().log(std::format("[{}] {}: a step {} through the door.", m_checkpoint, step.name, direction_name(step.direction)));
-        settle(stream(), context(), BUTTON_B, label_of(step), true);
+        const auto [x, y] = dpad_of(step.direction);
+        const WalkResult walk = walk_until_dpad(stream(), context(), run_from_wild_battle, {x, y}, 12000ms, step.name,
+            {.arrived = nullptr, .pace = m_can_run ? DpadPace::RUN : DpadPace::WALK});
+        stream().log(std::format("[{}] {}: {} through the door: {}.", m_checkpoint, step.name, direction_name(step.direction), walk_stop_name(walk.stop)));
+        settle(stream(), context(), BUTTON_B, label_of(step), walk.stop != WalkStop::TRANSITION);
         return Pokemon::outcome_ok();
     }
     const auto [x, y] = dpad_of(step.direction);
