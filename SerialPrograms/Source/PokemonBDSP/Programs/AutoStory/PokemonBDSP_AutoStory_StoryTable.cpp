@@ -301,11 +301,13 @@ std::vector<StoryCheckpoint> lake_and_pokedex(){
             step_into("lake_entrance", NORTH, "the trigger (16..17, 12): Barry hears Rowan and the two walk in"),
             event("starter_briefcase", "the lake's scene, to the open briefcase"),
             event("choose_starter", "the starter from the program's option"),
-            event("fight_starly", "the Starly battle"),
+            battle("starly", true, "the Starly battle, with the starter alone", "starter"),
             //  The game walks us out of the lake, then the Lakefront's scene walks us 3
             //  south: (17, 14) facing south, or a tile below (decomp; timeline 00.02 #5).
-            event("after_starly", "Rowan's lines and the walk out of the lake",
-                at_or_next_to(LAKEFRONT, "below_lake_entrance", SOUTH)),
+            //  Butters' sequence was B for a fixed 60 s; the scene rule ends it on
+            //  the quiet overworld instead (unchecked on the console).
+            scene("after_starly", at_or_next_to(LAKEFRONT, "below_lake_entrance", SOUTH),
+                "Rowan's lines and the walk out of the lake"),
         }),
         row("00.03", "Back to Sandgem: Rowan, Dawn and the Pokedex", at_or_next_to(LAKEFRONT, "below_lake_entrance", SOUTH), {
             route("short_of_rowan", at(ROUTE_201, 4, 14, EAST), "back east onto Route 201's lower level"),

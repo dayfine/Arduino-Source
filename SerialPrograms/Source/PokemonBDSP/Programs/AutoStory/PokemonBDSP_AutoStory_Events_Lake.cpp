@@ -5,9 +5,9 @@
  *  Adapted from PokemonAutomation/Arduino-Source#1717 by Developer-Butters.
  *
  *  The scenes of the story's start that need scripted input: the briefcase
- *  at Lake Verity, the starter, the Starly battle and the scene after it,
- *  the Pokedex in Rowan's lab, Mom's and Barry's mother's lines, and Dawn's
- *  catching tutorial. The button sequences are Butters' (#1717); they ran on
+ *  at Lake Verity, the starter, the Pokedex in Rowan's lab, Mom's and Barry's
+ *  mother's lines, and Dawn's catching tutorial. The button sequences are
+ *  Butters' (#1717); they ran on
  *  the console in his recordings, but not yet from the planned walks around
  *  them.
  *
@@ -116,12 +116,6 @@ void azure_flute_if_there(VideoStream& stream, ProControllerContext& context){
     }
 }
 
-//  00.02: after the Starly battle, Rowan's lines and the walk out of the
-//  lake, B for a minute.
-void after_starly(VideoStream&, ProControllerContext& context){
-    pbf_mash_button(context, BUTTON_B, 60000ms);
-    context.wait_for_all_requests();
-}
 
 //  00.03: Dawn walks us into Rowan's lab: his lines, "give a nickname?"
 //  (B: No), and the Pokedex, taken with A.
@@ -151,8 +145,7 @@ void add_lake_events(StoryEvents& events){
     events.emplace("azure_flute_if_there", console_event(azure_flute_if_there));
     events.emplace("starter_briefcase", console_event(starter_briefcase));
     events.emplace("choose_starter", choose_starter);
-    events.emplace("fight_starly", console_event(fight_starly));
-    events.emplace("after_starly", console_event(after_starly));
+
     events.emplace("rowan_gives_pokedex", console_event(rowan_gives_pokedex));
     events.emplace("catch_tutorial", console_event(catch_tutorial));
     events.emplace("catch_pokemon", console_event(catch_1_pokemon));
