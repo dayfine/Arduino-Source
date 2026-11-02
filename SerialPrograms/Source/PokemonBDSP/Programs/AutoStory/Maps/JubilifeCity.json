@@ -137,7 +137,10 @@
         {"name": "kid_with_nds_30", "kind": "npc", "x": 54, "y": 46}
     ],
     "coord_events": [
-        {"name": "dawn_at_the_steps", "x": 45, "y": 60, "width": 4, "length": 1, "var": "VAR_JUBILIFE_CITY_STATE", "value": 0, "source": "pret/pokeplatinum res/field/events/events_jubilife_city.json coord_events[0] (173, 796), script 2"},
-        {"name": "poketch_president", "x": 44, "y": 40, "width": 5, "length": 1, "var": "VAR_POKETCH_CAMPAIGN_STATE", "value": 1, "source": "pret/pokeplatinum res/field/events/events_jubilife_city.json coord_events[4] (172, 776), script 17"}
+        {"name": "dawn_at_the_steps", "x": 45, "y": 60, "width": 4, "length": 1, "var": "VAR_JUBILIFE_CITY_STATE", "value": 0, "source": "pret/pokediamond files/fielddata/eventdata/zone_event_release/narc_0002.bin coord_events[0] (173, 796), script 2"},
+        {"name": "coord_event_1", "x": 45, "y": 7, "width": 3, "length": 1, "var": "VAR_JUBILIFE_CITY_STATE", "value": 3, "source": "pret/pokediamond files/fielddata/eventdata/zone_event_release/narc_0002.bin coord_events[1] (173, 743), script 4"},
+        {"name": "coord_event_2", "x": 60, "y": 21, "width": 1, "length": 4, "var": "VAR_JUBILIFE_CITY_STATE", "value": 1, "source": "pret/pokediamond files/fielddata/eventdata/zone_event_release/narc_0002.bin coord_events[2] (188, 757), script 3"},
+        {"name": "coord_event_3", "x": 27, "y": 43, "width": 1, "length": 3, "var": "VAR_GTS_ACCESS_STATE", "value": 0, "source": "pret/pokediamond files/fielddata/eventdata/zone_event_release/narc_0002.bin coord_events[3] (155, 779), script 19"},
+        {"name": "poketch_president", "x": 44, "y": 40, "width": 5, "length": 1, "var": "VAR_POKETCH_CAMPAIGN_STATE", "value": 1, "source": "pret/pokediamond files/fielddata/eventdata/zone_event_release/narc_0002.bin coord_events[4] (172, 776), script 17"}
     ]
 }
