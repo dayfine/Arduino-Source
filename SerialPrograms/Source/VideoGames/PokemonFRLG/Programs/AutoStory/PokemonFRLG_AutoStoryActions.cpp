@@ -20,6 +20,7 @@
 #include "VideoGames/PokemonFRLG/Inference/Dialogs/PokemonFRLG_DialogDetector.h"
 #include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_ItemListReader.h"
 #include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_NamingScreenDetector.h"
+#include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_OptionMenuReader.h"
 #include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_SaveCardReader.h"
 #include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_StartMenuDetector.h"
 #include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleScreenDetector.h"
@@ -651,14 +652,84 @@ std::string read_save_place(ConsoleHandle& console, ProControllerContext& contex
     return place;
 }
 
-void set_options(ConsoleHandle& console, ProControllerContext& context, StartMenu menu){
+std::optional<size_t> option_right_presses(
+    const std::vector<std::string>& values, const std::string& current, const std::string& target
+){
+    const auto from = std::find(values.begin(), values.end(), current);
+    const auto to = std::find(values.begin(), values.end(), target);
+    if (from == values.end() || to == values.end()){
+        return std::nullopt;
+    }
+    const size_t count = values.size();
+    return (static_cast<size_t>(to - values.begin()) + count - static_cast<size_t>(from - values.begin())) % count;
+}
+
+static void options_shot(ConsoleHandle& console, ProControllerContext& context, const std::string& label){
+    context.wait_for_all_requests();
+    dump_debug_image(console, "AutoStory/options", label, console.video().snapshot());
+}
+
+//  The item's value, read up to 3 times while the menu may still be fading
+//  in or redrawing; empty if never read.
+static std::string read_option(
+    ConsoleHandle& console, ProControllerContext& context, OptionMenuItem item, Language language
+){
+    for (size_t attempt = 0; attempt < 3; attempt++){
+        if (attempt > 0){
+            pbf_wait(context, 500ms);
+        }
+        context.wait_for_all_requests();
+        const VideoSnapshot screen = console.video().snapshot();
+        const std::string value = screen ? read_option_value(console, language, screen, item) : "";
+        if (!value.empty()){
+            return value;
+        }
+    }
+    return "";
+}
+
+//  With the cursor on the item's row: RIGHT until it shows `target`.
+static void set_option(
+    ConsoleHandle& console, ProControllerContext& context,
+    OptionMenuItem item, const std::string& target, Language language
+){
+    const char* name = option_menu_name(item);
+    const std::string current = read_option(console, context, item, language);
+    const std::optional<size_t> presses = option_right_presses(option_menu_values(item), current, target);
+    if (!presses){
+        OperationFailedExceptionWithScreenshot::fire(
+            ErrorReportMode::SEND_ERROR_REPORT,
+            std::format("set_options(): can't read {} (read \"{}\", language {}).", name, current, language_data(language).name),
+            console
+        );
+    }
+    console.log(std::format("Options: {} is {}, {} RIGHT to {}.", name, current, *presses, target));
+    for (size_t i = 0; i < *presses; i++){
+        tap(context, DPAD_RIGHT);
+    }
+    const std::string now = read_option(console, context, item, language);
+    if (now != target){
+        OperationFailedExceptionWithScreenshot::fire(
+            ErrorReportMode::SEND_ERROR_REPORT,
+            std::format("set_options(): {} reads \"{}\" after {} RIGHT from {}, not {}.", name, now, *presses, current, target),
+            console
+        );
+    }
+}
+
+void set_options(ConsoleHandle& console, ProControllerContext& context, StartMenu menu, Language language){
     console.log("Options: text speed FAST, battle style SET.");
     open_start_menu_row(console, context, menu, start_menu_option_row(menu));
-    //  TEXT SPEED (MID), BATTLE SCENE, BATTLE STYLE (SHIFT), ...
-    tap(context, DPAD_RIGHT);
-    tap(context, DPAD_DOWN);
-    tap(context, DPAD_DOWN);
-    tap(context, DPAD_RIGHT);
+    options_shot(console, context, "before");
+    //  The cursor opens on TEXT SPEED (option_menu.c: cursorPos = 0), and
+    //  BATTLE STYLE is two rows down. Were it on another row, the presses
+    //  would change that row instead, and the read after them fails.
+    set_option(console, context, OptionMenuItem::TEXT_SPEED, "fast", language);
+    for (size_t row = option_menu_row(OptionMenuItem::TEXT_SPEED); row < option_menu_row(OptionMenuItem::BATTLE_STYLE); row++){
+        tap(context, DPAD_DOWN);
+    }
+    set_option(console, context, OptionMenuItem::BATTLE_STYLE, "set", language);
+    options_shot(console, context, "after");
     press(context, BUTTON_B, 1500ms);
     mash_until_overworld(console, context, 20000ms);
 }
