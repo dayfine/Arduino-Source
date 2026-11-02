@@ -1,6 +1,6 @@
 {
     "name": "SandgemTown",
-    "source": {"decomp_file": "pret/pokediamond: files/fielddata/land_data/land_data_release/narc_0007.bin, files/fielddata/land_data/land_data_release/narc_0173.bin; zone_event narc_0396; console: the lab's door mat (8, 11) takes us in from the side (r41, r42)", "revision": "default branch", "date": "2026-10-31"},
+    "source": {"decomp_file": "pret/pokediamond: files/fielddata/land_data/land_data_release/narc_0007.bin, files/fielddata/land_data/land_data_release/narc_0173.bin; zone_event narc_0396", "revision": "default branch", "date": "2026-10-31"},
     "tiles": [
         "########################......####",
         "########################......####",
@@ -13,7 +13,7 @@
         "####################......########",
         "####################......########",
         "########D##....##D##S....S#D######",
-        ".....S..D.....................####",
+        ".....S........................####",
         "..............................####",
         "..............................####",
         "..............................####",
