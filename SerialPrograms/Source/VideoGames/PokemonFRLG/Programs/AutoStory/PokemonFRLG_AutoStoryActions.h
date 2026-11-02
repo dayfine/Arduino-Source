@@ -168,10 +168,22 @@ void save_game(ConsoleHandle& console, ProControllerContext& context, StartMenu 
 //  with another START menu (another checkpoint's) is read too.
 std::string read_save_place(ConsoleHandle& console, ProControllerContext& context, Language language);
 
+//  RIGHT presses that turn an option showing `current` into `target`.
+//  RIGHT steps through `values` and wraps from the last to the first
+//  (pokefirered option_menu.c OptionMenu_ProcessInput). Nothing if either
+//  isn't one of `values`.
+std::optional<size_t> option_right_presses(
+    const std::vector<std::string>& values, const std::string& current, const std::string& target
+);
+
 //  From the overworld: OPTION, text speed FAST, battle style SET (no
 //  "Will you switch?" between a trainer's Pokemon). Returns to the
-//  overworld.
-void set_options(ConsoleHandle& console, ProControllerContext& context, StartMenu menu);
+//  overworld. A new game keeps the options of the save it replaces, so
+//  each value is read and stepped to its target, then read again; one that
+//  can't be read, as in a language the reader has no names for, or that
+//  isn't the target after the presses, fails with a screenshot and leaves
+//  the menu open.
+void set_options(ConsoleHandle& console, ProControllerContext& context, StartMenu menu, Language language);
 
 //  Facing the nurse: A, YES, the heal, and the text to its end.
 void heal_at_center(ConsoleHandle& console, ProControllerContext& context);
