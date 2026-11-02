@@ -79,14 +79,44 @@ Milliseconds route_open_hold(Direction direction, size_t tiles){
     return step * tiles - step / 2;
 }
 
-void route_turn(VideoStream& stream, ProControllerContext& context, Direction direction){
-    stream.log(std::string("[Route] Turning ") + direction_name(direction) + ".");
+void press_route_input(ProControllerContext& context, const RouteInput& input){
+    const Direction direction = input.direction;
     const DpadPosition dpad =
         direction == Direction::NORTH ? DPAD_UP :
         direction == Direction::SOUTH ? DPAD_DOWN :
         direction == Direction::WEST ? DPAD_LEFT : DPAD_RIGHT;
-    pbf_press_dpad(context, dpad, ROUTE_TURN_TAP, 300ms);
-    context.wait_for_all_requests();
+    for (size_t press = 0; press < input.count; press++){
+        switch (input.kind){
+        case RouteInputKind::DPAD:
+            pbf_press_dpad(context, dpad, input.hold, input.release);
+            break;
+        case RouteInputKind::STICK:
+            pbf_move_left_joystick(context, route_stick(direction), input.hold, input.release);
+            break;
+        case RouteInputKind::BUTTON_A:
+            pbf_press_button(context, BUTTON_A, input.hold, input.release);
+            break;
+        case RouteInputKind::WAIT:
+            pbf_wait(context, input.hold);
+            break;
+        case RouteInputKind::PAUSE:
+            context.wait_for(input.hold);
+            break;
+        }
+    }
+    if (input.end == RouteInputEnd::DONE){
+        context.wait_for_all_requests();
+    }
+}
+
+RouteInput route_turn_tap(Direction direction){
+    return {.kind = RouteInputKind::DPAD, .direction = direction, .hold = ROUTE_TURN_TAP, .release = 300ms,
+        .count = 1, .end = RouteInputEnd::DONE};
+}
+
+void route_turn(VideoStream& stream, ProControllerContext& context, Direction direction){
+    stream.log(std::string("[Route] Turning ") + direction_name(direction) + ".");
+    press_route_input(context, route_turn_tap(direction));
 }
 
 std::optional<Direction> talk_to_adjacent_npc(
