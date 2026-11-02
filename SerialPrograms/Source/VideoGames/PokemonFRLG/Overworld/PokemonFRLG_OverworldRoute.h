@@ -83,10 +83,15 @@ enum class RouteCost{
     //  the player is can only be estimated. A leg that ends at a wall is
     //  walked again instead.
     OPEN_STOP,
+    //  Extra again when that leg crosses tall grass or water, where a wild
+    //  battle is likely to stop it: the walker can't tell where it did
+    //  (console B, 2026-11-01, Route 1, four runs).
+    OPEN_WILD_STOP,
 };
 using RouteCosts = std::map<RouteCost, int>;
 
-//  TILE 1, TURN 2, WARP 30, SURF 40, GRASS_TILE 20, OPEN_STOP 8.
+//  TILE 1, TURN 2, WARP 30, SURF 40, GRASS_TILE 20, OPEN_STOP 8,
+//  OPEN_WILD_STOP 300.
 const RouteCosts& default_route_costs();
 
 //  `costs`'s cost for `kind`, or the default if it has none.
@@ -102,6 +107,29 @@ std::optional<std::vector<RouteStep>> plan_overworld_route(
     const RouteGoal& goal,
     const RouteCosts& costs = default_route_costs(),
     std::optional<Direction> start_facing = std::nullopt
+);
+
+//  Holding `direction` from `from`, on the water if `surfing`: where a wall
+//  stops the player, how many tiles on, and whether any tile on the way is
+//  tall grass or water.
+struct WallHold{
+    MapPosition end;
+    int tiles = 0;
+    bool wild = false;
+};
+//  Nothing unless every step on the way is a plain walk: a warp, Surf, a
+//  ledge, a person, a sign that would speak, or the edge of the loaded maps
+//  comes first.
+std::optional<WallHold> hold_to_wall(
+    const std::vector<MapData>& maps,
+    const MapPosition& from, bool surfing, Direction direction
+);
+
+//  The tiles a WALK `step` from `start` passes through, `start` first, short
+//  of a warp at its end.
+std::vector<MapPosition> leg_tiles(
+    const std::vector<MapData>& maps,
+    const MapPosition& start, const RouteStep& step
 );
 
 //  Replays `route` from `start` with the game's step rules and returns where

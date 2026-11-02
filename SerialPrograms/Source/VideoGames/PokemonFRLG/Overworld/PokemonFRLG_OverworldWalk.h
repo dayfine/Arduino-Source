@@ -10,7 +10,8 @@
  *  A message or a wild battle can stop the player part-way through a leg.
  *  Each kind is an OverworldInterrupt: the walker watches for all of them
  *  while it holds the D-pad, and when one shows it stops, has it cleared and
- *  walks the rest of the leg.
+ *  walks the rest of the leg; an open leg stops there instead, and the
+ *  route finds the player again (PokemonFRLG_OverworldRecovery.h).
  *
  */
 
@@ -23,6 +24,7 @@
 #include "Pokemon/Navigation/Pokemon_LegWalker.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
+#include "PokemonFRLG_OverworldRecovery.h"
 #include "PokemonFRLG_OverworldRoute.h"
 
 namespace PokemonAutomation{
@@ -61,14 +63,27 @@ void use_max_repel_from_bag(ConsoleHandle& console, ProControllerContext& contex
 
 //  Walks `route` from where it was planned. The player must be standing still
 //  on the overworld, not running and not on the bike. `facing` is the way the
-//  player faces at the start; if not given, it is read from the screen. Throws OperationFailedException if a
-//  warp's fade or the Surf prompt doesn't show, or a leg is interrupted too
-//  many times.
+//  player faces at the start; if not given, it is read from the screen.
+//
+//  When a battle or a message stops an open leg part-way, where the player
+//  is isn't guessed: see run_route(). Finding them again needs `planning`,
+//  what the route was planned with; without it the route fails instead.
+//
+//  After each leg to a wall it taps once more toward the wall, and fails if
+//  the player moves (a diagnostic; RoutePlanning::wall_check SKIP turns it
+//  off, as the Fast checks level does).
+//
+//  Throws OperationFailedException if a menu or message is open before a
+//  step, a warp's fade or the Surf prompt doesn't show, a warp's fade turns
+//  out to be a wild battle's, a leg is interrupted too many times, or the
+//  player can't be found again. A wild battle that starts as the last leg
+//  ends is cleared before it returns.
 void walk_overworld_route(
     ConsoleHandle& console, ProControllerContext& context,
     const std::vector<RouteStep>& route,
     std::optional<Direction> facing = std::nullopt,
-    const OverworldInterruptSet& interrupts = default_overworld_interrupts()
+    const OverworldInterruptSet& interrupts = default_overworld_interrupts(),
+    const RoutePlanning* planning = nullptr
 );
 
 

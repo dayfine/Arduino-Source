@@ -55,6 +55,7 @@ const RouteCosts& default_route_costs(){
         {RouteCost::SURF, 40},
         {RouteCost::GRASS_TILE, 20},
         {RouteCost::OPEN_STOP, 8},
+        {RouteCost::OPEN_WILD_STOP, 300},
     };
     return COSTS;
 }
@@ -305,6 +306,7 @@ Pokemon::LegCosts to_leg_costs(const RouteCosts& costs){
     leg_costs.per_tile = route_cost(costs, RouteCost::TILE);
     leg_costs.per_turn = route_cost(costs, RouteCost::TURN);
     leg_costs.per_open_stop = route_cost(costs, RouteCost::OPEN_STOP);
+    leg_costs.per_open_wild_stop = route_cost(costs, RouteCost::OPEN_WILD_STOP);
     return leg_costs;
 }
 
@@ -378,6 +380,83 @@ std::optional<std::vector<RouteStep>> plan_overworld_route(
     return route;
 }
 
+
+namespace{
+
+//  Further than any straight line on a map.
+constexpr int MAX_HOLD_TILES = 128;
+
+std::optional<Located> locate(const std::vector<MapData>& maps, const MapPosition& position, bool surfing){
+    const int map = find_map(maps, position.map);
+    if (map < 0){
+        return std::nullopt;
+    }
+    Located player;
+    player.map = map;
+    player.state = PlayerState{position.point, elevation_at(maps[map], position.point), surfing};
+    return player;
+}
+
+//  A plain step: no warp, no Surf, no getting off the water.
+std::optional<Located> plain_step(const std::vector<MapData>& maps, const Located& player, Direction direction){
+    const std::optional<Transition> transition = press(maps, player, direction);
+    if (!transition || transition->warped || transition->dismounted || transition->action != RouteAction::WALK){
+        return std::nullopt;
+    }
+    return transition->next;
+}
+
+}
+
+
+namespace{
+
+//  Holding north into a ledge stops the player: the maps don't keep which way
+//  a ledge faces, but FRLG's face south, east or west (pokefirered has no
+//  MB_JUMP_NORTH on any map these load). Only finding the player again
+//  relies on this; routes never hold into a ledge (stops_at()).
+bool ledge_stops_north(const std::vector<MapData>& maps, const Located& player, Direction direction){
+    return direction == Direction::NORTH && is_ledge(maps[player.map], player.state.position.next(direction));
+}
+
+}
+
+std::optional<WallHold> hold_to_wall(
+    const std::vector<MapData>& maps,
+    const MapPosition& from, bool surfing, Direction direction
+){
+    std::optional<Located> player = locate(maps, from, surfing);
+    WallHold hold;
+    for (int c = 0; player && c <= MAX_HOLD_TILES; c++){
+        if (stops_at(maps, *player, direction) || ledge_stops_north(maps, *player, direction)){
+            hold.end = MapPosition{maps[player->map].name, player->state.position};
+            hold.tiles = c;
+            return hold;
+        }
+        player = plain_step(maps, *player, direction);
+        if (player){
+            const MapData& map = maps[player->map];
+            hold.wild = hold.wild || is_tall_grass(map, player->state.position) || player->state.surfing;
+        }
+    }
+    return std::nullopt;
+}
+
+std::vector<MapPosition> leg_tiles(
+    const std::vector<MapData>& maps,
+    const MapPosition& start, const RouteStep& step
+){
+    std::vector<MapPosition> tiles{start};
+    std::optional<Located> player = locate(maps, start, step.surfing);
+    const int along = step.tiles - (step.warps ? 1 : 0);
+    for (int c = 0; player && c < along; c++){
+        player = plain_step(maps, *player, step.direction);
+        if (player){
+            tiles.push_back(MapPosition{maps[player->map].name, player->state.position});
+        }
+    }
+    return tiles;
+}
 
 MapPosition follow_overworld_route(
     const std::vector<MapData>& maps,
