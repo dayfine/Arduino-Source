@@ -267,6 +267,8 @@ private:
     //  Every banner read on the way, to check the map we arrive on against.
     std::vector<std::string> m_all_banners;
     std::string m_map_start;
+    //  Dialogue the map does not explain, so far on this route.
+    size_t m_unexplained_talks = 0;
 };
 
 std::vector<TilePos> RouteWalker::run(std::vector<TilePos> from){
@@ -643,6 +645,12 @@ LegNext RouteWalker::unknown_trainer(LegWalk& walk, const std::vector<std::vecto
         anywhere.insert(anywhere.end(), path.begin(), path.end());
     }
     anywhere = sorted_unique(std::move(anywhere));
+    //  A scene the map lacks (r14: Barry's Route 201 warning, then the row that
+    //  pulls us back) would replan into it forever: give up after the second.
+    if (++m_unexplained_talks > 2){
+        OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
+            walk.label + ": dialogue the map does not explain stopped us 3 times.", m_stream);
+    }
     route_status(m_stream, m_plan.label + ": a trainer the map lacks stopped us; fighting.");
     m_trainers.fight("unknown trainer");
     if (walk.planned.leg.ends_at_wall){
