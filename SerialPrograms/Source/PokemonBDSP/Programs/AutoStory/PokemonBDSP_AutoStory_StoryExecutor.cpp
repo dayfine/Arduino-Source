@@ -452,6 +452,17 @@ Outcome StoryExecutor::heal(RunState&, const StoryStep& step){
         enter_lit_door(stream(), context(), label_of(step));
     }
     talk_to_nurse(stream(), context(), label_of(step));
+    //  Her last line ("We hope to see you again!") can still be up, and a
+    //  line stops the run out at once (r62): B until none shows.
+    ShortDialogDetector line;
+    for (size_t presses = 0; presses < 10; presses++){
+        context().wait_for_all_requests();
+        const VideoSnapshot screen = stream().video().snapshot();
+        if (!screen || !line.detect(*screen.frame)){
+            break;
+        }
+        pbf_press_button(context(), BUTTON_B, 80ms, 700ms);
+    }
     //  Out the same way: south until the fade. The walk out's indoor check
     //  read "not a room" a step from the counter and stopped inside (r50, r59).
     route_turn(stream(), context(), Direction::SOUTH);
