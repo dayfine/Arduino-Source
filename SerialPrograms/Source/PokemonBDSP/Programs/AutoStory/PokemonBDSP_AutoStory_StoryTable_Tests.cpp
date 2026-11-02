@@ -4,6 +4,7 @@
  *
  */
 
+#include <algorithm>
 #include <format>
 #include <map>
 #include <optional>
@@ -12,6 +13,7 @@
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
+#include "Pokemon/AutoStory/Pokemon_StoryEvents.h"
 #include "Pokemon/AutoStory/Pokemon_StorySteps.h"
 #include "Data/PokemonBDSP_AutoStory_Maps.h"
 #include "Data/PokemonBDSP_AutoStory_PlanCosts.h"
@@ -76,6 +78,46 @@ public:
         }
         if (!ids.contains("00.00") || !ids.contains("01.11") || story_checkpoints().front().on_failure != StoryFailure::STOP){
             return "Expected 00.00 (which stops on a failure) to 01.11.";
+        }
+        return true;
+    }
+};
+
+//  Where a row's last step says it leaves the player: the end of its scene,
+//  or where its route (or heal) goes. None for a step that does not say.
+std::optional<Pokemon::Pose> end_pose(const StoryCheckpoint& row){
+    if (row.steps.empty()){
+        return std::nullopt;
+    }
+    const Pokemon::StoryStep& last = row.steps.back();
+    return last.pose_after ? last.pose_after : last.target;
+}
+
+//  Each row starts where the row before it ends: every tile its start allows
+//  is one the last row's end allows, on the same map. Checked where the last
+//  step says where it ends.
+class Test_StoryTableRowsJoin : public UnitTest{
+public:
+    Test_StoryTableRowsJoin()
+        : UnitTest("PokemonBDSP::AutoStory - Story table: each row starts where the last one ends")
+    {}
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        const std::vector<StoryCheckpoint>& rows = story_checkpoints();
+        for (size_t i = 1; i < rows.size(); i++){
+            const std::optional<Pokemon::Pose> end = end_pose(rows[i - 1]);
+            const std::optional<Pokemon::Pose>& start = rows[i].start;
+            if (!end || !start){
+                continue;
+            }
+            const std::vector<TilePos> ends = Pokemon::tiles_of(*end);
+            bool joins = start->map == end->map;
+            for (const TilePos& pos : Pokemon::tiles_of(*start)){
+                joins = joins && std::find(ends.begin(), ends.end(), pos) != ends.end();
+            }
+            if (!joins){
+                return std::format("{} starts at {}, but {} ends at {}.",
+                    rows[i].id, Pokemon::to_string(*start), rows[i - 1].id, Pokemon::to_string(*end));
+            }
         }
         return true;
     }
@@ -202,6 +244,7 @@ public:
 
 void add_tests_AutoStory_StoryTable(UnitTestDatabase& database){
     database.add<Test_StoryTableLints>();
+    database.add<Test_StoryTableRowsJoin>();
     database.add<Test_Route204NorthLine>();
     database.add<Test_MartLadyWalk>();
 }
