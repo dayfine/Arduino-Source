@@ -120,6 +120,11 @@ std::optional<StoryPose> story_pose(const Pokemon::Pose& pose);
 //  read_save_card_location()), or empty for a map whose place isn't known.
 std::string save_card_place(const std::string& map);
 
+//  Why a save whose card names `place` can't start a checkpoint that starts
+//  on `start_map`, or empty if it can: the places match, the card couldn't
+//  be read (empty `place`), or the map has no known place.
+std::string save_place_error(const std::string& start_map, const std::string& place);
+
 //  `legs` from `start` as route steps for the walker, each checked against
 //  the map: nothing if a step is blocked or leaves the map. A leg ends "to
 //  wall" if the next step its way is blocked.
@@ -154,7 +159,16 @@ struct StoryEnv{
     //  The name the new game's intro types for the player; empty keeps the
     //  game's default name.
     std::string player_name;
+    //  The map the checkpoint under way starts on, where its save is: a
+    //  reload checks the save card against it.
+    std::string start_map;
 };
+
+//  After a save is loaded for a checkpoint that starts on `start_map`: the
+//  save card's place, read from the START menu, against it, at every checks
+//  level. Empty if the save is there (or the card can't be read), else why
+//  not.
+std::string check_save_place(StoryEnv& env, const std::string& start_map);
 
 //  Does FRLG's kinds of story step on the console. A console step that
 //  fails is a failed Outcome, which the segment answers by reloading.

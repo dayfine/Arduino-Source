@@ -93,29 +93,16 @@ AutoStory::AutoStory()
 //  by an earlier checkpoint (a run that failed before saving) would start
 //  it in the wrong place (console B, 2026-11-01: 00.09 on the forest's
 //  save). Checked on the SAVE card; a card that can't be read is let pass.
-static void check_save_place(
-    SingleSwitchProgramEnvironment& env, ProControllerContext& context,
-    const std::vector<StoryCheckpoint>& checkpoints, size_t first, Language language
+static void check_start_save(
+    SingleSwitchProgramEnvironment& env, StoryEnv& story, const StoryCheckpoint& checkpoint
 ){
-    const StoryCheckpoint& checkpoint = checkpoints[first];
-    const std::string expected = checkpoint.start ? save_card_place(checkpoint.start->map) : "";
-    if (expected.empty()){
+    if (!checkpoint.start){
         return;
     }
-    //  The START menu as the checkpoint before left it.
-    const std::string place = read_save_place(env.console, context, checkpoints[first - 1].menu, language);
-    if (place.empty()){
-        env.console.log("Couldn't read the save card's place; starting " + checkpoint.id + " anyway.", COLOR_ORANGE);
-        return;
+    const std::string error = check_save_place(story, checkpoint.start->map);
+    if (!error.empty()){
+        throw UserSetupError(env.console, error + " Start at the checkpoint " + checkpoint.id + " the save is for.");
     }
-    if (place != expected){
-        throw UserSetupError(
-            env.console,
-            "The save is in " + place + ", but checkpoint " + checkpoint.id + " starts in " + expected +
-            " (" + checkpoint.start->map + "). Start at the checkpoint the save is for."
-        );
-    }
-    env.console.log("The save is in " + place + ", where " + checkpoint.id + " starts.");
 }
 
 namespace{
@@ -139,8 +126,15 @@ Pokemon::SegmentHooks story_hooks(SingleSwitchProgramEnvironment& env, StoryEnv&
         if (!story.has_save){
             return Pokemon::outcome_failed("no_save", "nothing saved yet");
         }
+        //  The save reloaded must be where the checkpoint starts: a save
+        //  that didn't happen leaves an older one (console B, 2026-11-02:
+        //  00.02 walked the bedroom's route in Pewter City).
         try{
             soft_reset(story.console, story.context);
+            const std::string error = check_save_place(story, story.start_map);
+            if (!error.empty()){
+                return Pokemon::outcome_failed("wrong_save", error);
+            }
         }catch (OperationFailedException& e){
             return Pokemon::outcome_failed("reload_failed", e.message());
         }
@@ -207,7 +201,7 @@ static void prepare_start(
     env.console.log("Loading the save for " + checkpoint.id + ".");
     soft_reset(env.console, context);
     story.has_save = true;
-    check_save_place(env, context, checkpoints, first, story.language);
+    check_start_save(env, story, checkpoints[first]);
 }
 
 //  The run stopped for an RNG program, as its option asked: the user's

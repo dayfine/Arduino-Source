@@ -290,6 +290,14 @@ std::string save_card_place(const std::string& map){
     return "";
 }
 
+std::string save_place_error(const std::string& start_map, const std::string& place){
+    const std::string expected = save_card_place(start_map);
+    if (expected.empty() || place.empty() || place == expected){
+        return "";
+    }
+    return "The save is in " + place + ", but the checkpoint starts in " + expected + " (" + start_map + ").";
+}
+
 std::optional<std::vector<RouteStep>> fixed_route(
     const std::vector<MapData>& maps, const MapPosition& start, const std::vector<StoryLeg>& legs
 ){
@@ -429,10 +437,27 @@ StoryRunPlan plan_story_run(
 }
 
 
+std::string check_save_place(StoryEnv& env, const std::string& start_map){
+    if (save_card_place(start_map).empty()){
+        return "";
+    }
+    const std::string place = read_save_place(env.console, env.context, env.language);
+    if (place.empty()){
+        env.console.log("Couldn't read the save card's place; going on.", COLOR_ORANGE);
+        return "";
+    }
+    const std::string error = save_place_error(start_map, place);
+    if (error.empty()){
+        env.console.log("The save is in " + place + ", where the checkpoint starts.");
+    }
+    return error;
+}
+
 Pokemon::Checkpoint build_checkpoint(const StoryCheckpoint& data, StoryExecutor& executor){
     executor.set_menu(data.menu);
     Pokemon::Checkpoint checkpoint = Pokemon::build_story_checkpoint(data, executor);
     StoryEnv& env = executor.env();
+    env.start_map = data.start ? data.start->map : "";
     const StartMenu menu = data.menu;
     checkpoint.save = [&env, menu](RunState&){
         return guarded([&]{

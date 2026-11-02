@@ -9,6 +9,9 @@
  */
 
 #include <functional>
+#include <string>
+#include <utility>
+#include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
@@ -380,6 +383,101 @@ UnitTestResult test_save_places(){
     return true;
 }
 
+//  A reload's save checked against the checkpoint's start: a save left in
+//  Pewter City (a new game whose save didn't happen) can't start 00.02 in
+//  the bedroom. The check takes no checks level: Fast runs it too.
+UnitTestResult test_save_place_error(){
+    struct Case{
+        std::string start_map;
+        std::string place;
+        bool error;
+    };
+    const Case CASES[] = {
+        {.start_map = "PalletTown_PlayersHouse_2F", .place = "pewter-city", .error = true},
+        {.start_map = "PalletTown_PlayersHouse_2F", .place = "pallet-town", .error = false},
+        //  A card that can't be read is let pass.
+        {.start_map = "PalletTown_PlayersHouse_2F", .place = "", .error = false},
+        {.start_map = "ViridianForest", .place = "viridian-city", .error = true},
+        //  A map with no known place isn't checked.
+        {.start_map = "Route22", .place = "pewter-city", .error = false},
+    };
+    for (const Case& c : CASES){
+        const std::string error = save_place_error(c.start_map, c.place);
+        if (error.empty() == c.error){
+            return "A save in \"" + c.place + "\" for a start on " + c.start_map + ": expected " +
+                (c.error ? "an error" : "no error") + ", got \"" + error + "\".";
+        }
+    }
+    return true;
+}
+
+const char* save_action_name(SaveAction action){
+    switch (action){
+    case SaveAction::WAIT:
+        return "WAIT";
+    case SaveAction::ANSWER_YES:
+        return "ANSWER_YES";
+    case SaveAction::NEXT_PAGE:
+        return "NEXT_PAGE";
+    case SaveAction::CHECK_OVERWORLD:
+        return "CHECK_OVERWORLD";
+    case SaveAction::FAIL_CANCELLED:
+        return "FAIL_CANCELLED";
+    case SaveAction::FAIL_ERROR:
+        return "FAIL_ERROR";
+    }
+    return "?";
+}
+
+//  save_game()'s answers to the save dialogs of pokefirered's start_menu.c,
+//  screen by screen from the first YES/NO.
+UnitTestResult test_save_dialog(){
+    using S = SaveScreen;
+    using A = SaveAction;
+    struct Case{
+        std::string name;
+        std::vector<std::pair<SaveScreen, SaveAction>> screens;
+    };
+    const std::vector<Case> CASES = {
+        {
+            .name = "first save",
+            .screens = {{S::YES_NO, A::ANSWER_YES}, {S::TEXT, A::WAIT}, {S::TEXT, A::WAIT}, {S::NOTHING, A::WAIT}, {S::NOTHING, A::CHECK_OVERWORLD}},
+        },
+        {
+            .name = "over this game's save",
+            .screens = {{S::YES_NO, A::ANSWER_YES}, {S::TEXT, A::WAIT}, {S::YES_NO, A::ANSWER_YES}, {S::TEXT, A::WAIT}, {S::NOTHING, A::WAIT}, {S::NOTHING, A::CHECK_OVERWORLD}},
+        },
+        {
+            //  WARNING!, four pages, then the YES/NO that starts on NO.
+            .name = "a new game over another game's save",
+            .screens = {
+                {S::YES_NO, A::ANSWER_YES},
+                {S::PAGED_TEXT, A::NEXT_PAGE}, {S::NOTHING, A::WAIT}, {S::PAGED_TEXT, A::NEXT_PAGE}, {S::PAGED_TEXT, A::NEXT_PAGE},
+                {S::TEXT, A::WAIT}, {S::YES_NO, A::ANSWER_YES}, {S::TEXT, A::WAIT}, {S::NOTHING, A::WAIT}, {S::NOTHING, A::CHECK_OVERWORLD},
+            },
+        },
+        {
+            .name = "cancelled: the START menu is back",
+            .screens = {{S::YES_NO, A::ANSWER_YES}, {S::TEXT, A::WAIT}, {S::START_MENU, A::FAIL_CANCELLED}},
+        },
+        {
+            .name = "Save error.",
+            .screens = {{S::YES_NO, A::ANSWER_YES}, {S::TEXT, A::WAIT}, {S::PAGED_TEXT, A::NEXT_PAGE}, {S::NOTHING, A::WAIT}, {S::NOTHING, A::FAIL_ERROR}},
+        },
+    };
+    for (const Case& c : CASES){
+        SaveDialog dialog;
+        for (size_t i = 0; i < c.screens.size(); i++){
+            const SaveAction action = dialog.next(c.screens[i].first);
+            if (action != c.screens[i].second){
+                return c.name + ", screen " + std::to_string(i + 1) + ": expected " + save_action_name(c.screens[i].second) +
+                    ", got " + save_action_name(action) + ".";
+            }
+        }
+    }
+    return true;
+}
+
 UnitTestResult test_lint(){
     for (const StoryCheckpoint& checkpoint : story_checkpoints()){
         const std::vector<std::string> problems = Pokemon::lint_story_checkpoint(checkpoint);
@@ -519,6 +617,8 @@ void add_tests_AutoStory(UnitTestDatabase& database){
     database.add<Test_AutoStory>("every route plans, and checkpoints chain", test_routes_and_chain);
     database.add<Test_AutoStory>("step names are unique per checkpoint", test_unique_names);
     database.add<Test_AutoStory>("every save has a place on the save card", test_save_places);
+    database.add<Test_AutoStory>("a reload's save is checked against the start", test_save_place_error);
+    database.add<Test_AutoStory>("save dialogs: every YES/NO is YES, a cancel fails", test_save_dialog);
     database.add<Test_AutoStory>("every checkpoint lints clean", test_lint);
     database.add<Test_AutoStory>("Pewter Gym walks", test_pewter_gym_walks);
     database.add<Test_AutoStory>("Pewter: to the aide's trigger", test_pewter_aide_walk);
