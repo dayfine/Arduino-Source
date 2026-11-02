@@ -23,6 +23,7 @@
 #include "PokemonBDSP/Inference/Battles/PokemonBDSP_BattleMenuDetector.h"
 #include "PokemonBDSP/Inference/PokemonBDSP_DialogDetector.h"
 #include "PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_OverworldDetector.h"
+#include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Indoors.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Location.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_RouteWalk.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Walk.h"
@@ -122,14 +123,19 @@ bool center_floor_on_screen(const ImageViewRGB32& screen, size_t* percent){
     return warm * 10 > total * 3;
 }
 
+bool pokemon_center_on_screen(const ImageViewRGB32& screen, size_t* percent){
+    return center_floor_on_screen(screen, percent) && indoors(screen);
+}
+
 bool in_pokemon_center(VideoStream& stream){
     const VideoSnapshot frame = stream.video().snapshot();
     if (!frame){
         return false;
     }
     size_t percent = 0;
-    const bool inside = center_floor_on_screen(*frame.frame, &percent);
-    stream.log("[Center check] warm floor " + std::to_string(percent) + " %: " +
+    const bool inside = pokemon_center_on_screen(*frame.frame, &percent);
+    stream.log("[Center check] warm floor " + std::to_string(percent) + " %, " +
+        (indoors(*frame.frame) ? "a room" : "outside") + ": " +
         (inside ? "in a Pokemon Center." : "not in a Pokemon Center."));
     return inside;
 }
