@@ -62,6 +62,9 @@ public:
                 return row.id + ": repeated or out of order.";
             }
             previous = row.id;
+            if ((row.on_failure == StoryFailure::RELOAD_AND_RETRY) == row.saves_in.empty()){
+                return row.id + ": a row names the map its start save is made in (saves_in) exactly when it saves first.";
+            }
             const std::vector<std::string> problems = Pokemon::lint_story_checkpoint(row);
             if (!problems.empty()){
                 return row.id + ": " + problems[0];

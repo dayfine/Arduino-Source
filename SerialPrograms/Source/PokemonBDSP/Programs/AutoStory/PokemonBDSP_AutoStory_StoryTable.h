@@ -6,7 +6,8 @@
  *  shared story steps (Pokemon/AutoStory/Pokemon_StorySteps.h): plain
  *  data, as FRLG's table is, so the tests plan its routes and run it
  *  against a fake game. Each row but 00.00 saves at its start, which is
- *  where the row before it ends.
+ *  where the row before it ends, and only if the save screen's card names
+ *  the row's map (saves_in).
  *
  */
 
