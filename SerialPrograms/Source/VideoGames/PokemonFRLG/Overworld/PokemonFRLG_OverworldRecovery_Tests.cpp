@@ -164,15 +164,13 @@ UnitTestResult test_stop_recover_resume(){
 
 //  A corridor with a person at each end: nothing finds the player again.
 const char* const TEST_CORRIDOR_JSON = R"({
-    "name": "Corridor", "width": 7, "height": 3,
+    "name": "Corridor", "source": {"decomp_file": "", "revision": "test", "date": "2026-10-31"},
     "tiles": ["#######", "#.....#", "#######"],
     "elevation": ["3333333", "3333333", "3333333"],
-    "warps": [],
     "objects": [
-        {"x": 1, "y": 1, "kind": "youngster", "flag": "", "wander_x": 0, "wander_y": 0},
-        {"x": 5, "y": 1, "kind": "lass", "flag": "", "wander_x": 0, "wander_y": 0}
-    ],
-    "connections": [], "points": [], "flag_sets": []
+        {"name": "youngster", "kind": "npc", "x": 1, "y": 1},
+        {"name": "lass", "kind": "npc", "x": 5, "y": 1}
+    ]
 })";
 
 RouteStep walk(Direction direction, int tiles, MapPosition end){

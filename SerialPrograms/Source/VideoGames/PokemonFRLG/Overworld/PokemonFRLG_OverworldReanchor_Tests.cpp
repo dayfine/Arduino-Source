@@ -93,11 +93,9 @@ UnitTestResult test_pallet_to_viridian_mart(){
 
 //  A field with a wall at its east end and a row of ledges to the south.
 const char* const TEST_FIELD_JSON = R"({
-    "name": "Field", "width": 8, "height": 5,
-    "tiles": ["########", "#......#", "#......#", "#JJJJJJ#", "#......#"],
-    "elevation": ["33333333", "33333333", "33333333", "33333333", "33333333"],
-    "warps": [], "objects": [],
-    "connections": [], "points": [], "flag_sets": []
+    "name": "Field", "source": {"decomp_file": "", "revision": "test", "date": "2026-10-31"},
+    "tiles": ["########", "#......#", "#......#", "#vvvvvv#", "#......#"],
+    "elevation": ["33333333", "33333333", "33333333", "33333333", "33333333"]
 })";
 
 std::string describe(const std::optional<Reanchor>& anchor){
