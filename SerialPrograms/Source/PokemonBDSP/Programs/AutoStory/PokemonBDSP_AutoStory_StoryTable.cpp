@@ -395,10 +395,11 @@ std::vector<StoryCheckpoint> jubilife(){
     return {
         row("00.05", "Jubilife: the Center, the Trainers' School and the Town Map", std::nullopt, {
             event("up_the_steps", "a tile west of the save below the steps, then up them", on(JUBILIFE, "up_the_steps")),
-            to_walls("to_the_sign", {{.direction = WEST, .tiles = 8}, {.direction = NORTH, .tiles = 8}},
-                "west to the fence's end, north to the sign by the lamp west of the road"),
-            to_walls("to_the_center", {{.direction = EAST, .tiles = 14}, {.direction = NORTH, .tiles = 14}},
-                "east across the road to the house, north up the sidewalk to the Center's doorway"),
+            //  Planned on the map: the hand-measured walls (west to the sign, east
+            //  across the road, north) leaned on the old turn's nudge and ended
+            //  beside the Trainers' School once turns stopped stepping (r57, r58).
+            route("to_the_center", at(JUBILIFE, 52, 41, NORTH),
+                "below the Center's door (52, 40)", "town"),
             //  The kids south of the Center can push us aside: the heal lines up by sight.
             heal("heal_jubilife", "in, the nurse, out onto the doorstep (r143a: check we are out)"),
             event("into_the_school", "eleven tiles west of the Center's doorstep, north through the School's door"),
