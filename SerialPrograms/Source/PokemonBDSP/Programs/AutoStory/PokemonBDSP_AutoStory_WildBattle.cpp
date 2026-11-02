@@ -413,8 +413,11 @@ void escape_wild_battle(VideoStream& stream,
         stream);
 }
 
+//  STARTER's check of the menu (its Battle button) holds for any party:
+//  STANDARD also reads the party's balls, which a lone starter does not
+//  match, so Route 201's first wild battle never saw its menu (r34).
 void run_from_wild_battle(VideoStream& stream, ProControllerContext& context){
-    escape_wild_battle(stream, context, BattleType::STANDARD);
+    escape_wild_battle(stream, context, BattleType::STARTER);
 }
 
 
