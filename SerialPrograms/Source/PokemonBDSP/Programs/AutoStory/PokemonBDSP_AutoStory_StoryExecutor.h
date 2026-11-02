@@ -123,7 +123,8 @@ protected:
     //  unless the step gives one.
     virtual Pokemon::Outcome legs(Pokemon::RunState& state, const Pokemon::StoryStep& step) override;
     //  One D-pad step `direction`, turning first: onto a scene's trigger or
-    //  into a door.
+    //  into a door. Variant "to_banner": one tap into a cave mouth, then
+    //  wait for pose_after's map's location banner.
     virtual Pokemon::Outcome step(Pokemon::RunState& state, const Pokemon::StoryStep& step) override;
     //  A at what we face; a dialogue must open.
     virtual Pokemon::Outcome talk(Pokemon::RunState& state, const Pokemon::StoryStep& step) override;

@@ -143,6 +143,16 @@ StoryStep step_into(std::string name, Direction direction, std::string why, std:
     step.pose_after = std::move(pose_after);
     return step;
 }
+//  Through a door or a cave mouth `direction` a D-pad tap at a time, each
+//  looked at, ending on the far map's location banner (the executor's
+//  "to_banner"): a hold can carry on past a fade it missed (r75, r219g).
+//  A tap after an unseen fade may step once more on the far side, so
+//  `pose_after` allows for it.
+StoryStep tap_into(std::string name, Direction direction, std::string why, Pose pose_after){
+    StoryStep step = step_into(std::move(name), direction, std::move(why), std::move(pose_after));
+    step.variant = "to_banner";
+    return step;
+}
 StoryStep talk(std::string name, std::string why){
     return make(StoryStepKind::TALK, std::move(name), std::move(why));
 }
@@ -496,10 +506,23 @@ std::vector<StoryCheckpoint> jubilife(){
     return {the_town_map(), the_coupons(), the_poketch()};
 }
 
+//  `tile` of `map`, or the tile past it `direction`: where a tap_into() may
+//  leave us.
+Pose arrival(const char* map, TilePos tile, Direction direction){
+    return Pokemon::tile_pose(map, {tile, tile.next(direction)}, direction);
+}
 //  Where the Oreburgh Gate lets us out onto Route 203: its warp tile (55, 9)
-//  (Diamond's warp (246, 749), zone event narc_0329), walking west.
+//  (Diamond's warp (246, 749), zone event narc_0329), walking west. The one
+//  tile only: from it and (54, 9) together the joined Route 203 and Jubilife
+//  find no plan. The tap stops at the fade, which puts us on the warp tile;
+//  r78 passed 01.06 from a save there (by the sign, the cave mouth east).
 Pose out_of_oreburgh_gate(){
     return at(ROUTE_203, 55, 9, WEST);
+}
+//  Where Route 204's door (11, 1) lets us into the Ravaged Path: (19, 50),
+//  as in r237a.
+Pose into_the_ravaged_path(){
+    return arrival(RAVAGED_PATH, map_point(RAVAGED_PATH, "entrance"), NORTH);
 }
 
 //  01.05, planned on Oreburgh's and the Gate's maps with the Diamond decomp's
@@ -513,17 +536,19 @@ Pose out_of_oreburgh_gate(){
 StoryCheckpoint oreburgh_to_route_203(){
     return row("01.05", "Oreburgh to Route 203", next_to(GYM, "roark", SOUTH, NORTH), {
         //  01.04 talks to Roark from below him, up the clear middle column.
-        step_into("out_of_the_gym", SOUTH, "down the middle column (5, 4..23) and out of the door (5, 24)",
-            at(OREBURGH, "gym_doorstep", SOUTH)),
+        tap_into("out_of_the_gym", SOUTH, "down the middle column (5, 4..23) and out of the door (5, 24)",
+            arrival(OREBURGH, map_point(OREBURGH, "gym_doorstep"), SOUTH)),
         route("east_of_barrys_trigger", at(OREBURGH, 7, 13, WEST),
             "west along the street, north up the stairs west of the houses, west along the Gate's row", "town"),
         step_into("barrys_trigger", WEST, "the trigger (6, 12..15)"),
         scene("barry_bumps_into_us", at(OREBURGH, 5, 13, EAST), "Barry runs into us, talks of Eterna, and leaves (assumed: the push)"),
         route("by_the_gate", next_to(OREBURGH, "gate_mouth", EAST, WEST), "west to the Gate's warp tile (2, 13)"),
         //  The warp's other end is the Gate's (27, 22), beside its east mouth.
-        step_into("into_oreburgh_gate", WEST, "the Gate's mouth (1, 13)", at(GATE, 27, 22, WEST)),
+        tap_into("into_oreburgh_gate", WEST, "the Gate's mouth (1, 13)", arrival(GATE, {27, 22}, WEST)),
         route("through_the_gate", at(GATE, 4, 22, WEST), "west along row 22 to the warp tile by the west mouth (3, 22)"),
-        step_into("out_of_oreburgh_gate", WEST, "the west mouth (3, 22)", out_of_oreburgh_gate()),
+        //  Route 203's banner or a failure here: the old walk west "until the
+        //  banner" went on into the pond's pocket (r75). 01.06 heads south.
+        tap_into("out_of_oreburgh_gate", WEST, "the west mouth (3, 22)", out_of_oreburgh_gate()),
     });
 }
 
@@ -556,7 +581,7 @@ StoryCheckpoint rowan_and_the_grunts(){
 //  above the way out (28, 45). Its other end is Route 204's (20, 26).
 StoryCheckpoint through_the_ravaged_path(){
     const Pose west_of_the_rock = at(RAVAGED_PATH, "before_rocks.2", EAST);
-    return row("01.09", "Ravaged Path", at(RAVAGED_PATH, "entrance", NORTH), {
+    return row("01.09", "Ravaged Path", into_the_ravaged_path(), {
         route("west_of_the_rock", west_of_the_rock, "up the stairs and along the corridor"),
         event("smash_the_rock", "Rock Smash on the rock east of us", west_of_the_rock),
         route("above_the_way_out", at(RAVAGED_PATH, "above_exit", SOUTH), "east through the rock's tile"),
@@ -627,7 +652,7 @@ std::vector<StoryCheckpoint> to_floaroma(){
                 "north out of Jubilife, up Route 204's street and grass to below the door (11, 1)", "town"),
             //  Its warp (Diamond's zone event narc_0330) lands us on the
             //  cave's (19, 50), as in r237a.
-            step_into("into_the_ravaged_path", NORTH, "the door (11, 1)", at(RAVAGED_PATH, "entrance", NORTH)),
+            tap_into("into_the_ravaged_path", NORTH, "the door (11, 1)", into_the_ravaged_path()),
         }),
         through_the_ravaged_path(),
         route_204_to_floaroma(),

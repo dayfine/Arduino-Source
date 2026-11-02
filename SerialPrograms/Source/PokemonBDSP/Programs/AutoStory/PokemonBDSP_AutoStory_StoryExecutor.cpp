@@ -352,11 +352,15 @@ namespace{
 //  stops it: holding on under Mom's "Oh, Kosmos!" wasted 12 s (r45). The walker's black-screen watch
 //  missed the lab's fade into Sandgem (r44, "dialog"), and settle's samples
 //  1.3 s apart can fall either side of it, so watch at settle's own darkness.
-bool run_into_door(VideoStream& stream, ProControllerContext& context, Direction direction, bool run){
-    const DpadPosition dpad =
+DpadPosition dpad_toward(Direction direction){
+    return
         direction == Direction::NORTH ? DPAD_UP :
         direction == Direction::SOUTH ? DPAD_DOWN :
         direction == Direction::WEST ? DPAD_LEFT : DPAD_RIGHT;
+}
+
+bool run_into_door(VideoStream& stream, ProControllerContext& context, Direction direction, bool run){
+    const DpadPosition dpad = dpad_toward(direction);
     BlackScreenWatcher dark(COLOR_RED, {0.1, 0.1, 0.8, 0.8}, 3 * FADE_DARKNESS, 60);
     ShortDialogWatcher dialog(COLOR_YELLOW);
     const int ret = run_until<ProControllerContext>(stream, context, [&](ProControllerContext& context){
@@ -368,10 +372,68 @@ bool run_into_door(VideoStream& stream, ProControllerContext& context, Direction
     return ret == 0;
 }
 
+//  What the screen showed after a tap toward a door or a cave mouth.
+enum class TapLook{
+    NOTHING,
+    DARK,
+    BANNER,
+};
+
+//  Looks for `map`'s location banner (and, if `dark_too`, the fade) for up
+//  to `wait`.
+TapLook look_after_tap(VideoStream& stream, ProControllerContext& context, const std::string& map, Milliseconds wait, bool dark_too){
+    const WallClock deadline = current_time() + wait;
+    while (true){
+        context.wait_for_all_requests();
+        const VideoSnapshot screen = stream.video().snapshot();
+        if (screen && location_banner_matches(read_location_banner(*screen.frame), map)){
+            return TapLook::BANNER;
+        }
+        if (dark_too && screen && image_average(*screen.frame).sum() / 3 < FADE_DARKNESS){
+            return TapLook::DARK;
+        }
+        if (current_time() >= deadline){
+            return TapLook::NOTHING;
+        }
+        context.wait_for(100ms);
+    }
+}
+
+//  A STEP "to_banner": D-pad taps one at a time toward a door or cave mouth,
+//  each followed by a look, until the fade (then no more taps) and
+//  pose_after's map's location banner. A held walk can carry on past a
+//  fade that goes unseen: out of the Gym it walked on south (r219g), and
+//  through the Oreburgh Gate's west mouth on west into a pocket by Route
+//  203's pond (r75). Taps during the fade are eaten. No banner fails the
+//  step right there.
+Outcome tap_to_banner(VideoStream& stream, ProControllerContext& context, const StoryStep& step, const std::string& checkpoint){
+    const std::string map = step.pose_after ? step.pose_after->map : "";
+    for (size_t tap = 1; tap <= 30; tap++){
+        pbf_press_dpad(context, dpad_toward(step.direction), 160ms, 0ms);
+        TapLook look = look_after_tap(stream, context, map, 1500ms, true);
+        const bool faded = look == TapLook::DARK;
+        if (faded){
+            look = look_after_tap(stream, context, map, 8000ms, false);
+        }
+        if (look == TapLook::BANNER){
+            stream.log(std::format("[{}] {}: {}'s banner after {} taps {}.", checkpoint, step.name, map, tap, direction_name(step.direction)));
+            context.wait_for(1000ms);
+            return Pokemon::outcome_ok();
+        }
+        if (faded){
+            break;
+        }
+    }
+    return Pokemon::outcome_failed("no_banner", map);
+}
+
 }
 
 Outcome StoryExecutor::step(RunState& state, const StoryStep& step){
     route_turn(stream(), context(), step.direction);
+    if (step.variant == "to_banner"){
+        return tap_to_banner(stream(), context(), step, m_checkpoint);
+    }
     //  A step through a door: walk (or run) on until the screen goes dark,
     //  from next to the door or from anywhere in its line (r43: tapping 8 tiles
     //  down the lab took 7 s), then settle for any scene on arrival (Mom's,
