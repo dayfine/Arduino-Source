@@ -1564,6 +1564,8 @@ file(GLOB LIBRARY_SOURCES
     Source/PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Location.h
     Source/PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_OverlayLog.cpp
     Source/PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_OverlayLog.h
+    Source/PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_RouteIO.cpp
+    Source/PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_RouteIO.h
     Source/PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_RouteWalk.cpp
     Source/PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_RouteWalk.h
     Source/PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Walk.cpp
@@ -1698,6 +1700,8 @@ file(GLOB LIBRARY_SOURCES
     Source/PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_StoryWorld.h
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_Maps_Tests.cpp
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_Maps_Tests.h
+    Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_PlannedRoute_Tests.cpp
+    Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_PlannedRoute_Tests.h
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_RoutePlanner_Tests.cpp
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_RoutePlanner_Tests.h
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryMaps_Tests.cpp
