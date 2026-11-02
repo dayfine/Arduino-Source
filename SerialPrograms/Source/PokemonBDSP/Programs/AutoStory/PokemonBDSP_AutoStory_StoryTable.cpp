@@ -256,10 +256,12 @@ std::vector<StoryCheckpoint> lake_and_pokedex(){
             event("starter_briefcase", "the lake's scene, to the open briefcase"),
             event("choose_starter", "the starter from the program's option"),
             event("fight_starly", "the Starly battle"),
-            //  The scene walks us out; the game leaves us on the entrance tile facing south (assumed).
-            event("after_starly", "Rowan's lines and the walk out of the lake", at(LAKEFRONT, "lake_entrance", SOUTH)),
+            //  The game walks us out of the lake, then the Lakefront's scene walks us 3
+            //  south: (17, 14) facing south, or a tile below (decomp; timeline 00.02 #5).
+            event("after_starly", "Rowan's lines and the walk out of the lake",
+                at_or_next_to(LAKEFRONT, "below_lake_entrance", SOUTH)),
         }),
-        row("00.03", "Back to Sandgem: Rowan, Dawn and the Pokedex", at(LAKEFRONT, "lake_entrance", SOUTH), {
+        row("00.03", "Back to Sandgem: Rowan, Dawn and the Pokedex", at_or_next_to(LAKEFRONT, "below_lake_entrance", SOUTH), {
             route("short_of_rowan", at(ROUTE_201, 4, 14, EAST), "back east onto Route 201's lower level"),
             step_into("rowans_stop", EAST, "the trigger (5, 14..16)"),
             scene("rowan_and_dawn", at(ROUTE_201, "rowan_stop"), "Rowan and Dawn come back for the Pokedex's owner"),
