@@ -293,8 +293,12 @@ std::vector<StoryCheckpoint> to_the_catch(){
         row("00.04", "Home to Mom, then Dawn's catching tutorial on Route 202", at(LAB, "rowan_talk", NORTH), {
             route("above_the_lab_door", at(LAB, 7, 14, SOUTH), "down the lab to its door (7, 15)"),
             step_into("out_of_the_lab", SOUTH, "out of the lab", door_front(SANDGEM, "lab_door")),
-            //  Dawn shows us the Center and the Mart; she leaves us by the Mart's door (assumed).
-            scene("dawn_shows_us_sandgem", door_front(SANDGEM, "poke_mart_door"), "Dawn's tour of Sandgem"),
+            //  Automatic on arrival, so out_of_the_lab's settle plays it. She leaves us
+            //  below the Mart's door (27, 10), a row or two down: r39's walk west
+            //  from "row 11" ran on along row 12, which is open to Route 201.
+            scene("dawn_shows_us_sandgem", Pokemon::tile_pose(SANDGEM, {
+                    TilePos{26, 11}, TilePos{27, 11}, TilePos{28, 11}, TilePos{26, 12}, TilePos{27, 12}, TilePos{28, 12}
+                }, NORTH), "Dawn's tour of Sandgem"),
             //  First to one known tile: the trees that end the doors' row.
             route("to_the_row_end", at(SANDGEM, "front_row_east_end"), "east along the doors' row to the trees", "town"),
             route("to_route_201", at(ROUTE_201, "route_201_east_end"), "west along the doors' row out of Sandgem"),
