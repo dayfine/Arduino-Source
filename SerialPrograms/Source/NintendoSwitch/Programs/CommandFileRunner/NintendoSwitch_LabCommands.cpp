@@ -29,6 +29,9 @@ public:
         : m_console(system_of(panel))
         , m_context(scope, m_console.controller<ProController>())
     {
+        //  Commands that watch the screen (run_until) need the inference
+        //  pivots a program's environment would have started.
+        m_console.initialize_inference_threads(scope);
         if (!m_context->is_ready()){
             throw ParseException("Controller is not ready.");
         }
