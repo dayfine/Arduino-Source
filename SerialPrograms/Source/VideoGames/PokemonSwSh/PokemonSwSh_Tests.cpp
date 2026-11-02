@@ -31,7 +31,7 @@ struct BossStateCase{
     uint8_t wins;
     std::set<std::string> opponent;
     std::string boss;
-    size_t caught_count;
+    uint8_t final_wins;     //  wins on the caught screen
     bool expected_accepted;
     std::string expected_boss;
     std::string expected_boss_if_caught;
@@ -56,7 +56,8 @@ public:
         if (state.boss != m_scenario.expected_boss){
             return std::format("Expected boss '{}', got '{}'", m_scenario.expected_boss, state.boss);
         }
-        const std::string caught = state.boss_if_caught(m_scenario.caught_count);
+        state.wins = m_scenario.final_wins;
+        const std::string caught = state.boss_if_caught();
         if (caught != m_scenario.expected_boss_if_caught){
             return std::format("Expected boss_if_caught '{}', got '{}'", m_scenario.expected_boss_if_caught, caught);
         }
@@ -69,25 +70,25 @@ private:
 
 void add_tests_MaxLairBossState(UnitTestDatabase& database){
     const BossStateCase cases[] = {
-        {.name = "rental before three wins", .wins = 2, .opponent = {"mimikyu-disguised"}, .boss = "", .caught_count = 3,
+        {.name = "rental before three wins", .wins = 2, .opponent = {"mimikyu-disguised"}, .boss = "", .final_wins = 3,
             .expected_accepted = true, .expected_boss = "", .expected_boss_if_caught = ""},
-        {.name = "Mimikyu at boss stage", .wins = 3, .opponent = {"mimikyu-disguised"}, .boss = "", .caught_count = 3,
+        {.name = "Mimikyu at boss stage", .wins = 3, .opponent = {"mimikyu-disguised"}, .boss = "", .final_wins = 3,
             .expected_accepted = true, .expected_boss = "mimikyu-disguised", .expected_boss_if_caught = "mimikyu-disguised"},
-        {.name = "Kyurem after Mimikyu misidentification", .wins = 3, .opponent = {"kyurem"}, .boss = "mimikyu-disguised", .caught_count = 3,
+        {.name = "Kyurem after Mimikyu misidentification", .wins = 3, .opponent = {"kyurem"}, .boss = "mimikyu-disguised", .final_wins = 3,
             .expected_accepted = true, .expected_boss = "mimikyu-disguised", .expected_boss_if_caught = "mimikyu-disguised"},
-        {.name = "identified boss lost", .wins = 3, .opponent = {"kyurem"}, .boss = "kyurem", .caught_count = 3,
+        {.name = "identified boss lost", .wins = 3, .opponent = {"kyurem"}, .boss = "kyurem", .final_wins = 3,
             .expected_accepted = true, .expected_boss = "kyurem", .expected_boss_if_caught = "kyurem"},
-        {.name = "identified boss caught", .wins = 3, .opponent = {"kyurem"}, .boss = "", .caught_count = 4,
+        {.name = "identified boss caught", .wins = 3, .opponent = {"kyurem"}, .boss = "", .final_wins = 4,
             .expected_accepted = true, .expected_boss = "kyurem", .expected_boss_if_caught = "kyurem"},
-        {.name = "boss before three wins must retry", .wins = 2, .opponent = {"kyurem"}, .boss = "", .caught_count = 2,
+        {.name = "boss before three wins must retry", .wins = 2, .opponent = {"kyurem"}, .boss = "", .final_wins = 2,
             .expected_accepted = false, .expected_boss = "", .expected_boss_if_caught = ""},
-        {.name = "empty boss-stage read", .wins = 3, .opponent = {}, .boss = "", .caught_count = 3,
+        {.name = "empty boss-stage read", .wins = 3, .opponent = {}, .boss = "", .final_wins = 3,
             .expected_accepted = true, .expected_boss = "", .expected_boss_if_caught = ""},
-        {.name = "ambiguous boss-stage read", .wins = 3, .opponent = {"kyurem", "mimikyu-disguised"}, .boss = "", .caught_count = 3,
+        {.name = "ambiguous boss-stage read", .wins = 3, .opponent = {"kyurem", "mimikyu-disguised"}, .boss = "", .final_wins = 3,
             .expected_accepted = true, .expected_boss = "kyurem", .expected_boss_if_caught = "kyurem"},
-        {.name = "rental read after known boss", .wins = 3, .opponent = {"mimikyu-disguised"}, .boss = "kyurem", .caught_count = 3,
+        {.name = "rental read after known boss", .wins = 3, .opponent = {"mimikyu-disguised"}, .boss = "kyurem", .final_wins = 3,
             .expected_accepted = true, .expected_boss = "kyurem", .expected_boss_if_caught = "kyurem"},
-        {.name = "four catches after rental boss", .wins = 3, .opponent = {"mimikyu-disguised"}, .boss = "mimikyu-disguised", .caught_count = 4,
+        {.name = "fourth win after rental boss", .wins = 3, .opponent = {"mimikyu-disguised"}, .boss = "mimikyu-disguised", .final_wins = 4,
             .expected_accepted = true, .expected_boss = "mimikyu-disguised", .expected_boss_if_caught = "mimikyu-disguised"},
     };
     for (const BossStateCase& scenario : cases){
