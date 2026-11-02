@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <format>
+#include "CommonFramework/Tools/DebugDumper.h"
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
 #include "CommonTools/Async/InferenceRoutines.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
@@ -343,6 +344,8 @@ void walk_overworld_route(
     const Pokemon::LegMover<ProControllerContext> mover = hold_dpad;
     for (const RouteStep& step : route){
         console.log("Route: " + to_string(step));
+        context.wait_for_all_requests();
+        dump_debug_image(console, "AutoStory/legs", "before-" + to_string(step), console.video().snapshot());
         check_overworld(console, context, step);
         switch (step.action){
         case RouteAction::WALK:
@@ -372,6 +375,8 @@ void walk_overworld_route(
                 step.wild ? AFTER_WILD_LEG_WATCH : AFTER_LEG_WATCH, MAX_INTERRUPTIONS_PER_LEG
             );
         }
+        context.wait_for_all_requests();
+        dump_debug_image(console, "AutoStory/legs", "after-" + to_string(step), console.video().snapshot());
         facing = step.facing_after;
     }
     context.wait_for_all_requests();
