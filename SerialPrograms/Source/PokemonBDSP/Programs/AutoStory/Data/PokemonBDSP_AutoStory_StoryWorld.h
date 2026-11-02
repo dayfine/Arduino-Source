@@ -49,6 +49,8 @@ public:
     //  Whether someone or something stands still on this tile, or it was
     //  blocked with block().
     bool occupied(const Pokemon::TilePos& pos) const;
+    //  Whether one of the maps' people stands on this tile (not a block()).
+    bool person(const Pokemon::TilePos& pos) const;
 
     //  Blocks a tile found in the way on the console. Tiles off the maps
     //  are left alone.
@@ -73,6 +75,7 @@ private:
         bool covered = false;
         Pokemon::TileKind tile = Pokemon::TileKind::WALL;
         bool occupied = false;
+        bool person = false;
     };
 
     void check_overlap(const Placed& map) const;
