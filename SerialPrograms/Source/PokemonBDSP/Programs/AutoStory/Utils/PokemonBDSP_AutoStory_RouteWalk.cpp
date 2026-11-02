@@ -81,7 +81,11 @@ Milliseconds route_open_hold(Direction direction, size_t tiles){
 
 void route_turn(VideoStream& stream, ProControllerContext& context, Direction direction){
     stream.log(std::string("[Route] Turning ") + direction_name(direction) + ".");
-    pbf_move_left_joystick(context, route_stick(direction), ROUTE_TURN_TAP, 300ms);
+    const DpadPosition dpad =
+        direction == Direction::NORTH ? DPAD_UP :
+        direction == Direction::SOUTH ? DPAD_DOWN :
+        direction == Direction::WEST ? DPAD_LEFT : DPAD_RIGHT;
+    pbf_press_dpad(context, dpad, ROUTE_TURN_TAP, 300ms);
     context.wait_for_all_requests();
 }
 
