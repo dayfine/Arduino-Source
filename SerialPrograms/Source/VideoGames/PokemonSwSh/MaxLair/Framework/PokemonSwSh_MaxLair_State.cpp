@@ -26,6 +26,7 @@ bool GlobalState::accept_opponent(){
     }
     return true;
 }
+
 std::string GlobalState::boss_if_caught() const{
     //  The identified boss is reported whether or not it was caught.
     return boss;

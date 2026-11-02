@@ -69,25 +69,33 @@ private:
 };
 
 void add_tests_MaxLairBossState(UnitTestDatabase& database){
+    //  Cases marked BUG record main's current, wrong behaviour; the next PR (#172) fixes them.
     const BossStateCase cases[] = {
         {.name = "rental before three wins", .wins = 2, .opponent = {"mimikyu-disguised"}, .boss = "", .final_wins = 3,
             .expected_accepted = true, .expected_boss = "", .expected_boss_if_caught = ""},
+        //  BUG: main accepts a rental (Mimikyu) as the boss and reports it caught; the next PR (#172) makes this retry.
         {.name = "Mimikyu at boss stage", .wins = 3, .opponent = {"mimikyu-disguised"}, .boss = "", .final_wins = 3,
             .expected_accepted = true, .expected_boss = "mimikyu-disguised", .expected_boss_if_caught = "mimikyu-disguised"},
+        //  BUG: main keeps the rental it misread as the boss after the real boss is read; #172 replaces it with Kyurem.
         {.name = "Kyurem after Mimikyu misidentification", .wins = 3, .opponent = {"kyurem"}, .boss = "mimikyu-disguised", .final_wins = 3,
             .expected_accepted = true, .expected_boss = "mimikyu-disguised", .expected_boss_if_caught = "mimikyu-disguised"},
+        //  BUG: main reports the boss as caught although the run ended without a fourth win; #172 reports no catch.
         {.name = "identified boss lost", .wins = 3, .opponent = {"kyurem"}, .boss = "kyurem", .final_wins = 3,
             .expected_accepted = true, .expected_boss = "kyurem", .expected_boss_if_caught = "kyurem"},
         {.name = "identified boss caught", .wins = 3, .opponent = {"kyurem"}, .boss = "", .final_wins = 4,
             .expected_accepted = true, .expected_boss = "kyurem", .expected_boss_if_caught = "kyurem"},
         {.name = "boss before three wins must retry", .wins = 2, .opponent = {"kyurem"}, .boss = "", .final_wins = 2,
             .expected_accepted = false, .expected_boss = "", .expected_boss_if_caught = ""},
+        //  BUG: main accepts a boss stage where no opponent was read; #172 makes this retry.
         {.name = "empty boss-stage read", .wins = 3, .opponent = {}, .boss = "", .final_wins = 3,
             .expected_accepted = true, .expected_boss = "", .expected_boss_if_caught = ""},
+        //  BUG: main accepts a two-candidate read and takes the first as the boss; #172 makes this retry.
         {.name = "ambiguous boss-stage read", .wins = 3, .opponent = {"kyurem", "mimikyu-disguised"}, .boss = "", .final_wins = 3,
             .expected_accepted = true, .expected_boss = "kyurem", .expected_boss_if_caught = "kyurem"},
+        //  BUG: main accepts a rental read at the boss stage and reports the boss caught without a fourth win; #172 makes this retry and reports no catch.
         {.name = "rental read after known boss", .wins = 3, .opponent = {"mimikyu-disguised"}, .boss = "kyurem", .final_wins = 3,
             .expected_accepted = true, .expected_boss = "kyurem", .expected_boss_if_caught = "kyurem"},
+        //  BUG: main accepts a rental read and reports the rental as the caught boss; #172 makes this retry and reports no catch.
         {.name = "fourth win after rental boss", .wins = 3, .opponent = {"mimikyu-disguised"}, .boss = "mimikyu-disguised", .final_wins = 4,
             .expected_accepted = true, .expected_boss = "mimikyu-disguised", .expected_boss_if_caught = "mimikyu-disguised"},
     };
