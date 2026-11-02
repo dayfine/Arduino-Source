@@ -439,7 +439,17 @@ Outcome StoryExecutor::train(RunState&, const StoryStep& step){
 }
 
 Outcome StoryExecutor::heal(RunState&, const StoryStep& step){
-    heal_at_pokemon_center(stream(), context(), label_of(step));
+    //  From the planned tile below the door, run in like any door. The lit-
+    //  doorway lineup is for a guess of where we stand: below Sandgem's door
+    //  it read 0.7 tile off and stepped us off it (r48).
+    route_turn(stream(), context(), Direction::NORTH);
+    if (run_into_door(stream(), context(), Direction::NORTH, m_can_run)){
+        stream().log(std::format("[{}] {}: north into the Center: faded.", m_checkpoint, step.name));
+        pbf_wait(context(), 1500ms);
+        heal_inside_pokemon_center(stream(), context(), label_of(step));
+    }else{
+        heal_at_pokemon_center(stream(), context(), label_of(step));
+    }
     //  r143a's heal said it had walked out while still inside.
     context().wait_for_all_requests();
     VideoSnapshot screen = stream().video().snapshot();
