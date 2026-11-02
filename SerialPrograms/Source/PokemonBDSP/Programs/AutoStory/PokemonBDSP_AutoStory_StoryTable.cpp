@@ -207,9 +207,15 @@ StoryCheckpoint bedroom_to_lakefront(){
         route("above_barrys_door", at(BARRYS_HOUSE, 6, 9, SOUTH), "back to his door"),
         step_into("out_of_barrys_house", SOUTH, "out of his door", at(TWINLEAF, "barry_doorstep", SOUTH)),
         //  The guitarist's trigger on Twinleaf's row 3 fires only before his talk upstairs.
-        route("below_barrys_warning", at(ROUTE_201, 15, 19, NORTH), "up Twinleaf's exit path onto Route 201"),
+        //  Barry's warning covers the whole exit path (14..19, 18), so it ends our walk
+        //  north: exact legs to the row below it, never a run to a wall through it (r14
+        //  ran north to (15, 13) and back, into it and the row-19 pull-back, in a loop).
+        legs("below_barrys_warning", {{.direction = EAST, .tiles = 6}, {.direction = NORTH, .tiles = 18}},
+            "along row 12, then up Twinleaf's exit to Route 201 (15, 19)"),
         step_into("barrys_warning", NORTH, "the trigger (14..19, 18)"),
-        scene("barry_warns_us", at(ROUTE_201, "barry_warning"), "Barry's tall-grass warning; we stay on the trigger (assumed)"),
+        scene("barry_warns_us", at(ROUTE_201, "barry_warning"), "Barry's tall-grass warning; he then stands north of us at (15, 17)"),
+        //  West at once, along row 18: north is Barry, south is row 19, which pulls us back.
+        legs("away_from_barry", {{.direction = WEST, .tiles = 3}}, "to (12, 18), clear of Barry's column"),
         //  Route 201's lower level, row 16, clear of the grass, then the Lakefront.
         route("below_the_lake_entrance", at(LAKEFRONT, "below_lake_entrance", NORTH), "west along Route 201's lower level to the Lakefront"),
     });
