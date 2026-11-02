@@ -16,6 +16,7 @@
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "CommonTools/Async/InferenceRoutines.h"
+#include "CommonTools/VisualDetectors/BlackScreenDetector.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "Pokemon/AutoStory/Pokemon_TilePose.h"
 #include "PokemonBDSP/Inference/PokemonBDSP_DialogDetector.h"
@@ -303,6 +304,15 @@ Outcome StoryExecutor::step(RunState& state, const StoryStep& step){
     const auto [x, y] = dpad_of(step.direction);
     const WalkResult walk = walk_tiles_dpad(stream(), context(), run_from_wild_battle, {x, y}, 1, step.name);
     stream().log(std::format("[{}] {}: a step {}, {}.", m_checkpoint, step.name, direction_name(step.direction), walk_stop_name(walk.stop)));
+    //  A step onto a door changes the map, and the fade can start after the
+    //  walk's window (r10: Barry's door). Wait it out here, so the next step
+    //  doesn't take it for its own stop.
+    if (walk.stop != WalkStop::TRANSITION && step.pose_after && step.pose_after->map != state.pose.map){
+        BlackScreenOverWatcher faded(COLOR_RED);
+        if (wait_until(stream(), context(), 5000ms, {{faded}}) != 0){
+            fail_step(stream(), label_of(step) + ": the map didn't change.");
+        }
+    }
     std::vector<TilePos> at;
     for (const TilePos& pos : Pokemon::tiles_of(state.pose)){
         at.push_back(pos.next(step.direction));
