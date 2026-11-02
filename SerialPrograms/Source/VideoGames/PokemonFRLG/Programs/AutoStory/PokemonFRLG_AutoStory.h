@@ -14,14 +14,12 @@
 
 #include "Common/Cpp/Options/BooleanCheckBoxOption.h"
 #include "Common/Cpp/Options/EnumDropdownOption.h"
-#include "Common/Cpp/Options/SimpleIntegerOption.h"
 #include "Common/Cpp/Options/StringOption.h"
 #include "CommonFramework/Notifications/EventNotificationsTable.h"
 #include "NintendoSwitch/NintendoSwitch_SingleSwitchProgram.h"
 #include "Pokemon/Options/Pokemon_StoryRunOptions.h"
-#include "VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_SeedsDatabase.h"
 #include "PokemonFRLG_AutoStoryActions.h"
-#include "PokemonFRLG_AutoStoryRngPlan.h"
+#include "PokemonFRLG_AutoStoryRngOptions.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -45,10 +43,6 @@ public:
     ) override{}
 
 private:
-    //  The Starter RNG attempts the RNG plan options ask for. Throws
-    //  UserSetupError for an option it can't read, or when no target passes.
-    std::vector<RngAttempt> plan_starter_attempts(ConsoleHandle& console) const;
-
     //  The start and end checkpoints, attempts, checks and language, as in
     //  every game's AutoStory.
     Pokemon::StoryRunOptions RUN;
@@ -57,16 +51,7 @@ private:
     //  The RNG programs the run stops for (StoryHandoff).
     BooleanCheckBoxOption STOP_FOR_SID_HELPER;
     BooleanCheckBoxOption STOP_FOR_STARTER_RNG;
-    //  What the Starter RNG stop lists (PokemonFRLG_AutoStoryRngPlan.h).
-    EnumDropdownOption<SoundSetting> RNG_SOUND;
-    SimpleIntegerOption<uint16_t> RNG_TID;
-    StringOption RNG_SID;
-    SimpleIntegerOption<uint32_t> SID_HELPER_ADVANCES;
-    SimpleIntegerOption<uint8_t> SID_HELPER_CANDIDATES;
-    BooleanCheckBoxOption RNG_SHINY_REQUIRED;
-    StringOption RNG_NATURES;
-    StringOption RNG_MIN_IVS;
-    SimpleIntegerOption<uint8_t> RNG_MAX_ATTEMPTS;
+    StarterRngPlanOptions RNG_PLAN;
     EventNotificationsOption NOTIFICATIONS;
 };
 

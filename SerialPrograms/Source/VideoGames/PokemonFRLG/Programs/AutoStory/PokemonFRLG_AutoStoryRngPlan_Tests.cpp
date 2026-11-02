@@ -201,17 +201,17 @@ UnitTestResult test_parse_natures(Logger&){
 }
 
 
-UnitTestResult test_plan_order(Logger&){
-    struct Case{
-        std::string name;
-        std::vector<RngTarget> targets;
-        bool shiny_required;
-        size_t max_attempts;
-        std::vector<uint32_t> states;
-        std::vector<std::vector<uint16_t>> sids;
-    };
+struct PlanCase{
+    std::string name;
+    std::vector<RngTarget> targets;
+    bool shiny_required;
+    size_t max_attempts;
+    std::vector<uint32_t> states;
+    std::vector<std::vector<uint16_t>> sids;
+};
+std::vector<PlanCase> plan_cases(){
     const std::vector<RngTarget> no_300 = {TARGETS[0], TARGETS[2], TARGETS[3]};
-    const Case cases[] = {
+    return {
         {
             .name = "two candidates in one target first, then the last",
             .targets = TARGETS, .shiny_required = true, .max_attempts = 5,
@@ -238,7 +238,10 @@ UnitTestResult test_plan_order(Logger&){
             .states = {}, .sids = {},
         },
     };
-    for (const Case& item : cases){
+}
+
+UnitTestResult test_plan_order(Logger&){
+    for (const PlanCase& item : plan_cases()){
         const std::vector<RngAttempt> attempts = plan_rng_attempts(item.targets, CANDIDATES, item.shiny_required, item.max_attempts);
         std::vector<uint32_t> states;
         std::vector<std::vector<uint16_t>> sids;
@@ -295,20 +298,20 @@ const char* step_name(RngPlanStep step){
     return "?";
 }
 
-UnitTestResult test_tracker(Logger&){
+struct TrackerCase{
+    std::string name;
+    bool shiny_required;
+    std::vector<RngAttemptOutcome> outcomes;
+    //  The step after each outcome, and the attempt run next.
+    std::vector<RngPlanStep> steps;
+    std::vector<size_t> attempts;
+    std::vector<uint16_t> remaining;
+    std::optional<uint16_t> confirmed;
+};
+std::vector<TrackerCase> tracker_cases(){
     using enum RngAttemptOutcome;
     using enum RngPlanStep;
-    struct Case{
-        std::string name;
-        bool shiny_required;
-        std::vector<RngAttemptOutcome> outcomes;
-        //  The step after each outcome, and the attempt run next.
-        std::vector<RngPlanStep> steps;
-        std::vector<size_t> attempts;
-        std::vector<uint16_t> remaining;
-        std::optional<uint16_t> confirmed;
-    };
-    const Case cases[] = {
+    return {
         {
             .name = "shiny at once: one of two SIDs",
             .shiny_required = true, .outcomes = {SHINY},
@@ -346,32 +349,41 @@ UnitTestResult test_tracker(Logger&){
             .remaining = {100, 200, 300}, .confirmed = std::nullopt,
         },
     };
-    const std::vector<RngAttempt> attempts = plan_rng_attempts(TARGETS, CANDIDATES, true, 5);
-    for (const Case& item : cases){
-        RngPlanTracker tracker(attempts, CANDIDATES, item.shiny_required, 2);
-        if (tracker.step() != RUN_ATTEMPT){
-            return item.name + ": expected to start with RUN_ATTEMPT, got " + step_name(tracker.step()) + ".";
-        }
-        for (size_t c = 0; c < item.outcomes.size(); c++){
-            const RngPlanStep step = tracker.record(item.outcomes[c]);
-            if (step != item.steps[c] || tracker.attempt_index() != item.attempts[c]){
-                return std::format(
-                    "{}: after outcome {}, expected {} at attempt {}, got {} at attempt {}.",
-                    item.name, c, step_name(item.steps[c]), item.attempts[c], step_name(step), tracker.attempt_index()
-                );
-            }
-        }
-        if (tracker.remaining_sids() != item.remaining || tracker.confirmed_sid() != item.confirmed){
+}
+
+UnitTestResult check_tracker_case(const TrackerCase& item){
+    RngPlanTracker tracker(plan_rng_attempts(TARGETS, CANDIDATES, true, 5), CANDIDATES, item.shiny_required, 2);
+    if (tracker.step() != RngPlanStep::RUN_ATTEMPT){
+        return item.name + ": expected to start with RUN_ATTEMPT, got " + step_name(tracker.step()) + ".";
+    }
+    for (size_t c = 0; c < item.outcomes.size(); c++){
+        const RngPlanStep step = tracker.record(item.outcomes[c]);
+        if (step != item.steps[c] || tracker.attempt_index() != item.attempts[c]){
             return std::format(
-                "{}: expected SIDs {} (confirmed {}), got {} (confirmed {}).",
-                item.name, join(item.remaining), item.confirmed ? std::to_string(*item.confirmed) : "none",
-                join(tracker.remaining_sids()), tracker.confirmed_sid() ? std::to_string(*tracker.confirmed_sid()) : "none"
+                "{}: after outcome {}, expected {} at attempt {}, got {} at attempt {}.",
+                item.name, c, step_name(item.steps[c]), item.attempts[c], step_name(step), tracker.attempt_index()
             );
         }
     }
+    if (tracker.remaining_sids() != item.remaining || tracker.confirmed_sid() != item.confirmed){
+        return std::format(
+            "{}: expected SIDs {} (confirmed {}), got {} (confirmed {}).",
+            item.name, join(item.remaining), item.confirmed ? std::to_string(*item.confirmed) : "none",
+            join(tracker.remaining_sids()), tracker.confirmed_sid() ? std::to_string(*tracker.confirmed_sid()) : "none"
+        );
+    }
+    return true;
+}
 
+UnitTestResult test_tracker(Logger&){
+    for (const TrackerCase& item : tracker_cases()){
+        const UnitTestResult result = check_tracker_case(item);
+        if (result.result != UnitTestResult::PASSED){
+            return result;
+        }
+    }
     RngPlanTracker empty({}, CANDIDATES, true, 2);
-    if (empty.step() != OUT_OF_ATTEMPTS){
+    if (empty.step() != RngPlanStep::OUT_OF_ATTEMPTS){
         return std::string("An empty plan: expected OUT_OF_ATTEMPTS, got ") + step_name(empty.step()) + ".";
     }
     return true;

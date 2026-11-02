@@ -79,65 +79,10 @@ AutoStory::AutoStory()
     , STOP_FOR_STARTER_RNG(
         "<b>Stop for Starter RNG:</b><br>Off by default. At the end of 00.04, save south of the table facing Squirtle's ball "
         "and stop, where the Starter RNG program starts. After Starter RNG, save right after the rival's battle without moving "
-        "and start AutoStory at 00.05.<br>"
-        "With this off, 00.04 and 00.04b run as one checkpoint, as before.<br>"
-        "With this on, the run lists the Starter RNG targets to try, in order, from the RNG plan options below.",
+        "and start AutoStory at 00.05, listing the targets to try from the RNG plan.<br>"
+        "With this off, 00.04 and 00.04b run as one checkpoint, as before.",
         LockMode::LOCK_WHILE_RUNNING,
         false
-    )
-    , RNG_SOUND(
-        "<b>RNG plan: Sound:</b><br>The in-game sound setting, as in Starter RNG. It picks the seeds.",
-        {
-            {SoundSetting::Mono, "mono", "Mono"},
-            {SoundSetting::Stereo, "stereo", "Stereo"}
-        },
-        LockMode::LOCK_WHILE_RUNNING,
-        SoundSetting::Mono
-    )
-    , RNG_TID(
-        "<b>RNG plan: TID:</b><br>The Trainer ID SID Helper read.",
-        LockMode::LOCK_WHILE_RUNNING,
-        0
-    )
-    , RNG_SID(
-        false,
-        "<b>RNG plan: SID:</b><br>The SID, once known. Empty: the targets are planned for the SIDs SID Helper lists, "
-        "from the two options below.",
-        LockMode::LOCK_WHILE_RUNNING,
-        "", ""
-    )
-    , SID_HELPER_ADVANCES(
-        "<b>RNG plan: SID Helper's Target Advances:</b><br>As set in SID Helper.",
-        LockMode::LOCK_WHILE_RUNNING,
-        3001, 2275
-    )
-    , SID_HELPER_CANDIDATES(
-        "<b>RNG plan: SID Helper's # Candidate SIDs:</b><br>As set in SID Helper. The middle one counts as the likeliest.",
-        LockMode::LOCK_WHILE_RUNNING,
-        5, 1, 11
-    )
-    , RNG_SHINY_REQUIRED(
-        "<b>RNG plan: Shiny required:</b><br>Only targets shiny for a SID candidate, tried until one comes out shiny. "
-        "Off: the quickest target that passes the nature and IV filters.",
-        LockMode::LOCK_WHILE_RUNNING,
-        true
-    )
-    , RNG_NATURES(
-        false,
-        "<b>RNG plan: Natures:</b><br>Separated by commas, e.g. \"Modest, Timid\". Empty: any nature.",
-        LockMode::LOCK_WHILE_RUNNING,
-        "", "Modest, Timid"
-    )
-    , RNG_MIN_IVS(
-        false,
-        "<b>RNG plan: Minimum IVs:</b><br>HP/Atk/Def/SpA/SpD/Spe.",
-        LockMode::LOCK_WHILE_RUNNING,
-        "0/0/0/0/0/0", "0/0/0/0/0/0"
-    )
-    , RNG_MAX_ATTEMPTS(
-        "<b>RNG plan: Max attempts:</b><br>The most targets to list.",
-        LockMode::LOCK_WHILE_RUNNING,
-        5, 1, 20
     )
     , NOTIFICATIONS({
         &NOTIFICATION_PROGRAM_FINISH,
@@ -149,15 +94,7 @@ AutoStory::AutoStory()
     PA_ADD_OPTION(PLAYER_NAME);
     PA_ADD_OPTION(STOP_FOR_SID_HELPER);
     PA_ADD_OPTION(STOP_FOR_STARTER_RNG);
-    PA_ADD_OPTION(RNG_SOUND);
-    PA_ADD_OPTION(RNG_TID);
-    PA_ADD_OPTION(RNG_SID);
-    PA_ADD_OPTION(SID_HELPER_ADVANCES);
-    PA_ADD_OPTION(SID_HELPER_CANDIDATES);
-    PA_ADD_OPTION(RNG_SHINY_REQUIRED);
-    PA_ADD_OPTION(RNG_NATURES);
-    PA_ADD_OPTION(RNG_MIN_IVS);
-    PA_ADD_OPTION(RNG_MAX_ATTEMPTS);
+    PA_ADD_OPTION(RNG_PLAN);
     PA_ADD_OPTION(NOTIFICATIONS);
 }
 
@@ -295,47 +232,20 @@ static void stop_for_handoff(
     send_program_finished_notification(env, notification, full);
 }
 
-std::vector<RngAttempt> AutoStory::plan_starter_attempts(ConsoleHandle& console) const{
-    std::vector<SidCandidate> candidates;
-    if (std::string(RNG_SID).empty()){
-        candidates = sid_helper_candidates(RNG_TID, SID_HELPER_ADVANCES, SID_HELPER_CANDIDATES);
-    }else{
-        const std::optional<uint16_t> sid = parse_sid(RNG_SID);
-        if (!sid){
-            throw UserSetupError(console, "RNG plan: the SID must be a number from 0 to 65535, or empty.");
-        }
-        candidates.push_back({*sid, 1});
-    }
-    const std::optional<std::vector<Pokemon::AdvNature>> natures = parse_natures(RNG_NATURES);
-    if (!natures){
-        throw UserSetupError(console, "RNG plan: natures must be nature names separated by commas, e.g. \"Modest, Timid\".");
-    }
-    const std::optional<Pokemon::AdvIVs> min_ivs = parse_ivs(RNG_MIN_IVS);
-    if (!min_ivs){
-        throw UserSetupError(console, "RNG plan: minimum IVs must be six numbers from 0 to 31, e.g. \"0/0/0/31/0/31\".");
-    }
-
-    RngTargetFilters filters;
-    filters.natures = *natures;
-    filters.min_ivs = *min_ivs;
-    filters.shiny_required = RNG_SHINY_REQUIRED;
-    const std::vector<RngAttempt> attempts = plan_starter_rng(StarterRngPlanInputs{
-        //  AutoStory plays FireRed only.
-        .firered = true,
-        .language = RUN.language(),
-        .sound = RNG_SOUND,
-        .tid = RNG_TID,
-        .candidates = candidates,
-        .filters = filters,
-        .max_attempts = RNG_MAX_ATTEMPTS,
-    });
-    if (attempts.empty()){
-        throw UserSetupError(console,
-            "RNG plan: no Starter RNG target passes the natures, minimum IVs and shiny options for TID "
-            + std::to_string(RNG_TID) + "."
-        );
-    }
-    return attempts;
+//  Starter RNG runs its own reset and calibration loop in its program(), so
+//  the attempts are the user's to run until that loop can be called from here.
+static void stop_for_starter_rng(
+    SingleSwitchProgramEnvironment& env, EventNotificationOption& notification,
+    const std::string& sound, const std::vector<std::string>& attempts
+){
+    stop_for_handoff(env, notification,
+        "Stopped for Starter RNG: saved south of the table, facing Squirtle's ball. "
+        "Run Starter RNG (Squirtle, FireRed, Sound " + sound + ") with attempt 1's Target Seed and Advances. "
+        "If it hits the target and it isn't shiny, load this save and run the next attempt. If it is shiny, "
+        "its SID is the one listed (or one of them): enter it as the RNG plan's SID. "
+        "Then save right after the rival's battle, without moving, and start AutoStory at 00.05.",
+        attempts
+    );
 }
 
 void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContext& context){
@@ -348,27 +258,19 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
         checkpoints, first, last, StoryHandoffs{.sid_helper = STOP_FOR_SID_HELPER, .starter_rng = STOP_FOR_STARTER_RNG}
     );
     if (plan.stop == StoryHandoff::SID_HELPER){
-        //  SID Helper's steps (set_sid_from_name_screen() to read_tid() in
-        //  PokemonFRLG_SidHelper.cpp) could run here instead of stopping;
-        //  they are file-static there for now.
+        //  SID Helper's steps (set_sid_from_name_screen() to read_tid(),
+        //  file-static in PokemonFRLG_SidHelper.cpp) could run here instead.
         play_new_game_to_player_name(env.console, context, player_name);
         stop_for_handoff(env, NOTIFICATION_PROGRAM_FINISH,
-            "Stopped for SID Helper: the player's name is typed and OK is not pressed. "
-            "Run SID Helper now. Enter the TID it reads, its Target Advances and its # Candidate SIDs "
-            "in AutoStory's RNG plan options, then start AutoStory at 00.01b."
+            "Stopped for SID Helper: the player's name is typed and OK is not pressed. Run SID Helper now, "
+            "enter its TID, Target Advances and # Candidate SIDs in the RNG plan, then start AutoStory at 00.01b."
         );
         return;
     }
-
-    //  The Starter RNG targets, worked out before anything is pressed so a
-    //  setup problem shows now, not after 00.04.
-    std::vector<std::string> rng_lines;
-    if (plan.stop == StoryHandoff::STARTER_RNG){
-        rng_lines = rng_attempt_lines(plan_starter_attempts(env.console));
-        for (const std::string& line : rng_lines){
-            env.console.log("Starter RNG plan: " + line);
-        }
-    }
+    //  Planned before anything is pressed, so a setup problem shows now.
+    const std::vector<std::string> rng_attempts = plan.stop == StoryHandoff::STARTER_RNG
+        ? rng_attempt_lines(RNG_PLAN.plan(env.console, RUN.language()))
+        : std::vector<std::string>{};
 
     StoryEnv story{env.console, context, checkpoints[first].supplies, checkpoints[first].supplies, false, RUN.checks()};
     story.player_name = player_name;
@@ -388,17 +290,7 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
     env.update_stats();
     throw_if_failed(report);
     if (plan.stop == StoryHandoff::STARTER_RNG){
-        //  Starter RNG runs its own reset and calibration loop in its
-        //  program(); the attempts are the user's to run until that loop can
-        //  be called from here.
-        stop_for_handoff(env, NOTIFICATION_PROGRAM_FINISH,
-            "Stopped for Starter RNG: saved south of the table, facing Squirtle's ball. "
-            "Run Starter RNG (Squirtle, FireRed, Sound " + std::string(RNG_SOUND == SoundSetting::Stereo ? "Stereo" : "Mono") + ") "
-            "with attempt 1's Target Seed and Advances. If it hits the target and it isn't shiny, load this save "
-            "and run the next attempt. If it is shiny, its SID is the one listed (or one of them): enter it as the "
-            "RNG plan's SID. Then save right after the rival's battle, without moving, and start AutoStory at 00.05.",
-            rng_lines
-        );
+        stop_for_starter_rng(env, NOTIFICATION_PROGRAM_FINISH, RNG_PLAN.sound_name(), rng_attempts);
         return;
     }
     env.console.log("AutoStory: done through " + plan.rows.back().id + ".");
