@@ -114,7 +114,7 @@ void StoryWorld::rebuild(){
     }
     for (const TilePos& pos : m_blocked){
         if (Cell* blocked = cell(pos)){
-            blocked->occupied = true;
+            blocked->occupant = BLOCKED;
         }
     }
     for (const TilePos& pos : m_uncovered){
@@ -127,13 +127,11 @@ void StoryWorld::rebuild(){
 void StoryWorld::paint(const Placed& placed, const TilePos& corner){
     for (int y = 0; y < placed.tiles.height; y++){
         for (int x = 0; x < placed.tiles.width; x++){
-            Pokemon::cell_at(m_cells, {corner.x + x, corner.y + y}) = Cell{true, placed.tiles.at({x, y}), false, false};
+            Pokemon::cell_at(m_cells, {corner.x + x, corner.y + y}) = Cell{true, placed.tiles.at({x, y}), NOBODY};
         }
     }
     for (const TilePos& pos : placed.occupied){
-        Cell& standing = Pokemon::cell_at(m_cells, {corner.x + pos.x, corner.y + pos.y});
-        standing.occupied = true;
-        standing.person = true;
+        Pokemon::cell_at(m_cells, {corner.x + pos.x, corner.y + pos.y}).occupant = PERSON;
     }
 }
 
@@ -159,19 +157,14 @@ std::optional<TileKind> StoryWorld::tile(const TilePos& pos) const{
     return found->tile;
 }
 
-bool StoryWorld::occupied(const TilePos& pos) const{
+StoryWorld::Occupant StoryWorld::occupied(const TilePos& pos) const{
     const Cell* found = cell(pos);
-    return found != nullptr && found->occupied;
-}
-
-bool StoryWorld::person(const TilePos& pos) const{
-    const Cell* found = cell(pos);
-    return found != nullptr && found->person;
+    return found == nullptr ? NOBODY : found->occupant;
 }
 
 void StoryWorld::block(const TilePos& pos){
     if (Cell* found = cell(pos)){
-        found->occupied = true;
+        found->occupant = BLOCKED;
         m_blocked.push_back(pos);
     }
 }
@@ -234,7 +227,7 @@ std::optional<TilePos> step(const StoryWorld& world, const TilePos& from, Direct
 //  they may turn and talk, or walk off (r29 ran east into Mom, who talked).
 bool at_wall(const StoryWorld& world, const TilePos& pos, Direction direction){
     const std::optional<TileKind> next = world.tile(pos.next(direction));
-    return next && *next != TileKind::DOOR && !world.person(pos.next(direction)) &&
+    return next && *next != TileKind::DOOR && world.occupied(pos.next(direction)) != StoryWorld::PERSON &&
         !step(world, pos, direction).has_value();
 }
 
