@@ -281,7 +281,7 @@ std::vector<StoryCheckpoint> lake_and_pokedex(){
             route("short_of_dawn", at(ROUTE_201, 63, 5, EAST), "Twinleaf, then east along Route 201 to its east edge"),
             //  Dawn's scene starts as we come into Sandgem (trigger (4, 10..15));
             //  walk until it does rather than to a tile (r35, r36).
-            legs("into_sandgem", {{.direction = EAST, .tiles = 8}}, "east into Sandgem until Dawn's scene starts", "until_scene"),
+            legs("into_sandgem", {{.direction = EAST, .tiles = 8}}, "east into Sandgem until Dawn's scene starts", "to_dialogue"),
             event("rowan_gives_pokedex", "Dawn walks us to the lab: Rowan, no nickname, the Pokedex",
                 at(LAB, "rowan_talk", NORTH)),
         }),

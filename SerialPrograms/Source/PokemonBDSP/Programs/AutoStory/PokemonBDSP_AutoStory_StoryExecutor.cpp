@@ -193,6 +193,30 @@ Outcome StoryExecutor::route(RunState& state, const StoryStep& step){
     return Pokemon::outcome_ok(walk_to(state.pose, *step.target, step));
 }
 
+namespace{
+
+//  A LEGS step "to_dialogue": taps its one leg until a dialogue starts on the
+//  way, wherever it starts (Dawn's at Sandgem's edge, r35/r36: an exact tile
+//  and banner raced her scene). The scene's lines are the next step's.
+Outcome leg_to_dialogue(VideoStream& stream, ProControllerContext& context, const StoryStep& step, const std::string& checkpoint){
+    const Pokemon::StoryLeg& leg = step.legs.front();
+    route_turn(stream, context, leg.direction);
+    const auto [x, y] = dpad_of(leg.direction);
+    const WalkResult walk = walk_tiles_dpad(stream, context, run_from_wild_battle, {x, y}, (size_t)leg.tiles, step.name);
+    stream.log(std::format("[{}] {}: taps {} to a dialogue: {} tiles, {}.", checkpoint, step.name, direction_name(leg.direction), walk.moved_chunks, walk_stop_name(walk.stop)));
+    if (walk.stop == WalkStop::DIALOG){
+        return Pokemon::outcome_ok();
+    }
+    //  A scene can lock us before its first line: Dawn walks over first (r37).
+    ShortDialogWatcher dialog(COLOR_CYAN);
+    if (walk.stop == WalkStop::BLOCKED && wait_until(stream, context, 10000ms, {{dialog}}) == 0){
+        return Pokemon::outcome_ok();
+    }
+    return Pokemon::outcome_failed("no_dialogue", step.name);
+}
+
+}
+
 Outcome StoryExecutor::legs(RunState& state, const StoryStep& step){
     if (step.variant == "to_wall"){
         for (const Pokemon::StoryLeg& leg : step.legs){
@@ -200,15 +224,8 @@ Outcome StoryExecutor::legs(RunState& state, const StoryStep& step){
         }
         return Pokemon::outcome_ok();
     }
-    //  Into a scene that starts on the way, wherever it starts (Dawn's at
-    //  Sandgem's edge, r35/r36: an exact tile and banner raced her scene).
-    if (step.variant == "until_scene"){
-        const Pokemon::StoryLeg& leg = step.legs.front();
-        route_turn(stream(), context(), leg.direction);
-        const auto [x, y] = dpad_of(leg.direction);
-        const WalkResult walk = walk_tiles_dpad(stream(), context(), run_from_wild_battle, {x, y}, (size_t)leg.tiles, step.name);
-        stream().log(std::format("[{}] {}: taps {} until the scene: {} tiles, {}.", m_checkpoint, step.name, direction_name(leg.direction), walk.moved_chunks, walk_stop_name(walk.stop)));
-        return walk.stop == WalkStop::DIALOG ? Pokemon::outcome_ok() : Pokemon::outcome_failed("no_scene", step.name);
+    if (step.variant == "to_dialogue"){
+        return leg_to_dialogue(stream(), context(), step, m_checkpoint);
     }
     const bool one_short_ok = step.variant == "one_short_ok";
     if (!one_short_ok && !step.variant.empty()){
