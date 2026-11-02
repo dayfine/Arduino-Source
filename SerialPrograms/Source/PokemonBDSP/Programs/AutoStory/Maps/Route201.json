@@ -1,6 +1,6 @@
 {
     "name": "Route201",
-    "source": {"decomp_file": "pret/pokediamond: files/fielddata/land_data/land_data_release/narc_0005.bin, files/fielddata/land_data/land_data_release/narc_0006.bin; zone_event narc_0327", "revision": "default branch", "console": "row 18 west of the exit path (8..13, 18) is trees on the console (r16, by hand), open in the decomp; the 201 sign stands at (13, 18), not (13, 17)", "date": "2026-10-31"},
+    "source": {"decomp_file": "pret/pokediamond: files/fielddata/land_data/land_data_release/narc_0005.bin, files/fielddata/land_data/land_data_release/narc_0006.bin; zone_event narc_0327", "revision": "default branch", "date": "2026-10-31"},
     "tiles": [
         "################################################################",
         "################################################################",
@@ -19,8 +19,8 @@
         "....................~~~~~~~~~~............................######",
         "....................~~~~~~~~~~............................######",
         "....................~~~~~~~~~~............................######",
-        "########............##########............................######",
-        "#############S......##########............~~~~~~~~~~~~~~~~######",
+        "########.....S......##########............................######",
+        "########............##########............~~~~~~~~~~~~~~~~######",
         "##############....############################~~~~~~~~~~~~######",
         "##############....############################~~~~~~~~~~~~######",
         "##############....##############################################",
@@ -42,5 +42,14 @@
         {"name": "pokemon_breeder_m_0", "kind": "npc", "x": 27, "y": 15, "wander": {"x0": 26, "y0": 14, "x1": 28, "y1": 16}},
         {"name": "school_kid_m_9", "kind": "npc", "x": 57, "y": 8, "facing": "west"},
         {"name": "lass_11", "kind": "npc", "x": 46, "y": 16, "wander": {"x0": 44, "y0": 16, "x1": 48, "y1": 16}}
+    ],
+    "patches": [
+        {"x": 8, "y": 18, "glyph": "#", "measured_by": "r16, 2026-10-31"},
+        {"x": 9, "y": 18, "glyph": "#", "measured_by": "r16, 2026-10-31"},
+        {"x": 10, "y": 18, "glyph": "#", "measured_by": "r16, 2026-10-31"},
+        {"x": 11, "y": 18, "glyph": "#", "measured_by": "r16, 2026-10-31"},
+        {"x": 12, "y": 18, "glyph": "#", "measured_by": "r16, 2026-10-31"},
+        {"x": 13, "y": 18, "glyph": "S", "measured_by": "r16, 2026-10-31"},
+        {"x": 13, "y": 17, "glyph": ".", "measured_by": "r16, 2026-10-31"}
     ]
 }

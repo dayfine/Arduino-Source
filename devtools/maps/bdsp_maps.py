@@ -421,6 +421,18 @@ PATCHES = {
         #   was blocked at once.
         + [(21, 30, '#', 'r254, 2026-11-01')]
     ),
+    'PlayerHouse1F': [
+        #   Open on the console, a wall in the data: west along row 8 stops
+        #   at x 4 (r32).
+        (4, 8, '.', 'r32, 2026-11-01'),
+    ],
+    'Route201': (
+        #   Row 18 west of the exit path is trees on the console, open in the
+        #   decomp, and the 201 sign stands at (13, 18), not (13, 17) (r16,
+        #   walked by hand).
+        [(x, 18, '#', 'r16, 2026-10-31') for x in range(8, 13)]
+        + [(13, 18, 'S', 'r16, 2026-10-31'), (13, 17, '.', 'r16, 2026-10-31')]
+    ),
     'Route204North': [
         #   Grass in the data, blocked on the console twice.
         (12, 6, '#', 'r248a, 2026-10-31'),
