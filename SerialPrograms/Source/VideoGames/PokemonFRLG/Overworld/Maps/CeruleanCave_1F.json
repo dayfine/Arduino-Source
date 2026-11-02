@@ -1,30 +1,33 @@
 {
     "name": "CeruleanCave_1F",
-    "width": 40,
-    "height": 23,
+    "source": {
+        "decomp_file": "data/maps/CeruleanCave_1F/map.json",
+        "revision": "ce6406d8c2eaf46d543c8a2606de0c3cb1951982",
+        "date": "2026-10-31"
+    },
     "tiles": [
         "########################################",
-        "#######...##.#########~~~~~~~~~#..##..##",
-        "#######...L..#########~~~~~~~~~#..L...##",
-        "#######..##..#~~~~~~~~~~~~~~~~~#......##",
-        "##L####..##..#~~~~~~~~~~#...#~~##.######",
-        "##.#.........#~~~~~~~~~~#...#~~~~~~~~~~#",
-        "#..#....##...#~~~#..........#~~~~~~~~~~#",
-        "#L.#....##...#~~~#..........#~~~~~~~~~~#",
-        "#..#....##...#~~~#.................#~~~#",
-        "####....##.###~~~#...######...#....#~~~#",
-        "##.#....#~~~##~~~#...##.####..L....#~~~#",
-        "##......#~~~##~~~##.###.L.##.......#~~~#",
-        "##......#~~~~~~~~#....#...##...#####~~~#",
-        "##......#~~~~~~~~#..#.##.###...###.....#",
-        "##..##..#~~~~~~~~#.........#...#.......#",
-        "##..#L..#~~~#....##......###...#.....###",
+        "#######...##.#########wwwwwwwww#..##..##",
+        "#######......#########wwwwwwwww#......##",
+        "#######..##..#wwwwwwwwwwwwwwwww#......##",
+        "##.####..##..#wwwwwwwwww#...#ww##.######",
+        "##.#.........#wwwwwwwwww#...#wwwwwwwwww#",
+        "#..#....##...#www#..........#wwwwwwwwww#",
+        "#..#....##...#www#..........#wwwwwwwwww#",
+        "#..#....##...#www#.................#www#",
+        "####....##.###www#...######...#....#www#",
+        "##.#....#www##www#...##.####.......#www#",
+        "##......#www##www##.###...##.......#www#",
+        "##......#wwwwwwww#....#...##...#####www#",
+        "##......#wwwwwwww#..#.##.###...###.....#",
+        "##..##..#wwwwwwww#.........#...#.......#",
+        "##..#...#www#....##......###...#.....###",
         "##......#...#....####...####...#...#####",
         "##......#...#..................#...#####",
         "#####.###...##.#...............#...#####",
         "#####..........#...............#...#####",
         "#####..........#...............#...#####",
-        "#####..........#################.v.#####",
+        "#####..........#################...#####",
         "########################################"
     ],
     "elevation": [
@@ -52,137 +55,140 @@
         "0000033333333330000000000000000033300000",
         "0000000000000000000000000000000000000000"
     ],
+    "points": {
+        "entrance": [33, 21],
+        "warp_0": [33, 21],
+        "warp_1": [34, 2],
+        "warp_2": [1, 7],
+        "warp_3": [10, 2],
+        "warp_4": [5, 15],
+        "warp_5": [30, 10],
+        "warp_6": [24, 11],
+        "warp_7": [2, 4]
+    },
     "warps": [
         {
             "x": 33,
             "y": 21,
-            "dest_map": "CeruleanCity",
-            "dest_warp": 7
+            "enter": "walk_south",
+            "to_map": "CeruleanCity",
+            "to_point": "warp_7"
         },
         {
             "x": 34,
             "y": 2,
-            "dest_map": "CeruleanCave_2F",
-            "dest_warp": 0
+            "enter": "step_on",
+            "to_map": "CeruleanCave_2F",
+            "to_point": "warp_0"
         },
         {
             "x": 1,
             "y": 7,
-            "dest_map": "CeruleanCave_B1F",
-            "dest_warp": 0
+            "enter": "step_on",
+            "to_map": "CeruleanCave_B1F",
+            "to_point": "warp_0"
         },
         {
             "x": 10,
             "y": 2,
-            "dest_map": "CeruleanCave_2F",
-            "dest_warp": 1
+            "enter": "step_on",
+            "to_map": "CeruleanCave_2F",
+            "to_point": "warp_1"
         },
         {
             "x": 5,
             "y": 15,
-            "dest_map": "CeruleanCave_2F",
-            "dest_warp": 2
+            "enter": "step_on",
+            "to_map": "CeruleanCave_2F",
+            "to_point": "warp_2"
         },
         {
             "x": 30,
             "y": 10,
-            "dest_map": "CeruleanCave_2F",
-            "dest_warp": 3
+            "enter": "step_on",
+            "to_map": "CeruleanCave_2F",
+            "to_point": "warp_3"
         },
         {
             "x": 24,
             "y": 11,
-            "dest_map": "CeruleanCave_2F",
-            "dest_warp": 4
+            "enter": "step_on",
+            "to_map": "CeruleanCave_2F",
+            "to_point": "warp_4"
         },
         {
             "x": 2,
             "y": 4,
-            "dest_map": "CeruleanCave_2F",
-            "dest_warp": 5
+            "enter": "step_on",
+            "to_map": "CeruleanCave_2F",
+            "to_point": "warp_5"
         }
     ],
     "objects": [
         {
+            "name": "item_ball",
+            "kind": "item",
             "x": 7,
             "y": 3,
-            "kind": "item_ball",
-            "flag": "FLAG_HIDE_CERULEAN_CAVE_1F_NUGGET",
-            "wander_x": 0,
-            "wander_y": 0
+            "hide_flag": "FLAG_HIDE_CERULEAN_CAVE_1F_NUGGET"
         },
         {
+            "name": "item_ball",
+            "kind": "item",
             "x": 11,
             "y": 16,
-            "kind": "item_ball",
-            "flag": "FLAG_HIDE_CERULEAN_CAVE_1F_FULL_RESTORE",
-            "wander_x": 0,
-            "wander_y": 0
+            "hide_flag": "FLAG_HIDE_CERULEAN_CAVE_1F_FULL_RESTORE"
         },
         {
+            "name": "item_ball",
+            "kind": "item",
             "x": 25,
             "y": 5,
-            "kind": "item_ball",
-            "flag": "FLAG_HIDE_CERULEAN_CAVE_1F_MAX_ELIXIR",
-            "wander_x": 0,
-            "wander_y": 0
+            "hide_flag": "FLAG_HIDE_CERULEAN_CAVE_1F_MAX_ELIXIR"
         },
         {
+            "name": "rock_smash_rock",
+            "kind": "npc",
             "x": 7,
             "y": 21,
-            "kind": "rock_smash_rock",
-            "flag": "FLAG_TEMP_12",
-            "wander_x": 0,
-            "wander_y": 0
+            "hide_flag": "FLAG_TEMP_12"
         },
         {
+            "name": "rock_smash_rock",
+            "kind": "npc",
             "x": 13,
             "y": 21,
-            "kind": "rock_smash_rock",
-            "flag": "FLAG_TEMP_13",
-            "wander_x": 0,
-            "wander_y": 0
+            "hide_flag": "FLAG_TEMP_13"
         },
         {
+            "name": "rock_smash_rock",
+            "kind": "npc",
             "x": 5,
             "y": 20,
-            "kind": "rock_smash_rock",
-            "flag": "FLAG_TEMP_14",
-            "wander_x": 0,
-            "wander_y": 0
+            "hide_flag": "FLAG_TEMP_14"
         },
         {
+            "name": "rock_smash_rock",
+            "kind": "npc",
             "x": 14,
             "y": 20,
-            "kind": "rock_smash_rock",
-            "flag": "FLAG_TEMP_15",
-            "wander_x": 0,
-            "wander_y": 0
+            "hide_flag": "FLAG_TEMP_15"
         },
         {
+            "name": "rock_smash_rock",
+            "kind": "npc",
             "x": 11,
             "y": 21,
-            "kind": "rock_smash_rock",
-            "flag": "FLAG_TEMP_16",
-            "wander_x": 0,
-            "wander_y": 0
+            "hide_flag": "FLAG_TEMP_16"
         },
         {
+            "name": "rock_smash_rock",
+            "kind": "npc",
             "x": 9,
             "y": 18,
-            "kind": "rock_smash_rock",
-            "flag": "FLAG_TEMP_17",
-            "wander_x": 0,
-            "wander_y": 0
+            "hide_flag": "FLAG_TEMP_17"
         }
     ],
-    "connections": [],
-    "points": [
-        {
-            "name": "entrance",
-            "x": 33,
-            "y": 21
-        }
-    ],
-    "flag_sets": []
+    "flag_sets": {},
+    "connections": []
 }

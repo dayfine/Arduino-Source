@@ -1,7 +1,10 @@
 {
     "name": "ViridianCity",
-    "width": 48,
-    "height": 40,
+    "source": {
+        "decomp_file": "data/maps/ViridianCity/map.json",
+        "revision": "ce6406d8c2eaf46d543c8a2606de0c3cb1951982",
+        "date": "2026-10-31"
+    },
     "tiles": [
         "###################.....########################",
         "###################....S########################",
@@ -15,7 +18,7 @@
         "########.###########...######....######...######",
         "########.##########.....#####...S..#D#....######",
         "########.###########...##D###.............######",
-        "########.##########........##JJJJJJJJJJJJJ######",
+        "########.##########........##vvvvvvvvvvvvv######",
         "########.###########......................######",
         "########.##########.......................######",
         "######...###########.........###################",
@@ -29,11 +32,11 @@
         "###########.............#####.............######",
         "###########.##..........#####.............######",
         "#######.....##..........#####.............######",
-        "#######....~~~~~~.......SSD##.............######",
-        "#######....~~~~~~.........................######",
-        "#######....~~~~~~.........................######",
-        "#######....~~~~~~.........................######",
-        "#######JJJJ~~~~~~JJJ...JJJJJJJJJJJJJJJJJJJ######",
+        "#######....wwwwww.......SSD##.............######",
+        "#######....wwwwww.........................######",
+        "#######....wwwwww.........................######",
+        "#######....wwwwww.........................######",
+        "#######vvvvwwwwwwvvv...vvvvvvvvvvvvvvvvvvv######",
         "#######.............S.....................######",
         "#######...................................######",
         "#######...................................######",
@@ -86,129 +89,128 @@
         "000000000000000000000033330000000000000000000000",
         "000000000000000000000033330000000000000000000000"
     ],
+    "points": {
+        "warp_0": [26, 26],
+        "warp_4": [36, 19]
+    },
     "warps": [
         {
             "x": 26,
             "y": 26,
-            "dest_map": "ViridianCity_PokemonCenter_1F",
-            "dest_warp": 1
+            "enter": "walk_into",
+            "to_map": "ViridianCity_PokemonCenter_1F",
+            "to_point": "warp_1"
         },
         {
             "x": 25,
             "y": 11,
-            "dest_map": "",
-            "dest_warp": 1
+            "enter": "walk_into"
         },
         {
             "x": 36,
             "y": 10,
-            "dest_map": "",
-            "dest_warp": 1
+            "enter": "walk_into"
         },
         {
             "x": 25,
             "y": 18,
-            "dest_map": "",
-            "dest_warp": 1
+            "enter": "walk_into"
         },
         {
             "x": 36,
             "y": 19,
-            "dest_map": "ViridianCity_Mart",
-            "dest_warp": 1
+            "enter": "walk_into",
+            "to_map": "ViridianCity_Mart",
+            "to_point": "warp_1"
         }
     ],
     "objects": [
         {
+            "name": "fat_man",
+            "kind": "npc",
             "x": 8,
-            "y": 26,
-            "kind": "fat_man",
-            "flag": "",
-            "wander_x": 0,
-            "wander_y": 0
+            "y": 26
         },
         {
+            "name": "cut_tree",
+            "kind": "npc",
             "x": 11,
             "y": 24,
-            "kind": "cut_tree",
-            "flag": "FLAG_TEMP_11",
-            "wander_x": 0,
-            "wander_y": 0
+            "hide_flag": "FLAG_TEMP_11"
         },
         {
+            "name": "old_man_1",
+            "kind": "npc",
             "x": 34,
-            "y": 11,
-            "kind": "old_man_1",
-            "flag": "",
-            "wander_x": 0,
-            "wander_y": 0
+            "y": 11
         },
         {
+            "name": "var_0",
+            "kind": "npc",
             "x": 21,
-            "y": 6,
-            "kind": "var_0",
-            "flag": "",
-            "wander_x": 0,
-            "wander_y": 0
+            "y": 6
         },
         {
+            "name": "woman_3",
+            "kind": "npc",
             "x": 20,
-            "y": 12,
-            "kind": "woman_3",
-            "flag": "",
-            "wander_x": 0,
-            "wander_y": 0
+            "y": 12
         },
         {
+            "name": "youngster",
+            "kind": "npc",
             "x": 33,
             "y": 26,
-            "kind": "youngster",
-            "flag": "",
-            "wander_x": 0,
-            "wander_y": 2
+            "wander": {
+                "x0": 33,
+                "y0": 24,
+                "x1": 33,
+                "y1": 28
+            }
         },
         {
+            "name": "boy",
+            "kind": "npc",
             "x": 16,
             "y": 22,
-            "kind": "boy",
-            "flag": "",
-            "wander_x": 1,
-            "wander_y": 2
+            "wander": {
+                "x0": 15,
+                "y0": 20,
+                "x1": 17,
+                "y1": 24
+            }
         },
         {
+            "name": "cut_tree",
+            "kind": "npc",
             "x": 18,
             "y": 5,
-            "kind": "cut_tree",
-            "flag": "FLAG_TEMP_12",
-            "wander_x": 0,
-            "wander_y": 0
+            "hide_flag": "FLAG_TEMP_12"
         },
         {
+            "name": "item_ball",
+            "kind": "item",
             "x": 17,
             "y": 5,
-            "kind": "item_ball",
-            "flag": "FLAG_HIDE_VIRIDIAN_CITY_POTION",
-            "wander_x": 0,
-            "wander_y": 0
+            "hide_flag": "FLAG_HIDE_VIRIDIAN_CITY_POTION"
         }
     ],
+    "flag_sets": {},
     "connections": [
         {
-            "direction": "north",
-            "offset": 12,
-            "map": "Route2"
+            "side": "north",
+            "to_map": "Route2",
+            "offset": 12
         },
         {
-            "direction": "south",
-            "offset": 12,
-            "map": "Route1"
+            "side": "south",
+            "to_map": "Route1",
+            "offset": 12
         },
         {
-            "direction": "west",
-            "offset": 10,
-            "map": "Route22"
+            "side": "west",
+            "to_map": "Route22",
+            "offset": 10
         }
-    ],
-    "points": [],
-    "flag_sets": []
+    ]
 }

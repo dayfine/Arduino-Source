@@ -1,7 +1,10 @@
 {
     "name": "CeruleanCave_B1F",
-    "width": 40,
-    "height": 23,
+    "source": {
+        "decomp_file": "data/maps/CeruleanCave_B1F/map.json",
+        "revision": "ce6406d8c2eaf46d543c8a2606de0c3cb1951982",
+        "date": "2026-10-31"
+    },
     "tiles": [
         "########################################",
         "##..............##.....############....#",
@@ -10,21 +13,21 @@
         "##......#####.###..####.....#######....#",
         "##......#..........########.#######.#..#",
         "##..##..##........#########............#",
-        "##..#L..###......##########............#",
-        "##......#~~~~~##................#...####",
-        "#########~~~~~##................#...####",
-        "#~~~############................#...####",
-        "#~~~##############.########.###.#...####",
-        "#~~~#.#.#.########........#.###.#...####",
-        "#~~~#.....########........#.....#...####",
-        "#~~~#.....########........#.....#...####",
-        "#~~~###.###~~~~#......#...#.###.#...####",
-        "#~~~~~~~~~~~~~~#......#...#.###.#...####",
-        "#~~~~~~~~~~~~~~#......#...#.....#...####",
-        "#~~~~~~~~~~~~~~#......#...#.....#...####",
-        "######~~~~~~~~~##.##.##...###.###...####",
-        "######~~~~~~~~~~~~#.......###.......####",
-        "######~~~~~~~~~~~~##.....####.......####",
+        "##..#...###......##########............#",
+        "##......#wwwww##................#...####",
+        "#########wwwww##................#...####",
+        "#www############................#...####",
+        "#www##############.########.###.#...####",
+        "#www#.#.#.########........#.###.#...####",
+        "#www#.....########........#.....#...####",
+        "#www#.....########........#.....#...####",
+        "#www###.###wwww#......#...#.###.#...####",
+        "#wwwwwwwwwwwwww#......#...#.###.#...####",
+        "#wwwwwwwwwwwwww#......#...#.....#...####",
+        "#wwwwwwwwwwwwww#......#...#.....#...####",
+        "######wwwwwwwww##.##.##...###.###...####",
+        "######wwwwwwwwwwww#.......###.......####",
+        "######wwwwwwwwwwww##.....####.......####",
         "########################################"
     ],
     "elevation": [
@@ -52,119 +55,105 @@
         "0000001111111111110033333000033333330000",
         "0000000000000000000000000000000000000000"
     ],
+    "points": {
+        "mewtwo": [7, 12],
+        "warp_0": [5, 7]
+    },
     "warps": [
         {
             "x": 5,
             "y": 7,
-            "dest_map": "CeruleanCave_1F",
-            "dest_warp": 2
+            "enter": "step_on",
+            "to_map": "CeruleanCave_1F",
+            "to_point": "warp_2"
         }
     ],
     "objects": [
         {
+            "name": "item_ball",
+            "kind": "item",
             "x": 31,
             "y": 9,
-            "kind": "item_ball",
-            "flag": "FLAG_HIDE_CERULEAN_CAVE_B1F_ULTRA_BALL",
-            "wander_x": 0,
-            "wander_y": 0
+            "hide_flag": "FLAG_HIDE_CERULEAN_CAVE_B1F_ULTRA_BALL"
         },
         {
+            "name": "item_ball",
+            "kind": "item",
             "x": 32,
             "y": 2,
-            "kind": "item_ball",
-            "flag": "FLAG_HIDE_CERULEAN_CAVE_B1F_MAX_REVIVE",
-            "wander_x": 0,
-            "wander_y": 0
+            "hide_flag": "FLAG_HIDE_CERULEAN_CAVE_B1F_MAX_REVIVE"
         },
-        {
-            "x": 7,
-            "y": 12,
-            "kind": "mewtwo",
-            "flag": "FLAG_HIDE_MEWTWO",
-            "wander_x": 0,
-            "wander_y": 0
-        },
-        {
-            "x": 37,
-            "y": 1,
-            "kind": "rock_smash_rock",
-            "flag": "FLAG_TEMP_12",
-            "wander_x": 0,
-            "wander_y": 0
-        },
-        {
-            "x": 38,
-            "y": 2,
-            "kind": "rock_smash_rock",
-            "flag": "FLAG_TEMP_13",
-            "wander_x": 0,
-            "wander_y": 0
-        },
-        {
-            "x": 35,
-            "y": 1,
-            "kind": "rock_smash_rock",
-            "flag": "FLAG_TEMP_14",
-            "wander_x": 0,
-            "wander_y": 0
-        },
-        {
-            "x": 37,
-            "y": 4,
-            "kind": "rock_smash_rock",
-            "flag": "FLAG_TEMP_15",
-            "wander_x": 0,
-            "wander_y": 0
-        },
-        {
-            "x": 35,
-            "y": 5,
-            "kind": "rock_smash_rock",
-            "flag": "FLAG_TEMP_16",
-            "wander_x": 0,
-            "wander_y": 0
-        },
-        {
-            "x": 2,
-            "y": 2,
-            "kind": "rock_smash_rock",
-            "flag": "FLAG_TEMP_17",
-            "wander_x": 0,
-            "wander_y": 0
-        },
-        {
-            "x": 4,
-            "y": 1,
-            "kind": "rock_smash_rock",
-            "flag": "FLAG_TEMP_18",
-            "wander_x": 0,
-            "wander_y": 0
-        },
-        {
-            "x": 6,
-            "y": 1,
-            "kind": "rock_smash_rock",
-            "flag": "FLAG_TEMP_19",
-            "wander_x": 0,
-            "wander_y": 0
-        },
-        {
-            "x": 3,
-            "y": 4,
-            "kind": "rock_smash_rock",
-            "flag": "FLAG_TEMP_1A",
-            "wander_x": 0,
-            "wander_y": 0
-        }
-    ],
-    "connections": [],
-    "points": [
         {
             "name": "mewtwo",
+            "kind": "npc",
             "x": 7,
-            "y": 12
+            "y": 12,
+            "hide_flag": "FLAG_HIDE_MEWTWO"
+        },
+        {
+            "name": "rock_smash_rock",
+            "kind": "npc",
+            "x": 37,
+            "y": 1,
+            "hide_flag": "FLAG_TEMP_12"
+        },
+        {
+            "name": "rock_smash_rock",
+            "kind": "npc",
+            "x": 38,
+            "y": 2,
+            "hide_flag": "FLAG_TEMP_13"
+        },
+        {
+            "name": "rock_smash_rock",
+            "kind": "npc",
+            "x": 35,
+            "y": 1,
+            "hide_flag": "FLAG_TEMP_14"
+        },
+        {
+            "name": "rock_smash_rock",
+            "kind": "npc",
+            "x": 37,
+            "y": 4,
+            "hide_flag": "FLAG_TEMP_15"
+        },
+        {
+            "name": "rock_smash_rock",
+            "kind": "npc",
+            "x": 35,
+            "y": 5,
+            "hide_flag": "FLAG_TEMP_16"
+        },
+        {
+            "name": "rock_smash_rock",
+            "kind": "npc",
+            "x": 2,
+            "y": 2,
+            "hide_flag": "FLAG_TEMP_17"
+        },
+        {
+            "name": "rock_smash_rock",
+            "kind": "npc",
+            "x": 4,
+            "y": 1,
+            "hide_flag": "FLAG_TEMP_18"
+        },
+        {
+            "name": "rock_smash_rock",
+            "kind": "npc",
+            "x": 6,
+            "y": 1,
+            "hide_flag": "FLAG_TEMP_19"
+        },
+        {
+            "name": "rock_smash_rock",
+            "kind": "npc",
+            "x": 3,
+            "y": 4,
+            "hide_flag": "FLAG_TEMP_1A"
         }
     ],
-    "flag_sets": []
+    "flag_sets": {},
+    "connections": []
 }

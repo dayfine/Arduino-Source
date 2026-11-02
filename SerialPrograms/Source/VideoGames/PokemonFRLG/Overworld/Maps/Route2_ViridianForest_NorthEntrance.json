@@ -1,10 +1,13 @@
 {
     "name": "Route2_ViridianForest_NorthEntrance",
-    "width": 15,
-    "height": 12,
+    "source": {
+        "decomp_file": "data/maps/Route2_ViridianForest_NorthEntrance/map.json",
+        "revision": "ce6406d8c2eaf46d543c8a2606de0c3cb1951982",
+        "date": "2026-10-31"
+    },
     "tiles": [
         "###############",
-        "#######C#######",
+        "#######.#######",
         "##...#...#...##",
         "#.............#",
         "#..........##.#",
@@ -13,62 +16,63 @@
         "#..........##.#",
         "###........##.#",
         "#.............#",
-        "#......v......#",
+        "#.............#",
         "###############"
     ],
+    "points": {
+        "warp_1": [7, 10],
+        "warp_3": [7, 1]
+    },
     "warps": [
         {
             "x": 6,
             "y": 10,
-            "dest_map": "ViridianForest",
-            "dest_warp": 2
+            "enter": "walk_into",
+            "to_map": "ViridianForest",
+            "to_point": "warp_2"
         },
         {
             "x": 7,
             "y": 10,
-            "dest_map": "ViridianForest",
-            "dest_warp": 2
+            "enter": "walk_south",
+            "to_map": "ViridianForest",
+            "to_point": "warp_2"
         },
         {
             "x": 8,
             "y": 10,
-            "dest_map": "ViridianForest",
-            "dest_warp": 2
+            "enter": "walk_into",
+            "to_map": "ViridianForest",
+            "to_point": "warp_2"
         },
         {
             "x": 7,
             "y": 1,
-            "dest_map": "Route2",
-            "dest_warp": 0
+            "enter": "cave_entrance",
+            "to_map": "Route2",
+            "to_point": "warp_0"
         }
     ],
     "objects": [
         {
+            "name": "youngster",
+            "kind": "npc",
             "x": 5,
-            "y": 4,
-            "kind": "youngster",
-            "flag": "",
-            "wander_x": 0,
-            "wander_y": 0
+            "y": 4
         },
         {
+            "name": "old_man_1",
+            "kind": "npc",
             "x": 4,
-            "y": 7,
-            "kind": "old_man_1",
-            "flag": "",
-            "wander_x": 0,
-            "wander_y": 0
+            "y": 7
         },
         {
+            "name": "cooltrainer_f",
+            "kind": "npc",
             "x": 10,
-            "y": 5,
-            "kind": "cooltrainer_f",
-            "flag": "",
-            "wander_x": 0,
-            "wander_y": 0
+            "y": 5
         }
     ],
-    "connections": [],
-    "points": [],
-    "flag_sets": []
+    "flag_sets": {},
+    "connections": []
 }

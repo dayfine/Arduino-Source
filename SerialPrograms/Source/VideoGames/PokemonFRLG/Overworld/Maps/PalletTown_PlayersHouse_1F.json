@@ -1,56 +1,64 @@
 {
     "name": "PalletTown_PlayersHouse_1F",
-    "width": 13,
-    "height": 10,
+    "source": {
+        "decomp_file": "data/maps/PalletTown_PlayersHouse_1F/map.json",
+        "revision": "ce6406d8c2eaf46d543c8a2606de0c3cb1951982",
+        "date": "2026-10-31"
+    },
     "tiles": [
         "#############",
         "#############",
-        "#.........>##",
+        "#..........##",
         "#............",
         "#.....##.....",
         "#.....##.....",
         "#............",
         "##..........#",
-        "#...v........",
+        "#............",
         "#############"
     ],
+    "points": {
+        "warp_1": [4, 8],
+        "warp_2": [10, 2]
+    },
     "warps": [
         {
             "x": 5,
             "y": 8,
-            "dest_map": "PalletTown",
-            "dest_warp": 0
+            "enter": "walk_into",
+            "to_map": "PalletTown",
+            "to_point": "warp_0"
         },
         {
             "x": 4,
             "y": 8,
-            "dest_map": "PalletTown",
-            "dest_warp": 0
+            "enter": "walk_south",
+            "to_map": "PalletTown",
+            "to_point": "warp_0"
         },
         {
             "x": 10,
             "y": 2,
-            "dest_map": "PalletTown_PlayersHouse_2F",
-            "dest_warp": 0
+            "enter": "walk_east",
+            "to_map": "PalletTown_PlayersHouse_2F",
+            "to_point": "warp_0"
         },
         {
             "x": 3,
             "y": 9,
-            "dest_map": "PalletTown",
-            "dest_warp": 0
+            "enter": "walk_into",
+            "to_map": "PalletTown",
+            "to_point": "warp_0"
         }
     ],
     "objects": [
         {
+            "name": "mom",
+            "kind": "npc",
             "x": 8,
-            "y": 4,
-            "kind": "mom",
-            "flag": "",
-            "wander_x": 0,
-            "wander_y": 0
+            "y": 4
         }
     ],
-    "connections": [],
-    "points": [],
-    "flag_sets": []
+    "flag_sets": {},
+    "connections": []
 }

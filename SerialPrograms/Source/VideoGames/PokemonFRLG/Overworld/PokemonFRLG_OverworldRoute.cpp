@@ -111,16 +111,19 @@ struct Transition{
 
 //  The player taking `warp`, or nothing if it leads off the loaded maps.
 std::optional<Transition> take_warp(const std::vector<MapData>& maps, const MapWarp* warp){
-    if (warp == nullptr){
+    if (warp == nullptr || !warp->to){
         return std::nullopt;
     }
-    const int destination = find_map(maps, warp->dest_map);
-    if (destination < 0 || warp->dest_warp < 0 || warp->dest_warp >= (int)maps[destination].warps.size()){
+    const int destination = find_map(maps, warp->to->map);
+    if (destination < 0){
         return std::nullopt;
     }
     const MapData& map = maps[destination];
-    const MapWarp& arrival = map.warps[warp->dest_warp];
-    TilePos position{arrival.x, arrival.y};
+    const auto arrival = map.points.find(warp->to->point);
+    if (arrival == map.points.end()){
+        return std::nullopt;
+    }
+    TilePos position = arrival->second;
     Transition transition;
     if (walks_out_on_arrival(map, position)){
         position = position.next(Direction::SOUTH);
@@ -136,10 +139,10 @@ std::optional<Transition> take_warp(const std::vector<MapData>& maps, const MapW
 std::optional<Transition> cross_edge(const std::vector<MapData>& maps, const Located& player, Direction direction){
     const MapData& map = maps[player.map];
     for (const MapConnection& connection : map.connections){
-        if (connection.direction != direction){
+        if (connection.side != direction){
             continue;
         }
-        const int destination = find_map(maps, connection.map);
+        const int destination = find_map(maps, connection.to_map);
         if (destination < 0){
             return std::nullopt;
         }
@@ -223,13 +226,13 @@ bool stops_at(const std::vector<MapData>& maps, const Located& player, Direction
     //  Held into a sign moving north or south, the game shows the sign's
     //  message: the player stops, but the walk is interrupted (console B,
     //  2026-11-01, the poster on the bedroom's wall).
-    if (tile_at(map, ahead) == Tile::SIGN && (direction == Direction::NORTH || direction == Direction::SOUTH)){
+    if (tile_at(map, ahead) == TileKind::SIGN && (direction == Direction::NORTH || direction == Direction::SOUTH)){
         return false;
     }
     //  Held into a ledge the way it faces, the player hops down it (console
     //  B, 2026-11-01, Viridian City: "south 2 (to wall)" from the Pokemon
-    //  Center hopped the ledge two rows down). The maps don't keep which way
-    //  a ledge faces, so none is held into.
+    //  Center hopped the ledge two rows down). Routes don't hop ledges, so
+    //  none is held into.
     if (is_ledge(map, ahead)){
         return false;
     }
@@ -237,7 +240,7 @@ bool stops_at(const std::vector<MapData>& maps, const Located& player, Direction
         return object_at(map, ahead) == nullptr;
     }
     for (const MapConnection& connection : map.connections){
-        if (connection.direction == direction){
+        if (connection.side == direction){
             return false;
         }
     }
@@ -449,10 +452,9 @@ std::string describe(const std::vector<RouteStep>& route){
 //  tile, and a tile that can't be entered moving south.
 const MapData& small_map(){
     static const MapData MAP = parse_map(R"({
-        "name": "Small", "width": 5, "height": 4,
-        "tiles": ["#####", "#.n.#", "#.~.#", "#####"],
-        "elevation": ["33333", "33403", "33133", "33333"],
-        "warps": [], "objects": [], "connections": [], "points": [], "flag_sets": []
+        "name": "Small", "source": {"decomp_file": "", "revision": "test", "date": "2026-10-31"},
+        "tiles": ["#####", "#.8.#", "#.w.#", "#####"],
+        "elevation": ["33333", "33403", "33133", "33333"]
     })", "Small");
     return MAP;
 }
@@ -509,7 +511,7 @@ UnitTestResult test_maps(){
     }
     const TilePos mewtwo_tile = map_point(maps, "CeruleanCave_B1F", "mewtwo");
     const MapObject* mewtwo = object_at(*b1f, mewtwo_tile);
-    if (mewtwo == nullptr || mewtwo->kind != "mewtwo"){
+    if (mewtwo == nullptr || mewtwo->name != "mewtwo"){
         return "Mewtwo is not on B1F at " + to_string(mewtwo_tile) + ".";
     }
     if (object_at(*city, {1, 13}) != nullptr){
@@ -675,11 +677,9 @@ UnitTestResult test_viridian_mart_to_pewter_gym(){
 
 //  A room with a sign on its north wall, above the third column.
 const char* const TEST_SIGN_ROOM_JSON = R"({
-    "name": "SignRoom", "width": 5, "height": 5,
+    "name": "SignRoom", "source": {"decomp_file": "", "revision": "test", "date": "2026-10-31"},
     "tiles": ["##S##", "#...#", "#...#", "#...#", "#####"],
-    "elevation": ["33333", "33333", "33333", "33333", "33333"],
-    "warps": [], "objects": [],
-    "connections": [], "points": [], "flag_sets": []
+    "elevation": ["33333", "33333", "33333", "33333", "33333"]
 })";
 
 //  Walking north under a sign stops by counting tiles, never by holding into
@@ -709,15 +709,13 @@ UnitTestResult test_no_hold_into_sign(){
 
 //  A yard with a row of ledges across it.
 const char* const TEST_LEDGE_YARD_JSON = R"({
-    "name": "LedgeYard", "width": 5, "height": 6,
-    "tiles": ["#####", "#...#", "#...#", "#JJJ#", "#...#", "#####"],
-    "elevation": ["33333", "33333", "33333", "33333", "33333", "33333"],
-    "warps": [], "objects": [],
-    "connections": [], "points": [], "flag_sets": []
+    "name": "LedgeYard", "source": {"decomp_file": "", "revision": "test", "date": "2026-10-31"},
+    "tiles": ["#####", "#...#", "#...#", "#vvv#", "#...#", "#####"],
+    "elevation": ["33333", "33333", "33333", "33333", "33333", "33333"]
 })";
 
 //  A ledge isn't a wall to hold into: moving the way it faces the player
-//  would hop it, and the maps don't say which way that is. Viridian City,
+//  would hop it, and routes don't hop ledges. Viridian City,
 //  from the Pokemon Center's door south to the row above the ledge.
 UnitTestResult test_no_hold_into_ledge(){
     const std::vector<MapData> maps{parse_map(TEST_LEDGE_YARD_JSON, "LedgeYard")};
@@ -799,20 +797,18 @@ UnitTestResult test_wild_steps(){
 }
 
 const char* const TEST_ROOM_JSON = R"({
-    "name": "Room", "width": 5, "height": 4,
-    "tiles": ["#####", "#...#", "#...#", "##v##"],
+    "name": "Room", "source": {"decomp_file": "", "revision": "test", "date": "2026-10-31"},
+    "tiles": ["#####", "#...#", "#...#", "##.##"],
     "elevation": ["33333", "33333", "33333", "33333"],
-    "warps": [{"x": 2, "y": 3, "dest_map": "Yard", "dest_warp": 0}],
-    "objects": [],
-    "connections": [], "points": [], "flag_sets": []
+    "points": {"warp_0": [2, 3]},
+    "warps": [{"x": 2, "y": 3, "enter": "walk_south", "to_map": "Yard", "to_point": "warp_0"}]
 })";
 const char* const TEST_YARD_JSON = R"({
-    "name": "Yard", "width": 5, "height": 4,
+    "name": "Yard", "source": {"decomp_file": "", "revision": "test", "date": "2026-10-31"},
     "tiles": ["#####", "##D##", "#...#", "#####"],
     "elevation": ["33333", "33333", "33333", "33333"],
-    "warps": [{"x": 2, "y": 1, "dest_map": "Room", "dest_warp": 0}],
-    "objects": [],
-    "connections": [], "points": [], "flag_sets": []
+    "points": {"warp_0": [2, 1]},
+    "warps": [{"x": 2, "y": 1, "enter": "walk_into", "to_map": "Room", "to_point": "warp_0"}]
 })";
 
 UnitTestResult test_route_through_warp(){

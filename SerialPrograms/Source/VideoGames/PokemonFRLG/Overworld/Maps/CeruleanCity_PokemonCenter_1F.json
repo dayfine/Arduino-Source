@@ -1,7 +1,10 @@
 {
     "name": "CeruleanCity_PokemonCenter_1F",
-    "width": 15,
-    "height": 10,
+    "source": {
+        "decomp_file": "data/maps/CeruleanCity_PokemonCenter_1F/map.json",
+        "revision": "ce6406d8c2eaf46d543c8a2606de0c3cb1951982",
+        "date": "2026-10-31"
+    },
     "tiles": [
         "#.#############",
         "###############",
@@ -9,9 +12,9 @@
         "....#######....",
         "...............",
         "...............",
-        "#L.........##..",
+        "#..........##..",
         "...........##..",
-        ".......v.......",
+        "...............",
         "###############"
     ],
     "elevation": [
@@ -26,102 +29,97 @@
         "333333333333333",
         "000000000000000"
     ],
+    "points": {
+        "pc": [11, 2],
+        "nurse_front": [7, 4],
+        "warp_1": [7, 8]
+    },
     "warps": [
         {
             "x": 6,
             "y": 8,
-            "dest_map": "CeruleanCity",
-            "dest_warp": 3
+            "enter": "walk_into",
+            "to_map": "CeruleanCity",
+            "to_point": "warp_3"
         },
         {
             "x": 7,
             "y": 8,
-            "dest_map": "CeruleanCity",
-            "dest_warp": 3
+            "enter": "walk_south",
+            "to_map": "CeruleanCity",
+            "to_point": "warp_3"
         },
         {
             "x": 8,
             "y": 8,
-            "dest_map": "CeruleanCity",
-            "dest_warp": 3
+            "enter": "walk_into",
+            "to_map": "CeruleanCity",
+            "to_point": "warp_3"
         },
         {
             "x": 1,
             "y": 6,
-            "dest_map": "",
-            "dest_warp": 0
+            "enter": "step_on"
         }
     ],
     "objects": [
         {
+            "name": "nurse",
+            "kind": "npc",
             "x": 7,
-            "y": 2,
-            "kind": "nurse",
-            "flag": "",
-            "wander_x": 0,
-            "wander_y": 0
-        },
-        {
-            "x": 12,
-            "y": 5,
-            "kind": "gentleman",
-            "flag": "",
-            "wander_x": 0,
-            "wander_y": 0
-        },
-        {
-            "x": 5,
-            "y": 4,
-            "kind": "rocker",
-            "flag": "",
-            "wander_x": 1,
-            "wander_y": 0
-        },
-        {
-            "x": 4,
-            "y": 8,
-            "kind": "youngster",
-            "flag": "",
-            "wander_x": 1,
-            "wander_y": 0
-        },
-        {
-            "x": 3,
-            "y": 3,
-            "kind": "lass",
-            "flag": "",
-            "wander_x": 0,
-            "wander_y": 0
-        },
-        {
-            "x": 2,
-            "y": 1,
-            "kind": "0",
-            "flag": "FLAG_HIDE_POSTGAME_GOSSIPERS",
-            "wander_x": 0,
-            "wander_y": 0
-        },
-        {
-            "x": 3,
-            "y": 1,
-            "kind": "0",
-            "flag": "FLAG_HIDE_POSTGAME_GOSSIPERS",
-            "wander_x": 0,
-            "wander_y": 0
-        }
-    ],
-    "connections": [],
-    "points": [
-        {
-            "name": "pc",
-            "x": 11,
             "y": 2
         },
         {
-            "name": "nurse_front",
-            "x": 7,
-            "y": 4
+            "name": "gentleman",
+            "kind": "npc",
+            "x": 12,
+            "y": 5
+        },
+        {
+            "name": "rocker",
+            "kind": "npc",
+            "x": 5,
+            "y": 4,
+            "wander": {
+                "x0": 4,
+                "y0": 4,
+                "x1": 6,
+                "y1": 4
+            }
+        },
+        {
+            "name": "youngster",
+            "kind": "npc",
+            "x": 4,
+            "y": 8,
+            "wander": {
+                "x0": 3,
+                "y0": 8,
+                "x1": 5,
+                "y1": 8
+            }
+        },
+        {
+            "name": "lass",
+            "kind": "npc",
+            "x": 3,
+            "y": 3
+        },
+        {
+            "name": "0",
+            "kind": "npc",
+            "x": 2,
+            "y": 1,
+            "hide_flag": "FLAG_HIDE_POSTGAME_GOSSIPERS"
+        },
+        {
+            "name": "0",
+            "kind": "npc",
+            "x": 3,
+            "y": 1,
+            "hide_flag": "FLAG_HIDE_POSTGAME_GOSSIPERS"
         }
     ],
-    "flag_sets": []
+    "flag_sets": {},
+    "connections": []
 }

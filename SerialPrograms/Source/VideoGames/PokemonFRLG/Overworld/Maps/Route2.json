@@ -1,22 +1,25 @@
 {
     "name": "Route2",
-    "width": 24,
-    "height": 80,
+    "source": {
+        "decomp_file": "data/maps/Route2/map.json",
+        "revision": "ce6406d8c2eaf46d543c8a2606de0c3cb1951982",
+        "date": "2026-10-31"
+    },
     "tiles": [
         "########....############",
         "########....############",
-        "##\"\"\"\"\"\"\"...############",
-        "##\"\"\"\"\"\"\"...#.........##",
-        "##\"\"\"\"\"\"\"...#.........##",
-        "##\"\"\"\"\"\"\"...#.........##",
-        "##\"\"\"\"\"\"\"...#########.##",
-        "##\"\"\"\"\"\"\"...#########.##",
-        "##\"\"\"\"\"\"\"...#########.##",
+        "##~~~~~~~...############",
+        "##~~~~~~~...#.........##",
+        "##~~~~~~~...#.........##",
+        "##~~~~~~~...#.........##",
+        "##~~~~~~~...#########.##",
+        "##~~~~~~~...#########.##",
+        "##~~~~~~~...#########.##",
         "##..........#########.##",
         "##..........#########.##",
-        "##..........#####C###.##",
+        "##..........#####.###.##",
         "##..........#.S.......##",
-        "####.vv.###.#.........##",
+        "####....###.#.........##",
         "###########...........##",
         "##########............##",
         "##############........##",
@@ -35,35 +38,35 @@
         "################......##",
         "################......##",
         "################......##",
-        "################JJJ.JJ##",
+        "################vvv.vv##",
         "################......##",
         "################......##",
         "################......##",
         "################......##",
-        "################JJJ.JJ##",
+        "################vvv.vv##",
         "################......##",
         "################......##",
         "################......##",
-        "#################.vv.###",
+        "#################....###",
         "########################",
         "########################",
         "########################",
         "##........##############",
-        "##################CC####",
+        "##################..####",
         "#################....###",
         "################......##",
         "################......##",
         "###.####.#######......##",
-        "#####CC#########JJJ.JJ##",
+        "#####..#########vvv.vv##",
         "####....########......##",
         "##............##......##",
         "##............##......##",
-        "##JJJJJJJJJ...##......##",
-        "##....\"\"\"\"\"\"\".##......##",
-        "##....\"\"\"\"\"\"\".##JJ.JJJ##",
-        "##....\"\"\"\"\"\"\".##......##",
-        "##....\"\"\"\"\"\"\".##......##",
-        "##....\"\"\"\"\"\"\".##......##",
+        "##vvvvvvvvv...##......##",
+        "##....~~~~~~~.##......##",
+        "##....~~~~~~~.##vv.vvv##",
+        "##....~~~~~~~.##......##",
+        "##....~~~~~~~.##......##",
+        "##....~~~~~~~.##......##",
         "##............##......##",
         "##....................##",
         "##....##########......##",
@@ -73,7 +76,7 @@
         "##............##......##",
         "##............##......##",
         "##....................##",
-        "##JJJJJJJ..JJJ..JJ.JJJ##",
+        "##vvvvvvv..vvv..vv.vvv##",
         "##............##......##",
         "####..........##......##",
         "####...S......##......##",
@@ -84,138 +87,125 @@
         "#######.......##########",
         "#######.....############"
     ],
+    "points": {
+        "warp_0": [5, 13],
+        "warp_2": [5, 51]
+    },
     "warps": [
         {
             "x": 5,
             "y": 13,
-            "dest_map": "Route2_ViridianForest_NorthEntrance",
-            "dest_warp": 3
+            "enter": "walk_south",
+            "to_map": "Route2_ViridianForest_NorthEntrance",
+            "to_point": "warp_3"
         },
         {
             "x": 6,
             "y": 13,
-            "dest_map": "Route2_ViridianForest_NorthEntrance",
-            "dest_warp": 3
+            "enter": "walk_south",
+            "to_map": "Route2_ViridianForest_NorthEntrance",
+            "to_point": "warp_3"
         },
         {
             "x": 5,
             "y": 51,
-            "dest_map": "Route2_ViridianForest_SouthEntrance",
-            "dest_warp": 1
+            "enter": "cave_entrance",
+            "to_map": "Route2_ViridianForest_SouthEntrance",
+            "to_point": "warp_1"
         },
         {
             "x": 17,
             "y": 11,
-            "dest_map": "",
-            "dest_warp": 1
+            "enter": "cave_entrance"
         },
         {
             "x": 17,
             "y": 22,
-            "dest_map": "",
-            "dest_warp": 1
+            "enter": "walk_into"
         },
         {
             "x": 18,
             "y": 46,
-            "dest_map": "",
-            "dest_warp": 1
+            "enter": "cave_entrance"
         },
         {
             "x": 18,
             "y": 41,
-            "dest_map": "",
-            "dest_warp": 3
+            "enter": "walk_south"
         },
         {
             "x": 19,
             "y": 41,
-            "dest_map": "",
-            "dest_warp": 3
+            "enter": "walk_south"
         },
         {
             "x": 19,
             "y": 46,
-            "dest_map": "",
-            "dest_warp": 1
+            "enter": "cave_entrance"
         },
         {
             "x": 6,
             "y": 51,
-            "dest_map": "Route2_ViridianForest_SouthEntrance",
-            "dest_warp": 1
+            "enter": "cave_entrance",
+            "to_map": "Route2_ViridianForest_SouthEntrance",
+            "to_point": "warp_1"
         }
     ],
     "objects": [
         {
+            "name": "cut_tree",
+            "kind": "npc",
             "x": 16,
             "y": 62,
-            "kind": "cut_tree",
-            "flag": "FLAG_TEMP_14",
-            "wander_x": 0,
-            "wander_y": 0
+            "hide_flag": "FLAG_TEMP_14"
         },
         {
+            "name": "cut_tree",
+            "kind": "npc",
             "x": 15,
             "y": 69,
-            "kind": "cut_tree",
-            "flag": "FLAG_TEMP_13",
-            "wander_x": 0,
-            "wander_y": 0
+            "hide_flag": "FLAG_TEMP_13"
         },
         {
+            "name": "cut_tree",
+            "kind": "npc",
             "x": 11,
             "y": 13,
-            "kind": "cut_tree",
-            "flag": "FLAG_TEMP_15",
-            "wander_x": 0,
-            "wander_y": 0
+            "hide_flag": "FLAG_TEMP_15"
         },
         {
+            "name": "cut_tree",
+            "kind": "npc",
             "x": 18,
             "y": 26,
-            "kind": "cut_tree",
-            "flag": "FLAG_TEMP_16",
-            "wander_x": 0,
-            "wander_y": 0
+            "hide_flag": "FLAG_TEMP_16"
         },
         {
+            "name": "item_ball",
+            "kind": "item",
             "x": 17,
             "y": 54,
-            "kind": "item_ball",
-            "flag": "FLAG_HIDE_ROUTE2_ETHER",
-            "wander_x": 0,
-            "wander_y": 0
+            "hide_flag": "FLAG_HIDE_ROUTE2_ETHER"
         },
         {
+            "name": "item_ball",
+            "kind": "item",
             "x": 17,
             "y": 64,
-            "kind": "item_ball",
-            "flag": "FLAG_HIDE_ROUTE2_PARALYZE_HEAL",
-            "wander_x": 0,
-            "wander_y": 0
-        },
-        {
-            "x": 6,
-            "y": 85,
-            "kind": "cut_tree",
-            "flag": "",
-            "wander_x": 0,
-            "wander_y": 0
+            "hide_flag": "FLAG_HIDE_ROUTE2_PARALYZE_HEAL"
         }
     ],
+    "flag_sets": {},
     "connections": [
         {
-            "direction": "north",
-            "offset": -12,
-            "map": "PewterCity"
+            "side": "north",
+            "to_map": "PewterCity",
+            "offset": -12
         },
         {
-            "direction": "south",
-            "offset": -12,
-            "map": "ViridianCity"
+            "side": "south",
+            "to_map": "ViridianCity",
+            "offset": -12
         }
-    ],
-    "points": [],
-    "flag_sets": []
+    ]
 }
