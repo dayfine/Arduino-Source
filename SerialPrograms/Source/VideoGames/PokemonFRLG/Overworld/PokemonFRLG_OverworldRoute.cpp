@@ -111,16 +111,19 @@ struct Transition{
 
 //  The player taking `warp`, or nothing if it leads off the loaded maps.
 std::optional<Transition> take_warp(const std::vector<MapData>& maps, const MapWarp* warp){
-    if (warp == nullptr){
+    if (warp == nullptr || !warp->to){
         return std::nullopt;
     }
-    const int destination = find_map(maps, warp->dest_map);
-    if (destination < 0 || warp->dest_warp < 0 || warp->dest_warp >= (int)maps[destination].warps.size()){
+    const int destination = find_map(maps, warp->to->map);
+    if (destination < 0){
         return std::nullopt;
     }
     const MapData& map = maps[destination];
-    const MapWarp& arrival = map.warps[warp->dest_warp];
-    TilePos position{arrival.x, arrival.y};
+    const auto arrival = map.points.find(warp->to->point);
+    if (arrival == map.points.end()){
+        return std::nullopt;
+    }
+    TilePos position = arrival->second;
     Transition transition;
     if (walks_out_on_arrival(map, position)){
         position = position.next(Direction::SOUTH);
@@ -136,10 +139,10 @@ std::optional<Transition> take_warp(const std::vector<MapData>& maps, const MapW
 std::optional<Transition> cross_edge(const std::vector<MapData>& maps, const Located& player, Direction direction){
     const MapData& map = maps[player.map];
     for (const MapConnection& connection : map.connections){
-        if (connection.direction != direction){
+        if (connection.side != direction){
             continue;
         }
-        const int destination = find_map(maps, connection.map);
+        const int destination = find_map(maps, connection.to_map);
         if (destination < 0){
             return std::nullopt;
         }
@@ -223,13 +226,13 @@ bool stops_at(const std::vector<MapData>& maps, const Located& player, Direction
     //  Held into a sign moving north or south, the game shows the sign's
     //  message: the player stops, but the walk is interrupted (console B,
     //  2026-11-01, the poster on the bedroom's wall).
-    if (tile_at(map, ahead) == Tile::SIGN && (direction == Direction::NORTH || direction == Direction::SOUTH)){
+    if (tile_at(map, ahead) == TileKind::SIGN && (direction == Direction::NORTH || direction == Direction::SOUTH)){
         return false;
     }
     //  Held into a ledge the way it faces, the player hops down it (console
     //  B, 2026-11-01, Viridian City: "south 2 (to wall)" from the Pokemon
-    //  Center hopped the ledge two rows down). The maps don't keep which way
-    //  a ledge faces, so none is held into.
+    //  Center hopped the ledge two rows down). Routes don't hop ledges, so
+    //  none is held into.
     if (is_ledge(map, ahead)){
         return false;
     }
@@ -237,7 +240,7 @@ bool stops_at(const std::vector<MapData>& maps, const Located& player, Direction
         return object_at(map, ahead) == nullptr;
     }
     for (const MapConnection& connection : map.connections){
-        if (connection.direction == direction){
+        if (connection.side == direction){
             return false;
         }
     }
@@ -509,7 +512,7 @@ UnitTestResult test_maps(){
     }
     const TilePos mewtwo_tile = map_point(maps, "CeruleanCave_B1F", "mewtwo");
     const MapObject* mewtwo = object_at(*b1f, mewtwo_tile);
-    if (mewtwo == nullptr || mewtwo->kind != "mewtwo"){
+    if (mewtwo == nullptr || mewtwo->name != "mewtwo"){
         return "Mewtwo is not on B1F at " + to_string(mewtwo_tile) + ".";
     }
     if (object_at(*city, {1, 13}) != nullptr){

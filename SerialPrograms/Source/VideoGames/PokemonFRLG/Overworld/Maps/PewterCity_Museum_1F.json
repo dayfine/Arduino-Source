@@ -1,7 +1,10 @@
 {
     "name": "PewterCity_Museum_1F",
-    "width": 28,
-    "height": 11,
+    "source": {
+        "decomp_file": "data/maps/PewterCity_Museum_1F/map.json",
+        "revision": "ce6406d8c2eaf46d543c8a2606de0c3cb1951982",
+        "date": "2026-10-31"
+    },
     "tiles": [
         "############################",
         "############################",
@@ -11,99 +14,95 @@
         "...............#............",
         "...........#...#...........#",
         "...####..###...###.........#",
-        "........>###.....#..........",
-        "#........###..v.##...v..##..",
+        ".........###.....#..........",
+        "#........###....##......##..",
         "############################"
     ],
+    "points": {
+        "warp_1": [14, 9],
+        "warp_3": [21, 9]
+    },
     "warps": [
         {
             "x": 13,
             "y": 9,
-            "dest_map": "PewterCity",
-            "dest_warp": 0
+            "enter": "walk_into",
+            "to_map": "PewterCity",
+            "to_point": "warp_0"
         },
         {
             "x": 14,
             "y": 9,
-            "dest_map": "PewterCity",
-            "dest_warp": 0
+            "enter": "walk_south",
+            "to_map": "PewterCity",
+            "to_point": "warp_0"
         },
         {
             "x": 15,
             "y": 9,
-            "dest_map": "PewterCity",
-            "dest_warp": 0
+            "enter": "walk_into",
+            "to_map": "PewterCity",
+            "to_point": "warp_0"
         },
         {
             "x": 21,
             "y": 9,
-            "dest_map": "PewterCity",
-            "dest_warp": 1
+            "enter": "walk_south",
+            "to_map": "PewterCity",
+            "to_point": "warp_1"
         },
         {
             "x": 22,
             "y": 9,
-            "dest_map": "PewterCity",
-            "dest_warp": 1
+            "enter": "walk_into",
+            "to_map": "PewterCity",
+            "to_point": "warp_1"
         },
         {
             "x": 8,
             "y": 8,
-            "dest_map": "",
-            "dest_warp": 0
+            "enter": "walk_east"
         }
     ],
     "objects": [
         {
+            "name": "worker_m",
+            "kind": "npc",
             "x": 16,
-            "y": 5,
-            "kind": "worker_m",
-            "flag": "",
-            "wander_x": 0,
-            "wander_y": 0
+            "y": 5
         },
         {
+            "name": "old_man_1",
+            "kind": "npc",
             "x": 2,
-            "y": 4,
-            "kind": "old_man_1",
-            "flag": "",
-            "wander_x": 0,
-            "wander_y": 0
+            "y": 4
         },
         {
+            "name": "scientist",
+            "kind": "npc",
             "x": 21,
-            "y": 3,
-            "kind": "scientist",
-            "flag": "",
-            "wander_x": 0,
-            "wander_y": 0
+            "y": 3
         },
         {
+            "name": "old_amber",
+            "kind": "npc",
             "x": 22,
             "y": 3,
-            "kind": "old_amber",
-            "flag": "FLAG_HIDE_OLD_AMBER",
-            "wander_x": 0,
-            "wander_y": 0
+            "hide_flag": "FLAG_HIDE_OLD_AMBER"
         },
         {
+            "name": "scientist",
+            "kind": "npc",
             "x": 26,
-            "y": 4,
-            "kind": "scientist",
-            "flag": "",
-            "wander_x": 0,
-            "wander_y": 0
+            "y": 4
         },
         {
+            "name": "scientist",
+            "kind": "npc",
             "x": 26,
-            "y": 7,
-            "kind": "scientist",
-            "flag": "",
-            "wander_x": 0,
-            "wander_y": 0
+            "y": 7
         }
     ],
-    "connections": [],
-    "points": [],
-    "flag_sets": []
+    "flag_sets": {},
+    "connections": []
 }

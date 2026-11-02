@@ -1,7 +1,10 @@
 {
     "name": "ViridianCity_Mart",
-    "width": 11,
-    "height": 9,
+    "source": {
+        "decomp_file": "data/maps/ViridianCity_Mart/map.json",
+        "revision": "ce6406d8c2eaf46d543c8a2606de0c3cb1951982",
+        "date": "2026-10-31"
+    },
     "tiles": [
         "###########",
         "###########",
@@ -10,7 +13,7 @@
         "####...##.#",
         ".......##.#",
         ".##....##.#",
-        "....v......",
+        "...........",
         "###########"
     ],
     "elevation": [
@@ -24,59 +27,65 @@
         "33333333333",
         "00000000000"
     ],
+    "points": {
+        "clerk_front": [4, 3],
+        "warp_1": [4, 7]
+    },
     "warps": [
         {
             "x": 3,
             "y": 7,
-            "dest_map": "ViridianCity",
-            "dest_warp": 4
+            "enter": "walk_into",
+            "to_map": "ViridianCity",
+            "to_point": "warp_4"
         },
         {
             "x": 4,
             "y": 7,
-            "dest_map": "ViridianCity",
-            "dest_warp": 4
+            "enter": "walk_south",
+            "to_map": "ViridianCity",
+            "to_point": "warp_4"
         },
         {
             "x": 5,
             "y": 7,
-            "dest_map": "ViridianCity",
-            "dest_warp": 4
+            "enter": "walk_into",
+            "to_map": "ViridianCity",
+            "to_point": "warp_4"
         }
     ],
     "objects": [
         {
+            "name": "clerk",
+            "kind": "npc",
             "x": 2,
-            "y": 3,
-            "kind": "clerk",
-            "flag": "",
-            "wander_x": 0,
-            "wander_y": 0
+            "y": 3
         },
         {
+            "name": "youngster",
+            "kind": "npc",
             "x": 6,
             "y": 2,
-            "kind": "youngster",
-            "flag": "",
-            "wander_x": 1,
-            "wander_y": 1
+            "wander": {
+                "x0": 5,
+                "y0": 1,
+                "x1": 7,
+                "y1": 3
+            }
         },
         {
+            "name": "woman_1",
+            "kind": "npc",
             "x": 9,
             "y": 5,
-            "kind": "woman_1",
-            "flag": "",
-            "wander_x": 0,
-            "wander_y": 1
+            "wander": {
+                "x0": 9,
+                "y0": 4,
+                "x1": 9,
+                "y1": 6
+            }
         }
     ],
-    "connections": [],
-    "points": [
-        {
-            "name": "clerk_front",
-            "x": 4,
-            "y": 3
-        }
-    ],
-    "flag_sets": []
+    "flag_sets": {},
+    "connections": []
 }

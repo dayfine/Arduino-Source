@@ -1,7 +1,10 @@
 {
     "name": "PalletTown",
-    "width": 24,
-    "height": 20,
+    "source": {
+        "decomp_file": "data/maps/PalletTown/map.json",
+        "revision": "ce6406d8c2eaf46d543c8a2606de0c3cb1951982",
+        "date": "2026-10-31"
+    },
     "tiles": [
         "############..##########",
         "############..##########",
@@ -20,9 +23,9 @@
         "##...S................##",
         "##....................##",
         "##...........###S##...##",
-        "##.....~~~~...........##",
-        "##.....~~~~...........##",
-        "##.....~~~~...........##"
+        "##.....wwww...........##",
+        "##.....wwww...........##",
+        "##.....wwww...........##"
     ],
     "elevation": [
         "000000000000330000000000",
@@ -46,65 +49,74 @@
         "003333311113333333333300",
         "003333311113333333333300"
     ],
+    "points": {
+        "oaks_lab_front": [16, 14],
+        "warp_0": [6, 7],
+        "warp_1": [15, 7],
+        "warp_2": [16, 13]
+    },
     "warps": [
         {
             "x": 6,
             "y": 7,
-            "dest_map": "PalletTown_PlayersHouse_1F",
-            "dest_warp": 1
+            "enter": "walk_into",
+            "to_map": "PalletTown_PlayersHouse_1F",
+            "to_point": "warp_1"
         },
         {
             "x": 15,
             "y": 7,
-            "dest_map": "PalletTown_RivalsHouse",
-            "dest_warp": 0
+            "enter": "walk_into",
+            "to_map": "PalletTown_RivalsHouse",
+            "to_point": "warp_0"
         },
         {
             "x": 16,
             "y": 13,
-            "dest_map": "PalletTown_ProfessorOaksLab",
-            "dest_warp": 0
+            "enter": "walk_into",
+            "to_map": "PalletTown_ProfessorOaksLab",
+            "to_point": "warp_0"
         }
     ],
     "objects": [
         {
+            "name": "woman_1",
+            "kind": "npc",
             "x": 3,
             "y": 10,
-            "kind": "woman_1",
-            "flag": "",
-            "wander_x": 1,
-            "wander_y": 4
+            "wander": {
+                "x0": 2,
+                "y0": 6,
+                "x1": 4,
+                "y1": 14
+            }
         },
         {
+            "name": "fat_man",
+            "kind": "npc",
             "x": 13,
             "y": 17,
-            "kind": "fat_man",
-            "flag": "",
-            "wander_x": 6,
-            "wander_y": 2
+            "wander": {
+                "x0": 7,
+                "y0": 15,
+                "x1": 19,
+                "y1": 19
+            }
         },
         {
+            "name": "prof_oak",
+            "kind": "npc",
             "x": 10,
             "y": 8,
-            "kind": "prof_oak",
-            "flag": "FLAG_HIDE_OAK_IN_PALLET_TOWN",
-            "wander_x": 0,
-            "wander_y": 0
+            "hide_flag": "FLAG_HIDE_OAK_IN_PALLET_TOWN"
         }
     ],
+    "flag_sets": {},
     "connections": [
         {
-            "direction": "north",
-            "offset": 0,
-            "map": "Route1"
+            "side": "north",
+            "to_map": "Route1",
+            "offset": 0
         }
-    ],
-    "points": [
-        {
-            "name": "oaks_lab_front",
-            "x": 16,
-            "y": 14
-        }
-    ],
-    "flag_sets": []
+    ]
 }

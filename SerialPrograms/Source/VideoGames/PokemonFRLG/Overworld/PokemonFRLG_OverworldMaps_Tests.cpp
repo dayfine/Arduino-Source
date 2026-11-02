@@ -72,22 +72,23 @@ bool mentions(const std::string& text, std::initializer_list<const char*> parts)
 UnitTestResult test_valid_map(){
     const MapData map = parse_map(VALID_MAP, "Test.json");
     if (map.name != "Test" || map.tiles.width != 3 || map.tiles.height != 2
-        || map.tiles.at({0, 1}) != Tile::TALL_GRASS || map.tiles.at({2, 1}) != Tile::MAT_SOUTH
+        || map.tiles.at({0, 1}) != TileKind::TALL_GRASS || exit_mat(map, {2, 1}) != Direction::SOUTH
     ){
         return "Wrong name, size or tiles.";
     }
     if (elevation_at(map, {2, 0}) != 1 || elevation_at(map, {1, 1}) != 15){
         return "Wrong elevation.";
     }
-    if (map.warps.size() != 1 || map.warps[0].dest_map != "Other" || map.warps[0].dest_warp != 2){
+    const MapWarp* door = warp_at(map, {1, 1});
+    if (map.warps.size() != 2 || door == nullptr || !door->to || door->to->map != "Other" || door->to->point != "warp_2"){
         return "Wrong warps.";
     }
     const MapObject* nurse = object_at(map, {1, 1});
-    if (map.objects.size() != 1 || nurse == nullptr || nurse->kind != "nurse" || nurse->flag != "FLAG_X"){
+    if (map.objects.size() != 1 || nurse == nullptr || nurse->name != "nurse" || nurse->hide_flag != "FLAG_X"){
         return "Wrong objects.";
     }
     const MapConnection& connection = map.connections.at(0);
-    if (connection.direction != Direction::SOUTH || connection.offset != -4 || connection.map != "Other"){
+    if (connection.side != Direction::SOUTH || connection.offset != -4 || connection.to_map != "Other"){
         return "Wrong connections.";
     }
     if (map.points.at("door") != TilePos{1, 1} || map.flag_sets.at("later") != std::set<std::string>{"FLAG_X", "FLAG_Y"}){
