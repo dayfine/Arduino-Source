@@ -703,18 +703,29 @@ int item_row(const Supplies& supplies, const std::string& item){
     return -1;
 }
 
-void set_from_bag(Supplies& supplies, const std::vector<BagRow>& rows){
+std::vector<std::string> set_from_bag(Supplies& supplies, const std::vector<BagRow>& rows){
+    const Supplies before = supplies;
     supplies.potions = 0;
     supplies.antidotes = 0;
     supplies.parlyz_heals = 0;
     supplies.pocket.clear();
+    std::vector<std::string> unread;
     for (const BagRow& row : rows){
         supplies.pocket.push_back(row.item);
         int* slot = count_slot(supplies, row.item);
-        if (slot != nullptr){
-            *slot = std::max(row.count, 0);
+        if (slot == nullptr){
+            continue;
         }
+        if (row.count > 0){
+            *slot = row.count;
+            continue;
+        }
+        //  Taking an unread count for none left the starter unhealed at
+        //  9 HP until it fainted (console B, 2026-11-02).
+        *slot = std::max(item_count(before, row.item), 1);
+        unread.push_back(row.item);
     }
+    return unread;
 }
 
 std::vector<BagRow> read_items_pocket(ConsoleHandle& console, ProControllerContext& context, Language language){

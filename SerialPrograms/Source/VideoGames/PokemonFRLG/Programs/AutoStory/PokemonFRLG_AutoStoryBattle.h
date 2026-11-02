@@ -85,7 +85,10 @@ int item_count(const Supplies& supplies, const std::string& item);
 int item_row(const Supplies& supplies, const std::string& item);
 
 //  Sets the counts and the pocket's order from the Items pocket as read.
-void set_from_bag(Supplies& supplies, const std::vector<BagRow>& rows);
+//  A row whose count couldn't be read still holds at least one: it keeps
+//  the count known before (the order bought), or 1. Returns those rows'
+//  items, for the log.
+std::vector<std::string> set_from_bag(Supplies& supplies, const std::vector<BagRow>& rows);
 
 //  From the overworld: opens the Items pocket, reads it, and closes the
 //  bag again. Empty if nothing could be read.

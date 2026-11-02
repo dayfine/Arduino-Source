@@ -6,6 +6,7 @@
  *
  */
 
+#include <format>
 #include <functional>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/Logging/AbstractLogger.h"
@@ -87,6 +88,46 @@ UnitTestResult test_pocket_rows(Logger&){
     return true;
 }
 
+//  A count the bag reader couldn't read (-1) is never taken for none: the
+//  row still holds some, so it keeps the count bought, or 1 with none
+//  known, and the battle's checks (a count above 0, a row) still use it.
+UnitTestResult test_unread_counts(Logger&){
+    Supplies bought;
+    bought.potions = 5;
+    bought.antidotes = 3;
+    bought.parlyz_heals = 1;
+    const std::vector<BagRow> rows{{"potion", -1}, {"antidote", -1}, {"parlyz-heal", 1}};
+    const std::vector<std::string> unread = set_from_bag(bought, rows);
+    if (unread != std::vector<std::string>{"potion", "antidote"}){
+        return "Expected the Potion and Antidote counts reported unread.";
+    }
+    if (bought.potions != 5 || bought.antidotes != 3 || bought.parlyz_heals != 1){
+        return std::format(
+            "Expected 5 Potions, 3 Antidotes, 1 Parlyz Heal kept from the order, got {}, {}, {}.",
+            bought.potions, bought.antidotes, bought.parlyz_heals
+        );
+    }
+
+    Supplies unknown;
+    unknown.potions = 0;
+    unknown.antidotes = 0;
+    unknown.parlyz_heals = 0;
+    set_from_bag(unknown, rows);
+    if (item_count(unknown, "potion") <= 0 || item_count(unknown, "antidote") <= 0){
+        return std::format(
+            "Expected unread counts with none known to count as some, got {} Potions, {} Antidotes.",
+            unknown.potions, unknown.antidotes
+        );
+    }
+    if (item_row(unknown, "potion") != 0 || item_row(unknown, "antidote") != 1 || item_row(unknown, "parlyz-heal") != 2){
+        return std::format(
+            "Expected rows 0, 1, 2 with unread counts, got {}, {}, {}.",
+            item_row(unknown, "potion"), item_row(unknown, "antidote"), item_row(unknown, "parlyz-heal")
+        );
+    }
+    return true;
+}
+
 //  In a language the reader has no names for, nothing is read, so the
 //  checks fall back to positions instead of failing.
 UnitTestResult test_unread_language(Logger& logger){
@@ -110,6 +151,7 @@ UnitTestResult test_unread_language(Logger& logger){
 void add_tests_AutoStoryItems(UnitTestDatabase& database){
     database.add<Test_AutoStoryItems>("Mart cursor stays on the row bought", test_mart_cursor);
     database.add<Test_AutoStoryItems>("Items pocket rows", test_pocket_rows);
+    database.add<Test_AutoStoryItems>("unread bag counts count as some", test_unread_counts);
     database.add<Test_AutoStoryItems>("no item names read in a language without them", test_unread_language);
 }
 

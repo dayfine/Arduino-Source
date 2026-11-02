@@ -16,6 +16,7 @@
 #include <string>
 #include <vector>
 #include "Common/Cpp/Logging/AbstractLogger.h"
+#include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "CommonFramework/ImageTools/ImageBoxes.h"
 #include "CommonFramework/ImageTypes/ImageViewRGB32.h"
 #include "CommonFramework/Language.h"
@@ -41,6 +42,7 @@ std::string read_item_list_name(Logger& logger, Language language, const ImageVi
 
 struct BagRow{
     std::string item;
+    //  -1 if the count couldn't be read: the row still holds at least one.
     int count = 0;
 };
 
@@ -48,6 +50,9 @@ struct BagRow{
 //  included). Stops at a row it can't read, so it is empty in a language
 //  the reader has no names for. The pocket must be scrolled to its top.
 std::vector<BagRow> read_bag_pocket(Logger& logger, Language language, const ImageViewRGB32& screen);
+
+
+void add_tests_ItemListReader(UnitTestDatabase& database);
 
 
 
