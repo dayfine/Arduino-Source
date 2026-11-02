@@ -9,6 +9,7 @@
 #include "Common/Cpp/Json/JsonObject.h"
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "CommonTools/OCR/OCR_SmallDictionaryMatcher.h"
+#include "Tests/ImageUnitTest.h"
 #include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_OcrPreprocessing.h"
 #include "VideoGames/PokemonFRLG/PokemonFRLG_Settings.h"
 #include "PokemonFRLG_SaveCardReader.h"
@@ -86,6 +87,49 @@ ImageFloatBox save_card_title_box(){
 std::string read_save_card_location(Logger& logger, Language language, const ImageViewRGB32& screen){
     const ImageViewRGB32 game = extract_box_reference(screen, GameSettings::instance().GAME_BOX);
     return PlaceNameMatcher::instance().read(logger, language, extract_box_reference(game, save_card_title_box()));
+}
+
+
+namespace{
+
+//  A capture of the save card over "Would you like to save the game?".
+class Test_SaveCard : public ImageUnitTest{
+public:
+    Test_SaveCard(const std::string& image, std::string expected)
+        : ImageUnitTest("PokemonFRLG::SaveCardReader - " + image, {image})
+        , m_expected(std::move(expected))
+    {}
+
+    virtual UnitTestResult run_on_images(
+        Logger& logger, CancellableScope& scope,
+        const std::vector<ImageRGB32>& images
+    ) const override{
+        const std::string read = read_save_card_location(logger, Language::English, images[0]);
+        if (read != m_expected){
+            return "Expected \"" + m_expected + "\", read \"" + read + "\"";
+        }
+        return true;
+    }
+
+private:
+    const std::string m_expected;
+};
+
+}
+
+void add_tests_SaveCardReader(UnitTestDatabase& database){
+    //  Console B, 2026-11-02, FireRed. The card covers the same corner of
+    //  the screen everywhere; the places behind it differ.
+    for (const auto& [image, place] : {
+        std::pair<const char*, const char*>{"PalletTown_Bedroom.png", "pallet-town"},
+        {"PalletTown_Outdoors.png", "pallet-town"},
+        {"PalletTown_OaksLab.png", "pallet-town"},
+        {"ViridianForest.png", "viridian-forest"},
+        {"PewterCity_PokemonCenter.png", "pewter-city"},
+        {"PewterCity_OneBadge.png", "pewter-city"},
+    }){
+        database.add<Test_SaveCard>(std::string("PokemonFRLG/SaveCardReader/") + image, place);
+    }
 }
 
 

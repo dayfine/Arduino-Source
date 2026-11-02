@@ -145,6 +145,35 @@ private:
     const std::vector<BagRow> m_expected;
 };
 
+//  A capture of a list, read row by row from the top.
+class Test_ItemListNames : public ImageUnitTest{
+public:
+    Test_ItemListNames(const std::string& image, std::vector<std::string> expected)
+        : ImageUnitTest("PokemonFRLG::ItemListReader - " + image, {image})
+        , m_expected(std::move(expected))
+    {}
+
+    virtual UnitTestResult run_on_images(
+        Logger& logger, CancellableScope& scope,
+        const std::vector<ImageRGB32>& images
+    ) const override{
+        std::string expected;
+        std::string read;
+        for (size_t row = 0; row < m_expected.size(); row++){
+            expected += " " + m_expected[row] + ";";
+            const std::string item = read_item_list_name(logger, Language::English, images[0], (int)row);
+            read += " " + (item.empty() ? std::string("(nothing)") : item) + ";";
+        }
+        if (read != expected){
+            return "Expected" + expected + " read" + read;
+        }
+        return true;
+    }
+
+private:
+    const std::vector<std::string> m_expected;
+};
+
 }
 
 void add_tests_ItemListReader(UnitTestDatabase& database){
@@ -153,6 +182,11 @@ void add_tests_ItemListReader(UnitTestDatabase& database){
     database.add<Test_BagPocket>(
         "PokemonFRLG/ItemListReader/ItemsPocket_Potion5_Antidote3_ParlyzHeal1.png",
         std::vector<BagRow>{{"potion", 5}, {"antidote", 3}, {"parlyz-heal", 1}}
+    );
+    //  The Viridian Mart's BUY list, the same day, the cursor on POTION.
+    database.add<Test_ItemListNames>(
+        "PokemonFRLG/ItemListReader/MartBuy_PokeBall_Potion_Antidote_ParlyzHeal.png",
+        std::vector<std::string>{"poke-ball", "potion", "antidote", "parlyz-heal", "cancel"}
     );
 }
 
