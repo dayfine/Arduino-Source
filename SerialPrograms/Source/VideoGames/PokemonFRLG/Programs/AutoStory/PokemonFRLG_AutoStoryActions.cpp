@@ -86,13 +86,13 @@ bool wait_for_yes_no(ConsoleHandle& console, ProControllerContext& context, Mill
     return wait_until(console, context, timeout, {yes}) >= 0;
 }
 
-//  The START menu's cursor onto `row`, read from the arrow. As
-//  move_cursor_to_position(), for a menu of any length.
-bool move_start_cursor(ConsoleHandle& console, ProControllerContext& context, int rows, int row){
+//  The START menu row the arrow is on, from the top, as the closest of the
+//  first `rows` rows. Nothing if no arrow shows.
+std::optional<int> start_cursor_row(ConsoleHandle& console, ProControllerContext& context, int rows){
     SelectionArrowWatcher arrow(COLOR_RED, &console.overlay(), MENU_ARROW_BOX);
     context.wait_for_all_requests();
     if (wait_until(console, context, 2000ms, {arrow}) < 0){
-        return false;
+        return std::nullopt;
     }
     const double arrow_y = arrow.last_detected().y + arrow.last_detected().height / 2;
     int current = 0;
@@ -105,12 +105,45 @@ bool move_start_cursor(ConsoleHandle& console, ProControllerContext& context, in
             current = c;
         }
     }
-    console.log(std::format("START menu: cursor on row {}, moving to row {}.", current + 1, row + 1));
-    const int down = (row - current + rows) % rows;
-    const int up = (current - row + rows) % rows;
+    return current;
+}
+
+//  The START menu's cursor onto `row`, read from the arrow. As
+//  move_cursor_to_position(), for a menu of any length.
+bool move_start_cursor(ConsoleHandle& console, ProControllerContext& context, int rows, int row){
+    const std::optional<int> current = start_cursor_row(console, context, rows);
+    if (!current){
+        return false;
+    }
+    console.log(std::format("START menu: cursor on row {}, moving to row {}.", *current + 1, row + 1));
+    const int down = (row - *current + rows) % rows;
+    const int up = (*current - row + rows) % rows;
     for (int c = 0; c < std::min(down, up); c++){
         tap(context, down <= up ? DPAD_DOWN : DPAD_UP);
     }
+    context.wait_for_all_requests();
+    return true;
+}
+
+//  The START menu's cursor onto SAVE, in a menu of any length: up past the
+//  top wraps to EXIT, the last row, whose place gives the length; SAVE is
+//  two above it.
+bool move_start_cursor_to_save(ConsoleHandle& console, ProControllerContext& context){
+    const int most = start_menu_rows(StartMenu::FULL);
+    const std::optional<int> current = start_cursor_row(console, context, most);
+    if (!current){
+        return false;
+    }
+    for (int c = 0; c <= *current; c++){
+        tap(context, DPAD_UP);
+    }
+    const std::optional<int> last = start_cursor_row(console, context, most);
+    if (!last){
+        return false;
+    }
+    console.log(std::format("START menu: {} rows, moving to SAVE.", *last + 1));
+    tap(context, DPAD_UP);
+    tap(context, DPAD_UP);
     context.wait_for_all_requests();
     return true;
 }
@@ -377,6 +410,105 @@ void face_wall(ProControllerContext& context, Direction direction){
     context.wait_for_all_requests();
 }
 
+SaveAction SaveDialog::next(SaveScreen screen){
+    if (screen != SaveScreen::NOTHING){
+        m_nothing_seen = 0;
+    }
+    switch (screen){
+    case SaveScreen::YES_NO:
+        m_paged_since_yes = false;
+        return SaveAction::ANSWER_YES;
+    case SaveScreen::PAGED_TEXT:
+        m_paged_since_yes = true;
+        return SaveAction::NEXT_PAGE;
+    case SaveScreen::TEXT:
+        return SaveAction::WAIT;
+    case SaveScreen::START_MENU:
+        return SaveAction::FAIL_CANCELLED;
+    case SaveScreen::NOTHING:
+        //  Twice in a row: not the frame between two boxes.
+        if (++m_nothing_seen < 2){
+            return SaveAction::WAIT;
+        }
+        return m_paged_since_yes ? SaveAction::FAIL_ERROR : SaveAction::CHECK_OVERWORLD;
+    }
+    return SaveAction::WAIT;
+}
+
+namespace{
+
+//  The four WARNING pages over another game's save, at the new game's text
+//  speed, the save itself and its 60-frame pause, with room to spare.
+constexpr Milliseconds SAVE_TIMEOUT = 30000ms;
+
+SaveScreen read_save_screen(const ImageViewRGB32& screen){
+    if (yes_no_cursor(screen)){
+        return SaveScreen::YES_NO;
+    }
+    //  Before the message boxes: the menu can show a help box under it.
+    if (StartMenuDetector(COLOR_RED).detect(screen)){
+        return SaveScreen::START_MENU;
+    }
+    if (AdvanceWhiteDialogDetector(COLOR_RED).detect(screen)){
+        return SaveScreen::PAGED_TEXT;
+    }
+    if (WhiteDialogDetector(COLOR_RED).detect(screen)){
+        return SaveScreen::TEXT;
+    }
+    return SaveScreen::NOTHING;
+}
+
+//  From the save card's first YES/NO to the overworld, as SaveDialog says.
+void run_save_dialog(ConsoleHandle& console, ProControllerContext& context){
+    SaveDialog dialog;
+    const WallClock deadline = current_time() + SAVE_TIMEOUT;
+    while (current_time() < deadline){
+        context.wait_for_all_requests();
+        VideoSnapshot screen = console.video().snapshot();
+        if (!screen){
+            pbf_wait(context, POLL);
+            continue;
+        }
+        switch (dialog.next(read_save_screen(screen))){
+        case SaveAction::WAIT:
+            pbf_wait(context, POLL);
+            break;
+        case SaveAction::ANSWER_YES:
+            //  The overwrite over another game's save starts on NO.
+            if (yes_no_cursor(screen) == false){
+                tap(context, DPAD_UP);
+            }
+            console.log("Save: YES.");
+            press(context, BUTTON_A, 1000ms);
+            break;
+        case SaveAction::NEXT_PAGE:
+            press(context, BUTTON_A, 500ms);
+            break;
+        case SaveAction::CHECK_OVERWORLD:
+            if (overworld_shows(console, context)){
+                console.log("Saved.");
+                return;
+            }
+            break;
+        case SaveAction::FAIL_CANCELLED:
+            OperationFailedExceptionWithScreenshot::fire(
+                ErrorReportMode::SEND_ERROR_REPORT, "save_game(): the START menu came back: the save was cancelled.", console
+            );
+        case SaveAction::FAIL_ERROR:
+            OperationFailedExceptionWithScreenshot::fire(
+                ErrorReportMode::SEND_ERROR_REPORT, "save_game(): a message after the last YES: the save failed.", console
+            );
+        }
+    }
+    OperationFailedExceptionWithScreenshot::fire(
+        ErrorReportMode::SEND_ERROR_REPORT,
+        std::format("save_game(): not back on the overworld {} s after saving.", SAVE_TIMEOUT.count() / 1000),
+        console
+    );
+}
+
+}
+
 void save_game(ConsoleHandle& console, ProControllerContext& context, StartMenu menu){
     console.log("Saving the game.");
     open_start_menu_row(console, context, menu, start_menu_save_row(menu));
@@ -386,19 +518,19 @@ void save_game(ConsoleHandle& console, ProControllerContext& context, StartMenu 
             ErrorReportMode::SEND_ERROR_REPORT, "save_game(): no YES/NO to save.", console
         );
     }
-    press(context, BUTTON_A, 1500ms);
-    //  "There is already a saved file. Is it okay to overwrite it?", except
-    //  for the first save.
-    if (wait_for_yes_no(console, context, 3000ms)){
-        press(context, BUTTON_A, 1500ms);
-    }
-    pbf_wait(context, 4000ms);
-    mash_until_overworld(console, context, 30000ms);
-    console.log("Saved.");
+    context.wait_for_all_requests();
+    dump_debug_image(console, "AutoStory/save", "save-card", console.video().snapshot());
+    run_save_dialog(console, context);
 }
 
-std::string read_save_place(ConsoleHandle& console, ProControllerContext& context, StartMenu menu, Language language){
-    open_start_menu_row(console, context, menu, start_menu_save_row(menu));
+std::string read_save_place(ConsoleHandle& console, ProControllerContext& context, Language language){
+    open_start_menu(console, context);
+    if (!move_start_cursor_to_save(console, context)){
+        OperationFailedExceptionWithScreenshot::fire(
+            ErrorReportMode::SEND_ERROR_REPORT, "START menu: no cursor.", console
+        );
+    }
+    press(context, BUTTON_A, 1500ms);
     std::string place;
     if (wait_for_yes_no(console, context, 5000ms)){
         context.wait_for_all_requests();
