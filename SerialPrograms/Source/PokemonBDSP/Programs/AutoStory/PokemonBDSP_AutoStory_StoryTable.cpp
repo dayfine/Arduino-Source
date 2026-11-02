@@ -278,8 +278,10 @@ std::vector<StoryCheckpoint> lake_and_pokedex(){
             route("above_the_door_again", at(HOME, 6, 9, SOUTH), "to above the door"),
             step_into("out_of_the_house_again", SOUTH, "onto the door's tile (6, 10), and out", at(TWINLEAF, "house_doorstep", SOUTH)),
             //  Through the grass now, with a starter: wild battles are run from.
-            route("short_of_dawn", at(SANDGEM, 3, 12, EAST), "Twinleaf, then east along Route 201 to Sandgem's edge"),
-            step_into("dawns_stop", EAST, "the trigger (4, 10..15)"),
+            route("short_of_dawn", at(ROUTE_201, 63, 5, EAST), "Twinleaf, then east along Route 201 to its east edge"),
+            //  Dawn's scene starts as we come into Sandgem (trigger (4, 10..15));
+            //  walk until it does rather than to a tile (r35, r36).
+            legs("into_sandgem", {{.direction = EAST, .tiles = 8}}, "east into Sandgem until Dawn's scene starts", "until_scene"),
             event("rowan_gives_pokedex", "Dawn walks us to the lab: Rowan, no nickname, the Pokedex",
                 at(LAB, "rowan_talk", NORTH)),
         }),

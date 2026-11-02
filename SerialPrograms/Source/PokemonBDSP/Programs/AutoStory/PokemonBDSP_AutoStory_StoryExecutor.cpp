@@ -200,6 +200,16 @@ Outcome StoryExecutor::legs(RunState& state, const StoryStep& step){
         }
         return Pokemon::outcome_ok();
     }
+    //  Into a scene that starts on the way, wherever it starts (Dawn's at
+    //  Sandgem's edge, r35/r36: an exact tile and banner raced her scene).
+    if (step.variant == "until_scene"){
+        const Pokemon::StoryLeg& leg = step.legs.front();
+        route_turn(stream(), context(), leg.direction);
+        const auto [x, y] = dpad_of(leg.direction);
+        const WalkResult walk = walk_tiles_dpad(stream(), context(), run_from_wild_battle, {x, y}, (size_t)leg.tiles, step.name);
+        stream().log(std::format("[{}] {}: taps {} until the scene: {} tiles, {}.", m_checkpoint, step.name, direction_name(leg.direction), walk.moved_chunks, walk_stop_name(walk.stop)));
+        return walk.stop == WalkStop::DIALOG ? Pokemon::outcome_ok() : Pokemon::outcome_failed("no_scene", step.name);
+    }
     const bool one_short_ok = step.variant == "one_short_ok";
     if (!one_short_ok && !step.variant.empty()){
         return Pokemon::outcome_failed("unknown_variant", step.variant);
