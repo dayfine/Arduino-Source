@@ -152,16 +152,17 @@ void heal_at_oreburgh_counter(VideoStream& stream, ProControllerContext& context
 //  36 to 48 px, so 18 or 19 of them missed the door by a part of a tile.
 constexpr size_t GYM_DPAD_TAPS_WEST_OF_CENTER = 20;
 
+const uint64_t GYM_DARKER_THAN = 90;
 void oreburgh_street_to_gym(VideoStream& stream, ProControllerContext& context){
     // From the Center's doorstep, straight west along its row to below the
     // gym's door, then north through it, all on the D-pad (whole tiles; see
     // GYM_DPAD_TAPS_WEST_OF_CENTER). A save inside the gym: already there.
+    // The gym's rock floor is darker than the street (mean brightness 75
+    // against 104, r74), which indoors() does not tell apart.
     context.wait_for_all_requests();
-    if (VideoSnapshot screen = stream.video().snapshot()){
-        if (indoors(*screen.frame)){
-            stream.log("[Route] 01.04: already in the gym.");
-            return;
-        }
+    if (in_dim_cave(stream, GYM_DARKER_THAN)){
+        stream.log("[Route] 01.04: already in the gym.");
+        return;
     }
     dpad_tiles(stream, context, DPAD_LEFT, GYM_DPAD_TAPS_WEST_OF_CENTER, "west to the gym's door");
     if (dpad_through_door_north(stream, context, "Oreburgh Gym door")){
