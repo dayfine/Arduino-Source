@@ -31,6 +31,7 @@
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "Tests/ImageUnitTest.h"
 #include "Inference/PokemonSV_BlueberryPointsReader.h"
+#include "Inference/PokemonSV_BlueberryQuestDetector.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -148,6 +149,80 @@ private:
 
 }
 
+namespace{
+
+//  One quest slot on a full frame of the quest panel.
+struct BlueberryQuestScenario{
+    std::string image;
+    Language language;
+    BlueberryQuestDetector::QuestPosition position;
+    std::string expected_slug;
+    size_t width;
+    size_t height;
+};
+
+class Test_BlueberryQuestDetector : public ImageUnitTest{
+public:
+    Test_BlueberryQuestDetector(BlueberryQuestScenario scenario)
+        : ImageUnitTest(
+            "PokemonSV::BlueberryQuestDetector - " + scenario.image
+            + " - slot " + std::to_string((int)scenario.position + 1)
+            + " - " + std::to_string(scenario.width),
+            {scenario.image}
+        )
+        , m_scenario(std::move(scenario))
+    {}
+
+    virtual UnitTestResult run_on_images(
+        Logger& logger, CancellableScope&,
+        const std::vector<ImageRGB32>& images
+    ) const override{
+        ImageRGB32 image = images[0].scale_to(m_scenario.width, m_scenario.height);
+        BlueberryQuestDetector detector(logger, COLOR_RED, m_scenario.language, m_scenario.position);
+        const std::string actual = detector.detect_quest(image);
+        if (actual != m_scenario.expected_slug){
+            return "Expected quest \"" + m_scenario.expected_slug + "\", read \"" + actual + "\"";
+        }
+        return true;
+    }
+
+private:
+    const BlueberryQuestScenario m_scenario;
+};
+
+}
+
+void add_tests_BlueberryQuestDetector(UnitTestDatabase& database){
+    using enum BlueberryQuestDetector::QuestPosition;
+    //  The Blueberry Points frames also show the quest panel. The second frame is
+    //  the first after rerolling the first quest. Singleplayer without a red quest
+    //  shows 3 quests, so the fourth slot reads as nothing. "catch-any" reads
+    //  "捕捉1隻..." on screen where the dictionary has "捕捉一隻...".
+    const struct{
+        std::string image;
+        std::string slugs[4];
+    } panels[] = {
+        {.image = "PokemonSV/BlueberryPoints/6750.png", .slugs = {"catch-any", "sneak-up", "auto-10", ""}},
+        {.image = "PokemonSV/BlueberryPoints/6740.png", .slugs = {"photo-swim", "sneak-up", "auto-10", ""}},
+    };
+    const BlueberryQuestDetector::QuestPosition positions[] = {FIRST, SECOND, THIRD, FOURTH};
+    const std::pair<size_t, size_t> sizes[] = {{1920, 1080}, {1280, 720}};
+    for (const auto& panel : panels){
+        for (size_t slot = 0; slot < 4; slot++){
+            for (const auto& [width, height] : sizes){
+                database.add<Test_BlueberryQuestDetector>(BlueberryQuestScenario{
+                    .image = panel.image,
+                    .language = Language::ChineseTraditional,
+                    .position = positions[slot],
+                    .expected_slug = panel.slugs[slot],
+                    .width = width,
+                    .height = height,
+                });
+            }
+        }
+    }
+}
+
 void add_tests(UnitTestDatabase& database){
     database.add<Test_BBQuestsSlugs>();
 
@@ -180,6 +255,7 @@ void add_tests(UnitTestDatabase& database){
     add_tests_NormalBattleMenus(database);
     add_tests_LetsGoKillDetector(database);
     add_tests_TeraEncounterAction(database);
+    add_tests_BlueberryQuestDetector(database);
 }
 
 
