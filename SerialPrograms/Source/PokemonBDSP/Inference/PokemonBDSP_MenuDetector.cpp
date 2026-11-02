@@ -132,6 +132,8 @@ void add_tests_MenuDetector(UnitTestDatabase& database){
     for (const char* image : {
         "PokemonBDSP/MenuDetector/NewGameBagOptions_True.png",
         "PokemonBDSP/MenuDetector/JubilifeTownMapNew_True.png",
+        //  Three NEW tags (Trainer Card, Town Map, Ball Capsules), cursor on Bag.
+        "PokemonBDSP/MenuDetector/FloaromaMenuThreeNew_True.png",
     }){
         database.add<Test_MenuDetector>(image, Columns::FromTop, true);
         database.add<Test_MenuDetector>(image, Columns::BelowNewTags, true);
@@ -142,6 +144,9 @@ void add_tests_MenuDetector(UnitTestDatabase& database){
         "PokemonBDSP/MenuDetector/OverworldOreburghMine_False.png",
         "PokemonBDSP/MenuDetector/IntroDialog_False.png",
         "PokemonBDSP/MenuDetector/IntroBarry_False.png",
+        "PokemonBDSP/MenuDetector/FloaromaOldManDialog_False.png",
+        //  Cloud shadows over Floaroma's flower field.
+        "PokemonBDSP/MenuDetector/FloaromaCloudShadows_False.png",
     }){
         database.add<Test_MenuDetector>(image, Columns::FromTop, false);
         database.add<Test_MenuDetector>(image, Columns::BelowNewTags, false);

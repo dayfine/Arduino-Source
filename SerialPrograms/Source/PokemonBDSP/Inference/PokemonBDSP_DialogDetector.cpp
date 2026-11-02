@@ -155,6 +155,11 @@ void add_tests_DialogDetector(UnitTestDatabase& database){
     database.add<Test_ShortDialogDetector>("PokemonBDSP/DialogDetector/IntroRowanNoArrow_True.png", true);
     //  A short line: the box's right end is white where the old check looks.
     database.add<Test_ShortDialogDetector>("PokemonBDSP/DialogDetector/IntroRowanShortLine_True.png", true);
+    //  A "???" name tab, in Jubilife's yellow plaza after the tag battle.
+    database.add<Test_ShortDialogDetector>("PokemonBDSP/DialogDetector/JubilifeUnknownNameTab_True.png", true);
+    //  One line, no name tab, over Floaroma's flowers.
+    database.add<Test_ShortDialogDetector>("PokemonBDSP/DialogDetector/FloaromaOldManOneLine_True.png", true);
+    database.add<Test_ShortDialogDetector>("PokemonBDSP/DialogDetector/FloaromaCloudShadows_False.png", false);
 }
 
 
