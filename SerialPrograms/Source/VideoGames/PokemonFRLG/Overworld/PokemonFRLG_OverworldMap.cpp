@@ -4,7 +4,6 @@
  *
  */
 
-#include <cstdlib>
 #include "Common/Cpp/Exceptions.h"
 #include "PokemonFRLG_OverworldMap.h"
 
@@ -13,69 +12,56 @@ namespace NintendoSwitch{
 namespace PokemonFRLG{
 
 
-std::optional<Tile> tile_from_char(char c){
-    switch (c){
-    case '#': return Tile::WALL;
-    case 'J': return Tile::LEDGE;
-    case '.': return Tile::FLOOR;
-    case '"': return Tile::TALL_GRASS;
-    case '~': return Tile::WATER;
-    case 'D': return Tile::DOOR;
-    case 'S': return Tile::SIGN;
-    case 'C': return Tile::CAVE_ENTRANCE;
-    case 'L': return Tile::LADDER;
-    case '^': return Tile::MAT_NORTH;
-    case 'v': return Tile::MAT_SOUTH;
-    case '<': return Tile::MAT_WEST;
-    case '>': return Tile::MAT_EAST;
-    case 'n': return Tile::CLOSED_NORTH;
-    case 's': return Tile::CLOSED_SOUTH;
-    case 'e': return Tile::CLOSED_EAST;
-    case 'w': return Tile::CLOSED_WEST;
-    default: return std::nullopt;
-    }
-}
-
-
 bool in_bounds(const MapData& map, const TilePos& point){
     return map.tiles.contains(point);
 }
-Tile tile_at(const MapData& map, const TilePos& point){
-    return in_bounds(map, point) ? map.tiles.at(point) : Tile::WALL;
+TileKind tile_at(const MapData& map, const TilePos& point){
+    return in_bounds(map, point) ? map.tiles.at(point) : TileKind::WALL;
 }
 uint8_t elevation_at(const MapData& map, const TilePos& point){
-    return map.elevation.contains(point) ? map.elevation.at(point) : ELEVATION_IGNORED;
+    if (!in_bounds(map, point)){
+        return ELEVATION_IGNORED;
+    }
+    return map.elevation ? map.elevation->at(point) : ELEVATION_GROUND;
 }
 
 bool is_wall(const MapData& map, const TilePos& point){
-    const Tile tile = tile_at(map, point);
-    return tile == Tile::WALL || tile == Tile::DOOR || tile == Tile::SIGN || tile == Tile::LEDGE;
+    const TileKind tile = tile_at(map, point);
+    return tile == TileKind::WALL || tile == TileKind::DOOR || tile == TileKind::SIGN || is_ledge(map, point);
 }
 bool is_ledge(const MapData& map, const TilePos& point){
-    return tile_at(map, point) == Tile::LEDGE;
+    switch (tile_at(map, point)){
+    case TileKind::LEDGE_NORTH:
+    case TileKind::LEDGE_SOUTH:
+    case TileKind::LEDGE_WEST:
+    case TileKind::LEDGE_EAST:
+        return true;
+    default:
+        return false;
+    }
 }
 bool is_water(const MapData& map, const TilePos& point){
-    return tile_at(map, point) == Tile::WATER;
+    return tile_at(map, point) == TileKind::WATER;
 }
 bool is_tall_grass(const MapData& map, const TilePos& point){
-    return tile_at(map, point) == Tile::TALL_GRASS;
+    return tile_at(map, point) == TileKind::TALL_GRASS;
 }
 
 namespace{
 
 //  The tile closed on its `side` edge.
-Tile closed_side(Direction side){
+TileKind closed_side(Direction side){
     switch (side){
     case Direction::NORTH:
-        return Tile::CLOSED_NORTH;
+        return TileKind::CLOSED_NORTH;
     case Direction::SOUTH:
-        return Tile::CLOSED_SOUTH;
+        return TileKind::CLOSED_SOUTH;
     case Direction::EAST:
-        return Tile::CLOSED_EAST;
+        return TileKind::CLOSED_EAST;
     case Direction::WEST:
-        return Tile::CLOSED_WEST;
+        return TileKind::CLOSED_WEST;
     }
-    return Tile::WALL;
+    return TileKind::WALL;
 }
 Direction opposite(Direction direction){
     switch (direction){
@@ -91,6 +77,15 @@ Direction opposite(Direction direction){
     return direction;
 }
 
+//  How the warp on this tile is entered, if there is one.
+std::optional<WarpEntry> warp_entry(const MapData& map, const TilePos& point){
+    const MapWarp* warp = warp_at(map, point);
+    if (warp == nullptr){
+        return std::nullopt;
+    }
+    return warp->enter;
+}
+
 }
 
 bool blocks_entering(const MapData& map, const TilePos& point, Direction direction){
@@ -102,35 +97,38 @@ bool blocks_leaving(const MapData& map, const TilePos& point, Direction directio
 }
 
 bool warps_on_step(const MapData& map, const TilePos& point){
-    const Tile tile = tile_at(map, point);
-    return tile == Tile::CAVE_ENTRANCE || tile == Tile::LADDER;
+    const std::optional<WarpEntry> entry = warp_entry(map, point);
+    return entry == WarpEntry::STEP_ON || entry == WarpEntry::CAVE_ENTRANCE;
 }
 bool is_door(const MapData& map, const TilePos& point){
-    return tile_at(map, point) == Tile::DOOR;
+    return tile_at(map, point) == TileKind::DOOR;
 }
 std::optional<Direction> exit_mat(const MapData& map, const TilePos& point){
-    switch (tile_at(map, point)){
-    case Tile::MAT_NORTH:
+    const std::optional<WarpEntry> entry = warp_entry(map, point);
+    if (!entry){
+        return std::nullopt;
+    }
+    switch (*entry){
+    case WarpEntry::WALK_NORTH:
         return Direction::NORTH;
-    case Tile::MAT_SOUTH:
+    case WarpEntry::WALK_SOUTH:
         return Direction::SOUTH;
-    case Tile::MAT_WEST:
+    case WarpEntry::WALK_WEST:
         return Direction::WEST;
-    case Tile::MAT_EAST:
+    case WarpEntry::WALK_EAST:
         return Direction::EAST;
     default:
         return std::nullopt;
     }
 }
 bool walks_out_on_arrival(const MapData& map, const TilePos& point){
-    const Tile tile = tile_at(map, point);
-    return tile == Tile::DOOR || tile == Tile::CAVE_ENTRANCE;
+    return is_door(map, point) || warp_entry(map, point) == WarpEntry::CAVE_ENTRANCE;
 }
 
 void hide_objects(MapData& map, const std::set<std::string>& flags){
     std::vector<MapObject> shown;
     for (const MapObject& object : map.objects){
-        if (object.flag.empty() || flags.count(object.flag) == 0){
+        if (!object.hide_flag || flags.count(*object.hide_flag) == 0){
             shown.push_back(object);
         }
     }
@@ -139,16 +137,11 @@ void hide_objects(MapData& map, const std::set<std::string>& flags){
 
 const MapObject* object_at(const MapData& map, const TilePos& point){
     for (const MapObject& object : map.objects){
-        if (std::abs(object.x - point.x) <= object.wander_x && std::abs(object.y - point.y) <= object.wander_y){
+        const Pokemon::TileBox box = object.wander.value_or(
+            Pokemon::TileBox{.x0 = object.x, .y0 = object.y, .x1 = object.x, .y1 = object.y}
+        );
+        if (box.x0 <= point.x && point.x <= box.x1 && box.y0 <= point.y && point.y <= box.y1){
             return &object;
-        }
-    }
-    return nullptr;
-}
-const MapWarp* warp_at(const MapData& map, const TilePos& point){
-    for (const MapWarp& warp : map.warps){
-        if (warp.x == point.x && warp.y == point.y){
-            return &warp;
         }
     }
     return nullptr;

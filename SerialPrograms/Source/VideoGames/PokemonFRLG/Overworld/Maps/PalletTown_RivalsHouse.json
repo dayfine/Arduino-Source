@@ -1,7 +1,10 @@
 {
     "name": "PalletTown_RivalsHouse",
-    "width": 13,
-    "height": 10,
+    "source": {
+        "decomp_file": "data/maps/PalletTown_RivalsHouse/map.json",
+        "revision": "ce6406d8c2eaf46d543c8a2606de0c3cb1951982",
+        "date": "2026-10-31"
+    },
     "tiles": [
         "#############",
         "#############",
@@ -11,48 +14,56 @@
         "......##.....",
         ".............",
         ".............",
-        "#...v.......#",
+        "#...........#",
         "#############"
     ],
+    "points": {
+        "warp_0": [4, 8]
+    },
     "warps": [
         {
             "x": 4,
             "y": 8,
-            "dest_map": "PalletTown",
-            "dest_warp": 1
+            "enter": "walk_south",
+            "to_map": "PalletTown",
+            "to_point": "warp_1"
         },
         {
             "x": 5,
             "y": 8,
-            "dest_map": "PalletTown",
-            "dest_warp": 1
+            "enter": "walk_into",
+            "to_map": "PalletTown",
+            "to_point": "warp_1"
         },
         {
             "x": 3,
             "y": 8,
-            "dest_map": "PalletTown",
-            "dest_warp": 1
+            "enter": "walk_into",
+            "to_map": "PalletTown",
+            "to_point": "warp_1"
         }
     ],
     "objects": [
         {
+            "name": "daisy",
+            "kind": "npc",
             "x": 10,
             "y": 6,
-            "kind": "daisy",
-            "flag": "",
-            "wander_x": 1,
-            "wander_y": 3
+            "wander": {
+                "x0": 9,
+                "y0": 3,
+                "x1": 11,
+                "y1": 9
+            }
         },
         {
+            "name": "town_map",
+            "kind": "npc",
             "x": 6,
             "y": 4,
-            "kind": "town_map",
-            "flag": "FLAG_HIDE_TOWN_MAP",
-            "wander_x": 0,
-            "wander_y": 0
+            "hide_flag": "FLAG_HIDE_TOWN_MAP"
         }
     ],
-    "connections": [],
-    "points": [],
-    "flag_sets": []
+    "flag_sets": {},
+    "connections": []
 }
