@@ -55,6 +55,13 @@ The map is named by its header constant (`MAP_HEADER_<name>` in pokeplatinum,
   0x69 door and 0x62..0x65 cave mouths (blocked, walked into) `D`; 0x6c..0x6f
   warp tiles (stood on) and 0x5e/0x5f warp stairs `W`; water `#`; cave floor
   0x08, sand 0x21 and anything else unblocked `.`.
+- height data, the land data file's last block (Platinum's layout,
+  `src/overlay005/bdhc.c`): the game refuses a step 20 or more units up or
+  down, so a cliff the blocked bit misses would be a wall our grid lacks.
+  `decomp.height_walls()` lists such pairs; the tests run it over Route 203
+  and every cached Platinum land file, and none is found outside the
+  Ravaged Path's unreachable void. Stairs are plain open tiles (behaviour
+  0x00); only the heights show them.
 - events, `res/field/events/events_<map>.json` or
   `files/fielddata/eventdata/zone_event_release/narc_NNNN.bin`: standing people
   `N`, signposts `S`, items on the ground and cut trees, smashable rocks and

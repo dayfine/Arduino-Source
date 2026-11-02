@@ -104,6 +104,91 @@ class Source:
         return self.read(path).decode('utf-8', errors='replace')
 
 
+#  Height data (BDHC), the last block of a land data file: the game's own
+#  layout in pret/pokeplatinum (src/overlay005/bdhc.c). Plates are rectangles
+#  in fx32 units around the cell's centre (a tile is 16 units), each a plane
+#  n.x * x + n.y * y + n.z * z + d = 0. pokediamond's files keep the same
+#  levels in another layout (3-D corner points) that this does not read.
+FX32_ONE = 4096
+TILE_UNITS = 16
+#  TerrainCollisionManager_WillPlayerCollide(): a step onto a tile whose
+#  height is this many units above or below ours is refused.
+HEIGHT_STEP = 20
+
+
+def decode_bdhc(data):
+    """The plates of a BDHC block: (x0, z0, x1, z1, (nx, ny, nz), d), fx32 values."""
+    if data[:4] != b'BDHC':
+        raise ValueError(f'height data: magic {data[:4]!r}, expected BDHC (Platinum layout)')
+    points, normals, constants, plates, strips, access = struct.unpack_from('<6H', data, 4)
+    offset = 16
+    point = [struct.unpack_from('<2i', data, offset + 8 * i) for i in range(points)]
+    offset += 8 * points
+    normal = [struct.unpack_from('<3i', data, offset + 12 * i) for i in range(normals)]
+    offset += 12 * normals
+    constant = [struct.unpack_from('<i', data, offset + 4 * i)[0] for i in range(constants)]
+    offset += 4 * constants
+    out = []
+    for i in range(plates):
+        first, second, n, d = struct.unpack_from('<4H', data, offset + 8 * i)
+        (ax, az), (bx, bz) = point[first], point[second]
+        out.append((min(ax, bx), min(az, bz), max(ax, bx), max(az, bz), normal[n], constant[d]))
+    if offset + 8 * plates + 8 * strips + 2 * access != len(data):
+        raise ValueError('height data: block size does not match its counts')
+    return out
+
+
+def land_bdhc(data):
+    """The BDHC block of a land data file."""
+    sizes = struct.unpack('<4I', data[:16])
+    start = 16 + sizes[0] + sizes[1] + sizes[2]
+    return data[start:start + sizes[3]]
+
+
+def tile_heights(plates):
+    """Per tile (row-major, 32 x 32): the heights, in units, of the plates over its centre."""
+    heights = []
+    for z in range(CELL):
+        for x in range(CELL):
+            px = (x * TILE_UNITS + TILE_UNITS // 2 - CELL * TILE_UNITS // 2) * FX32_ONE
+            pz = (z * TILE_UNITS + TILE_UNITS // 2 - CELL * TILE_UNITS // 2) * FX32_ONE
+            here = []
+            for x0, z0, x1, z1, (nx, ny, nz), d in plates:
+                if x0 <= px <= x1 and z0 <= pz <= z1:
+                    y = -((nx * px) // FX32_ONE + (nz * pz) // FX32_ONE + d) * FX32_ONE // ny
+                    here.append(y / FX32_ONE)
+            heights.append(here)
+    return heights
+
+
+def walkable(attr):
+    return not attr & BLOCKED and (attr & 0xff) not in WATER
+
+
+def height_walls(attrs, heights):
+    """Neighbouring walkable tiles ((x, z), (x, z), h, h) whose heights differ by HEIGHT_STEP or more.
+
+    Our grids read walls from the blocked bit only, so each such pair would be
+    a wall the grid misses. Where plates overlap (a bridge), the one nearest
+    the first tile's height is taken, as the game does."""
+    walls = []
+    for z in range(CELL):
+        for x in range(CELL):
+            a = heights[z * CELL + x]
+            if not walkable(attrs[z * CELL + x]) or not a:
+                continue
+            for nx, nz in ((x + 1, z), (x, z + 1)):
+                if nx >= CELL or nz >= CELL:
+                    continue
+                b = heights[nz * CELL + nx]
+                if not walkable(attrs[nz * CELL + nx]) or not b:
+                    continue
+                near = min(b, key=lambda h: abs(h - a[0]))
+                if abs(near - a[0]) >= HEIGHT_STEP:
+                    walls.append(((x, z), (nx, nz), a[0], near))
+    return walls
+
+
 @dataclass
 class MapHeader:
     name: str
@@ -424,16 +509,9 @@ def place_object(obj, grid, x, y):
     return f'{obj.name} {where}{look}{seen}{hidden}', None
 
 
-def decode(game, map_name, rect=None, date=None):
-    header = game.header(map_name)
-    matrix = game.matrix(header.matrix_id)
-    cells = matrix.cells_of(map_name)
-    if not cells:
-        raise KeyError(f'{map_name}: no cell of matrix {header.matrix_id:03d} carries it')
-    if rect is None:
-        rect = default_rect(matrix, cells)
+def terrain(world, rect):
+    """The rect's tiles in our legend, '?' outside the matrix, and the notes on them."""
     x0, z0, w, h = rect
-    world = World(game, matrix)
     grid = [[' '] * w for _ in range(h)]
     notes = {}
     for y in range(h):
@@ -446,6 +524,20 @@ def decode(game, map_name, rect=None, date=None):
             grid[y][x] = ch
             if note:
                 notes.setdefault(note, []).append((x, y))
+    return grid, notes
+
+
+def decode(game, map_name, rect=None, date=None):
+    header = game.header(map_name)
+    matrix = game.matrix(header.matrix_id)
+    cells = matrix.cells_of(map_name)
+    if not cells:
+        raise KeyError(f'{map_name}: no cell of matrix {header.matrix_id:03d} carries it')
+    if rect is None:
+        rect = default_rect(matrix, cells)
+    x0, z0, w, h = rect
+    world = World(game, matrix)
+    grid, notes = terrain(world, rect)
     events = game.events(header.events_id)
     inside = lambda ex, ez: x0 <= ex < x0 + w and z0 <= ez < z0 + h
     placed, off_grid = [], []
