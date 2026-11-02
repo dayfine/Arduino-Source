@@ -126,7 +126,9 @@ default value instead.
 | `navel_rock`, `birth_island` | **Unsupported**: need event tickets (MysticTicket, AuroraTicket) | — | *剧情后4*, *剧情后5* |
 | `diploma` | Diploma from Game Freak, Celadon Mansion 3F; needs a completed Pokedex. **Unsupported** until a dex-completion program exists. | — | *剧情后6* |
 | `<target>.rng` | RNG handoffs, one per target: see [RNG handoffs](#rng-handoffs) | per target | — |
-| `ace_setup` | ACE / glitch setup. **Reserved, method not chosen**; not designed. | — | — |
+| `item_dupe` | Mail glitch item duplication (Rare Candies, Nuggets): see [Item duplication](#item-duplication-item_dupe-the-mail-glitch). Changes the save for good. | 06.07 (setup from 01.01) | — |
+| `nugget_bridge_loop` | N Vs. Seeker loops of Routes 24/25 for money and EXP; N from the [money plan](#money-plan) | 04.02 | — |
+| `prize_tm` | Buy Game Corner TMs with coins (e.g. TM13 Ice Beam) | 06.01 | — |
 
 Italic lines that sit on the default path anyway: one of *中局31*/*中局36* (a
 Snorlax must be passed), one half of *中局44* (some route to Cinnabar), and
@@ -227,6 +229,264 @@ saved):
   parent option on by itself.
 - A TID/SID is known before the first target.
 
+## Item duplication (`item_dupe`, the "mail glitch")
+
+Off by default. It lets the run duplicate held items, mainly Rare Candies (to
+level the sweeper instead of grinding) and Nuggets (to sell instead of
+looping trainers for money).
+
+Sources: [Game8's guide for the Switch release](https://game8.co/games/Pokemon-FireRed-LeafGreen/archives/583965)
+(updated 2026-03-10), [pomeg-letterbombers' mail glitch notes](https://pomeg-letterbombers.github.io/pokemon-ace-notes/mail-glitch),
+[Glitch City wiki: Mail Trick glitch](https://glitchcity.wiki/Mail_Trick_glitch),
+and upstream's [ItemDuplication](https://pokemonautomation.github.io/Programs/PokemonFRLG/ItemDuplication.html)
+program, which automates the duplication loop once the glitch is set up.
+Bulbapedia blocked automated reads and was not used. Pokemon, moves and
+locations below were checked in the decomp.
+
+**One method exists for FRLG:** Knock Off plus Recycle in a double battle
+(found by luckytyphlosion, Nov 2023, per Glitch City). Trick is a Japanese
+Ruby/Sapphire method, not FRLG's. Knock Off removes the Mail without freeing
+its Mail data slot; afterwards giving Mail to a Pokemon that holds an item
+opens a "???" Mail screen, and confirming it adds one more of the held item to
+the bag while one Mail is used up.
+
+| Need | Where (decomp) | Story point |
+|---|---|---|
+| Farfetch'd with Knock Off | Trade a Spearow for CH'DING in Vermilion (`VermilionCity_House2`, `INGAME_TRADE_FARFETCHD`); Knock Off at Lv21. The traded Pokemon gets the level of the one given (`CreateInGameTradePokemonInternal`). Spearow: Route 3 grass, Lv6–8. | 03.02 |
+| Mr. Mime with Recycle | Trade an Abra for MIMIEN in the Route 2 house (`Route2_House`, `INGAME_TRADE_MR_MIME`), reached from Route 2's east side; Recycle at Lv33 (Porygon learns it at 44). Abra: Routes 24/25, Lv8–13; it Teleports, so it needs a first-turn catch. | 04.01 trip |
+| Obedience | A traded Pokemon above Lv30 disobeys until the Rainbow Badge (`IsMonDisobedient`: 10, 30 Cascade, 50 Rainbow, 70 Marsh). Mr. Mime at 33 needs it. | 06.02 |
+| Retro Mail | Celadon Dept. Store 4F, ¥50 each. Five held at once plus one per duplicate; pomeg suggests buying at least 100. | 06.01 |
+| A berry | Game8: any berry; pomeg: Sitrus works best (eaten at 50% HP). Found, not sold in Marts. | before 06.07 |
+| A double battle | First FRLG double on the route: Twins Eli & Anne, Route 8 (`trainers.inc`). Their Vs. Seeker rematch only opens after Fuchsia (`vs_seeker.c`), so the glitch battle must be their first battle: 05.03 and 06.06 must stay out of their sight. | 06.07 |
+
+Steps, as the sources give them (they differ in party order; both are listed,
+the console run picks one):
+
+1. Party: Game8 — Farfetch'd, a berry holder, Mr. Mime holding Retro Mail;
+   pomeg — berry holder, Knock Off user, Recycle user holding Mail. Save before
+   the battle.
+2. Double battle: get the berry holder to half HP so it eats the berry; switch
+   the Mail-holding Mr. Mime into that spot; Knock Off it; next turn use
+   Recycle (it brings back the berry, not the Mail). Finish the battle.
+3. Check: if any Pokemon still holds Mail, reload the save and retry (pomeg).
+4. At a Center, fill the party to six, original three in place; give Retro
+   Mail (same message as the lost one, Game8) to the five that aren't
+   Farfetch'd.
+5. Duplicate: give Farfetch'd the item to copy, then give it a Retro Mail; on
+   the "???" screen confirm without naming. One copy per Mail. Upstream's
+   ItemDuplication automates this step (Farfetch'd first holding the item,
+   party full holding the right Mail, Retro Mail at the top of the bag), so
+   AutoStory can hand off to it like an RNG handoff.
+
+**Save risk:** neither Game8 nor Glitch City reports corruption from the
+Knock Off method itself. But the save stays in a glitched Mail state (pomeg);
+in non-Japanese FRLG the "???" Mail writes into PC Box 3, Slot 1 and can
+change that Pokemon's substructure order, nature and gender (Glitch City).
+AutoStory keeps Box 3, Slot 1 empty for the rest of the run. Pokemon created
+from an empty slot by it can vanish in group selections (pomeg). The save
+can't be cleanly undone, so this option is the user's call.
+
+**Our version (English FireRed on Switch):** Game8 says it works on the
+Switch versions, and upstream ships an ItemDuplication program for the Switch
+release, but **neither I nor the lab have confirmed it on our console**, and
+pomeg's FAQ warns the Switch rerelease is "heavily internally modified" with
+quirks that break some cartridge codes. Japanese FRLG behaves differently; we
+run English. Verify once by hand on console B before AutoStory relies on it.
+
+**Placement:** the earliest point is right after the Rainbow Badge with Retro
+Mail bought, at Route 8 on the way back to Lavender: new checkpoint `06.07`.
+It also needs the Diglett's Cave trip (04.01) for the Route 2 house, a Spearow (01.01) and an Abra (02.04), and two
+GRIND steps (Farfetch'd to 21, Mr. Mime to 33; see the team plan).
+
+**Rare Candies for a sweep:** one Candy is one level. The plan raises the
+sweeper from about Lv36 at 06.07 (the WR's level at that story point) to
+Lv60 there, and to Lv70 at 14.01: **34 Candies**, an upper bound (fight EXP
+in between ignored; estimated). Add Nuggets for money (see the money plan):
+about 8 for the League's Full Restores. That is ~42 duplicates, so ~50 Retro
+Mail on top of the five held. Buy 15 at 06.01 (¥750), duplicate and sell
+Nuggets first, then buy the rest (up to pomeg's 100). Seeds: keep
+one found Rare Candy unused and keep the Route 24 Nugget unsold.
+
+## Team plan
+
+Default team is the WR's: one sweeper (the starter) plus HM users, no
+grinding (see the [speedrun notes](AutoStory-FRLG-SpeedrunNotes.md)). HM
+compatibility is from `tmhm_learnsets.h`; trade data from
+`ingame_trades.h`; opponent levels from `trainer_parties.h` (Squirtle player,
+so the rival's `_BULBASAUR` parties).
+
+| Role | Pokemon | Where | Notes |
+|---|---|---|---|
+| Sweeper, Surf, Strength (later Rock Smash, Waterfall) | Squirtle → Blastoise | 00.04 | Learns all four HMs. WR moves at the League: Surf, Strength, Bite, Blizzard. |
+| Cut | Rattata (WR, Route 1) | 00.05–00.07 capture | Learns Cut and Rock Smash. With `item_dupe`, Farfetch'd covers Cut too. |
+| Fly (`fly`) | Pidgey (WR) or Farfetch'd | Route 1/2 capture, or 03.02 trade | Both learn Fly. |
+| Flash (`flash`) | Mr. Mime (with `item_dupe`) | 04.01 trade | Rattata, Pidgey and Blastoise can't learn Flash. Without `item_dupe`, a Flash user is another capture (not planned). |
+| Knock Off (`item_dupe`) | Farfetch'd CH'DING | 03.02 trade for Spearow | Holds a Stick. |
+| Recycle (`item_dupe`) | Mr. Mime MIMIEN | 04.01 trade for Abra | |
+
+In-game trades (all in `ingame_trades.h`; the received Pokemon has the level
+of the one given):
+
+| You give | You get | Where | Plan use |
+|---|---|---|---|
+| Abra | Mr. Mime MIMIEN | Route 2 house | `item_dupe` |
+| Spearow | Farfetch'd CH'DING (Stick) | Vermilion house | `item_dupe`, Cut/Fly |
+| Poliwhirl | Jynx ZYNX (Fab Mail) | Cerulean house | — (pomeg mentions it can affect the glitch state; not used) |
+| Nidoran (one sex) | Nidoran (other) MS./MR. NIDO | Underground Path north entrance (Route 5) | — |
+| Nidorino / Nidorina | NINA / NINO | Route 11 gate 2F | — |
+| Golduck (FR) / Slowbro (LG) | Lickitung MARC | Route 18 gate 2F | — |
+| Raichu | Electrode ESPHERE | Cinnabar Lab lounge | — |
+| Venonat | Tangela TANGENY (Stardust) | Cinnabar Lab lounge | — |
+| Ponyta | Seel SEELOR | Cinnabar Lab experiment room | — |
+
+Levels per major fight: opponent's highest level (decomp), the WR sweeper's
+level there (speedrun notes), and a DEFAULT target (estimated: WR level, at
+least the opponent's ace + 2 for gyms and rivals). Our order differs from the
+WR's after Celadon (it did Koga and Blaine before Erika), so later WR levels
+are a guide, not a curve to copy.
+
+| Fight | Checkpoint | Opponent max | WR level | DEFAULT target |
+|---|---|---|---|---|
+| Brock | 00.09 | 14 | 11 | 14 |
+| Miguel | 01.02 | 12 | ~16 | 16 |
+| Misty | 02.01 | 21 | 20–21 | 23 |
+| Rival, Cerulean | 02.02 | 18 | 21 | 21 |
+| Rival, S.S. Anne | 03.03 | 20 | ~27 | 27 |
+| Surge | 03.06 | 24 | 28 | 28 |
+| Erika | 06.02 | 29 | 44 (fought late) | 32 |
+| Giovanni, Hideout | 06.05 | 29 | 36 | 36 |
+| Rival, Tower | 06.08 | 25 | 36–38 | 36 |
+| Koga | 07.05 | 43 | 40 | 45 |
+| Rival, Silph | 08.04 | 40 | 44–45 | 45 |
+| Giovanni, Silph | 08.05 | 41 | 45–46 | 45 |
+| Sabrina | 08.06 | 43 | 47 | 47 |
+| Blaine | 10.02 | 47 | 42 | 49 |
+| Giovanni, Gym | 12.03 | 50 | 49 | 52 |
+| Rival, Route 22 | 13.01 | 53 | 49 | 53 |
+| Elite Four | 14.02–14.05 | 60 (Dragonite) | 51–55 | 58 |
+| Champion | 14.06 | 63 | 55–57 | 60 |
+
+The WR is under target at Koga, Blaine and the League and wins with X items
+(X Special, X Speed, X Accuracy) and Full Restores; DEFAULT buys those too.
+
+**GRIND steps (no `item_dupe`).** `GRIND(where, level)`: fight until the lead
+reaches the level, with a bounded encounter count, then heal. Proposed, all
+estimated until runs measure EXP:
+
+| Before | GRIND | Notes |
+|---|---|---|
+| 02.01 Misty | Route 24/25 trainers, first pass (02.02–02.04 are on the way) | Fight Misty after Bill if below 23 (schedule change) |
+| 03.06 Surge | Vermilion: Route 6/11 trainers | |
+| 07.05 Koga | Route 12–15 trainers (EAST road) | Most of the gap closes on the road itself |
+| 10.02 Blaine | Cinnabar Mansion trainers / Route 21 | |
+| 14.01 League | Victory Road and Route 23 wild Pokemon | Biggest gap: 55→58 |
+
+With `item_dupe`, every GRIND for the sweeper after `06.07` is replaced by a
+Rare Candy step (`ITEM(rare_candy, n)` to the table's target). The two
+glitch-setup GRINDs stay: Farfetch'd to 21 and Mr. Mime to 33 (both on
+Route 24/25 trainers or the `nugget_bridge_loop`, which also pays).
+
+## Money plan
+
+Worked backwards from what the run buys. Every number is marked: **(d)**
+decomp, **(w)** speedrun notes, **(e)** estimated. Prices are `items.json`
+(d); selling gives half the price (`item_menu.c`) (d).
+
+### Sinks
+
+| Checkpoint | What | Cost |
+|---|---|---|
+| 00.07 | 5 Potions, 3 Antidotes, 1 Parlyz Heal (the existing `shop` row) | ¥2,000 (d: table) |
+| 01.01 `magikarp` | Magikarp | ¥500 (GiftRng docs) |
+| 02.06 | Cerulean restock, ~5 Potions + 2 Repels | ¥2,200 (e) |
+| 03.01 | 5 Super Potions, 3 Parlyz Heals, 3 Repels (WR's buy) | ¥5,150 (d prices, w quantities) |
+| 05.01 | 4 Escape Ropes, 7 Super Repels (WR's buy) | ¥5,700 (d, w) |
+| 06.01 | 6 X Speed, 21 X Special, 5 X Accuracy, 2 Guard Spec (WR's buy) | ¥15,600 (d, w) |
+| 06.01 `item_dupe` | 15 Retro Mail now, ~85 more after the first Nugget sales | ¥750 + ¥4,250 (d) |
+| 06.01 `prize_tm` | Game Corner TM: TM13 Ice Beam 4000 coins, TM24 Thunderbolt 4000, TM35 Flamethrower 4000, TM23 Iron Tail 3500, TM30 Shadow Ball 4500; coins ¥1,000 per 50 (¥20 each) | Ice Beam = ¥80,000 (d) |
+| 06.01 `game_corner_prize.rng` | Prize Pokemon, FR: Abra 180, Clefairy 500, Dratini 2800, Scyther 5500, Porygon 9999 coins; LG: Abra 120, Clefairy 750, Pinsir 2500, Dratini 4600, Porygon 6500 | FR Dratini = ¥56,000 (d) |
+| 07.06 | Safari Zone entry | ¥500 (d) |
+| 14.01 | ~13 Full Restores (WR bought about 13) | ¥39,000 (d price, w count) |
+| — | Bicycle: voucher, free | ¥0 |
+
+The WR gets Blizzard free (TM14, Pokemon Mansion B1F item ball (d)), so
+`prize_tm` is off by default.
+
+### Sources
+
+- Trainer payouts: `4 × last Pokemon's level × class base × 2 if double ×
+  2 with Amulet Coin` (`battle_script_commands.c`) (d). The table below sums
+  them per segment from `trainer_parties.h`, `trainers.h` and the trainers'
+  map scripts (d). "Required" is leaders, rivals, bosses, Miguel and the
+  Nugget Bridge (forced on a one-tile bridge). "Estimate" adds half of the
+  other trainers on those maps (e). The WR's money readings match the
+  decomp's prizes (Brock 1,400, Misty 2,100, Silph rival 1,440, Lorelei 5,400).
+- Nugget from the Route 24 Rocket: sells for ¥5,000 (d). Other Nuggets on the
+  default path (d): Rocket Hideout B3F (hidden), Pokemon Tower 5F, Safari
+  Center, Silph 8F (hidden), each ¥5,000 if picked up (not counted below).
+- Amulet Coin (`amulet_coin`, Route 16 gate, 40 caught): doubles prizes when
+  its holder is sent into the battle (`battle_util.c`) (d).
+- Vs. Seeker rematches (`vs_seeker`, Vermilion Center) (d, `vs_seeker.c`):
+  the battery needs 100 steps after each successful use; each fought trainer
+  on screen accepts with 70% chance; the rematch party is the highest tier the
+  story allows: tier 1 after getting the Vs. Seeker, 2 after visiting Celadon,
+  3 after Fuchsia, 4 after the Hall of Fame. Routes 24/25 have 15 rematchable
+  trainers; Hiker Franklin only from tier 2.
+
+| Nugget Bridge loop (Routes 24+25, all rematchable trainers) | Sum of prizes (d) | Expected at 70% (d) | With Amulet Coin |
+|---|---|---|---|
+| Tier 1 (Vs. Seeker, before Celadon) | ¥4,396 | ¥3,077 | — (coin comes later) |
+| Tier 2 (after Celadon) | ¥5,296 | ¥3,707 | ¥7,414 |
+| Tier 3 (after Fuchsia) | ¥5,840 | ¥4,088 | ¥8,176 |
+
+One loop needs several Vs. Seeker uses (trainers must be on screen), each
+after 100 steps: about 5 uses per loop (e).
+
+### Ledger (DEFAULT: EAST road, Route 21, no options)
+
+Start money ¥3,000 (w: Trainer Card at 0:00). "Floor" counts only required
+fights (d) plus the bridge Nugget sold; "estimate" adds half the other
+trainers (e).
+
+| Segment | Income floor | Income est. | Spend | Cumulative floor | Cumulative est. |
+|---|---|---|---|---|---|
+| start | | | | 3,000 | 3,000 |
+| 00 | 1,480 | 1,764 | 2,000 | 2,480 | 2,764 |
+| 01 | 288 | 2,578 | 0 | 2,768 | 5,342 |
+| 02 (+ Nugget 5,000) | 9,564 | 11,498 | 2,200 | 10,132 | 14,640 |
+| 03 | 3,120 | 11,572 | 5,150 | 8,102 | 21,062 |
+| 04 | 0 | 1,932 | 0 | 8,102 | 22,994 |
+| 05 | 0 | 10,820 | 5,700 | 2,402 | 28,114 |
+| 06 | 6,700 | 20,124 | 15,600 | **−6,498** | 32,638 |
+| 07 | 4,300 | 24,856 | 500 | −2,698 | 56,994 |
+| 08 | 5,740 | 24,864 | 0 | 3,042 | 81,858 |
+| 09 | 0 | 2,544 | 0 | 3,042 | 84,402 |
+| 10 | 4,700 | 18,732 | 0 | 7,742 | 103,134 |
+| 12 | 5,000 | 10,180 | 0 | 12,742 | 113,314 |
+| 13 | 1,908 | 11,678 | 0 | 14,650 | 124,992 |
+| 14.01 | 0 | 0 | 39,000 | **−24,350** | 85,992 |
+
+The estimate is high against the WR (¥15,694 at Celadon, ¥41,818 at the
+Plateau, both read on screen), which skipped most trainers; reality sits
+between floor and estimate.
+
+**Loops needed** (passes at tier 1, ¥3,077 expected each, run in 04.02):
+
+| Plan | Deficit (floor) | Loops (floor) | Loops (estimate) |
+|---|---|---|---|
+| No dupe | ¥24,350 by 14.01 (¥6,498 by 06.01) | 8 | 0 |
+| No dupe + `prize_tm` Ice Beam | ¥104,350 | 34 (or 15 at tier 2 with Amulet Coin) | 0 |
+| `item_dupe` (skip X items; keep the bridge Nugget as the seed; 15 Retro Mail) | ¥3,348 at 06.01 | 2 | 0 |
+| `item_dupe` after 06.07 | covered by duplicated Nuggets (¥5,000 each, 8 for the League) | 0 | 0 |
+
+`nugget_bridge_loop` (off unless the plan needs it): runs N loops in 04.02,
+before Route 9. Default N comes from this ledger at run start: the floor
+deficit up to the next money check divided by the expected loop payout,
+rounded up; the user can override it. It also serves the glitch-setup GRINDs.
+Every loop count is an estimate until a console run measures payouts per
+loop and steps per Vs. Seeker use.
+
+
 ## Main story
 
 ### Segment 00 — New game to the Running Shoes (Parts 1–3)
@@ -254,7 +514,7 @@ RNG split of `00.04`) get their ids in that PR.
 
 | ID | Title | Start | Does | End / save | 52poke |
 |---|---|---|---|---|---|
-| 01.01 | Route 3 to the Mt. Moon Center | PEWTER (46,21) N | `ready`; Route 3 trainers on the chosen path; Route 4 Center `heal` `[opt: magikarp]` | `@Route4.center_counter` | 开局16, *开局17* |
+| 01.01 | Route 3 to the Mt. Moon Center | PEWTER (46,21) N | `ready`; Route 3 trainers on the chosen path; Route 4 Center `heal` `[opt: magikarp]` `[opt: item_dupe — CAPTURE(spearow)]` | `@Route4.center_counter` | 开局16, *开局17* |
 | 01.02 | Mt. Moon to the fossils | `@Route4.center_counter` | `route` 1F→B1F→B2F; Rockets on the path; `PREP(Miguel)`; `battle(super_nerd_miguel)`; `CHOICE(fossil)` (Dome \| Helix, setting); `ITEM` | `@MtMoonB2F.fossil_room` | 开局18 |
 | 01.03 | Exit Mt. Moon to Cerulean | `@MtMoonB2F.fossil_room` | Exit east; Route 4 one-way ledges; Cerulean Center `heal`. Never plan a walk back uphill. | `@Cerulean.center_counter` | 开局19 |
 
@@ -268,7 +528,7 @@ a schedule change, not an option.
 | 02.01 | Cascade Badge | `@Cerulean.center_counter` | Gym trainers on the path; `PREP(Misty)`; `battle(Misty)`; Cascade Badge, TM03; back to the Center | `@Cerulean.center_counter` | 开局20 |
 | 02.02 | Rival at the bridge | `@Cerulean.center_counter` | North to the Route 24 trigger; `battle(rival_cerulean)`; Fame Checker | `@Route24.bridge_south` | 开局21 |
 | 02.03 | Nugget Bridge | `@Route24.bridge_south` | Five bridge trainers, each named; Nugget; `battle(rocket_recruiter)` | `@Route24.bridge_north` | 开局22 |
-| 02.04 | Route 25 to Sea Cottage | `@Route24.bridge_north` | Route 24 grass and Route 25 trainers on the chosen path; enter the cottage | `@SeaCottage.door` | 开局23 |
+| 02.04 | Route 25 to Sea Cottage | `@Route24.bridge_north` | Route 24 grass and Route 25 trainers on the chosen path; `[opt: item_dupe — CAPTURE(abra), first-turn catch]`; enter the cottage | `@SeaCottage.door` | 开局23 |
 | 02.05 | Restore Bill | `@SeaCottage.door` | `talk(Bill)`; `answer(help, YES)`; PC; separation `scene`; `talk(Bill)`; `VERIFY(SS_Ticket)` | `@SeaCottage.door` | 开局24 |
 | 02.06 | Back to Cerulean | `@SeaCottage.door` | Routes 25 and 24 south; Center `heal` | `@Cerulean.center_counter` | 开局25 |
 | 02.07 | The burgled house | `@Cerulean.center_counter` | Officer has moved (after the ticket); through the house to the back yard; `battle(rocket_thief)`; TM28 | `@Cerulean.house_backyard` | 中局1 |
@@ -279,7 +539,7 @@ a schedule change, not an option.
 | ID | Title | Start | Does | End / save | 52poke |
 |---|---|---|---|---|---|
 | 03.01 | Route 6 to Vermilion | `@Route6.underground_exit` | Route 6 trainers on the path; Vermilion Center `heal` | `@Vermilion.center_counter` | 中局3 |
-| 03.02 | To the harbor | `@Vermilion.center_counter` | `[opt: vs_seeker]` girl in the Center; `[opt: bike_voucher]` Fan Club chairman; `[opt: old_rod]` Fishing Guru; harbor ticket check; board | `@SSAnne.1F_entry` | *中局4*, *中局5*, *中局6*, 中局7, 中局8 |
+| 03.02 | To the harbor | `@Vermilion.center_counter` | `[opt: vs_seeker]` girl in the Center; `[opt: bike_voucher]` Fan Club chairman; `[opt: old_rod]` Fishing Guru; `[opt: item_dupe]` trade Spearow for Farfetch'd (Vermilion house), `GRIND(farfetchd, 21)` for Knock Off; harbor ticket check; board | `@SSAnne.1F_entry` | *中局4*, *中局5*, *中局6*, 中局7, 中局8 |
 | 03.03 | Ship rival | `@SSAnne.1F_entry` | Route to the captain's deck; `PREP(rival_ship)`; `battle(rival_ss_anne)` | `@SSAnne.captain_hall` | 中局9 |
 | 03.04 | Captain's Cut | `@SSAnne.captain_hall` | `talk(captain)`; back-rub `scene`; HM01; leave; ship departs; `PARTY(cut_user)`; `TEACH(Cut, slot)`. Squirtle can't learn Cut: needs a caught Cut user (WR: Rattata from Route 1). | `@Vermilion.center_counter` | 中局10 |
 | 03.05 | Surge's switches | `@Vermilion.center_counter` | `FIELD(Cut, gym_tree)`; gym trainers on the path; `PUZZLE(two_trash_switches)` read from the screen, bounded attempts | `@VermilionGym.surge_front` | 中局11 |
@@ -291,8 +551,8 @@ Default skips Flash and walks Rock Tunnel dark, as the WR does (45:00–50:00 in
 
 | ID | Title | Start | Does | End / save | 52poke |
 |---|---|---|---|---|---|
-| 04.01 | `[opt: flash or old_amber]` Diglett's Cave to HM05 | `@Vermilion.center_counter` | Route 11; Diglett's Cave; `[opt: flash]` Route 2 east gate aide (needs 10 caught: `CAPTURE` until met), `TEACH(Flash)`; `[opt: old_amber]` museum side door via Cut; back through the cave | `@Vermilion.center_counter` | *中局12* |
-| 04.02 | Back to Cerulean | `@Vermilion.center_counter` | Route 6; Underground Path; Route 5; `[opt: bike_voucher]` Bike Shop exchange; Center `heal` | `@Cerulean.center_counter` | 中局13 |
+| 04.01 | `[opt: flash, old_amber or item_dupe]` Diglett's Cave to HM05 | `@Vermilion.center_counter` | Route 11; Diglett's Cave; `[opt: flash]` Route 2 east gate aide (needs 10 caught: `CAPTURE` until met), `TEACH(Flash)`; `[opt: old_amber]` museum side door via Cut; `[opt: item_dupe]` Route 2 house: trade Abra for Mr. Mime; back through the cave | `@Vermilion.center_counter` | *中局12* |
+| 04.02 | Back to Cerulean | `@Vermilion.center_counter` | Route 6; Underground Path; Route 5; `[opt: bike_voucher]` Bike Shop exchange; `[opt: nugget_bridge_loop]` N Vs. Seeker loops of Routes 24/25 (needs `vs_seeker`), also `GRIND(mr_mime, 33)` with `item_dupe`; Center `heal` | `@Cerulean.center_counter` | 中局13 |
 | 04.03 | Routes 9 and 10 | `@Cerulean.center_counter` | Cut the east tree; Route 9 trainers on the path; Route 10 Center `heal` | `@Route10.center_counter` | 中局13 |
 
 ### Segment 05 — Rock Tunnel, Route 10 south, Lavender, Route 8, Underground Path, Route 7 (Part 8)
@@ -301,22 +561,23 @@ Default skips Flash and walks Rock Tunnel dark, as the WR does (45:00–50:00 in
 |---|---|---|---|---|---|
 | 05.01 | Rock Tunnel to Lavender | `@Route10.center_counter` | Rock Tunnel floors and ladders, dark (or `FIELD(Flash)` with `[opt: flash]`); path trainers; Route 10 south; Lavender Center `heal`. Hears Fuji is missing; does not enter the Tower. | `@Lavender.center_counter` | 中局13, 中局14 |
 | 05.02 | `[opt: early_tower]` Tower 2F rival | `@Lavender.center_counter` | Enter the Tower; 2F rival trigger (decomp `PokemonTower_2F` coord events (17,5), (16,6)); `battle(rival_tower)`; 3F ghosts can't be fought without the Scope: flee | `@Lavender.center_counter` | 中局14, *中局15*, *中局16* |
-| 05.03 | West to Celadon | `@Lavender.center_counter` | Route 8; Underground Path (7–8); Route 7; Celadon Center. No Saffron gate before the Tea. | `@Celadon.center_counter` | 中局17 |
+| 05.03 | West to Celadon | `@Lavender.center_counter` | Route 8 (with `item_dupe`, out of Twins Eli & Anne's sight); Underground Path (7–8); Route 7; Celadon Center. No Saffron gate before the Tea. | `@Celadon.center_counter` | 中局17 |
 
 ### Segment 06 — Celadon, Celadon Gym, Rocket Hideout, Pokemon Tower (Part 9)
 
 | ID | Title | Start | Does | End / save | 52poke |
 |---|---|---|---|---|---|
-| 06.01 | Celadon services | `@Celadon.center_counter` | Mansion 1F old lady: Tea; Dept. Store by budget `[opt: coin_case]` `[opt: game_corner_prize]` `[opt: eevee]` | `@Celadon.center_counter` | *中局19*, *中局23*, 中局24 |
+| 06.01 | Celadon services | `@Celadon.center_counter` | Mansion 1F old lady: Tea; Dept. Store by budget `[opt: coin_case]` `[opt: game_corner_prize]` `[opt: eevee]` `[opt: prize_tm]` `[opt: item_dupe — 15 Retro Mail]` | `@Celadon.center_counter` | *中局19*, *中局23*, 中局24 |
 | 06.02 | Rainbow Badge | `@Celadon.center_counter` | Cut the gym tree; gym trainers on the path; `PREP(Erika)`; `battle(Erika)`; Rainbow Badge, TM19 | `@Celadon.center_counter` | 中局18 |
 | 06.03 | Hideout entrance | `@Celadon.center_counter` | Game Corner; `battle(poster_grunt)`; press the poster switch; stairs | `@RocketHideoutB1F.stairs` | 中局20 |
 | 06.04 | Lift Key | `@RocketHideoutB1F.stairs` | Spinner floors to B4F northwest room; `battle(key_grunt)`; **talk again**; pick up the Lift Key | `@RocketHideoutB4F.key_room` | 中局21 |
 | 06.05 | Hideout Giovanni | `@RocketHideoutB4F.key_room` | Lift to B4F; door guards; `PREP(giovanni_hideout)`; `battle(giovanni_hideout)`; Silph Scope | `@Celadon.center_counter` | 中局22 |
-| 06.06 | Tea and back to Lavender | `@Celadon.center_counter` | Route 7 gate: guard takes the Tea; through Saffron; Route 8 gate; Lavender Center | `@Lavender.center_counter` | 中局25, 中局26 |
-| 06.07 | Tower rival and ascent | `@Lavender.center_counter` | Tower; 2F rival (skipped if `early_tower` won it); 3F–5F with the healing zone | `@PokemonTower5F.stairs_up` | 中局15 (if not early) |
-| 06.08 | Marowak | `@PokemonTower5F.stairs_up` | 6F: Scope reveals Marowak; `battle(marowak_ghost)` — can't be caught | `@PokemonTower6F.stairs_up` | 中局27 |
-| 06.09 | Fuji's rescue | `@PokemonTower6F.stairs_up` | 7F: three Rockets; Fuji; escort home | `@FujiHouse.fuji_front` | 中局28 |
-| 06.10 | Poke Flute | `@FujiHouse.fuji_front` | `talk(Fuji)`; Poke Flute; Center `heal` | `@Lavender.center_counter` | 中局29 |
+| 06.06 | Tea and back to Lavender | `@Celadon.center_counter` | Route 7 gate: guard takes the Tea; through Saffron; Route 8 gate (with `item_dupe`, still out of the Twins' sight); Lavender Center | `@Lavender.center_counter` | 中局25, 中局26 |
+| 06.07 | `[opt: item_dupe]` The mail glitch | `@Lavender.center_counter` | Party: berry holder, Farfetch'd (Knock Off), Mr. Mime (Recycle, holding Retro Mail); to Route 8; `battle(twins_eli_anne)` as a double: berry eaten, switch Mr. Mime in, Knock Off it, Recycle; check no one holds Mail (else reload); Center: fill party, Mail on five; hand off to ItemDuplication (or duplicate in-table): Rare Candies and Nuggets per the plans; sell Nuggets; `ITEM(rare_candy)` to the team plan's target. Box 3 Slot 1 stays empty from here. | `@Lavender.center_counter` | — |
+| 06.08 | Tower rival and ascent | `@Lavender.center_counter` | Tower; 2F rival (skipped if `early_tower` won it); 3F–5F with the healing zone | `@PokemonTower5F.stairs_up` | 中局15 (if not early) |
+| 06.09 | Marowak | `@PokemonTower5F.stairs_up` | 6F: Scope reveals Marowak; `battle(marowak_ghost)` — can't be caught | `@PokemonTower6F.stairs_up` | 中局27 |
+| 06.10 | Fuji's rescue | `@PokemonTower6F.stairs_up` | 7F: three Rockets; Fuji; escort home | `@FujiHouse.fuji_front` | 中局28 |
+| 06.11 | Poke Flute | `@FujiHouse.fuji_front` | `talk(Fuji)`; Poke Flute; Center `heal` | `@Lavender.center_counter` | 中局29 |
 
 ### Segment 07 — Routes 12–18, Fuchsia, Fuchsia Gym, Safari Zone (Part 10)
 
@@ -453,9 +714,9 @@ Starts after a break: the user brings the save to 60 caught species. If
 | S.S. Ticket | 02.05 | 02.07 (officer moves), 03.02 |
 | A Cut user + HM01 | caught Pokemon + 03.04 | 03.05, 04.03, 06.02, 07.01, 15.08 |
 | Flash (optional) | 04.01, 10 caught | 05.01 lit; default walks dark |
-| Silph Scope | 06.05 | 06.08 |
+| Silph Scope | 06.05 | 06.09 |
 | Tea | 06.01 | 06.06 (Saffron gates) |
-| Poke Flute | 06.10 | 07.02 or 07.04 |
+| Poke Flute | 06.11 | 07.02 or 07.04 |
 | Bicycle | `bike_voucher` | 07.04 (WEST) |
 | Surf + Soul Badge | 07.06 + 07.05 | 09.01/09.02, 12.01, 13.02 |
 | Strength + Rainbow Badge | 07.07 + 06.02 | 09.02, 13.03–13.04 |
@@ -546,8 +807,8 @@ counted because they are list lines there. *Italic* = optional on 52poke.
 | 中局11 | Surge: Thunder Badge | 03.05, 03.06 |
 | *中局12* | Diglett's Cave, Route 2 gate: HM05 Flash (10 caught) | 04.01 `flash` |
 | 中局13 | From Cerulean: Route 9, Rock Tunnel, Route 10 to Lavender | 04.02, 04.03, 05.01 |
-| 中局14 | Fuji is missing; to the Tower | 05.01 (news), 05.02 / 06.07 (Tower) |
-| *中局15* | Tower 2F rival | 05.02 `early_tower`; else 06.07 |
+| 中局14 | Fuji is missing; to the Tower | 05.01 (news), 05.02 / 06.08 (Tower) |
+| *中局15* | Tower 2F rival | 05.02 `early_tower`; else 06.08 |
 | *中局16* | 3F ghosts can't be attacked | 05.02 `early_tower` |
 | 中局17 | Route 8, Underground Path, Route 7 to Celadon | 05.03 |
 | 中局18 | Erika: Rainbow Badge | 06.02 |
@@ -559,9 +820,9 @@ counted because they are list lines there. *Italic* = optional on 52poke.
 | 中局24 | Tea from the Mansion old lady | 06.01 |
 | 中局25 | Tea to the Saffron guard | 06.06 |
 | 中局26 | Back to Lavender | 06.06 |
-| 中局27 | Scope reveals Marowak; can't be caught | 06.08 |
-| 中局28 | 7F: three Rockets | 06.09 |
-| 中局29 | Fuji: Poke Flute | 06.10 |
+| 中局27 | Scope reveals Marowak; can't be caught | 06.09 |
+| 中局28 | 7F: three Rockets | 06.10 |
+| 中局29 | Fuji: Poke Flute | 06.11 |
 | 中局30 | Choose Route 12, Cycling Road or Silph next | 07.02 (`south_road`); Silph is segment 08 |
 | *中局31* | Route 12 Snorlax | 07.02 (`south_road=EAST`, default) |
 | *中局32* | Super Rod | 07.03 `super_rod` |
