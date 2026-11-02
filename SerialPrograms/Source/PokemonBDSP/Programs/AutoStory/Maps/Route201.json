@@ -42,5 +42,14 @@
         {"name": "pokemon_breeder_m_0", "kind": "npc", "x": 27, "y": 15, "wander": {"x0": 26, "y0": 14, "x1": 28, "y1": 16}},
         {"name": "school_kid_m_9", "kind": "npc", "x": 57, "y": 8, "facing": "west"},
         {"name": "lass_11", "kind": "npc", "x": 46, "y": 16, "wander": {"x0": 44, "y0": 16, "x1": 48, "y1": 16}}
+    ],
+    "patches": [
+        {"x": 8, "y": 18, "glyph": "#", "measured_by": "r16, 2026-10-31"},
+        {"x": 9, "y": 18, "glyph": "#", "measured_by": "r16, 2026-10-31"},
+        {"x": 10, "y": 18, "glyph": "#", "measured_by": "r16, 2026-10-31"},
+        {"x": 11, "y": 18, "glyph": "#", "measured_by": "r16, 2026-10-31"},
+        {"x": 12, "y": 18, "glyph": "#", "measured_by": "r16, 2026-10-31"},
+        {"x": 13, "y": 18, "glyph": "S", "measured_by": "r16, 2026-10-31"},
+        {"x": 13, "y": 17, "glyph": ".", "measured_by": "r16, 2026-10-31"}
     ]
 }
