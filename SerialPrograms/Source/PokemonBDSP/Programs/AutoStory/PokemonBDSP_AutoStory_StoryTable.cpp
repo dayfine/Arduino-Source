@@ -7,9 +7,11 @@
  *  Butters' button sequences for the scenes (#1717). They replace his
  *  recorded stick holds, and have NOT run on a console yet: where a scene
  *  leaves the player (pose_after) is the decomp's or a guess, marked
- *  "assumed", until a new-game run checks it. 00.04b to 00.04d and 00.05's
- *  Jubilife walks were measured on the console (r72 to r261, 2026-10-30);
- *  segment 01 ran there end to end (2026-10-31), its walks kept as events.
+ *  "assumed", until a new-game run checks it. 00.04b to 00.04d were measured
+ *  on the console (r72 to r261, 2026-10-30); 00.05 to 00.05c, measured there
+ *  first, are now planned on Jubilife's map with the people and triggers of
+ *  the Diamond decomp's zone events and scripts. Segment 01 ran on the
+ *  console end to end (2026-10-31), its walks kept as events.
  *
  */
 
@@ -49,6 +51,8 @@ const char* const LAKEFRONT = "VerityLakefront";
 const char* const SANDGEM = "SandgemTown";
 const char* const ROUTE_202 = "Route202";
 const char* const JUBILIFE = "JubilifeCity";
+//  No map of it: a pose there names the room, not its tiles.
+const char* const TRAINERS_SCHOOL = "TrainersSchool";
 
 Pose at(const char* map, int x, int y, std::optional<Direction> facing = std::nullopt){
     return Pokemon::tile_pose(map, {TilePos{x, y}}, facing);
@@ -67,6 +71,11 @@ Pose at_or_next_to(const char* map, const char* point, Direction side){
 }
 Pose on(const char* map, const char* region){
     return Pokemon::tile_pose(map, map_region(map, region));
+}
+//  Somewhere in `map`, which has no tiles here: enough for a door step to
+//  know it goes out to another map.
+Pose inside(const char* map){
+    return Pokemon::tile_pose(map, {});
 }
 //  Columns from below Sandgem's Pokemon Center sign west to below its door.
 int sandgem_sign_to_center_door(){
@@ -125,6 +134,13 @@ StoryStep step_into(std::string name, Direction direction, std::string why, std:
 }
 StoryStep talk(std::string name, std::string why){
     return make(StoryStepKind::TALK, std::move(name), std::move(why));
+}
+//  A talk to someone who wanders through the tile we face: A until they
+//  stand there (the "talk_to_wanderer" event).
+StoryStep talk_to_wanderer(std::string name, std::string why){
+    StoryStep step = talk(std::move(name), std::move(why));
+    step.variant = "talk_to_wanderer";
+    return step;
 }
 //  Text to the overworld, with B; with A ("a") for lines that give an item.
 StoryStep scene(std::string name, std::optional<Pose> pose_after, std::string why, std::string button = ""){
@@ -388,49 +404,83 @@ std::vector<StoryCheckpoint> to_jubilife(){
     };
 }
 
-//  The Jubilife beats, stepped through on the console on 2026-10-30: every
-//  leg walks until something stops it, and each talk stands beside the
-//  person; the coupons and the Poketch end on the street east to Route 203.
+//  Below the Trainers' School's door, where it lets us out (40, 41).
+Pose below_the_school(){
+    return next_to(JUBILIFE, "trainers_school_door", SOUTH, SOUTH);
+}
+
+//  00.05: the steps were measured on the console (2026-10-30); the rest is
+//  planned on the map.
+StoryCheckpoint the_town_map(){
+    return row("00.05", "Jubilife: the Center, the Trainers' School and the Town Map", std::nullopt, {
+        event("up_the_steps", "a tile west of the save below the steps, then up them", on(JUBILIFE, "up_the_steps")),
+        //  Planned on the map: the hand-measured walls (west to the sign, east
+        //  across the road, north) leaned on the old turn's nudge and ended
+        //  beside the Trainers' School once turns stopped stepping (r57, r58).
+        route("to_the_center", at(JUBILIFE, 52, 41, NORTH),
+            "below the Center's door (52, 40)", "town"),
+        //  The kids south of the Center can push us aside: the heal lines up by sight.
+        heal("heal_jubilife", "in, the nurse, out onto the doorstep (r143a: check we are out)"),
+        //  Same rule as the Center: plan to the tile below the door, then run in
+        //  (r63: "eleven tiles west" counted on the old turn's step; the map says twelve).
+        route("to_the_school", next_to(JUBILIFE, "trainers_school_door", SOUTH, NORTH),
+            "below the School's door (40, 40)", "town"),
+        step_into("into_the_school", NORTH, "the School's door", inside(TRAINERS_SCHOOL)),
+        to_walls("up_to_barry", {{.direction = NORTH, .tiles = 10}}, "the door's column to the back wall, beside Barry"),
+        event("barry_town_map", "Barry gives the Town Map", inside(TRAINERS_SCHOOL)),
+        //  Barry stands beside the door's column, which is clear down to the door.
+        step_into("out_of_the_school", SOUTH, "straight down the door's column and out", below_the_school()),
+    });
+}
+
+//  00.05b, from the Diamond decomp (zone event narc_0002, scripts
+//  scr_seq narc_0002; local = the decomp's world tile - (128, 736)): the
+//  president's coord event, row 40 from x 44 to 48 while
+//  VAR_POKETCH_CAMPAIGN_STATE is 1, walks him from (46, 35) to above us;
+//  then the three clowns, each with a question whose answer is Yes.
+StoryCheckpoint the_coupons(){
+    return row("00.05b", "Jubilife: the president and the clowns' coupons", below_the_school(), {
+        //  From x 46 he walks straight down 4 to (46, 39); from the others he turns.
+        route("below_the_presidents_trigger", at(JUBILIFE, 46, 41, NORTH), "east along the School's row", "town"),
+        step_into("presidents_trigger", NORTH, "the trigger (44..48, 40)"),
+        scene("president_walks_up", at(JUBILIFE, 46, 40, NORTH), "he walks down to (46, 39) and sends us for the coupons"),
+        //  He stays at (46, 39) until the TV station clown's coupon sends him
+        //  home; a plan north from his column would walk into him.
+        legs("past_the_president", {{.direction = EAST, .tiles = 2}}, "east of his column"),
+        //  He wanders (54..56, 33); he comes through (55, 33) every other move.
+        route("below_the_mart_clown", next_to(JUBILIFE, "clown_mart", SOUTH, NORTH), "up the road east of the Center", "town"),
+        talk_to_wanderer("mart_clown", "the clown by the Mart, north of us when he is home"),
+        scene("mart_clowns_coupon", next_to(JUBILIFE, "clown_mart", SOUTH, NORTH), "\"Do Pokemon grow by defeating others?\" Yes; Coupon 1", "a"),
+        //  He stands still below the TV station's door, facing south.
+        route("below_the_tv_clown", next_to(JUBILIFE, "clown_tv_station", SOUTH, NORTH), "west and north to the TV station", "town"),
+        talk("tv_clown", "the clown below the TV station's door"),
+        //  His script also puts the president back at (46, 35), facing south.
+        scene("tv_clowns_coupon", next_to(JUBILIFE, "clown_tv_station", SOUTH, NORTH), "\"Can a Pokemon hold an item?\" Yes; Coupon 3", "a"),
+        //  He wanders (14..16, 18), behind the Poketch Company's sign (13, 19).
+        route("below_the_company_clown", next_to(JUBILIFE, "clown_poketch_company", SOUTH, NORTH), "west along the long road, north beside the sign", "town"),
+        talk_to_wanderer("company_clown", "the clown by the Poketch Company, north of us when he is home"),
+        scene("company_clowns_coupon", next_to(JUBILIFE, "clown_poketch_company", SOUTH, NORTH), "\"Do moves have types?\" Yes; Coupon 2", "a"),
+    });
+}
+
+//  00.05c: the president trades the coupons for the Poketch, walks 9 north
+//  and is gone (decomp); then up to the street east to Route 203, where
+//  01.01 walks east until Barry stops us.
+StoryCheckpoint the_poketch(){
+    const Pose below_the_president = next_to(JUBILIFE, "poketch_president", SOUTH, NORTH);
+    return row("00.05c", "Jubilife: the Poketch, up to the street east to Route 203",
+        next_to(JUBILIFE, "clown_poketch_company", SOUTH, NORTH), {
+        route("below_the_president", below_the_president, "east along the long road, down the main road", "town"),
+        talk("president", "the Poketch Company's president at (46, 35)"),
+        //  BDSP adds a help panel on the Poketch; B closes it.
+        scene("the_poketch", below_the_president, "the coupons for the Poketch; he walks off north"),
+        //  The street's rows 21 to 24 lead onto Route 203 at x 63.
+        route("to_the_route_203_street", at(JUBILIFE, 58, 22, EAST), "up the main road and east along the street", "town"),
+    });
+}
+
 std::vector<StoryCheckpoint> jubilife(){
-    return {
-        row("00.05", "Jubilife: the Center, the Trainers' School and the Town Map", std::nullopt, {
-            event("up_the_steps", "a tile west of the save below the steps, then up them", on(JUBILIFE, "up_the_steps")),
-            //  Planned on the map: the hand-measured walls (west to the sign, east
-            //  across the road, north) leaned on the old turn's nudge and ended
-            //  beside the Trainers' School once turns stopped stepping (r57, r58).
-            route("to_the_center", at(JUBILIFE, 52, 41, NORTH),
-                "below the Center's door (52, 40)", "town"),
-            //  The kids south of the Center can push us aside: the heal lines up by sight.
-            heal("heal_jubilife", "in, the nurse, out onto the doorstep (r143a: check we are out)"),
-            //  Same rule as the Center: plan to the tile below the door, then run in
-            //  (r63: "eleven tiles west" counted on the old turn's step; the map says twelve).
-            route("to_the_school", next_to(JUBILIFE, "trainers_school_door", SOUTH, NORTH),
-                "below the School's door (40, 40)", "town"),
-            step_into("into_the_school", NORTH, "the School's door"),
-            to_walls("up_to_barry", {{.direction = NORTH, .tiles = 10}}, "the door's column to the back wall, beside Barry"),
-            event("barry_town_map", "Barry gives the Town Map"),
-            event("out_of_the_school", "straight down the door's column and out"),
-        }),
-        row("00.05b", "Jubilife: the president and the clowns' coupons", std::nullopt, {
-            event("meet_the_president", "four tiles east into the road; the president walks up and talks"),
-            to_walls("east_to_the_lamp", {{.direction = EAST, .tiles = 8}}, "east until the lamp by the Center"),
-            event("up_to_the_mart_road", "a tile west, then north onto the road between the Center and the Mart"),
-            to_walls("east_to_the_building", {{.direction = EAST, .tiles = 14}}, "east along it until the tall building"),
-            event("clown_by_the_mart", "his question, Yes, and a coupon"),
-            //  The TV station's screen keeps the picture moving after we stop:
-            //  r161 saw the stop only at 14 tiles' time, r162a not within it.
-            to_walls("to_the_west_lamp", {{.direction = WEST, .tiles = 20}, {.direction = SOUTH, .tiles = 10},
-                {.direction = WEST, .tiles = 26}, {.direction = NORTH, .tiles = 6}},
-                "west to the hedges, south to the long road, west to the lamp, north a row"),
-            event("clown_by_the_company", "along the hedges to the gap by the Poketch Company's sign; he comes by"),
-        }),
-        row("00.05c", "Jubilife: the Poketch, up to the street east to Route 203", std::nullopt, {
-            event("to_the_main_road", "a row south of the gap, east along the long road to the main road"),
-            event("to_the_center_lamp", "six rows down, east to the Mart's wall, south to the Center's lamp"),
-            event("poketch_from_the_president", "he trades the coupons for the Poketch"),
-            event("up_to_the_route_203_street", "let him walk off, then ten rows north"),
-        }),
-    };
+    return {the_town_map(), the_coupons(), the_poketch()};
 }
 
 std::vector<StoryCheckpoint> to_oreburgh(){
