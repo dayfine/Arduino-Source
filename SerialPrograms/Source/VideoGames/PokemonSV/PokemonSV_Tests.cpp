@@ -31,6 +31,7 @@
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "Tests/ImageUnitTest.h"
 #include "Inference/PokemonSV_BlueberryPointsReader.h"
+#include "Inference/PokemonSV_BlueberryQuestDetector.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -180,6 +181,7 @@ void add_tests(UnitTestDatabase& database){
     add_tests_NormalBattleMenus(database);
     add_tests_LetsGoKillDetector(database);
     add_tests_TeraEncounterAction(database);
+    add_tests_BlueberryQuestDetector(database);
 }
 
 

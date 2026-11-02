@@ -9,6 +9,7 @@
 
 #include "Common/Cpp/Logging/AbstractLogger.h"
 #include "Common/Cpp/Color.h"
+#include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "CommonFramework/ImageTools/ImageBoxes.h"
 #include "CommonFramework/VideoPipeline/VideoOverlayScopes.h"
 #include "CommonFramework/Language.h"
@@ -73,6 +74,9 @@ protected:
     BlueberryQuestDetector m_detector;
     std::string m_quest_name;
 };
+
+
+void add_tests_BlueberryQuestDetector(UnitTestDatabase& database);
 
 
 
