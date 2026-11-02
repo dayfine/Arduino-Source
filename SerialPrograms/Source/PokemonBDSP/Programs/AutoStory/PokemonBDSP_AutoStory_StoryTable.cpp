@@ -539,6 +539,13 @@ Pose arrival(const char* map, TilePos tile, Direction direction){
 Pose out_of_oreburgh_gate(){
     return at(ROUTE_203, 55, 9, WEST);
 }
+//  Barry's coord event on Route 203 (Diamond's zone event narc_0329), column
+//  5 on rows 17 to 20 (the street's rows 21 to 24) while
+//  VAR_ROUTE_203_RIVAL_STATE is 0. He walks up, battles and runs off, and
+//  we stay on it (assumed; the event's walk east stopped there, on any row).
+Pose on_barrys_trigger(){
+    return Pokemon::tile_pose(ROUTE_203, {TilePos{5, 17}, TilePos{5, 18}, TilePos{5, 19}, TilePos{5, 20}}, EAST);
+}
 //  Where Route 204's door (11, 1) lets us into the Ravaged Path: (19, 50),
 //  as in r237a. The tap stops at the fade, on that tile.
 Pose into_the_ravaged_path(){
@@ -632,10 +639,11 @@ StoryCheckpoint route_204_to_floaroma(){
 
 std::vector<StoryCheckpoint> to_oreburgh(){
     return {
-        row("01.01", "Jubilife to Barry", std::nullopt, {
-            event("jubilife_center_to_street", "out of the Center to the street east to Route 203, unless we stand there"),
-            event("east_to_barry", "east until Barry stops us at Route 203's entrance"),
-            battle("barry", true, "Barry's battle; a loss goes on, as it did on the console"),
+        //  From 00.05c's end on the street east to Route 203.
+        row("01.01", "Jubilife to Barry", at(JUBILIFE, 58, 22, EAST), {
+            route("west_of_barrys_trigger", at(ROUTE_203, 4, 18, EAST), "east along the street onto Route 203", "town"),
+            step_into("barrys_trigger", EAST, "the trigger (5, 17..20): Barry walks over"),
+            anchored(battle("barry", true, "Barry's battle; a loss goes on, as it did on the console"), on_barrys_trigger()),
         }),
         row("01.02", "Route 203 to Oreburgh", std::nullopt, {
             event("route_203_east_to_the_gate", "east along Route 203, fighting the trainers who stop us"),
