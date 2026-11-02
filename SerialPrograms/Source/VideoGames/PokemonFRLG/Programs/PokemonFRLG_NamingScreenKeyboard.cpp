@@ -311,7 +311,7 @@ std::string naming_text_error(const std::string& text, NamingScreenKind kind){
     return "";
 }
 
-std::vector<NamingAction> plan_naming_input(
+std::vector<NamingAction> plan_naming_keys(
     const std::string& text, NamingScreenKind kind, const NamingCursor& start
 ){
     const std::string error = naming_text_error(text, kind);
@@ -327,6 +327,13 @@ std::vector<NamingAction> plan_naming_input(
         cursor = append_moves_to_key(cursor, key, actions);
         actions.emplace_back(NamingAction::A);
     }
+    return actions;
+}
+
+std::vector<NamingAction> plan_naming_input(
+    const std::string& text, NamingScreenKind kind, const NamingCursor& start
+){
+    std::vector<NamingAction> actions = plan_naming_keys(text, kind, start);
     //  When the last key fills the name, the game moves the cursor to OK by itself; START is
     //  then harmless.
     actions.emplace_back(NamingAction::START);

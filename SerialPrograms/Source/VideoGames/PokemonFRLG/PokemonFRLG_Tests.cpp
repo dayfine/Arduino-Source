@@ -538,6 +538,54 @@ void add_tests_NamingPlan(UnitTestDatabase& database){
 }
 
 
+struct NamingKeysScenario{
+    std::string name = "";
+    std::string text = "";
+    NamingScreenKind kind = NamingScreenKind::PLAYER;
+    //  The exact plan, when the shortest one is unique; "" to skip.
+    std::string expected_actions = "";
+};
+
+//  plan_naming_keys() stops before OK: it is plan_naming_input() without the final START A.
+class Test_NamingKeys : public UnitTest{
+public:
+    Test_NamingKeys(NamingKeysScenario scenario)
+        : UnitTest("PokemonFRLG::NamingScreen keys only - " + scenario.name)
+        , m_scenario(std::move(scenario))
+    {}
+
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        const std::string keys = to_string(plan_naming_keys(m_scenario.text, m_scenario.kind));
+        if (!m_scenario.expected_actions.empty() && keys != m_scenario.expected_actions){
+            return "Expected keys: " + m_scenario.expected_actions + "\nActual keys:   " + keys;
+        }
+        const std::string input = to_string(plan_naming_input(m_scenario.text, m_scenario.kind));
+        if (input != keys + " START A"){
+            return "Expected the confirmed plan to be \"" + keys + " START A\", got \"" + input + "\"";
+        }
+        return true;
+    }
+
+private:
+    const NamingKeysScenario m_scenario;
+};
+
+void add_tests_NamingKeys(UnitTestDatabase& database){
+    using enum NamingScreenKind;
+    const NamingKeysScenario scenarios[] = {
+        {.name = "one key", .text = "A", .expected_actions = "A"},
+        {.name = "next key", .text = "AB", .expected_actions = "A RIGHT A"},
+        {.name = "lower case page", .text = "a", .expected_actions = "SELECT A"},
+        //  A full name: the game moves the cursor to OK by itself, but nothing presses it.
+        {.name = "full player name", .text = "ABCDEFG"},
+        {.name = "mixed case", .text = "Kosmos"},
+    };
+    for (const NamingKeysScenario& scenario : scenarios){
+        database.add<Test_NamingKeys>(scenario);
+    }
+}
+
+
 struct NamingTextScenario{
     std::string name = "";
     std::string text = "";
@@ -632,6 +680,7 @@ void add_tests(UnitTestDatabase& database){
     add_tests_ExitWildBattle(database);
     add_tests_NamingCursor(database);
     add_tests_NamingPlan(database);
+    add_tests_NamingKeys(database);
     add_tests_NamingText(database);
 }
 

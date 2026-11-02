@@ -29,6 +29,13 @@ bool type_name(
     const std::string& text, NamingScreenKind kind
 );
 
+// Like type_name(), but leaves the name on screen with OK not pressed, for a program that
+// confirms the name itself (SID Helper presses PLUS then A on its own timing).
+bool type_name_without_confirming(
+    ConsoleHandle& console, ProControllerContext& context,
+    const std::string& text, NamingScreenKind kind
+);
+
 
 }
 }

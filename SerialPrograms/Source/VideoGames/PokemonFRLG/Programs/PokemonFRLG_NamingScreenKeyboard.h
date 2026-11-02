@@ -119,9 +119,15 @@ NamingCursor apply_naming_action(const NamingCursor& cursor, NamingAction action
 // no key, more characters than fit, or nothing but spaces (the game then keeps no name).
 std::string naming_text_error(const std::string& text, NamingScreenKind kind);
 
-// The presses that type `text` from `start` and confirm it: the shortest moves to each
-// character's key, A, and at the end START and A to press OK.
+// The presses that type `text` from `start` without confirming it: the shortest moves to
+// each character's key, then A. The name stays on screen with OK not pressed, which is where
+// SID Helper starts.
 // Throws InternalProgramError if naming_text_error() rejects `text`; check that first.
+std::vector<NamingAction> plan_naming_keys(
+    const std::string& text, NamingScreenKind kind, const NamingCursor& start = NamingCursor()
+);
+
+// plan_naming_keys(), then START and A to press OK.
 std::vector<NamingAction> plan_naming_input(
     const std::string& text, NamingScreenKind kind, const NamingCursor& start = NamingCursor()
 );

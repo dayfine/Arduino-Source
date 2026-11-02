@@ -55,19 +55,17 @@ void press(ProControllerContext& context, NamingAction action){
     }
 }
 
-}
-
-
-bool type_name(
-    ConsoleHandle& console, ProControllerContext& context,
-    const std::string& text, NamingScreenKind kind
-){
+void check_name(ConsoleHandle& console, const std::string& text, NamingScreenKind kind){
     const std::string error = naming_text_error(text, kind);
     if (!error.empty()){
         throw UserSetupError(console, error);
     }
-    const std::vector<NamingAction> actions = plan_naming_input(text, kind);
+}
 
+bool press_on_naming_screen(
+    ConsoleHandle& console, ProControllerContext& context,
+    const std::string& text, NamingScreenKind kind, const std::vector<NamingAction>& actions
+){
     NamingScreenWatcher naming_screen(COLOR_RED);
     context.wait_for_all_requests();
     if (wait_until(console, context, std::chrono::seconds(5), {naming_screen}) < 0){
@@ -81,6 +79,25 @@ bool type_name(
     }
     context.wait_for_all_requests();
     return true;
+}
+
+}
+
+
+bool type_name(
+    ConsoleHandle& console, ProControllerContext& context,
+    const std::string& text, NamingScreenKind kind
+){
+    check_name(console, text, kind);
+    return press_on_naming_screen(console, context, text, kind, plan_naming_input(text, kind));
+}
+
+bool type_name_without_confirming(
+    ConsoleHandle& console, ProControllerContext& context,
+    const std::string& text, NamingScreenKind kind
+){
+    check_name(console, text, kind);
+    return press_on_naming_screen(console, context, text, kind, plan_naming_keys(text, kind));
 }
 
 
