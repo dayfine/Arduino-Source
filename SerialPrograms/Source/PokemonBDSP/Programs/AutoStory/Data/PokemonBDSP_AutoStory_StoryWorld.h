@@ -46,11 +46,14 @@ public:
 
     //  The tile, or nothing off the maps.
     std::optional<Pokemon::TileKind> tile(const Pokemon::TilePos& pos) const;
-    //  Whether someone or something stands still on this tile, or it was
-    //  blocked with block().
-    bool occupied(const Pokemon::TilePos& pos) const;
-    //  Whether one of the maps' people stands on this tile (not a block()).
-    bool person(const Pokemon::TilePos& pos) const;
+    //  Who or what stands still on a tile: one of the maps' people, or a
+    //  tile blocked with block(). NOBODY is false, the others true.
+    enum Occupant{
+        NOBODY = 0,
+        PERSON,
+        BLOCKED,
+    };
+    Occupant occupied(const Pokemon::TilePos& pos) const;
 
     //  Blocks a tile found in the way on the console. Tiles off the maps
     //  are left alone.
@@ -74,8 +77,7 @@ private:
     struct Cell{
         bool covered = false;
         Pokemon::TileKind tile = Pokemon::TileKind::WALL;
-        bool occupied = false;
-        bool person = false;
+        Occupant occupant = NOBODY;
     };
 
     void check_overlap(const Placed& map) const;
