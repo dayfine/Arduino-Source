@@ -419,10 +419,17 @@ Outcome StoryExecutor::mash(RunState& state, const StoryStep& step){
 }
 
 Outcome StoryExecutor::battle(RunState&, const StoryStep& step){
+    //  A loss sends us to a Pokemon Center, so ending on its floor means a
+    //  loss - unless the floor check already passed where the battle began:
+    //  Jubilife's yellow plaza reads as Center floor (63 %, r79 won Rowan's
+    //  tag battle there and was called lost).
+    const bool center_before = !step.may_lose && in_pokemon_center(stream());
     if (!talk_or_fight(stream(), context(), label_of(step), TalkExpect::BATTLE, step.variant == "doubles" ? BattleFormat::DOUBLES : BattleFormat::SINGLES)){
         fail_step(stream(), label_of(step) + ": talked but did not battle.");
     }
-    if (!step.may_lose && in_pokemon_center(stream())){
+    if (center_before){
+        stream().log(label_of(step) + ": the floor read as a Center's before the battle too; no loss check here.", COLOR_ORANGE);
+    }else if (!step.may_lose && in_pokemon_center(stream())){
         fail_step(stream(), label_of(step) + ": lost the battle.");
     }
     return Pokemon::outcome_ok();
