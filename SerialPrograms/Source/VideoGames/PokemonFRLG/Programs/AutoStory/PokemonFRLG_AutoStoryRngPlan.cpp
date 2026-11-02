@@ -61,7 +61,7 @@ std::vector<std::string> split(const std::string& text, char separator){
 }
 
 
-std::optional<uint16_t> parse_sid(const std::string& text){
+std::optional<uint16_t> parse_trainer_id(const std::string& text){
     const std::string digits = trim(text);
     if (digits.empty() || digits.size() > 5 || !std::all_of(digits.begin(), digits.end(), [](char ch){ return ch >= '0' && ch <= '9'; })){
         return std::nullopt;
@@ -315,6 +315,59 @@ std::vector<RngAttempt> plan_starter_rng(const StarterRngPlanInputs& inputs){
     filters.min_advances = std::max(filters.min_advances, STARTER_RNG_MIN_ADVANCES);
     const std::vector<RngTarget> targets = search_rng_targets(seeds, inputs.tid, inputs.candidates, filters);
     return plan_rng_attempts(targets, inputs.candidates, filters.shiny_required, inputs.max_attempts);
+}
+
+
+namespace{
+
+std::string join_sids(const std::vector<uint16_t>& sids){
+    std::string text;
+    for (uint16_t sid : sids){
+        text += (text.empty() ? "" : ",") + std::to_string(sid);
+    }
+    return text;
+}
+
+}
+
+std::string rng_log_tid(uint16_t tid, bool from_card){
+    return std::format("RngPlan: tid={} source={}", tid, from_card ? "card" : "option");
+}
+
+std::string rng_log_sid_helper(uint16_t tid, uint32_t target_advances, const std::vector<SidCandidate>& candidates){
+    std::vector<uint16_t> sids;
+    for (const SidCandidate& candidate : candidates){
+        sids.push_back(candidate.sid);
+    }
+    return std::format("RngPlan: sid_helper tid={} target_advances={} candidates={}", tid, target_advances, join_sids(sids));
+}
+
+std::string rng_log_attempt(size_t index, const RngAttempt& attempt){
+    return std::format(
+        "RngPlan: attempt={} seed={:04X} advances={} sids={}",
+        index + 1, attempt.target.seed.seed, attempt.target.advances, join_sids(attempt.sids)
+    );
+}
+
+std::string rng_log_result(size_t index, RngAttemptOutcome outcome){
+    const char* name = "MISSED";
+    if (outcome == RngAttemptOutcome::SHINY){
+        name = "SHINY";
+    }else if (outcome == RngAttemptOutcome::HIT_NOT_SHINY){
+        name = "HIT_NOT_SHINY";
+    }
+    return std::format("RngPlan: result attempt={} outcome={}", index + 1, name);
+}
+
+std::string rng_log_confirmed(uint16_t tid, uint16_t sid, const std::vector<SidCandidate>& sid_helper_candidates){
+    size_t k = 0;
+    for (size_t c = 0; c < sid_helper_candidates.size(); c++){
+        if (sid_helper_candidates[c].sid == sid){
+            k = c + 1;
+            break;
+        }
+    }
+    return std::format("RngPlan: confirmed tid={} sid={} candidate={} of={}", tid, sid, k, sid_helper_candidates.size());
 }
 
 

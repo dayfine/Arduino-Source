@@ -7,6 +7,7 @@
 #include <format>
 #include "Common/Cpp/Exceptions.h"
 #include "CommonFramework/Exceptions/OperationFailedException.h"
+#include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
 #include "CommonFramework/Notifications/ProgramNotifications.h"
 #include "CommonFramework/VideoPipeline/VideoOverlay.h"
 #include "Pokemon/AutoStory/Pokemon_AutoStoryStats.h"
@@ -14,6 +15,7 @@
 #include "Pokemon/Pokemon_Strings.h"
 #include "VideoGames/PokemonFRLG/PokemonFRLG_Navigation.h"
 #include "VideoGames/PokemonFRLG/Programs/PokemonFRLG_NamingScreenKeyboard.h"
+#include "VideoGames/PokemonFRLG/Programs/PokemonFRLG_TrainerCard.h"
 #include "PokemonFRLG_AutoStoryEvents.h"
 #include "PokemonFRLG_AutoStoryTable.h"
 #include "PokemonFRLG_AutoStory.h"
@@ -232,8 +234,36 @@ static void stop_for_handoff(
     send_program_finished_notification(env, notification, full);
 }
 
+//  The TID for the Starter RNG plan: the RNG plan's, or read off the
+//  Trainer Card (START, the player's entry), which is then closed again.
+//  Before the first Pokemon, as at the stop, the player's entry is second.
+static uint16_t starter_rng_tid(
+    SingleSwitchProgramEnvironment& env, ProControllerContext& context,
+    const StarterRngPlanOptions& options, Language language
+){
+    std::optional<uint16_t> tid = options.tid_override(env.console);
+    if (tid){
+        env.console.log(rng_log_tid(*tid, false));
+        return *tid;
+    }
+    navigate_to_trainer_card(env.console, context);
+    tid = try_read_trainer_card_tid(env.console, context, language);
+    if (!tid){
+        OperationFailedExceptionWithScreenshot::fire(
+            ErrorReportMode::NO_ERROR_REPORT,
+            "Couldn't read the TID on the Trainer Card, so there is no Starter RNG plan. The game is saved facing "
+            "Squirtle's ball, where Starter RNG starts. Type the TID into the RNG plan's TID option for the next run.",
+            env.console
+        );
+    }
+    close_trainer_card(env.console, context);
+    env.console.log(rng_log_tid(*tid, true));
+    return *tid;
+}
+
 //  Starter RNG runs its own reset and calibration loop in its program(), so
 //  the attempts are the user's to run until that loop can be called from here.
+//  TODO: LeafGreen and Bulbasaur/Charmander, with AutoStory's starter choice.
 static void stop_for_starter_rng(
     SingleSwitchProgramEnvironment& env, EventNotificationOption& notification,
     const std::string& sound, const std::vector<std::string>& attempts
@@ -267,10 +297,10 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
         );
         return;
     }
-    //  Planned before anything is pressed, so a setup problem shows now.
-    const std::vector<std::string> rng_attempts = plan.stop == StoryHandoff::STARTER_RNG
-        ? rng_attempt_lines(RNG_PLAN.plan(env.console, RUN.language()))
-        : std::vector<std::string>{};
+    if (plan.stop == StoryHandoff::STARTER_RNG){
+        //  The options' text, before anything is pressed.
+        RNG_PLAN.check(env.console);
+    }
 
     StoryEnv story{env.console, context, checkpoints[first].supplies, checkpoints[first].supplies, false, RUN.checks()};
     story.player_name = player_name;
@@ -290,7 +320,11 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
     env.update_stats();
     throw_if_failed(report);
     if (plan.stop == StoryHandoff::STARTER_RNG){
-        stop_for_starter_rng(env, NOTIFICATION_PROGRAM_FINISH, RNG_PLAN.sound_name(), rng_attempts);
+        const uint16_t tid = starter_rng_tid(env, context, RNG_PLAN, RUN.language());
+        stop_for_starter_rng(
+            env, NOTIFICATION_PROGRAM_FINISH, RNG_PLAN.sound_name(),
+            rng_attempt_lines(RNG_PLAN.plan(env.console, RUN.language(), tid))
+        );
         return;
     }
     env.console.log("AutoStory: done through " + plan.rows.back().id + ".");

@@ -19,7 +19,10 @@ StarterRngPlanOptions::StarterRngPlanOptions()
         {{SoundSetting::Mono, "mono", "Mono"}, {SoundSetting::Stereo, "stereo", "Stereo"}},
         LockMode::LOCK_WHILE_RUNNING, SoundSetting::Mono
     )
-    , TID("<b>TID:</b><br>The Trainer ID SID Helper read.", LockMode::LOCK_WHILE_RUNNING, 0)
+    , TID(
+        false, "<b>TID:</b><br>Empty: read from the Trainer Card at the stop. Set it only if that read fails.",
+        LockMode::LOCK_WHILE_RUNNING, "", ""
+    )
     , SID(
         false,
         "<b>SID:</b><br>The SID, once known. Empty: plan for the SIDs SID Helper lists, from the two options below.",
@@ -63,19 +66,31 @@ std::string StarterRngPlanOptions::sound_name() const{
     return SOUND == SoundSetting::Stereo ? "Stereo" : "Mono";
 }
 
-std::vector<SidCandidate> StarterRngPlanOptions::candidates(Logger& logger) const{
-    const std::string sid_text = SID;
-    if (sid_text.empty()){
-        return sid_helper_candidates(TID, SID_HELPER_ADVANCES, SID_HELPER_CANDIDATES);
+std::optional<uint16_t> StarterRngPlanOptions::tid_override(Logger& logger) const{
+    const std::string text = TID;
+    if (text.empty()){
+        return std::nullopt;
     }
-    const std::optional<uint16_t> sid = parse_sid(sid_text);
+    const std::optional<uint16_t> tid = parse_trainer_id(text);
+    if (!tid){
+        throw UserSetupError(logger, "RNG plan: the TID must be a number from 0 to 65535, or empty.");
+    }
+    return tid;
+}
+
+std::optional<uint16_t> StarterRngPlanOptions::sid(Logger& logger) const{
+    const std::string text = SID;
+    if (text.empty()){
+        return std::nullopt;
+    }
+    const std::optional<uint16_t> sid = parse_trainer_id(text);
     if (!sid){
         throw UserSetupError(logger, "RNG plan: the SID must be a number from 0 to 65535, or empty.");
     }
-    return {{*sid, 1}};
+    return sid;
 }
 
-std::vector<RngAttempt> StarterRngPlanOptions::plan(Logger& logger, Language language) const{
+RngTargetFilters StarterRngPlanOptions::filters(Logger& logger) const{
     const std::optional<std::vector<Pokemon::AdvNature>> natures = parse_natures(NATURES);
     if (!natures){
         throw UserSetupError(logger, "RNG plan: natures must be nature names separated by commas, e.g. \"Modest, Timid\".");
@@ -88,21 +103,42 @@ std::vector<RngAttempt> StarterRngPlanOptions::plan(Logger& logger, Language lan
     filters.natures = *natures;
     filters.min_ivs = *min_ivs;
     filters.shiny_required = SHINY_REQUIRED;
+    return filters;
+}
+
+void StarterRngPlanOptions::check(Logger& logger) const{
+    tid_override(logger);
+    sid(logger);
+    filters(logger);
+}
+
+std::vector<RngAttempt> StarterRngPlanOptions::plan(Logger& logger, Language language, uint16_t tid) const{
+    //  SID Helper's candidates are logged even with the SID known, to place
+    //  it among them (rng_log_confirmed()).
+    const std::vector<SidCandidate> helper = sid_helper_candidates(tid, SID_HELPER_ADVANCES, SID_HELPER_CANDIDATES);
+    logger.log(rng_log_sid_helper(tid, SID_HELPER_ADVANCES, helper));
+    const std::optional<uint16_t> known = sid(logger);
+    if (known){
+        logger.log(rng_log_confirmed(tid, *known, helper));
+    }
 
     const std::vector<RngAttempt> attempts = plan_starter_rng(StarterRngPlanInputs{
-        //  AutoStory plays FireRed only.
+        //  TODO: LeafGreen, once AutoStory plays it.
         .firered = true,
         .language = language,
         .sound = SOUND,
-        .tid = TID,
-        .candidates = candidates(logger),
-        .filters = filters,
+        .tid = tid,
+        .candidates = known ? std::vector<SidCandidate>{{*known, 1}} : helper,
+        .filters = filters(logger),
         .max_attempts = MAX_ATTEMPTS,
     });
     if (attempts.empty()){
         throw UserSetupError(logger,
-            "RNG plan: no Starter RNG target passes the natures, minimum IVs and shiny options for TID " + std::to_string(TID) + "."
+            "RNG plan: no Starter RNG target passes the natures, minimum IVs and shiny options for TID " + std::to_string(tid) + "."
         );
+    }
+    for (size_t c = 0; c < attempts.size(); c++){
+        logger.log(rng_log_attempt(c, attempts[c]));
     }
     return attempts;
 }

@@ -37,8 +37,8 @@ namespace PokemonFRLG{
 //  less, so the outermost weigh 1.
 std::vector<SidCandidate> sid_helper_candidates(uint16_t tid, uint32_t target_advances, uint8_t count);
 
-//  A SID typed as a number from 0 to 65535. Nothing for any other text.
-std::optional<uint16_t> parse_sid(const std::string& text);
+//  A TID or SID typed as a number from 0 to 65535. Nothing for any other text.
+std::optional<uint16_t> parse_trainer_id(const std::string& text);
 
 //  "HP/Atk/Def/SpA/SpD/Spe", as Ten Lines and the RNG programs list IVs.
 //  Nothing for text that isn't six numbers from 0 to 31.
@@ -160,6 +160,26 @@ std::vector<RngAttempt> plan_starter_rng(const StarterRngPlanInputs& inputs);
 //  One line per attempt, for the log and the stop message: the Target Seed
 //  and Advances to give Starter RNG, the Pokemon, and the SIDs it is shiny for.
 std::vector<std::string> rng_attempt_lines(const std::vector<RngAttempt>& attempts);
+
+
+//  The data to rebuild how likely SID Helper's k-th candidate of N is (the
+//  1-2-3-2-1 weights of sid_helper_candidates() are a guess), from the logs
+//  alone. Every line starts with "RngPlan:"; grep for it:
+//      RngPlan: tid=<TID> source=<card|option>
+//      RngPlan: sid_helper tid=<TID> target_advances=<A> candidates=<SID>,...
+//      RngPlan: attempt=<i> seed=<hex> advances=<n> sids=<SID>,...
+//      RngPlan: result attempt=<i> outcome=<SHINY|HIT_NOT_SHINY|MISSED>
+//      RngPlan: confirmed tid=<TID> sid=<SID> candidate=<k> of=<N>
+//  "candidates" are in SID Helper's order; "candidate=k" counts from 1 in
+//  it, 0 when the SID wasn't among them. Count each TID's "confirmed" once:
+//  every later run with the SID set logs it again. While the user runs
+//  Starter RNG by hand, its own "Target Hit!" and "Missed target." lines
+//  are the attempts' results.
+std::string rng_log_tid(uint16_t tid, bool from_card);
+std::string rng_log_sid_helper(uint16_t tid, uint32_t target_advances, const std::vector<SidCandidate>& candidates);
+std::string rng_log_attempt(size_t index, const RngAttempt& attempt);
+std::string rng_log_result(size_t index, RngAttemptOutcome outcome);
+std::string rng_log_confirmed(uint16_t tid, uint16_t sid, const std::vector<SidCandidate>& sid_helper_candidates);
 
 
 void add_tests_AutoStoryRngPlan(UnitTestDatabase& database);

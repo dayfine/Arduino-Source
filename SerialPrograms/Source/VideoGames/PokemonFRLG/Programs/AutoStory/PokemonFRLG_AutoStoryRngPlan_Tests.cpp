@@ -120,7 +120,7 @@ UnitTestResult test_sid_helper_candidates(Logger&){
 }
 
 
-UnitTestResult test_parse_sid(Logger&){
+UnitTestResult test_parse_trainer_id(Logger&){
     struct Case{
         std::string text;
         std::string expected;
@@ -135,7 +135,7 @@ UnitTestResult test_parse_sid(Logger&){
         {.text = "12a", .expected = "none"},
     };
     for (const Case& item : cases){
-        const std::optional<uint16_t> sid = parse_sid(item.text);
+        const std::optional<uint16_t> sid = parse_trainer_id(item.text);
         const std::string got = sid ? std::to_string(*sid) : "none";
         if (got != item.expected){
             return std::format("SID \"{}\": expected {}, got {}.", item.text, item.expected, got);
@@ -390,6 +390,33 @@ UnitTestResult test_tracker(Logger&){
 }
 
 
+//  The "RngPlan:" lines the candidate odds are rebuilt from.
+UnitTestResult test_log_lines(Logger&){
+    RngAttempt attempt{make_target(1, 50, {0, 1}), {100, 200}};
+    attempt.target.seed.seed = 0x2ef6;
+    attempt.target.advances = 29364;
+    struct Case{
+        std::string got;
+        std::string expected;
+    };
+    const Case cases[] = {
+        {.got = rng_log_tid(43771, true), .expected = "RngPlan: tid=43771 source=card"},
+        {.got = rng_log_tid(43771, false), .expected = "RngPlan: tid=43771 source=option"},
+        {.got = rng_log_sid_helper(43771, 3001, CANDIDATES), .expected = "RngPlan: sid_helper tid=43771 target_advances=3001 candidates=100,200,300"},
+        {.got = rng_log_attempt(0, attempt), .expected = "RngPlan: attempt=1 seed=2EF6 advances=29364 sids=100,200"},
+        {.got = rng_log_result(1, RngAttemptOutcome::HIT_NOT_SHINY), .expected = "RngPlan: result attempt=2 outcome=HIT_NOT_SHINY"},
+        {.got = rng_log_confirmed(43771, 300, CANDIDATES), .expected = "RngPlan: confirmed tid=43771 sid=300 candidate=3 of=3"},
+        {.got = rng_log_confirmed(43771, 7, CANDIDATES), .expected = "RngPlan: confirmed tid=43771 sid=7 candidate=0 of=3"},
+    };
+    for (const Case& item : cases){
+        if (item.got != item.expected){
+            return "Expected \"" + item.expected + "\", got \"" + item.got + "\".";
+        }
+    }
+    return true;
+}
+
+
 //  A plan from the FireRed (English) list: every attempt starts from a seed
 //  Starter RNG finds, takes at least its smallest Advances, and is shiny for
 //  the SIDs it lists, which no earlier attempt listed.
@@ -444,13 +471,14 @@ UnitTestResult test_starter_plan(Logger&){
 
 void add_tests_AutoStoryRngPlan(UnitTestDatabase& database){
     database.add<Test_AutoStoryRngPlan>("SID Helper's candidates and weights", test_sid_helper_candidates);
-    database.add<Test_AutoStoryRngPlan>("SID text", test_parse_sid);
+    database.add<Test_AutoStoryRngPlan>("TID and SID text", test_parse_trainer_id);
     database.add<Test_AutoStoryRngPlan>("IVs text", test_parse_ivs);
     database.add<Test_AutoStoryRngPlan>("natures text", test_parse_natures);
     database.add<Test_AutoStoryRngPlan>("attempt order", test_plan_order);
     database.add<Test_AutoStoryRngPlan>("attempt outcome", test_classify);
     database.add<Test_AutoStoryRngPlan>("step after each outcome", test_tracker);
     database.add<Test_AutoStoryRngPlan>("Starter RNG plan from the FireRed list", test_starter_plan);
+    database.add<Test_AutoStoryRngPlan>("RngPlan log lines", test_log_lines);
 }
 
 

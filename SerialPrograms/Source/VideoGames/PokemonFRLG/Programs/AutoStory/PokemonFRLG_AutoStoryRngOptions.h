@@ -10,6 +10,7 @@
 #ifndef PokemonAutomation_PokemonFRLG_AutoStoryRngOptions_H
 #define PokemonAutomation_PokemonFRLG_AutoStoryRngOptions_H
 
+#include <optional>
 #include <string>
 #include <vector>
 #include "Common/Cpp/Logging/AbstractLogger.h"
@@ -31,16 +32,22 @@ class StarterRngPlanOptions : public GroupOption{
 public:
     StarterRngPlanOptions();
 
-    //  The attempts these options ask for, for a FireRed game in "language".
-    //  Throws UserSetupError for an option it can't read, or when no target
-    //  passes.
-    std::vector<RngAttempt> plan(Logger& logger, Language language) const;
+    //  Throws UserSetupError for a TID, SID, natures or IVs it can't read,
+    //  before the run presses anything.
+    void check(Logger& logger) const;
+    //  The TID typed in, or nothing to read it from the Trainer Card.
+    std::optional<uint16_t> tid_override(Logger& logger) const;
+
+    //  The attempts these options ask for, for TID "tid" in a FireRed game
+    //  in "language", logged as "RngPlan:" lines. Throws UserSetupError
+    //  when no target passes.
+    std::vector<RngAttempt> plan(Logger& logger, Language language, uint16_t tid) const;
     //  The sound setting as Starter RNG's dropdown shows it.
     std::string sound_name() const;
 
 public:
     EnumDropdownOption<SoundSetting> SOUND;
-    SimpleIntegerOption<uint16_t> TID;
+    StringOption TID;
     StringOption SID;
     SimpleIntegerOption<uint32_t> SID_HELPER_ADVANCES;
     SimpleIntegerOption<uint8_t> SID_HELPER_CANDIDATES;
@@ -50,7 +57,8 @@ public:
     SimpleIntegerOption<uint8_t> MAX_ATTEMPTS;
 
 private:
-    std::vector<SidCandidate> candidates(Logger& logger) const;
+    RngTargetFilters filters(Logger& logger) const;
+    std::optional<uint16_t> sid(Logger& logger) const;
 };
 
 
