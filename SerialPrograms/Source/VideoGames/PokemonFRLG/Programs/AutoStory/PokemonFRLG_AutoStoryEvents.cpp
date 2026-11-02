@@ -229,7 +229,12 @@ Outcome shop(StoryEnv& env, const StoryStep& step){
         env.console.log("Story: couldn't read the Items pocket; keeping the counts ordered.", COLOR_ORANGE);
         return Pokemon::outcome_ok();
     }
-    set_from_bag(env.supplies, rows);
+    for (const std::string& item : set_from_bag(env.supplies, rows)){
+        env.console.log(std::format(
+            "Story: couldn't read how many {} the bag holds; counting {}.",
+            item, item_count(env.supplies, item)
+        ), COLOR_ORANGE);
+    }
     return Pokemon::outcome_ok();
 }
 

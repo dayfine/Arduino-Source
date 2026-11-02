@@ -4,12 +4,14 @@
  *
  */
 
+#include <format>
 #include "Common/Cpp/Json/JsonArray.h"
 #include "Common/Cpp/Json/JsonObject.h"
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "CommonFramework/Language.h"
-#include "CommonTools/OCR/OCR_NumberReader.h"
 #include "CommonTools/OCR/OCR_SmallDictionaryMatcher.h"
+#include "Tests/ImageUnitTest.h"
+#include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_DigitReader.h"
 #include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_OcrPreprocessing.h"
 #include "VideoGames/PokemonFRLG/PokemonFRLG_Settings.h"
 #include "PokemonFRLG_ItemListReader.h"
@@ -100,9 +102,58 @@ std::vector<BagRow> read_bag_pocket(Logger& logger, Language language, const Ima
             break;
         }
         const ImageViewRGB32 count = extract_box_reference(game_box(screen), bag_item_count_box(row));
-        rows.push_back(BagRow{item, OCR::read_number_waterfill(logger, count, 0xff000000, 0xff808080)});
+        //  Not Tesseract on each waterfilled digit: the font joins some strokes
+        //  only at a corner, so the 5 and the 3 fell apart into pieces and read
+        //  as nothing (console B, 2026-11-02). The stat boxes' templates are
+        //  the same digits on the same cream.
+        rows.push_back(BagRow{item, read_digits_waterfill_template(logger, count, DigitTemplateType::StatBox)});
     }
     return rows;
+}
+
+
+namespace{
+
+//  A capture of the Items pocket, read from the top.
+class Test_BagPocket : public ImageUnitTest{
+public:
+    Test_BagPocket(const std::string& image, std::vector<BagRow> expected)
+        : ImageUnitTest("PokemonFRLG::ItemListReader - " + image, {image})
+        , m_expected(std::move(expected))
+    {}
+
+    virtual UnitTestResult run_on_images(
+        Logger& logger, CancellableScope& scope,
+        const std::vector<ImageRGB32>& images
+    ) const override{
+        const std::vector<BagRow> rows = read_bag_pocket(logger, Language::English, images[0]);
+        std::string expected;
+        for (const BagRow& row : m_expected){
+            expected += std::format(" {} x{};", row.item, row.count);
+        }
+        std::string read;
+        for (const BagRow& row : rows){
+            read += std::format(" {} x{};", row.item, row.count);
+        }
+        if (read != expected){
+            return "Expected" + expected + " read" + (read.empty() ? std::string(" nothing") : read);
+        }
+        return true;
+    }
+
+private:
+    const std::vector<BagRow> m_expected;
+};
+
+}
+
+void add_tests_ItemListReader(UnitTestDatabase& database){
+    //  Console B, 2026-11-02, after the Viridian Mart: the 5 and the 3 read
+    //  as nothing before the digit templates.
+    database.add<Test_BagPocket>(
+        "PokemonFRLG/ItemListReader/ItemsPocket_Potion5_Antidote3_ParlyzHeal1.png",
+        std::vector<BagRow>{{"potion", 5}, {"antidote", 3}, {"parlyz-heal", 1}}
+    );
 }
 
 
