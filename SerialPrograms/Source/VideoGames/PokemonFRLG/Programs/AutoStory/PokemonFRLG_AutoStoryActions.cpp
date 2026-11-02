@@ -703,17 +703,28 @@ static void set_option(
 }
 
 void set_options(ConsoleHandle& console, ProControllerContext& context, StartMenu menu, Language language){
-    console.log("Options: text speed FAST, battle style SET.");
+    console.log("Options: text speed FAST, battle scene OFF, battle style SET.");
     open_start_menu_row(console, context, menu, start_menu_option_row(menu));
     options_shot(console, context, "before");
-    //  The cursor opens on TEXT SPEED (option_menu.c: cursorPos = 0), and
-    //  BATTLE STYLE is two rows down. Were it on another row, the presses
-    //  would change that row instead, and the read after them fails.
-    set_option(console, context, OptionMenuItem::TEXT_SPEED, "fast", language);
-    for (size_t row = option_menu_row(OptionMenuItem::TEXT_SPEED); row < option_menu_row(OptionMenuItem::BATTLE_STYLE); row++){
-        tap(context, DPAD_DOWN);
+    struct Target{
+        OptionMenuItem item;
+        const char* value;
+    };
+    //  In row order. The cursor opens on TEXT SPEED (option_menu.c:
+    //  cursorPos = 0) and DOWN moves it a row. Were it on another row, the
+    //  presses would change that row instead, and the read after them fails.
+    const Target targets[] = {
+        {.item = OptionMenuItem::TEXT_SPEED, .value = "fast"},
+        {.item = OptionMenuItem::BATTLE_SCENE, .value = "off"},
+        {.item = OptionMenuItem::BATTLE_STYLE, .value = "set"},
+    };
+    size_t cursor = 0;
+    for (const Target& target : targets){
+        for (; cursor < option_menu_row(target.item); cursor++){
+            tap(context, DPAD_DOWN);
+        }
+        set_option(console, context, target.item, target.value, language);
     }
-    set_option(console, context, OptionMenuItem::BATTLE_STYLE, "set", language);
     options_shot(console, context, "after");
     press(context, BUTTON_B, 1500ms);
     mash_until_overworld(console, context, 20000ms);

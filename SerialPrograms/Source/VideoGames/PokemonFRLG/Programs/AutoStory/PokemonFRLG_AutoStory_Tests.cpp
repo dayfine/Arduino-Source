@@ -546,6 +546,7 @@ UnitTestResult test_intro_names(){
 //  presses assumed MID and SHIFT.
 UnitTestResult test_option_presses(){
     const std::vector<std::string>& speed = option_menu_values(OptionMenuItem::TEXT_SPEED);
+    const std::vector<std::string>& scene = option_menu_values(OptionMenuItem::BATTLE_SCENE);
     const std::vector<std::string>& style = option_menu_values(OptionMenuItem::BATTLE_STYLE);
     struct Case{
         const std::vector<std::string>& values;
@@ -557,6 +558,8 @@ UnitTestResult test_option_presses(){
         {.values = speed, .current = "slow", .target = "fast", .expected = 2},
         {.values = speed, .current = "mid", .target = "fast", .expected = 1},
         {.values = speed, .current = "fast", .target = "fast", .expected = 0},
+        {.values = scene, .current = "on", .target = "off", .expected = 1},
+        {.values = scene, .current = "off", .target = "off", .expected = 0},
         {.values = style, .current = "shift", .target = "set", .expected = 1},
         {.values = style, .current = "set", .target = "set", .expected = 0},
         //  RIGHT wraps from the last value to the first.
@@ -564,6 +567,7 @@ UnitTestResult test_option_presses(){
         //  Unread, or another row's value: no guess.
         {.values = speed, .current = "", .target = "fast", .expected = std::nullopt},
         {.values = style, .current = "fast", .target = "set", .expected = std::nullopt},
+        {.values = scene, .current = "set", .target = "off", .expected = std::nullopt},
     };
     for (const Case& c : cases){
         const std::optional<size_t> presses = option_right_presses(c.values, c.current, c.target);
