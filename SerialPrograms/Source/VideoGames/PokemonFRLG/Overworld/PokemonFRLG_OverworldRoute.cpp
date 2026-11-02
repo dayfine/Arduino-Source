@@ -452,10 +452,9 @@ std::string describe(const std::vector<RouteStep>& route){
 //  tile, and a tile that can't be entered moving south.
 const MapData& small_map(){
     static const MapData MAP = parse_map(R"({
-        "name": "Small", "width": 5, "height": 4,
-        "tiles": ["#####", "#.n.#", "#.~.#", "#####"],
-        "elevation": ["33333", "33403", "33133", "33333"],
-        "warps": [], "objects": [], "connections": [], "points": [], "flag_sets": []
+        "name": "Small", "source": {"decomp_file": "", "revision": "test", "date": "2026-10-31"},
+        "tiles": ["#####", "#.8.#", "#.w.#", "#####"],
+        "elevation": ["33333", "33403", "33133", "33333"]
     })", "Small");
     return MAP;
 }
@@ -678,11 +677,9 @@ UnitTestResult test_viridian_mart_to_pewter_gym(){
 
 //  A room with a sign on its north wall, above the third column.
 const char* const TEST_SIGN_ROOM_JSON = R"({
-    "name": "SignRoom", "width": 5, "height": 5,
+    "name": "SignRoom", "source": {"decomp_file": "", "revision": "test", "date": "2026-10-31"},
     "tiles": ["##S##", "#...#", "#...#", "#...#", "#####"],
-    "elevation": ["33333", "33333", "33333", "33333", "33333"],
-    "warps": [], "objects": [],
-    "connections": [], "points": [], "flag_sets": []
+    "elevation": ["33333", "33333", "33333", "33333", "33333"]
 })";
 
 //  Walking north under a sign stops by counting tiles, never by holding into
@@ -712,15 +709,13 @@ UnitTestResult test_no_hold_into_sign(){
 
 //  A yard with a row of ledges across it.
 const char* const TEST_LEDGE_YARD_JSON = R"({
-    "name": "LedgeYard", "width": 5, "height": 6,
-    "tiles": ["#####", "#...#", "#...#", "#JJJ#", "#...#", "#####"],
-    "elevation": ["33333", "33333", "33333", "33333", "33333", "33333"],
-    "warps": [], "objects": [],
-    "connections": [], "points": [], "flag_sets": []
+    "name": "LedgeYard", "source": {"decomp_file": "", "revision": "test", "date": "2026-10-31"},
+    "tiles": ["#####", "#...#", "#...#", "#vvv#", "#...#", "#####"],
+    "elevation": ["33333", "33333", "33333", "33333", "33333", "33333"]
 })";
 
 //  A ledge isn't a wall to hold into: moving the way it faces the player
-//  would hop it, and the maps don't say which way that is. Viridian City,
+//  would hop it, and routes don't hop ledges. Viridian City,
 //  from the Pokemon Center's door south to the row above the ledge.
 UnitTestResult test_no_hold_into_ledge(){
     const std::vector<MapData> maps{parse_map(TEST_LEDGE_YARD_JSON, "LedgeYard")};
@@ -802,20 +797,18 @@ UnitTestResult test_wild_steps(){
 }
 
 const char* const TEST_ROOM_JSON = R"({
-    "name": "Room", "width": 5, "height": 4,
-    "tiles": ["#####", "#...#", "#...#", "##v##"],
+    "name": "Room", "source": {"decomp_file": "", "revision": "test", "date": "2026-10-31"},
+    "tiles": ["#####", "#...#", "#...#", "##.##"],
     "elevation": ["33333", "33333", "33333", "33333"],
-    "warps": [{"x": 2, "y": 3, "dest_map": "Yard", "dest_warp": 0}],
-    "objects": [],
-    "connections": [], "points": [], "flag_sets": []
+    "points": {"warp_0": [2, 3]},
+    "warps": [{"x": 2, "y": 3, "enter": "walk_south", "to_map": "Yard", "to_point": "warp_0"}]
 })";
 const char* const TEST_YARD_JSON = R"({
-    "name": "Yard", "width": 5, "height": 4,
+    "name": "Yard", "source": {"decomp_file": "", "revision": "test", "date": "2026-10-31"},
     "tiles": ["#####", "##D##", "#...#", "#####"],
     "elevation": ["33333", "33333", "33333", "33333"],
-    "warps": [{"x": 2, "y": 1, "dest_map": "Room", "dest_warp": 0}],
-    "objects": [],
-    "connections": [], "points": [], "flag_sets": []
+    "points": {"warp_0": [2, 1]},
+    "warps": [{"x": 2, "y": 1, "enter": "walk_into", "to_map": "Room", "to_point": "warp_0"}]
 })";
 
 UnitTestResult test_route_through_warp(){

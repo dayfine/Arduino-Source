@@ -39,14 +39,18 @@ private:
 
 
 const char* const VALID_MAP = R"({
-    "name": "Test", "width": 3, "height": 2,
-    "tiles": ["#.~", "\"Dv"],
+    "name": "Test",
+    "source": {"decomp_file": "data/maps/Test/map.json", "revision": "test", "date": "2026-10-31"},
+    "tiles": ["#.w", "~D."],
     "elevation": ["031", "3f3"],
-    "warps": [{"x": 1, "y": 1, "dest_map": "Other", "dest_warp": 2}],
-    "objects": [{"x": 0, "y": 1, "kind": "nurse", "flag": "FLAG_X", "wander_x": 1, "wander_y": 0}],
-    "connections": [{"direction": "south", "offset": -4, "map": "Other"}],
-    "points": [{"name": "door", "x": 1, "y": 1}],
-    "flag_sets": [{"name": "later", "flags": ["FLAG_X", "FLAG_Y"]}]
+    "points": {"door": [1, 1]},
+    "warps": [
+        {"x": 1, "y": 1, "enter": "walk_into", "to_map": "Other", "to_point": "warp_2"},
+        {"x": 2, "y": 1, "enter": "walk_south"}
+    ],
+    "objects": [{"name": "nurse", "kind": "npc", "x": 0, "y": 1, "wander": {"x0": 0, "y0": 1, "x1": 1, "y1": 1}, "hide_flag": "FLAG_X"}],
+    "flag_sets": {"later": ["FLAG_X", "FLAG_Y"]},
+    "connections": [{"side": "south", "to_map": "Other", "offset": -4}]
 })";
 
 //  The ParseException that parsing `json` throws, or empty if it doesn't.
@@ -99,10 +103,10 @@ UnitTestResult test_valid_map(){
 
 UnitTestResult test_missing_field(){
     std::string json = VALID_MAP;
-    json.replace(json.find("\"warps\""), 7, "\"exits\"");
+    json.replace(json.find("\"tiles\""), 7, "\"cells\"");
     const std::string error = parse_error(json);
-    if (!mentions(error, {"Test.json", "warps", "missing"})){
-        return "Expected an error naming the missing warps, got: \"" + error + "\"";
+    if (!mentions(error, {"Test.json", "tiles", "missing"})){
+        return "Expected an error naming the missing tiles, got: \"" + error + "\"";
     }
     return true;
 }
@@ -123,19 +127,19 @@ UnitTestResult test_elevation_left_out(){
 
 UnitTestResult test_bad_field_type(){
     std::string json = VALID_MAP;
-    json.replace(json.find("\"dest_warp\": 2"), 14, "\"dest_warp\": \"2\"");
+    json.replace(json.find("\"x\": 1"), 6, "\"x\": \"1\"");
     const std::string error = parse_error(json);
-    if (!mentions(error, {"Test.json", "warps[0]", "dest_warp", "integer"})){
-        return "Expected an error naming warps[0].dest_warp, got: \"" + error + "\"";
+    if (!mentions(error, {"Test.json", "warps[0]", "x", "integer"})){
+        return "Expected an error naming warps[0].x, got: \"" + error + "\"";
     }
     return true;
 }
 
 UnitTestResult test_bad_row_length(){
     std::string json = VALID_MAP;
-    json.replace(json.find("\"#.~\""), 5, "\"#.\"");
+    json.replace(json.find("\"~D.\""), 5, "\"~D\"");
     const std::string error = parse_error(json);
-    if (!mentions(error, {"Test.json", "tiles[0]", "string of 3 tiles"})){
+    if (!mentions(error, {"Test.json", "tiles[1]", "string of 3 glyphs"})){
         return "Expected an error naming the short row, got: \"" + error + "\"";
     }
     return true;
@@ -143,9 +147,9 @@ UnitTestResult test_bad_row_length(){
 
 UnitTestResult test_unknown_tile(){
     std::string json = VALID_MAP;
-    json.replace(json.find("\"#.~\""), 5, "\"#.?\"");
+    json.replace(json.find("\"#.w\""), 5, "\"#.?\"");
     const std::string error = parse_error(json);
-    if (!mentions(error, {"Test.json", "tiles[0]", "unknown tile '?'", "(2, 0)"})){
+    if (!mentions(error, {"Test.json", "tiles[0]", "unknown glyph '?'", "(2, 0)"})){
         return "Expected an error naming the unknown tile, got: \"" + error + "\"";
     }
     return true;
