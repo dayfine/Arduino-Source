@@ -345,7 +345,11 @@ std::vector<TilePos> RouteWalker::arrive() const{
     const bool seen = std::any_of(m_all_banners.begin(), m_all_banners.end(), [&](const std::string& read){
         return location_banner_matches(read, map_end);
     });
-    if (changed_map && !seen){
+    //  No banner read at all is only a warning (r20-r22: none we could read on
+    //  the Lakefront-to-Route 201 crossing); the next step checks where we are.
+    if (changed_map && m_all_banners.empty()){
+        m_stream.log("[Route] " + m_plan.label + ": no banner read for " + map_end + "; going on.", COLOR_ORANGE);
+    }else if (changed_map && !seen){
         const std::string reads = quoted_list(m_all_banners);
         OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
             m_plan.label + ": arrived at " + describe(m_maps, m_from) + " on the map, but " + map_end +
