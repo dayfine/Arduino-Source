@@ -194,13 +194,15 @@ std::vector<StoryCheckpoint> intro(){
             scene("barry_goes_home", at(TWINLEAF, "barry_doorstep"), "his second lines (Butters waited for two)", "a"),
             step_into("into_barrys_house", NORTH, "his door", at(BARRYS_HOUSE, "door", NORTH)),
             legs("off_barrys_mat", {{.direction = NORTH, .tiles = 1}}, "off the door's mat, which no route starts on"),
-            route("below_barrys_stairs", at(BARRYS_HOUSE, 2, 4, NORTH), "past his mother at (4, 6)"),
-            step_into("up_barrys_stairs", NORTH, "onto the stairs", at(BARRYS_ROOM, "stairs")),
+            //  Like ours: stairs are entered sideways from the top of their mat, the
+            //  stairs point (r11: north from (2, 4) only bumps the wall).
+            route("below_barrys_stairs", at(BARRYS_HOUSE, "stairs", EAST), "past his mother at (4, 6) to the top of the stairs' mat"),
+            step_into("up_barrys_stairs", EAST, "onto the stairs", at(BARRYS_ROOM, "stairs")),
             route("beside_barry", at(BARRYS_ROOM, "barry_talk", EAST), "west of Barry, who faces his PC (assumed talk tile)"),
             talk("barry", "Barry in his room"),
             scene("barry_heads_for_the_lake", at(BARRYS_ROOM, "barry_talk", EAST), "he runs off to the lake", "a"),
-            route("above_barrys_stairs", at(BARRYS_ROOM, 3, 5, NORTH), "back to the stairs (3, 4)"),
-            step_into("down_barrys_stairs", NORTH, "onto the stairs", at(BARRYS_HOUSE, "stairs")),
+            route("above_barrys_stairs", at(BARRYS_ROOM, "stairs", WEST), "back to the top of the stairs' mat (assumed: mirrors ours)"),
+            step_into("down_barrys_stairs", WEST, "onto the stairs", at(BARRYS_HOUSE, "stairs")),
             route("above_barrys_door", at(BARRYS_HOUSE, 6, 9, SOUTH), "back to his door"),
             step_into("out_of_barrys_house", SOUTH, "out of his door", at(TWINLEAF, "barry_doorstep", SOUTH)),
             //  The guitarist's trigger on Twinleaf's row 3 fires only before his talk upstairs.
