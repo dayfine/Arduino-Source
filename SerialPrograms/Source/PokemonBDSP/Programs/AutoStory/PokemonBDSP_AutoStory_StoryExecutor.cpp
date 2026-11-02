@@ -440,23 +440,24 @@ Outcome StoryExecutor::train(RunState&, const StoryStep& step){
 
 Outcome StoryExecutor::heal(RunState&, const StoryStep& step){
     //  From the planned tile below the door, run in like any door. The lit-
-    //  doorway lineup is for a guess of where we stand: below Sandgem's door
-    //  it read 0.7 tile off and stepped us off it (r48).
+    //  doorway lineup is for when the run in finds no door: people on the
+    //  way can leave the route unsure of the column (r59, Jubilife). Below
+    //  Sandgem's door the lineup read 0.7 tile off and stepped us off it (r48).
     route_turn(stream(), context(), Direction::NORTH);
-    if (run_into_door(stream(), context(), Direction::NORTH, m_can_run)){
-        stream().log(std::format("[{}] {}: north into the Center: faded.", m_checkpoint, step.name));
+    const bool in = run_into_door(stream(), context(), Direction::NORTH, m_can_run);
+    stream().log(std::format("[{}] {}: north into the Center: {}.", m_checkpoint, step.name, in ? "faded" : "no door; lining up by sight"));
+    if (in){
         pbf_wait(context(), 1500ms);
-        talk_to_nurse(stream(), context(), label_of(step));
-        //  Out the same way: south until the fade. The walk out's indoor check
-        //  read "not a room" a step from the counter, and 00.04b ended inside
-        //  (r50, so r51's first steps went back up to the nurse).
-        route_turn(stream(), context(), Direction::SOUTH);
-        const bool out = run_into_door(stream(), context(), Direction::SOUTH, m_can_run);
-        stream().log(std::format("[{}] {}: south out of the Center: {}.", m_checkpoint, step.name, out ? "faded" : "no fade yet"));
-        settle(stream(), context(), BUTTON_B, label_of(step), !out);
     }else{
-        heal_at_pokemon_center(stream(), context(), label_of(step));
+        enter_lit_door(stream(), context(), label_of(step));
     }
+    talk_to_nurse(stream(), context(), label_of(step));
+    //  Out the same way: south until the fade. The walk out's indoor check
+    //  read "not a room" a step from the counter and stopped inside (r50, r59).
+    route_turn(stream(), context(), Direction::SOUTH);
+    const bool out = run_into_door(stream(), context(), Direction::SOUTH, m_can_run);
+    stream().log(std::format("[{}] {}: south out of the Center: {}.", m_checkpoint, step.name, out ? "faded" : "no fade yet"));
+    settle(stream(), context(), BUTTON_B, label_of(step), !out);
     //  r143a's heal said it had walked out while still inside.
     context().wait_for_all_requests();
     VideoSnapshot screen = stream().video().snapshot();
