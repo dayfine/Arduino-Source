@@ -338,7 +338,12 @@ Outcome StoryExecutor::step(RunState& state, const StoryStep& step){
     return Pokemon::outcome_ok(Pokemon::tile_pose(state.pose.map, at, step.direction));
 }
 
-Outcome StoryExecutor::talk(RunState&, const StoryStep& step){
+Outcome StoryExecutor::talk(RunState& state, const StoryStep& step){
+    //  Face whom we talk to: a route ends facing its last leg, not its goal
+    //  (r40 reached Mom facing north). They block the tile, so the tap only turns.
+    if (const std::optional<Direction> facing = Pokemon::facing_of(state.pose)){
+        route_turn(stream(), context(), *facing);
+    }
     pbf_press_button(context(), BUTTON_A, 80ms, 200ms);
     context().wait_for_all_requests();
     ShortDialogWatcher dialog(COLOR_YELLOW);
