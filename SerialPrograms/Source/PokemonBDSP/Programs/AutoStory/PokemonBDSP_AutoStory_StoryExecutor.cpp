@@ -228,13 +228,14 @@ Outcome StoryExecutor::step(RunState& state, const StoryStep& step){
     const auto [x, y] = dpad_of(step.direction);
     const WalkResult walk = walk_tiles_dpad(stream(), context(), run_from_wild_battle, {x, y}, 1, step.name);
     stream().log(std::format("[{}] {}: a step {}, {}.", m_checkpoint, step.name, direction_name(step.direction), walk_stop_name(walk.stop)));
-    //  A step onto a door changes the map, and the fade can start after the
-    //  walk's window (r10: Barry's door). Wait it out here, so the next step
-    //  doesn't take it for its own stop.
+    //  A step onto a door changes the map. The fade can start after the walk's
+    //  window (r10: Barry's door), so wait for it here, so the next step doesn't
+    //  take it for its own stop. It can also end inside the window (r12: our
+    //  door), so no fade is fine: the next step checks where we are.
     if (walk.stop != WalkStop::TRANSITION && step.pose_after && step.pose_after->map != state.pose.map){
         BlackScreenOverWatcher faded(COLOR_RED);
         if (wait_until(stream(), context(), 5000ms, {{faded}}) != 0){
-            fail_step(stream(), label_of(step) + ": the map didn't change.");
+            stream().log(label_of(step) + ": no fade after the step; it was likely inside the step.", COLOR_ORANGE);
         }
     }
     std::vector<TilePos> at;
