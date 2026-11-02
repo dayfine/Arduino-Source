@@ -309,6 +309,14 @@ StoryStep out_of_the_lab_into_dawns_tour(){
         }, NORTH));
 }
 
+//  Anywhere in the door's column: the step runs north into the door, so the
+//  route can end where the south run along x 14 stops (row 26) and go east.
+StoryStep home_to_the_doors_column(){
+    return route("home", Pokemon::tile_pose(TWINLEAF, {
+            TilePos{20, 22}, TilePos{20, 23}, TilePos{20, 24}, TilePos{20, 25}, TilePos{20, 26}
+        }, NORTH), "west along Route 201 to Twinleaf, running from wild battles");
+}
+
 std::vector<StoryCheckpoint> to_the_catch(){
     return {
         row("00.04", "Home to Mom, then Dawn's catching tutorial on Route 202", at(LAB, "rowan_talk", NORTH), {
@@ -318,11 +326,7 @@ std::vector<StoryCheckpoint> to_the_catch(){
             //  Route 201's banner shows, a few tiles in.
             route("onto_the_path", at(SANDGEM, 29, 12, WEST), "to the east end of the path below the doors' row", "town"),
             route_201_by_the_path(),
-            //  Anywhere in the door's column: the step runs north into the door, so the
-            //  route can end where the south run along x 14 stops (row 26) and go east.
-            route("home", Pokemon::tile_pose(TWINLEAF, {
-                    TilePos{20, 22}, TilePos{20, 23}, TilePos{20, 24}, TilePos{20, 25}, TilePos{20, 26}
-                }, NORTH), "west along Route 201 to Twinleaf, running from wild battles"),
+            home_to_the_doors_column(),
             //  The game sets us a tile inside, off the mat: (6, 9) (r40: the old extra
             //  step north put us beside the TV, above Mom).
             step_into("into_the_house", NORTH, "the house's door", at(HOME, 6, 9, NORTH)),
@@ -333,11 +337,13 @@ std::vector<StoryCheckpoint> to_the_catch(){
             //  Mom heals us, then Barry's mom comes in with his parcel; the scene
             //  leaves Mom at (6, 8), below us (r45).
             scene("mom_heals_us", at(HOME, 6, 7, EAST), "Mom heals us; Barry's mom gives us his parcel"),
-            legs("around_mom", {{.direction = WEST, .tiles = 1}, {.direction = SOUTH, .tiles = 2}, {.direction = EAST, .tiles = 1}},
-                "around Mom at (6, 8) to above the door"),
-            //  At the door Mom calls us back ("Oh, Kosmos!"), gives us the hat and walks
-            //  out with us; we end a tile west of the doorstep, beside her (r45).
-            step_into("out_of_the_house_again", SOUTH, "out of the door; Mom's hat", at(TWINLEAF, 19, 22, EAST)),
+            legs("around_mom", {{.direction = WEST, .tiles = 1}, {.direction = SOUTH, .tiles = 2}},
+                "around Mom at (6, 8), to beside the door's column"),
+            //  Stepping onto (6, 9), above the door, Mom calls us back ("Oh, Kosmos!",
+            //  r46), gives us the hat and walks out with us; we end a tile west of the
+            //  doorstep, beside her (r45).
+            legs("to_moms_call", {{.direction = EAST, .tiles = 1}}, "east above the door until Mom calls", "to_dialogue"),
+            scene("moms_hat", at(TWINLEAF, 19, 22, EAST), "Mom's hat; she walks out with us"),
             route("short_of_the_catch_tutorial", at(ROUTE_202, 22, 27, WEST), "through Sandgem onto Route 202, east of its trigger column"),
             step_into("catch_tutorial_trigger", WEST, "the trigger (21, 25..29), VAR_ROUTE_202_STATE 0"),
             event("catch_tutorial", "Dawn's catching tutorial"),
