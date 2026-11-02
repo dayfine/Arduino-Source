@@ -167,6 +167,54 @@ StoryStep skip_if(StoryStep step, std::string flag){
 }
 
 
+//  00.01: down from the bedroom, Barry's house, and out to the Lakefront.
+StoryCheckpoint bedroom_to_lakefront(){
+    return row("00.01", "Bedroom to the Verity Lakefront", at(BEDROOM, "start", NORTH), {
+        route("above_the_stairs", at(BEDROOM, "stairs", EAST), "the top of the mat, west of the stairs"),
+        //  The stairs are entered moving east from the top of the two-tile mat,
+        //  the decomp's stairs point (8, 4); east from (8, 5) or north are walls (r8, r9).
+        //  The stairs' warp lands on 1F's stairs; a tile below is allowed (assumed).
+        step_into("down_the_stairs", EAST, "onto the stairs", at_or_next_to(HOME, "stairs", SOUTH)),
+        //  Automatic on arrival (1F frame script): Mom walks over, talks, walks back to
+        //  (7, 8). No input; Butters' 1.1 s south hold fell inside the fade (timeline 00.01 #2).
+        scene("mom_calls", at_or_next_to(HOME, "stairs", SOUTH),
+            "Mom calls the player over as they come down; we stay put"),
+        route("above_the_door", at(HOME, 6, 9, SOUTH), "past Mom at (7, 8) to above the door"),
+        step_into("mom_warning", SOUTH, "the door's tile (6, 10): Mom's warning (coord event, VAR_PLAYER_HOUSE_STATE 1)"),
+        scene("mom_warns_us", at(HOME, "door", SOUTH), "\"don't go into the tall grass\""),
+        step_into("out_of_the_house", SOUTH, "out of the door", at(TWINLEAF, "house_doorstep", SOUTH)),
+        route("short_of_barrys_door", at(TWINLEAF, 10, 12, WEST), "a tile east of Barry's doorstep"),
+        step_into("barrys_door", WEST, "the trigger on his doorstep (9, 12)"),
+        //  Barry bumps into us and knocks us back a tile, still facing north (decomp;
+        //  r10: the first north tap after the scene gave no warp, the second did).
+        scene("barry_bursts_out", at(TWINLEAF, 9, 13, NORTH), "Barry runs out, bumps into us and runs back in", "a"),
+        scene("barry_goes_home", at(TWINLEAF, 9, 13, NORTH), "his second lines (Butters waited for two)", "a"),
+        legs("back_onto_barrys_doorstep", {{.direction = NORTH, .tiles = 1}}, "back to (9, 12); its trigger is spent"),
+        step_into("into_barrys_house", NORTH, "his door", at(BARRYS_HOUSE, "door", NORTH)),
+        legs("off_barrys_mat", {{.direction = NORTH, .tiles = 1}}, "off the door's mat, which no route starts on"),
+        //  Like ours: stairs are entered sideways from the top of their mat, the
+        //  stairs point (r11: north from (2, 4) only bumps the wall).
+        route("below_barrys_stairs", at(BARRYS_HOUSE, "stairs", EAST), "past his mother at (4, 6) to the top of the stairs' mat"),
+        step_into("up_barrys_stairs", EAST, "onto the stairs", at(BARRYS_ROOM, "stairs")),
+        //  Automatic on arrival (2F frame script), not a talk: Barry runs past us down
+        //  the stairs and the game walks us a tile south of them (decomp; Butters
+        //  never walked to him).
+        scene("barry_runs_to_the_lake", at(BARRYS_ROOM, 3, 5, NORTH), "Barry's lines; he runs off to the lake", "a"),
+        //  Butters went west from there straight into the stairs; ours are entered from
+        //  the mat's top tile, so go there first (unchecked: which works).
+        route("above_barrys_stairs", at(BARRYS_ROOM, "stairs", WEST), "back to the top of the stairs' mat"),
+        step_into("down_barrys_stairs", WEST, "onto the stairs", at(BARRYS_HOUSE, "stairs")),
+        route("above_barrys_door", at(BARRYS_HOUSE, 6, 9, SOUTH), "back to his door"),
+        step_into("out_of_barrys_house", SOUTH, "out of his door", at(TWINLEAF, "barry_doorstep", SOUTH)),
+        //  The guitarist's trigger on Twinleaf's row 3 fires only before his talk upstairs.
+        route("below_barrys_warning", at(ROUTE_201, 15, 19, NORTH), "up Twinleaf's exit path onto Route 201"),
+        step_into("barrys_warning", NORTH, "the trigger (14..19, 18)"),
+        scene("barry_warns_us", at(ROUTE_201, "barry_warning"), "Barry's tall-grass warning; we stay on the trigger (assumed)"),
+        //  Route 201's lower level, row 16, clear of the grass, then the Lakefront.
+        route("below_the_lake_entrance", at(LAKEFRONT, "below_lake_entrance", NORTH), "west along Route 201's lower level to the Lakefront"),
+    });
+}
+
 std::vector<StoryCheckpoint> intro(){
     StoryStep new_game = make(StoryStepKind::NEW_GAME, "intro", "language, appearance, the player's name, Barry's default name");
     new_game.pose_after = at(BEDROOM, "start", NORTH);
@@ -175,43 +223,7 @@ std::vector<StoryCheckpoint> intro(){
             skip_if(new_game, "save_loaded"),
             make(StoryStepKind::OPTIONS, "settings", "fast text, Send to Boxes automatic, no nickname prompt, Autosave off"),
         }, StoryFailure::STOP),
-        row("00.01", "Bedroom to the Verity Lakefront", at(BEDROOM, "start", NORTH), {
-            route("above_the_stairs", at(BEDROOM, "stairs", EAST), "the top of the mat, west of the stairs"),
-            //  The stairs are entered moving east from the top of the two-tile mat,
-            //  the decomp's stairs point (8, 4); east from (8, 5) or north are walls (r8, r9).
-            //  The stairs' warp lands on 1F's stairs; a tile below is allowed (assumed).
-            step_into("down_the_stairs", EAST, "onto the stairs", at_or_next_to(HOME, "stairs", SOUTH)),
-            //  Butters' recording walked 1.1 s south before her first line.
-            scene("mom_calls", at_or_next_to(HOME, "stairs", SOUTH),
-                "Mom calls the player over as they come down; we stay put (assumed)"),
-            route("above_the_door", at(HOME, 6, 9, SOUTH), "past Mom at (7, 8) to above the door"),
-            step_into("mom_warning", SOUTH, "the door's tile (6, 10): Mom's warning (coord event, VAR_PLAYER_HOUSE_STATE 1)"),
-            scene("mom_warns_us", at(HOME, "door", SOUTH), "\"don't go into the tall grass\""),
-            step_into("out_of_the_house", SOUTH, "out of the door", at(TWINLEAF, "house_doorstep", SOUTH)),
-            route("short_of_barrys_door", at(TWINLEAF, 10, 12, WEST), "a tile east of Barry's doorstep"),
-            step_into("barrys_door", WEST, "the trigger on his doorstep (9, 12)"),
-            scene("barry_bursts_out", at(TWINLEAF, "barry_doorstep"), "Barry runs out, bumps into us and runs back in", "a"),
-            scene("barry_goes_home", at(TWINLEAF, "barry_doorstep"), "his second lines (Butters waited for two)", "a"),
-            step_into("into_barrys_house", NORTH, "his door", at(BARRYS_HOUSE, "door", NORTH)),
-            legs("off_barrys_mat", {{.direction = NORTH, .tiles = 1}}, "off the door's mat, which no route starts on"),
-            //  Like ours: stairs are entered sideways from the top of their mat, the
-            //  stairs point (r11: north from (2, 4) only bumps the wall).
-            route("below_barrys_stairs", at(BARRYS_HOUSE, "stairs", EAST), "past his mother at (4, 6) to the top of the stairs' mat"),
-            step_into("up_barrys_stairs", EAST, "onto the stairs", at(BARRYS_ROOM, "stairs")),
-            route("beside_barry", at(BARRYS_ROOM, "barry_talk", EAST), "west of Barry, who faces his PC (assumed talk tile)"),
-            talk("barry", "Barry in his room"),
-            scene("barry_heads_for_the_lake", at(BARRYS_ROOM, "barry_talk", EAST), "he runs off to the lake", "a"),
-            route("above_barrys_stairs", at(BARRYS_ROOM, "stairs", WEST), "back to the top of the stairs' mat (assumed: mirrors ours)"),
-            step_into("down_barrys_stairs", WEST, "onto the stairs", at(BARRYS_HOUSE, "stairs")),
-            route("above_barrys_door", at(BARRYS_HOUSE, 6, 9, SOUTH), "back to his door"),
-            step_into("out_of_barrys_house", SOUTH, "out of his door", at(TWINLEAF, "barry_doorstep", SOUTH)),
-            //  The guitarist's trigger on Twinleaf's row 3 fires only before his talk upstairs.
-            route("below_barrys_warning", at(ROUTE_201, 15, 19, NORTH), "up Twinleaf's exit path onto Route 201"),
-            step_into("barrys_warning", NORTH, "the trigger (14..19, 18)"),
-            scene("barry_warns_us", at(ROUTE_201, "barry_warning"), "Barry's tall-grass warning; we stay on the trigger (assumed)"),
-            //  Route 201's lower level, row 16, clear of the grass, then the Lakefront.
-            route("below_the_lake_entrance", at(LAKEFRONT, "below_lake_entrance", NORTH), "west along Route 201's lower level to the Lakefront"),
-        }),
+        bedroom_to_lakefront(),
     };
 }
 
