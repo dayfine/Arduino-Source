@@ -9,13 +9,17 @@
  */
 
 #include <functional>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
+#include "CommonFramework/ImageTypes/ImageRGB32.h"
+#include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_OptionMenuReader.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRoute.h"
+#include "PokemonFRLG_AutoStoryActions.h"
 #include "PokemonFRLG_AutoStoryTable.h"
 
 namespace PokemonAutomation{
@@ -500,6 +504,42 @@ UnitTestResult test_unique_names(){
     }
     return true;
 }
+//  The intro's names: the player's keyboard first, then the rival's list,
+//  where a preset is picked; a keyboard after the player's means the list
+//  was missed.
+UnitTestResult test_intro_names(){
+    struct Case{
+        const char* what;
+        IntroNameScreen screen;
+        size_t keyboards_seen;
+        size_t presets_picked;
+        IntroNameStep expected;
+    };
+    const std::vector<Case> cases{
+        {.what = "the first keyboard", .screen = IntroNameScreen::KEYBOARD, .keyboards_seen = 0, .presets_picked = 0, .expected = IntroNameStep::PLAYER_KEYBOARD},
+        {.what = "the list after the player's keyboard", .screen = IntroNameScreen::RIVAL_LIST, .keyboards_seen = 1, .presets_picked = 0, .expected = IntroNameStep::RIVAL_PRESET},
+        {.what = "a list read before the player's keyboard", .screen = IntroNameScreen::RIVAL_LIST, .keyboards_seen = 0, .presets_picked = 0, .expected = IntroNameStep::NONE},
+        {.what = "the second keyboard", .screen = IntroNameScreen::KEYBOARD, .keyboards_seen = 1, .presets_picked = 0, .expected = IntroNameStep::RIVAL_KEYBOARD},
+        {.what = "a keyboard after a preset was picked", .screen = IntroNameScreen::KEYBOARD, .keyboards_seen = 1, .presets_picked = 1, .expected = IntroNameStep::RIVAL_KEYBOARD},
+        {.what = "the list again after a NO", .screen = IntroNameScreen::RIVAL_LIST, .keyboards_seen = 1, .presets_picked = 1, .expected = IntroNameStep::RIVAL_PRESET},
+        {.what = "the list after every try", .screen = IntroNameScreen::RIVAL_LIST, .keyboards_seen = 1, .presets_picked = RIVAL_PRESET_TRIES, .expected = IntroNameStep::NONE},
+        {.what = "a message box", .screen = IntroNameScreen::OTHER, .keyboards_seen = 1, .presets_picked = 0, .expected = IntroNameStep::NONE},
+    };
+    for (const Case& c : cases){
+        const IntroNameStep step = intro_name_step(c.screen, c.keyboards_seen, c.presets_picked);
+        if (step != c.expected){
+            return std::string(c.what) + ": expected step " + std::to_string(static_cast<int>(c.expected))
+                + ", got " + std::to_string(static_cast<int>(step)) + ".";
+        }
+    }
+    //  A black screen is no list.
+    ImageRGB32 black(1920, 1080);
+    black.fill(0xff000000);
+    if (rival_name_list_cursor(black).has_value()){
+        return "Read the rival's name list on a black screen.";
+    }
+    return true;
+}
 
 
 size_t row_index(const std::string& id){
@@ -666,6 +706,42 @@ UnitTestResult test_after_sid_helper_row(){
     return true;
 }
 
+//  set_options()'s RIGHT presses from each value an old save can leave:
+//  on console B a save with FAST and SET became SLOW and SHIFT when the
+//  presses assumed MID and SHIFT.
+UnitTestResult test_option_presses(){
+    const std::vector<std::string>& speed = option_menu_values(OptionMenuItem::TEXT_SPEED);
+    const std::vector<std::string>& style = option_menu_values(OptionMenuItem::BATTLE_STYLE);
+    struct Case{
+        const std::vector<std::string>& values;
+        std::string current;
+        std::string target;
+        std::optional<size_t> expected;
+    };
+    const std::vector<Case> cases{
+        {.values = speed, .current = "slow", .target = "fast", .expected = 2},
+        {.values = speed, .current = "mid", .target = "fast", .expected = 1},
+        {.values = speed, .current = "fast", .target = "fast", .expected = 0},
+        {.values = style, .current = "shift", .target = "set", .expected = 1},
+        {.values = style, .current = "set", .target = "set", .expected = 0},
+        //  RIGHT wraps from the last value to the first.
+        {.values = speed, .current = "fast", .target = "slow", .expected = 1},
+        //  Unread, or another row's value: no guess.
+        {.values = speed, .current = "", .target = "fast", .expected = std::nullopt},
+        {.values = style, .current = "fast", .target = "set", .expected = std::nullopt},
+    };
+    for (const Case& c : cases){
+        const std::optional<size_t> presses = option_right_presses(c.values, c.current, c.target);
+        if (presses != c.expected){
+            auto text = [](const std::optional<size_t>& n){
+                return n ? std::to_string(*n) + " RIGHT" : std::string("no presses");
+            };
+            return "\"" + c.current + "\" to " + c.target + ": expected " + text(c.expected) + ", got " + text(presses) + ".";
+        }
+    }
+    return true;
+}
+
 }
 
 
@@ -683,6 +759,8 @@ void add_tests_AutoStory(UnitTestDatabase& database){
     database.add<Test_AutoStory>("Pewter: to the aide's trigger", test_pewter_aide_walk);
     database.add<Test_AutoStory>("routes run after the Running Shoes", test_runs_after_shoes);
     database.add<Test_AutoStory>("Pewter: the first run", test_first_run);
+    database.add<Test_AutoStory>("intro: names, the rival's from the list", test_intro_names);
+    database.add<Test_AutoStory>("options: RIGHT presses from the shown value", test_option_presses);
 }
 
 
