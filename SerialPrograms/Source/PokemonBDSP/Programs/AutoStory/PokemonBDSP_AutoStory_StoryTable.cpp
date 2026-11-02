@@ -268,10 +268,10 @@ std::vector<StoryCheckpoint> lake_and_pokedex(){
             //  the game fades to the house, where Mom gives the Running Shoes. The
             //  scene ends beside her on the rug, facing her (console, r24).
             scene("rowan_and_dawn", at(HOME, 6, 8, EAST), "Rowan and Dawn come back; Barry, then home for the Running Shoes"),
-            //  Mom's door warning (var 1) was spent in 00.01: the mat is a plain door now (assumed).
+            //  Mom's warning was spent in 00.01, so the door's tile (6, 10) is a plain
+            //  door now: stepping onto it goes out (r27).
             route("above_the_door_again", at(HOME, 6, 9, SOUTH), "round Mom to above the door"),
-            step_into("onto_the_door_mat", SOUTH, "the door's tile (6, 10)", at(HOME, "door", SOUTH)),
-            step_into("out_of_the_house_again", SOUTH, "out of the door", at(TWINLEAF, "house_doorstep", SOUTH)),
+            step_into("out_of_the_house_again", SOUTH, "onto the door's tile (6, 10), and out", at(TWINLEAF, "house_doorstep", SOUTH)),
             //  Through the grass now, with a starter: wild battles are run from.
             route("short_of_dawn", at(SANDGEM, 3, 12, EAST), "Twinleaf, then east along Route 201 to Sandgem's edge"),
             step_into("dawns_stop", EAST, "the trigger (4, 10..15)"),

@@ -11,15 +11,16 @@
 #include "Common/Cpp/Filesystem/Filesystem.h"
 #include "Common/Cpp/PrettyPrint.h"
 #include "CommonFramework/Exceptions/OperationFailedException.h"
+#include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
 #include "CommonFramework/GlobalAutoPaths.h"
 #include "CommonFramework/Globals.h"
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "CommonTools/Async/InferenceRoutines.h"
-#include "CommonTools/VisualDetectors/BlackScreenDetector.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "Pokemon/AutoStory/Pokemon_TilePose.h"
 #include "PokemonBDSP/Inference/PokemonBDSP_DialogDetector.h"
+#include "PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_OverworldDetector.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_PlanCosts.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Indoors.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_PlannedRoute.h"
@@ -223,21 +224,52 @@ Outcome StoryExecutor::legs(RunState& state, const StoryStep& step){
     return Pokemon::outcome_ok(Pokemon::tile_pose(state.pose.map, at, step.legs.back().direction));
 }
 
+namespace{
+
+//  One rule for scenes and map changes: v2's long B mashes, with an end
+//  check. Press through the text, and keep pressing B while the screen is
+//  quiet: a scene can pause while someone walks off (Dawn and Barry after
+//  Rowan leaves, r23), fade dimly, not to black, to another map (r25), or
+//  wait on a box the detector misses (r26). B never starts a talk on the
+//  overworld. Done once the overworld has shown, with no text, for 5 s of
+//  presses.
+void settle(VideoStream& stream, ProControllerContext& context, Button button, const std::string& label){
+    const WallClock none = WallClock::max();
+    const WallClock deadline = current_time() + 120s;
+    ShortDialogDetector dialog;
+    OverworldDetector overworld;
+    WallClock quiet_since = none;
+    while (current_time() < deadline){
+        context.wait_for_all_requests();
+        const auto frame = stream.video().snapshot();
+        const WallClock now = current_time();
+        const bool talking = frame && dialog.detect(frame);
+        if (!talking && frame && overworld.detect(frame)){
+            quiet_since = quiet_since == none ? now : quiet_since;
+            if (now - quiet_since >= 5000ms){
+                return;
+            }
+        }else{
+            quiet_since = none;
+        }
+        pbf_press_button(context, talking ? button : BUTTON_B, 80ms, 1200ms);
+    }
+    OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
+        label + ": not back on a quiet overworld within 120 s.", stream);
+}
+
+}
+
 Outcome StoryExecutor::step(RunState& state, const StoryStep& step){
     route_turn(stream(), context(), step.direction);
     const auto [x, y] = dpad_of(step.direction);
     const WalkResult walk = walk_tiles_dpad(stream(), context(), run_from_wild_battle, {x, y}, 1, step.name);
     stream().log(std::format("[{}] {}: a step {}, {}.", m_checkpoint, step.name, direction_name(step.direction), walk_stop_name(walk.stop)));
-    //  A step onto a door changes the map. The fade can start after the walk's
-    //  window and take 3 to 5 s (r10, and by hand: black at +3.2 s, outside at +5.4 s),
-    //  window (r10: Barry's door), so wait for it here, so the next step doesn't
-    //  take it for its own stop. It can also end inside the window (r12: our
-    //  door), so no fade is fine: the next step checks where we are.
-    if (walk.stop != WalkStop::TRANSITION && step.pose_after && step.pose_after->map != state.pose.map){
-        BlackScreenOverWatcher faded(COLOR_RED);
-        if (wait_until(stream(), context(), 10000ms, {{faded}}) != 0){
-            stream().log(label_of(step) + ": no fade after the step; it was likely inside the step.", COLOR_ORANGE);
-        }
+    //  A step through a door: the fade takes 3 to 5 s and can start after the
+    //  walk's window (r10), and arrival can start a scene (Mom's, 00.01). Settle
+    //  as a scene does, so the next step starts on a quiet overworld.
+    if (step.pose_after && step.pose_after->map != state.pose.map){
+        settle(stream(), context(), BUTTON_B, label_of(step));
     }
     std::vector<TilePos> at;
     for (const TilePos& pos : Pokemon::tiles_of(state.pose)){
@@ -263,47 +295,14 @@ Outcome StoryExecutor::answer(RunState&, const StoryStep& step){
     return Pokemon::outcome_ok();
 }
 
-namespace{
-
-//  The text to the overworld, then any lines that follow a quiet spell: a
-//  scene can go quiet while someone walks off, then speak again (Dawn's
-//  "please wait for me!" after Rowan leaves, r23). A walk that meets such a
-//  line takes it for a trainer.
-void finish_scene_text(VideoStream& stream, ProControllerContext& context, Button button, const std::string& label){
-    finish_dialogue(stream, context, button, label);
-    for (size_t tail = 0; tail < 3; tail++){
-        ShortDialogWatcher dialog(COLOR_CYAN);
-        if (wait_until(stream, context, 4000ms, {{dialog}}) != 0){
-            return;
-        }
-        stream.log("[Story] " + label + ": the scene spoke again; finishing it.");
-        finish_dialogue(stream, context, button, label);
+Outcome StoryExecutor::mash(RunState&, const StoryStep& step){
+    //  The step before may have played the scene already (a door step settles
+    //  its arrival scene), so its first line is not required.
+    ShortDialogWatcher dialog(COLOR_CYAN);
+    if (wait_until(stream(), context(), 15000ms, {{dialog}}) != 0){
+        stream().log(label_of(step) + ": no line within 15 s; the step before played it.", COLOR_ORANGE);
     }
-}
-
-}
-
-Outcome StoryExecutor::mash(RunState& state, const StoryStep& step){
-    const Button button = step.variant == "a" ? BUTTON_A : BUTTON_B;
-    wait_for_dialogue(stream(), context(), label_of(step));
-    finish_scene_text(stream(), context(), button, label_of(step));
-    //  A scene that ends on another map can stall on a line our detector
-    //  misses, and only goes on (to the dim fade home, then Mom) at a press:
-    //  r26 sat 30 s until the next walk's first press. B is safe on the
-    //  overworld, so press it until the lines on arrival start.
-    if (step.pose_after && step.pose_after->map != state.pose.map){
-        ShortDialogWatcher dialog(COLOR_CYAN);
-        const int ret = run_until<ProControllerContext>(stream(), context(), [](ProControllerContext& context){
-            for (size_t press = 0; press < 25; press++){
-                pbf_press_button(context, BUTTON_B, 80ms, 1500ms);
-            }
-        }, {{dialog}});
-        if (ret != 0){
-            stream().log(label_of(step) + ": no lines on arrival at " + step.pose_after->map + ".", COLOR_ORANGE);
-            return Pokemon::outcome_ok();
-        }
-        finish_scene_text(stream(), context(), button, label_of(step));
-    }
+    settle(stream(), context(), step.variant == "a" ? BUTTON_A : BUTTON_B, label_of(step));
     return Pokemon::outcome_ok();
 }
 
