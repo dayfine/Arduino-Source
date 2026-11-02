@@ -188,7 +188,11 @@ std::vector<StoryStep> route_201_to_the_lakefront(){
 //  00.01: down from the bedroom, Barry's house, and out to the Lakefront.
 StoryCheckpoint bedroom_to_lakefront(){
     std::vector<StoryStep> steps{
-        route("above_the_stairs", at(BEDROOM, "stairs", EAST), "the top of the mat, west of the stairs"),
+        //  The top row: the Azure Flute's tile (7, 4), then east over the stairs' mat.
+        route("below_the_flute", at(BEDROOM, 7, 5, NORTH), "below the Azure Flute's tile"),
+        event("azure_flute_if_there", "take the Azure Flute if this save has one", at(BEDROOM, 7, 5, NORTH)),
+        legs("onto_the_flute_tile", {{.direction = NORTH, .tiles = 1}, {.direction = EAST, .tiles = 1}},
+            "up onto (7, 4), then east onto the top of the stairs' mat (8, 4)"),
         //  The stairs are entered moving east from the top of the two-tile mat,
         //  the decomp's stairs point (8, 4); east from (8, 5) or north are walls (r8, r9).
         //  The stairs' warp lands on 1F's stairs; a tile below is allowed (assumed).

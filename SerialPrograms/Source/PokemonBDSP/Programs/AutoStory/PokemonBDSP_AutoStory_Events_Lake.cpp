@@ -96,6 +96,23 @@ Pokemon::Outcome choose_starter(StoryExecutor& executor, Pokemon::RunState&, con
     return Pokemon::outcome_ok();
 }
 
+//  00.01: BDSP puts an Azure Flute on the bedroom floor at (7, 4) when the console
+//  has Legends: Arceus save data, and nothing there otherwise. Facing that tile:
+//  A, and if text follows ("You found an Azure Flute!", then the pocket line), B
+//  through it. Without the ball the A does nothing and we go on.
+void azure_flute_if_there(VideoStream& stream, ProControllerContext& context){
+    pbf_press_button(context, BUTTON_A, 80ms, 0ms);
+    context.wait_for_all_requests();
+    for (int presses = 0; presses < 6; presses++){
+        ShortDialogWatcher dialog(COLOR_YELLOW);
+        if (wait_until(stream, context, 2000ms, {{dialog}}) != 0){
+            return;
+        }
+        pbf_press_button(context, BUTTON_B, 80ms, 1000ms);
+        context.wait_for_all_requests();
+    }
+}
+
 //  00.02: after the Starly battle, Rowan's lines and the walk out of the
 //  lake, B for a minute.
 void after_starly(VideoStream&, ProControllerContext& context){
@@ -138,6 +155,7 @@ void catch_tutorial(VideoStream& stream, ProControllerContext& context){
 
 
 void add_lake_events(StoryEvents& events){
+    events.emplace("azure_flute_if_there", console_event(azure_flute_if_there));
     events.emplace("starter_briefcase", console_event(starter_briefcase));
     events.emplace("choose_starter", choose_starter);
     events.emplace("fight_starly", console_event(fight_starly));
