@@ -288,6 +288,16 @@ std::vector<StoryCheckpoint> lake_and_pokedex(){
     };
 }
 
+//  West along Sandgem's path (row 12) until Route 201's banner shows: it
+//  shows a tile or a few past the border, Sandgem (-1, 12) = Route 201 (63, 5).
+StoryStep route_201_by_the_path(){
+    StoryStep step = legs("to_route_201", {{.direction = WEST, .tiles = 40}}, "run west along the path until Route 201's banner", "to_map");
+    step.pose_after = Pokemon::tile_pose(ROUTE_201, {
+        TilePos{57, 5}, TilePos{58, 5}, TilePos{59, 5}, TilePos{60, 5}, TilePos{61, 5}, TilePos{62, 5}, TilePos{63, 5}
+    }, WEST);
+    return step;
+}
+
 std::vector<StoryCheckpoint> to_the_catch(){
     return {
         row("00.04", "Home to Mom, then Dawn's catching tutorial on Route 202", at(LAB, "rowan_talk", NORTH), {
@@ -299,9 +309,11 @@ std::vector<StoryCheckpoint> to_the_catch(){
             scene("dawn_shows_us_sandgem", Pokemon::tile_pose(SANDGEM, {
                     TilePos{26, 11}, TilePos{27, 11}, TilePos{28, 11}, TilePos{26, 12}, TilePos{27, 12}, TilePos{28, 12}
                 }, NORTH), "Dawn's tour of Sandgem"),
-            //  First to one known tile: the trees that end the doors' row.
-            route("to_the_row_end", at(SANDGEM, "front_row_east_end"), "east along the doors' row to the trees", "town"),
-            route("to_route_201", at(ROUTE_201, "route_201_east_end"), "west along the doors' row out of Sandgem"),
+            //  Not west along the doors' row: running it took us into the lab at its
+            //  mat (8, 11) (r41, r42). Row 12 is open into Route 201: run it until
+            //  Route 201's banner shows, a few tiles in.
+            route("onto_the_path", at(SANDGEM, 29, 12, WEST), "to the east end of the path below the doors' row", "town"),
+            route_201_by_the_path(),
             route("home", at(TWINLEAF, "house_doorstep", NORTH), "west along Route 201 to Twinleaf, running from wild battles"),
             //  The game sets us a tile inside, off the mat: (6, 9) (r40: the old extra
             //  step north put us beside the TV, above Mom).

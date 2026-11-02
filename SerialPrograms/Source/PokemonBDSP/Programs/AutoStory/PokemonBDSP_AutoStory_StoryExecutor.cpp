@@ -24,6 +24,7 @@
 #include "PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_OverworldDetector.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_PlanCosts.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Indoors.h"
+#include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Location.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_PlannedRoute.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_RouteWalk.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Walk.h"
@@ -215,6 +216,23 @@ Outcome leg_to_dialogue(VideoStream& stream, ProControllerContext& context, cons
     return Pokemon::outcome_failed("no_dialogue", step.name);
 }
 
+//  A LEGS step "to_map": runs its one leg until the location banner of
+//  pose_after's map shows, wherever it shows. A straight run along an open
+//  row needs no tile count (r41, r42: Sandgem's row 11 took us into the lab).
+Outcome leg_to_map(VideoStream& stream, ProControllerContext& context, const StoryStep& step, const std::string& checkpoint){
+    const Pokemon::StoryLeg& leg = step.legs.front();
+    const std::string map = step.pose_after ? step.pose_after->map : "";
+    route_turn(stream, context, leg.direction);
+    const auto [x, y] = dpad_of(leg.direction);
+    const WalkResult walk = walk_until_dpad(stream, context, run_from_wild_battle, {x, y},
+        Milliseconds(250) * leg.tiles + 2000ms, step.name, {
+            .arrived = [&](const ImageViewRGB32& screen){ return location_banner_matches(read_location_banner(screen), map); },
+            .pace = DpadPace::RUN,
+        });
+    stream.log(std::format("[{}] {}: ran {} to {}'s banner: {}.", checkpoint, step.name, direction_name(leg.direction), map, walk_stop_name(walk.stop)));
+    return walk.stop == WalkStop::ARRIVED ? Pokemon::outcome_ok() : Pokemon::outcome_failed("no_banner", map);
+}
+
 }
 
 Outcome StoryExecutor::legs(RunState& state, const StoryStep& step){
@@ -226,6 +244,9 @@ Outcome StoryExecutor::legs(RunState& state, const StoryStep& step){
     }
     if (step.variant == "to_dialogue"){
         return leg_to_dialogue(stream(), context(), step, m_checkpoint);
+    }
+    if (step.variant == "to_map"){
+        return leg_to_map(stream(), context(), step, m_checkpoint);
     }
     const bool one_short_ok = step.variant == "one_short_ok";
     if (!one_short_ok && !step.variant.empty()){
