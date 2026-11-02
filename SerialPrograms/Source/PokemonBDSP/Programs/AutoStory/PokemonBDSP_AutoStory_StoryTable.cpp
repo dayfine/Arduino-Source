@@ -402,7 +402,11 @@ std::vector<StoryCheckpoint> jubilife(){
                 "below the Center's door (52, 40)", "town"),
             //  The kids south of the Center can push us aside: the heal lines up by sight.
             heal("heal_jubilife", "in, the nurse, out onto the doorstep (r143a: check we are out)"),
-            event("into_the_school", "eleven tiles west of the Center's doorstep, north through the School's door"),
+            //  Same rule as the Center: plan to the tile below the door, then run in
+            //  (r63: "eleven tiles west" counted on the old turn's step; the map says twelve).
+            route("to_the_school", next_to(JUBILIFE, "trainers_school_door", SOUTH, NORTH),
+                "below the School's door (40, 40)", "town"),
+            step_into("into_the_school", NORTH, "the School's door"),
             to_walls("up_to_barry", {{.direction = NORTH, .tiles = 10}}, "the door's column to the back wall, beside Barry"),
             event("barry_town_map", "Barry gives the Town Map"),
             event("out_of_the_school", "straight down the door's column and out"),

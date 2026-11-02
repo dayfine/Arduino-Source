@@ -50,65 +50,6 @@ void up_the_steps(VideoStream& stream, ProControllerContext& context){
     }
 }
 
-//  The School's lamp, east of its door, from its doorsteps' row at night
-//  (2026-10-30): at 0.65 to 0.69 of the screen across the door takes us in;
-//  at 0.61 (right of it) and 0.75 (past it) its front stops us. A tile is
-//  0.065 of the screen. The box leaves out the Center's lamp further east.
-const double SCHOOL_LAMP_X_AT_DOOR = 0.67;
-const ImageFloatBox SCHOOL_LAMP_BOX(0.55, 0.20, 0.30, 0.10);
-const size_t SCHOOL_TILES_WEST_OF_CENTER = 11;
-
-//  At night the lamp east of the School's door says how many tiles across
-//  the door is; nothing by day.
-std::optional<double> school_door_across(VideoStream& stream, ProControllerContext& context){
-    context.wait_for_all_requests();
-    VideoSnapshot screen = stream.video().snapshot();
-    if (!screen){
-        return std::nullopt;
-    }
-    const std::optional<double> lamp = find_lit_lamp_x(*screen.frame, SCHOOL_LAMP_BOX);
-    if (!lamp){
-        stream.log("[Route] School's door: no lit lamp on screen.");
-        return std::nullopt;
-    }
-    const double across = tiles_across_at(*lamp) - tiles_across_at(SCHOOL_LAMP_X_AT_DOOR);
-    stream.log("[Route] School's door: the lamp at " + std::to_string(*lamp) + " of the screen, the door " +
-        std::to_string(across) + " tiles across.");
-    return across;
-}
-
-//  00.05: from the Center's doorstep into the Trainers' School. Measured on
-//  the console (2026-10-30): a tap to face west and eleven one-tile holds put
-//  us under the School's doorway; twelve is past it. A hold ends a part of a
-//  tile off (back east, eleven stopped beside the Center's door), so if the
-//  School's front stops us, nudge half a tile each way.
-void into_the_school(VideoStream& stream, ProControllerContext& context){
-    route_turn(stream, context, Direction::WEST);
-    for (size_t tiles = 0; tiles < SCHOOL_TILES_WEST_OF_CENTER; tiles++){
-        hold_for(stream, context, Direction::WEST, 160ms, "West to the School's door");
-    }
-    for (size_t looks = 0; looks < 3; looks++){
-        const std::optional<double> across = school_door_across(stream, context);
-        //  The door took us from -0.19 and 0.19 but not -0.34 (r148b).
-        if (!across || std::abs(*across) <= 0.3){
-            break;
-        }
-        stream.log("[Route] Line up with the School's door by its lamp: " + std::to_string(*across) + " tiles across.");
-        move_across(stream, context, *across);
-        context.wait_for_all_requests();
-    }
-    if (door_north_by_scene(stream, context, "Trainers' School door")){
-        return;
-    }
-    for (Direction side : {Direction::EAST, Direction::WEST, Direction::WEST}){
-        nudge(stream, context, side, "Line up with the School's door");
-        if (door_north_by_scene(stream, context, "Trainers' School door")){
-            return;
-        }
-    }
-    fail_step(stream, "The School's door did not take us from 11 tiles west of the Center's doorstep, or half a tile either side.");
-}
-
 //  00.05: Barry stands at the blackboard a tile west of the door's column,
 //  and that column is clear to the back wall: north to it, face west, his
 //  scene to "You obtained a Town Map!" (A closes it). A tile west by a hold
@@ -433,7 +374,6 @@ void north_to_rowan(VideoStream& stream, ProControllerContext& context){
 
 void add_jubilife_events(StoryEvents& events){
     events.emplace("up_the_steps", console_event(up_the_steps));
-    events.emplace("into_the_school", console_event(into_the_school));
     events.emplace("barry_town_map", console_event(barry_town_map));
     events.emplace("meet_the_president", console_event(meet_the_president));
     events.emplace("up_to_the_mart_road", console_event(up_to_the_mart_road));
