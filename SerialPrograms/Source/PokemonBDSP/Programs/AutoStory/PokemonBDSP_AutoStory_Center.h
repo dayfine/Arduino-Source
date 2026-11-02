@@ -110,6 +110,14 @@ void heal_at_pokemon_center(
     const std::string& label
 );
 
+//  heal_at_pokemon_center() from just inside the door: talks to the nurse,
+//  accepts, and walks back out. Ends on the tile below the door. For a caller
+//  that walked in on its own (from a known tile, straight north).
+void heal_inside_pokemon_center(
+    VideoStream& stream, ProControllerContext& context,
+    const std::string& label
+);
+
 
 
 }

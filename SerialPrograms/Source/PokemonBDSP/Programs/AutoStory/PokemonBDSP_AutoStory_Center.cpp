@@ -417,7 +417,13 @@ void heal_at_pokemon_center(
     const std::string& label
 ){
     enter_lit_door(stream, context, label);
+    heal_inside_pokemon_center(stream, context, label);
+}
 
+void heal_inside_pokemon_center(
+    VideoStream& stream, ProControllerContext& context,
+    const std::string& label
+){
     //  The nurse's counter is straight ahead of the door.
     route_status(stream, label + ": talking to the nurse.");
     if (walk_to_talk(stream, context, run_from_wild_battle, {0, 1}, 6000ms, label + ": to the nurse").stop != WalkStop::DIALOG){
