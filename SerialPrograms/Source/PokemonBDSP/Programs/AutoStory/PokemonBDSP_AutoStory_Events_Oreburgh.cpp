@@ -20,6 +20,7 @@
 #include "PokemonBDSP/Inference/PokemonBDSP_DialogDetector.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_Maps.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_StoryMaps.h"
+#include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Indoors.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Location.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_PlannedRoute.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_RouteWalk.h"
@@ -226,6 +227,15 @@ void oreburgh_center_door(VideoStream& stream, ProControllerContext& context){
     // ignored A in r101 and r104 until then). A save after his talk has him
     // gone already.
     //
+    //  Already in the Center (a save inside its door): nothing to do, as
+    //  01.01 does for its Center.
+    context.wait_for_all_requests();
+    if (VideoSnapshot screen = stream.video().snapshot()){
+        if (indoors(*screen.frame)){
+            stream.log("[Route] 01.03: already in the Pokemon Center.");
+            return;
+        }
+    }
     enter_oreburgh_center(stream, context);
     context.wait_for(1000ms);
 }
