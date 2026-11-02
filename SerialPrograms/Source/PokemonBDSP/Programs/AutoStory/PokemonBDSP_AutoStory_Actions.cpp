@@ -37,7 +37,16 @@ namespace{
 //  shows the play time and badges, a record of where each checkpoint save
 //  stands. Returns the map its card names.
 std::string open_save_prompt(VideoStream& stream, ProControllerContext& context){
-    overworld_to_menu(stream, context);
+    //  overworld_to_menu() reads the menu with the NEW tags' columns, which a new
+    //  Pokemon in the party breaks (r19: three misses, then the blind save).
+    pbf_press_button(context, BUTTON_X, 160ms, 840ms);
+    context.wait_for_all_requests();
+    MenuWatcher menu(COLOR_RED, true);
+    if (wait_until(stream, context, std::chrono::seconds(10), {{menu}}) < 0){
+        OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
+            "Menu not detected after 10 seconds.", stream);
+    }
+    context.wait_for(100ms);
     pbf_press_button(context, BUTTON_R, 80ms, 2000ms);
     context.wait_for_all_requests();
     VideoSnapshot screen = stream.video().snapshot();
