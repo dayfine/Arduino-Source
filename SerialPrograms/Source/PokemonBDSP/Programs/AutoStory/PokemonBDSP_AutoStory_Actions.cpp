@@ -33,12 +33,11 @@ using namespace std::chrono_literals;
 
 namespace{
 
-//  Opens the save prompt from the overworld and keeps a screenshot of it: it
-//  shows the play time and badges, a record of where each checkpoint save
-//  stands. Returns the map its card names.
-std::string open_save_prompt(VideoStream& stream, ProControllerContext& context){
-    //  overworld_to_menu() reads the menu with the NEW tags' columns, which a new
-    //  Pokemon in the party breaks (r19: three misses, then the blind save).
+//  X from the overworld, then waits up to 10 s for the menu. Reads it with
+//  the NEW tags allowed: overworld_to_menu() reads it with the tags' columns,
+//  which a new Pokemon in the party breaks (r19: three misses, then the blind
+//  save; r52: the Bag check after the Mart lady's Potions).
+void open_menu_from_overworld(VideoStream& stream, ProControllerContext& context){
     pbf_press_button(context, BUTTON_X, 160ms, 840ms);
     context.wait_for_all_requests();
     MenuWatcher menu(COLOR_RED, true);
@@ -46,6 +45,13 @@ std::string open_save_prompt(VideoStream& stream, ProControllerContext& context)
         OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
             "Menu not detected after 10 seconds.", stream);
     }
+}
+
+//  Opens the save prompt from the overworld and keeps a screenshot of it: it
+//  shows the play time and badges, a record of where each checkpoint save
+//  stands. Returns the map its card names.
+std::string open_save_prompt(VideoStream& stream, ProControllerContext& context){
+    open_menu_from_overworld(stream, context);
     context.wait_for(100ms);
     pbf_press_button(context, BUTTON_R, 80ms, 2000ms);
     context.wait_for_all_requests();
@@ -200,9 +206,9 @@ MenuCursorPosition read_menu_cursor(VideoStream& stream, ProControllerContext& c
 //  Opens the menu unless it is already open: a late-opening menu may show
 //  after a timeout, and X would close it.
 void open_menu_unless_open(VideoStream& stream, ProControllerContext& context){
-    MenuWatcher already_open;
+    MenuWatcher already_open(COLOR_RED, true);
     if (wait_until(stream, context, 300ms, {{already_open}}) < 0){
-        overworld_to_menu(stream, context);
+        open_menu_from_overworld(stream, context);
     }else{
         stream.log("[Open menu] Menu already visible; skipping X.");
     }
