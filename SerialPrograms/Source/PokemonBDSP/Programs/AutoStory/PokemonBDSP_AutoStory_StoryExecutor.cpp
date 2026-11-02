@@ -18,7 +18,9 @@
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "CommonTools/Async/InferenceRoutines.h"
+#include "CommonTools/VisualDetectors/BlackScreenDetector.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
+#include "NintendoSwitch/Commands/NintendoSwitch_Commands_Superscalar.h"
 #include "Pokemon/AutoStory/Pokemon_TilePose.h"
 #include "PokemonBDSP/Inference/PokemonBDSP_DialogDetector.h"
 #include "PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_OverworldDetector.h"
@@ -334,19 +336,40 @@ void settle(VideoStream& stream, ProControllerContext& context, Button button, c
 
 }
 
+namespace{
+
+//  Holds the D-pad toward a door (with B after the shoes) until the screen goes
+//  dark, up to 12 s. Returns whether it did. The walker's black-screen watch
+//  missed the lab's fade into Sandgem (r44, "dialog"), and settle's samples
+//  1.3 s apart can fall either side of it, so watch at settle's own darkness.
+bool run_into_door(VideoStream& stream, ProControllerContext& context, Direction direction, bool run){
+    const DpadPosition dpad =
+        direction == Direction::NORTH ? DPAD_UP :
+        direction == Direction::SOUTH ? DPAD_DOWN :
+        direction == Direction::WEST ? DPAD_LEFT : DPAD_RIGHT;
+    BlackScreenWatcher dark(COLOR_RED, {0.1, 0.1, 0.8, 0.8}, 3 * FADE_DARKNESS, 60);
+    const int ret = run_until<ProControllerContext>(stream, context, [&](ProControllerContext& context){
+        if (run){
+            ssf_press_button(context, BUTTON_B, 0ms, 12000ms, 0ms);
+        }
+        pbf_press_dpad(context, dpad, 12000ms, 0ms);
+    }, {{dark}});
+    return ret == 0;
+}
+
+}
+
 Outcome StoryExecutor::step(RunState& state, const StoryStep& step){
     route_turn(stream(), context(), step.direction);
-    //  A step through a door: walk (or run) on until the screen goes black,
+    //  A step through a door: walk (or run) on until the screen goes dark,
     //  from next to the door or from anywhere in its line (r43: tapping 8 tiles
     //  down the lab took 7 s), then settle for any scene on arrival (Mom's,
-    //  00.01; Dawn's tour, 00.04). Without a black screen, settle must see the
-    //  fade itself (r33 was outside, "no fade").
+    //  00.01; Dawn's tour, 00.04). Without the fade, settle must see it itself
+    //  (r33 was outside, "no fade").
     if (step.pose_after && step.pose_after->map != state.pose.map){
-        const auto [x, y] = dpad_of(step.direction);
-        const WalkResult walk = walk_until_dpad(stream(), context(), run_from_wild_battle, {x, y}, 12000ms, step.name,
-            {.arrived = nullptr, .pace = m_can_run ? DpadPace::RUN : DpadPace::WALK});
-        stream().log(std::format("[{}] {}: {} through the door: {}.", m_checkpoint, step.name, direction_name(step.direction), walk_stop_name(walk.stop)));
-        settle(stream(), context(), BUTTON_B, label_of(step), walk.stop != WalkStop::TRANSITION);
+        const bool faded = run_into_door(stream(), context(), step.direction, m_can_run);
+        stream().log(std::format("[{}] {}: {} through the door: {}.", m_checkpoint, step.name, direction_name(step.direction), faded ? "faded" : "no fade yet"));
+        settle(stream(), context(), BUTTON_B, label_of(step), !faded);
         return Pokemon::outcome_ok();
     }
     const auto [x, y] = dpad_of(step.direction);
