@@ -43,6 +43,7 @@ class ClassInfo:
     line: int
     has_bases: bool
     members: tuple
+    internal: bool = False  # nested in a class, or in a detail or anonymous namespace
 
 
 def tokens(source):
@@ -264,6 +265,16 @@ def scope_label(toks, index, heads):
     return None
 
 
+def is_internal_scope(toks, index, heads):
+    """A '{' that opens a class, an anonymous namespace or a detail namespace."""
+    if index in heads:
+        return True
+    if index > 0 and toks[index - 1][0] == 'namespace':
+        return True
+    label = scope_label(toks, index, heads) or ''
+    return label == 'detail' or label.endswith('::detail')
+
+
 def find_classes(source):
     toks = tokens(source)
     pairs = brace_pairs(toks)
@@ -273,7 +284,7 @@ def find_classes(source):
             head = class_head(toks, index)
             if head and head[0] and head[2] in pairs:
                 heads[head[2]] = (head[0], head[1], line, text)
-    result, stack = [], []
+    result, stack, internal = [], [], []
     for index, (text, _) in enumerate(toks):
         if text == '{':
             label = scope_label(toks, index, heads)
@@ -282,14 +293,19 @@ def find_classes(source):
                 body = members(toks, index + 1, pairs[index], pairs, keyword, name)
                 if body is not None:
                     qualified = '::'.join([s for s in stack if s] + [name])
-                    result.append(ClassInfo(qualified, line, bases, tuple(body)))
+                    result.append(ClassInfo(qualified, line, bases, tuple(body), any(internal)))
             stack.append(label)
+            internal.append(is_internal_scope(toks, index, heads))
         elif text == '}' and stack:
             stack.pop()
+            internal.pop()
     return result
 
 
 def is_single_method_interface(info):
+    """Nested and detail-namespace classes are implementation details (e.g. type erasure)."""
+    if info.internal:
+        return False
     methods = [m for m in info.members if m.kind == 'method']
     others = [m for m in info.members
               if m.kind != 'method' and not (m.kind == 'dtor' and m.virtual)]

@@ -14,10 +14,15 @@ class Metric:
     value: int
     limit: int
     line: int = 1
+    # What the base revision is matched on, if not `symbol`. Functions match on
+    # their qualified name without parameters: changing a parameter's type
+    # (std::function to MoveOnlyFunction, #90) must not turn an old long
+    # function into a new one held to the limit.
+    name: str = None
 
     @property
     def key(self):
-        return (self.path, self.symbol, self.check)
+        return (self.path, self.name if self.name is not None else self.symbol, self.check)
 
 
 class BraceDepth:
@@ -53,5 +58,5 @@ def measure(path, source):
         )
         for check, value, limit in values:
             result.append(Metric(path, function.long_name, check, value, limit,
-                                 function.start_line))
+                                 function.start_line, function.name))
     return result
