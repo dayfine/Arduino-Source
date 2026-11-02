@@ -1,6 +1,6 @@
 {
     "name": "PlayerHouse1F",
-    "source": {"decomp_file": "pret/pokeplatinum: res/field/maps/data/map_data_186.bin; events_twinleaf_town_player_house_1f.json; decomp only, not checked on the console", "revision": "c6689696d5fb", "date": "2026-11-01"},
+    "source": {"decomp_file": "pret/pokeplatinum: res/field/maps/data/map_data_186.bin; events_twinleaf_town_player_house_1f.json; decomp, but (4, 8) is open on the console: west along row 8 stops at x 4 (r32, 2026-11-01)", "revision": "c6689696d5fb", "date": "2026-11-01"},
     "tiles": [
         "#############",
         "#############",
@@ -10,7 +10,7 @@
         "#SSS..SS....#",
         "#...........#",
         "#...........#",
-        "#..##.......#",
+        "#..#........#",
         "##.##......##",
         "##....D....##",
         "#############"
