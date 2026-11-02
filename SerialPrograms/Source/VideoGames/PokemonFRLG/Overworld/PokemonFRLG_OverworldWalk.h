@@ -19,7 +19,9 @@
 
 #include <memory>
 #include <optional>
+#include <string>
 #include <vector>
+#include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "Pokemon/Navigation/Pokemon_LegWalker.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
@@ -59,16 +61,27 @@ OverworldInterruptSet overworld_interrupts_with_repel(int max_repel_slot);
 void use_max_repel_from_bag(ConsoleHandle& console, ProControllerContext& context, int slot);
 
 
-//  Walks `route` from where it was planned. The player must be standing still
-//  on the overworld, not running and not on the bike. `facing` is the way the
-//  player faces at the start; if not given, it is read from the screen. Throws OperationFailedException if a
-//  warp's fade or the Surf prompt doesn't show, or a leg is interrupted too
-//  many times.
+//  How the player moves on foot: walking, or running with B held, which
+//  needs the Running Shoes (FLAG_SYS_B_DASH, from Oak's aide in Pewter City
+//  after Brock). On the water the player surfs at its own pace either way.
+enum class MoveSpeed{
+    WALK,
+    RUN,
+};
+const char* move_speed_name(MoveSpeed speed);
+
+
+//  Walks `route` from where it was planned, at `speed`. The player must be
+//  standing still on the overworld and not on the bike. `facing` is the way
+//  the player faces at the start; if not given, it is read from the screen.
+//  Throws OperationFailedException if a warp's fade or the Surf prompt
+//  doesn't show, or a leg is interrupted too many times.
 void walk_overworld_route(
     ConsoleHandle& console, ProControllerContext& context,
     const std::vector<RouteStep>& route,
     std::optional<Direction> facing = std::nullopt,
-    const OverworldInterruptSet& interrupts = default_overworld_interrupts()
+    const OverworldInterruptSet& interrupts = default_overworld_interrupts(),
+    MoveSpeed speed = MoveSpeed::WALK
 );
 
 
@@ -79,6 +92,9 @@ namespace OverworldWalkSteps{
 
 inline constexpr Milliseconds TILE_TIME(267);       //  16 frames at 60 fps, measured exact over 15 tiles
 inline constexpr Milliseconds SURF_TILE_TIME(133);  //  the game moves a surfing player at running speed
+//  8 frames: running is 2 pixels a frame, twice walking. Not measured on the
+//  console yet; the walker logs each leg to a wall (speed_note()) for that.
+inline constexpr Milliseconds RUN_TILE_TIME(133);
 inline constexpr Milliseconds TURN_TAP(40);         //  turns a player facing another way, without a step
 inline constexpr Milliseconds TURN_SETTLE(300);
 inline constexpr Milliseconds FACE_HOLD(40);        //  short enough to turn without stepping
@@ -106,6 +122,27 @@ DpadPosition dpad(Direction direction);
 //  The leg mover: holds the D-pad. FRLG moves exactly a tile per 16 frames.
 void hold_dpad(ProControllerContext& context, Direction direction, Milliseconds duration);
 
+//  The leg mover for running: holds the D-pad with B for the whole hold.
+//  Turn taps go without B: a tap only turns the player.
+void hold_dpad_running(ProControllerContext& context, Direction direction, Milliseconds duration);
+
+//  How long one tile of `step` takes at `speed`: on the water, the Surf
+//  pace whatever the speed.
+Milliseconds tile_time(const RouteStep& step, MoveSpeed speed);
+
+//  The mover for `step` at `speed`: hold_dpad_running() for a run on foot,
+//  hold_dpad() otherwise (B does nothing on the water).
+Pokemon::LegMover<ProControllerContext> leg_mover(const RouteStep& step, MoveSpeed speed);
+
+//  How long the walker holds the D-pad for a WALK `step` at `speed`
+//  (Pokemon::leg_hold()).
+Milliseconds leg_hold_time(const RouteStep& step, MoveSpeed speed);
+
+//  For a leg to a wall on foot, the line the walker logs so a console run
+//  can check the pace: "[Speed] run west: 40 tiles in 5320 ms, held 5586 ms",
+//  the tiles at the assumed pace and the hold. Empty for other steps.
+std::string speed_note(const RouteStep& step, MoveSpeed speed);
+
 //  After a hold onto `step`'s warp: waits out its fade.
 void wait_out_warp(ConsoleHandle& console, ProControllerContext& context, const RouteStep& step);
 
@@ -123,6 +160,9 @@ std::optional<Direction> read_facing(ConsoleHandle& console, ProControllerContex
 void start_surf(ConsoleHandle& console, ProControllerContext& context, Direction direction, bool facing_water);
 
 }
+
+
+void add_tests_OverworldWalk(UnitTestDatabase& database);
 
 
 

@@ -110,7 +110,7 @@ Outcome walk_route(StoryEnv& env, RunState& state, const StoryStep& step){
     //  Planning lets the walker recover a stopped open leg: it plans back to
     //  the leg's end, then walks the rest as given.
     const RoutePlanning planning{.maps = &story_maps(), .costs = default_route_costs(), .start = start, .label = step.name, .wall_check = wall_check(env)};
-    walk_overworld_route_with_recovery(env.console, env.context, *route, planning, facing, interrupts);
+    walk_overworld_route_with_recovery(env.console, env.context, *route, planning, facing, interrupts, move_speed(step));
     log_arrival(env, step.name, target->map, target->tile);
     const std::optional<Direction> end_facing = route->empty() ? facing : std::optional<Direction>(route->back().facing_after);
     return Pokemon::outcome_ok(to_pose(StoryPose{target->map, target->tile, end_facing}));
@@ -134,7 +134,7 @@ Outcome walk_legs(StoryEnv& env, RunState& state, const StoryStep& step){
     //  Planning lets the walker recover a stopped open leg: it plans back to
     //  the leg's end, then walks the rest as given.
     const RoutePlanning planning{.maps = &story_maps(), .costs = default_route_costs(), .start = start, .label = step.name, .wall_check = wall_check(env)};
-    walk_overworld_route_with_recovery(env.console, env.context, *route, planning, facing, interrupts);
+    walk_overworld_route_with_recovery(env.console, env.context, *route, planning, facing, interrupts, move_speed(step));
     log_arrival(env, step.name, route->back().end.map, route->back().end.point);
     return Pokemon::outcome_ok(to_pose(StoryPose{route->back().end.map, route->back().end.point, route->back().facing_after}));
 }
@@ -256,6 +256,10 @@ std::optional<std::vector<MartOrder>> viridian_mart_orders(const std::vector<Pok
 const std::vector<MapData>& story_maps(){
     static const std::vector<MapData> maps = overworld_maps(map_flag_set(overworld_maps(), "after_hall_of_fame"));
     return maps;
+}
+
+MoveSpeed move_speed(const StoryStep& step){
+    return step.variant == RUN_VARIANT ? MoveSpeed::RUN : MoveSpeed::WALK;
 }
 
 Pokemon::Pose to_pose(const StoryPose& pose){

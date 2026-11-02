@@ -26,6 +26,7 @@ const char* const VIRIDIAN_MART = "ViridianCity_Mart";
 const char* const VIRIDIAN_CENTER = "ViridianCity_PokemonCenter_1F";
 const char* const FOREST = "ViridianForest";
 const char* const FOREST_GATE = "Route2_ViridianForest_NorthEntrance";
+const char* const PEWTER = "PewterCity";
 const char* const PEWTER_CENTER = "PewterCity_PokemonCenter_1F";
 const char* const GYM = "PewterCity_Gym";
 
@@ -97,6 +98,12 @@ StoryStep legs(std::string name, std::vector<StoryLeg> legs, std::string why, Wi
     StoryStep step = make(StoryStepKind::LEGS, std::move(name), std::move(why));
     step.legs = std::move(legs);
     step.fight_wild = wild == WildBattles::FIGHT;
+    return step;
+}
+
+//  `step`, a ROUTE or LEGS, run with B held: from the Running Shoes on.
+StoryStep running(StoryStep step){
+    step.variant = RUN_VARIANT;
     return step;
 }
 
@@ -246,12 +253,35 @@ StoryCheckpoint brock(){
     });
 }
 
+StoryCheckpoint running_shoes(){
+    return row("00.10", "Pewter: the Running Shoes from Oak's aide", at(GYM, 6, 6, NORTH), {}, StartMenu::FULL, {
+        //  Brock's win sets VAR_MAP_SCENE_PEWTER_CITY to 1 and shows the aide at
+        //  (46, 20); his triggers are (46, 21..23) (PewterCity map.json). The
+        //  Gym guide's triggers at (42..43, 21..23) need the scene at 0.
+        route("before_aide_trigger", at(PEWTER, 45, 21, EAST), "out of the Gym, east along row 21, short of the top trigger"),
+        step_into("aide_trigger", EAST, "onto (46, 21), below the aide"),
+        //  RunningShoesAideTriggerTop: the aide talks from (46, 20), no YES/NO;
+        //  the player only turns up. He walks off and is removed; FLAG_SYS_B_DASH
+        //  is set (console B, 2026-11-02: about 20 B presses to the overworld).
+        scene("shoes_from_aide", at(PEWTER, 46, 21, NORTH), "\"Oh, PLAYER!\" ... the Running Shoes; ends facing north"),
+    });
+}
+
+StoryCheckpoint first_run(){
+    //  From here on every route and leg runs. Route 3 isn't among the story's
+    //  maps yet, so this checkpoint only tests running on one long leg.
+    return row("00.11", "Pewter: a run to a wall, to time running", at(PEWTER, 46, 21, NORTH), {}, StartMenu::FULL, {
+        running(legs("run_west", {{WEST, 40}}, "row 21 west to the wall at (6, 21): logs the run's pace")),
+    });
+}
+
 }
 
 
 const std::vector<StoryCheckpoint>& story_checkpoints(){
     static const std::vector<StoryCheckpoint> checkpoints{
         new_game(), leave_house(), oaks_trigger(), starter(), parcel(), pokedex(), shopping(), forest(), brock(),
+        running_shoes(), first_run(),
     };
     return checkpoints;
 }

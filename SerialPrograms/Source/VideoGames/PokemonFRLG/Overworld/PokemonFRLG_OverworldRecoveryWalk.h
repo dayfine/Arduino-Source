@@ -25,9 +25,10 @@ namespace NintendoSwitch{
 namespace PokemonFRLG{
 
 
-//  Walks `route`, planned with `planning`, as walk_overworld_route() does,
-//  from the same start: standing still on the overworld, not running and
-//  not on the bike, facing `facing` (read from the screen if not given).
+//  Walks `route`, planned with `planning`, at `speed`, as
+//  walk_overworld_route() does, from the same start: standing still on the
+//  overworld, not on the bike, facing `facing` (read from the screen if not
+//  given).
 //
 //  When a battle or a message stops an open leg part-way, where the player
 //  is isn't guessed: run_route() finds them again with `planning`'s maps
@@ -47,7 +48,8 @@ void walk_overworld_route_with_recovery(
     const std::vector<RouteStep>& route,
     const RoutePlanning& planning,
     std::optional<Direction> facing = std::nullopt,
-    const OverworldInterruptSet& interrupts = default_overworld_interrupts()
+    const OverworldInterruptSet& interrupts = default_overworld_interrupts(),
+    MoveSpeed speed = MoveSpeed::WALK
 );
 
 
