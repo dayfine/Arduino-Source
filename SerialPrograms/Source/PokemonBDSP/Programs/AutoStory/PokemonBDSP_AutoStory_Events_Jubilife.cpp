@@ -51,20 +51,6 @@ void up_the_steps(VideoStream& stream, ProControllerContext& context){
     }
 }
 
-//  00.05: Barry stands at the blackboard a tile west of the door's column,
-//  and that column is clear to the back wall: north to it, face west, his
-//  scene to "You obtained a Town Map!" (A closes it). A tile west by a hold
-//  went two in r149a and the boy at the table stopped us.
-void barry_town_map(VideoStream& stream, ProControllerContext& context){
-    for (size_t attempt = 0; attempt < 2; attempt++){
-        const DialogueRead read = talk_facing(stream, context, Direction::WEST, BUTTON_A, "Barry");
-        if (read.opened && read.closed){
-            return;
-        }
-        walk_until_stopped(stream, context, Direction::NORTH, 4, "North to the back wall");
-    }
-    fail_step(stream, "Trainers' School: Barry did not answer from beside the back wall.");
-}
 
 //  00.05b: a talk to someone who wanders a tile either side of home along a
 //  row (the clowns by the Mart and the Poketch Company, WANDER_AROUND with
@@ -214,7 +200,7 @@ void east_to_barry(VideoStream& stream, ProControllerContext& context){
 
 void add_jubilife_events(StoryEvents& events){
     events.emplace("up_the_steps", console_event(up_the_steps));
-    events.emplace("barry_town_map", console_event(barry_town_map));
+
     events.emplace("talk_to_wanderer", talk_to_wanderer);
     events.emplace("jubilife_center_to_street", console_event(jubilife_center_to_street));
     events.emplace("east_to_barry", console_event(east_to_barry));

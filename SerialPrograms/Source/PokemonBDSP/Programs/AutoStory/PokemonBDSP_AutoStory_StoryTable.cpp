@@ -462,8 +462,15 @@ StoryCheckpoint the_town_map(){
         route("to_the_school", next_to(JUBILIFE, "trainers_school_door", SOUTH, NORTH),
             "below the School's door (40, 40)", "town"),
         step_into("into_the_school", NORTH, "the School's door", inside(TRAINERS_SCHOOL)),
-        to_walls("up_to_barry", {{.direction = NORTH, .tiles = 10}}, "the door's column to the back wall, beside Barry"),
-        event("barry_town_map", "Barry gives the Town Map", inside(TRAINERS_SCHOOL)),
+        //  Barry stands at the blackboard a tile west of the door's column,
+        //  which is clear to the back wall: beside him there, face west and
+        //  talk. A tile west by a hold went two in r149a, and the boy at the
+        //  table stopped us. (The event walked to the wall again once when he
+        //  did not answer.)
+        anchored(to_walls("up_to_barry", {{.direction = NORTH, .tiles = 10}}, "the door's column to the back wall, beside Barry"),
+            Pokemon::tile_pose(TRAINERS_SCHOOL, {}, WEST)),
+        talk("barry", "Barry, west of us at the blackboard"),
+        scene("barry_town_map", inside(TRAINERS_SCHOOL), "his lines to \"You obtained a Town Map!\", closed with A", "a"),
         //  Barry stands beside the door's column, which is clear down to the door.
         step_into("out_of_the_school", SOUTH, "straight down the door's column and out", below_the_school()),
     });
