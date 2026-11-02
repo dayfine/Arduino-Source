@@ -67,4 +67,4 @@ const std::vector<StoryTrack>& story_tracks();
 
 Not before a game needs a third section. The first one decides the shape: FRLG's
 postgame is an append; SV DLC is a branch. Until then `story_index()` carries a
-NOTE pointing here.
+NOTE stating the two-section assumption.
