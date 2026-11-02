@@ -91,7 +91,10 @@ PlazaReturnResult return_to_plaza_checked(
 
         //  A wrong landing usually means the cursor stopped short of Central
         //  Plaza, so retries overshoot from the start.
-        actions.fly_to_plaza(attempt > 1);
+        if (!actions.fly_to_plaza(attempt > 1)){
+            logger.log(prefix + "the fly didn't happen.", COLOR_RED);
+            continue;
+        }
 
         if (expected_banner.empty()){
             logger.log(prefix + "landed. Not checking where: no place name to check in this language.", COLOR_ORANGE);

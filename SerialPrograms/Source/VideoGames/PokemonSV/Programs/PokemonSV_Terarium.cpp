@@ -29,14 +29,16 @@ namespace PokemonSV{
 
 namespace{
 
-// Flies to the closest Pokecenter on the map. Nothing here checks where the
-// player lands: the closest-Pokecenter search can fall back to any fly point.
-void fly_toward_plaza(const ProgramInfo& info, VideoStream& stream, ProControllerContext& context, bool laggy){
+// Flies to the closest Pokecenter on the map, once. Nothing here checks where
+// the player lands: the closest-Pokecenter search can fall back to any fly
+// point. Returns false if the fly failed or a battle interrupted it; the
+// caller decides whether to try again, so one return can't loop for minutes.
+bool fly_toward_plaza(const ProgramInfo& info, VideoStream& stream, ProControllerContext& context, bool laggy){
     stream.log("Attempting to return to Central Plaza.");
     //Modified version of handle_battles_and_back_to_pokecenter()
     bool returned_to_pokecenter = false;
 
-    while(!returned_to_pokecenter){
+    {
         EncounterWatcher encounter_watcher(stream, COLOR_RED);
         int ret = run_until<ProControllerContext>(
             stream, context,
@@ -74,13 +76,15 @@ void fly_toward_plaza(const ProgramInfo& info, VideoStream& stream, ProControlle
                 pbf_press_button(context, BUTTON_ZR, 320ms, 800ms);
 
                 try{
-                    //The only pokecenter on the map is Central Plaza
-                    fly_to_closest_pokecenter_on_map(info, stream, context);
+                    //The only pokecenter on the map is Central Plaza. Each failed search
+                    //costs ~13 s, and repeating the same one rarely helps (bbq-m5 11:20:
+                    //17 identical "no Pokecenter" tries), so give up after 3.
+                    fly_to_closest_pokecenter_on_map(info, stream, context, 3);
                     context.wait_for_all_requests();
                     returned_to_pokecenter = true;
                 }catch (...){
-                    stream.log("Failed to return to Pokecenter. Closing map and retrying.");
-                    laggy = true;
+                    //The next try mashes B back to the overworld first.
+                    stream.log("Failed to return to Pokecenter.", COLOR_RED);
                 }
                 context.wait_for_all_requests();
             },
@@ -117,6 +121,7 @@ void fly_toward_plaza(const ProgramInfo& info, VideoStream& stream, ProControlle
         }
     }
     context.wait_for_all_requests();
+    return returned_to_pokecenter;
 }
 
 class PlazaReturnConsoleActions : public PlazaReturnActions{
@@ -131,8 +136,8 @@ public:
         , m_language(language)
     {}
 
-    virtual void fly_to_plaza(bool overshoot) override{
-        fly_toward_plaza(m_info, m_stream, m_context, overshoot);
+    virtual bool fly_to_plaza(bool overshoot) override{
+        return fly_toward_plaza(m_info, m_stream, m_context, overshoot);
     }
 
     // The banner fades in shortly after the overworld is back and stays for
