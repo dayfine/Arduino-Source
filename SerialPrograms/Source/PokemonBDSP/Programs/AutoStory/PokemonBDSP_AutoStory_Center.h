@@ -118,6 +118,14 @@ void heal_inside_pokemon_center(
     const std::string& label
 );
 
+//  From just inside a Pokemon Center's door: walks up to the nurse, talks to
+//  her and accepts. Ends at her counter, for a caller that walks out its own
+//  way.
+void talk_to_nurse(
+    VideoStream& stream, ProControllerContext& context,
+    const std::string& label
+);
+
 
 
 }
