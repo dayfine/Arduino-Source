@@ -46,12 +46,14 @@ MapData make_map(
         map.objects.push_back({
             .name = "standing", .kind = Pokemon::ObjectKind::NPC, .x = pos.x, .y = pos.y,
             .facing = std::nullopt, .wander = std::nullopt,
+            .trainer = std::nullopt, .hide_flag = std::nullopt,
         });
     }
     for (const TilePos& pos : wandering){
         map.objects.push_back({
             .name = "wandering", .kind = Pokemon::ObjectKind::NPC, .x = pos.x, .y = pos.y,
-            .facing = std::nullopt, .wander = Pokemon::WanderBox{pos.x, pos.y, pos.x, pos.y},
+            .facing = std::nullopt, .wander = Pokemon::TileBox{pos.x, pos.y, pos.x, pos.y},
+            .trainer = std::nullopt, .hide_flag = std::nullopt,
         });
     }
     return map;
