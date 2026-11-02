@@ -15,20 +15,21 @@ namespace MaxLairInternal{
 
 
 bool GlobalState::infer_boss_from_opponent(){
-    const std::string slug = opponent.empty() ? "" : *opponent.begin();
-    //  A boss before the end means something is out-of-sync.
-    if (wins != 3 && is_boss(slug)){
+    if (opponent.size() != 1){
         return false;
     }
-    //  Infer the boss if we don't know it.
-    if (wins == 3 && boss.empty()){
+    const std::string& slug = *opponent.begin();
+    if (is_boss(slug) != (wins == 3)){
+        return false;
+    }
+    if (wins == 3 && !is_boss(boss)){
         boss = slug;
     }
     return true;
 }
-std::string GlobalState::caught_boss(size_t) const{
-    //  The identified boss is reported whether or not it was caught.
-    return boss;
+std::string GlobalState::caught_boss(size_t caught_count) const{
+    //  A failed adventure can still have an identified boss, but no boss catch.
+    return caught_count == 4 && is_boss(boss) ? boss : std::string();
 }
 
 std::string PlayerState::dump() const{
