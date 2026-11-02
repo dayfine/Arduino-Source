@@ -65,6 +65,17 @@ VideoSnapshot snapshot_or_fail(VideoStream& stream, const std::string& label){
     return frame;
 }
 
+//  A stick straight north, south, east or west goes on the D-pad: the D-pad
+//  moves whole tiles, the stick stops between them (on the console a 100 ms
+//  stick tap moved ~0.6 tile; r57 to r61 walked a column off after stick
+//  holds). Diagonals stay on the stick.
+bool straight(JoystickPosition stick){
+    return (stick.x == 0) != (stick.y == 0);
+}
+DpadPosition dpad_toward(JoystickPosition stick){
+    return stick.x < 0 ? DPAD_LEFT : stick.x > 0 ? DPAD_RIGHT : stick.y > 0 ? DPAD_UP : DPAD_DOWN;
+}
+
 //  After a black screen: a wild battle if a battle screen shows up, else a transition.
 bool black_screen_was_battle(VideoStream& stream, ProControllerContext& context){
     BattleMenuWatcher battle_menu(BattleType::STANDARD, COLOR_YELLOW);
@@ -388,7 +399,7 @@ WalkResult walk_until(
 ){
     return walk_until_spec(stream, context, escape, {
         .stick = stick, .limit = limit, .label = label, .arrived = arrived,
-        .input = WalkInput::STICK, .wild = WildPolicy::RUN_FROM,
+        .input = straight(stick) ? WalkInput::DPAD : WalkInput::STICK, .wild = WildPolicy::RUN_FROM,
     });
 }
 
@@ -443,7 +454,11 @@ WalkResult walk_for(
     const int ret = run_until<ProControllerContext>(
         stream, context,
         [&](ProControllerContext& context){
-            pbf_move_left_joystick(context, stick, duration, 0ms);
+            if (straight(stick)){
+                pbf_press_dpad(context, dpad_toward(stick), duration, 0ms);
+            }else{
+                pbf_move_left_joystick(context, stick, duration, 0ms);
+            }
         },
         {{encounter_flash}, {black}, {battle_menu}, {dialog}, {battle_dialog}}
     );
