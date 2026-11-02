@@ -288,15 +288,22 @@ void settle(VideoStream& stream, ProControllerContext& context, Button button, c
 
 Outcome StoryExecutor::step(RunState& state, const StoryStep& step){
     route_turn(stream(), context(), step.direction);
+    //  A step through a door: one tap, then settle, which must see the fade
+    //  (3 to 5 s) and then any scene on arrival (Mom's, 00.01). A walk's
+    //  window could swallow the fade unseen (r33 was outside, "no fade").
+    if (step.pose_after && step.pose_after->map != state.pose.map){
+        const DpadPosition dpad =
+            step.direction == Direction::NORTH ? DPAD_UP :
+            step.direction == Direction::SOUTH ? DPAD_DOWN :
+            step.direction == Direction::WEST ? DPAD_LEFT : DPAD_RIGHT;
+        pbf_press_dpad(context(), dpad, 160ms, 0ms);
+        stream().log(std::format("[{}] {}: a step {} through the door.", m_checkpoint, step.name, direction_name(step.direction)));
+        settle(stream(), context(), BUTTON_B, label_of(step), true);
+        return Pokemon::outcome_ok();
+    }
     const auto [x, y] = dpad_of(step.direction);
     const WalkResult walk = walk_tiles_dpad(stream(), context(), run_from_wild_battle, {x, y}, 1, step.name);
     stream().log(std::format("[{}] {}: a step {}, {}.", m_checkpoint, step.name, direction_name(step.direction), walk_stop_name(walk.stop)));
-    //  A step through a door: the fade takes 3 to 5 s and can start after the
-    //  walk's window (r10), and arrival can start a scene (Mom's, 00.01). Settle
-    //  as a scene does, so the next step starts on a quiet overworld.
-    if (step.pose_after && step.pose_after->map != state.pose.map){
-        settle(stream(), context(), BUTTON_B, label_of(step), walk.stop != WalkStop::TRANSITION);
-    }
     std::vector<TilePos> at;
     for (const TilePos& pos : Pokemon::tiles_of(state.pose)){
         at.push_back(pos.next(step.direction));
