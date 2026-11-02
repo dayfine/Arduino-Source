@@ -272,7 +272,10 @@ std::vector<StoryCheckpoint> lake_and_pokedex(){
                 "Rowan and Dawn come back; Barry, then home for the Running Shoes"),
             //  Mom's warning was spent in 00.01, so the door's tile (6, 10) is a plain
             //  door now: stepping onto it goes out (r27).
-            route("above_the_door_again", at(HOME, 6, 9, SOUTH), "round Mom to above the door"),
+            //  Line up on the counter's wall west first: a plan from either tile
+            //  ran east into Mom at (7, 8), who talks (r29).
+            route("by_the_counter", at(HOME, 5, 8, WEST), "west against the counter's end (4, 8)"),
+            route("above_the_door_again", at(HOME, 6, 9, SOUTH), "to above the door"),
             step_into("out_of_the_house_again", SOUTH, "onto the door's tile (6, 10), and out", at(TWINLEAF, "house_doorstep", SOUTH)),
             //  Through the grass now, with a starter: wild battles are run from.
             route("short_of_dawn", at(SANDGEM, 3, 12, EAST), "Twinleaf, then east along Route 201 to Sandgem's edge"),
