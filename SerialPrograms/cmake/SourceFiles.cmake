@@ -118,6 +118,9 @@ file(GLOB CORE_LIBRARY_SOURCES
     ../Common/Cpp/Logging/MultiOutputLogger.h
     ../Common/Cpp/Logging/TaggedLogger.cpp
     ../Common/Cpp/Logging/TaggedLogger.h
+    ../Common/Cpp/MoveOnlyFunction.h
+    ../Common/Cpp/MoveOnlyFunction_Tests.cpp
+    ../Common/Cpp/MoveOnlyFunction_Tests.h
     ../Common/Cpp/Options/BatchOption.cpp
     ../Common/Cpp/Options/BatchOption.h
     ../Common/Cpp/Options/BooleanCheckBoxOption.cpp
@@ -396,11 +399,23 @@ file(GLOB LIBRARY_SOURCES
     ../Common/Cpp/Rectangle.tpp
     ../Common/Cpp/SIMDDebuggers.h
     ../Common/Cpp/Sockets/AbstractClientSocket.h
+    ../Common/Cpp/Sockets/AbstractServerSocket.h
     ../Common/Cpp/Sockets/ClientSocket.cpp
     ../Common/Cpp/Sockets/ClientSocket.h
+    ../Common/Cpp/Sockets/ClientSocket_POSIX.cpp
     ../Common/Cpp/Sockets/ClientSocket_POSIX.h
+    ../Common/Cpp/Sockets/ClientSocket_Qt.cpp
     ../Common/Cpp/Sockets/ClientSocket_Qt.h
+    ../Common/Cpp/Sockets/ClientSocket_WinSocket.cpp
     ../Common/Cpp/Sockets/ClientSocket_WinSocket.h
+    ../Common/Cpp/Sockets/ServerSocket_POSIX.cpp
+    ../Common/Cpp/Sockets/ServerSocket_WinSocket.cpp
+    ../Common/Cpp/Sockets/ServerSocket_Qt.cpp
+    ../Common/Cpp/Sockets/ServerSocket_POSIX.h
+    ../Common/Cpp/Sockets/ServerSocket_WinSocket.h
+    ../Common/Cpp/Sockets/ServerSocket_Qt.h
+    ../Common/Cpp/Sockets/Sockets_Tests.cpp
+    ../Common/Cpp/Sockets/Sockets_Tests.h
     ../Common/Cpp/StreamConnections/MockDevice.cpp
     ../Common/Cpp/StreamConnections/MockDevice.h
     ../Common/Cpp/TestRunners/ParallelUnitTestRunner.cpp
@@ -493,10 +508,12 @@ file(GLOB LIBRARY_SOURCES
     ../Common/SerialPABotBase/SerialPABotBase_Protocol.h
     Source/CommonFramework/AudioPipeline/AudioConstants.h
     Source/CommonFramework/AudioPipeline/AudioFeed.h
-    Source/CommonFramework/AudioPipeline/AudioInfo.cpp
-    Source/CommonFramework/AudioPipeline/AudioInfo.h
+    Source/CommonFramework/AudioPipeline/AudioFormat.cpp
+    Source/CommonFramework/AudioPipeline/AudioFormat.h
     Source/CommonFramework/AudioPipeline/AudioInfo_Tests.cpp
     Source/CommonFramework/AudioPipeline/AudioInfo_Tests.h
+    Source/CommonFramework/AudioPipeline/AudioInputChoice.cpp
+    Source/CommonFramework/AudioPipeline/AudioInputChoice.h
     Source/CommonFramework/AudioPipeline/AudioOption.cpp
     Source/CommonFramework/AudioPipeline/AudioOption.h
     Source/CommonFramework/AudioPipeline/AudioPassthroughPair.h
@@ -514,10 +531,15 @@ file(GLOB LIBRARY_SOURCES
     Source/CommonFramework/AudioPipeline/AudioSource.h
     Source/CommonFramework/AudioPipeline/AudioTemplate.cpp
     Source/CommonFramework/AudioPipeline/AudioTemplate.h
+    Source/CommonFramework/AudioPipeline/Backends/AudioDeviceInfo.cpp
+    Source/CommonFramework/AudioPipeline/Backends/AudioDeviceInfo.h
     Source/CommonFramework/AudioPipeline/Backends/AudioPassthroughPairQt.cpp
     Source/CommonFramework/AudioPipeline/Backends/AudioPassthroughPairQt.h
     Source/CommonFramework/AudioPipeline/Backends/AudioPassthroughPairQtThread.cpp
     Source/CommonFramework/AudioPipeline/Backends/AudioPassthroughPairQtThread.h
+    Source/CommonFramework/AudioPipeline/Backends/NativeAudioFormats.cpp
+    Source/CommonFramework/AudioPipeline/Backends/NativeAudioFormats.h
+    Source/CommonFramework/AudioPipeline/Backends/NativeAudioFormats_Apple.tpp
     Source/CommonFramework/AudioPipeline/IO/AudioFileLoader.cpp
     Source/CommonFramework/AudioPipeline/IO/AudioFileLoader.h
     Source/CommonFramework/AudioPipeline/IO/AudioFileLoader_Tests.cpp
@@ -554,6 +576,8 @@ file(GLOB LIBRARY_SOURCES
     Source/CommonFramework/Environment/SystemSleep_Apple.tpp
     Source/CommonFramework/Environment/SystemSleep_Linux.tpp
     Source/CommonFramework/Environment/SystemSleep_Windows.tpp
+    Source/CommonFramework/ErrorReports/CrashBacktrace.cpp
+    Source/CommonFramework/ErrorReports/CrashBacktrace.h
     Source/CommonFramework/ErrorReports/ErrorReports.cpp
     Source/CommonFramework/ErrorReports/ErrorReports.h
     Source/CommonFramework/ErrorReports/ProgramDumper.cpp
@@ -610,6 +634,8 @@ file(GLOB LIBRARY_SOURCES
     Source/CommonFramework/Notifications/SenderNotificationTable.h
     Source/CommonFramework/Options/BoxOption.cpp
     Source/CommonFramework/Options/BoxOption.h
+    Source/CommonFramework/Options/DeviceDropdownAliases.cpp
+    Source/CommonFramework/Options/DeviceDropdownAliases.h
     Source/CommonFramework/Options/Environment/OnnxOptions.h
     Source/CommonFramework/Options/Environment/SleepSuppressOption.cpp
     Source/CommonFramework/Options/Environment/SleepSuppressOption.h
@@ -721,6 +747,7 @@ file(GLOB LIBRARY_SOURCES
     Source/CommonFramework/VideoPipeline/Backends/SnapshotManager.h
     Source/CommonFramework/VideoPipeline/Backends/VideoFrameQt.cpp
     Source/CommonFramework/VideoPipeline/Backends/VideoFrameQt.h
+    Source/CommonFramework/VideoPipeline/CameraInfo.cpp
     Source/CommonFramework/VideoPipeline/CameraInfo.h
     Source/CommonFramework/VideoPipeline/Stats/CpuUtilizationStats.cpp
     Source/CommonFramework/VideoPipeline/Stats/CpuUtilizationStats.h
@@ -1657,6 +1684,14 @@ file(GLOB LIBRARY_SOURCES
     Source/PokemonBDSP/Programs/Trading/PokemonBDSP_TradeRoutines.h
     Source/PokemonBDSP/Resources/PokemonBDSP_NameDatabase.cpp
     Source/PokemonBDSP/Resources/PokemonBDSP_NameDatabase.h
+    Source/VideoGames/PokemonFRLG/Inference/Box/PokemonFRLG_BoxCellOccupiedDetector.cpp
+    Source/VideoGames/PokemonFRLG/Inference/Box/PokemonFRLG_BoxCellOccupiedDetector.h
+    Source/VideoGames/PokemonFRLG/Inference/Box/PokemonFRLG_BoxCellReader.cpp
+    Source/VideoGames/PokemonFRLG/Inference/Box/PokemonFRLG_BoxCellReader.h
+    Source/VideoGames/PokemonFRLG/Inference/Box/PokemonFRLG_BoxGenderReader.cpp
+    Source/VideoGames/PokemonFRLG/Inference/Box/PokemonFRLG_BoxGenderReader.h
+    Source/VideoGames/PokemonFRLG/Inference/Box/PokemonFRLG_BoxSelectionModeDetector.cpp
+    Source/VideoGames/PokemonFRLG/Inference/Box/PokemonFRLG_BoxSelectionModeDetector.h
     Source/VideoGames/PokemonFRLG/Inference/Dialogs/PokemonFRLG_BattleDialogs.cpp
     Source/VideoGames/PokemonFRLG/Inference/Dialogs/PokemonFRLG_BattleDialogs.h
     Source/VideoGames/PokemonFRLG/Inference/Dialogs/PokemonFRLG_DialogDetector.cpp
@@ -1794,6 +1829,8 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonFRLG/Programs/ShinyHunting/PokemonFRLG_ShinyHunt-Overworld.h
     Source/VideoGames/PokemonFRLG/Programs/TestPrograms/PokemonFRLG_ReadBattleLevelUp.cpp
     Source/VideoGames/PokemonFRLG/Programs/TestPrograms/PokemonFRLG_ReadBattleLevelUp.h
+    Source/VideoGames/PokemonFRLG/Programs/TestPrograms/PokemonFRLG_ReadBoxInfo.cpp
+    Source/VideoGames/PokemonFRLG/Programs/TestPrograms/PokemonFRLG_ReadBoxInfo.h
     Source/VideoGames/PokemonFRLG/Programs/TestPrograms/PokemonFRLG_ReadEncounter.cpp
     Source/VideoGames/PokemonFRLG/Programs/TestPrograms/PokemonFRLG_ReadEncounter.h
     Source/VideoGames/PokemonFRLG/Programs/TestPrograms/PokemonFRLG_ReadStats.cpp

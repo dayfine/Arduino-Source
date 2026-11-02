@@ -24,6 +24,13 @@ controller hardware, computer vision, OCR, and machine learning.
 - Test images/fixtures live in a **separate repo**: `PokemonAutomation/CommandLineTests`.
   At test time it is checked out next to the program; `GlobalAutoPaths` detects the
   `CommandLineTests/` (or `UnitTestResources/`) folder and loads test files relative to it.
+- Documentation lives in a **separate repo**: `PokemonAutomation/pokemonautomation.github.io`
+  (MkDocs, published at https://pokemonautomation.github.io). `docs/Developer/` is the
+  developer guide (build setup, button commands, image matching, parallel routines, tests).
+  `docs/Programs/<Game>/<Program>.md` is each program's user page; the `.html` path in a
+  program's descriptor (e.g. `Programs/NintendoSwitch/PreventSleep.html`) names that file.
+  Clone it next to this repo to read it locally, check it before writing new guidance here,
+  and update a program's page there when a change alters what its users do.
 
 ## Programs vs. infra
 
