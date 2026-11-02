@@ -30,6 +30,7 @@
 #include "Pokemon/AutoStory/Pokemon_StorySteps.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMap.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRoute.h"
+#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWalk.h"
 #include "PokemonFRLG_AutoStoryActions.h"
 #include "PokemonFRLG_AutoStoryBattle.h"
 
@@ -50,6 +51,14 @@ struct StoryPose{
     TilePos tile;
     std::optional<Direction> facing;
 };
+
+//  The variant of a ROUTE or LEGS step that runs, with B held: the player
+//  has the Running Shoes (00.10 on).
+inline const std::string RUN_VARIANT = "run";
+
+//  How `step`, a ROUTE or LEGS, moves the player: RUN_VARIANT runs.
+MoveSpeed move_speed(const StoryStep& step);
+
 
 //  A shared checkpoint with what FRLG adds to it.
 struct StoryCheckpoint : public Pokemon::StoryCheckpoint{

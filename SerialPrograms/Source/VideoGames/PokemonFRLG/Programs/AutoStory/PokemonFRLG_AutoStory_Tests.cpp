@@ -291,6 +291,75 @@ UnitTestResult test_pewter_gym_walks(){
     );
 }
 
+//  00.10: out of the Gym to the aide's top trigger. The route keeps off his
+//  three trigger tiles (46, 21..23), which would start the scene a step
+//  early, and the step east from its end lands on (46, 21).
+UnitTestResult test_pewter_aide_walk(){
+    const MapPosition gym{"PewterCity_Gym", {6, 6}};
+    const MapPosition goal{"PewterCity", {45, 21}};
+    const std::optional<std::vector<RouteStep>> route = plan_overworld_route(
+        story_maps(), gym, RouteGoal{goal, Direction::EAST}, default_route_costs(), Direction::NORTH
+    );
+    if (!route || route->empty()){
+        return "No route from " + to_string(gym) + " to " + to_string(goal) + ".";
+    }
+    MapPosition from = gym;
+    for (const RouteStep& step : *route){
+        if (step.action != RouteAction::WALK){
+            continue;
+        }
+        for (const MapPosition& tile : leg_tiles(story_maps(), from, step)){
+            if (tile.map == "PewterCity" && tile.point.x == 46 && tile.point.y >= 21 && tile.point.y <= 23){
+                return "The route crosses the aide's trigger " + to_string(tile) + ":" + describe(*route);
+            }
+        }
+        from = step.end;
+    }
+    if (route->back().end != goal){
+        return "Expected the route to end at " + to_string(goal) + ", got " + to_string(route->back().end) + ".";
+    }
+    const MapData& pewter = *find_map_named("PewterCity");
+    if (classify_step(pewter, PlayerState{{45, 21}, elevation_at(pewter, {45, 21}), false}, Direction::EAST) != StepKind::WALK){
+        return "Can't step east from (45, 21) onto the trigger (46, 21).";
+    }
+    return true;
+}
+
+//  Every ROUTE and LEGS after the Running Shoes (00.10) runs; none before.
+UnitTestResult test_runs_after_shoes(){
+    bool has_shoes = false;
+    for (const StoryCheckpoint& checkpoint : story_checkpoints()){
+        for (const StoryStep& step : checkpoint.steps){
+            if (step.kind != StoryStepKind::ROUTE && step.kind != StoryStepKind::LEGS){
+                continue;
+            }
+            const MoveSpeed expected = has_shoes ? MoveSpeed::RUN : MoveSpeed::WALK;
+            if (move_speed(step) != expected){
+                return checkpoint.id + "/" + step.name + ": expected to " + move_speed_name(expected) + ", it would " + move_speed_name(move_speed(step)) + ".";
+            }
+        }
+        has_shoes = has_shoes || checkpoint.id == "00.10";
+    }
+    if (!has_shoes){
+        return "No checkpoint 00.10, where the player gets the Running Shoes.";
+    }
+    return true;
+}
+
+//  00.11's run: one leg west along row 21, to the wall at (6, 21).
+UnitTestResult test_first_run(){
+    const MapPosition start{"PewterCity", {46, 21}};
+    const std::optional<std::vector<RouteStep>> route = fixed_route(story_maps(), start, {{Direction::WEST, 40}});
+    if (!route || route->size() != 1){
+        return "Expected one leg west from " + to_string(start) + ".";
+    }
+    const RouteStep& leg = route->front();
+    if (!leg.to_wall || leg.wild || leg.end != MapPosition{"PewterCity", {6, 21}}){
+        return "Expected a leg to the wall at (6, 21), off the grass, got:" + describe(*route);
+    }
+    return true;
+}
+
 //  Every checkpoint that starts from a save has a place the save card
 //  names, so a save left elsewhere is caught before it runs; and the
 //  places of the starts that matter differ.
@@ -343,6 +412,9 @@ void add_tests_AutoStory(UnitTestDatabase& database){
     database.add<Test_AutoStory>("every save has a place on the save card", test_save_places);
     database.add<Test_AutoStory>("every checkpoint lints clean", test_lint);
     database.add<Test_AutoStory>("Pewter Gym walks", test_pewter_gym_walks);
+    database.add<Test_AutoStory>("Pewter: to the aide's trigger", test_pewter_aide_walk);
+    database.add<Test_AutoStory>("routes run after the Running Shoes", test_runs_after_shoes);
+    database.add<Test_AutoStory>("Pewter: the first run", test_first_run);
 }
 
 
