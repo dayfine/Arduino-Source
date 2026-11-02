@@ -264,3 +264,162 @@ What this round adds to the design:
 - **Overworld screens belong in the screen machine.** The new-game intro runs on
   `ScreenMachine`; walking, dialogue and battle interrupts should be states of the same loop,
   so a dropped input shows up as an unexpected screen instead of a later timeout.
+
+## 14. Oreburgh 01.03 and 01.04 on console B, and what movement really is (2026-10-31, r178 to r215)
+
+Run 1 (English, Lucas, Piplup) went from 01.03 through beating Roark. It took about 40 builds,
+most of them spent guessing at timed walks before measuring.
+
+**Movement physics, measured** (screenshots from a wall anchor; background shift at 640 px width):
+
+| Input | Distance per tap | Spread |
+|---|---|---|
+| D-pad tap, 160 ms | 40 to 42 px (one tile) | about ±1 px |
+| Stick hold, 160 ms | 36 to 48 px | about ±6 px (±0.15 tile) |
+| Stick, 2 and 4 holds | 80 to 84 px, 144 to 152 px | the errors add up |
+| D-pad, 22 taps from the Oreburgh Center's doorstep | the same tile, under the gym's door, in 3 runs | 0 px |
+
+- **The D-pad moves in whole tiles; the stick doesn't.** Counted stick legs drift about half a
+  tile over 18 steps, which missed the gym's door again and again (r204 to r214). The D-pad
+  landed on the same tile every run.
+- **A 100 ms stick tap toward a new way only turns; a 160 ms D-pad tap turns and steps whichever way the player faced** (r248a, 2026-10-31: all seven first taps moved). It moves nobody, so a door north of us takes a tap to
+  face it and then a hold into it.
+- **Leaving a Pokemon Center lands on the same doorstep every time** (3 exits from the counter
+  save, pixel-identical). The tile-a-time drift we blamed on the exit was the stick.
+- **Holding past an event overshoots.** Walks are held in 400 ms chunks and only look between
+  chunks: holding through a door's fade walked a tile past the doorstep (r205), and out of the
+  gym down to the rocks (r212). Stop on the event (the dark fade, the floor gone), a tile at a
+  time.
+
+**How to plan a robust route** (the user's model): each leg is **clip to a wall, then an
+offset**.
+- **The clip** is a walk until stopped, with the stick: it pins one axis exactly, whatever the
+  start was, even with people moving nearby (the time limit counts as reached).
+- **The offset** is a count of D-pad taps from that pinned point: exact, as long as nothing
+  stands in the way.
+- Don't use stick holds for counted legs, and use stick nudges only for a last line-up with a
+  person (Roark) or a lit door.
+- Start checkpoints at fixed points: a Pokemon Center counter (heal there), a doorstep, a save
+  right after a battle that is hard to repeat (01.04 now ends just after Roark).
+
+**Seeing where we are:**
+- **Door fades** are often missed by the black-screen watcher: it stops watching when the step
+  ends, and the fade comes about 2 s later. Poll mean brightness for a few seconds instead
+  (fade 7, outdoors about 100).
+- **Inside a Center:** at least 45% warm floor (Oreburgh's sand reads up to 34%).
+- **In a cave or gym:** mean brightness under 65 to 85 (Oreburgh Mine 45 to 64, the street 99 to 116).
+- **A one-tile scroll can't be told from a scene change** by the view change (106 to 119 vs
+  121): don't use the view change for doors.
+- **Rocks and signs answer A too.** Check the talk is the one wanted: Roark's zooms the
+  camera (view change 86 vs under 10).
+- **Battles where there are no wild Pokemon** (gyms, towns, buildings) are trainers': fight,
+  never run (r206). Roark's battle menu reads as STANDARD, not TRAINER (r210). The map should
+  say where wild battles can happen (PokemonNavigation #11).
+- **Lines after a battle** (Roark's badge) keep the menu shut: finish them before a Potion (r211).
+
+**Process:**
+- Blind run, patch, rerun cost about 4 hours on 01.03 and 01.04. One hand measurement (4-tile
+  chunks with shots, or 10 D-pad taps) settled what several runs didn't. This is now the
+  `console-iteration` skill: measure by hand before fixing; stop after 2 same-step failures,
+  3 builds or 45 minutes.
+- A "pass" proved by timing alone was false twice: Roark's scene never finished (r186 "3/3"),
+  and a walk long enough counted as the mine. Prove a pass with something only the right
+  outcome shows.
+- Keep the game open on failure (the lab option `STOP_AT_FIRST_FAILURE`), so the failure can be
+  seen.
+- A lab script that starts "whatever program is selected" saved over the only save (01.03's
+  start, 03:05). `cf.sh` now refuses unless the Command File Runner is selected.
+
+**TODO:** audit every earlier route (00.04 to 01.05) for counted stick legs and redo them as
+"clip to a wall, then D-pad taps", measured on the console.
+
+## 15. Jubilife to Route 204, and where maps come from (2026-10-31, r216 to r246)
+
+Run 1 went on from Roark through the Oreburgh Gate, Route 203, Jubilife's north street,
+Route 204 South, the Ravaged Path (Rock Smash) and out onto Route 204 North. 01.10 (the
+walk into Floaroma) is the last checkpoint and took eight builds; what they taught is below.
+
+**Maps:**
+- **Bulbapedia's DP map images have 12 px rows for 16 px columns.** Every grid traced from
+  them (Jubilife, Routes 201 to 204) has 3/4 of a tile per row, and no single offset fixes
+  it: a cliff is painted about 24 px tall (two rows) above its tiles, so the lower level
+  under the Ravaged Path sits two rows below a flat 12 px grid. Vertical legs planned on such
+  a grid are 25 to 35% short. An image parser with tall grass, shadows and stairs fixed still
+  called half the open tiles walls (Route 204 North: 80% of tiles exact, 177 false walls).
+- **The Pokemon Platinum decompilation (pret/pokeplatinum) gives the real tiles**: each
+  32x32 cell's collision bit and behaviour (tall grass, ledges and their direction, warps,
+  doors), plus an events file with every NPC, their facing and wander range. Route 204 North,
+  Route 204 South and the Ravaged Path were rebuilt from it and matched the console at every
+  anchor probed. BDSP differs in spots: trainers stand a few tiles from Platinum's, one
+  column of the grass block's east edge is a wall on the console, the Potion lady on Route 201
+  wanders. Terrain from the decomp, people and such edits from the console.
+- **Say where each map comes from.** Every map file now opens with its source, its console
+  checks and the checkpoints that pass on it (`Data/MAPS.md`); a map change re-runs them.
+- **A wandering NPC is not a wall.** Marking the Youngster's two rows under the cliff as
+  tiles to avoid took away the only straight row to the stairs. The map stays true; the walker
+  waits for him or talks to him.
+- **One map is one connected component.** Route 204's halves meet only through the cave:
+  split (fork #97, PokemonNavigation #27). A ledge is one way (0x3b, jump south).
+
+**Routes:**
+- **The planner's cheapest route is not a human's.** It ran to a wall and tapped back
+  (cost 35) instead of nine taps (41), hugged the grass block's corner through tiles nobody
+  had walked, and bounced off walls. The human did it in 18 presses: south 1, west along the
+  row under the cliff, up the middle of the stairs, east into Aroma Lady Taylor's battle,
+  north through the grass, west under the flower beds, north into town. That line, as
+  waypoints (`walk_waypoints()`), with costs that let a straight tap leg win, is the route.
+- **Verify every tile a route touches** by a human walk or a D-pad probe before coding. The
+  corner at column 23 and the fourth row under the cave were planner choices never walked.
+- **Record the human.** A shot a second of the lab window plus the app log is enough; the
+  keyboard shows in the log only as `controller_state`, so the shots carry the moves.
+- **Draw the route on the image only with the cliffs accounted for**; a flat overlay put the
+  row under the cliff across the cave mouth and looked right.
+
+**Walker:**
+- **Time-counted legs break when something blocks them.** "West 10 to the wall" met the
+  Youngster, counted 8 tiles for 4, and every later leg was five columns off (r244a). Open
+  legs are whole-tile D-pad taps now; stretches between a line's corners plan as taps.
+- **A tap's screen change: a step 21 to 50, a bump into a wall or an NPC brushing past 4 to
+  13.** The old threshold of 10 counted bumps as steps up the cliff and "arrived" (r244a);
+  tap legs use 16. Measured from the logged per-tap values and the recording.
+- **A blocked tap leg waits 2.5 s and taps the rest**, three times, then talks (the Youngster
+  answers), marks the blocker and plans again from the exact tile the taps give.
+- **Rock Smash's prompt is answered by its Yes/No cursor**, not timed presses (r237a said
+  No); "someone in the way" in a cave tries the prompt before a talk.
+
+**Process:**
+- **A stale build ran twice.** A background build failed on a header I had broken, a grep
+  filtered the error out, the tests ran on the old binary, and the deploy copied the 18:29
+  app for the 18:57 fix (r245a was r244a again). Check the binary's time against the source
+  edit before any console run; build in the foreground when the result decides the run.
+- **The three-build stop exists to force a hand measurement.** 01.10 went to eight builds;
+  the measurement, once made (the human's walk), gave the route in 30 s and the parser and
+  overlay errors in an hour.
+- **An image parser is a check, not a source.** Each of its mistakes is a hand rule per map
+  for an approximation of what the decomp states exactly.
+
+**After r246 (r247 to r251, 2026-10-31/11-01):**
+- **A 160 ms D-pad tap in a new direction turns and steps.** Probed by hand: there is no
+  turn-only tap. The walker measures the turn tap's screen change like any other tap and counts
+  its step; before that, every tap leg after a corner was one tile long (r246a).
+- **One NPC bump read 17.2, above the 16 threshold** (r250a). A fixed threshold alone is not
+  enough: a tap is "still" when its change is under 16 or under 40% of the walk's largest
+  change, and a walk ended by a bump is accepted when the leg was meant to run until stopped.
+- **"Until stopped" beats a counted leg when a person is the stop.** 01.11's north legs run
+  until the old woman or the old man blocks; the counted version was one row short twice
+  (r249a, "we were in the right position" but the condition was stricter than the game).
+- **End a checkpoint on a signal the game gives, not on a place.** 01.10 ends when the Floaroma
+  banner reads "Floaroma Town", then saves; the Pokémon Center visit it used to continue into
+  was not needed and overshot the town (user: "forget about PC").
+- **Name NPCs the way the data does.** "The youngest boy outside the cave" was Youngster
+  Tyler/Brandon in different sources; the route records name the tile and the sight line, the
+  prose names the trainer class and the position.
+- **Routes are data now** (`RouteRecords`): each leg says direction, tiles and what ends it
+  (count, wall, NPC, door, banner, transition, scene); a test traces every traceable record on
+  its grid. 00.01 to 00.03 (#112), the decomp grids for Routes 201 to 203 and Jubilife (#111)
+  and the 00.04 plan fix (#110) all came with such tests and no console run: run 3 verifies
+  the batch (user, 2026-11-01).
+- **Diamond's own data exists** (pret/pokediamond): the collision block is byte-identical to
+  Platinum's for Route 204 North, and its coord-event binaries give the story triggers'
+  rectangles and flag values, which Platinum's JSON confirms. Diamond is the primary source
+  now, Platinum the readable cross-check.
