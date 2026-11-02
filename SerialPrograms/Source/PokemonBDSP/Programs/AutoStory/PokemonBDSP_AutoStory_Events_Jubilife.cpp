@@ -37,12 +37,18 @@ namespace{
 //  00.05: from the save below Jubilife's steps, against the wall east of
 //  them: a tile west (the first press only turns), then up the steps.
 void up_the_steps(VideoStream& stream, ProControllerContext& context){
+    //  D-pad taps, a tile each: the stick holds this was (200 ms west, 480 ms
+    //  north) left us between tiles, and every leg after it a column off
+    //  (r57 to r61). By hand: a tap west and taps north from the save land
+    //  on the map's tiles (between the lamps at x 43 and 49 after six).
     route_turn(stream, context, Direction::WEST);
-    walk_for(stream, context, run_from_wild_battle, {-1, 0}, 200ms, "To the steps");
-    const WalkResult up = walk_for(stream, context, run_from_wild_battle, {0, 1}, 480ms, "Up the steps");
+    walk_tiles_dpad(stream, context, run_from_wild_battle, {-1, 0}, 1, "To the steps");
+    route_turn(stream, context, Direction::NORTH);
+    const WalkResult up = walk_tiles_dpad(stream, context, run_from_wild_battle, {0, 1}, 2, "Up the steps");
     if (up.stop == WalkStop::DIALOG || up.stop == WalkStop::TRANSITION){
         fail_step(stream, std::string("Up the steps: ") + walk_stop_name(up.stop) + ".");
     }
+}
 }
 
 //  The School's lamp, east of its door, from its doorsteps' row at night
