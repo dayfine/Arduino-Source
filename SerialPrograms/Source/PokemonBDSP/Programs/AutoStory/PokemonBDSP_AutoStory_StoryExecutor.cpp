@@ -287,19 +287,22 @@ Outcome StoryExecutor::mash(RunState& state, const StoryStep& step){
     const Button button = step.variant == "a" ? BUTTON_A : BUTTON_B;
     wait_for_dialogue(stream(), context(), label_of(step));
     finish_scene_text(stream(), context(), button, label_of(step));
-    //  A scene that ends on another map fades there after a quiet spell, and
-    //  can speak again on arrival (r25: Barry, more than 4 s, the fade home,
-    //  then Mom). Wait for the fade, then for the lines after it.
+    //  A scene that ends on another map can stall on a line our detector
+    //  misses, and only goes on (to the dim fade home, then Mom) at a press:
+    //  r26 sat 30 s until the next walk's first press. B is safe on the
+    //  overworld, so press it until the lines on arrival start.
     if (step.pose_after && step.pose_after->map != state.pose.map){
-        BlackScreenOverWatcher faded(COLOR_RED);
-        if (wait_until(stream(), context(), 20000ms, {{faded}}) != 0){
-            stream().log(label_of(step) + ": no fade to " + step.pose_after->map + " after the scene.", COLOR_ORANGE);
+        ShortDialogWatcher dialog(COLOR_CYAN);
+        const int ret = run_until<ProControllerContext>(stream(), context(), [](ProControllerContext& context){
+            for (size_t press = 0; press < 25; press++){
+                pbf_press_button(context, BUTTON_B, 80ms, 1500ms);
+            }
+        }, {{dialog}});
+        if (ret != 0){
+            stream().log(label_of(step) + ": no lines on arrival at " + step.pose_after->map + ".", COLOR_ORANGE);
             return Pokemon::outcome_ok();
         }
-        ShortDialogWatcher dialog(COLOR_CYAN);
-        if (wait_until(stream(), context(), 10000ms, {{dialog}}) == 0){
-            finish_scene_text(stream(), context(), button, label_of(step));
-        }
+        finish_scene_text(stream(), context(), button, label_of(step));
     }
     return Pokemon::outcome_ok();
 }
