@@ -163,6 +163,20 @@ class CliTests(unittest.TestCase):
         self.assertEqual(1, result.returncode, result.stderr)
         self.assertIn('Tool.cpp:1: layering', result.stderr)
 
+    def test_style_checks_report_only_added_lines(self):
+        file = self.root / 'Common/style.cpp'
+        file.write_text('void f(){\n    if (x) return;\n}\n')
+        self.commit()
+        file.write_text('void f(){\n    if (x) return;\n    g();\n}\n')
+        self.git('add', '.')
+        self.assertEqual(0, self.cli().returncode)
+        file.write_text('void f(){\n    if (x) return;\n    std::mutex m;\n}\n')
+        self.git('add', '.')
+        result = self.cli()
+        self.assertEqual(1, result.returncode, result.stderr)
+        self.assertIn('style.cpp:3: style: std::mutex', result.stderr)
+        self.assertNotIn('style.cpp:2:', result.stderr)
+
     def test_github_annotates_failures_and_advisories(self):
         self.source(3)
         self.commit()
