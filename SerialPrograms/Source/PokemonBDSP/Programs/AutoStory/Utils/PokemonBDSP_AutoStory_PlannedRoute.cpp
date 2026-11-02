@@ -581,9 +581,10 @@ void RouteWalker::check_banners(LegWalk& walk){
     if (!walk.map_before.empty() && !walk.map_after.empty() && walk.map_after != walk.map_before && !banner_ok(walk)){
         //  A scene that starts as we cross the edge covers the banner (r19: Rowan
         //  and Dawn on Route 201's edge). With no banner read and a dialogue up,
-        //  let the next step, the scene, decide where we are.
-        VideoSnapshot now = m_stream.video().snapshot();
-        if (banner_text.empty() && now && ShortDialogDetector().detect(*now.frame)){
+        //  let the next step, the scene, decide where we are. The scene may still
+        //  be walking its people in (r20), so give its first line a few seconds.
+        ShortDialogWatcher scene_line(COLOR_YELLOW);
+        if (banner_text.empty() && wait_until(m_stream, m_context, 6000ms, {{scene_line}}) == 0){
             m_stream.log("[Route] " + walk.label + ": no banner, but a scene started; going on.", COLOR_ORANGE);
             return;
         }
