@@ -178,10 +178,12 @@ struct GlobalState{
     //  battle, records the boss unless a boss is already known.
     bool accept_opponent();
 
-    //  The same boss, but only if the adventure caught it (all four catches),
-    //  else empty: for the end-of-adventure decision (end_adventure_action()),
-    //  which must not apply the boss-caught rules after a loss.
-    std::string boss_if_caught(size_t caught_count) const;
+    //  The same boss, but only if the adventure caught it, else empty: for the
+    //  end-of-adventure decision (end_adventure_action()), which must not apply
+    //  the boss-caught rules after a loss. Decided from the battles won (the
+    //  boss is the fourth battle), not from how many Pokemon were caught, so it
+    //  stays right if non-boss catches are ever skipped.
+    std::string boss_if_caught() const;
 
     std::string dump() const;
 };
