@@ -135,11 +135,13 @@ StoryStep step_into(std::string name, Direction direction, std::string why, std:
 StoryStep talk(std::string name, std::string why){
     return make(StoryStepKind::TALK, std::move(name), std::move(why));
 }
-//  A talk to someone who wanders through the tile we face: A until they
-//  stand there (the "talk_to_wanderer" event).
-StoryStep talk_to_wanderer(std::string name, std::string why){
+//  A talk to someone who wanders a tile either side of home along a row:
+//  asks north from each tile below the range, answers with A and steps back
+//  below home (the "talk_to_wanderer" event).
+StoryStep talk_to_wanderer(std::string name, Pose pose_after, std::string why){
     StoryStep step = talk(std::move(name), std::move(why));
     step.variant = "talk_to_wanderer";
+    step.pose_after = std::move(pose_after);
     return step;
 }
 //  Text to the overworld, with B; with A ("a") for lines that give an item.
@@ -449,8 +451,8 @@ StoryCheckpoint the_coupons(){
         legs("past_the_president", {{.direction = EAST, .tiles = 2}}, "east of his column"),
         //  He wanders (54..56, 33); he comes through (55, 33) every other move.
         route("below_the_mart_clown", next_to(JUBILIFE, "clown_mart", SOUTH, NORTH), "up the road east of the Center", "town"),
-        talk_to_wanderer("mart_clown", "the clown by the Mart, north of us when he is home"),
-        scene("mart_clowns_coupon", next_to(JUBILIFE, "clown_mart", SOUTH, NORTH), "\"Do Pokemon grow by defeating others?\" Yes; Coupon 1", "a"),
+        talk_to_wanderer("mart_clown", next_to(JUBILIFE, "clown_mart", SOUTH, NORTH),
+            "the clown by the Mart: 'Do Pokemon grow by defeating others?' Yes; Coupon 1"),
         //  He stands still below the TV station's door, facing south.
         route("below_the_tv_clown", next_to(JUBILIFE, "clown_tv_station", SOUTH, NORTH), "west and north to the TV station", "town"),
         talk("tv_clown", "the clown below the TV station's door"),
@@ -458,8 +460,8 @@ StoryCheckpoint the_coupons(){
         scene("tv_clowns_coupon", next_to(JUBILIFE, "clown_tv_station", SOUTH, NORTH), "\"Can a Pokemon hold an item?\" Yes; Coupon 3", "a"),
         //  He wanders (14..16, 18), behind the Poketch Company's sign (13, 19).
         route("below_the_company_clown", next_to(JUBILIFE, "clown_poketch_company", SOUTH, NORTH), "west along the long road, north beside the sign", "town"),
-        talk_to_wanderer("company_clown", "the clown by the Poketch Company, north of us when he is home"),
-        scene("company_clowns_coupon", next_to(JUBILIFE, "clown_poketch_company", SOUTH, NORTH), "\"Do moves have types?\" Yes; Coupon 2", "a"),
+        talk_to_wanderer("company_clown", next_to(JUBILIFE, "clown_poketch_company", SOUTH, NORTH),
+            "the clown by the Poketch Company: 'Do moves have types?' Yes; Coupon 2"),
     });
 }
 
