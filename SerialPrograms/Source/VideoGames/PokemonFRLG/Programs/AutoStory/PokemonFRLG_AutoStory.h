@@ -47,6 +47,8 @@ private:
     Pokemon::StoryRunOptions RUN;
     BooleanCheckBoxOption NEW_GAME_FROM_TITLE;
     StringOption PLAYER_NAME;
+    //  The RNG programs the run stops for (StoryHandoff).
+    BooleanCheckBoxOption STOP_FOR_SID_HELPER;
     EventNotificationsOption NOTIFICATIONS;
 };
 

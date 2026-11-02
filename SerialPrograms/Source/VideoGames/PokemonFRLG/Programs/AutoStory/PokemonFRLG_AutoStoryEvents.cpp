@@ -400,6 +400,34 @@ Outcome StoryExecutor::ready(RunState& state, const StoryStep& step){
     return get_ready(m_env, state, step);
 }
 
+Outcome StoryExecutor::game(RunState&, const StoryStep& step){
+    if (step.variant == CLOSE_TRAINER_CARD){
+        close_trainer_card(m_env.console, m_env.context);
+        return Pokemon::outcome_ok();
+    }
+    return Pokemon::unsupported_step(step);
+}
+
+
+StoryRunPlan plan_story_run(
+    const std::vector<StoryCheckpoint>& checkpoints, size_t first, size_t last, const StoryHandoffs& handoffs
+){
+    StoryRunPlan plan;
+    for (size_t c = first; c <= last && c < checkpoints.size(); c++){
+        const StoryCheckpoint& row = checkpoints[c];
+        if (row.live_start && c != first){
+            continue;
+        }
+        if (row.handoff == StoryHandoff::SID_HELPER && handoffs.sid_helper){
+            plan.rows.clear();
+            plan.stop = StoryHandoff::SID_HELPER;
+            return plan;
+        }
+        plan.rows.emplace_back(row);
+    }
+    return plan;
+}
+
 
 Pokemon::Checkpoint build_checkpoint(const StoryCheckpoint& data, StoryExecutor& executor){
     executor.set_menu(data.menu);

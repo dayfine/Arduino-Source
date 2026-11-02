@@ -204,8 +204,8 @@ UnitTestResult check_checkpoint(const StoryCheckpoint& checkpoint, StoryPose& po
 
 UnitTestResult test_routes_and_chain(){
     const std::vector<StoryCheckpoint>& checkpoints = story_checkpoints();
-    if (checkpoints.size() != 11 || checkpoints[0].start){
-        return "Expected 11 checkpoints, the first from a new game.";
+    if (checkpoints.size() != 12 || checkpoints[0].start){
+        return "Expected 12 checkpoints, the first from a new game.";
     }
     StoryPose pose;
     for (size_t c = 0; c < checkpoints.size(); c++){
@@ -403,10 +403,119 @@ UnitTestResult test_unique_names(){
     return true;
 }
 
+
+size_t row_index(const std::string& id){
+    const std::vector<StoryCheckpoint>& checkpoints = story_checkpoints();
+    for (size_t c = 0; c < checkpoints.size(); c++){
+        if (checkpoints[c].id == id){
+            return c;
+        }
+    }
+    throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "No checkpoint " + id);
+}
+
+std::string joined_ids(const std::vector<StoryCheckpoint>& rows){
+    std::string text;
+    for (const StoryCheckpoint& row : rows){
+        text += (text.empty() ? "" : " ") + row.id;
+    }
+    return text;
+}
+
+const char* handoff_name(StoryHandoff handoff){
+    switch (handoff){
+    case StoryHandoff::NONE:
+        return "none";
+    case StoryHandoff::SID_HELPER:
+        return "SID Helper";
+    }
+    return "?";
+}
+
+struct RunPlanScenario{
+    std::string name = "";
+    std::string first = "";
+    //  The table's last row if empty.
+    std::string last = "";
+    StoryHandoffs handoffs = {};
+    std::string expected_ids = "";
+    StoryHandoff expected_stop = StoryHandoff::NONE;
+};
+
+class Test_RunPlan : public UnitTest{
+public:
+    Test_RunPlan(RunPlanScenario scenario)
+        : UnitTest("PokemonFRLG::AutoStory - run plan: " + scenario.name)
+        , m_scenario(std::move(scenario))
+    {}
+
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        try{
+            const size_t last = m_scenario.last.empty() ? story_checkpoints().size() - 1 : row_index(m_scenario.last);
+            const StoryRunPlan plan = plan_story_run(story_checkpoints(), row_index(m_scenario.first), last, m_scenario.handoffs);
+            const std::string ids = joined_ids(plan.rows);
+            if (ids != m_scenario.expected_ids || plan.stop != m_scenario.expected_stop){
+                return "Expected rows \"" + m_scenario.expected_ids + "\", stop " + handoff_name(m_scenario.expected_stop)
+                    + "; got \"" + ids + "\", stop " + handoff_name(plan.stop) + ".";
+            }
+            return true;
+        }catch (Exception& e){
+            return std::string(e.name()) + ": " + e.message();
+        }
+    }
+
+private:
+    const RunPlanScenario m_scenario;
+};
+
+void add_tests_RunPlan(UnitTestDatabase& database){
+    const std::string TODAY = "00.01 00.02 00.03 00.04 00.05 00.06 00.07 00.08 00.09 00.10 00.11";
+    const RunPlanScenario scenarios[] = {
+        {.name = "handoffs off: the story as before", .first = "00.01", .expected_ids = TODAY},
+        {.name = "handoffs off: a range", .first = "00.02", .last = "00.04", .expected_ids = "00.02 00.03 00.04"},
+        {
+            .name = "SID Helper: 00.01 stops on the keyboard",
+            .first = "00.01",
+            .handoffs = {.sid_helper = true},
+            .expected_ids = "",
+            .expected_stop = StoryHandoff::SID_HELPER,
+        },
+        {
+            .name = "SID Helper: back in at 00.01b",
+            .first = "00.01b",
+            .last = "00.03",
+            .handoffs = {.sid_helper = true},
+            .expected_ids = "00.01b 00.02 00.03",
+        },
+        {.name = "00.01b runs when started at, option off", .first = "00.01b", .last = "00.02", .expected_ids = "00.01b 00.02"},
+        {.name = "SID Helper: a later start passes over it", .first = "00.02", .last = "00.03", .handoffs = {.sid_helper = true}, .expected_ids = "00.02 00.03"},
+    };
+    for (const RunPlanScenario& scenario : scenarios){
+        database.add<Test_RunPlan>(scenario);
+    }
+}
+
+//  The way back in after SID Helper loads no save and starts where 00.01
+//  leaves the player, so 00.02 follows it unchanged.
+UnitTestResult test_after_sid_helper_row(){
+    const StoryCheckpoint& sid = story_checkpoints()[row_index("00.01b")];
+    if (!sid.live_start || story_checkpoints()[0].handoff != StoryHandoff::SID_HELPER){
+        return "Expected 00.01 to be SID Helper's handoff and 00.01b to start from the live game.";
+    }
+    for (const StoryCheckpoint& checkpoint : story_checkpoints()){
+        if (checkpoint.live_start != (checkpoint.id == "00.01b")){
+            return checkpoint.id + ": only 00.01b starts from the live game.";
+        }
+    }
+    return true;
+}
+
 }
 
 
 void add_tests_AutoStory(UnitTestDatabase& database){
+    add_tests_RunPlan(database);
+    database.add<Test_AutoStory>("00.01b: back in after SID Helper", test_after_sid_helper_row);
     database.add<Test_AutoStory>("every route plans, and checkpoints chain", test_routes_and_chain);
     database.add<Test_AutoStory>("step names are unique per checkpoint", test_unique_names);
     database.add<Test_AutoStory>("every save has a place on the save card", test_save_places);

@@ -67,6 +67,15 @@ AutoStory::AutoStory()
         LockMode::LOCK_WHILE_RUNNING,
         "Kosmos", ""
     )
+    , STOP_FOR_SID_HELPER(
+        "<b>Stop for SID Helper:</b><br>Off by default. At 00.01, stop on the player's keyboard with the name typed and OK not pressed, "
+        "where the SID Helper program starts. After SID Helper, start AutoStory at 00.01b, with the game as SID Helper left it "
+        "(the Trainer Card, or HOME): it closes the card, sets the options and saves in the bedroom.<br>"
+        "SID Helper needs the text speed and button settings already saved. On a cartridge with that save, choose NEW GAME "
+        "by hand and start AutoStory on the first message.",
+        LockMode::LOCK_WHILE_RUNNING,
+        false
+    )
     , NOTIFICATIONS({
         &NOTIFICATION_PROGRAM_FINISH,
         &NOTIFICATION_ERROR_FATAL,
@@ -75,6 +84,7 @@ AutoStory::AutoStory()
     PA_ADD_OPTION(RUN);
     PA_ADD_OPTION(NEW_GAME_FROM_TITLE);
     PA_ADD_OPTION(PLAYER_NAME);
+    PA_ADD_OPTION(STOP_FOR_SID_HELPER);
     PA_ADD_OPTION(NOTIFICATIONS);
 }
 
@@ -150,52 +160,98 @@ Pokemon::SegmentHooks story_hooks(SingleSwitchProgramEnvironment& env, StoryEnv&
 
 }
 
+//  The options' problems, before anything is pressed.
+static void check_setup(
+    ConsoleHandle& console, const std::vector<StoryCheckpoint>& checkpoints, size_t first, size_t last,
+    bool new_game_from_title, const std::string& player_name
+){
+    if (first > last || last >= checkpoints.size()){
+        throw UserSetupError(console, "The start checkpoint must not come after the end checkpoint.");
+    }
+    if (first == 0 && !new_game_from_title){
+        throw UserSetupError(console, "Checkpoint 00.01 starts a new game: start on the title screen with no save.");
+    }
+    if (first == 0){
+        check_player_name(console, player_name);
+    }
+}
+
+static void throw_if_failed(const Pokemon::SegmentReport& report){
+    if (report.completed){
+        return;
+    }
+    throw OperationFailedException(
+        ErrorReportMode::NO_ERROR_REPORT,
+        std::format(
+            "AutoStory stopped at {} {}: {}",
+            report.failed_checkpoint, report.failed_event, Pokemon::to_string(report.failure)
+        )
+    );
+}
+
+//  Gets the game to where checkpoint `first` starts: a new game from the
+//  title screen, the game as another program left it, or the checkpoint's
+//  save loaded.
+static void prepare_start(
+    SingleSwitchProgramEnvironment& env, ProControllerContext& context,
+    const std::vector<StoryCheckpoint>& checkpoints, size_t first, StoryEnv& story
+){
+    const StoryCheckpoint& checkpoint = checkpoints[first];
+    if (!checkpoint.start){
+        return;
+    }
+    if (checkpoint.live_start){
+        env.console.log(checkpoint.id + " starts from the game as it is: no save to load.");
+        return;
+    }
+    env.console.log("Loading the save for " + checkpoint.id + ".");
+    soft_reset(env.console, context);
+    story.has_save = true;
+    check_save_place(env, context, checkpoints, first, story.language);
+}
+
+//  The run stopped for an RNG program, as its option asked: the user's
+//  turn, with what to do next.
+static void stop_for_handoff(SingleSwitchProgramEnvironment& env, EventNotificationOption& notification, const std::string& message){
+    env.console.log(message, COLOR_BLUE);
+    env.console.overlay().add_log(message);
+    send_program_finished_notification(env, notification, message);
+}
+
 void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContext& context){
     const std::vector<StoryCheckpoint>& checkpoints = story_checkpoints();
     const size_t first = RUN.start_index();
     const size_t last = RUN.end_index();
-    if (first > last || last >= checkpoints.size()){
-        throw UserSetupError(env.console, "The start checkpoint must not come after the end checkpoint.");
-    }
-    if (first == 0 && !NEW_GAME_FROM_TITLE){
-        throw UserSetupError(env.console, "Checkpoint 00.01 starts a new game: start on the title screen with no save.");
-    }
     const std::string player_name = PLAYER_NAME;
-    if (first == 0){
-        check_player_name(env.console, player_name);
+    check_setup(env.console, checkpoints, first, last, NEW_GAME_FROM_TITLE, player_name);
+    const StoryRunPlan plan = plan_story_run(checkpoints, first, last, StoryHandoffs{.sid_helper = STOP_FOR_SID_HELPER});
+    if (plan.stop == StoryHandoff::SID_HELPER){
+        play_new_game_to_player_name(env.console, context, player_name);
+        stop_for_handoff(env, NOTIFICATION_PROGRAM_FINISH,
+            "Stopped for SID Helper: the player's name is typed and OK is not pressed. "
+            "Run SID Helper now, then start AutoStory at 00.01b."
+        );
+        return;
     }
 
     StoryEnv story{env.console, context, checkpoints[first].supplies, checkpoints[first].supplies, false, RUN.checks()};
     story.player_name = player_name;
-    if (!(first == 0 && NEW_GAME_FROM_TITLE)){
-        env.console.log("Loading the save for " + checkpoints[first].id + ".");
-        soft_reset(env.console, context);
-        story.has_save = true;
-        check_save_place(env, context, checkpoints, first, story.language);
-    }
+    prepare_start(env, context, checkpoints, first, story);
 
     StoryExecutor executor(story);
     executor.set_checks(RUN.checks());
     executor.set_language(RUN.language());
-    Pokemon::Segment segment = make_story_segment(checkpoints, executor);
+    Pokemon::Segment segment = make_story_segment(plan.rows, executor);
     Pokemon::SegmentHooks hooks = story_hooks(env, story);
 
     Pokemon::RunState state;
     const Pokemon::SegmentReport report = run_segment(
-        state, segment, Pokemon::SegmentRange{checkpoints[first].id, checkpoints[last].id}, RUN.policy(), hooks
+        state, segment, Pokemon::SegmentRange{plan.rows.front().id, plan.rows.back().id}, RUN.policy(), hooks
     );
     Pokemon::record_story_stats(env.current_stats<Pokemon::AutoStoryStats>(), report);
     env.update_stats();
-    if (!report.completed){
-        throw OperationFailedException(
-            ErrorReportMode::NO_ERROR_REPORT,
-            std::format(
-                "AutoStory stopped at {} {}: {}",
-                report.failed_checkpoint, report.failed_event, Pokemon::to_string(report.failure)
-            )
-        );
-    }
-    env.console.log("AutoStory: done through " + checkpoints[last].id + ".");
+    throw_if_failed(report);
+    env.console.log("AutoStory: done through " + plan.rows.back().id + ".");
     send_program_finished_notification(env, NOTIFICATION_PROGRAM_FINISH);
 }
 

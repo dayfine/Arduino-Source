@@ -135,6 +135,7 @@ protected:
     virtual Outcome mash(RunState&, const StoryStep&) override{ return Pokemon::outcome_ok(); }
     virtual Outcome battle(RunState&, const StoryStep&) override{ return Pokemon::outcome_ok(); }
     virtual Outcome heal(RunState&, const StoryStep&) override{ return Pokemon::outcome_ok(); }
+    virtual Outcome game(RunState&, const StoryStep&) override{ return Pokemon::outcome_ok(); }
     //  The Viridian Mart's list as the game shows it. After a purchase the
     //  cursor stays on the row bought (console B, 2026-11-01), so each
     //  order moves it from there, as buy_items() does since ad5d40885.
@@ -186,9 +187,11 @@ private:
 };
 
 
-//  One simulated run, segment built as the program builds it: each
-//  checkpoint saves at its end (hooks.save stands for save_game()).
+//  One simulated run, segment built as the program builds it: the rows a
+//  run takes with every handoff off, each saving at its end (hooks.save
+//  stands for save_game()).
 struct Simulation{
+    std::vector<StoryCheckpoint> rows = plan_story_run(story_checkpoints(), 0, story_checkpoints().size() - 1, StoryHandoffs{}).rows;
     FakeGame game;
     std::vector<std::string> lines;
     //  Where each save stood: the end of its checkpoint.
@@ -200,7 +203,7 @@ struct Simulation{
         game.set_language(Language::Japanese);
         Pokemon::Segment segment;
         segment.id = "00";
-        for (const StoryCheckpoint& data : story_checkpoints()){
+        for (const StoryCheckpoint& data : rows){
             segment.checkpoints.push_back(Pokemon::CheckpointSpec{
                 .id = data.id, .title = data.title, .saves = true,
                 .build = [this, &data]{ return Pokemon::build_story_checkpoint(data, game); },
@@ -269,15 +272,15 @@ UnitTestResult test_whole_story(){
         return "Expected the whole story through:" + joined(sim.lines);
     }
     std::vector<std::string> ids;
-    for (const StoryCheckpoint& data : story_checkpoints()){
+    for (const StoryCheckpoint& data : sim.rows){
         ids.push_back(data.id);
     }
     if (sim.begun() != ids || sim.saves.size() != ids.size()){
         return "Expected each checkpoint once, in order, each saving at its end:" + joined(sim.game.trace);
     }
     //  Each checkpoint starts where the save before it stands.
-    for (size_t c = 1; c < story_checkpoints().size(); c++){
-        const StoryCheckpoint& data = story_checkpoints()[c];
+    for (size_t c = 1; c < sim.rows.size(); c++){
+        const StoryCheckpoint& data = sim.rows[c];
         const std::optional<StoryPose> start = story_pose(*data.start);
         const std::optional<StoryPose> saved = story_pose(sim.saves[c - 1].second);
         const bool same = start && saved && start->map == saved->map && start->tile == saved->tile

@@ -135,6 +135,15 @@ void buy_items(
 //  (naming_text_error()).
 void play_new_game_intro(ConsoleHandle& console, ProControllerContext& context, const std::string& player_name);
 
+//  play_new_game_intro() up to the player's keyboard: `player_name` typed,
+//  OK not pressed, which is where SID Helper starts. Empty types nothing.
+void play_new_game_to_player_name(ConsoleHandle& console, ProControllerContext& context, const std::string& player_name);
+
+//  From the Trainer Card SID Helper leaves open, or from HOME (its "go
+//  home when done"): back to the game, the card and the START menu closed.
+//  Returns on the overworld.
+void close_trainer_card(ConsoleHandle& console, ProControllerContext& context);
+
 
 
 }
