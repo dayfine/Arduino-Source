@@ -34,6 +34,8 @@
 #include "Pokemon/AutoStory/Pokemon_StorySegments.h"
 #include "Pokemon/AutoStory/Pokemon_StorySteps.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_RoutePlanner.h"
+#include "PokemonBDSP_AutoStory_StoryStepIO.h"
+#include "PokemonBDSP_AutoStory_StoryWalkSteps.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -104,11 +106,6 @@ protected:
     const std::string& checkpoint() const{
         return m_checkpoint;
     }
-    //  Walks from the tiles of `from` on its map to any of `goal`'s tiles,
-    //  fighting the trainers who see us this attempt. Returns where it left
-    //  us, as a pose on `goal`'s map.
-    Pokemon::Pose walk_to(const Pokemon::Pose& from, const Pokemon::Pose& goal, const Pokemon::StoryStep& step);
-
     //  The intro of a new game, from the title screen to the bedroom.
     virtual Pokemon::Outcome new_game(Pokemon::RunState& state, const Pokemon::StoryStep& step) override;
     //  verify_tutorial_settings(): fast text, Autosave off.
@@ -148,12 +145,10 @@ private:
     Pokemon::Outcome run_guarded(Pokemon::RunState& state, const Pokemon::StoryStep& step);
 
     StoryEnv& m_env;
+    ConsoleStoryStepIO m_io;
+    //  The steps that walk and talk (ROUTE, LEGS, STEP, TALK, MASH).
+    StoryWalkSteps m_walks;
     std::string m_checkpoint;
-    //  Whether the player has the Running Shoes: the pace routes are timed at.
-    bool m_can_run = false;
-    //  Route 202's trainers who can still see us, in story_plan_world()'s
-    //  world tiles; all of them again at each attempt.
-    std::vector<TrainerSight> m_trainers;
     std::map<std::string, size_t> m_failures;
     std::map<std::string, size_t> m_run_counts;
     std::set<std::string> m_stop_rows;
