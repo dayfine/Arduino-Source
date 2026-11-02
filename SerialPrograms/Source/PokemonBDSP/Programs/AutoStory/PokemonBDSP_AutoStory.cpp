@@ -134,6 +134,20 @@ BDSPAutoStory::BDSPAutoStory()
     PA_ADD_OPTION(NOTIFICATIONS);
 }
 
+namespace{
+
+//  The checkpoints whose start is already saved: the first one, unless the
+//  run starts a new game. The console's save is the run's start, so saving
+//  again right after loading it only cost ~10 s.
+std::set<std::string> saved_before_the_run(const std::vector<StoryCheckpoint>& checkpoints, size_t first, bool new_game){
+    if (first == 0 && new_game){
+        return {};
+    }
+    return {checkpoints[first].id};
+}
+
+}
+
 void BDSPAutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContext& context){
     const std::vector<StoryCheckpoint>& checkpoints = story_checkpoints();
     const size_t first = RUN.start_index();
@@ -149,7 +163,7 @@ void BDSPAutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerCo
     executor.set_checks(RUN.checks());
     executor.set_language(RUN.language());
     executor.set_stop_rows(rows_that_stop(checkpoints));
-    std::set<std::string> saved;
+    std::set<std::string> saved = saved_before_the_run(checkpoints, first, NEW_GAME_INTRO);
     Pokemon::Segment segment = make_story_segment(checkpoints, executor, saved);
     Pokemon::SegmentHooks hooks = story_hooks(env, context);
 
