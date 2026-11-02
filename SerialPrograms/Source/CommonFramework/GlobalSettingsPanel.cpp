@@ -32,6 +32,7 @@
 #include "Controllers/ControllerSettings.h"
 //#include "CommonFramework/Environment/Environment.h"
 #include "Integrations/DiscordSettingsOption.h"
+#include "CommonFramework/Options/DeviceDropdownAliases.h"
 #include "GlobalSettingsPanel.h"
 
 // #include <iostream>
@@ -132,6 +133,7 @@ GlobalSettings::GlobalSettings()
         LockMode::UNLOCK_WHILE_RUNNING,
         KeyboardLayout::QWERTY
     )
+    , DEVICE_ALIASES(CONSTRUCT_TOKEN)
     , STREAM_HISTORY(CONSTRUCT_TOKEN)
     , SLEEP_SUPPRESS(CONSTRUCT_TOKEN)
     , m_discord_settings(
@@ -212,6 +214,7 @@ GlobalSettings::GlobalSettings()
     PA_ADD_OPTION(CONSOLE_SETTINGS_COLLAPSED);
 
     PA_ADD_OPTION(KEYBOARD_CONTROLS_LAYOUT);
+    PA_ADD_OPTION(DEVICE_ALIASES);
     PA_ADD_OPTION(STREAM_HISTORY);
 
 #ifdef PA_ENABLE_SLEEP_SUPPRESS
@@ -356,6 +359,7 @@ GlobalSettings_Descriptor::Wrapper& GlobalSettings_Descriptor::instance(){
 GlobalSettingsPanel::GlobalSettingsPanel()
     : settings(GlobalSettings::instance())
 {
+    settings.DEVICE_ALIASES->add_connected_devices();
     PA_ADD_OPTION(settings);
 }
 
