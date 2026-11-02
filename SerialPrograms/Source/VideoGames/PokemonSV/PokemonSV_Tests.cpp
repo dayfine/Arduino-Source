@@ -31,6 +31,14 @@
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "Tests/ImageUnitTest.h"
 #include "Inference/PokemonSV_BlueberryPointsReader.h"
+#include "PokemonSV_IsolatedHunt_Tests.h"
+#include "PokemonSV_IsolatedHuntFlight_Tests.h"
+#include "PokemonSV_IsolatedHuntPower_Tests.h"
+#include "PokemonSV_SandwichEating_Tests.h"
+#include "PokemonSV_IsolatedHuntLoop_Tests.h"
+#include "PokemonSV_IsolatedHuntCorridor_Tests.h"
+#include "PokemonSV_IsolatedHuntOptions_Tests.h"
+#include "PokemonSV_IsolatedHuntEncounter_Tests.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -148,7 +156,32 @@ private:
 
 }
 
+namespace{
+class Test_IsolatedHunt : public UnitTest{
+public:
+    Test_IsolatedHunt(std::string name, UnitTestResult (*test)())
+        : UnitTest(std::move(name)), m_test(test)
+    {}
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        return m_test();
+    }
+private:
+    UnitTestResult (*m_test)();
+};
+}
+
 void add_tests(UnitTestDatabase& database){
+    database.add<Test_IsolatedHunt>("PokemonSV/IsolatedHunt/Flight", test_isolated_hunt_flight);
+    database.add<Test_IsolatedHunt>("PokemonSV/IsolatedHunt/Power", test_isolated_hunt_power);
+    database.add<Test_IsolatedHunt>("PokemonSV/IsolatedHunt/Plan", test_isolated_hunt_plan);
+    database.add<Test_IsolatedHunt>("PokemonSV/IsolatedHunt/Locations", test_isolated_hunt_locations);
+    database.add<Test_IsolatedHunt>("PokemonSV/IsolatedHunt/Loop", test_isolated_hunt_loop);
+    database.add<Test_IsolatedHunt>("PokemonSV/IsolatedHunt/Corridor", test_isolated_hunt_corridor);
+    database.add<Test_IsolatedHunt>("PokemonSV/IsolatedHunt/ExitPolicy", test_isolated_hunt_exit_policy);
+    database.add<Test_IsolatedHunt>("PokemonSV/IsolatedHunt/Options", test_isolated_hunt_options);
+    database.add<Test_IsolatedHunt>("PokemonSV/IsolatedHunt/Sandwich", test_isolated_hunt_sandwich);
+    database.add<Test_IsolatedHunt>("PokemonSV/IsolatedHunt/EncounterOptions", test_isolated_hunt_encounter_options);
+    database.add<Test_IsolatedHunt>("PokemonSV/Sandwich/Eating", test_sandwich_eating);
     database.add<Test_BBQuestsSlugs>();
 
     // Full-frame references, in the CommandLineTests repo: they exercise the production
