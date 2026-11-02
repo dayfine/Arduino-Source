@@ -101,6 +101,9 @@ Pokemon::Outcome choose_starter(StoryExecutor& executor, Pokemon::RunState&, con
 //  A, and if text follows ("You found an Azure Flute!", then the pocket line), B
 //  through it. Without the ball the A does nothing and we go on.
 void azure_flute_if_there(VideoStream& stream, ProControllerContext& context){
+    //  The route ends facing the way its last leg went (east, r15): a short tap
+    //  north only turns us to face the tile.
+    pbf_press_dpad(context, DPAD_UP, 40ms, 400ms);
     pbf_press_button(context, BUTTON_A, 80ms, 0ms);
     context.wait_for_all_requests();
     for (int presses = 0; presses < 6; presses++){
