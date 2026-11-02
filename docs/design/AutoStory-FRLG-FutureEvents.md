@@ -22,9 +22,9 @@ that every line of the 52poke story flow lands somewhere:
   and `scripts.inc`. Where a row cites a script or tile it was read there;
   every other start or end is a symbolic anchor (`@Map.anchor`), not a
   coordinate. Resolve anchors against the decomp, then on the console.
-- **What a fast route skips** comes from pokeguy's LeafGreen 1:59:34 notes
-  (`autostory/FRLG_WR_VIDEO_NOTES.md` on `notes/frlg-wr-route`), quoted as
-  "WR" below.
+- **What a fast route skips** comes from the [speedrun notes](AutoStory-FRLG-SpeedrunNotes.md), a sampled review of
+  pokeguy's LeafGreen 1:59:34 any% run, quoted as "WR" below.
+- **RNG handoffs** follow the upstream FRLG RNG programs' docs pages.
 
 ## Reading the rows
 
@@ -65,7 +65,7 @@ Run modes (planned, `autostory/DEMO_PLAN.md` on the notes branch): SPEEDRUN,
 DEFAULT and SAFE choose which battles to take, whether to flee wild Pokemon,
 the heal threshold and what to buy. Rows describe DEFAULT. SPEEDRUN would
 mostly turn on travel options the WR uses (`bike_voucher`, `fly`,
-`south_road=WEST`) and could drop non-italic steps the WR skips, such as
+`south_road=WEST`; see the [speedrun notes](AutoStory-FRLG-SpeedrunNotes.md)) and could drop non-italic steps the WR skips, such as
 Silph's Master Ball.
 
 **Sections** follow the story-sections rule (`docs/design/AutoStory-StoryTracks.md`
@@ -95,9 +95,10 @@ default value instead.
 | `bike_voucher` | Fan Club voucher; exchange for the Bicycle in Cerulean | 03.02, 04.02 | *中局5* |
 | `old_rod` | Old Rod from the Fishing Guru's house | 03.02 | *中局6* |
 | `flash` | Diglett's Cave → Route 2 aide → HM05 Flash (10 caught) | 04.01, 05.01 | *中局12* |
-| `old_amber` | Pewter Museum side door (Cut) → Old Amber | 04.01 | not on 52poke |
+| `old_amber` | Pewter Museum side door (Cut) → Old Amber; runs the 04.01 trip | 04.01 | not on 52poke |
 | `early_tower` | Pokemon Tower before Celadon: 2F rival, ghosts on 3F | 05.02 | *中局15*, *中局16* |
 | `coin_case` | Coin Case from the man in the Celadon restaurant | 06.01 | *中局19* |
+| `game_corner_prize` | Needs `coin_case`. Buy coins from the Game Corner clerk (bounded budget, no gambling) and a prize Pokemon | 06.01 | — (part of *中局19*'s Game Corner) |
 | `eevee` | Eevee from the Celadon Mansion rooftop room | 06.01 | *中局23* |
 | `fly` | HM02 Fly from the Route 16 house; enables Fly travel | 07.01 | *中局37* |
 | `south_road` = **EAST** \| WEST | Which Snorlax road reaches Fuchsia. One is required. | 07.02–07.04 | *中局31*, *中局36* |
@@ -111,7 +112,7 @@ default value instead.
 | `cinnabar_approach` = **ROUTE21** \| SEAFOAM | Reach Cinnabar by Pallet + Route 21, or by Routes 19/20 and Seafoam | 09.01 / 09.02 | *中局44* |
 | `articuno` | Stop and save before Articuno; capture only if asked (needs SEAFOAM) | 09.02 | *终局4*, *终局5* |
 | `fossil_revival` | Revive the Mt. Moon fossil (and Old Amber) at the Cinnabar Lab | 10.01 | *终局13* |
-| `sevii_before_league` | Accept Bill on Cinnabar and play segment 11 before Giovanni. Off: decline; segment 11 runs at the start of the postgame. | 10.03 | *终局16* |
+| `sevii_before_league` | Accept Bill on Cinnabar and play segment 11 before Giovanni. Off: decline, as the WR does (1:23:10 in the [speedrun notes](AutoStory-FRLG-SpeedrunNotes.md)); segment 11 runs at the start of the postgame. | 10.03 | *终局16* |
 | `zapdos` | Power Plant: stop and save before Zapdos; capture only if asked (needs `fly`) | 12.02 | *终局1*–*终局3* |
 | `rock_smash` | HM06 from the old man at Ember Spa | 15.03 | *七之岛5* |
 | `moltres` | Mt. Ember summit: stop and save before Moltres | 15.03 | *七之岛6* |
@@ -124,10 +125,107 @@ default value instead.
 | `league_rematch` | Elite Four round 2 | 17.02 | not on 52poke |
 | `navel_rock`, `birth_island` | **Unsupported**: need event tickets (MysticTicket, AuroraTicket) | — | *剧情后4*, *剧情后5* |
 | `diploma` | Diploma from Game Freak, Celadon Mansion 3F; needs a completed Pokedex. **Unsupported** until a dex-completion program exists. | — | *剧情后6* |
+| `<target>.rng` | RNG handoffs, one per target: see [RNG handoffs](#rng-handoffs) | per target | — |
+| `ace_setup` | ACE / glitch setup. **Reserved, method not chosen**; not designed. | — | — |
 
 Italic lines that sit on the default path anyway: one of *中局31*/*中局36* (a
 Snorlax must be passed), one half of *中局44* (some route to Cinnabar), and
 *终局34* (Route 21 north; italic because Fly replaces it).
+
+### RNG handoffs
+
+Each upstream FRLG RNG program (`SerialPrograms/Source/VideoGames/PokemonFRLG/Programs/RngManipulation/`,
+docs `https://pokemonautomation.github.io/Programs/PokemonFRLG/<Program>.html`)
+starts from a save the player made in a set spot. A handoff is a split in its
+checkpoint: AutoStory sets up that start state, **saves and stops**, the user
+runs the RNG program, then AutoStory resumes from the listed checkpoint. All
+handoffs are off by default; one turns on only when its target is in the
+[RNG plan](#rng-plan-setting). Where the gift or encounter is itself an
+option, the handoff is a sub-option of it and needs that option on.
+
+Start states are from each program's docs page. Every resume point is
+**unverified**: it assumes the RNG program leaves the player where AutoStory
+saved, with the target in the party, and must be checked on the console.
+
+| Target | Program | Checkpoint (sub-option) | Start state the program needs | Split: AutoStory saves and stops | Resume after (unverified) |
+|---|---|---|---|---|---|
+| Bulbasaur / Charmander / Squirtle | StarterRng | 00.04 (`starter_rng_handoff`, reserved) | South side of the lab table, saved facing the chosen ball | Designed in the segment-00 PR | Per that PR |
+| Magikarp | GiftRng | 01.01 (`magikarp.rng`) | ¥500 or more; saved facing the Magikarp salesman (Route 4 Center) | Before the purchase | 01.01's heal and save, same spot |
+| Eevee | GiftRng | 06.01 (`eevee.rng`) | Saved facing Eevee's ball (Mansion rooftop room) | Before taking the ball | 06.01 from the room: rest of the services |
+| Game Corner Abra / Clefairy / Dratini (FR or LG) / Scyther / Pinsir / Porygon | GiftRng | 06.01 (`game_corner_prize.rng`) | Enough coins for the prize; saved facing the prize counter. Prize list depends on version. | Before buying the prize | 06.01 from the prize corner |
+| Snorlax | StaticRng | 07.02 EAST or 07.04 WEST (`south_road.rng_snorlax`) | Poke Flute held; saved facing Snorlax | Before playing the flute | The same row after the Snorlax tile is clear |
+| Hitmonchan / Hitmonlee | GiftRng | 08.02 (`dojo_gift.rng`) | Karate King beaten; saved facing the chosen ball | After the Karate King battle | 08.02 from the Dojo: leave for the Center |
+| Lapras | GiftRng | 08.04 (`lapras_gift.rng`) | Rival beaten; saved facing the Silph 7F employee | After the rival battle | 08.04 from the employee: on to 08.05 |
+| Articuno | StaticRng | 09.02 (`articuno.rng`) | Saved facing Articuno; optionally take overworld items and break smashable rocks first so they add no advances | The row's `STOP_AT` | 09.02 after the encounter: on to Cinnabar |
+| Omanyte / Kabuto / Aerodactyl | GiftRng | 10.01 (`fossil_revival.rng`) | Fossil given to the Lab scientist, building left and re-entered, saved next to the scientist. Species comes from 01.02's fossil choice; Aerodactyl needs `old_amber`. | After the hand-over and re-entry | 10.01 from the Lab: on to the Mansion |
+| Hypno | StaticRng | 11.03 (`rng_hypno`; story battle, no parent option) | Saved facing Lostelle in Berry Forest | Before talking to Lostelle | 11.03 after the Hypno battle: escort to Two Island |
+| Electrode | StaticRng | 12.02 (`zapdos.rng_electrode`; the Power Plant trip) | Saved facing the Electrode | At the Electrode, before Zapdos | 12.02 from the same tile |
+| Zapdos | StaticRng | 12.02 (`zapdos.rng`) | Saved facing Zapdos; items and rocks as for Articuno | The row's `STOP_AT` | 12.02 after the encounter: Fly back |
+| Moltres | StaticRng | 15.03 (`moltres.rng`) | Saved facing Moltres | The row's `STOP_AT` | 15.03 after the encounter: on to the Ruby |
+| Togepi | GiftRng | 16.01 (`water_labyrinth_egg.rng`) | No Repel active; max-friendship lead; on the Bicycle (needs `bike_voucher`); saved facing the old man. "Togepi (pre-approved)" if he already saw the lead but the party was full. | Before talking to the old man | 16.01 from Water Labyrinth |
+| Raikou / Entei / Suicune | RoamingLegendaryRng | 16.03 (`roaming_beast.rng`) | Sapphire held and **not yet given**; saved on Celio's left, facing him (machine's left light red, right dark); lead Lv5–49; a Fly user last with Fly as its first field move; a free slot; 3+ Max Repels second in the bag; balls on top. The beast follows the starter (Squirtle: Raikou). | Before giving the Sapphire. With this on, 16.03 must not save after the delivery. | 16.03's end (network complete), if the program delivers the Sapphire |
+| Mewtwo | StaticRng | 17.01 (`mewtwo.rng`) | Saved facing Mewtwo | The row's `STOP_AT` | 17.01 after the encounter |
+| Ho-Oh / Lugia | StaticRng | `navel_rock` | Top of Navel Rock's steps / facing Lugia | — | **Unsupported**: MysticTicket event island |
+| Deoxys | StaticRng | `birth_island` | Puzzle solved, saved before the red triangle | — | **Unsupported**: AuroraTicket event island |
+
+Two more programs could hook in later; not designed here:
+
+- **WildRng** (grass, surf, fishing, Rock Smash): the hook is a checkpoint
+  whose end tile can spawn the target. Needs a Sweet Scent user in the last
+  slot (grass, surf), a rod registered to SELECT and facing water (fishing), or
+  a Rock Smash user facing a rock. Natural spots: Tanoby Unown (17.04; slow to
+  calibrate per its docs), the Safari Zone (07.06; the program has a Safari
+  mode), any route a row already ends on.
+- **EggRng** (day care eggs): postgame only, at the Four Island Day Care
+  (15.05, `four_island_daycare`). Needs both parents deposited with no steps
+  taken after, three free slots, a Surf user, ideally Rock Smash. The program
+  saves twice by itself, so its resume point needs its own design.
+
+## RNG plan setting
+
+The user decides targets before the run, with an RNG search tool, and fills
+one table. AutoStory never picks seeds.
+
+| Field | Scope | Notes |
+|---|---|---|
+| Game version | shared | FireRed / LeafGreen; must match the game AutoStory runs |
+| Language | shared | Picks the seeds list (only English and Japanese lists exist; other languages use English) |
+| Sound | shared | Mono / Stereo; the in-game setting must match |
+| Switch profile position | shared | The RNG programs' `PROFILE` option |
+| TID / SID | shared | From `sid_helper_handoff` or entered by the user; targets are searched with it |
+| Target | per row | One of the targets above |
+| Target Seed, Advances | per row | From the search tool |
+| Target-specific | per row | Starter species; Game Corner prize; fossil (must match 01.02's choice) |
+
+How AutoStory uses it:
+
+- A handoff turns on only for a target in the table; nothing else stops.
+- At the handoff it reaches the start state, saves, stops, and tells the user
+  the exact program and values: program name and docs link, Target, Target
+  Seed, Advances, Game Version, Language, Sound, profile position, and the
+  checkpoint to start AutoStory from afterwards.
+- Later, possibly: call the RNG code inline instead of stopping (the programs
+  share calibration and reset routines in `PokemonFRLG_RngLoopRoutines` and
+  `PokemonFRLG_HardReset`). Not designed.
+- The RNG programs need Text Speed Fast, Button Mode **HELP**, Frame Type 1 and
+  the right sound setting. AutoStory must set or check these in its options
+  step before the first handoff; check that its own menus work with Button Mode
+  HELP.
+
+Checks before the run starts (an error stops the run before anything is
+saved):
+
+- Each Target Seed is found by `SeedsDatabase::find_seed` in the list for the
+  version and language, with that sound setting (as the programs themselves
+  check at their start).
+- Each target's checkpoint is in the selected start–end range and is not
+  skipped by the route choices or a parent option that is off. Examples:
+  Articuno with `cinnabar_approach=ROUTE21`; Togepi without `bike_voucher`;
+  Kabuto when 01.02 picks the Helix Fossil; Aerodactyl without `old_amber`;
+  Entei when the starter is Squirtle; the Dratini of the other version; any
+  target on `navel_rock` or `birth_island`. A listed target never turns its
+  parent option on by itself.
+- A TID/SID is known before the first target.
 
 ## Main story
 
@@ -189,11 +287,11 @@ a schedule change, not an option.
 
 ### Segment 04 — Route 11, Diglett's Cave, Route 2 east, Museum, Routes 9/10 (Part 7)
 
-Default skips Flash and walks Rock Tunnel dark, as the WR does.
+Default skips Flash and walks Rock Tunnel dark, as the WR does (45:00–50:00 in the [speedrun notes](AutoStory-FRLG-SpeedrunNotes.md)).
 
 | ID | Title | Start | Does | End / save | 52poke |
 |---|---|---|---|---|---|
-| 04.01 | `[opt: flash]` Diglett's Cave to HM05 | `@Vermilion.center_counter` | Route 11; Diglett's Cave; Route 2 east gate aide (needs 10 caught: `CAPTURE` until met); `TEACH(Flash)`; `[opt: old_amber]` museum side door via Cut; back through the cave | `@Vermilion.center_counter` | *中局12* |
+| 04.01 | `[opt: flash or old_amber]` Diglett's Cave to HM05 | `@Vermilion.center_counter` | Route 11; Diglett's Cave; `[opt: flash]` Route 2 east gate aide (needs 10 caught: `CAPTURE` until met), `TEACH(Flash)`; `[opt: old_amber]` museum side door via Cut; back through the cave | `@Vermilion.center_counter` | *中局12* |
 | 04.02 | Back to Cerulean | `@Vermilion.center_counter` | Route 6; Underground Path; Route 5; `[opt: bike_voucher]` Bike Shop exchange; Center `heal` | `@Cerulean.center_counter` | 中局13 |
 | 04.03 | Routes 9 and 10 | `@Cerulean.center_counter` | Cut the east tree; Route 9 trainers on the path; Route 10 Center `heal` | `@Route10.center_counter` | 中局13 |
 
@@ -209,7 +307,7 @@ Default skips Flash and walks Rock Tunnel dark, as the WR does.
 
 | ID | Title | Start | Does | End / save | 52poke |
 |---|---|---|---|---|---|
-| 06.01 | Celadon services | `@Celadon.center_counter` | Mansion 1F old lady: Tea; Dept. Store by budget `[opt: coin_case]` `[opt: eevee]` | `@Celadon.center_counter` | *中局19*, *中局23*, 中局24 |
+| 06.01 | Celadon services | `@Celadon.center_counter` | Mansion 1F old lady: Tea; Dept. Store by budget `[opt: coin_case]` `[opt: game_corner_prize]` `[opt: eevee]` | `@Celadon.center_counter` | *中局19*, *中局23*, 中局24 |
 | 06.02 | Rainbow Badge | `@Celadon.center_counter` | Cut the gym tree; gym trainers on the path; `PREP(Erika)`; `battle(Erika)`; Rainbow Badge, TM19 | `@Celadon.center_counter` | 中局18 |
 | 06.03 | Hideout entrance | `@Celadon.center_counter` | Game Corner; `battle(poster_grunt)`; press the poster switch; stairs | `@RocketHideoutB1F.stairs` | 中局20 |
 | 06.04 | Lift Key | `@RocketHideoutB1F.stairs` | Spinner floors to B4F northwest room; `battle(key_grunt)`; **talk again**; pick up the Lift Key | `@RocketHideoutB4F.key_room` | 中局21 |
@@ -565,13 +663,15 @@ counted because they are list lines there. *Italic* = optional on 52poke.
 | *剧情后4* | MysticTicket: Navel Rock, Lugia, Ho-Oh | `navel_rock` (unsupported) |
 | *剧情后5* | AuroraTicket: Birth Island, Deoxys | `birth_island` (unsupported) |
 | *剧情后6* | Diploma for a completed Pokedex | `diploma` (unsupported) |
-| 传说1 | Articuno, Seafoam | 09.02 `articuno` |
-| 传说2 | Zapdos, Power Plant | 12.02 `zapdos` |
-| 传说3 | Moltres, Mt. Ember | 15.03 `moltres` |
-| 传说4 | Mewtwo, Cerulean Cave, after the Sevii story | 17.01 `mewtwo` |
-| 传说5–7 | Raikou / Entei / Suicune by starter, after the Sapphire | 17.03 `roaming_beast` |
+| 传说1 | Articuno, Seafoam | 09.02 `articuno` (`articuno.rng`) |
+| 传说2 | Zapdos, Power Plant | 12.02 `zapdos` (`zapdos.rng`) |
+| 传说3 | Moltres, Mt. Ember | 15.03 `moltres` (`moltres.rng`) |
+| 传说4 | Mewtwo, Cerulean Cave, after the Sevii story | 17.01 `mewtwo` (`mewtwo.rng`) |
+| 传说5–7 | Raikou / Entei / Suicune by starter, after the Sapphire | 17.03 `roaming_beast`; RNG at 16.03 (`roaming_beast.rng`) |
 | 传说8–9 | Lugia, Ho-Oh, Navel Rock | `navel_rock` (unsupported) |
 | 传说10 | Deoxys, Birth Island | `birth_island` (unsupported) |
+
+RNG handoffs add no 52poke lines; they split checkpoints already listed.
 
 No line is unplaced. Three are placed with a caveat: 中局14 splits between
 `05.01` (the news) and the Tower rows; 中局30 is a choice line, resolved by
