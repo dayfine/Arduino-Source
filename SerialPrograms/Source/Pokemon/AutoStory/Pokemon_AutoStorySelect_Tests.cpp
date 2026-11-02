@@ -6,6 +6,7 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 #include "Pokemon_AutoStorySelect.h"
 #include "Pokemon_AutoStorySelect_Tests.h"
@@ -52,28 +53,56 @@ struct NamedEntry{
     std::string name() const{ return label; }
 };
 
+// A story list of two tutorial entries, then two of the main story (which
+// starts at index 2), as SV's lists are laid out.
+std::vector<std::unique_ptr<NamedEntry>> two_tutorial_two_main_story(){
+    std::vector<std::unique_ptr<NamedEntry>> list;
+    for (const char* label : {"tutorial 0", "tutorial 1", "main story 0", "main story 1"}){
+        list.emplace_back(std::make_unique<NamedEntry>(NamedEntry{label}));
+    }
+    return list;
+}
+
+// A dropdown built from [begin, end) of that list, and its (slug, label)
+// entries: slugs are indices in the whole list, not in the dropdown.
+struct AutoStorySelectScenario{
+    std::string name;
+    size_t begin;
+    size_t end;
+    std::vector<std::pair<std::string, std::string>> expected;
+};
+
 class Test_AutoStorySelectDatabase : public UnitTest{
 public:
-    Test_AutoStorySelectDatabase()
-        : UnitTest("Pokemon::AutoStorySelectDatabase - a section keeps whole-list slugs")
+    Test_AutoStorySelectDatabase(AutoStorySelectScenario scenario)
+        : UnitTest("Pokemon::AutoStorySelectDatabase - " + scenario.name)
+        , m_scenario(std::move(scenario))
     {}
 
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        std::vector<std::unique_ptr<NamedEntry>> list;
-        for (const char* label : {"a", "b", "c", "d"}){
-            list.emplace_back(std::make_unique<NamedEntry>(NamedEntry{label}));
+        const StringSelectDatabase database = make_story_select_database(
+            two_tutorial_two_main_story(), m_scenario.begin, m_scenario.end
+        );
+        std::vector<std::pair<std::string, std::string>> got;
+        for (const StringSelectEntry& entry : database.case_list()){
+            got.emplace_back(entry.slug, entry.display_name);
         }
-        const StringSelectDatabase database = make_story_select_database(list, 2, 10);
-        const std::vector<StringSelectEntry>& entries = database.case_list();
-        if (entries.size() != 2){
-            return "Expected 2 entries (the end is clamped to the list), got " + std::to_string(entries.size());
-        }
-        if (entries[0].slug != "2" || entries[0].display_name != "c" || entries[1].slug != "3" || entries[1].display_name != "d"){
-            return "Expected slugs 2, 3 labeled c, d; got " + entries[0].slug + " " + entries[0].display_name
-                + ", " + entries[1].slug + " " + entries[1].display_name;
+        if (got != m_scenario.expected){
+            return "Expected " + describe(m_scenario.expected) + ", got " + describe(got);
         }
         return true;
     }
+
+private:
+    static std::string describe(const std::vector<std::pair<std::string, std::string>>& entries){
+        std::string text;
+        for (const auto& [slug, label] : entries){
+            text += (text.empty() ? "" : ", ") + slug + " \"" + label + "\"";
+        }
+        return "[" + text + "]";
+    }
+
+    const AutoStorySelectScenario m_scenario;
 };
 
 }
@@ -107,7 +136,29 @@ void add_tests_AutoStorySelect(UnitTestDatabase& database){
     for (const AutoStoryIndexScenario& scenario : scenarios){
         database.add<Test_AutoStoryIndex>(scenario);
     }
-    database.add<Test_AutoStorySelectDatabase>();
+    const AutoStorySelectScenario select_scenarios[] = {
+        {
+            .name = "the tutorial dropdown",
+            .begin = 0,
+            .end = 2,
+            .expected = {{"0", "tutorial 0"}, {"1", "tutorial 1"}},
+        },
+        {
+            .name = "the main story dropdown keeps whole-list slugs",
+            .begin = 2,
+            .end = 4,
+            .expected = {{"2", "main story 0"}, {"3", "main story 1"}},
+        },
+        {
+            .name = "an end past the list is clamped to it",
+            .begin = 2,
+            .end = 10,
+            .expected = {{"2", "main story 0"}, {"3", "main story 1"}},
+        },
+    };
+    for (const AutoStorySelectScenario& scenario : select_scenarios){
+        database.add<Test_AutoStorySelectDatabase>(scenario);
+    }
 }
 
 
