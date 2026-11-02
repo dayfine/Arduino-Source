@@ -329,7 +329,11 @@ private:
         }
         const bool still = still_chunk(change);
         if (!still){
-            m_result.moved_chunks++;
+            //  A quiet tap and then a moving one: the first moved too. What
+            //  blocks a tap still blocks the next; the view barely changed
+            //  while the president walked off (r67: "east 2 moved 1", and
+            //  the console showed both tiles walked).
+            m_result.moved_chunks += 1 + (m_spec.input == WalkInput::TAPS ? m_unchanged : 0);
         }
         m_unchanged = still ? m_unchanged + 1 : 0;
         if (m_unchanged >= 2){
