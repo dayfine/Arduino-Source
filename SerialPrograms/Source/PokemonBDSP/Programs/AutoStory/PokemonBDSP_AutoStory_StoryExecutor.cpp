@@ -239,8 +239,9 @@ namespace{
 //  quiet: a scene can pause while someone walks off (Dawn and Barry after
 //  Rowan leaves, r23), fade dimly, not to black, to another map (r25), or
 //  wait on a box the detector misses (r26). B never starts a talk on the
-//  overworld. Done once the overworld has shown, with no text, for 5 s of
-//  presses.
+//  overworld. Done once the overworld has shown, with no text and a still
+//  screen, for 5 s of presses: after r31's fade home a scripted walk-in ran
+//  5 s with no text before Mom spoke.
 //
 //  A step or scene that ends on another map (`fade`) must fade on the way,
 //  and only the quiet after the fade counts: r30's scene went quiet for 5 s
@@ -254,6 +255,7 @@ void settle(VideoStream& stream, ProControllerContext& context, Button button, c
     OverworldDetector overworld;
     WallClock quiet_since = none;
     double darkest = 255;
+    VideoSnapshot previous;
     while (current_time() < deadline){
         context.wait_for_all_requests();
         const auto frame = stream.video().snapshot();
@@ -262,7 +264,9 @@ void settle(VideoStream& stream, ProControllerContext& context, Button button, c
             darkest = std::min(darkest, image_average(*frame.frame).sum() / 3);
         }
         const bool talking = frame && dialog.detect(frame);
-        if (!talking && frame && overworld.detect(frame) && (!fade || darkest < FADE_DARKNESS)){
+        const bool still = frame && previous && walk_screen_change(*previous.frame, *frame.frame) < WALK_TAP_BLOCKED_CHANGE;
+        previous = frame;
+        if (!talking && still && overworld.detect(frame) && (!fade || darkest < FADE_DARKNESS)){
             quiet_since = quiet_since == none ? now : quiet_since;
             if (now - quiet_since >= 5000ms){
                 stream.log(std::format("[Story] {}: settled; darkest frame {:.0f}.", label, darkest));
