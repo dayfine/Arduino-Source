@@ -19,6 +19,7 @@
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_PlanCosts.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_RoutePlanner.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_StoryWorld.h"
+#include "PokemonBDSP_AutoStory_RouteIO.h"
 #include "PokemonBDSP_AutoStory_RouteWalk.h"
 #include "PokemonBDSP_AutoStory_Walk.h"
 
@@ -64,6 +65,11 @@ std::vector<Pokemon::TilePos> walk_route(
     const StoryWorld& maps, std::vector<Pokemon::TilePos> from,
     RouteTrainers& trainers, const RouteWalkPlan& plan
 );
+//  walk_route() through `io`.
+std::vector<Pokemon::TilePos> walk_route(
+    RouteIO& io, const StoryWorld& maps, std::vector<Pokemon::TilePos> from,
+    RouteTrainers& trainers, const RouteWalkPlan& plan
+);
 
 //  The corners of a line a human walked, and the costs to plan each
 //  stretch with.
@@ -99,6 +105,11 @@ struct NpcTalk{
 void talk_to_npc(
     VideoStream& stream, ProControllerContext& context, const WildBattleEscape& escape,
     const StoryWorld& maps, std::vector<Pokemon::TilePos>& at,
+    RouteTrainers& trainers, const NpcTalk& talk
+);
+//  talk_to_npc() through `io`.
+void talk_to_npc(
+    RouteIO& io, const StoryWorld& maps, std::vector<Pokemon::TilePos>& at,
     RouteTrainers& trainers, const NpcTalk& talk
 );
 
