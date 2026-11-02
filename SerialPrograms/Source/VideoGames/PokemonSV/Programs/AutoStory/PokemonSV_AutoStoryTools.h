@@ -14,6 +14,7 @@
 #include "ML/Inference/ML_YOLOv5Detector.h"
 #include "ML/Inference/ML_YOLONavigation.h"
 #include "NintendoSwitch/NintendoSwitch_SingleSwitchProgram.h"
+#include "Pokemon/AutoStory/Pokemon_AutoStoryStats.h"
 #include "VideoGames/PokemonSV/Programs/PokemonSV_WorldNavigation.h"
 
 namespace PokemonAutomation{
@@ -24,20 +25,7 @@ using namespace ML;
 
 static constexpr bool ENABLE_TEST  = false;
 
-struct AutoStoryStats : public StatsTracker{
-    AutoStoryStats()
-        : m_checkpoint(m_stats["Checkpoint"])
-        , m_segment(m_stats["Segment"])
-        , m_reset(m_stats["Reset"])
-    {
-        m_display_order.emplace_back("Checkpoint");
-        m_display_order.emplace_back("Segment");
-        m_display_order.emplace_back("Reset");
-    }
-    std::atomic<uint64_t>& m_checkpoint;
-    std::atomic<uint64_t>& m_segment;
-    std::atomic<uint64_t>& m_reset;
-};    
+using AutoStoryStats = Pokemon::AutoStoryStats;
 
 
 
