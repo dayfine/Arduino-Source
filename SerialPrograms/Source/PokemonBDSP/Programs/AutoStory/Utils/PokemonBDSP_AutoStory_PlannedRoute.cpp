@@ -737,7 +737,12 @@ LegNext RouteWalker::known_trainer(LegWalk& walk, const std::vector<std::vector<
         const size_t k = std::min(taps, path.size());
         by_taps.push_back(k == 0 ? pos : path[k - 1]);
     }
-    return replan_from(walk, sorted_unique(std::move(by_taps)), std::to_string(taps) + " taps before the battle");
+    //  The taps can be a tile off too (r55: "5 taps" were 4, under Logan's
+    //  nose at Route 202 (26, 5), and the replan walked into him and then
+    //  along the wrong row). Plan from both: where the taps say and where his
+    //  sight line crosses the leg.
+    by_taps.insert(by_taps.end(), stopped.begin(), stopped.end());
+    return replan_from(walk, sorted_unique(std::move(by_taps)), std::to_string(taps) + " taps before the battle, or where they saw us");
 }
 
 
