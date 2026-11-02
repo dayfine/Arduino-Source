@@ -1794,6 +1794,8 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldReanchor_Tests.cpp
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRecovery.cpp
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRecovery.h
+    Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRecoveryWalk.cpp
+    Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRecoveryWalk.h
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRecovery_Tests.cpp
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRoute.cpp
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRoute.h
