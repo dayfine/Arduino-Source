@@ -127,11 +127,13 @@ void StoryWorld::rebuild(){
 void StoryWorld::paint(const Placed& placed, const TilePos& corner){
     for (int y = 0; y < placed.tiles.height; y++){
         for (int x = 0; x < placed.tiles.width; x++){
-            Pokemon::cell_at(m_cells, {corner.x + x, corner.y + y}) = Cell{true, placed.tiles.at({x, y}), false};
+            Pokemon::cell_at(m_cells, {corner.x + x, corner.y + y}) = Cell{true, placed.tiles.at({x, y}), false, false};
         }
     }
     for (const TilePos& pos : placed.occupied){
-        Pokemon::cell_at(m_cells, {corner.x + pos.x, corner.y + pos.y}).occupied = true;
+        Cell& standing = Pokemon::cell_at(m_cells, {corner.x + pos.x, corner.y + pos.y});
+        standing.occupied = true;
+        standing.person = true;
     }
 }
 
@@ -160,6 +162,11 @@ std::optional<TileKind> StoryWorld::tile(const TilePos& pos) const{
 bool StoryWorld::occupied(const TilePos& pos) const{
     const Cell* found = cell(pos);
     return found != nullptr && found->occupied;
+}
+
+bool StoryWorld::person(const TilePos& pos) const{
+    const Cell* found = cell(pos);
+    return found != nullptr && found->person;
 }
 
 void StoryWorld::block(const TilePos& pos){
@@ -223,9 +230,12 @@ std::optional<TilePos> step(const StoryWorld& world, const TilePos& from, Direct
     return std::nullopt;
 }
 
+//  Someone standing in the way stops us too, but is no wall to stop against:
+//  they may turn and talk, or walk off (r29 ran east into Mom, who talked).
 bool at_wall(const StoryWorld& world, const TilePos& pos, Direction direction){
     const std::optional<TileKind> next = world.tile(pos.next(direction));
-    return next && *next != TileKind::DOOR && !step(world, pos, direction).has_value();
+    return next && *next != TileKind::DOOR && !world.person(pos.next(direction)) &&
+        !step(world, pos, direction).has_value();
 }
 
 std::string describe(const StoryWorld& world, const TilePos& pos){
