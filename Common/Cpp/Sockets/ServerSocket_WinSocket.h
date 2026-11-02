@@ -9,6 +9,7 @@
 
 #include <string>
 #include <atomic>
+#include <chrono>
 #include <winsock2.h>
 #include "Common/Cpp/Concurrency/AsyncTask.h"
 #include "Common/Cpp/Concurrency/ConditionVariable.h"
@@ -27,18 +28,19 @@ public:
     ServerSocket_WinSocket(ThreadPool& thread_pool)
         : m_thread_pool(thread_pool)
     {}
-
     virtual ~ServerSocket_WinSocket(){
         close();
     }
 
     virtual void start(const std::string& address, uint16_t port) override;
-
     virtual void close_connection() override;
-
     virtual void close() noexcept override;
 
-    virtual size_t send(const void* data, size_t bytes) override;
+    virtual size_t send(
+        const void* data,
+        size_t bytes,
+        std::chrono::milliseconds timeout = std::chrono::milliseconds::max()
+    ) override;
 
 
 private:
@@ -50,7 +52,6 @@ private:
     static void ensure_wsa_started();
 
     void accept_thread_loop(std::string address, uint16_t port);
-
     void connection_thread_loop();
 
 
