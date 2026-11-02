@@ -61,9 +61,12 @@ JoystickPosition route_stick(Pokemon::Direction direction);
 //  800ms hold south 4: the player starts at once and finishes the step.
 Milliseconds route_open_hold(Pokemon::Direction direction, size_t tiles);
 
-//  A tap this short turns a player who faces another way, without a step: on
-//  the console a 150ms tap south after walking north only turned the player.
-constexpr Milliseconds ROUTE_TURN_TAP = Milliseconds(100);
+//  A D-pad tap this short only turns, whichever way the player faced: on the
+//  console 40, 50, 60 and 80 ms taps each turned without a step. A 100 ms
+//  stick tap stepped about 0.6 tile, off the tile grid, and a 160 ms D-pad
+//  tap steps a whole tile (r49: a stick "turn" put us a tile west of
+//  Sandgem's Center door; r248a).
+constexpr Milliseconds ROUTE_TURN_TAP = Milliseconds(50);
 
 //  Turns the player to face `direction` without moving. Only for a player who
 //  faces another way: one already facing it may take a step.
