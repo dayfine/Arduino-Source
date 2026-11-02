@@ -66,34 +66,57 @@ void barry_town_map(VideoStream& stream, ProControllerContext& context){
     fail_step(stream, "Trainers' School: Barry did not answer from beside the back wall.");
 }
 
-//  00.05b: a talk to someone who wanders through the tile we face (the
-//  clowns by the Mart and the Poketch Company: WANDER_AROUND a tile either
-//  side of home, so through it every other move). Faces the pose's way,
-//  then A until a line shows, for up to a minute; the scene after it
-//  answers and closes the talk.
-Pokemon::Outcome talk_to_wanderer(StoryExecutor& executor, Pokemon::RunState& state, const Pokemon::StoryStep& step){
-    VideoStream& stream = executor.stream();
-    ProControllerContext& context = executor.context();
-    if (const std::optional<Direction> facing = Pokemon::facing_of(state.pose)){
-        route_turn(stream, context, *facing);
-    }
-    for (size_t ask = 0; ask < 40; ask++){
+//  00.05b: a talk to someone who wanders a tile either side of home along a
+//  row (the clowns by the Mart and the Poketch Company, WANDER_AROUND with
+//  x range 1). Waiting under home alone missed him for a minute (r66: he
+//  stood a tile east), so walk the row below his range, a whole D-pad tile
+//  at a time, asking north from each tile. His question's answer is Yes, so
+//  A answers and takes the coupon; then back under his home tile.
+bool ask_north(VideoStream& stream, ProControllerContext& context){
+    route_turn(stream, context, Direction::NORTH);
+    for (size_t ask = 0; ask < 2; ask++){
         pbf_press_button(context, BUTTON_A, 80ms, 0ms);
         context.wait_for_all_requests();
         ShortDialogWatcher dialog(COLOR_YELLOW);
         if (wait_until(stream, context, 1500ms, {{dialog}}) == 0){
-            stream.log(std::format("[Talk] {}: answered after {} asks.", step.name, ask + 1));
+            return true;
+        }
+    }
+    return false;
+}
+//  One tile along the row, east (+1) or west (-1).
+void step_along(VideoStream& stream, ProControllerContext& context, int east, const std::string& label){
+    route_turn(stream, context, east > 0 ? Direction::EAST : Direction::WEST);
+    walk_tiles_dpad(stream, context, run_from_wild_battle, {east > 0 ? 1.0 : -1.0, 0}, 1, label);
+}
+Pokemon::Outcome talk_to_wanderer(StoryExecutor& executor, Pokemon::RunState&, const Pokemon::StoryStep& step){
+    VideoStream& stream = executor.stream();
+    ProControllerContext& context = executor.context();
+    const std::string label = "Along the row below " + step.name;
+    //  Home, east, west, west, east: each move one tile on the D-pad.
+    const int moves[] = {0, 1, -1, -1, 1};
+    int at = 0;
+    for (size_t round = 0; round < 6; round++){
+        for (int move : moves){
+            if (move != 0){
+                step_along(stream, context, move, label);
+                at += move;
+            }
+            if (!ask_north(stream, context)){
+                continue;
+            }
+            stream.log(std::format("[Talk] {}: answered in round {}, {} tiles east of home.", step.name, round + 1, at));
+            finish_dialogue(stream, context, BUTTON_A, step.name);
+            for (; at != 0; at += at > 0 ? -1 : 1){
+                step_along(stream, context, at > 0 ? -1 : 1, "Back below " + step.name + "'s home");
+            }
+            route_turn(stream, context, Direction::NORTH);
             return Pokemon::outcome_ok();
         }
     }
-    fail_step(stream, step.name + ": nobody came by to talk within a minute.");
+    fail_step(stream, step.name + ": no answer from any tile below his range.");
 }
 
-//  01.07: Rowan's and Dawn's lines after the tag battle. 01.08 starts here,
-//  from a save at the top of the street.
-void rowan_after_the_battle(VideoStream& stream, ProControllerContext& context){
-    finish_dialogue(stream, context, BUTTON_B, "Rowan and Dawn after the battle");
-}
 
 //  01.01 from the save at the Jubilife Center's PC: healed at the nurse,
 //  out of the door and through the plaza to the street east to Route 203.
@@ -224,7 +247,6 @@ void add_jubilife_events(StoryEvents& events){
     events.emplace("up_the_steps", console_event(up_the_steps));
     events.emplace("barry_town_map", console_event(barry_town_map));
     events.emplace("talk_to_wanderer", talk_to_wanderer);
-    events.emplace("rowan_after_the_battle", console_event(rowan_after_the_battle));
     events.emplace("jubilife_center_to_street", console_event(jubilife_center_to_street));
     events.emplace("east_to_barry", console_event(east_to_barry));
     events.emplace("west_to_the_crossroads", console_event(west_to_the_crossroads));

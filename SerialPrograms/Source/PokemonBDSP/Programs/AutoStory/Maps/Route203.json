@@ -1,6 +1,6 @@
 {
     "name": "Route203",
-    "source": {"decomp_file": "pret/pokediamond: files/fielddata/land_data/land_data_release/narc_0016.bin, files/fielddata/land_data/land_data_release/narc_0019.bin; zone_event narc_0329", "revision": "default branch", "date": "2026-10-31"},
+    "source": {"decomp_file": "pret/pokediamond: files/fielddata/land_data/land_data_release/narc_0016.bin, files/fielddata/land_data/land_data_release/narc_0019.bin, files/fielddata/land_data/land_data_release/narc_0020.bin; zone_event narc_0329", "revision": "default branch", "date": "2026-10-31"},
     "tiles": [
         "#############################################################",
         "#############################################################",

@@ -139,18 +139,20 @@ WalkResult walk_dir(
 
 //  `taps` D-pad taps toward `dpad`, settling between them. On the D-pad the
 //  player moves a whole tile per tap (measured above), so counted legs do
-//  not drift the way stick holds do. The first tap toward a new way only
-//  turns the player, so turn first.
+//  not drift the way stick holds do.
 void dpad_tiles(VideoStream& stream, ProControllerContext& context, DpadPosition dpad, size_t taps, const std::string& label){
     stream.log("[Walk] " + label + ": " + std::to_string(taps) + " D-pad taps.");
-    pbf_press_dpad(context, dpad, 160ms, 700ms);    // turn
+    //  No turn tap: a 160 ms tap is a whole step from any facing, so N taps
+    //  are N tiles (r80: the old 160 ms "turn" tap walked one tile too many,
+    //  two tiles west in the Ravaged Path, not one). Turning only matters to
+    //  talk to someone, and they block like a wall, so a tap toward them turns.
+    size_t moved = 0;
     // Count only taps that moved the view: one after the turn was lost and
     // the leg ended a tile short (r215d). A tile's scroll changes the view by
     // about 100; standing still, under 15. A tap that does not move is someone
     // in the way: people walk about these streets (r220g: blocked on tap 9
     // for 12 s while a passer-by stood in our row). Wait for them to move on,
     // up to 30 s, before giving up.
-    size_t moved = 0;
     const auto deadline = current_time() + std::chrono::milliseconds(taps * 1000 + 30000);
     while (moved < taps && current_time() < deadline){
         context.wait_for_all_requests();

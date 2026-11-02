@@ -247,8 +247,11 @@ protected:
     virtual Outcome train(RunState&, const StoryStep&) override{ return Pokemon::outcome_ok(); }
     virtual Outcome heal(RunState&, const StoryStep&) override{ return Pokemon::outcome_ok(); }
     virtual Outcome shop(RunState&, const StoryStep&) override{ return Pokemon::outcome_ok(); }
-    virtual Outcome save(RunState&, const StoryStep&) override{
+    virtual Outcome save(RunState&, const StoryStep& step) override{
         trace.push_back("save in " + m_row);
+        if (!step.variant.empty()){
+            trace.push_back("card for " + m_row + ": " + step.variant);
+        }
         return Pokemon::outcome_ok();
     }
     virtual Outcome game(RunState&, const StoryStep&) override{ return Pokemon::outcome_ok(); }
@@ -336,6 +339,12 @@ UnitTestResult test_whole_table(Logger& logger){
             const size_t expected = id == "00.00" ? 0 : id == "01.10" || id == "01.11" ? 2 : 1;
             if (saves != expected){
                 return std::format("{} saved {} times, expected {}:{}", id, saves, expected, joined(sim.trace));
+            }
+        }
+        //  Each start save checks the card for its row's map.
+        for (const StoryCheckpoint& row : story_checkpoints()){
+            if (!row.saves_in.empty() && sim.count("card for " + row.id + ": " + row.saves_in) != 1){
+                return std::format("{}'s start save did not check the card for {}:{}", row.id, row.saves_in, joined(sim.trace));
             }
         }
         if (report.one_shot_passes() != report.checkpoints_run){

@@ -20,6 +20,7 @@
 #include "PokemonBDSP/Inference/PokemonBDSP_DialogDetector.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_Maps.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_StoryMaps.h"
+#include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Indoors.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Location.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_PlannedRoute.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_RouteWalk.h"
@@ -151,10 +152,18 @@ void heal_at_oreburgh_counter(VideoStream& stream, ProControllerContext& context
 //  36 to 48 px, so 18 or 19 of them missed the door by a part of a tile.
 constexpr size_t GYM_DPAD_TAPS_WEST_OF_CENTER = 20;
 
+const uint64_t GYM_DARKER_THAN = 90;
 void oreburgh_street_to_gym(VideoStream& stream, ProControllerContext& context){
     // From the Center's doorstep, straight west along its row to below the
     // gym's door, then north through it, all on the D-pad (whole tiles; see
-    // GYM_DPAD_TAPS_WEST_OF_CENTER).
+    // GYM_DPAD_TAPS_WEST_OF_CENTER). A save inside the gym: already there.
+    // The gym's rock floor is darker than the street (mean brightness 75
+    // against 104, r74), which indoors() does not tell apart.
+    context.wait_for_all_requests();
+    if (in_dim_cave(stream, GYM_DARKER_THAN)){
+        stream.log("[Route] 01.04: already in the gym.");
+        return;
+    }
     dpad_tiles(stream, context, DPAD_LEFT, GYM_DPAD_TAPS_WEST_OF_CENTER, "west to the gym's door");
     if (dpad_through_door_north(stream, context, "Oreburgh Gym door")){
         return;
@@ -226,6 +235,19 @@ void oreburgh_center_door(VideoStream& stream, ProControllerContext& context){
     // ignored A in r101 and r104 until then). A save after his talk has him
     // gone already.
     //
+    //  Already in the Center (a save inside its door): nothing to do, as
+    //  01.01 does for its Center.
+    context.wait_for_all_requests();
+    if (VideoSnapshot screen = stream.video().snapshot()){
+        if (indoors(*screen.frame)){
+            stream.log("[Route] 01.03: already in the Pokemon Center.");
+            return;
+        }
+    }
+    if (in_dim_cave(stream)){
+        stream.log("[Route] 01.03: already in the mine.");
+        return;
+    }
     enter_oreburgh_center(stream, context);
     context.wait_for(1000ms);
 }
@@ -239,6 +261,11 @@ void south_into_the_mine(VideoStream& stream, ProControllerContext& context){
     // hand). A worker walks about on the sand path and stops the walk as a
     // wall would (r95, r96): wait for him to move and walk on. Step 3 copes
     // with ending in the hall or in the corridor.
+    //  A save in the mine's entrance hall: already there.
+    if (in_dim_cave(stream)){
+        stream.log("[Route] 01.03: already in the mine.");
+        return;
+    }
     bool in_mine = false;
     size_t transitions = 0;
     Milliseconds walked = 0ms;
@@ -446,7 +473,15 @@ void oreburgh_center_heal(VideoStream& stream, ProControllerContext& context){
 //  01.04: out of the Pokemon Center from the counter.
 void out_of_the_center(VideoStream& stream, ProControllerContext& context){
     // 01.03 leaves us at the Center's counter, facing the nurse; the door
-    // is straight south.
+    // is straight south. Not on the Center's floor (a save in the gym):
+    // nothing to leave.
+    context.wait_for_all_requests();
+    if (VideoSnapshot screen = stream.video().snapshot()){
+        if (!center_floor_on_screen(*screen.frame)){
+            stream.log("[Route] 01.04: not in the Center.");
+            return;
+        }
+    }
     walk_out_of_center(stream, context, "Oreburgh");
 }
 

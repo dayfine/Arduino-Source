@@ -108,6 +108,26 @@ void into_the_ravaged_path(VideoStream& stream, ProControllerContext& context){
     context.wait_for(2000ms);
 }
 
+//  01.09: from the tile above the way out, one tap south out of the cave.
+void out_of_the_ravaged_path(VideoStream& stream, ProControllerContext& context){
+    // One tap onto the way out, then wait for Route 204's banner: a timed
+    // walk south read the fade as nothing and walked on to the cliff, past
+    // cave_exit where 01.10 starts (r81). Not brightness: outside can be
+    // as dark as the cave at night.
+    pbf_press_dpad(context, DPAD_DOWN, 160ms, 0ms);
+    context.wait_for_all_requests();
+    bool out = false;
+    const auto deadline = current_time() + 8000ms;
+    while (!out && current_time() < deadline){
+        context.wait_for(200ms);
+        const VideoSnapshot frame = stream.video().snapshot();
+        out = frame && location_banner_showing(*frame.frame);
+    }
+    if (!out){
+        fail_step(stream, "Ravaged Path: no location banner after one tap south from a tile west of the corridor's end.");
+    }
+}
+
 //  01.09: through the Ravaged Path, smashing its rocks.
 void through_the_ravaged_path(VideoStream& stream, ProControllerContext& context){
     // On the traced grid (Maps/RavagedPath.json): from the
@@ -145,10 +165,7 @@ void through_the_ravaged_path(VideoStream& stream, ProControllerContext& context
         const StoryWorld rocks_out = ravaged_path_maps(smashed);
         at = walk_route(stream, context, run_from_wild_battle, rocks_out, at, no_trainers, RouteWalkPlan{[&](const Pokemon::TilePos& pos){ return pos == map_point("RavagedPath", "east_end"); }, "To the corridor's east end", {}, route_plan_costs()});
         dpad_tiles(stream, context, DPAD_LEFT, 1, "west onto the tile above the way out");
-        const WalkResult out = walk_dir(stream, context, Direction::SOUTH, 4000ms, "south out of the Ravaged Path");
-        if (out.stop != WalkStop::TRANSITION && out.stop != WalkStop::LIMIT){
-            fail_step(stream, "Ravaged Path: the walk south from a tile west of the corridor's end did not leave the cave.");
-        }
+        out_of_the_ravaged_path(stream, context);
         context.wait_for(2000ms);
     }
 }
@@ -209,10 +226,11 @@ void below_the_old_man(VideoStream& stream, ProControllerContext& context){
     if (west.moved_chunks < 1){
         fail_step(stream, "Floaroma: the step west below the old man did not move.");
     }
-    const WalkResult north = walk_tiles_dpad(stream, context, run_from_wild_battle, {0, 1}, 3, "north until the old man");
-    if (north.stop != WalkStop::BLOCKED && north.moved_chunks >= 3){
-        fail_step(stream, "Floaroma: nothing stopped the walk north to the old man.");
-    }
+    // He stands there, so one tap only turns us to him; the talk after fails
+    // if nobody answers. No counting: Floaroma's cloud shadows read as moves
+    // (r84: blocked taps counted, view change 20).
+    pbf_press_dpad(context, DPAD_UP, 160ms, 500ms);
+    context.wait_for_all_requests();
 }
 
 }

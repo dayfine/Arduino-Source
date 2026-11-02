@@ -517,8 +517,10 @@ def decode_map(name):
         for x, tile in enumerate(row):
             if tile == 'W':
                 row[x] = 'D' if (x, y) in doors else '.'
-    lands = sorted({world.land_id(x, z) for z in range(z0, z0 + height, decomp.CELL)
-                    for x in range(x0, x0 + width, decomp.CELL)} - {None})
+    #  Every cell the rectangle touches, also when it does not start on a cell's edge.
+    C = decomp.CELL
+    lands = sorted({world.land_id(C * col, C * row) for row in range(z0 // C, (z0 + height - 1) // C + 1)
+                    for col in range(x0 // C, (x0 + width - 1) // C + 1)} - {None})
     unverified = '; decomp only, not checked on the console' if spec.get('unverified') else ''
     source = {
         'decomp_file': f'{repo}: ' + ', '.join(game.land_path(land) for land in lands)
