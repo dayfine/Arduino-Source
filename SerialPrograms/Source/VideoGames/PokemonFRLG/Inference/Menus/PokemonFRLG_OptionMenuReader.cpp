@@ -48,11 +48,11 @@ struct OptionValue{
 //  One matcher per item, so a value is only matched against its own row's.
 class OptionValueMatcher : public OCR::SmallDictionaryMatcher{
 public:
-    static constexpr double MAX_LOG10P = -1.40;
     static constexpr double MAX_LOG10P_SPREAD = 0.50;
 
-    explicit OptionValueMatcher(const std::vector<OptionValue>& values)
+    OptionValueMatcher(const std::vector<OptionValue>& values, double max_log10p)
         : SmallDictionaryMatcher(dictionary(values))
+        , m_max_log10p(max_log10p)
     {}
 
     std::string read(Logger& logger, Language language, const ImageViewRGB32& image) const{
@@ -62,7 +62,7 @@ public:
         const ImageRGB32 ready = preprocess_for_ocr(image);
         const OCR::StringMatchResult result = match_substring_from_image_multifiltered(
             &logger, language, ready, VALUE_TEXT_FILTERS(),
-            MAX_LOG10P, MAX_LOG10P_SPREAD, 0.01, 0.50
+            m_max_log10p, MAX_LOG10P_SPREAD, 0.01, 0.50
         );
         return result.results.empty() ? "" : result.results.begin()->second.token;
     }
@@ -79,17 +79,11 @@ private:
         json["eng"] = std::move(english);
         return json;
     }
+
+    double m_max_log10p;
 };
 
-const std::vector<OptionValue>& text_speed_values(){
-    static const std::vector<OptionValue> values{{"slow", "Slow"}, {"mid", "Mid"}, {"fast", "Fast"}};
-    return values;
-}
-const std::vector<OptionValue>& battle_style_values(){
-    static const std::vector<OptionValue> values{{"shift", "Shift"}, {"set", "Set"}};
-    return values;
-}
-std::vector<std::string> slugs(const std::vector<OptionValue>& values){
+std::vector<std::string> slugs_of(const std::vector<OptionValue>& values){
     std::vector<std::string> ret;
     for (const OptionValue& value : values){
         ret.emplace_back(value.slug);
@@ -97,28 +91,52 @@ std::vector<std::string> slugs(const std::vector<OptionValue>& values){
     return ret;
 }
 
-const OptionValueMatcher& matcher(OptionMenuItem item){
-    static const OptionValueMatcher text_speed(text_speed_values());
-    static const OptionValueMatcher battle_style(battle_style_values());
-    return item == OptionMenuItem::TEXT_SPEED ? text_speed : battle_style;
+//  An item's name, its row (option_menu.c MENUITEM_*), its values and their
+//  matcher.
+struct OptionItem{
+    OptionItem(const char* name, size_t row, const std::vector<OptionValue>& values, double max_log10p)
+        : name(name)
+        , row(row)
+        , slugs(slugs_of(values))
+        , matcher(values, max_log10p)
+    {}
+
+    const char* name;
+    size_t row;
+    std::vector<std::string> slugs;
+    OptionValueMatcher matcher;
+};
+
+const OptionItem& option_item(OptionMenuItem item){
+    static const OptionItem text_speed("TEXT SPEED", 0, {{"slow", "Slow"}, {"mid", "Mid"}, {"fast", "Fast"}}, -1.40);
+    //  Two letters score at most log10(1/25): an exact "ON" (console B,
+    //  2026-11-02) is -1.398, short of the others' -1.40.
+    static const OptionItem battle_scene("BATTLE SCENE", 1, {{"on", "On"}, {"off", "Off"}}, -1.30);
+    static const OptionItem battle_style("BATTLE STYLE", 2, {{"shift", "Shift"}, {"set", "Set"}}, -1.40);
+    switch (item){
+    case OptionMenuItem::TEXT_SPEED:
+        return text_speed;
+    case OptionMenuItem::BATTLE_SCENE:
+        return battle_scene;
+    case OptionMenuItem::BATTLE_STYLE:
+        return battle_style;
+    }
+    return text_speed;
 }
 
 }
 
 
 const char* option_menu_name(OptionMenuItem item){
-    return item == OptionMenuItem::TEXT_SPEED ? "TEXT SPEED" : "BATTLE STYLE";
+    return option_item(item).name;
 }
 
 size_t option_menu_row(OptionMenuItem item){
-    //  option_menu.c MENUITEM_TEXTSPEED, MENUITEM_BATTLESTYLE.
-    return item == OptionMenuItem::TEXT_SPEED ? 0 : 2;
+    return option_item(item).row;
 }
 
 const std::vector<std::string>& option_menu_values(OptionMenuItem item){
-    static const std::vector<std::string> text_speed = slugs(text_speed_values());
-    static const std::vector<std::string> battle_style = slugs(battle_style_values());
-    return item == OptionMenuItem::TEXT_SPEED ? text_speed : battle_style;
+    return option_item(item).slugs;
 }
 
 ImageFloatBox option_value_box(size_t row){
@@ -128,7 +146,7 @@ ImageFloatBox option_value_box(size_t row){
 std::string read_option_value(Logger& logger, Language language, const ImageViewRGB32& screen, OptionMenuItem item){
     const ImageViewRGB32 game = extract_box_reference(screen, GameSettings::instance().GAME_BOX);
     const ImageViewRGB32 value = extract_box_reference(game, option_value_box(option_menu_row(item)));
-    return matcher(item).read(logger, language, value);
+    return option_item(item).matcher.read(logger, language, value);
 }
 
 
