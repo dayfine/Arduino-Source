@@ -18,6 +18,8 @@
 #include "Programs/Farming/PokemonFRLG_PickupFarmer.h"
 #include "Programs/Farming/PokemonFRLG_EvTrainer.h"
 
+#include "Programs/AutoStory/PokemonFRLG_AutoStory.h"
+
 #include "Programs/ShinyHunting/PokemonFRLG_GiftReset.h"
 #include "Programs/ShinyHunting/PokemonFRLG_LegendaryReset.h"
 #include "Programs/ShinyHunting/PokemonFRLG_LegendaryRunAway.h"
@@ -57,7 +59,6 @@ PanelListFactory::PanelListFactory()
 
 std::vector<PanelEntry> PanelListFactory::make_panels() const{
     std::vector<PanelEntry> ret;
-    
     ret.emplace_back("---- Settings ----");
     ret.emplace_back(make_OptionsPanel<GameSettingsPanel>());
 
@@ -69,7 +70,8 @@ std::vector<PanelEntry> PanelListFactory::make_panels() const{
     ret.emplace_back(make_SingleSwitchProgram<ItemDuplication>());
     ret.emplace_back(make_SingleSwitchProgram<EliteFourFarmer>());
 
-    //ret.emplace_back("---- General ----");
+    ret.emplace_back("---- General ----");
+    ret.emplace_back(make_SingleSwitchProgram<AutoStory>());
 
     ret.emplace_back("---- Shiny Hunting  ----");
     ret.emplace_back(make_SingleSwitchProgram<GiftReset>());

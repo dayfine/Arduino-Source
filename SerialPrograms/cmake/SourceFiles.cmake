@@ -1733,8 +1733,12 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonFRLG/Inference/Map/PokemonFRLG_PokemonLeagueDetectors.h
     Source/VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_BagDetector.cpp
     Source/VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_BagDetector.h
+    Source/VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_ItemListReader.cpp
+    Source/VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_ItemListReader.h
     Source/VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_LoadMenuDetector.cpp
     Source/VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_LoadMenuDetector.h
+    Source/VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_NamingScreenDetector.cpp
+    Source/VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_NamingScreenDetector.h
     Source/VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_PartyEmptySlotDetector.cpp
     Source/VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_PartyEmptySlotDetector.h
     Source/VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_PartyHeldItemDetector.cpp
@@ -1742,6 +1746,8 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_PartyMenuDetector.cpp
     Source/VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_PartyMenuDetector.h
     Source/VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_PartySlot.h
+    Source/VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_SaveCardReader.cpp
+    Source/VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_SaveCardReader.h
     Source/VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_StartMenuDetector.cpp
     Source/VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_StartMenuDetector.h
     Source/VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_SummaryDetector.cpp
@@ -1809,6 +1815,19 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonFRLG/PokemonFRLG_Settings.h
     Source/VideoGames/PokemonFRLG/PokemonFRLG_Tests.cpp
     Source/VideoGames/PokemonFRLG/PokemonFRLG_Tests.h
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStory.cpp
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStory.h
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryActions.cpp
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryActions.h
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryBattle.cpp
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryBattle.h
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryEvents.cpp
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryEvents.h
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryItems_Tests.cpp
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryTable.cpp
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryTable.h
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStorySimulation_Tests.cpp
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStory_Tests.cpp
     Source/VideoGames/PokemonFRLG/Programs/Farming/PokemonFRLG_EliteFourFarmer.cpp
     Source/VideoGames/PokemonFRLG/Programs/Farming/PokemonFRLG_EliteFourFarmer.h
     Source/VideoGames/PokemonFRLG/Programs/Farming/PokemonFRLG_EvTrainer.cpp
