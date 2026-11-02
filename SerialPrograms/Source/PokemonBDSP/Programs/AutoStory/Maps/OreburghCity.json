@@ -87,5 +87,9 @@
         {"name": "guitarist_20", "kind": "npc", "x": 23, "y": 13, "wander": {"x0": 22, "y0": 10, "x1": 24, "y1": 16}},
         {"name": "battle_girl_21", "kind": "npc", "x": 36, "y": 23, "wander": {"x0": 36, "y0": 21, "x1": 36, "y1": 25}},
         {"name": "machop_22", "kind": "npc", "x": 55, "y": 56, "wander": {"x0": 53, "y0": 54, "x1": 57, "y1": 58}}
+    ],
+    "coord_events": [
+        {"name": "coord_event_0", "x": 10, "y": 12, "width": 1, "length": 4, "var": "VAR_OREBURGH_CITY_STATE", "value": 0, "source": "pret/pokediamond files/fielddata/eventdata/zone_event_release/narc_0044.bin coord_events[0] (266, 748), script 3"},
+        {"name": "coord_event_1", "x": 6, "y": 12, "width": 1, "length": 4, "var": "VAR_OREBURGH_CITY_STATE", "value": 2, "source": "pret/pokediamond files/fielddata/eventdata/zone_event_release/narc_0044.bin coord_events[1] (262, 748), script 4"}
     ]
 }
