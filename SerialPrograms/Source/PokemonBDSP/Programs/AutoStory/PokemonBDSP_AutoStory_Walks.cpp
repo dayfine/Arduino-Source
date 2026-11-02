@@ -138,26 +138,14 @@ WalkResult walk_dir(
 
 //  `taps` D-pad taps toward `dpad`, settling between them. On the D-pad the
 //  player moves a whole tile per tap (measured above), so counted legs do
-//  not drift the way stick holds do. A short tap turns us first.
+//  not drift the way stick holds do.
 void dpad_tiles(VideoStream& stream, ProControllerContext& context, DpadPosition dpad, size_t taps, const std::string& label){
     stream.log("[Walk] " + label + ": " + std::to_string(taps) + " D-pad taps.");
-    //  Turn with a short tap: a 160 ms tap is a whole step even from another
-    //  facing, so the old 160 ms "turn" walked one tile too many on every
-    //  call (r80: two tiles west in the Ravaged Path, not one; the gym door's
-    //  counts of 21 and 22 landing 1 and 2 tiles west). A short tap the way we
-    //  already face can still step, so count it when the view moved.
+    //  No turn tap: a 160 ms tap is a whole step from any facing, so N taps
+    //  are N tiles (r80: the old 160 ms "turn" tap walked one tile too many,
+    //  two tiles west in the Ravaged Path, not one). Turning only matters to
+    //  talk to someone, and they block like a wall, so a tap toward them turns.
     size_t moved = 0;
-    {
-        context.wait_for_all_requests();
-        const VideoSnapshot before = stream.video().snapshot();
-        pbf_press_dpad(context, dpad, 50ms, 500ms);
-        context.wait_for_all_requests();
-        const VideoSnapshot after = stream.video().snapshot();
-        if (before && after && walk_screen_change(*before.frame, *after.frame) > 30){
-            stream.log("[Walk] " + label + ": the turn tap stepped; counting it.");
-            moved = 1;
-        }
-    }
     // Count only taps that moved the view: one after the turn was lost and
     // the leg ended a tile short (r215d). A tile's scroll changes the view by
     // about 100; standing still, under 15. A tap that does not move is someone

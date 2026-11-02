@@ -578,7 +578,8 @@ StoryCheckpoint rowan_and_the_grunts(){
     return row("01.07", "Jubilife: Rowan, Dawn and the Galactic grunts", below_rowans_trigger(), {
         step_into("rowans_trigger", NORTH, "the trigger (45..47, 7): the game walks us up to Rowan"),
         battle("galactic_grunts", false, "the lines, then the tag battle with Dawn", "doubles"),
-        scene("rowan_and_dawn_leave", after_the_grunts(), "Rowan's and Dawn's lines; they walk off"),
+        scene("rowan_and_dawn_leave", after_the_grunts(),
+            "Rowan's and Dawn's lines, then Bebe walks over with hers (r80 saved over her lines)"),
     });
 }
 
@@ -591,7 +592,9 @@ StoryCheckpoint through_the_ravaged_path(){
         route("west_of_the_rock", west_of_the_rock, "up the stairs and along the corridor"),
         event("smash_the_rock", "Rock Smash on the rock east of us", west_of_the_rock),
         route("above_the_way_out", at(RAVAGED_PATH, "above_exit", SOUTH), "east through the rock's tile"),
-        step_into("out_of_the_ravaged_path", SOUTH, "the way out (28, 45)", at(ROUTE_204_NORTH, "cave_exit", SOUTH)),
+        //  One tap and Route 204's banner: a timed walk south went on past
+        //  the cave's mouth to the cliff (r81).
+        tap_into("out_of_the_ravaged_path", SOUTH, "the way out (28, 45)", at(ROUTE_204_NORTH, "cave_exit", SOUTH)),
     });
 }
 

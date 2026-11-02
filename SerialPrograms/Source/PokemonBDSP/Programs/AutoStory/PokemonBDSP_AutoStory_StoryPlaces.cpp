@@ -211,6 +211,10 @@ std::vector<TrainerSight> map_trainers(const std::string& map){
 }
 
 
+const std::string& story_banner_name(const std::string& map){
+    return banner_name(map);
+}
+
 const StoryWorld* story_plan_world(const std::string& from, const std::string& to){
     for (const PlanWorld& world : plan_worlds()){
         if (world.maps.contains(from) && world.maps.contains(to)){

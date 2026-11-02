@@ -30,6 +30,10 @@ namespace PokemonBDSP{
 //  name them ("Route 202"), which the walker reads.
 const StoryWorld* story_plan_world(const std::string& from, const std::string& to);
 
+//  The location banner of the JSON map `map` ("Route 204" for both of its
+//  halves), or `map` itself for one no banner list names.
+const std::string& story_banner_name(const std::string& map);
+
 //  The tile `local` of the map `map` in `world`.
 Pokemon::TilePos story_to_world(const StoryWorld& world, const std::string& map, const Pokemon::TilePos& local);
 

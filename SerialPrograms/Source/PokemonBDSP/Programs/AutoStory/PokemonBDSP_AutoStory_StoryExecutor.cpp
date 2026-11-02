@@ -313,6 +313,7 @@ void settle(VideoStream& stream, ProControllerContext& context, Button button, c
     ShortDialogDetector dialog;
     OverworldDetector overworld;
     WallClock quiet_since = none;
+    WallClock calm_since = none;    //  overworld, no text, still or not
     double darkest = 255;
     VideoSnapshot previous;
     while (current_time() < deadline){
@@ -325,6 +326,15 @@ void settle(VideoStream& stream, ProControllerContext& context, Button button, c
         const bool talking = frame && dialog.detect(frame);
         const bool still = frame && previous && walk_screen_change(*previous.frame, *frame.frame) < WALK_TAP_BLOCKED_CHANGE;
         previous = frame;
+        //  Cloud shadows drift over Floaroma, so its screen is never still: r83
+        //  got Mew and then waited out the 120 s on a calm overworld. 15 s of
+        //  overworld with no text is three times r31's silent walk-in.
+        const bool calm = !talking && overworld.detect(frame) && (!fade || darkest < FADE_DARKNESS);
+        calm_since = calm ? (calm_since == none ? now : calm_since) : none;
+        if (calm && now - calm_since >= 15000ms){
+            stream.log(std::format("[Story] {}: settled on 15 s of overworld without text (the screen kept moving); darkest frame {:.0f}.", label, darkest));
+            return;
+        }
         if (!talking && still && overworld.detect(frame) && (!fade || darkest < FADE_DARKNESS)){
             quiet_since = quiet_since == none ? now : quiet_since;
             if (now - quiet_since >= 5000ms){
@@ -407,7 +417,7 @@ TapLook look_after_tap(VideoStream& stream, ProControllerContext& context, const
 //  203's pond (r75). Taps during the fade are eaten. No banner fails the
 //  step right there.
 Outcome tap_to_banner(VideoStream& stream, ProControllerContext& context, const StoryStep& step, const std::string& checkpoint){
-    const std::string map = step.pose_after ? step.pose_after->map : "";
+    const std::string map = step.pose_after ? story_banner_name(step.pose_after->map) : "";
     for (size_t tap = 1; tap <= 30; tap++){
         pbf_press_dpad(context, dpad_toward(step.direction), 160ms, 0ms);
         TapLook look = look_after_tap(stream, context, map, 1500ms, true);

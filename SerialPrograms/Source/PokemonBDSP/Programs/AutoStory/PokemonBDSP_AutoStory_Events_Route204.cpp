@@ -94,10 +94,11 @@ void below_the_old_man(VideoStream& stream, ProControllerContext& context){
     if (west.moved_chunks < 1){
         fail_step(stream, "Floaroma: the step west below the old man did not move.");
     }
-    const WalkResult north = walk_tiles_dpad(stream, context, run_from_wild_battle, {0, 1}, 3, "north until the old man");
-    if (north.stop != WalkStop::BLOCKED && north.moved_chunks >= 3){
-        fail_step(stream, "Floaroma: nothing stopped the walk north to the old man.");
-    }
+    // He stands there, so one tap only turns us to him; the talk after fails
+    // if nobody answers. No counting: Floaroma's cloud shadows read as moves
+    // (r84: blocked taps counted, view change 20).
+    pbf_press_dpad(context, DPAD_UP, 160ms, 500ms);
+    context.wait_for_all_requests();
 }
 
 }
