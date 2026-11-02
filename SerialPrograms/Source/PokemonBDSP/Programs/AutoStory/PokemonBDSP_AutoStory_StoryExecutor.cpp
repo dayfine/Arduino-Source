@@ -264,8 +264,20 @@ Outcome StoryExecutor::answer(RunState&, const StoryStep& step){
 }
 
 Outcome StoryExecutor::mash(RunState&, const StoryStep& step){
+    const Button button = step.variant == "a" ? BUTTON_A : BUTTON_B;
     wait_for_dialogue(stream(), context(), label_of(step));
-    finish_dialogue(stream(), context(), step.variant == "a" ? BUTTON_A : BUTTON_B, label_of(step));
+    finish_dialogue(stream(), context(), button, label_of(step));
+    //  A scene can go quiet while someone walks off, then speak again: Dawn's
+    //  "please wait for me!" comes after Rowan leaves (r23). A walk that
+    //  meets such a line takes it for a trainer, so take a few more.
+    for (size_t tail = 0; tail < 3; tail++){
+        ShortDialogWatcher dialog(COLOR_CYAN);
+        if (wait_until(stream(), context(), 4000ms, {{dialog}}) != 0){
+            break;
+        }
+        stream().log("[Story] " + label_of(step) + ": the scene spoke again; finishing it.");
+        finish_dialogue(stream(), context(), button, label_of(step));
+    }
     return Pokemon::outcome_ok();
 }
 
