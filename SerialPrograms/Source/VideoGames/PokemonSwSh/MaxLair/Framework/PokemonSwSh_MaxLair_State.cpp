@@ -27,6 +27,7 @@ bool GlobalState::accept_opponent(){
     }
     return true;
 }
+
 std::string GlobalState::boss_if_caught() const{
     //  A failed adventure can still have an identified boss, but no boss catch.
     return wins == 4 && is_boss(boss) ? boss : std::string();
