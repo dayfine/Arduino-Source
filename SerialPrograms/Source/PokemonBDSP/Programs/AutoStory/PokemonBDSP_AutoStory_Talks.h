@@ -58,6 +58,11 @@ void fight_route_trainer(VideoStream& stream, ProControllerContext& context, con
 //  green. After a battle it tells a loss (a whiteout ends at the counter)
 //  from a win. `percent`, if given, gets the warm share of the lower half.
 bool center_floor_on_screen(const ImageViewRGB32& screen, size_t* percent = nullptr);
+//  In a Pokemon Center: its floor on screen, and a room (indoors()). Floor
+//  colour alone read Jubilife's yellow plaza as a Center (63 %, r79) and
+//  Sandgem's and Oreburgh's streets at 30 to 35 %; of 635 lab frames, the
+//  two together pick out exactly the Center interiors.
+bool pokemon_center_on_screen(const ImageViewRGB32& screen, size_t* percent = nullptr);
 bool in_pokemon_center(VideoStream& stream);
 //  The Oreburgh Mine's hall and corridors are dim: mean brightness 45 to 64
 //  on the console, against 99 to 116 for the city and its yard (2026-10-31).
