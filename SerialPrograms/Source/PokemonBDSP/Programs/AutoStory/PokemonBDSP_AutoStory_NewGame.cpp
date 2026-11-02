@@ -49,7 +49,7 @@ std::string classify_intro_screen(ConsoleHandle* console, const ImageViewRGB32& 
     default:
         return "rival-list-preset";
     }
-    if (MenuDetector().detect(screen)){
+    if (MenuDetector(COLOR_RED, /*skip_new_banner*/ true).detect(screen)){
         return "menu";
     }
     //  Includes the appearance grid, whose prompt sits in a dialogue box.
@@ -217,7 +217,7 @@ void close_menu_and_finish(IntroRun& run){
     pbf_wait(run.context, 1000ms);
     run.context.wait_for_all_requests();
     VideoSnapshot screen_now = run.env.console.video().snapshot();
-    if (!screen_now || MenuDetector().detect(screen_now)){
+    if (!screen_now || MenuDetector(COLOR_RED, /*skip_new_banner*/ true).detect(screen_now)){
         run.trace.fail("The main menu did not close.");
     }
 }
@@ -248,7 +248,7 @@ XProbeResult x_from_still_screen(IntroRun& run){
     const VideoSnapshot before = stream.video().snapshot();
     press(run, BUTTON_X);
     run.context.wait_for_all_requests();
-    MenuWatcher menu;
+    MenuWatcher menu(COLOR_RED, /*skip_new_banner*/ true);
     if (wait_until(stream, run.context, 3s, {{menu}}) == 0){
         return XProbeResult::MENU;
     }
