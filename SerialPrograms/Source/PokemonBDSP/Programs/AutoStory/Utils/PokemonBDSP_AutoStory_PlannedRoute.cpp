@@ -564,21 +564,15 @@ LegNext RouteWalker::open_leg(LegWalk& walk){
     return LegNext::NEXT_LEG;
 }
 
-//  The first tap of a leg was meant to turn, but a 160 ms D-pad tap turns
-//  and steps whichever way the player faced (r248a: all seven did; r246a:
-//  "south 1" out of the cave went two tiles, onto the Youngster's row), so
-//  the tap is measured like any other and a step counts for the leg.
+//  Turns to the leg's way with a tap too short to step (50 ms: on the
+//  console 40 to 80 ms taps only turned). The leg's taps then each move a
+//  tile. The old 160 ms "turn" tap stepped whichever way we faced, and
+//  guessing from the screen whether it had was wrong both ways (r248a
+//  stepped; r60 only turned but counted a tile, a column off below
+//  Jubilife's Center).
 void RouteWalker::turn_tap(LegWalk& walk){
-    const DpadPosition dpad = walk.stick.x < 0 ? DPAD_LEFT : walk.stick.x > 0 ? DPAD_RIGHT : walk.stick.y > 0 ? DPAD_UP : DPAD_DOWN;
-    m_context.wait_for_all_requests();
-    VideoSnapshot before = m_stream.video().snapshot();
-    pbf_press_dpad(m_context, dpad, 160ms, 700ms);
-    m_context.wait_for_all_requests();
-    VideoSnapshot after = m_stream.video().snapshot();
-    if (before && after && walk_screen_change(*before.frame, *after.frame) > WALK_TAP_BLOCKED_CHANGE){
-        walk.turn_moved = 1;
-        m_stream.log("[Route] " + walk.label + ": the turn tap moved a tile (already facing that way); it counts.", COLOR_ORANGE);
-    }
+    route_turn(m_stream, m_context, walk.planned.leg.direction);
+    walk.turn_moved = 0;
 }
 
 LegNext RouteWalker::blocked_open_leg(LegWalk& walk, size_t moved){
