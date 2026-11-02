@@ -68,6 +68,34 @@ Milliseconds route_open_hold(Pokemon::Direction direction, size_t tiles);
 //  Sandgem's Center door; r248a).
 constexpr Milliseconds ROUTE_TURN_TAP = Milliseconds(50);
 
+//  What a RouteInput presses.
+enum class RouteInputKind{
+    DPAD,       //  the D-pad toward `direction`: whole tiles
+    STICK,      //  the left stick toward `direction`: any distance
+    BUTTON_A,
+    WAIT,       //  nothing, for `hold`, after what is already queued
+    PAUSE,      //  nothing, for `hold` from now (ControllerContext::wait_for())
+};
+//  Whether press_route_input() returns once the presses are done, or at once.
+enum class RouteInputEnd{
+    DONE,
+    QUEUED,
+};
+//  A short press, `count` times: held for `hold`, then let go for `release`.
+//  `direction` is for DPAD and STICK only.
+struct RouteInput{
+    RouteInputKind kind;
+    Pokemon::Direction direction;
+    Milliseconds hold;
+    Milliseconds release;
+    size_t count;
+    RouteInputEnd end;
+};
+void press_route_input(ProControllerContext& context, const RouteInput& input);
+
+//  The tap route_turn() turns with: on the D-pad, ROUTE_TURN_TAP long.
+RouteInput route_turn_tap(Pokemon::Direction direction);
+
 //  Turns the player to face `direction` without moving. Only for a player who
 //  faces another way: one already facing it may take a step.
 void route_turn(VideoStream& stream, ProControllerContext& context, Pokemon::Direction direction);
