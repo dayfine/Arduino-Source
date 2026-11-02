@@ -4,11 +4,16 @@
 # click. Every command is one request file; its journal is printed.
 #
 #   labctl.sh [-p PROFILE] state
-#       Print the state file (seq=, state=, program=, owner=, error=).
+#       Print the state file (seq=, state=, program=, controller=, owner=,
+#       error=). controller= is ready, none (not connected or reconnecting),
+#       or empty for a panel without a console.
 #   labctl.sh [-p PROFILE] start|stop
 #       Start or stop the selected program, then wait up to $LABCTL_WAIT
 #       seconds (default 60) for the state to reach RUNNING (start) or
 #       STOPPED (stop). Prints the final state; exit 0 on success, 1 otherwise.
+#       The app first waits up to 30 s (less when $LABCTL_WAIT is short) for
+#       the controller, and refuses with "controller not connected" if it
+#       never comes up.
 #   labctl.sh [-p PROFILE] select GAME:PROGRAM
 #       Show that program, as clicking it in the program list does.
 #   labctl.sh [-p PROFILE] set KEY JSON...
@@ -117,7 +122,14 @@ if [ "$cmd" = start ] || [ "$cmd" = stop ]; then
         [ "$(date +%s)" -ge "$end" ] && { echo "app not ready for $cmd (state: ${s:-no state file; is a lab-channel build running with this profile?})" >&2; exit 1; }
         nap
     done
-    echo "$cmd" | request "$name" >/dev/null || { echo "$cmd failed: $(field error)" >&2; exit 1; }
+    line=$cmd
+    if [ "$cmd" = start ]; then
+        # The app's controller wait must end before this script stops waiting
+        # for the journal, or it could start the program after we gave up.
+        cw=$(( W - 5 )); [ "$cw" -gt 30 ] && cw=30; [ "$cw" -lt 1 ] && cw=1
+        line="start $cw"
+    fi
+    echo "$line" | request "$name" >/dev/null || { echo "$cmd failed: $(field error)" >&2; exit 1; }
     end=$(( $(date +%s) + W ))
     while :; do
         s=$(field state)

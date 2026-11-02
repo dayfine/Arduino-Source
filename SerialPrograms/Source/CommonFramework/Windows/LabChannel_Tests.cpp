@@ -3,7 +3,8 @@
  *  From: https://github.com/PokemonAutomation/
  *
  *  The channel's text formats, with no app: request files, the journal, the
- *  "state" file, the owner lock and the keep-awake schedule.
+ *  "state" file, the owner lock, the keep-awake schedule and the wait for
+ *  the controller before "start".
  *
  */
 
@@ -139,12 +140,12 @@ UnitTestResult test_journal(){
 }
 
 UnitTestResult test_state_text(){
-    LabState state{"r1", "RUNNING", "PokemonBDSP:AutoStory", "lab-B", ""};
-    if (lab_state_text(state) != "seq=r1\nstate=RUNNING\nprogram=PokemonBDSP:AutoStory\nowner=lab-B\nerror=\n"){
+    LabState state{"r1", "RUNNING", "PokemonBDSP:AutoStory", "ready", "lab-B", ""};
+    if (lab_state_text(state) != "seq=r1\nstate=RUNNING\nprogram=PokemonBDSP:AutoStory\ncontroller=ready\nowner=lab-B\nerror=\n"){
         return "Unexpected state text: " + lab_state_text(state);
     }
-    state = {"", "NO_PROGRAM", "", "", "The selected panel is not a program."};
-    if (lab_state_text(state) != "seq=\nstate=NO_PROGRAM\nprogram=\nowner=\nerror=The selected panel is not a program.\n"){
+    state = {"", "NO_PROGRAM", "", "", "", "The selected panel is not a program."};
+    if (lab_state_text(state) != "seq=\nstate=NO_PROGRAM\nprogram=\ncontroller=\nowner=\nerror=The selected panel is not a program.\n"){
         return "Unexpected state text: " + lab_state_text(state);
     }
     return true;
@@ -226,6 +227,58 @@ UnitTestResult test_keep_awake(){
     return true;
 }
 
+//  A controller that reads "none" for `not_ready` checks, then `then`, with
+//  a fake sleep that only counts.
+struct FakeController{
+    FakeController(int p_not_ready, std::string p_then, bool p_closing = false)
+        : not_ready(p_not_ready), then(std::move(p_then)), closing(p_closing)
+    {}
+
+    int not_ready;
+    std::string then;
+    bool closing;
+
+    std::string error;
+    Milliseconds slept = 0ms;
+
+    FakeController& wait(Milliseconds timeout){
+        int checks = 0;
+        error = wait_for_controller(
+            [&]{ return checks++ < not_ready ? std::string("none") : then; },
+            [&](Milliseconds slice){ slept += slice; return !closing; },
+            timeout, 500ms
+        );
+        return *this;
+    }
+};
+
+UnitTestResult test_controller_wait(){
+    FakeController ready(0, "ready");
+    if (!ready.wait(30s).error.empty() || ready.slept != 0ms){
+        return "A ready controller starts at once.";
+    }
+    FakeController reconnecting(4, "ready");
+    if (!reconnecting.wait(30s).error.empty() || reconnecting.slept != 2000ms){
+        return std::format("A reconnecting controller is waited for; slept {} ms.", reconnecting.slept.count());
+    }
+    FakeController no_console(0, "");
+    if (!no_console.wait(30s).error.empty()){
+        return "A panel without a console does not wait.";
+    }
+    FakeController never(1000, "ready");
+    if (never.wait(3s).error != "controller not connected" || never.slept != 3000ms){
+        return std::format("A controller that never connects refuses the start after the timeout; slept {} ms.", never.slept.count());
+    }
+    FakeController closing(1000, "ready", true);
+    if (closing.wait(30s).error != "The app is closing."){
+        return "A closing app stops the wait.";
+    }
+    if (parse_seconds("30") != 30s || parse_seconds("0") || parse_seconds("soon") || parse_seconds("")){
+        return "parse_seconds() takes whole seconds of at least 1.";
+    }
+    return true;
+}
+
 
 class Test_LabChannel : public UnitTest{
 public:
@@ -253,6 +306,7 @@ void add_tests_LabChannel(UnitTestDatabase& database){
     database.add<Test_LabChannel>("state text", test_state_text);
     database.add<Test_LabChannel>("owner lock", test_owner);
     database.add<Test_LabChannel>("keep-awake schedule", test_keep_awake);
+    database.add<Test_LabChannel>("controller wait", test_controller_wait);
 }
 
 

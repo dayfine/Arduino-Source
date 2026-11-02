@@ -320,7 +320,7 @@ std::string LabChannel::run_line(const LabRequest& request, const LabRequestLine
             "  owner claim TOKEN | owner release   (then start with a line \"owner TOKEN\")\n"
             "  select GAME:PROGRAM\n"
             "  set OPTION_KEY JSON\n"
-            "  start | stop\n"
+            "  start [SECONDS] | stop   (start waits up to SECONDS, default 30, for the controller)\n"
             "  state\n"
             "  keepawake on|off [seconds]\n"
             "  popups [close]   (the app's message boxes; close presses their default button)\n  help\n";
@@ -438,9 +438,45 @@ std::string LabChannel::run_ui_command(const LabRequestLine& line, std::ostream&
         }
         return error;
     }
-    const bool start = command == "start";
+    if (command == "start"){
+        return run_start(words);
+    }
     return run_on_ui([&]{
-        return start_or_stop(m_callbacks.current_panel(), start);
+        return start_or_stop(m_callbacks.current_panel(), false);
+    });
+}
+
+//  "start [SECONDS]": waits for the controller, then starts. The wait runs
+//  here on the worker, so the window stays responsive while it reconnects.
+std::string LabChannel::run_start(const std::vector<std::string>& words){
+    Seconds timeout = CONTROLLER_WAIT_DEFAULT;
+    if (words.size() > 2){
+        return "start: expected start [SECONDS]";
+    }
+    if (words.size() == 2){
+        const std::optional<Seconds> seconds = parse_seconds(words[1]);
+        if (!seconds){
+            return "start: seconds must be a whole number of at least 1, got " + words[1];
+        }
+        timeout = *seconds;
+    }
+    const std::string error = wait_for_controller(
+        [this]{
+            std::lock_guard<Mutex> lg(m_panel_lock);
+            return read_controller_status();
+        },
+        [this](Milliseconds slice){
+            std::unique_lock<Mutex> lg(m_idle_lock);
+            m_idle_cv.wait_for(lg, slice);
+            return !m_stopping.load(std::memory_order_acquire);
+        },
+        timeout, POLL_INTERVAL
+    );
+    if (!error.empty()){
+        return error;
+    }
+    return run_on_ui([&]{
+        return start_or_stop(m_callbacks.current_panel(), true);
     });
 }
 
@@ -547,11 +583,16 @@ void LabChannel::read_program_state(std::string& state, std::string& program, bo
     running = current != ProgramState::STOPPED;
 }
 
+std::string LabChannel::read_controller_status(){
+    return m_panel == nullptr ? "" : m_console->controller_status(*m_panel);
+}
+
 void LabChannel::write_state(){
     {
         std::lock_guard<Mutex> lg(m_panel_lock);
         bool running;
         read_program_state(m_state.state, m_state.program, running);
+        m_state.controller = read_controller_status();
     }
     m_state.owner = m_owner.token();
     std::string text = lab_state_text(m_state);

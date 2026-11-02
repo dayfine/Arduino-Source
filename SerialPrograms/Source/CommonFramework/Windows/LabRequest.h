@@ -11,6 +11,7 @@
 #ifndef PokemonAutomation_LabRequest_H
 #define PokemonAutomation_LabRequest_H
 
+#include <functional>
 #include <optional>
 #include <string>
 #include <vector>
@@ -32,6 +33,9 @@ std::vector<std::string> split_command_line(const std::string& line);
 //  What follows the first `count` words of `line`, without the comment and
 //  the surrounding spaces: the JSON of "set KEY JSON", spaces and '#' intact.
 std::string line_after_words(const std::string& line, size_t count);
+
+//  A whole number of seconds, at least 1, as written on a command line.
+std::optional<Seconds> parse_seconds(const std::string& word);
 
 //  The ".txt" file in `inbox` whose name sorts first, if any.
 std::optional<Filesystem::Path> next_request_file(const std::string& inbox);
@@ -63,10 +67,26 @@ struct LabState{
     std::string seq;        //  Name of the last request handled.
     std::string state;      //  STOPPED, RUNNING, STOPPING, NOT_READY or NO_PROGRAM.
     std::string program;    //  The selected program's identifier, or "".
+    std::string controller; //  "ready", "none", or "" for a panel without a console.
     std::string owner;      //  The owner token, or "".
     std::string error;      //  The last error; "" once a request succeeds.
 };
 std::string lab_state_text(const LabState& state);
+
+
+//  "start [SECONDS]" first waits up to SECONDS for the panel's controller:
+//  after a program switch the app reconnects it, and a program started
+//  before it is ready fails with "Incompatible Controller".
+constexpr Seconds CONTROLLER_WAIT_DEFAULT = Seconds(30);
+
+//  Calls `status` (a LabState::controller value) until it is not "none",
+//  sleeping `slice` through `sleep` in between; `sleep` returns false when
+//  the app is closing. Returns an error message, or "".
+std::string wait_for_controller(
+    const std::function<std::string()>& status,
+    const std::function<bool(Milliseconds)>& sleep,
+    Milliseconds timeout, Milliseconds slice
+);
 
 
 //  The owner lock: once claimed, requests that drive the console must carry

@@ -85,6 +85,11 @@ public:
         const std::vector<std::string>& words, LabCommandOutput& output
     ) = 0;
 
+    //  "ready" when the console's controller can take commands, "none" when
+    //  it can't (not connected yet, or reconnecting after a program switch),
+    //  "" when `panel` has no console. Read for the state file and by "start".
+    virtual std::string controller_status(PanelSession& panel) = 0;
+
     //  The press that keeps the console awake ("keepawake on").
     virtual void keep_awake(PanelSession& panel, CancellableScope& scope) = 0;
 
@@ -123,6 +128,7 @@ private:
     std::string run_console_command(const std::vector<std::string>& words, LabCommandOutput& output);
     std::string run_on_console(const std::function<void(PanelSession& panel, CancellableScope& scope)>& body);
     std::string run_ui_command(const LabRequestLine& line, std::ostream& out);
+    std::string run_start(const std::vector<std::string>& words);
     std::string run_popups(const std::vector<std::string>& words, std::ostream& out);
     std::string run_on_ui(const std::function<std::string()>& body);
     void keep_awake();
@@ -130,6 +136,8 @@ private:
 
     //  The state of the selected program. Call under m_panel_lock.
     void read_program_state(std::string& state, std::string& program, bool& running) const;
+    //  The selected panel's LabConsoleCommands::controller_status(). Call under m_panel_lock.
+    std::string read_controller_status();
 
 
 private:
