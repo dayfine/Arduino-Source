@@ -168,6 +168,13 @@ struct GlobalState{
     size_t find_player_index(size_t console_id) const;
     void clear_battle_state();
 
+    //  Accept a single opponent for the current battle stage and infer the boss.
+    //  Returns false when the read needs to be retried; rejected reads do not change the boss.
+    bool infer_boss_from_opponent();
+
+    //  Return the caught boss slug, or an empty string if no boss was caught.
+    std::string caught_boss(size_t caught_count) const;
+
     std::string dump() const;
 };
 

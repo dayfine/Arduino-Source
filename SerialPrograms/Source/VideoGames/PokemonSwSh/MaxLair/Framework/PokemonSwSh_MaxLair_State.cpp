@@ -5,6 +5,7 @@
  */
 #include "Common/Cpp/PrettyPrint.h"
 #include "Pokemon/Pokemon_Types.h"
+#include "VideoGames/PokemonSwSh/Resources/PokemonSwSh_MaxLairDatabase.h"
 #include "PokemonSwSh_MaxLair_State.h"
 
 namespace PokemonAutomation{
@@ -12,6 +13,24 @@ namespace NintendoSwitch{
 namespace PokemonSwSh{
 namespace MaxLairInternal{
 
+
+bool GlobalState::infer_boss_from_opponent(){
+    if (opponent.size() != 1){
+        return false;
+    }
+    const std::string& slug = *opponent.begin();
+    if (is_boss(slug) != (wins == 3)){
+        return false;
+    }
+    if (wins == 3 && !is_boss(boss)){
+        boss = slug;
+    }
+    return true;
+}
+std::string GlobalState::caught_boss(size_t caught_count) const{
+    //  A failed adventure can still have an identified boss, but no boss catch.
+    return caught_count == 4 && is_boss(boss) ? boss : std::string();
+}
 
 std::string PlayerState::dump() const{
     std::string str;

@@ -75,12 +75,9 @@ bool read_battle_menu(
     std::set<std::string> mon = reader.read_opponent(stream.logger(), context, stream.video());
 
     bool retry = !process_header_read(stream.logger(), state, std::move(mon));
-    std::string opponent = state.opponent.empty()
-        ? ""
-        : *state.opponent.begin();
 
-    //  If we see a boss before the end. Something is wrong. Retry.
-    if (state.wins != 3 && is_boss(opponent)){
+    //  The fourth battle must be a boss; earlier battles must be rentals.
+    if (!state.infer_boss_from_opponent()){
         retry = true;
     }
 
@@ -97,7 +94,7 @@ bool read_battle_menu(
         pbf_mash_button(context, BUTTON_B, 3000ms);
         state.opponent = std::move(mon);
 
-        if (state.wins == 3 && !state.boss.empty()){
+        if (state.wins == 3 && is_boss(state.boss)){
             if (!state.opponent.empty() && *state.opponent.begin() != state.boss){
                 stream.log(
                     "Inconsistent Boss: Expected " + state.boss + ", Read: " + *state.opponent.begin(),
@@ -106,23 +103,14 @@ bool read_battle_menu(
             }
             state.opponent = {state.boss};
         }
-
-        opponent = state.opponent.empty()
-            ? ""
-            : *state.opponent.begin();
     }
     context.wait_for_all_requests();
 
 
-    if (state.wins != 3 && is_boss(opponent)){
-        stream.log("Boss found before 3 wins. Something is seriously out-of-sync.", COLOR_RED);
-        dump_image(stream.logger(), MODULE_NAME, "BossBeforeEnd", snapshot);
+    if (!state.infer_boss_from_opponent()){
+        stream.log("Opponent does not match the battle stage after summary read.", COLOR_RED);
+        dump_image(stream.logger(), MODULE_NAME, "UnexpectedBattleOpponent", snapshot);
         return false;
-    }
-
-    //  Infer the boss if we don't know it.
-    if (state.boss.empty() && state.wins == 3){
-        state.boss = opponent;
     }
 
     //  Read misc.
