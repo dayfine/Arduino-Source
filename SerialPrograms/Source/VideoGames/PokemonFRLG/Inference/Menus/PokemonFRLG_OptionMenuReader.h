@@ -29,18 +29,19 @@ namespace PokemonFRLG{
 //  The options AutoStory sets.
 enum class OptionMenuItem{
     TEXT_SPEED,
+    BATTLE_SCENE,
     BATTLE_STYLE,
 };
 
-//  "TEXT SPEED", "BATTLE STYLE", for logs.
+//  "TEXT SPEED", "BATTLE SCENE", "BATTLE STYLE", for logs.
 const char* option_menu_name(OptionMenuItem item);
 
 //  The item's row in the menu, from 0. The cursor opens on row 0.
 size_t option_menu_row(OptionMenuItem item);
 
 //  The item's values as slugs, in the order RIGHT steps through them:
-//  "slow", "mid", "fast"; "shift", "set" (option_menu.c sTextSpeedOptions,
-//  sBattleStyleOptions).
+//  "slow", "mid", "fast"; "on", "off"; "shift", "set" (option_menu.c
+//  sTextSpeedOptions, sBattleSceneOptions, sBattleStyleOptions).
 const std::vector<std::string>& option_menu_values(OptionMenuItem item);
 
 //  Where row `row` shows its value, as fractions of the game screen.
