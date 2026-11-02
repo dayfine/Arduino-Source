@@ -43,21 +43,25 @@ void MenuDetector::make_overlays(VideoOverlaySet& items) const{
     items.add(m_color, m_line4);
     items.add(m_color, m_cross);
 }
-//  Whether the five columns between the icons are white from `top` down.
-static bool stripes_white(const ImageViewRGB32& screen, double top){
-    for (size_t index = 0; index < 5; index++){
-        const ImageFloatBox stripe(0.160 + 0.166 * (double)index, top, 0.015, STRIPE_BOTTOM - top);
-        if (!is_white(image_stats(extract_box_reference(screen, stripe)))){
-            return false;
-        }
-    }
-    return true;
-}
 bool MenuDetector::detect(const ImageViewRGB32& screen){
-    //  A "NEW" tag above an icon (a new game's OPTIONS, next to the third
-    //  column) breaks a column at the top; below the tags the columns are
-    //  white either way.
-    if (!stripes_white(screen, m_line0.y) && !stripes_white(screen, STRIPE_TOP_BELOW_BANNER)){
+    ImageStats stats0 = image_stats(extract_box_reference(screen, m_line0));
+    if (!is_white(stats0)){
+        return false;
+    }
+    ImageStats stats1 = image_stats(extract_box_reference(screen, m_line1));
+    if (!is_white(stats1)){
+        return false;
+    }
+    ImageStats stats2 = image_stats(extract_box_reference(screen, m_line2));
+    if (!is_white(stats2)){
+        return false;
+    }
+    ImageStats stats3 = image_stats(extract_box_reference(screen, m_line3));
+    if (!is_white(stats3)){
+        return false;
+    }
+    ImageStats stats4 = image_stats(extract_box_reference(screen, m_line4));
+    if (!is_white(stats4)){
         return false;
     }
     ImageStats cross = image_stats(extract_box_reference(screen, m_cross));
@@ -82,11 +86,23 @@ bool MenuWatcher::process_frame(const ImageViewRGB32& frame, WallClock timestamp
 
 
 
+namespace{
+
+//  Which columns the detector checks: the default ones from the top, or the
+//  ones below the "NEW" tags (a new game's menu, skip_new_banner = true).
+enum class Columns{
+    FromTop,
+    BelowNewTags,
+};
 
 class Test_MenuDetector : public ImageUnitTest{
 public:
-    Test_MenuDetector(const std::string& image, bool expected)
-        : ImageUnitTest("PokemonBDSP::MenuDetector - " + image, {image})
+    Test_MenuDetector(const std::string& image, Columns columns, bool expected)
+        : ImageUnitTest(
+            "PokemonBDSP::MenuDetector" + std::string(columns == Columns::BelowNewTags ? "(skip_new_banner)" : "") + " - " + image,
+            {image}
+        )
+        , m_columns(columns)
         , m_expected(expected)
     {}
 
@@ -94,20 +110,31 @@ public:
         Logger&, CancellableScope&,
         const std::vector<ImageRGB32>& images
     ) const override{
-        return MenuDetector().detect(images[0]) == m_expected;
+        MenuDetector detector(COLOR_RED, m_columns == Columns::BelowNewTags);
+        return detector.detect(images[0]) == m_expected;
     }
 
 private:
+    Columns m_columns;
     bool m_expected;
 };
 
+}
+
 void add_tests_MenuDetector(UnitTestDatabase& database){
-    database.add<Test_MenuDetector>("PokemonBDSP/MenuDetector/NewGameBagOptions_True.png", true);
-    database.add<Test_MenuDetector>("PokemonBDSP/MenuDetector/Home_False.png", false);
-    database.add<Test_MenuDetector>("PokemonBDSP/MenuDetector/OverworldSandgemMart_False.png", false);
-    database.add<Test_MenuDetector>("PokemonBDSP/MenuDetector/OverworldOreburghMine_False.png", false);
-    database.add<Test_MenuDetector>("PokemonBDSP/MenuDetector/IntroDialog_False.png", false);
-    database.add<Test_MenuDetector>("PokemonBDSP/MenuDetector/IntroBarry_False.png", false);
+    //  The "NEW" tag above OPTIONS breaks the third column from the top.
+    database.add<Test_MenuDetector>("PokemonBDSP/MenuDetector/NewGameBagOptions_True.png", Columns::BelowNewTags, true);
+    database.add<Test_MenuDetector>("PokemonBDSP/MenuDetector/NewGameBagOptions_True.png", Columns::FromTop, false);
+    for (const char* image : {
+        "PokemonBDSP/MenuDetector/Home_False.png",
+        "PokemonBDSP/MenuDetector/OverworldSandgemMart_False.png",
+        "PokemonBDSP/MenuDetector/OverworldOreburghMine_False.png",
+        "PokemonBDSP/MenuDetector/IntroDialog_False.png",
+        "PokemonBDSP/MenuDetector/IntroBarry_False.png",
+    }){
+        database.add<Test_MenuDetector>(image, Columns::FromTop, false);
+        database.add<Test_MenuDetector>(image, Columns::BelowNewTags, false);
+    }
 }
 
 
