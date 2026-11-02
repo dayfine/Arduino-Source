@@ -110,6 +110,12 @@ BDSPAutoStory::BDSPAutoStory()
         "until the player is in control in the bedroom. Only when starting at 00.00.",
         LockMode::LOCK_WHILE_RUNNING, false
     )
+    , JUST_LOADED(
+        "<b>Just loaded the start's save:</b><br>"
+        "The game was just loaded from the start checkpoint's save, so its save at the start is skipped (about 10 s). "
+        "Leave off when the game has moved since its last save.",
+        LockMode::LOCK_WHILE_RUNNING, false
+    )
     , PLAYER_NAME(false, "<b>Player name:</b><br>For a new game. Letters and digits.", LockMode::LOCK_WHILE_RUNNING, "Kosmos", "Kosmos")
     , STARTER(
         "<b>Starter Pokemon:</b>",
@@ -129,6 +135,7 @@ BDSPAutoStory::BDSPAutoStory()
 {
     PA_ADD_OPTION(RUN);
     PA_ADD_OPTION(NEW_GAME_INTRO);
+    PA_ADD_OPTION(JUST_LOADED);
     PA_ADD_OPTION(PLAYER_NAME);
     PA_ADD_OPTION(STARTER);
     PA_ADD_OPTION(NOTIFICATIONS);
@@ -136,11 +143,11 @@ BDSPAutoStory::BDSPAutoStory()
 
 namespace{
 
-//  The checkpoints whose start is already saved: the first one, unless the
-//  run starts a new game. The console's save is the run's start, so saving
-//  again right after loading it only cost ~10 s.
-std::set<std::string> saved_before_the_run(const std::vector<StoryCheckpoint>& checkpoints, size_t first, bool new_game){
-    if (first == 0 && new_game){
+//  The checkpoints whose start is already saved: the first one when the game
+//  was just loaded from its save (saving again cost ~10 s). After play, the
+//  save is older and the first checkpoint must save its start.
+std::set<std::string> saved_before_the_run(const std::vector<StoryCheckpoint>& checkpoints, size_t first, bool just_loaded){
+    if (!just_loaded){
         return {};
     }
     return {checkpoints[first].id};
@@ -163,7 +170,7 @@ void BDSPAutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerCo
     executor.set_checks(RUN.checks());
     executor.set_language(RUN.language());
     executor.set_stop_rows(rows_that_stop(checkpoints));
-    std::set<std::string> saved = saved_before_the_run(checkpoints, first, NEW_GAME_INTRO);
+    std::set<std::string> saved = saved_before_the_run(checkpoints, first, JUST_LOADED && !(first == 0 && NEW_GAME_INTRO));
     Pokemon::Segment segment = make_story_segment(checkpoints, executor, saved);
     Pokemon::SegmentHooks hooks = story_hooks(env, context);
 
