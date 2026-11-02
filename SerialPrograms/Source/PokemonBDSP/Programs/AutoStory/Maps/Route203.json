@@ -60,5 +60,8 @@
         {"name": "item_10", "kind": "item", "x": 31, "y": 5},
         {"name": "item_11", "kind": "item", "x": 20, "y": 10},
         {"name": "lass_12", "kind": "npc", "x": 15, "y": 17, "wander": {"x0": 14, "y0": 17, "x1": 16, "y1": 17}}
+    ],
+    "coord_events": [
+        {"name": "coord_event_0", "x": 5, "y": 17, "width": 1, "length": 4, "var": "VAR_ROUTE_203_RIVAL_STATE", "value": 0, "source": "pret/pokediamond files/fielddata/eventdata/zone_event_release/narc_0329.bin coord_events[0] (196, 757), script 6"}
     ]
 }
