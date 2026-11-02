@@ -483,7 +483,7 @@ LegNext RouteWalker::stopped_short_of_wall(LegWalk& walk, size_t walked_tiles){
 }
 
 void RouteWalker::check_at_wall(LegWalk& walk){
-    const WalkResult check = walk_until_dpad(m_stream, m_context, m_escape, walk.stick, 2000ms,
+    WalkResult check = walk_until_dpad(m_stream, m_context, m_escape, walk.stick, 2000ms,
         walk.label + ": at the wall?", {.arrived = nullptr, .pace = DpadPace::RUN});
     if (check.stop == WalkStop::DIALOG){
         //  A trainer who saw us froze the walk (the "!") until its time ran
@@ -497,6 +497,10 @@ void RouteWalker::check_at_wall(LegWalk& walk){
         m_stream.log("[Route] " + walk.label + ": on to the wall after the battle.", COLOR_ORANGE);
         walk.result = walk_until_dpad(m_stream, m_context, m_escape, walk.stick, wall_limit(walk.planned.leg),
             walk.label + ": on to the wall", run_watching(walk));
+        //  Where the walk on stopped is what counts now, not the line that
+        //  stopped the check (r54: at the wall after Route 202's second
+        //  trainer, and failed on the "dialog").
+        check = walk.result;
     }
     if (check.stop != WalkStop::BLOCKED &&
         !(check.stop == WalkStop::LIMIT && holding_against_wall(m_stream, m_context, walk.stick.x, walk.stick.y, walk.label + ": at the wall?"))
