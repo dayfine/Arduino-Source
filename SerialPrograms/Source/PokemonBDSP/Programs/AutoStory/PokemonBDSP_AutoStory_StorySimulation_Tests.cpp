@@ -25,6 +25,7 @@
 #include "Pokemon/AutoStory/Pokemon_StorySteps.h"
 #include "Pokemon/AutoStory/Pokemon_TilePose.h"
 #include "Utils/PokemonBDSP_AutoStory_Location.h"
+#include "Data/PokemonBDSP_AutoStory_PlanCosts.h"
 #include "PokemonBDSP_AutoStory_StoryPlaces.h"
 #include "PokemonBDSP_AutoStory_StoryTable.h"
 #include "PokemonBDSP_AutoStory_StorySimulation_Tests.h"
@@ -70,6 +71,31 @@ struct Walked{
     std::string plan;
 };
 
+//  The tiles a plan walks.
+int tiles_walked(const std::vector<PlannedLeg>& plan){
+    int tiles = 0;
+    for (const PlannedLeg& leg : plan){
+        tiles += leg.leg.tiles;
+    }
+    return tiles;
+}
+
+//  A route may walk a little further than the shortest way, for a wall at a
+//  leg's end, but not round the town: r64 went 38 tiles to the School's door
+//  for 12 straight (the "town" costs still feared stick-era open legs).
+std::string detour_error(const StoryWorld& world, const std::vector<TilePos>& start,
+    const std::function<bool(const TilePos&)>& at_goal, const std::vector<PlannedLeg>& plan
+){
+    const auto shortest = plan_robust_route(world, start, at_goal, waypoint_plan_costs());
+    const int walked = tiles_walked(plan);
+    const int least = shortest ? tiles_walked(*shortest) : walked;
+    if (walked <= least + least / 2 + 4){
+        return "";
+    }
+    return std::format("the plan walks {} tiles where {} would do.", walked, least);
+}
+
+
 //  A ROUTE step from `from`, planned as StoryExecutor::walk_to() walks it.
 Walked plan_route(const Pose& from, const StoryStep& step){
     const Pose& goal = *step.target;
@@ -86,7 +112,8 @@ Walked plan_route(const Pose& from, const StoryStep& step){
     for (const TilePos& pos : Pokemon::tiles_of(goal)){
         targets.push_back(story_to_world(*world, goal.map, pos));
     }
-    const auto plan = plan_robust_route(*world, start, [&](const TilePos& pos){ return contains(targets, pos); }, *costs);
+    const std::function<bool(const TilePos&)> at_goal = [&](const TilePos& pos){ return contains(targets, pos); };
+    const auto plan = plan_robust_route(*world, start, at_goal, *costs);
     if (!plan){
         return {std::nullopt, step.name + ": no plan from" + describe(from.map, Pokemon::tiles_of(from)) + ".", ""};
     }
@@ -94,6 +121,10 @@ Walked plan_route(const Pose& from, const StoryStep& step){
     std::vector<TilePos> local;
     for (const PlannedLeg& leg : *plan){
         walked.plan += " " + to_string(leg.leg);
+    }
+    const std::string detour = detour_error(*world, start, at_goal, *plan);
+    if (!detour.empty()){
+        return {std::nullopt, step.name + ": " + detour, walked.plan};
     }
     for (const TilePos& pos : plan->empty() ? start : plan->back().after){
         const std::optional<TilePos> tile = story_to_local(*world, goal.map, pos);
