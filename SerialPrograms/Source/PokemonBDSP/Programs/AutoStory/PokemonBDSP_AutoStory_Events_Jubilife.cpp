@@ -49,7 +49,6 @@ void up_the_steps(VideoStream& stream, ProControllerContext& context){
         fail_step(stream, std::string("Up the steps: ") + walk_stop_name(up.stop) + ".");
     }
 }
-}
 
 //  The School's lamp, east of its door, from its doorsteps' row at night
 //  (2026-10-30): at 0.65 to 0.69 of the screen across the door takes us in;
