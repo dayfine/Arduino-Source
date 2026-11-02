@@ -110,7 +110,7 @@ bool read_battle_menu(
     context.wait_for_all_requests();
 
 
-    if (!state.infer_boss_from_opponent()){
+    if (!state.accept_opponent()){
         stream.log("Boss found before 3 wins. Something is seriously out-of-sync.", COLOR_RED);
         dump_image(stream.logger(), MODULE_NAME, "BossBeforeEnd", snapshot);
         return false;

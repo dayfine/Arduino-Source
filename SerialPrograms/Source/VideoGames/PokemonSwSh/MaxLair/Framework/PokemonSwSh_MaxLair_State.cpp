@@ -14,7 +14,7 @@ namespace PokemonSwSh{
 namespace MaxLairInternal{
 
 
-bool GlobalState::infer_boss_from_opponent(){
+bool GlobalState::accept_opponent(){
     const std::string slug = opponent.empty() ? "" : *opponent.begin();
     //  A boss before the end means something is out-of-sync.
     if (wins != 3 && is_boss(slug)){
@@ -26,7 +26,7 @@ bool GlobalState::infer_boss_from_opponent(){
     }
     return true;
 }
-std::string GlobalState::caught_boss(size_t) const{
+std::string GlobalState::boss_if_caught(size_t) const{
     //  The identified boss is reported whether or not it was caught.
     return boss;
 }
