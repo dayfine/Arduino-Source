@@ -266,8 +266,10 @@ std::vector<StoryCheckpoint> lake_and_pokedex(){
             step_into("rowans_stop", EAST, "the trigger (5, 14..16)"),
             //  BDSP, unlike Diamond: after Rowan leaves, Dawn's and Barry's lines, then
             //  the game fades to the house, where Mom gives the Running Shoes. The
-            //  scene ends beside her on the rug, facing her (console, r24).
-            scene("rowan_and_dawn", at(HOME, 6, 8, EAST), "Rowan and Dawn come back; Barry, then home for the Running Shoes"),
+            //  scene ends beside her on the rug, facing her: (6, 8) in r24 and r27,
+            //  (5, 8) in r28.
+            scene("rowan_and_dawn", Pokemon::tile_pose(HOME, {TilePos{5, 8}, TilePos{6, 8}}, EAST),
+                "Rowan and Dawn come back; Barry, then home for the Running Shoes"),
             //  Mom's warning was spent in 00.01, so the door's tile (6, 10) is a plain
             //  door now: stepping onto it goes out (r27).
             route("above_the_door_again", at(HOME, 6, 9, SOUTH), "round Mom to above the door"),
