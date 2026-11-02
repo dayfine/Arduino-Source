@@ -1,0 +1,36 @@
+#!/bin/sh
+# Pre-push code-health gate: the same check as CI's "C++ Code Health" job, run locally (about 1 s).
+# Installed by tools/install_hooks.sh as a stub that runs the latest copy from origin/agents.
+#
+# For each pushed branch whose commit is this worktree's HEAD, run devtools/code_health against the
+# branch's fork PR base (else origin/main) and refuse the push on any failure. Pushes of other commits
+# (e.g. pa-sync's merges made without a checkout), deletions and tags are not checked.
+# Bypass (git push --no-verify) only with the user's OK for that push.
+remote=$1
+case "$(git remote get-url "$remote" 2>/dev/null)" in *dayfine/Arduino-Source*) ;; *) exit 0;; esac
+[ -d devtools/code_health ] || exit 0
+PY=${CODE_HEALTH_PY:-$HOME/.venvs/code-health/bin/python}
+head=$(git rev-parse HEAD)
+status=0
+while read -r lref lsha rref rsha; do
+    case "$rref" in refs/heads/*) ;; *) continue;; esac
+    [ "$lsha" = 0000000000000000000000000000000000000000 ] && continue
+    [ "$lsha" = "$head" ] || { echo "pre-push: ${rref#refs/heads/} is not HEAD here, code health not checked" >&2; continue; }
+    if [ ! -x "$PY" ]; then
+        echo "pre-push: no code-health venv at $PY; run: sh <(git show origin/agents:tools/install_hooks.sh)" >&2
+        exit 1
+    fi
+    br=${rref#refs/heads/}
+    base=$(gh pr view "$br" -R dayfine/Arduino-Source --json baseRefName -q .baseRefName 2>/dev/null)
+    [ -n "$base" ] || base=main
+    git rev-parse -q --verify "origin/$base" >/dev/null || base=main
+    out=$("$PY" -m devtools.code_health --base-ref "origin/$base" 2>&1)
+    rc=$?
+    n=$(printf '%s\n' "$out" | sed -n 's/^Code health: \([0-9]*\) failure.*/\1/p')
+    if [ $rc != 0 ] || { [ -n "$n" ] && [ "$n" != 0 ]; }; then
+        printf '%s\n' "$out" | grep -v '^Advisory' | tail -25 >&2
+        echo "pre-push: $br fails code health (${n:-?} failures vs origin/$base); push refused. Fix in this PR's commits." >&2
+        status=1
+    fi
+done
+exit $status
