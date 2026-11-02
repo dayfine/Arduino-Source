@@ -13,7 +13,7 @@ Two earlier proposals are folded into section 8 and their PRs closed: the event 
 map-reuse review ([#56](https://github.com/dayfine/Arduino-Source/pull/56)). FRLG's events after
 Brock stay in their own doc ([#130](https://github.com/dayfine/Arduino-Source/pull/130)).
 
-PR order and sizes are on the notes branch: `autostory/DEMO_PLAN.md` and `autostory/FRLG_SIZING.md`.
+PR order and sizes: [AutoStory-Demo-Plan.md](AutoStory-Demo-Plan.md) and [AutoStory-FRLG-Sizing.md](AutoStory-FRLG-Sizing.md).
 
 ## 1. The problem
 
