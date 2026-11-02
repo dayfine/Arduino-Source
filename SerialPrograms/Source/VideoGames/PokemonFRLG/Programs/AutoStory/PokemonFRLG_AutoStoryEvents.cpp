@@ -12,7 +12,7 @@
 #include "Pokemon/AutoStory/Pokemon_TilePose.h"
 #include "Pokemon/Navigation/Pokemon_RouteLog.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
-#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRecovery.h"
+#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRecoveryWalk.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRoute.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWalk.h"
 #include "PokemonFRLG_AutoStoryEvents.h"
@@ -110,7 +110,7 @@ Outcome walk_route(StoryEnv& env, RunState& state, const StoryStep& step){
     //  Planning lets the walker recover a stopped open leg: it plans back to
     //  the leg's end, then walks the rest as given.
     const RoutePlanning planning{.maps = &story_maps(), .costs = default_route_costs(), .start = start, .label = step.name, .wall_check = wall_check(env)};
-    walk_overworld_route(env.console, env.context, *route, facing, interrupts, &planning);
+    walk_overworld_route_with_recovery(env.console, env.context, *route, planning, facing, interrupts);
     log_arrival(env, step.name, target->map, target->tile);
     const std::optional<Direction> end_facing = route->empty() ? facing : std::optional<Direction>(route->back().facing_after);
     return Pokemon::outcome_ok(to_pose(StoryPose{target->map, target->tile, end_facing}));
@@ -134,7 +134,7 @@ Outcome walk_legs(StoryEnv& env, RunState& state, const StoryStep& step){
     //  Planning lets the walker recover a stopped open leg: it plans back to
     //  the leg's end, then walks the rest as given.
     const RoutePlanning planning{.maps = &story_maps(), .costs = default_route_costs(), .start = start, .label = step.name, .wall_check = wall_check(env)};
-    walk_overworld_route(env.console, env.context, *route, facing, interrupts, &planning);
+    walk_overworld_route_with_recovery(env.console, env.context, *route, planning, facing, interrupts);
     log_arrival(env, step.name, route->back().end.map, route->back().end.point);
     return Pokemon::outcome_ok(to_pose(StoryPose{route->back().end.map, route->back().end.point, route->back().facing_after}));
 }
