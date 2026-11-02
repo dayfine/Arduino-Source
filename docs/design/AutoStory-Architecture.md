@@ -117,7 +117,7 @@ Goals:
 | Grid, leg planner, LegWalker, route log, JSON maps (MapData) | shared | `Pokemon/Navigation/` | [#114](https://github.com/dayfine/Arduino-Source/pull/114) |
 | Story events and segments: checkpoints, retry, the `[Checkpoint]`/`[Event]` log | shared | `Pokemon/AutoStory/Pokemon_StoryEvents*` | [#114](https://github.com/dayfine/Arduino-Source/pull/114) |
 | Story steps, builder, executor interface; run options (dropdowns, Checks, language, attempts) | shared | `Pokemon/AutoStory/Pokemon_StorySteps*`, `Pokemon/Options/` | [#122](https://github.com/dayfine/Arduino-Source/pull/122) |
-| Maps from the decomp, route planning | per game | FRLG `Overworld/`; BDSP `Maps/` + `Data/` | FRLG [#117](https://github.com/dayfine/Arduino-Source/pull/117); BDSP maps-v4, [#127](https://github.com/dayfine/Arduino-Source/pull/127) |
+| Maps from the decomp, route planning | per game | generator in `devtools/maps/`; map JSON in `Resources/<Game>/Maps/` (Packages); planning in FRLG `Overworld/`, BDSP `Data/` | FRLG [#117](https://github.com/dayfine/Arduino-Source/pull/117); BDSP maps-v4, [#127](https://github.com/dayfine/Arduino-Source/pull/127) |
 | Walker: movers, interrupts, recovery | per game, on the shared LegWalker | FRLG `Overworld/`; BDSP `Walk/` | FRLG [#118](https://github.com/dayfine/Arduino-Source/pull/118), [#119](https://github.com/dayfine/Arduino-Source/pull/119); BDSP [#129](https://github.com/dayfine/Arduino-Source/pull/129) |
 | Program, story table, executor, actions, battle, screen readers | per game | `Programs/AutoStory/` | FRLG [#120](https://github.com/dayfine/Arduino-Source/pull/120); BDSP [#128](https://github.com/dayfine/Arduino-Source/pull/128) |
 | Lab channel, run records, route pictures, lab CLI | dev tooling | `CommonFramework/Windows/Lab*`, `devtools/` | [#107](https://github.com/dayfine/Arduino-Source/pull/107), [#116](https://github.com/dayfine/Arduino-Source/pull/116)/#132, [#125](https://github.com/dayfine/Arduino-Source/pull/125), [#131](https://github.com/dayfine/Arduino-Source/pull/131) |
@@ -125,6 +125,12 @@ Goals:
 `Pokemon/Navigation/` holds what moves the player (grids, maps, legs, the walker); `Pokemon/AutoStory/`
 holds what the story is made of (events, segments, steps, the select database). Navigation never
 includes AutoStory.
+
+Generated maps are game data, like `Resources/PokemonFRLG/EncounterSlotsFR.json`: they ship in
+the Packages repo and load at runtime with `RESOURCE_PATH()`, so a full game's maps (about 1.5 MB for
+FireRed) stay out of code review. The small test maps under `Pokemon/Navigation/TestMaps/` stay
+compiled in, so unit tests need no resources. Today both games still compile their maps in; moving
+them is a follow-up.
 
 A game adds: maps (a generator from its decomp), movers (how one tile is walked), interrupt
 handlers, an executor for the step kinds, and its table. Everything else is shared.
