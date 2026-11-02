@@ -28,12 +28,12 @@ namespace{
 //  An open leg stops at its first interruption: how far it got isn't
 //  counted (that went wrong too often on the console), the route finds the
 //  player again at a wall instead. See walk_overworld_route_with_recovery().
-Pokemon::LegSpec leg_spec(const RouteStep& step){
+Pokemon::LegSpec leg_spec(const RouteStep& step, MoveSpeed speed){
     Pokemon::LegSpec leg;
     leg.direction = step.direction;
     leg.tiles = step.tiles;
     leg.to_wall = step.to_wall;
-    leg.tile_time = step.surfing ? SURF_TILE_TIME : TILE_TIME;
+    leg.tile_time = tile_time(step, speed);
     leg.stop_on_interrupt = !step.to_wall;
     leg.stop_if_blocked = step.to_wall;
     return leg;
@@ -44,7 +44,7 @@ Pokemon::LegSpec leg_spec(const RouteStep& step){
 bool walk_step(
     ConsoleHandle& console, ProControllerContext& context,
     const RouteStep& step, std::optional<Direction> facing,
-    const OverworldInterruptSet& interrupts
+    const OverworldInterruptSet& interrupts, MoveSpeed speed
 ){
     switch (step.action){
     case RouteAction::WALK:
@@ -54,7 +54,10 @@ bool walk_step(
         if (facing != step.direction){
             pbf_press_dpad(context, dpad(step.direction), TURN_TAP, TURN_SETTLE);
         }
-        if (Pokemon::walk_leg(console, context, hold_dpad, step.wild ? interrupts.wild : interrupts.other, leg_spec(step), MAX_INTERRUPTIONS_PER_LEG).stopped){
+        if (const std::string note = speed_note(step, speed); !note.empty()){
+            console.log(note);
+        }
+        if (Pokemon::walk_leg(console, context, leg_mover(step, speed), step.wild ? interrupts.wild : interrupts.other, leg_spec(step, speed), MAX_INTERRUPTIONS_PER_LEG).stopped){
             return false;
         }
         if (step.warps){
@@ -80,9 +83,9 @@ bool walk_step(
 StepEnd walk_and_watch(
     ConsoleHandle& console, ProControllerContext& context,
     const RouteStep& step, std::optional<Direction> facing,
-    const OverworldInterruptSet& interrupts
+    const OverworldInterruptSet& interrupts, MoveSpeed speed
 ){
-    if (!walk_step(console, context, step, facing, interrupts)){
+    if (!walk_step(console, context, step, facing, interrupts, speed)){
         return StepEnd::STOPPED;
     }
     if (step.action == RouteAction::FACE){
@@ -102,8 +105,9 @@ StepEnd walk_and_watch(
 //  After a trainer the player faces them, so this turns first.
 void hold_to_warp(
     ConsoleHandle& console, ProControllerContext& context,
-    const RouteStep& step, const OverworldInterrupts& interrupts
+    const RouteStep& step, const OverworldInterrupts& interrupts, MoveSpeed speed
 ){
+    const Pokemon::LegMover<ProControllerContext> mover = leg_mover(step, speed);
     for (size_t count = 0; count <= MAX_INTERRUPTIONS_PER_LEG; count++){
         BlackScreenWatcher fade(COLOR_RED);
         std::vector<std::unique_ptr<VisualInferenceCallback>> watchers;
@@ -117,7 +121,7 @@ void hold_to_warp(
             console, context,
             [&](ProControllerContext& context){
                 pbf_press_dpad(context, dpad(step.direction), TURN_TAP, TURN_SETTLE);
-                pbf_press_dpad(context, dpad(step.direction), TILE_TIME * (step.tiles + 2), STEP_RELEASE);
+                mover(context, step.direction, tile_time(step, speed) * (step.tiles + 2));
             },
             callbacks
         );
@@ -173,7 +177,8 @@ void walk_overworld_route_with_recovery(
     const std::vector<RouteStep>& route,
     const RoutePlanning& planning,
     std::optional<Direction> facing,
-    const OverworldInterruptSet& interrupts
+    const OverworldInterruptSet& interrupts,
+    MoveSpeed speed
 ){
     if (route.empty()){
         return;
@@ -184,10 +189,10 @@ void walk_overworld_route_with_recovery(
     RouteCalls calls;
     calls.walk = [&](const RouteStep& step, std::optional<Direction> from_facing){
         check_overworld(console, context, step);
-        return walk_and_watch(console, context, step, from_facing, interrupts);
+        return walk_and_watch(console, context, step, from_facing, interrupts, speed);
     };
     calls.hold_to_warp = [&](const RouteStep& step){
-        hold_to_warp(console, context, step, interrupts.other);
+        hold_to_warp(console, context, step, interrupts.other, speed);
     };
     calls.log = [&](const std::string& message){ console.log(message, COLOR_ORANGE); };
     calls.fail = [&](const std::string& message){
