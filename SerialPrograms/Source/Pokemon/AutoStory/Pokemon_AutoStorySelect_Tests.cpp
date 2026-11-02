@@ -105,9 +105,7 @@ private:
     const AutoStorySelectScenario m_scenario;
 };
 
-}
-
-void add_tests_AutoStorySelect(UnitTestDatabase& database){
+void add_index_tests(UnitTestDatabase& database){
     const AutoStoryIndexScenario scenarios[] = {
         {
             .name = "a tutorial entry is its own index",
@@ -136,6 +134,9 @@ void add_tests_AutoStorySelect(UnitTestDatabase& database){
     for (const AutoStoryIndexScenario& scenario : scenarios){
         database.add<Test_AutoStoryIndex>(scenario);
     }
+}
+
+void add_select_database_tests(UnitTestDatabase& database){
     const AutoStorySelectScenario select_scenarios[] = {
         {
             .name = "the tutorial dropdown",
@@ -159,6 +160,13 @@ void add_tests_AutoStorySelect(UnitTestDatabase& database){
     for (const AutoStorySelectScenario& scenario : select_scenarios){
         database.add<Test_AutoStorySelectDatabase>(scenario);
     }
+}
+
+}
+
+void add_tests_AutoStorySelect(UnitTestDatabase& database){
+    add_index_tests(database);
+    add_select_database_tests(database);
 }
 
 
