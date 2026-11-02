@@ -1897,6 +1897,8 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_RngNavigation.h
     Source/VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_RngStatsDatabase.cpp
     Source/VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_RngStatsDatabase.h
+    Source/VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_RngSteps_Tests.cpp
+    Source/VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_RngSteps_Tests.h
     Source/VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_RngTargetSearch.cpp
     Source/VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_RngTargetSearch.h
     Source/VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_RngTargetSearch_Tests.cpp
@@ -1907,8 +1909,12 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_SeedsDatabase.h
     Source/VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_SidHelper.cpp
     Source/VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_SidHelper.h
+    Source/VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_SidSteps.cpp
+    Source/VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_SidSteps.h
     Source/VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_StarterRng.cpp
     Source/VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_StarterRng.h
+    Source/VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_StarterRngAttempts.cpp
+    Source/VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_StarterRngAttempts.h
     Source/VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_StaticRng.cpp
     Source/VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_StaticRng.h
     Source/VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_WildRng.cpp
