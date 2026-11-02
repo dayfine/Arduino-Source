@@ -236,6 +236,10 @@ void oreburgh_center_door(VideoStream& stream, ProControllerContext& context){
             return;
         }
     }
+    if (in_dim_cave(stream)){
+        stream.log("[Route] 01.03: already in the mine.");
+        return;
+    }
     enter_oreburgh_center(stream, context);
     context.wait_for(1000ms);
 }
@@ -249,6 +253,11 @@ void south_into_the_mine(VideoStream& stream, ProControllerContext& context){
     // hand). A worker walks about on the sand path and stops the walk as a
     // wall would (r95, r96): wait for him to move and walk on. Step 3 copes
     // with ending in the hall or in the corridor.
+    //  A save in the mine's entrance hall: already there.
+    if (in_dim_cave(stream)){
+        stream.log("[Route] 01.03: already in the mine.");
+        return;
+    }
     bool in_mine = false;
     size_t transitions = 0;
     Milliseconds walked = 0ms;
