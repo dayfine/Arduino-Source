@@ -25,6 +25,11 @@ namespace PokemonBDSP{
 //  Poketch) and segment 01 (Jubilife to Floaroma).
 const std::vector<StoryCheckpoint>& story_checkpoints();
 
+//  Mom gives the Running Shoes in this row's step: from then on, B held
+//  with the D-pad runs (r24, r27).
+constexpr const char* RUNNING_SHOES_ROW = "00.03";
+constexpr const char* RUNNING_SHOES_STEP = "rowan_and_dawn";
+
 
 
 }

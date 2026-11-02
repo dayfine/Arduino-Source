@@ -32,6 +32,7 @@
 #include "PokemonBDSP_AutoStory_NewGame.h"
 #include "PokemonBDSP_AutoStory_Settings.h"
 #include "PokemonBDSP_AutoStory_StoryPlaces.h"
+#include "PokemonBDSP_AutoStory_StoryTable.h"
 #include "PokemonBDSP_AutoStory_Talks.h"
 #include "PokemonBDSP_AutoStory_Walks.h"
 #include "PokemonBDSP_AutoStory_WildBattle.h"
@@ -95,6 +96,8 @@ StoryExecutor::StoryExecutor(StoryEnv& env)
 
 void StoryExecutor::begin_attempt(const Pokemon::StoryCheckpoint& data){
     m_checkpoint = data.id;
+    //  A row starts from its save: after the shoes' row, the save has them.
+    m_can_run = data.id > std::string(RUNNING_SHOES_ROW);
     const StoryWorld* south = story_plan_world("Route202", "Route202");
     m_trainers = south ? story_trainers(*south) : std::vector<TrainerSight>{};
 }
@@ -102,7 +105,11 @@ void StoryExecutor::begin_attempt(const Pokemon::StoryCheckpoint& data){
 Outcome StoryExecutor::run(RunState& state, const StoryStep& step){
     stream().log(std::format("[{}] {} {}: {}", m_checkpoint, Pokemon::story_step_kind_name(step.kind), step.name, step.why), COLOR_BLUE);
     try{
-        return run_guarded(state, step);
+        Outcome outcome = run_guarded(state, step);
+        if (outcome.succeeded() && m_checkpoint == RUNNING_SHOES_ROW && step.name == RUNNING_SHOES_STEP){
+            m_can_run = true;
+        }
+        return outcome;
     }catch (OperationFailedException& e){
         if (m_stop_rows.contains(m_checkpoint)){
             throw;
@@ -150,7 +157,7 @@ Pose StoryExecutor::walk_to(const Pose& from, const Pose& goal, const StoryStep&
     };
     const RouteWalkPlan plan{
         [&](const TilePos& pos){ return std::find(targets.begin(), targets.end(), pos) != targets.end(); },
-        label_of(step), {}, *costs
+        label_of(step), {}, *costs, m_can_run ? MoveSpeed::RUN : MoveSpeed::WALK
     };
     const std::vector<TilePos> at = walk_route(stream(), context(), run_from_wild_battle, *maps, start, trainers, plan);
     if (south){

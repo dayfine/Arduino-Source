@@ -149,6 +149,8 @@ private:
 
     StoryEnv& m_env;
     std::string m_checkpoint;
+    //  Whether the player has the Running Shoes: the pace routes are timed at.
+    bool m_can_run = false;
     //  Route 202's trainers who can still see us, in story_plan_world()'s
     //  world tiles; all of them again at each attempt.
     std::vector<TrainerSight> m_trainers;
