@@ -19,9 +19,11 @@
 #include "Inference/Map/PokemonFRLG_PokemonLeagueDetectors.h"
 #include "Inference/Menus/PokemonFRLG_BagDetector.h"
 #include "Inference/Menus/PokemonFRLG_ItemListReader.h"
+#include "Inference/Menus/PokemonFRLG_OptionMenuReader.h"
 #include "Inference/Menus/PokemonFRLG_PartyEmptySlotDetector.h"
 #include "Inference/Menus/PokemonFRLG_PartyHeldItemDetector.h"
 #include "Inference/Menus/PokemonFRLG_PartyMenuDetector.h"
+#include "Inference/Menus/PokemonFRLG_SaveCardReader.h"
 #include "Inference/PokemonFRLG_BattleLevelUpReader.h"
 #include "Inference/PokemonFRLG_BattleSelectionArrowDetector.h"
 #include "Inference/PokemonFRLG_PartyLevelUpReader.h"
@@ -687,6 +689,8 @@ void add_tests(UnitTestDatabase& database){
     add_tests_BattleMoveSelectionArrow(database);
     add_tests_BagDetector(database);
     add_tests_ItemListReader(database);
+    add_tests_OptionMenuReader(database);
+    add_tests_SaveCardReader(database);
     add_tests_ExitWildBattle(database);
     add_tests_OverworldMaps(database);
     add_tests_OverworldRoute(database);
