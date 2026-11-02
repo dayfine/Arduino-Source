@@ -1,7 +1,10 @@
 {
     "name": "PewterCity_Gym",
-    "width": 13,
-    "height": 16,
+    "source": {
+        "decomp_file": "data/maps/PewterCity_Gym/map.json",
+        "revision": "ce6406d8c2eaf46d543c8a2606de0c3cb1951982",
+        "date": "2026-10-31"
+    },
     "tiles": [
         "#############",
         "####.....####",
@@ -17,62 +20,56 @@
         "#...........#",
         "#...S...S...#",
         "#...........#",
-        "#.....v.....#",
+        "#...........#",
         "#############"
     ],
+    "points": {
+        "brock_front": [6, 6],
+        "warp_1": [6, 14]
+    },
     "warps": [
         {
             "x": 5,
             "y": 14,
-            "dest_map": "PewterCity",
-            "dest_warp": 2
+            "enter": "walk_into",
+            "to_map": "PewterCity",
+            "to_point": "warp_2"
         },
         {
             "x": 6,
             "y": 14,
-            "dest_map": "PewterCity",
-            "dest_warp": 2
+            "enter": "walk_south",
+            "to_map": "PewterCity",
+            "to_point": "warp_2"
         },
         {
             "x": 7,
             "y": 14,
-            "dest_map": "PewterCity",
-            "dest_warp": 2
+            "enter": "walk_into",
+            "to_map": "PewterCity",
+            "to_point": "warp_2"
         }
     ],
     "objects": [
         {
+            "name": "brock",
+            "kind": "npc",
             "x": 6,
-            "y": 5,
-            "kind": "brock",
-            "flag": "",
-            "wander_x": 0,
-            "wander_y": 0
+            "y": 5
         },
         {
+            "name": "camper",
+            "kind": "npc",
             "x": 3,
-            "y": 8,
-            "kind": "camper",
-            "flag": "",
-            "wander_x": 0,
-            "wander_y": 0
+            "y": 8
         },
         {
+            "name": "gym_guy",
+            "kind": "npc",
             "x": 7,
-            "y": 12,
-            "kind": "gym_guy",
-            "flag": "",
-            "wander_x": 0,
-            "wander_y": 0
+            "y": 12
         }
     ],
-    "connections": [],
-    "points": [
-        {
-            "name": "brock_front",
-            "x": 6,
-            "y": 6
-        }
-    ],
-    "flag_sets": []
+    "flag_sets": {},
+    "connections": []
 }

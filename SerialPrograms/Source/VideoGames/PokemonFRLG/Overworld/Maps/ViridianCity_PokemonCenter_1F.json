@@ -1,7 +1,10 @@
 {
     "name": "ViridianCity_PokemonCenter_1F",
-    "width": 15,
-    "height": 10,
+    "source": {
+        "decomp_file": "data/maps/ViridianCity_PokemonCenter_1F/map.json",
+        "revision": "ce6406d8c2eaf46d543c8a2606de0c3cb1951982",
+        "date": "2026-10-31"
+    },
     "tiles": [
         "#.#############",
         "###############",
@@ -9,9 +12,9 @@
         "....#######....",
         "...............",
         "...............",
-        "#L.........##..",
+        "#..........##..",
         "...........##..",
-        ".......v.......",
+        "...............",
         "###############"
     ],
     "elevation": [
@@ -26,73 +29,70 @@
         "333333333333333",
         "000000000000000"
     ],
+    "points": {
+        "nurse_front": [7, 4],
+        "warp_1": [7, 8]
+    },
     "warps": [
         {
             "x": 6,
             "y": 8,
-            "dest_map": "ViridianCity",
-            "dest_warp": 0
+            "enter": "walk_into",
+            "to_map": "ViridianCity",
+            "to_point": "warp_0"
         },
         {
             "x": 7,
             "y": 8,
-            "dest_map": "ViridianCity",
-            "dest_warp": 0
+            "enter": "walk_south",
+            "to_map": "ViridianCity",
+            "to_point": "warp_0"
         },
         {
             "x": 8,
             "y": 8,
-            "dest_map": "ViridianCity",
-            "dest_warp": 0
+            "enter": "walk_into",
+            "to_map": "ViridianCity",
+            "to_point": "warp_0"
         },
         {
             "x": 1,
             "y": 6,
-            "dest_map": "",
-            "dest_warp": 0
+            "enter": "step_on"
         }
     ],
     "objects": [
         {
+            "name": "nurse",
+            "kind": "npc",
             "x": 7,
-            "y": 2,
-            "kind": "nurse",
-            "flag": "",
-            "wander_x": 0,
-            "wander_y": 0
+            "y": 2
         },
         {
+            "name": "gentleman",
+            "kind": "npc",
             "x": 12,
-            "y": 5,
-            "kind": "gentleman",
-            "flag": "",
-            "wander_x": 0,
-            "wander_y": 0
+            "y": 5
         },
         {
+            "name": "boy",
+            "kind": "npc",
             "x": 4,
-            "y": 7,
-            "kind": "boy",
-            "flag": "",
-            "wander_x": 0,
-            "wander_y": 0
+            "y": 7
         },
         {
+            "name": "youngster",
+            "kind": "npc",
             "x": 2,
             "y": 3,
-            "kind": "youngster",
-            "flag": "",
-            "wander_x": 1,
-            "wander_y": 1
+            "wander": {
+                "x0": 1,
+                "y0": 2,
+                "x1": 3,
+                "y1": 4
+            }
         }
     ],
-    "connections": [],
-    "points": [
-        {
-            "name": "nurse_front",
-            "x": 7,
-            "y": 4
-        }
-    ],
-    "flag_sets": []
+    "flag_sets": {},
+    "connections": []
 }

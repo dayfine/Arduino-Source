@@ -1,7 +1,10 @@
 {
     "name": "PewterCity",
-    "width": 48,
-    "height": 40,
+    "source": {
+        "decomp_file": "data/maps/PewterCity/map.json",
+        "revision": "ce6406d8c2eaf46d543c8a2606de0c3cb1951982",
+        "date": "2026-10-31"
+    },
     "tiles": [
         "################################################",
         "#######################....#####################",
@@ -9,8 +12,8 @@
         "####........#################.........##########",
         "####........#############D######......##########",
         "####........###########...............##########",
-        "#######.....#####C#####..#######........########",
-        "####JJJ..JJJJJJJ...SJJJJJJJJJJJJJJJJJ...########",
+        "#######.....#####.#####..#######........########",
+        "####vvv..vvvvvvv...Svvvvvvvvvvvvvvvvv...########",
         "####....................................########",
         "####............................#####...########",
         "######..........................#####...########",
@@ -33,7 +36,7 @@
         "######....................#.........#...########",
         "######..#####.............#.........#...########",
         "######..#####.............#.........#...########",
-        "######..#D###.......S.....#JJJJ.JJJJ#...########",
+        "######..#D###.......S.....#vvvv.vvvv#...########",
         "######..................................########",
         "######..................................########",
         "######..................................########",
@@ -44,121 +47,121 @@
         "####################....########################",
         "####################....########################"
     ],
+    "points": {
+        "gym_front": [15, 17],
+        "warp_0": [17, 6],
+        "warp_1": [25, 4],
+        "warp_2": [15, 16],
+        "warp_3": [28, 18],
+        "warp_5": [17, 25]
+    },
     "warps": [
         {
             "x": 17,
             "y": 6,
-            "dest_map": "PewterCity_Museum_1F",
-            "dest_warp": 1
+            "enter": "cave_entrance",
+            "to_map": "PewterCity_Museum_1F",
+            "to_point": "warp_1"
         },
         {
             "x": 25,
             "y": 4,
-            "dest_map": "PewterCity_Museum_1F",
-            "dest_warp": 3
+            "enter": "walk_into",
+            "to_map": "PewterCity_Museum_1F",
+            "to_point": "warp_3"
         },
         {
             "x": 15,
             "y": 16,
-            "dest_map": "PewterCity_Gym",
-            "dest_warp": 1
+            "enter": "walk_into",
+            "to_map": "PewterCity_Gym",
+            "to_point": "warp_1"
         },
         {
             "x": 28,
             "y": 18,
-            "dest_map": "PewterCity_Mart",
-            "dest_warp": 1
+            "enter": "walk_into",
+            "to_map": "PewterCity_Mart",
+            "to_point": "warp_1"
         },
         {
             "x": 33,
             "y": 11,
-            "dest_map": "",
-            "dest_warp": 1
+            "enter": "walk_into"
         },
         {
             "x": 17,
             "y": 25,
-            "dest_map": "PewterCity_PokemonCenter_1F",
-            "dest_warp": 1
+            "enter": "walk_into",
+            "to_map": "PewterCity_PokemonCenter_1F",
+            "to_point": "warp_1"
         },
         {
             "x": 9,
             "y": 30,
-            "dest_map": "",
-            "dest_warp": 1
+            "enter": "walk_into"
         }
     ],
     "objects": [
         {
+            "name": "lass",
+            "kind": "npc",
             "x": 6,
-            "y": 15,
-            "kind": "lass",
-            "flag": "",
-            "wander_x": 0,
-            "wander_y": 0
+            "y": 15
         },
         {
+            "name": "man",
+            "kind": "npc",
             "x": 33,
             "y": 17,
-            "kind": "man",
-            "flag": "FLAG_HIDE_PEWTER_MUSEUM_GUIDE",
-            "wander_x": 0,
-            "wander_y": 0
+            "hide_flag": "FLAG_HIDE_PEWTER_MUSEUM_GUIDE"
         },
         {
+            "name": "fat_man",
+            "kind": "npc",
             "x": 21,
-            "y": 28,
-            "kind": "fat_man",
-            "flag": "",
-            "wander_x": 0,
-            "wander_y": 0
+            "y": 28
         },
         {
+            "name": "bug_catcher",
+            "kind": "npc",
             "x": 33,
             "y": 27,
-            "kind": "bug_catcher",
-            "flag": "",
-            "wander_x": 2,
-            "wander_y": 0
+            "wander": {
+                "x0": 31,
+                "y0": 27,
+                "x1": 35,
+                "y1": 27
+            }
         },
         {
+            "name": "boy",
+            "kind": "npc",
             "x": 42,
             "y": 20,
-            "kind": "boy",
-            "flag": "FLAG_HIDE_PEWTER_CITY_GYM_GUIDE",
-            "wander_x": 0,
-            "wander_y": 0
+            "hide_flag": "FLAG_HIDE_PEWTER_CITY_GYM_GUIDE"
         },
         {
+            "name": "cut_tree",
+            "kind": "npc",
             "x": 30,
             "y": 5,
-            "kind": "cut_tree",
-            "flag": "FLAG_TEMP_12",
-            "wander_x": 0,
-            "wander_y": 0
+            "hide_flag": "FLAG_TEMP_12"
         },
         {
+            "name": "scientist",
+            "kind": "npc",
             "x": 46,
             "y": 20,
-            "kind": "scientist",
-            "flag": "FLAG_HIDE_PEWTER_CITY_RUNNING_SHOES_GUY",
-            "wander_x": 0,
-            "wander_y": 0
+            "hide_flag": "FLAG_HIDE_PEWTER_CITY_RUNNING_SHOES_GUY"
         }
     ],
+    "flag_sets": {},
     "connections": [
         {
-            "direction": "south",
-            "offset": 12,
-            "map": "Route2"
+            "side": "south",
+            "to_map": "Route2",
+            "offset": 12
         }
-    ],
-    "points": [
-        {
-            "name": "gym_front",
-            "x": 15,
-            "y": 17
-        }
-    ],
-    "flag_sets": []
+    ]
 }
