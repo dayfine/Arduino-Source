@@ -579,6 +579,14 @@ void RouteWalker::check_banners(LegWalk& walk){
     const std::string banner_text = quoted_list(walk.banners);
     m_all_banners.insert(m_all_banners.end(), walk.banners.begin(), walk.banners.end());
     if (!walk.map_before.empty() && !walk.map_after.empty() && walk.map_after != walk.map_before && !banner_ok(walk)){
+        //  A scene that starts as we cross the edge covers the banner (r19: Rowan
+        //  and Dawn on Route 201's edge). With no banner read and a dialogue up,
+        //  let the next step, the scene, decide where we are.
+        VideoSnapshot now = m_stream.video().snapshot();
+        if (banner_text.empty() && now && ShortDialogDetector().detect(*now.frame)){
+            m_stream.log("[Route] " + walk.label + ": no banner, but a scene started; going on.", COLOR_ORANGE);
+            return;
+        }
         OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
             walk.label + ": expected to enter " + walk.map_after + ", but the location banner read " +
             (banner_text.empty() ? "nothing" : banner_text) + ".", m_stream);
