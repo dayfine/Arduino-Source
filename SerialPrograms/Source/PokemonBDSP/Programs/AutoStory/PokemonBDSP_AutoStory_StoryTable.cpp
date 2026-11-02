@@ -303,8 +303,9 @@ std::vector<StoryCheckpoint> to_the_catch(){
             route("to_the_row_end", at(SANDGEM, "front_row_east_end"), "east along the doors' row to the trees", "town"),
             route("to_route_201", at(ROUTE_201, "route_201_east_end"), "west along the doors' row out of Sandgem"),
             route("home", at(TWINLEAF, "house_doorstep", NORTH), "west along Route 201 to Twinleaf, running from wild battles"),
-            step_into("into_the_house", NORTH, "the house's door", at(HOME, "door", NORTH)),
-            legs("off_the_mat", {{.direction = NORTH, .tiles = 1}}, "off the door's mat, which no route starts on"),
+            //  The game sets us a tile inside, off the mat: (6, 9) (r40: the old extra
+            //  step north put us beside the TV, above Mom).
+            step_into("into_the_house", NORTH, "the house's door", at(HOME, 6, 9, NORTH)),
             route("beside_mom", at(HOME, 6, 8, EAST), "west of Mom at (7, 8)"),
             talk("mom", "Mom"),
             scene("mom_running_shoes", at(HOME, 6, 8, EAST), "her lines"),
