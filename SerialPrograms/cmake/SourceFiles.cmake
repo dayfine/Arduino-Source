@@ -1856,6 +1856,10 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonFRLG/Programs/Farming/PokemonFRLG_PickupFarmer.h
     Source/VideoGames/PokemonFRLG/Programs/PokemonFRLG_BattleMenuNavigation.cpp
     Source/VideoGames/PokemonFRLG/Programs/PokemonFRLG_BattleMenuNavigation.h
+    Source/VideoGames/PokemonFRLG/Programs/PokemonFRLG_NamingScreen.cpp
+    Source/VideoGames/PokemonFRLG/Programs/PokemonFRLG_NamingScreen.h
+    Source/VideoGames/PokemonFRLG/Programs/PokemonFRLG_NamingScreenKeyboard.cpp
+    Source/VideoGames/PokemonFRLG/Programs/PokemonFRLG_NamingScreenKeyboard.h
     Source/VideoGames/PokemonFRLG/Programs/PokemonFRLG_SafariOptimalAction.cpp
     Source/VideoGames/PokemonFRLG/Programs/PokemonFRLG_SafariOptimalAction.h
     Source/VideoGames/PokemonFRLG/Programs/PokemonFRLG_StartMenuNavigation.cpp
