@@ -204,8 +204,8 @@ UnitTestResult check_checkpoint(const StoryCheckpoint& checkpoint, StoryPose& po
 
 UnitTestResult test_routes_and_chain(){
     const std::vector<StoryCheckpoint>& checkpoints = story_checkpoints();
-    if (checkpoints.size() != 12 || checkpoints[0].start){
-        return "Expected 12 checkpoints, the first from a new game.";
+    if (checkpoints.size() != 13 || checkpoints[0].start){
+        return "Expected 13 checkpoints, the first from a new game.";
     }
     StoryPose pose;
     for (size_t c = 0; c < checkpoints.size(); c++){
@@ -428,6 +428,8 @@ const char* handoff_name(StoryHandoff handoff){
         return "none";
     case StoryHandoff::SID_HELPER:
         return "SID Helper";
+    case StoryHandoff::STARTER_RNG:
+        return "Starter RNG";
     }
     return "?";
 }
@@ -489,10 +491,66 @@ void add_tests_RunPlan(UnitTestDatabase& database){
         },
         {.name = "00.01b runs when started at, option off", .first = "00.01b", .last = "00.02", .expected_ids = "00.01b 00.02"},
         {.name = "SID Helper: a later start passes over it", .first = "00.02", .last = "00.03", .handoffs = {.sid_helper = true}, .expected_ids = "00.02 00.03"},
+        {.name = "handoffs off: an end at 00.04 still takes the rival's battle", .first = "00.03", .last = "00.04", .expected_ids = "00.03 00.04"},
+        {
+            .name = "Starter RNG: stops after 00.04's save",
+            .first = "00.02",
+            .handoffs = {.starter_rng = true},
+            .expected_ids = "00.02 00.03 00.04",
+            .expected_stop = StoryHandoff::STARTER_RNG,
+        },
+        {.name = "00.04b runs from its own save", .first = "00.04b", .last = "00.05", .expected_ids = "00.04b 00.05"},
+        {.name = "Starter RNG: a later start doesn't stop", .first = "00.05", .last = "00.06", .handoffs = {.starter_rng = true}, .expected_ids = "00.05 00.06"},
+        {
+            .name = "both handoffs, back in after SID Helper",
+            .first = "00.01b",
+            .handoffs = {.sid_helper = true, .starter_rng = true},
+            .expected_ids = "00.01b 00.02 00.03 00.04",
+            .expected_stop = StoryHandoff::STARTER_RNG,
+        },
     };
     for (const RunPlanScenario& scenario : scenarios){
         database.add<Test_RunPlan>(scenario);
     }
+}
+
+std::string step_names(const StoryCheckpoint& checkpoint){
+    std::string text;
+    for (const StoryStep& step : checkpoint.steps){
+        text += (text.empty() ? "" : " ") + step.name;
+    }
+    return text;
+}
+
+//  With Starter RNG's handoff off, 00.04 and 00.04b run as the one 00.04
+//  the story had before the split: from the lab's table to the rival's
+//  battle, saving once with the starter's START menu.
+UnitTestResult test_starter_rows_joined(){
+    const std::vector<StoryCheckpoint>& checkpoints = story_checkpoints();
+    const StoryRunPlan plan = plan_story_run(checkpoints, row_index("00.04"), row_index("00.04b"), StoryHandoffs{});
+    const std::string expected_steps =
+        "below_squirtle squirtle_ball choose_squirtle no_nickname rival_takes_bulbasaur above_rival_trigger rival_trigger rival_battle";
+    if (plan.rows.size() != 1){
+        return "Expected one checkpoint, got \"" + joined_ids(plan.rows) + "\".";
+    }
+    const StoryCheckpoint& row = plan.rows[0];
+    if (row.id != "00.04" || row.title != "Squirtle, then the rival's battle" || step_names(row) != expected_steps){
+        return "Expected 00.04 \"Squirtle, then the rival's battle\": " + expected_steps
+            + "; got " + row.id + " \"" + row.title + "\": " + step_names(row);
+    }
+    const std::optional<StoryPose> start = story_pose(*row.start);
+    if (!start || start->map != "PalletTown_ProfessorOaksLab" || !(start->tile == TilePos{6, 4}) || row.menu != StartMenu::BEFORE_POKEDEX){
+        return "Expected the joined 00.04 to start at the table (6, 4) and save with the starter's START menu.";
+    }
+    //  Split, 00.04 saves under the ball facing it, before the starter.
+    const StoryCheckpoint& to_ball = checkpoints[row_index("00.04")];
+    const std::optional<StoryPose> ball = story_pose(*checkpoints[row_index("00.04b")].start);
+    if (to_ball.handoff != StoryHandoff::STARTER_RNG || to_ball.menu != StartMenu::BEFORE_POKEMON
+        || !ball || !(ball->tile == TilePos{9, 5}) || ball->facing != Direction::NORTH
+    ){
+        return "Expected 00.04 to end under Squirtle's ball (9, 5) facing north, saving before the starter.";
+    }
+    return true;
 }
 
 //  The way back in after SID Helper loads no save and starts where 00.01
@@ -516,6 +574,7 @@ UnitTestResult test_after_sid_helper_row(){
 void add_tests_AutoStory(UnitTestDatabase& database){
     add_tests_RunPlan(database);
     database.add<Test_AutoStory>("00.01b: back in after SID Helper", test_after_sid_helper_row);
+    database.add<Test_AutoStory>("00.04 and 00.04b: one checkpoint with Starter RNG off", test_starter_rows_joined);
     database.add<Test_AutoStory>("every route plans, and checkpoints chain", test_routes_and_chain);
     database.add<Test_AutoStory>("step names are unique per checkpoint", test_unique_names);
     database.add<Test_AutoStory>("every save has a place on the save card", test_save_places);

@@ -70,6 +70,10 @@ enum class StoryHandoff{
     //  The checkpoint's new game stops on the player's keyboard, the name
     //  typed and OK not pressed, which is where SID Helper starts.
     SID_HELPER,
+    //  The checkpoint saves south of the table, facing the starter's ball,
+    //  which is where Starter RNG starts. With the handoff off, it runs on
+    //  into the next checkpoint as one, as the story did before the split.
+    STARTER_RNG,
 };
 
 //  A shared checkpoint with what FRLG adds to it.
@@ -89,6 +93,7 @@ struct StoryCheckpoint : public Pokemon::StoryCheckpoint{
 //  The handoffs a run stops for (AutoStory's options).
 struct StoryHandoffs{
     bool sid_helper = false;
+    bool starter_rng = false;
 };
 
 //  What a run from table row `first` to `last` does.
@@ -97,12 +102,16 @@ struct StoryRunPlan{
     std::vector<StoryCheckpoint> rows;
     //  NONE: the run ends after `rows`. SID_HELPER: `rows` is empty; the run
     //  plays the new game to the player's keyboard and stops there.
+    //  STARTER_RNG: the run stops after `rows`, the last of which saves at
+    //  the starter's ball.
     StoryHandoff stop = StoryHandoff::NONE;
 };
 
 //  The rows of `checkpoints` from `first` to `last`, both inclusive, as a
 //  run with `handoffs` takes them: live-start rows only when the run
-//  starts there, and a run that reaches a handoff that is on stops for it.
+//  starts there, a run that reaches a handoff that is on stops for it, and
+//  a STARTER_RNG row whose handoff is off is joined with the row after it,
+//  under its own id.
 StoryRunPlan plan_story_run(
     const std::vector<StoryCheckpoint>& checkpoints, size_t first, size_t last, const StoryHandoffs& handoffs
 );

@@ -76,6 +76,14 @@ AutoStory::AutoStory()
         LockMode::LOCK_WHILE_RUNNING,
         false
     )
+    , STOP_FOR_STARTER_RNG(
+        "<b>Stop for Starter RNG:</b><br>Off by default. At the end of 00.04, save south of the table facing Squirtle's ball "
+        "and stop, where the Starter RNG program starts. After Starter RNG, save right after the rival's battle without moving "
+        "and start AutoStory at 00.05.<br>"
+        "With this off, 00.04 and 00.04b run as one checkpoint, as before.",
+        LockMode::LOCK_WHILE_RUNNING,
+        false
+    )
     , NOTIFICATIONS({
         &NOTIFICATION_PROGRAM_FINISH,
         &NOTIFICATION_ERROR_FATAL,
@@ -85,6 +93,7 @@ AutoStory::AutoStory()
     PA_ADD_OPTION(NEW_GAME_FROM_TITLE);
     PA_ADD_OPTION(PLAYER_NAME);
     PA_ADD_OPTION(STOP_FOR_SID_HELPER);
+    PA_ADD_OPTION(STOP_FOR_STARTER_RNG);
     PA_ADD_OPTION(NOTIFICATIONS);
 }
 
@@ -224,7 +233,9 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
     const size_t last = RUN.end_index();
     const std::string player_name = PLAYER_NAME;
     check_setup(env.console, checkpoints, first, last, NEW_GAME_FROM_TITLE, player_name);
-    const StoryRunPlan plan = plan_story_run(checkpoints, first, last, StoryHandoffs{.sid_helper = STOP_FOR_SID_HELPER});
+    const StoryRunPlan plan = plan_story_run(
+        checkpoints, first, last, StoryHandoffs{.sid_helper = STOP_FOR_SID_HELPER, .starter_rng = STOP_FOR_STARTER_RNG}
+    );
     if (plan.stop == StoryHandoff::SID_HELPER){
         play_new_game_to_player_name(env.console, context, player_name);
         stop_for_handoff(env, NOTIFICATION_PROGRAM_FINISH,
@@ -251,6 +262,13 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
     Pokemon::record_story_stats(env.current_stats<Pokemon::AutoStoryStats>(), report);
     env.update_stats();
     throw_if_failed(report);
+    if (plan.stop == StoryHandoff::STARTER_RNG){
+        stop_for_handoff(env, NOTIFICATION_PROGRAM_FINISH,
+            "Stopped for Starter RNG: saved south of the table, facing Squirtle's ball. Run Starter RNG now. "
+            "Then save right after the rival's battle, without moving, and start AutoStory at 00.05."
+        );
+        return;
+    }
     env.console.log("AutoStory: done through " + plan.rows.back().id + ".");
     send_program_finished_notification(env, NOTIFICATION_PROGRAM_FINISH);
 }

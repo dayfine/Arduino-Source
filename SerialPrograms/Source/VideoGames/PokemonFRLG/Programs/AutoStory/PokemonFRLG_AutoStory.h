@@ -49,6 +49,7 @@ private:
     StringOption PLAYER_NAME;
     //  The RNG programs the run stops for (StoryHandoff).
     BooleanCheckBoxOption STOP_FOR_SID_HELPER;
+    BooleanCheckBoxOption STOP_FOR_STARTER_RNG;
     EventNotificationsOption NOTIFICATIONS;
 };
 

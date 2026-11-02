@@ -182,9 +182,17 @@ StoryCheckpoint oaks_trigger(){
     });
 }
 
-StoryCheckpoint starter(){
-    return row("00.04", "Squirtle, then the rival's battle", at(LAB, 6, 4, NORTH), {}, StartMenu::BEFORE_POKEDEX, {
+//  Starter RNG starts from a save south of the table, facing the ball.
+StoryCheckpoint to_starter_ball(){
+    StoryCheckpoint checkpoint = row("00.04", "to Squirtle's ball, south of the table", at(LAB, 6, 4, NORTH), {}, StartMenu::BEFORE_POKEMON, {
         route("below_squirtle", at(LAB, 9, 5, NORTH), "under Squirtle's ball (9, 4)"),
+    });
+    checkpoint.handoff = StoryHandoff::STARTER_RNG;
+    return checkpoint;
+}
+
+StoryCheckpoint starter(){
+    return row("00.04b", "Squirtle, then the rival's battle", at(LAB, 9, 5, NORTH), {}, StartMenu::BEFORE_POKEDEX, {
         talk("squirtle_ball", "\"So, you want the WATER POKEMON SQUIRTLE?\""),
         answer("choose_squirtle", true, "take Squirtle"),
         answer("no_nickname", false, "\"give a nickname?\" NO"),
@@ -305,7 +313,7 @@ StoryCheckpoint first_run(){
 
 const std::vector<StoryCheckpoint>& story_checkpoints(){
     static const std::vector<StoryCheckpoint> checkpoints{
-        new_game(), after_sid_helper(), leave_house(), oaks_trigger(), starter(), parcel(), pokedex(), shopping(), forest(), brock(),
+        new_game(), after_sid_helper(), leave_house(), oaks_trigger(), to_starter_ball(), starter(), parcel(), pokedex(), shopping(), forest(), brock(),
         running_shoes(), first_run(),
     };
     return checkpoints;
