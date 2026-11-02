@@ -265,12 +265,14 @@ static uint16_t starter_rng_tid(
 //  the attempts are the user's to run until that loop can be called from here.
 //  TODO: LeafGreen and Bulbasaur/Charmander, with AutoStory's starter choice.
 static void stop_for_starter_rng(
-    SingleSwitchProgramEnvironment& env, EventNotificationOption& notification,
-    const std::string& sound, const std::vector<std::string>& attempts
+    SingleSwitchProgramEnvironment& env, ProControllerContext& context, EventNotificationOption& notification,
+    const StarterRngPlanOptions& options, Language language
 ){
+    const uint16_t tid = starter_rng_tid(env, context, options, language);
+    const std::vector<std::string> attempts = rng_attempt_lines(options.plan(env.console, language, tid));
     stop_for_handoff(env, notification,
         "Stopped for Starter RNG: saved south of the table, facing Squirtle's ball. "
-        "Run Starter RNG (Squirtle, FireRed, Sound " + sound + ") with attempt 1's Target Seed and Advances. "
+        "Run Starter RNG (Squirtle, FireRed, Sound " + options.sound_name() + ") with attempt 1's Target Seed and Advances. "
         "If it hits the target and it isn't shiny, load this save and run the next attempt. If it is shiny, "
         "its SID is the one listed (or one of them): enter it as the RNG plan's SID. "
         "Then save right after the rival's battle, without moving, and start AutoStory at 00.05.",
@@ -320,11 +322,7 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
     env.update_stats();
     throw_if_failed(report);
     if (plan.stop == StoryHandoff::STARTER_RNG){
-        const uint16_t tid = starter_rng_tid(env, context, RNG_PLAN, RUN.language());
-        stop_for_starter_rng(
-            env, NOTIFICATION_PROGRAM_FINISH, RNG_PLAN.sound_name(),
-            rng_attempt_lines(RNG_PLAN.plan(env.console, RUN.language(), tid))
-        );
+        stop_for_starter_rng(env, context, NOTIFICATION_PROGRAM_FINISH, RNG_PLAN, RUN.language());
         return;
     }
     env.console.log("AutoStory: done through " + plan.rows.back().id + ".");
