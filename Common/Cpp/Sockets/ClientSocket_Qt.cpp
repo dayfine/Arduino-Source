@@ -5,6 +5,7 @@
  */
 
 #include <chrono>
+#include <QSharedPointer>
 #include <QTimer>
 #include <QTcpSocket>
 #include "Common/Qt/QtThreadPool.h"
@@ -83,7 +84,7 @@ void ClientSocket_Qt::connect(const std::string& address, uint16_t port){
     emit internal_connect(address, port);
 }
 
-size_t ClientSocket_Qt::send(const void* data, size_t bytes){
+size_t ClientSocket_Qt::send(const void* data, size_t bytes, std::chrono::milliseconds timeout){
     QTcpSocket* socket;
     {
         std::lock_guard<Mutex> lg(m_lock);
@@ -93,25 +94,47 @@ size_t ClientSocket_Qt::send(const void* data, size_t bytes){
         return 0;
     }
 
-    SendData send_data;
-    send_data.packet.assign((const char*)data, bytes);
+    QSharedPointer<SendData> send_data = QSharedPointer<SendData>::create();
+    send_data->packet.assign((const char*)data, bytes);
+    //  "time_point::max()" (the infinite default) is never reached; using
+    //  it also avoids overflowing "now() + timeout".
+    send_data->deadline =
+        (timeout == std::chrono::milliseconds::max())
+            ? std::chrono::steady_clock::time_point::max()
+            : std::chrono::steady_clock::now() + timeout;
 
-    emit internal_send(&send_data);
+    emit internal_send(send_data);
 
     //  Wait for the socket's event thread to finish writing the packet.
-    //  The timeout covers the case where "close()" destroys the socket
-    //  before the queued call ever runs, in which case it will never
-    //  complete on its own.
+    //  A finite "timeout" waits for the deadline plus 1 s of queueing
+    //  margin: the write loop stops at the deadline, so anything beyond
+    //  that is just the queued call waiting to start.
+    //
+    //  The infinite default cannot wait indefinitely - a limitation of
+    //  this wrapper, not of Qt: if "close()" runs from another thread
+    //  and the event loop is destroyed while this call is still queued
+    //  (posted after the destruction event), Qt silently discards the
+    //  pending event, the handler never runs, and "done" is never set;
+    //  an unbounded wait would then hang the caller forever. A send
+    //  queued before close() is safe: the event loop is FIFO, so it
+    //  runs first. The 5 s bound turns that post-close race into a
+    //  "0 bytes written" result instead of a hang. The shared
+    //  ownership keeps the packet alive until the queued call runs
+    //  (or is discarded with the socket).
+    const std::chrono::milliseconds wait_time =
+        (timeout == std::chrono::milliseconds::max())
+            ? std::chrono::milliseconds(5000)
+            : timeout + std::chrono::milliseconds(1000);
     {
-        std::unique_lock<Mutex> lg(send_data.lock);
-        send_data.cv.wait_for(
+        std::unique_lock<Mutex> lg(send_data->lock);
+        send_data->cv.wait_for(
             lg,
-            std::chrono::seconds(5),
-            [&send_data]{ return send_data.done; }
+            wait_time,
+            [&send_data]{ return send_data->done; }
         );
     }
 
-    return send_data.bytes_sent;
+    return send_data->bytes_sent;
 }
 
 void ClientSocket_Qt::connection_failed(const std::string& error_message){
@@ -238,7 +261,7 @@ std::unique_ptr<QTcpSocket> ClientSocket_Qt::make_socket(){
     );
     QObject::connect(
         this, &ClientSocket_Qt::internal_send,
-        socket.get(), [this, sock = socket.get()](SendData* send_data){
+        socket.get(), [this, sock = socket.get()](QSharedPointer<SendData> send_data){
             {
                 std::lock_guard<Mutex> lg(m_lock);
                 m_sends_in_flight.fetch_add(1, std::memory_order_acq_rel);
@@ -249,7 +272,14 @@ std::unique_ptr<QTcpSocket> ClientSocket_Qt::make_socket(){
             {
                 const char* ptr = send_data->packet.data();
                 size_t remaining = send_data->packet.size();
-                while (remaining > 0 && sock->state() == QAbstractSocket::ConnectedState){
+                //  The deadline keeps a peer that never reads from pinning
+                //  this event thread forever (which would also block
+                //  "close()" on it).
+                while (
+                    remaining > 0
+                    && sock->state() == QAbstractSocket::ConnectedState
+                    && std::chrono::steady_clock::now() < send_data->deadline
+                ){
                     qint64 current_sent = sock->write(ptr, remaining);
                     if (current_sent <= 0){
                         //  The kernel's send buffer is full. Wait for
