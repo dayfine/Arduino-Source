@@ -1805,6 +1805,10 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_RngNavigation.h
     Source/VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_RngStatsDatabase.cpp
     Source/VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_RngStatsDatabase.h
+    Source/VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_RngTargetSearch.cpp
+    Source/VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_RngTargetSearch.h
+    Source/VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_RngTargetSearch_Tests.cpp
+    Source/VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_RngTargetSearch_Tests.h
     Source/VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_RoamingLegendaryRng.cpp
     Source/VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_RoamingLegendaryRng.h
     Source/VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_SeedsDatabase.cpp
