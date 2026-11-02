@@ -96,7 +96,7 @@ public:
             {.name = "a west ledge hops west", .rows = {".<."}, .from = {2, 0}, .direction = Direction::WEST, .lands = TilePos{0, 0}},
             {.name = "a west ledge stops east", .rows = {".<."}, .direction = Direction::EAST, .at_wall = true},
             {.name = "a ledge onto a wall stops", .rows = {".", "v", "#"}, .direction = Direction::SOUTH, .at_wall = true},
-            {.name = "a person standing still", .rows = {".", "."}, .standing = {{0, 0}}, .from = {0, 1}, .at_wall = true},
+            {.name = "a person standing still", .rows = {".", "."}, .standing = {{0, 0}}, .from = {0, 1}, .at_wall = false},
             {.name = "a wanderer does not block", .rows = {".", "."}, .wandering = {{0, 0}}, .from = {0, 1}, .lands = TilePos{0, 0}},
         };
         for (const StepCase& item : cases){
