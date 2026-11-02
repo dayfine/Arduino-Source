@@ -43,9 +43,12 @@ std::pair<double, double> dpad_of(Direction direction){
 void walk_until_stopped(VideoStream& stream, ProControllerContext& context, Direction direction, size_t tiles, const std::string& label){
     const bool across = direction == Direction::EAST || direction == Direction::WEST;
     const auto [x, y] = dpad_of(direction);
-    //  Time for every tile, and for the wall to read as still.
+    //  Twice every tile's time, and time for the wall to read as still: it
+    //  stops at the wall anyway. One tile's time each fell short once the
+    //  turn stopped stepping us ahead (r57: west to Jubilife's sign ended
+    //  on the time, a column short).
     const Milliseconds limit = ROUTE_START_DELAY + 800ms +
-        (int64_t)tiles * (across ? ROUTE_MS_PER_TILE_ACROSS : ROUTE_MS_PER_TILE_UP_DOWN);
+        (int64_t)tiles * 2 * (across ? ROUTE_MS_PER_TILE_ACROSS : ROUTE_MS_PER_TILE_UP_DOWN);
     //  Turn first: the first press of a new way only turns us, the screen
     //  holds still meanwhile, and that read as a wall two tiles into the
     //  walk west to the Lab's sign (r132a).
