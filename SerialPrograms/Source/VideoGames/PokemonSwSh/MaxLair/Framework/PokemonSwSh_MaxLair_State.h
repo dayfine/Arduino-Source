@@ -168,6 +168,14 @@ struct GlobalState{
     size_t find_player_index(size_t console_id) const;
     void clear_battle_state();
 
+    //  Check the opponent against the current battle stage and infer the boss.
+    //  Returns false when the read is out-of-sync with the battle stage.
+    bool infer_boss_from_opponent();
+
+    //  Return the boss slug passed to end_adventure_action() after
+    //  caught_count Pokemon were caught.
+    std::string caught_boss(size_t caught_count) const;
+
     std::string dump() const;
 };
 

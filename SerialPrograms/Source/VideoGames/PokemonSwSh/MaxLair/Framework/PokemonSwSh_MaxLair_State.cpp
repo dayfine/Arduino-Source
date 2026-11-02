@@ -5,6 +5,7 @@
  */
 #include "Common/Cpp/PrettyPrint.h"
 #include "Pokemon/Pokemon_Types.h"
+#include "VideoGames/PokemonSwSh/Resources/PokemonSwSh_MaxLairDatabase.h"
 #include "PokemonSwSh_MaxLair_State.h"
 
 namespace PokemonAutomation{
@@ -12,6 +13,23 @@ namespace NintendoSwitch{
 namespace PokemonSwSh{
 namespace MaxLairInternal{
 
+
+bool GlobalState::infer_boss_from_opponent(){
+    const std::string slug = opponent.empty() ? "" : *opponent.begin();
+    //  A boss before the end means something is out-of-sync.
+    if (wins != 3 && is_boss(slug)){
+        return false;
+    }
+    //  Infer the boss if we don't know it.
+    if (wins == 3 && boss.empty()){
+        boss = slug;
+    }
+    return true;
+}
+std::string GlobalState::caught_boss(size_t) const{
+    //  The identified boss is reported whether or not it was caught.
+    return boss;
+}
 
 std::string PlayerState::dump() const{
     std::string str;
