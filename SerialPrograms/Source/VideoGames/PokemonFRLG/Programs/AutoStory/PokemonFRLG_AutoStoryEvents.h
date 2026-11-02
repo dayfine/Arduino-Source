@@ -112,6 +112,9 @@ struct StoryEnv{
     //  The game's language, for reading item names. In one the readers have
     //  no names for, the checks fall back to positions and counts.
     Language language = Language::English;
+    //  The name the new game's intro types for the player; empty keeps the
+    //  game's default name.
+    std::string player_name;
 };
 
 //  Does FRLG's kinds of story step on the console. A console step that

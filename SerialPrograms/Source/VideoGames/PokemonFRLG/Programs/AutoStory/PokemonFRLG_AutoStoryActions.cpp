@@ -25,6 +25,7 @@
 #include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleScreenDetector.h"
 #include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_SelectionArrowDetector.h"
 #include "VideoGames/PokemonFRLG/PokemonFRLG_Settings.h"
+#include "VideoGames/PokemonFRLG/Programs/PokemonFRLG_NamingScreen.h"
 #include "VideoGames/PokemonFRLG/Programs/PokemonFRLG_StartMenuNavigation.h"
 #include "PokemonFRLG_AutoStoryActions.h"
 
@@ -132,13 +133,16 @@ void open_start_menu_row(ConsoleHandle& console, ProControllerContext& context, 
 //  goes back to the controls pages (console B, 2026-11-01). The controls
 //  pages read as a message box without an arrow, and the arrow at the end
 //  of Oak's lines may be missed, so a message box gets A every 1.5 s
-//  whatever it shows. On the keyboard, B deletes whatever a stray A typed
-//  and START jumps to OK, which confirms the empty name as the default.
+//  whatever it shows. On the keyboard, B deletes whatever a stray A typed;
+//  then the player's name is typed, or START jumps to OK, which confirms
+//  the empty name as the default. The first keyboard is the player's, the
+//  second the rival's, who always keeps the default name.
 class NewGameIntro{
 public:
-    NewGameIntro(ConsoleHandle& console, ProControllerContext& context)
+    NewGameIntro(ConsoleHandle& console, ProControllerContext& context, std::string player_name)
         : m_console(console)
         , m_context(context)
+        , m_player_name(std::move(player_name))
     {}
 
     void run(){
@@ -188,7 +192,7 @@ private:
             return false;
         }
         if (NamingScreenDetector(COLOR_RED).detect(screen)){
-            enter_empty_name();
+            enter_name();
             m_last_dialog = current_time();
             return false;
         }
@@ -227,18 +231,32 @@ private:
         return false;
     }
 
-    void enter_empty_name(){
-        m_console.log("New game: the keyboard, confirming an empty name.");
+    void enter_name(){
+        const bool player = m_keyboards_seen++ == 0;
         for (int c = 0; c < 8; c++){
             press(m_context, BUTTON_B, 340ms);
         }
-        press(m_context, BUTTON_PLUS, 500ms);
-        press(m_context, BUTTON_A, 2000ms);
+        if (!player || m_player_name.empty()){
+            m_console.log("New game: the keyboard, confirming an empty name.");
+            press(m_context, BUTTON_PLUS, 500ms);
+            press(m_context, BUTTON_A, 2000ms);
+            m_context.wait_for_all_requests();
+            return;
+        }
+        if (!type_name(m_console, m_context, m_player_name, NamingScreenKind::PLAYER)){
+            OperationFailedExceptionWithScreenshot::fire(
+                ErrorReportMode::SEND_ERROR_REPORT, "play_new_game_intro(): the keyboard closed before the name was typed.", m_console
+            );
+        }
+        //  Past the keyboard's fade, so it isn't taken for the rival's.
+        pbf_wait(m_context, 2000ms);
         m_context.wait_for_all_requests();
     }
 
     ConsoleHandle& m_console;
     ProControllerContext& m_context;
+    const std::string m_player_name;
+    size_t m_keyboards_seen = 0;
     WallClock m_last_dialog;
     WallClock m_last_press;
     bool m_dialog_seen = false;
@@ -509,9 +527,9 @@ void buy_items(
     mash_until_overworld(console, context, 20000ms);
 }
 
-void play_new_game_intro(ConsoleHandle& console, ProControllerContext& context){
+void play_new_game_intro(ConsoleHandle& console, ProControllerContext& context, const std::string& player_name){
     console.log("New game: from the title screen.");
-    NewGameIntro(console, context).run();
+    NewGameIntro(console, context, player_name).run();
 }
 
 

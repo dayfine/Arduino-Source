@@ -128,9 +128,12 @@ void buy_items(
 );
 
 //  From the title screen of a game with no save, to the bedroom: the
-//  controls pages, Oak's speech, BOY, and the default names for the player
-//  and the rival (an empty name confirmed). Returns on the overworld.
-void play_new_game_intro(ConsoleHandle& console, ProControllerContext& context);
+//  controls pages, Oak's speech, BOY, `player_name` typed on the player's
+//  keyboard, and the default name for the rival (an empty name confirmed).
+//  An empty `player_name` keeps the player's default name too. Returns on
+//  the overworld. Throws UserSetupError if the game can't take the name
+//  (naming_text_error()).
+void play_new_game_intro(ConsoleHandle& console, ProControllerContext& context, const std::string& player_name);
 
 
 

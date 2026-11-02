@@ -137,7 +137,7 @@ StoryStep shop(std::string name, std::vector<Pokemon::StoryItem> items, std::str
 StoryCheckpoint new_game(){
     return row("00.01", "new game to the bedroom", std::nullopt, {}, StartMenu::BEFORE_POKEMON, {
         //  new_game.c: the bedroom at (6, 6), facing the TV.
-        new_game_intro(at(BEDROOM, 6, 6, NORTH), "Oak's speech, BOY, default names, rival GREEN"),
+        new_game_intro(at(BEDROOM, 6, 6, NORTH), "Oak's speech, BOY, the player's name (default if none is set), rival GREEN"),
         make(StoryStepKind::OPTIONS, "options", "fast text; no switch prompt between a trainer's Pokemon"),
     });
 }

@@ -344,7 +344,7 @@ Outcome StoryExecutor::run(RunState& state, const StoryStep& step){
 }
 
 Outcome StoryExecutor::new_game(RunState&, const StoryStep&){
-    play_new_game_intro(m_env.console, m_env.context);
+    play_new_game_intro(m_env.console, m_env.context, m_env.player_name);
     return Pokemon::outcome_ok();
 }
 

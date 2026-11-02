@@ -13,6 +13,7 @@
 #include "Pokemon/AutoStory/Pokemon_StorySegments.h"
 #include "Pokemon/Pokemon_Strings.h"
 #include "VideoGames/PokemonFRLG/PokemonFRLG_Navigation.h"
+#include "VideoGames/PokemonFRLG/Programs/PokemonFRLG_NamingScreenKeyboard.h"
 #include "PokemonFRLG_AutoStoryEvents.h"
 #include "PokemonFRLG_AutoStoryTable.h"
 #include "PokemonFRLG_AutoStory.h"
@@ -59,6 +60,13 @@ AutoStory::AutoStory()
         LockMode::LOCK_WHILE_RUNNING,
         true
     )
+    , PLAYER_NAME(
+        false,
+        "<b>Player name:</b><br>Typed on the new game's keyboard (00.01). Empty keeps the game's default name. "
+        "The rival always keeps the default name.",
+        LockMode::LOCK_WHILE_RUNNING,
+        "Kosmos", ""
+    )
     , NOTIFICATIONS({
         &NOTIFICATION_PROGRAM_FINISH,
         &NOTIFICATION_ERROR_FATAL,
@@ -66,6 +74,7 @@ AutoStory::AutoStory()
 {
     PA_ADD_OPTION(RUN);
     PA_ADD_OPTION(NEW_GAME_FROM_TITLE);
+    PA_ADD_OPTION(PLAYER_NAME);
     PA_ADD_OPTION(NOTIFICATIONS);
 }
 
@@ -100,6 +109,17 @@ static void check_save_place(
 }
 
 namespace{
+
+//  Before the new game starts: a name the keyboard can't type is the user's to fix.
+void check_player_name(ConsoleHandle& console, const std::string& name){
+    if (name.empty()){
+        return;
+    }
+    const std::string error = naming_text_error(name, NamingScreenKind::PLAYER);
+    if (!error.empty()){
+        throw UserSetupError(console, "Player name: " + error);
+    }
+}
 
 //  A failed attempt reloads the last save, with the supplies it had; the
 //  engine's lines go to the console's log.
@@ -140,8 +160,13 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
     if (first == 0 && !NEW_GAME_FROM_TITLE){
         throw UserSetupError(env.console, "Checkpoint 00.01 starts a new game: start on the title screen with no save.");
     }
+    const std::string player_name = PLAYER_NAME;
+    if (first == 0){
+        check_player_name(env.console, player_name);
+    }
 
     StoryEnv story{env.console, context, checkpoints[first].supplies, checkpoints[first].supplies, false, RUN.checks()};
+    story.player_name = player_name;
     if (!(first == 0 && NEW_GAME_FROM_TITLE)){
         env.console.log("Loading the save for " + checkpoints[first].id + ".");
         soft_reset(env.console, context);
