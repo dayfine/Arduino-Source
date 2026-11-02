@@ -4,7 +4,9 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from devtools.maps import decomp
+from unittest import mock
+
+from devtools.maps import bdsp_maps, decomp
 
 #  One synthetic 32 x 32 cell, open ground but for the first row:
 #  wall, tall grass, ledge south, ledge east, door, warp tile, water, cave wall, cave floor.
@@ -67,7 +69,9 @@ def platinum_tree(root):
         ],
         'warp_events': [{'x': 5, 'z': 0, 'dest_header_id': 'MAP_HEADER_OTHER', 'dest_warp_id': 0},
                         {'x': 4, 'z': 1, 'dest_header_id': 'MAP_HEADER_OTHER', 'dest_warp_id': 1}],
-        'coord_events': []}))
+        'coord_events': [
+            {'script': 6, 'x': 2, 'z': 3, 'y': 0, 'width': 1, 'length': 5, 'var': 'VAR_TEST_STATE', 'value': 0},
+            {'script': 7, 'x': 30, 'z': 0, 'y': 0, 'width': 4, 'length': 1, 'var': '16390', 'value': 2}]}))
 
 
 def diamond_tree(root):
@@ -88,6 +92,7 @@ def diamond_tree(root):
     gfx[4], gfx[20], gfx[87], gfx[94] = 'OBJ_EVENT_GFX_YOUNGSTER', 'OBJ_EVENT_GFX_LASS', 'OBJ_EVENT_GFX_POKEBALL', 'OBJ_EVENT_GFX_ARROW_SIGNPOST'
     write(root, 'generated/movement_types.txt', '\n'.join(movement))
     write(root, 'generated/object_events_gfx.txt', '\n'.join(gfx))
+    write(root, 'generated/vars_flags.txt', 'FLAG_UNUSED\nVARS_START = 16384\nVAR_UNUSED_0x4000 = VARS_START\nVAR_TEST_STATE\n')
 
     def obj(gfx_id, movement_id, trainer, flag, data0, range_x, x, z):
         return struct.pack('<14HI', 0, gfx_id, movement_id, trainer, flag, 1, 0, data0, 0, 0, range_x, 0, x, z, 0)
@@ -97,7 +102,8 @@ def diamond_tree(root):
     events += obj(87, 0, 0, 1000, 0, 0, 9, 0) + obj(94, 0, 0, 0, 13, 0, 10, 0) + obj(20, 15, 1, 0, 4, 0, 11, 0)
     events += obj(4, 5, 0, 0, 0, 2, 12, 0) + obj(20, 0, 0, 0, 0, 0, 40, 0)
     events += struct.pack('<I', 2) + struct.pack('<4H4x', 5, 0, 4, 0) + struct.pack('<4H4x', 4, 1, 4, 1)
-    events += struct.pack('<I', 0)
+    #  Coord events: script, x, z, width, length, elevation, value, var.
+    events += struct.pack('<I', 2) + struct.pack('<8H', 6, 2, 3, 1, 5, 0, 0, 16385) + struct.pack('<8H', 7, 30, 0, 4, 1, 0, 2, 16390)
     write(root, 'files/fielddata/eventdata/zone_event_release/narc_0331.bin', events)
 
 
@@ -189,6 +195,52 @@ class DecodeTest(unittest.TestCase):
         self.assertEqual(d.off_grid, [
             'Youngster (object 3) wander west and east from (12, 0), columns 10 to 14, row 0, not a trainer: off the grid'])
         self.assertIn("Decoded from Pokemon Diamond's", decomp.render_cpp(d))
+
+
+class CoordEventsTest(unittest.TestCase):
+    EXPECTED = [decomp.CoordEvent(6, 2, 3, 1, 5, 'VAR_TEST_STATE', 0), decomp.CoordEvent(7, 30, 0, 4, 1, '16390', 2)]
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self.tmp.name)
+        platinum_tree(self.root)
+        diamond_tree(self.root)
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def events(self, repo):
+        game = decomp.game_for(repo, self.root / 'cache', local=self.root)
+        return game, game.events(game.header('TEST_TOWN').events_id)
+
+    def test_both_games_read_the_same_events(self):
+        #  Diamond's variable numbers are named from Platinum's enum; an unnamed one stays a number.
+        for repo in ('pret/pokeplatinum', 'pret/pokediamond'):
+            with self.subTest(repo=repo):
+                self.assertEqual(self.events(repo)[1].coord_events, self.EXPECTED)
+
+    def test_diamond_rejects_trailing_bytes(self):
+        path = self.root / 'files/fielddata/eventdata/zone_event_release/narc_0331.bin'
+        path.write_bytes(path.read_bytes() + bytes(2))
+        with self.assertRaises(ValueError):
+            self.events('pret/pokediamond')
+
+    def test_map_json_clips_names_and_adds(self):
+        game, _ = self.events('pret/pokediamond')
+        names = {'TestTown': {0: 'tutorial', 'add': [
+            {'name': 'call', 'x': 1, 'y': 1, 'width': 1, 'length': 1, 'var': 'CONSOLE_CALL', 'value': 0, 'measured_by': 'r1'}]}}
+        with mock.patch.dict(bdsp_maps.COORD_EVENTS, names, clear=True):
+            out = bdsp_maps.coord_events('TestTown', 'pret/pokediamond', game, 331, (1, 1, 31, 6))
+        source = 'pret/pokediamond files/fielddata/eventdata/zone_event_release/narc_0331.bin coord_events[{}] ({}), script {}'
+        self.assertEqual(out, [
+            {'name': 'tutorial', 'x': 1, 'y': 2, 'width': 1, 'length': 4, 'var': 'VAR_TEST_STATE', 'value': 0,
+             'source': source.format(0, '2, 3', 6)},
+            {'name': 'call', 'x': 1, 'y': 1, 'width': 1, 'length': 1, 'var': 'CONSOLE_CALL', 'value': 0, 'source': 'r1'},
+        ])
+        #  The second event's row 0 is above the rectangle; a taller one keeps it, cut at column 31.
+        out = bdsp_maps.coord_events('TestTown', 'pret/pokediamond', game, 331, (0, 0, 32, 32))
+        self.assertEqual(out[1], {'name': 'coord_event_1', 'x': 30, 'y': 0, 'width': 2, 'length': 1, 'var': '16390',
+                                  'value': 2, 'source': source.format(1, '30, 0', 7)})
 
 
 class SourceTest(unittest.TestCase):
