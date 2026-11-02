@@ -263,20 +263,43 @@ Outcome StoryExecutor::answer(RunState&, const StoryStep& step){
     return Pokemon::outcome_ok();
 }
 
-Outcome StoryExecutor::mash(RunState&, const StoryStep& step){
-    const Button button = step.variant == "a" ? BUTTON_A : BUTTON_B;
-    wait_for_dialogue(stream(), context(), label_of(step));
-    finish_dialogue(stream(), context(), button, label_of(step));
-    //  A scene can go quiet while someone walks off, then speak again: Dawn's
-    //  "please wait for me!" comes after Rowan leaves (r23). A walk that
-    //  meets such a line takes it for a trainer, so take a few more.
+namespace{
+
+//  The text to the overworld, then any lines that follow a quiet spell: a
+//  scene can go quiet while someone walks off, then speak again (Dawn's
+//  "please wait for me!" after Rowan leaves, r23). A walk that meets such a
+//  line takes it for a trainer.
+void finish_scene_text(VideoStream& stream, ProControllerContext& context, Button button, const std::string& label){
+    finish_dialogue(stream, context, button, label);
     for (size_t tail = 0; tail < 3; tail++){
         ShortDialogWatcher dialog(COLOR_CYAN);
-        if (wait_until(stream(), context(), 4000ms, {{dialog}}) != 0){
-            break;
+        if (wait_until(stream, context, 4000ms, {{dialog}}) != 0){
+            return;
         }
-        stream().log("[Story] " + label_of(step) + ": the scene spoke again; finishing it.");
-        finish_dialogue(stream(), context(), button, label_of(step));
+        stream.log("[Story] " + label + ": the scene spoke again; finishing it.");
+        finish_dialogue(stream, context, button, label);
+    }
+}
+
+}
+
+Outcome StoryExecutor::mash(RunState& state, const StoryStep& step){
+    const Button button = step.variant == "a" ? BUTTON_A : BUTTON_B;
+    wait_for_dialogue(stream(), context(), label_of(step));
+    finish_scene_text(stream(), context(), button, label_of(step));
+    //  A scene that ends on another map fades there after a quiet spell, and
+    //  can speak again on arrival (r25: Barry, more than 4 s, the fade home,
+    //  then Mom). Wait for the fade, then for the lines after it.
+    if (step.pose_after && step.pose_after->map != state.pose.map){
+        BlackScreenOverWatcher faded(COLOR_RED);
+        if (wait_until(stream(), context(), 20000ms, {{faded}}) != 0){
+            stream().log(label_of(step) + ": no fade to " + step.pose_after->map + " after the scene.", COLOR_ORANGE);
+            return Pokemon::outcome_ok();
+        }
+        ShortDialogWatcher dialog(COLOR_CYAN);
+        if (wait_until(stream(), context(), 10000ms, {{dialog}}) == 0){
+            finish_scene_text(stream(), context(), button, label_of(step));
+        }
     }
     return Pokemon::outcome_ok();
 }
