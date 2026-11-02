@@ -28,6 +28,9 @@ The tables below add what the decompilation doesn't say or BDSP changed:
 - PATCHES: tiles measured on the console that differ from Diamond's, with
   the run that measured them. The map's tiles stay the decompilation's; the
   loader applies the patches.
+- COORD_EVENTS: names for the events file's coord events (the scene
+  triggers), and triggers found on the console that the decompilation
+  doesn't have, with the run that found them.
 
 The legend is the schema's: '#' wall, '.' open, '~' tall grass, 'w' water,
 '^' 'v' '<' '>' ledges hopped the arrow's way, 'D' a door or cave mouth
@@ -39,7 +42,14 @@ Rules: terrain from the decomp, people and BDSP's edits from the console;
 a route is coded only over tiles a human or a probe has walked; a map change
 re-runs every checkpoint that walks it. Bulbapedia's DP images (12 px rows
 for 16 px columns, cliffs painted tall) are for drawing routes over, not for
-terrain. Scenes' coord events have no place in the schema (Segment00Lines).
+terrain.
+
+Each map lists its events file's coord events under "coord_events" (the
+shared schema, Pokemon_MapData.h, leaves the key to the game; BDSP AutoStory's
+Data/PokemonBDSP_AutoStory_CoordEvents.h reads it): `width` columns and
+`length` rows from local (x, y), armed while the story variable `var` holds
+`value`, and a `source` that names the file, the event's index, its world
+tile and its script. Boxes are clipped to the map's rectangle.
 """
 import argparse
 import json
@@ -138,7 +148,7 @@ MAPS = {
     #   00.01 to 00.03's interiors, from pokeplatinum (c6689696d5fb), each
     #   the only cell of its own matrix: decomp only, not yet checked on the
     #   console. Mom's warning on the way out is a coord event on the
-    #   player's door tile (6, 10), which the schema has no place for.
+    #   player's door tile (6, 10).
     'PlayerHouse1F': {'header': 'TWINLEAF_TOWN_PLAYER_HOUSE_1F', 'rect': (0, 0, 13, 12), **INTERIOR},
     'PlayerHouse2F': {'header': 'TWINLEAF_TOWN_PLAYER_HOUSE_2F', 'rect': (0, 0, 12, 12), **INTERIOR},
     'RivalHouse1F': {'header': 'TWINLEAF_TOWN_RIVAL_HOUSE_1F', 'rect': (0, 0, 13, 12), **INTERIOR},
@@ -421,10 +431,45 @@ PATCHES = {
         #   was blocked at once.
         + [(21, 30, '#', 'r254, 2026-11-01')]
     ),
+    'PlayerHouse1F': [
+        #   Open on the console, a wall in the data: west along row 8 stops
+        #   at x 4 (r32).
+        (4, 8, '.', 'r32, 2026-11-01'),
+    ],
+    'Route201': (
+        #   Row 18 west of the exit path is trees on the console, open in the
+        #   decomp, and the 201 sign stands at (13, 18), not (13, 17) (r16,
+        #   walked by hand).
+        [(x, 18, '#', 'r16, 2026-10-31') for x in range(8, 13)]
+        + [(13, 18, 'S', 'r16, 2026-10-31'), (13, 17, '.', 'r16, 2026-10-31')]
+    ),
     'Route204North': [
         #   Grass in the data, blocked on the console twice.
         (12, 6, '#', 'r248a, 2026-10-31'),
     ],
+}
+
+
+#   Coord events by events-file index: their names (the default is
+#   coord_event_<index>), and under 'add' the triggers the console found that
+#   the decompilation doesn't have.
+COORD_EVENTS = {
+    #   Barry stops us on row 18 (POINTS barry_warning); Rowan on column 5
+    #   (POINTS rowan_stop).
+    'Route201': {0: 'barry_warning', 1: 'rowan_stop'},
+    'Route202': {0: 'catch_tutorial'},
+    'SandgemTown': {0: 'dawn_walks_us_to_the_lab'},
+    'JubilifeCity': {0: 'dawn_at_the_steps', 4: 'poketch_president'},
+    'TwinleafTown': {1: 'barry_doorstep'},
+    'VerityLakefront': {0: 'lake_entrance'},
+    'PlayerHouse1F': {
+        0: 'moms_warning',
+        'add': [
+            {'name': 'moms_call', 'x': 6, 'y': 9, 'width': 1, 'length': 1, 'var': 'CONSOLE_MOMS_CALL', 'value': 0,
+             'measured_by': 'console r45, r46 (2026-11-01): after her heal Mom calls us back as we step above'
+                            ' the door; no coord event in the decomp'},
+        ],
+    },
 }
 
 
@@ -489,6 +534,29 @@ def place_objects(name, events, rect, rows):
     return objects
 
 
+def coord_events(name, repo, game, events_id, rect):
+    """The map's coord events: the events file's, clipped to `rect`, then COORD_EVENTS' additions."""
+    x0, z0, width, height = rect
+    names = COORD_EVENTS.get(name, {})
+    out = []
+    for index, event in enumerate(game.events(events_id).coord_events):
+        left, top = max(event.x, x0), max(event.z, z0)
+        right, bottom = min(event.x + event.width, x0 + width), min(event.z + event.length, z0 + height)
+        if left >= right or top >= bottom:
+            continue
+        out.append({
+            'name': names.get(index, f'coord_event_{index}'),
+            'x': left - x0, 'y': top - z0, 'width': right - left, 'length': bottom - top,
+            'var': event.var, 'value': event.value,
+            'source': f'{repo} {game.events_path(events_id)} coord_events[{index}] ({event.x}, {event.z}),'
+                      f' script {event.script}',
+        })
+    for added in names.get('add', []):
+        fields = {k: v for k, v in added.items() if k != 'measured_by'}
+        out.append({**fields, 'source': added['measured_by']})
+    return out
+
+
 def decode_map(name):
     spec = MAPS[name]
     repo = spec.get('repo', decomp.Diamond.REPO)
@@ -517,8 +585,10 @@ def decode_map(name):
         for x, tile in enumerate(row):
             if tile == 'W':
                 row[x] = 'D' if (x, y) in doors else '.'
-    lands = sorted({world.land_id(x, z) for z in range(z0, z0 + height, decomp.CELL)
-                    for x in range(x0, x0 + width, decomp.CELL)} - {None})
+    #  Every cell the rectangle touches, also when it does not start on a cell's edge.
+    C = decomp.CELL
+    lands = sorted({world.land_id(C * col, C * row) for row in range(z0 // C, (z0 + height - 1) // C + 1)
+                    for col in range(x0 // C, (x0 + width - 1) // C + 1)} - {None})
     unverified = '; decomp only, not checked on the console' if spec.get('unverified') else ''
     source = {
         'decomp_file': f'{repo}: ' + ', '.join(game.land_path(land) for land in lands)
@@ -526,7 +596,8 @@ def decode_map(name):
         'revision': spec.get('revision', 'default branch'),
         'date': spec.get('read', READ),
     }
-    return [''.join(row) for row in rows], objects, source
+    triggers = coord_events(name, repo, game, header.events_id, spec['rect'])
+    return [''.join(row) for row in rows], objects, source, triggers
 
 
 def points_of(name):
@@ -542,7 +613,7 @@ def points_of(name):
 
 def map_text(name):
     """The map's JSON: one line per row, point, object and patch."""
-    tiles, objects, source = decode_map(name)
+    tiles, objects, source, triggers = decode_map(name)
     lines = ['{', f'    "name": {json.dumps(name)},', f'    "source": {json.dumps(source)},', '    "tiles": [']
     lines += [f'        {json.dumps(row)},' for row in tiles]
     lines[-1] = lines[-1].rstrip(',')
@@ -560,6 +631,7 @@ def map_text(name):
     section('points', [f'{json.dumps(p)}: [{x}, {y}]' for p, (x, y) in points_of(name).items()])
     section('warps', [json.dumps({'x': x, 'y': y, 'to_map': m, 'to_point': p}) for x, y, m, p in WARPS.get(name, [])])
     section('objects', [json.dumps(o) for o in objects])
+    section('coord_events', [json.dumps(e) for e in triggers])
     section('patches', [json.dumps({'x': x, 'y': y, 'glyph': g, 'measured_by': m})
                         for x, y, g, m in PATCHES.get(name, [])])
     lines.append('}')

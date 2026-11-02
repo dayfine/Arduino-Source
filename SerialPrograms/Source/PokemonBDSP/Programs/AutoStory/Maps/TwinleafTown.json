@@ -46,5 +46,9 @@
         {"name": "pokemon_breeder_f_0", "kind": "npc", "x": 23, "y": 14, "wander": {"x0": 22, "y0": 14, "x1": 24, "y1": 14}},
         {"name": "collector_1", "kind": "npc", "x": 12, "y": 25},
         {"name": "guitarist_3", "kind": "npc", "x": 12, "y": 5}
+    ],
+    "coord_events": [
+        {"name": "coord_event_0", "x": 12, "y": 3, "width": 8, "length": 1, "var": "VAR_TWINLEAF_TOWN_GUITARIST_TRIGGER_STATE", "value": 1, "source": "pret/pokediamond files/fielddata/eventdata/zone_event_release/narc_0389.bin coord_events[0] (108, 867), script 4"},
+        {"name": "barry_doorstep", "x": 9, "y": 12, "width": 1, "length": 1, "var": "VAR_TWINLEAF_TOWN_RIVAL_TRIGGER_STATE", "value": 0, "source": "pret/pokediamond files/fielddata/eventdata/zone_event_release/narc_0389.bin coord_events[1] (105, 876), script 2"}
     ]
 }
