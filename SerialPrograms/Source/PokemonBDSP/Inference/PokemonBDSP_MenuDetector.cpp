@@ -20,9 +20,14 @@ const double STRIPE_TOP = 0.110;
 const double STRIPE_TOP_BELOW_BANNER = 0.170;
 const double STRIPE_BOTTOM = 0.598;
 
+//  Each column sits in the gap right of an icon, clear of the "NEW" tag on
+//  its top right corner: from 0.160 the column took the edge of the tag on
+//  TOWN MAP and the menu went unseen (r65, Jubilife).
+const double STRIPE_LEFT = 0.166;
+
 static ImageFloatBox menu_stripe(size_t index, bool skip_new_banner){
     double top = skip_new_banner ? STRIPE_TOP_BELOW_BANNER : STRIPE_TOP;
-    return ImageFloatBox(0.160 + 0.166 * (double)index, top, 0.015, STRIPE_BOTTOM - top);
+    return ImageFloatBox(STRIPE_LEFT + 0.166 * (double)index, top, 0.015, STRIPE_BOTTOM - top);
 }
 
 MenuDetector::MenuDetector(Color color, bool skip_new_banner)
@@ -122,9 +127,15 @@ private:
 }
 
 void add_tests_MenuDetector(UnitTestDatabase& database){
-    //  The "NEW" tag above OPTIONS breaks the third column from the top.
-    database.add<Test_MenuDetector>("PokemonBDSP/MenuDetector/NewGameBagOptions_True.png", Columns::BelowNewTags, true);
-    database.add<Test_MenuDetector>("PokemonBDSP/MenuDetector/NewGameBagOptions_True.png", Columns::FromTop, false);
+    //  The new game's menu: a "NEW" tag above OPTIONS. Jubilife after the
+    //  Town Map: one on TOWN MAP, and the quest's text below.
+    for (const char* image : {
+        "PokemonBDSP/MenuDetector/NewGameBagOptions_True.png",
+        "PokemonBDSP/MenuDetector/JubilifeTownMapNew_True.png",
+    }){
+        database.add<Test_MenuDetector>(image, Columns::FromTop, true);
+        database.add<Test_MenuDetector>(image, Columns::BelowNewTags, true);
+    }
     for (const char* image : {
         "PokemonBDSP/MenuDetector/Home_False.png",
         "PokemonBDSP/MenuDetector/OverworldSandgemMart_False.png",
