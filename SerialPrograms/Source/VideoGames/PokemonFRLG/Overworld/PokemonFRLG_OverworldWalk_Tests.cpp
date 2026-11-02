@@ -35,16 +35,6 @@ private:
 };
 
 
-RouteStep walk_step(Direction direction, int tiles, bool to_wall, bool surfing){
-    RouteStep step;
-    step.action = RouteAction::WALK;
-    step.direction = direction;
-    step.tiles = tiles;
-    step.to_wall = to_wall;
-    step.surfing = surfing;
-    return step;
-}
-
 struct HoldCase{
     std::string name;
     MoveSpeed speed;
@@ -79,7 +69,11 @@ const std::vector<HoldCase>& hold_cases(){
 }
 
 UnitTestResult check_hold(const HoldCase& test){
-    const RouteStep step = walk_step(Direction::WEST, test.tiles, test.to_wall, test.surfing);
+    RouteStep step;
+    step.direction = Direction::WEST;
+    step.tiles = test.tiles;
+    step.to_wall = test.to_wall;
+    step.surfing = test.surfing;
     const Milliseconds hold = leg_hold_time(step, test.speed);
     if (hold != test.hold){
         return std::format("Expected a hold of {}ms, got {}ms.", test.hold.count(), hold.count());
