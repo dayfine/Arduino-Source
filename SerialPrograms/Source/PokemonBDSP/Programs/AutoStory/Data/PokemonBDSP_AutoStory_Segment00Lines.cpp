@@ -124,7 +124,7 @@ const std::vector<WalkedLine>& lines(){
             twinleaf_point("barry_doorstep"), twinleaf({15, 12}), twinleaf_point("twinleaf_north_exit"), route201_point("barry_warning"),
         }, "Barry's tall-grass warning", {"Barry's tall-grass warning"}),
         walked("00.01", "Route 201's west half to the lake's entrance", {
-            route201_point("barry_warning"), route201({12, 18}), route201({12, 16}), route201({0, 16}),
+            route201_point("barry_warning"), route201({14, 18}), route201({14, 17}), route201({12, 17}), route201({12, 16}), route201({0, 16}),
             lakefront({20, 23}), lakefront({20, 21}), lakefront({17, 21}), lakefront_point("lake_entrance"),
         }, "Barry at the lake's entrance", {"Barry at the lake's entrance", "Route 201's row 19 after the warning"}),
         walked("00.03", "the lake's entrance back to Rowan", {

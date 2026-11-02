@@ -178,8 +178,9 @@ std::vector<StoryStep> route_201_to_the_lakefront(){
             "along row 12, then up Twinleaf's exit to Route 201 (15, 19)"),
         step_into("barrys_warning", NORTH, "the trigger (14..19, 18)"),
         scene("barry_warns_us", at(ROUTE_201, "barry_warning"), "Barry's tall-grass warning; he then stands north of us at (15, 17)"),
-        //  West at once, along row 18: north is Barry, south is row 19, which pulls us back.
-        legs("away_from_barry", {{.direction = WEST, .tiles = 3}}, "to (12, 18), clear of Barry's column"),
+        //  West at once, never back south onto row 19, which pulls us back.
+        legs("away_from_barry", {{.direction = WEST, .tiles = 1}, {.direction = NORTH, .tiles = 1}, {.direction = WEST, .tiles = 2}},
+            "to (12, 17): row 18 west of the path is trees (r16), the dirt goes on along row 17"),
         //  Route 201's lower level, row 16, clear of the grass, then the Lakefront.
         route("below_the_lake_entrance", at(LAKEFRONT, "below_lake_entrance", NORTH), "west along Route 201's lower level to the Lakefront"),
     };
