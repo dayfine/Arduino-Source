@@ -202,8 +202,11 @@ public:
                 checked++;
             }
             for (const Pokemon::MapWarp& warp : map.warps){
+                if (!warp.to){
+                    return std::format("{}: the warp at {} leads nowhere.", name, Pokemon::to_string(TilePos{warp.x, warp.y}));
+                }
                 try{
-                    map_point(warp.to_map, warp.to_point);
+                    map_point(warp.to->map, warp.to->point);
                 }catch (InternalProgramError& e){
                     return std::format("{}: the warp at {}: {}", name, Pokemon::to_string(TilePos{warp.x, warp.y}), e.message());
                 }
