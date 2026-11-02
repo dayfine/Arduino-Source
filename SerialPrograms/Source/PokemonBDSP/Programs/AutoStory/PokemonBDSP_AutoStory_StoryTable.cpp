@@ -138,6 +138,13 @@ StoryStep talk_walking(std::string name, Direction direction, int tiles, std::st
     step.variant = variant_name(TalkWay::WALKING);
     return step;
 }
+//  Faces `direction` and A until they answer (TalkWay::FACING).
+StoryStep talk_facing(std::string name, Direction direction, std::string why){
+    StoryStep step = make(StoryStepKind::TALK, std::move(name), std::move(why));
+    step.direction = direction;
+    step.variant = variant_name(TalkWay::FACING);
+    return step;
+}
 //  B on a clock while someone walks off, then the overworld must show.
 StoryStep wait_out(std::string name, std::string why){
     StoryStep step = make(StoryStepKind::MASH, std::move(name), std::move(why));
@@ -342,9 +349,14 @@ std::vector<StoryCheckpoint> jubilife(){
                 "east across the road to the house, north up the sidewalk to the Center's doorway"),
             //  The kids south of the Center can push us aside: the heal lines up by sight.
             heal("heal_jubilife", "in, the nurse, out onto the doorstep (r143a: check we are out)"),
-            event("into_the_school", "eleven tiles west of the Center's doorstep, north through the School's door"),
+            //  Measured on the console (2026-10-30): eleven one-tile holds
+            //  from the doorstep put us under the School's doorway; twelve is past it.
+            hold_taps("west_to_the_school", {{.direction = WEST, .tiles = 11}}, "eleven tiles west of the Center's doorstep"),
+            event("into_the_school", "lined up by the School's lamp, north through its door"),
             to_walls("up_to_barry", {{.direction = NORTH, .tiles = 10}}, "the door's column to the back wall, beside Barry"),
-            event("barry_town_map", "Barry gives the Town Map"),
+            //  A tile west by a hold went two in r149a: the talk only turns to him.
+            talk_facing("barry", WEST, "Barry at the blackboard, a tile west of the door's column"),
+            scene("town_map", std::nullopt, "his lines to \"You obtained a Town Map!\"", MashWay::A),
             out_south("out_of_the_school", "straight down the door's column and out"),
         }),
         row("00.05b", "Jubilife: the president and the clowns' coupons", std::nullopt, {

@@ -52,7 +52,14 @@ enum class StepWay{
 enum class TalkWay{
     AHEAD,      //  A at what we face
     WALKING,    //  walk the step's leg until someone stops us and talks
+    FACING,     //  face the step's way, then A, up to TALK_FACING_TRIES times
 };
+
+//  FACING's A presses, 3 s apart: a second for an A that came while the
+//  turn settled. Barry's talk (00.05) had two tries as an event, the second
+//  after a walk back north to the wall, which the walk before it now holds
+//  for its whole time.
+inline constexpr size_t TALK_FACING_TRIES = 2;
 
 //  WAIT_OUT's B presses, 1.5 s apart: the 12 s the president takes to walk
 //  off after the Poketch (00.05c, on the console 2026-10-30).

@@ -55,9 +55,10 @@ struct WayNames<StepWay>{
 };
 template <>
 struct WayNames<TalkWay>{
-    static constexpr std::array<std::pair<TalkWay, const char*>, 2> names{{
+    static constexpr std::array<std::pair<TalkWay, const char*>, 3> names{{
         {TalkWay::AHEAD, ""},
         {TalkWay::WALKING, "walking"},
+        {TalkWay::FACING, "facing"},
     }};
 };
 template <>

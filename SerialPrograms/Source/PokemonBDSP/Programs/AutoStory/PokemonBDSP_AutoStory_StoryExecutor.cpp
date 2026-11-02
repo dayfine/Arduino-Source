@@ -34,6 +34,7 @@
 #include "PokemonBDSP_AutoStory_StoryPlaces.h"
 #include "PokemonBDSP_AutoStory_StoryVariants.h"
 #include "PokemonBDSP_AutoStory_Talks.h"
+#include "PokemonBDSP_AutoStory_Tries.h"
 #include "PokemonBDSP_AutoStory_Walks.h"
 #include "PokemonBDSP_AutoStory_WildBattle.h"
 #include "PokemonBDSP_AutoStory_StoryExecutor.h"
@@ -98,6 +99,26 @@ void walk_until_someone_talks(VideoStream& stream, ProControllerContext& context
     ShortDialogWatcher opened(COLOR_CYAN);
     if (wait_until(stream, context, 5000ms, {{opened}}) != 0){
         fail_step(stream, label + ": nobody talked to us.");
+    }
+}
+
+//  Faces `direction`, then A until a dialogue opens, TALK_FACING_TRIES
+//  times at most.
+void talk_facing_tries(VideoStream& stream, ProControllerContext& context, Direction direction, const std::string& label){
+    route_turn(stream, context, direction);
+    const std::optional<size_t> answered = try_bounded(TALK_FACING_TRIES,
+        [&](size_t){
+            pbf_press_button(context, BUTTON_A, 80ms, 200ms);
+            context.wait_for_all_requests();
+            ShortDialogWatcher dialog(COLOR_YELLOW);
+            return wait_until(stream, context, 3000ms, {{dialog}}) == 0;
+        },
+        [&](size_t attempt){
+            stream.log(std::format("{}: nobody answered A {}; again.", label, attempt));
+        }
+    );
+    if (!answered){
+        fail_step(stream, std::format("{}: nobody answered {} A presses facing {}.", label, TALK_FACING_TRIES, direction_name(direction)));
     }
 }
 
@@ -327,6 +348,10 @@ Outcome StoryExecutor::talk(RunState&, const StoryStep& step){
     }
     if (*way == TalkWay::WALKING){
         walk_until_someone_talks(stream(), context(), step.legs.front(), label_of(step));
+        return Pokemon::outcome_ok();
+    }
+    if (*way == TalkWay::FACING){
+        talk_facing_tries(stream(), context(), step.direction, label_of(step));
         return Pokemon::outcome_ok();
     }
     pbf_press_button(context(), BUTTON_A, 80ms, 200ms);

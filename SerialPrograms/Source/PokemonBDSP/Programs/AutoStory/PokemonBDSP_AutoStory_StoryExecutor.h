@@ -124,7 +124,9 @@ protected:
     //  One D-pad step `direction`, turning first: onto a scene's trigger or
     //  into a door.
     virtual Pokemon::Outcome step(Pokemon::RunState& state, const Pokemon::StoryStep& step) override;
-    //  A at what we face; a dialogue must open.
+    //  A at what we face; a dialogue must open. Variant "walking": walk
+    //  the step's leg until someone talks; "facing": face `direction` first,
+    //  and A up to TALK_FACING_TRIES times.
     virtual Pokemon::Outcome talk(Pokemon::RunState& state, const Pokemon::StoryStep& step) override;
     //  A for YES, B for NO, once the question's box shows.
     virtual Pokemon::Outcome answer(Pokemon::RunState& state, const Pokemon::StoryStep& step) override;

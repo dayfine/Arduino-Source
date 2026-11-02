@@ -2,7 +2,7 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  The Jubilife beats of 00.05 (the Town Map, the president, the clowns' coupons,
+ *  The Jubilife beats of 00.05 (the School, the president, the clowns' coupons,
  *  the Poketch), stepped through on the console on 2026-10-30, and
  *  segment 01's walks out of the Center to Barry and up to Rowan's scene.
  *
@@ -20,6 +20,7 @@
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Walk.h"
 #include "PokemonBDSP_AutoStory_Center.h"
 #include "PokemonBDSP_AutoStory_Talks.h"
+#include "PokemonBDSP_AutoStory_Tries.h"
 #include "PokemonBDSP_AutoStory_Walks.h"
 #include "PokemonBDSP_AutoStory_WildBattle.h"
 #include "PokemonBDSP_AutoStory_Events.h"
@@ -51,7 +52,6 @@ void up_the_steps(VideoStream& stream, ProControllerContext& context){
 //  0.065 of the screen. The box leaves out the Center's lamp further east.
 const double SCHOOL_LAMP_X_AT_DOOR = 0.67;
 const ImageFloatBox SCHOOL_LAMP_BOX(0.55, 0.20, 0.30, 0.10);
-const size_t SCHOOL_TILES_WEST_OF_CENTER = 11;
 
 //  At night the lamp east of the School's door says how many tiles across
 //  the door is; nothing by day.
@@ -72,16 +72,12 @@ std::optional<double> school_door_across(VideoStream& stream, ProControllerConte
     return across;
 }
 
-//  00.05: from the Center's doorstep into the Trainers' School. Measured on
-//  the console (2026-10-30): a tap to face west and eleven one-tile holds put
-//  us under the School's doorway; twelve is past it. A hold ends a part of a
-//  tile off (back east, eleven stopped beside the Center's door), so if the
-//  School's front stops us, nudge half a tile each way.
+//  00.05: from under the School's doorway (the table's eleven holds west of
+//  the Center's doorstep) through it. A hold ends a part of a tile off (back
+//  east, eleven stopped beside the Center's door, 2026-10-30), so line up by
+//  the lamp at night, and if the School's front stops us, nudge half a tile
+//  each way.
 void into_the_school(VideoStream& stream, ProControllerContext& context){
-    route_turn(stream, context, Direction::WEST);
-    for (size_t tiles = 0; tiles < SCHOOL_TILES_WEST_OF_CENTER; tiles++){
-        hold_for(stream, context, Direction::WEST, 160ms, "West to the School's door");
-    }
     for (size_t looks = 0; looks < 3; looks++){
         const std::optional<double> across = school_door_across(stream, context);
         //  The door took us from -0.19 and 0.19 but not -0.34 (r148b).
@@ -104,33 +100,25 @@ void into_the_school(VideoStream& stream, ProControllerContext& context){
     fail_step(stream, "The School's door did not take us from 11 tiles west of the Center's doorstep, or half a tile either side.");
 }
 
-//  00.05: Barry stands at the blackboard a tile west of the door's column,
-//  and that column is clear to the back wall: north to it, face west, his
-//  scene to "You obtained a Town Map!" (A closes it). A tile west by a hold
-//  went two in r149a and the boy at the table stopped us.
-void barry_town_map(VideoStream& stream, ProControllerContext& context){
-    for (size_t attempt = 0; attempt < 2; attempt++){
-        const DialogueRead read = talk_facing(stream, context, Direction::WEST, BUTTON_A, "Barry");
-        if (read.opened && read.closed){
-            return;
-        }
-        walk_until_stopped(stream, context, Direction::NORTH, 4, "North to the back wall");
-    }
-    fail_step(stream, "Trainers' School: Barry did not answer from beside the back wall.");
-}
 
 //  00.05: the clown at the east end of the road between the Center and the
 //  Mart. He may be what stopped the walk east (r155c, 2.8 s against 2.2):
 //  ask ahead first. Else he stands a row south and a tile west: try that
 //  row, then one more, facing west each time. His question's default
 //  answer, Yes, is right; A takes his coupon.
+const size_t CLOWN_BY_THE_MART_ASKS = 3;
 void clown_by_the_mart(VideoStream& stream, ProControllerContext& context){
-    DialogueRead read = talk_facing(stream, context, Direction::EAST, BUTTON_A, "Clown by the Poke Mart");
-    for (size_t rows = 0; rows < 2 && !read.opened; rows++){
-        hold_for(stream, context, Direction::SOUTH, 200ms, "A row south");
-        route_turn(stream, context, Direction::WEST);
-        read = talk_facing(stream, context, Direction::WEST, BUTTON_A, "Clown by the Poke Mart");
-    }
+    DialogueRead read;
+    try_bounded(CLOWN_BY_THE_MART_ASKS,
+        [&](size_t attempt){
+            read = talk_facing(stream, context, attempt == 1 ? Direction::EAST : Direction::WEST, BUTTON_A, "Clown by the Poke Mart");
+            return read.opened;
+        },
+        [&](size_t){
+            hold_for(stream, context, Direction::SOUTH, 200ms, "A row south");
+            route_turn(stream, context, Direction::WEST);
+        }
+    );
     if (!read.opened || !read.closed){
         fail_step(stream, "Jubilife: the clown by the Poke Mart did not talk.");
     }
@@ -202,30 +190,31 @@ void clown_by_the_company(VideoStream& stream, ProControllerContext& context){
 //  a few tiles west: from a row up, west a tile at a time, asking ahead and
 //  north. Turns only ever change the way we face, so none is a step. His
 //  last line asks us to try the R Button; a help panel about the Poketch
-//  follows, closed with B.
+//  follows, which the table's wait_out step closes with its B presses
+//  while he walks off.
+const size_t PRESIDENT_TILES_WEST = 8;
 void poketch_from_the_president(VideoStream& stream, ProControllerContext& context){
     hold_for(stream, context, Direction::NORTH, 200ms, "A row up from the lamp");
     route_turn(stream, context, Direction::WEST);
     DialogueRead read;
-    for (size_t tiles = 0; tiles < 8 && !read.opened; tiles++){
-        read = talk_ahead(stream, context, BUTTON_B, "The Poketch Company president");
-        if (read.opened){
-            break;
+    try_bounded(PRESIDENT_TILES_WEST,
+        [&](size_t){
+            read = talk_ahead(stream, context, BUTTON_B, "The Poketch Company president");
+            if (read.opened){
+                return true;
+            }
+            route_turn(stream, context, Direction::NORTH);
+            read = talk_ahead(stream, context, BUTTON_B, "The Poketch Company president");
+            return read.opened;
+        },
+        [&](size_t){
+            route_turn(stream, context, Direction::WEST);
+            tap_tiles(stream, context, Direction::WEST, 1, "West along the road");
         }
-        route_turn(stream, context, Direction::NORTH);
-        read = talk_ahead(stream, context, BUTTON_B, "The Poketch Company president");
-        if (read.opened){
-            break;
-        }
-        route_turn(stream, context, Direction::WEST);
-        tap_tiles(stream, context, Direction::WEST, 1, "West along the road");
-    }
+    );
     if (!read.opened || !read.closed){
         fail_step(stream, "Jubilife: the president did not give us the Poketch.");
     }
-    stream.log("[Talk] The Poketch's help: B to close the panel.");
-    pbf_press_button(context, BUTTON_B, 80ms, 1500ms);
-    context.wait_for_all_requests();
 }
 
 //  01.07: Rowan's and Dawn's lines after the tag battle. 01.08 starts here,
@@ -362,7 +351,6 @@ void north_to_rowan(VideoStream& stream, ProControllerContext& context){
 void add_jubilife_events(StoryEvents& events){
     events.emplace("up_the_steps", console_event(up_the_steps));
     events.emplace("into_the_school", console_event(into_the_school));
-    events.emplace("barry_town_map", console_event(barry_town_map));
     events.emplace("clown_by_the_mart", console_event(clown_by_the_mart));
     events.emplace("clown_by_the_company", console_event(clown_by_the_company));
     events.emplace("poketch_from_the_president", console_event(poketch_from_the_president));

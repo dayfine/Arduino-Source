@@ -20,6 +20,7 @@
 #include "PokemonBDSP_AutoStory_Events.h"
 #include "PokemonBDSP_AutoStory_StoryTable.h"
 #include "PokemonBDSP_AutoStory_StoryVariants.h"
+#include "PokemonBDSP_AutoStory_Tries.h"
 #include "PokemonBDSP_AutoStory_StoryTable_Tests.h"
 
 namespace PokemonAutomation{
@@ -73,6 +74,62 @@ public:
         }
         if (MASH_WAIT_OUT_PRESSES != 8){
             return "MASH_WAIT_OUT_PRESSES is the 12 s (8 presses 1.5 s apart) the president took on the console.";
+        }
+        if (!built_in_variant(StoryStepKind::TALK, "facing") || TALK_FACING_TRIES != 2){
+            return "TALK \"facing\" is a way, with 2 A presses: Barry's two tries.";
+        }
+        return true;
+    }
+};
+
+//  What a run of try_bounded() did: the attempts made and the safe moves
+//  between them.
+struct TriesRun{
+    std::optional<size_t> took;
+    std::vector<size_t> attempts;
+    std::vector<size_t> moves;
+};
+TriesRun run_tries(size_t tries, std::optional<size_t> takes_at){
+    TriesRun run;
+    run.took = try_bounded(tries,
+        [&](size_t attempt){
+            run.attempts.push_back(attempt);
+            return takes_at == attempt;
+        },
+        [&](size_t attempt){ run.moves.push_back(attempt); }
+    );
+    return run;
+}
+
+//  The bound every tolerant step leans on: never more tries than allowed,
+//  a safe move only between two, none after the last, and the first try
+//  that holds ends it.
+class Test_BoundedTries : public UnitTest{
+public:
+    Test_BoundedTries()
+        : UnitTest("PokemonBDSP::AutoStory - Bounded tries: at most N, moves only between")
+    {}
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        struct Case{
+            size_t tries;
+            std::optional<size_t> takes_at;
+            std::optional<size_t> took;
+            std::vector<size_t> attempts;
+            std::vector<size_t> moves;
+        };
+        const std::vector<Case> cases{
+            {.tries = 3, .takes_at = 1, .took = 1, .attempts = {1}, .moves = {}},
+            {.tries = 3, .takes_at = 3, .took = 3, .attempts = {1, 2, 3}, .moves = {1, 2}},
+            {.tries = 3, .takes_at = std::nullopt, .took = std::nullopt, .attempts = {1, 2, 3}, .moves = {1, 2}},
+            {.tries = 2, .takes_at = 5, .took = std::nullopt, .attempts = {1, 2}, .moves = {1}},
+            {.tries = 0, .takes_at = 1, .took = std::nullopt, .attempts = {}, .moves = {}},
+        };
+        for (const Case& c : cases){
+            const TriesRun run = run_tries(c.tries, c.takes_at);
+            if (run.took != c.took || run.attempts != c.attempts || run.moves != c.moves){
+                return std::format("{} tries, taking at {}: expected {} attempts and {} moves, got {} and {}.",
+                    c.tries, c.takes_at.value_or(0), c.attempts.size(), c.moves.size(), run.attempts.size(), run.moves.size());
+            }
         }
         return true;
     }
@@ -235,6 +292,7 @@ public:
 
 void add_tests_AutoStory_StoryTable(UnitTestDatabase& database){
     database.add<Test_StoryVariants>();
+    database.add<Test_BoundedTries>();
     database.add<Test_StoryTableLints>();
     database.add<Test_Route204NorthLine>();
     database.add<Test_MartLadyWalk>();
