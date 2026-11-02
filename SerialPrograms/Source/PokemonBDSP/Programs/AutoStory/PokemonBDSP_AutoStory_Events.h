@@ -10,10 +10,10 @@
  *  are kept as they ran there. Each fails by throwing, with a screenshot;
  *  the executor turns that into a failed step.
  *
- *  They are in files by area: _Events_Lake (00.00 to 00.03), _Sandgem
- *  (00.04), _Jubilife (00.05, 01.01), _Route203 (01.02), _Oreburgh (01.03
- *  and 01.04) and _Route204 (01.09's Rock Smash, 01.11). 01.05 to 01.10
- *  are planned walks in the story table.
+ *  They are in files by area: _Events_Lake (00.00 to 00.04), _Sandgem
+ *  (00.04), _Jubilife (00.05), _Oreburgh (01.03 and 01.04) and _Route204
+ *  (01.09's Rock Smash, 01.11). 01.01, 01.02 and 01.05 to 01.10 are
+ *  planned walks in the story table.
  *
  */
 
@@ -46,7 +46,6 @@ StoryEvent console_event(std::function<void(VideoStream& stream, ProControllerCo
 void add_lake_events(StoryEvents& events);
 void add_sandgem_events(StoryEvents& events);
 void add_jubilife_events(StoryEvents& events);
-void add_route203_events(StoryEvents& events);
 void add_oreburgh_events(StoryEvents& events);
 void add_route204_events(StoryEvents& events);
 

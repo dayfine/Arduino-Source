@@ -536,8 +536,8 @@ Pose arrival(const char* map, TilePos tile, Direction direction){
 //  tile only: from it and (54, 9) together the joined Route 203 and Jubilife
 //  find no plan. The tap stops at the fade, which puts us on the warp tile;
 //  r78 passed 01.06 from a save there (by the sign, the cave mouth east).
-Pose out_of_oreburgh_gate(){
-    return at(ROUTE_203, 55, 9, WEST);
+Pose out_of_oreburgh_gate(Direction facing = WEST){
+    return at(ROUTE_203, 55, 9, facing);
 }
 //  Barry's coord event on Route 203 (Diamond's zone event narc_0329), column
 //  5 on rows 17 to 20 (the street's rows 21 to 24) while
@@ -576,6 +576,37 @@ StoryCheckpoint oreburgh_to_route_203(){
         //  Route 203's banner or a failure here: the old walk west "until the
         //  banner" went on into the pond's pocket (r75). 01.06 heads south.
         tap_into("out_of_oreburgh_gate", WEST, "the west mouth (3, 22)", out_of_oreburgh_gate()),
+    });
+}
+
+//  01.02, planned on Route 203's, the Gate's and Oreburgh's maps with the
+//  Diamond decomp's zone events (narc_0329, narc_0250, narc_0044): east
+//  along Route 203 to the Gate, fighting the trainers who see us
+//  (route_203_trainer_sights()); the Hiker's coord event (7, 22) while
+//  VAR_OREBURGH_GATE_1F_HIKER_STATE is 1; east along row 22 past Diana and
+//  Curtis (oreburgh_gate_trainer_sights()); then the coord event of the man
+//  at Oreburgh's entrance, column 10 on rows 12 to 15 while
+//  VAR_OREBURGH_CITY_STATE is 0. Each mouth is a tap to its banner, as in
+//  01.05; its warp's other end is the tile beside the far mouth.
+StoryCheckpoint route_203_to_oreburgh(){
+    return row("01.02", "Route 203 to Oreburgh", on_barrys_trigger(), {
+        route("by_the_gate", out_of_oreburgh_gate(EAST), "east along Route 203 to the Gate's warp tile (55, 9)"),
+        tap_into("into_oreburgh_gate", EAST, "the Gate's west mouth (56, 9)", arrival(GATE, {4, 22}, EAST)),
+        route("west_of_the_hikers_trigger", at(GATE, 6, 22, EAST), "east along row 22"),
+        step_into("hikers_trigger", EAST, "the trigger (7, 22): the Hiker walks down to us"),
+        //  The "Hidden Moves" card after his lines is no dialogue box, and
+        //  can come up a moment after them; the scene's B closes it.
+        scene("the_hiker", at(GATE, 7, 22, EAST), "HM Rock Smash, then the Hidden Moves card"),
+        route("by_the_east_mouth", at(GATE, 27, 22, EAST), "east along row 22, fighting Diana and Curtis"),
+        tap_into("into_oreburgh", EAST, "the Gate's east mouth (28, 22)",
+            arrival(OREBURGH, map_point(OREBURGH, "gate_mouth").next(EAST), EAST)),
+        route("west_of_the_welcome", at(OREBURGH, 9, 13, EAST), "east along row 13"),
+        step_into("welcome_trigger", EAST, "the trigger (10, 12..15): the man walks over"),
+        //  He walks us to the Pokemon Center between his lines; Barry joins
+        //  there with more lines after each walk. Where it leaves us is
+        //  not known: "a row or two below the Center's front, a little west
+        //  of its door" (01.03's save, 2026-10-29).
+        scene("oreburgh_welcome", std::nullopt, "the man's lines, the walk to the Center, and Barry's"),
     });
 }
 
@@ -645,13 +676,7 @@ std::vector<StoryCheckpoint> to_oreburgh(){
             step_into("barrys_trigger", EAST, "the trigger (5, 17..20): Barry walks over"),
             anchored(battle("barry", true, "Barry's battle; a loss goes on, as it did on the console"), on_barrys_trigger()),
         }),
-        row("01.02", "Route 203 to Oreburgh", std::nullopt, {
-            event("route_203_east_to_the_gate", "east along Route 203, fighting the trainers who stop us"),
-            skip_if(event("the_hiker", "the Hiker in the Gate gives HM Rock Smash"), "met_hiker"),
-            event("hidden_moves_card", "the card after him, closed with B"),
-            event("gate_east_to_oreburgh", "east past Curtis and Diana into Oreburgh"),
-            event("oreburgh_welcome", "the man at the entrance, and Barry at the Center"),
-        }),
+        route_203_to_oreburgh(),
         row("01.03", "Oreburgh Mine to Roark", std::nullopt, {
             event("oreburgh_center_door", "in by the Center's door, talking to Barry in it"),
             event("south_into_the_mine", "straight south from the door into the mine"),
