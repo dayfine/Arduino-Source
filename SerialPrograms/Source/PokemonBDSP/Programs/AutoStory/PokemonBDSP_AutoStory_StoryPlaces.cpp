@@ -171,39 +171,23 @@ const std::vector<PlanWorld>& plan_worlds(){
     return worlds;
 }
 
-//  Where the object `name` of the JSON map `map` stands.
-TilePos object_tile(const char* map, const char* name){
-    for (const Pokemon::MapObject& object : story_map(map).objects){
-        if (object.name == name){
-            return TilePos{object.x, object.y};
-        }
-    }
-    throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, std::string(map) + " has no " + name + ".");
-}
-
 //  Route 203's trainers, from the Diamond decomp's events (zone event
 //  narc_0329): where each stands on the JSON map, the way they look and
 //  how far. The one by the Gate wanders in BDSP and is off the map.
 std::vector<TrainerSight> route_203_trainer_sights(){
     const auto at = [](const char* name){
-        return object_tile("Route203", name);
+        for (const Pokemon::MapObject& object : story_map("Route203").objects){
+            if (object.name == name){
+                return TilePos{object.x, object.y};
+            }
+        }
+        throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, std::string("Route 203 has no ") + name + ".");
     };
     return {
         {.name = "Youngster (west)", .pos = at("youngster_1"), .facing = Direction::WEST, .range = 2},
         {.name = "Lass (above row 18)", .pos = at("lass_2"), .facing = Direction::WEST, .range = 5},
         {.name = "Youngster (above row 18)", .pos = at("youngster_3"), .facing = Direction::SOUTH, .range = 4},
         {.name = "Lass (by the Gate)", .pos = at("lass_4"), .facing = Direction::SOUTH, .range = 5},
-    };
-}
-
-//  The Oreburgh Gate's trainers (Diamond's zone event narc_0250): Picnicker
-//  Diana above row 22 and Camper Curtis below it. Both stopped the walk
-//  east along that row on the console (2026-10-29 to 10-31); the maps have
-//  no ranges, and 4 reaches the row from either.
-std::vector<TrainerSight> oreburgh_gate_trainer_sights(){
-    return {
-        {.name = "Picnicker Diana", .pos = object_tile("OreburghGate", "picnicker_0"), .facing = Direction::SOUTH, .range = 4},
-        {.name = "Camper Curtis", .pos = object_tile("OreburghGate", "camper_1"), .facing = Direction::NORTH, .range = 4},
     };
 }
 
@@ -214,9 +198,6 @@ std::vector<TrainerSight> map_trainers(const std::string& map){
     }
     if (map == "Route203"){
         return route_203_trainer_sights();
-    }
-    if (map == "OreburghGate"){
-        return oreburgh_gate_trainer_sights();
     }
     if (map == "Route204South"){
         return route204_south_trainer_sights();

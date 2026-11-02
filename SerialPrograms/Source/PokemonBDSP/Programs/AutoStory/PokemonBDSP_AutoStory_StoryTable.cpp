@@ -588,6 +588,12 @@ StoryCheckpoint oreburgh_to_route_203(){
 //  at Oreburgh's entrance, column 10 on rows 12 to 15 while
 //  VAR_OREBURGH_CITY_STATE is 0. Each mouth is a tap to its banner, as in
 //  01.05; its warp's other end is the tile beside the far mouth.
+//
+//  Diana and Curtis are not on the trainer list: the walker fights them as
+//  trainers the map lacks, one per route (in the grid sim, the second of
+//  two on one leg stopped its walk on to the wall unseen). On the list,
+//  the grid sim, which does not know them beaten, had them stop 01.05's
+//  walk back.
 StoryCheckpoint route_203_to_oreburgh(){
     return row("01.02", "Route 203 to Oreburgh", on_barrys_trigger(), {
         //  One known tile to plan from: from all four of the trigger's rows
@@ -602,7 +608,8 @@ StoryCheckpoint route_203_to_oreburgh(){
         //  The "Hidden Moves" card after his lines is no dialogue box, and
         //  can come up a moment after them; the scene's B closes it.
         scene("the_hiker", at(GATE, 7, 22, EAST), "HM Rock Smash, then the Hidden Moves card"),
-        route("by_the_east_mouth", at(GATE, 27, 22, EAST), "east along row 22, fighting Diana and Curtis"),
+        route("past_curtis", at(GATE, 20, 22, EAST), "east along row 22 past Camper Curtis's column (17), fighting him"),
+        route("by_the_east_mouth", at(GATE, 27, 22, EAST), "east past Picnicker Diana's column (24), fighting her"),
         tap_into("into_oreburgh", EAST, "the Gate's east mouth (28, 22)",
             arrival(OREBURGH, map_point(OREBURGH, "gate_mouth").next(EAST), EAST)),
         route("west_of_the_welcome", at(OREBURGH, 9, 13, EAST), "east along row 13"),
