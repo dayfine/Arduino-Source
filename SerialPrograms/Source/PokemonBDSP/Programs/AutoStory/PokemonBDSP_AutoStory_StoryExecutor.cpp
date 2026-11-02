@@ -339,7 +339,8 @@ void settle(VideoStream& stream, ProControllerContext& context, Button button, c
 namespace{
 
 //  Holds the D-pad toward a door (with B after the shoes) until the screen goes
-//  dark, up to 12 s. Returns whether it did. The walker's black-screen watch
+//  dark or a line shows, up to 12 s. Returns whether it went dark. A line
+//  stops it: holding on under Mom's "Oh, Kosmos!" wasted 12 s (r45). The walker's black-screen watch
 //  missed the lab's fade into Sandgem (r44, "dialog"), and settle's samples
 //  1.3 s apart can fall either side of it, so watch at settle's own darkness.
 bool run_into_door(VideoStream& stream, ProControllerContext& context, Direction direction, bool run){
@@ -348,12 +349,13 @@ bool run_into_door(VideoStream& stream, ProControllerContext& context, Direction
         direction == Direction::SOUTH ? DPAD_DOWN :
         direction == Direction::WEST ? DPAD_LEFT : DPAD_RIGHT;
     BlackScreenWatcher dark(COLOR_RED, {0.1, 0.1, 0.8, 0.8}, 3 * FADE_DARKNESS, 60);
+    ShortDialogWatcher dialog(COLOR_YELLOW);
     const int ret = run_until<ProControllerContext>(stream, context, [&](ProControllerContext& context){
         if (run){
             ssf_press_button(context, BUTTON_B, 0ms, 12000ms, 0ms);
         }
         pbf_press_dpad(context, dpad, 12000ms, 0ms);
-    }, {{dark}});
+    }, {{dark}, {dialog}});
     return ret == 0;
 }
 

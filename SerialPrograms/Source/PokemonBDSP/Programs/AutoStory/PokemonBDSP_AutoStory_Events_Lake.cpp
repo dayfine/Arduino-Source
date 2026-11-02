@@ -135,16 +135,6 @@ void rowan_gives_pokedex(VideoStream& stream, ProControllerContext& context){
     context.wait_for_all_requests();
 }
 
-//  00.04: Barry's mother stands in the door with his parcel: four A, with
-//  the waits of Butters' recording between them.
-void barrys_mother(VideoStream&, ProControllerContext& context){
-    pbf_press_button(context, BUTTON_A, 180ms, 946ms);
-    pbf_press_button(context, BUTTON_A, 180ms, 9092ms);
-    pbf_press_button(context, BUTTON_A, 180ms, 740ms);
-    pbf_press_button(context, BUTTON_A, 180ms, 2998ms);
-    context.wait_for_all_requests();
-}
-
 //  00.04: Dawn's catching tutorial on Route 202: her lines and her demo
 //  battle, B for 70 s.
 void catch_tutorial(VideoStream& stream, ProControllerContext& context){
@@ -164,7 +154,6 @@ void add_lake_events(StoryEvents& events){
     events.emplace("fight_starly", console_event(fight_starly));
     events.emplace("after_starly", console_event(after_starly));
     events.emplace("rowan_gives_pokedex", console_event(rowan_gives_pokedex));
-    events.emplace("barrys_mother", console_event(barrys_mother));
     events.emplace("catch_tutorial", console_event(catch_tutorial));
     events.emplace("catch_pokemon", console_event(catch_1_pokemon));
 }

@@ -330,10 +330,14 @@ std::vector<StoryCheckpoint> to_the_catch(){
             //  she was up and to the right; a tap north, east and A answered (r43).
             route("beside_mom", at(HOME, 6, 7, EAST), "west of Mom at (7, 7)"),
             talk("mom", "Mom"),
-            scene("mom_heals_us", at(HOME, 6, 7, EAST), "her lines; she heals the party"),
-            route("back_above_the_door", at(HOME, 6, 9, SOUTH), "Barry's mother stands in the door"),
-            event("barrys_mother", "she gives us Barry's parcel", at(HOME, 6, 9, SOUTH)),
-            step_into("out_of_the_house_again", SOUTH, "out of the door", at(TWINLEAF, "house_doorstep", SOUTH)),
+            //  Mom heals us, then Barry's mom comes in with his parcel; the scene
+            //  leaves Mom at (6, 8), below us (r45).
+            scene("mom_heals_us", at(HOME, 6, 7, EAST), "Mom heals us; Barry's mom gives us his parcel"),
+            legs("around_mom", {{.direction = WEST, .tiles = 1}, {.direction = SOUTH, .tiles = 2}, {.direction = EAST, .tiles = 1}},
+                "around Mom at (6, 8) to above the door"),
+            //  At the door Mom calls us back ("Oh, Kosmos!"), gives us the hat and walks
+            //  out with us; we end a tile west of the doorstep, beside her (r45).
+            step_into("out_of_the_house_again", SOUTH, "out of the door; Mom's hat", at(TWINLEAF, 19, 22, EAST)),
             route("short_of_the_catch_tutorial", at(ROUTE_202, 22, 27, WEST), "through Sandgem onto Route 202, east of its trigger column"),
             step_into("catch_tutorial_trigger", WEST, "the trigger (21, 25..29), VAR_ROUTE_202_STATE 0"),
             event("catch_tutorial", "Dawn's catching tutorial"),
