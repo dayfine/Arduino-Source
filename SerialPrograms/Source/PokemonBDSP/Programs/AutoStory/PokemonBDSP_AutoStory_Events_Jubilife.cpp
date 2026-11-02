@@ -118,12 +118,6 @@ Pokemon::Outcome talk_to_wanderer(StoryExecutor& executor, Pokemon::RunState&, c
 }
 
 
-//  01.07: Rowan's and Dawn's lines after the tag battle. 01.08 starts here,
-//  from a save at the top of the street.
-void rowan_after_the_battle(VideoStream& stream, ProControllerContext& context){
-    finish_dialogue(stream, context, BUTTON_B, "Rowan and Dawn after the battle");
-}
-
 //  01.01 from the save at the Jubilife Center's PC: healed at the nurse,
 //  out of the door and through the plaza to the street east to Route 203.
 void jubilife_heal_and_out_to_street(VideoStream& stream, ProControllerContext& context){
@@ -253,7 +247,6 @@ void add_jubilife_events(StoryEvents& events){
     events.emplace("up_the_steps", console_event(up_the_steps));
     events.emplace("barry_town_map", console_event(barry_town_map));
     events.emplace("talk_to_wanderer", talk_to_wanderer);
-    events.emplace("rowan_after_the_battle", console_event(rowan_after_the_battle));
     events.emplace("jubilife_center_to_street", console_event(jubilife_center_to_street));
     events.emplace("east_to_barry", console_event(east_to_barry));
     events.emplace("west_to_the_crossroads", console_event(west_to_the_crossroads));

@@ -528,7 +528,7 @@ std::vector<StoryCheckpoint> to_floaroma(){
             event("west_to_the_crossroads", "west along the long road"),
             event("north_to_rowan", "north up the street until Rowan's scene"),
             battle("galactic_grunts", false, "the tag battle with Dawn", "doubles"),
-            event("rowan_after_the_battle", "Rowan's and Dawn's lines"),
+            scene("rowan_after_the_battle", std::nullopt, "Rowan's and Dawn's lines, then Bebe walks over with hers (r80 saved over her lines)"),
         }),
         row("01.08", "Jubilife to the Ravaged Path", std::nullopt, {
             event("north_out_of_jubilife", "north until Route 204's banner"),
