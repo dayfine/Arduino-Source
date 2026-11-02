@@ -59,6 +59,11 @@ enum class StoryFailure{
 //  A row of the story table: the shared checkpoint, and what a failure does.
 struct StoryCheckpoint : public Pokemon::StoryCheckpoint{
     StoryFailure on_failure = StoryFailure::RELOAD_AND_RETRY;
+    //  The map the save screen's card names where the row starts ("Route
+    //  203"). The save at its start is refused anywhere else and the program
+    //  stops: r76/r77 started 01.06 a walk away from its start and saved over
+    //  the good save there. Empty for a row that does not save first.
+    std::string saves_in;
 };
 
 //  What the story's steps act on.

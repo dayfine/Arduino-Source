@@ -10,6 +10,7 @@
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/Filesystem/Filesystem.h"
 #include "Common/Cpp/PrettyPrint.h"
+#include "CommonFramework/Exceptions/FatalProgramException.h"
 #include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
 #include "CommonFramework/GlobalAutoPaths.h"
@@ -495,8 +496,24 @@ Outcome StoryExecutor::heal(RunState&, const StoryStep& step){
     return Pokemon::outcome_ok();
 }
 
-Outcome StoryExecutor::save(RunState&, const StoryStep&){
-    save_game(m_env.env, context());
+Outcome StoryExecutor::save(RunState&, const StoryStep& step){
+    if (step.variant.empty()){
+        save_game(m_env.env, context());
+        return Pokemon::outcome_ok();
+    }
+    //  A row's start save, its variant the map the card must name. With a
+    //  map, save_game() throws only when the card names another one, having
+    //  backed out unsaved. That stops the program: a reset would load an
+    //  older save and run this row from wherever that is.
+    try{
+        save_game(m_env.env, context(), step.variant);
+    }catch (OperationFailedException& e){
+        throw FatalProgramException(
+            ErrorReportMode::NO_ERROR_REPORT,
+            std::format("[{}] Not at the checkpoint's start, so not saving: {}", m_checkpoint, e.message()),
+            stream()
+        );
+    }
     return Pokemon::outcome_ok();
 }
 
@@ -526,15 +543,17 @@ Pokemon::Segment make_story_segment(
                 if (row.on_failure != StoryFailure::RELOAD_AND_RETRY){
                     return steps;
                 }
-                Pokemon::Event save = Pokemon::story_event(SAVE_AT_START, executor);
+                StoryStep save_at_start = SAVE_AT_START;
+                save_at_start.variant = row.saves_in;
+                Pokemon::Event save = Pokemon::story_event(save_at_start, executor);
                 save.skip_if.push_back(Pokemon::condition("saved at the start", [&saved, id = row.id](RunState&){
                     return saved.contains(id);
                 }));
                 //  A save that fails is a failed first attempt: the retry
                 //  resets and does not save again.
-                save.act = [&executor, &saved, id = row.id](RunState& state){
+                save.act = [&executor, &saved, id = row.id, save_at_start](RunState& state){
                     saved.insert(id);
-                    return executor.run(state, SAVE_AT_START);
+                    return executor.run(state, save_at_start);
                 };
                 Pokemon::Checkpoint checkpoint;
                 checkpoint.id = row.id;

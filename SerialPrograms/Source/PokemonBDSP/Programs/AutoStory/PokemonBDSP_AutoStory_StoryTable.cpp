@@ -15,6 +15,7 @@
  *
  */
 
+#include <map>
 #include <string>
 #include <utility>
 #include <vector>
@@ -554,11 +555,47 @@ std::vector<StoryCheckpoint> to_floaroma(){
     };
 }
 
+//  The map the save screen's card names at each row's start, as the console
+//  read it there (lab-B's logs, 2026-10-31 to 11-02). A building's card
+//  names its town: 00.04 starts in Rowan's lab, 01.04 at Oreburgh's nurse.
+const std::map<std::string, std::string>& start_save_cards(){
+    static const std::map<std::string, std::string> cards{
+        {"00.01",  "Twinleaf Town"},
+        {"00.02",  "Verity Lakefront"},
+        {"00.03",  "Verity Lakefront"},
+        {"00.04",  "Sandgem Town"},
+        {"00.04b", "Route 202"},
+        {"00.04c", "Sandgem Town"},
+        {"00.04d", "Route 202"},
+        {"00.05",  "Jubilife City"},
+        {"00.05b", "Jubilife City"},
+        {"00.05c", "Jubilife City"},
+        {"01.01",  "Jubilife City"},
+        {"01.02",  "Route 203"},
+        {"01.03",  "Oreburgh City"},
+        {"01.04",  "Oreburgh City"},
+        {"01.05",  "Oreburgh City"},
+        {"01.06",  "Route 203"},
+        {"01.07",  "Jubilife City"},
+        {"01.08",  "Jubilife City"},
+        {"01.09",  "Ravaged Path"},
+        {"01.10",  "Route 204"},
+        {"01.11",  "Floaroma Town"},
+    };
+    return cards;
+}
+
 std::vector<StoryCheckpoint> make_table(){
     std::vector<StoryCheckpoint> table;
     for (auto part : {intro, lake_and_pokedex, to_the_catch, to_jubilife, jubilife, to_oreburgh, to_floaroma}){
         for (StoryCheckpoint& checkpoint : part()){
             table.push_back(std::move(checkpoint));
+        }
+    }
+    for (StoryCheckpoint& checkpoint : table){
+        const auto card = start_save_cards().find(checkpoint.id);
+        if (checkpoint.on_failure == StoryFailure::RELOAD_AND_RETRY && card != start_save_cards().end()){
+            checkpoint.saves_in = card->second;
         }
     }
     return table;
