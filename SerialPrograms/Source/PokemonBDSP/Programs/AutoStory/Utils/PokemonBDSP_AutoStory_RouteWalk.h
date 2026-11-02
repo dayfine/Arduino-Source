@@ -33,14 +33,24 @@ constexpr Milliseconds ROUTE_MS_PER_TILE_ACROSS = Milliseconds(160);    //  east
 constexpr Milliseconds ROUTE_MS_PER_TILE_UP_DOWN = Milliseconds(240);   //  north or south
 //  From pressing the stick to the first step, when standing still.
 constexpr Milliseconds ROUTE_START_DELAY = Milliseconds(250);
-//  Running (B held) covers a tile in this fraction of the walking time. B
-//  held with the D-pad did not run: r238a walked the Ravaged Path's corridor
-//  at 160 ms a tile, and a limit set for twice that speed cut a wall leg
-//  short by two tiles. 1 until running is measured to work.
-constexpr int ROUTE_RUN_SPEEDUP = 1;
+//  How fast the player moves on a leg to a wall (B held with the D-pad).
+//  B only runs once Mom has given the Running Shoes (00.03); before that
+//  it walks. The bike comes later, with its own measured times.
+enum class MoveSpeed{
+    WALK,
+    RUN,
+};
 
-//  Walking time per tile in `direction`.
-Milliseconds route_ms_per_tile(Pokemon::Direction direction);
+//  Running time per tile, measured on the console: r27 ran Twinleaf's
+//  column 17 north onto Route 201, 35 tiles in about 5.75 s (164 ms a
+//  tile) where walking took 240. Across is scaled the same until measured.
+//  Rounded down: a count from too fast a pace runs over, which a wall leg
+//  forgives, where one from too slow a pace stops short of the wall.
+constexpr Milliseconds ROUTE_RUN_MS_PER_TILE_ACROSS = Milliseconds(100);
+constexpr Milliseconds ROUTE_RUN_MS_PER_TILE_UP_DOWN = Milliseconds(150);
+
+//  Time per tile in `direction` at `speed`.
+Milliseconds route_ms_per_tile(Pokemon::Direction direction, MoveSpeed speed = MoveSpeed::WALK);
 //  The left stick for a direction. Row 0 is the top of a map, and the
 //  stick's y is positive upward.
 JoystickPosition route_stick(Pokemon::Direction direction);

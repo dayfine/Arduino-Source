@@ -41,7 +41,10 @@ bool across(Direction direction){
 
 }
 
-Milliseconds route_ms_per_tile(Direction direction){
+Milliseconds route_ms_per_tile(Direction direction, MoveSpeed speed){
+    if (speed == MoveSpeed::RUN){
+        return across(direction) ? ROUTE_RUN_MS_PER_TILE_ACROSS : ROUTE_RUN_MS_PER_TILE_UP_DOWN;
+    }
     return across(direction) ? ROUTE_MS_PER_TILE_ACROSS : ROUTE_MS_PER_TILE_UP_DOWN;
 }
 
