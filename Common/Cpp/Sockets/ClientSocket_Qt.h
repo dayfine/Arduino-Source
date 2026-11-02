@@ -7,10 +7,11 @@
 #ifndef PokemonAutomation_ClientSocket_Qt_H
 #define PokemonAutomation_ClientSocket_Qt_H
 
+#include <chrono>
 #include <string>
 #include <atomic>
-#include <condition_variable>
 #include <QObject>
+#include <QSharedPointer>
 #include "Common/Cpp/Concurrency/Mutex.h"
 #include "Common/Cpp/Concurrency/ConditionVariable.h"
 #include "AbstractClientSocket.h"
@@ -28,11 +29,16 @@ class ClientSocket_Qt final : public QObject, public AbstractClientSocket{
 
     struct SendData{
         std::string packet;
+        //  The event-thread write loop stops at this deadline, so a send
+        //  that can never complete (a peer that never reads) cannot pin
+        //  the socket's event thread forever and block "close()". "max()"
+        //  means no deadline (the infinite default).
+        std::chrono::steady_clock::time_point deadline = std::chrono::steady_clock::time_point::max();
         size_t bytes_sent = 0;
         bool done = false;
 
         Mutex lock;
-        std::condition_variable cv;
+        ConditionVariable cv;
     };
 
 
@@ -56,12 +62,16 @@ public:
 
     virtual void connect(const std::string& address, uint16_t port) override;
 
-    virtual size_t send(const void* data, size_t bytes) override;
+    virtual size_t send(
+        const void* data,
+        size_t bytes,
+        std::chrono::milliseconds timeout = std::chrono::milliseconds::max()
+    ) override;
 
 
 signals:
     void internal_connect(const std::string& address, uint16_t port);
-    void internal_send(SendData* send_data);
+    void internal_send(QSharedPointer<SendData> send_data);
 
 
 private:
