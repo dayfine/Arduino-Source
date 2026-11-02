@@ -153,6 +153,8 @@ private:
 void add_tests_DialogDetector(UnitTestDatabase& database){
     database.add<Test_ShortDialogDetector>("PokemonBDSP/DialogDetector/IntroRowanNameTab_True.png", true);
     database.add<Test_ShortDialogDetector>("PokemonBDSP/DialogDetector/IntroRowanNoArrow_True.png", true);
+    //  A short line: the box's right end is white where the old check looks.
+    database.add<Test_ShortDialogDetector>("PokemonBDSP/DialogDetector/IntroRowanShortLine_True.png", true);
 }
 
 
