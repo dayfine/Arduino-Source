@@ -162,16 +162,22 @@ void open_start_menu_row(ConsoleHandle& console, ProControllerContext& context, 
 }
 
 
-//  The new game's intro, from the title screen. Everything but the keyboard
+//  The new game's intro, from the title screen. Everything but the names
 //  is advanced with A, which never hurts there (BOY is the default, YES to
-//  GREEN); B is never pressed outside the keyboard, since in the intro it
-//  goes back to the controls pages (console B, 2026-11-01). The controls
-//  pages read as a message box without an arrow, and the arrow at the end
-//  of Oak's lines may be missed, so a message box gets A every 1.5 s
-//  whatever it shows. On the keyboard, B deletes whatever a stray A typed;
-//  then the player's name is typed, or START jumps to OK, which confirms
-//  the empty name as the default. The first keyboard is the player's, the
-//  second the rival's, who always keeps the default name.
+//  "So your name is ...?" and "Er, was it GREEN?"); B is never pressed
+//  outside the keyboard, since in the intro it goes back to the controls
+//  pages (console B, 2026-11-01). The controls pages read as a message box
+//  without an arrow, and the arrow at the end of Oak's lines may be missed,
+//  so a message box gets A every 1.5 s whatever it shows. The player's name
+//  is asked on the keyboard straight away: B deletes whatever a stray A
+//  typed, then the name is typed, or START jumps to OK, which confirms the
+//  empty name as the default. The rival's is asked on a list with NEW NAME
+//  first, where A would open the keyboard: the cursor goes to the first
+//  preset name (the game's default rival, GREEN in FireRed, RED in
+//  LeafGreen) and A picks it, then YES confirms it (pokefirered
+//  oak_speech.c). If the keyboard opens anyway, the list was missed, and
+//  the empty name is confirmed there instead, which also names the rival
+//  GREEN.
 class NewGameIntro{
 public:
     //  Where the intro stops: the bedroom, or the player's keyboard with the
@@ -234,15 +240,15 @@ private:
             pbf_wait(m_context, POLL);
             return false;
         }
-        if (NamingScreenDetector(COLOR_RED).detect(screen)){
-            const bool player = m_keyboards_seen++ == 0;
-            if (player && m_end == End::PLAYER_NAME_TYPED){
-                clear_stray_keys();
-                type_player_name(false);
-                return true;
-            }
-            enter_name(player);
+        if (m_end == End::PLAYER_NAME_TYPED && m_keyboards_seen == 0 && NamingScreenDetector(COLOR_RED).detect(screen)){
+            m_keyboards_seen++;
+            clear_stray_keys();
+            type_player_name(false);
+            return true;
+        }
+        if (names(screen)){
             m_last_dialog = current_time();
+            m_last_press = m_last_dialog;
             return false;
         }
         if (yes_no_cursor(screen) || WhiteDialogDetector(COLOR_RED).detect(screen)){
@@ -257,6 +263,55 @@ private:
             return false;
         }
         return quiet(screen, now);
+    }
+
+    //  True if a keyboard or the rival's name list showed and was handled.
+    bool names(const ImageViewRGB32& screen){
+        IntroNameScreen shown = IntroNameScreen::OTHER;
+        std::optional<int> list_row;
+        if (NamingScreenDetector(COLOR_RED).detect(screen)){
+            shown = IntroNameScreen::KEYBOARD;
+        }else if (m_keyboards_seen > 0){
+            //  The list shows over a message box: look for it before the A
+            //  every 1.5 s, which would open the keyboard.
+            list_row = rival_name_list_cursor(screen);
+            shown = list_row ? IntroNameScreen::RIVAL_LIST : IntroNameScreen::OTHER;
+        }
+        switch (intro_name_step(shown, m_keyboards_seen, m_presets_picked)){
+        case IntroNameStep::PLAYER_KEYBOARD:
+            m_keyboards_seen++;
+            enter_name(true);
+            return true;
+        case IntroNameStep::RIVAL_KEYBOARD:
+            m_keyboards_seen++;
+            m_console.log("New game: the rival's keyboard opened, so the name list was missed.", COLOR_ORANGE);
+            enter_name(false);
+            return true;
+        case IntroNameStep::RIVAL_PRESET:
+            pick_rival_preset(*list_row);
+            return true;
+        case IntroNameStep::NONE:
+            return false;
+        }
+        return false;
+    }
+
+    //  Row 1 is the first preset name. The cursor is read again before A, so
+    //  a dropped press is made up on the next look.
+    void pick_rival_preset(int row){
+        if (row != 1){
+            m_console.log(std::format("New game: the rival's name list, cursor on row {}, moving to the first preset name.", row));
+            const DpadPosition direction = row < 1 ? DPAD_DOWN : DPAD_UP;
+            for (int c = 0; c < std::abs(row - 1); c++){
+                tap(m_context, direction, 300ms);
+            }
+            m_context.wait_for_all_requests();
+            return;
+        }
+        m_console.log("New game: the rival's name list, picking the first preset name.");
+        press(m_context, BUTTON_A, 2000ms);
+        m_context.wait_for_all_requests();
+        m_presets_picked++;
     }
 
     //  No message box and no keyboard: a fade, a pause in the speech, or
@@ -320,12 +375,27 @@ private:
     ProControllerContext& m_context;
     const std::string m_player_name;
     const End m_end;
-    size_t m_keyboards_seen = 0;
     WallClock m_last_dialog;
     WallClock m_last_press;
     bool m_dialog_seen = false;
+    size_t m_keyboards_seen = 0;
+    size_t m_presets_picked = 0;
 };
 
+}
+
+
+IntroNameStep intro_name_step(IntroNameScreen screen, size_t keyboards_seen, size_t presets_picked){
+    switch (screen){
+    case IntroNameScreen::KEYBOARD:
+        return keyboards_seen == 0 ? IntroNameStep::PLAYER_KEYBOARD : IntroNameStep::RIVAL_KEYBOARD;
+    case IntroNameScreen::RIVAL_LIST:
+        //  The list only comes after the player's keyboard.
+        return keyboards_seen > 0 && presets_picked < RIVAL_PRESET_TRIES ? IntroNameStep::RIVAL_PRESET : IntroNameStep::NONE;
+    case IntroNameScreen::OTHER:
+        return IntroNameStep::NONE;
+    }
+    return IntroNameStep::NONE;
 }
 
 
@@ -354,6 +424,26 @@ std::optional<bool> yes_no_cursor(const ImageViewRGB32& screen){
     }
     if (SelectionArrowDetector(COLOR_RED, nullptr, SelectionArrowPositionConfirmationMenu::NO).detect(screen)){
         return false;
+    }
+    return std::nullopt;
+}
+
+std::optional<int> rival_name_list_cursor(const ImageViewRGB32& screen){
+    //  On the 240x160 screen: the list's window spans x 16-112, y 16-96, and
+    //  this box (x 64-100, y 36-46) is white there, right of the names and
+    //  below NEW NAME. A YES/NO box's right frame runs through it.
+    const ImageViewRGB32 game = extract_box_reference(screen, GameSettings::instance().GAME_BOX);
+    if (!is_white(extract_box_reference(game, ImageFloatBox(0.267, 0.225, 0.15, 0.0625)))){
+        return std::nullopt;
+    }
+    for (int row = 0; row < 5; row++){
+        //  The START menu's arrow box (window at x 176, y 8; the box starts
+        //  1.4 px left and 0.4 px below), moved to the list's cursor at
+        //  x 16, y 17 + 16 * row.
+        const ImageFloatBox box(14.6 / 240, (17.4 + 16 * row) / 160, 0.0369231, 0.0778846);
+        if (SelectionArrowDetector(COLOR_RED, nullptr, box).detect(screen)){
+            return row;
+        }
     }
     return std::nullopt;
 }

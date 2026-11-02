@@ -14,8 +14,10 @@
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
+#include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRoute.h"
+#include "PokemonFRLG_AutoStoryActions.h"
 #include "PokemonFRLG_AutoStoryTable.h"
 
 namespace PokemonAutomation{
@@ -500,6 +502,42 @@ UnitTestResult test_unique_names(){
     }
     return true;
 }
+//  The intro's names: the player's keyboard first, then the rival's list,
+//  where a preset is picked; a keyboard after the player's means the list
+//  was missed.
+UnitTestResult test_intro_names(){
+    struct Case{
+        const char* what;
+        IntroNameScreen screen;
+        size_t keyboards_seen;
+        size_t presets_picked;
+        IntroNameStep expected;
+    };
+    const std::vector<Case> cases{
+        {.what = "the first keyboard", .screen = IntroNameScreen::KEYBOARD, .keyboards_seen = 0, .presets_picked = 0, .expected = IntroNameStep::PLAYER_KEYBOARD},
+        {.what = "the list after the player's keyboard", .screen = IntroNameScreen::RIVAL_LIST, .keyboards_seen = 1, .presets_picked = 0, .expected = IntroNameStep::RIVAL_PRESET},
+        {.what = "a list read before the player's keyboard", .screen = IntroNameScreen::RIVAL_LIST, .keyboards_seen = 0, .presets_picked = 0, .expected = IntroNameStep::NONE},
+        {.what = "the second keyboard", .screen = IntroNameScreen::KEYBOARD, .keyboards_seen = 1, .presets_picked = 0, .expected = IntroNameStep::RIVAL_KEYBOARD},
+        {.what = "a keyboard after a preset was picked", .screen = IntroNameScreen::KEYBOARD, .keyboards_seen = 1, .presets_picked = 1, .expected = IntroNameStep::RIVAL_KEYBOARD},
+        {.what = "the list again after a NO", .screen = IntroNameScreen::RIVAL_LIST, .keyboards_seen = 1, .presets_picked = 1, .expected = IntroNameStep::RIVAL_PRESET},
+        {.what = "the list after every try", .screen = IntroNameScreen::RIVAL_LIST, .keyboards_seen = 1, .presets_picked = RIVAL_PRESET_TRIES, .expected = IntroNameStep::NONE},
+        {.what = "a message box", .screen = IntroNameScreen::OTHER, .keyboards_seen = 1, .presets_picked = 0, .expected = IntroNameStep::NONE},
+    };
+    for (const Case& c : cases){
+        const IntroNameStep step = intro_name_step(c.screen, c.keyboards_seen, c.presets_picked);
+        if (step != c.expected){
+            return std::string(c.what) + ": expected step " + std::to_string(static_cast<int>(c.expected))
+                + ", got " + std::to_string(static_cast<int>(step)) + ".";
+        }
+    }
+    //  A black screen is no list.
+    ImageRGB32 black(1920, 1080);
+    black.fill(0xff000000);
+    if (rival_name_list_cursor(black).has_value()){
+        return "Read the rival's name list on a black screen.";
+    }
+    return true;
+}
 
 
 size_t row_index(const std::string& id){
@@ -683,6 +721,7 @@ void add_tests_AutoStory(UnitTestDatabase& database){
     database.add<Test_AutoStory>("Pewter: to the aide's trigger", test_pewter_aide_walk);
     database.add<Test_AutoStory>("routes run after the Running Shoes", test_runs_after_shoes);
     database.add<Test_AutoStory>("Pewter: the first run", test_first_run);
+    database.add<Test_AutoStory>("intro: names, the rival's from the list", test_intro_names);
 }
 
 
