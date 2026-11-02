@@ -357,7 +357,7 @@ Outcome StoryExecutor::new_game(RunState&, const StoryStep&){
 }
 
 Outcome StoryExecutor::options(RunState&, const StoryStep&){
-    set_options(m_env.console, m_env.context, m_menu);
+    set_options(m_env.console, m_env.context, m_menu, m_env.language);
     return Pokemon::outcome_ok();
 }
 

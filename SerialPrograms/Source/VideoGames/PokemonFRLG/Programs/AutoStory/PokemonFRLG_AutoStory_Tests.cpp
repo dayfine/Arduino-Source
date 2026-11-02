@@ -9,12 +9,14 @@
  */
 
 #include <functional>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
+#include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_OptionMenuReader.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRoute.h"
 #include "PokemonFRLG_AutoStoryActions.h"
@@ -704,6 +706,42 @@ UnitTestResult test_after_sid_helper_row(){
     return true;
 }
 
+//  set_options()'s RIGHT presses from each value an old save can leave:
+//  on console B a save with FAST and SET became SLOW and SHIFT when the
+//  presses assumed MID and SHIFT.
+UnitTestResult test_option_presses(){
+    const std::vector<std::string>& speed = option_menu_values(OptionMenuItem::TEXT_SPEED);
+    const std::vector<std::string>& style = option_menu_values(OptionMenuItem::BATTLE_STYLE);
+    struct Case{
+        const std::vector<std::string>& values;
+        std::string current;
+        std::string target;
+        std::optional<size_t> expected;
+    };
+    const std::vector<Case> cases{
+        {.values = speed, .current = "slow", .target = "fast", .expected = 2},
+        {.values = speed, .current = "mid", .target = "fast", .expected = 1},
+        {.values = speed, .current = "fast", .target = "fast", .expected = 0},
+        {.values = style, .current = "shift", .target = "set", .expected = 1},
+        {.values = style, .current = "set", .target = "set", .expected = 0},
+        //  RIGHT wraps from the last value to the first.
+        {.values = speed, .current = "fast", .target = "slow", .expected = 1},
+        //  Unread, or another row's value: no guess.
+        {.values = speed, .current = "", .target = "fast", .expected = std::nullopt},
+        {.values = style, .current = "fast", .target = "set", .expected = std::nullopt},
+    };
+    for (const Case& c : cases){
+        const std::optional<size_t> presses = option_right_presses(c.values, c.current, c.target);
+        if (presses != c.expected){
+            auto text = [](const std::optional<size_t>& n){
+                return n ? std::to_string(*n) + " RIGHT" : std::string("no presses");
+            };
+            return "\"" + c.current + "\" to " + c.target + ": expected " + text(c.expected) + ", got " + text(presses) + ".";
+        }
+    }
+    return true;
+}
+
 }
 
 
@@ -722,6 +760,7 @@ void add_tests_AutoStory(UnitTestDatabase& database){
     database.add<Test_AutoStory>("routes run after the Running Shoes", test_runs_after_shoes);
     database.add<Test_AutoStory>("Pewter: the first run", test_first_run);
     database.add<Test_AutoStory>("intro: names, the rival's from the list", test_intro_names);
+    database.add<Test_AutoStory>("options: RIGHT presses from the shown value", test_option_presses);
 }
 
 
