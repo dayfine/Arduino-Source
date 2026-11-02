@@ -157,7 +157,7 @@ void ServerSocket_WinSocket::close() noexcept{
     }
 }
 
-size_t ServerSocket_WinSocket::send(const void* data, size_t bytes){
+size_t ServerSocket_WinSocket::send(const void* data, size_t bytes, std::chrono::milliseconds timeout){
     SOCKET socket;
     {
         std::lock_guard<Mutex> lg(m_lock);
@@ -171,12 +171,24 @@ size_t ServerSocket_WinSocket::send(const void* data, size_t bytes){
     const char* ptr = (const char*)data;
     size_t sent = 0;
 
+    //  "time_point::max()" (the infinite default) is never reached; using
+    //  it also avoids overflowing "now() + timeout".
+    const std::chrono::steady_clock::time_point deadline =
+        (timeout == std::chrono::milliseconds::max())
+            ? std::chrono::steady_clock::time_point::max()
+            : std::chrono::steady_clock::now() + timeout;
+
     while (bytes > 0){
         {
             std::lock_guard<Mutex> lg(m_lock);
             if (m_state.load(std::memory_order_relaxed) != State::CONNECTED){
                 return sent;
             }
+        }
+        if (std::chrono::steady_clock::now() >= deadline){
+            //  The deadline elapsed with bytes still unwritten; the
+            //  connection is still fine, so just report the partial count.
+            return sent;
         }
 
         int current_sent = ::send(socket, ptr, (int)bytes, 0);
@@ -391,42 +403,48 @@ void ServerSocket_WinSocket::connection_thread_loop(){
     std::string error;
 
     while (true){
-        int bytes;
-        int error_no = 0;
-        bool no_data;
         {
             std::lock_guard<Mutex> lg(m_lock);
             if (m_state.load(std::memory_order_relaxed) != State::CONNECTED){
                 break;
             }
-            bytes = ::recv(socket, buffer, (int)BUFFER_SIZE, 0);
-            no_data = (bytes == SOCKET_ERROR);
-            if (no_data){
-                error_no = WSAGetLastError();
-                no_data = (error_no == WSAEWOULDBLOCK || error_no == WSAEINPROGRESS);
-            }
         }
 
+        //  The socket is non-blocking, so this returns immediately. It is
+        //  deliberately called without holding m_lock: the state check
+        //  above and the result handling below are the only parts that
+        //  need the lock, and no socket call should stretch it.
+        int bytes = ::recv(socket, buffer, (int)BUFFER_SIZE, 0);
+
         if (bytes > 0){
+            //  A new connection may have taken over while we were
+            //  reading: only dispatch the data if we still are the
+            //  active connection.
+            bool still_active;
+            {
+                std::lock_guard<Mutex> lg(m_lock);
+                still_active = (m_client == socket);
+            }
+            if (!still_active){
+                break;
+            }
             m_listeners.run_method(&Listener::on_receive_data, buffer, (size_t)bytes);
             continue;
         }
 
-        if (no_data){
-            std::this_thread::sleep_for(std::chrono::milliseconds(1));
-            continue;
-        }
-
-        if (bytes == 0){
-            error = "Connection closed by client.";
-        }else{
-            switch (error_no){
-            case WSAEINTR:
+        if (bytes == SOCKET_ERROR){
+            int error_no = WSAGetLastError();
+            if (error_no == WSAEWOULDBLOCK || error_no == WSAEINPROGRESS){
+                //  No data yet.
+                std::this_thread::sleep_for(std::chrono::milliseconds(1));
                 continue;
-            default:
-                error = "Receive error (WSA Error Code " + std::to_string(error_no) + ")";
-                break;
             }
+            if (error_no == WSAEINTR){
+                continue;
+            }
+            error = "Receive error (WSA Error Code " + std::to_string(error_no) + ")";
+        }else if (bytes == 0){
+            error = "Connection closed by client.";
         }
         break;
     }
