@@ -344,12 +344,23 @@ LegNext RouteWalker::walk_leg(const PlannedLeg& planned, size_t number, size_t c
 std::vector<TilePos> RouteWalker::arrive() const{
     const std::string map_end = map_of(m_maps, m_from);
     const bool changed_map = !m_map_start.empty() && !map_end.empty() && map_end != m_map_start;
-    const bool seen = std::any_of(m_all_banners.begin(), m_all_banners.end(), [&](const std::string& read){
+    bool seen = std::any_of(m_all_banners.begin(), m_all_banners.end(), [&](const std::string& read){
         return location_banner_matches(read, map_end);
     });
+    //  The banner can come up after the last leg ends: Sandgem's showed about
+    //  a second later (r35). Watch for it a while before judging.
+    for (const WallClock end = current_time() + 3000ms; changed_map && !seen && current_time() < end;){
+        m_context.wait_for_all_requests();
+        if (const VideoSnapshot screen = m_stream.video().snapshot()){
+            seen = location_banner_matches(read_location_banner(*screen.frame), map_end);
+        }
+        if (!seen){
+            m_context.wait_for(250ms);
+        }
+    }
     //  No banner read at all is only a warning (r20-r22: none we could read on
     //  the Lakefront-to-Route 201 crossing); the next step checks where we are.
-    if (changed_map && m_all_banners.empty()){
+    if (changed_map && !seen && m_all_banners.empty()){
         m_stream.log("[Route] " + m_plan.label + ": no banner read for " + map_end + "; going on.", COLOR_ORANGE);
     }else if (changed_map && !seen){
         const std::string reads = quoted_list(m_all_banners);
