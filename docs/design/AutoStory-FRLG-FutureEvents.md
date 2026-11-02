@@ -292,8 +292,15 @@ Two more programs could hook in later; not designed here:
 
 ## RNG plan setting
 
-The user decides targets before the run, with an RNG search tool, and fills
-one table. AutoStory never picks seeds.
+For the starter, AutoStory plans the targets itself (fork #182): at the
+Starter RNG stop it reads the TID off the Trainer Card, searches Starter RNG
+targets for SID Helper's candidate SIDs (`search_rng_targets()`, fork #181),
+and lists the attempts in order, each shiny for the likeliest candidates the
+earlier ones leave. The user still runs Starter RNG for each attempt by hand
+for now; a hit that isn't shiny rules its SIDs out, and a shiny confirms the
+SID for later targets. Filters (natures, minimum IVs, shiny required) and the
+TID/SID overrides are the "RNG Plan" options. For the other targets the user
+still picks them before the run, with an RNG search tool, and fills one table.
 
 | Field | Scope | Notes |
 |---|---|---|
@@ -301,7 +308,7 @@ one table. AutoStory never picks seeds.
 | Language | shared | Picks the seeds list (only English and Japanese lists exist; other languages use English) |
 | Sound | shared | Mono / Stereo; the in-game setting must match |
 | Switch profile position | shared | The RNG programs' `PROFILE` option |
-| TID / SID | shared | From `sid_helper_handoff` or entered by the user; targets are searched with it |
+| TID / SID | shared | TID read off the Trainer Card at the Starter RNG stop (or entered); SID confirmed by the starter plan or entered; targets are searched with it |
 | Target | per row | One of the targets above |
 | Target Seed, Advances | per row | From the search tool |
 | Target-specific | per row | Starter species, Game Corner prize, fossil: must match `starter`, `game_corner_prize`, `fossil` (check R4) |
