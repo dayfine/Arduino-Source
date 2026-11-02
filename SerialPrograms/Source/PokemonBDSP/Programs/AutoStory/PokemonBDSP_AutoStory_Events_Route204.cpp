@@ -145,18 +145,21 @@ void through_the_ravaged_path(VideoStream& stream, ProControllerContext& context
         const StoryWorld rocks_out = ravaged_path_maps(smashed);
         at = walk_route(stream, context, run_from_wild_battle, rocks_out, at, no_trainers, RouteWalkPlan{[&](const Pokemon::TilePos& pos){ return pos == map_point("RavagedPath", "east_end"); }, "To the corridor's east end", {}, route_plan_costs()});
         dpad_tiles(stream, context, DPAD_LEFT, 1, "west onto the tile above the way out");
-        // One tap at a time until daylight, so we stop on the tile below the
-        // mouth (cave_exit) where 01.10 starts: a timed walk south read the
-        // fade as nothing and walked on to the cliff (r81).
+        // One tap onto the way out, then wait for Route 204's banner: a timed
+        // walk south read the fade as nothing and walked on to the cliff, past
+        // cave_exit where 01.10 starts (r81). Not brightness: outside can be
+        // as dark as the cave at night.
+        pbf_press_dpad(context, DPAD_DOWN, 160ms, 0ms);
+        context.wait_for_all_requests();
         bool out = false;
-        for (size_t tap = 0; tap < 4 && !out; tap++){
-            pbf_press_dpad(context, DPAD_DOWN, 160ms, 0ms);
-            context.wait_for(2500ms);
-            context.wait_for_all_requests();
-            out = !in_dim_cave(stream);
+        const auto deadline = current_time() + 8000ms;
+        while (!out && current_time() < deadline){
+            context.wait_for(200ms);
+            const VideoSnapshot frame = stream.video().snapshot();
+            out = frame && location_banner_showing(*frame.frame);
         }
         if (!out){
-            fail_step(stream, "Ravaged Path: tapping south from a tile west of the corridor's end did not leave the cave.");
+            fail_step(stream, "Ravaged Path: no location banner after one tap south from a tile west of the corridor's end.");
         }
         context.wait_for(2000ms);
     }
