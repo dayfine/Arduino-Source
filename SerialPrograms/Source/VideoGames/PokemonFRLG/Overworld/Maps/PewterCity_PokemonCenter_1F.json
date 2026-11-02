@@ -1,0 +1,110 @@
+{
+    "name": "PewterCity_PokemonCenter_1F",
+    "source": {
+        "decomp_file": "data/maps/PewterCity_PokemonCenter_1F/map.json",
+        "revision": "ce6406d8c2eaf46d543c8a2606de0c3cb1951982",
+        "date": "2026-10-31"
+    },
+    "tiles": [
+        "#.#############",
+        "###############",
+        "....###..##....",
+        "....#######....",
+        "...............",
+        "...............",
+        "#..........##..",
+        "...........##..",
+        "...............",
+        "###############"
+    ],
+    "elevation": [
+        "030000000000000",
+        "000000000000000",
+        "333300033003333",
+        "333300000003333",
+        "333333333333333",
+        "330333333333333",
+        "044033333330033",
+        "330333333330033",
+        "333333333333333",
+        "000000000000000"
+    ],
+    "points": {
+        "nurse_front": [7, 4],
+        "warp_1": [7, 8]
+    },
+    "warps": [
+        {
+            "x": 6,
+            "y": 8,
+            "enter": "walk_into",
+            "to_map": "PewterCity",
+            "to_point": "warp_5"
+        },
+        {
+            "x": 7,
+            "y": 8,
+            "enter": "walk_south",
+            "to_map": "PewterCity",
+            "to_point": "warp_5"
+        },
+        {
+            "x": 8,
+            "y": 8,
+            "enter": "walk_into",
+            "to_map": "PewterCity",
+            "to_point": "warp_5"
+        },
+        {
+            "x": 1,
+            "y": 6,
+            "enter": "step_on"
+        }
+    ],
+    "objects": [
+        {
+            "name": "jigglypuff",
+            "kind": "npc",
+            "x": 2,
+            "y": 2
+        },
+        {
+            "name": "gentleman",
+            "kind": "npc",
+            "x": 4,
+            "y": 8
+        },
+        {
+            "name": "nurse",
+            "kind": "npc",
+            "x": 7,
+            "y": 2
+        },
+        {
+            "name": "youngster",
+            "kind": "npc",
+            "x": 1,
+            "y": 2
+        },
+        {
+            "name": "woman_1",
+            "kind": "npc",
+            "x": 13,
+            "y": 2
+        },
+        {
+            "name": "gba_kid",
+            "kind": "npc",
+            "x": 10,
+            "y": 7
+        },
+        {
+            "name": "gba_kid",
+            "kind": "npc",
+            "x": 14,
+            "y": 6
+        }
+    ],
+    "flag_sets": {},
+    "connections": []
+}

@@ -1,0 +1,78 @@
+{
+    "name": "Route2_ViridianForest_SouthEntrance",
+    "source": {
+        "decomp_file": "data/maps/Route2_ViridianForest_SouthEntrance/map.json",
+        "revision": "ce6406d8c2eaf46d543c8a2606de0c3cb1951982",
+        "date": "2026-10-31"
+    },
+    "tiles": [
+        "###############",
+        "#######.#######",
+        "##...#...#...##",
+        "#.............#",
+        "#..........##.#",
+        "###........##.#",
+        "#.............#",
+        "#..........##.#",
+        "###........##.#",
+        "#.............#",
+        "#.............#",
+        "###############"
+    ],
+    "points": {
+        "warp_1": [7, 10],
+        "warp_3": [7, 1]
+    },
+    "warps": [
+        {
+            "x": 6,
+            "y": 10,
+            "enter": "walk_into",
+            "to_map": "Route2",
+            "to_point": "warp_2"
+        },
+        {
+            "x": 7,
+            "y": 10,
+            "enter": "walk_south",
+            "to_map": "Route2",
+            "to_point": "warp_2"
+        },
+        {
+            "x": 8,
+            "y": 10,
+            "enter": "walk_into",
+            "to_map": "Route2",
+            "to_point": "warp_2"
+        },
+        {
+            "x": 7,
+            "y": 1,
+            "enter": "cave_entrance",
+            "to_map": "ViridianForest",
+            "to_point": "warp_0"
+        }
+    ],
+    "objects": [
+        {
+            "name": "woman_2",
+            "kind": "npc",
+            "x": 10,
+            "y": 6
+        },
+        {
+            "name": "woman_1",
+            "kind": "npc",
+            "x": 4,
+            "y": 7,
+            "wander": {
+                "x0": 3,
+                "y0": 6,
+                "x1": 5,
+                "y1": 8
+            }
+        }
+    ],
+    "flag_sets": {},
+    "connections": []
+}

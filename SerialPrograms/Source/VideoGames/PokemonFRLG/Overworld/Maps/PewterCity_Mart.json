@@ -1,0 +1,78 @@
+{
+    "name": "PewterCity_Mart",
+    "source": {
+        "decomp_file": "data/maps/PewterCity_Mart/map.json",
+        "revision": "ce6406d8c2eaf46d543c8a2606de0c3cb1951982",
+        "date": "2026-10-31"
+    },
+    "tiles": [
+        "###########",
+        "###########",
+        "##.#......#",
+        "...#.......",
+        "####...##.#",
+        ".......##.#",
+        ".##....##.#",
+        "...........",
+        "###########"
+    ],
+    "elevation": [
+        "00000000000",
+        "00000000000",
+        "00303333330",
+        "33003333333",
+        "00003330030",
+        "33333330030",
+        "30033330030",
+        "33333333333",
+        "00000000000"
+    ],
+    "points": {
+        "warp_1": [4, 7]
+    },
+    "warps": [
+        {
+            "x": 3,
+            "y": 7,
+            "enter": "walk_into",
+            "to_map": "PewterCity",
+            "to_point": "warp_3"
+        },
+        {
+            "x": 4,
+            "y": 7,
+            "enter": "walk_south",
+            "to_map": "PewterCity",
+            "to_point": "warp_3"
+        },
+        {
+            "x": 5,
+            "y": 7,
+            "enter": "walk_into",
+            "to_map": "PewterCity",
+            "to_point": "warp_3"
+        }
+    ],
+    "objects": [
+        {
+            "name": "youngster",
+            "kind": "npc",
+            "x": 8,
+            "y": 2
+        },
+        {
+            "name": "boy",
+            "kind": "npc",
+            "x": 6,
+            "y": 4
+        },
+        {
+            "name": "clerk",
+            "kind": "npc",
+            "x": 2,
+            "y": 3
+        }
+    ],
+    "flag_sets": {},
+    "connections": []
+}

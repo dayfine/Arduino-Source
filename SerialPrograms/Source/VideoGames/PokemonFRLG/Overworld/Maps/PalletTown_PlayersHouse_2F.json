@@ -1,0 +1,46 @@
+{
+    "name": "PalletTown_PlayersHouse_2F",
+    "source": {
+        "decomp_file": "data/maps/PalletTown_PlayersHouse_2F/map.json",
+        "revision": "ce6406d8c2eaf46d543c8a2606de0c3cb1951982",
+        "date": "2026-10-31"
+    },
+    "tiles": [
+        "############",
+        "###########S",
+        "#.......##..",
+        "#.......##..",
+        "#.2...#.....",
+        "#.8...#.....",
+        "#.#.........",
+        "#...........",
+        "#..........."
+    ],
+    "elevation": [
+        "000000000000",
+        "000000000000",
+        "033333330033",
+        "033333330033",
+        "033333033333",
+        "003033033333",
+        "040403333333",
+        "003033333333",
+        "033333333333"
+    ],
+    "points": {
+        "start": [6, 6],
+        "warp_0": [10, 2]
+    },
+    "warps": [
+        {
+            "x": 10,
+            "y": 2,
+            "enter": "walk_west",
+            "to_map": "PalletTown_PlayersHouse_1F",
+            "to_point": "warp_2"
+        }
+    ],
+    "objects": [],
+    "flag_sets": {},
+    "connections": []
+}

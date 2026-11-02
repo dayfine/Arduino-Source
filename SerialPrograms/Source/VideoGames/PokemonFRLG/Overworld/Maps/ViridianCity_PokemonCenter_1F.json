@@ -1,0 +1,98 @@
+{
+    "name": "ViridianCity_PokemonCenter_1F",
+    "source": {
+        "decomp_file": "data/maps/ViridianCity_PokemonCenter_1F/map.json",
+        "revision": "ce6406d8c2eaf46d543c8a2606de0c3cb1951982",
+        "date": "2026-10-31"
+    },
+    "tiles": [
+        "#.#############",
+        "###############",
+        "....###..##....",
+        "....#######....",
+        "...............",
+        "...............",
+        "#..........##..",
+        "...........##..",
+        "...............",
+        "###############"
+    ],
+    "elevation": [
+        "030000000000000",
+        "000000000000000",
+        "333300033003333",
+        "333300000003333",
+        "333333333333333",
+        "330333333333333",
+        "044033333330033",
+        "330333333330033",
+        "333333333333333",
+        "000000000000000"
+    ],
+    "points": {
+        "nurse_front": [7, 4],
+        "warp_1": [7, 8]
+    },
+    "warps": [
+        {
+            "x": 6,
+            "y": 8,
+            "enter": "walk_into",
+            "to_map": "ViridianCity",
+            "to_point": "warp_0"
+        },
+        {
+            "x": 7,
+            "y": 8,
+            "enter": "walk_south",
+            "to_map": "ViridianCity",
+            "to_point": "warp_0"
+        },
+        {
+            "x": 8,
+            "y": 8,
+            "enter": "walk_into",
+            "to_map": "ViridianCity",
+            "to_point": "warp_0"
+        },
+        {
+            "x": 1,
+            "y": 6,
+            "enter": "step_on"
+        }
+    ],
+    "objects": [
+        {
+            "name": "nurse",
+            "kind": "npc",
+            "x": 7,
+            "y": 2
+        },
+        {
+            "name": "gentleman",
+            "kind": "npc",
+            "x": 12,
+            "y": 5
+        },
+        {
+            "name": "boy",
+            "kind": "npc",
+            "x": 4,
+            "y": 7
+        },
+        {
+            "name": "youngster",
+            "kind": "npc",
+            "x": 2,
+            "y": 3,
+            "wander": {
+                "x0": 1,
+                "y0": 2,
+                "x1": 3,
+                "y1": 4
+            }
+        }
+    ],
+    "flag_sets": {},
+    "connections": []
+}
