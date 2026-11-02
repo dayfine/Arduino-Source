@@ -23,6 +23,37 @@ namespace PokemonBDSP{
 
 namespace{
 
+//  A turn must not step: on the console D-pad taps of 40 to 80 ms only
+//  turned, a 160 ms D-pad tap stepped a whole tile, and a 100 ms stick tap
+//  stepped about 0.6 tile, off the tile grid (r49, r248a). So route_turn()
+//  taps the D-pad, once, for at most 80 ms.
+class Test_RouteTurnTap : public UnitTest{
+public:
+    Test_RouteTurnTap()
+        : UnitTest("PokemonBDSP::AutoStory - a turn is a D-pad tap too short to step")
+    {}
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        constexpr Milliseconds LONGEST_TURN(80);
+        for (Pokemon::Direction direction : {Pokemon::Direction::NORTH, Pokemon::Direction::SOUTH, Pokemon::Direction::EAST, Pokemon::Direction::WEST}){
+            const RouteInput tap = route_turn_tap(direction);
+            const std::string name = std::string("turning ") + Pokemon::direction_name(direction);
+            if (tap.kind != RouteInputKind::DPAD){
+                return name + ": not a D-pad tap; a stick tap moves part of a tile.";
+            }
+            if (tap.direction != direction || tap.count != 1){
+                return name + ": expected one tap that way.";
+            }
+            if (tap.hold > LONGEST_TURN){
+                return name + ": a " + std::to_string(tap.hold.count()) + " ms tap; over 80 ms may step.";
+            }
+        }
+        if (ROUTE_TURN_TAP > LONGEST_TURN){
+            return "ROUTE_TURN_TAP is " + std::to_string(ROUTE_TURN_TAP.count()) + " ms; over 80 ms may step.";
+        }
+        return true;
+    }
+};
+
 //  indoors() decides when leave_door_south() is out: r257 walked on south
 //  past Sandgem's road into a house after leaving the Center, because the
 //  evening tint made the outside as warm as a room. Synthetic screens: the
@@ -211,6 +242,7 @@ public:
 
 
 void add_tests_AutoStory_Walk(UnitTestDatabase& database){
+    database.add<Test_RouteTurnTap>();
     database.add<Test_IndoorsAnyLight>();
     database.add<Test_DoorFade>();
     database.add<Test_LocationBanner>();
