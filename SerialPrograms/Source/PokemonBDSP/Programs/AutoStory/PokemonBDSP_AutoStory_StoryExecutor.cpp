@@ -240,9 +240,14 @@ namespace{
 //  Rowan leaves, r23), fade dimly, not to black, to another map (r25), or
 //  wait on a box the detector misses (r26). B never starts a talk on the
 //  overworld. Done once the overworld has shown, with no text, for 5 s of
-//  presses. Returns the darkest frame's brightness (0 to 255): a change of
-//  map fades, if only dimly (r24's fade home).
-double settle(VideoStream& stream, ProControllerContext& context, Button button, const std::string& label){
+//  presses.
+//
+//  A step or scene that ends on another map (`fade`) must fade on the way,
+//  and only the quiet after the fade counts: r30's scene went quiet for 5 s
+//  before the fade home, and r28 "went out" a tile beside the door and
+//  walked a whole route in the house. No fade is a map mismatch.
+constexpr double FADE_DARKNESS = 40;    //  brightness 0 to 255; r24's dim fade home goes darker
+void settle(VideoStream& stream, ProControllerContext& context, Button button, const std::string& label, bool fade){
     const WallClock none = WallClock::max();
     const WallClock deadline = current_time() + 120s;
     ShortDialogDetector dialog;
@@ -257,10 +262,11 @@ double settle(VideoStream& stream, ProControllerContext& context, Button button,
             darkest = std::min(darkest, image_average(*frame.frame).sum() / 3);
         }
         const bool talking = frame && dialog.detect(frame);
-        if (!talking && frame && overworld.detect(frame)){
+        if (!talking && frame && overworld.detect(frame) && (!fade || darkest < FADE_DARKNESS)){
             quiet_since = quiet_since == none ? now : quiet_since;
             if (now - quiet_since >= 5000ms){
-                return darkest;
+                stream.log(std::format("[Story] {}: settled; darkest frame {:.0f}.", label, darkest));
+                return;
             }
         }else{
             quiet_since = none;
@@ -268,18 +274,10 @@ double settle(VideoStream& stream, ProControllerContext& context, Button button,
         pbf_press_button(context, talking ? button : BUTTON_B, 80ms, 1200ms);
     }
     OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
-        label + ": not back on a quiet overworld within 120 s.", stream);
-}
-
-//  A step or scene that ends on another map must have faded on the way: r28
-//  stood beside the door, "went out", and walked a whole route in the house.
-//  Brightness 0 to 255; r24's dim fade home and every door go darker.
-constexpr double FADE_DARKNESS = 40;
-void require_fade(VideoStream& stream, const std::string& label, const std::string& map, bool faded){
-    if (!faded){
-        OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
-            label + ": no fade, so we are not on " + map + " (map mismatch).", stream);
-    }
+        fade && darkest >= FADE_DARKNESS
+            ? label + ": no fade within 120 s, so we are not where the step goes (map mismatch)."
+            : label + ": not back on a quiet overworld within 120 s.",
+        stream);
 }
 
 }
@@ -293,8 +291,7 @@ Outcome StoryExecutor::step(RunState& state, const StoryStep& step){
     //  walk's window (r10), and arrival can start a scene (Mom's, 00.01). Settle
     //  as a scene does, so the next step starts on a quiet overworld.
     if (step.pose_after && step.pose_after->map != state.pose.map){
-        const double darkest = settle(stream(), context(), BUTTON_B, label_of(step));
-        require_fade(stream(), label_of(step), step.pose_after->map, walk.stop == WalkStop::TRANSITION || darkest < FADE_DARKNESS);
+        settle(stream(), context(), BUTTON_B, label_of(step), walk.stop != WalkStop::TRANSITION);
     }
     std::vector<TilePos> at;
     for (const TilePos& pos : Pokemon::tiles_of(state.pose)){
@@ -327,10 +324,8 @@ Outcome StoryExecutor::mash(RunState& state, const StoryStep& step){
     if (wait_until(stream(), context(), 15000ms, {{dialog}}) != 0){
         stream().log(label_of(step) + ": no line within 15 s; the step before played it.", COLOR_ORANGE);
     }
-    const double darkest = settle(stream(), context(), step.variant == "a" ? BUTTON_A : BUTTON_B, label_of(step));
-    if (step.pose_after && step.pose_after->map != state.pose.map){
-        require_fade(stream(), label_of(step), step.pose_after->map, darkest < FADE_DARKNESS);
-    }
+    settle(stream(), context(), step.variant == "a" ? BUTTON_A : BUTTON_B, label_of(step),
+        step.pose_after && step.pose_after->map != state.pose.map);
     return Pokemon::outcome_ok();
 }
 
