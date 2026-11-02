@@ -204,8 +204,8 @@ UnitTestResult check_checkpoint(const StoryCheckpoint& checkpoint, StoryPose& po
 
 UnitTestResult test_routes_and_chain(){
     const std::vector<StoryCheckpoint>& checkpoints = story_checkpoints();
-    if (checkpoints.size() != 9 || checkpoints[0].start){
-        return "Expected 9 checkpoints, the first from a new game.";
+    if (checkpoints.size() != 11 || checkpoints[0].start){
+        return "Expected 11 checkpoints, the first from a new game.";
     }
     StoryPose pose;
     for (size_t c = 0; c < checkpoints.size(); c++){
