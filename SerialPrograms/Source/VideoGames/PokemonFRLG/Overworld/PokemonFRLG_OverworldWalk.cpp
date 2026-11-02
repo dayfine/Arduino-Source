@@ -147,8 +147,8 @@ private:
 };
 
 
-Pokemon::LegSpec leg_spec(const RouteStep& step){
-    return Pokemon::LegSpec{step.direction, step.tiles, step.to_wall, step.surfing ? SURF_TILE_TIME : TILE_TIME};
+Pokemon::LegSpec leg_spec(const RouteStep& step, MoveSpeed speed){
+    return Pokemon::LegSpec{step.direction, step.tiles, step.to_wall, tile_time(step, speed)};
 }
 
 }
@@ -172,6 +172,40 @@ DpadPosition dpad(Direction direction){
 
 void hold_dpad(ProControllerContext& context, Direction direction, Milliseconds duration){
     pbf_press_dpad(context, dpad(direction), duration, STEP_RELEASE);
+}
+
+void hold_dpad_running(ProControllerContext& context, Direction direction, Milliseconds duration){
+    pbf_controller_state(context, BUTTON_B, dpad(direction), {0, 0}, {0, 0}, duration);
+    pbf_wait(context, STEP_RELEASE);
+}
+
+Milliseconds tile_time(const RouteStep& step, MoveSpeed speed){
+    if (step.surfing){
+        return SURF_TILE_TIME;
+    }
+    return speed == MoveSpeed::RUN ? RUN_TILE_TIME : TILE_TIME;
+}
+
+Pokemon::LegMover<ProControllerContext> leg_mover(const RouteStep& step, MoveSpeed speed){
+    if (speed == MoveSpeed::RUN && !step.surfing){
+        return hold_dpad_running;
+    }
+    return hold_dpad;
+}
+
+Milliseconds leg_hold_time(const RouteStep& step, MoveSpeed speed){
+    return Pokemon::leg_hold(leg_spec(step, speed), step.tiles);
+}
+
+std::string speed_note(const RouteStep& step, MoveSpeed speed){
+    if (step.action != RouteAction::WALK || !step.to_wall || step.surfing){
+        return "";
+    }
+    return std::format(
+        "[Speed] {} {}: {} tiles in {} ms, held {} ms",
+        move_speed_name(speed), Pokemon::direction_name(step.direction), step.tiles,
+        (tile_time(step, speed) * step.tiles).count(), leg_hold_time(step, speed).count()
+    );
 }
 
 //  One watcher for the whole fade: a ladder's black is short enough to be
@@ -282,6 +316,16 @@ void start_surf(ConsoleHandle& console, ProControllerContext& context, Direction
 
 
 
+const char* move_speed_name(MoveSpeed speed){
+    switch (speed){
+    case MoveSpeed::WALK:
+        return "walk";
+    case MoveSpeed::RUN:
+        return "run";
+    }
+    return "?";
+}
+
 OverworldInterruptSet overworld_interrupts_with_repel(int max_repel_slot){
     OverworldInterruptSet ret;
     ret.wild.emplace_back(std::make_unique<WildBattleInterrupt>());
@@ -335,12 +379,12 @@ void walk_overworld_route(
     ConsoleHandle& console, ProControllerContext& context,
     const std::vector<RouteStep>& route,
     std::optional<Direction> facing,
-    const OverworldInterruptSet& interrupts
+    const OverworldInterruptSet& interrupts,
+    MoveSpeed speed
 ){
     if (!facing){
         facing = read_facing(console, context);
     }
-    const Pokemon::LegMover<ProControllerContext> mover = hold_dpad;
     for (const RouteStep& step : route){
         console.log("Route: " + to_string(step));
         check_overworld(console, context, step);
@@ -352,7 +396,10 @@ void walk_overworld_route(
             if (facing != step.direction){
                 pbf_press_dpad(context, dpad(step.direction), TURN_TAP, TURN_SETTLE);
             }
-            Pokemon::walk_leg(console, context, mover, step.wild ? interrupts.wild : interrupts.other, leg_spec(step), MAX_INTERRUPTIONS_PER_LEG);
+            if (const std::string note = speed_note(step, speed); !note.empty()){
+                console.log(note);
+            }
+            Pokemon::walk_leg(console, context, leg_mover(step, speed), step.wild ? interrupts.wild : interrupts.other, leg_spec(step, speed), MAX_INTERRUPTIONS_PER_LEG);
             if (step.warps){
                 wait_out_warp(console, context, step);
                 static_assert(AFTER_WARP_BATTLE_WATCH >= AFTER_WARP);
