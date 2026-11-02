@@ -330,8 +330,12 @@ std::vector<StoryCheckpoint> lake_and_pokedex(){
             //  Dawn's scene starts as we come into Sandgem (trigger (4, 10..15));
             //  walk until it does rather than to a tile (r35, r36).
             legs("into_sandgem", {{.direction = EAST, .tiles = 8}}, "east into Sandgem until Dawn's scene starts", "to_dialogue"),
-            event("rowan_gives_pokedex", "Dawn walks us to the lab: Rowan, no nickname, the Pokedex",
-                at(LAB, "rowan_talk", NORTH)),
+            //  Butters' sequence pressed B through Dawn's and Rowan's lines and
+            //  the nickname question (No), then A for the Pokedex. The scene's
+            //  B answers No too, and closes an item's lines as it did Barry's
+            //  parcel (r45). Into the lab is a fade.
+            scene("rowan_gives_pokedex", at(LAB, "rowan_talk", NORTH),
+                "Dawn walks us to the lab: Rowan, no nickname, the Pokedex"),
         }),
     };
 }

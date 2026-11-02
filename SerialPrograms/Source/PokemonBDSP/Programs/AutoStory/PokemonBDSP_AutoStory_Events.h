@@ -4,8 +4,8 @@
  *
  *  The story's steps that only BDSP has, by name: a step of the table whose
  *  variant names one of these runs it (StoryExecutor::run()). Some are the
- *  scripted scenes (the intro's briefcase, the starter, the Starly battle,
- *  the Pokedex); most are segment 01's walks, which were measured on the
+ *  scripted scenes (the lake's briefcase, the starter, Dawn's catching
+ *  tutorial); most are segment 01's walks, which were measured on the
  *  console as holds, taps and walks until stopped rather than planned, and
  *  are kept as they ran there. Each fails by throwing, with a screenshot;
  *  the executor turns that into a failed step.

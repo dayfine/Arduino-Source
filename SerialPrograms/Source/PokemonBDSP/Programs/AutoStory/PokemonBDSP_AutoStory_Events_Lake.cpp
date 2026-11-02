@@ -5,8 +5,8 @@
  *  Adapted from PokemonAutomation/Arduino-Source#1717 by Developer-Butters.
  *
  *  The scenes of the story's start that need scripted input: the briefcase
- *  at Lake Verity, the starter, the Pokedex in Rowan's lab, Mom's and Barry's
- *  mother's lines, and Dawn's catching tutorial. The button sequences are
+ *  at Lake Verity, the starter, Mom's and Barry's mother's lines, and Dawn's
+ *  catching tutorial. The button sequences are
  *  Butters' (#1717); they ran on
  *  the console in his recordings, but not yet from the planned walks around
  *  them.
@@ -117,17 +117,6 @@ void azure_flute_if_there(VideoStream& stream, ProControllerContext& context){
 }
 
 
-//  00.03: Dawn walks us into Rowan's lab: his lines, "give a nickname?"
-//  (B: No), and the Pokedex, taken with A.
-void rowan_gives_pokedex(VideoStream& stream, ProControllerContext& context){
-    wait_for_dialogue(stream, context, "Dawn at Sandgem's entrance");
-    pbf_mash_button(context, BUTTON_B, 50000ms);
-    wait_for_dialogue(stream, context, "Nickname: no");
-    pbf_mash_button(context, BUTTON_B, 40000ms);
-    wait_for_dialogue(stream, context, "The Pokedex");
-    pbf_mash_button(context, BUTTON_A, 40000ms);
-    context.wait_for_all_requests();
-}
 
 //  00.04: Dawn's catching tutorial on Route 202: her lines and her demo
 //  battle, B for 70 s.
@@ -146,7 +135,7 @@ void add_lake_events(StoryEvents& events){
     events.emplace("starter_briefcase", console_event(starter_briefcase));
     events.emplace("choose_starter", choose_starter);
 
-    events.emplace("rowan_gives_pokedex", console_event(rowan_gives_pokedex));
+
     events.emplace("catch_tutorial", console_event(catch_tutorial));
     events.emplace("catch_pokemon", console_event(catch_1_pokemon));
 }
