@@ -11,8 +11,9 @@
  *  the executor turns that into a failed step.
  *
  *  They are in files by area: _Events_Lake (00.00 to 00.03), _Sandgem
- *  (00.04), _Jubilife (00.05, 01.01, 01.06 to 01.08), _Oreburgh (01.02 to
- *  01.05) and _Route204 (01.09 to 01.11).
+ *  (00.04), _Jubilife (00.05, 01.01), _Route203 (01.02), _Oreburgh (01.03
+ *  and 01.04) and _Route204 (01.09's Rock Smash, 01.11). 01.05 to 01.10
+ *  are planned walks in the story table.
  *
  */
 

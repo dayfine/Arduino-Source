@@ -1,10 +1,10 @@
-/*  BDSP AutoStory - Events: Jubilife City (00.05, 01.01, 01.07)
+/*  BDSP AutoStory - Events: Jubilife City (00.05, 01.01)
  *
  *  From: https://github.com/PokemonAutomation/
  *
  *  The Jubilife beats of 00.05 the story table cannot plan (up the steps,
- *  Barry's Town Map, the talk to a wandering clown), and segment 01's walks
- *  out of the Center to Barry and up to Rowan's scene.
+ *  Barry's Town Map, the talk to a wandering clown), and segment 01's walk
+ *  out of the Center to Barry.
  *
  */
 
@@ -118,12 +118,6 @@ Pokemon::Outcome talk_to_wanderer(StoryExecutor& executor, Pokemon::RunState&, c
 }
 
 
-//  01.07: Rowan's and Dawn's lines after the tag battle. 01.08 starts here,
-//  from a save at the top of the street.
-void rowan_after_the_battle(VideoStream& stream, ProControllerContext& context){
-    finish_dialogue(stream, context, BUTTON_B, "Rowan and Dawn after the battle");
-}
-
 //  01.01 from the save at the Jubilife Center's PC: healed at the nurse,
 //  out of the door and through the plaza to the street east to Route 203.
 void jubilife_heal_and_out_to_street(VideoStream& stream, ProControllerContext& context){
@@ -215,37 +209,6 @@ void east_to_barry(VideoStream& stream, ProControllerContext& context){
     }
 }
 
-//  01.07: west along Jubilife's long road to the crossroads.
-void west_to_the_crossroads(VideoStream& stream, ProControllerContext& context){
-    // Route 203's row 18 carries on as Jubilife's long road. From the first
-    // tile the crossroads with the street north to Route 204 is 14 tiles
-    // west; the street is about 4 tiles wide, so a stick hold does (by hand,
-    // 2026-10-31: 2 x 1120 ms landed mid-street; 7 D-pad taps stopped below
-    // a building, and 18 went on to the road down to Route 202, r230b).
-    route_turn(stream, context, Direction::WEST);
-    pbf_move_left_joystick(context, {-1, 0}, route_open_hold(Direction::WEST, 14), 300ms);
-    context.wait_for_all_requests();
-}
-
-//  01.07: north up the street until Rowan's scene starts.
-void north_to_rowan(VideoStream& stream, ProControllerContext& context){
-    // North up the street: Rowan's scene starts a few tiles up (by hand, a
-    // 6 s walk). It opens with a cutscene, not a dialog box, so the walk
-    // reads as stopped; wait for his first line. The green-haired man walks
-    // about the crossroads and may stand in our way: wait and walk again.
-    bool scene = false;
-    for (size_t tries = 0; tries < 3 && !scene; tries++){
-        const WalkResult up = walk_dir(stream, context, Direction::NORTH, 6000ms, "north up the street to Route 204");
-        scene = up.stop == WalkStop::DIALOG || dialogue_opens(stream, context, 8000ms);
-        if (!scene){
-            pbf_wait(context, 2500ms);
-        }
-    }
-    if (!scene){
-        fail_step(stream, "Jubilife: Rowan's scene did not start up the street north.");
-    }
-}
-
 }
 
 
@@ -253,11 +216,8 @@ void add_jubilife_events(StoryEvents& events){
     events.emplace("up_the_steps", console_event(up_the_steps));
     events.emplace("barry_town_map", console_event(barry_town_map));
     events.emplace("talk_to_wanderer", talk_to_wanderer);
-    events.emplace("rowan_after_the_battle", console_event(rowan_after_the_battle));
     events.emplace("jubilife_center_to_street", console_event(jubilife_center_to_street));
     events.emplace("east_to_barry", console_event(east_to_barry));
-    events.emplace("west_to_the_crossroads", console_event(west_to_the_crossroads));
-    events.emplace("north_to_rowan", console_event(north_to_rowan));
 }
 
 

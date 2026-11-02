@@ -1,10 +1,9 @@
-/*  BDSP AutoStory - Events: Oreburgh (01.03 to 01.05)
+/*  BDSP AutoStory - Events: Oreburgh (01.03 to 01.04)
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  Segment 01's walks in Oreburgh: the mine and Roark, the Gym, and back
- *  out of the Oreburgh Gate, as they ran on the console (2026-10-29 to
- *  10-31).
+ *  Segment 01's walks in Oreburgh: the mine and Roark, and the Gym, as
+ *  they ran on the console (2026-10-29 to 10-31).
  *
  */
 
@@ -21,7 +20,6 @@
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_Maps.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_StoryMaps.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Indoors.h"
-#include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Location.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_PlannedRoute.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_RouteWalk.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Walk.h"
@@ -504,42 +502,6 @@ void gym_until_roark_beaten(VideoStream& stream, ProControllerContext& context){
     }
 }
 
-//  01.05: out of the gym onto its doorstep.
-void out_of_the_gym(VideoStream& stream, ProControllerContext& context){
-    // 01.04 ends in front of Roark, just after his battle: its save at
-    // 01.05's start is right after the win (2026-10-31, at the user's
-    // request), so a failure later never has to beat him again.
-    // No trip back to the Oreburgh Center (2026-10-31, the user): talk_or_fight()
-    // gives a Potion after Roark when HP is low, and Jubilife's Center is on
-    // the way. Out of the gym onto its doorstep, which is on the Center door's
-    // row: west along it reaches the stairs' cliff.
-    if (!dpad_out_of_building(stream, context, 40, "out of the gym")){
-        fail_step(stream, "Oreburgh Gym: did not leave by its door.");
-    }
-}
-
-//  01.05: up to the platform by the Oreburgh Gate and into it (Barry bumps into us there).
-void into_oreburgh_gate(VideoStream& stream, ProControllerContext& context){
-    // From the gym's doorstep, as walked by hand on 2026-10-29.
-    walk_dir(stream, context, Direction::WEST, 20000ms, "west to the stairs' cliff");
-    walk_dir(stream, context, Direction::NORTH, 10000ms, "north along the cliff");
-    hold_tiles(stream, context, Direction::EAST, 2);
-    walk_dir(stream, context, Direction::NORTH, 5000ms, "north up the stairs");
-    walk_dir(stream, context, Direction::WEST, 6000ms, "west along the platform");
-    hold_tiles(stream, context, Direction::SOUTH, 1);
-    // Barry runs into us on the platform ("*thud*") the first time; his lines
-    // end with no battle.
-    west_until_transition(stream, context, "Into Oreburgh Gate", 8);
-}
-
-//  01.05: west through the Gate until Route 203's banner shows.
-void out_of_oreburgh_gate(VideoStream& stream, ProControllerContext& context){
-    // The cave's fade out of the Gate does not always read as a transition
-    // (r89), so the walk west ends on Route 203's location banner, which
-    // shows for a few seconds as we step out. 01.06 starts there, from a save.
-    west_until_transition(stream, context, "West out of Oreburgh Gate", 8, location_banner_showing);
-}
-
 }
 
 
@@ -551,9 +513,6 @@ void add_oreburgh_events(StoryEvents& events){
     events.emplace("oreburgh_center_heal", console_event(oreburgh_center_heal));
     events.emplace("out_of_the_center", console_event(out_of_the_center));
     events.emplace("gym_until_roark_beaten", console_event(gym_until_roark_beaten));
-    events.emplace("out_of_the_gym", console_event(out_of_the_gym));
-    events.emplace("into_oreburgh_gate", console_event(into_oreburgh_gate));
-    events.emplace("out_of_oreburgh_gate", console_event(out_of_oreburgh_gate));
 }
 
 

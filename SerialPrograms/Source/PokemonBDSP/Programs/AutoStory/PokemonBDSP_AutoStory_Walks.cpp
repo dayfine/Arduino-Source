@@ -12,7 +12,6 @@
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "CommonTools/Async/InferenceRoutines.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
-#include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Location.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_RouteWalk.h"
 #include "PokemonBDSP_AutoStory_Talks.h"
 #include "PokemonBDSP_AutoStory_WildBattle.h"
@@ -194,31 +193,6 @@ bool dpad_through_door_north(VideoStream& stream, ProControllerContext& context,
     return false;
 }
 
-//  Out of a building whose door is straight south of us, a D-pad tile at a
-//  time, until the location banner shows: it names the map we step into
-//  (e.g. "Oreburgh City") for a few seconds, and never shows inside. Ends in
-//  the doorway, facing south. Out of the Oreburgh Gym from in front of Roark
-//  (by hand, 2026-10-31): 18 taps inside, 2 taps of black fade, the banner on
-//  the 21st. The door's fade alone was missed between steps (r219g walked on
-//  south to the rocks below the gym).
-bool dpad_out_of_building(VideoStream& stream, ProControllerContext& context, size_t max_taps, const std::string& label){
-    pbf_press_dpad(context, DPAD_DOWN, 160ms, 700ms);    // turn
-    for (size_t tap = 0; tap < max_taps; tap++){
-        pbf_press_dpad(context, DPAD_DOWN, 160ms, 900ms);
-        context.wait_for_all_requests();
-        const VideoSnapshot frame = stream.video().snapshot();
-        if (frame && location_banner_showing(*frame.frame)){
-            stream.log("[Walk] " + label + ": the location banner shows after " + std::to_string(tap + 1) + " taps; outside.");
-            context.wait_for(1000ms);
-            return true;
-        }
-        if (dialogue_opens(stream, context, 100ms)){
-            finish_dialogue(stream, context, BUTTON_B, label + ": someone in the way");
-        }
-    }
-    return false;
-}
-
 //  For a player inside a Pokemon Center after a whiteout, at the counter:
 //  out through the door. The door is straight south of the nurse in most
 //  Centers; in Oreburgh's it was two tiles east of where we stood (by hand).
@@ -265,54 +239,6 @@ void walk_out_of_center(VideoStream& stream, ProControllerContext& context, cons
         }
     }
     fail_step(stream, label + ": could not find the Pokemon Center's door.");
-}
-
-//  West until a transition, by the user's rule for a wall in the way: walk
-//  north to the top wall, which pins the row, then try the rows south of it
-//  one at a time. Trainers who stop us are fought. Returns at the first
-//  transition (a building, a cave, a gate), or when `arrived` matches.
-void west_until_transition(
-    VideoStream& stream, ProControllerContext& context, const std::string& label, size_t max_legs,
-    const std::function<bool(const ImageViewRGB32& screen)>& arrived
-){
-    for (size_t leg = 0; leg < max_legs; leg++){
-        const WalkResult west = walk_dir(stream, context, Direction::WEST, 20000ms, label, arrived);
-        if (west.stop == WalkStop::ARRIVED){
-            return;
-        }
-        if (west.stop == WalkStop::TRANSITION){
-            context.wait_for(2000ms);
-            return;
-        }
-        if (west.stop == WalkStop::DIALOG){
-            talk_or_fight(stream, context, label + ": someone in the way");
-            continue;
-        }
-        if (west.stop != WalkStop::BLOCKED){
-            continue;
-        }
-        walk_dir(stream, context, Direction::NORTH, 4000ms, label + ": north to the top wall");
-        bool moved = false;
-        for (size_t row = 0; row < 10 && !moved; row++){
-            hold_tiles(stream, context, Direction::SOUTH, 1);
-            const WalkResult probe = walk_dir(stream, context, Direction::WEST, 1500ms, label + ": west on the next row", arrived);
-            if (probe.stop == WalkStop::ARRIVED){
-                return;
-            }
-            moved = probe.stop != WalkStop::BLOCKED || probe.walked > 1200ms;
-            if (probe.stop == WalkStop::TRANSITION){
-                context.wait_for(2000ms);
-                return;
-            }
-            if (probe.stop == WalkStop::DIALOG){
-                talk_or_fight(stream, context, label + ": someone in the way");
-            }
-        }
-        if (!moved){
-            fail_step(stream, label + ": no row below the top wall leads west.");
-        }
-    }
-    fail_step(stream, label + ": no transition after " + std::to_string(max_legs) + " legs.");
 }
 
 

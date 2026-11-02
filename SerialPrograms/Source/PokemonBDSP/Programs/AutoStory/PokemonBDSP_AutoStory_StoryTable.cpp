@@ -11,10 +11,13 @@
  *  on the console (r72 to r261, 2026-10-30); 00.05 to 00.05c, measured there
  *  first, are now planned on Jubilife's map with the people and triggers of
  *  the Diamond decomp's zone events and scripts. Segment 01 ran on the
- *  console end to end (2026-10-31), its walks kept as events.
+ *  console end to end (2026-10-31), its walks as events; 01.05 to 01.10
+ *  are now planned on the maps the same way (2026-11-02), and have not
+ *  run on a console as plans yet.
  *
  */
 
+#include <format>
 #include <string>
 #include <utility>
 #include <vector>
@@ -53,6 +56,14 @@ const char* const ROUTE_202 = "Route202";
 const char* const JUBILIFE = "JubilifeCity";
 //  No map of it: a pose there names the room, not its tiles.
 const char* const TRAINERS_SCHOOL = "TrainersSchool";
+const char* const OREBURGH = "OreburghCity";
+const char* const GYM = "OreburghGym";
+const char* const GATE = "OreburghGate";
+const char* const ROUTE_203 = "Route203";
+const char* const ROUTE_204_SOUTH = "Route204South";
+const char* const RAVAGED_PATH = "RavagedPath";
+const char* const ROUTE_204_NORTH = "Route204North";
+const char* const FLOAROMA = "FloaromaTown";
 
 Pose at(const char* map, int x, int y, std::optional<Direction> facing = std::nullopt){
     return Pokemon::tile_pose(map, {TilePos{x, y}}, facing);
@@ -485,6 +496,92 @@ std::vector<StoryCheckpoint> jubilife(){
     return {the_town_map(), the_coupons(), the_poketch()};
 }
 
+//  Where the Oreburgh Gate lets us out onto Route 203: its warp tile (55, 9)
+//  (Diamond's warp (246, 749), zone event narc_0329), walking west.
+Pose out_of_oreburgh_gate(){
+    return at(ROUTE_203, 55, 9, WEST);
+}
+
+//  01.05, planned on Oreburgh's and the Gate's maps with the Diamond decomp's
+//  zone events (narc_0044, narc_0250) and Platinum's script for the scene
+//  (scripts_oreburgh_city.s, the same trigger and variable). Barry's coord
+//  event, column 6 on rows 12 to 15 while VAR_OREBURGH_CITY_STATE is 2 (after
+//  Roark: the old walk met his "*thud*" there, 2026-10-29), runs him into us
+//  from the east: the game pushes us a tile west, facing east, and he
+//  leaves. The Gate's way west is row 22, across the Hiker's trigger (7, 22),
+//  spent in 01.02.
+StoryCheckpoint oreburgh_to_route_203(){
+    return row("01.05", "Oreburgh to Route 203", next_to(GYM, "roark", SOUTH, NORTH), {
+        //  01.04 talks to Roark from below him, up the clear middle column.
+        step_into("out_of_the_gym", SOUTH, "down the middle column (5, 4..23) and out of the door (5, 24)",
+            at(OREBURGH, "gym_doorstep", SOUTH)),
+        route("east_of_barrys_trigger", at(OREBURGH, 7, 13, WEST),
+            "west along the street, north up the stairs west of the houses, west along the Gate's row", "town"),
+        step_into("barrys_trigger", WEST, "the trigger (6, 12..15)"),
+        scene("barry_bumps_into_us", at(OREBURGH, 5, 13, EAST), "Barry runs into us, talks of Eterna, and leaves (assumed: the push)"),
+        route("by_the_gate", next_to(OREBURGH, "gate_mouth", EAST, WEST), "west to the Gate's warp tile (2, 13)"),
+        //  The warp's other end is the Gate's (27, 22), beside its east mouth.
+        step_into("into_oreburgh_gate", WEST, "the Gate's mouth (1, 13)", at(GATE, 27, 22, WEST)),
+        route("through_the_gate", at(GATE, 4, 22, WEST), "west along row 22 to the warp tile by the west mouth (3, 22)"),
+        step_into("out_of_oreburgh_gate", WEST, "the west mouth (3, 22)", out_of_oreburgh_gate()),
+    });
+}
+
+//  Below Rowan's trigger in Jubilife: (47, 8), the east tile under the
+//  trigger (45..47, 7), which (48, 7) beside it is not.
+Pose below_rowans_trigger(){
+    return at(JUBILIFE, 47, 8, NORTH);
+}
+//  Where Rowan's scene leaves us: walked up to him at (47, 5), then a tile
+//  west in front of the grunt (Platinum's movements; assumed for BDSP).
+Pose after_the_grunts(){
+    return Pokemon::tile_pose(JUBILIFE, {TilePos{46, 5}, TilePos{47, 5}});
+}
+
+//  01.07, from the Diamond decomp (zone event narc_0002) and Platinum's
+//  script (scripts_jubilife_city.s, the same trigger and variable): the
+//  coord event (45..47, 7) while VAR_JUBILIFE_CITY_STATE is 3 walks us up to
+//  Rowan, his and the grunts' lines, then the tag battle with Dawn; after
+//  it they leave.
+StoryCheckpoint rowan_and_the_grunts(){
+    return row("01.07", "Jubilife: Rowan, Dawn and the Galactic grunts", below_rowans_trigger(), {
+        step_into("rowans_trigger", NORTH, "the trigger (45..47, 7): the game walks us up to Rowan"),
+        battle("galactic_grunts", false, "the lines, then the tag battle with Dawn", "doubles"),
+        scene("rowan_and_dawn_leave", after_the_grunts(), "Rowan's and Dawn's lines; they walk off"),
+    });
+}
+
+//  01.09 on the Ravaged Path's map (Platinum's, checked on the console in
+//  r235b): up the stairs to west of the rock (22, 43), smash it, east to
+//  above the way out (28, 45). Its other end is Route 204's (20, 26).
+StoryCheckpoint through_the_ravaged_path(){
+    const Pose west_of_the_rock = at(RAVAGED_PATH, "before_rocks.2", EAST);
+    return row("01.09", "Ravaged Path", at(RAVAGED_PATH, "entrance", NORTH), {
+        route("west_of_the_rock", west_of_the_rock, "up the stairs and along the corridor"),
+        event("smash_the_rock", "Rock Smash on the rock east of us", west_of_the_rock),
+        route("above_the_way_out", at(RAVAGED_PATH, "above_exit", SOUTH), "east through the rock's tile"),
+        step_into("out_of_the_ravaged_path", SOUTH, "the way out (28, 45)", at(ROUTE_204_NORTH, "cave_exit", SOUTH)),
+    });
+}
+
+//  01.10: the line a human walked up Route 204's north half (2026-10-31,
+//  r246a to r251a), corner to corner (Test_Route204NorthLine checks each
+//  stretch is one straight leg), then north between the flower beds into
+//  Floaroma. Its trainers who see us are fought: Taylor on the line, the
+//  Twins as a pair.
+StoryCheckpoint route_204_to_floaroma(){
+    std::vector<StoryStep> steps;
+    const std::vector<TilePos> line = map_region(ROUTE_204_NORTH, "floaroma_waypoints");
+    for (size_t i = 0; i < line.size(); i++){
+        steps.push_back(route(std::format("line_{}", i + 1), Pokemon::tile_pose(ROUTE_204_NORTH, {line[i]}),
+            "a corner of the human's line", "line"));
+    }
+    //  01.11 walks on from here: west 8 along row 29, north to the old woman.
+    steps.push_back(route("into_floaroma", at(FLOAROMA, "route_204_arrival", NORTH), "north up column 11 into Floaroma", "line"));
+    steps.push_back(save());
+    return row("01.10", "Route 204 to Floaroma", at(ROUTE_204_NORTH, "cave_exit", SOUTH), std::move(steps));
+}
+
 std::vector<StoryCheckpoint> to_oreburgh(){
     return {
         row("01.01", "Jubilife to Barry", std::nullopt, {
@@ -510,38 +607,30 @@ std::vector<StoryCheckpoint> to_oreburgh(){
             event("out_of_the_center", "out from the counter"),
             event("gym_until_roark_beaten", "west into the gym, up it to Roark; again from the Center after a loss"),
         }),
-        row("01.05", "Oreburgh to Route 203", std::nullopt, {
-            event("out_of_the_gym", "out of the gym onto its doorstep"),
-            event("into_oreburgh_gate", "up to the platform and west into the Gate"),
-            event("out_of_oreburgh_gate", "west until Route 203's banner shows"),
-        }),
+        oreburgh_to_route_203(),
     };
 }
 
 std::vector<StoryCheckpoint> to_floaroma(){
     return {
-        row("01.06", "Route 203 to Jubilife", std::nullopt, {
-            event("route_203_to_row_18", "on Route 203's map to row 18, below the girl"),
-            event("row_18_into_jubilife", "west along row 18, counting tiles"),
+        row("01.06", "Route 203 to Jubilife", out_of_oreburgh_gate(), {
+            //  Trainers who saw us going east in 01.02 are beaten; any other
+            //  sees us here and is fought (route_203_trainer_sights()).
+            route("below_rowans_trigger", below_rowans_trigger(),
+                "down Route 203 (its ledges only south), west along it into Jubilife's street, north up the road", "town"),
         }),
-        row("01.07", "Jubilife through Rowan's scene", std::nullopt, {
-            event("west_to_the_crossroads", "west along the long road"),
-            event("north_to_rowan", "north up the street until Rowan's scene"),
-            battle("galactic_grunts", false, "the tag battle with Dawn", "doubles"),
-            event("rowan_after_the_battle", "Rowan's and Dawn's lines"),
+        rowan_and_the_grunts(),
+        row("01.08", "Jubilife to the Ravaged Path", after_the_grunts(), {
+            //  Lass Sarah's east sight crosses the street (r233a, r234a): she
+            //  may stop us for a battle.
+            route("below_the_ravaged_path", at(ROUTE_204_SOUTH, "below_door", NORTH),
+                "north out of Jubilife, up Route 204's street and grass to below the door (11, 1)", "town"),
+            //  Its warp (Diamond's zone event narc_0330) lands us on the
+            //  cave's (19, 50), as in r237a.
+            step_into("into_the_ravaged_path", NORTH, "the door (11, 1)", at(RAVAGED_PATH, "entrance", NORTH)),
         }),
-        row("01.08", "Jubilife to the Ravaged Path", std::nullopt, {
-            event("north_out_of_jubilife", "north until Route 204's banner"),
-            event("route_204_south_to_the_door", "on Route 204 South's map to below the Ravaged Path's door"),
-            event("into_the_ravaged_path", "north through the door"),
-        }),
-        row("01.09", "Ravaged Path", std::nullopt, {
-            event("through_the_ravaged_path", "through the cave with Rock Smash, out onto Route 204 North"),
-        }),
-        row("01.10", "Route 204 to Floaroma", std::nullopt, {
-            event("route_204_to_floaroma", "the human's line north into Floaroma"),
-            save(),
-        }),
+        through_the_ravaged_path(),
+        route_204_to_floaroma(),
         row("01.11", "Floaroma's old couple", std::nullopt, {
             event("west_8_north_to_the_old_woman", "west 8, north until she stops us"),
             talk("old_woman", "she gives Mew when a Let's Go save is on the console"),

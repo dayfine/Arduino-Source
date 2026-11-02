@@ -65,6 +65,9 @@ std::optional<RobustPlanCosts> story_route_costs(const std::string& variant){
     if (variant == "robust"){
         return RobustPlanCosts();
     }
+    if (variant == "line"){
+        return waypoint_plan_costs();
+    }
     return std::nullopt;
 }
 
@@ -91,6 +94,16 @@ void save_failure_screenshot(VideoStream& stream, size_t attempt){
     stream.log("Failure screenshot: " + path);
 }
 
+//  A trainer who saw us on a route: Route 204's Twins battle as a pair
+//  (01.10), everyone else alone.
+void fight_story_trainer(VideoStream& stream, ProControllerContext& context, const std::string& trainer){
+    if (trainer.find("Twins") != std::string::npos){
+        talk_or_fight(stream, context, trainer, TalkExpect::BATTLE, BattleFormat::DOUBLES);
+        return;
+    }
+    fight_route_trainer(stream, context, trainer);
+}
+
 }
 
 
@@ -102,8 +115,7 @@ void StoryExecutor::begin_attempt(const Pokemon::StoryCheckpoint& data){
     m_checkpoint = data.id;
     //  A row starts from its save: after the shoes' row, the save has them.
     m_can_run = data.id > std::string(RUNNING_SHOES_ROW);
-    const StoryWorld* south = story_plan_world("Route202", "Route202");
-    m_trainers = south ? story_trainers(*south) : std::vector<TrainerSight>{};
+    m_trainers.clear();
 }
 
 Outcome StoryExecutor::run(RunState& state, const StoryStep& step){
@@ -152,21 +164,18 @@ Pose StoryExecutor::walk_to(const Pose& from, const Pose& goal, const StoryStep&
     for (const TilePos& pos : Pokemon::tiles_of(goal)){
         targets.push_back(story_to_world(*maps, goal.map, pos));
     }
-    //  Only Route 202's trainers are known; the ones fought stay off
-    //  m_trainers until the next attempt.
-    const bool south = maps == story_plan_world("Route202", "Route202");
+    //  The ones fought stay off m_trainers until the next attempt.
+    std::vector<TrainerSight>& sights = m_trainers.try_emplace(maps, story_trainers(*maps)).first->second;
     RouteTrainers trainers{
-        south ? m_trainers : std::vector<TrainerSight>{},
-        [this](const std::string& trainer){ fight_route_trainer(stream(), context(), trainer); }
+        sights,
+        [this](const std::string& trainer){ fight_story_trainer(stream(), context(), trainer); }
     };
     const RouteWalkPlan plan{
         [&](const TilePos& pos){ return std::find(targets.begin(), targets.end(), pos) != targets.end(); },
         label_of(step), {}, *costs, m_can_run ? MoveSpeed::RUN : MoveSpeed::WALK
     };
     const std::vector<TilePos> at = walk_route(stream(), context(), run_from_wild_battle, *maps, start, trainers, plan);
-    if (south){
-        m_trainers = std::move(trainers.sights);
-    }
+    sights = std::move(trainers.sights);
     std::vector<TilePos> local;
     for (const TilePos& pos : at){
         const std::optional<TilePos> tile = story_to_local(*maps, goal.map, pos);

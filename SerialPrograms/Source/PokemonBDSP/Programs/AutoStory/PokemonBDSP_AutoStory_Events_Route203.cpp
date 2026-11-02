@@ -1,10 +1,9 @@
-/*  BDSP AutoStory - Events: Route 203 (01.02, 01.06)
+/*  BDSP AutoStory - Events: Route 203 (01.02)
  *
  *  From: https://github.com/PokemonAutomation/
  *
  *  Segment 01's walks along Route 203: east to the Oreburgh Gate and through
- *  it to Oreburgh, and back west to Jubilife, as they ran on the console
- *  (2026-10-29 to 10-31).
+ *  it to Oreburgh, as they ran on the console (2026-10-29 to 10-31).
  *
  */
 
@@ -18,16 +17,12 @@
 #include "CommonTools/Async/InferenceRoutines.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "PokemonBDSP/Inference/PokemonBDSP_DialogDetector.h"
-#include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_StoryMaps.h"
-#include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Location.h"
-#include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_PlannedRoute.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_RouteWalk.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Walk.h"
 #include "PokemonBDSP_AutoStory_Talks.h"
 #include "PokemonBDSP_AutoStory_Walks.h"
 #include "PokemonBDSP_AutoStory_WildBattle.h"
 #include "PokemonBDSP_AutoStory_Events.h"
-#include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_Maps.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -188,51 +183,11 @@ void oreburgh_welcome(VideoStream& stream, ProControllerContext& context){
     context.wait_for_all_requests();
 }
 
-//  01.06: Route 203 on its grid to row 18, below the girl.
-Pokemon::Outcome route_203_to_row_18(StoryExecutor& executor, Pokemon::RunState& state, const Pokemon::StoryStep&){
-    VideoStream& stream = executor.stream();
-    ProControllerContext& context = executor.context();
-    // On the grid (Maps/Route203.json, from the decomp,
-    // its east stretch checked by hand): south from the Gate down the sand,
-    // west along the sand's bottom row and on under the girl's row, which
-    // runs straight to Jubilife as row 18. Trainers the map does not list
-    // are fought where they stop us.
-    RouteTrainers trainers{{}, [&](const std::string& who){
-        talk_or_fight(stream, context, "Route 203: " + who);
-    }};
-    const std::vector<Pokemon::TilePos> at = walk_route(stream, context, run_from_wild_battle, route203_maps(), map_region("Route203", "gate_exit"), trainers, RouteWalkPlan{on_route203_west_line, "Route 203 to row 18", {}, route_plan_costs()});
-    if (at.size() != 1){
-        fail_step(stream, "Route 203: the walk to row 18 did not end on a known tile.");
-    }
-    return Pokemon::outcome_ok(Pokemon::tile_pose("Route203", at));
-}
-
-//  01.06: west along row 18 into Jubilife, counting tiles.
-Pokemon::Outcome row_18_into_jubilife(StoryExecutor& executor, Pokemon::RunState& state, const Pokemon::StoryStep&){
-    VideoStream& stream = executor.stream();
-    ProControllerContext& context = executor.context();
-    const std::vector<Pokemon::TilePos> at = Pokemon::tiles_of(state.pose);
-    if (at.size() != 1){
-        fail_step(stream, "Route 203: row 18's walk needs the one tile the walk to it ended on.");
-    }
-    // Row 18 has no wall before Jubilife, so count the tiles: from column
-    // `x` it is x + 1 taps to Jubilife's first tile (by hand from column 31:
-    // 32 taps, Jubilife's banner on the last one). 01.07 starts there.
-    dpad_tiles(stream, context, DPAD_LEFT, (size_t)at[0].x + 1, "west along row 18 into Jubilife");
-    context.wait_for_all_requests();
-    if (!location_banner_showing(*stream.video().snapshot().frame)){
-        fail_step(stream, "Route 203: no Jubilife banner after counting the tiles west.");
-    }
-    return Pokemon::outcome_ok();
-}
-
 }
 
 
 void add_route203_events(StoryEvents& events){
     events.emplace("route_203_east_to_the_gate", route_203_east_to_the_gate);
-    events.emplace("route_203_to_row_18", route_203_to_row_18);
-    events.emplace("row_18_into_jubilife", row_18_into_jubilife);
     events.emplace("the_hiker", console_event(the_hiker));
     events.emplace("hidden_moves_card", console_event(hidden_moves_card));
     events.emplace("gate_east_to_oreburgh", console_event(gate_east_to_oreburgh));

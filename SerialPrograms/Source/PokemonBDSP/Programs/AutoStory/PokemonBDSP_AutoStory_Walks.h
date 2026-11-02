@@ -67,26 +67,10 @@ void dpad_tiles(VideoStream& stream, ProControllerContext& context, DpadPosition
 //  Through a door straight north of us: tap up to face it, hold up into it,
 //  and wait for its dark fade (by hand: brightness 7, about 1 s after).
 bool dpad_through_door_north(VideoStream& stream, ProControllerContext& context, const std::string& label);
-//  Out of a building whose door is straight south of us, a D-pad tile at a
-//  time, until the location banner shows: it names the map we step into
-//  (e.g. "Oreburgh City") for a few seconds, and never shows inside. Ends in
-//  the doorway, facing south. Out of the Oreburgh Gym from in front of Roark
-//  (by hand, 2026-10-31): 18 taps inside, 2 taps of black fade, the banner on
-//  the 21st. The door's fade alone was missed between steps (r219g walked on
-//  south to the rocks below the gym).
-bool dpad_out_of_building(VideoStream& stream, ProControllerContext& context, size_t max_taps, const std::string& label);
 //  For a player inside a Pokemon Center after a whiteout, at the counter:
 //  out through the door. The door is straight south of the nurse in most
 //  Centers; in Oreburgh's it was two tiles east of where we stood (by hand).
 void walk_out_of_center(VideoStream& stream, ProControllerContext& context, const std::string& label);
-//  West until a transition, by the user's rule for a wall in the way: walk
-//  north to the top wall, which pins the row, then try the rows south of it
-//  one at a time. Trainers who stop us are fought. Returns at the first
-//  transition (a building, a cave, a gate), or when `arrived` matches.
-void west_until_transition(
-    VideoStream& stream, ProControllerContext& context, const std::string& label, size_t max_legs,
-    const std::function<bool(const ImageViewRGB32& screen)>& arrived = nullptr
-);
 
 
 

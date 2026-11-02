@@ -71,7 +71,8 @@ struct StoryEnv{
 
 
 //  The plan costs a ROUTE step's variant names: "" the route costs,
-//  "town" town_plan_costs(), "robust" the planner's defaults. Nothing for
+//  "town" town_plan_costs(), "robust" the planner's defaults, "line"
+//  waypoint_plan_costs() (a stretch of a line a human walked). Nothing for
 //  another name.
 std::optional<RobustPlanCosts> story_route_costs(const std::string& variant);
 
@@ -113,7 +114,7 @@ protected:
     virtual Pokemon::Outcome new_game(Pokemon::RunState& state, const Pokemon::StoryStep& step) override;
     //  verify_tutorial_settings(): fast text, Autosave off.
     virtual Pokemon::Outcome options(Pokemon::RunState& state, const Pokemon::StoryStep& step) override;
-    //  Variant: the plan's costs ("" route, "town", "robust").
+    //  Variant: the plan's costs ("" route, "town", "robust", "line").
     virtual Pokemon::Outcome route(Pokemon::RunState& state, const Pokemon::StoryStep& step) override;
     //  Each leg in D-pad taps, turning first. Variant "one_short_ok": a leg
     //  may end a tile short (a door lined up by sight after). Variant
@@ -151,9 +152,10 @@ private:
     std::string m_checkpoint;
     //  Whether the player has the Running Shoes: the pace routes are timed at.
     bool m_can_run = false;
-    //  Route 202's trainers who can still see us, in story_plan_world()'s
-    //  world tiles; all of them again at each attempt.
-    std::vector<TrainerSight> m_trainers;
+    //  The trainers who can still see us on each story_plan_world() world,
+    //  in its tiles, from its first walk this attempt; all of them again at
+    //  each attempt.
+    std::map<const StoryWorld*, std::vector<TrainerSight>> m_trainers;
     std::map<std::string, size_t> m_failures;
     std::map<std::string, size_t> m_run_counts;
     std::set<std::string> m_stop_rows;
