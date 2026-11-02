@@ -135,6 +135,12 @@ StoryStep legs(std::string name, std::vector<StoryLeg> legs, std::string why, st
 StoryStep to_walls(std::string name, std::vector<StoryLeg> legs, std::string why){
     return PokemonBDSP::legs(std::move(name), std::move(legs), std::move(why), "to_wall");
 }
+//  `step`, after which the player stands on `pose`: a walk to a wall from
+//  a few tiles ends on one.
+StoryStep anchored(StoryStep step, Pose pose){
+    step.pose_after = std::move(pose);
+    return step;
+}
 //  TODO(#114 coord events): the map schema has no scene triggers yet, so
 //  each row steps onto the decomp's trigger tile, named in its reason.
 StoryStep step_into(std::string name, Direction direction, std::string why, std::optional<Pose> pose_after = std::nullopt){
@@ -520,9 +526,9 @@ Pose out_of_oreburgh_gate(){
     return at(ROUTE_203, 55, 9, WEST);
 }
 //  Where Route 204's door (11, 1) lets us into the Ravaged Path: (19, 50),
-//  as in r237a.
+//  as in r237a. The tap stops at the fade, on that tile.
 Pose into_the_ravaged_path(){
-    return arrival(RAVAGED_PATH, map_point(RAVAGED_PATH, "entrance"), NORTH);
+    return at(RAVAGED_PATH, "entrance", NORTH);
 }
 
 //  01.05, planned on Oreburgh's and the Gate's maps with the Diamond decomp's
@@ -646,6 +652,11 @@ std::vector<StoryCheckpoint> to_floaroma(){
         }),
         rowan_and_the_grunts(),
         row("01.08", "Jubilife to the Ravaged Path", after_the_grunts(), {
+            //  One known tile to plan from: from both of the scene's ends
+            //  the joined Jubilife and Route 204 find no plan. Row 5 is open
+            //  from x 44 to 49, a wall at 43.
+            anchored(to_walls("west_to_the_wall", {{.direction = WEST, .tiles = 4}}, "west along row 5 to the wall"),
+                at(JUBILIFE, 44, 5, WEST)),
             //  Lass Sarah's east sight crosses the street (r233a, r234a): she
             //  may stop us for a battle.
             route("below_the_ravaged_path", at(ROUTE_204_SOUTH, "below_door", NORTH),
