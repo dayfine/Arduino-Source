@@ -319,7 +319,7 @@ std::optional<std::vector<RouteStep>> fixed_route(
 std::optional<Direction> wall_beside(const MapData& map, const TilePos& tile){
     for (Direction direction : {Direction::WEST, Direction::EAST, Direction::NORTH, Direction::SOUTH}){
         const TilePos next = tile.next(direction);
-        if (in_bounds(map, next) && tile_at(map, next) == Tile::WALL && object_at(map, next) == nullptr){
+        if (in_bounds(map, next) && tile_at(map, next) == TileKind::WALL && object_at(map, next) == nullptr){
             return direction;
         }
     }
