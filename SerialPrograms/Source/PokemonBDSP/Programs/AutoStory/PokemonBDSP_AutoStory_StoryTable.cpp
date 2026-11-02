@@ -590,6 +590,11 @@ StoryCheckpoint oreburgh_to_route_203(){
 //  01.05; its warp's other end is the tile beside the far mouth.
 StoryCheckpoint route_203_to_oreburgh(){
     return row("01.02", "Route 203 to Oreburgh", on_barrys_trigger(), {
+        //  One known tile to plan from: from all four of the trigger's rows
+        //  at once the planner finds no plan. Its column is open from row
+        //  17 down to the cliff below row 20.
+        anchored(to_walls("south_to_the_cliff", {{.direction = SOUTH, .tiles = 4}}, "down the trigger's column to the cliff"),
+            at(ROUTE_203, 5, 20, SOUTH)),
         route("by_the_gate", out_of_oreburgh_gate(EAST), "east along Route 203 to the Gate's warp tile (55, 9)"),
         tap_into("into_oreburgh_gate", EAST, "the Gate's west mouth (56, 9)", arrival(GATE, {4, 22}, EAST)),
         route("west_of_the_hikers_trigger", at(GATE, 6, 22, EAST), "east along row 22"),
