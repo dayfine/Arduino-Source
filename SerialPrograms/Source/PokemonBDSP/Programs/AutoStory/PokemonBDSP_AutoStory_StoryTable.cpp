@@ -298,17 +298,21 @@ StoryStep route_201_by_the_path(){
     return step;
 }
 
+StoryStep out_of_the_lab_into_dawns_tour(){
+    //  Rowan's spot is in the door's column: run south out of the door. Dawn's
+    //  tour plays on arrival, inside the step's settle (r43: a scene row after
+    //  it waited 20 s for lines already played). She leaves us below the Mart's
+    //  door (27, 10), a row or two down: r39's walk west from "row 11" ran on
+    //  along row 12, which is open to Route 201.
+    return step_into("out_of_the_lab", SOUTH, "out of the lab; Dawn's tour of Sandgem", Pokemon::tile_pose(SANDGEM, {
+            TilePos{26, 11}, TilePos{27, 11}, TilePos{28, 11}, TilePos{26, 12}, TilePos{27, 12}, TilePos{28, 12}
+        }, NORTH));
+}
+
 std::vector<StoryCheckpoint> to_the_catch(){
     return {
         row("00.04", "Home to Mom, then Dawn's catching tutorial on Route 202", at(LAB, "rowan_talk", NORTH), {
-            //  Rowan's spot is in the door's column: run south out of the door. Dawn's
-            //  tour plays on arrival, inside the step's settle (r43: a scene row after
-            //  it waited 20 s for lines already played). She leaves us below the Mart's
-            //  door (27, 10), a row or two down: r39's walk west from "row 11" ran on
-            //  along row 12, which is open to Route 201.
-            step_into("out_of_the_lab", SOUTH, "out of the lab; Dawn's tour of Sandgem", Pokemon::tile_pose(SANDGEM, {
-                    TilePos{26, 11}, TilePos{27, 11}, TilePos{28, 11}, TilePos{26, 12}, TilePos{27, 12}, TilePos{28, 12}
-                }, NORTH)),
+            out_of_the_lab_into_dawns_tour(),
             //  Not west along the doors' row: running it took us into the lab at its
             //  mat (8, 11) (r41, r42). Row 12 is open into Route 201: run it until
             //  Route 201's banner shows, a few tiles in.
