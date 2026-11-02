@@ -53,18 +53,10 @@ struct NamedEntry{
     std::string name() const{ return label; }
 };
 
-// A story list of two tutorial entries, then two of the main story (which
-// starts at index 2), as SV's lists are laid out.
-std::vector<std::unique_ptr<NamedEntry>> two_tutorial_two_main_story(){
-    std::vector<std::unique_ptr<NamedEntry>> list;
-    for (const char* label : {"tutorial 0", "tutorial 1", "main story 0", "main story 1"}){
-        list.emplace_back(std::make_unique<NamedEntry>(NamedEntry{label}));
-    }
-    return list;
-}
-
-// A dropdown built from [begin, end) of that list, and its (slug, label)
-// entries: slugs are indices in the whole list, not in the dropdown.
+// A dropdown built from [begin, end) of a story list of two tutorial entries,
+// then two of the main story (which starts at index 2), as SV's lists are
+// laid out, and its (slug, label) entries: slugs are indices in the whole
+// list, not in the dropdown.
 struct AutoStorySelectScenario{
     std::string name;
     size_t begin;
@@ -80,9 +72,15 @@ public:
     {}
 
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        const StringSelectDatabase database = make_story_select_database(
-            two_tutorial_two_main_story(), m_scenario.begin, m_scenario.end
-        );
+        //  unique_ptr cannot be copied out of a braced list: build it in place.
+        const std::vector<std::unique_ptr<NamedEntry>> list = []{
+            std::vector<std::unique_ptr<NamedEntry>> list;
+            for (const char* label : {"tutorial 0", "tutorial 1", "main story 0", "main story 1"}){
+                list.emplace_back(std::make_unique<NamedEntry>(NamedEntry{label}));
+            }
+            return list;
+        }();
+        const StringSelectDatabase database = make_story_select_database(list, m_scenario.begin, m_scenario.end);
         std::vector<std::pair<std::string, std::string>> got;
         for (const StringSelectEntry& entry : database.case_list()){
             got.emplace_back(entry.slug, entry.display_name);
