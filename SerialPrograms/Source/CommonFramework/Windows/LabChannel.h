@@ -123,6 +123,7 @@ private:
     std::string run_console_command(const std::vector<std::string>& words, LabCommandOutput& output);
     std::string run_on_console(const std::function<void(PanelSession& panel, CancellableScope& scope)>& body);
     std::string run_ui_command(const LabRequestLine& line, std::ostream& out);
+    std::string run_popups(const std::vector<std::string>& words, std::ostream& out);
     std::string run_on_ui(const std::function<std::string()>& body);
     void keep_awake();
     void write_state();
