@@ -25,5 +25,9 @@
     ],
     "objects": [
         {"name": "mom_0", "kind": "npc", "x": 7, "y": 8, "facing": "north"}
+    ],
+    "coord_events": [
+        {"name": "moms_warning", "x": 6, "y": 10, "width": 1, "length": 1, "var": "VAR_PLAYER_HOUSE_STATE", "value": 1, "source": "pret/pokeplatinum res/field/events/events_twinleaf_town_player_house_1f.json coord_events[0] (6, 10), script 5"},
+        {"name": "moms_call", "x": 6, "y": 9, "width": 1, "length": 1, "var": "CONSOLE_MOMS_CALL", "value": 0, "source": "console r45, r46 (2026-11-01): after her heal Mom calls us back as we step above the door; no coord event in the decomp"}
     ]
 }

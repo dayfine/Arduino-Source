@@ -11,7 +11,8 @@
  *  Events, battles, shops and saves are stubs: a dialogue they open is
  *  closed, and the table's pose_after puts the player where they end. A
  *  heal checks that a walk north from where we stand enters a door. A scene
- *  starts when the player steps onto its trigger (SimTrigger). Rooms with no
+ *  starts when the player steps onto one of the maps' coord events while
+ *  its story variable holds (story_vars()). Rooms with no
  *  map (the Trainers' School) are passed over.
  *
  */
@@ -27,6 +28,8 @@
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "Pokemon/AutoStory/Pokemon_StorySegments.h"
 #include "Pokemon/AutoStory/Pokemon_TilePose.h"
+#include "Data/PokemonBDSP_AutoStory_CoordEvents.h"
+#include "Data/PokemonBDSP_AutoStory_Maps.h"
 #include "Utils/PokemonBDSP_AutoStory_GridSim.h"
 #include "Utils/PokemonBDSP_AutoStory_RouteWalk.h"
 #include "PokemonBDSP_AutoStory_Events.h"
@@ -115,35 +118,51 @@ struct RowTrigger{
     SimTrigger trigger;
 };
 
-std::vector<TilePos> column(int x, int y0, int y1){
-    std::vector<TilePos> tiles;
-    for (int y = y0; y <= y1; y++){
-        tiles.push_back({x, y});
-    }
-    return tiles;
-}
-std::vector<TilePos> row_of(int y, int x0, int x1){
-    std::vector<TilePos> tiles;
-    for (int x = x0; x <= x1; x++){
-        tiles.push_back({x, y});
-    }
-    return tiles;
+//  When a story variable holds the value its coord events wait for: from
+//  row `row` on, once the step `after` has run ("" from the row's start).
+struct VarState{
+    std::string var;
+    int value;
+    std::string row;
+    std::string after;
+};
+
+//  The story variables of 00.04 to 00.05c: Dawn's catching tutorial waits on
+//  Route 202 from 00.04's start, Mom calls us back once she has healed us,
+//  and the Poketch president waits on Jubilife's row 40 in 00.05b.
+std::vector<VarState> story_vars(){
+    return {
+        {.var = "VAR_ROUTE_202_STATE", .value = 0, .row = "00.04", .after = ""},
+        {.var = "CONSOLE_MOMS_CALL", .value = 0, .row = "00.04", .after = "mom_heals_us"},
+        {.var = "VAR_POKETCH_CAMPAIGN_STATE", .value = 1, .row = "00.05b", .after = ""},
+    };
 }
 
-//  The coord events of 00.04 to 00.05c, from the decomp as the table cites
-//  them: Mom's call above the door after she heals us (r45, r46), Dawn's
-//  catching tutorial on Route 202, and the Poketch president on Jubilife's
-//  row 40.
+//  The maps' coord events (story_coord_events()) whose variable holds.
+std::optional<VarState> var_state(const CoordEvent& event){
+    for (const VarState& state : story_vars()){
+        if (state.var == event.var && state.value == event.value){
+            return state;
+        }
+    }
+    return std::nullopt;
+}
+
+RowTrigger row_trigger(const std::string& map, const CoordEvent& event, const VarState& state){
+    return {.row = state.row, .after = state.after, .map = map, .trigger = {.name = event.name, .tiles = event.tiles}};
+}
+
 std::vector<RowTrigger> story_triggers(){
-    const auto trigger = [](std::string row, std::string after, std::string map, std::string name, std::vector<TilePos> tiles){
-        return RowTrigger{.row = std::move(row), .after = std::move(after), .map = std::move(map),
-            .trigger = SimTrigger{.name = std::move(name), .tiles = std::move(tiles)}};
-    };
-    return {
-        trigger("00.04", "mom_heals_us", "PlayerHouse1F", "moms_call", {TilePos{6, 9}}),
-        trigger("00.04", "", "Route202", "catch_tutorial", column(21, 25, 29)),
-        trigger("00.05b", "", "JubilifeCity", "president", row_of(40, 44, 48)),
-    };
+    std::vector<RowTrigger> triggers;
+    for (const auto& [map, json] : bdsp_map_json()){
+        for (const CoordEvent& event : story_coord_events(map)){
+            const std::optional<VarState> state = var_state(event);
+            if (state){
+                triggers.push_back(row_trigger(map, event, *state));
+            }
+        }
+    }
+    return triggers;
 }
 
 
@@ -357,6 +376,34 @@ UnitTestResult run_rows(Logger& logger, const Pokemon::SegmentRange& range){
 }
 
 
+//  Every coord event has ground the player can step onto, and the ones
+//  the story's variables arm are there.
+class Test_CoordEvents : public UnitTest{
+public:
+    Test_CoordEvents()
+        : UnitTest("PokemonBDSP::AutoStory - Story sim: the maps' coord events are on open ground or doors")
+    {}
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        for (const auto& [map, json] : bdsp_map_json()){
+            const StoryWorld* world = story_plan_world(map, map);
+            for (const CoordEvent& event : world == nullptr ? std::vector<CoordEvent>{} : story_coord_events(map)){
+                const auto open = [&](const TilePos& pos){
+                    const TilePos tile = story_to_world(*world, map, pos);
+                    return standable(*world, tile) || world->tile(tile) == Pokemon::TileKind::DOOR;
+                };
+                //  The decomp's boxes may run into walls (Sandgem's (4, 10..15)).
+                if (!std::ranges::any_of(event.tiles, open)){
+                    return std::format("{} {}: no tile is open ground or a door.", map, event.name);
+                }
+            }
+        }
+        const size_t armed = story_triggers().size();
+        return armed == story_vars().size() ? UnitTestResult(true)
+            : UnitTestResult(std::format("Expected {} coord events armed by the story's variables, found {}.", story_vars().size(), armed));
+    }
+};
+
+
 class Test_StorySim : public UnitTest{
 public:
     Test_StorySim(std::string name, std::string from, std::string to)
@@ -381,6 +428,7 @@ private:
 
 
 void add_tests_AutoStory_StorySim(UnitTestDatabase& database){
+    database.add<Test_CoordEvents>();
     database.add<Test_StorySim>("00.04 to 00.04d: home, the catch, Sandgem's Center, Route 202", "00.04", "00.04d");
     database.add<Test_StorySim>("00.05 to 00.05c: Jubilife's Center, School, clowns and Poketch", "00.05", "00.05c");
 }

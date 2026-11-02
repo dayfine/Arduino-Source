@@ -137,5 +137,8 @@
         {"x": 19, "y": 29, "glyph": "#", "measured_by": "r253, 2026-11-01"},
         {"x": 20, "y": 29, "glyph": "#", "measured_by": "r253, 2026-11-01"},
         {"x": 21, "y": 30, "glyph": "#", "measured_by": "r254, 2026-11-01"}
+    ],
+    "coord_events": [
+        {"name": "catch_tutorial", "x": 21, "y": 25, "width": 1, "length": 5, "var": "VAR_ROUTE_202_STATE", "value": 0, "source": "pret/pokeplatinum res/field/events/events_route_202.json coord_events[0] (180, 825), script 6"}
     ]
 }
