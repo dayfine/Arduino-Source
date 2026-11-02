@@ -7,6 +7,8 @@
 #include "CommonFramework/ImageTools/ImageStats.h"
 #include "CommonFramework/VideoPipeline/VideoOverlayScopes.h"
 #include "CommonTools/Images/SolidColorTest.h"
+#include "Common/Cpp/TestRunners/UnitTestDatabase.h"
+#include "Tests/ImageUnitTest.h"
 #include "PokemonBDSP_MenuDetector.h"
 
 namespace PokemonAutomation{
@@ -82,6 +84,58 @@ bool MenuWatcher::process_frame(const ImageViewRGB32& frame, WallClock timestamp
     return detect(frame);
 }
 
+
+
+namespace{
+
+//  Which columns the detector checks: the default ones from the top, or the
+//  ones below the "NEW" tags (a new game's menu, skip_new_banner = true).
+enum class Columns{
+    FromTop,
+    BelowNewTags,
+};
+
+class Test_MenuDetector : public ImageUnitTest{
+public:
+    Test_MenuDetector(const std::string& image, Columns columns, bool expected)
+        : ImageUnitTest(
+            "PokemonBDSP::MenuDetector" + std::string(columns == Columns::BelowNewTags ? "(skip_new_banner)" : "") + " - " + image,
+            {image}
+        )
+        , m_columns(columns)
+        , m_expected(expected)
+    {}
+
+    virtual UnitTestResult run_on_images(
+        Logger&, CancellableScope&,
+        const std::vector<ImageRGB32>& images
+    ) const override{
+        MenuDetector detector(COLOR_RED, m_columns == Columns::BelowNewTags);
+        return detector.detect(images[0]) == m_expected;
+    }
+
+private:
+    Columns m_columns;
+    bool m_expected;
+};
+
+}
+
+void add_tests_MenuDetector(UnitTestDatabase& database){
+    //  The "NEW" tag above OPTIONS breaks the third column from the top.
+    database.add<Test_MenuDetector>("PokemonBDSP/MenuDetector/NewGameBagOptions_True.png", Columns::BelowNewTags, true);
+    database.add<Test_MenuDetector>("PokemonBDSP/MenuDetector/NewGameBagOptions_True.png", Columns::FromTop, false);
+    for (const char* image : {
+        "PokemonBDSP/MenuDetector/Home_False.png",
+        "PokemonBDSP/MenuDetector/OverworldSandgemMart_False.png",
+        "PokemonBDSP/MenuDetector/OverworldOreburghMine_False.png",
+        "PokemonBDSP/MenuDetector/IntroDialog_False.png",
+        "PokemonBDSP/MenuDetector/IntroBarry_False.png",
+    }){
+        database.add<Test_MenuDetector>(image, Columns::FromTop, false);
+        database.add<Test_MenuDetector>(image, Columns::BelowNewTags, false);
+    }
+}
 
 
 }
