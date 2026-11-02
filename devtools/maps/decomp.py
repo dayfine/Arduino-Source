@@ -12,8 +12,11 @@ in these world coordinates.
 pokeplatinum keeps matrices and events as JSON and its map headers in
 include/data/map_headers.h. pokediamond keeps them as binary NARC entries
 (the layout pokeplatinum's tools/jsoncnv packs) with the header table in
-arm9/src/map_header.c, and gives sprites, movement types and trainer types
-by number; pokeplatinum's generated/*.txt tables name them. BDSP keeps
+arm9/src/map_header.c, and gives sprites, movement types, trainer types and
+story variables by number; pokeplatinum's generated/*.txt tables name them.
+An events file lists bg events, object events, warps and coord events (the
+scene triggers: stepping onto one of a box of tiles while a story variable
+holds a value starts a script), in that order. BDSP keeps
 Diamond/Pearl's layout; Platinum's few changes show up on the console.
 """
 import datetime
@@ -154,10 +157,23 @@ class Sign:
 
 
 @dataclass
+class CoordEvent:
+    """A scene trigger: `width` x `length` tiles from (x, z), armed while `var` holds `value`."""
+    script: int
+    x: int
+    z: int
+    width: int
+    length: int
+    var: str
+    value: int
+
+
+@dataclass
 class Events:
     objects: list = field(default_factory=list)
     warps: list = field(default_factory=list)
     signs: list = field(default_factory=list)
+    coord_events: list = field(default_factory=list)
 
 
 def strip_prefix(name, prefix):
@@ -203,8 +219,11 @@ class Platinum:
     def events_name(self, events_id):
         return f'{events_id}.json'
 
+    def events_path(self, events_id):
+        return f'res/field/events/{events_id}.json'
+
     def events(self, events_id):
-        data = json.loads(self.source.text(f'res/field/events/{events_id}.json'))
+        data = json.loads(self.source.text(self.events_path(events_id)))
         events = Events()
         for o in data.get('object_events', []):
             trainer = o['trainer_type'] != 'TRAINER_TYPE_NONE'
@@ -222,6 +241,9 @@ class Platinum:
         for b in data.get('bg_events', []):
             if b['type'] in BG_SIGNS:
                 events.signs.append(Sign(b['x'], b['z']))
+        for c in data.get('coord_events', []):
+            events.coord_events.append(CoordEvent(
+                c['script'], c['x'], c['z'], c['width'], c['length'], c['var'], c['value']))
         return events
 
 
@@ -231,6 +253,11 @@ class Diamond:
     Sprites, movement types and trainer types are numbers there; `names` is a
     Source for pret/pokeplatinum, whose generated/*.txt tables list them in
     order (checked on Route 204 North: the same twelve objects come out).
+    Story variables are numbered from 0x4000 in both games; Platinum's
+    generated/vars_flags.txt (a C enum) names them (checked: the coord events
+    that pokeplatinum also has on Route 202, Sandgem, Jubilife and the
+    player's house come out with Platinum's variable names). A number that
+    table does not name stays a number.
     """
     REPO = 'pret/pokediamond'
     GAME = 'Pokemon Diamond'
@@ -271,6 +298,16 @@ class Diamond:
         entries = self.table(table)
         return strip_prefix(entries[value], prefix) if value < len(entries) else str(value)
 
+    def var_name(self, number):
+        if 'vars' not in self._tables:
+            values = enum_values(self.names.text('generated/vars_flags.txt').splitlines())
+            names = {}
+            for name, value in values.items():
+                if name.startswith('VAR_'):
+                    names.setdefault(value, name)
+            self._tables['vars'] = names
+        return self._tables['vars'].get(number, str(number))
+
     def matrix(self, matrix_id):
         data = self.source.read(f'files/fielddata/mapmatrix/map_matrix/narc_{matrix_id:04d}.bin')
         width, height, has_headers, has_altitudes, name_len = struct.unpack_from('<5B', data, 0)
@@ -297,8 +334,11 @@ class Diamond:
     def events_name(self, events_id):
         return f'zone_event narc_{events_id:04d}'
 
+    def events_path(self, events_id):
+        return f'files/fielddata/eventdata/zone_event_release/narc_{events_id:04d}.bin'
+
     def events(self, events_id):
-        data = self.source.read(f'files/fielddata/eventdata/zone_event_release/narc_{events_id:04d}.bin')
+        data = self.source.read(self.events_path(events_id))
         events = Events()
         offset = 0
         (count,) = struct.unpack_from('<I', data, offset)
@@ -327,7 +367,30 @@ class Diamond:
             x, z, dest, _warp = struct.unpack_from('<4H4x', data, offset)
             offset += 12
             events.warps.append(Warp(x, z, self.map_name(dest)))
+        (count,) = struct.unpack_from('<I', data, offset)
+        offset += 4
+        for _ in range(count):
+            script, x, z, width, length, _y, value, var = struct.unpack_from('<8H', data, offset)
+            offset += 16
+            events.coord_events.append(CoordEvent(script, x, z, width, length, self.var_name(var), value))
+        if offset != len(data):
+            raise ValueError(f'{self.events_name(events_id)}: {len(data) - offset} bytes after the coord events')
         return events
+
+
+def enum_values(lines):
+    """Name -> value of a C enum's lines: `NAME` (the previous value + 1) or `NAME = number or NAME`."""
+    values = {}
+    following = 0
+    for line in lines:
+        name, _, value = (part.strip() for part in line.partition('='))
+        if not name:
+            continue
+        if value:
+            following = int(value, 0) if value[0].isdigit() else values[value]
+        values[name] = following
+        following += 1
+    return values
 
 
 def title(constant):
