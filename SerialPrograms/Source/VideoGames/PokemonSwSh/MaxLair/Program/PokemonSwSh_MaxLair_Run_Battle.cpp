@@ -77,7 +77,7 @@ bool read_battle_menu(
     bool retry = !process_header_read(stream.logger(), state, std::move(mon));
 
     //  The fourth battle must be a boss; earlier battles must be rentals.
-    if (!state.infer_boss_from_opponent()){
+    if (!state.accept_opponent()){
         retry = true;
     }
 
@@ -107,7 +107,7 @@ bool read_battle_menu(
     context.wait_for_all_requests();
 
 
-    if (!state.infer_boss_from_opponent()){
+    if (!state.accept_opponent()){
         stream.log("Opponent does not match the battle stage after summary read.", COLOR_RED);
         dump_image(stream.logger(), MODULE_NAME, "UnexpectedBattleOpponent", snapshot);
         return false;

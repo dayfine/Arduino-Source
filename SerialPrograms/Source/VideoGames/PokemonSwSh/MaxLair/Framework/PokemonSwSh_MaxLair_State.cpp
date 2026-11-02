@@ -14,7 +14,7 @@ namespace PokemonSwSh{
 namespace MaxLairInternal{
 
 
-bool GlobalState::infer_boss_from_opponent(){
+bool GlobalState::accept_opponent(){
     if (opponent.size() != 1){
         return false;
     }
@@ -27,7 +27,7 @@ bool GlobalState::infer_boss_from_opponent(){
     }
     return true;
 }
-std::string GlobalState::caught_boss(size_t caught_count) const{
+std::string GlobalState::boss_if_caught(size_t caught_count) const{
     //  A failed adventure can still have an identified boss, but no boss catch.
     return caught_count == 4 && is_boss(boss) ? boss : std::string();
 }
