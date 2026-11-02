@@ -24,41 +24,19 @@ namespace NintendoSwitch{
 namespace PokemonFRLG{
 
 using namespace std::chrono_literals;
+using namespace OverworldWalkSteps;
 
 
 namespace{
 
-constexpr Milliseconds TILE_TIME = 267ms;       //  16 frames at 60 fps, measured exact over 15 tiles
-constexpr Milliseconds SURF_TILE_TIME = 133ms;  //  the game moves a surfing player at running speed
-constexpr Milliseconds TURN_TAP = 40ms;         //  turns a player facing another way, without a step
-constexpr Milliseconds TURN_SETTLE = 300ms;
-constexpr Milliseconds FACE_HOLD = 40ms;        //  short enough to turn without stepping
 constexpr Milliseconds FACE_SETTLE = 300ms;     //  the turn animation, before A reaches what is ahead
-constexpr Milliseconds STEP_RELEASE = 100ms;
 //  From the end of the hold, through the fade out and in.
 constexpr Milliseconds WARP_TIMEOUT = 8000ms;
 constexpr Milliseconds SURF_PROMPT_TIMEOUT = 5000ms;
 constexpr Milliseconds SURF_ANIMATION = 3000ms;
-//  After a warp's fade: leaving by a door the game walks the player a tile out
-//  on its own, and a leg started before that ends loses tiles (on the console a
-//  600ms wait cost 2 tiles).
-constexpr Milliseconds AFTER_WARP = 1500ms;
-//  After a warp's fade, which a wild battle's flashes and wipe can pass for:
-//  a battle's HP box shows within this long (console B, 2026-11-01).
-constexpr Milliseconds AFTER_WARP_BATTLE_WATCH = 5000ms;
-//  A message set off by a leg's last step shows after the hold ends. Caught
-//  here, before the next leg's turn tap, which the message would swallow.
-constexpr Milliseconds AFTER_LEG_WATCH = 500ms;
-//  The same after a leg through grass. A battle whose flashes are missed is
-//  seen only by its "Wild <Pokemon> appeared!", 3.7s after its step's press
-//  (twice on Route 1, console B, 2026-11-01, run 7). Unless the walker waits
-//  that long, the next leg is walked into the battle and lost: there, "east
-//  4" and "west 4".
-constexpr Milliseconds AFTER_WILD_LEG_WATCH = 3500ms;
 //  After a message closes: a trainer who saw the player speaks first, then
 //  the battle starts, with "<Trainer> would like to battle!" seconds later.
 constexpr Milliseconds TRAINER_BATTLE_WATCH = 6000ms;
-constexpr size_t MAX_INTERRUPTIONS_PER_LEG = 5;
 
 
 //  A wild battle, seen by the flashes it starts with.
@@ -169,6 +147,15 @@ private:
 };
 
 
+Pokemon::LegSpec leg_spec(const RouteStep& step){
+    return Pokemon::LegSpec{step.direction, step.tiles, step.to_wall, step.surfing ? SURF_TILE_TIME : TILE_TIME};
+}
+
+}
+
+
+namespace OverworldWalkSteps{
+
 DpadPosition dpad(Direction direction){
     switch (direction){
     case Direction::NORTH:
@@ -183,13 +170,8 @@ DpadPosition dpad(Direction direction){
     return DPAD_NONE;
 }
 
-//  The leg mover: holds the D-pad. FRLG moves exactly a tile per 16 frames.
 void hold_dpad(ProControllerContext& context, Direction direction, Milliseconds duration){
     pbf_press_dpad(context, dpad(direction), duration, STEP_RELEASE);
-}
-
-Pokemon::LegSpec leg_spec(const RouteStep& step){
-    return Pokemon::LegSpec{step.direction, step.tiles, step.to_wall, step.surfing ? SURF_TILE_TIME : TILE_TIME};
 }
 
 //  One watcher for the whole fade: a ladder's black is short enough to be

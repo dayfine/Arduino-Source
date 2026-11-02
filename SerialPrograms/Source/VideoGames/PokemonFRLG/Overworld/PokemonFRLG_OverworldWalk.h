@@ -72,6 +72,59 @@ void walk_overworld_route(
 );
 
 
+//  The pieces walk_overworld_route() is made of, for a walker that runs a
+//  route its own way. Each throws OperationFailedException as
+//  walk_overworld_route() describes.
+namespace OverworldWalkSteps{
+
+inline constexpr Milliseconds TILE_TIME(267);       //  16 frames at 60 fps, measured exact over 15 tiles
+inline constexpr Milliseconds SURF_TILE_TIME(133);  //  the game moves a surfing player at running speed
+inline constexpr Milliseconds TURN_TAP(40);         //  turns a player facing another way, without a step
+inline constexpr Milliseconds TURN_SETTLE(300);
+inline constexpr Milliseconds FACE_HOLD(40);        //  short enough to turn without stepping
+inline constexpr Milliseconds STEP_RELEASE(100);
+//  After a warp's fade: leaving by a door the game walks the player a tile out
+//  on its own, and a leg started before that ends loses tiles (on the console a
+//  600ms wait cost 2 tiles).
+inline constexpr Milliseconds AFTER_WARP(1500);
+//  After a warp's fade, which a wild battle's flashes and wipe can pass for:
+//  a battle's HP box shows within this long (console B, 2026-11-01).
+inline constexpr Milliseconds AFTER_WARP_BATTLE_WATCH(5000);
+//  A message set off by a leg's last step shows after the hold ends. Caught
+//  here, before the next leg's turn tap, which the message would swallow.
+inline constexpr Milliseconds AFTER_LEG_WATCH(500);
+//  The same after a leg through grass. A battle whose flashes are missed is
+//  seen only by its "Wild <Pokemon> appeared!", 3.7s after its step's press
+//  (twice on Route 1, console B, 2026-11-01, run 7). Unless the walker waits
+//  that long, the next leg is walked into the battle and lost: there, "east
+//  4" and "west 4".
+inline constexpr Milliseconds AFTER_WILD_LEG_WATCH(3500);
+inline constexpr size_t MAX_INTERRUPTIONS_PER_LEG = 5;
+
+DpadPosition dpad(Direction direction);
+
+//  The leg mover: holds the D-pad. FRLG moves exactly a tile per 16 frames.
+void hold_dpad(ProControllerContext& context, Direction direction, Milliseconds duration);
+
+//  After a hold onto `step`'s warp: waits out its fade.
+void wait_out_warp(ConsoleHandle& console, ProControllerContext& context, const RouteStep& step);
+
+//  Before `step`: fails unless the overworld is up.
+void check_overworld(ConsoleHandle& console, ProControllerContext& context, const RouteStep& step);
+
+//  After `step`'s warp: fails, once the battle is fled, if its fade was a
+//  wild battle's.
+void check_warp_was_no_battle(ConsoleHandle& console, ProControllerContext& context, const RouteStep& step);
+
+//  The way the player faces, read from the screen; nothing if it can't be read.
+std::optional<Direction> read_facing(ConsoleHandle& console, ProControllerContext& context);
+
+//  Facing `direction` (turning first unless `facing_water`), starts Surf.
+void start_surf(ConsoleHandle& console, ProControllerContext& context, Direction direction, bool facing_water);
+
+}
+
+
 
 }
 }
