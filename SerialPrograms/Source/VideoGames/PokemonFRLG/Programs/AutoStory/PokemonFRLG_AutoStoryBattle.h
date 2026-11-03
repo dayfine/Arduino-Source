@@ -129,6 +129,8 @@ struct PartyStatus{
     bool hp_seen = false;
     bool hp_yellow = false;
     bool hp_red = false;
+    //  The HP bar's colored share, 0 to 1, for the log.
+    double hp_fill = 0;
     StatusCondition status = StatusCondition::NONE;
 };
 PartyStatus read_party_status(const ImageViewRGB32& screen);
