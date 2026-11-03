@@ -4,11 +4,12 @@
  *
  *  SID Helper's intro timing per language, and Starter RNG's per-starter
  *  tables, as SID Helper and Starter RNG computed them before the steps
- *  moved out of the programs.
+ *  moved out of the programs; and whether a shiny was the target.
  *
  */
 
 #include <format>
+#include <utility>
 #include <string>
 #include <vector>
 #include "CommonFramework/Language.h"
@@ -138,6 +139,63 @@ private:
     StarterRow m_row;
 };
 
+
+
+//  Target: seed 0x70FE, advance 1000.
+struct ShinyRow{
+    std::string name;
+    //  The (seed, advance) of each state the shiny's stats match.
+    std::vector<std::pair<uint16_t, uint64_t>> hits;
+    StarterRngOutcome expected;
+};
+
+const std::vector<ShinyRow> SHINY_ROWS = {
+    {.name = "the target alone", .hits = {{0x70fe, 1000}}, .expected = StarterRngOutcome::shiny_on_target},
+    {.name = "the target among others", .hits = {{0x70fe, 998}, {0x70fe, 1000}, {0x70ff, 1000}}, .expected = StarterRngOutcome::shiny_on_target},
+    {.name = "another advance", .hits = {{0x70fe, 1002}}, .expected = StarterRngOutcome::shiny_off_target},
+    {.name = "another seed", .hits = {{0x70fd, 1000}}, .expected = StarterRngOutcome::shiny_off_target},
+    {.name = "no match", .hits = {}, .expected = StarterRngOutcome::shiny},
+};
+
+const char* outcome_name(StarterRngOutcome outcome){
+    switch (outcome){
+    case StarterRngOutcome::shiny:              return "shiny";
+    case StarterRngOutcome::shiny_on_target:    return "shiny_on_target";
+    case StarterRngOutcome::shiny_off_target:   return "shiny_off_target";
+    case StarterRngOutcome::target_hit:         return "target_hit";
+    case StarterRngOutcome::wild_shiny:         return "wild_shiny";
+    case StarterRngOutcome::out_of_resets:      return "out_of_resets";
+    case StarterRngOutcome::no_matches:         return "no_matches";
+    }
+    return "?";
+}
+
+class Test_IdentifyShiny : public UnitTest{
+public:
+    explicit Test_IdentifyShiny(const ShinyRow& row)
+        : UnitTest("PokemonFRLG::RngSteps - Shiny " + row.name)
+        , m_row(row)
+    {}
+
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        std::vector<AdvRngState> hits;
+        for (const auto& [seed, advance] : m_row.hits){
+            AdvRngState hit{};
+            hit.seed = seed;
+            hit.advance = advance;
+            hits.push_back(hit);
+        }
+        const StarterRngOutcome got = identify_shiny(0x70fe, 1000, hits);
+        if (got != m_row.expected){
+            return std::string("Expected ") + outcome_name(m_row.expected) + ", got " + outcome_name(got);
+        }
+        return true;
+    }
+
+private:
+    ShinyRow m_row;
+};
+
 }
 
 
@@ -147,6 +205,9 @@ void add_tests_RngSteps(UnitTestDatabase& database){
     }
     for (const StarterRow& row : STARTER_ROWS){
         database.add<Test_StarterTables>(row);
+    }
+    for (const ShinyRow& row : SHINY_ROWS){
+        database.add<Test_IdentifyShiny>(row);
     }
 }
 

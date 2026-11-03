@@ -220,6 +220,7 @@ void StarterRng::program(SingleSwitchProgramEnvironment& env, ProControllerConte
             .profile = PROFILE,
             .ignore_wild_shinies = IGNORE_WILD_SHINIES,
             .take_video = TAKE_VIDEO,
+            .identify_shiny = false,
             .max_resets = [this]{ return uint64_t(MAX_RESETS); },
             .on_reset = nullptr,
         },

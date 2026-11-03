@@ -81,6 +81,10 @@ struct StarterRngSettings{
     bool ignore_wild_shinies = false;
     //  Record a video when a shiny is found.
     bool take_video = false;
+    //  After a shiny, read its summary and search for the state hit, to
+    //  tell whether it was the target (shiny_on_target or
+    //  shiny_off_target). Off, the attempts end on the shiny at once.
+    bool identify_shiny = false;
     //  Read before each reset, since Starter RNG lets the user change it
     //  while running.
     std::function<uint64_t()> max_resets;
@@ -105,16 +109,23 @@ struct StarterRngNotifications{
 
 
 enum class StarterRngOutcome{
-    shiny,          //  The starter was shiny after a reset.
+    shiny,          //  The starter was shiny after a reset; not known if on the target.
+    shiny_on_target,    //  Shiny, and the target is among the states its stats match.
+    shiny_off_target,   //  Shiny, and the states its stats match aren't the target.
     target_hit,     //  The calibration shows the target was hit; not shiny.
     wild_shiny,     //  A wild shiny on Route 1, with ignore_wild_shinies off.
     out_of_resets,  //  More resets than max_resets.
     no_matches,     //  5 searches in a row matched no state near the target.
 };
 
+//  A shiny's outcome from the states its stats match near the target
+//  ("hits"): on the target if it is among them, off it if not, and just
+//  shiny if none match.
+StarterRngOutcome identify_shiny(uint16_t seed, uint64_t advances, const std::vector<AdvRngState>& hits);
+
 struct StarterRngResult{
     StarterRngOutcome outcome = StarterRngOutcome::out_of_resets;
-    //  The target's PID, nature and IVs, on target_hit.
+    //  The target's PID, nature and IVs, on target_hit and shiny_on_target.
     std::optional<AdvPokemonResult> pokemon;
 };
 
@@ -142,6 +153,7 @@ private:
     std::optional<StarterRngOutcome> finished(SingleSwitchProgramEnvironment& env);
     void reset_game(SingleSwitchProgramEnvironment& env, ProControllerContext& context);
     bool check_shiny_starter(SingleSwitchProgramEnvironment& env, ProControllerContext& context);
+    StarterRngOutcome identify_shiny_starter(SingleSwitchProgramEnvironment& env, ProControllerContext& context);
     void send_shiny_notification(SingleSwitchProgramEnvironment& env, ProControllerContext& context, const std::string& title);
     std::vector<AdvRngState> search(SingleSwitchProgramEnvironment& env, AdvRngFilters& filters);
     void record_error(SingleSwitchProgramEnvironment& env, const std::vector<AdvRngState>& search_hits);

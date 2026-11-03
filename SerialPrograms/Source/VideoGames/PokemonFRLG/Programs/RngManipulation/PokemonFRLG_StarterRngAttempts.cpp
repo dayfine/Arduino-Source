@@ -4,6 +4,8 @@
  *
  */
 
+#include <algorithm>
+#include <format>
 #include <set>
 #include <string>
 #include "Common/Cpp/Exceptions.h"
@@ -38,6 +40,11 @@ const uint64_t INITIAL_ADVANCES_RADIUS = 1024;
 const uint8_t MAX_HISTORY_LENGTH = 10;
 
 const int16_t GENDER_THRESHOLD = 30;
+
+const std::set<std::string>& starter_species(){
+    static const std::set<std::string> SPECIES_LIST = { "bulbasaur", "squirtle", "charmander" };
+    return SPECIES_LIST;
+}
 
 }
 
@@ -79,6 +86,17 @@ int steps_left_to_lab_door(StarterSpecies starter){
         return 4;
     }
     throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "Unknown starter.");
+}
+
+
+StarterRngOutcome identify_shiny(uint16_t seed, uint64_t advances, const std::vector<AdvRngState>& hits){
+    if (hits.empty()){
+        return StarterRngOutcome::shiny;
+    }
+    const bool on_target = std::any_of(hits.begin(), hits.end(), [&](const AdvRngState& hit){
+        return have_hit_target(seed, advances, hit);
+    });
+    return on_target ? StarterRngOutcome::shiny_on_target : StarterRngOutcome::shiny_off_target;
 }
 
 
@@ -144,7 +162,9 @@ StarterRngResult StarterRngAttempts::run(SingleSwitchProgramEnvironment& env, Pr
         reset_game(env, context);
 
         if (check_shiny_starter(env, context)){
-            return StarterRngResult{.outcome = StarterRngOutcome::shiny, .pokemon = std::nullopt};
+            const StarterRngOutcome shiny = m_settings.identify_shiny ? identify_shiny_starter(env, context) : StarterRngOutcome::shiny;
+            const bool on_target = shiny == StarterRngOutcome::shiny_on_target;
+            return StarterRngResult{.outcome = shiny, .pokemon = on_target ? std::optional(target_result) : std::nullopt};
         }
 
         run_attempt(env, context);
@@ -235,6 +255,24 @@ bool StarterRngAttempts::check_shiny_starter(SingleSwitchProgramEnvironment& env
     return shiny_found;
 }
 
+//  On the shiny's summary, as check_for_shiny() leaves it: reads it as
+//  stage 1 of an attempt does and searches near the target.
+StarterRngOutcome StarterRngAttempts::identify_shiny_starter(SingleSwitchProgramEnvironment& env, ProControllerContext& context){
+    AdvObservedPokemon pokemon = read_summary(env.console, context, m_settings.language, starter_species());
+    pokemon.level[0] = 5;
+    AdvRngFilters filters = observation_to_filters(pokemon, m_base_stats);
+    m_displays.filters.set(filters);
+    const std::vector<AdvRngState> hits = search(env, filters);
+    m_displays.calibration.set_hits(hits);
+    const StarterRngOutcome outcome = identify_shiny(m_target.seed, m_target.advances, hits);
+    env.log(std::format(
+        "Shiny starter: {} states near the target match it; {}.", hits.size(),
+        outcome == StarterRngOutcome::shiny_on_target ? "the target is one of them"
+            : outcome == StarterRngOutcome::shiny_off_target ? "the target isn't" : "not known if it is the target"
+    ));
+    return outcome;
+}
+
 void StarterRngAttempts::send_shiny_notification(
     SingleSwitchProgramEnvironment& env, ProControllerContext& context, const std::string& title
 ){
@@ -270,10 +308,8 @@ void StarterRngAttempts::record_error(SingleSwitchProgramEnvironment& env, const
 
 
 void StarterRngAttempts::run_attempt(SingleSwitchProgramEnvironment& env, ProControllerContext& context){
-    static const std::set<std::string> SPECIES_LIST = { "bulbasaur", "squirtle", "charmander" };
-
     // Stage 1: initial search -- starter received
-    AdvObservedPokemon pokemon = read_summary(env.console, context, m_settings.language, SPECIES_LIST);
+    AdvObservedPokemon pokemon = read_summary(env.console, context, m_settings.language, starter_species());
     pokemon.level[0] = 5;
     AdvRngFilters filters = observation_to_filters(pokemon, m_base_stats);
     m_displays.filters.set(filters);
