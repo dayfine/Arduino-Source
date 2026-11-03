@@ -16,6 +16,7 @@
 #include "Common/Cpp/Logging/AbstractLogger.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "PokemonFRLG_AutoStoryBattle.h"
+#include "PokemonFRLG_AutoStoryBattleData.h"
 #include "PokemonFRLG_AutoStoryBattleDecisions.h"
 #include "PokemonFRLG_AutoStoryParty.h"
 
@@ -372,8 +373,9 @@ UnitTestResult test_summary_members(Logger&){
 //  #211: Bite, not Water Gun, against the trainers whose parties resist
 //  Water Gun: the Cerulean rival's Bulbasaur, and Misty's Staryu and
 //  Starmie (Water, Psychic: Bite does twice). Once Bite is out of PP,
-//  Tackle (35) over the resisted Water Gun (40 x 1.5 x 0.5); and the battle
-//  loop picks Bite against a known party, but not in a wild battle.
+//  Tackle (35, on Bulbasaur's lower Defense) over the resisted Water Gun
+//  (40 x 1.5 x 0.5); and the battle loop picks Bite against a known party,
+//  but not in a wild battle, which has its own foes (BattleData tests).
 UnitTestResult test_attack_by_matchup(Logger&){
     PartyMember wartortle = grown_to(new_member("squirtle", 5), 20);
     const std::vector<std::string> bulbasaur{"bulbasaur"};
@@ -388,8 +390,8 @@ UnitTestResult test_attack_by_matchup(Logger&){
     };
     const std::vector<Case> cases{
         {.name = "the rival's Bulbasaur", .foes = bulbasaur},
-        {.name = "the Cerulean rival's party", .foes = trainer_party("rival_cerulean")},
-        {.name = "Misty's party", .foes = trainer_party("misty")},
+        {.name = "the Cerulean rival's party", .foes = trainer_party("TRAINER_RIVAL_CERULEAN_BULBASAUR")},
+        {.name = "Misty's party", .foes = trainer_party("TRAINER_LEADER_MISTY")},
     };
     for (const Case& c : cases){
         const std::optional<size_t> slot = attack_slot_against(wartortle, c.foes);
@@ -397,8 +399,9 @@ UnitTestResult test_attack_by_matchup(Logger&){
             return std::format("{} ({}): expected Bite (slot 1), got slot {}.", c.name, joined(c.foes), slot ? std::to_string(*slot) : "none");
         }
     }
-    if (trainer_party("rival_cerulean") != std::vector<std::string>{"pidgeotto", "abra", "rattata", "bulbasaur"}){
-        return "Expected the Cerulean rival's party from pret's sParty_RivalCeruleanBulbasaur, got " + joined(trainer_party("rival_cerulean")) + ".";
+    const std::vector<std::string> rival = trainer_party(story_trainer("CeruleanCity", "rival_cerulean").value_or(""));
+    if (rival != std::vector<std::string>{"pidgeotto", "abra", "rattata", "bulbasaur"}){
+        return "Expected the Cerulean rival's party from pret's sParty_RivalCeruleanBulbasaur, got " + joined(rival) + ".";
     }
 
     PartyMember no_bite = wartortle;
@@ -417,19 +420,19 @@ UnitTestResult test_attack_by_matchup(Logger&){
     BattleDecisions wild(supplies, BattleKind::WILD_FIGHT);
     supplies.potions = 5;
     if (wild.turn(GREEN).slot != *water_gun){
-        return "Expected a wild battle to keep the plan's order (Water Gun), whatever foes are set.";
+        return "Expected a wild battle with nothing read to keep the plan's order (Water Gun), whatever foes are set.";
     }
     return true;
 }
 
-//  A trainer whose party the story doesn't know, and no foes at all, get
-//  the plan's order: Water Gun first.
+//  A trainer the data doesn't have, a species it doesn't have, and no foes
+//  at all get the plan's order: Water Gun first.
 UnitTestResult test_attack_unknown_foe(Logger&){
     const PartyMember wartortle = grown_to(new_member("squirtle", 5), 20);
-    if (!trainer_party("bug_catcher_cale").empty()){
-        return "Expected no party for a trainer the story doesn't know.";
+    if (!trainer_party("TRAINER_NOBODY").empty() || story_trainer("Route24", "nobody")){
+        return "Expected no party for a trainer the data doesn't have.";
     }
-    const std::vector<std::vector<std::string>> unknown{{}, {"missingno"}, trainer_party("bug_catcher_cale")};
+    const std::vector<std::vector<std::string>> unknown{{}, {"missingno"}, trainer_party("TRAINER_NOBODY")};
     for (const std::vector<std::string>& foes : unknown){
         if (attack_slot_against(wartortle, foes) != attack_slot(wartortle) || attack_slot(wartortle) != BOTTOM_LEFT_MOVE){
             return "Expected the plan's order (Water Gun) against " + joined(foes) + ".";
@@ -720,6 +723,84 @@ UnitTestResult test_move_refusal_watch(Logger&){
     return true;
 }
 
+//  Regression, console B 2026-11-03, Miguel's battle (m48): the move list
+//  opened after YES to "Delete a move to make room for BITE?", and closed
+//  with no move forgotten, so the game asked "Stop learning BITE?" where
+//  the story expected the next move's "Delete a move?". NO there and YES
+//  at "Delete a move?" went round 13 times (75 s), until presses by time
+//  ended it. A YES/NO right after the move list is "Stop learning?": YES,
+//  and the lead keeps its moves.
+UnitTestResult test_move_list_closed(Logger&){
+    enum class Prompt{DELETE, STOP};
+    Supplies supplies;
+    supplies.lead = squirtle_before_miguel();
+    BattleDecisions decisions(supplies, BattleKind::TRAINER);
+    decisions.turn(GREEN);
+    Prompt prompt = Prompt::DELETE;
+    for (int answers = 1; answers <= 8; answers++){
+        const PromptAnswer answer = decisions.prompt(false);
+        if (answer.learned){
+            //  The move list showed, as the loop saw it.
+            supplies.lead = *answer.learned;
+        }
+        if (prompt == Prompt::STOP && answer.answer == YesNo::YES){
+            const std::vector<std::string> before{"water-gun", "tail-whip", "bubble", "withdraw"};
+            if (move_names(supplies.lead) != before){
+                return "Expected the moves as before Bite was offered, got " + joined(move_names(supplies.lead)) + ".";
+            }
+            return true;
+        }
+        //  The move list closes with nothing forgotten: "Stop learning?",
+        //  as after NO; NO there asks "Delete a move?" again.
+        prompt = prompt == Prompt::DELETE ? Prompt::STOP : Prompt::DELETE;
+    }
+    return "Expected the move prompts to end within 8 answers.";
+}
+
+//  However the YES/NOs come, a few after a turn are all the move prompts
+//  can be (two moves offered, NO then YES each); after those, YES only,
+//  which ends either prompt ("Delete a move?": the move list, which the
+//  loop's B closes; "Stop learning?": done), and the moves stay as they are.
+UnitTestResult test_move_prompts_bounded(Logger&){
+    Supplies supplies;
+    supplies.lead = with_moves("wartortle", {"tackle", "bite", "water-gun", "withdraw"}, 19);
+    BattleDecisions decisions(supplies, BattleKind::TRAINER);
+    decisions.turn(GREEN);
+    for (int answers = 1; answers <= 12; answers++){
+        const PromptAnswer answer = decisions.prompt(false);
+        if (answers > 4 && (answer.answer != YesNo::YES || answer.forget_slot)){
+            return std::format("Expected a plain YES at the move prompt {} after a turn.", answers);
+        }
+    }
+    const std::vector<std::string> moves{"tackle", "bite", "water-gun", "withdraw"};
+    if (move_names(supplies.lead) != moves){
+        return "Expected the moves unchanged, got " + joined(move_names(supplies.lead)) + ".";
+    }
+    return true;
+}
+
+//  Regression, console B 2026-11-03, before Miguel (m48): yellow HP
+//  (17/55) and no Potion left, and the story went into the battle, as the
+//  nurse was only for red HP. After the items, the nurse for any HP not
+//  green, a status, or attacks low on PP.
+UnitTestResult test_nurse_before_battle(Logger&){
+    Supplies supplies;
+    supplies.lead = squirtle_before_miguel();
+    if (nurse_before_battle(supplies)){
+        return "Expected no nurse with green HP, no status and full PP.";
+    }
+    supplies.hurt = true;
+    if (!nurse_before_battle(supplies)){
+        return "Expected the nurse for yellow HP that no Potion healed.";
+    }
+    supplies.hurt = false;
+    supplies.status = StatusCondition::OTHER;
+    if (!nurse_before_battle(supplies)){
+        return "Expected the nurse for a status no item cured.";
+    }
+    return true;
+}
+
 void add_tests_AutoStoryParty(UnitTestDatabase& database){
     database.add<Test_AutoStoryParty>("movesets the game gives and the story plays", test_movesets);
     database.add<Test_AutoStoryParty>("move offered and slot forgotten", test_learn_prompts);
@@ -737,6 +818,10 @@ void add_tests_AutoStoryParty(UnitTestDatabase& database){
     database.add<Test_AutoStoryParty>("a YES/NO with no move list after it changes no move", test_yes_no_without_move_list);
     database.add<Test_AutoStoryParty>("a disabled move: left alone while Disable lasts, PP back", test_disabled_move);
     database.add<Test_AutoStoryParty>("a move turned down: the move list, then the menu sooner than a turn", test_move_refusal_watch);
+    database.add<Test_AutoStoryParty>("the move list closed with nothing forgotten: YES to \"Stop learning?\"", test_move_list_closed);
+    database.add<Test_AutoStoryParty>("move prompts after a turn: a plain YES after the first few", test_move_prompts_bounded);
+    database.add<Test_AutoStoryParty>("the nurse before a battle for HP not green with no Potion", test_nurse_before_battle);
+    add_tests_AutoStoryBattleData(database);
 }
 
 

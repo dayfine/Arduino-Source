@@ -45,6 +45,8 @@ constexpr Milliseconds REFUSED_WITHIN = std::chrono::milliseconds(7000);
 //  Below this much PP left in the lead's attacks, the nurse before a fight
 //  that needs them: about a trainer's worth of turns.
 constexpr size_t LOW_ATTACK_PP = 10;
+//  The move prompts a turn can bring: two moves offered, NO then YES each.
+constexpr int MOVE_PROMPTS = 4;
 
 }
 
@@ -60,6 +62,10 @@ bool attacks_low_on_pp(const Supplies& supplies){
     return attack_slot(supplies.lead).has_value() && attack_pp(supplies.lead) < LOW_ATTACK_PP;
 }
 
+bool nurse_before_battle(const Supplies& supplies){
+    return supplies.hurt || supplies.status != StatusCondition::NONE || attacks_low_on_pp(supplies);
+}
+
 
 BattleDecisions::BattleDecisions(Supplies& supplies, BattleKind kind)
     : m_supplies(supplies)
@@ -68,6 +74,8 @@ BattleDecisions::BattleDecisions(Supplies& supplies, BattleKind kind)
 
 TurnAction BattleDecisions::turn(const PartyStatus& status){
     m_turns++;
+    m_move_prompts = 0;
+    m_before_forget.reset();
     count_down_refused();
     m_last_move_slot.reset();
     if (!m_lost){
@@ -105,8 +113,8 @@ TurnAction BattleDecisions::lead_turn(const PartyStatus& status){
     return move_turn();
 }
 
-//  The plan's attack with PP left, or against a trainer whose party is
-//  known, the one that does it most damage. While the story doesn't know
+//  The plan's attack with PP left, or against known foes (a trainer's
+//  party, the wild Pokemon read), the one that does them most damage. While the story doesn't know
 //  all four moves, the bottom left one (Bubble from Lv7), which the cursor
 //  can't reach while that slot is empty, so before Bubble it stays on
 //  Tackle.
@@ -117,9 +125,7 @@ TurnAction BattleDecisions::move_turn(){
             usable.moves[refused.first].pp = 0;
         }
     }
-    const std::optional<size_t> slot = m_kind == BattleKind::TRAINER
-        ? attack_slot_against(usable, m_supplies.foes)
-        : attack_slot(usable);
+    const std::optional<size_t> slot = attack_slot_against(usable, m_kind == BattleKind::TRAINER ? m_supplies.foes : m_supplies.wild_foes);
     if (!slot){
         return TurnAction{.choice = TurnChoice::MOVE, .slot = BOTTOM_LEFT_MOVE};
     }
@@ -184,6 +190,20 @@ PromptAnswer BattleDecisions::prompt(bool lead_box_gone){
         //  NO tries to run; if that fails, the party list opens.
         return PromptAnswer{.answer = m_kind == BattleKind::TRAINER ? YesNo::YES : YesNo::NO};
     }
+    m_move_prompts++;
+    if (m_before_forget){
+        //  A YES/NO right after the move list: it closed with no move
+        //  forgotten, and this is "Stop learning <move>?" (console B,
+        //  2026-11-03, Miguel's battle). The lead keeps its moves.
+        m_supplies.lead = std::move(*m_before_forget);
+        m_before_forget.reset();
+        return PromptAnswer{.answer = YesNo::YES};
+    }
+    if (m_move_prompts > MOVE_PROMPTS){
+        //  More than the move prompts can be: YES ends either one, as
+        //  "Delete a move?" opens the move list, which the loop's B closes.
+        return PromptAnswer{.answer = YesNo::YES};
+    }
     if (m_declined_delete){
         //  "Stop learning <move>?" YES; NO would ask "Delete a move?" again.
         m_declined_delete = false;
@@ -192,6 +212,7 @@ PromptAnswer BattleDecisions::prompt(bool lead_box_gone){
     PartyMember learning = m_supplies.lead;
     const LearnDecision decision = learn_move(learning);
     if (decision.forget_slot){
+        m_before_forget = m_supplies.lead;
         return PromptAnswer{.answer = YesNo::YES, .forget_slot = decision.forget_slot, .learned = std::move(learning)};
     }
     m_supplies.lead = std::move(learning);

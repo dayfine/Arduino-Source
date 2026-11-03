@@ -16,6 +16,7 @@
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRoute.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWalk.h"
 #include "PokemonFRLG_AutoStoryAbilities.h"
+#include "PokemonFRLG_AutoStoryBattleData.h"
 #include "PokemonFRLG_AutoStoryCapture.h"
 #include "PokemonFRLG_AutoStoryEvents.h"
 #include "PokemonFRLG_AutoStorySummary.h"
@@ -155,9 +156,10 @@ Outcome battle(StoryEnv& env, const StoryStep& step){
     if (advance_text(env.console, env.context, BATTLE_TEXT_TIMEOUT, true) != TextEnd::BATTLE){
         return Pokemon::outcome_failed("no_battle");
     }
-    env.supplies.foes = trainer_party(step.name);
+    const std::optional<std::string_view> trainer = step.pose_after ? story_trainer(step.pose_after->map, step.name) : std::nullopt;
+    env.supplies.foes = trainer ? trainer_party(*trainer) : std::vector<std::string>{};
     if (!env.supplies.foes.empty()){
-        env.console.log("Story: " + step.name + "'s party is known; attacks are chosen against it.");
+        env.console.log("Story: " + step.name + " is " + std::string(*trainer) + "; attacks are chosen against the party.");
     }
     const BattleEnd end = fight_battle(env.console, env.context, env.supplies, BattleKind::TRAINER, env.checks, env.language);
     env.supplies.foes.clear();
@@ -169,8 +171,8 @@ Outcome battle(StoryEnv& env, const StoryStep& step){
 }
 
 //  HP and status are the battle loop's last reading. Items first (an
-//  Antidote, a Parlyz Heal, a Potion); the nurse only for red HP with no
-//  Potion left, a status no item here cures, or attacks low on PP.
+//  Antidote, a Parlyz Heal, a Potion); then the nurse as
+//  nurse_before_battle() says.
 Outcome get_ready(StoryEnv& env, RunState& state, const StoryStep& step){
     Supplies& supplies = env.supplies;
     env.console.log(std::format(
@@ -178,7 +180,7 @@ Outcome get_ready(StoryEnv& env, RunState& state, const StoryStep& step){
         supplies.hp_red ? "red" : supplies.hurt ? "yellow" : "green", status_name(supplies.status), supplies.potions
     ));
     recover_after_battle(env.console, env.context, supplies, env.checks, env.language);
-    if (!supplies.hp_red && supplies.status == StatusCondition::NONE && !attacks_low_on_pp(supplies)){
+    if (!nurse_before_battle(supplies)){
         return Pokemon::outcome_ok();
     }
     Outcome walked = walk_route(env, state, step);

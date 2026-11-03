@@ -1787,6 +1787,8 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleLevelUpReader.h
     Source/VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleFlashWatcher.cpp
     Source/VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleFlashWatcher.h
+    Source/VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleHpBarReader.cpp
+    Source/VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleHpBarReader.h
     Source/VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattlePokemonDetector.cpp
     Source/VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattlePokemonDetector.h
     Source/VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleScreenDetector.cpp
@@ -1863,6 +1865,9 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryActions.h
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryBattle.cpp
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryBattle.h
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryBattleData.cpp
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryBattleData.h
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryBattleData_Tests.cpp
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryBattleDecisions.cpp
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryBattleDecisions.h
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryCapture.cpp

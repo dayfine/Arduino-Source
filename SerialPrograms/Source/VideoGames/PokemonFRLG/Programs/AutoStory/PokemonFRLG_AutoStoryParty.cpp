@@ -5,7 +5,8 @@
  */
 
 #include <algorithm>
-#include <array>
+#include <iterator>
+#include "PokemonFRLG_AutoStoryBattleData.h"
 #include "PokemonFRLG_AutoStoryParty.h"
 
 namespace PokemonAutomation{
@@ -87,113 +88,6 @@ constexpr Evolution EVOLUTIONS[] = {
     {.species = "wartortle", .evolution = {.into = "blastoise", .level = 36}},
     {.species = "magikarp", .evolution = {.into = "gyarados", .level = 20}},
 };
-
-//  pret/pokefirered include/constants/pokemon.h TYPE_*, MYSTERY left out.
-enum class Type{
-    NORMAL, FIGHTING, FLYING, POISON, GROUND, ROCK, BUG, GHOST, STEEL,
-    FIRE, WATER, GRASS, ELECTRIC, PSYCHIC, ICE, DRAGON, DARK,
-};
-
-struct MoveData{
-    std::string_view move;
-    uint8_t pp = 0;
-    //  Flail's and Dragon Rage's damage doesn't come from their power, 1.
-    uint8_t power = 0;
-    Type type = Type::NORMAL;
-};
-
-//  pret/pokefirered src/data/battle_moves.h.
-constexpr MoveData MOVES[] = {
-    {.move = "tackle", .pp = 35, .power = 35, .type = Type::NORMAL},
-    {.move = "tail-whip", .pp = 30, .power = 0, .type = Type::NORMAL},
-    {.move = "bubble", .pp = 30, .power = 20, .type = Type::WATER},
-    {.move = "withdraw", .pp = 40, .power = 0, .type = Type::WATER},
-    {.move = "water-gun", .pp = 25, .power = 40, .type = Type::WATER},
-    {.move = "bite", .pp = 25, .power = 60, .type = Type::DARK},
-    {.move = "rapid-spin", .pp = 40, .power = 20, .type = Type::NORMAL},
-    {.move = "protect", .pp = 10, .power = 0, .type = Type::NORMAL},
-    {.move = "rain-dance", .pp = 5, .power = 0, .type = Type::WATER},
-    {.move = "skull-bash", .pp = 15, .power = 100, .type = Type::NORMAL},
-    {.move = "hydro-pump", .pp = 5, .power = 120, .type = Type::WATER},
-    {.move = "splash", .pp = 40, .power = 0, .type = Type::NORMAL},
-    {.move = "flail", .pp = 15, .power = 1, .type = Type::NORMAL},
-    {.move = "thrash", .pp = 20, .power = 90, .type = Type::NORMAL},
-    {.move = "dragon-rage", .pp = 10, .power = 1, .type = Type::DRAGON},
-    {.move = "leer", .pp = 30, .power = 0, .type = Type::NORMAL},
-    {.move = "twister", .pp = 20, .power = 40, .type = Type::DRAGON},
-    {.move = "dragon-dance", .pp = 20, .power = 0, .type = Type::DRAGON},
-    {.move = "hyper-beam", .pp = 5, .power = 150, .type = Type::NORMAL},
-};
-
-//  The types of the party's species and of the trainers' in
-//  TRAINER_PARTIES (pret/pokefirered src/data/pokemon/species_info.h).
-struct SpeciesTypes{
-    std::string_view species;
-    Type first;
-    Type second;
-};
-constexpr SpeciesTypes SPECIES_TYPES[] = {
-    {.species = "squirtle", .first = Type::WATER, .second = Type::WATER},
-    {.species = "wartortle", .first = Type::WATER, .second = Type::WATER},
-    {.species = "blastoise", .first = Type::WATER, .second = Type::WATER},
-    {.species = "magikarp", .first = Type::WATER, .second = Type::WATER},
-    {.species = "gyarados", .first = Type::WATER, .second = Type::FLYING},
-    {.species = "pidgeotto", .first = Type::NORMAL, .second = Type::FLYING},
-    {.species = "abra", .first = Type::PSYCHIC, .second = Type::PSYCHIC},
-    {.species = "rattata", .first = Type::NORMAL, .second = Type::NORMAL},
-    {.species = "bulbasaur", .first = Type::GRASS, .second = Type::POISON},
-    {.species = "staryu", .first = Type::WATER, .second = Type::WATER},
-    {.species = "starmie", .first = Type::WATER, .second = Type::PSYCHIC},
-};
-
-//  pret/pokefirered src/battle_main.c gTypeEffectiveness, the rows of the
-//  types the party's moves have (Normal, Water, Dark, Dragon): every
-//  pairing not here is 1x. In tenths: 20 is 2x, 5 is 0.5x.
-struct Effectiveness{
-    Type attack;
-    Type defend;
-    uint8_t tenths;
-};
-constexpr Effectiveness TYPE_CHART[] = {
-    {.attack = Type::NORMAL, .defend = Type::ROCK, .tenths = 5},
-    {.attack = Type::NORMAL, .defend = Type::STEEL, .tenths = 5},
-    {.attack = Type::NORMAL, .defend = Type::GHOST, .tenths = 0},
-    {.attack = Type::WATER, .defend = Type::FIRE, .tenths = 20},
-    {.attack = Type::WATER, .defend = Type::WATER, .tenths = 5},
-    {.attack = Type::WATER, .defend = Type::GRASS, .tenths = 5},
-    {.attack = Type::WATER, .defend = Type::GROUND, .tenths = 20},
-    {.attack = Type::WATER, .defend = Type::ROCK, .tenths = 20},
-    {.attack = Type::WATER, .defend = Type::DRAGON, .tenths = 5},
-    {.attack = Type::DARK, .defend = Type::FIGHTING, .tenths = 5},
-    {.attack = Type::DARK, .defend = Type::PSYCHIC, .tenths = 20},
-    {.attack = Type::DARK, .defend = Type::GHOST, .tenths = 20},
-    {.attack = Type::DARK, .defend = Type::DARK, .tenths = 5},
-    {.attack = Type::DARK, .defend = Type::STEEL, .tenths = 5},
-    {.attack = Type::DRAGON, .defend = Type::DRAGON, .tenths = 20},
-    {.attack = Type::DRAGON, .defend = Type::STEEL, .tenths = 5},
-};
-
-//  The species of a trainer's party, by the table's battle step, from
-//  pret/pokefirered src/data/trainer_parties.h.
-struct TrainerParty{
-    std::string_view battle;
-    std::array<std::string_view, 6> species;
-};
-constexpr TrainerParty TRAINER_PARTIES[] = {
-    //  sParty_RivalCeruleanBulbasaur: Lv17, Lv16, Lv15, Lv18.
-    {.battle = "rival_cerulean", .species = {"pidgeotto", "abra", "rattata", "bulbasaur"}},
-    //  sParty_Misty: Lv18, Lv21.
-    {.battle = "misty", .species = {"staryu", "starmie"}},
-};
-
-const MoveData* move_data(std::string_view move){
-    for (const MoveData& entry : MOVES){
-        if (entry.move == move){
-            return &entry;
-        }
-    }
-    return nullptr;
-}
 
 //  The story's plan per line (named by its first species): a level-up move
 //  it learns over a full move list, and the move whose slot it takes. Any
@@ -299,47 +193,35 @@ void take_level(PartyMember& member, uint8_t level){
     member.moves_through_level = level;
 }
 
-const SpeciesTypes* species_types(std::string_view species){
-    for (const SpeciesTypes& entry : SPECIES_TYPES){
-        if (entry.species == species){
-            return &entry;
-        }
-    }
-    return nullptr;
+//  The base stat `attacker` uses `move` with: Attack or Sp. Atk, by the
+//  move's type.
+uint8_t attacking_stat(const SpeciesData& attacker, const MoveData& move){
+    return special_type(move.type) ? attacker.sp_attack : attacker.attack;
 }
 
-//  In tenths; 10 for a species the table doesn't have.
-size_t effectiveness(Type attack, std::string_view defender){
-    const SpeciesTypes* types = species_types(defender);
-    if (types == nullptr){
-        return 10;
-    }
-    size_t tenths = 10;
-    for (Type defend : {types->first, types->second}){
-        for (const Effectiveness& entry : TYPE_CHART){
-            if (entry.attack == attack && entry.defend == defend){
-                tenths = tenths * entry.tenths / 10;
-            }
-        }
-        if (types->second == types->first){
-            break;
-        }
+//  In tenths.
+size_t effectiveness(const MoveData& move, const SpeciesData& defender){
+    size_t tenths = type_effectiveness(move.type, defender.first);
+    if (defender.second != defender.first){
+        tenths = tenths * type_effectiveness(move.type, defender.second) / 10;
     }
     return tenths;
 }
 
-//  `move`'s power times STAB times its effectiveness, summed over `foes`,
-//  in hundredths of a point.
+//  `move`'s expected damage, summed over `foes`: its power times STAB
+//  times its effectiveness times the lead's base attacking stat for it.
+//  The foe's Defense and Sp. Def, levels, IVs, EVs, natures and accuracy
+//  are left out. Each foe must be in species_data().
 size_t expected_damage(const PartyMember& member, std::string_view move, const std::vector<std::string>& foes){
     const MoveData* data = move_data(move);
-    if (data == nullptr){
+    const SpeciesData* own = species_data(member.species);
+    if (data == nullptr || own == nullptr){
         return 0;
     }
-    const SpeciesTypes* own = species_types(member.species);
-    const bool stab = own != nullptr && (own->first == data->type || own->second == data->type);
+    const bool stab = own->first == data->type || own->second == data->type;
     size_t damage = 0;
     for (const std::string& foe : foes){
-        damage += (size_t)data->power * (stab ? 15 : 10) * effectiveness(data->type, foe);
+        damage += (size_t)data->power * (stab ? 15 : 10) * effectiveness(*data, *species_data(foe)) * attacking_stat(*own, *data);
     }
     return damage;
 }
@@ -485,30 +367,27 @@ std::optional<size_t> attack_slot(const PartyMember& member){
     return TOP_LEFT_MOVE;
 }
 
-std::vector<std::string> trainer_party(std::string_view battle){
+std::vector<std::string> trainer_party(std::string_view trainer){
     std::vector<std::string> party;
-    for (const TrainerParty& trainer : TRAINER_PARTIES){
-        if (trainer.battle != battle){
-            continue;
-        }
-        for (std::string_view species : trainer.species){
-            if (!species.empty()){
-                party.emplace_back(species);
-            }
-        }
+    for (const TrainerMon& mon : trainer_mons(trainer)){
+        party.push_back(mon.species);
     }
     return party;
 }
 
 std::optional<size_t> attack_slot_against(const PartyMember& member, const std::vector<std::string>& foes){
     const std::optional<size_t> plan = attack_slot(member);
-    if (foes.empty() || !plan){
+    std::vector<std::string> known;
+    std::ranges::copy_if(foes, std::back_inserter(known), [](const std::string& foe){
+        return species_data(foe) != nullptr;
+    });
+    if (known.empty() || !plan){
         return plan;
     }
     std::optional<size_t> best;
     size_t best_damage = 0;
     for (size_t slot : attack_order(member)){
-        const size_t damage = expected_damage(member, member.moves[slot].move, foes);
+        const size_t damage = expected_damage(member, member.moves[slot].move, known);
         if (member.moves[slot].pp > 0 && damage > best_damage){
             best = slot;
             best_damage = damage;

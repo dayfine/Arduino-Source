@@ -75,6 +75,10 @@ struct Supplies{
     //  story knows it (trainer_party()): the lead's attacks are chosen
     //  against it. Empty otherwise; wild battles never use it.
     std::vector<std::string> foes = {};
+    //  The wild Pokemon of the battle going on, as read at its first battle
+    //  menu (read_wild_foes()): the lead's attacks are chosen against it.
+    //  Empty when it wasn't read; trainer battles never use it.
+    std::vector<std::string> wild_foes = {};
 };
 
 //  The nurse healed the party: HP, status and PP.
@@ -82,6 +86,12 @@ void healed_by_nurse(Supplies& supplies);
 
 //  The lead's attacks are low on PP: the nurse before a fight that needs them.
 bool attacks_low_on_pp(const Supplies& supplies);
+
+//  Before a trainer's battle, once the items are used: the nurse for HP
+//  not green (no Potion left to heal it), a status no item cured, or
+//  attacks low on PP. Yellow HP counts (console B, 2026-11-03: 17/55 HP
+//  and no Potion into Miguel's battle, which only red would have stopped).
+bool nurse_before_battle(const Supplies& supplies);
 
 enum class BattleKind{
     WILD_RUN,       //  RUN, or fight after a few "Can't escape!"
@@ -120,16 +130,15 @@ std::vector<std::string> set_from_loaded_bag(Supplies& supplies, Supplies& saved
 std::vector<BagRow> read_items_pocket(ConsoleHandle& console, ProControllerContext& context, Language language);
 
 
-//  What the HP bar and the status badge of the player's Pokemon show, on a
-//  battle screen with its box. Colors measured on console B's captures
-//  (2026-11-01): the bar's fill green (100, 251, 171), yellow
-//  (255, 228, 23), red (255, 113, 68); the badge's place off-white
+//  What the HP bar (read_player_hp_bar()) and the status badge of the
+//  player's Pokemon show, on a battle screen with its box. The badge's
+//  place measured on console B's captures (2026-11-01): off-white
 //  (255, 255, 217) with no status, (228, 168, 212) for PSN.
 struct PartyStatus{
     bool hp_seen = false;
     bool hp_yellow = false;
     bool hp_red = false;
-    //  The HP bar's colored share, 0 to 1, for the log.
+    //  The HP bar's filled share of its width, 0 to 1, for the log.
     double hp_fill = 0;
     StatusCondition status = StatusCondition::NONE;
 };
