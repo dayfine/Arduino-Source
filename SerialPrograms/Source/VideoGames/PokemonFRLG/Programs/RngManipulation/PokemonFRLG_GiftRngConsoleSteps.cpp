@@ -6,6 +6,7 @@
 
 #include "Common/Cpp/Exceptions.h"
 #include "CommonFramework/Exceptions/OperationFailedException.h"
+#include "PokemonFRLG_StarterRngConsoleSteps.h"
 #include "PokemonFRLG_GiftRngConsoleSteps.h"
 
 namespace PokemonAutomation{
@@ -35,8 +36,10 @@ StarterRngOutcome loop_outcome(GiftRngOutcome outcome){
 namespace{
 
 //  Gift RNG's settings for one try: no resets after the try's deadline,
-//  and its resets reported to the loop.
-GiftRngSettings try_settings(Language language, const StarterRngAttemptCall& call){
+//  its resets reported to the loop, and its reads to `on_read`.
+GiftRngSettings try_settings(
+    Language language, const StarterRngAttemptCall& call, std::function<void(const RngResetRead&)> on_read
+){
     return GiftRngSettings{
         .language = language,
         .profile = 0,
@@ -52,6 +55,7 @@ GiftRngSettings try_settings(Language language, const StarterRngAttemptCall& cal
                 on_reset(StarterRngProgress{.resets = progress.resets, .calibrations = progress.calibrations});
             }
         },
+        .on_read = std::move(on_read),
     };
 }
 
@@ -92,7 +96,9 @@ StarterRngResult ConsoleGiftRngSteps::run_attempt(const RngAttempt& attempt, con
             .advances = attempt.target.advances,
             .seed_match = seed_match,
         },
-        try_settings(m_settings.language, call),
+        try_settings(
+            m_settings.language, call, reset_line_logger(m_env.console, "Gift RNG", attempt, seed_match, call.max_resets)
+        ),
         GiftRngDisplays{
             .target = m_target_display,
             .filters = m_filter_display,

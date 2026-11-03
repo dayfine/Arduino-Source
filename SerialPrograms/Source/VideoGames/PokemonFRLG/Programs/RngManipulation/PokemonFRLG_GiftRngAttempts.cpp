@@ -155,10 +155,23 @@ GiftRngResult GiftRngAttempts::run(SingleSwitchProgramEnvironment& env, ProContr
         if (check_shiny_gift(env, context)){
             const GiftRngOutcome shiny = m_settings.identify_shiny ? identify_shiny_gift(env, context) : GiftRngOutcome::shiny;
             const bool on_target = shiny == GiftRngOutcome::shiny_on_target;
+            report_read(true);
             return GiftRngResult{.outcome = shiny, .pokemon = on_target ? std::optional(target_result) : std::nullopt};
         }
 
         run_attempt(env, context);
+        report_read(false);
+    }
+}
+
+void GiftRngAttempts::report_read(bool shiny){
+    if (m_settings.on_read){
+        m_settings.on_read(RngResetRead{
+            .resets = m_stats.resets.load(),
+            .hits = m_search_hits,
+            .hit = shiny ? std::nullopt : reset_hit(m_uncertain_history, m_calibration_history, m_search_hits),
+            .shiny = shiny,
+        });
     }
 }
 
@@ -220,6 +233,7 @@ void GiftRngAttempts::reset_game(SingleSwitchProgramEnvironment& env, ProControl
         m_launch_delay, false, m_settings.profile
     );
     m_stats.resets++;
+    m_search_hits.clear();
     if (m_settings.on_reset){
         m_settings.on_reset(GiftRngProgress{.resets = m_stats.resets.load(), .calibrations = m_calibrations});
     }
@@ -278,10 +292,11 @@ AdvObservedPokemon GiftRngAttempts::read_gift(SingleSwitchProgramEnvironment& en
 }
 
 std::vector<AdvRngState> GiftRngAttempts::search(SingleSwitchProgramEnvironment& env, AdvRngFilters& filters){
-    return get_search_results(
+    m_search_hits = get_search_results(
         env.console, m_searcher, filters, m_target.seed_match.seed_values,
         m_target.advances, m_advances_radius, m_species.gender_threshold
     );
+    return m_search_hits;
 }
 
 
@@ -305,6 +320,7 @@ void GiftRngAttempts::run_attempt(SingleSwitchProgramEnvironment& env, ProContro
         }
     );
 
+    m_search_hits = search_hits;
     env.log("RNG search finished.");
     update_failed_searches(m_failed_searches, search_hits);
 }
