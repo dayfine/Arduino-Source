@@ -12,6 +12,7 @@
 #include <algorithm>
 #include <functional>
 #include <map>
+#include <optional>
 #include <set>
 #include <string>
 #include <utility>
@@ -578,6 +579,30 @@ UnitTestResult test_run_options(){
     return true;
 }
 
+//  Verify mode: off by default; 3 runs and 2 passes when on, for one
+//  checkpoint only, never needing more passes than runs.
+UnitTestResult test_verify_options(){
+    StoryRunOptions options(two_sections_database());
+    if (options.VERIFY.policy()){
+        return "Expected verify mode off by default.";
+    }
+    options.VERIFY.set_enabled(true);
+    if (options.check_validity().empty()){
+        return "Expected verify mode refused over more than one checkpoint.";
+    }
+    options.END_CHECKPOINT.set_by_index(options.start_index());
+    const std::optional<VerifyPolicy> policy = options.VERIFY.policy();
+    if (!options.check_validity().empty() || !policy || policy->runs != 3 || policy->passes_needed != 2){
+        return "Expected 3 runs and 2 passes on one checkpoint: " + options.check_validity();
+    }
+    options.VERIFY.RUNS.set(2);
+    options.VERIFY.PASSES.set(3);
+    if (options.check_validity().empty()){
+        return "Expected more passes than runs refused.";
+    }
+    return true;
+}
+
 UnitTestResult test_lint(){
     StoryStep no_target = make(StoryStepKind::ROUTE, "walk");
     StoryStep again = make(StoryStepKind::TALK, "walk");
@@ -631,6 +656,7 @@ void add_tests_StorySteps(UnitTestDatabase& database){
     database.add<Test_StorySteps>("lint", test_lint);
     database.add<Test_StorySteps>("the checks level reaches the steps", test_checks_level);
     database.add<Test_StorySteps>("the run options' defaults", test_run_options);
+    database.add<Test_StorySteps>("the run options' verify mode", test_verify_options);
     database.add<Test_StorySteps>("start and end checkpoint dropdowns", test_checkpoint_dropdowns);
     database.add<Test_StorySteps>("a segment's run in the AutoStory stats", test_story_stats);
     database.add<Test_StorySteps>("policy: attempts per checkpoint, then fail", test_policy_attempts_then_fail);

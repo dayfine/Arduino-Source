@@ -39,6 +39,42 @@ std::string story_checkpoint_label(const StoryCheckpoint& checkpoint){
 }
 
 
+StoryVerifyOptions::StoryVerifyOptions()
+    : GroupOption(
+        "Verify Mode: run the start checkpoint (also the end) from its save several times, never saving at its end",
+        LockMode::LOCK_WHILE_RUNNING,
+        EnableMode::DEFAULT_DISABLED
+    )
+    , RUNS(
+        "<b>Runs:</b><br>Runs of the checkpoint, each from its save.",
+        LockMode::LOCK_WHILE_RUNNING,
+        3, 1, 20
+    )
+    , PASSES(
+        "<b>Passes needed:</b><br>Runs that must pass for the checkpoint to be verified.",
+        LockMode::LOCK_WHILE_RUNNING,
+        2, 1, 20
+    )
+{
+    PA_ADD_OPTION(RUNS);
+    PA_ADD_OPTION(PASSES);
+}
+
+std::optional<VerifyPolicy> StoryVerifyOptions::policy() const{
+    if (!enabled()){
+        return std::nullopt;
+    }
+    return VerifyPolicy{.runs = RUNS, .passes_needed = PASSES};
+}
+
+std::string StoryVerifyOptions::check_validity() const{
+    if (enabled() && PASSES > RUNS){
+        return "Verify mode can't need more passes than it has runs.";
+    }
+    return GroupOption::check_validity();
+}
+
+
 StoryRunOptions::StoryRunOptions(const StringSelectDatabase& checkpoints)
     : GroupOption("Story Run", LockMode::LOCK_WHILE_RUNNING)
     , START_CHECKPOINT(
@@ -83,6 +119,7 @@ StoryRunOptions::StoryRunOptions(const StringSelectDatabase& checkpoints)
     PA_ADD_OPTION(STOP_AT_FIRST_FAILURE);
     PA_ADD_OPTION(CHECKS);
     PA_ADD_OPTION(LANGUAGE);
+    PA_ADD_OPTION(VERIFY);
 }
 
 size_t StoryRunOptions::start_index() const{
@@ -96,6 +133,9 @@ size_t StoryRunOptions::end_index() const{
 std::string StoryRunOptions::check_validity() const{
     if (start_index() > end_index()){
         return "The start checkpoint comes after the end checkpoint.";
+    }
+    if (VERIFY.enabled() && start_index() != end_index()){
+        return "Verify mode runs one checkpoint: set the end checkpoint to the start checkpoint.";
     }
     return GroupOption::check_validity();
 }

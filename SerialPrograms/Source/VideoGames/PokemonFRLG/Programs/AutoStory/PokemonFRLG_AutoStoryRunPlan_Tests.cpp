@@ -4,11 +4,12 @@
  *
  *  Which rows of the story table a run takes (plan_story_run()) with the
  *  RNG programs' handoffs on and off, the rows the handoffs split or
- *  join, and what 00.15 runs before the rival.
+ *  join, Misty in Cerulean Gym, and what 00.15 runs before the rival.
  *
  */
 
 #include <functional>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -19,6 +20,7 @@
 #include "PokemonFRLG_AutoStoryGrind.h"
 #include "PokemonFRLG_AutoStoryMart.h"
 #include "PokemonFRLG_AutoStoryTable.h"
+#include "PokemonFRLG_AutoStoryTeach.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -115,11 +117,11 @@ private:
 };
 
 void add_tests_RunPlan(UnitTestDatabase& database){
-    const std::string TODAY = "00.01 00.02 00.03 00.04 00.05 00.06 00.07 00.08 00.09 00.10 00.11 00.12 00.12c 00.13 00.14 00.15 00.16";
+    const std::string TODAY = "00.01 00.02 00.03 00.04 00.05 00.06 00.07 00.08 00.09 00.10 00.11 00.12 00.12c 00.13 00.14 00.14b 00.14c 00.15 00.15b 00.16";
     const RunPlanScenario scenarios[] = {
         {.name = "handoffs off: the story as before", .first = "00.01", .expected_ids = TODAY},
         {.name = "handoffs off: a range", .first = "00.02", .last = "00.04", .expected_ids = "00.02 00.03 00.04"},
-        {.name = "handoffs off: Mt. Moon to Nugget Bridge", .first = "00.13", .last = "00.16", .expected_ids = "00.13 00.14 00.15 00.16"},
+        {.name = "handoffs off: Mt. Moon to Nugget Bridge", .first = "00.13", .last = "00.16", .expected_ids = "00.13 00.14 00.14b 00.14c 00.15 00.15b 00.16"},
         {
             .name = "SID Helper: 00.01 stops on the keyboard",
             .first = "00.01",
@@ -168,8 +170,8 @@ void add_tests_GiftRunPlan(UnitTestDatabase& database){
             .expected_ids = "00.11 00.12",
             .expected_stop = StoryHandoff::GIFT_RNG,
         },
-        {.name = "Gift RNG off: 00.12b is passed over", .first = "00.11", .expected_ids = "00.11 00.12 00.12c 00.13 00.14 00.15 00.16"},
-        {.name = "Gift RNG off: 00.12b runs when started at", .first = "00.12b", .expected_ids = "00.12b 00.12c 00.13 00.14 00.15 00.16"},
+        {.name = "Gift RNG off: 00.12b is passed over", .first = "00.11", .expected_ids = "00.11 00.12 00.12c 00.13 00.14 00.14b 00.14c 00.15 00.15b 00.16"},
+        {.name = "Gift RNG off: 00.12b runs when started at", .first = "00.12b", .expected_ids = "00.12b 00.12c 00.13 00.14 00.14b 00.14c 00.15 00.15b 00.16"},
         {
             .name = "Gift RNG: started at 00.12b, from the save beside the salesman",
             .first = "00.12b",
@@ -184,7 +186,7 @@ void add_tests_GiftRunPlan(UnitTestDatabase& database){
             .expected_ids = "",
             .expected_stop = StoryHandoff::GIFT_RNG,
         },
-        {.name = "Starter RNG alone: 00.12b runs when started at", .first = "00.12b", .handoffs = {.starter_rng = true}, .expected_ids = "00.12b 00.12c 00.13 00.14 00.15 00.16"},
+        {.name = "Starter RNG alone: 00.12b runs when started at", .first = "00.12b", .handoffs = {.starter_rng = true}, .expected_ids = "00.12b 00.12c 00.13 00.14 00.14b 00.14c 00.15 00.15b 00.16"},
         {
             .name = "Starter RNG first, with both on",
             .first = "00.03",
@@ -291,9 +293,8 @@ UnitTestResult test_cerulean_mart_and_grind(){
         const std::optional<GrindPlan> plan = parse_grind_variant(step.variant);
         return plan && plan->member == 0 && plan->level >= 22;
     });
-    const size_t rival = find_step(steps, 0, [](const StoryStep& step){ return step.name == "rival_trigger"; });
-    if (mart == steps.size() || grind == steps.size() || rival == steps.size() || grind > rival){
-        return "00.15: expected a Cerulean Mart step buying Potions, then a GRIND of the lead to Lv22, before the rival's trigger.";
+    if (mart == steps.size() || grind == steps.size()){
+        return "00.15: expected a Cerulean Mart step buying Potions, then a GRIND of the lead to Lv22.";
     }
     const std::optional<StoryPose> clerk = mart > 0 && steps[mart - 1].target ? story_pose(*steps[mart - 1].target) : std::nullopt;
     if (!clerk || clerk->map != "CeruleanCity_Mart"){
@@ -311,6 +312,97 @@ UnitTestResult test_cerulean_mart_and_grind(){
     return true;
 }
 
+//  00.15b, the rival's battle as its own checkpoint, as every battle lost
+//  twice or more gets: it starts from a save, 00.15's on (23, 7) below his
+//  trigger with the nurse just before, so a verify run or a retry reloads
+//  right before him; and his is its only battle.
+UnitTestResult test_cerulean_rival_row(){
+    const std::vector<StoryCheckpoint>& checkpoints = story_checkpoints();
+    const size_t index = row_index("00.15b");
+    const StoryCheckpoint& rival = checkpoints[index];
+    const std::optional<StoryPose> start = rival.start ? story_pose(*rival.start) : std::nullopt;
+    if (!start || rival.live_start || start->map != "CeruleanCity" || !(start->tile == TilePos{23, 7})
+        || save_card_place(start->map).empty()
+    ){
+        return "00.15b: expected it to start from a save on (23, 7) in Cerulean City.";
+    }
+    std::string battles;
+    for (const StoryStep& step : rival.steps){
+        battles += step.kind == StoryStepKind::BATTLE ? " " + step.name : "";
+    }
+    if (battles != " rival_cerulean" || rival.steps.size() != 2 || rival.steps[0].name != "rival_trigger"){
+        return "00.15b: expected only the step onto his trigger and his battle; its battles:" + battles;
+    }
+    const StoryCheckpoint& before = checkpoints[index - 1];
+    const size_t n = before.steps.size();
+    const std::optional<StoryPose> end = n > 0 && before.steps[n - 1].target ? story_pose(*before.steps[n - 1].target) : std::nullopt;
+    if (before.id != "00.15" || n < 2 || before.steps[n - 2].kind != StoryStepKind::HEAL
+        || !end || end->map != start->map || !(end->tile == start->tile)
+    ){
+        return "00.15: expected it to end with the nurse, then the walk to (23, 7) where 00.15b starts.";
+    }
+    for (const StoryStep& step : before.steps){
+        if (step.kind == StoryStepKind::BATTLE){
+            return "00.15: expected no trainer battle before its save; found " + step.name + ".";
+        }
+    }
+    return true;
+}
+
+//  The battles in `row`, each name after a space.
+std::string battle_names(const StoryCheckpoint& row){
+    std::string battles;
+    for (const StoryStep& step : row.steps){
+        battles += step.kind == StoryStepKind::BATTLE ? " " + step.name : "";
+    }
+    return battles;
+}
+
+//  00.14b, before Misty: Potions at Cerulean's Mart, then into the Gym to
+//  a save on (9, 7), below her platform; no battle. 00.14c, Misty's battle
+//  as its own checkpoint: it starts from that save, talks to her from
+//  beside her, (9, 6), and hers is its only battle; then TM03 Water Pulse
+//  in place of Tail Whip.
+UnitTestResult test_misty_rows(){
+    const std::vector<StoryCheckpoint>& checkpoints = story_checkpoints();
+    const StoryCheckpoint& gym = checkpoints[row_index("00.14b")];
+    const StoryCheckpoint& misty = checkpoints[row_index("00.14c")];
+    if (checkpoints[row_index("00.14b") - 1].id != "00.14" || checkpoints[row_index("00.14c") + 1].id != "00.15"){
+        return "Expected 00.14b and 00.14c between 00.14 and 00.15.";
+    }
+    const std::vector<StoryStep>& steps = gym.steps;
+    const size_t mart = find_step(steps, 0, [](const StoryStep& step){
+        const std::optional<MartPlan> plan = parse_mart_variant(step.variant);
+        return plan && plan->map == "CeruleanCity_Mart" && !plan->lines.empty() && plan->lines[0].item == "potion";
+    });
+    if (mart == steps.size() || !battle_names(gym).empty()){
+        return "00.14b: expected a Cerulean Mart step buying Potions and no battle; its battles:" + battle_names(gym);
+    }
+    const std::optional<StoryPose> start = misty.start ? story_pose(*misty.start) : std::nullopt;
+    if (!start || misty.live_start || start->map != "CeruleanCity_Gym" || !(start->tile == TilePos{9, 7})
+        || save_card_place(start->map).empty()
+    ){
+        return "00.14c: expected it to start from a save on (9, 7) in Cerulean Gym.";
+    }
+    if (battle_names(misty) != " misty" || misty.steps.size() < 3 || misty.steps[1].kind != StoryStepKind::TALK
+        || misty.steps[2].name != "misty"
+    ){
+        return "00.14c: expected a walk beside Misty, the talk and her battle, the only one; its battles:" + battle_names(misty);
+    }
+    const std::optional<StoryPose> beside = misty.steps[0].target ? story_pose(*misty.steps[0].target) : std::nullopt;
+    if (!beside || !(beside->tile == TilePos{9, 6}) || beside->facing != Direction::WEST){
+        return "00.14c: expected the talk from (9, 6), facing Misty (8, 6).";
+    }
+    const size_t teach = find_step(misty.steps, 0, [](const StoryStep& step){
+        const std::optional<TeachPlan> plan = parse_teach_variant(step.variant);
+        return plan && plan->item == "tm03" && plan->move == "water-pulse" && plan->member == 0 && plan->forget_move == "tail-whip";
+    });
+    if (teach == misty.steps.size()){
+        return "00.14c: expected TM03 Water Pulse taught to the lead in place of Tail Whip.";
+    }
+    return true;
+}
+
 }
 
 
@@ -320,6 +412,8 @@ void add_tests_AutoStoryRunPlan(UnitTestDatabase& database){
     database.add<Test_AutoStory>("00.01b and 00.12b: back in after SID Helper and Gift RNG", test_after_sid_helper_row);
     database.add<Test_AutoStory>("00.04 and 00.04b: one checkpoint with Starter RNG off", test_starter_rows_joined);
     database.add<Test_AutoStory>("00.15: Potions at Cerulean's Mart and a GRIND before the rival", test_cerulean_mart_and_grind);
+    database.add<Test_AutoStory>("00.15b: the rival's battle alone, from a save before him", test_cerulean_rival_row);
+    database.add<Test_AutoStory>("00.14b and 00.14c: Cerulean Gym, then Misty alone from a save before her", test_misty_rows);
 }
 
 
