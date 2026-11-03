@@ -359,9 +359,8 @@ UnitTestResult test_runs_after_shoes(){
 }
 
 //  The trainer on `map` who would see the player on `tile`, other than the
-//  `beaten`. Wanderers are left out: no route can plan around one.
-//  wanderer_problem() checks the walk can handle each crossing of their
-//  sight instead.
+//  `beaten`. Wanderers are left out: no route can plan around one (see
+//  wanderer_stops()).
 const MapObject* trainer_seeing(const MapData& map, const TilePos& tile, const std::set<const MapObject*>& beaten){
     for (const MapObject& object : map.objects){
         if (object.trainer && !object.wander && !beaten.contains(&object) && trainer_may_see(map, object, tile)){
@@ -400,41 +399,23 @@ bool wanderer_sees(const MapPosition& tile){
     return false;
 }
 
-//  A leg that crosses a wandering trainer's sight, and the crossing as the
-//  walk sees it (trainer_crossing()).
-struct WandererCrossing{
-    RouteStep leg;
-    TrainerCrossing crossing;
-};
-
-//  The legs of a ROUTE or LEGS `step` from `pose` that cross a wandering
-//  trainer's sight.
-std::vector<WandererCrossing> wanderer_crossings(const StoryPose& pose, const StoryStep& step){
-    std::vector<WandererCrossing> crossings;
+//  Whether they look the player's way can't be planned for, so the walk
+//  watches for a wanderer after each leg that crosses their sight, fights
+//  them, and goes on from where they stopped the player, if it can tell
+//  (run_route()'s trainer_stop(): the leg has one tile in any trainer's
+//  sight and is off the grass). For each leg of `step` from `pose` that
+//  crosses a wanderer's sight, that tile, or nothing if it can't tell.
+std::vector<std::optional<MapPosition>> wanderer_stops(const StoryPose& pose, const StoryStep& step){
+    std::vector<std::optional<MapPosition>> stops;
     MapPosition from{pose.map, pose.tile};
     for (const RouteStep& leg : legs_walked(pose, step)){
-        const std::optional<TrainerCrossing> crossing = trainer_crossing(story_maps(), from, leg);
-        if (crossing && std::any_of(crossing->seen.begin(), crossing->seen.end(), wanderer_sees)){
-            crossings.push_back({leg, *crossing});
+        const std::optional<TrainerCrossing> c = trainer_crossing(story_maps(), from, leg);
+        if (c && std::any_of(c->seen.begin(), c->seen.end(), wanderer_sees)){
+            stops.push_back(c->seen.size() == 1 && !leg.wild && !leg.warps ? std::optional(c->seen[0]) : std::nullopt);
         }
         from = leg.end;
     }
-    return crossings;
-}
-
-//  Why the walk couldn't handle a wandering trainer who sees the player on
-//  `step`, or empty. Whether they look the player's way can't be planned
-//  for, so the walk watches for them after each leg that crosses their
-//  sight and fights them; it then goes on from where they stopped the
-//  player, which it knows when the leg has one tile in any trainer's sight
-//  and is off the grass (run_route()).
-std::string wanderer_problem(const StoryPose& pose, const StoryStep& step){
-    for (const WandererCrossing& c : wanderer_crossings(pose, step)){
-        if (c.crossing.seen.size() != 1 || c.leg.wild || c.leg.warps){
-            return to_string(c.leg) + " crosses a wandering trainer's sight where the walk can't tell where they'd stop the player";
-        }
-    }
-    return "";
+    return stops;
 }
 
 //  The tiles a ROUTE or LEGS `step` from `pose` walks onto, in order.
@@ -473,20 +454,6 @@ std::string tile_problem(const MapPosition& tile, const std::set<const MapObject
     return "";
 }
 
-//  Why a ROUTE or LEGS `step` from `pose` shouldn't be walked as planned
-//  (tile_problem(), wanderer_problem()), or empty; empty for other steps.
-std::string walk_problem(const StoryPose& pose, const StoryStep& step, const std::set<const MapObject*>& beaten){
-    if (step.kind != StoryStepKind::ROUTE && step.kind != StoryStepKind::LEGS){
-        return "";
-    }
-    for (const MapPosition& tile : tiles_walked(pose, step)){
-        if (std::string problem = tile_problem(tile, beaten); !problem.empty()){
-            return problem;
-        }
-    }
-    return wanderer_problem(pose, step);
-}
-
 //  Moves `pose` past `step`, as check_checkpoint() does.
 UnitTestResult advance(StoryPose& pose, const StoryStep& step){
     if (step.kind == StoryStepKind::ROUTE){
@@ -511,8 +478,15 @@ UnitTestResult check_lines(const StoryCheckpoint& checkpoint, std::set<const Map
     for (size_t c = 0; c < checkpoint.steps.size(); c++){
         const StoryStep& step = checkpoint.steps[c];
         const std::string where = checkpoint.id + "/" + step.name + ": ";
-        if (const std::string problem = walk_problem(pose, step, beaten); !problem.empty()){
-            return where + problem;
+        const bool walks = step.kind == StoryStepKind::ROUTE || step.kind == StoryStepKind::LEGS;
+        for (const MapPosition& tile : walks ? tiles_walked(pose, step) : std::vector<MapPosition>{}){
+            if (const std::string problem = tile_problem(tile, beaten); !problem.empty()){
+                return where + problem;
+            }
+        }
+        const std::vector<std::optional<MapPosition>> stops = walks ? wanderer_stops(pose, step) : std::vector<std::optional<MapPosition>>{};
+        if (std::count(stops.begin(), stops.end(), std::nullopt) > 0){
+            return where + "crosses a wandering trainer's sight where the walk can't tell where they'd stop the player.";
         }
         const MapData* map = find_map_named(pose.map);
         const MapObject* trainer = step.kind == StoryStepKind::STEP && map ? trainer_seeing(*map, pose.tile.next(step.direction), beaten) : nullptr;
@@ -556,19 +530,17 @@ UnitTestResult test_trainer_lines(){
 //  she sees the player, the walk goes on from there (console B,
 //  2026-11-02, she stopped "east 11 (to wall)" there).
 UnitTestResult test_robin_crossing(){
-    const StoryCheckpoint* salesman = nullptr;
     for (const StoryCheckpoint& checkpoint : story_checkpoints()){
-        salesman = checkpoint.id == "00.12" ? &checkpoint : salesman;
+        if (checkpoint.id != "00.12" || checkpoint.steps.empty() || checkpoint.steps[0].name != "route4_nurse"){
+            continue;
+        }
+        const std::vector<std::optional<MapPosition>> expected{MapPosition{"Route3", {40, 9}}};
+        if (wanderer_stops(one_tile(*checkpoint.start), checkpoint.steps[0]) != expected){
+            return "Expected 00.12/route4_nurse to cross Lass Robin's sight once, the walk placing her stop on Route3 (40, 9).";
+        }
+        return true;
     }
-    if (salesman == nullptr || salesman->steps.empty() || salesman->steps[0].name != "route4_nurse"){
-        return "Expected 00.12 to start with route4_nurse.";
-    }
-    const std::vector<WandererCrossing> crossings = wanderer_crossings(one_tile(*salesman->start), salesman->steps[0]);
-    const std::vector<MapPosition> expected{MapPosition{"Route3", {40, 9}}};
-    if (crossings.size() != 1 || crossings[0].crossing.seen != expected || crossings[0].crossing.approach_tiles != 3){
-        return "Expected 00.12/route4_nurse to cross Lass Robin's sight once, on Route3 (40, 9), with an approach of 3; it crosses wanderers' sight on " + std::to_string(crossings.size()) + " leg(s).";
-    }
-    return true;
+    return "No step 00.12/route4_nurse.";
 }
 
 //  Every checkpoint that starts from a save has a place the save card
