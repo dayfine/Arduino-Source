@@ -10,7 +10,7 @@ SRC is the worktree's parent of SerialPrograms, i.e. the worktree root):
 
 ```sh
 SRC=$(git rev-parse --show-toplevel)
-L="ccache;cache_dir=$HOME/Library/Caches/pokemonautomation-ccache;base_dir=$SRC;max_size=5G"
+L="ccache;cache_dir=$HOME/Library/Caches/pokemonautomation-ccache;base_dir=$SRC"
 cmake -S SerialPrograms -B SerialPrograms/build -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo \
   -DCMAKE_C_COMPILER_LAUNCHER="$L" -DCMAKE_CXX_COMPILER_LAUNCHER="$L" \
   -DCMAKE_C_FLAGS="-fdebug-prefix-map=$SRC=. -fdebug-compilation-dir=." \
@@ -21,5 +21,8 @@ cmake -S SerialPrograms -B SerialPrograms/build -G Ninja -DCMAKE_BUILD_TYPE=RelW
 - `base_dir` makes paths relative, so worktrees share hits; the debug-prefix flags keep the
   checkout path out of objects (start the debugger from the build dir).
 - Hits need the same compiler, SDK, Qt and flags. A widely included header still rebuilds its users.
+- The cache's size limit lives in the cache directory's own `ccache.conf`
+  (`max_size = 15G`, raised from 5 GB on 2026-11-02 when the cache was full at 48% hits), not in the
+  launcher; change it there with `ccache --dir ~/Library/Caches/pokemonautomation-ccache -M <size>`.
 - Stats: `ccache --dir ~/Library/Caches/pokemonautomation-ccache --show-stats`.
 - The full preset (macos-ccache in CMakePresets.json) is on branch `build/local-ccache`.

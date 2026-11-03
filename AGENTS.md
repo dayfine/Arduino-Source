@@ -526,7 +526,8 @@ done
 - **A fresh macOS configure** needs
   `PKG_CONFIG_PATH=/opt/homebrew/opt/opencv@4/lib/pkgconfig` and
   `-DWrapOpenGL_AGL=<CommandLineTools SDK>/System/Library/Frameworks/AGL.framework/AGL.tbd`,
-  or the final link fails with "framework 'AGL' not found".
+  or the final link fails with "framework 'AGL' not found". Every configure also adds the shared
+  ccache launcher and flags from [tools/ccache.md](tools/ccache.md).
 - Report which CI runs passed (with links) instead of claiming a local pass.
 - **Expected CI failures:** `FileException` for test images that exist only on the fork, not in
   upstream `CommandLineTests` (FRLG SaveCardReader, OptionMenuReader, ItemListReader; BDSP
