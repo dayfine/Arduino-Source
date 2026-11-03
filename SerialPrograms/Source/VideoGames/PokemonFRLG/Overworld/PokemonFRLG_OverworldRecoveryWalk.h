@@ -34,14 +34,20 @@ namespace PokemonFRLG{
 //  is isn't guessed: run_route() finds them again with `planning`'s maps
 //  and costs and walks the rest of the route as planned.
 //
+//  After a leg that crosses a trainer's sight it watches for the trainer,
+//  long enough for them to walk up and speak, and hands what shows to
+//  `interrupts`; where the maps place the stop, the route goes on from
+//  there (run_route()).
+//
 //  After each leg to a wall it taps once more toward the wall, and fails if
 //  the player moves (a diagnostic; RoutePlanning::wall_check SKIP turns it
 //  off, as the Fast checks level does).
 //
-//  Throws OperationFailedException if a menu or message is open before a
-//  step, a warp's fade or the Surf prompt doesn't show, a warp's fade turns
-//  out to be a wild battle's, a leg is interrupted too many times, or the
-//  player can't be found again. A wild battle that starts as the last leg
+//  A message open before a step is handed to `interrupts` once
+//  (clear_open_message()). Throws OperationFailedException if a menu or
+//  message is still open before a step, a warp's fade or the Surf prompt
+//  doesn't show, a warp's fade turns out to be a wild battle's, a leg is
+//  interrupted too many times, or the player can't be found again. A wild battle that starts as the last leg
 //  ends is cleared before it returns.
 void walk_overworld_route_with_recovery(
     ConsoleHandle& console, ProControllerContext& context,
