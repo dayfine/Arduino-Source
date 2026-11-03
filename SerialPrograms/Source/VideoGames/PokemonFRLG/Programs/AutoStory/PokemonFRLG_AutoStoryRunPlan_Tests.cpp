@@ -315,7 +315,9 @@ UnitTestResult test_cerulean_mart_and_grind(){
 //  00.15b, the rival's battle as its own checkpoint, as every battle lost
 //  twice or more gets: it starts from a save, 00.15's on (23, 7) below his
 //  trigger with the nurse just before, so a verify run or a retry reloads
-//  right before him; and his is its only battle.
+//  right before him; and his is its only battle. First Water Pulse over
+//  Tail Whip if the lead doesn't know it: console B's save (2026-11-03) is
+//  past the TEACH that failed there, which does nothing once it is known.
 UnitTestResult test_cerulean_rival_row(){
     const std::vector<StoryCheckpoint>& checkpoints = story_checkpoints();
     const size_t index = row_index("00.15b");
@@ -330,8 +332,14 @@ UnitTestResult test_cerulean_rival_row(){
     for (const StoryStep& step : rival.steps){
         battles += step.kind == StoryStepKind::BATTLE ? " " + step.name : "";
     }
-    if (battles != " rival_cerulean" || rival.steps.size() != 2 || rival.steps[0].name != "rival_trigger"){
-        return "00.15b: expected only the step onto his trigger and his battle; its battles:" + battles;
+    if (battles != " rival_cerulean" || rival.steps.size() != 3 || rival.steps[1].name != "rival_trigger"){
+        return "00.15b: expected a TEACH, the step onto his trigger and his battle; its battles:" + battles;
+    }
+    const std::optional<TeachPlan> teach = parse_teach_variant(rival.steps[0].variant);
+    if (rival.steps[0].kind != StoryStepKind::GAME || !teach || teach->item != "tm03" || teach->move != "water-pulse"
+        || teach->member != 0 || teach->forget_move != "tail-whip"
+    ){
+        return "00.15b: expected it to start with TM03 Water Pulse over the lead's Tail Whip.";
     }
     const StoryCheckpoint& before = checkpoints[index - 1];
     const size_t n = before.steps.size();
