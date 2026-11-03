@@ -44,7 +44,8 @@ public:
 
 class StubTeach : public TeachActions{
 public:
-    virtual bool open_item(std::string_view, std::string_view) override{ return false; }
+    //  Its TM Case is empty.
+    virtual ItemOpen open_item(std::string_view, std::string_view) override{ return ItemOpen::NOT_IN_CASE; }
     virtual TeachPrompt choose_member(size_t) override{ return TeachPrompt::FAILED; }
     virtual ForgetEnd forget(size_t) override{ return ForgetEnd::FAILED; }
     virtual void stop_teaching() override{}
@@ -60,6 +61,7 @@ public:
     virtual GrindFight fight() override{ return GrindFight::FAILED; }
     virtual bool needs_heal() override{ return false; }
     virtual bool heal_trip() override{ return true; }
+    virtual std::optional<WinEstimate> win_chance(const MemberInfo&, std::string_view) override{ return std::nullopt; }
 };
 
 class StubFossils : public ChoiceActions{
@@ -139,6 +141,7 @@ std::vector<StepCase> step_cases(){
         {"a Mart with too little money succeeds", [](StubGame& game){ game.mart.money = 100; }, game_step("mart PewterCity_Mart budget=2000 potion=5"), ""},
         {"a Mart purchase that fails", none, game_step("mart PewterCity_Mart budget=2000 potion=5"), "mart_failed"},
         {"a move it knows already succeeds", none, game_step("teach hm03 surf slot=1"), ""},
+        {"a TM not in the TM Case is skipped", none, game_step("teach tm03 water-pulse slot=1 forget=water-gun"), ""},
         {"a level that can't be read stops a GRIND", [](StubGame& game){ game.level.reset(); }, grind, "grind_unread"},
         {"a GRIND without a nurse", none, game_step("grind slot=1 level=20"), "bad_variant"},
         {"no YES/NO at the fossil", none, fossil_step("fossil", "", Fossil::HELIX), "fossil_failed"},

@@ -26,7 +26,8 @@ Outcome mart(Logger& logger, const MartPlan& plan, StoryAbilities& abilities){
 
 Outcome teach(Logger& logger, const TeachPlan& plan, StoryAbilities& abilities){
     const TeachResult result = run_teach(logger, abilities.teach, abilities.members, plan);
-    if (result.end == TeachEnd::LEARNED || result.end == TeachEnd::ALREADY_KNOWN){
+    //  NO_ITEM: skipped, with run_teach()'s log line.
+    if (result.end == TeachEnd::LEARNED || result.end == TeachEnd::ALREADY_KNOWN || result.end == TeachEnd::NO_ITEM){
         return Pokemon::outcome_ok();
     }
     return Pokemon::outcome_failed(std::string("teach_") + teach_end_name(result.end), teach_message(plan, result));
