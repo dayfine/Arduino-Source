@@ -604,6 +604,34 @@ UnitTestResult test_mt_moon_late_battle(){
     return true;
 }
 
+//  Console B, 2026-11-03 (row 00.13, b2f_ladder_foot): a wild battle whose
+//  flashes were missed started on "south 3 (warp)" from (5, 3) to 1F's
+//  ladder; its wipe passed for the ladder's fade, and the walker stopped as
+//  off the route, with the player on (5, 5). A battle on the leg's first or
+//  second step is now run from, the player found again on the leg, and the
+//  route goes on down both ladders. Without the rule it stops as it did.
+UnitTestResult test_mt_moon_battle_on_ladder_leg(){
+    const SimCase c{.start = at("MtMoon_1F", 3, 3), .facing = Direction::NORTH, .goal = at("MtMoon_B2F", 26, 21)};
+    for (size_t tile : {1, 2}){
+        const std::optional<SimRun> now = run_with_battle_on_warp_leg(c, tile);
+        if (!now){
+            return std::format("Expected a leg onto 1F's ladder with a cave step {}:", tile) + describe(planned(c));
+        }
+        if (!arrived(*now, c.goal) || now->state.warps != 2){
+            return std::format("Expected the battle on step {} run from, then B1F and B2F reached:", tile) + describe(*now);
+        }
+    }
+    SimCase off = c;
+    off.rules.find_player_after_warp_battle = false;
+    const std::optional<SimRun> old = run_with_battle_on_warp_leg(off, 2);
+    if (!old || !stopped_with(*old, "a wild battle, not the warp to MtMoon_B1F: the player is off the route.")
+        || !(old->state.position == at("MtMoon_1F", 5, 5))
+    ){
+        return "Expected a stop as off the route on (5, 5) without the rule:" + (old ? describe(*old) : "");
+    }
+    return true;
+}
+
 //  Mt. Moon B2F, after the HELIX FOSSIL: the player steps onto (14, 7),
 //  where it lay, and the way out goes north through the gap, west to the
 //  ladder (5, 10), up to B1F and out of its east end onto Route 4, walked
@@ -638,6 +666,7 @@ void add_tests_OverworldSim(UnitTestDatabase& database){
     database.add<Test_OverworldSim>("Mt. Moon: a short open leg before the Grunt's line", test_mt_moon_short_leg);
     database.add<Test_OverworldSim>("Mt. Moon: a late wild battle in the cave", test_mt_moon_late_battle);
     database.add<Test_OverworldSim>("Mt. Moon: after the HELIX, out to Route 4", test_mt_moon_way_out);
+    database.add<Test_OverworldSim>("Mt. Moon: a battle on the leg onto 1F's ladder", test_mt_moon_battle_on_ladder_leg);
 }
 
 
