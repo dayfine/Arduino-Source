@@ -11,8 +11,8 @@ restriction on 2026-10-23. It applies to every agent, including Codex and Claude
 user.** A successful build, completed validation or merged parent does not
 authorize an agent to publish upstream.
 
-- **At most two open upstream PRs from us, drafts included** (upstream
-  CONTRIBUTIONS.md). This is a limit for the user's upstream handoff, not
+- **At most three open upstream PRs from us, drafts included** (the user's
+  call on 2026-11-03; upstream CONTRIBUTING.md asks new contributors for two). This is a limit for the user's upstream handoff, not
   permission for an agent to create a PR.
 - **Use `gh` through `~/.local/bin/gh`, first on PATH.** Do not bypass its
   upstream guard. Always specify `--repo dayfine/Arduino-Source --draft` when
