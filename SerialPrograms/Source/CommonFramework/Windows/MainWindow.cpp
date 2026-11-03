@@ -15,6 +15,7 @@
 #include <QLabel>
 #include <QPushButton>
 #include <QMessageBox>
+#include <QTimer>
 #include "Common/Cpp/ScopeExit.h"
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/Logging/MultiOutputLogger.h"
@@ -288,6 +289,16 @@ MainWindow::MainWindow(QWidget* parent)
     GlobalSettings::instance().WALLPAPER.add_listener(*this);
     SystemSleepController::instance().add_listener(*this);
     update_wallpaper();
+
+    //  Let lab scripts start/stop the selected program. See LabControl.h.
+    QTimer* lab_control_timer = new QTimer(this);
+    connect(
+        lab_control_timer, &QTimer::timeout,
+        this, [this]{
+            poll_lab_control(m_current_panel.get(), m_lab_control_status);
+        }
+    );
+    lab_control_timer->start(500);
 //    cout << "Done constructing" << endl;
 }
 MainWindow::~MainWindow(){
