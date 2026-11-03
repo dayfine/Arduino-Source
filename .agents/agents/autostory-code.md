@@ -42,12 +42,19 @@ without being restated.
   still alive.
 - **Your own checkout.** Work only in your own worktree:
   `git -C /Users/difan/Projects/Arduino-Source worktree add <your temp folder>/wt-<topic> <branch>`
-  (new work: `-b <branch> origin/<base>`). Run builds against that tree, never the dispatcher's. A fresh
-  configure needs `PKG_CONFIG_PATH=/opt/homebrew/opt/opencv@4/lib/pkgconfig` and
-  `-DWrapOpenGL_AGL=<CommandLineTools SDK>/System/Library/Frameworks/AGL.framework/AGL.tbd`. One local
-  build at a time on this Mac, `-j4`.
-- **Reuse a built tree.** A fresh worktree means a full configure and a ~30-minute build (ccache
-  hits little across branches). If the dispatcher names a worktree with a build, or an existing worktree
+  (new work: `-b <branch> origin/<base>`). Run builds against that tree, never the dispatcher's. One local
+  build at a time on this Mac, `-j4`. A fresh configure uses the shared compiler cache, as this one
+  command from the worktree root (the AGL path avoids "framework 'AGL' not found" at link):
+  ```sh
+  SRC=$(git rev-parse --show-toplevel); L="ccache;cache_dir=$HOME/Library/Caches/pokemonautomation-ccache;base_dir=$SRC"
+  PKG_CONFIG_PATH=/opt/homebrew/opt/opencv@4/lib/pkgconfig cmake -S SerialPrograms -B SerialPrograms/build -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_C_COMPILER_LAUNCHER="$L" -DCMAKE_CXX_COMPILER_LAUNCHER="$L" -DCMAKE_C_FLAGS="-fdebug-prefix-map=$SRC=. -fdebug-compilation-dir=." -DCMAKE_CXX_FLAGS="-fdebug-prefix-map=$SRC=. -fdebug-compilation-dir=." -DWrapOpenGL_AGL=<CommandLineTools SDK>/System/Library/Frameworks/AGL.framework/AGL.tbd
+  ```
+  A build directory configured without the launcher (`grep -c ccache SerialPrograms/build/CMakeCache.txt`
+  finds nothing) must be reconfigured with this command before building. After a full build, report the
+  hit rate from `ccache --dir ~/Library/Caches/pokemonautomation-ccache -s`. Details: `tools/ccache.md`.
+- **Reuse a built tree.** A fresh worktree means a full configure and build: about 14 minutes
+  uncached; with the shared cache, every file unchanged since any cached build comes from the cache
+  (a second worktree at the same revision built in 41 s). If the dispatcher names a worktree with a build, or an existing worktree
   for the same game already has one, `git switch` your branch there instead, so ninja rebuilds only what
   changed (a small fix: under a minute).
 - **Commit early, finish in one turn.** Commit and push as soon as the scoped checks pass; the full
