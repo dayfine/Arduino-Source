@@ -68,11 +68,8 @@ public:
     virtual std::unique_ptr<VisualInferenceCallback> make_watcher() const override{
         return std::make_unique<BattleScreenWatcher>(COLOR_RED);
     }
-    //  The flashes, the wipe and the opening animation: 3.7s after the step's
-    //  press, twice on Route 1 (console B, 2026-11-01). Other maps open
-    //  battles with other wipes, so elsewhere this is a guess.
     virtual Milliseconds detection_delay() const override{
-        return 3700ms;
+        return OverworldWalkSteps::LATE_WILD_BATTLE_DELAY;
     }
 };
 
