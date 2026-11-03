@@ -434,6 +434,120 @@ UnitTestResult test_mart_exit(){
     return true;
 }
 
+//  Mt. Moon (story row 00.13): every floor tile has wild encounters, and
+//  the floors join by ladders taken on stepping onto them. From the Moon
+//  Stone (3, 2) on 1F down to the foot of B2F's ladder: two ladders, each
+//  a fade.
+UnitTestResult test_mt_moon_ladders(){
+    const SimCase c{.start = at("MtMoon_1F", 3, 3), .facing = Direction::NORTH, .goal = at("MtMoon_B2F", 26, 21)};
+    const SimRun now = run_case(c);
+    if (!arrived(now, c.goal) || now.state.warps != 2){
+        return "Expected B2F reached by two ladders:" + describe(now);
+    }
+    return true;
+}
+
+//  The Moon Stone's ball (3, 2) on Mt. Moon 1F is a short way off the way
+//  down: from (11, 3), where 00.13's walk up column 11 ends, to face it
+//  and then on to B1F costs a few tiles more than going straight, and
+//  both walks end where they were planned to.
+UnitTestResult test_moon_stone_detour(){
+    const MapPosition from = at("MtMoon_1F", 11, 3);
+    const MapPosition ball_front = at("MtMoon_1F", 3, 3);
+    const MapPosition b1f = arrival("MtMoon_B1F", "warp_0");
+    const auto tiles = [](const std::vector<RouteStep>& route){
+        int count = 0;
+        for (const RouteStep& step : route){
+            count += step.tiles;
+        }
+        return count;
+    };
+    const SimCase straight{.start = from, .facing = Direction::NORTH, .goal = b1f};
+    const SimCase to_ball{.start = from, .facing = Direction::NORTH, .goal = ball_front};
+    const SimCase on{.start = ball_front, .facing = Direction::NORTH, .goal = b1f};
+    const int extra = tiles(planned(to_ball)) + tiles(planned(on)) - tiles(planned(straight));
+    if (extra > 8){
+        return std::format("Expected the detour to cost 8 tiles or fewer, not {}:", extra) + describe(planned(to_ball)) + describe(planned(on));
+    }
+    for (const SimCase& c : {to_ball, on}){
+        const SimRun run = run_case(c);
+        if (!arrived(run, c.goal)){
+            return "Expected the detour walked:" + describe(run);
+        }
+    }
+    return true;
+}
+
+//  Mt. Moon B2F: the Grunt at (37, 21) looks around (sight 3) over the
+//  only way east. 00.13 crosses his room on legs to walls; the sim's
+//  trainers see every way they may look, so he sees the player on
+//  (37, 22), is fought, and the leg is held on to its wall.
+UnitTestResult test_mt_moon_grunt_mid_leg(){
+    SimCase c{.start = at("MtMoon_B2F", 32, 22), .facing = Direction::SOUTH, .goal = at("MtMoon_B2F", 39, 14)};
+    c.route = std::vector<RouteStep>{
+        leg(Direction::EAST, 8, at("MtMoon_B2F", 40, 22), true),
+        leg(Direction::NORTH, 3, at("MtMoon_B2F", 40, 19), true),
+        leg(Direction::WEST, 1, at("MtMoon_B2F", 39, 19), false),
+        leg(Direction::NORTH, 5, c.goal, true),
+    };
+    const SimRun now = run_case(c);
+    if (!arrived(now, c.goal) || now.state.trainers_beaten != std::vector<std::string>{"rocket_m"}){
+        return "Expected the Grunt fought once and the legs walked:" + describe(now);
+    }
+    return true;
+}
+
+//  Mt. Moon B2F: 00.13's open leg east along the bottom row, (8, 38) to
+//  (11, 38), ends a tile short with nothing on screen. The hold north
+//  after it would end on (10, 21), a column west of the Grunt's line the
+//  table steps into from (11, 21): the walker finds the player at walls
+//  and walks back first. Taken as walked, the route ends on (10, 21).
+UnitTestResult test_mt_moon_short_leg(){
+    SimCase c{.start = at("MtMoon_B2F", 8, 38), .facing = Direction::WEST, .goal = at("MtMoon_B2F", 11, 21)};
+    c.route = std::vector<RouteStep>{
+        leg(Direction::EAST, 3, at("MtMoon_B2F", 11, 38), false),
+        leg(Direction::NORTH, 17, c.goal, true),
+    };
+    c.script.short_holds[1] = 1;
+    const SimRun now = run_case(c);
+    if (!arrived(now, c.goal)){
+        return "Expected the player found at walls after the short leg, and the route walked:" + describe(now);
+    }
+    SimCase trusted = c;
+    trusted.open_leg_check = OpenLegCheck::TRUST;
+    const SimRun old = run_case(trusted);
+    if (!old.failure.empty() || !(old.state.position == at("MtMoon_B2F", 10, 21))){
+        return "Expected the walk claimed done on (10, 21) without the check:" + describe(old);
+    }
+    return true;
+}
+
+//  Mt. Moon: a wild battle whose flashes are missed stops a leg to a wall
+//  part-way (every cave tile can start one); it is run from and the leg
+//  walked again, and the route goes on down the ladders.
+UnitTestResult test_mt_moon_late_battle(){
+    SimCase c{.start = at("MtMoon_1F", 3, 3), .facing = Direction::NORTH, .goal = at("MtMoon_B2F", 26, 21)};
+    c.script.encounters = {{.grass_step = 9, .seen_late = true}};
+    const SimRun now = run_case(c);
+    if (!arrived(now, c.goal)){
+        return "Expected the battle run from, then B2F reached:" + describe(now);
+    }
+    return true;
+}
+
+//  Mt. Moon B2F, after the HELIX FOSSIL: the player steps onto (14, 7),
+//  where it lay, and the way out goes north through the gap, west to the
+//  ladder (5, 10), up to B1F and out of its east end onto Route 4, walked
+//  a tile south of the cave mouth.
+UnitTestResult test_mt_moon_way_out(){
+    const SimCase c{.start = at("MtMoon_B2F", 14, 7), .facing = Direction::NORTH, .goal = at("Route4", 32, 6)};
+    const SimRun now = run_case(c);
+    if (!arrived(now, c.goal) || now.state.warps != 2 || now.state.facing != Direction::SOUTH){
+        return "Expected Route 4 east of the mountain reached by two warps, facing south:" + describe(now);
+    }
+    return true;
+}
+
 }
 
 
@@ -448,6 +562,12 @@ void add_tests_OverworldSim(UnitTestDatabase& database){
     database.add<Test_OverworldSim>("a short leg, nothing seen", test_short_leg_unseen);
     database.add<Test_OverworldSim>("a trainer on the way out of Pewter Gym", test_trainer_on_way_out);
     database.add<Test_OverworldSim>("out of Viridian Mart from the clerk's scene", test_mart_exit);
+    database.add<Test_OverworldSim>("Mt. Moon: down the ladders to B2F", test_mt_moon_ladders);
+    database.add<Test_OverworldSim>("Mt. Moon: the Moon Stone is a short detour", test_moon_stone_detour);
+    database.add<Test_OverworldSim>("Mt. Moon: the Grunt who looks around stops a leg to a wall", test_mt_moon_grunt_mid_leg);
+    database.add<Test_OverworldSim>("Mt. Moon: a short open leg before the Grunt's line", test_mt_moon_short_leg);
+    database.add<Test_OverworldSim>("Mt. Moon: a late wild battle in the cave", test_mt_moon_late_battle);
+    database.add<Test_OverworldSim>("Mt. Moon: after the HELIX, out to Route 4", test_mt_moon_way_out);
 }
 
 
