@@ -7,6 +7,7 @@
  */
 
 #include <format>
+#include <optional>
 #include <set>
 #include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "CommonFramework/Notifications/ProgramNotifications.h"
@@ -99,6 +100,68 @@ void close_game_after_failure(SingleSwitchProgramEnvironment& env, ProController
     }
 }
 
+//  A run that stopped short throws, closing the game first unless it
+//  stopped at the first failure as asked.
+void throw_if_stopped(SingleSwitchProgramEnvironment& env, ProControllerContext& context, const Pokemon::SegmentReport& report){
+    if (report.completed){
+        return;
+    }
+    if (!report.stopped_at_first_failure){
+        close_game_after_failure(env, context);
+    }
+    throw OperationFailedException(
+        ErrorReportMode::NO_ERROR_REPORT,
+        std::format(
+            "AutoStory stopped at {} {}: {}",
+            report.failed_checkpoint, report.failed_event, Pokemon::to_string(report.failure)
+        )
+    );
+}
+
+//  Verify mode's checkpoint and runs, and whether the game starts as a new
+//  game (refused: no save to reload) or stays open after a failure.
+struct VerifyRequest{
+    std::string id;
+    Pokemon::VerifyPolicy policy;
+    bool new_game = false;
+    bool keep_game = false;
+};
+
+//  Verify mode: the checkpoint run as the request's policy says. Rows save
+//  at their start, never at their end, so the reset from HOME between runs
+//  loads the save the first run started from. Throws unless enough runs
+//  pass, closing the game first as after any failure unless `keep_game`.
+void verify_story_checkpoint(
+    SingleSwitchProgramEnvironment& env, ProControllerContext& context, Pokemon::RunState& state,
+    Pokemon::Segment& segment, Pokemon::SegmentHooks& hooks, const VerifyRequest& request
+){
+    if (request.new_game){
+        throw UserSetupError(env.console, "Verify mode reloads the start's save between runs: turn off \"Start a new game first\".");
+    }
+    const std::string& id = request.id;
+    const Pokemon::VerifyPolicy& policy = request.policy;
+    const bool keep_game = request.keep_game;
+    Pokemon::VerifyReport report;
+    try{
+        report = Pokemon::verify_checkpoint(state, segment, id, policy, hooks);
+    }catch (OperationFailedException&){
+        if (!keep_game){
+            close_game_after_failure(env, context);
+        }
+        throw;
+    }
+    const std::string summary = std::format(
+        "AutoStory verify: {} {}/{} passed, {} needed.", id, report.passes, policy.runs, policy.passes_needed
+    );
+    if (!report.verified){
+        if (!keep_game){
+            close_game_after_failure(env, context);
+        }
+        throw OperationFailedException(ErrorReportMode::NO_ERROR_REPORT, summary);
+    }
+    env.console.log(summary);
+}
+
 }
 
 
@@ -178,6 +241,12 @@ void BDSPAutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerCo
     if (!(first == 0 && NEW_GAME_INTRO)){
         state.flags.insert("save_loaded");
     }
+    if (const std::optional<Pokemon::VerifyPolicy> verify = RUN.VERIFY.policy()){
+        const VerifyRequest request{checkpoints[first].id, *verify, first == 0 && NEW_GAME_INTRO, RUN.STOP_AT_FIRST_FAILURE};
+        verify_story_checkpoint(env, context, state, segment, hooks, request);
+        send_program_finished_notification(env, NOTIFICATION_PROGRAM_FINISH);
+        return;
+    }
     Pokemon::SegmentReport report;
     try{
         report = run_segment(state, segment, Pokemon::SegmentRange{checkpoints[first].id, checkpoints[last].id}, RUN.policy(), hooks);
@@ -190,18 +259,7 @@ void BDSPAutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerCo
     Pokemon::AutoStoryStats& stats = env.current_stats<Pokemon::AutoStoryStats>();
     Pokemon::record_story_stats(stats, report);
     env.update_stats();
-    if (!report.completed){
-        if (!report.stopped_at_first_failure){
-            close_game_after_failure(env, context);
-        }
-        throw OperationFailedException(
-            ErrorReportMode::NO_ERROR_REPORT,
-            std::format(
-                "AutoStory stopped at {} {}: {}",
-                report.failed_checkpoint, report.failed_event, Pokemon::to_string(report.failure)
-            )
-        );
-    }
+    throw_if_stopped(env, context, report);
     env.console.log("AutoStory: done through " + checkpoints[last].id + ".");
     send_program_finished_notification(env, NOTIFICATION_PROGRAM_FINISH);
 }

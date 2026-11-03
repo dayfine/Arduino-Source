@@ -66,6 +66,9 @@ std::optional<RobustPlanCosts> story_route_costs(const std::string& variant){
     if (variant == "robust"){
         return RobustPlanCosts();
     }
+    if (variant == "line"){
+        return waypoint_plan_costs();
+    }
     return std::nullopt;
 }
 
@@ -92,6 +95,16 @@ void save_failure_screenshot(VideoStream& stream, size_t attempt){
     stream.log("Failure screenshot: " + path);
 }
 
+//  A trainer who saw us on a route: Route 204's Twins battle as a pair
+//  (01.10), everyone else alone.
+void fight_story_trainer(VideoStream& stream, ProControllerContext& context, const std::string& trainer){
+    if (trainer.find("Twins") != std::string::npos){
+        talk_or_fight(stream, context, trainer, TalkExpect::BATTLE, BattleFormat::DOUBLES);
+        return;
+    }
+    fight_route_trainer(stream, context, trainer);
+}
+
 }
 
 
@@ -103,8 +116,7 @@ void StoryExecutor::begin_attempt(const Pokemon::StoryCheckpoint& data){
     m_checkpoint = data.id;
     //  A row starts from its save: after the shoes' row, the save has them.
     m_can_run = data.id > std::string(RUNNING_SHOES_ROW);
-    const StoryWorld* south = story_plan_world("Route202", "Route202");
-    m_trainers = south ? story_trainers(*south) : std::vector<TrainerSight>{};
+    m_trainers.clear();
 }
 
 Outcome StoryExecutor::run(RunState& state, const StoryStep& step){
@@ -153,21 +165,18 @@ Pose StoryExecutor::walk_to(const Pose& from, const Pose& goal, const StoryStep&
     for (const TilePos& pos : Pokemon::tiles_of(goal)){
         targets.push_back(story_to_world(*maps, goal.map, pos));
     }
-    //  Only Route 202's trainers are known; the ones fought stay off
-    //  m_trainers until the next attempt.
-    const bool south = maps == story_plan_world("Route202", "Route202");
+    //  The ones fought stay off m_trainers until the next attempt.
+    std::vector<TrainerSight>& sights = m_trainers.try_emplace(maps, story_trainers(*maps)).first->second;
     RouteTrainers trainers{
-        south ? m_trainers : std::vector<TrainerSight>{},
-        [this](const std::string& trainer){ fight_route_trainer(stream(), context(), trainer); }
+        sights,
+        [this](const std::string& trainer){ fight_story_trainer(stream(), context(), trainer); }
     };
     const RouteWalkPlan plan{
         [&](const TilePos& pos){ return std::find(targets.begin(), targets.end(), pos) != targets.end(); },
         label_of(step), {}, *costs, m_can_run ? MoveSpeed::RUN : MoveSpeed::WALK
     };
     const std::vector<TilePos> at = walk_route(stream(), context(), run_from_wild_battle, *maps, start, trainers, plan);
-    if (south){
-        m_trainers = std::move(trainers.sights);
-    }
+    sights = std::move(trainers.sights);
     std::vector<TilePos> local;
     for (const TilePos& pos : at){
         const std::optional<TilePos> tile = story_to_local(*maps, goal.map, pos);
@@ -354,11 +363,15 @@ namespace{
 //  stops it: holding on under Mom's "Oh, Kosmos!" wasted 12 s (r45). The walker's black-screen watch
 //  missed the lab's fade into Sandgem (r44, "dialog"), and settle's samples
 //  1.3 s apart can fall either side of it, so watch at settle's own darkness.
-bool run_into_door(VideoStream& stream, ProControllerContext& context, Direction direction, bool run){
-    const DpadPosition dpad =
+DpadPosition dpad_toward(Direction direction){
+    return
         direction == Direction::NORTH ? DPAD_UP :
         direction == Direction::SOUTH ? DPAD_DOWN :
         direction == Direction::WEST ? DPAD_LEFT : DPAD_RIGHT;
+}
+
+bool run_into_door(VideoStream& stream, ProControllerContext& context, Direction direction, bool run){
+    const DpadPosition dpad = dpad_toward(direction);
     BlackScreenWatcher dark(COLOR_RED, {0.1, 0.1, 0.8, 0.8}, 3 * FADE_DARKNESS, 60);
     ShortDialogWatcher dialog(COLOR_YELLOW);
     const int ret = run_until<ProControllerContext>(stream, context, [&](ProControllerContext& context){
@@ -370,10 +383,68 @@ bool run_into_door(VideoStream& stream, ProControllerContext& context, Direction
     return ret == 0;
 }
 
+//  What the screen showed after a tap toward a door or a cave mouth.
+enum class TapLook{
+    NOTHING,
+    DARK,
+    BANNER,
+};
+
+//  Looks for `map`'s location banner (and, if `dark_too`, the fade) for up
+//  to `wait`.
+TapLook look_after_tap(VideoStream& stream, ProControllerContext& context, const std::string& map, Milliseconds wait, bool dark_too){
+    const WallClock deadline = current_time() + wait;
+    while (true){
+        context.wait_for_all_requests();
+        const VideoSnapshot screen = stream.video().snapshot();
+        if (screen && location_banner_matches(read_location_banner(*screen.frame), map)){
+            return TapLook::BANNER;
+        }
+        if (dark_too && screen && image_average(*screen.frame).sum() / 3 < FADE_DARKNESS){
+            return TapLook::DARK;
+        }
+        if (current_time() >= deadline){
+            return TapLook::NOTHING;
+        }
+        context.wait_for(100ms);
+    }
+}
+
+//  A STEP "to_banner": D-pad taps one at a time toward a door or cave mouth,
+//  each followed by a look, until the fade (then no more taps) and
+//  pose_after's map's location banner. A held walk can carry on past a
+//  fade that goes unseen: out of the Gym it walked on south (r219g), and
+//  through the Oreburgh Gate's west mouth on west into a pocket by Route
+//  203's pond (r75). Taps during the fade are eaten. No banner fails the
+//  step right there.
+Outcome tap_to_banner(VideoStream& stream, ProControllerContext& context, const StoryStep& step, const std::string& checkpoint){
+    const std::string map = step.pose_after ? story_banner_name(step.pose_after->map) : "";
+    for (size_t tap = 1; tap <= 30; tap++){
+        pbf_press_dpad(context, dpad_toward(step.direction), 160ms, 0ms);
+        TapLook look = look_after_tap(stream, context, map, 1500ms, true);
+        const bool faded = look == TapLook::DARK;
+        if (faded){
+            look = look_after_tap(stream, context, map, 8000ms, false);
+        }
+        if (look == TapLook::BANNER){
+            stream.log(std::format("[{}] {}: {}'s banner after {} taps {}.", checkpoint, step.name, map, tap, direction_name(step.direction)));
+            context.wait_for(1000ms);
+            return Pokemon::outcome_ok();
+        }
+        if (faded){
+            break;
+        }
+    }
+    return Pokemon::outcome_failed("no_banner", map);
+}
+
 }
 
 Outcome StoryExecutor::step(RunState& state, const StoryStep& step){
     route_turn(stream(), context(), step.direction);
+    if (step.variant == "to_banner"){
+        return tap_to_banner(stream(), context(), step, m_checkpoint);
+    }
     //  A step through a door: walk (or run) on until the screen goes dark,
     //  from next to the door or from anywhere in its line (r43: tapping 8 tiles
     //  down the lab took 7 s), then settle for any scene on arrival (Mom's,
@@ -403,8 +474,10 @@ Outcome StoryExecutor::talk(RunState& state, const StoryStep& step){
     }
     pbf_press_button(context(), BUTTON_A, 80ms, 200ms);
     context().wait_for_all_requests();
+    //  Roark's first line in the mine comes after the camera zooms in on
+    //  us, which can take some seconds (r98; the old event waited 8 s).
     ShortDialogWatcher dialog(COLOR_YELLOW);
-    if (wait_until(stream(), context(), 3000ms, {{dialog}}) != 0){
+    if (wait_until(stream(), context(), 8000ms, {{dialog}}) != 0){
         fail_step(stream(), label_of(step) + ": nobody answered.");
     }
     return Pokemon::outcome_ok();
@@ -430,6 +503,13 @@ Outcome StoryExecutor::mash(RunState& state, const StoryStep& step){
 }
 
 Outcome StoryExecutor::battle(RunState&, const StoryStep& step){
+    //  "starter": the Starly battle at the lake (00.02). It opens on its own,
+    //  with no talk, and the starter has no Poke Balls to throw; the scene
+    //  goes on whoever wins.
+    if (step.variant == "starter"){
+        fight_starly(stream(), context());
+        return Pokemon::outcome_ok();
+    }
     //  A loss sends us to a Pokemon Center, so ending on its floor means a
     //  loss - unless the floor check already passed where the battle began:
     //  Jubilife's yellow plaza reads as Center floor (63 %, r79 won Rowan's

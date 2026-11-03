@@ -18,7 +18,6 @@ const StoryEvents& story_events(){
         add_lake_events(ret);
         add_sandgem_events(ret);
         add_jubilife_events(ret);
-        add_route203_events(ret);
         add_oreburgh_events(ret);
         add_route204_events(ret);
         return ret;
