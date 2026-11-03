@@ -15,6 +15,7 @@
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRecoveryWalk.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRoute.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWalk.h"
+#include "PokemonFRLG_AutoStoryAbilities.h"
 #include "PokemonFRLG_AutoStoryCapture.h"
 #include "PokemonFRLG_AutoStoryEvents.h"
 
@@ -413,7 +414,66 @@ Outcome StoryExecutor::ready(RunState& state, const StoryStep& step){
     return get_ready(m_env, state, step);
 }
 
-Outcome StoryExecutor::game(RunState&, const StoryStep& step){
+namespace{
+
+bool walked(StoryEnv& env, RunState& state, const StoryStep& step){
+    const Outcome outcome = walk_route(env, state, step);
+    if (outcome.succeeded() && outcome.pose){
+        state.pose = *outcome.pose;
+    }
+    return outcome.succeeded();
+}
+
+//  A GRIND's trip from the patch to the nurse (`step`'s target) and back
+//  to `patch`, starting where pacing left the player (`spot`).
+bool grind_heal_trip(StoryEnv& env, RunState& state, const StoryStep& step, const Pokemon::Pose& patch, const GrindSpot& spot){
+    std::optional<StoryPose> here = story_pose(patch);
+    if (!here){
+        return false;
+    }
+    if (spot.displaced && spot.facing){
+        here->tile = here->tile.next(*spot.facing);
+    }
+    if (spot.facing){
+        here->facing = spot.facing;
+    }
+    state.pose = to_pose(*here);
+    StoryStep walk;
+    walk.kind = StoryStepKind::ROUTE;
+    walk.name = step.name + "_to_nurse";
+    walk.target = step.target;
+    if (!walked(env, state, walk)){
+        return false;
+    }
+    heal_at_center(env.console, env.context);
+    env.supplies.hurt = false;
+    env.supplies.hp_red = false;
+    env.supplies.status = StatusCondition::NONE;
+    walk.name = step.name + "_back_to_patch";
+    walk.target = patch;
+    return walked(env, state, walk);
+}
+
+//  A MART, TEACH, LEVEL, GRIND or fossil step on the console; nothing for
+//  another variant.
+std::optional<Outcome> run_abilities(StoryEnv& env, RunState& state, const StoryStep& step){
+    const Pokemon::Pose patch = state.pose;
+    ConsoleMartActions mart(env.console, env.context, env.language, env.supplies);
+    ConsoleTeachActions teach(env.console);
+    ConsoleGrindActions grind(
+        env.console, env.context, env.language, env.supplies, env.checks,
+        [&](const GrindSpot& spot){
+            return grind_heal_trip(env, state, step, patch, spot);
+        }
+    );
+    ConsoleChoiceActions choice(env.console, env.context);
+    StoryAbilities abilities{console_member_reader(env.console), mart, teach, grind, choice};
+    return run_ability_game_step(env.console.logger(), &env.console, step, abilities);
+}
+
+}
+
+Outcome StoryExecutor::game(RunState& state, const StoryStep& step){
     if (step.variant == CLOSE_TRAINER_CARD){
         close_trainer_card(m_env.console, m_env.context);
         return Pokemon::outcome_ok();
@@ -427,6 +487,10 @@ Outcome StoryExecutor::game(RunState&, const StoryStep& step){
     const std::optional<Outcome> stored = run_storage_game_step(m_env.console.logger(), &m_env.console, step, capture, pc);
     if (stored){
         return *stored;
+    }
+    const std::optional<Outcome> ability = run_abilities(m_env, state, step);
+    if (ability){
+        return *ability;
     }
     return Pokemon::unsupported_step(step);
 }

@@ -225,7 +225,9 @@ protected:
     //  LEAVE_GIFT_SUMMARY: back from Gift RNG (leave_gift_summary()).
     //  A capture or a PC deposit or withdrawal (capture_step(), pc_step()
     //  in PokemonFRLG_AutoStoryCapture.h); a shiny met in a capture stops
-    //  the program without reloading.
+    //  the program without reloading. A MART, TEACH, LEVEL, GRIND or
+    //  fossil CHOICE (PokemonFRLG_AutoStoryAbilities.h); a GRIND heals by
+    //  routing to its target, the nurse, and back.
     virtual Pokemon::Outcome game(Pokemon::RunState& state, const StoryStep& step) override;
 
 private:
