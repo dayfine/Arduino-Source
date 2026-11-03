@@ -12,6 +12,8 @@
 #ifndef PokemonAutomation_PokemonFRLG_AutoStory_H
 #define PokemonAutomation_PokemonFRLG_AutoStory_H
 
+#include <optional>
+#include <string>
 #include "Common/Cpp/Options/BooleanCheckBoxOption.h"
 #include "Common/Cpp/Options/EnumDropdownOption.h"
 #include "Common/Cpp/Options/StringOption.h"
@@ -19,6 +21,8 @@
 #include "NintendoSwitch/NintendoSwitch_SingleSwitchProgram.h"
 #include "Pokemon/Options/Pokemon_StoryRunOptions.h"
 #include "PokemonFRLG_AutoStoryActions.h"
+#include "PokemonFRLG_AutoStoryEvents.h"
+#include "PokemonFRLG_AutoStoryRngLoop.h"
 #include "PokemonFRLG_AutoStoryRngOptions.h"
 
 namespace PokemonAutomation{
@@ -43,6 +47,17 @@ public:
     ) override{}
 
 private:
+    //  The RNG programs' handoffs the run takes, from the options.
+    StoryHandoffs story_handoffs() const;
+    //  After 00.04 saved under Squirtle's ball (row `ball_row`): the stop
+    //  for Starter RNG, or its attempts run here and, for a shiny, the run
+    //  on to the end checkpoint. Returns the last checkpoint run, or nothing
+    //  once the run has stopped.
+    std::optional<std::string> after_starter_ball(
+        SingleSwitchProgramEnvironment& env, ProControllerContext& context,
+        StoryEnv& story, StoryExecutor& executor, const StarterRngPlanned& planned, size_t ball_row
+    );
+
     //  The start and end checkpoints, attempts, checks and language, as in
     //  every game's AutoStory.
     Pokemon::StoryRunOptions RUN;
@@ -51,7 +66,12 @@ private:
     //  The RNG programs the run stops for (StoryHandoff).
     BooleanCheckBoxOption STOP_FOR_SID_HELPER;
     BooleanCheckBoxOption STOP_FOR_STARTER_RNG;
+    //  Runs SID Helper's steps and Starter RNG's attempts in the program
+    //  instead of stopping for them.
+    BooleanCheckBoxOption RUN_STARTER_RNG;
     StarterRngPlanOptions RNG_PLAN;
+    EventNotificationOption NOTIFICATION_SHINY;
+    EventNotificationOption NOTIFICATION_STATUS_UPDATE;
     EventNotificationsOption NOTIFICATIONS;
 };
 

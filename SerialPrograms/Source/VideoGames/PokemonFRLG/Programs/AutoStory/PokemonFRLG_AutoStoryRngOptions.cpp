@@ -112,10 +112,19 @@ void StarterRngPlanOptions::check(Logger& logger) const{
     filters(logger);
 }
 
+std::vector<SidCandidate> StarterRngPlanOptions::helper_candidates(uint16_t tid) const{
+    return sid_helper_candidates(tid, SID_HELPER_ADVANCES, SID_HELPER_CANDIDATES);
+}
+
+std::vector<SidCandidate> StarterRngPlanOptions::plan_candidates(Logger& logger, uint16_t tid) const{
+    const std::optional<uint16_t> known = sid(logger);
+    return known ? std::vector<SidCandidate>{{*known, 1}} : helper_candidates(tid);
+}
+
 std::vector<RngAttempt> StarterRngPlanOptions::plan(Logger& logger, Language language, uint16_t tid) const{
     //  SID Helper's candidates are logged even with the SID known, to place
     //  it among them (rng_log_confirmed()).
-    const std::vector<SidCandidate> helper = sid_helper_candidates(tid, SID_HELPER_ADVANCES, SID_HELPER_CANDIDATES);
+    const std::vector<SidCandidate> helper = helper_candidates(tid);
     logger.log(rng_log_sid_helper(tid, SID_HELPER_ADVANCES, helper));
     const std::optional<uint16_t> known = sid(logger);
     if (known){
@@ -128,7 +137,7 @@ std::vector<RngAttempt> StarterRngPlanOptions::plan(Logger& logger, Language lan
         .language = language,
         .sound = SOUND,
         .tid = tid,
-        .candidates = known ? std::vector<SidCandidate>{{*known, 1}} : helper,
+        .candidates = plan_candidates(logger, tid),
         .filters = filters(logger),
         .max_attempts = MAX_ATTEMPTS,
     });

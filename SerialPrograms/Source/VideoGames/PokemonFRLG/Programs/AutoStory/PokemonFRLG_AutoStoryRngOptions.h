@@ -42,6 +42,10 @@ public:
     //  in "language", logged as "RngPlan:" lines. Throws UserSetupError
     //  when no target passes.
     std::vector<RngAttempt> plan(Logger& logger, Language language, uint16_t tid) const;
+    //  SID Helper's candidates for "tid", from the two SID Helper options.
+    std::vector<SidCandidate> helper_candidates(uint16_t tid) const;
+    //  The SIDs plan() plans for: the SID if set, else helper_candidates().
+    std::vector<SidCandidate> plan_candidates(Logger& logger, uint16_t tid) const;
     //  The sound setting as Starter RNG's dropdown shows it.
     std::string sound_name() const;
 

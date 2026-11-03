@@ -40,6 +40,7 @@
 #include "Programs/PokemonFRLG_NamingScreenKeyboard.h"
 #include "PokemonFRLG_Navigation.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryBattle.h"
+#include "Programs/AutoStory/PokemonFRLG_AutoStoryRngLoop.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryRngPlan.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryTable.h"
 #include "Programs/RngManipulation/PokemonFRLG_RngSteps_Tests.h"
@@ -705,6 +706,7 @@ void add_tests(UnitTestDatabase& database){
     add_tests_AutoStorySimulation(database);
     add_tests_AutoStoryItems(database);
     add_tests_AutoStoryRngPlan(database);
+    add_tests_AutoStoryRngLoop(database);
     add_tests_NamingCursor(database);
     add_tests_NamingPlan(database);
     add_tests_NamingKeys(database);
