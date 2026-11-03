@@ -162,6 +162,11 @@
             "side": "south",
             "to_map": "Route2",
             "offset": 12
+        },
+        {
+            "side": "east",
+            "to_map": "Route3",
+            "offset": 10
         }
     ]
 }

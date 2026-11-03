@@ -745,7 +745,7 @@ public:
     }
     //  As the walker's own wild battle interrupts.
     virtual Milliseconds detection_delay() const override{
-        return m_late ? 2000ms : 300ms;
+        return m_late ? OverworldWalkSteps::LATE_WILD_BATTLE_DELAY : 300ms;
     }
     //  Run from or fought by the battle loop, which returns only once START
     //  opens on the overworld, so nothing of the battle is left before the

@@ -15,9 +15,12 @@
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRecoveryWalk.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRoute.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWalk.h"
+#include "PokemonFRLG_AutoStoryAbilities.h"
 #include "PokemonFRLG_AutoStoryBattleData.h"
+#include "PokemonFRLG_AutoStoryCapture.h"
 #include "PokemonFRLG_AutoStoryEvents.h"
 #include "PokemonFRLG_AutoStorySummary.h"
+#include "PokemonFRLG_AutoStoryTeachScreens.h"
 #include "PokemonFRLG_AutoStoryWinChance.h"
 
 namespace PokemonAutomation{
@@ -312,15 +315,18 @@ std::optional<StoryPose> story_pose(const Pokemon::Pose& pose){
 }
 
 std::string save_card_place(const std::string& map){
-    //  The longer names first: "ViridianForest" before "ViridianCity".
-    static const std::pair<const char*, const char*> PLACES[] = {
+    //  A map of the place, or a building in it ("Route4_PokemonCenter_1F"
+    //  is on Route 4, "Route24" isn't on Route 2).
+    static const std::pair<std::string, const char*> PLACES[] = {
         {"PalletTown", "pallet-town"},
         {"ViridianForest", "viridian-forest"},
         {"ViridianCity", "viridian-city"},
         {"PewterCity", "pewter-city"},
+        {"Route3", "route-3"},
+        {"Route4", "route-4"},
     };
     for (const auto& [prefix, place] : PLACES){
-        if (map.rfind(prefix, 0) == 0){
+        if (map == prefix || map.rfind(prefix + "_", 0) == 0){
             return place;
         }
     }
@@ -354,6 +360,7 @@ std::optional<std::vector<RouteStep>> fixed_route(
         step.direction = leg.direction;
         step.tiles = leg.tiles;
         step.facing_after = leg.direction;
+        step.walk_only = !map->allow_running;
         for (int c = 0; c < leg.tiles; c++){
             const StepKind kind = classify_step(*map, player, leg.direction);
             const TilePos next = player.position.next(leg.direction);
@@ -443,10 +450,83 @@ Outcome StoryExecutor::ready(RunState& state, const StoryStep& step){
     return get_ready(m_env, state, step);
 }
 
-Outcome StoryExecutor::game(RunState&, const StoryStep& step){
+namespace{
+
+bool walked(StoryEnv& env, RunState& state, const StoryStep& step){
+    const Outcome outcome = walk_route(env, state, step);
+    if (outcome.succeeded() && outcome.pose){
+        state.pose = *outcome.pose;
+    }
+    return outcome.succeeded();
+}
+
+//  A GRIND's trip from the patch to the nurse (`step`'s target) and back
+//  to `patch`, starting where pacing left the player (`spot`).
+bool grind_heal_trip(StoryEnv& env, RunState& state, const StoryStep& step, const Pokemon::Pose& patch, const GrindSpot& spot){
+    std::optional<StoryPose> here = story_pose(patch);
+    if (!here){
+        return false;
+    }
+    if (spot.displaced && spot.facing){
+        here->tile = here->tile.next(*spot.facing);
+    }
+    if (spot.facing){
+        here->facing = spot.facing;
+    }
+    state.pose = to_pose(*here);
+    StoryStep walk;
+    walk.kind = StoryStepKind::ROUTE;
+    walk.name = step.name + "_to_nurse";
+    walk.target = step.target;
+    if (!walked(env, state, walk)){
+        return false;
+    }
+    heal_at_center(env.console, env.context);
+    //  PP too: a grind's battles spend more than its attacks have.
+    healed_by_nurse(env.supplies);
+    walk.name = step.name + "_back_to_patch";
+    walk.target = patch;
+    return walked(env, state, walk);
+}
+
+//  A MART, TEACH, LEVEL, GRIND or fossil step on the console; nothing for
+//  another variant.
+std::optional<Outcome> run_abilities(StoryEnv& env, RunState& state, const StoryStep& step){
+    const Pokemon::Pose patch = state.pose;
+    ConsoleMartActions mart(env.console, env.context, env.language, env.supplies);
+    ConsoleTeachScreens teach_screens(env.console, env.context, env.language);
+    ScreenTeachActions teach(env.console.logger(), teach_screens);
+    ConsoleGrindActions grind(
+        env.console, env.context, env.language, env.supplies, env.checks,
+        [&](const GrindSpot& spot){
+            return grind_heal_trip(env, state, step, patch, spot);
+        }
+    );
+    ConsoleChoiceActions choice(env.console, env.context);
+    StoryAbilities abilities{console_member_reader(env.console, env.context, env.language), mart, teach, grind, choice};
+    return run_ability_game_step(env.console.logger(), &env.console, step, abilities);
+}
+
+}
+
+Outcome StoryExecutor::game(RunState& state, const StoryStep& step){
     if (step.variant == CLOSE_TRAINER_CARD){
         close_trainer_card(m_env.console, m_env.context);
         return Pokemon::outcome_ok();
+    }
+    if (step.variant == LEAVE_GIFT_SUMMARY){
+        leave_gift_summary(m_env.console, m_env.context);
+        return Pokemon::outcome_ok();
+    }
+    ConsoleCaptureActions capture(m_env.console, m_env.context, m_env.language);
+    ConsolePcStorageActions pc(m_env.console, m_env.context);
+    const std::optional<Outcome> stored = run_storage_game_step(m_env.console.logger(), &m_env.console, step, capture, pc);
+    if (stored){
+        return *stored;
+    }
+    const std::optional<Outcome> ability = run_abilities(m_env, state, step);
+    if (ability){
+        return *ability;
     }
     return Pokemon::unsupported_step(step);
 }
@@ -473,6 +553,13 @@ StoryRunPlan plan_story_run(
     const std::vector<StoryCheckpoint>& checkpoints, size_t first, size_t last, const StoryHandoffs& handoffs
 ){
     StoryRunPlan plan;
+    //  Started at the way back in from Gift RNG with its handoff on: the run
+    //  takes the handoff again, from the save the row before ends at.
+    if (first > 0 && first < checkpoints.size() && checkpoints[first].live_start
+        && checkpoints[first - 1].handoff == StoryHandoff::GIFT_RNG && handoffs.gift_rng){
+        plan.stop = StoryHandoff::GIFT_RNG;
+        return plan;
+    }
     for (size_t c = first; c <= last && c < checkpoints.size(); c++){
         const StoryCheckpoint& row = checkpoints[c];
         if (row.live_start && c != first){
@@ -486,6 +573,11 @@ StoryRunPlan plan_story_run(
         if (row.handoff == StoryHandoff::STARTER_RNG && handoffs.starter_rng){
             plan.rows.emplace_back(row);
             plan.stop = StoryHandoff::STARTER_RNG;
+            return plan;
+        }
+        if (row.handoff == StoryHandoff::GIFT_RNG && handoffs.gift_rng){
+            plan.rows.emplace_back(row);
+            plan.stop = StoryHandoff::GIFT_RNG;
             return plan;
         }
         if (row.handoff == StoryHandoff::STARTER_RNG && c + 1 < checkpoints.size()){

@@ -59,6 +59,10 @@ inline const std::string RUN_VARIANT = "run";
 //  The GAME step that closes the Trainer Card SID Helper leaves open.
 inline const std::string CLOSE_TRAINER_CARD = "close_trainer_card";
 
+//  The GAME step that leaves the gift's summary Gift RNG leaves open for
+//  the overworld.
+inline const std::string LEAVE_GIFT_SUMMARY = "leave_gift_summary";
+
 //  How `step`, a ROUTE or LEGS, moves the player: RUN_VARIANT runs.
 MoveSpeed move_speed(const StoryStep& step);
 
@@ -74,6 +78,9 @@ enum class StoryHandoff{
     //  which is where Starter RNG starts. With the handoff off, it runs on
     //  into the next checkpoint as one, as the story did before the split.
     STARTER_RNG,
+    //  The checkpoint saves beside the Magikarp salesman, facing him, which
+    //  is where Gift RNG starts.
+    GIFT_RNG,
 };
 
 //  A shared checkpoint with what FRLG adds to it.
@@ -94,6 +101,7 @@ struct StoryCheckpoint : public Pokemon::StoryCheckpoint{
 struct StoryHandoffs{
     bool sid_helper = false;
     bool starter_rng = false;
+    bool gift_rng = false;
 };
 
 //  What a run from table row `first` to `last` does.
@@ -103,13 +111,16 @@ struct StoryRunPlan{
     //  NONE: the run ends after `rows`. SID_HELPER: `rows` is empty; the run
     //  plays the new game to the player's keyboard and stops there.
     //  STARTER_RNG: the run stops after `rows`, the last of which saves at
-    //  the starter's ball.
+    //  the starter's ball. GIFT_RNG: likewise, beside the Magikarp salesman;
+    //  with `rows` empty, the run started at 00.12b and takes Gift RNG from
+    //  the save beside the salesman, where the row before `first` ends.
     StoryHandoff stop = StoryHandoff::NONE;
 };
 
 //  The rows of `checkpoints` from `first` to `last`, both inclusive, as a
 //  run with `handoffs` takes them: live-start rows only when the run
-//  starts there, a run that reaches a handoff that is on stops for it, and
+//  starts there (00.12b with Gift RNG's handoff on starts at the handoff
+//  instead), a run that reaches a handoff that is on stops for it, and
 //  a STARTER_RNG row whose handoff is off is joined with the row after it,
 //  under its own id.
 StoryRunPlan plan_story_run(
@@ -117,8 +128,9 @@ StoryRunPlan plan_story_run(
 );
 
 
-//  The maps the story plans on: every map to Brock, with the objects the
-//  game hides after the Hall of Fame removed, as the lab's frlg_route does.
+//  The maps the story plans on: every map to Route 4's Pokemon Center, with
+//  the objects the game hides after the Hall of Fame removed, as the lab's
+//  frlg_route does.
 const std::vector<MapData>& story_maps();
 
 Pokemon::Pose to_pose(const StoryPose& pose);
@@ -224,6 +236,12 @@ protected:
     virtual Pokemon::Outcome shop(Pokemon::RunState& state, const StoryStep& step) override;
     virtual Pokemon::Outcome ready(Pokemon::RunState& state, const StoryStep& step) override;
     //  CLOSE_TRAINER_CARD: back from SID Helper (close_trainer_card()).
+    //  LEAVE_GIFT_SUMMARY: back from Gift RNG (leave_gift_summary()).
+    //  A capture or a PC deposit or withdrawal (capture_step(), pc_step()
+    //  in PokemonFRLG_AutoStoryCapture.h); a shiny met in a capture stops
+    //  the program without reloading. A MART, TEACH, LEVEL, GRIND or
+    //  fossil CHOICE (PokemonFRLG_AutoStoryAbilities.h); a GRIND heals by
+    //  routing to its target, the nurse, and back.
     virtual Pokemon::Outcome game(Pokemon::RunState& state, const StoryStep& step) override;
 
 private:
