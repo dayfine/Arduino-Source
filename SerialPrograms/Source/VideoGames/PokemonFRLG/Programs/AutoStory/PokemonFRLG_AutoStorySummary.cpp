@@ -44,6 +44,20 @@ bool wait_drawn(ConsoleHandle& console, ProControllerContext& context, VisualInf
     return true;
 }
 
+//  POKEMON SKILLS' stats, none unless all six read.
+std::optional<Stats> skills_stats(ConsoleHandle& console, Language language, const ImageViewRGB32& screen){
+    PokemonFRLG_Stats read;
+    StatsReader().read_page2(console, language, screen, read);
+    if (!read.hp || !read.attack || !read.defense || !read.sp_attack || !read.sp_defense || !read.speed){
+        return std::nullopt;
+    }
+    return Stats{
+        .hp = static_cast<uint16_t>(*read.hp), .attack = static_cast<uint16_t>(*read.attack),
+        .defense = static_cast<uint16_t>(*read.defense), .sp_attack = static_cast<uint16_t>(*read.sp_attack),
+        .sp_defense = static_cast<uint16_t>(*read.sp_defense), .speed = static_cast<uint16_t>(*read.speed),
+    };
+}
+
 //  From the party menu with the cursor on the member: its summary, read.
 std::optional<SummaryRead> read_open_summary(ConsoleHandle& console, ProControllerContext& context, Language language){
     PartySelectionWatcher submenu(COLOR_RED);
@@ -75,6 +89,9 @@ std::optional<SummaryRead> read_open_summary(ConsoleHandle& console, ProControll
     if (!wait_drawn(console, context, skills, 3000ms)){
         console.log("Summary: POKEMON SKILLS didn't show.", COLOR_ORANGE);
         return std::nullopt;
+    }
+    if (VideoSnapshot page = console.video().snapshot()){
+        read.stats = skills_stats(console, language, page);
     }
     SummaryPage3Watcher moves(COLOR_RED);
     tap(context, DPAD_RIGHT, 0ms);
@@ -114,10 +131,16 @@ std::optional<SummaryRead> read_party_summary(
         for (const SummaryMove& move : read->moves){
             moves += std::format("{}{} {}/{}", moves.empty() ? "" : ", ", move.move, move.pp, move.max_pp);
         }
+        const std::string stats = read->stats
+            ? std::format(
+                "{} HP, {}/{}/{}/{}/{}", read->stats->hp, read->stats->attack, read->stats->defense,
+                read->stats->sp_attack, read->stats->sp_defense, read->stats->speed
+            )
+            : "stats not read";
         console.log(std::format(
-            "Summary of party slot {}: {} Lv{}, {}.",
+            "Summary of party slot {}: {} Lv{}, {}, {}.",
             slot + 1, read->species.empty() ? "?" : read->species,
-            read->level ? std::to_string(*read->level) : "?", moves.empty() ? "no moves read" : moves
+            read->level ? std::to_string(*read->level) : "?", stats, moves.empty() ? "no moves read" : moves
         ));
     }
     return read;
