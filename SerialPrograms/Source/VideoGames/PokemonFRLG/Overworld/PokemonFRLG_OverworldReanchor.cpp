@@ -368,6 +368,23 @@ std::optional<Reanchor> plan_reanchor(
     return std::nullopt;
 }
 
+std::optional<std::vector<RouteStep>> holds_to_one_tile(
+    const std::vector<MapData>& maps, const std::vector<MapPosition>& tiles
+){
+    std::vector<Hypothesis> positions;
+    for (const MapPosition& tile : tiles){
+        add_unique(positions, Hypothesis{0, tile});
+    }
+    if (positions.empty()){
+        return std::nullopt;
+    }
+    const std::vector<Found> found = find_player({maps}, positions, false);
+    if (found.empty()){
+        return std::nullopt;
+    }
+    return found[0].holds;
+}
+
 
 
 }

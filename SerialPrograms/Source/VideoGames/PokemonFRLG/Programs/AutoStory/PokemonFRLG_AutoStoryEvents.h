@@ -160,6 +160,21 @@ std::optional<std::vector<RouteStep>> fixed_route(
     const std::vector<MapData>& maps, const MapPosition& start, const std::vector<StoryLeg>& legs
 );
 
+//  Where a GRIND or capture `step` that paces (pace = ...) leaves the
+//  player who started it on `patch`: the patch's tile or the one its pace
+//  leads to, as the last battle came, facing unknown. `patch` for any
+//  other step, or a `patch` not on one tile.
+Pokemon::Pose paced_pose(const Pokemon::Pose& patch, const StoryStep& step);
+
+//  A ROUTE's legs from `pose` to `goal`: from one tile, as planned; from
+//  a set of tiles (paced_pose()), first the holds to walls that bring them
+//  all to one tile (holds_to_one_tile()), then the route from there.
+//  Nothing if either can't be planned.
+std::optional<std::vector<RouteStep>> plan_story_route(
+    const std::vector<MapData>& maps, const Pokemon::Pose& pose,
+    std::optional<Direction> facing, const RouteGoal& goal
+);
+
 //  A way the player at `tile` can turn to without stepping: a wall there,
 //  with no one standing in it. West and east first: walking north or south
 //  into a sign would read it.
