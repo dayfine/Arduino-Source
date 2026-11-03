@@ -403,6 +403,9 @@ private:
         if (between_turns(screen, now)){
             return false;
         }
+        if (battle_gone(screen, now)){
+            return true;
+        }
         const BattleScreen seen = read_battle_screen(screen, m_confirmed);
         if (seen != m_last_seen){
             m_console.log(std::format("Battle: {} (turn {}).", screen_name(seen), m_decisions.turns()));
@@ -413,12 +416,7 @@ private:
             m_move_chosen = false;
         }else if (now - m_last_menu > NO_MENU && now - m_last_battle < NO_MENU_NEAR && now - m_last_press > 1500ms){
             //  Something waits that none of the battle screens knows.
-            m_console.log(std::format("Battle: no battle menu for {} s, pressing {}.",
-                std::chrono::duration_cast<std::chrono::seconds>(now - m_last_menu).count(), m_press_a ? "A" : "B"));
-            pbf_press_button(m_context, m_press_a ? BUTTON_A : BUTTON_B, 160ms, 200ms);
-            m_press_a = !m_press_a;
-            m_last_press = now;
-            return false;
+            return press_blind(now);
         }
         if (seen == BattleScreen::NONE){
             return no_battle_screen(screen, now);
@@ -451,7 +449,7 @@ private:
             send_next_member(now);
             return true;
         }
-        if (m_evolution.holds(read_text_screen(screen), m_decisions.turns())){
+        if (m_evolution.holds(read_text_screen(screen))){
             wait_out_evolution();
             return true;
         }
@@ -482,7 +480,7 @@ private:
             pbf_wait(m_context, POLL);
             m_context.wait_for_all_requests();
             VideoSnapshot screen = m_console.video().snapshot();
-            holds = !screen || m_evolution.holds(read_text_screen(screen), m_decisions.turns());
+            holds = !screen || m_evolution.holds(read_text_screen(screen));
         }
         const WallClock end = current_time();
         const Milliseconds held = std::chrono::duration_cast<Milliseconds>(end - start);
@@ -492,6 +490,34 @@ private:
         m_evolution.held(held, m_decisions.lost());
         m_last_press = end;
         m_last_battle = end;
+    }
+
+    //  True once START opens the menu, after no battle menu, HP box or
+    //  YES/NO for a while: whatever the text box reads, the battle is over.
+    bool battle_gone(const ImageViewRGB32& screen, WallClock now){
+        const BattleSeen seen = BattleMenuDetector(COLOR_RED).detect(screen) ? BattleSeen::MENU
+            : battle_shows(screen) ? BattleSeen::BATTLE : BattleSeen::NONE;
+        m_end.seen(seen, now);
+        if (!m_end.check_overworld(now)){
+            return false;
+        }
+        m_last_overworld_check = now;
+        return overworld_shows(m_console, m_context);
+    }
+
+    //  A or B, in turn. True once they have gone on too long: the walk,
+    //  which finds the player again, takes over.
+    bool press_blind(WallClock now){
+        if (m_end.pressed_blind(now)){
+            m_console.log("Battle: no battle menu after pressing A and B; leaving the rest to the walk.", COLOR_RED);
+            return true;
+        }
+        m_console.log(std::format("Battle: no battle menu for {} s, pressing {}.",
+            std::chrono::duration_cast<std::chrono::seconds>(now - m_last_menu).count(), m_press_a ? "A" : "B"));
+        pbf_press_button(m_context, m_press_a ? BUTTON_A : BUTTON_B, 160ms, 200ms);
+        m_press_a = !m_press_a;
+        m_last_press = now;
+        return false;
     }
 
     //  True once the battle is over: only when START opens the menu. The
@@ -595,6 +621,7 @@ private:
         m_faint_polls = 0;
         const PartyStatus status = read_party_status(screen);
         const TurnAction action = m_decisions.turn(status);
+        m_evolution.turn_taken(action.choice);
         m_console.log(std::format(
             "Battle: turn {}, HP {}, {}, {} Potions, {} Antidotes, {} Parlyz Heals.",
             m_decisions.turns(), status.hp_red ? "red" : status.hp_yellow ? "yellow" : "green",
@@ -635,6 +662,7 @@ private:
     Supplies& m_supplies;
     BattleDecisions m_decisions;
     EvolutionHold m_evolution;
+    BattleEndWatch m_end;
     const BattleKind m_kind;
     const StoryChecks m_checks;
     const Language m_language;
@@ -804,6 +832,11 @@ PartyStatus read_party_status(const ImageViewRGB32& screen){
     status.hp_red = status.hp_seen && !status.hp_yellow && counts.red == most;
     status.status = read_status_badge(extract_box_reference(game, STATUS_BADGE_BOX));
     return status;
+}
+
+bool battle_shows(const ImageViewRGB32& screen){
+    const BattleTextScreen text = read_text_screen(screen);
+    return text.hp_box || text.yes_no;
 }
 
 //  The count the story keeps for `item`, or null for an item it doesn't count.
