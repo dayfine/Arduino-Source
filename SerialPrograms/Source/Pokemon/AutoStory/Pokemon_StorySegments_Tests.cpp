@@ -309,6 +309,71 @@ UnitTestResult test_throwing_event_is_logged(){
     return "Expected the exception to go on to the game.";
 }
 
+//  Verify mode: every run starts from the save the first started from, a
+//  failed run is counted, not retried, and 2 of 3 passes verify it.
+UnitTestResult test_verify_runs_from_one_save(){
+    Lab lab;
+    lab.world.map = "Route 201";
+    lab.saved = lab.world;
+    lab.world.walk_failures = 1;
+    Segment segment = twinleaf_to_sandgem(lab.world);
+    SegmentHooks hooks = lab.hooks();
+    RunState state;
+    const VerifyReport report = verify_checkpoint(state, segment, "00.02", VerifyPolicy{}, hooks);
+    const std::vector<std::string> expected = {"walk_south", "reload", "walk_south", "reload", "walk_south"};
+    if (!report.verified || report.runs != 3 || report.passes != 2 || lab.world.trace != expected){
+        return "Expected three runs, reloading between them, two passing:" + lab.all();
+    }
+    if (!lab.has("[Verify] 00.02: start, 3 runs from one save, 2 must pass")
+        || !lab.has("[Verify] 00.02: run 1/3 failed at walk_south: blocked: a wanderer on the path")
+        || !lab.has("[Verify] 00.02: run 2/3 passed")
+        || lab.lines.back() != "[Verify] 00.02: 2/3 passed, 2 needed: verified"
+    ){
+        return "Expected a line per run, then the summary:" + lab.all();
+    }
+    return true;
+}
+
+//  A checkpoint that saves at its end doesn't in verify mode: the next run
+//  would start after it.
+UnitTestResult test_verify_skips_the_end_save(){
+    Lab lab;
+    Segment segment = twinleaf_to_sandgem(lab.world);
+    SegmentHooks hooks = lab.hooks();
+    RunState state;
+    const VerifyReport report = verify_checkpoint(state, segment, "00.01", VerifyPolicy{.runs = 2, .passes_needed = 2}, hooks);
+    const std::vector<std::string> expected = {"walk_out", "reload", "walk_out"};
+    if (!report.verified || lab.world.trace != expected || lab.saved.map != "Twinleaf Town"){
+        return "Expected two runs from Twinleaf Town and no save:" + lab.all();
+    }
+    return true;
+}
+
+UnitTestResult test_verify_too_few_passes(){
+    Lab lab;
+    lab.world.map = "Route 201";
+    lab.saved = lab.world;
+    lab.world.walk_failures = 2;
+    Segment segment = twinleaf_to_sandgem(lab.world);
+    SegmentHooks hooks = lab.hooks();
+    RunState state;
+    const VerifyReport report = verify_checkpoint(state, segment, "00.02", VerifyPolicy{}, hooks);
+    if (report.verified || report.runs != 3 || report.passes != 1
+        || lab.lines.back() != "[Verify] 00.02: 1/3 passed, 2 needed: not verified"
+    ){
+        return "Expected 1 of 3, not verified:" + lab.all();
+    }
+    VerifyReport bad = verify_checkpoint(state, segment, "00.02", VerifyPolicy{.runs = 2, .passes_needed = 3}, hooks);
+    if (bad.verified || bad.runs != 0 || bad.failure.failure != "bad_verify_policy"){
+        return "Expected more passes than runs refused:" + lab.all();
+    }
+    bad = verify_checkpoint(state, segment, "00.09", VerifyPolicy{}, hooks);
+    if (bad.verified || bad.runs != 0 || bad.failure.failure != "unknown_checkpoint"){
+        return "Expected an unknown checkpoint refused:" + lab.all();
+    }
+    return true;
+}
+
 UnitTestResult test_describe(){
     Lab lab;
     Segment segment = twinleaf_to_sandgem(lab.world);
@@ -366,6 +431,9 @@ void add_tests_StorySegments(UnitTestDatabase& database){
     database.add<Test_StorySegments>("describe", test_describe);
     database.add<Test_StorySegments>("status lines for the overlay", test_status_lines);
     database.add<Test_StorySegments>("a throwing event is logged, then goes on", test_throwing_event_is_logged);
+    database.add<Test_StorySegments>("verify: runs from one save", test_verify_runs_from_one_save);
+    database.add<Test_StorySegments>("verify: no save at the end", test_verify_skips_the_end_save);
+    database.add<Test_StorySegments>("verify: too few passes", test_verify_too_few_passes);
 }
 
 
