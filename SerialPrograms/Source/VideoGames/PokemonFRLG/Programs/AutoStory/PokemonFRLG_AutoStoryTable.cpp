@@ -101,8 +101,9 @@ StoryStep legs(std::string name, std::vector<StoryLeg> legs, std::string why, Wi
     return step;
 }
 
-//  `step`, a ROUTE or LEGS, run with B held: from the Running Shoes on.
-StoryStep running(StoryStep step){
+//  `step`, a ROUTE or LEGS, run with B held: from the Running Shoes on. No
+//  checkpoint after 00.10 is in the table yet.
+[[maybe_unused]] StoryStep running(StoryStep step){
     step.variant = RUN_VARIANT;
     return step;
 }
@@ -300,21 +301,13 @@ StoryCheckpoint running_shoes(){
     });
 }
 
-StoryCheckpoint first_run(){
-    //  From here on every route and leg runs. Route 3 isn't among the story's
-    //  maps yet, so this checkpoint only tests running on one long leg.
-    return row("00.11", "Pewter: a run to a wall, to time running", at(PEWTER, 46, 21, NORTH), {}, StartMenu::FULL, {
-        running(legs("run_west", {{WEST, 40}}, "row 21 west to the wall at (6, 21): logs the run's pace")),
-    });
-}
-
 }
 
 
 const std::vector<StoryCheckpoint>& story_checkpoints(){
     static const std::vector<StoryCheckpoint> checkpoints{
         new_game(), after_sid_helper(), leave_house(), oaks_trigger(), to_starter_ball(), starter(), parcel(), pokedex(), shopping(), forest(), brock(),
-        running_shoes(), first_run(),
+        running_shoes(),
     };
     return checkpoints;
 }
