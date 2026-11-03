@@ -1,0 +1,127 @@
+{
+    "name": "PalletTown_ProfessorOaksLab",
+    "source": {
+        "decomp_file": "data/maps/PalletTown_ProfessorOaksLab/map.json",
+        "revision": "ce6406d8c2eaf46d543c8a2606de0c3cb1951982",
+        "date": "2026-10-31"
+    },
+    "tiles": [
+        "#############",
+        "######SS#####",
+        ".............",
+        "#............",
+        "###.....###..",
+        ".##..........",
+        ".............",
+        ".............",
+        "#####...#####",
+        ".............",
+        ".............",
+        ".............",
+        "#...........#",
+        "#############"
+    ],
+    "points": {
+        "warp_0": [6, 12]
+    },
+    "warps": [
+        {
+            "x": 6,
+            "y": 12,
+            "enter": "walk_south",
+            "to_map": "PalletTown",
+            "to_point": "warp_2"
+        },
+        {
+            "x": 7,
+            "y": 12,
+            "enter": "walk_into",
+            "to_map": "PalletTown",
+            "to_point": "warp_2"
+        },
+        {
+            "x": 5,
+            "y": 12,
+            "enter": "walk_into",
+            "to_map": "PalletTown",
+            "to_point": "warp_2"
+        }
+    ],
+    "objects": [
+        {
+            "name": "scientist",
+            "kind": "npc",
+            "x": 3,
+            "y": 11
+        },
+        {
+            "name": "worker_f",
+            "kind": "npc",
+            "x": 2,
+            "y": 10,
+            "wander": {
+                "x0": 2,
+                "y0": 6,
+                "x1": 2,
+                "y1": 13
+            }
+        },
+        {
+            "name": "scientist",
+            "kind": "npc",
+            "x": 11,
+            "y": 10
+        },
+        {
+            "name": "prof_oak",
+            "kind": "npc",
+            "x": 6,
+            "y": 3,
+            "hide_flag": "FLAG_HIDE_OAK_IN_HIS_LAB"
+        },
+        {
+            "name": "item_ball",
+            "kind": "item",
+            "x": 8,
+            "y": 4,
+            "hide_flag": "FLAG_HIDE_BULBASAUR_BALL"
+        },
+        {
+            "name": "item_ball",
+            "kind": "item",
+            "x": 9,
+            "y": 4,
+            "hide_flag": "FLAG_HIDE_SQUIRTLE_BALL"
+        },
+        {
+            "name": "item_ball",
+            "kind": "item",
+            "x": 10,
+            "y": 4,
+            "hide_flag": "FLAG_HIDE_CHARMANDER_BALL"
+        },
+        {
+            "name": "blue",
+            "kind": "npc",
+            "x": 5,
+            "y": 4,
+            "hide_flag": "FLAG_HIDE_RIVAL_IN_LAB"
+        },
+        {
+            "name": "pokedex",
+            "kind": "npc",
+            "x": 4,
+            "y": 1,
+            "hide_flag": "FLAG_HIDE_POKEDEX"
+        },
+        {
+            "name": "pokedex",
+            "kind": "npc",
+            "x": 5,
+            "y": 1,
+            "hide_flag": "FLAG_HIDE_POKEDEX"
+        }
+    ],
+    "flag_sets": {},
+    "connections": []
+}
