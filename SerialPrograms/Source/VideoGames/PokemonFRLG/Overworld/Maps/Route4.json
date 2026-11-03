@@ -50,18 +50,24 @@
         "000000003333333300000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
     ],
     "points": {
+        "warp_0": [19, 5],
+        "warp_1": [32, 5],
         "warp_2": [12, 5]
     },
     "warps": [
         {
             "x": 19,
             "y": 5,
-            "enter": "cave_entrance"
+            "enter": "cave_entrance",
+            "to_map": "MtMoon_1F",
+            "to_point": "warp_3"
         },
         {
             "x": 32,
             "y": 5,
-            "enter": "cave_entrance"
+            "enter": "cave_entrance",
+            "to_map": "MtMoon_B1F",
+            "to_point": "warp_7"
         },
         {
             "x": 12,

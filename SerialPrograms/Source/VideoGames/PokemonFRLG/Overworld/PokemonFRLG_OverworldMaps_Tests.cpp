@@ -246,6 +246,45 @@ UnitTestResult test_route3_route4_maps(){
     return true;
 }
 
+//  Mt. Moon's three floors load, every floor tile of them with wild
+//  encounters, and join Route 4's two cave mouths: the way from the west
+//  mouth (19, 5) to the east one (32, 5) goes down to B2F and back up,
+//  through the gap the fossils leave once taken, and comes out walked a
+//  tile south, facing south.
+UnitTestResult test_mt_moon_maps(){
+    const std::vector<MapData> maps = overworld_maps({"FLAG_HIDE_DOME_FOSSIL", "FLAG_HIDE_HELIX_FOSSIL"});
+    for (const char* name : {"MtMoon_1F", "MtMoon_B1F", "MtMoon_B2F"}){
+        const MapData* map = built_in(maps, name);
+        if (map == nullptr){
+            return std::string("Missing map ") + name + ".";
+        }
+        for (int y = 0; y < map->tiles.height; y++){
+            for (int x = 0; x < map->tiles.width; x++){
+                const TilePos tile{x, y};
+                if (map->tiles.at(tile) == TileKind::OPEN && warp_at(*map, tile) == nullptr){
+                    return std::format("{}: open floor without wild encounters at {}.", name, Pokemon::to_string(tile));
+                }
+            }
+        }
+    }
+    const std::optional<std::vector<RouteStep>> route = plan_overworld_route(
+        maps, MapPosition{"Route4", {19, 6}}, RouteGoal{MapPosition{"Route4", {32, 6}}, Direction::SOUTH}
+    );
+    if (!route || route->empty()){
+        return "No route through Mt. Moon from Route 4's west mouth to its east one.";
+    }
+    std::set<std::string> floors;
+    for (const RouteStep& step : *route){
+        if (step.warps){
+            floors.insert(step.end.map);
+        }
+    }
+    if (floors != std::set<std::string>{"MtMoon_1F", "MtMoon_B1F", "MtMoon_B2F", "Route4"} || route->back().facing_after != Direction::SOUTH){
+        return "Expected the way through to warp onto every floor and out to Route 4 facing south.";
+    }
+    return true;
+}
+
 //  A planned step walks where its map doesn't let the player run, and only
 //  there: out of Pewter's Pokemon Center to the Gym.
 UnitTestResult test_walk_only_indoors(){
@@ -445,6 +484,7 @@ void add_tests_OverworldMaps(UnitTestDatabase& database){
     database.add<Test_OverworldMaps>("unknown tile", test_unknown_tile);
     database.add<Test_OverworldMaps>("not JSON", test_not_json);
     database.add<Test_OverworldMaps>("Route 3, Route 4 and its Pokemon Center", test_route3_route4_maps);
+    database.add<Test_OverworldMaps>("Mt. Moon joins Route 4's cave mouths", test_mt_moon_maps);
     database.add<Test_OverworldMaps>("walks where running isn't allowed", test_walk_only_indoors);
     database.add<Test_OverworldMaps>("Route 4's Pokemon Center escalator", test_route4_center_escalator);
     database.add<Test_OverworldMaps>("trainer sight", test_trainer_sight);

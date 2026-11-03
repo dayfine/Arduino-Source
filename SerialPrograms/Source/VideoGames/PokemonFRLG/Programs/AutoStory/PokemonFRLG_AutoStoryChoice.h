@@ -12,12 +12,14 @@
  *
  *  The table walks the player to face the chosen fossil; the step reads
  *  which fossil the prompt offers before it answers YES, and answers NO
- *  (B) and stops if it offers the other, or can't be read. After the
+ *  (B) and stops if it offers the other. A prompt it can't read is taken
+ *  to offer the fossil the player faces, and answered YES. After the
  *  scene the bag is read for the fossil, where a reader can.
  *
  *  The decisions take their game steps from a ChoiceActions, so they run
  *  in tests against a fake Mt. Moon. On the console the prompt's text has
- *  no reader yet, so the console step stops with NO answered.
+ *  no reader yet: the step waits for the YES/NO box, answers YES by the
+ *  player's place, and clears the scene to the overworld.
  *
  */
 
@@ -84,8 +86,6 @@ enum class ChoiceEnd{
     TAKEN,
     //  The prompt offered the other fossil: NO answered.
     WRONG_ONE,
-    //  The prompt couldn't be read: NO answered.
-    UNREAD,
     FAILED,
 };
 const char* choice_end_name(ChoiceEnd end);
@@ -101,8 +101,9 @@ struct ChoiceResult{
 ChoiceResult run_fossil_choice(Logger& logger, ChoiceActions& actions, Fossil fossil);
 
 
-//  The console's fossil CHOICE: talks, then, with no reader for the
-//  prompt's text yet, answers NO and stops.
+//  The console's fossil CHOICE: talks until the YES/NO box shows, has no
+//  reader for the prompt's text yet, answers by the box's cursor, and
+//  clears the scene to the overworld.
 class ConsoleChoiceActions : public ChoiceActions{
 public:
     ConsoleChoiceActions(ConsoleHandle& console, ProControllerContext& context);

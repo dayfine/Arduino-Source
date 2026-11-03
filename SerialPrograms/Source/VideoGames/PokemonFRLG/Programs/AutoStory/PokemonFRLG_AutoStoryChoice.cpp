@@ -44,7 +44,6 @@ const char* choice_end_name(ChoiceEnd end){
     switch (end){
     case ChoiceEnd::TAKEN:      return "taken";
     case ChoiceEnd::WRONG_ONE:  return "wrong_one";
-    case ChoiceEnd::UNREAD:     return "unread";
     case ChoiceEnd::FAILED:     return "failed";
     }
     return "?";
@@ -93,11 +92,10 @@ ChoiceResult run_fossil_choice(Logger& logger, ChoiceActions& actions, Fossil fo
     if (!actions.talk()){
         return choice_end(ChoiceEnd::FAILED, "no YES/NO after talking to the fossil");
     }
+    //  Unread, the offer is taken to be the fossil the table faced the
+    //  player to.
     const std::optional<Fossil> offer = actions.read_offer();
-    if (!offer){
-        return decline(actions, ChoiceEnd::UNREAD, "couldn't read which fossil the prompt offers");
-    }
-    if (*offer != fossil){
+    if (offer && *offer != fossil){
         return decline(actions, ChoiceEnd::WRONG_ONE, std::format("facing the {} fossil, not the {}", fossil_name(*offer), fossil_name(fossil)));
     }
     actions.answer(true);
@@ -109,7 +107,8 @@ ChoiceResult run_fossil_choice(Logger& logger, ChoiceActions& actions, Fossil fo
         return choice_end(ChoiceEnd::FAILED, std::format("the bag holds the {} fossil", fossil_name(*held)));
     }
     logger.log(std::format(
-        "Choice: took the {} fossil{}.", fossil_name(fossil), held ? ", seen in the bag" : " (the bag isn't read)"
+        "Choice: took the {} fossil{}{}.", fossil_name(fossil), offer ? "" : ", by where the player faces (the prompt isn't read)",
+        held ? ", seen in the bag" : " (the bag isn't read)"
     ));
     return {.end = ChoiceEnd::TAKEN, .confirmed = held.has_value(), .detail = ""};
 }
@@ -140,9 +139,8 @@ std::optional<Fossil> ConsoleChoiceActions::read_offer(){
 }
 
 void ConsoleChoiceActions::answer(bool yes){
-    //  The cursor opens on YES; B answers NO.
-    pbf_press_button(m_context, yes ? BUTTON_A : BUTTON_B, 160ms, 800ms);
-    m_context.wait_for_all_requests();
+    //  Reads the cursor (it opens on YES) and answers; B answers NO.
+    answer_yes_no(m_console, m_context, yes, BUTTON_B, 5000ms);
 }
 
 bool ConsoleChoiceActions::finish(){

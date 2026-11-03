@@ -57,6 +57,11 @@ WARP_ENTRIES = {
 #   Ledges, by the way the player hops over them.
 LEDGES = {'MB_JUMP_NORTH': '^', 'MB_JUMP_SOUTH': 'v', 'MB_JUMP_WEST': '<', 'MB_JUMP_EAST': '>'}
 FLOOR = ('MB_NORMAL', 'MB_CAVE', 'MB_ROCK_STAIRS', 'MB_TALL_GRASS')
+#   A metatile's encounter type (METATILE_ATTRIBUTE_ENCOUNTER_TYPE in
+#   include/fieldmap.h): on a map with land encounters, a step onto a LAND
+#   tile may start a wild battle, as on every floor tile of a cave.
+ENCOUNTER_TYPE_SHIFT, ENCOUNTER_TYPE_MASK = 24, 0x7
+TILE_ENCOUNTER_LAND = 1
 DIRECTIONS = {'up': 'north', 'down': 'south', 'left': 'west', 'right': 'east'}
 
 #   Places and flag sets the decompilation doesn't name, written into the map
@@ -153,9 +158,18 @@ def tile_glyph(behavior, collision, unhandled, sign_event=False):
     return '.', None
 
 
-def grid(decomp, layout, names, unhandled, signs=frozenset()):
+def encounter_glyph(glyph, attributes):
+    """On a map with land encounters: `glyph` for a tile with these metatile
+    attributes, open floor where wild Pokemon appear written as tall grass."""
+    encounter = (attributes >> ENCOUNTER_TYPE_SHIFT) & ENCOUNTER_TYPE_MASK
+    return '~' if glyph == '.' and encounter == TILE_ENCOUNTER_LAND else glyph
+
+
+def grid(decomp, layout, names, unhandled, signs=frozenset(), land_encounters=False):
     """The map's tile rows, elevation rows, and how the warp on each tile is
-    entered, by (x, y), where it isn't by walking into it."""
+    entered, by (x, y), where it isn't by walking into it. With
+    `land_encounters`, open floor where wild Pokemon appear (a cave's) is
+    written as tall grass, the glyph for "open, with wild encounters"."""
     width, height = layout['width'], layout['height']
     blocks = decomp.read(layout['blockdata_filepath'])
     primary = tileset_attributes(decomp, layout['primary_tileset'], 'primary')
@@ -169,6 +183,8 @@ def grid(decomp, layout, names, unhandled, signs=frozenset()):
             attributes = primary[metatile] if metatile < 640 else secondary[metatile - 640]
             behavior = names.get(attributes & 0x1ff, hex(attributes & 0x1ff))
             glyph, entry = tile_glyph(behavior, collision, unhandled, (x, y) in signs)
+            if land_encounters and entry is None:
+                glyph = encounter_glyph(glyph, attributes)
             row += glyph
             if entry:
                 entries[(x, y)] = entry
@@ -283,10 +299,18 @@ def arrivals(sources, loaded):
     return arriving
 
 
-def map_json(decomp, name, sources, layouts, names, loaded, unhandled):
+def land_encounter_maps(decomp):
+    """The ids of the maps that have land encounters (src/data/wild_encounters.json)."""
+    groups = json.loads(decomp.read('src/data/wild_encounters.json'))['wild_encounter_groups']
+    return {e['map'] for group in groups for e in group.get('encounters', []) if 'land_mons' in e}
+
+
+def map_json(decomp, name, sources, layouts, names, loaded, unhandled, land_maps=frozenset()):
     source = sources[name]
     signs = frozenset((e['x'], e['y']) for e in source.get('bg_events', []) if e.get('type') == 'sign')
-    tiles, elevation, entries = grid(decomp, layouts[source['layout']], names, unhandled, signs)
+    tiles, elevation, entries = grid(
+        decomp, layouts[source['layout']], names, unhandled, signs, source['id'] in land_maps
+    )
     warp_events = source.get('warp_events', [])
     points = {n: [x, y] for n, (x, y) in POINTS.get(name, {}).items()}
     for index in sorted(arrivals(sources, loaded)[name]):
@@ -341,7 +365,8 @@ def main():
     sources = {m: json.loads(decomp.read(f'data/maps/{m}/map.json')) for m in args.maps}
     loaded = {source['id']: m for m, source in sources.items()}
     unhandled = {}
-    maps = [(name, json_text(map_json(decomp, name, sources, layouts, names, loaded, unhandled))) for name in args.maps]
+    land_maps = land_encounter_maps(decomp)
+    maps = [(name, json_text(map_json(decomp, name, sources, layouts, names, loaded, unhandled, land_maps))) for name in args.maps]
     if unhandled:
         print(f'Non-collision behaviors written as floor: {unhandled}')
     if args.check:

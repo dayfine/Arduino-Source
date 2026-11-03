@@ -13,7 +13,6 @@
 #include <optional>
 #include <set>
 #include <string>
-#include <string_view>
 #include <utility>
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
@@ -24,6 +23,7 @@
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRecovery.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRoute.h"
 #include "PokemonFRLG_AutoStoryActions.h"
+#include "PokemonFRLG_AutoStoryPcStorage.h"
 #include "PokemonFRLG_AutoStoryTable.h"
 
 namespace PokemonAutomation{
@@ -215,8 +215,8 @@ UnitTestResult check_checkpoint(const StoryCheckpoint& checkpoint, StoryPose& po
 
 UnitTestResult test_routes_and_chain(){
     const std::vector<StoryCheckpoint>& checkpoints = story_checkpoints();
-    if (checkpoints.size() != 15 || checkpoints[0].start){
-        return "Expected 15 checkpoints, the first from a new game.";
+    if (checkpoints.size() != 17 || checkpoints[0].start){
+        return "Expected 17 checkpoints, the first from a new game.";
     }
     StoryPose pose;
     for (size_t c = 0; c < checkpoints.size(); c++){
@@ -359,16 +359,38 @@ UnitTestResult test_runs_after_shoes(){
     return true;
 }
 
+//  A trainer who stands still but turns to look more than one way (Mt.
+//  Moon B2F's Grunt at (37, 21) looks around): whether they see the player
+//  depends on where they look as the player passes.
+bool looks_around(const MapObject& object){
+    return object.trainer && !object.wander && object.trainer->looks.size() > 1;
+}
+
 //  The trainer on `map` who would see the player on `tile`, other than the
-//  `beaten`. Wanderers are left out: no route can plan around one (see
-//  wanderer_stops()).
+//  `beaten`. Wanderers and those who look around are left out: no route
+//  can plan around one (see wanderer_stops() and held_past_lookers()).
 const MapObject* trainer_seeing(const MapData& map, const TilePos& tile, const std::set<const MapObject*>& beaten){
     for (const MapObject& object : map.objects){
-        if (object.trainer && !object.wander && !beaten.contains(&object) && trainer_may_see(map, object, tile)){
+        if (object.trainer && !object.wander && !looks_around(object) && !beaten.contains(&object) && trainer_may_see(map, object, tile)){
             return &object;
         }
     }
     return nullptr;
+}
+
+//  Whether every floor tile of `map` has wild encounters, as in a cave:
+//  every open tile is tall grass, but for warps. No route keeps out of
+//  its grass.
+bool wild_everywhere(const MapData& map){
+    for (int y = 0; y < map.tiles.height; y++){
+        for (int x = 0; x < map.tiles.width; x++){
+            const TilePos tile{x, y};
+            if (map.tiles.at(tile) == TileKind::OPEN && warp_at(map, tile) == nullptr){
+                return false;
+            }
+        }
+    }
+    return true;
 }
 
 //  The legs a ROUTE or LEGS `step` from `pose` walks; none if it plans none.
@@ -419,6 +441,28 @@ std::vector<std::optional<MapPosition>> wanderer_stops(const StoryPose& pose, co
     return stops;
 }
 
+//  Where a leg of a ROUTE or LEGS `step` from `pose` crosses the sight of a
+//  trainer who looks around, the leg ends on a wall: if the trainer looks
+//  the player's way, they walk up beside the leg, and the walker holds it
+//  on to its wall after the battle. Empty if so, else the leg that doesn't.
+std::string held_past_lookers(const StoryPose& pose, const StoryStep& step){
+    MapPosition from{pose.map, pose.tile};
+    for (const RouteStep& leg : legs_walked(pose, step)){
+        const MapData* map = find_map_named(from.map);
+        bool crosses = false;
+        for (const MapPosition& tile : leg.action == RouteAction::WALK ? leg_tiles(story_maps(), from, leg) : std::vector<MapPosition>{}){
+            for (const MapObject& object : map ? map->objects : std::vector<MapObject>{}){
+                crosses |= looks_around(object) && trainer_may_see(*map, object, tile.point);
+            }
+        }
+        if (crosses && !leg.to_wall){
+            return "crosses a trainer's sight on " + to_string(leg) + ", not a leg to a wall.";
+        }
+        from = leg.end;
+    }
+    return "";
+}
+
 //  The tiles a ROUTE or LEGS `step` from `pose` walks onto, in order.
 std::vector<MapPosition> tiles_walked(const StoryPose& pose, const StoryStep& step){
     std::vector<MapPosition> tiles;
@@ -441,7 +485,7 @@ std::string tile_problem(const MapPosition& tile, const std::set<const MapObject
     if (map == nullptr){
         return "off the story's maps at " + to_string(tile);
     }
-    if (is_tall_grass(*map, tile.point)){
+    if (is_tall_grass(*map, tile.point) && !wild_everywhere(*map)){
         return "in the grass at " + to_string(tile);
     }
     const MapWarp* warp = warp_at(*map, tile.point);
@@ -489,6 +533,9 @@ UnitTestResult check_lines(const StoryCheckpoint& checkpoint, std::set<const Map
         if (std::count(stops.begin(), stops.end(), std::nullopt) > 0){
             return where + "crosses a wandering trainer's sight where the walk can't tell where they'd stop the player.";
         }
+        if (const std::string problem = walks ? held_past_lookers(pose, step) : ""; !problem.empty()){
+            return where + problem;
+        }
         const MapData* map = find_map_named(pose.map);
         const MapObject* trainer = step.kind == StoryStepKind::STEP && map ? trainer_seeing(*map, pose.tile.next(step.direction), beaten) : nullptr;
         if (trainer != nullptr && (c + 1 == checkpoint.steps.size() || checkpoint.steps[c + 1].kind != StoryStepKind::BATTLE)){
@@ -504,11 +551,13 @@ UnitTestResult check_lines(const StoryCheckpoint& checkpoint, std::set<const Map
     return true;
 }
 
-//  From the Running Shoes on, routes and legs keep out of the grass, off
-//  warps to maps not loaded and out of trainers' lines, but for the three
-//  Route 3 trainers the table steps in front of to fight; and where they
-//  cross a wandering trainer's sight, the walk can place the player if the
-//  trainer stops them.
+//  From the Running Shoes on, routes and legs keep out of the grass (but
+//  in caves, which are all grass), off warps to maps not loaded and out of
+//  trainers' lines, but for the three Route 3 trainers and Mt. Moon's Grunt
+//  at (12, 20) the table steps in front of to fight; where they cross a
+//  wandering trainer's sight, the walk can place the player if the trainer
+//  stops them; and where they cross the sight of one who looks around, on
+//  a leg to a wall.
 UnitTestResult test_trainer_lines(){
     std::set<const MapObject*> beaten;
     bool has_shoes = false;
@@ -520,8 +569,9 @@ UnitTestResult test_trainer_lines(){
         }
         has_shoes = has_shoes || checkpoint.id == "00.10";
     }
-    if (beaten.size() != 3){
-        return "Expected to fight Colton, Greg and James on Route 3; the table fights " + std::to_string(beaten.size()) + " trainers.";
+    if (beaten.size() != 4){
+        return "Expected to fight Colton, Greg and James on Route 3 and the Grunt at (12, 20) in Mt. Moon; the table fights "
+            + std::to_string(beaten.size()) + " trainers.";
     }
     return true;
 }
@@ -723,210 +773,22 @@ UnitTestResult test_intro_names(){
 }
 
 
-size_t row_index(std::string_view id){
-    const std::vector<StoryCheckpoint>& checkpoints = story_checkpoints();
-    for (size_t c = 0; c < checkpoints.size(); c++){
-        if (checkpoints[c].id == id){
-            return c;
-        }
-    }
-    throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "No checkpoint " + std::string(id));
-}
-
-std::string joined_ids(const std::vector<StoryCheckpoint>& rows){
-    std::string text;
-    for (const StoryCheckpoint& row : rows){
-        text += (text.empty() ? "" : " ") + row.id;
-    }
-    return text;
-}
-
-const char* handoff_name(StoryHandoff handoff){
-    switch (handoff){
-    case StoryHandoff::NONE:
-        return "none";
-    case StoryHandoff::SID_HELPER:
-        return "SID Helper";
-    case StoryHandoff::STARTER_RNG:
-        return "Starter RNG";
-    case StoryHandoff::GIFT_RNG:
-        return "Gift RNG";
-    }
-    return "?";
-}
-
-struct RunPlanScenario{
-    std::string name = "";
-    std::string first = "";
-    //  The table's last row if empty.
-    std::string last = "";
-    StoryHandoffs handoffs = {};
-    std::string expected_ids = "";
-    StoryHandoff expected_stop = StoryHandoff::NONE;
-};
-
-class Test_RunPlan : public UnitTest{
-public:
-    Test_RunPlan(RunPlanScenario scenario)
-        : UnitTest("PokemonFRLG::AutoStory - run plan: " + scenario.name)
-        , m_scenario(std::move(scenario))
-    {}
-
-    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        try{
-            const size_t last = m_scenario.last.empty() ? story_checkpoints().size() - 1 : row_index(m_scenario.last);
-            const StoryRunPlan plan = plan_story_run(story_checkpoints(), row_index(m_scenario.first), last, m_scenario.handoffs);
-            const std::string ids = joined_ids(plan.rows);
-            if (ids != m_scenario.expected_ids || plan.stop != m_scenario.expected_stop){
-                return "Expected rows \"" + m_scenario.expected_ids + "\", stop " + handoff_name(m_scenario.expected_stop)
-                    + "; got \"" + ids + "\", stop " + handoff_name(plan.stop) + ".";
-            }
-            return true;
-        }catch (Exception& e){
-            return std::string(e.name()) + ": " + e.message();
-        }
-    }
-
-private:
-    const RunPlanScenario m_scenario;
-};
-
-void add_tests_RunPlan(UnitTestDatabase& database){
-    const std::string TODAY = "00.01 00.02 00.03 00.04 00.05 00.06 00.07 00.08 00.09 00.10 00.11 00.12";
-    const RunPlanScenario scenarios[] = {
-        {.name = "handoffs off: the story as before", .first = "00.01", .expected_ids = TODAY},
-        {.name = "handoffs off: a range", .first = "00.02", .last = "00.04", .expected_ids = "00.02 00.03 00.04"},
-        {
-            .name = "SID Helper: 00.01 stops on the keyboard",
-            .first = "00.01",
-            .handoffs = {.sid_helper = true},
-            .expected_ids = "",
-            .expected_stop = StoryHandoff::SID_HELPER,
-        },
-        {
-            .name = "SID Helper: back in at 00.01b",
-            .first = "00.01b",
-            .last = "00.03",
-            .handoffs = {.sid_helper = true},
-            .expected_ids = "00.01b 00.02 00.03",
-        },
-        {.name = "00.01b runs when started at, option off", .first = "00.01b", .last = "00.02", .expected_ids = "00.01b 00.02"},
-        {.name = "SID Helper: a later start passes over it", .first = "00.02", .last = "00.03", .handoffs = {.sid_helper = true}, .expected_ids = "00.02 00.03"},
-        {.name = "handoffs off: an end at 00.04 still takes the rival's battle", .first = "00.03", .last = "00.04", .expected_ids = "00.03 00.04"},
-        {
-            .name = "Starter RNG: stops after 00.04's save",
-            .first = "00.02",
-            .handoffs = {.starter_rng = true},
-            .expected_ids = "00.02 00.03 00.04",
-            .expected_stop = StoryHandoff::STARTER_RNG,
-        },
-        {.name = "00.04b runs from its own save", .first = "00.04b", .last = "00.05", .expected_ids = "00.04b 00.05"},
-        {.name = "Starter RNG: a later start doesn't stop", .first = "00.05", .last = "00.06", .handoffs = {.starter_rng = true}, .expected_ids = "00.05 00.06"},
-        {
-            .name = "both handoffs, back in after SID Helper",
-            .first = "00.01b",
-            .handoffs = {.sid_helper = true, .starter_rng = true},
-            .expected_ids = "00.01b 00.02 00.03 00.04",
-            .expected_stop = StoryHandoff::STARTER_RNG,
-        },
-    };
-    for (const RunPlanScenario& scenario : scenarios){
-        database.add<Test_RunPlan>(scenario);
-    }
-}
-
-void add_tests_GiftRunPlan(UnitTestDatabase& database){
-    const RunPlanScenario scenarios[] = {
-        {
-            .name = "Gift RNG: stops after 00.12's save",
-            .first = "00.11",
-            .handoffs = {.gift_rng = true},
-            .expected_ids = "00.11 00.12",
-            .expected_stop = StoryHandoff::GIFT_RNG,
-        },
-        {.name = "Gift RNG off: 00.12b is passed over", .first = "00.11", .expected_ids = "00.11 00.12"},
-        {.name = "Gift RNG off: 00.12b runs when started at", .first = "00.12b", .expected_ids = "00.12b"},
-        {
-            .name = "Gift RNG: started at 00.12b, from the save beside the salesman",
-            .first = "00.12b",
-            .handoffs = {.gift_rng = true},
-            .expected_ids = "",
-            .expected_stop = StoryHandoff::GIFT_RNG,
-        },
-        {
-            .name = "Gift RNG: started at 00.12b with Starter RNG on too",
-            .first = "00.12b",
-            .handoffs = {.sid_helper = true, .starter_rng = true, .gift_rng = true},
-            .expected_ids = "",
-            .expected_stop = StoryHandoff::GIFT_RNG,
-        },
-        {.name = "Starter RNG alone: 00.12b runs when started at", .first = "00.12b", .handoffs = {.starter_rng = true}, .expected_ids = "00.12b"},
-        {
-            .name = "Starter RNG first, with both on",
-            .first = "00.03",
-            .handoffs = {.starter_rng = true, .gift_rng = true},
-            .expected_ids = "00.03 00.04",
-            .expected_stop = StoryHandoff::STARTER_RNG,
-        },
-    };
-    for (const RunPlanScenario& scenario : scenarios){
-        database.add<Test_RunPlan>(scenario);
-    }
-}
-
-std::string step_names(const StoryCheckpoint& checkpoint){
-    std::string text;
-    for (const StoryStep& step : checkpoint.steps){
-        text += (text.empty() ? "" : " ") + step.name;
-    }
-    return text;
-}
-
-//  With Starter RNG's handoff off, 00.04 and 00.04b run as the one 00.04
-//  the story had before the split: from the lab's table to the rival's
-//  battle, saving once with the starter's START menu.
-UnitTestResult test_starter_rows_joined(){
-    const std::vector<StoryCheckpoint>& checkpoints = story_checkpoints();
-    const StoryRunPlan plan = plan_story_run(checkpoints, row_index("00.04"), row_index("00.04b"), StoryHandoffs{});
-    const std::string expected_steps =
-        "below_squirtle squirtle_ball choose_squirtle no_nickname rival_takes_bulbasaur above_rival_trigger rival_trigger rival_battle";
-    if (plan.rows.size() != 1){
-        return "Expected one checkpoint, got \"" + joined_ids(plan.rows) + "\".";
-    }
-    const StoryCheckpoint& row = plan.rows[0];
-    if (row.id != "00.04" || row.title != "Squirtle, then the rival's battle" || step_names(row) != expected_steps){
-        return "Expected 00.04 \"Squirtle, then the rival's battle\": " + expected_steps
-            + "; got " + row.id + " \"" + row.title + "\": " + step_names(row);
-    }
-    const std::optional<StoryPose> start = story_pose(*row.start);
-    if (!start || start->map != "PalletTown_ProfessorOaksLab" || !(start->tile == TilePos{6, 4}) || row.menu != StartMenu::BEFORE_POKEDEX){
-        return "Expected the joined 00.04 to start at the table (6, 4) and save with the starter's START menu.";
-    }
-    //  Split, 00.04 saves under the ball facing it, before the starter.
-    const StoryCheckpoint& to_ball = checkpoints[row_index("00.04")];
-    const std::optional<StoryPose> ball = story_pose(*checkpoints[row_index("00.04b")].start);
-    if (to_ball.handoff != StoryHandoff::STARTER_RNG || to_ball.menu != StartMenu::BEFORE_POKEMON
-        || !ball || !(ball->tile == TilePos{9, 5}) || ball->facing != Direction::NORTH
-    ){
-        return "Expected 00.04 to end under Squirtle's ball (9, 5) facing north, saving before the starter.";
-    }
-    return true;
-}
-
-//  The ways back in after SID Helper and Gift RNG load no save and start
-//  where 00.01 and 00.12 leave the player, so the rows after them follow
-//  unchanged.
-UnitTestResult test_after_sid_helper_row(){
-    const StoryCheckpoint& sid = story_checkpoints()[row_index("00.01b")];
-    if (!sid.live_start || story_checkpoints()[0].handoff != StoryHandoff::SID_HELPER){
-        return "Expected 00.01 to be SID Helper's handoff and 00.01b to start from the live game.";
-    }
+//  00.12c stores the Magikarp Gift RNG bought; with Gift RNG off there is
+//  none, and the deposit is skipped instead of refused.
+UnitTestResult test_magikarp_deposit_skippable(){
     for (const StoryCheckpoint& checkpoint : story_checkpoints()){
-        if (checkpoint.live_start != (checkpoint.id == "00.01b" || checkpoint.id == "00.12b")){
-            return checkpoint.id + ": only 00.01b and 00.12b start from the live game.";
+        if (checkpoint.id != "00.12c"){
+            continue;
         }
+        for (const StoryStep& step : checkpoint.steps){
+            const std::optional<PcTransfer> transfer = parse_pc_variant(step.variant);
+            if (transfer && transfer->party_slot == 1 && transfer->if_missing == PcMissing::SKIP){
+                return true;
+            }
+        }
+        return "00.12c: expected a deposit of the second slot, skipped if the party hasn't got it.";
     }
-    return true;
+    return "No checkpoint 00.12c.";
 }
 
 //  set_options()'s RIGHT presses from each value an old save can leave:
@@ -973,10 +835,7 @@ UnitTestResult test_option_presses(){
 
 
 void add_tests_AutoStory(UnitTestDatabase& database){
-    add_tests_RunPlan(database);
-    add_tests_GiftRunPlan(database);
-    database.add<Test_AutoStory>("00.01b and 00.12b: back in after SID Helper and Gift RNG", test_after_sid_helper_row);
-    database.add<Test_AutoStory>("00.04 and 00.04b: one checkpoint with Starter RNG off", test_starter_rows_joined);
+    add_tests_AutoStoryRunPlan(database);
     database.add<Test_AutoStory>("every route plans, and checkpoints chain", test_routes_and_chain);
     database.add<Test_AutoStory>("step names are unique per checkpoint", test_unique_names);
     database.add<Test_AutoStory>("every save has a place on the save card", test_save_places);
@@ -990,6 +849,7 @@ void add_tests_AutoStory(UnitTestDatabase& database){
     database.add<Test_AutoStory>("Route 3: Lass Robin stops the walk on (40, 9)", test_robin_crossing);
     database.add<Test_AutoStory>("intro: names, the rival's from the list", test_intro_names);
     database.add<Test_AutoStory>("options: RIGHT presses from the shown value", test_option_presses);
+    database.add<Test_AutoStory>("00.12c: the Magikarp's deposit is skipped without Gift RNG", test_magikarp_deposit_skippable);
 }
 
 
