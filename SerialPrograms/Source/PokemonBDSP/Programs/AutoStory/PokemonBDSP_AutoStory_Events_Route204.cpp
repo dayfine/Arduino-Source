@@ -1,9 +1,8 @@
-/*  BDSP AutoStory - Events: Route 204 to Floaroma (01.09, 01.11)
+/*  BDSP AutoStory - Events: the Ravaged Path (01.09)
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  The Ravaged Path's Rock Smash, and segment 01's walks to the old couple
- *  in Floaroma's flower field, as they ran on the console (2026-10-31).
+ *  The Ravaged Path's Rock Smash, as it ran on the console (2026-10-31).
  *
  */
 
@@ -72,42 +71,11 @@ void smash_the_rock(VideoStream& stream, ProControllerContext& context){
     }
 }
 
-//  01.11: west 8 along the flower field's bottom row, north until the old woman stops us.
-void west_8_north_to_the_old_woman(VideoStream& stream, ProControllerContext& context){
-    {
-        const WalkResult west = walk_tiles_dpad(stream, context, run_from_wild_battle, {-1, 0}, 8, "west 8 to the flower field");
-        if (west.stop != WalkStop::LIMIT || west.moved_chunks < 7){
-            fail_step(stream, "Floaroma: west 8 to the flower field moved " + std::to_string(west.moved_chunks) + " tiles.");
-        }
-        //  Blocked, or out of taps with the last ones bumping: either way
-        //  she is in front of us (r250a: 3 steps, 2 bumps, "limit").
-        const WalkResult north = walk_tiles_dpad(stream, context, run_from_wild_battle, {0, 1}, 5, "north until the old woman");
-        if (north.stop != WalkStop::BLOCKED && north.moved_chunks >= 5){
-            fail_step(stream, "Floaroma: nothing stopped the walk north to the old woman.");
-        }
-    }
-}
-
-//  01.11: one tile west, then a tap north: the old man stands there, so the tap only turns.
-void below_the_old_man(VideoStream& stream, ProControllerContext& context){
-    const WalkResult west = walk_tiles_dpad(stream, context, run_from_wild_battle, {-1, 0}, 1, "west 1 below the old man");
-    if (west.moved_chunks < 1){
-        fail_step(stream, "Floaroma: the step west below the old man did not move.");
-    }
-    // He stands there, so one tap only turns us to him; the talk after fails
-    // if nobody answers. No counting: Floaroma's cloud shadows read as moves
-    // (r84: blocked taps counted, view change 20).
-    pbf_press_dpad(context, DPAD_UP, 160ms, 500ms);
-    context.wait_for_all_requests();
-}
-
 }
 
 
 void add_route204_events(StoryEvents& events){
     events.emplace("smash_the_rock", console_event(smash_the_rock));
-    events.emplace("west_8_north_to_the_old_woman", console_event(west_8_north_to_the_old_woman));
-    events.emplace("below_the_old_man", console_event(below_the_old_man));
 }
 
 

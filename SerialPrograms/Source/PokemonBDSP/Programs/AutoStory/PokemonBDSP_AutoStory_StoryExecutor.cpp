@@ -474,8 +474,10 @@ Outcome StoryExecutor::talk(RunState& state, const StoryStep& step){
     }
     pbf_press_button(context(), BUTTON_A, 80ms, 200ms);
     context().wait_for_all_requests();
+    //  Roark's first line in the mine comes after the camera zooms in on
+    //  us, which can take some seconds (r98; the old event waited 8 s).
     ShortDialogWatcher dialog(COLOR_YELLOW);
-    if (wait_until(stream(), context(), 3000ms, {{dialog}}) != 0){
+    if (wait_until(stream(), context(), 8000ms, {{dialog}}) != 0){
         fail_step(stream(), label_of(step) + ": nobody answered.");
     }
     return Pokemon::outcome_ok();
@@ -501,6 +503,13 @@ Outcome StoryExecutor::mash(RunState& state, const StoryStep& step){
 }
 
 Outcome StoryExecutor::battle(RunState&, const StoryStep& step){
+    //  "starter": the Starly battle at the lake (00.02). It opens on its own,
+    //  with no talk, and the starter has no Poke Balls to throw; the scene
+    //  goes on whoever wins.
+    if (step.variant == "starter"){
+        fight_starly(stream(), context());
+        return Pokemon::outcome_ok();
+    }
     //  A loss sends us to a Pokemon Center, so ending on its floor means a
     //  loss - unless the floor check already passed where the battle began:
     //  Jubilife's yellow plaza reads as Center floor (63 %, r79 won Rowan's
