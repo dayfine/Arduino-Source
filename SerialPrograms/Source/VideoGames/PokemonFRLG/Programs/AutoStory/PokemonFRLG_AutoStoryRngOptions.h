@@ -3,7 +3,7 @@
  *  From: https://github.com/PokemonAutomation/
  *
  *  The RNG plan options: what AutoStory's Starter RNG stop searches targets
- *  with (PokemonFRLG_AutoStoryRngPlan.h).
+ *  with (RngManipulation/PokemonFRLG_RngPlan.h).
  *
  */
 
@@ -20,8 +20,9 @@
 #include "Common/Cpp/Options/SimpleIntegerOption.h"
 #include "Common/Cpp/Options/StringOption.h"
 #include "CommonFramework/Language.h"
+#include "VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_RngPlan.h"
+#include "VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_RngTargetSearch.h"
 #include "VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_SeedsDatabase.h"
-#include "PokemonFRLG_AutoStoryRngPlan.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{

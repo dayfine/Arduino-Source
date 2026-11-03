@@ -167,10 +167,10 @@ struct StoryEnv{
     Language language = Language::English;
     //  The name the new game's intro types for the player; empty keeps the
     //  game's default name.
-    std::string player_name;
+    std::string player_name = {};
     //  The map the checkpoint under way starts on, where its save is: a
     //  reload checks the save card against it.
-    std::string start_map;
+    std::string start_map = {};
 };
 
 //  After a save is loaded for a checkpoint that starts on `start_map`: the
