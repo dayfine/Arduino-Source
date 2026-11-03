@@ -270,19 +270,12 @@ RngPlanStep RngPlanTracker::record(RngAttemptOutcome outcome){
     }
     const std::vector<uint16_t>& sids = m_attempts[m_attempt].sids;
     switch (outcome){
-    case RngAttemptOutcome::SHINY:{
+    case RngAttemptOutcome::SHINY:
         //  The SID is one the target is shiny for. None of them: it wasn't
         //  among the candidates.
-        std::vector<uint16_t> narrowed;
-        for (uint16_t sid : m_remaining){
-            if (std::find(sids.begin(), sids.end(), sid) != sids.end()){
-                narrowed.push_back(sid);
-            }
-        }
-        m_remaining = std::move(narrowed);
+        std::erase_if(m_remaining, [&](uint16_t sid){ return std::find(sids.begin(), sids.end(), sid) == sids.end(); });
         m_step = RngPlanStep::GOT_SHINY;
         return m_step;
-    }
     case RngAttemptOutcome::SHINY_OFF_TARGET:
         m_step = RngPlanStep::GOT_SHINY_OFF_TARGET;
         return m_step;
@@ -303,8 +296,12 @@ RngPlanStep RngPlanTracker::record(RngAttemptOutcome outcome){
         return m_step;
     case RngAttemptOutcome::MISSED:
         //  A miss rules nothing out. Too many: try the next attempt instead.
-        m_retries++;
-        if (m_retries > m_max_retries && !move_to_next_attempt()){
+        if (++m_retries <= m_max_retries){
+            return m_step;
+        }
+        [[fallthrough]];
+    case RngAttemptOutcome::UNUSABLE:
+        if (!move_to_next_attempt()){
             m_step = RngPlanStep::MISSED_EVERY_ATTEMPT_LEFT;
         }
         return m_step;
@@ -390,6 +387,8 @@ const char* outcome_name(RngAttemptOutcome outcome){
         return "hit_not_shiny";
     case RngAttemptOutcome::MISSED:
         return "missed";
+    case RngAttemptOutcome::UNUSABLE:
+        return "unusable";
     }
     throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "Unknown RngAttemptOutcome.");
 }
