@@ -4,6 +4,7 @@
  *
  */
 
+#include <cmath>
 #include "Common/Cpp/Exceptions.h"
 #include "VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_RngPlanInputs.h"
 #include "VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_RngPlanLog.h"
@@ -12,6 +13,38 @@
 namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonFRLG{
+
+
+RngStopCalibrationOptions::RngStopCalibrationOptions()
+    : GroupOption("RNG Calibration (this console)", LockMode::LOCK_WHILE_RUNNING)
+    , SEED(
+        "<b>Seed Calibration (ms):</b><br>As in Starter RNG's RNG Calibration. Each RNG stop starts from it, "
+        "and saves what it learns after every reset.",
+        LockMode::LOCK_WHILE_RUNNING, 0
+    )
+    , CSF(
+        "<b>Continue Screen Frames Calibration:</b><br>As in Starter RNG's RNG Calibration, kept as the seed's is.",
+        LockMode::LOCK_WHILE_RUNNING, 0.0
+    )
+{
+    PA_ADD_OPTION(SEED);
+    PA_ADD_OPTION(CSF);
+}
+
+RngCalibrations RngStopCalibrationOptions::calibration(const FloatingPointOption& ingame) const{
+    return RngCalibrations{
+        .seed_offset = double(int64_t(SEED)) / FRLG_FRAME_DURATION,
+        .csf_offset = CSF,
+        .ingame_offset = ingame,
+    };
+}
+
+void RngStopCalibrationOptions::save(const RngCalibrations& calibration, FloatingPointOption& ingame){
+    //  In ms, as RngCalibrationDisplay::set_calibrations() shows it.
+    SEED.set(int64_t(std::round(calibration.seed_offset * FRLG_FRAME_DURATION)));
+    CSF.set(calibration.csf_offset);
+    ingame.set(calibration.ingame_offset);
+}
 
 
 StarterRngPlanOptions::StarterRngPlanOptions()
@@ -44,10 +77,7 @@ StarterRngPlanOptions::StarterRngPlanOptions()
         "Off: the quickest target that passes the natures and IVs.",
         LockMode::LOCK_WHILE_RUNNING, true
     )
-    , NATURES(
-        false, "<b>Natures:</b><br>Separated by commas. Empty: any nature.",
-        LockMode::LOCK_WHILE_RUNNING, "", "Modest, Timid"
-    )
+    , NATURES(false, "<b>Natures:</b><br>Separated by commas. Empty: any nature.", LockMode::LOCK_WHILE_RUNNING, "", "Modest, Timid")
     , MIN_IVS(
         false, "<b>Minimum IVs:</b><br>HP/Atk/Def/SpA/SpD/Spe.",
         LockMode::LOCK_WHILE_RUNNING, "0/0/0/0/0/0", "0/0/0/0/0/0"
@@ -63,6 +93,7 @@ StarterRngPlanOptions::StarterRngPlanOptions()
     PA_ADD_OPTION(NATURES);
     PA_ADD_OPTION(MIN_IVS);
     PA_ADD_OPTION(MAX_ATTEMPTS);
+    PA_ADD_OPTION(CALIBRATION);
 }
 
 std::string StarterRngPlanOptions::sound_name() const{
