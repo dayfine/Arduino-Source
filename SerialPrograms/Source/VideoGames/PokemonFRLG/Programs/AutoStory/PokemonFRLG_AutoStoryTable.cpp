@@ -824,6 +824,11 @@ StoryCheckpoint back_to_cerulean(){
     });
 }
 
+//  Stopgap for console B's save, which caught nothing on Route 1. A new
+//  playthrough should instead catch a Rattata on Route 1 or 22 early, as
+//  its Cut user and spare member, and drop this row (and its walk over
+//  Nugget Bridge and back).
+//
 //  An Oddish for HM01 Cut, and a second member behind the lead
 //  (docs/design/AutoStory-FRLG-FutureEvents.md, "Console B run choices").
 //  Route 24's grass (Route24 map.json: x 3..5, rows 19..31, west of Nugget
