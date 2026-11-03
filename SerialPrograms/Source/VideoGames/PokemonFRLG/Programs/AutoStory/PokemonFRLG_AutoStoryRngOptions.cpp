@@ -27,7 +27,8 @@ StarterRngPlanOptions::StarterRngPlanOptions()
     )
     , SID(
         false,
-        "<b>SID:</b><br>The SID, once known. Empty: plan for the SIDs SID Helper lists, from the two options below.",
+        "<b>SID:</b><br>The SID, once known. Empty: plan for the SIDs SID Helper lists, from the two options below. "
+        "Run Starter RNG in AutoStory fills it in when a shiny Squirtle confirms the SID.",
         LockMode::LOCK_WHILE_RUNNING, "", ""
     )
     , SID_HELPER_ADVANCES(

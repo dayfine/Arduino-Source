@@ -53,7 +53,7 @@ UnitTestResult test_shiny_messages(){
     const std::vector<Case> cases = {
         {
             .result = {.end = StarterRngLoopEnd::SHINY, .attempts_run = 2, .remaining_sids = {300}, .sid = uint16_t(300)},
-            .expected = "Starter RNG: shiny Squirtle. The SID is 300: enter it as the RNG plan's SID.",
+            .expected = "Starter RNG: shiny Squirtle. The SID is 300: saved as the RNG plan's SID, so AutoStory skips SID Helper's steps next time.",
         },
         {
             .result = {.end = StarterRngLoopEnd::SHINY, .attempts_run = 1, .remaining_sids = {100, 200}, .sid = std::nullopt},
