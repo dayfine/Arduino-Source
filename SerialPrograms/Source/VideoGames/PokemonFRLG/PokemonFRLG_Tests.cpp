@@ -48,6 +48,7 @@
 #include "Programs/RngManipulation/PokemonFRLG_RngPlan_Tests.h"
 #include "Programs/RngManipulation/PokemonFRLG_RngSteps_Tests.h"
 #include "Programs/RngManipulation/PokemonFRLG_RngTargetSearch_Tests.h"
+#include "Programs/RngManipulation/PokemonFRLG_StarterRngLoop_Tests.h"
 #include "Tests/TestUtils.h"
 
 #include "PokemonFRLG_Tests.h"
@@ -719,6 +720,7 @@ void add_tests(UnitTestDatabase& database){
     add_tests_RngPlanTracker(database);
     add_tests_RngPlanLog(database);
     add_tests_RngSteps(database);
+    add_tests_StarterRngLoop(database);
 }
 
 

@@ -1933,6 +1933,12 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_StarterRng.h
     Source/VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_StarterRngAttempts.cpp
     Source/VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_StarterRngAttempts.h
+    Source/VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_StarterRngConsoleSteps.cpp
+    Source/VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_StarterRngConsoleSteps.h
+    Source/VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_StarterRngLoop.cpp
+    Source/VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_StarterRngLoop.h
+    Source/VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_StarterRngLoop_Tests.cpp
+    Source/VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_StarterRngLoop_Tests.h
     Source/VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_StaticRng.cpp
     Source/VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_StaticRng.h
     Source/VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_WildRng.cpp
