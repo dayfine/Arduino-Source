@@ -4,13 +4,14 @@
  *
  */
 
-#include <format>
 #include "Common/Cpp/Color.h"
+#include "Common/Cpp/Filesystem/Filesystem.h"
 #include "Common/Cpp/Json/JsonArray.h"
 #include "Common/Cpp/Json/JsonObject.h"
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "CommonTools/OCR/OCR_SmallDictionaryMatcher.h"
 #include "Tests/ImageUnitTest.h"
+#include "Tests/TestUtils.h"
 #include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_OcrPreprocessing.h"
 #include "VideoGames/PokemonFRLG/PokemonFRLG_Settings.h"
 #include "PokemonFRLG_OptionMenuReader.h"
@@ -154,68 +155,47 @@ std::string read_option_value(Logger& logger, Language language, const ImageView
 
 namespace{
 
-//  The values the menu shows for the options AutoStory sets.
-struct OptionValues{
-    std::string text_speed;
-    std::string battle_scene;
-    std::string battle_style;
-};
-
-std::string to_string(const OptionValues& values){
-    return std::format(
-        "TEXT SPEED \"{}\", BATTLE SCENE \"{}\", BATTLE STYLE \"{}\"",
-        values.text_speed, values.battle_scene, values.battle_style
-    );
-}
-
-//  A capture of the OPTION menu, read on each row AutoStory sets.
+//  A capture of the OPTION menu, named for what it shows:
+//  <anything>_<language code>_<TEXT SPEED>_<BATTLE SCENE>_<BATTLE STYLE>,
+//  e.g. CursorTop_eng_fast_on_set.png.
 class Test_OptionMenu : public ImageUnitTest{
 public:
-    Test_OptionMenu(const std::string& image, OptionValues expected)
+    Test_OptionMenu(const std::string& image)
         : ImageUnitTest("PokemonFRLG::OptionMenuReader - " + image, {image})
-        , m_expected(std::move(expected))
     {}
 
     virtual UnitTestResult run_on_images(
         Logger& logger, CancellableScope& scope,
         const std::vector<ImageRGB32>& images
     ) const override{
-        const OptionValues read{
-            .text_speed = read_option_value(logger, Language::English, images[0], OptionMenuItem::TEXT_SPEED),
-            .battle_scene = read_option_value(logger, Language::English, images[0], OptionMenuItem::BATTLE_SCENE),
-            .battle_style = read_option_value(logger, Language::English, images[0], OptionMenuItem::BATTLE_STYLE),
-        };
-        const std::string expected = to_string(m_expected);
-        const std::string got = to_string(read);
-        if (got != expected){
-            return "Expected " + expected + ", read " + got;
+        const std::vector<std::string> words = parse_words(Filesystem::Path(image_paths()[0]).stem().string());
+        if (words.size() < 5){
+            return "Error: filename must be <anything>_<language code>_<text speed>_<battle scene>_<battle style>.";
+        }
+        const std::string& language_word = words[words.size() - 4];
+        const Language language = language_code_to_enum(language_word);
+        if (language == Language::None || language == Language::EndOfList){
+            return "Error: invalid language word in filename: " + language_word;
+        }
+
+        const OptionMenuItem items[] = {OptionMenuItem::TEXT_SPEED, OptionMenuItem::BATTLE_SCENE, OptionMenuItem::BATTLE_STYLE};
+        for (size_t c = 0; c < 3; c++){
+            const std::string read = read_option_value(logger, language, images[0], items[c]);
+            TEST_RESULT_COMPONENT_EQUAL_STR(read, words[words.size() - 3 + c], option_menu_name(items[c]));
         }
         return true;
     }
-
-private:
-    const OptionValues m_expected;
 };
 
 }
 
 void add_tests_OptionMenuReader(UnitTestDatabase& database){
-    //  Console B, 2026-11-02, FireRed: the menu as a new game opens it, the
-    //  cursor on TEXT SPEED's white row.
-    database.add<Test_OptionMenu>(
-        "PokemonFRLG/OptionMenuReader/Options_Fast_On_Set.png",
-        OptionValues{.text_speed = "fast", .battle_scene = "on", .battle_style = "set"}
-    );
-    //  The cursor moved down to BATTLE STYLE: TEXT SPEED's row is darkened.
-    database.add<Test_OptionMenu>(
-        "PokemonFRLG/OptionMenuReader/Options_Fast_On_Set_CursorOnBattleStyle.png",
-        OptionValues{.text_speed = "fast", .battle_scene = "on", .battle_style = "set"}
-    );
-    //  After AutoStory set BATTLE SCENE to OFF.
-    database.add<Test_OptionMenu>(
-        "PokemonFRLG/OptionMenuReader/Options_Fast_Off_Set_CursorOnBattleStyle.png",
-        OptionValues{.text_speed = "fast", .battle_scene = "off", .battle_style = "set"}
-    );
+    //  FireRed on console B, 2026-11-02: the menu as a new game opens it,
+    //  then with the cursor moved to BATTLE STYLE (the other rows darkened),
+    //  before and after AutoStory set BATTLE SCENE to OFF.
+    database.add<Test_OptionMenu>("PokemonFRLG/OptionMenuReader/CursorTop_eng_fast_on_set.png");
+    database.add<Test_OptionMenu>("PokemonFRLG/OptionMenuReader/CursorBattleStyle_eng_fast_on_set.png");
+    database.add<Test_OptionMenu>("PokemonFRLG/OptionMenuReader/CursorBattleStyle_eng_fast_off_set.png");
 }
 
 
