@@ -67,6 +67,9 @@ struct Supplies{
     //  screen that showed it, and no Potion or nurse healed it since.
     bool hurt = false;
     bool hp_red = false;
+    //  The starter's HP bar's filled share at the last battle screen that
+    //  showed it, 1 after the nurse or a Potion on the overworld.
+    double hp_fill = 1.0;
     //  The starter's moves and their PP, as far as the story knows them:
     //  a new game's Squirtle unless a checkpoint's row says otherwise.
     PartyMember lead = new_member("squirtle", 5);
