@@ -29,7 +29,7 @@ mkdir -p "$(dirname "$L")" || exit 2
 # step. A lock without a pid is therefore either an owner still writing it
 # or an owner that died in between; the age tells them apart.
 INIT_GRACE=5
-age(){ echo $(( $(date +%s) - $(stat -f %m "$1" 2>/dev/null || stat -c %Y "$1" 2>/dev/null || date +%s) )); }
+age(){ echo $(( $(date +%s) - $(stat -c %Y "$1" 2>/dev/null || stat -f %m "$1" 2>/dev/null || date +%s) )); }
 held(){
     [ -d "$L" ] || return 1
     pid=$(cat "$L/pid" 2>/dev/null)
