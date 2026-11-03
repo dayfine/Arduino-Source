@@ -17,6 +17,7 @@
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWalk.h"
 #include "PokemonFRLG_AutoStoryCapture.h"
 #include "PokemonFRLG_AutoStoryEvents.h"
+#include "PokemonFRLG_AutoStorySummary.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -163,7 +164,7 @@ Outcome battle(StoryEnv& env, const StoryStep& step){
 
 //  HP and status are the battle loop's last reading. Items first (an
 //  Antidote, a Parlyz Heal, a Potion); the nurse only for red HP with no
-//  Potion left, or a status no item here cures.
+//  Potion left, a status no item here cures, or attacks low on PP.
 Outcome get_ready(StoryEnv& env, RunState& state, const StoryStep& step){
     Supplies& supplies = env.supplies;
     env.console.log(std::format(
@@ -171,7 +172,7 @@ Outcome get_ready(StoryEnv& env, RunState& state, const StoryStep& step){
         supplies.hp_red ? "red" : supplies.hurt ? "yellow" : "green", status_name(supplies.status), supplies.potions
     ));
     recover_after_battle(env.console, env.context, supplies, env.checks, env.language);
-    if (!supplies.hp_red && supplies.status == StatusCondition::NONE){
+    if (!supplies.hp_red && supplies.status == StatusCondition::NONE && !attacks_low_on_pp(supplies)){
         return Pokemon::outcome_ok();
     }
     Outcome walked = walk_route(env, state, step);
@@ -179,9 +180,7 @@ Outcome get_ready(StoryEnv& env, RunState& state, const StoryStep& step){
         return walked;
     }
     heal_at_center(env.console, env.context);
-    supplies.hurt = false;
-    supplies.hp_red = false;
-    supplies.status = StatusCondition::NONE;
+    healed_by_nurse(supplies);
     return walked;
 }
 
@@ -399,9 +398,7 @@ Outcome StoryExecutor::battle(RunState&, const StoryStep& step){
 
 Outcome StoryExecutor::heal(RunState&, const StoryStep&){
     heal_at_center(m_env.console, m_env.context);
-    m_env.supplies.hurt = false;
-    m_env.supplies.hp_red = false;
-    m_env.supplies.status = StatusCondition::NONE;
+    healed_by_nurse(m_env.supplies);
     return Pokemon::outcome_ok();
 }
 
@@ -505,6 +502,19 @@ std::string check_save_place(StoryEnv& env, const std::string& start_map){
         env.console.log("The save is in " + place + ", where the checkpoint starts.");
     }
     return error;
+}
+
+void read_lead_moves(StoryEnv& env, StartMenu menu){
+    const std::optional<SummaryRead> read = read_party_summary(env.console, env.context, menu, env.language, 0);
+    if (!read || read->moves.empty()){
+        env.console.log("Couldn't read the lead's moves; going on with the checkpoint's.", COLOR_ORANGE);
+        return;
+    }
+    const PartyMember& before = env.supplies.lead;
+    const std::string species = read->species.empty() ? before.species : read->species;
+    const uint8_t level = read->level && *read->level <= 100 ? static_cast<uint8_t>(*read->level) : before.moves_through_level;
+    env.supplies.lead = member_from_summary(species, level, read->moves);
+    env.saved_supplies.lead = env.supplies.lead;
 }
 
 Pokemon::Checkpoint build_checkpoint(const StoryCheckpoint& data, StoryExecutor& executor){
