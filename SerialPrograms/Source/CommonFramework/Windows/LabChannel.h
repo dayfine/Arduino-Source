@@ -12,7 +12,8 @@
  *  order from a worker thread and then moved to "Lab/done/". Its journal
  *  "Lab/outbox/<name>.out" has one line per command and ends with "end".
  *  "Lab/state" is rewritten after every request and whenever the program
- *  state changes.
+ *  state changes. Each run of the program is written to "Lab/runs/<run_id>/"
+ *  as it goes (LabRunFiles.h).
  *
  *  The channel owns the worker and the files. Anything that touches the
  *  window (select, start, stop, set) runs on the UI thread through the
@@ -38,6 +39,7 @@
 #include "CommonFramework/Globals.h"
 #include "CommonFramework/Panels/PanelSession.h"
 #include "LabRequest.h"
+#include "LabRunFiles.h"
 
 namespace PokemonAutomation{
 
@@ -120,6 +122,7 @@ private:
     void poll();
     void handle_request(const Filesystem::Path& file);
     std::string run_line(const LabRequest& request, const LabRequestLine& line, LabCommandOutput& output);
+    void record_probe(const LabRequestLine& line, const std::string& output, const std::string& error);
     std::string run_console_command(const std::vector<std::string>& words, LabCommandOutput& output);
     std::string run_on_console(const std::function<void(PanelSession& panel, CancellableScope& scope)>& body);
     std::string run_ui_command(const LabRequestLine& line, std::ostream& out);
@@ -127,8 +130,15 @@ private:
     void keep_awake();
     void write_state();
 
-    //  The state of the selected program. Call under m_panel_lock.
-    void read_program_state(std::string& state, std::string& program, bool& running) const;
+    //  The state of the selected program, as the state file shows it.
+    struct SelectedProgram{
+        std::string state = {};
+        std::string program = {};
+        std::string run = {};
+        bool running = false;
+    };
+    //  Call under m_panel_lock.
+    SelectedProgram read_program_state() const;
 
 
 private:
@@ -146,6 +156,7 @@ private:
     //  Owned by the worker thread.
     LabOwner m_owner;
     KeepAwakeSchedule m_keep_awake;
+    LabRunWriter m_runs;
     LabState m_state;
     std::string m_written_state;
     bool m_folder_ready = false;

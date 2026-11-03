@@ -118,6 +118,7 @@ std::string lab_state_text(const LabState& state){
         "seq=" + state.seq + "\n" +
         "state=" + state.state + "\n" +
         "program=" + state.program + "\n" +
+        "run=" + state.run + "\n" +
         "owner=" + state.owner + "\n" +
         "error=" + state.error + "\n";
 }

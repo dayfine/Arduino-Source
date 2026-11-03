@@ -60,11 +60,12 @@ std::string journal_error(size_t number, const std::string& command, const std::
 
 //  What the "state" file says.
 struct LabState{
-    std::string seq;        //  Name of the last request handled.
-    std::string state;      //  STOPPED, RUNNING, STOPPING, NOT_READY or NO_PROGRAM.
-    std::string program;    //  The selected program's identifier, or "".
-    std::string owner;      //  The owner token, or "".
-    std::string error;      //  The last error; "" once a request succeeds.
+    std::string seq = {};       //  Name of the last request handled.
+    std::string state = {};     //  STOPPED, RUNNING, STOPPING, NOT_READY or NO_PROGRAM.
+    std::string program = {};   //  The selected program's identifier, or "".
+    std::string run = {};       //  The selected program's last run (Lab/runs/<run>/), or "".
+    std::string owner = {};     //  The owner token, or "".
+    std::string error = {};     //  The last error; "" once a request succeeds.
 };
 std::string lab_state_text(const LabState& state);
 
