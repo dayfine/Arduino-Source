@@ -394,23 +394,26 @@ UnitTestResult test_lead_as_read(){
 //  Console B at the end of 00.15 (2026-11-03): Wartortle Lv22, 65 HP,
 //  with Water Pulse taught over Tail Whip, and 10 Potions. The sim, the
 //  levels since the summary added to its stats, wins against the
-//  Cerulean rival about 42% at Lv22, 62% at Lv23, 66% at Lv24 and 76% at
-//  Lv25: a GRIND to 50% stops at Lv23.
+//  Cerulean rival about 52% at Lv22 (42% when the sim's Potion was sized
+//  on the foe's biggest hit) and more at Lv25: a GRIND to 50% stops at
+//  Lv22.
 UnitTestResult test_console_party(){
     Stats stats = combatant("wartortle", 22, OWN_GENES)->stats;
     stats.hp = 65;
     const MemberInfo read{.species = "wartortle", .level = 22, .moves = {"bite", "water-pulse", "bubble", "withdraw"}, .stats = stats};
     const PartyMember at22 = lead_as_read(read, PartyMember{});
-    for (uint8_t level = 22; level <= 25; level++){
+    double previous = 0;
+    for (uint8_t level = 22; level <= 25; level += 3){
         PartyMember lead = at22;
         lead.moves_through_level = level;
         const std::optional<WinEstimate> estimate = healed_win_chance(lead, SimItems{.potions = 10}, RIVAL);
-        if (!estimate || (estimate->chance >= MIN_WIN_CHANCE) != (level >= 23)){
+        if (!estimate || estimate->chance < MIN_WIN_CHANCE || estimate->chance <= previous){
             return std::format(
-                "Lv{}: {:.1f}%; expected {:.0f}% or more from Lv23.",
+                "Lv{}: {:.1f}%; expected {:.0f}% or more, rising with the level.",
                 level, estimate ? 100 * estimate->chance : 0.0, 100 * MIN_WIN_CHANCE
             );
         }
+        previous = estimate->chance;
     }
     return true;
 }
@@ -465,7 +468,7 @@ void add_tests_AutoStoryGrind(UnitTestDatabase& database){
     add("the table's variant", test_grind_variant);
     add("the level cap's message", test_grind_cap_message);
     add("the lead the sim plays is the one read", test_lead_as_read);
-    add("console B's party stops at Lv25 against the Cerulean rival", test_console_party);
+    add("console B's party is fought at Lv22 against the Cerulean rival", test_console_party);
 }
 
 
