@@ -1,0 +1,66 @@
+{
+    "name": "Route25_SeaCottage",
+    "source": {
+        "decomp_file": "data/maps/Route25_SeaCottage/map.json",
+        "revision": "ce6406d8c2eaf46d543c8a2606de0c3cb1951982",
+        "date": "2026-10-31"
+    },
+    "allow_running": false,
+    "tiles": [
+        "###############",
+        "###############",
+        "#.##########..#",
+        "###D######D#.##",
+        "..............#",
+        "....##........#",
+        "..............#",
+        "#.............#",
+        "#..............",
+        "###..........##",
+        "###############"
+    ],
+    "points": {
+        "warp_1": [7, 9]
+    },
+    "warps": [
+        {
+            "x": 6,
+            "y": 9,
+            "enter": "walk_into",
+            "to_map": "Route25",
+            "to_point": "warp_0"
+        },
+        {
+            "x": 7,
+            "y": 9,
+            "enter": "walk_south",
+            "to_map": "Route25",
+            "to_point": "warp_0"
+        },
+        {
+            "x": 8,
+            "y": 9,
+            "enter": "walk_into",
+            "to_map": "Route25",
+            "to_point": "warp_0"
+        }
+    ],
+    "objects": [
+        {
+            "name": "bill",
+            "kind": "npc",
+            "x": 7,
+            "y": 5,
+            "hide_flag": "FLAG_HIDE_BILL_HUMAN_SEA_COTTAGE"
+        },
+        {
+            "name": "clefairy",
+            "kind": "npc",
+            "x": 10,
+            "y": 6,
+            "hide_flag": "FLAG_HIDE_BILL_CLEFAIRY"
+        }
+    ],
+    "flag_sets": {},
+    "connections": []
+}

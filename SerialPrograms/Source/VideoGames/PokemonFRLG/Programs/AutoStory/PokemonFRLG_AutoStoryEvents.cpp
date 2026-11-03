@@ -324,6 +324,7 @@ std::string save_card_place(const std::string& map){
         {"PewterCity", "pewter-city"},
         {"Route3", "route-3"},
         {"Route4", "route-4"},
+        {"CeruleanCity", "cerulean-city"},
     };
     for (const auto& [prefix, place] : PLACES){
         if (map == prefix || map.rfind(prefix + "_", 0) == 0){
