@@ -20,6 +20,9 @@
  *    YES, leaves it unlearned.
  *  - A TM is used up; an HM is not.
  *
+ *  A TM or HM the TM CASE hasn't got skips the step, with a log line: the
+ *  table can teach a TM a run may not have won yet.
+ *
  *  The step reads the member's moves first (MemberReader) and decides
  *  everything before it opens the bag: the move to forget, by name or
  *  slot; a refusal if the member already knows the move, has four moves
@@ -107,6 +110,15 @@ enum class ForgetEnd{
     FAILED,
 };
 
+//  What opening the TM or HM from the bag came to.
+enum class ItemOpen{
+    //  On "Teach which POKEMON?".
+    OPENED,
+    //  The TM CASE's list was read and hasn't got it.
+    NOT_IN_CASE,
+    FAILED,
+};
+
 //  The game steps a TEACH step takes, injected so its decisions run in
 //  tests.
 class TeachActions{
@@ -114,9 +126,8 @@ public:
     virtual ~TeachActions() = default;
 
     //  From the overworld: the bag, the TM Case, `item` (which holds
-    //  `move`), USE, to the party menu. False if the item isn't there or the
-    //  party didn't show.
-    virtual bool open_item(std::string_view item, std::string_view move) = 0;
+    //  `move`), USE, to the party menu.
+    virtual ItemOpen open_item(std::string_view item, std::string_view move) = 0;
     //  On "Teach which POKEMON?": A on `slot`.
     virtual TeachPrompt choose_member(size_t slot) = 0;
     //  On "Delete an older move?": YES, then A on move `slot` (0-3).
@@ -134,6 +145,8 @@ enum class TeachEnd{
     REFUSED,
     //  The member's moves couldn't be read: nothing was pressed.
     UNREAD,
+    //  The TM or HM isn't in the TM CASE: skipped, nothing taught.
+    NO_ITEM,
     FAILED,
 };
 const char* teach_end_name(TeachEnd end);

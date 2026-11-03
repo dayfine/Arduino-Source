@@ -30,6 +30,7 @@ const char* teach_end_name(TeachEnd end){
     case TeachEnd::ALREADY_KNOWN:   return "already_known";
     case TeachEnd::REFUSED:         return "refused";
     case TeachEnd::UNREAD:          return "unread";
+    case TeachEnd::NO_ITEM:         return "no_item";
     case TeachEnd::FAILED:          return "failed";
     }
     return "?";
@@ -159,7 +160,12 @@ public:
         if (decision.forget){
             m_result.forgot = member->moves[*decision.forget];
         }
-        if (!m_actions.open_item(m_plan.item, m_plan.move)){
+        switch (m_actions.open_item(m_plan.item, m_plan.move)){
+        case ItemOpen::OPENED:
+            break;
+        case ItemOpen::NOT_IN_CASE:
+            return leave(TeachEnd::NO_ITEM, std::format("no {} in the TM Case", m_plan.item));
+        case ItemOpen::FAILED:
             return leave(TeachEnd::FAILED, std::format("couldn't open {} from the TM Case", m_plan.item));
         }
         if (!teach(decision.forget)){
@@ -252,7 +258,8 @@ private:
 
 TeachResult run_teach(Logger& logger, TeachActions& actions, const MemberReader& reader, const TeachPlan& plan){
     TeachResult result = TeachRun(actions, reader, plan).run();
-    logger.log(teach_message(plan, result), result.end == TeachEnd::LEARNED ? COLOR_BLACK : COLOR_RED);
+    const Color color = result.end == TeachEnd::LEARNED ? COLOR_BLACK : result.end == TeachEnd::NO_ITEM ? COLOR_ORANGE : COLOR_RED;
+    logger.log(teach_message(plan, result), color);
     return result;
 }
 
@@ -265,6 +272,8 @@ std::string teach_message(const TeachPlan& plan, const TeachResult& result){
             : std::format("{}: learned, forgot {}.", what, result.forgot);
     case TeachEnd::ALREADY_KNOWN:
         return std::format("{}: it knows it already; nothing done.", what);
+    case TeachEnd::NO_ITEM:
+        return std::format("{}: {}; skipped.", what, result.detail);
     default:
         return std::format("{}: {}: {}.", what, teach_end_name(result.end), result.detail);
     }
