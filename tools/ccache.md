@@ -9,15 +9,18 @@ cache) against 13–14 min uncached (Apple Clang 21, Qt 6.8.3, ccache 4.14).
 SRC is the worktree's parent of SerialPrograms, i.e. the worktree root):
 
 ```sh
-SRC=$(git rev-parse --show-toplevel)
+SRC=$(cd "$(git rev-parse --show-toplevel)" && pwd -P)
 L="ccache;cache_dir=$HOME/Library/Caches/pokemonautomation-ccache;base_dir=$SRC"
-cmake -S SerialPrograms -B SerialPrograms/build -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+cmake -S "$SRC/SerialPrograms" -B "$SRC/SerialPrograms/build" -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo \
   -DCMAKE_C_COMPILER_LAUNCHER="$L" -DCMAKE_CXX_COMPILER_LAUNCHER="$L" \
   -DCMAKE_C_FLAGS="-fdebug-prefix-map=$SRC=. -fdebug-compilation-dir=." \
   -DCMAKE_CXX_FLAGS="-fdebug-prefix-map=$SRC=. -fdebug-compilation-dir=." \
   ...usual Qt / AGL / OpenCV options...
 ```
 
+- Use one spelling of the tree path. `pwd -P` resolves links; a tree under `/tmp` (a link to
+  `/private/tmp`) configured with one spelling and compiled with the other misses every file.
+  Keep worktrees in `~/Projects/wt/<name>`.
 - `base_dir` makes paths relative, so worktrees share hits; the debug-prefix flags keep the
   checkout path out of objects (start the debugger from the build dir).
 - Hits need the same compiler, SDK, Qt and flags. A widely included header still rebuilds its users.
