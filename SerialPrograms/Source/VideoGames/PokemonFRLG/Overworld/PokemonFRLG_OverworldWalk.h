@@ -119,6 +119,11 @@ inline constexpr Milliseconds LATE_WILD_BATTLE_DELAY(3700);
 //  the walker waits that long, the next leg is walked into the battle and
 //  lost: on Route 1, "east 4" and "west 4".
 inline constexpr Milliseconds AFTER_WILD_LEG_WATCH(3500);
+//  After a leg's watch saw nothing, but the screen shows a battle on its
+//  way: how long to watch on for its HP boxes. In Mt. Moon they came over
+//  5s after the step that set the battle off, after the watch had ended on
+//  the battle's empty text box (console B, 2026-11-03, row 00.13).
+inline constexpr Milliseconds UNSEEN_BATTLE_WATCH(5000);
 //  How long clear_open_message() watches for the message it saw.
 inline constexpr Milliseconds OPEN_MESSAGE_WATCH(1000);
 inline constexpr size_t MAX_INTERRUPTIONS_PER_LEG = 5;
@@ -165,6 +170,17 @@ void check_overworld(ConsoleHandle& console, ProControllerContext& context, cons
 //  once, instead of failing at once. check_overworld() then fails if the
 //  overworld still isn't up.
 void clear_open_message(
+    ConsoleHandle& console, ProControllerContext& context,
+    const OverworldInterrupts& interrupts, const RouteStep& step
+);
+
+//  After `step`'s hold and the watch after it, which saw nothing: if the
+//  screen shows a wild battle on its way anyway (its text box before the HP
+//  boxes, or black), watches on for it with `interrupts` and clears what
+//  shows. Returns how many it cleared: the leg may have stopped part-way.
+//  Only on a walk where a wild battle can start (RouteStep::wild) and not
+//  onto a warp, whose fade check_warp_was_no_battle() covers.
+size_t clear_unseen_battle(
     ConsoleHandle& console, ProControllerContext& context,
     const OverworldInterrupts& interrupts, const RouteStep& step
 );
