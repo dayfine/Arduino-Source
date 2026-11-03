@@ -158,15 +158,13 @@ std::optional<std::string> refuse_battle(StoryEnv& env, const StoryStep& step, s
     if (step.may_lose || supplies.risk != BattleRisk::HIGH){
         return std::nullopt;
     }
-    //  The bar's colors, as HP: green full, yellow half, red a fifth.
-    const double hp_share = supplies.hp_red ? 0.2 : supplies.hurt ? 0.5 : 1.0;
-    const std::optional<WinEstimate> estimate = story_win_chance(supplies.lead, supplies.potions, hp_share, trainer);
+    const std::optional<WinEstimate> estimate = story_win_chance(supplies.lead, supplies.potions, supplies.hp_fill, trainer);
     if (!estimate){
         return std::nullopt;
     }
     env.console.log(std::format(
-        "Story: {} against {}: the sim wins {} of {} ({:.0f}%), {} Potions.",
-        step.name, trainer, estimate->wins, estimate->battles, 100 * estimate->chance, supplies.potions
+        "Story: {} against {}: the sim wins {} of {} ({:.0f}%) with {}.",
+        step.name, trainer, estimate->wins, estimate->battles, 100 * estimate->chance, estimate->inputs
     ));
     return win_chance_refusal(*estimate);
 }
@@ -527,7 +525,9 @@ void read_lead_moves(StoryEnv& env, StartMenu menu){
     const PartyMember& before = env.supplies.lead;
     const std::string species = read->species.empty() ? before.species : read->species;
     const uint8_t level = read->level && *read->level <= 100 ? static_cast<uint8_t>(*read->level) : before.moves_through_level;
-    env.supplies.lead = member_from_summary(species, level, read->moves);
+    //  The stats belong to the species and level read.
+    const bool stats_fit = species == read->species && read->level.has_value();
+    env.supplies.lead = member_from_summary(species, level, read->moves, stats_fit ? read->stats : std::nullopt);
     env.saved_supplies.lead = env.supplies.lead;
 }
 
