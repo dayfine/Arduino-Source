@@ -268,7 +268,10 @@ uint8_t move_power(std::string_view move){
 }
 
 PartyMember new_member(std::string_view species, uint8_t level){
-    PartyMember member{.species = std::string(species), .moves = {}, .moves_through_level = level, .moves_read = false};
+    PartyMember member{
+        .species = std::string(species), .moves = {}, .moves_through_level = level, .moves_read = false,
+        .level = 0, .stats = std::nullopt,
+    };
     for (const LevelUpMove& entry : LEVEL_UP_MOVES){
         if (entry.species != species || entry.level > level || knows(member, entry.move)){
             continue;
@@ -298,8 +301,18 @@ PartyMember story_lead_after_brock(){
     return grown_to(new_member("squirtle", 5), 13);
 }
 
-PartyMember member_from_summary(std::string_view species, uint8_t level, const std::vector<SummaryMove>& moves){
-    PartyMember member{.species = std::string(species), .moves = {}, .moves_through_level = level, .moves_read = true};
+uint8_t battle_level(const PartyMember& member){
+    return std::max(member.level, member.moves_through_level);
+}
+
+PartyMember member_from_summary(
+    std::string_view species, uint8_t level, const std::vector<SummaryMove>& moves,
+    const std::optional<Stats>& stats
+){
+    PartyMember member{
+        .species = std::string(species), .moves = {}, .moves_through_level = level, .moves_read = true,
+        .level = level, .stats = stats,
+    };
     for (const SummaryMove& read : moves){
         const uint8_t full = max_pp(read.move);
         const uint8_t pp = read.pp >= 0 ? static_cast<uint8_t>(std::min<int>(read.pp, 255)) : static_cast<uint8_t>(full / 2);
@@ -332,6 +345,7 @@ LearnDecision learn_move(PartyMember& member){
 void evolve(PartyMember& member){
     if (const std::optional<LevelEvolution> evolution = level_evolution(member.species)){
         member.species = std::string(evolution->into);
+        member.stats.reset();
     }
 }
 
