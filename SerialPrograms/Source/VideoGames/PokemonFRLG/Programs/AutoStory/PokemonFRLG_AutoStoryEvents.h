@@ -197,6 +197,12 @@ std::string check_save_place(StoryEnv& env, const std::string& start_map);
 //  kept if no move can be read.
 void read_lead_moves(StoryEnv& env, StartMenu menu);
 
+//  After a save is loaded, with START's menu `menu`: the Items pocket's
+//  counts as read (set_from_loaded_bag()), in place of the row's, which
+//  are kept if nothing can be read. Only with the full menu: the rows
+//  before it carry the items they have.
+void read_bag_supplies(StoryEnv& env, StartMenu menu);
+
 //  Does FRLG's kinds of story step on the console. A console step that
 //  fails is a failed Outcome, which the segment answers by reloading.
 class StoryExecutor : public Pokemon::StoryStepExecutor{
