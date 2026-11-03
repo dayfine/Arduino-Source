@@ -94,7 +94,9 @@ struct LegResult{
     bool exact = true;
     size_t interruptions = 0;
     //  The leg stopped at an interrupt (stop_on_interrupt, stop_if_blocked):
-    //  the player is somewhere along it, and `tiles` is not known.
+    //  the player is somewhere along it. For an open leg `tiles` is then how
+    //  many the interrupt's timing says were walked (tiles_before_interrupt()),
+    //  for the caller to look around; for a leg to a wall it is 0.
     bool stopped = false;
 };
 

@@ -1837,9 +1837,14 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryActions.h
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryBattle.cpp
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryBattle.h
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryBattleDecisions.cpp
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryBattleDecisions.h
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryEvents.cpp
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryEvents.h
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryItems_Tests.cpp
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryParty.cpp
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryParty.h
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryParty_Tests.cpp
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryRngLoop.cpp
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryRngLoop.h
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryRngLoop_Tests.cpp

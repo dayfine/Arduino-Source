@@ -50,6 +50,15 @@ StoryCheckpoint row(
     return checkpoint;
 }
 
+//  At the rows after Brock: no items counted, the starter with the moves
+//  the story gave it by Lv13. A save made before the story learned moves
+//  has Bubble where this says Water Gun: the same slot, 5 more PP.
+Supplies after_brock(){
+    Supplies supplies;
+    supplies.lead = story_lead_after_brock();
+    return supplies;
+}
+
 //  What a walk does about wild Pokemon: runs, or fights them for EXP.
 enum class WildBattles{
     RUN,
@@ -290,7 +299,7 @@ StoryCheckpoint brock(){
 }
 
 StoryCheckpoint running_shoes(){
-    return row("00.10", "Pewter: the Running Shoes from Oak's aide", at(GYM, 6, 6, NORTH), {}, StartMenu::FULL, {
+    return row("00.10", "Pewter: the Running Shoes from Oak's aide", at(GYM, 6, 6, NORTH), after_brock(), StartMenu::FULL, {
         //  Brock's win sets VAR_MAP_SCENE_PEWTER_CITY to 1 and shows the aide at
         //  (46, 20); his triggers are (46, 21..23) (PewterCity map.json). The
         //  Gym guide's triggers at (42..43, 21..23) need the scene at 0.
@@ -317,7 +326,7 @@ StoryCheckpoint running_shoes(){
 //  its own, so no leg is cut; the trainer walks up to the player, who stays
 //  put facing the way they stepped.
 StoryCheckpoint route3(){
-    return row("00.11", "Pewter Center, then Route 3's trainers", at(PEWTER, 17, 26, SOUTH), {}, StartMenu::FULL, {
+    return row("00.11", "Pewter Center, then Route 3's trainers", at(PEWTER, 17, 26, SOUTH), after_brock(), StartMenu::FULL, {
         running(route("pewter_nurse", at(PEWTER_CENTER, 7, 4, NORTH), "in by the door below the player")),
         heal("heal_pewter"),
         //  Up from row 9 west of Janice's line, which ends at x 14.
@@ -348,7 +357,7 @@ StoryCheckpoint route3(){
 //  (40, 9) (run_route(); console B, 2026-11-02, she stopped the player
 //  there and spoke after the leg's short watch).
 StoryCheckpoint magikarp_salesman(){
-    StoryCheckpoint checkpoint = row("00.12", "Route 3 and 4 to the Magikarp salesman", at(ROUTE3, 36, 8, SOUTH), {}, StartMenu::FULL, {
+    StoryCheckpoint checkpoint = row("00.12", "Route 3 and 4 to the Magikarp salesman", at(ROUTE3, 36, 8, SOUTH), after_brock(), StartMenu::FULL, {
         running(route("route4_nurse", at(ROUTE4_CENTER, 7, 4, NORTH), "east over Route 3, off the grass, north into Route 4 and its Pokemon Center")),
         heal("heal_route4"),
         //  Gift RNG starts from a save facing the salesman (1, 3).

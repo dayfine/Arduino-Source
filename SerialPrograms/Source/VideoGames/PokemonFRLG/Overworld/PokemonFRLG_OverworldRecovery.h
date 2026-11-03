@@ -10,12 +10,18 @@
  *      trainer), is held on toward the warp;
  *    - a leg that crosses a trainer's sight (trainer_crossing()) is watched
  *      after for long enough that the trainer, if they saw the player, has
- *      walked up and spoken; when they stopped it on the one tile of the leg
- *      they can see, the route is planned again from that tile;
- *    - any other open leg stopped part-way is found again with holds to
- *      walls (plan_reanchor()), and rejoins the route at that leg's end by
- *      a route planned on the caller's maps and costs. The rest of the
+ *      walked up and spoken;
+ *    - any other open leg stopped part-way, or a leg seen stopped by a
+ *      trainer, has the tiles the player may be on worked out from the
+ *      stop's timing and the trainers' sight (stop_candidates()). One tile:
+ *      the route is planned again from it. More: holds to walls that end on
+ *      one tile from all of them find the player (plan_reanchor()), and a
+ *      way back to the stopped leg's end rejoins the route. The rest of the
  *      route is then walked as planned.
+ *
+ *  Where the player is is never guessed: when no holds find them from every
+ *  tile they may be on, the route fails, and the caller stops without
+ *  saving.
  *
  *  The console side is passed in, so this is tested with scripted steps.
  *
@@ -29,6 +35,7 @@
 #include <string>
 #include <vector>
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
+#include "PokemonFRLG_OverworldReanchor.h"
 #include "PokemonFRLG_OverworldRoute.h"
 
 namespace PokemonAutomation{
@@ -44,8 +51,16 @@ enum class StepEnd{
                 //  stopped the player before the end
 };
 
+//  How a step ended, and for an open leg STOPPED part-way, how many of its
+//  tiles the timing of the stop says the player walked. Not set: anywhere
+//  on the leg.
+struct StepOutcome{
+    StepEnd end = StepEnd::DONE;
+    std::optional<WalkedTiles> walked;
+};
+
 //  Whether, after each leg to a wall, the walker taps once more toward the
-//  wall to check the player really stands at it (see RouteCalls).
+//  wall and logs whether the player moved (see RouteCalls).
 enum class WallCheck{
     TAP,
     SKIP,
@@ -66,13 +81,13 @@ struct RoutePlanning{
 //  stop); `hold_to_warp` holds on along a stopped leg until its warp;
 //  `fail` throws.
 struct RouteCalls{
-    std::function<StepEnd(const RouteStep& step, std::optional<Direction> facing)> walk;
+    std::function<StepOutcome(const RouteStep& step, std::optional<Direction> facing)> walk;
     std::function<void(const RouteStep& step)> hold_to_warp;
     std::function<void(const std::string& message)> log;
     std::function<void(const std::string& message)> fail;
     //  Taps once more toward the wall a leg to a wall ended at, and says
-    //  whether the player moved: if so, the leg didn't end at its wall. Not
-    //  set (or WallCheck::SKIP): not checked.
+    //  whether the screen moved. Only logged: a bump and a step can't be
+    //  told apart reliably yet. Not set (or WallCheck::SKIP): not tapped.
     std::function<bool(const RouteStep& step)> moved_past_wall;
     //  After a leg that ended as planned but crosses a trainer's sight:
     //  watches long enough for a trainer who saw the player to walk up
@@ -85,8 +100,8 @@ struct RouteCalls{
 //  Where a WALK leg crosses the sight of its maps' trainers
 //  (trainer_may_see()): the tiles of the leg after its start that one may
 //  see, in order, and the farthest any of them walks up to the player
-//  (their sight). A trainer who sees the player stops them on that tile.
-//  Trainers already beaten are counted too: the maps don't know them.
+//  (their sight), to watch for them that long. Trainers already beaten are
+//  counted too: the maps don't know them.
 struct TrainerCrossing{
     std::vector<MapPosition> seen;
     int approach_tiles = 0;
