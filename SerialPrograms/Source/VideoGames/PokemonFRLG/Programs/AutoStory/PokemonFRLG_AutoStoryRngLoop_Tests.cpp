@@ -117,12 +117,87 @@ UnitTestResult test_rows_after_shiny(){
     return true;
 }
 
+
+std::string calibration_text(const RngCalibrations& calibration){
+    return std::format("{}/{}/{}", calibration.seed_offset, calibration.csf_offset, calibration.ingame_offset);
+}
+
+//  Starter RNG starts from the RNG plan's calibration: the console's seed
+//  and Continue Screen Frames offsets, and Starter RNG's in-game offset.
+UnitTestResult test_starter_calibration_from_options(){
+    StarterRngPlanOptions options;
+    RngStopCalibrationOptions& calibration = options.CALIBRATION;
+    const RngCalibrations zero{.seed_offset = 0, .csf_offset = 0, .ingame_offset = 0};
+    if (calibration.calibration(calibration.STARTER_INGAME) != zero){
+        return "Expected no calibration by default; got " + calibration_text(calibration.calibration(calibration.STARTER_INGAME));
+    }
+    calibration.SEED.set(17);
+    calibration.CSF.set(0.5);
+    calibration.STARTER_INGAME.set(-1.2);
+    const RngCalibrations expected{.seed_offset = 17 / FRLG_FRAME_DURATION, .csf_offset = 0.5, .ingame_offset = -1.2};
+    const RngCalibrations got = calibration.calibration(calibration.STARTER_INGAME);
+    if (got != expected){
+        return std::format("Expected calibration {}; got {}", calibration_text(expected), calibration_text(got));
+    }
+    return true;
+}
+
+//  Steps whose one try resets once for each calibration in `resets`.
+class ResettingSteps : public StarterRngLoopSteps{
+public:
+    explicit ResettingSteps(std::vector<RngCalibrations> resets) : m_resets(std::move(resets)) {}
+    virtual WallClock now() override{ return WallClock{}; }
+    virtual StarterRngResult run_attempt(const RngAttempt&, const StarterRngAttemptCall& call) override{
+        for (size_t c = 0; c < m_resets.size(); c++){
+            call.on_reset(StarterRngProgress{.resets = c + 1, .calibrations = m_resets[c]});
+        }
+        return StarterRngResult{.outcome = StarterRngOutcome::out_of_resets, .pokemon = std::nullopt};
+    }
+
+private:
+    std::vector<RngCalibrations> m_resets;
+};
+
+//  Each reset's calibration is kept in the RNG plan before the loop hears
+//  of the reset, so a run stopped after it keeps it.
+UnitTestResult test_starter_calibration_saved(){
+    StarterRngPlanOptions options;
+    RngStopCalibrationOptions& calibration = options.CALIBRATION;
+    ResettingSteps resetting({
+        {.seed_offset = 0.5, .csf_offset = 0.25, .ingame_offset = -0.5},
+        {.seed_offset = 1.0, .csf_offset = 0.5, .ingame_offset = -1.2},
+    });
+    CalibrationSavingSteps steps(resetting, calibration, calibration.STARTER_INGAME);
+    std::vector<double> csf_at_reset;
+    steps.run_attempt(RngAttempt{}, StarterRngAttemptCall{
+        .index = 0, .deadline = WallClock{}, .max_resets = 2,
+        .on_reset = [&](const StarterRngProgress&){ csf_at_reset.emplace_back(calibration.CSF); },
+    });
+    if (csf_at_reset != std::vector<double>{0.25, 0.5}){
+        std::string got;
+        for (double csf : csf_at_reset){
+            got += std::format(" {}", csf);
+        }
+        return "Expected the CSF offset saved at each reset as 0.25 0.5; got" + got;
+    }
+    //  The seed offset is kept in ms: 1.0 frame is 16.7 ms.
+    if (int64_t(calibration.SEED) != 17 || double(calibration.STARTER_INGAME) != -1.2){
+        return std::format(
+            "Expected seed 17 ms and Starter RNG in-game -1.2 saved; got {} ms and {}",
+            int64_t(calibration.SEED), double(calibration.STARTER_INGAME)
+        );
+    }
+    return true;
+}
+
 }
 
 
 void add_tests_AutoStoryRngLoop(UnitTestDatabase& database){
     database.add<Test_AutoStoryRngLoop>("shiny messages", test_shiny_messages);
     database.add<Test_AutoStoryRngLoop>("rows after a shiny", test_rows_after_shiny);
+    database.add<Test_AutoStoryRngLoop>("Starter RNG starts from the RNG plan's calibration", test_starter_calibration_from_options);
+    database.add<Test_AutoStoryRngLoop>("Starter RNG saves its calibration after each reset", test_starter_calibration_saved);
 }
 
 

@@ -49,6 +49,8 @@ public:
 public:
     SimpleIntegerOption<int64_t> SEED;
     FloatingPointOption CSF;
+    //  Starter RNG's in-game advances offset.
+    FloatingPointOption STARTER_INGAME;
 };
 
 

@@ -26,9 +26,15 @@ RngStopCalibrationOptions::RngStopCalibrationOptions()
         "<b>Continue Screen Frames Calibration:</b><br>As in Starter RNG's RNG Calibration, kept as the seed's is.",
         LockMode::LOCK_WHILE_RUNNING, 0.0
     )
+    , STARTER_INGAME(
+        "<b>Starter RNG's In-Game Advances Calibration:</b><br>As in Starter RNG's RNG Calibration, "
+        "for Squirtle only: each RNG stop keeps its own.",
+        LockMode::LOCK_WHILE_RUNNING, 0.0
+    )
 {
     PA_ADD_OPTION(SEED);
     PA_ADD_OPTION(CSF);
+    PA_ADD_OPTION(STARTER_INGAME);
 }
 
 RngCalibrations RngStopCalibrationOptions::calibration(const FloatingPointOption& ingame) const{

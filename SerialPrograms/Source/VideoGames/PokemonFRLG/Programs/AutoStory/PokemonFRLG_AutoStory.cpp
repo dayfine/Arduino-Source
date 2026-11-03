@@ -415,9 +415,13 @@ static bool run_starter_rng_in_program(
     RngPlanTracker tracker(
         planned.attempts, options.plan_candidates(env.console, planned.tid), options.SHINY_REQUIRED, STARTER_RNG_LIMITS.max_retries
     );
-    ConsoleStarterRngSteps steps(
-        env, context, StarterRngConsoleSettings{.language = language, .sound = options.SOUND}, notifications
-    );
+    //  The settings file gets the calibration saved after each reset when
+    //  the program's panel is closed or the app quits.
+    RngStopCalibrationOptions& calibration = options.CALIBRATION;
+    ConsoleStarterRngSteps console_steps(env, context, StarterRngConsoleSettings{
+        .language = language, .sound = options.SOUND, .calibration = calibration.calibration(calibration.STARTER_INGAME),
+    }, notifications);
+    CalibrationSavingSteps steps(console_steps, calibration, calibration.STARTER_INGAME);
     RngPlanLogger logger(env.console);
     const StarterRngLoopResult result = run_starter_rng_plan(
         logger, tracker, steps, STARTER_RNG_LIMITS, planned.tid, options.helper_candidates(planned.tid)
