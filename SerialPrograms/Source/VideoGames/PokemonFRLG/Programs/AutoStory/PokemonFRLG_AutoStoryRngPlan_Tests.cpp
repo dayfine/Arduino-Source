@@ -358,6 +358,31 @@ std::vector<TrackerCase> tracker_retry_cases(){
             .steps = {RUN_ATTEMPT, GOT_SHINY_OFF_TARGET, GOT_SHINY_OFF_TARGET}, .attempts = {1, 1, 1},
             .remaining = {300}, .confirmed = std::nullopt,
         },
+    };
+}
+//  Attempts that can't run.
+std::vector<TrackerCase> tracker_unusable_cases(){
+    using enum RngAttemptOutcome;
+    using enum RngPlanStep;
+    return {
+        {
+            .name = "an attempt that can't run moves on",
+            .shiny_required = true, .outcomes = {MISSED, UNUSABLE, SHINY},
+            .steps = {RUN_ATTEMPT, RUN_ATTEMPT, GOT_SHINY}, .attempts = {0, 1, 1},
+            .remaining = {300}, .confirmed = uint16_t(300),
+        },
+        {
+            .name = "the last attempt can't run",
+            .shiny_required = true, .outcomes = {UNUSABLE, UNUSABLE},
+            .steps = {RUN_ATTEMPT, MISSED_EVERY_ATTEMPT_LEFT}, .attempts = {1, 1},
+            .remaining = {100, 200, 300}, .confirmed = std::nullopt,
+        },
+    };
+}
+std::vector<TrackerCase> tracker_mixed_cases(){
+    using enum RngAttemptOutcome;
+    using enum RngPlanStep;
+    return {
         {
             .name = "miss, hit, misses, then shiny",
             .shiny_required = true, .outcomes = {MISSED, HIT_NOT_SHINY, MISSED, MISSED, SHINY},
@@ -411,8 +436,10 @@ UnitTestResult check_tracker_case(const TrackerCase& item){
 
 UnitTestResult test_tracker(Logger&){
     std::vector<TrackerCase> cases = tracker_cases();
-    for (TrackerCase& item : tracker_retry_cases()){
-        cases.push_back(std::move(item));
+    for (auto* more : {tracker_retry_cases, tracker_unusable_cases, tracker_mixed_cases}){
+        for (TrackerCase& item : more()){
+            cases.push_back(std::move(item));
+        }
     }
     for (const TrackerCase& item : cases){
         const UnitTestResult result = check_tracker_case(item);

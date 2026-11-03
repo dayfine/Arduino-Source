@@ -88,6 +88,9 @@ enum class RngAttemptOutcome{
     HIT_NOT_SHINY,
     //  Another nature or other IVs: not the target.
     MISSED,
+    //  The attempt couldn't run (Starter RNG refused its timings). It rules
+    //  nothing out; the next attempt runs instead.
+    UNUSABLE,
 };
 
 struct RngAttemptResult{
@@ -110,7 +113,8 @@ enum class RngPlanStep{
     //  Every attempt was hit and none was shiny.
     OUT_OF_ATTEMPTS,
     //  The last attempt still shiny for a SID left was missed more often
-    //  than the retries allow. (Missing an earlier one moves on to the next.)
+    //  than the retries allow, or couldn't run. (Missing an earlier one moves
+    //  on to the next.)
     MISSED_EVERY_ATTEMPT_LEFT,
 };
 
@@ -206,7 +210,7 @@ std::vector<std::string> rng_attempt_lines(const std::vector<RngAttempt>& attemp
 //          advances=<n> sids=<SID>,... ruled_out=<SID>,... attempt_time=<h:mm:ss>/<cap>
 //          total_time=<h:mm:ss>/<cap> calibration=<seed>/<csf>/<ingame frames|->
 //      (once at the try's start, then after every reset)
-//      RngPlan: result attempt=<i> try=<t> outcome=<shiny|shiny_off_target|hit_not_shiny|missed>
+//      RngPlan: result attempt=<i> try=<t> outcome=<shiny|shiny_off_target|hit_not_shiny|missed|unusable>
 //          starter_rng=<Starter RNG's outcome> nature=<N|-> ivs=<a/b/c/d/e/f|->
 //          pid=<hex|-> next=<retry|next_attempt|confirm|stop>
 //      RngPlan: confirmed tid=<TID> sid=<SID> candidate=<k> of=<N>
