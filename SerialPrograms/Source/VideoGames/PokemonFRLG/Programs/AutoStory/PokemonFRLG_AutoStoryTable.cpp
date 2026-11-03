@@ -522,22 +522,54 @@ StoryCheckpoint route4_to_cerulean(){
 //  misty_front (8, 7) is in her line; Swimmer Luis (10, 12) in the water
 //  faces west, sight 1, over (9, 12), on column 9 north of the door. No
 //  gym trainer has to be fought for Misty, so neither is: from the door up
-//  column 9 to row 13, west to (4, 13), and to walls round the pool's west
-//  and north sides, (4, 10), (12, 10), (12, 7), then west to (9, 7), the
-//  tile below the platform's east end, out of Diana's line. 00.14c steps
-//  up onto (9, 6) and talks to Misty from beside her.
+//  column 9 to row 13 (a route there, so the planner's walk to a wall
+//  doesn't run on past it through (9, 12)), west to (4, 13), and to walls
+//  round the pool's west and north sides, (4, 10), (12, 10), (12, 7), then
+//  west to (9, 7), the tile below the platform's east end, out of Diana's
+//  line. 00.14c steps up onto (9, 6) and talks to Misty from beside her.
 //
-//  Before her: up to 5 Potions at the Mart (CeruleanCity_Mart_Items: row
-//  3, 300 each; floor and budget 1500 as in 00.15, since the money box
-//  can't be read yet). With no gym trainer fought there is no nurse trip:
-//  the row starts healed at the Center, and its save is before Misty, so
-//  her battle is its own checkpoint, 00.14c, verified and retried from it.
+//  Misty beat a Lv20 Wartortle (console B, run m51), so first a GRIND to
+//  Lv23 on 00.15's patch. Gen 3 numbers (pokefirered: her mons have IV 0;
+//  Wartortle taken at IV 15, no EVs): Starmie Lv21 has 56 HP, Atk 36, SpA
+//  47, SpD 40. Bite is Dark, special in Gen 3, no STAB, x2 on Psychic: at
+//  Lv23 (SpA 39) it does 23..28, three hits (two on top rolls); at Lv20,
+//  20..24. Her Swift (physical, 60) does 9..11 to a Lv23 Wartortle (about
+//  67 HP, Def 45) and Water Pulse (STAB, resisted) 8..10: 6 or more hits,
+//  though m51 saw about 20 a turn. Her Recover (28) and Super Potion undo
+//  a Bite, so the margin is in Bite's damage.
+//
+//  The Mart comes before the GRIND: its wild battles are fought only with
+//  2 or more Potions, and 00.14's save has none (m51 met Misty with only
+//  the 5 this row bought). 5 Potions (row 3, 300 each), then up to 3 Super
+//  Potions (row 2, 700), last so they take the Items pocket's last row;
+//  the battle doesn't use them yet. The money box can't be read, so the
+//  floor stands for it, and a floor above the money fails the step (the
+//  quantity box wraps). Prizes (pokefirered: 4 x last level x the class's
+//  factor) from a new game's 3000, less Viridian's 2000 and the Magikarp's
+//  500: Liam 220, Brock 1400, Route 3's bug catchers 360, the Mt. Moon
+//  grunt 416 and Miguel 288 (the first rival's 80 only if won), at least
+//  3184 here. Floor and budget 3000: 5 Potions and 2 Super Potions, 2900.
+//  Misty's 2100 (4 x 21 x 25) then leaves 00.15 its floor of 1500. Then the
+//  nurse, and the save before Misty, so her battle is its own checkpoint,
+//  00.14c, verified and retried from it. 00.15's GRIND to Lv22 then ends
+//  at once.
 StoryCheckpoint cerulean_gym(){
-    const MartPlan potions{.map = CERULEAN_MART, .lines = {{.item = "potion", .quantity = 5}}, .budget = 1500, .money_floor = 1500};
-    return row("00.14b", "Cerulean: Potions, then into the Gym, saved below Misty's platform", at(CERULEAN_CENTER, 7, 4, NORTH), after_brock(), StartMenu::FULL, {
+    const MartPlan supplies{
+        .map = CERULEAN_MART,
+        .lines = {{.item = "potion", .quantity = 5}, {.item = "super-potion", .quantity = 3}},
+        .budget = 3000,
+        .money_floor = 3000,
+    };
+    const GrindPlan to_lv23{.member = 0, .level = 23, .max_encounters = 100, .pace = WEST, .heal_every = 0};
+    return row("00.14b", "Cerulean: Potions, a GRIND to Lv23, then into the Gym, saved below Misty's platform", at(CERULEAN_CENTER, 7, 4, NORTH), after_brock(), StartMenu::FULL, {
         running(route("mart_clerk", at(CERULEAN_MART, 4, 3, WEST), "out of the Center to the Mart's clerk")),
-        mart_step("buy_potions", "up to 5 Potions before Misty", potions),
-        running(route("gym_west_walkway", at(CERULEAN_GYM, 4, 13), "into the Gym, up column 9 to row 13, west to its wall, short of Luis's (9, 12)")),
+        mart_step("buy_potions", "5 Potions for the GRIND's wild battles, then Super Potions as the money allows", supplies),
+        running(route("grind_patch", at(ROUTE4, 86, 16, WEST), "west out of the city along Route 4's lower road onto its grass's east edge")),
+        grind_step("grind_to_lv23", "wild battles until the lead is Lv23, where Bite takes Starmie in three", to_lv23, at(CERULEAN_CENTER, 7, 4, NORTH)),
+        running(route("cerulean_nurse", at(CERULEAN_CENTER, 7, 4, NORTH), "back to the Center: Misty's battle starts at full HP and PP")),
+        heal("heal_cerulean"),
+        running(route("gym_below_luis", at(CERULEAN_GYM, 9, 13), "into the Gym, up column 9 to row 13, short of Luis's (9, 12)")),
+        running(legs("gym_west_walkway", {{WEST, 5}}, "west to the wall (4, 13)")),
         running(legs("below_misty_platform", {{NORTH, 3}, {EAST, 8}, {NORTH, 3}, {WEST, 3}}, "walls (4, 10), (12, 10), (12, 7), then to (9, 7), out of Diana's line")),
     });
 }
