@@ -64,7 +64,7 @@ std::string joined(const std::vector<std::string>& names){
 }
 
 PartyMember with_moves(std::string species, std::vector<std::string> moves, uint8_t through){
-    PartyMember member{.species = std::move(species), .moves = {}, .moves_through_level = through};
+    PartyMember member{.species = std::move(species), .moves = {}, .moves_through_level = through, .moves_read = false};
     for (std::string& move : moves){
         const uint8_t pp = max_pp(move);
         member.moves.emplace_back(KnownMove{.move = std::move(move), .pp = pp});
@@ -265,6 +265,109 @@ UnitTestResult test_pp(Logger&){
     return true;
 }
 
+//  Regression: the save console B left after Route 3 (2026-11-02) has
+//  Squirtle Lv16 with WATER GUN where TACKLE was and BUBBLE kept, as its
+//  summary shows. From the moves read, the battle uses Water Gun from the
+//  top left, then Bubble; never a Tackle it doesn't know, nor Bubble's slot
+//  for Water Gun.
+UnitTestResult test_moves_from_summary(Logger&){
+    const std::vector<SummaryMove> read{
+        {.move = "water-gun", .pp = 25, .max_pp = 25},
+        {.move = "tail-whip", .pp = 30, .max_pp = 30},
+        {.move = "bubble", .pp = 30, .max_pp = 30},
+        {.move = "withdraw", .pp = 40, .max_pp = 40},
+    };
+    Supplies supplies;
+    supplies.lead = member_from_summary("squirtle", 16, read);
+    if (attack_pp(supplies.lead) != 55){
+        return std::format("Expected 55 PP in Water Gun and Bubble, got {}.", attack_pp(supplies.lead));
+    }
+    BattleDecisions decisions(supplies, BattleKind::TRAINER);
+    struct Turns{
+        size_t count;
+        size_t slot;
+        std::string move;
+    };
+    const std::vector<Turns> plan{
+        {.count = 25, .slot = TOP_LEFT_MOVE, .move = "Water Gun"},
+        {.count = 30, .slot = BOTTOM_LEFT_MOVE, .move = "Bubble"},
+        //  No damaging move left: a move with PP, so the turn isn't lost to "no PP left".
+        {.count = 1, .slot = 1, .move = "Tail Whip"},
+    };
+    size_t turn = 0;
+    for (const Turns& turns : plan){
+        for (size_t c = 0; c < turns.count; c++){
+            turn++;
+            const TurnAction action = decisions.turn(GREEN);
+            if (action.choice != TurnChoice::MOVE || action.slot != turns.slot){
+                return std::format("Expected {} (slot {}) at turn {}, got slot {}.", turns.move, turns.slot, turn, action.slot);
+            }
+        }
+    }
+
+    //  Bite at Lv18 takes Tail Whip's slot, as the plan says.
+    PartyMember lead = member_from_summary("squirtle", 16, read);
+    const LearnDecision bite = learn_move(lead);
+    if (bite.move != std::optional<std::string>("bite") || bite.forget_slot != std::optional<size_t>(1)){
+        return "Expected Bite offered over Tail Whip (slot 1) after the moves read.";
+    }
+    return true;
+}
+
+//  Moves read off a summary: all it knows even when fewer than four, a PP
+//  not read taken as half the full PP (the game colors it from half down),
+//  and the strongest damaging move once the plan's attacks are gone.
+UnitTestResult test_summary_members(Logger&){
+    struct Case{
+        std::string name;
+        PartyMember member;
+        std::optional<size_t> slot;
+        size_t pp;
+    };
+    const std::vector<Case> cases{
+        {
+            .name = "three moves read",
+            .member = member_from_summary("squirtle", 9, {
+                {.move = "tackle", .pp = 35, .max_pp = 35}, {.move = "tail-whip", .pp = 30, .max_pp = 30},
+                {.move = "bubble", .pp = 30, .max_pp = 30},
+            }),
+            .slot = 2, .pp = 65,
+        },
+        {
+            .name = "Water Gun's PP not read",
+            .member = member_from_summary("squirtle", 16, {
+                {.move = "water-gun", .pp = -1, .max_pp = -1}, {.move = "tail-whip", .pp = 30, .max_pp = 30},
+                {.move = "bubble", .pp = 30, .max_pp = 30}, {.move = "withdraw", .pp = 40, .max_pp = 40},
+            }),
+            .slot = 0, .pp = 42,
+        },
+        {
+            .name = "none of the plan's attacks",
+            .member = member_from_summary("wartortle", 40, {
+                {.move = "tail-whip", .pp = 30, .max_pp = 30}, {.move = "rapid-spin", .pp = 40, .max_pp = 40},
+                {.move = "skull-bash", .pp = 15, .max_pp = 15}, {.move = "withdraw", .pp = 40, .max_pp = 40},
+            }),
+            .slot = 2, .pp = 55,
+        },
+        {
+            .name = "four moves not read, fewer known",
+            .member = with_moves("squirtle", {"tackle", "tail-whip", "bubble"}, 7),
+            .slot = std::nullopt, .pp = 65,
+        },
+    };
+    for (const Case& c : cases){
+        const std::optional<size_t> slot = attack_slot(c.member);
+        if (slot != c.slot || attack_pp(c.member) != c.pp){
+            return std::format(
+                "{}: expected slot {} and {} PP in attacks, got slot {} and {}.",
+                c.name, c.slot ? std::to_string(*c.slot) : "none", c.pp,
+                slot ? std::to_string(*slot) : "none", attack_pp(c.member)
+            );
+        }
+    }
+    return true;
+}
+
 
 //  A fake evolution scene: B pressed while it shows "is evolving!" cancels
 //  the evolution, as in the game.
@@ -341,6 +444,8 @@ void add_tests_AutoStoryParty(UnitTestDatabase& database){
     database.add<Test_AutoStoryParty>("YES/NO answers to move prompts", test_prompt_answers);
     database.add<Test_AutoStoryParty>("fainted lead runs or sends the next member", test_fainted_lead);
     database.add<Test_AutoStoryParty>("PP: preferred attack, then Tackle; nurse restores", test_pp);
+    database.add<Test_AutoStoryParty>("moves read off the summary, Water Gun over Tackle", test_moves_from_summary);
+    database.add<Test_AutoStoryParty>("summary members: fewer moves, unread PP, strongest attack", test_summary_members);
     database.add<Test_AutoStoryParty>("no B during an evolution", test_no_b_during_evolution);
 }
 
