@@ -20,6 +20,7 @@
 #include "PokemonBDSP_AutoStory_Talks.h"
 #include "PokemonBDSP_AutoStory_Walks.h"
 #include "PokemonBDSP_AutoStory_WildBattle.h"
+#include "PokemonBDSP_AutoStory_StoryPlaces.h"
 #include "PokemonBDSP_AutoStory_StoryStepIO.h"
 
 namespace PokemonAutomation{
@@ -97,11 +98,15 @@ void settle(VideoStream& stream, ProControllerContext& context, Button button, c
 //  stops it: holding on under Mom's "Oh, Kosmos!" wasted 12 s (r45). The walker's black-screen watch
 //  missed the lab's fade into Sandgem (r44, "dialog"), and settle's samples
 //  1.3 s apart can fall either side of it, so watch at settle's own darkness.
-bool run_into_door(VideoStream& stream, ProControllerContext& context, Direction direction, bool run){
-    const DpadPosition dpad =
+DpadPosition dpad_toward(Direction direction){
+    return
         direction == Direction::NORTH ? DPAD_UP :
         direction == Direction::SOUTH ? DPAD_DOWN :
         direction == Direction::WEST ? DPAD_LEFT : DPAD_RIGHT;
+}
+
+bool run_into_door(VideoStream& stream, ProControllerContext& context, Direction direction, bool run){
+    const DpadPosition dpad = dpad_toward(direction);
     BlackScreenWatcher dark(COLOR_RED, {0.1, 0.1, 0.8, 0.8}, 3 * FADE_DARKNESS, 60);
     ShortDialogWatcher dialog(COLOR_YELLOW);
     const int ret = run_until<ProControllerContext>(stream, context, [&](ProControllerContext& context){
@@ -111,6 +116,33 @@ bool run_into_door(VideoStream& stream, ProControllerContext& context, Direction
         pbf_press_dpad(context, dpad, 12000ms, 0ms);
     }, {{dark}, {dialog}});
     return ret == 0;
+}
+
+//  What the screen showed after a tap toward a door or a cave mouth.
+enum class TapLook{
+    NOTHING,
+    DARK,
+    BANNER,
+};
+
+//  Looks for the location banner `banner` (and, if `dark_too`, the fade)
+//  for up to `wait`.
+TapLook look_after_tap(VideoStream& stream, ProControllerContext& context, const std::string& banner, Milliseconds wait, bool dark_too){
+    const WallClock deadline = current_time() + wait;
+    while (true){
+        context.wait_for_all_requests();
+        const VideoSnapshot screen = stream.video().snapshot();
+        if (screen && location_banner_matches(read_location_banner(*screen.frame), banner)){
+            return TapLook::BANNER;
+        }
+        if (dark_too && screen && image_average(*screen.frame).sum() / 3 < FADE_DARKNESS){
+            return TapLook::DARK;
+        }
+        if (current_time() >= deadline){
+            return TapLook::NOTHING;
+        }
+        context.wait_for(100ms);
+    }
 }
 
 }
@@ -124,6 +156,10 @@ ConsoleStoryStepIO::ConsoleStoryStepIO(VideoStream& stream, ProControllerContext
 {}
 
 void ConsoleStoryStepIO::fight(const std::string& trainer){
+    if (trainer.find("Twins") != std::string::npos){
+        talk_or_fight(m_stream, m_context, trainer, TalkExpect::BATTLE, BattleFormat::DOUBLES);
+        return;
+    }
     fight_route_trainer(m_stream, m_context, trainer);
 }
 
@@ -143,6 +179,30 @@ bool ConsoleStoryStepIO::run_until_map(Direction direction, Milliseconds limit, 
 
 bool ConsoleStoryStepIO::run_into_door(Direction direction, bool run){
     return PokemonBDSP::run_into_door(m_stream, m_context, direction, run);
+}
+
+//  A held walk can carry on past a fade that goes unseen: out of the Gym it
+//  walked on south (r219g), and through the Oreburgh Gate's west mouth on
+//  west into a pocket by Route 203's pond (r75). Taps during the fade are
+//  eaten.
+std::optional<size_t> ConsoleStoryStepIO::tap_to_banner(Direction direction, const std::string& map, size_t max_taps){
+    const std::string& banner = story_banner_name(map);
+    for (size_t tap = 1; tap <= max_taps; tap++){
+        pbf_press_dpad(m_context, dpad_toward(direction), 160ms, 0ms);
+        TapLook look = look_after_tap(m_stream, m_context, banner, 1500ms, true);
+        const bool faded = look == TapLook::DARK;
+        if (faded){
+            look = look_after_tap(m_stream, m_context, banner, 8000ms, false);
+        }
+        if (look == TapLook::BANNER){
+            m_context.wait_for(1000ms);
+            return tap;
+        }
+        if (faded){
+            break;
+        }
+    }
+    return std::nullopt;
 }
 
 void ConsoleStoryStepIO::settle(Button button, const std::string& label, bool fade){

@@ -1684,7 +1684,6 @@ file(GLOB LIBRARY_SOURCES
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_Events_Jubilife.cpp
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_Events_Lake.cpp
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_Events_Oreburgh.cpp
-    Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_Events_Route203.cpp
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_Events_Route204.cpp
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_Events_Sandgem.cpp
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_NewGame.cpp

@@ -66,6 +66,9 @@ std::optional<RobustPlanCosts> story_route_costs(const std::string& variant){
     if (variant == "robust"){
         return RobustPlanCosts();
     }
+    if (variant == "line"){
+        return waypoint_plan_costs();
+    }
     return std::nullopt;
 }
 
@@ -170,6 +173,13 @@ Outcome StoryExecutor::mash(RunState& state, const StoryStep& step){
 }
 
 Outcome StoryExecutor::battle(RunState&, const StoryStep& step){
+    //  "starter": the Starly battle at the lake (00.02). It opens on its own,
+    //  with no talk, and the starter has no Poke Balls to throw; the scene
+    //  goes on whoever wins.
+    if (step.variant == "starter"){
+        fight_starly(stream(), context());
+        return Pokemon::outcome_ok();
+    }
     //  A loss sends us to a Pokemon Center, so ending on its floor means a
     //  loss - unless the floor check already passed where the battle began:
     //  Jubilife's yellow plaza reads as Center floor (63 %, r79 won Rowan's

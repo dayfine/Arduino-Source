@@ -123,6 +123,24 @@ public:
         }
         return warped;
     }
+    //  A banner miss: the fade was seen, the banner not within 8 s, so the
+    //  step fails there, as on the console.
+    virtual std::optional<size_t> tap_to_banner(Direction direction, const std::string&, size_t max_taps) override{
+        for (size_t tap = 1; tap <= max_taps; tap++){
+            const SimMove move = m_sim.tap(direction, 160ms, false);
+            if (move.stop == SimStop::WARP){
+                if (m_misses.banner == m_misses.banners++){
+                    m_misses.missed = true;
+                    return std::nullopt;
+                }
+                return tap;
+            }
+            if (move.stop == SimStop::DIALOG){
+                return std::nullopt;
+            }
+        }
+        return std::nullopt;
+    }
     //  A scene may take us to another map (Mom walks us out, 00.04): with a
     //  dialogue open the stub scene plays it. Otherwise only a door fades.
     //  A fade missed on the way in stays missed: it was over before settle()
@@ -260,7 +278,7 @@ private:
     const StoryWorld* sim_world(const std::string& map) const;
     SimWorld setup(const StoryWorld* world) const;
     void arm(const std::string& after);
-    bool sync(const Pose& pose);
+    bool sync(const Pose& pose, const StoryWorld* on = nullptr);
     std::string check(const StoryStep& step, const Outcome& outcome) const;
     Outcome run_step(RunState& state, const StoryStep& step);
 
@@ -324,9 +342,9 @@ void SimExecutor::arm(const std::string& after){
 
 //  Puts the player on `pose` unless they stand on one of its tiles already.
 //  Returns whether the pose is on a map the simulation has.
-bool SimExecutor::sync(const Pose& pose){
+bool SimExecutor::sync(const Pose& pose, const StoryWorld* on){
     const std::vector<TilePos> tiles = Pokemon::tiles_of(pose);
-    const StoryWorld* world = pose.map.empty() ? nullptr : sim_world(pose.map);
+    const StoryWorld* world = on != nullptr ? on : pose.map.empty() ? nullptr : sim_world(pose.map);
     if (world == nullptr || tiles.empty()){
         return false;
     }
@@ -376,7 +394,14 @@ Outcome SimExecutor::run_step(RunState& state, const StoryStep& step){
     //  A scene goes on from where the step before left us.
     const bool walks = step.kind == StoryStepKind::ROUTE || step.kind == StoryStepKind::LEGS ||
         step.kind == StoryStepKind::STEP || step.kind == StoryStepKind::TALK;
-    if (walks && !sync(state.pose)){
+    //  A route walks on the world it plans on (Jubilife alone has no Route
+    //  204 north of it); the house keeps Mom where the console showed her.
+    const StoryWorld* on = step.kind == StoryStepKind::ROUTE && step.target && !state.pose.map.empty()
+        ? story_plan_world(state.pose.map, step.target->map) : nullptr;
+    if (on != nullptr && on == story_plan_world("PlayerHouse1F", "PlayerHouse1F")){
+        on = nullptr;
+    }
+    if (walks && !sync(state.pose, on)){
         m_logger.log(std::format("[{}] {}: no map for {}; passed over.", m_row, step.name, Pokemon::to_string(state.pose)));
         m_passed_over = true;
         return Pokemon::outcome_ok();

@@ -78,7 +78,8 @@ struct StoryEnv{
 
 
 //  The plan costs a ROUTE step's variant names: "" the route costs,
-//  "town" town_plan_costs(), "robust" the planner's defaults. Nothing for
+//  "town" town_plan_costs(), "robust" the planner's defaults, "line"
+//  waypoint_plan_costs() (a stretch of a line a human walked). Nothing for
 //  another name.
 std::optional<RobustPlanCosts> story_route_costs(const std::string& variant);
 
@@ -115,7 +116,7 @@ protected:
     virtual Pokemon::Outcome new_game(Pokemon::RunState& state, const Pokemon::StoryStep& step) override;
     //  verify_tutorial_settings(): fast text, Autosave off.
     virtual Pokemon::Outcome options(Pokemon::RunState& state, const Pokemon::StoryStep& step) override;
-    //  Variant: the plan's costs ("" route, "town", "robust").
+    //  Variant: the plan's costs ("" route, "town", "robust", "line").
     virtual Pokemon::Outcome route(Pokemon::RunState& state, const Pokemon::StoryStep& step) override;
     //  Each leg in D-pad taps, turning first. Variant "one_short_ok": a leg
     //  may end a tile short (a door lined up by sight after). Variant
@@ -124,7 +125,8 @@ protected:
     //  unless the step gives one.
     virtual Pokemon::Outcome legs(Pokemon::RunState& state, const Pokemon::StoryStep& step) override;
     //  One D-pad step `direction`, turning first: onto a scene's trigger or
-    //  into a door.
+    //  into a door. Variant "to_banner": one tap into a cave mouth, then
+    //  wait for pose_after's map's location banner.
     virtual Pokemon::Outcome step(Pokemon::RunState& state, const Pokemon::StoryStep& step) override;
     //  A at what we face; a dialogue must open.
     virtual Pokemon::Outcome talk(Pokemon::RunState& state, const Pokemon::StoryStep& step) override;

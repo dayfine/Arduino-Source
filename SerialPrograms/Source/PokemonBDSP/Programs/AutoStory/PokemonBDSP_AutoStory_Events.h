@@ -4,15 +4,17 @@
  *
  *  The story's steps that only BDSP has, by name: a step of the table whose
  *  variant names one of these runs it (StoryExecutor::run()). Some are the
- *  scripted scenes (the intro's briefcase, the starter, the Starly battle,
- *  the Pokedex); most are segment 01's walks, which were measured on the
- *  console as holds, taps and walks until stopped rather than planned, and
- *  are kept as they ran there. Each fails by throwing, with a screenshot;
- *  the executor turns that into a failed step.
+ *  scripted scenes (the Azure Flute, the lake's briefcase, the starter,
+ *  Dawn's catching tutorial and the catch); the rest do what the shared
+ *  steps cannot, as they ran on the console: the Poke Mart lady's Potions
+ *  and the stairs into Jubilife (00.04c, 00.04d), a clown who wanders
+ *  (00.05b), the Gym's tries from the Pokemon Center (01.04) and Rock Smash
+ *  (01.09). Each fails by throwing, with a screenshot; the executor turns
+ *  that into a failed step.
  *
- *  They are in files by area: _Events_Lake (00.00 to 00.03), _Sandgem
- *  (00.04), _Jubilife (00.05, 01.01, 01.06 to 01.08), _Oreburgh (01.02 to
- *  01.05) and _Route204 (01.09 to 01.11).
+ *  They are in files by area: _Events_Lake (00.00 to 00.04), _Sandgem
+ *  (00.04c, 00.04d), _Jubilife (00.05b), _Oreburgh (01.04) and _Route204
+ *  (01.09).
  *
  */
 
@@ -45,7 +47,6 @@ StoryEvent console_event(std::function<void(VideoStream& stream, ProControllerCo
 void add_lake_events(StoryEvents& events);
 void add_sandgem_events(StoryEvents& events);
 void add_jubilife_events(StoryEvents& events);
-void add_route203_events(StoryEvents& events);
 void add_oreburgh_events(StoryEvents& events);
 void add_route204_events(StoryEvents& events);
 

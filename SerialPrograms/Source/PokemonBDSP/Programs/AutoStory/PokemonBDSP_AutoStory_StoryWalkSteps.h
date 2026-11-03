@@ -11,6 +11,7 @@
 #ifndef PokemonAutomation_PokemonBDSP_AutoStory_StoryWalkSteps_H
 #define PokemonAutomation_PokemonBDSP_AutoStory_StoryWalkSteps_H
 
+#include <map>
 #include <string>
 #include <vector>
 #include "Pokemon/AutoStory/Pokemon_StorySteps.h"
@@ -52,15 +53,17 @@ private:
     Pokemon::Outcome tap_legs(const Pokemon::Pose& from, const Pokemon::StoryStep& step);
     Pokemon::Outcome leg_to_dialogue(const Pokemon::StoryStep& step);
     Pokemon::Outcome leg_to_map(const Pokemon::StoryStep& step);
+    Pokemon::Outcome tap_to_banner(const Pokemon::StoryStep& step);
     void turn(Pokemon::Direction direction);
     void log(const std::string& text);
 
     StoryStepIO& m_io;
     std::string m_row;
     bool m_can_run = false;
-    //  Route 202's trainers who can still see us, in story_plan_world()'s
-    //  world tiles; all of them again at each attempt.
-    std::vector<TrainerSight> m_trainers;
+    //  The trainers who can still see us on each story_plan_world() world,
+    //  in its tiles, from its first walk this attempt; all of them again at
+    //  each attempt.
+    std::map<const StoryWorld*, std::vector<TrainerSight>> m_trainers;
 };
 
 

@@ -51,8 +51,7 @@ void StoryWalkSteps::begin_attempt(const std::string& row){
     m_row = row;
     //  A row starts from its save: after the shoes' row, the save has them.
     m_can_run = row > std::string(RUNNING_SHOES_ROW);
-    const StoryWorld* south = story_plan_world("Route202", "Route202");
-    m_trainers = south ? story_trainers(*south) : std::vector<TrainerSight>{};
+    m_trainers.clear();
 }
 
 void StoryWalkSteps::turn(Direction direction){
@@ -81,11 +80,10 @@ Pose StoryWalkSteps::walk_to(const Pose& from, const Pose& goal, const StoryStep
     for (const TilePos& pos : Pokemon::tiles_of(goal)){
         targets.push_back(story_to_world(*maps, goal.map, pos));
     }
-    //  Only Route 202's trainers are known; the ones fought stay off
-    //  m_trainers until the next attempt.
-    const bool south = maps == story_plan_world("Route202", "Route202");
+    //  The ones fought stay off m_trainers until the next attempt.
+    std::vector<TrainerSight>& sights = m_trainers.try_emplace(maps, story_trainers(*maps)).first->second;
     RouteTrainers trainers{
-        south ? m_trainers : std::vector<TrainerSight>{},
+        sights,
         [this](const std::string& trainer){ m_io.fight(trainer); }
     };
     const RouteWalkPlan plan{
@@ -93,9 +91,7 @@ Pose StoryWalkSteps::walk_to(const Pose& from, const Pose& goal, const StoryStep
         label_of(step), {}, *costs, m_can_run ? MoveSpeed::RUN : MoveSpeed::WALK
     };
     const std::vector<TilePos> at = walk_route(m_io.route(), *maps, start, trainers, plan);
-    if (south){
-        m_trainers = std::move(trainers.sights);
-    }
+    sights = std::move(trainers.sights);
     std::vector<TilePos> local;
     for (const TilePos& pos : at){
         const std::optional<TilePos> tile = story_to_local(*maps, goal.map, pos);
@@ -141,6 +137,19 @@ Outcome StoryWalkSteps::leg_to_map(const StoryStep& step){
     turn(leg.direction);
     const bool arrived = m_io.run_until_map(leg.direction, Milliseconds(250) * leg.tiles + 2000ms, map, step.name);
     return arrived ? Pokemon::outcome_ok() : Pokemon::outcome_failed("no_banner", map);
+}
+
+//  A STEP "to_banner": D-pad taps toward a door or cave mouth until the fade
+//  and pose_after's map's location banner. No banner fails the step right
+//  there.
+Outcome StoryWalkSteps::tap_to_banner(const StoryStep& step){
+    const std::string map = step.pose_after ? step.pose_after->map : "";
+    const std::optional<size_t> taps = m_io.tap_to_banner(step.direction, map, 30);
+    if (!taps){
+        return Pokemon::outcome_failed("no_banner", map);
+    }
+    log(std::format("[{}] {}: {}'s banner after {} taps {}.", m_row, step.name, map, *taps, direction_name(step.direction)));
+    return Pokemon::outcome_ok();
 }
 
 //  Each leg in D-pad taps, turning first; "one_short_ok" lets a leg end a
@@ -195,6 +204,9 @@ Outcome StoryWalkSteps::legs(RunState& state, const StoryStep& step){
 
 Outcome StoryWalkSteps::step(RunState& state, const StoryStep& step){
     turn(step.direction);
+    if (step.variant == "to_banner"){
+        return tap_to_banner(step);
+    }
     //  A step through a door: walk (or run) on until the screen goes dark,
     //  from next to the door or from anywhere in its line (r43: tapping 8 tiles
     //  down the lab took 7 s), then settle for any scene on arrival (Mom's,
@@ -223,7 +235,9 @@ Outcome StoryWalkSteps::talk(RunState& state, const StoryStep& step){
     }
     m_io.route().press({.kind = RouteInputKind::BUTTON_A, .direction = Direction::NORTH, .hold = 80ms, .release = 200ms,
         .count = 1, .end = RouteInputEnd::DONE});
-    if (!m_io.route().dialog_within(3000ms, COLOR_YELLOW)){
+    //  Roark's first line in the mine comes after the camera zooms in on
+    //  us, which can take some seconds (r98; the old event waited 8 s).
+    if (!m_io.route().dialog_within(8000ms, COLOR_YELLOW)){
         fail(m_io.route(), label_of(step) + ": nobody answered.");
     }
     return Pokemon::outcome_ok();
