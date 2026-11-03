@@ -1,0 +1,1743 @@
+2026-10-25 01:00:02.090398 - [Console 0]: issue_controller_state(): hold = 2000ms
+2026-10-25 01:00:02.139307 - [Console 0]: cancel_all_commands()
+2026-10-25 01:00:15.582041 - [Console 0]: ConvertFrame: Count = 1, Mean = 0.707ms, Stddev = nanms, Min = 0.707ms, Max = 0.707ms
+2026-10-25 01:00:15.582068 - [Console 0]: Saving screenshot to: /Users/difan/Library/Application Support/SerialPrograms/Profiles/sv-isolated-live-20261024/Screenshots/screenshot-20261025-010015582066.png
+2026-10-25 01:00:28.316746 - [Console 0]: issue_controller_state(): hold = 2000ms
+2026-10-25 01:00:28.408208 - [Console 0]: cancel_all_commands()
+2026-10-25 01:00:29.247331 - [Console 0]: issue_controller_state(): hold = 2000ms
+2026-10-25 01:00:29.282220 - [Console 0]: issue_controller_state(): hold = 2000ms
+2026-10-25 01:00:29.377571 - [Console 0]: issue_controller_state(): hold = 2000ms
+2026-10-25 01:00:29.443633 - [Console 0]: cancel_all_commands()
+2026-10-25 01:00:29.744360 - [Console 0]: ConvertFrame: Count = 1, Mean = 1.652ms, Stddev = nanms, Min = 1.652ms, Max = 1.652ms
+2026-10-25 01:00:29.744391 - [Console 0]: Saving screenshot to: /Users/difan/Library/Application Support/SerialPrograms/Profiles/sv-isolated-live-20261024/Screenshots/screenshot-20261025-010029744388.png
+2026-10-25 01:00:38.540875 - [Console 0]: issue_controller_state(): hold = 2000ms
+2026-10-25 01:00:38.700353 - [Console 0]: cancel_all_commands()
+2026-10-25 01:00:45.895437 - [Console 0]: ConvertFrame: Count = 1, Mean = 0.809ms, Stddev = nanms, Min = 0.809ms, Max = 0.809ms
+2026-10-25 01:00:45.895475 - [Console 0]: Saving screenshot to: /Users/difan/Library/Application Support/SerialPrograms/Profiles/sv-isolated-live-20261024/Screenshots/screenshot-20261025-010045895473.png
+2026-10-25 01:00:56.757503 - [Console 0]: issue_controller_state(): hold = 2000ms
+2026-10-25 01:00:56.780321 - [Console 0]: issue_controller_state(): hold = 2000ms
+2026-10-25 01:00:56.905347 - [Console 0]: issue_controller_state(): hold = 2000ms
+2026-10-25 01:00:56.916395 - [Console 0]: cancel_all_commands()
+2026-10-25 01:00:56.990690 - [Console 0]: issue_controller_state(): hold = 2000ms
+2026-10-25 01:00:57.042497 - [Console 0]: issue_controller_state(): hold = 2000ms
+2026-10-25 01:00:57.111529 - [Console 0]: issue_controller_state(): hold = 2000ms
+2026-10-25 01:00:57.187498 - [Console 0]: cancel_all_commands()
+2026-10-25 01:00:58.215243 - [Console 0]: ConvertFrame: Count = 1, Mean = 0.19ms, Stddev = nanms, Min = 0.19ms, Max = 0.19ms
+2026-10-25 01:00:58.215270 - [Console 0]: Saving screenshot to: /Users/difan/Library/Application Support/SerialPrograms/Profiles/sv-isolated-live-20261024/Screenshots/screenshot-20261025-010058215268.png
+2026-10-25 01:01:12.380199 - [Console 0]: issue_controller_state(): hold = 2000ms
+2026-10-25 01:01:12.547930 - [Console 0]: cancel_all_commands()
+2026-10-25 01:01:13.842635 - [Console 0]: ConvertFrame: Count = 1, Mean = 0.246ms, Stddev = nanms, Min = 0.246ms, Max = 0.246ms
+2026-10-25 01:01:13.842660 - [Console 0]: Saving screenshot to: /Users/difan/Library/Application Support/SerialPrograms/Profiles/sv-isolated-live-20261024/Screenshots/screenshot-20261025-010113842659.png
+2026-10-25 01:01:28.700739 - [Console 0]: issue_controller_state(): hold = 2000ms
+2026-10-25 01:01:28.868679 - [Console 0]: cancel_all_commands()
+2026-10-25 01:01:29.149403 - [Program]: Received Program Start Request
+2026-10-25 01:01:29.149458 - [Program]: Starting program...
+2026-10-25 01:01:29.149461 - [Program]: Program State: RUNNING
+2026-10-25 01:01:29.149506 - [Global]: Thread priority set to: Max Priority
+2026-10-25 01:01:29.149522 - [Global]: Disabling OS sleep...
+2026-10-25 01:01:29.149940 - [Global]: Disabled OS sleep.
+2026-10-25 01:01:29.149972 - [Program]: Loading historical stats...
+2026-10-25 01:01:29.150394 - [Program]: <b>Starting Program: PokemonSV:IsolatedHuntPrototype</b>
+2026-10-25 01:01:29.150690 - [Console 0]: ConvertFrame: Count = 1, Mean = 0.268ms, Stddev = nanms, Min = 0.268ms, Max = 0.268ms
+2026-10-25 01:01:29.150774 - [Console 0]: Connecting controller...
+2026-10-25 01:01:29.151926 - [Console 0]: Current Player Number: Player 1
+2026-10-25 01:01:29.151935 - [Console 0]: Controller player matches required (Player 1). Continuing...
+2026-10-25 01:01:29.152039 - [Global]: Thread priority set to: Min Priority
+2026-10-25 01:01:29.203054 - [Global]: Thread priority set to: Min Priority
+2026-10-25 01:01:30.503569 - [Console 0]: OverworldWatcher: Count = 28, Mean = 0.404107 ms, Stddev = 0.372882 ms, Min = 0.051 ms, Max = 1.96 ms
+2026-10-25 01:01:30.730843 - [Global]: Thread priority set to: Min Priority
+2026-10-25 01:01:30.730873 - [Console 0]: Isolated setup: existing power=1, power budget ms=300000
+2026-10-25 01:01:30.730889 - [Console 0]: Isolated hunt state: re-fly Zero Gate starting anchor
+2026-10-25 01:01:30.730894 - [Console 0]: Isolated stage begin: stage=re-fly Zero Gate starting anchor, timeout ms=90000
+2026-10-25 01:01:30.730885 - [Program]: Loading spectrogram...
+2026-10-25 01:01:30.731172 - [stdout]: Initialize WavFile on /Users/difan/Projects/Arduino-Source-isolated/build-prep/app/Resources/PokemonSV/LetsGoKill-48000.wav
+2026-10-25 01:01:30.731462 - [stdout]: Wav file audio format: sample format Int16, bytes per sample 2, channel config Unknown, num channels 2, sample rate 48000
+2026-10-25 01:01:30.731475 - [Console 0]: wait_for_all()
+2026-10-25 01:01:30.731840 - [Global]: Built audio template with sample rate 48000, 53 windows and 1024 frequencies from /Users/difan/Projects/Arduino-Source-isolated/build-prep/app/Resources/PokemonSV/LetsGoKill-48000.wav
+2026-10-25 01:01:30.733175 - [Program]: Loading spectrogram...
+2026-10-25 01:01:30.748512 - [stdout]: Start audio decoder.
+2026-10-25 01:01:30.751470 - [Global]: Built audio template with sample rate 48000, 192 windows and 1024 frequencies from /Users/difan/Projects/Arduino-Source-isolated/build-prep/app/Resources/PokemonSV/ShinySound-48000.mp3
+2026-10-25 01:01:31.832305 - [Console 0]: OverworldWatcher: Count = 22, Mean = 0.266682 ms, Stddev = 0.0902575 ms, Min = 0.039 ms, Max = 0.45 ms
+2026-10-25 01:01:31.832328 - [Console 0]: NormalBattleMenuWatcher: Count = 22, Mean = 0.0322273 ms, Stddev = 0.0177037 ms, Min = 0.017 ms, Max = 0.099 ms
+2026-10-25 01:01:31.932688 - [Console 0]: Detected overworld.
+2026-10-25 01:01:31.932731 - [Console 0]: issue_buttons(): Y, delay = 1000ms, hold = 160ms, cooldown = 0ms
+2026-10-25 01:01:31.932784 - [Console 0]: wait_for_all()
+2026-10-25 01:01:35.284479 - [Console 0]: NormalBattleMenuWatcher: Count = 46, Mean = 0.0361957 ms, Stddev = 0.0427492 ms, Min = 0.014 ms, Max = 0.232 ms
+2026-10-25 01:01:35.284510 - [Console 0]: MapWatcher: Count = 46, Mean = 0.0764348 ms, Stddev = 0.314088 ms, Min = 0.007 ms, Max = 2.155 ms
+2026-10-25 01:01:35.284515 - [Console 0]: PromptDialogWatcher: Count = 46, Mean = 0.0028913 ms, Stddev = 0.00967983 ms, Min = 0.001 ms, Max = 0.066 ms
+2026-10-25 01:01:35.284518 - [Console 0]: AdvanceDialogWatcher: Count = 46, Mean = 0.00554348 ms, Stddev = 0.00406452 ms, Min = 0.003 ms, Max = 0.024 ms
+2026-10-25 01:01:35.284542 - [Console 0]: OverworldWatcher: Count = 46, Mean = 0.0448043 ms, Stddev = 0.0156157 ms, Min = 0.028 ms, Max = 0.096 ms
+2026-10-25 01:01:35.385504 - [Console 0]: Detected map.
+2026-10-25 01:01:35.385554 - [Console 0]: wait_for_all()
+2026-10-25 01:01:35.385580 - [Console 0]: issue_buttons(): A, delay = 1200ms, hold = 160ms, cooldown = 0ms
+2026-10-25 01:01:35.385612 - [Console 0]: wait_for_all()
+2026-10-25 01:01:36.587126 - [Console 0]: MapDestinationMenuWatcher: Count = 0, Mean = nan ms, Stddev = nan ms, Min = 4.29497e+06 ms, Max = 0 ms
+2026-10-25 01:01:36.587153 - [Console 0]: MapFlyMenuWatcher: Count = 1, Mean = 0.011 ms, Stddev = nan ms, Min = 0.011 ms, Max = 0.011 ms
+2026-10-25 01:01:36.587157 - [Console 0]: PromptDialogWatcher: Count = 1, Mean = 0.004 ms, Stddev = nan ms, Min = 0.004 ms, Max = 0.004 ms
+2026-10-25 01:01:36.587160 - [Console 0]: WhiteButtonWatcher: Count = 1, Mean = 0.012 ms, Stddev = nan ms, Min = 0.012 ms, Max = 0.012 ms
+2026-10-25 01:01:36.587164 - [Console 0]: OverworldWatcher: Count = 1, Mean = 0.059 ms, Stddev = nan ms, Min = 0.059 ms, Max = 0.059 ms
+2026-10-25 01:01:36.587192 - [Console 0]: NormalBattleMenuWatcher: Count = 1, Mean = 0.034 ms, Stddev = nan ms, Min = 0.034 ms, Max = 0.034 ms
+2026-10-25 01:01:36.688238 - [Console 0]: Detected fly here prompt dialog.
+2026-10-25 01:01:36.688280 - [Console 0]: issue_buttons(): A, delay = 1200ms, hold = 160ms, cooldown = 0ms
+2026-10-25 01:01:36.688310 - [Console 0]: wait_for_all()
+2026-10-25 01:01:38.241671 - [Console 0]: MapDestinationMenuWatcher: Count = 7, Mean = 0.00414286 ms, Stddev = 0.00106904 ms, Min = 0.003 ms, Max = 0.006 ms
+2026-10-25 01:01:38.241703 - [Console 0]: MapFlyMenuWatcher: Count = 7, Mean = 0.00385714 ms, Stddev = 0.00186445 ms, Min = 0.003 ms, Max = 0.008 ms
+2026-10-25 01:01:38.241709 - [Console 0]: PromptDialogWatcher: Count = 7, Mean = 1.426 ms, Stddev = 0.926531 ms, Min = 0.871 ms, Max = 3.38 ms
+2026-10-25 01:01:38.241719 - [Console 0]: WhiteButtonWatcher: Count = 7, Mean = 0.0102857 ms, Stddev = 0.0061023 ms, Min = 0.007 ms, Max = 0.024 ms
+2026-10-25 01:01:38.241726 - [Console 0]: OverworldWatcher: Count = 7, Mean = 0.0591429 ms, Stddev = 0.0364117 ms, Min = 0.031 ms, Max = 0.12 ms
+2026-10-25 01:01:38.241730 - [Console 0]: NormalBattleMenuWatcher: Count = 7, Mean = 0.0255714 ms, Stddev = 0.00519157 ms, Min = 0.018 ms, Max = 0.034 ms
+2026-10-25 01:01:38.342586 - [Console 0]: Detected fly confirmation prompt.
+2026-10-25 01:01:38.342633 - [Console 0]: issue_buttons(): A, delay = 1200ms, hold = 160ms, cooldown = 0ms
+2026-10-25 01:01:38.342642 - [Console 0]: wait_for_all()
+2026-10-25 01:01:39.181040 - [Console 0]: ConvertFrame: Count = 199, Mean = 1.27097ms, Stddev = 1.67617ms, Min = 0.199ms, Max = 6.879ms
+2026-10-25 01:01:42.195157 - [Console 0]: Unable to locate the overworld radar ball, falling back on hard coded location.
+2026-10-25 01:01:43.245293 - [Console 0]: MapDestinationMenuWatcher: Count = 74, Mean = 0.00487838 ms, Stddev = 0.00546459 ms, Min = 0.001 ms, Max = 0.033 ms
+2026-10-25 01:01:43.245321 - [Console 0]: MapFlyMenuWatcher: Count = 75, Mean = 0.00444 ms, Stddev = 0.00487753 ms, Min = 0.002 ms, Max = 0.037 ms
+2026-10-25 01:01:43.245327 - [Console 0]: PromptDialogWatcher: Count = 75, Mean = 0.01472 ms, Stddev = 0.0156132 ms, Min = 0.002 ms, Max = 0.066 ms
+2026-10-25 01:01:43.245349 - [Console 0]: WhiteButtonWatcher: Count = 75, Mean = 0.00865333 ms, Stddev = 0.00486436 ms, Min = 0.005 ms, Max = 0.027 ms
+2026-10-25 01:01:43.245366 - [Console 0]: OverworldWatcher: Count = 75, Mean = 0.1256 ms, Stddev = 0.127099 ms, Min = 0.033 ms, Max = 0.564 ms
+2026-10-25 01:01:43.245370 - [Console 0]: NormalBattleMenuWatcher: Count = 75, Mean = 0.0362933 ms, Stddev = 0.0184975 ms, Min = 0.019 ms, Max = 0.108 ms
+2026-10-25 01:01:43.346402 - [Console 0]: Detected overworld. Fly successful.
+2026-10-25 01:01:43.346431 - [Console 0]: wait_for_all()
+2026-10-25 01:01:43.346449 - [Console 0]: IsolatedStageDeadline: Count = 252, Mean = 0.000535714 ms, Stddev = 0.00254261 ms, Min = 0 ms, Max = 0.04 ms
+2026-10-25 01:01:43.346454 - [Console 0]: SweatBubbleWatcher: Count = 252, Mean = 0.0681508 ms, Stddev = 0.0618135 ms, Min = 0.008 ms, Max = 0.662 ms
+2026-10-25 01:01:43.346467 - [Console 0]: NormalBattleMenuWatcher: Count = 252, Mean = 0.0782698 ms, Stddev = 0.0741467 ms, Min = 0.018 ms, Max = 0.828 ms
+2026-10-25 01:01:43.346477 - [Console 0]: Isolated stage end: stage=re-fly Zero Gate starting anchor, outcome=completed, elapsed ms=12615
+2026-10-25 01:01:43.346480 - [Console 0]: Isolated hunt state: automatic Meal Power verification
+2026-10-25 01:01:43.346483 - [Console 0]: Isolated stage begin: stage=automatic Meal Power verification, timeout ms=120000
+2026-10-25 01:01:43.346520 - [Console 0]: issue_dpad(): right, delay = 1200ms, hold = 160ms, cooldown = 0ms
+2026-10-25 01:01:43.346524 - [Console 0]: wait_for_all()
+2026-10-25 01:01:45.187590 - [Global]: Creating Ort::session from model /Users/difan/Projects/Arduino-Source-isolated/build-prep/app/Resources/PaddleOCR/chinese/rec.onnx
+2026-10-25 01:01:45.187615 - [Global]: Creating dedicated CPU-only session...
+2026-10-25 01:01:45.188316 - [stdout]: Set potential model cache path in session options: /Users/difan/Library/Application Support/SerialPrograms/Profiles/sv-isolated-live-20261024/ModelCache/PaddleOCRPipeline/
+2026-10-25 01:01:45.188531 - [Global]: Setting ONNX Intra-Op Threads: 8
+2026-10-25 01:01:45.188539 - [Global]: Setting ONNX Inter-Op Threads: 0
+2026-10-25 01:01:45.343614 - [Global]: Ort::Session created
+2026-10-25 01:01:45.428887 - [Global]: Creating Ort::session from model /Users/difan/Projects/Arduino-Source-isolated/build-prep/app/Resources/PaddleOCR/english/rec.onnx
+2026-10-25 01:01:45.428915 - [Global]: Creating dedicated CPU-only session...
+2026-10-25 01:01:45.428931 - [stdout]: Set potential model cache path in session options: /Users/difan/Library/Application Support/SerialPrograms/Profiles/sv-isolated-live-20261024/ModelCache/PaddleOCRPipeline/
+2026-10-25 01:01:45.468164 - [Global]: Ort::Session created
+2026-10-25 01:01:45.481444 - [Console 0]: Isolated power OCR: 遭遇力：火 Lv.2
+2026-10-25 01:01:45.802439 - [Console 0]: Isolated power OCR: 遭遇力：火 Lv.2
+2026-10-25 01:01:46.122478 - [Console 0]: Isolated power OCR: 遭遇力：火 Lv.2
+2026-10-25 01:01:46.122528 - [Console 0]: issue_buttons(): B, delay = 1200ms, hold = 160ms, cooldown = 0ms
+2026-10-25 01:01:47.773845 - [Console 0]: OverworldWatcher: Count = 34, Mean = 0.207735 ms, Stddev = 0.151664 ms, Min = 0.036 ms, Max = 0.476 ms
+2026-10-25 01:01:47.773897 - [Console 0]: Isolated verification: stage=meal power, method=OCR, type=fire, level=2, accepted=1
+2026-10-25 01:01:47.773902 - [Console 0]: wait_for_all()
+2026-10-25 01:01:47.773912 - [Console 0]: IsolatedStageDeadline: Count = 89, Mean = 0.000235955 ms, Stddev = 0.000427 ms, Min = 0 ms, Max = 0.001 ms
+2026-10-25 01:01:47.773916 - [Console 0]: SweatBubbleWatcher: Count = 89, Mean = 0.0263371 ms, Stddev = 0.018352 ms, Min = 0.012 ms, Max = 0.076 ms
+2026-10-25 01:01:47.773927 - [Console 0]: NormalBattleMenuWatcher: Count = 89, Mean = 0.0662809 ms, Stddev = 0.0549268 ms, Min = 0.034 ms, Max = 0.347 ms
+2026-10-25 01:01:47.773934 - [Console 0]: Isolated stage end: stage=automatic Meal Power verification, outcome=completed, elapsed ms=4428
+2026-10-25 01:01:47.773954 - [Console 0]: Isolated hunt state: travel to charcadet patch
+2026-10-25 01:01:47.773966 - [Console 0]: Isolated stage begin: stage=travel to charcadet patch, timeout ms=420000
+2026-10-25 01:01:47.773979 - [Console 0]: wait_for_all()
+2026-10-25 01:01:48.925432 - [Console 0]: OverworldWatcher: Count = 22, Mean = 0.286909 ms, Stddev = 0.121708 ms, Min = 0.054 ms, Max = 0.642 ms
+2026-10-25 01:01:48.925462 - [Console 0]: NormalBattleMenuWatcher: Count = 22, Mean = 0.0376364 ms, Stddev = 0.0116845 ms, Min = 0.021 ms, Max = 0.074 ms
+2026-10-25 01:01:49.025594 - [Console 0]: Detected overworld.
+2026-10-25 01:01:49.025639 - [Console 0]: issue_buttons(): Y, delay = 1000ms, hold = 160ms, cooldown = 0ms
+2026-10-25 01:01:49.025648 - [Console 0]: wait_for_all()
+2026-10-25 01:01:49.224955 - [Console 0]: ConvertFrame: Count = 248, Mean = 1.31624ms, Stddev = 1.69477ms, Min = 0.186ms, Max = 8.077ms
+2026-10-25 01:01:50.059716 - [Console 0]: Saving screenshot to: /Users/difan/Library/Application Support/SerialPrograms/Profiles/sv-isolated-live-20261024/Screenshots/video-20261025-010150059706.mp4
+2026-10-25 01:01:50.059735 - [Console 0]: Saving stream history...
+2026-10-25 01:01:50.068765 - [Console 0]: Total frames to save: 300
+2026-10-25 01:01:50.076223 - [Console 0]: Frame size: 1280 x 720
+2026-10-25 01:01:50.093039 - [Console 0]: Saving frame 0 / 300
+2026-10-25 01:01:50.701282 - [Console 0]: Saving frame 100 / 300
+2026-10-25 01:01:51.330757 - [Console 0]: Saving frame 200 / 300
+2026-10-25 01:01:51.959416 - [Console 0]: Done saving stream history...
+2026-10-25 01:01:51.964440 - [Console 0]: Saving screenshot to: /Users/difan/Library/Application Support/SerialPrograms/Profiles/sv-isolated-live-20261024/Screenshots/screenshot-20261025-010151964432.png
+2026-10-25 01:01:52.377380 - [Console 0]: NormalBattleMenuWatcher: Count = 48, Mean = 0.0265 ms, Stddev = 0.0126491 ms, Min = 0.01 ms, Max = 0.084 ms
+2026-10-25 01:01:52.377405 - [Console 0]: MapWatcher: Count = 48, Mean = 0.0263125 ms, Stddev = 0.0132764 ms, Min = 0.007 ms, Max = 0.061 ms
+2026-10-25 01:01:52.377409 - [Console 0]: PromptDialogWatcher: Count = 48, Mean = 0.00120833 ms, Stddev = 0.00045934 ms, Min = 0.001 ms, Max = 0.003 ms
+2026-10-25 01:01:52.377422 - [Console 0]: AdvanceDialogWatcher: Count = 48, Mean = 0.00495833 ms, Stddev = 0.00206241 ms, Min = 0.002 ms, Max = 0.013 ms
+2026-10-25 01:01:52.377425 - [Console 0]: OverworldWatcher: Count = 48, Mean = 0.0390417 ms, Stddev = 0.0119662 ms, Min = 0.027 ms, Max = 0.08 ms
+2026-10-25 01:01:52.478455 - [Console 0]: Detected map.
+2026-10-25 01:01:52.478482 - [Console 0]: Central candidate seek: one zoom out, west 950ms, south 650ms; name verification required.
+2026-10-25 01:01:52.478510 - [Console 0]: issue_buttons(): ZL, delay = 1000ms, hold = 160ms, cooldown = 0ms
+2026-10-25 01:01:52.478551 - [Console 0]: issue_left_joystick(): (-1.000,0.000), delay = 1150ms, hold = 950ms, cooldown = 0ms
+2026-10-25 01:01:52.478572 - [Console 0]: issue_left_joystick(): (0.000,1.000), delay = 850ms, hold = 650ms, cooldown = 0ms
+2026-10-25 01:01:52.478576 - [Console 0]: wait_for_all()
+2026-10-25 01:01:55.480530 - [Console 0]: wait_for_all()
+2026-10-25 01:01:57.480766 - [Console 0]: MapPokeCenterIconWatcher: Count = 40, Mean = 0.2969 ms, Stddev = 0.272663 ms, Min = 0.184 ms, Max = 1.923 ms
+2026-10-25 01:01:57.480805 - [Console 0]: No visible Pokecenter found on map
+2026-10-25 01:01:57.480812 - [Console 0]: wait_for_all()
+2026-10-25 01:01:57.480829 - [Console 0]: IsolatedStageDeadline: Count = 193, Mean = 0.000492228 ms, Stddev = 0.00156165 ms, Min = 0 ms, Max = 0.021 ms
+2026-10-25 01:01:57.480834 - [Console 0]: SweatBubbleWatcher: Count = 193, Mean = 0.072 ms, Stddev = 0.0422634 ms, Min = 0.017 ms, Max = 0.196 ms
+2026-10-25 01:01:57.480837 - [Console 0]: NormalBattleMenuWatcher: Count = 193, Mean = 0.0602953 ms, Stddev = 0.029679 ms, Min = 0.027 ms, Max = 0.182 ms
+2026-10-25 01:01:57.480844 - [Console 0]: Isolated stage end: stage=travel to charcadet patch, outcome=completed, elapsed ms=9707
+2026-10-25 01:01:57.480857 - [Program]: Current Stats: Kills: 0 - Encounters: 0 - Shinies: 0 - Clearing Passes: 0 - Refusals: 0 - Spawn Refreshes: 0 - Sandwiches: 0 - Hunt Seconds: 0
+2026-10-25 01:01:57.480870 - [Console 0]: Isolated result: target=charcadet, stop=travel failed, detected kills=0, rounds=0, encounters=0, refusals=0, refreshes=0, hunt seconds=0, kills/min=0.000000
+2026-10-25 01:01:57.480873 - [Console 0]: Stopped at the current location for inspection; no departure after refusal, policy stop or failure.
+2026-10-25 01:01:57.480879 - [Console 0]: LetsGoHpWatcher: Count = 534, Mean = 0.00754682 ms, Stddev = 0.00638865 ms, Min = 0.002 ms, Max = 0.073 ms
+2026-10-25 01:01:57.480885 - [Console 0]: LetsGoKillSoundDetector: Count = 1,338, Mean = 0.0847496 ms, Stddev = 0.111686 ms, Min = 0 ms, Max = 2.287 ms
+2026-10-25 01:01:57.480893 - [Console 0]: StartBattleYellowBarWatcher: Count = 534, Mean = 0.00639139 ms, Stddev = 0.00488002 ms, Min = 0.003 ms, Max = 0.052 ms
+2026-10-25 01:01:57.480935 - [Console 0]: ShinySoundDetector: Count = 1,338, Mean = 0.248694 ms, Stddev = 0.565795 ms, Min = 0 ms, Max = 19.494 ms
+2026-10-25 01:01:57.480948 - [Console 0]: ShinyScreenshotTracker: Count = 534, Mean = 0.000934457 ms, Stddev = 0.00184925 ms, Min = 0 ms, Max = 0.035 ms
+2026-10-25 01:01:57.480960 - [Program]: Shiny sound not detected. Error Coefficient = 0.999925
+2026-10-25 01:01:57.481103 - [Program]: Let's Go Kill Sound not detected. Error Coefficient = 0.990036
+2026-10-25 01:01:57.481175 - [Program]: EventNotification(Program Finished): Notifications not enabled.
+2026-10-25 01:01:57.481182 - [Console 0]: wait_for_all()
+2026-10-25 01:01:57.481187 - [Program]: Program finished normally!
+2026-10-25 01:01:57.481220 - [Program]: Saving historical stats...
+2026-10-25 01:01:57.481763 - [Program]: Stats successfully saved!
+2026-10-25 01:01:57.481771 - [Program]: Program State: STOPPED
+2026-10-25 01:01:57.481865 - [Global]: Enabled display sleep and OS sleep.
+2026-10-25 01:02:05.746749 - [Console 0]: ConvertFrame: Count = 207, Mean = 1.38255ms, Stddev = 1.58955ms, Min = 0.195ms, Max = 6.319ms
+2026-10-25 01:02:05.746779 - [Console 0]: Saving screenshot to: /Users/difan/Library/Application Support/SerialPrograms/Profiles/sv-isolated-live-20261024/Screenshots/screenshot-20261025-010205746777.png
+2026-10-25 01:02:10.128079 - [Console 0]: Saving screenshot to: /Users/difan/Library/Application Support/SerialPrograms/Profiles/sv-isolated-live-20261024/Screenshots/video-20261025-010210128070.mp4
+2026-10-25 01:02:10.128097 - [Console 0]: Saving stream history...
+2026-10-25 01:02:10.131111 - [Console 0]: Total frames to save: 300
+2026-10-25 01:02:10.133916 - [Console 0]: Frame size: 1280 x 720
+2026-10-25 01:02:10.135541 - [Console 0]: Saving frame 0 / 300
+2026-10-25 01:02:10.768302 - [Console 0]: Saving frame 100 / 300
+2026-10-25 01:02:11.373159 - [Console 0]: Saving frame 200 / 300
+2026-10-25 01:02:11.912951 - [Console 0]: Done saving stream history...
+2026-10-25 01:02:15.529338 - [Console 0]: VideoSource::report_source_frame(): Count = 1,502, Mean = 0.00509987ms, Stddev = 0.0489166ms, Min = 0ms, Max = 1.897ms
+2026-10-25 01:02:30.176683 - [Console 0]: Saving screenshot to: /Users/difan/Library/Application Support/SerialPrograms/Profiles/sv-isolated-live-20261024/Screenshots/video-20261025-010230176671.mp4
+2026-10-25 01:02:30.176703 - [Console 0]: Saving stream history...
+2026-10-25 01:02:30.182592 - [Console 0]: Total frames to save: 300
+2026-10-25 01:02:30.186814 - [Console 0]: Frame size: 1280 x 720
+2026-10-25 01:02:30.187184 - [Console 0]: Saving frame 0 / 300
+2026-10-25 01:02:30.734968 - [Console 0]: Saving frame 100 / 300
+2026-10-25 01:02:31.277890 - [Console 0]: Saving frame 200 / 300
+2026-10-25 01:02:31.824491 - [Console 0]: Done saving stream history...
+2026-10-25 01:02:42.155681 - [Console 0]: issue_controller_state(): hold = 2000ms
+2026-10-25 01:02:42.313483 - [Console 0]: cancel_all_commands()
+2026-10-25 01:02:43.667706 - [Console 0]: issue_controller_state(): hold = 2000ms
+2026-10-25 01:02:43.826915 - [Console 0]: cancel_all_commands()
+2026-10-25 01:02:45.128686 - [Console 0]: ConvertFrame: Count = 1, Mean = 0.452ms, Stddev = nanms, Min = 0.452ms, Max = 0.452ms
+2026-10-25 01:02:45.128716 - [Console 0]: Saving screenshot to: /Users/difan/Library/Application Support/SerialPrograms/Profiles/sv-isolated-live-20261024/Screenshots/screenshot-20261025-010245128714.png
+2026-10-25 01:02:50.244270 - [Console 0]: Saving screenshot to: /Users/difan/Library/Application Support/SerialPrograms/Profiles/sv-isolated-live-20261024/Screenshots/video-20261025-010250244261.mp4
+2026-10-25 01:02:50.244287 - [Console 0]: Saving stream history...
+2026-10-25 01:02:50.246460 - [Console 0]: Total frames to save: 300
+2026-10-25 01:02:50.250376 - [Console 0]: Frame size: 1280 x 720
+2026-10-25 01:02:50.250688 - [Console 0]: Saving frame 0 / 300
+2026-10-25 01:02:50.794594 - [Console 0]: Saving frame 100 / 300
+2026-10-25 01:02:51.341864 - [Console 0]: Saving frame 200 / 300
+2026-10-25 01:02:51.942144 - [Console 0]: Done saving stream history...
+2026-10-25 01:02:53.414565 - [stdout]: Saving Settings...
+2026-10-25 01:02:53.419618 - [Global]: Saving panel settings...
+2026-10-25 01:02:53.419947 - [Program]: Shutting down SingleSwitchProgramSession...
+2026-10-25 01:02:53.419964 - [Program]: Shutting down ConsoleProgramSession...
+2026-10-25 01:02:53.420037 - [Console 0]: Shutting down ConsoleSystemSession...
+2026-10-25 01:02:53.573304 - [Console 0]: DeviceHandle::~DeviceHandle(): Waiting for 0 request(s) to finish.
+2026-10-25 01:02:53.665633 - [Console 0]: Shutting down VideoSession...
+2026-10-25 01:02:53.665677 - [Console 0]: Stopping Camera...
+2026-10-25 01:02:53.890113 - [Global]: Enabled display sleep and OS sleep.
+2026-10-25 01:05:11.623279 - [Global]: ================================================================================
+2026-10-25 01:05:11.623281 - [Global]: Starting Program...
+2026-10-25 01:05:11.623300 - [Global]: Current path: /
+2026-10-25 01:05:11.623318 - [Global]: Executable path: /Users/difan/Projects/Arduino-Source-isolated/build-prep/app/SerialPrograms.app/Contents/MacOS
+2026-10-25 01:05:11.623320 - [Global]: Program setting folder: /Users/difan/Library/Application Support/SerialPrograms/Profiles/sv-isolated-live-20261024/UserSettings/
+2026-10-25 01:05:11.623322 - [Global]: Program resources folder: /Users/difan/Projects/Arduino-Source-isolated/build-prep/app/Resources/
+2026-10-25 01:05:11.623317 - [Global]: Processor capability set to: Apple M1 (NEON)
+2026-10-25 01:05:11.623359 - [Global]: Found Resource folder at /Users/difan/Projects/Arduino-Source-isolated/build-prep/app/Resources/
+2026-10-25 01:05:11.623419 - [Global]: Thread priority set to: Min Priority
+2026-10-25 01:05:11.624134 - [Global]: ActionState::READY
+2026-10-25 01:05:11.624167 - [Global]: ActionState::READY
+2026-10-25 01:05:11.624185 - [Global]: ActionState::READY
+2026-10-25 01:05:11.624337 - [Global]: LifeTime Sanitizer: Enabled
+2026-10-25 01:05:11.624393 - [Global]: Processor String: Apple M2 Pro
+2026-10-25 01:05:11.624397 - [Global]: Processor string matches. Using stored processor level.
+2026-10-25 01:05:11.624399 - [Global]: Processor capability set to: Apple M1 (NEON)
+2026-10-25 01:05:11.624439 - [Global]: Thread priority set to: Max Priority
+2026-10-25 01:05:11.624485 - [Global]: Thread priority set to: Min Priority
+2026-10-25 01:05:11.626165 - [Global]: Serial Port Added: cu.Bluetooth-Incoming-Port
+2026-10-25 01:05:11.626173 - [Global]: Serial Port Added: cu.debug-console
+2026-10-25 01:05:11.626174 - [Global]: Serial Port Added: cu.usbmodem5C630032771
+2026-10-25 01:05:11.626175 - [Global]: Serial Port Added: tty.Bluetooth-Incoming-Port
+2026-10-25 01:05:11.626175 - [Global]: Serial Port Added: tty.debug-console
+2026-10-25 01:05:11.626176 - [Global]: Serial Port Added: tty.usbmodem5C630032771
+2026-10-25 01:05:11.626178 - [Global]: Serial port refresh took 1 ms. Further updates shorter than this will be suppressed.
+2026-10-25 01:05:11.805799 - [Global]: Checking for new version...
+2026-10-25 01:05:11.805807 - [Global]: Thread priority set to: Min Priority
+2026-10-25 01:05:11.805828 - [Global]: Start refreshing camera list...
+2026-10-25 01:05:11.805858 - [Global]: Done refreshing camera list... 0.000 seconds
+2026-10-25 01:05:12.332806 - [Global]: Thread priority set to: Min Priority
+2026-10-25 01:05:12.473152 - [Program]: Loading historical stats...
+2026-10-25 01:05:12.473691 - [Console 0]: Changing video...
+2026-10-25 01:05:12.473700 - [Global]: Thread priority set to: Min Priority
+2026-10-25 01:05:12.474069 - [Console 0]: AudioSession::reset()
+2026-10-25 01:05:12.474092 - [Global]: Thread priority set to: Min Priority
+2026-10-25 01:05:12.474104 - [Console 0]: Starting stream history...
+2026-10-25 01:05:12.474150 - [Global]: Thread priority set to: Min Priority
+2026-10-25 01:05:12.474623 - [Global]: DictionaryOCR - Tokens: 7, Match Candidates: 10
+2026-10-25 01:05:12.474633 - [Global]: DictionaryOCR - Tokens: 7, Match Candidates: 8
+2026-10-25 01:05:12.474644 - [Global]: DictionaryOCR - Tokens: 7, Match Candidates: 7
+2026-10-25 01:05:12.474651 - [Global]: DictionaryOCR - Tokens: 7, Match Candidates: 7
+2026-10-25 01:05:12.474660 - [Global]: DictionaryOCR - Tokens: 7, Match Candidates: 7
+2026-10-25 01:05:12.474666 - [Global]: DictionaryOCR - Tokens: 7, Match Candidates: 7
+2026-10-25 01:05:12.474675 - [Global]: DictionaryOCR - Tokens: 7, Match Candidates: 7
+2026-10-25 01:05:12.474690 - [Global]: DictionaryOCR - Tokens: 7, Match Candidates: 7
+2026-10-25 01:05:12.474699 - [Global]: DictionaryOCR - Tokens: 7, Match Candidates: 7
+2026-10-25 01:05:12.516197 - [Global]: MacBook Pro Microphone
+2026-10-25 01:05:12.516218 - [Global]: USB Digital Audio
+2026-10-25 01:05:12.516449 - [Global]: Done querying audio inputs... 0.007 seconds
+2026-10-25 01:05:12.516462 - [Global]: MacBook Pro Microphone
+2026-10-25 01:05:12.516467 - [Global]: USB Digital Audio
+2026-10-25 01:05:12.516471 - [Global]: Done querying audio inputs... 0.000 seconds
+2026-10-25 01:05:12.516475 - [Global]: MacBook Pro Speakers
+2026-10-25 01:05:12.516477 - [Global]: BenQ RD320UA
+2026-10-25 01:05:12.516498 - [Console 0]: Changing video...
+2026-10-25 01:05:12.516502 - [Console 0]: Clearing stream history...
+2026-10-25 01:05:12.516517 - [Console 0]: Starting Camera: Backend = CameraQt65QMediaCaptureSession
+2026-10-25 01:05:12.516526 - [Console 0]: Camera: USB Video
+2026-10-25 01:05:12.516544 - [Console 0]: Resolution: 1920 x 1080, Format: NV12, FPS: 60
+2026-10-25 01:05:12.675331 - [Console 0]: Starting stream history...
+2026-10-25 01:05:12.675355 - [Console 0]: Clearing stream history...
+2026-10-25 01:05:12.675388 - [Console 0]: Starting stream history...
+2026-10-25 01:05:12.675431 - [Console 0]: AudioInputDevice(): sample format Int16, bytes per sample 2, channel config Mono, num channels 1, sample rate 96000
+2026-10-25 01:05:12.675468 - [Global]: Thread priority set to: Min Priority
+2026-10-25 01:05:12.675477 - [Console 0]: Opening serial port...
+2026-10-25 01:05:12.679025 - [Global]: Thread priority set to: Max Priority
+2026-10-25 01:05:12.679039 - [Console 0]: Opening up reliable channel...
+2026-10-25 01:05:12.679089 - [Console 0]: Connecting...
+2026-10-25 01:05:12.679097 - [Global]: Thread priority set to: Max Priority
+2026-10-25 01:05:12.686987 - [Global]: MacBook Pro Microphone
+2026-10-25 01:05:12.687004 - [Global]: USB Digital Audio
+2026-10-25 01:05:12.687010 - [Global]: Done querying audio inputs... 0.000 seconds
+2026-10-25 01:05:12.687039 - [Global]: MacBook Pro Speakers
+2026-10-25 01:05:12.687042 - [Global]: BenQ RD320UA
+2026-10-25 01:05:12.730165 - [Console 0]: DTR = 1, RTS = 1
+2026-10-25 01:05:12.730184 - [Console 0]: Trying baud 921,600 (with session ID)...
+2026-10-25 01:05:12.731315 - [Console 0]: Session ID: 0x83f6ce88
+2026-10-25 01:05:12.731353 - [Console 0]: [RSC]: Sending: (0x1) PABB2_CONNECTION_OPCODE_ASK_RESET: seqnum = 0
+2026-10-25 01:05:12.732147 - [Console 0]: [RSC]: Sending: (0x2) PABB2_CONNECTION_OPCODE_ASK_VERSION: seqnum = 1
+2026-10-25 01:05:12.732806 - [Console 0]: [RSC]: Remote Protocol: 2026061800 (compatible)
+2026-10-25 01:05:12.732826 - [Console 0]: [RSC]: Sending: (0x3) PABB2_CONNECTION_OPCODE_ASK_PACKET_SIZE: seqnum = 2
+2026-10-25 01:05:12.733375 - [Console 0]: [RSC]: Setting Packet Size: 64 bytes
+2026-10-25 01:05:12.733391 - [Console 0]: [RSC]: Sending: (0x4) PABB2_CONNECTION_OPCODE_ASK_BUFFER_SLOTS: seqnum = 3
+2026-10-25 01:05:12.733969 - [Console 0]: [RSC]: Setting Reorder Window: 128 slots
+2026-10-25 01:05:12.733983 - [Console 0]: Querying device...
+2026-10-25 01:05:12.734002 - [Console 0]: [MLC]: Sending: (0x20) PABB2_MESSAGE_OPCODE_PROTOCOL_VERSION: id = 0
+2026-10-25 01:05:12.734934 - [Console 0]: [MLC]: Sending: (0x22) PABB2_MESSAGE_OPCODE_DEVICE_IDENTIFIER: id = 1
+2026-10-25 01:05:12.736048 - [Console 0]: [MLC]: Device ID: 0x12
+2026-10-25 01:05:12.736054 - [Console 0]: [MLC]: Remote Protocol: 2026061803 (compatible)
+2026-10-25 01:05:12.736066 - [Console 0]: [MLC]: Sending: (0x21) PABB2_MESSAGE_OPCODE_FIRMWARE_VERSION: id = 2
+2026-10-25 01:05:12.737136 - [Console 0]: [MLC]: Firmware Version: 2026070400
+2026-10-25 01:05:12.737145 - [Console 0]: [MLC]: Sending: (0x23) PABB2_MESSAGE_OPCODE_DEVICE_NAME: id = 3
+2026-10-25 01:05:12.738507 - [Console 0]: [MLC]: Device Name: PABotBase2-ESP32-S3
+2026-10-25 01:05:12.738515 - [Console 0]: [MLC]: Sending: (0x25) PABB2_MESSAGE_OPCODE_SET_LOGGING_FLAG: id = 0, flag = 0
+2026-10-25 01:05:12.738529 - [Console 0]: [MLC]: Sending: (0x24) PABB2_MESSAGE_OPCODE_CONTROLLER_LIST: id = 4
+2026-10-25 01:05:12.740467 - [Console 0]: Checking Controller List... (0x0, 0x100, 0x1000, 0x1010, 0x1100, 0x1101, 0x1102)
+2026-10-25 01:05:12.740476 - [Console 0]: [MLC]: Sending: (0x26) PABB2_MESSAGE_OPCODE_CQ_CAPACITY: id = 5
+2026-10-25 01:05:12.741568 - [Console 0]: [MLC]: Command Queue Size: 255
+2026-10-25 01:05:12.741586 - [Console 0]: Setting queue size to: 64
+2026-10-25 01:05:12.741595 - [Console 0]: Reading Controller Mode...
+2026-10-25 01:05:12.741598 - [Console 0]: [MLC]: Sending: (0x32) PABB2_MESSAGE_OPCODE_READ_CONTROLLER_MODE: id = 6
+2026-10-25 01:05:12.742608 - [Console 0]: Reading Controller Mode... Mode = NS1: Wired Pro Controller
+2026-10-25 01:05:12.742613 - [Console 0]: Reading Controller Mode...
+2026-10-25 01:05:12.742616 - [Console 0]: [MLC]: Sending: (0x32) PABB2_MESSAGE_OPCODE_READ_CONTROLLER_MODE: id = 7
+2026-10-25 01:05:12.743704 - [Console 0]: Reading Controller Mode... Mode = NS1: Wired Pro Controller
+2026-10-25 01:05:12.744406 - [Console 0]: Reading Controller Colors...
+2026-10-25 01:05:12.744414 - [Console 0]: [MLC]: Sending: (0x91) PABB2_MESSAGE_REQ_NS1_OEM_CONTROLLER_READ_SPI: id = 8, controller_type = 4352, address = 0x6050, bytes = 12
+2026-10-25 01:05:12.744413 - [Global]: Thread priority set to: Min Priority
+2026-10-25 01:05:12.745614 - [Console 0]: Reading Controller Colors... Done
+2026-10-25 01:05:12.767531 - [Console 0]: Done starting audio... 0.091 seconds
+2026-10-25 01:05:12.767583 - [Console 0]: Initializing ChannelMixer: 2 -> 1 x 48,000 Hz
+2026-10-25 01:05:12.767710 - [Console 0]: Initializing AudioResampler: 48,000 -> 96,000 Hz, channels = 1
+2026-10-25 01:05:12.767720 - [Console 0]: WorkingAudio2WorkingAudio: Nodes = 2
+2026-10-25 01:05:12.767730 - [Console 0]: Initializing ChannelMixer: 2 -> 1 x 48,000 Hz
+2026-10-25 01:05:12.767733 - [Console 0]: WorkingAudio2WorkingAudio: Nodes = 1
+2026-10-25 01:05:12.971968 - [stdout]: Checking MacOS Permissions...
+2026-10-25 01:05:12.972014 - [stdout]: Camera permission granted
+2026-10-25 01:05:12.972036 - [stdout]: Microphone permission granted
+2026-10-25 01:05:25.753902 - [Console 0]: ConvertFrame: Count = 1, Mean = 0.208ms, Stddev = nanms, Min = 0.208ms, Max = 0.208ms
+2026-10-25 01:05:25.753931 - [Console 0]: Saving screenshot to: /Users/difan/Library/Application Support/SerialPrograms/Profiles/sv-isolated-live-20261024/Screenshots/screenshot-20261025-010525753928.png
+2026-10-25 01:05:46.121114 - [Global]: Thread priority set to: Max Priority
+2026-10-25 01:05:46.421403 - [Console 0]: Clearing audio output...
+2026-10-25 01:05:46.421434 - [Global]: MacBook Pro Speakers
+2026-10-25 01:05:46.421439 - [Global]: BenQ RD320UA
+2026-10-25 01:05:48.878713 - [Console 0]: ConvertFrame: Count = 1, Mean = 0.219ms, Stddev = nanms, Min = 0.219ms, Max = 0.219ms
+2026-10-25 01:05:48.878740 - [Console 0]: Saving screenshot to: /Users/difan/Library/Application Support/SerialPrograms/Profiles/sv-isolated-live-20261024/Screenshots/screenshot-20261025-010548878738.png
+2026-10-25 01:06:01.335107 - [Console 0]: issue_controller_state(): hold = 2000ms
+2026-10-25 01:06:01.496010 - [Console 0]: cancel_all_commands()
+2026-10-25 01:06:01.700814 - [Global]: Serial port refresh took 1 ms. Further updates shorter than this will be suppressed.
+2026-10-25 01:06:03.804776 - [Console 0]: ConvertFrame: Count = 1, Mean = 0.208ms, Stddev = nanms, Min = 0.208ms, Max = 0.208ms
+2026-10-25 01:06:03.804808 - [Console 0]: Saving screenshot to: /Users/difan/Library/Application Support/SerialPrograms/Profiles/sv-isolated-live-20261024/Screenshots/screenshot-20261025-010603804806.png
+2026-10-25 01:06:19.265426 - [Program]: Received Program Start Request
+2026-10-25 01:06:19.265455 - [Program]: Starting program...
+2026-10-25 01:06:19.265458 - [Program]: Program State: RUNNING
+2026-10-25 01:06:19.265500 - [Global]: Thread priority set to: Max Priority
+2026-10-25 01:06:19.265516 - [Global]: Disabling OS sleep...
+2026-10-25 01:06:19.266048 - [Global]: Disabled OS sleep.
+2026-10-25 01:06:19.266069 - [Program]: Loading historical stats...
+2026-10-25 01:06:19.266357 - [Program]: <b>Starting Program: PokemonSV:IsolatedHuntPrototype</b>
+2026-10-25 01:06:19.268991 - [Console 0]: ConvertFrame: Count = 1, Mean = 2.611ms, Stddev = nanms, Min = 2.611ms, Max = 2.611ms
+2026-10-25 01:06:19.269077 - [Console 0]: Connecting controller...
+2026-10-25 01:06:19.270200 - [Console 0]: Current Player Number: Player 1
+2026-10-25 01:06:19.270211 - [Console 0]: Controller player matches required (Player 1). Continuing...
+2026-10-25 01:06:19.270296 - [Global]: Thread priority set to: Min Priority
+2026-10-25 01:06:19.321322 - [Global]: Thread priority set to: Min Priority
+2026-10-25 01:06:20.371360 - [Console 0]: OverworldWatcher: Count = 23, Mean = 0.761696 ms, Stddev = 0.743812 ms, Min = 0.262 ms, Max = 3.474 ms
+2026-10-25 01:06:20.615737 - [Global]: Thread priority set to: Min Priority
+2026-10-25 01:06:20.615774 - [Console 0]: Isolated setup: existing power=1, power budget ms=300000
+2026-10-25 01:06:20.615792 - [Console 0]: Isolated hunt state: re-fly Zero Gate starting anchor
+2026-10-25 01:06:20.615796 - [Console 0]: Isolated stage begin: stage=re-fly Zero Gate starting anchor, timeout ms=90000
+2026-10-25 01:06:20.615828 - [Program]: Loading spectrogram...
+2026-10-25 01:06:20.616033 - [stdout]: Initialize WavFile on /Users/difan/Projects/Arduino-Source-isolated/build-prep/app/Resources/PokemonSV/LetsGoKill-48000.wav
+2026-10-25 01:06:20.616225 - [stdout]: Wav file audio format: sample format Int16, bytes per sample 2, channel config Unknown, num channels 2, sample rate 48000
+2026-10-25 01:06:20.616371 - [Console 0]: wait_for_all()
+2026-10-25 01:06:20.616581 - [Global]: Built audio template with sample rate 48000, 53 windows and 1024 frequencies from /Users/difan/Projects/Arduino-Source-isolated/build-prep/app/Resources/PokemonSV/LetsGoKill-48000.wav
+2026-10-25 01:06:20.616702 - [Program]: Loading spectrogram...
+2026-10-25 01:06:20.628556 - [stdout]: Start audio decoder.
+2026-10-25 01:06:20.631062 - [Global]: Built audio template with sample rate 48000, 192 windows and 1024 frequencies from /Users/difan/Projects/Arduino-Source-isolated/build-prep/app/Resources/PokemonSV/ShinySound-48000.mp3
+2026-10-25 01:06:21.667457 - [Console 0]: OverworldWatcher: Count = 21, Mean = 0.412095 ms, Stddev = 0.347513 ms, Min = 0.045 ms, Max = 1.458 ms
+2026-10-25 01:06:21.667499 - [Console 0]: NormalBattleMenuWatcher: Count = 21, Mean = 0.0502857 ms, Stddev = 0.0316293 ms, Min = 0.024 ms, Max = 0.155 ms
+2026-10-25 01:06:21.768540 - [Console 0]: Detected overworld.
+2026-10-25 01:06:21.768615 - [Console 0]: issue_buttons(): Y, delay = 1000ms, hold = 160ms, cooldown = 0ms
+2026-10-25 01:06:21.768708 - [Console 0]: wait_for_all()
+2026-10-25 01:06:24.072765 - [Global]: Thread priority set to: Min Priority
+2026-10-25 01:06:24.770523 - [Console 0]: NormalBattleMenuWatcher: Count = 41, Mean = 0.0506098 ms, Stddev = 0.0928426 ms, Min = 0.01 ms, Max = 0.618 ms
+2026-10-25 01:06:24.770544 - [Console 0]: MapWatcher: Count = 41, Mean = 0.0771463 ms, Stddev = 0.208171 ms, Min = 0.007 ms, Max = 1.358 ms
+2026-10-25 01:06:24.770550 - [Console 0]: PromptDialogWatcher: Count = 41, Mean = 0.00173171 ms, Stddev = 0.00111858 ms, Min = 0 ms, Max = 0.004 ms
+2026-10-25 01:06:24.770562 - [Console 0]: AdvanceDialogWatcher: Count = 41, Mean = 0.0065122 ms, Stddev = 0.0039123 ms, Min = 0.002 ms, Max = 0.016 ms
+2026-10-25 01:06:24.770566 - [Console 0]: OverworldWatcher: Count = 41, Mean = 0.061439 ms, Stddev = 0.0415235 ms, Min = 0.029 ms, Max = 0.193 ms
+2026-10-25 01:06:24.870777 - [Console 0]: Detected map.
+2026-10-25 01:06:24.870821 - [Console 0]: wait_for_all()
+2026-10-25 01:06:24.870849 - [Console 0]: issue_buttons(): A, delay = 1200ms, hold = 160ms, cooldown = 0ms
+2026-10-25 01:06:24.870880 - [Console 0]: wait_for_all()
+2026-10-25 01:06:26.072370 - [Console 0]: MapDestinationMenuWatcher: Count = 0, Mean = nan ms, Stddev = nan ms, Min = 4.29497e+06 ms, Max = 0 ms
+2026-10-25 01:06:26.072398 - [Console 0]: MapFlyMenuWatcher: Count = 1, Mean = 0.012 ms, Stddev = nan ms, Min = 0.012 ms, Max = 0.012 ms
+2026-10-25 01:06:26.072403 - [Console 0]: PromptDialogWatcher: Count = 1, Mean = 0.004 ms, Stddev = nan ms, Min = 0.004 ms, Max = 0.004 ms
+2026-10-25 01:06:26.072407 - [Console 0]: WhiteButtonWatcher: Count = 1, Mean = 0.012 ms, Stddev = nan ms, Min = 0.012 ms, Max = 0.012 ms
+2026-10-25 01:06:26.072416 - [Console 0]: OverworldWatcher: Count = 1, Mean = 0.041 ms, Stddev = nan ms, Min = 0.041 ms, Max = 0.041 ms
+2026-10-25 01:06:26.072432 - [Console 0]: NormalBattleMenuWatcher: Count = 1, Mean = 0.044 ms, Stddev = nan ms, Min = 0.044 ms, Max = 0.044 ms
+2026-10-25 01:06:26.172802 - [Console 0]: Detected fly here prompt dialog.
+2026-10-25 01:06:26.172840 - [Console 0]: issue_buttons(): A, delay = 1200ms, hold = 160ms, cooldown = 0ms
+2026-10-25 01:06:26.172869 - [Console 0]: wait_for_all()
+2026-10-25 01:06:27.676205 - [Console 0]: MapDestinationMenuWatcher: Count = 6, Mean = 0.00416667 ms, Stddev = 0.000408248 ms, Min = 0.004 ms, Max = 0.005 ms
+2026-10-25 01:06:27.676233 - [Console 0]: MapFlyMenuWatcher: Count = 7, Mean = 0.00557143 ms, Stddev = 0.00269921 ms, Min = 0.003 ms, Max = 0.009 ms
+2026-10-25 01:06:27.676238 - [Console 0]: PromptDialogWatcher: Count = 7, Mean = 1.41171 ms, Stddev = 0.699971 ms, Min = 0.914 ms, Max = 2.58 ms
+2026-10-25 01:06:27.676244 - [Console 0]: WhiteButtonWatcher: Count = 7, Mean = 0.0161429 ms, Stddev = 0.00833524 ms, Min = 0.008 ms, Max = 0.028 ms
+2026-10-25 01:06:27.676249 - [Console 0]: OverworldWatcher: Count = 7, Mean = 0.0634286 ms, Stddev = 0.0314105 ms, Min = 0.033 ms, Max = 0.1 ms
+2026-10-25 01:06:27.676255 - [Console 0]: NormalBattleMenuWatcher: Count = 7, Mean = 0.0275714 ms, Stddev = 0.00340867 ms, Min = 0.021 ms, Max = 0.031 ms
+2026-10-25 01:06:27.777295 - [Console 0]: Detected fly confirmation prompt.
+2026-10-25 01:06:27.777394 - [Console 0]: issue_buttons(): A, delay = 1200ms, hold = 160ms, cooldown = 0ms
+2026-10-25 01:06:27.777417 - [Console 0]: wait_for_all()
+2026-10-25 01:06:29.280873 - [Console 0]: ConvertFrame: Count = 201, Mean = 0.886776ms, Stddev = 1.03185ms, Min = 0.206ms, Max = 5.887ms
+2026-10-25 01:06:29.391486 - [Console 0]: Saving screenshot to: /Users/difan/Library/Application Support/SerialPrograms/Profiles/sv-isolated-live-20261024/Screenshots/video-20261025-010629391478.mp4
+2026-10-25 01:06:29.391505 - [Console 0]: Saving stream history...
+2026-10-25 01:06:29.394863 - [Console 0]: Total frames to save: 301
+2026-10-25 01:06:29.400831 - [Console 0]: Frame size: 1280 x 720
+2026-10-25 01:06:29.413975 - [Console 0]: Saving frame 0 / 301
+2026-10-25 01:06:30.045646 - [Console 0]: Saving frame 100 / 301
+2026-10-25 01:06:30.687860 - [Console 0]: Saving frame 200 / 301
+2026-10-25 01:06:31.307099 - [Console 0]: Saving frame 300 / 301
+2026-10-25 01:06:31.315450 - [Console 0]: Done saving stream history...
+2026-10-25 01:06:33.180055 - [Console 0]: MapDestinationMenuWatcher: Count = 84, Mean = 0.0062619 ms, Stddev = 0.00763334 ms, Min = 0.002 ms, Max = 0.052 ms
+2026-10-25 01:06:33.180081 - [Console 0]: MapFlyMenuWatcher: Count = 85, Mean = 0.00521176 ms, Stddev = 0.00480846 ms, Min = 0.002 ms, Max = 0.028 ms
+2026-10-25 01:06:33.180086 - [Console 0]: PromptDialogWatcher: Count = 85, Mean = 0.0172941 ms, Stddev = 0.016917 ms, Min = 0.002 ms, Max = 0.081 ms
+2026-10-25 01:06:33.180095 - [Console 0]: WhiteButtonWatcher: Count = 85, Mean = 0.0128353 ms, Stddev = 0.0196274 ms, Min = 0.005 ms, Max = 0.174 ms
+2026-10-25 01:06:33.180117 - [Console 0]: OverworldWatcher: Count = 85, Mean = 0.143494 ms, Stddev = 0.200175 ms, Min = 0.032 ms, Max = 0.94 ms
+2026-10-25 01:06:33.180134 - [Console 0]: NormalBattleMenuWatcher: Count = 85, Mean = 0.0430941 ms, Stddev = 0.0263613 ms, Min = 0.021 ms, Max = 0.133 ms
+2026-10-25 01:06:33.281166 - [Console 0]: Detected overworld. Fly successful.
+2026-10-25 01:06:33.281196 - [Console 0]: wait_for_all()
+2026-10-25 01:06:33.281211 - [Console 0]: IsolatedStageDeadline: Count = 253, Mean = 0.000450593 ms, Stddev = 0.00150216 ms, Min = 0 ms, Max = 0.021 ms
+2026-10-25 01:06:33.281222 - [Console 0]: SweatBubbleWatcher: Count = 253, Mean = 0.0975059 ms, Stddev = 0.131805 ms, Min = 0.007 ms, Max = 0.772 ms
+2026-10-25 01:06:33.281228 - [Console 0]: NormalBattleMenuWatcher: Count = 253, Mean = 0.103328 ms, Stddev = 0.0940434 ms, Min = 0.016 ms, Max = 0.567 ms
+2026-10-25 01:06:33.281240 - [Console 0]: Isolated stage end: stage=re-fly Zero Gate starting anchor, outcome=completed, elapsed ms=12665
+2026-10-25 01:06:33.281245 - [Console 0]: Isolated hunt state: automatic Meal Power verification
+2026-10-25 01:06:33.281249 - [Console 0]: Isolated stage begin: stage=automatic Meal Power verification, timeout ms=120000
+2026-10-25 01:06:33.281286 - [Console 0]: issue_dpad(): right, delay = 1200ms, hold = 160ms, cooldown = 0ms
+2026-10-25 01:06:33.281292 - [Console 0]: wait_for_all()
+2026-10-25 01:06:35.117071 - [Global]: Creating Ort::session from model /Users/difan/Projects/Arduino-Source-isolated/build-prep/app/Resources/PaddleOCR/chinese/rec.onnx
+2026-10-25 01:06:35.117096 - [Global]: Creating dedicated CPU-only session...
+2026-10-25 01:06:35.118080 - [stdout]: Set potential model cache path in session options: /Users/difan/Library/Application Support/SerialPrograms/Profiles/sv-isolated-live-20261024/ModelCache/PaddleOCRPipeline/
+2026-10-25 01:06:35.118362 - [Global]: Setting ONNX Intra-Op Threads: 8
+2026-10-25 01:06:35.118369 - [Global]: Setting ONNX Inter-Op Threads: 0
+2026-10-25 01:06:35.226429 - [Global]: Ort::Session created
+2026-10-25 01:06:35.307117 - [Global]: Creating Ort::session from model /Users/difan/Projects/Arduino-Source-isolated/build-prep/app/Resources/PaddleOCR/english/rec.onnx
+2026-10-25 01:06:35.307135 - [Global]: Creating dedicated CPU-only session...
+2026-10-25 01:06:35.307145 - [stdout]: Set potential model cache path in session options: /Users/difan/Library/Application Support/SerialPrograms/Profiles/sv-isolated-live-20261024/ModelCache/PaddleOCRPipeline/
+2026-10-25 01:06:35.343445 - [Global]: Ort::Session created
+2026-10-25 01:06:35.357094 - [Console 0]: Isolated power OCR: 遭遇力：火 Lv.2
+2026-10-25 01:06:35.660397 - [Console 0]: Isolated power OCR: 遭遇力：火 Lv.2
+2026-10-25 01:06:35.963401 - [Console 0]: Isolated power OCR: 遭遇力：火 Lv.2
+2026-10-25 01:06:35.963444 - [Console 0]: issue_buttons(): B, delay = 1200ms, hold = 160ms, cooldown = 0ms
+2026-10-25 01:06:37.714339 - [Console 0]: OverworldWatcher: Count = 34, Mean = 0.314618 ms, Stddev = 0.277168 ms, Min = 0.037 ms, Max = 1.095 ms
+2026-10-25 01:06:37.714403 - [Console 0]: Isolated verification: stage=meal power, method=OCR, type=fire, level=2, accepted=1
+2026-10-25 01:06:37.714411 - [Console 0]: wait_for_all()
+2026-10-25 01:06:37.714424 - [Console 0]: IsolatedStageDeadline: Count = 89, Mean = 0.000258427 ms, Stddev = 0.00044025 ms, Min = 0 ms, Max = 0.001 ms
+2026-10-25 01:06:37.714428 - [Console 0]: SweatBubbleWatcher: Count = 89, Mean = 0.0288202 ms, Stddev = 0.0228242 ms, Min = 0.008 ms, Max = 0.122 ms
+2026-10-25 01:06:37.714450 - [Console 0]: NormalBattleMenuWatcher: Count = 89, Mean = 0.069618 ms, Stddev = 0.0503186 ms, Min = 0.032 ms, Max = 0.322 ms
+2026-10-25 01:06:37.714457 - [Console 0]: Isolated stage end: stage=automatic Meal Power verification, outcome=completed, elapsed ms=4433
+2026-10-25 01:06:37.714461 - [Console 0]: Isolated hunt state: travel to charcadet patch
+2026-10-25 01:06:37.714465 - [Console 0]: Isolated stage begin: stage=travel to charcadet patch, timeout ms=420000
+2026-10-25 01:06:37.714480 - [Console 0]: wait_for_all()
+2026-10-25 01:06:38.815819 - [Console 0]: OverworldWatcher: Count = 23, Mean = 0.420478 ms, Stddev = 0.338033 ms, Min = 0.026 ms, Max = 1.129 ms
+2026-10-25 01:06:38.815844 - [Console 0]: NormalBattleMenuWatcher: Count = 23, Mean = 0.0441739 ms, Stddev = 0.0219331 ms, Min = 0.017 ms, Max = 0.089 ms
+2026-10-25 01:06:38.916189 - [Console 0]: Detected overworld.
+2026-10-25 01:06:38.916232 - [Console 0]: issue_buttons(): Y, delay = 1000ms, hold = 160ms, cooldown = 0ms
+2026-10-25 01:06:38.916242 - [Console 0]: wait_for_all()
+2026-10-25 01:06:39.315764 - [Console 0]: ConvertFrame: Count = 242, Mean = 0.674855ms, Stddev = 0.923177ms, Min = 0.201ms, Max = 7.925ms
+2026-10-25 01:06:42.017968 - [Console 0]: NormalBattleMenuWatcher: Count = 43, Mean = 0.0392558 ms, Stddev = 0.03941 ms, Min = 0.012 ms, Max = 0.262 ms
+2026-10-25 01:06:42.017992 - [Console 0]: MapWatcher: Count = 43, Mean = 0.0412093 ms, Stddev = 0.0340836 ms, Min = 0.006 ms, Max = 0.134 ms
+2026-10-25 01:06:42.017996 - [Console 0]: PromptDialogWatcher: Count = 43, Mean = 0.00181395 ms, Stddev = 0.00107473 ms, Min = 0.001 ms, Max = 0.004 ms
+2026-10-25 01:06:42.018008 - [Console 0]: AdvanceDialogWatcher: Count = 43, Mean = 0.00669767 ms, Stddev = 0.00421751 ms, Min = 0.002 ms, Max = 0.019 ms
+2026-10-25 01:06:42.018011 - [Console 0]: OverworldWatcher: Count = 43, Mean = 0.0608372 ms, Stddev = 0.0501711 ms, Min = 0.027 ms, Max = 0.313 ms
+2026-10-25 01:06:42.118560 - [Console 0]: Detected map.
+2026-10-25 01:06:42.118584 - [Console 0]: Central candidate seek: one zoom out, west 950ms, south 650ms; name verification required.
+2026-10-25 01:06:42.118608 - [Console 0]: issue_buttons(): ZL, delay = 1000ms, hold = 160ms, cooldown = 0ms
+2026-10-25 01:06:42.118664 - [Console 0]: issue_left_joystick(): (-1.000,0.000), delay = 1150ms, hold = 950ms, cooldown = 0ms
+2026-10-25 01:06:42.118680 - [Console 0]: issue_left_joystick(): (0.000,-1.000), delay = 850ms, hold = 650ms, cooldown = 0ms
+2026-10-25 01:06:42.118683 - [Console 0]: wait_for_all()
+2026-10-25 01:06:45.120562 - [Console 0]: wait_for_all()
+2026-10-25 01:06:45.121284 - [Console 0]: MapPokeCenterIconWatcher: Count = 1, Mean = 0.636 ms, Stddev = nan ms, Min = 0.636 ms, Max = 0.636 ms
+2026-10-25 01:06:45.121314 - [Console 0]: Found Pokecenter at box: x=0.595833, y=0.244444, width=0.0182292, height=0.0333333, dist to center 327.363 pixels
+2026-10-25 01:06:45.121320 - [Console 0]: Found Pokecenter at box: x=0.523958, y=0.507407, width=0.01875, height=0.0324074, dist to center 68.893 pixels
+2026-10-25 01:06:45.121324 - [Console 0]: Found Pokecenter at box: x=0.691146, y=0.681481, width=0.01875, height=0.0333333, dist to center 440.478 pixels
+2026-10-25 01:06:45.121328 - [Console 0]: Found Pokecenter at box: x=0.747917, y=0.690741, width=0.01875, height=0.0324074, dist to center 542.207 pixels
+2026-10-25 01:06:45.121331 - [Console 0]: Found Pokecenter at box: x=0.849479, y=0.743519, width=0.01875, height=0.0333333, dist to center 744.098 pixels
+2026-10-25 01:06:45.121336 - [Console 0]: Found closest Pokecenter icon on map: (1024.000000, 565.500000).
+2026-10-25 01:06:45.121356 - [Console 0]: issue_left_joystick(): (0.464,-0.185), delay = 400ms, hold = 160ms, cooldown = 0ms
+2026-10-25 01:06:45.121361 - [Console 0]: wait_for_all()
+2026-10-25 01:06:45.526875 - [Console 0]: issue_buttons(): A, delay = 1200ms, hold = 160ms, cooldown = 0ms
+2026-10-25 01:06:45.928014 - [Console 0]: MapFlyMenuWatcher: Count = 9, Mean = 0.00555556 ms, Stddev = 0.00507718 ms, Min = 0.002 ms, Max = 0.018 ms
+2026-10-25 01:06:45.928119 - [Console 0]: issue_buttons(): A, delay = 1200ms, hold = 160ms, cooldown = 0ms
+2026-10-25 01:06:48.030637 - [Console 0]: PromptDialogWatcher: Count = 43, Mean = 0.507465 ms, Stddev = 0.817062 ms, Min = 0.004 ms, Max = 2.838 ms
+2026-10-25 01:06:48.327239 - [Console 0]: Flight destination read: 西第1區：中央
+2026-10-25 01:06:48.624559 - [Console 0]: Flight destination read: 西第1區：中央
+2026-10-25 01:06:48.629080 - [Console 0]: issue_buttons(): A, delay = 1200ms, hold = 160ms, cooldown = 0ms
+2026-10-25 01:06:49.365743 - [Console 0]: ConvertFrame: Count = 220, Mean = 1.16134ms, Stddev = 1.49533ms, Min = 0.196ms, Max = 8.135ms
+2026-10-25 01:06:49.456739 - [Console 0]: Saving screenshot to: /Users/difan/Library/Application Support/SerialPrograms/Profiles/sv-isolated-live-20261024/Screenshots/video-20261025-010649456726.mp4
+2026-10-25 01:06:49.456757 - [Console 0]: Saving stream history...
+2026-10-25 01:06:49.459125 - [Console 0]: Total frames to save: 301
+2026-10-25 01:06:49.463305 - [Console 0]: Frame size: 1280 x 720
+2026-10-25 01:06:49.463635 - [Console 0]: Saving frame 0 / 301
+2026-10-25 01:06:50.091812 - [Console 0]: Saving frame 100 / 301
+2026-10-25 01:06:50.714394 - [Console 0]: Saving frame 200 / 301
+2026-10-25 01:06:51.333938 - [Console 0]: Saving frame 300 / 301
+2026-10-25 01:06:51.343871 - [Console 0]: Done saving stream history...
+2026-10-25 01:06:56.880409 - [Console 0]: OverworldWatcher: Count = 166, Mean = 0.108584 ms, Stddev = 0.147988 ms, Min = 0.031 ms, Max = 1.149 ms
+2026-10-25 01:06:56.880443 - [Console 0]: SUPERVISED: stand on foot at the lower Central uphill corridor, set a marker with a river buffer, and match the safe heading. Then check Central path inspected.
+2026-10-25 01:06:59.415753 - [Console 0]: ConvertFrame: Count = 239, Mean = 0.998163ms, Stddev = 1.42969ms, Min = 0.2ms, Max = 7.023ms
+2026-10-25 01:07:00.542137 - [Console 0]: Saving screenshot to: /Users/difan/Library/Application Support/SerialPrograms/Profiles/sv-isolated-live-20261024/Screenshots/screenshot-20261025-010700542129.png
+2026-10-25 01:07:09.415890 - [Console 0]: ConvertFrame: Count = 204, Mean = 1.03453ms, Stddev = 1.30337ms, Min = 0.2ms, Max = 6.326ms
+2026-10-25 01:07:09.527431 - [Console 0]: Saving screenshot to: /Users/difan/Library/Application Support/SerialPrograms/Profiles/sv-isolated-live-20261024/Screenshots/video-20261025-010709527422.mp4
+2026-10-25 01:07:09.527452 - [Console 0]: Saving stream history...
+2026-10-25 01:07:09.529426 - [Console 0]: Total frames to save: 300
+2026-10-25 01:07:09.533548 - [Console 0]: Frame size: 1280 x 720
+2026-10-25 01:07:09.533915 - [Console 0]: Saving frame 0 / 300
+2026-10-25 01:07:10.160043 - [Console 0]: Saving frame 100 / 300
+2026-10-25 01:07:10.757167 - [Console 0]: Saving frame 200 / 300
+2026-10-25 01:07:11.479578 - [Console 0]: Done saving stream history...
+2026-10-25 01:07:19.416348 - [Console 0]: ConvertFrame: Count = 204, Mean = 1.16977ms, Stddev = 1.57053ms, Min = 0.206ms, Max = 7.239ms
+2026-10-25 01:07:29.416650 - [Console 0]: ConvertFrame: Count = 202, Mean = 1.18431ms, Stddev = 1.56008ms, Min = 0.209ms, Max = 7.281ms
+2026-10-25 01:07:29.588116 - [Console 0]: Saving screenshot to: /Users/difan/Library/Application Support/SerialPrograms/Profiles/sv-isolated-live-20261024/Screenshots/video-20261025-010729588105.mp4
+2026-10-25 01:07:29.588135 - [Console 0]: Saving stream history...
+2026-10-25 01:07:29.591886 - [Console 0]: Total frames to save: 300
+2026-10-25 01:07:29.596107 - [Console 0]: Frame size: 1280 x 720
+2026-10-25 01:07:29.596418 - [Console 0]: Saving frame 0 / 300
+2026-10-25 01:07:30.323347 - [Console 0]: Saving frame 100 / 300
+2026-10-25 01:07:31.041635 - [Console 0]: Saving frame 200 / 300
+2026-10-25 01:07:31.765684 - [Console 0]: Done saving stream history...
+2026-10-25 01:07:39.467390 - [Console 0]: ConvertFrame: Count = 203, Mean = 1.1719ms, Stddev = 1.56987ms, Min = 0.195ms, Max = 7.502ms
+2026-10-25 01:07:49.470981 - [Console 0]: ConvertFrame: Count = 201, Mean = 1.08184ms, Stddev = 1.37988ms, Min = 0.205ms, Max = 5.994ms
+2026-10-25 01:07:49.653091 - [Console 0]: Saving screenshot to: /Users/difan/Library/Application Support/SerialPrograms/Profiles/sv-isolated-live-20261024/Screenshots/video-20261025-010749653081.mp4
+2026-10-25 01:07:49.653113 - [Console 0]: Saving stream history...
+2026-10-25 01:07:49.655090 - [Console 0]: Total frames to save: 301
+2026-10-25 01:07:49.659327 - [Console 0]: Frame size: 1280 x 720
+2026-10-25 01:07:49.659671 - [Console 0]: Saving frame 0 / 301
+2026-10-25 01:07:50.385427 - [Console 0]: Saving frame 100 / 301
+2026-10-25 01:07:51.106490 - [Console 0]: Saving frame 200 / 301
+2026-10-25 01:07:51.854268 - [Console 0]: Saving frame 300 / 301
+2026-10-25 01:07:51.862492 - [Console 0]: Done saving stream history...
+2026-10-25 01:07:51.863091 - [Console 0]: Saving screenshot to: /Users/difan/Library/Application Support/SerialPrograms/Profiles/sv-isolated-live-20261024/Screenshots/screenshot-20261025-010751863086.png
+2026-10-25 01:07:59.515679 - [Console 0]: ConvertFrame: Count = 205, Mean = 1.10251ms, Stddev = 1.54589ms, Min = 0.204ms, Max = 8.037ms
+2026-10-25 01:08:09.515795 - [Console 0]: ConvertFrame: Count = 201, Mean = 1.06568ms, Stddev = 1.36897ms, Min = 0.201ms, Max = 6.702ms
+2026-10-25 01:08:09.726985 - [Console 0]: Saving screenshot to: /Users/difan/Library/Application Support/SerialPrograms/Profiles/sv-isolated-live-20261024/Screenshots/video-20261025-010809726975.mp4
+2026-10-25 01:08:09.727003 - [Console 0]: Saving stream history...
+2026-10-25 01:08:09.729294 - [Console 0]: Total frames to save: 301
+2026-10-25 01:08:09.733462 - [Console 0]: Frame size: 1280 x 720
+2026-10-25 01:08:09.733903 - [Console 0]: Saving frame 0 / 301
+2026-10-25 01:08:10.485851 - [Console 0]: Saving frame 100 / 301
+2026-10-25 01:08:11.198418 - [Console 0]: Saving frame 200 / 301
+2026-10-25 01:08:11.930610 - [Console 0]: Saving frame 300 / 301
+2026-10-25 01:08:11.939219 - [Console 0]: Done saving stream history...
+2026-10-25 01:08:19.515801 - [Console 0]: ConvertFrame: Count = 201, Mean = 0.965692ms, Stddev = 1.25257ms, Min = 0.204ms, Max = 7.893ms
+2026-10-25 01:08:29.565815 - [Console 0]: ConvertFrame: Count = 202, Mean = 1.13976ms, Stddev = 1.42992ms, Min = 0.205ms, Max = 6.977ms
+2026-10-25 01:08:29.787173 - [Console 0]: Saving screenshot to: /Users/difan/Library/Application Support/SerialPrograms/Profiles/sv-isolated-live-20261024/Screenshots/video-20261025-010829787159.mp4
+2026-10-25 01:08:29.787198 - [Console 0]: Saving stream history...
+2026-10-25 01:08:29.789172 - [Console 0]: Total frames to save: 300
+2026-10-25 01:08:29.793233 - [Console 0]: Frame size: 1280 x 720
+2026-10-25 01:08:29.793521 - [Console 0]: Saving frame 0 / 300
+2026-10-25 01:08:30.411963 - [Console 0]: issue_controller_state(): hold = 2000ms
+2026-10-25 01:08:30.524077 - [Console 0]: Saving frame 100 / 300
+2026-10-25 01:08:31.243086 - [Console 0]: Saving frame 200 / 300
+2026-10-25 01:08:31.412975 - [Console 0]: issue_controller_state(): hold = 2000ms
+2026-10-25 01:08:31.719107 - [Console 0]: cancel_all_commands()
+2026-10-25 01:08:31.972757 - [Console 0]: Done saving stream history...
+2026-10-25 01:08:32.049903 - [Console 0]: issue_controller_state(): hold = 2000ms
+2026-10-25 01:08:33.050920 - [Console 0]: issue_controller_state(): hold = 2000ms
+2026-10-25 01:08:33.852069 - [Console 0]: cancel_all_commands()
+2026-10-25 01:08:34.176331 - [Console 0]: issue_controller_state(): hold = 2000ms
+2026-10-25 01:08:34.344102 - [Console 0]: cancel_all_commands()
+2026-10-25 01:08:35.643713 - [Console 0]: Saving screenshot to: /Users/difan/Library/Application Support/SerialPrograms/Profiles/sv-isolated-live-20261024/Screenshots/screenshot-20261025-010835643704.png
+2026-10-25 01:08:39.566208 - [Console 0]: ConvertFrame: Count = 201, Mean = 0.963886ms, Stddev = 1.2346ms, Min = 0.204ms, Max = 6.351ms
+2026-10-25 01:08:47.029047 - [Console 0]: Isolated verification: stage=Central path, method=supervised, accepted=0, elapsed ms=110148
+2026-10-25 01:08:47.029100 - [Console 0]: wait_for_all()
+2026-10-25 01:08:47.029171 - [Console 0]: IsolatedStageDeadline: Count = 2,587, Mean = 0.000623889 ms, Stddev = 0.00355941 ms, Min = 0 ms, Max = 0.111 ms
+2026-10-25 01:08:47.029194 - [Console 0]: SweatBubbleWatcher: Count = 2,587, Mean = 0.0655682 ms, Stddev = 0.0799098 ms, Min = 0.007 ms, Max = 0.713 ms
+2026-10-25 01:08:47.029203 - [Console 0]: NormalBattleMenuWatcher: Count = 2,587, Mean = 0.111816 ms, Stddev = 0.111444 ms, Min = 0.027 ms, Max = 0.847 ms
+2026-10-25 01:08:47.029231 - [Console 0]: Isolated stage end: stage=travel to charcadet patch, outcome=completed, elapsed ms=129315
+2026-10-25 01:08:47.029254 - [Program]: Current Stats: Kills: 0 - Encounters: 0 - Shinies: 0 - Clearing Passes: 0 - Refusals: 0 - Spawn Refreshes: 0 - Sandwiches: 0 - Hunt Seconds: 0
+2026-10-25 01:08:47.029272 - [Console 0]: Isolated result: target=charcadet, stop=travel failed, detected kills=0, rounds=0, encounters=0, refusals=0, refreshes=0, hunt seconds=0, kills/min=0.000000
+2026-10-25 01:08:47.029282 - [Console 0]: Stopped at the current location for inspection; no departure after refusal, policy stop or failure.
+2026-10-25 01:08:47.029300 - [Console 0]: LetsGoHpWatcher: Count = 2,927, Mean = 0.00994636 ms, Stddev = 0.0237108 ms, Min = 0.001 ms, Max = 0.398 ms
+2026-10-25 01:08:47.029318 - [Console 0]: LetsGoKillSoundDetector: Count = 7,321, Mean = 0.0735495 ms, Stddev = 0.0782012 ms, Min = 0 ms, Max = 3.691 ms
+2026-10-25 01:08:47.029331 - [Console 0]: StartBattleYellowBarWatcher: Count = 2,927, Mean = 0.0123109 ms, Stddev = 0.0296384 ms, Min = 0.003 ms, Max = 0.512 ms
+2026-10-25 01:08:47.029349 - [Console 0]: ShinySoundDetector: Count = 7,321, Mean = 0.225544 ms, Stddev = 0.262725 ms, Min = 0 ms, Max = 14.695 ms
+2026-10-25 01:08:47.029362 - [Console 0]: ShinyScreenshotTracker: Count = 2,927, Mean = 0.00141647 ms, Stddev = 0.00970982 ms, Min = 0 ms, Max = 0.394 ms
+2026-10-25 01:08:47.029374 - [Program]: Shiny sound not detected. Error Coefficient = 0.999812
+2026-10-25 01:08:47.029590 - [Program]: Let's Go Kill Sound not detected. Error Coefficient = 0.989885
+2026-10-25 01:08:47.029777 - [Program]: EventNotification(Program Finished): Notifications not enabled.
+2026-10-25 01:08:47.029798 - [Console 0]: wait_for_all()
+2026-10-25 01:08:47.029834 - [Program]: Program finished normally!
+2026-10-25 01:08:47.029909 - [Program]: Saving historical stats...
+2026-10-25 01:08:47.031469 - [Program]: Stats successfully saved!
+2026-10-25 01:08:47.031479 - [Program]: Program State: STOPPED
+2026-10-25 01:08:47.031636 - [Global]: Enabled display sleep and OS sleep.
+2026-10-25 01:08:49.851234 - [Console 0]: Saving screenshot to: /Users/difan/Library/Application Support/SerialPrograms/Profiles/sv-isolated-live-20261024/Screenshots/video-20261025-010849851227.mp4
+2026-10-25 01:08:49.851252 - [Console 0]: Saving stream history...
+2026-10-25 01:08:49.855970 - [Console 0]: Total frames to save: 300
+2026-10-25 01:08:49.860055 - [Console 0]: Frame size: 1280 x 720
+2026-10-25 01:08:49.860394 - [Console 0]: Saving frame 0 / 300
+2026-10-25 01:08:50.582431 - [Console 0]: Saving frame 100 / 300
+2026-10-25 01:08:51.344854 - [Console 0]: Saving frame 200 / 300
+2026-10-25 01:08:52.037002 - [Console 0]: Done saving stream history...
+2026-10-25 01:08:56.550077 - [Console 0]: issue_controller_state(): hold = 2000ms
+2026-10-25 01:08:56.721453 - [Console 0]: cancel_all_commands()
+2026-10-25 01:08:59.026006 - [Console 0]: ConvertFrame: Count = 151, Mean = 1.10898ms, Stddev = 1.49764ms, Min = 0.208ms, Max = 8.543ms
+2026-10-25 01:08:59.026058 - [Console 0]: Saving screenshot to: /Users/difan/Library/Application Support/SerialPrograms/Profiles/sv-isolated-live-20261024/Screenshots/screenshot-20261025-010859026055.png
+2026-10-25 01:09:00.974337 - [Global]: Serial port refresh took 6 ms. Further updates shorter than this will be suppressed.
+2026-10-25 01:09:09.941994 - [Console 0]: Saving screenshot to: /Users/difan/Library/Application Support/SerialPrograms/Profiles/sv-isolated-live-20261024/Screenshots/video-20261025-010909941978.mp4
+2026-10-25 01:09:09.942019 - [Console 0]: Saving stream history...
+2026-10-25 01:09:09.944919 - [Console 0]: Total frames to save: 300
+2026-10-25 01:09:09.949483 - [Console 0]: Frame size: 1280 x 720
+2026-10-25 01:09:09.951636 - [Console 0]: Saving frame 0 / 300
+2026-10-25 01:09:10.664327 - [Console 0]: Saving frame 100 / 300
+2026-10-25 01:09:11.561586 - [Console 0]: Saving frame 200 / 300
+2026-10-25 01:09:12.166668 - [Console 0]: Done saving stream history...
+2026-10-25 01:09:30.008758 - [Console 0]: Saving screenshot to: /Users/difan/Library/Application Support/SerialPrograms/Profiles/sv-isolated-live-20261024/Screenshots/video-20261025-010930008748.mp4
+2026-10-25 01:09:30.008776 - [Console 0]: Saving stream history...
+2026-10-25 01:09:30.012244 - [Console 0]: Total frames to save: 301
+2026-10-25 01:09:30.016244 - [Console 0]: Frame size: 1280 x 720
+2026-10-25 01:09:30.016593 - [Console 0]: Saving frame 0 / 301
+2026-10-25 01:09:30.586002 - [Console 0]: Saving frame 100 / 301
+2026-10-25 01:09:31.149752 - [Console 0]: Saving frame 200 / 301
+2026-10-25 01:09:31.712085 - [Console 0]: Saving frame 300 / 301
+2026-10-25 01:09:31.719594 - [Console 0]: Done saving stream history...
+2026-10-25 01:09:50.067664 - [Console 0]: Saving screenshot to: /Users/difan/Library/Application Support/SerialPrograms/Profiles/sv-isolated-live-20261024/Screenshots/video-20261025-010950067654.mp4
+2026-10-25 01:09:50.067693 - [Console 0]: Saving stream history...
+2026-10-25 01:09:50.075363 - [Console 0]: Total frames to save: 300
+2026-10-25 01:09:50.079438 - [Console 0]: Frame size: 1280 x 720
+2026-10-25 01:09:50.079996 - [Console 0]: Saving frame 0 / 300
+2026-10-25 01:09:50.654635 - [Console 0]: Saving frame 100 / 300
+2026-10-25 01:09:51.225083 - [Console 0]: Saving frame 200 / 300
+2026-10-25 01:09:51.790722 - [Console 0]: Done saving stream history...
+2026-10-25 01:10:10.149737 - [Console 0]: Saving screenshot to: /Users/difan/Library/Application Support/SerialPrograms/Profiles/sv-isolated-live-20261024/Screenshots/video-20261025-011010149728.mp4
+2026-10-25 01:10:10.149752 - [Console 0]: Saving stream history...
+2026-10-25 01:10:10.151116 - [Console 0]: Total frames to save: 301
+2026-10-25 01:10:10.155008 - [Console 0]: Frame size: 1280 x 720
+2026-10-25 01:10:10.155328 - [Console 0]: Saving frame 0 / 301
+2026-10-25 01:10:10.725159 - [Console 0]: Saving frame 100 / 301
+2026-10-25 01:10:11.286456 - [Console 0]: Saving frame 200 / 301
+2026-10-25 01:10:11.850134 - [Console 0]: Saving frame 300 / 301
+2026-10-25 01:10:11.857711 - [Console 0]: Done saving stream history...
+2026-10-25 01:10:12.502366 - [Console 0]: issue_controller_state(): hold = 2000ms
+2026-10-25 01:10:12.859624 - [Console 0]: cancel_all_commands()
+2026-10-25 01:10:13.216430 - [Console 0]: issue_controller_state(): hold = 2000ms
+2026-10-25 01:10:13.526207 - [Console 0]: cancel_all_commands()
+2026-10-25 01:10:14.833009 - [Console 0]: ConvertFrame: Count = 1, Mean = 2.401ms, Stddev = nanms, Min = 2.401ms, Max = 2.401ms
+2026-10-25 01:10:14.833040 - [Console 0]: Saving screenshot to: /Users/difan/Library/Application Support/SerialPrograms/Profiles/sv-isolated-live-20261024/Screenshots/screenshot-20261025-011014833038.png
+2026-10-25 01:10:30.207543 - [Console 0]: Saving screenshot to: /Users/difan/Library/Application Support/SerialPrograms/Profiles/sv-isolated-live-20261024/Screenshots/video-20261025-011030207533.mp4
+2026-10-25 01:10:30.207566 - [Console 0]: Saving stream history...
+2026-10-25 01:10:30.212998 - [Console 0]: Total frames to save: 301
+2026-10-25 01:10:30.216914 - [Console 0]: Frame size: 1280 x 720
+2026-10-25 01:10:30.217325 - [Console 0]: Saving frame 0 / 301
+2026-10-25 01:10:30.794588 - [Console 0]: Saving frame 100 / 301
+2026-10-25 01:10:31.380658 - [Console 0]: Saving frame 200 / 301
+2026-10-25 01:10:31.945142 - [Console 0]: Saving frame 300 / 301
+2026-10-25 01:10:31.953162 - [Console 0]: Done saving stream history...
+2026-10-25 01:10:35.693284 - [Console 0]: issue_controller_state(): hold = 2000ms
+2026-10-25 01:10:35.844768 - [Console 0]: cancel_all_commands()
+2026-10-25 01:10:36.168259 - [Console 0]: issue_controller_state(): hold = 2000ms
+2026-10-25 01:10:36.309401 - [Console 0]: cancel_all_commands()
+2026-10-25 01:10:36.640079 - [Console 0]: issue_controller_state(): hold = 2000ms
+2026-10-25 01:10:36.800809 - [Console 0]: cancel_all_commands()
+2026-10-25 01:10:38.112595 - [Console 0]: ConvertFrame: Count = 1, Mean = 2.006ms, Stddev = nanms, Min = 2.006ms, Max = 2.006ms
+2026-10-25 01:10:38.112625 - [Console 0]: Saving screenshot to: /Users/difan/Library/Application Support/SerialPrograms/Profiles/sv-isolated-live-20261024/Screenshots/screenshot-20261025-011038112623.png
+2026-10-25 01:10:50.267920 - [Console 0]: Saving screenshot to: /Users/difan/Library/Application Support/SerialPrograms/Profiles/sv-isolated-live-20261024/Screenshots/video-20261025-011050267909.mp4
+2026-10-25 01:10:50.267940 - [Console 0]: Saving stream history...
+2026-10-25 01:10:50.271425 - [Console 0]: Total frames to save: 300
+2026-10-25 01:10:50.275473 - [Console 0]: Frame size: 1280 x 720
+2026-10-25 01:10:50.275799 - [Console 0]: Saving frame 0 / 300
+2026-10-25 01:10:50.847740 - [Console 0]: Saving frame 100 / 300
+2026-10-25 01:10:51.423227 - [Console 0]: Saving frame 200 / 300
+2026-10-25 01:10:51.991096 - [Console 0]: Done saving stream history...
+2026-10-25 01:11:03.843483 - [Console 0]: issue_controller_state(): hold = 2000ms
+2026-10-25 01:11:04.008924 - [Console 0]: cancel_all_commands()
+2026-10-25 01:11:04.327589 - [Console 0]: issue_controller_state(): hold = 2000ms
+2026-10-25 01:11:04.491386 - [Console 0]: cancel_all_commands()
+2026-10-25 01:11:05.822624 - [Console 0]: issue_controller_state(): hold = 2000ms
+2026-10-25 01:11:05.988328 - [Console 0]: cancel_all_commands()
+2026-10-25 01:11:08.318972 - [Console 0]: issue_controller_state(): hold = 2000ms
+2026-10-25 01:11:08.488073 - [Console 0]: cancel_all_commands()
+2026-10-25 01:11:08.813201 - [Console 0]: issue_controller_state(): hold = 2000ms
+2026-10-25 01:11:09.765654 - [Console 0]: cancel_all_commands()
+2026-10-25 01:11:10.085437 - [Console 0]: issue_controller_state(): hold = 2000ms
+2026-10-25 01:11:10.339847 - [Console 0]: Saving screenshot to: /Users/difan/Library/Application Support/SerialPrograms/Profiles/sv-isolated-live-20261024/Screenshots/video-20261025-011110339834.mp4
+2026-10-25 01:11:10.339864 - [Console 0]: Saving stream history...
+2026-10-25 01:11:10.341884 - [Console 0]: Total frames to save: 301
+2026-10-25 01:11:10.345938 - [Console 0]: Frame size: 1280 x 720
+2026-10-25 01:11:10.346271 - [Console 0]: Saving frame 0 / 301
+2026-10-25 01:11:10.738080 - [Console 0]: cancel_all_commands()
+2026-10-25 01:11:10.926867 - [Console 0]: Saving frame 100 / 301
+2026-10-25 01:11:11.496461 - [Console 0]: Saving frame 200 / 301
+2026-10-25 01:11:12.224084 - [Console 0]: Saving frame 300 / 301
+2026-10-25 01:11:12.233574 - [Console 0]: Done saving stream history...
+2026-10-25 01:11:12.234476 - [Console 0]: ConvertFrame: Count = 1, Mean = 0.208ms, Stddev = nanms, Min = 0.208ms, Max = 0.208ms
+2026-10-25 01:11:12.234493 - [Console 0]: Saving screenshot to: /Users/difan/Library/Application Support/SerialPrograms/Profiles/sv-isolated-live-20261024/Screenshots/screenshot-20261025-011112234491.png
+2026-10-25 01:11:30.390121 - [Console 0]: Saving screenshot to: /Users/difan/Library/Application Support/SerialPrograms/Profiles/sv-isolated-live-20261024/Screenshots/video-20261025-011130390112.mp4
+2026-10-25 01:11:30.390138 - [Console 0]: Saving stream history...
+2026-10-25 01:11:30.392377 - [Console 0]: Total frames to save: 301
+2026-10-25 01:11:30.396412 - [Console 0]: Frame size: 1280 x 720
+2026-10-25 01:11:30.396739 - [Console 0]: Saving frame 0 / 301
+2026-10-25 01:11:31.124144 - [Console 0]: Saving frame 100 / 301
+2026-10-25 01:11:31.825366 - [Console 0]: Saving frame 200 / 301
+2026-10-25 01:11:32.482686 - [Console 0]: Saving frame 300 / 301
+2026-10-25 01:11:32.488942 - [Console 0]: Done saving stream history...
+2026-10-25 01:11:35.455684 - [Console 0]: issue_controller_state(): hold = 2000ms
+2026-10-25 01:11:35.621026 - [Console 0]: cancel_all_commands()
+2026-10-25 01:11:38.925609 - [Console 0]: ConvertFrame: Count = 1, Mean = 0.198ms, Stddev = nanms, Min = 0.198ms, Max = 0.198ms
+2026-10-25 01:11:38.925634 - [Console 0]: Saving screenshot to: /Users/difan/Library/Application Support/SerialPrograms/Profiles/sv-isolated-live-20261024/Screenshots/screenshot-20261025-011138925632.png
+2026-10-25 01:11:50.455535 - [Console 0]: Saving screenshot to: /Users/difan/Library/Application Support/SerialPrograms/Profiles/sv-isolated-live-20261024/Screenshots/video-20261025-011150455522.mp4
+2026-10-25 01:11:50.455559 - [Console 0]: Saving stream history...
+2026-10-25 01:11:50.457297 - [Console 0]: Total frames to save: 301
+2026-10-25 01:11:50.461306 - [Console 0]: Frame size: 1280 x 720
+2026-10-25 01:11:50.461623 - [Console 0]: Saving frame 0 / 301
+2026-10-25 01:11:51.116194 - [Console 0]: Saving frame 100 / 301
+2026-10-25 01:11:51.738474 - [Console 0]: Saving frame 200 / 301
+2026-10-25 01:11:52.309502 - [Console 0]: Saving frame 300 / 301
+2026-10-25 01:11:52.317058 - [Console 0]: Done saving stream history...
+2026-10-25 01:12:03.561506 - [Console 0]: issue_controller_state(): hold = 2000ms
+2026-10-25 01:12:03.723578 - [Console 0]: cancel_all_commands()
+2026-10-25 01:12:05.054365 - [Console 0]: issue_controller_state(): hold = 2000ms
+2026-10-25 01:12:06.012715 - [Console 0]: cancel_all_commands()
+2026-10-25 01:12:06.330814 - [Console 0]: issue_controller_state(): hold = 2000ms
+2026-10-25 01:12:06.982559 - [Console 0]: cancel_all_commands()
+2026-10-25 01:12:09.276915 - [Console 0]: ConvertFrame: Count = 1, Mean = 0.448ms, Stddev = nanms, Min = 0.448ms, Max = 0.448ms
+2026-10-25 01:12:09.276946 - [Console 0]: Saving screenshot to: /Users/difan/Library/Application Support/SerialPrograms/Profiles/sv-isolated-live-20261024/Screenshots/screenshot-20261025-011209276939.png
+2026-10-25 01:12:10.522172 - [Console 0]: Saving screenshot to: /Users/difan/Library/Application Support/SerialPrograms/Profiles/sv-isolated-live-20261024/Screenshots/video-20261025-011210522162.mp4
+2026-10-25 01:12:10.522191 - [Console 0]: Saving stream history...
+2026-10-25 01:12:10.523222 - [Console 0]: Total frames to save: 301
+2026-10-25 01:12:10.527050 - [Console 0]: Frame size: 1280 x 720
+2026-10-25 01:12:10.527315 - [Console 0]: Saving frame 0 / 301
+2026-10-25 01:12:11.104698 - [Console 0]: Saving frame 100 / 301
+2026-10-25 01:12:11.668936 - [Console 0]: Saving frame 200 / 301
+2026-10-25 01:12:12.280475 - [Console 0]: Saving frame 300 / 301
+2026-10-25 01:12:12.288746 - [Console 0]: Done saving stream history...
+2026-10-25 01:12:30.575053 - [Console 0]: Saving screenshot to: /Users/difan/Library/Application Support/SerialPrograms/Profiles/sv-isolated-live-20261024/Screenshots/video-20261025-011230575045.mp4
+2026-10-25 01:12:30.575069 - [Console 0]: Saving stream history...
+2026-10-25 01:12:30.578012 - [Console 0]: Total frames to save: 301
+2026-10-25 01:12:30.581932 - [Console 0]: Frame size: 1280 x 720
+2026-10-25 01:12:30.582305 - [Console 0]: Saving frame 0 / 301
+2026-10-25 01:12:31.206173 - [Console 0]: Saving frame 100 / 301
+2026-10-25 01:12:31.801073 - [Console 0]: Saving frame 200 / 301
+2026-10-25 01:12:32.394884 - [Console 0]: Saving frame 300 / 301
+2026-10-25 01:12:32.403329 - [Console 0]: Done saving stream history...
+2026-10-25 01:12:34.070382 - [Console 0]: issue_controller_state(): hold = 2000ms
+2026-10-25 01:12:34.139058 - [Console 0]: cancel_all_commands()
+2026-10-25 01:12:34.476143 - [Console 0]: issue_controller_state(): hold = 2000ms
+2026-10-25 01:12:34.497286 - [Console 0]: cancel_all_commands()
+2026-10-25 01:12:34.818487 - [Console 0]: issue_controller_state(): hold = 2000ms
+2026-10-25 01:12:34.982463 - [Console 0]: cancel_all_commands()
+2026-10-25 01:12:37.277605 - [Console 0]: ConvertFrame: Count = 1, Mean = 0.366ms, Stddev = nanms, Min = 0.366ms, Max = 0.366ms
+2026-10-25 01:12:37.277628 - [Console 0]: Saving screenshot to: /Users/difan/Library/Application Support/SerialPrograms/Profiles/sv-isolated-live-20261024/Screenshots/screenshot-20261025-011237277626.png
+2026-10-25 01:12:50.640143 - [Console 0]: Saving screenshot to: /Users/difan/Library/Application Support/SerialPrograms/Profiles/sv-isolated-live-20261024/Screenshots/video-20261025-011250640135.mp4
+2026-10-25 01:12:50.640159 - [Console 0]: Saving stream history...
+2026-10-25 01:12:50.641365 - [Console 0]: Total frames to save: 301
+2026-10-25 01:12:50.645455 - [Console 0]: Frame size: 1280 x 720
+2026-10-25 01:12:50.645749 - [Console 0]: Saving frame 0 / 301
+2026-10-25 01:12:51.239614 - [Console 0]: Saving frame 100 / 301
+2026-10-25 01:12:51.839091 - [Console 0]: Saving frame 200 / 301
+2026-10-25 01:12:52.426963 - [Console 0]: Saving frame 300 / 301
+2026-10-25 01:12:52.435173 - [Console 0]: Done saving stream history...
+2026-10-25 01:12:56.890221 - [Console 0]: issue_controller_state(): hold = 2000ms
+2026-10-25 01:12:57.052416 - [Console 0]: cancel_all_commands()
+2026-10-25 01:12:59.363207 - [Console 0]: ConvertFrame: Count = 1, Mean = 0.197ms, Stddev = nanms, Min = 0.197ms, Max = 0.197ms
+2026-10-25 01:12:59.363232 - [Console 0]: Saving screenshot to: /Users/difan/Library/Application Support/SerialPrograms/Profiles/sv-isolated-live-20261024/Screenshots/screenshot-20261025-011259363231.png
+2026-10-25 01:13:18.935623 - [Console 0]: issue_controller_state(): hold = 2000ms
+2026-10-25 01:13:19.094465 - [Console 0]: cancel_all_commands()
+2026-10-25 01:13:29.391497 - [Console 0]: ConvertFrame: Count = 1, Mean = 0.221ms, Stddev = nanms, Min = 0.221ms, Max = 0.221ms
+2026-10-25 01:13:29.391533 - [Console 0]: Saving screenshot to: /Users/difan/Library/Application Support/SerialPrograms/Profiles/sv-isolated-live-20261024/Screenshots/screenshot-20261025-011329391530.png
+2026-10-25 01:13:47.034614 - [Program]: Received Program Start Request
+2026-10-25 01:13:47.034665 - [Program]: Starting program...
+2026-10-25 01:13:47.034667 - [Program]: Program State: RUNNING
+2026-10-25 01:13:47.034712 - [Global]: Disabling OS sleep...
+2026-10-25 01:13:47.034948 - [Global]: Disabled OS sleep.
+2026-10-25 01:13:47.034982 - [Program]: Loading historical stats...
+2026-10-25 01:13:47.036008 - [Program]: <b>Starting Program: PokemonSV:IsolatedHuntPrototype</b>
+2026-10-25 01:13:47.036277 - [Console 0]: ConvertFrame: Count = 1, Mean = 0.239ms, Stddev = nanms, Min = 0.239ms, Max = 0.239ms
+2026-10-25 01:13:47.036338 - [Console 0]: Connecting controller...
+2026-10-25 01:13:47.037457 - [Console 0]: Current Player Number: Player 1
+2026-10-25 01:13:47.037462 - [Console 0]: Controller player matches required (Player 1). Continuing...
+2026-10-25 01:13:48.088902 - [Console 0]: OverworldWatcher: Count = 22, Mean = 0.514091 ms, Stddev = 0.457022 ms, Min = 0.163 ms, Max = 2.153 ms
+2026-10-25 01:13:48.089021 - [Console 0]: Isolated setup: existing power=1, power budget ms=300000
+2026-10-25 01:13:48.089033 - [Console 0]: Isolated hunt state: re-fly Zero Gate starting anchor
+2026-10-25 01:13:48.089038 - [Console 0]: Isolated stage begin: stage=re-fly Zero Gate starting anchor, timeout ms=90000
+2026-10-25 01:13:48.089070 - [Console 0]: wait_for_all()
+2026-10-25 01:13:48.089094 - [Program]: Loading spectrogram...
+2026-10-25 01:13:48.089316 - [Program]: Loading spectrogram...
+2026-10-25 01:13:49.140777 - [Console 0]: OverworldWatcher: Count = 22, Mean = 0.361227 ms, Stddev = 0.224077 ms, Min = 0.05 ms, Max = 1.224 ms
+2026-10-25 01:13:49.140826 - [Console 0]: NormalBattleMenuWatcher: Count = 22, Mean = 0.036 ms, Stddev = 0.0184494 ms, Min = 0.018 ms, Max = 0.087 ms
+2026-10-25 01:13:49.241079 - [Console 0]: Detected overworld.
+2026-10-25 01:13:49.241128 - [Console 0]: issue_buttons(): Y, delay = 1000ms, hold = 160ms, cooldown = 0ms
+2026-10-25 01:13:49.241136 - [Console 0]: wait_for_all()
+2026-10-25 01:13:52.392853 - [Console 0]: NormalBattleMenuWatcher: Count = 44, Mean = 0.0292273 ms, Stddev = 0.0144478 ms, Min = 0.011 ms, Max = 0.073 ms
+2026-10-25 01:13:52.392886 - [Console 0]: MapWatcher: Count = 44, Mean = 0.0318864 ms, Stddev = 0.0247511 ms, Min = 0.007 ms, Max = 0.103 ms
+2026-10-25 01:13:52.392891 - [Console 0]: PromptDialogWatcher: Count = 44, Mean = 0.00145455 ms, Stddev = 0.00084783 ms, Min = 0.001 ms, Max = 0.004 ms
+2026-10-25 01:13:52.392894 - [Console 0]: AdvanceDialogWatcher: Count = 44, Mean = 0.005 ms, Stddev = 0.00351078 ms, Min = 0.002 ms, Max = 0.02 ms
+2026-10-25 01:13:52.392921 - [Console 0]: OverworldWatcher: Count = 44, Mean = 0.0447273 ms, Stddev = 0.0284363 ms, Min = 0.026 ms, Max = 0.181 ms
+2026-10-25 01:13:52.493955 - [Console 0]: Detected map.
+2026-10-25 01:13:52.493982 - [Console 0]: wait_for_all()
+2026-10-25 01:13:52.494007 - [Console 0]: issue_buttons(): A, delay = 1200ms, hold = 160ms, cooldown = 0ms
+2026-10-25 01:13:52.494015 - [Console 0]: wait_for_all()
+2026-10-25 01:13:53.695532 - [Console 0]: MapDestinationMenuWatcher: Count = 1, Mean = 0.003 ms, Stddev = nan ms, Min = 0.003 ms, Max = 0.003 ms
+2026-10-25 01:13:53.695559 - [Console 0]: MapFlyMenuWatcher: Count = 1, Mean = 0.016 ms, Stddev = nan ms, Min = 0.016 ms, Max = 0.016 ms
+2026-10-25 01:13:53.695564 - [Console 0]: PromptDialogWatcher: Count = 1, Mean = 0.003 ms, Stddev = nan ms, Min = 0.003 ms, Max = 0.003 ms
+2026-10-25 01:13:53.695572 - [Console 0]: WhiteButtonWatcher: Count = 1, Mean = 0.006 ms, Stddev = nan ms, Min = 0.006 ms, Max = 0.006 ms
+2026-10-25 01:13:53.695577 - [Console 0]: OverworldWatcher: Count = 1, Mean = 0.045 ms, Stddev = nan ms, Min = 0.045 ms, Max = 0.045 ms
+2026-10-25 01:13:53.695580 - [Console 0]: NormalBattleMenuWatcher: Count = 1, Mean = 0.016 ms, Stddev = nan ms, Min = 0.016 ms, Max = 0.016 ms
+2026-10-25 01:13:53.796608 - [Console 0]: Detected fly here prompt dialog.
+2026-10-25 01:13:53.796646 - [Console 0]: issue_buttons(): A, delay = 1200ms, hold = 160ms, cooldown = 0ms
+2026-10-25 01:13:53.796655 - [Console 0]: wait_for_all()
+2026-10-25 01:13:55.300117 - [Console 0]: MapDestinationMenuWatcher: Count = 7, Mean = 0.00585714 ms, Stddev = 0.00536745 ms, Min = 0.002 ms, Max = 0.017 ms
+2026-10-25 01:13:55.300145 - [Console 0]: MapFlyMenuWatcher: Count = 7, Mean = 0.00357143 ms, Stddev = 0.0020702 ms, Min = 0.002 ms, Max = 0.007 ms
+2026-10-25 01:13:55.300150 - [Console 0]: PromptDialogWatcher: Count = 7, Mean = 1.39243 ms, Stddev = 0.78642 ms, Min = 0.879 ms, Max = 2.63 ms
+2026-10-25 01:13:55.300155 - [Console 0]: WhiteButtonWatcher: Count = 7, Mean = 0.0145714 ms, Stddev = 0.00907115 ms, Min = 0.007 ms, Max = 0.03 ms
+2026-10-25 01:13:55.300160 - [Console 0]: OverworldWatcher: Count = 7, Mean = 0.0995714 ms, Stddev = 0.110109 ms, Min = 0.031 ms, Max = 0.339 ms
+2026-10-25 01:13:55.300163 - [Console 0]: NormalBattleMenuWatcher: Count = 7, Mean = 0.0282857 ms, Stddev = 0.0128025 ms, Min = 0.017 ms, Max = 0.051 ms
+2026-10-25 01:13:55.401195 - [Console 0]: Detected fly confirmation prompt.
+2026-10-25 01:13:55.401245 - [Console 0]: issue_buttons(): A, delay = 1200ms, hold = 160ms, cooldown = 0ms
+2026-10-25 01:13:55.401254 - [Console 0]: wait_for_all()
+2026-10-25 01:13:57.039600 - [Console 0]: ConvertFrame: Count = 208, Mean = 0.627139ms, Stddev = 0.92218ms, Min = 0.193ms, Max = 6.367ms
+2026-10-25 01:13:59.453779 - [Console 0]: Unable to locate the overworld radar ball, falling back on hard coded location.
+2026-10-25 01:14:00.554065 - [Console 0]: MapDestinationMenuWatcher: Count = 79, Mean = 0.00534177 ms, Stddev = 0.00475526 ms, Min = 0.001 ms, Max = 0.038 ms
+2026-10-25 01:14:00.554089 - [Console 0]: MapFlyMenuWatcher: Count = 80, Mean = 0.0052625 ms, Stddev = 0.00490606 ms, Min = 0.001 ms, Max = 0.034 ms
+2026-10-25 01:14:00.554094 - [Console 0]: PromptDialogWatcher: Count = 80, Mean = 0.0188625 ms, Stddev = 0.0197207 ms, Min = 0.003 ms, Max = 0.078 ms
+2026-10-25 01:14:00.554113 - [Console 0]: WhiteButtonWatcher: Count = 80, Mean = 0.015575 ms, Stddev = 0.0165551 ms, Min = 0.004 ms, Max = 0.115 ms
+2026-10-25 01:14:00.554117 - [Console 0]: OverworldWatcher: Count = 80, Mean = 0.151813 ms, Stddev = 0.207096 ms, Min = 0.031 ms, Max = 1.507 ms
+2026-10-25 01:14:00.554121 - [Console 0]: NormalBattleMenuWatcher: Count = 80, Mean = 0.03785 ms, Stddev = 0.0183876 ms, Min = 0.01 ms, Max = 0.109 ms
+2026-10-25 01:14:00.655146 - [Console 0]: Detected overworld. Fly successful.
+2026-10-25 01:14:00.655208 - [Console 0]: wait_for_all()
+2026-10-25 01:14:00.655248 - [Console 0]: IsolatedStageDeadline: Count = 252, Mean = 0.000547619 ms, Stddev = 0.00160232 ms, Min = 0 ms, Max = 0.02 ms
+2026-10-25 01:14:00.655260 - [Console 0]: SweatBubbleWatcher: Count = 252, Mean = 0.0937817 ms, Stddev = 0.135502 ms, Min = 0.01 ms, Max = 1.226 ms
+2026-10-25 01:14:00.655269 - [Console 0]: NormalBattleMenuWatcher: Count = 252, Mean = 0.118246 ms, Stddev = 0.154447 ms, Min = 0.023 ms, Max = 1.214 ms
+2026-10-25 01:14:00.655290 - [Console 0]: Isolated stage end: stage=re-fly Zero Gate starting anchor, outcome=completed, elapsed ms=12566
+2026-10-25 01:14:00.655298 - [Console 0]: Isolated hunt state: automatic Meal Power verification
+2026-10-25 01:14:00.655307 - [Console 0]: Isolated stage begin: stage=automatic Meal Power verification, timeout ms=120000
+2026-10-25 01:14:00.655366 - [Console 0]: issue_dpad(): right, delay = 1200ms, hold = 160ms, cooldown = 0ms
+2026-10-25 01:14:00.655373 - [Console 0]: wait_for_all()
+2026-10-25 01:14:02.189378 - [Console 0]: Isolated power OCR: 遭遇力：火 Lv.2
+2026-10-25 01:14:02.492572 - [Console 0]: Isolated power OCR: 遭遇力：火 Lv.2
+2026-10-25 01:14:02.798558 - [Console 0]: Isolated power OCR: 遭遇力：火 Lv.2
+2026-10-25 01:14:02.798604 - [Console 0]: issue_buttons(): B, delay = 1200ms, hold = 160ms, cooldown = 0ms
+2026-10-25 01:14:04.499874 - [Console 0]: OverworldWatcher: Count = 35, Mean = 0.218057 ms, Stddev = 0.222606 ms, Min = 0.032 ms, Max = 1.072 ms
+2026-10-25 01:14:04.499930 - [Console 0]: Isolated verification: stage=meal power, method=OCR, type=fire, level=2, accepted=1
+2026-10-25 01:14:04.499938 - [Console 0]: wait_for_all()
+2026-10-25 01:14:04.499956 - [Console 0]: IsolatedStageDeadline: Count = 77, Mean = 0.000181818 ms, Stddev = 0.000388224 ms, Min = 0 ms, Max = 0.001 ms
+2026-10-25 01:14:04.499963 - [Console 0]: SweatBubbleWatcher: Count = 77, Mean = 0.0215195 ms, Stddev = 0.0148099 ms, Min = 0.007 ms, Max = 0.067 ms
+2026-10-25 01:14:04.499968 - [Console 0]: NormalBattleMenuWatcher: Count = 77, Mean = 0.0478312 ms, Stddev = 0.019782 ms, Min = 0.025 ms, Max = 0.117 ms
+2026-10-25 01:14:04.499980 - [Console 0]: Isolated stage end: stage=automatic Meal Power verification, outcome=completed, elapsed ms=3845
+2026-10-25 01:14:04.499986 - [Console 0]: Isolated hunt state: travel to charcadet patch
+2026-10-25 01:14:04.499995 - [Console 0]: Isolated stage begin: stage=travel to charcadet patch, timeout ms=420000
+2026-10-25 01:14:04.500011 - [Console 0]: wait_for_all()
+2026-10-25 01:14:05.550587 - [Console 0]: OverworldWatcher: Count = 22, Mean = 0.263318 ms, Stddev = 0.152598 ms, Min = 0.07 ms, Max = 0.646 ms
+2026-10-25 01:14:05.550611 - [Console 0]: NormalBattleMenuWatcher: Count = 22, Mean = 0.0266818 ms, Stddev = 0.0189922 ms, Min = 0.012 ms, Max = 0.079 ms
+2026-10-25 01:14:05.651639 - [Console 0]: Detected overworld.
+2026-10-25 01:14:05.651686 - [Console 0]: issue_buttons(): Y, delay = 1000ms, hold = 160ms, cooldown = 0ms
+2026-10-25 01:14:05.651694 - [Console 0]: wait_for_all()
+2026-10-25 01:14:07.040260 - [Console 0]: ConvertFrame: Count = 250, Mean = 0.871788ms, Stddev = 1.25606ms, Min = 0.184ms, Max = 5.803ms
+2026-10-25 01:14:08.903514 - [Console 0]: NormalBattleMenuWatcher: Count = 46, Mean = 0.0281087 ms, Stddev = 0.017214 ms, Min = 0.01 ms, Max = 0.08 ms
+2026-10-25 01:14:08.903541 - [Console 0]: MapWatcher: Count = 46, Mean = 0.0343696 ms, Stddev = 0.0245288 ms, Min = 0.006 ms, Max = 0.106 ms
+2026-10-25 01:14:08.903546 - [Console 0]: PromptDialogWatcher: Count = 46, Mean = 0.0016087 ms, Stddev = 0.00106413 ms, Min = 0 ms, Max = 0.004 ms
+2026-10-25 01:14:08.903550 - [Console 0]: AdvanceDialogWatcher: Count = 46, Mean = 0.00667391 ms, Stddev = 0.00476121 ms, Min = 0.003 ms, Max = 0.029 ms
+2026-10-25 01:14:08.903576 - [Console 0]: OverworldWatcher: Count = 46, Mean = 0.054587 ms, Stddev = 0.0299233 ms, Min = 0.03 ms, Max = 0.124 ms
+2026-10-25 01:14:09.004477 - [Console 0]: Detected map.
+2026-10-25 01:14:09.004509 - [Console 0]: Central candidate seek: one zoom out, west 950ms, south 650ms; name verification required.
+2026-10-25 01:14:09.004533 - [Console 0]: issue_buttons(): ZL, delay = 1000ms, hold = 160ms, cooldown = 0ms
+2026-10-25 01:14:09.004585 - [Console 0]: issue_left_joystick(): (-1.000,0.000), delay = 1150ms, hold = 950ms, cooldown = 0ms
+2026-10-25 01:14:09.004601 - [Console 0]: issue_left_joystick(): (0.000,-1.000), delay = 850ms, hold = 650ms, cooldown = 0ms
+2026-10-25 01:14:09.004604 - [Console 0]: wait_for_all()
+2026-10-25 01:14:12.006525 - [Console 0]: wait_for_all()
+2026-10-25 01:14:12.006912 - [Console 0]: MapPokeCenterIconWatcher: Count = 1, Mean = 0.286 ms, Stddev = nan ms, Min = 0.286 ms, Max = 0.286 ms
+2026-10-25 01:14:12.006962 - [Console 0]: Found Pokecenter at box: x=0.580208, y=0.244444, width=0.0182292, height=0.0333333, dist to center 309.8 pixels
+2026-10-25 01:14:12.006967 - [Console 0]: Found Pokecenter at box: x=0.675521, y=0.681481, width=0.01875, height=0.0333333, dist to center 414.513 pixels
+2026-10-25 01:14:12.006971 - [Console 0]: Found Pokecenter at box: x=0.732292, y=0.690741, width=0.01875, height=0.0324074, dist to center 515.023 pixels
+2026-10-25 01:14:12.006975 - [Console 0]: Found Pokecenter at box: x=0.833854, y=0.743519, width=0.01875, height=0.0333333, dist to center 716.409 pixels
+2026-10-25 01:14:12.006978 - [Console 0]: Found closest Pokecenter icon on map: (1131.500000, 282.000000).
+2026-10-25 01:14:12.007002 - [Console 0]: issue_left_joystick(): (0.277,0.416), delay = 960ms, hold = 720ms, cooldown = 0ms
+2026-10-25 01:14:12.007007 - [Console 0]: wait_for_all()
+2026-10-25 01:14:12.974400 - [Console 0]: issue_buttons(): A, delay = 1200ms, hold = 160ms, cooldown = 0ms
+2026-10-25 01:14:13.375579 - [Console 0]: MapFlyMenuWatcher: Count = 9, Mean = 0.00844444 ms, Stddev = 0.00746845 ms, Min = 0.003 ms, Max = 0.023 ms
+2026-10-25 01:14:13.375679 - [Console 0]: issue_buttons(): A, delay = 1200ms, hold = 160ms, cooldown = 0ms
+2026-10-25 01:14:15.527417 - [Console 0]: PromptDialogWatcher: Count = 44, Mean = 0.599023 ms, Stddev = 0.938209 ms, Min = 0.005 ms, Max = 3.37 ms
+2026-10-25 01:14:15.824338 - [Console 0]: Flight destination read: 西第1區：北
+2026-10-25 01:14:15.824369 - [Console 0]: Central flight failed; stopping for inspection.
+2026-10-25 01:14:15.824377 - [Console 0]: wait_for_all()
+2026-10-25 01:14:15.824393 - [Console 0]: IsolatedStageDeadline: Count = 227, Mean = 0.000361233 ms, Stddev = 0.000673056 ms, Min = 0 ms, Max = 0.005 ms
+2026-10-25 01:14:15.824410 - [Console 0]: SweatBubbleWatcher: Count = 227, Mean = 0.0490441 ms, Stddev = 0.0379685 ms, Min = 0.008 ms, Max = 0.233 ms
+2026-10-25 01:14:15.824414 - [Console 0]: NormalBattleMenuWatcher: Count = 227, Mean = 0.0425198 ms, Stddev = 0.0174268 ms, Min = 0.02 ms, Max = 0.112 ms
+2026-10-25 01:14:15.824424 - [Console 0]: Isolated stage end: stage=travel to charcadet patch, outcome=completed, elapsed ms=11324
+2026-10-25 01:14:15.824434 - [Program]: Current Stats: Kills: 0 - Encounters: 0 - Shinies: 0 - Clearing Passes: 0 - Refusals: 0 - Spawn Refreshes: 0 - Sandwiches: 0 - Hunt Seconds: 0
+2026-10-25 01:14:15.824442 - [Console 0]: Isolated result: target=charcadet, stop=travel failed, detected kills=0, rounds=0, encounters=0, refusals=0, refreshes=0, hunt seconds=0, kills/min=0.000000
+2026-10-25 01:14:15.824446 - [Console 0]: Stopped at the current location for inspection; no departure after refusal, policy stop or failure.
+2026-10-25 01:14:15.824453 - [Console 0]: LetsGoHpWatcher: Count = 555, Mean = 0.00718198 ms, Stddev = 0.0070127 ms, Min = 0.002 ms, Max = 0.082 ms
+2026-10-25 01:14:15.824460 - [Console 0]: LetsGoKillSoundDetector: Count = 1,387, Mean = 0.0837253 ms, Stddev = 0.107101 ms, Min = 0 ms, Max = 1.637 ms
+2026-10-25 01:14:15.824467 - [Console 0]: StartBattleYellowBarWatcher: Count = 555, Mean = 0.0106523 ms, Stddev = 0.0349872 ms, Min = 0.003 ms, Max = 0.664 ms
+2026-10-25 01:14:15.824477 - [Console 0]: ShinySoundDetector: Count = 1,387, Mean = 0.210451 ms, Stddev = 0.176987 ms, Min = 0 ms, Max = 1.904 ms
+2026-10-25 01:14:15.824484 - [Console 0]: ShinyScreenshotTracker: Count = 555, Mean = 0.000994595 ms, Stddev = 0.00143385 ms, Min = 0 ms, Max = 0.018 ms
+2026-10-25 01:14:15.824491 - [Program]: Shiny sound not detected. Error Coefficient = 0.999929
+2026-10-25 01:14:15.824639 - [Program]: Let's Go Kill Sound not detected. Error Coefficient = 0.989803
+2026-10-25 01:14:15.824695 - [Program]: EventNotification(Program Finished): Notifications not enabled.
+2026-10-25 01:14:15.824703 - [Console 0]: wait_for_all()
+2026-10-25 01:14:15.824716 - [Program]: Program finished normally!
+2026-10-25 01:14:15.824759 - [Program]: Saving historical stats...
+2026-10-25 01:14:15.825955 - [Program]: Stats successfully saved!
+2026-10-25 01:14:15.825965 - [Program]: Program State: STOPPED
+2026-10-25 01:14:15.826034 - [Global]: Enabled display sleep and OS sleep.
+2026-10-25 01:14:22.086987 - [Console 0]: ConvertFrame: Count = 220, Mean = 0.870482ms, Stddev = 1.14295ms, Min = 0.185ms, Max = 5.897ms
+2026-10-25 01:14:22.087012 - [Console 0]: Saving screenshot to: /Users/difan/Library/Application Support/SerialPrograms/Profiles/sv-isolated-live-20261024/Screenshots/screenshot-20261025-011422087010.png
+2026-10-25 01:16:13.300638 - [Console 0]: issue_controller_state(): hold = 2000ms
+2026-10-25 01:16:13.462882 - [Console 0]: cancel_all_commands()
+2026-10-25 01:16:14.806805 - [Console 0]: issue_controller_state(): hold = 2000ms
+2026-10-25 01:16:14.967634 - [Console 0]: cancel_all_commands()
+2026-10-25 01:16:16.212605 - [stdout]: Saving Settings...
+2026-10-25 01:16:16.223543 - [Global]: Saving panel settings...
+2026-10-25 01:16:16.224088 - [Program]: Shutting down SingleSwitchProgramSession...
+2026-10-25 01:16:16.224106 - [Program]: Shutting down ConsoleProgramSession...
+2026-10-25 01:16:16.224152 - [Console 0]: Shutting down ConsoleSystemSession...
+2026-10-25 01:16:16.376622 - [Console 0]: DeviceHandle::~DeviceHandle(): Waiting for 0 request(s) to finish.
+2026-10-25 01:16:16.501844 - [Console 0]: Shutting down VideoSession...
+2026-10-25 01:16:16.501863 - [Console 0]: Stopping Camera...
+2026-10-25 01:16:16.992754 - [Global]: Enabled display sleep and OS sleep.
+2026-10-25 01:19:34.614800 - [Global]: ================================================================================
+2026-10-25 01:19:34.614803 - [Global]: Starting Program...
+2026-10-25 01:19:34.614826 - [Global]: Current path: /
+2026-10-25 01:19:34.614830 - [Global]: Processor capability set to: Apple M1 (NEON)
+2026-10-25 01:19:34.614855 - [Global]: Executable path: /Users/difan/Projects/Arduino-Source-isolated/build-prep/app/SerialPrograms.app/Contents/MacOS
+2026-10-25 01:19:34.614859 - [Global]: Program setting folder: /Users/difan/Library/Application Support/SerialPrograms/Profiles/sv-isolated-live-20261024/UserSettings/
+2026-10-25 01:19:34.614860 - [Global]: Program resources folder: /Users/difan/Projects/Arduino-Source-isolated/build-prep/app/Resources/
+2026-10-25 01:19:34.614903 - [Global]: Found Resource folder at /Users/difan/Projects/Arduino-Source-isolated/build-prep/app/Resources/
+2026-10-25 01:19:34.614939 - [Global]: Thread priority set to: Min Priority
+2026-10-25 01:19:34.615357 - [Global]: ActionState::READY
+2026-10-25 01:19:34.615367 - [Global]: ActionState::READY
+2026-10-25 01:19:34.615373 - [Global]: ActionState::READY
+2026-10-25 01:19:34.615523 - [Global]: LifeTime Sanitizer: Enabled
+2026-10-25 01:19:34.615584 - [Global]: Processor String: Apple M2 Pro
+2026-10-25 01:19:34.615588 - [Global]: Processor string matches. Using stored processor level.
+2026-10-25 01:19:34.615590 - [Global]: Processor capability set to: Apple M1 (NEON)
+2026-10-25 01:19:34.615627 - [Global]: Thread priority set to: Max Priority
+2026-10-25 01:19:34.615663 - [Global]: Thread priority set to: Min Priority
+2026-10-25 01:19:34.616648 - [Global]: Serial Port Added: cu.Bluetooth-Incoming-Port
+2026-10-25 01:19:34.616655 - [Global]: Serial Port Added: cu.debug-console
+2026-10-25 01:19:34.616656 - [Global]: Serial Port Added: cu.usbmodem5C630032771
+2026-10-25 01:19:34.616657 - [Global]: Serial Port Added: tty.Bluetooth-Incoming-Port
+2026-10-25 01:19:34.616658 - [Global]: Serial Port Added: tty.debug-console
+2026-10-25 01:19:34.616659 - [Global]: Serial Port Added: tty.usbmodem5C630032771
+2026-10-25 01:19:34.616660 - [Global]: Serial port refresh took 0 ms. Further updates shorter than this will be suppressed.
+2026-10-25 01:19:34.791436 - [Global]: Checking for new version...
+2026-10-25 01:19:34.791443 - [Global]: Thread priority set to: Min Priority
+2026-10-25 01:19:34.791457 - [Global]: Start refreshing camera list...
+2026-10-25 01:19:34.791475 - [Global]: Done refreshing camera list... 0.000 seconds
+2026-10-25 01:19:35.375432 - [Global]: Thread priority set to: Min Priority
+2026-10-25 01:19:35.524584 - [Program]: Loading historical stats...
+2026-10-25 01:19:35.525040 - [Console 0]: Changing video...
+2026-10-25 01:19:35.525049 - [Global]: Thread priority set to: Min Priority
+2026-10-25 01:19:35.525356 - [Console 0]: AudioSession::reset()
+2026-10-25 01:19:35.525397 - [Console 0]: Starting stream history...
+2026-10-25 01:19:35.525395 - [Global]: Thread priority set to: Min Priority
+2026-10-25 01:19:35.525444 - [Global]: Thread priority set to: Min Priority
+2026-10-25 01:19:35.525629 - [Global]: DictionaryOCR - Tokens: 7, Match Candidates: 10
+2026-10-25 01:19:35.525639 - [Global]: DictionaryOCR - Tokens: 7, Match Candidates: 8
+2026-10-25 01:19:35.525650 - [Global]: DictionaryOCR - Tokens: 7, Match Candidates: 7
+2026-10-25 01:19:35.525657 - [Global]: DictionaryOCR - Tokens: 7, Match Candidates: 7
+2026-10-25 01:19:35.525665 - [Global]: DictionaryOCR - Tokens: 7, Match Candidates: 7
+2026-10-25 01:19:35.525672 - [Global]: DictionaryOCR - Tokens: 7, Match Candidates: 7
+2026-10-25 01:19:35.525681 - [Global]: DictionaryOCR - Tokens: 7, Match Candidates: 7
+2026-10-25 01:19:35.525698 - [Global]: DictionaryOCR - Tokens: 7, Match Candidates: 7
+2026-10-25 01:19:35.525709 - [Global]: DictionaryOCR - Tokens: 7, Match Candidates: 7
+2026-10-25 01:19:35.562329 - [Global]: MacBook Pro Microphone
+2026-10-25 01:19:35.562351 - [Global]: USB Digital Audio
+2026-10-25 01:19:35.562360 - [Global]: Done querying audio inputs... 0.007 seconds
+2026-10-25 01:19:35.562371 - [Global]: MacBook Pro Microphone
+2026-10-25 01:19:35.562376 - [Global]: USB Digital Audio
+2026-10-25 01:19:35.562380 - [Global]: Done querying audio inputs... 0.000 seconds
+2026-10-25 01:19:35.562384 - [Global]: MacBook Pro Speakers
+2026-10-25 01:19:35.562388 - [Global]: BenQ RD320UA
+2026-10-25 01:19:35.562408 - [Console 0]: Changing video...
+2026-10-25 01:19:35.562412 - [Console 0]: Clearing stream history...
+2026-10-25 01:19:35.562427 - [Console 0]: Starting Camera: Backend = CameraQt65QMediaCaptureSession
+2026-10-25 01:19:35.562433 - [Console 0]: Camera: USB Video
+2026-10-25 01:19:35.562447 - [Console 0]: Resolution: 1920 x 1080, Format: NV12, FPS: 60
+2026-10-25 01:19:35.706140 - [Console 0]: Starting stream history...
+2026-10-25 01:19:35.706166 - [Console 0]: Clearing stream history...
+2026-10-25 01:19:35.706197 - [Console 0]: Starting stream history...
+2026-10-25 01:19:35.706249 - [Console 0]: AudioInputDevice(): sample format Int16, bytes per sample 2, channel config Mono, num channels 1, sample rate 96000
+2026-10-25 01:19:35.706266 - [Global]: Thread priority set to: Min Priority
+2026-10-25 01:19:35.706274 - [Console 0]: Opening serial port...
+2026-10-25 01:19:35.710009 - [Global]: Thread priority set to: Max Priority
+2026-10-25 01:19:35.710014 - [Console 0]: Opening up reliable channel...
+2026-10-25 01:19:35.710062 - [Console 0]: Connecting...
+2026-10-25 01:19:35.710073 - [Global]: Thread priority set to: Max Priority
+2026-10-25 01:19:35.717660 - [Global]: MacBook Pro Microphone
+2026-10-25 01:19:35.717675 - [Global]: USB Digital Audio
+2026-10-25 01:19:35.717682 - [Global]: Done querying audio inputs... 0.000 seconds
+2026-10-25 01:19:35.717710 - [Global]: MacBook Pro Speakers
+2026-10-25 01:19:35.717717 - [Global]: BenQ RD320UA
+2026-10-25 01:19:35.761140 - [Console 0]: DTR = 1, RTS = 1
+2026-10-25 01:19:35.761158 - [Console 0]: Trying baud 921,600 (with session ID)...
+2026-10-25 01:19:35.763067 - [Console 0]: Session ID: 0x8f6b3c28
+2026-10-25 01:19:35.763085 - [Console 0]: [RSC]: Sending: (0x1) PABB2_CONNECTION_OPCODE_ASK_RESET: seqnum = 0
+2026-10-25 01:19:35.764034 - [Console 0]: [RSC]: Sending: (0x2) PABB2_CONNECTION_OPCODE_ASK_VERSION: seqnum = 1
+2026-10-25 01:19:35.764633 - [Console 0]: [RSC]: Remote Protocol: 2026061800 (compatible)
+2026-10-25 01:19:35.764671 - [Console 0]: [RSC]: Sending: (0x3) PABB2_CONNECTION_OPCODE_ASK_PACKET_SIZE: seqnum = 2
+2026-10-25 01:19:35.765283 - [Console 0]: [RSC]: Setting Packet Size: 64 bytes
+2026-10-25 01:19:35.765306 - [Console 0]: [RSC]: Sending: (0x4) PABB2_CONNECTION_OPCODE_ASK_BUFFER_SLOTS: seqnum = 3
+2026-10-25 01:19:35.765873 - [Console 0]: [RSC]: Setting Reorder Window: 128 slots
+2026-10-25 01:19:35.765889 - [Console 0]: Querying device...
+2026-10-25 01:19:35.765914 - [Console 0]: [MLC]: Sending: (0x20) PABB2_MESSAGE_OPCODE_PROTOCOL_VERSION: id = 0
+2026-10-25 01:19:35.766820 - [Console 0]: [MLC]: Sending: (0x22) PABB2_MESSAGE_OPCODE_DEVICE_IDENTIFIER: id = 1
+2026-10-25 01:19:35.768009 - [Console 0]: [MLC]: Device ID: 0x12
+2026-10-25 01:19:35.768017 - [Console 0]: [MLC]: Remote Protocol: 2026061803 (compatible)
+2026-10-25 01:19:35.768020 - [Console 0]: [MLC]: Sending: (0x21) PABB2_MESSAGE_OPCODE_FIRMWARE_VERSION: id = 2
+2026-10-25 01:19:35.769002 - [Console 0]: [MLC]: Firmware Version: 2026070400
+2026-10-25 01:19:35.769011 - [Console 0]: [MLC]: Sending: (0x23) PABB2_MESSAGE_OPCODE_DEVICE_NAME: id = 3
+2026-10-25 01:19:35.770314 - [Console 0]: [MLC]: Device Name: PABotBase2-ESP32-S3
+2026-10-25 01:19:35.770323 - [Console 0]: [MLC]: Sending: (0x25) PABB2_MESSAGE_OPCODE_SET_LOGGING_FLAG: id = 0, flag = 0
+2026-10-25 01:19:35.770330 - [Console 0]: [MLC]: Sending: (0x24) PABB2_MESSAGE_OPCODE_CONTROLLER_LIST: id = 4
+2026-10-25 01:19:35.772153 - [Console 0]: Checking Controller List... (0x0, 0x100, 0x1000, 0x1010, 0x1100, 0x1101, 0x1102)
+2026-10-25 01:19:35.772161 - [Console 0]: [MLC]: Sending: (0x26) PABB2_MESSAGE_OPCODE_CQ_CAPACITY: id = 5
+2026-10-25 01:19:35.773198 - [Console 0]: [MLC]: Command Queue Size: 255
+2026-10-25 01:19:35.773206 - [Console 0]: Setting queue size to: 64
+2026-10-25 01:19:35.773233 - [Console 0]: Reading Controller Mode...
+2026-10-25 01:19:35.773240 - [Console 0]: [MLC]: Sending: (0x32) PABB2_MESSAGE_OPCODE_READ_CONTROLLER_MODE: id = 6
+2026-10-25 01:19:35.774191 - [Console 0]: Reading Controller Mode... Mode = NS1: Wired Pro Controller
+2026-10-25 01:19:35.774198 - [Console 0]: Reading Controller Mode...
+2026-10-25 01:19:35.774201 - [Console 0]: [MLC]: Sending: (0x32) PABB2_MESSAGE_OPCODE_READ_CONTROLLER_MODE: id = 7
+2026-10-25 01:19:35.775174 - [Console 0]: Reading Controller Mode... Mode = NS1: Wired Pro Controller
+2026-10-25 01:19:35.775897 - [Console 0]: Reading Controller Colors...
+2026-10-25 01:19:35.775905 - [Console 0]: [MLC]: Sending: (0x91) PABB2_MESSAGE_REQ_NS1_OEM_CONTROLLER_READ_SPI: id = 8, controller_type = 4352, address = 0x6050, bytes = 12
+2026-10-25 01:19:35.775908 - [Global]: Thread priority set to: Min Priority
+2026-10-25 01:19:35.777065 - [Console 0]: Reading Controller Colors... Done
+2026-10-25 01:19:35.795098 - [Console 0]: Done starting audio... 0.088 seconds
+2026-10-25 01:19:35.795147 - [Console 0]: Initializing ChannelMixer: 2 -> 1 x 48,000 Hz
+2026-10-25 01:19:35.795254 - [Console 0]: Initializing AudioResampler: 48,000 -> 96,000 Hz, channels = 1
+2026-10-25 01:19:35.795260 - [Console 0]: WorkingAudio2WorkingAudio: Nodes = 2
+2026-10-25 01:19:35.795269 - [Console 0]: Initializing ChannelMixer: 2 -> 1 x 48,000 Hz
+2026-10-25 01:19:35.795270 - [Console 0]: WorkingAudio2WorkingAudio: Nodes = 1
+2026-10-25 01:19:35.996998 - [stdout]: Checking MacOS Permissions...
+2026-10-25 01:19:35.997048 - [stdout]: Camera permission granted
+2026-10-25 01:19:35.997069 - [stdout]: Microphone permission granted
+2026-10-25 01:19:39.625525 - [Global]: Serial port refresh took 0 ms. Further updates shorter than this will be suppressed.
+2026-10-25 01:19:50.642375 - [Global]: Serial port refresh took 1 ms. Further updates shorter than this will be suppressed.
+2026-10-25 01:19:55.651817 - [Global]: Serial port refresh took 1 ms. Further updates shorter than this will be suppressed.
+2026-10-25 01:19:56.654472 - [Global]: Serial port refresh took 1 ms. Further updates shorter than this will be suppressed.
+2026-10-25 01:19:57.656259 - [Global]: Serial port refresh took 1 ms. Further updates shorter than this will be suppressed.
+2026-10-25 01:20:03.666407 - [Global]: Serial port refresh took 1 ms. Further updates shorter than this will be suppressed.
+2026-10-25 01:20:13.252590 - [Global]: Thread priority set to: Max Priority
+2026-10-25 01:20:13.556481 - [Console 0]: issue_controller_state(): hold = 2000ms
+2026-10-25 01:20:13.718070 - [Console 0]: cancel_all_commands()
+2026-10-25 01:20:16.030213 - [Console 0]: ConvertFrame: Count = 1, Mean = 0.199ms, Stddev = nanms, Min = 0.199ms, Max = 0.199ms
+2026-10-25 01:20:16.030238 - [Console 0]: Saving screenshot to: /Users/difan/Library/Application Support/SerialPrograms/Profiles/sv-isolated-live-20261024/Screenshots/screenshot-20261025-012016030237.png
+2026-10-25 01:20:39.347324 - [Console 0]: issue_controller_state(): hold = 2000ms
+2026-10-25 01:20:39.491362 - [Console 0]: cancel_all_commands()
+2026-10-25 01:20:39.815203 - [Console 0]: issue_controller_state(): hold = 2000ms
+2026-10-25 01:20:40.124407 - [Console 0]: cancel_all_commands()
+2026-10-25 01:20:40.449121 - [Console 0]: issue_controller_state(): hold = 2000ms
+2026-10-25 01:20:40.607812 - [Console 0]: cancel_all_commands()
+2026-10-25 01:20:42.923646 - [Console 0]: ConvertFrame: Count = 1, Mean = 0.237ms, Stddev = nanms, Min = 0.237ms, Max = 0.237ms
+2026-10-25 01:20:42.923673 - [Console 0]: Saving screenshot to: /Users/difan/Library/Application Support/SerialPrograms/Profiles/sv-isolated-live-20261024/Screenshots/screenshot-20261025-012042923671.png
+2026-10-25 01:21:11.989522 - [Console 0]: issue_controller_state(): hold = 2000ms
+2026-10-25 01:21:12.153478 - [Console 0]: cancel_all_commands()
+2026-10-25 01:21:13.776728 - [Global]: Serial port refresh took 1 ms. Further updates shorter than this will be suppressed.
+2026-10-25 01:21:14.489426 - [Console 0]: issue_controller_state(): hold = 2000ms
+2026-10-25 01:21:14.654270 - [Console 0]: cancel_all_commands()
+2026-10-25 01:21:24.951812 - [Console 0]: ConvertFrame: Count = 1, Mean = 0.204ms, Stddev = nanms, Min = 0.204ms, Max = 0.204ms
+2026-10-25 01:21:24.951839 - [Console 0]: Saving screenshot to: /Users/difan/Library/Application Support/SerialPrograms/Profiles/sv-isolated-live-20261024/Screenshots/screenshot-20261025-012124951837.png
+2026-10-25 01:22:03.751243 - [Program]: Received Program Start Request
+2026-10-25 01:22:03.751273 - [Program]: Starting program...
+2026-10-25 01:22:03.751275 - [Program]: Program State: RUNNING
+2026-10-25 01:22:03.751310 - [Global]: Thread priority set to: Max Priority
+2026-10-25 01:22:03.751319 - [Global]: Disabling OS sleep...
+2026-10-25 01:22:03.751789 - [Global]: Disabled OS sleep.
+2026-10-25 01:22:03.751807 - [Program]: Loading historical stats...
+2026-10-25 01:22:03.752130 - [Program]: <b>Starting Program: PokemonSV:IsolatedHuntPrototype</b>
+2026-10-25 01:22:03.752378 - [Console 0]: ConvertFrame: Count = 1, Mean = 0.227ms, Stddev = nanms, Min = 0.227ms, Max = 0.227ms
+2026-10-25 01:22:03.752434 - [Console 0]: Connecting controller...
+2026-10-25 01:22:03.753587 - [Console 0]: Current Player Number: Player 1
+2026-10-25 01:22:03.753592 - [Console 0]: Controller player matches required (Player 1). Continuing...
+2026-10-25 01:22:03.753671 - [Global]: Thread priority set to: Min Priority
+2026-10-25 01:22:03.804745 - [Global]: Thread priority set to: Min Priority
+2026-10-25 01:22:04.856161 - [Console 0]: OverworldWatcher: Count = 23, Mean = 0.853826 ms, Stddev = 0.642281 ms, Min = 0.245 ms, Max = 2.532 ms
+2026-10-25 01:22:04.857442 - [Global]: Serial port refresh took 2 ms. Further updates shorter than this will be suppressed.
+2026-10-25 01:22:05.080750 - [Global]: Thread priority set to: Min Priority
+2026-10-25 01:22:05.080776 - [Console 0]: Isolated setup: existing power=1, power budget ms=300000
+2026-10-25 01:22:05.080790 - [Console 0]: Isolated hunt state: automatic Meal Power verification
+2026-10-25 01:22:05.080792 - [Program]: Loading spectrogram...
+2026-10-25 01:22:05.080794 - [Console 0]: Isolated stage begin: stage=automatic Meal Power verification, timeout ms=120000
+2026-10-25 01:22:05.081077 - [stdout]: Initialize WavFile on /Users/difan/Projects/Arduino-Source-isolated/build-prep/app/Resources/PokemonSV/LetsGoKill-48000.wav
+2026-10-25 01:22:05.081324 - [stdout]: Wav file audio format: sample format Int16, bytes per sample 2, channel config Unknown, num channels 2, sample rate 48000
+2026-10-25 01:22:05.081333 - [Console 0]: issue_dpad(): right, delay = 1200ms, hold = 160ms, cooldown = 0ms
+2026-10-25 01:22:05.081339 - [Console 0]: wait_for_all()
+2026-10-25 01:22:05.081699 - [Global]: Built audio template with sample rate 48000, 53 windows and 1024 frequencies from /Users/difan/Projects/Arduino-Source-isolated/build-prep/app/Resources/PokemonSV/LetsGoKill-48000.wav
+2026-10-25 01:22:05.081821 - [Program]: Loading spectrogram...
+2026-10-25 01:22:05.096386 - [stdout]: Start audio decoder.
+2026-10-25 01:22:05.099361 - [Global]: Built audio template with sample rate 48000, 192 windows and 1024 frequencies from /Users/difan/Projects/Arduino-Source-isolated/build-prep/app/Resources/PokemonSV/ShinySound-48000.mp3
+2026-10-25 01:22:06.922060 - [Global]: Creating Ort::session from model /Users/difan/Projects/Arduino-Source-isolated/build-prep/app/Resources/PaddleOCR/chinese/rec.onnx
+2026-10-25 01:22:06.922075 - [Global]: Creating dedicated CPU-only session...
+2026-10-25 01:22:06.923436 - [stdout]: Set potential model cache path in session options: /Users/difan/Library/Application Support/SerialPrograms/Profiles/sv-isolated-live-20261024/ModelCache/PaddleOCRPipeline/
+2026-10-25 01:22:06.923689 - [Global]: Setting ONNX Intra-Op Threads: 8
+2026-10-25 01:22:06.923694 - [Global]: Setting ONNX Inter-Op Threads: 0
+2026-10-25 01:22:07.066563 - [Global]: Ort::Session created
+2026-10-25 01:22:07.148330 - [Global]: Creating Ort::session from model /Users/difan/Projects/Arduino-Source-isolated/build-prep/app/Resources/PaddleOCR/english/rec.onnx
+2026-10-25 01:22:07.148349 - [Global]: Creating dedicated CPU-only session...
+2026-10-25 01:22:07.148359 - [stdout]: Set potential model cache path in session options: /Users/difan/Library/Application Support/SerialPrograms/Profiles/sv-isolated-live-20261024/ModelCache/PaddleOCRPipeline/
+2026-10-25 01:22:07.187518 - [Global]: Ort::Session created
+2026-10-25 01:22:07.199585 - [Console 0]: Isolated power OCR: 遭遇力：火 Lv. 2
+2026-10-25 01:22:07.502127 - [Console 0]: Isolated power OCR: 遭遇力：火 Lv. 2
+2026-10-25 01:22:07.804736 - [Console 0]: Isolated power OCR: 遭遇力：火 Lv. 2
+2026-10-25 01:22:07.804777 - [Console 0]: issue_buttons(): B, delay = 1200ms, hold = 160ms, cooldown = 0ms
+2026-10-25 01:22:09.557066 - [Console 0]: OverworldWatcher: Count = 36, Mean = 0.300583 ms, Stddev = 0.295637 ms, Min = 0.036 ms, Max = 1.184 ms
+2026-10-25 01:22:09.557157 - [Console 0]: Isolated verification: stage=meal power, method=OCR, type=fire, level=2, accepted=1
+2026-10-25 01:22:09.557166 - [Console 0]: wait_for_all()
+2026-10-25 01:22:09.557181 - [Console 0]: IsolatedStageDeadline: Count = 89, Mean = 0.000730337 ms, Stddev = 0.00202127 ms, Min = 0 ms, Max = 0.014 ms
+2026-10-25 01:22:09.557190 - [Console 0]: SweatBubbleWatcher: Count = 89, Mean = 0.0525281 ms, Stddev = 0.0598082 ms, Min = 0.009 ms, Max = 0.375 ms
+2026-10-25 01:22:09.557197 - [Console 0]: NormalBattleMenuWatcher: Count = 89, Mean = 0.0826517 ms, Stddev = 0.0573692 ms, Min = 0.018 ms, Max = 0.404 ms
+2026-10-25 01:22:09.557214 - [Console 0]: Isolated stage end: stage=automatic Meal Power verification, outcome=completed, elapsed ms=4477
+2026-10-25 01:22:09.557220 - [Console 0]: Isolated hunt state: travel to charcadet patch
+2026-10-25 01:22:09.557227 - [Console 0]: Isolated stage begin: stage=travel to charcadet patch, timeout ms=420000
+2026-10-25 01:22:09.557304 - [Console 0]: wait_for_all()
+2026-10-25 01:22:10.609024 - [Console 0]: OverworldWatcher: Count = 22, Mean = 0.443 ms, Stddev = 0.354389 ms, Min = 0.123 ms, Max = 1.455 ms
+2026-10-25 01:22:10.609066 - [Console 0]: NormalBattleMenuWatcher: Count = 22, Mean = 0.0436818 ms, Stddev = 0.0464034 ms, Min = 0.014 ms, Max = 0.236 ms
+2026-10-25 01:22:10.709809 - [Console 0]: Detected overworld.
+2026-10-25 01:22:10.709853 - [Console 0]: issue_buttons(): Y, delay = 1000ms, hold = 160ms, cooldown = 0ms
+2026-10-25 01:22:10.709897 - [Console 0]: wait_for_all()
+2026-10-25 01:22:13.758718 - [Console 0]: ConvertFrame: Count = 227, Mean = 0.857009ms, Stddev = 1.11112ms, Min = 0.197ms, Max = 7.162ms
+2026-10-25 01:22:14.011800 - [Console 0]: NormalBattleMenuWatcher: Count = 47, Mean = 0.0322979 ms, Stddev = 0.0187894 ms, Min = 0.012 ms, Max = 0.093 ms
+2026-10-25 01:22:14.011827 - [Console 0]: MapWatcher: Count = 47, Mean = 0.0600851 ms, Stddev = 0.182922 ms, Min = 0.005 ms, Max = 1.275 ms
+2026-10-25 01:22:14.011833 - [Console 0]: PromptDialogWatcher: Count = 47, Mean = 0.00168085 ms, Stddev = 0.00104479 ms, Min = 0 ms, Max = 0.004 ms
+2026-10-25 01:22:14.011838 - [Console 0]: AdvanceDialogWatcher: Count = 47, Mean = 0.00655319 ms, Stddev = 0.00327579 ms, Min = 0.003 ms, Max = 0.015 ms
+2026-10-25 01:22:14.011841 - [Console 0]: OverworldWatcher: Count = 47, Mean = 0.0523191 ms, Stddev = 0.0303237 ms, Min = 0.029 ms, Max = 0.169 ms
+2026-10-25 01:22:14.112879 - [Console 0]: Detected map.
+2026-10-25 01:22:14.112971 - [Console 0]: issue_left_joystick(): (-1.000,0.000), delay = 360ms, hold = 160ms, cooldown = 0ms
+2026-10-25 01:22:14.113033 - [Console 0]: wait_for_all()
+2026-10-25 01:22:14.474398 - [Console 0]: wait_for_all()
+2026-10-25 01:22:16.475676 - [Console 0]: MapPokeCenterIconWatcher: Count = 40, Mean = 0.422375 ms, Stddev = 0.278819 ms, Min = 0.235 ms, Max = 1.846 ms
+2026-10-25 01:22:16.475749 - [Console 0]: No visible Pokecenter found on map
+2026-10-25 01:22:16.475763 - [Console 0]: wait_for_all()
+2026-10-25 01:22:16.475779 - [Console 0]: IsolatedStageDeadline: Count = 139, Mean = 0.000453237 ms, Stddev = 0.000661827 ms, Min = 0 ms, Max = 0.005 ms
+2026-10-25 01:22:16.475787 - [Console 0]: SweatBubbleWatcher: Count = 139, Mean = 0.0778777 ms, Stddev = 0.101068 ms, Min = 0.011 ms, Max = 0.723 ms
+2026-10-25 01:22:16.475794 - [Console 0]: NormalBattleMenuWatcher: Count = 139, Mean = 0.0759424 ms, Stddev = 0.084538 ms, Min = 0.026 ms, Max = 0.763 ms
+2026-10-25 01:22:16.475804 - [Console 0]: Isolated stage end: stage=travel to charcadet patch, outcome=completed, elapsed ms=6919
+2026-10-25 01:22:16.475821 - [Program]: Current Stats: Kills: 0 - Encounters: 0 - Shinies: 0 - Clearing Passes: 0 - Refusals: 0 - Spawn Refreshes: 0 - Sandwiches: 0 - Hunt Seconds: 0
+2026-10-25 01:22:16.475833 - [Console 0]: Isolated result: target=charcadet, stop=travel failed, detected kills=0, rounds=0, encounters=0, refusals=0, refreshes=0, hunt seconds=0, kills/min=0.000000
+2026-10-25 01:22:16.475839 - [Console 0]: Stopped at the current location for inspection; no departure after refusal, policy stop or failure.
+2026-10-25 01:22:16.475846 - [Console 0]: LetsGoHpWatcher: Count = 226, Mean = 0.00836726 ms, Stddev = 0.0116902 ms, Min = 0.002 ms, Max = 0.119 ms
+2026-10-25 01:22:16.475857 - [Console 0]: LetsGoKillSoundDetector: Count = 570, Mean = 0.0830474 ms, Stddev = 0.0823129 ms, Min = 0 ms, Max = 1.027 ms
+2026-10-25 01:22:16.475863 - [Console 0]: StartBattleYellowBarWatcher: Count = 226, Mean = 0.00856195 ms, Stddev = 0.00953488 ms, Min = 0.003 ms, Max = 0.124 ms
+2026-10-25 01:22:16.475869 - [Console 0]: ShinySoundDetector: Count = 570, Mean = 0.2627 ms, Stddev = 0.775048 ms, Min = 0 ms, Max = 17.823 ms
+2026-10-25 01:22:16.475875 - [Console 0]: ShinyScreenshotTracker: Count = 226, Mean = 0.000969027 ms, Stddev = 0.00200752 ms, Min = 0 ms, Max = 0.025 ms
+2026-10-25 01:22:16.475888 - [Program]: Shiny sound not detected. Error Coefficient = 0.999858
+2026-10-25 01:22:16.476199 - [Program]: Let's Go Kill Sound not detected. Error Coefficient = 0.987715
+2026-10-25 01:22:16.476348 - [Program]: EventNotification(Program Finished): Notifications not enabled.
+2026-10-25 01:22:16.476362 - [Console 0]: wait_for_all()
+2026-10-25 01:22:16.476371 - [Program]: Program finished normally!
+2026-10-25 01:22:16.476424 - [Program]: Saving historical stats...
+2026-10-25 01:22:16.477288 - [Program]: Stats successfully saved!
+2026-10-25 01:22:16.477299 - [Program]: Program State: STOPPED
+2026-10-25 01:22:16.477424 - [Global]: Enabled display sleep and OS sleep.
+2026-10-25 01:22:18.531864 - [Console 0]: Saving screenshot to: /Users/difan/Library/Application Support/SerialPrograms/Profiles/sv-isolated-live-20261024/Screenshots/video-20261025-012218531855.mp4
+2026-10-25 01:22:18.531880 - [Console 0]: Saving stream history...
+2026-10-25 01:22:18.535358 - [Console 0]: Total frames to save: 301
+2026-10-25 01:22:18.542397 - [Console 0]: Frame size: 1280 x 720
+2026-10-25 01:22:18.558211 - [Console 0]: Saving frame 0 / 301
+2026-10-25 01:22:19.303202 - [Console 0]: Saving frame 100 / 301
+2026-10-25 01:22:20.026874 - [Console 0]: Saving frame 200 / 301
+2026-10-25 01:22:20.665067 - [Console 0]: Saving frame 300 / 301
+2026-10-25 01:22:20.672889 - [Console 0]: Done saving stream history...
+2026-10-25 01:22:25.824707 - [Console 0]: ConvertFrame: Count = 69, Mean = 0.991203ms, Stddev = 1.24689ms, Min = 0.203ms, Max = 5.621ms
+2026-10-25 01:22:25.824735 - [Console 0]: Saving screenshot to: /Users/difan/Library/Application Support/SerialPrograms/Profiles/sv-isolated-live-20261024/Screenshots/screenshot-20261025-012225824733.png
+2026-10-25 01:22:38.583236 - [Console 0]: Saving screenshot to: /Users/difan/Library/Application Support/SerialPrograms/Profiles/sv-isolated-live-20261024/Screenshots/video-20261025-012238583221.mp4
+2026-10-25 01:22:38.583254 - [Console 0]: Saving stream history...
+2026-10-25 01:22:38.584638 - [Console 0]: Total frames to save: 300
+2026-10-25 01:22:38.588852 - [Console 0]: Frame size: 1280 x 720
+2026-10-25 01:22:38.589175 - [Console 0]: Saving frame 0 / 300
+2026-10-25 01:22:39.231338 - [Console 0]: Saving frame 100 / 300
+2026-10-25 01:22:39.797460 - [Console 0]: Saving frame 200 / 300
+2026-10-25 01:22:40.357152 - [Console 0]: Done saving stream history...
+2026-10-25 01:22:58.649745 - [Console 0]: Saving screenshot to: /Users/difan/Library/Application Support/SerialPrograms/Profiles/sv-isolated-live-20261024/Screenshots/video-20261025-012258649736.mp4
+2026-10-25 01:22:58.649765 - [Console 0]: Saving stream history...
+2026-10-25 01:22:58.650830 - [Console 0]: Total frames to save: 300
+2026-10-25 01:22:58.654612 - [Console 0]: Frame size: 1280 x 720
+2026-10-25 01:22:58.654933 - [Console 0]: Saving frame 0 / 300
+2026-10-25 01:22:59.225236 - [Console 0]: Saving frame 100 / 300
+2026-10-25 01:22:59.788285 - [Console 0]: Saving frame 200 / 300
+2026-10-25 01:23:00.354705 - [Console 0]: Done saving stream history...
+2026-10-25 01:23:18.714597 - [Console 0]: Saving screenshot to: /Users/difan/Library/Application Support/SerialPrograms/Profiles/sv-isolated-live-20261024/Screenshots/video-20261025-012318714587.mp4
+2026-10-25 01:23:18.714617 - [Console 0]: Saving stream history...
+2026-10-25 01:23:18.715479 - [Console 0]: Total frames to save: 301
+2026-10-25 01:23:18.719958 - [Console 0]: Frame size: 1280 x 720
+2026-10-25 01:23:18.720265 - [Console 0]: Saving frame 0 / 301
+2026-10-25 01:23:19.297536 - [Console 0]: Saving frame 100 / 301
+2026-10-25 01:23:19.868082 - [Console 0]: Saving frame 200 / 301
+2026-10-25 01:23:20.427639 - [Console 0]: Saving frame 300 / 301
+2026-10-25 01:23:20.435345 - [Console 0]: Done saving stream history...
+2026-10-25 01:23:38.766154 - [Console 0]: Saving screenshot to: /Users/difan/Library/Application Support/SerialPrograms/Profiles/sv-isolated-live-20261024/Screenshots/video-20261025-012338766145.mp4
+2026-10-25 01:23:38.766172 - [Console 0]: Saving stream history...
+2026-10-25 01:23:38.768888 - [Console 0]: Total frames to save: 301
+2026-10-25 01:23:38.772750 - [Console 0]: Frame size: 1280 x 720
+2026-10-25 01:23:38.773040 - [Console 0]: Saving frame 0 / 301
+2026-10-25 01:23:39.336342 - [Console 0]: Saving frame 100 / 301
+2026-10-25 01:23:39.893096 - [Console 0]: Saving frame 200 / 301
+2026-10-25 01:23:40.447406 - [Console 0]: Saving frame 300 / 301
+2026-10-25 01:23:40.454778 - [Console 0]: Done saving stream history...
+2026-10-25 01:23:44.994728 - [Console 0]: issue_controller_state(): hold = 2000ms
+2026-10-25 01:23:45.122267 - [Console 0]: cancel_all_commands()
+2026-10-25 01:23:45.448360 - [Console 0]: issue_controller_state(): hold = 2000ms
+2026-10-25 01:23:45.605614 - [Console 0]: cancel_all_commands()
+2026-10-25 01:23:47.910424 - [Console 0]: ConvertFrame: Count = 1, Mean = 0.192ms, Stddev = nanms, Min = 0.192ms, Max = 0.192ms
+2026-10-25 01:23:47.910452 - [Console 0]: Saving screenshot to: /Users/difan/Library/Application Support/SerialPrograms/Profiles/sv-isolated-live-20261024/Screenshots/screenshot-20261025-012347910450.png
+2026-10-25 01:23:58.837321 - [Console 0]: Saving screenshot to: /Users/difan/Library/Application Support/SerialPrograms/Profiles/sv-isolated-live-20261024/Screenshots/video-20261025-012358837308.mp4
+2026-10-25 01:23:58.837341 - [Console 0]: Saving stream history...
+2026-10-25 01:23:58.838600 - [Console 0]: Total frames to save: 300
+2026-10-25 01:23:58.842534 - [Console 0]: Frame size: 1280 x 720
+2026-10-25 01:23:58.842812 - [Console 0]: Saving frame 0 / 300
+2026-10-25 01:23:59.411014 - [Console 0]: Saving frame 100 / 300
+2026-10-25 01:23:59.981046 - [Console 0]: Saving frame 200 / 300
+2026-10-25 01:24:00.551623 - [Console 0]: Done saving stream history...
+2026-10-25 01:24:18.893618 - [Console 0]: Saving screenshot to: /Users/difan/Library/Application Support/SerialPrograms/Profiles/sv-isolated-live-20261024/Screenshots/video-20261025-012418893608.mp4
+2026-10-25 01:24:18.893636 - [Console 0]: Saving stream history...
+2026-10-25 01:24:18.894526 - [Console 0]: Total frames to save: 300
+2026-10-25 01:24:18.898502 - [Console 0]: Frame size: 1280 x 720
+2026-10-25 01:24:18.898827 - [Console 0]: Saving frame 0 / 300
+2026-10-25 01:24:19.467636 - [Console 0]: Saving frame 100 / 300
+2026-10-25 01:24:20.035438 - [Console 0]: Saving frame 200 / 300
+2026-10-25 01:24:20.602477 - [Console 0]: Done saving stream history...
+2026-10-25 01:24:24.863133 - [Console 0]: issue_controller_state(): hold = 2000ms
+2026-10-25 01:24:25.022911 - [Console 0]: cancel_all_commands()
+2026-10-25 01:24:27.330456 - [Console 0]: ConvertFrame: Count = 1, Mean = 0.227ms, Stddev = nanms, Min = 0.227ms, Max = 0.227ms
+2026-10-25 01:24:27.330484 - [Console 0]: Saving screenshot to: /Users/difan/Library/Application Support/SerialPrograms/Profiles/sv-isolated-live-20261024/Screenshots/screenshot-20261025-012427330481.png
+2026-10-25 01:24:38.960470 - [Console 0]: Saving screenshot to: /Users/difan/Library/Application Support/SerialPrograms/Profiles/sv-isolated-live-20261024/Screenshots/video-20261025-012438960461.mp4
+2026-10-25 01:24:38.960489 - [Console 0]: Saving stream history...
+2026-10-25 01:24:38.961330 - [Console 0]: Total frames to save: 300
+2026-10-25 01:24:38.965133 - [Console 0]: Frame size: 1280 x 720
+2026-10-25 01:24:38.966141 - [Console 0]: Saving frame 0 / 300
+2026-10-25 01:24:39.541034 - [Console 0]: Saving frame 100 / 300
+2026-10-25 01:24:40.110793 - [Console 0]: Saving frame 200 / 300
+2026-10-25 01:24:40.672497 - [Console 0]: Done saving stream history...
+2026-10-25 01:24:44.101986 - [Global]: Serial port refresh took 4 ms. Further updates shorter than this will be suppressed.
+2026-10-25 01:24:59.049664 - [Console 0]: Saving screenshot to: /Users/difan/Library/Application Support/SerialPrograms/Profiles/sv-isolated-live-20261024/Screenshots/video-20261025-012459049654.mp4
+2026-10-25 01:24:59.049684 - [Console 0]: Saving stream history...
+2026-10-25 01:24:59.052809 - [Console 0]: Total frames to save: 301
+2026-10-25 01:24:59.056723 - [Console 0]: Frame size: 1280 x 720
+2026-10-25 01:24:59.057814 - [Console 0]: Saving frame 0 / 301
+2026-10-25 01:24:59.642942 - [Console 0]: Saving frame 100 / 301
+2026-10-25 01:25:00.207696 - [Console 0]: Saving frame 200 / 301
+2026-10-25 01:25:00.771692 - [Console 0]: Saving frame 300 / 301
+2026-10-25 01:25:00.780472 - [Console 0]: Done saving stream history...
+2026-10-25 01:25:19.117225 - [Console 0]: Saving screenshot to: /Users/difan/Library/Application Support/SerialPrograms/Profiles/sv-isolated-live-20261024/Screenshots/video-20261025-012519117207.mp4
+2026-10-25 01:25:19.117263 - [Console 0]: Saving stream history...
+2026-10-25 01:25:19.118688 - [Console 0]: Total frames to save: 301
+2026-10-25 01:25:19.122509 - [Console 0]: Frame size: 1280 x 720
+2026-10-25 01:25:19.122793 - [Console 0]: Saving frame 0 / 301
+2026-10-25 01:25:19.690222 - [Console 0]: Saving frame 100 / 301
+2026-10-25 01:25:20.252390 - [Console 0]: Saving frame 200 / 301
+2026-10-25 01:25:20.813769 - [Console 0]: Saving frame 300 / 301
+2026-10-25 01:25:20.821346 - [Console 0]: Done saving stream history...
+2026-10-25 01:25:37.951664 - [Console 0]: issue_controller_state(): hold = 2000ms
+2026-10-25 01:25:38.112580 - [Console 0]: cancel_all_commands()
+2026-10-25 01:25:39.168987 - [Console 0]: Saving screenshot to: /Users/difan/Library/Application Support/SerialPrograms/Profiles/sv-isolated-live-20261024/Screenshots/video-20261025-012539168978.mp4
+2026-10-25 01:25:39.169005 - [Console 0]: Saving stream history...
+2026-10-25 01:25:39.170098 - [Console 0]: Total frames to save: 300
+2026-10-25 01:25:39.173964 - [Console 0]: Frame size: 1280 x 720
+2026-10-25 01:25:39.174235 - [Console 0]: Saving frame 0 / 300
+2026-10-25 01:25:39.447870 - [Console 0]: issue_controller_state(): hold = 2000ms
+2026-10-25 01:25:39.604221 - [Console 0]: cancel_all_commands()
+2026-10-25 01:25:39.748470 - [Console 0]: Saving frame 100 / 300
+2026-10-25 01:25:40.311679 - [Console 0]: Saving frame 200 / 300
+2026-10-25 01:25:40.879128 - [Console 0]: Done saving stream history...
+2026-10-25 01:25:40.943364 - [Console 0]: issue_controller_state(): hold = 2000ms
+2026-10-25 01:25:41.112543 - [Console 0]: cancel_all_commands()
+2026-10-25 01:25:41.357435 - [stdout]: Saving Settings...
+2026-10-25 01:25:41.363983 - [Global]: Saving panel settings...
+2026-10-25 01:25:41.364342 - [Program]: Shutting down SingleSwitchProgramSession...
+2026-10-25 01:25:41.364358 - [Program]: Shutting down ConsoleProgramSession...
+2026-10-25 01:25:41.364403 - [Console 0]: Shutting down ConsoleSystemSession...
+2026-10-25 01:25:41.517075 - [Console 0]: DeviceHandle::~DeviceHandle(): Waiting for 0 request(s) to finish.
+2026-10-25 01:25:41.631052 - [Console 0]: Shutting down VideoSession...
+2026-10-25 01:25:41.631089 - [Console 0]: Stopping Camera...
+2026-10-25 01:25:41.737663 - [Global]: Enabled display sleep and OS sleep.
+2026-10-25 01:27:36.548641 - [Global]: ================================================================================
+2026-10-25 01:27:36.548643 - [Global]: Starting Program...
+2026-10-25 01:27:36.548659 - [Global]: Current path: /
+2026-10-25 01:27:36.548669 - [Global]: Processor capability set to: Apple M1 (NEON)
+2026-10-25 01:27:36.548674 - [Global]: Executable path: /Users/difan/Projects/Arduino-Source-isolated/build-prep/app/SerialPrograms.app/Contents/MacOS
+2026-10-25 01:27:36.548676 - [Global]: Program setting folder: /Users/difan/Library/Application Support/SerialPrograms/Profiles/sv-isolated-live-20261024/UserSettings/
+2026-10-25 01:27:36.548677 - [Global]: Program resources folder: /Users/difan/Projects/Arduino-Source-isolated/build-prep/app/Resources/
+2026-10-25 01:27:36.548713 - [Global]: Found Resource folder at /Users/difan/Projects/Arduino-Source-isolated/build-prep/app/Resources/
+2026-10-25 01:27:36.548742 - [Global]: Thread priority set to: Min Priority
+2026-10-25 01:27:36.549244 - [Global]: ActionState::READY
+2026-10-25 01:27:36.549258 - [Global]: ActionState::READY
+2026-10-25 01:27:36.549263 - [Global]: ActionState::READY
+2026-10-25 01:27:36.549412 - [Global]: LifeTime Sanitizer: Enabled
+2026-10-25 01:27:36.549461 - [Global]: Processor String: Apple M2 Pro
+2026-10-25 01:27:36.549464 - [Global]: Processor string matches. Using stored processor level.
+2026-10-25 01:27:36.549468 - [Global]: Processor capability set to: Apple M1 (NEON)
+2026-10-25 01:27:36.549497 - [Global]: Thread priority set to: Max Priority
+2026-10-25 01:27:36.549523 - [Global]: Thread priority set to: Min Priority
+2026-10-25 01:27:36.551095 - [Global]: Serial Port Added: cu.Bluetooth-Incoming-Port
+2026-10-25 01:27:36.551098 - [Global]: Serial Port Added: cu.debug-console
+2026-10-25 01:27:36.551099 - [Global]: Serial Port Added: cu.usbmodem5C630032771
+2026-10-25 01:27:36.551100 - [Global]: Serial Port Added: tty.Bluetooth-Incoming-Port
+2026-10-25 01:27:36.551101 - [Global]: Serial Port Added: tty.debug-console
+2026-10-25 01:27:36.551102 - [Global]: Serial Port Added: tty.usbmodem5C630032771
+2026-10-25 01:27:36.551104 - [Global]: Serial port refresh took 1 ms. Further updates shorter than this will be suppressed.
+2026-10-25 01:27:36.682943 - [Global]: Checking for new version...
+2026-10-25 01:27:36.682949 - [Global]: Thread priority set to: Min Priority
+2026-10-25 01:27:36.682974 - [Global]: Start refreshing camera list...
+2026-10-25 01:27:36.682997 - [Global]: Done refreshing camera list... 0.000 seconds
+2026-10-25 01:27:37.208167 - [Global]: Thread priority set to: Min Priority
+2026-10-25 01:27:37.346921 - [Program]: Loading historical stats...
+2026-10-25 01:27:37.347391 - [Console 0]: Changing video...
+2026-10-25 01:27:37.347399 - [Global]: Thread priority set to: Min Priority
+2026-10-25 01:27:37.347768 - [Console 0]: AudioSession::reset()
+2026-10-25 01:27:37.347791 - [Global]: Thread priority set to: Min Priority
+2026-10-25 01:27:37.347803 - [Console 0]: Starting stream history...
+2026-10-25 01:27:37.347833 - [Global]: Thread priority set to: Min Priority
+2026-10-25 01:27:37.348016 - [Global]: DictionaryOCR - Tokens: 7, Match Candidates: 10
+2026-10-25 01:27:37.348027 - [Global]: DictionaryOCR - Tokens: 7, Match Candidates: 8
+2026-10-25 01:27:37.348037 - [Global]: DictionaryOCR - Tokens: 7, Match Candidates: 7
+2026-10-25 01:27:37.348044 - [Global]: DictionaryOCR - Tokens: 7, Match Candidates: 7
+2026-10-25 01:27:37.348052 - [Global]: DictionaryOCR - Tokens: 7, Match Candidates: 7
+2026-10-25 01:27:37.348060 - [Global]: DictionaryOCR - Tokens: 7, Match Candidates: 7
+2026-10-25 01:27:37.348069 - [Global]: DictionaryOCR - Tokens: 7, Match Candidates: 7
+2026-10-25 01:27:37.348084 - [Global]: DictionaryOCR - Tokens: 7, Match Candidates: 7
+2026-10-25 01:27:37.348093 - [Global]: DictionaryOCR - Tokens: 7, Match Candidates: 7
+2026-10-25 01:27:37.382613 - [Global]: MacBook Pro Microphone
+2026-10-25 01:27:37.382635 - [Global]: USB Digital Audio
+2026-10-25 01:27:37.382642 - [Global]: Done querying audio inputs... 0.005 seconds
+2026-10-25 01:27:37.382651 - [Global]: MacBook Pro Microphone
+2026-10-25 01:27:37.382656 - [Global]: USB Digital Audio
+2026-10-25 01:27:37.382660 - [Global]: Done querying audio inputs... 0.000 seconds
+2026-10-25 01:27:37.382664 - [Global]: MacBook Pro Speakers
+2026-10-25 01:27:37.382666 - [Global]: BenQ RD320UA
+2026-10-25 01:27:37.382685 - [Console 0]: Changing video...
+2026-10-25 01:27:37.382688 - [Console 0]: Clearing stream history...
+2026-10-25 01:27:37.382710 - [Console 0]: Starting Camera: Backend = CameraQt65QMediaCaptureSession
+2026-10-25 01:27:37.382716 - [Console 0]: Camera: USB Video
+2026-10-25 01:27:37.382730 - [Console 0]: Resolution: 1920 x 1080, Format: NV12, FPS: 60
+2026-10-25 01:27:37.511280 - [Console 0]: Starting stream history...
+2026-10-25 01:27:37.511303 - [Console 0]: Clearing stream history...
+2026-10-25 01:27:37.511328 - [Console 0]: Starting stream history...
+2026-10-25 01:27:37.511367 - [Global]: Thread priority set to: Min Priority
+2026-10-25 01:27:37.511374 - [Console 0]: Opening serial port...
+2026-10-25 01:27:37.511375 - [Console 0]: AudioInputDevice(): sample format Int16, bytes per sample 2, channel config Mono, num channels 1, sample rate 96000
+2026-10-25 01:27:37.514825 - [Global]: Thread priority set to: Max Priority
+2026-10-25 01:27:37.514832 - [Console 0]: Opening up reliable channel...
+2026-10-25 01:27:37.514886 - [Console 0]: Connecting...
+2026-10-25 01:27:37.514899 - [Global]: Thread priority set to: Max Priority
+2026-10-25 01:27:37.522309 - [Global]: MacBook Pro Microphone
+2026-10-25 01:27:37.522326 - [Global]: USB Digital Audio
+2026-10-25 01:27:37.522334 - [Global]: Done querying audio inputs... 0.000 seconds
+2026-10-25 01:27:37.522364 - [Global]: MacBook Pro Speakers
+2026-10-25 01:27:37.522371 - [Global]: BenQ RD320UA
+2026-10-25 01:27:37.565949 - [Console 0]: DTR = 1, RTS = 1
+2026-10-25 01:27:37.565965 - [Console 0]: Trying baud 921,600 (with session ID)...
+2026-10-25 01:27:37.567560 - [Console 0]: Session ID: 0xb8a5c2c7
+2026-10-25 01:27:37.567578 - [Console 0]: [RSC]: Sending: (0x1) PABB2_CONNECTION_OPCODE_ASK_RESET: seqnum = 0
+2026-10-25 01:27:37.568378 - [Console 0]: [RSC]: Sending: (0x2) PABB2_CONNECTION_OPCODE_ASK_VERSION: seqnum = 1
+2026-10-25 01:27:37.568994 - [Console 0]: [RSC]: Remote Protocol: 2026061800 (compatible)
+2026-10-25 01:27:37.569012 - [Console 0]: [RSC]: Sending: (0x3) PABB2_CONNECTION_OPCODE_ASK_PACKET_SIZE: seqnum = 2
+2026-10-25 01:27:37.569551 - [Console 0]: [RSC]: Setting Packet Size: 64 bytes
+2026-10-25 01:27:37.569564 - [Console 0]: [RSC]: Sending: (0x4) PABB2_CONNECTION_OPCODE_ASK_BUFFER_SLOTS: seqnum = 3
+2026-10-25 01:27:37.570122 - [Console 0]: [RSC]: Setting Reorder Window: 128 slots
+2026-10-25 01:27:37.570137 - [Console 0]: Querying device...
+2026-10-25 01:27:37.570153 - [Console 0]: [MLC]: Sending: (0x20) PABB2_MESSAGE_OPCODE_PROTOCOL_VERSION: id = 0
+2026-10-25 01:27:37.571073 - [Console 0]: [MLC]: Sending: (0x22) PABB2_MESSAGE_OPCODE_DEVICE_IDENTIFIER: id = 1
+2026-10-25 01:27:37.572081 - [Console 0]: [MLC]: Device ID: 0x12
+2026-10-25 01:27:37.572090 - [Console 0]: [MLC]: Remote Protocol: 2026061803 (compatible)
+2026-10-25 01:27:37.572094 - [Console 0]: [MLC]: Sending: (0x21) PABB2_MESSAGE_OPCODE_FIRMWARE_VERSION: id = 2
+2026-10-25 01:27:37.573064 - [Console 0]: [MLC]: Firmware Version: 2026070400
+2026-10-25 01:27:37.573073 - [Console 0]: [MLC]: Sending: (0x23) PABB2_MESSAGE_OPCODE_DEVICE_NAME: id = 3
+2026-10-25 01:27:37.574427 - [Console 0]: [MLC]: Device Name: PABotBase2-ESP32-S3
+2026-10-25 01:27:37.574432 - [Console 0]: [MLC]: Sending: (0x25) PABB2_MESSAGE_OPCODE_SET_LOGGING_FLAG: id = 0, flag = 0
+2026-10-25 01:27:37.574438 - [Console 0]: [MLC]: Sending: (0x24) PABB2_MESSAGE_OPCODE_CONTROLLER_LIST: id = 4
+2026-10-25 01:27:37.576315 - [Console 0]: Checking Controller List... (0x0, 0x100, 0x1000, 0x1010, 0x1100, 0x1101, 0x1102)
+2026-10-25 01:27:37.576321 - [Console 0]: [MLC]: Sending: (0x26) PABB2_MESSAGE_OPCODE_CQ_CAPACITY: id = 5
+2026-10-25 01:27:37.577499 - [Console 0]: [MLC]: Command Queue Size: 255
+2026-10-25 01:27:37.577512 - [Console 0]: Setting queue size to: 64
+2026-10-25 01:27:37.577518 - [Console 0]: Reading Controller Mode...
+2026-10-25 01:27:37.577521 - [Console 0]: [MLC]: Sending: (0x32) PABB2_MESSAGE_OPCODE_READ_CONTROLLER_MODE: id = 6
+2026-10-25 01:27:37.578511 - [Console 0]: Reading Controller Mode... Mode = NS1: Wired Pro Controller
+2026-10-25 01:27:37.578522 - [Console 0]: Reading Controller Mode...
+2026-10-25 01:27:37.578526 - [Console 0]: [MLC]: Sending: (0x32) PABB2_MESSAGE_OPCODE_READ_CONTROLLER_MODE: id = 7
+2026-10-25 01:27:37.579538 - [Console 0]: Reading Controller Mode... Mode = NS1: Wired Pro Controller
+2026-10-25 01:27:37.580321 - [Console 0]: Reading Controller Colors...
+2026-10-25 01:27:37.580329 - [Console 0]: [MLC]: Sending: (0x91) PABB2_MESSAGE_REQ_NS1_OEM_CONTROLLER_READ_SPI: id = 8, controller_type = 4352, address = 0x6050, bytes = 12
+2026-10-25 01:27:37.580328 - [Global]: Thread priority set to: Min Priority
+2026-10-25 01:27:37.581528 - [Console 0]: Reading Controller Colors... Done
+2026-10-25 01:27:37.586133 - [Console 0]: Done starting audio... 0.074 seconds
+2026-10-25 01:27:37.586184 - [Console 0]: Initializing ChannelMixer: 2 -> 1 x 48,000 Hz
+2026-10-25 01:27:37.586291 - [Console 0]: Initializing AudioResampler: 48,000 -> 96,000 Hz, channels = 1
+2026-10-25 01:27:37.586297 - [Console 0]: WorkingAudio2WorkingAudio: Nodes = 2
+2026-10-25 01:27:37.586305 - [Console 0]: Initializing ChannelMixer: 2 -> 1 x 48,000 Hz
+2026-10-25 01:27:37.586306 - [Console 0]: WorkingAudio2WorkingAudio: Nodes = 1
+2026-10-25 01:27:37.792555 - [stdout]: Checking MacOS Permissions...
+2026-10-25 01:27:37.792605 - [stdout]: Camera permission granted
+2026-10-25 01:27:37.792631 - [stdout]: Microphone permission granted
+2026-10-25 01:27:38.556807 - [Global]: Serial port refresh took 3 ms. Further updates shorter than this will be suppressed.
+2026-10-25 01:27:54.919354 - [Global]: Thread priority set to: Max Priority
+2026-10-25 01:27:55.219658 - [Console 0]: issue_controller_state(): hold = 2000ms
+2026-10-25 01:27:55.376947 - [Console 0]: cancel_all_commands()
+2026-10-25 01:27:57.710125 - [Console 0]: ConvertFrame: Count = 1, Mean = 0.26ms, Stddev = nanms, Min = 0.26ms, Max = 0.26ms
+2026-10-25 01:27:57.710150 - [Console 0]: Saving screenshot to: /Users/difan/Library/Application Support/SerialPrograms/Profiles/sv-isolated-live-20261024/Screenshots/screenshot-20261025-012757710149.png
+2026-10-25 01:28:28.360486 - [Console 0]: issue_controller_state(): hold = 2000ms
+2026-10-25 01:28:29.361497 - [Console 0]: issue_controller_state(): hold = 2000ms
+2026-10-25 01:28:29.657735 - [Console 0]: cancel_all_commands()
+2026-10-25 01:28:29.987742 - [Console 0]: issue_controller_state(): hold = 2000ms
+2026-10-25 01:28:30.151745 - [Console 0]: cancel_all_commands()
+2026-10-25 01:28:30.485325 - [Console 0]: issue_controller_state(): hold = 2000ms
+2026-10-25 01:28:31.487929 - [Console 0]: cancel_all_commands()
+2026-10-25 01:28:33.791279 - [Console 0]: ConvertFrame: Count = 1, Mean = 0.495ms, Stddev = nanms, Min = 0.495ms, Max = 0.495ms
+2026-10-25 01:28:33.791313 - [Console 0]: Saving screenshot to: /Users/difan/Library/Application Support/SerialPrograms/Profiles/sv-isolated-live-20261024/Screenshots/screenshot-20261025-012833791311.png
+2026-10-25 01:29:11.850190 - [Console 0]: issue_controller_state(): hold = 2000ms
+2026-10-25 01:29:11.979057 - [Console 0]: cancel_all_commands()
+2026-10-25 01:29:13.271181 - [Console 0]: ConvertFrame: Count = 1, Mean = 0.244ms, Stddev = nanms, Min = 0.244ms, Max = 0.244ms
+2026-10-25 01:29:13.271207 - [Console 0]: Saving screenshot to: /Users/difan/Library/Application Support/SerialPrograms/Profiles/sv-isolated-live-20261024/Screenshots/screenshot-20261025-012913271206.png
+2026-10-25 01:30:13.790624 - [Console 0]: issue_controller_state(): hold = 2000ms
+2026-10-25 01:30:13.947527 - [Console 0]: cancel_all_commands()
+2026-10-25 01:30:15.249375 - [Console 0]: ConvertFrame: Count = 1, Mean = 0.231ms, Stddev = nanms, Min = 0.231ms, Max = 0.231ms
+2026-10-25 01:30:15.249401 - [Console 0]: Saving screenshot to: /Users/difan/Library/Application Support/SerialPrograms/Profiles/sv-isolated-live-20261024/Screenshots/screenshot-20261025-013015249399.png
+2026-10-25 01:30:51.979420 - [Console 0]: issue_controller_state(): hold = 2000ms
+2026-10-25 01:30:52.136300 - [Console 0]: cancel_all_commands()
+2026-10-25 01:30:52.461500 - [Console 0]: issue_controller_state(): hold = 2000ms
+2026-10-25 01:30:52.569521 - [Console 0]: cancel_all_commands()
+2026-10-25 01:30:52.916977 - [Console 0]: issue_controller_state(): hold = 2000ms
+2026-10-25 01:30:53.061342 - [Console 0]: cancel_all_commands()
+2026-10-25 01:30:56.354760 - [Console 0]: ConvertFrame: Count = 1, Mean = 0.304ms, Stddev = nanms, Min = 0.304ms, Max = 0.304ms
+2026-10-25 01:30:56.354786 - [Console 0]: Saving screenshot to: /Users/difan/Library/Application Support/SerialPrograms/Profiles/sv-isolated-live-20261024/Screenshots/screenshot-20261025-013056354784.png
+2026-10-25 01:31:36.148429 - [Console 0]: ConvertFrame: Count = 1, Mean = 0.391ms, Stddev = nanms, Min = 0.391ms, Max = 0.391ms
+2026-10-25 01:31:36.148460 - [Console 0]: Saving screenshot to: /Users/difan/Library/Application Support/SerialPrograms/Profiles/sv-isolated-live-20261024/Screenshots/screenshot-20261025-013136148458.png
+2026-10-25 01:32:13.216748 - [Console 0]: issue_controller_state(): hold = 2000ms
+2026-10-25 01:32:13.399375 - [Console 0]: cancel_all_commands()
+2026-10-25 01:32:14.709743 - [Console 0]: ConvertFrame: Count = 1, Mean = 0.215ms, Stddev = nanms, Min = 0.215ms, Max = 0.215ms
+2026-10-25 01:32:14.709768 - [Console 0]: Saving screenshot to: /Users/difan/Library/Application Support/SerialPrograms/Profiles/sv-isolated-live-20261024/Screenshots/screenshot-20261025-013214709766.png
+2026-10-25 01:32:14.754482 - [Program]: Received Program Start Request
+2026-10-25 01:32:14.754517 - [Program]: Starting program...
+2026-10-25 01:32:14.754519 - [Program]: Program State: RUNNING
+2026-10-25 01:32:14.754558 - [Global]: Thread priority set to: Max Priority
+2026-10-25 01:32:14.754571 - [Global]: Disabling OS sleep...
+2026-10-25 01:32:14.754952 - [Global]: Disabled OS sleep.
+2026-10-25 01:32:14.754971 - [Program]: Loading historical stats...
+2026-10-25 01:32:14.755985 - [Program]: <b>Starting Program: PokemonSV:IsolatedHuntPrototype</b>
+2026-10-25 01:32:14.756478 - [Console 0]: Connecting controller...
+2026-10-25 01:32:14.757675 - [Console 0]: Current Player Number: Player 1
+2026-10-25 01:32:14.757681 - [Console 0]: Controller player matches required (Player 1). Continuing...
+2026-10-25 01:32:14.757775 - [Global]: Thread priority set to: Min Priority
+2026-10-25 01:32:14.808288 - [Global]: Thread priority set to: Min Priority
+2026-10-25 01:32:15.859259 - [Console 0]: OverworldWatcher: Count = 23, Mean = 0.682304 ms, Stddev = 0.612391 ms, Min = 0.246 ms, Max = 2.345 ms
+2026-10-25 01:32:16.081342 - [Console 0]: Isolated setup: existing power=1, power budget ms=300000
+2026-10-25 01:32:16.081365 - [Console 0]: Isolated hunt state: automatic Meal Power verification
+2026-10-25 01:32:16.081371 - [Console 0]: Isolated stage begin: stage=automatic Meal Power verification, timeout ms=120000
+2026-10-25 01:32:16.081331 - [Global]: Thread priority set to: Min Priority
+2026-10-25 01:32:16.081405 - [Program]: Loading spectrogram...
+2026-10-25 01:32:16.081639 - [stdout]: Initialize WavFile on /Users/difan/Projects/Arduino-Source-isolated/build-prep/app/Resources/PokemonSV/LetsGoKill-48000.wav
+2026-10-25 01:32:16.081879 - [stdout]: Wav file audio format: sample format Int16, bytes per sample 2, channel config Unknown, num channels 2, sample rate 48000
+2026-10-25 01:32:16.081916 - [Console 0]: issue_dpad(): right, delay = 1200ms, hold = 160ms, cooldown = 0ms
+2026-10-25 01:32:16.081927 - [Console 0]: wait_for_all()
+2026-10-25 01:32:16.082251 - [Global]: Built audio template with sample rate 48000, 53 windows and 1024 frequencies from /Users/difan/Projects/Arduino-Source-isolated/build-prep/app/Resources/PokemonSV/LetsGoKill-48000.wav
+2026-10-25 01:32:16.082379 - [Program]: Loading spectrogram...
+2026-10-25 01:32:16.096378 - [stdout]: Start audio decoder.
+2026-10-25 01:32:16.099035 - [Global]: Built audio template with sample rate 48000, 192 windows and 1024 frequencies from /Users/difan/Projects/Arduino-Source-isolated/build-prep/app/Resources/PokemonSV/ShinySound-48000.mp3
+2026-10-25 01:32:17.921573 - [Global]: Creating Ort::session from model /Users/difan/Projects/Arduino-Source-isolated/build-prep/app/Resources/PaddleOCR/chinese/rec.onnx
+2026-10-25 01:32:17.921591 - [Global]: Creating dedicated CPU-only session...
+2026-10-25 01:32:17.923019 - [stdout]: Set potential model cache path in session options: /Users/difan/Library/Application Support/SerialPrograms/Profiles/sv-isolated-live-20261024/ModelCache/PaddleOCRPipeline/
+2026-10-25 01:32:17.923254 - [Global]: Setting ONNX Intra-Op Threads: 8
+2026-10-25 01:32:17.923263 - [Global]: Setting ONNX Inter-Op Threads: 0
+2026-10-25 01:32:18.059267 - [Global]: Ort::Session created
+2026-10-25 01:32:18.139383 - [Global]: Creating Ort::session from model /Users/difan/Projects/Arduino-Source-isolated/build-prep/app/Resources/PaddleOCR/english/rec.onnx
+2026-10-25 01:32:18.139408 - [Global]: Creating dedicated CPU-only session...
+2026-10-25 01:32:18.139418 - [stdout]: Set potential model cache path in session options: /Users/difan/Library/Application Support/SerialPrograms/Profiles/sv-isolated-live-20261024/ModelCache/PaddleOCRPipeline/
+2026-10-25 01:32:18.175570 - [Global]: Ort::Session created
+2026-10-25 01:32:18.187806 - [Console 0]: Isolated power OCR: 遭遇力：火 Lv. 2
+2026-10-25 01:32:18.491053 - [Console 0]: Isolated power OCR: 遭遇力：火 Lv.2
+2026-10-25 01:32:18.793754 - [Console 0]: Isolated power OCR: 遭遇力：火 Lv.2
+2026-10-25 01:32:18.793799 - [Console 0]: issue_buttons(): B, delay = 1200ms, hold = 160ms, cooldown = 0ms
+2026-10-25 01:32:20.495013 - [Console 0]: OverworldWatcher: Count = 34, Mean = 0.293235 ms, Stddev = 0.293062 ms, Min = 0.033 ms, Max = 1.449 ms
+2026-10-25 01:32:20.495060 - [Console 0]: Isolated verification: stage=meal power, method=OCR, type=fire, level=2, accepted=1
+2026-10-25 01:32:20.495065 - [Console 0]: wait_for_all()
+2026-10-25 01:32:20.495074 - [Console 0]: IsolatedStageDeadline: Count = 88, Mean = 0.00138636 ms, Stddev = 0.00775106 ms, Min = 0 ms, Max = 0.072 ms
+2026-10-25 01:32:20.495078 - [Console 0]: SweatBubbleWatcher: Count = 88, Mean = 0.158057 ms, Stddev = 0.178765 ms, Min = 0.035 ms, Max = 1.057 ms
+2026-10-25 01:32:20.495089 - [Console 0]: NormalBattleMenuWatcher: Count = 88, Mean = 0.118114 ms, Stddev = 0.138094 ms, Min = 0.026 ms, Max = 1.204 ms
+2026-10-25 01:32:20.495095 - [Console 0]: Isolated stage end: stage=automatic Meal Power verification, outcome=completed, elapsed ms=4414
+2026-10-25 01:32:20.495098 - [Console 0]: Isolated hunt state: travel to charcadet patch
+2026-10-25 01:32:20.495101 - [Console 0]: Isolated stage begin: stage=travel to charcadet patch, timeout ms=420000
+2026-10-25 01:32:20.495112 - [Console 0]: Anchor resume: supervised current patch; skipping initial flight.
+2026-10-25 01:32:20.495115 - [Console 0]: SUPERVISED: stand on foot at the lower Central uphill corridor, set a marker with a river buffer, and match the safe heading. Then check Central path inspected.
+2026-10-25 01:32:24.732596 - [Console 0]: ConvertFrame: Count = 227, Mean = 0.626899ms, Stddev = 0.76574ms, Min = 0.197ms, Max = 4.73ms
+2026-10-25 01:32:34.733977 - [Console 0]: ConvertFrame: Count = 250, Mean = 0.76142ms, Stddev = 1.03863ms, Min = 0.199ms, Max = 6.199ms
+2026-10-25 01:32:44.746655 - [Console 0]: ConvertFrame: Count = 251, Mean = 0.732163ms, Stddev = 1.07383ms, Min = 0.195ms, Max = 6.194ms
+2026-10-25 01:32:51.106799 - [Console 0]: Isolated verification: stage=Central path, method=supervised, accepted=1, elapsed ms=30611
+2026-10-25 01:32:52.157914 - [Console 0]: OverworldWatcher: Count = 21, Mean = 0.342 ms, Stddev = 0.257001 ms, Min = 0.076 ms, Max = 1.289 ms
+2026-10-25 01:32:52.157943 - [Console 0]: wait_for_all()
+2026-10-25 01:32:52.157954 - [Console 0]: IsolatedStageDeadline: Count = 634, Mean = 0.000449527 ms, Stddev = 0.000884199 ms, Min = 0 ms, Max = 0.014 ms
+2026-10-25 01:32:52.157958 - [Console 0]: SweatBubbleWatcher: Count = 634, Mean = 0.0498817 ms, Stddev = 0.0581163 ms, Min = 0.007 ms, Max = 0.666 ms
+2026-10-25 01:32:52.157962 - [Console 0]: NormalBattleMenuWatcher: Count = 634, Mean = 0.0815615 ms, Stddev = 0.0704237 ms, Min = 0.028 ms, Max = 0.773 ms
+2026-10-25 01:32:52.157968 - [Console 0]: Isolated stage end: stage=travel to charcadet patch, outcome=completed, elapsed ms=31663
+2026-10-25 01:32:52.159286 - [Console 0]: Isolated ascent: stage=marker, state=1, leg=0, reset=0
+2026-10-25 01:32:52.159295 - [Console 0]: Isolated hunt state: ascent reanchor: old-marker heading correction
+2026-10-25 01:32:52.159299 - [Console 0]: Isolated stage begin: stage=ascent reanchor: old-marker heading correction, timeout ms=20000
+2026-10-25 01:32:52.159331 - [Console 0]: wait_for_all()
+2026-10-25 01:32:53.261203 - [Console 0]: OverworldWatcher: Count = 23, Mean = 0.330261 ms, Stddev = 0.171668 ms, Min = 0.05 ms, Max = 0.898 ms
+2026-10-25 01:32:53.261251 - [Console 0]: NormalBattleMenuWatcher: Count = 23, Mean = 0.069 ms, Stddev = 0.172075 ms, Min = 0.016 ms, Max = 0.851 ms
+2026-10-25 01:32:53.361376 - [Console 0]: Detected overworld.
+2026-10-25 01:32:53.361417 - [Console 0]: issue_buttons(): Y, delay = 1000ms, hold = 160ms, cooldown = 0ms
+2026-10-25 01:32:53.361457 - [Console 0]: wait_for_all()
+2026-10-25 01:32:54.760576 - [Console 0]: ConvertFrame: Count = 249, Mean = 0.606076ms, Stddev = 0.91224ms, Min = 0.197ms, Max = 6.008ms
+2026-10-25 01:32:56.466439 - [Console 0]: NormalBattleMenuWatcher: Count = 42, Mean = 0.043619 ms, Stddev = 0.0240111 ms, Min = 0.02 ms, Max = 0.107 ms
+2026-10-25 01:32:56.466465 - [Console 0]: MapWatcher: Count = 43, Mean = 0.0919302 ms, Stddev = 0.285557 ms, Min = 0.006 ms, Max = 1.876 ms
+2026-10-25 01:32:56.466469 - [Console 0]: PromptDialogWatcher: Count = 43, Mean = 0.002 ms, Stddev = 0.00123443 ms, Min = 0.001 ms, Max = 0.004 ms
+2026-10-25 01:32:56.466479 - [Console 0]: AdvanceDialogWatcher: Count = 43, Mean = 0.00851163 ms, Stddev = 0.00515647 ms, Min = 0.003 ms, Max = 0.023 ms
+2026-10-25 01:32:56.466483 - [Console 0]: OverworldWatcher: Count = 43, Mean = 0.0707907 ms, Stddev = 0.0669166 ms, Min = 0.032 ms, Max = 0.458 ms
+2026-10-25 01:32:56.567507 - [Console 0]: Detected map.
+2026-10-25 01:32:56.567538 - [Console 0]: Exiting to overworld from Rotom Phone...
+2026-10-25 01:32:56.567562 - [Console 0]: wait_for_all()
+2026-10-25 01:32:56.567713 - [Console 0]: issue_buttons(): Y, delay = 8160ms, hold = 160ms, cooldown = 0ms
+2026-10-25 01:32:56.567804 - [Console 0]: issue_buttons(): Y, delay = 8160ms, hold = 160ms, cooldown = 0ms
+2026-10-25 01:32:56.567831 - [Console 0]: issue_buttons(): Y, delay = 8160ms, hold = 160ms, cooldown = 0ms
+2026-10-25 01:32:56.567838 - [Console 0]: issue_buttons(): Y, delay = 8160ms, hold = 160ms, cooldown = 0ms
+2026-10-25 01:32:56.567866 - [Console 0]: issue_buttons(): Y, delay = 8160ms, hold = 160ms, cooldown = 0ms
+2026-10-25 01:32:56.567883 - [Console 0]: issue_buttons(): Y, delay = 8160ms, hold = 160ms, cooldown = 0ms
+2026-10-25 01:32:56.567889 - [Console 0]: issue_buttons(): Y, delay = 8160ms, hold = 160ms, cooldown = 0ms
+2026-10-25 01:32:56.567896 - [Console 0]: issue_buttons(): Y, delay = 8160ms, hold = 160ms, cooldown = 0ms
+2026-10-25 01:32:56.567993 - [Console 0]: issue_buttons(): Y, delay = 8160ms, hold = 160ms, cooldown = 0ms
+2026-10-25 01:32:56.568024 - [Console 0]: issue_buttons(): Y, delay = 8160ms, hold = 160ms, cooldown = 0ms
+2026-10-25 01:32:56.568029 - [Console 0]: wait_for_all()
+2026-10-25 01:32:59.018771 - [Console 0]: cancel_all_commands()
+2026-10-25 01:32:59.018858 - [Console 0]: GradientArrowWatcher: Count = 49, Mean = 0.401286 ms, Stddev = 0.391627 ms, Min = 0.141 ms, Max = 2.048 ms
+2026-10-25 01:32:59.018882 - [Console 0]: NormalBattleMenuWatcher: Count = 50, Mean = 0.0514 ms, Stddev = 0.0291155 ms, Min = 0.019 ms, Max = 0.162 ms
+2026-10-25 01:32:59.018887 - [Console 0]: OverworldWatcher: Count = 50, Mean = 0.2151 ms, Stddev = 0.241444 ms, Min = 0.032 ms, Max = 1.298 ms
+2026-10-25 01:32:59.018921 - [Console 0]: issue_buttons(): L, delay = 1000ms, hold = 160ms, cooldown = 0ms
+2026-10-25 01:32:59.018927 - [Console 0]: wait_for_all()
+2026-10-25 01:33:00.020572 - [Console 0]: Isolated ascent: stage=marker, state=1, leg=0, reset=0
+2026-10-25 01:33:00.020653 - [Console 0]: Isolated ascent: stage=reanchor, marker ahead=1
+2026-10-25 01:33:00.020660 - [Console 0]: wait_for_all()
+2026-10-25 01:33:00.020679 - [Console 0]: IsolatedStageDeadline: Count = 158, Mean = 0.000537975 ms, Stddev = 0.00118179 ms, Min = 0 ms, Max = 0.009 ms
+2026-10-25 01:33:00.020690 - [Console 0]: SweatBubbleWatcher: Count = 158, Mean = 0.059519 ms, Stddev = 0.0687841 ms, Min = 0.013 ms, Max = 0.664 ms
+2026-10-25 01:33:00.020695 - [Console 0]: NormalBattleMenuWatcher: Count = 158, Mean = 0.0923418 ms, Stddev = 0.0703016 ms, Min = 0.031 ms, Max = 0.514 ms
+2026-10-25 01:33:00.020704 - [Console 0]: Isolated stage end: stage=ascent reanchor: old-marker heading correction, outcome=completed, elapsed ms=7861
+2026-10-25 01:33:00.020757 - [Console 0]: wait_for_all()
+2026-10-25 01:33:00.020780 - [Console 0]: issue_buttons(): R, delay = 5160ms, hold = 160ms, cooldown = 0ms
+2026-10-25 01:33:00.020800 - [Console 0]: issue_left_joystick(): (0.000,1.000), delay = 760ms, hold = 600ms, cooldown = 0ms
+2026-10-25 01:33:00.020806 - [Console 0]: wait_for_all()
+2026-10-25 01:33:04.772054 - [Console 0]: ConvertFrame: Count = 250, Mean = 0.506876ms, Stddev = 0.63047ms, Min = 0.193ms, Max = 4.275ms
+2026-10-25 01:33:04.822528 - [Program]: Let's Go Kill Sound found, score 0.912006/0.93, scale: 0.383819
+2026-10-25 01:33:04.841444 - [Program]: Let's Go Kill Sound found, score 0.867918/0.93, scale: 0.464783
+2026-10-25 01:33:04.862345 - [Program]: Let's Go Kill Sound found, score 0.554377/0.93, scale: 0.778768
+2026-10-25 01:33:04.882348 - [Program]: Let's Go Kill Sound found, score 0.802568/0.93, scale: 0.558228
+2026-10-25 01:33:05.042344 - [Console 0]: Detected kill.
+2026-10-25 01:33:05.042399 - [Program]: Current Stats: Kills: 1 - Encounters: 0 - Shinies: 0 - Clearing Passes: 0 - Refusals: 0 - Spawn Refreshes: 0 - Sandwiches: 0 - Hunt Seconds: 0
+2026-10-25 01:33:05.942643 - [Console 0]: walk_forward_while_clear_front_path() duration traveled: 600ms
+2026-10-25 01:33:06.167647 - [Console 0]: Saving screenshot to: /Users/difan/Library/Application Support/SerialPrograms/Profiles/sv-isolated-live-20261024/Screenshots/screenshot-20261025-013306167638.png
+2026-10-25 01:33:07.197629 - [Console 0]: wait_for_all()
+2026-10-25 01:33:07.197666 - [Console 0]: DestinationMarkerWatcher: Count = 144, Mean = 0.0340972 ms, Stddev = 0.0559938 ms, Min = 0.006 ms, Max = 0.466 ms
+2026-10-25 01:33:07.197675 - [Console 0]: SweatBubbleWatcher: Count = 144, Mean = 0.0647014 ms, Stddev = 0.0808987 ms, Min = 0.012 ms, Max = 0.559 ms
+2026-10-25 01:33:07.197680 - [Console 0]: NormalBattleMenuWatcher: Count = 144, Mean = 0.118743 ms, Stddev = 0.109526 ms, Min = 0.037 ms, Max = 0.818 ms
+2026-10-25 01:33:07.197696 - [Program]: Current Stats: Kills: 1 - Encounters: 0 - Shinies: 0 - Clearing Passes: 1 - Refusals: 0 - Spawn Refreshes: 0 - Sandwiches: 0 - Hunt Seconds: 15
+2026-10-25 01:33:07.197701 - [Console 0]: Isolated ascent: stage=advance, target=charcadet, leg=1, movement cap ms=600, elapsed ms=7177, detected defeats=1, no-progress=0, event=-1
+2026-10-25 01:33:07.198058 - [Console 0]: Isolated ascent: stage=marker, state=1, leg=1, reset=0
+2026-10-25 01:33:07.198069 - [Console 0]: Isolated hunt state: ascent reanchor: old-marker heading correction
+2026-10-25 01:33:07.198074 - [Console 0]: Isolated stage begin: stage=ascent reanchor: old-marker heading correction, timeout ms=20000
+2026-10-25 01:33:07.198089 - [Console 0]: wait_for_all()
+2026-10-25 01:33:07.522352 - [Program]: Let's Go Kill Sound found, score 0.911906/0.93, scale: 0.38392
+2026-10-25 01:33:07.542412 - [Program]: Let's Go Kill Sound found, score 0.868747/0.93, scale: 0.463265
+2026-10-25 01:33:07.562350 - [Program]: Let's Go Kill Sound found, score 0.555349/0.93, scale: 0.777928
+2026-10-25 01:33:07.602348 - [Program]: Let's Go Kill Sound found, score 0.802675/0.93, scale: 0.557962
+2026-10-25 01:33:07.622346 - [Program]: Let's Go Kill Sound found, score 0.92846/0.93, scale: 0.347521
+2026-10-25 01:33:07.722356 - [Console 0]: Detected kill.
+2026-10-25 01:33:07.722408 - [Program]: Current Stats: Kills: 2 - Encounters: 0 - Shinies: 0 - Clearing Passes: 1 - Refusals: 0 - Spawn Refreshes: 0 - Sandwiches: 0 - Hunt Seconds: 15
+2026-10-25 01:33:08.249448 - [Console 0]: OverworldWatcher: Count = 22, Mean = 0.390318 ms, Stddev = 0.291225 ms, Min = 0.047 ms, Max = 1.184 ms
+2026-10-25 01:33:08.249476 - [Console 0]: NormalBattleMenuWatcher: Count = 22, Mean = 0.0411818 ms, Stddev = 0.0227107 ms, Min = 0.018 ms, Max = 0.088 ms
+2026-10-25 01:33:08.350501 - [Console 0]: Detected overworld.
+2026-10-25 01:33:08.350546 - [Console 0]: issue_buttons(): Y, delay = 1000ms, hold = 160ms, cooldown = 0ms
+2026-10-25 01:33:08.350556 - [Console 0]: wait_for_all()
+2026-10-25 01:33:11.352358 - [Console 0]: NormalBattleMenuWatcher: Count = 41, Mean = 0.0362683 ms, Stddev = 0.0179109 ms, Min = 0.013 ms, Max = 0.093 ms
+2026-10-25 01:33:11.352381 - [Console 0]: MapWatcher: Count = 41, Mean = 0.0392439 ms, Stddev = 0.0314426 ms, Min = 0.005 ms, Max = 0.112 ms
+2026-10-25 01:33:11.352386 - [Console 0]: PromptDialogWatcher: Count = 41, Mean = 0.00170732 ms, Stddev = 0.00100608 ms, Min = 0.001 ms, Max = 0.004 ms
+2026-10-25 01:33:11.352394 - [Console 0]: AdvanceDialogWatcher: Count = 41, Mean = 0.00682927 ms, Stddev = 0.00398059 ms, Min = 0.003 ms, Max = 0.021 ms
+2026-10-25 01:33:11.352397 - [Console 0]: OverworldWatcher: Count = 41, Mean = 0.0676585 ms, Stddev = 0.0556204 ms, Min = 0.028 ms, Max = 0.286 ms
+2026-10-25 01:33:11.453425 - [Console 0]: Detected map.
+2026-10-25 01:33:11.453452 - [Console 0]: Exiting to overworld from Rotom Phone...
+2026-10-25 01:33:11.453457 - [Console 0]: wait_for_all()
+2026-10-25 01:33:11.453492 - [Console 0]: issue_buttons(): Y, delay = 8160ms, hold = 160ms, cooldown = 0ms
+2026-10-25 01:33:11.453501 - [Console 0]: issue_buttons(): Y, delay = 8160ms, hold = 160ms, cooldown = 0ms
+2026-10-25 01:33:11.453547 - [Console 0]: issue_buttons(): Y, delay = 8160ms, hold = 160ms, cooldown = 0ms
+2026-10-25 01:33:11.453567 - [Console 0]: issue_buttons(): Y, delay = 8160ms, hold = 160ms, cooldown = 0ms
+2026-10-25 01:33:11.453576 - [Console 0]: issue_buttons(): Y, delay = 8160ms, hold = 160ms, cooldown = 0ms
+2026-10-25 01:33:11.453592 - [Console 0]: issue_buttons(): Y, delay = 8160ms, hold = 160ms, cooldown = 0ms
+2026-10-25 01:33:11.453601 - [Console 0]: issue_buttons(): Y, delay = 8160ms, hold = 160ms, cooldown = 0ms
+2026-10-25 01:33:11.453612 - [Console 0]: issue_buttons(): Y, delay = 8160ms, hold = 160ms, cooldown = 0ms
+2026-10-25 01:33:11.453620 - [Console 0]: issue_buttons(): Y, delay = 8160ms, hold = 160ms, cooldown = 0ms
+2026-10-25 01:33:11.453628 - [Console 0]: issue_buttons(): Y, delay = 8160ms, hold = 160ms, cooldown = 0ms
+2026-10-25 01:33:11.453630 - [Console 0]: wait_for_all()
+2026-10-25 01:33:12.662218 - [Console 0]: Saving screenshot to: /Users/difan/Library/Application Support/SerialPrograms/Profiles/sv-isolated-live-20261024/Screenshots/video-20261025-013312662209.mp4
+2026-10-25 01:33:12.662234 - [Console 0]: Saving stream history...
+2026-10-25 01:33:12.665684 - [Console 0]: Total frames to save: 300
+2026-10-25 01:33:12.672919 - [Console 0]: Frame size: 1280 x 720
+2026-10-25 01:33:12.687035 - [Console 0]: Saving frame 0 / 300
+2026-10-25 01:33:13.464446 - [Console 0]: Saving frame 100 / 300
+2026-10-25 01:33:13.853901 - [Console 0]: cancel_all_commands()
+2026-10-25 01:33:13.853981 - [Console 0]: GradientArrowWatcher: Count = 48, Mean = 0.282458 ms, Stddev = 0.452242 ms, Min = 0.138 ms, Max = 3.168 ms
+2026-10-25 01:33:13.854003 - [Console 0]: NormalBattleMenuWatcher: Count = 49, Mean = 0.0397551 ms, Stddev = 0.0207068 ms, Min = 0.017 ms, Max = 0.13 ms
+2026-10-25 01:33:13.854008 - [Console 0]: OverworldWatcher: Count = 49, Mean = 0.143755 ms, Stddev = 0.113815 ms, Min = 0.032 ms, Max = 0.551 ms
+2026-10-25 01:33:13.854034 - [Console 0]: issue_buttons(): L, delay = 1000ms, hold = 160ms, cooldown = 0ms
+2026-10-25 01:33:13.854039 - [Console 0]: wait_for_all()
+2026-10-25 01:33:14.215690 - [Console 0]: Saving frame 200 / 300
+2026-10-25 01:33:14.799453 - [Console 0]: ConvertFrame: Count = 251, Mean = 0.540673ms, Stddev = 0.776355ms, Min = 0.194ms, Max = 6.322ms
+2026-10-25 01:33:14.855677 - [Console 0]: Isolated ascent: stage=marker, state=1, leg=1, reset=0
+2026-10-25 01:33:14.855760 - [Console 0]: Isolated ascent: stage=reanchor, marker ahead=1
+2026-10-25 01:33:14.855766 - [Console 0]: wait_for_all()
+2026-10-25 01:33:14.855781 - [Console 0]: IsolatedStageDeadline: Count = 154, Mean = 0.000448052 ms, Stddev = 0.000732461 ms, Min = 0 ms, Max = 0.007 ms
+2026-10-25 01:33:14.855786 - [Console 0]: SweatBubbleWatcher: Count = 154, Mean = 0.0590519 ms, Stddev = 0.0517727 ms, Min = 0.009 ms, Max = 0.358 ms
+2026-10-25 01:33:14.855789 - [Console 0]: NormalBattleMenuWatcher: Count = 154, Mean = 0.0903961 ms, Stddev = 0.0731687 ms, Min = 0.024 ms, Max = 0.534 ms
+2026-10-25 01:33:14.855797 - [Console 0]: Isolated stage end: stage=ascent reanchor: old-marker heading correction, outcome=completed, elapsed ms=7658
+2026-10-25 01:33:14.855817 - [Console 0]: wait_for_all()
+2026-10-25 01:33:14.855840 - [Console 0]: issue_buttons(): R, delay = 5160ms, hold = 160ms, cooldown = 0ms
+2026-10-25 01:33:14.855863 - [Console 0]: issue_left_joystick(): (0.000,1.000), delay = 760ms, hold = 600ms, cooldown = 0ms
+2026-10-25 01:33:14.855865 - [Console 0]: wait_for_all()
+2026-10-25 01:33:14.978154 - [Console 0]: Done saving stream history...
+2026-10-25 01:33:20.781456 - [Console 0]: walk_forward_while_clear_front_path() duration traveled: 600ms
+2026-10-25 01:33:21.032523 - [Console 0]: wait_for_all()
+2026-10-25 01:33:21.032572 - [Console 0]: DestinationMarkerWatcher: Count = 124, Mean = 0.0350565 ms, Stddev = 0.061544 ms, Min = 0.008 ms, Max = 0.445 ms
+2026-10-25 01:33:21.032584 - [Console 0]: SweatBubbleWatcher: Count = 124, Mean = 0.052121 ms, Stddev = 0.0450363 ms, Min = 0.011 ms, Max = 0.347 ms
+2026-10-25 01:33:21.032591 - [Console 0]: NormalBattleMenuWatcher: Count = 124, Mean = 0.123274 ms, Stddev = 0.117615 ms, Min = 0.041 ms, Max = 0.636 ms
+2026-10-25 01:33:21.032609 - [Program]: Current Stats: Kills: 2 - Encounters: 0 - Shinies: 0 - Clearing Passes: 2 - Refusals: 0 - Spawn Refreshes: 0 - Sandwiches: 0 - Hunt Seconds: 28
+2026-10-25 01:33:21.032613 - [Console 0]: Isolated ascent: stage=advance, target=charcadet, leg=2, movement cap ms=600, elapsed ms=6176, detected defeats=0, no-progress=1, event=-1
+2026-10-25 01:33:21.032730 - [Console 0]: Isolated ascent: stage=marker, state=1, leg=2, reset=0
+2026-10-25 01:33:21.032734 - [Console 0]: Isolated hunt state: ascent reanchor: old-marker heading correction
+2026-10-25 01:33:21.032739 - [Console 0]: Isolated stage begin: stage=ascent reanchor: old-marker heading correction, timeout ms=20000
+2026-10-25 01:33:21.032752 - [Console 0]: wait_for_all()
+2026-10-25 01:33:21.384153 - [Global]: Thread priority set to: Min Priority
+2026-10-25 01:33:22.083010 - [Console 0]: OverworldWatcher: Count = 22, Mean = 0.255409 ms, Stddev = 0.206358 ms, Min = 0.039 ms, Max = 0.83 ms
+2026-10-25 01:33:22.083035 - [Console 0]: NormalBattleMenuWatcher: Count = 22, Mean = 0.0397273 ms, Stddev = 0.0265817 ms, Min = 0.02 ms, Max = 0.107 ms
+2026-10-25 01:33:22.183166 - [Console 0]: Detected overworld.
+2026-10-25 01:33:22.183212 - [Console 0]: issue_buttons(): Y, delay = 1000ms, hold = 160ms, cooldown = 0ms
+2026-10-25 01:33:22.183222 - [Console 0]: wait_for_all()
+2026-10-25 01:33:24.832594 - [Console 0]: ConvertFrame: Count = 242, Mean = 0.606426ms, Stddev = 0.844923ms, Min = 0.198ms, Max = 5.587ms
+2026-10-25 01:33:25.234987 - [Console 0]: NormalBattleMenuWatcher: Count = 41, Mean = 0.0288537 ms, Stddev = 0.0184602 ms, Min = 0.01 ms, Max = 0.123 ms
+2026-10-25 01:33:25.235014 - [Console 0]: MapWatcher: Count = 41, Mean = 0.0297561 ms, Stddev = 0.0262028 ms, Min = 0.004 ms, Max = 0.14 ms
+2026-10-25 01:33:25.235019 - [Console 0]: PromptDialogWatcher: Count = 41, Mean = 0.00156098 ms, Stddev = 0.00176137 ms, Min = 0.001 ms, Max = 0.01 ms
+2026-10-25 01:33:25.235029 - [Console 0]: AdvanceDialogWatcher: Count = 41, Mean = 0.00443902 ms, Stddev = 0.00215695 ms, Min = 0.003 ms, Max = 0.017 ms
+2026-10-25 01:33:25.235033 - [Console 0]: OverworldWatcher: Count = 41, Mean = 0.0459756 ms, Stddev = 0.0269662 ms, Min = 0.028 ms, Max = 0.128 ms
+2026-10-25 01:33:25.335868 - [Console 0]: Detected map.
+2026-10-25 01:33:25.335898 - [Console 0]: Exiting to overworld from Rotom Phone...
+2026-10-25 01:33:25.335907 - [Console 0]: wait_for_all()
+2026-10-25 01:33:25.335961 - [Console 0]: issue_buttons(): Y, delay = 8160ms, hold = 160ms, cooldown = 0ms
+2026-10-25 01:33:25.336006 - [Console 0]: issue_buttons(): Y, delay = 8160ms, hold = 160ms, cooldown = 0ms
+2026-10-25 01:33:25.336027 - [Console 0]: issue_buttons(): Y, delay = 8160ms, hold = 160ms, cooldown = 0ms
+2026-10-25 01:33:25.336044 - [Console 0]: issue_buttons(): Y, delay = 8160ms, hold = 160ms, cooldown = 0ms
+2026-10-25 01:33:25.336061 - [Console 0]: issue_buttons(): Y, delay = 8160ms, hold = 160ms, cooldown = 0ms
+2026-10-25 01:33:25.336077 - [Console 0]: issue_buttons(): Y, delay = 8160ms, hold = 160ms, cooldown = 0ms
+2026-10-25 01:33:25.336088 - [Console 0]: issue_buttons(): Y, delay = 8160ms, hold = 160ms, cooldown = 0ms
+2026-10-25 01:33:25.336098 - [Console 0]: issue_buttons(): Y, delay = 8160ms, hold = 160ms, cooldown = 0ms
+2026-10-25 01:33:25.336104 - [Console 0]: issue_buttons(): Y, delay = 8160ms, hold = 160ms, cooldown = 0ms
+2026-10-25 01:33:25.336113 - [Console 0]: issue_buttons(): Y, delay = 8160ms, hold = 160ms, cooldown = 0ms
+2026-10-25 01:33:25.336116 - [Console 0]: wait_for_all()
+2026-10-25 01:33:26.333305 - [Console 0]: cancel_all_commands()
+2026-10-25 01:33:26.333326 - [Console 0]: GradientArrowWatcher: Count = 20, Mean = 0.2245 ms, Stddev = 0.0799668 ms, Min = 0.142 ms, Max = 0.463 ms
+2026-10-25 01:33:26.333341 - [Console 0]: NormalBattleMenuWatcher: Count = 20, Mean = 0.0379 ms, Stddev = 0.0188956 ms, Min = 0.014 ms, Max = 0.1 ms
+2026-10-25 01:33:26.333345 - [Console 0]: OverworldWatcher: Count = 20, Mean = 0.0439 ms, Stddev = 0.0284177 ms, Min = 0.03 ms, Max = 0.158 ms
+2026-10-25 01:33:26.334593 - [Console 0]: OperationFailedExceptionWithScreenshot: leave_phone_to_overworld(): Unknown state after 10 button Y presses.
+2026-10-25 01:33:26.334719 - [Console 0]: IsolatedStageDeadline: Count = 107, Mean = 0.000401869 ms, Stddev = 0.00054703 ms, Min = 0 ms, Max = 0.003 ms
+2026-10-25 01:33:26.334726 - [Console 0]: SweatBubbleWatcher: Count = 107, Mean = 0.0351869 ms, Stddev = 0.0687373 ms, Min = 0.005 ms, Max = 0.631 ms
+2026-10-25 01:33:26.334730 - [Console 0]: NormalBattleMenuWatcher: Count = 107, Mean = 0.0652804 ms, Stddev = 0.172237 ms, Min = 0.014 ms, Max = 1.761 ms
+2026-10-25 01:33:26.334741 - [Console 0]: ascent reanchor: old-marker heading correction: leave_phone_to_overworld(): Unknown state after 10 button Y presses.
+2026-10-25 01:33:26.334748 - [Console 0]: Isolated stage end: stage=ascent reanchor: old-marker heading correction, outcome=exception, battle=0, elapsed ms=5302
+2026-10-25 01:33:26.334759 - [Program]: Current Stats: Kills: 2 - Encounters: 0 - Shinies: 0 - Clearing Passes: 2 - Refusals: 0 - Spawn Refreshes: 0 - Sandwiches: 0 - Hunt Seconds: 34
+2026-10-25 01:33:26.334765 - [Console 0]: Isolated result: target=charcadet, stop=marker reanchor failed, detected kills=1, rounds=2, encounters=0, refusals=0, refreshes=0, hunt seconds=34, kills/min=1.764706
+2026-10-25 01:33:26.334768 - [Console 0]: Stopped at the current location for inspection; no departure after refusal, policy stop or failure.
+2026-10-25 01:33:26.334772 - [Console 0]: LetsGoHpWatcher: Count = 1,404, Mean = 0.00558832 ms, Stddev = 0.00760547 ms, Min = 0.002 ms, Max = 0.23 ms
+2026-10-25 01:33:26.334784 - [Console 0]: LetsGoKillSoundDetector: Count = 3,513, Mean = 0.0892755 ms, Stddev = 0.098806 ms, Min = 0 ms, Max = 2.705 ms
+2026-10-25 01:33:26.334793 - [Console 0]: StartBattleYellowBarWatcher: Count = 1,404, Mean = 0.00823291 ms, Stddev = 0.0140541 ms, Min = 0.003 ms, Max = 0.391 ms
+2026-10-25 01:33:26.334796 - [Console 0]: ShinySoundDetector: Count = 3,513, Mean = 0.262968 ms, Stddev = 0.356538 ms, Min = 0 ms, Max = 16.927 ms
+2026-10-25 01:33:26.334798 - [Console 0]: ShinyScreenshotTracker: Count = 1,404, Mean = 0.00124644 ms, Stddev = 0.00745482 ms, Min = 0 ms, Max = 0.274 ms
+2026-10-25 01:33:26.334812 - [Program]: Shiny sound not detected. Error Coefficient = 0.999914
+2026-10-25 01:33:26.334978 - [Program]: Let's Go Kill Sound detected! Error Coefficient = 0.554377
+2026-10-25 01:33:26.335103 - [Program]: EventNotification(Program Finished): Notifications not enabled.
+2026-10-25 01:33:26.335117 - [Console 0]: wait_for_all()
+2026-10-25 01:33:26.335130 - [Program]: Program finished normally!
+2026-10-25 01:33:26.335176 - [Program]: Saving historical stats...
+2026-10-25 01:33:26.335640 - [Program]: Stats successfully saved!
+2026-10-25 01:33:26.335647 - [Program]: Program State: STOPPED
+2026-10-25 01:33:26.335750 - [Global]: Enabled display sleep and OS sleep.
+2026-10-25 01:33:30.135918 - [Global]: Serial port refresh took 18 ms. Further updates shorter than this will be suppressed.
+2026-10-25 01:33:32.755211 - [Console 0]: Saving screenshot to: /Users/difan/Library/Application Support/SerialPrograms/Profiles/sv-isolated-live-20261024/Screenshots/video-20261025-013332755201.mp4
+2026-10-25 01:33:32.755228 - [Console 0]: Saving stream history...
+2026-10-25 01:33:32.766167 - [Console 0]: Total frames to save: 301
+2026-10-25 01:33:32.770488 - [Console 0]: Frame size: 1280 x 720
+2026-10-25 01:33:32.771105 - [Console 0]: Saving frame 0 / 301
+2026-10-25 01:33:33.574959 - [Console 0]: Saving frame 100 / 301
+2026-10-25 01:33:34.379026 - [Console 0]: Saving frame 200 / 301
+2026-10-25 01:33:35.093101 - [Console 0]: Saving frame 300 / 301
+2026-10-25 01:33:35.100338 - [Console 0]: Done saving stream history...
+2026-10-25 01:33:52.851664 - [Console 0]: Saving screenshot to: /Users/difan/Library/Application Support/SerialPrograms/Profiles/sv-isolated-live-20261024/Screenshots/video-20261025-013352851633.mp4
+2026-10-25 01:33:52.851702 - [Console 0]: Saving stream history...
+2026-10-25 01:33:52.858413 - [Console 0]: Total frames to save: 300
+2026-10-25 01:33:52.862640 - [Console 0]: Frame size: 1280 x 720
+2026-10-25 01:33:52.863066 - [Console 0]: Saving frame 0 / 300
+2026-10-25 01:33:53.617443 - [Console 0]: Saving frame 100 / 300
+2026-10-25 01:33:54.416830 - [Console 0]: Saving frame 200 / 300
+2026-10-25 01:33:55.130000 - [Console 0]: Done saving stream history...
+2026-10-25 01:34:12.924089 - [Console 0]: Saving screenshot to: /Users/difan/Library/Application Support/SerialPrograms/Profiles/sv-isolated-live-20261024/Screenshots/video-20261025-013412924080.mp4
+2026-10-25 01:34:12.924112 - [Console 0]: Saving stream history...
+2026-10-25 01:34:12.929237 - [Console 0]: Total frames to save: 301
+2026-10-25 01:34:12.933502 - [Console 0]: Frame size: 1280 x 720
+2026-10-25 01:34:12.934714 - [Console 0]: Saving frame 0 / 301
+2026-10-25 01:34:13.648668 - [Console 0]: Saving frame 100 / 301
+2026-10-25 01:34:14.356500 - [Console 0]: Saving frame 200 / 301
+2026-10-25 01:34:14.773759 - [Console 0]: Saving frame 300 / 301
+2026-10-25 01:34:14.777382 - [Console 0]: Done saving stream history...
+2026-10-25 01:34:32.982366 - [Console 0]: Saving screenshot to: /Users/difan/Library/Application Support/SerialPrograms/Profiles/sv-isolated-live-20261024/Screenshots/video-20261025-013432982331.mp4
+2026-10-25 01:34:32.982403 - [Console 0]: Saving stream history...
+2026-10-25 01:34:32.984752 - [Console 0]: Total frames to save: 301
+2026-10-25 01:34:32.990114 - [Console 0]: Frame size: 1280 x 720
+2026-10-25 01:34:32.991580 - [Console 0]: Saving frame 0 / 301
+2026-10-25 01:34:33.408245 - [Console 0]: Saving frame 100 / 301
+2026-10-25 01:34:33.782741 - [Console 0]: Saving frame 200 / 301
+2026-10-25 01:34:34.160442 - [Console 0]: Saving frame 300 / 301
+2026-10-25 01:34:34.164162 - [Console 0]: Done saving stream history...
+2026-10-25 01:34:37.542329 - [Console 0]: VideoSource::report_source_frame(): Count = 1,501, Mean = 0.00662425ms, Stddev = 0.0531136ms, Min = 0ms, Max = 2.059ms
+2026-10-25 01:34:38.950964 - [Console 0]: ConvertFrame: Count = 38, Mean = 1.04668ms, Stddev = 1.28387ms, Min = 0.217ms, Max = 4.571ms
+2026-10-25 01:34:38.950988 - [Console 0]: Saving screenshot to: /Users/difan/Library/Application Support/SerialPrograms/Profiles/sv-isolated-live-20261024/Screenshots/screenshot-20261025-013438950986.png
+2026-10-25 01:34:38.989621 - [Console 0]: Saving screenshot to: /Users/difan/Library/Application Support/SerialPrograms/Profiles/sv-isolated-live-20261024/Screenshots/video-20261025-013438989613.mp4
+2026-10-25 01:34:38.989639 - [Console 0]: Saving stream history...
+2026-10-25 01:34:38.990295 - [Console 0]: Total frames to save: 301
+2026-10-25 01:34:38.992993 - [Console 0]: Frame size: 1280 x 720
+2026-10-25 01:34:38.993254 - [Console 0]: Saving frame 0 / 301
+2026-10-25 01:34:39.372286 - [Console 0]: Saving frame 100 / 301
+2026-10-25 01:34:39.748981 - [Console 0]: Saving frame 200 / 301
+2026-10-25 01:34:40.119784 - [Console 0]: Saving frame 300 / 301
+2026-10-25 01:34:40.124548 - [Console 0]: Done saving stream history...
+2026-10-25 01:36:31.489302 - [Global]: Serial port refresh took 24 ms. Further updates shorter than this will be suppressed.
+2026-10-25 01:37:09.088890 - [stdout]: Saving Settings...
+2026-10-25 01:37:09.094714 - [Global]: Saving panel settings...
+2026-10-25 01:37:09.095065 - [Program]: Shutting down SingleSwitchProgramSession...
+2026-10-25 01:37:09.095087 - [Program]: Shutting down ConsoleProgramSession...
+2026-10-25 01:37:09.095135 - [Console 0]: Shutting down ConsoleSystemSession...
+2026-10-25 01:37:09.248381 - [Console 0]: DeviceHandle::~DeviceHandle(): Waiting for 0 request(s) to finish.
+2026-10-25 01:37:09.323880 - [Console 0]: Shutting down VideoSession...
+2026-10-25 01:37:09.323933 - [Console 0]: Stopping Camera...
+2026-10-25 01:37:09.810937 - [Global]: Enabled display sleep and OS sleep.

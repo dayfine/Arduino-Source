@@ -151,6 +151,19 @@ See [pokemon_sv/PR_WORKFLOW.md](pokemon_sv/PR_WORKFLOW.md). In short:
 - **Notes:** nothing from this branch goes into a PR branch: no milestone notes,
   run records, fixtures or manifests.
 
+## Console automation (BDSP and FRLG AutoStory)
+
+Rules set by the user on 2026-11-02.
+
+- **A console failure becomes a test first.** Every failed console step becomes a simulation
+  regression test that fails (red) before the fix lands. The test comment names the console run
+  and date (e.g. `// console B, FRLG run r12, 2026-11-02: ...`).
+- **Wait for each screen by detector, never by a fixed delay.** A press sent before a menu is
+  drawn goes to the text box behind it (seen 2026-11-02 at the FRLG PC). A step that has no
+  detector for the screen it needs stops instead of pressing blind.
+- **FRLG has one save slot.** Never rerun an earlier checkpoint on a save that is further along,
+  and a failed step stops without saving.
+
 ## C++ style
 
 **Order of authority:** upstream `AGENTS.md` and `CONTRIBUTING.md` (formatting, naming,
@@ -160,8 +173,8 @@ the surrounding code, then this section. It adopts the
 [Abseil Tips of the Week](https://abseil.io/tips/) (TotW) where they don't conflict, with
 Abseil translated to `std`. The build is **C++23** with Apple Clang, MSVC/clang-cl
 (`/W4 /WX`) and GCC/clang (`-Werror`). `std::format` and `std::ranges` are already used;
-`std::span` and `std::string_view` are available but rare. A first use in a file is a style
-change a reviewer will notice, so keep it where it clearly pays off.
+`std::span` is available but rare; a first use in a file is a style change a reviewer will notice,
+so keep it where it clearly pays off. `std::string_view` is the exception (see Strings).
 
 ### Where the repo wins over Google
 
@@ -192,8 +205,10 @@ change a reviewer will notice, so keep it where it clearly pays off.
 ### Adopted
 
 **Strings**
-- **`std::string_view` by value** for new read-only text helpers. Never store it past the
-  call (TotW #1, #180). Existing APIs keep `const std::string&`.
+- **`std::string_view` by value** for read-only string parameters and for loops over literal
+  ids (`for (std::string_view slug : {...})`). Never store it past the call (TotW #1, #180).
+  The user's call over upstream's `const std::string&` habit (2026-11-02): fix it across our PRs
+  before an upstream handoff. Existing upstream APIs we don't otherwise touch keep their signature.
 - **`std::format`** for messages with several parts, instead of `+` / `std::to_string`
   chains or `ostringstream` (TotW #3, #124). Raw string literals for embedded JSON (TotW #64).
 
@@ -337,6 +352,15 @@ change a reviewer will notice, so keep it where it clearly pays off.
   and control a lab instance and the Switch.
 - [lab/LAB_BUILDS.md](lab/LAB_BUILDS.md): lab builds base on `lab/main`, which
   holds lab-only tooling; upstream-bound branches never merge it.
+- [lab/scripts/README.md](lab/scripts/README.md): console B helper scripts (Lab Console
+  batches, CFR, CI wait, decomp lookup) and the CFR command syntax.
+- [autostory/LAB_NAVIGATION.md](autostory/LAB_NAVIGATION.md): measuring maps on console B and
+  the navigation traps that cost runs.
+- [autostory/frlg/lab/](autostory/frlg/lab/): FRLG new-game notes on console B and an index of
+  the captures behind them.
+- [autostory/FRLG_DEMO_WORK_PLAN.md](autostory/FRLG_DEMO_WORK_PLAN.md) and
+  [pokemon_sv/BENCH_PLAN.md](pokemon_sv/BENCH_PLAN.md): the FRLG demo plan and the BBQ routine
+  bench.
 
 ### Skills
 
@@ -348,6 +372,14 @@ checkout of this branch; edit it here and PR the change, not the local copy.
   dev loop for a console automation segment (define, observe, hypothesize,
   verify by hand, fix once, rerun), one train on the console, hard stops,
   learning, escalation and follow-ups.
+- [skills/bdsp-autostory-test/SKILL.md](skills/bdsp-autostory-test/SKILL.md): build, deploy and
+  run one BDSP AutoStory checkpoint on console B, and judge it from log and screenshots.
+- [skills/map-route-verify/SKILL.md](skills/map-route-verify/SKILL.md): build a navigation grid
+  from a map, plan a route on it and verify both on the console.
+- [skills/cpp-style-review/SKILL.md](skills/cpp-style-review/SKILL.md): judgement-level C++
+  style review of a fork PR, against the user's own review themes.
+- [skills/codex-dispatch/SKILL.md](skills/codex-dispatch/SKILL.md): hand bounded tasks to Codex
+  and use it as an advisory reviewer.
 
 ## C++ harness and verification (fork issue #40)
 
@@ -416,5 +448,8 @@ done
   `-DWrapOpenGL_AGL=<CommandLineTools SDK>/System/Library/Frameworks/AGL.framework/AGL.tbd`,
   or the final link fails with "framework 'AGL' not found".
 - Report which CI runs passed (with links) instead of claiming a local pass.
+- **Expected CI failures:** `FileException` for test images that exist only on the fork, not in
+  upstream `CommandLineTests` (FRLG SaveCardReader, OptionMenuReader, ItemListReader; BDSP
+  MenuDetector, ShortDialogDetector), is expected and not a real failure. Any other failure is.
 
 Canonical rules remain here on `agents`; never merge this branch into code.

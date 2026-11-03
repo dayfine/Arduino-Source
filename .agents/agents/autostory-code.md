@@ -46,6 +46,10 @@ without being restated.
   configure needs `PKG_CONFIG_PATH=/opt/homebrew/opt/opencv@4/lib/pkgconfig` and
   `-DWrapOpenGL_AGL=<CommandLineTools SDK>/System/Library/Frameworks/AGL.framework/AGL.tbd`. One local
   build at a time on this Mac, `-j4`.
+- **Reuse a built tree.** A fresh worktree means a full configure and a ~30-minute build (ccache
+  hits little across branches). If the dispatcher names a worktree with a build, or an existing worktree
+  for the same game already has one, `git switch` your branch there instead, so ninja rebuilds only what
+  changed (a small fix: under a minute).
 - **Commit early, finish in one turn.** Commit and push as soon as the scoped checks pass; the full
   build and test run comes after the push. Then, in the foreground and without ending the turn:
   verify → commit → push → open the PR → confirm the PR's file list. Never end with an unpushed commit.
