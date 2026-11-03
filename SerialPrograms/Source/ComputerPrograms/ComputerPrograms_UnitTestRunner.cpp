@@ -21,6 +21,7 @@
 #include "CommonFramework/GlobalAutoPaths.h"
 #include "CommonFramework/ProgramStats/StatsTracking.h"
 #include "CommonFramework/Tools/GlobalThreadPools.h"
+#include "CommonFramework/Windows/LabControl.h"
 #include "CommonTools/VisualDetectors/BlackBorderDetector.h"
 #include "CommonTools/OCR/OCR_Tests.h"
 
@@ -60,6 +61,7 @@ UnitTestDatabase make_UNIT_TESTS_ALL(){
     add_tests_FFTStreamer(ret);
     add_tests_SinkPipeline(ret);
     add_tests_AudioFileLoader(ret);
+    add_tests_LabControl(ret);
     OCR::add_tests(ret);
     Kernels::add_tests(ret);
     NintendoSwitch::add_tests_CheckOnlineDetector(ret);
@@ -254,10 +256,12 @@ void UnitTestRunner::program(ProgramEnvironment& env, CancellableScope& scope){
         m_env = nullptr;
     });
 
+    //  Uncapped pool: the runner caps the # of concurrently running tests itself, and
+    //  dispatch_now_blocking() would stall the dispatcher once a capped pool saturates.
     PokemonAutomation::UnitTestRunner runner(
         &scope,
         env.logger(),
-        GlobalThreadPools::computation_normal()
+        GlobalThreadPools::unlimited_normal()
     );
     runner.add_listener(*this);
 
@@ -372,9 +376,11 @@ bool CommandLineUnitTestRunner::run(bool augment_color_distortions){
         m_logger.log("Color distortion augmentation enabled. Image tests with labeled images also run with: " + labels);
     }
 
+    //  Uncapped pool: the runner caps the # of concurrently running tests itself, and
+    //  dispatch_now_blocking() would stall the dispatcher once a capped pool saturates.
     PokemonAutomation::UnitTestRunner runner(
         m_logger,
-        GlobalThreadPools::computation_normal()
+        GlobalThreadPools::unlimited_normal()
     );
     runner.add_listener(*this);
     for (const auto& test : UNIT_TESTS_ALL()){
