@@ -6,8 +6,10 @@
  *
  */
 
+#include <cmath>
 #include <format>
 #include <functional>
+#include <string_view>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/Logging/AbstractLogger.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
@@ -194,6 +196,38 @@ private:
     bool m_expected;
 };
 
+//  read_party_status() on console B's captures: the bar's color, and its
+//  colored share within a pixel of the 48-pixel bar of `hp` / `max_hp`.
+//  Console B, 2026-11-03, before Miguel: 17/55 HP read as 15% of the bar,
+//  then 2% with the box a pixel lower.
+class Test_PartyHp : public ImageUnitTest{
+public:
+    Test_PartyHp(const std::string& image, std::string_view color, int hp, int max_hp)
+        : ImageUnitTest("PokemonFRLG::AutoStoryBattle - " + image, {image})
+        , m_color(color)
+        , m_share(double(hp) / max_hp)
+    {}
+
+    virtual UnitTestResult run_on_images(
+        Logger& logger, CancellableScope& scope,
+        const std::vector<ImageRGB32>& images
+    ) const override{
+        const PartyStatus status = read_party_status(images[0]);
+        const std::string_view color = !status.hp_seen ? "none" : status.hp_red ? "red" : status.hp_yellow ? "yellow" : "green";
+        if (color != m_color){
+            return std::format("Expected an HP bar read as {}, got {}.", m_color, color);
+        }
+        if (std::abs(status.hp_fill - m_share) > 1.0 / 48){
+            return std::format("Expected {:.0f}% of the bar, got {:.0f}%.", 100 * m_share, 100 * status.hp_fill);
+        }
+        return true;
+    }
+
+private:
+    std::string_view m_color;
+    double m_share;
+};
+
 
 }
 
@@ -209,6 +243,10 @@ void add_tests_AutoStoryItems(UnitTestDatabase& database){
     //  text box (console B, 2026-11-03: 9 minutes of A and B there).
     database.add<Test_BattleShows>("PokemonFRLG/WildEncounterReader/eng_chansey.jpg", true);
     database.add<Test_BattleShows>("PokemonFRLG/AutoStoryBattle/MtMoonB2F_AfterRun_False.png", false);
+    database.add<Test_PartyHp>("PokemonFRLG/AutoStoryBattle/MtMoon1F_HpGreen_Full.png", "green", 45, 45);
+    database.add<Test_PartyHp>("PokemonFRLG/AutoStoryBattle/MtMoon1F_HpGreen_27of45.png", "green", 27, 45);
+    database.add<Test_PartyHp>("PokemonFRLG/AutoStoryBattle/MtMoonB2F_HpYellow_17of55.png", "yellow", 17, 55);
+    database.add<Test_PartyHp>("PokemonFRLG/AutoStoryBattle/MtMoonB2F_HpYellow_17of55_BarLow.png", "yellow", 17, 55);
     //  The battle's choices, registered here to keep add_tests() within its size.
     add_tests_AutoStoryParty(database);
 }
