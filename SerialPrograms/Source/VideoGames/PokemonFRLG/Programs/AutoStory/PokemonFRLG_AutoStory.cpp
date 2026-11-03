@@ -54,7 +54,7 @@ std::unique_ptr<StatsTracker> AutoStory_Descriptor::make_stats() const{
 namespace{
 
 //  The start and end dropdowns' entries: the table's checkpoints, 00.01 to
-//  00.11. The options hold a reference to it.
+//  00.10. The options hold a reference to it.
 const StringSelectDatabase& checkpoint_database(){
     static const StringSelectDatabase database = Pokemon::story_checkpoint_database(story_checkpoints());
     return database;
