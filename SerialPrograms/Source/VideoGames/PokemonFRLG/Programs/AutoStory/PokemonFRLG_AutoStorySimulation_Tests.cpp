@@ -53,6 +53,37 @@ const MapData* map_named(const std::string& name){
     return nullptr;
 }
 
+//  Whether the player, at the end of a WALK `step`, stops there holding on:
+//  the map's edge, a wall, or water to Surf onto, but no warp of any kind,
+//  even one to a map that isn't loaded.
+bool stops_past_end(const RouteStep& step){
+    const MapData& map = *map_named(step.end.map);
+    const TilePos here = step.end.point;
+    const TilePos ahead = here.next(step.direction);
+    if (!in_bounds(map, ahead)){
+        return true;
+    }
+    if (warps_on_step(map, ahead) || exit_mat(map, here) == step.direction
+        || (step.direction == Direction::NORTH && is_door(map, ahead))
+    ){
+        return false;
+    }
+    const StepKind kind = classify_step(map, PlayerState{here, elevation_at(map, here), step.surfing}, step.direction);
+    return kind == StepKind::BLOCKED || kind == StepKind::START_SURF;
+}
+
+//  The first leg of `route` to a wall that holding on would carry past its
+//  end, or nothing (console B, 2026-11-02: one rode Route 4's Pokemon
+//  Center escalator).
+std::optional<std::string> overrun_wall_leg(const std::vector<RouteStep>& route){
+    for (const RouteStep& step : route){
+        if (step.to_wall && !stops_past_end(step)){
+            return to_string(step);
+        }
+    }
+    return std::nullopt;
+}
+
 //  Where the run stands, with a facing: a wall beside it when unknown.
 struct Standing{
     MapPosition position;
@@ -177,6 +208,9 @@ private:
         const MapPosition end = follow_overworld_route(story_maps(), at.position, *route);
         if (!(end == goal.position)){
             return Pokemon::outcome_failed("wrong_end", to_string(end));
+        }
+        if (const std::optional<std::string> leg = overrun_wall_leg(*route)){
+            return Pokemon::outcome_failed("wall_overrun", *leg);
         }
         const Direction facing = route->empty() ? at.facing : route->back().facing_after;
         return Pokemon::outcome_ok(to_pose(StoryPose{target->map, target->tile, facing}));
