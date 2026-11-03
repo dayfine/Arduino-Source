@@ -17,7 +17,12 @@
  *      the route is planned again from it. More: holds to walls that end on
  *      one tile from all of them find the player (plan_reanchor()), and a
  *      way back to the stopped leg's end rejoins the route. The rest of the
- *      route is then walked as planned.
+ *      route is then walked as planned;
+ *    - an open leg that ended with nothing seen may still have ended up to
+ *      OPEN_LEG_SHORTFALL tiles short. When the next step is a hold to a
+ *      wall that doesn't end on its tile from each of those, the player is
+ *      found at walls the same way and walked back to the leg's end first.
+ *      When no holds find them, the leg is taken as walked, as before.
  *
  *  Where the player is is never guessed: when no holds find them from every
  *  tile they may be on, the route fails, and the caller stops without
@@ -66,6 +71,19 @@ enum class WallCheck{
     SKIP,
 };
 
+//  The most tiles an open leg has been seen to end short with nothing on
+//  screen: "west 6" in Viridian Forest ended 2 short (r16, console B,
+//  2026-11-01); on Route 1 a column was lost (cp0006-b). The cause isn't
+//  known (the forest drift), so this is what was seen, not a bound.
+constexpr int OPEN_LEG_SHORTFALL = 2;
+
+//  Whether, after an open leg that ended with nothing seen, the player is
+//  found again at walls when where they stand matters (see run_route()).
+enum class OpenLegCheck{
+    REANCHOR,
+    TRUST,      //  taken to have ended where planned
+};
+
 //  What the route was planned with, to plan the way back onto it: the maps
 //  (with the event flags the caller set) and the costs; and, for the route
 //  log (Pokemon_RouteLog.h), where it starts and what the caller calls it.
@@ -75,6 +93,7 @@ struct RoutePlanning{
     std::optional<MapPosition> start;
     std::string label = "Route";
     WallCheck wall_check = WallCheck::TAP;
+    OpenLegCheck open_leg_check = OpenLegCheck::REANCHOR;
 };
 
 //  The console side. `walk` walks one step from `facing` (unknown after a

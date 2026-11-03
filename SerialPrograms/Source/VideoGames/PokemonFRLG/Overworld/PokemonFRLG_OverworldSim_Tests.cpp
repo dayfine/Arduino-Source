@@ -89,6 +89,7 @@ struct SimCase{
     SimWalkerRules rules = {};
     std::optional<std::vector<RouteStep>> route = std::nullopt;
     WallCheck wall_check = WallCheck::TAP;
+    OpenLegCheck open_leg_check = OpenLegCheck::REANCHOR;
 };
 
 struct SimRun{
@@ -116,7 +117,7 @@ SimRun run_case(const SimCase& c){
     run.route = planned(c);
     OverworldSim sim(maps(), c.start, c.facing, c.script);
     OverworldSimWalker walker(sim, c.rules);
-    const RoutePlanning planning{.maps = &maps(), .costs = default_route_costs(), .start = c.start, .label = "Sim", .wall_check = c.wall_check};
+    const RoutePlanning planning{.maps = &maps(), .costs = default_route_costs(), .start = c.start, .label = "Sim", .wall_check = c.wall_check, .open_leg_check = c.open_leg_check};
     run.failure = walker.run(run.route, planning);
     run.state = sim.state();
     run.log = walker.log();
@@ -345,8 +346,10 @@ UnitTestResult test_no_hold_over_ledge(){
 //  r16 (console B, 2026-11-01), Viridian Forest: an open leg west ended 2
 //  tiles short with nothing on screen, and the next leg, south to a wall,
 //  was held into the TRAINER TIPS sign on (9, 29) six times. The walker now
-//  stops at the second read, as off the route; it can't yet tell the leg
-//  ended short (follow-up).
+//  finds the player at walls after the open leg, since the hold south
+//  doesn't end on its tile from where a short leg leaves them. Without that
+//  check it stops at the sign's second read, as off the route; without the
+//  stop either, it reads the sign 6 times.
 UnitTestResult test_short_leg_then_sign(){
     SimCase c{.start = at("ViridianForest", 13, 28), .facing = Direction::WEST, .goal = at("ViridianForest", 7, 33)};
     c.route = std::vector<RouteStep>{
@@ -355,14 +358,45 @@ UnitTestResult test_short_leg_then_sign(){
     };
     c.script.short_holds[1] = 2;
     const SimRun now = run_case(c);
-    if (!stopped_with(now, "interrupted right away, again") || now.state.signs_read > 2){
-        return "Expected a stop at the sign's second read:" + describe(now);
+    if (!arrived(now, c.goal) || now.state.signs_read != 0){
+        return "Expected the player found at walls after the short leg, and the route walked:" + describe(now);
     }
-    SimCase unbounded = c;
+    SimCase trusted = c;
+    trusted.open_leg_check = OpenLegCheck::TRUST;
+    const SimRun blocked = run_case(trusted);
+    if (!stopped_with(blocked, "interrupted right away, again") || blocked.state.signs_read > 2){
+        return "Expected a stop at the sign's second read without the check:" + describe(blocked);
+    }
+    SimCase unbounded = trusted;
     unbounded.rules.stop_if_blocked = false;
     const SimRun old = run_case(unbounded);
     if (!stopped_with(old, "Interrupted 6 times") || old.state.signs_read != 6){
         return "Expected the sign read 6 times without the rule:" + describe(old);
+    }
+    return true;
+}
+
+//  r16 (console B, 2026-11-01), Viridian Forest, a tile short instead of 2:
+//  the hold south from (8, 28) misses the sign and stops at the wall a
+//  column east of the plan's, with nothing on screen, so the walk was
+//  claimed done off the route. The walker now finds the player at walls
+//  after the open leg; without that check it ends on (8, 33).
+UnitTestResult test_short_leg_unseen(){
+    SimCase c{.start = at("ViridianForest", 13, 28), .facing = Direction::WEST, .goal = at("ViridianForest", 7, 33)};
+    c.route = std::vector<RouteStep>{
+        leg(Direction::WEST, 6, at("ViridianForest", 7, 28), false),
+        leg(Direction::SOUTH, 5, c.goal, true),
+    };
+    c.script.short_holds[1] = 1;
+    const SimRun now = run_case(c);
+    if (!arrived(now, c.goal)){
+        return "Expected the player found at walls after the short leg, and the route walked:" + describe(now);
+    }
+    SimCase trusted = c;
+    trusted.open_leg_check = OpenLegCheck::TRUST;
+    const SimRun old = run_case(trusted);
+    if (!old.failure.empty() || !(old.state.position == at("ViridianForest", 8, 33))){
+        return "Expected the walk claimed done on (8, 33) without the check:" + describe(old);
     }
     return true;
 }
@@ -411,6 +445,7 @@ void add_tests_OverworldSim(UnitTestDatabase& database){
     database.add<Test_OverworldSim>("a trainer's battle is fought, not fled", test_trainer_not_fled);
     database.add<Test_OverworldSim>("no hold over a ledge", test_no_hold_over_ledge);
     database.add<Test_OverworldSim>("a short leg, then a sign", test_short_leg_then_sign);
+    database.add<Test_OverworldSim>("a short leg, nothing seen", test_short_leg_unseen);
     database.add<Test_OverworldSim>("a trainer on the way out of Pewter Gym", test_trainer_on_way_out);
     database.add<Test_OverworldSim>("out of Viridian Mart from the clerk's scene", test_mart_exit);
 }
