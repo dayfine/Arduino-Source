@@ -69,6 +69,15 @@ UnitTestResult test_hold_times(){
     if (leg_hold(wall, 4) != TILE * 6){
         return std::format("Wall leg: {}ms", leg_hold(wall, 4).count());
     }
+    //  A stall on step 2: a tile longer while the hold covers it.
+    LegSpec stalled = open;
+    stalled.stalled_steps = {2};
+    if (leg_hold(stalled, 4) != TILE * 4 + TILE / 2 || leg_hold(stalled, 3) != TILE * 3 + TILE / 2){
+        return std::format("Stalled leg: {}ms, {}ms", leg_hold(stalled, 4).count(), leg_hold(stalled, 3).count());
+    }
+    if (leg_hold(stalled, 2) != TILE + TILE / 2){
+        return std::format("Stalled leg past its stall: {}ms", leg_hold(stalled, 2).count());
+    }
     return true;
 }
 

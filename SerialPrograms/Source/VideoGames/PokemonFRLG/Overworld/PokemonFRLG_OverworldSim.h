@@ -17,6 +17,9 @@
  *  with the walker's rules as switches, so a test can show a failure with
  *  the rule that was missing and its absence with the rule.
  *
+ *  A step onto a connected map waits a tile first, as the console does
+ *  while the game loads the map.
+ *
  *  Not modelled: Surf, bikes, running, HP and status. Wandering people
  *  stand on their tile.
  *
@@ -276,6 +279,11 @@ struct SimWalkerRules{
     //  on for, and the step before it taken as stopped part-way, not the
     //  step held from where the battle left the player.
     bool battle_before_step = true;
+    //  A hold over a step onto a connected map is a tile longer for it
+    //  (RouteStep::connection_steps). Without it the open leg north from
+    //  Cerulean City onto Nugget Bridge ended a tile short (console B,
+    //  2026-11-03, rows 00.16 and 00.20).
+    bool hold_over_connections = true;
 };
 
 //  The console side of run_route() on an OverworldSim, as

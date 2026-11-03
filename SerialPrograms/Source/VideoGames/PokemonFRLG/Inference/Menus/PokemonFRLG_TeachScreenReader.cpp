@@ -489,22 +489,23 @@ private:
 
 void add_tests_TeachScreenReader(UnitTestDatabase& database){
     //  FireRed on console B, 2026-11-03: TM03 taught to the lead from the
-    //  bag, B on the move to forget, and YES to stop.
+    //  bag, B on the move to forget, and YES to stop. Listed in the order
+    //  the screens came up.
     for (const char* image : {
-        "01_BagItems_eng.png",
-        "02_BagKeyItems_eng.png",
-        "03_KeyItemsTmCase_eng.png",
-        "04_TmCaseMenu_eng.png",
-        "05_TmCaseList_eng.png",
-        "06_Tm03Menu_eng.png",
-        "07_TeachWhich_eng.png",
-        "08_WantsToLearn_eng.png",
-        "09_KnowsFour_eng.png",
-        "10_DeleteQuestion_eng.png",
-        "11_WhichMove_eng.png",
-        "12_KnownMoves_eng.png",
-        "13_StopQuestion_eng.png",
-        "14_DidNotLearn_eng.png",
+        "BagItems_eng.png",
+        "BagKeyItems_eng.png",
+        "KeyItemsTmCase_eng.png",
+        "TmCaseMenu_eng.png",
+        "TmCaseList_eng.png",
+        "Tm03Menu_eng.png",
+        "TeachWhich_eng.png",
+        "WantsToLearn_eng.png",
+        "KnowsFour_eng.png",
+        "DeleteQuestion_eng.png",
+        "WhichMove_eng.png",
+        "KnownMoves_eng.png",
+        "StopQuestion_eng.png",
+        "DidNotLearn_eng.png",
     }){
         database.add<Test_TeachScreen>(std::string("PokemonFRLG/TeachScreenReader/") + image);
     }

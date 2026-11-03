@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <format>
 #include <functional>
+#include <ranges>
 #include <string>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
@@ -359,6 +360,10 @@ RouteStep to_route_step(const std::vector<MapData>& maps, const Pokemon::Leg<Loc
         //  start map only, "north 22" from Pallet Town through Route 1's grass
         //  wasn't watched for battles (console B, 2026-11-01).
         step.wild = leg.wild || leg.start.state.surfing || leg.kind == Pokemon::LegKind::ACTION;
+    }
+    const std::vector<MapPosition> tiles = leg_tiles(maps, MapPosition{maps[leg.start.map].name, leg.start.state.position}, step);
+    for (int c : std::views::iota(1, (int)tiles.size()) | std::views::filter([&](int n){ return tiles[n].map != tiles[n - 1].map; })){
+        step.connection_steps.push_back(c);
     }
     return step;
 }
