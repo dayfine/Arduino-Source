@@ -20,6 +20,7 @@
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
 #include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_SummaryMovesReader.h"
 #include "PokemonFRLG_AutoStoryActions.h"
+#include "PokemonFRLG_AutoStoryDamage.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -33,10 +34,13 @@ struct SummaryRead{
     std::optional<unsigned> level = std::nullopt;
     //  KNOWN MOVES, from the top, up to the first name not read.
     std::vector<SummaryMove> moves = {};
+    //  POKEMON SKILLS (HP as its maximum), none unless all six were read.
+    std::optional<Stats> stats = std::nullopt;
 };
 
 //  From the overworld: the party menu, party slot `slot`'s SUMMARY, its
-//  first page (species, level) and KNOWN MOVES, then back to the overworld.
+//  first page (species, level), POKEMON SKILLS (stats) and KNOWN MOVES,
+//  then back to the overworld.
 //  Each screen is waited for before the next press: a press sent before a
 //  menu is drawn goes to what was there before (console B, 2026-11-02, the
 //  PC's menus). Nothing if a screen didn't show, or before the starter
