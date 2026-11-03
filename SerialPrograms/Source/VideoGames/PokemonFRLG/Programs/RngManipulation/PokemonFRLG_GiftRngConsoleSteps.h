@@ -36,10 +36,13 @@ StarterRngOutcome loop_outcome(GiftRngOutcome outcome);
 struct GiftRngConsoleSettings{
     Language language = Language::English;
     SoundSetting sound = SoundSetting::Mono;
+    //  The calibration the first try starts from.
+    RngCalibrations calibration = {};
 };
 
 //  The loop's steps on the console, with Gift RNG's displays, stats and
-//  calibration kept here (AutoStory doesn't show them). Magikarp, FireRed,
+//  calibration kept here (AutoStory doesn't show them). Each try after the
+//  first starts from the calibration the last one ended with. Magikarp, FireRed,
 //  the Switch's default profile, no Teachy TV and no Rare Candies.
 class ConsoleGiftRngSteps : public StarterRngLoopSteps{
 public:

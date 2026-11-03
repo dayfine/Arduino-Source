@@ -68,7 +68,9 @@ ConsoleGiftRngSteps::ConsoleGiftRngSteps(
     , m_notifications(notifications)
     //  TODO: LeafGreen, once AutoStory plays it.
     , m_seeds(seeds_json_path(true, settings.language))
-{}
+{
+    m_calibration_display.set_calibrations(settings.calibration);
+}
 
 WallClock ConsoleGiftRngSteps::now(){
     return current_time();

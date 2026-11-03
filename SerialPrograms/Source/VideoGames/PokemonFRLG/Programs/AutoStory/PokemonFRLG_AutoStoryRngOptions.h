@@ -51,6 +51,8 @@ public:
     FloatingPointOption CSF;
     //  Starter RNG's in-game advances offset.
     FloatingPointOption STARTER_INGAME;
+    //  Gift RNG's, for the Magikarp.
+    FloatingPointOption GIFT_INGAME;
 };
 
 

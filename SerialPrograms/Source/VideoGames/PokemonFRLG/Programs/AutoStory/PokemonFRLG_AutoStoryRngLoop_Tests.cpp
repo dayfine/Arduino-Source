@@ -305,6 +305,28 @@ UnitTestResult test_starter_calibration_saved(){
     return true;
 }
 
+//  Gift RNG starts from the console's seed and CSF offsets, which Starter
+//  RNG may have saved, and its own in-game offset: 0 until it saves one.
+//  Saving Gift RNG's leaves Starter RNG's in-game offset as it was.
+UnitTestResult test_gift_calibration(){
+    StarterRngPlanOptions options;
+    RngStopCalibrationOptions& calibration = options.CALIBRATION;
+    calibration.save({.seed_offset = 1.0, .csf_offset = 0.5, .ingame_offset = -1.2}, calibration.STARTER_INGAME);
+    const RngCalibrations gift = calibration.calibration(calibration.GIFT_INGAME);
+    const RngCalibrations expected{.seed_offset = 17 / FRLG_FRAME_DURATION, .csf_offset = 0.5, .ingame_offset = 0};
+    if (gift != expected){
+        return std::format("Expected Gift RNG to start from {}; got {}", calibration_text(expected), calibration_text(gift));
+    }
+    calibration.save({.seed_offset = 1.0, .csf_offset = 0.5, .ingame_offset = 9.0}, calibration.GIFT_INGAME);
+    if (double(calibration.GIFT_INGAME) != 9.0 || double(calibration.STARTER_INGAME) != -1.2){
+        return std::format(
+            "Expected in-game offsets Gift 9 and Starter -1.2; got {} and {}",
+            double(calibration.GIFT_INGAME), double(calibration.STARTER_INGAME)
+        );
+    }
+    return true;
+}
+
 }
 
 
@@ -316,6 +338,7 @@ void add_tests_AutoStoryRngLoop(UnitTestDatabase& database){
     database.add<Test_AutoStoryRngLoop>("Gift RNG outcomes in the RNG plan", test_gift_outcomes);
     database.add<Test_AutoStoryRngLoop>("Starter RNG starts from the RNG plan's calibration", test_starter_calibration_from_options);
     database.add<Test_AutoStoryRngLoop>("Starter RNG saves its calibration after each reset", test_starter_calibration_saved);
+    database.add<Test_AutoStoryRngLoop>("Gift RNG keeps its own in-game calibration", test_gift_calibration);
 }
 
 

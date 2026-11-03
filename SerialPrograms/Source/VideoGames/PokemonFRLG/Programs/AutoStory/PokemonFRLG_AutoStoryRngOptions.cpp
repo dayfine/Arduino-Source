@@ -31,10 +31,15 @@ RngStopCalibrationOptions::RngStopCalibrationOptions()
         "for Squirtle only: each RNG stop keeps its own.",
         LockMode::LOCK_WHILE_RUNNING, 0.0
     )
+    , GIFT_INGAME(
+        "<b>Gift RNG's In-Game Advances Calibration:</b><br>As in Gift RNG's RNG Calibration, for the Magikarp.",
+        LockMode::LOCK_WHILE_RUNNING, 0.0
+    )
 {
     PA_ADD_OPTION(SEED);
     PA_ADD_OPTION(CSF);
     PA_ADD_OPTION(STARTER_INGAME);
+    PA_ADD_OPTION(GIFT_INGAME);
 }
 
 RngCalibrations RngStopCalibrationOptions::calibration(const FloatingPointOption& ingame) const{
