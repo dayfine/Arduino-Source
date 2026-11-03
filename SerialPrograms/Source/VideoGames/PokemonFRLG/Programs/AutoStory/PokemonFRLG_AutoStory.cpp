@@ -404,7 +404,6 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
     StoryEnv story{env.console, context, checkpoints[first].supplies, checkpoints[first].supplies, false, RUN.checks()};
     story.player_name = player_name;
     prepare_start(env, context, checkpoints, first, story);
-
     StoryExecutor executor(story);
     executor.set_checks(RUN.checks());
     executor.set_language(RUN.language());
@@ -416,7 +415,6 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
         });
     }
     Pokemon::SegmentHooks hooks = story_hooks(env, story);
-
     Pokemon::RunState state;
     const Pokemon::SegmentReport report = run_segment(
         state, segment, Pokemon::SegmentRange{plan.rows.front().id, plan.rows.back().id}, RUN.policy(), hooks
