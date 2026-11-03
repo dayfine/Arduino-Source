@@ -273,8 +273,9 @@ void add_tests_PcScreenReader(UnitTestDatabase& database){
         "MagikarpStored_party-panel_2_none.png",
         "RattataStored_party-panel_1_none.png",
         "ContinueDeposit_yes-no_1_none.png",
-        //  WITHDRAW opened by a press sent too early: the hand on the box's name.
-        "WithdrawBox_box-grid_none_none.png",
+        //  WITHDRAW's box grid, the hand on slot 0: it is drawn above the
+        //  Pokemon it points at.
+        "WithdrawBox_box-grid_0_none.png",
         "ContinueWithdraw_yes-no_1_none.png",
         "Overworld_overworld_none_none.png",
         "StartMenu_other_none_none.png",
