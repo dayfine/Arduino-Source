@@ -59,8 +59,8 @@ const char* const JUBILIFE = "JubilifeCity";
 const char* const TRAINERS_SCHOOL = "TrainersSchool";
 const char* const OREBURGH = "OreburghCity";
 const char* const GYM = "OreburghGym";
-//  The mine's entrance hall (Diamond's MAP_OREBURGH_MINE_B1F) has no map:
-//  a pose there names it. The coal room below it, Roark's, does.
+//  The mine's entrance hall (Diamond's MAP_OREBURGH_MINE_B1F) and the coal
+//  room below it, Roark's.
 const char* const MINE_HALL = "OreburghMineB1F";
 const char* const MINE = "OreburghMine";
 const char* const GATE = "OreburghGate";
@@ -441,6 +441,9 @@ std::vector<StoryCheckpoint> to_jubilife(){
     StoryStep stairs = step_into("into_jubilife", NORTH,
         "Jubilife's south edge is a wall with stairs in it, west of where the route may leave us (r78)");
     stairs.variant = "jubilife_stairs";
+    //  On Jubilife from here on: the scene after it plays where we stand, with
+    //  no fade to wait for.
+    stairs.pose_after = below_jubilifes_steps();
     return {
         row("00.04c", "Potions, back to Route 202's save spot", door_front(SANDGEM, "pokemon_center_door"), {
             potions,
@@ -662,8 +665,8 @@ StoryCheckpoint route_203_to_oreburgh(){
 //  events narc_0044 and narc_0197): Barry in the Center's door says Roark
 //  went to the mine (Roark ignored A until then, r101 and r104); down the
 //  door's column to the mine's warp tiles (44..48, 59); straight down the
-//  entrance hall, which has no map, to its warps (11..13, 21); in the coal
-//  room down to Roark, whose scene ends with him gone (Platinum's
+//  entrance hall to its warps (11..13, 21); in the coal room down to
+//  Roark, whose scene ends with him gone (Platinum's
 //  scripts_oreburgh_mine_b2f.s: he smashes the rock east of him and walks
 //  off east); back up and out; and the Center's nurse, so 01.04 starts on
 //  the doorstep. The Center's door is the decomp's (47, 20): out of
@@ -693,7 +696,7 @@ StoryCheckpoint oreburgh_mine_to_roark(){
         //  The Hiker wanders (46..48, 25..27), in the door's column: the
         //  route goes round him.
         route("above_the_mine", at(OREBURGH, 46, 58, SOUTH), "down the door's column to above the mine's warp tiles", "town"),
-        step_into("into_the_mine", SOUTH, "the warp tile (46, 59)", inside(MINE_HALL)),
+        step_into("into_the_mine", SOUTH, "the warp tile (46, 59)", at(MINE_HALL, 12, 1, SOUTH)),
         //  We land on the warp tile we came by, (12, 1): 19 taps end on row
         //  20, a step short of the warp row.
         legs("down_the_hall", {{.direction = SOUTH, .tiles = 19}}, "down column 12 of the entrance hall"),
@@ -709,7 +712,7 @@ StoryCheckpoint oreburgh_mine_to_roark(){
         talk("roark", "Roark, north of us between his rocks"),
         scene("roark_smashes_the_rock", below_roark, "his lines, Rock Smash on the rock east of him, and he walks off"),
         route("below_the_coal_rooms_warp", at(MINE, 15, 2, NORTH), "back up the corridor"),
-        step_into("up_to_the_hall", NORTH, "the warp tile (15, 1)", inside(MINE_HALL)),
+        step_into("up_to_the_hall", NORTH, "the warp tile (15, 1)", at(MINE_HALL, 11, 21, NORTH)),
         legs("up_the_hall", {{.direction = NORTH, .tiles = 19}}, "up column 11 of the entrance hall"),
         step_into("out_of_the_mine", NORTH, "the hall's warp tiles (11..13, 1)",
             Pokemon::tile_pose(OREBURGH, {TilePos{45, 59}, TilePos{45, 58}}, NORTH)),

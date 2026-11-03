@@ -125,6 +125,9 @@ MAPS = {
     #   walk north into the hall went up column 14 (the warp is column 15: a
     #   stick hold drifts, or BDSP's stairs are wider).
     'OreburghMine': {'header': 'OREBURGH_MINE_B2F', 'rect': (0, 0, 32, 32)},
+    #   B1F, the entrance hall: 01.03 crosses it on column 12 going down and
+    #   column 11 coming up (the console's walks went straight through).
+    'OreburghMineB1F': {'header': 'OREBURGH_MINE_B1F', 'rect': (0, 0, 32, 32)},
     #   Platinum's matrix 051 (Diamond's matrix is not in the cache), rows
     #   0..53. Console (2026-10-31, r235b and D-pad probes): in from the south
     #   door onto (19, 50), up the stairs (18..20, 45..47) to the wall at row
@@ -414,6 +417,9 @@ WARP_DOORS = {
     #   The mine's mouth: 01.03 walks down to the row above it and steps on.
     #   We come out on it too, and walk north off it to a wall first.
     'OreburghCity': [(x, 59) for x in range(44, 49)],
+    #   The hall's way up to the city: its other warp row (11..13, 21) has
+    #   cave mouths below it, so a step south from row 20 goes through.
+    'OreburghMineB1F': [(11, 1), (12, 1), (13, 1)],
 }
 
 
