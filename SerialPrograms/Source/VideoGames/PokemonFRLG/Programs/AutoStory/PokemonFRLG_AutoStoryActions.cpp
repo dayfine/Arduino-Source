@@ -468,12 +468,19 @@ bool overworld_shows(ConsoleHandle& console, ProControllerContext& context){
     return true;
 }
 
+namespace{
+bool yes_no_shows(ConsoleHandle& console){
+    VideoSnapshot screen = console.video().snapshot();
+    return screen && yes_no_cursor(screen).has_value();
+}
+}
+
 TextEnd advance_text(ConsoleHandle& console, ProControllerContext& context, Milliseconds timeout, bool stop_at_battle){
     const WallClock deadline = current_time() + timeout;
     //  A YES/NO here is a move to learn: "Delete a move to make room?" NO,
     //  then, right after, "Stop learning?" YES. B to "Stop learning?" goes
     //  back to the first, for good (console B, 2026-11-01).
-    WallClock last_no = WallClock::min();
+    std::optional<WallClock> last_no;
     while (current_time() < deadline){
         BattleScreenWatcher battle(COLOR_RED);
         BattleMenuWatcher battle_menu(COLOR_RED);
@@ -481,7 +488,7 @@ TextEnd advance_text(ConsoleHandle& console, ProControllerContext& context, Mill
         SelectionArrowWatcher no(COLOR_RED, &console.overlay(), SelectionArrowPositionConfirmationMenu::NO);
         BattleLearnDialogWatcher learn(COLOR_RED);
         context.wait_for_all_requests();
-        const int ret = run_until<ProControllerContext>(
+        int ret = run_until<ProControllerContext>(
             console, context,
             [](ProControllerContext& context){
                 for (int c = 0; c < 5; c++){
@@ -490,11 +497,16 @@ TextEnd advance_text(ConsoleHandle& console, ProControllerContext& context, Mill
             },
             {battle, battle_menu, yes, no, learn}
         );
+        //  The arrow watchers alone match scenery (a rock's edge on Route 3),
+        //  so a YES/NO also needs its box.
+        if ((ret == 2 || ret == 3) && !yes_no_shows(console)){
+            ret = -1;
+        }
         if (ret >= 2){
-            const bool stop_learning = current_time() - last_no < 10000ms;
+            const bool stop_learning = last_no && current_time() - *last_no < 10000ms;
             console.log(stop_learning ? "Text: YES/NO, YES (stop learning)." : "Text: YES/NO, NO.");
             press(context, stop_learning ? BUTTON_A : BUTTON_B, 1500ms);
-            last_no = stop_learning ? WallClock::min() : current_time();
+            last_no = stop_learning ? std::nullopt : std::optional<WallClock>(current_time());
             continue;
         }
         if (ret >= 0 && stop_at_battle){
