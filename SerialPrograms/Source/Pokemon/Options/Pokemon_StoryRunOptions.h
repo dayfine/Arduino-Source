@@ -14,6 +14,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 #include "Common/Cpp/Options/BooleanCheckBoxOption.h"
@@ -55,6 +56,24 @@ StringSelectDatabase story_checkpoint_database(const std::vector<Row>& rows){
 }
 
 
+//  Verify mode, off by default (verify_checkpoint()): the start checkpoint
+//  RUNS times from its save, never saving at its end; verified when at
+//  least PASSES pass. For a battle that has lost twice or more, given its
+//  own checkpoint saved right before it.
+class StoryVerifyOptions : public GroupOption{
+public:
+    StoryVerifyOptions();
+
+    //  The runs and passes, unset when verify mode is off.
+    std::optional<VerifyPolicy> policy() const;
+    virtual std::string check_validity() const override;
+
+public:
+    SimpleIntegerOption<uint8_t> RUNS;
+    SimpleIntegerOption<uint8_t> PASSES;
+};
+
+
 class StoryRunOptions : public GroupOption{
 public:
     //  `checkpoints`: story_checkpoint_database() of the game's story, kept
@@ -84,6 +103,8 @@ public:
     //  Any language the game has, whether or not a reader supports it:
     //  steps without one use language-free checks, so none is refused.
     EnumDropdownOption<Language> LANGUAGE;
+    //  On, it runs one checkpoint: the start, which must also be the end.
+    StoryVerifyOptions VERIFY;
 };
 
 
