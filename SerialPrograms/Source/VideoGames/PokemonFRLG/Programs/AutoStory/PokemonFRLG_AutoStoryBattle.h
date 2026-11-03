@@ -75,6 +75,10 @@ struct Supplies{
     //  story knows it (trainer_party()): the lead's attacks are chosen
     //  against it. Empty otherwise; wild battles never use it.
     std::vector<std::string> foes = {};
+    //  The wild Pokemon of the battle going on, as read at its first battle
+    //  menu (read_wild_foes()): the lead's attacks are chosen against it.
+    //  Empty when it wasn't read; trainer battles never use it.
+    std::vector<std::string> wild_foes = {};
 };
 
 //  The nurse healed the party: HP, status and PP.
