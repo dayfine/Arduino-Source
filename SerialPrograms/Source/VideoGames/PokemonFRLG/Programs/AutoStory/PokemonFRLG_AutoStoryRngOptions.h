@@ -16,10 +16,12 @@
 #include "Common/Cpp/Logging/AbstractLogger.h"
 #include "Common/Cpp/Options/BooleanCheckBoxOption.h"
 #include "Common/Cpp/Options/EnumDropdownOption.h"
+#include "Common/Cpp/Options/FloatingPointOption.h"
 #include "Common/Cpp/Options/GroupOption.h"
 #include "Common/Cpp/Options/SimpleIntegerOption.h"
 #include "Common/Cpp/Options/StringOption.h"
 #include "CommonFramework/Language.h"
+#include "VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_RngCalibration.h"
 #include "VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_RngPlan.h"
 #include "VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_RngTargetSearch.h"
 #include "VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_SeedsDatabase.h"
@@ -27,6 +29,29 @@
 namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonFRLG{
+
+
+//  This console's RNG calibration, as Starter RNG's RNG Calibration shows
+//  it, for AutoStory's RNG stops to start from: the seed and Continue
+//  Screen Frames offsets, the same for every stop, and an in-game advances
+//  offset for each stop.
+class RngStopCalibrationOptions : public GroupOption{
+public:
+    RngStopCalibrationOptions();
+
+    //  The calibration in frames for the stop whose in-game advances offset
+    //  `ingame` keeps.
+    RngCalibrations calibration(const FloatingPointOption& ingame) const;
+    //  Keeps `calibration` as calibration() returns it. Called after each
+    //  reset, so a stopped run keeps what it learned.
+    void save(const RngCalibrations& calibration, FloatingPointOption& ingame);
+
+public:
+    SimpleIntegerOption<int64_t> SEED;
+    FloatingPointOption CSF;
+    //  Starter RNG's in-game advances offset.
+    FloatingPointOption STARTER_INGAME;
+};
 
 
 class StarterRngPlanOptions : public GroupOption{
@@ -60,6 +85,7 @@ public:
     StringOption NATURES;
     StringOption MIN_IVS;
     SimpleIntegerOption<uint8_t> MAX_ATTEMPTS;
+    RngStopCalibrationOptions CALIBRATION;
 
 private:
     RngTargetFilters filters(Logger& logger) const;

@@ -64,6 +64,30 @@ std::string starter_rng_loop_message(const StarterRngLoopResult& result){
 }
 
 
+CalibrationSavingSteps::CalibrationSavingSteps(
+    StarterRngLoopSteps& steps, RngStopCalibrationOptions& calibration, FloatingPointOption& ingame
+)
+    : m_steps(steps)
+    , m_calibration(calibration)
+    , m_ingame(ingame)
+{}
+
+WallClock CalibrationSavingSteps::now(){
+    return m_steps.now();
+}
+
+StarterRngResult CalibrationSavingSteps::run_attempt(const RngAttempt& attempt, const StarterRngAttemptCall& call){
+    StarterRngAttemptCall saving = call;
+    saving.on_reset = [&](const StarterRngProgress& progress){
+        m_calibration.save(progress.calibrations, m_ingame);
+        if (call.on_reset){
+            call.on_reset(progress);
+        }
+    };
+    return m_steps.run_attempt(attempt, saving);
+}
+
+
 std::vector<StoryCheckpoint> rows_after_starter_rng(
     const std::vector<StoryCheckpoint>& checkpoints, size_t ball_row, size_t last
 ){
