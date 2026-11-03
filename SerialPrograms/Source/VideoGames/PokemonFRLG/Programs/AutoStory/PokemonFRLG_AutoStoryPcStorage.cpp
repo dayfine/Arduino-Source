@@ -107,7 +107,7 @@ std::optional<PcTransfer> parse_pc_variant(std::string_view variant){
 }
 
 
-std::string pc_transfer_error(const PcTransfer& transfer, const std::vector<PartyMember>& party){
+std::string pc_transfer_error(const PcTransfer& transfer, const std::vector<PcPartyMember>& party){
     if (transfer.action == PcAction::WITHDRAW){
         return party.size() >= PARTY_SIZE ? "the party is full" : "";
     }
@@ -361,8 +361,8 @@ ConsolePcStorageActions::ConsolePcStorageActions(ConsoleHandle& console, ProCont
     , m_context(context)
 {}
 
-std::vector<PartyMember> ConsolePcStorageActions::read_party(){
-    return std::vector<PartyMember>(read_party_size(m_console, m_context));
+std::vector<PcPartyMember> ConsolePcStorageActions::read_party(){
+    return std::vector<PcPartyMember>(read_party_size(m_console, m_context));
 }
 
 PcView ConsolePcStorageActions::read_view(){

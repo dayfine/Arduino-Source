@@ -403,9 +403,9 @@ UnitTestResult test_capture_messages(){
 //  A PC that does nothing: the segment tests below only use its party.
 class IdlePc : public PcStorageActions{
 public:
-    std::vector<PartyMember> party = {{.species = "squirtle"}, {.species = "magikarp"}};
+    std::vector<PcPartyMember> party = {{.species = "squirtle"}, {.species = "magikarp"}};
     size_t views = 0;
-    virtual std::vector<PartyMember> read_party() override{
+    virtual std::vector<PcPartyMember> read_party() override{
         return party;
     }
     virtual PcView read_view() override{

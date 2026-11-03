@@ -86,7 +86,7 @@ std::optional<PcTransfer> parse_pc_variant(std::string_view variant);
 
 
 //  A party member as far as a PC step needs to know.
-struct PartyMember{
+struct PcPartyMember{
     //  Its species' slug, or empty if not read.
     std::string species = {};
     bool fainted = false;
@@ -95,7 +95,7 @@ struct PartyMember{
 //  Why `transfer` can't be done with `party`, or empty if it can: a
 //  deposit of a slot the party hasn't got, of its last Pokemon, or of its
 //  last one that can fight; a withdrawal into a full party.
-std::string pc_transfer_error(const PcTransfer& transfer, const std::vector<PartyMember>& party);
+std::string pc_transfer_error(const PcTransfer& transfer, const std::vector<PcPartyMember>& party);
 
 
 //  What shows during a PC step, as far as its decisions go.
@@ -191,7 +191,7 @@ public:
 
     //  From the overworld: the party, read from the party menu, which is
     //  closed again.
-    virtual std::vector<PartyMember> read_party() = 0;
+    virtual std::vector<PcPartyMember> read_party() = 0;
     //  What shows now.
     virtual PcView read_view() = 0;
     //  One press (A, B or the D-pad), and the wait for the screen to answer.
@@ -230,7 +230,7 @@ class ConsolePcStorageActions : public PcStorageActions{
 public:
     ConsolePcStorageActions(ConsoleHandle& console, ProControllerContext& context);
 
-    virtual std::vector<PartyMember> read_party() override;
+    virtual std::vector<PcPartyMember> read_party() override;
     virtual PcView read_view() override;
     virtual void press(PcPress press) override;
 
