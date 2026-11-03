@@ -46,6 +46,7 @@ enum class SimScreen{
     MESSAGE,        //  a white message box: a sign, a trainer
     START_MENU,
     BATTLE_FLASH,   //  a wild battle's opening flashes
+    BATTLE_OPENING, //  a battle's text box, empty, before the HP boxes
     BATTLE,         //  a battle's text box with the HP boxes
     FADE,           //  a warp's fade out and in
 };
@@ -76,6 +77,9 @@ struct SimTiming{
     Milliseconds tile{267};
     Milliseconds flash{300};
     Milliseconds battle_screen{3700};
+    //  A wild battle's text box, before the HP boxes (battle_screen). Not
+    //  set: not modelled, the battle screen shows at once.
+    std::optional<Milliseconds> battle_opening;
     Milliseconds message{400};
     Milliseconds fade{1000};            //  from the step's end to the new map
     Milliseconds trainer_notice{1000};  //  "!" over the trainer, before they walk up
@@ -245,6 +249,12 @@ struct SimWalkerRules{
     //  Without it the walker stopped as off the route (console B,
     //  2026-11-03, Mt. Moon 1F, row 00.13).
     bool find_player_after_warp_battle = true;
+    //  After a leg's watch saw nothing, a battle's text box on screen (its
+    //  HP boxes still to come) is watched on for, and the leg taken as
+    //  stopped part-way. Without it the walker took "south 15 (to wall)"
+    //  as walked and the next leg into the battle (console B, 2026-11-03,
+    //  Mt. Moon B1F, row 00.13).
+    bool watch_on_for_unseen_battle = true;
 };
 
 //  The console side of run_route() on an OverworldSim, as
@@ -287,6 +297,7 @@ private:
     [[noreturn]] void fail_off_route(const RouteStep& step);
     std::optional<SimSeen> hold_watching(const RouteStep& step, Milliseconds hold, const std::vector<Interrupt>& interrupts);
     size_t clear_late(const std::vector<Interrupt>& interrupts, Milliseconds watch, size_t max);
+    size_t clear_unseen_battle(const RouteStep& step);
     void clear(const Interrupt& interrupt);
     void hold_to_warp(const RouteStep& step);
     StepEnd watch_for_trainer(const RouteStep& step, int approach_tiles);

@@ -88,7 +88,8 @@ std::optional<WalkedTiles> walk_step(
 //  walk_step(), then a watch for what its last step set off. Not DONE if
 //  the player may have stopped short of the step's end: an open leg
 //  stopped, or something seen after the hold, which may have stopped it
-//  before the end (after a warp, it was checked for already).
+//  before the end (after a warp, it was checked for already). A battle
+//  on its way that the watch missed counts as seen (clear_unseen_battle()).
 StepOutcome walk_and_watch(
     ConsoleHandle& console, ProControllerContext& context,
     const RouteStep& step, std::optional<Direction> facing,
@@ -101,7 +102,11 @@ StepOutcome walk_and_watch(
         return StepOutcome{};
     }
     const Milliseconds watch = step.wild ? AFTER_WILD_LEG_WATCH : AFTER_LEG_WATCH;
-    const size_t late = Pokemon::clear_late_interrupts(console, context, step.wild ? interrupts.wild : interrupts.other, watch, MAX_INTERRUPTIONS_PER_LEG);
+    const OverworldInterrupts& watched = step.wild ? interrupts.wild : interrupts.other;
+    size_t late = Pokemon::clear_late_interrupts(console, context, watched, watch, MAX_INTERRUPTIONS_PER_LEG);
+    if (late == 0){
+        late = clear_unseen_battle(console, context, watched, step);
+    }
     //  After a warp it was checked for already.
     const bool done = late == 0 || step.warps || step.action != RouteAction::WALK;
     return StepOutcome{.end = done ? StepEnd::DONE : StepEnd::LATE, .walked = std::nullopt};
