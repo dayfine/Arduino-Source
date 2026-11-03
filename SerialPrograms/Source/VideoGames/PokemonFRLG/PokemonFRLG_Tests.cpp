@@ -28,6 +28,7 @@
 #include "Inference/Menus/PokemonFRLG_SummaryMovesReader.h"
 #include "Inference/PokemonFRLG_BattleLevelUpReader.h"
 #include "Inference/PokemonFRLG_BattleSelectionArrowDetector.h"
+#include "Inference/PokemonFRLG_BattleTextBoxDetector.h"
 #include "Inference/PokemonFRLG_PartyLevelUpReader.h"
 #include "Inference/PokemonFRLG_ShinySymbolDetector.h"
 #include "Inference/PokemonFRLG_StatsReader.h"
@@ -724,6 +725,7 @@ void add_tests(UnitTestDatabase& database){
     add_tests_EliteFourRoomDetector(database);
     add_tests_HallOfFameSavingDetector(database);
     add_tests_BattleMoveSelectionArrow(database);
+    add_tests_BattleTextBoxDetector(database);
     add_tests_BagDetector(database);
     add_tests_AutoStoryReaders(database);
     add_tests_ExitWildBattle(database);
