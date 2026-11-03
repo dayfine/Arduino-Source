@@ -24,6 +24,7 @@
 #include "VideoGames/PokemonFRLG/PokemonFRLG_Navigation.h"
 #include "VideoGames/PokemonFRLG/PokemonFRLG_Settings.h"
 #include "PokemonFRLG_AutoStoryActions.h"
+#include "PokemonFRLG_AutoStoryBattleData.h"
 #include "PokemonFRLG_AutoStoryBattleDecisions.h"
 #include "PokemonFRLG_AutoStoryBattle.h"
 
@@ -623,6 +624,9 @@ private:
 
     void take_turn(const ImageViewRGB32& screen){
         m_faint_polls = 0;
+        if (m_kind != BattleKind::TRAINER && m_decisions.turns() == 0){
+            m_supplies.wild_foes = read_wild_foes(m_console.logger(), m_language, screen);
+        }
         if (m_refusal.refused(current_time())){
             m_console.log("Battle: the move list came back without a turn (Disable?); choosing another move.", COLOR_ORANGE);
             m_decisions.turn_done(TurnChoice::MOVE, TurnResult::REFUSED);
