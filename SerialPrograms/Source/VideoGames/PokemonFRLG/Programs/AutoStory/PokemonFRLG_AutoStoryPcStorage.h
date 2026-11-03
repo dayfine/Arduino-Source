@@ -63,6 +63,13 @@ enum class PcAction{
     WITHDRAW,
 };
 
+//  What a DEPOSIT does when the party hasn't got its slot: refuse, or
+//  skip it as done (the Magikarp from Gift RNG, when Gift RNG didn't run).
+enum class PcMissing{
+    REFUSE,
+    SKIP,
+};
+
 //  What a PC step does. Slots and boxes count from 0.
 struct PcTransfer{
     PcAction action = PcAction::DEPOSIT;
@@ -73,6 +80,7 @@ struct PcTransfer{
     size_t box = 0;
     //  WITHDRAW: the box slot, row by row, six to a row.
     size_t box_slot = 0;
+    PcMissing if_missing = PcMissing::REFUSE;
 };
 
 //  The prefix of a GAME step's variant that names a PC step.
@@ -80,7 +88,7 @@ inline constexpr std::string_view PC_VARIANT_PREFIX = "pc ";
 
 //  `transfer` as a GAME step's variant: "pc deposit slot=2 box=1" or
 //  "pc withdraw box=1 slot=7", slots and boxes counted from 1 as the game
-//  shows them.
+//  shows them; a deposit with PcMissing::SKIP ends in " if_present".
 std::string pc_variant(const PcTransfer& transfer);
 //  A variant from pc_variant(); nothing if `variant` isn't one, or names a
 //  slot or box the game hasn't got.
@@ -169,6 +177,9 @@ public:
 
 enum class PcEnd{
     DONE,
+    //  A DEPOSIT with PcMissing::SKIP whose slot the party hasn't got: the
+    //  PC wasn't touched.
+    SKIPPED,
     //  pc_transfer_error() refused it before the PC was touched.
     REFUSED,
     FAILED,
