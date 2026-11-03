@@ -44,7 +44,7 @@ public:
 
 class StubTeach : public TeachActions{
 public:
-    virtual bool open_item(std::string_view) override{ return false; }
+    virtual bool open_item(std::string_view, std::string_view) override{ return false; }
     virtual TeachPrompt choose_member(size_t) override{ return TeachPrompt::FAILED; }
     virtual ForgetEnd forget(size_t) override{ return ForgetEnd::FAILED; }
     virtual void stop_teaching() override{}
