@@ -6,6 +6,8 @@
 
 #include "PokemonFRLG_AutoStoryCapture.h"
 #include "PokemonFRLG_AutoStoryChoice.h"
+#include "PokemonFRLG_AutoStoryGrind.h"
+#include "PokemonFRLG_AutoStoryMart.h"
 #include "PokemonFRLG_AutoStoryPcStorage.h"
 #include "PokemonFRLG_AutoStoryTable.h"
 
@@ -39,6 +41,7 @@ const char* const MT_MOON_1F = "MtMoon_1F";
 const char* const MT_MOON_B2F = "MtMoon_B2F";
 const char* const CERULEAN = "CeruleanCity";
 const char* const CERULEAN_CENTER = "CeruleanCity_PokemonCenter_1F";
+const char* const CERULEAN_MART = "CeruleanCity_Mart";
 const char* const ROUTE24 = "Route24";
 
 Pokemon::Pose at(const char* map, int x, int y, std::optional<Direction> facing = std::nullopt){
@@ -507,9 +510,23 @@ StoryCheckpoint route4_to_cerulean(){
 //  who took Squirtle he has Pidgeotto Lv17, Abra Lv16, Rattata Lv15 and
 //  Bulbasaur Lv18 (sParty_RivalCeruleanBulbasaur), whose Vine Whip and
 //  Sleep Powder are the danger.
+//
+//  Before him: 5 Potions at the Mart (CeruleanCity_Mart_Items: POTION is
+//  row 3, 300 each; Mt. Moon's trainers leave well over the floor), then a
+//  GRIND to Lv22 on Route 4's grass east of Mt. Moon (75..86, 11..17;
+//  Spearow, Rattata, Ekans and Mankey around Lv10, about 80 EXP each),
+//  healing at the Center. With Bite chosen against his party, Lv22 is
+//  where a lone Wartortle beats it (#211's estimate: about 70 HP of his
+//  damage against its 61, which the Potions cover; at Lv18 about 100).
 StoryCheckpoint cerulean_rival(){
-    return row("00.15", "Cerulean: the rival north of the city", at(CERULEAN_CENTER, 7, 4, NORTH), after_brock(), StartMenu::FULL, {
-        running(route("below_rival_trigger", at(CERULEAN, 23, 7, NORTH), "out of the Center, north up to (23, 7), short of the trigger row 6")),
+    const MartPlan potions{.map = CERULEAN_MART, .lines = {{.item = "potion", .quantity = 5}}, .budget = 1500, .money_floor = 1500};
+    const GrindPlan to_lv22{.member = 0, .level = 22, .max_encounters = 100, .pace = WEST, .heal_every = 0};
+    return row("00.15", "Cerulean: Potions, a GRIND to Lv22, then the rival north of the city", at(CERULEAN_CENTER, 7, 4, NORTH), after_brock(), StartMenu::FULL, {
+        running(route("mart_clerk", at(CERULEAN_MART, 4, 3, WEST), "out of the Center to the Mart's clerk")),
+        mart_step("buy_potions", "5 Potions: the GRIND fights wild battles only with 2 or more", potions),
+        running(route("grind_patch", at(ROUTE4, 86, 16, WEST), "west out of the city along Route 4's lower road onto its grass's east edge")),
+        grind_step("grind_to_lv22", "wild battles until the lead is Lv22, the nurse when hurt or low on PP", to_lv22, at(CERULEAN_CENTER, 7, 4, NORTH)),
+        running(route("below_rival_trigger", at(CERULEAN, 23, 7, NORTH), "back east into the city, north up to (23, 7), short of the trigger row 6")),
         step_into("rival_trigger", NORTH, "onto (23, 6), the middle trigger: \"Yo! <player>!\""),
         battle("rival_cerulean", at(CERULEAN, 23, 6, SOUTH), false, "Pidgeotto, Abra, Rattata and Bulbasaur; then the FAME CHECKER"),
         running(route("cerulean_nurse", at(CERULEAN_CENTER, 7, 4, NORTH), "back to the Center before Nugget Bridge")),

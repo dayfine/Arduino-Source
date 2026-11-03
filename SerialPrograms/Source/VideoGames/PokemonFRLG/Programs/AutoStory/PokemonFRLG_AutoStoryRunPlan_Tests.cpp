@@ -3,8 +3,8 @@
  *  From: https://github.com/PokemonAutomation/
  *
  *  Which rows of the story table a run takes (plan_story_run()) with the
- *  RNG programs' handoffs on and off, and the rows the handoffs split or
- *  join.
+ *  RNG programs' handoffs on and off, the rows the handoffs split or
+ *  join, and what 00.15 runs before the rival.
  *
  */
 
@@ -14,6 +14,10 @@
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
+#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRoute.h"
+#include "PokemonFRLG_AutoStoryEvents.h"
+#include "PokemonFRLG_AutoStoryGrind.h"
+#include "PokemonFRLG_AutoStoryMart.h"
 #include "PokemonFRLG_AutoStoryTable.h"
 
 namespace PokemonAutomation{
@@ -249,6 +253,64 @@ UnitTestResult test_after_sid_helper_row(){
     return true;
 }
 
+//  The index of the first step of `steps` from `from` that `matches`, or
+//  steps.size().
+size_t find_step(const std::vector<StoryStep>& steps, size_t from, const std::function<bool(const StoryStep&)>& matches){
+    for (size_t c = from; c < steps.size(); c++){
+        if (matches(steps[c])){
+            return c;
+        }
+    }
+    return steps.size();
+}
+
+//  Whether a route plans from `from` to `to` (ending facing as `to` does).
+bool plans(const Pokemon::Pose& from, const Pokemon::Pose& to){
+    const std::optional<StoryPose> start = story_pose(from);
+    const std::optional<StoryPose> goal = story_pose(to);
+    if (!start || !goal){
+        return false;
+    }
+    return plan_overworld_route(
+        story_maps(), MapPosition{start->map, start->tile}, RouteGoal{MapPosition{goal->map, goal->tile}, goal->facing},
+        default_route_costs(), start->facing.value_or(Direction::NORTH)
+    ).has_value();
+}
+
+//  00.15, before the rival: Potions from Cerulean's Mart (a loaded save's
+//  bag may hold too few for the wild battles a GRIND fights), then a GRIND
+//  on Route 4's grass east of Mt. Moon to Lv22, where Bite beats his party
+//  (#211), healing at Cerulean's Center; its trip there plans both ways.
+UnitTestResult test_cerulean_mart_and_grind(){
+    const std::vector<StoryStep>& steps = story_checkpoints()[row_index("00.15")].steps;
+    const size_t mart = find_step(steps, 0, [](const StoryStep& step){
+        const std::optional<MartPlan> plan = parse_mart_variant(step.variant);
+        return plan && plan->map == "CeruleanCity_Mart" && !plan->lines.empty() && plan->lines[0].item == "potion";
+    });
+    const size_t grind = find_step(steps, mart, [](const StoryStep& step){
+        const std::optional<GrindPlan> plan = parse_grind_variant(step.variant);
+        return plan && plan->member == 0 && plan->level >= 22;
+    });
+    const size_t rival = find_step(steps, 0, [](const StoryStep& step){ return step.name == "rival_trigger"; });
+    if (mart == steps.size() || grind == steps.size() || rival == steps.size() || grind > rival){
+        return "00.15: expected a Cerulean Mart step buying Potions, then a GRIND of the lead to Lv22, before the rival's trigger.";
+    }
+    const std::optional<StoryPose> clerk = mart > 0 && steps[mart - 1].target ? story_pose(*steps[mart - 1].target) : std::nullopt;
+    if (!clerk || clerk->map != "CeruleanCity_Mart"){
+        return "00.15: expected the Mart step right after a route to the clerk.";
+    }
+    if (grind == 0 || !steps[grind - 1].target || !steps[grind].target){
+        return "00.15: expected the GRIND right after a route to its patch, with the nurse as its target.";
+    }
+    const Pokemon::Pose& patch = *steps[grind - 1].target;
+    const Pokemon::Pose& nurse = *steps[grind].target;
+    const std::optional<StoryPose> nurse_pose = story_pose(nurse);
+    if (!nurse_pose || nurse_pose->map != "CeruleanCity_PokemonCenter_1F" || !plans(patch, nurse) || !plans(nurse, patch)){
+        return "00.15: expected the GRIND's trips to Cerulean's nurse and back to plan.";
+    }
+    return true;
+}
+
 }
 
 
@@ -257,6 +319,7 @@ void add_tests_AutoStoryRunPlan(UnitTestDatabase& database){
     add_tests_GiftRunPlan(database);
     database.add<Test_AutoStory>("00.01b and 00.12b: back in after SID Helper and Gift RNG", test_after_sid_helper_row);
     database.add<Test_AutoStory>("00.04 and 00.04b: one checkpoint with Starter RNG off", test_starter_rows_joined);
+    database.add<Test_AutoStory>("00.15: Potions at Cerulean's Mart and a GRIND before the rival", test_cerulean_mart_and_grind);
 }
 
 

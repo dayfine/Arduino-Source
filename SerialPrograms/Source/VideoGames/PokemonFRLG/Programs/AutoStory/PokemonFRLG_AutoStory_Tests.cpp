@@ -23,6 +23,7 @@
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRecovery.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRoute.h"
 #include "PokemonFRLG_AutoStoryActions.h"
+#include "PokemonFRLG_AutoStoryGrind.h"
 #include "PokemonFRLG_AutoStoryPcStorage.h"
 #include "PokemonFRLG_AutoStoryTable.h"
 
@@ -524,8 +525,12 @@ UnitTestResult check_lines(const StoryCheckpoint& checkpoint, std::set<const Map
         const StoryStep& step = checkpoint.steps[c];
         const std::string where = checkpoint.id + "/" + step.name + ": ";
         const bool walks = step.kind == StoryStepKind::ROUTE || step.kind == StoryStepKind::LEGS;
+        //  A GRIND's patch is grass: the route there may end on it.
+        const bool to_patch = step.target && c + 1 < checkpoint.steps.size() && parse_grind_variant(checkpoint.steps[c + 1].variant);
         for (const MapPosition& tile : walks ? tiles_walked(pose, step) : std::vector<MapPosition>{}){
-            if (const std::string problem = tile_problem(tile, beaten); !problem.empty()){
+            const StoryPose end = to_patch ? one_tile(*step.target) : StoryPose{};
+            const bool patch = to_patch && tile.map == end.map && tile.point == end.tile;
+            if (const std::string problem = tile_problem(tile, beaten); !problem.empty() && !(patch && problem.starts_with("in the grass"))){
                 return where + problem;
             }
         }
@@ -552,7 +557,7 @@ UnitTestResult check_lines(const StoryCheckpoint& checkpoint, std::set<const Map
 }
 
 //  From the Running Shoes on, routes and legs keep out of the grass (but
-//  in caves, which are all grass), off warps to maps not loaded and out of
+//  in caves, which are all grass, and onto a GRIND's patch), off warps to maps not loaded and out of
 //  trainers' lines, but for the three Route 3 trainers, Mt. Moon's Grunt
 //  at (12, 20) and Nugget Bridge's five the table steps in front of to
 //  fight; where they cross a wandering trainer's sight, the walk can place
