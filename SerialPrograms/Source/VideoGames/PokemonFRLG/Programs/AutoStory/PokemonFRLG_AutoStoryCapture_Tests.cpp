@@ -13,6 +13,7 @@
 #include <algorithm>
 #include <format>
 #include <functional>
+#include <optional>
 #include <string>
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
@@ -511,6 +512,88 @@ UnitTestResult test_capture_in_segment(){
     return true;
 }
 
+
+
+//  A patch where the battle starts on step `battle_step` (from 1): the
+//  flash shows unless missed; its screen shows from `screen_after` steps
+//  later on (0: right after the step), or never.
+struct FakePatch : public PatchSteps{
+    size_t battle_step = 0;
+    bool flash_missed = false;
+    std::optional<size_t> screen_after = 0;
+    //  Whether the overworld shows when no battle does.
+    bool overworld = true;
+
+    size_t steps = 0;
+    size_t moved = 0;
+    std::vector<std::string> dumps = {};
+
+    bool battle_started() const{
+        return battle_step != 0 && steps >= battle_step;
+    }
+    virtual bool step() override{
+        if (battle_started()){
+            //  The D-pad does nothing in a battle.
+            steps++;
+            return false;
+        }
+        steps++;
+        moved++;
+        return steps == battle_step && !flash_missed;
+    }
+    virtual bool battle_shows() override{
+        return battle_started() && screen_after && steps >= battle_step + *screen_after;
+    }
+    virtual bool overworld_shows() override{
+        return !battle_started() && overworld;
+    }
+    virtual void dump_screen(std::string_view label) override{
+        dumps.emplace_back(label);
+    }
+};
+
+struct PaceCase{
+    std::string name;
+    FakePatch patch;
+    bool found;
+    //  Steps the player took on the overworld: none in a battle.
+    size_t moved;
+    size_t dumps = 0;
+};
+
+UnitTestResult test_pace_until_battle(){
+    const auto patch = [](size_t battle_step, bool flash_missed, std::optional<size_t> screen_after, bool overworld){
+        FakePatch fake;
+        fake.battle_step = battle_step;
+        fake.flash_missed = flash_missed;
+        fake.screen_after = screen_after;
+        fake.overworld = overworld;
+        return fake;
+    };
+    std::vector<PaceCase> cases{
+        {"the flash on step 5", patch(5, false, 0, true), true, 5},
+        //  Console B, 2026-11-03: "Wild RATTATA appeared!" waited for A
+        //  while 193 more steps paced in vain.
+        {"the flash missed, the text box right after", patch(5, true, 0, true), true, 5},
+        {"the flash missed, the text box a step later", patch(5, true, 1, true), true, 5},
+        {"the flash missed, the text box only after the last step", patch(PACE_MAX_STEPS, true, 0, true), true, PACE_MAX_STEPS},
+        {"no battle: the overworld, no image", patch(0, false, 0, true), false, PACE_MAX_STEPS},
+        {"no battle, not the overworld: an image", patch(0, false, 0, false), false, PACE_MAX_STEPS, 1},
+    };
+    for (PaceCase& item : cases){
+        LineLogger logger;
+        const bool found = pace_until_battle(logger, item.patch, PACE_MAX_STEPS);
+        if (found != item.found || item.patch.moved != item.moved || item.patch.dumps.size() != item.dumps){
+            return std::format(
+                "{}: expected found {}, {} steps moved, {} images; got {}, {}, {} ({}).",
+                item.name, item.found, item.moved, item.dumps,
+                found, item.patch.moved, item.patch.dumps.size(), joined(logger.lines)
+            );
+        }
+    }
+    return true;
+}
+
 }
 
 
@@ -522,6 +605,7 @@ void add_tests_AutoStoryCapture(UnitTestDatabase& database){
     add("the table's variant", test_capture_variant);
     add("messages", test_capture_messages);
     add("capture and PC steps in a segment: reloads and stops", test_capture_in_segment);
+    add("pacing finds a battle whose flash was missed", test_pace_until_battle);
 }
 
 
