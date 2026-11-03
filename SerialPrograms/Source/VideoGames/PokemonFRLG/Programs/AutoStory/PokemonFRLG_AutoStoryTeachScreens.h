@@ -101,6 +101,19 @@ public:
     virtual bool leave() override;
 
 private:
+    //  Looks until `screen` shows, `looks` times at most.
+    std::optional<TeachView> wait_for(TeachScreen screen, size_t looks = 12);
+    //  On `screen`: the cursor to `row`. False if it didn't get there.
+    bool move_cursor_to(TeachScreen screen, size_t row);
+    //  In the bag: to KEY ITEMS.
+    bool to_key_items();
+    //  On the list `screen`: A on the row `name`, then A on the item menu's
+    //  top row (OPEN or USE).
+    bool open_row(TeachScreen screen, std::string_view name);
+    //  After A on a member: what it showed.
+    TeachPrompt member_answer();
+    void press(TeachPress press);
+
     Logger& m_logger;
     TeachScreens& m_screens;
 };
@@ -118,9 +131,15 @@ public:
     virtual bool to_overworld() override;
 
 private:
+    //  The screen in `image`, read.
+    TeachView read_view(const ImageViewRGB32& image, TeachScreen screen, std::optional<size_t> cursor);
+    void log_view(const TeachView& view);
+
     ConsoleHandle& m_console;
     ProControllerContext& m_context;
     Language m_language;
+    //  The last view logged.
+    std::string m_logged;
 };
 
 

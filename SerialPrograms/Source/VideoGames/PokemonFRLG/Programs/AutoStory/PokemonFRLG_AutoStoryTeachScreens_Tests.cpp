@@ -338,28 +338,41 @@ struct ScreensCase{
     size_t tm03 = 0;
 };
 
+void left_on_poke_balls(FakeTeachGame& game){
+    game.pocket = 2;
+}
+void three_moves(FakeTeachGame& game){
+    game.moves = {"bite", "bubble", "withdraw"};
+}
+void no_tm03(FakeTeachGame& game){
+    game.tms = {{"rock-tomb", 1}};
+}
+void nothing_compatible(FakeTeachGame& game){
+    game.compatible.clear();
+}
+
 std::vector<ScreensCase> screens_cases(){
     return {
         {.name = "console B: TM03 over TAIL WHIP"},
         {
             .name = "the bag left on POKE BALLS",
-            .setup = [](FakeTeachGame& game){ game.pocket = 2; },
+            .setup = left_on_poke_balls,
         },
         {
             .name = "a free slot: no move forgotten",
-            .setup = [](FakeTeachGame& game){ game.moves = {"bite", "bubble", "withdraw"}; },
+            .setup = three_moves,
             .plan = {.item = "tm03", .move = "water-pulse", .member = 0},
             .moves = {"bite", "bubble", "withdraw", "water-pulse"},
         },
         {
             .name = "no TM03 in the TM CASE: back to the overworld",
-            .setup = [](FakeTeachGame& game){ game.tms = {{"rock-tomb", 1}}; },
+            .setup = no_tm03,
             .end = TeachEnd::FAILED,
             .moves = {"bite", "tail-whip", "bubble", "withdraw"},
         },
         {
             .name = "not compatible: given up, back to the overworld",
-            .setup = [](FakeTeachGame& game){ game.compatible.clear(); },
+            .setup = nothing_compatible,
             .end = TeachEnd::REFUSED,
             .moves = {"bite", "tail-whip", "bubble", "withdraw"},
             .tm03 = 1,

@@ -55,13 +55,16 @@ const char* teach_screen_name(TeachScreen screen);
 TeachScreen read_teach_screen(const ImageViewRGB32& screen);
 
 
-//  Rows a list or menu shows at once.
+//  Rows a list or menu shows at once: the bag's, the TM CASE's (its info
+//  box is below), the item menu's.
 constexpr size_t TEACH_LIST_ROWS = 6;
+constexpr size_t TM_CASE_ROWS = 5;
 constexpr size_t ITEM_MENU_ROWS = 3;
 
-//  The row the dark arrow is on: in the bag's list, the TM CASE's list,
-//  the item menu (0: OPEN or USE) or the party menu's YES/NO (0: YES).
-//  Nothing if no row or more than one has it.
+//  The row the cursor is on: the dark arrow in the bag's list, the TM
+//  CASE's list, the item menu (0: OPEN or USE) or the party menu's YES/NO
+//  (0: YES); the red box on KNOWN MOVES. Nothing if no row or more than one
+//  has it.
 std::optional<size_t> read_teach_cursor(TeachScreen screen, const ImageViewRGB32& image);
 
 //  The open pocket's name: "items", "key-items" or "poke-balls"; empty if
@@ -75,6 +78,10 @@ std::string read_key_item(Logger& logger, Language language, const ImageViewRGB3
 //  The move of the TM or HM in the TM CASE's row `row`, as a slug such as
 //  "water-pulse"; empty for CLOSE or a move not read.
 std::string read_tm_case_move(Logger& logger, Language language, const ImageViewRGB32& screen, size_t row);
+
+//  The rows of KEY ITEMS (`screen` BAG) or the TM CASE from the top, up to
+//  the first not read; KEY ITEMS' end with its "cancel".
+std::vector<std::string> read_teach_rows(Logger& logger, Language language, const ImageViewRGB32& image, TeachScreen screen);
 
 //  The messages of the party menu while a TM is taught.
 enum class TeachText{
