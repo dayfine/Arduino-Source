@@ -223,6 +223,9 @@ protected:
     virtual Pokemon::Outcome ready(Pokemon::RunState& state, const StoryStep& step) override;
     //  CLOSE_TRAINER_CARD: back from SID Helper (close_trainer_card()).
     //  LEAVE_GIFT_SUMMARY: back from Gift RNG (leave_gift_summary()).
+    //  A capture or a PC deposit or withdrawal (capture_step(), pc_step()
+    //  in PokemonFRLG_AutoStoryCapture.h); a shiny met in a capture stops
+    //  the program without reloading.
     virtual Pokemon::Outcome game(Pokemon::RunState& state, const StoryStep& step) override;
 
 private:

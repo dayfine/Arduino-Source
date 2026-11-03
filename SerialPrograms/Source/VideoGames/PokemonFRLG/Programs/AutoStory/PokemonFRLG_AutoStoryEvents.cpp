@@ -15,6 +15,7 @@
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRecoveryWalk.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRoute.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWalk.h"
+#include "PokemonFRLG_AutoStoryCapture.h"
 #include "PokemonFRLG_AutoStoryEvents.h"
 
 namespace PokemonAutomation{
@@ -420,6 +421,12 @@ Outcome StoryExecutor::game(RunState&, const StoryStep& step){
     if (step.variant == LEAVE_GIFT_SUMMARY){
         leave_gift_summary(m_env.console, m_env.context);
         return Pokemon::outcome_ok();
+    }
+    ConsoleCaptureActions capture(m_env.console, m_env.context, m_env.language);
+    ConsolePcStorageActions pc(m_env.console, m_env.context);
+    const std::optional<Outcome> stored = run_storage_game_step(m_env.console.logger(), &m_env.console, step, capture, pc);
+    if (stored){
+        return *stored;
     }
     return Pokemon::unsupported_step(step);
 }
