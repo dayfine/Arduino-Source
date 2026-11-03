@@ -45,11 +45,13 @@ private:
 struct StarterRngConsoleSettings{
     Language language = Language::English;
     SoundSetting sound = SoundSetting::Mono;
+    //  The calibration the first try starts from.
+    RngCalibrations calibration = {};
 };
 
 //  The loop's steps on the console, with Starter RNG's displays, stats and
-//  calibration kept here (AutoStory doesn't show them). Each try starts
-//  from the calibration the last one ended with. Squirtle, FireRed, the
+//  calibration kept here (AutoStory doesn't show them). Each try after the
+//  first starts from the calibration the last one ended with. Squirtle, FireRed, the
 //  Switch's default profile.
 class ConsoleStarterRngSteps : public StarterRngLoopSteps{
 public:
