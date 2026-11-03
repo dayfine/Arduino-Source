@@ -13,6 +13,7 @@
  */
 
 #include <algorithm>
+#include <cstdlib>
 #include <format>
 #include <functional>
 #include <optional>
@@ -659,12 +660,101 @@ UnitTestResult test_mt_moon_battle_seen_after_wall_leg(){
     }
     SimCase off = c;
     off.rules.watch_on_for_unseen_battle = false;
+    off.rules.battle_before_step = false;
     const SimRun old = run_case(off);
     const bool taken_as_walked = std::any_of(old.log.begin(), old.log.end(), [](const std::string& line){
         return line.find("south 15 (to wall): ended at MtMoon_B1F (3, 18) (walked)") != std::string::npos;
     });
     if (!taken_as_walked || !stopped_with(old, "no fade in and out after walking onto the warp to MtMoon_B2F.")){
         return "Expected the leg taken as walked and the run stopped on no fade, as on the console, without the rule:" + describe(old);
+    }
+    return true;
+}
+
+//  Console B, 2026-11-03 (row 00.13, b2f_south): on Mt. Moon B2F a wild
+//  battle started on the first step of "east 7 (to wall)" from (39, 14),
+//  along tiles closed on their north side, which the maps don't mark as
+//  wild: the leg watched only for messages, and the screen was black
+//  after it. The leg was taken as walked to (46, 14); "south 14 (to
+//  wall)" saw the battle, ran, and was held again from (40, 14), to
+//  (40, 17), and every leg after it went on about 6 tiles off. The sim
+//  walks the route from (39, 14) on to below Miguel's trigger (14, 12),
+//  with the battle's wipe black from 1 s after its step and its HP boxes
+//  at 5.3 s, as on the console.
+SimCase b2f_east_battle_case(){
+    SimCase c{.start = at("MtMoon_B2F", 39, 14), .facing = Direction::NORTH, .goal = at("MtMoon_B2F", 14, 12)};
+    c.route = std::vector<RouteStep>{
+        leg(Direction::EAST, 7, at("MtMoon_B2F", 46, 14), true),
+        leg(Direction::SOUTH, 14, at("MtMoon_B2F", 46, 28), true),
+        leg(Direction::WEST, 9, at("MtMoon_B2F", 37, 28), true),
+        leg(Direction::SOUTH, 10, at("MtMoon_B2F", 37, 38), true),
+        leg(Direction::WEST, 29, at("MtMoon_B2F", 8, 38), true),
+        leg(Direction::EAST, 3, at("MtMoon_B2F", 11, 38), false),
+        leg(Direction::NORTH, 17, at("MtMoon_B2F", 11, 21), true),
+        leg(Direction::EAST, 3, at("MtMoon_B2F", 14, 21), false),
+        leg(Direction::NORTH, 9, c.goal, false),
+    };
+    //  As the planner marks them: all but "east 7" cross cave floor.
+    for (RouteStep& step : *c.route){
+        step.wild = to_string(step) != "walk east 7 (to wall) -> MtMoon_B2F (46, 14)";
+    }
+    c.script.wild_floor_maps = {"MtMoon_B2F"};
+    c.script.encounters = {{.grass_step = 1, .seen_late = true}};
+    c.script.timing.battle_wipe = Milliseconds(1000);
+    c.script.timing.battle_opening = Milliseconds(4500);
+    c.script.timing.battle_screen = Milliseconds(5300);
+    return c;
+}
+
+bool logged(const SimRun& run, const std::string& text){
+    return std::any_of(run.log.begin(), run.log.end(), [&](const std::string& line){
+        return line.find(text) != std::string::npos;
+    });
+}
+
+//  The black after "east 7" is now a battle on its way: it is run from,
+//  the leg walked again to its wall, and the route reaches (14, 12).
+//  Without the rule, and without the check before the next step, the sim
+//  goes the console's way: "east 7" is taken as walked, and the route ends
+//  far from (14, 12).
+UnitTestResult test_mt_moon_black_after_unmarked_leg(){
+    const SimCase c = b2f_east_battle_case();
+    const std::vector<RouteStep> planned_route = plan_overworld_route(maps(), c.start, RouteGoal{at("MtMoon_B2F", 46, 14), std::nullopt}).value_or(std::vector<RouteStep>{});
+    if (planned_route.size() != 1 || planned_route[0].wild || to_string(planned_route[0]) != "walk east 7 (to wall) -> MtMoon_B2F (46, 14)"){
+        return "Expected the planner's \"east 7 (to wall)\" from (39, 14), not marked wild:" + describe(planned_route);
+    }
+    const SimRun now = run_case(c);
+    if (!arrived(now, c.goal) || !logged(now, "a battle's wipe after walk east 7 (to wall)")){
+        return "Expected the black after \"east 7\" watched on, the battle run from and (14, 12) reached:" + describe(now);
+    }
+    SimCase off = c;
+    off.rules.watch_on_after_unmarked_leg = false;
+    off.rules.battle_before_step = false;
+    const SimRun old = run_case(off);
+    const int off_by = std::abs(old.state.position.point.x - c.goal.point.x) + std::abs(old.state.position.point.y - c.goal.point.y);
+    if (!logged(old, "east 7 (to wall): ended at MtMoon_B2F (46, 14) (walked)") || (old.failure.empty() && off_by < 6)){
+        return "Expected \"east 7\" taken as walked and the route ended or stopped far from (14, 12), as on the console, without the rules:" + describe(old);
+    }
+    return true;
+}
+
+//  The same battle, its black seen only before the next step (on the
+//  console the check after the leg can come before the wipe): the step
+//  isn't walked, and the player is found on "east 7", walked again to its
+//  wall, not on "south 14"'s line.
+UnitTestResult test_mt_moon_battle_before_next_leg(){
+    SimCase c = b2f_east_battle_case();
+    c.rules.watch_on_after_unmarked_leg = false;
+    c.wall_check = WallCheck::SKIP;
+    const SimRun now = run_case(c);
+    if (!arrived(now, c.goal) || !logged(now, "a battle's wipe before walk south 14 (to wall)")){
+        return "Expected the battle seen before \"south 14\", \"east 7\" walked again and (14, 12) reached:" + describe(now);
+    }
+    SimCase off = c;
+    off.rules.battle_before_step = false;
+    const SimRun old = run_case(off);
+    if (old.state.position == c.goal){
+        return "Expected the route to end off (14, 12) without the check before a step:" + describe(old);
     }
     return true;
 }
@@ -771,6 +861,8 @@ void add_tests_OverworldSim(UnitTestDatabase& database){
     database.add<Test_OverworldSim>("Mt. Moon: after the HELIX, out to Route 4", test_mt_moon_way_out);
     database.add<Test_OverworldSim>("Mt. Moon: a battle on the leg onto 1F's ladder", test_mt_moon_battle_on_ladder_leg);
     database.add<Test_OverworldSim>("Mt. Moon: a battle seen only after a leg to a wall", test_mt_moon_battle_seen_after_wall_leg);
+    database.add<Test_OverworldSim>("Mt. Moon: black after a leg the maps don't mark wild", test_mt_moon_black_after_unmarked_leg);
+    database.add<Test_OverworldSim>("Mt. Moon: a battle seen only before the next leg", test_mt_moon_battle_before_next_leg);
     database.add<Test_OverworldSim>("Route 4 east, down its ledge, to Cerulean's Pokemon Center", test_route4_to_cerulean);
     database.add<Test_OverworldSim>("Cerulean: the Center to the rival's row and Nugget Bridge", test_cerulean_to_bridge);
     database.add<Test_OverworldSim>("Nugget Bridge: each trainer met on the step onto their row", test_nugget_bridge_legs);
