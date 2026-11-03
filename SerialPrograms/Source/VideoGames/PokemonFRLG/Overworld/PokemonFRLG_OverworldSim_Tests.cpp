@@ -548,6 +548,59 @@ UnitTestResult test_mt_moon_way_out(){
     return true;
 }
 
+//  Story row 00.14: from Route 4 east of Mt. Moon over its ledges into
+//  Cerulean City and its Pokemon Center, one door, out of Lass Crissy's
+//  line (75, 3).
+UnitTestResult test_route4_to_cerulean(){
+    const SimCase c{.start = at("Route4", 32, 6), .facing = Direction::SOUTH, .goal = at("CeruleanCity_PokemonCenter_1F", 7, 4)};
+    const SimRun now = run_case(c);
+    if (!arrived(now, c.goal) || now.state.warps != 1 || !now.state.trainers_beaten.empty()){
+        return "Expected Cerulean's Pokemon Center reached by its door, no trainer met:" + describe(now);
+    }
+    return true;
+}
+
+//  Story rows 00.15 and 00.16: out of Cerulean's Pokemon Center by its mat
+//  to below the rival's trigger row, and on north across the city's edge
+//  onto Nugget Bridge, below Cale's row, meeting no one.
+UnitTestResult test_cerulean_to_bridge(){
+    const MapPosition nurse = at("CeruleanCity_PokemonCenter_1F", 7, 4);
+    for (const MapPosition& goal : {at("CeruleanCity", 23, 7), at("Route24", 11, 32)}){
+        const SimCase c{.start = nurse, .facing = Direction::NORTH, .goal = goal};
+        const SimRun now = run_case(c);
+        if (!arrived(now, c.goal) || now.state.warps != 1 || !now.state.trainers_beaten.empty()){
+            return "Expected " + to_string(goal) + " reached by the Center's mat, no trainer met:" + describe(now);
+        }
+    }
+    return true;
+}
+
+//  Story row 00.16 up Nugget Bridge: each short leg ends on a trainer's
+//  row, in their sight beside them, and they fight there without walking:
+//  Cale, Ali, Timmy, Reli and Ethan, and the legs go on to below the
+//  Rocket (11, 16).
+UnitTestResult test_nugget_bridge_legs(){
+    SimCase c{.start = at("Route24", 11, 32), .facing = Direction::NORTH, .goal = at("Route24", 11, 16)};
+    c.route = std::vector<RouteStep>{
+        leg(Direction::NORTH, 1, at("Route24", 11, 31), false),
+        leg(Direction::NORTH, 2, at("Route24", 11, 29), false),
+        leg(Direction::NORTH, 1, at("Route24", 11, 28), false),
+        leg(Direction::NORTH, 2, at("Route24", 11, 26), false),
+        leg(Direction::NORTH, 1, at("Route24", 11, 25), false),
+        leg(Direction::NORTH, 2, at("Route24", 11, 23), false),
+        leg(Direction::NORTH, 1, at("Route24", 11, 22), false),
+        leg(Direction::NORTH, 2, at("Route24", 11, 20), false),
+        leg(Direction::NORTH, 1, at("Route24", 11, 19), false),
+        leg(Direction::NORTH, 3, c.goal, false),
+    };
+    const SimRun now = run_case(c);
+    const std::vector<std::string> expected{"bug_catcher", "lass", "youngster", "lass", "camper"};
+    if (!arrived(now, c.goal) || now.state.trainers_beaten != expected){
+        return "Expected the five bridge trainers fought in turn and the bridge walked:" + describe(now);
+    }
+    return true;
+}
+
 }
 
 
@@ -568,6 +621,9 @@ void add_tests_OverworldSim(UnitTestDatabase& database){
     database.add<Test_OverworldSim>("Mt. Moon: a short open leg before the Grunt's line", test_mt_moon_short_leg);
     database.add<Test_OverworldSim>("Mt. Moon: a late wild battle in the cave", test_mt_moon_late_battle);
     database.add<Test_OverworldSim>("Mt. Moon: after the HELIX, out to Route 4", test_mt_moon_way_out);
+    database.add<Test_OverworldSim>("Route 4 east to Cerulean's Pokemon Center", test_route4_to_cerulean);
+    database.add<Test_OverworldSim>("Cerulean: the Center to the rival's row and Nugget Bridge", test_cerulean_to_bridge);
+    database.add<Test_OverworldSim>("Nugget Bridge: a trainer at each short leg's end", test_nugget_bridge_legs);
 }
 
 
