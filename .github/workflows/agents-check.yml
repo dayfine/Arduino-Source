@@ -1,7 +1,7 @@
 # harness: project
-# Checks for what lives on the agents notes branch: scripts, lab control, Python tools.
-# C++ Code Health (devtools/code_health) only analyzes Common/ and SerialPrograms/ on code
-# branches, so it has nothing to check here; it runs in the code branches' CI and our pre-push hook.
+# Checks for what lives on the agents notes branch: scripts, lab control, Python tools, and the
+# C++ Code Health linter's self-tests. The linter (devtools/code_health) lives here; code branches'
+# code-health.yml checks out this branch to run it on their C++, and so does our pre-push hook.
 name: Agents Check
 
 on:
@@ -28,7 +28,16 @@ jobs:
       - name: Lab lock race test
         run: sh lab/control/lablock_test.sh 10
       - name: Python syntax
-        run: python3 -m py_compile $(git ls-files 'tools/*.py' 'bin/*.py' 'lab/*.py')
+        run: python3 -m py_compile $(git ls-files 'tools/*.py' 'bin/*.py' 'lab/*.py' 'devtools/*.py')
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: devtools/code_health/requirements.txt
+      - name: Code health linter self-tests
+        run: |
+          python -m pip install -r devtools/code_health/requirements.txt
+          python -m unittest discover -s devtools/code_health/tests -v
       - name: Harness checks
         run: |
           sh bin/agent-harness-check.sh

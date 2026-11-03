@@ -12,8 +12,9 @@ and Claude (getting PRs ready for review). The user decides scope and priorities
 
 Start here. Paths without a branch are on this `agents` branch; read them with
 `git show origin/agents:<path>` from any checkout, or open them in a checkout of `agents`
-(`~/Projects/Arduino-Source-agents`). Code-side tools live on fork `main` and every code branch,
-because CI and the hooks run them from the code checkout; they are indexed here, not copied.
+(`~/Projects/Arduino-Source-agents`). The Code Health linter lives here too (`devtools/code_health`);
+code branches keep only a stub workflow that checks this branch out to run it. Other code-side tools
+(`devtools/maps`, the C++ CI workflows) live on fork `main` and every code branch.
 
 **Rules**
 
@@ -40,7 +41,8 @@ because CI and the hooks run them from the code checkout; they are indexed here,
 There are two different checks, and neither replaces the other:
 
 1. **Code Health** checks C++ code changes on code branches (function length, public methods per
-   class, layering, style findings): `python -m devtools.code_health --base-ref origin/<base>`.
+   class, layering, style findings). The linter is [devtools/code_health/](devtools/code_health/README.md)
+   on this branch; run it from a checkout of `agents` with `--root <code checkout>`.
    It runs in CI's "C++ Code Health" job and in the pre-push hook, and counts toward CI green.
 2. **Harness checks** check this `agents` branch only: `bin/agent-harness-check.sh` (every
    `.agents/agents`, `.agents/rules` file, workflow and `dev/lib` script carries a `harness:`
@@ -50,10 +52,10 @@ There are two different checks, and neither replaces the other:
 
 | What | Where | Use |
 |---|---|---|
-| Code health linter | `devtools/code_health/` on fork `main` and code branches | By hand, in a code checkout: `~/.venvs/code-health/bin/python -m devtools.code_health --base-ref origin/<PR base>`. Full gate: `devtools/verify.py` ([details](#c-harness-and-verification-fork-issue-40)). |
+| Code health linter | [devtools/code_health/](devtools/code_health/README.md) (here only; self-tests in `devtools/code_health/tests`, run by Agents Check) | By hand: `cd ~/Projects/Arduino-Source-agents && ~/.venvs/code-health/bin/python -m devtools.code_health --root <code checkout> --base-ref origin/<PR base>`. Full gate: [devtools/verify.py](devtools/verify.py) ([details](#c-harness-and-verification-fork-issue-40)). |
 | Pre-push hook | [tools/hooks/pre-push](tools/hooks/pre-push), [tools/install_hooks.sh](tools/install_hooks.sh) | Once per clone: `sh <(git show origin/agents:tools/install_hooks.sh)`. Creates the venv `~/.venvs/code-health`. Never `--no-verify` without the user's OK. |
-| CI workflows (code) | `.github/workflows/` on `main`: `cpp-ci-serial-programs-{mac,mac-intel,ubuntu-clang,ubuntu-default,windows-clang,windows-default}.yml`, `code-health.yml`, `tabs.yml` | Drafts skip the C++ jobs: `gh workflow run cpp-ci-serial-programs-<os>.yml -R dayfine/Arduino-Source --ref <branch>`. |
-| CI workflow (this branch) | `.github/workflows/harness-check.yml` | Runs on PRs into `agents`. |
+| CI workflows (code) | `.github/workflows/` on `main`: `cpp-ci-serial-programs-{mac,mac-intel,ubuntu-clang,ubuntu-default,windows-clang,windows-default}.yml`, `code-health.yml` (stub: checks out `agents` into `.agents-tools` and runs the linter from there), `tabs.yml` | Drafts skip the C++ jobs: `gh workflow run cpp-ci-serial-programs-<os>.yml -R dayfine/Arduino-Source --ref <branch>`. |
+| CI workflow (this branch) | `.github/workflows/harness-check.yml`, `.github/workflows/agents-check.yml` | Run on PRs into `agents`; Agents Check also runs the linter self-tests. |
 | Waiting on CI | [lab/scripts/ciwait.sh](lab/scripts/ciwait.sh), `dev/lib/wait-pr-checks.sh` | Main session only, in the background. Expected failures: `FileException` for fork-only test images (FRLG SaveCardReader, OptionMenuReader, ItemListReader; BDSP MenuDetector, ShortDialogDetector). |
 
 **Lab and console B**
@@ -94,8 +96,9 @@ Once per clone, install the pre-push code-health gate (it covers every worktree)
 sh <(git show origin/agents:tools/install_hooks.sh)
 ```
 
-A push of a branch that fails `devtools/code_health` against its fork PR base is refused, the same
-check as CI's "C++ Code Health" job. Fix the failures in that PR's own commits; `--no-verify` only
+A push of a branch that fails code health against its fork PR base is refused, the same check as
+CI's "C++ Code Health" job. The hook runs the linter from `origin/agents` (`git fetch origin agents`
+keeps it current); `PA_AGENTS_DIR=<agents checkout>` runs a local copy instead. Fix the failures in that PR's own commits; `--no-verify` only
 with the user's OK. A PR is not "CI green" while Code Health is red.
 
 All linked worktrees share these remote refs. Re-read the PR rule before any
@@ -460,17 +463,17 @@ checkout of this branch; edit it here and PR the change, not the local copy.
 
 ## C++ harness and verification (fork issue #40)
 
-Fork PR #41 is merged into `origin/main` at `67ed6141d`. It provides reusable
-measurements/policy under `devtools/code_health/`, incremental comparison
-against the base revision, and a PR/main CI job. Run from a code checkout
-with its dedicated Python environment:
+Fork PR #41 added the linter (`devtools/code_health/`: measurements/policy,
+incremental comparison against the base revision) and `devtools/verify.py`;
+both now live on this `agents` branch. Code branches' CI job checks out
+`agents` to run them. Run from a code checkout with the code-health venv:
 
 ```sh
-.venv-code-health/bin/python devtools/verify.py --build-dir SerialPrograms/bin --binary SerialPrograms/bin/SerialPrograms --base-ref origin/main
+~/.venvs/code-health/bin/python ~/Projects/Arduino-Source-agents/devtools/verify.py --build-dir SerialPrograms/bin --binary SerialPrograms/bin/SerialPrograms --base-ref origin/main
 ```
 
 This command requires a configured build, Packages/downloaded resources and the
-CommandLineTests fixture checkout; see `devtools/code_health/README.md`. On
+CommandLineTests fixture checkout; see [devtools/code_health/README.md](devtools/code_health/README.md). On
 macOS use the app's `Contents/MacOS/SerialPrograms` binary; on Windows use
 `RelWithDebInfo/SerialPrograms.exe`. It runs linter self-tests, the incremental
 code-health check, CMake build and native registered C++ tests, stops at the first failure,
