@@ -2,8 +2,8 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  The Starter RNG loop's decisions on scripted attempt outcomes and a fake
- *  clock, and the rows a run takes after a shiny.
+ *  The Starter RNG loop's decisions and log lines on scripted attempt
+ *  outcomes and a fake clock, and the rows a run takes after a shiny.
  *
  */
 
@@ -56,11 +56,13 @@ public:
     std::vector<std::string> lines;
 };
 
-//  Each attempt takes `minutes_per_attempt` on the clock and comes out as
-//  the next of `outcomes`.
+//  Each try takes `minutes_per_attempt` on the clock, makes one reset at
+//  its end with calibration 1.5/-2/0.25 frames, and comes out as the next
+//  of `outcomes`. An empty one is Starter RNG refusing the timings: a
+//  UserSetupError at once.
 class ScriptedSteps : public StarterRngLoopSteps{
 public:
-    ScriptedSteps(std::vector<StarterRngOutcome> outcomes, int minutes_per_attempt)
+    ScriptedSteps(std::vector<std::optional<StarterRngOutcome>> outcomes, int minutes_per_attempt)
         : m_outcomes(std::move(outcomes))
         , m_minutes(minutes_per_attempt)
     {}
@@ -68,14 +70,19 @@ public:
     virtual WallClock now() override{
         return m_now;
     }
-    virtual StarterRngOutcome run_attempt(size_t index, const RngAttempt&, WallClock deadline) override{
+    virtual StarterRngResult run_attempt(const RngAttempt&, const StarterRngAttemptCall& call) override{
         if (m_next >= m_outcomes.size()){
             throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "More attempts than scripted.");
         }
-        indices.push_back(index);
-        deadlines_min.push_back(int(std::chrono::duration_cast<std::chrono::minutes>(deadline - START).count()));
+        indices.push_back(call.index);
+        deadlines_min.push_back(int(std::chrono::duration_cast<std::chrono::minutes>(call.deadline - START).count()));
+        const std::optional<StarterRngOutcome> outcome = m_outcomes[m_next++];
+        if (!outcome){
+            throw UserSetupError(m_logger, "Refused timings.");
+        }
         m_now += std::chrono::minutes(m_minutes);
-        return m_outcomes[m_next++];
+        call.on_reset(StarterRngProgress{.resets = 1, .calibrations = {1.5, -2, 0.25}});
+        return StarterRngResult{.outcome = *outcome, .pokemon = std::nullopt};
     }
 
     std::vector<size_t> indices;
@@ -84,8 +91,9 @@ public:
 
 private:
     static inline const WallClock START = WallClock{} + std::chrono::hours(1000);
-    std::vector<StarterRngOutcome> m_outcomes;
+    std::vector<std::optional<StarterRngOutcome>> m_outcomes;
     int m_minutes;
+    LineLogger m_logger;
     WallClock m_now = START;
     size_t m_next = 0;
 };
@@ -96,28 +104,36 @@ const std::vector<SidCandidate> CANDIDATES = {{100, 1}, {200, 2}, {300, 1}};
 
 std::vector<RngAttempt> attempts(){
     RngAttempt first{};
+    first.target.seed.seed = 0xceff;
+    first.target.advances = 983;
     first.sids = {100, 200};
     RngAttempt second{};
+    second.target.seed.seed = 0x2ef6;
+    second.target.advances = 29364;
     second.sids = {300};
     return {first, second};
 }
 
-//  60-minute attempts, 12 hours in all.
+//  60-minute tries, 12 hours in all, 50 resets a try, 2 retries.
 const StarterRngLoopLimits LIMITS{
     .attempt_time = std::chrono::minutes(60),
     .total_time = std::chrono::hours(12),
+    .max_resets = 50,
+    .max_retries = 2,
 };
 
 std::string end_name(StarterRngLoopEnd end){
     switch (end){
     case StarterRngLoopEnd::SHINY:
         return "SHINY";
+    case StarterRngLoopEnd::SHINY_OFF_TARGET:
+        return "SHINY_OFF_TARGET";
     case StarterRngLoopEnd::TARGET:
         return "TARGET";
     case StarterRngLoopEnd::OUT_OF_ATTEMPTS:
         return "OUT_OF_ATTEMPTS";
-    case StarterRngLoopEnd::OUT_OF_RETRIES:
-        return "OUT_OF_RETRIES";
+    case StarterRngLoopEnd::MISSED_EVERY_ATTEMPT_LEFT:
+        return "MISSED_EVERY_ATTEMPT_LEFT";
     case StarterRngLoopEnd::OUT_OF_TIME:
         return "OUT_OF_TIME";
     }
@@ -135,67 +151,148 @@ std::string join(const std::vector<size_t>& values){
 
 struct LoopRow{
     std::string name;
-    std::vector<StarterRngOutcome> outcomes;
+    //  Empty: Starter RNG refuses the attempt's timings.
+    std::vector<std::optional<StarterRngOutcome>> outcomes;
     int minutes_per_attempt;
     bool shiny_required;
     StarterRngLoopEnd end;
     //  The attempts run, from 1, as "1,1,2".
     std::string attempts_run;
-    //  The SID confirmed, or 0 for none.
+    //  The SID confirmed, or 0 for none; with it, an "RngPlan: confirmed" line.
     uint16_t sid;
-    //  A log line the loop must write; empty for none.
-    std::string line;
+    //  Log lines the loop must write.
+    std::vector<std::string> lines;
 };
+
+using enum StarterRngOutcome;
+const std::optional<StarterRngOutcome> REFUSED = std::nullopt;
 
 const std::vector<LoopRow> LOOP_ROWS = {
     {
         .name = "hit, then shiny confirms the SID",
-        .outcomes = {StarterRngOutcome::target_hit, StarterRngOutcome::shiny},
+        .outcomes = {target_hit, shiny_on_target},
         .minutes_per_attempt = 30, .shiny_required = true,
         .end = StarterRngLoopEnd::SHINY, .attempts_run = "1,2", .sid = 300,
-        .line = "RngPlan: confirmed tid=12345 sid=300 candidate=3 of=3",
+        .lines = {
+            "RngPlan: state attempt=1/2 try=1/3 reset=0/50 seed=CEFF advances=983 sids=100,200 ruled_out=- "
+                "attempt_time=00:00:00/01:00:00 total_time=00:00:00/12:00:00 calibration=-",
+            "RngPlan: state attempt=1/2 try=1/3 reset=1/50 seed=CEFF advances=983 sids=100,200 ruled_out=- "
+                "attempt_time=00:30:00/01:00:00 total_time=00:30:00/12:00:00 calibration=1.50/-2.00/0.25",
+            "RngPlan: result attempt=1 try=1 outcome=hit_not_shiny starter_rng=target_hit nature=- ivs=- pid=- next=next_attempt",
+            "RngPlan: state attempt=2/2 try=1/3 reset=0/50 seed=2EF6 advances=29364 sids=300 ruled_out=100,200 "
+                "attempt_time=00:00:00/01:00:00 total_time=00:30:00/12:00:00 calibration=-",
+            "RngPlan: result attempt=2 try=1 outcome=shiny starter_rng=shiny_on_target nature=- ivs=- pid=- next=confirm",
+            "RngPlan: confirmed tid=12345 sid=300 candidate=3 of=3",
+        },
     },
     {
-        .name = "shiny for two SIDs confirms none",
-        .outcomes = {StarterRngOutcome::shiny},
+        .name = "shiny on the target for two SIDs confirms none",
+        .outcomes = {shiny_on_target},
         .minutes_per_attempt = 30, .shiny_required = true,
         .end = StarterRngLoopEnd::SHINY, .attempts_run = "1", .sid = 0,
-        .line = "RngPlan: result attempt=1 outcome=SHINY",
+        .lines = {"RngPlan: result attempt=1 try=1 outcome=shiny starter_rng=shiny_on_target nature=- ivs=- pid=- next=confirm"},
+    },
+    {
+        .name = "shiny off the target confirms nothing",
+        .outcomes = {target_hit, shiny_off_target},
+        .minutes_per_attempt = 30, .shiny_required = true,
+        .end = StarterRngLoopEnd::SHINY_OFF_TARGET, .attempts_run = "1,2", .sid = 0,
+        .lines = {"RngPlan: result attempt=2 try=1 outcome=shiny_off_target starter_rng=shiny_off_target nature=- ivs=- pid=- next=stop"},
+    },
+    {
+        .name = "a shiny not known to be the target confirms nothing",
+        .outcomes = {shiny},
+        .minutes_per_attempt = 30, .shiny_required = true,
+        .end = StarterRngLoopEnd::SHINY_OFF_TARGET, .attempts_run = "1", .sid = 0,
+        .lines = {"RngPlan: result attempt=1 try=1 outcome=shiny_off_target starter_rng=shiny nature=- ivs=- pid=- next=stop"},
     },
     {
         .name = "misses retry the same attempt",
-        .outcomes = {StarterRngOutcome::out_of_resets, StarterRngOutcome::no_matches, StarterRngOutcome::shiny},
+        .outcomes = {out_of_resets, no_matches, shiny_on_target},
         .minutes_per_attempt = 30, .shiny_required = true,
         .end = StarterRngLoopEnd::SHINY, .attempts_run = "1,1,1", .sid = 0,
-        .line = "RngPlan: result attempt=1 outcome=MISSED",
+        .lines = {
+            "RngPlan: result attempt=1 try=1 outcome=missed starter_rng=out_of_resets nature=- ivs=- pid=- next=retry",
+            "RngPlan: result attempt=1 try=2 outcome=missed starter_rng=no_matches nature=- ivs=- pid=- next=retry",
+            "RngPlan: result attempt=1 try=3 outcome=shiny starter_rng=shiny_on_target nature=- ivs=- pid=- next=confirm",
+        },
     },
     {
-        .name = "too many misses stop",
-        .outcomes = {StarterRngOutcome::out_of_resets, StarterRngOutcome::out_of_resets, StarterRngOutcome::wild_shiny},
+        .name = "an attempt past its deadline",
+        .outcomes = {out_of_resets, shiny_on_target},
+        .minutes_per_attempt = 90, .shiny_required = true,
+        .end = StarterRngLoopEnd::SHINY, .attempts_run = "1,1", .sid = 0,
+        .lines = {"RngPlan: result attempt=1 try=1 outcome=missed starter_rng=attempt_deadline nature=- ivs=- pid=- next=retry"},
+    },
+    {
+        .name = "retries used up, then the next attempt",
+        .outcomes = {out_of_resets, no_matches, wild_shiny, shiny_on_target},
         .minutes_per_attempt = 30, .shiny_required = true,
-        .end = StarterRngLoopEnd::OUT_OF_RETRIES, .attempts_run = "1,1,1", .sid = 0,
-        .line = "",
+        .end = StarterRngLoopEnd::SHINY, .attempts_run = "1,1,1,2", .sid = 300,
+        .lines = {
+            "RngPlan: result attempt=1 try=3 outcome=missed starter_rng=wild_shiny nature=- ivs=- pid=- next=next_attempt",
+            "RngPlan: result attempt=2 try=1 outcome=shiny starter_rng=shiny_on_target nature=- ivs=- pid=- next=confirm",
+            "RngPlan: confirmed tid=12345 sid=300 candidate=3 of=3",
+        },
+    },
+    {
+        .name = "every attempt left missed too often",
+        .outcomes = {out_of_resets, out_of_resets, out_of_resets, no_matches, no_matches, no_matches},
+        .minutes_per_attempt = 30, .shiny_required = true,
+        .end = StarterRngLoopEnd::MISSED_EVERY_ATTEMPT_LEFT, .attempts_run = "1,1,1,2,2,2", .sid = 0,
+        .lines = {"RngPlan: result attempt=2 try=3 outcome=missed starter_rng=no_matches nature=- ivs=- pid=- next=stop"},
+    },
+    {
+        .name = "miss, hit, miss, then shiny",
+        .outcomes = {out_of_resets, target_hit, no_matches, shiny_on_target},
+        .minutes_per_attempt = 30, .shiny_required = true,
+        .end = StarterRngLoopEnd::SHINY, .attempts_run = "1,1,2,2", .sid = 300,
+        .lines = {
+            "RngPlan: result attempt=1 try=2 outcome=hit_not_shiny starter_rng=target_hit nature=- ivs=- pid=- next=next_attempt",
+            "RngPlan: result attempt=2 try=2 outcome=shiny starter_rng=shiny_on_target nature=- ivs=- pid=- next=confirm",
+        },
+    },
+    {
+        .name = "an attempt whose timings Starter RNG refuses is skipped",
+        .outcomes = {REFUSED, shiny_on_target},
+        .minutes_per_attempt = 30, .shiny_required = true,
+        .end = StarterRngLoopEnd::SHINY, .attempts_run = "1,2", .sid = 300,
+        .lines = {
+            "RngPlan: attempt 1 can't run: Refused timings.",
+            "RngPlan: result attempt=1 try=1 outcome=unusable starter_rng=setup_error nature=- ivs=- pid=- next=next_attempt",
+        },
+    },
+    {
+        .name = "no attempt Starter RNG will run",
+        .outcomes = {REFUSED, REFUSED},
+        .minutes_per_attempt = 30, .shiny_required = true,
+        .end = StarterRngLoopEnd::MISSED_EVERY_ATTEMPT_LEFT, .attempts_run = "1,2", .sid = 0,
+        .lines = {"RngPlan: result attempt=2 try=1 outcome=unusable starter_rng=setup_error nature=- ivs=- pid=- next=stop"},
     },
     {
         .name = "every attempt hit, none shiny",
-        .outcomes = {StarterRngOutcome::target_hit, StarterRngOutcome::target_hit},
+        .outcomes = {target_hit, target_hit},
         .minutes_per_attempt = 30, .shiny_required = true,
         .end = StarterRngLoopEnd::OUT_OF_ATTEMPTS, .attempts_run = "1,2", .sid = 0,
-        .line = "RngPlan: result attempt=2 outcome=HIT_NOT_SHINY",
+        .lines = {"RngPlan: result attempt=2 try=1 outcome=hit_not_shiny starter_rng=target_hit nature=- ivs=- pid=- next=stop"},
     },
     {
         .name = "a hit ends the plan with shiny not required",
-        .outcomes = {StarterRngOutcome::target_hit},
+        .outcomes = {target_hit},
         .minutes_per_attempt = 30, .shiny_required = false,
         .end = StarterRngLoopEnd::TARGET, .attempts_run = "1", .sid = 0,
-        .line = "",
+        .lines = {},
     },
     {
         .name = "no attempt starts after the total time",
-        .outcomes = {StarterRngOutcome::out_of_resets, StarterRngOutcome::out_of_resets},
+        .outcomes = {out_of_resets, out_of_resets},
         .minutes_per_attempt = 400, .shiny_required = true,
         .end = StarterRngLoopEnd::OUT_OF_TIME, .attempts_run = "1,1", .sid = 0,
-        .line = "RngPlan: out of time before attempt 1",
+        .lines = {
+            "RngPlan: state attempt=1/2 try=2/3 reset=1/50 seed=CEFF advances=983 sids=100,200 ruled_out=- "
+                "attempt_time=06:40:00/01:00:00 total_time=13:20:00/12:00:00 calibration=1.50/-2.00/0.25",
+            "RngPlan: out of time before attempt 1",
+        },
     },
 };
 
@@ -212,8 +309,16 @@ UnitTestResult run_loop_row(const LoopRow& row){
     if (expected != got){
         return "Expected " + expected + "; got " + got;
     }
-    if (!row.line.empty() && !logger.has(row.line)){
-        return "Expected the log line \"" + row.line + "\"";
+    for (const std::string& line : row.lines){
+        if (!logger.has(line)){
+            return "Expected the log line \"" + line + "\"";
+        }
+    }
+    const bool confirmed = std::any_of(logger.lines.begin(), logger.lines.end(), [](const std::string& line){
+        return line.starts_with("RngPlan: confirmed");
+    });
+    if (confirmed != (row.sid != 0)){
+        return std::format("Expected {} \"RngPlan: confirmed\" line", row.sid != 0 ? "a" : "no");
     }
     if (result.attempts_run != steps.indices.size()){
         return std::format("Expected attempts_run {}; got {}", steps.indices.size(), result.attempts_run);
@@ -229,7 +334,9 @@ UnitTestResult test_deadlines(){
     RngPlanTracker tracker(attempts(), CANDIDATES, true, 5);
     ScriptedSteps steps({StarterRngOutcome::out_of_resets, StarterRngOutcome::out_of_resets}, 400);
     LineLogger logger;
-    const StarterRngLoopLimits limits{.attempt_time = std::chrono::minutes(60), .total_time = std::chrono::minutes(430)};
+    const StarterRngLoopLimits limits{
+        .attempt_time = std::chrono::minutes(60), .total_time = std::chrono::minutes(430), .max_resets = 50, .max_retries = 5,
+    };
     run_starter_rng_plan(logger, tracker, steps, limits, 12345, CANDIDATES);
     std::string got;
     for (int deadline : steps.deadlines_min){
@@ -237,6 +344,60 @@ UnitTestResult test_deadlines(){
     }
     if (got != "60,430"){
         return "Expected deadlines 60,430 minutes; got " + got;
+    }
+    return true;
+}
+
+
+//  What the run says after a shiny, by what it tells of the SID.
+UnitTestResult test_shiny_messages(){
+    struct Case{
+        StarterRngLoopResult result;
+        std::string expected;
+    };
+    const std::vector<Case> cases = {
+        {
+            .result = {.end = StarterRngLoopEnd::SHINY, .attempts_run = 2, .remaining_sids = {300}, .sid = uint16_t(300)},
+            .expected = "Starter RNG: shiny Squirtle. The SID is 300: enter it as the RNG plan's SID.",
+        },
+        {
+            .result = {.end = StarterRngLoopEnd::SHINY, .attempts_run = 1, .remaining_sids = {100, 200}, .sid = std::nullopt},
+            .expected = "Starter RNG: shiny Squirtle. The SID is one of 100,200.",
+        },
+        {
+            .result = {.end = StarterRngLoopEnd::SHINY, .attempts_run = 1, .remaining_sids = {}, .sid = std::nullopt},
+            .expected = "Starter RNG: shiny Squirtle, for none of the SID candidates left: the SID isn't one of SID Helper's candidates.",
+        },
+        {
+            .result = {.end = StarterRngLoopEnd::SHINY_OFF_TARGET, .attempts_run = 1, .remaining_sids = {100, 200}, .sid = std::nullopt},
+            .expected = "Starter RNG: shiny Squirtle, but not the planned target, so it doesn't tell the SID. "
+                "SIDs left: 100,200.",
+        },
+    };
+    for (const Case& item : cases){
+        const std::string got = starter_rng_loop_message(item.result);
+        if (got != item.expected){
+            return "Expected \"" + item.expected + "\", got \"" + got + "\".";
+        }
+    }
+    return true;
+}
+
+
+//  The state line on its own: hours, empty lists and a negative offset.
+UnitTestResult test_state_line(){
+    const std::string got = rng_log_state(RngLoopState{
+        .attempt = 3, .attempts = 5, .try_number = 2, .tries = 3, .resets = 41, .max_resets = 50,
+        .seed = 0x70fe, .advances = 1200, .sids = {}, .ruled_out = {7, 8},
+        .attempt_time = std::chrono::seconds(3 * 3600 + 61), .attempt_cap = std::chrono::hours(3),
+        .total_time = std::chrono::minutes(605), .total_cap = std::chrono::hours(12),
+        .calibration = RngCalibrations{-0.5, 12, -3.125},
+    });
+    const std::string expected =
+        "RngPlan: state attempt=3/5 try=2/3 reset=41/50 seed=70FE advances=1200 sids=- ruled_out=7,8 "
+        "attempt_time=03:01:01/03:00:00 total_time=10:05:00/12:00:00 calibration=-0.50/12.00/-3.12";
+    if (got != expected){
+        return "Expected \"" + expected + "\", got \"" + got + "\".";
     }
     return true;
 }
@@ -288,6 +449,8 @@ void add_tests_AutoStoryRngLoop(UnitTestDatabase& database){
         database.add<Test_AutoStoryRngLoop>(row.name, [row]{ return run_loop_row(row); });
     }
     database.add<Test_AutoStoryRngLoop>("attempt deadlines", test_deadlines);
+    database.add<Test_AutoStoryRngLoop>("state line", test_state_line);
+    database.add<Test_AutoStoryRngLoop>("shiny messages", test_shiny_messages);
     database.add<Test_AutoStoryRngLoop>("rows after a shiny", test_rows_after_shiny);
 }
 
