@@ -118,32 +118,45 @@ std::string no_potion_reason(const Supplies& supplies, const PartyStatus& status
     if (!asked){
         return std::format("HP {} and the next hit can't faint the lead", bar_name(status));
     }
-    return std::format("the next hit (about {:.0f}) undoes it and it outlasts the foe no longer", c.expected_hit);
+    return std::format(
+        "the next turn ({:.0f}% of the time {} HP or less) undoes it and it outlasts the foe no longer",
+        100 * POTION_COVER_PERCENTILE, c.likely_hit
+    );
 }
 
-//  Against a known foe: a Potion at BattleRisk::HIGH when its next hit
+//  The foe's move chances, for the log: "vine-whip 42%, sleep-powder 42%".
+std::string move_chances_text(const PotionCase& c){
+    std::string text;
+    for (const auto& [move, chance] : c.move_chances){
+        if (chance > 0){
+            text += std::format("{}{} {:.0f}%", text.empty() ? "" : ", ", move, 100 * chance);
+        }
+    }
+    return text.empty() ? "none" : text;
+}
+
+//  Against a known foe: a Potion at BattleRisk::HIGH when its next turn
 //  could faint the lead (potion_now(), the HP from the bar's share) or the
 //  bar is red, at LOW whenever the bar isn't green; either only if
 //  potion_pays(). Else, asleep, an Awakening if awakening_now().
 ItemTurn known_foe_items(
-    const Supplies& supplies, const PartyStatus& status, double seen_hit,
-    const SimBattler& own, const SimBattler& foe, int awakenings
+    const Supplies& supplies, const PartyStatus& status, int awakenings,
+    const SimBattler& own, const PotionCase& c
 ){
     const bool hurt = status.hp_red || status.hp_yellow;
-    const PotionCase c = potion_case(own, foe, seen_hit);
     const std::string numbers = std::format(
-        "{}/{} HP, the foe's next hit about {:.0f} (up to {}), {} of them before the lead's attacks faint it",
-        c.hp, c.max_hp, c.expected_hit, c.max_hit, c.hits_to_ko
+        "{}/{} HP, the foe's next turn {} HP or less {:.0f}% of the time (mean {:.0f}, up to {}; {}), {} of them before the lead's attacks faint it",
+        c.hp, c.max_hp, c.likely_hit, 100 * POTION_COVER_PERCENTILE, c.expected_hit, c.max_hit, move_chances_text(c), c.hits_to_ko
     );
+    if (awakening_now(c, own, awakenings)){
+        return {TurnChoice::AWAKENING, "an Awakening: asleep, and the lead outlasts the turn it costs; " + numbers};
+    }
     const bool high = supplies.risk == BattleRisk::HIGH;
-    if (supplies.potions > 0 && high && potion_now(own, foe, supplies.potions, seen_hit)){
-        return {TurnChoice::POTION, "a Potion: the next hit could faint the lead, not after it; " + numbers};
+    if (high && potion_now(c, supplies.potions)){
+        return {TurnChoice::POTION, "a Potion: the next turn could faint the lead, and it covers that turn; " + numbers};
     }
     if (supplies.potions > 0 && (high ? status.hp_red : hurt) && potion_pays(c)){
-        return {TurnChoice::POTION, "a Potion: it outheals the next hit, or outlasts the foe; " + numbers};
-    }
-    if (awakening_now(own, foe, awakenings, seen_hit)){
-        return {TurnChoice::AWAKENING, "an Awakening: asleep, and the lead outlasts the hit its turn costs; " + numbers};
+        return {TurnChoice::POTION, "a Potion: it covers the next turn, or outlasts the foe; " + numbers};
     }
     if (!hurt && own.status != SimStatus::SLEEP){
         return {};
@@ -155,11 +168,12 @@ ItemTurn known_foe_items(
 ItemTurn item_turn(const Supplies& supplies, const PartyStatus& status, double seen_hit, int awakenings){
     const std::optional<SimBattler> foe = foe_out(supplies);
     std::optional<SimBattler> own = own_battler(supplies.lead, status.hp_seen ? status.hp_fill : 1.0);
-    if (!foe || !own){
+    const std::optional<SimTrainer> trainer = sim_trainer(supplies.trainer);
+    if (!foe || !own || !trainer){
         return unknown_foe_items(supplies, status, seen_hit, awakenings);
     }
     own->status = status.status == StatusCondition::SLEEP ? SimStatus::SLEEP : SimStatus::NONE;
-    return known_foe_items(supplies, status, seen_hit, *own, *foe, awakenings);
+    return known_foe_items(supplies, status, awakenings, *own, potion_case(*own, *foe, *trainer, seen_hit));
 }
 
 //  The lead's HP from the bar's share, if it showed.

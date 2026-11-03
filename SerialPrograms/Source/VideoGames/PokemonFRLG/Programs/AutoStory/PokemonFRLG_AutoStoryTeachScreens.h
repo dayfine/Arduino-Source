@@ -24,6 +24,11 @@
  *    YES/NO, YES: "<MON> did not learn the move <MOVE>." and the TM CASE's
  *    list again, the TM kept.
  *  - From the TM CASE's list, B closes it to the bag, and B the bag.
+ *  - A move tutor (not seen on console B yet; pokefirered
+ *    move_tutors.inc): its lines and two YES/NOs in the overworld's
+ *    message box, then the same party menu and prompts. After the learn,
+ *    or "did not learn", the party menu closes onto the tutor's last line
+ *    in the overworld, which the reader doesn't place.
  *
  *  Each step looks at the screen before it presses, and stops at a screen
  *  it doesn't expect instead of pressing on. The screens come from a
@@ -83,6 +88,10 @@ public:
 
     //  From the overworld: START, BAG. False if the bag didn't open.
     virtual bool open_bag() = 0;
+    //  From the overworld, facing a move tutor: talks, YES to its offer and
+    //  to "This move can be learned only once", its messages to the party
+    //  menu. False if a YES/NO or the party menu didn't show.
+    virtual bool talk_to_tutor() = 0;
     //  The screen, once it has stopped changing.
     virtual TeachView look() = 0;
     virtual void press(TeachPress press) = 0;
@@ -123,6 +132,9 @@ private:
 
     Logger& m_logger;
     TeachScreens& m_screens;
+    //  Taught by a tutor: after the party menu comes the overworld, not
+    //  the TM CASE.
+    bool m_tutor = false;
 };
 
 
@@ -133,6 +145,7 @@ public:
     ConsoleTeachScreens(ConsoleHandle& console, ProControllerContext& context, Language language);
 
     virtual bool open_bag() override;
+    virtual bool talk_to_tutor() override;
     virtual TeachView look() override;
     virtual void press(TeachPress press) override;
     virtual bool to_overworld() override;

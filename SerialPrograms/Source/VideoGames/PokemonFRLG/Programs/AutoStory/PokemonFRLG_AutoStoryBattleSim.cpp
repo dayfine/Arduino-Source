@@ -27,6 +27,13 @@ constexpr int MAX_STAGE = 6;
 constexpr size_t TURNS_CAP = 30;
 //  The hits a multi-hit move is taken to land when sizing a foe's hit.
 constexpr uint32_t MULTI_HITS = 3;
+constexpr uint32_t CRIT_CHANCE = 16;
+constexpr uint32_t HIGH_CRIT_CHANCE = 8;
+//  sAccuracyStageRatios, -6 to +6, in hundredths.
+constexpr uint32_t ACCURACY_RATIOS[] = {33, 36, 43, 50, 60, 75, 100, 133, 166, 200, 233, 266, 300};
+//  ai_move_chances()'s fixed seed.
+constexpr uint32_t AI_SAMPLE_SEED = 1;
+constexpr size_t DAMAGE_ROLLS = 16;
 
 const MoveData& data_of(std::string_view move){
     static const MoveData NONE;
@@ -314,6 +321,83 @@ size_t turns_to_faint(SimBattler foe, std::vector<std::string> items, size_t foe
     return TURNS_CAP + 1;
 }
 
+uint16_t eighth(const SimBattler& battler){
+    return std::max<uint16_t>(battler.body.stats.hp / 8, 1);
+}
+
+bool poison_proof(const Combatant& body){
+    return has_type(body, PokemonType::POISON) || has_type(body, PokemonType::STEEL);
+}
+
+//  The chance that `foe` moves this turn: not while asleep (it moves on
+//  the turn its counter reaches 0), 3 in 4 paralysed.
+double moves_this_turn(const SimBattler& foe){
+    if (foe.status == SimStatus::SLEEP && foe.sleep > 1){
+        return 0;
+    }
+    return foe.status == SimStatus::PARALYSIS ? 0.75 : 1.0;
+}
+
+//  The end-of-turn HP a status move that lands adds: a new poison or
+//  Leech Seed, 1/8 HP.
+uint32_t status_toll(const MoveData& move, const SimBattler& own){
+    const bool poisons = (move.effect == "poison" || move.effect == "toxic")
+        && own.status == SimStatus::NONE && !poison_proof(own.body);
+    const bool seeds = move.effect == "leech-seed" && !own.seeded && !has_type(own.body, PokemonType::GRASS);
+    return poisons || seeds ? eighth(own) : 0;
+}
+
+//  One hit's damage and its chance: the 16 rolls, or the one fixed value.
+std::vector<std::pair<uint32_t, double>> one_hit_values(const SimBattler& foe, const SimBattler& own, const MoveData& move, bool crit){
+    if (move.effect == "super-fang"){
+        return {{std::max<uint32_t>(own.hp / 2, 1), 1.0}};
+    }
+    const uint32_t before = damage_before_roll(foe.body, own.body, move, crit);
+    if (before == 0 || fixed_damage(move, foe.body)){
+        return {{before, 1.0}};
+    }
+    std::vector<std::pair<uint32_t, double>> values;
+    for (uint32_t roll = 0; roll < DAMAGE_ROLLS; roll++){
+        values.emplace_back(rolled_damage(before, 100 - roll), 1.0 / DAMAGE_ROLLS);
+    }
+    return values;
+}
+
+//  A move's hit counts and their chances (Cmd_setmultihitcounter: 2 or 3
+//  at 3/8 each, 4 or 5 at 1/8 each).
+std::vector<std::pair<uint32_t, double>> hit_counts(const MoveData& move){
+    if (move.effect == "multi-hit"){
+        return {{2, 0.375}, {3, 0.375}, {4, 0.125}, {5, 0.125}};
+    }
+    return {{hits_of(move), 1.0}};
+}
+
+void add_chance(std::vector<double>& hp_lost, uint32_t damage, double chance){
+    if (hp_lost.size() <= damage){
+        hp_lost.resize(damage + 1, 0);
+    }
+    hp_lost[damage] += chance;
+}
+
+//  `move` used with `chance`, on top of `toll` at the end of the turn.
+void add_move(std::vector<double>& hp_lost, const SimBattler& foe, const SimBattler& own, const MoveData& move, double chance, uint32_t toll){
+    const double hit = std::min(hit_percent(foe, own, move), 100u) / 100.0;
+    add_chance(hp_lost, toll, chance * (1 - hit));
+    if (move.power == 0){
+        add_chance(hp_lost, toll + status_toll(move, own), chance * hit);
+        return;
+    }
+    const double crit = 1.0 / crit_odds(move);
+    for (const bool crits : {false, true}){
+        const double crit_share = crits ? crit : 1 - crit;
+        for (const auto& [count, count_share] : hit_counts(move)){
+            for (const auto& [damage, damage_share] : one_hit_values(foe, own, move, crits)){
+                add_chance(hp_lost, toll + damage * count, chance * hit * crit_share * count_share * damage_share);
+            }
+        }
+    }
+}
+
 //  The slots with PP left that do damage to `foe`.
 std::vector<size_t> damaging_slots(const SimBattler& own, const SimBattler& foe){
     std::vector<size_t> slots;
@@ -435,6 +519,90 @@ std::vector<int> ai_move_scores(const SimTrainer& trainer, const SimBattler& foe
     return scores;
 }
 
+std::vector<double> ai_move_chances(const SimTrainer& trainer, const SimBattler& foe, const SimBattler& target){
+    std::vector<double> chances(foe.moves.size(), 0);
+    std::mt19937 rng(AI_SAMPLE_SEED);
+    const std::mt19937 start = rng;
+    size_t samples = AI_MOVE_SAMPLES;
+    for (size_t i = 0; i < samples; i++){
+        const std::vector<int> scores = ai_move_scores(trainer, foe, target, rng);
+        if (i == 0 && rng == start){
+            //  Nothing random drawn: one sample is the answer.
+            samples = 1;
+        }
+        const int best = scores.empty() ? 0 : *std::ranges::max_element(scores);
+        const double ties = static_cast<double>(std::ranges::count(scores, best));
+        for (size_t slot = 0; slot < scores.size(); slot++){
+            chances[slot] += best > 0 && scores[slot] == best ? 1 / ties : 0;
+        }
+    }
+    for (double& chance : chances){
+        chance /= static_cast<double>(samples);
+    }
+    return chances;
+}
+
+uint32_t hit_percent(const SimBattler& user, const SimBattler& target, const MoveData& move){
+    if (move.accuracy == 0){
+        return 100;
+    }
+    const int buff = std::clamp(
+        user.body.stages[static_cast<size_t>(Stage::ACCURACY)] - target.body.stages[static_cast<size_t>(Stage::EVASION)],
+        -MAX_STAGE, MAX_STAGE
+    );
+    return move.accuracy * ACCURACY_RATIOS[buff + MAX_STAGE] / 100;
+}
+
+uint32_t crit_odds(const MoveData& move){
+    return move.effect == "high-critical" ? HIGH_CRIT_CHANCE : CRIT_CHANCE;
+}
+
+double NextTurnDamage::mean() const{
+    double sum = 0;
+    for (size_t damage = 0; damage < hp_lost.size(); damage++){
+        sum += static_cast<double>(damage) * hp_lost[damage];
+    }
+    return sum;
+}
+
+uint32_t NextTurnDamage::percentile(double share) const{
+    //  Rounding in the sums: a share reached within this counts.
+    constexpr double SLACK = 1e-9;
+    double below = 0;
+    for (size_t damage = 0; damage < hp_lost.size(); damage++){
+        below += hp_lost[damage];
+        if (below + SLACK >= share){
+            return static_cast<uint32_t>(damage);
+        }
+    }
+    return most();
+}
+
+uint32_t NextTurnDamage::most() const{
+    for (size_t damage = hp_lost.size(); damage > 0; damage--){
+        if (hp_lost[damage - 1] > 0){
+            return static_cast<uint32_t>(damage - 1);
+        }
+    }
+    return 0;
+}
+
+NextTurnDamage next_turn_damage(const SimTrainer& trainer, const SimBattler& foe, const SimBattler& own){
+    NextTurnDamage next{.move_chances = ai_move_chances(trainer, foe, own), .hp_lost = {}};
+    const uint32_t toll = (own.status == SimStatus::POISON ? eighth(own) : 0) + (own.seeded ? eighth(own) : 0);
+    const double moves = moves_this_turn(foe);
+    double placed = 0;
+    for (size_t slot = 0; slot < foe.moves.size(); slot++){
+        const double chance = next.move_chances[slot] * moves;
+        if (chance > 0){
+            add_move(next.hp_lost, foe, own, data_of(foe.moves[slot].move), chance, toll);
+            placed += chance;
+        }
+    }
+    add_chance(next.hp_lost, toll, std::max(0.0, 1 - placed));
+    return next;
+}
+
 size_t ai_next_foe(const std::vector<SimBattler>& party, size_t fainted, const SimBattler& lead){
     std::vector<size_t> left;
     for (size_t slot = 0; slot < party.size(); slot++){
@@ -500,12 +668,12 @@ uint32_t foe_max_hit(const SimBattler& foe, const SimBattler& own){
     return most;
 }
 
-PotionCase potion_case(const SimBattler& own, const SimBattler& foe, double seen_hit){
-    double expected = 0;
-    for (const SimMove& known : foe.moves){
-        if (known.pp > 0){
-            expected = std::max(expected, mean_per_turn(foe, own, data_of(known.move)));
-        }
+PotionCase potion_case(const SimBattler& own, const SimBattler& foe, const SimTrainer& trainer, double seen_hit){
+    const NextTurnDamage next = next_turn_damage(trainer, foe, own);
+    const uint32_t seen = static_cast<uint32_t>(std::ceil(seen_hit));
+    std::vector<std::pair<std::string, double>> chances;
+    for (size_t slot = 0; slot < foe.moves.size(); slot++){
+        chances.emplace_back(foe.moves[slot].move, next.move_chances[slot]);
     }
     const std::optional<size_t> slot = planned_attack_slot(own, foe, {}, 1);
     const size_t turns = slot
@@ -517,9 +685,11 @@ PotionCase potion_case(const SimBattler& own, const SimBattler& foe, double seen
     return PotionCase{
         .hp = own.hp,
         .max_hp = own.body.stats.hp,
-        .expected_hit = std::max(expected, seen_hit),
-        .max_hit = std::max(foe_max_hit(foe, own), static_cast<uint32_t>(std::ceil(seen_hit))),
+        .expected_hit = std::max(next.mean(), seen_hit),
+        .likely_hit = std::max(next.percentile(POTION_COVER_PERCENTILE), seen),
+        .max_hit = std::max(next.most(), seen),
         .hits_to_ko = hits,
+        .move_chances = std::move(chances),
     };
 }
 
@@ -528,38 +698,31 @@ bool potion_pays(const PotionCase& c){
     if (heal == 0){
         return false;
     }
-    const double healed = c.hp + heal;
-    if (heal > c.expected_hit && healed > c.expected_hit){
+    if (heal > c.likely_hit){
         return true;
     }
+    const double healed = c.hp + heal;
     const bool lasts_if_healed = healed > c.expected_hit * static_cast<double>(c.hits_to_ko + 1);
     const bool lasts_now = c.hp > c.expected_hit * static_cast<double>(c.hits_to_ko);
     return lasts_if_healed && !lasts_now;
 }
 
-bool potion_now(const SimBattler& own, const SimBattler& foe, int potions, double seen_hit){
-    const uint16_t max_hp = own.body.stats.hp;
-    if (potions <= 0 || own.hp >= max_hp){
-        return false;
-    }
-    const PotionCase c = potion_case(own, foe, seen_hit);
-    const uint32_t healed = std::min<uint32_t>(max_hp, own.hp + POTION_HP);
-    return c.max_hit >= own.hp && healed > c.max_hit && potion_pays(c);
+bool potion_now(const PotionCase& c, int potions){
+    return potions > 0 && c.hp < c.max_hp && c.max_hit >= c.hp && potion_pays(c);
 }
 
-bool awakening_now(const SimBattler& own, const SimBattler& foe, int awakenings, double seen_hit){
+bool awakening_now(const PotionCase& c, const SimBattler& own, int awakenings){
     if (awakenings <= 0 || own.status != SimStatus::SLEEP){
         return false;
     }
-    const PotionCase c = potion_case(own, foe, seen_hit);
-    return (c.expected_hit > 0 || own.seeded) && own.hp > c.expected_hit;
+    return c.max_hit > 0 && own.hp > c.likely_hit;
 }
 
 OwnTurn own_turn(
     const SimBattler& own, const SimItems& own_items, const SimBattler& foe,
-    const std::vector<std::string>& items, size_t foes_left
+    const SimTrainer& trainer, size_t foes_left
 ){
-    const int potions = own_items.potions;
+    const std::vector<std::string>& items = trainer.items;
     const std::optional<size_t> slot = planned_attack_slot(own, foe, items, foes_left);
     if (slot && own.status != SimStatus::SLEEP){
         const MoveData& move = data_of(own.moves[*slot].move);
@@ -572,11 +735,17 @@ OwnTurn own_turn(
             return OwnTurn{.potion = false, .slot = slot};
         }
     }
-    if (potion_now(own, foe, potions)){
-        return OwnTurn{.potion = true, .slot = std::nullopt};
+    const bool may_heal = own_items.potions > 0 && own.hp < own.body.stats.hp;
+    const bool may_wake = own_items.awakenings > 0 && own.status == SimStatus::SLEEP;
+    if (!may_heal && !may_wake){
+        return OwnTurn{.potion = false, .slot = slot};
     }
-    if (awakening_now(own, foe, own_items.awakenings)){
+    const PotionCase c = potion_case(own, foe, trainer);
+    if (awakening_now(c, own, own_items.awakenings)){
         return OwnTurn{.potion = false, .slot = std::nullopt, .awakening = true};
+    }
+    if (potion_now(c, own_items.potions)){
+        return OwnTurn{.potion = true, .slot = std::nullopt};
     }
     return OwnTurn{.potion = false, .slot = slot};
 }

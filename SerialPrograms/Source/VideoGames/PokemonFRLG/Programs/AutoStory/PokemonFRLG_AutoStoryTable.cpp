@@ -776,9 +776,10 @@ StoryCheckpoint route25(){
 //  walks to (7, 6) (BillWalkToMiddleOfRoom); the player isn't moved.
 //  Talked to from (6, 6), Bill gives the S.S. TICKET, no YES/NO, and goes
 //  on about the S.S. ANNE (FLAG_GOT_SS_TICKET, which also hides Nugget
-//  Bridge's Rocket). Out by the mat; the door puts the player on (51, 5),
-//  facing south. The maps keep Bill at (7, 5) and the Clefairy at (10, 6),
-//  where they don't block the way.
+//  Bridge's Rocket). Out by the mat (7, 9); the door puts the player on
+//  (51, 5), facing south. The maps keep Bill at (7, 5), but after his
+//  scene he stands on (7, 6), in the way from (6, 6) to the mat (console
+//  B, 2026-11-03), so the walk out goes around him to (7, 8) first.
 StoryCheckpoint bill(){
     return row("00.18", "Bill's Sea Cottage: the Cell Separator and the S.S. Ticket", at(SEA_COTTAGE, 7, 8, NORTH), after_brock(), StartMenu::FULL, {
         running(route("below_bill_clefairy", at(SEA_COTTAGE, 10, 7, NORTH), "below the Clefairy (10, 6), facing it")),
@@ -791,6 +792,7 @@ StoryCheckpoint bill(){
         running(legs("beside_bill", {{EAST, 2}}, "to (6, 6), west of Bill, facing him")),
         talk("thank_bill", "\"Thanks, bud! ... take this\""),
         scene("ss_ticket", at(SEA_COTTAGE, 6, 6, EAST), "the S.S. TICKET; \"... the S.S. ANNE ... go instead\""),
+        running(legs("around_bill", {{SOUTH, 2}, {EAST, 1}}, "to (7, 8), above the mat; Bill stands on (7, 6) after his scene")),
         running(route("out_of_cottage", at(ROUTE25, 51, 5, SOUTH), "down to the mat and out; the door puts the player below it")),
     });
 }
@@ -810,6 +812,49 @@ StoryCheckpoint back_to_cerulean(){
     });
 }
 
+//  An Oddish for HM01 Cut, and a second member behind the lead
+//  (docs/design/AutoStory-FRLG-FutureEvents.md, "Console B run choices").
+//  Route 24's grass (Route24 map.json: x 3..5, rows 19..31, west of Nugget
+//  Bridge) is the nearest to the Center with Oddish: FireRed's
+//  sRoute24_FireRed (pokefirered wild_encounters.json) has it in 25% of
+//  battles, Lv12..14, as Route 25's grass; Routes 5 and 6 aren't on the
+//  story's maps yet. Up the bridge, whose trainers 00.16 beat, west along
+//  rows 10..15 and down column 4 to the grass's first row, (4, 19); the
+//  step paces west to (3, 19) and back. Camper Shane (5, 21) faces north,
+//  sight 5, over (5, 16..20): column 5 is kept off.
+//
+//  First 7 Poke Balls at the Mart (row 1, 200 each; the bag isn't read, so
+//  the step buys them whatever the bag holds). The floor, from 00.15's
+//  1500 less its 1400: the rival's 288 (4 x 18 x 4), the Rocket's 480 (4
+//  x 15 x 8), Franklin's 540 and Nob's 468 (hikers, 9) alone make 1876
+//  (pokefirered gTrainerMoneyTable). An Oddish at full HP (catch rate 255)
+//  stays in a Poke Ball about 1 time in 3 (Gen 3: a = 85, four shakes of
+//  0.76), so 7 balls catch it about 94% of the time; the step throws 7 at
+//  most, in 30 battles (none an Oddish: 0.02%). Nothing weakens it: the HP
+//  bar isn't read on the console yet.
+//
+//  The Oddish joins the party second. Battles keep the lead in
+//  (PokemonFRLG_AutoStoryBattleDecisions.h): the Oddish is sent only when
+//  the lead faints in a trainer's battle, which counts as lost. Back to
+//  the nurse, and the save in the Center.
+StoryCheckpoint oddish(){
+    const MartPlan balls{
+        .map = CERULEAN_MART,
+        .lines = {{.item = "poke-ball", .quantity = 7}},
+        .budget = 1400,
+        .money_floor = 1500,
+    };
+    const CapturePlan catch_oddish{.species = "oddish", .catches = 1, .max_encounters = 30, .max_balls = 7, .pace = WEST};
+    return row("00.20", "Route 24's grass: an Oddish for Cut, then the Center", at(CERULEAN_CENTER, 7, 4, NORTH), after_brock(), StartMenu::FULL, {
+        running(route("mart_clerk", at(CERULEAN_MART, 4, 3, WEST), "out of the Center to the Mart's clerk")),
+        mart_step("buy_poke_balls", "7 Poke Balls for the Oddish", balls),
+        running(route("oddish_patch", at(ROUTE24, 4, 19), "north over Nugget Bridge, west and down column 4 onto the grass's first row, out of Shane's column 5")),
+        capture_step("catch_oddish", "wild battles until an Oddish, then Poke Balls; any other species is run from", catch_oddish),
+        running(route("cerulean_nurse", at(CERULEAN_CENTER, 7, 4, NORTH), "back over the bridge to the Center")),
+        heal("heal_cerulean"),
+    });
+}
+
 }
 
 
@@ -818,7 +863,7 @@ const std::vector<StoryCheckpoint>& story_checkpoints(){
         new_game(), after_sid_helper(), leave_house(), oaks_trigger(), to_starter_ball(), starter(), parcel(), pokedex(), shopping(), forest(), brock(),
         running_shoes(), route3(), magikarp_salesman(), after_gift_rng(), magikarp_to_box(), mt_moon(),
         route4_to_cerulean(), cerulean_gym(), misty(), cerulean_grind(), cerulean_rival(), nugget_bridge(),
-        route25(), bill(), back_to_cerulean(),
+        route25(), bill(), back_to_cerulean(), oddish(),
     };
     return checkpoints;
 }
