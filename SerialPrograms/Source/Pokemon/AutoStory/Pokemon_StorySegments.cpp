@@ -174,6 +174,79 @@ SegmentReport run_segment(
 }
 
 
+namespace{
+
+//  One verify run: the checkpoint built fresh, without its end save.
+//  Returns true if it passed.
+bool verify_run(
+    RunState& state, CheckpointSpec& spec, size_t run, const VerifyPolicy& policy, SegmentHooks& hooks
+){
+    Checkpoint checkpoint = spec.build();
+    checkpoint.save = nullptr;
+    EventLogger log = [&hooks](const std::string& line){ say(hooks, line); };
+    const CheckpointReport result = run_checkpoint(state, checkpoint, log);
+    if (result.completed){
+        say(hooks, std::format("[Verify] {}: run {}/{} passed", spec.id, run, policy.runs));
+        return true;
+    }
+    say(hooks, std::format(
+        "[Verify] {}: run {}/{} failed{}: {}",
+        spec.id, run, policy.runs,
+        result.failed_name.empty() ? "" : " at " + result.failed_name,
+        to_string(result.failure)
+    ));
+    return false;
+}
+
+VerifyReport verify_summary(VerifyReport& report, const VerifyPolicy& policy, SegmentHooks& hooks){
+    report.verified = report.failure.succeeded() && report.passes >= policy.passes_needed;
+    say(hooks, std::format(
+        "[Verify] {}: {}/{} passed, {} needed: {}",
+        report.checkpoint, report.passes, policy.runs, policy.passes_needed,
+        report.verified ? "verified" : "not verified"
+    ));
+    return report;
+}
+
+}
+
+
+VerifyReport verify_checkpoint(
+    RunState& state, Segment& segment, const std::string& id,
+    const VerifyPolicy& policy, SegmentHooks& hooks
+){
+    VerifyReport report;
+    report.checkpoint = id;
+    const std::optional<size_t> index = index_of(segment, id);
+    if (!index){
+        report.failure = outcome_failed("unknown_checkpoint", id);
+    }else if (policy.runs == 0 || policy.passes_needed > policy.runs){
+        report.failure = outcome_failed("bad_verify_policy", std::format("{} of {} runs", policy.passes_needed, policy.runs));
+    }
+    if (!report.failure.succeeded()){
+        say(hooks, std::format("[Verify] {}: {}", id, to_string(report.failure)));
+        return report;
+    }
+    CheckpointSpec& spec = segment.checkpoints[*index];
+    say(hooks, std::format(
+        "[Verify] {}: start, {} runs from one save, {} must pass", id, policy.runs, policy.passes_needed
+    ));
+    for (size_t run = 1; run <= policy.runs; run++){
+        if (run > 1){
+            Outcome reloaded = reload(state, hooks);
+            if (!reloaded.succeeded()){
+                say(hooks, std::format("[Verify] {}: no reload before run {}: {}", id, run, to_string(reloaded)));
+                report.failure = std::move(reloaded);
+                break;
+            }
+        }
+        report.runs++;
+        report.passes += verify_run(state, spec, run, policy, hooks) ? 1 : 0;
+    }
+    return verify_summary(report, policy, hooks);
+}
+
+
 std::string describe(Segment& segment){
     std::string text = std::format("segment {}: {} checkpoints\n", segment.id, segment.checkpoints.size());
     for (const CheckpointSpec& spec : segment.checkpoints){
