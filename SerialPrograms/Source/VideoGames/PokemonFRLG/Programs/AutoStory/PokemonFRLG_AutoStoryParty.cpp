@@ -196,7 +196,7 @@ void take_level(PartyMember& member, uint8_t level){
 //  The base stat `attacker` uses `move` with: Attack or Sp. Atk, by the
 //  move's type.
 uint8_t attacking_stat(const SpeciesData& attacker, const MoveData& move){
-    return special_type(move.type) ? attacker.sp_attack : attacker.attack;
+    return special_type(move.type) ? attacker.base.sp_attack : attacker.base.attack;
 }
 
 //  In tenths.
