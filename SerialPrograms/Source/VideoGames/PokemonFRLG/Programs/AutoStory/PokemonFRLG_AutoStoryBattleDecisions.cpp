@@ -76,17 +76,33 @@ std::optional<size_t> trainer_attack_slot(const PartyMember& usable, const Suppl
     return slot ? slot : attack_slot_against(usable, supplies.foes);
 }
 
-//  A Potion this turn: at BattleRisk::HIGH against a known foe, when its
-//  next hit could faint the lead (potion_now(), the HP from the bar's
-//  share) or the bar is red; else whenever the bar isn't green.
-bool wants_potion(const Supplies& supplies, const PartyStatus& status){
+//  A Potion this turn, against a known foe (`seen_hit` the HP its last hit
+//  took, 0 if not seen): at BattleRisk::HIGH when its next hit could faint
+//  the lead (potion_now(), the HP from the bar's share) or the bar is red,
+//  at LOW whenever the bar isn't green; either only if potion_pays().
+//  Against a foe not known, whenever the bar isn't green, unless the last
+//  hit took a Potion's worth or more.
+bool wants_potion(const Supplies& supplies, const PartyStatus& status, double seen_hit){
     const bool hurt = status.hp_red || status.hp_yellow;
-    const std::optional<SimBattler> foe = supplies.risk == BattleRisk::HIGH ? foe_out(supplies) : std::nullopt;
+    const std::optional<SimBattler> foe = foe_out(supplies);
     const std::optional<SimBattler> own = own_battler(supplies.lead, status.hp_seen ? status.hp_fill : 1.0);
     if (!foe || !own){
-        return hurt;
+        return hurt && seen_hit < POTION_HP;
     }
-    return status.hp_red || potion_now(*own, *foe, supplies.potions);
+    if (supplies.risk == BattleRisk::HIGH && potion_now(*own, *foe, supplies.potions, seen_hit)){
+        return true;
+    }
+    const bool asked = supplies.risk == BattleRisk::HIGH ? status.hp_red : hurt;
+    return asked && potion_pays(potion_case(*own, *foe, seen_hit));
+}
+
+//  The lead's HP from the bar's share, if it showed.
+std::optional<double> lead_hp(const Supplies& supplies, const PartyStatus& status){
+    const std::optional<SimBattler> own = own_battler(supplies.lead);
+    if (!status.hp_seen || !own){
+        return std::nullopt;
+    }
+    return status.hp_fill * own->body.stats.hp;
 }
 
 }
@@ -95,6 +111,7 @@ bool wants_potion(const Supplies& supplies, const PartyStatus& status){
 void healed_by_nurse(Supplies& supplies){
     supplies.hurt = false;
     supplies.hp_red = false;
+    supplies.hp_fill = 1.0;
     supplies.status = StatusCondition::NONE;
     restore_pp(supplies.lead);
 }
@@ -133,6 +150,9 @@ TurnAction BattleDecisions::turn(const PartyStatus& status){
 TurnAction BattleDecisions::lead_turn(const PartyStatus& status){
     const bool hurt = status.hp_red || status.hp_yellow;
     m_supplies.hurt = hurt;
+    if (status.hp_seen){
+        m_supplies.hp_fill = status.hp_fill;
+    }
     m_supplies.status = status.status;
     m_psn_reads = status.status == StatusCondition::POISON ? m_psn_reads + 1 : 0;
     //  A wild Pokemon is fought for EXP only at full strength: fighting
@@ -144,7 +164,8 @@ TurnAction BattleDecisions::lead_turn(const PartyStatus& status){
         m_run_tries++;
         return TurnAction{.choice = TurnChoice::RUN};
     }
-    if (!m_items_off && m_supplies.potions > 0 && wants_potion(m_supplies, status)){
+    see_hit(status);
+    if (!m_items_off && m_supplies.potions > 0 && wants_potion(m_supplies, status, m_seen_hit)){
         return TurnAction{.choice = TurnChoice::POTION};
     }
     if (!m_items_off && m_psn_reads >= PSN_READS && !m_antidote_used && m_supplies.antidotes > 0){
@@ -152,6 +173,22 @@ TurnAction BattleDecisions::lead_turn(const PartyStatus& status){
         return TurnAction{.choice = TurnChoice::ANTIDOTE};
     }
     return move_turn();
+}
+
+void BattleDecisions::see_hit(const PartyStatus& status){
+    if (m_supplies.foe_out != m_hit_by){
+        m_seen_hit = 0;
+        m_hit_by = m_supplies.foe_out;
+    }
+    const std::optional<double> hp = lead_hp(m_supplies, status);
+    if (hp && m_last_hp){
+        const double taken = *m_last_hp + (m_healed ? POTION_HP : 0) - *hp;
+        if (taken > 0){
+            m_seen_hit = taken;
+        }
+    }
+    m_last_hp = hp;
+    m_healed = false;
 }
 
 //  The plan's attack with PP left, or against known foes (a trainer's
@@ -214,6 +251,7 @@ void BattleDecisions::turn_done(TurnChoice choice, TurnResult result){
     }
     switch (choice){
     case TurnChoice::POTION:
+        m_healed = true;
         m_supplies.potions--;
         m_supplies.hurt = false;
         m_supplies.hp_red = false;
