@@ -190,7 +190,7 @@ UnitTestResult test_rows_after_magikarp(){
     ){
         return "Expected 00.12 to be Gift RNG's handoff and 00.12b to start from the live game at (2, 3) facing west.";
     }
-    for (const std::string& last : {"00.12", "00.12b"}){
+    for (const char* last : {"00.12", "00.12b"}){
         const StoryRunPlan plan = rows_after_gift_rng(checkpoints, salesman_row, row_index(last), StoryHandoffs{.gift_rng = true});
         if (joined_ids(plan) != "00.12b" || first_step(plan) != LEAVE_GIFT_SUMMARY || plan.stop != StoryHandoff::NONE){
             return std::format(
