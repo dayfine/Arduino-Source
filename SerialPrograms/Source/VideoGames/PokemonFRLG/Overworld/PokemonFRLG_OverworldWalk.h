@@ -176,13 +176,26 @@ void clear_open_message(
 
 //  After `step`'s hold and the watch after it, which saw nothing: if the
 //  screen shows a wild battle on its way anyway (its text box before the HP
-//  boxes, or black), watches on for it with `interrupts` and clears what
-//  shows. Returns how many it cleared: the leg may have stopped part-way.
-//  Only on a walk where a wild battle can start (RouteStep::wild) and not
-//  onto a warp, whose fade check_warp_was_no_battle() covers.
+//  boxes, or black), watches on for it with `wild` (the interrupts for a
+//  step where a wild battle can start) and clears what shows. Returns how
+//  many it cleared: the leg may have stopped part-way. After any walk not
+//  onto a warp, whose fade check_warp_was_no_battle() covers, also where
+//  the maps see no wild tiles (RouteStep::wild): they miss some. Mt. Moon
+//  B2F's tiles closed on one side are cave floor too, and a battle on
+//  "east 7 (to wall)" there left the screen black after the leg, which
+//  was taken as walked (console B, 2026-11-03, row 00.13).
 size_t clear_unseen_battle(
     ConsoleHandle& console, ProControllerContext& context,
-    const OverworldInterrupts& interrupts, const RouteStep& step
+    const OverworldInterrupts& wild, const RouteStep& step
+);
+
+//  Before `step`: if the screen shows a wild battle on its way (as
+//  clear_unseen_battle()), set off before the step started, watches on for
+//  it with `wild` and clears what shows. Returns how many it cleared: the
+//  step before may have stopped part-way.
+size_t clear_battle_before(
+    ConsoleHandle& console, ProControllerContext& context,
+    const OverworldInterrupts& wild, const RouteStep& step
 );
 
 //  After a warp's fade: if it was a wild battle's, runs from the battle and
