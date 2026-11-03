@@ -12,8 +12,8 @@
  *
  *  They are in files by area: _Events_Lake (00.00 to 00.04), _Sandgem
  *  (00.04), _Jubilife (00.05), _Oreburgh (01.04's Gym) and _Route204
- *  (01.09's Rock Smash, 01.11). 01.01 to 01.03 and 01.05 to 01.10 are
- *  planned walks in the story table.
+ *  (01.09's Rock Smash). 01.01 to 01.03 and 01.05 to 01.11 are planned
+ *  walks in the story table.
  *
  */
 

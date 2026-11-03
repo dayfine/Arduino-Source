@@ -777,6 +777,27 @@ std::vector<StoryCheckpoint> to_oreburgh(){
     };
 }
 
+//  01.11 on Floaroma's map: the old woman (3, 25) and the old man (2, 25)
+//  west of her stand still above the flower field's bottom row (r251a).
+//  The walk to her is the one that ran on the console: 8 taps west along
+//  row 29, then north until she stops us (r250a: 3 steps, then bumps).
+StoryCheckpoint floaromas_old_couple(){
+    const Pose below_the_old_woman = next_to(FLOAROMA, "old_woman", SOUTH, NORTH);
+    const Pose below_the_old_man = next_to(FLOAROMA, "old_man", SOUTH, NORTH);
+    return row("01.11", "Floaroma's old couple", at(FLOAROMA, "route_204_arrival", NORTH), {
+        legs("west_along_the_field", {{.direction = WEST, .tiles = 8}}, "8 taps west along row 29"),
+        anchored(to_walls("up_to_the_old_woman", {{.direction = NORTH, .tiles = 5}}, "north until she stops us"),
+            below_the_old_woman),
+        talk("old_woman", "she gives Mew when a Let's Go save is on the console"),
+        scene("old_woman_talks", below_the_old_woman, "her lines"),
+        //  He stands above that tile, so talk() turning north only turns.
+        anchored(legs("below_the_old_man", {{.direction = WEST, .tiles = 1}}, "a tile west"), below_the_old_man),
+        talk("old_man", "he gives Jirachi with a Sword/Shield save"),
+        scene("old_man_talks", below_the_old_man, "his lines"),
+        save(),
+    });
+}
+
 std::vector<StoryCheckpoint> to_floaroma(){
     return {
         row("01.06", "Route 203 to Jubilife", out_of_oreburgh_gate(), {
@@ -802,15 +823,7 @@ std::vector<StoryCheckpoint> to_floaroma(){
         }),
         through_the_ravaged_path(),
         route_204_to_floaroma(),
-        row("01.11", "Floaroma's old couple", std::nullopt, {
-            event("west_8_north_to_the_old_woman", "west 8, north until she stops us"),
-            talk("old_woman", "she gives Mew when a Let's Go save is on the console"),
-            scene("old_woman_talks", std::nullopt, "her lines"),
-            event("below_the_old_man", "a tile west, a tap north"),
-            talk("old_man", "he gives Jirachi with a Sword/Shield save"),
-            scene("old_man_talks", std::nullopt, "his lines"),
-            save(),
-        }),
+        floaromas_old_couple(),
     };
 }
 
