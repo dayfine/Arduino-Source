@@ -5,6 +5,7 @@
  */
 
 #include <format>
+#include <optional>
 #include "Common/Cpp/Exceptions.h"
 #include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "CommonFramework/Notifications/ProgramNotifications.h"
@@ -141,10 +142,61 @@ Pokemon::SegmentHooks story_hooks(SingleSwitchProgramEnvironment& env, StoryEnv&
     return hooks;
 }
 
+//  The game on the save checkpoint `checkpoint` starts from, with the
+//  supplies and moves read from it.
+void load_verify_save(
+    SingleSwitchProgramEnvironment& env, ProControllerContext& context, StoryEnv& story, const StoryCheckpoint& checkpoint
+){
+    if (!checkpoint.start){
+        throw UserSetupError(env.console,
+            "Verify mode reloads the checkpoint's save between runs: " + checkpoint.id + " starts a new game and has none."
+        );
+    }
+    env.console.log("Verify mode: loading the save for " + checkpoint.id + ".");
+    soft_reset(env.console, context);
+    story.has_save = true;
+    check_start_save(env, story, checkpoint);
+    read_lead_moves(story, checkpoint.menu);
+    read_bag_supplies(story, checkpoint.menu);
+}
+
+//  Verify mode: the start checkpoint run from its save as `policy` says,
+//  never saving at its end, so every run starts from the same save.
+//  Throws unless enough runs pass.
+void verify_story_checkpoint(
+    SingleSwitchProgramEnvironment& env, ProControllerContext& context,
+    const Pokemon::StoryRunOptions& run, const Pokemon::VerifyPolicy& policy, EventNotificationOption& finished
+){
+    const std::vector<StoryCheckpoint>& checkpoints = story_checkpoints();
+    const StoryCheckpoint& checkpoint = checkpoints[run.start_index()];
+    StoryEnv story{env.console, context, checkpoint.supplies, checkpoint.supplies, false, run.checks()};
+    load_verify_save(env, context, story, checkpoint);
+    StoryExecutor executor(story);
+    executor.set_checks(run.checks());
+    executor.set_language(run.language());
+    Pokemon::Segment segment = make_story_segment(checkpoints, executor);
+    Pokemon::SegmentHooks hooks = story_hooks(env, story);
+
+    Pokemon::RunState state;
+    const Pokemon::VerifyReport report = Pokemon::verify_checkpoint(state, segment, checkpoint.id, policy, hooks);
+    const std::string summary = std::format(
+        "AutoStory verify: {} {}/{} passed, {} needed.", checkpoint.id, report.passes, policy.runs, policy.passes_needed
+    );
+    if (!report.verified){
+        throw OperationFailedException(ErrorReportMode::NO_ERROR_REPORT, summary);
+    }
+    env.console.log(summary);
+    send_program_finished_notification(env, finished, summary);
+}
+
 
 }
 
 void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContext& context){
+    if (const std::optional<Pokemon::VerifyPolicy> verify = RUN.VERIFY.policy()){
+        verify_story_checkpoint(env, context, RUN, *verify, NOTIFICATION_PROGRAM_FINISH);
+        return;
+    }
     const std::vector<StoryCheckpoint>& checkpoints = story_checkpoints();
     const size_t first = RUN.start_index();
     const size_t last = RUN.end_index();

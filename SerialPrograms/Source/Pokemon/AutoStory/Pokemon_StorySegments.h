@@ -128,6 +128,41 @@ SegmentReport run_segment(
     const SegmentPolicy& policy, SegmentHooks& hooks
 );
 
+
+//  Verify mode, for a checkpoint that must be shown to hold up (a battle
+//  lost twice or more gets its own checkpoint, saved right before it, and is
+//  verified this way): the checkpoint run `runs` times, each from the same
+//  save. The checkpoint never saves at its end, so each run after the first
+//  reloads the save the first started from.
+struct VerifyPolicy{
+    size_t runs = 3;
+    //  Passing runs the checkpoint needs to be verified.
+    size_t passes_needed = 2;
+};
+
+struct VerifyReport{
+    std::string checkpoint;
+    size_t runs = 0;
+    size_t passes = 0;
+    //  At least VerifyPolicy::passes_needed runs passed.
+    bool verified = false;
+    //  What stopped the runs early: an unknown checkpoint, a bad policy or
+    //  a failed reload. Runs that fail are counted, not stopped at.
+    Outcome failure;
+};
+
+//  Runs checkpoint `id` of `segment` as `policy` says, from the save the
+//  game is on. No retries, no in-place recoveries and no save at its end.
+//  Logs through `hooks.log`, after each run's checkpoint lines:
+//      [Verify] 00.15b: start, 3 runs from one save, 2 must pass
+//      [Verify] 00.15b: run 1/3 passed
+//      [Verify] 00.15b: run 2/3 failed at rival_battle: battle_lost
+//      [Verify] 00.15b: 2/3 passed, 2 needed: verified
+VerifyReport verify_checkpoint(
+    RunState& state, Segment& segment, const std::string& id,
+    const VerifyPolicy& policy, SegmentHooks& hooks
+);
+
 //  A readable dump for review: the rows, then each checkpoint built once
 //  and described as describe(const Checkpoint&) does. Nothing runs.
 std::string describe(Segment& segment);
