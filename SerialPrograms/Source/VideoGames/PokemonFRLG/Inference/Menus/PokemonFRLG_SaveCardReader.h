@@ -4,9 +4,10 @@
  *
  *  Reads where the game would be saved: the place name in blue at the top
  *  of the card the START menu's SAVE shows ("PALLET TOWN" over PLAYER,
- *  BADGES and TIME). It knows the places from a new game to Route 4, and
- *  Cerulean City, in English only so far: in another language nothing is
- *  read. Route 3, Route 4 and Cerulean City have no test capture yet.
+ *  BADGES and TIME). It knows the places from a new game to Route 4,
+ *  Cerulean City, Route 24 and Route 25 (Bill's Sea Cottage is on it), in
+ *  English only so far: in another language nothing is read. Route 3,
+ *  Route 4, Cerulean City, Route 24 and Route 25 have no test capture yet.
  *
  */
 
@@ -31,8 +32,9 @@ namespace PokemonFRLG{
 ImageFloatBox save_card_title_box();
 
 //  The place on the save card: "pallet-town", "viridian-city",
-//  "viridian-forest", "pewter-city", "route-1" to "route-4", "cerulean-city"; empty if it
-//  can't be read, as in a language the reader has no names for.
+//  "viridian-forest", "pewter-city", "route-1" to "route-4", "cerulean-city",
+//  "route-24", "route-25"; empty if it can't be read, as in a language the
+//  reader has no names for.
 std::string read_save_card_location(Logger& logger, Language language, const ImageViewRGB32& screen);
 
 
