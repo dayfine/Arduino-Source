@@ -155,7 +155,12 @@ Outcome battle(StoryEnv& env, const StoryStep& step){
     if (advance_text(env.console, env.context, BATTLE_TEXT_TIMEOUT, true) != TextEnd::BATTLE){
         return Pokemon::outcome_failed("no_battle");
     }
+    env.supplies.foes = trainer_party(step.name);
+    if (!env.supplies.foes.empty()){
+        env.console.log("Story: " + step.name + "'s party is known; attacks are chosen against it.");
+    }
     const BattleEnd end = fight_battle(env.console, env.context, env.supplies, BattleKind::TRAINER, env.checks, env.language);
+    env.supplies.foes.clear();
     if (end == BattleEnd::LOST && !step.may_lose){
         return Pokemon::outcome_failed("blackout");
     }
@@ -444,9 +449,8 @@ bool grind_heal_trip(StoryEnv& env, RunState& state, const StoryStep& step, cons
         return false;
     }
     heal_at_center(env.console, env.context);
-    env.supplies.hurt = false;
-    env.supplies.hp_red = false;
-    env.supplies.status = StatusCondition::NONE;
+    //  PP too: a grind's battles spend more than its attacks have.
+    healed_by_nurse(env.supplies);
     walk.name = step.name + "_back_to_patch";
     walk.target = patch;
     return walked(env, state, walk);
@@ -580,6 +584,22 @@ void read_lead_moves(StoryEnv& env, StartMenu menu){
     const uint8_t level = read->level && *read->level <= 100 ? static_cast<uint8_t>(*read->level) : before.moves_through_level;
     env.supplies.lead = member_from_summary(species, level, read->moves);
     env.saved_supplies.lead = env.supplies.lead;
+}
+
+void read_bag_supplies(StoryEnv& env, StartMenu menu){
+    if (menu != StartMenu::FULL){
+        return;
+    }
+    const std::vector<BagRow> rows = read_items_pocket(env.console, env.context, env.language);
+    if (rows.empty()){
+        env.console.log("Couldn't read the Items pocket; going on with the checkpoint's items.", COLOR_ORANGE);
+        return;
+    }
+    for (const std::string& item : set_from_loaded_bag(env.supplies, env.saved_supplies, rows)){
+        env.console.log(std::format(
+            "Story: couldn't read how many {} the bag holds; counting {}.", item, item_count(env.supplies, item)
+        ), COLOR_ORANGE);
+    }
 }
 
 Pokemon::Checkpoint build_checkpoint(const StoryCheckpoint& data, StoryExecutor& executor){
