@@ -116,6 +116,7 @@ public:
 
     RngPlanStep step() const{ return m_step; }
     size_t attempt_index() const{ return m_attempt; }
+    size_t attempt_count() const{ return m_attempts.size(); }
     const RngAttempt& current_attempt() const{ return m_attempts[m_attempt]; }
     //  The SID candidates not ruled out, in the order given.
     const std::vector<uint16_t>& remaining_sids() const{ return m_remaining; }
@@ -164,12 +165,22 @@ std::vector<std::string> rng_attempt_lines(const std::vector<RngAttempt>& attemp
 
 //  The data to rebuild how likely SID Helper's k-th candidate of N is (the
 //  1-2-3-2-1 weights of sid_helper_candidates() are a guess), from the logs
-//  alone. Every line starts with "RngPlan:"; grep for it:
+//  alone, and to follow AutoStory's Starter RNG loop. Every line starts with
+//  "RngPlan:"; grep for it. In the order a run logs them:
 //      RngPlan: tid=<TID> source=<card|option>
 //      RngPlan: sid_helper tid=<TID> target_advances=<A> candidates=<SID>,...
 //      RngPlan: attempt=<i> seed=<hex> advances=<n> sids=<SID>,...
-//      RngPlan: result attempt=<i> outcome=<SHINY|HIT_NOT_SHINY|MISSED>
+//  then, with Run Starter RNG in AutoStory, for each try of an attempt
+//  (rng_log_state() in PokemonFRLG_AutoStoryRngLoop.h):
+//      RngPlan: state attempt=<i>/<n> try=<t>/<tries> reset=<r>/<max> seed=<hex>
+//          advances=<n> sids=<SID>,... ruled_out=<SID>,... attempt_time=<h:mm:ss>/<cap>
+//          total_time=<h:mm:ss>/<cap> calibration=<seed>/<csf>/<ingame frames|->
+//      (once at the try's start, then after every reset)
+//      RngPlan: result attempt=<i> try=<t> outcome=<shiny|hit_not_shiny|missed>
+//          starter_rng=<Starter RNG's outcome> nature=<N|-> ivs=<a/b/c/d/e/f|->
+//          pid=<hex|-> next=<retry|next_attempt|confirm|stop>
 //      RngPlan: confirmed tid=<TID> sid=<SID> candidate=<k> of=<N>
+//  Lists that are empty print "-".
 //  "candidates" are in SID Helper's order; "candidate=k" counts from 1 in
 //  it, 0 when the SID wasn't among them. Count each TID's "confirmed" once:
 //  every later run with the SID set logs it again. While the user runs
@@ -178,7 +189,30 @@ std::vector<std::string> rng_attempt_lines(const std::vector<RngAttempt>& attemp
 std::string rng_log_tid(uint16_t tid, bool from_card);
 std::string rng_log_sid_helper(uint16_t tid, uint32_t target_advances, const std::vector<SidCandidate>& candidates);
 std::string rng_log_attempt(size_t index, const RngAttempt& attempt);
-std::string rng_log_result(size_t index, RngAttemptOutcome outcome);
+//  What the loop does after an attempt's result.
+enum class RngPlanNext{
+    RETRY,
+    NEXT_ATTEMPT,
+    //  Shiny: go on with the story.
+    CONFIRM,
+    STOP,
+};
+//  The step after `index` came out as the tracker's `step` and its attempt
+//  is now `next_index`.
+RngPlanNext rng_plan_next(RngPlanStep step, size_t index, size_t next_index);
+
+struct RngResultLog{
+    size_t index = 0;
+    //  From 1.
+    size_t try_number = 1;
+    RngAttemptOutcome outcome = RngAttemptOutcome::MISSED;
+    //  How the RNG program put it ("out_of_resets"); empty for none.
+    std::string detail;
+    //  The Pokemon hit, when known.
+    std::optional<Pokemon::AdvPokemonResult> pokemon;
+    RngPlanNext next = RngPlanNext::STOP;
+};
+std::string rng_log_result(const RngResultLog& result);
 std::string rng_log_confirmed(uint16_t tid, uint16_t sid, const std::vector<SidCandidate>& sid_helper_candidates);
 
 

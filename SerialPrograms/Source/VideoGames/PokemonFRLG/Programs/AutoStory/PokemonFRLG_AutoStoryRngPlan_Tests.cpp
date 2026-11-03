@@ -404,7 +404,23 @@ UnitTestResult test_log_lines(Logger&){
         {.got = rng_log_tid(43771, false), .expected = "RngPlan: tid=43771 source=option"},
         {.got = rng_log_sid_helper(43771, 3001, CANDIDATES), .expected = "RngPlan: sid_helper tid=43771 target_advances=3001 candidates=100,200,300"},
         {.got = rng_log_attempt(0, attempt), .expected = "RngPlan: attempt=1 seed=2EF6 advances=29364 sids=100,200"},
-        {.got = rng_log_result(1, RngAttemptOutcome::HIT_NOT_SHINY), .expected = "RngPlan: result attempt=2 outcome=HIT_NOT_SHINY"},
+        {
+            .got = rng_log_result(RngResultLog{
+                .index = 1, .try_number = 2, .outcome = RngAttemptOutcome::HIT_NOT_SHINY, .detail = "target_hit",
+                .pokemon = attempt.target.pokemon, .next = RngPlanNext::NEXT_ATTEMPT,
+            }),
+            .expected = std::format(
+                "RngPlan: result attempt=2 try=2 outcome=hit_not_shiny starter_rng=target_hit nature={} ivs={} pid={:08X} next=next_attempt",
+                nature_to_string(attempt.target.pokemon.nature), ivs_to_string(attempt.target.pokemon.ivs), attempt.target.pokemon.pid
+            ),
+        },
+        {
+            .got = rng_log_result(RngResultLog{
+                .index = 0, .try_number = 1, .outcome = RngAttemptOutcome::MISSED, .detail = "out_of_resets",
+                .pokemon = std::nullopt, .next = RngPlanNext::RETRY,
+            }),
+            .expected = "RngPlan: result attempt=1 try=1 outcome=missed starter_rng=out_of_resets nature=- ivs=- pid=- next=retry",
+        },
         {.got = rng_log_confirmed(43771, 300, CANDIDATES), .expected = "RngPlan: confirmed tid=43771 sid=300 candidate=3 of=3"},
         {.got = rng_log_confirmed(43771, 7, CANDIDATES), .expected = "RngPlan: confirmed tid=43771 sid=7 candidate=0 of=3"},
     };
