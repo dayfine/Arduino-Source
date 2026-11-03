@@ -179,6 +179,12 @@ struct StoryEnv{
 //  not.
 std::string check_save_place(StoryEnv& env, const std::string& start_map);
 
+//  After a save is loaded, with START's menu `menu`: the lead's moves as its
+//  summary shows them, which the battles then start from in place of the
+//  row's (in env's supplies and the ones a reload restores). The row's are
+//  kept if no move can be read.
+void read_lead_moves(StoryEnv& env, StartMenu menu);
+
 //  Does FRLG's kinds of story step on the console. A console step that
 //  fails is a failed Outcome, which the segment answers by reloading.
 class StoryExecutor : public Pokemon::StoryStepExecutor{
