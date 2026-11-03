@@ -105,8 +105,8 @@ TurnAction BattleDecisions::lead_turn(const PartyStatus& status){
     return move_turn();
 }
 
-//  The plan's attack with PP left, or against a trainer whose party is
-//  known, the one that does it most damage. While the story doesn't know
+//  The plan's attack with PP left, or against known foes (a trainer's
+//  party, the wild Pokemon read), the one that does them most damage. While the story doesn't know
 //  all four moves, the bottom left one (Bubble from Lv7), which the cursor
 //  can't reach while that slot is empty, so before Bubble it stays on
 //  Tackle.
@@ -117,9 +117,7 @@ TurnAction BattleDecisions::move_turn(){
             usable.moves[refused.first].pp = 0;
         }
     }
-    const std::optional<size_t> slot = m_kind == BattleKind::TRAINER
-        ? attack_slot_against(usable, m_supplies.foes)
-        : attack_slot(usable);
+    const std::optional<size_t> slot = attack_slot_against(usable, m_kind == BattleKind::TRAINER ? m_supplies.foes : m_supplies.wild_foes);
     if (!slot){
         return TurnAction{.choice = TurnChoice::MOVE, .slot = BOTTOM_LEFT_MOVE};
     }

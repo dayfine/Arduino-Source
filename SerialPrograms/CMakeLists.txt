@@ -199,6 +199,8 @@ pa_embed_text_files(SerialProgramsLib Source/Pokemon/Navigation/TestMaps
     Pokemon/Navigation/Pokemon_Navigation_Tests.h PokemonAutomation::Pokemon navigation_test_map_json)
 pa_embed_text_files(SerialProgramsLib Source/VideoGames/PokemonFRLG/Overworld/Maps
     VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h PokemonAutomation::NintendoSwitch::PokemonFRLG overworld_map_json)
+pa_embed_text_files(SerialProgramsLib Source/VideoGames/PokemonFRLG/Programs/AutoStory/BattleData
+    VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryBattleData.h PokemonAutomation::NintendoSwitch::PokemonFRLG autostory_battle_json)
 
 
 # Create binary target
