@@ -167,6 +167,23 @@ struct StarterRngPlanInputs{
 //  Starter RNG's smallest Advances setting.
 inline constexpr uint64_t STARTER_RNG_MIN_ADVANCES = 940;
 
+//  Starter RNG waits on the title screen for the seed list's delay plus
+//  this (FIXED_SEED_OFFSET in StarterRng's attempts) plus its seed
+//  calibration, and refuses a wait under STARTER_RNG_MIN_TITLE_DELAY_MS
+//  (check_timings() in PokemonFRLG_BlindNavigation.cpp).
+inline constexpr int64_t STARTER_RNG_FIXED_SEED_OFFSET_MS = -845;
+inline constexpr uint64_t STARTER_RNG_MIN_TITLE_DELAY_MS = 29650;
+//  Room for the seed calibration, which Starter RNG learns as it resets and
+//  nudges by up to 2 frames between resets: 1 s is 60 frames, more than a
+//  calibrated console drifts.
+inline constexpr uint64_t STARTER_RNG_SEED_DELAY_MARGIN_MS = 1000;
+//  Whether Starter RNG can wait on the title screen for `seed`'s delay, as
+//  prepare_timings() makes it before any calibration, with the margin
+//  above. (Console B, 2026-11-02, FireRed English: seeds 11A3 and 405C, at
+//  30,473 and 30,488 ms in the table, are 29,628 and 29,643 ms waits, which
+//  Starter RNG refuses.)
+bool starter_rng_can_wait_for(const InitialSeedEntry& seed);
+
 //  The attempts for Starter RNG, from the seed list of the version and
 //  language in Help button mode, the one Starter RNG uses.
 std::vector<RngAttempt> plan_starter_rng(const StarterRngPlanInputs& inputs);

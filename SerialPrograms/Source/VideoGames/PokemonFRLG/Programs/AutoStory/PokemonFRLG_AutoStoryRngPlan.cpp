@@ -313,11 +313,17 @@ RngPlanStep RngPlanTracker::record(RngAttemptOutcome outcome){
 }
 
 
+bool starter_rng_can_wait_for(const InitialSeedEntry& seed){
+    const int64_t wait = int64_t(seed.seed_time_ms) + STARTER_RNG_FIXED_SEED_OFFSET_MS;
+    return wait >= int64_t(STARTER_RNG_MIN_TITLE_DELAY_MS + STARTER_RNG_SEED_DELAY_MARGIN_MS);
+}
+
 std::vector<RngAttempt> plan_starter_rng(const StarterRngPlanInputs& inputs){
     const SeedsDatabase database(seeds_json_path(inputs.firered, inputs.language));
     //  Only the English lists hold the blackout button's seeds (initial_seed_entries()).
     const bool english_list = inputs.language != Language::Japanese;
-    const std::vector<InitialSeedEntry> seeds = initial_seed_entries(database, inputs.sound, "Help", english_list);
+    std::vector<InitialSeedEntry> seeds = initial_seed_entries(database, inputs.sound, "Help", english_list);
+    std::erase_if(seeds, [](const InitialSeedEntry& seed){ return !starter_rng_can_wait_for(seed); });
 
     RngTargetFilters filters = inputs.filters;
     filters.min_advances = std::max(filters.min_advances, STARTER_RNG_MIN_ADVANCES);

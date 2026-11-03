@@ -490,6 +490,54 @@ UnitTestResult test_log_lines(Logger&){
 //  A plan from the FireRed (English) list: every attempt starts from a seed
 //  Starter RNG finds, takes at least its smallest Advances, and is shiny for
 //  the SIDs it lists, which no earlier attempt listed.
+//  Console B, 2026-11-02, FireRed English, Mono, Help: Starter RNG refused
+//  both of these as title screen waits under 30 s. AutoStory's plan for TID
+//  55740 started with 11A3 at 945 advances (29,628 ms after Starter RNG's
+//  offsets); StarterRng by hand with 405C at 990 advances listed 30,488 ms
+//  from the table, 29,643 ms after them. Neither seed may start an attempt.
+UnitTestResult test_starter_plan_seed_delay(Logger&){
+    struct Case{
+        uint16_t seed;
+        uint64_t table_ms;
+    };
+    const Case cases[] = {
+        {.seed = 0x11a3, .table_ms = 30473},
+        {.seed = 0x405c, .table_ms = 30488},
+    };
+    const SeedsDatabase database(seeds_json_path(true, Language::English));
+    const std::vector<InitialSeedEntry> seeds = initial_seed_entries(database, SoundSetting::Mono, "Help", true);
+    for (const Case& item : cases){
+        auto entry = std::find_if(seeds.begin(), seeds.end(), [&](const InitialSeedEntry& seed){ return seed.seed == item.seed; });
+        if (entry == seeds.end() || entry->seed_time_ms != item.table_ms){
+            return std::format("Expected seed {:04X} at {} ms in the FireRed English list (Mono, Help).", item.seed, item.table_ms);
+        }
+        if (starter_rng_can_wait_for(*entry)){
+            return std::format("Seed {:04X} ({} ms): expected too early for Starter RNG's title screen.", item.seed, item.table_ms);
+        }
+    }
+
+    const uint16_t tid = 55740;
+    const std::vector<RngAttempt> attempts = plan_starter_rng(StarterRngPlanInputs{
+        .firered = true,
+        .language = Language::English,
+        .sound = SoundSetting::Mono,
+        .tid = tid,
+        .candidates = sid_helper_candidates(tid, 3001, 5),
+        .filters = {},
+        .max_attempts = 5,
+    });
+    if (attempts.empty()){
+        return "Expected attempts for TID 55740, got none.";
+    }
+    for (size_t c = 0; c < attempts.size(); c++){
+        const InitialSeedEntry& seed = attempts[c].target.seed;
+        if (seed.seed == 0x11a3 || seed.seed == 0x405c || !starter_rng_can_wait_for(seed)){
+            return std::format("Attempt {}: seed {:04X} at {} ms is too early for the title screen.", c + 1, seed.seed, seed.seed_time_ms);
+        }
+    }
+    return true;
+}
+
 UnitTestResult test_starter_plan(Logger&){
     const uint16_t tid = 43771;
     StarterRngPlanInputs inputs{
@@ -548,6 +596,7 @@ void add_tests_AutoStoryRngPlan(UnitTestDatabase& database){
     database.add<Test_AutoStoryRngPlan>("attempt outcome", test_classify);
     database.add<Test_AutoStoryRngPlan>("step after each outcome", test_tracker);
     database.add<Test_AutoStoryRngPlan>("Starter RNG plan from the FireRed list", test_starter_plan);
+    database.add<Test_AutoStoryRngPlan>("Starter RNG plan: no seed too early for the title screen", test_starter_plan_seed_delay);
     database.add<Test_AutoStoryRngPlan>("RngPlan log lines", test_log_lines);
 }
 
