@@ -111,13 +111,16 @@ struct StoryRunPlan{
     //  NONE: the run ends after `rows`. SID_HELPER: `rows` is empty; the run
     //  plays the new game to the player's keyboard and stops there.
     //  STARTER_RNG: the run stops after `rows`, the last of which saves at
-    //  the starter's ball. GIFT_RNG: likewise, beside the Magikarp salesman.
+    //  the starter's ball. GIFT_RNG: likewise, beside the Magikarp salesman;
+    //  with `rows` empty, the run started at 00.12b and takes Gift RNG from
+    //  the save beside the salesman, where the row before `first` ends.
     StoryHandoff stop = StoryHandoff::NONE;
 };
 
 //  The rows of `checkpoints` from `first` to `last`, both inclusive, as a
 //  run with `handoffs` takes them: live-start rows only when the run
-//  starts there, a run that reaches a handoff that is on stops for it, and
+//  starts there (00.12b with Gift RNG's handoff on starts at the handoff
+//  instead), a run that reaches a handoff that is on stops for it, and
 //  a STARTER_RNG row whose handoff is off is joined with the row after it,
 //  under its own id.
 StoryRunPlan plan_story_run(

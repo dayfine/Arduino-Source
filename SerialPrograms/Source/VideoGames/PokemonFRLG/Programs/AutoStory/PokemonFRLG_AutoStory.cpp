@@ -75,6 +75,8 @@ const char* const RUN_GIFT_RNG_TEXT =
     "Pokemon Center, run Gift RNG's attempts for the Magikarp from that save, as the RNG plan lists them for its TID and "
     "SID (set by Run Starter RNG in AutoStory, or typed in). A shiny Magikarp is saved there (00.12b) and the run goes "
     "on; otherwise the run stops with the save beside the salesman.<br>"
+    "To try again from that save, start at 00.12b with this on: it loads the save and runs the attempts first. "
+    "After Gift RNG run by hand, start at 00.12b with this off.<br>"
     "English only. The Magikarp costs 500 and needs a free party slot; AutoStory's options leave the text fast.";
 
 AutoStory::AutoStory()
@@ -223,16 +225,17 @@ static void throw_if_failed(const Pokemon::SegmentReport& report){
 
 //  Gets the game to where checkpoint `first` starts: a new game from the
 //  title screen, the game as another program left it, or the checkpoint's
-//  save loaded.
+//  save loaded. `at_handoff`: the run starts with the RNG handoff before a
+//  live-start row, whose save is where that row starts, so it is loaded.
 static void prepare_start(
     SingleSwitchProgramEnvironment& env, ProControllerContext& context,
-    const std::vector<StoryCheckpoint>& checkpoints, size_t first, StoryEnv& story
+    const std::vector<StoryCheckpoint>& checkpoints, size_t first, StoryEnv& story, bool at_handoff
 ){
     const StoryCheckpoint& checkpoint = checkpoints[first];
     if (!checkpoint.start){
         return;
     }
-    if (checkpoint.live_start){
+    if (checkpoint.live_start && !at_handoff){
         env.console.log(checkpoint.id + " starts from the game as it is: no save to load.");
         return;
     }
@@ -570,12 +573,15 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
 
     StoryEnv story{env.console, context, checkpoints[first].supplies, checkpoints[first].supplies, false, RUN.checks()};
     story.player_name = player_name;
-    prepare_start(env, context, checkpoints, first, story);
+    const bool at_gift_rng = plan.stop == StoryHandoff::GIFT_RNG && plan.rows.empty();
+    prepare_start(env, context, checkpoints, first, story, at_gift_rng);
     StoryExecutor executor(story);
     executor.set_checks(RUN.checks());
     executor.set_language(RUN.language());
 
-    const std::optional<std::string> done_through = run_story_plan(env, context, story, executor, std::move(plan));
+    const std::optional<std::string> done_through = at_gift_rng
+        ? run_from_gift_rng_save(env, context, story, executor, first)
+        : run_story_plan(env, context, story, executor, std::move(plan));
     if (done_through){
         send_story_finished(env, NOTIFICATION_PROGRAM_FINISH, *done_through, sid_before, RNG_PLAN.SID);
     }
@@ -615,6 +621,20 @@ std::optional<std::string> AutoStory::run_story_plan(
         }
         plan = std::move(*next);
     }
+}
+
+std::optional<std::string> AutoStory::run_from_gift_rng_save(
+    SingleSwitchProgramEnvironment& env, ProControllerContext& context,
+    StoryEnv& story, StoryExecutor& executor, size_t first
+){
+    const StarterRngPlanned planned = plan_handoff_attempts(
+        env, context, RNG_PLAN, RUN.language(), StoryHandoff::GIFT_RNG, story_checkpoints()[first].id
+    );
+    std::optional<StoryRunPlan> next = after_magikarp_salesman(env, context, story, planned, first - 1);
+    if (!next){
+        return std::nullopt;
+    }
+    return run_story_plan(env, context, story, executor, std::move(*next));
 }
 
 std::optional<StoryRunPlan> AutoStory::after_starter_ball(

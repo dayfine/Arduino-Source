@@ -65,8 +65,9 @@ std::string starter_rng_loop_message(const StarterRngLoopResult& result){
 
 
 std::string gift_rng_loop_message(const StarterRngLoopResult& result){
-    const std::string save = "The save is still beside the salesman, facing him: run Gift RNG (Magikarp) from it with "
-        "an attempt from the log, then start AutoStory at 00.12b.";
+    const std::string save = "The save is still beside the salesman, facing him: start AutoStory at 00.12b with Run Gift "
+        "RNG in AutoStory on to try again, or run Gift RNG (Magikarp) from it by hand with an attempt from the log, then "
+        "start AutoStory at 00.12b with that option off.";
     switch (result.end){
     case StarterRngLoopEnd::SHINY:
         return "Gift RNG: shiny Magikarp, on the planned target. 00.12b saves it.";

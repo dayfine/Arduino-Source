@@ -794,7 +794,22 @@ void add_tests_GiftRunPlan(UnitTestDatabase& database){
             .expected_stop = StoryHandoff::GIFT_RNG,
         },
         {.name = "Gift RNG off: 00.12b is passed over", .first = "00.11", .expected_ids = "00.11 00.12"},
-        {.name = "00.12b runs when started at", .first = "00.12b", .handoffs = {.gift_rng = true}, .expected_ids = "00.12b"},
+        {.name = "Gift RNG off: 00.12b runs when started at", .first = "00.12b", .expected_ids = "00.12b"},
+        {
+            .name = "Gift RNG: started at 00.12b, from the save beside the salesman",
+            .first = "00.12b",
+            .handoffs = {.gift_rng = true},
+            .expected_ids = "",
+            .expected_stop = StoryHandoff::GIFT_RNG,
+        },
+        {
+            .name = "Gift RNG: started at 00.12b with Starter RNG on too",
+            .first = "00.12b",
+            .handoffs = {.sid_helper = true, .starter_rng = true, .gift_rng = true},
+            .expected_ids = "",
+            .expected_stop = StoryHandoff::GIFT_RNG,
+        },
+        {.name = "Starter RNG alone: 00.12b runs when started at", .first = "00.12b", .handoffs = {.starter_rng = true}, .expected_ids = "00.12b"},
         {
             .name = "Starter RNG first, with both on",
             .first = "00.03",

@@ -446,6 +446,13 @@ StoryRunPlan plan_story_run(
     const std::vector<StoryCheckpoint>& checkpoints, size_t first, size_t last, const StoryHandoffs& handoffs
 ){
     StoryRunPlan plan;
+    //  Started at the way back in from Gift RNG with its handoff on: the run
+    //  takes the handoff again, from the save the row before ends at.
+    if (first > 0 && first < checkpoints.size() && checkpoints[first].live_start
+        && checkpoints[first - 1].handoff == StoryHandoff::GIFT_RNG && handoffs.gift_rng){
+        plan.stop = StoryHandoff::GIFT_RNG;
+        return plan;
+    }
     for (size_t c = first; c <= last && c < checkpoints.size(); c++){
         const StoryCheckpoint& row = checkpoints[c];
         if (row.live_start && c != first){

@@ -63,6 +63,13 @@ private:
         SingleSwitchProgramEnvironment& env, ProControllerContext& context,
         StoryEnv& story, const StarterRngPlanned& planned, size_t ball_row
     );
+    //  Started at 00.12b (row `first`) with Run Gift RNG in AutoStory on,
+    //  the save beside the salesman loaded: Gift RNG's attempts, then for a
+    //  shiny the rows after them. As run_story_plan() returns.
+    std::optional<std::string> run_from_gift_rng_save(
+        SingleSwitchProgramEnvironment& env, ProControllerContext& context,
+        StoryEnv& story, StoryExecutor& executor, size_t first
+    );
     //  After 00.12 saved beside the Magikarp salesman (row `salesman_row`):
     //  Gift RNG's attempts run here. Returns the rows to run after a shiny,
     //  or nothing once the run has stopped.

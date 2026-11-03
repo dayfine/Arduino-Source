@@ -146,8 +146,9 @@ UnitTestResult test_gift_messages(){
         StarterRngLoopResult result;
         std::string expected;
     };
-    const std::string save = "The save is still beside the salesman, facing him: run Gift RNG (Magikarp) from it with "
-        "an attempt from the log, then start AutoStory at 00.12b.";
+    const std::string save = "The save is still beside the salesman, facing him: start AutoStory at 00.12b with Run Gift "
+        "RNG in AutoStory on to try again, or run Gift RNG (Magikarp) from it by hand with an attempt from the log, then "
+        "start AutoStory at 00.12b with that option off.";
     const std::vector<Case> cases = {
         {
             .result = {.end = StarterRngLoopEnd::SHINY, .attempts_run = 1, .remaining_sids = {300}, .sid = uint16_t(300)},
