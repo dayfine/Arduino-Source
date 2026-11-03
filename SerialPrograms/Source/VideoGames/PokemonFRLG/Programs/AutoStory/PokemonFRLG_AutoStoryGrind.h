@@ -162,13 +162,8 @@ PartyMember lead_as_read(const MemberInfo& read, const PartyMember& tracked);
 std::optional<WinEstimate> healed_win_chance(PartyMember lead, int potions, std::string_view trainer);
 
 
-//  Where pacing left the player, for the trip to the nurse: on the patch's
-//  tile, or one tile `pace` from it, as the last step taken left it.
-struct GrindSpot{
-    bool displaced = false;
-    //  The way the player faces after its last step; nothing before one.
-    std::optional<Pokemon::Direction> facing = std::nullopt;
-};
+//  Where pacing left the player, for the trip to the nurse.
+using GrindSpot = PaceSpot;
 
 //  The console's GRIND steps: encounters found by pacing as a capture
 //  does, the shiny heard as a capture hears it, battles by fight_battle(),

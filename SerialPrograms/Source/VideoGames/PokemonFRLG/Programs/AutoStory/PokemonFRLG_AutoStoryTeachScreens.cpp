@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <format>
 #include "CommonFramework/Exceptions/OperationFailedException.h"
+#include "CommonFramework/Tools/DebugDumper.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "VideoGames/PokemonFRLG/PokemonFRLG_Navigation.h"
@@ -192,19 +193,25 @@ TeachPrompt ScreenTeachActions::member_answer(){
     return TeachPrompt::FAILED;
 }
 
+void ScreenTeachActions::answer_to_forget(const TeachView& view){
+    //  YES to delete a move; NO to stop trying, back to the moves.
+    if (view.text == TeachText::STOP_QUESTION){
+        press(TeachPress::B);
+    }else{
+        press(view.cursor == 1u ? TeachPress::UP : TeachPress::A);
+    }
+}
+
 ForgetEnd ScreenTeachActions::forget(size_t slot){
     bool picked = false;
     size_t still = 0;
+    //  Looks at a screen not placed since the move was picked.
+    size_t unplaced = 0;
     for (size_t c = 0; c < MAX_LOOKS; c++){
         const TeachView view = m_screens.look();
         switch (view.screen){
         case TeachScreen::PARTY_YES_NO:
-            //  YES to delete a move; NO to stop trying, back to the moves.
-            if (view.text == TeachText::STOP_QUESTION){
-                press(TeachPress::B);
-            }else{
-                press(view.cursor == 1u ? TeachPress::UP : TeachPress::A);
-            }
+            answer_to_forget(view);
             break;
         case TeachScreen::PARTY_TEXT:
             press(TeachPress::A);
@@ -222,10 +229,22 @@ ForgetEnd ScreenTeachActions::forget(size_t slot){
             }
             break;
         case TeachScreen::TM_CASE:
+        case TeachScreen::BAG:
+        case TeachScreen::ITEM_MENU:
             return picked ? ForgetEnd::LEARNED : ForgetEnd::FAILED;
         default:
+            //  After the pick, its messages: B pages through them, once the
+            //  moves page has closed (the first look).
+            if (picked && ++unplaced > 1){
+                press(TeachPress::B);
+            }
             break;
         }
+    }
+    if (picked && unplaced > 0){
+        //  The moves page closed on the pick: the moves read after decide.
+        m_logger.log("Teach: the TM CASE didn't show after the forget; reading the moves will tell.", COLOR_ORANGE);
+        return ForgetEnd::LEARNED;
     }
     return ForgetEnd::FAILED;
 }
@@ -253,6 +272,10 @@ void ScreenTeachActions::stop_teaching(){
             return;
         }
     }
+}
+
+void ScreenTeachActions::dump_screen(std::string_view label){
+    m_screens.dump_screen(label);
 }
 
 bool ScreenTeachActions::leave(){
@@ -369,6 +392,11 @@ void ConsoleTeachScreens::press(TeachPress press){
     case TeachPress::RIGHT: pbf_press_dpad(m_context, DPAD_RIGHT, 160ms, 240ms); break;
     }
     m_context.wait_for_all_requests();
+}
+
+void ConsoleTeachScreens::dump_screen(std::string_view label){
+    m_context.wait_for_all_requests();
+    dump_debug_image(m_console, "AutoStory/teach", std::string(label), m_console.video().snapshot());
 }
 
 bool ConsoleTeachScreens::to_overworld(){

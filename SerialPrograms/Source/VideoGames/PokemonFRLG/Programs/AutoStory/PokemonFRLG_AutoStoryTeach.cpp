@@ -166,13 +166,14 @@ public:
         case ItemOpen::NOT_IN_CASE:
             return leave(TeachEnd::NO_ITEM, std::format("no {} in the TM Case", m_plan.item));
         case ItemOpen::FAILED:
+            m_actions.dump_screen("open-failed");
             return leave(TeachEnd::FAILED, std::format("couldn't open {} from the TM Case", m_plan.item));
         }
         if (!teach(decision.forget)){
             return leave(m_result.end, m_result.detail);
         }
         if (!m_actions.leave()){
-            return end(TeachEnd::FAILED, "the overworld didn't come back");
+            return failed("leave-failed", "the overworld didn't come back");
         }
         return confirm(decision.forget);
     }
@@ -183,14 +184,20 @@ private:
         m_result.detail = std::move(detail);
         return m_result;
     }
+    //  FAILED, with the screen saved as `label`.
+    TeachResult failed(std::string_view label, std::string detail){
+        m_actions.dump_screen(label);
+        return end(TeachEnd::FAILED, std::move(detail));
+    }
     TeachResult leave(TeachEnd end, std::string detail){
         if (!m_actions.leave()){
-            return this->end(TeachEnd::FAILED, "the overworld didn't come back");
+            return failed("leave-failed", "the overworld didn't come back");
         }
         return this->end(end, std::move(detail));
     }
-    //  Sets the result and gives up teaching. False.
+    //  Sets the result, saves the screen and gives up teaching. False.
     bool give_up(TeachEnd end, std::string detail){
+        m_actions.dump_screen(std::string("gave-up-") + teach_end_name(end));
         m_actions.stop_teaching();
         m_result.end = end;
         m_result.detail = std::move(detail);
@@ -236,14 +243,14 @@ private:
     TeachResult confirm(std::optional<size_t> forget){
         const std::optional<MemberInfo> after = m_reader(m_plan.member);
         if (!after || after->moves.empty()){
-            return end(TeachEnd::FAILED, "couldn't read the moves after teaching");
+            return failed("moves-unread", "couldn't read the moves after teaching");
         }
         const std::vector<std::string>& moves = after->moves;
         const bool landed = forget
             ? *forget < moves.size() && moves[*forget] == m_plan.move
             : std::find(moves.begin(), moves.end(), m_plan.move) != moves.end();
         if (!landed){
-            return end(TeachEnd::FAILED, std::format("{} isn't among its moves after teaching", m_plan.move));
+            return failed("not-learned", std::format("{} isn't among its moves after teaching", m_plan.move));
         }
         return end(TeachEnd::LEARNED, "");
     }

@@ -50,6 +50,7 @@ public:
     virtual ForgetEnd forget(size_t) override{ return ForgetEnd::FAILED; }
     virtual void stop_teaching() override{}
     virtual bool leave() override{ return true; }
+    virtual void dump_screen(std::string_view) override{}
 };
 
 class StubPatch : public GrindActions{

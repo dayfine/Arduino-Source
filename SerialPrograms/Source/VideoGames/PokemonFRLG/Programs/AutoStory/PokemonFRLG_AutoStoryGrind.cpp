@@ -7,8 +7,6 @@
 #include <algorithm>
 #include <format>
 #include "CommonFramework/Exceptions/OperationFailedException.h"
-#include "CommonTools/Async/InferenceRoutines.h"
-#include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleFlashWatcher.h"
 #include "PokemonFRLG_AutoStoryActions.h"
 #include "PokemonFRLG_AutoStoryGrind.h"
 #include "PokemonFRLG_AutoStoryVariantWords.h"
@@ -18,21 +16,6 @@ namespace NintendoSwitch{
 namespace PokemonFRLG{
 
 using Pokemon::Direction;
-
-
-namespace{
-
-Direction opposite_direction(Direction direction){
-    switch (direction){
-    case Direction::NORTH:  return Direction::SOUTH;
-    case Direction::EAST:   return Direction::WEST;
-    case Direction::SOUTH:  return Direction::NORTH;
-    case Direction::WEST:   return Direction::EAST;
-    }
-    return direction;
-}
-
-}
 
 
 const char* grind_end_name(GrindEnd end){
@@ -347,23 +330,8 @@ ConsoleGrindActions::ConsoleGrindActions(
 bool ConsoleGrindActions::find_encounter(Direction pace){
     //  As ConsoleCaptureActions::find_encounter(), keeping track of the
     //  tile: a battle starts on the tile just stepped onto.
-    constexpr size_t MAX_STEPS = 200;
-    for (size_t c = 0; c < MAX_STEPS; c++){
-        const Direction way = m_spot.displaced ? opposite_direction(pace) : pace;
-        BattleFlashWatcher battle(COLOR_RED);
-        const int ret = run_until<ProControllerContext>(
-            m_console, m_context,
-            [&](ProControllerContext& context){
-                step_once(context, way, m_spot.facing);
-            },
-            {battle}
-        );
-        m_spot = {.displaced = !m_spot.displaced, .facing = way};
-        if (ret == 0){
-            return true;
-        }
-    }
-    return false;
+    ConsolePatchSteps steps(m_console, m_context, pace, m_spot);
+    return pace_until_battle(m_console.logger(), steps, PACE_MAX_STEPS);
 }
 
 EncounterSeen ConsoleGrindActions::read_encounter(){

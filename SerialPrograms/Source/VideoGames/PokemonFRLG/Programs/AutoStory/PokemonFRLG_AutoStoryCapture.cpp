@@ -7,6 +7,7 @@
 #include <format>
 #include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "CommonFramework/Exceptions/ProgramFinishedException.h"
+#include "CommonFramework/Tools/DebugDumper.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "CommonTools/Async/InferenceRoutines.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
@@ -14,6 +15,7 @@
 #include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_BagDetector.h"
 #include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_ItemListReader.h"
 #include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleFlashWatcher.h"
+#include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleScreenDetector.h"
 #include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_WildEncounterReader.h"
 #include "VideoGames/PokemonFRLG/PokemonFRLG_Navigation.h"
 #include "VideoGames/PokemonFRLG/Programs/PokemonFRLG_BattleMenuNavigation.h"
@@ -433,6 +435,70 @@ std::optional<Pokemon::Outcome> run_storage_game_step(
 }
 
 
+bool pace_until_battle(Logger& logger, PatchSteps& steps, size_t max_steps){
+    for (size_t c = 0; c < max_steps; c++){
+        if (steps.step()){
+            return true;
+        }
+        //  The flash can be missed (console B, 2026-11-03): the battle's
+        //  first text then waits for A, and the D-pad does nothing. Found a
+        //  step late, the player stays where the battle started, but the
+        //  step after it still counts as taken.
+        if (steps.battle_shows()){
+            logger.log(std::format("Pacing: a battle shows after step {}; its flash was missed.", c + 1), COLOR_ORANGE);
+            return true;
+        }
+    }
+    if (steps.overworld_shows()){
+        return false;
+    }
+    if (steps.battle_shows()){
+        logger.log(std::format("Pacing: a battle shows after the last of {} steps; its flash was missed.", max_steps), COLOR_ORANGE);
+        return true;
+    }
+    logger.log(std::format("Pacing: no battle in {} steps, and the overworld doesn't show.", max_steps), COLOR_RED);
+    steps.dump_screen("no-battle-not-overworld");
+    return false;
+}
+
+
+ConsolePatchSteps::ConsolePatchSteps(ConsoleHandle& console, ProControllerContext& context, Direction pace, PaceSpot& spot)
+    : m_console(console)
+    , m_context(context)
+    , m_pace(pace)
+    , m_spot(spot)
+{}
+
+bool ConsolePatchSteps::step(){
+    const Direction way = m_spot.displaced ? opposite(m_pace) : m_pace;
+    BattleFlashWatcher battle(COLOR_RED);
+    const int ret = run_until<ProControllerContext>(
+        m_console, m_context,
+        [&](ProControllerContext& context){
+            step_once(context, way, m_spot.facing);
+        },
+        {battle}
+    );
+    m_spot = {.displaced = !m_spot.displaced, .facing = way};
+    return ret == 0;
+}
+
+bool ConsolePatchSteps::battle_shows(){
+    m_context.wait_for_all_requests();
+    VideoSnapshot screen = m_console.video().snapshot();
+    return screen && BattleScreenDetector(COLOR_RED).detect(screen);
+}
+
+bool ConsolePatchSteps::overworld_shows(){
+    return PokemonFRLG::overworld_shows(m_console, m_context);
+}
+
+void ConsolePatchSteps::dump_screen(std::string_view label){
+    m_context.wait_for_all_requests();
+    dump_debug_image(m_console, "AutoStory/pace", std::string(label), m_console.video().snapshot());
+}
+
+
 ConsoleCaptureActions::ConsoleCaptureActions(ConsoleHandle& console, ProControllerContext& context, Language language)
     : m_console(console)
     , m_context(context)
@@ -440,27 +506,9 @@ ConsoleCaptureActions::ConsoleCaptureActions(ConsoleHandle& console, ProControll
 {}
 
 bool ConsoleCaptureActions::find_encounter(Direction pace){
-    //  Steps in the patch before giving up: about 10 % of steps in grass
-    //  start a battle at Route 4's rates.
-    constexpr size_t MAX_STEPS = 200;
-    std::optional<Direction> facing;
-    Direction way = pace;
-    for (size_t c = 0; c < MAX_STEPS; c++){
-        BattleFlashWatcher battle(COLOR_RED);
-        const int ret = run_until<ProControllerContext>(
-            m_console, m_context,
-            [&](ProControllerContext& context){
-                step_once(context, way, facing);
-            },
-            {battle}
-        );
-        if (ret == 0){
-            return true;
-        }
-        facing = way;
-        way = opposite(way);
-    }
-    return false;
+    PaceSpot spot;
+    ConsolePatchSteps steps(m_console, m_context, pace, spot);
+    return pace_until_battle(m_console.logger(), steps, PACE_MAX_STEPS);
 }
 
 EncounterSeen ConsoleCaptureActions::read_encounter(){
