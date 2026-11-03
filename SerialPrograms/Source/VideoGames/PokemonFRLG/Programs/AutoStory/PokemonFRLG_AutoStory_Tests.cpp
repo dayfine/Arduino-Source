@@ -11,6 +11,7 @@
 #include <functional>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
@@ -528,14 +529,14 @@ UnitTestResult test_intro_names(){
 }
 
 
-size_t row_index(const std::string& id){
+size_t row_index(std::string_view id){
     const std::vector<StoryCheckpoint>& checkpoints = story_checkpoints();
     for (size_t c = 0; c < checkpoints.size(); c++){
         if (checkpoints[c].id == id){
             return c;
         }
     }
-    throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "No checkpoint " + id);
+    throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "No checkpoint " + std::string(id));
 }
 
 std::string joined_ids(const std::vector<StoryCheckpoint>& rows){
