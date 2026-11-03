@@ -551,6 +551,7 @@ Pokemon::Checkpoint build_checkpoint(const StoryCheckpoint& data, StoryExecutor&
     Pokemon::Checkpoint checkpoint = Pokemon::build_story_checkpoint(data, executor);
     StoryEnv& env = executor.env();
     env.start_map = data.start ? data.start->map : "";
+    env.start_menu = data.menu;
     const StartMenu menu = data.menu;
     checkpoint.save = [&env, menu](RunState&){
         return guarded([&]{
