@@ -482,12 +482,11 @@ Milliseconds delay_of(const OverworldInterrupts& interrupts, size_t index){
 }
 
 
-OverworldSimWalker::OverworldSimWalker(OverworldSim& sim, SimWalkerRules rules)
+OverworldSimWalker::OverworldSimWalker(OverworldSim& sim, SimWalkerRules rules, const OverworldInterruptSet& walker)
     : m_sim(sim)
     , m_rules(rules)
 {
-    //  The walker's own interrupts, in its order: battles first.
-    const OverworldInterruptSet& walker = default_overworld_interrupts();
+    //  In the walker's order: battles first.
     m_wild = {
         {"a wild battle", SimWatcher::FLASH, delay_of(walker.wild, 0), true},
         {"a wild battle (seen late)", SimWatcher::BATTLE_SCREEN, delay_of(walker.wild, 1), true},

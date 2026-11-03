@@ -248,7 +248,14 @@ struct SimWalkerRules{
 //  a message is closed and a trainer's battle after it fought.
 class OverworldSimWalker{
 public:
-    OverworldSimWalker(OverworldSim& sim, SimWalkerRules rules = {});
+    //  `interrupts`: whose detection delays place a stopped leg, the
+    //  walker's own or a caller's (story_interrupts()). Each set lists a
+    //  wild battle, one seen late and a message for `wild`, and a message
+    //  for `other`, in that order.
+    OverworldSimWalker(
+        OverworldSim& sim, SimWalkerRules rules = {},
+        const OverworldInterruptSet& interrupts = default_overworld_interrupts()
+    );
 
     //  RouteCalls whose `fail` throws OperationFailedException, as the
     //  console's does.
