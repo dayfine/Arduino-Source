@@ -586,6 +586,53 @@ UnitTestResult test_route25_trainers(){
     return true;
 }
 
+//  00.20 on the sim, its walks from the Center: over Nugget Bridge, whose
+//  trainers 00.16 beat (they stand there, but don't battle), onto Route
+//  24's grass at (4, 19) out of Camper Shane's sight, and back to the
+//  nurse. No trainer battles on the way.
+UnitTestResult test_oddish_walks(){
+    const std::vector<StoryCheckpoint>& rows = story_checkpoints();
+    const auto row = std::find_if(rows.begin(), rows.end(), [](const StoryCheckpoint& data){ return data.id == "00.20"; });
+    if (row == rows.end()){
+        return "No checkpoint 00.20.";
+    }
+    std::vector<MapData> maps = story_maps();
+    for (MapData& map : maps){
+        if (map.name != "Route24"){
+            continue;
+        }
+        for (MapObject& object : map.objects){
+            if (object.trainer && object.x >= 10 && object.x <= 12){
+                object.trainer.reset();
+            }
+        }
+    }
+    StoryPose at = *story_pose(*row->start);
+    OverworldSim sim(maps, MapPosition{at.map, at.tile}, *at.facing);
+    const std::map<std::string, MapPosition> ends{
+        {"mart_clerk", {"CeruleanCity_Mart", {4, 3}}},
+        {"oddish_patch", {"Route24", {4, 19}}},
+        {"cerulean_nurse", {"CeruleanCity_PokemonCenter_1F", {7, 4}}},
+    };
+    for (const StoryStep& step : row->steps){
+        if (step.kind != StoryStepKind::ROUTE){
+            continue;
+        }
+        const std::string failure = row_step_on_sim(sim, at, step, "00.20");
+        if (!failure.empty()){
+            return failure;
+        }
+        const auto end = ends.find(step.name);
+        if (end == ends.end() || !(sim.state().position == end->second)){
+            return "00.20/" + step.name + ": ended on " + to_string(sim.state().position) + ".";
+        }
+    }
+    if (!sim.state().trainers_beaten.empty() || !sim.state().violations.empty()){
+        return "00.20: a trainer's battle or a violation on the way.";
+    }
+    return true;
+}
+
 }
 
 
@@ -600,6 +647,7 @@ void add_tests_AutoStorySimulation(UnitTestDatabase& database){
     add("00.14 into Cerulean, the entry leg a tile short", test_cerulean_entry_short);
     add("00.16 Nugget Bridge, the walk onto it a tile short", test_nugget_bridge_short);
     add("00.17 Route 25, its four trainers and Dan", test_route25_trainers);
+    add("00.20 to Route 24's grass and back, past Shane", test_oddish_walks);
 }
 
 
