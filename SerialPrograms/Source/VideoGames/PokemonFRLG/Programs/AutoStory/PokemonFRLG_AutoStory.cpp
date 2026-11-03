@@ -196,6 +196,22 @@ void verify_story_checkpoint(
 
 }
 
+//  The options' problems, before anything is pressed.
+static void check_setup(
+    ConsoleHandle& console, const std::vector<StoryCheckpoint>& checkpoints, size_t first, size_t last,
+    bool new_game_from_title, const std::string& player_name
+){
+    if (first > last || last >= checkpoints.size()){
+        throw UserSetupError(console, "The start checkpoint must not come after the end checkpoint.");
+    }
+    if (first == 0 && !new_game_from_title){
+        throw UserSetupError(console, "Checkpoint 00.01 starts a new game: start on the title screen with no save.");
+    }
+    if (first == 0){
+        check_player_name(console, player_name);
+    }
+}
+
 void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContext& context){
     if (const std::optional<Pokemon::VerifyPolicy> verify = RUN.VERIFY.policy()){
         verify_story_checkpoint(env, context, RUN, *verify, NOTIFICATION_PROGRAM_FINISH);
@@ -204,16 +220,8 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
     const std::vector<StoryCheckpoint>& checkpoints = story_checkpoints();
     const size_t first = RUN.start_index();
     const size_t last = RUN.end_index();
-    if (first > last || last >= checkpoints.size()){
-        throw UserSetupError(env.console, "The start checkpoint must not come after the end checkpoint.");
-    }
-    if (first == 0 && !NEW_GAME_FROM_TITLE){
-        throw UserSetupError(env.console, "Checkpoint 00.01 starts a new game: start on the title screen with no save.");
-    }
     const std::string player_name = PLAYER_NAME;
-    if (first == 0){
-        check_player_name(env.console, player_name);
-    }
+    check_setup(env.console, checkpoints, first, last, NEW_GAME_FROM_TITLE, player_name);
 
     StoryEnv story{env.console, context, checkpoints[first].supplies, checkpoints[first].supplies, false, RUN.checks()};
     story.player_name = player_name;
