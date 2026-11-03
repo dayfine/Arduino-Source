@@ -18,7 +18,9 @@
  *    "Should a move be deleted and replaced with <MOVE>?" YES/NO (YES on
  *    top), YES: "Which move should be forgotten?", then KNOWN MOVES with
  *    the four moves and the new one fifth, the red cursor on the first. A
- *    on a move forgets it; B instead: "Stop trying to teach <MOVE>?"
+ *    on a move forgets it: "1, 2 and... ... Poof!", "<MON> forgot <OLD>.",
+ *    "And... <MON> learned <MOVE>!", which the reader doesn't place (read
+ *    "other"; B pages through them), then the TM CASE's list. B instead: "Stop trying to teach <MOVE>?"
  *    YES/NO, YES: "<MON> did not learn the move <MOVE>." and the TM CASE's
  *    list again, the TM kept.
  *  - From the TM CASE's list, B closes it to the bag, and B the bag.
@@ -86,6 +88,8 @@ public:
     virtual void press(TeachPress press) = 0;
     //  B until the overworld is back. False if it didn't come back.
     virtual bool to_overworld() = 0;
+    //  Saves the screen as a debug image, named `label`.
+    virtual void dump_screen(std::string_view label) = 0;
 };
 
 
@@ -99,6 +103,7 @@ public:
     virtual ForgetEnd forget(size_t slot) override;
     virtual void stop_teaching() override;
     virtual bool leave() override;
+    virtual void dump_screen(std::string_view label) override;
 
 private:
     //  Looks until `screen` shows, `looks` times at most.
@@ -112,6 +117,8 @@ private:
     ItemOpen open_row(TeachScreen screen, std::string_view name);
     //  After A on a member: what it showed.
     TeachPrompt member_answer();
+    //  On a YES/NO while forgetting: the answer that goes on to the moves.
+    void answer_to_forget(const TeachView& view);
     void press(TeachPress press);
 
     Logger& m_logger;
@@ -129,6 +136,7 @@ public:
     virtual TeachView look() override;
     virtual void press(TeachPress press) override;
     virtual bool to_overworld() override;
+    virtual void dump_screen(std::string_view label) override;
 
 private:
     //  The screen in `image`, read.
