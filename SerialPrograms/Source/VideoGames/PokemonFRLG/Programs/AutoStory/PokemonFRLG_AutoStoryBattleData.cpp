@@ -54,6 +54,12 @@ constexpr StoryTrainer STORY_TRAINERS[] = {
     //  The Nugget Bridge Rocket, Route24_EventScript_Rocket.
     {.map = "Route24", .battle = "rocket_grunt", .trainer = "TRAINER_TEAM_ROCKET_GRUNT_6"},
     {.map = "CeruleanCity_Gym", .battle = "misty", .trainer = "TRAINER_LEADER_MISTY"},
+    //  Route 25's four the way can't walk around (Route25 scripts.inc):
+    //  Franklin (11, 4), Kelsey (22, 8), Nob (27, 9) and Haley (42, 5).
+    {.map = "Route25", .battle = "hiker_franklin", .trainer = "TRAINER_HIKER_FRANKLIN"},
+    {.map = "Route25", .battle = "picnicker_kelsey", .trainer = "TRAINER_PICNICKER_KELSEY"},
+    {.map = "Route25", .battle = "hiker_nob", .trainer = "TRAINER_HIKER_NOB"},
+    {.map = "Route25", .battle = "lass_haley", .trainer = "TRAINER_LASS_HALEY"},
 };
 
 using JsonTable = std::map<std::string, JsonValue, std::less<>>;

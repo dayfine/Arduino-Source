@@ -71,6 +71,8 @@ private:
             {"route-3", "Route 3"},
             {"route-4", "Route 4"},
             {"cerulean-city", "Cerulean City"},
+            {"route-24", "Route 24"},
+            {"route-25", "Route 25"},
         }){
             JsonArray names;
             names.push_back(name);

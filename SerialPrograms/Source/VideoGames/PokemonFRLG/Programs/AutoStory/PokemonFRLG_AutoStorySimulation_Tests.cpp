@@ -479,16 +479,17 @@ UnitTestResult test_cerulean_entry_short(){
     return true;
 }
 
-//  Runs `step` of 00.16 on `sim` as the program does: legs by the sim's
-//  walker from `at`, where the table says the player stands; a step one
-//  tap at a time, or for a step into a trainer's line by
-//  step_until_seen(), each watched for the trainer; a battle from the
-//  trainer's message, which must be up. Moves `at` to where the table
-//  says the step ends. Returns the failure, or empty.
-std::string bridge_step_on_sim(OverworldSim& sim, StoryPose& at, const StoryStep& step){
-    const std::string where = "00.16/" + step.name + ": ";
+//  Runs `step` of row `id` on `sim` as the program does: routes and legs
+//  by the sim's walker from `at`, where the table says the player stands,
+//  fighting a trainer who sees the player on the way; a step one tap at a
+//  time, or for a step into a trainer's line by step_until_seen(), each
+//  watched for the trainer; a battle from the trainer's message, which
+//  must be up. Moves `at` to where the table says the step ends. Returns
+//  the failure, or empty.
+std::string row_step_on_sim(OverworldSim& sim, StoryPose& at, const StoryStep& step, const std::string& id){
+    const std::string where = id + "/" + step.name + ": ";
     const auto on = [&sim]{ return " On " + to_string(sim.state().position) + "."; };
-    if (step.kind == StoryStepKind::LEGS){
+    if (step.kind == StoryStepKind::LEGS || step.kind == StoryStepKind::ROUTE){
         const std::optional<std::vector<RouteStep>> route = walked_route(at, step);
         const RoutePlanning planning{.maps = &story_maps(), .start = MapPosition{at.map, at.tile}, .label = step.name};
         const std::string failure = route ? OverworldSimWalker(sim).run(*route, planning) : "no legs.";
@@ -540,7 +541,7 @@ UnitTestResult test_nugget_bridge_short(){
         StoryPose at = *story_pose(*walk->target);
         OverworldSim sim(story_maps(), MapPosition{at.map, {at.tile.x, at.tile.y + short_by}}, Direction::NORTH);
         for (auto step = walk + 1; step != row->steps.end() && step->kind != StoryStepKind::READY; ++step){
-            const std::string failure = bridge_step_on_sim(sim, at, *step);
+            const std::string failure = row_step_on_sim(sim, at, *step, "00.16");
             if (!failure.empty()){
                 return std::format("Walk {} tile(s) short: ", short_by) + failure;
             }
@@ -548,6 +549,39 @@ UnitTestResult test_nugget_bridge_short(){
         if (sim.state().trainers_beaten.size() != 5){
             return std::format("Walk {} tile(s) short: expected 5 trainers beaten, got {}.", short_by, sim.state().trainers_beaten.size());
         }
+    }
+    return true;
+}
+
+//  00.17 on the sim, from its start on Route 24 to the Sea Cottage:
+//  Franklin, Kelsey, Nob and Haley are met on the steps into their lines
+//  and beaten there. The sim's trainers who look around see every way
+//  they may look, so Youngster Dan sees the player on (20, 4), walks up
+//  to (21, 4) and is fought there, off the way on.
+UnitTestResult test_route25_trainers(){
+    const std::vector<StoryCheckpoint>& rows = story_checkpoints();
+    const auto row = std::find_if(rows.begin(), rows.end(), [](const StoryCheckpoint& data){ return data.id == "00.17"; });
+    if (row == rows.end()){
+        return "No checkpoint 00.17.";
+    }
+    StoryPose at = *story_pose(*row->start);
+    OverworldSim sim(story_maps(), MapPosition{at.map, at.tile}, *at.facing);
+    for (const StoryStep& step : row->steps){
+        const std::string failure = row_step_on_sim(sim, at, step, "00.17");
+        if (!failure.empty()){
+            return failure;
+        }
+    }
+    const std::vector<std::string> expected{"hiker", "youngster", "picnicker", "hiker", "lass"};
+    if (sim.state().trainers_beaten != expected){
+        std::string beaten;
+        for (const std::string& name : sim.state().trainers_beaten){
+            beaten += " " + name;
+        }
+        return "00.17: expected Franklin, Dan, Kelsey, Nob and Haley beaten; beat" + beaten + ".";
+    }
+    if (!(sim.state().position == MapPosition{"Route25_SeaCottage", {7, 8}})){
+        return "00.17: expected to end in the Sea Cottage on (7, 8), not " + to_string(sim.state().position) + ".";
     }
     return true;
 }
@@ -565,6 +599,7 @@ void add_tests_AutoStorySimulation(UnitTestDatabase& database){
     add("a battle lost every time stops after 3 attempts", test_gives_up_after_attempts);
     add("00.14 into Cerulean, the entry leg a tile short", test_cerulean_entry_short);
     add("00.16 Nugget Bridge, the walk onto it a tile short", test_nugget_bridge_short);
+    add("00.17 Route 25, its four trainers and Dan", test_route25_trainers);
 }
 
 
