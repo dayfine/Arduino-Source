@@ -390,11 +390,15 @@ StoryCheckpoint after_gift_rng(){
 //  The Magikarp goes to BOX 1 at the Center's PC (11, 1), so Mt. Moon is
 //  fought with the starter alone (console B, 2026-11-02: done by hand and
 //  saved at (11, 2), facing the PC, where this row ends). The wandering
-//  boy (4..6, 3..5) is walked around.
+//  boy (4..6, 3..5) is walked around. The Magikarp comes from Gift RNG:
+//  with Gift RNG off the party is the starter alone, and the deposit is
+//  skipped.
 StoryCheckpoint magikarp_to_box(){
     return row("00.12c", "Route 4 Center: the Magikarp into BOX 1", at(ROUTE4_CENTER, 2, 3, WEST), after_brock(), StartMenu::FULL, {
         running(route("pc_front", at(ROUTE4_CENTER, 11, 2, NORTH), "below the PC (11, 1), facing it")),
-        pc_step("magikarp_to_box", "DEPOSIT the party's second slot into BOX 1", PcTransfer{.action = PcAction::DEPOSIT, .party_slot = 1, .box = 0}),
+        pc_step("magikarp_to_box", "DEPOSIT the party's second slot into BOX 1, if it has one", PcTransfer{
+            .action = PcAction::DEPOSIT, .party_slot = 1, .box = 0, .if_missing = PcMissing::SKIP,
+        }),
     });
 }
 

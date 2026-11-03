@@ -23,6 +23,7 @@
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRecovery.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRoute.h"
 #include "PokemonFRLG_AutoStoryActions.h"
+#include "PokemonFRLG_AutoStoryPcStorage.h"
 #include "PokemonFRLG_AutoStoryTable.h"
 
 namespace PokemonAutomation{
@@ -772,6 +773,24 @@ UnitTestResult test_intro_names(){
 }
 
 
+//  00.12c stores the Magikarp Gift RNG bought; with Gift RNG off there is
+//  none, and the deposit is skipped instead of refused.
+UnitTestResult test_magikarp_deposit_skippable(){
+    for (const StoryCheckpoint& checkpoint : story_checkpoints()){
+        if (checkpoint.id != "00.12c"){
+            continue;
+        }
+        for (const StoryStep& step : checkpoint.steps){
+            const std::optional<PcTransfer> transfer = parse_pc_variant(step.variant);
+            if (transfer && transfer->party_slot == 1 && transfer->if_missing == PcMissing::SKIP){
+                return true;
+            }
+        }
+        return "00.12c: expected a deposit of the second slot, skipped if the party hasn't got it.";
+    }
+    return "No checkpoint 00.12c.";
+}
+
 //  set_options()'s RIGHT presses from each value an old save can leave:
 //  on console B a save with FAST and SET became SLOW and SHIFT when the
 //  presses assumed MID and SHIFT.
@@ -830,6 +849,7 @@ void add_tests_AutoStory(UnitTestDatabase& database){
     database.add<Test_AutoStory>("Route 3: Lass Robin stops the walk on (40, 9)", test_robin_crossing);
     database.add<Test_AutoStory>("intro: names, the rival's from the list", test_intro_names);
     database.add<Test_AutoStory>("options: RIGHT presses from the shown value", test_option_presses);
+    database.add<Test_AutoStory>("00.12c: the Magikarp's deposit is skipped without Gift RNG", test_magikarp_deposit_skippable);
 }
 
 
