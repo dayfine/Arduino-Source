@@ -133,8 +133,8 @@ void check_player_name(ConsoleHandle& console, const std::string& name){
     }
 }
 
-//  A failed attempt reloads the last save, with the supplies it had; the
-//  engine's lines go to the console's log.
+//  A failed attempt reloads the last save, with the supplies it had, read
+//  from its bag again; the engine's lines go to the console's log.
 Pokemon::SegmentHooks story_hooks(SingleSwitchProgramEnvironment& env, StoryEnv& story){
     Pokemon::SegmentHooks hooks;
     hooks.reload = [&story](Pokemon::RunState&){
@@ -150,10 +150,14 @@ Pokemon::SegmentHooks story_hooks(SingleSwitchProgramEnvironment& env, StoryEnv&
             if (!error.empty()){
                 return Pokemon::outcome_failed("wrong_save", error);
             }
+            story.supplies = story.saved_supplies;
+            //  Every reload, so each verify run starts from the bag as the
+            //  save holds it, not from a count once read wrong or not at
+            //  all (console B, 2026-11-03: 0 Potions in all 3 runs).
+            read_bag_supplies(story, story.start_menu);
         }catch (OperationFailedException& e){
             return Pokemon::outcome_failed("reload_failed", e.message());
         }
-        story.supplies = story.saved_supplies;
         return Pokemon::outcome_ok();
     };
     hooks.log = [&env](const std::string& line){
@@ -400,7 +404,6 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
     StoryEnv story{env.console, context, checkpoints[first].supplies, checkpoints[first].supplies, false, RUN.checks()};
     story.player_name = player_name;
     prepare_start(env, context, checkpoints, first, story);
-
     StoryExecutor executor(story);
     executor.set_checks(RUN.checks());
     executor.set_language(RUN.language());
@@ -412,7 +415,6 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
         });
     }
     Pokemon::SegmentHooks hooks = story_hooks(env, story);
-
     Pokemon::RunState state;
     const Pokemon::SegmentReport report = run_segment(
         state, segment, Pokemon::SegmentRange{plan.rows.front().id, plan.rows.back().id}, RUN.policy(), hooks
