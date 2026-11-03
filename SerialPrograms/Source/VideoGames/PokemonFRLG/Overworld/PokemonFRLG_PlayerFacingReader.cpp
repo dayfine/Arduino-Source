@@ -5,15 +5,18 @@
  */
 
 #include <algorithm>
+#include <cctype>
 #include <cstdlib>
 #include <limits>
 #include "Common/Cpp/Color.h"
 #include "Common/Cpp/Exceptions.h"
+#include "Common/Cpp/Filesystem/Filesystem.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "CommonFramework/GlobalAutoPaths.h"
 #include "CommonFramework/ImageTools/ImageBoxes.h"
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "CommonFramework/ImageTypes/ImageViewRGB32.h"
+#include "Tests/TestUtils.h"
 #include "VideoGames/PokemonFRLG/PokemonFRLG_Settings.h"
 #include "PokemonFRLG_PlayerFacingReader.h"
 
@@ -135,13 +138,21 @@ namespace{
 
 class Test_PlayerFacingReader : public UnitTest{
 public:
-    Test_PlayerFacingReader(const std::string& image, std::optional<Direction> expected)
+    //  The image's name ends with the way the player faces, or "None" where
+    //  no standing player shows: <anything>_<South|North|West|East|None>.
+    Test_PlayerFacingReader(const std::string& image)
         : UnitTest("PokemonFRLG::PlayerFacingReader - " + image)
         , m_image(UNIT_TEST_RESOURCE_PATH() + image)
-        , m_expected(expected)
     {}
 
     virtual UnitTestResult run(Logger& logger, CancellableScope& scope) const override{
+        const std::vector<std::string> words = parse_words(Filesystem::Path(m_image).stem().string());
+        if (words.size() < 2){
+            return "Error: filename must be <anything>_<South|North|West|East|None>.";
+        }
+        std::string expected = words.back();
+        std::transform(expected.begin(), expected.end(), expected.begin(), [](unsigned char c){ return (char)std::tolower(c); });
+
         std::optional<Direction> facing;
         try{
             facing = read_player_facing(ImageRGB32(m_image));
@@ -149,15 +160,15 @@ public:
             //  The screenshots and the sprite sheet aren't in CI's resources yet.
             return UnitTestResult(UnitTestResult::SKIPPED, "File not found: " + e.message());
         }
-        if (facing == m_expected){
+        const std::string read = facing ? direction_name(*facing) : "none";
+        if (read == expected){
             return true;
         }
-        return std::string("Read ") + (facing ? direction_name(*facing) : "nothing");
+        return "Expected " + expected + ", read " + read;
     }
 
 private:
     std::string m_image;
-    std::optional<Direction> m_expected;
 };
 
 //  Made-up sprites, so the matching is tested without the sprite sheet:
@@ -237,12 +248,12 @@ public:
 void add_tests_PlayerFacingReader(UnitTestDatabase& database){
     database.add<Test_PlayerFacingFixture>();
     //  LeafGreen on the Switch, captured with a 1080p card.
-    database.add<Test_PlayerFacingReader>("PokemonFRLG/PlayerFacingReader/South-Route24.png", Direction::SOUTH);
-    database.add<Test_PlayerFacingReader>("PokemonFRLG/PlayerFacingReader/North-Route24.png", Direction::NORTH);
-    database.add<Test_PlayerFacingReader>("PokemonFRLG/PlayerFacingReader/South-CeruleanCave.png", Direction::SOUTH);
-    database.add<Test_PlayerFacingReader>("PokemonFRLG/PlayerFacingReader/North-CeruleanCave.png", Direction::NORTH);
-    database.add<Test_PlayerFacingReader>("PokemonFRLG/PlayerFacingReader/Surfing.png", std::nullopt);
-    database.add<Test_PlayerFacingReader>("PokemonFRLG/PlayerFacingReader/Bag.png", std::nullopt);
+    database.add<Test_PlayerFacingReader>("PokemonFRLG/PlayerFacingReader/Route24_South.png");
+    database.add<Test_PlayerFacingReader>("PokemonFRLG/PlayerFacingReader/Route24_North.png");
+    database.add<Test_PlayerFacingReader>("PokemonFRLG/PlayerFacingReader/CeruleanCave_South.png");
+    database.add<Test_PlayerFacingReader>("PokemonFRLG/PlayerFacingReader/CeruleanCave_North.png");
+    database.add<Test_PlayerFacingReader>("PokemonFRLG/PlayerFacingReader/Surfing_None.png");
+    database.add<Test_PlayerFacingReader>("PokemonFRLG/PlayerFacingReader/Bag_None.png");
 }
 
 
