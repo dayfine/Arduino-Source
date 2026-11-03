@@ -16,6 +16,7 @@
 #include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_SaveCardReader.h"
 #include "PokemonFRLG_AutoStoryActions.h"
 #include "PokemonFRLG_AutoStoryBattle.h"
+#include "PokemonFRLG_AutoStoryBattleDecisions.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -153,6 +154,8 @@ void add_tests_AutoStoryItems(UnitTestDatabase& database){
     database.add<Test_AutoStoryItems>("Items pocket rows", test_pocket_rows);
     database.add<Test_AutoStoryItems>("unread bag counts count as some", test_unread_counts);
     database.add<Test_AutoStoryItems>("no item names read in a language without them", test_unread_language);
+    //  The battle's choices, registered here to keep add_tests() within its size.
+    add_tests_AutoStoryParty(database);
 }
 
 
