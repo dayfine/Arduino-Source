@@ -137,8 +137,13 @@ StoryRunPlan plan_story_run(
 
 //  The maps the story plans on: every map to Route 4's Pokemon Center, with
 //  the objects the game hides after the Hall of Fame removed, as the lab's
-//  frlg_route does.
+//  frlg_route does, and those a new game hides until their scene (the
+//  S.S. Anne's rival on the Captain's door).
 const std::vector<MapData>& story_maps();
+//  default_route_costs() without Surf, which the story hasn't got yet:
+//  routes stay on land, even where water is the shorter way (Vermilion
+//  City's harbor).
+const RouteCosts& story_route_costs();
 
 Pokemon::Pose to_pose(const StoryPose& pose);
 //  `pose` as a StoryPose: nothing unless it is on one tile.
@@ -166,9 +171,10 @@ std::optional<std::vector<RouteStep>> fixed_route(
 //  other step, or a `patch` not on one tile.
 Pokemon::Pose paced_pose(const Pokemon::Pose& patch, const StoryStep& step);
 
-//  A ROUTE's legs from `pose` to `goal`: from one tile, as planned; from
-//  a set of tiles (paced_pose()), first the holds to walls that bring them
-//  all to one tile (holds_to_one_tile()), then the route from there.
+//  A ROUTE's legs from `pose` to `goal`, on story_route_costs(): from
+//  one tile, as planned; from a set of tiles (paced_pose()), first the
+//  holds to walls that bring them all to one tile (holds_to_one_tile()),
+//  then the route from there.
 //  Nothing if either can't be planned.
 std::optional<std::vector<RouteStep>> plan_story_route(
     const std::vector<MapData>& maps, const Pokemon::Pose& pose,

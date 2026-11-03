@@ -347,6 +347,57 @@ UnitTestResult test_cerulean_maps(){
     return true;
 }
 
+//  Cerulean's burgled house, Route 5, the Underground Path, Route 6,
+//  Vermilion City and the S.S. Anne load and join: from Cerulean's Pokemon
+//  Center a route plans through the house, its back yard and the
+//  Underground Path to Vermilion's nurse, and from there onto
+//  the ship and up to the Captain. The rival a new game hides
+//  (FLAG_HIDE_SS_ANNE_RIVAL, flag set "new_game") stands on the Captain's
+//  door until then: with him there, no route reaches the Captain. With
+//  Surf's cost below 0, no route surfs.
+UnitTestResult test_vermilion_maps(){
+    const std::vector<MapData> all = overworld_maps();
+    for (const char* name : {
+        "CeruleanCity_House2", "Route5", "UndergroundPath_NorthEntrance", "UndergroundPath_NorthSouthTunnel", "UndergroundPath_SouthEntrance",
+        "Route6", "VermilionCity", "VermilionCity_PokemonCenter_1F",
+        "SSAnne_Exterior", "SSAnne_1F_Corridor", "SSAnne_2F_Corridor", "SSAnne_CaptainsOffice",
+    }){
+        if (built_in(all, name) == nullptr){
+            return std::string("Missing map ") + name + ".";
+        }
+    }
+    const std::set<std::string> new_game = map_flag_set(all, "new_game");
+    if (new_game.count("FLAG_HIDE_SS_ANNE_RIVAL") == 0){
+        return "Expected FLAG_HIDE_SS_ANNE_RIVAL in flag set new_game.";
+    }
+    const std::vector<MapData> maps = overworld_maps(new_game);
+    const MapPosition nurse{"VermilionCity_PokemonCenter_1F", map_point(maps, "VermilionCity_PokemonCenter_1F", "nurse_front")};
+    if (nurse.point != TilePos{7, 4}){
+        return "Unexpected nurse_front in Vermilion's Pokemon Center.";
+    }
+    if (!plans_from_cerulean_nurse(maps, RouteGoal{nurse, Direction::NORTH})){
+        return "No route from Cerulean's Pokemon Center through the burgled house and the Underground Path to Vermilion's.";
+    }
+    const RouteGoal captain{MapPosition{"SSAnne_CaptainsOffice", {5, 5}}, Direction::NORTH};
+    RouteCosts walking = default_route_costs();
+    walking[RouteCost::SURF] = -1;
+    const std::optional<std::vector<RouteStep>> aboard = plan_overworld_route(maps, nurse, captain, walking, Direction::NORTH);
+    if (!aboard){
+        return "No route from Vermilion's Pokemon Center onto the S.S. Anne to the Captain.";
+    }
+    //  The harbor's water (20..23, 23..27) is the shorter way south; a
+    //  player without Surf walks round it.
+    for (const RouteStep& step : *aboard){
+        if (step.action == RouteAction::SURF){
+            return "Expected the way aboard on land, not " + to_string(step) + ".";
+        }
+    }
+    if (plan_overworld_route(all, nurse, captain, default_route_costs(), Direction::NORTH)){
+        return "Expected the rival on the Captain's door to block the way while shown.";
+    }
+    return true;
+}
+
 //  A planned step walks where its map doesn't let the player run, and only
 //  there: out of Pewter's Pokemon Center to the Gym.
 UnitTestResult test_walk_only_indoors(){
@@ -549,6 +600,7 @@ void add_tests_OverworldMaps(UnitTestDatabase& database){
     database.add<Test_OverworldMaps>("Mt. Moon joins Route 4's cave mouths", test_mt_moon_maps);
     database.add<Test_OverworldMaps>("Mt. Moon's floor closed on one side is wild", test_mt_moon_closed_floor_wild);
     database.add<Test_OverworldMaps>("Cerulean's Mart and Gym, Route 25 and Bill's Sea Cottage", test_cerulean_maps);
+    database.add<Test_OverworldMaps>("Route 5 and 6 to Vermilion City and the S.S. Anne", test_vermilion_maps);
     database.add<Test_OverworldMaps>("walks where running isn't allowed", test_walk_only_indoors);
     database.add<Test_OverworldMaps>("Route 4's Pokemon Center escalator", test_route4_center_escalator);
     database.add<Test_OverworldMaps>("trainer sight", test_trainer_sight);

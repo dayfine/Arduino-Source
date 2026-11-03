@@ -33,8 +33,8 @@ ImageFloatBox save_card_title_box();
 
 //  The place on the save card: "pallet-town", "viridian-city",
 //  "viridian-forest", "pewter-city", "route-1" to "route-4", "cerulean-city",
-//  "route-24", "route-25"; empty if it can't be read, as in a language the
-//  reader has no names for.
+//  "route-24", "route-25", "vermilion-city"; empty if it can't be read, as
+//  in a language the reader has no names for.
 std::string read_save_card_location(Logger& logger, Language language, const ImageViewRGB32& screen);
 
 

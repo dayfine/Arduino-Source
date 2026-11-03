@@ -54,6 +54,21 @@ const char* const MAP_NAMES[] = {
     "CeruleanCity_Gym",
     "Route25",
     "Route25_SeaCottage",
+    //  The burgled house, the way south out of Cerulean; Route 5, the
+    //  Underground Path and Route 6 to Vermilion City, and the S.S.
+    //  Anne's way to the Captain.
+    "CeruleanCity_House2",
+    "Route5",
+    "UndergroundPath_NorthEntrance",
+    "UndergroundPath_NorthSouthTunnel",
+    "UndergroundPath_SouthEntrance",
+    "Route6",
+    "VermilionCity",
+    "VermilionCity_PokemonCenter_1F",
+    "SSAnne_Exterior",
+    "SSAnne_1F_Corridor",
+    "SSAnne_2F_Corridor",
+    "SSAnne_CaptainsOffice",
     "CeruleanCave_1F",
     "CeruleanCave_2F",
     "CeruleanCave_B1F",

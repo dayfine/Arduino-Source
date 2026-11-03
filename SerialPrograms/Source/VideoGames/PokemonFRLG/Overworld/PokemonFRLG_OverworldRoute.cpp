@@ -288,7 +288,7 @@ public:
 
     std::optional<Pokemon::Step<State>> press(const State& state, Direction direction) const{
         const std::optional<Transition> transition = PokemonFRLG::press(m_maps, state, direction);
-        if (!transition){
+        if (!transition || (transition->action == RouteAction::SURF && route_cost(m_costs, RouteCost::SURF) < 0)){
             return std::nullopt;
         }
         Pokemon::Step<State> step;

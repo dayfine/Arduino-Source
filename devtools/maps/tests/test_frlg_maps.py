@@ -65,5 +65,26 @@ class EncounterTest(unittest.TestCase):
             self.assertFalse(frlg_maps.wild_edge(glyph, self.CAVE_FLOOR))
 
 
+class FakeDecomp:
+    def __init__(self, files):
+        self.files = files
+
+    def read(self, rel):
+        return self.files[rel]
+
+
+class TilesetTest(unittest.TestCase):
+    #   gTileset_SSAnne's folder is ss_anne, which the symbol doesn't say.
+    METATILES = (b'const u32 gMetatileAttributes_SS[] = INCBIN_U32("data/tilesets/secondary/ss/metatile_attributes.bin");\n'
+                 b'const u32 gMetatileAttributes_SSAnne[] = INCBIN_U32("data/tilesets/secondary/ss_anne/metatile_attributes.bin");\n')
+
+    def test_attributes_from_the_file_metatiles_h_names(self):
+        decomp = FakeDecomp({
+            'src/data/tilesets/metatiles.h': self.METATILES,
+            'data/tilesets/secondary/ss_anne/metatile_attributes.bin': bytes([1, 0, 0, 0, 0x22, 0, 0, 1]),
+        })
+        self.assertEqual(frlg_maps.tileset_attributes(decomp, 'gTileset_SSAnne'), [1, 0x01000022])
+
+
 if __name__ == '__main__':
     unittest.main()
