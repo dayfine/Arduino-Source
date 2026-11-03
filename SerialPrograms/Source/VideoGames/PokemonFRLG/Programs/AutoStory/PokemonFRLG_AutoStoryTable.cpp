@@ -505,6 +505,15 @@ StoryCheckpoint mt_moon(){
 //  over row 3 from x 76 to 79; the way east keeps out of her line and off
 //  the grass south of the road (75..87, 11..17).
 //
+//  On the way, the Mega Kick tutor (Black Belt (50, 3), facing west,
+//  Route4_EventScript_MegaKickTutor) stands in a pen (46..51, 2..4) north
+//  of the road, beside the Mega Punch tutor (47, 3); the pen opens south
+//  only on (48, 5) and (49, 5), the rest of row 5 ledges out of it. From
+//  Mt. Moon's exit the walk goes east and up into the pen to (50, 4),
+//  below the tutor, and Mega Kick takes Withdraw's slot. Cerulean can't
+//  be walked back to Route 4's upper road without Surf, so it is now or
+//  much later.
+//
 //  The open leg east across the city's edge ended a tile short on the
 //  console (2026-11-03: on (6, 20), not (7, 20)), and no hold to a wall
 //  in the city's west end finds the player from there: the next hold
@@ -516,7 +525,10 @@ StoryCheckpoint mt_moon(){
 //  door (22, 19). The way keeps out of the boy's (16, 18..24) and the
 //  balding man's (8..10, 22..24) wander boxes.
 StoryCheckpoint route4_to_cerulean(){
-    return row("00.14", "Route 4 east to Cerulean's Pokemon Center", at(ROUTE4, 32, 6, SOUTH), after_brock(), StartMenu::FULL, {
+    const TeachPlan mega_kick{.item = std::string(TEACH_TUTOR), .move = "mega-kick", .member = 0, .forget_move = "withdraw"};
+    return row("00.14", "Route 4: Mega Kick from its tutor, then east to Cerulean's Pokemon Center", at(ROUTE4, 32, 6, SOUTH), after_brock(), StartMenu::FULL, {
+        running(route("mega_kick_tutor", at(ROUTE4, 50, 4, NORTH), "east and up through (48, 5) into the tutors' pen, below the Mega Kick tutor (50, 3)")),
+        teach_step("teach_mega_kick", "the tutor's Mega Kick in place of Withdraw, unless the lead knows it", mega_kick),
         running(route("above_ledge", at(ROUTE4, 93, 8, SOUTH), "east along Route 4's upper road to above the ledge row 9")),
         hop("ledge_hop", SOUTH, at(ROUTE4, 93, 10, SOUTH), "down the ledge (93, 9) to the lower road"),
         running(route("cerulean_entry", at(CERULEAN, 9, 20, EAST), "east into Cerulean City, to (9, 20) below column 9")),

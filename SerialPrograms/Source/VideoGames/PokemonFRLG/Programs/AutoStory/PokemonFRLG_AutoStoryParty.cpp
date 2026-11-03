@@ -95,7 +95,7 @@ constexpr Evolution EVOLUTIONS[] = {
 //  Water Gun where Bubble was (so the attack stays bottom left), Bite over
 //  Tail Whip. TM and tutor moves are not level-up prompts and are not
 //  here; no rule replaces them, so Water Pulse (TM03, 00.14c) and Mega Kick
-//  (Route 4's tutor, 00.20) are kept over every later level-up move.
+//  (Route 4's tutor, 00.14) are kept over every later level-up move.
 struct LearnRule{
     std::string_view line;
     std::string_view move;

@@ -633,6 +633,47 @@ UnitTestResult test_oddish_walks(){
     return true;
 }
 
+//  00.14 on the sim, from Mt. Moon's exit (32, 6): east and up through
+//  (48, 5) into the tutors' pen on Route 4 to (50, 4), facing the Mega
+//  Kick tutor (50, 3), then on to above the ledge (93, 8). Each walk ends
+//  where the table says, and no trainer sees the player on the way.
+UnitTestResult test_mega_kick_tutor_walks(){
+    const std::vector<StoryCheckpoint>& rows = story_checkpoints();
+    const auto row = std::find_if(rows.begin(), rows.end(), [](const StoryCheckpoint& data){ return data.id == "00.14"; });
+    if (row == rows.end()){
+        return "No checkpoint 00.14.";
+    }
+    const auto ledge = std::find_if(row->steps.begin(), row->steps.end(), [](const StoryStep& step){ return step.name == "above_ledge"; });
+    if (ledge == row->steps.end()){
+        return "00.14: no above_ledge.";
+    }
+    StoryPose at = *story_pose(*row->start);
+    OverworldSim sim(story_maps(), MapPosition{at.map, at.tile}, *at.facing);
+    bool at_tutor = false;
+    for (auto step = row->steps.begin(); step != ledge + 1; ++step){
+        if (step->kind != StoryStepKind::ROUTE && step->kind != StoryStepKind::LEGS){
+            continue;
+        }
+        const std::string failure = row_step_on_sim(sim, at, *step, "00.14");
+        if (!failure.empty()){
+            return failure;
+        }
+        if (!(sim.state().position == MapPosition{at.map, at.tile})){
+            return "00.14/" + step->name + ": expected " + to_string(MapPosition{at.map, at.tile}) + ", but on " + to_string(sim.state().position) + ".";
+        }
+        if (sim.state().position == MapPosition{"Route4", {50, 4}} && sim.state().facing == Direction::NORTH){
+            at_tutor = true;
+        }
+    }
+    if (!at_tutor){
+        return "00.14: no walk ended on Route 4's (50, 4) facing the Mega Kick tutor (50, 3).";
+    }
+    if (!sim.state().trainers_beaten.empty() || !sim.state().violations.empty()){
+        return "00.14: a trainer's battle or a violation on the way.";
+    }
+    return true;
+}
+
 //  Console B, 2026-11-03 (row 00.18): after his scene Bill stands on
 //  (7, 6), east of the player on (6, 6), not on the maps' (7, 5). The
 //  walk out planned east onto (7, 6) and south to the mat (7, 9); the
@@ -699,6 +740,7 @@ void add_tests_AutoStorySimulation(UnitTestDatabase& database){
     add("a failed walk reloads its checkpoint's save", test_retry_from_save);
     add("a battle lost every time stops after 3 attempts", test_gives_up_after_attempts);
     add("00.14 into Cerulean, the entry leg a tile short", test_cerulean_entry_short);
+    add("00.14 from Mt. Moon to the Mega Kick tutor, then above the ledge", test_mega_kick_tutor_walks);
     add("00.16 Nugget Bridge, the walk onto it a tile short", test_nugget_bridge_short);
     add("00.17 Route 25, its four trainers and Dan", test_route25_trainers);
     add("00.18 out of Bill's Sea Cottage, Bill on (7, 6)", test_out_of_bill_cottage);
