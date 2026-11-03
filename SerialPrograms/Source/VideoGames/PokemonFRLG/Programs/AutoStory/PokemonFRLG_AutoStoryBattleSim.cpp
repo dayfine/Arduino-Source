@@ -547,12 +547,21 @@ bool potion_now(const SimBattler& own, const SimBattler& foe, int potions, doubl
     return c.max_hit >= own.hp && healed > c.max_hit && potion_pays(c);
 }
 
+bool awakening_now(const SimBattler& own, const SimBattler& foe, int awakenings, double seen_hit){
+    if (awakenings <= 0 || own.status != SimStatus::SLEEP){
+        return false;
+    }
+    const PotionCase c = potion_case(own, foe, seen_hit);
+    return (c.expected_hit > 0 || own.seeded) && own.hp > c.expected_hit;
+}
+
 OwnTurn own_turn(
-    const SimBattler& own, int potions, const SimBattler& foe,
+    const SimBattler& own, const SimItems& own_items, const SimBattler& foe,
     const std::vector<std::string>& items, size_t foes_left
 ){
+    const int potions = own_items.potions;
     const std::optional<size_t> slot = planned_attack_slot(own, foe, items, foes_left);
-    if (slot){
+    if (slot && own.status != SimStatus::SLEEP){
         const MoveData& move = data_of(own.moves[*slot].move);
         const bool foe_priority = std::ranges::any_of(foe.moves, [](const SimMove& known){
             return known.pp > 0 && data_of(known.move).priority > 0;
@@ -565,6 +574,9 @@ OwnTurn own_turn(
     }
     if (potion_now(own, foe, potions)){
         return OwnTurn{.potion = true, .slot = std::nullopt};
+    }
+    if (awakening_now(own, foe, own_items.awakenings)){
+        return OwnTurn{.potion = false, .slot = std::nullopt, .awakening = true};
     }
     return OwnTurn{.potion = false, .slot = slot};
 }

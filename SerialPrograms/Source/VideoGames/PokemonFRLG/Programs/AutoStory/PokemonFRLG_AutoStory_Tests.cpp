@@ -379,6 +379,24 @@ const MapObject* trainer_seeing(const MapData& map, const TilePos& tile, const s
     return nullptr;
 }
 
+//  The tile a STEP from `pose` ends on: the next one; for a step into a
+//  trainer's line, the first within TRAINER_LINE_TILES that a trainer
+//  other than the `beaten` sees, where step_until_seen() stops, else the
+//  last.
+TilePos step_end(const StoryPose& pose, const StoryStep& step, const std::set<const MapObject*>& beaten){
+    const MapData* map = find_map_named(pose.map);
+    if (step.variant != TRAINER_LINE_VARIANT || map == nullptr){
+        return pose.tile.next(step.direction);
+    }
+    TilePos tile = pose.tile;
+    step_until_seen(
+        TRAINER_LINE_TILES,
+        [&]{ tile = tile.next(step.direction); },
+        [&]{ return trainer_seeing(*map, tile, beaten) != nullptr; }
+    );
+    return tile;
+}
+
 //  Whether every floor tile of `map` has wild encounters, as in a cave:
 //  every open tile is tall grass, but for warps. No route keeps out of
 //  its grass.
@@ -509,7 +527,7 @@ UnitTestResult advance(StoryPose& pose, const StoryStep& step){
         return check_legs(pose, step);
     }
     if (step.kind == StoryStepKind::STEP){
-        pose = StoryPose{pose.map, pose.tile.next(step.direction), step.direction};
+        pose = StoryPose{pose.map, step_end(pose, step, {}), step.direction};
     }
     if (step.pose_after){
         pose = one_tile(*step.pose_after);
@@ -542,7 +560,7 @@ UnitTestResult check_lines(const StoryCheckpoint& checkpoint, std::set<const Map
             return where + problem;
         }
         const MapData* map = find_map_named(pose.map);
-        const MapObject* trainer = step.kind == StoryStepKind::STEP && map ? trainer_seeing(*map, pose.tile.next(step.direction), beaten) : nullptr;
+        const MapObject* trainer = step.kind == StoryStepKind::STEP && map ? trainer_seeing(*map, step_end(pose, step, beaten), beaten) : nullptr;
         if (trainer != nullptr && (c + 1 == checkpoint.steps.size() || checkpoint.steps[c + 1].kind != StoryStepKind::BATTLE)){
             return where + "steps into a trainer's line with no battle after it.";
         }
@@ -682,7 +700,7 @@ UnitTestResult test_nugget_bridge_order(){
     StoryPose pose = one_tile(*checkpoint->start);
     for (size_t c = 0; c < steps.size(); c++){
         const MapData* map = find_map_named(pose.map);
-        const MapObject* trainer = steps[c].kind == StoryStepKind::STEP && map ? trainer_seeing(*map, pose.tile.next(steps[c].direction), {}) : nullptr;
+        const MapObject* trainer = steps[c].kind == StoryStepKind::STEP && map ? trainer_seeing(*map, step_end(pose, steps[c], {}), {}) : nullptr;
         if (trainer != nullptr && (c + 1 == steps.size() || steps[c + 1].kind != StoryStepKind::BATTLE)){
             return "00.16/" + steps[c].name + ": no battle right after the step.";
         }

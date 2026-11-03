@@ -68,6 +68,7 @@ private:
             std::pair<const char*, const char*>{"potion", "Potion"},
             {"antidote", "Antidote"},
             {"parlyz-heal", "Parlyz Heal"},
+            {"awakening", "Awakening"},
             {"poke-ball", "Poke Ball"},
             {"cancel", "Cancel"},
         }){

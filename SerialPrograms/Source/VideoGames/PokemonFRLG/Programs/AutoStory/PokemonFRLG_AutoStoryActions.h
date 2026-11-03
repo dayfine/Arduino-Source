@@ -15,6 +15,7 @@
 #define PokemonAutomation_PokemonFRLG_AutoStoryActions_H
 
 #include <cstddef>
+#include <functional>
 #include <optional>
 #include <string>
 #include <vector>
@@ -110,6 +111,27 @@ void answer_yes_no(ConsoleHandle& console, ProControllerContext& context, bool y
 //  `facing` is the way the player faces, if known; a player facing another
 //  way is turned first.
 void step_once(ProControllerContext& context, Pokemon::Direction direction, std::optional<Pokemon::Direction> facing);
+
+//  Steps with `step` a tile at a time, at most `max_tiles`, until `seen`
+//  says a trainer saw the player. Returns the tiles stepped, or nothing
+//  if no trainer did. A walk that ended a tile short of a trainer's line
+//  still meets them (console B, 2026-11-03, Nugget Bridge: the walk ended
+//  on (11, 33), one step reached (11, 32), and Cale on row 31 never saw
+//  the player).
+std::optional<int> step_until_seen(int max_tiles, const std::function<void()>& step, const std::function<bool()>& seen);
+
+//  How long after a step into a trainer's line their message shows: the
+//  "!", then their words, as the route walker watches for a trainer
+//  with no tiles to walk up (PokemonFRLG_OverworldRecoveryWalk.cpp).
+inline constexpr Milliseconds TRAINER_LINE_WATCH(2500);
+
+//  From the overworld: step_until_seen() `direction`, turning first
+//  unless `facing` is `direction`, each step watched TRAINER_LINE_WATCH
+//  for a trainer's message or battle.
+std::optional<int> step_into_line(
+    ConsoleHandle& console, ProControllerContext& context,
+    Pokemon::Direction direction, std::optional<Pokemon::Direction> facing, int max_tiles
+);
 
 //  From the overworld, turns to face `direction` without stepping: the
 //  player must have a wall that way.

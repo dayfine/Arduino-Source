@@ -308,9 +308,9 @@ PartyMember lead_as_read(const MemberInfo& read, const PartyMember& tracked){
     return member_from_summary(read.species.empty() ? tracked.species : read.species, level, moves, read.stats);
 }
 
-std::optional<WinEstimate> healed_win_chance(PartyMember lead, int potions, std::string_view trainer){
+std::optional<WinEstimate> healed_win_chance(PartyMember lead, const SimItems& items, std::string_view trainer){
     restore_pp(lead);
-    return story_win_chance(lead, potions, 1.0, trainer);
+    return story_win_chance(lead, items, 1.0, trainer);
 }
 
 
@@ -354,7 +354,7 @@ bool ConsoleGrindActions::needs_heal(){
 
 std::optional<WinEstimate> ConsoleGrindActions::win_chance(const MemberInfo& member, std::string_view trainer){
     m_supplies.lead = lead_as_read(member, m_supplies.lead);
-    return healed_win_chance(m_supplies.lead, m_supplies.potions, trainer);
+    return healed_win_chance(m_supplies.lead, SimItems{.potions = m_supplies.potions, .awakenings = m_supplies.awakenings}, trainer);
 }
 
 bool ConsoleGrindActions::heal_trip(){
