@@ -17,6 +17,7 @@
 #include "VideoGames/PokemonFRLG/Inference/Dialogs/PokemonFRLG_BattleDialogs.h"
 #include "VideoGames/PokemonFRLG/Inference/Dialogs/PokemonFRLG_DialogDetector.h"
 #include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleFlashWatcher.h"
+#include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleHpBarReader.h"
 #include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattlePokemonDetector.h"
 #include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleScreenDetector.h"
 #include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_PartyMenuDetector.h"
@@ -68,40 +69,10 @@ constexpr Milliseconds AFTER_BATTLE_TEXT = 60000ms;
 //  The move list to fade in after "Delete a move?", and its cursor to move.
 constexpr Milliseconds MOVE_LIST_TIMEOUT = 5000ms;
 
-//  In the player's box, as fractions of the 240x160 screen: the HP bar's
-//  fill, which grows from its left end, and the status badge left of the
-//  HP numbers. The box bobs by a pixel; these keep a pixel inside.
-const ImageFloatBox HP_BAR_BOX(174.0 / 240, 91.0 / 160, 48.0 / 240, 2.0 / 160);
+//  In the player's box, as a fraction of the 240x160 screen: the status
+//  badge left of the HP numbers. The box bobs by a pixel; this keeps a
+//  pixel inside.
 const ImageFloatBox STATUS_BADGE_BOX(146.0 / 240, 99.0 / 160, 12.0 / 240, 4.0 / 160);
-
-
-struct HpCounts{
-    size_t green = 0;
-    size_t yellow = 0;
-    size_t red = 0;
-    size_t total = 0;
-};
-
-HpCounts count_hp_colors(const ImageViewRGB32& image){
-    HpCounts counts;
-    for (size_t y = 0; y < image.height(); y++){
-        for (size_t x = 0; x < image.width(); x++){
-            const uint32_t pixel = image.pixel(x, y);
-            const int r = (pixel >> 16) & 0xff;
-            const int g = (pixel >> 8) & 0xff;
-            const int b = pixel & 0xff;
-            counts.total++;
-            if (g > 200 && r < 160 && b > 120 && b < 210){
-                counts.green++;
-            }else if (r > 220 && g > 180 && b < 80){
-                counts.yellow++;
-            }else if (r > 220 && g > 80 && g < 150 && b < 110){
-                counts.red++;
-            }
-        }
-    }
-    return counts;
-}
 
 StatusCondition read_status_badge(const ImageViewRGB32& badge){
     const ImageStats stats = image_stats(badge);
@@ -836,16 +807,12 @@ const char* status_name(StatusCondition status){
 
 PartyStatus read_party_status(const ImageViewRGB32& screen){
     const ImageViewRGB32 game = extract_box_reference(screen, GameSettings::instance().GAME_BOX);
-    const HpCounts counts = count_hp_colors(extract_box_reference(game, HP_BAR_BOX));
-    //  At 1 HP the red sliver was 32 of the box's 4000 pixels (console B,
-    //  2026-11-01, 1/25 HP).
-    const size_t seen = counts.total / 200 + 1;
+    const HpBarReading bar = read_player_hp_bar(game);
     PartyStatus status;
-    const size_t most = std::max({counts.green, counts.yellow, counts.red});
-    status.hp_seen = most >= seen;
-    status.hp_yellow = status.hp_seen && counts.yellow == most;
-    status.hp_red = status.hp_seen && !status.hp_yellow && counts.red == most;
-    status.hp_fill = counts.total == 0 ? 0 : double(counts.green + counts.yellow + counts.red) / counts.total;
+    status.hp_seen = bar.seen;
+    status.hp_yellow = bar.seen && bar.color == HpBarColor::YELLOW;
+    status.hp_red = bar.seen && bar.color == HpBarColor::RED;
+    status.hp_fill = bar.fill;
     status.status = read_status_badge(extract_box_reference(game, STATUS_BADGE_BOX));
     return status;
 }
