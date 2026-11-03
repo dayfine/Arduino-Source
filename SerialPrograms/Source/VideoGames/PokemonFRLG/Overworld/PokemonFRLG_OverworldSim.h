@@ -27,6 +27,7 @@
 
 #include <map>
 #include <optional>
+#include <set>
 #include <string>
 #include <vector>
 #include "Common/Cpp/Time.h"
@@ -46,6 +47,7 @@ enum class SimScreen{
     MESSAGE,        //  a white message box: a sign, a trainer
     START_MENU,
     BATTLE_FLASH,   //  a wild battle's opening flashes
+    BATTLE_WIPE,    //  black, as a wild battle's wipe ends, before its text box
     BATTLE_OPENING, //  a battle's text box, empty, before the HP boxes
     BATTLE,         //  a battle's text box with the HP boxes
     FADE,           //  a warp's fade out and in
@@ -64,7 +66,8 @@ enum class SimWatcher{
 };
 
 //  A wild battle on the player's `grass_step`th step onto tall grass (from
-//  1). Seen late: its flashes are missed, and only the battle screen shows.
+//  1), or onto any tile of a map in SimScript::wild_floor_maps. Seen late:
+//  its flashes are missed, and only the battle screen shows.
 struct SimEncounter{
     int grass_step = 1;
     bool seen_late = false;
@@ -80,6 +83,9 @@ struct SimTiming{
     //  A wild battle's text box, before the HP boxes (battle_screen). Not
     //  set: not modelled, the battle screen shows at once.
     std::optional<Milliseconds> battle_opening;
+    //  Black, from the end of a wild battle's wipe until its text box
+    //  (battle_opening) or HP boxes. Not set: not modelled.
+    std::optional<Milliseconds> battle_wipe;
     Milliseconds message{400};
     Milliseconds fade{1000};            //  from the step's end to the new map
     Milliseconds trainer_notice{1000};  //  "!" over the trainer, before they walk up
@@ -94,6 +100,10 @@ struct SimScript{
     //  The hold numbered by the key (from 1) stops this many tiles short,
     //  with nothing on screen (the forest drift, console B, 2026-11-01).
     std::map<int, int> short_holds;
+    //  Maps where every step can start a wild battle, also on tiles the maps
+    //  don't mark as grass: Mt. Moon B2F's tiles closed on one side ('8')
+    //  are cave floor too (console B, 2026-11-03).
+    std::set<std::string> wild_floor_maps;
     SimTiming timing;
 };
 
@@ -255,6 +265,17 @@ struct SimWalkerRules{
     //  as walked and the next leg into the battle (console B, 2026-11-03,
     //  Mt. Moon B1F, row 00.13).
     bool watch_on_for_unseen_battle = true;
+    //  The same after a leg the maps see no wild tiles on (RouteStep::wild),
+    //  which the leg and its watch don't watch for battles: on Mt. Moon
+    //  B2F's tiles closed on one side, which the maps don't mark as wild, a
+    //  battle on "east 7 (to wall)" left black after the leg, the leg was
+    //  taken as walked and the next one held from where the battle was
+    //  (console B, 2026-11-03, row 00.13).
+    bool watch_on_after_unmarked_leg = true;
+    //  Before a step, a battle on its way (its text box or wipe) is watched
+    //  on for, and the step before it taken as stopped part-way, not the
+    //  step held from where the battle left the player.
+    bool battle_before_step = true;
 };
 
 //  The console side of run_route() on an OverworldSim, as
@@ -298,6 +319,7 @@ private:
     std::optional<SimSeen> hold_watching(const RouteStep& step, Milliseconds hold, const std::vector<Interrupt>& interrupts);
     size_t clear_late(const std::vector<Interrupt>& interrupts, Milliseconds watch, size_t max);
     size_t clear_unseen_battle(const RouteStep& step);
+    bool battle_on_its_way() const;
     void clear(const Interrupt& interrupt);
     void hold_to_warp(const RouteStep& step);
     StepEnd watch_for_trainer(const RouteStep& step, int approach_tiles);
