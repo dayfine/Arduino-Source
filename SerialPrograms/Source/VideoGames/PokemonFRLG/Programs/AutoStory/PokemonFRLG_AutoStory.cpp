@@ -575,14 +575,12 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
         first = checkpoint_index(checkpoints, "00.01b");
         plan = plan_story_run(checkpoints, first, last, handoffs);
     }
-
     StoryEnv story{env.console, context, checkpoints[first].supplies, checkpoints[first].supplies, false, RUN.checks()};
     story.player_name = player_name;
     prepare_start(env, context, checkpoints, first, story);
     StoryExecutor executor(story);
     executor.set_checks(RUN.checks());
     executor.set_language(RUN.language());
-
     StarterRngPlanned planned;
     std::function<void()> before;
     if (plan.stop == StoryHandoff::STARTER_RNG){
