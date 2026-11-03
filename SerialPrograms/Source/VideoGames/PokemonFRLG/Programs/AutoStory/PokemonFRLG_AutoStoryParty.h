@@ -4,9 +4,10 @@
  *
  *  The lead's moves as the story knows them, and the data its choices come
  *  from: level-up moves and evolutions (pret/pokefirered
- *  src/data/pokemon/level_up_learnsets.h, evolution.h), each move's PP
- *  (src/data/battle_moves.h), which new move takes which old one's slot,
- *  and which moves the lead attacks with first.
+ *  src/data/pokemon/level_up_learnsets.h, evolution.h), which new move
+ *  takes which old one's slot, and which moves the lead attacks with
+ *  first. Moves' PP, power and type, species' types and trainers' parties
+ *  are the generated battle data (PokemonFRLG_AutoStoryBattleData.h).
  *
  *  The story starts from the moves read off the lead's summary when a run
  *  loads a save (member_from_summary()), else from the moves a checkpoint's
@@ -117,18 +118,22 @@ void evolve(PartyMember& member);
 //  while the story doesn't know all its moves (fewer than four, not read).
 std::optional<size_t> attack_slot(const PartyMember& member);
 
-//  The species of a trainer's party, by the table's name for the battle
-//  ("rival_cerulean"), from pret/pokefirered src/data/trainer_parties.h
-//  (the rival's for a player who took Squirtle). Empty for a battle whose
-//  party the story doesn't know.
-std::vector<std::string> trainer_party(std::string_view battle);
+//  The species of `trainer`'s party, in order: pret's constant
+//  ("TRAINER_LEADER_MISTY", see story_trainer()), from pret/pokefirered
+//  src/data/trainer_parties.h. Empty for a trainer the data doesn't have.
+std::vector<std::string> trainer_party(std::string_view trainer);
 
-//  The slot to attack a trainer whose party is `foes` with, any of them
-//  as likely to be out: the move with PP left that does the most expected
-//  damage, its power times STAB times its type's effectiveness against
-//  each foe (pret's type chart), ties going to attack_slot()'s order.
-//  attack_slot() itself with no foes, or while the story doesn't know all
-//  its moves.
+//  The slot to attack `foes` with, any of them as likely to be out: the
+//  move with PP left that does the most expected damage, ties going to
+//  attack_slot()'s order. Expected damage, summed over the foes, is power
+//  times STAB times the type chart, times the lead's base Attack or Sp.
+//  Atk, whichever the move's type uses (Gen 3: Fire, Water, Grass,
+//  Electric, Psychic, Ice, Dragon and Dark are special): Water Gun and Bite
+//  compare on Sp. Atk, Tackle on Attack. The foe's defenses are left out,
+//  so a frail foe's low Defense doesn't pull Tackle ahead of a type
+//  advantage. A foe the data doesn't
+//  have is left out; with none left, or while the story doesn't know all
+//  the lead's moves, attack_slot() itself (the plan's order).
 std::optional<size_t> attack_slot_against(const PartyMember& member, const std::vector<std::string>& foes);
 
 //  The PP left in the damaging moves it knows.
