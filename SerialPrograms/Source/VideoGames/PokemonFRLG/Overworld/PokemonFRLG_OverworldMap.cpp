@@ -135,16 +135,54 @@ void hide_objects(MapData& map, const std::set<std::string>& flags){
     map.objects = std::move(shown);
 }
 
+namespace{
+
+//  The tiles `object` may stand on: its wander box, or its own tile.
+Pokemon::TileBox standing_box(const MapObject& object){
+    return object.wander.value_or(
+        Pokemon::TileBox{.x0 = object.x, .y0 = object.y, .x1 = object.x, .y1 = object.y}
+    );
+}
+
+//  Whether `trainer`, standing on `from`, sees `tile` any way it looks.
+bool sees_from(const MapData& map, const Pokemon::MapTrainer& trainer, const TilePos& from, const TilePos& tile){
+    for (Direction look : trainer.looks){
+        TilePos seen = from;
+        for (int c = 0; c < trainer.sight && !is_wall(map, seen.next(look)); c++){
+            seen = seen.next(look);
+            if (seen == tile){
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+}
+
 const MapObject* object_at(const MapData& map, const TilePos& point){
     for (const MapObject& object : map.objects){
-        const Pokemon::TileBox box = object.wander.value_or(
-            Pokemon::TileBox{.x0 = object.x, .y0 = object.y, .x1 = object.x, .y1 = object.y}
-        );
+        const Pokemon::TileBox box = standing_box(object);
         if (box.x0 <= point.x && point.x <= box.x1 && box.y0 <= point.y && point.y <= box.y1){
             return &object;
         }
     }
     return nullptr;
+}
+
+bool trainer_may_see(const MapData& map, const MapObject& object, const TilePos& tile){
+    if (!object.trainer){
+        return false;
+    }
+    const Pokemon::TileBox box = standing_box(object);
+    for (int y = box.y0; y <= box.y1; y++){
+        for (int x = box.x0; x <= box.x1; x++){
+            if (sees_from(map, *object.trainer, TilePos{x, y}, tile)){
+                return true;
+            }
+        }
+    }
+    return false;
 }
 
 
