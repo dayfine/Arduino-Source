@@ -21,6 +21,8 @@
 #ifndef PokemonAutomation_PokemonFRLG_AutoStoryBattle_H
 #define PokemonAutomation_PokemonFRLG_AutoStoryBattle_H
 
+#include <cstddef>
+#include <optional>
 #include <string>
 #include <vector>
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
@@ -30,6 +32,7 @@
 #include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_ItemListReader.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWalk.h"
 #include "PokemonFRLG_AutoStoryActions.h"
+#include "PokemonFRLG_AutoStoryBattleData.h"
 #include "PokemonFRLG_AutoStoryParty.h"
 
 namespace PokemonAutomation{
@@ -73,8 +76,16 @@ struct Supplies{
     std::vector<size_t> protected_slots = {};
     //  The party of the trainer the table's battle step fights, when the
     //  story knows it (trainer_party()): the lead's attacks are chosen
-    //  against it. Empty otherwise; wild battles never use it.
+    //  against it while the one out isn't known. Empty otherwise; wild
+    //  battles never use it.
     std::vector<std::string> foes = {};
+    //  That trainer (story_trainer()), "" otherwise.
+    std::string trainer = {};
+    //  How carefully that battle is fought (story_battle_risk()).
+    BattleRisk risk = BattleRisk::LOW;
+    //  The slot of the trainer's party out, as the battle loop tracks it
+    //  (TrainerFoeTracker): the lead's attacks are chosen against it.
+    std::optional<size_t> foe_out = {};
     //  The wild Pokemon of the battle going on, as read at its first battle
     //  menu (read_wild_foes()): the lead's attacks are chosen against it.
     //  Empty when it wasn't read; trainer battles never use it.
