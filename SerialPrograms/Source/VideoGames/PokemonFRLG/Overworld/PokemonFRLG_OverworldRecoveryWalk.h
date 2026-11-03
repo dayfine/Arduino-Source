@@ -35,6 +35,8 @@ namespace PokemonFRLG{
 //  is isn't guessed: the stop's timing narrows it to a few tiles of the leg
 //  (walked_near()), from which run_route() finds them again with
 //  `planning`'s maps and costs, and walks the rest of the route as planned.
+//  A warp's fade that turns out to be a wild battle's stops its leg the
+//  same way, somewhere before the warp (walked_before_warp()).
 //
 //  After a leg that crosses a trainer's sight it watches for the trainer,
 //  long enough for them to walk up and speak, and hands what shows to
@@ -48,10 +50,9 @@ namespace PokemonFRLG{
 //  A message open before a step is handed to `interrupts` once
 //  (clear_open_message()). Throws OperationFailedException if a menu or
 //  message is still open before a step, a warp's fade or the Surf prompt
-//  doesn't show, a warp's fade turns out to be a wild battle's, a leg is
-//  interrupted too many times, or the player can't be found again from
-//  every tile they may be on. A wild battle that starts as the last leg
-//  ends is cleared before it returns.
+//  doesn't show, a leg is interrupted too many times, or the player can't
+//  be found again from every tile they may be on. A wild battle that
+//  starts as the last leg ends is cleared before it returns.
 void walk_overworld_route_with_recovery(
     ConsoleHandle& console, ProControllerContext& context,
     const std::vector<RouteStep>& route,

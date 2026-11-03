@@ -410,6 +410,10 @@ private:
 }
 
 
+WalkedTiles walked_before_warp(const RouteStep& step){
+    return WalkedTiles{.min = 1, .max = step.tiles - 1};
+}
+
 std::optional<TrainerCrossing> trainer_crossing(
     const std::vector<MapData>& maps, const MapPosition& start, const RouteStep& step
 ){

@@ -169,6 +169,10 @@ void clear_open_message(
     const OverworldInterrupts& interrupts, const RouteStep& step
 );
 
+//  After a warp's fade: if it was a wild battle's, runs from the battle and
+//  returns true.
+bool run_from_battle_after_warp(ConsoleHandle& console, ProControllerContext& context);
+
 //  After `step`'s warp: fails, once the battle is fled, if its fade was a
 //  wild battle's.
 void check_warp_was_no_battle(ConsoleHandle& console, ProControllerContext& context, const RouteStep& step);

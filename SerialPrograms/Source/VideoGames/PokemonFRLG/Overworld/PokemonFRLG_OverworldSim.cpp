@@ -555,18 +555,28 @@ std::optional<SimSeen> OverworldSimWalker::hold_watching(const RouteStep& step, 
     return m_sim.hold(step.direction, hold, STEP_RELEASE, hold + STEP_RELEASE + m_rules.watch_past_hold, watchers(interrupts));
 }
 
-//  wait_out_warp(), then check_warp_was_no_battle().
-void OverworldSimWalker::after_warp(const RouteStep& step, int warps_before){
+//  wait_out_warp(), then run_from_battle_after_warp(): false if the fade
+//  was a wild battle's, run from. wait_out_warp()'s watcher takes a wild
+//  battle's wipe for the fade (run 7; console B, 2026-11-03, Mt. Moon 1F):
+//  the battle screen stands in for the wipe.
+bool OverworldSimWalker::after_warp(const RouteStep& step, int warps_before){
     if (m_sim.state().warps == warps_before){
-        m_sim.watch({}, WARP_TIMEOUT);
-        fail("walk_overworld_route(): no fade in and out after walking onto the warp to " + step.end.map + ".");
+        if (!m_sim.watch({SimWatcher::BATTLE_SCREEN}, WARP_TIMEOUT)){
+            fail("walk_overworld_route(): no fade in and out after walking onto the warp to " + step.end.map + ".");
+        }
+    }else{
+        m_sim.watch({SimWatcher::FADE}, WARP_TIMEOUT);
     }
-    m_sim.watch({SimWatcher::FADE}, WARP_TIMEOUT);
     m_sim.watch({}, AFTER_WARP);
-    if (m_sim.watch(watchers({m_wild[1]}), AFTER_WARP_BATTLE_WATCH - AFTER_WARP)){
-        m_sim.handle_battle(SimBattleChoice::RUN);
-        fail("walk_overworld_route(): a wild battle, not the warp to " + step.end.map + ": the player is off the route.");
+    if (!m_sim.watch(watchers({m_wild[1]}), AFTER_WARP_BATTLE_WATCH - AFTER_WARP)){
+        return true;
     }
+    m_sim.handle_battle(SimBattleChoice::RUN);
+    return false;
+}
+
+void OverworldSimWalker::fail_off_route(const RouteStep& step){
+    fail("walk_overworld_route(): a wild battle, not the warp to " + step.end.map + ": the player is off the route.");
 }
 
 std::optional<WalkedTiles> OverworldSimWalker::walk_step(const RouteStep& step, std::optional<Direction> facing){
@@ -603,8 +613,12 @@ std::optional<WalkedTiles> OverworldSimWalker::walk_step(const RouteStep& step, 
     if (result.stopped){
         return walked_near(step, result.tiles, TILE_TIME);
     }
-    if (step.warps){
-        after_warp(step, warps_before);
+    if (step.warps && !after_warp(step, warps_before)){
+        if (!m_rules.find_player_after_warp_battle){
+            fail_off_route(step);
+        }
+        m_log.push_back("Route: a wild battle, not the warp to " + step.end.map + "; the player is on " + to_string(step) + " before the warp.");
+        return walked_before_warp(step);
     }
     return std::nullopt;
 }
@@ -638,7 +652,9 @@ void OverworldSimWalker::hold_to_warp(const RouteStep& step){
         const Milliseconds hold = TILE_TIME * (step.tiles + 2);
         const std::optional<SimSeen> seen = m_sim.hold(step.direction, hold, STEP_RELEASE, hold + STEP_RELEASE, fade_first);
         if (seen && seen->watcher == 0){
-            after_warp(step, warps_before);
+            if (!after_warp(step, warps_before)){
+                fail_off_route(step);
+            }
             return;
         }
         if (!seen){
