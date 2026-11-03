@@ -87,33 +87,44 @@ constexpr Evolution EVOLUTIONS[] = {
     {.species = "magikarp", .evolution = {.into = "gyarados", .level = 20}},
 };
 
-struct MovePp{
+struct MoveData{
     std::string_view move;
     uint8_t pp = 0;
+    //  Flail's and Dragon Rage's damage doesn't come from their power, 1.
+    uint8_t power = 0;
 };
 
 //  pret/pokefirered src/data/battle_moves.h.
-constexpr MovePp MOVE_PP[] = {
-    {.move = "tackle", .pp = 35},
-    {.move = "tail-whip", .pp = 30},
-    {.move = "bubble", .pp = 30},
-    {.move = "withdraw", .pp = 40},
-    {.move = "water-gun", .pp = 25},
-    {.move = "bite", .pp = 25},
-    {.move = "rapid-spin", .pp = 40},
-    {.move = "protect", .pp = 10},
-    {.move = "rain-dance", .pp = 5},
-    {.move = "skull-bash", .pp = 15},
-    {.move = "hydro-pump", .pp = 5},
-    {.move = "splash", .pp = 40},
-    {.move = "flail", .pp = 15},
-    {.move = "thrash", .pp = 20},
-    {.move = "dragon-rage", .pp = 10},
-    {.move = "leer", .pp = 30},
-    {.move = "twister", .pp = 20},
-    {.move = "dragon-dance", .pp = 20},
-    {.move = "hyper-beam", .pp = 5},
+constexpr MoveData MOVES[] = {
+    {.move = "tackle", .pp = 35, .power = 35},
+    {.move = "tail-whip", .pp = 30, .power = 0},
+    {.move = "bubble", .pp = 30, .power = 20},
+    {.move = "withdraw", .pp = 40, .power = 0},
+    {.move = "water-gun", .pp = 25, .power = 40},
+    {.move = "bite", .pp = 25, .power = 60},
+    {.move = "rapid-spin", .pp = 40, .power = 20},
+    {.move = "protect", .pp = 10, .power = 0},
+    {.move = "rain-dance", .pp = 5, .power = 0},
+    {.move = "skull-bash", .pp = 15, .power = 100},
+    {.move = "hydro-pump", .pp = 5, .power = 120},
+    {.move = "splash", .pp = 40, .power = 0},
+    {.move = "flail", .pp = 15, .power = 1},
+    {.move = "thrash", .pp = 20, .power = 90},
+    {.move = "dragon-rage", .pp = 10, .power = 1},
+    {.move = "leer", .pp = 30, .power = 0},
+    {.move = "twister", .pp = 20, .power = 40},
+    {.move = "dragon-dance", .pp = 20, .power = 0},
+    {.move = "hyper-beam", .pp = 5, .power = 150},
 };
+
+const MoveData* move_data(std::string_view move){
+    for (const MoveData& entry : MOVES){
+        if (entry.move == move){
+            return &entry;
+        }
+    }
+    return nullptr;
+}
 
 //  The story's plan per line (named by its first species): a level-up move
 //  it learns over a full move list, and the move whose slot it takes. Any
@@ -131,7 +142,8 @@ constexpr LearnRule LEARN_RULES[] = {
     {.line = "magikarp", .move = "twister", .replaces = "splash"},
 };
 
-//  The attacks per line, the one used first at the top.
+//  The attacks per line, the one used first at the top. Past these, the
+//  strongest damaging move with PP left.
 struct Attack{
     std::string_view line;
     std::string_view move;
@@ -225,16 +237,17 @@ std::optional<LevelEvolution> level_evolution(std::string_view species){
 }
 
 uint8_t max_pp(std::string_view move){
-    for (const MovePp& entry : MOVE_PP){
-        if (entry.move == move){
-            return entry.pp;
-        }
-    }
-    return 0;
+    const MoveData* data = move_data(move);
+    return data == nullptr ? 0 : data->pp;
+}
+
+uint8_t move_power(std::string_view move){
+    const MoveData* data = move_data(move);
+    return data == nullptr ? 0 : data->power;
 }
 
 PartyMember new_member(std::string_view species, uint8_t level){
-    PartyMember member{.species = std::string(species), .moves = {}, .moves_through_level = level};
+    PartyMember member{.species = std::string(species), .moves = {}, .moves_through_level = level, .moves_read = false};
     for (const LevelUpMove& entry : LEVEL_UP_MOVES){
         if (entry.species != species || entry.level > level || knows(member, entry.move)){
             continue;
@@ -262,6 +275,16 @@ PartyMember grown_to(PartyMember member, uint8_t level){
 
 PartyMember story_lead_after_brock(){
     return grown_to(new_member("squirtle", 5), 13);
+}
+
+PartyMember member_from_summary(std::string_view species, uint8_t level, const std::vector<SummaryMove>& moves){
+    PartyMember member{.species = std::string(species), .moves = {}, .moves_through_level = level, .moves_read = true};
+    for (const SummaryMove& read : moves){
+        const uint8_t full = max_pp(read.move);
+        const uint8_t pp = read.pp >= 0 ? static_cast<uint8_t>(std::min<int>(read.pp, 255)) : static_cast<uint8_t>(full / 2);
+        member.moves.emplace_back(KnownMove{.move = read.move, .pp = pp});
+    }
+    return member;
 }
 
 LearnDecision learn_move(PartyMember& member){
@@ -292,7 +315,7 @@ void evolve(PartyMember& member){
 }
 
 std::optional<size_t> attack_slot(const PartyMember& member){
-    if (member.moves.size() < MAX_MOVES){
+    if (member.moves.size() < MAX_MOVES && !member.moves_read){
         return std::nullopt;
     }
     const std::string_view line = line_of(member.species);
@@ -305,6 +328,16 @@ std::optional<size_t> attack_slot(const PartyMember& member){
             return slot;
         }
     }
+    std::optional<size_t> strongest;
+    for (size_t slot = 0; slot < member.moves.size(); slot++){
+        const uint8_t power = move_power(member.moves[slot].move);
+        if (power > 0 && member.moves[slot].pp > 0 && (!strongest || power > move_power(member.moves[*strongest].move))){
+            strongest = slot;
+        }
+    }
+    if (strongest){
+        return strongest;
+    }
     for (size_t slot = 0; slot < member.moves.size(); slot++){
         if (member.moves[slot].pp > 0){
             return slot;
@@ -314,14 +347,10 @@ std::optional<size_t> attack_slot(const PartyMember& member){
 }
 
 size_t attack_pp(const PartyMember& member){
-    const std::string_view line = line_of(member.species);
     size_t pp = 0;
-    for (const Attack& attack : ATTACKS){
-        if (attack.line != line){
-            continue;
-        }
-        if (const std::optional<size_t> slot = slot_of(member, attack.move)){
-            pp += member.moves[*slot].pp;
+    for (const KnownMove& known : member.moves){
+        if (move_power(known.move) > 0){
+            pp += known.pp;
         }
     }
     return pp;
