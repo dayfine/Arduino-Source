@@ -10,7 +10,9 @@
 #ifndef PokemonAutomation_PokemonFRLG_StarterRngConsoleSteps_H
 #define PokemonAutomation_PokemonFRLG_StarterRngConsoleSteps_H
 
+#include <functional>
 #include <string>
+#include <string_view>
 #include "Common/Cpp/Color.h"
 #include "Common/Cpp/Logging/AbstractLogger.h"
 #include "Common/Cpp/Time.h"
@@ -30,8 +32,8 @@ namespace NintendoSwitch{
 namespace PokemonFRLG{
 
 
-//  The console's log, with the loop's state and result lines also on the
-//  stream's overlay log.
+//  The console's log, with the loop's result lines also on the stream's
+//  overlay log. Its state lines, too long for it, stay in the log.
 class RngPlanLogger : public Logger{
 public:
     explicit RngPlanLogger(ConsoleHandle& console);
@@ -40,6 +42,14 @@ public:
 private:
     ConsoleHandle& m_console;
 };
+
+
+//  An on_read for `program`'s tries at `attempt`, which puts each reset's
+//  line (rng_reset_line()) on the console's log and its stream's overlay
+//  log. `program` is a literal, as "Starter RNG".
+std::function<void(const RngResetRead&)> reset_line_logger(
+    ConsoleHandle& console, std::string_view program, const RngAttempt& attempt, const SeedMatch& seed_match, uint64_t max_resets
+);
 
 
 struct StarterRngConsoleSettings{
@@ -51,8 +61,9 @@ struct StarterRngConsoleSettings{
 
 //  The loop's steps on the console, with Starter RNG's displays, stats and
 //  calibration kept here (AutoStory doesn't show them). Each try after the
-//  first starts from the calibration the last one ended with. Squirtle, FireRed, the
-//  Switch's default profile.
+//  first starts from the calibration the last one ended with, and each
+//  reset puts one line (rng_reset_line()) on the log and the stream's
+//  overlay log. Squirtle, FireRed, the Switch's default profile.
 class ConsoleStarterRngSteps : public StarterRngLoopSteps{
 public:
     ConsoleStarterRngSteps(

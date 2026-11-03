@@ -19,9 +19,28 @@ RngPlanLogger::RngPlanLogger(ConsoleHandle& console)
 
 void RngPlanLogger::log(const std::string& msg, Color color){
     m_console.log(msg, color);
-    if (msg.starts_with("RngPlan: state") || msg.starts_with("RngPlan: result")){
+    if (msg.starts_with("RngPlan: result")){
         m_console.overlay().add_log(msg);
     }
+}
+
+
+std::function<void(const RngResetRead&)> reset_line_logger(
+    ConsoleHandle& console, std::string_view program, const RngAttempt& attempt, const SeedMatch& seed_match, uint64_t max_resets
+){
+    RngResetLine line{
+        .program = program, .max_resets = max_resets,
+        .target_seed = attempt.target.seed.seed, .target_advances = attempt.target.advances,
+        .seed_values = seed_match.seed_values, .seed_position = seed_match.seed_position,
+        .read = {},
+    };
+    return [&console, line](const RngResetRead& read){
+        RngResetLine reset = line;
+        reset.read = read;
+        const std::string text = rng_reset_line(reset);
+        console.log(text);
+        console.overlay().add_log(text);
+    };
 }
 
 
@@ -69,6 +88,7 @@ StarterRngResult ConsoleStarterRngSteps::run_attempt(const RngAttempt& attempt, 
                 return current_time() >= deadline ? uint64_t(0) : max_resets;
             },
             .on_reset = call.on_reset,
+            .on_read = reset_line_logger(m_env.console, "Starter RNG", attempt, seed_match, call.max_resets),
         },
         StarterRngDisplays{
             .target = m_target_display,

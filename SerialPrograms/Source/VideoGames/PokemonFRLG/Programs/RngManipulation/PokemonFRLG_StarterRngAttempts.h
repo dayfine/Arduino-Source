@@ -73,6 +73,25 @@ struct StarterRngProgress{
     RngCalibrations calibrations{};
 };
 
+//  What a reset's reads came to, once its search is done. Gift RNG's
+//  attempts report theirs this way too.
+struct RngResetRead{
+    uint64_t resets = 0;
+    //  The states near the target that the Pokemon read matches.
+    std::vector<AdvRngState> hits;
+    //  The one the calibration took as hit; none when it couldn't tell.
+    std::optional<AdvRngState> hit;
+    //  Shiny right after the reset; `hits` are then its summary's.
+    bool shiny = false;
+};
+
+//  The state update_history() took as hit for a reset whose last search
+//  found `hits`: the newest in `calibration`. It takes none for no hits, and
+//  none for a tie between advances, which it leaves in `uncertain`.
+std::optional<AdvRngState> reset_hit(
+    const RngUncertainHistory& uncertain, const RngCalibrationHistory& calibration, const std::vector<AdvRngState>& hits
+);
+
 struct StarterRngSettings{
     Language language = Language::None;
     //  The Switch profile's position on the user selection screen; 0 for
@@ -90,6 +109,8 @@ struct StarterRngSettings{
     std::function<uint64_t()> max_resets;
     //  Called after each reset, if set, for a caller that logs the attempts.
     std::function<void(const StarterRngProgress&)> on_reset;
+    //  Called after each reset's reads, if set, as on_reset is.
+    std::function<void(const RngResetRead&)> on_read;
 };
 
 //  Where the attempts show the target, the filters read so far and the
@@ -157,6 +178,7 @@ private:
     void send_shiny_notification(SingleSwitchProgramEnvironment& env, ProControllerContext& context, const std::string& title);
     std::vector<AdvRngState> search(SingleSwitchProgramEnvironment& env, AdvRngFilters& filters);
     void record_error(SingleSwitchProgramEnvironment& env, const std::vector<AdvRngState>& search_hits);
+    void report_read(bool shiny);
 
     void run_attempt(SingleSwitchProgramEnvironment& env, ProControllerContext& context);
     bool run_rival_stage(
@@ -229,6 +251,8 @@ private:
     uint64_t m_advances_radius = 0;
     bool m_wildshiny_found = false;
     uint16_t m_failed_searches = 0;
+    //  The last search's hits, for on_read.
+    std::vector<AdvRngState> m_search_hits;
 };
 
 
