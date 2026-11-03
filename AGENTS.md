@@ -8,6 +8,75 @@ from it.**
 Agents working here: Codex (implementation and live validation on a Switch)
 and Claude (getting PRs ready for review). The user decides scope and priorities.
 
+## Index: where everything agent-related lives
+
+Start here. Paths without a branch are on this `agents` branch; read them with
+`git show origin/agents:<path>` from any checkout, or open them in a checkout of `agents`
+(`~/Projects/Arduino-Source-agents`). Code-side tools live on fork `main` and every code branch,
+because CI and the hooks run them from the code checkout; they are indexed here, not copied.
+
+**Rules**
+
+| What | Where | Use |
+|---|---|---|
+| PRs: never upstream; fork drafts only; at most two open upstream PRs (the user's) | [pokemon_sv/PR_WORKFLOW.md](pokemon_sv/PR_WORKFLOW.md), [Where PRs live](#where-prs-live) | Re-read before any `gh pr` change. `gh` is `~/.local/bin/gh`; always `-R dayfine/Arduino-Source --draft`. |
+| Merge, never rebase or force-push; review fixes as new commits; a PR owns its files | [Where PRs live](#where-prs-live) | Merge the parent in; change a file only in the PR that added it. |
+| Agents: dispatch, no waiting, let agents finish | [Dispatching subagents](#dispatching-subagents), [.agents/rules/](.agents/rules/) | Subagents push, report PR + SHA, stop; the main session waits on CI. |
+| Builds: CI first, one local build at a time (`-j4`) | [Let CI build and test](#let-ci-build-and-test-build-locally-only-when-you-must) | Dispatch CI on the fork; build locally only for a console run. |
+| Console runs: a failure becomes a sim regression test, wait by detector, FRLG has one save slot | [Console automation](#console-automation-bdsp-and-frlg-autostory) | Red test before the fix; no fixed delays; never rerun an earlier checkpoint on a later save. |
+| C++ style, incl. `std::string_view` by value | [C++ style](#c-style), [Code conventions](#code-conventions-for-pr-branches) | Repo style first, then Google/Abseil as adopted there. |
+| Shell commands | [Commands: keep them tight](#commands-keep-them-tight) | One purpose per command, no broad scans, no `rm` on globs. |
+
+**Agents and skills**
+
+| What | Where | Use |
+|---|---|---|
+| Agent definitions (`autostory-code`, `pr-maintenance`, `reviewer`, `run-records`) | [.agents/agents/](.agents/agents/) | `~/.claude/agents/<name>.md` symlinks to `~/Projects/Arduino-Source-agentdefs/.agents/agents/` (a checkout of `agents`; `git -C` it `pull` to update). Dispatch with `subagent_type: <name>`. |
+| Harness checks | [bin/](bin/), [dev/lib/](dev/lib/), [.agents/standing-rules.conf](.agents/standing-rules.conf) | `sh bin/agent-harness-check.sh`, `sh bin/agent-standing-rules-check.sh`; CI: Harness Check on PRs into `agents`. |
+| Skills | [skills/](skills/) ([list](#skills)) | `ln -s "$PWD/skills/<name>" ~/.claude/skills/<name>` from a checkout of `agents`; edit here, not the local copy. |
+
+**Code health and CI**
+
+There are two different checks, and neither replaces the other:
+
+1. **Code Health** checks C++ code changes on code branches (function length, public methods per
+   class, layering, style findings): `python -m devtools.code_health --base-ref origin/<base>`.
+   It runs in CI's "C++ Code Health" job and in the pre-push hook, and counts toward CI green.
+2. **Harness checks** check this `agents` branch only: `bin/agent-harness-check.sh` (every
+   `.agents/agents`, `.agents/rules` file, workflow and `dev/lib` script carries a `harness:`
+   field) and `bin/agent-standing-rules-check.sh` (agent definitions still carry the
+   standing-rules block). Run them by hand before pushing here; Harness Check runs them on PRs
+   into `agents`.
+
+| What | Where | Use |
+|---|---|---|
+| Code health linter | `devtools/code_health/` on fork `main` and code branches | By hand, in a code checkout: `~/.venvs/code-health/bin/python -m devtools.code_health --base-ref origin/<PR base>`. Full gate: `devtools/verify.py` ([details](#c-harness-and-verification-fork-issue-40)). |
+| Pre-push hook | [tools/hooks/pre-push](tools/hooks/pre-push), [tools/install_hooks.sh](tools/install_hooks.sh) | Once per clone: `sh <(git show origin/agents:tools/install_hooks.sh)`. Creates the venv `~/.venvs/code-health`. Never `--no-verify` without the user's OK. |
+| CI workflows (code) | `.github/workflows/` on `main`: `cpp-ci-serial-programs-{mac,mac-intel,ubuntu-clang,ubuntu-default,windows-clang,windows-default}.yml`, `code-health.yml`, `tabs.yml` | Drafts skip the C++ jobs: `gh workflow run cpp-ci-serial-programs-<os>.yml -R dayfine/Arduino-Source --ref <branch>`. |
+| CI workflow (this branch) | `.github/workflows/harness-check.yml` | Runs on PRs into `agents`. |
+| Waiting on CI | [lab/scripts/ciwait.sh](lab/scripts/ciwait.sh), `dev/lib/wait-pr-checks.sh` | Main session only, in the background. Expected failures: `FileException` for fork-only test images (FRLG SaveCardReader, OptionMenuReader, ItemListReader; BDSP MenuDetector, ShortDialogDetector). |
+
+**Lab and console B**
+
+| What | Where | Use |
+|---|---|---|
+| Lab control: lock, channel, CFR batches | [lab/control/](lab/control/README.md) (`lablock.sh`, `labctl.sh`, `cfrun.sh`) | `sh lab/control/lablock.sh status`; one train on the console. Old copy: `devtools/lab` on `lab/main`. |
+| Console B helpers | [lab/scripts/](lab/scripts/README.md) (`lc.sh`, `sel.sh`, `cfr.sh`, `env.sh`) | `sh lab/scripts/lc.sh state`; `printf ... \| sh lab/scripts/cfr.sh NAME`. |
+| CFR syntax and the HOME gotcha | [lab/scripts/README.md](lab/scripts/README.md#cfr-batch-syntax) | Start each batch with a `shot`; at HOME, `press A` before any stick. |
+| Lab builds | [lab/LAB_BUILDS.md](lab/LAB_BUILDS.md), [pokemon_sv/lab/CONTROL.md](pokemon_sv/lab/CONTROL.md) | Lab trees base on `lab/main`; upstream-bound branches never merge it. |
+| Map tools | `devtools/maps` on `main`/code branches; [lab/scripts/decomp.sh](lab/scripts/decomp.sh) | `sh lab/scripts/decomp.sh ARGS` (`MAPGRID_WT` = a tree with `devtools/maps`). Skill: map-route-verify. |
+| Lab notes | [autostory/](autostory/) ([LAB_NAVIGATION.md](autostory/LAB_NAVIGATION.md)), [autostory/frlg/lab/](autostory/frlg/lab/) | FRLG notes and capture index. |
+| Captures and local lab files (not in git) | `~/FRLGLab/{captures,notes}`, `~/BDSPLab` (deploy, `cfB.sh`, BDSP notes) | Link by path; don't commit game captures. BDSP run steps: skill bdsp-autostory-test. |
+
+**Records and daily jobs**
+
+| What | Where | Use |
+|---|---|---|
+| BBQ notes and run records | [pokemon_sv/](pokemon_sv/) ([where to look first](#plans-and-state-where-to-look-first)) | Milestones, ledgers, runs. |
+| Harness and trial records | [harness/](harness/) | ccache trial, FRLG license notes, issue #40 state. |
+| Fork branch sync | launchd `com.dayfine.pa-sync`, 07:00: `~/Projects/pa-tools/sync_branches.py` | Needs `~/.zshenv` for `GH_TOKEN`. Logs: `~/Library/Logs/pa-sync/`. |
+| Lab disk GC | launchd `com.dayfine.lab-disk-gc`, 06:30: `~/BDSPLab/disk_gc.sh --apply` | Old shots, builds, idle pushed worktrees. Log: `~/Library/Logs/lab-disk-gc/gc.log`. Extend it, don't add jobs. |
+
 ## Session startup from a code checkout
 
 At the start of each task, from any code worktree, refresh and read the shared
@@ -70,7 +139,7 @@ obviously safe.
   - new feature branches until their first fork PR
 - **Claude owns:**
   - PR branches and their descriptions, once a PR exists
-  - rebasing PRs as their parents merge
+  - merging parents into PRs as they change or merge
   - answering review comments
   - preparing upstream handoffs for the user
 - **Hand over, don't push over.** Changes to an existing PR are handed over as
@@ -112,6 +181,14 @@ See [pokemon_sv/PR_WORKFLOW.md](pokemon_sv/PR_WORKFLOW.md). In short:
   client, or direct API calls. The user's explicit instructions govern any
   exception; readiness and parent merges are not authorization.
 - **Stacked draft PRs** go on the fork, based on their parent's branch.
+- **Merge, never rebase or force-push.** A parent's change reaches its children by merging it in,
+  so review comments and earlier hashes stay put. This replaces the "rebase each child onto
+  `main`" step in PR_WORKFLOW.md. Review fixes go in a new commit on top; fold a PR into one
+  commit only for the user's upstream handoff.
+- **A PR owns its files.** A file is changed only in the PR that added it; a stacked PR that needs
+  a change there commits it on the owning branch and merges it down. Check
+  `git diff <parent>...<child> --stat` before reporting a PR.
+- **Let agents finish.** Don't give a running or wrapping-up agent new work; queue it as a new task.
 - **Upstream references in fork PRs** are written in full:
   `PokemonAutomation/Arduino-Source#1631`.
 - **Descriptions** tell the reviewer what to read: a "How to review" section for

@@ -7,7 +7,7 @@ and never start a program on a save you have not checked.
 
 | Script | What it does |
 |---|---|
-| `env.sh` | Shared settings, sourced by the others. `LAB_CONSOLE` (default `B`), `LAB_PROFILE_NAME` (default `lab-B`), `LAB_PROFILE` (the profile folder), `LAB_DIR` (a lab tree's `devtools/lab`, default `~/Projects/Arduino-Source-frlglab/devtools/lab`), `LABLOCK_TOKEN` or `LABLOCK_TOKEN_FILE` (the console lock). |
+| `env.sh` | Shared settings, sourced by the others. `LAB_CONSOLE` (default `B`), `LAB_PROFILE_NAME` (default `lab-B`), `LAB_PROFILE` (the profile folder), `LAB_CONTROL` (the folder with `labctl.sh`: [`../control`](../control/README.md) next to these scripts, else `$PA_AGENTS_DIR/lab/control`, default `~/Projects/Arduino-Source-agents`, else the old `~/Projects/Arduino-Source-frlglab/devtools/lab`), `LAB_DIR` (`lablock.sh`'s lock root, default `~/.lab`), `LABLOCK_TOKEN` or `LABLOCK_TOKEN_FILE` (the console lock). |
 | `lc.sh ARGS` | `labctl.sh` against that profile: `state`, `select ID`, `start`, `stop`, ... |
 | `sel.sh PROGRAM` | Select a program (e.g. `NintendoSwitch:CommandFileRunner`, `PokemonFRLG:AutoStory`) and wait until the log says the controller is ready; one retry, exit 1 if never ready. |
 | `cfr.sh NAME < batch` | Queue stdin as a Command File Runner batch, select the CFR, start it, wait for `end` (cap `CFR_WAIT_S`, default 600 s; stops early if the lab app exits) and print the journal. |
