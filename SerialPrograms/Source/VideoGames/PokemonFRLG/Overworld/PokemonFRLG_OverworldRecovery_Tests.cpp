@@ -54,11 +54,18 @@ struct ScriptedRoute{
     //  Whether the tap past a leg's wall moves the player, and the taps made.
     bool moves_past_wall = false;
     size_t wall_taps = 0;
+    //  The way each walked step started facing.
+    std::vector<std::optional<Direction>> facings;
+    //  How the watches for a trainer end, in order; DONE after these. The
+    //  approach of each watch made.
+    std::vector<StepEnd> watch_ends;
+    std::vector<int> watches;
 
     RouteCalls calls(){
         RouteCalls calls;
-        calls.walk = [this](const RouteStep& step, std::optional<Direction>){
+        calls.walk = [this](const RouteStep& step, std::optional<Direction> facing){
             walked.push_back(step);
+            facings.push_back(facing);
             auto iter = ends.find(walked.size() - 1);
             return iter == ends.end() ? StepEnd::DONE : iter->second;
         };
@@ -71,6 +78,10 @@ struct ScriptedRoute{
         calls.fail = [this](const std::string& message){
             failure = message;
             throw std::runtime_error(message);
+        };
+        calls.watch_for_trainer = [this](const RouteStep&, int approach_tiles){
+            watches.push_back(approach_tiles);
+            return watches.size() <= watch_ends.size() ? watch_ends[watches.size() - 1] : StepEnd::DONE;
         };
         return calls;
     }
@@ -298,6 +309,123 @@ UnitTestResult test_route_logged(){
     return true;
 }
 
+//  Route 3's Lass Robin (console B, 2026-11-02), shrunk: a corridor along
+//  row 1, walled at x 6, and below it Robin's column x 3, where she wanders
+//  y 2..4 looking north and south, sight 3. Every way east along the
+//  corridor crosses her sight at (3, 1), and nowhere else.
+const char* const TEST_ROBIN_JSON = R"({
+    "name": "Robin", "source": {"decomp_file": "", "revision": "test", "date": "2026-11-02"},
+    "tiles": ["#######", "......#", "###.###", "###.###", "###.###", "#######"],
+    "objects": [
+        {"name": "lass", "kind": "npc", "x": 3, "y": 3, "wander": {"x0": 3, "y0": 2, "x1": 3, "y1": 4}, "trainer": {"sight": 3, "looks": ["north", "south"]}}
+    ]
+})";
+
+MapPosition robin(int x, int y){
+    return MapPosition{"Robin", {x, y}};
+}
+
+//  East along the corridor crosses Robin's sight on (3, 1) only; west of
+//  her, or back from the wall, it doesn't.
+UnitTestResult test_trainer_crossing(){
+    const std::vector<MapData> maps{parse_map(TEST_ROBIN_JSON, "Robin")};
+    RouteStep east = walk(Direction::EAST, 5, robin(5, 1));
+    east.to_wall = true;
+    const std::optional<TrainerCrossing> crossing = trainer_crossing(maps, robin(0, 1), east);
+    if (!crossing || crossing->seen != std::vector<MapPosition>{robin(3, 1)} || crossing->approach_tiles != 3){
+        return "Expected east along the corridor to cross her sight on (3, 1) only, with an approach of 3.";
+    }
+    if (trainer_crossing(maps, robin(0, 1), walk(Direction::EAST, 2, robin(2, 1)))
+        || trainer_crossing(maps, robin(5, 1), walk(Direction::WEST, 1, robin(4, 1)))
+    ){
+        return "Expected legs off her column to cross no sight.";
+    }
+    return true;
+}
+
+//  A leg east past Robin, then a turn north: how the leg and the watch for
+//  her after it end, and whether she saw the player.
+struct TrainerCase{
+    const char* name;
+    RouteStep leg;
+    StepEnd walk_end;
+    StepEnd watch_end;
+    size_t watches;
+    bool seen;
+};
+
+//  What `c`'s route should walk: the leg, then, if she saw the player, the
+//  way on from (3, 1) to its end, then the turn.
+std::optional<std::vector<RouteStep>> expected_walk(const std::vector<MapData>& maps, const TrainerCase& c, const RouteStep& face){
+    std::vector<RouteStep> expected{c.leg};
+    if (c.seen){
+        const std::optional<std::vector<RouteStep>> way = plan_overworld_route(maps, robin(3, 1), RouteGoal{c.leg.end, std::nullopt}, default_route_costs(), Direction::EAST);
+        if (!way || way->empty()){
+            return std::nullopt;
+        }
+        expected.insert(expected.end(), way->begin(), way->end());
+    }
+    expected.push_back(face);
+    return expected;
+}
+
+UnitTestResult run_trainer_case(const std::vector<MapData>& maps, const TrainerCase& c){
+    RouteStep face = walk(Direction::NORTH, 0, c.leg.end);
+    face.action = RouteAction::FACE;
+    const RoutePlanning planning{.maps = &maps, .costs = default_route_costs(), .start = robin(0, 1), .label = "Route", .wall_check = WallCheck::SKIP};
+    ScriptedRoute script;
+    script.ends[0] = c.walk_end;
+    script.watch_ends = {c.watch_end};
+    if (script.run({c.leg, face}, &planning)){
+        return "failed: " + script.failure;
+    }
+    const std::optional<std::vector<RouteStep>> expected = expected_walk(maps, c, face);
+    if (!expected){
+        return "expected a way on from (3, 1).";
+    }
+    bool match = expected->size() == script.walked.size() && script.watches.size() == c.watches;
+    for (size_t i = 0; match && i < expected->size(); i++){
+        match = same((*expected)[i], script.walked[i]);
+    }
+    if (!match){
+        return std::format("walked:{}\nexpected:{}\nafter {} watch(es)", describe(script.walked), describe(*expected), script.watches.size());
+    }
+    if (c.watches > 0 && script.watches[0] != 3){
+        return "expected a watch for an approach of 3.";
+    }
+    if (c.seen && script.facings[1] != Direction::EAST){
+        return "expected the route on from (3, 1) to start facing east.";
+    }
+    const UnitTestResult logged = expect_logged(script.logs, {"stopped by a trainer who saw the player, at Robin (3, 1); planning again."});
+    if ((logged.result == UnitTestResult::PASSED) != c.seen){
+        return c.seen ? "expected the stop logged at (3, 1)." : "didn't expect a stop logged.";
+    }
+    return true;
+}
+
+//  She sees the player: the leg's watch for her (or the leg itself) is
+//  interrupted by her message, which the interrupts fight, and the route is
+//  planned again from (3, 1), facing east. When she doesn't, the route is
+//  walked as planned, after one watch.
+UnitTestResult test_trainer_stops_leg(){
+    const std::vector<MapData> maps{parse_map(TEST_ROBIN_JSON, "Robin")};
+    RouteStep wall = walk(Direction::EAST, 5, robin(5, 1));
+    wall.to_wall = true;
+    const RouteStep open = walk(Direction::EAST, 4, robin(4, 1));
+    const TrainerCase cases[] = {
+        {.name = "to a wall, seen", .leg = wall, .walk_end = StepEnd::DONE, .watch_end = StepEnd::LATE, .watches = 1, .seen = true},
+        {.name = "open, seen", .leg = open, .walk_end = StepEnd::STOPPED, .watch_end = StepEnd::DONE, .watches = 0, .seen = true},
+        {.name = "to a wall, not seen", .leg = wall, .walk_end = StepEnd::DONE, .watch_end = StepEnd::DONE, .watches = 1, .seen = false},
+    };
+    for (const TrainerCase& c : cases){
+        const UnitTestResult result = run_trainer_case(maps, c);
+        if (result.result != UnitTestResult::PASSED){
+            return std::string(c.name) + ": " + result.message;
+        }
+    }
+    return true;
+}
+
 }
 
 
@@ -308,6 +436,8 @@ void add_tests_OverworldRecovery(UnitTestDatabase& database){
     database.add<Test_OverworldRecovery>("a leg to a warp", test_warp_leg);
     database.add<Test_OverworldRecovery>("the route is logged", test_route_logged);
     database.add<Test_OverworldRecovery>("a leg to a wall ends at it", test_wall_check);
+    database.add<Test_OverworldRecovery>("a leg crosses a trainer's sight", test_trainer_crossing);
+    database.add<Test_OverworldRecovery>("a trainer stops a leg", test_trainer_stops_leg);
 }
 
 

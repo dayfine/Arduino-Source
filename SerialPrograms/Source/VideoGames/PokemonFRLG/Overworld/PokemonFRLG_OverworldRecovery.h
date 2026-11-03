@@ -8,6 +8,10 @@
  *    - a leg to a wall interrupted after its hold is walked again;
  *    - an open leg to a warp, off the grass, stopped by a message (a
  *      trainer), is held on toward the warp;
+ *    - a leg that crosses a trainer's sight (trainer_crossing()) is watched
+ *      after for long enough that the trainer, if they saw the player, has
+ *      walked up and spoken; when they stopped it on the one tile of the leg
+ *      they can see, the route is planned again from that tile;
  *    - any other open leg stopped part-way is found again with holds to
  *      walls (plan_reanchor()), and rejoins the route at that leg's end by
  *      a route planned on the caller's maps and costs. The rest of the
@@ -70,7 +74,27 @@ struct RouteCalls{
     //  whether the player moved: if so, the leg didn't end at its wall. Not
     //  set (or WallCheck::SKIP): not checked.
     std::function<bool(const RouteStep& step)> moved_past_wall;
+    //  After a leg that ended as planned but crosses a trainer's sight:
+    //  watches long enough for a trainer who saw the player to walk up
+    //  `approach_tiles` tiles and speak, has what shows cleared (the
+    //  caller's interrupts fight the trainer), and returns LATE if anything
+    //  showed, DONE if not. Not set: not watched.
+    std::function<StepEnd(const RouteStep& step, int approach_tiles)> watch_for_trainer;
 };
+
+//  Where a WALK leg crosses the sight of its maps' trainers
+//  (trainer_may_see()): the tiles of the leg after its start that one may
+//  see, in order, and the farthest any of them walks up to the player
+//  (their sight). A trainer who sees the player stops them on that tile.
+//  Trainers already beaten are counted too: the maps don't know them.
+struct TrainerCrossing{
+    std::vector<MapPosition> seen;
+    int approach_tiles = 0;
+};
+//  Nothing if `step`, from `start`, crosses no trainer's sight.
+std::optional<TrainerCrossing> trainer_crossing(
+    const std::vector<MapData>& maps, const MapPosition& start, const RouteStep& step
+);
 
 //  How often a route may stop part-way before it gives up.
 constexpr size_t MAX_ROUTE_STOPS = 8;
@@ -78,7 +102,7 @@ constexpr size_t MAX_ROUTE_STOPS = 8;
 //  Walks `route` from `facing`, logging it in the shared route log lines:
 //  the plan, each leg as it starts and how it ended, and where the player
 //  was found again. Without `planning`, a stop that needs the player found
-//  again fails instead.
+//  again fails instead, and no leg is watched for trainers.
 void run_route(
     const std::vector<RouteStep>& route, std::optional<Direction> facing,
     const RoutePlanning* planning, const RouteCalls& calls
