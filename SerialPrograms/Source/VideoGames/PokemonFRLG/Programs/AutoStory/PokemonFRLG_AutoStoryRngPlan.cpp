@@ -8,6 +8,8 @@
 #include <cstdlib>
 #include <format>
 #include "Common/Cpp/Exceptions.h"
+#include "VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_BlindNavigation.h"
+#include "VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_RngCalibration.h"
 #include "PokemonFRLG_AutoStoryRngPlan.h"
 
 namespace PokemonAutomation{
@@ -310,9 +312,18 @@ RngPlanStep RngPlanTracker::record(RngAttemptOutcome outcome){
 }
 
 
+int64_t starter_rng_seed_wait_ms(const InitialSeedEntry& seed){
+    return int64_t(seed.seed_time_ms) + STARTER_RNG_FIXED_SEED_OFFSET_MS;
+}
+
 bool starter_rng_can_wait_for(const InitialSeedEntry& seed){
-    const int64_t wait = int64_t(seed.seed_time_ms) + STARTER_RNG_FIXED_SEED_OFFSET_MS;
-    return wait >= int64_t(STARTER_RNG_MIN_TITLE_DELAY_MS + STARTER_RNG_SEED_DELAY_MARGIN_MS);
+    return starter_rng_seed_wait_ms(seed) >= STARTER_RNG_MIN_SEED_WAIT_MS;
+}
+
+int64_t starter_rng_ingame_ms(uint64_t advances){
+    const int64_t frames = int64_t(advances) - int64_t(STARTER_RNG_CONTINUE_SCREEN_FRAMES)
+        + fixed_advances_offset(PokemonFRLG_RngTarget::starters);
+    return int64_t(frames * FRLG_FRAME_DURATION / 2);
 }
 
 std::vector<RngAttempt> plan_starter_rng(const StarterRngPlanInputs& inputs){
@@ -323,7 +334,7 @@ std::vector<RngAttempt> plan_starter_rng(const StarterRngPlanInputs& inputs){
     std::erase_if(seeds, [](const InitialSeedEntry& seed){ return !starter_rng_can_wait_for(seed); });
 
     RngTargetFilters filters = inputs.filters;
-    filters.min_advances = std::max(filters.min_advances, STARTER_RNG_MIN_ADVANCES);
+    filters.min_advances = std::max(filters.min_advances, STARTER_RNG_PLAN_MIN_ADVANCES);
     const std::vector<RngTarget> targets = search_rng_targets(seeds, inputs.tid, inputs.candidates, filters);
     return plan_rng_attempts(targets, inputs.candidates, filters.shiny_required, inputs.max_attempts);
 }
@@ -355,8 +366,9 @@ std::string rng_log_sid_helper(uint16_t tid, uint32_t target_advances, const std
 
 std::string rng_log_attempt(size_t index, const RngAttempt& attempt){
     return std::format(
-        "RngPlan: attempt={} seed={:04X} advances={} sids={}",
-        index + 1, attempt.target.seed.seed, attempt.target.advances, join_sids(attempt.sids)
+        "RngPlan: attempt={} seed={:04X} advances={} sids={} seed_wait_ms={} ingame_ms={}",
+        index + 1, attempt.target.seed.seed, attempt.target.advances, join_sids(attempt.sids),
+        starter_rng_seed_wait_ms(attempt.target.seed), starter_rng_ingame_ms(attempt.target.advances)
     );
 }
 
