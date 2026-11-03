@@ -69,6 +69,7 @@ const char* const BDSP_MAP = R"({
 const char* const FRLG_MAP = R"({
     "name": "CeruleanCave_1F",
     "source": {"decomp_file": "data/maps/CeruleanCave_1F/map.json", "revision": "ce6406d8c2ea", "date": "2026-11-01"},
+    "allow_running": false,
     "width": 4,
     "tiles": ["#..#", "8.2#", "4.6."],
     "elevation": ["3303", "3F03", "0a33"],
@@ -170,11 +171,11 @@ UnitTestResult test_lists_may_be_left_out(){
         "source": {"decomp_file": "f", "revision": "r", "date": "d"},
         "tiles": ["#.#"]
     })"), "Cave.json");
-    if (map.tiles.width != 3 || map.tiles.height != 1 || map.world || map.elevation
+    if (map.tiles.width != 3 || map.tiles.height != 1 || map.world || !map.allow_running || map.elevation
         || !map.points.empty() || !map.regions.empty() || !map.warps.empty() || !map.objects.empty()
         || !map.triggers.empty() || !map.flag_sets.empty() || !map.connections.empty() || !map.patches.empty()
     ){
-        return "Expected a 3x1 map with nothing on it.";
+        return "Expected a 3x1 map with nothing on it, where the player may run.";
     }
     return true;
 }
@@ -345,6 +346,7 @@ UnitTestResult test_frlg_shaped_map(){
         {.what = "mat east", .expected = warp(WarpEntry::WALK_EAST, {3, 2}, "CeruleanCave_2F.warp_3"), .read = text(warp_at(map, {3, 2}))},
         {.what = "the guard's hide flag", .expected = "FLAG_HIDE_CERULEAN_CAVE_GUARD", .read = text(map.objects[0].hide_flag)},
         {.what = "flag set, each flag once", .expected = "FLAG_B FLAG_HIDE_CERULEAN_CAVE_GUARD ", .read = text(map.flag_sets.at("after_hall_of_fame"))},
+        {.what = "no running", .expected = "false", .read = map.allow_running ? "true" : "false"},
     });
 }
 
@@ -367,6 +369,7 @@ UnitTestResult test_each_error_class_of_game_fields(){
         {.name = "elevation not hex", .json = edited(FRLG_MAP, "\"3F03\"", "\"3G03\""), .mentions = {"elevation[1]", "'G'", "not a hex digit"}},
         {.name = "flag set not a list", .json = edited(FRLG_MAP, "[\"FLAG_B\", \"FLAG_HIDE_CERULEAN_CAVE_GUARD\", \"FLAG_B\"]", "\"FLAG_B\""), .mentions = {"flag_sets.after_hall_of_fame", "not a list"}},
         {.name = "flag not a string", .json = edited(FRLG_MAP, "[\"FLAG_B\", ", "[7, "), .mentions = {"flag_sets.after_hall_of_fame[0] is not a string"}},
+        {.name = "allow_running not a boolean", .json = edited(FRLG_MAP, "\"allow_running\": false", "\"allow_running\": 0"), .mentions = {"allow_running is not true or false"}},
     });
 }
 
