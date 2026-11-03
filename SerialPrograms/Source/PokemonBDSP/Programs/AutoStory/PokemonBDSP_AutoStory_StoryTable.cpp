@@ -579,9 +579,15 @@ Pose after_the_welcome(){
         TilePos{43, 21}, TilePos{44, 21}, TilePos{45, 21}, TilePos{43, 22}, TilePos{44, 22}, TilePos{45, 22}
     });
 }
-//  Out of Oreburgh's Pokemon Center: on (46, 21), facing south (r217d, r218d).
+//  Below Oreburgh's Pokemon Center's door (47, 20), facing it.
+Pose below_oreburghs_center(){
+    return at(OREBURGH, 47, 21, NORTH);
+}
+//  Out of Oreburgh's Pokemon Center, facing south: below its door, or on
+//  the map's doorstep (46, 21), from which 01.04's 20 taps west reach the
+//  Gym's door column (r217d, r218d).
 Pose out_of_oreburgh_center(){
-    return at(OREBURGH, "pokemon_center_doorstep", SOUTH);
+    return Pokemon::tile_pose(OREBURGH, {TilePos{47, 21}, map_point(OREBURGH, "pokemon_center_doorstep")}, SOUTH);
 }
 
 //  01.05, planned on Oreburgh's and the Gate's maps with the Diamond decomp's
@@ -660,9 +666,11 @@ StoryCheckpoint route_203_to_oreburgh(){
 //  room down to Roark, whose scene ends with him gone (Platinum's
 //  scripts_oreburgh_mine_b2f.s: he smashes the rock east of him and walks
 //  off east); back up and out; and the Center's nurse, so 01.04 starts on
-//  the doorstep. The Center's door is column 46 on the console: we came out
-//  of it on (46, 21), 20 taps east of the Gym's door (r217d, r218d), and
-//  north from below the mine's sign and a tile east went in (2026-10-31).
+//  the doorstep. The Center's door is the decomp's (47, 20): out of
+//  Sandgem's and Jubilife's Centers the console stood in their doors'
+//  columns. The map's doorstep (46, 21) is the Gym's door column plus the
+//  20 taps of 01.04 (r217d, r218d), which do not say where the taps began;
+//  the heal lines up on the lit doorway if north from (47, 21) misses.
 //
 //  The hall is walked on counted taps, not held: it is a cave, and a wild
 //  battle on a hold toward a fade would read as the fade. Its warp tiles
@@ -677,11 +685,11 @@ StoryCheckpoint oreburgh_mine_to_roark(){
         //  walk east on these rows a tile east of the door, as by hand.
         anchored(to_walls("to_the_centers_fence", {{.direction = EAST, .tiles = 6}, {.direction = NORTH, .tiles = 2}},
             "east to the fence below the Center's east corner, north to the Center's front"), at(OREBURGH, 48, 21, NORTH)),
-        anchored(legs("below_the_centers_door", {{.direction = WEST, .tiles = 2}}, "taps west below the door"),
-            at(OREBURGH, "pokemon_center_doorstep", NORTH)),
+        anchored(legs("below_the_centers_door", {{.direction = WEST, .tiles = 1}}, "a tap west below the door"),
+            below_oreburghs_center()),
         //  He stands in the door the first time; walking into him reads as a wall.
         talk("barry", "Barry in the Center's door"),
-        scene("barrys_lines", at(OREBURGH, "pokemon_center_doorstep", NORTH), "Roark has gone to the mine"),
+        scene("barrys_lines", below_oreburghs_center(), "Roark has gone to the mine"),
         //  The Hiker wanders (46..48, 25..27), in the door's column: the
         //  route goes round him.
         route("above_the_mine", at(OREBURGH, 46, 58, SOUTH), "down the door's column to above the mine's warp tiles", "town"),
@@ -707,7 +715,7 @@ StoryCheckpoint oreburgh_mine_to_roark(){
             Pokemon::tile_pose(OREBURGH, {TilePos{45, 59}, TilePos{45, 58}}, NORTH)),
         anchored(to_walls("up_to_the_mines_sign", {{.direction = NORTH, .tiles = 3}}, "north against the mine's sign (45, 56)"),
             at(OREBURGH, 45, 57, NORTH)),
-        route("below_the_centers_door_again", at(OREBURGH, "pokemon_center_doorstep", NORTH), "up to below the Center's door", "town"),
+        route("below_the_centers_door_again", below_oreburghs_center(), "up to below the Center's door", "town"),
         heal("heal_oreburgh", "the nurse; out onto the doorstep, where 01.04 starts", out_of_oreburgh_center()),
     });
 }
