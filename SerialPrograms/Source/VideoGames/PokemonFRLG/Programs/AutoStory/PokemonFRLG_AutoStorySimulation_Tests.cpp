@@ -633,6 +633,60 @@ UnitTestResult test_oddish_walks(){
     return true;
 }
 
+//  Console B, 2026-11-03 (row 00.18): after his scene Bill stands on
+//  (7, 6), east of the player on (6, 6), not on the maps' (7, 5). The
+//  walk out planned east onto (7, 6) and south to the mat (7, 9); the
+//  east tap bumped Bill, and the hold south took the player down column 6
+//  to (6, 9), beside the mat, with no warp. On a copy of the maps with
+//  Bill on (7, 6) and only the mat (7, 9) as the way out (the console
+//  didn't warp from (6, 9)), the row's walks after the ticket end each
+//  where the table says and leave on Route 25's (51, 5).
+UnitTestResult test_out_of_bill_cottage(){
+    const std::vector<StoryCheckpoint>& rows = story_checkpoints();
+    const auto row = std::find_if(rows.begin(), rows.end(), [](const StoryCheckpoint& data){ return data.id == "00.18"; });
+    if (row == rows.end()){
+        return "No checkpoint 00.18.";
+    }
+    const auto ticket = std::find_if(row->steps.begin(), row->steps.end(), [](const StoryStep& step){ return step.name == "ss_ticket"; });
+    if (ticket == row->steps.end() || !ticket->pose_after){
+        return "00.18: no ss_ticket.";
+    }
+    std::vector<MapData> maps = story_maps();
+    for (MapData& map : maps){
+        if (map.name != "Route25_SeaCottage"){
+            continue;
+        }
+        for (MapObject& object : map.objects){
+            if (object.name == "bill"){
+                object.x = 7;
+                object.y = 6;
+            }
+        }
+        std::erase_if(map.warps, [](const MapWarp& warp){ return warp.x != 7; });
+    }
+    StoryPose at = *story_pose(*ticket->pose_after);
+    OverworldSim sim(maps, MapPosition{at.map, at.tile}, *at.facing);
+    for (auto step = ticket + 1; step != row->steps.end(); ++step){
+        if (step->kind != StoryStepKind::ROUTE && step->kind != StoryStepKind::LEGS){
+            continue;
+        }
+        const std::string failure = row_step_on_sim(sim, at, *step, "00.18");
+        if (!failure.empty()){
+            return failure;
+        }
+        if (!(sim.state().position == MapPosition{at.map, at.tile})){
+            return "00.18/" + step->name + ": expected " + to_string(MapPosition{at.map, at.tile}) + ", but on " + to_string(sim.state().position) + ".";
+        }
+    }
+    if (!(sim.state().position == MapPosition{"Route25", {51, 5}})){
+        return "00.18: expected to leave onto Route 25's (51, 5), not " + to_string(sim.state().position) + ".";
+    }
+    if (!sim.state().violations.empty()){
+        return "00.18: violations:" + joined(sim.state().violations);
+    }
+    return true;
+}
+
 }
 
 
@@ -647,6 +701,7 @@ void add_tests_AutoStorySimulation(UnitTestDatabase& database){
     add("00.14 into Cerulean, the entry leg a tile short", test_cerulean_entry_short);
     add("00.16 Nugget Bridge, the walk onto it a tile short", test_nugget_bridge_short);
     add("00.17 Route 25, its four trainers and Dan", test_route25_trainers);
+    add("00.18 out of Bill's Sea Cottage, Bill on (7, 6)", test_out_of_bill_cottage);
     add("00.20 to Route 24's grass and back, past Shane", test_oddish_walks);
 }
 

@@ -776,9 +776,10 @@ StoryCheckpoint route25(){
 //  walks to (7, 6) (BillWalkToMiddleOfRoom); the player isn't moved.
 //  Talked to from (6, 6), Bill gives the S.S. TICKET, no YES/NO, and goes
 //  on about the S.S. ANNE (FLAG_GOT_SS_TICKET, which also hides Nugget
-//  Bridge's Rocket). Out by the mat; the door puts the player on (51, 5),
-//  facing south. The maps keep Bill at (7, 5) and the Clefairy at (10, 6),
-//  where they don't block the way.
+//  Bridge's Rocket). Out by the mat (7, 9); the door puts the player on
+//  (51, 5), facing south. The maps keep Bill at (7, 5), but after his
+//  scene he stands on (7, 6), in the way from (6, 6) to the mat (console
+//  B, 2026-11-03), so the walk out goes around him to (7, 8) first.
 StoryCheckpoint bill(){
     return row("00.18", "Bill's Sea Cottage: the Cell Separator and the S.S. Ticket", at(SEA_COTTAGE, 7, 8, NORTH), after_brock(), StartMenu::FULL, {
         running(route("below_bill_clefairy", at(SEA_COTTAGE, 10, 7, NORTH), "below the Clefairy (10, 6), facing it")),
@@ -791,6 +792,7 @@ StoryCheckpoint bill(){
         running(legs("beside_bill", {{EAST, 2}}, "to (6, 6), west of Bill, facing him")),
         talk("thank_bill", "\"Thanks, bud! ... take this\""),
         scene("ss_ticket", at(SEA_COTTAGE, 6, 6, EAST), "the S.S. TICKET; \"... the S.S. ANNE ... go instead\""),
+        running(legs("around_bill", {{SOUTH, 2}, {EAST, 1}}, "to (7, 8), above the mat; Bill stands on (7, 6) after his scene")),
         running(route("out_of_cottage", at(ROUTE25, 51, 5, SOUTH), "down to the mat and out; the door puts the player below it")),
     });
 }
