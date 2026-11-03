@@ -159,7 +159,7 @@ public:
         if (decision.forget){
             m_result.forgot = member->moves[*decision.forget];
         }
-        if (!m_actions.open_item(m_plan.item)){
+        if (!m_actions.open_item(m_plan.item, m_plan.move)){
             return leave(TeachEnd::FAILED, std::format("couldn't open {} from the TM Case", m_plan.item));
         }
         if (!teach(decision.forget)){
@@ -269,32 +269,6 @@ std::string teach_message(const TeachPlan& plan, const TeachResult& result){
         return std::format("{}: {}: {}.", what, teach_end_name(result.end), result.detail);
     }
 }
-
-
-ConsoleTeachActions::ConsoleTeachActions(ConsoleHandle& console)
-    : m_console(console)
-{}
-
-bool ConsoleTeachActions::open_item(std::string_view item){
-    m_console.log(std::format("Teach: no reader for the TM Case yet; not opening {}.", item), COLOR_RED);
-    return false;
-}
-
-TeachPrompt ConsoleTeachActions::choose_member(size_t){
-    return TeachPrompt::FAILED;
-}
-
-ForgetEnd ConsoleTeachActions::forget(size_t){
-    return ForgetEnd::FAILED;
-}
-
-void ConsoleTeachActions::stop_teaching(){}
-
-bool ConsoleTeachActions::leave(){
-    //  Nothing was opened.
-    return true;
-}
-
 
 
 }
