@@ -368,7 +368,15 @@ std::optional<WinEstimate> story_win_chance(const PartyMember& lead, int potions
     if (!own || !sim){
         return std::nullopt;
     }
-    return estimate_win_chance(*own, potions, *sim);
+    WinEstimate estimate = estimate_win_chance(*own, potions, *sim);
+    estimate.inputs = std::format("{} Lv{} {}/{} HP:", own->species, own->body.level, own->hp, own->body.stats.hp);
+    for (size_t slot = 0; slot < own->moves.size(); slot++){
+        estimate.inputs += std::format(
+            "{} {} {}/{}", slot == 0 ? "" : ",", own->moves[slot].move, own->moves[slot].pp, max_pp(own->moves[slot].move)
+        );
+    }
+    estimate.inputs += std::format("; {} Potions", potions);
+    return estimate;
 }
 
 std::optional<std::string> win_chance_refusal(const WinEstimate& estimate, double minimum){
@@ -376,8 +384,9 @@ std::optional<std::string> win_chance_refusal(const WinEstimate& estimate, doubl
         return std::nullopt;
     }
     return std::format(
-        "win chance {:.0f}% < {:.0f}%: grind first",
-        std::floor(100 * estimate.chance), std::round(100 * minimum)
+        "win chance {:.0f}% < {:.0f}%{}: grind first",
+        std::floor(100 * estimate.chance), std::round(100 * minimum),
+        estimate.inputs.empty() ? "" : " with " + estimate.inputs
     );
 }
 
