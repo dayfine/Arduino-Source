@@ -50,6 +50,8 @@ enum class FakeScreen{
     TM_MENU,
     PROMPT,
     TEXT,
+    //  Messages the reader doesn't place: "other".
+    UNREAD_TEXT,
     DELETE_YES_NO,
     STOP_YES_NO,
     KNOWN_MOVES,
@@ -70,9 +72,14 @@ struct FakeTeachGame{
     //  The messages left to page through, and the screen after them.
     std::deque<TeachText> texts = {};
     FakeScreen after_texts = FakeScreen::OVERWORLD;
+    //  The messages after a move is forgotten ("1, 2 and... Poof!", "...
+    //  forgot TAIL WHIP.", "And... learned WATER PULSE!") read as "other",
+    //  as on console B (2026-11-03).
+    bool forget_texts_unread = false;
     //  The TM in use, by row.
     size_t tm = 0;
     std::vector<std::string> presses = {};
+    std::vector<std::string> dumps = {};
     std::string error = {};
 };
 
@@ -224,7 +231,10 @@ void press_known_moves(FakeTeachGame& game, TeachPress press){
         }
         game.moves[game.cursor] = tm_move(game);
         use_up(game);
-        show_texts(game, {TeachText::UNKNOWN, TeachText::UNKNOWN}, FakeScreen::TM_CASE);
+        show_texts(game, {TeachText::UNKNOWN, TeachText::UNKNOWN, TeachText::UNKNOWN}, FakeScreen::TM_CASE);
+        if (game.forget_texts_unread){
+            game.screen = FakeScreen::UNREAD_TEXT;
+        }
         game.cursor = 0;
     }else{
         move_cursor(game, press, MOVE_SLOTS + 1);
@@ -253,6 +263,7 @@ void press_game(FakeTeachGame& game, TeachPress press){
         }
         return;
     case FakeScreen::TEXT:
+    case FakeScreen::UNREAD_TEXT:
         game.texts.pop_front();
         if (game.texts.empty()){
             game.screen = game.after_texts;
@@ -265,6 +276,7 @@ TeachView view_of(const FakeTeachGame& game){
     switch (game.screen){
     case FakeScreen::OVERWORLD:
     case FakeScreen::START_MENU:
+    case FakeScreen::UNREAD_TEXT:
         return {};
     case FakeScreen::BAG:{
         const bool key_items = game.pockets[game.pocket] == "key-items";
@@ -322,6 +334,9 @@ public:
         }
         return false;
     }
+    virtual void dump_screen(std::string_view label) override{
+        m_game.dumps.emplace_back(label);
+    }
 
 private:
     FakeTeachGame& m_game;
@@ -347,6 +362,9 @@ void three_moves(FakeTeachGame& game){
 void no_tm03(FakeTeachGame& game){
     game.tms = {{"rock-tomb", 1}};
 }
+void forget_texts_unread(FakeTeachGame& game){
+    game.forget_texts_unread = true;
+}
 void nothing_compatible(FakeTeachGame& game){
     game.compatible.clear();
 }
@@ -354,6 +372,12 @@ void nothing_compatible(FakeTeachGame& game){
 std::vector<ScreensCase> screens_cases(){
     return {
         {.name = "console B: TM03 over TAIL WHIP"},
+        {
+            //  Console B, 2026-11-03: known_moves, then "other" until the
+            //  step gave up; the move was learned.
+            .name = "the texts after the forget read as other",
+            .setup = forget_texts_unread,
+        },
         {
             .name = "the bag left on POKE BALLS",
             .setup = left_on_poke_balls,
@@ -409,6 +433,11 @@ UnitTestResult check_screens_case(const ScreensCase& item){
     }
     if (game.screen != FakeScreen::OVERWORLD){
         return std::format("{}: didn't end on the overworld; presses: {}.", item.name, presses);
+    }
+    //  A debug image for each failure, none otherwise.
+    const bool failed = item.end == TeachEnd::FAILED || item.end == TeachEnd::REFUSED;
+    if (failed == game.dumps.empty()){
+        return std::format("{}: {} debug images.", item.name, game.dumps.size());
     }
     return true;
 }
