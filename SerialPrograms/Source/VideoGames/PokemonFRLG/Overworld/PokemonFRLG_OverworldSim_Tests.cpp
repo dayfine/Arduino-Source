@@ -673,8 +673,8 @@ UnitTestResult test_mt_moon_battle_seen_after_wall_leg(){
 
 //  Console B, 2026-11-03 (row 00.13, b2f_south): on Mt. Moon B2F a wild
 //  battle started on the first step of "east 7 (to wall)" from (39, 14),
-//  along tiles closed on their north side, which the maps don't mark as
-//  wild: the leg watched only for messages, and the screen was black
+//  along tiles closed on their north side, which the maps didn't mark as
+//  wild then: the leg watched only for messages, and the screen was black
 //  after it. The leg was taken as walked to (46, 14); "south 14 (to
 //  wall)" saw the battle, ran, and was held again from (40, 14), to
 //  (40, 17), and every leg after it went on about 6 tiles off. The sim
@@ -694,7 +694,8 @@ SimCase b2f_east_battle_case(){
         leg(Direction::EAST, 3, at("MtMoon_B2F", 14, 21), false),
         leg(Direction::NORTH, 9, c.goal, false),
     };
-    //  As the planner marks them: all but "east 7" cross cave floor.
+    //  As the planner marked them on the console: all but "east 7", whose
+    //  floor closed on the north the maps didn't yet mark wild.
     for (RouteStep& step : *c.route){
         step.wild = to_string(step) != "walk east 7 (to wall) -> MtMoon_B2F (46, 14)";
     }
@@ -720,8 +721,8 @@ bool logged(const SimRun& run, const std::string& text){
 UnitTestResult test_mt_moon_black_after_unmarked_leg(){
     const SimCase c = b2f_east_battle_case();
     const std::vector<RouteStep> planned_route = plan_overworld_route(maps(), c.start, RouteGoal{at("MtMoon_B2F", 46, 14), std::nullopt}).value_or(std::vector<RouteStep>{});
-    if (planned_route.size() != 1 || planned_route[0].wild || to_string(planned_route[0]) != "walk east 7 (to wall) -> MtMoon_B2F (46, 14)"){
-        return "Expected the planner's \"east 7 (to wall)\" from (39, 14), not marked wild:" + describe(planned_route);
+    if (planned_route.size() != 1 || to_string(planned_route[0]) != "walk east 7 (to wall) -> MtMoon_B2F (46, 14)"){
+        return "Expected the planner's \"east 7 (to wall)\" from (39, 14):" + describe(planned_route);
     }
     const SimRun now = run_case(c);
     if (!arrived(now, c.goal) || !logged(now, "a battle's wipe after walk east 7 (to wall)")){
@@ -861,7 +862,7 @@ void add_tests_OverworldSim(UnitTestDatabase& database){
     database.add<Test_OverworldSim>("Mt. Moon: after the HELIX, out to Route 4", test_mt_moon_way_out);
     database.add<Test_OverworldSim>("Mt. Moon: a battle on the leg onto 1F's ladder", test_mt_moon_battle_on_ladder_leg);
     database.add<Test_OverworldSim>("Mt. Moon: a battle seen only after a leg to a wall", test_mt_moon_battle_seen_after_wall_leg);
-    database.add<Test_OverworldSim>("Mt. Moon: black after a leg the maps don't mark wild", test_mt_moon_black_after_unmarked_leg);
+    database.add<Test_OverworldSim>("Mt. Moon: black after a leg not marked wild", test_mt_moon_black_after_unmarked_leg);
     database.add<Test_OverworldSim>("Mt. Moon: a battle seen only before the next leg", test_mt_moon_battle_before_next_leg);
     database.add<Test_OverworldSim>("Route 4 east, down its ledge, to Cerulean's Pokemon Center", test_route4_to_cerulean);
     database.add<Test_OverworldSim>("Cerulean: the Center to the rival's row and Nugget Bridge", test_cerulean_to_bridge);
