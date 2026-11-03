@@ -3,11 +3,11 @@
  *  From: https://github.com/PokemonAutomation/
  *
  *  AutoStory's Starter RNG stop, run in the program: the RNG plan's
- *  attempts (PokemonFRLG_AutoStoryRngPlan.h), each run with Starter RNG's
+ *  attempts (RngManipulation/PokemonFRLG_RngPlan.h), each run with Starter RNG's
  *  attempt loop (StarterRngAttempts) from the save under Squirtle's ball,
  *  until one comes out shiny or the plan, its retries or the time run out.
  *  Its "RngPlan: state" and "RngPlan: result" lines are listed with the
- *  plan's in PokemonFRLG_AutoStoryRngPlan.h.
+ *  plan's in RngManipulation/PokemonFRLG_RngPlanLog.h.
  *
  */
 
@@ -31,10 +31,11 @@
 #include "NintendoSwitch/NintendoSwitch_SingleSwitchProgram.h"
 #include "VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_RngCalibration.h"
 #include "VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_RngDisplays.h"
+#include "VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_RngPlan.h"
+#include "VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_RngPlanTracker.h"
 #include "VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_SeedsDatabase.h"
 #include "VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_StarterRngAttempts.h"
 #include "PokemonFRLG_AutoStoryEvents.h"
-#include "PokemonFRLG_AutoStoryRngPlan.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{

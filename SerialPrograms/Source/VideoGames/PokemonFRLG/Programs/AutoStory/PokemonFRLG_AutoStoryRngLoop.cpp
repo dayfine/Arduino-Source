@@ -9,6 +9,7 @@
 #include "Common/Cpp/Exceptions.h"
 #include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "CommonFramework/VideoPipeline/VideoOverlay.h"
+#include "VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_RngPlanLog.h"
 #include "PokemonFRLG_AutoStoryRngLoop.h"
 
 namespace PokemonAutomation{

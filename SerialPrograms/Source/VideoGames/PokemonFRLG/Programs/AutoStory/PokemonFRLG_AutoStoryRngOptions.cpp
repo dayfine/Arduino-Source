@@ -5,6 +5,8 @@
  */
 
 #include "Common/Cpp/Exceptions.h"
+#include "VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_RngPlanInputs.h"
+#include "VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_RngPlanLog.h"
 #include "PokemonFRLG_AutoStoryRngOptions.h"
 
 namespace PokemonAutomation{
