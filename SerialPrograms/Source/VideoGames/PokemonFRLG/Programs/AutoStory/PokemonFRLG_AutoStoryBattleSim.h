@@ -9,9 +9,10 @@
  *  whole battles from these.
  *
  *  The trainer's side is pret's: party, levels, IVs, natures, moves, items
- *  and AI flags (trainers.json). The lead's stats come from its species
- *  and level (PartyMember::moves_through_level, the level the story knows)
- *  with OWN_GENES, since the summary isn't read for stats.
+ *  and AI flags (trainers.json). The lead is what its summary showed
+ *  when the run started (species, level, moves and PP, stats from POKEMON
+ *  SKILLS), with the levels since (battle_level()) added at OWN_GENES;
+ *  without a summary, its species and battle_level() at OWN_GENES.
  *
  *  Approximations, from pret/pokefirered:
  *  - The AI's move (battle_ai_script_commands.c, data/battle_ai_scripts.s):
@@ -90,7 +91,9 @@ struct SimBattler{
 };
 
 //  The lead with `hp_share` of its HP (1 for full), its moves and PP as
-//  the story counts them. None for a species the data doesn't have.
+//  the story counts them, at battle_level(): its stats as read
+//  (PartyMember::stats) plus what the levels since add with `genes`, else
+//  from `genes`. None for a species the data doesn't have.
 std::optional<SimBattler> own_battler(const PartyMember& lead, double hp_share = 1.0, const Genes& genes = OWN_GENES);
 
 //  A trainer's Pokemon at full HP and PP.
@@ -142,9 +145,33 @@ std::optional<size_t> planned_attack_slot(
 //  The most `foe` can do to `own` with one move, no crit, highest roll.
 uint32_t foe_max_hit(const SimBattler& foe, const SimBattler& own);
 
-//  BattleRisk::HIGH: a Potion now: `foe`'s next hit could faint `own`, and
-//  after the Potion it couldn't.
-bool potion_now(const SimBattler& own, const SimBattler& foe, int potions);
+//  What a Potion now is weighed on.
+struct PotionCase{
+    uint16_t hp = 0;
+    uint16_t max_hp = 0;
+    //  The foe's next hit, on average and at most.
+    double expected_hit = 0;
+    uint32_t max_hit = 0;
+    //  The foe's hits the lead takes before its attacks faint the foe, if
+    //  it attacks from now on.
+    size_t hits_to_ko = 0;
+};
+//  `own` against `foe`: the foe's strongest move at the mean roll and
+//  accuracy, or `seen_hit` (HP the last hit took, as the battle loop read
+//  it) if more; the lead's planned move against the foe at its HP now.
+PotionCase potion_case(const SimBattler& own, const SimBattler& foe, double seen_hit = 0);
+
+//  At either BattleRisk: a Potion is worth the turn only if, after it and
+//  the foe's expected hit, the lead has gained HP, or if it lets the lead
+//  last until its attacks faint the foe when attacking now wouldn't.
+//  Otherwise it attacks: a Potion the next hit undoes only gives the foe
+//  another turn (console B, 2026-11-03, m51: five Potions at 8/60 HP each
+//  undone by Misty's Starmie, then no Potions and a faint).
+bool potion_pays(const PotionCase& c);
+
+//  BattleRisk::HIGH: a Potion now: `foe`'s next hit could faint `own`,
+//  after the Potion it couldn't, and potion_pays().
+bool potion_now(const SimBattler& own, const SimBattler& foe, int potions, double seen_hit = 0);
 
 //  The lead's turn at BattleRisk::HIGH.
 struct OwnTurn{
