@@ -365,9 +365,9 @@ std::vector<ScreensCase> screens_cases(){
             .moves = {"bite", "bubble", "withdraw", "water-pulse"},
         },
         {
-            .name = "no TM03 in the TM CASE: back to the overworld",
+            .name = "no TM03 in the TM CASE: skipped, back to the overworld",
             .setup = no_tm03,
-            .end = TeachEnd::FAILED,
+            .end = TeachEnd::NO_ITEM,
             .moves = {"bite", "tail-whip", "bubble", "withdraw"},
         },
         {

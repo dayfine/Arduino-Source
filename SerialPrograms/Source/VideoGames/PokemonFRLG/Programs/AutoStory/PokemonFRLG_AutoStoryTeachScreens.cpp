@@ -107,40 +107,42 @@ bool ScreenTeachActions::to_key_items(){
     return false;
 }
 
-bool ScreenTeachActions::open_row(TeachScreen screen, std::string_view name){
+ItemOpen ScreenTeachActions::open_row(TeachScreen screen, std::string_view name){
     const std::optional<TeachView> view = wait_for(screen);
     if (!view){
-        return false;
+        return ItemOpen::FAILED;
     }
     const auto found = std::find(view->rows.begin(), view->rows.end(), name);
     if (found == view->rows.end()){
         m_logger.log(std::format("Teach: no {} in {} ({}).", name, teach_screen_name(screen), rows_text(view->rows)), COLOR_RED);
-        return false;
+        //  No rows: nothing was read.
+        return view->rows.empty() ? ItemOpen::FAILED : ItemOpen::NOT_IN_CASE;
     }
     if (!move_cursor_to(screen, size_t(found - view->rows.begin()))){
-        return false;
+        return ItemOpen::FAILED;
     }
     press(TeachPress::A);
     if (!wait_for(TeachScreen::ITEM_MENU) || !move_cursor_to(TeachScreen::ITEM_MENU, 0)){
-        return false;
+        return ItemOpen::FAILED;
     }
     press(TeachPress::A);
-    return true;
+    return ItemOpen::OPENED;
 }
 
-bool ScreenTeachActions::open_item(std::string_view item, std::string_view move){
+ItemOpen ScreenTeachActions::open_item(std::string_view item, std::string_view move){
     if (!m_screens.open_bag()){
         m_logger.log("Teach: the bag didn't open.", COLOR_RED);
-        return false;
+        return ItemOpen::FAILED;
     }
-    if (!to_key_items() || !open_row(TeachScreen::BAG, "tm-case")){
-        return false;
+    if (!to_key_items() || open_row(TeachScreen::BAG, "tm-case") != ItemOpen::OPENED){
+        return ItemOpen::FAILED;
     }
-    if (!open_row(TeachScreen::TM_CASE, move)){
+    const ItemOpen opened = open_row(TeachScreen::TM_CASE, move);
+    if (opened != ItemOpen::OPENED){
         m_logger.log(std::format("Teach: couldn't use {} ({}) from the TM CASE.", item, move), COLOR_RED);
-        return false;
+        return opened;
     }
-    return wait_for(TeachScreen::PARTY_PROMPT).has_value();
+    return wait_for(TeachScreen::PARTY_PROMPT).has_value() ? ItemOpen::OPENED : ItemOpen::FAILED;
 }
 
 TeachPrompt ScreenTeachActions::choose_member(size_t slot){
