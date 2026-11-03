@@ -29,7 +29,9 @@
 #include "Inference/PokemonFRLG_WildEncounterReader.h"
 #include "PokemonFRLG_Navigation.h"
 #include "Programs/RngManipulation/PokemonFRLG_RngPlanInputs_Tests.h"
+#include "Programs/RngManipulation/PokemonFRLG_RngPlanLog_Tests.h"
 #include "Programs/RngManipulation/PokemonFRLG_RngPlanTracker_Tests.h"
+#include "Programs/RngManipulation/PokemonFRLG_RngPlan_Tests.h"
 #include "Programs/RngManipulation/PokemonFRLG_RngTargetSearch_Tests.h"
 #include "Tests/TestUtils.h"
 
@@ -293,7 +295,9 @@ void add_tests(UnitTestDatabase& database){
     add_tests_ExitWildBattle(database);
     add_tests_RngTargetSearch(database);
     add_tests_RngPlanInputs(database);
+    add_tests_RngPlan(database);
     add_tests_RngPlanTracker(database);
+    add_tests_RngPlanLog(database);
 }
 
 
