@@ -36,5 +36,19 @@ class TrainerTest(unittest.TestCase):
             self.assertNotIn('facing', data)
 
 
+class EncounterTest(unittest.TestCase):
+    #   MtMoon_1F's cave floor: behavior MB_CAVE (0x08), encounter type LAND.
+    CAVE_FLOOR = 0x08 | (frlg_maps.TILE_ENCOUNTER_LAND << frlg_maps.ENCOUNTER_TYPE_SHIFT)
+
+    def test_cave_floor_has_wild_encounters(self):
+        self.assertEqual(frlg_maps.encounter_glyph('.', self.CAVE_FLOOR), '~')
+
+    def test_floor_without_encounters_stays_open(self):
+        self.assertEqual(frlg_maps.encounter_glyph('.', 0x08), '.')
+
+    def test_walls_stay_walls(self):
+        self.assertEqual(frlg_maps.encounter_glyph('#', self.CAVE_FLOOR), '#')
+
+
 if __name__ == '__main__':
     unittest.main()
