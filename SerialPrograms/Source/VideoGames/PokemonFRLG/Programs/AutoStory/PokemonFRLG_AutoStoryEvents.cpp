@@ -16,6 +16,7 @@
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRoute.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWalk.h"
 #include "PokemonFRLG_AutoStoryAbilities.h"
+#include "PokemonFRLG_AutoStoryBattleData.h"
 #include "PokemonFRLG_AutoStoryCapture.h"
 #include "PokemonFRLG_AutoStoryEvents.h"
 #include "PokemonFRLG_AutoStorySummary.h"
@@ -155,9 +156,10 @@ Outcome battle(StoryEnv& env, const StoryStep& step){
     if (advance_text(env.console, env.context, BATTLE_TEXT_TIMEOUT, true) != TextEnd::BATTLE){
         return Pokemon::outcome_failed("no_battle");
     }
-    env.supplies.foes = trainer_party(step.name);
+    const std::optional<std::string_view> trainer = step.pose_after ? story_trainer(step.pose_after->map, step.name) : std::nullopt;
+    env.supplies.foes = trainer ? trainer_party(*trainer) : std::vector<std::string>{};
     if (!env.supplies.foes.empty()){
-        env.console.log("Story: " + step.name + "'s party is known; attacks are chosen against it.");
+        env.console.log("Story: " + step.name + " is " + std::string(*trainer) + "; attacks are chosen against the party.");
     }
     const BattleEnd end = fight_battle(env.console, env.context, env.supplies, BattleKind::TRAINER, env.checks, env.language);
     env.supplies.foes.clear();

@@ -16,6 +16,7 @@
 #include "Common/Cpp/Logging/AbstractLogger.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "PokemonFRLG_AutoStoryBattle.h"
+#include "PokemonFRLG_AutoStoryBattleData.h"
 #include "PokemonFRLG_AutoStoryBattleDecisions.h"
 #include "PokemonFRLG_AutoStoryParty.h"
 
@@ -372,8 +373,9 @@ UnitTestResult test_summary_members(Logger&){
 //  #211: Bite, not Water Gun, against the trainers whose parties resist
 //  Water Gun: the Cerulean rival's Bulbasaur, and Misty's Staryu and
 //  Starmie (Water, Psychic: Bite does twice). Once Bite is out of PP,
-//  Tackle (35) over the resisted Water Gun (40 x 1.5 x 0.5); and the battle
-//  loop picks Bite against a known party, but not in a wild battle.
+//  Tackle (35, on Bulbasaur's lower Defense) over the resisted Water Gun
+//  (40 x 1.5 x 0.5); and the battle loop picks Bite against a known party,
+//  but not in a wild battle, which has its own foes (BattleData tests).
 UnitTestResult test_attack_by_matchup(Logger&){
     PartyMember wartortle = grown_to(new_member("squirtle", 5), 20);
     const std::vector<std::string> bulbasaur{"bulbasaur"};
@@ -388,8 +390,8 @@ UnitTestResult test_attack_by_matchup(Logger&){
     };
     const std::vector<Case> cases{
         {.name = "the rival's Bulbasaur", .foes = bulbasaur},
-        {.name = "the Cerulean rival's party", .foes = trainer_party("rival_cerulean")},
-        {.name = "Misty's party", .foes = trainer_party("misty")},
+        {.name = "the Cerulean rival's party", .foes = trainer_party("TRAINER_RIVAL_CERULEAN_BULBASAUR")},
+        {.name = "Misty's party", .foes = trainer_party("TRAINER_LEADER_MISTY")},
     };
     for (const Case& c : cases){
         const std::optional<size_t> slot = attack_slot_against(wartortle, c.foes);
@@ -397,8 +399,9 @@ UnitTestResult test_attack_by_matchup(Logger&){
             return std::format("{} ({}): expected Bite (slot 1), got slot {}.", c.name, joined(c.foes), slot ? std::to_string(*slot) : "none");
         }
     }
-    if (trainer_party("rival_cerulean") != std::vector<std::string>{"pidgeotto", "abra", "rattata", "bulbasaur"}){
-        return "Expected the Cerulean rival's party from pret's sParty_RivalCeruleanBulbasaur, got " + joined(trainer_party("rival_cerulean")) + ".";
+    const std::vector<std::string> rival = trainer_party(story_trainer("CeruleanCity", "rival_cerulean").value_or(""));
+    if (rival != std::vector<std::string>{"pidgeotto", "abra", "rattata", "bulbasaur"}){
+        return "Expected the Cerulean rival's party from pret's sParty_RivalCeruleanBulbasaur, got " + joined(rival) + ".";
     }
 
     PartyMember no_bite = wartortle;
@@ -417,19 +420,19 @@ UnitTestResult test_attack_by_matchup(Logger&){
     BattleDecisions wild(supplies, BattleKind::WILD_FIGHT);
     supplies.potions = 5;
     if (wild.turn(GREEN).slot != *water_gun){
-        return "Expected a wild battle to keep the plan's order (Water Gun), whatever foes are set.";
+        return "Expected a wild battle with nothing read to keep the plan's order (Water Gun), whatever foes are set.";
     }
     return true;
 }
 
-//  A trainer whose party the story doesn't know, and no foes at all, get
-//  the plan's order: Water Gun first.
+//  A trainer the data doesn't have, a species it doesn't have, and no foes
+//  at all get the plan's order: Water Gun first.
 UnitTestResult test_attack_unknown_foe(Logger&){
     const PartyMember wartortle = grown_to(new_member("squirtle", 5), 20);
-    if (!trainer_party("bug_catcher_cale").empty()){
-        return "Expected no party for a trainer the story doesn't know.";
+    if (!trainer_party("TRAINER_NOBODY").empty() || story_trainer("Route24", "nobody")){
+        return "Expected no party for a trainer the data doesn't have.";
     }
-    const std::vector<std::vector<std::string>> unknown{{}, {"missingno"}, trainer_party("bug_catcher_cale")};
+    const std::vector<std::vector<std::string>> unknown{{}, {"missingno"}, trainer_party("TRAINER_NOBODY")};
     for (const std::vector<std::string>& foes : unknown){
         if (attack_slot_against(wartortle, foes) != attack_slot(wartortle) || attack_slot(wartortle) != BOTTOM_LEFT_MOVE){
             return "Expected the plan's order (Water Gun) against " + joined(foes) + ".";
@@ -737,6 +740,7 @@ void add_tests_AutoStoryParty(UnitTestDatabase& database){
     database.add<Test_AutoStoryParty>("a YES/NO with no move list after it changes no move", test_yes_no_without_move_list);
     database.add<Test_AutoStoryParty>("a disabled move: left alone while Disable lasts, PP back", test_disabled_move);
     database.add<Test_AutoStoryParty>("a move turned down: the move list, then the menu sooner than a turn", test_move_refusal_watch);
+    add_tests_AutoStoryBattleData(database);
 }
 
 
