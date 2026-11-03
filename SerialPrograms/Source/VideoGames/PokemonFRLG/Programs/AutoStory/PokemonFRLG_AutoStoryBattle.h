@@ -2,15 +2,15 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  The battle loop of the FRLG story, for a party of one (the starter), as
- *  the by-hand run to Brock played it (console B, 2026-11-01): at each turn
- *  the cursor is put back on FIGHT and the move list's top left, since the
- *  game remembers both; the move is the bottom left one (Bubble), which the
- *  cursor can't reach while that slot is empty, so before Bubble it stays on
- *  Tackle. A Potion is used when the HP bar turns yellow or red, an Antidote
- *  (once a battle) when the status reads PSN at two turns in a row; after
- *  the battle, PSN and PAR are cured from the bag.
- *  "Delete a move to make room?" is answered NO and "Stop learning?" YES.
+ *  The battle loop of the FRLG story, the starter leading, as the by-hand
+ *  run to Brock played it (console B, 2026-11-01): at each turn the cursor
+ *  is put back on FIGHT and the move list's top left, since the game
+ *  remembers both, then onto the move BattleDecisions picks. A Potion is
+ *  used when the HP bar turns yellow or red, an Antidote (once a battle)
+ *  when the status reads PSN at two turns in a row; after the battle, PSN
+ *  and PAR are cured from the bag. Move prompts, an evolution after the
+ *  battle and a fainted lead are as PokemonFRLG_AutoStoryBattleDecisions.h
+ *  says.
  *
  *  Also the overworld interrupts the story walks routes with: wild battles
  *  run from (or fought, for EXP), and messages, after which a trainer's
@@ -30,6 +30,7 @@
 #include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_ItemListReader.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWalk.h"
 #include "PokemonFRLG_AutoStoryActions.h"
+#include "PokemonFRLG_AutoStoryParty.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -63,7 +64,20 @@ struct Supplies{
     //  screen that showed it, and no Potion or nurse healed it since.
     bool hurt = false;
     bool hp_red = false;
+    //  The starter's moves and their PP, as far as the story knows them:
+    //  a new game's Squirtle unless a checkpoint's row says otherwise.
+    PartyMember lead = new_member("squirtle", 5);
+    //  Party slots (from 0, the lead) that are never sent in when the lead
+    //  faints, so they gain no EXP and learn or evolve nothing: a member
+    //  kept for later, or one the user keeps for a trade.
+    std::vector<size_t> protected_slots = {};
 };
+
+//  The nurse healed the party: HP, status and PP.
+void healed_by_nurse(Supplies& supplies);
+
+//  The lead's attacks are low on PP: the nurse before a fight that needs them.
+bool attacks_low_on_pp(const Supplies& supplies);
 
 enum class BattleKind{
     WILD_RUN,       //  RUN, or fight after a few "Can't escape!"
@@ -73,8 +87,9 @@ enum class BattleKind{
 
 enum class BattleEnd{
     WON,
-    //  The starter fainted: a blackout, except in the lab's rival battle,
-    //  which the story goes on from.
+    //  The starter fainted: a blackout, or a wild battle run from (or won)
+    //  by the next member, except in the lab's rival battle, which the
+    //  story goes on from.
     LOST,
 };
 

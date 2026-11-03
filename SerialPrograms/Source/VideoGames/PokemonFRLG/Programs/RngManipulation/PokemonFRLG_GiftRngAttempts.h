@@ -27,6 +27,7 @@
 #include "PokemonFRLG_RngCalibration.h"
 #include "PokemonFRLG_RngDisplays.h"
 #include "PokemonFRLG_SeedsDatabase.h"
+#include "PokemonFRLG_StarterRngAttempts.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -92,6 +93,8 @@ struct GiftRngSettings{
     std::function<uint64_t()> max_rare_candies;
     //  Called after each reset, if set, for a caller that logs the attempts.
     std::function<void(const GiftRngProgress&)> on_reset;
+    //  Called after each reset's reads, if set, as on_reset is.
+    std::function<void(const RngResetRead&)> on_read;
 };
 
 //  Where the attempts show the target, the filters read so far and the
@@ -158,6 +161,7 @@ private:
     AdvObservedPokemon read_gift(SingleSwitchProgramEnvironment& env, ProControllerContext& context);
     std::vector<AdvRngState> search(SingleSwitchProgramEnvironment& env, AdvRngFilters& filters);
     void run_attempt(SingleSwitchProgramEnvironment& env, ProControllerContext& context);
+    void report_read(bool shiny);
 
     const GiftRngTarget m_target;
     const GiftRngSettings m_settings;
@@ -175,6 +179,8 @@ private:
     RngCalibrationHistory m_calibration_history;
     uint64_t m_advances_radius = 0;
     uint16_t m_failed_searches = 0;
+    //  The last search's hits, for on_read.
+    std::vector<AdvRngState> m_search_hits;
 };
 
 

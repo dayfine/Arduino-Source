@@ -223,6 +223,7 @@ void StarterRng::program(SingleSwitchProgramEnvironment& env, ProControllerConte
             .identify_shiny = false,
             .max_resets = [this]{ return uint64_t(MAX_RESETS); },
             .on_reset = nullptr,
+            .on_read = nullptr,
         },
         StarterRngDisplays{.target = RNG_TARGET, .filters = RNG_FILTERS, .calibration = RNG_CALIBRATION},
         StarterRngNotifications{

@@ -247,6 +247,7 @@ void GiftRng::program(SingleSwitchProgramEnvironment& env, ProControllerContext&
             .max_resets = [this]{ return uint64_t(MAX_RESETS); },
             .max_rare_candies = [this]{ return uint64_t(MAX_RARE_CANDIES); },
             .on_reset = nullptr,
+            .on_read = nullptr,
         },
         GiftRngDisplays{.target = RNG_TARGET, .filters = RNG_FILTERS, .calibration = RNG_CALIBRATION},
         GiftRngNotifications{

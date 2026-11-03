@@ -9,6 +9,7 @@
  */
 
 #include <format>
+#include <optional>
 #include <utility>
 #include <string>
 #include <vector>
@@ -196,6 +197,68 @@ private:
     ShinyRow m_row;
 };
 
+
+AdvRngState state(uint16_t seed, uint64_t advance){
+    AdvRngState hit{};
+    hit.seed = seed;
+    hit.advance = advance;
+    return hit;
+}
+
+//  A state's (seed, advance).
+using SeedAdvance = std::pair<uint16_t, uint64_t>;
+
+std::string state_text(const std::optional<SeedAdvance>& state){
+    return state ? std::format("{:04x}/{}", state->first, state->second) : "none";
+}
+
+struct ResetHitRow{
+    std::string name;
+    //  The reset's hits, and what update_history() left after it.
+    std::vector<AdvRngState> hits;
+    size_t uncertain = 0;
+    std::vector<AdvRngState> calibrated;
+    //  The (seed, advance) taken as hit, if any.
+    std::optional<SeedAdvance> expected;
+};
+
+const std::vector<ResetHitRow> RESET_HIT_ROWS = {
+    {.name = "one hit", .hits = {state(0x70fe, 1001)}, .uncertain = 0, .calibrated = {state(0x70fe, 1001)}, .expected = SeedAdvance{0x70fe, 1001}},
+    {
+        .name = "settled by the history", .hits = {state(0x70fe, 998), state(0x70ff, 1003)}, .uncertain = 0,
+        .calibrated = {state(0x70fd, 1004), state(0x70ff, 1003)}, .expected = SeedAdvance{0x70ff, 1003},
+    },
+    {.name = "a tie", .hits = {state(0x70fe, 998), state(0x70ff, 1003)}, .uncertain = 2, .calibrated = {state(0x70fd, 1004)}, .expected = std::nullopt},
+    {.name = "no hits", .hits = {}, .uncertain = 0, .calibrated = {state(0x70fd, 1004)}, .expected = std::nullopt},
+};
+
+class Test_ResetHit : public UnitTest{
+public:
+    explicit Test_ResetHit(const ResetHitRow& row)
+        : UnitTest("PokemonFRLG::RngSteps - Reset hit " + row.name)
+        , m_row(row)
+    {}
+
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        RngUncertainHistory uncertain;
+        uncertain.results.resize(m_row.uncertain);
+        RngCalibrationHistory calibration;
+        calibration.results = m_row.calibrated;
+        const std::optional<AdvRngState> hit = reset_hit(uncertain, calibration, m_row.hits);
+        std::optional<SeedAdvance> got;
+        if (hit){
+            got = SeedAdvance{hit->seed, hit->advance};
+        }
+        if (got != m_row.expected){
+            return "Expected " + state_text(m_row.expected) + ", got " + state_text(got);
+        }
+        return true;
+    }
+
+private:
+    ResetHitRow m_row;
+};
+
 }
 
 
@@ -208,6 +271,9 @@ void add_tests_RngSteps(UnitTestDatabase& database){
     }
     for (const ShinyRow& row : SHINY_ROWS){
         database.add<Test_IdentifyShiny>(row);
+    }
+    for (const ResetHitRow& row : RESET_HIT_ROWS){
+        database.add<Test_ResetHit>(row);
     }
 }
 

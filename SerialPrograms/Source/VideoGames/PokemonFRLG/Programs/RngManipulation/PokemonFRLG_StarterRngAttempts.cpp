@@ -99,6 +99,17 @@ StarterRngOutcome identify_shiny(uint16_t seed, uint64_t advances, const std::ve
     return on_target ? StarterRngOutcome::shiny_on_target : StarterRngOutcome::shiny_off_target;
 }
 
+std::optional<AdvRngState> reset_hit(
+    const RngUncertainHistory& uncertain, const RngCalibrationHistory& calibration, const std::vector<AdvRngState>& hits
+){
+    //  update_history() clears `uncertain` only when it takes a hit, and adds
+    //  the reset's last after the earlier ones it settles.
+    if (hits.empty() || !uncertain.results.empty() || calibration.results.empty()){
+        return std::nullopt;
+    }
+    return calibration.results.back();
+}
+
 
 StarterRngStats::StarterRngStats()
     : resets(m_stats["Resets"])
@@ -164,10 +175,23 @@ StarterRngResult StarterRngAttempts::run(SingleSwitchProgramEnvironment& env, Pr
         if (check_shiny_starter(env, context)){
             const StarterRngOutcome shiny = m_settings.identify_shiny ? identify_shiny_starter(env, context) : StarterRngOutcome::shiny;
             const bool on_target = shiny == StarterRngOutcome::shiny_on_target;
+            report_read(true);
             return StarterRngResult{.outcome = shiny, .pokemon = on_target ? std::optional(target_result) : std::nullopt};
         }
 
         run_attempt(env, context);
+        report_read(false);
+    }
+}
+
+void StarterRngAttempts::report_read(bool shiny){
+    if (m_settings.on_read){
+        m_settings.on_read(RngResetRead{
+            .resets = m_stats.resets.load(),
+            .hits = m_search_hits,
+            .hit = shiny ? std::nullopt : reset_hit(m_uncertain_history, m_calibration_history, m_search_hits),
+            .shiny = shiny,
+        });
     }
 }
 
@@ -234,6 +258,7 @@ void StarterRngAttempts::reset_game(SingleSwitchProgramEnvironment& env, ProCont
         m_launch_delay, false, m_settings.profile
     );
     m_stats.resets++;
+    m_search_hits.clear();
     if (m_settings.on_reset){
         m_settings.on_reset(StarterRngProgress{.resets = m_stats.resets.load(), .calibrations = m_calibrations});
     }
@@ -292,10 +317,11 @@ void StarterRngAttempts::send_shiny_notification(
 }
 
 std::vector<AdvRngState> StarterRngAttempts::search(SingleSwitchProgramEnvironment& env, AdvRngFilters& filters){
-    return get_search_results(
+    m_search_hits = get_search_results(
         env.console, m_searcher, filters, m_target.seed_match.seed_values,
         m_target.advances, m_advances_radius, GENDER_THRESHOLD
     );
+    return m_search_hits;
 }
 
 void StarterRngAttempts::record_error(SingleSwitchProgramEnvironment& env, const std::vector<AdvRngState>& search_hits){

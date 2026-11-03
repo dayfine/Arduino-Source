@@ -17,6 +17,7 @@
 #include <functional>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/Logging/AbstractLogger.h"
@@ -66,6 +67,26 @@ struct RngLoopState{
     std::optional<RngCalibrations> calibration;
 };
 std::string rng_log_state(const RngLoopState& state);
+
+
+//  A reset's reads, for its one line on the stream's log.
+struct RngResetLine{
+    //  "Starter RNG" or "Gift RNG".
+    std::string_view program;
+    uint64_t max_resets = 0;
+    uint16_t target_seed = 0;
+    uint64_t target_advances = 0;
+    //  The seeds near the target, in the order of their delays, and the
+    //  target's place among them (SeedMatch).
+    std::vector<uint16_t> seed_values;
+    int16_t seed_position = -1;
+    RngResetRead read;
+};
+//  The frames from the target seed to `seed` among `seed_values`: +1 for
+//  the seed a frame later. None when either isn't among them.
+std::optional<int> seed_frame_offset(const std::vector<uint16_t>& seed_values, int16_t target_position, uint16_t seed);
+//  As "Gift RNG try 28/50: seed 9cf3 = target, advance 1669 (target 1670, -1). Missed."
+std::string rng_reset_line(const RngResetLine& line);
 
 
 struct StarterRngLoopLimits{

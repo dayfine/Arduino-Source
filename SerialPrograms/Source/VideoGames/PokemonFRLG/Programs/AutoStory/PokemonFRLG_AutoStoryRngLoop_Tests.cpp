@@ -11,6 +11,7 @@
 #include <format>
 #include <functional>
 #include <string>
+#include <string_view>
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/Logging/AbstractLogger.h"
@@ -81,14 +82,14 @@ UnitTestResult test_shiny_messages(){
 }
 
 
-size_t row_index(const std::string& id){
+size_t row_index(std::string_view id){
     const std::vector<StoryCheckpoint>& checkpoints = story_checkpoints();
     for (size_t c = 0; c < checkpoints.size(); c++){
         if (checkpoints[c].id == id){
             return c;
         }
     }
-    throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "No checkpoint " + id);
+    throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "No checkpoint " + std::string(id));
 }
 
 std::string joined_ids(const StoryRunPlan& plan){
@@ -190,7 +191,7 @@ UnitTestResult test_rows_after_magikarp(){
     ){
         return "Expected 00.12 to be Gift RNG's handoff and 00.12b to start from the live game at (2, 3) facing west.";
     }
-    for (const std::string& last : {"00.12", "00.12b"}){
+    for (std::string_view last : {"00.12", "00.12b"}){
         const StoryRunPlan plan = rows_after_gift_rng(checkpoints, salesman_row, row_index(last), StoryHandoffs{.gift_rng = true});
         if (joined_ids(plan) != "00.12b" || first_step(plan) != LEAVE_GIFT_SUMMARY || plan.stop != StoryHandoff::NONE){
             return std::format(
@@ -231,6 +232,101 @@ UnitTestResult test_gift_outcomes(){
     return true;
 }
 
+
+std::string calibration_text(const RngCalibrations& calibration){
+    return std::format("{}/{}/{}", calibration.seed_offset, calibration.csf_offset, calibration.ingame_offset);
+}
+
+//  Starter RNG starts from the RNG plan's calibration: the console's seed
+//  and Continue Screen Frames offsets, and Starter RNG's in-game offset.
+UnitTestResult test_starter_calibration_from_options(){
+    StarterRngPlanOptions options;
+    RngStopCalibrationOptions& calibration = options.CALIBRATION;
+    const RngCalibrations zero{.seed_offset = 0, .csf_offset = 0, .ingame_offset = 0};
+    if (calibration.calibration(calibration.STARTER_INGAME) != zero){
+        return "Expected no calibration by default; got " + calibration_text(calibration.calibration(calibration.STARTER_INGAME));
+    }
+    calibration.SEED.set(17);
+    calibration.CSF.set(0.5);
+    calibration.STARTER_INGAME.set(-1.2);
+    const RngCalibrations expected{.seed_offset = 17 / FRLG_FRAME_DURATION, .csf_offset = 0.5, .ingame_offset = -1.2};
+    const RngCalibrations got = calibration.calibration(calibration.STARTER_INGAME);
+    if (got != expected){
+        return std::format("Expected calibration {}; got {}", calibration_text(expected), calibration_text(got));
+    }
+    return true;
+}
+
+//  Steps whose one try resets once for each calibration in `resets`.
+class ResettingSteps : public StarterRngLoopSteps{
+public:
+    explicit ResettingSteps(std::vector<RngCalibrations> resets) : m_resets(std::move(resets)) {}
+    virtual WallClock now() override{ return WallClock{}; }
+    virtual StarterRngResult run_attempt(const RngAttempt&, const StarterRngAttemptCall& call) override{
+        for (size_t c = 0; c < m_resets.size(); c++){
+            call.on_reset(StarterRngProgress{.resets = c + 1, .calibrations = m_resets[c]});
+        }
+        return StarterRngResult{.outcome = StarterRngOutcome::out_of_resets, .pokemon = std::nullopt};
+    }
+
+private:
+    std::vector<RngCalibrations> m_resets;
+};
+
+//  Each reset's calibration is kept in the RNG plan before the loop hears
+//  of the reset, so a run stopped after it keeps it.
+UnitTestResult test_starter_calibration_saved(){
+    StarterRngPlanOptions options;
+    RngStopCalibrationOptions& calibration = options.CALIBRATION;
+    ResettingSteps resetting({
+        {.seed_offset = 0.5, .csf_offset = 0.25, .ingame_offset = -0.5},
+        {.seed_offset = 1.0, .csf_offset = 0.5, .ingame_offset = -1.2},
+    });
+    CalibrationSavingSteps steps(resetting, calibration, calibration.STARTER_INGAME);
+    std::vector<double> csf_at_reset;
+    steps.run_attempt(RngAttempt{}, StarterRngAttemptCall{
+        .index = 0, .deadline = WallClock{}, .max_resets = 2,
+        .on_reset = [&](const StarterRngProgress&){ csf_at_reset.emplace_back(calibration.CSF); },
+    });
+    if (csf_at_reset != std::vector<double>{0.25, 0.5}){
+        std::string got;
+        for (double csf : csf_at_reset){
+            got += std::format(" {}", csf);
+        }
+        return "Expected the CSF offset saved at each reset as 0.25 0.5; got" + got;
+    }
+    //  The seed offset is kept in ms: 1.0 frame is 16.7 ms.
+    if (int64_t(calibration.SEED) != 17 || double(calibration.STARTER_INGAME) != -1.2){
+        return std::format(
+            "Expected seed 17 ms and Starter RNG in-game -1.2 saved; got {} ms and {}",
+            int64_t(calibration.SEED), double(calibration.STARTER_INGAME)
+        );
+    }
+    return true;
+}
+
+//  Gift RNG starts from the console's seed and CSF offsets, which Starter
+//  RNG may have saved, and its own in-game offset: 0 until it saves one.
+//  Saving Gift RNG's leaves Starter RNG's in-game offset as it was.
+UnitTestResult test_gift_calibration(){
+    StarterRngPlanOptions options;
+    RngStopCalibrationOptions& calibration = options.CALIBRATION;
+    calibration.save({.seed_offset = 1.0, .csf_offset = 0.5, .ingame_offset = -1.2}, calibration.STARTER_INGAME);
+    const RngCalibrations gift = calibration.calibration(calibration.GIFT_INGAME);
+    const RngCalibrations expected{.seed_offset = 17 / FRLG_FRAME_DURATION, .csf_offset = 0.5, .ingame_offset = 0};
+    if (gift != expected){
+        return std::format("Expected Gift RNG to start from {}; got {}", calibration_text(expected), calibration_text(gift));
+    }
+    calibration.save({.seed_offset = 1.0, .csf_offset = 0.5, .ingame_offset = 9.0}, calibration.GIFT_INGAME);
+    if (double(calibration.GIFT_INGAME) != 9.0 || double(calibration.STARTER_INGAME) != -1.2){
+        return std::format(
+            "Expected in-game offsets Gift 9 and Starter -1.2; got {} and {}",
+            double(calibration.GIFT_INGAME), double(calibration.STARTER_INGAME)
+        );
+    }
+    return true;
+}
+
 }
 
 
@@ -240,6 +336,9 @@ void add_tests_AutoStoryRngLoop(UnitTestDatabase& database){
     database.add<Test_AutoStoryRngLoop>("Gift RNG messages", test_gift_messages);
     database.add<Test_AutoStoryRngLoop>("00.12 and 00.12b: rows after a shiny Magikarp", test_rows_after_magikarp);
     database.add<Test_AutoStoryRngLoop>("Gift RNG outcomes in the RNG plan", test_gift_outcomes);
+    database.add<Test_AutoStoryRngLoop>("Starter RNG starts from the RNG plan's calibration", test_starter_calibration_from_options);
+    database.add<Test_AutoStoryRngLoop>("Starter RNG saves its calibration after each reset", test_starter_calibration_saved);
+    database.add<Test_AutoStoryRngLoop>("Gift RNG keeps its own in-game calibration", test_gift_calibration);
 }
 
 

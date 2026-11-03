@@ -212,6 +212,23 @@ std::optional<Transition> press(const std::vector<MapData>& maps, const Located&
     return transition;
 }
 
+//  Whether pressing `direction` takes a warp to a map that isn't loaded,
+//  which press() refuses as if it were a wall.
+bool warps_off_loaded_maps(const std::vector<MapData>& maps, const Located& player, Direction direction){
+    const MapData& map = maps[player.map];
+    const TilePos here = player.state.position;
+    const TilePos ahead = here.next(direction);
+    const MapWarp* warp = nullptr;
+    if (exit_mat(map, here) == direction){
+        warp = warp_at(map, here);
+    }else if (direction == Direction::NORTH && is_door(map, ahead) && !player.state.surfing){
+        warp = warp_at(map, ahead);
+    }else if (in_bounds(map, ahead) && warps_on_step(map, ahead) && classify_step(map, player.state, direction) != StepKind::BLOCKED){
+        warp = warp_at(map, ahead);
+    }
+    return warp != nullptr && !take_warp(maps, warp);
+}
+
 //  Whether holding `direction` stops the player where they are: a wall, or
 //  water they'd need to Surf onto. A leg that ends there can be
 //  held for longer than it takes, and walked again after an interruption. A
@@ -221,6 +238,12 @@ bool stops_at(const std::vector<MapData>& maps, const Located& player, Direction
     const std::optional<Transition> transition = press(maps, player, direction);
     if (transition){
         return transition->action == RouteAction::SURF;
+    }
+    //  Nor does a warp to a map that isn't loaded: the player takes it (console
+    //  B, 2026-11-02, "west 5 (to wall)" rode Route 4's Pokemon Center
+    //  escalator up to 2F).
+    if (warps_off_loaded_maps(maps, player, direction)){
+        return false;
     }
     const MapData& map = maps[player.map];
     const TilePos ahead = player.state.position.next(direction);

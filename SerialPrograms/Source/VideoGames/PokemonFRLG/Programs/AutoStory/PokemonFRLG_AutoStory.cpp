@@ -243,6 +243,7 @@ static void prepare_start(
     soft_reset(env.console, context);
     story.has_save = true;
     check_start_save(env, story, checkpoints[first]);
+    read_lead_moves(story, checkpoints[first].menu);
 }
 
 //  The run stopped for an RNG program, as its option asked: the user's
@@ -471,9 +472,13 @@ static bool run_starter_rng_in_program(
     const StarterRngPlanned& planned, StarterRngPlanOptions& options, Language language,
     const StarterRngNotifications& notifications, EventNotificationOption& finished
 ){
-    ConsoleStarterRngSteps steps(
-        env, context, StarterRngConsoleSettings{.language = language, .sound = options.SOUND}, notifications
-    );
+    //  The settings file gets the calibration saved after each reset when
+    //  the program's panel is closed or the app quits.
+    RngStopCalibrationOptions& calibration = options.CALIBRATION;
+    ConsoleStarterRngSteps console_steps(env, context, StarterRngConsoleSettings{
+        .language = language, .sound = options.SOUND, .calibration = calibration.calibration(calibration.STARTER_INGAME),
+    }, notifications);
+    CalibrationSavingSteps steps(console_steps, calibration, calibration.STARTER_INGAME);
     const StarterRngLoopResult result = run_rng_plan_in_program(env, steps, planned, options);
     return shiny_or_stop(env, finished, result, starter_rng_loop_message(result));
 }
@@ -486,9 +491,13 @@ static bool run_gift_rng_in_program(
     const StarterRngPlanned& planned, StarterRngPlanOptions& options, Language language,
     const GiftRngNotifications& notifications, EventNotificationOption& finished
 ){
-    ConsoleGiftRngSteps steps(
-        env, context, GiftRngConsoleSettings{.language = language, .sound = options.SOUND}, notifications
-    );
+    //  The console's seed and CSF offsets, from Starter RNG too, and Gift
+    //  RNG's own in-game offset, saved as Starter RNG's are.
+    RngStopCalibrationOptions& calibration = options.CALIBRATION;
+    ConsoleGiftRngSteps console_steps(env, context, GiftRngConsoleSettings{
+        .language = language, .sound = options.SOUND, .calibration = calibration.calibration(calibration.GIFT_INGAME),
+    }, notifications);
+    CalibrationSavingSteps steps(console_steps, calibration, calibration.GIFT_INGAME);
     const StarterRngLoopResult result = run_rng_plan_in_program(env, steps, planned, options);
     return shiny_or_stop(env, finished, result, gift_rng_loop_message(result));
 }

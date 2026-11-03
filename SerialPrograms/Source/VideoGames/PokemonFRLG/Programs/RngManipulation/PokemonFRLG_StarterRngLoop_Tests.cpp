@@ -413,6 +413,87 @@ UnitTestResult test_state_line(){
     return true;
 }
 
+
+
+AdvRngState state(uint16_t seed, uint64_t advance){
+    AdvRngState hit{};
+    hit.seed = seed;
+    hit.advance = advance;
+    return hit;
+}
+
+//  Target: seed 9cf3 at advance 1670, between 7425 a frame earlier and
+//  e66e a frame later.
+struct ResetLineRow{
+    std::string name;
+    std::string program;
+    RngResetRead read;
+    std::string expected;
+};
+
+const std::vector<ResetLineRow> RESET_LINE_ROWS = {
+    {
+        .name = "seed on the target", .program = "Gift RNG",
+        .read = {.resets = 28, .hits = {state(0x9cf3, 1669)}, .hit = state(0x9cf3, 1669), .shiny = false},
+        .expected = "Gift RNG try 28/50: seed 9cf3 = target, advance 1669 (target 1670, -1). Missed.",
+    },
+    {
+        .name = "seed a frame late", .program = "Starter RNG",
+        .read = {.resets = 27, .hits = {state(0xe66e, 1677), state(0x7425, 1690)}, .hit = state(0xe66e, 1677), .shiny = false},
+        .expected = "Starter RNG try 27/50: seed e66e (+1 frame late), advance 1677 (target 1670, +7). Missed.",
+    },
+    {
+        .name = "seed a frame early", .program = "Gift RNG",
+        .read = {.resets = 4, .hits = {state(0x7425, 1670)}, .hit = std::nullopt, .shiny = false},
+        .expected = "Gift RNG try 4/50: seed 7425 (-1 frame early), advance 1670. Missed.",
+    },
+    {
+        .name = "seed not near the target", .program = "Gift RNG",
+        .read = {.resets = 5, .hits = {state(0x1234, 1670)}, .hit = state(0x1234, 1670), .shiny = false},
+        .expected = "Gift RNG try 5/50: seed 1234 (not near the target), advance 1670. Missed.",
+    },
+    {
+        .name = "no match", .program = "Gift RNG",
+        .read = {.resets = 19, .hits = {}, .hit = std::nullopt, .shiny = false},
+        .expected = "Gift RNG try 19/50: no match read (stats fit no seed/advance).",
+    },
+    {
+        .name = "several matches", .program = "Gift RNG",
+        .read = {
+            .resets = 3, .hits = {state(0x9cf3, 1668), state(0x9cf3, 1668), state(0xe66e, 1671), state(0x7425, 1675)},
+            .hit = std::nullopt, .shiny = false,
+        },
+        .expected = "Gift RNG try 3/50: 3 possible matches, can't tell which.",
+    },
+    {
+        .name = "target hit", .program = "Starter RNG",
+        .read = {.resets = 12, .hits = {state(0x9cf3, 1670)}, .hit = state(0x9cf3, 1670), .shiny = false},
+        .expected = "Starter RNG try 12/50: seed 9cf3 = target, advance 1670. HIT, not shiny.",
+    },
+    {
+        .name = "shiny on the target", .program = "Gift RNG",
+        .read = {.resets = 31, .hits = {state(0xe66e, 1671), state(0x9cf3, 1670)}, .hit = std::nullopt, .shiny = true},
+        .expected = "Gift RNG try 31/50: seed 9cf3 = target, advance 1670. HIT, shiny!",
+    },
+    {
+        .name = "shiny off the target", .program = "Gift RNG",
+        .read = {.resets = 9, .hits = {state(0xe66e, 1671)}, .hit = std::nullopt, .shiny = true},
+        .expected = "Gift RNG try 9/50: shiny, not on the target.",
+    },
+};
+
+UnitTestResult test_reset_line(const ResetLineRow& row){
+    const std::string got = rng_reset_line(RngResetLine{
+        .program = row.program, .max_resets = 50, .target_seed = 0x9cf3, .target_advances = 1670,
+        .seed_values = {0x1111, 0x7425, 0x9cf3, 0xe66e, 0x2222}, .seed_position = 2,
+        .read = row.read,
+    });
+    if (got != row.expected){
+        return "Expected \"" + row.expected + "\", got \"" + got + "\".";
+    }
+    return true;
+}
+
 }
 
 
@@ -423,6 +504,9 @@ void add_tests_StarterRngLoop(UnitTestDatabase& database){
     database.add<Test_StarterRngLoop>("attempt deadlines", test_deadlines);
     database.add<Test_StarterRngLoop>("a setup error stops the loop", test_setup_error_stops);
     database.add<Test_StarterRngLoop>("state line", test_state_line);
+    for (const ResetLineRow& row : RESET_LINE_ROWS){
+        database.add<Test_StarterRngLoop>("reset line " + row.name, [row]{ return test_reset_line(row); });
+    }
 }
 
 

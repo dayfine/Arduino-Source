@@ -4,6 +4,8 @@
  *
  */
 
+#include <chrono>
+#include <format>
 #include <functional>
 #include <initializer_list>
 #include <set>
@@ -11,6 +13,7 @@
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "PokemonFRLG_OverworldMaps.h"
+#include "PokemonFRLG_OverworldReanchor.h"
 #include "PokemonFRLG_OverworldRoute.h"
 
 namespace PokemonAutomation{
@@ -156,6 +159,50 @@ UnitTestResult test_unknown_tile(){
     return true;
 }
 
+//  Route 3's Lass Robin, shrunk: she wanders x 2, y 2..4 looking north and
+//  south, sight 3, below a corridor (row 1) walled off at x 2 above it; a
+//  bug catcher at (5, 4) looks west, sight 2.
+const char* const TRAINERS_MAP = R"({
+    "name": "Trainers",
+    "source": {"decomp_file": "", "revision": "test", "date": "2026-11-02"},
+    "tiles": ["##.####", ".......", ".......", ".......", ".......", "~~~~~~~"],
+    "objects": [
+        {"name": "lass", "kind": "npc", "x": 2, "y": 3, "wander": {"x0": 2, "y0": 2, "x1": 2, "y1": 4}, "trainer": {"sight": 3, "looks": ["north", "south"]}},
+        {"name": "bug_catcher", "kind": "npc", "x": 5, "y": 4, "facing": "west", "trainer": {"sight": 2}},
+        {"name": "youngster", "kind": "npc", "x": 6, "y": 1}
+    ]
+})";
+
+//  A wanderer sees from every tile she may stand on, short of a wall; a
+//  trainer standing still only along his facing; a non-trainer nothing.
+UnitTestResult test_trainer_sight(){
+    const MapData map = parse_map(TRAINERS_MAP, "Trainers.json");
+    const MapObject& lass = map.objects[0];
+    const MapObject& bug_catcher = map.objects[1];
+    const MapObject& youngster = map.objects[2];
+    struct Case{
+        const MapObject* object;
+        TilePos tile;
+        bool sees;
+    };
+    const Case cases[] = {
+        {&lass, {2, 1}, true},          //  from (2, 2..4), north
+        {&lass, {2, 0}, true},          //  the gap in the wall, 2 tiles up from (2, 2)
+        {&lass, {2, 5}, true},          //  south, from (2, 4)
+        {&lass, {1, 1}, false},
+        {&bug_catcher, {3, 4}, true},
+        {&bug_catcher, {2, 4}, false},  //  past his sight
+        {&bug_catcher, {5, 3}, false},  //  not his way
+        {&youngster, {5, 1}, false},
+    };
+    for (const Case& c : cases){
+        if (trainer_may_see(map, *c.object, c.tile) != c.sees){
+            return c.object->name + (c.sees ? " should see " : " shouldn't see ") + Pokemon::to_string(c.tile) + ".";
+        }
+    }
+    return true;
+}
+
 UnitTestResult test_not_json(){
     const std::string error = parse_error("{\"name\": ");
     if (!mentions(error, {"Test.json", "not a JSON object"})){
@@ -231,6 +278,161 @@ UnitTestResult test_walk_only_indoors(){
     return true;
 }
 
+//  From (7, 6) in Route 4's Pokemon Center to the salesman, no leg holds
+//  west along row 6: the escalator at (1, 6) rides up to 2F, which isn't
+//  loaded (console B, 2026-11-02, "west 5 (to wall)").
+UnitTestResult test_route4_center_escalator(){
+    const std::vector<MapData> maps = overworld_maps();
+    const MapPosition start{"Route4_PokemonCenter_1F", {7, 6}};
+    const MapPosition salesman{"Route4_PokemonCenter_1F", {2, 3}};
+    if (hold_to_wall(maps, start, false, Direction::WEST)){
+        return "Expected no hold west from (7, 6) along the escalator's row.";
+    }
+    const std::optional<std::vector<RouteStep>> route = plan_overworld_route(maps, start, RouteGoal{salesman, Direction::WEST});
+    if (!route || !(follow_overworld_route(maps, start, *route) == salesman)){
+        return "Expected a route from (7, 6) to the salesman.";
+    }
+    for (const RouteStep& step : *route){
+        if (step.to_wall && step.direction == Direction::WEST && step.end.point == TilePos{2, 6}){
+            return "Expected no hold west next to the escalator: " + to_string(step);
+        }
+    }
+    return true;
+}
+
+//  A hall with an escalator at (1, 2) to a floor that isn't loaded, like
+//  Route 4's Pokemon Center.
+const char* const ESCALATOR_HALL = R"({
+    "name": "Hall", "source": {"decomp_file": "", "revision": "test", "date": "2026-11-02"},
+    "tiles": ["######", "#....#", "#....#", "######"],
+    "warps": [{"x": 1, "y": 2, "enter": "step_on"}]
+})";
+
+//  Holding west along the escalator's row rides it: a leg there ends by
+//  counting tiles, never by holding to the wall behind it (console B,
+//  2026-11-02, Route 4's Pokemon Center).
+UnitTestResult test_no_hold_onto_escalator(){
+    const std::vector<MapData> maps{parse_map(ESCALATOR_HALL, "Hall")};
+    if (hold_to_wall(maps, {"Hall", {4, 2}}, false, Direction::WEST)){
+        return "Expected no hold west along the escalator's row.";
+    }
+    const std::optional<std::vector<RouteStep>> route = plan_overworld_route(maps, {"Hall", {4, 2}}, {{"Hall", {2, 1}}, std::nullopt});
+    if (!route || !(follow_overworld_route(maps, {"Hall", {4, 2}}, *route) == MapPosition{"Hall", {2, 1}})){
+        return "Expected a route from (4, 2) to (2, 1).";
+    }
+    for (const RouteStep& step : *route){
+        if (step.to_wall && step.direction == Direction::WEST && step.end.point == TilePos{2, 2}){
+            return "Expected no hold west next to the escalator: " + to_string(step);
+        }
+    }
+    return true;
+}
+
+
+//  Whether the player, `walked` tiles into `step` from `at` when stopped,
+//  is found again and walked back to the leg's end.
+UnitTestResult check_found_again(
+    const std::vector<MapData>& maps, const MapPosition& at, const RouteStep& step, WalkedTiles walked
+){
+    const std::vector<StopCandidate> candidates = stop_candidates(maps, at, step, walked);
+    const std::optional<Reanchor> anchor = plan_reanchor(maps, candidates, step);
+    if (!anchor || !(follow_overworld_route(maps, anchor->found, anchor->back) == step.end)){
+        return std::format(
+            "Not found again on {} from {}, stopped {} to {} tiles in ({} candidates).",
+            to_string(step), to_string(at), walked.min, walked.max, candidates.size()
+        );
+    }
+    return true;
+}
+
+//  Every open leg from `start` to `goal`, stopped wherever the timing may
+//  put it, walking or running, or anywhere on it: the player is found again.
+//  A leg to a warp off the grass is held on to its warp instead.
+UnitTestResult check_found_again(const std::vector<MapData>& maps, const MapPosition& start, const MapPosition& goal){
+    const std::optional<std::vector<RouteStep>> route = plan_overworld_route(maps, start, RouteGoal{goal, std::nullopt});
+    if (!route){
+        return "No route from " + to_string(start) + ".";
+    }
+    MapPosition at = start;
+    for (const RouteStep& step : *route){
+        std::vector<WalkedTiles> stops;
+        if (step.action == RouteAction::WALK && !step.to_wall && !(step.warps && !step.wild)){
+            stops.push_back(whole_leg(step));
+            for (int estimate = 0; estimate <= step.tiles; estimate++){
+                stops.push_back(walked_near(step, estimate, std::chrono::milliseconds(267)));
+                stops.push_back(walked_near(step, estimate, std::chrono::milliseconds(133)));
+            }
+        }
+        for (const WalkedTiles& walked : stops){
+            const UnitTestResult result = check_found_again(maps, at, step, walked);
+            if (result.result != UnitTestResult::PASSED){
+                return result;
+            }
+        }
+        at = step.end;
+    }
+    return true;
+}
+
+//  00.11's way from Pewter into Route 3 and 00.12's over Route 3 and 4.
+UnitTestResult test_found_again_route3_route4(){
+    const std::vector<MapData> maps = overworld_maps();
+    const UnitTestResult into_route3 = check_found_again(maps, {"PewterCity", {17, 26}}, {"Route3", {13, 8}});
+    if (into_route3.result != UnitTestResult::PASSED){
+        return into_route3;
+    }
+    return check_found_again(maps, {"Route3", {36, 8}}, {"Route4_PokemonCenter_1F", {7, 4}});
+}
+
+//  A leg off the grass that crosses one trainer's sight, on the maps the
+//  story walks: a stop on it is that trainer's, on the tile they see, and
+//  they stand next to the player afterwards.
+UnitTestResult test_trainer_stops(){
+    const std::vector<MapData> maps = overworld_maps();
+    struct Case{
+        const char* name;
+        MapPosition start;
+        Direction direction;
+        int tiles;
+        bool to_wall;
+        MapPosition player;
+        MapPosition trainer;
+    };
+    const Case cases[] = {
+        {
+            .name = "Route 3, Lass Robin, east along row 9 (00.12)",
+            .start = {"Route3", {36, 9}}, .direction = Direction::EAST, .tiles = 11, .to_wall = true,
+            .player = {"Route3", {40, 9}}, .trainer = {"Route3", {40, 10}},
+        },
+        {
+            .name = "Viridian Forest, the Bug Catcher at (47, 45), north up column 42",
+            .start = {"ViridianForest", {42, 61}}, .direction = Direction::NORTH, .tiles = 17, .to_wall = false,
+            .player = {"ViridianForest", {42, 45}}, .trainer = {"ViridianForest", {43, 45}},
+        },
+    };
+    for (const Case& c : cases){
+        RouteStep step;
+        step.direction = c.direction;
+        step.tiles = c.tiles;
+        step.to_wall = c.to_wall;
+        step.end = c.start;
+        step.end.point = TilePos{
+            c.start.point.x + (c.direction == Direction::EAST ? c.tiles : 0),
+            c.start.point.y - (c.direction == Direction::NORTH ? c.tiles : 0),
+        };
+        const std::vector<StopCandidate> candidates = stop_candidates(maps, c.start, step, whole_leg(step));
+        if (candidates.size() != 1 || !(candidates[0].player == c.player) || !candidates[0].trainer || !(candidates[0].trainer->at == c.trainer)){
+            return std::format("{}: expected one stop, at {} with the trainer at {}; got {} candidates.",
+                c.name, to_string(c.player), to_string(c.trainer), candidates.size());
+        }
+        const std::optional<Reanchor> anchor = plan_reanchor(maps, candidates, step);
+        if (!anchor || !anchor->holds.empty() || !(follow_overworld_route(maps, c.player, anchor->back) == step.end)){
+            return std::string(c.name) + ": expected a way on from the stop, with no holds.";
+        }
+    }
+    return true;
+}
+
 }
 
 
@@ -244,6 +446,11 @@ void add_tests_OverworldMaps(UnitTestDatabase& database){
     database.add<Test_OverworldMaps>("not JSON", test_not_json);
     database.add<Test_OverworldMaps>("Route 3, Route 4 and its Pokemon Center", test_route3_route4_maps);
     database.add<Test_OverworldMaps>("walks where running isn't allowed", test_walk_only_indoors);
+    database.add<Test_OverworldMaps>("Route 4's Pokemon Center escalator", test_route4_center_escalator);
+    database.add<Test_OverworldMaps>("trainer sight", test_trainer_sight);
+    database.add<Test_OverworldMaps>("no hold onto an escalator", test_no_hold_onto_escalator);
+    database.add<Test_OverworldMaps>("found again on Route 3 and 4", test_found_again_route3_route4);
+    database.add<Test_OverworldMaps>("trainer stops on the story's maps", test_trainer_stops);
 }
 
 

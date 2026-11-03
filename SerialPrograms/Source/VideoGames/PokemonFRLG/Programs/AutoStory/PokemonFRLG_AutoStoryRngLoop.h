@@ -20,6 +20,7 @@
 #include "VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_RngPlan.h"
 #include "VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_StarterRngLoop.h"
 #include "PokemonFRLG_AutoStoryEvents.h"
+#include "PokemonFRLG_AutoStoryRngOptions.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -36,6 +37,23 @@ struct StarterRngPlanned{
 std::string starter_rng_loop_message(const StarterRngLoopResult& result);
 //  As starter_rng_loop_message(), for Gift RNG's Magikarp.
 std::string gift_rng_loop_message(const StarterRngLoopResult& result);
+
+
+//  `steps`, with the calibration of each reset also kept in the RNG plan's
+//  calibration, with `ingame` as the stop's in-game advances offset, so the
+//  next run starts from it.
+class CalibrationSavingSteps : public StarterRngLoopSteps{
+public:
+    CalibrationSavingSteps(StarterRngLoopSteps& steps, RngStopCalibrationOptions& calibration, FloatingPointOption& ingame);
+
+    virtual WallClock now() override;
+    virtual StarterRngResult run_attempt(const RngAttempt& attempt, const StarterRngAttemptCall& call) override;
+
+private:
+    StarterRngLoopSteps& m_steps;
+    RngStopCalibrationOptions& m_calibration;
+    FloatingPointOption& m_ingame;
+};
 
 
 //  The rows a run takes after a shiny from the loop, which leaves the player

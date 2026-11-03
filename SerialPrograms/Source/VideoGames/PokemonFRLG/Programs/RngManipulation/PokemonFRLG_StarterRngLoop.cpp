@@ -5,7 +5,10 @@
  */
 
 #include <algorithm>
+#include <cstdlib>
 #include <format>
+#include <set>
+#include <utility>
 #include "Common/Cpp/Exceptions.h"
 #include "VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_RngPlanLog.h"
 #include "PokemonFRLG_StarterRngLoop.h"
@@ -88,6 +91,79 @@ std::string rng_log_state(const RngLoopState& state){
         clock_text(state.total_time), clock_text(state.total_cap),
         calibration_text(state.calibration)
     );
+}
+
+
+std::optional<int> seed_frame_offset(const std::vector<uint16_t>& seed_values, int16_t target_position, uint16_t seed){
+    const auto found = std::find(seed_values.begin(), seed_values.end(), seed);
+    if (target_position < 0 || found == seed_values.end()){
+        return std::nullopt;
+    }
+    return int(found - seed_values.begin()) - target_position;
+}
+
+namespace{
+
+std::string seed_text(const RngResetLine& line, uint16_t seed){
+    if (seed == line.target_seed){
+        return std::format("seed {:04x} = target", seed);
+    }
+    const std::optional<int> frames = seed_frame_offset(line.seed_values, line.seed_position, seed);
+    if (!frames){
+        return std::format("seed {:04x} (not near the target)", seed);
+    }
+    return std::format(
+        "seed {:04x} ({:+} frame{} {})", seed, *frames, std::abs(*frames) == 1 ? "" : "s", *frames > 0 ? "late" : "early"
+    );
+}
+
+std::string advance_text(uint64_t target, uint64_t advance){
+    if (advance == target){
+        return std::format("advance {}", advance);
+    }
+    return std::format("advance {} (target {}, {:+})", advance, target, int64_t(advance) - int64_t(target));
+}
+
+size_t distinct_states(const std::vector<AdvRngState>& hits){
+    std::set<std::pair<uint16_t, uint64_t>> states;
+    for (const AdvRngState& hit : hits){
+        states.emplace(hit.seed, hit.advance);
+    }
+    return states.size();
+}
+
+std::string shiny_text(const RngResetLine& line){
+    const std::vector<AdvRngState>& hits = line.read.hits;
+    const bool on_target = std::any_of(hits.begin(), hits.end(), [&](const AdvRngState& hit){
+        return have_hit_target(line.target_seed, line.target_advances, hit);
+    });
+    if (on_target){
+        return seed_text(line, line.target_seed) + ", " + advance_text(line.target_advances, line.target_advances) + ". HIT, shiny!";
+    }
+    return hits.empty() ? "shiny, not known if on the target." : "shiny, not on the target.";
+}
+
+}
+
+std::string rng_reset_line(const RngResetLine& line){
+    const RngResetRead& read = line.read;
+    const std::string head = std::format("{} try {}/{}: ", line.program, read.resets, line.max_resets);
+    if (read.shiny){
+        return head + shiny_text(line);
+    }
+    const size_t states = distinct_states(read.hits);
+    std::optional<AdvRngState> hit = read.hit;
+    if (!hit && states == 1){
+        hit = read.hits.front();
+    }
+    if (!hit){
+        return head + (states == 0
+            ? std::string("no match read (stats fit no seed/advance).")
+            : std::format("{} possible matches, can't tell which.", states));
+    }
+    const bool on_target = have_hit_target(line.target_seed, line.target_advances, *hit);
+    return head + seed_text(line, hit->seed) + ", " + advance_text(line.target_advances, hit->advance)
+        + (on_target ? ". HIT, not shiny." : ". Missed.");
 }
 
 

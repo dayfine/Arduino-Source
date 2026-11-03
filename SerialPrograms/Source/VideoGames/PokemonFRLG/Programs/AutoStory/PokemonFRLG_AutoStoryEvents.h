@@ -191,6 +191,12 @@ struct StoryEnv{
 //  not.
 std::string check_save_place(StoryEnv& env, const std::string& start_map);
 
+//  After a save is loaded, with START's menu `menu`: the lead's moves as its
+//  summary shows them, which the battles then start from in place of the
+//  row's (in env's supplies and the ones a reload restores). The row's are
+//  kept if no move can be read.
+void read_lead_moves(StoryEnv& env, StartMenu menu);
+
 //  Does FRLG's kinds of story step on the console. A console step that
 //  fails is a failed Outcome, which the segment answers by reloading.
 class StoryExecutor : public Pokemon::StoryStepExecutor{
@@ -223,6 +229,11 @@ protected:
     virtual Pokemon::Outcome ready(Pokemon::RunState& state, const StoryStep& step) override;
     //  CLOSE_TRAINER_CARD: back from SID Helper (close_trainer_card()).
     //  LEAVE_GIFT_SUMMARY: back from Gift RNG (leave_gift_summary()).
+    //  A capture or a PC deposit or withdrawal (capture_step(), pc_step()
+    //  in PokemonFRLG_AutoStoryCapture.h); a shiny met in a capture stops
+    //  the program without reloading. A MART, TEACH, LEVEL, GRIND or
+    //  fossil CHOICE (PokemonFRLG_AutoStoryAbilities.h); a GRIND heals by
+    //  routing to its target, the nurse, and back.
     virtual Pokemon::Outcome game(Pokemon::RunState& state, const StoryStep& step) override;
 
 private:
