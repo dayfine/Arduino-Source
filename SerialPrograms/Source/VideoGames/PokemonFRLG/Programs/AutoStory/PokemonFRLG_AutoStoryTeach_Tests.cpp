@@ -21,6 +21,7 @@
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "PokemonFRLG_AutoStoryTeach.h"
+#include "PokemonFRLG_AutoStoryTeachScreens.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -72,7 +73,7 @@ public:
         }
         return info;
     }
-    virtual bool open_item(std::string_view item) override{
+    virtual bool open_item(std::string_view item, std::string_view) override{
         items_opened++;
         const auto found = tm_case.find(std::string(item));
         if (found == tm_case.end() || found->second.count == 0){
@@ -382,6 +383,7 @@ void add_tests_AutoStoryTeach(UnitTestDatabase& database){
     add("TMs and HMs on a fake party", test_teach);
     add("a TM is used up, an HM kept", test_tm_used_up);
     add("the table's variant", test_teach_variant);
+    add_tests_AutoStoryTeachScreens(database);
 }
 
 

@@ -20,6 +20,7 @@
 #include "PokemonFRLG_AutoStoryCapture.h"
 #include "PokemonFRLG_AutoStoryEvents.h"
 #include "PokemonFRLG_AutoStorySummary.h"
+#include "PokemonFRLG_AutoStoryTeachScreens.h"
 #include "PokemonFRLG_AutoStoryWinChance.h"
 
 namespace PokemonAutomation{
@@ -493,7 +494,8 @@ bool grind_heal_trip(StoryEnv& env, RunState& state, const StoryStep& step, cons
 std::optional<Outcome> run_abilities(StoryEnv& env, RunState& state, const StoryStep& step){
     const Pokemon::Pose patch = state.pose;
     ConsoleMartActions mart(env.console, env.context, env.language, env.supplies);
-    ConsoleTeachActions teach(env.console);
+    ConsoleTeachScreens teach_screens(env.console, env.context, env.language);
+    ScreenTeachActions teach(env.console.logger(), teach_screens);
     ConsoleGrindActions grind(
         env.console, env.context, env.language, env.supplies, env.checks,
         [&](const GrindSpot& spot){
