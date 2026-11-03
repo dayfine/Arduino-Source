@@ -579,9 +579,8 @@ StoryCheckpoint cerulean_gym(){
 //  BADGE, TM03 (Water Pulse) and its explanation, all read with the
 //  battle's. Bite is chosen against her party (Starmie is Water/Psychic).
 //  Back to the nurse round the pool's west side, out of Luis's line; then
-//  Water Pulse in place of Tail Whip, last, at the Center: the console's
-//  TEACH has no TM Case reader yet and stops there, after the walk and the
-//  heal. Ends where 00.15 starts.
+//  Water Pulse in place of Tail Whip, last, at the Center, from the bag's
+//  TM CASE. Ends where 00.15 starts.
 StoryCheckpoint misty(){
     const TeachPlan water_pulse{.item = "tm03", .move = "water-pulse", .member = 0, .forget_move = "tail-whip"};
     return row("00.14c", "Cerulean Gym: Misty, then Water Pulse", at(CERULEAN_GYM, 9, 7, WEST), after_brock(), StartMenu::FULL, {
