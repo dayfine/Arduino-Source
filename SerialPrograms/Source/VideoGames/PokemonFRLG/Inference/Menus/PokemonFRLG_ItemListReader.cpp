@@ -4,6 +4,7 @@
  *
  */
 
+#include <algorithm>
 #include <format>
 #include "Common/Cpp/Filesystem/Filesystem.h"
 #include "Common/Cpp/Json/JsonArray.h"
@@ -102,7 +103,7 @@ std::vector<BagRow> read_bag_pocket(Logger& logger, Language language, const Ima
     std::vector<BagRow> rows;
     for (int row = 0; row < ITEM_LIST_ROWS; row++){
         const std::string item = read_item_list_name(logger, language, screen, row);
-        if (item.empty() || item == "cancel"){
+        if (item == "cancel"){
             break;
         }
         const ImageViewRGB32 count = extract_box_reference(game_box(screen), bag_item_count_box(row));
@@ -112,7 +113,18 @@ std::vector<BagRow> read_bag_pocket(Logger& logger, Language language, const Ima
         //  the same digits on the same cream.
         rows.push_back(BagRow{item, read_digits_waterfill_template(logger, count, DigitTemplateType::StatBox)});
     }
-    return rows;
+    return pocket_rows(std::move(rows));
+}
+
+std::vector<BagRow> pocket_rows(std::vector<BagRow> reads){
+    const auto cancel = std::find_if(reads.begin(), reads.end(), [](const BagRow& row){
+        return row.item == "cancel";
+    });
+    reads.erase(cancel, reads.end());
+    while (!reads.empty() && reads.back().item.empty()){
+        reads.pop_back();
+    }
+    return reads;
 }
 
 
@@ -146,7 +158,7 @@ public:
         for (size_t c = 0; c < rows.size(); c++){
             labels.push_back(std::format("row {} item", c + 1));
             labels.push_back(std::format("row {} count", c + 1));
-            values.push_back(rows[c].item);
+            values.push_back(rows[c].item.empty() ? "(unread)" : rows[c].item);
             values.push_back(std::to_string(rows[c].count));
         }
         return check_against_golden_file(UNIT_TEST_RESOURCE_PATH() + image_paths()[0], labels, values);
@@ -189,6 +201,10 @@ void add_tests_ItemListReader(UnitTestDatabase& database){
     //  FireRed on console B, 2026-11-02, after the Viridian Mart: the 5 and
     //  the 3 read as nothing before the digit templates.
     database.add<Test_BagPocket>("PokemonFRLG/ItemListReader/ItemsPocket_eng.png");
+    //  Console B, 2026-11-03, the save before Cerulean's rival: a MOON STONE,
+    //  which the reader has no name for, above the PARLYZ HEAL and 15 POTIONs.
+    //  Stopping at it read nothing, and the rival was fought with 0 Potions.
+    database.add<Test_BagPocket>("PokemonFRLG/ItemListReader/ItemsPocketMoonStone_eng.png");
     //  The Viridian Mart's BUY list, the same day, the cursor on POTION.
     database.add<Test_MartList>("PokemonFRLG/ItemListReader/MartBuyList_eng.png");
 }

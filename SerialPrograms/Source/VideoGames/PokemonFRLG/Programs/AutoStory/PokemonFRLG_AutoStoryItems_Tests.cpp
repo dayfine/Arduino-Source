@@ -164,6 +164,46 @@ UnitTestResult test_unread_counts(Logger&){
     return true;
 }
 
+//  Console B, 2026-11-03: a save from Mt. Moon has a MOON STONE above the
+//  PARLYZ HEAL and 15 POTIONs. An item the story doesn't count still takes
+//  its row, so the battle knows all 15 Potions and finds them in row 2.
+UnitTestResult test_loaded_bag_other_items(Logger&){
+    Supplies row;
+    row.potions = 0;
+    row.parlyz_heals = 0;
+    Supplies saved = row;
+    set_from_loaded_bag(row, saved, {{"", 1}, {"parlyz-heal", 1}, {"potion", 15}});
+    if (row.potions != 15 || saved.potions != 15 || row.parlyz_heals != 1){
+        return std::format(
+            "Expected 15 Potions and 1 Parlyz Heal from the bag, now and for a reload; got {}, {} and {}.",
+            row.potions, saved.potions, row.parlyz_heals
+        );
+    }
+    if (item_row(row, "parlyz-heal") != 1 || item_row(row, "potion") != 2 || item_row(saved, "potion") != 2){
+        return std::format(
+            "Expected the Parlyz Heal in row 1 and the Potions in row 2 below the Moon Stone, got {} and {}.",
+            item_row(row, "parlyz-heal"), item_row(row, "potion")
+        );
+    }
+    return true;
+}
+
+//  The pocket's rows as read: an unread name keeps its row, so the rows
+//  below it are still read; the rows end at CANCEL, or at the last name read.
+UnitTestResult test_pocket_rows_unread(Logger&){
+    const std::vector<BagRow> rows = pocket_rows({{"", 1}, {"parlyz-heal", 1}, {"potion", 15}, {"cancel", -1}, {"", -1}});
+    if (rows.size() != 3 || !rows[0].item.empty() || rows[2].item != "potion" || rows[2].count != 15){
+        return std::format("Expected 3 rows, the Potions' last with 15, got {}.", rows.size());
+    }
+    if (pocket_rows({{"potion", 3}, {"", -1}, {"", -1}}).size() != 1){
+        return "Expected the unread rows after the last name dropped.";
+    }
+    if (!pocket_rows({{"", 1}, {"", 2}}).empty()){
+        return "Expected nothing with no name read.";
+    }
+    return true;
+}
+
 //  In a language the reader has no names for, nothing is read, so the
 //  checks fall back to positions instead of failing.
 UnitTestResult test_unread_language(Logger& logger){
@@ -304,6 +344,8 @@ void add_tests_AutoStoryItems(UnitTestDatabase& database){
     database.add<Test_AutoStoryItems>("Mart cursor stays on the row bought", test_mart_cursor);
     database.add<Test_AutoStoryItems>("Items pocket rows", test_pocket_rows);
     database.add<Test_AutoStoryItems>("a loaded save's counts come from the bag", test_loaded_bag);
+    database.add<Test_AutoStoryItems>("an item the story doesn't count keeps its row", test_loaded_bag_other_items);
+    database.add<Test_AutoStoryItems>("an unread item name keeps its row", test_pocket_rows_unread);
     database.add<Test_AutoStoryItems>("unread bag counts count as some", test_unread_counts);
     database.add<Test_AutoStoryItems>("no item names read in a language without them", test_unread_language);
     database.add<Test_AutoStoryItems>("a wild battle seen late is placed where it stopped the leg", test_late_battle_placed);

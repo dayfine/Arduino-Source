@@ -41,15 +41,25 @@ ImageFloatBox bag_item_count_box(int row);
 std::string read_item_list_name(Logger& logger, Language language, const ImageViewRGB32& screen, int row);
 
 struct BagRow{
+    //  The item's slug, as read_item_list_name() gives it; empty if its name
+    //  can't be read.
     std::string item;
     //  -1 if the count couldn't be read: the row still holds at least one.
     int count = 0;
 };
 
-//  The rows of the bag's open pocket from the top, up to its CANCEL (not
-//  included). Stops at a row it can't read, so it is empty in a language
-//  the reader has no names for. The pocket must be scrolled to its top.
+//  The rows of the bag's open pocket from the top, as pocket_rows() keeps
+//  them. The pocket must be scrolled to its top.
 std::vector<BagRow> read_bag_pocket(Logger& logger, Language language, const ImageViewRGB32& screen);
+
+//  The rows of a pocket from `reads`, each row as read from the top: up to
+//  the CANCEL (not included). A row whose name can't be read stays, with an
+//  empty item, so the rows below keep their places: stopping there read
+//  nothing below a MOON STONE, and the rival was fought with 0 of the bag's
+//  15 Potions (console B, 2026-11-03). Unread rows after the last name read
+//  are dropped. Empty if no name is read, as in a language the reader has
+//  no names for.
+std::vector<BagRow> pocket_rows(std::vector<BagRow> reads);
 
 
 void add_tests_ItemListReader(UnitTestDatabase& database);

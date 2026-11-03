@@ -57,8 +57,9 @@ struct Supplies{
     int antidotes = 0;
     int parlyz_heals = 0;
     //  The Items pocket's order, by slug (see read_item_list_name()): the
-    //  order bought, or as read from the bag. An item with none left takes
-    //  no row.
+    //  order bought, or as read from the bag, with "" for a row whose name
+    //  couldn't be read. A counted item with none left takes no row; the
+    //  others always take theirs.
     std::vector<std::string> pocket = {"potion", "antidote", "parlyz-heal"};
     //  The starter's status at the last battle screen that showed it, and
     //  not cured since.
@@ -125,6 +126,7 @@ enum class BattleEnd{
 int item_count(const Supplies& supplies, const std::string& item);
 
 //  The row (from 0) of `item` in the Items pocket, or -1 if none is left.
+//  Items the story doesn't count, such as a MOON STONE, take rows too.
 int item_row(const Supplies& supplies, const std::string& item);
 
 //  Sets the counts and the pocket's order from the Items pocket as read.
