@@ -25,7 +25,7 @@ authorize an agent to publish upstream.
   #1632 uses base `bbq/save-milestone-tracker`. A PR with two parents uses one
   parent as its base, merges in the other, and says so in its banner.
 - **When an upstream parent merges:**
-  1. Rebase each child onto `main`.
+  1. Merge `main` into each child (never rebase or force-push).
   2. Rebuild and run its tests.
   3. Keep its fork PR as a draft and prepare an upstream handoff for the user,
      including the branch, tested revision, results and dependencies.
