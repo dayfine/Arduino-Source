@@ -1,3 +1,4 @@
+import os
 import unittest
 from pathlib import Path
 
@@ -5,7 +6,8 @@ from devtools.code_health.config import GAME_MODULES, PLATFORM_MODULES, SOURCE_R
 from devtools.code_health.layering import check
 
 
-REPO = Path(__file__).resolve().parents[3]
+# The code checkout to classify: CODE_HEALTH_REPO (CI sets it), else this tree.
+REPO = Path(os.environ.get('CODE_HEALTH_REPO') or Path(__file__).resolve().parents[3])
 SHARED = SOURCE_ROOT + 'CommonTools/Async/Example.cpp'
 
 
@@ -38,7 +40,7 @@ class LayeringTests(unittest.TestCase):
     def test_every_top_level_source_directory_is_classified(self):
         root = REPO / SOURCE_ROOT
         if not root.is_dir():
-            self.skipTest('SerialPrograms/Source is not checked out')
+            self.skipTest('SerialPrograms/Source is not checked out; set CODE_HEALTH_REPO')
         directories = {p.name for p in root.iterdir() if p.is_dir()}
         self.assertEqual(set(), directories - set(GAME_MODULES) - set(PLATFORM_MODULES))
         self.assertEqual(set(), set(GAME_MODULES) & set(PLATFORM_MODULES))

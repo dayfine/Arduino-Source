@@ -1,7 +1,8 @@
 #!/bin/sh
 # install_hooks.sh: set up the local code-health gate for every worktree of this clone.
 #   sh <(git show origin/agents:tools/install_hooks.sh)
-# Creates the code-health venv (~/.venvs/code-health) and installs a pre-push stub in the clone's
+# Creates the code-health venv (~/.venvs/code-health) with the requirements of the linter on
+# origin/agents (devtools/code_health) and installs a pre-push stub in the clone's
 # shared hooks folder. The stub runs tools/hooks/pre-push from origin/agents, so updates need no reinstall.
 set -e
 V=$HOME/.venvs/code-health
@@ -9,7 +10,7 @@ if [ ! -x "$V/bin/python" ]; then
     PY=$(command -v python3.12 || command -v python3.11 || command -v python3)
     "$PY" -m venv "$V"
 fi
-git show origin/main:devtools/code_health/requirements.txt > "${TMPDIR:-/tmp}/code-health-req.txt"
+git show origin/agents:devtools/code_health/requirements.txt > "${TMPDIR:-/tmp}/code-health-req.txt"
 "$V/bin/pip" install -q -r "${TMPDIR:-/tmp}/code-health-req.txt"
 H=$(git rev-parse --path-format=absolute --git-common-dir)/hooks
 mkdir -p "$H"

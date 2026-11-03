@@ -1,13 +1,33 @@
 # Incremental C++ code-health and agent verification
 
-From the checkout root, create a dedicated environment (Python 3.8+):
+This linter lives only on the fork's `agents` branch (dayfine/Arduino-Source). Code branches keep a
+thin `.github/workflows/code-health.yml` that checks out `agents` next to the code and runs it from
+there; the pre-push hook (`tools/hooks/pre-push`) does the same locally.
+
+Create the environment once (Python 3.8+; `tools/install_hooks.sh` does this):
 
 ```sh
-python3 -m venv .venv-code-health
-.venv-code-health/bin/python -m pip install -r devtools/code_health/requirements.txt
-.venv-code-health/bin/python -m unittest discover -s devtools/code_health/tests -v
-.venv-code-health/bin/python -m devtools.code_health
+python3 -m venv ~/.venvs/code-health
+~/.venvs/code-health/bin/pip install -r devtools/code_health/requirements.txt
 ```
+
+Self-tests, from a checkout of `agents` (e.g. `~/Projects/Arduino-Source-agents`):
+
+```sh
+~/.venvs/code-health/bin/python -m unittest discover -s devtools/code_health/tests -v
+```
+
+Check a code checkout: run from the `agents` checkout and point `--root` at the code:
+
+```sh
+cd ~/Projects/Arduino-Source-agents
+~/.venvs/code-health/bin/python -m devtools.code_health --root <code checkout> --base-ref origin/<PR base>
+```
+
+`--root` defaults to the current directory, so `PYTHONPATH=<agents checkout> python -m
+devtools.code_health` from the code checkout also works once that branch no longer carries its own
+`devtools/code_health` (Python would import the code branch's copy first). Set `CODE_HEALTH_REPO` to
+a code checkout when running the self-tests, so the layering test can classify its source tree.
 
 Without `--base-ref`, the base is `git merge-base HEAD upstream/main`, or
 `origin/main` when there is no `upstream` remote, and the command prints the
@@ -107,7 +127,7 @@ returns 1 on failure, and needs no Switch. Linux CI uses `QT_QPA_PLATFORM=offscr
 It still initializes QApplication/camera enumeration; headless is not Qt-free.
 
 Prerequisites: install platform dependencies as in that CI workflow, configure
-this checkout's CMake build (e.g. `cmake -S SerialPrograms -B SerialPrograms/bin
+the code checkout's CMake build (e.g. `cmake -S SerialPrograms -B SerialPrograms/bin
 -DQT_MAJOR:STRING=6`), and provide Packages/resources. Put the separate
 `PokemonAutomation/CommandLineTests` fixture checkout in an ancestor of the
 binary, within its five-level resource search, or use `UnitTestResources`.
@@ -117,10 +137,10 @@ resources for tests” step does. For this runner on macOS, install models under
 On Linux/Windows install under `<build-dir>/DownloadedResources/`. Missing
 fixture/model resources are not passes.
 
-For a configured Linux build:
+For a configured Linux build, from the code checkout:
 
 ```sh
-.venv-code-health/bin/python devtools/verify.py --build-dir SerialPrograms/bin --binary SerialPrograms/bin/SerialPrograms --base-ref origin/main
+~/.venvs/code-health/bin/python ~/Projects/Arduino-Source-agents/devtools/verify.py --build-dir SerialPrograms/bin --binary SerialPrograms/bin/SerialPrograms --base-ref origin/main
 ```
 
 On macOS use `--binary SerialPrograms/bin/SerialPrograms.app/Contents/MacOS/SerialPrograms`;
@@ -128,7 +148,7 @@ on Windows use `--binary SerialPrograms/bin/RelWithDebInfo/SerialPrograms.exe`.
 This runs linter self-tests, the incremental check, CMake build, then native tests;
 it stops at the first nonzero exit and propagates it. Native tests run from
 the build directory. On macOS it uses a separate `agent-native-tests` profile;
-Qt is offscreen on all platforms. Use this checkout's build/binary.
+Qt is offscreen on all platforms. Use the code checkout's build/binary.
 
 ## Agent work loop and reuse
 
