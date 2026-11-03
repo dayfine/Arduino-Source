@@ -86,6 +86,28 @@ const UnitTestDatabase& UNIT_TESTS_ALL(){
     static UnitTestDatabase database = make_UNIT_TESTS_ALL();
     return database;
 }
+namespace{
+bool matches_any(const std::string& test_name, const std::vector<std::string>& filters){
+    if (filters.empty()){
+        return true;
+    }
+    for (const std::string& filter : filters){
+        if (test_name.contains(filter)){
+            return true;
+        }
+    }
+    return false;
+}
+}
+std::vector<std::string> unit_test_names(const std::vector<std::string>& filters){
+    std::vector<std::string> ret;
+    for (const auto& test : UNIT_TESTS_ALL()){
+        if (matches_any(test.first, filters)){
+            ret.emplace_back(test.first);
+        }
+    }
+    return ret;
+}
 StringSelectDatabase make_TEST_DATABASE(){
     StringSelectDatabase database;
     for (auto& test : UNIT_TESTS_ALL()){
@@ -355,7 +377,7 @@ void UnitTestRunner::on_test_finished(
 
 
 
-bool CommandLineUnitTestRunner::run(bool augment_color_distortions){
+size_t CommandLineUnitTestRunner::run(bool augment_color_distortions, const std::vector<std::string>& filters){
     if (augment_color_distortions){
         //  Load the distortion data before any test runs. Each `ImageUnitTest` checks the global
         //  manager when it runs, and only runs with distortions if it is loaded.
@@ -363,7 +385,7 @@ bool CommandLineUnitTestRunner::run(bool augment_color_distortions){
             initialize_test_image_distortions(UNIT_TEST_RESOURCE_PATH());
         }catch (Exception& e){
             m_logger.log("Unable to load the test image distortions: " + e.to_str(), COLOR_RED);
-            return true;
+            return 1;
         }
         const TestImageDistortionManager& manager = *test_image_distortion_manager();
         std::string labels;
@@ -380,7 +402,9 @@ bool CommandLineUnitTestRunner::run(bool augment_color_distortions){
     );
     runner.add_listener(*this);
     for (const auto& test : UNIT_TESTS_ALL()){
-        runner.add_test(test.second);
+        if (matches_any(test.first, filters)){
+            runner.add_test(test.second);
+        }
     }
     runner.run();
 
@@ -390,7 +414,7 @@ bool CommandLineUnitTestRunner::run(bool augment_color_distortions){
         "\n    Failed:  " + tostr_u_commas(m_failed_tests.load(std::memory_order_acquire)) +
         "\n    Skipped: " + tostr_u_commas(m_skipped_tests.load(std::memory_order_acquire))
     );
-    return m_failed_tests.load(std::memory_order_acquire) > 0;
+    return m_failed_tests.load(std::memory_order_acquire);
 }
 void CommandLineUnitTestRunner::on_test_finished(
     std::shared_ptr<const UnitTest> test,
