@@ -75,11 +75,15 @@ TurnAction BattleDecisions::lead_turn(const PartyStatus& status){
     return move_turn();
 }
 
-//  The plan's attack with PP left. While the story doesn't know all four
-//  moves, the bottom left one (Bubble from Lv7), which the cursor can't
-//  reach while that slot is empty, so before Bubble it stays on Tackle.
+//  The plan's attack with PP left, or against a trainer whose party is
+//  known, the one that does it most damage. While the story doesn't know
+//  all four moves, the bottom left one (Bubble from Lv7), which the cursor
+//  can't reach while that slot is empty, so before Bubble it stays on
+//  Tackle.
 TurnAction BattleDecisions::move_turn(){
-    const std::optional<size_t> slot = attack_slot(m_supplies.lead);
+    const std::optional<size_t> slot = m_kind == BattleKind::TRAINER
+        ? attack_slot_against(m_supplies.lead, m_supplies.foes)
+        : attack_slot(m_supplies.lead);
     if (!slot){
         return TurnAction{.choice = TurnChoice::MOVE, .slot = BOTTOM_LEFT_MOVE};
     }

@@ -49,6 +49,11 @@ const char* const MAP_NAMES[] = {
     "CeruleanCity_PokemonCenter_1F",
     "CeruleanCity",
     "Route24",
+    //  Cerulean City's Mart and Gym, and Route 25 to Bill's Sea Cottage.
+    "CeruleanCity_Mart",
+    "CeruleanCity_Gym",
+    "Route25",
+    "Route25_SeaCottage",
     "CeruleanCave_1F",
     "CeruleanCave_2F",
     "CeruleanCave_B1F",

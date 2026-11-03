@@ -12,6 +12,7 @@
  *
  */
 
+#include <algorithm>
 #include <format>
 #include <functional>
 #include <optional>
@@ -632,6 +633,42 @@ UnitTestResult test_mt_moon_battle_on_ladder_leg(){
     return true;
 }
 
+//  Console B, 2026-11-03 (row 00.13, b2f_ladder_foot): on B1F a wild
+//  battle started part-way down "south 15 (to wall)" from (3, 3), with its
+//  flashes missed. Its HP boxes came over 5 s after the step, after the
+//  leg's watch had ended on the battle's empty text box: the leg was taken
+//  as walked to (3, 18), and "east 19 (warp)" was walked into the battle
+//  from a tile it wasn't on. The console ran (133 ms a tile) and the sim
+//  walks, so the battle starts a few steps later here, for the same
+//  timing. The text box after the watch is now watched on for, the leg
+//  walked again to its wall, and the route reaches B2F's ladder. Without
+//  the rule the leg is taken as walked, and the run stops on no fade onto
+//  the ladder down to B2F, as it did.
+UnitTestResult test_mt_moon_battle_seen_after_wall_leg(){
+    SimCase c{.start = at("MtMoon_B1F", 3, 3), .facing = Direction::SOUTH, .goal = at("MtMoon_B2F", 26, 21)};
+    c.script.encounters = {{.grass_step = 13, .seen_late = true}};
+    c.script.timing.battle_opening = Milliseconds(4500);
+    c.script.timing.battle_screen = Milliseconds(5300);
+    const std::vector<RouteStep> route = planned(c);
+    if (route.empty() || to_string(route[0]) != "walk south 15 (to wall) -> MtMoon_B1F (3, 18)"){
+        return "Expected the route to start with \"south 15 (to wall)\":" + describe(route);
+    }
+    const SimRun now = run_case(c);
+    if (!arrived(now, c.goal) || now.state.warps != 1){
+        return "Expected the battle run from, the leg walked again and B2F reached:" + describe(now);
+    }
+    SimCase off = c;
+    off.rules.watch_on_for_unseen_battle = false;
+    const SimRun old = run_case(off);
+    const bool taken_as_walked = std::any_of(old.log.begin(), old.log.end(), [](const std::string& line){
+        return line.find("south 15 (to wall): ended at MtMoon_B1F (3, 18) (walked)") != std::string::npos;
+    });
+    if (!taken_as_walked || !stopped_with(old, "no fade in and out after walking onto the warp to MtMoon_B2F.")){
+        return "Expected the leg taken as walked and the run stopped on no fade, as on the console, without the rule:" + describe(old);
+    }
+    return true;
+}
+
 //  Mt. Moon B2F, after the HELIX FOSSIL: the player steps onto (14, 7),
 //  where it lay, and the way out goes north through the gap, west to the
 //  ladder (5, 10), up to B1F and out of its east end onto Route 4, walked
@@ -641,6 +678,72 @@ UnitTestResult test_mt_moon_way_out(){
     const SimRun now = run_case(c);
     if (!arrived(now, c.goal) || now.state.warps != 2 || now.state.facing != Direction::SOUTH){
         return "Expected Route 4 east of the mountain reached by two warps, facing south:" + describe(now);
+    }
+    return true;
+}
+
+//  Story row 00.14: from Route 4 east of Mt. Moon along the upper road to
+//  above the ledge row 9, out of Lass Crissy's line (75, 3); one step
+//  south hops the ledge onto the lower road two tiles down; from there
+//  into Cerulean City and its Pokemon Center by one door. No route plans
+//  past the ledge: the upper road reaches the city only by water.
+UnitTestResult test_route4_to_cerulean(){
+    const SimCase upper{.start = at("Route4", 32, 6), .facing = Direction::SOUTH, .goal = at("Route4", 93, 8)};
+    const SimRun walk = run_case(upper);
+    if (!arrived(walk, upper.goal) || !walk.state.trainers_beaten.empty()){
+        return "Expected the upper road walked to above the ledge, no trainer met:" + describe(walk);
+    }
+    OverworldSim sim(maps(), at("Route4", 93, 8), Direction::SOUTH);
+    sim.tap(Direction::SOUTH);
+    sim.watch({SimWatcher::MESSAGE}, std::chrono::milliseconds(2000));
+    if (!(sim.state().position == at("Route4", 93, 10))){
+        return "Expected the step south to hop the ledge onto (93, 10), not " + to_string(sim.state().position) + ".";
+    }
+    const SimCase lower{.start = at("Route4", 93, 10), .facing = Direction::SOUTH, .goal = at("CeruleanCity_PokemonCenter_1F", 7, 4)};
+    const SimRun now = run_case(lower);
+    if (!arrived(now, lower.goal) || now.state.warps != 1 || !now.state.trainers_beaten.empty()){
+        return "Expected Cerulean's Pokemon Center reached by its door, no trainer met:" + describe(now);
+    }
+    return true;
+}
+
+//  Story rows 00.15 and 00.16: out of Cerulean's Pokemon Center by its mat
+//  to below the rival's trigger row, and on north across the city's edge
+//  onto Nugget Bridge, below Cale's row, meeting no one.
+UnitTestResult test_cerulean_to_bridge(){
+    const MapPosition nurse = at("CeruleanCity_PokemonCenter_1F", 7, 4);
+    for (const MapPosition& goal : {at("CeruleanCity", 23, 7), at("Route24", 11, 32)}){
+        const SimCase c{.start = nurse, .facing = Direction::NORTH, .goal = goal};
+        const SimRun now = run_case(c);
+        if (!arrived(now, c.goal) || now.state.warps != 1 || !now.state.trainers_beaten.empty()){
+            return "Expected " + to_string(goal) + " reached by the Center's mat, no trainer met:" + describe(now);
+        }
+    }
+    return true;
+}
+
+//  Story row 00.16 up Nugget Bridge: the short legs between the five
+//  trainers' rows meet no one; and the step from the tile below each row
+//  onto it is in that trainer's sight, beside them, so they fight there
+//  without walking: Cale, Ali, Timmy, Reli and Ethan.
+UnitTestResult test_nugget_bridge_legs(){
+    SimCase between{.start = at("Route24", 11, 31), .facing = Direction::NORTH, .goal = at("Route24", 11, 29)};
+    between.route = std::vector<RouteStep>{leg(Direction::NORTH, 2, between.goal, false)};
+    const SimRun walk = run_case(between);
+    if (!arrived(walk, between.goal) || !walk.state.trainers_beaten.empty()){
+        return "Expected the leg between two rows walked, no trainer met:" + describe(walk);
+    }
+    const struct{
+        int row;
+        const char* trainer;
+    } LINES[] = {{31, "bug_catcher"}, {28, "lass"}, {25, "youngster"}, {22, "lass"}, {19, "camper"}};
+    for (const auto& line : LINES){
+        SimCase c{.start = at("Route24", 11, line.row + 1), .facing = Direction::NORTH, .goal = at("Route24", 11, line.row)};
+        c.route = std::vector<RouteStep>{leg(Direction::NORTH, 1, c.goal, false)};
+        const SimRun now = run_case(c);
+        if (!arrived(now, c.goal) || now.state.trainers_beaten != std::vector<std::string>{line.trainer}){
+            return std::format("Expected the {} on row {} fought beside the player:", line.trainer, line.row) + describe(now);
+        }
     }
     return true;
 }
@@ -667,6 +770,10 @@ void add_tests_OverworldSim(UnitTestDatabase& database){
     database.add<Test_OverworldSim>("Mt. Moon: a late wild battle in the cave", test_mt_moon_late_battle);
     database.add<Test_OverworldSim>("Mt. Moon: after the HELIX, out to Route 4", test_mt_moon_way_out);
     database.add<Test_OverworldSim>("Mt. Moon: a battle on the leg onto 1F's ladder", test_mt_moon_battle_on_ladder_leg);
+    database.add<Test_OverworldSim>("Mt. Moon: a battle seen only after a leg to a wall", test_mt_moon_battle_seen_after_wall_leg);
+    database.add<Test_OverworldSim>("Route 4 east, down its ledge, to Cerulean's Pokemon Center", test_route4_to_cerulean);
+    database.add<Test_OverworldSim>("Cerulean: the Center to the rival's row and Nugget Bridge", test_cerulean_to_bridge);
+    database.add<Test_OverworldSim>("Nugget Bridge: each trainer met on the step onto their row", test_nugget_bridge_legs);
 }
 
 

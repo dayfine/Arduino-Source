@@ -872,6 +872,18 @@ std::vector<std::string> set_from_bag(Supplies& supplies, const std::vector<BagR
     return unread;
 }
 
+std::vector<std::string> set_from_loaded_bag(Supplies& supplies, Supplies& saved, const std::vector<BagRow>& rows){
+    if (rows.empty()){
+        return {};
+    }
+    std::vector<std::string> unread = set_from_bag(supplies, rows);
+    saved.potions = supplies.potions;
+    saved.antidotes = supplies.antidotes;
+    saved.parlyz_heals = supplies.parlyz_heals;
+    saved.pocket = supplies.pocket;
+    return unread;
+}
+
 std::vector<BagRow> read_items_pocket(ConsoleHandle& console, ProControllerContext& context, Language language){
     open_items_pocket(console, context);
     context.wait_for_all_requests();

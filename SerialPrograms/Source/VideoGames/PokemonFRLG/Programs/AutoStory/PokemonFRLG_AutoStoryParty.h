@@ -117,6 +117,20 @@ void evolve(PartyMember& member);
 //  while the story doesn't know all its moves (fewer than four, not read).
 std::optional<size_t> attack_slot(const PartyMember& member);
 
+//  The species of a trainer's party, by the table's name for the battle
+//  ("rival_cerulean"), from pret/pokefirered src/data/trainer_parties.h
+//  (the rival's for a player who took Squirtle). Empty for a battle whose
+//  party the story doesn't know.
+std::vector<std::string> trainer_party(std::string_view battle);
+
+//  The slot to attack a trainer whose party is `foes` with, any of them
+//  as likely to be out: the move with PP left that does the most expected
+//  damage, its power times STAB times its type's effectiveness against
+//  each foe (pret's type chart), ties going to attack_slot()'s order.
+//  attack_slot() itself with no foes, or while the story doesn't know all
+//  its moves.
+std::optional<size_t> attack_slot_against(const PartyMember& member, const std::vector<std::string>& foes);
+
 //  The PP left in the damaging moves it knows.
 size_t attack_pp(const PartyMember& member);
 

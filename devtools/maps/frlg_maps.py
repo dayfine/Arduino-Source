@@ -82,6 +82,10 @@ POINTS = {
     'Route4_PokemonCenter_1F': {'nurse_front': (7, 4), 'salesman_front': (2, 3)},
     #   The tile in front of the PC.
     'CeruleanCity_PokemonCenter_1F': {'pc': (11, 2), 'nurse_front': (7, 4)},
+    #   The clerk (2, 3) is across the counter to the west.
+    'CeruleanCity_Mart': {'clerk_front': (4, 3)},
+    #   Below Misty (8, 6).
+    'CeruleanCity_Gym': {'misty_front': (8, 7)},
     #   Where the player stands after entering from Cerulean City.
     'CeruleanCave_1F': {'entrance': (33, 21)},
     #   Mewtwo's tile. Its battle starts by talking to it from the south.

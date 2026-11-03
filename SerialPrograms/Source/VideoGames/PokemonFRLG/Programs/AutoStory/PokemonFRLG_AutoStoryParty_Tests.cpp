@@ -369,6 +369,102 @@ UnitTestResult test_summary_members(Logger&){
 }
 
 
+//  #211: Bite, not Water Gun, against the trainers whose parties resist
+//  Water Gun: the Cerulean rival's Bulbasaur, and Misty's Staryu and
+//  Starmie (Water, Psychic: Bite does twice). Once Bite is out of PP,
+//  Tackle (35) over the resisted Water Gun (40 x 1.5 x 0.5); and the battle
+//  loop picks Bite against a known party, but not in a wild battle.
+UnitTestResult test_attack_by_matchup(Logger&){
+    PartyMember wartortle = grown_to(new_member("squirtle", 5), 20);
+    const std::vector<std::string> bulbasaur{"bulbasaur"};
+    const std::optional<size_t> bite = 1;
+    const std::optional<size_t> water_gun = BOTTOM_LEFT_MOVE;
+    if (move_names(wartortle) != std::vector<std::string>{"tackle", "bite", "water-gun", "withdraw"}){
+        return "Expected Wartortle Lv20 with Tackle, Bite, Water Gun, Withdraw, got " + joined(move_names(wartortle)) + ".";
+    }
+    struct Case{
+        std::string name;
+        std::vector<std::string> foes;
+    };
+    const std::vector<Case> cases{
+        {.name = "the rival's Bulbasaur", .foes = bulbasaur},
+        {.name = "the Cerulean rival's party", .foes = trainer_party("rival_cerulean")},
+        {.name = "Misty's party", .foes = trainer_party("misty")},
+    };
+    for (const Case& c : cases){
+        const std::optional<size_t> slot = attack_slot_against(wartortle, c.foes);
+        if (slot != bite){
+            return std::format("{} ({}): expected Bite (slot 1), got slot {}.", c.name, joined(c.foes), slot ? std::to_string(*slot) : "none");
+        }
+    }
+    if (trainer_party("rival_cerulean") != std::vector<std::string>{"pidgeotto", "abra", "rattata", "bulbasaur"}){
+        return "Expected the Cerulean rival's party from pret's sParty_RivalCeruleanBulbasaur, got " + joined(trainer_party("rival_cerulean")) + ".";
+    }
+
+    PartyMember no_bite = wartortle;
+    no_bite.moves[1].pp = 0;
+    if (attack_slot_against(no_bite, bulbasaur) != TOP_LEFT_MOVE || attack_slot_against(no_bite, {"pidgeotto"}) != water_gun){
+        return "Expected Tackle against Bulbasaur once Bite is out of PP, and Water Gun against Pidgeotto.";
+    }
+
+    Supplies supplies;
+    supplies.lead = wartortle;
+    supplies.foes = bulbasaur;
+    BattleDecisions trainer(supplies, BattleKind::TRAINER);
+    if (trainer.turn(GREEN).slot != *bite || supplies.lead.moves[1].pp != 24){
+        return "Expected the trainer battle's turn to use Bite against Bulbasaur, spending its PP.";
+    }
+    BattleDecisions wild(supplies, BattleKind::WILD_FIGHT);
+    supplies.potions = 5;
+    if (wild.turn(GREEN).slot != *water_gun){
+        return "Expected a wild battle to keep the plan's order (Water Gun), whatever foes are set.";
+    }
+    return true;
+}
+
+//  A trainer whose party the story doesn't know, and no foes at all, get
+//  the plan's order: Water Gun first.
+UnitTestResult test_attack_unknown_foe(Logger&){
+    const PartyMember wartortle = grown_to(new_member("squirtle", 5), 20);
+    if (!trainer_party("bug_catcher_cale").empty()){
+        return "Expected no party for a trainer the story doesn't know.";
+    }
+    const std::vector<std::vector<std::string>> unknown{{}, {"missingno"}, trainer_party("bug_catcher_cale")};
+    for (const std::vector<std::string>& foes : unknown){
+        if (attack_slot_against(wartortle, foes) != attack_slot(wartortle) || attack_slot(wartortle) != BOTTOM_LEFT_MOVE){
+            return "Expected the plan's order (Water Gun) against " + joined(foes) + ".";
+        }
+    }
+    return true;
+}
+
+//  Bite is learned when offered (Wartortle Lv19, pret's
+//  sWartortleLevelUpLearnset) over Tail Whip, else over Withdraw; never
+//  over Water Gun.
+UnitTestResult test_bite_learned(Logger&){
+    struct Case{
+        std::string name;
+        std::vector<std::string> moves;
+        size_t forget;
+    };
+    const std::vector<Case> cases{
+        {.name = "with Tail Whip", .moves = {"tackle", "tail-whip", "water-gun", "withdraw"}, .forget = 1},
+        {.name = "Water Gun over Tackle, no Tail Whip", .moves = {"water-gun", "bubble", "tackle", "withdraw"}, .forget = 3},
+    };
+    for (const Case& c : cases){
+        PartyMember member = with_moves("wartortle", c.moves, 18);
+        const LearnDecision decision = learn_move(member);
+        if (decision.move != "bite" || decision.forget_slot != c.forget){
+            return std::format(
+                "{}: expected Bite over slot {}, got {} over slot {}.", c.name, c.forget,
+                decision.move.value_or("nothing"), decision.forget_slot ? std::to_string(*decision.forget_slot) : "none"
+            );
+        }
+    }
+    return true;
+}
+
+
 //  A fake evolution scene: B pressed while it shows "is evolving!" cancels
 //  the evolution, as in the game.
 struct FakeEvolution{
@@ -447,6 +543,9 @@ void add_tests_AutoStoryParty(UnitTestDatabase& database){
     database.add<Test_AutoStoryParty>("moves read off the summary, Water Gun over Tackle", test_moves_from_summary);
     database.add<Test_AutoStoryParty>("summary members: fewer moves, unread PP, strongest attack", test_summary_members);
     database.add<Test_AutoStoryParty>("no B during an evolution", test_no_b_during_evolution);
+    database.add<Test_AutoStoryParty>("attacks by matchup: Bite on the rival's Bulbasaur and Misty", test_attack_by_matchup);
+    database.add<Test_AutoStoryParty>("attacks against an unknown foe: the plan's order", test_attack_unknown_foe);
+    database.add<Test_AutoStoryParty>("Bite learned over Tail Whip or Withdraw", test_bite_learned);
 }
 
 

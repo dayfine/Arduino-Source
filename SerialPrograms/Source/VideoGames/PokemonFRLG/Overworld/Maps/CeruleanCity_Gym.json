@@ -1,0 +1,116 @@
+{
+    "name": "CeruleanCity_Gym",
+    "source": {
+        "decomp_file": "data/maps/CeruleanCity_Gym/map.json",
+        "revision": "ce6406d8c2eaf46d543c8a2606de0c3cb1951982",
+        "date": "2026-10-31"
+    },
+    "allow_running": false,
+    "tiles": [
+        "#################",
+        "#####w#w.w#w#####",
+        "#################",
+        "#...............#",
+        "#......www......#",
+        "#.wwwwwwwwwwwww.#",
+        "#.wwwww...wwwww.#",
+        "#.ww.........ww.#",
+        "#.wwwww...ww.ww.#",
+        "#.wwwwwwwwww.ww.#",
+        "#.ww.........ww.#",
+        "#.ww.wwww.wwwww.#",
+        "#.ww.wwww.wwwww.#",
+        "#.ww......wwwww.#",
+        "#.wwwwwww.wwwww.#",
+        "#.wwwwwww.wwwww.#",
+        "#.wwww.....wwww.#",
+        "#.wwwwS...Swwww.#",
+        "#...............#",
+        "#################"
+    ],
+    "elevation": [
+        "00000000000000000",
+        "00000000000000000",
+        "00000000000000000",
+        "03333333333333330",
+        "03333331113333330",
+        "03111111111111130",
+        "03111113331111130",
+        "03113333333331130",
+        "03111113331131130",
+        "03111111111131130",
+        "03113333333331130",
+        "03113111131111130",
+        "03113111130111130",
+        "03113333331111130",
+        "03111111131111130",
+        "03111111131111130",
+        "03111133333111130",
+        "03111103330111130",
+        "03333333333333330",
+        "00000000000000000"
+    ],
+    "points": {
+        "misty_front": [8, 7],
+        "warp_1": [8, 18]
+    },
+    "warps": [
+        {
+            "x": 7,
+            "y": 18,
+            "enter": "walk_into",
+            "to_map": "CeruleanCity",
+            "to_point": "warp_4"
+        },
+        {
+            "x": 8,
+            "y": 18,
+            "enter": "walk_south",
+            "to_map": "CeruleanCity",
+            "to_point": "warp_4"
+        },
+        {
+            "x": 9,
+            "y": 18,
+            "enter": "walk_into",
+            "to_map": "CeruleanCity",
+            "to_point": "warp_4"
+        }
+    ],
+    "objects": [
+        {
+            "name": "swimmer_m_water",
+            "kind": "npc",
+            "x": 10,
+            "y": 12,
+            "facing": "west",
+            "trainer": {
+                "sight": 1
+            }
+        },
+        {
+            "name": "picnicker",
+            "kind": "npc",
+            "x": 4,
+            "y": 7,
+            "facing": "east",
+            "trainer": {
+                "sight": 4
+            }
+        },
+        {
+            "name": "misty",
+            "kind": "npc",
+            "x": 8,
+            "y": 6
+        },
+        {
+            "name": "gym_guy",
+            "kind": "npc",
+            "x": 7,
+            "y": 16
+        }
+    ],
+    "flag_sets": {},
+    "connections": []
+}

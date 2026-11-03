@@ -6,6 +6,8 @@
 
 #include "PokemonFRLG_AutoStoryCapture.h"
 #include "PokemonFRLG_AutoStoryChoice.h"
+#include "PokemonFRLG_AutoStoryGrind.h"
+#include "PokemonFRLG_AutoStoryMart.h"
 #include "PokemonFRLG_AutoStoryPcStorage.h"
 #include "PokemonFRLG_AutoStoryTable.h"
 
@@ -37,6 +39,10 @@ const char* const ROUTE4 = "Route4";
 const char* const ROUTE4_CENTER = "Route4_PokemonCenter_1F";
 const char* const MT_MOON_1F = "MtMoon_1F";
 const char* const MT_MOON_B2F = "MtMoon_B2F";
+const char* const CERULEAN = "CeruleanCity";
+const char* const CERULEAN_CENTER = "CeruleanCity_PokemonCenter_1F";
+const char* const CERULEAN_MART = "CeruleanCity_Mart";
+const char* const ROUTE24 = "Route24";
 
 Pokemon::Pose at(const char* map, int x, int y, std::optional<Direction> facing = std::nullopt){
     return to_pose(StoryPose{map, {x, y}, facing});
@@ -91,6 +97,16 @@ StoryStep route(std::string name, Pokemon::Pose target, std::string why, WildBat
 StoryStep step_into(std::string name, Direction direction, std::string why){
     StoryStep step = make(StoryStepKind::STEP, std::move(name), std::move(why));
     step.direction = direction;
+    return step;
+}
+
+//  A step the way a ledge faces, from the tile before it: the player hops
+//  it and lands on `landing`, two tiles on. Planned routes never hop a
+//  ledge (they hold into walls, and a held ledge hops), so where the only
+//  way on is down a ledge the table takes it as this one step.
+StoryStep hop(std::string name, Direction direction, Pokemon::Pose landing, std::string why){
+    StoryStep step = step_into(std::move(name), direction, std::move(why));
+    step.pose_after = std::move(landing);
     return step;
 }
 
@@ -468,6 +484,93 @@ StoryCheckpoint mt_moon(){
     });
 }
 
+//  Route 4 east of Mt. Moon (Route4 map.json) joins Cerulean City at its
+//  east end (x 107; Route 4's row 3 is the city's row 13). Its upper road
+//  (rows 2..8) reaches the city only by water: the way on by land is down
+//  the ledge row 9 at x 90..96 to the lower road (rows 10..12), which
+//  joins the city's rows 20..22. Lass Crissy (75, 3) faces east, sight 4,
+//  over row 3 from x 76 to 79; the way east keeps out of her line and off
+//  the grass south of the road (75..87, 11..17).
+StoryCheckpoint route4_to_cerulean(){
+    return row("00.14", "Route 4 east to Cerulean's Pokemon Center", at(ROUTE4, 32, 6, SOUTH), after_brock(), StartMenu::FULL, {
+        running(route("above_ledge", at(ROUTE4, 93, 8, SOUTH), "east along Route 4's upper road to above the ledge row 9")),
+        hop("ledge_hop", SOUTH, at(ROUTE4, 93, 10, SOUTH), "down the ledge (93, 9) to the lower road"),
+        running(route("cerulean_nurse", at(CERULEAN_CENTER, 7, 4, NORTH), "east into Cerulean City and its Pokemon Center")),
+        heal("heal_cerulean"),
+    });
+}
+
+//  The rival north of Cerulean (CeruleanCity scripts.inc): the only way
+//  north to Nugget Bridge is columns 22..24, and a step onto row 6 there
+//  (CeruleanCity_EventScript_RivalTrigger*, VAR_MAP_SCENE_CERULEAN_CITY_RIVAL
+//  0) brings him down to the player. From the middle, (23, 6), he stops
+//  at (23, 5); after the battle he walks round the player and off south,
+//  and the player, turning to watch him, ends facing south. His FAME
+//  CHECKER's text is read to the overworld with the battle's. For a player
+//  who took Squirtle he has Pidgeotto Lv17, Abra Lv16, Rattata Lv15 and
+//  Bulbasaur Lv18 (sParty_RivalCeruleanBulbasaur), whose Vine Whip and
+//  Sleep Powder are the danger.
+//
+//  Before him: 5 Potions at the Mart (CeruleanCity_Mart_Items: POTION is
+//  row 3, 300 each; Mt. Moon's trainers leave well over the floor), then a
+//  GRIND to Lv22 on Route 4's grass east of Mt. Moon (75..86, 11..17;
+//  Spearow, Rattata, Ekans and Mankey around Lv10, about 80 EXP each),
+//  healing at the Center. With Bite chosen against his party, Lv22 is
+//  where a lone Wartortle beats it (#211's estimate: about 70 HP of his
+//  damage against its 61, which the Potions cover; at Lv18 about 100).
+StoryCheckpoint cerulean_rival(){
+    const MartPlan potions{.map = CERULEAN_MART, .lines = {{.item = "potion", .quantity = 5}}, .budget = 1500, .money_floor = 1500};
+    const GrindPlan to_lv22{.member = 0, .level = 22, .max_encounters = 100, .pace = WEST, .heal_every = 0};
+    return row("00.15", "Cerulean: Potions, a GRIND to Lv22, then the rival north of the city", at(CERULEAN_CENTER, 7, 4, NORTH), after_brock(), StartMenu::FULL, {
+        running(route("mart_clerk", at(CERULEAN_MART, 4, 3, WEST), "out of the Center to the Mart's clerk")),
+        mart_step("buy_potions", "5 Potions: the GRIND fights wild battles only with 2 or more", potions),
+        running(route("grind_patch", at(ROUTE4, 86, 16, WEST), "west out of the city along Route 4's lower road onto its grass's east edge")),
+        grind_step("grind_to_lv22", "wild battles until the lead is Lv22, the nurse when hurt or low on PP", to_lv22, at(CERULEAN_CENTER, 7, 4, NORTH)),
+        running(route("below_rival_trigger", at(CERULEAN, 23, 7, NORTH), "back east into the city, north up to (23, 7), short of the trigger row 6")),
+        step_into("rival_trigger", NORTH, "onto (23, 6), the middle trigger: \"Yo! <player>!\""),
+        battle("rival_cerulean", at(CERULEAN, 23, 6, SOUTH), false, "Pidgeotto, Abra, Rattata and Bulbasaur; then the FAME CHECKER"),
+        running(route("cerulean_nurse", at(CERULEAN_CENTER, 7, 4, NORTH), "back to the Center before Nugget Bridge")),
+        heal("heal_cerulean"),
+    });
+}
+
+//  Nugget Bridge (Route24 map.json) is x 10..12 from row 32 north to row
+//  16, the city's columns 22..24 (offset 12). Its five trainers stand on
+//  it facing across, sight 2, so each line crosses the middle column 11
+//  on the trainer's row: Bug Catcher Cale (12, 31), Lass Ali (10, 28),
+//  Youngster Timmy (12, 25), Lass Reli (10, 22) and Camper Ethan (12, 19).
+//  Each is fought on the step onto their row, beside them: they don't
+//  walk, and the player keeps facing north. Two tiles separate the rows,
+//  walked as one short leg. Then the Rocket (12, 15): the step onto
+//  (11, 15) (Route24_EventScript_RocketTriggerRight, VAR_MAP_SCENE_ROUTE24
+//  0) gives the NUGGET, "join Team Rocket", and his battle; he only turns,
+//  and the player turns east to him. Camper Shane (5, 21) looks north
+//  from the west bank, off the way.
+StoryCheckpoint nugget_bridge(){
+    return row("00.16", "Nugget Bridge: five trainers and the Rocket", at(CERULEAN_CENTER, 7, 4, NORTH), after_brock(), StartMenu::FULL, {
+        running(route("below_cale_line", at(ROUTE24, 11, 32, NORTH), "out of the Center, north past the rival's row onto the bridge, below Cale's row")),
+        step_into("cale_line", NORTH, "onto (11, 31), beside Cale"),
+        battle("bug_catcher_cale", at(ROUTE24, 11, 31, NORTH), false, "his Bug Pokemon"),
+        running(legs("below_ali_line", {{NORTH, 2}}, "up to (11, 29)")),
+        step_into("ali_line", NORTH, "onto (11, 28), beside Ali"),
+        battle("lass_ali", at(ROUTE24, 11, 28, NORTH), false, "her Pokemon"),
+        running(legs("below_timmy_line", {{NORTH, 2}}, "up to (11, 26)")),
+        step_into("timmy_line", NORTH, "onto (11, 25), beside Timmy"),
+        battle("youngster_timmy", at(ROUTE24, 11, 25, NORTH), false, "his Pokemon"),
+        running(legs("below_reli_line", {{NORTH, 2}}, "up to (11, 23)")),
+        step_into("reli_line", NORTH, "onto (11, 22), beside Reli"),
+        battle("lass_reli", at(ROUTE24, 11, 22, NORTH), false, "her Pokemon"),
+        running(legs("below_ethan_line", {{NORTH, 2}}, "up to (11, 20)")),
+        step_into("ethan_line", NORTH, "onto (11, 19), beside Ethan"),
+        battle("camper_ethan", at(ROUTE24, 11, 19, NORTH), false, "his Pokemon"),
+        //  A route, not legs: the nurse may have been needed.
+        ready("ready_for_rocket", at(CERULEAN_CENTER, 7, 4, NORTH), "items for a status or low HP; the nurse only if they can't"),
+        running(route("below_rocket_trigger", at(ROUTE24, 11, 16, NORTH), "up the bridge to below the Rocket's trigger (11, 15)")),
+        step_into("rocket_trigger", NORTH, "onto (11, 15), beside the Rocket"),
+        battle("rocket_grunt", at(ROUTE24, 11, 15, EAST), false, "the NUGGET, then Ekans and Zubat, Lv15"),
+    });
+}
+
 }
 
 
@@ -475,6 +578,7 @@ const std::vector<StoryCheckpoint>& story_checkpoints(){
     static const std::vector<StoryCheckpoint> checkpoints{
         new_game(), after_sid_helper(), leave_house(), oaks_trigger(), to_starter_ball(), starter(), parcel(), pokedex(), shopping(), forest(), brock(),
         running_shoes(), route3(), magikarp_salesman(), after_gift_rng(), magikarp_to_box(), mt_moon(),
+        route4_to_cerulean(), cerulean_rival(), nugget_bridge(),
     };
     return checkpoints;
 }

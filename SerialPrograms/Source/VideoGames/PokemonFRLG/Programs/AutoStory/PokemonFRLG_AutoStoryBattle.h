@@ -71,6 +71,10 @@ struct Supplies{
     //  faints, so they gain no EXP and learn or evolve nothing: a member
     //  kept for later, or one the user keeps for a trade.
     std::vector<size_t> protected_slots = {};
+    //  The party of the trainer the table's battle step fights, when the
+    //  story knows it (trainer_party()): the lead's attacks are chosen
+    //  against it. Empty otherwise; wild battles never use it.
+    std::vector<std::string> foes = {};
 };
 
 //  The nurse healed the party: HP, status and PP.
@@ -104,6 +108,12 @@ int item_row(const Supplies& supplies, const std::string& item);
 //  the count known before (the order bought), or 1. Returns those rows'
 //  items, for the log.
 std::vector<std::string> set_from_bag(Supplies& supplies, const std::vector<BagRow>& rows);
+
+//  After a save is loaded: the Items pocket as read, taken into `supplies`
+//  and `saved` (what a reload restores) in place of the row's counts, as
+//  set_from_bag() does. With nothing read both keep the row's. Returns the
+//  items whose count couldn't be read.
+std::vector<std::string> set_from_loaded_bag(Supplies& supplies, Supplies& saved, const std::vector<BagRow>& rows);
 
 //  From the overworld: opens the Items pocket, reads it, and closes the
 //  bag again. Empty if nothing could be read.
