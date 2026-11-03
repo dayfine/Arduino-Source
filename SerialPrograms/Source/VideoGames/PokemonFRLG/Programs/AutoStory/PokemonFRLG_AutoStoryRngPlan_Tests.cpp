@@ -358,6 +358,31 @@ std::vector<TrackerCase> tracker_retry_cases(){
             .steps = {RUN_ATTEMPT, GOT_SHINY_OFF_TARGET, GOT_SHINY_OFF_TARGET}, .attempts = {1, 1, 1},
             .remaining = {300}, .confirmed = std::nullopt,
         },
+    };
+}
+//  Attempts that can't run.
+std::vector<TrackerCase> tracker_unusable_cases(){
+    using enum RngAttemptOutcome;
+    using enum RngPlanStep;
+    return {
+        {
+            .name = "an attempt that can't run moves on",
+            .shiny_required = true, .outcomes = {MISSED, UNUSABLE, SHINY},
+            .steps = {RUN_ATTEMPT, RUN_ATTEMPT, GOT_SHINY}, .attempts = {0, 1, 1},
+            .remaining = {300}, .confirmed = uint16_t(300),
+        },
+        {
+            .name = "the last attempt can't run",
+            .shiny_required = true, .outcomes = {UNUSABLE, UNUSABLE},
+            .steps = {RUN_ATTEMPT, MISSED_EVERY_ATTEMPT_LEFT}, .attempts = {1, 1},
+            .remaining = {100, 200, 300}, .confirmed = std::nullopt,
+        },
+    };
+}
+std::vector<TrackerCase> tracker_mixed_cases(){
+    using enum RngAttemptOutcome;
+    using enum RngPlanStep;
+    return {
         {
             .name = "miss, hit, misses, then shiny",
             .shiny_required = true, .outcomes = {MISSED, HIT_NOT_SHINY, MISSED, MISSED, SHINY},
@@ -411,8 +436,10 @@ UnitTestResult check_tracker_case(const TrackerCase& item){
 
 UnitTestResult test_tracker(Logger&){
     std::vector<TrackerCase> cases = tracker_cases();
-    for (TrackerCase& item : tracker_retry_cases()){
-        cases.push_back(std::move(item));
+    for (auto* more : {tracker_retry_cases, tracker_unusable_cases, tracker_mixed_cases}){
+        for (TrackerCase& item : more()){
+            cases.push_back(std::move(item));
+        }
     }
     for (const TrackerCase& item : cases){
         const UnitTestResult result = check_tracker_case(item);
@@ -450,7 +477,9 @@ UnitTestResult test_log_lines(Logger&){
         {.got = rng_log_tid(43771, true), .expected = "RngPlan: tid=43771 source=card"},
         {.got = rng_log_tid(43771, false), .expected = "RngPlan: tid=43771 source=option"},
         {.got = rng_log_sid_helper(43771, 3001, CANDIDATES), .expected = "RngPlan: sid_helper tid=43771 target_advances=3001 candidates=100,200,300"},
-        {.got = rng_log_attempt(0, attempt), .expected = "RngPlan: attempt=1 seed=2EF6 advances=29364 sids=100,200"},
+        {.got = rng_log_attempt(0, attempt), .expected = std::format(
+            "RngPlan: attempt=1 seed=2EF6 advances=29364 sids=100,200 seed_wait_ms=49155 ingame_ms={}", starter_rng_ingame_ms(29364)
+        )},
         {
             .got = rng_log_result(RngResultLog{
                 .index = 1, .try_number = 2, .outcome = RngAttemptOutcome::HIT_NOT_SHINY, .detail = "target_hit",
@@ -490,6 +519,81 @@ UnitTestResult test_log_lines(Logger&){
 //  A plan from the FireRed (English) list: every attempt starts from a seed
 //  Starter RNG finds, takes at least its smallest Advances, and is shiny for
 //  the SIDs it lists, which no earlier attempt listed.
+//  Console B, 2026-11-02, FireRed English, Mono, Help: Starter RNG refused
+//  both of these as title screen waits under 30 s. AutoStory's plan for TID
+//  55740 started with 11A3 at 945 advances (29,628 ms after Starter RNG's
+//  offsets); StarterRng by hand with 405C at 990 advances listed 30,488 ms
+//  from the table, 29,643 ms after them. Neither seed may start an attempt.
+UnitTestResult test_starter_plan_seed_delay(Logger&){
+    struct Case{
+        uint16_t seed;
+        uint64_t table_ms;
+    };
+    const Case cases[] = {
+        {.seed = 0x11a3, .table_ms = 30473},
+        {.seed = 0x405c, .table_ms = 30488},
+    };
+    const SeedsDatabase database(seeds_json_path(true, Language::English));
+    const std::vector<InitialSeedEntry> seeds = initial_seed_entries(database, SoundSetting::Mono, "Help", true);
+    for (const Case& item : cases){
+        auto entry = std::find_if(seeds.begin(), seeds.end(), [&](const InitialSeedEntry& seed){ return seed.seed == item.seed; });
+        if (entry == seeds.end() || entry->seed_time_ms != item.table_ms){
+            return std::format("Expected seed {:04X} at {} ms in the FireRed English list (Mono, Help).", item.seed, item.table_ms);
+        }
+        if (starter_rng_can_wait_for(*entry)){
+            return std::format("Seed {:04X} ({} ms): expected too early for Starter RNG's title screen.", item.seed, item.table_ms);
+        }
+    }
+
+    const uint16_t tid = 55740;
+    const std::vector<RngAttempt> attempts = plan_starter_rng(StarterRngPlanInputs{
+        .firered = true,
+        .language = Language::English,
+        .sound = SoundSetting::Mono,
+        .tid = tid,
+        .candidates = sid_helper_candidates(tid, 3001, 5),
+        .filters = {},
+        .max_attempts = 5,
+    });
+    if (attempts.empty()){
+        return "Expected attempts for TID 55740, got none.";
+    }
+    for (size_t c = 0; c < attempts.size(); c++){
+        const InitialSeedEntry& seed = attempts[c].target.seed;
+        if (seed.seed == 0x11a3 || seed.seed == 0x405c || starter_rng_seed_wait_ms(seed) < 31500){
+            return std::format("Attempt {}: seed {:04X} at {} ms is too early for the title screen.", c + 1, seed.seed, seed.seed_time_ms);
+        }
+        if (attempts[c].target.advances < 1660){
+            return std::format("Attempt {}: {} advances leave no room for the in-game calibration.", c + 1, attempts[c].target.advances);
+        }
+    }
+    return true;
+}
+
+//  Starter RNG's in-game wait: 7,500 ms at its 940-advance minimum; console
+//  B's B579 target at 967 advances was 7,725 ms, which one miss's
+//  calibration (-720) cut under the minimum. Targets start 720 advances on.
+UnitTestResult test_starter_ingame_wait(Logger&){
+    struct Case{
+        uint64_t advances;
+        int64_t ms;
+    };
+    const Case cases[] = {
+        {.advances = 940, .ms = 7500},
+        {.advances = 967, .ms = 7725},
+        {.advances = 1660, .ms = 13500},
+    };
+    for (const Case& item : cases){
+        if (starter_rng_ingame_ms(item.advances) != item.ms){
+            return std::format("{} advances: expected {} ms in game, got {}.", item.advances, item.ms, starter_rng_ingame_ms(item.advances));
+        }
+    }
+    if (STARTER_RNG_PLAN_MIN_ADVANCES != 1660){
+        return std::format("Expected the plan's minimum at 1660 advances, got {}.", STARTER_RNG_PLAN_MIN_ADVANCES);
+    }
+    return true;
+}
+
 UnitTestResult test_starter_plan(Logger&){
     const uint16_t tid = 43771;
     StarterRngPlanInputs inputs{
@@ -513,8 +617,8 @@ UnitTestResult test_starter_plan(Logger&){
         if (!database.find_seed(attempt.target.seed.seed, SoundSetting::Mono, 5).found){
             return std::format("Attempt {}: Starter RNG can't find Target Seed {:04X}.", c + 1, attempt.target.seed.seed);
         }
-        if (attempt.target.advances < STARTER_RNG_MIN_ADVANCES){
-            return std::format("Attempt {}: Advances {} below Starter RNG's {}.", c + 1, attempt.target.advances, STARTER_RNG_MIN_ADVANCES);
+        if (attempt.target.advances < STARTER_RNG_PLAN_MIN_ADVANCES){
+            return std::format("Attempt {}: Advances {} below the plan's {}.", c + 1, attempt.target.advances, STARTER_RNG_PLAN_MIN_ADVANCES);
         }
         if (attempt.sids.empty()){
             return std::format("Attempt {}: shiny for no SID candidate.", c + 1);
@@ -548,6 +652,8 @@ void add_tests_AutoStoryRngPlan(UnitTestDatabase& database){
     database.add<Test_AutoStoryRngPlan>("attempt outcome", test_classify);
     database.add<Test_AutoStoryRngPlan>("step after each outcome", test_tracker);
     database.add<Test_AutoStoryRngPlan>("Starter RNG plan from the FireRed list", test_starter_plan);
+    database.add<Test_AutoStoryRngPlan>("Starter RNG plan: no seed too early for the title screen", test_starter_plan_seed_delay);
+    database.add<Test_AutoStoryRngPlan>("Starter RNG plan: room for the in-game calibration", test_starter_ingame_wait);
     database.add<Test_AutoStoryRngPlan>("RngPlan log lines", test_log_lines);
 }
 

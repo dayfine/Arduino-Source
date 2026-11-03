@@ -8,6 +8,8 @@
 #include <cstdlib>
 #include <format>
 #include "Common/Cpp/Exceptions.h"
+#include "VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_BlindNavigation.h"
+#include "VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_RngCalibration.h"
 #include "PokemonFRLG_AutoStoryRngPlan.h"
 
 namespace PokemonAutomation{
@@ -270,19 +272,12 @@ RngPlanStep RngPlanTracker::record(RngAttemptOutcome outcome){
     }
     const std::vector<uint16_t>& sids = m_attempts[m_attempt].sids;
     switch (outcome){
-    case RngAttemptOutcome::SHINY:{
+    case RngAttemptOutcome::SHINY:
         //  The SID is one the target is shiny for. None of them: it wasn't
         //  among the candidates.
-        std::vector<uint16_t> narrowed;
-        for (uint16_t sid : m_remaining){
-            if (std::find(sids.begin(), sids.end(), sid) != sids.end()){
-                narrowed.push_back(sid);
-            }
-        }
-        m_remaining = std::move(narrowed);
+        std::erase_if(m_remaining, [&](uint16_t sid){ return std::find(sids.begin(), sids.end(), sid) == sids.end(); });
         m_step = RngPlanStep::GOT_SHINY;
         return m_step;
-    }
     case RngAttemptOutcome::SHINY_OFF_TARGET:
         m_step = RngPlanStep::GOT_SHINY_OFF_TARGET;
         return m_step;
@@ -303,8 +298,12 @@ RngPlanStep RngPlanTracker::record(RngAttemptOutcome outcome){
         return m_step;
     case RngAttemptOutcome::MISSED:
         //  A miss rules nothing out. Too many: try the next attempt instead.
-        m_retries++;
-        if (m_retries > m_max_retries && !move_to_next_attempt()){
+        if (++m_retries <= m_max_retries){
+            return m_step;
+        }
+        [[fallthrough]];
+    case RngAttemptOutcome::UNUSABLE:
+        if (!move_to_next_attempt()){
             m_step = RngPlanStep::MISSED_EVERY_ATTEMPT_LEFT;
         }
         return m_step;
@@ -313,14 +312,29 @@ RngPlanStep RngPlanTracker::record(RngAttemptOutcome outcome){
 }
 
 
+int64_t starter_rng_seed_wait_ms(const InitialSeedEntry& seed){
+    return int64_t(seed.seed_time_ms) + STARTER_RNG_FIXED_SEED_OFFSET_MS;
+}
+
+bool starter_rng_can_wait_for(const InitialSeedEntry& seed){
+    return starter_rng_seed_wait_ms(seed) >= STARTER_RNG_MIN_SEED_WAIT_MS;
+}
+
+int64_t starter_rng_ingame_ms(uint64_t advances){
+    const int64_t frames = int64_t(advances) - int64_t(STARTER_RNG_CONTINUE_SCREEN_FRAMES)
+        + fixed_advances_offset(PokemonFRLG_RngTarget::starters);
+    return int64_t(frames * FRLG_FRAME_DURATION / 2);
+}
+
 std::vector<RngAttempt> plan_starter_rng(const StarterRngPlanInputs& inputs){
     const SeedsDatabase database(seeds_json_path(inputs.firered, inputs.language));
     //  Only the English lists hold the blackout button's seeds (initial_seed_entries()).
     const bool english_list = inputs.language != Language::Japanese;
-    const std::vector<InitialSeedEntry> seeds = initial_seed_entries(database, inputs.sound, "Help", english_list);
+    std::vector<InitialSeedEntry> seeds = initial_seed_entries(database, inputs.sound, "Help", english_list);
+    std::erase_if(seeds, [](const InitialSeedEntry& seed){ return !starter_rng_can_wait_for(seed); });
 
     RngTargetFilters filters = inputs.filters;
-    filters.min_advances = std::max(filters.min_advances, STARTER_RNG_MIN_ADVANCES);
+    filters.min_advances = std::max(filters.min_advances, STARTER_RNG_PLAN_MIN_ADVANCES);
     const std::vector<RngTarget> targets = search_rng_targets(seeds, inputs.tid, inputs.candidates, filters);
     return plan_rng_attempts(targets, inputs.candidates, filters.shiny_required, inputs.max_attempts);
 }
@@ -352,8 +366,9 @@ std::string rng_log_sid_helper(uint16_t tid, uint32_t target_advances, const std
 
 std::string rng_log_attempt(size_t index, const RngAttempt& attempt){
     return std::format(
-        "RngPlan: attempt={} seed={:04X} advances={} sids={}",
-        index + 1, attempt.target.seed.seed, attempt.target.advances, join_sids(attempt.sids)
+        "RngPlan: attempt={} seed={:04X} advances={} sids={} seed_wait_ms={} ingame_ms={}",
+        index + 1, attempt.target.seed.seed, attempt.target.advances, join_sids(attempt.sids),
+        starter_rng_seed_wait_ms(attempt.target.seed), starter_rng_ingame_ms(attempt.target.advances)
     );
 }
 
@@ -384,6 +399,8 @@ const char* outcome_name(RngAttemptOutcome outcome){
         return "hit_not_shiny";
     case RngAttemptOutcome::MISSED:
         return "missed";
+    case RngAttemptOutcome::UNUSABLE:
+        return "unusable";
     }
     throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "Unknown RngAttemptOutcome.");
 }
