@@ -13,6 +13,7 @@
  *          "name": "TestTown",
  *          "source": {"decomp_file": "data/maps/TestTown/map.json", "revision": "abc123", "date": "2026-10-31"},
  *          "world": {"name": "Sinnoh", "x": 96, "y": 864},
+ *          "allow_running": false,                     //  left out: true
  *          "tiles": ["####", "#..~", ...],             //  rows of glyphs, all the same length
  *          "elevation": ["3333", "3300", ...],         //  one hex digit per tile
  *          "points": {"door": [1, 2], ...},
@@ -182,6 +183,10 @@ struct MapData{
     std::string name;
     MapSource source;
     std::optional<MapWorld> world;
+    //  Whether the game lets the player run here. FRLG's indoor maps, such as
+    //  the Pokemon Centers, don't (pokefirered's map header allow_running):
+    //  B held there still walks.
+    bool allow_running = true;
     //  With the patches applied.
     Grid<TileKind> tiles;
     //  The same size as `tiles`. FRLG reads a map without it as all ground
