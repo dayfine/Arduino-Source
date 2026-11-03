@@ -191,14 +191,14 @@ std::optional<std::string> refuse_battle(StoryEnv& env, const StoryStep& step, s
     if (step.may_lose || supplies.risk != BattleRisk::HIGH){
         return std::nullopt;
     }
-    const SimItems items{.potions = supplies.potions, .awakenings = supplies.awakenings};
+    const SimItems items{.potions = supplies.potions, .awakenings = supplies.awakenings, .antidotes = supplies.antidotes};
     const std::optional<WinEstimate> estimate = story_win_chance(supplies.lead, items, supplies.hp_fill, trainer);
     if (!estimate){
         return std::nullopt;
     }
     env.console.log(std::format(
-        "Story: {} against {}: the sim wins {} of {} ({:.0f}%) with {}.",
-        step.name, trainer, estimate->wins, estimate->battles, 100 * estimate->chance, estimate->inputs
+        "Story: {} against {}: the sim wins {} of {} ({:.0f}%) with {}; {}.",
+        step.name, trainer, estimate->wins, estimate->battles, 100 * estimate->chance, estimate->inputs, loss_text(*estimate)
     ));
     return win_chance_refusal(*estimate);
 }

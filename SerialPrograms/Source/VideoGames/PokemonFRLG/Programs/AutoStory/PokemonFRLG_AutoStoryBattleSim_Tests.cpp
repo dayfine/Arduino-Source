@@ -51,6 +51,7 @@ private:
 
 constexpr std::string_view RIVAL = "TRAINER_RIVAL_CERULEAN_BULBASAUR";
 constexpr std::string_view MISTY = "TRAINER_LEADER_MISTY";
+constexpr std::string_view SS_ANNE_RIVAL = "TRAINER_RIVAL_SS_ANNE_BULBASAUR";
 
 std::string stats_text(const Stats& s){
     return std::format("{}/{}/{}/{}/{}/{}", s.hp, s.attack, s.defense, s.sp_attack, s.sp_defense, s.speed);
@@ -644,6 +645,43 @@ UnitTestResult test_rival_potions_raise_chance(){
 }
 
 
+//  00.22's lead: Wartortle Lv27 at 78 HP, its other stats at OWN_GENES.
+PartyMember ss_anne_lead(){
+    Stats stats = combatant("wartortle", 27, OWN_GENES)->stats;
+    stats.hp = 78;
+    std::vector<SummaryMove> moves;
+    for (const char* move : {"bite", "water-pulse", "bubble", "withdraw"}){
+        moves.push_back(SummaryMove{.move = move, .pp = max_pp(move), .max_pp = max_pp(move)});
+    }
+    return member_from_summary("wartortle", 27, moves, stats);
+}
+
+UnitTestResult test_ss_anne_rival(){
+    const SimTrainer rival = *sim_trainer(SS_ANNE_RIVAL);
+    const SimBattler own = *own_battler(ss_anne_lead());
+    const WinEstimate base = estimate_win_chance(own, SimItems{.potions = 15}, rival);
+    const WinEstimate antidote = estimate_win_chance(own, SimItems{.potions = 15, .antidotes = 1}, rival);
+    SimBattler mega_kick = own;
+    mega_kick.moves[2] = SimMove{.move = "mega-kick", .pp = 5};
+    const WinEstimate kicked = estimate_win_chance(mega_kick, SimItems{.potions = 15}, rival);
+    if (base.chance < 0.25 || base.chance > 0.45 || antidote.chance < base.chance + 0.03 || kicked.chance < base.chance + 0.15){
+        return std::format(
+            "Lv27, 15 Potions: expected 25-45%, an Antidote 3 points more and Mega Kick 15 more, got {:.1f}%, {:.1f}%, {:.1f}%.",
+            100 * base.chance, 100 * antidote.chance, 100 * kicked.chance
+        );
+    }
+    const auto& by_foe = base.losses.by_foe;
+    const size_t to_ivysaur = by_foe.contains("ivysaur") ? by_foe.at("ivysaur") : 0;
+    if (2 * to_ivysaur < base.battles - base.wins || 2 * base.losses.seeded < base.battles - base.wins){
+        return "Expected most losses to the Ivysaur and seeded, got \"" + loss_text(base) + "\".";
+    }
+    const std::string text = loss_text(base);
+    if (!text.starts_with(std::format("lost {}: ivysaur {}", base.battles - base.wins, to_ivysaur)) || text.find("; seeded ") == std::string::npos){
+        return "Expected the loss text to lead with the Ivysaur and name the seeded, got \"" + text + "\".";
+    }
+    return true;
+}
+
 void add_tests_AutoStoryBattleSim(UnitTestDatabase& database){
     database.add<Test_AutoStoryBattleSim>("Gen 3 stats and damage worked by hand", test_hand_numbers);
     database.add<Test_AutoStoryBattleSim>("the Elite Four Farmer's Starmie picks OHKO at Sp. Atk 302", test_elite_four_table);
@@ -663,6 +701,7 @@ void add_tests_AutoStoryBattleSim(UnitTestDatabase& database){
     database.add<Test_AutoStoryBattleSim>("Cerulean rival: a Potion against the Bulbasaur", test_rival_bulbasaur_potion);
     database.add<Test_AutoStoryBattleSim>("Cerulean rival: 15 Potions win over half", test_rival_potions_raise_chance);
     database.add<Test_AutoStoryBattleSim>("the foe's next-turn damage and move chances", test_next_turn_damage);
+    database.add<Test_AutoStoryBattleSim>("S.S. Anne rival: lost to the Ivysaur, seeded", test_ss_anne_rival);
 }
 
 

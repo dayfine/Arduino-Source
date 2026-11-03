@@ -355,7 +355,7 @@ bool ConsoleGrindActions::needs_heal(){
 
 std::optional<WinEstimate> ConsoleGrindActions::win_chance(const MemberInfo& member, std::string_view trainer){
     m_supplies.lead = lead_as_read(member, m_supplies.lead);
-    return healed_win_chance(m_supplies.lead, SimItems{.potions = m_supplies.potions, .awakenings = m_supplies.awakenings}, trainer);
+    return healed_win_chance(m_supplies.lead, SimItems{.potions = m_supplies.potions, .awakenings = m_supplies.awakenings, .antidotes = m_supplies.antidotes}, trainer);
 }
 
 bool ConsoleGrindActions::heal_trip(){

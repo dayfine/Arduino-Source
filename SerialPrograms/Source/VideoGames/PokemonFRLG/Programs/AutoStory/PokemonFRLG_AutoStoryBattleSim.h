@@ -70,10 +70,16 @@ inline constexpr uint16_t POTION_HP = 20;
 //  must be rarer than 1 in 5.
 inline constexpr double POTION_COVER_PERCENTILE = 0.80;
 
+//  An Antidote is used, once a battle, on the turn the lead is read
+//  poisoned this many turns in a row, if no Potion or Awakening comes
+//  first.
+inline constexpr int PSN_TURNS_BEFORE_ANTIDOTE = 2;
+
 //  The lead's items in the bag that the sim plays.
 struct SimItems{
     int potions = 0;
     int awakenings = 0;
+    int antidotes = 0;
 };
 
 enum class SimStatus{
