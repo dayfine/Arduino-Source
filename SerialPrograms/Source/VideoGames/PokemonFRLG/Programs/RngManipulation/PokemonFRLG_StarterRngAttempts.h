@@ -66,6 +66,13 @@ struct StarterRngTarget{
     SeedMatch seed_match;
 };
 
+//  Where an attempt is after a reset: the resets so far, and the
+//  calibration that reset was timed with.
+struct StarterRngProgress{
+    uint64_t resets = 0;
+    RngCalibrations calibrations{};
+};
+
 struct StarterRngSettings{
     Language language = Language::None;
     //  The Switch profile's position on the user selection screen; 0 for
@@ -77,6 +84,8 @@ struct StarterRngSettings{
     //  Read before each reset, since Starter RNG lets the user change it
     //  while running.
     std::function<uint64_t()> max_resets;
+    //  Called after each reset, if set, for a caller that logs the attempts.
+    std::function<void(const StarterRngProgress&)> on_reset;
 };
 
 //  Where the attempts show the target, the filters read so far and the
