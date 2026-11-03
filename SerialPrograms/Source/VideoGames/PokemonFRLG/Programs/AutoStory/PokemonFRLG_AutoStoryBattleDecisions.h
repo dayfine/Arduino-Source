@@ -20,6 +20,7 @@
 #define PokemonAutomation_PokemonFRLG_AutoStoryBattleDecisions_H
 
 #include <cstddef>
+#include <map>
 #include <optional>
 #include <set>
 #include "Common/Cpp/Time.h"
@@ -45,6 +46,20 @@ struct TurnAction{
     size_t slot = BOTTOM_LEFT_MOVE;
 };
 
+//  What came of a TurnAction.
+enum class TurnResult{
+    DONE,
+    //  An item not used (another item in its row), or a move the game said
+    //  has no PP left.
+    NOT_DONE,
+    //  The game turned the move down although it has PP left: a foe's
+    //  Disable (console B, 2026-11-03, Mt. Moon: Miguel's Grimer disabled
+    //  Water Gun, and the loop chose it 17 more times while no turn passed).
+    //  Its PP comes back, and it isn't chosen for as long as Disable can
+    //  last (pret: 2 to 5 turns).
+    REFUSED,
+};
+
 enum class YesNo{
     YES,
     NO,
@@ -67,6 +82,11 @@ struct PromptAnswer{
     //  After YES to "Delete a move?": the slot to forget on the move list
     //  that opens, its cursor on the top move.
     std::optional<size_t> forget_slot = {};
+    //  With forget_slot: the lead once the move is learned, to keep only if
+    //  the move list opened (console B, 2026-11-03: a YES/NO read where no
+    //  move list followed was taken as Bite over Tail Whip, and the loop
+    //  later chose Tail Whip for Bite).
+    std::optional<PartyMember> learned = {};
 };
 
 
@@ -76,9 +96,8 @@ public:
 
     //  At the battle menu, with the player's box as read.
     TurnAction turn(const PartyStatus& status);
-    //  What turn() chose was done, or not: an item not used (another item
-    //  in its row), or a move the game said has no PP left.
-    void turn_done(TurnChoice choice, bool done);
+    //  What came of what turn() chose.
+    void turn_done(TurnChoice choice, TurnResult result);
 
     //  A YES/NO in or after the battle. With the lead's box gone and the
     //  opponent's there, it is "Use next POKEMON?"; else the move prompts:
@@ -98,6 +117,8 @@ public:
 private:
     TurnAction lead_turn(const PartyStatus& status);
     TurnAction move_turn();
+    void count_down_refused();
+    void move_refused();
 
     Supplies& m_supplies;
     const BattleKind m_kind;
@@ -111,6 +132,8 @@ private:
     //  NO was answered to "Delete a move?": "Stop learning?" comes next.
     bool m_declined_delete = false;
     std::optional<size_t> m_last_move_slot;
+    //  The slots the game turned down, and the turns until they are tried again.
+    std::map<size_t, int> m_refused;
     //  The members sent in after the lead fainted.
     std::set<size_t> m_sent;
 };
@@ -174,6 +197,24 @@ private:
     std::optional<WallClock> m_last_battle;
     std::optional<WallClock> m_last_check;
     std::optional<WallClock> m_blind_since;
+};
+
+
+//  Whether the game turned down the move chosen, at the battle menu after
+//  it: the move list came back (no battle screen reads on it) and the menu
+//  followed sooner than any turn (console B, 2026-11-03: 5.7 s from the
+//  choice for a disabled move, 8.3 s and up for a turn).
+class MoveRefusalWatch{
+public:
+    void move_chosen(WallClock now);
+    //  No battle screen read while the battle goes on.
+    void no_battle_screen();
+    //  At the battle menu: true if the move chosen before it was turned down.
+    bool refused(WallClock now);
+
+private:
+    std::optional<WallClock> m_chosen;
+    bool m_list_back = false;
 };
 
 

@@ -62,9 +62,6 @@ constexpr Milliseconds NOT_A_BATTLE = 15000ms;
 //  An evolution's animation, with no presses: as long as exit_wild_battle()
 //  (PokemonFRLG_Navigation.cpp) waits for one.
 constexpr Milliseconds EVOLUTION = 20000ms;
-//  Below this much PP left in the lead's attacks, the nurse before a fight
-//  that needs them: about a trainer's worth of turns.
-constexpr size_t LOW_ATTACK_PP = 10;
 //  Text and the move learn prompts after a battle, on the overworld.
 constexpr Milliseconds AFTER_BATTLE_TEXT = 60000ms;
 //  The move list to fade in after "Delete a move?", and its cursor to move.
@@ -302,16 +299,13 @@ std::optional<size_t> read_move_list_cursor(
 //  2026-11-02). Done in one go, so the loop's B presses can't land on the
 //  list. A list whose cursor never shows gets the presses by time, as
 //  before; a cursor that can't be brought to `slot` fails the battle.
-void forget_move(ConsoleHandle& console, ProControllerContext& context, size_t slot){
+//  YES, then `slot` on the move list. False, with nothing more pressed, if no move list showed.
+bool forget_move(ConsoleHandle& console, ProControllerContext& context, size_t slot){
     pbf_press_button(context, BUTTON_A, 160ms, 0ms);
     std::optional<size_t> cursor = read_move_list_cursor(console, context, std::nullopt, MOVE_LIST_TIMEOUT);
     if (!cursor){
-        console.log("Battle: no cursor read on the move list; moving it by time.", COLOR_ORANGE);
-        for (size_t c = 0; c < slot; c++){
-            pbf_press_dpad(context, DPAD_DOWN, 160ms, 400ms);
-        }
-        pbf_press_button(context, BUTTON_A, 160ms, 2000ms);
-        return;
+        console.log("Battle: no move list after YES; the moves stay as they were.", COLOR_ORANGE);
+        return false;
     }
     for (size_t presses = 0; *cursor != slot; presses++){
         if (presses >= 2 * SUMMARY_MOVE_ROWS){
@@ -332,10 +326,15 @@ void forget_move(ConsoleHandle& console, ProControllerContext& context, size_t s
         );
     }
     pbf_press_button(context, BUTTON_A, 160ms, 2000ms);
+    return true;
 }
 
 //  The party list in battle opens on the lead: down to `slot`, then A, and
 //  SHIFT, the top of its menu.
+TurnResult item_result(bool used){
+    return used ? TurnResult::DONE : TurnResult::NOT_DONE;
+}
+
 void send_member(ProControllerContext& context, size_t slot){
     for (size_t c = 0; c < slot; c++){
         pbf_press_dpad(context, DPAD_DOWN, 160ms, 400ms);
@@ -419,6 +418,7 @@ private:
             return press_blind(now);
         }
         if (seen == BattleScreen::NONE){
+            m_refusal.no_battle_screen();
             return no_battle_screen(screen, now);
         }
         m_seen_battle = true;
@@ -438,8 +438,9 @@ private:
         }
         if (m_move_chosen && BattleOutOfPpDetector(COLOR_RED).detect(screen)){
             m_console.log("Battle: no PP left for that move; choosing again.", COLOR_ORANGE);
-            m_decisions.turn_done(TurnChoice::MOVE, false);
+            m_decisions.turn_done(TurnChoice::MOVE, TurnResult::NOT_DONE);
             m_move_chosen = false;
+            m_refusal = MoveRefusalWatch();
             pbf_press_button(m_context, BUTTON_B, 160ms, 800ms);
             pbf_press_button(m_context, BUTTON_B, 160ms, 800ms);
             m_last_press = now;
@@ -606,10 +607,13 @@ private:
     }
 
     void answer_prompt(const ImageViewRGB32& screen, WallClock now){
+        dump_debug_image(m_console, "AutoStory/battle", std::format("turn{}-yes-no", m_decisions.turns()), screen);
         const PromptAnswer answer = m_decisions.prompt(starter_fainted(screen));
         if (answer.forget_slot){
             m_console.log(std::format("Battle: learning the new move over move {}.", *answer.forget_slot + 1));
-            forget_move(m_console, m_context, *answer.forget_slot);
+            if (forget_move(m_console, m_context, *answer.forget_slot) && answer.learned){
+                m_supplies.lead = *answer.learned;
+            }
         }else{
             m_console.log(std::format("Battle: answering {} to a YES/NO.", answer.answer == YesNo::YES ? "YES" : "NO"));
             pbf_press_button(m_context, answer.answer == YesNo::YES ? BUTTON_A : BUTTON_B, 160ms, 1500ms);
@@ -619,27 +623,33 @@ private:
 
     void take_turn(const ImageViewRGB32& screen){
         m_faint_polls = 0;
+        if (m_refusal.refused(current_time())){
+            m_console.log("Battle: the move list came back without a turn (Disable?); choosing another move.", COLOR_ORANGE);
+            m_decisions.turn_done(TurnChoice::MOVE, TurnResult::REFUSED);
+        }
         const PartyStatus status = read_party_status(screen);
         const TurnAction action = m_decisions.turn(status);
         m_evolution.turn_taken(action.choice);
         m_console.log(std::format(
-            "Battle: turn {}, HP {}, {}, {} Potions, {} Antidotes, {} Parlyz Heals.",
-            m_decisions.turns(), status.hp_red ? "red" : status.hp_yellow ? "yellow" : "green",
+            "Battle: turn {}, HP {} ({:.0f}% of the bar), {}, {} Potions, {} Antidotes, {} Parlyz Heals.",
+            m_decisions.turns(), status.hp_red ? "red" : status.hp_yellow ? "yellow" : "green", 100 * status.hp_fill,
             status_name(status.status), m_supplies.potions, m_supplies.antidotes, m_supplies.parlyz_heals
         ));
+        dump_debug_image(m_console, "AutoStory/battle", std::format("turn{}-menu", m_decisions.turns()), screen);
         switch (action.choice){
         case TurnChoice::RUN:
             m_console.log("Battle: RUN.");
             run_away(m_context);
             return;
         case TurnChoice::POTION:
-            m_decisions.turn_done(action.choice, use_item(m_console, m_context, item_row(m_supplies, "potion"), "potion", m_checks, m_language));
+            m_decisions.turn_done(action.choice, item_result(use_item(m_console, m_context, item_row(m_supplies, "potion"), "potion", m_checks, m_language)));
             return;
         case TurnChoice::ANTIDOTE:
-            m_decisions.turn_done(action.choice, use_item(m_console, m_context, item_row(m_supplies, "antidote"), "antidote", m_checks, m_language));
+            m_decisions.turn_done(action.choice, item_result(use_item(m_console, m_context, item_row(m_supplies, "antidote"), "antidote", m_checks, m_language)));
             return;
         case TurnChoice::MOVE:
             m_console.log(std::format("Battle: move {}.", action.slot + 1));
+            m_refusal.move_chosen(current_time());
             use_move(m_context, action.slot);
             m_move_chosen = true;
             return;
@@ -663,6 +673,7 @@ private:
     BattleDecisions m_decisions;
     EvolutionHold m_evolution;
     BattleEndWatch m_end;
+    MoveRefusalWatch m_refusal;
     const BattleKind m_kind;
     const StoryChecks m_checks;
     const Language m_language;
@@ -830,6 +841,7 @@ PartyStatus read_party_status(const ImageViewRGB32& screen){
     status.hp_seen = most >= seen;
     status.hp_yellow = status.hp_seen && counts.yellow == most;
     status.hp_red = status.hp_seen && !status.hp_yellow && counts.red == most;
+    status.hp_fill = counts.total == 0 ? 0 : double(counts.green + counts.yellow + counts.red) / counts.total;
     status.status = read_status_badge(extract_box_reference(game, STATUS_BADGE_BOX));
     return status;
 }
@@ -956,17 +968,6 @@ void recover_after_battle(
             supplies.hp_red = false;
         }
     }
-}
-
-void healed_by_nurse(Supplies& supplies){
-    supplies.hurt = false;
-    supplies.hp_red = false;
-    supplies.status = StatusCondition::NONE;
-    restore_pp(supplies.lead);
-}
-
-bool attacks_low_on_pp(const Supplies& supplies){
-    return attack_slot(supplies.lead).has_value() && attack_pp(supplies.lead) < LOW_ATTACK_PP;
 }
 
 BattleEnd fight_battle(

@@ -49,6 +49,21 @@ class EncounterTest(unittest.TestCase):
     def test_walls_stay_walls(self):
         self.assertEqual(frlg_maps.encounter_glyph('#', self.CAVE_FLOOR), '#')
 
+    #   MtMoon_B2F's floor closed on the north: MB_IMPASSABLE_NORTH (0x32),
+    #   encounter type LAND, as wild as the cave floor around it.
+    CLOSED_NORTH = 0x32 | (frlg_maps.TILE_ENCOUNTER_LAND << frlg_maps.ENCOUNTER_TYPE_SHIFT)
+
+    def test_closed_side_floor_has_wild_encounters(self):
+        for glyph in '8264':
+            self.assertTrue(frlg_maps.wild_edge(glyph, self.CLOSED_NORTH))
+
+    def test_closed_side_floor_without_encounters_is_not_wild(self):
+        self.assertFalse(frlg_maps.wild_edge('8', 0x32))
+
+    def test_other_tiles_are_no_wild_edges(self):
+        for glyph in '.~#':
+            self.assertFalse(frlg_maps.wild_edge(glyph, self.CAVE_FLOOR))
+
 
 if __name__ == '__main__':
     unittest.main()
