@@ -13,6 +13,7 @@
 #include <format>
 #include <functional>
 #include <map>
+#include <numeric>
 #include <string>
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
@@ -376,10 +377,11 @@ UnitTestResult test_sim_potion_rule(){
     //  Starmie as m51 saw it: at least the Potion's 20 a hit.
     starmie.body.stats.attack = static_cast<uint16_t>(starmie.body.stats.attack * 2);
     starmie.body.stats.sp_attack = static_cast<uint16_t>(starmie.body.stats.sp_attack * 2);
-    if (potion_case(own, starmie).expected_hit < POTION_HP){
-        return std::format("Expected Starmie's mean hit at 20 or more, got {:.1f}.", potion_case(own, starmie).expected_hit);
+    const uint32_t likely = potion_case(own, starmie, misty).likely_hit;
+    if (likely < POTION_HP){
+        return std::format("Expected Starmie's next turn at 20 or more {:.0f}% of the time, got {}.", 100 * POTION_COVER_PERCENTILE, likely);
     }
-    const OwnTurn sim = own_turn(own, SimItems{.potions = 5}, starmie, misty.items, 1);
+    const OwnTurn sim = own_turn(own, SimItems{.potions = 5}, starmie, misty, 1);
     if (sim.potion || sim.slot != size_t(0)){
         return std::format(
             "Sim at 8/60 against Starmie (max hit {}): expected Bite (slot 0), got {}.",
@@ -392,7 +394,7 @@ UnitTestResult test_sim_potion_rule(){
     if (hit < 6 || hit >= POTION_HP){
         return std::format("Expected Staryu's best hit on the Wartortle from 6 to 19, got {}.", hit);
     }
-    if (!own_turn(low, SimItems{.potions = 5}, staryu, misty.items, 2).potion){
+    if (!own_turn(low, SimItems{.potions = 5}, staryu, misty, 2).potion){
         return std::format("At 6/60 against Staryu (max hit {}): expected a Potion.", hit);
     }
     return true;
@@ -400,17 +402,18 @@ UnitTestResult test_sim_potion_rule(){
 
 //  The sim plays the lead the summary showed, not the one the story
 //  counts: m51's Wartortle (Lv20, 60 HP, Bite, Tail Whip, Bubble,
-//  Withdraw) with 5 Potions wins about 96% against Misty; the story's own
+//  Withdraw) with 2 Potions wins about 98% against Misty; the story's own
 //  Wartortle Lv20 (Tackle, Bite, Water Gun, Withdraw; 56 HP at OWN_GENES)
-//  about 94%, from other inputs. m51 lost: the sim leaves out Water
-//  Pulse's confusion, among others (PokemonFRLG_AutoStoryWinChance.h).
+//  about 95%, from other inputs (both near 100% with 5). m51 lost: the
+//  sim leaves out Water Pulse's confusion, among others
+//  (PokemonFRLG_AutoStoryWinChance.h).
 UnitTestResult test_misty_real_lead(){
-    const std::optional<WinEstimate> real = story_win_chance(m51_lead(20), SimItems{.potions = 5}, 1.0, MISTY);
-    const std::optional<WinEstimate> story = story_win_chance(grown_to(new_member("squirtle", 5), 20), SimItems{.potions = 5}, 1.0, MISTY);
+    const std::optional<WinEstimate> real = story_win_chance(m51_lead(20), SimItems{.potions = 2}, 1.0, MISTY);
+    const std::optional<WinEstimate> story = story_win_chance(grown_to(new_member("squirtle", 5), 20), SimItems{.potions = 2}, 1.0, MISTY);
     if (!real || !story){
         return "Expected win chances for both leads.";
     }
-    const std::string expected = "wartortle Lv20 60/60 HP: bite 25/25, tail-whip 30/30, bubble 30/30, withdraw 40/40; 5 Potions";
+    const std::string expected = "wartortle Lv20 60/60 HP: bite 25/25, tail-whip 30/30, bubble 30/30, withdraw 40/40; 2 Potions";
     if (real->inputs != expected){
         return "m51's lead: expected the inputs \"" + expected + "\", got \"" + real->inputs + "\".";
     }
@@ -425,11 +428,11 @@ UnitTestResult test_misty_real_lead(){
 
 //  The Cerulean rival against m51's moves (no Water Gun), the levels
 //  since the summary added to its stats: refused at Lv20 and 22 (about
-//  32%, 37%), fought at Lv25 and 30 (about 66%, 95%). The refusal names
+//  30%, 43%), fought at Lv25 and 30 (about 75%, 96%). The refusal names
 //  the chance and the lead it was played with.
 UnitTestResult test_rival_real_moves(){
     const std::vector<std::tuple<uint8_t, double, double>> cases = {
-        {20, 0.20, 0.45}, {22, 0.25, 0.50}, {25, 0.50, 0.70}, {30, 0.90, 1.00},
+        {20, 0.20, 0.45}, {22, 0.25, 0.50}, {25, 0.50, 0.85}, {30, 0.90, 1.00},
     };
     for (const auto& [level, low, high] : cases){
         const std::optional<WinEstimate> estimate = story_win_chance(m51_lead(level), SimItems{.potions = 5}, 1.0, RIVAL);
@@ -533,27 +536,27 @@ UnitTestResult test_sim_awakening_rule(){
     own.status = SimStatus::SLEEP;
     own.sleep = 4;
     own.hp = 34;
-    if (!own_turn(own, SimItems{.potions = 15, .awakenings = 2}, bulbasaur, rival.items, 1).awakening){
+    if (!own_turn(own, SimItems{.potions = 15, .awakenings = 2}, bulbasaur, rival, 1).awakening){
         return "Asleep at 34/65 against the Bulbasaur with 2 Awakenings: expected one.";
     }
-    if (own_turn(own, SimItems{.potions = 15, .awakenings = 0}, bulbasaur, rival.items, 1).awakening){
+    if (own_turn(own, SimItems{.potions = 15, .awakenings = 0}, bulbasaur, rival, 1).awakening){
         return "Asleep with no Awakenings: expected none used.";
     }
     own.hp = 8;
-    if (own_turn(own, SimItems{.potions = 0, .awakenings = 2}, bulbasaur, rival.items, 1).awakening){
+    if (own_turn(own, SimItems{.potions = 0, .awakenings = 2}, bulbasaur, rival, 1).awakening){
         return "Asleep at 8/65, below the Bulbasaur's hit: expected no Awakening.";
     }
     own.hp = 34;
     const SimBattler& abra = rival.party[1];
-    if (own_turn(own, SimItems{.potions = 15, .awakenings = 2}, abra, rival.items, 4).awakening){
+    if (own_turn(own, SimItems{.potions = 15, .awakenings = 2}, abra, rival, 4).awakening){
         return "Asleep against Abra (Teleport only): expected no Awakening.";
     }
     return true;
 }
 
 //  m56's Wartortle Lv22 with 15 Potions against the rival: Awakenings
-//  against the Bulbasaur's Sleep Powder win more battles (about 44% with
-//  none, 52% with 2, 53% with 3), and the inputs name them.
+//  against the Bulbasaur's Sleep Powder win more battles (about 54% with
+//  none, 59% with 2), and the inputs name them.
 UnitTestResult test_rival_awakenings(){
     const std::optional<WinEstimate> none = story_win_chance(m56_lead(), SimItems{.potions = 15}, 1.0, RIVAL);
     const std::optional<WinEstimate> three = story_win_chance(m56_lead(), SimItems{.potions = 15, .awakenings = 3}, 1.0, RIVAL);
@@ -565,6 +568,76 @@ UnitTestResult test_rival_awakenings(){
     }
     if (three->inputs.find("; 15 Potions, 3 Awakenings") == std::string::npos){
         return "Expected the inputs to name the Awakenings, got \"" + three->inputs + "\".";
+    }
+    return true;
+}
+
+//  m56's Wartortle awake at 26/65 against the rival's Bulbasaur at full
+//  HP: the AI spends most turns on Sleep Powder and Leech Seed, so a
+//  Vine Whip that undoes a Potion is the rare turn (m56 run 2: about 8 HP
+//  a turn for three turns). With 15 Potions, a Potion.
+UnitTestResult test_rival_bulbasaur_potion(){
+    const SimTrainer rival = *sim_trainer(RIVAL);
+    const SimBattler& bulbasaur = rival.party[3];
+    SimBattler own = *own_battler(m56_lead());
+    own.hp = 26;
+    if (!own_turn(own, SimItems{.potions = 15}, bulbasaur, rival, 1).potion){
+        return std::format("Awake at 26/65 against the Bulbasaur with 15 Potions: expected a Potion (max hit {}).", foe_max_hit(bulbasaur, own));
+    }
+    return true;
+}
+
+//  The foe's next turn: a Bulbasaur with Vine Whip alone uses it every
+//  turn, from its lowest roll to its highest crit, never missing; with all
+//  four moves, no Sleep Powder on an asleep lead, and a seeded lead loses
+//  its eighth whatever the foe does.
+UnitTestResult test_next_turn_damage(){
+    const SimTrainer rival = *sim_trainer(RIVAL);
+    SimBattler bulbasaur = rival.party[3];
+    SimBattler own = *own_battler(m56_lead());
+    own.hp = 26;
+    const std::vector<SimMove> all = bulbasaur.moves;
+    bulbasaur.moves = {SimMove{.move = "vine-whip", .pp = 25}};
+    const NextTurnDamage vine_whip = next_turn_damage(rival, bulbasaur, own);
+    const MoveData& move = *move_data("vine-whip");
+    const uint32_t lowest = damage_range(bulbasaur.body, own.body, move, false).min;
+    const uint32_t highest = damage_range(bulbasaur.body, own.body, move, true).max;
+    if (vine_whip.move_chances != std::vector<double>{1.0} || vine_whip.percentile(0.01) != lowest || vine_whip.most() != highest){
+        return std::format(
+            "Vine Whip alone: expected it at 100%, {} to {} HP, got {:.2f}, {} to {}.",
+            lowest, highest, vine_whip.move_chances.empty() ? 0.0 : vine_whip.move_chances[0], vine_whip.percentile(0.01), vine_whip.most()
+        );
+    }
+    bulbasaur.moves = all;
+    own.status = SimStatus::SLEEP;
+    own.sleep = 3;
+    const NextTurnDamage asleep = next_turn_damage(rival, bulbasaur, own);
+    if (asleep.move_chances[0] != 0 || std::abs(std::accumulate(asleep.move_chances.begin(), asleep.move_chances.end(), 0.0) - 1) > 1e-9){
+        return std::format("Asleep: expected no Sleep Powder and chances adding to 1, got Sleep Powder {:.2f}.", asleep.move_chances[0]);
+    }
+    own.status = SimStatus::NONE;
+    own.seeded = true;
+    const uint32_t eighth = own.body.stats.hp / 8;
+    if (next_turn_damage(rival, bulbasaur, own).percentile(0.001) != eighth){
+        return std::format("Seeded: expected at least {} HP lost, got {}.", eighth, next_turn_damage(rival, bulbasaur, own).percentile(0.001));
+    }
+    return true;
+}
+
+//  m56's Wartortle Lv22 against the rival: with the Potions sized on the
+//  foe's likely turn, 15 Potions win over half the battles (about 54%;
+//  44% when the Potion was sized on the Bulbasaur's biggest hit), more
+//  than 5 (about 51%). More Potions don't win much more: the battles lost
+//  are lost seeded, poisoned or asleep, where the Bulbasaur's turn and the
+//  drain take more than a Potion heals.
+UnitTestResult test_rival_potions_raise_chance(){
+    const std::optional<WinEstimate> five = story_win_chance(m56_lead(), SimItems{.potions = 5}, 1.0, RIVAL);
+    const std::optional<WinEstimate> fifteen = story_win_chance(m56_lead(), SimItems{.potions = 15}, 1.0, RIVAL);
+    if (!five || !fifteen || fifteen->chance < 0.50 || fifteen->chance <= five->chance){
+        return std::format(
+            "m56's lead: expected 15 Potions to win over 50% and more than 5, got {:.1f}% and {:.1f}% with 5.",
+            fifteen ? 100 * fifteen->chance : 0.0, five ? 100 * five->chance : 0.0
+        );
     }
     return true;
 }
@@ -587,6 +660,9 @@ void add_tests_AutoStoryBattleSim(UnitTestDatabase& database){
     database.add<Test_AutoStoryBattleSim>("m56: asleep at red HP, a Potion undone; an Awakening first", test_rival_sleep_turns);
     database.add<Test_AutoStoryBattleSim>("the sim's Awakening: asleep, outlasting the next hit", test_sim_awakening_rule);
     database.add<Test_AutoStoryBattleSim>("Cerulean rival: Awakenings raise the win chance", test_rival_awakenings);
+    database.add<Test_AutoStoryBattleSim>("Cerulean rival: a Potion against the Bulbasaur", test_rival_bulbasaur_potion);
+    database.add<Test_AutoStoryBattleSim>("Cerulean rival: 15 Potions win over half", test_rival_potions_raise_chance);
+    database.add<Test_AutoStoryBattleSim>("the foe's next-turn damage and move chances", test_next_turn_damage);
 }
 
 

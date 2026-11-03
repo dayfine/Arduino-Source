@@ -46,6 +46,7 @@
 #include <random>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "PokemonFRLG_AutoStoryBattleData.h"
@@ -63,6 +64,11 @@ inline constexpr Genes OWN_GENES{.iv = 15, .ev = 0, .nature = 0};
 
 //  HP a Potion heals.
 inline constexpr uint16_t POTION_HP = 20;
+
+//  A Potion is used only when its HP covers this share of the foe's
+//  next-turn damage (next_turn_damage()): at 0.80, a turn that undoes it
+//  must be rarer than 1 in 5.
+inline constexpr double POTION_COVER_PERCENTILE = 0.80;
 
 //  The lead's items in the bag that the sim plays.
 struct SimItems{
@@ -130,6 +136,41 @@ std::optional<size_t> ai_item_choice(const SimBattler& foe, const std::vector<st
 //  random parts.
 std::vector<int> ai_move_scores(const SimTrainer& trainer, const SimBattler& foe, const SimBattler& target, std::mt19937& rng);
 
+//  How often the AI picks each of `foe`'s moves against `target` now, in
+//  slot order: ai_move_scores() drawn AI_MOVE_SAMPLES times from a fixed
+//  seed, ties split evenly. The chances change with the state (a status
+//  on the target, Leech Seed, stages, HP). All 0 with no PP left.
+inline constexpr size_t AI_MOVE_SAMPLES = 1000;
+std::vector<double> ai_move_chances(const SimTrainer& trainer, const SimBattler& foe, const SimBattler& target);
+
+//  The chance in percent that `user`'s `move` hits `target`: its accuracy
+//  at the user's accuracy and the target's evasion stages
+//  (sAccuracyStageRatios); 100 for a move that never misses.
+uint32_t hit_percent(const SimBattler& user, const SimBattler& target, const MoveData& move);
+
+//  A move's crit odds: 1 in 16, 1 in 8 for a high-crit move.
+uint32_t crit_odds(const MoveData& move);
+
+//  The HP `own` loses over the foe's next turn, as the AI picks its move
+//  (ai_move_chances()): each damaging move's 16 rolls, crit chance,
+//  accuracy with stages and multi-hit counts; a poison or Leech Seed that
+//  lands this turn and the poison and Leech Seed already on `own` (1/8 HP
+//  each at the end of the turn). An asleep foe doesn't move, a paralysed
+//  one 1 turn in 4. A Potion comes before both moves (items act first),
+//  so all of it lands after one.
+struct NextTurnDamage{
+    //  ai_move_chances().
+    std::vector<double> move_chances = {};
+    //  hp_lost[d]: the chance of losing d HP.
+    std::vector<double> hp_lost = {};
+
+    double mean() const;
+    //  The least HP lost at least `share` of the time.
+    uint32_t percentile(double share) const;
+    uint32_t most() const;
+};
+NextTurnDamage next_turn_damage(const SimTrainer& trainer, const SimBattler& foe, const SimBattler& own);
+
 //  The party slot the AI sends out after `fainted`, of the ones still up.
 size_t ai_next_foe(const std::vector<SimBattler>& party, size_t fainted, const SimBattler& lead);
 
@@ -155,38 +196,43 @@ uint32_t foe_max_hit(const SimBattler& foe, const SimBattler& own);
 struct PotionCase{
     uint16_t hp = 0;
     uint16_t max_hp = 0;
-    //  The foe's next hit, on average and at most.
+    //  The HP the foe's next turn takes (next_turn_damage()): on average,
+    //  at POTION_COVER_PERCENTILE and at most.
     double expected_hit = 0;
+    uint32_t likely_hit = 0;
     uint32_t max_hit = 0;
     //  The foe's hits the lead takes before its attacks faint the foe, if
     //  it attacks from now on.
     size_t hits_to_ko = 0;
+    //  The foe's moves and ai_move_chances(), for the log.
+    std::vector<std::pair<std::string, double>> move_chances = {};
 };
-//  `own` against `foe`: the foe's strongest move at the mean roll and
-//  accuracy, or `seen_hit` (HP the last hit took, as the battle loop read
-//  it) if more; the lead's planned move against the foe at its HP now.
-PotionCase potion_case(const SimBattler& own, const SimBattler& foe, double seen_hit = 0);
+//  `own` against `foe`, played by `trainer`'s AI: next_turn_damage(), each
+//  figure raised to `seen_hit` (HP the last hit took, as the battle loop
+//  read it) if more; the lead's planned move against the foe at its HP now.
+PotionCase potion_case(const SimBattler& own, const SimBattler& foe, const SimTrainer& trainer, double seen_hit = 0);
 
-//  At either BattleRisk: a Potion is worth the turn only if, after it and
-//  the foe's expected hit, the lead has gained HP, or if it lets the lead
-//  last until its attacks faint the foe when attacking now wouldn't.
-//  Otherwise it attacks: a Potion the next hit undoes only gives the foe
-//  another turn (console B, 2026-11-03, m51: five Potions at 8/60 HP each
-//  undone by Misty's Starmie, then no Potions and a faint).
+//  At either BattleRisk: a Potion is worth the turn only if its HP is more
+//  than the foe's next turn takes at POTION_COVER_PERCENTILE, or if it lets
+//  the lead last until its attacks faint the foe (at the mean) when
+//  attacking now wouldn't. Otherwise it attacks: a Potion the next turn
+//  undoes only gives the foe another turn (console B, 2026-11-03, m51: five
+//  Potions at 8/60 HP each undone by Misty's Starmie, then no Potions and
+//  a faint).
 bool potion_pays(const PotionCase& c);
 
-//  BattleRisk::HIGH: a Potion now: `foe`'s next hit could faint `own`,
-//  after the Potion it couldn't, and potion_pays().
-bool potion_now(const SimBattler& own, const SimBattler& foe, int potions, double seen_hit = 0);
+//  BattleRisk::HIGH: a Potion now, with `potions` left: the foe's next turn
+//  could faint the lead (PotionCase::max_hit) and potion_pays().
+bool potion_now(const PotionCase& c, int potions);
 
 //  At either BattleRisk, `own` asleep with an Awakening left: one now if
-//  `foe` can hurt it (a damaging move with PP left, or Leech Seed on it)
-//  and it outlasts the hit the item's turn costs (potion_case()'s, with
-//  `seen_hit`). The game counts sleep down only on turns the lead tries to
-//  move (pret battle_util.c AtkCanceller_UnableToUseMove), so the turn
-//  saves the rest of the 1 to 4 asleep. Below that hit the lead's move is
-//  tried instead, to wake and attack, or a Potion as the Potion rules say.
-bool awakening_now(const SimBattler& own, const SimBattler& foe, int awakenings, double seen_hit = 0);
+//  the foe's next turn can hurt it and it outlasts that turn at
+//  POTION_COVER_PERCENTILE (`c`). The game counts sleep down only on turns
+//  the lead tries to move (pret battle_util.c AtkCanceller_UnableToUseMove),
+//  so the turn saves the rest of the 1 to 4 asleep. Below that the lead's
+//  move is tried instead, to wake and attack, or a Potion as the Potion
+//  rules say.
+bool awakening_now(const PotionCase& c, const SimBattler& own, int awakenings);
 
 //  The lead's turn at BattleRisk::HIGH.
 struct OwnTurn{
@@ -199,10 +245,11 @@ struct OwnTurn{
 //  planned_attack_slot()'s move when it surely faints `foe` first (the
 //  lead is awake and faster, the lowest roll faints it, it never misses and
 //  the AI won't heal first), else a Potion if potion_now(), else an
-//  Awakening if awakening_now(), else that move.
+//  Awakening if awakening_now(), else that move. `trainer`: its AI and the
+//  items it has left.
 OwnTurn own_turn(
     const SimBattler& own, const SimItems& own_items, const SimBattler& foe,
-    const std::vector<std::string>& items, size_t foes_left
+    const SimTrainer& trainer, size_t foes_left
 );
 
 

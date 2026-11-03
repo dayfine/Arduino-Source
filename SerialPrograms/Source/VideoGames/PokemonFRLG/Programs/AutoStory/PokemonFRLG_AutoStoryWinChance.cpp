@@ -19,12 +19,7 @@ namespace{
 
 //  A battle still going after this many turns counts as lost.
 constexpr size_t MAX_TURNS = 100;
-constexpr uint32_t CRIT_CHANCE = 16;
-constexpr uint32_t HIGH_CRIT_CHANCE = 8;
 constexpr int MAX_STAGE = 6;
-
-//  sAccuracyStageRatios, -6 to +6, in hundredths.
-constexpr uint32_t ACCURACY_RATIOS[] = {33, 36, 43, 50, 60, 75, 100, 133, 166, 200, 233, 266, 300};
 
 const MoveData& data_of(std::string_view move){
     static const MoveData NONE;
@@ -151,7 +146,7 @@ private:
 
     void play_turn(){
         const size_t left = foes_left();
-        const OwnTurn own = own_turn(m_own, m_items, foe(), m_trainer.items, left);
+        const OwnTurn own = own_turn(m_own, m_items, foe(), m_trainer, left);
         const std::optional<size_t> item = ai_item_choice(foe(), m_trainer.items, left);
         const std::optional<size_t> foe_slot = item ? std::nullopt : foe_move();
         if (own.potion){
@@ -217,15 +212,7 @@ private:
     }
 
     bool hits(const SimBattler& user, const SimBattler& target, const MoveData& move){
-        if (move.accuracy == 0){
-            return true;
-        }
-        const int buff = std::clamp(
-            user.body.stages[static_cast<size_t>(Stage::ACCURACY)] - target.body.stages[static_cast<size_t>(Stage::EVASION)],
-            -MAX_STAGE, MAX_STAGE
-        );
-        const uint32_t chance = move.accuracy * ACCURACY_RATIOS[buff + MAX_STAGE] / 100;
-        return random(100) + 1 <= chance;
+        return move.accuracy == 0 || random(100) + 1 <= hit_percent(user, target, move);
     }
 
     void use(SimBattler& user, SimBattler& target, const std::string& move_name, std::optional<size_t> slot, bool moves_first){
@@ -262,7 +249,7 @@ private:
         if (move.effect == "super-fang"){
             return std::max<uint32_t>(target.hp / 2, 1);
         }
-        const bool crit = random(move.effect == "high-critical" ? HIGH_CRIT_CHANCE : CRIT_CHANCE) == 0;
+        const bool crit = random(crit_odds(move)) == 0;
         const uint32_t before = damage_before_roll(user.body, target.body, move, crit);
         return fixed_damage(move, user.body) ? before : rolled_damage(before, 100 - random(16));
     }
