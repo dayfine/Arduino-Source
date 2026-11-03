@@ -304,7 +304,7 @@ GrindFight ConsoleGrindActions::fight(){
 }
 
 bool ConsoleGrindActions::needs_heal(){
-    return m_supplies.hurt || m_supplies.status != StatusCondition::NONE;
+    return m_supplies.hurt || m_supplies.status != StatusCondition::NONE || attacks_low_on_pp(m_supplies);
 }
 
 bool ConsoleGrindActions::heal_trip(){

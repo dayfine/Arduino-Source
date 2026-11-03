@@ -13,7 +13,8 @@
  *  move-learn prompts, evolutions and switching are its business. So the
  *  member that grinds must lead the party: the step refuses another slot.
  *  It heals when the battle handler says the lead is hurt or has a status,
- *  or after `heal_every` battles. It is bounded by encounters, and a
+ *  when its attacks are low on PP, or after `heal_every` battles; the
+ *  nurse restores PP as well. It is bounded by encounters, and a
  *  shiny stops it as it stops a capture: nothing pressed.
  *
  *  The level is read with a MemberReader before the first battle and after
@@ -92,7 +93,8 @@ public:
     virtual EncounterSeen read_encounter() = 0;
     //  From the battle menu: the battle handler, to the overworld.
     virtual GrindFight fight() = 0;
-    //  Whether the lead is hurt or has a status, as the battles left it.
+    //  Whether the lead is hurt, has a status or is low on PP in its
+    //  attacks, as the battles left it.
     virtual bool needs_heal() = 0;
     //  From the patch: to the nurse, heal, back to the patch. False if it
     //  didn't get there and back.

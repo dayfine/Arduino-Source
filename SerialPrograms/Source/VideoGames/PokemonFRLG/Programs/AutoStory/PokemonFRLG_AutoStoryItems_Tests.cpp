@@ -94,6 +94,33 @@ UnitTestResult test_pocket_rows(Logger&){
     return true;
 }
 
+//  #211: a row loaded from a save counted no Potions, so its wild battles
+//  were all run from. The counts come from the bag as read, both for the
+//  run and for a reload; with nothing read, the row's are kept.
+UnitTestResult test_loaded_bag(Logger&){
+    Supplies row;
+    Supplies saved = row;
+    const std::vector<std::string> unread = set_from_loaded_bag(row, saved, {{"potion", 4}, {"antidote", 2}});
+    if (row.potions != 4 || saved.potions != 4 || row.antidotes != 2 || saved.antidotes != 2 || !unread.empty()){
+        return std::format(
+            "Expected 4 Potions and 2 Antidotes from the bag, now and for a reload; got {} and {}, {} and {}.",
+            row.potions, saved.potions, row.antidotes, saved.antidotes
+        );
+    }
+    if (item_row(saved, "antidote") != 1){
+        return "Expected the reload's pocket order from the bag.";
+    }
+
+    Supplies known;
+    known.potions = 2;
+    Supplies known_saved = known;
+    set_from_loaded_bag(known, known_saved, {});
+    if (known.potions != 2 || known_saved.potions != 2){
+        return "Expected the row's 2 Potions kept with nothing read.";
+    }
+    return true;
+}
+
 //  A count the bag reader couldn't read (-1) is never taken for none: the
 //  row still holds some, so it keeps the count bought, or 1 with none
 //  known, and the battle's checks (a count above 0, a row) still use it.
@@ -220,6 +247,7 @@ UnitTestResult test_late_battle_placed(Logger&){
 void add_tests_AutoStoryItems(UnitTestDatabase& database){
     database.add<Test_AutoStoryItems>("Mart cursor stays on the row bought", test_mart_cursor);
     database.add<Test_AutoStoryItems>("Items pocket rows", test_pocket_rows);
+    database.add<Test_AutoStoryItems>("a loaded save's counts come from the bag", test_loaded_bag);
     database.add<Test_AutoStoryItems>("unread bag counts count as some", test_unread_counts);
     database.add<Test_AutoStoryItems>("no item names read in a language without them", test_unread_language);
     database.add<Test_AutoStoryItems>("a wild battle seen late is placed where it stopped the leg", test_late_battle_placed);
