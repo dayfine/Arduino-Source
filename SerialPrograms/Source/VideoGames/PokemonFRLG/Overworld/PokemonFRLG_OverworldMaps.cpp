@@ -37,6 +37,10 @@ const char* const MAP_NAMES[] = {
     "PewterCity_Mart",
     "PewterCity_Museum_1F",
     "PewterCity_Gym",
+    //  Route 3 to the Magikarp salesman in Route 4's Pokemon Center.
+    "Route3",
+    "Route4",
+    "Route4_PokemonCenter_1F",
     //  Cerulean Cave, for Mewtwo.
     "CeruleanCity_PokemonCenter_1F",
     "CeruleanCity",

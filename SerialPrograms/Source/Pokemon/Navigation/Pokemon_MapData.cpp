@@ -106,6 +106,18 @@ std::string read_string(const JsonObject& object, const std::string& key, const 
     return *text;
 }
 
+//  The boolean `key`, or `fallback` when the map leaves it out.
+bool optional_bool(const JsonObject& object, const std::string& key, bool fallback, const std::string& where){
+    const JsonValue* value = object.get_value(key);
+    if (value == nullptr){
+        return fallback;
+    }
+    if (!value->is_boolean()){
+        throw ParseException(where + key + " is not true or false.");
+    }
+    return value->to_boolean_default(fallback);
+}
+
 //  The string `key`, or nothing when the map leaves it out.
 std::optional<std::string> optional_string(const JsonObject& object, const std::string& key, const std::string& where){
     if (object.get_value(key) == nullptr){
@@ -517,6 +529,7 @@ MapData parse_map(const JsonValue& json, const std::string& source_name){
     map.name = read_string(root, "name", where);
     map.source = read_source(root, where);
     map.world = read_world(root, where);
+    map.allow_running = optional_bool(root, "allow_running", true, where);
     map.tiles = read_tiles(root, where);
     map.elevation = read_elevation(root, map.tiles, where);
     map.points = read_points(root, where);

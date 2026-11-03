@@ -327,6 +327,7 @@ RouteStep to_route_step(const std::vector<MapData>& maps, const Pokemon::Leg<Loc
     step.tiles = leg.kind == Pokemon::LegKind::FACE ? 0 : leg.tiles;
     step.warps = leg.warps;
     step.surfing = leg.start.state.surfing;
+    step.walk_only = !maps[leg.start.map].allow_running;
     step.to_wall = leg.to_wall;
     step.facing_after = leg.facing_after;
     step.end = MapPosition{maps[leg.end.map].name, leg.end.state.position};
@@ -427,6 +428,7 @@ std::optional<WallHold> hold_to_wall(
 ){
     std::optional<Located> player = locate(maps, from, surfing);
     WallHold hold;
+    hold.walk_only = player && !maps[player->map].allow_running;
     for (int c = 0; player && c <= MAX_HOLD_TILES; c++){
         if (stops_at(maps, *player, direction) || ledge_stops_north(maps, *player, direction)){
             hold.end = MapPosition{maps[player->map].name, player->state.position};

@@ -117,8 +117,9 @@ StoryRunPlan plan_story_run(
 );
 
 
-//  The maps the story plans on: every map to Brock, with the objects the
-//  game hides after the Hall of Fame removed, as the lab's frlg_route does.
+//  The maps the story plans on: every map to Route 4's Pokemon Center, with
+//  the objects the game hides after the Hall of Fame removed, as the lab's
+//  frlg_route does.
 const std::vector<MapData>& story_maps();
 
 Pokemon::Pose to_pose(const StoryPose& pose);

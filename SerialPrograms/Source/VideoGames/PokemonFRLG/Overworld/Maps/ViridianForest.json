@@ -141,19 +141,31 @@
             "name": "bug_catcher",
             "kind": "npc",
             "x": 47,
-            "y": 45
+            "y": 45,
+            "facing": "west",
+            "trainer": {
+                "sight": 5
+            }
         },
         {
             "name": "bug_catcher",
             "kind": "npc",
             "x": 47,
-            "y": 29
+            "y": 29,
+            "facing": "west",
+            "trainer": {
+                "sight": 4
+            }
         },
         {
             "name": "bug_catcher",
             "kind": "npc",
             "x": 7,
-            "y": 22
+            "y": 22,
+            "facing": "west",
+            "trainer": {
+                "sight": 4
+            }
         },
         {
             "name": "item_ball",
@@ -180,13 +192,24 @@
             "name": "bug_catcher",
             "kind": "npc",
             "x": 43,
-            "y": 6
+            "y": 6,
+            "trainer": {
+                "sight": 1,
+                "looks": [
+                    "south",
+                    "north"
+                ]
+            }
         },
         {
             "name": "bug_catcher",
             "kind": "npc",
             "x": 16,
-            "y": 5
+            "y": 5,
+            "facing": "north",
+            "trainer": {
+                "sight": 1
+            }
         },
         {
             "name": "item_ball",
