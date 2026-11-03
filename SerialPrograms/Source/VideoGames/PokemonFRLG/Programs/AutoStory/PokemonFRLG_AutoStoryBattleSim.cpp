@@ -330,9 +330,25 @@ std::vector<size_t> damaging_slots(const SimBattler& own, const SimBattler& foe)
 
 
 std::optional<SimBattler> own_battler(const PartyMember& lead, double hp_share, const Genes& genes){
-    std::optional<Combatant> body = combatant(lead.species, lead.moves_through_level, genes);
+    std::optional<Combatant> body = combatant(lead.species, battle_level(lead), genes);
     if (!body){
         return std::nullopt;
+    }
+    if (lead.stats && lead.level > 0){
+        //  The stats read, and what the levels since add with `genes`.
+        const Stats then = combatant(lead.species, lead.level, genes)->stats;
+        const Stats now = body->stats;
+        const auto grown = [](uint16_t read, uint16_t before, uint16_t after){
+            return static_cast<uint16_t>(read + after - before);
+        };
+        body->stats = Stats{
+            .hp = grown(lead.stats->hp, then.hp, now.hp),
+            .attack = grown(lead.stats->attack, then.attack, now.attack),
+            .defense = grown(lead.stats->defense, then.defense, now.defense),
+            .sp_attack = grown(lead.stats->sp_attack, then.sp_attack, now.sp_attack),
+            .sp_defense = grown(lead.stats->sp_defense, then.sp_defense, now.sp_defense),
+            .speed = grown(lead.stats->speed, then.speed, now.speed),
+        };
     }
     SimBattler battler{.species = lead.species, .body = *body, .hp = 0, .moves = {}};
     battler.hp = static_cast<uint16_t>(std::clamp<double>(std::round(body->stats.hp * hp_share), 1, body->stats.hp));
@@ -484,14 +500,51 @@ uint32_t foe_max_hit(const SimBattler& foe, const SimBattler& own){
     return most;
 }
 
-bool potion_now(const SimBattler& own, const SimBattler& foe, int potions){
+PotionCase potion_case(const SimBattler& own, const SimBattler& foe, double seen_hit){
+    double expected = 0;
+    for (const SimMove& known : foe.moves){
+        if (known.pp > 0){
+            expected = std::max(expected, mean_per_turn(foe, own, data_of(known.move)));
+        }
+    }
+    const std::optional<size_t> slot = planned_attack_slot(own, foe, {}, 1);
+    const size_t turns = slot
+        ? turns_to_faint(foe, {}, 1, mean_per_turn(own, foe, data_of(own.moves[*slot].move)))
+        : TURNS_CAP + 1;
+    //  A faster foe hits before each of the lead's attacks, a slower one
+    //  only between them.
+    const size_t hits = speed_of(foe) >= speed_of(own) ? turns : turns - 1;
+    return PotionCase{
+        .hp = own.hp,
+        .max_hp = own.body.stats.hp,
+        .expected_hit = std::max(expected, seen_hit),
+        .max_hit = std::max(foe_max_hit(foe, own), static_cast<uint32_t>(std::ceil(seen_hit))),
+        .hits_to_ko = hits,
+    };
+}
+
+bool potion_pays(const PotionCase& c){
+    const uint16_t heal = static_cast<uint16_t>(std::min<int>(POTION_HP, c.max_hp - c.hp));
+    if (heal == 0){
+        return false;
+    }
+    const double healed = c.hp + heal;
+    if (heal > c.expected_hit && healed > c.expected_hit){
+        return true;
+    }
+    const bool lasts_if_healed = healed > c.expected_hit * static_cast<double>(c.hits_to_ko + 1);
+    const bool lasts_now = c.hp > c.expected_hit * static_cast<double>(c.hits_to_ko);
+    return lasts_if_healed && !lasts_now;
+}
+
+bool potion_now(const SimBattler& own, const SimBattler& foe, int potions, double seen_hit){
     const uint16_t max_hp = own.body.stats.hp;
     if (potions <= 0 || own.hp >= max_hp){
         return false;
     }
-    const uint32_t hit = foe_max_hit(foe, own);
+    const PotionCase c = potion_case(own, foe, seen_hit);
     const uint32_t healed = std::min<uint32_t>(max_hp, own.hp + POTION_HP);
-    return hit >= own.hp && healed > hit;
+    return c.max_hit >= own.hp && healed > c.max_hit && potion_pays(c);
 }
 
 OwnTurn own_turn(
