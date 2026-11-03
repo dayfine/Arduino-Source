@@ -723,6 +723,84 @@ UnitTestResult test_move_refusal_watch(Logger&){
     return true;
 }
 
+//  Regression, console B 2026-11-03, Miguel's battle (m48): the move list
+//  opened after YES to "Delete a move to make room for BITE?", and closed
+//  with no move forgotten, so the game asked "Stop learning BITE?" where
+//  the story expected the next move's "Delete a move?". NO there and YES
+//  at "Delete a move?" went round 13 times (75 s), until presses by time
+//  ended it. A YES/NO right after the move list is "Stop learning?": YES,
+//  and the lead keeps its moves.
+UnitTestResult test_move_list_closed(Logger&){
+    enum class Prompt{DELETE, STOP};
+    Supplies supplies;
+    supplies.lead = squirtle_before_miguel();
+    BattleDecisions decisions(supplies, BattleKind::TRAINER);
+    decisions.turn(GREEN);
+    Prompt prompt = Prompt::DELETE;
+    for (int answers = 1; answers <= 8; answers++){
+        const PromptAnswer answer = decisions.prompt(false);
+        if (answer.learned){
+            //  The move list showed, as the loop saw it.
+            supplies.lead = *answer.learned;
+        }
+        if (prompt == Prompt::STOP && answer.answer == YesNo::YES){
+            const std::vector<std::string> before{"water-gun", "tail-whip", "bubble", "withdraw"};
+            if (move_names(supplies.lead) != before){
+                return "Expected the moves as before Bite was offered, got " + joined(move_names(supplies.lead)) + ".";
+            }
+            return true;
+        }
+        //  The move list closes with nothing forgotten: "Stop learning?",
+        //  as after NO; NO there asks "Delete a move?" again.
+        prompt = prompt == Prompt::DELETE ? Prompt::STOP : Prompt::DELETE;
+    }
+    return "Expected the move prompts to end within 8 answers.";
+}
+
+//  However the YES/NOs come, a few after a turn are all the move prompts
+//  can be (two moves offered, NO then YES each); after those, YES only,
+//  which ends either prompt ("Delete a move?": the move list, which the
+//  loop's B closes; "Stop learning?": done), and the moves stay as they are.
+UnitTestResult test_move_prompts_bounded(Logger&){
+    Supplies supplies;
+    supplies.lead = with_moves("wartortle", {"tackle", "bite", "water-gun", "withdraw"}, 19);
+    BattleDecisions decisions(supplies, BattleKind::TRAINER);
+    decisions.turn(GREEN);
+    for (int answers = 1; answers <= 12; answers++){
+        const PromptAnswer answer = decisions.prompt(false);
+        if (answers > 4 && (answer.answer != YesNo::YES || answer.forget_slot)){
+            return std::format("Expected a plain YES at the move prompt {} after a turn.", answers);
+        }
+    }
+    const std::vector<std::string> moves{"tackle", "bite", "water-gun", "withdraw"};
+    if (move_names(supplies.lead) != moves){
+        return "Expected the moves unchanged, got " + joined(move_names(supplies.lead)) + ".";
+    }
+    return true;
+}
+
+//  Regression, console B 2026-11-03, before Miguel (m48): yellow HP
+//  (17/55) and no Potion left, and the story went into the battle, as the
+//  nurse was only for red HP. After the items, the nurse for any HP not
+//  green, a status, or attacks low on PP.
+UnitTestResult test_nurse_before_battle(Logger&){
+    Supplies supplies;
+    supplies.lead = squirtle_before_miguel();
+    if (nurse_before_battle(supplies)){
+        return "Expected no nurse with green HP, no status and full PP.";
+    }
+    supplies.hurt = true;
+    if (!nurse_before_battle(supplies)){
+        return "Expected the nurse for yellow HP that no Potion healed.";
+    }
+    supplies.hurt = false;
+    supplies.status = StatusCondition::OTHER;
+    if (!nurse_before_battle(supplies)){
+        return "Expected the nurse for a status no item cured.";
+    }
+    return true;
+}
+
 void add_tests_AutoStoryParty(UnitTestDatabase& database){
     database.add<Test_AutoStoryParty>("movesets the game gives and the story plays", test_movesets);
     database.add<Test_AutoStoryParty>("move offered and slot forgotten", test_learn_prompts);
@@ -740,6 +818,9 @@ void add_tests_AutoStoryParty(UnitTestDatabase& database){
     database.add<Test_AutoStoryParty>("a YES/NO with no move list after it changes no move", test_yes_no_without_move_list);
     database.add<Test_AutoStoryParty>("a disabled move: left alone while Disable lasts, PP back", test_disabled_move);
     database.add<Test_AutoStoryParty>("a move turned down: the move list, then the menu sooner than a turn", test_move_refusal_watch);
+    database.add<Test_AutoStoryParty>("the move list closed with nothing forgotten: YES to \"Stop learning?\"", test_move_list_closed);
+    database.add<Test_AutoStoryParty>("move prompts after a turn: a plain YES after the first few", test_move_prompts_bounded);
+    database.add<Test_AutoStoryParty>("the nurse before a battle for HP not green with no Potion", test_nurse_before_battle);
     add_tests_AutoStoryBattleData(database);
 }
 
