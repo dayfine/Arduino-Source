@@ -7,21 +7,25 @@
  *
  */
 
+#include <cctype>
 #include <cmath>
 #include <cstdint>
 #include <format>
 #include <functional>
 #include <optional>
+#include <string>
 #include <string_view>
 #include <utility>
 #include <vector>
 #include "Common/Cpp/Color.h"
 #include "Common/Cpp/Exceptions.h"
+#include "Common/Cpp/Filesystem/Filesystem.h"
 #include "Common/Cpp/Logging/AbstractLogger.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "CommonFramework/Language.h"
 #include "Tests/ImageUnitTest.h"
+#include "Tests/TestUtils.h"
 #include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_SaveCardReader.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSim.h"
@@ -324,10 +328,11 @@ UnitTestResult test_late_battle_placed(Logger&){
 
 
 //  battle_shows(), the battle loop's look at whether the battle is still on
-//  screen, on console B's captures.
+//  screen, on console B's captures named <anything>_<True or False>.png.
+//  An image whose name doesn't say is registered with its answer.
 class Test_BattleShows : public ImageUnitTest{
 public:
-    Test_BattleShows(const std::string& image, bool expected)
+    Test_BattleShows(const std::string& image, std::optional<bool> expected = std::nullopt)
         : ImageUnitTest("PokemonFRLG::AutoStoryBattle - " + image, {image})
         , m_expected(expected)
     {}
@@ -336,45 +341,65 @@ public:
         Logger& logger, CancellableScope& scope,
         const std::vector<ImageRGB32>& images
     ) const override{
-        return battle_shows(images[0]) == m_expected;
+        bool expected = false;
+        if (m_expected){
+            expected = *m_expected;
+        }else{
+            const std::vector<std::string> words = parse_words(Filesystem::Path(image_paths()[0]).stem().string());
+            if (words.empty() || !parse_bool(words.back(), expected)){
+                return "Error: filename must be <anything>_<True or False>.";
+            }
+        }
+        return battle_shows(images[0]) == expected;
     }
 
 private:
-    bool m_expected;
+    std::optional<bool> m_expected;
 };
 
-//  read_party_status() on console B's captures: the bar's color, and its
-//  colored share within a pixel of the 48-pixel bar of `hp` / `max_hp`.
+//  read_party_status() on console B's captures named
+//  <anything>_Hp<Color>_<hp>of<max hp>[_<anything>].png: the bar's color,
+//  and its colored share within a pixel of the 48-pixel bar of hp / max hp.
 //  Console B, 2026-11-03, before Miguel: 17/55 HP read as 15% of the bar,
 //  then 2% with the box a pixel lower.
 class Test_PartyHp : public ImageUnitTest{
 public:
-    Test_PartyHp(const std::string& image, std::string_view color, int hp, int max_hp)
+    Test_PartyHp(const std::string& image)
         : ImageUnitTest("PokemonFRLG::AutoStoryBattle - " + image, {image})
-        , m_color(color)
-        , m_share(double(hp) / max_hp)
     {}
 
     virtual UnitTestResult run_on_images(
         Logger& logger, CancellableScope& scope,
         const std::vector<ImageRGB32>& images
     ) const override{
+        std::string expected_color;
+        int hp = 0;
+        int max_hp = 0;
+        for (const std::string& word : parse_words(Filesystem::Path(image_paths()[0]).stem().string())){
+            const size_t of = word.find("of");
+            if (word.starts_with("Hp") && word.size() > 2){
+                expected_color = word.substr(2);
+                expected_color[0] = char(std::tolower((unsigned char)expected_color[0]));
+            }else if (of != std::string::npos){
+                parse_int(word.substr(0, of), hp);
+                parse_int(word.substr(of + 2), max_hp);
+            }
+        }
+        if (expected_color.empty() || max_hp <= 0){
+            return "Error: filename must be <anything>_Hp<Color>_<hp>of<max hp>[_<anything>].";
+        }
+        const double share = double(hp) / max_hp;
         const PartyStatus status = read_party_status(images[0]);
         const std::string_view color = !status.hp_seen ? "none" : status.hp_red ? "red" : status.hp_yellow ? "yellow" : "green";
-        if (color != m_color){
-            return std::format("Expected an HP bar read as {}, got {}.", m_color, color);
+        if (color != expected_color){
+            return std::format("Expected an HP bar read as {}, got {}.", expected_color, color);
         }
-        if (std::abs(status.hp_fill - m_share) > 1.0 / 48){
-            return std::format("Expected {:.0f}% of the bar, got {:.0f}%.", 100 * m_share, 100 * status.hp_fill);
+        if (std::abs(status.hp_fill - share) > 1.0 / 48){
+            return std::format("Expected {:.0f}% of the bar, got {:.0f}%.", 100 * share, 100 * status.hp_fill);
         }
         return true;
     }
-
-private:
-    std::string_view m_color;
-    double m_share;
 };
-
 
 }
 
@@ -394,11 +419,15 @@ void add_tests_AutoStoryItems(UnitTestDatabase& database){
     //  after "Got away safely!", whose black lower half reads as the battle's
     //  text box (console B, 2026-11-03: 9 minutes of A and B there).
     database.add<Test_BattleShows>("PokemonFRLG/WildEncounterReader/eng_chansey.jpg", true);
-    database.add<Test_BattleShows>("PokemonFRLG/AutoStoryBattle/MtMoonB2F_AfterRun_False.png", false);
-    database.add<Test_PartyHp>("PokemonFRLG/AutoStoryBattle/MtMoon1F_HpGreen_Full.png", "green", 45, 45);
-    database.add<Test_PartyHp>("PokemonFRLG/AutoStoryBattle/MtMoon1F_HpGreen_27of45.png", "green", 27, 45);
-    database.add<Test_PartyHp>("PokemonFRLG/AutoStoryBattle/MtMoonB2F_HpYellow_17of55.png", "yellow", 17, 55);
-    database.add<Test_PartyHp>("PokemonFRLG/AutoStoryBattle/MtMoonB2F_HpYellow_17of55_BarLow.png", "yellow", 17, 55);
+    database.add<Test_BattleShows>("PokemonFRLG/AutoStoryBattle/MtMoonB2F_AfterRun_False.png");
+    for (const char* image : {
+        "MtMoon1F_HpGreen_45of45.png",
+        "MtMoon1F_HpGreen_27of45.png",
+        "MtMoonB2F_HpYellow_17of55.png",
+        "MtMoonB2F_HpYellow_17of55_BarLow.png",
+    }){
+        database.add<Test_PartyHp>(std::string("PokemonFRLG/AutoStoryBattle/") + image);
+    }
     //  The battle's choices, registered here to keep add_tests() within its size.
     add_tests_AutoStoryParty(database);
 }
