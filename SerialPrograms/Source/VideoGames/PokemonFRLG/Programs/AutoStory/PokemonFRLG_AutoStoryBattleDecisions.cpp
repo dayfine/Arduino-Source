@@ -5,6 +5,7 @@
  */
 
 #include <algorithm>
+#include <iterator>
 #include "PokemonFRLG_AutoStoryBattleDecisions.h"
 
 namespace PokemonAutomation{
@@ -35,7 +36,28 @@ constexpr Milliseconds BATTLE_GONE = std::chrono::milliseconds(3000);
 constexpr Milliseconds OVERWORLD_CHECK = std::chrono::milliseconds(3000);
 //  A and B pressed blind for this long with no battle menu: give up.
 constexpr Milliseconds BLIND_PRESSES = std::chrono::milliseconds(30000);
+//  Turns a move turned down is left alone: the longest Disable (pret
+//  battle_script_commands.c Cmd_disablelastusedattack, 2 to 5 turns).
+constexpr int DISABLE_TURNS = 5;
+//  The battle menu back this soon after a move was chosen, with the move
+//  list between: the move wasn't used.
+constexpr Milliseconds REFUSED_WITHIN = std::chrono::milliseconds(7000);
+//  Below this much PP left in the lead's attacks, the nurse before a fight
+//  that needs them: about a trainer's worth of turns.
+constexpr size_t LOW_ATTACK_PP = 10;
 
+}
+
+
+void healed_by_nurse(Supplies& supplies){
+    supplies.hurt = false;
+    supplies.hp_red = false;
+    supplies.status = StatusCondition::NONE;
+    restore_pp(supplies.lead);
+}
+
+bool attacks_low_on_pp(const Supplies& supplies){
+    return attack_slot(supplies.lead).has_value() && attack_pp(supplies.lead) < LOW_ATTACK_PP;
 }
 
 
@@ -46,6 +68,7 @@ BattleDecisions::BattleDecisions(Supplies& supplies, BattleKind kind)
 
 TurnAction BattleDecisions::turn(const PartyStatus& status){
     m_turns++;
+    count_down_refused();
     m_last_move_slot.reset();
     if (!m_lost){
         return lead_turn(status);
@@ -88,9 +111,15 @@ TurnAction BattleDecisions::lead_turn(const PartyStatus& status){
 //  can't reach while that slot is empty, so before Bubble it stays on
 //  Tackle.
 TurnAction BattleDecisions::move_turn(){
+    PartyMember usable = m_supplies.lead;
+    for (const auto& refused : m_refused){
+        if (refused.first < usable.moves.size()){
+            usable.moves[refused.first].pp = 0;
+        }
+    }
     const std::optional<size_t> slot = m_kind == BattleKind::TRAINER
-        ? attack_slot_against(m_supplies.lead, m_supplies.foes)
-        : attack_slot(m_supplies.lead);
+        ? attack_slot_against(usable, m_supplies.foes)
+        : attack_slot(usable);
     if (!slot){
         return TurnAction{.choice = TurnChoice::MOVE, .slot = BOTTOM_LEFT_MOVE};
     }
@@ -99,7 +128,31 @@ TurnAction BattleDecisions::move_turn(){
     return TurnAction{.choice = TurnChoice::MOVE, .slot = *slot};
 }
 
-void BattleDecisions::turn_done(TurnChoice choice, bool done){
+void BattleDecisions::count_down_refused(){
+    for (auto it = m_refused.begin(); it != m_refused.end();){
+        it = --it->second <= 0 ? m_refused.erase(it) : std::next(it);
+    }
+}
+
+void BattleDecisions::move_refused(){
+    if (!m_last_move_slot){
+        return;
+    }
+    const size_t slot = *m_last_move_slot;
+    if (slot < m_supplies.lead.moves.size()){
+        m_supplies.lead.moves[slot].pp++;
+    }
+    //  One more: the next turn() counts down the one that didn't happen.
+    m_refused[slot] = DISABLE_TURNS + 1;
+    m_last_move_slot.reset();
+}
+
+void BattleDecisions::turn_done(TurnChoice choice, TurnResult result){
+    if (result == TurnResult::REFUSED){
+        move_refused();
+        return;
+    }
+    const bool done = result == TurnResult::DONE;
     if (!done && choice == TurnChoice::MOVE){
         if (m_last_move_slot){
             no_pp_left(m_supplies.lead, *m_last_move_slot);
@@ -136,10 +189,12 @@ PromptAnswer BattleDecisions::prompt(bool lead_box_gone){
         m_declined_delete = false;
         return PromptAnswer{.answer = YesNo::YES};
     }
-    const LearnDecision decision = learn_move(m_supplies.lead);
+    PartyMember learning = m_supplies.lead;
+    const LearnDecision decision = learn_move(learning);
     if (decision.forget_slot){
-        return PromptAnswer{.answer = YesNo::YES, .forget_slot = decision.forget_slot};
+        return PromptAnswer{.answer = YesNo::YES, .forget_slot = decision.forget_slot, .learned = std::move(learning)};
     }
+    m_supplies.lead = std::move(learning);
     m_declined_delete = true;
     return PromptAnswer{.answer = YesNo::NO};
 }
@@ -201,6 +256,22 @@ bool BattleEndWatch::check_overworld(WallClock now){
     }
     m_last_check = now;
     return true;
+}
+
+void MoveRefusalWatch::move_chosen(WallClock now){
+    m_chosen = now;
+    m_list_back = false;
+}
+
+void MoveRefusalWatch::no_battle_screen(){
+    m_list_back = m_chosen.has_value();
+}
+
+bool MoveRefusalWatch::refused(WallClock now){
+    const bool refused = m_chosen && m_list_back && now - *m_chosen < REFUSED_WITHIN;
+    m_chosen.reset();
+    m_list_back = false;
+    return refused;
 }
 
 bool BattleEndWatch::pressed_blind(WallClock now){
