@@ -1885,6 +1885,8 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_GiftRngAttempts.h
     Source/VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_GiftRngAttempts_Tests.cpp
     Source/VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_GiftRngAttempts_Tests.h
+    Source/VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_GiftRngConsoleSteps.cpp
+    Source/VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_GiftRngConsoleSteps.h
     Source/VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_HardReset.cpp
     Source/VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_HardReset.h
     Source/VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_LocationsDatabase.cpp

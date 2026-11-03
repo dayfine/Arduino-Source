@@ -64,8 +64,51 @@ std::string starter_rng_loop_message(const StarterRngLoopResult& result){
 }
 
 
-std::vector<StoryCheckpoint> rows_after_starter_rng(
-    const std::vector<StoryCheckpoint>& checkpoints, size_t ball_row, size_t last
+std::string gift_rng_loop_message(const StarterRngLoopResult& result){
+    const std::string save = "The save is still beside the salesman, facing him: run Gift RNG (Magikarp) from it with "
+        "an attempt from the log, then start AutoStory at 00.12b.";
+    switch (result.end){
+    case StarterRngLoopEnd::SHINY:
+        return "Gift RNG: shiny Magikarp, on the planned target. 00.12b saves it.";
+    case StarterRngLoopEnd::SHINY_OFF_TARGET:
+        return "Gift RNG: shiny Magikarp, but not the planned target. 00.12b saves it.";
+    case StarterRngLoopEnd::TARGET:
+        return "Gift RNG hit the target (shiny not required). Nothing was saved after it: start AutoStory at 00.12b "
+            "to save the Magikarp where it stands.";
+    case StarterRngLoopEnd::OUT_OF_ATTEMPTS:
+        return std::format(
+            "Gift RNG: every planned attempt hit its target and none was shiny, so the RNG plan's SID doesn't fit. "
+            "SIDs left: {}. {}", join_sids(result.remaining_sids), save
+        );
+    case StarterRngLoopEnd::MISSED_EVERY_ATTEMPT_LEFT:
+        return "Gift RNG: every attempt left missed its target more often than the retries allow, or Gift RNG refused "
+            "its timings (see the log). Check the RNG plan's sound setting. " + save;
+    case StarterRngLoopEnd::OUT_OF_TIME:
+        return std::format("Gift RNG: out of time after {} attempts. {}", result.attempts_run, save);
+    }
+    throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "Unknown Gift RNG loop end.");
+}
+
+
+namespace{
+
+//  `plan` with the rows from `first` to `last` as plan_story_run() takes
+//  them after it, and the handoff they stop at.
+StoryRunPlan then_rows(
+    StoryRunPlan plan, const std::vector<StoryCheckpoint>& checkpoints, size_t first, size_t last, const StoryHandoffs& handoffs
+){
+    if (last >= first){
+        StoryRunPlan rest = plan_story_run(checkpoints, first, last, handoffs);
+        plan.rows.insert(plan.rows.end(), rest.rows.begin(), rest.rows.end());
+        plan.stop = rest.stop;
+    }
+    return plan;
+}
+
+}
+
+StoryRunPlan rows_after_starter_rng(
+    const std::vector<StoryCheckpoint>& checkpoints, size_t ball_row, size_t last, const StoryHandoffs& handoffs
 ){
     if (ball_row + 1 >= checkpoints.size()){
         throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "No checkpoint after the starter's ball.");
@@ -80,12 +123,24 @@ std::vector<StoryCheckpoint> rows_after_starter_rng(
     row.steps.erase(row.steps.begin(), taken + 1);
     row.title = "after Starter RNG in AutoStory: the rival's battle";
 
-    std::vector<StoryCheckpoint> rows{std::move(row)};
-    if (last > ball_row + 1){
-        StoryRunPlan rest = plan_story_run(checkpoints, ball_row + 2, last, StoryHandoffs{});
-        rows.insert(rows.end(), rest.rows.begin(), rest.rows.end());
+    StoryRunPlan plan;
+    plan.rows.emplace_back(std::move(row));
+    return then_rows(std::move(plan), checkpoints, ball_row + 2, last, handoffs);
+}
+
+StoryRunPlan rows_after_gift_rng(
+    const std::vector<StoryCheckpoint>& checkpoints, size_t salesman_row, size_t last, const StoryHandoffs& handoffs
+){
+    if (salesman_row + 1 >= checkpoints.size()){
+        throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "No checkpoint after the Magikarp salesman.");
     }
-    return rows;
+    const StoryCheckpoint& row = checkpoints[salesman_row + 1];
+    if (row.steps.empty() || row.steps.front().variant != LEAVE_GIFT_SUMMARY){
+        throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, row.id + " doesn't start by leaving the gift's summary.");
+    }
+    StoryRunPlan plan;
+    plan.rows.emplace_back(row);
+    return then_rows(std::move(plan), checkpoints, salesman_row + 2, last, handoffs);
 }
 
 

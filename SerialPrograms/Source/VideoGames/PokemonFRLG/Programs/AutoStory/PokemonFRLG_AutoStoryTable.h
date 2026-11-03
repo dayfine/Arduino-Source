@@ -4,7 +4,7 @@
  *
  *  FireRed from a new game to the Boulder Badge, the Running Shoes and Route
  *  3 to the Magikarp salesman in Route 4's Pokemon Center, as story
- *  checkpoints 00.01 to 00.12, each saved at its end. After 00.10 every
+ *  checkpoints 00.01 to 00.12b, each saved at its end. After 00.10 every
  *  route and leg runs. Taken from a by-hand run on console B (2026-11-01)
  *  and the pokefirered map scripts.
  *
@@ -23,8 +23,9 @@ namespace PokemonFRLG{
 
 
 //  Checkpoints 00.01 to 00.12, in order, with 00.01b, the way back in after
-//  SID Helper, after 00.01, and 00.04 split in two at Squirtle's ball for
-//  Starter RNG: 00.04 and 00.04b.
+//  SID Helper, after 00.01, 00.04 split in two at Squirtle's ball for
+//  Starter RNG: 00.04 and 00.04b, and 00.12b, the way back in after Gift
+//  RNG, after 00.12.
 const std::vector<StoryCheckpoint>& story_checkpoints();
 
 

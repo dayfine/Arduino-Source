@@ -49,13 +49,26 @@ public:
 private:
     //  The RNG programs' handoffs the run takes, from the options.
     StoryHandoffs story_handoffs() const;
-    //  After 00.04 saved under Squirtle's ball (row `ball_row`): the stop
-    //  for Starter RNG, or its attempts run here and, for a shiny, the run
-    //  on to the end checkpoint. Returns the last checkpoint run, or nothing
-    //  once the run has stopped.
-    std::optional<std::string> after_starter_ball(
+    //  Runs `plan`'s rows, then the RNG handoff they stop at and, for a
+    //  shiny, the rows after it, to the end checkpoint. Returns the last
+    //  checkpoint run, or nothing once the run has stopped.
+    std::optional<std::string> run_story_plan(
         SingleSwitchProgramEnvironment& env, ProControllerContext& context,
-        StoryEnv& story, StoryExecutor& executor, const StarterRngPlanned& planned, size_t ball_row
+        StoryEnv& story, StoryExecutor& executor, StoryRunPlan plan
+    );
+    //  After 00.04 saved under Squirtle's ball (row `ball_row`): the stop
+    //  for Starter RNG, or its attempts run here. Returns the rows to run
+    //  after a shiny, or nothing once the run has stopped.
+    std::optional<StoryRunPlan> after_starter_ball(
+        SingleSwitchProgramEnvironment& env, ProControllerContext& context,
+        StoryEnv& story, const StarterRngPlanned& planned, size_t ball_row
+    );
+    //  After 00.12 saved beside the Magikarp salesman (row `salesman_row`):
+    //  Gift RNG's attempts run here. Returns the rows to run after a shiny,
+    //  or nothing once the run has stopped.
+    std::optional<StoryRunPlan> after_magikarp_salesman(
+        SingleSwitchProgramEnvironment& env, ProControllerContext& context,
+        StoryEnv& story, const StarterRngPlanned& planned, size_t salesman_row
     );
 
     //  The start and end checkpoints, attempts, checks and language, as in
@@ -69,6 +82,8 @@ private:
     //  Runs SID Helper's steps and Starter RNG's attempts in the program
     //  instead of stopping for them.
     BooleanCheckBoxOption RUN_STARTER_RNG;
+    //  Runs Gift RNG's attempts for the Magikarp in the program after 00.12.
+    BooleanCheckBoxOption RUN_GIFT_RNG;
     StarterRngPlanOptions RNG_PLAN;
     EventNotificationOption NOTIFICATION_SHINY;
     EventNotificationOption NOTIFICATION_STATUS_UPDATE;

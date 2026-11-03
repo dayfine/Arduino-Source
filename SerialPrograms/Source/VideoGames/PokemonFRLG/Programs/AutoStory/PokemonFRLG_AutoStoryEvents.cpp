@@ -417,6 +417,10 @@ Outcome StoryExecutor::game(RunState&, const StoryStep& step){
         close_trainer_card(m_env.console, m_env.context);
         return Pokemon::outcome_ok();
     }
+    if (step.variant == LEAVE_GIFT_SUMMARY){
+        leave_gift_summary(m_env.console, m_env.context);
+        return Pokemon::outcome_ok();
+    }
     return Pokemon::unsupported_step(step);
 }
 
@@ -455,6 +459,11 @@ StoryRunPlan plan_story_run(
         if (row.handoff == StoryHandoff::STARTER_RNG && handoffs.starter_rng){
             plan.rows.emplace_back(row);
             plan.stop = StoryHandoff::STARTER_RNG;
+            return plan;
+        }
+        if (row.handoff == StoryHandoff::GIFT_RNG && handoffs.gift_rng){
+            plan.rows.emplace_back(row);
+            plan.stop = StoryHandoff::GIFT_RNG;
             return plan;
         }
         if (row.handoff == StoryHandoff::STARTER_RNG && c + 1 < checkpoints.size()){

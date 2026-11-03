@@ -212,8 +212,8 @@ UnitTestResult check_checkpoint(const StoryCheckpoint& checkpoint, StoryPose& po
 
 UnitTestResult test_routes_and_chain(){
     const std::vector<StoryCheckpoint>& checkpoints = story_checkpoints();
-    if (checkpoints.size() != 14 || checkpoints[0].start){
-        return "Expected 14 checkpoints, the first from a new game.";
+    if (checkpoints.size() != 15 || checkpoints[0].start){
+        return "Expected 15 checkpoints, the first from a new game.";
     }
     StoryPose pose;
     for (size_t c = 0; c < checkpoints.size(); c++){
@@ -698,6 +698,8 @@ const char* handoff_name(StoryHandoff handoff){
         return "SID Helper";
     case StoryHandoff::STARTER_RNG:
         return "Starter RNG";
+    case StoryHandoff::GIFT_RNG:
+        return "Gift RNG";
     }
     return "?";
 }
@@ -782,6 +784,30 @@ void add_tests_RunPlan(UnitTestDatabase& database){
     }
 }
 
+void add_tests_GiftRunPlan(UnitTestDatabase& database){
+    const RunPlanScenario scenarios[] = {
+        {
+            .name = "Gift RNG: stops after 00.12's save",
+            .first = "00.11",
+            .handoffs = {.gift_rng = true},
+            .expected_ids = "00.11 00.12",
+            .expected_stop = StoryHandoff::GIFT_RNG,
+        },
+        {.name = "Gift RNG off: 00.12b is passed over", .first = "00.11", .expected_ids = "00.11 00.12"},
+        {.name = "00.12b runs when started at", .first = "00.12b", .handoffs = {.gift_rng = true}, .expected_ids = "00.12b"},
+        {
+            .name = "Starter RNG first, with both on",
+            .first = "00.03",
+            .handoffs = {.starter_rng = true, .gift_rng = true},
+            .expected_ids = "00.03 00.04",
+            .expected_stop = StoryHandoff::STARTER_RNG,
+        },
+    };
+    for (const RunPlanScenario& scenario : scenarios){
+        database.add<Test_RunPlan>(scenario);
+    }
+}
+
 std::string step_names(const StoryCheckpoint& checkpoint){
     std::string text;
     for (const StoryStep& step : checkpoint.steps){
@@ -821,16 +847,17 @@ UnitTestResult test_starter_rows_joined(){
     return true;
 }
 
-//  The way back in after SID Helper loads no save and starts where 00.01
-//  leaves the player, so 00.02 follows it unchanged.
+//  The ways back in after SID Helper and Gift RNG load no save and start
+//  where 00.01 and 00.12 leave the player, so the rows after them follow
+//  unchanged.
 UnitTestResult test_after_sid_helper_row(){
     const StoryCheckpoint& sid = story_checkpoints()[row_index("00.01b")];
     if (!sid.live_start || story_checkpoints()[0].handoff != StoryHandoff::SID_HELPER){
         return "Expected 00.01 to be SID Helper's handoff and 00.01b to start from the live game.";
     }
     for (const StoryCheckpoint& checkpoint : story_checkpoints()){
-        if (checkpoint.live_start != (checkpoint.id == "00.01b")){
-            return checkpoint.id + ": only 00.01b starts from the live game.";
+        if (checkpoint.live_start != (checkpoint.id == "00.01b" || checkpoint.id == "00.12b")){
+            return checkpoint.id + ": only 00.01b and 00.12b start from the live game.";
         }
     }
     return true;
@@ -881,7 +908,8 @@ UnitTestResult test_option_presses(){
 
 void add_tests_AutoStory(UnitTestDatabase& database){
     add_tests_RunPlan(database);
-    database.add<Test_AutoStory>("00.01b: back in after SID Helper", test_after_sid_helper_row);
+    add_tests_GiftRunPlan(database);
+    database.add<Test_AutoStory>("00.01b and 00.12b: back in after SID Helper and Gift RNG", test_after_sid_helper_row);
     database.add<Test_AutoStory>("00.04 and 00.04b: one checkpoint with Starter RNG off", test_starter_rows_joined);
     database.add<Test_AutoStory>("every route plans, and checkpoints chain", test_routes_and_chain);
     database.add<Test_AutoStory>("step names are unique per checkpoint", test_unique_names);

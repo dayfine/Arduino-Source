@@ -342,12 +342,25 @@ StoryCheckpoint route3(){
 //  (40, 11) wanders up and down at x 40 across the way east, looking north
 //  and south: if she sees the player, the walk fights her (story_interrupts()).
 StoryCheckpoint magikarp_salesman(){
-    return row("00.12", "Route 3 and 4 to the Magikarp salesman", at(ROUTE3, 36, 8, SOUTH), {}, StartMenu::FULL, {
+    StoryCheckpoint checkpoint = row("00.12", "Route 3 and 4 to the Magikarp salesman", at(ROUTE3, 36, 8, SOUTH), {}, StartMenu::FULL, {
         running(route("route4_nurse", at(ROUTE4_CENTER, 7, 4, NORTH), "east over Route 3, off the grass, north into Route 4 and its Pokemon Center")),
         heal("heal_route4"),
-        //  The seam for a Gift RNG program: the save faces the salesman (1, 3).
+        //  Gift RNG starts from a save facing the salesman (1, 3).
         running(route("before_salesman", at(ROUTE4_CENTER, 2, 3, WEST), "beside the Magikarp salesman, facing him")),
     });
+    checkpoint.handoff = StoryHandoff::GIFT_RNG;
+    return checkpoint;
+}
+
+//  Gift RNG buys the Magikarp (500 of the money 00.12 brings) without
+//  moving the player and leaves its summary open, or HOME. This saves the
+//  shiny where 00.12 ended.
+StoryCheckpoint after_gift_rng(){
+    StoryCheckpoint checkpoint = row("00.12b", "after Gift RNG: save with the Magikarp", at(ROUTE4_CENTER, 2, 3, WEST), {}, StartMenu::FULL, {
+        game_step(LEAVE_GIFT_SUMMARY, at(ROUTE4_CENTER, 2, 3, WEST), "the Magikarp's summary Gift RNG left open, or HOME"),
+    });
+    checkpoint.live_start = true;
+    return checkpoint;
 }
 
 }
@@ -356,7 +369,7 @@ StoryCheckpoint magikarp_salesman(){
 const std::vector<StoryCheckpoint>& story_checkpoints(){
     static const std::vector<StoryCheckpoint> checkpoints{
         new_game(), after_sid_helper(), leave_house(), oaks_trigger(), to_starter_ball(), starter(), parcel(), pokedex(), shopping(), forest(), brock(),
-        running_shoes(), route3(), magikarp_salesman(),
+        running_shoes(), route3(), magikarp_salesman(), after_gift_rng(),
     };
     return checkpoints;
 }
