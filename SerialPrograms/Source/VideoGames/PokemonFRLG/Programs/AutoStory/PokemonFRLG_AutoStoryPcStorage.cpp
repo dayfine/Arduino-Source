@@ -7,8 +7,6 @@
 #include <format>
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
-#include "VideoGames/PokemonFRLG/Inference/Box/PokemonFRLG_BoxCellOccupiedDetector.h"
-#include "VideoGames/PokemonFRLG/Inference/Box/PokemonFRLG_BoxSelectionModeDetector.h"
 #include "VideoGames/PokemonFRLG/PokemonFRLG_Navigation.h"
 #include "PokemonFRLG_AutoStoryActions.h"
 #include "PokemonFRLG_AutoStoryPcStorage.h"
@@ -29,6 +27,8 @@ constexpr size_t BOX_SLOTS = 30;
 constexpr size_t BOX_COLUMNS = 6;
 //  The storage menu's options: WITHDRAW, DEPOSIT, MOVE POKEMON, MOVE ITEMS, SEE YA!.
 constexpr size_t STORAGE_MENU_ROWS = 5;
+//  A second look at a frame that reads as the overworld.
+constexpr Milliseconds OVERWORLD_CONFIRM = 800ms;
 
 std::vector<std::string_view> split_words(std::string_view text){
     std::vector<std::string_view> words;
@@ -107,7 +107,7 @@ std::optional<PcTransfer> parse_pc_variant(std::string_view variant){
 }
 
 
-std::string pc_transfer_error(const PcTransfer& transfer, const std::vector<PartyMember>& party){
+std::string pc_transfer_error(const PcTransfer& transfer, const std::vector<PcPartyMember>& party){
     if (transfer.action == PcAction::WITHDRAW){
         return party.size() >= PARTY_SIZE ? "the party is full" : "";
     }
@@ -125,22 +125,6 @@ std::string pc_transfer_error(const PcTransfer& transfer, const std::vector<Part
     return std::format("slot {} is the party's last Pokemon that can fight", transfer.party_slot + 1);
 }
 
-
-const char* pc_screen_name(PcScreen screen){
-    switch (screen){
-    case PcScreen::OVERWORLD:       return "overworld";
-    case PcScreen::TEXT:            return "text";
-    case PcScreen::PC_LIST:         return "PC list";
-    case PcScreen::STORAGE_MENU:    return "storage menu";
-    case PcScreen::PARTY_PANEL:     return "party panel";
-    case PcScreen::BOX_GRID:        return "box grid";
-    case PcScreen::MON_MENU:        return "Pokemon's menu";
-    case PcScreen::BOX_CHOOSER:     return "box chooser";
-    case PcScreen::YES_NO:          return "YES/NO";
-    case PcScreen::OTHER:           return "other";
-    }
-    return "?";
-}
 
 const char* pc_press_name(PcPress press){
     switch (press){
@@ -168,15 +152,9 @@ PcDecision PcStorageDialog::next(const PcView& view){
     }
     switch (view.screen){
     case PcScreen::OVERWORLD:
-        if (m_transferred){
-            return {PcPress::DONE};
-        }
-        if (!m_booted){
-            m_booted = true;
-            return {PcPress::A};
-        }
-        return {PcPress::FAIL, "the overworld came back before the transfer"};
+        return on_overworld();
     case PcScreen::TEXT:
+        m_booting_reads = PC_BOOT_READS;
         return {PcPress::B};
     case PcScreen::PC_LIST:
         //  The list opens on its top row each time.
@@ -207,6 +185,21 @@ PcDecision PcStorageDialog::next(const PcView& view){
         return {PcPress::WAIT};
     }
     return {PcPress::FAIL, "unknown screen"};
+}
+
+PcDecision PcStorageDialog::on_overworld(){
+    if (m_transferred){
+        return {PcPress::DONE};
+    }
+    if (!m_booted){
+        m_booted = true;
+        return {PcPress::A};
+    }
+    //  Still the overworld while the PC boots, or again after a step.
+    if (++m_booting_reads < PC_BOOT_READS){
+        return {PcPress::WAIT};
+    }
+    return {PcPress::FAIL, "the overworld came back before the transfer"};
 }
 
 PcDecision PcStorageDialog::on_storage_menu(const PcView& view){
@@ -361,8 +354,8 @@ ConsolePcStorageActions::ConsolePcStorageActions(ConsoleHandle& console, ProCont
     , m_context(context)
 {}
 
-std::vector<PartyMember> ConsolePcStorageActions::read_party(){
-    return std::vector<PartyMember>(read_party_size(m_console, m_context));
+std::vector<PcPartyMember> ConsolePcStorageActions::read_party(){
+    return std::vector<PcPartyMember>(read_party_size(m_console, m_context));
 }
 
 PcView ConsolePcStorageActions::read_view(){
@@ -371,18 +364,14 @@ PcView ConsolePcStorageActions::read_view(){
     if (!screen){
         return {};
     }
-    if (const std::optional<bool> yes = yes_no_cursor(screen)){
-        return {.screen = PcScreen::YES_NO, .cursor = *yes ? 0 : 1};
+    const PcView view = read_pc_screen(m_console, screen);
+    if (view.screen != PcScreen::OVERWORLD){
+        return view;
     }
-    const std::optional<BoxSelection> selection = BoxSelectionModeDetector(COLOR_RED).detect(screen);
-    if (selection && selection->location == BoxSelectionLocation::Grid){
-        return {
-            .screen = PcScreen::BOX_GRID,
-            .cursor = selection->row * BOX_COLUMNS + selection->column,
-            .occupied = BoxCellOccupiedDetector(COLOR_RED).detect(screen),
-        };
-    }
-    return {};
+    pbf_wait(m_context, OVERWORLD_CONFIRM);
+    m_context.wait_for_all_requests();
+    VideoSnapshot again = m_console.video().snapshot();
+    return again ? read_pc_screen(m_console, again) : PcView{};
 }
 
 void ConsolePcStorageActions::press(PcPress press){

@@ -40,7 +40,7 @@ constexpr size_t COLUMNS = 6;
 //  The PC's menus and box screens, as pokefirered runs them.
 class FakePc : public PcStorageActions{
 public:
-    std::vector<PartyMember> party;
+    std::vector<PcPartyMember> party;
     //  Each box's slots: a species, or empty.
     std::vector<std::vector<std::string>> boxes = std::vector<std::vector<std::string>>(BOXES, std::vector<std::string>(BOX_SLOTS));
     //  The box the PC shows on WITHDRAW: the last one viewed.
@@ -51,7 +51,7 @@ public:
     //  Set by a press the game would take some other way than the step means.
     std::string error;
 
-    virtual std::vector<PartyMember> read_party() override{
+    virtual std::vector<PcPartyMember> read_party() override{
         return party;
     }
     virtual PcView read_view() override{
@@ -279,21 +279,21 @@ std::string joined(const std::vector<std::string>& items){
     return text;
 }
 
-std::string party_species(const std::vector<PartyMember>& party){
+std::string party_species(const std::vector<PcPartyMember>& party){
     std::vector<std::string> species;
-    for (const PartyMember& member : party){
+    for (const PcPartyMember& member : party){
         species.push_back(member.species);
     }
     return joined(species);
 }
 
-const std::vector<PartyMember> SQUIRTLE_MAGIKARP = {{.species = "squirtle"}, {.species = "magikarp"}};
+const std::vector<PcPartyMember> SQUIRTLE_MAGIKARP = {{.species = "squirtle"}, {.species = "magikarp"}};
 
 
 struct PcCase{
     std::string name = {};
     PcTransfer transfer = {};
-    std::vector<PartyMember> party = {};
+    std::vector<PcPartyMember> party = {};
     //  Box 1's first slots, then box 2's.
     std::vector<std::string> box1 = {};
     std::vector<std::string> box2 = {};
@@ -471,8 +471,12 @@ UnitTestResult test_pc_dialog_screens(){
         {.name = "a YES/NO before the transfer", .transfer = deposit,
             .views = {{.screen = PcScreen::YES_NO, .cursor = 0}}, .press = PcPress::FAIL},
         {.name = "nothing recognized for long", .transfer = deposit, .views = others, .press = PcPress::FAIL},
+        {.name = "the PC still booting after A: wait", .transfer = deposit,
+            .views = {{.screen = PcScreen::OVERWORLD}, {.screen = PcScreen::OVERWORLD}}, .press = PcPress::WAIT},
         {.name = "the overworld again before the transfer", .transfer = deposit,
-            .views = {{.screen = PcScreen::OVERWORLD}, {.screen = PcScreen::OVERWORLD}}, .press = PcPress::FAIL},
+            .views = {{.screen = PcScreen::OVERWORLD}, {.screen = PcScreen::TEXT}, {.screen = PcScreen::OVERWORLD}}, .press = PcPress::FAIL},
+        {.name = "the PC never booting", .transfer = deposit,
+            .views = std::vector<PcView>(PC_BOOT_READS + 1, PcView{.screen = PcScreen::OVERWORLD}), .press = PcPress::FAIL},
         {.name = "the box chooser after a move, unread", .transfer = {.action = PcAction::DEPOSIT, .box = 2},
             .views = {{.screen = PcScreen::BOX_CHOOSER}, {.screen = PcScreen::BOX_CHOOSER}}, .press = PcPress::FAIL},
     };
