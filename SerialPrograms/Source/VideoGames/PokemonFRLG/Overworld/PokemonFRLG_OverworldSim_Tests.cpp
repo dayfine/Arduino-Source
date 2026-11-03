@@ -212,6 +212,39 @@ std::optional<size_t> longest_wild_leg(const std::vector<RouteStep>& route){
 }
 
 
+//  The first WALK of `route` onto a warp through grass.
+std::optional<size_t> wild_warp_leg(const std::vector<RouteStep>& route){
+    for (size_t c = 0; c < route.size(); c++){
+        if (route[c].action == RouteAction::WALK && route[c].wild && route[c].warps){
+            return c;
+        }
+    }
+    return std::nullopt;
+}
+
+//  A walk of `c` with a wild battle, its flashes missed, on step `tile`
+//  (from 1) of the route's first leg onto a warp through grass, which must
+//  be a grass step. Nothing if there is no such leg or step.
+std::optional<SimRun> run_with_battle_on_warp_leg(SimCase c, size_t tile){
+    const std::vector<RouteStep> route = planned(c);
+    const std::optional<size_t> warp = wild_warp_leg(route);
+    if (!warp){
+        return std::nullopt;
+    }
+    const MapPosition from = *warp == 0 ? c.start : route[*warp - 1].end;
+    const std::vector<MapPosition> tiles = leg_tiles(maps(), from, route[*warp]);
+    if (tile >= tiles.size() || !on_grass(tiles[tile])){
+        return std::nullopt;
+    }
+    int grass_step = grass_steps(c.start, route, *warp).before;
+    for (size_t t = 1; t <= tile; t++){
+        grass_step += on_grass(tiles[t]) ? 1 : 0;
+    }
+    c.script.encounters = {{.grass_step = grass_step, .seen_late = true}};
+    return run_case(c);
+}
+
+
 //  cp0007 m6f and r15 (console B, 2026-11-01): out of Viridian Forest
 //  through its north gate. The leg through the grass ends on the gate's
 //  warp. Two rules keep it from failing on screens that aren't battles:
@@ -237,6 +270,42 @@ UnitTestResult test_forest_north_gate(){
     const SimRun black = run_case(text_box);
     if (arrived(black, c.goal)){
         return "Expected the black below the gate's mat taken for a battle without an HP box:" + describe(black);
+    }
+    return true;
+}
+
+//  Console B, 2026-11-03, Mt. Moon 1F (row 00.13): a wild battle whose
+//  flashes were missed started on the leg south onto the ladder; its wipe
+//  passed for the ladder's fade, and the walker stopped as off the route,
+//  on the leg a tile short of the ladder. Here on the leg through the
+//  forest's grass onto its north gate: a battle on the leg's first or
+//  second step is run from, the player found again on the leg, and the
+//  gate reached through its warp. If the walk back onto the warp then
+//  ends short of it (hold 4: the leg, the hold that finds the player and
+//  its re-hold after the Bug Catcher), the route still stops on no fade.
+//  Without the rule it stops as off the route, as on the console.
+UnitTestResult test_battle_on_warp_leg(){
+    const SimCase c{.start = at("ViridianForest", 5, 20), .facing = Direction::NORTH, .goal = at("Route2_ViridianForest_NorthEntrance", 7, 9)};
+    for (size_t tile : {1, 2}){
+        const std::optional<SimRun> now = run_with_battle_on_warp_leg(c, tile);
+        if (!now){
+            return std::format("Expected a leg onto the gate's warp with grass on its step {}:", tile) + describe(planned(c));
+        }
+        if (!arrived(*now, c.goal) || now->state.warps != 1){
+            return std::format("Expected the battle on step {} run from, then the gate reached:", tile) + describe(*now);
+        }
+    }
+    SimCase no_warp = c;
+    no_warp.script.short_holds[4] = 2;
+    const std::optional<SimRun> short_back = run_with_battle_on_warp_leg(no_warp, 1);
+    if (!short_back || !stopped_with(*short_back, "no fade in and out") || short_back->state.warps != 0){
+        return "Expected a stop on no fade when the walk back ends short of the warp:" + (short_back ? describe(*short_back) : "");
+    }
+    SimCase off = c;
+    off.rules.find_player_after_warp_battle = false;
+    const std::optional<SimRun> old = run_with_battle_on_warp_leg(off, 1);
+    if (!old || !stopped_with(*old, "a wild battle, not the warp to Route2_ViridianForest_NorthEntrance: the player is off the route.")){
+        return "Expected a stop as off the route without the rule:" + (old ? describe(*old) : "");
     }
     return true;
 }
@@ -439,6 +508,7 @@ UnitTestResult test_mart_exit(){
 
 void add_tests_OverworldSim(UnitTestDatabase& database){
     database.add<Test_OverworldSim>("the forest's north gate: no fade or black read as a battle", test_forest_north_gate);
+    database.add<Test_OverworldSim>("a battle on a leg onto a warp", test_battle_on_warp_leg);
     database.add<Test_OverworldSim>("the START menu left open", test_start_menu_open);
     database.add<Test_OverworldSim>("a battle at the end of a leg", test_battle_at_end_of_leg);
     database.add<Test_OverworldSim>("a late battle stops an open leg", test_late_battle_mid_leg);
