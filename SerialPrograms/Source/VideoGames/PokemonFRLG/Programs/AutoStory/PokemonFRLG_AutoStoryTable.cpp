@@ -10,6 +10,7 @@
 #include "PokemonFRLG_AutoStoryMart.h"
 #include "PokemonFRLG_AutoStoryPcStorage.h"
 #include "PokemonFRLG_AutoStoryTable.h"
+#include "PokemonFRLG_AutoStoryTeach.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -547,10 +548,15 @@ StoryCheckpoint cerulean_grind(){
 //  CHECKER's text is read to the overworld with the battle's. For a player
 //  who took Squirtle he has Pidgeotto Lv17, Abra Lv16, Rattata Lv15 and
 //  Bulbasaur Lv18 (sParty_RivalCeruleanBulbasaur), whose Vine Whip and
-//  Sleep Powder are the danger. Only the step and the battle: the row
-//  starts from 00.15's save below the trigger, and saves after him.
+//  Sleep Powder are the danger. The row starts from 00.15's save below the
+//  trigger, and saves after him. First TM03 Water Pulse over Tail Whip (from
+//  the bag, where the player stands), if the lead doesn't know it yet:
+//  console B's save (2026-11-03) is past Misty's TEACH, which failed there.
+//  Where she taught it, the step reads the moves and does nothing.
 StoryCheckpoint cerulean_rival(){
-    return row("00.15b", "Cerulean: the rival north of the city", at(CERULEAN, 23, 7, NORTH), after_brock(), StartMenu::FULL, {
+    const TeachPlan water_pulse{.item = "tm03", .move = "water-pulse", .member = 0, .forget_move = "tail-whip"};
+    return row("00.15b", "Cerulean: Water Pulse if not known, then the rival north of the city", at(CERULEAN, 23, 7, NORTH), after_brock(), StartMenu::FULL, {
+        teach_step("teach_water_pulse", "TM03 Water Pulse in place of Tail Whip, unless the lead knows it", water_pulse),
         step_into("rival_trigger", NORTH, "onto (23, 6), the middle trigger: \"Yo! <player>!\""),
         battle("rival_cerulean", at(CERULEAN, 23, 6, SOUTH), false, "Pidgeotto, Abra, Rattata and Bulbasaur; then the FAME CHECKER"),
     });
