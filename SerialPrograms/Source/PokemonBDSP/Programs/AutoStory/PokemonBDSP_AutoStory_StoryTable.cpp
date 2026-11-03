@@ -59,6 +59,10 @@ const char* const JUBILIFE = "JubilifeCity";
 const char* const TRAINERS_SCHOOL = "TrainersSchool";
 const char* const OREBURGH = "OreburghCity";
 const char* const GYM = "OreburghGym";
+//  The mine's entrance hall (Diamond's MAP_OREBURGH_MINE_B1F) has no map:
+//  a pose there names it. The coal room below it, Roark's, does.
+const char* const MINE_HALL = "OreburghMineB1F";
+const char* const MINE = "OreburghMine";
 const char* const GATE = "OreburghGate";
 const char* const ROUTE_203 = "Route203";
 const char* const ROUTE_204_SOUTH = "Route204South";
@@ -552,6 +556,20 @@ Pose into_the_ravaged_path(){
     return at(RAVAGED_PATH, "entrance", NORTH);
 }
 
+//  Where Oreburgh's welcome scene leaves us, Barry in the Center's door: "a row
+//  or two below the Center's front, a little west of its door" (01.03's
+//  save, 2026-10-29); "two tiles west of the door and a row down" (the old
+//  event). Not Diamond's: its man walks us to the Gym, (23, 23).
+Pose after_the_welcome(){
+    return Pokemon::tile_pose(OREBURGH, {
+        TilePos{43, 21}, TilePos{44, 21}, TilePos{45, 21}, TilePos{43, 22}, TilePos{44, 22}, TilePos{45, 22}
+    });
+}
+//  Out of Oreburgh's Pokemon Center: on (46, 21), facing south (r217d, r218d).
+Pose out_of_oreburgh_center(){
+    return at(OREBURGH, "pokemon_center_doorstep", SOUTH);
+}
+
 //  01.05, planned on Oreburgh's and the Gate's maps with the Diamond decomp's
 //  zone events (narc_0044, narc_0250) and Platinum's script for the scene
 //  (scripts_oreburgh_city.s, the same trigger and variable). Barry's coord
@@ -615,10 +633,68 @@ StoryCheckpoint route_203_to_oreburgh(){
         route("west_of_the_welcome", at(OREBURGH, 9, 13, EAST), "east along row 13"),
         step_into("welcome_trigger", EAST, "the trigger (10, 12..15): the man walks over"),
         //  He walks us to the Pokemon Center between his lines; Barry joins
-        //  there with more lines after each walk. Where it leaves us is
-        //  not known: "a row or two below the Center's front, a little west
-        //  of its door" (01.03's save, 2026-10-29).
-        scene("oreburgh_welcome", std::nullopt, "the man's lines, the walk to the Center, and Barry's"),
+        //  there with more lines after each walk.
+        scene("oreburgh_welcome", after_the_welcome(), "the man's lines, the walk to the Center, and Barry's"),
+    });
+}
+
+//  01.03, planned on Oreburgh's map and the coal room's (Diamond's zone
+//  events narc_0044 and narc_0197): Barry in the Center's door says Roark
+//  went to the mine (Roark ignored A until then, r101 and r104); down the
+//  door's column to the mine's warp tiles (44..48, 59); straight down the
+//  entrance hall, which has no map, to its warps (11..13, 21); in the coal
+//  room down to Roark, whose scene ends with him gone (Platinum's
+//  scripts_oreburgh_mine_b2f.s: he smashes the rock east of him and walks
+//  off east); back up and out; and the Center's nurse, so 01.04 starts on
+//  the doorstep. The Center's door is column 46 on the console: we came out
+//  of it on (46, 21), 20 taps east of the Gym's door (r217d, r218d), and
+//  north from below the mine's sign and a tile east went in (2026-10-31).
+//
+//  The hall is walked on counted taps, not held: it is a cave, and a wild
+//  battle on a hold toward a fade would read as the fade. Its warp tiles
+//  are only entered on the step after, which meets no wild Pokemon. Down,
+//  from the city's (46, 59) we land on its (12, 1); up, from the coal
+//  room's warp we land on its (11, 21) and come out on the city's (45, 59),
+//  below the mine's sign (the old walk north stopped against it, r103).
+StoryCheckpoint oreburgh_mine_to_roark(){
+    const Pose below_roark = next_to(MINE, "roark", SOUTH, NORTH);
+    return row("01.03", "Oreburgh Mine to Roark", after_the_welcome(), {
+        //  The fence south of the Center's east corner (column 49) stops a
+        //  walk east on these rows a tile east of the door, as by hand.
+        anchored(to_walls("to_the_centers_fence", {{.direction = EAST, .tiles = 6}, {.direction = NORTH, .tiles = 2}},
+            "east to the fence below the Center's east corner, north to the Center's front"), at(OREBURGH, 48, 21, NORTH)),
+        anchored(legs("below_the_centers_door", {{.direction = WEST, .tiles = 2}}, "taps west below the door"),
+            at(OREBURGH, "pokemon_center_doorstep", NORTH)),
+        //  He stands in the door the first time; walking into him reads as a wall.
+        talk("barry", "Barry in the Center's door"),
+        scene("barrys_lines", at(OREBURGH, "pokemon_center_doorstep", NORTH), "Roark has gone to the mine"),
+        //  The Hiker wanders (46..48, 25..27), in the door's column: the
+        //  route goes round him.
+        route("above_the_mine", at(OREBURGH, 46, 58, SOUTH), "down the door's column to above the mine's warp tiles", "town"),
+        step_into("into_the_mine", SOUTH, "the warp tile (46, 59)", inside(MINE_HALL)),
+        //  We land on the warp tile we came by, (12, 1): 19 taps end on row
+        //  20, a step short of the warp row.
+        legs("down_the_hall", {{.direction = SOUTH, .tiles = 19}}, "down column 12 of the entrance hall"),
+        step_into("into_the_coal_room", SOUTH, "the hall's warp tiles (11..13, 21)",
+            Pokemon::tile_pose(MINE, {TilePos{15, 2}, TilePos{15, 1}}, SOUTH)),
+        //  One known tile to plan from: the corridor's column 15 ends at the
+        //  boulder (15, 10), where the old walk south stopped too.
+        anchored(to_walls("down_to_the_boulder", {{.direction = SOUTH, .tiles = 9}}, "down the corridor to the boulder (15, 10)"),
+            at(MINE, 15, 9, SOUTH)),
+        route("below_roark", below_roark, "down the corridor and the room's east side, west along the bottom row"),
+        //  His first line comes after the camera zooms in on us (r98); his
+        //  rocks either side answer A too, but he is the one north of us.
+        talk("roark", "Roark, north of us between his rocks"),
+        scene("roark_smashes_the_rock", below_roark, "his lines, Rock Smash on the rock east of him, and he walks off"),
+        route("below_the_coal_rooms_warp", at(MINE, 15, 2, NORTH), "back up the corridor"),
+        step_into("up_to_the_hall", NORTH, "the warp tile (15, 1)", inside(MINE_HALL)),
+        legs("up_the_hall", {{.direction = NORTH, .tiles = 19}}, "up column 11 of the entrance hall"),
+        step_into("out_of_the_mine", NORTH, "the hall's warp tiles (11..13, 1)",
+            Pokemon::tile_pose(OREBURGH, {TilePos{45, 59}, TilePos{45, 58}}, NORTH)),
+        anchored(to_walls("up_to_the_mines_sign", {{.direction = NORTH, .tiles = 3}}, "north against the mine's sign (45, 56)"),
+            at(OREBURGH, 45, 57, NORTH)),
+        route("below_the_centers_door_again", at(OREBURGH, "pokemon_center_doorstep", NORTH), "up to below the Center's door", "town"),
+        heal("heal_oreburgh", "the nurse; out onto the doorstep, where 01.04 starts", out_of_oreburgh_center()),
     });
 }
 
@@ -689,16 +765,13 @@ std::vector<StoryCheckpoint> to_oreburgh(){
             anchored(battle("barry", true, "Barry's battle; a loss goes on, as it did on the console"), on_barrys_trigger()),
         }),
         route_203_to_oreburgh(),
-        row("01.03", "Oreburgh Mine to Roark", std::nullopt, {
-            event("oreburgh_center_door", "in by the Center's door, talking to Barry in it"),
-            event("south_into_the_mine", "straight south from the door into the mine"),
-            event("mine_hall", "through the entrance hall"),
-            event("roark_in_the_mine", "down the corridor to Roark, his talk, and back out"),
-            event("oreburgh_center_heal", "the Center's nurse: 01.04 starts at her counter"),
-        }),
-        row("01.04", "Oreburgh Gym", std::nullopt, {
-            event("out_of_the_center", "out from the counter"),
-            event("gym_until_roark_beaten", "west into the gym, up it to Roark; again from the Center after a loss"),
+        oreburgh_mine_to_roark(),
+        //  Stays an event: after a loss it walks back from the Center with
+        //  the experience the battles gave, which a reload of this row's
+        //  save would take away (Roark won twice by hand before he lost).
+        row("01.04", "Oreburgh Gym", out_of_oreburgh_center(), {
+            event("gym_until_roark_beaten", "west into the gym, up it to Roark; again from the Center after a loss",
+                next_to(GYM, "roark", SOUTH, NORTH)),
         }),
         oreburgh_to_route_203(),
     };
@@ -743,7 +816,7 @@ std::vector<StoryCheckpoint> to_floaroma(){
 
 //  The map the save screen's card names at each row's start, as the console
 //  read it there (lab-B's logs, 2026-10-31 to 11-02). A building's card
-//  names its town: 00.04 starts in Rowan's lab, 01.04 at Oreburgh's nurse.
+//  names its town: 00.04 starts in Rowan's lab.
 const std::map<std::string, std::string>& start_save_cards(){
     static const std::map<std::string, std::string> cards{
         {"00.01",  "Twinleaf Town"},

@@ -474,8 +474,10 @@ Outcome StoryExecutor::talk(RunState& state, const StoryStep& step){
     }
     pbf_press_button(context(), BUTTON_A, 80ms, 200ms);
     context().wait_for_all_requests();
+    //  Roark's first line in the mine comes after the camera zooms in on
+    //  us, which can take some seconds (r98; the old event waited 8 s).
     ShortDialogWatcher dialog(COLOR_YELLOW);
-    if (wait_until(stream(), context(), 3000ms, {{dialog}}) != 0){
+    if (wait_until(stream(), context(), 8000ms, {{dialog}}) != 0){
         fail_step(stream(), label_of(step) + ": nobody answered.");
     }
     return Pokemon::outcome_ok();

@@ -411,6 +411,9 @@ WARP_DOORS = {
     'JubilifeCity': [(0, 22), (0, 23), (40, 40), (21, 42)],
     #   The way up to the entrance hall: stepping on it leaves the room.
     'OreburghMine': [(15, 1)],
+    #   The mine's mouth: 01.03 walks down to the row above it and steps on.
+    #   We come out on it too, and walk north off it to a wall first.
+    'OreburghCity': [(x, 59) for x in range(44, 49)],
 }
 
 

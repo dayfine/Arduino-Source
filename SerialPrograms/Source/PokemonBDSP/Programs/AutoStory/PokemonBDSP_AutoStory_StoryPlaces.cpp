@@ -130,12 +130,12 @@ Pokemon::MapData ravaged_path_smashed(){
     return map;
 }
 
-//  The interiors (houses, the lab, the Gym, the Gate, the Ravaged Path),
-//  each its own world, named by its JSON map.
+//  The interiors (houses, the lab, the Gym, the Gate, the mine's coal room,
+//  the Ravaged Path), each its own world, named by its JSON map.
 const std::map<std::string, StoryWorld>& room_worlds(){
     static const std::map<std::string, StoryWorld> rooms = []{
         std::map<std::string, StoryWorld> ret;
-        for (const char* room : {"PlayerHouse2F", "PlayerHouse1F", "RivalHouse1F", "RivalHouse2F", "RowansLab", "OreburghGym", "OreburghGate"}){
+        for (const char* room : {"PlayerHouse2F", "PlayerHouse1F", "RivalHouse1F", "RivalHouse2F", "RowansLab", "OreburghGym", "OreburghGate", "OreburghMine"}){
             ret[room].add(room, story_map(room), {0, 0});
         }
         ret["RavagedPath"].add("RavagedPath", ravaged_path_smashed(), {0, 0});
