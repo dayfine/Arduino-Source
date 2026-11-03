@@ -28,6 +28,7 @@
 #include "PokemonFRLG_AutoStoryBattleData.h"
 #include "PokemonFRLG_AutoStoryBattleDecisions.h"
 #include "PokemonFRLG_AutoStoryBattle.h"
+#include "PokemonFRLG_AutoStoryFoeTracker.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -327,6 +328,7 @@ public:
         , m_supplies(supplies)
         , m_decisions(supplies, kind)
         , m_evolution(supplies.lead)
+        , m_foes(kind == BattleKind::TRAINER ? supplies.trainer : "", supplies.lead)
         , m_kind(kind)
         , m_checks(checks)
         , m_language(language)
@@ -397,6 +399,7 @@ private:
         m_last_battle = now;
         read_hp(screen);
         watch_for_faint(screen);
+        m_foes.boxes_seen(BattleBoxes{.lead = BattlePokemonDetector(COLOR_RED).detect(screen), .foe = BattleOpponentDetector(COLOR_RED).detect(screen)});
         act(seen, screen, now);
         return false;
     }
@@ -598,6 +601,10 @@ private:
         if (m_kind != BattleKind::TRAINER && m_decisions.turns() == 0){
             m_supplies.wild_foes = read_wild_foes(m_console.logger(), m_language, screen);
         }
+        if (!m_foes.species().empty()){
+            m_foes.at_menu(read_trainer_foe(m_console.logger(), m_language, screen, m_foes.species()));
+            m_supplies.foe_out = m_foes.out();
+        }
         if (m_refusal.refused(current_time())){
             m_console.log("Battle: the move list came back without a turn (Disable?); choosing another move.", COLOR_ORANGE);
             m_decisions.turn_done(TurnChoice::MOVE, TurnResult::REFUSED);
@@ -647,6 +654,7 @@ private:
     Supplies& m_supplies;
     BattleDecisions m_decisions;
     EvolutionHold m_evolution;
+    TrainerFoeTracker m_foes;
     BattleEndWatch m_end;
     MoveRefusalWatch m_refusal;
     const BattleKind m_kind;
