@@ -191,8 +191,9 @@ StarterRngResult run_try(
     return steps.run_attempt(tracker.current_attempt(), call);
 }
 
-//  run_try(), with a setup error (Starter RNG refusing the attempt's
-//  timings) as an attempt that can't run.
+//  run_try(), with Starter RNG refusing the attempt's timings as an attempt
+//  that can't run. Other errors, a setup error such as no sound included,
+//  would fail every attempt the same way, so they end the loop.
 TryOutcome run_try_outcome(
     Logger& logger, LoopLog& log, const RngPlanTracker& tracker, StarterRngLoopSteps& steps,
     const StarterRngLoopLimits& limits, WallClock start, WallClock deadline
@@ -206,7 +207,7 @@ TryOutcome run_try_outcome(
             .detail = past_deadline ? "attempt_deadline" : starter_rng_outcome_name(attempt.outcome),
             .pokemon = attempt.pokemon,
         };
-    }catch (UserSetupError& e){
+    }catch (StarterRngTimingsRefused& e){
         logger.log(std::format("RngPlan: attempt {} can't run: {}", tracker.attempt_index() + 1, e.message()), COLOR_RED);
         return TryOutcome{.outcome = RngAttemptOutcome::UNUSABLE, .detail = "setup_error", .pokemon = std::nullopt};
     }
@@ -387,7 +388,7 @@ StarterRngResult ConsoleStarterRngSteps::run_attempt(const RngAttempt& attempt, 
         if (e.error_report_mode() != ErrorReportMode::NO_ERROR_REPORT){
             throw;
         }
-        throw UserSetupError(m_env.logger(), e.message());
+        throw StarterRngTimingsRefused(e.message());
     }
 }
 

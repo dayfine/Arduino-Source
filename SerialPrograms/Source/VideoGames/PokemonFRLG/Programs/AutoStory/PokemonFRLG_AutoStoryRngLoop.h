@@ -20,6 +20,7 @@
 #include <string>
 #include <vector>
 #include "Common/Cpp/Color.h"
+#include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/Logging/AbstractLogger.h"
 #include "Common/Cpp/Time.h"
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
@@ -93,6 +94,19 @@ struct StarterRngLoopLimits{
     size_t max_retries = 0;
 };
 
+//  Starter RNG refused an attempt's timings (check_timings()). The loop
+//  records the attempt as unusable and moves on; any other error, a
+//  UserSetupError included, stops the loop.
+class StarterRngTimingsRefused : public Exception{
+public:
+    explicit StarterRngTimingsRefused(std::string message) : m_message(std::move(message)) {}
+    virtual const char* name() const override{ return "StarterRngTimingsRefused"; }
+    virtual std::string message() const override{ return m_message; }
+
+private:
+    std::string m_message;
+};
+
 //  One try of an attempt, as the loop asks the steps for it.
 struct StarterRngAttemptCall{
     //  From 0.
@@ -111,8 +125,8 @@ public:
     virtual ~StarterRngLoopSteps() = default;
     virtual WallClock now() = 0;
     //  Runs Starter RNG's attempts at `attempt`'s target from the save under
-    //  the ball, as `call` says. Throws UserSetupError when Starter RNG
-    //  refuses the attempt's timings; the loop logs it and moves on.
+    //  the ball, as `call` says. Throws StarterRngTimingsRefused when
+    //  Starter RNG refuses the attempt's timings; the loop logs it and moves on.
     virtual StarterRngResult run_attempt(const RngAttempt& attempt, const StarterRngAttemptCall& call) = 0;
 };
 

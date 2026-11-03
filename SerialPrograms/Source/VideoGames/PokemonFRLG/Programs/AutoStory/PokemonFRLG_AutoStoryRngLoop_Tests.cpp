@@ -59,7 +59,7 @@ public:
 //  Each try takes `minutes_per_attempt` on the clock, makes one reset at
 //  its end with calibration 1.5/-2/0.25 frames, and comes out as the next
 //  of `outcomes`. An empty one is Starter RNG refusing the timings: a
-//  UserSetupError at once.
+//  StarterRngTimingsRefused at once.
 class ScriptedSteps : public StarterRngLoopSteps{
 public:
     ScriptedSteps(std::vector<std::optional<StarterRngOutcome>> outcomes, int minutes_per_attempt)
@@ -78,7 +78,7 @@ public:
         deadlines_min.push_back(int(std::chrono::duration_cast<std::chrono::minutes>(call.deadline - START).count()));
         const std::optional<StarterRngOutcome> outcome = m_outcomes[m_next++];
         if (!outcome){
-            throw UserSetupError(m_logger, "Refused timings.");
+            throw StarterRngTimingsRefused("Refused timings.");
         }
         m_now += std::chrono::minutes(m_minutes);
         call.on_reset(StarterRngProgress{.resets = 1, .calibrations = {1.5, -2, 0.25}});
@@ -96,6 +96,24 @@ private:
     LineLogger m_logger;
     WallClock m_now = START;
     size_t m_next = 0;
+};
+
+//  A setup problem Starter RNG hits on every attempt alike, such as no
+//  audio input.
+class SetupErrorSteps : public StarterRngLoopSteps{
+public:
+    virtual WallClock now() override{
+        return WallClock{} + std::chrono::hours(1000);
+    }
+    virtual StarterRngResult run_attempt(const RngAttempt&, const StarterRngAttemptCall&) override{
+        calls++;
+        throw UserSetupError(m_logger, "No sound detected.");
+    }
+
+    size_t calls = 0;
+
+private:
+    LineLogger m_logger;
 };
 
 //  SID Helper's candidates 100, 200, 300; attempt 1 is shiny for 100 and
@@ -349,6 +367,34 @@ UnitTestResult test_deadlines(){
 }
 
 
+//  A setup error other than refused timings stops the loop at once: it
+//  reaches the program, and the attempt is neither recorded nor skipped.
+UnitTestResult test_setup_error_stops(){
+    RngPlanTracker tracker(attempts(), CANDIDATES, true, 2);
+    SetupErrorSteps steps;
+    LineLogger logger;
+    const size_t sids = tracker.remaining_sids().size();
+    bool thrown = false;
+    try{
+        run_starter_rng_plan(logger, tracker, steps, LIMITS, 12345, CANDIDATES);
+    }catch (UserSetupError&){
+        thrown = true;
+    }
+    const bool result_line = std::any_of(logger.lines.begin(), logger.lines.end(), [](const std::string& line){
+        return line.starts_with("RngPlan: result") || line.starts_with("RngPlan: attempt");
+    });
+    const std::string expected = std::format("thrown 1, calls 1, attempt 1, sids {}, result line 0", sids);
+    const std::string got = std::format(
+        "thrown {}, calls {}, attempt {}, sids {}, result line {}",
+        int(thrown), steps.calls, tracker.attempt_index() + 1, tracker.remaining_sids().size(), int(result_line)
+    );
+    if (got != expected){
+        return "Expected " + expected + "; got " + got;
+    }
+    return true;
+}
+
+
 //  What the run says after a shiny, by what it tells of the SID.
 UnitTestResult test_shiny_messages(){
     struct Case{
@@ -449,6 +495,7 @@ void add_tests_AutoStoryRngLoop(UnitTestDatabase& database){
         database.add<Test_AutoStoryRngLoop>(row.name, [row]{ return run_loop_row(row); });
     }
     database.add<Test_AutoStoryRngLoop>("attempt deadlines", test_deadlines);
+    database.add<Test_AutoStoryRngLoop>("a setup error stops the loop", test_setup_error_stops);
     database.add<Test_AutoStoryRngLoop>("state line", test_state_line);
     database.add<Test_AutoStoryRngLoop>("shiny messages", test_shiny_messages);
     database.add<Test_AutoStoryRngLoop>("rows after a shiny", test_rows_after_shiny);
