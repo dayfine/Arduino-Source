@@ -704,6 +704,14 @@ static void add_tests_AutoStoryReaders(UnitTestDatabase& database){
     add_tests_TeachScreenReader(database);
 }
 
+//  The naming screen's cursor, plans, keys and text.
+static void add_tests_Naming(UnitTestDatabase& database){
+    add_tests_NamingCursor(database);
+    add_tests_NamingPlan(database);
+    add_tests_NamingKeys(database);
+    add_tests_NamingText(database);
+}
+
 void add_tests(UnitTestDatabase& database){
     add_tests_WhiteDialogDetector(database);
     add_tests_AdvanceWhiteDialogDetector(database);
@@ -749,10 +757,7 @@ void add_tests(UnitTestDatabase& database){
     add_tests_AutoStoryCapture(database);
     add_tests_AutoStoryPcStorage(database);
     add_tests_AutoStoryAbilities(database);
-    add_tests_NamingCursor(database);
-    add_tests_NamingPlan(database);
-    add_tests_NamingKeys(database);
-    add_tests_NamingText(database);
+    add_tests_Naming(database);
     add_tests_RngManipulation(database);
 }
 

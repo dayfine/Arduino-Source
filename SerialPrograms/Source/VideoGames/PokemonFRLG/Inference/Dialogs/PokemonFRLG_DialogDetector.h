@@ -73,6 +73,7 @@ private:
     ImageFloatBox m_right_box;
     ImageFloatBox m_top_box;
     ImageFloatBox m_bottom_box;
+    ImageFloatBox m_frame_box;
 };
 class WhiteDialogWatcher : public DetectorToFinder<WhiteDialogDetector>{
 public:
