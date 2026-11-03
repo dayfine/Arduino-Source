@@ -42,6 +42,7 @@
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryBattle.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryRngLoop.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryTable.h"
+#include "Programs/RngManipulation/PokemonFRLG_GiftRngAttempts_Tests.h"
 #include "Programs/RngManipulation/PokemonFRLG_RngPlanInputs_Tests.h"
 #include "Programs/RngManipulation/PokemonFRLG_RngPlanLog_Tests.h"
 #include "Programs/RngManipulation/PokemonFRLG_RngPlanTracker_Tests.h"
@@ -721,6 +722,7 @@ void add_tests(UnitTestDatabase& database){
     add_tests_RngPlanLog(database);
     add_tests_RngSteps(database);
     add_tests_StarterRngLoop(database);
+    add_tests_GiftRngAttempts(database);
 }
 
 
