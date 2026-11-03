@@ -836,9 +836,12 @@ StoryCheckpoint back_to_cerulean(){
 //  sRoute24_FireRed (pokefirered wild_encounters.json) has it in 25% of
 //  battles, Lv12..14, as Route 25's grass; Routes 5 and 6 aren't on the
 //  story's maps yet. Up the bridge, whose trainers 00.16 beat, west along
-//  rows 10..15 and down column 4 to the grass's first row, (4, 19); the
-//  step paces west to (3, 19) and back. Camper Shane (5, 21) faces north,
-//  sight 5, over (5, 16..20): column 5 is kept off.
+//  rows 10..15 to the cliff (3, 15) and down column 3 to the grass's first
+//  row, (3, 19); the step paces east to (4, 19) and back. Camper Shane
+//  (5, 21) faces north, sight 5, over (5, 16..20): column 5 is kept off.
+//  The leg west ends on the cliff, not open: on console B (m63) an open
+//  leg west to (4, 15) ended a tile short, and the walk down column 5
+//  came into Shane's sight.
 //
 //  First 7 Poke Balls at the Mart (row 1, 200 each; the bag isn't read, so
 //  the step buys them whatever the bag holds). The floor, from 00.15's
@@ -861,11 +864,11 @@ StoryCheckpoint oddish(){
         .budget = 1400,
         .money_floor = 1500,
     };
-    const CapturePlan catch_oddish{.species = "oddish", .catches = 1, .max_encounters = 30, .max_balls = 7, .pace = WEST};
+    const CapturePlan catch_oddish{.species = "oddish", .catches = 1, .max_encounters = 30, .max_balls = 7, .pace = EAST};
     return row("00.20", "Route 24's grass: an Oddish for Cut, then the Center", at(CERULEAN_CENTER, 7, 4, NORTH), after_brock(), StartMenu::FULL, {
         running(route("mart_clerk", at(CERULEAN_MART, 4, 3, WEST), "out of the Center to the Mart's clerk")),
         mart_step("buy_poke_balls", "7 Poke Balls for the Oddish", balls),
-        running(route("oddish_patch", at(ROUTE24, 4, 19), "north over Nugget Bridge, west and down column 4 onto the grass's first row, out of Shane's column 5")),
+        running(route("oddish_patch", at(ROUTE24, 3, 19), "north over Nugget Bridge, west to the cliff and down column 3 onto the grass's first row, out of Shane's column 5")),
         capture_step("catch_oddish", "wild battles until an Oddish, then Poke Balls; any other species is run from", catch_oddish),
         running(route("cerulean_nurse", at(CERULEAN_CENTER, 7, 4, NORTH), "back over the bridge to the Center")),
         heal("heal_cerulean"),

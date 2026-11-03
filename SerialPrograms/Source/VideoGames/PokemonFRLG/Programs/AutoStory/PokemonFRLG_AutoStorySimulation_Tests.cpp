@@ -638,7 +638,7 @@ UnitTestResult test_oddish_walks(){
     OverworldSim sim(maps_bridge_beaten(), MapPosition{at.map, at.tile}, *at.facing);
     const std::map<std::string, MapPosition> ends{
         {"mart_clerk", {"CeruleanCity_Mart", {4, 3}}},
-        {"oddish_patch", {"Route24", {4, 19}}},
+        {"oddish_patch", {"Route24", {3, 19}}},
         {"oddish_patch_cliff", {"Route24", {3, 19}}},
         {"cerulean_nurse", {"CeruleanCity_PokemonCenter_1F", {7, 4}}},
     };
@@ -714,6 +714,46 @@ std::string walk_paced_route(OverworldSim& sim, const std::vector<RouteStep>& ro
 //  warp to the Center never came. On the sim, the battle on either step
 //  of the pace, the row's later walks, from the capture's tiles, reach the
 //  nurse.
+//  Console B, 2026-11-03 (m63, 00.20 verify run 2): the open leg west
+//  from Nugget Bridge's head ended a tile short, so the walk down onto the
+//  grass ended on (5, 19), in Camper Shane's sight; after the first wild
+//  battle he walked up ("I saw your feat from the grass!") and the capture
+//  stopped. From the Mart, the walk to the patch on the sim keeps out of
+//  his sight with the leg west whole or a tile short.
+UnitTestResult test_oddish_patch_west_short(){
+    const std::vector<StoryCheckpoint>& rows = story_checkpoints();
+    const auto row = std::find_if(rows.begin(), rows.end(), [](const StoryCheckpoint& data){ return data.id == "00.20"; });
+    if (row == rows.end()){
+        return "No checkpoint 00.20.";
+    }
+    const auto mart = std::find_if(row->steps.begin(), row->steps.end(), [](const StoryStep& step){ return step.name == "mart_clerk"; });
+    const auto patch = std::find_if(row->steps.begin(), row->steps.end(), [](const StoryStep& step){ return step.name == "oddish_patch"; });
+    if (mart == row->steps.end() || patch == row->steps.end() || !mart->target || !patch->target){
+        return "00.20: no mart_clerk or oddish_patch.";
+    }
+    for (int short_by : {0, 1}){
+        StoryPose at = *story_pose(*mart->target);
+        SimScript script;
+        //  Holds from the Mart: south, west, north, east, north, east, north
+        //  over the bridge, then the 8th, west from the bridge's head.
+        script.short_holds[8] = short_by;
+        OverworldSim sim(maps_bridge_beaten(), MapPosition{at.map, at.tile}, *at.facing, script);
+        const std::string failure = row_step_on_sim(sim, at, *patch, "00.20");
+        const std::string label = std::format("West leg {} tile(s) short: ", short_by);
+        if (!failure.empty()){
+            return label + failure;
+        }
+        if (!sim.state().trainers_beaten.empty()){
+            return label + "a trainer saw the player, on " + to_string(sim.state().position) + ".";
+        }
+        const StoryPose end = *story_pose(*patch->target);
+        if (!(sim.state().position == MapPosition{end.map, end.tile})){
+            return label + "ended on " + to_string(sim.state().position) + ", not " + to_string(MapPosition{end.map, end.tile}) + ".";
+        }
+    }
+    return true;
+}
+
 UnitTestResult test_oddish_battle_on_far_step(){
     const std::vector<StoryCheckpoint>& rows = story_checkpoints();
     const auto row = std::find_if(rows.begin(), rows.end(), [](const StoryCheckpoint& data){ return data.id == "00.20"; });
@@ -728,8 +768,8 @@ UnitTestResult test_oddish_battle_on_far_step(){
     if (patch == capture || !patch->target){
         return "00.20: no oddish_patch before catch_oddish.";
     }
-    //  The sim starts on the patch (4, 19): grass step 1 is the pace's far
-    //  step onto (3, 19), step 2 the one back.
+    //  The sim starts on the patch (3, 19): grass step 1 is the pace's far
+    //  step onto (4, 19), step 2 the one back.
     for (int grass_step : {1, 2}){
         SimScript script;
         script.encounters.push_back(SimEncounter{.grass_step = grass_step});
@@ -737,7 +777,7 @@ UnitTestResult test_oddish_battle_on_far_step(){
         OverworldSim sim(maps_bridge_beaten(), MapPosition{start.map, start.tile}, Direction::SOUTH, script);
         const std::string label = std::format("Battle on grass step {}: ", grass_step);
         QuietLogger logger;
-        SimPatch pacing(sim, Direction::WEST, Direction::EAST);
+        SimPatch pacing(sim, Direction::EAST, Direction::WEST);
         if (!pace_until_battle(logger, pacing, PACE_MAX_STEPS) || sim.handle_battle(SimBattleChoice::RUN) != SimBattleEnd::ENDED){
             return label + "no wild battle on the pace.";
         }
@@ -932,6 +972,7 @@ void add_tests_AutoStorySimulation(UnitTestDatabase& database){
     add("00.18 out of Bill's Sea Cottage, Bill on (7, 6)", test_out_of_bill_cottage);
     add("00.20 to Route 24's grass and back, past Shane", test_oddish_walks);
     add("00.20 back to the Center, the Oddish's battle on the pace's far step", test_oddish_battle_on_far_step);
+    add("00.20 onto the grass out of Shane's sight, the leg west a tile short", test_oddish_patch_west_short);
     add("the routes after pacing, from either of its tiles", test_routes_after_pacing);
 }
 
