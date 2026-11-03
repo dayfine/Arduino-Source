@@ -127,6 +127,44 @@ bool SelectionDialogDetector::detect(const ImageViewRGB32& screen){
     return false;
 }
 
+class Test_WhiteDialogDetector : public ImageUnitTest{
+public:
+
+    Test_WhiteDialogDetector(
+        const std::string& image,
+        bool expected
+    )
+        : ImageUnitTest("PokemonFRLG::WhiteDialogDetector - " + image, {image})
+        , m_expected(expected)
+    {}
+
+    virtual UnitTestResult run_on_images(
+        Logger& logger, CancellableScope& scope,
+        const std::vector<ImageRGB32>& images
+    ) const override{
+        WhiteDialogDetector detector(COLOR_RED);
+        const ImageRGB32& image = images[0];
+        return detector.detect(image) == m_expected;
+    };
+
+private:
+    bool m_expected;
+};
+
+void add_tests_WhiteDialogDetector(UnitTestDatabase& database){
+    //  The S.S. Anne's white hull fills the dialog area, with no frame around it.
+    database.add<Test_WhiteDialogDetector>("PokemonFRLG/WhiteDialogDetector/SSAnne1F_Corridor_False.png", false);
+    database.add<Test_WhiteDialogDetector>("PokemonFRLG/WhiteDialogDetector/SSAnne1F_CorridorWorker_False.png", false);
+    //  Real dialogs, from the other dialog detectors' folders.
+    database.add<Test_WhiteDialogDetector>("PokemonFRLG/AdvanceWhiteDialogDetector/English-Bulba_True.png", true);
+    database.add<Test_WhiteDialogDetector>("PokemonFRLG/AdvanceWhiteDialogDetector/Ger-KennyExile-Sq_True.png", true);
+    database.add<Test_WhiteDialogDetector>("PokemonFRLG/AdvanceWhiteDialogDetector/MacOS-not-ili-Char_True.png", true);
+    database.add<Test_WhiteDialogDetector>("PokemonFRLG/AdvanceWhiteDialogDetector/Spanish-AlejaKaiser-Char_True.png", true);
+    database.add<Test_WhiteDialogDetector>("PokemonFRLG/Dialog/white_dialog_jap-112434221413.png", true);
+    database.add<Test_WhiteDialogDetector>("PokemonFRLG/Dialog/white_dialog_red_text_spa-205200755327.png", true);
+    database.add<Test_WhiteDialogDetector>("PokemonFRLG/SelectionDialogDetector/English-Bulba-720p_True.png", true);
+}
+
 class Test_AdvanceWhiteDialogDetector : public ImageUnitTest{
 public:
 

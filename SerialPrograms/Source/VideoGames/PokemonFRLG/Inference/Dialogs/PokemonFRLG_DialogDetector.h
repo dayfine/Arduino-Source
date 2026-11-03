@@ -134,6 +134,7 @@ public:
     {}
 };
 
+void add_tests_WhiteDialogDetector(UnitTestDatabase& database);
 void add_tests_AdvanceWhiteDialogDetector(UnitTestDatabase& database);
 void add_tests_SelectionDialogDetector(UnitTestDatabase& database);
 
