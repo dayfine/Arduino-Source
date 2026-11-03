@@ -275,6 +275,28 @@ UnitTestResult test_walk_only_indoors(){
     return true;
 }
 
+//  From (7, 6) in Route 4's Pokemon Center to the salesman, no leg holds
+//  west along row 6: the escalator at (1, 6) rides up to 2F, which isn't
+//  loaded (console B, 2026-11-02, "west 5 (to wall)").
+UnitTestResult test_route4_center_escalator(){
+    const std::vector<MapData> maps = overworld_maps();
+    const MapPosition start{"Route4_PokemonCenter_1F", {7, 6}};
+    const MapPosition salesman{"Route4_PokemonCenter_1F", {2, 3}};
+    if (hold_to_wall(maps, start, false, Direction::WEST)){
+        return "Expected no hold west from (7, 6) along the escalator's row.";
+    }
+    const std::optional<std::vector<RouteStep>> route = plan_overworld_route(maps, start, RouteGoal{salesman, Direction::WEST});
+    if (!route || !(follow_overworld_route(maps, start, *route) == salesman)){
+        return "Expected a route from (7, 6) to the salesman.";
+    }
+    for (const RouteStep& step : *route){
+        if (step.to_wall && step.direction == Direction::WEST && step.end.point == TilePos{2, 6}){
+            return "Expected no hold west next to the escalator: " + to_string(step);
+        }
+    }
+    return true;
+}
+
 //  A hall with an escalator at (1, 2) to a floor that isn't loaded, like
 //  Route 4's Pokemon Center.
 const char* const ESCALATOR_HALL = R"({
@@ -316,6 +338,7 @@ void add_tests_OverworldMaps(UnitTestDatabase& database){
     database.add<Test_OverworldMaps>("not JSON", test_not_json);
     database.add<Test_OverworldMaps>("Route 3, Route 4 and its Pokemon Center", test_route3_route4_maps);
     database.add<Test_OverworldMaps>("walks where running isn't allowed", test_walk_only_indoors);
+    database.add<Test_OverworldMaps>("Route 4's Pokemon Center escalator", test_route4_center_escalator);
     database.add<Test_OverworldMaps>("trainer sight", test_trainer_sight);
     database.add<Test_OverworldMaps>("no hold onto an escalator", test_no_hold_onto_escalator);
 }
