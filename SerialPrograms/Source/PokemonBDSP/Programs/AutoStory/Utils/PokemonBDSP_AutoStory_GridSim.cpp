@@ -117,6 +117,9 @@ void GridSim::place(SimWorld world, const TilePos& start, std::optional<Directio
     m_player.dialog = false;
     m_player.trainer.reset();
     m_player.warped.reset();
+    if (m_world.can_run){
+        m_player.can_run = *m_world.can_run;
+    }
 }
 
 //  Moves into the next tile toward `direction`, `part` of the way (a whole
@@ -131,7 +134,7 @@ std::optional<SimStop> GridSim::enter_next(Direction direction, int part, int& m
         const std::optional<TilePos> landing = PokemonBDSP::step(world, from, direction);
         if (landing && *landing != ahead[0]){
             part = 2 * SIM_TILE;
-        }else if (!landing && is_door(world, ahead[0])){
+        }else if (!landing && (is_door(world, ahead[0]) || std::find(m_world.doors.begin(), m_world.doors.end(), ahead[0]) != m_world.doors.end())){
             m_player.pos = sim_pos(ahead[0]);
             m_player.warped = ahead[0];
             moved += SIM_TILE;

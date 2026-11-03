@@ -64,11 +64,16 @@ struct SimTrigger{
 };
 
 //  Where the simulated player walks: the world (which must outlive the
-//  simulation), its trainers and its scene triggers, in world tiles.
+//  simulation), its trainers and its scene triggers, in world tiles; and
+//  the tiles that warp like doors though the maps draw them as walls (a
+//  house's stairs, entered from beside them); and, if the caller knows,
+//  whether B runs from here on (the Running Shoes, 00.03).
 struct SimWorld{
     const StoryWorld* world = nullptr;
     std::vector<TrainerSight> trainers = {};
     std::vector<SimTrigger> triggers = {};
+    std::vector<Pokemon::TilePos> doors = {};
+    std::optional<bool> can_run = std::nullopt;
 };
 
 enum class SimStop{
