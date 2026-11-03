@@ -5,11 +5,15 @@
  *  Which Starter RNG targets AutoStory asks for, in order, when the SID is
  *  only narrowed down to SID Helper's candidates, and what to do after each
  *  one. The loop is the one PokemonFRLG_RngTargetSearch.h describes:
- *   - Shiny: the SID is one of those the target is shiny for. With one left,
- *     it is confirmed and later targets can be searched with it alone.
+ *   - Shiny, and the target was hit: the SID is one of those the target is
+ *     shiny for. With one left, it is confirmed and later targets can be
+ *     searched with it alone.
+ *   - Shiny, but not the target (another advance): it says nothing about
+ *     the SID. The plan ends with the shiny.
  *   - Nature and IVs match, but not shiny: the target was hit, so the SIDs it
  *     is shiny for are wrong. Go on to the next attempt.
- *   - Nature or IVs differ: the target was missed. Run it again.
+ *   - Nature or IVs differ: the target was missed. Run it again, up to the
+ *     retries, then go on to the next attempt.
  *
  */
 
@@ -76,7 +80,10 @@ std::vector<RngAttempt> plan_rng_attempts(
 
 //  What came out of one attempt.
 enum class RngAttemptOutcome{
+    //  Shiny, with the target's nature and IVs.
     SHINY,
+    //  Shiny, but not the target, or not known to be.
+    SHINY_OFF_TARGET,
     //  The target's nature and IVs, not shiny.
     HIT_NOT_SHINY,
     //  Another nature or other IVs: not the target.
@@ -94,14 +101,17 @@ RngAttemptOutcome classify_attempt(const RngTarget& target, const RngAttemptResu
 enum class RngPlanStep{
     //  Run current_attempt(): the first, the next, or the same again after a miss.
     RUN_ATTEMPT,
-    //  Shiny. remaining_sids() are the SIDs it can be.
+    //  Shiny, the target hit. remaining_sids() are the SIDs it can be.
     GOT_SHINY,
+    //  Shiny, not the target: the SIDs are as they were, none confirmed.
+    GOT_SHINY_OFF_TARGET,
     //  Shiny not required, and the target was hit.
     GOT_TARGET,
     //  Every attempt was hit and none was shiny.
     OUT_OF_ATTEMPTS,
-    //  One attempt was missed more often than the retries allow.
-    OUT_OF_RETRIES,
+    //  The last attempt still shiny for a SID left was missed more often
+    //  than the retries allow. (Missing an earlier one moves on to the next.)
+    MISSED_EVERY_ATTEMPT_LEFT,
 };
 
 //  Follows the plan through the attempts' outcomes.
@@ -129,6 +139,9 @@ public:
 
 private:
     bool is_ruled_out(uint16_t sid) const;
+    //  Moves to the next attempt still shiny for a SID left (with shiny
+    //  required; else any next one). False if there is none.
+    bool move_to_next_attempt();
 
     std::vector<RngAttempt> m_attempts;
     bool m_shiny_required;
@@ -176,7 +189,7 @@ std::vector<std::string> rng_attempt_lines(const std::vector<RngAttempt>& attemp
 //          advances=<n> sids=<SID>,... ruled_out=<SID>,... attempt_time=<h:mm:ss>/<cap>
 //          total_time=<h:mm:ss>/<cap> calibration=<seed>/<csf>/<ingame frames|->
 //      (once at the try's start, then after every reset)
-//      RngPlan: result attempt=<i> try=<t> outcome=<shiny|hit_not_shiny|missed>
+//      RngPlan: result attempt=<i> try=<t> outcome=<shiny|shiny_off_target|hit_not_shiny|missed>
 //          starter_rng=<Starter RNG's outcome> nature=<N|-> ivs=<a/b/c/d/e/f|->
 //          pid=<hex|-> next=<retry|next_attempt|confirm|stop>
 //      RngPlan: confirmed tid=<TID> sid=<SID> candidate=<k> of=<N>
@@ -193,7 +206,7 @@ std::string rng_log_attempt(size_t index, const RngAttempt& attempt);
 enum class RngPlanNext{
     RETRY,
     NEXT_ATTEMPT,
-    //  Shiny: go on with the story.
+    //  Shiny and the target: go on with the story.
     CONFIRM,
     STOP,
 };

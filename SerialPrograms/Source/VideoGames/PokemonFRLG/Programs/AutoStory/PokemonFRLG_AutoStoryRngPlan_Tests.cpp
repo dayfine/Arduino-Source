@@ -273,7 +273,8 @@ UnitTestResult test_classify(Logger&){
         RngAttemptOutcome expected;
     };
     const Case cases[] = {
-        {.name = "shiny", .result = {.shiny = true, .nature = other_nature, .ivs = other_ivs}, .expected = RngAttemptOutcome::SHINY},
+        {.name = "shiny, the target", .result = {.shiny = true, .nature = hit.pokemon.nature, .ivs = hit.pokemon.ivs}, .expected = RngAttemptOutcome::SHINY},
+        {.name = "shiny, not the target", .result = {.shiny = true, .nature = other_nature, .ivs = other_ivs}, .expected = RngAttemptOutcome::SHINY_OFF_TARGET},
         {.name = "same nature and IVs", .result = {.shiny = false, .nature = hit.pokemon.nature, .ivs = hit.pokemon.ivs}, .expected = RngAttemptOutcome::HIT_NOT_SHINY},
         {.name = "other IVs", .result = {.shiny = false, .nature = hit.pokemon.nature, .ivs = other_ivs}, .expected = RngAttemptOutcome::MISSED},
         {.name = "other nature", .result = {.shiny = false, .nature = other_nature, .ivs = hit.pokemon.ivs}, .expected = RngAttemptOutcome::MISSED},
@@ -291,9 +292,10 @@ const char* step_name(RngPlanStep step){
     switch (step){
     case RngPlanStep::RUN_ATTEMPT:     return "RUN_ATTEMPT";
     case RngPlanStep::GOT_SHINY:       return "GOT_SHINY";
+    case RngPlanStep::GOT_SHINY_OFF_TARGET: return "GOT_SHINY_OFF_TARGET";
     case RngPlanStep::GOT_TARGET:      return "GOT_TARGET";
     case RngPlanStep::OUT_OF_ATTEMPTS: return "OUT_OF_ATTEMPTS";
-    case RngPlanStep::OUT_OF_RETRIES:  return "OUT_OF_RETRIES";
+    case RngPlanStep::MISSED_EVERY_ATTEMPT_LEFT: return "MISSED_EVERY_ATTEMPT_LEFT";
     }
     return "?";
 }
@@ -330,11 +332,43 @@ std::vector<TrackerCase> tracker_cases(){
             .steps = {RUN_ATTEMPT, RUN_ATTEMPT, RUN_ATTEMPT, RUN_ATTEMPT}, .attempts = {0, 0, 1, 1},
             .remaining = {300}, .confirmed = std::nullopt,
         },
+    };
+}
+//  Misses: retried, then the next attempt, mixed with hits and shinies.
+std::vector<TrackerCase> tracker_retry_cases(){
+    using enum RngAttemptOutcome;
+    using enum RngPlanStep;
+    return {
         {
-            .name = "three misses in a row with two retries",
+            .name = "retries used up, then the next attempt",
             .shiny_required = true, .outcomes = {MISSED, MISSED, MISSED, SHINY},
-            .steps = {RUN_ATTEMPT, RUN_ATTEMPT, OUT_OF_RETRIES, OUT_OF_RETRIES}, .attempts = {0, 0, 0, 0},
+            .steps = {RUN_ATTEMPT, RUN_ATTEMPT, RUN_ATTEMPT, GOT_SHINY}, .attempts = {0, 0, 1, 1},
+            .remaining = {300}, .confirmed = uint16_t(300),
+        },
+        {
+            .name = "every attempt left missed too often",
+            .shiny_required = true, .outcomes = {MISSED, MISSED, MISSED, MISSED, MISSED, MISSED},
+            .steps = {RUN_ATTEMPT, RUN_ATTEMPT, RUN_ATTEMPT, RUN_ATTEMPT, RUN_ATTEMPT, MISSED_EVERY_ATTEMPT_LEFT},
+            .attempts = {0, 0, 1, 1, 1, 1},
             .remaining = {100, 200, 300}, .confirmed = std::nullopt,
+        },
+        {
+            .name = "shiny off the target confirms nothing",
+            .shiny_required = true, .outcomes = {HIT_NOT_SHINY, SHINY_OFF_TARGET, SHINY},
+            .steps = {RUN_ATTEMPT, GOT_SHINY_OFF_TARGET, GOT_SHINY_OFF_TARGET}, .attempts = {1, 1, 1},
+            .remaining = {300}, .confirmed = std::nullopt,
+        },
+        {
+            .name = "miss, hit, misses, then shiny",
+            .shiny_required = true, .outcomes = {MISSED, HIT_NOT_SHINY, MISSED, MISSED, SHINY},
+            .steps = {RUN_ATTEMPT, RUN_ATTEMPT, RUN_ATTEMPT, RUN_ATTEMPT, GOT_SHINY}, .attempts = {0, 1, 1, 1, 1},
+            .remaining = {300}, .confirmed = uint16_t(300),
+        },
+        {
+            .name = "misses move on, then a hit ends the plan",
+            .shiny_required = true, .outcomes = {MISSED, MISSED, MISSED, MISSED, HIT_NOT_SHINY},
+            .steps = {RUN_ATTEMPT, RUN_ATTEMPT, RUN_ATTEMPT, RUN_ATTEMPT, OUT_OF_ATTEMPTS}, .attempts = {0, 0, 1, 1, 1},
+            .remaining = {100, 200}, .confirmed = std::nullopt,
         },
         {
             .name = "every attempt hit, none shiny",
@@ -376,7 +410,11 @@ UnitTestResult check_tracker_case(const TrackerCase& item){
 }
 
 UnitTestResult test_tracker(Logger&){
-    for (const TrackerCase& item : tracker_cases()){
+    std::vector<TrackerCase> cases = tracker_cases();
+    for (TrackerCase& item : tracker_retry_cases()){
+        cases.push_back(std::move(item));
+    }
+    for (const TrackerCase& item : cases){
         const UnitTestResult result = check_tracker_case(item);
         if (result.result != UnitTestResult::PASSED){
             return result;
@@ -385,6 +423,15 @@ UnitTestResult test_tracker(Logger&){
     RngPlanTracker empty({}, CANDIDATES, true, 2);
     if (empty.step() != RngPlanStep::OUT_OF_ATTEMPTS){
         return std::string("An empty plan: expected OUT_OF_ATTEMPTS, got ") + step_name(empty.step()) + ".";
+    }
+    //  A shiny hit for a SID that is no candidate: none left, none confirmed.
+    RngPlanTracker outside({RngAttempt{make_target(1, 50, {}), {999}}}, CANDIDATES, true, 2);
+    outside.record(RngAttemptOutcome::SHINY);
+    if (outside.step() != RngPlanStep::GOT_SHINY || !outside.remaining_sids().empty() || outside.confirmed_sid()){
+        return std::format(
+            "Shiny for no candidate: expected GOT_SHINY with no SID left, got {} with SIDs {}.",
+            step_name(outside.step()), join(outside.remaining_sids())
+        );
     }
     return true;
 }
@@ -420,6 +467,13 @@ UnitTestResult test_log_lines(Logger&){
                 .pokemon = std::nullopt, .next = RngPlanNext::RETRY,
             }),
             .expected = "RngPlan: result attempt=1 try=1 outcome=missed starter_rng=out_of_resets nature=- ivs=- pid=- next=retry",
+        },
+        {
+            .got = rng_log_result(RngResultLog{
+                .index = 2, .try_number = 3, .outcome = RngAttemptOutcome::SHINY_OFF_TARGET, .detail = "shiny_off_target",
+                .pokemon = std::nullopt, .next = RngPlanNext::STOP,
+            }),
+            .expected = "RngPlan: result attempt=3 try=3 outcome=shiny_off_target starter_rng=shiny_off_target nature=- ivs=- pid=- next=stop",
         },
         {.got = rng_log_confirmed(43771, 300, CANDIDATES), .expected = "RngPlan: confirmed tid=43771 sid=300 candidate=3 of=3"},
         {.got = rng_log_confirmed(43771, 7, CANDIDATES), .expected = "RngPlan: confirmed tid=43771 sid=7 candidate=0 of=3"},
