@@ -62,6 +62,10 @@ FLOOR = ('MB_NORMAL', 'MB_CAVE', 'MB_ROCK_STAIRS', 'MB_TALL_GRASS')
 #   tile may start a wild battle, as on every floor tile of a cave.
 ENCOUNTER_TYPE_SHIFT, ENCOUNTER_TYPE_MASK = 24, 0x7
 TILE_ENCOUNTER_LAND = 1
+#   Open tiles closed on one side, and the region that lists those of them
+#   with wild encounters, which their glyph can't say.
+CLOSED_GLYPHS = '8264'
+WILD_REGION = 'wild'
 DIRECTIONS = {'up': 'north', 'down': 'south', 'left': 'west', 'right': 'east'}
 
 #   Places and flag sets the decompilation doesn't name, written into the map
@@ -158,23 +162,36 @@ def tile_glyph(behavior, collision, unhandled, sign_event=False):
     return '.', None
 
 
+def land_encounter(attributes):
+    """Whether, on a map with land encounters, a step onto a tile with these
+    metatile attributes may start a wild battle."""
+    return (attributes >> ENCOUNTER_TYPE_SHIFT) & ENCOUNTER_TYPE_MASK == TILE_ENCOUNTER_LAND
+
+
 def encounter_glyph(glyph, attributes):
     """On a map with land encounters: `glyph` for a tile with these metatile
     attributes, open floor where wild Pokemon appear written as tall grass."""
-    encounter = (attributes >> ENCOUNTER_TYPE_SHIFT) & ENCOUNTER_TYPE_MASK
-    return '~' if glyph == '.' and encounter == TILE_ENCOUNTER_LAND else glyph
+    return '~' if glyph == '.' and land_encounter(attributes) else glyph
+
+
+def wild_edge(glyph, attributes):
+    """On a map with land encounters: whether a tile closed on one side, with
+    these metatile attributes, has wild encounters. Its glyph can't say so;
+    the map lists it in region WILD_REGION."""
+    return glyph in CLOSED_GLYPHS and land_encounter(attributes)
 
 
 def grid(decomp, layout, names, unhandled, signs=frozenset(), land_encounters=False):
-    """The map's tile rows, elevation rows, and how the warp on each tile is
-    entered, by (x, y), where it isn't by walking into it. With
-    `land_encounters`, open floor where wild Pokemon appear (a cave's) is
-    written as tall grass, the glyph for "open, with wild encounters"."""
+    """The map's tile rows, elevation rows, how the warp on each tile is
+    entered, by (x, y), where it isn't by walking into it, and the tiles closed
+    on one side that have wild encounters. With `land_encounters`, open floor
+    where wild Pokemon appear (a cave's) is written as tall grass, the glyph
+    for "open, with wild encounters"."""
     width, height = layout['width'], layout['height']
     blocks = decomp.read(layout['blockdata_filepath'])
     primary = tileset_attributes(decomp, layout['primary_tileset'], 'primary')
     secondary = tileset_attributes(decomp, layout['secondary_tileset'], 'secondary')
-    tiles, elevation, entries = [], [], {}
+    tiles, elevation, entries, wild_edges = [], [], {}, []
     for y in range(height):
         row, levels = '', ''
         for x in range(width):
@@ -185,13 +202,15 @@ def grid(decomp, layout, names, unhandled, signs=frozenset(), land_encounters=Fa
             glyph, entry = tile_glyph(behavior, collision, unhandled, (x, y) in signs)
             if land_encounters and entry is None:
                 glyph = encounter_glyph(glyph, attributes)
+                if wild_edge(glyph, attributes):
+                    wild_edges.append([x, y])
             row += glyph
             if entry:
                 entries[(x, y)] = entry
             levels += '%x' % level
         tiles.append(row)
         elevation.append(levels)
-    return tiles, elevation, entries
+    return tiles, elevation, entries, wild_edges
 
 
 def wander_box(obj, tiles):
@@ -308,7 +327,7 @@ def land_encounter_maps(decomp):
 def map_json(decomp, name, sources, layouts, names, loaded, unhandled, land_maps=frozenset()):
     source = sources[name]
     signs = frozenset((e['x'], e['y']) for e in source.get('bg_events', []) if e.get('type') == 'sign')
-    tiles, elevation, entries = grid(
+    tiles, elevation, entries, wild_edges = grid(
         decomp, layouts[source['layout']], names, unhandled, signs, source['id'] in land_maps
     )
     warp_events = source.get('warp_events', [])
@@ -321,6 +340,7 @@ def map_json(decomp, name, sources, layouts, names, loaded, unhandled, land_maps
         'allow_running': source.get('allow_running', True),
         'tiles': tiles, 'elevation': elevation,
         'points': points,
+        'regions': {WILD_REGION: wild_edges} if wild_edges else {},
         'warps': [warp(event, entries, loaded, sources) for event in warp_events],
         #   A few objects stand off the map, where no route meets them.
         'objects': [
@@ -333,6 +353,8 @@ def map_json(decomp, name, sources, layouts, names, loaded, unhandled, land_maps
             for c in (source.get('connections') or []) if c['map'] in loaded
         ],
     }
+    if not data['regions']:
+        del data['regions']
     if ground_only(tiles, elevation):
         del data['elevation']
     if data['allow_running']:

@@ -12,6 +12,7 @@
 #include <string>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
+#include "PokemonFRLG_OverworldMap.h"
 #include "PokemonFRLG_OverworldMaps.h"
 #include "PokemonFRLG_OverworldReanchor.h"
 #include "PokemonFRLG_OverworldRoute.h"
@@ -285,6 +286,31 @@ UnitTestResult test_mt_moon_maps(){
     return true;
 }
 
+//  Mt. Moon B2F's floor closed on its north side, along row 14, has wild
+//  encounters like the cave floor south of it: a leg along it is wild, so the
+//  walker watches for a battle there.
+UnitTestResult test_mt_moon_closed_floor_wild(){
+    const std::vector<MapData> maps = overworld_maps({"FLAG_HIDE_DOME_FOSSIL", "FLAG_HIDE_HELIX_FOSSIL"});
+    const MapData* map = built_in(maps, "MtMoon_B2F");
+    if (map == nullptr){
+        return "Missing map MtMoon_B2F.";
+    }
+    if (map->tiles.at({40, 14}) != TileKind::CLOSED_NORTH || !is_tall_grass(*map, {40, 14})){
+        return "Expected MtMoon_B2F (40, 14) to be floor closed on the north, with wild encounters.";
+    }
+    const std::optional<std::vector<RouteStep>> route = plan_overworld_route(
+        maps, MapPosition{"MtMoon_B2F", {37, 14}}, RouteGoal{MapPosition{"MtMoon_B2F", {46, 14}}, Direction::EAST}
+    );
+    if (!route || route->size() != 1){
+        return "Expected one leg along MtMoon_B2F's row 14.";
+    }
+    const RouteStep& step = route->front();
+    if (step.direction != Direction::EAST || step.tiles != 9 || !step.wild){
+        return "Expected a wild leg 9 tiles east along row 14, got " + to_string(step) + ".";
+    }
+    return true;
+}
+
 //  A planned step walks where its map doesn't let the player run, and only
 //  there: out of Pewter's Pokemon Center to the Gym.
 UnitTestResult test_walk_only_indoors(){
@@ -485,6 +511,7 @@ void add_tests_OverworldMaps(UnitTestDatabase& database){
     database.add<Test_OverworldMaps>("not JSON", test_not_json);
     database.add<Test_OverworldMaps>("Route 3, Route 4 and its Pokemon Center", test_route3_route4_maps);
     database.add<Test_OverworldMaps>("Mt. Moon joins Route 4's cave mouths", test_mt_moon_maps);
+    database.add<Test_OverworldMaps>("Mt. Moon's floor closed on one side is wild", test_mt_moon_closed_floor_wild);
     database.add<Test_OverworldMaps>("walks where running isn't allowed", test_walk_only_indoors);
     database.add<Test_OverworldMaps>("Route 4's Pokemon Center escalator", test_route4_center_escalator);
     database.add<Test_OverworldMaps>("trainer sight", test_trainer_sight);
