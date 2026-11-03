@@ -97,6 +97,16 @@ StoryStep step_into(std::string name, Direction direction, std::string why){
     return step;
 }
 
+//  A step the way a ledge faces, from the tile before it: the player hops
+//  it and lands on `landing`, two tiles on. Planned routes never hop a
+//  ledge (they hold into walls, and a held ledge hops), so where the only
+//  way on is down a ledge the table takes it as this one step.
+StoryStep hop(std::string name, Direction direction, Pokemon::Pose landing, std::string why){
+    StoryStep step = step_into(std::move(name), direction, std::move(why));
+    step.pose_after = std::move(landing);
+    return step;
+}
+
 StoryStep answer(std::string name, bool yes, std::string why){
     StoryStep step = make(StoryStepKind::ANSWER, std::move(name), std::move(why));
     step.yes = yes;
@@ -472,13 +482,17 @@ StoryCheckpoint mt_moon(){
 }
 
 //  Route 4 east of Mt. Moon (Route4 map.json) joins Cerulean City at its
-//  east end (x 107; Route 4's row 3 is the city's row 13). Lass Crissy
-//  (75, 3) faces east, sight 4, over row 3 from x 76 to 79; the way east
-//  keeps out of her line and off the grass south of the road (75..87,
-//  11..17).
+//  east end (x 107; Route 4's row 3 is the city's row 13). Its upper road
+//  (rows 2..8) reaches the city only by water: the way on by land is down
+//  the ledge row 9 at x 90..96 to the lower road (rows 10..12), which
+//  joins the city's rows 20..22. Lass Crissy (75, 3) faces east, sight 4,
+//  over row 3 from x 76 to 79; the way east keeps out of her line and off
+//  the grass south of the road (75..87, 11..17).
 StoryCheckpoint route4_to_cerulean(){
     return row("00.14", "Route 4 east to Cerulean's Pokemon Center", at(ROUTE4, 32, 6, SOUTH), after_brock(), StartMenu::FULL, {
-        running(route("cerulean_nurse", at(CERULEAN_CENTER, 7, 4, NORTH), "east over Route 4's ledges into Cerulean City and its Pokemon Center")),
+        running(route("above_ledge", at(ROUTE4, 93, 8, SOUTH), "east along Route 4's upper road to above the ledge row 9")),
+        hop("ledge_hop", SOUTH, at(ROUTE4, 93, 10, SOUTH), "down the ledge (93, 9) to the lower road"),
+        running(route("cerulean_nurse", at(CERULEAN_CENTER, 7, 4, NORTH), "east into Cerulean City and its Pokemon Center")),
         heal("heal_cerulean"),
     });
 }
