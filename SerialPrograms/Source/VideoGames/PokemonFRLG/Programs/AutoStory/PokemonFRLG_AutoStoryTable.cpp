@@ -339,8 +339,14 @@ StoryCheckpoint route3(){
 
 //  Route 3's north exit (x 68..75) joins Route 4 (offset 60) at x 8..15, up
 //  which column 12 leads to the Pokemon Center's door (12, 5). Lass Robin
-//  (40, 11) wanders up and down at x 40 across the way east, looking north
-//  and south: if she sees the player, the walk fights her (story_interrupts()).
+//  (40, 11) wanders up and down at x 40, looking north and south, sight 3.
+//  Rock above (y <= 8) and grass below (y >= 12) leave every way east
+//  across her column at y 9..11, so whether she sees the player depends on
+//  her facing. The walk watches for her after the leg along row 9, which
+//  crosses her sight on (40, 9) only; if she saw the player, her message
+//  goes to story_interrupts(), which fight her, and the route goes on from
+//  (40, 9) (run_route(); console B, 2026-11-02, she stopped the player
+//  there and spoke after the leg's short watch).
 StoryCheckpoint magikarp_salesman(){
     return row("00.12", "Route 3 and 4 to the Magikarp salesman", at(ROUTE3, 36, 8, SOUTH), {}, StartMenu::FULL, {
         running(route("route4_nurse", at(ROUTE4_CENTER, 7, 4, NORTH), "east over Route 3, off the grass, north into Route 4 and its Pokemon Center")),
