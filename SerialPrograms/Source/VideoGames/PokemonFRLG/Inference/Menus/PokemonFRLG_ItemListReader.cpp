@@ -5,12 +5,16 @@
  */
 
 #include <format>
+#include "Common/Cpp/Filesystem/Filesystem.h"
 #include "Common/Cpp/Json/JsonArray.h"
 #include "Common/Cpp/Json/JsonObject.h"
+#include "CommonFramework/GlobalAutoPaths.h"
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "CommonFramework/Language.h"
 #include "CommonTools/OCR/OCR_SmallDictionaryMatcher.h"
 #include "Tests/ImageUnitTest.h"
+#include "Tests/TestUtils.h"
+#include "VideoGames/PokemonFRLG/PokemonFRLG_Tests.h"
 #include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_DigitReader.h"
 #include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_OcrPreprocessing.h"
 #include "VideoGames/PokemonFRLG/PokemonFRLG_Settings.h"
@@ -114,46 +118,79 @@ std::vector<BagRow> read_bag_pocket(Logger& logger, Language language, const Ima
 
 namespace{
 
-//  A capture of the Items pocket, read from the top.
+//  The language a test image's name ends with: <anything>_<language code>.
+Language language_of_test_image(const std::string& image){
+    const std::vector<std::string> words = parse_words(Filesystem::Path(image).stem().string());
+    return words.size() < 2 ? Language::None : language_code_to_enum(words.back());
+}
+
+//  A capture of a bag pocket, read from the top. Its golden file holds each
+//  row's item and count, one per line.
 class Test_BagPocket : public ImageUnitTest{
 public:
-    Test_BagPocket(const std::string& image, std::vector<BagRow> expected)
+    Test_BagPocket(const std::string& image)
         : ImageUnitTest("PokemonFRLG::ItemListReader - " + image, {image})
-        , m_expected(std::move(expected))
     {}
 
     virtual UnitTestResult run_on_images(
         Logger& logger, CancellableScope& scope,
         const std::vector<ImageRGB32>& images
     ) const override{
-        const std::vector<BagRow> rows = read_bag_pocket(logger, Language::English, images[0]);
-        std::string expected;
-        for (const BagRow& row : m_expected){
-            expected += std::format(" {} x{};", row.item, row.count);
+        const Language language = language_of_test_image(image_paths()[0]);
+        if (language == Language::None || language == Language::EndOfList){
+            return "Error: filename must be <anything>_<language code>.";
         }
-        std::string read;
-        for (const BagRow& row : rows){
-            read += std::format(" {} x{};", row.item, row.count);
+        std::vector<std::string> labels;
+        std::vector<std::string> values;
+        const std::vector<BagRow> rows = read_bag_pocket(logger, language, images[0]);
+        for (size_t c = 0; c < rows.size(); c++){
+            labels.push_back(std::format("row {} item", c + 1));
+            labels.push_back(std::format("row {} count", c + 1));
+            values.push_back(rows[c].item);
+            values.push_back(std::to_string(rows[c].count));
         }
-        if (read != expected){
-            return "Expected" + expected + " read" + (read.empty() ? std::string(" nothing") : read);
-        }
-        return true;
+        return check_against_golden_file(UNIT_TEST_RESOURCE_PATH() + image_paths()[0], labels, values);
     }
+};
 
-private:
-    const std::vector<BagRow> m_expected;
+//  A capture of a Mart's BUY list, read from the top to its CANCEL. Its
+//  golden file holds each row's item, one per line.
+class Test_MartList : public ImageUnitTest{
+public:
+    Test_MartList(const std::string& image)
+        : ImageUnitTest("PokemonFRLG::ItemListReader - " + image, {image})
+    {}
+
+    virtual UnitTestResult run_on_images(
+        Logger& logger, CancellableScope& scope,
+        const std::vector<ImageRGB32>& images
+    ) const override{
+        const Language language = language_of_test_image(image_paths()[0]);
+        if (language == Language::None || language == Language::EndOfList){
+            return "Error: filename must be <anything>_<language code>.";
+        }
+        std::vector<std::string> labels;
+        std::vector<std::string> values;
+        for (int row = 0; row < ITEM_LIST_ROWS; row++){
+            const std::string item = read_item_list_name(logger, language, images[0], row);
+            labels.push_back(std::format("row {}", row + 1));
+            values.push_back(item.empty() ? "(nothing)" : item);
+            if (item.empty() || item == "cancel"){
+                break;
+            }
+        }
+        return check_against_golden_file(UNIT_TEST_RESOURCE_PATH() + image_paths()[0], labels, values);
+    }
 };
 
 }
 
 void add_tests_ItemListReader(UnitTestDatabase& database){
-    //  Console B, 2026-11-02, after the Viridian Mart: the 5 and the 3 read
-    //  as nothing before the digit templates.
-    database.add<Test_BagPocket>(
-        "PokemonFRLG/ItemListReader/ItemsPocket_Potion5_Antidote3_ParlyzHeal1.png",
-        std::vector<BagRow>{{"potion", 5}, {"antidote", 3}, {"parlyz-heal", 1}}
-    );
+    //  FireRed on console B, 2026-11-02, after the Viridian Mart: the 5 and
+    //  the 3 read as nothing before the digit templates.
+    database.add<Test_BagPocket>("PokemonFRLG/ItemListReader/ItemsPocket_eng.png");
+    //  The Viridian Mart's BUY list, the same day, the cursor on POTION.
+    database.add<Test_MartList>("PokemonFRLG/ItemListReader/MartBuyList_eng.png");
 }
 
 
