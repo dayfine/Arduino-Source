@@ -29,6 +29,8 @@ const char* const FOREST_GATE = "Route2_ViridianForest_NorthEntrance";
 const char* const PEWTER = "PewterCity";
 const char* const PEWTER_CENTER = "PewterCity_PokemonCenter_1F";
 const char* const GYM = "PewterCity_Gym";
+const char* const ROUTE3 = "Route3";
+const char* const ROUTE4_CENTER = "Route4_PokemonCenter_1F";
 
 Pokemon::Pose at(const char* map, int x, int y, std::optional<Direction> facing = std::nullopt){
     return to_pose(StoryPose{map, {x, y}, facing});
@@ -101,9 +103,9 @@ StoryStep legs(std::string name, std::vector<StoryLeg> legs, std::string why, Wi
     return step;
 }
 
-//  `step`, a ROUTE or LEGS, run with B held: from the Running Shoes on. No
-//  checkpoint after 00.10 is in the table yet.
-[[maybe_unused]] StoryStep running(StoryStep step){
+//  `step`, a ROUTE or LEGS, run with B held: from the Running Shoes on.
+//  Indoors, where the game doesn't let the player run, it walks.
+StoryStep running(StoryStep step){
     step.variant = RUN_VARIANT;
     return step;
 }
@@ -298,6 +300,53 @@ StoryCheckpoint running_shoes(){
         //  the player only turns up. He walks off and is removed; FLAG_SYS_B_DASH
         //  is set (console B, 2026-11-02: about 20 B presses to the overworld).
         scene("shoes_from_aide", at(PEWTER, 46, 21, NORTH), "\"Oh, PLAYER!\" ... the Running Shoes; ends facing north"),
+        //  Where the by-hand walk stopped to start 00.11 (console B, 2026-11-02).
+        route("below_pewter_center", at(PEWTER, 17, 26, SOUTH), "west along row 21 and down to below the Pokemon Center's door (17, 25)"),
+    });
+}
+
+//  Route 3's trainers (Route3 map.json): the way east meets three of them.
+//  Bug Catcher Colton (12, 6) faces east, sight 3: the only way north past
+//  the row 7 ledges is the gap at x 14..15, below his line. Youngster Ben
+//  (17, 4) faces south, sight 2, so the way east keeps to row 3 past him.
+//  Bug Catcher Greg (25, 4) faces south, sight 2, over the way east along
+//  row 5. Bug Catcher James (32, 6) faces east, sight 4, over the way down
+//  at x 35..36. The others are kept out of: Lass Janice (19, 9) sees west
+//  along row 9 to x 14, Lass Sally (30, 3) west along row 3 to x 25, and
+//  Youngster Calvin (29, 10) west along row 10. Each line is stepped into on
+//  its own, so no leg is cut; the trainer walks up to the player, who stays
+//  put facing the way they stepped.
+StoryCheckpoint route3(){
+    return row("00.11", "Pewter Center, then Route 3's trainers", at(PEWTER, 17, 26, SOUTH), {}, StartMenu::FULL, {
+        running(route("pewter_nurse", at(PEWTER_CENTER, 7, 4, NORTH), "in by the door below the player")),
+        heal("heal_pewter"),
+        //  Up from row 9 west of Janice's line, which ends at x 14.
+        running(route("west_of_janice_line", at(ROUTE3, 13, 8), "out of Pewter by row 21, east into Route 3, short of Janice's line")),
+        running(legs("below_colton_line", {{EAST, 1}, {NORTH, 1}}, "to (14, 7), in the ledges' gap")),
+        step_into("colton_line", NORTH, "onto (14, 6), in Colton's line"),
+        battle("bug_catcher_colton", at(ROUTE3, 14, 6, NORTH), false, "his Bug Pokemon; Colton stops at (13, 6)"),
+        running(legs("past_ben", {{NORTH, 3}, {EAST, 4}, {SOUTH, 2}, {EAST, 6}}, "up to row 3 above Ben, down at x 18 east of his line, to (24, 5)")),
+        step_into("greg_line", EAST, "onto (25, 5), below Greg"),
+        battle("bug_catcher_greg", at(ROUTE3, 25, 5, EAST), false, "his Bug Pokemon; Greg is already next to the player"),
+        running(legs("above_james_line", {{EAST, 11}}, "along row 5 to the wall at (36, 5)")),
+        step_into("james_line", SOUTH, "onto (36, 6), at the end of James's line"),
+        battle("bug_catcher_james", at(ROUTE3, 36, 6, SOUTH), false, "his Bug Pokemon; James stops at (35, 6)"),
+        //  Saved here, the trainers behind, so a failure on the way to Route 4
+        //  doesn't fight them again.
+        running(legs("save_spot", {{SOUTH, 2}}, "down to (36, 8), beside the wall east of it")),
+    });
+}
+
+//  Route 3's north exit (x 68..75) joins Route 4 (offset 60) at x 8..15, up
+//  which column 12 leads to the Pokemon Center's door (12, 5). Lass Robin
+//  (40, 11) wanders up and down at x 40 across the way east, looking north
+//  and south: if she sees the player, the walk fights her (story_interrupts()).
+StoryCheckpoint magikarp_salesman(){
+    return row("00.12", "Route 3 and 4 to the Magikarp salesman", at(ROUTE3, 36, 8, SOUTH), {}, StartMenu::FULL, {
+        running(route("route4_nurse", at(ROUTE4_CENTER, 7, 4, NORTH), "east over Route 3, off the grass, north into Route 4 and its Pokemon Center")),
+        heal("heal_route4"),
+        //  The seam for a Gift RNG program: the save faces the salesman (1, 3).
+        running(route("before_salesman", at(ROUTE4_CENTER, 2, 3, WEST), "beside the Magikarp salesman, facing him")),
     });
 }
 
@@ -307,7 +356,7 @@ StoryCheckpoint running_shoes(){
 const std::vector<StoryCheckpoint>& story_checkpoints(){
     static const std::vector<StoryCheckpoint> checkpoints{
         new_game(), after_sid_helper(), leave_house(), oaks_trigger(), to_starter_ball(), starter(), parcel(), pokedex(), shopping(), forest(), brock(),
-        running_shoes(),
+        running_shoes(), route3(), magikarp_salesman(),
     };
     return checkpoints;
 }

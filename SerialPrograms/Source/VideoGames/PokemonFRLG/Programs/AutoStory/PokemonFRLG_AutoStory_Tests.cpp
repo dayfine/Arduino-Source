@@ -10,6 +10,7 @@
 
 #include <functional>
 #include <optional>
+#include <set>
 #include <string>
 #include <utility>
 #include <vector>
@@ -211,8 +212,8 @@ UnitTestResult check_checkpoint(const StoryCheckpoint& checkpoint, StoryPose& po
 
 UnitTestResult test_routes_and_chain(){
     const std::vector<StoryCheckpoint>& checkpoints = story_checkpoints();
-    if (checkpoints.size() != 12 || checkpoints[0].start){
-        return "Expected 12 checkpoints, the first from a new game.";
+    if (checkpoints.size() != 14 || checkpoints[0].start){
+        return "Expected 14 checkpoints, the first from a new game.";
     }
     StoryPose pose;
     for (size_t c = 0; c < checkpoints.size(); c++){
@@ -335,6 +336,7 @@ UnitTestResult test_pewter_aide_walk(){
 //  Every ROUTE and LEGS after the Running Shoes (00.10) runs; none before.
 UnitTestResult test_runs_after_shoes(){
     bool has_shoes = false;
+    size_t runs = 0;
     for (const StoryCheckpoint& checkpoint : story_checkpoints()){
         for (const StoryStep& step : checkpoint.steps){
             if (step.kind != StoryStepKind::ROUTE && step.kind != StoryStepKind::LEGS){
@@ -344,11 +346,149 @@ UnitTestResult test_runs_after_shoes(){
             if (move_speed(step) != expected){
                 return checkpoint.id + "/" + step.name + ": expected to " + move_speed_name(expected) + ", it would " + move_speed_name(move_speed(step)) + ".";
             }
+            runs += has_shoes ? 1 : 0;
         }
         has_shoes = has_shoes || checkpoint.id == "00.10";
     }
-    if (!has_shoes){
-        return "No checkpoint 00.10, where the player gets the Running Shoes.";
+    if (!has_shoes || runs == 0){
+        return "No checkpoint 00.10, where the player gets the Running Shoes, or no route after it.";
+    }
+    return true;
+}
+
+//  Whether `trainer` on `map` sees `tile`: within their sight, any way they
+//  look, short of a wall.
+bool sees(const MapData& map, const MapObject& trainer, const TilePos& tile){
+    for (Direction look : trainer.trainer->looks){
+        TilePos seen{trainer.x, trainer.y};
+        for (int c = 0; c < trainer.trainer->sight && !is_wall(map, seen.next(look)); c++){
+            seen = seen.next(look);
+            if (seen == tile){
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+//  The trainer on `map` who would see the player on `tile`, other than the
+//  `beaten`. Wanderers are left out: no route can plan around one, and the
+//  walk fights one who sees the player (story_interrupts()).
+const MapObject* trainer_seeing(const MapData& map, const TilePos& tile, const std::set<const MapObject*>& beaten){
+    for (const MapObject& object : map.objects){
+        if (object.trainer && !object.wander && !beaten.contains(&object) && sees(map, object, tile)){
+            return &object;
+        }
+    }
+    return nullptr;
+}
+
+//  The tiles a ROUTE or LEGS `step` from `pose` walks onto, in order.
+std::vector<MapPosition> tiles_walked(const StoryPose& pose, const StoryStep& step){
+    const MapPosition start{pose.map, pose.tile};
+    std::optional<std::vector<RouteStep>> route;
+    if (step.kind == StoryStepKind::LEGS){
+        route = fixed_route(story_maps(), start, step.legs);
+    }else if (step.target){
+        const MapData* map = find_map_named(pose.map);
+        const std::optional<Direction> facing = pose.facing ? pose.facing : map ? wall_beside(*map, pose.tile) : std::nullopt;
+        const StoryPose target = one_tile(*step.target);
+        route = plan_overworld_route(story_maps(), start, RouteGoal{{target.map, target.tile}, target.facing}, default_route_costs(), facing);
+    }
+    std::vector<MapPosition> tiles;
+    MapPosition from = start;
+    for (const RouteStep& leg : route ? *route : std::vector<RouteStep>{}){
+        if (leg.action == RouteAction::WALK){
+            const std::vector<MapPosition> passed = leg_tiles(story_maps(), from, leg);
+            tiles.insert(tiles.end(), passed.begin() + 1, passed.end());
+        }
+        from = leg.end;
+        tiles.push_back(from);
+    }
+    return tiles;
+}
+
+//  Why the player shouldn't walk onto `tile`, or empty: tall grass, a warp
+//  to a map not loaded (Route 4's ways into Mt. Moon), a trainer's line.
+std::string tile_problem(const MapPosition& tile, const std::set<const MapObject*>& beaten){
+    const MapData* map = find_map_named(tile.map);
+    if (map == nullptr){
+        return "off the story's maps at " + to_string(tile);
+    }
+    if (is_tall_grass(*map, tile.point)){
+        return "in the grass at " + to_string(tile);
+    }
+    const MapWarp* warp = warp_at(*map, tile.point);
+    if (warp != nullptr && !warp->to){
+        return "onto a warp to a map not loaded at " + to_string(tile);
+    }
+    const MapObject* trainer = trainer_seeing(*map, tile.point, beaten);
+    if (trainer != nullptr){
+        return "in the line of the trainer at " + to_string(TilePos{trainer->x, trainer->y}) + " at " + to_string(tile);
+    }
+    return "";
+}
+
+//  Moves `pose` past `step`, as check_checkpoint() does.
+UnitTestResult advance(StoryPose& pose, const StoryStep& step){
+    if (step.kind == StoryStepKind::ROUTE){
+        return check_route(pose, step);
+    }
+    if (step.kind == StoryStepKind::LEGS){
+        return check_legs(pose, step);
+    }
+    if (step.kind == StoryStepKind::STEP){
+        pose = StoryPose{pose.map, pose.tile.next(step.direction), step.direction};
+    }
+    if (step.pose_after){
+        pose = one_tile(*step.pose_after);
+    }
+    return true;
+}
+
+//  `checkpoint`'s routes and legs keep to tiles with no tile_problem(); a
+//  step into a trainer's line is followed by the battle, which beats them.
+UnitTestResult check_lines(const StoryCheckpoint& checkpoint, std::set<const MapObject*>& beaten){
+    StoryPose pose = one_tile(*checkpoint.start);
+    for (size_t c = 0; c < checkpoint.steps.size(); c++){
+        const StoryStep& step = checkpoint.steps[c];
+        const std::string where = checkpoint.id + "/" + step.name + ": ";
+        for (const MapPosition& tile : step.kind == StoryStepKind::ROUTE || step.kind == StoryStepKind::LEGS ? tiles_walked(pose, step) : std::vector<MapPosition>{}){
+            if (const std::string problem = tile_problem(tile, beaten); !problem.empty()){
+                return where + problem;
+            }
+        }
+        const MapData* map = find_map_named(pose.map);
+        const MapObject* trainer = step.kind == StoryStepKind::STEP && map ? trainer_seeing(*map, pose.tile.next(step.direction), beaten) : nullptr;
+        if (trainer != nullptr && (c + 1 == checkpoint.steps.size() || checkpoint.steps[c + 1].kind != StoryStepKind::BATTLE)){
+            return where + "steps into a trainer's line with no battle after it.";
+        }
+        if (trainer != nullptr){
+            beaten.insert(trainer);
+        }
+        if (UnitTestResult result = advance(pose, step); result.result != UnitTestResult::PASSED){
+            return checkpoint.id + " " + result.message;
+        }
+    }
+    return true;
+}
+
+//  From the Running Shoes on, routes and legs keep out of the grass, off
+//  warps to maps not loaded and out of trainers' lines, but for the three
+//  Route 3 trainers the table steps in front of to fight.
+UnitTestResult test_trainer_lines(){
+    std::set<const MapObject*> beaten;
+    bool has_shoes = false;
+    for (const StoryCheckpoint& checkpoint : story_checkpoints()){
+        if (has_shoes){
+            if (UnitTestResult result = check_lines(checkpoint, beaten); result.result != UnitTestResult::PASSED){
+                return result;
+            }
+        }
+        has_shoes = has_shoes || checkpoint.id == "00.10";
+    }
+    if (beaten.size() != 3){
+        return "Expected to fight Colton, Greg and James on Route 3; the table fights " + std::to_string(beaten.size()) + " trainers.";
     }
     return true;
 }
@@ -367,7 +507,11 @@ UnitTestResult test_save_places(){
     ){
         return "Wrong save card places.";
     }
-    if (!save_card_place("Route22").empty()){
+    if (save_card_place("Route3") != "route-3" || save_card_place("Route4_PokemonCenter_1F") != "route-4"){
+        return "Wrong save card places on Route 3 and 4.";
+    }
+    //  Not Route 2's or Route 4's: a map name is a place's or a building's in it.
+    if (!save_card_place("Route22").empty() || !save_card_place("Route24").empty() || !save_card_place("Route2").empty()){
         return "A place for a map the table doesn't use.";
     }
     return true;
@@ -595,7 +739,7 @@ private:
 };
 
 void add_tests_RunPlan(UnitTestDatabase& database){
-    const std::string TODAY = "00.01 00.02 00.03 00.04 00.05 00.06 00.07 00.08 00.09 00.10";
+    const std::string TODAY = "00.01 00.02 00.03 00.04 00.05 00.06 00.07 00.08 00.09 00.10 00.11 00.12";
     const RunPlanScenario scenarios[] = {
         {.name = "handoffs off: the story as before", .first = "00.01", .expected_ids = TODAY},
         {.name = "handoffs off: a range", .first = "00.02", .last = "00.04", .expected_ids = "00.02 00.03 00.04"},
@@ -748,6 +892,7 @@ void add_tests_AutoStory(UnitTestDatabase& database){
     database.add<Test_AutoStory>("Pewter Gym walks", test_pewter_gym_walks);
     database.add<Test_AutoStory>("Pewter: to the aide's trigger", test_pewter_aide_walk);
     database.add<Test_AutoStory>("routes run after the Running Shoes", test_runs_after_shoes);
+    database.add<Test_AutoStory>("Route 3: only the planned trainers' lines", test_trainer_lines);
     database.add<Test_AutoStory>("intro: names, the rival's from the list", test_intro_names);
     database.add<Test_AutoStory>("options: RIGHT presses from the shown value", test_option_presses);
 }

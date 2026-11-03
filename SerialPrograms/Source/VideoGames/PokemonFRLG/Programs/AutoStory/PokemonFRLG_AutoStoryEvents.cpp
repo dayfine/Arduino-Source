@@ -275,15 +275,18 @@ std::optional<StoryPose> story_pose(const Pokemon::Pose& pose){
 }
 
 std::string save_card_place(const std::string& map){
-    //  The longer names first: "ViridianForest" before "ViridianCity".
-    static const std::pair<const char*, const char*> PLACES[] = {
+    //  A map of the place, or a building in it ("Route4_PokemonCenter_1F"
+    //  is on Route 4, "Route24" isn't on Route 2).
+    static const std::pair<std::string, const char*> PLACES[] = {
         {"PalletTown", "pallet-town"},
         {"ViridianForest", "viridian-forest"},
         {"ViridianCity", "viridian-city"},
         {"PewterCity", "pewter-city"},
+        {"Route3", "route-3"},
+        {"Route4", "route-4"},
     };
     for (const auto& [prefix, place] : PLACES){
-        if (map.rfind(prefix, 0) == 0){
+        if (map == prefix || map.rfind(prefix + "_", 0) == 0){
             return place;
         }
     }
