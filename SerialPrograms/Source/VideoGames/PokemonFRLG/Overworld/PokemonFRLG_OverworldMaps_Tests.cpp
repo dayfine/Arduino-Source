@@ -11,6 +11,7 @@
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "PokemonFRLG_OverworldMaps.h"
+#include "PokemonFRLG_OverworldRoute.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -163,6 +164,73 @@ UnitTestResult test_not_json(){
     return true;
 }
 
+const MapData* built_in(const std::vector<MapData>& maps, const std::string& name){
+    for (const MapData& map : maps){
+        if (map.name == name){
+            return &map;
+        }
+    }
+    return nullptr;
+}
+
+//  Route 3, Route 4 and its Pokemon Center load, joined to Pewter City; the
+//  Center doesn't let the player run, the routes do.
+UnitTestResult test_route3_route4_maps(){
+    const std::vector<MapData> maps = overworld_maps();
+    for (const char* name : {"Route3", "Route4", "Route4_PokemonCenter_1F"}){
+        if (built_in(maps, name) == nullptr){
+            return std::string("Missing map ") + name + ".";
+        }
+    }
+    if (!built_in(maps, "Route3")->allow_running || !built_in(maps, "PewterCity")->allow_running
+        || built_in(maps, "Route4_PokemonCenter_1F")->allow_running || built_in(maps, "PewterCity_PokemonCenter_1F")->allow_running
+    ){
+        return "Expected running on the routes and Pewter City, not in the Pokemon Centers.";
+    }
+    const MapPosition nurse{"Route4_PokemonCenter_1F", map_point(maps, "Route4_PokemonCenter_1F", "nurse_front")};
+    const MapPosition salesman{"Route4_PokemonCenter_1F", map_point(maps, "Route4_PokemonCenter_1F", "salesman_front")};
+    if (nurse.point != TilePos{7, 4} || salesman.point != TilePos{2, 3}){
+        return "Unexpected nurse_front or salesman_front.";
+    }
+    const MapPosition pewter{"PewterCity", {45, 21}};
+    if (!plan_overworld_route(maps, pewter, RouteGoal{nurse, Direction::NORTH})){
+        return "No route from Pewter City over Route 3 to Route 4's Pokemon Center.";
+    }
+    return true;
+}
+
+//  A planned step walks where its map doesn't let the player run, and only
+//  there: out of Pewter's Pokemon Center to the Gym.
+UnitTestResult test_walk_only_indoors(){
+    const std::vector<MapData> maps = overworld_maps();
+    MapPosition from{"PewterCity_PokemonCenter_1F", map_point(maps, "PewterCity_PokemonCenter_1F", "nurse_front")};
+    const std::optional<std::vector<RouteStep>> route = plan_overworld_route(
+        maps, from, RouteGoal{MapPosition{"PewterCity", map_point(maps, "PewterCity", "gym_front")}, Direction::NORTH}
+    );
+    if (!route){
+        return "No route from Pewter's Pokemon Center to the Gym.";
+    }
+    bool indoors = false;
+    bool outdoors = false;
+    for (const RouteStep& step : *route){
+        const bool in_center = from.map == "PewterCity_PokemonCenter_1F";
+        if (step.action == RouteAction::WALK && step.walk_only != in_center){
+            return "Wrong walk_only on " + to_string(step) + ", from " + to_string(from) + ".";
+        }
+        indoors = indoors || in_center;
+        outdoors = outdoors || !in_center;
+        from = step.end;
+    }
+    if (!indoors || !outdoors){
+        return "Expected steps inside the Center and outside.";
+    }
+    const std::optional<WallHold> hold = hold_to_wall(maps, {"PewterCity_PokemonCenter_1F", {7, 4}}, false, Direction::WEST);
+    if (!hold || !hold->walk_only){
+        return "Expected a hold to a wall in the Center to walk.";
+    }
+    return true;
+}
+
 }
 
 
@@ -174,6 +242,8 @@ void add_tests_OverworldMaps(UnitTestDatabase& database){
     database.add<Test_OverworldMaps>("row of the wrong length", test_bad_row_length);
     database.add<Test_OverworldMaps>("unknown tile", test_unknown_tile);
     database.add<Test_OverworldMaps>("not JSON", test_not_json);
+    database.add<Test_OverworldMaps>("Route 3, Route 4 and its Pokemon Center", test_route3_route4_maps);
+    database.add<Test_OverworldMaps>("walks where running isn't allowed", test_walk_only_indoors);
 }
 
 

@@ -126,12 +126,17 @@ void hold_dpad(ProControllerContext& context, Direction direction, Milliseconds 
 //  Turn taps go without B: a tap only turns the player.
 void hold_dpad_running(ProControllerContext& context, Direction direction, Milliseconds duration);
 
+//  The speed `step` moves at when the walker goes at `speed`: a walk where
+//  the map doesn't let the player run (RouteStep::walk_only).
+MoveSpeed step_speed(const RouteStep& step, MoveSpeed speed);
+
 //  How long one tile of `step` takes at `speed`: on the water, the Surf
-//  pace whatever the speed.
+//  pace whatever the speed; where running isn't allowed, the walking pace.
 Milliseconds tile_time(const RouteStep& step, MoveSpeed speed);
 
-//  The mover for `step` at `speed`: hold_dpad_running() for a run on foot,
-//  hold_dpad() otherwise (B does nothing on the water).
+//  The mover for `step` at `speed`: hold_dpad_running() for a run on foot
+//  where the map allows it, hold_dpad() otherwise (B does nothing on the
+//  water).
 Pokemon::LegMover<ProControllerContext> leg_mover(const RouteStep& step, MoveSpeed speed);
 
 //  How long the walker holds the D-pad for a WALK `step` at `speed`

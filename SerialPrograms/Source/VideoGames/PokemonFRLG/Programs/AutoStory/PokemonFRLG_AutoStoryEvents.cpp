@@ -317,6 +317,7 @@ std::optional<std::vector<RouteStep>> fixed_route(
         step.direction = leg.direction;
         step.tiles = leg.tiles;
         step.facing_after = leg.direction;
+        step.walk_only = !map->allow_running;
         for (int c = 0; c < leg.tiles; c++){
             const StepKind kind = classify_step(*map, player, leg.direction);
             const TilePos next = player.position.next(leg.direction);

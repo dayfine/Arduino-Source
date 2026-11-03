@@ -4,21 +4,24 @@ TODO: move the maps to PokemonAutomation/Packages (Resources/PokemonFRLG/Maps) w
 
 Usage:
     python3 devtools/maps/frlg_maps.py --out SerialPrograms/Source/VideoGames/PokemonFRLG/Overworld/Maps \
-        CeruleanCity_PokemonCenter_1F CeruleanCity Route24 \
-        CeruleanCave_1F CeruleanCave_2F CeruleanCave_B1F
+        Route3 Route4 Route4_PokemonCenter_1F
     python3 devtools/maps/frlg_maps.py --out <folder>
     python3 devtools/maps/frlg_maps.py --out <folder> --check
 
 Downloads each map's data/maps/<map>/map.json, its layout's map.bin and its
 tilesets' metatile_attributes.bin at --commit into --cache, then writes
 <out>/<map>.json in the schema of Pokemon::MapData (Pokemon_MapData.h).
+A map whose header doesn't allow running (indoors) says so; a trainer has
+their sight and the ways they look.
 Warps and connections lead only to maps in the same run: a warp to another map
 has no destination, and a connection to one is left out. A warp arrives at
 point "warp_<n>" of its map, the tile of that map's warp n. Other named points
 and flag sets come from POINTS and FLAG_SETS below.
 
-Without map names, the maps are the ones already in --out. --check writes
-nothing: it regenerates them and fails if any file differs. The program
+Without map names, the maps are the ones already in --out; with them, those
+maps are added to the ones in --out, so warps and connections still join
+them all. --check writes nothing: it regenerates them and fails if any file
+differs. The program
 builds in the files of SerialPrograms/Source/VideoGames/PokemonFRLG/
 Overworld/Maps, the folder to write and check.
 """
@@ -70,6 +73,8 @@ POINTS = {
     'PewterCity': {'gym_front': (15, 17)},
     'PewterCity_PokemonCenter_1F': {'nurse_front': (7, 4)},
     'PewterCity_Gym': {'brock_front': (6, 6)},
+    #   The Magikarp salesman is at (1, 3), west of `salesman_front`.
+    'Route4_PokemonCenter_1F': {'nurse_front': (7, 4), 'salesman_front': (2, 3)},
     #   The tile in front of the PC.
     'CeruleanCity_PokemonCenter_1F': {'pc': (11, 2), 'nurse_front': (7, 4)},
     #   Where the player stands after entering from Cerulean City.
@@ -189,12 +194,50 @@ def wander_box(obj, tiles):
     }
 
 
+#   Which way a person stands, by how they move.
+FACINGS = {
+    'MOVEMENT_TYPE_FACE_UP': 'north', 'MOVEMENT_TYPE_FACE_DOWN': 'south',
+    'MOVEMENT_TYPE_FACE_LEFT': 'west', 'MOVEMENT_TYPE_FACE_RIGHT': 'east',
+}
+#   The ways a trainer who turns looks. A trainer who moves some other way
+#   (wanders, looks around) may look any way.
+TURNING_LOOKS = {
+    'MOVEMENT_TYPE_FACE_DOWN_AND_UP': ['south', 'north'],
+    'MOVEMENT_TYPE_FACE_LEFT_AND_RIGHT': ['west', 'east'],
+    'MOVEMENT_TYPE_FACE_UP_AND_LEFT': ['north', 'west'],
+    'MOVEMENT_TYPE_FACE_UP_AND_RIGHT': ['north', 'east'],
+    'MOVEMENT_TYPE_FACE_DOWN_AND_LEFT': ['south', 'west'],
+    'MOVEMENT_TYPE_FACE_DOWN_AND_RIGHT': ['south', 'east'],
+    'MOVEMENT_TYPE_WANDER_UP_AND_DOWN': ['north', 'south'],
+    'MOVEMENT_TYPE_WANDER_LEFT_AND_RIGHT': ['west', 'east'],
+}
+ALL_LOOKS = ['north', 'east', 'south', 'west']
+
+
+def trainer(obj):
+    """A trainer's sight and, unless they only face one way, the ways they
+    look; None for anyone who doesn't battle on sight."""
+    sight = int(obj.get('trainer_sight_or_berry_tree_id') or 0)
+    if obj.get('trainer_type') != 'TRAINER_TYPE_NORMAL' or sight < 1:
+        return None
+    movement = obj.get('movement_type', '')
+    if movement in FACINGS:
+        return {'sight': sight}
+    return {'sight': sight, 'looks': TURNING_LOOKS.get(movement, ALL_LOOKS)}
+
+
 def map_object(obj, tiles):
     kind = obj['graphics_id'].replace('OBJ_EVENT_GFX_', '').lower()
     data = {'name': kind, 'kind': 'item' if kind == 'item_ball' else 'npc', 'x': obj['x'], 'y': obj['y']}
     box = wander_box(obj, tiles)
     if box:
         data['wander'] = box
+    sight = trainer(obj)
+    if sight:
+        #   A trainer who faces one way looks that way.
+        if 'looks' not in sight:
+            data['facing'] = FACINGS[obj['movement_type']]
+        data['trainer'] = sight
     flag = obj.get('flag') or '0'
     if flag != '0':
         data['hide_flag'] = flag
@@ -251,6 +294,7 @@ def map_json(decomp, name, sources, layouts, names, loaded, unhandled):
     data = {
         'name': name,
         'source': {'decomp_file': f'data/maps/{name}/map.json', 'revision': COMMIT, 'date': COMMIT_DATE},
+        'allow_running': source.get('allow_running', True),
         'tiles': tiles, 'elevation': elevation,
         'points': points,
         'warps': [warp(event, entries, loaded, sources) for event in warp_events],
@@ -267,6 +311,8 @@ def map_json(decomp, name, sources, layouts, names, loaded, unhandled):
     }
     if ground_only(tiles, elevation):
         del data['elevation']
+    if data['allow_running']:
+        del data['allow_running']
     return data
 
 
@@ -284,8 +330,8 @@ def main():
     parser.add_argument('--check', action='store_true', help='check the files in --out instead of writing them')
     parser.add_argument('maps', nargs='*', help='default: the maps already in --out')
     args = parser.parse_args()
-    if not args.maps and os.path.isdir(args.out):
-        args.maps = sorted(f[:-5] for f in os.listdir(args.out) if f.endswith('.json'))
+    if os.path.isdir(args.out):
+        args.maps = sorted(set(args.maps) | {f[:-5] for f in os.listdir(args.out) if f.endswith('.json')})
     if not args.maps:
         parser.error('no maps given, and none in --out')
 

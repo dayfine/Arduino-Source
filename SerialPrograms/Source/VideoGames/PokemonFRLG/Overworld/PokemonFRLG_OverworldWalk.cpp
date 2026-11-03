@@ -179,15 +179,19 @@ void hold_dpad_running(ProControllerContext& context, Direction direction, Milli
     pbf_wait(context, STEP_RELEASE);
 }
 
+MoveSpeed step_speed(const RouteStep& step, MoveSpeed speed){
+    return step.walk_only ? MoveSpeed::WALK : speed;
+}
+
 Milliseconds tile_time(const RouteStep& step, MoveSpeed speed){
     if (step.surfing){
         return SURF_TILE_TIME;
     }
-    return speed == MoveSpeed::RUN ? RUN_TILE_TIME : TILE_TIME;
+    return step_speed(step, speed) == MoveSpeed::RUN ? RUN_TILE_TIME : TILE_TIME;
 }
 
 Pokemon::LegMover<ProControllerContext> leg_mover(const RouteStep& step, MoveSpeed speed){
-    if (speed == MoveSpeed::RUN && !step.surfing){
+    if (step_speed(step, speed) == MoveSpeed::RUN && !step.surfing){
         return hold_dpad_running;
     }
     return hold_dpad;
@@ -203,7 +207,7 @@ std::string speed_note(const RouteStep& step, MoveSpeed speed){
     }
     return std::format(
         "[Speed] {} {}: {} tiles in {} ms, held {} ms",
-        move_speed_name(speed), Pokemon::direction_name(step.direction), step.tiles,
+        move_speed_name(step_speed(step, speed)), Pokemon::direction_name(step.direction), step.tiles,
         (tile_time(step, speed) * step.tiles).count(), leg_hold_time(step, speed).count()
     );
 }

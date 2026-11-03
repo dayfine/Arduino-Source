@@ -265,6 +265,11 @@
             "side": "north",
             "to_map": "Route24",
             "offset": 12
+        },
+        {
+            "side": "west",
+            "to_map": "Route4",
+            "offset": 10
         }
     ]
 }
