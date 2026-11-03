@@ -42,6 +42,7 @@
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryBattle.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryRngLoop.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryTable.h"
+#include "Programs/RngManipulation/PokemonFRLG_GiftRngAttempts_Tests.h"
 #include "Programs/RngManipulation/PokemonFRLG_RngPlanInputs_Tests.h"
 #include "Programs/RngManipulation/PokemonFRLG_RngPlanLog_Tests.h"
 #include "Programs/RngManipulation/PokemonFRLG_RngPlanTracker_Tests.h"
@@ -669,6 +670,18 @@ void add_tests_NamingText(UnitTestDatabase& database){
     }
 }
 
+//  The RNG programs' searches, plans and loops.
+void add_tests_RngManipulation(UnitTestDatabase& database){
+    add_tests_RngTargetSearch(database);
+    add_tests_RngPlanInputs(database);
+    add_tests_RngPlan(database);
+    add_tests_RngPlanTracker(database);
+    add_tests_RngPlanLog(database);
+    add_tests_RngSteps(database);
+    add_tests_StarterRngLoop(database);
+    add_tests_GiftRngAttempts(database);
+}
+
 }
 
 
@@ -714,13 +727,7 @@ void add_tests(UnitTestDatabase& database){
     add_tests_NamingPlan(database);
     add_tests_NamingKeys(database);
     add_tests_NamingText(database);
-    add_tests_RngTargetSearch(database);
-    add_tests_RngPlanInputs(database);
-    add_tests_RngPlan(database);
-    add_tests_RngPlanTracker(database);
-    add_tests_RngPlanLog(database);
-    add_tests_RngSteps(database);
-    add_tests_StarterRngLoop(database);
+    add_tests_RngManipulation(database);
 }
 
 
