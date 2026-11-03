@@ -491,11 +491,25 @@ StoryCheckpoint mt_moon(){
 //  joins the city's rows 20..22. Lass Crissy (75, 3) faces east, sight 4,
 //  over row 3 from x 76 to 79; the way east keeps out of her line and off
 //  the grass south of the road (75..87, 11..17).
+//
+//  The open leg east across the city's edge ended a tile short on the
+//  console (2026-11-03: on (6, 20), not (7, 20)), and no hold to a wall
+//  in the city's west end finds the player from there: the next hold
+//  south met the fence on (6, 23) and the walk went on a column off. So
+//  the entry ends on (9, 20), and only legs to walls follow: north up
+//  column 9 (or 8, a tile short) to row 12, west to (8, 12), east to
+//  (30, 12) beside the policeman (31, 12), south to (30, 17), west to
+//  (25, 17), and down the ledge row 18 to (25, 19), a few tiles from the
+//  door (22, 19). The way keeps out of the boy's (16, 18..24) and the
+//  balding man's (8..10, 22..24) wander boxes.
 StoryCheckpoint route4_to_cerulean(){
     return row("00.14", "Route 4 east to Cerulean's Pokemon Center", at(ROUTE4, 32, 6, SOUTH), after_brock(), StartMenu::FULL, {
         running(route("above_ledge", at(ROUTE4, 93, 8, SOUTH), "east along Route 4's upper road to above the ledge row 9")),
         hop("ledge_hop", SOUTH, at(ROUTE4, 93, 10, SOUTH), "down the ledge (93, 9) to the lower road"),
-        running(route("cerulean_nurse", at(CERULEAN_CENTER, 7, 4, NORTH), "east into Cerulean City and its Pokemon Center")),
+        running(route("cerulean_entry", at(CERULEAN, 9, 20, EAST), "east into Cerulean City, to (9, 20) below column 9")),
+        running(legs("above_city_ledge", {{NORTH, 8}, {WEST, 1}, {EAST, 22}, {SOUTH, 5}, {WEST, 5}}, "to walls: (9, 12), (8, 12), (30, 12), (30, 17), (25, 17)")),
+        hop("city_ledge_hop", SOUTH, at(CERULEAN, 25, 19, SOUTH), "down the ledge (25, 18)"),
+        running(route("cerulean_nurse", at(CERULEAN_CENTER, 7, 4, NORTH), "west along row 20 to the Pokemon Center's door (22, 19)")),
         heal("heal_cerulean"),
     });
 }
