@@ -280,7 +280,7 @@ UnitTestResult test_rival_win_chance(){
     if (!planned || planned->chance < 0.15 || planned->chance > 0.40){
         return std::format("Lv22, 5 Potions: expected 15% to 40%, got {:.1f}%.", planned ? 100 * planned->chance : 0.0);
     }
-    if (refusal != std::format("win chance {:.0f}% < 70%: grind first", std::floor(100 * planned->chance))){
+    if (refusal != std::format("win chance {:.0f}% < 70% with {}: grind first", std::floor(100 * planned->chance), planned->inputs)){
         return "Lv22, 5 Potions: expected a refusal with the chance, got \"" + refusal.value_or("") + "\".";
     }
     const std::optional<WinEstimate> ground = story_win_chance(grown_to(new_member("squirtle", 5), 30), 5, 1.0, RIVAL);
@@ -290,6 +290,148 @@ UnitTestResult test_rival_win_chance(){
     return true;
 }
 
+
+//  Console B, 2026-11-03 (run m51), Misty: the Wartortle's moves, Bite,
+//  Tail Whip, Bubble, Withdraw (Water Gun was lost earlier).
+std::vector<SummaryMove> m51_moves(){
+    return {
+        {.move = "bite", .pp = 25, .max_pp = 25}, {.move = "tail-whip", .pp = 30, .max_pp = 30},
+        {.move = "bubble", .pp = 30, .max_pp = 30}, {.move = "withdraw", .pp = 40, .max_pp = 40},
+    };
+}
+
+//  m51's Wartortle as its summary would read: `level`, 60 HP at Lv20,
+//  the other stats at OWN_GENES.
+PartyMember m51_lead(uint8_t level){
+    Stats stats = combatant("wartortle", 20, OWN_GENES)->stats;
+    stats.hp = 60;
+    PartyMember lead = member_from_summary("wartortle", 20, m51_moves(), stats);
+    lead.moves_through_level = level;
+    return lead;
+}
+
+//  m51's Wartortle Lv20 at `hp` of 60.
+SimBattler m51_wartortle(uint16_t hp){
+    SimBattler own = *own_battler(m51_lead(20));
+    own.hp = hp;
+    return own;
+}
+
+//  m51, turns 8 to 13: at 8/60 HP against Misty's Starmie, which hit
+//  about 20 a turn, the HIGH tier's Potion (+20) was undone by each hit,
+//  five times over; then Bite once with no Potions left, and it fainted.
+//  The loop replayed at either tier: once a Potion is seen undone by the
+//  next hit, no more, but Bite, which also flinches.
+UnitTestResult test_m51_potion_loop(){
+    for (const BattleRisk risk : {BattleRisk::LOW, BattleRisk::HIGH}){
+        Supplies supplies;
+        supplies.lead = m51_lead(20);
+        supplies.potions = 5;
+        supplies.trainer = std::string(MISTY);
+        supplies.foes = trainer_party(MISTY);
+        supplies.risk = risk;
+        supplies.foe_out = 1;
+        BattleDecisions decisions(supplies, BattleKind::TRAINER);
+        const PartyStatus red{.hp_seen = true, .hp_yellow = false, .hp_red = true, .hp_fill = 8.0 / 60, .status = StatusCondition::NONE};
+        int potions = 0;
+        for (int turn = 8; turn <= 13; turn++){
+            const TurnAction action = decisions.turn(red);
+            if (action.choice == TurnChoice::POTION){
+                potions++;
+            }else if (action.choice != TurnChoice::MOVE || action.slot != 0){
+                return std::format("Risk {}, turn {}: expected a Potion or Bite (slot 0), got slot {}.", battle_risk_name(risk), turn, action.slot);
+            }
+            decisions.turn_done(action.choice, TurnResult::DONE);
+        }
+        if (potions > 1){
+            return std::format("Risk {}: {} Potions at 8/60 HP over turns 8 to 13, each undone by the next hit; expected at most 1.", battle_risk_name(risk), potions);
+        }
+    }
+    return true;
+}
+
+//  The sim's own choice by the same rule: at 8/60 a Potion against a foe
+//  whose hit undoes it, no Potion; against one whose hit could faint the
+//  lead but heals less than 20, a Potion.
+UnitTestResult test_sim_potion_rule(){
+    const SimTrainer misty = *sim_trainer(MISTY);
+    SimBattler starmie = misty.party[1];
+    const SimBattler own = m51_wartortle(8);
+    //  Starmie as m51 saw it: at least the Potion's 20 a hit.
+    starmie.body.stats.attack = static_cast<uint16_t>(starmie.body.stats.attack * 2);
+    starmie.body.stats.sp_attack = static_cast<uint16_t>(starmie.body.stats.sp_attack * 2);
+    if (potion_case(own, starmie).expected_hit < POTION_HP){
+        return std::format("Expected Starmie's mean hit at 20 or more, got {:.1f}.", potion_case(own, starmie).expected_hit);
+    }
+    const OwnTurn sim = own_turn(own, 5, starmie, misty.items, 1);
+    if (sim.potion || sim.slot != size_t(0)){
+        return std::format(
+            "Sim at 8/60 against Starmie (max hit {}): expected Bite (slot 0), got {}.",
+            foe_max_hit(starmie, own), sim.potion ? "a Potion" : "slot " + std::to_string(sim.slot.value_or(9))
+        );
+    }
+    const SimBattler& staryu = misty.party[0];
+    const SimBattler low = m51_wartortle(6);
+    const uint32_t hit = foe_max_hit(staryu, low);
+    if (hit < 6 || hit >= POTION_HP){
+        return std::format("Expected Staryu's best hit on the Wartortle from 6 to 19, got {}.", hit);
+    }
+    if (!own_turn(low, 5, staryu, misty.items, 2).potion){
+        return std::format("At 6/60 against Staryu (max hit {}): expected a Potion.", hit);
+    }
+    return true;
+}
+
+//  The sim plays the lead the summary showed, not the one the story
+//  counts: m51's Wartortle (Lv20, 60 HP, Bite, Tail Whip, Bubble,
+//  Withdraw) with 5 Potions wins about 96% against Misty; the story's own
+//  Wartortle Lv20 (Tackle, Bite, Water Gun, Withdraw; 56 HP at OWN_GENES)
+//  about 94%, from other inputs. m51 lost: the sim leaves out Water
+//  Pulse's confusion, among others (PokemonFRLG_AutoStoryWinChance.h).
+UnitTestResult test_misty_real_lead(){
+    const std::optional<WinEstimate> real = story_win_chance(m51_lead(20), 5, 1.0, MISTY);
+    const std::optional<WinEstimate> story = story_win_chance(grown_to(new_member("squirtle", 5), 20), 5, 1.0, MISTY);
+    if (!real || !story){
+        return "Expected win chances for both leads.";
+    }
+    const std::string expected = "wartortle Lv20 60/60 HP: bite 25/25, tail-whip 30/30, bubble 30/30, withdraw 40/40; 5 Potions";
+    if (real->inputs != expected){
+        return "m51's lead: expected the inputs \"" + expected + "\", got \"" + real->inputs + "\".";
+    }
+    if (real->chance < 0.90 || story->chance < 0.85 || real->chance == story->chance || story->inputs == real->inputs){
+        return std::format(
+            "Expected m51's lead ({:.1f}%) and the story's ({:.1f}%, {}) to differ, both over 85%.",
+            100 * real->chance, 100 * story->chance, story->inputs
+        );
+    }
+    return true;
+}
+
+//  The Cerulean rival against m51's moves (no Water Gun), the levels
+//  since the summary added to its stats: refused at Lv20, 22 and 25 (about
+//  32%, 37%, 66%), fought at Lv30 (about 95%). The refusal names the
+//  chance and the lead it was played with.
+UnitTestResult test_rival_real_moves(){
+    const std::vector<std::tuple<uint8_t, double, double>> cases = {
+        {20, 0.20, 0.45}, {22, 0.25, 0.50}, {25, 0.50, 0.70}, {30, 0.90, 1.00},
+    };
+    for (const auto& [level, low, high] : cases){
+        const std::optional<WinEstimate> estimate = story_win_chance(m51_lead(level), 5, 1.0, RIVAL);
+        if (!estimate || estimate->chance < low || estimate->chance >= high){
+            return std::format("Lv{}: expected {:.0f}% to {:.0f}%, got {:.1f}%.", level, 100 * low, 100 * high, estimate ? 100 * estimate->chance : 0.0);
+        }
+        const bool refused = win_chance_refusal(*estimate).has_value();
+        if (refused != (level < 30)){
+            return std::format("Lv{} at {:.1f}%: expected {}.", level, 100 * estimate->chance, level < 30 ? "a refusal" : "no refusal");
+        }
+    }
+    const std::optional<WinEstimate> lv22 = story_win_chance(m51_lead(22), 5, 1.0, RIVAL);
+    const std::string refusal = win_chance_refusal(*lv22).value_or("");
+    if (refusal.find("wartortle Lv22 65/65 HP: bite") == std::string::npos || refusal.find("; 5 Potions") == std::string::npos){
+        return "Lv22: expected the refusal to name the lead's level, HP, moves and Potions, got \"" + refusal + "\".";
+    }
+    return true;
+}
 }
 
 
@@ -301,6 +443,10 @@ void add_tests_AutoStoryBattleSim(UnitTestDatabase& database){
     database.add<Test_AutoStoryBattleSim>("the rival's next Pokemon when no name is read", test_next_foe);
     database.add<Test_AutoStoryBattleSim>("battle risks by trainer", test_risks);
     database.add<Test_AutoStoryBattleSim>("Cerulean rival: refused at Lv22, fought at Lv30", test_rival_win_chance);
+    database.add<Test_AutoStoryBattleSim>("m51: no Potion the foe's hit undoes", test_m51_potion_loop);
+    database.add<Test_AutoStoryBattleSim>("the sim's Potion: only when it outheals the hit", test_sim_potion_rule);
+    database.add<Test_AutoStoryBattleSim>("Misty: m51's lead as the summary showed it", test_misty_real_lead);
+    database.add<Test_AutoStoryBattleSim>("Cerulean rival with m51's moves at Lv20 to 30", test_rival_real_moves);
 }
 
 
