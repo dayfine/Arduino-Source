@@ -243,7 +243,7 @@ private:
         const std::optional<StoryPose> target = story_pose(*step.target);
         const RouteGoal goal{{target->map, target->tile}, target->facing};
         const std::optional<std::vector<RouteStep>> route = plan_overworld_route(
-            story_maps(), at.position, goal, default_route_costs(), at.facing
+            story_maps(), at.position, goal, story_route_costs(), at.facing
         );
         if (!route){
             return Pokemon::outcome_failed("no_route", to_string(at.position) + " to " + to_string(goal.position));

@@ -217,8 +217,8 @@ UnitTestResult check_checkpoint(const StoryCheckpoint& checkpoint, StoryPose& po
 
 UnitTestResult test_routes_and_chain(){
     const std::vector<StoryCheckpoint>& checkpoints = story_checkpoints();
-    if (checkpoints.size() != 27 || checkpoints[0].start){
-        return "Expected 27 checkpoints, the first from a new game.";
+    if (checkpoints.size() != 29 || checkpoints[0].start){
+        return "Expected 29 checkpoints, the first from a new game.";
     }
     StoryPose pose;
     for (size_t c = 0; c < checkpoints.size(); c++){
@@ -423,7 +423,7 @@ std::vector<RouteStep> legs_walked(const StoryPose& pose, const StoryStep& step)
         const MapData* map = find_map_named(pose.map);
         const std::optional<Direction> facing = pose.facing ? pose.facing : map ? wall_beside(*map, pose.tile) : std::nullopt;
         const StoryPose target = one_tile(*step.target);
-        route = plan_overworld_route(story_maps(), start, RouteGoal{{target.map, target.tile}, target.facing}, default_route_costs(), facing);
+        route = plan_overworld_route(story_maps(), start, RouteGoal{{target.map, target.tile}, target.facing}, story_route_costs(), facing);
     }
     return route ? *route : std::vector<RouteStep>{};
 }
@@ -521,6 +521,12 @@ std::string tile_problem(const MapPosition& tile, const std::set<const MapObject
     return "";
 }
 
+//  LEGS whose legs through grass end on walls or are one tile (Route 6).
+bool grass_held(const StoryPose& pose, const StoryStep& step){
+    const std::vector<RouteStep> legs = legs_walked(pose, step);
+    return step.kind == StoryStepKind::LEGS && std::all_of(legs.begin(), legs.end(), [](const RouteStep& leg){ return !leg.wild || leg.to_wall || leg.tiles == 1; });
+}
+
 //  Moves `pose` past `step`, as check_checkpoint() does.
 UnitTestResult advance(StoryPose& pose, const StoryStep& step){
     if (step.kind == StoryStepKind::ROUTE){
@@ -552,7 +558,7 @@ UnitTestResult check_lines(const StoryCheckpoint& checkpoint, std::set<const Map
         for (const MapPosition& tile : walks ? tiles_walked(pose, step) : std::vector<MapPosition>{}){
             const StoryPose end = to_patch ? one_tile(*step.target) : StoryPose{};
             const bool patch = to_patch && tile.map == end.map && tile.point == end.tile;
-            if (const std::string problem = tile_problem(tile, beaten); !problem.empty() && !(patch && problem.starts_with("in the grass"))){
+            if (const std::string problem = tile_problem(tile, beaten); !problem.empty() && !((patch || grass_held(pose, step)) && problem.starts_with("in the grass"))){
                 return where + problem;
             }
         }
@@ -579,9 +585,9 @@ UnitTestResult check_lines(const StoryCheckpoint& checkpoint, std::set<const Map
 }
 
 //  From the Running Shoes on, routes and legs keep out of the grass (but
-//  in caves, which are all grass, and onto a GRIND's or a capture's patch), off warps to maps not loaded and out of
+//  in caves, which are all grass, onto a GRIND's or a capture's patch, and on legs held to walls round Route 6's trainers), off warps to maps not loaded and out of
 //  trainers' lines, but for the three Route 3 trainers, Mt. Moon's Grunt
-//  at (12, 20), Nugget Bridge's five and Route 25's four the table steps
+//  at (12, 20), Nugget Bridge's five, Route 25's four and Route 6's Jeff the table steps
 //  in front of to fight; where they cross a wandering trainer's sight, the walk can place
 //  the player if the trainer stops them; and where they cross the sight of
 //  one who looks around, on a leg to a wall.
@@ -596,9 +602,9 @@ UnitTestResult test_trainer_lines(){
         }
         has_shoes = has_shoes || checkpoint.id == "00.10";
     }
-    if (beaten.size() != 13){
+    if (beaten.size() != 14){
         return "Expected to fight Colton, Greg and James on Route 3, the Grunt at (12, 20) in Mt. Moon, Nugget Bridge's five"
-            " and Franklin, Kelsey, Nob and Haley on Route 25; the table fights "
+            ", Franklin, Kelsey, Nob and Haley on Route 25 and Jeff on Route 6; the table fights "
             + std::to_string(beaten.size()) + " trainers.";
     }
     return true;

@@ -131,7 +131,7 @@ Outcome walk_route(StoryEnv& env, RunState& state, const StoryStep& step){
     //  Planning lets the walker recover a stopped open leg: it plans back to
     //  the leg's end, then walks the rest as given. From a set of tiles
     //  the start isn't known: the walker reads the facing.
-    const RoutePlanning planning{.maps = &story_maps(), .costs = default_route_costs(), .start = start, .label = step.name, .wall_check = wall_check(env)};
+    const RoutePlanning planning{.maps = &story_maps(), .costs = story_route_costs(), .start = start, .label = step.name, .wall_check = wall_check(env)};
     walk_overworld_route_with_recovery(env.console, env.context, *route, planning, facing, interrupts, move_speed(step));
     log_arrival(env, step.name, target->map, target->tile);
     const std::optional<Direction> end_facing = route->empty() ? facing : std::optional<Direction>(route->back().facing_after);
@@ -155,7 +155,7 @@ Outcome walk_legs(StoryEnv& env, RunState& state, const StoryStep& step){
     const OverworldInterruptSet interrupts = story_interrupts(env.supplies, step.fight_wild, env.checks, env.language);
     //  Planning lets the walker recover a stopped open leg: it plans back to
     //  the leg's end, then walks the rest as given.
-    const RoutePlanning planning{.maps = &story_maps(), .costs = default_route_costs(), .start = start, .label = step.name, .wall_check = wall_check(env)};
+    const RoutePlanning planning{.maps = &story_maps(), .costs = story_route_costs(), .start = start, .label = step.name, .wall_check = wall_check(env)};
     walk_overworld_route_with_recovery(env.console, env.context, *route, planning, facing, interrupts, move_speed(step));
     log_arrival(env, step.name, route->back().end.map, route->back().end.point);
     return Pokemon::outcome_ok(to_pose(StoryPose{route->back().end.map, route->back().end.point, route->back().facing_after}));
@@ -324,8 +324,22 @@ std::optional<std::vector<MartOrder>> viridian_mart_orders(const std::vector<Pok
     return orders;
 }
 
+const RouteCosts& story_route_costs(){
+    static const RouteCosts COSTS = []{
+        RouteCosts costs = default_route_costs();
+        costs[RouteCost::SURF] = -1;
+        return costs;
+    }();
+    return COSTS;
+}
+
 const std::vector<MapData>& story_maps(){
-    static const std::vector<MapData> maps = overworld_maps(map_flag_set(overworld_maps(), "after_hall_of_fame"));
+    static const std::vector<MapData> maps = []{
+        const std::vector<MapData> all = overworld_maps();
+        std::set<std::string> flags = map_flag_set(all, "after_hall_of_fame");
+        flags.merge(map_flag_set(all, "new_game"));
+        return overworld_maps(flags);
+    }();
     return maps;
 }
 
@@ -358,6 +372,7 @@ std::string save_card_place(const std::string& map){
         {"CeruleanCity", "cerulean-city"},
         {"Route24", "route-24"},
         {"Route25", "route-25"},
+        {"VermilionCity", "vermilion-city"},
     };
     for (const auto& [prefix, place] : PLACES){
         if (map == prefix || map.rfind(prefix + "_", 0) == 0){
@@ -441,7 +456,7 @@ std::optional<std::vector<RouteStep>> plan_story_route(
     if (!holds->empty()){
         facing = holds->back().facing_after;
     }
-    std::optional<std::vector<RouteStep>> route = plan_overworld_route(maps, from, goal, default_route_costs(), facing);
+    std::optional<std::vector<RouteStep>> route = plan_overworld_route(maps, from, goal, story_route_costs(), facing);
     if (route){
         route->insert(route->begin(), holds->begin(), holds->end());
     }

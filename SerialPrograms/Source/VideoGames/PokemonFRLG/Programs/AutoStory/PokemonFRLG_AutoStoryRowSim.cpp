@@ -24,7 +24,7 @@ std::optional<std::vector<RouteStep>> walked_route(const StoryPose& at, const St
     }
     const std::optional<StoryPose> target = story_pose(*step.target);
     const RouteGoal goal{{target->map, target->tile}, target->facing};
-    return plan_overworld_route(story_maps(), start, goal, default_route_costs(), at.facing);
+    return plan_overworld_route(story_maps(), start, goal, story_route_costs(), at.facing);
 }
 
 //  Runs `step` of row `id` on `sim` as the program does: routes and legs
@@ -39,7 +39,7 @@ std::string row_step_on_sim(OverworldSim& sim, StoryPose& at, const StoryStep& s
     const auto on = [&sim]{ return " On " + to_string(sim.state().position) + "."; };
     if (step.kind == StoryStepKind::LEGS || step.kind == StoryStepKind::ROUTE){
         const std::optional<std::vector<RouteStep>> route = walked_route(at, step);
-        const RoutePlanning planning{.maps = &story_maps(), .start = MapPosition{at.map, at.tile}, .label = step.name};
+        const RoutePlanning planning{.maps = &story_maps(), .costs = story_route_costs(), .start = MapPosition{at.map, at.tile}, .label = step.name};
         const std::string failure = route ? OverworldSimWalker(sim).run(*route, planning) : "no legs.";
         at = route ? StoryPose{route->back().end.map, route->back().end.point, route->back().facing_after} : at;
         return failure.empty() ? "" : where + failure + on();

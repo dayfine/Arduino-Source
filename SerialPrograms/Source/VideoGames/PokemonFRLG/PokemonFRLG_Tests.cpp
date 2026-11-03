@@ -741,6 +741,7 @@ void add_tests(UnitTestDatabase& database){
     add_tests_PlayerFacingReader(database);
     add_tests_AutoStory(database);
     add_tests_AutoStorySimulation(database);
+    add_tests_AutoStoryVermilion(database);
     add_tests_AutoStoryPaceSim(database);
     add_tests_AutoStoryItems(database);
     add_tests_AutoStoryRngLoop(database);
