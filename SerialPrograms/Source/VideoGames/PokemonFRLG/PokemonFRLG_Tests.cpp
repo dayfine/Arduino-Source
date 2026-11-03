@@ -41,6 +41,7 @@
 #include "PokemonFRLG_Navigation.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryBattle.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryTable.h"
+#include "Programs/RngManipulation/PokemonFRLG_RngTargetSearch_Tests.h"
 #include "Tests/TestUtils.h"
 
 #include "PokemonFRLG_Tests.h"
@@ -705,6 +706,7 @@ void add_tests(UnitTestDatabase& database){
     add_tests_NamingPlan(database);
     add_tests_NamingKeys(database);
     add_tests_NamingText(database);
+    add_tests_RngTargetSearch(database);
 }
 
 
