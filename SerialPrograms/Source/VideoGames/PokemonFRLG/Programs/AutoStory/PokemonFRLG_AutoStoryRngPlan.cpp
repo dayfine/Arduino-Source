@@ -213,16 +213,15 @@ std::vector<RngAttempt> plan_rng_attempts(
 
 
 RngAttemptOutcome classify_attempt(const RngTarget& target, const RngAttemptResult& result){
-    if (result.shiny){
-        return RngAttemptOutcome::SHINY;
-    }
     const AdvIVs& want = target.pokemon.ivs;
     const AdvIVs& got = result.ivs;
     const bool same_ivs = want.hp == got.hp && want.attack == got.attack && want.defense == got.defense
         && want.spatk == got.spatk && want.spdef == got.spdef && want.speed == got.speed;
-    return result.nature == target.pokemon.nature && same_ivs
-        ? RngAttemptOutcome::HIT_NOT_SHINY
-        : RngAttemptOutcome::MISSED;
+    const bool hit = result.nature == target.pokemon.nature && same_ivs;
+    if (result.shiny){
+        return hit ? RngAttemptOutcome::SHINY : RngAttemptOutcome::SHINY_OFF_TARGET;
+    }
+    return hit ? RngAttemptOutcome::HIT_NOT_SHINY : RngAttemptOutcome::MISSED;
 }
 
 
@@ -253,6 +252,18 @@ bool RngPlanTracker::is_ruled_out(uint16_t sid) const{
     return std::find(m_remaining.begin(), m_remaining.end(), sid) == m_remaining.end();
 }
 
+bool RngPlanTracker::move_to_next_attempt(){
+    for (size_t next = m_attempt + 1; next < m_attempts.size(); next++){
+        const std::vector<uint16_t>& next_sids = m_attempts[next].sids;
+        if (!m_shiny_required || !std::all_of(next_sids.begin(), next_sids.end(), [&](uint16_t sid){ return is_ruled_out(sid); })){
+            m_attempt = next;
+            m_retries = 0;
+            return true;
+        }
+    }
+    return false;
+}
+
 RngPlanStep RngPlanTracker::record(RngAttemptOutcome outcome){
     if (m_step != RngPlanStep::RUN_ATTEMPT){
         return m_step;
@@ -272,6 +283,9 @@ RngPlanStep RngPlanTracker::record(RngAttemptOutcome outcome){
         m_step = RngPlanStep::GOT_SHINY;
         return m_step;
     }
+    case RngAttemptOutcome::SHINY_OFF_TARGET:
+        m_step = RngPlanStep::GOT_SHINY_OFF_TARGET;
+        return m_step;
     case RngAttemptOutcome::HIT_NOT_SHINY:
         if (!m_shiny_required){
             m_step = RngPlanStep::GOT_TARGET;
@@ -283,21 +297,15 @@ RngPlanStep RngPlanTracker::record(RngAttemptOutcome outcome){
             }),
             m_remaining.end()
         );
-        m_retries = 0;
-        //  The next attempt still shiny for a candidate left.
-        for (size_t next = m_attempt + 1; next < m_attempts.size(); next++){
-            const std::vector<uint16_t>& next_sids = m_attempts[next].sids;
-            if (!std::all_of(next_sids.begin(), next_sids.end(), [&](uint16_t sid){ return is_ruled_out(sid); })){
-                m_attempt = next;
-                return m_step;
-            }
+        if (!move_to_next_attempt()){
+            m_step = RngPlanStep::OUT_OF_ATTEMPTS;
         }
-        m_step = RngPlanStep::OUT_OF_ATTEMPTS;
         return m_step;
     case RngAttemptOutcome::MISSED:
+        //  A miss rules nothing out. Too many: try the next attempt instead.
         m_retries++;
-        if (m_retries > m_max_retries){
-            m_step = RngPlanStep::OUT_OF_RETRIES;
+        if (m_retries > m_max_retries && !move_to_next_attempt()){
+            m_step = RngPlanStep::MISSED_EVERY_ATTEMPT_LEFT;
         }
         return m_step;
     }
@@ -349,14 +357,64 @@ std::string rng_log_attempt(size_t index, const RngAttempt& attempt){
     );
 }
 
-std::string rng_log_result(size_t index, RngAttemptOutcome outcome){
-    const char* name = "MISSED";
-    if (outcome == RngAttemptOutcome::SHINY){
-        name = "SHINY";
-    }else if (outcome == RngAttemptOutcome::HIT_NOT_SHINY){
-        name = "HIT_NOT_SHINY";
+RngPlanNext rng_plan_next(RngPlanStep step, size_t index, size_t next_index){
+    switch (step){
+    case RngPlanStep::RUN_ATTEMPT:
+        return next_index == index ? RngPlanNext::RETRY : RngPlanNext::NEXT_ATTEMPT;
+    case RngPlanStep::GOT_SHINY:
+        return RngPlanNext::CONFIRM;
+    case RngPlanStep::GOT_SHINY_OFF_TARGET:
+    case RngPlanStep::GOT_TARGET:
+    case RngPlanStep::OUT_OF_ATTEMPTS:
+    case RngPlanStep::MISSED_EVERY_ATTEMPT_LEFT:
+        return RngPlanNext::STOP;
     }
-    return std::format("RngPlan: result attempt={} outcome={}", index + 1, name);
+    throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "Unknown RngPlanStep.");
+}
+
+namespace{
+
+const char* outcome_name(RngAttemptOutcome outcome){
+    switch (outcome){
+    case RngAttemptOutcome::SHINY:
+        return "shiny";
+    case RngAttemptOutcome::SHINY_OFF_TARGET:
+        return "shiny_off_target";
+    case RngAttemptOutcome::HIT_NOT_SHINY:
+        return "hit_not_shiny";
+    case RngAttemptOutcome::MISSED:
+        return "missed";
+    }
+    throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "Unknown RngAttemptOutcome.");
+}
+
+const char* next_name(RngPlanNext next){
+    switch (next){
+    case RngPlanNext::RETRY:
+        return "retry";
+    case RngPlanNext::NEXT_ATTEMPT:
+        return "next_attempt";
+    case RngPlanNext::CONFIRM:
+        return "confirm";
+    case RngPlanNext::STOP:
+        return "stop";
+    }
+    throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "Unknown RngPlanNext.");
+}
+
+}
+
+std::string rng_log_result(const RngResultLog& result){
+    const std::optional<AdvPokemonResult>& pokemon = result.pokemon;
+    return std::format(
+        "RngPlan: result attempt={} try={} outcome={} starter_rng={} nature={} ivs={} pid={} next={}",
+        result.index + 1, result.try_number, outcome_name(result.outcome),
+        result.detail.empty() ? "-" : result.detail,
+        pokemon ? nature_to_string(pokemon->nature) : "-",
+        pokemon ? ivs_to_string(pokemon->ivs) : "-",
+        pokemon ? std::format("{:08X}", pokemon->pid) : "-",
+        next_name(result.next)
+    );
 }
 
 std::string rng_log_confirmed(uint16_t tid, uint16_t sid, const std::vector<SidCandidate>& sid_helper_candidates){
