@@ -252,7 +252,7 @@ UnitTestResult test_pp(Logger&){
 
     BattleDecisions out(supplies, BattleKind::TRAINER);
     out.turn(GREEN);
-    out.turn_done(TurnChoice::MOVE, false);
+    out.turn_done(TurnChoice::MOVE, TurnResult::NOT_DONE);
     if (out.turn(GREEN).slot != TOP_LEFT_MOVE){
         return "Expected Tackle after the game said Water Gun has no PP left.";
     }
@@ -625,6 +625,101 @@ UnitTestResult test_end_watch_timing(Logger&){
 }
 
 
+//  The lead console B took into Super Nerd Miguel's battle (2026-11-03,
+//  Mt. Moon B2F), as its summary read before the run.
+PartyMember squirtle_before_miguel(){
+    return member_from_summary("squirtle", 16, {
+        {.move = "water-gun", .pp = 25, .max_pp = 25},
+        {.move = "tail-whip", .pp = 30, .max_pp = 30},
+        {.move = "bubble", .pp = 30, .max_pp = 30},
+        {.move = "withdraw", .pp = 40, .max_pp = 40},
+    });
+}
+
+//  Regression, console B 2026-11-03: in the trainer's battle before the
+//  Rocket Grunt, a YES/NO read at a level-up (Lv17: no move to learn) got
+//  the plan's YES for Bite over Tail Whip, and no move list followed. The
+//  story still took Tail Whip as Bite, and in Miguel's battle chose it as
+//  its attack for 7 turns, until the starter fainted. The moves change only
+//  once the move list was seen.
+UnitTestResult test_yes_no_without_move_list(Logger&){
+    Supplies supplies;
+    supplies.lead = squirtle_before_miguel();
+    BattleDecisions decisions(supplies, BattleKind::TRAINER);
+    decisions.turn(GREEN);
+    const PromptAnswer answer = decisions.prompt(false);
+    if (answer.answer != YesNo::YES || answer.forget_slot != std::optional<size_t>(1)){
+        return "Expected the plan's YES, Bite over Tail Whip (slot 1).";
+    }
+    const std::vector<std::string> before{"water-gun", "tail-whip", "bubble", "withdraw"};
+    if (move_names(supplies.lead) != before){
+        return "Expected the moves unchanged with no move list seen, got " + joined(move_names(supplies.lead)) + ".";
+    }
+    const std::vector<std::string> after{"water-gun", "bite", "bubble", "withdraw"};
+    if (!answer.learned || move_names(*answer.learned) != after){
+        return "Expected the lead to keep once the move list shows to have Bite over Tail Whip.";
+    }
+    return true;
+}
+
+//  Regression, console B 2026-11-03, Super Nerd Miguel (pret
+//  sParty_SuperNerdMiguel: Grimer Lv12, whose moves include Disable): after
+//  turn 1, Water Gun was turned down 17 times with no turn passing, and
+//  each try spent a PP of the story's count. Turned down once, it is left
+//  alone for as long as Disable lasts, its PP given back, and Bubble (not
+//  Tail Whip) attacks meanwhile.
+UnitTestResult test_disabled_move(Logger&){
+    Supplies supplies;
+    supplies.lead = squirtle_before_miguel();
+    supplies.foes = {"grimer", "voltorb", "koffing"};
+    BattleDecisions decisions(supplies, BattleKind::TRAINER);
+    if (decisions.turn(GREEN).slot != TOP_LEFT_MOVE || decisions.turn(GREEN).slot != TOP_LEFT_MOVE){
+        return "Expected Water Gun (slot 0) at turns 1 and 2.";
+    }
+    decisions.turn_done(TurnChoice::MOVE, TurnResult::REFUSED);
+    if (supplies.lead.moves[TOP_LEFT_MOVE].pp != 24){
+        return std::format("Expected Water Gun at 24 PP after one turn and one refused, got {}.", supplies.lead.moves[TOP_LEFT_MOVE].pp);
+    }
+    for (int c = 0; c < 5; c++){
+        const TurnAction action = decisions.turn(GREEN);
+        if (action.choice != TurnChoice::MOVE || action.slot != BOTTOM_LEFT_MOVE){
+            return std::format("Expected Bubble (slot 2) at turn {} after Water Gun was turned down, got slot {}.", c + 1, action.slot);
+        }
+    }
+    if (decisions.turn(GREEN).slot != TOP_LEFT_MOVE){
+        return "Expected Water Gun again once Disable is over.";
+    }
+    return true;
+}
+
+//  The loop's view of a move turned down (console B, 2026-11-03): the move
+//  list back (no battle screen) and the battle menu 5.7 s after the choice.
+//  Not a turn (8.3 s and up, with no move list), nor a menu long after one
+//  (a YES/NO's presses, 25 s).
+UnitTestResult test_move_refusal_watch(Logger&){
+    const WallClock start = current_time();
+    MoveRefusalWatch watch;
+    watch.move_chosen(start);
+    watch.no_battle_screen();
+    if (!watch.refused(start + 5700ms)){
+        return "Expected the move list then the menu at 5.7 s read as the move turned down.";
+    }
+    watch.move_chosen(start);
+    if (watch.refused(start + 5000ms)){
+        return "Expected no refusal without the move list between.";
+    }
+    watch.move_chosen(start);
+    watch.no_battle_screen();
+    if (watch.refused(start + 25000ms)){
+        return "Expected no refusal for a menu 25 s after the choice.";
+    }
+    watch.no_battle_screen();
+    if (watch.refused(start + 26000ms)){
+        return "Expected no refusal with no move chosen.";
+    }
+    return true;
+}
+
 void add_tests_AutoStoryParty(UnitTestDatabase& database){
     database.add<Test_AutoStoryParty>("movesets the game gives and the story plays", test_movesets);
     database.add<Test_AutoStoryParty>("move offered and slot forgotten", test_learn_prompts);
@@ -639,6 +734,9 @@ void add_tests_AutoStoryParty(UnitTestDatabase& database){
     database.add<Test_AutoStoryParty>("attacks by matchup: Bite on the rival's Bulbasaur and Misty", test_attack_by_matchup);
     database.add<Test_AutoStoryParty>("attacks against an unknown foe: the plan's order", test_attack_unknown_foe);
     database.add<Test_AutoStoryParty>("Bite learned over Tail Whip or Withdraw", test_bite_learned);
+    database.add<Test_AutoStoryParty>("a YES/NO with no move list after it changes no move", test_yes_no_without_move_list);
+    database.add<Test_AutoStoryParty>("a disabled move: left alone while Disable lasts, PP back", test_disabled_move);
+    database.add<Test_AutoStoryParty>("a move turned down: the move list, then the menu sooner than a turn", test_move_refusal_watch);
 }
 
 
