@@ -203,6 +203,38 @@ Checkpoint build_story_checkpoint(const StoryCheckpoint& data, StoryStepExecutor
     return checkpoint;
 }
 
+namespace{
+
+//  `event`, for a once_per_save step known in `prepared` as `key`: skipped
+//  while `prepared` has it, and added to it when it succeeds changing
+//  nothing.
+void run_once_per_save(Event& event, std::string key, PreparedSteps& prepared){
+    event.skip_if.push_back(condition("done_from_this_save", [&prepared, key](RunState&){
+        return prepared.contains(key);
+    }));
+    event.act = [act = std::move(event.act), &prepared, key](RunState& state) mutable{
+        Outcome outcome = act(state);
+        if (outcome.succeeded() && outcome.changed_nothing){
+            prepared.insert(key);
+        }
+        return outcome;
+    };
+}
+
+}
+
+Checkpoint build_story_checkpoint(const StoryCheckpoint& data, StoryStepExecutor& executor, PreparedSteps& prepared){
+    Checkpoint checkpoint = build_story_checkpoint(data, executor);
+    //  After "from_save", the events are the steps in order.
+    const size_t first = data.start ? 1 : 0;
+    for (size_t c = 0; c < data.steps.size(); c++){
+        if (data.steps[c].once_per_save){
+            run_once_per_save(checkpoint.events[first + c], data.id + "/" + data.steps[c].name, prepared);
+        }
+    }
+    return checkpoint;
+}
+
 
 namespace{
 
@@ -252,6 +284,10 @@ std::vector<std::string> lint_story_checkpoint(const StoryCheckpoint& data){
         const std::string missing = missing_field(step);
         if (!missing.empty()){
             problems.emplace_back(std::format("{} {}: {} {}", where, step.name, story_step_kind_name(step.kind), missing));
+        }
+        //  skip_if's conditions must all hold; once per save is one more.
+        if (step.once_per_save && !step.skip_if.empty()){
+            problems.emplace_back(std::format("{} {}: once per save with skip_if", where, step.name));
         }
     }
     return problems;

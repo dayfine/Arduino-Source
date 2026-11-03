@@ -105,6 +105,7 @@ Pokemon::StoryStep teach_step(std::string name, std::string why, const TeachPlan
     step.name = std::move(name);
     step.why = std::move(why);
     step.variant = teach_variant(plan);
+    step.once_per_save = true;
     return step;
 }
 

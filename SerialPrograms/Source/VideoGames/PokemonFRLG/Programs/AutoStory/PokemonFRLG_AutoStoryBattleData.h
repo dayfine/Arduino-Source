@@ -158,8 +158,11 @@ BattleRisk default_battle_risk(std::string_view trainer);
 //  else its trainer's default. LOW for a battle the table doesn't name.
 BattleRisk story_battle_risk(std::string_view map, std::string_view battle);
 
-//  A HIGH battle is fought only if the sim wins at least this often.
-inline constexpr double MIN_WIN_CHANCE = 0.70;
+//  A HIGH battle is fought only if the sim wins at least this often. Half:
+//  the Cerulean rival at a sim chance of 56% passed console verification
+//  2 of 3 (console B, 2026-11-03, m56), and verify mode, run from a save
+//  right before the battle, is the backstop for HIGH battles.
+inline constexpr double MIN_WIN_CHANCE = 0.50;
 
 
 //  (name, JSON text) of each file in BattleData/, sorted by name.

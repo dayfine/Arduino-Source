@@ -280,12 +280,28 @@ UnitTestResult test_rival_win_chance(){
     if (!planned || planned->chance < 0.15 || planned->chance > 0.40){
         return std::format("Lv22, 5 Potions: expected 15% to 40%, got {:.1f}%.", planned ? 100 * planned->chance : 0.0);
     }
-    if (refusal != std::format("win chance {:.0f}% < 70% with {}: grind first", std::floor(100 * planned->chance), planned->inputs)){
+    if (refusal != std::format("win chance {:.0f}% < 50% with {}: grind first", std::floor(100 * planned->chance), planned->inputs)){
         return "Lv22, 5 Potions: expected a refusal with the chance, got \"" + refusal.value_or("") + "\".";
     }
     const std::optional<WinEstimate> ground = story_win_chance(grown_to(new_member("squirtle", 5), 30), SimItems{.potions = 5}, 1.0, RIVAL);
     if (!ground || ground->chance < 0.90 || win_chance_refusal(*ground)){
         return std::format("Lv30, 5 Potions: expected over 90% and no refusal, got {:.1f}%.", ground ? 100 * ground->chance : 0.0);
+    }
+    return true;
+}
+
+
+//  Console B, 2026-11-03 (m56): the Cerulean rival at a sim chance of
+//  56% was won 2 of 3 in verify mode, so a battle that close is fought,
+//  with verify mode as the backstop; one under half is still refused.
+UnitTestResult test_threshold_m56(){
+    const WinEstimate m56{.battles = 1000, .wins = 560, .chance = 0.56, .inputs = "m56"};
+    if (const std::optional<std::string> refusal = win_chance_refusal(m56)){
+        return "56%: expected the battle fought, got \"" + *refusal + "\".";
+    }
+    const WinEstimate close{.battles = 1000, .wins = 490, .chance = 0.49, .inputs = "close"};
+    if (win_chance_refusal(close) != "win chance 49% < 50% with close: grind first"){
+        return "49%: expected a refusal naming 50%, got \"" + win_chance_refusal(close).value_or("") + "\".";
     }
     return true;
 }
@@ -408,9 +424,9 @@ UnitTestResult test_misty_real_lead(){
 }
 
 //  The Cerulean rival against m51's moves (no Water Gun), the levels
-//  since the summary added to its stats: refused at Lv20, 22 and 25 (about
-//  32%, 37%, 66%), fought at Lv30 (about 95%). The refusal names the
-//  chance and the lead it was played with.
+//  since the summary added to its stats: refused at Lv20 and 22 (about
+//  32%, 37%), fought at Lv25 and 30 (about 66%, 95%). The refusal names
+//  the chance and the lead it was played with.
 UnitTestResult test_rival_real_moves(){
     const std::vector<std::tuple<uint8_t, double, double>> cases = {
         {20, 0.20, 0.45}, {22, 0.25, 0.50}, {25, 0.50, 0.70}, {30, 0.90, 1.00},
@@ -421,8 +437,8 @@ UnitTestResult test_rival_real_moves(){
             return std::format("Lv{}: expected {:.0f}% to {:.0f}%, got {:.1f}%.", level, 100 * low, 100 * high, estimate ? 100 * estimate->chance : 0.0);
         }
         const bool refused = win_chance_refusal(*estimate).has_value();
-        if (refused != (level < 30)){
-            return std::format("Lv{} at {:.1f}%: expected {}.", level, 100 * estimate->chance, level < 30 ? "a refusal" : "no refusal");
+        if (refused != (level < 25)){
+            return std::format("Lv{} at {:.1f}%: expected {}.", level, 100 * estimate->chance, level < 25 ? "a refusal" : "no refusal");
         }
     }
     const std::optional<WinEstimate> lv22 = story_win_chance(m51_lead(22), SimItems{.potions = 5}, 1.0, RIVAL);
@@ -563,6 +579,7 @@ void add_tests_AutoStoryBattleSim(UnitTestDatabase& database){
     database.add<Test_AutoStoryBattleSim>("the rival's next Pokemon when no name is read", test_next_foe);
     database.add<Test_AutoStoryBattleSim>("battle risks by trainer", test_risks);
     database.add<Test_AutoStoryBattleSim>("Cerulean rival: refused at Lv22, fought at Lv30", test_rival_win_chance);
+    database.add<Test_AutoStoryBattleSim>("m56: a 56% battle is fought, 49% refused", test_threshold_m56);
     database.add<Test_AutoStoryBattleSim>("m51: no Potion the foe's hit undoes", test_m51_potion_loop);
     database.add<Test_AutoStoryBattleSim>("the sim's Potion: only when it outheals the hit", test_sim_potion_rule);
     database.add<Test_AutoStoryBattleSim>("Misty: m51's lead as the summary showed it", test_misty_real_lead);

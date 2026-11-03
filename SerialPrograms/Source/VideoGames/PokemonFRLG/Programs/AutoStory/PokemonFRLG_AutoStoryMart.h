@@ -94,7 +94,8 @@ std::string mart_variant(const MartPlan& plan);
 //  names an item its Mart doesn't sell.
 std::optional<MartPlan> parse_mart_variant(std::string_view variant);
 
-//  The table's Mart step.
+//  The table's Mart step, once per save (StoryStep::once_per_save): a
+//  retry from the same save skips it when it had nothing to buy.
 Pokemon::StoryStep mart_step(std::string name, std::string why, const MartPlan& plan);
 
 

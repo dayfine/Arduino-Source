@@ -285,7 +285,7 @@ bool plans(const Pokemon::Pose& from, const Pokemon::Pose& to){
 //  GRIND; Potions from Cerulean's Mart (a loaded save's bag may hold too
 //  few for the wild battles a GRIND fights), and at its money floor 2 or
 //  more Awakenings for the rival's Sleep Powder; then a GRIND on Route 4's
-//  grass east of Mt. Moon until the sim beats the rival 00.15b fights 70%
+//  grass east of Mt. Moon until the sim beats the rival 00.15b fights 50%
 //  or more, healing at Cerulean's Center; its trip there plans both ways.
 UnitTestResult test_cerulean_mart_and_grind(){
     const StoryCheckpoint& row = story_checkpoints()[row_index("00.15")];
@@ -309,7 +309,7 @@ UnitTestResult test_cerulean_mart_and_grind(){
             && plan->level > 25;
     });
     if (mart == steps.size() || grind == steps.size()){
-        return "00.15: expected a Cerulean Mart step buying Potions, then a GRIND of the lead until the rival is 70%, capped above Lv25.";
+        return "00.15: expected a Cerulean Mart step buying Potions, then a GRIND of the lead until the rival is 50%, capped above Lv25.";
     }
     const MartPlan plan = *parse_mart_variant(steps[mart].variant);
     const std::optional<std::vector<MartBuy>> buys = plan.money_floor

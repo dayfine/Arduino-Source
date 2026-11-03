@@ -54,7 +54,7 @@ WinEstimate estimate_win_chance(const SimBattler& own, const SimItems& items, co
 //  `trainer`. None if the data lacks the lead's species or the trainer.
 std::optional<WinEstimate> story_win_chance(const PartyMember& lead, const SimItems& items, double hp_share, std::string_view trainer);
 
-//  Why not to fight: "win chance 41% < 70% with <inputs>: grind first", or
+//  Why not to fight: "win chance 41% < 50% with <inputs>: grind first", or
 //  none at `minimum` or above.
 std::optional<std::string> win_chance_refusal(const WinEstimate& estimate, double minimum = MIN_WIN_CHANCE);
 

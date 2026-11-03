@@ -106,6 +106,15 @@ StoryStep step_into(std::string name, Direction direction, std::string why){
 //  it and lands on `landing`, two tiles on. Planned routes never hop a
 //  ledge (they hold into walls, and a held ledge hops), so where the only
 //  way on is down a ledge the table takes it as this one step.
+//  A step `direction` into a trainer's line, a tile at a time until the
+//  trainer sees the player (TRAINER_LINE_VARIANT): the battle after it
+//  starts whether the walk before ended on its tile or a tile short.
+StoryStep into_line(std::string name, Direction direction, std::string why){
+    StoryStep step = step_into(std::move(name), direction, std::move(why));
+    step.variant = TRAINER_LINE_VARIANT;
+    return step;
+}
+
 StoryStep hop(std::string name, Direction direction, Pokemon::Pose landing, std::string why){
     StoryStep step = step_into(std::move(name), direction, std::move(why));
     step.pose_after = std::move(landing);
@@ -605,9 +614,9 @@ StoryCheckpoint misty(){
 //  15 Potions), 1400 of the floor's 1500. Then a GRIND on Route 4's grass
 //  east of Mt. Moon (75..86, 11..17; Spearow, Rattata, Ekans and Mankey
 //  around Lv10, about 80 EXP each), healing at the Center, until the
-//  battle sim beats the rival 00.15b fights 70% or more: the win chance
+//  battle sim beats the rival 00.15b fights 50% or more: the win chance
 //  his battle refuses below. Console B's Wartortle (Lv22, 65 HP, Water
-//  Pulse) is about 42% there and 76% at Lv25; Lv28 (about 88%, some 120
+//  Pulse) is about 42% there and 62% at Lv23; Lv28 (about 88%, some 120
 //  battles from Lv22) is the cap. Then the nurse, and the save on (23, 7),
 //  the tile below his trigger: his battle is its own checkpoint, 00.15b,
 //  verified and retried from this save.
@@ -628,7 +637,7 @@ StoryCheckpoint cerulean_grind(){
         running(route("mart_clerk", at(CERULEAN_MART, 4, 3, WEST), "out of the Center to the Mart's clerk")),
         mart_step("buy_potions", "3 Potions: the GRIND fights wild battles only with 2 or more; 2 Awakenings for the rival's Sleep Powder", potions),
         running(route("grind_patch", at(ROUTE4, 86, 16, WEST), "west out of the city along Route 4's lower road onto its grass's east edge")),
-        grind_step("grind_for_rival", "wild battles until the sim beats the rival 70% or more, Lv28 at most; the nurse when hurt or low on PP", for_rival, at(CERULEAN_CENTER, 7, 4, NORTH)),
+        grind_step("grind_for_rival", "wild battles until the sim beats the rival 50% or more, Lv28 at most; the nurse when hurt or low on PP", for_rival, at(CERULEAN_CENTER, 7, 4, NORTH)),
         running(route("cerulean_nurse", at(CERULEAN_CENTER, 7, 4, NORTH), "back to the Center: the rival's battle starts at full HP and PP")),
         heal("heal_cerulean"),
         running(route("below_rival_trigger", at(CERULEAN, 23, 7, NORTH), "out of the Center, north up to (23, 7), short of the trigger row 6")),
@@ -665,29 +674,33 @@ StoryCheckpoint cerulean_rival(){
 //  Youngster Timmy (12, 25), Lass Reli (10, 22) and Camper Ethan (12, 19).
 //  Each is fought on the step onto their row, beside them: they don't
 //  walk, and the player keeps facing north. Two tiles separate the rows,
-//  walked as one short leg. Then the Rocket (12, 15): the step onto
-//  (11, 15) (Route24_EventScript_RocketTriggerRight, VAR_MAP_SCENE_ROUTE24
-//  0) gives the NUGGET, "join Team Rocket", and his battle; he only turns,
-//  and the player turns east to him. Camper Shane (5, 21) looks north
-//  from the west bank, off the way.
+//  walked as one short leg; the step onto a row goes on a tile at a time
+//  until the trainer sees the player (into_line()), as the open leg onto
+//  the bridge ended a tile short twice on console B (2026-11-03), on
+//  (11, 33), and one step left the player out of Cale's sight. Then the
+//  Rocket (12, 15): the step onto (11, 15)
+//  (Route24_EventScript_RocketTriggerRight, VAR_MAP_SCENE_ROUTE24 0) gives
+//  the NUGGET, "join Team Rocket", and his battle; he only turns, and the
+//  player turns east to him. Camper Shane (5, 21) looks north from the
+//  west bank, off the way.
 StoryCheckpoint nugget_bridge(){
     return row("00.16", "Nugget Bridge: the nurse, five trainers and the Rocket", at(CERULEAN, 23, 6, SOUTH), after_brock(), StartMenu::FULL, {
         running(route("cerulean_nurse", at(CERULEAN_CENTER, 7, 4, NORTH), "back to the Center after the rival, before Nugget Bridge")),
         heal("heal_cerulean"),
         running(route("below_cale_line", at(ROUTE24, 11, 32, NORTH), "out of the Center, north past the rival's row onto the bridge, below Cale's row")),
-        step_into("cale_line", NORTH, "onto (11, 31), beside Cale"),
+        into_line("cale_line", NORTH, "onto (11, 31), beside Cale"),
         battle("bug_catcher_cale", at(ROUTE24, 11, 31, NORTH), false, "his Bug Pokemon"),
         running(legs("below_ali_line", {{NORTH, 2}}, "up to (11, 29)")),
-        step_into("ali_line", NORTH, "onto (11, 28), beside Ali"),
+        into_line("ali_line", NORTH, "onto (11, 28), beside Ali"),
         battle("lass_ali", at(ROUTE24, 11, 28, NORTH), false, "her Pokemon"),
         running(legs("below_timmy_line", {{NORTH, 2}}, "up to (11, 26)")),
-        step_into("timmy_line", NORTH, "onto (11, 25), beside Timmy"),
+        into_line("timmy_line", NORTH, "onto (11, 25), beside Timmy"),
         battle("youngster_timmy", at(ROUTE24, 11, 25, NORTH), false, "his Pokemon"),
         running(legs("below_reli_line", {{NORTH, 2}}, "up to (11, 23)")),
-        step_into("reli_line", NORTH, "onto (11, 22), beside Reli"),
+        into_line("reli_line", NORTH, "onto (11, 22), beside Reli"),
         battle("lass_reli", at(ROUTE24, 11, 22, NORTH), false, "her Pokemon"),
         running(legs("below_ethan_line", {{NORTH, 2}}, "up to (11, 20)")),
-        step_into("ethan_line", NORTH, "onto (11, 19), beside Ethan"),
+        into_line("ethan_line", NORTH, "onto (11, 19), beside Ethan"),
         battle("camper_ethan", at(ROUTE24, 11, 19, NORTH), false, "his Pokemon"),
         //  A route, not legs: the nurse may have been needed.
         ready("ready_for_rocket", at(CERULEAN_CENTER, 7, 4, NORTH), "items for a status or low HP; the nurse only if they can't"),

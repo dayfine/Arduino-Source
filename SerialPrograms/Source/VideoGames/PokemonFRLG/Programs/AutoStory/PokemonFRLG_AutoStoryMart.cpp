@@ -156,6 +156,7 @@ Pokemon::StoryStep mart_step(std::string name, std::string why, const MartPlan& 
     step.name = std::move(name);
     step.why = std::move(why);
     step.variant = mart_variant(plan);
+    step.once_per_save = true;
     return step;
 }
 
