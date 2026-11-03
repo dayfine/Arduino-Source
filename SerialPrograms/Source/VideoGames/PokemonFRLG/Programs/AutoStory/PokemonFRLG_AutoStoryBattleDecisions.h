@@ -101,7 +101,11 @@ public:
 
     //  A YES/NO in or after the battle. With the lead's box gone and the
     //  opponent's there, it is "Use next POKEMON?"; else the move prompts:
-    //  "Delete a move to make room?", then "Stop learning?" after a NO.
+    //  "Delete a move to make room?", then "Stop learning?" after a NO, or
+    //  after YES and a move list closed with nothing forgotten. Past
+    //  MOVE_PROMPTS since the last turn, a plain YES, which ends them
+    //  either way (console B, 2026-11-03: NO and YES out of step with the
+    //  game went round for 75 s).
     PromptAnswer prompt(bool lead_box_gone);
 
     //  The party list opened with the lead fainted: the slot to send in,
@@ -131,6 +135,11 @@ private:
     bool m_lost = false;
     //  NO was answered to "Delete a move?": "Stop learning?" comes next.
     bool m_declined_delete = false;
+    //  The move prompts since the last turn.
+    int m_move_prompts = 0;
+    //  YES was answered to "Delete a move?": the lead as it was before.
+    //  A YES/NO before the next turn means nothing was forgotten.
+    std::optional<PartyMember> m_before_forget;
     std::optional<size_t> m_last_move_slot;
     //  The slots the game turned down, and the turns until they are tried again.
     std::map<size_t, int> m_refused;
