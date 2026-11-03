@@ -64,6 +64,12 @@ inline constexpr Genes OWN_GENES{.iv = 15, .ev = 0, .nature = 0};
 //  HP a Potion heals.
 inline constexpr uint16_t POTION_HP = 20;
 
+//  The lead's items in the bag that the sim plays.
+struct SimItems{
+    int potions = 0;
+    int awakenings = 0;
+};
+
 enum class SimStatus{
     NONE,
     SLEEP,
@@ -173,17 +179,29 @@ bool potion_pays(const PotionCase& c);
 //  after the Potion it couldn't, and potion_pays().
 bool potion_now(const SimBattler& own, const SimBattler& foe, int potions, double seen_hit = 0);
 
+//  At either BattleRisk, `own` asleep with an Awakening left: one now if
+//  `foe` can hurt it (a damaging move with PP left, or Leech Seed on it)
+//  and it outlasts the hit the item's turn costs (potion_case()'s, with
+//  `seen_hit`). The game counts sleep down only on turns the lead tries to
+//  move (pret battle_util.c AtkCanceller_UnableToUseMove), so the turn
+//  saves the rest of the 1 to 4 asleep. Below that hit the lead's move is
+//  tried instead, to wake and attack, or a Potion as the Potion rules say.
+bool awakening_now(const SimBattler& own, const SimBattler& foe, int awakenings, double seen_hit = 0);
+
 //  The lead's turn at BattleRisk::HIGH.
 struct OwnTurn{
     bool potion = false;
-    //  Not a Potion: the move's slot, none if no move does damage.
+    //  Not a Potion or an Awakening: the move's slot, none if no move does
+    //  damage.
     std::optional<size_t> slot = std::nullopt;
+    bool awakening = false;
 };
 //  planned_attack_slot()'s move when it surely faints `foe` first (the
-//  lead is faster, the lowest roll faints it, it never misses and the AI
-//  won't heal first), else a Potion if potion_now(), else that move.
+//  lead is awake and faster, the lowest roll faints it, it never misses and
+//  the AI won't heal first), else a Potion if potion_now(), else an
+//  Awakening if awakening_now(), else that move.
 OwnTurn own_turn(
-    const SimBattler& own, int potions, const SimBattler& foe,
+    const SimBattler& own, const SimItems& own_items, const SimBattler& foe,
     const std::vector<std::string>& items, size_t foes_left
 );
 

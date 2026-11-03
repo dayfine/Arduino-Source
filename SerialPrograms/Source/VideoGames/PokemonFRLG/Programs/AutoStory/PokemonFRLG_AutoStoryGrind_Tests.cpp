@@ -404,7 +404,7 @@ UnitTestResult test_console_party(){
     for (uint8_t level = 22; level <= 25; level++){
         PartyMember lead = at22;
         lead.moves_through_level = level;
-        const std::optional<WinEstimate> estimate = healed_win_chance(lead, 10, RIVAL);
+        const std::optional<WinEstimate> estimate = healed_win_chance(lead, SimItems{.potions = 10}, RIVAL);
         if (!estimate || (estimate->chance >= MIN_WIN_CHANCE) != (level == 25)){
             return std::format(
                 "Lv{}: {:.1f}%; expected the first at {:.0f}% or more at Lv25.",

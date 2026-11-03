@@ -90,9 +90,9 @@ void change_stage(SimBattler& user, SimBattler& target, std::string_view effect)
 //  One battle, played once.
 class SimBattle{
 public:
-    SimBattle(const SimBattler& own, int potions, const SimTrainer& trainer, std::mt19937& rng)
+    SimBattle(const SimBattler& own, const SimItems& items, const SimTrainer& trainer, std::mt19937& rng)
         : m_own(own)
-        , m_potions(potions)
+        , m_items(items)
         , m_trainer(trainer)
         , m_rng(rng)
     {}
@@ -151,18 +151,24 @@ private:
 
     void play_turn(){
         const size_t left = foes_left();
-        const OwnTurn own = own_turn(m_own, m_potions, foe(), m_trainer.items, left);
+        const OwnTurn own = own_turn(m_own, m_items, foe(), m_trainer.items, left);
         const std::optional<size_t> item = ai_item_choice(foe(), m_trainer.items, left);
         const std::optional<size_t> foe_slot = item ? std::nullopt : foe_move();
         if (own.potion){
             gain_hp(m_own, POTION_HP);
-            m_potions--;
+            m_items.potions--;
+        }
+        if (own.awakening){
+            m_own.status = SimStatus::NONE;
+            m_own.sleep = 0;
+            m_items.awakenings--;
         }
         if (item){
             gain_hp(foe(), ai_item_hp(m_trainer.items[*item]));
             m_trainer.items[*item].clear();
         }
-        const std::string own_move = own.potion ? "" : own.slot ? m_own.moves[*own.slot].move : "struggle";
+        const bool item_used = own.potion || own.awakening;
+        const std::string own_move = item_used ? "" : own.slot ? m_own.moves[*own.slot].move : "struggle";
         const std::string foe_used = item ? "" : foe_slot ? foe().moves[*foe_slot].move : "struggle";
         play_moves(own_move, own.slot, foe_used, foe_slot);
         end_of_turn();
@@ -341,7 +347,7 @@ private:
     }
 
     SimBattler m_own;
-    int m_potions;
+    SimItems m_items;
     SimTrainer m_trainer;
     std::mt19937& m_rng;
     size_t m_out = 0;
@@ -351,31 +357,34 @@ private:
 }
 
 
-WinEstimate estimate_win_chance(const SimBattler& own, int potions, const SimTrainer& trainer, size_t battles, uint32_t seed){
+WinEstimate estimate_win_chance(const SimBattler& own, const SimItems& items, const SimTrainer& trainer, size_t battles, uint32_t seed){
     std::mt19937 rng(seed);
     WinEstimate estimate{.battles = battles, .wins = 0, .chance = 0};
     for (size_t i = 0; i < battles; i++){
-        SimBattle battle(own, potions, trainer, rng);
+        SimBattle battle(own, items, trainer, rng);
         estimate.wins += battle.won() ? 1 : 0;
     }
     estimate.chance = battles == 0 ? 0 : static_cast<double>(estimate.wins) / battles;
     return estimate;
 }
 
-std::optional<WinEstimate> story_win_chance(const PartyMember& lead, int potions, double hp_share, std::string_view trainer){
+std::optional<WinEstimate> story_win_chance(const PartyMember& lead, const SimItems& items, double hp_share, std::string_view trainer){
     const std::optional<SimBattler> own = own_battler(lead, hp_share);
     const std::optional<SimTrainer> sim = sim_trainer(trainer);
     if (!own || !sim){
         return std::nullopt;
     }
-    WinEstimate estimate = estimate_win_chance(*own, potions, *sim);
+    WinEstimate estimate = estimate_win_chance(*own, items, *sim);
     estimate.inputs = std::format("{} Lv{} {}/{} HP:", own->species, own->body.level, own->hp, own->body.stats.hp);
     for (size_t slot = 0; slot < own->moves.size(); slot++){
         estimate.inputs += std::format(
             "{} {} {}/{}", slot == 0 ? "" : ",", own->moves[slot].move, own->moves[slot].pp, max_pp(own->moves[slot].move)
         );
     }
-    estimate.inputs += std::format("; {} Potions", potions);
+    estimate.inputs += std::format("; {} Potions", items.potions);
+    if (items.awakenings > 0){
+        estimate.inputs += std::format(", {} Awakenings", items.awakenings);
+    }
     return estimate;
 }
 

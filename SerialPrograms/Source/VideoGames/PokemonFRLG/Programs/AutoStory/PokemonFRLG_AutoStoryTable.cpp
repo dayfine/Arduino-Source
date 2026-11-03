@@ -597,9 +597,12 @@ StoryCheckpoint misty(){
 //  Before the rival north of Cerulean (cerulean_rival()), from the
 //  Center: first TM03 Water Pulse over Tail Whip, if the lead doesn't know
 //  it yet, so the GRIND's sim plays it (a run without TM03 from Misty
-//  skips the step). Then 5 Potions at the Mart
+//  skips the step). Then 3 Potions at the Mart
 //  (CeruleanCity_Mart_Items: POTION is row 3, 300 each; Mt. Moon's
-//  trainers leave well over the floor), then a GRIND on Route 4's grass
+//  trainers leave well over the floor) and 2 Awakenings (row 6, 250 each;
+//  pokefirered items.json) for the rival's Bulbasaur's Sleep Powder
+//  (console B, m56: asleep at 34/65 HP, it fainted two turns later with
+//  15 Potions), 1400 of the floor's 1500. Then a GRIND on Route 4's grass
 //  east of Mt. Moon (75..86, 11..17; Spearow, Rattata, Ekans and Mankey
 //  around Lv10, about 80 EXP each), healing at the Center, until the
 //  battle sim beats the rival 00.15b fights 70% or more: the win chance
@@ -610,7 +613,12 @@ StoryCheckpoint misty(){
 //  verified and retried from this save.
 StoryCheckpoint cerulean_grind(){
     const TeachPlan water_pulse{.item = "tm03", .move = "water-pulse", .member = 0, .forget_move = "tail-whip"};
-    const MartPlan potions{.map = CERULEAN_MART, .lines = {{.item = "potion", .quantity = 5}}, .budget = 1500, .money_floor = 1500};
+    const MartPlan potions{
+        .map = CERULEAN_MART,
+        .lines = {{.item = "potion", .quantity = 3}, {.item = "awakening", .quantity = 2}},
+        .budget = 1500,
+        .money_floor = 1500,
+    };
     const GrindPlan for_rival{
         .member = 0, .level = 28, .max_encounters = 150, .pace = WEST, .heal_every = 0,
         .trainer = std::string(story_trainer(CERULEAN, "rival_cerulean").value_or("")), .min_chance = MIN_WIN_CHANCE,
@@ -618,7 +626,7 @@ StoryCheckpoint cerulean_grind(){
     return row("00.15", "Cerulean: Water Pulse, Potions, a GRIND until the rival is winnable, then saved below his trigger", at(CERULEAN_CENTER, 7, 4, NORTH), after_brock(), StartMenu::FULL, {
         teach_step("teach_water_pulse", "TM03 Water Pulse in place of Tail Whip, unless the lead knows it or there is no TM03", water_pulse),
         running(route("mart_clerk", at(CERULEAN_MART, 4, 3, WEST), "out of the Center to the Mart's clerk")),
-        mart_step("buy_potions", "5 Potions: the GRIND fights wild battles only with 2 or more", potions),
+        mart_step("buy_potions", "3 Potions: the GRIND fights wild battles only with 2 or more; 2 Awakenings for the rival's Sleep Powder", potions),
         running(route("grind_patch", at(ROUTE4, 86, 16, WEST), "west out of the city along Route 4's lower road onto its grass's east edge")),
         grind_step("grind_for_rival", "wild battles until the sim beats the rival 70% or more, Lv28 at most; the nurse when hurt or low on PP", for_rival, at(CERULEAN_CENTER, 7, 4, NORTH)),
         running(route("cerulean_nurse", at(CERULEAN_CENTER, 7, 4, NORTH), "back to the Center: the rival's battle starts at full HP and PP")),

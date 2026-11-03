@@ -415,6 +415,8 @@ void count_supplies(Supplies& supplies, std::string_view item, size_t quantity){
         count = &Supplies::antidotes;
     }else if (item == "parlyz-heal"){
         count = &Supplies::parlyz_heals;
+    }else if (item == "awakening"){
+        count = &Supplies::awakenings;
     }
     if (count == nullptr){
         return;

@@ -157,9 +157,9 @@ std::string grind_message(const GrindPlan& plan, const GrindResult& result);
 //  full.
 PartyMember lead_as_read(const MemberInfo& read, const PartyMember& tracked);
 
-//  The sim's chance for `lead` with `potions` against `trainer`, once the
+//  The sim's chance for `lead` with `items` against `trainer`, once the
 //  nurse has healed it (full HP and PP).
-std::optional<WinEstimate> healed_win_chance(PartyMember lead, int potions, std::string_view trainer);
+std::optional<WinEstimate> healed_win_chance(PartyMember lead, const SimItems& items, std::string_view trainer);
 
 
 //  Where pacing left the player, for the trip to the nurse.

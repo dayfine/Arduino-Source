@@ -161,7 +161,8 @@ std::optional<std::string> refuse_battle(StoryEnv& env, const StoryStep& step, s
     if (step.may_lose || supplies.risk != BattleRisk::HIGH){
         return std::nullopt;
     }
-    const std::optional<WinEstimate> estimate = story_win_chance(supplies.lead, supplies.potions, supplies.hp_fill, trainer);
+    const SimItems items{.potions = supplies.potions, .awakenings = supplies.awakenings};
+    const std::optional<WinEstimate> estimate = story_win_chance(supplies.lead, items, supplies.hp_fill, trainer);
     if (!estimate){
         return std::nullopt;
     }

@@ -5,7 +5,9 @@
  */
 
 #include <algorithm>
+#include <format>
 #include <iterator>
+#include <string>
 #include "PokemonFRLG_AutoStoryBattleDecisions.h"
 #include "PokemonFRLG_AutoStoryBattleSim.h"
 
@@ -76,24 +78,88 @@ std::optional<size_t> trainer_attack_slot(const PartyMember& usable, const Suppl
     return slot ? slot : attack_slot_against(usable, supplies.foes);
 }
 
-//  A Potion this turn, against a known foe (`seen_hit` the HP its last hit
-//  took, 0 if not seen): at BattleRisk::HIGH when its next hit could faint
-//  the lead (potion_now(), the HP from the bar's share) or the bar is red,
-//  at LOW whenever the bar isn't green; either only if potion_pays().
-//  Against a foe not known, whenever the bar isn't green, unless the last
-//  hit took a Potion's worth or more.
-bool wants_potion(const Supplies& supplies, const PartyStatus& status, double seen_hit){
+//  The item a turn uses, if any, and why one was or wasn't, for the log.
+struct ItemTurn{
+    TurnChoice choice = TurnChoice::MOVE;
+    std::string reason = {};
+};
+
+const char* bar_name(const PartyStatus& status){
+    return status.hp_red ? "red" : status.hp_yellow ? "yellow" : "green";
+}
+
+//  Against a foe not known (`seen_hit` the HP its last hit took, 0 if not
+//  seen): a Potion whenever the bar isn't green, unless the last hit took
+//  a Potion's worth or more; asleep, an Awakening unless the bar is red.
+ItemTurn unknown_foe_items(const Supplies& supplies, const PartyStatus& status, double seen_hit, int awakenings){
     const bool hurt = status.hp_red || status.hp_yellow;
+    const bool asleep = status.status == StatusCondition::SLEEP;
+    if (hurt && supplies.potions > 0 && seen_hit < POTION_HP){
+        return {TurnChoice::POTION, std::format("a Potion: HP {}, the foe not known, its last hit {:.0f} HP", bar_name(status), seen_hit)};
+    }
+    if (asleep && awakenings > 0 && !status.hp_red){
+        return {TurnChoice::AWAKENING, std::format("an Awakening: asleep at HP {}, the foe not known", bar_name(status))};
+    }
+    if (!hurt){
+        return {};
+    }
+    return {TurnChoice::MOVE, supplies.potions <= 0
+        ? std::string("no Potion: none left")
+        : std::format("no Potion: the foe not known, its last hit {:.0f} HP would undo one", seen_hit)
+    };
+}
+
+//  Why no Potion against a known foe, at `c`.
+std::string no_potion_reason(const Supplies& supplies, const PartyStatus& status, const PotionCase& c){
+    if (supplies.potions <= 0){
+        return "none left";
+    }
+    const bool asked = supplies.risk == BattleRisk::HIGH ? status.hp_red : status.hp_red || status.hp_yellow;
+    if (!asked){
+        return std::format("HP {} and the next hit can't faint the lead", bar_name(status));
+    }
+    return std::format("the next hit (about {:.0f}) undoes it and it outlasts the foe no longer", c.expected_hit);
+}
+
+//  Against a known foe: a Potion at BattleRisk::HIGH when its next hit
+//  could faint the lead (potion_now(), the HP from the bar's share) or the
+//  bar is red, at LOW whenever the bar isn't green; either only if
+//  potion_pays(). Else, asleep, an Awakening if awakening_now().
+ItemTurn known_foe_items(
+    const Supplies& supplies, const PartyStatus& status, double seen_hit,
+    const SimBattler& own, const SimBattler& foe, int awakenings
+){
+    const bool hurt = status.hp_red || status.hp_yellow;
+    const PotionCase c = potion_case(own, foe, seen_hit);
+    const std::string numbers = std::format(
+        "{}/{} HP, the foe's next hit about {:.0f} (up to {}), {} of them before the lead's attacks faint it",
+        c.hp, c.max_hp, c.expected_hit, c.max_hit, c.hits_to_ko
+    );
+    const bool high = supplies.risk == BattleRisk::HIGH;
+    if (supplies.potions > 0 && high && potion_now(own, foe, supplies.potions, seen_hit)){
+        return {TurnChoice::POTION, "a Potion: the next hit could faint the lead, not after it; " + numbers};
+    }
+    if (supplies.potions > 0 && (high ? status.hp_red : hurt) && potion_pays(c)){
+        return {TurnChoice::POTION, "a Potion: it outheals the next hit, or outlasts the foe; " + numbers};
+    }
+    if (awakening_now(own, foe, awakenings, seen_hit)){
+        return {TurnChoice::AWAKENING, "an Awakening: asleep, and the lead outlasts the hit its turn costs; " + numbers};
+    }
+    if (!hurt && own.status != SimStatus::SLEEP){
+        return {};
+    }
+    return {TurnChoice::MOVE, "no Potion: " + no_potion_reason(supplies, status, c) + "; " + numbers};
+}
+
+//  The item this turn, from the bar and the badge as read.
+ItemTurn item_turn(const Supplies& supplies, const PartyStatus& status, double seen_hit, int awakenings){
     const std::optional<SimBattler> foe = foe_out(supplies);
-    const std::optional<SimBattler> own = own_battler(supplies.lead, status.hp_seen ? status.hp_fill : 1.0);
+    std::optional<SimBattler> own = own_battler(supplies.lead, status.hp_seen ? status.hp_fill : 1.0);
     if (!foe || !own){
-        return hurt && seen_hit < POTION_HP;
+        return unknown_foe_items(supplies, status, seen_hit, awakenings);
     }
-    if (supplies.risk == BattleRisk::HIGH && potion_now(*own, *foe, supplies.potions, seen_hit)){
-        return true;
-    }
-    const bool asked = supplies.risk == BattleRisk::HIGH ? status.hp_red : hurt;
-    return asked && potion_pays(potion_case(*own, *foe, seen_hit));
+    own->status = status.status == StatusCondition::SLEEP ? SimStatus::SLEEP : SimStatus::NONE;
+    return known_foe_items(supplies, status, seen_hit, *own, *foe, awakenings);
 }
 
 //  The lead's HP from the bar's share, if it showed.
@@ -165,14 +231,19 @@ TurnAction BattleDecisions::lead_turn(const PartyStatus& status){
         return TurnAction{.choice = TurnChoice::RUN};
     }
     see_hit(status);
-    if (!m_items_off && m_supplies.potions > 0 && wants_potion(m_supplies, status, m_seen_hit)){
-        return TurnAction{.choice = TurnChoice::POTION};
+    //  Awakenings are kept for trainers: a wild battle with a status is run from.
+    const int awakenings = m_kind == BattleKind::TRAINER ? m_supplies.awakenings : 0;
+    const ItemTurn items = m_items_off ? ItemTurn{} : item_turn(m_supplies, status, m_seen_hit, awakenings);
+    if (items.choice != TurnChoice::MOVE){
+        return TurnAction{.choice = items.choice, .heal_reason = items.reason};
     }
     if (!m_items_off && m_psn_reads >= PSN_READS && !m_antidote_used && m_supplies.antidotes > 0){
         m_antidote_used = true;
-        return TurnAction{.choice = TurnChoice::ANTIDOTE};
+        return TurnAction{.choice = TurnChoice::ANTIDOTE, .heal_reason = items.reason};
     }
-    return move_turn();
+    TurnAction action = move_turn();
+    action.heal_reason = items.reason;
+    return action;
 }
 
 void BattleDecisions::see_hit(const PartyStatus& status){
@@ -258,6 +329,10 @@ void BattleDecisions::turn_done(TurnChoice choice, TurnResult result){
         return;
     case TurnChoice::ANTIDOTE:
         m_supplies.antidotes--;
+        return;
+    case TurnChoice::AWAKENING:
+        m_supplies.awakenings--;
+        m_supplies.status = StatusCondition::NONE;
         return;
     case TurnChoice::RUN:
     case TurnChoice::MOVE:

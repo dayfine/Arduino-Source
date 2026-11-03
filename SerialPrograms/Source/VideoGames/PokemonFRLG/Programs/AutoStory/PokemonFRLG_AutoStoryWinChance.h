@@ -10,7 +10,7 @@
  *  AI's ties. Too low a chance stops the story before the fight, for a
  *  GRIND or the nurse first.
  *
- *  Each turn: the Potion and the AI's item first, then the moves by
+ *  Each turn: the Potion or Awakening and the AI's item first, then the moves by
  *  priority and speed (a quarter with PARALYSIS). Sleep (2 to 5 on the
  *  game's counter), poison (1/8 HP a turn), paralysis (1/4 no move), Leech
  *  Seed (1/8 a turn to the other side), flinch, one- and two-stage stat
@@ -41,18 +41,18 @@ struct WinEstimate{
     size_t wins = 0;
     //  wins / battles
     double chance = 0;
-    //  The lead and Potions the battles were played with, for the log:
-    //  "wartortle Lv20 60/60 HP: bite 25/25, ...; 5 Potions".
+    //  The lead and items the battles were played with, for the log:
+    //  "wartortle Lv20 60/60 HP: bite 25/25, ...; 5 Potions, 2 Awakenings".
     std::string inputs = {};
 };
 
-//  `own` with `potions` Potions against `trainer`, `battles` times, from a
-//  fixed `seed` so the same inputs give the same estimate.
-WinEstimate estimate_win_chance(const SimBattler& own, int potions, const SimTrainer& trainer, size_t battles = 1000, uint32_t seed = 1);
+//  `own` with `items` against `trainer`, `battles` times, from a fixed
+//  `seed` so the same inputs give the same estimate.
+WinEstimate estimate_win_chance(const SimBattler& own, const SimItems& items, const SimTrainer& trainer, size_t battles = 1000, uint32_t seed = 1);
 
-//  The story's lead (`hp_share` of its HP) with `potions` against
+//  The story's lead (`hp_share` of its HP) with `items` against
 //  `trainer`. None if the data lacks the lead's species or the trainer.
-std::optional<WinEstimate> story_win_chance(const PartyMember& lead, int potions, double hp_share, std::string_view trainer);
+std::optional<WinEstimate> story_win_chance(const PartyMember& lead, const SimItems& items, double hp_share, std::string_view trainer);
 
 //  Why not to fight: "win chance 41% < 70% with <inputs>: grind first", or
 //  none at `minimum` or above.

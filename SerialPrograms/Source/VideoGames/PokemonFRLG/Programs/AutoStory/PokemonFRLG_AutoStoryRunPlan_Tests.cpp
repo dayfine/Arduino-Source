@@ -8,6 +8,7 @@
  *
  */
 
+#include <algorithm>
 #include <functional>
 #include <optional>
 #include <string>
@@ -282,7 +283,8 @@ bool plans(const Pokemon::Pose& from, const Pokemon::Pose& to){
 //  00.15, before the rival, from the Center: first TM03 Water Pulse over
 //  Tail Whip if the lead doesn't know it, so the sim plays it in the
 //  GRIND; Potions from Cerulean's Mart (a loaded save's bag may hold too
-//  few for the wild battles a GRIND fights); then a GRIND on Route 4's
+//  few for the wild battles a GRIND fights), and at its money floor 2 or
+//  more Awakenings for the rival's Sleep Powder; then a GRIND on Route 4's
 //  grass east of Mt. Moon until the sim beats the rival 00.15b fights 70%
 //  or more, healing at Cerulean's Center; its trip there plans both ways.
 UnitTestResult test_cerulean_mart_and_grind(){
@@ -308,6 +310,16 @@ UnitTestResult test_cerulean_mart_and_grind(){
     });
     if (mart == steps.size() || grind == steps.size()){
         return "00.15: expected a Cerulean Mart step buying Potions, then a GRIND of the lead until the rival is 70%, capped above Lv25.";
+    }
+    const MartPlan plan = *parse_mart_variant(steps[mart].variant);
+    const std::optional<std::vector<MartBuy>> buys = plan.money_floor
+        ? plan_mart_buys(mart_stock(plan.map), plan, *plan.money_floor)
+        : std::nullopt;
+    const bool awakenings = buys && std::ranges::any_of(*buys, [](const MartBuy& buy){
+        return buy.item == "awakening" && buy.quantity >= 2;
+    });
+    if (!awakenings){
+        return "00.15: expected the Mart step to buy 2 or more Awakenings at its money floor.";
     }
     const std::optional<StoryPose> clerk = mart > 0 && steps[mart - 1].target ? story_pose(*steps[mart - 1].target) : std::nullopt;
     if (!clerk || clerk->map != "CeruleanCity_Mart"){
