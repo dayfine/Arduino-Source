@@ -420,6 +420,13 @@ int start_menu_option_row(StartMenu menu){
 
 
 std::optional<bool> yes_no_cursor(const ImageViewRGB32& screen){
+    //  The box's white right of NO (x 196-212, y 92-102 on the 240x160
+    //  screen). Without it the arrow alone matches the dark edge of a rock
+    //  on Route 3 at (36, 8), right where YES's arrow shows.
+    const ImageViewRGB32 game = extract_box_reference(screen, GameSettings::instance().GAME_BOX);
+    if (!is_white(extract_box_reference(game, ImageFloatBox(196.0 / 240, 92.0 / 160, 16.0 / 240, 10.0 / 160)))){
+        return std::nullopt;
+    }
     if (SelectionArrowDetector(COLOR_RED, nullptr, SelectionArrowPositionConfirmationMenu::YES).detect(screen)){
         return true;
     }
