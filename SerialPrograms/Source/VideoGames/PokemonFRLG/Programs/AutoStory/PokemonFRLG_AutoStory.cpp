@@ -141,6 +141,7 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
         soft_reset(env.console, context);
         story.has_save = true;
         check_start_save(env, story, checkpoints[first]);
+        read_lead_moves(story, checkpoints[first].menu);
     }
 
     StoryExecutor executor(story);
