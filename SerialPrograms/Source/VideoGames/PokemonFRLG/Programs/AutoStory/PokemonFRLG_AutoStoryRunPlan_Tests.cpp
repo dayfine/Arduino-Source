@@ -111,10 +111,11 @@ private:
 };
 
 void add_tests_RunPlan(UnitTestDatabase& database){
-    const std::string TODAY = "00.01 00.02 00.03 00.04 00.05 00.06 00.07 00.08 00.09 00.10 00.11 00.12 00.12c 00.13";
+    const std::string TODAY = "00.01 00.02 00.03 00.04 00.05 00.06 00.07 00.08 00.09 00.10 00.11 00.12 00.12c 00.13 00.14 00.15 00.16";
     const RunPlanScenario scenarios[] = {
         {.name = "handoffs off: the story as before", .first = "00.01", .expected_ids = TODAY},
         {.name = "handoffs off: a range", .first = "00.02", .last = "00.04", .expected_ids = "00.02 00.03 00.04"},
+        {.name = "handoffs off: Mt. Moon to Nugget Bridge", .first = "00.13", .last = "00.16", .expected_ids = "00.13 00.14 00.15 00.16"},
         {
             .name = "SID Helper: 00.01 stops on the keyboard",
             .first = "00.01",
@@ -163,8 +164,8 @@ void add_tests_GiftRunPlan(UnitTestDatabase& database){
             .expected_ids = "00.11 00.12",
             .expected_stop = StoryHandoff::GIFT_RNG,
         },
-        {.name = "Gift RNG off: 00.12b is passed over", .first = "00.11", .expected_ids = "00.11 00.12 00.12c 00.13"},
-        {.name = "Gift RNG off: 00.12b runs when started at", .first = "00.12b", .expected_ids = "00.12b 00.12c 00.13"},
+        {.name = "Gift RNG off: 00.12b is passed over", .first = "00.11", .expected_ids = "00.11 00.12 00.12c 00.13 00.14 00.15 00.16"},
+        {.name = "Gift RNG off: 00.12b runs when started at", .first = "00.12b", .expected_ids = "00.12b 00.12c 00.13 00.14 00.15 00.16"},
         {
             .name = "Gift RNG: started at 00.12b, from the save beside the salesman",
             .first = "00.12b",
@@ -179,7 +180,7 @@ void add_tests_GiftRunPlan(UnitTestDatabase& database){
             .expected_ids = "",
             .expected_stop = StoryHandoff::GIFT_RNG,
         },
-        {.name = "Starter RNG alone: 00.12b runs when started at", .first = "00.12b", .handoffs = {.starter_rng = true}, .expected_ids = "00.12b 00.12c 00.13"},
+        {.name = "Starter RNG alone: 00.12b runs when started at", .first = "00.12b", .handoffs = {.starter_rng = true}, .expected_ids = "00.12b 00.12c 00.13 00.14 00.15 00.16"},
         {
             .name = "Starter RNG first, with both on",
             .first = "00.03",
