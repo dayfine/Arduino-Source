@@ -16,6 +16,8 @@
 #include "CommonTools/Async/InferenceRoutines.h"
 #include "CommonTools/Images/SolidColorTest.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
+#include "NintendoSwitch/Inference/NintendoSwitch_HomeMenuDetector.h"
+#include "NintendoSwitch/Programs/NintendoSwitch_GameEntry.h"
 #include "VideoGames/PokemonFRLG/Inference/Dialogs/PokemonFRLG_BattleDialogs.h"
 #include "VideoGames/PokemonFRLG/Inference/Dialogs/PokemonFRLG_DialogDetector.h"
 #include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_ItemListReader.h"
@@ -26,6 +28,7 @@
 #include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleScreenDetector.h"
 #include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_SelectionArrowDetector.h"
 #include "VideoGames/PokemonFRLG/PokemonFRLG_Settings.h"
+#include "VideoGames/PokemonFRLG/Programs/PokemonFRLG_NamingScreen.h"
 #include "VideoGames/PokemonFRLG/Programs/PokemonFRLG_StartMenuNavigation.h"
 #include "PokemonFRLG_AutoStoryActions.h"
 
@@ -168,18 +171,28 @@ void open_start_menu_row(ConsoleHandle& console, ProControllerContext& context, 
 //  without an arrow, and the arrow at the end of Oak's lines may be missed,
 //  so a message box gets A every 1.5 s whatever it shows. The player's name
 //  is asked on the keyboard straight away: B deletes whatever a stray A
-//  typed and START jumps to OK, which confirms the empty name as the
-//  default. The rival's is asked on a list with NEW NAME first, where A
-//  would open the keyboard: the cursor goes to the first preset name (the
-//  game's default rival, GREEN in FireRed, RED in LeafGreen) and A picks
-//  it, then YES confirms it (pokefirered oak_speech.c). If the keyboard
-//  opens anyway, the list was missed, and the empty name is confirmed
-//  there instead, which also names the rival GREEN.
+//  typed, then the name is typed, or START jumps to OK, which confirms the
+//  empty name as the default. The rival's is asked on a list with NEW NAME
+//  first, where A would open the keyboard: the cursor goes to the first
+//  preset name (the game's default rival, GREEN in FireRed, RED in
+//  LeafGreen) and A picks it, then YES confirms it (pokefirered
+//  oak_speech.c). If the keyboard opens anyway, the list was missed, and
+//  the empty name is confirmed there instead, which also names the rival
+//  GREEN.
 class NewGameIntro{
 public:
-    NewGameIntro(ConsoleHandle& console, ProControllerContext& context)
+    //  Where the intro stops: the bedroom, or the player's keyboard with the
+    //  name typed and OK not pressed (for SID Helper).
+    enum class End{
+        BEDROOM,
+        PLAYER_NAME_TYPED,
+    };
+
+    NewGameIntro(ConsoleHandle& console, ProControllerContext& context, std::string player_name, End end)
         : m_console(console)
         , m_context(context)
+        , m_player_name(std::move(player_name))
+        , m_end(end)
     {}
 
     void run(){
@@ -189,7 +202,7 @@ public:
         m_last_press = m_last_dialog;
         while (current_time() < deadline){
             if (step()){
-                m_console.log("New game: the bedroom.");
+                m_console.log(m_end == End::BEDROOM ? "New game: the bedroom." : "New game: the player's name is typed, OK not pressed.");
                 return;
             }
         }
@@ -228,6 +241,12 @@ private:
             pbf_wait(m_context, POLL);
             return false;
         }
+        if (m_end == End::PLAYER_NAME_TYPED && m_keyboards_seen == 0 && NamingScreenDetector(COLOR_RED).detect(screen)){
+            m_keyboards_seen++;
+            clear_stray_keys();
+            type_player_name(false);
+            return true;
+        }
         if (names(screen)){
             m_last_dialog = current_time();
             m_last_press = m_last_dialog;
@@ -262,12 +281,12 @@ private:
         switch (intro_name_step(shown, m_keyboards_seen, m_presets_picked)){
         case IntroNameStep::PLAYER_KEYBOARD:
             m_keyboards_seen++;
-            enter_empty_name();
+            enter_name(true);
             return true;
         case IntroNameStep::RIVAL_KEYBOARD:
             m_keyboards_seen++;
             m_console.log("New game: the rival's keyboard opened, so the name list was missed.", COLOR_ORANGE);
-            enter_empty_name();
+            enter_name(false);
             return true;
         case IntroNameStep::RIVAL_PRESET:
             pick_rival_preset(*list_row);
@@ -317,18 +336,46 @@ private:
         return false;
     }
 
-    void enter_empty_name(){
-        m_console.log("New game: the keyboard, confirming an empty name.");
+    //  B deletes whatever a stray A typed; the cursor stays on its key.
+    void clear_stray_keys(){
         for (int c = 0; c < 8; c++){
             press(m_context, BUTTON_B, 340ms);
         }
-        press(m_context, BUTTON_PLUS, 500ms);
-        press(m_context, BUTTON_A, 2000ms);
+    }
+
+    void enter_name(bool player){
+        clear_stray_keys();
+        if (!player || m_player_name.empty()){
+            m_console.log("New game: the keyboard, confirming an empty name.");
+            press(m_context, BUTTON_PLUS, 500ms);
+            press(m_context, BUTTON_A, 2000ms);
+            m_context.wait_for_all_requests();
+            return;
+        }
+        type_player_name(true);
+        //  Past the keyboard's fade, so it isn't taken for the rival's.
+        pbf_wait(m_context, 2000ms);
         m_context.wait_for_all_requests();
+    }
+
+    void type_player_name(bool confirm){
+        if (m_player_name.empty()){
+            return;
+        }
+        const bool typed = confirm
+            ? type_name(m_console, m_context, m_player_name, NamingScreenKind::PLAYER)
+            : type_name_without_confirming(m_console, m_context, m_player_name, NamingScreenKind::PLAYER);
+        if (!typed){
+            OperationFailedExceptionWithScreenshot::fire(
+                ErrorReportMode::SEND_ERROR_REPORT, "play_new_game_intro(): the keyboard closed before the name was typed.", m_console
+            );
+        }
     }
 
     ConsoleHandle& m_console;
     ProControllerContext& m_context;
+    const std::string m_player_name;
+    const End m_end;
     WallClock m_last_dialog;
     WallClock m_last_press;
     bool m_dialog_seen = false;
@@ -834,9 +881,25 @@ void buy_items(
     mash_until_overworld(console, context, 20000ms);
 }
 
-void play_new_game_intro(ConsoleHandle& console, ProControllerContext& context){
+void play_new_game_intro(ConsoleHandle& console, ProControllerContext& context, const std::string& player_name){
     console.log("New game: from the title screen.");
-    NewGameIntro(console, context).run();
+    NewGameIntro(console, context, player_name, NewGameIntro::End::BEDROOM).run();
+}
+
+void play_new_game_to_player_name(ConsoleHandle& console, ProControllerContext& context, const std::string& player_name){
+    console.log("New game: from the title screen to the player's keyboard, for SID Helper.");
+    NewGameIntro(console, context, player_name, NewGameIntro::End::PLAYER_NAME_TYPED).run();
+}
+
+void close_trainer_card(ConsoleHandle& console, ProControllerContext& context){
+    context.wait_for_all_requests();
+    VideoSnapshot screen = console.video().snapshot();
+    if (screen && HomeMenuDetector(console, COLOR_RED).detect(screen)){
+        console.log("After SID Helper: on HOME, back to the game.");
+        resume_game_from_home(console, context);
+    }
+    //  B closes the card, then the START menu.
+    mash_until_overworld(console, context, 20000ms);
 }
 
 

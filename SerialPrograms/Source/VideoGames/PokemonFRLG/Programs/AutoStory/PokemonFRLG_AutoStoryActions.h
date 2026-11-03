@@ -212,10 +212,21 @@ void buy_items(
 );
 
 //  From the title screen of a game with no save, to the bedroom: the
-//  controls pages, Oak's speech, BOY, the default name for the player (an
-//  empty name confirmed) and the rival's first preset name. Returns on the
-//  overworld.
-void play_new_game_intro(ConsoleHandle& console, ProControllerContext& context);
+//  controls pages, Oak's speech, BOY, `player_name` typed on the player's
+//  keyboard, and the rival's first preset name. An empty `player_name`
+//  keeps the player's default name (an empty name confirmed). Returns on
+//  the overworld. Throws UserSetupError if the game can't take the name
+//  (naming_text_error()).
+void play_new_game_intro(ConsoleHandle& console, ProControllerContext& context, const std::string& player_name);
+
+//  play_new_game_intro() up to the player's keyboard: `player_name` typed,
+//  OK not pressed, which is where SID Helper starts. Empty types nothing.
+void play_new_game_to_player_name(ConsoleHandle& console, ProControllerContext& context, const std::string& player_name);
+
+//  From the Trainer Card SID Helper leaves open, or from HOME (its "go
+//  home when done"): back to the game, the card and the START menu closed.
+//  Returns on the overworld.
+void close_trainer_card(ConsoleHandle& console, ProControllerContext& context);
 
 
 

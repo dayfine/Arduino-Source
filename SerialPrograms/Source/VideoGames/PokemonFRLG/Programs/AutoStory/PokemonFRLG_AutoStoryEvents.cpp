@@ -389,7 +389,7 @@ Outcome StoryExecutor::run(RunState& state, const StoryStep& step){
 }
 
 Outcome StoryExecutor::new_game(RunState&, const StoryStep&){
-    play_new_game_intro(m_env.console, m_env.context);
+    play_new_game_intro(m_env.console, m_env.context, m_env.player_name);
     return Pokemon::outcome_ok();
 }
 
@@ -441,6 +441,61 @@ Outcome StoryExecutor::shop(RunState&, const StoryStep& step){
 
 Outcome StoryExecutor::ready(RunState& state, const StoryStep& step){
     return get_ready(m_env, state, step);
+}
+
+Outcome StoryExecutor::game(RunState&, const StoryStep& step){
+    if (step.variant == CLOSE_TRAINER_CARD){
+        close_trainer_card(m_env.console, m_env.context);
+        return Pokemon::outcome_ok();
+    }
+    return Pokemon::unsupported_step(step);
+}
+
+
+namespace{
+
+//  `first` and `second` as one checkpoint: `first`'s id, start and
+//  supplies, `second`'s title and START menu, both rows' steps.
+StoryCheckpoint joined_rows(const StoryCheckpoint& first, const StoryCheckpoint& second){
+    StoryCheckpoint row = second;
+    row.id = first.id;
+    row.start = first.start;
+    row.supplies = first.supplies;
+    row.live_start = first.live_start;
+    row.steps = first.steps;
+    row.steps.insert(row.steps.end(), second.steps.begin(), second.steps.end());
+    return row;
+}
+
+}
+
+StoryRunPlan plan_story_run(
+    const std::vector<StoryCheckpoint>& checkpoints, size_t first, size_t last, const StoryHandoffs& handoffs
+){
+    StoryRunPlan plan;
+    for (size_t c = first; c <= last && c < checkpoints.size(); c++){
+        const StoryCheckpoint& row = checkpoints[c];
+        if (row.live_start && c != first){
+            continue;
+        }
+        if (row.handoff == StoryHandoff::SID_HELPER && handoffs.sid_helper){
+            plan.rows.clear();
+            plan.stop = StoryHandoff::SID_HELPER;
+            return plan;
+        }
+        if (row.handoff == StoryHandoff::STARTER_RNG && handoffs.starter_rng){
+            plan.rows.emplace_back(row);
+            plan.stop = StoryHandoff::STARTER_RNG;
+            return plan;
+        }
+        if (row.handoff == StoryHandoff::STARTER_RNG && c + 1 < checkpoints.size()){
+            plan.rows.emplace_back(joined_rows(row, checkpoints[c + 1]));
+            c++;
+            continue;
+        }
+        plan.rows.emplace_back(row);
+    }
+    return plan;
 }
 
 

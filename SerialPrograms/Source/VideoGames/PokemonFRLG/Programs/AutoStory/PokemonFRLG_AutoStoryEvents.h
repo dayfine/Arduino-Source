@@ -56,9 +56,25 @@ struct StoryPose{
 //  has the Running Shoes (00.10 on).
 inline const std::string RUN_VARIANT = "run";
 
+//  The GAME step that closes the Trainer Card SID Helper leaves open.
+inline const std::string CLOSE_TRAINER_CARD = "close_trainer_card";
+
 //  How `step`, a ROUTE or LEGS, moves the player: RUN_VARIANT runs.
 MoveSpeed move_speed(const StoryStep& step);
 
+
+//  An upstream RNG program the user may run part-way through the story.
+//  Each is off unless its option is on.
+enum class StoryHandoff{
+    NONE,
+    //  The checkpoint's new game stops on the player's keyboard, the name
+    //  typed and OK not pressed, which is where SID Helper starts.
+    SID_HELPER,
+    //  The checkpoint saves south of the table, facing the starter's ball,
+    //  which is where Starter RNG starts. With the handoff off, it runs on
+    //  into the next checkpoint as one, as the story did before the split.
+    STARTER_RNG,
+};
 
 //  A shared checkpoint with what FRLG adds to it.
 struct StoryCheckpoint : public Pokemon::StoryCheckpoint{
@@ -66,7 +82,39 @@ struct StoryCheckpoint : public Pokemon::StoryCheckpoint{
     Supplies supplies;
     //  The START menu at its end, when it saves.
     StartMenu menu = StartMenu::FULL;
+    //  Starts from the game as another program left it, loading no save:
+    //  the way back into the story after an RNG program. A run that starts
+    //  before it passes over it.
+    bool live_start = false;
+    //  The RNG program the user may run at this checkpoint.
+    StoryHandoff handoff = StoryHandoff::NONE;
 };
+
+//  The handoffs a run stops for (AutoStory's options).
+struct StoryHandoffs{
+    bool sid_helper = false;
+    bool starter_rng = false;
+};
+
+//  What a run from table row `first` to `last` does.
+struct StoryRunPlan{
+    //  The checkpoints to run, in order.
+    std::vector<StoryCheckpoint> rows;
+    //  NONE: the run ends after `rows`. SID_HELPER: `rows` is empty; the run
+    //  plays the new game to the player's keyboard and stops there.
+    //  STARTER_RNG: the run stops after `rows`, the last of which saves at
+    //  the starter's ball.
+    StoryHandoff stop = StoryHandoff::NONE;
+};
+
+//  The rows of `checkpoints` from `first` to `last`, both inclusive, as a
+//  run with `handoffs` takes them: live-start rows only when the run
+//  starts there, a run that reaches a handoff that is on stops for it, and
+//  a STARTER_RNG row whose handoff is off is joined with the row after it,
+//  under its own id.
+StoryRunPlan plan_story_run(
+    const std::vector<StoryCheckpoint>& checkpoints, size_t first, size_t last, const StoryHandoffs& handoffs
+);
 
 
 //  The maps the story plans on: every map to Brock, with the objects the
@@ -117,6 +165,9 @@ struct StoryEnv{
     //  The game's language, for reading item names. In one the readers have
     //  no names for, the checks fall back to positions and counts.
     Language language = Language::English;
+    //  The name the new game's intro types for the player; empty keeps the
+    //  game's default name.
+    std::string player_name = {};
     //  The map the checkpoint under way starts on, where its save is: a
     //  reload checks the save card against it.
     std::string start_map = {};
@@ -172,6 +223,8 @@ protected:
     //  The Viridian Mart, before the Boulder Badge: Potions, Antidotes and Parlyz Heals.
     virtual Pokemon::Outcome shop(Pokemon::RunState& state, const StoryStep& step) override;
     virtual Pokemon::Outcome ready(Pokemon::RunState& state, const StoryStep& step) override;
+    //  CLOSE_TRAINER_CARD: back from SID Helper (close_trainer_card()).
+    virtual Pokemon::Outcome game(Pokemon::RunState& state, const StoryStep& step) override;
 
 private:
     StoryEnv& m_env;

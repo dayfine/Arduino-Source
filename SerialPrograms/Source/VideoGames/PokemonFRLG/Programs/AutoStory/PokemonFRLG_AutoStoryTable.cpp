@@ -146,12 +146,37 @@ StoryStep shop(std::string name, std::vector<Pokemon::StoryItem> items, std::str
 }
 
 
+StoryStep game_step(std::string variant, Pokemon::Pose pose_after, std::string why){
+    StoryStep step = make(StoryStepKind::GAME, variant, std::move(why));
+    step.variant = std::move(variant);
+    step.pose_after = std::move(pose_after);
+    return step;
+}
+
+StoryStep options_step(){
+    return make(StoryStepKind::OPTIONS, "options", "fast text; no switch prompt between a trainer's Pokemon");
+}
+
+
 StoryCheckpoint new_game(){
-    return row("00.01", "new game to the bedroom", std::nullopt, {}, StartMenu::BEFORE_POKEMON, {
+    StoryCheckpoint checkpoint = row("00.01", "new game to the bedroom", std::nullopt, {}, StartMenu::BEFORE_POKEMON, {
         //  new_game.c: the bedroom at (6, 6), facing the TV.
-        new_game_intro(at(BEDROOM, 6, 6, NORTH), "Oak's speech, BOY, default names, rival GREEN"),
-        make(StoryStepKind::OPTIONS, "options", "fast text; no switch prompt between a trainer's Pokemon"),
+        new_game_intro(at(BEDROOM, 6, 6, NORTH), "Oak's speech, BOY, the player's name (default if none is set), rival GREEN"),
+        options_step(),
     });
+    checkpoint.handoff = StoryHandoff::SID_HELPER;
+    return checkpoint;
+}
+
+//  SID Helper confirms the name, finishes the intro and reads the Trainer
+//  Card from the START menu, without moving the player or saving.
+StoryCheckpoint after_sid_helper(){
+    StoryCheckpoint checkpoint = row("00.01b", "after SID Helper: close the Trainer Card, save in the bedroom", at(BEDROOM, 6, 6, NORTH), {}, StartMenu::BEFORE_POKEMON, {
+        game_step(CLOSE_TRAINER_CARD, at(BEDROOM, 6, 6, NORTH), "the Trainer Card SID Helper left open, or HOME"),
+        options_step(),
+    });
+    checkpoint.live_start = true;
+    return checkpoint;
 }
 
 StoryCheckpoint leave_house(){
@@ -169,9 +194,17 @@ StoryCheckpoint oaks_trigger(){
     });
 }
 
-StoryCheckpoint starter(){
-    return row("00.04", "Squirtle, then the rival's battle", at(LAB, 6, 4, NORTH), {}, StartMenu::BEFORE_POKEDEX, {
+//  Starter RNG starts from a save south of the table, facing the ball.
+StoryCheckpoint to_starter_ball(){
+    StoryCheckpoint checkpoint = row("00.04", "to Squirtle's ball, south of the table", at(LAB, 6, 4, NORTH), {}, StartMenu::BEFORE_POKEMON, {
         route("below_squirtle", at(LAB, 9, 5, NORTH), "under Squirtle's ball (9, 4)"),
+    });
+    checkpoint.handoff = StoryHandoff::STARTER_RNG;
+    return checkpoint;
+}
+
+StoryCheckpoint starter(){
+    return row("00.04b", "Squirtle, then the rival's battle", at(LAB, 9, 5, NORTH), {}, StartMenu::BEFORE_POKEDEX, {
         talk("squirtle_ball", "\"So, you want the WATER POKEMON SQUIRTLE?\""),
         answer("choose_squirtle", true, "take Squirtle"),
         answer("no_nickname", false, "\"give a nickname?\" NO"),
@@ -284,7 +317,7 @@ StoryCheckpoint running_shoes(){
 
 const std::vector<StoryCheckpoint>& story_checkpoints(){
     static const std::vector<StoryCheckpoint> checkpoints{
-        new_game(), leave_house(), oaks_trigger(), starter(), parcel(), pokedex(), shopping(), forest(), brock(),
+        new_game(), after_sid_helper(), leave_house(), oaks_trigger(), to_starter_ball(), starter(), parcel(), pokedex(), shopping(), forest(), brock(),
         running_shoes(),
     };
     return checkpoints;
