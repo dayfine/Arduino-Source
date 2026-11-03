@@ -119,7 +119,7 @@ struct StoryEnv{
     Language language = Language::English;
     //  The map the checkpoint under way starts on, where its save is: a
     //  reload checks the save card against it.
-    std::string start_map;
+    std::string start_map = {};
 };
 
 //  After a save is loaded for a checkpoint that starts on `start_map`: the
