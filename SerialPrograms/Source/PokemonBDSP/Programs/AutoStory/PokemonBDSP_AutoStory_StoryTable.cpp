@@ -438,12 +438,12 @@ std::vector<StoryCheckpoint> to_jubilife(){
     potions.items = {{.item = "potion", .quantity = 10}};
     potions.variant = "sandgem_potions";
     potions.pose_after = at(ROUTE_202, "save_spot");
-    StoryStep stairs = step_into("into_jubilife", NORTH,
-        "Jubilife's south edge is a wall with stairs in it, west of where the route may leave us (r78)");
-    stairs.variant = "jubilife_stairs";
-    //  On Jubilife from here on: the scene after it plays where we stand, with
-    //  no fade to wait for.
-    stairs.pose_after = below_jubilifes_steps();
+    //  An event, not a step: it walks north and west until Dawn's scene
+    //  starts. It leaves us on Jubilife, so the scene after it plays where
+    //  we stand, with no fade to wait for.
+    const StoryStep stairs = event("jubilife_stairs",
+        "Jubilife's south edge is a wall with stairs in it, west of where the route may leave us (r78)",
+        below_jubilifes_steps());
     return {
         row("00.04c", "Potions, back to Route 202's save spot", door_front(SANDGEM, "pokemon_center_door"), {
             potions,
