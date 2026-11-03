@@ -41,6 +41,9 @@ struct WinEstimate{
     size_t wins = 0;
     //  wins / battles
     double chance = 0;
+    //  The lead and Potions the battles were played with, for the log:
+    //  "wartortle Lv20 60/60 HP: bite 25/25, ...; 5 Potions".
+    std::string inputs = {};
 };
 
 //  `own` with `potions` Potions against `trainer`, `battles` times, from a
@@ -51,8 +54,8 @@ WinEstimate estimate_win_chance(const SimBattler& own, int potions, const SimTra
 //  `trainer`. None if the data lacks the lead's species or the trainer.
 std::optional<WinEstimate> story_win_chance(const PartyMember& lead, int potions, double hp_share, std::string_view trainer);
 
-//  Why not to fight: "win chance 41% < 70%: grind first", or none at
-//  `minimum` or above.
+//  Why not to fight: "win chance 41% < 70% with <inputs>: grind first", or
+//  none at `minimum` or above.
 std::optional<std::string> win_chance_refusal(const WinEstimate& estimate, double minimum = MIN_WIN_CHANCE);
 
 
