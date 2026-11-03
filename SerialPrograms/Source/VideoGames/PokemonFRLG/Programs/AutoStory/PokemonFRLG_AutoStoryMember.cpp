@@ -6,6 +6,7 @@
 
 #include <format>
 #include "PokemonFRLG_AutoStoryMember.h"
+#include "PokemonFRLG_AutoStorySummary.h"
 #include "PokemonFRLG_AutoStoryVariantWords.h"
 
 namespace PokemonAutomation{
@@ -13,12 +14,18 @@ namespace NintendoSwitch{
 namespace PokemonFRLG{
 
 
-MemberReader console_member_reader(ConsoleHandle& console){
-    return [&console](size_t slot) -> std::optional<MemberInfo>{
-        console.log(std::format(
-            "Party: no summary-screen reader yet; can't read the member in slot {}.", slot + 1
-        ), COLOR_RED);
-        return std::nullopt;
+MemberReader console_member_reader(ConsoleHandle& console, ProControllerContext& context, Language language){
+    return [&console, &context, language](size_t slot) -> std::optional<MemberInfo>{
+        const std::optional<SummaryRead> read = read_party_summary(console, context, StartMenu::FULL, language, slot);
+        if (!read || read->species.empty() || !read->level || read->moves.empty()){
+            console.log(std::format("Party: couldn't read the member in slot {}.", slot + 1), COLOR_RED);
+            return std::nullopt;
+        }
+        MemberInfo info{.species = read->species, .level = read->level, .moves = {}};
+        for (const SummaryMove& move : read->moves){
+            info.moves.push_back(move.move);
+        }
+        return info;
     };
 }
 

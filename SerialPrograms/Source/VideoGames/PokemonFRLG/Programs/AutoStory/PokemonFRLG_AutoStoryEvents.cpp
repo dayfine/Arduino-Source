@@ -464,7 +464,7 @@ std::optional<Outcome> run_abilities(StoryEnv& env, RunState& state, const Story
         }
     );
     ConsoleChoiceActions choice(env.console, env.context);
-    StoryAbilities abilities{console_member_reader(env.console), mart, teach, grind, choice};
+    StoryAbilities abilities{console_member_reader(env.console, env.context, env.language), mart, teach, grind, choice};
     return run_ability_game_step(env.console.logger(), &env.console, step, abilities);
 }
 

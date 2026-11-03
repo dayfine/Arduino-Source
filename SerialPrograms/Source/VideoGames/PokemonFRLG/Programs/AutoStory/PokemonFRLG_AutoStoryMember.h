@@ -5,10 +5,10 @@
  *  What the story reads about one party member: its species, level and
  *  moves, as the summary screen shows them (page 1: level; page 3: the
  *  four moves). The story's steps take them from a MemberReader, so their
- *  decisions run in tests against a fake party; the summary-screen reader
- *  is being built separately and plugs in as a MemberReader. Until it
- *  does, console_member_reader() reads nothing, and every step that needs a
- *  member's level or moves stops instead of guessing.
+ *  decisions run in tests against a fake party; on the console they read
+ *  the member's summary (read_party_summary(), PokemonFRLG_AutoStorySummary.h).
+ *  A member that can't be read stops every step that needs its level or
+ *  moves instead of guessing.
  *
  *  Also the LEVEL step: a check, for the table, that a member has reached
  *  a level, before a fight that needs it.
@@ -25,6 +25,7 @@
 #include <string_view>
 #include <vector>
 #include "Common/Cpp/Logging/AbstractLogger.h"
+#include "CommonFramework/Language.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
 #include "Pokemon/AutoStory/Pokemon_StorySteps.h"
@@ -53,9 +54,11 @@ struct MemberInfo{
 //  summary couldn't be read.
 using MemberReader = std::function<std::optional<MemberInfo>(size_t slot)>;
 
-//  The console's reader, until the summary-screen reader lands: reads
-//  nothing and logs why, so the steps that need it stop.
-MemberReader console_member_reader(ConsoleHandle& console);
+//  The console's reader: the member's summary, opened from the START
+//  menu's POKEMON, in a game in `language`. The steps that read members
+//  come after the Pokedex, so the START menu is the full one. A member
+//  whose species, level or moves aren't all read is nothing.
+MemberReader console_member_reader(ConsoleHandle& console, ProControllerContext& context, Language language);
 
 
 //  What a LEVEL step checks: party slot `slot` (0-5) is at least `level`.
