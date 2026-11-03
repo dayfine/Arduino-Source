@@ -18,6 +18,7 @@
 #include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_TrainerIdReader.h"
 #include "VideoGames/PokemonFRLG/PokemonFRLG_Navigation.h"
 #include "VideoGames/PokemonFRLG/Programs/PokemonFRLG_StartMenuNavigation.h"
+#include "VideoGames/PokemonFRLG/Programs/PokemonFRLG_TrainerCard.h"
 #include "PokemonFRLG_RngCalibration.h"
 #include "PokemonFRLG_SidHelper.h"
 
@@ -168,65 +169,6 @@ void finish_intro_animations(SingleSwitchProgramEnvironment& env, ProControllerC
     context.wait_for_all_requests();
 }
 
-void navigate_to_trainer_card(SingleSwitchProgramEnvironment& env, ProControllerContext& context){
-    int errors = 0;
-    while (true){
-        if (errors >= 5){
-            OperationFailedExceptionWithScreenshot::fire(
-                ErrorReportMode::SEND_ERROR_REPORT, "SidHelper(): failed 5 times to navigate to the Trainer Card", env.console
-            ); 
-        }
-
-        open_start_menu(env.console, context);
-
-        // the positions are different before recieving a Pokemon and Pokedex
-        bool cursor = move_cursor_to_position(
-            env.console, context, SelectionArrowPositionStartMenu(1)
-        );
-        if (!cursor){
-            errors++;
-            pbf_mash_button(context, BUTTON_B, 2000ms);
-            continue;
-        }
-
-        TrainerCardWatcher trainer_card(COLOR_RED);
-        context.wait_for_all_requests();
-        int ret = run_until<ProControllerContext>(
-            env.console, context,
-            [](ProControllerContext& context){
-                pbf_press_button(context, BUTTON_A, 200ms, 2300ms);
-                pbf_press_button(context, BUTTON_A, 200ms, 2300ms);
-            },
-            { trainer_card }
-        );
-
-        if (ret < 0){
-            env.log("SidHelper(): failed to detect Trainer Card");
-            errors++;
-            pbf_mash_button(context, BUTTON_B, 2000ms);
-            continue;
-        }
-
-        break;
-    }
-}
-
-uint16_t read_tid(SingleSwitchProgramEnvironment& env, ProControllerContext& context, Language lang){
-    TrainerIdReader reader;
-    VideoOverlaySet overlays(env.console.overlay());
-    reader.make_overlays(overlays);
-
-    VideoSnapshot screen = env.console.video().snapshot();
-    env.log("Trainer Card detected.");
-    env.log("Reading TID...");
-    uint16_t tid = reader.read_tid(env.logger(), lang, screen);
-    env.log("TID: " + std::to_string(tid));
-
-    context.wait_for_all_requests();
-
-    return tid;
-}
-
 std::vector<std::pair<std::string, std::string>> get_sid_messages(
     SingleSwitchProgramEnvironment& env,
     ProControllerContext& context,
@@ -310,9 +252,9 @@ void SidHelper::program(SingleSwitchProgramEnvironment& env, ProControllerContex
 
     set_sid_from_name_screen(env, context, SID_DELAY, extra_press_at_end);
     finish_intro_animations(env, context);
-    navigate_to_trainer_card(env, context);
+    navigate_to_trainer_card(env.console, context);
 
-    uint16_t tid = read_tid(env, context, lang);
+    uint16_t tid = read_trainer_card_tid(env.console, context, lang);
 
     std::vector<std::pair<std::string, std::string>> sid_messages = get_sid_messages(
         env, context, tid, TARGET_ADVANCES, NUM_CANDIDATES
