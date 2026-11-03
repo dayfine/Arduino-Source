@@ -42,8 +42,9 @@
 #ifndef PokemonAutomation_Tests_CommandLineTests_H
 #define PokemonAutomation_Tests_CommandLineTests_H
 
-#include <string>
-#include <vector>
+#include <cstddef>
+#include <span>
+#include <string_view>
 
 namespace PokemonAutomation{
 
@@ -58,7 +59,7 @@ int run_command_line_tests(bool augment_color_distortions);
 // Run the unit tests whose names contain any of `filters`, or all of them if `filters` is empty,
 // and print the results to stdout. Return the number of failed tests, or 1 if
 // `augment_color_distortions` is set and the distortion data can't be loaded.
-size_t run_unit_tests(bool augment_color_distortions, const std::vector<std::string>& filters);
+size_t run_unit_tests(bool augment_color_distortions, std::span<const std::string_view> filters);
 
 
 

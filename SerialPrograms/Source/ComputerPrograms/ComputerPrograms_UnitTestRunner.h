@@ -8,7 +8,9 @@
 #define PokemonAutomation_ComputerPrograms_UnitTestRunner_H
 
 #include <atomic>
+#include <span>
 #include <string>
+#include <string_view>
 #include <vector>
 #include "Common/Cpp/TestRunners/ParallelUnitTestRunner.h"
 #include "Common/Cpp/Options/StaticTextOption.h"
@@ -97,7 +99,7 @@ public:
     //  distortion augmentation to widen the test coverage, using the distortion data in the
     //  CaptureCardCalibration/ folder of the test repo. If that data can't be loaded, log the
     //  error and return 1 without running any test.
-    size_t run(bool augment_color_distortions, const std::vector<std::string>& filters);
+    size_t run(bool augment_color_distortions, std::span<const std::string_view> filters);
 
 
 private:
@@ -117,7 +119,7 @@ private:
 
 //  The names of the unit tests that contain any of `filters`, or of all the tests if `filters`
 //  is empty, in name order.
-std::vector<std::string> unit_test_names(const std::vector<std::string>& filters);
+std::vector<std::string> unit_test_names(std::span<const std::string_view> filters);
 
 
 

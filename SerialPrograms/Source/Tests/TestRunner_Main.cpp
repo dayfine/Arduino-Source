@@ -26,6 +26,7 @@
 #include <iostream>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 #include <QCoreApplication>
 #include "Common/Cpp/Concurrency/Qt6.9ThreadBugWorkaround.h"
@@ -47,24 +48,15 @@
 #include "ComputerPrograms/ComputerPrograms_UnitTestRunner.h"
 #include "Tests/CommandLineTests.h"
 
-using namespace PokemonAutomation;
-
 namespace PokemonAutomation{
-
-bool use_qt_ui(){
-    return false;
-}
-
-}
-
-
 namespace{
 
 constexpr int EXIT_BAD_ARGUMENTS = 255;
 constexpr size_t MAX_FAILURE_EXIT_CODE = 254;
 
 struct TestRunnerArguments{
-    std::vector<std::string> filters;
+    //  Views of argv, which outlives every use.
+    std::vector<std::string_view> filters;
     bool list = false;
     bool augment_color_distortions = false;
 };
@@ -73,7 +65,7 @@ struct TestRunnerArguments{
 std::optional<TestRunnerArguments> parse_arguments(int argc, char* argv[]){
     TestRunnerArguments arguments;
     for (int i = 1; i < argc; i++){
-        const std::string arg = argv[i];
+        const std::string_view arg = argv[i];
         if (arg == "--filter" && i + 1 < argc){
             arguments.filters.emplace_back(argv[++i]);
         }else if (arg == "--list"){
@@ -148,10 +140,8 @@ void stop_thread_pools(){
     GlobalThreadPools::qt_event_threadpool().stop();
 }
 
-}
-
-
-int main(int argc, char* argv[]){
+//  The body of main(). `argc` is a reference because QCoreApplication keeps one.
+int test_runner_main(int& argc, char* argv[]){
     std::optional<TestRunnerArguments> arguments = parse_arguments(argc, argv);
     if (!arguments){
         return EXIT_BAD_ARGUMENTS;
@@ -180,4 +170,19 @@ int main(int argc, char* argv[]){
 #endif
     stop_thread_pools();
     return ret;
+}
+
+} // namespace
+
+
+bool use_qt_ui(){
+    return false;
+}
+
+
+} // namespace PokemonAutomation
+
+
+int main(int argc, char* argv[]){
+    return PokemonAutomation::test_runner_main(argc, argv);
 }

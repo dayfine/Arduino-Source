@@ -44,6 +44,23 @@ namespace PokemonAutomation{
 namespace ComputerPrograms{
 
 
+namespace{
+
+bool matches_any(std::string_view test_name, std::span<const std::string_view> filters){
+    if (filters.empty()){
+        return true;
+    }
+    for (std::string_view filter : filters){
+        if (test_name.contains(filter)){
+            return true;
+        }
+    }
+    return false;
+}
+
+} // namespace
+
+
 
 
 
@@ -86,20 +103,7 @@ const UnitTestDatabase& UNIT_TESTS_ALL(){
     static UnitTestDatabase database = make_UNIT_TESTS_ALL();
     return database;
 }
-namespace{
-bool matches_any(const std::string& test_name, const std::vector<std::string>& filters){
-    if (filters.empty()){
-        return true;
-    }
-    for (const std::string& filter : filters){
-        if (test_name.contains(filter)){
-            return true;
-        }
-    }
-    return false;
-}
-}
-std::vector<std::string> unit_test_names(const std::vector<std::string>& filters){
+std::vector<std::string> unit_test_names(std::span<const std::string_view> filters){
     std::vector<std::string> ret;
     for (const auto& test : UNIT_TESTS_ALL()){
         if (matches_any(test.first, filters)){
@@ -379,7 +383,7 @@ void UnitTestRunner::on_test_finished(
 
 
 
-size_t CommandLineUnitTestRunner::run(bool augment_color_distortions, const std::vector<std::string>& filters){
+size_t CommandLineUnitTestRunner::run(bool augment_color_distortions, std::span<const std::string_view> filters){
     if (augment_color_distortions){
         //  Load the distortion data before any test runs. Each `ImageUnitTest` checks the global
         //  manager when it runs, and only runs with distortions if it is loaded.
