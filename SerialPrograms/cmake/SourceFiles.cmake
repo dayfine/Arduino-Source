@@ -1773,6 +1773,8 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleLevelUpReader.h
     Source/VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleFlashWatcher.cpp
     Source/VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleFlashWatcher.h
+    Source/VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleHpBarReader.cpp
+    Source/VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleHpBarReader.h
     Source/VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattlePokemonDetector.cpp
     Source/VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattlePokemonDetector.h
     Source/VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleScreenDetector.cpp
