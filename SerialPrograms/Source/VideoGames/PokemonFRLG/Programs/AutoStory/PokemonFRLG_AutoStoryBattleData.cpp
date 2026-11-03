@@ -6,7 +6,9 @@
 
 #include <algorithm>
 #include <functional>
+#include <initializer_list>
 #include <map>
+#include <tuple>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/Json/JsonArray.h"
 #include "Common/Cpp/Json/JsonObject.h"
@@ -25,11 +27,13 @@ namespace{
 //  step leaves the player on and the step's name. The rival's teams are
 //  those against a player who took Squirtle. On a map with more than one
 //  trainer of a kind, the object's tile and script (pret
-//  data/maps/<map>/map.json, scripts.inc) say which.
+//  data/maps/<map>/map.json, scripts.inc) say which. A row's `risk`, when
+//  set, overrides its trainer's default_battle_risk(): tune it here.
 struct StoryTrainer{
     std::string_view map;
     std::string_view battle;
     std::string_view trainer;
+    std::optional<BattleRisk> risk = std::nullopt;
 };
 constexpr StoryTrainer STORY_TRAINERS[] = {
     {.map = "PalletTown_ProfessorOaksLab", .battle = "rival_battle", .trainer = "TRAINER_RIVAL_OAKS_LAB_BULBASAUR"},
@@ -80,18 +84,24 @@ uint8_t byte_of(const JsonValue& value){
 template <typename Data>
 using Table = std::map<std::string, Data, std::less<>>;
 
+//  [power, type, pp, accuracy, priority, effect, chance]
 const Table<MoveData>& moves(){
     static const Table<MoveData> MOVES = []{
         Table<MoveData> moves;
         for (const auto& [name, value] : file_json("moves").to_object_throw()){
             const JsonArray& entry = value.to_array_throw();
-            moves.emplace(name, MoveData{.power = byte_of(entry[0]), .type = type_of(entry[1]), .pp = byte_of(entry[2])});
+            moves.emplace(name, MoveData{
+                .power = byte_of(entry[0]), .type = type_of(entry[1]), .pp = byte_of(entry[2]),
+                .accuracy = byte_of(entry[3]), .priority = static_cast<int8_t>(entry[4].to_integer_throw()),
+                .effect = entry[5].to_string_throw(), .effect_chance = byte_of(entry[6]),
+            });
         }
         return moves;
     }();
     return MOVES;
 }
 
+//  [type, type, HP, Attack, Defense, Sp. Atk, Sp. Def, Speed]
 const Table<SpeciesData>& species(){
     static const Table<SpeciesData> SPECIES = []{
         Table<SpeciesData> species;
@@ -99,12 +109,28 @@ const Table<SpeciesData>& species(){
             const JsonArray& entry = value.to_array_throw();
             species.emplace(name, SpeciesData{
                 .first = type_of(entry[0]), .second = type_of(entry[1]),
-                .attack = byte_of(entry[2]), .sp_attack = byte_of(entry[3]),
+                .base = BaseStats{
+                    .hp = byte_of(entry[2]), .attack = byte_of(entry[3]), .defense = byte_of(entry[4]),
+                    .sp_attack = byte_of(entry[5]), .sp_defense = byte_of(entry[6]), .speed = byte_of(entry[7]),
+                },
             });
         }
         return species;
     }();
     return SPECIES;
+}
+
+//  The type chart's rows in its order: (attack, defend, tenths).
+const std::vector<std::tuple<PokemonType, PokemonType, size_t>>& chart_rows(){
+    static const std::vector<std::tuple<PokemonType, PokemonType, size_t>> ROWS = []{
+        std::vector<std::tuple<PokemonType, PokemonType, size_t>> rows;
+        for (const JsonValue& value : file_json("type_chart").to_array_throw()){
+            const JsonArray& entry = value.to_array_throw();
+            rows.emplace_back(type_of(entry[0]), type_of(entry[1]), static_cast<size_t>(entry[2].to_integer_throw()));
+        }
+        return rows;
+    }();
+    return ROWS;
 }
 
 std::vector<std::string> strings_of(const JsonValue& value){
@@ -115,12 +141,27 @@ std::vector<std::string> strings_of(const JsonValue& value){
     return strings;
 }
 
+//  [species, level, iv, nature, [moves]]
 TrainerMon trainer_mon(const JsonArray& entry){
-    TrainerMon mon{.species = entry[0].to_string_throw(), .level = byte_of(entry[1]), .moves = {}};
-    if (entry.size() > 2){
-        mon.moves = strings_of(entry[2]);
+    return TrainerMon{
+        .species = entry[0].to_string_throw(), .level = byte_of(entry[1]),
+        .iv = byte_of(entry[2]), .nature = byte_of(entry[3]), .moves = strings_of(entry[4]),
+    };
+}
+
+//  {"ai": [...], "items": [...], "party": [...]}
+TrainerData trainer_entry(const JsonObject& entry){
+    TrainerData data{.ai = strings_of(entry.get_value_throw("ai")), .items = strings_of(entry.get_value_throw("items")), .party = {}};
+    for (const JsonValue& value : entry.get_value_throw("party").to_array_throw()){
+        data.party.push_back(trainer_mon(value.to_array_throw()));
     }
-    return mon;
+    return data;
+}
+
+bool starts_with_any(std::string_view text, std::initializer_list<std::string_view> prefixes){
+    return std::ranges::any_of(prefixes, [text](std::string_view prefix){
+        return text.starts_with(prefix);
+    });
 }
 
 }
@@ -180,6 +221,22 @@ size_t type_effectiveness(PokemonType attack, PokemonType defend){
     return it == CHART.end() ? 10 : it->second;
 }
 
+std::vector<size_t> type_multipliers(PokemonType attack, PokemonType first, PokemonType second){
+    std::vector<size_t> multipliers;
+    for (const auto& [row_attack, defend, tenths] : chart_rows()){
+        if (row_attack != attack){
+            continue;
+        }
+        if (defend == first){
+            multipliers.push_back(tenths);
+        }
+        if (defend == second && first != second){
+            multipliers.push_back(tenths);
+        }
+    }
+    return multipliers;
+}
+
 bool special_type(PokemonType type){
     switch (type){
     case PokemonType::FIRE:
@@ -197,16 +254,30 @@ bool special_type(PokemonType type){
 }
 
 std::vector<TrainerMon> trainer_mons(std::string_view trainer){
+    std::optional<TrainerData> data = trainer_data(trainer);
+    return data ? std::move(data->party) : std::vector<TrainerMon>{};
+}
+
+std::optional<TrainerData> trainer_data(std::string_view trainer){
     const JsonObject& trainers = file_json("trainers").to_object_throw();
     const auto it = trainers.find(std::string(trainer));
-    std::vector<TrainerMon> party;
     if (it == trainers.end()){
-        return party;
+        return std::nullopt;
     }
-    for (const JsonValue& value : it->second.to_array_throw()){
-        party.push_back(trainer_mon(value.to_array_throw()));
+    return trainer_entry(it->second.to_object_throw());
+}
+
+std::string read_trainer_foe(Logger& logger, Language language, const ImageViewRGB32& screen, const std::vector<std::string>& party){
+    if (language == Language::None || party.empty()){
+        return "";
     }
-    return party;
+    const std::set<std::string> species(party.begin(), party.end());
+    std::string read = WildEncounterReader().read_encounter(logger, language, screen, species).name;
+    if (!species.contains(read)){
+        read.clear();
+    }
+    logger.log(read.empty() ? "Battle: the trainer's Pokemon wasn't read." : "Battle: the trainer's " + read + " is out.");
+    return read;
 }
 
 std::vector<std::string> map_trainers(std::string_view map){
@@ -222,6 +293,26 @@ std::optional<std::string_view> story_trainer(std::string_view map, std::string_
         }
     }
     return std::nullopt;
+}
+
+const char* battle_risk_name(BattleRisk risk){
+    return risk == BattleRisk::HIGH ? "high" : "low";
+}
+
+BattleRisk default_battle_risk(std::string_view trainer){
+    const bool big = starts_with_any(trainer, {
+        "TRAINER_RIVAL_", "TRAINER_CHAMPION_", "TRAINER_LEADER_", "TRAINER_ELITE_FOUR_", "TRAINER_BOSS_", "TRAINER_TEAM_ROCKET_ADMIN",
+    });
+    return big ? BattleRisk::HIGH : BattleRisk::LOW;
+}
+
+BattleRisk story_battle_risk(std::string_view map, std::string_view battle){
+    for (const StoryTrainer& entry : STORY_TRAINERS){
+        if (entry.map == map && entry.battle == battle){
+            return entry.risk ? *entry.risk : default_battle_risk(entry.trainer);
+        }
+    }
+    return BattleRisk::LOW;
 }
 
 

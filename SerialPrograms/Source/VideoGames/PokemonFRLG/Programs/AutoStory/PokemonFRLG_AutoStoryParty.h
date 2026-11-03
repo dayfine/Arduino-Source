@@ -32,6 +32,7 @@
 #include <string_view>
 #include <vector>
 #include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_SummaryMovesReader.h"
+#include "PokemonFRLG_AutoStoryDamage.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -60,7 +61,17 @@ struct PartyMember{
     //  The moves were read off its summary: they are all it knows, even
     //  fewer than four.
     bool moves_read = false;
+    //  Its level as its summary showed it, 0 if not read. Level-ups since
+    //  aren't seen: battle_level() takes the higher of this and
+    //  moves_through_level.
+    uint8_t level = {};
+    //  Its stats as POKEMON SKILLS showed them at `level`, as this
+    //  species; none if not read, or once it evolves.
+    std::optional<Stats> stats = {};
 };
+
+//  The level the battle sim takes for `member`.
+uint8_t battle_level(const PartyMember& member);
 
 //  The species `species` evolves into by level, and at which level.
 struct LevelEvolution{
@@ -89,10 +100,14 @@ PartyMember grown_to(PartyMember member, uint8_t level);
 PartyMember story_lead_after_brock();
 
 //  `species` at `level` with `moves` as its summary shows them, in slot
-//  order. A PP that wasn't read is taken as half the move's full PP: the
-//  game draws the PP in color from half down (pokefirered
-//  pokemon_summary_screen.c), which the reader may not read.
-PartyMember member_from_summary(std::string_view species, uint8_t level, const std::vector<SummaryMove>& moves);
+//  order, and its `stats` if POKEMON SKILLS was read. A PP that wasn't
+//  read is taken as half the move's full PP: the game draws the PP in
+//  color from half down (pokefirered pokemon_summary_screen.c), which the
+//  reader may not read.
+PartyMember member_from_summary(
+    std::string_view species, uint8_t level, const std::vector<SummaryMove>& moves,
+    const std::optional<Stats>& stats = std::nullopt
+);
 
 
 //  The answer to "Delete a move to make room for <move>?".

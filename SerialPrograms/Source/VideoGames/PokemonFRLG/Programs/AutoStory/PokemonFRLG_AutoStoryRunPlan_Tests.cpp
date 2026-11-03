@@ -403,6 +403,63 @@ UnitTestResult test_misty_rows(){
     return true;
 }
 
+//  00.14b in order (Misty lost to at Lv20, console B, run m51): the Mart
+//  first, Potions then Super Potions, the Potions enough for the GRIND's
+//  wild battles at the table's money floor and at least one Super Potion
+//  after them; a GRIND of the lead to Lv23 on Route 4, from a route to its
+//  patch, with Cerulean's nurse as its target; the nurse; then the walk
+//  into the Gym, ending on (9, 7).
+UnitTestResult test_misty_grind_order(){
+    const std::vector<StoryStep>& steps = story_checkpoints()[row_index("00.14b")].steps;
+    std::optional<MartPlan> plan;
+    const size_t mart = find_step(steps, 0, [&](const StoryStep& step){
+        plan = parse_mart_variant(step.variant);
+        return plan && plan->map == "CeruleanCity_Mart";
+    });
+    if (mart == steps.size() || plan->lines.size() < 2 || plan->lines[0].item != "potion" || plan->lines[1].item != "super-potion"
+        || !plan->money_floor
+    ){
+        return "00.14b: expected a Cerulean Mart step buying Potions, then Super Potions, with a money floor.";
+    }
+    const std::optional<std::vector<MartBuy>> buys = plan_mart_buys(mart_stock(plan->map), *plan, *plan->money_floor);
+    if (!buys || buys->size() < 2 || (*buys)[0].quantity < 2 || (*buys)[1].item != "super-potion"){
+        return "00.14b: expected the money floor to buy 2 or more Potions and a Super Potion.";
+    }
+    const size_t grind = find_step(steps, mart, [](const StoryStep& step){
+        const std::optional<GrindPlan> grind_plan = parse_grind_variant(step.variant);
+        return grind_plan && grind_plan->member == 0 && grind_plan->level >= 23;
+    });
+    if (grind == steps.size() || !steps[grind - 1].target || !steps[grind].target){
+        return "00.14b: expected a GRIND of the lead to Lv23 after the Mart, right after a route to its patch, the nurse its target.";
+    }
+    const std::optional<StoryPose> patch = story_pose(*steps[grind - 1].target);
+    const std::optional<StoryPose> nurse = story_pose(*steps[grind].target);
+    if (!patch || patch->map != "Route4" || !nurse || nurse->map != "CeruleanCity_PokemonCenter_1F"
+        || !plans(*steps[grind - 1].target, *steps[grind].target) || !plans(*steps[grind].target, *steps[grind - 1].target)
+    ){
+        return "00.14b: expected the GRIND on Route 4, its trips to Cerulean's nurse and back planning.";
+    }
+    const size_t heal = find_step(steps, grind + 1, [](const StoryStep& step){
+        return step.name == "heal_cerulean";
+    });
+    const size_t gym = find_step(steps, grind + 1, [](const StoryStep& step){
+        const std::optional<StoryPose> pose = step.target ? story_pose(*step.target) : std::nullopt;
+        return pose && pose->map == "CeruleanCity_Gym";
+    });
+    if (heal == steps.size() || gym == steps.size() || heal > gym){
+        return "00.14b: expected the nurse after the GRIND, then the walk into the Gym.";
+    }
+    StoryPose end;
+    for (const StoryStep& step : steps){
+        const std::optional<StoryPose> pose = step.target ? story_pose(*step.target) : std::nullopt;
+        end = pose ? *pose : end;
+    }
+    if (end.map != "CeruleanCity_Gym"){
+        return "00.14b: expected the row to end in Cerulean Gym.";
+    }
+    return true;
+}
+
 }
 
 
@@ -414,6 +471,7 @@ void add_tests_AutoStoryRunPlan(UnitTestDatabase& database){
     database.add<Test_AutoStory>("00.15: Potions at Cerulean's Mart and a GRIND before the rival", test_cerulean_mart_and_grind);
     database.add<Test_AutoStory>("00.15b: the rival's battle alone, from a save before him", test_cerulean_rival_row);
     database.add<Test_AutoStory>("00.14b and 00.14c: Cerulean Gym, then Misty alone from a save before her", test_misty_rows);
+    database.add<Test_AutoStory>("00.14b: Potions and Super Potions, a GRIND to Lv23, the nurse, then the Gym", test_misty_grind_order);
 }
 
 

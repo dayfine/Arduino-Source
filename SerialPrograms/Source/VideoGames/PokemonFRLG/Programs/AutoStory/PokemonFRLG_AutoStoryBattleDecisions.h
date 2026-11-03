@@ -121,6 +121,8 @@ public:
 private:
     TurnAction lead_turn(const PartyStatus& status);
     TurnAction move_turn();
+    //  The HP the lead lost since the last turn, from the bar.
+    void see_hit(const PartyStatus& status);
     void count_down_refused();
     void move_refused();
 
@@ -141,6 +143,14 @@ private:
     //  A YES/NO before the next turn means nothing was forgotten.
     std::optional<PartyMember> m_before_forget;
     std::optional<size_t> m_last_move_slot;
+    //  The lead's HP at the last turn, from the bar, and whether a Potion
+    //  was used on it since.
+    std::optional<double> m_last_hp;
+    bool m_healed = false;
+    //  The HP the last hit seen took, from the foe out `m_hit_by`; 0 if none
+    //  was seen.
+    double m_seen_hit = 0;
+    std::optional<size_t> m_hit_by;
     //  The slots the game turned down, and the turns until they are tried again.
     std::map<size_t, int> m_refused;
     //  The members sent in after the lead fainted.

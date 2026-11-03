@@ -799,17 +799,23 @@ UnitTestResult test_route4_to_cerulean(){
 }
 
 //  Story rows 00.14b and 00.14c in Cerulean Gym (pokefirered map.json):
-//  from the Mart's clerk into the Gym, up column 9 and west to (4, 13),
+//  from the Center into the Gym, up column 9 to (9, 13), west to (4, 13),
 //  then to walls round the pool's west and north sides and west to (9, 7)
 //  below Misty's platform, meeting no one; and back from beside her (9, 6)
 //  the same way round to (9, 13) and out to the Center.
 UnitTestResult test_cerulean_gym_walks(){
-    const SimCase in{.start = at("CeruleanCity_Mart", 4, 3), .facing = Direction::WEST, .goal = at("CeruleanCity_Gym", 4, 13)};
+    const SimCase in{.start = at("CeruleanCity_PokemonCenter_1F", 7, 4), .facing = Direction::NORTH, .goal = at("CeruleanCity_Gym", 9, 13)};
     const SimRun entered = run_case(in);
     if (!arrived(entered, in.goal) || entered.state.warps != 2 || !entered.state.trainers_beaten.empty()){
-        return "Expected the Gym entered and (4, 13) reached, no trainer met:" + describe(entered);
+        return "Expected the Gym entered and (9, 13) reached, no trainer met:" + describe(entered);
     }
-    SimCase up{.start = in.goal, .facing = Direction::WEST, .goal = at("CeruleanCity_Gym", 9, 7)};
+    SimCase west{.start = in.goal, .facing = Direction::NORTH, .goal = at("CeruleanCity_Gym", 4, 13)};
+    west.route = std::vector<RouteStep>{leg(Direction::WEST, 5, west.goal, true)};
+    const SimRun walkway = run_case(west);
+    if (!arrived(walkway, west.goal) || !walkway.state.trainers_beaten.empty()){
+        return "Expected the wall (4, 13) reached west from (9, 13), no trainer met:" + describe(walkway);
+    }
+    SimCase up{.start = west.goal, .facing = Direction::WEST, .goal = at("CeruleanCity_Gym", 9, 7)};
     up.route = std::vector<RouteStep>{
         leg(Direction::NORTH, 3, at("CeruleanCity_Gym", 4, 10), true),
         leg(Direction::EAST, 8, at("CeruleanCity_Gym", 12, 10), true),

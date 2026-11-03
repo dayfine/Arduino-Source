@@ -18,6 +18,7 @@
 #include "PokemonFRLG_AutoStoryBattle.h"
 #include "PokemonFRLG_AutoStoryBattleData.h"
 #include "PokemonFRLG_AutoStoryBattleDecisions.h"
+#include "PokemonFRLG_AutoStoryBattleSim.h"
 #include "PokemonFRLG_AutoStoryParty.h"
 #include "PokemonFRLG_AutoStoryTable.h"
 
@@ -83,7 +84,7 @@ UnitTestResult test_data(){
         return "Expected Bite: 60 power, Dark (special in Gen 3), 25 PP.";
     }
     const SpeciesData* starmie = species_data("starmie");
-    if (starmie == nullptr || starmie->first != PokemonType::WATER || starmie->second != PokemonType::PSYCHIC || starmie->sp_attack != 100){
+    if (starmie == nullptr || starmie->first != PokemonType::WATER || starmie->second != PokemonType::PSYCHIC || starmie->base.sp_attack != 100){
         return "Expected Starmie: Water, Psychic, base Sp. Atk 100.";
     }
     if (battle_species().size() != 386 || species_data("farfetch-d") == nullptr || species_data("missingno") != nullptr){
@@ -193,6 +194,7 @@ void add_tests_AutoStoryBattleData(UnitTestDatabase& database){
     database.add<Test_AutoStoryBattleData>("Miguel's Grimer: Water Gun", test_miguel_grimer);
     database.add<Test_AutoStoryBattleData>("Bite on Psychic, Ghost and Water-resistant foes", test_bite_wins);
     database.add<Test_AutoStoryBattleData>("a wild Pokemon not read: the plan's order", test_wild_fallback);
+    add_tests_AutoStoryBattleSim(database);
 }
 
 
