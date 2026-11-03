@@ -349,14 +349,61 @@ std::string rng_log_attempt(size_t index, const RngAttempt& attempt){
     );
 }
 
-std::string rng_log_result(size_t index, RngAttemptOutcome outcome){
-    const char* name = "MISSED";
-    if (outcome == RngAttemptOutcome::SHINY){
-        name = "SHINY";
-    }else if (outcome == RngAttemptOutcome::HIT_NOT_SHINY){
-        name = "HIT_NOT_SHINY";
+RngPlanNext rng_plan_next(RngPlanStep step, size_t index, size_t next_index){
+    switch (step){
+    case RngPlanStep::RUN_ATTEMPT:
+        return next_index == index ? RngPlanNext::RETRY : RngPlanNext::NEXT_ATTEMPT;
+    case RngPlanStep::GOT_SHINY:
+        return RngPlanNext::CONFIRM;
+    case RngPlanStep::GOT_TARGET:
+    case RngPlanStep::OUT_OF_ATTEMPTS:
+    case RngPlanStep::OUT_OF_RETRIES:
+        return RngPlanNext::STOP;
     }
-    return std::format("RngPlan: result attempt={} outcome={}", index + 1, name);
+    throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "Unknown RngPlanStep.");
+}
+
+namespace{
+
+const char* outcome_name(RngAttemptOutcome outcome){
+    switch (outcome){
+    case RngAttemptOutcome::SHINY:
+        return "shiny";
+    case RngAttemptOutcome::HIT_NOT_SHINY:
+        return "hit_not_shiny";
+    case RngAttemptOutcome::MISSED:
+        return "missed";
+    }
+    throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "Unknown RngAttemptOutcome.");
+}
+
+const char* next_name(RngPlanNext next){
+    switch (next){
+    case RngPlanNext::RETRY:
+        return "retry";
+    case RngPlanNext::NEXT_ATTEMPT:
+        return "next_attempt";
+    case RngPlanNext::CONFIRM:
+        return "confirm";
+    case RngPlanNext::STOP:
+        return "stop";
+    }
+    throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "Unknown RngPlanNext.");
+}
+
+}
+
+std::string rng_log_result(const RngResultLog& result){
+    const std::optional<AdvPokemonResult>& pokemon = result.pokemon;
+    return std::format(
+        "RngPlan: result attempt={} try={} outcome={} starter_rng={} nature={} ivs={} pid={} next={}",
+        result.index + 1, result.try_number, outcome_name(result.outcome),
+        result.detail.empty() ? "-" : result.detail,
+        pokemon ? nature_to_string(pokemon->nature) : "-",
+        pokemon ? ivs_to_string(pokemon->ivs) : "-",
+        pokemon ? std::format("{:08X}", pokemon->pid) : "-",
+        next_name(result.next)
+    );
 }
 
 std::string rng_log_confirmed(uint16_t tid, uint16_t sid, const std::vector<SidCandidate>& sid_helper_candidates){

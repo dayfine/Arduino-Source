@@ -2,8 +2,8 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  The Starter RNG loop's decisions on scripted attempt outcomes and a fake
- *  clock, and the rows a run takes after a shiny.
+ *  The Starter RNG loop's decisions and log lines on scripted attempt
+ *  outcomes and a fake clock, and the rows a run takes after a shiny.
  *
  */
 
@@ -56,8 +56,9 @@ public:
     std::vector<std::string> lines;
 };
 
-//  Each attempt takes `minutes_per_attempt` on the clock and comes out as
-//  the next of `outcomes`.
+//  Each try takes `minutes_per_attempt` on the clock, makes one reset at
+//  its end with calibration 1.5/-2/0.25 frames, and comes out as the next
+//  of `outcomes`.
 class ScriptedSteps : public StarterRngLoopSteps{
 public:
     ScriptedSteps(std::vector<StarterRngOutcome> outcomes, int minutes_per_attempt)
@@ -68,14 +69,15 @@ public:
     virtual WallClock now() override{
         return m_now;
     }
-    virtual StarterRngOutcome run_attempt(size_t index, const RngAttempt&, WallClock deadline) override{
+    virtual StarterRngResult run_attempt(const RngAttempt&, const StarterRngAttemptCall& call) override{
         if (m_next >= m_outcomes.size()){
             throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "More attempts than scripted.");
         }
-        indices.push_back(index);
-        deadlines_min.push_back(int(std::chrono::duration_cast<std::chrono::minutes>(deadline - START).count()));
+        indices.push_back(call.index);
+        deadlines_min.push_back(int(std::chrono::duration_cast<std::chrono::minutes>(call.deadline - START).count()));
         m_now += std::chrono::minutes(m_minutes);
-        return m_outcomes[m_next++];
+        call.on_reset(StarterRngProgress{.resets = 1, .calibrations = {1.5, -2, 0.25}});
+        return StarterRngResult{.outcome = m_outcomes[m_next++], .pokemon = std::nullopt};
     }
 
     std::vector<size_t> indices;
@@ -96,16 +98,22 @@ const std::vector<SidCandidate> CANDIDATES = {{100, 1}, {200, 2}, {300, 1}};
 
 std::vector<RngAttempt> attempts(){
     RngAttempt first{};
+    first.target.seed.seed = 0xceff;
+    first.target.advances = 983;
     first.sids = {100, 200};
     RngAttempt second{};
+    second.target.seed.seed = 0x2ef6;
+    second.target.advances = 29364;
     second.sids = {300};
     return {first, second};
 }
 
-//  60-minute attempts, 12 hours in all.
+//  60-minute tries, 12 hours in all, 50 resets a try, 2 retries.
 const StarterRngLoopLimits LIMITS{
     .attempt_time = std::chrono::minutes(60),
     .total_time = std::chrono::hours(12),
+    .max_resets = 50,
+    .max_retries = 2,
 };
 
 std::string end_name(StarterRngLoopEnd end){
@@ -143,8 +151,8 @@ struct LoopRow{
     std::string attempts_run;
     //  The SID confirmed, or 0 for none.
     uint16_t sid;
-    //  A log line the loop must write; empty for none.
-    std::string line;
+    //  Log lines the loop must write.
+    std::vector<std::string> lines;
 };
 
 const std::vector<LoopRow> LOOP_ROWS = {
@@ -153,49 +161,67 @@ const std::vector<LoopRow> LOOP_ROWS = {
         .outcomes = {StarterRngOutcome::target_hit, StarterRngOutcome::shiny},
         .minutes_per_attempt = 30, .shiny_required = true,
         .end = StarterRngLoopEnd::SHINY, .attempts_run = "1,2", .sid = 300,
-        .line = "RngPlan: confirmed tid=12345 sid=300 candidate=3 of=3",
+        .lines = {
+            "RngPlan: state attempt=1/2 try=1/3 reset=0/50 seed=CEFF advances=983 sids=100,200 ruled_out=- "
+                "attempt_time=00:00:00/01:00:00 total_time=00:00:00/12:00:00 calibration=-",
+            "RngPlan: state attempt=1/2 try=1/3 reset=1/50 seed=CEFF advances=983 sids=100,200 ruled_out=- "
+                "attempt_time=00:30:00/01:00:00 total_time=00:30:00/12:00:00 calibration=1.50/-2.00/0.25",
+            "RngPlan: result attempt=1 try=1 outcome=hit_not_shiny starter_rng=target_hit nature=- ivs=- pid=- next=next_attempt",
+            "RngPlan: state attempt=2/2 try=1/3 reset=0/50 seed=2EF6 advances=29364 sids=300 ruled_out=100,200 "
+                "attempt_time=00:00:00/01:00:00 total_time=00:30:00/12:00:00 calibration=-",
+            "RngPlan: result attempt=2 try=1 outcome=shiny starter_rng=shiny nature=- ivs=- pid=- next=confirm",
+            "RngPlan: confirmed tid=12345 sid=300 candidate=3 of=3",
+        },
     },
     {
         .name = "shiny for two SIDs confirms none",
         .outcomes = {StarterRngOutcome::shiny},
         .minutes_per_attempt = 30, .shiny_required = true,
         .end = StarterRngLoopEnd::SHINY, .attempts_run = "1", .sid = 0,
-        .line = "RngPlan: result attempt=1 outcome=SHINY",
+        .lines = {"RngPlan: result attempt=1 try=1 outcome=shiny starter_rng=shiny nature=- ivs=- pid=- next=confirm"},
     },
     {
         .name = "misses retry the same attempt",
         .outcomes = {StarterRngOutcome::out_of_resets, StarterRngOutcome::no_matches, StarterRngOutcome::shiny},
         .minutes_per_attempt = 30, .shiny_required = true,
         .end = StarterRngLoopEnd::SHINY, .attempts_run = "1,1,1", .sid = 0,
-        .line = "RngPlan: result attempt=1 outcome=MISSED",
+        .lines = {
+            "RngPlan: result attempt=1 try=1 outcome=missed starter_rng=out_of_resets nature=- ivs=- pid=- next=retry",
+            "RngPlan: result attempt=1 try=2 outcome=missed starter_rng=no_matches nature=- ivs=- pid=- next=retry",
+            "RngPlan: result attempt=1 try=3 outcome=shiny starter_rng=shiny nature=- ivs=- pid=- next=confirm",
+        },
     },
     {
         .name = "too many misses stop",
         .outcomes = {StarterRngOutcome::out_of_resets, StarterRngOutcome::out_of_resets, StarterRngOutcome::wild_shiny},
         .minutes_per_attempt = 30, .shiny_required = true,
         .end = StarterRngLoopEnd::OUT_OF_RETRIES, .attempts_run = "1,1,1", .sid = 0,
-        .line = "",
+        .lines = {"RngPlan: result attempt=1 try=3 outcome=missed starter_rng=wild_shiny nature=- ivs=- pid=- next=stop"},
     },
     {
         .name = "every attempt hit, none shiny",
         .outcomes = {StarterRngOutcome::target_hit, StarterRngOutcome::target_hit},
         .minutes_per_attempt = 30, .shiny_required = true,
         .end = StarterRngLoopEnd::OUT_OF_ATTEMPTS, .attempts_run = "1,2", .sid = 0,
-        .line = "RngPlan: result attempt=2 outcome=HIT_NOT_SHINY",
+        .lines = {"RngPlan: result attempt=2 try=1 outcome=hit_not_shiny starter_rng=target_hit nature=- ivs=- pid=- next=stop"},
     },
     {
         .name = "a hit ends the plan with shiny not required",
         .outcomes = {StarterRngOutcome::target_hit},
         .minutes_per_attempt = 30, .shiny_required = false,
         .end = StarterRngLoopEnd::TARGET, .attempts_run = "1", .sid = 0,
-        .line = "",
+        .lines = {},
     },
     {
         .name = "no attempt starts after the total time",
         .outcomes = {StarterRngOutcome::out_of_resets, StarterRngOutcome::out_of_resets},
         .minutes_per_attempt = 400, .shiny_required = true,
         .end = StarterRngLoopEnd::OUT_OF_TIME, .attempts_run = "1,1", .sid = 0,
-        .line = "RngPlan: out of time before attempt 1",
+        .lines = {
+            "RngPlan: state attempt=1/2 try=2/3 reset=1/50 seed=CEFF advances=983 sids=100,200 ruled_out=- "
+                "attempt_time=06:40:00/01:00:00 total_time=13:20:00/12:00:00 calibration=1.50/-2.00/0.25",
+            "RngPlan: out of time before attempt 1",
+        },
     },
 };
 
@@ -212,8 +238,10 @@ UnitTestResult run_loop_row(const LoopRow& row){
     if (expected != got){
         return "Expected " + expected + "; got " + got;
     }
-    if (!row.line.empty() && !logger.has(row.line)){
-        return "Expected the log line \"" + row.line + "\"";
+    for (const std::string& line : row.lines){
+        if (!logger.has(line)){
+            return "Expected the log line \"" + line + "\"";
+        }
     }
     if (result.attempts_run != steps.indices.size()){
         return std::format("Expected attempts_run {}; got {}", steps.indices.size(), result.attempts_run);
@@ -229,7 +257,9 @@ UnitTestResult test_deadlines(){
     RngPlanTracker tracker(attempts(), CANDIDATES, true, 5);
     ScriptedSteps steps({StarterRngOutcome::out_of_resets, StarterRngOutcome::out_of_resets}, 400);
     LineLogger logger;
-    const StarterRngLoopLimits limits{.attempt_time = std::chrono::minutes(60), .total_time = std::chrono::minutes(430)};
+    const StarterRngLoopLimits limits{
+        .attempt_time = std::chrono::minutes(60), .total_time = std::chrono::minutes(430), .max_resets = 50, .max_retries = 5,
+    };
     run_starter_rng_plan(logger, tracker, steps, limits, 12345, CANDIDATES);
     std::string got;
     for (int deadline : steps.deadlines_min){
@@ -237,6 +267,25 @@ UnitTestResult test_deadlines(){
     }
     if (got != "60,430"){
         return "Expected deadlines 60,430 minutes; got " + got;
+    }
+    return true;
+}
+
+
+//  The state line on its own: hours, empty lists and a negative offset.
+UnitTestResult test_state_line(){
+    const std::string got = rng_log_state(RngLoopState{
+        .attempt = 3, .attempts = 5, .try_number = 2, .tries = 3, .resets = 41, .max_resets = 50,
+        .seed = 0x70fe, .advances = 1200, .sids = {}, .ruled_out = {7, 8},
+        .attempt_time = std::chrono::seconds(3 * 3600 + 61), .attempt_cap = std::chrono::hours(3),
+        .total_time = std::chrono::minutes(605), .total_cap = std::chrono::hours(12),
+        .calibration = RngCalibrations{-0.5, 12, -3.125},
+    });
+    const std::string expected =
+        "RngPlan: state attempt=3/5 try=2/3 reset=41/50 seed=70FE advances=1200 sids=- ruled_out=7,8 "
+        "attempt_time=03:01:01/03:00:00 total_time=10:05:00/12:00:00 calibration=-0.50/12.00/-3.12";
+    if (got != expected){
+        return "Expected \"" + expected + "\", got \"" + got + "\".";
     }
     return true;
 }
@@ -288,6 +337,7 @@ void add_tests_AutoStoryRngLoop(UnitTestDatabase& database){
         database.add<Test_AutoStoryRngLoop>(row.name, [row]{ return run_loop_row(row); });
     }
     database.add<Test_AutoStoryRngLoop>("attempt deadlines", test_deadlines);
+    database.add<Test_AutoStoryRngLoop>("state line", test_state_line);
     database.add<Test_AutoStoryRngLoop>("rows after a shiny", test_rows_after_shiny);
 }
 

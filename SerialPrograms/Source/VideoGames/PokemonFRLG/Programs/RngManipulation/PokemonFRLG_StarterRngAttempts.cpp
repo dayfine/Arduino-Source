@@ -214,6 +214,9 @@ void StarterRngAttempts::reset_game(SingleSwitchProgramEnvironment& env, ProCont
         m_launch_delay, false, m_settings.profile
     );
     m_stats.resets++;
+    if (m_settings.on_reset){
+        m_settings.on_reset(StarterRngProgress{.resets = m_stats.resets.load(), .calibrations = m_calibrations});
+    }
 
     m_displays.filters.reset();
     m_displays.calibration.set_calibrations(m_calibrations);

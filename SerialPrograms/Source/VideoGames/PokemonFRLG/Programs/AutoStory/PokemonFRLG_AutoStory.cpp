@@ -388,13 +388,13 @@ static void set_sid_in_program(
 
 namespace{
 
-//  Run Starter RNG in AutoStory: an attempt's misses before the run stops,
-//  Starter RNG's default Max Resets per attempt, and the time caps.
-const size_t STARTER_RNG_MAX_RETRIES = 2;
-const uint64_t STARTER_RNG_MAX_RESETS = 50;
+//  Run Starter RNG in AutoStory: the time caps, Starter RNG's default Max
+//  Resets per try, and an attempt's misses before the run stops.
 const StarterRngLoopLimits STARTER_RNG_LIMITS{
     .attempt_time = std::chrono::hours(3),
     .total_time = std::chrono::hours(12),
+    .max_resets = 50,
+    .max_retries = 2,
 };
 
 }
@@ -408,15 +408,14 @@ static bool run_starter_rng_in_program(
     const StarterRngNotifications& notifications, EventNotificationOption& finished
 ){
     RngPlanTracker tracker(
-        planned.attempts, options.plan_candidates(env.console, planned.tid), options.SHINY_REQUIRED, STARTER_RNG_MAX_RETRIES
+        planned.attempts, options.plan_candidates(env.console, planned.tid), options.SHINY_REQUIRED, STARTER_RNG_LIMITS.max_retries
     );
     ConsoleStarterRngSteps steps(
-        env, context,
-        StarterRngConsoleSettings{.language = language, .sound = options.SOUND, .max_resets = STARTER_RNG_MAX_RESETS},
-        notifications
+        env, context, StarterRngConsoleSettings{.language = language, .sound = options.SOUND}, notifications
     );
+    RngPlanLogger logger(env.console);
     const StarterRngLoopResult result = run_starter_rng_plan(
-        env.console, tracker, steps, STARTER_RNG_LIMITS, planned.tid, options.helper_candidates(planned.tid)
+        logger, tracker, steps, STARTER_RNG_LIMITS, planned.tid, options.helper_candidates(planned.tid)
     );
     const std::string message = starter_rng_loop_message(result);
     if (result.end != StarterRngLoopEnd::SHINY){
