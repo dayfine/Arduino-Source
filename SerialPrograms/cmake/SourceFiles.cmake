@@ -1842,9 +1842,6 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryItems_Tests.cpp
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryRngOptions.cpp
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryRngOptions.h
-    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryRngPlan.cpp
-    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryRngPlan.h
-    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryRngPlan_Tests.cpp
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryTable.cpp
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryTable.h
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStorySimulation_Tests.cpp
@@ -1895,6 +1892,24 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_RngLoopRoutines.h
     Source/VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_RngNavigation.cpp
     Source/VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_RngNavigation.h
+    Source/VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_RngPlan.cpp
+    Source/VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_RngPlan.h
+    Source/VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_RngPlan_Tests.cpp
+    Source/VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_RngPlan_Tests.h
+    Source/VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_RngPlanInputs.cpp
+    Source/VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_RngPlanInputs.h
+    Source/VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_RngPlanInputs_Tests.cpp
+    Source/VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_RngPlanInputs_Tests.h
+    Source/VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_RngPlanLog.cpp
+    Source/VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_RngPlanLog.h
+    Source/VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_RngPlanLog_Tests.cpp
+    Source/VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_RngPlanLog_Tests.h
+    Source/VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_RngPlanTestTargets.cpp
+    Source/VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_RngPlanTestTargets.h
+    Source/VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_RngPlanTracker.cpp
+    Source/VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_RngPlanTracker.h
+    Source/VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_RngPlanTracker_Tests.cpp
+    Source/VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_RngPlanTracker_Tests.h
     Source/VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_RngStatsDatabase.cpp
     Source/VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_RngStatsDatabase.h
     Source/VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_RngSteps_Tests.cpp

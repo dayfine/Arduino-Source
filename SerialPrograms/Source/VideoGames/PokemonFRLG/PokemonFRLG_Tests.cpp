@@ -40,8 +40,11 @@
 #include "Programs/PokemonFRLG_NamingScreenKeyboard.h"
 #include "PokemonFRLG_Navigation.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryBattle.h"
-#include "Programs/AutoStory/PokemonFRLG_AutoStoryRngPlan.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryTable.h"
+#include "Programs/RngManipulation/PokemonFRLG_RngPlanInputs_Tests.h"
+#include "Programs/RngManipulation/PokemonFRLG_RngPlanLog_Tests.h"
+#include "Programs/RngManipulation/PokemonFRLG_RngPlanTracker_Tests.h"
+#include "Programs/RngManipulation/PokemonFRLG_RngPlan_Tests.h"
 #include "Programs/RngManipulation/PokemonFRLG_RngSteps_Tests.h"
 #include "Programs/RngManipulation/PokemonFRLG_RngTargetSearch_Tests.h"
 #include "Tests/TestUtils.h"
@@ -704,12 +707,15 @@ void add_tests(UnitTestDatabase& database){
     add_tests_AutoStory(database);
     add_tests_AutoStorySimulation(database);
     add_tests_AutoStoryItems(database);
-    add_tests_AutoStoryRngPlan(database);
     add_tests_NamingCursor(database);
     add_tests_NamingPlan(database);
     add_tests_NamingKeys(database);
     add_tests_NamingText(database);
     add_tests_RngTargetSearch(database);
+    add_tests_RngPlanInputs(database);
+    add_tests_RngPlan(database);
+    add_tests_RngPlanTracker(database);
+    add_tests_RngPlanLog(database);
     add_tests_RngSteps(database);
 }
 
