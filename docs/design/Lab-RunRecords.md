@@ -239,6 +239,22 @@ reports the program's best estimate of the player's tile and facing, so
 The old `CommandFiles/` folder can go once Lab carries every CFR command;
 that is cleanup, not part of this design.
 
+**Follow-up watcher** (**proposed**, from the user, 2026-11-02). An agent
+that only reads a run until it ends, then does what comes after with CFR, so
+a stable farming program such as Max Lair does not grow follow-up steps of
+its own. Example: Max Lair stops on a shiny (or on an error, or out of ore);
+the watcher sees `result.json` turn `terminal`, reads the outcome, the error
+and the last events, opens the end frame, and then acts through CFR: a
+`shot` to confirm, HOME so nothing times out, a note or a notification, or
+the next program for the shiny case. Rules: while the run is active it sends
+nothing to the console (no `stop`, no probes that press buttons); it takes
+the console only after `terminal`, through `lablock.sh`; and it acts on the
+program's stated outcome, so a program it serves must say *why* it stopped
+(a `screenshot` or `checkpoint` event naming the reason, or a distinct
+error text), not only that it did. Needs `labctl.sh wait` (today) and
+`runs.py show` (milestone 3); no new framework code. The follow-up recipes
+(per program and outcome) live in the agent's skill, not in the program.
+
 **Run index and CLI.** No index file: folder names sort by start time and
 `result.json` has the summary. `labctl.sh wait` exists. **Proposed:**
 `devtools/lab/runs.py` (standard library only, like `devtools/maps`):
@@ -260,6 +276,7 @@ the first slice is two PRs:
 | 3 | new `lab/runs-cli` | #116 | `devtools/lab/runs.py` list/show/report | ~250 |
 | 4 | commits on #114, #120, #128 | #132 | `SegmentHooks.event`, route log events, per-game forwarding with attempt frames | ~80 shared, ~40 per game |
 | 5 | commit on #125 | 4 | `route_trace.py` reads `events.jsonl` | ~80 |
+| 6 | agent skill, no PR | 3 | follow-up watcher: wait on a run, then act by outcome with CFR; first user: Max Lair on a shiny | skill only |
 
 1 and 2 are reviewed together; 3 needs only 2; 4 needs only 1; 5 needs 4
 and #125. `lab/run-records-base` is `lab/tooling` with `main` and #132
