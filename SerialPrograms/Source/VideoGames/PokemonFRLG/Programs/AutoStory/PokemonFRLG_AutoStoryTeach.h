@@ -136,6 +136,8 @@ public:
     virtual void stop_teaching() = 0;
     //  Back to the overworld. False if it didn't come back.
     virtual bool leave() = 0;
+    //  Saves the screen as a debug image, named `label`: the step failed.
+    virtual void dump_screen(std::string_view label) = 0;
 };
 
 enum class TeachEnd{
