@@ -589,7 +589,11 @@ UnitTestResult test_route25_trainers(){
 //  00.20 on the sim, its walks from the Center: over Nugget Bridge, whose
 //  trainers 00.16 beat (they stand there, but don't battle), onto Route
 //  24's grass at (4, 19) out of Camper Shane's sight, and back to the
-//  nurse. No trainer battles on the way.
+//  nurse. No trainer battles on the way. The open leg north from Cerulean
+//  City onto the bridge crosses onto Route 24, where the game holds the
+//  player up a tile: held for its tiles alone it ended on (11, 16), a tile
+//  short, and the leg west bumped the bridge's posts (console B,
+//  2026-11-03, row 00.20, twice).
 UnitTestResult test_oddish_walks(){
     const std::vector<StoryCheckpoint>& rows = story_checkpoints();
     const auto row = std::find_if(rows.begin(), rows.end(), [](const StoryCheckpoint& data){ return data.id == "00.20"; });
