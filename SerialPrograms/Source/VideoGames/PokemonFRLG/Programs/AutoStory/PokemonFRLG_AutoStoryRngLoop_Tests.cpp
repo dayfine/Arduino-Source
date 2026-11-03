@@ -120,12 +120,14 @@ std::string end_name(StarterRngLoopEnd end){
     switch (end){
     case StarterRngLoopEnd::SHINY:
         return "SHINY";
+    case StarterRngLoopEnd::SHINY_OFF_TARGET:
+        return "SHINY_OFF_TARGET";
     case StarterRngLoopEnd::TARGET:
         return "TARGET";
     case StarterRngLoopEnd::OUT_OF_ATTEMPTS:
         return "OUT_OF_ATTEMPTS";
-    case StarterRngLoopEnd::OUT_OF_RETRIES:
-        return "OUT_OF_RETRIES";
+    case StarterRngLoopEnd::MISSED_EVERY_ATTEMPT_LEFT:
+        return "MISSED_EVERY_ATTEMPT_LEFT";
     case StarterRngLoopEnd::OUT_OF_TIME:
         return "OUT_OF_TIME";
     }
@@ -149,16 +151,18 @@ struct LoopRow{
     StarterRngLoopEnd end;
     //  The attempts run, from 1, as "1,1,2".
     std::string attempts_run;
-    //  The SID confirmed, or 0 for none.
+    //  The SID confirmed, or 0 for none; with it, an "RngPlan: confirmed" line.
     uint16_t sid;
     //  Log lines the loop must write.
     std::vector<std::string> lines;
 };
 
+using enum StarterRngOutcome;
+
 const std::vector<LoopRow> LOOP_ROWS = {
     {
         .name = "hit, then shiny confirms the SID",
-        .outcomes = {StarterRngOutcome::target_hit, StarterRngOutcome::shiny},
+        .outcomes = {target_hit, shiny_on_target},
         .minutes_per_attempt = 30, .shiny_required = true,
         .end = StarterRngLoopEnd::SHINY, .attempts_run = "1,2", .sid = 300,
         .lines = {
@@ -169,52 +173,94 @@ const std::vector<LoopRow> LOOP_ROWS = {
             "RngPlan: result attempt=1 try=1 outcome=hit_not_shiny starter_rng=target_hit nature=- ivs=- pid=- next=next_attempt",
             "RngPlan: state attempt=2/2 try=1/3 reset=0/50 seed=2EF6 advances=29364 sids=300 ruled_out=100,200 "
                 "attempt_time=00:00:00/01:00:00 total_time=00:30:00/12:00:00 calibration=-",
-            "RngPlan: result attempt=2 try=1 outcome=shiny starter_rng=shiny nature=- ivs=- pid=- next=confirm",
+            "RngPlan: result attempt=2 try=1 outcome=shiny starter_rng=shiny_on_target nature=- ivs=- pid=- next=confirm",
             "RngPlan: confirmed tid=12345 sid=300 candidate=3 of=3",
         },
     },
     {
-        .name = "shiny for two SIDs confirms none",
-        .outcomes = {StarterRngOutcome::shiny},
+        .name = "shiny on the target for two SIDs confirms none",
+        .outcomes = {shiny_on_target},
         .minutes_per_attempt = 30, .shiny_required = true,
         .end = StarterRngLoopEnd::SHINY, .attempts_run = "1", .sid = 0,
-        .lines = {"RngPlan: result attempt=1 try=1 outcome=shiny starter_rng=shiny nature=- ivs=- pid=- next=confirm"},
+        .lines = {"RngPlan: result attempt=1 try=1 outcome=shiny starter_rng=shiny_on_target nature=- ivs=- pid=- next=confirm"},
+    },
+    {
+        .name = "shiny off the target confirms nothing",
+        .outcomes = {target_hit, shiny_off_target},
+        .minutes_per_attempt = 30, .shiny_required = true,
+        .end = StarterRngLoopEnd::SHINY_OFF_TARGET, .attempts_run = "1,2", .sid = 0,
+        .lines = {"RngPlan: result attempt=2 try=1 outcome=shiny_off_target starter_rng=shiny_off_target nature=- ivs=- pid=- next=stop"},
+    },
+    {
+        .name = "a shiny not known to be the target confirms nothing",
+        .outcomes = {shiny},
+        .minutes_per_attempt = 30, .shiny_required = true,
+        .end = StarterRngLoopEnd::SHINY_OFF_TARGET, .attempts_run = "1", .sid = 0,
+        .lines = {"RngPlan: result attempt=1 try=1 outcome=shiny_off_target starter_rng=shiny nature=- ivs=- pid=- next=stop"},
     },
     {
         .name = "misses retry the same attempt",
-        .outcomes = {StarterRngOutcome::out_of_resets, StarterRngOutcome::no_matches, StarterRngOutcome::shiny},
+        .outcomes = {out_of_resets, no_matches, shiny_on_target},
         .minutes_per_attempt = 30, .shiny_required = true,
         .end = StarterRngLoopEnd::SHINY, .attempts_run = "1,1,1", .sid = 0,
         .lines = {
             "RngPlan: result attempt=1 try=1 outcome=missed starter_rng=out_of_resets nature=- ivs=- pid=- next=retry",
             "RngPlan: result attempt=1 try=2 outcome=missed starter_rng=no_matches nature=- ivs=- pid=- next=retry",
-            "RngPlan: result attempt=1 try=3 outcome=shiny starter_rng=shiny nature=- ivs=- pid=- next=confirm",
+            "RngPlan: result attempt=1 try=3 outcome=shiny starter_rng=shiny_on_target nature=- ivs=- pid=- next=confirm",
         },
     },
     {
-        .name = "too many misses stop",
-        .outcomes = {StarterRngOutcome::out_of_resets, StarterRngOutcome::out_of_resets, StarterRngOutcome::wild_shiny},
+        .name = "an attempt past its deadline",
+        .outcomes = {out_of_resets, shiny_on_target},
+        .minutes_per_attempt = 90, .shiny_required = true,
+        .end = StarterRngLoopEnd::SHINY, .attempts_run = "1,1", .sid = 0,
+        .lines = {"RngPlan: result attempt=1 try=1 outcome=missed starter_rng=attempt_deadline nature=- ivs=- pid=- next=retry"},
+    },
+    {
+        .name = "retries used up, then the next attempt",
+        .outcomes = {out_of_resets, no_matches, wild_shiny, shiny_on_target},
         .minutes_per_attempt = 30, .shiny_required = true,
-        .end = StarterRngLoopEnd::OUT_OF_RETRIES, .attempts_run = "1,1,1", .sid = 0,
-        .lines = {"RngPlan: result attempt=1 try=3 outcome=missed starter_rng=wild_shiny nature=- ivs=- pid=- next=stop"},
+        .end = StarterRngLoopEnd::SHINY, .attempts_run = "1,1,1,2", .sid = 300,
+        .lines = {
+            "RngPlan: result attempt=1 try=3 outcome=missed starter_rng=wild_shiny nature=- ivs=- pid=- next=next_attempt",
+            "RngPlan: result attempt=2 try=1 outcome=shiny starter_rng=shiny_on_target nature=- ivs=- pid=- next=confirm",
+            "RngPlan: confirmed tid=12345 sid=300 candidate=3 of=3",
+        },
+    },
+    {
+        .name = "every attempt left missed too often",
+        .outcomes = {out_of_resets, out_of_resets, out_of_resets, no_matches, no_matches, no_matches},
+        .minutes_per_attempt = 30, .shiny_required = true,
+        .end = StarterRngLoopEnd::MISSED_EVERY_ATTEMPT_LEFT, .attempts_run = "1,1,1,2,2,2", .sid = 0,
+        .lines = {"RngPlan: result attempt=2 try=3 outcome=missed starter_rng=no_matches nature=- ivs=- pid=- next=stop"},
+    },
+    {
+        .name = "miss, hit, miss, then shiny",
+        .outcomes = {out_of_resets, target_hit, no_matches, shiny_on_target},
+        .minutes_per_attempt = 30, .shiny_required = true,
+        .end = StarterRngLoopEnd::SHINY, .attempts_run = "1,1,2,2", .sid = 300,
+        .lines = {
+            "RngPlan: result attempt=1 try=2 outcome=hit_not_shiny starter_rng=target_hit nature=- ivs=- pid=- next=next_attempt",
+            "RngPlan: result attempt=2 try=2 outcome=shiny starter_rng=shiny_on_target nature=- ivs=- pid=- next=confirm",
+        },
     },
     {
         .name = "every attempt hit, none shiny",
-        .outcomes = {StarterRngOutcome::target_hit, StarterRngOutcome::target_hit},
+        .outcomes = {target_hit, target_hit},
         .minutes_per_attempt = 30, .shiny_required = true,
         .end = StarterRngLoopEnd::OUT_OF_ATTEMPTS, .attempts_run = "1,2", .sid = 0,
         .lines = {"RngPlan: result attempt=2 try=1 outcome=hit_not_shiny starter_rng=target_hit nature=- ivs=- pid=- next=stop"},
     },
     {
         .name = "a hit ends the plan with shiny not required",
-        .outcomes = {StarterRngOutcome::target_hit},
+        .outcomes = {target_hit},
         .minutes_per_attempt = 30, .shiny_required = false,
         .end = StarterRngLoopEnd::TARGET, .attempts_run = "1", .sid = 0,
         .lines = {},
     },
     {
         .name = "no attempt starts after the total time",
-        .outcomes = {StarterRngOutcome::out_of_resets, StarterRngOutcome::out_of_resets},
+        .outcomes = {out_of_resets, out_of_resets},
         .minutes_per_attempt = 400, .shiny_required = true,
         .end = StarterRngLoopEnd::OUT_OF_TIME, .attempts_run = "1,1", .sid = 0,
         .lines = {
@@ -243,6 +289,12 @@ UnitTestResult run_loop_row(const LoopRow& row){
             return "Expected the log line \"" + line + "\"";
         }
     }
+    const bool confirmed = std::any_of(logger.lines.begin(), logger.lines.end(), [](const std::string& line){
+        return line.starts_with("RngPlan: confirmed");
+    });
+    if (confirmed != (row.sid != 0)){
+        return std::format("Expected {} \"RngPlan: confirmed\" line", row.sid != 0 ? "a" : "no");
+    }
     if (result.attempts_run != steps.indices.size()){
         return std::format("Expected attempts_run {}; got {}", steps.indices.size(), result.attempts_run);
     }
@@ -267,6 +319,41 @@ UnitTestResult test_deadlines(){
     }
     if (got != "60,430"){
         return "Expected deadlines 60,430 minutes; got " + got;
+    }
+    return true;
+}
+
+
+//  What the run says after a shiny, by what it tells of the SID.
+UnitTestResult test_shiny_messages(){
+    struct Case{
+        StarterRngLoopResult result;
+        std::string expected;
+    };
+    const std::vector<Case> cases = {
+        {
+            .result = {.end = StarterRngLoopEnd::SHINY, .attempts_run = 2, .remaining_sids = {300}, .sid = uint16_t(300)},
+            .expected = "Starter RNG: shiny Squirtle. The SID is 300: enter it as the RNG plan's SID.",
+        },
+        {
+            .result = {.end = StarterRngLoopEnd::SHINY, .attempts_run = 1, .remaining_sids = {100, 200}, .sid = std::nullopt},
+            .expected = "Starter RNG: shiny Squirtle. The SID is one of 100,200.",
+        },
+        {
+            .result = {.end = StarterRngLoopEnd::SHINY, .attempts_run = 1, .remaining_sids = {}, .sid = std::nullopt},
+            .expected = "Starter RNG: shiny Squirtle, for none of the SID candidates left: the SID isn't one of SID Helper's candidates.",
+        },
+        {
+            .result = {.end = StarterRngLoopEnd::SHINY_OFF_TARGET, .attempts_run = 1, .remaining_sids = {100, 200}, .sid = std::nullopt},
+            .expected = "Starter RNG: shiny Squirtle, but not the planned target, so it doesn't tell the SID. "
+                "SIDs left: 100,200.",
+        },
+    };
+    for (const Case& item : cases){
+        const std::string got = starter_rng_loop_message(item.result);
+        if (got != item.expected){
+            return "Expected \"" + item.expected + "\", got \"" + got + "\".";
+        }
     }
     return true;
 }
@@ -338,6 +425,7 @@ void add_tests_AutoStoryRngLoop(UnitTestDatabase& database){
     }
     database.add<Test_AutoStoryRngLoop>("attempt deadlines", test_deadlines);
     database.add<Test_AutoStoryRngLoop>("state line", test_state_line);
+    database.add<Test_AutoStoryRngLoop>("shiny messages", test_shiny_messages);
     database.add<Test_AutoStoryRngLoop>("rows after a shiny", test_rows_after_shiny);
 }
 

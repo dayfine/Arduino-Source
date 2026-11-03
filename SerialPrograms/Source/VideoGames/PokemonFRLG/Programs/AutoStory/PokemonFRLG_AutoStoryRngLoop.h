@@ -46,10 +46,14 @@ struct StarterRngPlanned{
     std::vector<RngAttempt> attempts;
 };
 
-//  Starter RNG's outcome as the RNG plan counts it. Out of resets, no
-//  matches and a wild shiny are misses, which the plan runs again.
+//  Starter RNG's outcome as the RNG plan counts it. Only a shiny on the
+//  target is SHINY; one off it, or not known to be on it, is
+//  SHINY_OFF_TARGET. Out of resets, no matches and a wild shiny are misses,
+//  which the plan runs again.
 RngAttemptOutcome plan_outcome(StarterRngOutcome outcome);
-//  As the result line names it: "shiny", "target_hit", "out_of_resets"...
+//  As the result line names it: "shiny_on_target", "target_hit",
+//  "out_of_resets"... (The loop says "attempt_deadline" instead of
+//  "out_of_resets" once the try's deadline has passed.)
 std::string starter_rng_outcome_name(StarterRngOutcome outcome);
 
 
@@ -112,15 +116,19 @@ public:
 };
 
 enum class StarterRngLoopEnd{
-    //  The starter is shiny; the game is on its summary, not saved.
+    //  The starter is shiny and the target; the game is on its summary, not saved.
     SHINY,
+    //  The starter is shiny but not the target (or not known to be), so it
+    //  doesn't tell the SID; the game is on its summary, not saved.
+    SHINY_OFF_TARGET,
     //  Shiny not required, and the target was hit. The game is where
     //  Starter RNG's calibration left it, not saved.
     TARGET,
     //  Every attempt was hit and none was shiny.
     OUT_OF_ATTEMPTS,
-    //  One attempt missed more often than the retries allow.
-    OUT_OF_RETRIES,
+    //  The last attempt still shiny for a SID left missed more often than
+    //  the retries allow.
+    MISSED_EVERY_ATTEMPT_LEFT,
     //  The total time ran out with attempts left.
     OUT_OF_TIME,
 };

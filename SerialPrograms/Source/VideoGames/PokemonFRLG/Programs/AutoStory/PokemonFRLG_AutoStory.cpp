@@ -400,8 +400,8 @@ const StarterRngLoopLimits STARTER_RNG_LIMITS{
 }
 
 //  Starter RNG's attempts in the program, from the save south of the table.
-//  Returns true for a shiny Squirtle, the game on its summary; otherwise the
-//  run has stopped with what to do next.
+//  Returns true for a shiny Squirtle, on the target or not, the game on its
+//  summary; otherwise the run has stopped with what to do next.
 static bool run_starter_rng_in_program(
     SingleSwitchProgramEnvironment& env, ProControllerContext& context,
     const StarterRngPlanned& planned, const StarterRngPlanOptions& options, Language language,
@@ -418,7 +418,7 @@ static bool run_starter_rng_in_program(
         logger, tracker, steps, STARTER_RNG_LIMITS, planned.tid, options.helper_candidates(planned.tid)
     );
     const std::string message = starter_rng_loop_message(result);
-    if (result.end != StarterRngLoopEnd::SHINY){
+    if (result.end != StarterRngLoopEnd::SHINY && result.end != StarterRngLoopEnd::SHINY_OFF_TARGET){
         stop_for_handoff(env, finished, message);
         return false;
     }

@@ -17,8 +17,11 @@ namespace PokemonFRLG{
 
 RngAttemptOutcome plan_outcome(StarterRngOutcome outcome){
     switch (outcome){
-    case StarterRngOutcome::shiny:
+    case StarterRngOutcome::shiny_on_target:
         return RngAttemptOutcome::SHINY;
+    case StarterRngOutcome::shiny:
+    case StarterRngOutcome::shiny_off_target:
+        return RngAttemptOutcome::SHINY_OFF_TARGET;
     case StarterRngOutcome::target_hit:
         return RngAttemptOutcome::HIT_NOT_SHINY;
     case StarterRngOutcome::wild_shiny:
@@ -33,6 +36,10 @@ std::string starter_rng_outcome_name(StarterRngOutcome outcome){
     switch (outcome){
     case StarterRngOutcome::shiny:
         return "shiny";
+    case StarterRngOutcome::shiny_on_target:
+        return "shiny_on_target";
+    case StarterRngOutcome::shiny_off_target:
+        return "shiny_off_target";
     case StarterRngOutcome::target_hit:
         return "target_hit";
     case StarterRngOutcome::wild_shiny:
@@ -92,12 +99,14 @@ std::optional<StarterRngLoopEnd> loop_end(RngPlanStep step){
         return std::nullopt;
     case RngPlanStep::GOT_SHINY:
         return StarterRngLoopEnd::SHINY;
+    case RngPlanStep::GOT_SHINY_OFF_TARGET:
+        return StarterRngLoopEnd::SHINY_OFF_TARGET;
     case RngPlanStep::GOT_TARGET:
         return StarterRngLoopEnd::TARGET;
     case RngPlanStep::OUT_OF_ATTEMPTS:
         return StarterRngLoopEnd::OUT_OF_ATTEMPTS;
-    case RngPlanStep::OUT_OF_RETRIES:
-        return StarterRngLoopEnd::OUT_OF_RETRIES;
+    case RngPlanStep::MISSED_EVERY_ATTEMPT_LEFT:
+        return StarterRngLoopEnd::MISSED_EVERY_ATTEMPT_LEFT;
     }
     throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "Unknown RNG plan step.");
 }
@@ -159,13 +168,13 @@ private:
 //  Runs one try of the tracker's current attempt, logging its state lines.
 StarterRngResult run_try(
     LoopLog& log, const RngPlanTracker& tracker, StarterRngLoopSteps& steps,
-    const StarterRngLoopLimits& limits, WallClock start, WallClock total_deadline
+    const StarterRngLoopLimits& limits, WallClock start, WallClock deadline
 ){
     log.begin_try(start);
     log.log_state(start, 0, std::nullopt);
     StarterRngAttemptCall call{
         .index = tracker.attempt_index(),
-        .deadline = std::min(start + limits.attempt_time, total_deadline),
+        .deadline = deadline,
         .max_resets = limits.max_resets,
         .on_reset = [&](const StarterRngProgress& progress){
             log.log_state(steps.now(), progress.resets, progress.calibrations);
@@ -198,13 +207,16 @@ StarterRngLoopResult run_starter_rng_plan(
             break;
         }
         const size_t index = tracker.attempt_index();
-        const StarterRngResult attempt = run_try(log, tracker, steps, limits, start, total_deadline);
+        const WallClock deadline = std::min(start + limits.attempt_time, total_deadline);
+        const StarterRngResult attempt = run_try(log, tracker, steps, limits, start, deadline);
+        //  The deadline ends a try as out of resets.
+        const bool past_deadline = attempt.outcome == StarterRngOutcome::out_of_resets && steps.now() >= deadline;
         const RngAttemptOutcome outcome = plan_outcome(attempt.outcome);
         result.attempts_run++;
         const RngPlanStep step = tracker.record(outcome);
         logger.log(rng_log_result(RngResultLog{
             .index = index, .try_number = log.try_number(), .outcome = outcome,
-            .detail = starter_rng_outcome_name(attempt.outcome), .pokemon = attempt.pokemon,
+            .detail = past_deadline ? "attempt_deadline" : starter_rng_outcome_name(attempt.outcome), .pokemon = attempt.pokemon,
             .next = rng_plan_next(step, index, tracker.attempt_index()),
         }));
     }
@@ -220,9 +232,17 @@ std::string starter_rng_loop_message(const StarterRngLoopResult& result){
     const std::string sids = join_sids(result.remaining_sids);
     switch (result.end){
     case StarterRngLoopEnd::SHINY:
-        return result.sid
-            ? std::format("Starter RNG: shiny Squirtle. The SID is {}: enter it as the RNG plan's SID.", *result.sid)
-            : std::format("Starter RNG: shiny Squirtle. The SID is one of {}.", sids);
+        if (result.sid){
+            return std::format("Starter RNG: shiny Squirtle. The SID is {}: enter it as the RNG plan's SID.", *result.sid);
+        }
+        if (result.remaining_sids.empty()){
+            return "Starter RNG: shiny Squirtle, for none of the SID candidates left: the SID isn't one of SID Helper's candidates.";
+        }
+        return std::format("Starter RNG: shiny Squirtle. The SID is one of {}.", sids);
+    case StarterRngLoopEnd::SHINY_OFF_TARGET:
+        return std::format(
+            "Starter RNG: shiny Squirtle, but not the planned target, so it doesn't tell the SID. SIDs left: {}.", sids
+        );
     case StarterRngLoopEnd::TARGET:
         return "Starter RNG hit the target (shiny not required). Nothing was saved after it: the game is where "
             "Starter RNG's calibration left it. Play to the rival's battle and save by hand, then start AutoStory at 00.05.";
@@ -231,8 +251,8 @@ std::string starter_rng_loop_message(const StarterRngLoopResult& result){
             "Starter RNG: every planned attempt hit its target and none was shiny. SIDs left: {}. "
             "The save is still south of the table: raise the RNG plan's max attempts and start AutoStory at 00.04 again.", sids
         );
-    case StarterRngLoopEnd::OUT_OF_RETRIES:
-        return "Starter RNG: one attempt missed its target more often than the retries allow. "
+    case StarterRngLoopEnd::MISSED_EVERY_ATTEMPT_LEFT:
+        return "Starter RNG: every attempt left missed its target more often than the retries allow. "
             "The save is still south of the table: check the RNG plan's sound setting and start AutoStory at 00.04 again.";
     case StarterRngLoopEnd::OUT_OF_TIME:
         return std::format(
@@ -318,6 +338,7 @@ StarterRngResult ConsoleStarterRngSteps::run_attempt(const RngAttempt& attempt, 
             .profile = 0,
             .ignore_wild_shinies = true,
             .take_video = false,
+            .identify_shiny = true,
             .max_resets = [deadline = call.deadline, max_resets = call.max_resets]{
                 return current_time() >= deadline ? uint64_t(0) : max_resets;
             },
