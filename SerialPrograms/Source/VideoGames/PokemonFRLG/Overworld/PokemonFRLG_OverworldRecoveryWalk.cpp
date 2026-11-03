@@ -25,9 +25,10 @@ using namespace OverworldWalkSteps;
 
 namespace{
 
-//  An open leg stops at its first interruption: how far it got isn't
-//  counted (that went wrong too often on the console), the route finds the
-//  player again at a wall instead. See walk_overworld_route_with_recovery().
+//  An open leg stops at its first interruption: walking on from how far it
+//  got went wrong too often on the console. The timing only narrows where
+//  the player is, and the route finds them again at a wall. See
+//  walk_overworld_route_with_recovery().
 Pokemon::LegSpec leg_spec(const RouteStep& step, MoveSpeed speed){
     Pokemon::LegSpec leg;
     leg.direction = step.direction;
@@ -39,15 +40,15 @@ Pokemon::LegSpec leg_spec(const RouteStep& step, MoveSpeed speed){
     return leg;
 }
 
-//  One step of a route, for a player facing `facing`. Returns false if an
-//  open leg stopped part-way, so where the player is isn't known.
-bool walk_step(
+//  One step of a route, for a player facing `facing`. If an open leg
+//  stopped part-way, returns how far the timing puts the player along it.
+std::optional<WalkedTiles> walk_step(
     ConsoleHandle& console, ProControllerContext& context,
     const RouteStep& step, std::optional<Direction> facing,
     const OverworldInterruptSet& interrupts, MoveSpeed speed
 ){
     switch (step.action){
-    case RouteAction::WALK:
+    case RouteAction::WALK:{
         //  Turning first, with a tap, makes the hold start from a standstill
         //  facing the right way: holding through a turn lost a tile on the
         //  console, while holds from a standstill were exact over 15 tiles.
@@ -57,8 +58,12 @@ bool walk_step(
         if (const std::string note = speed_note(step, speed); !note.empty()){
             console.log(note);
         }
-        if (Pokemon::walk_leg(console, context, leg_mover(step, speed), step.wild ? interrupts.wild : interrupts.other, leg_spec(step, speed), MAX_INTERRUPTIONS_PER_LEG).stopped){
-            return false;
+        const Pokemon::LegResult result = Pokemon::walk_leg(
+            console, context, leg_mover(step, speed), step.wild ? interrupts.wild : interrupts.other,
+            leg_spec(step, speed), MAX_INTERRUPTIONS_PER_LEG
+        );
+        if (result.stopped){
+            return walked_near(step, result.tiles, tile_time(step, speed));
         }
         if (step.warps){
             wait_out_warp(console, context, step);
@@ -66,6 +71,7 @@ bool walk_step(
             check_warp_was_no_battle(console, context, step);
         }
         break;
+    }
     case RouteAction::SURF:
         start_surf(console, context, step.direction, facing == step.direction);
         break;
@@ -73,28 +79,29 @@ bool walk_step(
         pbf_press_dpad(context, dpad(step.direction), FACE_HOLD, STEP_RELEASE);
         break;
     }
-    return true;
+    return std::nullopt;
 }
 
-//  walk_step(), then a watch for what its last step set off. Returns false
-//  if the player may have stopped short of the step's end: an open leg
+//  walk_step(), then a watch for what its last step set off. Not DONE if
+//  the player may have stopped short of the step's end: an open leg
 //  stopped, or something seen after the hold, which may have stopped it
 //  before the end (after a warp, it was checked for already).
-StepEnd walk_and_watch(
+StepOutcome walk_and_watch(
     ConsoleHandle& console, ProControllerContext& context,
     const RouteStep& step, std::optional<Direction> facing,
     const OverworldInterruptSet& interrupts, MoveSpeed speed
 ){
-    if (!walk_step(console, context, step, facing, interrupts, speed)){
-        return StepEnd::STOPPED;
+    if (const std::optional<WalkedTiles> walked = walk_step(console, context, step, facing, interrupts, speed)){
+        return StepOutcome{.end = StepEnd::STOPPED, .walked = walked};
     }
     if (step.action == RouteAction::FACE){
-        return StepEnd::DONE;
+        return StepOutcome{};
     }
     const Milliseconds watch = step.wild ? AFTER_WILD_LEG_WATCH : AFTER_LEG_WATCH;
     const size_t late = Pokemon::clear_late_interrupts(console, context, step.wild ? interrupts.wild : interrupts.other, watch, MAX_INTERRUPTIONS_PER_LEG);
     //  After a warp it was checked for already.
-    return late == 0 || step.warps || step.action != RouteAction::WALK ? StepEnd::DONE : StepEnd::LATE;
+    const bool done = late == 0 || step.warps || step.action != RouteAction::WALK;
+    return StepOutcome{.end = done ? StepEnd::DONE : StepEnd::LATE, .walked = std::nullopt};
 }
 
 //  Holds on along `step`, stopped part-way off the grass, until its warp's
