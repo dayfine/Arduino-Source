@@ -214,8 +214,8 @@ UnitTestResult check_checkpoint(const StoryCheckpoint& checkpoint, StoryPose& po
 
 UnitTestResult test_routes_and_chain(){
     const std::vector<StoryCheckpoint>& checkpoints = story_checkpoints();
-    if (checkpoints.size() != 15 || checkpoints[0].start){
-        return "Expected 15 checkpoints, the first from a new game.";
+    if (checkpoints.size() != 17 || checkpoints[0].start){
+        return "Expected 17 checkpoints, the first from a new game.";
     }
     StoryPose pose;
     for (size_t c = 0; c < checkpoints.size(); c++){
@@ -358,16 +358,38 @@ UnitTestResult test_runs_after_shoes(){
     return true;
 }
 
+//  A trainer who stands still but turns to look more than one way (Mt.
+//  Moon B2F's Grunt at (37, 21) looks around): whether they see the player
+//  depends on where they look as the player passes.
+bool looks_around(const MapObject& object){
+    return object.trainer && !object.wander && object.trainer->looks.size() > 1;
+}
+
 //  The trainer on `map` who would see the player on `tile`, other than the
-//  `beaten`. Wanderers are left out: no route can plan around one (see
-//  wanderer_stops()).
+//  `beaten`. Wanderers and those who look around are left out: no route
+//  can plan around one (see wanderer_stops() and held_past_lookers()).
 const MapObject* trainer_seeing(const MapData& map, const TilePos& tile, const std::set<const MapObject*>& beaten){
     for (const MapObject& object : map.objects){
-        if (object.trainer && !object.wander && !beaten.contains(&object) && trainer_may_see(map, object, tile)){
+        if (object.trainer && !object.wander && !looks_around(object) && !beaten.contains(&object) && trainer_may_see(map, object, tile)){
             return &object;
         }
     }
     return nullptr;
+}
+
+//  Whether every floor tile of `map` has wild encounters, as in a cave:
+//  every open tile is tall grass, but for warps. No route keeps out of
+//  its grass.
+bool wild_everywhere(const MapData& map){
+    for (int y = 0; y < map.tiles.height; y++){
+        for (int x = 0; x < map.tiles.width; x++){
+            const TilePos tile{x, y};
+            if (map.tiles.at(tile) == TileKind::OPEN && warp_at(map, tile) == nullptr){
+                return false;
+            }
+        }
+    }
+    return true;
 }
 
 //  The legs a ROUTE or LEGS `step` from `pose` walks; none if it plans none.
@@ -418,6 +440,28 @@ std::vector<std::optional<MapPosition>> wanderer_stops(const StoryPose& pose, co
     return stops;
 }
 
+//  Where a leg of a ROUTE or LEGS `step` from `pose` crosses the sight of a
+//  trainer who looks around, the leg ends on a wall: if the trainer looks
+//  the player's way, they walk up beside the leg, and the walker holds it
+//  on to its wall after the battle. Empty if so, else the leg that doesn't.
+std::string held_past_lookers(const StoryPose& pose, const StoryStep& step){
+    MapPosition from{pose.map, pose.tile};
+    for (const RouteStep& leg : legs_walked(pose, step)){
+        const MapData* map = find_map_named(from.map);
+        bool crosses = false;
+        for (const MapPosition& tile : leg.action == RouteAction::WALK ? leg_tiles(story_maps(), from, leg) : std::vector<MapPosition>{}){
+            for (const MapObject& object : map ? map->objects : std::vector<MapObject>{}){
+                crosses |= looks_around(object) && trainer_may_see(*map, object, tile.point);
+            }
+        }
+        if (crosses && !leg.to_wall){
+            return "crosses a trainer's sight on " + to_string(leg) + ", not a leg to a wall.";
+        }
+        from = leg.end;
+    }
+    return "";
+}
+
 //  The tiles a ROUTE or LEGS `step` from `pose` walks onto, in order.
 std::vector<MapPosition> tiles_walked(const StoryPose& pose, const StoryStep& step){
     std::vector<MapPosition> tiles;
@@ -440,7 +484,7 @@ std::string tile_problem(const MapPosition& tile, const std::set<const MapObject
     if (map == nullptr){
         return "off the story's maps at " + to_string(tile);
     }
-    if (is_tall_grass(*map, tile.point)){
+    if (is_tall_grass(*map, tile.point) && !wild_everywhere(*map)){
         return "in the grass at " + to_string(tile);
     }
     const MapWarp* warp = warp_at(*map, tile.point);
@@ -488,6 +532,9 @@ UnitTestResult check_lines(const StoryCheckpoint& checkpoint, std::set<const Map
         if (std::count(stops.begin(), stops.end(), std::nullopt) > 0){
             return where + "crosses a wandering trainer's sight where the walk can't tell where they'd stop the player.";
         }
+        if (const std::string problem = walks ? held_past_lookers(pose, step) : ""; !problem.empty()){
+            return where + problem;
+        }
         const MapData* map = find_map_named(pose.map);
         const MapObject* trainer = step.kind == StoryStepKind::STEP && map ? trainer_seeing(*map, pose.tile.next(step.direction), beaten) : nullptr;
         if (trainer != nullptr && (c + 1 == checkpoint.steps.size() || checkpoint.steps[c + 1].kind != StoryStepKind::BATTLE)){
@@ -503,11 +550,13 @@ UnitTestResult check_lines(const StoryCheckpoint& checkpoint, std::set<const Map
     return true;
 }
 
-//  From the Running Shoes on, routes and legs keep out of the grass, off
-//  warps to maps not loaded and out of trainers' lines, but for the three
-//  Route 3 trainers the table steps in front of to fight; and where they
-//  cross a wandering trainer's sight, the walk can place the player if the
-//  trainer stops them.
+//  From the Running Shoes on, routes and legs keep out of the grass (but
+//  in caves, which are all grass), off warps to maps not loaded and out of
+//  trainers' lines, but for the three Route 3 trainers and Mt. Moon's Grunt
+//  at (12, 20) the table steps in front of to fight; where they cross a
+//  wandering trainer's sight, the walk can place the player if the trainer
+//  stops them; and where they cross the sight of one who looks around, on
+//  a leg to a wall.
 UnitTestResult test_trainer_lines(){
     std::set<const MapObject*> beaten;
     bool has_shoes = false;
@@ -519,8 +568,9 @@ UnitTestResult test_trainer_lines(){
         }
         has_shoes = has_shoes || checkpoint.id == "00.10";
     }
-    if (beaten.size() != 3){
-        return "Expected to fight Colton, Greg and James on Route 3; the table fights " + std::to_string(beaten.size()) + " trainers.";
+    if (beaten.size() != 4){
+        return "Expected to fight Colton, Greg and James on Route 3 and the Grunt at (12, 20) in Mt. Moon; the table fights "
+            + std::to_string(beaten.size()) + " trainers.";
     }
     return true;
 }

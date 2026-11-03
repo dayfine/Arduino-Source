@@ -4,6 +4,9 @@
  *
  */
 
+#include "PokemonFRLG_AutoStoryCapture.h"
+#include "PokemonFRLG_AutoStoryChoice.h"
+#include "PokemonFRLG_AutoStoryPcStorage.h"
 #include "PokemonFRLG_AutoStoryTable.h"
 
 namespace PokemonAutomation{
@@ -30,7 +33,10 @@ const char* const PEWTER = "PewterCity";
 const char* const PEWTER_CENTER = "PewterCity_PokemonCenter_1F";
 const char* const GYM = "PewterCity_Gym";
 const char* const ROUTE3 = "Route3";
+const char* const ROUTE4 = "Route4";
 const char* const ROUTE4_CENTER = "Route4_PokemonCenter_1F";
+const char* const MT_MOON_1F = "MtMoon_1F";
+const char* const MT_MOON_B2F = "MtMoon_B2F";
 
 Pokemon::Pose at(const char* map, int x, int y, std::optional<Direction> facing = std::nullopt){
     return to_pose(StoryPose{map, {x, y}, facing});
@@ -381,13 +387,90 @@ StoryCheckpoint after_gift_rng(){
     return checkpoint;
 }
 
+//  The Magikarp goes to BOX 1 at the Center's PC (11, 1), so Mt. Moon is
+//  fought with the starter alone (console B, 2026-11-02: done by hand and
+//  saved at (11, 2), facing the PC, where this row ends). The wandering
+//  boy (4..6, 3..5) is walked around.
+StoryCheckpoint magikarp_to_box(){
+    return row("00.12c", "Route 4 Center: the Magikarp into BOX 1", at(ROUTE4_CENTER, 2, 3, WEST), after_brock(), StartMenu::FULL, {
+        running(route("pc_front", at(ROUTE4_CENTER, 11, 2, NORTH), "below the PC (11, 1), facing it")),
+        pc_step("magikarp_to_box", "DEPOSIT the party's second slot into BOX 1", PcTransfer{.action = PcAction::DEPOSIT, .party_slot = 1, .box = 0}),
+    });
+}
+
+//  Mt. Moon (pokefirered data/maps/MtMoon_1F, _B1F, _B2F). Every floor tile
+//  of the cave has wild encounters, which are run from, so its legs end on
+//  walls, ladders or someone standing still, which the walker holds again
+//  after a battle; the few open ones are short. The way through: up 1F's
+//  middle and west side, its north-west ladder, B1F's west ladder down to
+//  B2F's south-east, round B2F's south edge to its west, north past
+//  Miguel and the fossils, and the ladder up to B1F's east end, which
+//  leads out to Route 4 east of the mountain.
+//  - 1F's trainers are walked around: Youngster Josh (13, 17) sees east
+//    along row 17 to x 17, so the way west into the west room is down
+//    column 18 and up column 11; Lass Miriam walks round (32..33, 4..5),
+//    sight 2, so the way east keeps to row 9 and columns 38 and 40; Hiker
+//    Marcos wanders (5..9, 8..12) and sees one tile, so the way north is
+//    column 11 and row 3.
+//  - The Moon Stone ball (3, 2) on 1F (FLAG_HIDE_MT_MOON_1F_MOON_STONE) is
+//    a few tiles off the way to the ladder (5, 6).
+//  - The Grunt at (37, 21) on B2F looks around (sight 3) over the only way
+//    east round B2F. His room is crossed on legs to walls, at one tile of
+//    his sight each, (37, 22) and (40, 21); if he looks the player's way,
+//    he walks up beside the leg, story_interrupts() fights him, and the
+//    leg is held on to its wall.
+//  - The Grunt at (12, 20) faces south (sight 2) over (12, 21..22), across
+//    rows 21..22, the only way north to Miguel: stepped into from the
+//    west, he is next to the player and doesn't walk.
+//  - Super Nerd Miguel (13, 11) battles on the step onto (14, 11)
+//    (MtMoon_B2F_EventScript_MiguelTrigger, VAR_MAP_SCENE_MT_MOON_B2F 0),
+//    then "We'll each take one!"
+//  - The fossils: DOME (13, 7), HELIX (14, 7). After the HELIX, Miguel
+//    walks up to (13, 8) and takes the DOME, which opens the gap north.
+//  The save is on Route 4: the save card's places don't include Mt. Moon.
+StoryCheckpoint mt_moon(){
+    return row("00.13", "Mt. Moon: a Moon Stone, a Rocket, Miguel and the Helix Fossil", at(ROUTE4_CENTER, 11, 2, NORTH), after_brock(), StartMenu::FULL, {
+        running(route("route4_nurse", at(ROUTE4_CENTER, 7, 4, NORTH), "the nurse, below the counter")),
+        heal("heal_route4"),
+        running(route("mt_moon_entrance", at(MT_MOON_1F, 18, 37, NORTH), "out of the Center, west into Mt. Moon")),
+        running(legs("mt_moon_1f", {
+            {NORTH, 12}, {EAST, 8}, {NORTH, 12}, {EAST, 3}, {SOUTH, 1}, {EAST, 9},
+            {NORTH, 1}, {EAST, 2}, {NORTH, 4}, {WEST, 24}, {EAST, 2}, {SOUTH, 12},
+            {WEST, 7}, {NORTH, 18}, {WEST, 9}, {EAST, 1},
+        }, "up the middle, east of Miriam, west along row 9, down column 18 past Josh, up column 11 past Marcos, to (3, 3)")),
+        running(route("below_moon_stone", at(MT_MOON_1F, 3, 3, NORTH), "facing the Moon Stone (3, 2)")),
+        talk("moon_stone_ball", "A on the item ball"),
+        //  No reader for the text yet: the scene's end is the overworld.
+        scene("found_moon_stone", at(MT_MOON_1F, 3, 3, NORTH), "\"<player> found a MOON STONE!\", then the pocket line; the ball is gone"),
+        running(route("b2f_ladder_foot", at(MT_MOON_B2F, 26, 21, EAST), "1F's ladder (5, 6), down B1F's west side to its ladder (22, 18), onto B2F")),
+        running(legs("b2f_south", {
+            {NORTH, 4}, {EAST, 8}, {WEST, 2}, {SOUTH, 5}, {EAST, 8}, {NORTH, 3}, {WEST, 1}, {NORTH, 5},
+            {EAST, 7}, {SOUTH, 14}, {WEST, 9}, {SOUTH, 10}, {WEST, 29}, {EAST, 3}, {NORTH, 17},
+        }, "through the Grunt's room at (37, 21), round the south edge, up column 11 to (11, 21)")),
+        step_into("grunt_line", EAST, "onto (12, 21), below the Grunt at (12, 20)"),
+        battle("rocket_grunt", at(MT_MOON_B2F, 12, 21, EAST), false, "Rattata and Zubat, Lv13"),
+        ready("ready_for_miguel", at(ROUTE4_CENTER, 7, 4, NORTH), "items for a status or low HP; the nurse, back through the cave, only if they can't"),
+        //  Up column 13 to Miguel, who stops the leg on (13, 12), then east
+        //  to the wall: the tile below his trigger.
+        running(legs("below_miguel_trigger", {{EAST, 1}, {NORTH, 9}, {EAST, 1}}, "to (14, 12), below Miguel's trigger (14, 11)")),
+        step_into("miguel_trigger", NORTH, "onto (14, 11), beside Miguel"),
+        battle("super_nerd_miguel", at(MT_MOON_B2F, 14, 11, NORTH), false, "Grimer, Voltorb and Koffing, Lv12; \"We'll each take one!\""),
+        running(legs("below_helix_fossil", {{NORTH, 3}}, "up column 14 to the HELIX FOSSIL (14, 7)")),
+        fossil_step("helix_fossil", "the HELIX FOSSIL; Miguel takes the DOME FOSSIL", Fossil::HELIX),
+        //  The maps keep the fossils, which the game removes after the
+        //  choice: the step onto the HELIX's tile is taken on its own.
+        step_into("helix_gap", NORTH, "onto (14, 7), where the HELIX FOSSIL lay"),
+        running(route("route4_east", at(ROUTE4, 32, 6, SOUTH), "west to B2F's ladder (5, 10), up to B1F, east to its exit onto Route 4")),
+    });
+}
+
 }
 
 
 const std::vector<StoryCheckpoint>& story_checkpoints(){
     static const std::vector<StoryCheckpoint> checkpoints{
         new_game(), after_sid_helper(), leave_house(), oaks_trigger(), to_starter_ball(), starter(), parcel(), pokedex(), shopping(), forest(), brock(),
-        running_shoes(), route3(), magikarp_salesman(), after_gift_rng(),
+        running_shoes(), route3(), magikarp_salesman(), after_gift_rng(), magikarp_to_box(), mt_moon(),
     };
     return checkpoints;
 }
