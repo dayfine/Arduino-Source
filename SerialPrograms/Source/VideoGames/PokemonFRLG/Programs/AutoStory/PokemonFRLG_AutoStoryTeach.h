@@ -23,6 +23,14 @@
  *  A TM or HM the TM CASE hasn't got skips the step, with a log line: the
  *  table can teach a TM a run may not have won yet.
  *
+ *  A move tutor teaches the same way from the overworld, the player facing
+ *  the tutor (pokefirered data/scripts/move_tutors.inc, e.g.
+ *  Route4_EventScript_MegaKickTutor): its offer, YES/NO; "This move can be
+ *  learned only once. Is that okay?", YES/NO; "Which POKEMON wants to
+ *  learn it?", then the party menu (ChooseMonForMoveTutor) with the TM's
+ *  prompts. After it, the party menu closes onto the tutor's last line,
+ *  not the TM CASE.
+ *
  *  The step reads the member's moves first (MemberReader) and decides
  *  everything before it opens the bag: the move to forget, by name or
  *  slot; a refusal if the member already knows the move, has four moves
@@ -56,7 +64,8 @@ namespace PokemonFRLG{
 
 //  What a TEACH step teaches.
 struct TeachPlan{
-    //  The TM or HM's slug, e.g. "hm03", "tm28".
+    //  The TM or HM's slug, e.g. "hm03", "tm28"; or TEACH_TUTOR, the move
+    //  tutor the player faces.
     std::string item = {};
     //  The move it holds, e.g. "surf".
     std::string move = {};
@@ -67,6 +76,9 @@ struct TeachPlan{
     std::string forget_move = {};
     std::optional<size_t> forget_slot = std::nullopt;
 };
+
+//  TeachPlan::item for a move tutor.
+inline constexpr std::string_view TEACH_TUTOR = "tutor";
 
 //  Whether `move` is an HM's, which the game won't let a Pokemon forget.
 bool is_hm_move(std::string_view move);
@@ -129,7 +141,8 @@ public:
     virtual ~TeachActions() = default;
 
     //  From the overworld: the bag, the TM Case, `item` (which holds
-    //  `move`), USE, to the party menu.
+    //  `move`), USE, to the party menu. For TEACH_TUTOR: talk to the
+    //  tutor the player faces, YES to its questions, to the party menu.
     virtual ItemOpen open_item(std::string_view item, std::string_view move) = 0;
     //  On "Teach which POKEMON?": A on `slot`.
     virtual TeachPrompt choose_member(size_t slot) = 0;

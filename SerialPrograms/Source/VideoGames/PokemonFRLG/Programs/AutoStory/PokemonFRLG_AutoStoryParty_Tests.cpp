@@ -152,6 +152,21 @@ UnitTestResult test_learn_prompts(Logger&){
     return true;
 }
 
+//  Mega Kick, from Route 4's tutor over Withdraw: no level-up rule takes
+//  its slot, so Rapid Spin and Protect are declined.
+UnitTestResult test_mega_kick_kept(Logger&){
+    const std::vector<std::string> moves{"bite", "water-pulse", "bubble", "mega-kick"};
+    for (const auto& [level, offered] : {std::pair<uint8_t, std::string>{24, "rapid-spin"}, {30, "protect"}}){
+        PartyMember member = with_moves("wartortle", moves, level);
+        const LearnDecision decision = learn_move(member);
+        if (decision.move != offered || decision.forget_slot || move_names(member) != moves){
+            return std::format("Lv{}: expected {} declined, leaving {}; got {}, leaving {}.",
+                level + 1, offered, joined(moves), decision.move.value_or("nothing"), joined(move_names(member)));
+        }
+    }
+    return true;
+}
+
 //  NO to "Delete a move?" is followed by YES to "Stop learning?" (B there
 //  asks "Delete a move?" again, console B 2026-11-01); a move the plan
 //  wants is YES with the slot to forget.
@@ -804,6 +819,7 @@ UnitTestResult test_nurse_before_battle(Logger&){
 void add_tests_AutoStoryParty(UnitTestDatabase& database){
     database.add<Test_AutoStoryParty>("movesets the game gives and the story plays", test_movesets);
     database.add<Test_AutoStoryParty>("move offered and slot forgotten", test_learn_prompts);
+    database.add<Test_AutoStoryParty>("Mega Kick kept over later level-up moves", test_mega_kick_kept);
     database.add<Test_AutoStoryParty>("YES/NO answers to move prompts", test_prompt_answers);
     database.add<Test_AutoStoryParty>("fainted lead runs or sends the next member", test_fainted_lead);
     database.add<Test_AutoStoryParty>("PP: preferred attack, then Tackle; nurse restores", test_pp);

@@ -82,7 +82,7 @@ std::optional<TeachPlan> parse_teach_variant(std::string_view variant){
         return std::nullopt;
     }
     const std::vector<std::string_view> words = variant_words(variant.substr(TEACH_VARIANT_PREFIX.size()));
-    if (words.size() < 3 || !is_tm_or_hm(words[0]) || variant_pair(words[1])){
+    if (words.size() < 3 || !(is_tm_or_hm(words[0]) || words[0] == TEACH_TUTOR) || variant_pair(words[1])){
         return std::nullopt;
     }
     TeachPlan plan{.item = std::string(words[0]), .move = std::string(words[1])};
