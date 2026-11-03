@@ -49,8 +49,10 @@ StoryCheckpoint row(
 }
 
 //  At the rows after Brock: no items counted, the starter with the moves
-//  the story gave it by Lv13. A save made before the story learned moves
-//  has Bubble where this says Water Gun: the same slot, 5 more PP.
+//  the story gave it by Lv13. A run that loads a save reads the moves off
+//  the lead's summary instead (read_lead_moves()), so a save whose moves
+//  differ from these (console B, 2026-11-02: Water Gun where Tackle was)
+//  is fought with the moves it has.
 Supplies after_brock(){
     Supplies supplies;
     supplies.lead = story_lead_after_brock();

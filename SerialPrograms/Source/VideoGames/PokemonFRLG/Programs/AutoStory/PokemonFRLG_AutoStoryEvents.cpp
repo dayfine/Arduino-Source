@@ -421,6 +421,19 @@ std::string check_save_place(StoryEnv& env, const std::string& start_map){
     return error;
 }
 
+void read_lead_moves(StoryEnv& env, StartMenu menu){
+    const std::optional<SummaryRead> read = read_party_summary(env.console, env.context, menu, env.language, 0);
+    if (!read || read->moves.empty()){
+        env.console.log("Couldn't read the lead's moves; going on with the checkpoint's.", COLOR_ORANGE);
+        return;
+    }
+    const PartyMember& before = env.supplies.lead;
+    const std::string species = read->species.empty() ? before.species : read->species;
+    const uint8_t level = read->level && *read->level <= 100 ? static_cast<uint8_t>(*read->level) : before.moves_through_level;
+    env.supplies.lead = member_from_summary(species, level, read->moves);
+    env.saved_supplies.lead = env.supplies.lead;
+}
+
 Pokemon::Checkpoint build_checkpoint(const StoryCheckpoint& data, StoryExecutor& executor){
     executor.set_menu(data.menu);
     Pokemon::Checkpoint checkpoint = Pokemon::build_story_checkpoint(data, executor);

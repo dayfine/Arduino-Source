@@ -20,6 +20,7 @@
 #include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattlePokemonDetector.h"
 #include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleScreenDetector.h"
 #include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_PartyMenuDetector.h"
+#include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_SummaryMovesReader.h"
 #include "VideoGames/PokemonFRLG/PokemonFRLG_Navigation.h"
 #include "VideoGames/PokemonFRLG/PokemonFRLG_Settings.h"
 #include "PokemonFRLG_AutoStoryActions.h"
@@ -66,6 +67,8 @@ constexpr Milliseconds EVOLUTION = 20000ms;
 constexpr size_t LOW_ATTACK_PP = 10;
 //  Text and the move learn prompts after a battle, on the overworld.
 constexpr Milliseconds AFTER_BATTLE_TEXT = 60000ms;
+//  The move list to fade in after "Delete a move?", and its cursor to move.
+constexpr Milliseconds MOVE_LIST_TIMEOUT = 5000ms;
 
 //  In the player's box, as fractions of the 240x160 screen: the HP bar's
 //  fill, which grows from its left end, and the status badge left of the
@@ -270,14 +273,63 @@ void use_move(ProControllerContext& context, size_t slot){
     pbf_press_button(context, BUTTON_A, 160ms, 500ms);
 }
 
+//  The move list's cursor row once it shows, and, if `before` is given, once
+//  it has left that row: up to `timeout`.
+std::optional<size_t> read_move_list_cursor(
+    ConsoleHandle& console, ProControllerContext& context,
+    std::optional<size_t> before, Milliseconds timeout
+){
+    const WallClock deadline = current_time() + timeout;
+    while (true){
+        context.wait_for_all_requests();
+        VideoSnapshot screen = console.video().snapshot();
+        const std::optional<size_t> cursor = screen ? read_summary_move_cursor(screen) : std::nullopt;
+        if (cursor && cursor != before){
+            return cursor;
+        }
+        if (current_time() >= deadline){
+            return std::nullopt;
+        }
+        pbf_wait(context, POLL);
+    }
+}
+
 //  After YES to "Delete a move?": the move list fades in with its cursor on
 //  the top move (pret pokemon_summary_screen.c); A on a move forgets it,
-//  B would go back to "Stop learning?". Done in one go, so the loop's B
-//  presses can't land on the list.
-void forget_move(ProControllerContext& context, size_t slot){
-    pbf_press_button(context, BUTTON_A, 160ms, 2500ms);
-    for (size_t c = 0; c < slot; c++){
-        pbf_press_dpad(context, DPAD_DOWN, 160ms, 400ms);
+//  B would go back to "Stop learning?". The cursor is read before A and
+//  after each press: DOWNs sent while the list faded in were lost, and A
+//  forgot the top move, Tackle, for Water Gun instead of Bubble (console B,
+//  2026-11-02). Done in one go, so the loop's B presses can't land on the
+//  list. A list whose cursor never shows gets the presses by time, as
+//  before; a cursor that can't be brought to `slot` fails the battle.
+void forget_move(ConsoleHandle& console, ProControllerContext& context, size_t slot){
+    pbf_press_button(context, BUTTON_A, 160ms, 0ms);
+    std::optional<size_t> cursor = read_move_list_cursor(console, context, std::nullopt, MOVE_LIST_TIMEOUT);
+    if (!cursor){
+        console.log("Battle: no cursor read on the move list; moving it by time.", COLOR_ORANGE);
+        for (size_t c = 0; c < slot; c++){
+            pbf_press_dpad(context, DPAD_DOWN, 160ms, 400ms);
+        }
+        pbf_press_button(context, BUTTON_A, 160ms, 2000ms);
+        return;
+    }
+    for (size_t presses = 0; *cursor != slot; presses++){
+        if (presses >= 2 * SUMMARY_MOVE_ROWS){
+            break;
+        }
+        const size_t from = *cursor;
+        pbf_press_dpad(context, from < slot ? DPAD_DOWN : DPAD_UP, 160ms, 0ms);
+        cursor = read_move_list_cursor(console, context, from, MOVE_LIST_TIMEOUT);
+        if (!cursor){
+            break;
+        }
+    }
+    if (cursor != slot){
+        OperationFailedExceptionWithScreenshot::fire(
+            ErrorReportMode::SEND_ERROR_REPORT,
+            std::format("forget_move(): the cursor didn't reach move {} on the move list.", slot + 1),
+            console
+        );
     }
     pbf_press_button(context, BUTTON_A, 160ms, 2000ms);
 }
@@ -531,7 +583,7 @@ private:
         const PromptAnswer answer = m_decisions.prompt(starter_fainted(screen));
         if (answer.forget_slot){
             m_console.log(std::format("Battle: learning the new move over move {}.", *answer.forget_slot + 1));
-            forget_move(m_context, *answer.forget_slot);
+            forget_move(m_console, m_context, *answer.forget_slot);
         }else{
             m_console.log(std::format("Battle: answering {} to a YES/NO.", answer.answer == YesNo::YES ? "YES" : "NO"));
             pbf_press_button(m_context, answer.answer == YesNo::YES ? BUTTON_A : BUTTON_B, 160ms, 1500ms);
