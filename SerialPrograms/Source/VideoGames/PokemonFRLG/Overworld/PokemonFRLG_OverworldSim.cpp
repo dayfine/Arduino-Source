@@ -31,6 +31,8 @@ const char* sim_screen_name(SimScreen screen){
         return "the START menu";
     case SimScreen::BATTLE_FLASH:
         return "a battle's flashes";
+    case SimScreen::BATTLE_OPENING:
+        return "a battle's opening";
     case SimScreen::BATTLE:
         return "a battle";
     case SimScreen::FADE:
@@ -144,7 +146,7 @@ bool OverworldSim::sees(SimWatcher watcher, SimScreen screen) const{
     case SimWatcher::BATTLE_SCREEN:
         return screen == SimScreen::BATTLE;
     case SimWatcher::BATTLE_TEXT_BOX:
-        return screen == SimScreen::BATTLE || (screen == SimScreen::OVERWORLD && m_state.black_below);
+        return screen == SimScreen::BATTLE || screen == SimScreen::BATTLE_OPENING || (screen == SimScreen::OVERWORLD && m_state.black_below);
     case SimWatcher::MESSAGE:
         return screen == SimScreen::MESSAGE;
     case SimWatcher::FADE:
@@ -320,6 +322,9 @@ bool OverworldSim::wild_battle(Milliseconds pressed){
         m_battle_pending = true;
         if (!encounter.seen_late){
             schedule(pressed + m_script.timing.flash, SimScreen::BATTLE_FLASH, false);
+        }
+        if (m_script.timing.battle_opening){
+            schedule(pressed + *m_script.timing.battle_opening, SimScreen::BATTLE_OPENING, false);
         }
         schedule(pressed + m_script.timing.battle_screen, SimScreen::BATTLE, false);
         note(std::format("a wild battle on {}{}.", to_string(m_state.position), encounter.seen_late ? " (flashes missed)" : ""));
@@ -636,9 +641,23 @@ StepOutcome OverworldSimWalker::walk(const RouteStep& step, std::optional<Direct
     if (step.action == RouteAction::FACE){
         return StepOutcome{};
     }
-    const size_t late = clear_late(interrupts(step), step.wild ? m_rules.after_wild_leg_watch : AFTER_LEG_WATCH, MAX_INTERRUPTIONS_PER_LEG);
+    size_t late = clear_late(interrupts(step), step.wild ? m_rules.after_wild_leg_watch : AFTER_LEG_WATCH, MAX_INTERRUPTIONS_PER_LEG);
+    if (late == 0){
+        late = clear_unseen_battle(step);
+    }
     const bool done = late == 0 || step.warps || step.action != RouteAction::WALK;
     return StepOutcome{.end = done ? StepEnd::DONE : StepEnd::LATE, .walked = std::nullopt};
+}
+
+//  clear_unseen_battle(): the battle's text box seen after the leg's watch.
+size_t OverworldSimWalker::clear_unseen_battle(const RouteStep& step){
+    if (!m_rules.watch_on_for_unseen_battle || !step.wild || step.action != RouteAction::WALK || step.warps
+        || m_sim.state().screen != SimScreen::BATTLE_OPENING
+    ){
+        return 0;
+    }
+    m_log.push_back("Route: a battle's text box after " + to_string(step) + ", which nothing stopped: watching on for a wild battle.");
+    return clear_late(m_wild, UNSEEN_BATTLE_WATCH, MAX_INTERRUPTIONS_PER_LEG);
 }
 
 void OverworldSimWalker::hold_to_warp(const RouteStep& step){

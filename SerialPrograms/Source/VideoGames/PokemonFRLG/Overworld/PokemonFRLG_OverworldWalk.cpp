@@ -8,6 +8,7 @@
 #include <format>
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
 #include "CommonTools/Async/InferenceRoutines.h"
+#include "CommonTools/VisualDetectors/BlackScreenDetector.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "VideoGames/PokemonFRLG/Inference/Dialogs/PokemonFRLG_BattleDialogs.h"
@@ -15,6 +16,7 @@
 #include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_StartMenuDetector.h"
 #include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleFlashWatcher.h"
 #include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleScreenDetector.h"
+#include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleTextBoxDetector.h"
 #include "VideoGames/PokemonFRLG/PokemonFRLG_Navigation.h"
 #include "PokemonFRLG_PlayerFacingReader.h"
 #include "PokemonFRLG_OverworldWalk.h"
@@ -263,6 +265,37 @@ void clear_open_message(
     Pokemon::clear_late_interrupts(console, context, interrupts, OPEN_MESSAGE_WATCH, 1);
 }
 
+//  A battle whose flashes were missed shows its HP boxes, which the leg's
+//  watch for a late battle needs, seconds after its text box: in Mt. Moon
+//  the watch after "south 15 (to wall)" ended on the box still empty, the
+//  leg was taken as walked to its wall, and the next leg was walked into
+//  the battle, 5 tiles short of where it was planned from (console B,
+//  2026-11-03, row 00.13).
+size_t clear_unseen_battle(
+    ConsoleHandle& console, ProControllerContext& context,
+    const OverworldInterrupts& interrupts, const RouteStep& step
+){
+    if (!step.wild || step.action != RouteAction::WALK || step.warps){
+        return 0;
+    }
+    context.wait_for_all_requests();
+    VideoSnapshot screen = console.video().snapshot();
+    if (!screen){
+        return 0;
+    }
+    const char* seen = nullptr;
+    if (BattleTextBoxDetector(COLOR_RED).detect(screen)){
+        seen = "a battle's text box";
+    }else if (BlackScreenDetector(COLOR_RED).detect(screen)){
+        seen = "a black screen";
+    }
+    if (seen == nullptr){
+        return 0;
+    }
+    console.log(std::format("Route: {} after {}, which nothing stopped: watching on for a wild battle.", seen, to_string(step)), COLOR_ORANGE);
+    return Pokemon::clear_late_interrupts(console, context, interrupts, UNSEEN_BATTLE_WATCH, MAX_INTERRUPTIONS_PER_LEG);
+}
+
 //  After a warp's fade: fails, once the battle is fled, if it was a wild
 //  battle's. In run 7 (console B, 2026-11-01) the player had drifted onto
 //  Route 1's grass, and the step meant for Oak's Lab's door set off a
@@ -436,10 +469,10 @@ void walk_overworld_route(
             break;
         }
         if (step.action != RouteAction::FACE){
-            Pokemon::clear_late_interrupts(
-                console, context, step.wild ? interrupts.wild : interrupts.other,
-                step.wild ? AFTER_WILD_LEG_WATCH : AFTER_LEG_WATCH, MAX_INTERRUPTIONS_PER_LEG
-            );
+            const OverworldInterrupts& watched = step.wild ? interrupts.wild : interrupts.other;
+            if (Pokemon::clear_late_interrupts(console, context, watched, step.wild ? AFTER_WILD_LEG_WATCH : AFTER_LEG_WATCH, MAX_INTERRUPTIONS_PER_LEG) == 0){
+                clear_unseen_battle(console, context, watched, step);
+            }
         }
         facing = step.facing_after;
     }
