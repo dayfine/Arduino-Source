@@ -14,6 +14,7 @@
 
 #include <string>
 #include "Common/Cpp/Logging/AbstractLogger.h"
+#include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "CommonFramework/ImageTools/ImageBoxes.h"
 #include "CommonFramework/ImageTypes/ImageViewRGB32.h"
 #include "CommonFramework/Language.h"
@@ -32,6 +33,9 @@ ImageFloatBox save_card_title_box();
 //  "viridian-forest", "pewter-city", "route-1" or "route-2"; empty if it
 //  can't be read, as in a language the reader has no names for.
 std::string read_save_card_location(Logger& logger, Language language, const ImageViewRGB32& screen);
+
+
+void add_tests_SaveCardReader(UnitTestDatabase& database);
 
 
 

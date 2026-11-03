@@ -17,6 +17,7 @@
 #include <string>
 #include <vector>
 #include "Common/Cpp/Logging/AbstractLogger.h"
+#include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "CommonFramework/ImageTools/ImageBoxes.h"
 #include "CommonFramework/ImageTypes/ImageViewRGB32.h"
 #include "CommonFramework/Language.h"
@@ -50,6 +51,9 @@ ImageFloatBox option_value_box(size_t row);
 //  The value the item's row shows, one of option_menu_values(item), in a
 //  game in `language`; empty if it can't be read.
 std::string read_option_value(Logger& logger, Language language, const ImageViewRGB32& screen, OptionMenuItem item);
+
+
+void add_tests_OptionMenuReader(UnitTestDatabase& database);
 
 
 

@@ -5,10 +5,13 @@
  */
 
 #include "Common/Cpp/Color.h"
+#include "Common/Cpp/Filesystem/Filesystem.h"
 #include "Common/Cpp/Json/JsonArray.h"
 #include "Common/Cpp/Json/JsonObject.h"
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "CommonTools/OCR/OCR_SmallDictionaryMatcher.h"
+#include "Tests/ImageUnitTest.h"
+#include "Tests/TestUtils.h"
 #include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_OcrPreprocessing.h"
 #include "VideoGames/PokemonFRLG/PokemonFRLG_Settings.h"
 #include "PokemonFRLG_SaveCardReader.h"
@@ -86,6 +89,51 @@ ImageFloatBox save_card_title_box(){
 std::string read_save_card_location(Logger& logger, Language language, const ImageViewRGB32& screen){
     const ImageViewRGB32 game = extract_box_reference(screen, GameSettings::instance().GAME_BOX);
     return PlaceNameMatcher::instance().read(logger, language, extract_box_reference(game, save_card_title_box()));
+}
+
+
+namespace{
+
+//  A capture of the save card over "Would you like to save the game?",
+//  named <anything>_<language code>_<place slug>, e.g.
+//  Bedroom_eng_pallet-town.png.
+class Test_SaveCard : public ImageUnitTest{
+public:
+    Test_SaveCard(const std::string& image)
+        : ImageUnitTest("PokemonFRLG::SaveCardReader - " + image, {image})
+    {}
+
+    virtual UnitTestResult run_on_images(
+        Logger& logger, CancellableScope& scope,
+        const std::vector<ImageRGB32>& images
+    ) const override{
+        const std::vector<std::string> words = parse_words(Filesystem::Path(image_paths()[0]).stem().string());
+        if (words.size() < 3){
+            return "Error: filename must be <anything>_<language code>_<place slug>.";
+        }
+        const std::string& language_word = words[words.size() - 2];
+        const Language language = language_code_to_enum(language_word);
+        if (language == Language::None || language == Language::EndOfList){
+            return "Error: invalid language word in filename: " + language_word;
+        }
+
+        const std::string read = read_save_card_location(logger, language, images[0]);
+        TEST_RESULT_COMPONENT_EQUAL_STR(read, words.back(), "place");
+        return true;
+    }
+};
+
+}
+
+void add_tests_SaveCardReader(UnitTestDatabase& database){
+    //  FireRed on console B, 2026-11-02. The card covers the same corner of
+    //  the screen everywhere; the places behind it differ.
+    database.add<Test_SaveCard>("PokemonFRLG/SaveCardReader/Bedroom_eng_pallet-town.png");
+    database.add<Test_SaveCard>("PokemonFRLG/SaveCardReader/Outdoors_eng_pallet-town.png");
+    database.add<Test_SaveCard>("PokemonFRLG/SaveCardReader/OaksLab_eng_pallet-town.png");
+    database.add<Test_SaveCard>("PokemonFRLG/SaveCardReader/Forest_eng_viridian-forest.png");
+    database.add<Test_SaveCard>("PokemonFRLG/SaveCardReader/PokemonCenter_eng_pewter-city.png");
+    database.add<Test_SaveCard>("PokemonFRLG/SaveCardReader/OneBadge_eng_pewter-city.png");
 }
 
 

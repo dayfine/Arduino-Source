@@ -5,8 +5,10 @@
  */
 
 #include <format>
+#include <functional>
 #include "Common/Cpp/Exceptions.h"
 #include "CommonFramework/Exceptions/OperationFailedException.h"
+#include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
 #include "CommonFramework/Notifications/ProgramNotifications.h"
 #include "CommonFramework/VideoPipeline/VideoOverlay.h"
 #include "Pokemon/AutoStory/Pokemon_AutoStoryStats.h"
@@ -14,7 +16,11 @@
 #include "Pokemon/Pokemon_Strings.h"
 #include "VideoGames/PokemonFRLG/PokemonFRLG_Navigation.h"
 #include "VideoGames/PokemonFRLG/Programs/PokemonFRLG_NamingScreenKeyboard.h"
+#include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
+#include "VideoGames/PokemonFRLG/Programs/PokemonFRLG_TrainerCard.h"
+#include "VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_SidSteps.h"
 #include "PokemonFRLG_AutoStoryEvents.h"
+#include "PokemonFRLG_AutoStoryRngLoop.h"
 #include "PokemonFRLG_AutoStoryTable.h"
 #include "PokemonFRLG_AutoStory.h"
 
@@ -52,6 +58,13 @@ const StringSelectDatabase& checkpoint_database(){
 
 }
 
+const char* const RUN_STARTER_RNG_TEXT =
+    "<b>Run Starter RNG in AutoStory:</b><br>Off by default. Instead of stopping for them, run SID Helper's steps on the "
+    "new game's keyboard when the RNG plan has no SID, and Starter RNG's attempts from a save south of the table at the "
+    "end of 00.04, as the RNG plan lists them. A shiny Squirtle goes on to the rival's battle, saves after it and the run "
+    "goes on; otherwise the run stops with the save south of the table.<br>"
+    "SID Helper's timing needs the text speed and button settings already saved, as with Stop for SID Helper.";
+
 AutoStory::AutoStory()
     : RUN(checkpoint_database())
     , NEW_GAME_FROM_TITLE(
@@ -79,21 +92,23 @@ AutoStory::AutoStory()
     , STOP_FOR_STARTER_RNG(
         "<b>Stop for Starter RNG:</b><br>Off by default. At the end of 00.04, save south of the table facing Squirtle's ball "
         "and stop, where the Starter RNG program starts. After Starter RNG, save right after the rival's battle without moving "
-        "and start AutoStory at 00.05.<br>"
+        "and start AutoStory at 00.05, listing the targets to try from the RNG plan.<br>"
         "With this off, 00.04 and 00.04b run as one checkpoint, as before.",
         LockMode::LOCK_WHILE_RUNNING,
         false
     )
-    , NOTIFICATIONS({
-        &NOTIFICATION_PROGRAM_FINISH,
-        &NOTIFICATION_ERROR_FATAL,
-    })
+    , RUN_STARTER_RNG(RUN_STARTER_RNG_TEXT, LockMode::LOCK_WHILE_RUNNING, false)
+    , NOTIFICATION_SHINY("Shiny found", true, true, ImageAttachmentMode::JPG, {"Notifs", "Showcase"})
+    , NOTIFICATION_STATUS_UPDATE("Status Update", true, false, std::chrono::seconds(3600))
+    , NOTIFICATIONS({&NOTIFICATION_SHINY, &NOTIFICATION_STATUS_UPDATE, &NOTIFICATION_PROGRAM_FINISH, &NOTIFICATION_ERROR_FATAL})
 {
     PA_ADD_OPTION(RUN);
     PA_ADD_OPTION(NEW_GAME_FROM_TITLE);
     PA_ADD_OPTION(PLAYER_NAME);
     PA_ADD_OPTION(STOP_FOR_SID_HELPER);
     PA_ADD_OPTION(STOP_FOR_STARTER_RNG);
+    PA_ADD_OPTION(RUN_STARTER_RNG);
+    PA_ADD_OPTION(RNG_PLAN);
     PA_ADD_OPTION(NOTIFICATIONS);
 }
 
@@ -214,58 +229,299 @@ static void prepare_start(
 }
 
 //  The run stopped for an RNG program, as its option asked: the user's
-//  turn, with what to do next.
-static void stop_for_handoff(SingleSwitchProgramEnvironment& env, EventNotificationOption& notification, const std::string& message){
+//  turn, with what to do next, and the lines that go with it (the RNG
+//  plan's attempts).
+static void stop_for_handoff(
+    SingleSwitchProgramEnvironment& env, EventNotificationOption& notification,
+    const std::string& message, const std::vector<std::string>& lines = {}
+){
     env.console.log(message, COLOR_BLUE);
     env.console.overlay().add_log(message);
-    send_program_finished_notification(env, notification, message);
+    std::string full = message;
+    for (const std::string& line : lines){
+        env.console.log(line, COLOR_BLUE);
+        env.console.overlay().add_log(line);
+        full += "\n" + line;
+    }
+    send_program_finished_notification(env, notification, full);
+}
+
+static void stop_for_sid_helper(
+    SingleSwitchProgramEnvironment& env, ProControllerContext& context,
+    EventNotificationOption& notification, const std::string& player_name
+){
+    play_new_game_to_player_name(env.console, context, player_name);
+    stop_for_handoff(env, notification,
+        "Stopped for SID Helper: the player's name is typed and OK is not pressed. Run SID Helper now, "
+        "enter its Target Advances and # Candidate SIDs in the RNG plan, then start AutoStory at 00.01b."
+    );
+}
+
+//  The TID for the Starter RNG plan: the RNG plan's, or read off the
+//  Trainer Card (START, the player's entry), which is then closed again.
+//  Before the first Pokemon, as under the ball, the player's entry is second.
+static uint16_t starter_rng_tid(
+    SingleSwitchProgramEnvironment& env, ProControllerContext& context,
+    const StarterRngPlanOptions& options, Language language
+){
+    std::optional<uint16_t> tid = options.tid_override(env.console);
+    if (tid){
+        env.console.log(rng_log_tid(*tid, false));
+        return *tid;
+    }
+    navigate_to_trainer_card(env.console, context);
+    tid = try_read_trainer_card_tid(env.console, context, language);
+    if (!tid){
+        OperationFailedExceptionWithScreenshot::fire(
+            ErrorReportMode::NO_ERROR_REPORT,
+            "Couldn't read the TID on the Trainer Card, so there is no Starter RNG plan. Nothing was saved: "
+            "type the TID into the RNG plan's TID option and start AutoStory at 00.04 again.",
+            env.console
+        );
+    }
+    close_trainer_card(env.console, context);
+    env.console.log(rng_log_tid(*tid, true));
+    return *tid;
+}
+
+//  The Starter RNG attempts. Run under the ball before 00.04 saves there, so
+//  a failure ends the run with 00.03's save kept.
+static StarterRngPlanned plan_starter_rng_attempts(
+    SingleSwitchProgramEnvironment& env, ProControllerContext& context,
+    const StarterRngPlanOptions& options, Language language
+){
+    const uint16_t tid = starter_rng_tid(env, context, options, language);
+    try{
+        return StarterRngPlanned{.tid = tid, .attempts = options.plan(env.console, language, tid)};
+    }catch (UserSetupError& e){
+        throw UserSetupError(env.console, e.message() + " Nothing was saved: fix the RNG plan and start AutoStory at 00.04 again.");
+    }
+}
+
+//  Has the last checkpoint of `segment` call `before` just before it saves.
+static void before_last_save(Pokemon::Segment& segment, std::function<void()> before){
+    Pokemon::CheckpointSpec& spec = segment.checkpoints.back();
+    spec.build = [build = std::move(spec.build), before]() mutable{
+        Pokemon::Checkpoint checkpoint = build();
+        checkpoint.save = [save = std::move(checkpoint.save), before](Pokemon::RunState& state) mutable{
+            before();
+            return save(state);
+        };
+        return checkpoint;
+    };
+}
+
+//  The attempts are the user's to run, with Run Starter RNG in AutoStory off.
+//  TODO: LeafGreen and Bulbasaur/Charmander, with AutoStory's starter choice.
+static void stop_for_starter_rng(
+    SingleSwitchProgramEnvironment& env, EventNotificationOption& notification,
+    const std::string& sound, const std::vector<std::string>& attempts
+){
+    stop_for_handoff(env, notification,
+        "Stopped for Starter RNG: saved south of the table, facing Squirtle's ball. "
+        "Run Starter RNG (Squirtle, FireRed, Sound " + sound + ") with attempt 1's Target Seed and Advances. "
+        "If it hits the target and it isn't shiny, load this save and run the next attempt. If it is shiny, "
+        "its SID is the one listed (or one of them): enter it as the RNG plan's SID. "
+        "Then save right after the rival's battle, without moving, and start AutoStory at 00.05.",
+        attempts
+    );
+}
+
+static size_t checkpoint_index(const std::vector<StoryCheckpoint>& checkpoints, const std::string& id){
+    for (size_t c = 0; c < checkpoints.size(); c++){
+        if (checkpoints[c].id == id){
+            return c;
+        }
+    }
+    throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "No checkpoint " + id + ".");
+}
+
+//  Runs `rows` as one segment, calling `before` (if set) just before the
+//  last row saves. Throws if a checkpoint fails for good.
+static void run_story_rows(
+    SingleSwitchProgramEnvironment& env, StoryEnv& story, StoryExecutor& executor,
+    const std::vector<StoryCheckpoint>& rows, const Pokemon::SegmentPolicy& policy,
+    std::function<void()> before
+){
+    Pokemon::Segment segment = make_story_segment(rows, executor);
+    if (before){
+        before_last_save(segment, std::move(before));
+    }
+    Pokemon::SegmentHooks hooks = story_hooks(env, story);
+
+    Pokemon::RunState state;
+    const Pokemon::SegmentReport report = run_segment(
+        state, segment, Pokemon::SegmentRange{rows.front().id, rows.back().id}, policy, hooks
+    );
+    Pokemon::record_story_stats(env.current_stats<Pokemon::AutoStoryStats>(), report);
+    env.update_stats();
+    throw_if_failed(report);
+}
+
+//  SID Helper's steps in the program, from the player's keyboard: the name
+//  typed, then the intro at SID Helper's timing into the bedroom, and the
+//  Trainer Card opened to read the TID. Ends on the card, where 00.01b
+//  starts.
+static void set_sid_in_program(
+    SingleSwitchProgramEnvironment& env, ProControllerContext& context,
+    const std::string& player_name, const StarterRngPlanOptions& options, Language language
+){
+    const uint32_t target_advances = options.SID_HELPER_ADVANCES;
+    if (target_advances % 2 == 0){
+        throw UserSetupError(env.console, "RNG plan: SID Helper's Target Advances must be odd.");
+    }
+    play_new_game_to_player_name(env.console, context, player_name);
+    const SidTiming timing = sid_timing(language, target_advances);
+    env.log("SID Helper's steps: delay " + std::to_string(timing.delay_ms) + "ms");
+    set_sid_from_name_screen(context, timing);
+    finish_intro_animations(env, context);
+
+    navigate_to_trainer_card(env.console, context);
+    const std::optional<uint16_t> tid = try_read_trainer_card_tid(env.console, context, language);
+    if (!tid){
+        env.console.log("Couldn't read the TID on the Trainer Card; 00.04 reads it again.", COLOR_ORANGE);
+        return;
+    }
+    env.console.log(rng_log_tid(*tid, true));
+    env.console.log(rng_log_sid_helper(*tid, target_advances, options.helper_candidates(*tid)));
+}
+
+namespace{
+
+//  Run Starter RNG in AutoStory: an attempt's misses before the run stops,
+//  Starter RNG's default Max Resets per attempt, and the time caps.
+const size_t STARTER_RNG_MAX_RETRIES = 2;
+const uint64_t STARTER_RNG_MAX_RESETS = 50;
+const StarterRngLoopLimits STARTER_RNG_LIMITS{
+    .attempt_time = std::chrono::hours(3),
+    .total_time = std::chrono::hours(12),
+};
+
+}
+
+//  Starter RNG's attempts in the program, from the save south of the table.
+//  Returns true for a shiny Squirtle, the game on its summary; otherwise the
+//  run has stopped with what to do next.
+static bool run_starter_rng_in_program(
+    SingleSwitchProgramEnvironment& env, ProControllerContext& context,
+    const StarterRngPlanned& planned, const StarterRngPlanOptions& options, Language language,
+    const StarterRngNotifications& notifications, EventNotificationOption& finished
+){
+    RngPlanTracker tracker(
+        planned.attempts, options.plan_candidates(env.console, planned.tid), options.SHINY_REQUIRED, STARTER_RNG_MAX_RETRIES
+    );
+    ConsoleStarterRngSteps steps(
+        env, context,
+        StarterRngConsoleSettings{.language = language, .sound = options.SOUND, .max_resets = STARTER_RNG_MAX_RESETS},
+        notifications
+    );
+    const StarterRngLoopResult result = run_starter_rng_plan(
+        env.console, tracker, steps, STARTER_RNG_LIMITS, planned.tid, options.helper_candidates(planned.tid)
+    );
+    const std::string message = starter_rng_loop_message(result);
+    if (result.end != StarterRngLoopEnd::SHINY){
+        stop_for_handoff(env, finished, message);
+        return false;
+    }
+    env.console.log(message, COLOR_BLUE);
+    env.console.overlay().add_log(message);
+    return true;
+}
+
+//  After a shiny Squirtle: off its summary, then the rival's battle, which
+//  saves (00.04b), and the rows after it to `last`. Until that save, a
+//  reload would load the save under the ball and lose the shiny, so a
+//  failure stops the run instead. Returns the last row's id.
+static std::string run_after_shiny_starter(
+    SingleSwitchProgramEnvironment& env, ProControllerContext& context,
+    StoryEnv& story, StoryExecutor& executor, const Pokemon::SegmentPolicy& policy, size_t ball_row, size_t last
+){
+    const std::vector<StoryCheckpoint> rows = rows_after_starter_rng(story_checkpoints(), ball_row, last);
+    //  As Starter RNG leaves the summary for the overworld.
+    pbf_mash_button(context, BUTTON_B, 5000ms);
+    context.wait_for_all_requests();
+    env.console.log("The shiny Squirtle isn't saved until " + rows.front().id + " saves after the rival's battle. "
+        "If it fails before then, the run stops without reloading: save by hand.", COLOR_BLUE);
+    story.has_save = false;
+    run_story_rows(env, story, executor, rows, policy, nullptr);
+    return rows.back().id;
+}
+
+StoryHandoffs AutoStory::story_handoffs() const{
+    //  Running Starter RNG here splits 00.04 at the ball as its stop does,
+    //  and sets the SID at 00.01 when it isn't known.
+    return StoryHandoffs{
+        .sid_helper = RUN_STARTER_RNG ? static_cast<std::string>(RNG_PLAN.SID).empty() : bool(STOP_FOR_SID_HELPER),
+        .starter_rng = STOP_FOR_STARTER_RNG || RUN_STARTER_RNG,
+    };
 }
 
 void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContext& context){
     const std::vector<StoryCheckpoint>& checkpoints = story_checkpoints();
-    const size_t first = RUN.start_index();
+    size_t first = RUN.start_index();
     const size_t last = RUN.end_index();
     const std::string player_name = PLAYER_NAME;
     check_setup(env.console, checkpoints, first, last, NEW_GAME_FROM_TITLE, player_name);
-    const StoryRunPlan plan = plan_story_run(
-        checkpoints, first, last, StoryHandoffs{.sid_helper = STOP_FOR_SID_HELPER, .starter_rng = STOP_FOR_STARTER_RNG}
-    );
-    if (plan.stop == StoryHandoff::SID_HELPER){
-        play_new_game_to_player_name(env.console, context, player_name);
-        stop_for_handoff(env, NOTIFICATION_PROGRAM_FINISH,
-            "Stopped for SID Helper: the player's name is typed and OK is not pressed. "
-            "Run SID Helper now, then start AutoStory at 00.01b."
-        );
+    const StoryHandoffs handoffs = story_handoffs();
+    StoryRunPlan plan = plan_story_run(checkpoints, first, last, handoffs);
+    if (plan.stop == StoryHandoff::SID_HELPER && !RUN_STARTER_RNG){
+        stop_for_sid_helper(env, context, NOTIFICATION_PROGRAM_FINISH, player_name);
         return;
+    }
+    if (plan.stop != StoryHandoff::NONE){
+        //  The options' text, before anything is pressed.
+        RNG_PLAN.check(env.console);
+    }
+    if (plan.stop == StoryHandoff::SID_HELPER){
+        set_sid_in_program(env, context, player_name, RNG_PLAN, RUN.language());
+        first = checkpoint_index(checkpoints, "00.01b");
+        plan = plan_story_run(checkpoints, first, last, handoffs);
     }
 
     StoryEnv story{env.console, context, checkpoints[first].supplies, checkpoints[first].supplies, false, RUN.checks()};
     story.player_name = player_name;
     prepare_start(env, context, checkpoints, first, story);
-
     StoryExecutor executor(story);
     executor.set_checks(RUN.checks());
     executor.set_language(RUN.language());
-    Pokemon::Segment segment = make_story_segment(plan.rows, executor);
-    Pokemon::SegmentHooks hooks = story_hooks(env, story);
 
-    Pokemon::RunState state;
-    const Pokemon::SegmentReport report = run_segment(
-        state, segment, Pokemon::SegmentRange{plan.rows.front().id, plan.rows.back().id}, RUN.policy(), hooks
-    );
-    Pokemon::record_story_stats(env.current_stats<Pokemon::AutoStoryStats>(), report);
-    env.update_stats();
-    throw_if_failed(report);
+    StarterRngPlanned planned;
+    std::function<void()> before;
     if (plan.stop == StoryHandoff::STARTER_RNG){
-        stop_for_handoff(env, NOTIFICATION_PROGRAM_FINISH,
-            "Stopped for Starter RNG: saved south of the table, facing Squirtle's ball. Run Starter RNG now. "
-            "Then save right after the rival's battle, without moving, and start AutoStory at 00.05."
-        );
-        return;
+        before = [&]{ planned = plan_starter_rng_attempts(env, context, RNG_PLAN, RUN.language()); };
     }
-    env.console.log("AutoStory: done through " + plan.rows.back().id + ".");
+    run_story_rows(env, story, executor, plan.rows, RUN.policy(), std::move(before));
+    std::string done_through = plan.rows.back().id;
+    if (plan.stop == StoryHandoff::STARTER_RNG){
+        std::optional<std::string> done = after_starter_ball(
+            env, context, story, executor, planned, checkpoint_index(checkpoints, done_through)
+        );
+        if (!done){
+            return;
+        }
+        done_through = *done;
+    }
+    env.console.log("AutoStory: done through " + done_through + ".");
     send_program_finished_notification(env, NOTIFICATION_PROGRAM_FINISH);
 }
+
+std::optional<std::string> AutoStory::after_starter_ball(
+    SingleSwitchProgramEnvironment& env, ProControllerContext& context,
+    StoryEnv& story, StoryExecutor& executor, const StarterRngPlanned& planned, size_t ball_row
+){
+    if (!RUN_STARTER_RNG){
+        stop_for_starter_rng(env, NOTIFICATION_PROGRAM_FINISH, RNG_PLAN.sound_name(), rng_attempt_lines(planned.attempts));
+        return std::nullopt;
+    }
+    const StarterRngNotifications notifications{
+        .shiny = NOTIFICATION_SHINY, .status_update = NOTIFICATION_STATUS_UPDATE, .error_recoverable = NOTIFICATION_ERROR_RECOVERABLE,
+    };
+    if (!run_starter_rng_in_program(env, context, planned, RNG_PLAN, RUN.language(), notifications, NOTIFICATION_PROGRAM_FINISH)){
+        return std::nullopt;
+    }
+    return run_after_shiny_starter(env, context, story, executor, RUN.policy(), ball_row, RUN.end_index());
+}
+
 
 
 

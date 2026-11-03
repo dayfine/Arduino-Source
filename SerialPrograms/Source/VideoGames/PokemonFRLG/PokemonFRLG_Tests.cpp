@@ -19,9 +19,11 @@
 #include "Inference/Map/PokemonFRLG_PokemonLeagueDetectors.h"
 #include "Inference/Menus/PokemonFRLG_BagDetector.h"
 #include "Inference/Menus/PokemonFRLG_ItemListReader.h"
+#include "Inference/Menus/PokemonFRLG_OptionMenuReader.h"
 #include "Inference/Menus/PokemonFRLG_PartyEmptySlotDetector.h"
 #include "Inference/Menus/PokemonFRLG_PartyHeldItemDetector.h"
 #include "Inference/Menus/PokemonFRLG_PartyMenuDetector.h"
+#include "Inference/Menus/PokemonFRLG_SaveCardReader.h"
 #include "Inference/PokemonFRLG_BattleLevelUpReader.h"
 #include "Inference/PokemonFRLG_BattleSelectionArrowDetector.h"
 #include "Inference/PokemonFRLG_PartyLevelUpReader.h"
@@ -38,7 +40,11 @@
 #include "Programs/PokemonFRLG_NamingScreenKeyboard.h"
 #include "PokemonFRLG_Navigation.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryBattle.h"
+#include "Programs/AutoStory/PokemonFRLG_AutoStoryRngLoop.h"
+#include "Programs/AutoStory/PokemonFRLG_AutoStoryRngPlan.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryTable.h"
+#include "Programs/RngManipulation/PokemonFRLG_RngSteps_Tests.h"
+#include "Programs/RngManipulation/PokemonFRLG_RngTargetSearch_Tests.h"
 #include "Tests/TestUtils.h"
 
 #include "PokemonFRLG_Tests.h"
@@ -687,6 +693,8 @@ void add_tests(UnitTestDatabase& database){
     add_tests_BattleMoveSelectionArrow(database);
     add_tests_BagDetector(database);
     add_tests_ItemListReader(database);
+    add_tests_OptionMenuReader(database);
+    add_tests_SaveCardReader(database);
     add_tests_ExitWildBattle(database);
     add_tests_OverworldMaps(database);
     add_tests_OverworldRoute(database);
@@ -697,10 +705,14 @@ void add_tests(UnitTestDatabase& database){
     add_tests_AutoStory(database);
     add_tests_AutoStorySimulation(database);
     add_tests_AutoStoryItems(database);
+    add_tests_AutoStoryRngPlan(database);
+    add_tests_AutoStoryRngLoop(database);
     add_tests_NamingCursor(database);
     add_tests_NamingPlan(database);
     add_tests_NamingKeys(database);
     add_tests_NamingText(database);
+    add_tests_RngTargetSearch(database);
+    add_tests_RngSteps(database);
 }
 
 
