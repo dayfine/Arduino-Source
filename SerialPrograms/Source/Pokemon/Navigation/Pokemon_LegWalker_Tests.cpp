@@ -130,7 +130,8 @@ UnitTestResult test_open_leg_interrupted_at_end(){
     return true;
 }
 
-//  An open leg set to stop at an interrupt doesn't walk on from a guess.
+//  An open leg set to stop at an interrupt doesn't walk on from a guess; it
+//  says how far the timing puts the player, for the caller to look around.
 UnitTestResult test_open_leg_stops(){
     ScriptedLeg script;
     script.outcomes = {after_step(2)};
@@ -139,6 +140,9 @@ UnitTestResult test_open_leg_stops(){
     const LegResult result = walk_leg_with(leg, script.calls(), 5);
     if (script.holds.size() != 1 || !result.stopped || result.exact || script.cleared.size() != 1){
         return "Expected one hold, the interrupt cleared, and the leg stopped.";
+    }
+    if (result.tiles != 2){
+        return std::format("Expected the timing to put the player 2 tiles in, got {}.", result.tiles);
     }
     return true;
 }
