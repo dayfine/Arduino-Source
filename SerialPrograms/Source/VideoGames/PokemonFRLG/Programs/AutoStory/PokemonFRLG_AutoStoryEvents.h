@@ -172,6 +172,8 @@ struct StoryEnv{
     //  The map the checkpoint under way starts on, where its save is: a
     //  reload checks the save card against it.
     std::string start_map = {};
+    //  That checkpoint's START menu: a reload reads the bag again with it.
+    StartMenu start_menu = StartMenu::BEFORE_POKEMON;
 };
 
 //  After a save is loaded for a checkpoint that starts on `start_map`: the
