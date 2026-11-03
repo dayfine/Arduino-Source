@@ -421,6 +421,7 @@ std::optional<Pokemon::Outcome> run_storage_game_step(
         const PcResult result = run_pc_transfer(logger, pc, *transfer);
         switch (result.end){
         case PcEnd::DONE:
+        case PcEnd::SKIPPED:
             return Pokemon::outcome_ok();
         case PcEnd::REFUSED:
             return Pokemon::outcome_failed("pc_refused", result.detail);
