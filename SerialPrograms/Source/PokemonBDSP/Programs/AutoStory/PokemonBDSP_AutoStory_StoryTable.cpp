@@ -11,9 +11,9 @@
  *  on the console (r72 to r261, 2026-10-30); 00.05 to 00.05c, measured there
  *  first, are now planned on Jubilife's map with the people and triggers of
  *  the Diamond decomp's zone events and scripts. Segment 01 ran on the
- *  console end to end (2026-10-31), its walks as events; 01.05 to 01.10
- *  are now planned on the maps the same way (2026-11-02), and have not
- *  run on a console as plans yet.
+ *  console end to end (2026-10-31), its walks as events; all of it but
+ *  01.04's Gym is now planned on the maps the same way (2026-11-02), and
+ *  has not run on a console as plans yet.
  *
  */
 
@@ -422,6 +422,16 @@ std::vector<StoryCheckpoint> to_the_catch(){
     };
 }
 
+//  Where Dawn's scene leaves 00.04d, and 00.05's save: below Jubilife's
+//  steps (45..47, 61), against the wall east of them, (48, 62). BDSP starts
+//  her scene as we come in below the steps, not on Diamond's trigger above
+//  them (45..48, 60): 00.05's old event went "a tile west, then up the
+//  steps" from its save, two taps north (2026-10-30). Not measured as a
+//  tile: the event's numbers and the map's (#134).
+Pose below_jubilifes_steps(){
+    return at(JUBILIFE, 48, 62);
+}
+
 std::vector<StoryCheckpoint> to_jubilife(){
     StoryStep potions = make(StoryStepKind::SHOP, "potions",
         "Potions before Route 202's trainers: the Poke Mart lady's 10 (she stands still, as in the decomp)");
@@ -439,7 +449,7 @@ std::vector<StoryCheckpoint> to_jubilife(){
         row("00.04d", "Route 202's trainers, Dawn in Jubilife", at(ROUTE_202, "save_spot"), {
             route("north_to_jubilife", on(ROUTE_202, "jubilife_exit"), "north past Route 202's trainers, fighting who sees us"),
             stairs,
-            scene("dawn_scene", std::nullopt, "Dawn walks over while we stand still"),
+            scene("dawn_scene", below_jubilifes_steps(), "Dawn walks over while we stand still"),
         }),
     };
 }
@@ -449,11 +459,15 @@ Pose below_the_school(){
     return next_to(JUBILIFE, "trainers_school_door", SOUTH, SOUTH);
 }
 
-//  00.05: the steps were measured on the console (2026-10-30); the rest is
+//  00.05: the steps as measured on the console (2026-10-30); the rest is
 //  planned on the map.
 StoryCheckpoint the_town_map(){
-    return row("00.05", "Jubilife: the Center, the Trainers' School and the Town Map", std::nullopt, {
-        event("up_the_steps", "a tile west of the save below the steps, then up them", on(JUBILIFE, "up_the_steps")),
+    return row("00.05", "Jubilife: the Center, the Trainers' School and the Town Map", below_jubilifes_steps(), {
+        //  D-pad taps, a tile each: the stick holds this was (200 ms west,
+        //  480 ms north) left us between tiles, and every leg after it a
+        //  column off (r57 to r61).
+        legs("up_the_steps", {{.direction = WEST, .tiles = 1}, {.direction = NORTH, .tiles = 2}},
+            "a tile west of the save, then up the steps to (47, 60)"),
         //  Planned on the map: the hand-measured walls (west to the sign, east
         //  across the road, north) leaned on the old turn's nudge and ended
         //  beside the Trainers' School once turns stopped stepping (r57, r58).

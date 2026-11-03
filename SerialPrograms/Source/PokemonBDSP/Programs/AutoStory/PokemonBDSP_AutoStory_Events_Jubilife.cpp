@@ -1,9 +1,9 @@
-/*  BDSP AutoStory - Events: Jubilife City (00.05)
+/*  BDSP AutoStory - Events: Jubilife City (00.05b)
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  The Jubilife beats of 00.05 the story table cannot plan: up the steps,
- *  and the talk to a wandering clown.
+ *  The Jubilife beat of 00.05b the story table cannot plan: the talk to a
+ *  wandering clown.
  *
  */
 
@@ -30,23 +30,6 @@ using Pokemon::Direction;
 
 
 namespace{
-
-//  00.05: from the save below Jubilife's steps, against the wall east of
-//  them: a tile west (the first press only turns), then up the steps.
-void up_the_steps(VideoStream& stream, ProControllerContext& context){
-    //  D-pad taps, a tile each: the stick holds this was (200 ms west, 480 ms
-    //  north) left us between tiles, and every leg after it a column off
-    //  (r57 to r61). By hand: a tap west and taps north from the save land
-    //  on the map's tiles (between the lamps at x 43 and 49 after six).
-    route_turn(stream, context, Direction::WEST);
-    walk_tiles_dpad(stream, context, run_from_wild_battle, {-1, 0}, 1, "To the steps");
-    route_turn(stream, context, Direction::NORTH);
-    const WalkResult up = walk_tiles_dpad(stream, context, run_from_wild_battle, {0, 1}, 2, "Up the steps");
-    if (up.stop == WalkStop::DIALOG || up.stop == WalkStop::TRANSITION){
-        fail_step(stream, std::string("Up the steps: ") + walk_stop_name(up.stop) + ".");
-    }
-}
-
 
 //  00.05b: a talk to someone who wanders a tile either side of home along a
 //  row (the clowns by the Mart and the Poketch Company, WANDER_AROUND with
@@ -103,7 +86,6 @@ Pokemon::Outcome talk_to_wanderer(StoryExecutor& executor, Pokemon::RunState&, c
 
 
 void add_jubilife_events(StoryEvents& events){
-    events.emplace("up_the_steps", console_event(up_the_steps));
     events.emplace("talk_to_wanderer", talk_to_wanderer);
 }
 
