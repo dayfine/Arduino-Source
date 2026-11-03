@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <format>
 #include "Common/Cpp/Exceptions.h"
+#include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "CommonFramework/VideoPipeline/VideoOverlay.h"
 #include "PokemonFRLG_AutoStoryRngLoop.h"
 
@@ -165,6 +166,13 @@ private:
     WallClock m_try_start;
 };
 
+//  What one try came to, for the tracker and the result line.
+struct TryOutcome{
+    RngAttemptOutcome outcome = RngAttemptOutcome::MISSED;
+    std::string detail;
+    std::optional<AdvPokemonResult> pokemon;
+};
+
 //  Runs one try of the tracker's current attempt, logging its state lines.
 StarterRngResult run_try(
     LoopLog& log, const RngPlanTracker& tracker, StarterRngLoopSteps& steps,
@@ -181,6 +189,27 @@ StarterRngResult run_try(
         },
     };
     return steps.run_attempt(tracker.current_attempt(), call);
+}
+
+//  run_try(), with a setup error (Starter RNG refusing the attempt's
+//  timings) as an attempt that can't run.
+TryOutcome run_try_outcome(
+    Logger& logger, LoopLog& log, const RngPlanTracker& tracker, StarterRngLoopSteps& steps,
+    const StarterRngLoopLimits& limits, WallClock start, WallClock deadline
+){
+    try{
+        const StarterRngResult attempt = run_try(log, tracker, steps, limits, start, deadline);
+        //  The deadline ends a try as out of resets.
+        const bool past_deadline = attempt.outcome == StarterRngOutcome::out_of_resets && steps.now() >= deadline;
+        return TryOutcome{
+            .outcome = plan_outcome(attempt.outcome),
+            .detail = past_deadline ? "attempt_deadline" : starter_rng_outcome_name(attempt.outcome),
+            .pokemon = attempt.pokemon,
+        };
+    }catch (UserSetupError& e){
+        logger.log(std::format("RngPlan: attempt {} can't run: {}", tracker.attempt_index() + 1, e.message()), COLOR_RED);
+        return TryOutcome{.outcome = RngAttemptOutcome::UNUSABLE, .detail = "setup_error", .pokemon = std::nullopt};
+    }
 }
 
 }
@@ -208,15 +237,12 @@ StarterRngLoopResult run_starter_rng_plan(
         }
         const size_t index = tracker.attempt_index();
         const WallClock deadline = std::min(start + limits.attempt_time, total_deadline);
-        const StarterRngResult attempt = run_try(log, tracker, steps, limits, start, deadline);
-        //  The deadline ends a try as out of resets.
-        const bool past_deadline = attempt.outcome == StarterRngOutcome::out_of_resets && steps.now() >= deadline;
-        const RngAttemptOutcome outcome = plan_outcome(attempt.outcome);
+        const TryOutcome attempt = run_try_outcome(logger, log, tracker, steps, limits, start, deadline);
         result.attempts_run++;
-        const RngPlanStep step = tracker.record(outcome);
+        const RngPlanStep step = tracker.record(attempt.outcome);
         logger.log(rng_log_result(RngResultLog{
-            .index = index, .try_number = log.try_number(), .outcome = outcome,
-            .detail = past_deadline ? "attempt_deadline" : starter_rng_outcome_name(attempt.outcome), .pokemon = attempt.pokemon,
+            .index = index, .try_number = log.try_number(), .outcome = attempt.outcome,
+            .detail = attempt.detail, .pokemon = attempt.pokemon,
             .next = rng_plan_next(step, index, tracker.attempt_index()),
         }));
     }
@@ -252,8 +278,9 @@ std::string starter_rng_loop_message(const StarterRngLoopResult& result){
             "The save is still south of the table: raise the RNG plan's max attempts and start AutoStory at 00.04 again.", sids
         );
     case StarterRngLoopEnd::MISSED_EVERY_ATTEMPT_LEFT:
-        return "Starter RNG: every attempt left missed its target more often than the retries allow. "
-            "The save is still south of the table: check the RNG plan's sound setting and start AutoStory at 00.04 again.";
+        return "Starter RNG: every attempt left missed its target more often than the retries allow, or Starter RNG "
+            "refused its timings (see the log). The save is still south of the table: check the RNG plan's sound setting "
+            "and start AutoStory at 00.04 again.";
     case StarterRngLoopEnd::OUT_OF_TIME:
         return std::format(
             "Starter RNG: out of time after {} attempts. The save is still south of the table: start AutoStory at 00.04 again.",
@@ -352,7 +379,16 @@ StarterRngResult ConsoleStarterRngSteps::run_attempt(const RngAttempt& attempt, 
         m_notifications,
         stats
     );
-    return attempts.run(m_env, m_context);
+    try{
+        return attempts.run(m_env, m_context);
+    }catch (OperationFailedException& e){
+        //  Starter RNG refuses timings it can't press (check_timings()) this
+        //  way; a failure in the game sends an error report.
+        if (e.error_report_mode() != ErrorReportMode::NO_ERROR_REPORT){
+            throw;
+        }
+        throw UserSetupError(m_env.logger(), e.message());
+    }
 }
 
 

@@ -111,7 +111,8 @@ public:
     virtual ~StarterRngLoopSteps() = default;
     virtual WallClock now() = 0;
     //  Runs Starter RNG's attempts at `attempt`'s target from the save under
-    //  the ball, as `call` says.
+    //  the ball, as `call` says. Throws UserSetupError when Starter RNG
+    //  refuses the attempt's timings; the loop logs it and moves on.
     virtual StarterRngResult run_attempt(const RngAttempt& attempt, const StarterRngAttemptCall& call) = 0;
 };
 
@@ -127,7 +128,7 @@ enum class StarterRngLoopEnd{
     //  Every attempt was hit and none was shiny.
     OUT_OF_ATTEMPTS,
     //  The last attempt still shiny for a SID left missed more often than
-    //  the retries allow.
+    //  the retries allow, or couldn't run.
     MISSED_EVERY_ATTEMPT_LEFT,
     //  The total time ran out with attempts left.
     OUT_OF_TIME,

@@ -58,10 +58,11 @@ public:
 
 //  Each try takes `minutes_per_attempt` on the clock, makes one reset at
 //  its end with calibration 1.5/-2/0.25 frames, and comes out as the next
-//  of `outcomes`.
+//  of `outcomes`. An empty one is Starter RNG refusing the timings: a
+//  UserSetupError at once.
 class ScriptedSteps : public StarterRngLoopSteps{
 public:
-    ScriptedSteps(std::vector<StarterRngOutcome> outcomes, int minutes_per_attempt)
+    ScriptedSteps(std::vector<std::optional<StarterRngOutcome>> outcomes, int minutes_per_attempt)
         : m_outcomes(std::move(outcomes))
         , m_minutes(minutes_per_attempt)
     {}
@@ -75,9 +76,13 @@ public:
         }
         indices.push_back(call.index);
         deadlines_min.push_back(int(std::chrono::duration_cast<std::chrono::minutes>(call.deadline - START).count()));
+        const std::optional<StarterRngOutcome> outcome = m_outcomes[m_next++];
+        if (!outcome){
+            throw UserSetupError(m_logger, "Refused timings.");
+        }
         m_now += std::chrono::minutes(m_minutes);
         call.on_reset(StarterRngProgress{.resets = 1, .calibrations = {1.5, -2, 0.25}});
-        return StarterRngResult{.outcome = m_outcomes[m_next++], .pokemon = std::nullopt};
+        return StarterRngResult{.outcome = *outcome, .pokemon = std::nullopt};
     }
 
     std::vector<size_t> indices;
@@ -86,8 +91,9 @@ public:
 
 private:
     static inline const WallClock START = WallClock{} + std::chrono::hours(1000);
-    std::vector<StarterRngOutcome> m_outcomes;
+    std::vector<std::optional<StarterRngOutcome>> m_outcomes;
     int m_minutes;
+    LineLogger m_logger;
     WallClock m_now = START;
     size_t m_next = 0;
 };
@@ -145,7 +151,8 @@ std::string join(const std::vector<size_t>& values){
 
 struct LoopRow{
     std::string name;
-    std::vector<StarterRngOutcome> outcomes;
+    //  Empty: Starter RNG refuses the attempt's timings.
+    std::vector<std::optional<StarterRngOutcome>> outcomes;
     int minutes_per_attempt;
     bool shiny_required;
     StarterRngLoopEnd end;
@@ -158,6 +165,7 @@ struct LoopRow{
 };
 
 using enum StarterRngOutcome;
+const std::optional<StarterRngOutcome> REFUSED = std::nullopt;
 
 const std::vector<LoopRow> LOOP_ROWS = {
     {
@@ -243,6 +251,23 @@ const std::vector<LoopRow> LOOP_ROWS = {
             "RngPlan: result attempt=1 try=2 outcome=hit_not_shiny starter_rng=target_hit nature=- ivs=- pid=- next=next_attempt",
             "RngPlan: result attempt=2 try=2 outcome=shiny starter_rng=shiny_on_target nature=- ivs=- pid=- next=confirm",
         },
+    },
+    {
+        .name = "an attempt whose timings Starter RNG refuses is skipped",
+        .outcomes = {REFUSED, shiny_on_target},
+        .minutes_per_attempt = 30, .shiny_required = true,
+        .end = StarterRngLoopEnd::SHINY, .attempts_run = "1,2", .sid = 300,
+        .lines = {
+            "RngPlan: attempt 1 can't run: Refused timings.",
+            "RngPlan: result attempt=1 try=1 outcome=unusable starter_rng=setup_error nature=- ivs=- pid=- next=next_attempt",
+        },
+    },
+    {
+        .name = "no attempt Starter RNG will run",
+        .outcomes = {REFUSED, REFUSED},
+        .minutes_per_attempt = 30, .shiny_required = true,
+        .end = StarterRngLoopEnd::MISSED_EVERY_ATTEMPT_LEFT, .attempts_run = "1,2", .sid = 0,
+        .lines = {"RngPlan: result attempt=2 try=1 outcome=unusable starter_rng=setup_error nature=- ivs=- pid=- next=stop"},
     },
     {
         .name = "every attempt hit, none shiny",
