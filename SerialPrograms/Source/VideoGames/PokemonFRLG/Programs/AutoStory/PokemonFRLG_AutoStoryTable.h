@@ -3,7 +3,7 @@
  *  From: https://github.com/PokemonAutomation/
  *
  *  FireRed from a new game to the Boulder Badge and the Running Shoes, as
- *  story checkpoints 00.01 to 00.11, each saved at its end. From 00.11 on
+ *  story checkpoints 00.01 to 00.10, each saved at its end. After 00.10
  *  every route and leg runs. Taken from a by-hand run on
  *  console B (2026-11-01) and the pokefirered map scripts.
  *
@@ -21,7 +21,7 @@ namespace NintendoSwitch{
 namespace PokemonFRLG{
 
 
-//  Checkpoints 00.01 to 00.11, in order.
+//  Checkpoints 00.01 to 00.10, in order.
 const std::vector<StoryCheckpoint>& story_checkpoints();
 
 

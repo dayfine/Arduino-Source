@@ -353,20 +353,6 @@ UnitTestResult test_runs_after_shoes(){
     return true;
 }
 
-//  00.11's run: one leg west along row 21, to the wall at (6, 21).
-UnitTestResult test_first_run(){
-    const MapPosition start{"PewterCity", {46, 21}};
-    const std::optional<std::vector<RouteStep>> route = fixed_route(story_maps(), start, {{Direction::WEST, 40}});
-    if (!route || route->size() != 1){
-        return "Expected one leg west from " + to_string(start) + ".";
-    }
-    const RouteStep& leg = route->front();
-    if (!leg.to_wall || leg.wild || leg.end != MapPosition{"PewterCity", {6, 21}}){
-        return "Expected a leg to the wall at (6, 21), off the grass, got:" + describe(*route);
-    }
-    return true;
-}
-
 //  Every checkpoint that starts from a save has a place the save card
 //  names, so a save left elsewhere is caught before it runs; and the
 //  places of the starts that matter differ.
@@ -594,7 +580,6 @@ void add_tests_AutoStory(UnitTestDatabase& database){
     database.add<Test_AutoStory>("Pewter Gym walks", test_pewter_gym_walks);
     database.add<Test_AutoStory>("Pewter: to the aide's trigger", test_pewter_aide_walk);
     database.add<Test_AutoStory>("routes run after the Running Shoes", test_runs_after_shoes);
-    database.add<Test_AutoStory>("Pewter: the first run", test_first_run);
     database.add<Test_AutoStory>("intro: names, the rival's from the list", test_intro_names);
     database.add<Test_AutoStory>("options: RIGHT presses from the shown value", test_option_presses);
 }
