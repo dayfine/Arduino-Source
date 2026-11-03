@@ -577,6 +577,7 @@ private:
         if (status.hp_seen){
             m_supplies.hurt = status.hp_red || status.hp_yellow;
             m_supplies.hp_red = status.hp_red;
+            m_supplies.hp_fill = status.hp_fill;
         }
         m_supplies.status = status.status;
     }
@@ -945,6 +946,7 @@ void recover_after_battle(
             supplies.potions--;
             supplies.hurt = false;
             supplies.hp_red = false;
+            supplies.hp_fill = 1.0;
         }
     }
 }
