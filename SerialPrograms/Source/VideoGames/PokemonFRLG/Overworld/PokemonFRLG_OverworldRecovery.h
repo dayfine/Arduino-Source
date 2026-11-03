@@ -56,6 +56,10 @@ enum class StepEnd{
     STOPPED,    //  stopped part-way: where the player is isn't known
     LATE,       //  something was seen after the hold, which may have
                 //  stopped the player before the end
+    //  Not walked: a wild battle set off before the step showed before it
+    //  started. The step before it may have stopped part-way: its
+    //  battle was seen too late (console B, 2026-11-03, Mt. Moon B2F).
+    BATTLE_BEFORE,
 };
 
 //  How a step ended, and for an open leg STOPPED part-way, how many of its

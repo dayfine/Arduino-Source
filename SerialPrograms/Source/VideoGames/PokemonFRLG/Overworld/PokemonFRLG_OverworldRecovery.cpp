@@ -158,6 +158,9 @@ public:
         const std::string leg = to_string(step);
         m_reholds = m_last_late && leg == m_last ? m_reholds + 1 : 0;
         StepOutcome outcome = m_calls.walk(step, facing);
+        if (outcome.end == StepEnd::BATTLE_BEFORE){
+            return outcome;
+        }
         if (outcome.end == StepEnd::DONE && crossing && m_calls.watch_for_trainer){
             outcome = StepOutcome{.end = m_calls.watch_for_trainer(step, crossing->approach_tiles), .walked = std::nullopt};
         }
@@ -223,6 +226,7 @@ public:
             const StepOutcome outcome = m_steps.walk(step, m_facing, crossing);
             if (outcome.end == StepEnd::DONE){
                 const std::optional<MapPosition> start = m_next >= m_unchecked ? m_at : std::nullopt;
+                remember_walked(step);
                 m_at = step.end;
                 m_facing = step.facing_after;
                 m_lines.done(step, ++m_next, m_holds);
@@ -235,6 +239,13 @@ public:
                 m_calls.fail(std::format("walk_overworld_route(): stopped part-way {} times.", m_stops));
                 return;
             }
+            if (outcome.end == StepEnd::BATTLE_BEFORE){
+                if (!after_battle_before(step)){
+                    return;
+                }
+                continue;
+            }
+            m_walked.reset();
             if (!after_stop(step, outcome, start, crossing)){
                 return;
             }
@@ -251,6 +262,44 @@ private:
             return std::nullopt;
         }
         return trainer_crossing(*maps(), *m_at, step);
+    }
+
+    //  A walk the next step's battle check may find stopped part-way:
+    //  where in the plan it is, and where it started from, if known.
+    struct Walked{
+        RouteStep step;
+        size_t index = 0;
+        std::optional<MapPosition> start;
+    };
+
+    //  `step`, m_plan[m_next], walked to its end. Only a walk not onto a
+    //  warp can have stopped part-way unseen.
+    void remember_walked(const RouteStep& step){
+        m_walked.reset();
+        if (step.action == RouteAction::WALK && !step.warps){
+            m_walked = Walked{step, m_next, m_next >= m_holds ? m_at : std::nullopt};
+        }
+    }
+
+    //  A wild battle set off before `step`, m_plan[m_next], showed before
+    //  it started. The step walked before it may have been stopped by the
+    //  battle anywhere: the player is found again on it, as after a battle
+    //  seen after its hold, and never taken to be on `step`'s line (the
+    //  next leg was held from where the battle left the player, and the
+    //  route went on 6 tiles off: console B, 2026-11-03, Mt. Moon B2F).
+    //  With nothing walked since the plan was made, the player is where
+    //  `step` starts. False once the route has failed.
+    bool after_battle_before(const RouteStep& step){
+        if (!m_walked){
+            m_calls.log("Route: a wild battle before " + to_string(step) + ", with nothing walked since the plan: walking it from its start.");
+            return true;
+        }
+        const Walked walked = std::move(*m_walked);
+        m_walked.reset();
+        m_calls.log("Route: a wild battle before " + to_string(step) + " was set off on " + to_string(walked.step) + ", which may have stopped part-way.");
+        m_next = walked.index;
+        m_at = walked.start;
+        return after_stop(walked.step, StepOutcome{.end = StepEnd::LATE, .walked = std::nullopt}, walked.start, std::nullopt);
     }
 
     //  After a stop on `step`, from `start` if known. False once the route
@@ -348,6 +397,7 @@ private:
         plan.insert(plan.end(), anchor.back.begin(), anchor.back.end());
         plan.insert(plan.end(), m_plan.begin() + rest, m_plan.end());
         m_plan = std::move(plan);
+        m_walked.reset();
         m_holds = anchor.holds.size();
         m_unchecked = m_holds + anchor.back.size();
         m_next = 0;
@@ -405,6 +455,7 @@ private:
     size_t m_stops = 0;
     size_t m_holds = 0;     //  of the plan, holds to walls that find the player
     size_t m_unchecked = 0; //  of the plan, the holds and the way back after them
+    std::optional<Walked> m_walked;     //  the step walked last, if it may have stopped part-way
 };
 
 }
