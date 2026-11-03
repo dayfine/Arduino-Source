@@ -136,6 +136,7 @@ public:
         m_screen = Screen::OVERWORLD;
         return true;
     }
+    virtual void dump_screen(std::string_view) override{}
 
 private:
     enum class Screen{
