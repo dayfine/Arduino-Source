@@ -372,7 +372,7 @@ StoryCheckpoint magikarp_salesman(){
 //  shiny where 00.12 ended. A run started here with Gift RNG's handoff on
 //  loads the save beside the salesman and runs Gift RNG first.
 StoryCheckpoint after_gift_rng(){
-    StoryCheckpoint checkpoint = row("00.12b", "after Gift RNG: save with the Magikarp", at(ROUTE4_CENTER, 2, 3, WEST), {}, StartMenu::FULL, {
+    StoryCheckpoint checkpoint = row("00.12b", "after Gift RNG: save with the Magikarp", at(ROUTE4_CENTER, 2, 3, WEST), after_brock(), StartMenu::FULL, {
         game_step(LEAVE_GIFT_SUMMARY, at(ROUTE4_CENTER, 2, 3, WEST), "the Magikarp's summary Gift RNG left open, or HOME"),
     });
     checkpoint.live_start = true;
