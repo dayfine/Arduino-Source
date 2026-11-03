@@ -858,10 +858,16 @@ int item_count(const Supplies& supplies, const std::string& item){
     return 0;
 }
 
+//  Whether the story keeps a count for `item`.
+static bool counted(const std::string& item){
+    Supplies probe;
+    return count_slot(probe, item) != nullptr;
+}
+
 int item_row(const Supplies& supplies, const std::string& item){
     int row = 0;
     for (const std::string& slot : supplies.pocket){
-        if (item_count(supplies, slot) <= 0){
+        if (counted(slot) && item_count(supplies, slot) <= 0){
             continue;
         }
         if (slot == item){
