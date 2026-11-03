@@ -26,7 +26,8 @@ namespace PokemonFRLG{
 //  Checkpoints 00.01 to 00.16, in order, with 00.01b, the way back in after
 //  SID Helper, after 00.01, 00.04 split in two at Squirtle's ball for
 //  Starter RNG: 00.04 and 00.04b, 00.12b, the way back in after Gift RNG,
-//  after 00.12, and 00.12c, the Magikarp put in BOX 1, after it.
+//  after 00.12, 00.12c, the Magikarp put in BOX 1, after it, and 00.15b,
+//  the rival in Cerulean alone, from 00.15's save below his trigger.
 const std::vector<StoryCheckpoint>& story_checkpoints();
 
 

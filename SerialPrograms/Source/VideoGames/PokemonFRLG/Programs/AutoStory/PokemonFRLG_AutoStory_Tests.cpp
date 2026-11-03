@@ -216,8 +216,8 @@ UnitTestResult check_checkpoint(const StoryCheckpoint& checkpoint, StoryPose& po
 
 UnitTestResult test_routes_and_chain(){
     const std::vector<StoryCheckpoint>& checkpoints = story_checkpoints();
-    if (checkpoints.size() != 20 || checkpoints[0].start){
-        return "Expected 20 checkpoints, the first from a new game.";
+    if (checkpoints.size() != 21 || checkpoints[0].start){
+        return "Expected 21 checkpoints, the first from a new game.";
     }
     StoryPose pose;
     for (size_t c = 0; c < checkpoints.size(); c++){
@@ -652,13 +652,13 @@ UnitTestResult check_trigger(const TriggerCase& c){
     return "No step " + c.checkpoint + "/" + c.step + ".";
 }
 
-//  00.15 meets the rival on the middle of his three trigger tiles, row 6
+//  00.15b meets the rival on the middle of his three trigger tiles, row 6
 //  at x 22..24 north of Cerulean (VAR_MAP_SCENE_CERULEAN_CITY_RIVAL 0),
 //  and 00.16 the Rocket on the east one of his two, (10..11, 15) on Nugget
 //  Bridge (VAR_MAP_SCENE_ROUTE24 0), each from the tile below.
 UnitTestResult test_cerulean_triggers(){
     const TriggerCase CASES[] = {
-        {.checkpoint = "00.15", .step = "rival_trigger", .map = "CeruleanCity", .y = 6, .x0 = 22, .x1 = 24, .onto_x = 23},
+        {.checkpoint = "00.15b", .step = "rival_trigger", .map = "CeruleanCity", .y = 6, .x0 = 22, .x1 = 24, .onto_x = 23},
         {.checkpoint = "00.16", .step = "rocket_trigger", .map = "Route24", .y = 15, .x0 = 10, .x1 = 11, .onto_x = 11},
     };
     for (const TriggerCase& c : CASES){

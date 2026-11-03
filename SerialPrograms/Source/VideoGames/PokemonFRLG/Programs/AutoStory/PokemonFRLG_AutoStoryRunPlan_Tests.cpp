@@ -9,6 +9,7 @@
  */
 
 #include <functional>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -115,11 +116,11 @@ private:
 };
 
 void add_tests_RunPlan(UnitTestDatabase& database){
-    const std::string TODAY = "00.01 00.02 00.03 00.04 00.05 00.06 00.07 00.08 00.09 00.10 00.11 00.12 00.12c 00.13 00.14 00.15 00.16";
+    const std::string TODAY = "00.01 00.02 00.03 00.04 00.05 00.06 00.07 00.08 00.09 00.10 00.11 00.12 00.12c 00.13 00.14 00.15 00.15b 00.16";
     const RunPlanScenario scenarios[] = {
         {.name = "handoffs off: the story as before", .first = "00.01", .expected_ids = TODAY},
         {.name = "handoffs off: a range", .first = "00.02", .last = "00.04", .expected_ids = "00.02 00.03 00.04"},
-        {.name = "handoffs off: Mt. Moon to Nugget Bridge", .first = "00.13", .last = "00.16", .expected_ids = "00.13 00.14 00.15 00.16"},
+        {.name = "handoffs off: Mt. Moon to Nugget Bridge", .first = "00.13", .last = "00.16", .expected_ids = "00.13 00.14 00.15 00.15b 00.16"},
         {
             .name = "SID Helper: 00.01 stops on the keyboard",
             .first = "00.01",
@@ -168,8 +169,8 @@ void add_tests_GiftRunPlan(UnitTestDatabase& database){
             .expected_ids = "00.11 00.12",
             .expected_stop = StoryHandoff::GIFT_RNG,
         },
-        {.name = "Gift RNG off: 00.12b is passed over", .first = "00.11", .expected_ids = "00.11 00.12 00.12c 00.13 00.14 00.15 00.16"},
-        {.name = "Gift RNG off: 00.12b runs when started at", .first = "00.12b", .expected_ids = "00.12b 00.12c 00.13 00.14 00.15 00.16"},
+        {.name = "Gift RNG off: 00.12b is passed over", .first = "00.11", .expected_ids = "00.11 00.12 00.12c 00.13 00.14 00.15 00.15b 00.16"},
+        {.name = "Gift RNG off: 00.12b runs when started at", .first = "00.12b", .expected_ids = "00.12b 00.12c 00.13 00.14 00.15 00.15b 00.16"},
         {
             .name = "Gift RNG: started at 00.12b, from the save beside the salesman",
             .first = "00.12b",
@@ -184,7 +185,7 @@ void add_tests_GiftRunPlan(UnitTestDatabase& database){
             .expected_ids = "",
             .expected_stop = StoryHandoff::GIFT_RNG,
         },
-        {.name = "Starter RNG alone: 00.12b runs when started at", .first = "00.12b", .handoffs = {.starter_rng = true}, .expected_ids = "00.12b 00.12c 00.13 00.14 00.15 00.16"},
+        {.name = "Starter RNG alone: 00.12b runs when started at", .first = "00.12b", .handoffs = {.starter_rng = true}, .expected_ids = "00.12b 00.12c 00.13 00.14 00.15 00.15b 00.16"},
         {
             .name = "Starter RNG first, with both on",
             .first = "00.03",
@@ -291,9 +292,8 @@ UnitTestResult test_cerulean_mart_and_grind(){
         const std::optional<GrindPlan> plan = parse_grind_variant(step.variant);
         return plan && plan->member == 0 && plan->level >= 22;
     });
-    const size_t rival = find_step(steps, 0, [](const StoryStep& step){ return step.name == "rival_trigger"; });
-    if (mart == steps.size() || grind == steps.size() || rival == steps.size() || grind > rival){
-        return "00.15: expected a Cerulean Mart step buying Potions, then a GRIND of the lead to Lv22, before the rival's trigger.";
+    if (mart == steps.size() || grind == steps.size()){
+        return "00.15: expected a Cerulean Mart step buying Potions, then a GRIND of the lead to Lv22.";
     }
     const std::optional<StoryPose> clerk = mart > 0 && steps[mart - 1].target ? story_pose(*steps[mart - 1].target) : std::nullopt;
     if (!clerk || clerk->map != "CeruleanCity_Mart"){
@@ -311,6 +311,43 @@ UnitTestResult test_cerulean_mart_and_grind(){
     return true;
 }
 
+//  00.15b, the rival's battle as its own checkpoint, as every battle lost
+//  twice or more gets: it starts from a save, 00.15's on (23, 7) below his
+//  trigger with the nurse just before, so a verify run or a retry reloads
+//  right before him; and his is its only battle.
+UnitTestResult test_cerulean_rival_row(){
+    const std::vector<StoryCheckpoint>& checkpoints = story_checkpoints();
+    const size_t index = row_index("00.15b");
+    const StoryCheckpoint& rival = checkpoints[index];
+    const std::optional<StoryPose> start = rival.start ? story_pose(*rival.start) : std::nullopt;
+    if (!start || rival.live_start || start->map != "CeruleanCity" || !(start->tile == TilePos{23, 7})
+        || save_card_place(start->map).empty()
+    ){
+        return "00.15b: expected it to start from a save on (23, 7) in Cerulean City.";
+    }
+    std::string battles;
+    for (const StoryStep& step : rival.steps){
+        battles += step.kind == StoryStepKind::BATTLE ? " " + step.name : "";
+    }
+    if (battles != " rival_cerulean" || rival.steps.size() != 2 || rival.steps[0].name != "rival_trigger"){
+        return "00.15b: expected only the step onto his trigger and his battle; its battles:" + battles;
+    }
+    const StoryCheckpoint& before = checkpoints[index - 1];
+    const size_t n = before.steps.size();
+    const std::optional<StoryPose> end = n > 0 && before.steps[n - 1].target ? story_pose(*before.steps[n - 1].target) : std::nullopt;
+    if (before.id != "00.15" || n < 2 || before.steps[n - 2].kind != StoryStepKind::HEAL
+        || !end || end->map != start->map || !(end->tile == start->tile)
+    ){
+        return "00.15: expected it to end with the nurse, then the walk to (23, 7) where 00.15b starts.";
+    }
+    for (const StoryStep& step : before.steps){
+        if (step.kind == StoryStepKind::BATTLE){
+            return "00.15: expected no trainer battle before its save; found " + step.name + ".";
+        }
+    }
+    return true;
+}
+
 }
 
 
@@ -320,6 +357,7 @@ void add_tests_AutoStoryRunPlan(UnitTestDatabase& database){
     database.add<Test_AutoStory>("00.01b and 00.12b: back in after SID Helper and Gift RNG", test_after_sid_helper_row);
     database.add<Test_AutoStory>("00.04 and 00.04b: one checkpoint with Starter RNG off", test_starter_rows_joined);
     database.add<Test_AutoStory>("00.15: Potions at Cerulean's Mart and a GRIND before the rival", test_cerulean_mart_and_grind);
+    database.add<Test_AutoStory>("00.15b: the rival's battle alone, from a save before him", test_cerulean_rival_row);
 }
 
 
