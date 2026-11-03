@@ -448,9 +448,8 @@ bool grind_heal_trip(StoryEnv& env, RunState& state, const StoryStep& step, cons
         return false;
     }
     heal_at_center(env.console, env.context);
-    env.supplies.hurt = false;
-    env.supplies.hp_red = false;
-    env.supplies.status = StatusCondition::NONE;
+    //  PP too: a grind's battles spend more than its attacks have.
+    healed_by_nurse(env.supplies);
     walk.name = step.name + "_back_to_patch";
     walk.target = patch;
     return walked(env, state, walk);
