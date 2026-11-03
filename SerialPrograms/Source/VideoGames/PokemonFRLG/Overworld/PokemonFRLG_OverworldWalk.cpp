@@ -271,29 +271,52 @@ void clear_open_message(
 //  leg was taken as walked to its wall, and the next leg was walked into
 //  the battle, 5 tiles short of where it was planned from (console B,
 //  2026-11-03, row 00.13).
-size_t clear_unseen_battle(
-    ConsoleHandle& console, ProControllerContext& context,
-    const OverworldInterrupts& interrupts, const RouteStep& step
-){
-    if (!step.wild || step.action != RouteAction::WALK || step.warps){
-        return 0;
-    }
+namespace{
+
+//  What on screen shows a wild battle on its way: its text box, or the
+//  black of its wipe. Nothing if neither shows.
+const char* battle_on_its_way(ConsoleHandle& console, ProControllerContext& context){
     context.wait_for_all_requests();
     VideoSnapshot screen = console.video().snapshot();
     if (!screen){
+        return nullptr;
+    }
+    if (BattleTextBoxDetector(COLOR_RED).detect(screen)){
+        return "a battle's text box";
+    }
+    if (BlackScreenDetector(COLOR_RED).detect(screen)){
+        return "a black screen";
+    }
+    return nullptr;
+}
+
+}
+
+size_t clear_unseen_battle(
+    ConsoleHandle& console, ProControllerContext& context,
+    const OverworldInterrupts& wild, const RouteStep& step
+){
+    if (step.action != RouteAction::WALK || step.warps){
         return 0;
     }
-    const char* seen = nullptr;
-    if (BattleTextBoxDetector(COLOR_RED).detect(screen)){
-        seen = "a battle's text box";
-    }else if (BlackScreenDetector(COLOR_RED).detect(screen)){
-        seen = "a black screen";
-    }
+    const char* seen = battle_on_its_way(console, context);
     if (seen == nullptr){
         return 0;
     }
     console.log(std::format("Route: {} after {}, which nothing stopped: watching on for a wild battle.", seen, to_string(step)), COLOR_ORANGE);
-    return Pokemon::clear_late_interrupts(console, context, interrupts, UNSEEN_BATTLE_WATCH, MAX_INTERRUPTIONS_PER_LEG);
+    return Pokemon::clear_late_interrupts(console, context, wild, UNSEEN_BATTLE_WATCH, MAX_INTERRUPTIONS_PER_LEG);
+}
+
+size_t clear_battle_before(
+    ConsoleHandle& console, ProControllerContext& context,
+    const OverworldInterrupts& wild, const RouteStep& step
+){
+    const char* seen = battle_on_its_way(console, context);
+    if (seen == nullptr){
+        return 0;
+    }
+    console.log(std::format("Route: {} before {}: watching on for a wild battle set off before it.", seen, to_string(step)), COLOR_ORANGE);
+    return Pokemon::clear_late_interrupts(console, context, wild, UNSEEN_BATTLE_WATCH, MAX_INTERRUPTIONS_PER_LEG);
 }
 
 //  After a warp's fade: fails, once the battle is fled, if it was a wild
@@ -471,7 +494,7 @@ void walk_overworld_route(
         if (step.action != RouteAction::FACE){
             const OverworldInterrupts& watched = step.wild ? interrupts.wild : interrupts.other;
             if (Pokemon::clear_late_interrupts(console, context, watched, step.wild ? AFTER_WILD_LEG_WATCH : AFTER_LEG_WATCH, MAX_INTERRUPTIONS_PER_LEG) == 0){
-                clear_unseen_battle(console, context, watched, step);
+                clear_unseen_battle(console, context, interrupts.wild, step);
             }
         }
         facing = step.facing_after;
