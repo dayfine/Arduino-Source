@@ -32,9 +32,10 @@
  *  no Pokemon that can fight.
  *
  *  The step's decisions take what shows from a PcStorageActions, so they
- *  run in tests against a fake PC. On the console, the screens are read
- *  with the box detectors where they exist; the PC's menus have no reader
- *  yet (see PcScreen), so there the step fails instead of pressing blind.
+ *  run in tests against a fake PC. On the console, each screen is read
+ *  (PokemonFRLG_PcScreenReader.h) before the press it gets: a press sent
+ *  before a menu is drawn goes to the message behind it (console B,
+ *  2026-11-02: DOWN, A before the storage menu showed opened WITHDRAW).
  *
  */
 
@@ -50,6 +51,7 @@
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
+#include "VideoGames/PokemonFRLG/Inference/Box/PokemonFRLG_PcScreenReader.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -98,42 +100,6 @@ struct PcPartyMember{
 std::string pc_transfer_error(const PcTransfer& transfer, const std::vector<PcPartyMember>& party);
 
 
-//  What shows during a PC step, as far as its decisions go.
-enum class PcScreen{
-    //  The overworld, with no message.
-    OVERWORLD,
-    //  A message waiting for a button: the PC booting, "Accessed ...".
-    TEXT,
-    //  "Which PC should be accessed?": SOMEONE'S PC on top.
-    PC_LIST,
-    //  WITHDRAW, DEPOSIT, MOVE POKEMON, MOVE ITEMS, SEE YA!.
-    STORAGE_MENU,
-    //  DEPOSIT's box screen: the hand on the party panel (0-5, 6 CANCEL).
-    PARTY_PANEL,
-    //  WITHDRAW's box screen: the hand on the box (0-29, row by row).
-    BOX_GRID,
-    //  A Pokemon's menu: STORE or WITHDRAW, SUMMARY, MARK, RELEASE, CANCEL.
-    MON_MENU,
-    //  "Deposit in which BOX?".
-    BOX_CHOOSER,
-    //  "Continue BOX operations?".
-    YES_NO,
-    //  Anything else: a fade, a frame between two screens.
-    OTHER,
-};
-const char* pc_screen_name(PcScreen screen);
-
-struct PcView{
-    PcScreen screen = PcScreen::OTHER;
-    //  The cursor's row (a menu, the party panel) or cell (the box grid),
-    //  if read.
-    std::optional<size_t> cursor = std::nullopt;
-    //  BOX_GRID, BOX_CHOOSER: the box shown, if read.
-    std::optional<size_t> box = std::nullopt;
-    //  BOX_GRID: whether the cell under the hand holds a Pokemon, if read.
-    std::optional<bool> occupied = std::nullopt;
-};
-
 enum class PcPress{
     A,
     B,
@@ -169,6 +135,7 @@ public:
     }
 
 private:
+    PcDecision on_overworld();
     PcDecision on_storage_menu(const PcView& view);
     PcDecision on_party_panel(const PcView& view);
     PcDecision on_box_grid(const PcView& view);
@@ -177,6 +144,8 @@ private:
 
     PcTransfer m_transfer;
     bool m_booted = false;
+    //  The overworld read since A at the PC, while the PC boots.
+    size_t m_booting_reads = 0;
     bool m_transferred = false;
     //  BOX_CHOOSER opens on BOX 1 each time the PC is entered.
     bool m_chooser_seen = false;
@@ -213,6 +182,8 @@ struct PcResult{
 constexpr size_t PC_MAX_PRESSES = 80;
 //  OTHER read this many times in a row: a failure.
 constexpr size_t PC_MAX_OTHER_IN_A_ROW = 10;
+//  The overworld read this many times after A at the PC: it didn't boot.
+constexpr size_t PC_BOOT_READS = 4;
 
 //  From the overworld, facing the PC: the transfer, back to the overworld.
 PcResult run_pc_transfer(Logger& logger, PcStorageActions& actions, const PcTransfer& transfer);
@@ -223,9 +194,10 @@ PcResult run_pc_transfer(Logger& logger, PcStorageActions& actions, const PcTran
 size_t read_party_size(ConsoleHandle& console, ProControllerContext& context);
 
 //  The console's PC steps. Party members are read by count only: none is
-//  taken as fainted, since the story heals before it uses the PC. Of the
-//  PC's screens only the box grid (BoxSelectionModeDetector) is read so
-//  far; the rest read as OTHER until detectors are made from captures.
+//  taken as fainted, since the story heals before it uses the PC. Screens
+//  are read with read_pc_screen(); the overworld only once a second frame,
+//  a moment later, shows it too, since a frame between two menus can look
+//  like it.
 class ConsolePcStorageActions : public PcStorageActions{
 public:
     ConsolePcStorageActions(ConsoleHandle& console, ProControllerContext& context);

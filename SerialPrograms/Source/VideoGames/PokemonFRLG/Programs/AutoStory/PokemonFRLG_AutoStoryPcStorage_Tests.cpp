@@ -471,8 +471,12 @@ UnitTestResult test_pc_dialog_screens(){
         {.name = "a YES/NO before the transfer", .transfer = deposit,
             .views = {{.screen = PcScreen::YES_NO, .cursor = 0}}, .press = PcPress::FAIL},
         {.name = "nothing recognized for long", .transfer = deposit, .views = others, .press = PcPress::FAIL},
+        {.name = "the PC still booting after A: wait", .transfer = deposit,
+            .views = {{.screen = PcScreen::OVERWORLD}, {.screen = PcScreen::OVERWORLD}}, .press = PcPress::WAIT},
         {.name = "the overworld again before the transfer", .transfer = deposit,
-            .views = {{.screen = PcScreen::OVERWORLD}, {.screen = PcScreen::OVERWORLD}}, .press = PcPress::FAIL},
+            .views = {{.screen = PcScreen::OVERWORLD}, {.screen = PcScreen::TEXT}, {.screen = PcScreen::OVERWORLD}}, .press = PcPress::FAIL},
+        {.name = "the PC never booting", .transfer = deposit,
+            .views = std::vector<PcView>(PC_BOOT_READS + 1, PcView{.screen = PcScreen::OVERWORLD}), .press = PcPress::FAIL},
         {.name = "the box chooser after a move, unread", .transfer = {.action = PcAction::DEPOSIT, .box = 2},
             .views = {{.screen = PcScreen::BOX_CHOOSER}, {.screen = PcScreen::BOX_CHOOSER}}, .press = PcPress::FAIL},
     };

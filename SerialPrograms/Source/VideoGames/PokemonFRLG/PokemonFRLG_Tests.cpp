@@ -13,6 +13,7 @@
 #include "Inference/Box/PokemonFRLG_BoxCellReader.h"
 #include "Inference/Box/PokemonFRLG_BoxGenderReader.h"
 #include "Inference/Box/PokemonFRLG_BoxSelectionModeDetector.h"
+#include "Inference/Box/PokemonFRLG_PcScreenReader.h"
 #include "Inference/Dialogs/PokemonFRLG_BattleDialogs.h"
 #include "Inference/Dialogs/PokemonFRLG_DialogDetector.h"
 #include "Inference/Dialogs/PokemonFRLG_PrizeSelectDetector.h"
@@ -703,6 +704,7 @@ void add_tests(UnitTestDatabase& database){
     add_tests_BoxCellReader(database);
     add_tests_BoxGenderReader(database);
     add_tests_BoxSelectionModeDetector(database);
+    add_tests_PcScreenReader(database);
     add_tests_SelectionDialogDetector(database);
     add_tests_ShinySymbolDetector(database);
     add_tests_PrizeSelectDetector(database);
