@@ -69,7 +69,10 @@ std::optional<size_t> counted_value(std::string_view word, std::string_view key,
 
 std::string pc_variant(const PcTransfer& transfer){
     if (transfer.action == PcAction::DEPOSIT){
-        return std::format("{}deposit slot={} box={}", PC_VARIANT_PREFIX, transfer.party_slot + 1, transfer.box + 1);
+        return std::format(
+            "{}deposit slot={} box={}{}", PC_VARIANT_PREFIX, transfer.party_slot + 1, transfer.box + 1,
+            transfer.if_missing == PcMissing::SKIP ? " if_present" : ""
+        );
     }
     return std::format("{}withdraw box={} slot={}", PC_VARIANT_PREFIX, transfer.box + 1, transfer.box_slot + 1);
 }
@@ -78,11 +81,15 @@ std::optional<PcTransfer> parse_pc_variant(std::string_view variant){
     if (!variant.starts_with(PC_VARIANT_PREFIX)){
         return std::nullopt;
     }
-    const std::vector<std::string_view> words = split_words(variant.substr(PC_VARIANT_PREFIX.size()));
+    std::vector<std::string_view> words = split_words(variant.substr(PC_VARIANT_PREFIX.size()));
+    PcTransfer transfer;
+    if (words.size() == 4 && words[0] == "deposit" && words[3] == "if_present"){
+        transfer.if_missing = PcMissing::SKIP;
+        words.pop_back();
+    }
     if (words.size() != 3){
         return std::nullopt;
     }
-    PcTransfer transfer;
     std::optional<size_t> slot;
     std::optional<size_t> box;
     if (words[0] == "deposit"){
@@ -311,7 +318,12 @@ PcDecision PcStorageDialog::on_box_chooser(const PcView& view){
 
 PcResult run_pc_transfer(Logger& logger, PcStorageActions& actions, const PcTransfer& transfer){
     const std::string name = pc_variant(transfer);
-    const std::string refused = pc_transfer_error(transfer, actions.read_party());
+    const std::vector<PcPartyMember> party = actions.read_party();
+    if (transfer.action == PcAction::DEPOSIT && transfer.if_missing == PcMissing::SKIP && transfer.party_slot >= party.size()){
+        logger.log(std::format("PC: skipped \"{}\": the party has {} Pokemon.", name, party.size()));
+        return {PcEnd::SKIPPED, ""};
+    }
+    const std::string refused = pc_transfer_error(transfer, party);
     if (!refused.empty()){
         logger.log("PC: refused \"" + name + "\": " + refused + ".", COLOR_RED);
         return {PcEnd::REFUSED, refused};

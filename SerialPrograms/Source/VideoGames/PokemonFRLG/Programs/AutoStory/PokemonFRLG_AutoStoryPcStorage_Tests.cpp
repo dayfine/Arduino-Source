@@ -369,6 +369,14 @@ const std::vector<PcCase> PC_CASES = {
         .presses = "",
     },
     {
+        .name = "skip a slot the party hasn't got, when told to",
+        .transfer = {.action = PcAction::DEPOSIT, .party_slot = 1, .box = 0, .if_missing = PcMissing::SKIP},
+        .party = {{.species = "squirtle"}},
+        .end = PcEnd::SKIPPED,
+        .party_after = "squirtle",
+        .presses = "",
+    },
+    {
         .name = "refuse a slot the party hasn't got",
         .transfer = {.action = PcAction::DEPOSIT, .party_slot = 2},
         .party = SQUIRTLE_MAGIKARP,
@@ -500,12 +508,14 @@ UnitTestResult test_pc_variant(){
     const std::vector<PcTransfer> transfers = {
         {.action = PcAction::DEPOSIT, .party_slot = 1, .box = 0},
         {.action = PcAction::WITHDRAW, .box = 13, .box_slot = 29},
+        {.action = PcAction::DEPOSIT, .party_slot = 1, .box = 0, .if_missing = PcMissing::SKIP},
     };
     for (const PcTransfer& transfer : transfers){
         const std::string variant = pc_variant(transfer);
         const std::optional<PcTransfer> back = parse_pc_variant(variant);
         if (!back || back->action != transfer.action || back->box != transfer.box
             || back->party_slot != transfer.party_slot || back->box_slot != transfer.box_slot
+            || back->if_missing != transfer.if_missing
         ){
             return "\"" + variant + "\" didn't read back as the transfer it was made from.";
         }
