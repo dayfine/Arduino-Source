@@ -326,7 +326,7 @@ StoryCheckpoint running_shoes(){
 //  its own, so no leg is cut; the trainer walks up to the player, who stays
 //  put facing the way they stepped.
 StoryCheckpoint route3(){
-    return row("00.11", "Pewter Center, then Route 3's trainers", at(PEWTER, 17, 26, SOUTH), {}, StartMenu::FULL, {
+    return row("00.11", "Pewter Center, then Route 3's trainers", at(PEWTER, 17, 26, SOUTH), after_brock(), StartMenu::FULL, {
         running(route("pewter_nurse", at(PEWTER_CENTER, 7, 4, NORTH), "in by the door below the player")),
         heal("heal_pewter"),
         //  Up from row 9 west of Janice's line, which ends at x 14.
@@ -357,7 +357,7 @@ StoryCheckpoint route3(){
 //  (40, 9) (run_route(); console B, 2026-11-02, she stopped the player
 //  there and spoke after the leg's short watch).
 StoryCheckpoint magikarp_salesman(){
-    return row("00.12", "Route 3 and 4 to the Magikarp salesman", at(ROUTE3, 36, 8, SOUTH), {}, StartMenu::FULL, {
+    return row("00.12", "Route 3 and 4 to the Magikarp salesman", at(ROUTE3, 36, 8, SOUTH), after_brock(), StartMenu::FULL, {
         running(route("route4_nurse", at(ROUTE4_CENTER, 7, 4, NORTH), "east over Route 3, off the grass, north into Route 4 and its Pokemon Center")),
         heal("heal_route4"),
         //  The seam for a Gift RNG program: the save faces the salesman (1, 3).
