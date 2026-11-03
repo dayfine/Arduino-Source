@@ -103,6 +103,7 @@ const UnitTestDatabase& UNIT_TESTS_ALL(){
     static UnitTestDatabase database = make_UNIT_TESTS_ALL();
     return database;
 }
+
 std::vector<std::string> unit_test_names(std::span<const std::string_view> filters){
     std::vector<std::string> ret;
     for (const auto& test : UNIT_TESTS_ALL()){
@@ -112,6 +113,7 @@ std::vector<std::string> unit_test_names(std::span<const std::string_view> filte
     }
     return ret;
 }
+
 StringSelectDatabase make_TEST_DATABASE(){
     StringSelectDatabase database;
     for (auto& test : UNIT_TESTS_ALL()){
