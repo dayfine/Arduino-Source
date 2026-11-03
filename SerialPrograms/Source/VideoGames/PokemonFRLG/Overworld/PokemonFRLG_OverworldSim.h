@@ -240,6 +240,11 @@ struct SimWalkerRules{
     //  now; the tile-at-a-time build watched each step for 900 ms, and saw
     //  the warp's fade on the step onto the forest's north gate as a battle.
     Milliseconds watch_past_hold{0};
+    //  A leg onto a warp whose fade was a wild battle's (its wipe passes for
+    //  the fade) stops before the warp, and the player is found again on it.
+    //  Without it the walker stopped as off the route (console B,
+    //  2026-11-03, Mt. Moon 1F, row 00.13).
+    bool find_player_after_warp_battle = true;
 };
 
 //  The console side of run_route() on an OverworldSim, as
@@ -278,7 +283,8 @@ private:
     };
     StepOutcome walk(const RouteStep& step, std::optional<Direction> facing);
     std::optional<WalkedTiles> walk_step(const RouteStep& step, std::optional<Direction> facing);
-    void after_warp(const RouteStep& step, int warps_before);
+    bool after_warp(const RouteStep& step, int warps_before);
+    [[noreturn]] void fail_off_route(const RouteStep& step);
     std::optional<SimSeen> hold_watching(const RouteStep& step, Milliseconds hold, const std::vector<Interrupt>& interrupts);
     size_t clear_late(const std::vector<Interrupt>& interrupts, Milliseconds watch, size_t max);
     void clear(const Interrupt& interrupt);
