@@ -115,6 +115,8 @@ inline constexpr Milliseconds AFTER_LEG_WATCH(500);
 //  that long, the next leg is walked into the battle and lost: there, "east
 //  4" and "west 4".
 inline constexpr Milliseconds AFTER_WILD_LEG_WATCH(3500);
+//  How long clear_open_message() watches for the message it saw.
+inline constexpr Milliseconds OPEN_MESSAGE_WATCH(1000);
 inline constexpr size_t MAX_INTERRUPTIONS_PER_LEG = 5;
 
 DpadPosition dpad(Direction direction);
@@ -153,6 +155,15 @@ void wait_out_warp(ConsoleHandle& console, ProControllerContext& context, const 
 
 //  Before `step`: fails unless the overworld is up.
 void check_overworld(ConsoleHandle& console, ProControllerContext& context, const RouteStep& step);
+
+//  Before `step`: if a message is open (a trainer who saw the player on the
+//  last leg and spoke after its watch), hands what shows to `interrupts`,
+//  once, instead of failing at once. check_overworld() then fails if the
+//  overworld still isn't up.
+void clear_open_message(
+    ConsoleHandle& console, ProControllerContext& context,
+    const OverworldInterrupts& interrupts, const RouteStep& step
+);
 
 //  After `step`'s warp: fails, once the battle is fled, if its fade was a
 //  wild battle's.

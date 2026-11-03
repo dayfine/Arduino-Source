@@ -253,6 +253,19 @@ void check_overworld(ConsoleHandle& console, ProControllerContext& context, cons
     }
 }
 
+void clear_open_message(
+    ConsoleHandle& console, ProControllerContext& context,
+    const OverworldInterrupts& interrupts, const RouteStep& step
+){
+    context.wait_for_all_requests();
+    VideoSnapshot screen = console.video().snapshot();
+    if (!screen || !WhiteDialogDetector(COLOR_RED).detect(screen)){
+        return;
+    }
+    console.log("Route: a message is open before " + to_string(step) + "; handing it to the leg's interrupts.", COLOR_ORANGE);
+    Pokemon::clear_late_interrupts(console, context, interrupts, OPEN_MESSAGE_WATCH, 1);
+}
+
 //  After a warp's fade: fails, once the battle is fled, if it was a wild
 //  battle's. In run 7 (console B, 2026-11-01) the player had drifted onto
 //  Route 1's grass, and the step meant for Oak's Lab's door set off a
@@ -391,6 +404,7 @@ void walk_overworld_route(
     }
     for (const RouteStep& step : route){
         console.log("Route: " + to_string(step));
+        clear_open_message(console, context, step.wild ? interrupts.wild : interrupts.other, step);
         check_overworld(console, context, step);
         switch (step.action){
         case RouteAction::WALK:
