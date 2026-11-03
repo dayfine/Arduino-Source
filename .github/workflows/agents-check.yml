@@ -1,0 +1,35 @@
+# harness: project
+# Checks for what lives on the agents notes branch: scripts, lab control, Python tools.
+# C++ Code Health (devtools/code_health) only analyzes Common/ and SerialPrograms/ on code
+# branches, so it has nothing to check here; it runs in the code branches' CI and our pre-push hook.
+name: Agents Check
+
+on:
+  pull_request:
+    branches: [agents]
+  push:
+    branches: [agents]
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Shell syntax (sh -n)
+        run: |
+          status=0
+          for f in $(git ls-files '*.sh') tools/hooks/pre-push; do
+            sh -n "$f" || { echo "::error file=$f::sh -n failed"; status=1; }
+          done
+          exit $status
+      - name: ShellCheck (errors only)
+        run: shellcheck -S error $(git ls-files '*.sh') tools/hooks/pre-push
+      - name: Lab lock race test
+        run: sh lab/control/lablock_test.sh 10
+      - name: Python syntax
+        run: python3 -m py_compile $(git ls-files 'tools/*.py' 'bin/*.py' 'lab/*.py')
+      - name: Harness checks
+        run: |
+          sh bin/agent-harness-check.sh
+          sh bin/agent-standing-rules-check.sh
