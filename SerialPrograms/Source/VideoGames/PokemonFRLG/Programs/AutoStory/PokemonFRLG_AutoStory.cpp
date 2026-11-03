@@ -405,10 +405,11 @@ const StarterRngLoopLimits STARTER_RNG_LIMITS{
 
 //  Starter RNG's attempts in the program, from the save south of the table.
 //  Returns true for a shiny Squirtle, on the target or not, the game on its
-//  summary; otherwise the run has stopped with what to do next.
+//  summary; otherwise the run has stopped with what to do next. A shiny that
+//  confirms the SID writes it into the RNG plan's SID option.
 static bool run_starter_rng_in_program(
     SingleSwitchProgramEnvironment& env, ProControllerContext& context,
-    const StarterRngPlanned& planned, const StarterRngPlanOptions& options, Language language,
+    const StarterRngPlanned& planned, StarterRngPlanOptions& options, Language language,
     const StarterRngNotifications& notifications, EventNotificationOption& finished
 ){
     RngPlanTracker tracker(
@@ -421,6 +422,18 @@ static bool run_starter_rng_in_program(
     const StarterRngLoopResult result = run_starter_rng_plan(
         logger, tracker, steps, STARTER_RNG_LIMITS, planned.tid, options.helper_candidates(planned.tid)
     );
+    const std::string confirmed_sid = result.sid ? std::to_string(*result.sid) : "";
+    if (result.end == StarterRngLoopEnd::SHINY && result.sid && static_cast<std::string>(options.SID) != confirmed_sid){
+        //  Kept in AutoStory's settings, so the next run plans for it and skips SID
+        //  Helper's steps. Deferred: a per-save record keyed by TID (e.g. UserSettings/
+        //  FRLG-Saves.json: TID -> SID, version, language) that any FRLG RNG program
+        //  could read, once a second program needs the SID.
+        options.SID.set(confirmed_sid);
+        env.console.log(
+            "AutoStory: set the RNG plan's SID to " + confirmed_sid + ". The settings file gets it "
+            "when the program's panel is closed or the app quits.", COLOR_BLUE
+        );
+    }
     const std::string message = starter_rng_loop_message(result);
     if (result.end != StarterRngLoopEnd::SHINY && result.end != StarterRngLoopEnd::SHINY_OFF_TARGET){
         stop_for_handoff(env, finished, message);
@@ -450,6 +463,20 @@ static std::string run_after_shiny_starter(
     return rows.back().id;
 }
 
+//  The run is done through `done_through`. The finish message also gives
+//  the SID when Starter RNG set it, from `sid_before` to `sid_after`.
+static void send_story_finished(
+    SingleSwitchProgramEnvironment& env, EventNotificationOption& finished,
+    const std::string& done_through, const std::string& sid_before, const std::string& sid_after
+){
+    std::string message = "AutoStory: done through " + done_through + ".";
+    if (sid_after != sid_before){
+        message += " Starter RNG confirmed the SID, " + sid_after + ", and saved it as the RNG plan's SID.";
+    }
+    env.console.log(message);
+    send_program_finished_notification(env, finished, message);
+}
+
 StoryHandoffs AutoStory::story_handoffs() const{
     //  Running Starter RNG here splits 00.04 at the ball as its stop does,
     //  and sets the SID at 00.01 when it isn't known.
@@ -466,6 +493,7 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
     const std::string player_name = PLAYER_NAME;
     check_setup(env.console, checkpoints, first, last, NEW_GAME_FROM_TITLE, player_name);
     const StoryHandoffs handoffs = story_handoffs();
+    const std::string sid_before = RNG_PLAN.SID;
     StoryRunPlan plan = plan_story_run(checkpoints, first, last, handoffs);
     if (plan.stop == StoryHandoff::SID_HELPER && !RUN_STARTER_RNG){
         stop_for_sid_helper(env, context, NOTIFICATION_PROGRAM_FINISH, player_name);
@@ -504,8 +532,7 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
         }
         done_through = *done;
     }
-    env.console.log("AutoStory: done through " + done_through + ".");
-    send_program_finished_notification(env, NOTIFICATION_PROGRAM_FINISH);
+    send_story_finished(env, NOTIFICATION_PROGRAM_FINISH, done_through, sid_before, RNG_PLAN.SID);
 }
 
 std::optional<std::string> AutoStory::after_starter_ball(

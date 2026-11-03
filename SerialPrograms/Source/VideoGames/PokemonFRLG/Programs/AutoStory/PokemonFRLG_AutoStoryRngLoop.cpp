@@ -32,7 +32,7 @@ std::string starter_rng_loop_message(const StarterRngLoopResult& result){
     switch (result.end){
     case StarterRngLoopEnd::SHINY:
         if (result.sid){
-            return std::format("Starter RNG: shiny Squirtle. The SID is {}: enter it as the RNG plan's SID.", *result.sid);
+            return std::format("Starter RNG: shiny Squirtle. The SID is {}: saved as the RNG plan's SID, so AutoStory skips SID Helper's steps next time.", *result.sid);
         }
         if (result.remaining_sids.empty()){
             return "Starter RNG: shiny Squirtle, for none of the SID candidates left: the SID isn't one of SID Helper's candidates.";
