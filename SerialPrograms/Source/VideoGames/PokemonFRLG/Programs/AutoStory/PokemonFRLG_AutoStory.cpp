@@ -142,6 +142,7 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
         story.has_save = true;
         check_start_save(env, story, checkpoints[first]);
         read_lead_moves(story, checkpoints[first].menu);
+        read_bag_supplies(story, checkpoints[first].menu);
     }
 
     StoryExecutor executor(story);
