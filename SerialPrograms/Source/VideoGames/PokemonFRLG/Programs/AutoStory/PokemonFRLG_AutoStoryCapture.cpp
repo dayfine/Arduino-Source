@@ -12,6 +12,7 @@
 #include "CommonTools/Async/InferenceRoutines.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "VideoGames/PokemonFRLG/Inference/Dialogs/PokemonFRLG_BattleDialogs.h"
+#include "VideoGames/PokemonFRLG/Inference/Dialogs/PokemonFRLG_DialogDetector.h"
 #include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_BagDetector.h"
 #include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_ItemListReader.h"
 #include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleFlashWatcher.h"
@@ -448,6 +449,13 @@ bool pace_until_battle(Logger& logger, PatchSteps& steps, size_t max_steps){
             logger.log(std::format("Pacing: a battle shows after step {}; its flash was missed.", c + 1), COLOR_ORANGE);
             return true;
         }
+        //  Console B, 2026-11-03 (m63): Camper Shane on Route 24 saw the
+        //  player pace in his sight and walked up; his message stayed up
+        //  while the rest of the steps paced in vain.
+        if (steps.message_shows()){
+            const std::string trainer = steps.fight_trainer();
+            logger.log(std::format("Pacing: trainer battle during pacing: {}, after step {}.", trainer, c + 1), COLOR_ORANGE);
+        }
     }
     if (steps.overworld_shows()){
         return false;
@@ -462,11 +470,15 @@ bool pace_until_battle(Logger& logger, PatchSteps& steps, size_t max_steps){
 }
 
 
-ConsolePatchSteps::ConsolePatchSteps(ConsoleHandle& console, ProControllerContext& context, Direction pace, PaceSpot& spot)
+ConsolePatchSteps::ConsolePatchSteps(
+    ConsoleHandle& console, ProControllerContext& context, Direction pace, PaceSpot& spot,
+    const PaceTrainerBattle& trainer_battle
+)
     : m_console(console)
     , m_context(context)
     , m_pace(pace)
     , m_spot(spot)
+    , m_trainer_battle(trainer_battle)
 {}
 
 bool ConsolePatchSteps::step(){
@@ -493,21 +505,38 @@ bool ConsolePatchSteps::overworld_shows(){
     return PokemonFRLG::overworld_shows(m_console, m_context);
 }
 
+bool ConsolePatchSteps::message_shows(){
+    m_context.wait_for_all_requests();
+    VideoSnapshot screen = m_console.video().snapshot();
+    return screen && WhiteDialogDetector(COLOR_RED).detect(screen);
+}
+
+std::string ConsolePatchSteps::fight_trainer(){
+    m_trainer_battle();
+    //  Back on the patch's tile, facing as the walk back left it.
+    m_spot = {};
+    return "a trainer";
+}
+
 void ConsolePatchSteps::dump_screen(std::string_view label){
     m_context.wait_for_all_requests();
     dump_debug_image(m_console, "AutoStory/pace", std::string(label), m_console.video().snapshot());
 }
 
 
-ConsoleCaptureActions::ConsoleCaptureActions(ConsoleHandle& console, ProControllerContext& context, Language language)
+ConsoleCaptureActions::ConsoleCaptureActions(
+    ConsoleHandle& console, ProControllerContext& context, Language language,
+    PaceTrainerBattle trainer_battle
+)
     : m_console(console)
     , m_context(context)
     , m_language(language)
+    , m_trainer_battle(std::move(trainer_battle))
 {}
 
 bool ConsoleCaptureActions::find_encounter(Direction pace){
     PaceSpot spot;
-    ConsolePatchSteps steps(m_console, m_context, pace, spot);
+    ConsolePatchSteps steps(m_console, m_context, pace, spot, m_trainer_battle);
     return pace_until_battle(m_console.logger(), steps, PACE_MAX_STEPS);
 }
 

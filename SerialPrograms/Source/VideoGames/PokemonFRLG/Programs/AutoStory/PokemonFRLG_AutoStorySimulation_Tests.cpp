@@ -31,6 +31,7 @@
 #include "PokemonFRLG_AutoStoryActions.h"
 #include "PokemonFRLG_AutoStoryCapture.h"
 #include "PokemonFRLG_AutoStoryEvents.h"
+#include "PokemonFRLG_AutoStoryPaceSim.h"
 #include "PokemonFRLG_AutoStoryTable.h"
 
 namespace PokemonAutomation{
@@ -665,36 +666,6 @@ class QuietLogger : public Logger{
 public:
     using Logger::log;
     virtual void log(const std::string&, Color) override{}
-};
-
-//  Pacing on the sim as on the console: `pace` and back, a tap to turn
-//  first when the player faces another way (step_once()).
-class SimPatch : public PatchSteps{
-public:
-    SimPatch(OverworldSim& sim, Direction pace, Direction back)
-        : m_sim(sim), m_pace(pace), m_back(back)
-    {}
-    virtual bool step() override{
-        const Direction way = m_displaced ? m_back : m_pace;
-        if (m_sim.state().facing != way){
-            m_sim.tap(way);
-        }
-        m_sim.tap(way);
-        m_displaced = !m_displaced;
-        return m_sim.watch({SimWatcher::FLASH}, std::chrono::milliseconds(1000)).has_value();
-    }
-    virtual bool battle_shows() override{
-        return m_sim.watch({SimWatcher::BATTLE_SCREEN}, std::chrono::milliseconds(5000)).has_value();
-    }
-    virtual bool overworld_shows() override{
-        return m_sim.state().screen == SimScreen::OVERWORLD;
-    }
-    virtual void dump_screen(std::string_view) override{}
-private:
-    OverworldSim& m_sim;
-    Direction m_pace;
-    Direction m_back;
-    bool m_displaced = false;
 };
 
 //  Walks `route`, planned from the pacing step's tiles by
