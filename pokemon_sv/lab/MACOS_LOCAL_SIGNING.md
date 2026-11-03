@@ -143,3 +143,17 @@ On 2026-10-25 the signed app was opened at the stable path with profile
 No new consent prompt was observed in this launch. This is a bounded observation,
 not a claim that future rebuilds or OS changes can never prompt. Current device
 state belongs in run records, not the historical handback paragraphs above.
+
+## BBQ lab r10 adoption (2026-10-25)
+
+`lab/r10` (worktree `Arduino-Source-r10`) cherry-picked the three signing
+commits (`f8c4df5e1`, `38acc0710`, `c40770e92`) and was reconfigured with the
+same three cmake flags. Strict verification passed; designated requirement is the
+same `com.dayfine.pokemonautomation.lab` + certificate leaf as above. Binary
+SHA256 `1caaeecf1fc00ca46c0bb873520aa055e90521e0da3031f3969a4c7b4930cfb9`.
+Launched with profile `bbq-r15`: the log reported camera and microphone
+permission granted, with no prompt. The video showed colour bars (no HDMI
+signal from the Switch at the time), so game video was not yet confirmed. The
+native test helper stays at `build-prep/app/BBQNativeTests`, outside the bundle.
+Both lab apps now share one identity; run only one at a time on the capture card
+and controller.
