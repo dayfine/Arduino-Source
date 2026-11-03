@@ -11,6 +11,7 @@
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "PokemonFRLG_OverworldMaps.h"
+#include "PokemonFRLG_OverworldRoute.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -207,6 +208,34 @@ UnitTestResult test_not_json(){
     return true;
 }
 
+//  A hall with an escalator at (1, 2) to a floor that isn't loaded, like
+//  Route 4's Pokemon Center.
+const char* const ESCALATOR_HALL = R"({
+    "name": "Hall", "source": {"decomp_file": "", "revision": "test", "date": "2026-11-02"},
+    "tiles": ["######", "#....#", "#....#", "######"],
+    "warps": [{"x": 1, "y": 2, "enter": "step_on"}]
+})";
+
+//  Holding west along the escalator's row rides it: a leg there ends by
+//  counting tiles, never by holding to the wall behind it (console B,
+//  2026-11-02, Route 4's Pokemon Center).
+UnitTestResult test_no_hold_onto_escalator(){
+    const std::vector<MapData> maps{parse_map(ESCALATOR_HALL, "Hall")};
+    if (hold_to_wall(maps, {"Hall", {4, 2}}, false, Direction::WEST)){
+        return "Expected no hold west along the escalator's row.";
+    }
+    const std::optional<std::vector<RouteStep>> route = plan_overworld_route(maps, {"Hall", {4, 2}}, {{"Hall", {2, 1}}, std::nullopt});
+    if (!route || !(follow_overworld_route(maps, {"Hall", {4, 2}}, *route) == MapPosition{"Hall", {2, 1}})){
+        return "Expected a route from (4, 2) to (2, 1).";
+    }
+    for (const RouteStep& step : *route){
+        if (step.to_wall && step.direction == Direction::WEST && step.end.point == TilePos{2, 2}){
+            return "Expected no hold west next to the escalator: " + to_string(step);
+        }
+    }
+    return true;
+}
+
 }
 
 
@@ -219,6 +248,7 @@ void add_tests_OverworldMaps(UnitTestDatabase& database){
     database.add<Test_OverworldMaps>("unknown tile", test_unknown_tile);
     database.add<Test_OverworldMaps>("not JSON", test_not_json);
     database.add<Test_OverworldMaps>("trainer sight", test_trainer_sight);
+    database.add<Test_OverworldMaps>("no hold onto an escalator", test_no_hold_onto_escalator);
 }
 
 
