@@ -94,7 +94,7 @@ class ScreenTeachActions : public TeachActions{
 public:
     ScreenTeachActions(Logger& logger, TeachScreens& screens);
 
-    virtual bool open_item(std::string_view item, std::string_view move) override;
+    virtual ItemOpen open_item(std::string_view item, std::string_view move) override;
     virtual TeachPrompt choose_member(size_t slot) override;
     virtual ForgetEnd forget(size_t slot) override;
     virtual void stop_teaching() override;
@@ -108,8 +108,8 @@ private:
     //  In the bag: to KEY ITEMS.
     bool to_key_items();
     //  On the list `screen`: A on the row `name`, then A on the item menu's
-    //  top row (OPEN or USE).
-    bool open_row(TeachScreen screen, std::string_view name);
+    //  top row (OPEN or USE). NOT_IN_CASE: the rows read haven't got it.
+    ItemOpen open_row(TeachScreen screen, std::string_view name);
     //  After A on a member: what it showed.
     TeachPrompt member_answer();
     void press(TeachPress press);
