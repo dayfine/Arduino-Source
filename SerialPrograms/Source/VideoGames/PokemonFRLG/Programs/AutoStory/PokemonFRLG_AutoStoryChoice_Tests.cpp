@@ -118,10 +118,19 @@ std::vector<ChoiceCase> choice_cases(){
             .facing = Fossil::DOME,
             .end = ChoiceEnd::WRONG_ONE,
         },
+        //  The console has no reader for the prompt's text: the table has
+        //  walked the player to face the wanted fossil, so YES takes it
+        //  (console B: answering NO and stopping left 00.13 stuck there).
         {
-            .name = "an unread prompt: NO, both left",
+            .name = "an unread prompt: YES, facing the wanted fossil",
             .setup = [](FakeFossilRoom& room){ room.offer_readable = false; },
-            .end = ChoiceEnd::UNREAD,
+            .taken = Fossil::HELIX,
+            .confirmed = true,
+        },
+        {
+            .name = "an unread prompt and an unread bag: YES",
+            .setup = [](FakeFossilRoom& room){ room.offer_readable = false; room.bag_readable = false; },
+            .taken = Fossil::HELIX,
         },
         {
             .name = "taken, the bag unread",
