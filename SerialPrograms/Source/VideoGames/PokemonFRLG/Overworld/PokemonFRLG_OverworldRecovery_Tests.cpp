@@ -6,6 +6,8 @@
  *
  */
 
+#include <algorithm>
+#include <chrono>
 #include <format>
 #include <functional>
 #include <map>
@@ -46,7 +48,7 @@ private:
 
 //  Steps that end as scripted, by the order they are walked in; DONE if not.
 struct ScriptedRoute{
-    std::map<size_t, StepEnd> ends;
+    std::map<size_t, StepOutcome> ends;
     std::vector<RouteStep> walked;
     std::vector<RouteStep> held_to_warp;
     std::vector<std::string> logs;
@@ -67,7 +69,7 @@ struct ScriptedRoute{
             walked.push_back(step);
             facings.push_back(facing);
             auto iter = ends.find(walked.size() - 1);
-            return iter == ends.end() ? StepEnd::DONE : iter->second;
+            return iter == ends.end() ? StepOutcome{} : iter->second;
         };
         calls.hold_to_warp = [this](const RouteStep& step){ held_to_warp.push_back(step); };
         calls.log = [this](const std::string& message){ logs.push_back(message); };
@@ -122,9 +124,25 @@ bool same(const RouteStep& a, const RouteStep& b){
     return to_string(a) == to_string(b);
 }
 
+UnitTestResult expect_walked(const std::vector<RouteStep>& expected, const std::vector<RouteStep>& walked){
+    bool match = expected.size() == walked.size();
+    for (size_t c = 0; match && c < expected.size(); c++){
+        match = same(expected[c], walked[c]);
+    }
+    if (!match){
+        return "Walked:" + describe(walked) + "\nexpected:" + describe(expected);
+    }
+    return true;
+}
+
+StepOutcome stop_part_way(std::optional<WalkedTiles> walked = std::nullopt){
+    return StepOutcome{.end = StepEnd::STOPPED, .walked = walked};
+}
+
 //  Viridian Mart to Oak's Lab; the first open leg through grass is stopped
-//  by a battle. The player is found again, walked back to that leg's end on
-//  the same maps, and the rest of the route is walked as planned.
+//  by a battle halfway, by its timing. The player is found again from the
+//  tiles around there, walked back to that leg's end, and the rest of the
+//  route is walked as planned.
 UnitTestResult test_stop_recover_resume(){
     const std::vector<MapData> maps = overworld_maps();
     const MapPosition start{"ViridianCity_Mart", map_point(maps, "ViridianCity_Mart", "clerk_front")};
@@ -141,35 +159,32 @@ UnitTestResult test_stop_recover_resume(){
     if (stopped == 0 || stopped == route->size()){
         return "Expected an open leg through grass:" + describe(*route);
     }
+    const RouteStep& step = (*route)[stopped];
+    const WalkedTiles walked = walked_near(step, step.tiles / 2, std::chrono::milliseconds(267));
     ScriptedRoute script;
-    script.ends[stopped] = StepEnd::STOPPED;
+    script.ends[stopped] = StepOutcome{.end = StepEnd::STOPPED, .walked = walked};
     const RoutePlanning planning{.maps = &maps, .costs = default_route_costs(), .start = std::nullopt, .label = "Route", .wall_check = WallCheck::TAP};
     if (script.run(*route, &planning)){
         return "Failed: " + script.failure;
     }
 
-    const RouteStep& step = (*route)[stopped];
-    const std::optional<Reanchor> anchor = plan_reanchor(maps, (*route)[stopped - 1].end, step);
-    const std::optional<std::vector<RouteStep>> back = anchor
-        ? plan_overworld_route(maps, anchor->end, RouteGoal{step.end, std::nullopt}, default_route_costs(), anchor->holds.back().direction)
-        : std::nullopt;
-    if (!back || !(follow_overworld_route(maps, anchor->end, *back) == step.end)){
-        return "Expected a way back to " + to_string(step.end) + ".";
+    const std::vector<StopCandidate> candidates = stop_candidates(maps, (*route)[stopped - 1].end, step, walked);
+    const std::optional<Reanchor> anchor = plan_reanchor(maps, candidates, step);
+    if (candidates.size() != (size_t)(walked.max - walked.min + 1) || !anchor || anchor->holds.empty()){
+        return std::format("Expected holds from the {} tiles around the estimate.", walked.max - walked.min + 1);
     }
     std::vector<RouteStep> expected(route->begin(), route->begin() + stopped + 1);
     expected.insert(expected.end(), anchor->holds.begin(), anchor->holds.end());
-    expected.insert(expected.end(), back->begin(), back->end());
+    expected.insert(expected.end(), anchor->back.begin(), anchor->back.end());
     expected.insert(expected.end(), route->begin() + stopped + 1, route->end());
-    bool match = expected.size() == script.walked.size();
-    for (size_t c = 0; match && c < expected.size(); c++){
-        match = same(expected[c], script.walked[c]);
-    }
-    if (!match){
-        return "Walked:" + describe(script.walked) + "\nexpected:" + describe(expected);
+    const UnitTestResult walked_as_expected = expect_walked(expected, script.walked);
+    if (walked_as_expected.result != UnitTestResult::PASSED){
+        return walked_as_expected;
     }
     return expect_logged(script.logs, {
         "): ended at an unknown tile (unknown: stopped part-way).",
-        ": found again at " + anchor->end.map + " " + Pokemon::to_string(anchor->end.point),
+        std::format("{} stopped {} to {} tiles in; the player is on one of: {};", to_string(step), walked.min, walked.max, to_string(candidates[0])),
+        ": found again at " + anchor->found.map + " " + Pokemon::to_string(anchor->found.point),
     });
 }
 
@@ -193,20 +208,20 @@ RouteStep walk(Direction direction, int tiles, MapPosition end){
     return step;
 }
 
-//  With no maps, or no walls to find the player by, a stop fails the route
-//  instead of guessing.
+//  With no maps, or no walls to find the player by from every tile they may
+//  be on, a stop fails the route instead of guessing.
 UnitTestResult test_no_recovery(){
     const std::vector<MapData> maps{parse_map(TEST_CORRIDOR_JSON, "Corridor")};
     const std::vector<RouteStep> route{walk(Direction::EAST, 2, {"Corridor", {4, 1}})};
     ScriptedRoute without_maps;
-    without_maps.ends[0] = StepEnd::STOPPED;
+    without_maps.ends[0] = stop_part_way();
     if (!without_maps.run(route, nullptr) || without_maps.failure.find("no maps") == std::string::npos){
         return "Expected a failure without maps, got: " + without_maps.failure;
     }
     ScriptedRoute without_walls;
-    without_walls.ends[0] = StepEnd::STOPPED;
+    without_walls.ends[0] = stop_part_way(WalkedTiles{.min = 1, .max = 2});
     const RoutePlanning planning{.maps = &maps, .costs = default_route_costs(), .start = std::nullopt, .label = "Route", .wall_check = WallCheck::TAP};
-    if (!without_walls.run(route, &planning) || without_walls.failure.find("no walls") == std::string::npos){
+    if (!without_walls.run(route, &planning) || without_walls.failure.find("no holds to walls find the player") == std::string::npos){
         return "Expected a failure without walls, got: " + without_walls.failure;
     }
     return true;
@@ -218,12 +233,12 @@ UnitTestResult test_wall_legs(){
     RouteStep wall = walk(Direction::NORTH, 3, {"Corridor", {1, 1}});
     wall.to_wall = true;
     ScriptedRoute late;
-    late.ends[0] = StepEnd::LATE;
+    late.ends[0] = StepOutcome{.end = StepEnd::LATE, .walked = std::nullopt};
     if (late.run({wall}, nullptr) || late.walked.size() != 2){
         return "Expected the leg walked again.";
     }
     ScriptedRoute blocked;
-    blocked.ends[0] = StepEnd::STOPPED;
+    blocked.ends[0] = stop_part_way();
     if (!blocked.run({wall}, nullptr)){
         return "Expected a blocked leg to a wall to fail.";
     }
@@ -237,16 +252,16 @@ UnitTestResult test_warp_leg(){
     door.warps = true;
     const RouteStep after = walk(Direction::EAST, 2, {"PewterCity", {18, 18}});
     ScriptedRoute script;
-    script.ends[0] = StepEnd::STOPPED;
+    script.ends[0] = stop_part_way();
     if (script.run({door, after}, nullptr) || script.held_to_warp.size() != 1 || script.walked.size() != 2){
         return "Expected a hold to the warp, then the next step.";
     }
     return true;
 }
 
-//  After a leg to a wall, a tap toward it that moves the player fails the
-//  route (the forest drift diagnostic); one that doesn't, or with the check
-//  off, goes on. Open legs aren't tapped.
+//  After a leg to a wall, a tap toward it that moves the screen is only
+//  logged (the forest drift diagnostic): a bump and a step can't be told
+//  apart yet. With the check off there is no tap. Open legs aren't tapped.
 UnitTestResult test_wall_check(){
     RouteStep wall = walk(Direction::NORTH, 3, {"Corridor", {1, 1}});
     wall.to_wall = true;
@@ -255,25 +270,25 @@ UnitTestResult test_wall_check(){
         const char* name;
         bool moves;
         WallCheck check;
-        bool fails;
+        bool logged;
         size_t taps;
     };
     const Case cases[] = {
-        {.name = "the tap moves", .moves = true, .check = WallCheck::TAP, .fails = true, .taps = 1},
-        {.name = "the tap bumps", .moves = false, .check = WallCheck::TAP, .fails = false, .taps = 1},
-        {.name = "the check is off", .moves = true, .check = WallCheck::SKIP, .fails = false, .taps = 0},
+        {.name = "the tap moves", .moves = true, .check = WallCheck::TAP, .logged = true, .taps = 1},
+        {.name = "the tap bumps", .moves = false, .check = WallCheck::TAP, .logged = false, .taps = 1},
+        {.name = "the check is off", .moves = true, .check = WallCheck::SKIP, .logged = false, .taps = 0},
     };
     for (const Case& c : cases){
         const RoutePlanning planning{.maps = nullptr, .costs = default_route_costs(), .start = std::nullopt, .label = "Route", .wall_check = c.check};
         ScriptedRoute script;
         script.moves_past_wall = c.moves;
-        const bool failed = script.run({wall, open}, &planning);
-        if (failed != c.fails || script.wall_taps != c.taps){
-            return std::format("{}: expected {} after {} tap(s), got {} after {}: {}",
-                c.name, c.fails ? "a failure" : "no failure", c.taps, failed ? "a failure" : "none", script.wall_taps, script.failure);
+        if (script.run({wall, open}, &planning) || script.walked.size() != 2 || script.wall_taps != c.taps){
+            return std::format("{}: expected both legs walked after {} tap(s), got {} after {}: {}",
+                c.name, c.taps, script.walked.size(), script.wall_taps, script.failure);
         }
-        if (c.fails && script.failure != "position check: " + to_string(wall) + " did not end at its wall"){
-            return std::string(c.name) + ": wrong failure: " + script.failure;
+        const UnitTestResult logged = expect_logged(script.logs, {"Position check (logged only): a tap after " + to_string(wall)});
+        if ((logged.result == UnitTestResult::PASSED) != c.logged){
+            return std::string(c.name) + (c.logged ? ": expected the tap logged." : ": didn't expect the tap logged.");
         }
     }
     return true;
@@ -349,6 +364,7 @@ struct TrainerCase{
     const char* name;
     RouteStep leg;
     StepEnd walk_end;
+    std::optional<WalkedTiles> walked;
     StepEnd watch_end;
     size_t watches;
     bool seen;
@@ -374,7 +390,7 @@ UnitTestResult run_trainer_case(const std::vector<MapData>& maps, const TrainerC
     face.action = RouteAction::FACE;
     const RoutePlanning planning{.maps = &maps, .costs = default_route_costs(), .start = robin(0, 1), .label = "Route", .wall_check = WallCheck::SKIP};
     ScriptedRoute script;
-    script.ends[0] = c.walk_end;
+    script.ends[0] = StepOutcome{.end = c.walk_end, .walked = c.walked};
     script.watch_ends = {c.watch_end};
     if (script.run({c.leg, face}, &planning)){
         return "failed: " + script.failure;
@@ -413,9 +429,12 @@ UnitTestResult test_trainer_stops_leg(){
     wall.to_wall = true;
     const RouteStep open = walk(Direction::EAST, 4, robin(4, 1));
     const TrainerCase cases[] = {
-        {.name = "to a wall, seen", .leg = wall, .walk_end = StepEnd::DONE, .watch_end = StepEnd::LATE, .watches = 1, .seen = true},
-        {.name = "open, seen", .leg = open, .walk_end = StepEnd::STOPPED, .watch_end = StepEnd::DONE, .watches = 0, .seen = true},
-        {.name = "to a wall, not seen", .leg = wall, .walk_end = StepEnd::DONE, .watch_end = StepEnd::DONE, .watches = 1, .seen = false},
+        {.name = "to a wall, seen", .leg = wall, .walk_end = StepEnd::DONE, .walked = std::nullopt, .watch_end = StepEnd::LATE, .watches = 1, .seen = true},
+        {.name = "open, seen", .leg = open, .walk_end = StepEnd::STOPPED, .walked = std::nullopt, .watch_end = StepEnd::DONE, .watches = 0, .seen = true},
+        //  She stops the player on (3, 1) and speaks only after walking up,
+        //  so the timing puts the stop past her tile: still hers.
+        {.name = "open, seen, timed late", .leg = open, .walk_end = StepEnd::STOPPED, .walked = WalkedTiles{.min = 3, .max = 4}, .watch_end = StepEnd::DONE, .watches = 0, .seen = true},
+        {.name = "to a wall, not seen", .leg = wall, .walk_end = StepEnd::DONE, .walked = std::nullopt, .watch_end = StepEnd::DONE, .watches = 1, .seen = false},
     };
     for (const TrainerCase& c : cases){
         const UnitTestResult result = run_trainer_case(maps, c);
@@ -424,6 +443,42 @@ UnitTestResult test_trainer_stops_leg(){
         }
     }
     return true;
+}
+
+
+//  On the grass a stop past Robin's column may be a wild battle's anywhere
+//  on the leg, or hers on (3, 1), after which she stands on (3, 2): the
+//  player is found again from all of them, then walks back to the leg's end.
+UnitTestResult test_grass_in_sight(){
+    const std::vector<MapData> maps{parse_map(TEST_ROBIN_JSON, "Robin")};
+    RouteStep grass = walk(Direction::EAST, 4, robin(4, 1));
+    grass.wild = true;
+    RouteStep face = walk(Direction::NORTH, 0, grass.end);
+    face.action = RouteAction::FACE;
+    const std::vector<StopCandidate> candidates = stop_candidates(maps, robin(0, 1), grass, whole_leg(grass));
+    const StopCandidate hers{.player = robin(3, 1), .trainer = TrainerStop{.object = 0, .at = robin(3, 2)}};
+    if (candidates.size() != 6 || std::find(candidates.begin(), candidates.end(), hers) == candidates.end()){
+        return std::format("Expected the leg's 5 tiles and hers, got {} candidates.", candidates.size());
+    }
+    const std::optional<Reanchor> anchor = plan_reanchor(maps, candidates, grass);
+    if (!anchor || anchor->holds.empty()){
+        return "Expected holds that find the player.";
+    }
+    const RoutePlanning planning{.maps = &maps, .costs = default_route_costs(), .start = robin(0, 1), .label = "Route", .wall_check = WallCheck::SKIP};
+    ScriptedRoute script;
+    script.ends[0] = stop_part_way();
+    if (script.run({grass, face}, &planning)){
+        return "Failed: " + script.failure;
+    }
+    std::vector<RouteStep> expected{grass};
+    expected.insert(expected.end(), anchor->holds.begin(), anchor->holds.end());
+    expected.insert(expected.end(), anchor->back.begin(), anchor->back.end());
+    expected.push_back(face);
+    const UnitTestResult walked = expect_walked(expected, script.walked);
+    if (walked.result != UnitTestResult::PASSED){
+        return walked;
+    }
+    return expect_logged(script.logs, {"Robin (3, 1) (stopped by a trainer, now at (3, 2))"});
 }
 
 }
@@ -438,6 +493,7 @@ void add_tests_OverworldRecovery(UnitTestDatabase& database){
     database.add<Test_OverworldRecovery>("a leg to a wall ends at it", test_wall_check);
     database.add<Test_OverworldRecovery>("a leg crosses a trainer's sight", test_trainer_crossing);
     database.add<Test_OverworldRecovery>("a trainer stops a leg", test_trainer_stops_leg);
+    database.add<Test_OverworldRecovery>("a stop on the grass in a trainer's sight", test_grass_in_sight);
 }
 
 
