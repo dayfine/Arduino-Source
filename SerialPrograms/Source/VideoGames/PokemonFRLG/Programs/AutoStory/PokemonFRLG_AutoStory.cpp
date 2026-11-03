@@ -162,6 +162,11 @@ void load_verify_save(
             "Verify mode reloads the checkpoint's save between runs: " + checkpoint.id + " starts a new game and has none."
         );
     }
+    if (checkpoint.live_start){
+        throw UserSetupError(env.console,
+            "Verify mode reloads the checkpoint's save between runs: " + checkpoint.id + " starts from the game as it is, with no save."
+        );
+    }
     env.console.log("Verify mode: loading the save for " + checkpoint.id + ".");
     soft_reset(env.console, context);
     story.has_save = true;
