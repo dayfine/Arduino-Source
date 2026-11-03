@@ -28,6 +28,13 @@ constexpr Milliseconds EVOLUTION_SEEN = std::chrono::milliseconds(5000);
 //  Nothing pressed for at most this long in all in a battle: an evolution
 //  and the next member's, with room to spare.
 constexpr Milliseconds EVOLUTION_HOLDS = std::chrono::milliseconds(45000);
+//  No battle menu, HP box or YES/NO for this long: START, to see whether
+//  the overworld is back. Longer than a turn's text between two HP boxes.
+constexpr Milliseconds BATTLE_GONE = std::chrono::milliseconds(3000);
+//  START at most this often: each look takes over a second.
+constexpr Milliseconds OVERWORLD_CHECK = std::chrono::milliseconds(3000);
+//  A and B pressed blind for this long with no battle menu: give up.
+constexpr Milliseconds BLIND_PRESSES = std::chrono::milliseconds(30000);
 
 }
 
@@ -158,8 +165,12 @@ EvolutionHold::EvolutionHold(PartyMember& lead)
     : m_lead(lead)
 {}
 
-bool EvolutionHold::holds(const BattleTextScreen& screen, size_t turns) const{
-    return turns > 0 && m_held < EVOLUTION_HOLDS && screen.text_box && !screen.hp_box && !screen.arrow && !screen.yes_no;
+void EvolutionHold::turn_taken(TurnChoice choice){
+    m_attacked = choice == TurnChoice::MOVE;
+}
+
+bool EvolutionHold::holds(const BattleTextScreen& screen) const{
+    return m_attacked && m_held < EVOLUTION_HOLDS && screen.text_box && !screen.hp_box && !screen.arrow && !screen.yes_no;
 }
 
 void EvolutionHold::held(Milliseconds held, bool lead_fainted){
@@ -170,6 +181,33 @@ void EvolutionHold::held(Milliseconds held, bool lead_fainted){
     }
     m_evolved = true;
     evolve(m_lead);
+}
+
+void BattleEndWatch::seen(BattleSeen what, WallClock now){
+    if (what != BattleSeen::NONE){
+        m_last_battle = now;
+    }
+    if (what == BattleSeen::MENU){
+        m_blind_since.reset();
+    }
+}
+
+bool BattleEndWatch::check_overworld(WallClock now){
+    if (!m_last_battle || now - *m_last_battle < BATTLE_GONE){
+        return false;
+    }
+    if (m_last_check && now - *m_last_check < OVERWORLD_CHECK){
+        return false;
+    }
+    m_last_check = now;
+    return true;
+}
+
+bool BattleEndWatch::pressed_blind(WallClock now){
+    if (!m_blind_since){
+        m_blind_since = now;
+    }
+    return now - *m_blind_since >= BLIND_PRESSES;
 }
 
 

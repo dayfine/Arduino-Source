@@ -123,20 +123,57 @@ class EvolutionHold{
 public:
     explicit EvolutionHold(PartyMember& lead);
 
-    //  Whether `screen` may be an evolution: after a turn, the text box
-    //  with no HP box and no arrow or YES/NO, as "What? <Pokemon> is
-    //  evolving!" shows through the animation. Nothing is pressed while it
-    //  shows, for at most EVOLUTION_HOLDS in all in a battle, in case it is
-    //  something else.
-    bool holds(const BattleTextScreen& screen, size_t turns) const;
+    //  The loop took a turn: only one that attacked can end the battle in a
+    //  win, and so in an evolution.
+    void turn_taken(TurnChoice choice);
+    //  Whether `screen` may be an evolution: after a turn that attacked (not
+    //  after RUN: console B, 2026-11-03, a minute without B after "Got away
+    //  safely!"), the text box with no HP box and no arrow or YES/NO, as
+    //  "What? <Pokemon> is evolving!" shows through the animation. Nothing
+    //  is pressed while it shows, for at most EVOLUTION_HOLDS in all in a
+    //  battle, in case it is something else.
+    bool holds(const BattleTextScreen& screen) const;
     //  Such a screen showed for `held` with nothing pressed: long enough,
     //  and the lead evolved (unless it had fainted).
     void held(Milliseconds held, bool lead_fainted);
 
 private:
     PartyMember& m_lead;
+    bool m_attacked = false;
     bool m_evolved = false;
     Milliseconds m_held = Milliseconds::zero();
+};
+
+
+//  What the battle loop saw of the battle at a poll.
+enum class BattleSeen{
+    NONE,
+    BATTLE,     //  as battle_shows() reads it
+    MENU,       //  the battle menu
+};
+
+//  When the battle loop presses START to see whether the overworld is
+//  back, and when it gives up pressing A and B for a screen nothing reads.
+//  The battle counts as on screen by its menu, an HP box or a YES/NO only:
+//  its text box alone also reads on the black below a dark cave's corridor
+//  (console B, 2026-11-03, Mt. Moon B2F: after "Got away safely!" the loop
+//  took the cave for the battle and pressed A and B for 9 minutes).
+class BattleEndWatch{
+public:
+    //  What the loop read at `now`.
+    void seen(BattleSeen what, WallClock now);
+    //  Whether to press START at `now`: a battle was seen, and none since
+    //  for BATTLE_GONE. At most every OVERWORLD_CHECK.
+    bool check_overworld(WallClock now);
+    //  A or B was pressed blind at `now`. True once that has gone on for
+    //  BLIND_PRESSES with no battle menu: the loop stops, and the walker,
+    //  which finds the player again, goes on.
+    bool pressed_blind(WallClock now);
+
+private:
+    std::optional<WallClock> m_last_battle;
+    std::optional<WallClock> m_last_check;
+    std::optional<WallClock> m_blind_since;
 };
 
 

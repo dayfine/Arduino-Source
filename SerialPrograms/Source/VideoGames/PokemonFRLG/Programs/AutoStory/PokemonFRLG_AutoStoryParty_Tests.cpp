@@ -474,11 +474,11 @@ struct FakeEvolution{
 };
 
 //  Plays `scene` against the loop's rule (B at any screen it doesn't hold
-//  for), after `turns` turns: whether the evolution went through.
-bool evolves_against_loop(const FakeEvolution& scene, const EvolutionHold& hold, size_t turns){
+//  for): whether the evolution went through.
+bool evolves_against_loop(const FakeEvolution& scene, const EvolutionHold& hold){
     bool cancelled = false;
     for (size_t frame = 0; frame < scene.frames.size(); frame++){
-        const bool pressed_b = !hold.holds(scene.frames[frame], turns);
+        const bool pressed_b = !hold.holds(scene.frames[frame]);
         if (pressed_b && frame >= scene.evolving_from && frame < scene.evolving_to){
             cancelled = true;
         }
@@ -502,10 +502,11 @@ UnitTestResult test_no_b_during_evolution(Logger&){
 
     PartyMember lead = with_moves("squirtle", {"tackle", "tail-whip", "bubble", "withdraw"}, 13);
     EvolutionHold hold(lead);
-    if (!evolves_against_loop(scene, hold, 1)){
+    hold.turn_taken(TurnChoice::MOVE);
+    if (!evolves_against_loop(scene, hold)){
         return "B was pressed during \"is evolving!\": the evolution would be cancelled.";
     }
-    if (hold.holds(congratulations, 1) || hold.holds(learn_prompt, 1)){
+    if (hold.holds(congratulations) || hold.holds(learn_prompt)){
         return "Expected B (or the prompt's answer) for the text with an arrow and the YES/NO after the evolution.";
     }
 
@@ -518,14 +519,104 @@ UnitTestResult test_no_b_during_evolution(Logger&){
         return "Expected Squirtle to be Wartortle after 15 s of its evolution screen, got " + lead.species + ".";
     }
     hold.held(40s, false);
-    if (hold.holds(evolving, 1)){
+    if (hold.holds(evolving)){
         return "Expected no more holding once a battle's holds reach their cap.";
     }
 
     PartyMember other = new_member("squirtle", 5);
     EvolutionHold before_turn(other);
-    if (before_turn.holds(evolving, 0)){
+    if (before_turn.holds(evolving)){
         return "Held before the first turn, where Oak's text box needs B.";
+    }
+    return true;
+}
+
+//  A poll of the battle loop: what it read, at `ms` from the start.
+struct LoopPoll{
+    int ms;
+    BattleTextScreen screen;
+    bool menu = false;
+};
+
+//  Regression: console B, 2026-11-03, Mt. Moon B2F: RUN, "Got away
+//  safely!", then the cave corridor, whose black lower half reads as the
+//  battle's text box with no HP box. The loop held B for an evolution for
+//  a minute, then pressed A and B for 9 minutes. After RUN nothing is held,
+//  and START looks for the overworld within seconds of the last HP box.
+UnitTestResult test_run_then_overworld(Logger&){
+    const BattleTextScreen menu_screen{.text_box = true, .hp_box = true, .arrow = false, .yes_no = false};
+    const BattleTextScreen got_away{.text_box = true, .hp_box = true, .arrow = true, .yes_no = false};
+    const BattleTextScreen dark_cave{.text_box = true, .hp_box = false, .arrow = false, .yes_no = false};
+    std::vector<LoopPoll> polls{{.ms = 0, .screen = menu_screen, .menu = true}};
+    for (int ms = 300; ms <= 1500; ms += 300){
+        polls.push_back({.ms = ms, .screen = got_away});
+    }
+    for (int ms = 1800; ms <= 60000; ms += 300){
+        polls.push_back({.ms = ms, .screen = dark_cave});
+    }
+
+    Supplies supplies;
+    BattleDecisions decisions(supplies, BattleKind::WILD_RUN);
+    EvolutionHold hold(supplies.lead);
+    BattleEndWatch watch;
+    const WallClock start = current_time();
+    const TurnChoice choice = decisions.turn(PartyStatus{.hp_seen = true}).choice;
+    if (choice != TurnChoice::RUN){
+        return "Expected RUN from a wild Pokemon.";
+    }
+    hold.turn_taken(choice);
+    for (const LoopPoll& poll : polls){
+        const WallClock now = start + std::chrono::milliseconds(poll.ms);
+        if (hold.holds(poll.screen)){
+            return std::format("Held B for an evolution at {} ms, after RUN.", poll.ms);
+        }
+        const bool battle = poll.screen.hp_box || poll.screen.yes_no;
+        watch.seen(poll.menu ? BattleSeen::MENU : battle ? BattleSeen::BATTLE : BattleSeen::NONE, now);
+        if (watch.check_overworld(now)){
+            //  The last HP box at 1.5 s; START within the next 3.5 s.
+            if (poll.ms > 5000){
+                return std::format("START first looked for the overworld at {} ms.", poll.ms);
+            }
+            return true;
+        }
+    }
+    return "START never looked for the overworld in the dark cave.";
+}
+
+//  START only once the battle is gone for a while, and then not at every
+//  poll; A and B blind for at most 30 s since the last battle menu.
+UnitTestResult test_end_watch_timing(Logger&){
+    const WallClock start = current_time();
+    const auto at = [&](int ms){ return start + std::chrono::milliseconds(ms); };
+    BattleEndWatch watch;
+    if (watch.check_overworld(at(10000))){
+        return "Looked for the overworld before any battle screen showed.";
+    }
+    for (int ms = 0; ms <= 20000; ms += 300){
+        watch.seen(BattleSeen::BATTLE, at(ms));
+        if (watch.check_overworld(at(ms))){
+            return std::format("Looked for the overworld at {} ms with an HP box on screen.", ms);
+        }
+    }
+    int checks = 0;
+    for (int ms = 20100; ms <= 32000; ms += 300){
+        watch.seen(BattleSeen::NONE, at(ms));
+        checks += watch.check_overworld(at(ms)) ? 1 : 0;
+    }
+    if (checks < 2 || checks > 4){
+        return std::format("Expected START every 3 s for 12 s without the battle, got {} looks.", checks);
+    }
+    for (int ms = 0; ms < 30000; ms += 1500){
+        if (watch.pressed_blind(at(40000 + ms))){
+            return std::format("Gave up pressing blind after {} ms.", ms);
+        }
+    }
+    if (!watch.pressed_blind(at(70000))){
+        return "Expected to give up after 30 s of blind presses.";
+    }
+    watch.seen(BattleSeen::MENU, at(71000));
+    if (watch.pressed_blind(at(72000))){
+        return "Expected the battle menu to start the blind presses' time over.";
     }
     return true;
 }
@@ -543,6 +634,8 @@ void add_tests_AutoStoryParty(UnitTestDatabase& database){
     database.add<Test_AutoStoryParty>("moves read off the summary, Water Gun over Tackle", test_moves_from_summary);
     database.add<Test_AutoStoryParty>("summary members: fewer moves, unread PP, strongest attack", test_summary_members);
     database.add<Test_AutoStoryParty>("no B during an evolution", test_no_b_during_evolution);
+    database.add<Test_AutoStoryParty>("RUN, then a dark cave: no evolution wait, START soon", test_run_then_overworld);
+    database.add<Test_AutoStoryParty>("battle end: START after the battle is gone, A and B for 30 s at most", test_end_watch_timing);
     database.add<Test_AutoStoryParty>("attacks by matchup: Bite on the rival's Bulbasaur and Misty", test_attack_by_matchup);
     database.add<Test_AutoStoryParty>("attacks against an unknown foe: the plan's order", test_attack_unknown_foe);
     database.add<Test_AutoStoryParty>("Bite learned over Tail Whip or Withdraw", test_bite_learned);

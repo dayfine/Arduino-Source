@@ -133,10 +133,17 @@ struct PartyStatus{
 };
 PartyStatus read_party_status(const ImageViewRGB32& screen);
 
+//  Whether `screen` shows a battle, for the battle loop's end: the battle
+//  menu, an HP box or a YES/NO. Not the text box alone, which also reads on
+//  the black below a small room or a dark cave's corridor.
+bool battle_shows(const ImageViewRGB32& screen);
+
 //  From anywhere in a battle (or its opening), plays it to the end as
 //  `kind` says, using `supplies` as needed. Returns once START opens the
 //  menu on the overworld: text after the battle (a gym leader's speech) is
-//  read with B on the way. Throws OperationFailedException if it runs over 10 minutes.
+//  read with B on the way. After 30 s of A and B for a screen nothing reads,
+//  returns anyway, for the walk to find the player. Throws
+//  OperationFailedException if it runs over 10 minutes.
 //  THOROUGH: an item's name is read in the bag before it is used, and a
 //  different one isn't used.
 BattleEnd fight_battle(

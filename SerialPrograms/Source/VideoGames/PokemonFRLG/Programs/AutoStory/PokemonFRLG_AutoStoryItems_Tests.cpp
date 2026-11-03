@@ -16,6 +16,7 @@
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "CommonFramework/Language.h"
+#include "Tests/ImageUnitTest.h"
 #include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_SaveCardReader.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSim.h"
@@ -241,6 +242,27 @@ UnitTestResult test_late_battle_placed(Logger&){
 }
 
 
+//  battle_shows(), the battle loop's look at whether the battle is still on
+//  screen, on console B's captures.
+class Test_BattleShows : public ImageUnitTest{
+public:
+    Test_BattleShows(const std::string& image, bool expected)
+        : ImageUnitTest("PokemonFRLG::AutoStoryBattle - " + image, {image})
+        , m_expected(expected)
+    {}
+
+    virtual UnitTestResult run_on_images(
+        Logger& logger, CancellableScope& scope,
+        const std::vector<ImageRGB32>& images
+    ) const override{
+        return battle_shows(images[0]) == m_expected;
+    }
+
+private:
+    bool m_expected;
+};
+
+
 }
 
 
@@ -251,6 +273,11 @@ void add_tests_AutoStoryItems(UnitTestDatabase& database){
     database.add<Test_AutoStoryItems>("unread bag counts count as some", test_unread_counts);
     database.add<Test_AutoStoryItems>("no item names read in a language without them", test_unread_language);
     database.add<Test_AutoStoryItems>("a wild battle seen late is placed where it stopped the leg", test_late_battle_placed);
+    //  "Wild CHANSEY appeared!" with its HP box, and Mt. Moon B2F's corridor
+    //  after "Got away safely!", whose black lower half reads as the battle's
+    //  text box (console B, 2026-11-03: 9 minutes of A and B there).
+    database.add<Test_BattleShows>("PokemonFRLG/WildEncounterReader/eng_chansey.jpg", true);
+    database.add<Test_BattleShows>("PokemonFRLG/AutoStoryBattle/MtMoonB2F_AfterRun_False.png", false);
     //  The battle's choices, registered here to keep add_tests() within its size.
     add_tests_AutoStoryParty(database);
 }
