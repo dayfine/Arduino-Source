@@ -560,6 +560,25 @@ bool grind_heal_trip(StoryEnv& env, RunState& state, const StoryStep& step, cons
     return walked(env, state, walk);
 }
 
+//  A trainer saw the player pacing `step` on `patch` (console B,
+//  2026-11-03, m63: Camper Shane on Route 24): fights them, then walks back
+//  onto the patch from either of pacing's tiles (see PaceTrainerBattle).
+void pace_trainer_battle(StoryEnv& env, RunState& state, const StoryStep& step, const Pokemon::Pose& patch){
+    clear_overworld_message(env.console, env.context, env.supplies, env.checks, env.language);
+    state.pose = paced_pose(patch, step);
+    StoryStep walk;
+    walk.kind = StoryStepKind::ROUTE;
+    walk.name = step.name + "_back_after_trainer";
+    walk.target = patch;
+    if (!walked(env, state, walk)){
+        OperationFailedExceptionWithScreenshot::fire(
+            ErrorReportMode::SEND_ERROR_REPORT,
+            "Pacing: no way back onto the patch after a trainer's battle.",
+            env.console
+        );
+    }
+}
+
 //  A MART, TEACH, LEVEL, GRIND or fossil step on the console; nothing for
 //  another variant.
 std::optional<Outcome> run_abilities(StoryEnv& env, RunState& state, const StoryStep& step){
@@ -571,6 +590,9 @@ std::optional<Outcome> run_abilities(StoryEnv& env, RunState& state, const Story
         env.console, env.context, env.language, env.supplies, env.checks,
         [&](const GrindSpot& spot){
             return grind_heal_trip(env, state, step, patch, spot);
+        },
+        [&]{
+            pace_trainer_battle(env, state, step, patch);
         }
     );
     ConsoleChoiceActions choice(env.console, env.context);
@@ -589,7 +611,10 @@ Outcome StoryExecutor::game(RunState& state, const StoryStep& step){
         leave_gift_summary(m_env.console, m_env.context);
         return Pokemon::outcome_ok();
     }
-    ConsoleCaptureActions capture(m_env.console, m_env.context, m_env.language);
+    const Pokemon::Pose patch = state.pose;
+    ConsoleCaptureActions capture(m_env.console, m_env.context, m_env.language, [&]{
+        pace_trainer_battle(m_env, state, step, patch);
+    });
     ConsolePcStorageActions pc(m_env.console, m_env.context);
     std::optional<Outcome> done = run_storage_game_step(m_env.console.logger(), &m_env.console, step, capture, pc);
     if (!done){

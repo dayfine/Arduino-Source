@@ -175,7 +175,7 @@ public:
 
     ConsoleGrindActions(
         ConsoleHandle& console, ProControllerContext& context, Language language,
-        Supplies& supplies, StoryChecks checks, HealTrip heal_trip
+        Supplies& supplies, StoryChecks checks, HealTrip heal_trip, PaceTrainerBattle trainer_battle
     );
 
     virtual bool find_encounter(Pokemon::Direction pace) override;
@@ -195,6 +195,7 @@ private:
     StoryChecks m_checks;
     ConsoleCaptureActions m_encounters;
     HealTrip m_heal_trip;
+    PaceTrainerBattle m_trainer_battle;
     GrindSpot m_spot;
 };
 
