@@ -19,9 +19,11 @@
 #include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleFlashWatcher.h"
 #include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattlePokemonDetector.h"
 #include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleScreenDetector.h"
+#include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_PartyMenuDetector.h"
 #include "VideoGames/PokemonFRLG/PokemonFRLG_Navigation.h"
 #include "VideoGames/PokemonFRLG/PokemonFRLG_Settings.h"
 #include "PokemonFRLG_AutoStoryActions.h"
+#include "PokemonFRLG_AutoStoryBattleDecisions.h"
 #include "PokemonFRLG_AutoStoryBattle.h"
 
 namespace PokemonAutomation{
@@ -53,16 +55,15 @@ constexpr Milliseconds NO_MENU_NEAR = 10000ms;
 //  is checked by START this often (a trainer's battle that never started,
 //  console B, 2026-11-01: 10 minutes of B on the overworld).
 constexpr Milliseconds OVERWORLD_CHECK = 3000ms;
-//  A wild Pokemon is fought (WILD_FIGHT) only with green HP and this many
-//  Potions left; otherwise it is run from.
-constexpr int MIN_POTIONS_TO_FIGHT = 2;
-//  RUN this many times ("Can't escape!") before fighting instead.
-constexpr int RUN_TRIES = 4;
 //  No battle menu or HP box this long after a battle was seen: there was
 //  none (console B, 2026-11-01, Viridian Forest's north gate mat).
 constexpr Milliseconds NOT_A_BATTLE = 15000ms;
-//  PSN read at this many turns in a row before an Antidote.
-constexpr int PSN_READS = 2;
+//  An evolution's animation, with no presses: as long as exit_wild_battle()
+//  (PokemonFRLG_Navigation.cpp) waits for one.
+constexpr Milliseconds EVOLUTION = 20000ms;
+//  Below this much PP left in the lead's attacks, the nurse before a fight
+//  that needs them: about a trainer's worth of turns.
+constexpr size_t LOW_ATTACK_PP = 10;
 //  Text and the move learn prompts after a battle, on the overworld.
 constexpr Milliseconds AFTER_BATTLE_TEXT = 60000ms;
 
@@ -167,6 +168,15 @@ BattleScreen read_battle_screen(const ImageViewRGB32& screen, bool confirmed){
     return BattleScreen::NONE;
 }
 
+BattleTextScreen read_text_screen(const ImageViewRGB32& screen){
+    return BattleTextScreen{
+        .text_box = BattleDialogDetector(COLOR_RED).detect(screen),
+        .hp_box = BattleScreenDetector(COLOR_RED).detect(screen),
+        .arrow = AdvanceBattleDialogDetector(COLOR_RED).detect(screen),
+        .yes_no = BattleLearnDialogDetector(COLOR_RED).detect(screen) || yes_no_cursor(screen).has_value(),
+    };
+}
+
 //  The player's Pokemon gone while the opponent's is still there.
 bool starter_fainted(const ImageViewRGB32& screen){
     return !BattlePokemonDetector(COLOR_RED).detect(screen) && BattleOpponentDetector(COLOR_RED).detect(screen);
@@ -243,16 +253,43 @@ void run_away(ProControllerContext& context){
     pbf_press_button(context, BUTTON_A, 160ms, 500ms);
 }
 
-//  FIGHT, then the bottom left move (Bubble), or Tackle while that slot is
-//  empty: the cursor doesn't move onto an empty slot.
-void use_move(ProControllerContext& context){
+//  FIGHT, then the move in `slot` from the top left. The cursor doesn't
+//  move onto an empty slot.
+void use_move(ProControllerContext& context, size_t slot){
     tap(context, DPAD_LEFT);
     tap(context, DPAD_UP);
     pbf_press_button(context, BUTTON_A, 160ms, 1000ms);
     tap(context, DPAD_LEFT);
     tap(context, DPAD_UP);
-    tap(context, DPAD_DOWN);
+    if (slot % 2 == 1){
+        tap(context, DPAD_RIGHT);
+    }
+    if (slot >= 2){
+        tap(context, DPAD_DOWN);
+    }
     pbf_press_button(context, BUTTON_A, 160ms, 500ms);
+}
+
+//  After YES to "Delete a move?": the move list fades in with its cursor on
+//  the top move (pret pokemon_summary_screen.c); A on a move forgets it,
+//  B would go back to "Stop learning?". Done in one go, so the loop's B
+//  presses can't land on the list.
+void forget_move(ProControllerContext& context, size_t slot){
+    pbf_press_button(context, BUTTON_A, 160ms, 2500ms);
+    for (size_t c = 0; c < slot; c++){
+        pbf_press_dpad(context, DPAD_DOWN, 160ms, 400ms);
+    }
+    pbf_press_button(context, BUTTON_A, 160ms, 2000ms);
+}
+
+//  The party list in battle opens on the lead: down to `slot`, then A, and
+//  SHIFT, the top of its menu.
+void send_member(ProControllerContext& context, size_t slot){
+    for (size_t c = 0; c < slot; c++){
+        pbf_press_dpad(context, DPAD_DOWN, 160ms, 400ms);
+    }
+    pbf_press_button(context, BUTTON_A, 160ms, 800ms);
+    pbf_press_button(context, BUTTON_A, 160ms, 1500ms);
 }
 
 
@@ -265,6 +302,8 @@ public:
         : m_console(console)
         , m_context(context)
         , m_supplies(supplies)
+        , m_decisions(supplies, kind)
+        , m_evolution(supplies.lead)
         , m_kind(kind)
         , m_checks(checks)
         , m_language(language)
@@ -284,8 +323,10 @@ public:
         while (!over){
             over = step();
         }
-        m_console.log(std::format("Battle: over after {} turns{}.", m_turns, m_lost ? ", the starter fainted" : ""));
-        return m_lost ? BattleEnd::LOST : BattleEnd::WON;
+        m_console.log(std::format(
+            "Battle: over after {} turns{}.", m_decisions.turns(), m_decisions.lost() ? ", the starter fainted" : ""
+        ));
+        return m_decisions.lost() ? BattleEnd::LOST : BattleEnd::WON;
     }
 
 private:
@@ -307,13 +348,17 @@ private:
             m_console.log("Battle: no battle menu or HP box in 15 s: not a battle.", COLOR_ORANGE);
             return true;
         }
+        if (between_turns(screen, now)){
+            return false;
+        }
         const BattleScreen seen = read_battle_screen(screen, m_confirmed);
         if (seen != m_last_seen){
-            m_console.log(std::format("Battle: {} (turn {}).", screen_name(seen), m_turns));
+            m_console.log(std::format("Battle: {} (turn {}).", screen_name(seen), m_decisions.turns()));
             m_last_seen = seen;
         }
         if (seen == BattleScreen::MENU){
             m_last_menu = now;
+            m_move_chosen = false;
         }else if (now - m_last_menu > NO_MENU && now - m_last_battle < NO_MENU_NEAR && now - m_last_press > 1500ms){
             //  Something waits that none of the battle screens knows.
             m_console.log(std::format("Battle: no battle menu for {} s, pressing {}.",
@@ -329,8 +374,72 @@ private:
         m_seen_battle = true;
         m_last_battle = now;
         read_hp(screen);
+        watch_for_faint(screen);
         act(seen, screen, now);
         return false;
+    }
+
+    //  The screens between the turns that need more than B: "no PP left",
+    //  the party list once the lead fainted, and an evolution after the
+    //  battle. True if one was handled.
+    bool between_turns(const ImageViewRGB32& screen, WallClock now){
+        if (!m_confirmed){
+            return false;
+        }
+        if (m_move_chosen && BattleOutOfPpDetector(COLOR_RED).detect(screen)){
+            m_console.log("Battle: no PP left for that move; choosing again.", COLOR_ORANGE);
+            m_decisions.turn_done(TurnChoice::MOVE, false);
+            m_move_chosen = false;
+            pbf_press_button(m_context, BUTTON_B, 160ms, 800ms);
+            pbf_press_button(m_context, BUTTON_B, 160ms, 800ms);
+            m_last_press = now;
+            return true;
+        }
+        if (m_decisions.lost() && PartyMenuDetector(COLOR_RED).detect(screen)){
+            send_next_member(now);
+            return true;
+        }
+        if (m_evolution.holds(read_text_screen(screen), m_decisions.turns())){
+            wait_out_evolution();
+            return true;
+        }
+        return false;
+    }
+
+    //  The party list after the lead fainted: the next member allowed in, or
+    //  a stop with only protected members left.
+    void send_next_member(WallClock now){
+        const std::optional<size_t> slot = m_decisions.next_member_slot();
+        if (!slot){
+            OperationFailedExceptionWithScreenshot::fire(
+                ErrorReportMode::NO_ERROR_REPORT,
+                "fight_battle(): the starter fainted and only protected members are left; not sending one.",
+                m_console
+            );
+        }
+        m_console.log(std::format("Battle: the lead fainted; sending party slot {}.", *slot + 1), COLOR_ORANGE);
+        send_member(m_context, *slot);
+        m_last_press = now;
+    }
+
+    //  Nothing pressed while the screen may be an evolution, up to EVOLUTION.
+    void wait_out_evolution(){
+        const WallClock start = current_time();
+        bool holds = true;
+        while (holds && current_time() - start < EVOLUTION){
+            pbf_wait(m_context, POLL);
+            m_context.wait_for_all_requests();
+            VideoSnapshot screen = m_console.video().snapshot();
+            holds = !screen || m_evolution.holds(read_text_screen(screen), m_decisions.turns());
+        }
+        const WallClock end = current_time();
+        const Milliseconds held = std::chrono::duration_cast<Milliseconds>(end - start);
+        if (held >= 2000ms){
+            m_console.log(std::format("Battle: no B for {} s, for an evolution.", held.count() / 1000));
+        }
+        m_evolution.held(held, m_decisions.lost());
+        m_last_press = end;
+        m_last_battle = end;
     }
 
     //  True once the battle is over: only when START opens the menu. The
@@ -343,8 +452,8 @@ private:
             pbf_wait(m_context, POLL);
             return false;
         }
-        if (m_turns > 0 && yes_no_cursor(screen)){
-            answer_learn_prompt(now);
+        if (m_decisions.turns() > 0 && yes_no_cursor(screen)){
+            answer_prompt(screen, now);
             return false;
         }
         if (now - m_last_battle > BATTLE_GONE && now - m_last_overworld_check > OVERWORLD_CHECK){
@@ -384,11 +493,11 @@ private:
             m_last_press = now;
             return;
         case BattleScreen::LEARN:
-            if (m_turns == 0){
-                //  The learn prompts come after a turn; before one it is a misread.
+            if (m_decisions.turns() == 0){
+                //  The prompts come after a turn; before one it is a misread.
                 break;
             }
-            answer_learn_prompt(now);
+            answer_prompt(screen, now);
             return;
         case BattleScreen::ADVANCE:
             pbf_press_button(m_context, BUTTON_B, 160ms, 200ms);
@@ -397,7 +506,6 @@ private:
         default:
             break;
         }
-        watch_for_faint(screen);
         if (now - m_last_press > STUCK){
             pbf_press_button(m_context, BUTTON_B, 160ms, 200ms);
             m_last_press = now;
@@ -406,9 +514,9 @@ private:
     }
 
     //  The HP bar whenever the starter's box shows, so the last reading
-    //  includes the battle's last hit.
+    //  includes the battle's last hit. Not once another member is out.
     void read_hp(const ImageViewRGB32& screen){
-        if (!BattlePokemonDetector(COLOR_RED).detect(screen)){
+        if (m_decisions.lost() || !BattlePokemonDetector(COLOR_RED).detect(screen)){
             return;
         }
         const PartyStatus status = read_party_status(screen);
@@ -419,77 +527,65 @@ private:
         m_supplies.status = status.status;
     }
 
-    //  "Delete a move to make room?" NO, then "Stop learning?" YES.
-    void answer_learn_prompt(WallClock now){
-        m_console.log(m_learn_prompts % 2 == 0 ? "Battle: not deleting a move." : "Battle: stop learning.");
-        pbf_press_button(m_context, m_learn_prompts % 2 == 0 ? BUTTON_B : BUTTON_A, 160ms, 1500ms);
-        m_learn_prompts++;
+    void answer_prompt(const ImageViewRGB32& screen, WallClock now){
+        const PromptAnswer answer = m_decisions.prompt(starter_fainted(screen));
+        if (answer.forget_slot){
+            m_console.log(std::format("Battle: learning the new move over move {}.", *answer.forget_slot + 1));
+            forget_move(m_context, *answer.forget_slot);
+        }else{
+            m_console.log(std::format("Battle: answering {} to a YES/NO.", answer.answer == YesNo::YES ? "YES" : "NO"));
+            pbf_press_button(m_context, answer.answer == YesNo::YES ? BUTTON_A : BUTTON_B, 160ms, 1500ms);
+        }
         m_last_press = now;
     }
 
     void take_turn(const ImageViewRGB32& screen){
-        m_turns++;
         m_faint_polls = 0;
         const PartyStatus status = read_party_status(screen);
-        const bool hurt = status.hp_red || status.hp_yellow;
-        m_supplies.hurt = hurt;
-        m_supplies.status = status.status;
-        m_psn_reads = status.status == StatusCondition::POISON ? m_psn_reads + 1 : 0;
+        const TurnAction action = m_decisions.turn(status);
         m_console.log(std::format(
             "Battle: turn {}, HP {}, {}, {} Potions, {} Antidotes, {} Parlyz Heals.",
-            m_turns, status.hp_red ? "red" : status.hp_yellow ? "yellow" : "green",
+            m_decisions.turns(), status.hp_red ? "red" : status.hp_yellow ? "yellow" : "green",
             status_name(status.status), m_supplies.potions, m_supplies.antidotes, m_supplies.parlyz_heals
         ));
-        //  A wild Pokemon is fought for EXP only at full strength: fighting
-        //  every one in Viridian Forest used up all 4 Potions and then the
-        //  starter (console B, 2026-11-01). With a status, it is run from too.
-        const bool weak = hurt || status.status != StatusCondition::NONE || m_supplies.potions < MIN_POTIONS_TO_FIGHT;
-        const bool run = m_kind == BattleKind::WILD_RUN || (m_kind == BattleKind::WILD_FIGHT && weak);
-        if (run && m_run_tries < RUN_TRIES){
-            m_run_tries++;
-            m_console.log(std::format("Battle: RUN (try {}).", m_run_tries));
+        switch (action.choice){
+        case TurnChoice::RUN:
+            m_console.log("Battle: RUN.");
             run_away(m_context);
             return;
-        }
-        if (!m_items_off && hurt && m_supplies.potions > 0){
-            if (use_item(m_console, m_context, item_row(m_supplies, "potion"), "potion", m_checks, m_language)){
-                m_supplies.potions--;
-                m_supplies.hurt = false;
-                m_supplies.hp_red = false;
-            }else{
-                m_items_off = true;
-            }
-        }else if (!m_items_off && m_psn_reads >= PSN_READS && !m_antidote_used && m_supplies.antidotes > 0){
-            m_antidote_used = true;
-            if (use_item(m_console, m_context, item_row(m_supplies, "antidote"), "antidote", m_checks, m_language)){
-                m_supplies.antidotes--;
-            }else{
-                m_items_off = true;
-            }
-        }else{
-            use_move(m_context);
+        case TurnChoice::POTION:
+            m_decisions.turn_done(action.choice, use_item(m_console, m_context, item_row(m_supplies, "potion"), "potion", m_checks, m_language));
+            return;
+        case TurnChoice::ANTIDOTE:
+            m_decisions.turn_done(action.choice, use_item(m_console, m_context, item_row(m_supplies, "antidote"), "antidote", m_checks, m_language));
+            return;
+        case TurnChoice::MOVE:
+            m_console.log(std::format("Battle: move {}.", action.slot + 1));
+            use_move(m_context, action.slot);
+            m_move_chosen = true;
+            return;
         }
     }
 
     void watch_for_faint(const ImageViewRGB32& screen){
-        if (m_turns == 0 || m_lost){
+        if (m_decisions.turns() == 0 || m_decisions.lost()){
             return;
         }
         m_faint_polls = starter_fainted(screen) ? m_faint_polls + 1 : 0;
         if (m_faint_polls >= FAINT_POLLS){
             m_console.log("Battle: the starter fainted.", COLOR_RED);
-            m_lost = true;
+            m_decisions.lead_fainted();
         }
     }
 
     ConsoleHandle& m_console;
     ProControllerContext& m_context;
     Supplies& m_supplies;
+    BattleDecisions m_decisions;
+    EvolutionHold m_evolution;
     const BattleKind m_kind;
     const StoryChecks m_checks;
     const Language m_language;
-    //  An item read as another in the bag: none is used again this battle.
-    bool m_items_off = false;
     const WallClock m_start;
     WallClock m_last_battle;
     WallClock m_last_press;
@@ -498,13 +594,9 @@ private:
     BattleScreen m_last_seen = BattleScreen::NONE;
     bool m_seen_battle = false;
     bool m_confirmed = false;
-    bool m_lost = false;
     bool m_press_a = true;
-    bool m_antidote_used = false;
-    int m_psn_reads = 0;
-    int m_run_tries = 0;
-    size_t m_turns = 0;
-    size_t m_learn_prompts = 0;
+    //  A move was chosen and no battle menu has shown since.
+    bool m_move_chosen = false;
     int m_faint_polls = 0;
 };
 
@@ -767,6 +859,17 @@ void recover_after_battle(
             supplies.hp_red = false;
         }
     }
+}
+
+void healed_by_nurse(Supplies& supplies){
+    supplies.hurt = false;
+    supplies.hp_red = false;
+    supplies.status = StatusCondition::NONE;
+    restore_pp(supplies.lead);
+}
+
+bool attacks_low_on_pp(const Supplies& supplies){
+    return attack_slot(supplies.lead).has_value() && attack_pp(supplies.lead) < LOW_ATTACK_PP;
 }
 
 BattleEnd fight_battle(

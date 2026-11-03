@@ -48,6 +48,15 @@ StoryCheckpoint row(
     return checkpoint;
 }
 
+//  At the rows after Brock: no items counted, the starter with the moves
+//  the story gave it by Lv13. A save made before the story learned moves
+//  has Bubble where this says Water Gun: the same slot, 5 more PP.
+Supplies after_brock(){
+    Supplies supplies;
+    supplies.lead = story_lead_after_brock();
+    return supplies;
+}
+
 //  What a walk does about wild Pokemon: runs, or fights them for EXP.
 enum class WildBattles{
     RUN,
@@ -280,7 +289,7 @@ StoryCheckpoint brock(){
 }
 
 StoryCheckpoint running_shoes(){
-    return row("00.10", "Pewter: the Running Shoes from Oak's aide", at(GYM, 6, 6, NORTH), {}, StartMenu::FULL, {
+    return row("00.10", "Pewter: the Running Shoes from Oak's aide", at(GYM, 6, 6, NORTH), after_brock(), StartMenu::FULL, {
         //  Brock's win sets VAR_MAP_SCENE_PEWTER_CITY to 1 and shows the aide at
         //  (46, 20); his triggers are (46, 21..23) (PewterCity map.json). The
         //  Gym guide's triggers at (42..43, 21..23) need the scene at 0.
