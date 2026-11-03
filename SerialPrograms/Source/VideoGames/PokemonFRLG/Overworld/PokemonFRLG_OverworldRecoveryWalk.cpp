@@ -143,6 +143,29 @@ void hold_to_warp(
     );
 }
 
+//  A trainer who sees the player stops them, a "!" shows over the trainer,
+//  the trainer walks up, then speaks. The leg's hold may run on past the
+//  tile the player was stopped on, so the watch counts from the hold's end,
+//  with room to spare: on Route 3 (console B, 2026-11-02) Lass Robin's
+//  message showed after the 500ms watch after the leg had ended. Not
+//  measured on the console yet.
+constexpr Milliseconds TRAINER_NOTICE(1500);
+constexpr Milliseconds TRAINER_SPEAKS(1000);
+
+//  After `step`, which crosses a trainer's sight: watches for the trainer
+//  to walk up `approach_tiles` tiles and speak, and clears what shows.
+StepEnd watch_for_trainer(
+    ConsoleHandle& console, ProControllerContext& context,
+    const RouteStep& step, int approach_tiles, const OverworldInterruptSet& interrupts
+){
+    const Milliseconds watch = TRAINER_NOTICE + TILE_TIME * approach_tiles + TRAINER_SPEAKS;
+    console.log(std::format("Route: {} crosses a trainer's sight; watching {} ms for them.", to_string(step), watch.count()));
+    const size_t seen = Pokemon::clear_late_interrupts(
+        console, context, step.wild ? interrupts.wild : interrupts.other, watch, MAX_INTERRUPTIONS_PER_LEG
+    );
+    return seen == 0 ? StepEnd::DONE : StepEnd::LATE;
+}
+
 //  TODO(forest drift, 2026-11-01): diagnostic; remove or turn into a recovery once the cause is known.
 //  How much the game screen's top quarter, clear of the player in the
 //  middle, may change when a tap toward a wall only bumps the player (the
@@ -188,6 +211,7 @@ void walk_overworld_route_with_recovery(
     }
     RouteCalls calls;
     calls.walk = [&](const RouteStep& step, std::optional<Direction> from_facing){
+        clear_open_message(console, context, step.wild ? interrupts.wild : interrupts.other, step);
         check_overworld(console, context, step);
         return walk_and_watch(console, context, step, from_facing, interrupts, speed);
     };
@@ -200,6 +224,9 @@ void walk_overworld_route_with_recovery(
     };
     calls.moved_past_wall = [&](const RouteStep& step){
         return moved_past_wall(console, context, step);
+    };
+    calls.watch_for_trainer = [&](const RouteStep& step, int approach_tiles){
+        return watch_for_trainer(console, context, step, approach_tiles, interrupts);
     };
     run_route(route, facing, &planning, calls);
     context.wait_for_all_requests();
