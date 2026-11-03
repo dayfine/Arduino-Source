@@ -11,6 +11,7 @@
 #include <format>
 #include <functional>
 #include <string>
+#include <string_view>
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/Logging/AbstractLogger.h"
@@ -81,14 +82,14 @@ UnitTestResult test_shiny_messages(){
 }
 
 
-size_t row_index(const std::string& id){
+size_t row_index(std::string_view id){
     const std::vector<StoryCheckpoint>& checkpoints = story_checkpoints();
     for (size_t c = 0; c < checkpoints.size(); c++){
         if (checkpoints[c].id == id){
             return c;
         }
     }
-    throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "No checkpoint " + id);
+    throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "No checkpoint " + std::string(id));
 }
 
 std::string joined_ids(const StoryRunPlan& plan){
@@ -190,7 +191,7 @@ UnitTestResult test_rows_after_magikarp(){
     ){
         return "Expected 00.12 to be Gift RNG's handoff and 00.12b to start from the live game at (2, 3) facing west.";
     }
-    for (const char* last : {"00.12", "00.12b"}){
+    for (std::string_view last : {"00.12", "00.12b"}){
         const StoryRunPlan plan = rows_after_gift_rng(checkpoints, salesman_row, row_index(last), StoryHandoffs{.gift_rng = true});
         if (joined_ids(plan) != "00.12b" || first_step(plan) != LEAVE_GIFT_SUMMARY || plan.stop != StoryHandoff::NONE){
             return std::format(
