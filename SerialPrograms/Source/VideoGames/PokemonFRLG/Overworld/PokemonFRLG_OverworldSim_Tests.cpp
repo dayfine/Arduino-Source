@@ -12,6 +12,7 @@
  *
  */
 
+#include <algorithm>
 #include <format>
 #include <functional>
 #include <optional>
@@ -632,6 +633,42 @@ UnitTestResult test_mt_moon_battle_on_ladder_leg(){
     return true;
 }
 
+//  Console B, 2026-11-03 (row 00.13, b2f_ladder_foot): on B1F a wild
+//  battle started part-way down "south 15 (to wall)" from (3, 3), with its
+//  flashes missed. Its HP boxes came over 5 s after the step, after the
+//  leg's watch had ended on the battle's empty text box: the leg was taken
+//  as walked to (3, 18), and "east 19 (warp)" was walked into the battle
+//  from a tile it wasn't on. The console ran (133 ms a tile) and the sim
+//  walks, so the battle starts a few steps later here, for the same
+//  timing. The text box after the watch is now watched on for, the leg
+//  walked again to its wall, and the route reaches B2F's ladder. Without
+//  the rule the leg is taken as walked, and the run stops on no fade onto
+//  the ladder down to B2F, as it did.
+UnitTestResult test_mt_moon_battle_seen_after_wall_leg(){
+    SimCase c{.start = at("MtMoon_B1F", 3, 3), .facing = Direction::SOUTH, .goal = at("MtMoon_B2F", 26, 21)};
+    c.script.encounters = {{.grass_step = 13, .seen_late = true}};
+    c.script.timing.battle_opening = Milliseconds(4500);
+    c.script.timing.battle_screen = Milliseconds(5300);
+    const std::vector<RouteStep> route = planned(c);
+    if (route.empty() || to_string(route[0]) != "walk south 15 (to wall) -> MtMoon_B1F (3, 18)"){
+        return "Expected the route to start with \"south 15 (to wall)\":" + describe(route);
+    }
+    const SimRun now = run_case(c);
+    if (!arrived(now, c.goal) || now.state.warps != 1){
+        return "Expected the battle run from, the leg walked again and B2F reached:" + describe(now);
+    }
+    SimCase off = c;
+    off.rules.watch_on_for_unseen_battle = false;
+    const SimRun old = run_case(off);
+    const bool taken_as_walked = std::any_of(old.log.begin(), old.log.end(), [](const std::string& line){
+        return line.find("south 15 (to wall): ended at MtMoon_B1F (3, 18) (walked)") != std::string::npos;
+    });
+    if (!taken_as_walked || !stopped_with(old, "no fade in and out after walking onto the warp to MtMoon_B2F.")){
+        return "Expected the leg taken as walked and the run stopped on no fade, as on the console, without the rule:" + describe(old);
+    }
+    return true;
+}
+
 //  Mt. Moon B2F, after the HELIX FOSSIL: the player steps onto (14, 7),
 //  where it lay, and the way out goes north through the gap, west to the
 //  ladder (5, 10), up to B1F and out of its east end onto Route 4, walked
@@ -667,6 +704,7 @@ void add_tests_OverworldSim(UnitTestDatabase& database){
     database.add<Test_OverworldSim>("Mt. Moon: a late wild battle in the cave", test_mt_moon_late_battle);
     database.add<Test_OverworldSim>("Mt. Moon: after the HELIX, out to Route 4", test_mt_moon_way_out);
     database.add<Test_OverworldSim>("Mt. Moon: a battle on the leg onto 1F's ladder", test_mt_moon_battle_on_ladder_leg);
+    database.add<Test_OverworldSim>("Mt. Moon: a battle seen only after a leg to a wall", test_mt_moon_battle_seen_after_wall_leg);
 }
 
 
