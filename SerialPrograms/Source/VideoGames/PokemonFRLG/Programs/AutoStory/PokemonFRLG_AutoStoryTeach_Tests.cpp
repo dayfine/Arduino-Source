@@ -21,6 +21,7 @@
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "PokemonFRLG_AutoStoryTeach.h"
+#include "PokemonFRLG_AutoStoryTeachScreens.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -55,6 +56,8 @@ public:
     std::optional<std::vector<std::string>> stale_moves = std::nullopt;
     //  The moves page forgets nothing: a bug the confirmation must catch.
     bool forget_ignored = false;
+    //  The bag or the TM Case didn't open.
+    bool open_fails = false;
     size_t items_opened = 0;
     size_t stopped = 0;
     std::string error = {};
@@ -72,16 +75,20 @@ public:
         }
         return info;
     }
-    virtual bool open_item(std::string_view item) override{
+    virtual ItemOpen open_item(std::string_view item, std::string_view) override{
         items_opened++;
+        if (open_fails){
+            m_screen = Screen::BAG;
+            return ItemOpen::FAILED;
+        }
         const auto found = tm_case.find(std::string(item));
         if (found == tm_case.end() || found->second.count == 0){
             m_screen = Screen::BAG;
-            return false;
+            return ItemOpen::NOT_IN_CASE;
         }
         m_item = found->first;
         m_screen = Screen::CHOOSE_MEMBER;
-        return true;
+        return ItemOpen::OPENED;
     }
     virtual TeachPrompt choose_member(size_t slot) override{
         if (m_screen != Screen::CHOOSE_MEMBER || slot >= party.size()){
@@ -277,10 +284,17 @@ std::vector<TeachCase> teach_cases_3(){
             .opened = false,
         },
         {
-            .name = "an item the TM Case hasn't got",
+            .name = "an item the TM Case hasn't got: skipped",
             .plan = {.item = "hm05", .move = "flash", .member = 2, .forget_move = "acid"},
-            .end = TeachEnd::FAILED,
+            .end = TeachEnd::NO_ITEM,
             .moves = {"absorb", "cut", "poison-powder", "acid"},
+        },
+        {
+            .name = "the TM Case didn't open",
+            .plan = {.item = "hm03", .move = "surf", .member = 0, .forget_move = "tail-whip"},
+            .setup = [](FakeTeachGame& game){ game.open_fails = true; },
+            .end = TeachEnd::FAILED,
+            .moves = {"water-gun", "tail-whip", "bubble", "withdraw"},
         },
         {
             .name = "the move didn't land: the read after catches it",
@@ -382,6 +396,7 @@ void add_tests_AutoStoryTeach(UnitTestDatabase& database){
     add("TMs and HMs on a fake party", test_teach);
     add("a TM is used up, an HM kept", test_tm_used_up);
     add("the table's variant", test_teach_variant);
+    add_tests_AutoStoryTeachScreens(database);
 }
 
 

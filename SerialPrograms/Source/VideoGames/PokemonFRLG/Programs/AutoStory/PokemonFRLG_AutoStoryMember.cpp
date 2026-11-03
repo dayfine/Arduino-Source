@@ -21,7 +21,7 @@ MemberReader console_member_reader(ConsoleHandle& console, ProControllerContext&
             console.log(std::format("Party: couldn't read the member in slot {}.", slot + 1), COLOR_RED);
             return std::nullopt;
         }
-        MemberInfo info{.species = read->species, .level = read->level, .moves = {}};
+        MemberInfo info{.species = read->species, .level = read->level, .moves = {}, .stats = read->stats};
         for (const SummaryMove& move : read->moves){
             info.moves.push_back(move.move);
         }

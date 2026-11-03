@@ -5,6 +5,7 @@
  */
 
 #include <format>
+#include <utility>
 #include "Common/Cpp/Filesystem/Filesystem.h"
 #include "Common/Cpp/Json/JsonArray.h"
 #include "Common/Cpp/Json/JsonObject.h"
@@ -40,6 +41,86 @@ constexpr double CURSOR_EDGE_LEFT = 120;
 constexpr double CURSOR_EDGE_TOP = 24;
 constexpr double CURSOR_EDGE_HEIGHT = 16;
 
+//  The level-up moves of Squirtle's and Magikarp's lines (pret
+//  pokefirered src/data/pokemon/level_up_learnsets.h), then the TMs'
+//  and HMs' moves not among them (src/data/items.h; Hyper Beam, Protect
+//  and Rain Dance are above), as the game writes them.
+constexpr std::pair<const char*, const char*> MOVE_NAMES[] = {
+    {"tackle", "Tackle"},
+    {"tail-whip", "Tail Whip"},
+    {"bubble", "Bubble"},
+    {"withdraw", "Withdraw"},
+    {"water-gun", "Water Gun"},
+    {"bite", "Bite"},
+    {"rapid-spin", "Rapid Spin"},
+    {"protect", "Protect"},
+    {"rain-dance", "Rain Dance"},
+    {"skull-bash", "Skull Bash"},
+    {"hydro-pump", "Hydro Pump"},
+    {"splash", "Splash"},
+    {"flail", "Flail"},
+    {"thrash", "Thrash"},
+    {"dragon-rage", "Dragon Rage"},
+    {"leer", "Leer"},
+    {"twister", "Twister"},
+    {"dragon-dance", "Dragon Dance"},
+    {"hyper-beam", "Hyper Beam"},
+    {"focus-punch", "Focus Punch"},
+    {"dragon-claw", "Dragon Claw"},
+    {"water-pulse", "Water Pulse"},
+    {"calm-mind", "Calm Mind"},
+    {"roar", "Roar"},
+    {"toxic", "Toxic"},
+    {"hail", "Hail"},
+    {"bulk-up", "Bulk Up"},
+    {"bullet-seed", "Bullet Seed"},
+    {"hidden-power", "Hidden Power"},
+    {"sunny-day", "Sunny Day"},
+    {"taunt", "Taunt"},
+    {"ice-beam", "Ice Beam"},
+    {"blizzard", "Blizzard"},
+    {"light-screen", "Light Screen"},
+    {"giga-drain", "Giga Drain"},
+    {"safeguard", "Safeguard"},
+    {"frustration", "Frustration"},
+    {"solar-beam", "SolarBeam"},
+    {"iron-tail", "Iron Tail"},
+    {"thunderbolt", "Thunderbolt"},
+    {"thunder", "Thunder"},
+    {"earthquake", "Earthquake"},
+    {"return", "Return"},
+    {"dig", "Dig"},
+    {"psychic", "Psychic"},
+    {"shadow-ball", "Shadow Ball"},
+    {"brick-break", "Brick Break"},
+    {"double-team", "Double Team"},
+    {"reflect", "Reflect"},
+    {"shock-wave", "Shock Wave"},
+    {"flamethrower", "Flamethrower"},
+    {"sludge-bomb", "Sludge Bomb"},
+    {"sandstorm", "Sandstorm"},
+    {"fire-blast", "Fire Blast"},
+    {"rock-tomb", "Rock Tomb"},
+    {"aerial-ace", "Aerial Ace"},
+    {"torment", "Torment"},
+    {"facade", "Facade"},
+    {"secret-power", "Secret Power"},
+    {"rest", "Rest"},
+    {"attract", "Attract"},
+    {"thief", "Thief"},
+    {"steel-wing", "Steel Wing"},
+    {"skill-swap", "Skill Swap"},
+    {"snatch", "Snatch"},
+    {"overheat", "Overheat"},
+    {"cut", "Cut"},
+    {"fly", "Fly"},
+    {"surf", "Surf"},
+    {"strength", "Strength"},
+    {"flash", "Flash"},
+    {"rock-smash", "Rock Smash"},
+    {"waterfall", "Waterfall"},
+};
+
 class MoveNameMatcher : public OCR::SmallDictionaryMatcher{
 public:
     static constexpr double MAX_LOG10P = -1.40;
@@ -67,31 +148,9 @@ private:
         : SmallDictionaryMatcher(dictionary())
     {}
 
-    //  The level-up moves of Squirtle's and Magikarp's lines (pret
-    //  pokefirered src/data/pokemon/level_up_learnsets.h).
     static JsonObject dictionary(){
         JsonObject english;
-        for (const auto& [slug, name] : {
-            std::pair<const char*, const char*>{"tackle", "Tackle"},
-            {"tail-whip", "Tail Whip"},
-            {"bubble", "Bubble"},
-            {"withdraw", "Withdraw"},
-            {"water-gun", "Water Gun"},
-            {"bite", "Bite"},
-            {"rapid-spin", "Rapid Spin"},
-            {"protect", "Protect"},
-            {"rain-dance", "Rain Dance"},
-            {"skull-bash", "Skull Bash"},
-            {"hydro-pump", "Hydro Pump"},
-            {"splash", "Splash"},
-            {"flail", "Flail"},
-            {"thrash", "Thrash"},
-            {"dragon-rage", "Dragon Rage"},
-            {"leer", "Leer"},
-            {"twister", "Twister"},
-            {"dragon-dance", "Dragon Dance"},
-            {"hyper-beam", "Hyper Beam"},
-        }){
+        for (const auto& [slug, name] : MOVE_NAMES){
             JsonArray names;
             names.push_back(name);
             english[slug] = std::move(names);
@@ -133,7 +192,11 @@ ImageFloatBox summary_move_max_pp_box(size_t row){
 }
 
 std::string read_summary_move_name(Logger& logger, Language language, const ImageViewRGB32& screen, size_t row){
-    return MoveNameMatcher::instance().read(logger, language, extract_box_reference(game_box(screen), summary_move_name_box(row)));
+    return read_move_name(logger, language, extract_box_reference(game_box(screen), summary_move_name_box(row)));
+}
+
+std::string read_move_name(Logger& logger, Language language, const ImageViewRGB32& name){
+    return MoveNameMatcher::instance().read(logger, language, name);
 }
 
 std::vector<SummaryMove> read_summary_moves(Logger& logger, Language language, const ImageViewRGB32& screen){

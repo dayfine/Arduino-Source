@@ -11,8 +11,8 @@
  *  PP at 64. The fifth row is CANCEL, or the move offered.
  *
  *  It knows the names of the moves of the lines the FRLG AutoStory party
- *  comes from, in English only so far: in another language a name is never
- *  read.
+ *  comes from, and of the TMs' and HMs' moves, in English only so far: in
+ *  another language a name is never read.
  *
  */
 
@@ -47,6 +47,10 @@ ImageFloatBox summary_move_max_pp_box(size_t row);
 //  `language`; empty for an empty slot, a move the reader has no name
 //  for, or a language it has no names for.
 std::string read_summary_move_name(Logger& logger, Language language, const ImageViewRGB32& screen, size_t row);
+
+//  The move named in `name`, a box around one move's name in dark text on
+//  a light background, such as a TM CASE row's; empty as above.
+std::string read_move_name(Logger& logger, Language language, const ImageViewRGB32& name);
 
 struct SummaryMove{
     std::string move;

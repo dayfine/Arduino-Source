@@ -2,9 +2,9 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  What the story reads about one party member: its species, level and
- *  moves, as the summary screen shows them (page 1: level; page 3: the
- *  four moves). The story's steps take them from a MemberReader, so their
+ *  What the story reads about one party member: its species, level, stats
+ *  and moves, as the summary screen shows them (page 1: level; page 2:
+ *  stats; page 3: the four moves). The story's steps take them from a MemberReader, so their
  *  decisions run in tests against a fake party; on the console they read
  *  the member's summary (read_party_summary(), PokemonFRLG_AutoStorySummary.h).
  *  A member that can't be read stops every step that needs its level or
@@ -29,6 +29,7 @@
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
 #include "Pokemon/AutoStory/Pokemon_StorySteps.h"
+#include "PokemonFRLG_AutoStoryDamage.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -47,6 +48,8 @@ struct MemberInfo{
     //  Its moves' slugs in the summary's order (e.g. "water-gun"), one to
     //  four; empty if not read.
     std::vector<std::string> moves = {};
+    //  POKEMON SKILLS (HP as its maximum); none if not read.
+    std::optional<Stats> stats = std::nullopt;
 };
 
 //  Reads party slot `slot` (0-5), from the overworld back to the

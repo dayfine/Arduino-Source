@@ -3,7 +3,10 @@
  *  From: https://github.com/PokemonAutomation/
  *
  *  GRIND(who, where, level): fight wild battles in a patch until a party
- *  member reaches a level, then heal. The table stands the player in the
+ *  member reaches a level, then heal. Or GRIND(who, where, trainer): until
+ *  the battle sim (PokemonFRLG_AutoStoryWinChance.h) says the member beats
+ *  the next boss often enough, the level then a cap: between battles, with
+ *  the level, moves and stats just read, healed, and the bag's Potions. The table stands the player in the
  *  patch (as for a capture) and names the Pokemon Center's nurse as the
  *  step's target: between rounds, and at the end, the step walks there,
  *  heals and walks back to where it started.
@@ -17,9 +20,8 @@
  *  nurse restores PP as well. It is bounded by encounters, and a
  *  shiny stops it as it stops a capture: nothing pressed.
  *
- *  The level is read with a MemberReader before the first battle and after
- *  each win; the console has no summary reader yet, so there the step
- *  stops before its first battle.
+ *  The member is read with a MemberReader before the first battle and
+ *  after each win.
  *
  */
 
@@ -39,8 +41,11 @@
 #include "Pokemon/AutoStory/Pokemon_StorySteps.h"
 #include "Pokemon/Navigation/Pokemon_Grid.h"
 #include "PokemonFRLG_AutoStoryBattle.h"
+#include "PokemonFRLG_AutoStoryBattleData.h"
 #include "PokemonFRLG_AutoStoryCapture.h"
 #include "PokemonFRLG_AutoStoryMember.h"
+#include "PokemonFRLG_AutoStoryParty.h"
+#include "PokemonFRLG_AutoStoryWinChance.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -50,6 +55,8 @@ namespace PokemonFRLG{
 struct GrindPlan{
     //  The party slot that grinds: the lead (0) only.
     size_t member = 0;
+    //  Without a trainer, the level to reach; with one, the cap: the step
+    //  stops there if the chance is still short.
     unsigned level = 2;
     //  Wild battles, of any species, before the step gives up.
     size_t max_encounters = 60;
@@ -57,13 +64,20 @@ struct GrindPlan{
     Pokemon::Direction pace = Pokemon::Direction::EAST;
     //  Battles between visits to the nurse; 0: only when hurt.
     size_t heal_every = 0;
+    //  The next boss step's trainer, e.g. "TRAINER_RIVAL_CERULEAN_BULBASAUR":
+    //  grind until the sim's win chance against it is `min_chance` or
+    //  more. Empty: grind to `level`.
+    std::string trainer = {};
+    double min_chance = MIN_WIN_CHANCE;
 };
 
 //  The prefix of a GAME step's variant that names a GRIND step.
 inline constexpr std::string_view GRIND_VARIANT_PREFIX = "grind ";
 
 //  `plan` as a variant: "grind slot=1 level=18 encounters=60 pace=east
-//  heal_every=8", the slot counted from 1. The step's target is the nurse.
+//  heal_every=8", the slot counted from 1, and with a trainer
+//  " beat=TRAINER_RIVAL_CERULEAN_BULBASAUR chance=70", the chance in
+//  percent. The step's target is the nurse.
 std::string grind_variant(const GrindPlan& plan);
 std::optional<GrindPlan> parse_grind_variant(std::string_view variant);
 
@@ -99,10 +113,18 @@ public:
     //  From the patch: to the nurse, heal, back to the patch. False if it
     //  didn't get there and back.
     virtual bool heal_trip() = 0;
+    //  The sim's chance for `member`, as just read, healed, against
+    //  `trainer`; none if the sim lacks the species or the trainer.
+    virtual std::optional<WinEstimate> win_chance(const MemberInfo& member, std::string_view trainer) = 0;
 };
 
 enum class GrindEnd{
+    //  The level, or the win chance, reached.
     REACHED,
+    //  The level cap reached with the win chance still short.
+    LEVEL_CAP,
+    //  The sim has no chance for the member against the trainer.
+    NO_ESTIMATE,
     OUT_OF_ENCOUNTERS,
     NO_ENCOUNTER,
     //  A shiny showed: stopped in its battle, nothing pressed.
@@ -120,6 +142,8 @@ struct GrindResult{
     size_t encounters = 0;
     size_t heals = 0;
     std::optional<unsigned> level = std::nullopt;
+    //  The last win chance against the plan's trainer.
+    std::optional<double> chance = std::nullopt;
     std::string detail = {};
 };
 
@@ -127,6 +151,15 @@ struct GrindResult{
 GrindResult run_grind(Logger& logger, GrindActions& actions, const MemberReader& reader, const GrindPlan& plan);
 
 std::string grind_message(const GrindPlan& plan, const GrindResult& result);
+
+//  The story's lead as `read` shows it (species, level, moves, stats),
+//  each move's PP as `tracked` counts it for a move of that name, else
+//  full.
+PartyMember lead_as_read(const MemberInfo& read, const PartyMember& tracked);
+
+//  The sim's chance for `lead` with `potions` against `trainer`, once the
+//  nurse has healed it (full HP and PP).
+std::optional<WinEstimate> healed_win_chance(PartyMember lead, int potions, std::string_view trainer);
 
 
 //  Where pacing left the player, for the trip to the nurse: on the patch's
@@ -155,6 +188,9 @@ public:
     virtual GrindFight fight() override;
     virtual bool needs_heal() override;
     virtual bool heal_trip() override;
+    //  With the bag's Potions. The member read becomes the story's lead,
+    //  so the boss's own check before its battle plays the same one.
+    virtual std::optional<WinEstimate> win_chance(const MemberInfo& member, std::string_view trainer) override;
 
 private:
     ConsoleHandle& m_console;
