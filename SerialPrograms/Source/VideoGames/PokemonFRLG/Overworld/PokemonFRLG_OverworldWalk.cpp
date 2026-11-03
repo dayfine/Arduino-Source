@@ -268,13 +268,20 @@ void clear_open_message(
 //  Route 1's grass, and the step meant for Oak's Lab's door set off a
 //  battle; its flashes and wipe passed for the warp's fade, the route went
 //  on as if inside, and the next screen was the battle's FIGHT menu.
-void check_warp_was_no_battle(ConsoleHandle& console, ProControllerContext& context, const RouteStep& step){
+bool run_from_battle_after_warp(ConsoleHandle& console, ProControllerContext& context){
     BattleScreenWatcher battle(COLOR_RED);
     context.wait_for_all_requests();
     if (wait_until(console, context, AFTER_WARP_BATTLE_WATCH, {battle}) < 0){
-        return;
+        return false;
     }
     flee_battle(console, context);
+    return true;
+}
+
+void check_warp_was_no_battle(ConsoleHandle& console, ProControllerContext& context, const RouteStep& step){
+    if (!run_from_battle_after_warp(console, context)){
+        return;
+    }
     OperationFailedExceptionWithScreenshot::fire(
         ErrorReportMode::SEND_ERROR_REPORT,
         "walk_overworld_route(): a wild battle, not the warp to " + step.end.map + ": the player is off the route.",

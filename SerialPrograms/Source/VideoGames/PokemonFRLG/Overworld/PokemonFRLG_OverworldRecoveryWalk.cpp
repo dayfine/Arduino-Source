@@ -68,7 +68,10 @@ std::optional<WalkedTiles> walk_step(
         if (step.warps){
             wait_out_warp(console, context, step);
             static_assert(AFTER_WARP_BATTLE_WATCH >= AFTER_WARP);
-            check_warp_was_no_battle(console, context, step);
+            if (run_from_battle_after_warp(console, context)){
+                console.log("Route: a wild battle, not the warp to " + step.end.map + "; the player is on " + to_string(step) + " before the warp.", COLOR_ORANGE);
+                return walked_before_warp(step);
+            }
         }
         break;
     }
