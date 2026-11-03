@@ -551,8 +551,8 @@ StoryCheckpoint route4_to_cerulean(){
 //  3184 here. Floor and budget 3000: 5 Potions and 2 Super Potions, 2900.
 //  Misty's 2100 (4 x 21 x 25) then leaves 00.15 its floor of 1500. Then the
 //  nurse, and the save before Misty, so her battle is its own checkpoint,
-//  00.14c, verified and retried from it. 00.15's GRIND to Lv22 then ends
-//  at once.
+//  00.14c, verified and retried from it. 00.15's GRIND then fights
+//  until the sim beats the Cerulean rival often enough.
 StoryCheckpoint cerulean_gym(){
     const MartPlan supplies{
         .map = CERULEAN_MART,
@@ -594,24 +594,33 @@ StoryCheckpoint misty(){
     });
 }
 
-//  Before the rival north of Cerulean (cerulean_rival()): 5 Potions at the
-//  Mart (CeruleanCity_Mart_Items: POTION is row 3, 300 each; Mt. Moon's
-//  trainers leave well over the floor), then a GRIND to Lv22 on Route 4's
-//  grass east of Mt. Moon (75..86, 11..17; Spearow, Rattata, Ekans and
-//  Mankey around Lv10, about 80 EXP each), healing at the Center. With
-//  Bite chosen against his party, Lv22 is where a lone Wartortle beats it
-//  (#211's estimate: about 70 HP of his damage against its 61, which the
-//  Potions cover; at Lv18 about 100). Then the nurse, and the save on
-//  (23, 7), the tile below his trigger: his battle is its own checkpoint,
-//  00.15b, verified and retried from this save.
+//  Before the rival north of Cerulean (cerulean_rival()), from the
+//  Center: first TM03 Water Pulse over Tail Whip, if the lead doesn't know
+//  it yet, so the GRIND's sim plays it (a run without TM03 from Misty
+//  skips the step). Then 5 Potions at the Mart
+//  (CeruleanCity_Mart_Items: POTION is row 3, 300 each; Mt. Moon's
+//  trainers leave well over the floor), then a GRIND on Route 4's grass
+//  east of Mt. Moon (75..86, 11..17; Spearow, Rattata, Ekans and Mankey
+//  around Lv10, about 80 EXP each), healing at the Center, until the
+//  battle sim beats the rival 00.15b fights 70% or more: the win chance
+//  his battle refuses below. Console B's Wartortle (Lv22, 65 HP, Water
+//  Pulse) is about 42% there and 76% at Lv25; Lv28 (about 88%, some 120
+//  battles from Lv22) is the cap. Then the nurse, and the save on (23, 7),
+//  the tile below his trigger: his battle is its own checkpoint, 00.15b,
+//  verified and retried from this save.
 StoryCheckpoint cerulean_grind(){
+    const TeachPlan water_pulse{.item = "tm03", .move = "water-pulse", .member = 0, .forget_move = "tail-whip"};
     const MartPlan potions{.map = CERULEAN_MART, .lines = {{.item = "potion", .quantity = 5}}, .budget = 1500, .money_floor = 1500};
-    const GrindPlan to_lv22{.member = 0, .level = 22, .max_encounters = 100, .pace = WEST, .heal_every = 0};
-    return row("00.15", "Cerulean: Potions, a GRIND to Lv22, then saved below the rival's trigger", at(CERULEAN_CENTER, 7, 4, NORTH), after_brock(), StartMenu::FULL, {
+    const GrindPlan for_rival{
+        .member = 0, .level = 28, .max_encounters = 150, .pace = WEST, .heal_every = 0,
+        .trainer = std::string(story_trainer(CERULEAN, "rival_cerulean").value_or("")), .min_chance = MIN_WIN_CHANCE,
+    };
+    return row("00.15", "Cerulean: Water Pulse, Potions, a GRIND until the rival is winnable, then saved below his trigger", at(CERULEAN_CENTER, 7, 4, NORTH), after_brock(), StartMenu::FULL, {
+        teach_step("teach_water_pulse", "TM03 Water Pulse in place of Tail Whip, unless the lead knows it or there is no TM03", water_pulse),
         running(route("mart_clerk", at(CERULEAN_MART, 4, 3, WEST), "out of the Center to the Mart's clerk")),
         mart_step("buy_potions", "5 Potions: the GRIND fights wild battles only with 2 or more", potions),
         running(route("grind_patch", at(ROUTE4, 86, 16, WEST), "west out of the city along Route 4's lower road onto its grass's east edge")),
-        grind_step("grind_to_lv22", "wild battles until the lead is Lv22, the nurse when hurt or low on PP", to_lv22, at(CERULEAN_CENTER, 7, 4, NORTH)),
+        grind_step("grind_for_rival", "wild battles until the sim beats the rival 70% or more, Lv28 at most; the nurse when hurt or low on PP", for_rival, at(CERULEAN_CENTER, 7, 4, NORTH)),
         running(route("cerulean_nurse", at(CERULEAN_CENTER, 7, 4, NORTH), "back to the Center: the rival's battle starts at full HP and PP")),
         heal("heal_cerulean"),
         running(route("below_rival_trigger", at(CERULEAN, 23, 7, NORTH), "out of the Center, north up to (23, 7), short of the trigger row 6")),

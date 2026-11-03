@@ -279,22 +279,35 @@ bool plans(const Pokemon::Pose& from, const Pokemon::Pose& to){
     ).has_value();
 }
 
-//  00.15, before the rival: Potions from Cerulean's Mart (a loaded save's
-//  bag may hold too few for the wild battles a GRIND fights), then a GRIND
-//  on Route 4's grass east of Mt. Moon to Lv22, where Bite beats his party
-//  (#211), healing at Cerulean's Center; its trip there plans both ways.
+//  00.15, before the rival, from the Center: first TM03 Water Pulse over
+//  Tail Whip if the lead doesn't know it, so the sim plays it in the
+//  GRIND; Potions from Cerulean's Mart (a loaded save's bag may hold too
+//  few for the wild battles a GRIND fights); then a GRIND on Route 4's
+//  grass east of Mt. Moon until the sim beats the rival 00.15b fights 70%
+//  or more, healing at Cerulean's Center; its trip there plans both ways.
 UnitTestResult test_cerulean_mart_and_grind(){
-    const std::vector<StoryStep>& steps = story_checkpoints()[row_index("00.15")].steps;
+    const StoryCheckpoint& row = story_checkpoints()[row_index("00.15")];
+    const std::vector<StoryStep>& steps = row.steps;
+    const std::optional<StoryPose> start = row.start ? story_pose(*row.start) : std::nullopt;
+    if (!start || start->map != "CeruleanCity_PokemonCenter_1F"){
+        return "00.15: expected it to start in Cerulean's Center.";
+    }
+    const std::optional<TeachPlan> teach = steps.empty() ? std::nullopt : parse_teach_variant(steps[0].variant);
+    if (!teach || teach->item != "tm03" || teach->move != "water-pulse" || teach->member != 0 || teach->forget_move != "tail-whip"){
+        return "00.15: expected it to start with TM03 Water Pulse over the lead's Tail Whip.";
+    }
     const size_t mart = find_step(steps, 0, [](const StoryStep& step){
         const std::optional<MartPlan> plan = parse_mart_variant(step.variant);
         return plan && plan->map == "CeruleanCity_Mart" && !plan->lines.empty() && plan->lines[0].item == "potion";
     });
-    const size_t grind = find_step(steps, mart, [](const StoryStep& step){
+    const std::optional<std::string_view> rival = story_trainer("CeruleanCity", "rival_cerulean");
+    const size_t grind = find_step(steps, mart, [&](const StoryStep& step){
         const std::optional<GrindPlan> plan = parse_grind_variant(step.variant);
-        return plan && plan->member == 0 && plan->level >= 22;
+        return plan && plan->member == 0 && rival && plan->trainer == *rival && plan->min_chance == MIN_WIN_CHANCE
+            && plan->level > 25;
     });
     if (mart == steps.size() || grind == steps.size()){
-        return "00.15: expected a Cerulean Mart step buying Potions, then a GRIND of the lead to Lv22.";
+        return "00.15: expected a Cerulean Mart step buying Potions, then a GRIND of the lead until the rival is 70%, capped above Lv25.";
     }
     const std::optional<StoryPose> clerk = mart > 0 && steps[mart - 1].target ? story_pose(*steps[mart - 1].target) : std::nullopt;
     if (!clerk || clerk->map != "CeruleanCity_Mart"){
