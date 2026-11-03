@@ -798,6 +798,73 @@ UnitTestResult test_route4_to_cerulean(){
     return true;
 }
 
+//  Story rows 00.14b and 00.14c in Cerulean Gym (pokefirered map.json):
+//  from the Mart's clerk into the Gym, up column 9 and west to (4, 13),
+//  then to walls round the pool's west and north sides and west to (9, 7)
+//  below Misty's platform, meeting no one; and back from beside her (9, 6)
+//  the same way round to (9, 13) and out to the Center.
+UnitTestResult test_cerulean_gym_walks(){
+    const SimCase in{.start = at("CeruleanCity_Mart", 4, 3), .facing = Direction::WEST, .goal = at("CeruleanCity_Gym", 4, 13)};
+    const SimRun entered = run_case(in);
+    if (!arrived(entered, in.goal) || entered.state.warps != 2 || !entered.state.trainers_beaten.empty()){
+        return "Expected the Gym entered and (4, 13) reached, no trainer met:" + describe(entered);
+    }
+    SimCase up{.start = in.goal, .facing = Direction::WEST, .goal = at("CeruleanCity_Gym", 9, 7)};
+    up.route = std::vector<RouteStep>{
+        leg(Direction::NORTH, 3, at("CeruleanCity_Gym", 4, 10), true),
+        leg(Direction::EAST, 8, at("CeruleanCity_Gym", 12, 10), true),
+        leg(Direction::NORTH, 3, at("CeruleanCity_Gym", 12, 7), true),
+        leg(Direction::WEST, 3, up.goal, false),
+    };
+    const SimRun walk = run_case(up);
+    if (!arrived(walk, up.goal) || !walk.state.trainers_beaten.empty()){
+        return "Expected (9, 7) below Misty's platform reached round the pool, no trainer met:" + describe(walk);
+    }
+    SimCase out{.start = at("CeruleanCity_Gym", 9, 6), .facing = Direction::WEST, .goal = at("CeruleanCity_Gym", 9, 13)};
+    out.route = std::vector<RouteStep>{
+        leg(Direction::SOUTH, 1, at("CeruleanCity_Gym", 9, 7), false),
+        leg(Direction::EAST, 3, at("CeruleanCity_Gym", 12, 7), true),
+        leg(Direction::SOUTH, 3, at("CeruleanCity_Gym", 12, 10), true),
+        leg(Direction::WEST, 8, at("CeruleanCity_Gym", 4, 10), true),
+        leg(Direction::SOUTH, 3, at("CeruleanCity_Gym", 4, 13), true),
+        leg(Direction::EAST, 5, out.goal, true),
+    };
+    const SimRun back = run_case(out);
+    if (!arrived(back, out.goal) || !back.state.trainers_beaten.empty()){
+        return "Expected (9, 13) reached from beside Misty round the pool, no trainer met:" + describe(back);
+    }
+    const SimCase nurse{.start = out.goal, .facing = Direction::EAST, .goal = at("CeruleanCity_PokemonCenter_1F", 7, 4)};
+    const SimRun healed = run_case(nurse);
+    if (!arrived(healed, nurse.goal) || healed.state.warps != 2 || !healed.state.trainers_beaten.empty()){
+        return "Expected the Center reached from (9, 13), no trainer met:" + describe(healed);
+    }
+    return true;
+}
+
+//  The straight ways in Cerulean Gym that 00.14b and 00.14c keep off: the
+//  step onto (9, 12) meets Swimmer Luis, and the step onto (8, 7),
+//  misty_front, Picnicker Diana.
+UnitTestResult test_cerulean_gym_lines(){
+    const struct{
+        MapPosition from;
+        Direction direction;
+        MapPosition onto;
+        const char* trainer;
+    } LINES[] = {
+        {at("CeruleanCity_Gym", 9, 13), Direction::NORTH, at("CeruleanCity_Gym", 9, 12), "swimmer_m_water"},
+        {at("CeruleanCity_Gym", 9, 7), Direction::WEST, at("CeruleanCity_Gym", 8, 7), "picnicker"},
+    };
+    for (const auto& line : LINES){
+        SimCase c{.start = line.from, .facing = line.direction, .goal = line.onto};
+        c.route = std::vector<RouteStep>{leg(line.direction, 1, c.goal, false)};
+        const SimRun now = run_case(c);
+        if (!arrived(now, c.goal) || now.state.trainers_beaten != std::vector<std::string>{line.trainer}){
+            return std::format("Expected the {} fought on the step onto {}:", line.trainer, to_string(line.onto)) + describe(now);
+        }
+    }
+    return true;
+}
+
 //  Story rows 00.15 and 00.16: out of Cerulean's Pokemon Center by its mat
 //  to below the rival's trigger row, and on north across the city's edge
 //  onto Nugget Bridge, below Cale's row, meeting no one.
@@ -865,6 +932,8 @@ void add_tests_OverworldSim(UnitTestDatabase& database){
     database.add<Test_OverworldSim>("Mt. Moon: black after a leg not marked wild", test_mt_moon_black_after_unmarked_leg);
     database.add<Test_OverworldSim>("Mt. Moon: a battle seen only before the next leg", test_mt_moon_battle_before_next_leg);
     database.add<Test_OverworldSim>("Route 4 east, down its ledge, to Cerulean's Pokemon Center", test_route4_to_cerulean);
+    database.add<Test_OverworldSim>("Cerulean Gym: to Misty and back round the pool, no trainer met", test_cerulean_gym_walks);
+    database.add<Test_OverworldSim>("Cerulean Gym: the straight ways meet Luis and Diana", test_cerulean_gym_lines);
     database.add<Test_OverworldSim>("Cerulean: the Center to the rival's row and Nugget Bridge", test_cerulean_to_bridge);
     database.add<Test_OverworldSim>("Nugget Bridge: each trainer met on the step onto their row", test_nugget_bridge_legs);
 }
