@@ -162,7 +162,7 @@ Outcome battle(StoryEnv& env, const StoryStep& step){
 
 //  HP and status are the battle loop's last reading. Items first (an
 //  Antidote, a Parlyz Heal, a Potion); the nurse only for red HP with no
-//  Potion left, or a status no item here cures.
+//  Potion left, a status no item here cures, or attacks low on PP.
 Outcome get_ready(StoryEnv& env, RunState& state, const StoryStep& step){
     Supplies& supplies = env.supplies;
     env.console.log(std::format(
@@ -170,7 +170,7 @@ Outcome get_ready(StoryEnv& env, RunState& state, const StoryStep& step){
         supplies.hp_red ? "red" : supplies.hurt ? "yellow" : "green", status_name(supplies.status), supplies.potions
     ));
     recover_after_battle(env.console, env.context, supplies, env.checks, env.language);
-    if (!supplies.hp_red && supplies.status == StatusCondition::NONE){
+    if (!supplies.hp_red && supplies.status == StatusCondition::NONE && !attacks_low_on_pp(supplies)){
         return Pokemon::outcome_ok();
     }
     Outcome walked = walk_route(env, state, step);
@@ -178,9 +178,7 @@ Outcome get_ready(StoryEnv& env, RunState& state, const StoryStep& step){
         return walked;
     }
     heal_at_center(env.console, env.context);
-    supplies.hurt = false;
-    supplies.hp_red = false;
-    supplies.status = StatusCondition::NONE;
+    healed_by_nurse(supplies);
     return walked;
 }
 
@@ -395,9 +393,7 @@ Outcome StoryExecutor::battle(RunState&, const StoryStep& step){
 
 Outcome StoryExecutor::heal(RunState&, const StoryStep&){
     heal_at_center(m_env.console, m_env.context);
-    m_env.supplies.hurt = false;
-    m_env.supplies.hp_red = false;
-    m_env.supplies.status = StatusCondition::NONE;
+    healed_by_nurse(m_env.supplies);
     return Pokemon::outcome_ok();
 }
 
