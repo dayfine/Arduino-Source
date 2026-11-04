@@ -107,7 +107,7 @@ BattleScreen read_battle_screen(const ImageViewRGB32& screen, bool confirmed){
     if (BattleMenuDetector(COLOR_RED).detect(screen)){
         return BattleScreen::MENU;
     }
-    if (BattleLearnDialogDetector(COLOR_RED).detect(screen)){
+    if (battle_yes_no_shows(screen)){
         return BattleScreen::LEARN;
     }
     if (!confirmed && !BattleScreenDetector(COLOR_RED).detect(screen)){
@@ -127,7 +127,7 @@ BattleTextScreen read_text_screen(const ImageViewRGB32& screen){
         .text_box = BattleDialogDetector(COLOR_RED).detect(screen),
         .hp_box = BattleScreenDetector(COLOR_RED).detect(screen),
         .arrow = AdvanceBattleDialogDetector(COLOR_RED).detect(screen),
-        .yes_no = BattleLearnDialogDetector(COLOR_RED).detect(screen) || yes_no_cursor(screen).has_value(),
+        .yes_no = battle_yes_no_shows(screen) || yes_no_cursor(screen).has_value(),
     };
 }
 
@@ -167,8 +167,7 @@ bool bag_row_is(
 
 //  From the battle menu: `item`, in `row` (from 0) of the Items pocket, on
 //  the starter. The bag opens on the pocket used last; Items is the first.
-//  Returns whether it was used; if the row holds something else (THOROUGH),
-//  backs out to the battle menu. Not run on the console yet.
+//  Returns whether it was used; else (THOROUGH) backs out to the menu.
 bool use_item(
     ConsoleHandle& console, ProControllerContext& context,
     int row, const std::string& item, StoryChecks checks, Language language
@@ -207,8 +206,7 @@ void run_away(ProControllerContext& context){
     pbf_press_button(context, BUTTON_A, 160ms, 500ms);
 }
 
-//  FIGHT, then the move in `slot` from the top left. The cursor doesn't
-//  move onto an empty slot.
+//  FIGHT, then the move in `slot` from the top left; the cursor stays off empty slots.
 void use_move(ProControllerContext& context, size_t slot){
     tap(context, DPAD_LEFT);
     tap(context, DPAD_UP);
@@ -283,12 +281,12 @@ bool forget_move(ConsoleHandle& console, ProControllerContext& context, size_t s
     return true;
 }
 
-//  The party list in battle opens on the lead: down to `slot`, then A, and
-//  SHIFT, the top of its menu.
 TurnResult item_result(bool used){
     return used ? TurnResult::DONE : TurnResult::NOT_DONE;
 }
 
+//  The party list in battle opens on the lead: down to `slot`, then A, and
+//  SHIFT, the top of its menu.
 void send_member(ProControllerContext& context, size_t slot){
     for (size_t c = 0; c < slot; c++){
         pbf_press_dpad(context, DPAD_DOWN, 160ms, 400ms);
@@ -392,7 +390,7 @@ private:
         if (!m_confirmed){
             return false;
         }
-        if (m_move_chosen && BattleOutOfPpDetector(COLOR_RED).detect(screen)){
+        if (m_move_chosen && m_refusal.no_pp_due(now) && BattleOutOfPpDetector(COLOR_RED).detect(screen)){
             m_console.log("Battle: no PP left for that move; choosing again.", COLOR_ORANGE);
             m_decisions.turn_done(TurnChoice::MOVE, TurnResult::NOT_DONE);
             m_move_chosen = false;
@@ -586,6 +584,8 @@ private:
         if (!m_foes.species().empty()){
             m_foes.at_menu(read_trainer_foe(m_console.logger(), m_language, screen, m_foes.species()));
             m_supplies.foe_out = m_foes.out();
+            m_supplies.foes_fainted = m_foes.fainted();
+            m_supplies.foe_hp_fill = read_opponent_hp_fill(screen);
         }
         if (m_refusal.refused(current_time())){
             m_console.log("Battle: the move list came back without a turn (Disable?); choosing another move.", COLOR_ORANGE);

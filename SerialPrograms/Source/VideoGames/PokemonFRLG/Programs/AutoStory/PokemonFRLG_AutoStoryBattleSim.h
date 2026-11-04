@@ -177,6 +177,10 @@ struct NextTurnDamage{
 };
 NextTurnDamage next_turn_damage(const SimTrainer& trainer, const SimBattler& foe, const SimBattler& own);
 
+//  The chance `foe`'s next turn seeds `own`: the AI's chance of Leech Seed
+//  times its accuracy. 0 if it has none, or `own` is seeded or Grass.
+double seed_chance(const SimTrainer& trainer, const SimBattler& foe, const SimBattler& own);
+
 //  The party slot the AI sends out after `fainted`, of the ones still up.
 size_t ai_next_foe(const std::vector<SimBattler>& party, size_t fainted, const SimBattler& lead);
 
@@ -207,8 +211,9 @@ struct PotionCase{
     double expected_hit = 0;
     uint32_t likely_hit = 0;
     uint32_t max_hit = 0;
-    //  The foe's hits the lead takes before its attacks faint the foe, if
-    //  it attacks from now on.
+    //  The lead's attacks that faint the foe at the mean, and the foe's hits
+    //  the lead takes before they do, if it attacks from now on.
+    size_t turns_to_ko = 0;
     size_t hits_to_ko = 0;
     //  The foe's moves and ai_move_chances(), for the log.
     std::vector<std::pair<std::string, double>> move_chances = {};
@@ -240,6 +245,17 @@ bool potion_now(const PotionCase& c, int potions);
 //  rules say.
 bool awakening_now(const PotionCase& c, const SimBattler& own, int awakenings);
 
+//  Task #77's top-up before the knockout, with `potions` left: the lead's
+//  next attack faints the foe out at the mean, whose turn takes at most
+//  half a Potion on average (`c`), a Potion heals at least a quarter of its
+//  HP more than that, and a foe in `to_come` hits harder on average
+//  (next_turn_damage()). Each such turn costs a small hit and heals more,
+//  so the lead meets the stronger foe near full.
+bool top_up_now(
+    const PotionCase& c, const SimBattler& own, const SimTrainer& trainer,
+    const std::vector<SimBattler>& to_come, int potions
+);
+
 //  The lead's turn at BattleRisk::HIGH.
 struct OwnTurn{
     bool potion = false;
@@ -247,15 +263,20 @@ struct OwnTurn{
     //  damage.
     std::optional<size_t> slot = std::nullopt;
     bool awakening = false;
+    //  The Potion is top_up_now()'s.
+    bool top_up = false;
 };
-//  planned_attack_slot()'s move when it surely faints `foe` first (the
-//  lead is awake and faster, the lowest roll faints it, it never misses and
-//  the AI won't heal first), else a Potion if potion_now(), else an
-//  Awakening if awakening_now(), else that move. `trainer`: its AI and the
-//  items it has left.
+//  A Potion if top_up_now() (`to_come`: the trainer's Pokemon not out and
+//  not fainted), else planned_attack_slot()'s move when it surely faints
+//  `foe` first (the lead is awake and faster, the lowest roll faints it, it
+//  never misses and the AI won't heal first), else a Potion if
+//  potion_now(), else an Awakening if awakening_now(), else that move.
+//  `trainer`: its AI and the items it has left. `seen_hit`: as
+//  potion_case() takes it.
 OwnTurn own_turn(
     const SimBattler& own, const SimItems& own_items, const SimBattler& foe,
-    const SimTrainer& trainer, size_t foes_left
+    const SimTrainer& trainer, size_t foes_left,
+    const std::vector<SimBattler>& to_come = {}, double seen_hit = 0
 );
 
 
