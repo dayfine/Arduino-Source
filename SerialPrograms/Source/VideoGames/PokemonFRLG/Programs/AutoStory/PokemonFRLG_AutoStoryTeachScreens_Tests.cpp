@@ -109,6 +109,12 @@ struct FakeTeachGame{
     std::optional<size_t> scene_slot = std::nullopt;
     //  The TM's scene reads as "other".
     bool scene_unread = false;
+    //  "1, 2, and... Poof!" reads as "learned", as on console B (TM28 to
+    //  the Wartortle, 2026-11-03).
+    bool poof_reads_learned = false;
+    //  A doesn't page the scene's boxes: it never ends.
+    bool scene_stuck = false;
+    size_t looks = 0;
     //  The TM in use, by row.
     size_t tm = 0;
     std::vector<std::string> presses = {};
@@ -171,9 +177,14 @@ void use_up(FakeTeachGame& game){
 //  wobble, "<MON> learned <MOVE>!", then the TM CASE.
 void start_scene(FakeTeachGame& game, std::optional<size_t> slot){
     game.scene.clear();
+    //  After a forget (pokefirered Task_ForgetMove): "1, 2, and... Poof!",
+    //  "<MON> forgot <OLD>.", "And...", each ending in \p: they wait for A.
     if (slot){
         game.scene.push_back({});
-        game.scene.push_back({.waits_for_a = true});
+        game.scene.push_back({
+            .text = game.poof_reads_learned ? TeachText::LEARNED : TeachText::UNKNOWN,
+            .waits_for_a = true,
+        });
         game.scene.push_back({.waits_for_a = true});
         game.scene.push_back({.waits_for_a = true});
     }
@@ -207,7 +218,7 @@ void next_scene_step(FakeTeachGame& game){
 void press_scene(FakeTeachGame& game, TeachPress press){
     if (press == TeachPress::B){
         game.error = "B cancelled the TM's scene";
-    }else if (press == TeachPress::A && game.scene.front().waits_for_a){
+    }else if (press == TeachPress::A && game.scene.front().waits_for_a && !game.scene_stuck){
         next_scene_step(game);
     }
 }
@@ -437,6 +448,9 @@ public:
         return true;
     }
     virtual TeachView look() override{
+        if (++m_game.looks > 1000){
+            throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "more than 1000 looks");
+        }
         const TeachView view = view_of(m_game);
         if (m_game.screen == FakeScreen::SCENE && !m_game.scene.front().waits_for_a){
             next_scene_step(m_game);
@@ -506,6 +520,12 @@ void wartortle_dig(FakeTeachGame& game){
 }
 void no_tm03(FakeTeachGame& game){
     game.tms = {{"rock-tomb", 1}};
+}
+//  Console B, 2026-11-03: the step stopped pressing on "Poof!" read as
+//  "learned", and waited 5 minutes.
+void wartortle_dig_poof_learned(FakeTeachGame& game){
+    wartortle_dig(game);
+    game.poof_reads_learned = true;
 }
 void forget_texts_unread(FakeTeachGame& game){
     game.forget_texts_unread = true;
@@ -589,6 +609,13 @@ std::vector<ScreensCase> scene_screens_cases(){
             .moves = {"bite", "tail-whip", "bubble", "dig"},
             .tm03 = 1,
         },
+        {
+            .name = "console B: TM28 DIG over WITHDRAW, \"Poof!\" read as \"learned\"",
+            .setup = wartortle_dig_poof_learned,
+            .plan = {.item = "tm28", .move = "dig", .member = 0, .forget_move = "withdraw"},
+            .moves = {"bite", "tail-whip", "bubble", "dig"},
+            .tm03 = 1,
+        },
     };
 }
 
@@ -665,6 +692,30 @@ UnitTestResult check_screens_case(const ScreensCase& item){
     return true;
 }
 
+//  A TM's scene that A doesn't page: the step gives up within a few
+//  scenes' looks, not one per leave() look.
+UnitTestResult test_stuck_scene(){
+    QuietLogger logger;
+    FakeTeachGame game;
+    wartortle_dig(game);
+    game.scene_stuck = true;
+    FakeTeachScreens screens(game);
+    ScreenTeachActions actions(logger, screens);
+    const MemberReader reader = [&game](size_t) -> std::optional<MemberInfo>{
+        return MemberInfo{.species = "wartortle", .level = 22, .moves = game.moves};
+    };
+    const TeachPlan plan{.item = "tm28", .move = "dig", .member = 0, .forget_move = "withdraw"};
+    const TeachResult result = run_teach(logger, actions, reader, plan);
+    if (result.end != TeachEnd::FAILED){
+        return std::format("a stuck scene ended {} ({}).", teach_end_name(result.end), result.detail);
+    }
+    //  The scene's looks: once in forget(), once in leave().
+    if (game.looks > 150){
+        return std::format("a stuck scene took {} looks.", game.looks);
+    }
+    return true;
+}
+
 UnitTestResult test_screens(){
     for (const std::vector<ScreensCase>& cases : {screens_cases(), scene_screens_cases(), tutor_screens_cases()}){
         for (const ScreensCase& item : cases){
@@ -701,6 +752,7 @@ private:
 
 void add_tests_AutoStoryTeachScreens(UnitTestDatabase& database){
     database.add<Test_AutoStoryTeachScreens>("TM03 through the console's screens", test_screens);
+    database.add<Test_AutoStoryTeachScreens>("a TM's scene that doesn't end", test_stuck_scene);
 }
 
 
