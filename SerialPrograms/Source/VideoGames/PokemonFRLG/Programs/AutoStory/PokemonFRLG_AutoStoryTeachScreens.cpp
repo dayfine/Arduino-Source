@@ -225,13 +225,13 @@ bool ScreenTeachActions::through_scene(){
         switch (view.screen){
         case TeachScreen::TM_SCENE:
         case TeachScreen::OTHER:
-            //  The disc's wobble and "learned" run on their own: an A
+            //  A on every look, "learned" too: the forget's "Poof!" has
+            //  read as "learned" (console B, 2026-11-03) and waits for A.
+            //  The wobble and the real "learned" run on their own: an A
             //  then is lost, or opens the TM's menu once the TM CASE is
             //  back, which leave() closes.
             learned |= view.text == TeachText::LEARNED;
-            if (!learned){
-                press(TeachPress::A);
-            }
+            press(TeachPress::A);
             break;
         case TeachScreen::TM_CASE:
         case TeachScreen::ITEM_MENU:
@@ -340,6 +340,7 @@ void ScreenTeachActions::dump_screen(std::string_view label){
 }
 
 bool ScreenTeachActions::leave(){
+    bool scene_seen = false;
     for (size_t c = 0; c < MAX_LOOKS; c++){
         const TeachView view = m_screens.look();
         switch (view.screen){
@@ -355,7 +356,13 @@ bool ScreenTeachActions::leave(){
             stop_teaching();
             break;
         case TeachScreen::TM_SCENE:
-            //  B would cancel it: to its end, then out.
+            //  B would cancel it: to its end, then out. Once: a scene
+            //  that A didn't end is stuck.
+            if (scene_seen){
+                m_logger.log("Teach: the TM's scene is still up.", COLOR_RED);
+                return false;
+            }
+            scene_seen = true;
             through_scene();
             break;
         case TeachScreen::OTHER:

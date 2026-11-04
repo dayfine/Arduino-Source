@@ -25,8 +25,8 @@
  *    the first. A on a move forgets it in the TM's scene: "1, 2 and...
  *    ... Poof!", "<MON> forgot <OLD>.", "And...", each waiting for A,
  *    then "Machine set!" and the rest as with room. A pages through it
- *    all; once "learned" shows, no more presses. B instead: "Stop trying
- *    to teach <MOVE>?" YES/NO, YES: "<MON> did not learn the move
+ *    all, until the TM CASE: "Poof!" has read as "learned". B on the
+ *    moves instead: "Stop trying to teach <MOVE>?" YES/NO, YES: "<MON> did not learn the move
  *    <MOVE>." and the TM CASE's list again, the TM kept.
  *  - From the TM CASE's list, B closes it to the bag, and B the bag.
  *  - A move tutor (not seen on console B yet; pokefirered
@@ -131,8 +131,8 @@ private:
     ItemOpen open_row(TeachScreen screen, std::string_view name);
     //  After A on a member: what it showed.
     TeachPrompt member_answer();
-    //  In the TM's scene: A through its messages, never B, until the TM
-    //  CASE is back. True if it came back or "learned" showed (the moves
+    //  In the TM's scene: A on each look, never B, until the TM CASE is
+    //  back. True if it came back or "learned" showed (the moves
     //  read after decide); false if the party menu came back instead.
     bool through_scene();
     //  On a YES/NO while forgetting: the answer that goes on to the moves.
