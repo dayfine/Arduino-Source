@@ -14,15 +14,25 @@ namespace PokemonSwSh{
 namespace MaxLairInternal{
 
 
+namespace{
+
+//  wins is incremented after each battle is won: battles 1-3 (wins < 3) are
+//  against rental Pokemon, and battle 4 (wins == 3) is against the legendary boss.
+bool is_boss_battle(const GlobalState& state){
+    return state.wins == 3;
+}
+
+} // namespace
+
 bool GlobalState::accept_opponent(){
-    const std::string slug = opponent.empty() ? "" : *opponent.begin();
+    const std::string opponent_slug = opponent.empty() ? "" : *opponent.begin();
     //  A boss before the end means something is out-of-sync.
-    if (wins != 3 && is_boss(slug)){
+    if (!is_boss_battle(*this) && is_boss(opponent_slug)){
         return false;
     }
     //  Infer the boss if we don't know it.
-    if (wins == 3 && boss.empty()){
-        boss = slug;
+    if (is_boss_battle(*this) && boss.empty()){
+        boss = opponent_slug;
     }
     return true;
 }
