@@ -38,6 +38,10 @@ constexpr Milliseconds BATTLE_GONE = std::chrono::milliseconds(3000);
 constexpr Milliseconds OVERWORLD_CHECK = std::chrono::milliseconds(3000);
 //  A and B pressed blind for this long with no battle menu: give up.
 constexpr Milliseconds BLIND_PRESSES = std::chrono::milliseconds(30000);
+//  No battle on screen for this long, and START has not opened the menu:
+//  stop. Longer than a gym leader's speech after the battle and a
+//  whiteout's walk to the nurse, with B pressed through them.
+constexpr Milliseconds NO_OVERWORLD = std::chrono::milliseconds(60000);
 //  Turns a move turned down is left alone: the longest Disable (pret
 //  battle_script_commands.c Cmd_disablelastusedattack, 2 to 5 turns).
 constexpr int DISABLE_TURNS = 5;
@@ -563,6 +567,10 @@ bool BattleEndWatch::pressed_blind(WallClock now){
         m_blind_since = now;
     }
     return now - *m_blind_since >= BLIND_PRESSES;
+}
+
+bool BattleEndWatch::overworld_lost(WallClock now) const{
+    return m_last_battle && m_last_check && now - *m_last_battle >= NO_OVERWORLD;
 }
 
 

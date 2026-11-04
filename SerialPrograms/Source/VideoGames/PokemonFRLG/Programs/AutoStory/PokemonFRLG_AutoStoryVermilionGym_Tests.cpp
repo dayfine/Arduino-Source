@@ -15,11 +15,13 @@
 #include <format>
 #include <functional>
 #include <optional>
+#include <set>
 #include <string>
 #include <utility>
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
+#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRoute.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSim.h"
 #include "PokemonFRLG_AutoStoryDamage.h"
@@ -99,10 +101,9 @@ MapData& map_named(std::vector<MapData>& maps, const std::string& name){
     throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "No map " + name + ".");
 }
 
-//  The story's maps with the trainers beaten that rows before 00.24
-//  fought: Route 6's Jeff (00.21) and Vermilion Gym's three (00.23).
-std::vector<MapData> maps_after_gym(){
-    std::vector<MapData> maps = story_maps();
+//  `maps` with the trainers beaten that rows before 00.24 fought: Route
+//  6's Jeff (00.21) and Vermilion Gym's three (00.23).
+std::vector<MapData> maps_after_gym(std::vector<MapData> maps = story_maps()){
     for (MapObject& object : map_named(maps, GYM).objects){
         object.trainer.reset();
     }
@@ -112,6 +113,17 @@ std::vector<MapData> maps_after_gym(){
         }
     }
     return maps;
+}
+
+//  maps_after_gym() with Oak's aide on Vermilion City's (25, 7): Lt.
+//  Surge's win shows him (VermilionCity_Gym_EventScript_ShowOaksAide),
+//  and he stays until talked to (VermilionCity_EventScript_HideOaksAide).
+std::vector<MapData> maps_after_surge(){
+    const std::vector<MapData> all = overworld_maps();
+    std::set<std::string> flags = map_flag_set(all, "after_hall_of_fame");
+    flags.merge(map_flag_set(all, "new_game"));
+    flags.erase("FLAG_HIDE_VERMILION_CITY_OAKS_AIDE");
+    return maps_after_gym(overworld_maps(flags));
 }
 
 //  The walk to `can`'s stand on `sim` as the trash can step plans it, on
@@ -337,6 +349,32 @@ UnitTestResult test_to_surge_and_out(){
     return true;
 }
 
+//  Console B, 00.25 (2026-11-03 18:17): the walk to the nurse went up
+//  column 27 to row 7 and west along it, into Oak's aide on (25, 7), there
+//  since Surge's win; the leg was taken as walked and the step into the
+//  Center's door went into a house's wall. 00.25 from Surge to the nurse
+//  with the aide there, meeting no one.
+UnitTestResult test_out_past_oaks_aide(){
+    const StoryCheckpoint& row = checkpoint("00.25");
+    const std::vector<MapData> maps = maps_after_surge();
+    const MapData& city = *std::find_if(maps.begin(), maps.end(), [](const MapData& map){ return map.name == StoryTable::VERMILION; });
+    if (object_at(city, {25, 7}) == nullptr){
+        return "Expected Oak's aide on (25, 7) after Lt. Surge.";
+    }
+    StoryPose at = *story_pose(*row.start);
+    OverworldSim sim(maps, MapPosition{at.map, at.tile}, *at.facing);
+    for (const StoryStep& step : row.steps){
+        if (const std::string failure = gym_step_on_sim(sim, at, step, row.id); !failure.empty()){
+            return failure;
+        }
+    }
+    const MapPosition nurse{StoryTable::VERMILION_CENTER, {7, 4}};
+    if (!sim.state().violations.empty() || !(sim.state().position == nurse)){
+        return "Expected the nurse reached past Oak's aide; on " + to_string(sim.state().position) + (sim.state().violations.empty() ? "." : ", " + sim.state().violations.back());
+    }
+    return true;
+}
+
 //  The story's lead before Surge: Wartortle at `level` with the S.S.
 //  Anne's moves (00.22), stats at OWN_GENES.
 PartyMember surge_lead(uint8_t level){
@@ -475,6 +513,7 @@ void add_tests_AutoStoryVermilionGym(UnitTestDatabase& database){
     database.add<Test_AutoStoryVermilionGym>("00.23 Vermilion Gym: Dwayne, Baily and Tucker, the cans at once or after a reset", test_gym_row);
     database.add<Test_AutoStoryVermilionGym>("00.23 every can's stand from Tucker's tile and from every other, and out", test_cans_from_everywhere);
     database.add<Test_AutoStoryVermilionGym>("00.24 and 00.25 through the beams to Lt. Surge and out", test_to_surge_and_out);
+    database.add<Test_AutoStoryVermilionGym>("00.25 out to the nurse past Oak's aide on (25, 7)", test_out_past_oaks_aide);
     database.add<Test_AutoStoryVermilionGym>("Lt. Surge: Dig over Withdraw, the sim's chance", test_surge_chance);
     database.add<Test_AutoStoryVermilionGym>("Lt. Surge: the Raichu's Double Team at full HP", test_surge_raichu_double_team);
     database.add<Test_AutoStoryVermilionGym>("Lt. Surge: Dig takes two turns, m73's lead under 79%", test_surge_dig_two_turns);

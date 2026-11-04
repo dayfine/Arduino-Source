@@ -132,14 +132,21 @@ StoryCheckpoint to_lt_surge(){
 //  Voltorb Lv21, Pikachu Lv18 and Raichu Lv24, Shock Wave and Thunder
 //  Wave, a Super Potion and a Full Heal (sParty_LeaderLtSurge); then the
 //  THUNDERBADGE and TM34, read to the overworld with the battle's text.
-//  Out, the tree, and the nurse.
+//  Out, the tree, and the nurse. Surge's win also puts Oak's aide on
+//  Vermilion City's (25, 7) (VermilionCity_Gym_EventScript_ShowOaksAide),
+//  where he stays until talked to; the story's maps don't have him. The
+//  way to the nurse along row 7 runs into him (console B, 2026-11-03: the
+//  leg west stopped beside him and the step into the Center's door went
+//  into a house), so it goes along row 10 to the water instead, clear of
+//  him, and up column 14 from there.
 StoryCheckpoint lt_surge(){
     return row("00.25", "Vermilion Gym: Lt. Surge, the THUNDERBADGE, then the Center", at(VERMILION_GYM, 5, 3, NORTH), after_brock(), StartMenu::FULL, {
         talk("challenge_lt_surge", "\"Hey, kid! What do you think you're doing here?\""),
         battle("lt_surge", at(VERMILION_GYM, 5, 3, NORTH), false, "Voltorb, Pikachu and Raichu; THUNDERBADGE and TM34"),
         running(route("below_gym_tree", at(VERMILION, 19, 25, NORTH), "down through the beams, out of the gym, east to below the tree, grown back")),
         cut_tree("cut_tree_out", at(VERMILION, 19, 24, NORTH), "the tree; a step onto its tile"),
-        running(route("vermilion_nurse", at(VERMILION_CENTER, 7, 4, NORTH), "north through the city to the Pokemon Center")),
+        running(route("below_oaks_aide", at(VERMILION, 14, 10), "north through the city and west along row 10 to the water, (14, 10): off Oak's aide's row 7")),
+        running(route("vermilion_nurse", at(VERMILION_CENTER, 7, 4, NORTH), "up to the Pokemon Center")),
         heal("heal_vermilion"),
     });
 }

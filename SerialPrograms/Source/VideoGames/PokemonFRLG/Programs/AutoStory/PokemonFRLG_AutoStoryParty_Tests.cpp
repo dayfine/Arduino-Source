@@ -10,6 +10,7 @@
 
 #include <format>
 #include <functional>
+#include <optional>
 #include <string>
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
@@ -639,6 +640,37 @@ UnitTestResult test_end_watch_timing(Logger&){
     return true;
 }
 
+//  Console B, 2026-11-03, after losing to Lt. Surge: no battle screen and
+//  no START menu, and the loop pressed + and B for 8 minutes. It gives up
+//  60 s after the last battle screen, once START has looked; a battle
+//  screen in between starts that time over.
+UnitTestResult test_end_watch_gives_up(Logger&){
+    const WallClock start = current_time();
+    const auto at = [&](int ms){ return start + std::chrono::milliseconds(ms); };
+    BattleEndWatch watch;
+    if (watch.overworld_lost(at(120000))){
+        return "Gave up before any battle screen showed.";
+    }
+    watch.seen(BattleSeen::BATTLE, at(0));
+    std::optional<int> gave_up;
+    for (int ms = 300; ms <= 600000 && !gave_up; ms += 300){
+        watch.seen(BattleSeen::NONE, at(ms));
+        watch.check_overworld(at(ms));
+        if (ms == 30000){
+            watch.seen(BattleSeen::BATTLE, at(ms));
+        }
+        if (watch.overworld_lost(at(ms))){
+            gave_up = ms;
+        }
+    }
+    if (!gave_up || *gave_up < 90000 || *gave_up > 95000){
+        return gave_up
+            ? std::format("Expected to give up 60 s after the battle screen at 30 s, at {} ms.", *gave_up)
+            : std::string("Never gave up on the overworld in 10 minutes.");
+    }
+    return true;
+}
+
 
 }
 
@@ -878,6 +910,7 @@ void add_tests_AutoStoryParty(UnitTestDatabase& database){
     database.add<Test_AutoStoryParty>("no B during an evolution", test_no_b_during_evolution);
     database.add<Test_AutoStoryParty>("RUN, then a dark cave: no evolution wait, START soon", test_run_then_overworld);
     database.add<Test_AutoStoryParty>("battle end: START after the battle is gone, A and B for 30 s at most", test_end_watch_timing);
+    database.add<Test_AutoStoryParty>("battle end: no overworld 60 s after the battle, a stop", test_end_watch_gives_up);
     database.add<Test_AutoStoryParty>("attacks by matchup: Bite on the rival's Bulbasaur and Misty", test_attack_by_matchup);
     database.add<Test_AutoStoryParty>("attacks against an unknown foe: the plan's order", test_attack_unknown_foe);
     database.add<Test_AutoStoryParty>("Bite learned over Tail Whip or Withdraw", test_bite_learned);

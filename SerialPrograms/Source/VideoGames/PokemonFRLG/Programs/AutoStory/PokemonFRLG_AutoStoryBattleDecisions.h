@@ -236,6 +236,10 @@ public:
     //  BLIND_PRESSES with no battle menu: the loop stops, and the walker,
     //  which finds the player again, goes on.
     bool pressed_blind(WallClock now);
+    //  True once START has looked for the overworld and no battle has shown
+    //  for NO_OVERWORLD: neither is coming back (console B, 2026-11-03,
+    //  after losing to Lt. Surge: 8 minutes of + and B on a grey screen).
+    bool overworld_lost(WallClock now) const;
 
 private:
     std::optional<WallClock> m_last_battle;
