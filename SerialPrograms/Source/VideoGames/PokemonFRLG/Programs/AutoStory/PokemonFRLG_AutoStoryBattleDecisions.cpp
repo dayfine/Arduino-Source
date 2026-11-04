@@ -24,8 +24,6 @@ constexpr size_t PARTY_SLOTS = 6;
 constexpr int MIN_POTIONS_TO_FIGHT = 2;
 //  RUN this many times ("Can't escape!") before fighting instead.
 constexpr int RUN_TRIES = 4;
-//  PSN read at this many turns in a row before an Antidote.
-constexpr int PSN_READS = 2;
 //  An evolution screen held this long was an evolution, not a text box
 //  between two others.
 constexpr Milliseconds EVOLUTION_SEEN = std::chrono::milliseconds(5000);
@@ -251,7 +249,7 @@ TurnAction BattleDecisions::lead_turn(const PartyStatus& status){
     if (items.choice != TurnChoice::MOVE){
         return TurnAction{.choice = items.choice, .heal_reason = items.reason};
     }
-    if (!m_items_off && m_psn_reads >= PSN_READS && !m_antidote_used && m_supplies.antidotes > 0){
+    if (!m_items_off && m_psn_reads >= PSN_TURNS_BEFORE_ANTIDOTE && !m_antidote_used && m_supplies.antidotes > 0){
         m_antidote_used = true;
         return TurnAction{.choice = TurnChoice::ANTIDOTE, .heal_reason = items.reason};
     }
