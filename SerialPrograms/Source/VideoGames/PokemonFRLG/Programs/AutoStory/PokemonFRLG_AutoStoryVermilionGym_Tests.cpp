@@ -348,9 +348,9 @@ PartyMember surge_lead(uint8_t level){
 }
 
 //  Lt. Surge against the lead with 14 Potions: Raichu's Shock Wave and
-//  Thunder Wave beat Water Pulse and Bite (7% at Lv28, 14% at Lv30); TM28
-//  Dig in place of Withdraw takes it to 45% at Lv28 and about 50% at Lv30,
-//  the GRIND's gate (00.23, 00.24). The battles still lost are to the
+//  Thunder Wave beat Water Pulse and Bite (6% at Lv28); TM28 Dig in place
+//  of Withdraw takes it to 47% at Lv28 and 51% at Lv29 and Lv30, past the
+//  GRIND's gate (00.23, 00.24). The battles still lost are to the
 //  Raichu. The gym's three trainers are no risk.
 UnitTestResult test_surge_chance(){
     const SimTrainer surge = *sim_trainer("TRAINER_LEADER_LT_SURGE");

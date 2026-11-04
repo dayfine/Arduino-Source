@@ -58,7 +58,7 @@ StoryStep trash_cans(std::string name, std::string why){
 //  Sweet Scent, Poison Powder at 14), so it has room. TM28 Dig, from the
 //  Cerulean Rocket (00.21), to the lead in place of Withdraw: Ground, twice
 //  as strong on Lt. Surge's three, it takes the sim's chance against him
-//  for a Lv28 Wartortle with 14 Potions from 7% to 45%. Vermilion's tree
+//  for a Lv28 Wartortle with 14 Potions from 6% to 47%. Vermilion's tree
 //  (19, 24) (EventScript_CutTree) is the only way into the gym's yard,
 //  row 24 being walls but for it; the gym's door is (14, 25). In the gym,
 //  the trainers as above, then the trash cans until the door opens; out,
@@ -90,8 +90,8 @@ StoryCheckpoint vermilion_gym(){
 }
 
 //  Wild battles on Route 6 until the sim beats Lt. Surge half the time:
-//  with Dig, 45% at Lv28, 51% at Lv30, so a Lv29 lead after the gym's
-//  trainers needs a level or so. The grass nearest the city is Route 6's
+//  with Dig, 47% at Lv28 and 51% at Lv29, so a lead the gym's trainers
+//  have brought to Lv29 passes at once, and a Lv28 one after a level. The grass nearest the city is Route 6's
 //  south patch (13..16, 30..33); Picnicker Isabelle (13, 32) faces west
 //  over (10..12, 32), on the way north from the city, so the walk goes
 //  along Jeff's row 33 (he is beaten) to the wall (7, 33), up to row 31
