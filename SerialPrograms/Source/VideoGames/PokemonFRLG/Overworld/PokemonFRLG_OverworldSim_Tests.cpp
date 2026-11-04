@@ -912,6 +912,25 @@ UnitTestResult test_nugget_bridge_legs(){
     return true;
 }
 
+//  Story row 00.24 from Route 6 to Vermilion City's nurse: the open leg
+//  south 14 crosses onto Vermilion City and is held a tile longer for the
+//  game holding the player up there. It didn't: the player ended a tile
+//  south of (23, 7), the leg west on (15, 8), and the north 1 onto the
+//  Center's door only reached the tile below it: "no fade in and out"
+//  (console B, 2026-11-03). Either way the door is reached.
+UnitTestResult test_route6_to_vermilion_center(){
+    const MapPosition nurse = at("VermilionCity_PokemonCenter_1F", 7, 4);
+    for (const bool stalls : {true, false}){
+        SimCase c{.start = at("Route6", 11, 33), .facing = Direction::EAST, .goal = nurse};
+        c.script.connections_stall = stalls;
+        const SimRun now = run_case(c);
+        if (!arrived(now, c.goal) || now.state.warps != 1){
+            return std::format("Expected the nurse reached by the Center's door, the crossing {}:", stalls ? "stalled" : "not stalled") + describe(now);
+        }
+    }
+    return true;
+}
+
 }
 
 
@@ -942,6 +961,7 @@ void add_tests_OverworldSim(UnitTestDatabase& database){
     database.add<Test_OverworldSim>("Cerulean Gym: the straight ways meet Luis and Diana", test_cerulean_gym_lines);
     database.add<Test_OverworldSim>("Cerulean: the Center to the rival's row and Nugget Bridge", test_cerulean_to_bridge);
     database.add<Test_OverworldSim>("Nugget Bridge: each trainer met on the step onto their row", test_nugget_bridge_legs);
+    database.add<Test_OverworldSim>("Route 6 into Vermilion's Pokemon Center, the crossing stalled or not", test_route6_to_vermilion_center);
 }
 
 

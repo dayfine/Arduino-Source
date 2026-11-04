@@ -619,6 +619,12 @@ std::optional<Outcome> run_abilities(StoryEnv& env, RunState& state, const Story
     );
     ConsoleChoiceActions choice(env.console, env.context);
     StoryAbilities abilities{console_member_reader(env.console, env.context, env.language), mart, teach, grind, choice};
+    if (const std::optional<GrindPlan> plan = parse_grind_check_variant(step.variant)){
+        if (grind_reached_already(env.console.logger(), grind, abilities.members, *plan)){
+            state.flags.insert(step.name);
+        }
+        return Pokemon::outcome_unchanged();
+    }
     return run_ability_game_step(env.console.logger(), &env.console, step, abilities);
 }
 

@@ -84,6 +84,17 @@ std::optional<GrindPlan> parse_grind_variant(std::string_view variant);
 //  The table's GRIND step: `nurse` is where the player faces the nurse.
 Pokemon::StoryStep grind_step(std::string name, std::string why, const GrindPlan& plan, Pokemon::Pose nurse);
 
+//  The prefix of a GAME step's variant that checks a GRIND step's plan
+//  before the walk out to its patch, e.g. "grind_check slot=1 level=32
+//  ...", the rest as grind_variant()'s.
+inline constexpr std::string_view GRIND_CHECK_VARIANT_PREFIX = "grind_check ";
+std::optional<GrindPlan> parse_grind_check_variant(std::string_view variant);
+
+//  The table's check before the walk out to a GRIND step's patch: when the
+//  lead already has what `plan` grinds for, the step sets a run flag named
+//  `name`, which the walk out, the GRIND step and the way back skip_if.
+Pokemon::StoryStep grind_check_step(std::string name, std::string why, const GrindPlan& plan);
+
 
 enum class GrindFight{
     //  The battle ended with the overworld back and the lead standing,
@@ -149,6 +160,12 @@ struct GrindResult{
 
 //  From the overworld in the patch: grinds as `plan` says.
 GrindResult run_grind(Logger& logger, GrindActions& actions, const MemberReader& reader, const GrindPlan& plan);
+
+//  Before the walk out to the patch: whether the member `plan` grinds, as
+//  read, already has its level, or with a trainer its win chance. Nothing
+//  is fought. 00.24 walked to Route 6's grass and back at Lv29 with the
+//  chance against Lt. Surge already 79% (console B, 2026-11-03).
+bool grind_reached_already(Logger& logger, GrindActions& actions, const MemberReader& reader, const GrindPlan& plan);
 
 std::string grind_message(const GrindPlan& plan, const GrindResult& result);
 

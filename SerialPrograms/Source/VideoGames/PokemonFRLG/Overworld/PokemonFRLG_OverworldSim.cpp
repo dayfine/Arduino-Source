@@ -377,7 +377,7 @@ void OverworldSim::walk_hold(Direction direction, Milliseconds duration, int sho
             bump(direction, pressed);
             return;
         }
-        if (step->map != m_map && !step->warped){
+        if (m_script.connections_stall && step->map != m_map && !step->warped){
             //  The step onto a connected map waits a tile while the game
             //  loads it: a hold timed by its tiles alone ended a tile short
             //  (console B, 2026-11-03, rows 00.14, 00.16 and 00.20).
@@ -638,7 +638,7 @@ std::optional<WalkedTiles> OverworldSimWalker::walk_step(const RouteStep& step, 
     const std::vector<Interrupt>& ints = interrupts(step);
     Pokemon::LegSpec leg;
     leg.direction = step.direction;
-    leg.tiles = step.tiles;
+    leg.tiles = step.tiles + step.warp_slack;
     leg.to_wall = step.to_wall;
     leg.tile_time = TILE_TIME;
     leg.stop_on_interrupt = !step.to_wall;
