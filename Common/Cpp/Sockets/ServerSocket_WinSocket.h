@@ -9,6 +9,7 @@
 
 #include <string>
 #include <atomic>
+#include <chrono>
 #include <winsock2.h>
 #include "Common/Cpp/Concurrency/AsyncTask.h"
 #include "Common/Cpp/Concurrency/ConditionVariable.h"
@@ -32,10 +33,24 @@ public:
     }
 
     virtual void start(const std::string& address, uint16_t port) override;
+
+    //  Closes the active connection and keeps listening. The connection
+    //  thread stops and closes the socket itself; an in-flight "send()" is
+    //  cancelled and returns promptly with the bytes written so far (the
+    //  send loop re-checks the state every iteration). Safe to call from
+    //  within a listener callback.
     virtual void close_connection() override;
+
+    //  Stops the server. It cancels any in-flight "send()" the same way
+    //  "close_connection()" does, and blocks until the worker threads have
+    //  exited, so it must not be called from within a listener callback.
     virtual void close() noexcept override;
 
-    virtual size_t send(const void* data, size_t bytes) override;
+    virtual size_t send(
+        const void* data,
+        size_t bytes,
+        std::chrono::milliseconds timeout = std::chrono::milliseconds::max()
+    ) override;
 
 
 private:
