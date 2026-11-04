@@ -1,0 +1,75 @@
+{
+    "name": "CeruleanCity_BikeShop",
+    "source": {
+        "decomp_file": "data/maps/CeruleanCity_BikeShop/map.json",
+        "revision": "ce6406d8c2eaf46d543c8a2606de0c3cb1951982",
+        "date": "2026-10-31"
+    },
+    "allow_running": false,
+    "tiles": [
+        "###########",
+        "###########",
+        ".####...#..",
+        "..#.##..#..",
+        ".#..#...###",
+        "..#.#.....#",
+        "........#..",
+        "..#........",
+        "..#......#.",
+        "###########"
+    ],
+    "points": {
+        "warp_1": [5, 8]
+    },
+    "warps": [
+        {
+            "x": 4,
+            "y": 9,
+            "enter": "walk_into",
+            "to_map": "CeruleanCity",
+            "to_point": "warp_5"
+        },
+        {
+            "x": 5,
+            "y": 8,
+            "enter": "walk_south",
+            "to_map": "CeruleanCity",
+            "to_point": "warp_5"
+        },
+        {
+            "x": 6,
+            "y": 9,
+            "enter": "walk_into",
+            "to_map": "CeruleanCity",
+            "to_point": "warp_5"
+        }
+    ],
+    "objects": [
+        {
+            "name": "man",
+            "kind": "npc",
+            "x": 9,
+            "y": 3
+        },
+        {
+            "name": "youngster",
+            "kind": "npc",
+            "x": 9,
+            "y": 7,
+            "wander": {
+                "x0": 8,
+                "y0": 6,
+                "x1": 10,
+                "y1": 8
+            }
+        },
+        {
+            "name": "woman_2",
+            "kind": "npc",
+            "x": 5,
+            "y": 5
+        }
+    ],
+    "flag_sets": {},
+    "connections": []
+}

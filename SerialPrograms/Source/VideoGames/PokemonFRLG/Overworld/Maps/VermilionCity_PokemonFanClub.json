@@ -1,0 +1,103 @@
+{
+    "name": "VermilionCity_PokemonFanClub",
+    "source": {
+        "decomp_file": "data/maps/VermilionCity_PokemonFanClub/map.json",
+        "revision": "ce6406d8c2eaf46d543c8a2606de0c3cb1951982",
+        "date": "2026-10-31"
+    },
+    "allow_running": false,
+    "tiles": [
+        "############",
+        "############",
+        "............",
+        ".....22.....",
+        "#....88....#",
+        "#..64##64..#",
+        "#..64##64..#",
+        "#..........#",
+        "#..........#",
+        "............",
+        "#..........#",
+        "############"
+    ],
+    "elevation": [
+        "000000000000",
+        "000000000000",
+        "333333333333",
+        "333333333333",
+        "033304403330",
+        "033330033330",
+        "033330033330",
+        "033333333330",
+        "033333333330",
+        "333333333333",
+        "033333333330",
+        "000000000000"
+    ],
+    "points": {
+        "warp_1": [5, 10]
+    },
+    "warps": [
+        {
+            "x": 4,
+            "y": 10,
+            "enter": "walk_into",
+            "to_map": "VermilionCity",
+            "to_point": "warp_5"
+        },
+        {
+            "x": 5,
+            "y": 10,
+            "enter": "walk_south",
+            "to_map": "VermilionCity",
+            "to_point": "warp_5"
+        },
+        {
+            "x": 6,
+            "y": 10,
+            "enter": "walk_into",
+            "to_map": "VermilionCity",
+            "to_point": "warp_5"
+        }
+    ],
+    "objects": [
+        {
+            "name": "gentleman",
+            "kind": "npc",
+            "x": 5,
+            "y": 4
+        },
+        {
+            "name": "worker_f",
+            "kind": "npc",
+            "x": 6,
+            "y": 4
+        },
+        {
+            "name": "pikachu",
+            "kind": "npc",
+            "x": 7,
+            "y": 6
+        },
+        {
+            "name": "seel",
+            "kind": "npc",
+            "x": 4,
+            "y": 6
+        },
+        {
+            "name": "woman_1",
+            "kind": "npc",
+            "x": 4,
+            "y": 5
+        },
+        {
+            "name": "fat_man",
+            "kind": "npc",
+            "x": 7,
+            "y": 5
+        }
+    ],
+    "flag_sets": {},
+    "connections": []
+}

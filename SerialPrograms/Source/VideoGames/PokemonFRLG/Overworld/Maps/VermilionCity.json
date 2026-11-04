@@ -94,6 +94,7 @@
         "warp_1": [23, 34],
         "warp_2": [24, 34],
         "warp_4": [15, 6],
+        "warp_5": [12, 17],
         "warp_9": [14, 25]
     },
     "warps": [
@@ -133,7 +134,9 @@
         {
             "x": 12,
             "y": 17,
-            "enter": "walk_into"
+            "enter": "walk_into",
+            "to_map": "VermilionCity_PokemonFanClub",
+            "to_point": "warp_1"
         },
         {
             "x": 19,

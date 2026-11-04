@@ -792,7 +792,7 @@ const std::vector<StoryCheckpoint>& story_checkpoints(){
         running_shoes(), route3(), magikarp_salesman(), after_gift_rng(), magikarp_to_box(), mt_moon(),
         route4_to_cerulean(), cerulean_gym(), misty(), cerulean_grind(), cerulean_rival(), nugget_bridge(),
         route25(), bill(), back_to_cerulean(), oddish(), to_vermilion(), ss_anne(),
-        vermilion_gym(), to_lt_surge(), lt_surge(),
+        vermilion_gym(), to_lt_surge(), lt_surge(), bike_voucher(),
     };
     return checkpoints;
 }
