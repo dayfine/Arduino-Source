@@ -4,6 +4,7 @@
  *
  */
 
+#include <algorithm>
 #include <chrono>
 #include <format>
 #include <functional>
@@ -398,6 +399,56 @@ UnitTestResult test_vermilion_maps(){
     return true;
 }
 
+//  Vermilion Gym loads and joins the city by its door (14, 25), behind the
+//  tree (19, 24), an object Cut removes: from the Center no route on land
+//  reaches the gym, from the tree's tile one does. The beams on rows 6 and
+//  7 are written off (OPENED_TILES), so a route reaches Lt. Surge (5, 2);
+//  the cans on rows 10, 12 and 14 are walls. Dwayne (8, 13) and Baily
+//  (2, 11) look every way, sight 3; Tucker (7, 8) west.
+UnitTestResult test_vermilion_gym_map(){
+    const std::vector<MapData> maps = overworld_maps(map_flag_set(overworld_maps(), "new_game"));
+    const MapData* gym = built_in(maps, "VermilionCity_Gym");
+    if (gym == nullptr){
+        return "Missing map VermilionCity_Gym.";
+    }
+    RouteCosts walking = default_route_costs();
+    walking[RouteCost::SURF] = -1;
+    const MapPosition nurse{"VermilionCity_PokemonCenter_1F", {7, 4}};
+    const RouteGoal door{MapPosition{"VermilionCity_Gym", {5, 18}}, std::nullopt};
+    if (plan_overworld_route(maps, nurse, door, walking, Direction::NORTH)){
+        return "Expected the tree (19, 24) to shut the gym off from the Center.";
+    }
+    if (!plan_overworld_route(maps, MapPosition{"VermilionCity", {19, 24}}, door, walking, Direction::SOUTH)){
+        return "No route from the tree's tile into the gym.";
+    }
+    if (!plan_overworld_route(maps, MapPosition{"VermilionCity_Gym", {5, 8}}, RouteGoal{MapPosition{"VermilionCity_Gym", {5, 3}}, Direction::NORTH}, walking, Direction::NORTH)){
+        return "Expected a route through the beams, off, to Lt. Surge.";
+    }
+    for (int can : {1, 3, 5, 7, 9}){
+        for (int row : {10, 12, 14}){
+            if (tile_at(*gym, TilePos{can, row}) != TileKind::WALL){
+                return std::format("Expected a can at ({}, {}).", can, row);
+            }
+        }
+    }
+    struct Seen{
+        const char* name;
+        TilePos tile;
+        bool seen;
+    };
+    for (const Seen& check : std::initializer_list<Seen>{
+        {"sailor", {8, 15}, true}, {"sailor", {7, 15}, false}, {"sailor", {5, 13}, true}, {"sailor", {4, 13}, false},
+        {"balding_man", {2, 13}, true}, {"balding_man", {3, 13}, false}, {"balding_man", {5, 11}, true}, {"balding_man", {6, 11}, false},
+        {"gentleman", {4, 8}, true}, {"gentleman", {5, 9}, false}, {"gentleman", {8, 8}, false},
+    }){
+        const auto object = std::find_if(gym->objects.begin(), gym->objects.end(), [&](const MapObject& o){ return o.name == check.name; });
+        if (object == gym->objects.end() || trainer_may_see(*gym, *object, check.tile) != check.seen){
+            return std::format("{} {} ({}, {}).", check.name, check.seen ? "should see" : "shouldn't see", check.tile.x, check.tile.y);
+        }
+    }
+    return true;
+}
+
 //  A planned step walks where its map doesn't let the player run, and only
 //  there: out of Pewter's Pokemon Center to the Gym.
 UnitTestResult test_walk_only_indoors(){
@@ -601,6 +652,7 @@ void add_tests_OverworldMaps(UnitTestDatabase& database){
     database.add<Test_OverworldMaps>("Mt. Moon's floor closed on one side is wild", test_mt_moon_closed_floor_wild);
     database.add<Test_OverworldMaps>("Cerulean's Mart and Gym, Route 25 and Bill's Sea Cottage", test_cerulean_maps);
     database.add<Test_OverworldMaps>("Route 5 and 6 to Vermilion City and the S.S. Anne", test_vermilion_maps);
+    database.add<Test_OverworldMaps>("Vermilion Gym: behind the tree, beams, cans and trainers' sight", test_vermilion_gym_map);
     database.add<Test_OverworldMaps>("walks where running isn't allowed", test_walk_only_indoors);
     database.add<Test_OverworldMaps>("Route 4's Pokemon Center escalator", test_route4_center_escalator);
     database.add<Test_OverworldMaps>("trainer sight", test_trainer_sight);

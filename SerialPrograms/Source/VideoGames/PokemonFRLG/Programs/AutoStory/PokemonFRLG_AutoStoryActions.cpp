@@ -555,6 +555,30 @@ void answer_yes_no(ConsoleHandle& console, ProControllerContext& context, bool y
     );
 }
 
+std::optional<size_t> talk_and_count_pages(ConsoleHandle& console, ProControllerContext& context){
+    WhiteDialogWatcher opened(COLOR_RED);
+    const int shown = run_until<ProControllerContext>(
+        console, context,
+        [](ProControllerContext& context){
+            pbf_press_button(context, BUTTON_A, 160ms, 3000ms);
+        },
+        {opened}
+    );
+    if (shown < 0){
+        return std::nullopt;
+    }
+    //  Fast text prints a page in well under a second; an A before it
+    //  ends would only finish it.
+    pbf_wait(context, 1500ms);
+    pbf_press_button(context, BUTTON_A, 160ms, 1200ms);
+    context.wait_for_all_requests();
+    VideoSnapshot screen = console.video().snapshot();
+    const size_t pages = screen && WhiteDialogDetector(COLOR_RED).detect(screen) ? 2 : 1;
+    console.log(std::format("Message: {} page(s).", pages));
+    mash_until_overworld(console, context, std::chrono::seconds(20));
+    return pages;
+}
+
 void step_once(ProControllerContext& context, Direction direction, std::optional<Direction> facing){
     if (facing != direction){
         pbf_press_dpad(context, dpad(direction), TURN_TAP, TURN_SETTLE);
@@ -576,7 +600,7 @@ std::optional<int> step_until_seen(int max_tiles, const std::function<void()>& s
 
 std::optional<int> step_into_line(
     ConsoleHandle& console, ProControllerContext& context,
-    Direction direction, std::optional<Direction> facing, int max_tiles
+    Direction direction, std::optional<Direction> facing, int max_tiles, Milliseconds watch
 ){
     return step_until_seen(
         max_tiles,
@@ -587,7 +611,7 @@ std::optional<int> step_into_line(
         [&]{
             WhiteDialogWatcher message(COLOR_RED);
             BattleScreenWatcher battle(COLOR_RED);
-            return wait_until(console, context, TRAINER_LINE_WATCH, {message, battle}) >= 0;
+            return wait_until(console, context, watch, {message, battle}) >= 0;
         }
     );
 }

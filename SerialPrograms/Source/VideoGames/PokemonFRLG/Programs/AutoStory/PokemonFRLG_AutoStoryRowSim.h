@@ -32,8 +32,8 @@ std::optional<std::vector<RouteStep>> walked_route(const StoryPose& at, const St
 //  fighting a trainer who sees the player on the way; a step one tap at a
 //  time, or for a step into a trainer's line by step_until_seen(), each
 //  watched for the trainer; a battle from the trainer's message, which
-//  must be up. Moves `at` to where the table says the step ends. Returns
-//  the failure, or empty.
+//  must be up; a cut tree cut and stepped onto. Moves `at` to where the
+//  table says the step ends. Returns the failure, or empty.
 std::string row_step_on_sim(OverworldSim& sim, StoryPose& at, const StoryStep& step, const std::string& id);
 
 

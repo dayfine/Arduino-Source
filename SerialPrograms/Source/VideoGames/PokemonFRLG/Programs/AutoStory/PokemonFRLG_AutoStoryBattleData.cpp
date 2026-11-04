@@ -65,6 +65,11 @@ constexpr StoryTrainer STORY_TRAINERS[] = {
     //  Route 6's Jeff (13, 33), across the only way south.
     {.map = "Route6", .battle = "camper_jeff", .trainer = "TRAINER_CAMPER_JEFF"},
     {.map = "SSAnne_2F_Corridor", .battle = "rival_ss_anne", .trainer = "TRAINER_RIVAL_SS_ANNE_BULBASAUR"},
+    //  Vermilion Gym's three, before the trash cans, and Lt. Surge.
+    {.map = "VermilionCity_Gym", .battle = "sailor_dwayne", .trainer = "TRAINER_SAILOR_DWAYNE"},
+    {.map = "VermilionCity_Gym", .battle = "engineer_baily", .trainer = "TRAINER_ENGINEER_BAILY"},
+    {.map = "VermilionCity_Gym", .battle = "gentleman_tucker", .trainer = "TRAINER_GENTLEMAN_TUCKER"},
+    {.map = "VermilionCity_Gym", .battle = "lt_surge", .trainer = "TRAINER_LEADER_LT_SURGE"},
 };
 
 using JsonTable = std::map<std::string, JsonValue, std::less<>>;
