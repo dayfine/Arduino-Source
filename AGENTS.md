@@ -127,6 +127,10 @@ obviously safe.
 - **No `rm` on globs or variables.** Delete only what you created, by explicit path, inside your
   own worktree or your temp folder. For git trees use `git clean` or `git worktree remove`.
   Anything else that needs deleting goes in your report for the user.
+- **Worktrees live in `~/Projects/wt/<name>`, never under `/tmp`.** On macOS `/tmp` is a link to
+  `/private/tmp`; a tree reached by both spellings misses the compiler cache (2026-11-03: 1,600
+  misses, a 28-minute build of a cached revision) and disappears on reboot. Disk GC sweeps
+  `~/Projects/wt` like the old temp trees.
 - **Stay in your lane.** Don't touch other agents' worktrees, `~/BDSPLab/builds` (except a deploy
   your brief asks for), the SerialPrograms profile folders, or the consoles. Console B is run by
   the main session only.

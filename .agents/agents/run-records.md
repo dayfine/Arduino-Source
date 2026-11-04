@@ -34,7 +34,7 @@ without being restated.
 - **Bounded loops.** Every wait loop has an iteration cap and checks that the producing process is
   still alive.
 - **Your own checkout.** Work only in your own worktree:
-  `git -C /Users/difan/Projects/Arduino-Source worktree add -b agents-<topic> <your temp folder>/wt-<topic> origin/agents`.
+  `git -C /Users/difan/Projects/Arduino-Source worktree add -b agents-<topic> /Users/difan/Projects/wt/<topic> origin/agents`.
   Never edit the dedicated notes worktree or a code worktree.
 - **Commit early, finish in one turn.** Commit and push as soon as the scoped checks pass; the full
   build and test run comes after the push. Then, in the foreground and without ending the turn:
