@@ -129,7 +129,9 @@ std::optional<SummaryRead> read_party_summary(
     if (read){
         std::string moves;
         for (const SummaryMove& move : read->moves){
-            moves += std::format("{}{} {}/{}", moves.empty() ? "" : ", ", move.move, move.pp, move.max_pp);
+            moves += std::format(
+                "{}{} {}/{}", moves.empty() ? "" : ", ", move.move.empty() ? "?" : move.move, move.pp, move.max_pp
+            );
         }
         const std::string stats = read->stats
             ? std::format(
