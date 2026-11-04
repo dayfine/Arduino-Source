@@ -94,7 +94,7 @@ bool read_battle_menu(
         pbf_mash_button(context, BUTTON_B, 3000ms);
         state.opponent = std::move(mon);
 
-        if (state.wins == 3 && is_boss(state.boss)){
+        if (state.in_boss_battle_with_known_boss()){
             if (!state.opponent.empty() && *state.opponent.begin() != state.boss){
                 stream.log(
                     "Inconsistent Boss: Expected " + state.boss + ", Read: " + *state.opponent.begin(),

@@ -172,6 +172,9 @@ struct GlobalState{
     size_t find_player_index(size_t console_id) const;
     void clear_battle_state();
 
+    //  True during the fourth (boss) battle when a boss has already been identified.
+    bool in_boss_battle_with_known_boss() const;
+
     //  Returns false when the opponent read doesn't fit this battle stage (not
     //  exactly one opponent, or a boss before the fourth battle / a rental at
     //  it), so the caller retries the read. On an accepted read at the fourth

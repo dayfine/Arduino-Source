@@ -14,23 +14,32 @@ namespace PokemonSwSh{
 namespace MaxLairInternal{
 
 
+bool GlobalState::in_boss_battle_with_known_boss() const{
+    return wins == 3 && is_boss(boss);
+}
+
 bool GlobalState::accept_opponent(){
     if (opponent.size() != 1){
         return false;
     }
-    const std::string& slug = *opponent.begin();
-    if (is_boss(slug) != (wins == 3)){
+    const std::string& opponent_slug = *opponent.begin();
+    //  wins is incremented after each battle is won: battles 1-3 (wins < 3) are
+    //  against rental Pokemon, and battle 4 (wins == 3) is against the legendary boss.
+    const bool in_boss_battle = (wins == 3);
+    if (is_boss(opponent_slug) != in_boss_battle){
         return false;
     }
-    if (wins == 3 && !is_boss(boss)){
-        boss = slug;
+    if (in_boss_battle && !in_boss_battle_with_known_boss()){
+        boss = opponent_slug;
     }
     return true;
 }
 
 std::string GlobalState::boss_if_caught() const{
-    //  A failed adventure can still have an identified boss, but no boss catch.
-    return wins == 4 && is_boss(boss) ? boss : std::string();
+    //  A failed adventure (e.g. wins == 3, only lost to the boss) can still have
+    //  an identified boss, but no boss catch: catching the boss requires winning
+    //  the fourth battle (wins == 4).
+    return wins == 4 && is_boss(boss) ? boss : "";
 }
 
 std::string PlayerState::dump() const{
