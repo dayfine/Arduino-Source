@@ -173,6 +173,9 @@ All bool, default **off**, no user data unless noted. Each is one italic
 | Key | Values | Changes | Rows | Needs / conflicts | User data |
 |---|---|---|---|---|---|
 | `supporters` | **REQUIRED** \| FULL | REQUIRED: only the HM and Surf users the [team plan](#team-plan) marks required for `starter` × `game_version`. FULL: also the matchup supporters, their stones and TMs. SQUIRTLE + REQUIRED is the WR's team, today's default. | the team plan's catch rows | FULL adds stone purchases ([money plan](#sinks)); some FULL catches turn on `super_rod` | — |
+| `mega_kick_tutor` | bool, **off** | Route 4 move tutor teaches Mega Kick (one use per save), replacing the move the [team plan](#team-plan) names (WR: Withdraw). Reachable west from Cerulean after Misty too | 01.03 or a 02.x detour | one tutor use per save | — |
+| `blackglasses` | bool, **on** with SQUIRTLE | Rocket Hideout B3F detour for BlackGlasses, held by the sweeper to boost Bite (WR) | 06.04 | — | — |
+| `blizzard_tm14` | bool, **on** | TM14 Blizzard from the Pokemon Mansion B1F item ball, taught for Lance's dragons (WR) | 10.02 | — | which move it replaces |
 
 ### Legendaries and extras
 
@@ -198,6 +201,7 @@ GRIND steps are part of DEFAULT, not options; see the [team plan](#levels-and-gr
 | Key | Values | Changes | Rows | Needs / conflicts | User data |
 |---|---|---|---|---|---|
 | `nugget_bridge_loop` | **AUTO** \| N ≥ 0 | N Vs. Seeker loops of Routes 24/25 for money and EXP. AUTO takes N from the [money plan](#ledger-default-east-road-route-21-no-options) at run start: 0 when there is no deficit. Also serves the glitch-setup GRINDs. | 04.02 | N > 0 needs `vs_seeker` | optional N override |
+| `rocket_nugget_loop` | **0** \| N ≥ 0 | Lose to the Route 24 Rocket N times on purpose (Withdraw/weakest move only), white out, sell the Nugget at the Cerulean Mart, then win. His script gives the Nugget **before** the battle and only a win sets `VAR_MAP_SCENE_ROUTE24` = 1, so it repeats only while you lose. Net per loop ¥5,000 minus the white-out loss (highest level × 24 with 2 badges, about ¥576 at Lv24) | 02.03 | must run before the winning battle; gone on a save that already beat him | N |
 | `prize_tm` | **NONE** \| list of Game Corner TMs (TM13, TM23, TM24, TM30, TM35) | Buy coins and the TMs; prices in the [money plan](#sinks) | 06.01 | `coin_case`; money | which TMs |
 | `game_corner_prize` | **NONE** \| a prize Pokemon from the version's list | Buy coins (bounded budget, no gambling) and the prize | 06.01 | `coin_case`; the species must be in `game_version`'s list | which Pokemon |
 
@@ -527,6 +531,40 @@ Buy the Water Stone at 06.01 either way and evolve on capture: Starmie
 learns no level-up moves after Lv1 except Confuse Ray at 33, so evolving at
 once only loses Staryu's later moves (Bubble Beam 28), which TMs replace.
 
+**Who carries each problem fight (2026-11-03 review).** The tables above, read
+per starter; FireRed unless noted. LeafGreen's Starmie covers most of these.
+
+- **Charmander at Misty: a gap with `supporters=REQUIRED`.** Ember is resisted
+  by both, and Metal Claw (13) is Steel, which Water resists too, so REQUIRED
+  has no answer and Charmeleon only wins on levels. Proposed: make a Misty
+  answer REQUIRED for Charmander:
+  - Pikachu (Viridian Forest 5%, Lv3–5, 00.08, bounded encounters):
+    Thunder Shock on both, Thunder Wave on Starmie. Also covers the rival's
+    Squirtle line, Lorelei and Lance's Gyarados later.
+  - or a `misty_after_bill` order: Cerulean's exits open on
+    `FLAG_GOT_SS_TICKET` (`CeruleanCity_OnTransition`), not on the badge, so a Grass supporter caught on Routes 24/25 can level first. In
+    FireRed that is Oddish, which has only Absorb before Lv14 and Stun Spore at
+    16 / Sleep Powder at 18, so it supports with status rather than damage;
+    LeafGreen's Bellsprout has Vine Whip from Lv1.
+  - Butterfree's Sleep Powder (15) can also set up Charmeleon, but its
+    Confusion is resisted by Starmie.
+- **Charmander later:** Giovanni and Lorelei go to Lapras (Silph 7F gift, Surf,
+  Ice Beam), Lance to Lapras's Ice Beam; Charizard carries the rest.
+- **Bulbasaur in FireRed after Erika:** Venusaur stops being enough from Erika
+  on.
+  - Lapras (REQUIRED, from 08.04): Surf for Blaine, Ice Beam for Lance and the
+    Champion's Charizard.
+  - Growlithe → Arcanine (FULL; Route 7/8, Fire Stone ¥2,100 at 06.01): Erika,
+    Koga (even), Blaine with TM28 Dig, Lorelei's Jynx and Cloyster.
+  - Pidgeotto: Erika with Wing Attack (27) and Fly.
+  - Sabrina's Psychic types hit Venusaur's Poison side: Arcanine or Lapras
+    there. Agatha's Ghost/Poison team resists Grass: Arcanine.
+  - So a Bulbasaur FireRed run should take Arcanine as REQUIRED, not FULL:
+    without it, Erika, Koga, Sabrina and Agatha all fall to Lapras alone.
+- **Squirtle (console B):** Surge with Water Pulse + Mega Kick (WR) or TM28
+  Dig; Erika with Bite/Mega Kick on levels (Pidgeotto if FULL); Lance with
+  TM14 Blizzard.
+
 ### Catches, purchases and teaching added to rows
 
 | Row | Step | When |
@@ -618,6 +656,30 @@ With `item_dupe`, every GRIND for the sweeper after `06.07` is replaced by a
 Rare Candy step (`ITEM(rare_candy, n)` to the table's target). The two
 glitch-setup GRINDs stay: Farfetch'd to 21 and Mr. Mime to 33 (both on
 Route 24/25 trainers or the `nugget_bridge_loop`, which also pays).
+
+### Console B run choices (2026-11-03)
+
+The FireRed save on console B (player Kosmos, shiny Magikarp in BOX1) runs
+these options; the user chose them on 2026-11-03.
+
+- `starter` SQUIRTLE, `supporters` REQUIRED: a solo Wartortle/Blastoise in the
+  WR's style plus the HM users it can't cover. Squirtle's line learns Surf and
+  Strength but not Cut, Fly or Flash, so a **Cut user is caught** before 03.04
+  (Fly optional). The Rattata in BOX1 is the user's and is never used.
+- `item_dupe` **off**: needs both in-game trades (Spearow for Farfetch'd with
+  Knock Off, Abra for Mr. Mime raised to Lv33 for Recycle), the Twins left
+  unfought, and is unconfirmed on the Switch release.
+- `exp_share` **off**: the Route 15 gate aide needs 50 species caught.
+- `prize_tm` **NONE**: TM13 Ice Beam is 4,000 coins (`CeladonCity_GameCorner_PrizeRoom`),
+  and coins are 50 for ¥1,000 (`CeladonCity_GameCorner`), so ¥80,000. The
+  WR's Ice move is the free TM14 Blizzard (`blizzard_tm14`).
+- `rocket_nugget_loop` **missed**: 00.16 beat the Rocket on 2026-11-03, so the
+  loop is gone on this save. Money comes from `nugget_bridge_loop` (Vs. Seeker
+  from the Vermilion Center girl, 03.02) instead.
+- `mega_kick_tutor` optional: the tutor is still unused on this save
+  (moves now Bite / Water Pulse / Bubble / Withdraw).
+- Money target: the WR's Celadon X-item buy (¥15,600) plus about 10 Potions
+  kept on hand per segment (restock to target, not a fixed buy).
 
 ## Money plan
 
