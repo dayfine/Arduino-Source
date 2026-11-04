@@ -32,7 +32,7 @@ namespace{
 Pokemon::LegSpec leg_spec(const RouteStep& step, MoveSpeed speed){
     Pokemon::LegSpec leg;
     leg.direction = step.direction;
-    leg.tiles = step.tiles;
+    leg.tiles = step.tiles + step.warp_slack;
     leg.to_wall = step.to_wall;
     leg.tile_time = tile_time(step, speed);
     leg.stop_on_interrupt = !step.to_wall;
