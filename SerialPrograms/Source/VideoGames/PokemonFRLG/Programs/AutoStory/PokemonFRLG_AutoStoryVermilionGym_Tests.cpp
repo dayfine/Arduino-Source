@@ -24,6 +24,7 @@
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSim.h"
 #include "PokemonFRLG_AutoStoryDamage.h"
 #include "PokemonFRLG_AutoStoryEvents.h"
+#include "PokemonFRLG_AutoStoryGrind.h"
 #include "PokemonFRLG_AutoStoryParty.h"
 #include "PokemonFRLG_AutoStoryRowSim.h"
 #include "PokemonFRLG_AutoStoryTable.h"
@@ -382,6 +383,38 @@ UnitTestResult test_surge_chance(){
     }
     return true;
 }
+
+//  00.24 with a lead that beats Lt. Surge already: the check in the Center
+//  comes first, and with its flag set the walk to Route 6's grass, the
+//  grind and the way back are skipped; the rest goes from the nurse to
+//  below Surge on the sim. Console B walked out and back at Lv29, 79%
+//  (2026-11-03).
+UnitTestResult test_surge_winnable_skips_grind(){
+    const StoryCheckpoint& row = checkpoint("00.24");
+    const StoryStep& check = row.steps.front();
+    if (!parse_grind_check_variant(check.variant)){
+        return "Expected 00.24 to start with the grind's check, not " + check.name + ".";
+    }
+    StoryPose at = *story_pose(*row.start);
+    OverworldSim sim(maps_after_gym(), MapPosition{at.map, at.tile}, *at.facing);
+    std::vector<std::string> skipped;
+    for (const StoryStep& step : row.steps){
+        if (step.skip_if == std::vector<std::string>{check.name}){
+            skipped.push_back(step.name);
+            continue;
+        }
+        if (const std::string failure = gym_step_on_sim(sim, at, step, row.id); !failure.empty()){
+            return failure;
+        }
+    }
+    const std::vector<std::string> expected{
+        "route6_south_path", "round_isabelle_line", "grind_for_surge", "west_on_row_31", "down_to_jeff_row", "vermilion_nurse", "heal_vermilion",
+    };
+    if (skipped != expected || !(sim.state().position == MapPosition{GYM, {5, 3}})){
+        return std::format("Expected the trip to Route 6 skipped and below Surge reached; {} skipped, on {}.", skipped.size(), to_string(sim.state().position));
+    }
+    return true;
+}
 }
 
 
@@ -391,6 +424,7 @@ void add_tests_AutoStoryVermilionGym(UnitTestDatabase& database){
     database.add<Test_AutoStoryVermilionGym>("00.23 every can's stand from Tucker's tile and from every other, and out", test_cans_from_everywhere);
     database.add<Test_AutoStoryVermilionGym>("00.24 and 00.25 through the beams to Lt. Surge and out", test_to_surge_and_out);
     database.add<Test_AutoStoryVermilionGym>("Lt. Surge: Dig over Withdraw, the sim's chance", test_surge_chance);
+    database.add<Test_AutoStoryVermilionGym>("00.24 with Lt. Surge winnable already: no trip to Route 6", test_surge_winnable_skips_grind);
 }
 
 

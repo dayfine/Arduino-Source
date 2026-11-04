@@ -50,6 +50,12 @@ StoryStep trash_cans(std::string name, std::string why){
     return step;
 }
 
+//  `step`, skipped when the run flag `flag` is set.
+StoryStep unless(const char* flag, StoryStep step){
+    step.skip_if.emplace_back(flag);
+    return step;
+}
+
 }
 
 
@@ -97,22 +103,25 @@ StoryCheckpoint vermilion_gym(){
 //  along Jeff's row 33 (he is beaten) to the wall (7, 33), up to row 31
 //  and east along it onto the patch's west edge, (13, 31), above
 //  Isabelle, out of her line. Back to the nurse the same way.
+//  All that is skipped when the lead, read in the Center, passes already.
 //  Then the tree, the gym, whose trainers stand where the map has them,
 //  beaten, and whose beams stay off (FLAG_FOUND_BOTH_VERMILION_GYM_SWITCHES):
 //  up column 5 to below Lt. Surge, and saved there.
 StoryCheckpoint to_lt_surge(){
+    constexpr const char* SURGE_WINNABLE = "surge_winnable";
     const GrindPlan for_surge{
         .member = 0, .level = 32, .max_encounters = 150, .pace = EAST, .heal_every = 0,
         .trainer = std::string(story_trainer(VERMILION_GYM, "lt_surge").value_or("")), .min_chance = MIN_WIN_CHANCE,
     };
     return row("00.24", "Route 6's grass until Lt. Surge is winnable, then through the open beams to him", at(VERMILION_CENTER, 7, 4, NORTH), after_brock(), StartMenu::FULL, {
-        running(route("route6_south_path", at(ROUTE6, 11, 34, NORTH), "out of the Center, north out of the city onto Route 6's path, below Jeff's row")),
-        running(legs("round_isabelle_line", {{NORTH, 1}, {WEST, 4}, {NORTH, 2}, {EAST, 5}, {EAST, 1}}, "onto Jeff's row (11, 33), west to the wall (7, 33), up to (7, 31), east along row 31 to (12, 31) and a step onto the grass, (13, 31): out of Isabelle's line")),
-        grind_step("grind_for_surge", "wild battles until the sim beats Lt. Surge 50% or more, Lv32 at most; the nurse when hurt or low on PP", for_surge, at(VERMILION_CENTER, 7, 4, NORTH)),
-        running(route("west_on_row_31", at(ROUTE6, 7, 31), "west along row 31, out of the grass, to the wall (7, 31)")),
-        running(legs("down_to_jeff_row", {{SOUTH, 2}, {EAST, 4}}, "down to the wall (7, 33), east along Jeff's row to (11, 33): out of Isabelle's line")),
-        running(route("vermilion_nurse", at(VERMILION_CENTER, 7, 4, NORTH), "south into the city to the Pokemon Center")),
-        heal("heal_vermilion"),
+        grind_check_step(SURGE_WINNABLE, "the lead as it is: if the sim beats Lt. Surge 50% or more already, no trip to Route 6", for_surge),
+        unless(SURGE_WINNABLE, running(route("route6_south_path", at(ROUTE6, 11, 34, NORTH), "out of the Center, north out of the city onto Route 6's path, below Jeff's row"))),
+        unless(SURGE_WINNABLE, running(legs("round_isabelle_line", {{NORTH, 1}, {WEST, 4}, {NORTH, 2}, {EAST, 5}, {EAST, 1}}, "onto Jeff's row (11, 33), west to the wall (7, 33), up to (7, 31), east along row 31 to (12, 31) and a step onto the grass, (13, 31): out of Isabelle's line"))),
+        unless(SURGE_WINNABLE, grind_step("grind_for_surge", "wild battles until the sim beats Lt. Surge 50% or more, Lv32 at most; the nurse when hurt or low on PP", for_surge, at(VERMILION_CENTER, 7, 4, NORTH))),
+        unless(SURGE_WINNABLE, running(route("west_on_row_31", at(ROUTE6, 7, 31), "west along row 31, out of the grass, to the wall (7, 31)"))),
+        unless(SURGE_WINNABLE, running(legs("down_to_jeff_row", {{SOUTH, 2}, {EAST, 4}}, "down to the wall (7, 33), east along Jeff's row to (11, 33): out of Isabelle's line"))),
+        unless(SURGE_WINNABLE, running(route("vermilion_nurse", at(VERMILION_CENTER, 7, 4, NORTH), "south into the city to the Pokemon Center"))),
+        unless(SURGE_WINNABLE, heal("heal_vermilion")),
         running(route("above_gym_tree", at(VERMILION, 19, 23, SOUTH), "out of the Center, south through the city to above the tree (19, 24)")),
         cut_tree("cut_gym_tree", at(VERMILION, 19, 24, SOUTH), "the tree; a step onto its tile"),
         running(route("below_lt_surge", at(VERMILION_GYM, 5, 3, NORTH), "into the gym, up round the cans and through the beams, off, to below Surge (5, 2)")),
