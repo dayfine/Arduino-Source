@@ -74,6 +74,10 @@ const char* const MAP_NAMES[] = {
     //  The BIKE VOUCHER and the BICYCLE.
     "VermilionCity_PokemonFanClub",
     "CeruleanCity_BikeShop",
+    //  East over Route 9 to Route 10's Pokemon Center.
+    "Route9",
+    "Route10",
+    "Route10_PokemonCenter_1F",
     "CeruleanCave_1F",
     "CeruleanCave_2F",
     "CeruleanCave_B1F",

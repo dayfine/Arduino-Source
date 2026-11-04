@@ -294,6 +294,11 @@
             "side": "west",
             "to_map": "Route4",
             "offset": 10
+        },
+        {
+            "side": "east",
+            "to_map": "Route9",
+            "offset": 10
         }
     ]
 }

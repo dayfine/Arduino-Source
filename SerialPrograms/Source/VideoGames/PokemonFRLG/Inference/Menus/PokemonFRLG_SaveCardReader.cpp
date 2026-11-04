@@ -73,6 +73,7 @@ private:
             {"cerulean-city", "Cerulean City"},
             {"route-24", "Route 24"},
             {"route-25", "Route 25"},
+            {"route-10", "Route 10"},
             {"vermilion-city", "Vermilion City"},
         }){
             JsonArray names;

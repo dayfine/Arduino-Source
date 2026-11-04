@@ -6,7 +6,8 @@
  *  overworld sim: 00.26 from where 00.25 ends, to the Fan Club's chairman,
  *  north past Route 6's trainers, through the tree into Cerulean, to the
  *  Bike Shop's clerk, the Mart and the nurse, with Oak's aide on
- *  Vermilion's (25, 7); and what its Mart step buys.
+ *  Vermilion's (25, 7); and what its Mart step buys. 00.27 from where
+ *  00.26 ends, east over Route 9 to Route 10's Pokemon Center.
  *
  */
 
@@ -117,19 +118,29 @@ std::optional<StoryPose> last_target(const StoryCheckpoint& row){
 }
 
 
-//  00.26 comes right after 00.25 and starts where it ends, at Vermilion's
-//  nurse.
-UnitTestResult test_starts_where_lt_surge_ends(){
-    if (row_index("00.26") != row_index("00.25") + 1){
-        return "Expected 00.26 right after 00.25.";
+//  Row `id` comes right after row `previous` and starts where its last
+//  walk ends.
+UnitTestResult starts_where_ends(const std::string& previous, const std::string& id){
+    if (row_index(id) != row_index(previous) + 1){
+        return "Expected " + id + " right after " + previous + ".";
     }
-    const std::optional<StoryPose> end = last_target(checkpoint("00.25"));
-    const StoryCheckpoint& row = checkpoint("00.26");
+    const std::optional<StoryPose> end = last_target(checkpoint(previous));
+    const StoryCheckpoint& row = checkpoint(id);
     const std::optional<StoryPose> start = row.start ? story_pose(*row.start) : std::nullopt;
     if (!end || !start || start->map != end->map || !(start->tile == end->tile) || start->facing != end->facing){
-        return "Expected 00.26 to start where 00.25's walk to the nurse ends.";
+        return "Expected " + id + " to start where " + previous + "'s last walk ends.";
     }
     return true;
+}
+
+//  00.26 starts at Vermilion's nurse, where 00.25 ends.
+UnitTestResult test_starts_where_lt_surge_ends(){
+    return starts_where_ends("00.25", "00.26");
+}
+
+//  00.27 starts at Cerulean's nurse, where 00.26 ends.
+UnitTestResult test_starts_where_bicycle_ends(){
+    return starts_where_ends("00.26", "00.27");
 }
 
 //  00.26 on the sim from Vermilion's nurse to Cerulean's, the maps as
@@ -211,6 +222,48 @@ UnitTestResult test_repels_and_escape_ropes(){
     return true;
 }
 
+//  00.27 on the sim from Cerulean's nurse to Route 10's, the maps as 00.26
+//  leaves them, both trees grown back: the trees cut, Alicia, Jeremy and
+//  Conner fought where the table steps into their lines and no one else
+//  met (Brice, Caitlin and the rest unfought), no violation, each step
+//  ending where the table says, and the walk ending at Route 10's nurse.
+UnitTestResult test_route10_row(){
+    const StoryCheckpoint& row = checkpoint("00.27");
+    const std::vector<MapData> maps = maps_after_surge();
+    StoryPose at = *story_pose(*row.start);
+    OverworldSim sim(maps, MapPosition{at.map, at.tile}, *at.facing);
+    for (const StoryStep& step : row.steps){
+        if (const std::string failure = row_step_on_sim(sim, at, step, row.id); !failure.empty()){
+            return failure;
+        }
+        //  A step into a trainer's line ends where the battle after it says.
+        const bool into_line = step.kind == StoryStepKind::STEP && !step.variant.empty();
+        if (!into_line && !(sim.state().position == MapPosition{at.map, at.tile})){
+            return std::format("00.27/{}: expected {}, on {}.", step.name, to_string(MapPosition{at.map, at.tile}), to_string(sim.state().position));
+        }
+    }
+    if (sim.state().trainers_beaten != std::vector<std::string>{"picnicker", "hiker", "bug_catcher"}){
+        return "00.27: expected to fight Alicia, Jeremy and Conner, no one else; fought " + std::to_string(sim.state().trainers_beaten.size()) + ".";
+    }
+    if (!sim.state().violations.empty()){
+        return "00.27: a violation on the way: " + sim.state().violations.back();
+    }
+    const MapPosition nurse{StoryTable::ROUTE10_CENTER, {7, 4}};
+    if (!(sim.state().position == nurse)){
+        return "00.27: ended on " + to_string(sim.state().position) + ", not Route 10's nurse.";
+    }
+    return true;
+}
+
+//  The next row starts from 00.27's save in Route 10's Center, whose save
+//  card says ROUTE 10: a place of its own, not Route 1's.
+UnitTestResult test_route10_save_place(){
+    if (save_card_place(StoryTable::ROUTE10_CENTER) != "route-10" || save_card_place("Route1") == "route-10"){
+        return "Wrong save card place for Route 10's Pokemon Center.";
+    }
+    return true;
+}
+
 }
 
 
@@ -218,6 +271,9 @@ void add_tests_AutoStoryCeladon(UnitTestDatabase& database){
     database.add<Test_AutoStoryCeladon>("00.26 starts where 00.25 ends", test_starts_where_lt_surge_ends);
     database.add<Test_AutoStoryCeladon>("00.26 the Fan Club, Route 6 and the Underground Path north, the Bike Shop, past Oak's aide", test_bike_voucher_row);
     database.add<Test_AutoStoryCeladon>("00.26 Repels and Escape Ropes, 3000 left", test_repels_and_escape_ropes);
+    database.add<Test_AutoStoryCeladon>("00.27 starts where 00.26 ends", test_starts_where_bicycle_ends);
+    database.add<Test_AutoStoryCeladon>("00.27 the two trees, Route 9's Alicia, Jeremy and Conner, to Route 10's Pokemon Center", test_route10_row);
+    database.add<Test_AutoStoryCeladon>("00.27 saves in Route 10's Pokemon Center, ROUTE 10 on the save card", test_route10_save_place);
 }
 
 

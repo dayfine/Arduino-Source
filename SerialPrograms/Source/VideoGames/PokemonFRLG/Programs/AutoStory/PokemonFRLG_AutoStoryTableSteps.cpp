@@ -69,6 +69,10 @@ StoryStep hop(std::string name, Direction direction, Pokemon::Pose landing, std:
     return step;
 }
 
+StoryStep step_onto(std::string name, Direction direction, Pokemon::Pose tile, std::string why){
+    return hop(std::move(name), direction, std::move(tile), std::move(why));
+}
+
 StoryStep answer(std::string name, bool yes, std::string why){
     StoryStep step = make(StoryStepKind::ANSWER, std::move(name), std::move(why));
     step.yes = yes;

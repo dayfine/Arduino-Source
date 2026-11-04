@@ -46,11 +46,24 @@ std::string cut_on_sim(OverworldSim& sim, StoryPose& at, const StoryStep& step){
     return "";
 }
 
+//  A hop() or step_onto(): one step, ending where the table says. Moves
+//  `at` there; returns the failure, or empty.
+std::string step_onto_on_sim(OverworldSim& sim, StoryPose& at, const StoryStep& step){
+    if (sim.state().facing != step.direction){
+        sim.tap(step.direction);
+    }
+    sim.tap(step.direction);
+    at = *story_pose(*step.pose_after);
+    return sim.state().position == MapPosition{at.map, at.tile} ? "" : "expected to end on " + to_string(MapPosition{at.map, at.tile}) + ".";
+}
+
 }
 
 //  Runs `step` of row `id` on `sim` as the program does: routes and legs
 //  by the sim's walker from `at`, where the table says the player stands,
-//  fighting a trainer who sees the player on the way; a step one tap at a
+//  fighting a trainer who sees the player on the way; a hop down a ledge
+//  (hop()) or a step onto the tile before one (step_onto()), to where the
+//  table says; a step one tap at a
 //  time, or for a step into a trainer's line by step_until_seen(), each
 //  watched for the trainer; a battle from the trainer's message, which
 //  must be up; a cut tree cut and stepped onto. Moves `at` to where the
@@ -67,6 +80,10 @@ std::string row_step_on_sim(OverworldSim& sim, StoryPose& at, const StoryStep& s
         const RoutePlanning planning{.maps = &story_maps(), .costs = story_route_costs(), .start = MapPosition{at.map, at.tile}, .label = step.name};
         const std::string failure = route ? OverworldSimWalker(sim).run(*route, planning) : "no legs.";
         at = route ? StoryPose{route->back().end.map, route->back().end.point, route->back().facing_after} : at;
+        return failure.empty() ? "" : where + failure + on();
+    }
+    if (step.kind == StoryStepKind::STEP && step.variant.empty() && step.pose_after){
+        const std::string failure = step_onto_on_sim(sim, at, step);
         return failure.empty() ? "" : where + failure + on();
     }
     if (step.kind == StoryStepKind::STEP){

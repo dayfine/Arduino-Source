@@ -29,7 +29,9 @@ std::optional<std::vector<RouteStep>> walked_route(const StoryPose& at, const St
 
 //  Runs `step` of row `id` on `sim` as the program does: routes and legs
 //  by the sim's walker from `at`, where the table says the player stands,
-//  fighting a trainer who sees the player on the way; a step one tap at a
+//  fighting a trainer who sees the player on the way; a hop down a ledge
+//  (hop()) or a step onto the tile before one (step_onto()), to where the
+//  table says; a step one tap at a
 //  time, or for a step into a trainer's line by step_until_seen(), each
 //  watched for the trainer; a battle from the trainer's message, which
 //  must be up; a cut tree cut and stepped onto. Moves `at` to where the

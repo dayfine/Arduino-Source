@@ -59,6 +59,9 @@ inline constexpr const char* SS_ANNE_2F = "SSAnne_2F_Corridor";
 inline constexpr const char* CAPTAINS_OFFICE = "SSAnne_CaptainsOffice";
 inline constexpr const char* FAN_CLUB = "VermilionCity_PokemonFanClub";
 inline constexpr const char* BIKE_SHOP = "CeruleanCity_BikeShop";
+inline constexpr const char* ROUTE9 = "Route9";
+inline constexpr const char* ROUTE10 = "Route10";
+inline constexpr const char* ROUTE10_CENTER = "Route10_PokemonCenter_1F";
 
 Pokemon::Pose at(const char* map, int x, int y, std::optional<Direction> facing = std::nullopt);
 
@@ -96,6 +99,9 @@ StoryStep into_sight(std::string name, Direction direction, std::string why);
 //  ledge (they hold into walls, and a held ledge hops), so where the only
 //  way on is down a ledge the table takes it as this one step.
 StoryStep hop(std::string name, Direction direction, Pokemon::Pose landing, std::string why);
+//  One step `direction` onto `tile`, the next one, where a walk's hold
+//  would go on: onto the tile before a ledge, which a held leg hops.
+StoryStep step_onto(std::string name, Direction direction, Pokemon::Pose tile, std::string why);
 StoryStep answer(std::string name, bool yes, std::string why);
 StoryStep scene(std::string name, std::optional<Pokemon::Pose> pose_after, std::string why);
 StoryStep battle(std::string name, Pokemon::Pose pose_after, bool may_lose, std::string why);
@@ -121,6 +127,7 @@ StoryCheckpoint vermilion_gym();
 StoryCheckpoint to_lt_surge();
 StoryCheckpoint lt_surge();
 StoryCheckpoint bike_voucher();
+StoryCheckpoint route10_center();
 
 
 

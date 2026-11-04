@@ -77,6 +77,76 @@ StoryCheckpoint bike_voucher(){
     });
 }
 
+//  East out of Cerulean over Route 9 to Route 10's Pokemon Center
+//  (pokeguy 45:12 to 47:27), on foot: the Bicycle isn't registered yet.
+//  - Cerulean (CeruleanCity map.json): the way east, column 39..40 up
+//    from row 33 to rows 18..19 and out of the city's east edge, is
+//    reached from the city only through the tree (26, 32), grown back
+//    since 00.26 (its flag is a FLAG_TEMP), or the burgled house. Cut
+//    from above. Route 9 joins the city's rows 18..19 by its rows 8..9
+//    (offset -10); its tree (2, 8) (FLAG_TEMP_12) closes them, (2, 9)
+//    being rock: cut from (1, 8), west of it.
+//  - Route 9 (Route9 map.json, scripts.inc), its ledges all facing south.
+//    Of its nine trainers, three can't be walked around, as in pokeguy's
+//    run, where Jeremy happened to look away:
+//    - Picnicker Alicia (14, 10) faces west, sight 3, over (11..13, 10),
+//      the only tiles above the ledge row 11 the way west goes down by:
+//      fought on the step onto (11, 10); she walks up to (12, 10). Then
+//      down the ledge (11, 11).
+//    - Hiker Jeremy (20, 17) looks north and west (FACE_UP_AND_LEFT),
+//      sight 4: north over (20, 13..16), every way east of column 19
+//      below the rocks of row 12. Fought on (20, 13), waiting for him to
+//      look north (TRAINER_WAIT_VARIANT); he walks up to (20, 14).
+//    - Bug Catcher Conner (49, 7) faces east, sight 3, over (50..52, 7):
+//      the way north from row 13 is column 52 alone (the ledges of row
+//      11 face south), and row 7 is the way onto the ridge. Fought on the
+//      step onto (52, 7); he walks up to (51, 7).
+//    - Hiker Brice wanders row 2 (50..56), looking west and east, sight
+//      1, over (49..57, 2), and the way up from the ledges of row 4 is
+//      (50..51, 4) below him. The leg up column 51 ends on row 3 if he
+//      stands at (51, 2), else it goes on to (51, 1) past him, and he may
+//      see the player there; either way the legs to walls after it meet
+//      on (48, 1): west to the rock (48, 3) or (48, 1), up to (48, 1).
+//      Row 1 is clear of his sight; east along it to the rock (64, 1)
+//      and down column 64 past the hidden Rare Candy (63, 2), not picked
+//      up. A held leg down to (64, 3) would hop the ledge (64, 4) and go
+//      on, so the last tile is one step, then the hop.
+//    - Picnicker Caitlin (60, 9) faces east over (61..64, 9): the way to
+//      Route 10 goes along row 8, above her line, by legs to (70, 8), a
+//      tile short of the edge. Camper Chris (26, 7),
+//      Bug Catcher Brent (26, 1), Camper Drew (36, 6) and Hiker Alan (61,
+//      16) are off the way; TM40 (12, 17) is left.
+//  - Route 10 (Route10 map.json) joins Route 9's rows 8..10 by its own;
+//    its north part, down to the Center's door (13, 20), has no trainer
+//    on the way and its grass is walked round. The trees west of the
+//    door (10, 20..26) stay.
+//  - The nurse, and the save in Route 10's Center: the save card names
+//    ROUTE 10.
+StoryCheckpoint route10_center(){
+    return row("00.27", "East over Route 9 to Route 10's Pokemon Center: the two trees, Alicia, Jeremy and Conner", at(CERULEAN_CENTER, 7, 4, NORTH), after_brock(), StartMenu::FULL, {
+        running(route("above_cerulean_tree", at(CERULEAN, 26, 31, SOUTH), "out of the Center, south through the city to above the tree (26, 32), grown back")),
+        cut_tree("cut_cerulean_tree", at(CERULEAN, 26, 32, SOUTH), "the tree; a step onto its tile"),
+        running(route("west_of_route9_tree", at(ROUTE9, 1, 8, EAST), "down to row 33, east and up column 39 or 40 to row 18, east out of the city onto Route 9, west of its tree (2, 8)")),
+        cut_tree("cut_route9_tree", at(ROUTE9, 2, 8, EAST), "Route 9's tree; a step onto its tile"),
+        running(route("above_alicia_line", at(ROUTE9, 11, 9, SOUTH), "east to (11, 9), above the west end of Alicia's line")),
+        into_line("alicia_line", SOUTH, "onto (11, 10), in Alicia's line: she walks up to (12, 10)"),
+        battle("picnicker_alicia", at(ROUTE9, 11, 10, EAST), false, "Oddish, Bellsprout, Oddish and Bellsprout, Lv18"),
+        hop("alicia_ledge_hop", SOUTH, at(ROUTE9, 11, 12, SOUTH), "down the ledge (11, 11)"),
+        running(route("west_of_jeremy_sight", at(ROUTE9, 19, 13, EAST), "down to row 13 and east along it to (19, 13), west of Jeremy's north line")),
+        into_sight("jeremy_sight", EAST, "onto (20, 13), four above Jeremy (20, 17): when he looks north he walks up to (20, 14)"),
+        battle("hiker_jeremy", at(ROUTE9, 20, 13, SOUTH), false, "Machop and Onix, Lv20"),
+        running(route("below_conner_line", at(ROUTE9, 52, 8, NORTH), "east along row 13 and up column 52 to (52, 8), below the east end of Conner's line")),
+        into_line("conner_line", NORTH, "onto (52, 7), the end of Conner's line: he walks up to (51, 7)"),
+        battle("bug_catcher_conner", at(ROUTE9, 52, 7, WEST), false, "Caterpie, Weedle and Venonat, Lv20"),
+        running(legs("round_brice", {{NORTH, 2}, {WEST, 1}, {NORTH, 2}, {WEST, 3}, {NORTH, 2}, {EAST, 16}, {SOUTH, 1}}, "up to the ledge (52, 4), up column 51 to Brice's row, west to the rock (48, 3) (or (48, 1)), up to (48, 1), east along row 1 to the rock (64, 1), down to (64, 2)")),
+        step_onto("above_east_ledge", SOUTH, at(ROUTE9, 64, 3, SOUTH), "onto (64, 3), above the ledge (64, 4)"),
+        hop("east_ledge_hop", SOUTH, at(ROUTE9, 64, 5, SOUTH), "down the ledge (64, 4)"),
+        running(legs("above_caitlin_line", {{SOUTH, 3}, {EAST, 6}}, "down column 64 to row 8, east along it to (70, 8): above Caitlin's line (61..64, 9)")),
+        running(route("route10_nurse", at(ROUTE10_CENTER, 7, 4, NORTH), "east onto Route 10, round its grass and down to the Center's door (13, 20), to the nurse")),
+        heal("heal_route10"),
+    });
+}
+
 
 }
 }
