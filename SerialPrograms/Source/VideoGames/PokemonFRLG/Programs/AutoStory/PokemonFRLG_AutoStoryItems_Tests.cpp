@@ -26,6 +26,8 @@
 #include "CommonFramework/Language.h"
 #include "Tests/ImageUnitTest.h"
 #include "Tests/TestUtils.h"
+#include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleHpBarReader.h"
+#include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleScreenDetector.h"
 #include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_SaveCardReader.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSim.h"
@@ -357,6 +359,52 @@ private:
     std::optional<bool> m_expected;
 };
 
+//  battle_yes_no_shows() on console B's captures named
+//  <anything>_<True or False>.png.
+class Test_BattleYesNo : public ImageUnitTest{
+public:
+    Test_BattleYesNo(const std::string& image)
+        : ImageUnitTest("PokemonFRLG::AutoStoryBattle - " + image, {image})
+    {}
+
+    virtual UnitTestResult run_on_images(
+        Logger& logger, CancellableScope& scope,
+        const std::vector<ImageRGB32>& images
+    ) const override{
+        bool expected = false;
+        const std::vector<std::string> words = parse_words(Filesystem::Path(image_paths()[0]).stem().string());
+        if (words.empty() || !parse_bool(words.back(), expected)){
+            return "Error: filename must be <anything>_<True or False>.";
+        }
+        return battle_yes_no_shows(images[0]) == expected;
+    }
+};
+
+//  read_opponent_hp_fill() on console B's captures named
+//  <anything>_FoeHp_<pixels>of48.png: the bar's filled share within a pixel.
+class Test_FoeHp : public ImageUnitTest{
+public:
+    Test_FoeHp(const std::string& image)
+        : ImageUnitTest("PokemonFRLG::AutoStoryBattle - " + image, {image})
+    {}
+
+    virtual UnitTestResult run_on_images(
+        Logger& logger, CancellableScope& scope,
+        const std::vector<ImageRGB32>& images
+    ) const override{
+        const std::vector<std::string> words = parse_words(Filesystem::Path(image_paths()[0]).stem().string());
+        int pixels = -1;
+        if (words.empty() || words.back().find("of48") == std::string::npos || !parse_int(words.back().substr(0, words.back().find("of48")), pixels)){
+            return "Error: filename must be <anything>_FoeHp_<pixels>of48.";
+        }
+        const std::optional<double> fill = read_opponent_hp_fill(images[0]);
+        if (!fill || std::abs(*fill - pixels / 48.0) > 1.0 / 48){
+            return std::format("Expected {} of 48 pixels, got {:.1f}.", pixels, fill ? 48 * *fill : -1.0);
+        }
+        return true;
+    }
+};
+
 //  read_party_status() on console B's captures named
 //  <anything>_Hp<Color>_<hp>of<max hp>[_<anything>].png: the bar's color,
 //  and its colored share within a pixel of the 48-pixel bar of hp / max hp.
@@ -428,6 +476,20 @@ void add_tests_AutoStoryItems(UnitTestDatabase& database){
     }){
         database.add<Test_PartyHp>(std::string("PokemonFRLG/AutoStoryBattle/") + image);
     }
+    //  The YES/NO to "Delete a move to make room for BITE?" (Miguel), and the
+    //  S.S. Anne rival's and Misty's send-outs, which the move prompt's
+    //  detector alone took for one (console B, 2026-11-03).
+    for (const char* image : {
+        "Miguel_DeleteMoveForBite_YesNo_True.png",
+        "SSAnneRival_SentOutRaticate_YesNo_False.png",
+        "SSAnneRival_SentOutKadabra_YesNo_False.png",
+        "Misty_SentOutStarmie_YesNo_False.png",
+    }){
+        database.add<Test_BattleYesNo>(std::string("PokemonFRLG/AutoStoryBattle/") + image);
+    }
+    //  The S.S. Anne rival's Pidgeotto at full HP, its Raticate low.
+    database.add<Test_FoeHp>("PokemonFRLG/AutoStoryBattle/SSAnneRival_Pidgeotto_FoeHp_48of48.png");
+    database.add<Test_FoeHp>("PokemonFRLG/AutoStoryBattle/SSAnneRival_Raticate_FoeHp_7of48.png");
     //  The battle's choices, registered here to keep add_tests() within its size.
     add_tests_AutoStoryParty(database);
 }

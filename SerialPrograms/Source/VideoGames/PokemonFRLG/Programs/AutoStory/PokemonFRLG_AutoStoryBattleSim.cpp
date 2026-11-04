@@ -25,6 +25,11 @@ constexpr int NOT_STRONGEST = 1;
 constexpr int MAX_STAGE = 6;
 //  More turns than this to faint a foe counts as never.
 constexpr size_t TURNS_CAP = 30;
+//  A top-up gives the foe a turn: not when that turn lowers the lead's
+//  stages or gives it a status this often (the S.S. Anne rival's Pidgeotto,
+//  Sand-Attack; Raticate, Tail Whip: topping up against them lost more
+//  battles to the Ivysaur than it won).
+constexpr double MAX_TOP_UP_HARM = 0.15;
 //  The hits a multi-hit move is taken to land when sizing a foe's hit.
 constexpr uint32_t MULTI_HITS = 3;
 constexpr uint32_t CRIT_CHANCE = 16;
@@ -688,6 +693,7 @@ PotionCase potion_case(const SimBattler& own, const SimBattler& foe, const SimTr
         .expected_hit = std::max(next.mean(), seen_hit),
         .likely_hit = std::max(next.percentile(POTION_COVER_PERCENTILE), seen),
         .max_hit = std::max(next.most(), seen),
+        .turns_to_ko = turns,
         .hits_to_ko = hits,
         .move_chances = std::move(chances),
     };
@@ -718,33 +724,98 @@ bool awakening_now(const PotionCase& c, const SimBattler& own, int awakenings){
     return c.max_hit > 0 && own.hp > c.likely_hit;
 }
 
-OwnTurn own_turn(
-    const SimBattler& own, const SimItems& own_items, const SimBattler& foe,
-    const SimTrainer& trainer, size_t foes_left
-){
-    const std::vector<std::string>& items = trainer.items;
-    const std::optional<size_t> slot = planned_attack_slot(own, foe, items, foes_left);
-    if (slot && own.status != SimStatus::SLEEP){
-        const MoveData& move = data_of(own.moves[*slot].move);
-        const bool foe_priority = std::ranges::any_of(foe.moves, [](const SimMove& known){
-            return known.pp > 0 && data_of(known.move).priority > 0;
-        });
-        const bool first = speed_of(own) > speed_of(foe) && !foe_priority && move.priority >= 0;
-        const bool sure = move.accuracy == 0 || move.accuracy >= 100;
-        if (first && sure && lowest_roll(own, foe, move) >= foe.hp && !ai_item_choice(foe, items, foes_left)){
-            return OwnTurn{.potion = false, .slot = slot};
+double seed_chance(const SimTrainer& trainer, const SimBattler& foe, const SimBattler& own){
+    const std::vector<double> chances = ai_move_chances(trainer, foe, own);
+    for (size_t slot = 0; slot < foe.moves.size(); slot++){
+        const MoveData& move = data_of(foe.moves[slot].move);
+        if (foe.moves[slot].move == "leech-seed" && !own.seeded){
+            return chances[slot] * moves_this_turn(foe) * hit_percent(foe, own, move) / 100.0;
         }
     }
+    return 0;
+}
+
+namespace{
+
+//  The chance the foe's turn (`c`) leaves the lead worse off for the rest of
+//  the battle: a stat stage down, a status or Leech Seed, by a move that does
+//  no damage.
+double lasting_harm_chance(const PotionCase& c){
+    double chance = 0;
+    for (const auto& [move, picked] : c.move_chances){
+        const MoveData& data = data_of(move);
+        const std::string_view effect = data.effect;
+        const bool lasting = effect.ends_with("-down") || effect == "poison" || effect == "toxic"
+            || effect == "sleep" || effect == "paralyze" || effect == "leech-seed";
+        chance += data.power == 0 && lasting ? picked : 0;
+    }
+    return chance;
+}
+
+}
+
+bool top_up_now(
+    const PotionCase& c, const SimBattler& own, const SimTrainer& trainer,
+    const std::vector<SimBattler>& to_come, int potions
+){
+    const double heal = std::min<int>(POTION_HP, c.max_hp - c.hp);
+    if (potions <= 0 || c.turns_to_ko != 1 || 2 * c.expected_hit > POTION_HP || heal - c.expected_hit < POTION_HP / 4.0){
+        return false;
+    }
+    if (lasting_harm_chance(c) > MAX_TOP_UP_HARM){
+        return false;
+    }
+    return std::ranges::any_of(to_come, [&](const SimBattler& next){
+        return next.hp > 0 && next_turn_damage(trainer, next, own).mean() > c.expected_hit;
+    });
+}
+
+namespace{
+
+//  own_turn()'s planned move when it surely faints `foe` first.
+bool sure_first_ko(
+    const SimBattler& own, const SimBattler& foe, const std::vector<std::string>& items,
+    size_t foes_left, std::optional<size_t> slot
+){
+    if (!slot || own.status == SimStatus::SLEEP){
+        return false;
+    }
+    const MoveData& move = data_of(own.moves[*slot].move);
+    const bool foe_priority = std::ranges::any_of(foe.moves, [](const SimMove& known){
+        return known.pp > 0 && data_of(known.move).priority > 0;
+    });
+    const bool first = speed_of(own) > speed_of(foe) && !foe_priority && move.priority >= 0;
+    const bool sure = move.accuracy == 0 || move.accuracy >= 100;
+    return first && sure && lowest_roll(own, foe, move) >= foe.hp && !ai_item_choice(foe, items, foes_left);
+}
+
+}
+
+OwnTurn own_turn(
+    const SimBattler& own, const SimItems& own_items, const SimBattler& foe,
+    const SimTrainer& trainer, size_t foes_left,
+    const std::vector<SimBattler>& to_come, double seen_hit
+){
+    const std::optional<size_t> slot = planned_attack_slot(own, foe, trainer.items, foes_left);
     const bool may_heal = own_items.potions > 0 && own.hp < own.body.stats.hp;
     const bool may_wake = own_items.awakenings > 0 && own.status == SimStatus::SLEEP;
-    if (!may_heal && !may_wake){
+    std::optional<PotionCase> c;
+    if (may_heal && !to_come.empty() && own.status != SimStatus::SLEEP){
+        c = potion_case(own, foe, trainer, seen_hit);
+        if (top_up_now(*c, own, trainer, to_come, own_items.potions)){
+            return OwnTurn{.potion = true, .slot = std::nullopt, .awakening = false, .top_up = true};
+        }
+    }
+    if (sure_first_ko(own, foe, trainer.items, foes_left, slot) || (!may_heal && !may_wake)){
         return OwnTurn{.potion = false, .slot = slot};
     }
-    const PotionCase c = potion_case(own, foe, trainer);
-    if (awakening_now(c, own, own_items.awakenings)){
+    if (!c){
+        c = potion_case(own, foe, trainer, seen_hit);
+    }
+    if (awakening_now(*c, own, own_items.awakenings)){
         return OwnTurn{.potion = false, .slot = std::nullopt, .awakening = true};
     }
-    if (potion_now(c, own_items.potions)){
+    if (potion_now(*c, own_items.potions)){
         return OwnTurn{.potion = true, .slot = std::nullopt};
     }
     return OwnTurn{.potion = false, .slot = slot};

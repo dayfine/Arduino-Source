@@ -63,6 +63,28 @@ inline const std::string RUN_VARIANT = "run";
 inline const std::string TRAINER_LINE_VARIANT = "trainer_line";
 inline constexpr int TRAINER_LINE_TILES = 3;
 
+//  The variant of a STEP into the line of a trainer who looks around
+//  (MOVEMENT_TYPE_LOOK_AROUND): one tile, then a wait of up to
+//  TRAINER_WAIT_WATCH for the trainer to turn to the player. Indoors, where
+//  the player can't run, such a trainer turns a random way every 32 to 128
+//  frames (pokefirered event_object_movement.c, MovementType_LookAround;
+//  it turns to the player only when the player runs), so they face the
+//  player within 30 s all but about 1 time in 500; and the game checks
+//  their sight every frame (ProcessPlayerFieldInput()), not only after a
+//  step. Stepped into from outside their sight onto the second tile of
+//  their line, the player is always seen there, and the trainer walks up
+//  one tile.
+inline const std::string TRAINER_WAIT_VARIANT = "trainer_wait";
+
+//  The GAME step that cuts the tree the player faces, `direction`
+//  (pokefirered data/scripts/field_moves.inc, EventScript_CutTree): A,
+//  "This tree looks like it can be CUT down! Would you like to CUT it?"
+//  YES, "<MON> used CUT!", the tree falls; then a step onto its tile. With
+//  no Pokemon that knows Cut there is no YES/NO, and the step fails. The
+//  tree grows back when the player leaves the map (its hide flag is a
+//  FLAG_TEMP), so the walk back cuts it again.
+inline const std::string CUT_TREE_VARIANT = "cut_tree";
+
 //  The GAME step that closes the Trainer Card SID Helper leaves open.
 inline const std::string CLOSE_TRAINER_CARD = "close_trainer_card";
 

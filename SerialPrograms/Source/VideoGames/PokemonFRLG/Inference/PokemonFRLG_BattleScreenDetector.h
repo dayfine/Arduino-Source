@@ -47,6 +47,15 @@ public:
 };
 
 
+//  A YES/NO box in a battle (a move to learn): BattleLearnDialogDetector,
+//  and the box's slate-blue left frame. The detector alone reads white
+//  where the box would be and the teal text box, which a foe's send-out
+//  flash shows on the S.S. Anne's white floor (console B, 2026-11-03, m68:
+//  "RIVAL GREEN sent out RATICATE!" and "...KADABRA!" taken for a move
+//  prompt, NO at one and YES at the other).
+bool battle_yes_no_shows(const ImageViewRGB32& screen);
+
+
 
 }
 }

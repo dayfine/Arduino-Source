@@ -710,6 +710,56 @@ UnitTestResult test_disabled_move(Logger&){
     return true;
 }
 
+//  Regression, console B 2026-11-03, m68, the S.S. Anne rival: "no PP left
+//  for that move" read 37 s after the battle's last move, as it ended, and
+//  the story took the move's PP as 0. Read once, a move is left alone as a
+//  Disable (Kadabra's) would have it, its PP kept; read again for the same
+//  move, its PP is 0.
+UnitTestResult test_no_pp_read_once(Logger&){
+    Supplies supplies;
+    supplies.lead = squirtle_before_miguel();
+    supplies.foes = {"grimer", "voltorb", "koffing"};
+    BattleDecisions decisions(supplies, BattleKind::TRAINER);
+    if (decisions.turn(GREEN).slot != TOP_LEFT_MOVE){
+        return "Expected Water Gun (slot 0) at turn 1.";
+    }
+    decisions.turn_done(TurnChoice::MOVE, TurnResult::NOT_DONE);
+    if (supplies.lead.moves[TOP_LEFT_MOVE].pp != 25){
+        return std::format("Expected Water Gun's 25 PP kept after one \"no PP\" read, got {}.", supplies.lead.moves[TOP_LEFT_MOVE].pp);
+    }
+    for (int c = 0; c < 5; c++){
+        if (decisions.turn(GREEN).slot == TOP_LEFT_MOVE){
+            return std::format("Expected Water Gun left alone at turn {} after the read, as a Disable.", c + 1);
+        }
+    }
+    if (decisions.turn(GREEN).slot != TOP_LEFT_MOVE){
+        return "Expected Water Gun again once a Disable would be over.";
+    }
+    decisions.turn_done(TurnChoice::MOVE, TurnResult::NOT_DONE);
+    if (supplies.lead.moves[TOP_LEFT_MOVE].pp != 0){
+        return std::format("Expected Water Gun at 0 PP after a second read, got {}.", supplies.lead.moves[TOP_LEFT_MOVE].pp);
+    }
+    return true;
+}
+
+//  "no PP left" counts only as soon after the choice as a refusal's menu
+//  comes: m68's read 37 s after the battle's last move doesn't.
+UnitTestResult test_no_pp_due(Logger&){
+    const WallClock start = current_time();
+    MoveRefusalWatch watch;
+    if (watch.no_pp_due(start)){
+        return "Expected no \"no PP\" read counted with no move chosen.";
+    }
+    watch.move_chosen(start);
+    if (!watch.no_pp_due(start + 4000ms)){
+        return "Expected a \"no PP\" read 4 s after the choice counted.";
+    }
+    if (watch.no_pp_due(start + 37000ms)){
+        return "Expected a \"no PP\" read 37 s after the choice not counted.";
+    }
+    return true;
+}
+
 //  The loop's view of a move turned down (console B, 2026-11-03): the move
 //  list back (no battle screen) and the battle menu 5.7 s after the choice.
 //  Not a turn (8.3 s and up, with no move list), nor a menu long after one
@@ -834,6 +884,8 @@ void add_tests_AutoStoryParty(UnitTestDatabase& database){
     database.add<Test_AutoStoryParty>("a YES/NO with no move list after it changes no move", test_yes_no_without_move_list);
     database.add<Test_AutoStoryParty>("a disabled move: left alone while Disable lasts, PP back", test_disabled_move);
     database.add<Test_AutoStoryParty>("a move turned down: the move list, then the menu sooner than a turn", test_move_refusal_watch);
+    database.add<Test_AutoStoryParty>("\"no PP\" read once: left alone as a Disable; twice: PP 0", test_no_pp_read_once);
+    database.add<Test_AutoStoryParty>("\"no PP\" counts only soon after the move chosen", test_no_pp_due);
     database.add<Test_AutoStoryParty>("the move list closed with nothing forgotten: YES to \"Stop learning?\"", test_move_list_closed);
     database.add<Test_AutoStoryParty>("move prompts after a turn: a plain YES after the first few", test_move_prompts_bounded);
     database.add<Test_AutoStoryParty>("the nurse before a battle for HP not green with no Potion", test_nurse_before_battle);

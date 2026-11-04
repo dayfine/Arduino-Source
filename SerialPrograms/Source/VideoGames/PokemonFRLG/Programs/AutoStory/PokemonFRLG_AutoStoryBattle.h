@@ -25,6 +25,7 @@
 
 #include <cstddef>
 #include <optional>
+#include <set>
 #include <string>
 #include <vector>
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
@@ -94,6 +95,11 @@ struct Supplies{
     //  The slot of the trainer's party out, as the battle loop tracks it
     //  (TrainerFoeTracker): the lead's attacks are chosen against it.
     std::optional<size_t> foe_out = {};
+    //  Its HP bar's filled share at the last battle menu, none if not read:
+    //  its HP for the lead's attacks and Potions. Full while none.
+    std::optional<double> foe_hp_fill = {};
+    //  The slots of that party seen fainted (TrainerFoeTracker): not to come.
+    std::set<size_t> foes_fainted = {};
     //  The wild Pokemon of the battle going on, as read at its first battle
     //  menu (read_wild_foes()): the lead's attacks are chosen against it.
     //  Empty when it wasn't read; trainer battles never use it.

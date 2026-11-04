@@ -2,14 +2,15 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  The HP bar in the player's box on a battle screen: its color and how
- *  much of it is filled.
+ *  The HP bars on a battle screen, the player's and the opponent's: their
+ *  color and how much of them is filled.
  *
  */
 
 #ifndef PokemonAutomation_PokemonFRLG_BattleHpBarReader_H
 #define PokemonAutomation_PokemonFRLG_BattleHpBarReader_H
 
+#include <optional>
 #include "CommonFramework/ImageTypes/ImageViewRGB32.h"
 
 namespace PokemonAutomation{
@@ -34,6 +35,13 @@ struct HpBarReading{
 
 //  `game`: the game's screen, the Game Box of the video.
 HpBarReading read_player_hp_bar(const ImageViewRGB32& game);
+
+//  The opponent's HP bar, in its box top left, the same way.
+HpBarReading read_opponent_hp_bar(const ImageViewRGB32& game);
+
+//  That bar's filled share on `screen` (the whole video, its Game Box
+//  taken from the settings), none if no fill shows.
+std::optional<double> read_opponent_hp_fill(const ImageViewRGB32& screen);
 
 
 

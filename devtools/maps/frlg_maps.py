@@ -112,6 +112,17 @@ FLAG_SETS = {
     'VermilionCity': {'new_game': ['FLAG_HIDE_VERMILION_CITY_OAKS_AIDE']},
 }
 
+#   Tiles a script changes for good once the story is past it, written as
+#   the story finds them after: Vermilion Gym's beams across rows 6 and 7
+#   go off once both switches are found
+#   (VermilionCity_Gym_EventScript_SetBeamsOff: (4..6, 6..7) floor,
+#   FLAG_FOUND_BOTH_VERMILION_GYM_SWITCHES). No route of the story's goes
+#   north of them before that, and one after can't end a leg on them as on
+#   a wall.
+OPENED_TILES = {
+    'VermilionCity_Gym': [(x, y) for y in (6, 7) for x in (4, 5, 6)],
+}
+
 
 class Decomp:
     def __init__(self, commit, cache):
@@ -350,6 +361,8 @@ def map_json(decomp, name, sources, layouts, names, loaded, unhandled, land_maps
     tiles, elevation, entries, wild_edges = grid(
         decomp, layouts[source['layout']], names, unhandled, signs, source['id'] in land_maps
     )
+    for x, y in OPENED_TILES.get(name, []):
+        tiles[y] = tiles[y][:x] + '.' + tiles[y][x + 1:]
     warp_events = source.get('warp_events', [])
     points = {n: [x, y] for n, (x, y) in POINTS.get(name, {}).items()}
     for index in sorted(arrivals(sources, loaded)[name]):

@@ -10,6 +10,7 @@
  */
 
 #include <cmath>
+#include <cstddef>
 #include <format>
 #include <functional>
 #include <map>
@@ -682,6 +683,109 @@ UnitTestResult test_ss_anne_rival(){
     return true;
 }
 
+//  Regression, console B 2026-11-03, m68, the S.S. Anne rival: a YES/NO
+//  read at "RIVAL GREEN sent out RATICATE!" (turn 5) and "...KADABRA!"
+//  (turn 7), with no move to learn. The first was taken for "Delete a move
+//  to make room for PROTECT?" (Lv31): NO, and "Stop learning?" due, which
+//  the second got: YES. From then on the lead was figured at Lv31: "34/88
+//  HP" for 31/78. Neither is a move prompt: NO, the lead as it was.
+UnitTestResult test_ss_anne_send_out_prompts(){
+    Supplies supplies;
+    supplies.lead = ss_anne_lead();
+    supplies.trainer = std::string(SS_ANNE_RIVAL);
+    supplies.foes = trainer_party(SS_ANNE_RIVAL);
+    supplies.risk = BattleRisk::HIGH;
+    const PartyMember before = supplies.lead;
+    BattleDecisions decisions(supplies, BattleKind::TRAINER);
+    const PartyStatus green{.hp_seen = true, .hp_yellow = false, .hp_red = false, .hp_fill = 1.0, .status = StatusCondition::NONE};
+    for (int turn = 1; turn <= 7; turn++){
+        decisions.turn(green);
+        if (turn != 5 && turn != 7){
+            continue;
+        }
+        const PromptAnswer answer = decisions.prompt(false);
+        if (answer.answer != YesNo::NO || answer.forget_slot){
+            return std::format("Turn {}: expected NO to a YES/NO with no move to learn.", turn);
+        }
+    }
+    if (battle_level(supplies.lead) != 27 || supplies.lead.moves_through_level != before.moves_through_level){
+        return std::format("Expected the lead still at Lv27, got Lv{}.", battle_level(supplies.lead));
+    }
+    const uint16_t max_hp = own_battler(supplies.lead)->body.stats.hp;
+    return max_hp == 78 ? UnitTestResult(true) : UnitTestResult(std::format("Expected 78 max HP, as the screen shows, got {}.", max_hp));
+}
+
+//  The battle loop's Potion against a known foe at BattleRisk::HIGH is the
+//  win-chance sim's (own_turn()), poisoned or not, so the chance the sim
+//  gives is the one the loop plays for. Before, the loop left out the
+//  poison's eighth a turn, and used a Potion at red HP the sim wouldn't.
+//  Whether the loop and the sim agree on a Potion against the rival's
+//  `slot`, out first, at `percent` of the lead's HP with `status`.
+UnitTestResult loop_potion_is_sim(size_t slot, StatusCondition status, int percent){
+    const SimTrainer rival = *sim_trainer(SS_ANNE_RIVAL);
+    Supplies supplies;
+    supplies.lead = ss_anne_lead();
+    supplies.trainer = std::string(SS_ANNE_RIVAL);
+    supplies.foes = trainer_party(SS_ANNE_RIVAL);
+    supplies.risk = BattleRisk::HIGH;
+    supplies.potions = 15;
+    supplies.foe_out = slot;
+    const double fill = percent / 100.0;
+    const PartyStatus read{.hp_seen = true, .hp_yellow = fill <= 0.5 && fill > 0.2, .hp_red = fill <= 0.2, .hp_fill = fill, .status = status};
+    BattleDecisions decisions(supplies, BattleKind::TRAINER);
+    const bool loop = decisions.turn(read).choice == TurnChoice::POTION;
+    SimBattler own = *own_battler(ss_anne_lead(), fill);
+    own.status = status == StatusCondition::POISON ? SimStatus::POISON : SimStatus::NONE;
+    std::vector<SimBattler> to_come = rival.party;
+    to_come.erase(to_come.begin() + static_cast<std::ptrdiff_t>(slot));
+    const bool sim = own_turn(own, SimItems{.potions = 15}, rival.party[slot], rival, rival.party.size(), to_come).potion;
+    if (loop == sim){
+        return true;
+    }
+    return std::format(
+        "{} at {}% HP, {}: the loop {} a Potion, the sim {}.", rival.party[slot].species, percent,
+        status_name(status), loop ? "uses" : "doesn't use", sim ? "does" : "doesn't"
+    );
+}
+
+UnitTestResult test_loop_potion_is_sim(){
+    for (size_t slot : {size_t(1), size_t(3)}){
+        for (StatusCondition status : {StatusCondition::NONE, StatusCondition::POISON}){
+            for (int percent = 5; percent < 100; percent += 5){
+                const UnitTestResult result = loop_potion_is_sim(slot, status, percent);
+                if (result.result != UnitTestResult::PASSED){
+                    return result;
+                }
+            }
+        }
+    }
+    return true;
+}
+
+//  Task #77, the top-up: against the S.S. Anne rival's Kadabra, which the
+//  lead's next attack faints and whose turn takes little (Teleport,
+//  Disable), a Potion at 45/78 HP while the Ivysaur is to come; not with
+//  nothing to come, nor near full HP.
+UnitTestResult test_top_up(){
+    const SimTrainer rival = *sim_trainer(SS_ANNE_RIVAL);
+    const SimBattler& kadabra = rival.party[2];
+    const std::vector<SimBattler> to_come{rival.party[3]};
+    SimBattler own = *own_battler(ss_anne_lead());
+    own.hp = 45;
+    const PotionCase c = potion_case(own, kadabra, rival);
+    if (!own_turn(own, SimItems{.potions = 15}, kadabra, rival, 2, to_come).top_up){
+        return std::format("45/78 HP against the Kadabra (mean hit {:.1f}, {} turns to faint it): expected a top-up.", c.expected_hit, c.turns_to_ko);
+    }
+    if (own_turn(own, SimItems{.potions = 15}, kadabra, rival, 1).potion){
+        return "Expected no top-up with no foe to come.";
+    }
+    own.hp = 70;
+    if (own_turn(own, SimItems{.potions = 15}, kadabra, rival, 2, to_come).potion){
+        return "Expected no top-up at 70/78 HP.";
+    }
+    return true;
+}
+
 void add_tests_AutoStoryBattleSim(UnitTestDatabase& database){
     database.add<Test_AutoStoryBattleSim>("Gen 3 stats and damage worked by hand", test_hand_numbers);
     database.add<Test_AutoStoryBattleSim>("the Elite Four Farmer's Starmie picks OHKO at Sp. Atk 302", test_elite_four_table);
@@ -702,6 +806,9 @@ void add_tests_AutoStoryBattleSim(UnitTestDatabase& database){
     database.add<Test_AutoStoryBattleSim>("Cerulean rival: 15 Potions win over half", test_rival_potions_raise_chance);
     database.add<Test_AutoStoryBattleSim>("the foe's next-turn damage and move chances", test_next_turn_damage);
     database.add<Test_AutoStoryBattleSim>("S.S. Anne rival: lost to the Ivysaur, seeded", test_ss_anne_rival);
+    database.add<Test_AutoStoryBattleSim>("S.S. Anne rival: the send-outs' YES/NO is NO, the lead kept at Lv27", test_ss_anne_send_out_prompts);
+    database.add<Test_AutoStoryBattleSim>("the battle loop's Potion is the sim's, poisoned or not", test_loop_potion_is_sim);
+    database.add<Test_AutoStoryBattleSim>("a top-up before the knockout, a stronger foe to come", test_top_up);
 }
 
 
