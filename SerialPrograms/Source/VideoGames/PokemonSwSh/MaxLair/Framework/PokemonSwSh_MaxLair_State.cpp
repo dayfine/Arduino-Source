@@ -14,8 +14,18 @@ namespace PokemonSwSh{
 namespace MaxLairInternal{
 
 
+namespace{
+
+//  wins is incremented after each battle is won: battles 1-3 (wins < 3) are
+//  against rental Pokemon, and battle 4 (wins == 3) is against the legendary boss.
+bool is_boss_battle(const GlobalState& state){
+    return state.wins == 3;
+}
+
+} // namespace
+
 bool GlobalState::in_boss_battle_with_known_boss() const{
-    return wins == 3 && is_boss(boss);
+    return is_boss_battle(*this) && is_boss(boss);
 }
 
 bool GlobalState::accept_opponent(){
@@ -23,13 +33,12 @@ bool GlobalState::accept_opponent(){
         return false;
     }
     const std::string& opponent_slug = *opponent.begin();
-    //  wins is incremented after each battle is won: battles 1-3 (wins < 3) are
-    //  against rental Pokemon, and battle 4 (wins == 3) is against the legendary boss.
-    const bool in_boss_battle = (wins == 3);
-    if (is_boss(opponent_slug) != in_boss_battle){
+    //  Reject the OCR read if the opponent species doesn't match the current stage:
+    //  a legendary boss read during battles 1-3, or a non-boss rental read in battle 4.
+    if (is_boss(opponent_slug) != is_boss_battle(*this)){
         return false;
     }
-    if (in_boss_battle && !in_boss_battle_with_known_boss()){
+    if (is_boss_battle(*this) && !in_boss_battle_with_known_boss()){
         boss = opponent_slug;
     }
     return true;
