@@ -8,12 +8,20 @@
  *  tm03 from the TM Case": the console's steps had no readers and stopped
  *  before the bag.
  *
+ *  A TM or HM taught goes through the TM's scene (pokefirered
+ *  pokemon_special_anim.c, Task_UseTM_NoForget / Task_ForgetMove, then
+ *  Task_MachineSet): "Machine set!" waits for A and B cancels the teach;
+ *  the wobble and "<MON> learned <MOVE>!" run on their own. Console B,
+ *  00.23 (2026-11-03): HM01 to an Oddish with two free slots stopped on
+ *  "Machine set!", read as "other", and gave up.
+ *
  */
 
 #include <algorithm>
 #include <deque>
 #include <format>
 #include <functional>
+#include <optional>
 #include <set>
 #include <string>
 #include <utility>
@@ -57,6 +65,17 @@ enum class FakeScreen{
     KNOWN_MOVES,
     //  A tutor's last line in the overworld, after its party menu.
     TUTOR_TEXT,
+    //  The TM's scene.
+    SCENE,
+};
+
+//  A look at the TM's scene: what it shows, and whether it waits for A;
+//  the others pass with the look.
+struct SceneStep{
+    TeachText text = TeachText::UNKNOWN;
+    bool waits_for_a = false;
+    //  The disc's wobble and zoom: no message box.
+    bool box = true;
 };
 
 //  The bag, TM CASE and party menu as console B showed them.
@@ -80,8 +99,16 @@ struct FakeTeachGame{
     FakeScreen after_texts = FakeScreen::OVERWORLD;
     //  The messages after a move is forgotten ("1, 2 and... Poof!", "...
     //  forgot TAIL WHIP.", "And... learned WATER PULSE!") read as "other",
-    //  as on console B (2026-11-03).
+    //  as on console B (2026-11-03): a tutor's over the party menu, a TM's
+    //  whole scene.
     bool forget_texts_unread = false;
+    //  The TM's scene left to show, and the move it teaches: into
+    //  `scene_slot`, or a free slot.
+    std::deque<SceneStep> scene = {};
+    std::string scene_move = {};
+    std::optional<size_t> scene_slot = std::nullopt;
+    //  The TM's scene reads as "other".
+    bool scene_unread = false;
     //  The TM in use, by row.
     size_t tm = 0;
     std::vector<std::string> presses = {};
@@ -127,15 +154,61 @@ std::string tm_move(const FakeTeachGame& game){
 }
 
 void use_up(FakeTeachGame& game){
-    if (game.tutoring){
+    const std::string move = tm_move(game);
+    //  An HM is kept.
+    if (game.tutoring || is_hm_move(move)){
         return;
     }
-    const std::string move = tm_move(game);
     for (FakeTm& tm : game.tms){
         if (tm.move == move && tm.count > 0){
             tm.count--;
             return;
         }
+    }
+}
+
+//  The TM's scene, after the forget's lines if any: "Machine set!", the
+//  wobble, "<MON> learned <MOVE>!", then the TM CASE.
+void start_scene(FakeTeachGame& game, std::optional<size_t> slot){
+    game.scene.clear();
+    if (slot){
+        game.scene.push_back({});
+        game.scene.push_back({.waits_for_a = true});
+        game.scene.push_back({.waits_for_a = true});
+        game.scene.push_back({.waits_for_a = true});
+    }
+    game.scene.push_back({.text = TeachText::MACHINE_SET, .waits_for_a = true});
+    game.scene.push_back({.box = false});
+    game.scene.push_back({.box = false});
+    game.scene.push_back({.text = TeachText::LEARNED});
+    game.scene.push_back({.text = TeachText::LEARNED});
+    game.scene_move = tm_move(game);
+    game.scene_slot = slot;
+    game.scene_unread |= slot && game.forget_texts_unread;
+    game.screen = FakeScreen::SCENE;
+}
+
+//  The scene's step passed: at its end the move is learned.
+void next_scene_step(FakeTeachGame& game){
+    game.scene.pop_front();
+    if (!game.scene.empty()){
+        return;
+    }
+    if (game.scene_slot){
+        game.moves[*game.scene_slot] = game.scene_move;
+    }else{
+        game.moves.push_back(game.scene_move);
+    }
+    use_up(game);
+    game.screen = FakeScreen::TM_CASE;
+    game.cursor = game.tm;
+}
+
+void press_scene(FakeTeachGame& game, TeachPress press){
+    if (press == TeachPress::B){
+        game.error = "B cancelled the TM's scene";
+    }else if (press == TeachPress::A && game.scene.front().waits_for_a){
+        next_scene_step(game);
     }
 }
 
@@ -145,11 +218,14 @@ void choose_member(FakeTeachGame& game){
         show_texts(game, {TeachText::NOT_COMPATIBLE}, FakeScreen::PROMPT);
         return;
     }
+    if (game.moves.size() < MOVE_SLOTS && !game.tutoring){
+        start_scene(game, std::nullopt);
+        return;
+    }
     if (game.moves.size() < MOVE_SLOTS){
         game.moves.push_back(move);
-        use_up(game);
         game.cursor = 0;
-        show_texts(game, {TeachText::WANTS_TO_LEARN, TeachText::UNKNOWN}, after_party(game));
+        show_texts(game, {TeachText::LEARNED}, after_party(game));
         return;
     }
     show_texts(game, {TeachText::WANTS_TO_LEARN, TeachText::KNOWS_FOUR}, FakeScreen::DELETE_YES_NO);
@@ -246,6 +322,10 @@ void press_known_moves(FakeTeachGame& game, TeachPress press){
         if (is_hm_move(game.moves[game.cursor])){
             return;
         }
+        if (!game.tutoring){
+            start_scene(game, game.cursor);
+            return;
+        }
         game.moves[game.cursor] = tm_move(game);
         use_up(game);
         show_texts(game, {TeachText::UNKNOWN, TeachText::UNKNOWN, TeachText::UNKNOWN}, after_party(game));
@@ -271,6 +351,7 @@ void press_game(FakeTeachGame& game, TeachPress press){
     case FakeScreen::DELETE_YES_NO:
     case FakeScreen::STOP_YES_NO:   press_yes_no(game, press); return;
     case FakeScreen::KNOWN_MOVES:   press_known_moves(game, press); return;
+    case FakeScreen::SCENE:         press_scene(game, press); return;
     case FakeScreen::PROMPT:
         if (press == TeachPress::A){
             choose_member(game);
@@ -319,6 +400,13 @@ TeachView view_of(const FakeTeachGame& game){
         return {.screen = TeachScreen::PARTY_YES_NO, .cursor = game.cursor, .text = TeachText::STOP_QUESTION};
     case FakeScreen::KNOWN_MOVES:
         return {.screen = TeachScreen::KNOWN_MOVES, .cursor = game.cursor};
+    case FakeScreen::SCENE:{
+        const SceneStep& step = game.scene.front();
+        if (game.scene_unread || !step.box){
+            return {};
+        }
+        return {.screen = TeachScreen::TM_SCENE, .text = step.text};
+    }
     }
     return {};
 }
@@ -349,7 +437,11 @@ public:
         return true;
     }
     virtual TeachView look() override{
-        return view_of(m_game);
+        const TeachView view = view_of(m_game);
+        if (m_game.screen == FakeScreen::SCENE && !m_game.scene.front().waits_for_a){
+            next_scene_step(m_game);
+        }
+        return view;
     }
     virtual void press(TeachPress press) override{
         m_game.presses.emplace_back(teach_press_name(press));
@@ -396,6 +488,22 @@ void left_on_poke_balls(FakeTeachGame& game){
 void three_moves(FakeTeachGame& game){
     game.moves = {"bite", "bubble", "withdraw"};
 }
+void three_moves_scene_unread(FakeTeachGame& game){
+    three_moves(game);
+    game.scene_unread = true;
+}
+//  00.23 on console B: HM01 to the Oddish (slot 2), ABSORB and SWEET
+//  SCENT.
+void oddish_cut(FakeTeachGame& game){
+    game.tms = {{"water-pulse", 1}, {"cut", 1}};
+    game.moves = {"absorb", "sweet-scent"};
+    game.compatible.insert("cut");
+}
+//  Next in the row: TM28 DIG over a move of the Wartortle's four.
+void wartortle_dig(FakeTeachGame& game){
+    game.tms = {{"water-pulse", 1}, {"dig", 1}};
+    game.compatible.insert("dig");
+}
 void no_tm03(FakeTeachGame& game){
     game.tms = {{"rock-tomb", 1}};
 }
@@ -441,6 +549,26 @@ std::vector<ScreensCase> screens_cases(){
             .setup = three_moves,
             .plan = {.item = "tm03", .move = "water-pulse", .member = 0},
             .moves = {"bite", "bubble", "withdraw", "water-pulse"},
+        },
+        {
+            .name = "a free slot, the TM's scene read as other",
+            .setup = three_moves_scene_unread,
+            .plan = {.item = "tm03", .move = "water-pulse", .member = 0},
+            .moves = {"bite", "bubble", "withdraw", "water-pulse"},
+        },
+        {
+            .name = "console B 00.23: HM01 to the Oddish, two free slots",
+            .setup = oddish_cut,
+            .plan = {.item = "hm01", .move = "cut", .member = 1},
+            .moves = {"absorb", "sweet-scent", "cut"},
+            .tm03 = 1,
+        },
+        {
+            .name = "TM28 DIG over WITHDRAW",
+            .setup = wartortle_dig,
+            .plan = {.item = "tm28", .move = "dig", .member = 0, .forget_move = "withdraw"},
+            .moves = {"bite", "tail-whip", "bubble", "dig"},
+            .tm03 = 1,
         },
         {
             .name = "no TM03 in the TM CASE: skipped, back to the overworld",

@@ -315,6 +315,7 @@ bool ScreenTeachActions::leave(){
             stop_teaching();
             break;
         case TeachScreen::OTHER:
+        case TeachScreen::TM_SCENE:
             return m_screens.to_overworld();
         }
     }

@@ -271,6 +271,7 @@ const char* teach_screen_name(TeachScreen screen){
     case TeachScreen::PARTY_TEXT:   return "party_text";
     case TeachScreen::PARTY_YES_NO: return "party_yes_no";
     case TeachScreen::KNOWN_MOVES:  return "known_moves";
+    case TeachScreen::TM_SCENE:     return "tm_scene";
     }
     return "?";
 }
@@ -286,6 +287,8 @@ const char* teach_text_name(TeachText text){
     case TeachText::STOP_QUESTION:   return "stop_question";
     case TeachText::DID_NOT_LEARN:   return "did_not_learn";
     case TeachText::NOT_COMPATIBLE:  return "not_compatible";
+    case TeachText::MACHINE_SET:     return "machine_set";
+    case TeachText::LEARNED:         return "learned";
     }
     return "?";
 }
@@ -415,8 +418,8 @@ void add_list(
 //  then: in the bag, its pocket, the key items from the top (KEY ITEMS
 //  only) and the cursor's row (from 1, or "none"); in the TM CASE, its
 //  moves from the top and the cursor's row; in an item menu or YES/NO, the
-//  cursor's row; over the party menu, the message; on KNOWN MOVES, the five
-//  rows' moves and the cursor's row.
+//  cursor's row; over the party menu or in the TM's scene, the message; on
+//  KNOWN MOVES, the five rows' moves and the cursor's row.
 class Test_TeachScreen : public ImageUnitTest{
 public:
     Test_TeachScreen(const std::string& image)
@@ -467,6 +470,7 @@ private:
             [[fallthrough]];
         case TeachScreen::PARTY_PROMPT:
         case TeachScreen::PARTY_TEXT:
+        case TeachScreen::TM_SCENE:
             labels.push_back("text");
             values.push_back(teach_text_name(read_teach_text(logger, language, screen)));
             return;
@@ -506,6 +510,8 @@ void add_tests_TeachScreenReader(UnitTestDatabase& database){
         "KnownMoves_eng.png",
         "StopQuestion_eng.png",
         "DidNotLearn_eng.png",
+        //  HM01 to an Oddish with two free slots (00.23, console B).
+        "MachineSet_eng.png",
     }){
         database.add<Test_TeachScreen>(std::string("PokemonFRLG/TeachScreenReader/") + image);
     }
