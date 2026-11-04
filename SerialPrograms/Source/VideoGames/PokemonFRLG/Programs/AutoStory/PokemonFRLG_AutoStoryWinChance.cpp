@@ -130,6 +130,17 @@ private:
         }));
     }
 
+    //  The trainer's Pokemon not out and not fainted.
+    std::vector<SimBattler> to_come() const{
+        std::vector<SimBattler> rest;
+        for (size_t slot = 0; slot < m_trainer.party.size(); slot++){
+            if (slot != m_out && m_trainer.party[slot].hp > 0){
+                rest.push_back(m_trainer.party[slot]);
+            }
+        }
+        return rest;
+    }
+
     bool send_next(){
         if (foes_left() == 0){
             return false;
@@ -161,7 +172,7 @@ private:
     void play_turn(){
         const size_t left = foes_left();
         m_psn_turns = m_own.status == SimStatus::POISON ? m_psn_turns + 1 : 0;
-        const OwnTurn own = own_turn(m_own, m_items, foe(), m_trainer, left);
+        const OwnTurn own = own_turn(m_own, m_items, foe(), m_trainer, left, to_come());
         const bool antidote = !own.potion && !own.awakening && antidote_now();
         const std::optional<size_t> item = ai_item_choice(foe(), m_trainer.items, left);
         const std::optional<size_t> foe_slot = item ? std::nullopt : foe_move();

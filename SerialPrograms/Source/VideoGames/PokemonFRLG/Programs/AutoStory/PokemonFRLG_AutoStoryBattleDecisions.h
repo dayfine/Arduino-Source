@@ -20,6 +20,7 @@
 #define PokemonAutomation_PokemonFRLG_AutoStoryBattleDecisions_H
 
 #include <cstddef>
+#include <cstdint>
 #include <map>
 #include <optional>
 #include <set>
@@ -55,7 +56,10 @@ struct TurnAction{
 enum class TurnResult{
     DONE,
     //  An item not used (another item in its row), or a move the game said
-    //  has no PP left.
+    //  has no PP left. The first time for a move it is taken as turned
+    //  down (REFUSED): Kadabra's Disable, or a misread (console B,
+    //  2026-11-03, m68: "no PP left" read after the battle's last turn); the
+    //  second time its PP is 0.
     NOT_DONE,
     //  The game turned the move down although it has PP left: a foe's
     //  Disable (console B, 2026-11-03, Mt. Moon: Miguel's Grimer disabled
@@ -106,11 +110,15 @@ public:
 
     //  A YES/NO in or after the battle. With the lead's box gone and the
     //  opponent's there, it is "Use next POKEMON?"; else the move prompts:
-    //  "Delete a move to make room?", then "Stop learning?" after a NO, or
-    //  after YES and a move list closed with nothing forgotten. Past
-    //  MOVE_PROMPTS since the last turn, a plain YES, which ends them
-    //  either way (console B, 2026-11-03: NO and YES out of step with the
-    //  game went round for 75 s).
+    //  "Delete a move to make room?", then "Stop learning?" after a NO (in
+    //  the same turn), or after YES and a move list closed with nothing
+    //  forgotten. Past MOVE_PROMPTS since the last turn, a plain YES, which
+    //  ends them either way (console B, 2026-11-03: NO and YES out of step
+    //  with the game went round for 75 s). With no move the lead can have
+    //  reached to offer (none left, or one more than MAX_LEVELS_IN_BATTLE
+    //  above its level read before the battle), it is no move prompt, such
+    //  as the trainer's "Will <player> change POKEMON?": NO, and the lead
+    //  is left as it was.
     PromptAnswer prompt(bool lead_box_gone);
 
     //  The party list opened with the lead fainted: the slot to send in,
@@ -130,6 +138,8 @@ private:
     void see_hit(const PartyStatus& status);
     void count_down_refused();
     void move_refused();
+    //  The chance the foe's last turn seeded the lead taken in.
+    void see_seed_chance();
 
     Supplies& m_supplies;
     const BattleKind m_kind;
@@ -158,6 +168,16 @@ private:
     std::optional<size_t> m_hit_by;
     //  The slots the game turned down, and the turns until they are tried again.
     std::map<size_t, int> m_refused;
+    //  The slots "no PP left" was read for once.
+    std::set<size_t> m_no_pp_read;
+    //  The highest level a move offered can be for, from the lead's level
+    //  read before the battle; none if it wasn't read.
+    std::optional<uint8_t> m_level_cap;
+    //  The chance the lead isn't seeded, from the foes' Leech Seed chances
+    //  at each turn (the game doesn't show it), and the chance at the turn
+    //  just chosen, taken in at the next one.
+    double m_unseeded = 1.0;
+    double m_seed_pending = 0;
     //  The members sent in after the lead fainted.
     std::set<size_t> m_sent;
 };
@@ -231,6 +251,10 @@ private:
 class MoveRefusalWatch{
 public:
     void move_chosen(WallClock now);
+    //  Whether a "no PP left" read at `now` counts: no later than a
+    //  refusal's menu would come (console B, 2026-11-03, m68: one read 37 s
+    //  after the battle's last move, as the battle ended).
+    bool no_pp_due(WallClock now) const;
     //  No battle screen read while the battle goes on.
     void no_battle_screen();
     //  At the battle menu: true if the move chosen before it was turned down.
