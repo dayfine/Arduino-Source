@@ -713,6 +713,13 @@ static void add_tests_Naming(UnitTestDatabase& database){
     add_tests_NamingText(database);
 }
 
+//  The story's rows on the overworld sim, a file of tests per stage.
+static void add_tests_AutoStoryRows(UnitTestDatabase& database){
+    add_tests_AutoStoryVermilion(database);
+    add_tests_AutoStoryVermilionGym(database);
+    add_tests_AutoStoryCeladon(database);
+}
+
 void add_tests(UnitTestDatabase& database){
     add_tests_WhiteDialogDetector(database);
     add_tests_AdvanceWhiteDialogDetector(database);
@@ -751,9 +758,7 @@ void add_tests(UnitTestDatabase& database){
     add_tests_PlayerFacingReader(database);
     add_tests_AutoStory(database);
     add_tests_AutoStorySimulation(database);
-    add_tests_AutoStoryVermilion(database);
-    add_tests_AutoStoryVermilionGym(database);
-    add_tests_AutoStoryCeladon(database);
+    add_tests_AutoStoryRows(database);
     add_tests_AutoStoryTrashCans(database);
     add_tests_AutoStoryPaceSim(database);
     add_tests_AutoStoryItems(database);
