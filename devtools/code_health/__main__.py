@@ -5,12 +5,12 @@ import subprocess
 import sys
 from pathlib import Path
 
-from . import layering, style
+from . import allow, layering, style
 from .classes import measure_classes
 from .findings import annotations
 from .git_files import changed_files, default_base, read_revision
 from .metrics import measure
-from .policy import advisories, evaluate
+from .policy import advisories, bypasses, evaluate
 
 
 def analyze(path, source):
@@ -22,7 +22,7 @@ def run(root, base_ref=None, github=False):
         base_ref, how = default_base(root)
         print(f'Base: {base_ref} ({how}).')
     changes = changed_files(root, base_ref)
-    failures, notes = [], []
+    failures, notes, bypassed = [], [], []
     advisory = 0
     for current, original in changes:
         source = (root / current).read_text(encoding='utf-8-sig')
@@ -30,8 +30,14 @@ def run(root, base_ref=None, github=False):
         metrics = analyze(current, source)
         previous = analyze(current, previous_source) if original else []
         failures.extend(layering.check(current, source, previous_source))
-        failures.extend(evaluate(metrics, previous))
+        allowances, tag_errors = allow.parse(current, source)
+        allowed, misplaced = allow.attach(current, source, allowances, metrics)
+        failures.extend(tag_errors + misplaced)
+        failures.extend(evaluate(metrics, previous, allowed))
         notes.extend(advisories(metrics, previous))
+        notices, unneeded = bypasses(metrics, allowed)
+        bypassed.extend(notices)
+        notes.extend(unneeded)
         style_errors, style_notes = style.check(current, source, previous_source)
         failures.extend(style_errors)
         notes.extend(style_notes)
@@ -40,11 +46,16 @@ def run(root, base_ref=None, github=False):
     print(f'Advisory: {advisory} changed files exceed 500 lines; prefer functions <=25 lines.')
     for note in notes:
         print(f'Advisory: {note}')
+    for notice in bypassed:
+        print(f'Bypass: {notice}')
     for failure in failures:
         print(failure, file=sys.stderr)
     if github:
-        for line in annotations('error', failures) + annotations('warning', notes):
+        for line in (annotations('error', failures) + annotations('warning', notes)
+                     + annotations('warning', bypassed, title='bypass')):
             print(line)
+    if bypassed:
+        print(f'Bypassed: {len(bypassed)} limits under code-health allow tags; review each justification.')
     print(f'Code health: {len(failures)} failures.')
     return bool(failures)
 

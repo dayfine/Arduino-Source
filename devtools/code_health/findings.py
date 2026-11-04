@@ -3,7 +3,8 @@ from dataclasses import dataclass
 
 # GitHub shows at most 10 of each level per step in the diff; more is noise in the log.
 ANNOTATION_CAP = 50
-TITLES = {'error': 'Code health', 'warning': 'Code health (advisory)'}
+TITLES = {'error': 'Code health', 'warning': 'Code health (advisory)',
+          'bypass': 'Code health (bypass)'}
 
 
 @dataclass(frozen=True)
@@ -24,16 +25,18 @@ def escape_property(text):
     return escape_data(str(text)).replace(':', '%3A').replace(',', '%2C')
 
 
-def annotation(level, finding):
+def annotation(level, finding, title=None):
     properties = ','.join(f'{key}={escape_property(value)}' for key, value in
-                          (('file', finding.path), ('line', finding.line), ('title', TITLES[level])))
+                          (('file', finding.path), ('line', finding.line), ('title', TITLES[title or level])))
     return f'::{level} {properties}::{escape_data(finding.message)}'
 
 
-def annotations(level, findings, cap=ANNOTATION_CAP):
-    """Workflow commands for at most `cap` findings, then a plain note about the rest."""
-    lines = [annotation(level, finding) for finding in findings[:cap]]
+def annotations(level, findings, cap=ANNOTATION_CAP, title=None):
+    """Workflow commands for at most `cap` findings, then a plain note about the rest.
+
+    `title` is a TITLES key that labels them when it differs from `level`."""
+    lines = [annotation(level, finding, title) for finding in findings[:cap]]
     if len(findings) > cap:
-        lines.append(f'Annotated {cap} of {len(findings)} {TITLES[level].lower()} findings; '
+        lines.append(f'Annotated {cap} of {len(findings)} {TITLES[title or level].lower()} findings; '
                      'see the log above for the rest.')
     return lines
