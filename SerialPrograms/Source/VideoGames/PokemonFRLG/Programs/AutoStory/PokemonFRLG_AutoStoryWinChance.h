@@ -17,8 +17,11 @@
  *  game's counter), poison (1/8 HP a turn), paralysis (1/4 no move), Leech
  *  Seed (1/8 a turn to the other side), flinch, one- and two-stage stat
  *  changes, multi-hit moves (2 to 5 as the game draws them), drain (half)
- *  and Recover (half) are played; burn, freeze, confusion, recoil,
- *  recharge, two-turn moves, trapping, abilities and held items are not.
+ *  and Recover (half) are played, and two-turn moves (two_turn()): the
+ *  charge turn, PP paid then and no choice the next, cut short by a turn
+ *  the user can't move; under ground or in the air every move at it but
+ *  its own stat raises and heals misses. Burn, freeze, confusion, recoil,
+ *  recharge, trapping, abilities and held items are not.
  *  The lead is never switched out: a fainted lead is a lost battle.
  *
  */

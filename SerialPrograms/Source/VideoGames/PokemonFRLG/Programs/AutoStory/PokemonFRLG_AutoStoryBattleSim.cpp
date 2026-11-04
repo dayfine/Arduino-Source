@@ -205,6 +205,20 @@ int cv_toxic(const SimBattler& user, const SimBattler& target, std::mt19937& rng
     return score - (hp_percent(target) > 50 || random_below(rng, 50) ? 0 : 3);
 }
 
+//  AI_CV_EvasionUp, without the target's Toxic, Ingrain and Curse, which
+//  the sim doesn't play.
+int cv_evasion_up(const SimBattler& user, const SimBattler& target, std::mt19937& rng){
+    int score = 0;
+    score += hp_percent(user) >= 90 && !random_below(rng, 100) ? 3 : 0;
+    score -= level(user, Stage::EVASION) >= 9 && !random_below(rng, 128) ? 1 : 0;
+    score += target.seeded && !random_below(rng, 70) ? 3 : 0;
+    if (hp_percent(user) > 70 || level(user, Stage::EVASION) == MAX_STAGE){
+        return score;
+    }
+    const bool low = hp_percent(user) < 40 || hp_percent(target) < 40;
+    return score - (low || !random_below(rng, 70) ? 2 : 0);
+}
+
 int cv_heal(const SimBattler& user, const SimBattler& target, std::mt19937& rng){
     if (hp_percent(user) == 100){
         return -3;
@@ -229,6 +243,9 @@ int viability(const MoveData& move, const SimBattler& user, const SimBattler& ta
     }
     if (effect == "accuracy-down"){
         return cv_accuracy_down(user, target, rng);
+    }
+    if (effect == "evasion-up"){
+        return cv_evasion_up(user, target, rng);
     }
     if (effect == "speed-down"){
         return faster(target, user) ? (random_below(rng, 70) ? 0 : 2) : -3;
@@ -303,9 +320,12 @@ uint32_t lowest_roll(const SimBattler& own, const SimBattler& foe, const MoveDat
     return damage_range(own.body, foe.body, move, false).min * hits_of(move);
 }
 
+//  At the move's own accuracy: the battle loop doesn't see stages. A
+//  two-turn move does half its damage a turn.
 double mean_per_turn(const SimBattler& own, const SimBattler& foe, const MoveData& move){
     const double accuracy = move.accuracy == 0 ? 1.0 : move.accuracy / 100.0;
-    return average_damage(own.body, foe.body, move) * hits_of(move) * accuracy;
+    const double turns = two_turn(move) ? 2.0 : 1.0;
+    return average_damage(own.body, foe.body, move) * hits_of(move) * accuracy / turns;
 }
 
 //  Turns to faint `foe` with `per_turn` a turn, the AI healing it as
@@ -562,6 +582,16 @@ uint32_t crit_odds(const MoveData& move){
     return move.effect == "high-critical" ? HIGH_CRIT_CHANCE : CRIT_CHANCE;
 }
 
+bool two_turn(const MoveData& move){
+    const std::string_view effect = move.effect;
+    return effect == "semi-invulnerable" || effect == "solar-beam" || effect == "razor-wind"
+        || effect == "skull-bash" || effect == "sky-attack";
+}
+
+bool semi_invulnerable(const SimBattler& battler){
+    return !battler.charging.empty() && data_of(battler.charging).effect == "semi-invulnerable";
+}
+
 double NextTurnDamage::mean() const{
     double sum = 0;
     for (size_t damage = 0; damage < hp_lost.size(); damage++){
@@ -652,7 +682,8 @@ std::optional<size_t> planned_attack_slot(
         const bool faints = lowest_roll(own, foe, move) >= foe.hp;
         const int sure = move.accuracy == 0 ? 100 : move.accuracy;
         //  Fewest turns, then surest, then weakest, then most PP left.
-        const size_t turns = faints ? 1 : turns_to_faint(foe, items, foes_left, mean_per_turn(own, foe, move));
+        const size_t first = two_turn(move) ? 2 : 1;
+        const size_t turns = faints ? first : turns_to_faint(foe, items, foes_left, mean_per_turn(own, foe, move));
         const Rank rank{turns, -(faints ? sure : 0), move.power, -own.moves[slot].pp};
         if (!best || rank < best_rank){
             best = slot;
@@ -784,7 +815,7 @@ bool sure_first_ko(
     const bool foe_priority = std::ranges::any_of(foe.moves, [](const SimMove& known){
         return known.pp > 0 && data_of(known.move).priority > 0;
     });
-    const bool first = speed_of(own) > speed_of(foe) && !foe_priority && move.priority >= 0;
+    const bool first = speed_of(own) > speed_of(foe) && !foe_priority && move.priority >= 0 && !two_turn(move);
     const bool sure = move.accuracy == 0 || move.accuracy >= 100;
     return first && sure && lowest_roll(own, foe, move) >= foe.hp && !ai_item_choice(foe, items, foes_left);
 }

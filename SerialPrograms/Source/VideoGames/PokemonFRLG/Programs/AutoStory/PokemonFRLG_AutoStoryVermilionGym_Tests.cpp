@@ -15,11 +15,13 @@
 #include <format>
 #include <functional>
 #include <optional>
+#include <set>
 #include <string>
 #include <utility>
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
+#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRoute.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSim.h"
 #include "PokemonFRLG_AutoStoryDamage.h"
@@ -99,10 +101,9 @@ MapData& map_named(std::vector<MapData>& maps, const std::string& name){
     throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "No map " + name + ".");
 }
 
-//  The story's maps with the trainers beaten that rows before 00.24
-//  fought: Route 6's Jeff (00.21) and Vermilion Gym's three (00.23).
-std::vector<MapData> maps_after_gym(){
-    std::vector<MapData> maps = story_maps();
+//  `maps` with the trainers beaten that rows before 00.24 fought: Route
+//  6's Jeff (00.21) and Vermilion Gym's three (00.23).
+std::vector<MapData> maps_after_gym(std::vector<MapData> maps = story_maps()){
     for (MapObject& object : map_named(maps, GYM).objects){
         object.trainer.reset();
     }
@@ -112,6 +113,17 @@ std::vector<MapData> maps_after_gym(){
         }
     }
     return maps;
+}
+
+//  maps_after_gym() with Oak's aide on Vermilion City's (25, 7): Lt.
+//  Surge's win shows him (VermilionCity_Gym_EventScript_ShowOaksAide),
+//  and he stays until talked to (VermilionCity_EventScript_HideOaksAide).
+std::vector<MapData> maps_after_surge(){
+    const std::vector<MapData> all = overworld_maps();
+    std::set<std::string> flags = map_flag_set(all, "after_hall_of_fame");
+    flags.merge(map_flag_set(all, "new_game"));
+    flags.erase("FLAG_HIDE_VERMILION_CITY_OAKS_AIDE");
+    return maps_after_gym(overworld_maps(flags));
 }
 
 //  The walk to `can`'s stand on `sim` as the trash can step plans it, on
@@ -337,6 +349,32 @@ UnitTestResult test_to_surge_and_out(){
     return true;
 }
 
+//  Console B, 00.25 (2026-11-03 18:17): the walk to the nurse went up
+//  column 27 to row 7 and west along it, into Oak's aide on (25, 7), there
+//  since Surge's win; the leg was taken as walked and the step into the
+//  Center's door went into a house's wall. 00.25 from Surge to the nurse
+//  with the aide there, meeting no one.
+UnitTestResult test_out_past_oaks_aide(){
+    const StoryCheckpoint& row = checkpoint("00.25");
+    const std::vector<MapData> maps = maps_after_surge();
+    const MapData& city = *std::find_if(maps.begin(), maps.end(), [](const MapData& map){ return map.name == StoryTable::VERMILION; });
+    if (object_at(city, {25, 7}) == nullptr){
+        return "Expected Oak's aide on (25, 7) after Lt. Surge.";
+    }
+    StoryPose at = *story_pose(*row.start);
+    OverworldSim sim(maps, MapPosition{at.map, at.tile}, *at.facing);
+    for (const StoryStep& step : row.steps){
+        if (const std::string failure = gym_step_on_sim(sim, at, step, row.id); !failure.empty()){
+            return failure;
+        }
+    }
+    const MapPosition nurse{StoryTable::VERMILION_CENTER, {7, 4}};
+    if (!sim.state().violations.empty() || !(sim.state().position == nurse)){
+        return "Expected the nurse reached past Oak's aide; on " + to_string(sim.state().position) + (sim.state().violations.empty() ? "." : ", " + sim.state().violations.back());
+    }
+    return true;
+}
+
 //  The story's lead before Surge: Wartortle at `level` with the S.S.
 //  Anne's moves (00.22), stats at OWN_GENES.
 PartyMember surge_lead(uint8_t level){
@@ -348,10 +386,10 @@ PartyMember surge_lead(uint8_t level){
     return member_from_summary("wartortle", level, moves, stats);
 }
 
-//  Lt. Surge against the lead with 14 Potions: Raichu's Shock Wave and
-//  Thunder Wave beat Water Pulse and Bite (6% at Lv28); TM28 Dig in place
-//  of Withdraw takes it to 47% at Lv28 and 51% at Lv29 and Lv30, past the
-//  GRIND's gate (00.23, 00.24). The battles still lost are to the
+//  Lt. Surge against the lead with 14 Potions: Raichu's Shock Wave,
+//  Thunder Wave and Double Team beat Water Pulse and Bite (3% at Lv28);
+//  TM28 Dig in place of Withdraw takes it to 27% at Lv28 and 61% at Lv30,
+//  past the GRIND's gate (00.23, 00.24). The battles still lost are to the
 //  Raichu. The gym's three trainers are no risk.
 UnitTestResult test_surge_chance(){
     const SimTrainer surge = *sim_trainer("TRAINER_LEADER_LT_SURGE");
@@ -366,9 +404,9 @@ UnitTestResult test_surge_chance(){
     const WinEstimate plain = chance(28, false);
     const WinEstimate dug = chance(28, true);
     const WinEstimate dug30 = chance(30, true);
-    if (plain.chance > 0.15 || dug.chance < 0.35 || dug.chance > 0.55 || dug30.chance < dug.chance + 0.02){
+    if (plain.chance > 0.15 || dug.chance < 0.2 || dug.chance > 0.4 || dug30.chance < 0.5){
         return std::format(
-            "Expected under 15% at Lv28, 35-55% with Dig, more at Lv30; got {:.1f}%, {:.1f}% ({}), {:.1f}%.",
+            "Expected under 15% at Lv28, 20-40% with Dig, 50% or more at Lv30; got {:.1f}%, {:.1f}% ({}), {:.1f}%.",
             100 * plain.chance, 100 * dug.chance, loss_text(dug), 100 * dug30.chance
         );
     }
@@ -380,6 +418,58 @@ UnitTestResult test_surge_chance(){
         if (estimate_win_chance(*own_battler(surge_lead(28)), potions, *sim_trainer(trainer)).chance < 0.9){
             return std::string("Expected the lead to beat ") + trainer + " 90% of the time or more.";
         }
+    }
+    return true;
+}
+
+//  Console B, m73 (2026-11-03): the Raichu stayed at full HP for six
+//  turns while the Dig missed. pret AI_CV_EvasionUp gives Double Team +3
+//  at 90% HP or more, 156 times in 256, over Shock Wave and Thunder Wave
+//  (100 each); AI_CBM_EvasionUp takes 10 off at +6 evasion.
+UnitTestResult test_surge_raichu_double_team(){
+    const SimTrainer surge = *sim_trainer("TRAINER_LEADER_LT_SURGE");
+    const SimBattler& raichu = surge.party[2];
+    const SimBattler lead = *own_battler(surge_lead(29));
+    if (raichu.moves[2].move != "double-team"){
+        return "Expected the Raichu's third move to be Double Team, got " + raichu.moves[2].move + ".";
+    }
+    const double full = ai_move_chances(surge, raichu, lead)[2];
+    SimBattler dodging = raichu;
+    dodging.body.stages[static_cast<size_t>(Stage::EVASION)] = 6;
+    const double maxed = ai_move_chances(surge, dodging, lead)[2];
+    if (full < 0.65 || maxed > 0){
+        return std::format("Expected Double Team 65% of the time or more at full HP, never at +6; got {:.0f}% and {:.0f}%.", 100 * full, 100 * maxed);
+    }
+    return true;
+}
+
+//  m73's lead as its summary showed it before Lt. Surge, `levels` more.
+PartyMember m73_lead(uint8_t levels = 0){
+    std::vector<SummaryMove> moves;
+    for (const char* move : {"bite", "water-pulse", "bubble", "dig"}){
+        moves.push_back(SummaryMove{.move = move, .pp = max_pp(move), .max_pp = max_pp(move)});
+    }
+    PartyMember lead = member_from_summary("wartortle", 29, moves, Stats{83, 44, 59, 51, 64, 49});
+    lead.moves_through_level = static_cast<uint8_t>(29 + levels);
+    return lead;
+}
+
+//  m73: each Dig took two turns (18 s from menu to menu, Bite 10 s), and
+//  the Raichu's Double Team lands while the lead is under ground. The sim
+//  played Dig as one turn and gave Double Team no CHECK_VIABILITY: 79% for
+//  m73's lead and 14 Potions, lost on the console. Now 58%, all lost to
+//  the Raichu; at Lv31 the lead outspeeds it (82%).
+UnitTestResult test_surge_dig_two_turns(){
+    const SimItems potions{.potions = 14};
+    const WinEstimate m73 = *story_win_chance(m73_lead(), potions, 1.0, "TRAINER_LEADER_LT_SURGE");
+    const WinEstimate lv31 = *story_win_chance(m73_lead(2), potions, 1.0, "TRAINER_LEADER_LT_SURGE");
+    const auto& by_foe = m73.losses.by_foe;
+    const bool raichu = by_foe.contains("raichu") && by_foe.at("raichu") == m73.battles - m73.wins;
+    if (m73.chance < 0.45 || m73.chance > 0.7 || !raichu || lv31.chance < 0.75){
+        return std::format(
+            "Expected m73's lead at 45-70%, every loss to the Raichu, 75% or more at Lv31; got {:.1f}% ({}), {:.1f}%.",
+            100 * m73.chance, loss_text(m73), 100 * lv31.chance
+        );
     }
     return true;
 }
@@ -423,7 +513,10 @@ void add_tests_AutoStoryVermilionGym(UnitTestDatabase& database){
     database.add<Test_AutoStoryVermilionGym>("00.23 Vermilion Gym: Dwayne, Baily and Tucker, the cans at once or after a reset", test_gym_row);
     database.add<Test_AutoStoryVermilionGym>("00.23 every can's stand from Tucker's tile and from every other, and out", test_cans_from_everywhere);
     database.add<Test_AutoStoryVermilionGym>("00.24 and 00.25 through the beams to Lt. Surge and out", test_to_surge_and_out);
+    database.add<Test_AutoStoryVermilionGym>("00.25 out to the nurse past Oak's aide on (25, 7)", test_out_past_oaks_aide);
     database.add<Test_AutoStoryVermilionGym>("Lt. Surge: Dig over Withdraw, the sim's chance", test_surge_chance);
+    database.add<Test_AutoStoryVermilionGym>("Lt. Surge: the Raichu's Double Team at full HP", test_surge_raichu_double_team);
+    database.add<Test_AutoStoryVermilionGym>("Lt. Surge: Dig takes two turns, m73's lead under 79%", test_surge_dig_two_turns);
     database.add<Test_AutoStoryVermilionGym>("00.24 with Lt. Surge winnable already: no trip to Route 6", test_surge_winnable_skips_grind);
 }
 

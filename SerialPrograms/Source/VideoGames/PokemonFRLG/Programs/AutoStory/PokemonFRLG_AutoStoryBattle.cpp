@@ -512,9 +512,10 @@ private:
                 ErrorReportMode::SEND_ERROR_REPORT, "fight_battle(): no battle on screen.", m_console
             );
         }
-        if (now - m_start > BATTLE_TIMEOUT){
+        //  Neither the battle nor the overworld for a minute: a stop, not 10 minutes of + and B.
+        if (now - m_start > BATTLE_TIMEOUT || m_end.overworld_lost(now)){
             OperationFailedExceptionWithScreenshot::fire(
-                ErrorReportMode::SEND_ERROR_REPORT, "fight_battle(): the battle took over 10 minutes.", m_console
+                ErrorReportMode::SEND_ERROR_REPORT, now - m_start > BATTLE_TIMEOUT ? std::string("fight_battle(): the battle took over 10 minutes.") : std::format("fight_battle(): no battle screen and no START menu for 60 s after the battle (turn {}{}).", m_decisions.turns(), m_decisions.lost() ? ", the lead fainted: the battle is lost" : ""), m_console
             );
         }
     }
@@ -991,7 +992,6 @@ OverworldInterruptSet story_interrupts(Supplies& supplies, bool fight_wild, Stor
     ret.other.emplace_back(std::make_unique<StoryMessage>(supplies, checks, language));
     return ret;
 }
-
 
 
 }
