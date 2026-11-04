@@ -68,52 +68,53 @@ private:
     BossStateTestCase m_scenario;
 };
 
+const BossStateTestCase CASES[] = {
+    {
+        .input = {.name = "rental before three wins", .wins = 2, .opponent = {"mimikyu-disguised"}, .boss = "", .final_wins = 3},
+        .expectation = {.accepted = true, .boss = "", .boss_if_caught = ""},
+    },
+    {
+        .input = {.name = "Mimikyu at boss stage must retry", .wins = 3, .opponent = {"mimikyu-disguised"}, .boss = "", .final_wins = 3},
+        .expectation = {.accepted = false, .boss = "", .boss_if_caught = ""},
+    },
+    {
+        .input = {.name = "Kyurem after Mimikyu misidentification", .wins = 3, .opponent = {"kyurem"}, .boss = "mimikyu-disguised", .final_wins = 3},
+        .expectation = {.accepted = true, .boss = "kyurem", .boss_if_caught = ""},
+    },
+    {
+        .input = {.name = "identified boss lost", .wins = 3, .opponent = {"kyurem"}, .boss = "kyurem", .final_wins = 3},
+        .expectation = {.accepted = true, .boss = "kyurem", .boss_if_caught = ""},
+    },
+    {
+        .input = {.name = "identified boss caught", .wins = 3, .opponent = {"kyurem"}, .boss = "", .final_wins = 4},
+        .expectation = {.accepted = true, .boss = "kyurem", .boss_if_caught = "kyurem"},
+    },
+    {
+        .input = {.name = "boss before three wins must retry", .wins = 2, .opponent = {"kyurem"}, .boss = "", .final_wins = 2},
+        .expectation = {.accepted = false, .boss = "", .boss_if_caught = ""},
+    },
+    {
+        .input = {.name = "empty boss-stage read must retry", .wins = 3, .opponent = {}, .boss = "", .final_wins = 3},
+        .expectation = {.accepted = false, .boss = "", .boss_if_caught = ""},
+    },
+    {
+        .input = {.name = "ambiguous boss-stage read must retry", .wins = 3, .opponent = {"kyurem", "mimikyu-disguised"}, .boss = "", .final_wins = 3},
+        .expectation = {.accepted = false, .boss = "", .boss_if_caught = ""},
+    },
+    {
+        .input = {.name = "rejected read preserves known boss", .wins = 3, .opponent = {"mimikyu-disguised"}, .boss = "kyurem", .final_wins = 3},
+        .expectation = {.accepted = false, .boss = "kyurem", .boss_if_caught = ""},
+    },
+    {
+        .input = {.name = "fourth win cannot legitimize rental boss", .wins = 3, .opponent = {"mimikyu-disguised"}, .boss = "mimikyu-disguised", .final_wins = 4},
+        .expectation = {.accepted = false, .boss = "mimikyu-disguised", .boss_if_caught = ""},
+    },
+};
+
 }
 
 void add_tests_MaxLairBossState(UnitTestDatabase& database){
-    const BossStateTestCase cases[] = {
-        {
-            .input = {.name = "rental before three wins", .wins = 2, .opponent = {"mimikyu-disguised"}, .boss = "", .final_wins = 3},
-            .expectation = {.accepted = true, .boss = "", .boss_if_caught = ""},
-        },
-        {
-            .input = {.name = "Mimikyu at boss stage must retry", .wins = 3, .opponent = {"mimikyu-disguised"}, .boss = "", .final_wins = 3},
-            .expectation = {.accepted = false, .boss = "", .boss_if_caught = ""},
-        },
-        {
-            .input = {.name = "Kyurem after Mimikyu misidentification", .wins = 3, .opponent = {"kyurem"}, .boss = "mimikyu-disguised", .final_wins = 3},
-            .expectation = {.accepted = true, .boss = "kyurem", .boss_if_caught = ""},
-        },
-        {
-            .input = {.name = "identified boss lost", .wins = 3, .opponent = {"kyurem"}, .boss = "kyurem", .final_wins = 3},
-            .expectation = {.accepted = true, .boss = "kyurem", .boss_if_caught = ""},
-        },
-        {
-            .input = {.name = "identified boss caught", .wins = 3, .opponent = {"kyurem"}, .boss = "", .final_wins = 4},
-            .expectation = {.accepted = true, .boss = "kyurem", .boss_if_caught = "kyurem"},
-        },
-        {
-            .input = {.name = "boss before three wins must retry", .wins = 2, .opponent = {"kyurem"}, .boss = "", .final_wins = 2},
-            .expectation = {.accepted = false, .boss = "", .boss_if_caught = ""},
-        },
-        {
-            .input = {.name = "empty boss-stage read must retry", .wins = 3, .opponent = {}, .boss = "", .final_wins = 3},
-            .expectation = {.accepted = false, .boss = "", .boss_if_caught = ""},
-        },
-        {
-            .input = {.name = "ambiguous boss-stage read must retry", .wins = 3, .opponent = {"kyurem", "mimikyu-disguised"}, .boss = "", .final_wins = 3},
-            .expectation = {.accepted = false, .boss = "", .boss_if_caught = ""},
-        },
-        {
-            .input = {.name = "rejected read preserves known boss", .wins = 3, .opponent = {"mimikyu-disguised"}, .boss = "kyurem", .final_wins = 3},
-            .expectation = {.accepted = false, .boss = "kyurem", .boss_if_caught = ""},
-        },
-        {
-            .input = {.name = "fourth win cannot legitimize rental boss", .wins = 3, .opponent = {"mimikyu-disguised"}, .boss = "mimikyu-disguised", .final_wins = 4},
-            .expectation = {.accepted = false, .boss = "mimikyu-disguised", .boss_if_caught = ""},
-        },
-    };
-    for (const BossStateTestCase& scenario : cases){
+    for (const BossStateTestCase& scenario : CASES){
         database.add<Test_MaxLairBossState>(scenario);
     }
 }
