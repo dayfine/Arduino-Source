@@ -380,6 +380,9 @@ so keep it where it clearly pays off. `std::string_view` is the exception (see S
   - function length (50; 25 recommended)
   - nesting (4) and parameters (7)
   - public methods (7), public data in a mutating class, single-method interface
+  - a limit may be exceeded only under a justified `// code-health: allow <check> -- <why>`
+    tag at the site, up to twice the limit; squashing lines to get under it is not allowed
+    ([README](devtools/code_health/README.md#bypass-tags))
   - layering: shared code must not include game modules
 - **Checked now by CI:**
   - the tabs job

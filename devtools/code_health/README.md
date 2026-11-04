@@ -56,7 +56,7 @@ improve but may not grow. Unchanged long functions in a touched file do not
 block unrelated improvements. Renamed files compare with their original path.
 Renamed function signatures have a new identity and must meet the limits.
 There is no repository-wide scan, generated baseline or exceptions registry.
-Fix/extract code instead of raising limits.
+Fix/extract code instead of raising limits; the one way past a limit is a justified tag at the site.
 
 With `--github` (CI passes it; also the default when `GITHUB_ACTIONS=true`) each
 failure is also printed as an `::error` annotation and each advisory as a
@@ -82,6 +82,40 @@ Class shapes come from a lexical member scan over lizard's tokens
 functions. libclang would need a compilation database with Qt include paths
 to parse these headers; the scan only has to tell access sections, member
 functions and data apart. Classes split across `#if` branches are skipped.
+
+## Bypass tags
+
+```cpp
+// Moves by generation, in the game's own order.
+// code-health: allow function_lines -- one table of move data; splitting it hides which rows belong together
+void load_move_table(){
+```
+
+`// code-health: allow <check>[,<check>] -- <justification>` lets the listed metrics of one
+function or class exceed their limit. Checks are the metric names in the table above:
+`file_lines`, `function_lines`, `nesting`, `parameters`, `public_methods`, `public_data`,
+`single_method_interface`. Style and layering findings have no bypass.
+
+- **Place it** on the function's or class's first line, or in the comment block directly above
+  it (only `//` comment and `template` lines between). A `file_lines` tag goes in the first 20
+  lines of the file. A tag that attaches to nothing fails.
+- **Justify it:** the text after `--`, on the tag line itself, must be at least 40 characters and 6 words,
+  and say why splitting would make the code worse. Unknown checks, a missing or short
+  justification, or a malformed tag fail.
+- **Ceiling:** a tag allows at most twice the limit (100-line functions, 8 nesting levels,
+  14 parameters, 14 public methods, 2000-line files). Yes/no checks with limit 0 (public data,
+  single-method interface) have no ceiling. Legacy values above the ceiling may still stay or shrink.
+- **Visibility:** every value over its limit under a tag prints as a `Bypass:` line quoting the
+  justification, and under `--github` as a `::warning` titled "Code health (bypass)" at the
+  function or class, so each bypass shows in the PR diff. A tag on a value within its limit is reported as
+  an advisory to remove it.
+
+A bypass is acceptable when splitting would hurt readability: a data table or data-driven file,
+a flat switch over every enum value or game state, a generated-like list of registrations, or an
+interface whose shape is fixed by Qt or upstream. "Legacy", "TODO" or "will split later" are not
+justifications. Squashing statements onto fewer lines, or packing parameters into an ad-hoc
+struct, to get under a limit is not acceptable: it hides the size from the linter and reviewers.
+Use a tag and argue for it, or split the code.
 
 ## Layering
 
