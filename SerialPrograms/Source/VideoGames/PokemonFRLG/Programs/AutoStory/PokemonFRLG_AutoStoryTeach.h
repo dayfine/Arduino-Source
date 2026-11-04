@@ -10,11 +10,12 @@
  *    "Teach which POKEMON?", each member ABLE or NOT ABLE. A on a member
  *    that knows the move says so; one NOT ABLE: "<MON> and <MOVE> are not
  *    compatible.".
- *  - "<MON> wants to learn the move <MOVE>."; with fewer than four moves
- *    it learns.
- *  - With four: "However, <MON> already knows four moves.", "Should a
- *    move be deleted and replaced with <MOVE>?" YES/NO. YES opens the
- *    moves page; A on a move forgets it and it learns. An HM move can't be
+ *  - With fewer than four moves it learns, in the TM's scene ("Machine
+ *    set!", "<MON> learned <MOVE>!").
+ *  - With four: "<MON> wants to learn the move <MOVE>.", "However, <MON>
+ *    already knows four moves.", "Should a move be deleted and replaced
+ *    with <MOVE>?" YES/NO. YES opens the moves page; A on a move forgets
+ *    it and it learns, in the same scene. An HM move can't be
  *    forgotten (pokefirered: "HM moves can't be forgotten now.") and the
  *    moves page shows again. B there, then "Stop trying to teach <MOVE>?"
  *    YES, leaves it unlearned.
