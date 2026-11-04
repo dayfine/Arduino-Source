@@ -11,10 +11,13 @@
  *  on the console (r72 to r261, 2026-10-30); 00.05 to 00.05c, measured there
  *  first, are now planned on Jubilife's map with the people and triggers of
  *  the Diamond decomp's zone events and scripts. Segment 01 ran on the
- *  console end to end (2026-10-31), its walks kept as events.
+ *  console end to end (2026-10-31), its walks as events; all of it but
+ *  01.04's Gym is now planned on the maps the same way (2026-11-02), and
+ *  has not run on a console as plans yet.
  *
  */
 
+#include <format>
 #include <map>
 #include <string>
 #include <utility>
@@ -54,6 +57,18 @@ const char* const ROUTE_202 = "Route202";
 const char* const JUBILIFE = "JubilifeCity";
 //  No map of it: a pose there names the room, not its tiles.
 const char* const TRAINERS_SCHOOL = "TrainersSchool";
+const char* const OREBURGH = "OreburghCity";
+const char* const GYM = "OreburghGym";
+//  The mine's entrance hall (Diamond's MAP_OREBURGH_MINE_B1F) and the coal
+//  room below it, Roark's.
+const char* const MINE_HALL = "OreburghMineB1F";
+const char* const MINE = "OreburghMine";
+const char* const GATE = "OreburghGate";
+const char* const ROUTE_203 = "Route203";
+const char* const ROUTE_204_SOUTH = "Route204South";
+const char* const RAVAGED_PATH = "RavagedPath";
+const char* const ROUTE_204_NORTH = "Route204North";
+const char* const FLOAROMA = "FloaromaTown";
 
 Pose at(const char* map, int x, int y, std::optional<Direction> facing = std::nullopt){
     return Pokemon::tile_pose(map, {TilePos{x, y}}, facing);
@@ -125,12 +140,28 @@ StoryStep legs(std::string name, std::vector<StoryLeg> legs, std::string why, st
 StoryStep to_walls(std::string name, std::vector<StoryLeg> legs, std::string why){
     return PokemonBDSP::legs(std::move(name), std::move(legs), std::move(why), "to_wall");
 }
+//  `step`, after which the player stands on `pose`: a walk to a wall from
+//  a few tiles ends on one.
+StoryStep anchored(StoryStep step, Pose pose){
+    step.pose_after = std::move(pose);
+    return step;
+}
 //  TODO(#114 coord events): the map schema has no scene triggers yet, so
 //  each row steps onto the decomp's trigger tile, named in its reason.
 StoryStep step_into(std::string name, Direction direction, std::string why, std::optional<Pose> pose_after = std::nullopt){
     StoryStep step = make(StoryStepKind::STEP, std::move(name), std::move(why));
     step.direction = direction;
     step.pose_after = std::move(pose_after);
+    return step;
+}
+//  Through a door or a cave mouth `direction` a D-pad tap at a time, each
+//  looked at, ending on the far map's location banner (the executor's
+//  "to_banner"): a hold can carry on past a fade it missed (r75, r219g).
+//  A tap after an unseen fade may step once more on the far side, so
+//  `pose_after` allows for it.
+StoryStep tap_into(std::string name, Direction direction, std::string why, Pose pose_after){
+    StoryStep step = step_into(std::move(name), direction, std::move(why), std::move(pose_after));
+    step.variant = "to_banner";
     return step;
 }
 StoryStep talk(std::string name, std::string why){
@@ -274,11 +305,13 @@ std::vector<StoryCheckpoint> lake_and_pokedex(){
             step_into("lake_entrance", NORTH, "the trigger (16..17, 12): Barry hears Rowan and the two walk in"),
             event("starter_briefcase", "the lake's scene, to the open briefcase"),
             event("choose_starter", "the starter from the program's option"),
-            event("fight_starly", "the Starly battle"),
+            battle("starly", true, "the Starly battle, with the starter alone", "starter"),
             //  The game walks us out of the lake, then the Lakefront's scene walks us 3
             //  south: (17, 14) facing south, or a tile below (decomp; timeline 00.02 #5).
-            event("after_starly", "Rowan's lines and the walk out of the lake",
-                at_or_next_to(LAKEFRONT, "below_lake_entrance", SOUTH)),
+            //  Butters' sequence was B for a fixed 60 s; the scene rule ends it on
+            //  the quiet overworld instead (unchecked on the console).
+            scene("after_starly", at_or_next_to(LAKEFRONT, "below_lake_entrance", SOUTH),
+                "Rowan's lines and the walk out of the lake"),
         }),
         row("00.03", "Back to Sandgem: Rowan, Dawn and the Pokedex", at_or_next_to(LAKEFRONT, "below_lake_entrance", SOUTH), {
             route("short_of_rowan", at(ROUTE_201, 4, 14, EAST), "back east onto Route 201's lower level"),
@@ -301,8 +334,12 @@ std::vector<StoryCheckpoint> lake_and_pokedex(){
             //  Dawn's scene starts as we come into Sandgem (trigger (4, 10..15));
             //  walk until it does rather than to a tile (r35, r36).
             legs("into_sandgem", {{.direction = EAST, .tiles = 8}}, "east into Sandgem until Dawn's scene starts", "to_dialogue"),
-            event("rowan_gives_pokedex", "Dawn walks us to the lab: Rowan, no nickname, the Pokedex",
-                at(LAB, "rowan_talk", NORTH)),
+            //  Butters' sequence pressed B through Dawn's and Rowan's lines and
+            //  the nickname question (No), then A for the Pokedex. The scene's
+            //  B answers No too, and closes an item's lines as it did Barry's
+            //  parcel (r45). Into the lab is a fade.
+            scene("rowan_gives_pokedex", at(LAB, "rowan_talk", NORTH),
+                "Dawn walks us to the lab: Rowan, no nickname, the Pokedex"),
         }),
     };
 }
@@ -385,15 +422,28 @@ std::vector<StoryCheckpoint> to_the_catch(){
     };
 }
 
+//  Where Dawn's scene leaves 00.04d, and 00.05's save: below Jubilife's
+//  steps (45..47, 61), against the wall east of them, (48, 62). BDSP starts
+//  her scene as we come in below the steps, not on Diamond's trigger above
+//  them (45..48, 60): 00.05's old event went "a tile west, then up the
+//  steps" from its save, two taps north (2026-10-30). Not measured as a
+//  tile: the event's numbers and the map's (#134).
+Pose below_jubilifes_steps(){
+    return at(JUBILIFE, 48, 62);
+}
+
 std::vector<StoryCheckpoint> to_jubilife(){
     StoryStep potions = make(StoryStepKind::SHOP, "potions",
         "Potions before Route 202's trainers: the Poke Mart lady's 10 (she stands still, as in the decomp)");
     potions.items = {{.item = "potion", .quantity = 10}};
     potions.variant = "sandgem_potions";
     potions.pose_after = at(ROUTE_202, "save_spot");
-    StoryStep stairs = step_into("into_jubilife", NORTH,
-        "Jubilife's south edge is a wall with stairs in it, west of where the route may leave us (r78)");
-    stairs.variant = "jubilife_stairs";
+    //  An event, not a step: it walks north and west until Dawn's scene
+    //  starts. It leaves us on Jubilife, so the scene after it plays where
+    //  we stand, with no fade to wait for.
+    const StoryStep stairs = event("jubilife_stairs",
+        "Jubilife's south edge is a wall with stairs in it, west of where the route may leave us (r78)",
+        below_jubilifes_steps());
     return {
         row("00.04c", "Potions, back to Route 202's save spot", door_front(SANDGEM, "pokemon_center_door"), {
             potions,
@@ -402,7 +452,7 @@ std::vector<StoryCheckpoint> to_jubilife(){
         row("00.04d", "Route 202's trainers, Dawn in Jubilife", at(ROUTE_202, "save_spot"), {
             route("north_to_jubilife", on(ROUTE_202, "jubilife_exit"), "north past Route 202's trainers, fighting who sees us"),
             stairs,
-            scene("dawn_scene", std::nullopt, "Dawn walks over while we stand still"),
+            scene("dawn_scene", below_jubilifes_steps(), "Dawn walks over while we stand still"),
         }),
     };
 }
@@ -412,11 +462,15 @@ Pose below_the_school(){
     return next_to(JUBILIFE, "trainers_school_door", SOUTH, SOUTH);
 }
 
-//  00.05: the steps were measured on the console (2026-10-30); the rest is
+//  00.05: the steps as measured on the console (2026-10-30); the rest is
 //  planned on the map.
 StoryCheckpoint the_town_map(){
-    return row("00.05", "Jubilife: the Center, the Trainers' School and the Town Map", std::nullopt, {
-        event("up_the_steps", "a tile west of the save below the steps, then up them", on(JUBILIFE, "up_the_steps")),
+    return row("00.05", "Jubilife: the Center, the Trainers' School and the Town Map", below_jubilifes_steps(), {
+        //  D-pad taps, a tile each: the stick holds this was (200 ms west,
+        //  480 ms north) left us between tiles, and every leg after it a
+        //  column off (r57 to r61).
+        legs("up_the_steps", {{.direction = WEST, .tiles = 1}, {.direction = NORTH, .tiles = 2}},
+            "a tile west of the save, then up the steps to (47, 60)"),
         //  Planned on the map: the hand-measured walls (west to the sign, east
         //  across the road, north) leaned on the old turn's nudge and ended
         //  beside the Trainers' School once turns stopped stepping (r57, r58).
@@ -429,8 +483,15 @@ StoryCheckpoint the_town_map(){
         route("to_the_school", next_to(JUBILIFE, "trainers_school_door", SOUTH, NORTH),
             "below the School's door (40, 40)", "town"),
         step_into("into_the_school", NORTH, "the School's door", inside(TRAINERS_SCHOOL)),
-        to_walls("up_to_barry", {{.direction = NORTH, .tiles = 10}}, "the door's column to the back wall, beside Barry"),
-        event("barry_town_map", "Barry gives the Town Map", inside(TRAINERS_SCHOOL)),
+        //  Barry stands at the blackboard a tile west of the door's column,
+        //  which is clear to the back wall: beside him there, face west and
+        //  talk. A tile west by a hold went two in r149a, and the boy at the
+        //  table stopped us. (The event walked to the wall again once when he
+        //  did not answer.)
+        anchored(to_walls("up_to_barry", {{.direction = NORTH, .tiles = 10}}, "the door's column to the back wall, beside Barry"),
+            Pokemon::tile_pose(TRAINERS_SCHOOL, {}, WEST)),
+        talk("barry", "Barry, west of us at the blackboard"),
+        scene("barry_town_map", inside(TRAINERS_SCHOOL), "his lines to \"You obtained a Town Map!\", closed with A", "a"),
         //  Barry stands beside the door's column, which is clear down to the door.
         step_into("out_of_the_school", SOUTH, "straight down the door's column and out", below_the_school()),
     });
@@ -486,78 +547,314 @@ std::vector<StoryCheckpoint> jubilife(){
     return {the_town_map(), the_coupons(), the_poketch()};
 }
 
+//  `tile` of `map`, or the tile past it `direction`: where a tap_into() may
+//  leave us.
+Pose arrival(const char* map, TilePos tile, Direction direction){
+    return Pokemon::tile_pose(map, {tile, tile.next(direction)}, direction);
+}
+//  Where the Oreburgh Gate lets us out onto Route 203: its warp tile (55, 9)
+//  (Diamond's warp (246, 749), zone event narc_0329), walking west. The one
+//  tile only: from it and (54, 9) together the joined Route 203 and Jubilife
+//  find no plan. The tap stops at the fade, which puts us on the warp tile;
+//  r78 passed 01.06 from a save there (by the sign, the cave mouth east).
+Pose out_of_oreburgh_gate(Direction facing = WEST){
+    return at(ROUTE_203, 55, 9, facing);
+}
+//  Barry's coord event on Route 203 (Diamond's zone event narc_0329), column
+//  5 on rows 17 to 20 (the street's rows 21 to 24) while
+//  VAR_ROUTE_203_RIVAL_STATE is 0. He walks up, battles and runs off, and
+//  we stay on it (assumed; the event's walk east stopped there, on any row).
+Pose on_barrys_trigger(){
+    return Pokemon::tile_pose(ROUTE_203, {TilePos{5, 17}, TilePos{5, 18}, TilePos{5, 19}, TilePos{5, 20}}, EAST);
+}
+//  Where Route 204's door (11, 1) lets us into the Ravaged Path: (19, 50),
+//  as in r237a. The tap stops at the fade, on that tile.
+Pose into_the_ravaged_path(){
+    return at(RAVAGED_PATH, "entrance", NORTH);
+}
+
+//  Where Oreburgh's welcome scene leaves us, Barry in the Center's door: "a row
+//  or two below the Center's front, a little west of its door" (01.03's
+//  save, 2026-10-29); "two tiles west of the door and a row down" (the old
+//  event). Not Diamond's: its man walks us to the Gym, (23, 23).
+Pose after_the_welcome(){
+    return Pokemon::tile_pose(OREBURGH, {
+        TilePos{43, 21}, TilePos{44, 21}, TilePos{45, 21}, TilePos{43, 22}, TilePos{44, 22}, TilePos{45, 22}
+    });
+}
+//  Below Oreburgh's Pokemon Center's door (47, 20), facing it.
+Pose below_oreburghs_center(){
+    return at(OREBURGH, 47, 21, NORTH);
+}
+//  Out of Oreburgh's Pokemon Center, facing south: below its door, or on
+//  the map's doorstep (46, 21), from which 01.04's 20 taps west reach the
+//  Gym's door column (r217d, r218d).
+Pose out_of_oreburgh_center(){
+    return Pokemon::tile_pose(OREBURGH, {TilePos{47, 21}, map_point(OREBURGH, "pokemon_center_doorstep")}, SOUTH);
+}
+
+//  01.05, planned on Oreburgh's and the Gate's maps with the Diamond decomp's
+//  zone events (narc_0044, narc_0250) and Platinum's script for the scene
+//  (scripts_oreburgh_city.s, the same trigger and variable). Barry's coord
+//  event, column 6 on rows 12 to 15 while VAR_OREBURGH_CITY_STATE is 2 (after
+//  Roark: the old walk met his "*thud*" there, 2026-10-29), runs him into us
+//  from the east: the game pushes us a tile west, facing east, and he
+//  leaves. The Gate's way west is row 22, across the Hiker's trigger (7, 22),
+//  spent in 01.02.
+StoryCheckpoint oreburgh_to_route_203(){
+    return row("01.05", "Oreburgh to Route 203", next_to(GYM, "roark", SOUTH, NORTH), {
+        //  01.04 talks to Roark from below him, up the clear middle column.
+        tap_into("out_of_the_gym", SOUTH, "down the middle column (5, 4..23) and out of the door (5, 24)",
+            arrival(OREBURGH, map_point(OREBURGH, "gym_doorstep"), SOUTH)),
+        route("east_of_barrys_trigger", at(OREBURGH, 7, 13, WEST),
+            "west along the street, north up the stairs west of the houses, west along the Gate's row", "town"),
+        step_into("barrys_trigger", WEST, "the trigger (6, 12..15)"),
+        scene("barry_bumps_into_us", at(OREBURGH, 5, 13, EAST), "Barry runs into us, talks of Eterna, and leaves (assumed: the push)"),
+        route("by_the_gate", next_to(OREBURGH, "gate_mouth", EAST, WEST), "west to the Gate's warp tile (2, 13)"),
+        //  The warp's other end is the Gate's (27, 22), beside its east mouth.
+        tap_into("into_oreburgh_gate", WEST, "the Gate's mouth (1, 13)", arrival(GATE, {27, 22}, WEST)),
+        route("through_the_gate", at(GATE, 4, 22, WEST), "west along row 22 to the warp tile by the west mouth (3, 22)"),
+        //  Route 203's banner or a failure here: the old walk west "until the
+        //  banner" went on into the pond's pocket (r75). 01.06 heads south.
+        tap_into("out_of_oreburgh_gate", WEST, "the west mouth (3, 22)", out_of_oreburgh_gate()),
+    });
+}
+
+//  01.02, planned on Route 203's, the Gate's and Oreburgh's maps with the
+//  Diamond decomp's zone events (narc_0329, narc_0250, narc_0044): east
+//  along Route 203 to the Gate, fighting the trainers who see us
+//  (route_203_trainer_sights()); the Hiker's coord event (7, 22) while
+//  VAR_OREBURGH_GATE_1F_HIKER_STATE is 1; east along row 22 past Diana and
+//  Curtis (oreburgh_gate_trainer_sights()); then the coord event of the man
+//  at Oreburgh's entrance, column 10 on rows 12 to 15 while
+//  VAR_OREBURGH_CITY_STATE is 0. Each mouth is a tap to its banner, as in
+//  01.05; its warp's other end is the tile beside the far mouth.
+//
+//  Diana and Curtis are not on the trainer list: the walker fights them as
+//  trainers the map lacks, one per route (in the grid sim, the second of
+//  two on one leg stopped its walk on to the wall unseen). On the list,
+//  the grid sim, which does not know them beaten, had them stop 01.05's
+//  walk back.
+StoryCheckpoint route_203_to_oreburgh(){
+    return row("01.02", "Route 203 to Oreburgh", on_barrys_trigger(), {
+        //  One known tile to plan from: from all four of the trigger's rows
+        //  at once the planner finds no plan. Its column is open from row
+        //  17 down to the cliff below row 20.
+        anchored(to_walls("south_to_the_cliff", {{.direction = SOUTH, .tiles = 4}}, "down the trigger's column to the cliff"),
+            at(ROUTE_203, 5, 20, SOUTH)),
+        route("by_the_gate", out_of_oreburgh_gate(EAST), "east along Route 203 to the Gate's warp tile (55, 9)"),
+        tap_into("into_oreburgh_gate", EAST, "the Gate's west mouth (56, 9)", arrival(GATE, {4, 22}, EAST)),
+        route("west_of_the_hikers_trigger", at(GATE, 6, 22, EAST), "east along row 22"),
+        step_into("hikers_trigger", EAST, "the trigger (7, 22): the Hiker walks down to us"),
+        //  The "Hidden Moves" card after his lines is no dialogue box, and
+        //  can come up a moment after them; the scene's B closes it.
+        scene("the_hiker", at(GATE, 7, 22, EAST), "HM Rock Smash, then the Hidden Moves card"),
+        route("past_curtis", at(GATE, 20, 22, EAST), "east along row 22 past Camper Curtis's column (17), fighting him"),
+        route("by_the_east_mouth", at(GATE, 27, 22, EAST), "east past Picnicker Diana's column (24), fighting her"),
+        tap_into("into_oreburgh", EAST, "the Gate's east mouth (28, 22)",
+            arrival(OREBURGH, map_point(OREBURGH, "gate_mouth").next(EAST), EAST)),
+        route("west_of_the_welcome", at(OREBURGH, 9, 13, EAST), "east along row 13"),
+        step_into("welcome_trigger", EAST, "the trigger (10, 12..15): the man walks over"),
+        //  He walks us to the Pokemon Center between his lines; Barry joins
+        //  there with more lines after each walk.
+        scene("oreburgh_welcome", after_the_welcome(), "the man's lines, the walk to the Center, and Barry's"),
+    });
+}
+
+//  01.03, planned on Oreburgh's map and the coal room's (Diamond's zone
+//  events narc_0044 and narc_0197): Barry in the Center's door says Roark
+//  went to the mine (Roark ignored A until then, r101 and r104); down the
+//  door's column to the mine's warp tiles (44..48, 59); straight down the
+//  entrance hall to its warps (11..13, 21); in the coal room down to
+//  Roark, whose scene ends with him gone (Platinum's
+//  scripts_oreburgh_mine_b2f.s: he smashes the rock east of him and walks
+//  off east); back up and out; and the Center's nurse, so 01.04 starts on
+//  the doorstep. The Center's door is the decomp's (47, 20): out of
+//  Sandgem's and Jubilife's Centers the console stood in their doors'
+//  columns. The map's doorstep (46, 21) is the Gym's door column plus the
+//  20 taps of 01.04 (r217d, r218d), which do not say where the taps began;
+//  the heal lines up on the lit doorway if north from (47, 21) misses.
+//
+//  The hall is walked on counted taps, not held: it is a cave, and a wild
+//  battle on a hold toward a fade would read as the fade. Its warp tiles
+//  are only entered on the step after, which meets no wild Pokemon. Down,
+//  from the city's (46, 59) we land on its (12, 1); up, from the coal
+//  room's warp we land on its (11, 21) and come out on the city's (45, 59),
+//  below the mine's sign (the old walk north stopped against it, r103).
+StoryCheckpoint oreburgh_mine_to_roark(){
+    const Pose below_roark = next_to(MINE, "roark", SOUTH, NORTH);
+    return row("01.03", "Oreburgh Mine to Roark", after_the_welcome(), {
+        //  The fence south of the Center's east corner (column 49) stops a
+        //  walk east on these rows a tile east of the door, as by hand.
+        anchored(to_walls("to_the_centers_fence", {{.direction = EAST, .tiles = 6}, {.direction = NORTH, .tiles = 2}},
+            "east to the fence below the Center's east corner, north to the Center's front"), at(OREBURGH, 48, 21, NORTH)),
+        anchored(legs("below_the_centers_door", {{.direction = WEST, .tiles = 1}}, "a tap west below the door"),
+            below_oreburghs_center()),
+        //  He stands in the door the first time; walking into him reads as a wall.
+        talk("barry", "Barry in the Center's door"),
+        scene("barrys_lines", below_oreburghs_center(), "Roark has gone to the mine"),
+        //  The Hiker wanders (46..48, 25..27), in the door's column: the
+        //  route goes round him.
+        route("above_the_mine", at(OREBURGH, 46, 58, SOUTH), "down the door's column to above the mine's warp tiles", "town"),
+        step_into("into_the_mine", SOUTH, "the warp tile (46, 59)", at(MINE_HALL, 12, 1, SOUTH)),
+        //  We land on the warp tile we came by, (12, 1): 19 taps end on row
+        //  20, a step short of the warp row.
+        legs("down_the_hall", {{.direction = SOUTH, .tiles = 19}}, "down column 12 of the entrance hall"),
+        step_into("into_the_coal_room", SOUTH, "the hall's warp tiles (11..13, 21)",
+            Pokemon::tile_pose(MINE, {TilePos{15, 2}, TilePos{15, 1}}, SOUTH)),
+        //  One known tile to plan from: the corridor's column 15 ends at the
+        //  boulder (15, 10), where the old walk south stopped too.
+        anchored(to_walls("down_to_the_boulder", {{.direction = SOUTH, .tiles = 9}}, "down the corridor to the boulder (15, 10)"),
+            at(MINE, 15, 9, SOUTH)),
+        route("below_roark", below_roark, "down the corridor and the room's east side, west along the bottom row"),
+        //  His first line comes after the camera zooms in on us (r98); his
+        //  rocks either side answer A too, but he is the one north of us.
+        talk("roark", "Roark, north of us between his rocks"),
+        scene("roark_smashes_the_rock", below_roark, "his lines, Rock Smash on the rock east of him, and he walks off"),
+        route("below_the_coal_rooms_warp", at(MINE, 15, 2, NORTH), "back up the corridor"),
+        step_into("up_to_the_hall", NORTH, "the warp tile (15, 1)", at(MINE_HALL, 11, 21, NORTH)),
+        legs("up_the_hall", {{.direction = NORTH, .tiles = 19}}, "up column 11 of the entrance hall"),
+        step_into("out_of_the_mine", NORTH, "the hall's warp tiles (11..13, 1)",
+            Pokemon::tile_pose(OREBURGH, {TilePos{45, 59}, TilePos{45, 58}}, NORTH)),
+        anchored(to_walls("up_to_the_mines_sign", {{.direction = NORTH, .tiles = 3}}, "north against the mine's sign (45, 56)"),
+            at(OREBURGH, 45, 57, NORTH)),
+        route("below_the_centers_door_again", below_oreburghs_center(), "up to below the Center's door", "town"),
+        heal("heal_oreburgh", "the nurse; out onto the doorstep, where 01.04 starts", out_of_oreburgh_center()),
+    });
+}
+
+//  Below Rowan's trigger in Jubilife: (47, 8), the east tile under the
+//  trigger (45..47, 7), which (48, 7) beside it is not.
+Pose below_rowans_trigger(){
+    return at(JUBILIFE, 47, 8, NORTH);
+}
+//  Where Rowan's scene leaves us: walked up to him at (47, 5), then a tile
+//  west in front of the grunt (Platinum's movements; assumed for BDSP).
+Pose after_the_grunts(){
+    return Pokemon::tile_pose(JUBILIFE, {TilePos{46, 5}, TilePos{47, 5}});
+}
+
+//  01.07, from the Diamond decomp (zone event narc_0002) and Platinum's
+//  script (scripts_jubilife_city.s, the same trigger and variable): the
+//  coord event (45..47, 7) while VAR_JUBILIFE_CITY_STATE is 3 walks us up to
+//  Rowan, his and the grunts' lines, then the tag battle with Dawn; after
+//  it they leave.
+StoryCheckpoint rowan_and_the_grunts(){
+    return row("01.07", "Jubilife: Rowan, Dawn and the Galactic grunts", below_rowans_trigger(), {
+        step_into("rowans_trigger", NORTH, "the trigger (45..47, 7): the game walks us up to Rowan"),
+        battle("galactic_grunts", false, "the lines, then the tag battle with Dawn", "doubles"),
+        scene("rowan_and_dawn_leave", after_the_grunts(),
+            "Rowan's and Dawn's lines, then Bebe walks over with hers (r80 saved over her lines)"),
+    });
+}
+
+//  01.09 on the Ravaged Path's map (Platinum's, checked on the console in
+//  r235b): up the stairs to west of the rock (22, 43), smash it, east to
+//  above the way out (28, 45). Its other end is Route 204's (20, 26).
+StoryCheckpoint through_the_ravaged_path(){
+    const Pose west_of_the_rock = at(RAVAGED_PATH, "before_rocks.2", EAST);
+    return row("01.09", "Ravaged Path", into_the_ravaged_path(), {
+        route("west_of_the_rock", west_of_the_rock, "up the stairs and along the corridor"),
+        event("smash_the_rock", "Rock Smash on the rock east of us", west_of_the_rock),
+        route("above_the_way_out", at(RAVAGED_PATH, "above_exit", SOUTH), "east through the rock's tile"),
+        //  One tap and Route 204's banner: a timed walk south went on past
+        //  the cave's mouth to the cliff (r81).
+        tap_into("out_of_the_ravaged_path", SOUTH, "the way out (28, 45)", at(ROUTE_204_NORTH, "cave_exit", SOUTH)),
+    });
+}
+
+//  01.10: the line a human walked up Route 204's north half (2026-10-31,
+//  r246a to r251a), corner to corner (Test_Route204NorthLine checks each
+//  stretch is one straight leg), then north between the flower beds into
+//  Floaroma. Its trainers who see us are fought: Taylor on the line, the
+//  Twins as a pair.
+StoryCheckpoint route_204_to_floaroma(){
+    std::vector<StoryStep> steps;
+    const std::vector<TilePos> line = map_region(ROUTE_204_NORTH, "floaroma_waypoints");
+    for (size_t i = 0; i < line.size(); i++){
+        steps.push_back(route(std::format("line_{}", i + 1), Pokemon::tile_pose(ROUTE_204_NORTH, {line[i]}),
+            "a corner of the human's line", "line"));
+    }
+    //  01.11 walks on from here: west 8 along row 29, north to the old woman.
+    steps.push_back(route("into_floaroma", at(FLOAROMA, "route_204_arrival", NORTH), "north up column 11 into Floaroma", "line"));
+    steps.push_back(save());
+    return row("01.10", "Route 204 to Floaroma", at(ROUTE_204_NORTH, "cave_exit", SOUTH), std::move(steps));
+}
+
 std::vector<StoryCheckpoint> to_oreburgh(){
     return {
-        row("01.01", "Jubilife to Barry", std::nullopt, {
-            event("jubilife_center_to_street", "out of the Center to the street east to Route 203, unless we stand there"),
-            event("east_to_barry", "east until Barry stops us at Route 203's entrance"),
-            battle("barry", true, "Barry's battle; a loss goes on, as it did on the console"),
+        //  From 00.05c's end on the street east to Route 203.
+        row("01.01", "Jubilife to Barry", at(JUBILIFE, 58, 22, EAST), {
+            route("west_of_barrys_trigger", at(ROUTE_203, 4, 18, EAST), "east along the street onto Route 203", "town"),
+            step_into("barrys_trigger", EAST, "the trigger (5, 17..20): Barry walks over"),
+            anchored(battle("barry", true, "Barry's battle; a loss goes on, as it did on the console"), on_barrys_trigger()),
         }),
-        row("01.02", "Route 203 to Oreburgh", std::nullopt, {
-            event("route_203_east_to_the_gate", "east along Route 203, fighting the trainers who stop us"),
-            skip_if(event("the_hiker", "the Hiker in the Gate gives HM Rock Smash"), "met_hiker"),
-            event("hidden_moves_card", "the card after him, closed with B"),
-            event("gate_east_to_oreburgh", "east past Curtis and Diana into Oreburgh"),
-            event("oreburgh_welcome", "the man at the entrance, and Barry at the Center"),
+        route_203_to_oreburgh(),
+        oreburgh_mine_to_roark(),
+        //  Stays an event: after a loss it walks back from the Center with
+        //  the experience the battles gave, which a reload of this row's
+        //  save would take away (Roark won twice by hand before he lost).
+        row("01.04", "Oreburgh Gym", out_of_oreburgh_center(), {
+            event("gym_until_roark_beaten", "west into the gym, up it to Roark; again from the Center after a loss",
+                next_to(GYM, "roark", SOUTH, NORTH)),
         }),
-        row("01.03", "Oreburgh Mine to Roark", std::nullopt, {
-            event("oreburgh_center_door", "in by the Center's door, talking to Barry in it"),
-            event("south_into_the_mine", "straight south from the door into the mine"),
-            event("mine_hall", "through the entrance hall"),
-            event("roark_in_the_mine", "down the corridor to Roark, his talk, and back out"),
-            event("oreburgh_center_heal", "the Center's nurse: 01.04 starts at her counter"),
-        }),
-        row("01.04", "Oreburgh Gym", std::nullopt, {
-            event("out_of_the_center", "out from the counter"),
-            event("gym_until_roark_beaten", "west into the gym, up it to Roark; again from the Center after a loss"),
-        }),
-        row("01.05", "Oreburgh to Route 203", std::nullopt, {
-            event("out_of_the_gym", "out of the gym onto its doorstep"),
-            event("into_oreburgh_gate", "up to the platform and west into the Gate"),
-            event("out_of_oreburgh_gate", "west until Route 203's banner shows"),
-        }),
+        oreburgh_to_route_203(),
     };
+}
+
+//  01.11 on Floaroma's map: the old woman (3, 25) and the old man (2, 25)
+//  west of her stand still above the flower field's bottom row (r251a).
+//  The walk to her is the one that ran on the console: 8 taps west along
+//  row 29, then north until she stops us (r250a: 3 steps, then bumps).
+StoryCheckpoint floaromas_old_couple(){
+    const Pose below_the_old_woman = next_to(FLOAROMA, "old_woman", SOUTH, NORTH);
+    const Pose below_the_old_man = next_to(FLOAROMA, "old_man", SOUTH, NORTH);
+    return row("01.11", "Floaroma's old couple", at(FLOAROMA, "route_204_arrival", NORTH), {
+        legs("west_along_the_field", {{.direction = WEST, .tiles = 8}}, "8 taps west along row 29"),
+        anchored(to_walls("up_to_the_old_woman", {{.direction = NORTH, .tiles = 5}}, "north until she stops us"),
+            below_the_old_woman),
+        talk("old_woman", "she gives Mew when a Let's Go save is on the console"),
+        scene("old_woman_talks", below_the_old_woman, "her lines"),
+        //  He stands above that tile, so talk() turning north only turns.
+        anchored(legs("below_the_old_man", {{.direction = WEST, .tiles = 1}}, "a tile west"), below_the_old_man),
+        talk("old_man", "he gives Jirachi with a Sword/Shield save"),
+        scene("old_man_talks", below_the_old_man, "his lines"),
+        save(),
+    });
 }
 
 std::vector<StoryCheckpoint> to_floaroma(){
     return {
-        row("01.06", "Route 203 to Jubilife", std::nullopt, {
-            event("route_203_to_row_18", "on Route 203's map to row 18, below the girl"),
-            event("row_18_into_jubilife", "west along row 18, counting tiles"),
+        row("01.06", "Route 203 to Jubilife", out_of_oreburgh_gate(), {
+            //  Trainers who saw us going east in 01.02 are beaten; any other
+            //  sees us here and is fought (route_203_trainer_sights()).
+            route("below_rowans_trigger", below_rowans_trigger(),
+                "down Route 203 (its ledges only south), west along it into Jubilife's street, north up the road", "town"),
         }),
-        row("01.07", "Jubilife through Rowan's scene", std::nullopt, {
-            event("west_to_the_crossroads", "west along the long road"),
-            event("north_to_rowan", "north up the street until Rowan's scene"),
-            battle("galactic_grunts", false, "the tag battle with Dawn", "doubles"),
-            scene("rowan_after_the_battle", std::nullopt, "Rowan's and Dawn's lines, then Bebe walks over with hers (r80 saved over her lines)"),
+        rowan_and_the_grunts(),
+        row("01.08", "Jubilife to the Ravaged Path", after_the_grunts(), {
+            //  One known tile to plan from: from both of the scene's ends
+            //  the joined Jubilife and Route 204 find no plan. Row 5 is open
+            //  from x 44 to 49, a wall at 43.
+            anchored(to_walls("west_to_the_wall", {{.direction = WEST, .tiles = 4}}, "west along row 5 to the wall"),
+                at(JUBILIFE, 44, 5, WEST)),
+            //  Lass Sarah's east sight crosses the street (r233a, r234a): she
+            //  may stop us for a battle.
+            route("below_the_ravaged_path", at(ROUTE_204_SOUTH, "below_door", NORTH),
+                "north out of Jubilife, up Route 204's street and grass to below the door (11, 1)", "town"),
+            //  Its warp (Diamond's zone event narc_0330) lands us on the
+            //  cave's (19, 50), as in r237a.
+            tap_into("into_the_ravaged_path", NORTH, "the door (11, 1)", into_the_ravaged_path()),
         }),
-        row("01.08", "Jubilife to the Ravaged Path", std::nullopt, {
-            event("north_out_of_jubilife", "north until Route 204's banner"),
-            event("route_204_south_to_the_door", "on Route 204 South's map to below the Ravaged Path's door"),
-            event("into_the_ravaged_path", "north through the door"),
-        }),
-        row("01.09", "Ravaged Path", std::nullopt, {
-            event("through_the_ravaged_path", "through the cave with Rock Smash, out onto Route 204 North"),
-        }),
-        row("01.10", "Route 204 to Floaroma", std::nullopt, {
-            event("route_204_to_floaroma", "the human's line north into Floaroma"),
-            save(),
-        }),
-        row("01.11", "Floaroma's old couple", std::nullopt, {
-            event("west_8_north_to_the_old_woman", "west 8, north until she stops us"),
-            talk("old_woman", "she gives Mew when a Let's Go save is on the console"),
-            scene("old_woman_talks", std::nullopt, "her lines"),
-            event("below_the_old_man", "a tile west, a tap north"),
-            talk("old_man", "he gives Jirachi with a Sword/Shield save"),
-            scene("old_man_talks", std::nullopt, "his lines"),
-            save(),
-        }),
+        through_the_ravaged_path(),
+        route_204_to_floaroma(),
+        floaromas_old_couple(),
     };
 }
 
 //  The map the save screen's card names at each row's start, as the console
 //  read it there (lab-B's logs, 2026-10-31 to 11-02). A building's card
-//  names its town: 00.04 starts in Rowan's lab, 01.04 at Oreburgh's nurse.
+//  names its town: 00.04 starts in Rowan's lab.
 const std::map<std::string, std::string>& start_save_cards(){
     static const std::map<std::string, std::string> cards{
         {"00.01",  "Twinleaf Town"},

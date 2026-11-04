@@ -3,9 +3,11 @@
  *  From: https://github.com/PokemonAutomation/
  *
  *  Where the story's steps walk: poses are tiles of the JSON maps
- *  ("Route202"), named by map_point() and map_region(). A walk from one map to another is planned on a story world that holds both: the
- *  outdoors from Twinleaf to Route 202, Jubilife, and each interior of
- *  00.01 to 00.04 on its own.
+ *  ("Route202"), named by map_point() and map_region(). A walk from one map
+ *  to another is planned on a story world that holds both: the outdoors
+ *  from Twinleaf to Route 202, Jubilife, Oreburgh, Route 203 into Jubilife,
+ *  Jubilife up Route 204's south half, Route 204's north half into
+ *  Floaroma, and each interior on its own.
  *
  */
 
@@ -28,13 +30,17 @@ namespace PokemonBDSP{
 //  name them ("Route 202"), which the walker reads.
 const StoryWorld* story_plan_world(const std::string& from, const std::string& to);
 
+//  The location banner of the JSON map `map` ("Route 204" for both of its
+//  halves), or `map` itself for one no banner list names.
+const std::string& story_banner_name(const std::string& map);
+
 //  The tile `local` of the map `map` in `world`.
 Pokemon::TilePos story_to_world(const StoryWorld& world, const std::string& map, const Pokemon::TilePos& local);
 
 //  The world tile `pos` as a tile of `map`, or nothing if it is not on `map`.
 std::optional<Pokemon::TilePos> story_to_local(const StoryWorld& world, const std::string& map, const Pokemon::TilePos& pos);
 
-//  The trainers a walk on `world` may meet (Route 202's), in its tiles.
+//  The trainers a walk on `world` may meet (Routes 202 to 204's), in its tiles.
 std::vector<TrainerSight> story_trainers(const StoryWorld& world);
 
 

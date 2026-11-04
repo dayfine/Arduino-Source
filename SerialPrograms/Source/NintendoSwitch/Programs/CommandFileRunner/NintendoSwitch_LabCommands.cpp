@@ -92,6 +92,16 @@ void SwitchLabCommands::run(
     }
 }
 
+std::string SwitchLabCommands::controller_status(PanelSession& panel){
+    GameConsole::ConsoleProgramSession* program = dynamic_cast<GameConsole::ConsoleProgramSession*>(&panel);
+    if (program == nullptr){
+        return "";
+    }
+    //  Controller 0, the one LabConsole and the program's ConsoleHandle use.
+    GameConsole::ConsoleSystemSession& system = program->system();
+    return system.controllers() > 0 && system.controller(0).ready() ? "ready" : "none";
+}
+
 void SwitchLabCommands::keep_awake(PanelSession& panel, CancellableScope& scope){
     LabConsole console(panel, scope);
     pbf_press_button(console.context(), BUTTON_B, 80ms, 0ms);

@@ -52,5 +52,8 @@
         {"name": "camper_12", "kind": "npc", "x": 6, "y": 10},
         {"name": "old_woman", "kind": "npc", "x": 3, "y": 25},
         {"name": "old_man", "kind": "npc", "x": 2, "y": 25}
+    ],
+    "coord_events": [
+        {"name": "coord_event_0", "x": 10, "y": 29, "width": 3, "length": 1, "var": "VAR_UNK_0x4072", "value": 0, "source": "pret/pokediamond files/fielddata/eventdata/zone_event_release/narc_0404.bin coord_events[0] (170, 669), script 2"}
     ]
 }

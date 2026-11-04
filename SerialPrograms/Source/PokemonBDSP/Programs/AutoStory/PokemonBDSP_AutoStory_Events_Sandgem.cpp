@@ -145,7 +145,7 @@ void walk_to_route_202_save_spot(
 }
 
 // North into Jubilife until Dawn's scene starts (00.04d's
-// into_jubilife). Jubilife's south edge is a wall with stairs in it,
+// jubilife_stairs). Jubilife's south edge is a wall with stairs in it,
 // west of where the route may leave us (r78 stood at its east end).
 // Entering starts a scene: Dawn walks over while we stand still. So
 // walk north; if the wall stops us and no dialogue follows, the stairs

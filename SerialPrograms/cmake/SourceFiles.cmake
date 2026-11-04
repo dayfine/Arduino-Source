@@ -1497,6 +1497,8 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/Options/Pokemon_StoryRunOptions.cpp
     Source/Pokemon/Options/Pokemon_StoryRunOptions.h
     Source/Pokemon/AutoStory/Pokemon_AutoStorySelect.h
+    Source/Pokemon/AutoStory/Pokemon_AutoStorySelect_Tests.cpp
+    Source/Pokemon/AutoStory/Pokemon_AutoStorySelect_Tests.h
     Source/Pokemon/AutoStory/Pokemon_AutoStoryStats.h
     Source/Pokemon/AutoStory/Pokemon_AutoStory_Tests.h
     Source/Pokemon/AutoStory/Pokemon_StoryEvents.cpp
@@ -1692,7 +1694,6 @@ file(GLOB LIBRARY_SOURCES
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_Events_Jubilife.cpp
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_Events_Lake.cpp
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_Events_Oreburgh.cpp
-    Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_Events_Route203.cpp
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_Events_Route204.cpp
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_Events_Sandgem.cpp
     Source/PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_NewGame.cpp
