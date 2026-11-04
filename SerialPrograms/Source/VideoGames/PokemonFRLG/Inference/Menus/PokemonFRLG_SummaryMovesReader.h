@@ -53,6 +53,7 @@ std::string read_summary_move_name(Logger& logger, Language language, const Imag
 std::string read_move_name(Logger& logger, Language language, const ImageViewRGB32& name);
 
 struct SummaryMove{
+    //  Empty for a move the reader has no name for.
     std::string move;
     //  -1 if not read. The game draws a move's PP in color once it is down
     //  to half, which the digit templates may not read.
@@ -60,7 +61,8 @@ struct SummaryMove{
     int max_pp = -1;
 };
 
-//  The moves from the top, up to the first row whose name can't be read.
+//  The moves from the top, up to the first empty slot. A move whose name
+//  isn't read keeps its row, with its name empty.
 std::vector<SummaryMove> read_summary_moves(Logger& logger, Language language, const ImageViewRGB32& screen);
 
 //  The row (0 to 4) the red cursor box is on, if one shows.
