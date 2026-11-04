@@ -37,12 +37,12 @@ without being restated.
 - **Bounded loops.** Every wait loop has an iteration cap and checks that the producing process is
   still alive.
 - **Your own checkout.** Work only in your own worktree:
-  `git -C /Users/difan/Projects/Arduino-Source worktree add <your temp folder>/wt-<branch> <branch>`.
+  `git -C /Users/difan/Projects/Arduino-Source worktree add /Users/difan/Projects/wt/<branch> <branch>`.
   Run builds against that tree, never the dispatcher's. A fresh configure, when no build directory
   exists, uses the shared compiler cache, as this one command from the worktree root:
   ```sh
-  SRC=$(git rev-parse --show-toplevel); L="ccache;cache_dir=$HOME/Library/Caches/pokemonautomation-ccache;base_dir=$SRC"
-  PKG_CONFIG_PATH=/opt/homebrew/opt/opencv@4/lib/pkgconfig cmake -S SerialPrograms -B SerialPrograms/build -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_C_COMPILER_LAUNCHER="$L" -DCMAKE_CXX_COMPILER_LAUNCHER="$L" -DCMAKE_C_FLAGS="-fdebug-prefix-map=$SRC=. -fdebug-compilation-dir=." -DCMAKE_CXX_FLAGS="-fdebug-prefix-map=$SRC=. -fdebug-compilation-dir=." -DWrapOpenGL_AGL=<CommandLineTools SDK>/System/Library/Frameworks/AGL.framework/AGL.tbd
+  SRC=$(cd "$(git rev-parse --show-toplevel)" && pwd -P); L="ccache;cache_dir=$HOME/Library/Caches/pokemonautomation-ccache;base_dir=$SRC"
+  PKG_CONFIG_PATH=/opt/homebrew/opt/opencv@4/lib/pkgconfig cmake -S "$SRC/SerialPrograms" -B "$SRC/SerialPrograms/build" -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_C_COMPILER_LAUNCHER="$L" -DCMAKE_CXX_COMPILER_LAUNCHER="$L" -DCMAKE_C_FLAGS="-fdebug-prefix-map=$SRC=. -fdebug-compilation-dir=." -DCMAKE_CXX_FLAGS="-fdebug-prefix-map=$SRC=. -fdebug-compilation-dir=." -DWrapOpenGL_AGL=<CommandLineTools SDK>/System/Library/Frameworks/AGL.framework/AGL.tbd
   ```
   A build directory configured without the launcher (`grep -c ccache SerialPrograms/build/CMakeCache.txt`
   finds nothing) must be reconfigured with this command before building. After a full build, report the

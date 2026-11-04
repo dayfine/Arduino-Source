@@ -194,6 +194,24 @@ class CliTests(unittest.TestCase):
                       'example(): function_lines=51', result.stdout)
         self.assertIn('Code health: 1 failures.', result.stdout)
 
+    def test_allow_tag_bypasses_a_limit_visibly(self):
+        self.source(3)
+        self.commit()
+        why = 'one table of move data; splitting it would hide which rows belong together'
+        file = self.root / 'Common/example.cpp'
+        file.write_text(f'// code-health: allow function_lines -- {why}\n'
+                        'void example(){\n' + '    ;\n' * 70 + '}\n')
+        result = self.cli('--github')
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertIn('Bypass: Common/example.cpp:2: example(): function_lines=72 over limit 50', result.stdout)
+        self.assertIn('::warning file=Common/example.cpp,line=2,title=Code health (bypass)::', result.stdout)
+        self.assertIn(why, result.stdout)
+        file.write_text('// code-health: allow function_lines -- legacy\n'
+                        'void example(){\n' + '    ;\n' * 70 + '}\n')
+        result = self.cli()
+        self.assertEqual(1, result.returncode, result.stderr)
+        self.assertIn('justification', result.stderr)
+
 
 if __name__ == '__main__':
     unittest.main()

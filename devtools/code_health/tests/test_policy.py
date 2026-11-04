@@ -1,7 +1,8 @@
 import unittest
 
 from devtools.code_health.metrics import Metric, measure
-from devtools.code_health.policy import evaluate
+from devtools.code_health.allow import Allowance
+from devtools.code_health.policy import bypasses, evaluate
 
 
 def function(value, symbol='test()'):
@@ -31,6 +32,38 @@ class RatchetTests(unittest.TestCase):
 
     def test_growth_below_limit_is_allowed(self):
         self.assertEqual([], evaluate([function(50)], [function(25)]))
+
+
+class BypassTests(unittest.TestCase):
+    tag = Allowance(3, ('function_lines',), 'a lookup table of game text that reads best as one block')
+
+    def test_tag_allows_up_to_twice_the_limit_and_reports_it(self):
+        metric = function(100)
+        self.assertEqual([], evaluate([metric], [], {metric: self.tag}))
+        notices, unneeded = bypasses([metric], {metric: self.tag})
+        self.assertEqual([], unneeded)
+        self.assertIn('function_lines=100 over limit 50', notices[0].message)
+        self.assertIn(self.tag.justification, notices[0].message)
+
+    def test_tag_does_not_allow_more_than_twice_the_limit(self):
+        metric = function(101)
+        failures = evaluate([metric], [], {metric: self.tag})
+        self.assertIn('allow tag permits at most 100', failures[0].message)
+
+    def test_legacy_debt_above_the_ceiling_may_still_shrink(self):
+        metric = function(110)
+        self.assertEqual([], evaluate([metric], [function(120)], {metric: self.tag}))
+
+    def test_yes_no_checks_have_no_ceiling(self):
+        metric = Metric('Common/test.h', 'Callback', 'single_method_interface', 1, 0)
+        self.assertEqual([], evaluate([metric], [], {metric: self.tag}))
+
+    def test_tag_within_the_limit_is_flagged_as_unneeded(self):
+        metric = function(40)
+        notices, unneeded = bypasses([metric], {metric: self.tag})
+        self.assertEqual([], notices)
+        self.assertIn('remove its code-health allow tag', unneeded[0].message)
+        self.assertEqual(3, unneeded[0].line)
 
 
 if __name__ == '__main__':

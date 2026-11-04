@@ -14,7 +14,7 @@ PRs, ordered by layer and grouped into chains, ending with the user docs.
 - **One concern per PR, about 400 changed lines or fewer**, not counting moved code, tests and
   reference images. Moves get their own PR. Behavior changes are separate and say so in the title.
 - **Layers point down only.** L1 cores land before the L2 routines that call them, L2 before L3.
-- **Upstream is serial.** At most two open there; everything else waits as fork drafts in the
+- **Upstream is serial.** At most three open there; everything else waits as fork drafts in the
   order below, and the user publishes the next one when a slot frees.
 - **Freeze before extracting.** Routes still being tuned are extracted only after a run confirms
   them; tuning continues on lab.

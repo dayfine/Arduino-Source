@@ -37,7 +37,7 @@ without being restated.
 - **Bounded loops.** Every wait loop has an iteration cap and checks that the producing process is
   still alive.
 - **Your own checkout.** Work only in your own worktree:
-  `git -C /Users/difan/Projects/Arduino-Source worktree add --detach <your temp folder>/wt-review-<PR> <sha>`.
+  `git -C /Users/difan/Projects/Arduino-Source worktree add --detach /Users/difan/Projects/wt/review-<PR> <sha>`.
   Run builds against that tree, never the dispatcher's.
 - **Review delivery.** Line 1 is `Reviewed SHA: <full sha>`; `## Verdict` sits on its own line,
   followed by `APPROVED` or `NEEDS_REWORK`. **Post first, then verify:** re-read the PR's reviews and
