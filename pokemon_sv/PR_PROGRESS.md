@@ -46,7 +46,7 @@ upstream/main
 
 ## Working set rules (user, 2026-10-26)
 
-- **Upstream: exactly two open at a time.** When one merges, the user publishes the next from the
+- **Upstream: at most three open at a time.** When one merges, the user publishes the next from the
   queue below the same day.
 - **Working set: about 10 fork drafts** that are being built, tested or fixed. When it drops under
   6, start the next batch of 8–10 from the plan, lowest risk first.

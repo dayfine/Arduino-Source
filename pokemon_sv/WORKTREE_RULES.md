@@ -9,7 +9,7 @@ Do not merge, rebase or cherry-pick the notes branch into a code branch.
 No agent opens, reopens or marks ready a PR on
 `PokemonAutomation/Arduino-Source`. New PRs are drafts on
 `dayfine/Arduino-Source`. The user receives anything intended for upstream.
-The upstream cap of two open PRs, including drafts, grants no publication
+The upstream cap of three open PRs, including drafts, grants no publication
 permission to agents. These instructions supersede the old Claude-publishes
 workflow. See [PR_WORKFLOW.md](PR_WORKFLOW.md).
 

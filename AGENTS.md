@@ -20,7 +20,7 @@ code branches keep only a stub workflow that checks this branch out to run it. O
 
 | What | Where | Use |
 |---|---|---|
-| PRs: never upstream; fork drafts only; at most two open upstream PRs (the user's) | [pokemon_sv/PR_WORKFLOW.md](pokemon_sv/PR_WORKFLOW.md), [Where PRs live](#where-prs-live) | Re-read before any `gh pr` change. `gh` is `~/.local/bin/gh`; always `-R dayfine/Arduino-Source --draft`. |
+| PRs: never upstream; fork drafts only; at most three open upstream PRs (the user's) | [pokemon_sv/PR_WORKFLOW.md](pokemon_sv/PR_WORKFLOW.md), [Where PRs live](#where-prs-live) | Re-read before any `gh pr` change. `gh` is `~/.local/bin/gh`; always `-R dayfine/Arduino-Source --draft`. |
 | Merge, never rebase or force-push; review fixes as new commits; a PR owns its files | [Where PRs live](#where-prs-live) | Merge the parent in; change a file only in the PR that added it. |
 | Agents: dispatch, no waiting, let agents finish | [Dispatching subagents](#dispatching-subagents), [.agents/rules/](.agents/rules/) | Subagents push, report PR + SHA, stop; the main session waits on CI. |
 | Builds: CI first, one local build at a time (`-j4`) | [Let CI build and test](#let-ci-build-and-test-build-locally-only-when-you-must) | Dispatch CI on the fork; build locally only for a console run. |
@@ -177,8 +177,8 @@ See [pokemon_sv/PR_WORKFLOW.md](pokemon_sv/PR_WORKFLOW.md). In short:
   `dayfine/Arduino-Source`**, including changes ready for review. Hand anything
   intended for upstream to the user. This replaces the former Claude-publishes
   workflow, per the user's global instructions on 2026-10-23.
-- Upstream allows **at most two open PRs from us, drafts included**
-  (CONTRIBUTIONS.md). This limit does not authorize agents to publish upstream.
+- We keep **at most three open upstream PRs, drafts included** (the user's
+  call on 2026-11-03; upstream CONTRIBUTING.md asks new contributors for two). This limit does not authorize agents to publish upstream.
 - Use `gh` through `~/.local/bin/gh`, first on PATH. Do not bypass the guard
   through the Homebrew executable, an override environment variable, another
   client, or direct API calls. The user's explicit instructions govern any
