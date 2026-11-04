@@ -172,10 +172,13 @@ private:
     void play_turn(){
         const size_t left = foes_left();
         m_psn_turns = m_own.status == SimStatus::POISON ? m_psn_turns + 1 : 0;
-        const OwnTurn own = own_turn(m_own, m_items, foe(), m_trainer, left, to_come());
-        const bool antidote = !own.potion && !own.awakening && antidote_now();
-        const std::optional<size_t> item = ai_item_choice(foe(), m_trainer.items, left);
-        const std::optional<size_t> foe_slot = item ? std::nullopt : foe_move();
+        //  A charged two-turn move strikes: no choice this turn.
+        const bool own_locked = !m_own.charging.empty();
+        const bool foe_locked = !foe().charging.empty();
+        const OwnTurn own = own_locked ? OwnTurn{} : own_turn(m_own, m_items, foe(), m_trainer, left, to_come());
+        const bool antidote = !own_locked && !own.potion && !own.awakening && antidote_now();
+        const std::optional<size_t> item = foe_locked ? std::nullopt : ai_item_choice(foe(), m_trainer.items, left);
+        const std::optional<size_t> foe_slot = item || foe_locked ? std::nullopt : foe_move();
         if (own.potion){
             gain_hp(m_own, POTION_HP);
             m_items.potions--;
@@ -195,8 +198,10 @@ private:
             m_trainer.items[*item].clear();
         }
         const bool item_used = own.potion || own.awakening || antidote;
-        const std::string own_move = item_used ? "" : own.slot ? m_own.moves[*own.slot].move : "struggle";
-        const std::string foe_used = item ? "" : foe_slot ? foe().moves[*foe_slot].move : "struggle";
+        const std::string own_move = own_locked ? m_own.charging
+            : item_used ? "" : own.slot ? m_own.moves[*own.slot].move : "struggle";
+        const std::string foe_used = foe_locked ? foe().charging
+            : item ? "" : foe_slot ? foe().moves[*foe_slot].move : "struggle";
         play_moves(own_move, own.slot, foe_used, foe_slot);
         end_of_turn();
     }
@@ -254,13 +259,25 @@ private:
     }
 
     void use(SimBattler& user, SimBattler& target, const std::string& move_name, std::optional<size_t> slot, bool moves_first){
-        if (move_name.empty() || user.hp == 0 || target.hp == 0 || !can_move(user, moves_first)){
+        if (move_name.empty() || user.hp == 0 || target.hp == 0){
+            return;
+        }
+        if (!can_move(user, moves_first)){
+            user.charging.clear();
             return;
         }
         if (slot && user.moves[*slot].pp > 0){
             user.moves[*slot].pp--;
         }
         const MoveData& move = data_of(move_name);
+        if (two_turn(move) && user.charging.empty()){
+            user.charging = move_name;
+            return;
+        }
+        user.charging.clear();
+        if (semi_invulnerable(target) && !on_user(move)){
+            return;
+        }
         if (!hits(user, target, move)){
             return;
         }
@@ -269,6 +286,18 @@ private:
         }else{
             apply_status_move(user, target, move);
         }
+    }
+
+    //  A move on its user only: a stat raise, Recover.
+    static bool on_user(const MoveData& move){
+        if (move.power > 0){
+            return false;
+        }
+        if (move.effect == "restore-hp" || move.effect == "softboiled"){
+            return true;
+        }
+        const std::optional<StageChange> change = stage_change(move.effect);
+        return change && change->on_user;
     }
 
     uint32_t hit_count(const MoveData& move){
