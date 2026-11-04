@@ -551,6 +551,25 @@ std::vector<ScreensCase> screens_cases(){
             .moves = {"bite", "bubble", "withdraw", "water-pulse"},
         },
         {
+            .name = "no TM03 in the TM CASE: skipped, back to the overworld",
+            .setup = no_tm03,
+            .end = TeachEnd::NO_ITEM,
+            .moves = {"bite", "tail-whip", "bubble", "withdraw"},
+        },
+        {
+            .name = "not compatible: given up, back to the overworld",
+            .setup = nothing_compatible,
+            .end = TeachEnd::REFUSED,
+            .moves = {"bite", "tail-whip", "bubble", "withdraw"},
+            .tm03 = 1,
+        },
+    };
+}
+
+//  The TM's scene, with a free slot and after a forget, for a TM and an HM.
+std::vector<ScreensCase> scene_screens_cases(){
+    return {
+        {
             .name = "a free slot, the TM's scene read as other",
             .setup = three_moves_scene_unread,
             .plan = {.item = "tm03", .move = "water-pulse", .member = 0},
@@ -568,19 +587,6 @@ std::vector<ScreensCase> screens_cases(){
             .setup = wartortle_dig,
             .plan = {.item = "tm28", .move = "dig", .member = 0, .forget_move = "withdraw"},
             .moves = {"bite", "tail-whip", "bubble", "dig"},
-            .tm03 = 1,
-        },
-        {
-            .name = "no TM03 in the TM CASE: skipped, back to the overworld",
-            .setup = no_tm03,
-            .end = TeachEnd::NO_ITEM,
-            .moves = {"bite", "tail-whip", "bubble", "withdraw"},
-        },
-        {
-            .name = "not compatible: given up, back to the overworld",
-            .setup = nothing_compatible,
-            .end = TeachEnd::REFUSED,
-            .moves = {"bite", "tail-whip", "bubble", "withdraw"},
             .tm03 = 1,
         },
     };
@@ -660,7 +666,7 @@ UnitTestResult check_screens_case(const ScreensCase& item){
 }
 
 UnitTestResult test_screens(){
-    for (const std::vector<ScreensCase>& cases : {screens_cases(), tutor_screens_cases()}){
+    for (const std::vector<ScreensCase>& cases : {screens_cases(), scene_screens_cases(), tutor_screens_cases()}){
         for (const ScreensCase& item : cases){
             const UnitTestResult result = check_screens_case(item);
             if (result.result != UnitTestResult::PASSED){

@@ -13,16 +13,21 @@
  *    WATER PULSE x1", "No39 ROCK TOMB x1", CLOSE).
  *  - A on a TM: USE/GIVE/EXIT, USE on top; A: the party menu, "Teach which
  *    POKEMON?", each member ABLE or NOT ABLE, the cursor on the lead.
- *  - A on a member: "<MON> wants to learn the move <MOVE>."; with room it
- *    learns. With four: "However, <MON> already knows four moves.",
- *    "Should a move be deleted and replaced with <MOVE>?" YES/NO (YES on
- *    top), YES: "Which move should be forgotten?", then KNOWN MOVES with
- *    the four moves and the new one fifth, the red cursor on the first. A
- *    on a move forgets it: "1, 2 and... ... Poof!", "<MON> forgot <OLD>.",
- *    "And... <MON> learned <MOVE>!", which the reader doesn't place (read
- *    "other"; B pages through them), then the TM CASE's list. B instead: "Stop trying to teach <MOVE>?"
- *    YES/NO, YES: "<MON> did not learn the move <MOVE>." and the TM CASE's
- *    list again, the TM kept.
+ *  - A on a member with room: the TM's scene (pokefirered
+ *    pokemon_special_anim.c), the member on pale blue diamonds: "Machine
+ *    set!", which waits for A (B there cancels the teach), the disc's
+ *    wobble, "<MON> learned <MOVE>!", then the TM CASE's list (console B,
+ *    00.23: HM01 to an Oddish with two free slots). With four: "<MON>
+ *    wants to learn the move <MOVE>.", "However, <MON> already knows four
+ *    moves.", "Should a move be deleted and replaced with <MOVE>?" YES/NO
+ *    (YES on top), YES: "Which move should be forgotten?", then KNOWN
+ *    MOVES with the four moves and the new one fifth, the red cursor on
+ *    the first. A on a move forgets it in the TM's scene: "1, 2 and...
+ *    ... Poof!", "<MON> forgot <OLD>.", "And...", each waiting for A,
+ *    then "Machine set!" and the rest as with room. A pages through it
+ *    all; once "learned" shows, no more presses. B instead: "Stop trying
+ *    to teach <MOVE>?" YES/NO, YES: "<MON> did not learn the move
+ *    <MOVE>." and the TM CASE's list again, the TM kept.
  *  - From the TM CASE's list, B closes it to the bag, and B the bag.
  *  - A move tutor (not seen on console B yet; pokefirered
  *    move_tutors.inc): its lines and two YES/NOs in the overworld's
@@ -126,6 +131,10 @@ private:
     ItemOpen open_row(TeachScreen screen, std::string_view name);
     //  After A on a member: what it showed.
     TeachPrompt member_answer();
+    //  In the TM's scene: A through its messages, never B, until the TM
+    //  CASE is back. True if it came back or "learned" showed (the moves
+    //  read after decide); false if the party menu came back instead.
+    bool through_scene();
     //  On a YES/NO while forgetting: the answer that goes on to the moves.
     void answer_to_forget(const TeachView& view);
     void press(TeachPress press);

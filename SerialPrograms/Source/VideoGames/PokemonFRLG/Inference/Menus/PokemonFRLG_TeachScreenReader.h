@@ -12,8 +12,9 @@
  *  Which screen shows is told from the colors of its background, its boxes
  *  and the dark arrow of its cursor, measured on those captures in the
  *  game's 240x160 pixels: the bag's frame is orange, the TM CASE's mint,
- *  the party menu's dark teal. Names and messages are read by OCR, in
- *  English only so far: in another language nothing is read.
+ *  the party menu's dark teal, the TM's scene's pale blue diamonds. Names
+ *  and messages are read by OCR, in English only so far: in another
+ *  language nothing is read.
  *
  */
 

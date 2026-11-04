@@ -57,6 +57,12 @@ bool solid(const ImageViewRGB32& screen, const GameBox& box, const FloatPixel& c
     return euclidean_distance(stats.average, color) < 40 && stats.stddev.sum() < 40;
 }
 
+//  The box is a fine pattern of light colors averaging near `color`.
+bool patterned(const ImageViewRGB32& screen, const GameBox& box, const FloatPixel& color){
+    const ImageStats stats = image_stats(game_crop(screen, box));
+    return euclidean_distance(stats.average, color) < 30 && stats.stddev.sum() < 70;
+}
+
 //  Measured on the captures (console B, 2026-11-03). Left of the title, the
 //  frame's color tells the screen: the bag's orange, the TM CASE's mint,
 //  the party menu's dark teal.
@@ -65,6 +71,11 @@ const FloatPixel BAG_ORANGE(255, 210, 94);
 const FloatPixel TM_CASE_MINT(193, 234, 207);
 const FloatPixel PARTY_TEAL(18, 109, 107);
 const FloatPixel WHITE(255, 255, 255);
+//  The TM's scene: pale blue diamonds on both sides of the member, around
+//  (198, 234, 255) with a stddev near 30 for the pattern.
+constexpr GameBox SCENE_LEFT{0, 20, 16, 90};
+constexpr GameBox SCENE_RIGHT{224, 20, 16, 90};
+const FloatPixel SCENE_BLUE(198, 234, 255);
 
 //  The item menu's box, between its rows (OPEN at y 109, REGISTER 125,
 //  CANCEL 141); blue text box or list below it when it is closed.
@@ -202,6 +213,8 @@ const NameMatcher& text_matcher(){
         {"stop-question", "Stop trying to teach"},
         {"did-not-learn", "did not learn the"},
         {"not-compatible", "are not compatible"},
+        {"machine-set", "Machine set"},
+        {"learned", "learned"},
     };
     return matcher;
 }
@@ -216,6 +229,8 @@ TeachText teach_text(const std::string& slug){
         {"stop-question", TeachText::STOP_QUESTION},
         {"did-not-learn", TeachText::DID_NOT_LEARN},
         {"not-compatible", TeachText::NOT_COMPATIBLE},
+        {"machine-set", TeachText::MACHINE_SET},
+        {"learned", TeachText::LEARNED},
     };
     for (const auto& [name, text] : texts){
         if (name == slug){
@@ -304,6 +319,9 @@ TeachScreen read_teach_screen(const ImageViewRGB32& screen){
     if (solid(screen, CORNER, PARTY_TEAL)){
         return read_party_screen(screen);
     }
+    if (patterned(screen, SCENE_LEFT, SCENE_BLUE) && patterned(screen, SCENE_RIGHT, SCENE_BLUE)){
+        return TeachScreen::TM_SCENE;
+    }
     if (read_summary_move_cursor(screen)){
         return TeachScreen::KNOWN_MOVES;
     }
@@ -353,7 +371,7 @@ TeachText read_teach_text(Logger& logger, Language language, const ImageViewRGB3
     if (kind == TeachScreen::PARTY_PROMPT){
         return teach_text(text_matcher().read(logger, language, game_crop(screen, PROMPT_LINE), DARK_TEXT_FILTERS()));
     }
-    if (kind != TeachScreen::PARTY_TEXT && kind != TeachScreen::PARTY_YES_NO){
+    if (kind != TeachScreen::PARTY_TEXT && kind != TeachScreen::PARTY_YES_NO && kind != TeachScreen::TM_SCENE){
         return TeachText::UNKNOWN;
     }
     //  The phrase either line matches best.
