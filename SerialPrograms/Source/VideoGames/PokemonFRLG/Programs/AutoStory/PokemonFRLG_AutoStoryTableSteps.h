@@ -57,6 +57,8 @@ inline constexpr const char* VERMILION_GYM = "VermilionCity_Gym";
 inline constexpr const char* SS_ANNE_1F = "SSAnne_1F_Corridor";
 inline constexpr const char* SS_ANNE_2F = "SSAnne_2F_Corridor";
 inline constexpr const char* CAPTAINS_OFFICE = "SSAnne_CaptainsOffice";
+inline constexpr const char* FAN_CLUB = "VermilionCity_PokemonFanClub";
+inline constexpr const char* BIKE_SHOP = "CeruleanCity_BikeShop";
 
 Pokemon::Pose at(const char* map, int x, int y, std::optional<Direction> facing = std::nullopt);
 
@@ -113,10 +115,12 @@ StoryStep options_step();
 StoryStep cut_tree(std::string name, Pokemon::Pose tree, std::string why);
 
 
-//  Rows in files of their own (PokemonFRLG_AutoStoryTableVermilionGym.cpp).
+//  Rows in files of their own (PokemonFRLG_AutoStoryTableVermilionGym.cpp,
+//  PokemonFRLG_AutoStoryTableCeladon.cpp).
 StoryCheckpoint vermilion_gym();
 StoryCheckpoint to_lt_surge();
 StoryCheckpoint lt_surge();
+StoryCheckpoint bike_voucher();
 
 
 

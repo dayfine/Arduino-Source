@@ -93,6 +93,7 @@
         "warp_1": [30, 11],
         "warp_3": [22, 19],
         "warp_4": [31, 21],
+        "warp_5": [13, 28],
         "warp_6": [29, 28],
         "warp_7": [1, 12],
         "warp_9": [31, 8]
@@ -132,7 +133,9 @@
         {
             "x": 13,
             "y": 28,
-            "enter": "cave_entrance"
+            "enter": "cave_entrance",
+            "to_map": "CeruleanCity_BikeShop",
+            "to_point": "warp_1"
         },
         {
             "x": 29,
@@ -170,7 +173,9 @@
         {
             "x": 14,
             "y": 28,
-            "enter": "cave_entrance"
+            "enter": "cave_entrance",
+            "to_map": "CeruleanCity_BikeShop",
+            "to_point": "warp_1"
         },
         {
             "x": 23,

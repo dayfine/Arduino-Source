@@ -71,6 +71,9 @@ const char* const MAP_NAMES[] = {
     "SSAnne_CaptainsOffice",
     //  Vermilion Gym, past the tree Cut fells.
     "VermilionCity_Gym",
+    //  The BIKE VOUCHER and the BICYCLE.
+    "VermilionCity_PokemonFanClub",
+    "CeruleanCity_BikeShop",
     "CeruleanCave_1F",
     "CeruleanCave_2F",
     "CeruleanCave_B1F",
