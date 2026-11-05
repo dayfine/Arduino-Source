@@ -8,9 +8,9 @@ untouched. These are fork drafts for owner handoff, not merged changes.
 
 | Draft | Branch / tested revision | Base and scope |
 |---|---|---|
-| [#227](https://github.com/dayfine/Arduino-Source/pull/227) | `nav/recovery-core-extraction` @ `af21f2750289adef1a370ba214eb557b26c9c0ec` | #114 `acf85aa2411a125ea1088908e66d4eff93351f1f`: game-independent convergent wall search, 9 registered native tests. |
-| [#228](https://github.com/dayfine/Arduino-Source/pull/228) | `frlg/shared-recovery-adapter` @ `616d2f5f0` | #224 `51c0ce6128e5981da56b370a770874b96a1e129f`, merged #227: replace FRLG's pure search with the shared search. |
-| [#229](https://github.com/dayfine/Arduino-Source/pull/229) | `bdsp/shared-recovery-tests` @ `a816258cdc62174dc43000f586d015cc4d7788f5` | #226 `f8bdd62b9df4dbf285f93853147295e0552a0367`, merged #227: BDSP adapter, native encounter outcomes and real story/walker recovery regressions and fixes. |
+| [#227](https://github.com/dayfine/Arduino-Source/pull/227) | `nav/recovery-core-extraction` @ `554624edf` | #114 `acf85aa2411a125ea1088908e66d4eff93351f1f`: game-independent convergent wall search, 9 registered native tests. |
+| [#228](https://github.com/dayfine/Arduino-Source/pull/228) | `frlg/shared-recovery-adapter` @ `72714076b` | #224 `51c0ce6128e5981da56b370a770874b96a1e129f`, merged #227: replace FRLG's pure search with the shared search. |
+| [#229](https://github.com/dayfine/Arduino-Source/pull/229) | `bdsp/shared-recovery-tests` @ `e287144a9` | #226 `f8bdd62b9df4dbf285f93853147295e0552a0367`, merged #227: BDSP adapter, native encounter outcomes and real story/walker recovery regressions and fixes. |
 
 Shared extraction stays separate from BDSP behavior changes. FRLG baseline
 includes #213 plus later #215/#219 behavior inherited by #224. Preserve trainer
@@ -208,3 +208,48 @@ Recipes/results: `/tmp/build-wall-review.py`, `/tmp/wall-review-native-results.l
 `/tmp/wall-recovery-contracts-original-final-rules.log`,
 `/tmp/wall-recovery-contracts-green.log`, `/tmp/contracts-selftests-with-code.log`.
 Native physics/resource/strict-unused-I/O fidelity boundaries above still apply.
+
+
+### Current static-policy revision (supersedes the stateful-policy review checkpoint)
+
+User clarified that only the public template needs a separate declaration;
+internal templates must be defined in place. #231 now enforces that distinction
+and rejects redundant internal forward declarations. All **112 self-tests pass**;
+[latest Agents Check](https://github.com/dayfine/Arduino-Source/actions/runs/42093158378)
+passes at `e069109f8138c085a76d08ffa944e2b93d939588`.
+
+Core #227 is now `554624edf`: `find_wall_anchors<Policy>(positions, context, limits)`.
+All policy operations are static. Map/movement state lives in explicit Context,
+not a policy instance or global map. The result vector is constructed after the
+already-converged early return. Context/span are borrowed only during the call.
+
+The test comments draw the known walls of a synthetic corridor and closed room.
+Walkable coordinates are 0..10; walls are outside at -1/11. A west hold stops at
+0 inside the walkable region. Room hypotheses (2,3)/(3,4) converge via north then
+west at (0,0). These are analytic search policies, not native map-loader/walker
+simulations. Real maps' unknown edges remain the game adapters' responsibility.
+
+To keep dependent PRs compatible, merge #227 forward and switch adapters:
+
+- FRLG #228 `72714076b4ee0ec6d3e002e90895d5ca01826e90`: static ReanchorPolicy,
+  explicit ReanchorContext carrying world alternatives/surfing. **58 native
+  cases pass**, zero fail, using the actual merged shared header.
+- BDSP #229 `e287144a9196999d7b1ac2a6206ad23f23bb3230`: static WallPolicy,
+  StoryWorld passed as context. **48 native cases pass**, zero fail.
+- Shared **10 native cases pass**, zero fail; revised #227 passes the candidate
+  #231 gate with zero findings. Normal adapter pre-push gates pass as well.
+
+The previous core `c1a55d784` passed full Windows [42090328101](https://github.com/dayfine/Arduino-Source/actions/runs/42090328101)
+and macOS [42090332966](https://github.com/dayfine/Arduino-Source/actions/runs/42090332966).
+Fresh full builds for the static-policy revision are running:
+[Windows 42093374031](https://github.com/dayfine/Arduino-Source/actions/runs/42093374031),
+[macOS 42093379011](https://github.com/dayfine/Arduino-Source/actions/runs/42093379011).
+Do not report the previous full runs as tests of the new static signature.
+
+Recipes/results for this revision: `/tmp/build-wall-review.py`,
+`/tmp/build-native-recovery.py`, `/tmp/build-bdsp-recovery-story.py`,
+`/tmp/wall-review-native-results.log`, `/tmp/frlg-static-native-results.log`,
+`/tmp/bdsp-static-native-results.log`, `/tmp/contracts-selftests-with-code.log`.
+All adapter changes preserve map/terrain and route execution behavior; no console
+or save was accessed. Quota at 11:26 PST: primary 17%, weekly 14% remaining;
+primary reset 11:56 PST. These were actual account readings.
