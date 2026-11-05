@@ -172,7 +172,7 @@ std::vector<TilePos> counted_ends(const std::vector<TilePos>& starts, const Poke
     }
     return ends;
 }
-}
+} // namespace
 
 Pose StoryWalkSteps::recover_tapped_leg(const Pose& from, const std::vector<TilePos>& starts,
     const std::vector<TilePos>& goals, const Pokemon::StoryLeg& leg, const StoryStep& step){

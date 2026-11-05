@@ -156,6 +156,7 @@ bool sim_can_step(const GridSim& sim, Pokemon::Direction direction);
 //  normalized movement/escape evidence, not a model of image detectors or
 //  battle mechanics. BEFORE leaves the tile unchanged; AFTER completes it.
 enum class SimEncounterPhase{ BEFORE_MOVEMENT, AFTER_MOVEMENT };
+//  Match one tap and supply its cleared encounter phase and origin evidence.
 struct SimWildTap{
     std::string label;
     Pokemon::Direction direction = Pokemon::Direction::NORTH;

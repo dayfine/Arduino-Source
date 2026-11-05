@@ -69,7 +69,7 @@ public:
 
 };
 
-}
+} // namespace
 
 std::vector<Pokemon::WallAnchor<Pokemon::TilePos, TileLeg>> wall_recovery_candidates(
     const StoryWorld& world, const std::vector<Pokemon::TilePos>& from,
@@ -120,7 +120,7 @@ std::vector<PlannedLeg> recovery_legs(
     }
     return legs;
 }
-}
+} // namespace
 
 std::optional<std::vector<PlannedLeg>> plan_recovered_route(
     const StoryWorld& world, const std::vector<TilePos>& from,
@@ -150,6 +150,6 @@ std::optional<std::vector<PlannedLeg>> plan_recovered_route(
     return std::nullopt;
 }
 
-}
-}
-}
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

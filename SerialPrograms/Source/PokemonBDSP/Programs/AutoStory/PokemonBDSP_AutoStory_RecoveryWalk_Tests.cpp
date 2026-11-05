@@ -68,7 +68,7 @@ const Pokemon::StoryStep& mine_step(){
     throw GridSimFailure{"missing native mine step"};
 }
 
-struct RecoveryCase{
+struct RecoveryInput{
     std::string name;
     std::vector<size_t> taps;
     Direction direction = Direction::SOUTH;
@@ -76,13 +76,21 @@ struct RecoveryCase{
     SimEncounterPhase phase = SimEncounterPhase::BEFORE_MOVEMENT;
     WalkOrigin origin = WalkOrigin::CURRENT_LEG;
     size_t interrupted_holds = 0;
+};
+struct RecoveryExpectation{
     std::string failure = {};
+    TilePos end = {.x = 18, .y = 29};
+    Direction facing = Direction::WEST;
+};
+struct RecoveryCase{
+    RecoveryInput input;
+    RecoveryExpectation expectation;
 };
 
 class Test_RecoveryWalk : public UnitTest{
 public:
     explicit Test_RecoveryWalk(RecoveryCase data)
-        : UnitTest("PokemonBDSP::AutoStory - Recovery walk: " + data.name), m_case(std::move(data))
+        : UnitTest("PokemonBDSP::AutoStory - Recovery walk: " + data.input.name), m_case(std::move(data))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
         const StoryWorld* world = story_plan_world("OreburghMine", "OreburghMine");
@@ -91,12 +99,12 @@ public:
         }
         GridSim sim({.world = world}, world->to_world("OreburghMine", {15, 10}), Direction::SOUTH, true);
         std::vector<SimWildTap> taps;
-        for (size_t tap : m_case.taps){
-            taps.push_back({.label = "below_roark", .direction = m_case.direction,
-                .requested_tiles = m_case.tiles, .tap = tap, .phase = m_case.phase, .origin = m_case.origin});
+        for (size_t tap : m_case.input.taps){
+            taps.push_back({.label = "below_roark", .direction = m_case.input.direction,
+                .requested_tiles = m_case.input.tiles, .tap = tap, .phase = m_case.input.phase, .origin = m_case.input.origin});
         }
         std::vector<std::string> notes;
-        InterruptingRouteIO route(sim, notes, std::move(taps), m_case.interrupted_holds);
+        InterruptingRouteIO route(sim, notes, std::move(taps), m_case.input.interrupted_holds);
         RecoveryStepIO io(route);
         StoryWalkSteps walks(io);
         walks.begin_attempt("01.03");
@@ -110,13 +118,13 @@ public:
         }catch (const GridSimFailure& error){
             failure = error.message;
         }
-        if (!m_case.failure.empty()){
-            return failure.find(m_case.failure) != std::string::npos ? UnitTestResult(true)
-                : UnitTestResult("Expected " + m_case.failure + ", got " + failure);
+        if (!m_case.expectation.failure.empty()){
+            return failure.find(m_case.expectation.failure) != std::string::npos ? UnitTestResult(true)
+                : UnitTestResult("Expected " + m_case.expectation.failure + ", got " + failure);
         }
         const auto end = story_to_local(*world, "OreburghMine", nearest_tile(sim.player().pos));
-        if (!failure.empty() || !end || *end != TilePos{18, 29} || !declared
-            || Pokemon::facing_of(*declared) != sim.player().facing || sim.player().facing != Direction::WEST){
+        if (!failure.empty() || !end || *end != m_case.expectation.end || !declared
+            || Pokemon::facing_of(*declared) != sim.player().facing || sim.player().facing != m_case.expectation.facing){
             return "Expected below Roark (18,29), got " + to_string(sim.player().pos) + ": " + failure;
         }
         return true;
@@ -124,19 +132,24 @@ public:
 private:
     RecoveryCase m_case;
 };
-}
+} // namespace
 
 void add_tests_AutoStory_RecoveryWalk(UnitTestDatabase& database){
-    database.add<Test_RecoveryWalk>(RecoveryCase{.name = "uninterrupted native mine step", .taps = {}});
-    database.add<Test_RecoveryWalk>(RecoveryCase{.name = "last tap interrupted before movement", .taps = {5}});
-    database.add<Test_RecoveryWalk>(RecoveryCase{.name = "last tap completed before battle", .taps = {5}, .phase = SimEncounterPhase::AFTER_MOVEMENT});
-    database.add<Test_RecoveryWalk>(RecoveryCase{.name = "two interrupted advances, row 15", .taps = {4, 5}});
-    database.add<Test_RecoveryWalk>(RecoveryCase{.name = "last west leg recovers position and facing", .taps = {9}, .direction = Direction::WEST, .tiles = 9});
-    database.add<Test_RecoveryWalk>(RecoveryCase{.name = "repeat the interrupted recovery hold", .taps = {5}, .interrupted_holds = 1});
-    database.add<Test_RecoveryWalk>(RecoveryCase{.name = "recovery hold budget exhausted", .taps = {5}, .interrupted_holds = 10, .failure = "recovery budget"});
-    database.add<Test_RecoveryWalk>(RecoveryCase{.name = "first input may belong to previous leg", .taps = {1}, .failure = "encounter_origin_unknown"});
-    database.add<Test_RecoveryWalk>(RecoveryCase{.name = "late encounter origin unknown", .taps = {5}, .origin = WalkOrigin::MAY_PRECEDE_LEG, .failure = "encounter_origin_unknown"});
+    const RecoveryCase CASES[] = {
+        {.input = {.name = "uninterrupted native mine step", .taps = {}}, .expectation = {.failure = ""}},
+        {.input = {.name = "last tap interrupted before movement", .taps = {5}}, .expectation = {.failure = ""}},
+        {.input = {.name = "last tap completed before battle", .taps = {5}, .phase = SimEncounterPhase::AFTER_MOVEMENT}, .expectation = {.failure = ""}},
+        {.input = {.name = "two interrupted advances, row 15", .taps = {4, 5}}, .expectation = {.failure = ""}},
+        {.input = {.name = "last west leg recovers position and facing", .taps = {9}, .direction = Direction::WEST, .tiles = 9}, .expectation = {.failure = ""}},
+        {.input = {.name = "repeat the interrupted recovery hold", .taps = {5}, .interrupted_holds = 1}, .expectation = {.failure = ""}},
+        {.input = {.name = "recovery hold budget exhausted", .taps = {5}, .interrupted_holds = 10}, .expectation = {.failure = "recovery budget"}},
+        {.input = {.name = "first input may belong to previous leg", .taps = {1}}, .expectation = {.failure = "encounter_origin_unknown"}},
+        {.input = {.name = "late encounter origin unknown", .taps = {5}, .origin = WalkOrigin::MAY_PRECEDE_LEG}, .expectation = {.failure = "encounter_origin_unknown"}},
+    };
+    for (const RecoveryCase& scenario : CASES){
+        database.add<Test_RecoveryWalk>(scenario);
+    }
 }
-}
-}
-}
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

@@ -38,7 +38,7 @@ std::optional<std::vector<PlannedLeg>> plan_recovered_route(
     const RobustPlanCosts& costs
 );
 
-}
-}
-}
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

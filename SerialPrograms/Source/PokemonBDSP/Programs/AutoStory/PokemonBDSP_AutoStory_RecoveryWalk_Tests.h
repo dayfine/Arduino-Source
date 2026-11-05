@@ -7,8 +7,9 @@
 namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonBDSP{
+//  Register mine interruption, localization and bounded recovery scenarios.
 void add_tests_AutoStory_RecoveryWalk(UnitTestDatabase& database);
-}
-}
-}
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif
