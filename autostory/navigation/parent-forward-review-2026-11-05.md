@@ -36,3 +36,10 @@ Original #122 was checked with the same canonical linter against its original pa
 Child branches have been pushed normally with ancestry-only merges (identical source trees): #228 `01cd46204bd5646b3cf341e7c9d43c02b4e6de6c`, #229 `e35a3a5a7d1299b3eac844b0facfd50ee92f5a56`. Base refs are still unchanged pending approval.
 
 Approval requirement: [tools/hooks/pre-push](https://github.com/dayfine/Arduino-Source/blob/agents/tools/hooks/pre-push) says “Bypass (git push --no-verify) only with the user’s OK for that push.” The existing bootstrap approval was already consumed and does not cover this batch.
+
+
+## Published after explicit approval
+
+The user approved this exact batch. All 16 parent refs were updated atomically, with no force pushes or PR merges. #224 now points at `cc43650ef`, #226 at `e65fd9092`. GitHub confirms #228 contains only `PokemonFRLG_OverworldReanchor.cpp`, and #229 no longer contains shared nav-core files. The one-time bypass approval was consumed.
+
+The remaining legacy lint work is inventoried in [the parent-PR lint handoff](parent-pr-lint-handoff-2026-11-05.md).
