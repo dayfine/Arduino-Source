@@ -38,22 +38,21 @@ std::optional<WallHit> safe_wall(const StoryWorld& world, TilePos from, Directio
     return wall;
 }
 
-class WallModel{
+class WallPolicy{
 public:
     using Hypothesis = TilePos;
     using Position = TilePos;
     using Hold = TileLeg;
 
-    explicit WallModel(const StoryWorld& world) : m_world(&world){}
-    Position position(const Hypothesis& at) const{ return at; }
-    int tiles(const Hold& hold) const{ return (int)hold.tiles; }
-    std::optional<Pokemon::WallRecoveryStep<Hypothesis, Hold>> hold(
-        const std::vector<Hypothesis>& from, Direction direction
-    ) const{
+    static Position position(const Hypothesis& at){ return at; }
+    static int tiles(const Hold& hold){ return (int)hold.tiles; }
+    static std::optional<Pokemon::WallRecoveryStep<Hypothesis, Hold>> hold(
+        const StoryWorld& world, const std::vector<Hypothesis>& from, Direction direction
+    ){
         std::vector<Hypothesis> ends;
         size_t longest = 0;
         for (const auto& start : from){
-            const auto wall = safe_wall(*m_world, start, direction);
+            const auto wall = safe_wall(world, start, direction);
             if (!wall){
                 return std::nullopt;
             }
@@ -68,8 +67,6 @@ public:
         };
     }
 
-private:
-    const StoryWorld* m_world;
 };
 
 }
@@ -83,7 +80,7 @@ std::vector<Pokemon::WallAnchor<Pokemon::TilePos, TileLeg>> wall_recovery_candid
             return {};
         }
     }
-    return Pokemon::find_wall_anchors(WallModel(world), from, limits);
+    return Pokemon::find_wall_anchors<WallPolicy>(from, world, limits);
 }
 
 std::vector<TilePos> interrupted_leg_positions(
