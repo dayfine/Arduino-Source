@@ -320,7 +320,7 @@ Head: `130344db1cb2a394693019d734145f8c295c589b`. Base `frlg/stage5-bill`: `7b6a
 
 ### #224: frlg/stage7-celadon
 
-Head: `cc43650ef87c91aa4a6ac049c37114cfddf82d36`. Base `frlg/stage6-vermilion`: `130344db1cb2a394693019d734145f8c295c589b`.
+Head: `7eb6517069c65748be88016f1e558fc3b67504b2` (includes subsequently merged #228). Base `frlg/stage6-vermilion`: `130344db1cb2a394693019d734145f8c295c589b`.
 
 - `SerialPrograms/Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryCeladon_Tests.cpp`
 - `SerialPrograms/Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryTableCeladon.cpp`
@@ -497,3 +497,5 @@ Head: `e65fd909297b58068e2dd92e534e969b2acc086d`. Base `bdsp/sim`: `b6f2f4d1ba99
 Inventory: canonical merged style rules (the implementation behind #231), full PR diff against the updated parent, not just the six-file parent refresh. All listed findings fall into the four categories above. Logs on this machine: `/tmp/nav-parent-NUMBER-full-lint.log`; machine-readable snapshot: `/tmp/nav-parent-lint-inventory.json`.
 
 The 16 parent-only merges themselves passed incremental lint against their previous tips and contained only the six reviewed #227 files. Their publication used one explicitly approved atomic fast-forward-only push. That approval was consumed. No functional lint cleanup has yet been applied to these parent PRs.
+
+#228 merged into #224 during this handoff. The #224 lint count was rechecked at `7eb6517069` and remains 16. Its old adapter branch was deleted; native CI was dispatched on #224 directly. Native CI is also running for #226 and #229.
