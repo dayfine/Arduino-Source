@@ -163,3 +163,48 @@ pushes used the normal hook. No upstream PR mutation or GitHub comments/messages
 
 Quota at 07:46 PST: primary 54%, weekly 20% remaining, from actual local
 account/rateLimits/read. Primary resets 11:56 PST; weekly November10 22:35 PST.
+
+## Header and test-contract review, November 5
+
+User requested API-first template headers, namespace labels, comments on each
+namespace-scope header symbol, a span input, an explicit policy role, and native
+case tables with separate input/expectation structs. Separate draft
+[#231](https://github.com/dayfine/Arduino-Source/pull/231) targets `agents` for the
+canonical lint implementation and conventions. #227 carries the C++ changes
+and replaces its stale branch-local lint workflow with the existing canonical
+agents-based workflow. Merge #231 to activate the rules in that workflow and
+normal pre-push source; never merge agents into a code branch.
+
+- Linter: `8d2547845` on `lint/cpp-header-test-contracts`.
+  Agents Check [42090196868](https://github.com/dayfine/Arduino-Source/actions/runs/42090196868)
+  passes. 110 self-tests pass with `CODE_HEALTH_REPO` set to the native checkout;
+  notes-only CI has one expected checkout-dependent skip. Harness checks pass.
+- Core: `c1a55d784aaf310ee3b47a3e740d6350da8402e0` on #227. Final structural
+  rules find **19 errors** in original `af21f2750`, and **zero** in the revised
+  native change against #114 `acf85aa2411a125ea1088908e66d4eff93351f1f`.
+  Each rule has failing then passing self-test fixtures. CLI integration checks
+  failure exit status, GitHub annotations and the corrected-header success.
+- A hold is a directional press maintained until a wall stops movement, not a
+  tap count or duration. MovementPolicy already selects behavior at compile time;
+  the stateful policy carries game map/object-world state. No safe universal
+  default collision policy exists. The span is borrowed during the call; branch
+  vectors own hypotheses. Existing policy hold() vector contracts are preserved.
+- Shared native tests: **10 pass, zero fail**. Corridor inputs use vector;
+  corner inputs use array. The prior combined corner case is now two table rows,
+  giving one additional registered case. Expectations check selected position,
+  direction and held-tile distance, with actual values in failure messages.
+- Compatibility: compile existing FRLG `616d2f5f0` and BDSP `a816258cd` adapters
+  against the actual revised header via compiler `-include`, substituting the
+  revised shared native test source. No game source edits or branch merges:
+  **58 FRLG and 48 BDSP focused native cases pass**, zero fail. This is API
+  compatibility evidence, not a claim those game branches already inherited #227.
+- Full core Windows [42090328101](https://github.com/dayfine/Arduino-Source/actions/runs/42090328101)
+  and macOS [42090332966](https://github.com/dayfine/Arduino-Source/actions/runs/42090332966)
+  are pending at this checkpoint. #227 code health/no-tabs checks pass.
+
+Recipes/results: `/tmp/build-wall-review.py`, `/tmp/wall-review-native-results.log`,
+`/tmp/build-frlg-review.py`, `/tmp/frlg-review-native-results.log`,
+`/tmp/build-bdsp-review.py`, `/tmp/bdsp-review-native-results.log`,
+`/tmp/wall-recovery-contracts-original-final-rules.log`,
+`/tmp/wall-recovery-contracts-green.log`, `/tmp/contracts-selftests-with-code.log`.
+Native physics/resource/strict-unused-I/O fidelity boundaries above still apply.
