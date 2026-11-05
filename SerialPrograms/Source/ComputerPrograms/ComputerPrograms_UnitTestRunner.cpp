@@ -70,6 +70,7 @@ UnitTestDatabase make_UNIT_TESTS_ALL(){
     Pokemon::add_tests_AutoStorySelect(ret);
     Pokemon::add_tests_LegPlanner(ret);
     Pokemon::add_tests_LegWalker(ret);
+    Pokemon::add_tests_WallRecovery(ret);
     Pokemon::add_tests_MapData(ret);
     Pokemon::add_tests_RouteLog(ret);
     Pokemon::add_tests_StoryEvents(ret);
