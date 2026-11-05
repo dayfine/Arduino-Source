@@ -6,6 +6,8 @@
  *  real forest/mine scenarios and collision/transition semantics.
  */
 
+#include <array>
+#include <format>
 #include <string>
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "Pokemon_WallRecovery.h"
@@ -18,6 +20,7 @@ namespace{
 struct TestHold{
     Direction direction;
     int tiles;
+    bool operator==(const TestHold&) const = default;
 };
 
 class CorridorModel{
@@ -80,61 +83,154 @@ public:
     }
 };
 
-class Test_WallRecoveryCorner : public UnitTest{
-public:
-    Test_WallRecoveryCorner() : UnitTest("Pokemon::WallRecovery - two holds and depth budget"){}
-    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        const std::vector<TilePos> from{{2, 3}, {3, 4}};
-        if (!find_wall_anchors(CornerModel(), from, {.max_holds = 1}).empty()){
-            return "One hold cannot localize both axes.";
-        }
-        const auto found = find_wall_anchors(CornerModel(), from, {.max_holds = 2});
-        if (found.empty() || found[0].holds.size() != 2 || found[0].at != TilePos{0, 0}){
-            return "Expected two shortest holds to the northwest corner.";
-        }
-        return true;
-    }
+//  Inputs and expectations are separate aggregates; each registered test owns one row.
+struct CorridorInput{
+    std::string name;
+    std::vector<int> positions;
+    std::optional<int> person;
+    size_t budget;
+};
+
+struct CorridorExpectation{
+    std::optional<int> first_anchor;
+    std::vector<TestHold> holds;
+};
+
+struct CorridorTestCase{
+    CorridorInput input;
+    CorridorExpectation expectation;
 };
 
 class Test_WallRecovery : public UnitTest{
 public:
-    Test_WallRecovery(std::string name, std::vector<int> from, std::optional<int> person,
-        size_t budget, std::optional<int> expected, size_t holds)
-        : UnitTest("Pokemon::WallRecovery - " + name)
-        , m_from(std::move(from)), m_person(person), m_budget(budget), m_expected(expected), m_holds(holds)
+    explicit Test_WallRecovery(CorridorTestCase scenario)
+        : UnitTest("Pokemon::WallRecovery - " + scenario.input.name), m_scenario(std::move(scenario))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        const auto found = find_wall_anchors(CorridorModel(m_person), m_from, {.max_holds = m_budget});
-        if (!m_expected){
-            return found.empty() ? UnitTestResult(true) : UnitTestResult("Expected no safe anchor.");
+        const auto& input = m_scenario.input;
+        const auto& expected = m_scenario.expectation;
+        const auto found = find_wall_anchors(CorridorModel(input.person), input.positions, {.max_holds = input.budget});
+        const std::optional<int> actual = found.empty() ? std::nullopt : std::optional<int>(found.front().at);
+        if (actual != expected.first_anchor){
+            return std::format("Expected first anchor {}, got {} ({} anchors).",
+                expected.first_anchor ? std::to_string(*expected.first_anchor) : "none",
+                actual ? std::to_string(*actual) : "none", found.size());
         }
-        if (found.empty() || found[0].at != *m_expected || found[0].holds.size() != m_holds){
-            return "Wrong convergence tile or hold count.";
+        if (!found.empty() && found.front().holds != expected.holds){
+            return std::format("Expected holds {}, got {}.", describe(expected.holds), describe(found.front().holds));
         }
         return true;
     }
-
 private:
-    std::vector<int> m_from;
-    std::optional<int> m_person;
-    size_t m_budget;
-    std::optional<int> m_expected;
-    size_t m_holds;
+    static std::string describe(const std::vector<TestHold>& holds){
+        std::string result;
+        for (const auto& hold : holds){
+            result += std::format("{} {} tiles; ", direction_name(hold.direction), hold.tiles);
+        }
+        return result.empty() ? "none" : result;
+    }
+    CorridorTestCase m_scenario;
 };
 
-}
+const CorridorTestCase CORRIDOR_CASES[] = {
+    {
+        .input = {.name = "empty", .positions = {}, .person = std::nullopt, .budget = 3},
+        .expectation = {.first_anchor = std::nullopt, .holds = {}},
+    },
+    {
+        .input = {.name = "already known", .positions = {4}, .person = std::nullopt, .budget = 0},
+        .expectation = {.first_anchor = 4, .holds = {}},
+    },
+    {
+        .input = {.name = "both tiles", .positions = {2, 3}, .person = std::nullopt, .budget = 3},
+        .expectation = {.first_anchor = 0, .holds = {{.direction = Direction::WEST, .tiles = 3}}},
+    },
+    {
+        .input = {.name = "three shortfall endpoints", .positions = {3, 4, 5}, .person = std::nullopt, .budget = 3},
+        .expectation = {.first_anchor = 0, .holds = {{.direction = Direction::WEST, .tiles = 5}}},
+    },
+    {
+        .input = {.name = "shortest hold first", .positions = {8, 9}, .person = std::nullopt, .budget = 3},
+        .expectation = {.first_anchor = 10, .holds = {{.direction = Direction::EAST, .tiles = 2}}},
+    },
+    {
+        .input = {.name = "person is not an anchor", .positions = {2, 3}, .person = 1, .budget = 3},
+        .expectation = {.first_anchor = 10, .holds = {{.direction = Direction::EAST, .tiles = 8}}},
+    },
+    {
+        .input = {.name = "person splits belief", .positions = {2, 8}, .person = 5, .budget = 3},
+        .expectation = {.first_anchor = std::nullopt, .holds = {}},
+    },
+    {
+        .input = {.name = "budget exhausted", .positions = {2, 3}, .person = std::nullopt, .budget = 0},
+        .expectation = {.first_anchor = std::nullopt, .holds = {}},
+    },
+};
+
+struct CornerInput{
+    std::string name;
+    std::array<TilePos, 2> positions;
+    size_t budget;
+};
+
+struct CornerExpectation{
+    std::optional<TilePos> first_anchor;
+    std::vector<TestHold> holds;
+};
+
+struct CornerTestCase{
+    CornerInput input;
+    CornerExpectation expectation;
+};
+
+class Test_WallRecoveryCorner : public UnitTest{
+public:
+    explicit Test_WallRecoveryCorner(CornerTestCase scenario)
+        : UnitTest("Pokemon::WallRecovery - " + scenario.input.name), m_scenario(std::move(scenario))
+    {}
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        const auto& input = m_scenario.input;
+        const auto& expected = m_scenario.expectation;
+        //  std::array and the corridor's std::vector both bind to the borrowed span API.
+        const auto found = find_wall_anchors(CornerModel(), input.positions, {.max_holds = input.budget});
+        const std::optional<TilePos> actual = found.empty() ? std::nullopt : std::optional<TilePos>(found.front().at);
+        if (actual != expected.first_anchor){
+            return std::format("Expected first corner {}, got {} ({} anchors).",
+                expected.first_anchor ? to_string(*expected.first_anchor) : "none",
+                actual ? to_string(*actual) : "none", found.size());
+        }
+        if (!found.empty() && found.front().holds != expected.holds){
+            return std::format("Expected {} holds beginning north 4 then west 3, got {} holds.",
+                expected.holds.size(), found.front().holds.size());
+        }
+        return true;
+    }
+private:
+    CornerTestCase m_scenario;
+};
+
+const CornerTestCase CORNER_CASES[] = {
+    {
+        .input = {.name = "one hold cannot localize both axes", .positions = {{{.x = 2, .y = 3}, {.x = 3, .y = 4}}}, .budget = 1},
+        .expectation = {.first_anchor = std::nullopt, .holds = {}},
+    },
+    {
+        .input = {.name = "two holds converge at northwest corner", .positions = {{{.x = 2, .y = 3}, {.x = 3, .y = 4}}}, .budget = 2},
+        .expectation = {.first_anchor = TilePos{.x = 0, .y = 0},
+            .holds = {{.direction = Direction::NORTH, .tiles = 4}, {.direction = Direction::WEST, .tiles = 3}}},
+    },
+};
+
+} // namespace
 
 void add_tests_WallRecovery(UnitTestDatabase& database){
-    database.add<Test_WallRecoveryCorner>();
-    database.add<Test_WallRecovery>("empty", std::vector<int>{}, std::nullopt, 3, std::nullopt, 0);
-    database.add<Test_WallRecovery>("already known", std::vector<int>{4}, std::nullopt, 0, 4, 0);
-    database.add<Test_WallRecovery>("both tiles", std::vector<int>{2, 3}, std::nullopt, 3, 0, 1);
-    database.add<Test_WallRecovery>("three shortfall endpoints", std::vector<int>{3, 4, 5}, std::nullopt, 3, 0, 1);
-    database.add<Test_WallRecovery>("shortest hold first", std::vector<int>{8, 9}, std::nullopt, 3, 10, 1);
-    database.add<Test_WallRecovery>("person is not an anchor", std::vector<int>{2, 3}, 1, 3, 10, 1);
-    database.add<Test_WallRecovery>("person splits belief", std::vector<int>{2, 8}, 5, 3, std::nullopt, 0);
-    database.add<Test_WallRecovery>("budget exhausted", std::vector<int>{2, 3}, std::nullopt, 0, std::nullopt, 0);
+    for (const CorridorTestCase& scenario : CORRIDOR_CASES){
+        database.add<Test_WallRecovery>(scenario);
+    }
+    for (const CornerTestCase& scenario : CORNER_CASES){
+        database.add<Test_WallRecoveryCorner>(scenario);
+    }
 }
 
-}
-}
+} // namespace Pokemon
+} // namespace PokemonAutomation
