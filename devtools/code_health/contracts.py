@@ -17,6 +17,8 @@ def scopes(parsed):
         yield statement, tuple(stack)
         if statement.end == '{':
             kind = brace_kind(statement.text)
+            if re.fullmatch(r'extern\s*"\s*"', statement.text):
+                kind = 'linkage'
             match = re.fullmatch(r'(?:inline\s+)?namespace\s*([\w:]*)', statement.text)
             if kind == 'class':
                 match = re.search(r'\b(?:class|struct|union)\s+(\w+)', statement.text)

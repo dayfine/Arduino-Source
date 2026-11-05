@@ -196,3 +196,7 @@ template <typename T> T f(T);
 template <typename T> T f(T value){ return value; }
 '''
         self.assertEqual([], self.messages(source))
+
+    def test_extern_c_linkage_block_is_not_a_namespace(self):
+        source = 'extern "C"{\n// Exported entry point.\nvoid run();\n}\n'
+        self.assertEqual([], self.messages(source))
