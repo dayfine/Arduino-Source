@@ -705,17 +705,17 @@ std::vector<StoryLeg> legs_below_roark(){
         {.direction = SOUTH, .tiles = 5},
         {.direction = EAST,  .tiles = 13},
         {.direction = SOUTH, .tiles = 10},
-        {.direction = WEST,  .tiles = 2},
+        {.direction = WEST,  .tiles = 1},
         {.direction = SOUTH, .tiles = 2},
-        {.direction = WEST,  .tiles = 8},
+        {.direction = WEST,  .tiles = 9},
     };
 }
 
 std::vector<StoryLeg> legs_out_of_coal_room(){
     return {
-        {.direction = EAST,  .tiles = 8},
+        {.direction = EAST,  .tiles = 9},
         {.direction = NORTH, .tiles = 2},
-        {.direction = EAST,  .tiles = 2},
+        {.direction = EAST,  .tiles = 1},
         {.direction = NORTH, .tiles = 10},
         {.direction = WEST,  .tiles = 13},
         {.direction = NORTH, .tiles = 5},
