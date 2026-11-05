@@ -15,6 +15,9 @@
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "Data/PokemonBDSP_AutoStory_RoutePlanner.h"
+#include "Data/PokemonBDSP_AutoStory_WallRecovery.h"
+#include "Data/PokemonBDSP_AutoStory_Maps.h"
+#include "Utils/PokemonBDSP_AutoStory_GridSim.h"
 #include "PokemonBDSP_AutoStory_RoutePlanner_Tests.h"
 
 namespace PokemonAutomation{
@@ -153,6 +156,126 @@ public:
 };
 
 
+//  November 5 mine report: credited taps need not establish physical pose.
+//  The two phases are explicit diagnostics, not inferred console timing.
+struct EncounterInput{
+    std::string name;
+    SimEncounterPhase phase;
+};
+struct EncounterExpectation{
+    TilePos end;
+    size_t battles = 1;
+    size_t credited = 5;
+};
+struct EncounterCase{
+    EncounterInput input;
+    EncounterExpectation expectation;
+};
+class Test_InterruptedMineTaps : public UnitTest{
+public:
+    explicit Test_InterruptedMineTaps(EncounterCase scenario)
+        : UnitTest("PokemonBDSP::AutoStory - Encounter credits: " + scenario.input.name), m_case(std::move(scenario))
+    {}
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        StoryWorld mine;
+        mine.add("OreburghMine", story_map("OreburghMine"), {0, 0});
+        GridSim sim({.world = &mine}, {15, 12}, Direction::SOUTH, /*can_run=*/false);
+        std::vector<std::string> notes;
+        GridSimRouteIO io(sim, notes, {{.label = "south", .direction = Direction::SOUTH,
+            .requested_tiles = 5, .tap = 5, .phase = m_case.input.phase}});
+        const auto result = io.walk_taps(Direction::SOUTH, 5, "south");
+        const auto& expected = m_case.expectation;
+        const TilePos actual = nearest_tile(sim.player().pos);
+        if (result.wild_battles != expected.battles || result.moved_chunks != expected.credited || actual != expected.end){
+            return std::format("Expected {} battles, {} credits, tile {}; got {}, {}, {}.",
+                expected.battles, expected.credited, Pokemon::to_string(expected.end),
+                result.wild_battles, result.moved_chunks, Pokemon::to_string(actual));
+        }
+        return true;
+    }
+private:
+    EncounterCase m_case;
+};
+
+//  Empty map name selects a synthetic corridor: ####### / #.....# / #######.
+//  Both possible starts (1,1)/(5,1) must share a safe wall ray. NPCs and
+//  warps on that ray or its wall invalidate it; ordinary terrain is unchanged.
+struct RecoveryGeometryInput{
+    std::string name;
+    std::string map = {};
+    std::vector<TilePos> from;
+    std::optional<Pokemon::TileBox> wander = {};
+    std::vector<TilePos> warps = {};
+};
+struct RecoveryGeometryExpectation{
+    std::optional<TilePos> anchor;
+    Direction direction = Direction::SOUTH;
+    size_t holds = 1;
+    std::optional<TilePos> free_tile = {};
+};
+struct RecoveryGeometryCase{
+    RecoveryGeometryInput input;
+    RecoveryGeometryExpectation expectation;
+};
+
+Pokemon::MapData recovery_map(const RecoveryGeometryInput& input){
+    Pokemon::MapData map;
+    if (!input.map.empty()){
+        return story_map(input.map);
+    }
+    map.name = "RecoveryDiagnostic";
+    map.tiles = Pokemon::Grid<Pokemon::TileKind>{7, 3, {}};
+    for (const char* row : {"#######", "#.....#", "#######"}){
+        for (char glyph : std::string(row)){
+            map.tiles.cells.push_back(*Pokemon::tile_from_glyph(glyph));
+        }
+    }
+    if (input.wander){
+        map.objects.push_back({.name = "wanderer", .x = 3, .y = 1, .facing = std::nullopt,
+            .wander = input.wander, .trainer = std::nullopt, .hide_flag = std::nullopt});
+    }
+    for (const auto& warp : input.warps){
+        map.warps.push_back({.x = warp.x, .y = warp.y, .to = std::nullopt});
+    }
+    return map;
+}
+
+class Test_RecoveryGeometry : public UnitTest{
+public:
+    explicit Test_RecoveryGeometry(RecoveryGeometryCase scenario)
+        : UnitTest("PokemonBDSP::AutoStory - Recovery geometry: " + scenario.input.name), m_case(std::move(scenario))
+    {}
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        const auto& expected = m_case.expectation;
+        const auto map = recovery_map(m_case.input);
+        StoryWorld world;
+        world.add(map.name, map, {0, 0});
+        if (expected.free_tile && (!standable(world, *expected.free_tile)
+            || world.occupied(*expected.free_tile) != StoryWorld::NOBODY)){
+            return "Expected ordinary movement to remain free at " + Pokemon::to_string(*expected.free_tile);
+        }
+        const auto anchors = wall_recovery_candidates(world, m_case.input.from);
+        const auto actual = anchors.empty() ? std::optional<TilePos>() : std::optional<TilePos>(anchors.front().at);
+        if (actual != expected.anchor){
+            return std::format("Expected anchor {}, got {}.",
+                expected.anchor ? Pokemon::to_string(*expected.anchor) : "none",
+                actual ? Pokemon::to_string(*actual) : "none");
+        }
+        if (anchors.empty()){
+            return true;
+        }
+        const auto& holds = anchors.front().holds;
+        if (holds.size() != expected.holds || holds.empty() || holds.front().direction != expected.direction){
+            return std::format("Expected {} holds beginning {}, got {} beginning {}.",
+                expected.holds, Pokemon::direction_name(expected.direction), holds.size(),
+                holds.empty() ? "none" : Pokemon::direction_name(holds.front().direction));
+        }
+        return true;
+    }
+private:
+    RecoveryGeometryCase m_case;
+};
+
 //  A trainer's sight stops at the first tile the player cannot stand on,
 //  and a leg through it is reported; a leg that is stopped throws.
 class Test_TrainerSight : public UnitTest{
@@ -179,6 +302,28 @@ public:
     }
 };
 
+
+const EncounterCase ENCOUNTER_CASES[] = {
+    {.input = {.name = "before movement", .phase = SimEncounterPhase::BEFORE_MOVEMENT},
+        .expectation = {.end = {.x = 15, .y = 16}}},
+    {.input = {.name = "after movement", .phase = SimEncounterPhase::AFTER_MOVEMENT},
+        .expectation = {.end = {.x = 15, .y = 17}}},
+};
+
+const RecoveryGeometryCase GEOMETRY_CASES[] = {
+    {.input = {.name = "mine rows converge south", .map = "OreburghMine", .from = {{15, 15}, {15, 16}, {15, 17}}},
+        .expectation = {.anchor = TilePos{.x = 15, .y = 17}}},
+    {.input = {.name = "r55 tiles converge east", .map = "Route202", .from = {{27, 5}, {26, 5}}},
+        .expectation = {.anchor = TilePos{.x = 30, .y = 5}, .direction = Direction::EAST}},
+    {.input = {.name = "wandering area is unsafe", .from = {{1, 1}, {5, 1}},
+            .wander = Pokemon::TileBox{.x0 = 2, .y0 = 1, .x1 = 4, .y1 = 1}},
+        .expectation = {.anchor = std::nullopt, .free_tile = TilePos{.x = 3, .y = 1}}},
+    {.input = {.name = "warp crossings are unsafe", .from = {{1, 1}, {5, 1}}, .warps = {{3, 1}}},
+        .expectation = {.anchor = std::nullopt}},
+    {.input = {.name = "warps on blocked glyphs are unsafe", .from = {{1, 1}, {5, 1}}, .warps = {{0, 1}, {6, 1}}},
+        .expectation = {.anchor = std::nullopt}},
+};
+
 }
 
 
@@ -187,6 +332,14 @@ void add_tests_AutoStory_RoutePlanner(UnitTestDatabase& database){
     database.add<Test_PlanTileRoute>();
     database.add<Test_PlanRobustRoute>();
     database.add<Test_TrainerSight>();
+
+    for (const EncounterCase& scenario : ENCOUNTER_CASES){
+        database.add<Test_InterruptedMineTaps>(scenario);
+    }
+
+    for (const RecoveryGeometryCase& scenario : GEOMETRY_CASES){
+        database.add<Test_RecoveryGeometry>(scenario);
+    }
 }
 
 

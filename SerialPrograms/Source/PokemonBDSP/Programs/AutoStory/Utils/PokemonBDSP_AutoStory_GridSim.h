@@ -26,6 +26,7 @@
 
 #include <optional>
 #include <string>
+#include <utility>
 #include <vector>
 #include "Common/Cpp/Time.h"
 #include "Pokemon/Navigation/Pokemon_Grid.h"
@@ -151,13 +152,28 @@ private:
 bool sim_can_step(const GridSim& sim, Pokemon::Direction direction);
 
 
+//  A deterministic, already-cleared encounter at a tap boundary. This is
+//  normalized movement/escape evidence, not a model of image detectors or
+//  battle mechanics. BEFORE leaves the tile unchanged; AFTER completes it.
+enum class SimEncounterPhase{ BEFORE_MOVEMENT, AFTER_MOVEMENT };
+//  Match one tap and supply its cleared encounter phase and origin evidence.
+struct SimWildTap{
+    std::string label;
+    Pokemon::Direction direction = Pokemon::Direction::NORTH;
+    size_t requested_tiles = 0;
+    size_t tap = 0;  //  one-based within the matching walk_taps call
+    SimEncounterPhase phase = SimEncounterPhase::AFTER_MOVEMENT;
+    WalkOrigin origin = WalkOrigin::CURRENT_LEG;
+};
+
 //  The walker's RouteIO on a GridSim. A failure throws GridSimFailure.
 class GridSimRouteIO : public RouteIO{
 public:
     //  Every line noted goes to `notes`, which must outlive this.
-    GridSimRouteIO(GridSim& sim, std::vector<std::string>& notes)
+    GridSimRouteIO(GridSim& sim, std::vector<std::string>& notes, std::vector<SimWildTap> encounters = {})
         : m_sim(sim)
         , m_notes(notes)
+        , m_encounters(std::move(encounters))
     {}
 
     virtual WalkResult walk_to_wall(const RouteWallWalk& walk) override;
@@ -169,8 +185,11 @@ public:
     virtual void note(const std::string& text, RouteNote kind) override;
 
 private:
+    std::optional<SimWildTap> take_encounter(Pokemon::Direction direction, size_t tiles, size_t tap, const std::string& label);
+
     GridSim& m_sim;
     std::vector<std::string>& m_notes;
+    std::vector<SimWildTap> m_encounters;
 };
 
 //  What GridSimRouteIO throws for RouteNote::FAILURE.

@@ -237,6 +237,7 @@ public:
             }
             const Milliseconds chunk = std::min(CHUNK, m_spec.limit - m_result.walked);
             const int ret = hold(chunk);
+            m_chunks++;
             m_result.walked += chunk;
             ChunkVerdict verdict = after_watchers(ret);
             if (verdict.next == ChunkNext::LOOK){
@@ -359,8 +360,12 @@ private:
 
     void escape_battle(const std::string& what){
         m_result.wild_battles++;
+        if (m_chunks <= 1){
+            m_result.origin = WalkOrigin::MAY_PRECEDE_LEG;
+        }
         if (m_spec.input == WalkInput::TAPS){
-            //  A wild battle encounter triggers upon entering the tile; credit the moved tile.
+            //  Preserve the reporting credit; callers must carry uncertain
+            //  pose after an encounter rather than infer a completed tile.
             m_result.moved_chunks++;
         }
         m_stream.log("[Walk] " + m_spec.label + ": " + what);
@@ -378,6 +383,7 @@ private:
         ){
             m_result.wild_battles++;
             late_battle = true;
+            m_result.origin = WalkOrigin::MAY_PRECEDE_LEG;
         }
         //  When the final tap of a TAPS leg lagged during frame drops at its
         //  800ms check (m_unchanged == 1 at WalkStop::LIMIT), it finishes
@@ -407,6 +413,7 @@ private:
     VideoSnapshot m_before;
     VideoSnapshot m_before_still;
     size_t m_unchanged = 0;
+    size_t m_chunks = 0;
     double m_largest = 0;
 };
 

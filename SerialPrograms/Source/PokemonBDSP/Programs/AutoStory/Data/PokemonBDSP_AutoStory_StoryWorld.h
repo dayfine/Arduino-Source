@@ -53,7 +53,9 @@ public:
         PERSON,
         BLOCKED,
     };
-    Occupant occupied(const Pokemon::TilePos& pos) const;
+    //  Recovery also excludes wandering areas and declared warps.
+    enum class OccupancyUse{ MOVEMENT, WALL_RECOVERY };
+    Occupant occupied(const Pokemon::TilePos& pos, OccupancyUse use = OccupancyUse::MOVEMENT) const;
 
     //  Blocks a tile found in the way on the console. Tiles off the maps
     //  are left alone.
@@ -72,12 +74,15 @@ private:
         std::string name;
         Pokemon::Grid<Pokemon::TileKind> tiles;
         std::vector<Pokemon::TilePos> occupied;     //  local tiles
+        std::vector<Pokemon::TileBox> wander;       //  recovery hazards, not terrain
+        std::vector<Pokemon::TilePos> warps;
         Pokemon::TilePos offset;
     };
     struct Cell{
         bool covered = false;
         Pokemon::TileKind tile = Pokemon::TileKind::WALL;
         Occupant occupant = NOBODY;
+        bool recovery_hazard = false;
     };
 
     void check_overlap(const Placed& map) const;
