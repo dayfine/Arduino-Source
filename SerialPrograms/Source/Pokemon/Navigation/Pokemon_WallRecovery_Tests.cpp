@@ -83,6 +83,15 @@ public:
     }
 };
 
+//  Show both directions and distances when a selected recovery plan differs.
+std::string describe_holds(std::span<const TestHold> holds){
+    std::string result;
+    for (const auto& hold : holds){
+        result += std::format("{} {} tiles; ", direction_name(hold.direction), hold.tiles);
+    }
+    return result.empty() ? "none" : result;
+}
+
 //  Inputs and expectations are separate aggregates; each registered test owns one row.
 struct CorridorInput{
     std::string name;
@@ -117,18 +126,11 @@ public:
                 actual ? std::to_string(*actual) : "none", found.size());
         }
         if (!found.empty() && found.front().holds != expected.holds){
-            return std::format("Expected holds {}, got {}.", describe(expected.holds), describe(found.front().holds));
+            return std::format("Expected holds {}, got {}.", describe_holds(expected.holds), describe_holds(found.front().holds));
         }
         return true;
     }
 private:
-    static std::string describe(const std::vector<TestHold>& holds){
-        std::string result;
-        for (const auto& hold : holds){
-            result += std::format("{} {} tiles; ", direction_name(hold.direction), hold.tiles);
-        }
-        return result.empty() ? "none" : result;
-    }
     CorridorTestCase m_scenario;
 };
 
@@ -200,8 +202,8 @@ public:
                 actual ? to_string(*actual) : "none", found.size());
         }
         if (!found.empty() && found.front().holds != expected.holds){
-            return std::format("Expected {} holds beginning north 4 then west 3, got {} holds.",
-                expected.holds.size(), found.front().holds.size());
+            return std::format("Expected holds {}, got {}.",
+                describe_holds(expected.holds), describe_holds(found.front().holds));
         }
         return true;
     }
