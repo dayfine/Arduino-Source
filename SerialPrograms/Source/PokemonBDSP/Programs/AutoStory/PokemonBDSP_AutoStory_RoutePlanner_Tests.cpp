@@ -15,6 +15,8 @@
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "Data/PokemonBDSP_AutoStory_RoutePlanner.h"
+#include "Data/PokemonBDSP_AutoStory_WallRecovery.h"
+#include "Data/PokemonBDSP_AutoStory_Maps.h"
 #include "PokemonBDSP_AutoStory_RoutePlanner_Tests.h"
 
 namespace PokemonAutomation{
@@ -155,6 +157,31 @@ public:
 
 //  A trainer's sight stops at the first tile the player cannot stand on,
 //  and a leg through it is reported; a leg that is stopped throws.
+//  November 5 mine report: row 15 instead of intended row 17. Diagnostic
+//  pre-east belief, not a claim that one interrupted tap caused two tiles.
+class Test_SharedWallRecovery : public UnitTest{
+public:
+    Test_SharedWallRecovery() : UnitTest("PokemonBDSP::AutoStory - Route planner: shared mine and r55 recovery"){}
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        StoryWorld mine;
+        mine.add("OreburghMine", story_map("OreburghMine"), {0, 0});
+        const auto anchors = wall_recovery_candidates(mine, {{15, 15}, {15, 16}, {15, 17}});
+        if (anchors.empty() || anchors.front().at != TilePos{15, 17}
+            || anchors.front().holds.size() != 1 || anchors.front().holds.front().direction != Direction::SOUTH){
+            return "Mine rows 15/16/17 must converge south against row 18.";
+        }
+        //  r55's post-dialogue count and trainer-sight possibilities.
+        StoryWorld route;
+        route.add("Route202", story_map("Route202"), {0, 0});
+        const auto logan = wall_recovery_candidates(route, {{27, 5}, {26, 5}});
+        if (logan.empty() || logan.front().at != TilePos{30, 5}
+            || logan.front().holds.front().direction != Direction::EAST){
+            return "r55's two tiles must anchor east, clear of Logan.";
+        }
+        return true;
+    }
+};
+
 class Test_TrainerSight : public UnitTest{
 public:
     Test_TrainerSight()
@@ -187,6 +214,7 @@ void add_tests_AutoStory_RoutePlanner(UnitTestDatabase& database){
     database.add<Test_PlanTileRoute>();
     database.add<Test_PlanRobustRoute>();
     database.add<Test_TrainerSight>();
+    database.add<Test_SharedWallRecovery>();
 }
 
 
