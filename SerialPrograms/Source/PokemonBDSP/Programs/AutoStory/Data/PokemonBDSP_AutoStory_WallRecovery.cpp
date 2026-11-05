@@ -83,6 +83,73 @@ std::vector<Pokemon::WallAnchor<Pokemon::TilePos, TileLeg>> wall_recovery_candid
     return Pokemon::find_wall_anchors(WallModel(world), from, limits);
 }
 
+std::vector<TilePos> interrupted_leg_positions(
+    const StoryWorld& world, const std::vector<TilePos>& from, Direction direction, size_t tiles
+){
+    std::vector<TilePos> positions;
+    for (TilePos at : from){
+        for (size_t count = 0; count <= tiles; count++){
+            if (std::find(positions.begin(), positions.end(), at) == positions.end()){
+                positions.push_back(at);
+            }
+            const auto next = step(world, at, direction);
+            if (count == tiles || !next){
+                break;
+            }
+            at = *next;
+        }
+    }
+    return positions;
+}
+
+namespace{
+std::vector<PlannedLeg> recovery_legs(
+    const StoryWorld& world, std::vector<TilePos> from, const std::vector<TileLeg>& holds
+){
+    std::vector<PlannedLeg> legs;
+    for (const auto& hold : holds){
+        std::vector<TilePos> after;
+        for (const auto& at : from){
+            const TilePos end = slide_to_wall(world, at, hold.direction).stop;
+            if (std::find(after.begin(), after.end(), end) == after.end()){
+                after.push_back(end);
+            }
+        }
+        legs.push_back({.leg = hold, .after = after});
+        from = std::move(after);
+    }
+    return legs;
+}
+}
+
+std::optional<std::vector<PlannedLeg>> plan_recovered_route(
+    const StoryWorld& world, const std::vector<TilePos>& from,
+    const std::function<bool(const TilePos&)>& goal, const RobustPlanCosts& costs
+){
+    if (from.empty()){
+        return std::nullopt;
+    }
+    if (std::all_of(from.begin(), from.end(), goal)){
+        return std::vector<PlannedLeg>();
+    }
+    if (from.size() == 1){
+        return plan_robust_route(world, from, goal, costs);
+    }
+    auto anchors = wall_recovery_candidates(world, from);
+    std::stable_sort(anchors.begin(), anchors.end(), [&](const auto& a, const auto& b){
+        return goal(a.at) && !goal(b.at);
+    });
+    for (const auto& anchor : anchors){
+        const auto back = plan_robust_route(world, std::vector<TilePos>{anchor.at}, goal, costs);
+        if (back){
+            auto route = recovery_legs(world, from, anchor.holds);
+            route.insert(route.end(), back->begin(), back->end());
+            return route;
+        }
+    }
+    return std::nullopt;
+}
+
 }
 }
 }

@@ -71,6 +71,8 @@ const Pokemon::StoryStep& mine_step(){
 struct RecoveryCase{
     std::string name;
     std::vector<size_t> taps;
+    Direction direction = Direction::SOUTH;
+    size_t tiles = 5;
     SimEncounterPhase phase = SimEncounterPhase::BEFORE_MOVEMENT;
     WalkOrigin origin = WalkOrigin::CURRENT_LEG;
     size_t interrupted_holds = 0;
@@ -90,8 +92,8 @@ public:
         GridSim sim({.world = world}, world->to_world("OreburghMine", {15, 10}), Direction::SOUTH, true);
         std::vector<SimWildTap> taps;
         for (size_t tap : m_case.taps){
-            taps.push_back({.label = "below_roark", .direction = Direction::SOUTH,
-                .requested_tiles = 5, .tap = tap, .phase = m_case.phase, .origin = m_case.origin});
+            taps.push_back({.label = "below_roark", .direction = m_case.direction,
+                .requested_tiles = m_case.tiles, .tap = tap, .phase = m_case.phase, .origin = m_case.origin});
         }
         std::vector<std::string> notes;
         InterruptingRouteIO route(sim, notes, std::move(taps), m_case.interrupted_holds);
@@ -100,9 +102,11 @@ public:
         walks.begin_attempt("01.03");
         Pokemon::RunState state{.pose = Pokemon::tile_pose("OreburghMine", {{15, 10}}, Direction::SOUTH)};
         std::string failure;
+        std::optional<Pokemon::Pose> declared;
         try{
             const auto outcome = walks.legs(state, mine_step());
             failure = outcome.failure;
+            declared = outcome.pose;
         }catch (const GridSimFailure& error){
             failure = error.message;
         }
@@ -111,7 +115,8 @@ public:
                 : UnitTestResult("Expected " + m_case.failure + ", got " + failure);
         }
         const auto end = story_to_local(*world, "OreburghMine", nearest_tile(sim.player().pos));
-        if (!failure.empty() || !end || *end != TilePos{18, 29}){
+        if (!failure.empty() || !end || *end != TilePos{18, 29} || !declared
+            || Pokemon::facing_of(*declared) != sim.player().facing || sim.player().facing != Direction::WEST){
             return "Expected below Roark (18,29), got " + to_string(sim.player().pos) + ": " + failure;
         }
         return true;
@@ -126,6 +131,7 @@ void add_tests_AutoStory_RecoveryWalk(UnitTestDatabase& database){
     database.add<Test_RecoveryWalk>(RecoveryCase{.name = "last tap interrupted before movement", .taps = {5}});
     database.add<Test_RecoveryWalk>(RecoveryCase{.name = "last tap completed before battle", .taps = {5}, .phase = SimEncounterPhase::AFTER_MOVEMENT});
     database.add<Test_RecoveryWalk>(RecoveryCase{.name = "two interrupted advances, row 15", .taps = {4, 5}});
+    database.add<Test_RecoveryWalk>(RecoveryCase{.name = "last west leg recovers position and facing", .taps = {9}, .direction = Direction::WEST, .tiles = 9});
     database.add<Test_RecoveryWalk>(RecoveryCase{.name = "repeat the interrupted recovery hold", .taps = {5}, .interrupted_holds = 1});
     database.add<Test_RecoveryWalk>(RecoveryCase{.name = "recovery hold budget exhausted", .taps = {5}, .interrupted_holds = 10, .failure = "recovery budget"});
     database.add<Test_RecoveryWalk>(RecoveryCase{.name = "first input may belong to previous leg", .taps = {1}, .failure = "encounter_origin_unknown"});

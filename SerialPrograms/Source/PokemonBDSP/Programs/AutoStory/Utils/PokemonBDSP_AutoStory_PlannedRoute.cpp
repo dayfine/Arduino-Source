@@ -12,6 +12,7 @@
 #include "Common/Cpp/Filesystem/Filesystem.h"
 #include "CommonFramework/GlobalAutoPaths.h"
 #include "Pokemon/Navigation/Pokemon_RouteLog.h"
+#include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_WallRecovery.h"
 #include "PokemonBDSP_AutoStory_Location.h"
 #include "PokemonBDSP_AutoStory_RouteIO.h"
 #include "PokemonBDSP_AutoStory_RouteWalk.h"
@@ -222,6 +223,7 @@ private:
 
     //  Legs to a wall.
     LegNext wall_leg(LegWalk& walk);
+    bool finish_interrupted_wall(LegWalk& walk, Milliseconds limit);
     size_t unstick_wall_leg(LegWalk& walk, size_t walked_tiles, size_t nearest);
     LegNext stopped_short_of_wall(LegWalk& walk, size_t walked_tiles);
     void check_at_wall(LegWalk& walk);
@@ -229,6 +231,7 @@ private:
 
     //  Open legs, tapped.
     LegNext open_leg(LegWalk& walk);
+    LegNext interrupted_open_leg(LegWalk& walk);
     void turn_tap(LegWalk& walk);
     LegNext blocked_open_leg(LegWalk& walk, size_t moved);
 
@@ -286,14 +289,14 @@ std::vector<TilePos> RouteWalker::run(std::vector<TilePos> from){
 }
 
 std::vector<PlannedLeg> RouteWalker::plan_legs() const{
-    std::optional<std::vector<PlannedLeg>> legs = plan_robust_route(m_grid, m_from, m_plan.goal, m_plan.costs);
+    std::optional<std::vector<PlannedLeg>> legs = plan_recovered_route(m_grid, m_from, m_plan.goal, m_plan.costs);
     if (!legs){
         //  From a few possible tiles the exact-open-leg costs found no
         //  plan where the default ones did (r240a, three tiles on Route
         //  204's row 27); the default plan is longer but sound.
         m_io.note("[Route] " + m_plan.label + ": no plan with the route costs from " + describe(m_maps, m_from) +
             "; trying the default costs.", RouteNote::WARNING);
-        legs = plan_robust_route(m_grid, m_from, m_plan.goal, RobustPlanCosts());
+        legs = plan_recovered_route(m_grid, m_from, m_plan.goal, RobustPlanCosts());
     }
     if (!legs){
         fail(m_io, m_plan.label + ": no plan from " + describe(m_maps, m_from) + ".");
@@ -360,16 +363,7 @@ LegNext RouteWalker::wall_leg(LegWalk& walk){
     const TileLeg& leg = walk.planned.leg;
     const Milliseconds limit = wall_limit(leg);
     walk.result = m_io.walk_to_wall({.direction = walk.planned.leg.direction, .limit = limit, .label = walk.label, .options = run_watching(walk)});
-    //  A wild battle may end the walk early. Walking to a wall again ends in
-    //  the same place, so finish the leg.
-    const bool interrupted = walk.result.wild_battles > 0;
-    for (size_t again = 0; again < 3 && walk.result.wild_battles > 0 &&
-        (walk.result.stop == WalkStop::LIMIT || walk.result.stop == WalkStop::BLOCKED); again++
-    ){
-        m_io.note("[Route] " + walk.label + ": a wild battle on the way; walking to the wall again.", RouteNote::LOG);
-        walk.result = m_io.walk_to_wall({.direction = walk.planned.leg.direction, .limit = limit, .label = walk.label, .options = run_watching(walk)});
-    }
-    if (interrupted){
+    if (finish_interrupted_wall(walk, limit)){
         return LegNext::NEXT_LEG;
     }
     //  A wall well before the nearest one the map has: something the map
@@ -404,6 +398,30 @@ LegNext RouteWalker::wall_leg(LegWalk& walk){
         check_at_wall(walk);
     }
     return LegNext::NEXT_LEG;
+}
+
+bool RouteWalker::finish_interrupted_wall(LegWalk& walk, Milliseconds limit){
+    if (walk.result.wild_battles == 0){
+        return false;
+    }
+    for (size_t again = 0; again < 3 && walk.result.wild_battles > 0; again++){
+        if (walk.result.origin == WalkOrigin::MAY_PRECEDE_LEG){
+            fail(m_io, "encounter_origin_unknown: " + walk.label);
+        }
+        if (walk.result.stop != WalkStop::LIMIT && walk.result.stop != WalkStop::BLOCKED){
+            fail(m_io, "unconfirmed transition/dialogue during wall recovery: " + walk.label);
+        }
+        m_io.note("[Route] " + walk.label + ": a wild battle on the way; walking to the wall again.", RouteNote::LOG);
+        walk.result = m_io.walk_to_wall({.direction = walk.planned.leg.direction, .limit = limit,
+            .label = walk.label, .options = run_watching(walk)});
+    }
+    if (walk.result.wild_battles > 0){
+        fail(m_io, "recovery budget exhausted: " + walk.label);
+    }
+    if (walk.result.stop != WalkStop::BLOCKED){
+        check_at_wall(walk);
+    }
+    return true;
 }
 
 //  A walk to the wall that stopped well short of it: tap through a corner,
@@ -486,8 +504,12 @@ void RouteWalker::check_at_wall(LegWalk& walk){
 //  however far it got, so walk on to it and carry on.
 void RouteWalker::on_to_wall(LegWalk& walk){
     m_io.note("[Route] " + walk.label + ": on to the wall after the battle.", RouteNote::WARNING);
-    m_io.walk_to_wall({.direction = walk.planned.leg.direction, .limit = wall_limit(walk.planned.leg),
+    const Milliseconds limit = wall_limit(walk.planned.leg);
+    walk.result = m_io.walk_to_wall({.direction = walk.planned.leg.direction, .limit = limit,
         .label = walk.label + ": on to the wall", .options = run_watching(walk)});
+    if (!finish_interrupted_wall(walk, limit) && walk.result.stop != WalkStop::BLOCKED){
+        check_at_wall(walk);
+    }
     m_from = walk.planned.after;
     log_leg_done(m_io, m_maps, m_plan.label, walk.planned, 0);
 }
@@ -504,11 +526,8 @@ LegNext RouteWalker::open_leg(LegWalk& walk){
     if (leg.tiles > walk.turn_moved){
         walk.result = m_io.walk_taps(leg.direction, leg.tiles - walk.turn_moved, walk.label);
     }
-    //  A wild battle starts once the step onto the grass is done, so the
-    //  taps still count; the walk went on after it.
     if (walk.result.wild_battles > 0){
-        m_io.note("[Route] " + walk.label + ": " + std::to_string(walk.result.wild_battles) +
-            " wild battle(s) on the way; the tap count holds.", RouteNote::WARNING);
+        return interrupted_open_leg(walk);
     }
     //  Taps that moved nothing: someone stands in the way (the Youngster
     //  below the Ravaged Path wanders across the row under the cliff, r239a,
@@ -527,11 +546,30 @@ LegNext RouteWalker::open_leg(LegWalk& walk){
         walk.result.stop = rest.stop;
         walk.result.walked += rest.walked;
         walk.result.wild_battles += rest.wild_battles;
+        if (rest.origin == WalkOrigin::MAY_PRECEDE_LEG){
+            walk.result.origin = rest.origin;
+        }
+    }
+    if (walk.result.wild_battles > 0){
+        return interrupted_open_leg(walk);
     }
     if (walk.result.stop == WalkStop::BLOCKED && moved < leg.tiles){
         return blocked_open_leg(walk, moved);
     }
     return LegNext::NEXT_LEG;
+}
+
+LegNext RouteWalker::interrupted_open_leg(LegWalk& walk){
+    if (walk.result.origin == WalkOrigin::MAY_PRECEDE_LEG){
+        fail(m_io, "encounter_origin_unknown: " + walk.label);
+    }
+    if (walk.result.stop != WalkStop::LIMIT && walk.result.stop != WalkStop::BLOCKED){
+        fail(m_io, "interrupted open leg has an unconfirmed dialogue/transition: " + walk.label);
+    }
+    auto possible = interrupted_leg_positions(m_grid, m_from, walk.planned.leg.direction, walk.planned.leg.tiles);
+    const auto next = replan_from(walk, std::move(possible), "encounter: credited taps do not establish pose");
+    m_facing.reset();
+    return next;
 }
 
 //  Turns to the leg's way with a tap too short to step (50 ms: on the

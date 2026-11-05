@@ -23,6 +23,21 @@ std::vector<Pokemon::WallAnchor<Pokemon::TilePos, TileLeg>> wall_recovery_candid
     const Pokemon::WallRecoveryLimits& limits = Pokemon::WallRecoveryLimits()
 );
 
+//  Every legal prefix, including zero movement, of an interrupted counted leg.
+std::vector<Pokemon::TilePos> interrupted_leg_positions(
+    const StoryWorld& world, const std::vector<Pokemon::TilePos>& from,
+    Pokemon::Direction direction, size_t tiles
+);
+
+//  Establish a common wall anchor before continuing from an uncertain pose.
+//  Single positions retain the existing planner. Ambiguous positions without
+//  a safe anchor fail instead of choosing one. Goals already held need no walk.
+std::optional<std::vector<PlannedLeg>> plan_recovered_route(
+    const StoryWorld& world, const std::vector<Pokemon::TilePos>& from,
+    const std::function<bool(const Pokemon::TilePos&)>& goal,
+    const RobustPlanCosts& costs
+);
+
 }
 }
 }
