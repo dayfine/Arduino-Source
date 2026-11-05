@@ -290,6 +290,10 @@ MainWindow::MainWindow(QWidget* parent)
     SystemSleepController::instance().add_listener(*this);
     update_wallpaper();
 
+    init_lab_channel();
+//    cout << "Done constructing" << endl;
+}
+void MainWindow::init_lab_channel(){
     //  Let lab scripts drive the app through files, if the lab folder exists.
     //  See LabChannel.h. Nothing runs otherwise.
     m_lab_channel = LabChannel::start_if_enabled(
@@ -304,7 +308,6 @@ MainWindow::MainWindow(QWidget* parent)
     if (m_lab_channel){
         m_lab_channel->set_panel(m_current_panel.get());
     }
-//    cout << "Done constructing" << endl;
 }
 MainWindow::~MainWindow(){
     close_panel();

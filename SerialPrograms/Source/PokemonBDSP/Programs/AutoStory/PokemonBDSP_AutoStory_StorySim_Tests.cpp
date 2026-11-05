@@ -784,13 +784,12 @@ Pose r75_pond_pocket(){
 //  4 s walk_dir()), its fade missed: on past cave_exit (20, 26) to the
 //  cliff, column 20 down to row 30.
 StoryStep r81_old_cave_exit(){
-    StoryStep step;
-    step.kind = StoryStepKind::LEGS;
-    step.name = "out_of_the_ravaged_path";
-    step.legs = {{.direction = Direction::SOUTH, .tiles = 4}};
-    step.variant = "to_wall";
-    step.pose_after = Pokemon::tile_pose("Route204North", {TilePos{20, 26}}, Direction::SOUTH);
-    return step;
+    return StoryStep{
+        .kind = StoryStepKind::LEGS, .name = "out_of_the_ravaged_path",
+        .legs = {{.direction = Direction::SOUTH, .tiles = 4}},
+        .variant = "to_wall",
+        .pose_after = Pokemon::tile_pose("Route204North", {TilePos{20, 26}}, Direction::SOUTH),
+    };
 }
 Pose r81_below_the_mouth(){
     return Pokemon::tile_pose("Route204North", {TilePos{20, 27}, TilePos{20, 28}, TilePos{20, 29}, TilePos{20, 30}});
@@ -833,31 +832,39 @@ private:
 //  Oreburgh Mine B1F: tapping 20 tiles south steps onto the cave mouth warp
 //  at (12, 21), cutting the counted leg short at 19 tiles.
 StoryStep old_mine_hall_south_20(){
-    StoryStep step;
-    step.kind = StoryStepKind::LEGS;
-    step.name = "into_the_coal_room";
-    step.legs = {{.direction = Direction::SOUTH, .tiles = 20}};
-    return step;
+    return {.kind = StoryStepKind::LEGS, .name = "into_the_coal_room", .legs = {{.direction = Direction::SOUTH, .tiles = 20}}};
 }
 
 //  Oreburgh Mine B1F: tapping 19 tiles south leaves the player on row 20
 //  without warping; the next step (south_to_the_rock) hits the warp immediately.
 StoryStep old_mine_hall_south_19(){
-    StoryStep step;
-    step.kind = StoryStepKind::LEGS;
-    step.name = "into_the_coal_room";
-    step.legs = {{.direction = Direction::SOUTH, .tiles = 19}};
-    return step;
+    return {.kind = StoryStepKind::LEGS, .name = "into_the_coal_room", .legs = {{.direction = Direction::SOUTH, .tiles = 19}}};
 }
 
 //  Oreburgh Mine B1F: tapping 20 tiles north steps onto the city exit warp
 //  at (11, 1), cutting the leg short / warping unexpectedly.
 StoryStep old_mine_hall_north_20(){
-    StoryStep step;
-    step.kind = StoryStepKind::LEGS;
-    step.name = "out_of_the_mine";
-    step.legs = {{.direction = Direction::NORTH, .tiles = 20}};
-    return step;
+    return {.kind = StoryStepKind::LEGS, .name = "out_of_the_mine", .legs = {{.direction = Direction::NORTH, .tiles = 20}}};
+}
+
+//  Oreburgh Mine: cutting west 1 at col 28 lands on col 27, hitting the
+//  wooden crate at (27, 28) on the south leg.
+StoryStep old_coal_room_crate_cut(){
+    return StoryStep{
+        .kind = StoryStepKind::LEGS,
+        .name = "below_roark",
+        .legs = {
+            {.direction = Direction::EAST,  .tiles = 1},
+            {.direction = Direction::SOUTH, .tiles = 2},
+            {.direction = Direction::WEST,  .tiles = 1},
+            {.direction = Direction::SOUTH, .tiles = 5},
+            {.direction = Direction::EAST,  .tiles = 13},
+            {.direction = Direction::SOUTH, .tiles = 10},
+            {.direction = Direction::WEST,  .tiles = 1},
+            {.direction = Direction::SOUTH, .tiles = 2},
+            {.direction = Direction::WEST,  .tiles = 9},
+        },
+    };
 }
 
 //  Every coord event has ground the player can step onto, and the ones
@@ -984,8 +991,8 @@ void add_tests_AutoStory_StorySim(UnitTestDatabase& database){
     database.add<Test_StorySimStepFailure>("01.03, counted 20 taps south into cave mouth warp", "01.03", old_mine_hall_south_20(), "01.03 into_the_coal_room", "warped at (12, 21)");
     database.add<Test_StorySimStepFailure>("01.03, counted 19 taps south leaves player in hall", "01.03", old_mine_hall_south_19(), "01.03 south_to_the_rock", "warp instead of a stop.");
     database.add<Test_StorySimStepFailure>("01.03, counted 20 taps north into city exit warp", "01.03", old_mine_hall_north_20(), "01.03 out_of_the_mine", "warped at (11, 1)");
+    database.add<Test_StorySimStepFailure>("01.03, cut corner through coal room crate at col 27", "01.03", old_coal_room_crate_cut(), "01.03 below_roark", "short_leg: south 2 moved 0");
 }
-
 
 }
 }

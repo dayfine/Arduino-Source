@@ -93,6 +93,8 @@ private:
     bool m_pending_move = false;
     bool m_panel_transition = false;
 
+    void init_lab_channel();
+
     //  The lab channel, when "<user files>/Lab/" existed at startup (LabChannel.h).
     std::unique_ptr<LabChannel> m_lab_channel;
 };
