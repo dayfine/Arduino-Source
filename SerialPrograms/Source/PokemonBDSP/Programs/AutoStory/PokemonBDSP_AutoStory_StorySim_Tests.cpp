@@ -841,7 +841,7 @@ StoryStep old_mine_hall_south_20(){
 }
 
 //  Oreburgh Mine B1F: tapping 19 tiles south leaves the player on row 20
-//  without warping; the next step (below_roark) hits the warp immediately.
+//  without warping; the next step (south_to_the_rock) hits the warp immediately.
 StoryStep old_mine_hall_south_19(){
     StoryStep step;
     step.kind = StoryStepKind::LEGS;
@@ -982,7 +982,7 @@ void add_tests_AutoStory_StorySim(UnitTestDatabase& database){
     database.add<Test_StorySimExit>("r75, out of the Oreburgh Gate", "01.05", r75_old_gate_exit(), SimMisses{}, r75_pond_pocket());
     database.add<Test_StorySimExit>("r81, out of the Ravaged Path", "01.09", r81_old_cave_exit(), SimMisses{.fade = 0}, r81_below_the_mouth());
     database.add<Test_StorySimStepFailure>("01.03, counted 20 taps south into cave mouth warp", "01.03", old_mine_hall_south_20(), "01.03 into_the_coal_room", "warped at (12, 21)");
-    database.add<Test_StorySimStepFailure>("01.03, counted 19 taps south leaves player in hall", "01.03", old_mine_hall_south_19(), "01.03 below_roark", "short_leg: south 8 moved 1");
+    database.add<Test_StorySimStepFailure>("01.03, counted 19 taps south leaves player in hall", "01.03", old_mine_hall_south_19(), "01.03 south_to_the_rock", "warp instead of a stop.");
     database.add<Test_StorySimStepFailure>("01.03, counted 20 taps north into city exit warp", "01.03", old_mine_hall_north_20(), "01.03 out_of_the_mine", "warped at (11, 1)");
 }
 

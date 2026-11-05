@@ -699,7 +699,6 @@ StoryCheckpoint route_203_to_oreburgh(){
 //  below the mine's sign (the old walk north stopped against it, r103).
 std::vector<StoryLeg> legs_below_roark(){
     return {
-        {.direction = SOUTH, .tiles = 8},
         {.direction = EAST,  .tiles = 1},
         {.direction = SOUTH, .tiles = 2},
         {.direction = WEST,  .tiles = 1},
@@ -737,7 +736,9 @@ StoryCheckpoint oreburgh_mine_to_roark(){
         route("above_the_mine", at(OREBURGH, 46, 58, SOUTH), "down the door's column to above the mine's warp tiles", "town"),
         step_into("into_the_mine", SOUTH, "the warp tile (46, 59)", at(MINE_HALL, 12, 1, SOUTH)),
         step_into("into_the_coal_room", SOUTH, "down the entrance hall through the cave mouth", at(MINE, 15, 2, SOUTH)),
-        anchored(legs("below_roark", legs_below_roark(), "corridor slalom, east across room, down column 28, and west to below Roark"), below_roark),
+        anchored(to_walls("south_to_the_rock", {{.direction = SOUTH, .tiles = 8}}, "south against the corridor rock (15, 11)"),
+            at(MINE, 15, 10, SOUTH)),
+        anchored(legs("below_roark", legs_below_roark(), "east around rock, across room, down column 28, and west to below Roark"), below_roark),
         talk("roark", "Roark, north of us between his rocks"),
         scene("roark_smashes_the_rock", below_roark, "his lines, Rock Smash on the rock east of him, and he walks off"),
         anchored(legs("below_the_coal_rooms_warp", legs_out_of_coal_room(), "east around crate, up column 28, west across row 17, and up corridor to warp doorstep"),
