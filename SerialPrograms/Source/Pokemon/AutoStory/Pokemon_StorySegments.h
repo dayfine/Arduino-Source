@@ -37,6 +37,7 @@ struct CheckpointSpec{
     MoveOnlyFunction<Checkpoint()> build;
 };
 
+// Collection of ordered checkpoints that make up a story segment.
 struct Segment{
     std::string id;
     std::vector<CheckpointSpec> checkpoints;
@@ -57,6 +58,7 @@ struct SegmentHooks{
     EventLogger status;
 };
 
+// Retry and timeout configuration for story segment execution.
 struct SegmentPolicy{
     //  Runs of one checkpoint, reloading between them, before the segment stops.
     size_t attempts_per_checkpoint = 3;
@@ -70,6 +72,7 @@ struct SegmentRange{
 };
 
 
+// Execution results and failure diagnostics for a story segment run.
 struct SegmentReport{
     bool completed = false;
     //  Both empty when nothing failed; the event is empty when a start
@@ -105,6 +108,7 @@ struct VerifyPolicy{
     size_t passes_needed = 2;
 };
 
+// Verification results for multiple runs of a checkpoint.
 struct VerifyReport{
     std::string checkpoint;
     size_t runs = 0;
@@ -134,6 +138,6 @@ std::string describe(Segment& segment);
 
 
 
-}
-}
+} // namespace Pokemon
+} // namespace PokemonAutomation
 #endif
