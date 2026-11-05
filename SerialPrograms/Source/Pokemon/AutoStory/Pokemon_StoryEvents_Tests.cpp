@@ -611,42 +611,107 @@ UnitTestResult test_lint(){
 }
 
 
+struct StoryEventInput{
+    std::string name;
+    UnitTestResult (*test)();
+};
+
+struct StoryEventExpectation{
+    const char* description;
+};
+
+struct StoryEventTestCase{
+    StoryEventInput input;
+    StoryEventExpectation expectation;
+};
+
 class Test_StoryEvents : public UnitTest{
 public:
-    Test_StoryEvents(std::string name, std::function<UnitTestResult()> body)
-        : UnitTest("Pokemon::StoryEvents - " + std::move(name))
-        , m_body(std::move(body))
+    explicit Test_StoryEvents(StoryEventTestCase scenario)
+        : UnitTest("Pokemon::StoryEvents - " + scenario.input.name)
+        , m_scenario(std::move(scenario))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        return m_body();
+        return m_scenario.input.test();
     }
 
 private:
-    std::function<UnitTestResult()> m_body;
+    StoryEventTestCase m_scenario;
 };
 
-}
+const StoryEventTestCase STORY_EVENT_CASES[] = {
+    {
+        .input = {.name = "events run in order", .test = test_runs_events_in_order},
+        .expectation = {.description = "executes registered events in sequence and records traces"},
+    },
+    {
+        .input = {.name = "a done event is skipped", .test = test_skips_done_event},
+        .expectation = {.description = "bypasses event execution when skip condition is satisfied"},
+    },
+    {
+        .input = {.name = "a failed expect is waited out", .test = test_expect_failure_waited_out},
+        .expectation = {.description = "retries transient expectation failure until timeout"},
+    },
+    {
+        .input = {.name = "recoveries escalate to a re-anchor", .test = test_escalates_to_reanchor},
+        .expectation = {.description = "escalates recovery strategy to re-anchor when wait fails"},
+    },
+    {
+        .input = {.name = "a stop names the failed event", .test = test_stop_names_failed_event},
+        .expectation = {.description = "records identifier of the failed event upon stopping"},
+    },
+    {
+        .input = {.name = "an unanswered failure stops", .test = test_unmatched_failure_stops},
+        .expectation = {.description = "stops checkpoint execution when failure has no handler"},
+    },
+    {
+        .input = {.name = "an interrupt mid-event", .test = test_interrupt_mid_event},
+        .expectation = {.description = "handles asynchronous interruption during event execution"},
+    },
+    {
+        .input = {.name = "an interrupt rechecks the expects", .test = test_interrupt_recheck_expect},
+        .expectation = {.description = "re-evaluates expected conditions after an interrupt clears"},
+    },
+    {
+        .input = {.name = "too many interrupts", .test = test_too_many_interrupts},
+        .expectation = {.description = "aborts execution when interrupt count exceeds threshold"},
+    },
+    {
+        .input = {.name = "resume after a reload", .test = test_resume_after_reload},
+        .expectation = {.description = "resumes story execution cleanly following save reload"},
+    },
+    {
+        .input = {.name = "start, end and save", .test = test_start_end_and_save},
+        .expectation = {.description = "validates start conditions, end conditions, and state save"},
+    },
+    {
+        .input = {.name = "pose certainty", .test = test_pose_certainty},
+        .expectation = {.description = "tracks and adjusts player pose confidence levels"},
+    },
+    {
+        .input = {.name = "the position is the game's", .test = test_position_is_the_games},
+        .expectation = {.description = "preserves game-specific coordinate representations"},
+    },
+    {
+        .input = {.name = "an action returns its pose", .test = test_outcome_pose},
+        .expectation = {.description = "updates run pose from successful event action outcome"},
+    },
+    {
+        .input = {.name = "lint", .test = test_lint},
+        .expectation = {.description = "validates checkpoint structural integrity and rules"},
+    },
+};
+
+} // namespace
 
 
 void add_tests_StoryEvents(UnitTestDatabase& database){
-    database.add<Test_StoryEvents>("events run in order", test_runs_events_in_order);
-    database.add<Test_StoryEvents>("a done event is skipped", test_skips_done_event);
-    database.add<Test_StoryEvents>("a failed expect is waited out", test_expect_failure_waited_out);
-    database.add<Test_StoryEvents>("recoveries escalate to a re-anchor", test_escalates_to_reanchor);
-    database.add<Test_StoryEvents>("a stop names the failed event", test_stop_names_failed_event);
-    database.add<Test_StoryEvents>("an unanswered failure stops", test_unmatched_failure_stops);
-    database.add<Test_StoryEvents>("an interrupt mid-event", test_interrupt_mid_event);
-    database.add<Test_StoryEvents>("an interrupt rechecks the expects", test_interrupt_recheck_expect);
-    database.add<Test_StoryEvents>("too many interrupts", test_too_many_interrupts);
-    database.add<Test_StoryEvents>("resume after a reload", test_resume_after_reload);
-    database.add<Test_StoryEvents>("start, end and save", test_start_end_and_save);
-    database.add<Test_StoryEvents>("pose certainty", test_pose_certainty);
-    database.add<Test_StoryEvents>("the position is the game's", test_position_is_the_games);
-    database.add<Test_StoryEvents>("an action returns its pose", test_outcome_pose);
-    database.add<Test_StoryEvents>("lint", test_lint);
+    for (const auto& scenario : STORY_EVENT_CASES){
+        database.add<Test_StoryEvents>(scenario);
+    }
 }
 
 
 
-}
-}
+} // namespace Pokemon
+} // namespace PokemonAutomation
