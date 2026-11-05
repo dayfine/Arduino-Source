@@ -804,6 +804,70 @@ Pose r81_below_the_mouth(){
 }
 
 
+//  A corridor traversal that stepped onto a warp door in counted taps,
+//  triggering a premature transition and failing with short_leg.
+//  The old step must fail at expected_failed_step with expected_error.
+class Test_StorySimStepFailure : public UnitTest{
+public:
+    Test_StorySimStepFailure(std::string name, std::string row, StoryStep old_step, std::string expected_failed_step, std::string expected_error)
+        : UnitTest("PokemonBDSP::AutoStory - Story sim, failures: " + std::move(name))
+        , m_row(std::move(row))
+        , m_old(std::move(old_step))
+        , m_expected_failed_step(std::move(expected_failed_step))
+        , m_expected_error(std::move(expected_error))
+    {}
+    virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
+        try{
+            SimExecutor executor(logger);
+            const std::vector<StoryCheckpoint> rows = table_with(m_row, m_old);
+            run_rows_on(executor, logger, {.from = m_row, .to = m_row}, rows);
+            const SimRun& run = executor.result();
+            if (run.failed_step != m_expected_failed_step || run.error.find(m_expected_error) == std::string::npos){
+                return std::format("expected old {} to fail at '{}' with '{}', but got failed_step='{}', error='{}'.",
+                    m_old.name, m_expected_failed_step, m_expected_error, run.failed_step, run.error);
+            }
+            return true;
+        }catch (Exception& e){
+            return std::string(e.name()) + ": " + e.message();
+        }
+    }
+private:
+    std::string m_row;
+    StoryStep m_old;
+    std::string m_expected_failed_step;
+    std::string m_expected_error;
+};
+
+//  Oreburgh Mine B1F: tapping 20 tiles south steps onto the cave mouth warp
+//  at (12, 21), cutting the counted leg short at 19 tiles.
+StoryStep old_mine_hall_south_20(){
+    StoryStep step;
+    step.kind = StoryStepKind::LEGS;
+    step.name = "into_the_coal_room";
+    step.legs = {{.direction = Direction::SOUTH, .tiles = 20}};
+    return step;
+}
+
+//  Oreburgh Mine B1F: tapping 19 tiles south leaves the player on row 20
+//  without warping; the next step (below_roark) hits the warp immediately.
+StoryStep old_mine_hall_south_19(){
+    StoryStep step;
+    step.kind = StoryStepKind::LEGS;
+    step.name = "into_the_coal_room";
+    step.legs = {{.direction = Direction::SOUTH, .tiles = 19}};
+    return step;
+}
+
+//  Oreburgh Mine B1F: tapping 20 tiles north steps onto the city exit warp
+//  at (11, 1), cutting the leg short / warping unexpectedly.
+StoryStep old_mine_hall_north_20(){
+    StoryStep step;
+    step.kind = StoryStepKind::LEGS;
+    step.name = "out_of_the_mine";
+    step.legs = {{.direction = Direction::NORTH, .tiles = 20}};
+    return step;
+}
+
 //  Every coord event has ground the player can step onto, and the ones
 //  the story's variables arm are there.
 class Test_CoordEvents : public UnitTest{
@@ -928,6 +992,9 @@ void add_tests_AutoStory_StorySim(UnitTestDatabase& database){
     }
     database.add<Test_StorySimExit>("r75, out of the Oreburgh Gate", "01.05", r75_old_gate_exit(), SimMisses{}, r75_pond_pocket());
     database.add<Test_StorySimExit>("r81, out of the Ravaged Path", "01.09", r81_old_cave_exit(), SimMisses{.fade = 0}, r81_below_the_mouth());
+    database.add<Test_StorySimStepFailure>("01.03, counted 20 taps south into cave mouth warp", "01.03", old_mine_hall_south_20(), "01.03 into_the_coal_room", "warped at (12, 21)");
+    database.add<Test_StorySimStepFailure>("01.03, counted 19 taps south leaves player in hall", "01.03", old_mine_hall_south_19(), "01.03 below_roark", "short_leg: south 8 moved 1");
+    database.add<Test_StorySimStepFailure>("01.03, counted 20 taps north into city exit warp", "01.03", old_mine_hall_north_20(), "01.03 out_of_the_mine", "warped at (11, 1)");
 }
 
 

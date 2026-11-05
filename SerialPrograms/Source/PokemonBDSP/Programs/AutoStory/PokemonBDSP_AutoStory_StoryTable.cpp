@@ -714,14 +714,10 @@ StoryCheckpoint oreburgh_mine_to_roark(){
         route("above_the_mine", at(OREBURGH, 46, 58, SOUTH), "down the door's column to above the mine's warp tiles", "town"),
         //  Stepping south from Oreburgh City (46, 58) onto the warp tile (46, 59)
         //  enters OreburghMineB1F (the entrance hall) at landing (12, 1, SOUTH).
-        tap_step("into_the_mine", SOUTH, "the warp tile (46, 59)", at(MINE_HALL, 12, 1, SOUTH)),
-        //  In OreburghMineB1F, column 12 is completely clear of obstacles all
-        //  the way south between the conveyor belts. From row 1, 19 taps reach the
-        //  doorstep at row 20 (20th tap steps onto the cave warp row 21).
-        legs("down_the_hall", {{.direction = SOUTH, .tiles = 19}}, "down column 12 of the entrance hall to (12, 20)"),
-        //  From (12, 20), stepping south onto row 21 (the cave mouth warp row)
-        //  warps into OreburghMine (the coal room / Roark's room) at landing (15, 2, SOUTH).
-        tap_step("into_the_coal_room", SOUTH, "the hall's warp tiles (11..13, 21)", at(MINE, 15, 2, SOUTH)),
+        step_into("into_the_mine", SOUTH, "the warp tile (46, 59)", at(MINE_HALL, 12, 1, SOUTH)),
+        //  In OreburghMineB1F, run straight south down column 12 through the cave mouth warp
+        //  into OreburghMine (the coal room) at landing (15, 2, SOUTH).
+        step_into("into_the_coal_room", SOUTH, "down the entrance hall through the cave mouth", at(MINE, 15, 2, SOUTH)),
         //  From the coal room doorway landing (15, 2), we use exact D-pad legs down to Roark at (18, 28):
         //  - South 8 down column 15 to (15, 10), just above the corridor boulder at (15, 11).
         //  - Dodge the boulder: east 1 to col 16, south 2 to row 12, west 1 to col 15.
@@ -770,11 +766,10 @@ StoryCheckpoint oreburgh_mine_to_roark(){
         }, "east around crate, up column 28, west across row 17, and up corridor to warp doorstep"),
             at(MINE, 15, 2, NORTH)),
         //  Step north onto the coal room exit doorway (15, 1), warping back to the entrance hall.
-        tap_step("up_to_the_hall", NORTH, "the warp tile (15, 1)", at(MINE_HALL, 11, 21, NORTH)),
-        //  In OreburghMineB1F, walk north 19 taps up column 11 from row 21 to row 2.
-        legs("up_the_hall", {{.direction = NORTH, .tiles = 19}}, "up column 11 of the entrance hall to (11, 2)"),
-        //  From row 2, step north onto row 1 warp tile into Oreburgh City below the sign.
-        tap_step("out_of_the_mine", NORTH, "the hall's warp tiles (11..13, 1)",
+        step_into("up_to_the_hall", NORTH, "the warp tile (15, 1)", at(MINE_HALL, 11, 21, NORTH)),
+        //  In OreburghMineB1F, run straight north up column 11 through the exit warp
+        //  into Oreburgh City below the sign.
+        step_into("out_of_the_mine", NORTH, "up the entrance hall and out to the city",
             Pokemon::tile_pose(OREBURGH, {TilePos{45, 59}, TilePos{45, 58}}, NORTH)),
         anchored(to_walls("up_to_the_mines_sign", {{.direction = NORTH, .tiles = 3}}, "north against the mine's sign (45, 56)"),
             at(OREBURGH, 45, 57, NORTH)),

@@ -198,6 +198,40 @@ public:
     }
 };
 
+//  Oreburgh Mine B1F (the entrance hall):
+//  The hallway connects Oreburgh City above with the Coal Room below.
+//  Row 1 contains warp doors (11..13, 1) leading to the city.
+//  Row 21 contains warp doors (11..13, 21) leading to the coal room.
+//  Column 12 is unobstructed south from landing (12, 1) to warp door (12, 21).
+//  Column 11 is unobstructed north from landing (11, 21) to warp door (11, 1).
+class Test_OreburghMineHall : public UnitTest{
+public:
+    Test_OreburghMineHall()
+        : UnitTest("PokemonBDSP::AutoStory - Oreburgh Mine B1F: the entrance hall corridor and warps")
+    {}
+    virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
+        const StoryWorld hall = alone("OreburghMineB1F");
+        for (int x = 11; x <= 13; x++){
+            if (hall.tile({x, 1}) != TileKind::DOOR){
+                return std::format("OreburghMineB1F ({}, 1) is not a DOOR tile (exit to city).", x);
+            }
+            if (hall.tile({x, 21}) != TileKind::DOOR){
+                return std::format("OreburghMineB1F ({}, 21) is not a DOOR tile (entrance to coal room).", x);
+            }
+        }
+        for (int y = 2; y <= 20; y++){
+            if (!standable(hall, {12, y})){
+                return std::format("OreburghMineB1F column 12 row {} is blocked; expected clear path to coal room.", y);
+            }
+            if (!standable(hall, {11, y})){
+                return std::format("OreburghMineB1F column 11 row {} is blocked; expected clear path to city exit.", y);
+            }
+        }
+        logger.log("OreburghMineB1F: columns 11 and 12 are clear between row 1 and row 21 warp doors.");
+        return true;
+    }
+};
+
 //  Each traceable record with a start tile starts on ground, and its legs
 //  counted in whole tiles trace on its map up to the first leg that ends
 //  some other way.
@@ -242,6 +276,7 @@ void add_tests_AutoStory_StoryMaps(UnitTestDatabase& database){
     database.add<Test_SandgemCenterApproach>();
     database.add<Test_TrainingToSandgem>();
     database.add<Test_OreburghGymColumn>();
+    database.add<Test_OreburghMineHall>();
     database.add<Test_RouteRecords>();
 }
 
