@@ -304,14 +304,39 @@ WalkResult GridSimRouteIO::walk_to_wall(const RouteWallWalk& walk){
     return {.stop = walk_stop(move.stop), .walked = move.time, .wild_battles = 0, .moved_chunks = (size_t)(move.distance / SIM_TILE)};
 }
 
+std::optional<SimWildTap> GridSimRouteIO::take_encounter(Direction direction, size_t tiles, size_t tap, const std::string& label){
+    const auto found = std::find_if(m_encounters.begin(), m_encounters.end(), [&](const SimWildTap& encounter){
+        return encounter.direction == direction && encounter.requested_tiles == tiles
+            && encounter.tap == tap && encounter.label == label;
+    });
+    if (found == m_encounters.end()){
+        return std::nullopt;
+    }
+    SimWildTap encounter = *found;
+    m_encounters.erase(found);
+    return encounter;
+}
+
 //  A tap a tile, as walk_tiles_dpad() taps: two taps in a row that move
 //  nothing end the walk.
 WalkResult GridSimRouteIO::walk_taps(Direction direction, size_t tiles, const std::string& label){
     WalkResult result{.stop = WalkStop::LIMIT, .walked = 0ms, .wild_battles = 0, .moved_chunks = 0};
     size_t still = 0;
     for (size_t tap = 0; tap < tiles && result.stop == WalkStop::LIMIT; tap++){
-        const SimMove move = m_sim.tap(direction, ROUTE_MS_PER_TILE_ACROSS, false);
+        const auto encounter = take_encounter(direction, tiles, tap + 1, label);
+        const SimMove move = encounter && encounter->phase == SimEncounterPhase::BEFORE_MOVEMENT
+            ? SimMove{} : m_sim.tap(direction, ROUTE_MS_PER_TILE_ACROSS, false);
         result.walked += 800ms;
+        if (encounter){
+            //  Match the production escape_battle() credit, independently
+            //  of actual simulated displacement. Consumers must not infer
+            //  pose solely from this credit after an interrupted input.
+            result.wild_battles++;
+            result.moved_chunks++;
+            still = 0;
+            m_notes.push_back("[Sim] cleared wild encounter during " + label);
+            continue;
+        }
         still = move.distance > 0 ? 0 : still + 1;
         result.moved_chunks += move.distance > 0 ? 1 : 0;
         if (move.stop == SimStop::DIALOG || move.stop == SimStop::WARP){

@@ -17,6 +17,7 @@
 #include "Data/PokemonBDSP_AutoStory_RoutePlanner.h"
 #include "Data/PokemonBDSP_AutoStory_WallRecovery.h"
 #include "Data/PokemonBDSP_AutoStory_Maps.h"
+#include "Utils/PokemonBDSP_AutoStory_GridSim.h"
 #include "PokemonBDSP_AutoStory_RoutePlanner_Tests.h"
 
 namespace PokemonAutomation{
@@ -159,6 +160,27 @@ public:
 //  and a leg through it is reported; a leg that is stopped throws.
 //  November 5 mine report: row 15 instead of intended row 17. Diagnostic
 //  pre-east belief, not a claim that one interrupted tap caused two tiles.
+class Test_InterruptedMineTaps : public UnitTest{
+public:
+    Test_InterruptedMineTaps() : UnitTest("PokemonBDSP::AutoStory - Route planner: encounter credits do not establish pose"){}
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        StoryWorld mine;
+        mine.add("OreburghMine", story_map("OreburghMine"), {0, 0});
+        for (SimEncounterPhase phase : {SimEncounterPhase::BEFORE_MOVEMENT, SimEncounterPhase::AFTER_MOVEMENT}){
+            GridSim sim({.world = &mine}, {15, 12}, Direction::SOUTH, /*can_run=*/false);
+            std::vector<std::string> notes;
+            GridSimRouteIO io(sim, notes, {{.label = "south", .direction = Direction::SOUTH,
+                .requested_tiles = 5, .tap = 5, .phase = phase}});
+            const auto result = io.walk_taps(Direction::SOUTH, 5, "south");
+            const TilePos expected = phase == SimEncounterPhase::BEFORE_MOVEMENT ? TilePos{15, 16} : TilePos{15, 17};
+            if (result.wild_battles != 1 || result.moved_chunks != 5 || nearest_tile(sim.player().pos) != expected){
+                return "Same credited count must allow both uncompleted and completed encounter steps.";
+            }
+        }
+        return true;
+    }
+};
+
 class Test_SharedWallRecovery : public UnitTest{
 public:
     Test_SharedWallRecovery() : UnitTest("PokemonBDSP::AutoStory - Route planner: shared mine and r55 recovery"){}
@@ -215,6 +237,7 @@ void add_tests_AutoStory_RoutePlanner(UnitTestDatabase& database){
     database.add<Test_PlanRobustRoute>();
     database.add<Test_TrainerSight>();
     database.add<Test_SharedWallRecovery>();
+    database.add<Test_InterruptedMineTaps>();
 }
 
 
