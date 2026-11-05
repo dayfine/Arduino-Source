@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <format>
+#include "Pokemon/Navigation/Pokemon_WallRecovery.h"
 #include "PokemonFRLG_OverworldReanchor.h"
 
 namespace PokemonAutomation{
@@ -126,15 +127,6 @@ struct Hypothesis{
     bool operator==(const Hypothesis& other) const = default;
 };
 
-bool converged(const std::vector<Hypothesis>& positions){
-    for (const Hypothesis& position : positions){
-        if (!(position.at == positions[0].at)){
-            return false;
-        }
-    }
-    return true;
-}
-
 //  Whether a person stands, or may wander, on a tile `wall` passes after
 //  `from`. The step rules don't have people, but one there stops the player
 //  short of the wall.
@@ -183,41 +175,33 @@ std::optional<std::pair<std::vector<Hypothesis>, RouteStep>> hold_all(
     return std::make_pair(std::move(ends), hold);
 }
 
-int total_tiles(const std::vector<RouteStep>& legs){
-    int total = 0;
-    for (const RouteStep& leg : legs){
-        total += leg.tiles;
-    }
-    return total;
-}
+using Found = Pokemon::WallAnchor<MapPosition, RouteStep>;
 
-struct Found{
-    std::vector<RouteStep> holds;
-    MapPosition at;
+//  Runtime world alternatives and movement mode, separate from the policy type.
+struct ReanchorContext{
+    const std::vector<std::vector<MapData>>& worlds;
+    bool surfing = false;
 };
 
-//  Every way of exactly `depth` holds that brings all of `positions` to one
-//  tile, in a fixed order.
-void search(
-    const std::vector<std::vector<MapData>>& worlds, const std::vector<Hypothesis>& positions, bool surfing,
-    size_t depth, std::vector<RouteStep>& holds, std::vector<Found>& found
-){
-    for (Direction direction : Pokemon::ALL_DIRECTIONS){
-        auto next = hold_all(worlds, positions, surfing, direction);
-        if (!next || next->first == positions || next->second.tiles == 0){
-            continue;
+class ReanchorPolicy{
+public:
+    using Hypothesis = PokemonFRLG::Hypothesis;
+    using Position = MapPosition;
+    using Hold = RouteStep;
+
+    static Position position(const Hypothesis& hypothesis){ return hypothesis.at; }
+    static int tiles(const Hold& hold){ return hold.tiles; }
+    static std::optional<Pokemon::WallRecoveryStep<Hypothesis, Hold>> hold(
+        const ReanchorContext& context, const std::vector<Hypothesis>& positions, Direction direction
+    ){
+        auto next = hold_all(context.worlds, positions, context.surfing, direction);
+        if (!next){
+            return std::nullopt;
         }
-        holds.push_back(next->second);
-        if (converged(next->first)){
-            if (depth == 1){
-                found.push_back(Found{holds, next->first[0].at});
-            }
-        }else if (depth > 1){
-            search(worlds, next->first, surfing, depth - 1, holds, found);
-        }
-        holds.pop_back();
+        return Pokemon::WallRecoveryStep<Hypothesis, Hold>{std::move(next->first), std::move(next->second)};
     }
-}
+
+};
 
 //  Whether `route`, planned from `at` on other maps, walks the same on
 //  `world`: each leg to a wall stops at its end, each open leg gets there.
@@ -257,18 +241,9 @@ bool walks_same_everywhere(
 std::vector<Found> find_player(
     const std::vector<std::vector<MapData>>& worlds, const std::vector<Hypothesis>& positions, bool surfing
 ){
-    std::vector<Found> found;
-    if (converged(positions)){
-        found.push_back(Found{{}, positions[0].at});
-    }
-    for (size_t depth = 1; found.empty() && depth <= MAX_HOLDS; depth++){
-        std::vector<RouteStep> holds;
-        search(worlds, positions, surfing, depth, holds, found);
-        std::stable_sort(found.begin(), found.end(), [](const Found& a, const Found& b){
-            return total_tiles(a.holds) < total_tiles(b.holds);
-        });
-    }
-    return found;
+    return Pokemon::find_wall_anchors<ReanchorPolicy>(
+        positions, ReanchorContext{.worlds = worlds, .surfing = surfing}, {.max_holds = MAX_HOLDS}
+    );
 }
 
 }
