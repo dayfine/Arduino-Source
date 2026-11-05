@@ -374,7 +374,7 @@ void UnitTestRunner::on_test_finished(
 
 
 
-bool CommandLineUnitTestRunner::run(bool augment_color_distortions){
+bool CommandLineUnitTestRunner::run(bool augment_color_distortions, const std::string& filter){
     if (augment_color_distortions){
         //  Load the distortion data before any test runs. Each `ImageUnitTest` checks the global
         //  manager when it runs, and only runs with distortions if it is loaded.
@@ -399,7 +399,9 @@ bool CommandLineUnitTestRunner::run(bool augment_color_distortions){
     );
     runner.add_listener(*this);
     for (const auto& test : UNIT_TESTS_ALL()){
-        runner.add_test(test.second);
+        if (filter.empty() || test.first.find(filter) != std::string::npos){
+            runner.add_test(test.second);
+        }
     }
     runner.run();
 

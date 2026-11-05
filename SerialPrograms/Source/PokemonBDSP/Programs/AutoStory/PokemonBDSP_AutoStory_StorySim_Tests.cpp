@@ -142,11 +142,13 @@ public:
         return warped;
     }
     //  A scene may take us to another map (Mom walks us out, 00.04): with a
-    //  dialogue open the stub scene plays it. Otherwise only a door fades.
-    //  A fade missed on the way in stays missed: it was over before settle()
-    //  looked, which then fails as it does on the console after 120 s.
+    //  dialogue open and `m_far` on another world, the stub scene plays the
+    //  fade. Otherwise only a door fades. A fade missed on the way in stays
+    //  missed: it was over before settle() looked, which then fails as it
+    //  does on the console after 120 s.
     virtual void settle(Button, const std::string& label, bool fade) override{
-        if (fade && ((!m_sim.player().warped && !m_sim.player().dialog) || m_misses.fade_unseen)){
+        const bool scene_fades = m_sim.player().dialog && m_far_side();
+        if (fade && ((!m_sim.player().warped && !scene_fades) || m_misses.fade_unseen)){
             m_route.note(label + ": no fade, so we are not where the step goes (map mismatch).", RouteNote::FAILURE);
         }
         m_misses.fade_unseen = false;
@@ -268,12 +270,13 @@ struct VarState{
 //  203 in 01.01; the Gate's Hiker and Oreburgh's welcome in 01.02; Barry's
 //  bump in Oreburgh after Roark in 01.05; and Rowan in Jubilife in 01.07.
 //  Left out: the Twinleaf guitarist (spent upstairs), Platinum's rival
-//  steps around our bedroom's start, Dawn at Jubilife's steps (BDSP starts
-//  her below them: an event), and Floaroma's (10..12, 29) (Diamond only).
+//  steps around our bedroom's start and Mom's warning on the door (6, 10)
+//  (in BDSP her downstairs scene covers it and (6, 10) warps right out),
+//  Dawn at Jubilife's steps (BDSP starts her below them: an event), and
+//  Floaroma's (10..12, 29) (Diamond only).
 std::vector<VarState> story_vars(){
     return {
         {.var = "VAR_TWINLEAF_TOWN_RIVAL_TRIGGER_STATE", .value = 0, .row = "00.01", .after = ""},
-        {.var = "VAR_PLAYER_HOUSE_STATE", .value = 1, .row = "00.01", .after = ""},
         {.var = "VAR_FOLLOWER_RIVAL_STATE", .value = 0, .row = "00.01", .after = ""},
         {.var = "VAR_FOLLOWER_RIVAL_STATE", .value = 1, .row = "00.01", .after = "barry_warns_us"},
         {.var = "VAR_VERITY_LAKEFRONT_STATE", .value = 0, .row = "00.02", .after = ""},
@@ -332,9 +335,9 @@ std::vector<SimPerson> sim_people(){
     return {
         //  Mom stands a row above the decomp's (7, 8) from 00.04 on (r43).
         {.name = "mom", .map = "PlayerHouse1F", .tile = {7, 7}, .row = "00.04", .until = ""},
-        //  Barry stands in the Center's door until his lines (01.03; Roark
+        //  Barry stands in the Gym's door until his lines (01.03; Roark
         //  ignored A until then, r101 and r104).
-        {.name = "barry", .map = "OreburghCity", .tile = {47, 20}, .row = "01.03", .until = "barrys_lines"},
+        {.name = "barry", .map = "OreburghCity", .tile = {26, 21}, .row = "01.03", .until = "barrys_lines"},
     };
 }
 
@@ -522,7 +525,7 @@ bool SimExecutor::sync(const Pose& pose, const StoryWorld* on){
 bool SimExecutor::cross(){
     const StoryWorld* world = m_far ? sim_world(m_far->map) : nullptr;
     const std::vector<TilePos> tiles = m_far ? Pokemon::tiles_of(*m_far) : std::vector<TilePos>{};
-    if (world == nullptr || tiles.empty()){
+    if (world == nullptr || world == &m_sim.world() || tiles.empty()){
         return false;
     }
     m_sim.place(setup(world), story_to_world(*world, m_far->map, tiles.front()), std::nullopt);
@@ -571,8 +574,10 @@ std::string SimExecutor::check(const StoryStep& step, const Outcome& outcome){
         return "";
     }
     const SimPlayer& player = m_sim.player();
-    if (player.warped && !story_to_local(m_sim.world(), expected->map, nearest_tile(player.pos))){
-        return "";
+    if (player.warped){
+        return story_to_local(m_sim.world(), expected->map, nearest_tile(player.pos))
+            ? std::format("warped at {} ({}), not on {}.", to_string(player.pos), describe(m_sim.world(), *player.warped), Pokemon::to_string(*expected))
+            : "";
     }
     return off_pose(*expected);
 }

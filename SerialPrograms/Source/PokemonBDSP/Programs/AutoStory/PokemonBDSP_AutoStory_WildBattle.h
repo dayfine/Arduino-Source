@@ -40,7 +40,7 @@ void escape_wild_battle(
     VideoStream& stream,
     ProControllerContext& context,
     BattleType battle_type = BattleType::STANDARD,
-    std::chrono::seconds timeout = std::chrono::seconds(30)
+    std::chrono::seconds timeout = std::chrono::seconds(60)
 );
 
 //  escape_wild_battle() for a standard wild battle, as the walker takes it

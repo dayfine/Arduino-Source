@@ -54,7 +54,26 @@
         {"x": 10, "y": 18, "glyph": "#", "measured_by": "r16, 2026-10-31"},
         {"x": 11, "y": 18, "glyph": "#", "measured_by": "r16, 2026-10-31"},
         {"x": 12, "y": 18, "glyph": "#", "measured_by": "r16, 2026-10-31"},
-        {"x": 13, "y": 18, "glyph": "S", "measured_by": "r16, 2026-10-31"},
-        {"x": 13, "y": 17, "glyph": ".", "measured_by": "r16, 2026-10-31"}
+        {"x": 13, "y": 18, "glyph": "#", "measured_by": "probe-r201-sign, 2026-11-03: (13, 17) is the decomp's 201 sign, (13, 18) is trees"},
+        {"x": 36, "y": 9, "glyph": "#", "measured_by": "r6, 2026-11-04: Route 201 pine trees east of upper ledge"},
+        {"x": 37, "y": 9, "glyph": "#", "measured_by": "r6, 2026-11-04: Route 201 pine trees east of upper ledge"},
+        {"x": 38, "y": 9, "glyph": "#", "measured_by": "r6, 2026-11-04: Route 201 pine trees east of upper ledge"},
+        {"x": 39, "y": 9, "glyph": "#", "measured_by": "r6, 2026-11-04: Route 201 pine trees east of upper ledge"},
+        {"x": 36, "y": 10, "glyph": "#", "measured_by": "r6, 2026-11-04: Route 201 pine trees east of upper ledge"},
+        {"x": 37, "y": 10, "glyph": "#", "measured_by": "r6, 2026-11-04: Route 201 pine trees east of upper ledge"},
+        {"x": 38, "y": 10, "glyph": "#", "measured_by": "r6, 2026-11-04: Route 201 pine trees east of upper ledge"},
+        {"x": 39, "y": 10, "glyph": "#", "measured_by": "r6, 2026-11-04: Route 201 pine trees east of upper ledge"},
+        {"x": 36, "y": 11, "glyph": "#", "measured_by": "r6, 2026-11-04: Route 201 pine trees east of upper ledge"},
+        {"x": 37, "y": 11, "glyph": "#", "measured_by": "r6, 2026-11-04: Route 201 pine trees east of upper ledge"},
+        {"x": 38, "y": 11, "glyph": "#", "measured_by": "r6, 2026-11-04: Route 201 pine trees east of upper ledge"},
+        {"x": 39, "y": 11, "glyph": "#", "measured_by": "r6, 2026-11-04: Route 201 pine trees east of upper ledge"},
+        {"x": 32, "y": 12, "glyph": "#", "measured_by": "r6, 2026-11-04: Route 201 upper ledge barrier"},
+        {"x": 33, "y": 12, "glyph": "#", "measured_by": "r6, 2026-11-04: Route 201 upper ledge barrier"},
+        {"x": 34, "y": 12, "glyph": "#", "measured_by": "r6, 2026-11-04: Route 201 upper ledge barrier"},
+        {"x": 35, "y": 12, "glyph": "#", "measured_by": "r6, 2026-11-04: Route 201 upper ledge barrier"},
+        {"x": 36, "y": 12, "glyph": "#", "measured_by": "r6, 2026-11-04: Route 201 pine trees east of upper ledge"},
+        {"x": 37, "y": 12, "glyph": "#", "measured_by": "r6, 2026-11-04: Route 201 pine trees east of upper ledge"},
+        {"x": 38, "y": 12, "glyph": "#", "measured_by": "r6, 2026-11-04: Route 201 pine trees east of upper ledge"},
+        {"x": 39, "y": 12, "glyph": "#", "measured_by": "r6, 2026-11-04: Route 201 pine trees east of upper ledge"}
     ]
 }

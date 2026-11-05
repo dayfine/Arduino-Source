@@ -136,8 +136,11 @@ std::optional<SimStop> GridSim::enter_next(Direction direction, int part, int& m
             part = 2 * SIM_TILE;
         }else if (!landing && (is_door(world, ahead[0]) || std::find(m_world.doors.begin(), m_world.doors.end(), ahead[0]) != m_world.doors.end())){
             m_player.pos = sim_pos(ahead[0]);
-            m_player.warped = ahead[0];
             moved += SIM_TILE;
+            if (const std::optional<SimStop> stop = arrive()){
+                return stop;
+            }
+            m_player.warped = ahead[0];
             return SimStop::WARP;
         }else if (!landing){
             return SimStop::BLOCKED;
@@ -183,6 +186,7 @@ SimMove GridSim::advance(Direction direction, int distance){
     if (m_player.dialog){
         return {.stop = SimStop::DIALOG};
     }
+    m_player.warped.reset();
     int moved = 0;
     while (moved < distance){
         const int offset = along(m_player.pos, direction) % SIM_TILE;

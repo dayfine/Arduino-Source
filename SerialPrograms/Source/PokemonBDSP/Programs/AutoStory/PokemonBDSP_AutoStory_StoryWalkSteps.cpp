@@ -121,8 +121,9 @@ Outcome StoryWalkSteps::leg_to_dialogue(const StoryStep& step){
     if (walk.stop == WalkStop::DIALOG){
         return Pokemon::outcome_ok();
     }
-    //  A scene can lock us before its first line: Dawn walks over first (r37).
-    if (walk.stop == WalkStop::BLOCKED && m_io.route().dialog_within(10000ms, COLOR_CYAN)){
+    //  A scene can lock us before its first line: Dawn walks over first (r37),
+    //  or Mom walks over to us on the mat (r7).
+    if (m_io.route().dialog_within(10000ms, COLOR_CYAN)){
         return Pokemon::outcome_ok();
     }
     return Pokemon::outcome_failed("no_dialogue", step.name);
@@ -203,21 +204,30 @@ Outcome StoryWalkSteps::legs(RunState& state, const StoryStep& step){
 }
 
 Outcome StoryWalkSteps::step(RunState& state, const StoryStep& step){
-    turn(step.direction);
     if (step.variant == "to_banner"){
+        turn(step.direction);
         return tap_to_banner(step);
+    }
+    if (step.variant == "tap"){
+        //  No separate turn tap first: at 1 tile from the door, a turn tap
+        //  steps onto the warp, causing walk_taps to take an extra step on the far map.
+        m_io.route().walk_taps(step.direction, 1, step.name);
+        m_io.settle(BUTTON_B, label_of(step), false);
+        return Pokemon::outcome_ok();
     }
     //  A step through a door: walk (or run) on until the screen goes dark,
     //  from next to the door or from anywhere in its line (r43: tapping 8 tiles
     //  down the lab took 7 s), then settle for any scene on arrival (Mom's,
     //  00.01; Dawn's tour, 00.04). Without the fade, settle must see it itself
-    //  (r33 was outside, "no fade").
+    //  (r33 was outside, "no fade"). No separate turn tap first: at 1 tile
+    //  from the door, a 50 ms turn tap can step in before run_into_door() watches.
     if (step.pose_after && step.pose_after->map != state.pose.map){
         const bool faded = m_io.run_into_door(step.direction, m_can_run);
         log(std::format("[{}] {}: {} through the door: {}.", m_row, step.name, direction_name(step.direction), faded ? "faded" : "no fade yet"));
         m_io.settle(BUTTON_B, label_of(step), !faded);
         return Pokemon::outcome_ok();
     }
+    turn(step.direction);
     const WalkResult walk = m_io.route().walk_taps(step.direction, 1, step.name);
     log(std::format("[{}] {}: a step {}, {}.", m_row, step.name, direction_name(step.direction), walk_stop_name(walk.stop)));
     std::vector<TilePos> at;
@@ -250,7 +260,8 @@ Outcome StoryWalkSteps::mash(RunState& state, const StoryStep& step){
         m_io.route().note(label_of(step) + ": no line within 15 s; the step before played it.", RouteNote::WARNING);
     }
     m_io.settle(step.variant == "a" ? BUTTON_A : BUTTON_B, label_of(step),
-        step.pose_after && step.pose_after->map != state.pose.map);
+        step.pose_after && step.pose_after->map != state.pose.map &&
+        story_plan_world(state.pose.map, step.pose_after->map) == nullptr);
     if (m_row == RUNNING_SHOES_ROW && step.name == RUNNING_SHOES_STEP){
         m_can_run = true;
     }

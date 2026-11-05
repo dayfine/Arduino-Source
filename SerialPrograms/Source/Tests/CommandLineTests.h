@@ -49,7 +49,7 @@ namespace PokemonAutomation{
 // `augment_color_distortions` is set by the "--augment-color-distortions" argument: also run image tests
 // with color distortion augmentation, using the distortion data from the test repo.
 // Return 0 if all tests are passed, and 1 if any test failed or the distortion data can't be loaded.
-int run_command_line_tests(bool augment_color_distortions);
+int run_command_line_tests(bool augment_color_distortions, const std::string& filter = "");
 
 
 

@@ -417,12 +417,12 @@ void fight_story_battle(VideoStream& stream, ProControllerContext& context, cons
 }
 
 void fight_trainer(VideoStream& stream, ProControllerContext& context, const std::string& label){
-    // The best move on the menu each turn, whatever the starter.
-    fight_with_best_move(stream, context, {.battle_type = BattleType::TRAINER, .format = BattleFormat::SINGLES, .switch_on_faint = false}, label);
+    // The best move on the menu each turn, whatever the starter; the next Pokemon after a faint.
+    fight_with_best_move(stream, context, {.battle_type = BattleType::TRAINER, .format = BattleFormat::SINGLES, .switch_on_faint = true}, label);
 }
 
 void fight_wild_battle(VideoStream& stream, ProControllerContext& context, const std::string& label){
-    fight_with_best_move(stream, context, {.battle_type = BattleType::STANDARD, .format = BattleFormat::SINGLES, .switch_on_faint = false}, label);
+    fight_with_best_move(stream, context, {.battle_type = BattleType::STANDARD, .format = BattleFormat::SINGLES, .switch_on_faint = true}, label);
 }
 
 

@@ -94,7 +94,7 @@ public:
     //  distortion augmentation to widen the test coverage, using the distortion data in the
     //  CaptureCardCalibration/ folder of the test repo. If that data can't be loaded, log the
     //  error and return true without running any test.
-    bool run(bool augment_color_distortions);
+    bool run(bool augment_color_distortions, const std::string& filter = "");
 
 
 private:
