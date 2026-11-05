@@ -55,6 +55,7 @@ struct Genes{
 //  A trainer's Pokemon's IVs from pret's iv (0 to 255).
 uint8_t trainer_iv(uint8_t pret_iv);
 
+//  Calculates Gen 3 stats from base stats, level, and genes.
 Stats gen3_stats(const BaseStats& base, uint8_t level, const Genes& genes);
 
 //  The stat stages the damage formula and the sim use, from -6 to +6.
@@ -67,7 +68,9 @@ enum class Stage : size_t{
     ACCURACY,
     EVASION,
 };
+//  Number of modifier stat stages.
 inline constexpr size_t STAGES = 7;
+//  Array of stat stage modifiers.
 using StatStages = std::array<int8_t, STAGES>;
 
 //  `stat` at `stage` (gStatStageRatios).
@@ -105,6 +108,7 @@ uint32_t damage_before_roll(const Combatant& attacker, const Combatant& defender
 //  `before` at the random roll `percent` (85 to 100).
 uint32_t rolled_damage(uint32_t before, uint32_t percent);
 
+//  Minimum and maximum simulated damage roll.
 struct DamageRange{
     uint32_t min = 0;
     uint32_t max = 0;
@@ -117,7 +121,7 @@ double average_damage(const Combatant& attacker, const Combatant& defender, cons
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

@@ -53,11 +53,12 @@ ImageFloatBox option_value_box(size_t row);
 std::string read_option_value(Logger& logger, Language language, const ImageViewRGB32& screen, OptionMenuItem item);
 
 
+//  Registers option menu reader unit tests.
 void add_tests_OptionMenuReader(UnitTestDatabase& database);
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

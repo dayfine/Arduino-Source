@@ -127,7 +127,7 @@ const OptionItem& option_item(OptionMenuItem item){
     return text_speed;
 }
 
-}
+} // namespace
 
 
 const char* option_menu_name(OptionMenuItem item){
@@ -187,7 +187,7 @@ public:
     }
 };
 
-}
+} // namespace
 
 void add_tests_OptionMenuReader(UnitTestDatabase& database){
     //  FireRed on console B, 2026-11-02: the menu as a new game opens it,
@@ -200,6 +200,6 @@ void add_tests_OptionMenuReader(UnitTestDatabase& database){
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

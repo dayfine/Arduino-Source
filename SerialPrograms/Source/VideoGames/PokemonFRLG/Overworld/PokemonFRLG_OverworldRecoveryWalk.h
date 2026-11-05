@@ -63,7 +63,7 @@ void walk_overworld_route_with_recovery(
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

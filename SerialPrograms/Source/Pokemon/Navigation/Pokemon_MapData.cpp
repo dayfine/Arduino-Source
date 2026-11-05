@@ -47,7 +47,7 @@ constexpr std::pair<const char*, WarpEntry> WARP_ENTRIES[] = {
     {"walk_east", WarpEntry::WALK_EAST},
 };
 
-}
+} // namespace
 
 std::optional<TileKind> tile_from_glyph(char glyph){
     for (const auto& [known, tile] : GLYPHS){
@@ -519,7 +519,7 @@ void check_places(const MapData& map, const std::string& where){
     }
 }
 
-}
+} // namespace
 
 
 MapData parse_map(const JsonValue& json, const std::string& source_name){
@@ -558,5 +558,5 @@ const MapWarp* warp_at(const MapData& map, const TilePos& pos){
 
 
 
-}
-}
+} // namespace Pokemon
+} // namespace PokemonAutomation

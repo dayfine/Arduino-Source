@@ -51,7 +51,7 @@ std::optional<SummaryRead> read_party_summary(
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

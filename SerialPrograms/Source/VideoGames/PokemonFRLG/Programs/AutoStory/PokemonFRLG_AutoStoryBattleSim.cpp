@@ -326,7 +326,7 @@ std::vector<size_t> damaging_slots(const SimBattler& own, const SimBattler& foe)
     return slots;
 }
 
-}
+} // namespace
 
 
 std::optional<SimBattler> own_battler(const PartyMember& lead, double hp_share, const Genes& genes){
@@ -571,6 +571,6 @@ OwnTurn own_turn(
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

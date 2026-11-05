@@ -32,6 +32,7 @@ constexpr int ITEM_LIST_ROWS = 6;
 //  Where row `row` (from 0) of a list shows its item's name, and in the bag
 //  its count, as fractions of the game screen.
 ImageFloatBox item_list_name_box(int row);
+//  Where row `row` of the bag shows its item count.
 ImageFloatBox bag_item_count_box(int row);
 
 //  The item named in row `row`: a slug such as "potion", "antidote",
@@ -40,6 +41,7 @@ ImageFloatBox bag_item_count_box(int row);
 //  reader has no names for.
 std::string read_item_list_name(Logger& logger, Language language, const ImageViewRGB32& screen, int row);
 
+//  A single item entry in the bag pocket.
 struct BagRow{
     //  The item's slug, as read_item_list_name() gives it; empty if its name
     //  can't be read.
@@ -62,11 +64,12 @@ std::vector<BagRow> read_bag_pocket(Logger& logger, Language language, const Ima
 std::vector<BagRow> pocket_rows(std::vector<BagRow> reads);
 
 
+//  Registers item list reader unit tests.
 void add_tests_ItemListReader(UnitTestDatabase& database);
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

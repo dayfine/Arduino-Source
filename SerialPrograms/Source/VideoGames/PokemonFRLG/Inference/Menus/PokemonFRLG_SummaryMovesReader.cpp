@@ -178,7 +178,7 @@ int read_pp(Logger& logger, const ImageViewRGB32& screen, const ImageFloatBox& b
     return pp >= 0 && pp <= 64 ? pp : -1;
 }
 
-}
+} // namespace
 
 
 ImageFloatBox summary_move_name_box(size_t row){
@@ -298,7 +298,7 @@ public:
     }
 };
 
-}
+} // namespace
 
 void add_tests_SummaryMovesReader(UnitTestDatabase& database){
     //  FireRed on console B, 2026-11-02: the story's Squirtle at Lv16, not
@@ -315,6 +315,6 @@ void add_tests_SummaryMovesReader(UnitTestDatabase& database){
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

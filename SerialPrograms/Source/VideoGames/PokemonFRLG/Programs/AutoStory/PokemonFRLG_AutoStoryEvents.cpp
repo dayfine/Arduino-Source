@@ -275,7 +275,7 @@ Outcome shop(StoryEnv& env, const StoryStep& step){
     return Pokemon::outcome_ok();
 }
 
-}
+} // namespace
 
 
 std::optional<std::vector<MartOrder>> viridian_mart_orders(const std::vector<Pokemon::StoryItem>& items){
@@ -578,6 +578,6 @@ Pokemon::Segment make_story_segment(const std::vector<StoryCheckpoint>& checkpoi
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

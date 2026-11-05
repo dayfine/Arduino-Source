@@ -20,22 +20,36 @@ namespace PokemonFRLG{
 
 namespace{
 
+struct OverworldMapsInput{
+    std::string name;
+    UnitTestResult (*body)();
+};
+
+struct OverworldMapsExpectation{
+    const char* description;
+};
+
+struct OverworldMapsTestCase{
+    OverworldMapsInput input;
+    OverworldMapsExpectation expectation;
+};
+
 class Test_OverworldMaps : public UnitTest{
 public:
-    Test_OverworldMaps(std::string name, std::function<UnitTestResult()> body)
-        : UnitTest("PokemonFRLG::OverworldMaps - " + std::move(name))
-        , m_body(std::move(body))
+    explicit Test_OverworldMaps(OverworldMapsTestCase scenario)
+        : UnitTest("PokemonFRLG::OverworldMaps - " + scenario.input.name)
+        , m_scenario(std::move(scenario))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
         try{
-            return m_body();
+            return m_scenario.input.body();
         }catch (Exception& e){
             return std::string(e.name()) + ": " + e.message();
         }
     }
 
 private:
-    std::function<UnitTestResult()> m_body;
+    OverworldMapsTestCase m_scenario;
 };
 
 
@@ -236,23 +250,57 @@ UnitTestResult test_no_hold_onto_escalator(){
     return true;
 }
 
-}
+
+const OverworldMapsTestCase OVERWORLD_MAPS_CASES[] = {
+    {
+        .input = {.name = "valid map", .body = test_valid_map},
+        .expectation = {.description = "parses valid map json and properties"},
+    },
+    {
+        .input = {.name = "missing field", .body = test_missing_field},
+        .expectation = {.description = "detects missing required fields in map json"},
+    },
+    {
+        .input = {.name = "elevation left out", .body = test_elevation_left_out},
+        .expectation = {.description = "handles omitted elevation data cleanly"},
+    },
+    {
+        .input = {.name = "field of the wrong type", .body = test_bad_field_type},
+        .expectation = {.description = "rejects invalid field types in map json"},
+    },
+    {
+        .input = {.name = "row of the wrong length", .body = test_bad_row_length},
+        .expectation = {.description = "rejects rows not matching declared width"},
+    },
+    {
+        .input = {.name = "unknown tile", .body = test_unknown_tile},
+        .expectation = {.description = "rejects unmapped character codes in tile map"},
+    },
+    {
+        .input = {.name = "not JSON", .body = test_not_json},
+        .expectation = {.description = "rejects malformed json input string"},
+    },
+    {
+        .input = {.name = "trainer sight", .body = test_trainer_sight},
+        .expectation = {.description = "evaluates line of sight for trainer objects"},
+    },
+    {
+        .input = {.name = "no hold onto an escalator", .body = test_no_hold_onto_escalator},
+        .expectation = {.description = "prevents holding into an escalator"},
+    },
+};
+
+} // namespace
 
 
 void add_tests_OverworldMaps(UnitTestDatabase& database){
-    database.add<Test_OverworldMaps>("valid map", test_valid_map);
-    database.add<Test_OverworldMaps>("missing field", test_missing_field);
-    database.add<Test_OverworldMaps>("elevation left out", test_elevation_left_out);
-    database.add<Test_OverworldMaps>("field of the wrong type", test_bad_field_type);
-    database.add<Test_OverworldMaps>("row of the wrong length", test_bad_row_length);
-    database.add<Test_OverworldMaps>("unknown tile", test_unknown_tile);
-    database.add<Test_OverworldMaps>("not JSON", test_not_json);
-    database.add<Test_OverworldMaps>("trainer sight", test_trainer_sight);
-    database.add<Test_OverworldMaps>("no hold onto an escalator", test_no_hold_onto_escalator);
+    for (const auto& scenario : OVERWORLD_MAPS_CASES){
+        database.add<Test_OverworldMaps>(scenario);
+    }
 }
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

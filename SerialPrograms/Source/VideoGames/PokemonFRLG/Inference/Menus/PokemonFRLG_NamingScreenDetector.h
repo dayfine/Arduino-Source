@@ -27,6 +27,7 @@ namespace NintendoSwitch{
 namespace PokemonFRLG{
 
 
+//  Detects the character/pokemon naming screen keyboard.
 class NamingScreenDetector : public StaticScreenDetector{
 public:
     NamingScreenDetector(Color color = COLOR_RED);
@@ -42,6 +43,7 @@ private:
     //  The text entry window, right of the last character.
     ImageFloatBox m_entry_box;
 };
+//  Visual watcher for the naming screen keyboard.
 class NamingScreenWatcher : public DetectorToFinder<NamingScreenDetector>{
 public:
     NamingScreenWatcher(Color color = COLOR_RED)
@@ -50,8 +52,8 @@ public:
 };
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 
 #endif

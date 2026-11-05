@@ -41,7 +41,9 @@ namespace PokemonFRLG{
 
 //  The move slots, in the order of the battle's move list and the summary.
 inline constexpr size_t TOP_LEFT_MOVE = 0;
+//  Move slot index for bottom-left move.
 inline constexpr size_t BOTTOM_LEFT_MOVE = 2;
+//  Maximum number of moves a Pokemon can know.
 inline constexpr size_t MAX_MOVES = 4;
 
 //  A move the lead knows, by slug ("water-gun"), and the PP the story
@@ -51,6 +53,7 @@ struct KnownMove{
     uint8_t pp = 0;
 };
 
+//  Party member Pokemon status and learned moves.
 struct PartyMember{
     std::string species;
     //  In slot order. Fewer than four while moves learned into free slots
@@ -78,6 +81,7 @@ struct LevelEvolution{
     std::string_view into;
     uint8_t level = 0;
 };
+//  Level-up evolution target if species evolves by level.
 std::optional<LevelEvolution> level_evolution(std::string_view species);
 
 //  A move's full PP; 0 for a move the table doesn't have.
@@ -165,7 +169,7 @@ void restore_pp(PartyMember& member);
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

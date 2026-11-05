@@ -86,7 +86,7 @@ std::optional<WarpEntry> warp_entry(const MapData& map, const TilePos& point){
     return warp->enter;
 }
 
-}
+} // namespace
 
 bool blocks_entering(const MapData& map, const TilePos& point, Direction direction){
     //  Moving south enters by the north edge.
@@ -158,7 +158,7 @@ bool sees_from(const MapData& map, const Pokemon::MapTrainer& trainer, const Til
     return false;
 }
 
-}
+} // namespace
 
 const MapObject* object_at(const MapData& map, const TilePos& point){
     for (const MapObject& object : map.objects){
@@ -247,6 +247,6 @@ PlayerState after_step_onto(
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

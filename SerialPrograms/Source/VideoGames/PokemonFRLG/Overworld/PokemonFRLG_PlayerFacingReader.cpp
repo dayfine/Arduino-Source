@@ -79,7 +79,7 @@ double difference(const ImageViewRGB32& game, const ImageViewRGB32& sprite, bool
     return pixels == 0 ? std::numeric_limits<double>::max() : (double)total / (3 * pixels);
 }
 
-}
+} // namespace
 
 
 const PlayerSprites& player_sprites(){
@@ -243,7 +243,7 @@ public:
     }
 };
 
-}
+} // namespace
 
 void add_tests_PlayerFacingReader(UnitTestDatabase& database){
     database.add<Test_PlayerFacingFixture>();
@@ -258,6 +258,6 @@ void add_tests_PlayerFacingReader(UnitTestDatabase& database){
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

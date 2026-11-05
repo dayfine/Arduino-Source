@@ -151,7 +151,7 @@ Pokemon::LegSpec leg_spec(const RouteStep& step, MoveSpeed speed){
     return Pokemon::LegSpec{step.direction, step.tiles, step.to_wall, tile_time(step, speed)};
 }
 
-}
+} // namespace
 
 
 namespace OverworldWalkSteps{
@@ -325,7 +325,7 @@ void start_surf(ConsoleHandle& console, ProControllerContext& context, Direction
     pbf_wait(context, SURF_ANIMATION);
 }
 
-}
+} // namespace OverworldWalkSteps
 
 
 
@@ -440,6 +440,6 @@ void walk_overworld_route(
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

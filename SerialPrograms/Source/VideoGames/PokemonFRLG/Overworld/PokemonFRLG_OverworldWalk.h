@@ -35,6 +35,7 @@ namespace PokemonFRLG{
 //  Something that stops the player part-way through a leg: a wild battle, a
 //  message. See Pokemon::LegInterrupt.
 using OverworldInterrupt = Pokemon::LegInterrupt<ConsoleHandle, ProControllerContext>;
+//  Overworld movement interruption triggers.
 using OverworldInterrupts = Pokemon::LegInterrupts<ConsoleHandle, ProControllerContext>;
 
 //  What to watch for on a route's steps: `wild` on steps where a wild
@@ -68,6 +69,7 @@ enum class MoveSpeed{
     WALK,
     RUN,
 };
+//  Name of a movement speed.
 const char* move_speed_name(MoveSpeed speed);
 
 
@@ -90,14 +92,20 @@ void walk_overworld_route(
 //  walk_overworld_route() describes.
 namespace OverworldWalkSteps{
 
-inline constexpr Milliseconds TILE_TIME(267);       //  16 frames at 60 fps, measured exact over 15 tiles
-inline constexpr Milliseconds SURF_TILE_TIME(133);  //  the game moves a surfing player at running speed
+//  Walking duration for a single tile (16 frames at 60 fps).
+inline constexpr Milliseconds TILE_TIME(267);
+//  Surfing duration for a single tile.
+inline constexpr Milliseconds SURF_TILE_TIME(133);
 //  8 frames: running is 2 pixels a frame, twice walking. Not measured on the
 //  console yet; the walker logs each leg to a wall (speed_note()) for that.
 inline constexpr Milliseconds RUN_TILE_TIME(133);
-inline constexpr Milliseconds TURN_TAP(40);         //  turns a player facing another way, without a step
+//  turns a player facing another way, without a step.
+inline constexpr Milliseconds TURN_TAP(40);
+//  duration to wait after turning to allow state to settle.
 inline constexpr Milliseconds TURN_SETTLE(300);
-inline constexpr Milliseconds FACE_HOLD(40);        //  short enough to turn without stepping
+//  short enough to turn without stepping.
+inline constexpr Milliseconds FACE_HOLD(40);
+//  duration of button release between movement steps.
 inline constexpr Milliseconds STEP_RELEASE(100);
 //  After a warp's fade: leaving by a door the game walks the player a tile out
 //  on its own, and a leg started before that ends loses tiles (on the console a
@@ -117,8 +125,10 @@ inline constexpr Milliseconds AFTER_LEG_WATCH(500);
 inline constexpr Milliseconds AFTER_WILD_LEG_WATCH(3500);
 //  How long clear_open_message() watches for the message it saw.
 inline constexpr Milliseconds OPEN_MESSAGE_WATCH(1000);
+//  Maximum interruptions before a leg is abandoned.
 inline constexpr size_t MAX_INTERRUPTIONS_PER_LEG = 5;
 
+//  Maps Direction to corresponding DpadPosition.
 DpadPosition dpad(Direction direction);
 
 //  The leg mover: holds the D-pad. FRLG moves exactly a tile per 16 frames.
@@ -170,14 +180,15 @@ std::optional<Direction> read_facing(ConsoleHandle& console, ProControllerContex
 //  Facing `direction` (turning first unless `facing_water`), starts Surf.
 void start_surf(ConsoleHandle& console, ProControllerContext& context, Direction direction, bool facing_water);
 
-}
+} // namespace OverworldWalkSteps
 
 
+//  Registers overworld walk unit tests.
 void add_tests_OverworldWalk(UnitTestDatabase& database);
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

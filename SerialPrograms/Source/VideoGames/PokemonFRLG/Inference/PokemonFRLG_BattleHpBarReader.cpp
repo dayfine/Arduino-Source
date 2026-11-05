@@ -52,7 +52,7 @@ std::optional<HpBarColor> fill_color(uint32_t pixel){
     return std::nullopt;
 }
 
-}
+} // namespace
 
 
 HpBarReading read_player_hp_bar(const ImageViewRGB32& game){
@@ -82,6 +82,6 @@ HpBarReading read_player_hp_bar(const ImageViewRGB32& game){
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

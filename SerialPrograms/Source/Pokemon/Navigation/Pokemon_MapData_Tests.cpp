@@ -374,24 +374,6 @@ UnitTestResult test_each_error_class_of_game_fields(){
 }
 
 
-class Test_MapData : public UnitTest{
-public:
-    Test_MapData(std::string name, std::function<UnitTestResult()> body)
-        : UnitTest("Pokemon::MapData - " + std::move(name))
-        , m_body(std::move(body))
-    {}
-    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        try{
-            return m_body();
-        }catch (Exception& e){
-            return std::string(e.name()) + ": " + e.message();
-        }
-    }
-
-private:
-    std::function<UnitTestResult()> m_body;
-};
-
 //  The maps in TestMaps/, read back from the program: the small one, and one
 //  longer than a string literal may be, which the build splits.
 UnitTestResult test_built_in_maps(){
@@ -418,21 +400,83 @@ UnitTestResult test_built_in_maps(){
     return true;
 }
 
-}
+struct MapDataTestInput{
+    std::string name;
+    UnitTestResult (*test)();
+};
+
+struct MapDataTestExpectation{
+    const char* description;
+};
+
+struct MapDataTestCase{
+    MapDataTestInput input;
+    MapDataTestExpectation expectation;
+};
+
+class Test_MapData : public UnitTest{
+public:
+    explicit Test_MapData(MapDataTestCase scenario)
+        : UnitTest("Pokemon::MapData - " + scenario.input.name)
+        , m_scenario(std::move(scenario))
+    {}
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        try{
+            return m_scenario.input.test();
+        }catch (Exception& e){
+            return std::string(e.name()) + ": " + e.message();
+        }
+    }
+
+private:
+    MapDataTestCase m_scenario;
+};
+
+const MapDataTestCase MAP_DATA_CASES[] = {
+    {
+        .input = {.name = "the valid map", .test = test_valid_map},
+        .expectation = {.description = "parses full map with all properties and layers"},
+    },
+    {
+        .input = {.name = "lists may be left out", .test = test_lists_may_be_left_out},
+        .expectation = {.description = "allows optional collection fields to be omitted"},
+    },
+    {
+        .input = {.name = "glyphs round-trip", .test = test_glyphs_round_trip},
+        .expectation = {.description = "converts between tile characters and enum kinds"},
+    },
+    {
+        .input = {.name = "each error class", .test = test_each_error_class},
+        .expectation = {.description = "rejects invalid JSON syntax and malformed map schemas"},
+    },
+    {
+        .input = {.name = "a map shaped like BDSP's", .test = test_bdsp_shaped_map},
+        .expectation = {.description = "parses BDSP-specific world offsets, trainers, and triggers"},
+    },
+    {
+        .input = {.name = "a map shaped like FRLG's", .test = test_frlg_shaped_map},
+        .expectation = {.description = "parses FRLG-specific elevations, flags, and warp directions"},
+    },
+    {
+        .input = {.name = "each error class of the game fields", .test = test_each_error_class_of_game_fields},
+        .expectation = {.description = "validates constraints on game-specific map fields"},
+    },
+    {
+        .input = {.name = "maps built into the program", .test = test_built_in_maps},
+        .expectation = {.description = "loads and verifies embedded test map assets"},
+    },
+};
+
+} // namespace
 
 
 void add_tests_MapData(UnitTestDatabase& database){
-    database.add<Test_MapData>("the valid map", test_valid_map);
-    database.add<Test_MapData>("lists may be left out", test_lists_may_be_left_out);
-    database.add<Test_MapData>("glyphs round-trip", test_glyphs_round_trip);
-    database.add<Test_MapData>("each error class", test_each_error_class);
-    database.add<Test_MapData>("a map shaped like BDSP's", test_bdsp_shaped_map);
-    database.add<Test_MapData>("a map shaped like FRLG's", test_frlg_shaped_map);
-    database.add<Test_MapData>("each error class of the game fields", test_each_error_class_of_game_fields);
-    database.add<Test_MapData>("maps built into the program", test_built_in_maps);
+    for (const auto& scenario : MAP_DATA_CASES){
+        database.add<Test_MapData>(scenario);
+    }
 }
 
 
 
-}
-}
+} // namespace Pokemon
+} // namespace PokemonAutomation

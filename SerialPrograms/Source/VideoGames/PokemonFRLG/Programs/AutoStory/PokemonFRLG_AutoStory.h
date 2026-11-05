@@ -30,12 +30,14 @@ namespace NintendoSwitch{
 namespace PokemonFRLG{
 
 
+//  Program descriptor for FRLG AutoStory.
 class AutoStory_Descriptor : public SingleSwitchProgramDescriptor{
 public:
     AutoStory_Descriptor();
     virtual std::unique_ptr<StatsTracker> make_stats() const override;
 };
 
+//  Program instance executing FRLG AutoStory.
 class AutoStory : public SingleSwitchProgramInstance{
 public:
     using Descriptor = AutoStory_Descriptor;
@@ -77,7 +79,7 @@ private:
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

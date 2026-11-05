@@ -270,7 +270,7 @@ std::vector<Found> find_player(
     return found;
 }
 
-}
+} // namespace
 
 
 WalkedTiles walked_near(const RouteStep& step, int estimate, Milliseconds tile_time){
@@ -369,6 +369,6 @@ std::optional<Reanchor> plan_reanchor(
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

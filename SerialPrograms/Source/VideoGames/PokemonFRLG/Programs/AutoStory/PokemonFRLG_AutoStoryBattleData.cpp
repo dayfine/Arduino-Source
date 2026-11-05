@@ -164,7 +164,7 @@ bool starts_with_any(std::string_view text, std::initializer_list<std::string_vi
     });
 }
 
-}
+} // namespace
 
 
 const MoveData* move_data(std::string_view move){
@@ -317,6 +317,6 @@ BattleRisk story_battle_risk(std::string_view map, std::string_view battle){
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

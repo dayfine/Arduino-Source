@@ -61,7 +61,7 @@ const StringSelectDatabase& checkpoint_database(){
     return database;
 }
 
-}
+} // namespace
 
 const char* const RUN_STARTER_RNG_TEXT =
     "<b>Run Starter RNG in AutoStory:</b><br>Off by default. Instead of stopping for them, run SID Helper's steps on the "
@@ -237,7 +237,7 @@ void verify_story_checkpoint(
 }
 
 
-}
+} // namespace
 
 //  The options' problems, before anything is pressed.
 static void check_setup(
@@ -620,6 +620,6 @@ std::optional<std::string> AutoStory::after_starter_ball(
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
