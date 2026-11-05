@@ -11,7 +11,7 @@ not a claim that BDSP recovery is fixed or that the owning PRs have adopted it.
 |---|---|---|---|
 | `nav/recovery-core-extraction` | `~/Projects/wt/nav-recovery-core` | `af21f2750` | #114 `acf85aa2411a125ea1088908e66d4eff93351f1f`; shared search and 9 registered C++ tests. |
 | `frlg/shared-recovery-adapter` | `~/Projects/wt/frlg-shared-recovery` | `616d2f5f0` | #224 `51c0ce6128e5981da56b370a770874b96a1e129f` plus merged shared branch; owner handoff for FRLG adapter. |
-| `bdsp/shared-recovery-tests` | `~/Projects/wt/bdsp-shared-recovery` | `9fe6f718f` | #226 `f8bdd62b9df4dbf285f93853147295e0552a0367` plus merged shared branch; tested movement adapter only. |
+| `bdsp/shared-recovery-tests` | `~/Projects/wt/bdsp-shared-recovery` | `1f9f07eb9` | #226 `f8bdd62b9df4dbf285f93853147295e0552a0367` plus merged shared branch; tested movement adapter only. |
 
 FRLG pure `find_player` search now delegates to `Pokemon_WallRecovery.h` through
 an adapter. Its movement, trainer-world alternatives, route-back checks, timing,
@@ -38,8 +38,9 @@ native #226 map bytes; no terrain or Simulation publishing pins were changed.
 - Rebuilt that runner with the original #224 `OverworldReanchor.cpp`: **57
   passed, 0 failed**. Result logs compare identical. This compares registered
   test outcomes; it is not a claim of exhaustive native trace equality.
-- BDSP selected native runner: **17 passed, 0 failed** (9 shared tests plus
-  route-planner/world suites, including the two new source-grounded checks).
+- BDSP selected native runner: **18 passed, 0 failed** (9 shared tests plus
+  route-planner/world suites, including the two new source-grounded checks and
+  the normalized encounter-tap case).
   Uses the actual #226 map decoder and 22 native map JSONs.
 - Current `agents` code health against each intended base: **0 failures**.
   CRLF source checked with `git -c core.whitespace=cr-at-eol diff --check`.
@@ -86,7 +87,7 @@ then normal hook pushes can discover the correct base. Honor owning-PR handoffs.
 1. BDSP `GridSimRouteIO::walk_taps` and `walk_to_wall` currently always report
    `wild_battles=0`. Passing grid/story simulations therefore cannot validate
    the reported battle-interrupted mine leg. Add deterministic encounter
-   outcomes first: movement completed versus not completed, delayed detection,
+   outcomes before relying on the full story run: movement completed versus not completed, delayed detection,
    queued input and repeat interruptions. Separate actual simulated movement
    from the walker-reported credit; do not assume a screenshot proves the cause.
 2. `StoryWalkSteps::tap_legs` presently advances the pose using intended tile
@@ -108,3 +109,25 @@ then normal hook pushes can discover the correct base. Honor owning-PR handoffs.
    Do not merge the aggregate game stack into #114; core stays game-independent.
 
 No deployment, live validation or successful full-game replay is claimed.
+
+
+## Additional simulator-model progress
+
+Commit `1f9f07eb9` adds optional `SimWildTap` events to the BDSP GridSimRouteIO.
+A matching tap can complete movement before a normalized encounter or leave it
+uncompleted. Both cases report the same production-style escape movement credit,
+so the test proves that the credited count cannot alone determine pose. This
+is a deterministic adapter-outcome model, not a detector/escape-mechanics model.
+Existing callers have an empty event script and preserve their behavior.
+
+The new native regression passes in the 18-test runner. Rebuilding with original
+#226 GridSim.cpp (same tests, actual production decoder/movement) gives exactly
+one failing test, `encounter credits do not establish pose`, confirming the old
+simulator did not exercise this uncertainty. Logs:
+`/tmp/bdsp-before-encounters-results.log`; recipe:
+`python3 /tmp/build-bdsp-recovery.py baseline`.
+
+Late detection, partial/queued movement, interrupted holds, retry exhaustion and
+real StoryWalkSteps/RouteWalker consumer recovery still need native regressions
+and fixes. Do not call BDSP fixed based on the new event primitive or geometry
+adapter. The production execution code has not been modified in these branches.
