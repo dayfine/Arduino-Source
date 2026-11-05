@@ -18,6 +18,8 @@ namespace Pokemon{
 
 void add_tests_LegPlanner(UnitTestDatabase& database);
 void add_tests_LegWalker(UnitTestDatabase& database);
+//  Register shared wall-convergence policy tests.
+void add_tests_WallRecovery(UnitTestDatabase& database);
 void add_tests_MapData(UnitTestDatabase& database);
 void add_tests_RouteLog(UnitTestDatabase& database);
 
