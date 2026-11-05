@@ -10,7 +10,7 @@ untouched. These are fork drafts for owner handoff, not merged changes.
 |---|---|---|
 | [#227](https://github.com/dayfine/Arduino-Source/pull/227) | `nav/recovery-core-extraction` @ `af21f2750289adef1a370ba214eb557b26c9c0ec` | #114 `acf85aa2411a125ea1088908e66d4eff93351f1f`: game-independent convergent wall search, 9 registered native tests. |
 | [#228](https://github.com/dayfine/Arduino-Source/pull/228) | `frlg/shared-recovery-adapter` @ `616d2f5f0` | #224 `51c0ce6128e5981da56b370a770874b96a1e129f`, merged #227: replace FRLG's pure search with the shared search. |
-| [#229](https://github.com/dayfine/Arduino-Source/pull/229) | `bdsp/shared-recovery-tests` @ `33898d825b68ac92aa9fdd1487b2dea3d6d25072` | #226 `f8bdd62b9df4dbf285f93853147295e0552a0367`, merged #227: BDSP adapter, native encounter outcomes and real story/walker recovery regressions and fixes. |
+| [#229](https://github.com/dayfine/Arduino-Source/pull/229) | `bdsp/shared-recovery-tests` @ `a816258cdc62174dc43000f586d015cc4d7788f5` | #226 `f8bdd62b9df4dbf285f93853147295e0552a0367`, merged #227: BDSP adapter, native encounter outcomes and real story/walker recovery regressions and fixes. |
 
 Shared extraction stays separate from BDSP behavior changes. FRLG baseline
 includes #213 plus later #215/#219 behavior inherited by #224. Preserve trainer
@@ -57,9 +57,12 @@ are retained for object wandering bounds and warps. Ordinary terrain is unchange
 - Shared core full **macOS [42050010624](https://github.com/dayfine/Arduino-Source/actions/runs/42050010624)
   and Windows Clang [42050010694](https://github.com/dayfine/Arduino-Source/actions/runs/42050010694) pass**.
   Linux Clang [42050010826](https://github.com/dayfine/Arduino-Source/actions/runs/42050010826) pending at this checkpoint.
-- **BDSP focused native runner: 33 pass, 0 fail** at `33898d825`.
-  Includes 9 shared tests, existing planner/world/PlannedRoute tests, normalized
-  encounter outcomes, safety diagnostics and 9 actual mine story-step cases.
+- **BDSP focused native runner: 47 pass, 0 fail** at `a816258cd`.
+  Includes 9 shared tests, existing map/story-map/recorded-route/GridSim/
+  planner/world/PlannedRoute tests, normalized encounter outcomes, safety
+  diagnostics and 9 actual mine story-step cases. The initial focused subset
+  was 33 tests; existing coordinate/route tests were added to the runner to
+  check recovery metadata placement without changing the tests themselves.
 - Rebuilding the original production StoryWalkSteps/PlannedRoute/Walk against
   the initial 8 consumer cases gives **6 failures**, including the reported
   `(19,15)` / `EAST 14 moved 4` shape with two interrupted advances.
@@ -72,7 +75,11 @@ are retained for object wandering bounds and warps. Ordinary terrain is unchange
   26 failures are absent BDSP detector image fixtures. 80 BDSP AutoStory tests
   pass on the red reference.
 - Patched BDSP full Clang [42054684795](https://github.com/dayfine/Arduino-Source/actions/runs/42054684795)
-  and Windows Clang [42054689499](https://github.com/dayfine/Arduino-Source/actions/runs/42054689499) pending.
+  at `33898d825` is pending. Initial Windows Clang
+  [42054689499](https://github.com/dayfine/Arduino-Source/actions/runs/42054689499)
+  found missing designated-field initializers in new tests. Commit `a816258cd`
+  fixes those warnings only; [Windows rerun 42056081592](https://github.com/dayfine/Arduino-Source/actions/runs/42056081592)
+  is pending. No warnings were suppressed.
 - Code health against each immutable owning base: **0 failures**. CRLF diff
   checked with `git -c core.whitespace=cr-at-eol diff --check`.
 
@@ -101,6 +108,11 @@ first-input/late-origin recovery beyond explicit failure, and a wall-vs-unmapped
 NPC confirmation policy. Static metadata cannot prove live obstacles absent.
 The legacy generic LegInterrupt clear/same-pose contract still needs audit.
 Do not claim universal recovery, full-game replay or console validation.
+
+Broader focused recipe/result: `/tmp/build-bdsp-recovery-story.py`,
+`/tmp/bdsp-recovery-story-results.log`. An attempted standalone story-suite
+link required event/OCR application dependencies; those suites remain for full
+CI rather than substituting their production implementations.
 
 Temporary local recipes/logs: `/tmp/build-native-recovery.py` (FRLG; `baseline`
 argument), `/tmp/build-bdsp-recovery-consumer.py` (`red` argument),
