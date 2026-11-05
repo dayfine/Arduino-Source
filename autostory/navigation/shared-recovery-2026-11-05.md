@@ -67,7 +67,10 @@ are retained for object wandering bounds and warps. Ordinary terrain is unchange
   before/after movement and two missed advances are labelled diagnostics, not a
   claim that one observed battle caused two missing tiles.
 - Frozen red reference: `bdsp/recovery-red-baseline` @ `2ac420dc1`;
-  CI [42051485263](https://github.com/dayfine/Arduino-Source/actions/runs/42051485263) pending.
+  CI [42051485263](https://github.com/dayfine/Arduino-Source/actions/runs/42051485263) confirms
+  exactly those 6 consumer failures, including `(19,15) short_leg`; its other
+  26 failures are absent BDSP detector image fixtures. 80 BDSP AutoStory tests
+  pass on the red reference.
 - Patched BDSP full Clang [42054684795](https://github.com/dayfine/Arduino-Source/actions/runs/42054684795)
   and Windows Clang [42054689499](https://github.com/dayfine/Arduino-Source/actions/runs/42054689499) pending.
 - Code health against each immutable owning base: **0 failures**. CRLF diff
