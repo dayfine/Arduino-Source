@@ -697,78 +697,52 @@ StoryCheckpoint route_203_to_oreburgh(){
 //  from the city's (46, 59) we land on its (12, 1); up, from the coal
 //  room's warp we land on its (11, 21) and come out on the city's (45, 59),
 //  below the mine's sign (the old walk north stopped against it, r103).
+std::vector<StoryLeg> legs_below_roark(){
+    return {
+        {.direction = SOUTH, .tiles = 8},
+        {.direction = EAST,  .tiles = 1},
+        {.direction = SOUTH, .tiles = 2},
+        {.direction = WEST,  .tiles = 1},
+        {.direction = SOUTH, .tiles = 5},
+        {.direction = EAST,  .tiles = 13},
+        {.direction = SOUTH, .tiles = 10},
+        {.direction = WEST,  .tiles = 2},
+        {.direction = SOUTH, .tiles = 2},
+        {.direction = WEST,  .tiles = 8},
+    };
+}
+
+std::vector<StoryLeg> legs_out_of_coal_room(){
+    return {
+        {.direction = EAST,  .tiles = 8},
+        {.direction = NORTH, .tiles = 2},
+        {.direction = EAST,  .tiles = 2},
+        {.direction = NORTH, .tiles = 10},
+        {.direction = WEST,  .tiles = 13},
+        {.direction = NORTH, .tiles = 5},
+        {.direction = EAST,  .tiles = 1},
+        {.direction = NORTH, .tiles = 2},
+        {.direction = WEST,  .tiles = 1},
+        {.direction = NORTH, .tiles = 8},
+    };
+}
+
 StoryCheckpoint oreburgh_mine_to_roark(){
     const Pose below_roark = next_to(MINE, "roark", SOUTH, NORTH);
     return row("01.03", "Oreburgh Mine to Roark", after_the_welcome(), {
-        //  The welcome scene ends with the player at (23, 23) facing east into
-        //  the guide boy standing at (24, 23). To avoid bumping into the boy,
-        //  we step south 1 to row 24, east 3 across the open street into Barry's
-        //  column 26, and north 2 up to the doorstep (26, 22) facing Barry.
         anchored(legs("below_barry", {{.direction = SOUTH, .tiles = 1}, {.direction = EAST, .tiles = 3}, {.direction = NORTH, .tiles = 2}},
             "south 1 around the guide, east 3 to Barry's column, north 2 to below Barry"), below_barry()),
-        //  He stands in the door the first time; talking to him triggers his lines.
         talk("barry", "Barry in the Gym's door"),
         scene("barrys_lines", below_barry(), "Roark has gone to the mine"),
-        //  The Hiker wanders (46..48, 25..27), in the door's column: the
-        //  route goes round him.
         route("above_the_mine", at(OREBURGH, 46, 58, SOUTH), "down the door's column to above the mine's warp tiles", "town"),
-        //  Stepping south from Oreburgh City (46, 58) onto the warp tile (46, 59)
-        //  enters OreburghMineB1F (the entrance hall) at landing (12, 1, SOUTH).
         step_into("into_the_mine", SOUTH, "the warp tile (46, 59)", at(MINE_HALL, 12, 1, SOUTH)),
-        //  In OreburghMineB1F, run straight south down column 12 through the cave mouth warp
-        //  into OreburghMine (the coal room) at landing (15, 2, SOUTH).
         step_into("into_the_coal_room", SOUTH, "down the entrance hall through the cave mouth", at(MINE, 15, 2, SOUTH)),
-        //  From the coal room doorway landing (15, 2), we use exact D-pad legs down to Roark at (18, 28):
-        //  - South 8 down column 15 to (15, 10), just above the corridor boulder at (15, 11).
-        //  - Dodge the boulder: east 1 to col 16, south 2 to row 12, west 1 to col 15.
-        //  - South 5 down corridor column 15 to row 17.
-        //  - East 13 across row 17 to column 28.
-        //  - South 10 down column 28 past Machop and the boulder at (27, 23) to row 27.
-        //  - West 2 to column 26 (bypassing the wooden crate at (27, 28..29)).
-        //  - South 2 to row 29.
-        //  - West 8 along row 29 directly to (18, 29, NORTH) below Roark.
-        anchored(legs("below_roark", {
-            {.direction = SOUTH, .tiles = 8},
-            {.direction = EAST,  .tiles = 1},
-            {.direction = SOUTH, .tiles = 2},
-            {.direction = WEST,  .tiles = 1},
-            {.direction = SOUTH, .tiles = 5},
-            {.direction = EAST,  .tiles = 13},
-            {.direction = SOUTH, .tiles = 10},
-            {.direction = WEST,  .tiles = 2},
-            {.direction = SOUTH, .tiles = 2},
-            {.direction = WEST,  .tiles = 8},
-        }, "corridor slalom, east across room, down column 28, and west to below Roark"), below_roark),
-        //  His first line comes after the camera zooms in on us (r98); his
-        //  rocks either side answer A too, but he is the one north of us.
+        anchored(legs("below_roark", legs_below_roark(), "corridor slalom, east across room, down column 28, and west to below Roark"), below_roark),
         talk("roark", "Roark, north of us between his rocks"),
         scene("roark_smashes_the_rock", below_roark, "his lines, Rock Smash on the rock east of him, and he walks off"),
-        //  Return to the coal room warp at (15, 2, NORTH):
-        //  - East 8 along row 29 to column 26.
-        //  - North 2 to row 27.
-        //  - East 2 to column 28 around the wooden crate.
-        //  - North 10 up column 28 past the boulder and Machop to row 17.
-        //  - West 13 across row 17 to corridor column 15.
-        //  - North 5 up corridor to row 12.
-        //  - Dodge corridor boulder: east 1 to col 16, north 2 to row 10, west 1 to col 15.
-        //  - North 8 straight up to doorstep (15, 2) below the exit warp at (15, 1).
-        anchored(legs("below_the_coal_rooms_warp", {
-            {.direction = EAST,  .tiles = 8},
-            {.direction = NORTH, .tiles = 2},
-            {.direction = EAST,  .tiles = 2},
-            {.direction = NORTH, .tiles = 10},
-            {.direction = WEST,  .tiles = 13},
-            {.direction = NORTH, .tiles = 5},
-            {.direction = EAST,  .tiles = 1},
-            {.direction = NORTH, .tiles = 2},
-            {.direction = WEST,  .tiles = 1},
-            {.direction = NORTH, .tiles = 8},
-        }, "east around crate, up column 28, west across row 17, and up corridor to warp doorstep"),
+        anchored(legs("below_the_coal_rooms_warp", legs_out_of_coal_room(), "east around crate, up column 28, west across row 17, and up corridor to warp doorstep"),
             at(MINE, 15, 2, NORTH)),
-        //  Step north onto the coal room exit doorway (15, 1), warping back to the entrance hall.
         step_into("up_to_the_hall", NORTH, "the warp tile (15, 1)", at(MINE_HALL, 11, 21, NORTH)),
-        //  In OreburghMineB1F, run straight north up column 11 through the exit warp
-        //  into Oreburgh City below the sign.
         step_into("out_of_the_mine", NORTH, "up the entrance hall and out to the city",
             Pokemon::tile_pose(OREBURGH, {TilePos{45, 59}, TilePos{45, 58}}, NORTH)),
         anchored(to_walls("up_to_the_mines_sign", {{.direction = NORTH, .tiles = 3}}, "north against the mine's sign (45, 56)"),

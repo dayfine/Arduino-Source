@@ -54,7 +54,6 @@ namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonBDSP{
 
-
 namespace{
 
 using namespace std::chrono_literals;
@@ -65,7 +64,6 @@ using Pokemon::RunState;
 using Pokemon::StoryStep;
 using Pokemon::StoryStepKind;
 using Pokemon::TilePos;
-
 
 //  Which detections the simulation misses on purpose (#162): the `fade`th
 //  door fade (run_into_door(), from 0) or the `banner`th map banner
@@ -240,7 +238,6 @@ std::optional<size_t> SimStoryStepIO::tap_to_banner(Direction direction, const s
     return std::nullopt;
 }
 
-
 //  A scene's trigger the simulation fires from row `row` on, once the step
 //  `after` has run ("" from the row's start), on `map`'s `tiles`.
 struct RowTrigger{
@@ -320,7 +317,6 @@ std::vector<RowTrigger> story_triggers(){
     return triggers;
 }
 
-
 //  Someone the maps do not have, who stands on `tile` of `map` and is
 //  talked to there or walked round: from row `row` on if `until` is "",
 //  else in `row` until its step `until` has run.
@@ -355,7 +351,6 @@ std::vector<SimStairs> sim_stairs(){
         {.map = "RivalHouse2F", .side = Direction::WEST},
     };
 }
-
 
 //  The program's walking steps on the simulation, the rest stubbed.
 class SimExecutor : public Pokemon::StoryStepExecutor{
@@ -644,7 +639,6 @@ Outcome SimExecutor::run(RunState& state, const StoryStep& step){
     return outcome;
 }
 
-
 //  Runs `range` of `rows` (the table unless given) on `executor`, stopping
 //  at the first failure.
 Pokemon::SegmentReport run_rows_on(
@@ -697,7 +691,6 @@ bool ends_on(const SimRun& run, const Pose& pose){
 std::string end_of(const SimRun& run){
     return run.world ? describe(*run.world, run.end) : "nowhere";
 }
-
 
 //  A way out of a map that a hold walked on past (r75, r81), against the
 //  table's tap to the banner. The old step, with `misses`, must end on
@@ -803,7 +796,6 @@ Pose r81_below_the_mouth(){
     return Pokemon::tile_pose("Route204North", {TilePos{20, 27}, TilePos{20, 28}, TilePos{20, 29}, TilePos{20, 30}});
 }
 
-
 //  A corridor traversal that stepped onto a warp door in counted taps,
 //  triggering a premature transition and failing with short_leg.
 //  The old step must fail at expected_failed_step with expected_error.
@@ -895,7 +887,6 @@ public:
     }
 };
 
-
 //  A detection the console can miss, missed in turn at each place the run
 //  makes it (#162). Each miss must either be got over (the run completes,
 //  every walk ending on its tiles) or stop the run in the step that missed:
@@ -959,7 +950,6 @@ private:
     Pokemon::SegmentRange m_range;
 };
 
-
 class Test_StorySim : public UnitTest{
 public:
     Test_StorySim(std::string name, std::string from, std::string to)
@@ -982,7 +972,6 @@ private:
 
 }
 
-
 void add_tests_AutoStory_StorySim(UnitTestDatabase& database){
     database.add<Test_CoordEvents>();
     database.add<Test_StorySimMisses>("00.00 to 01.11", "00.00", "01.11");
@@ -996,7 +985,6 @@ void add_tests_AutoStory_StorySim(UnitTestDatabase& database){
     database.add<Test_StorySimStepFailure>("01.03, counted 19 taps south leaves player in hall", "01.03", old_mine_hall_south_19(), "01.03 below_roark", "short_leg: south 8 moved 1");
     database.add<Test_StorySimStepFailure>("01.03, counted 20 taps north into city exit warp", "01.03", old_mine_hall_north_20(), "01.03 out_of_the_mine", "warped at (11, 1)");
 }
-
 
 
 }
