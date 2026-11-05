@@ -56,11 +56,16 @@ void StoryWorld::add(std::string name, const Pokemon::MapData& map, const TilePo
             throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "Map placed twice: " + name);
         }
     }
-    Placed placed{std::move(name), map.tiles, {}, offset};
+    Placed placed{.name = std::move(name), .tiles = map.tiles, .occupied = {}, .wander = {}, .warps = {}, .offset = offset};
     for (const Pokemon::MapObject& object : map.objects){
         if (!object.wander){
             placed.occupied.push_back({object.x, object.y});
+        }else{
+            placed.wander.push_back(*object.wander);
         }
+    }
+    for (const auto& warp : map.warps){
+        placed.warps.push_back({warp.x, warp.y});
     }
     check_overlap(placed);
     m_maps.push_back(std::move(placed));
@@ -138,6 +143,18 @@ void StoryWorld::paint(const Placed& placed, const TilePos& corner){
     for (const TilePos& pos : placed.occupied){
         Pokemon::cell_at(m_cells, {corner.x + pos.x, corner.y + pos.y}).occupant = PERSON;
     }
+    for (const auto& box : placed.wander){
+        for (int y = std::max(0, box.y0); y <= std::min(placed.tiles.height - 1, box.y1); y++){
+            for (int x = std::max(0, box.x0); x <= std::min(placed.tiles.width - 1, box.x1); x++){
+                Pokemon::cell_at(m_cells, {corner.x + x, corner.y + y}).recovery_hazard = true;
+            }
+        }
+    }
+    for (const auto& warp : placed.warps){
+        if (placed.tiles.contains(warp)){
+            Pokemon::cell_at(m_cells, {corner.x + warp.x, corner.y + warp.y}).recovery_hazard = true;
+        }
+    }
 }
 
 const StoryWorld::Cell* StoryWorld::cell(const TilePos& pos) const{
@@ -162,8 +179,11 @@ std::optional<TileKind> StoryWorld::tile(const TilePos& pos) const{
     return found->tile;
 }
 
-StoryWorld::Occupant StoryWorld::occupied(const TilePos& pos) const{
+StoryWorld::Occupant StoryWorld::occupied(const TilePos& pos, OccupancyUse use) const{
     const Cell* found = cell(pos);
+    if (found && use == OccupancyUse::WALL_RECOVERY && found->recovery_hazard){
+        return PERSON;
+    }
     return found == nullptr ? NOBODY : found->occupant;
 }
 

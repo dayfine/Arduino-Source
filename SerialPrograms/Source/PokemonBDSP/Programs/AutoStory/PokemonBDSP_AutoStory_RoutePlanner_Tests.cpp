@@ -181,6 +181,65 @@ public:
     }
 };
 
+class Test_RecoveryWanderHazard : public UnitTest{
+public:
+    Test_RecoveryWanderHazard() : UnitTest("PokemonBDSP::AutoStory - Route planner: wandering areas are not safe recovery rays"){}
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        Pokemon::MapData map;
+        map.name = "WanderDiagnostic";
+        map.tiles = Pokemon::Grid<Pokemon::TileKind>{7, 3, {}};
+        for (const char* row : {"#######", "#.....#", "#######"}){
+            for (char glyph : std::string(row)){
+                map.tiles.cells.push_back(*Pokemon::tile_from_glyph(glyph));
+            }
+        }
+        map.objects.push_back({.name = "wanderer", .x = 3, .y = 1,
+            .wander = Pokemon::TileBox{.x0 = 2, .y0 = 1, .x1 = 4, .y1 = 1}});
+        StoryWorld world;
+        world.add(map.name, map, {0, 0});
+        if (!standable(world, {3, 1}) || world.occupied({3, 1}) != StoryWorld::NOBODY){
+            return "Recovery metadata must not change ordinary movement terrain.";
+        }
+        if (!wall_recovery_candidates(world, {{1, 1}, {5, 1}}).empty()){
+            return "Neither common wall ray is safe through the wandering NPC's area.";
+        }
+        return true;
+    }
+};
+
+//  Synthetic diagnostic: a declared warp is unsafe even if its glyph is wall.
+class Test_RecoveryWarpHazard : public UnitTest{
+public:
+    explicit Test_RecoveryWarpHazard(bool wall)
+        : UnitTest(std::string("PokemonBDSP::AutoStory - Route planner: recovery rejects ") +
+            (wall ? "warps on blocked glyphs" : "warp crossings")), m_wall(wall)
+    {}
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        Pokemon::MapData map;
+        map.name = "WarpDiagnostic";
+        map.tiles = Pokemon::Grid<Pokemon::TileKind>{7, 3, {}};
+        for (const char* row : {"#######", "#.....#", "#######"}){
+            for (char glyph : std::string(row)){
+                map.tiles.cells.push_back(*Pokemon::tile_from_glyph(glyph));
+            }
+        }
+        if (m_wall){
+            map.warps.push_back({.x = 0, .y = 1});
+            map.warps.push_back({.x = 6, .y = 1});
+        }else{
+            map.warps.push_back({.x = 3, .y = 1});
+        }
+        StoryWorld world;
+        world.add(map.name, map, {0, 0});
+        if (!wall_recovery_candidates(world, {{1, 1}, {5, 1}}).empty()){
+            return "A declared warp must not become a recovery ray or anchor.";
+        }
+        return true;
+    }
+private:
+    bool m_wall;
+};
+
 class Test_SharedWallRecovery : public UnitTest{
 public:
     Test_SharedWallRecovery() : UnitTest("PokemonBDSP::AutoStory - Route planner: shared mine and r55 recovery"){}
@@ -238,6 +297,9 @@ void add_tests_AutoStory_RoutePlanner(UnitTestDatabase& database){
     database.add<Test_TrainerSight>();
     database.add<Test_SharedWallRecovery>();
     database.add<Test_InterruptedMineTaps>();
+    database.add<Test_RecoveryWanderHazard>();
+    database.add<Test_RecoveryWarpHazard>(false);
+    database.add<Test_RecoveryWarpHazard>(true);
 }
 
 

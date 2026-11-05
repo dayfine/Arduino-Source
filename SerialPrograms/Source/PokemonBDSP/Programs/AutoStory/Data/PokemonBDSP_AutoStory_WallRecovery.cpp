@@ -17,17 +17,20 @@ using Pokemon::TilePos;
 //  ledge may be legal travel but must not become a localization anchor.
 std::optional<WallHit> safe_wall(const StoryWorld& world, TilePos from, Direction direction){
     const auto map = world.to_local(from);
-    if (!map || !standable(world, from)){
+    if (!map || !standable(world, from)
+        || world.occupied(from, StoryWorld::OccupancyUse::WALL_RECOVERY) == StoryWorld::PERSON){
         return std::nullopt;
     }
     const WallHit wall = slide_to_wall(world, from, direction);
-    if (!wall.anchored){
+    if (!wall.anchored
+        || world.occupied(wall.wall, StoryWorld::OccupancyUse::WALL_RECOVERY) == StoryWorld::PERSON){
         return std::nullopt;
     }
     while (from != wall.stop){
         const auto next = step(world, from, direction);
         const auto local = next ? world.to_local(*next) : std::nullopt;
-        if (!next || *next != from.next(direction) || !local || local->map != map->map){
+        if (!next || *next != from.next(direction) || !local || local->map != map->map
+            || world.occupied(*next, StoryWorld::OccupancyUse::WALL_RECOVERY) == StoryWorld::PERSON){
             return std::nullopt;
         }
         from = *next;
