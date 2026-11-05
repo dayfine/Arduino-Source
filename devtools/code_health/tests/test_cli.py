@@ -138,7 +138,7 @@ class CliTests(unittest.TestCase):
         (self.root / 'Common/old.h').write_text(interface)
         self.commit()
         with (self.root / 'Common/old.h').open('a') as file:
-            file.write('int helper();\n')
+            file.write('// An unrelated documented declaration.\nint helper();\n')
         self.git('add', '.')
         self.assertEqual(0, self.cli().returncode)
         (self.root / 'Common/new.h').write_text(interface.replace('Listener', 'Fresh'))
@@ -211,6 +211,23 @@ class CliTests(unittest.TestCase):
         result = self.cli()
         self.assertEqual(1, result.returncode, result.stderr)
         self.assertIn('justification', result.stderr)
+
+    def test_structural_header_findings_reach_cli_and_annotations(self):
+        self.source(3)
+        self.commit()
+        header = self.root / 'Common/policy.h'
+        header.write_text('namespace Policy{\ntemplate <typename T> T run(T value){ return value; }\n}\n')
+        self.git('add', '.')
+        red = self.cli('--github')
+        self.assertEqual(1, red.returncode)
+        for rule in ('namespace-close', 'template-api', 'header-comment'):
+            self.assertIn(rule, red.stderr)
+        self.assertIn('::error file=Common/policy.h', red.stdout)
+        header.write_text('namespace Policy{\n// Return the value.\n'
+                          'template <typename T> T run(T value);\n'
+                          'template <typename T> T run(T value){ return value; }\n'
+                          '} // namespace Policy\n')
+        self.assertEqual(0, self.cli().returncode)
 
 
 if __name__ == '__main__':

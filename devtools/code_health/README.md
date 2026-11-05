@@ -196,3 +196,53 @@ need appropriate live run evidence.
 `metrics.py` and `policy.py` accept source/metrics as values and know nothing
 about this repository's Git layout. `git_files.py` and `__main__.py` are the
 integration layer; extract a separate package only when another consumer needs it.
+
+## Header and native test contracts
+
+The fork's structural checks in `style.py` run in both the normal CLI and
+pre-push/CI gate. They share the existing parsing pass and comment/literal-aware
+scope lexer, not raw line
+matches or application source-extraction tests. Only changed namespace closes
+and declarations are enforced; untouched legacy declarations are grandfathered.
+
+- `namespace-close`: named namespaces end in `} // namespace Name`, anonymous
+  ones in `} // namespace`. The name must match, including C++ nested namespace syntax.
+- `template-api`: public namespace-scope function templates in headers declare their
+  interface before their definition. Inline class members and class templates
+  do not need redundant declarations. Keep default arguments on the declaration.
+- `template-api-order`: public template declarations precede helper namespaces
+  named `*Internal`, `internal`, or `detail`.
+- `template-api-internal`: internal helper templates are defined in place, with
+  no separate forward declaration. A header containing only internal helpers
+  needs no invented public API.
+- `header-comment`: document each added/changed namespace-scope header symbol,
+  including helper declarations, types, aliases, and constants. An immediately
+  adjacent `//` or block/Doxygen comment counts. A definition can reuse its own
+  documented declaration. Class members and namespaces themselves are excluded.
+- `test-case`: new/changed native `*_Tests.cpp` UnitTest classes take one aggregate case.
+  That case has exactly `input` and `expectation` fields, each a separate local
+  struct. A named C-array, `std::array`, or `std::vector` table contains designated
+  `.input` / `.expectation` rows and is consumed by a range-for for registration.
+  Include a descriptive name in the input and compare expected and observed values.
+
+```cpp
+struct ValueInput{ std::string name; int value; };
+struct ValueExpectation{ int result; };
+struct ValueTestCase{ ValueInput input; ValueExpectation expectation; };
+
+const ValueTestCase CASES[] = {
+    {
+        .input = {.name = "increment", .value = 1},
+        .expectation = {.result = 2},
+    },
+};
+// Test_Value receives ValueTestCase and compares actual results with expectation.
+// Register with: for (const auto& scenario : CASES){ database.add<Test_Value>(scenario); }
+```
+
+The native shape follows PokemonAutomation/Arduino-Source#1846. The lexical
+checker validates local structure; it cannot resolve included aliases, macro
+generated declarations or C++ overloads like a compiler. Shared fixture types
+should remain beside the tests or need a deliberate parser extension, not an
+unexplained bypass. Header parameter spans, game movement policies and comment
+quality still require design review. These rules do not force a default policy.
