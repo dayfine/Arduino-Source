@@ -1462,6 +1462,8 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/Inference/Pokemon_TypeReader.h
     Source/Pokemon/Navigation/Pokemon_Grid.cpp
     Source/Pokemon/Navigation/Pokemon_Grid.h
+    Source/Pokemon/Navigation/Pokemon_WallRecovery.h
+    Source/Pokemon/Navigation/Pokemon_WallRecovery_Tests.cpp
     Source/Pokemon/Navigation/Pokemon_LegPlanner.h
     Source/Pokemon/Navigation/Pokemon_LegPlanner_Tests.cpp
     Source/Pokemon/Navigation/Pokemon_LegWalker.cpp
