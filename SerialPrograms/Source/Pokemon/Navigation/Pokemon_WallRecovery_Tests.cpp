@@ -59,48 +59,6 @@ public:
 
 };
 
-//  A synthetic closed room: all (x,y) in [0,10] x [0,10] are walkable.
-//  Walls are outside that rectangle at x/y=-1 and x/y=11.
-//      #############
-//      #C..........#  y=0; C=(0,0), the expected northwest stop
-//      #...........#
-//      #...........#
-//      #..A........#  A=(2,3)
-//      #...B.......#  B=(3,4)
-//      #...........#  ... through y=10
-//      #############
-//  NORTH 4 maps A/B to (2,0)/(3,0); WEST 3 then merges them at C.
-//  Coordinates always stay inside the room; no unknown edge is crossed.
-struct CornerContext{};
-
-class CornerPolicy{
-public:
-    using Hypothesis = TilePos;
-    using Position = TilePos;
-    using Hold = TestHold;
-
-    static Position position(const Hypothesis& at){ return at; }
-    static int tiles(const Hold& hold){ return hold.tiles; }
-    static std::optional<WallRecoveryStep<Hypothesis, Hold>> hold(
-        const CornerContext&, const std::vector<Hypothesis>& from, Direction direction
-    ){
-        std::vector<Hypothesis> ends;
-        int longest = 0;
-        for (const TilePos& start : from){
-            TilePos end = start;
-            const bool vertical = direction == Direction::NORTH || direction == Direction::SOUTH;
-            int& coordinate = vertical ? end.y : end.x;
-            const int distance = direction == Direction::NORTH || direction == Direction::WEST ? coordinate : 10 - coordinate;
-            coordinate = direction == Direction::NORTH || direction == Direction::WEST ? 0 : 10;
-            longest = std::max(longest, distance);
-            if (std::find(ends.begin(), ends.end(), end) == ends.end()){
-                ends.push_back(end);
-            }
-        }
-        return WallRecoveryStep<Hypothesis, Hold>{ends, {direction, longest}};
-    }
-};
-
 //  Show both directions and distances when a selected recovery plan differs.
 std::string describe_holds(std::span<const TestHold> holds){
     std::string result;
@@ -185,6 +143,48 @@ const CorridorTestCase CORRIDOR_CASES[] = {
         .input = {.name = "budget exhausted", .positions = {2, 3}, .person = std::nullopt, .budget = 0},
         .expectation = {.first_anchor = std::nullopt, .holds = {}},
     },
+};
+
+//  A synthetic closed room: all (x,y) in [0,10] x [0,10] are walkable.
+//  Walls are outside that rectangle at x/y=-1 and x/y=11.
+//      #############
+//      #C..........#  y=0; C=(0,0), the expected northwest stop
+//      #...........#
+//      #...........#
+//      #..A........#  A=(2,3)
+//      #...B.......#  B=(3,4)
+//      #...........#  ... through y=10
+//      #############
+//  NORTH 4 maps A/B to (2,0)/(3,0); WEST 3 then merges them at C.
+//  Coordinates always stay inside the room; no unknown edge is crossed.
+struct CornerContext{};
+
+class CornerPolicy{
+public:
+    using Hypothesis = TilePos;
+    using Position = TilePos;
+    using Hold = TestHold;
+
+    static Position position(const Hypothesis& at){ return at; }
+    static int tiles(const Hold& hold){ return hold.tiles; }
+    static std::optional<WallRecoveryStep<Hypothesis, Hold>> hold(
+        const CornerContext&, const std::vector<Hypothesis>& from, Direction direction
+    ){
+        std::vector<Hypothesis> ends;
+        int longest = 0;
+        for (const TilePos& start : from){
+            TilePos end = start;
+            const bool vertical = direction == Direction::NORTH || direction == Direction::SOUTH;
+            int& coordinate = vertical ? end.y : end.x;
+            const int distance = direction == Direction::NORTH || direction == Direction::WEST ? coordinate : 10 - coordinate;
+            coordinate = direction == Direction::NORTH || direction == Direction::WEST ? 0 : 10;
+            longest = std::max(longest, distance);
+            if (std::find(ends.begin(), ends.end(), end) == ends.end()){
+                ends.push_back(end);
+            }
+        }
+        return WallRecoveryStep<Hypothesis, Hold>{ends, {direction, longest}};
+    }
 };
 
 struct CornerInput{
