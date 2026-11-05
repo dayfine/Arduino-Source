@@ -406,37 +406,87 @@ UnitTestResult test_describe(){
 }
 
 
+struct StorySegmentInput{
+    std::string name;
+    UnitTestResult (*test)();
+};
+
+struct StorySegmentExpectation{
+    const char* description;
+};
+
+struct StorySegmentTestCase{
+    StorySegmentInput input;
+    StorySegmentExpectation expectation;
+};
+
 class Test_StorySegments : public UnitTest{
 public:
-    Test_StorySegments(std::string name, std::function<UnitTestResult()> body)
-        : UnitTest("Pokemon::StorySegments - " + std::move(name))
-        , m_body(std::move(body))
+    explicit Test_StorySegments(StorySegmentTestCase scenario)
+        : UnitTest("Pokemon::StorySegments - " + scenario.input.name)
+        , m_scenario(std::move(scenario))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        return m_body();
+        return m_scenario.input.test();
     }
 
 private:
-    std::function<UnitTestResult()> m_body;
+    StorySegmentTestCase m_scenario;
 };
 
-}
+const StorySegmentTestCase STORY_SEGMENT_CASES[] = {
+    {
+        .input = {.name = "checkpoints run in order", .test = test_runs_checkpoints_in_order},
+        .expectation = {.description = "executes sequential checkpoints and saves state"},
+    },
+    {
+        .input = {.name = "a failed checkpoint is reloaded", .test = test_reloads_a_failed_checkpoint},
+        .expectation = {.description = "reloads prior saved state upon checkpoint failure"},
+    },
+    {
+        .input = {.name = "gives up and names the failure", .test = test_gives_up_and_names_the_failure},
+        .expectation = {.description = "reports terminal checkpoint failure after exhausting retries"},
+    },
+    {
+        .input = {.name = "a range of checkpoints", .test = test_range},
+        .expectation = {.description = "runs only the specified slice of checkpoints"},
+    },
+    {
+        .input = {.name = "describe", .test = test_describe},
+        .expectation = {.description = "formats human-readable segment summary without executing"},
+    },
+    {
+        .input = {.name = "status lines for the overlay", .test = test_status_lines},
+        .expectation = {.description = "generates UI overlay status updates during execution"},
+    },
+    {
+        .input = {.name = "a throwing event is logged, then goes on", .test = test_throwing_event_is_logged},
+        .expectation = {.description = "handles and logs exception without terminating segment"},
+    },
+    {
+        .input = {.name = "verify: runs from one save", .test = test_verify_runs_from_one_save},
+        .expectation = {.description = "runs verification passes against the initial save state"},
+    },
+    {
+        .input = {.name = "verify: no save at the end", .test = test_verify_skips_the_end_save},
+        .expectation = {.description = "skips checkpoint state save during verification mode"},
+    },
+    {
+        .input = {.name = "verify: too few passes", .test = test_verify_too_few_passes},
+        .expectation = {.description = "fails verification when required pass count is not met"},
+    },
+};
+
+} // namespace
 
 
 void add_tests_StorySegments(UnitTestDatabase& database){
-    database.add<Test_StorySegments>("checkpoints run in order", test_runs_checkpoints_in_order);
-    database.add<Test_StorySegments>("a failed checkpoint is reloaded", test_reloads_a_failed_checkpoint);
-    database.add<Test_StorySegments>("gives up and names the failure", test_gives_up_and_names_the_failure);
-    database.add<Test_StorySegments>("a range of checkpoints", test_range);
-    database.add<Test_StorySegments>("describe", test_describe);
-    database.add<Test_StorySegments>("status lines for the overlay", test_status_lines);
-    database.add<Test_StorySegments>("a throwing event is logged, then goes on", test_throwing_event_is_logged);
-    database.add<Test_StorySegments>("verify: runs from one save", test_verify_runs_from_one_save);
-    database.add<Test_StorySegments>("verify: no save at the end", test_verify_skips_the_end_save);
-    database.add<Test_StorySegments>("verify: too few passes", test_verify_too_few_passes);
+    for (const auto& scenario : STORY_SEGMENT_CASES){
+        database.add<Test_StorySegments>(scenario);
+    }
 }
 
 
 
-}
-}
+} // namespace Pokemon
+} // namespace PokemonAutomation

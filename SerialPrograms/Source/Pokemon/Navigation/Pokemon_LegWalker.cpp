@@ -44,7 +44,7 @@ bool stops_here(const LegSpec& leg, const LegResult& result, const HoldOutcome& 
     return leg.stop_if_blocked && result.interruptions > 1 && outcome.elapsed < leg.tile_time * 3;
 }
 
-}
+} // namespace
 
 
 LegResult walk_leg_with(const LegSpec& leg, const LegCalls& calls, size_t max_interruptions){
@@ -87,5 +87,5 @@ LegResult walk_leg_with(const LegSpec& leg, const LegCalls& calls, size_t max_in
 
 
 
-}
-}
+} // namespace Pokemon
+} // namespace PokemonAutomation

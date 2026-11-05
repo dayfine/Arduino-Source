@@ -15,12 +15,14 @@ namespace PokemonAutomation{
 namespace Pokemon{
 
 
+// Registers unit tests for story event sequencing and execution.
 void add_tests_StoryEvents(UnitTestDatabase& database);
+// Registers unit tests for story segment running, verification, and branching.
 void add_tests_StorySegments(UnitTestDatabase& database);
 void add_tests_StorySteps(UnitTestDatabase& database);
 
 
 
-}
-}
+} // namespace Pokemon
+} // namespace PokemonAutomation
 #endif
