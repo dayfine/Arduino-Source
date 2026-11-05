@@ -76,7 +76,7 @@ struct RecoveryCase{
     SimEncounterPhase phase = SimEncounterPhase::BEFORE_MOVEMENT;
     WalkOrigin origin = WalkOrigin::CURRENT_LEG;
     size_t interrupted_holds = 0;
-    std::string failure;
+    std::string failure = {};
 };
 
 class Test_RecoveryWalk : public UnitTest{
@@ -100,7 +100,7 @@ public:
         RecoveryStepIO io(route);
         StoryWalkSteps walks(io);
         walks.begin_attempt("01.03");
-        Pokemon::RunState state{.pose = Pokemon::tile_pose("OreburghMine", {{15, 10}}, Direction::SOUTH)};
+        Pokemon::RunState state{.pose = Pokemon::tile_pose("OreburghMine", {{15, 10}}, Direction::SOUTH), .flags = {}};
         std::string failure;
         std::optional<Pokemon::Pose> declared;
         try{

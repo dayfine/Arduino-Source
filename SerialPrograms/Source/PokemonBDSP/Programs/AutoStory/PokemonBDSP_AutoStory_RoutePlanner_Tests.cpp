@@ -193,8 +193,9 @@ public:
                 map.tiles.cells.push_back(*Pokemon::tile_from_glyph(glyph));
             }
         }
-        map.objects.push_back({.name = "wanderer", .x = 3, .y = 1,
-            .wander = Pokemon::TileBox{.x0 = 2, .y0 = 1, .x1 = 4, .y1 = 1}});
+        map.objects.push_back({.name = "wanderer", .x = 3, .y = 1, .facing = std::nullopt,
+            .wander = Pokemon::TileBox{.x0 = 2, .y0 = 1, .x1 = 4, .y1 = 1},
+            .trainer = std::nullopt, .hide_flag = std::nullopt});
         StoryWorld world;
         world.add(map.name, map, {0, 0});
         if (!standable(world, {3, 1}) || world.occupied({3, 1}) != StoryWorld::NOBODY){
@@ -224,10 +225,10 @@ public:
             }
         }
         if (m_wall){
-            map.warps.push_back({.x = 0, .y = 1});
-            map.warps.push_back({.x = 6, .y = 1});
+            map.warps.push_back({.x = 0, .y = 1, .to = std::nullopt});
+            map.warps.push_back({.x = 6, .y = 1, .to = std::nullopt});
         }else{
-            map.warps.push_back({.x = 3, .y = 1});
+            map.warps.push_back({.x = 3, .y = 1, .to = std::nullopt});
         }
         StoryWorld world;
         world.add(map.name, map, {0, 0});
