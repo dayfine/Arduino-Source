@@ -212,10 +212,6 @@ class CliTests(unittest.TestCase):
         self.assertEqual(1, result.returncode, result.stderr)
         self.assertIn('justification', result.stderr)
 
-
-if __name__ == '__main__':
-    unittest.main()
-
     def test_structural_header_findings_reach_cli_and_annotations(self):
         self.source(3)
         self.commit()
@@ -232,3 +228,7 @@ if __name__ == '__main__':
                           'template <typename T> T run(T value){ return value; }\n'
                           '} // namespace Policy\n')
         self.assertEqual(0, self.cli().returncode)
+
+
+if __name__ == '__main__':
+    unittest.main()
