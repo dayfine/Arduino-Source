@@ -39,8 +39,11 @@ namespace NintendoSwitch{
 namespace PokemonFRLG{
 
 
+//  Story leg definition imported from Pokemon AutoStory.
 using Pokemon::StoryLeg;
+//  Story step definition imported from Pokemon AutoStory.
 using Pokemon::StoryStep;
+//  Story step kind classification imported from Pokemon AutoStory.
 using Pokemon::StoryStepKind;
 
 //  Where the player stands and faces: the one-tile poses of FRLG's table
@@ -73,6 +76,7 @@ struct StoryCheckpoint : public Pokemon::StoryCheckpoint{
 //  game hides after the Hall of Fame removed, as the lab's frlg_route does.
 const std::vector<MapData>& story_maps();
 
+//  Converts a StoryPose to a general navigation Pose.
 Pokemon::Pose to_pose(const StoryPose& pose);
 //  `pose` as a StoryPose: nothing unless it is on one tile.
 std::optional<StoryPose> story_pose(const Pokemon::Pose& pose);
@@ -186,7 +190,7 @@ Pokemon::Segment make_story_segment(const std::vector<StoryCheckpoint>& checkpoi
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

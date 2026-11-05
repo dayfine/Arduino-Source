@@ -50,7 +50,7 @@ const StringSelectDatabase& checkpoint_database(){
     return database;
 }
 
-}
+} // namespace
 
 AutoStory::AutoStory()
     : RUN(checkpoint_database())
@@ -174,7 +174,7 @@ void verify_story_checkpoint(
 }
 
 
-}
+} // namespace
 
 void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContext& context){
     if (const std::optional<Pokemon::VerifyPolicy> verify = RUN.VERIFY.policy()){
@@ -228,6 +228,6 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

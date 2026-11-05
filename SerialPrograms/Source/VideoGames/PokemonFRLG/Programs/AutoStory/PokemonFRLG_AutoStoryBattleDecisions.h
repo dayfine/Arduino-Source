@@ -33,6 +33,7 @@ namespace NintendoSwitch{
 namespace PokemonFRLG{
 
 
+//  High-level action chosen for a battle turn.
 enum class TurnChoice{
     RUN,
     POTION,
@@ -40,6 +41,7 @@ enum class TurnChoice{
     MOVE,
 };
 
+//  Decided battle action including slot or item index.
 struct TurnAction{
     TurnChoice choice = TurnChoice::MOVE;
     //  For MOVE, the move list's slot.
@@ -60,6 +62,7 @@ enum class TurnResult{
     REFUSED,
 };
 
+//  Binary prompt decision.
 enum class YesNo{
     YES,
     NO,
@@ -77,6 +80,7 @@ struct BattleTextScreen{
     bool yes_no = false;
 };
 
+//  Answer to an in-battle prompt dialogue.
 struct PromptAnswer{
     YesNo answer = YesNo::NO;
     //  After YES to "Delete a move?": the slot to forget on the move list
@@ -90,6 +94,7 @@ struct PromptAnswer{
 };
 
 
+//  State machine deciding turn choices and prompt answers in battles.
 class BattleDecisions{
 public:
     BattleDecisions(Supplies& supplies, BattleKind kind);
@@ -237,11 +242,12 @@ private:
 };
 
 
+//  Registers AutoStory party management unit tests.
 void add_tests_AutoStoryParty(UnitTestDatabase& database);
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

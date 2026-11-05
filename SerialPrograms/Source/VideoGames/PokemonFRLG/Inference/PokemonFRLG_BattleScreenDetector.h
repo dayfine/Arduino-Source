@@ -25,6 +25,7 @@ namespace NintendoSwitch{
 namespace PokemonFRLG{
 
 
+//  Detects active overworld battle screen interface.
 class BattleScreenDetector : public StaticScreenDetector{
 public:
     BattleScreenDetector(Color color = COLOR_RED);
@@ -39,6 +40,7 @@ private:
     BattlePokemonDetector m_player;
 };
 
+//  Visual watcher for battle screen transition.
 class BattleScreenWatcher : public DetectorToFinder<BattleScreenDetector>{
 public:
     BattleScreenWatcher(Color color = COLOR_RED)
@@ -48,7 +50,7 @@ public:
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

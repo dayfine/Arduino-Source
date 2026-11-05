@@ -18,7 +18,7 @@ namespace{
 //  PokemonFRLG_AutoStoryBattle.cpp).
 constexpr int FOE_GONE_POLLS = 3;
 
-}
+} // namespace
 
 
 TrainerFoeTracker::TrainerFoeTracker(std::string_view trainer, const PartyMember& lead)
@@ -72,6 +72,6 @@ std::optional<size_t> TrainerFoeTracker::out() const{
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

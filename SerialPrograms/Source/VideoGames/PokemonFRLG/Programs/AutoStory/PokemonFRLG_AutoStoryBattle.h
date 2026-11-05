@@ -48,6 +48,7 @@ enum class StatusCondition{
     PARALYSIS,
     OTHER,      //  SLP, BRN, FRZ
 };
+//  String representation of a status condition.
 const char* status_name(StatusCondition status);
 
 //  The healing items in the Items pocket, in the order they were bought:
@@ -108,12 +109,14 @@ bool attacks_low_on_pp(const Supplies& supplies);
 //  and no Potion into Miguel's battle, which only red would have stopped).
 bool nurse_before_battle(const Supplies& supplies);
 
+//  Type of battle engagement strategy.
 enum class BattleKind{
     WILD_RUN,       //  RUN, or fight after a few "Can't escape!"
     WILD_FIGHT,     //  fight for EXP with green HP, no status and 2 Potions, else RUN
     TRAINER,
 };
 
+//  Terminal state of a battle encounter.
 enum class BattleEnd{
     WON,
     //  The starter fainted: a blackout, or a wild battle run from (or won)
@@ -158,6 +161,7 @@ struct PartyStatus{
     double hp_fill = 0;
     StatusCondition status = StatusCondition::NONE;
 };
+//  Reads current party health and status from battle screen.
 PartyStatus read_party_status(const ImageViewRGB32& screen);
 
 //  Whether `screen` shows a battle, for the battle loop's end: the battle
@@ -195,11 +199,12 @@ void recover_after_battle(
 OverworldInterruptSet story_interrupts(Supplies& supplies, bool fight_wild, StoryChecks checks, Language language);
 
 
+//  Registers AutoStory item usage unit tests.
 void add_tests_AutoStoryItems(UnitTestDatabase& database);
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

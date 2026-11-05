@@ -40,7 +40,9 @@ constexpr size_t SUMMARY_MOVE_ROWS = 5;
 //  Where row `row` (from 0) shows its move's name, its current PP and its
 //  full PP, as fractions of the game screen.
 ImageFloatBox summary_move_name_box(size_t row);
+//  Where row `row` of summary moves shows its current PP.
 ImageFloatBox summary_move_pp_box(size_t row);
+//  Where row `row` of summary moves shows its max PP.
 ImageFloatBox summary_move_max_pp_box(size_t row);
 
 //  The move named in row `row`: a slug such as "water-gun", in a game in
@@ -52,6 +54,7 @@ std::string read_summary_move_name(Logger& logger, Language language, const Imag
 //  a light background, such as a TM CASE row's; empty as above.
 std::string read_move_name(Logger& logger, Language language, const ImageViewRGB32& name);
 
+//  A single move entry read from the summary moves screen.
 struct SummaryMove{
     std::string move;
     //  -1 if not read. The game draws a move's PP in color once it is down
@@ -67,11 +70,12 @@ std::vector<SummaryMove> read_summary_moves(Logger& logger, Language language, c
 std::optional<size_t> read_summary_move_cursor(const ImageViewRGB32& screen);
 
 
+//  Registers summary moves reader unit tests.
 void add_tests_SummaryMovesReader(UnitTestDatabase& database);
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

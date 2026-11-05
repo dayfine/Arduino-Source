@@ -320,7 +320,7 @@ private:
     size_t m_holds = 0;     //  of the plan, holds to walls that find the player
 };
 
-}
+} // namespace
 
 
 std::optional<TrainerCrossing> trainer_crossing(
@@ -353,6 +353,6 @@ void run_route(
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
