@@ -69,6 +69,12 @@ def template_api(path, parsed, changed):
         key = function_key(statement, enclosing)
         if key is None or not statement.text.startswith('template'):
             continue
+        helper = any(internal(name) for _, name in enclosing)
+        if helper:
+            if statement.end == ';' and statement.line in changed:
+                errors.append(Finding(path, statement.line,
+                    'template-api-internal: define internal function templates in place'))
+            continue
         if statement.end == ';':
             declared.add(key)
         elif statement.end == '{' and key not in declared and statement.line in changed:

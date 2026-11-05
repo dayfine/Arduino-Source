@@ -206,12 +206,14 @@ and declarations are enforced; untouched legacy declarations are grandfathered.
 
 - `namespace-close`: named namespaces end in `} // namespace Name`, anonymous
   ones in `} // namespace`. The name must match, including C++ nested namespace syntax.
-- `template-api`: namespace-scope function templates in headers declare their
+- `template-api`: public namespace-scope function templates in headers declare their
   interface before their definition. Inline class members and class templates
   do not need redundant declarations. Keep default arguments on the declaration.
 - `template-api-order`: public template declarations precede helper namespaces
-  named `*Internal`, `internal`, or `detail`. Header helpers also declare before
-  defining. A header containing only internal helpers needs no invented public API.
+  named `*Internal`, `internal`, or `detail`.
+- `template-api-internal`: internal helper templates are defined in place, with
+  no separate forward declaration. A header containing only internal helpers
+  needs no invented public API.
 - `header-comment`: document each added/changed namespace-scope header symbol,
   including helper declarations, types, aliases, and constants. An immediately
   adjacent `//` or block/Doxygen comment counts. A definition can reuse its own

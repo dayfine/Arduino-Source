@@ -281,7 +281,7 @@ so keep it where it clearly pays off. `std::string_view` is the exception (see S
   Let `ProgramCancelledException` and `ProgramFinishedException` propagate.
 - **Forward declarations:** include real headers instead of forward-declaring types.
   Function templates in headers declare their public API before internal helper
-  namespaces, then declare helpers before defining them. Their definitions stay
+  namespaces; internal helper templates are defined in place. Definitions stay
   in the same header; this is not permission to forward-declare external types.
 - **Header documentation:** comment every namespace-scope symbol, including
   types, aliases, constants and internal helpers. A function definition may reuse

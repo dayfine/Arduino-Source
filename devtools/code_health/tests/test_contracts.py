@@ -49,7 +49,6 @@ void add_tests(){
     def test_public_template_interface_precedes_internal_namespace(self):
         source = '''namespace DetailInternal{
 // Identity helper.
-template <typename T> T identity(T value);
 template <typename T> T identity(T value){ return value; }
 } // namespace DetailInternal
 // Public operation.
@@ -135,7 +134,6 @@ template <typename T> T f(T value, int count){ return value; }
 template <typename T> T run(T value);
 namespace DetailInternal{
 // Identity helper.
-template <typename T> T identity(T value);
 template <typename T> T identity(T value){ return value; }
 } // namespace DetailInternal
 template <typename T> T run(T value){ return value; }
@@ -200,3 +198,16 @@ template <typename T> T f(T value){ return value; }
     def test_extern_c_linkage_block_is_not_a_namespace(self):
         source = 'extern "C"{\n// Exported entry point.\nvoid run();\n}\n'
         self.assertEqual([], self.messages(source))
+
+    def test_internal_templates_are_defined_in_place(self):
+        source = '''// Public operation.
+template <typename T> T run(T value);
+namespace DetailInternal{
+// Identity helper.
+template <typename T> T identity(T value){ return value; }
+} // namespace DetailInternal
+template <typename T> T run(T value){ return value; }
+'''
+        self.assertEqual([], self.messages(source))
+        separate = source.replace('// Identity helper.', '// Identity helper.\ntemplate <typename T> T identity(T value);\n// Definition.')
+        self.assertTrue(any('template-api-internal' in m for m in self.messages(separate)))
