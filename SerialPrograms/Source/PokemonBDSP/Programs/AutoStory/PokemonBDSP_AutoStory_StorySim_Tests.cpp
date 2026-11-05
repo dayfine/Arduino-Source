@@ -847,8 +847,8 @@ StoryStep old_mine_hall_north_20(){
     return {.kind = StoryStepKind::LEGS, .name = "out_of_the_mine", .legs = {{.direction = Direction::NORTH, .tiles = 20}}};
 }
 
-//  Oreburgh Mine: cutting west 1 at col 28 lands on col 27, hitting the
-//  wooden crate at (27, 28) on the south leg.
+//  Oreburgh Mine: stepping south at col 29 without bypassing the crate
+//  hits the wooden crate at (29, 28) on the south leg.
 StoryStep old_coal_room_crate_cut(){
     return StoryStep{
         .kind = StoryStepKind::LEGS,
@@ -858,11 +858,10 @@ StoryStep old_coal_room_crate_cut(){
             {.direction = Direction::SOUTH, .tiles = 2},
             {.direction = Direction::WEST,  .tiles = 1},
             {.direction = Direction::SOUTH, .tiles = 5},
-            {.direction = Direction::EAST,  .tiles = 13},
+            {.direction = Direction::EAST,  .tiles = 14},
             {.direction = Direction::SOUTH, .tiles = 10},
-            {.direction = Direction::WEST,  .tiles = 1},
             {.direction = Direction::SOUTH, .tiles = 2},
-            {.direction = Direction::WEST,  .tiles = 9},
+            {.direction = Direction::WEST,  .tiles = 11},
         },
     };
 }
@@ -991,7 +990,7 @@ void add_tests_AutoStory_StorySim(UnitTestDatabase& database){
     database.add<Test_StorySimStepFailure>("01.03, counted 20 taps south into cave mouth warp", "01.03", old_mine_hall_south_20(), "01.03 into_the_coal_room", "warped at (12, 21)");
     database.add<Test_StorySimStepFailure>("01.03, counted 19 taps south leaves player in hall", "01.03", old_mine_hall_south_19(), "01.03 south_to_the_rock", "warp instead of a stop.");
     database.add<Test_StorySimStepFailure>("01.03, counted 20 taps north into city exit warp", "01.03", old_mine_hall_north_20(), "01.03 out_of_the_mine", "warped at (11, 1)");
-    database.add<Test_StorySimStepFailure>("01.03, cut corner through coal room crate at col 27", "01.03", old_coal_room_crate_cut(), "01.03 below_roark", "short_leg: south 2 moved 0");
+    database.add<Test_StorySimStepFailure>("01.03, cut corner through coal room crate at col 29", "01.03", old_coal_room_crate_cut(), "01.03 below_roark", "short_leg: south 2 moved 0");
 }
 
 }

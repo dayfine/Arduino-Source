@@ -703,21 +703,21 @@ std::vector<StoryLeg> legs_below_roark(){
         {.direction = SOUTH, .tiles = 2},
         {.direction = WEST,  .tiles = 1},
         {.direction = SOUTH, .tiles = 5},
-        {.direction = EAST,  .tiles = 13},
+        {.direction = EAST,  .tiles = 14},
         {.direction = SOUTH, .tiles = 10},
         {.direction = WEST,  .tiles = 2},
         {.direction = SOUTH, .tiles = 2},
-        {.direction = WEST,  .tiles = 8},
+        {.direction = WEST,  .tiles = 9},
     };
 }
 
 std::vector<StoryLeg> legs_out_of_coal_room(){
     return {
-        {.direction = EAST,  .tiles = 8},
+        {.direction = EAST,  .tiles = 9},
         {.direction = NORTH, .tiles = 2},
         {.direction = EAST,  .tiles = 2},
         {.direction = NORTH, .tiles = 10},
-        {.direction = WEST,  .tiles = 13},
+        {.direction = WEST,  .tiles = 14},
         {.direction = NORTH, .tiles = 5},
         {.direction = EAST,  .tiles = 1},
         {.direction = NORTH, .tiles = 2},
@@ -738,10 +738,10 @@ StoryCheckpoint oreburgh_mine_to_roark(){
         step_into("into_the_coal_room", SOUTH, "down the entrance hall through the cave mouth", at(MINE, 15, 2, SOUTH)),
         anchored(to_walls("south_to_the_rock", {{.direction = SOUTH, .tiles = 8}}, "south against the corridor rock (15, 11)"),
             at(MINE, 15, 10, SOUTH)),
-        anchored(legs("below_roark", legs_below_roark(), "east around rock, across room, down column 28, and west to below Roark"), below_roark),
+        anchored(legs("below_roark", legs_below_roark(), "east around rock, across room, down column 29, and west to below Roark"), below_roark),
         talk("roark", "Roark, north of us between his rocks"),
         scene("roark_smashes_the_rock", below_roark, "his lines, Rock Smash on the rock east of him, and he walks off"),
-        anchored(legs("below_the_coal_rooms_warp", legs_out_of_coal_room(), "east around crate, up column 28, west across row 17, and up corridor to warp doorstep"),
+        anchored(legs("below_the_coal_rooms_warp", legs_out_of_coal_room(), "east around crate, up column 29, west across row 17, and up corridor to warp doorstep"),
             at(MINE, 15, 2, NORTH)),
         step_into("up_to_the_hall", NORTH, "the warp tile (15, 1)", at(MINE_HALL, 11, 21, NORTH)),
         step_into("out_of_the_mine", NORTH, "up the entrance hall and out to the city",
