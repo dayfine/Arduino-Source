@@ -177,34 +177,30 @@ std::optional<std::pair<std::vector<Hypothesis>, RouteStep>> hold_all(
 
 using Found = Pokemon::WallAnchor<MapPosition, RouteStep>;
 
-struct ReanchorMovement{
+//  Runtime world alternatives and movement mode, separate from the policy type.
+struct ReanchorContext{
+    const std::vector<std::vector<MapData>>& worlds;
     bool surfing = false;
 };
 
-class ReanchorModel{
+class ReanchorPolicy{
 public:
     using Hypothesis = PokemonFRLG::Hypothesis;
     using Position = MapPosition;
     using Hold = RouteStep;
 
-    ReanchorModel(const std::vector<std::vector<MapData>>& worlds, ReanchorMovement movement)
-        : m_worlds(&worlds), m_movement(movement)
-    {}
-    Position position(const Hypothesis& hypothesis) const{ return hypothesis.at; }
-    int tiles(const Hold& hold) const{ return hold.tiles; }
-    std::optional<Pokemon::WallRecoveryStep<Hypothesis, Hold>> hold(
-        const std::vector<Hypothesis>& positions, Direction direction
-    ) const{
-        auto next = hold_all(*m_worlds, positions, m_movement.surfing, direction);
+    static Position position(const Hypothesis& hypothesis){ return hypothesis.at; }
+    static int tiles(const Hold& hold){ return hold.tiles; }
+    static std::optional<Pokemon::WallRecoveryStep<Hypothesis, Hold>> hold(
+        const ReanchorContext& context, const std::vector<Hypothesis>& positions, Direction direction
+    ){
+        auto next = hold_all(context.worlds, positions, context.surfing, direction);
         if (!next){
             return std::nullopt;
         }
         return Pokemon::WallRecoveryStep<Hypothesis, Hold>{std::move(next->first), std::move(next->second)};
     }
 
-private:
-    const std::vector<std::vector<MapData>>* m_worlds;
-    ReanchorMovement m_movement;
 };
 
 //  Whether `route`, planned from `at` on other maps, walks the same on
@@ -245,7 +241,9 @@ bool walks_same_everywhere(
 std::vector<Found> find_player(
     const std::vector<std::vector<MapData>>& worlds, const std::vector<Hypothesis>& positions, bool surfing
 ){
-    return Pokemon::find_wall_anchors(ReanchorModel(worlds, {surfing}), positions, {.max_holds = MAX_HOLDS});
+    return Pokemon::find_wall_anchors<ReanchorPolicy>(
+        positions, ReanchorContext{.worlds = worlds, .surfing = surfing}, {.max_holds = MAX_HOLDS}
+    );
 }
 
 }
