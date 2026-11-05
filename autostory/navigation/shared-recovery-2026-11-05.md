@@ -24,6 +24,32 @@ BDSP planner/walker and simulator/story patches belong with #127/#129 and
 their branches. Do not merge the aggregate FRLG stack into nav-core. No upstream
 publication is authorized.
 
+## How #226 picks this up
+
+GitHub does not propagate stacked branch changes automatically. After owners
+adopt the changes, merge parents forward (never rebase/force-push) through the
+current stack:
+
+`#114 nav/shared -> #122 nav/story-steps -> #134 bdsp/maps-v4 -> #127 bdsp/nav-v4
+-> #129 bdsp/walk-v4 -> #152 bdsp/detectors-v4 -> #148 bdsp/actions-v4
+-> #128 bdsp/autostory-v4 -> #167 bdsp/sim -> #226 mine/floaroma`.
+
+1. Adopt #227's reusable search in #114, then merge forward. That alone does
+   **not** change BDSP execution; FRLG consumes it separately through #228.
+2. Place #229's world/adapter/planner changes with #127, and movement outcome /
+   RouteWalker changes with #129. Merge each owner change forward through the
+   existing dependencies. StoryWalkSteps changes belong with #128.
+3. Place GridSim event outcomes with #167; keep real mine story regressions
+   with the story/simulator owners (#167/#226). Merge into #226 and rerun its
+   native suites before any console use. Registration edits follow their tests.
+4. Keep #229 as the tested aggregate reference while owners distribute patches.
+   It is based on #226, so its full implementation does not flow backwards into
+   earlier PRs automatically. Do not merge that aggregate into nav-core.
+
+No map or story-leg edits in #226 are required for the tested recovery fix.
+Future parent changes require a fresh combined test, not an assumption that
+passing this pinned aggregate proves an arbitrary updated stack.
+
 ## Implemented BDSP behavior
 
 A credited tap after a wild battle does not establish displacement. Keep every
@@ -75,11 +101,20 @@ are retained for object wandering bounds and warps. Ordinary terrain is unchange
   26 failures are absent BDSP detector image fixtures. 80 BDSP AutoStory tests
   pass on the red reference.
 - Patched BDSP full Clang [42054684795](https://github.com/dayfine/Arduino-Source/actions/runs/42054684795)
-  at `33898d825` is pending. Initial Windows Clang
+  at `33898d825` builds and passes **90 BDSP AutoStory tests**, including all
+  **9 RecoveryWalk cases** (26,704 total passed). The only 26 failures are the
+  exact same missing-image test names as the red baseline. All 6 recovery
+  failures are removed. This full job remains red for the image fixtures.
+  Latest commit `a816258cd` changes test initialization only; its 47 focused
+  tests pass locally. Initial Windows Clang
   [42054689499](https://github.com/dayfine/Arduino-Source/actions/runs/42054689499)
   found missing designated-field initializers in new tests. Commit `a816258cd`
   fixes those warnings only; [Windows rerun 42056081592](https://github.com/dayfine/Arduino-Source/actions/runs/42056081592)
-  is pending. No warnings were suppressed.
+  compiles the new recovery files, then fails on 9 missing-field warnings in
+  untouched `PokemonBDSP_AutoStory_StorySim_Tests.cpp` (lines 474/739/742/792/
+  835/841/847/866/989). Its Git blob is `f6946a425071911dad51199316277b225fd892e6`
+  in both the pinned #226 base and this tip. Hand those warnings to the #167/#226
+  owner; do not suppress them or mix unrelated source changes into extraction.
 - Code health against each immutable owning base: **0 failures**. CRLF diff
   checked with `git -c core.whitespace=cr-at-eol diff --check`.
 
@@ -126,5 +161,5 @@ The user approved one bootstrap `git push --no-verify` because no PR existed for
 the hook to resolve #114 as base. It was used once for #227; all subsequent code
 pushes used the normal hook. No upstream PR mutation or GitHub comments/messages.
 
-Quota at 07:24 PST: primary 67%, weekly 22% remaining, from actual local
+Quota at 07:46 PST: primary 54%, weekly 20% remaining, from actual local
 account/rateLimits/read. Primary resets 11:56 PST; weekly November10 22:35 PST.
