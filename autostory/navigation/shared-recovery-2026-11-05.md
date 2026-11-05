@@ -253,3 +253,28 @@ Recipes/results for this revision: `/tmp/build-wall-review.py`,
 All adapter changes preserve map/terrain and route execution behavior; no console
 or save was accessed. Quota at 11:26 PST: primary 17%, weekly 14% remaining;
 primary reset 11:56 PST. These were actual account readings.
+
+### #227 merged; #228/#229 parent refresh
+
+#227 was squash-merged into `nav/shared` at `546b3c0d1`. Merge that parent into
+both isolated adapter branches (no rebase or force-push). Each add/add conflict
+in `Pokemon_WallRecovery_Tests.cpp` was resolved to the reviewed merged parent.
+The shared header/test bytes match `origin/nav/shared` exactly.
+
+- #228: `ed38fe72fe5add438aa9a53a4ebb1667fce742ac`; **58 native cases pass**,
+  canonical pre-push lint passes. Refreshed Linux Clang run: 42097382957.
+- #229: `17c50cfb11db1a7755c664da9e5390e533bf23bb`; **50 native cases pass**,
+  canonical pre-push lint passes. Refreshed Linux Clang run: 42100570118.
+  Newly merged #231 exposed 23 style findings. Add namespace labels/header
+  documentation and convert the added recovery tests to input/expectation case
+  tables. Preserve the assertions, separating encounter phases and mine/r55
+  geometry into individually named rows (two extra registered cases).
+
+Code health, source diff checks and warnings-as-errors compilation pass.
+Game base branches remain untouched; shared changes remain visible in the PR
+diffs until the owning base stacks merge nav-core forward. CI was dispatched
+and left running as requested. No runtime, terrain, map-pack or save changes.
+
+Quota reached 0% at 11:48 PST, reset 11:56 PST; the user resumed after reset.
+Actual 12:01 reading: primary 100%, weekly 11% remaining. Remaining work resumed
+normally; no quota bypass or claims of work running during unavailability.
