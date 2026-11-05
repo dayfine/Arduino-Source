@@ -31,6 +31,8 @@
 #include "NintendoSwitch/Inference/NintendoSwitch_UpdatePopupDetector.h"
 #include "NintendoSwitch/Programs/Typewriter/NintendoSwitch_Typewriter_Tests.h"
 
+#include "Pokemon/AutoStory/Pokemon_AutoStory_Tests.h"
+#include "Pokemon/Navigation/Pokemon_Navigation_Tests.h"
 #include "VideoGames/PokemonHome/PokemonHome_Tests.h"
 #include "VideoGames/PokemonSwSh/PokemonSwSh_Tests.h"
 #include "VideoGames/PokemonLA/PokemonLA_Tests.h"
@@ -66,6 +68,13 @@ UnitTestDatabase make_UNIT_TESTS_ALL(){
     OCR::add_tests(ret);
     Kernels::add_tests(ret);
     Pokemon::add_tests_AutoStorySelect(ret);
+    Pokemon::add_tests_LegPlanner(ret);
+    Pokemon::add_tests_LegWalker(ret);
+    Pokemon::add_tests_WallRecovery(ret);
+    Pokemon::add_tests_MapData(ret);
+    Pokemon::add_tests_RouteLog(ret);
+    Pokemon::add_tests_StoryEvents(ret);
+    Pokemon::add_tests_StorySegments(ret);
     NintendoSwitch::add_tests_CheckOnlineDetector(ret);
     NintendoSwitch::add_tests_FailedToConnectDetector(ret);
     NintendoSwitch::add_tests_UpdatePopupDetector(ret);
