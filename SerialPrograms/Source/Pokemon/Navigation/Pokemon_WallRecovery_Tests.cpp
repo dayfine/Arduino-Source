@@ -23,27 +23,33 @@ struct TestHold{
     bool operator==(const TestHold&) const = default;
 };
 
-class CorridorModel{
+//  A one-dimensional synthetic corridor, not an open map edge:
+//      wall | walkable x=0 ... 10 | wall
+//       -1  | . . A B . . . . . . . | 11
+//  A/B are example hypotheses x=2/3. WEST stops at x=0; EAST at x=10.
+//  NORTH/SOUTH are unavailable. A person anywhere on a ray makes it unsafe.
+struct CorridorContext{
+    std::optional<int> person;
+};
+
+class CorridorPolicy{
 public:
     using Hypothesis = int;
     using Position = int;
     using Hold = TestHold;
 
-    explicit CorridorModel(std::optional<int> person = std::nullopt)
-        : m_person(person)
-    {}
-    Position position(Hypothesis at) const{ return at; }
-    int tiles(const Hold& hold) const{ return hold.tiles; }
-    std::optional<WallRecoveryStep<Hypothesis, Hold>> hold(
-        const std::vector<Hypothesis>& from, Direction direction
-    ) const{
+    static Position position(Hypothesis at){ return at; }
+    static int tiles(const Hold& hold){ return hold.tiles; }
+    static std::optional<WallRecoveryStep<Hypothesis, Hold>> hold(
+        const CorridorContext& context, const std::vector<Hypothesis>& from, Direction direction
+    ){
         if (direction != Direction::WEST && direction != Direction::EAST){
             return std::nullopt;
         }
         const int end = direction == Direction::WEST ? 0 : 10;
         int longest = 0;
         for (int start : from){
-            if (m_person && std::min(start, end) <= *m_person && *m_person <= std::max(start, end)){
+            if (context.person && std::min(start, end) <= *context.person && *context.person <= std::max(start, end)){
                 return std::nullopt;
             }
             longest = std::max(longest, start > end ? start - end : end - start);
@@ -51,21 +57,33 @@ public:
         return WallRecoveryStep<Hypothesis, Hold>{{end}, {direction, longest}};
     }
 
-private:
-    std::optional<int> m_person;
 };
 
-class CornerModel{
+//  A synthetic closed room: all (x,y) in [0,10] x [0,10] are walkable.
+//  Walls are outside that rectangle at x/y=-1 and x/y=11.
+//      #############
+//      #C..........#  y=0; C=(0,0), the expected northwest stop
+//      #...........#
+//      #...........#
+//      #..A........#  A=(2,3)
+//      #...B.......#  B=(3,4)
+//      #...........#  ... through y=10
+//      #############
+//  NORTH 4 maps A/B to (2,0)/(3,0); WEST 3 then merges them at C.
+//  Coordinates always stay inside the room; no unknown edge is crossed.
+struct CornerContext{};
+
+class CornerPolicy{
 public:
     using Hypothesis = TilePos;
     using Position = TilePos;
     using Hold = TestHold;
 
-    Position position(const Hypothesis& at) const{ return at; }
-    int tiles(const Hold& hold) const{ return hold.tiles; }
-    std::optional<WallRecoveryStep<Hypothesis, Hold>> hold(
-        const std::vector<Hypothesis>& from, Direction direction
-    ) const{
+    static Position position(const Hypothesis& at){ return at; }
+    static int tiles(const Hold& hold){ return hold.tiles; }
+    static std::optional<WallRecoveryStep<Hypothesis, Hold>> hold(
+        const CornerContext&, const std::vector<Hypothesis>& from, Direction direction
+    ){
         std::vector<Hypothesis> ends;
         int longest = 0;
         for (const TilePos& start : from){
@@ -118,7 +136,7 @@ public:
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
         const auto& input = m_scenario.input;
         const auto& expected = m_scenario.expectation;
-        const auto found = find_wall_anchors(CorridorModel(input.person), input.positions, {.max_holds = input.budget});
+        const auto found = find_wall_anchors<CorridorPolicy>(input.positions, CorridorContext{.person = input.person}, {.max_holds = input.budget});
         const std::optional<int> actual = found.empty() ? std::nullopt : std::optional<int>(found.front().at);
         if (actual != expected.first_anchor){
             return std::format("Expected first anchor {}, got {} ({} anchors).",
@@ -194,7 +212,7 @@ public:
         const auto& input = m_scenario.input;
         const auto& expected = m_scenario.expectation;
         //  std::array and the corridor's std::vector both bind to the borrowed span API.
-        const auto found = find_wall_anchors(CornerModel(), input.positions, {.max_holds = input.budget});
+        const auto found = find_wall_anchors<CornerPolicy>(input.positions, CornerContext{}, {.max_holds = input.budget});
         const std::optional<TilePos> actual = found.empty() ? std::nullopt : std::optional<TilePos>(found.front().at);
         if (actual != expected.first_anchor){
             return std::format("Expected first corner {}, got {} ({} anchors).",

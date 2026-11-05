@@ -7,16 +7,15 @@
  *  the player. Its descriptor belongs to the game; it is not a duration or
  *  a count of taps. Results predict convergence, not confirmed execution.
  *
- *  MovementPolicy is a compile-time policy, supplied as a stateful object
- *  so it can refer to the game's map and trainer/object-world hypotheses.
- *  It defines Hypothesis, Hold and Position, and provides:
- *      Position position(const Hypothesis&) const;
- *      optional<WallRecoveryStep<Hypothesis, Hold>> hold(positions, direction) const;
- *      int tiles(const Hold&) const;
- *  hold() receives a const vector of hypotheses and rejects any direction
- *  unsafe for any hypothesis, including NPCs, warps and unknown map edges.
- *  Hypothesis and Position support ==. No default movement policy exists:
- *  choosing the game's collision rules is part of the caller's contract.
+ *  MovementPolicy defines Hypothesis, Hold and Position, and static operations:
+ *      Position position(const Hypothesis&);
+ *      optional<WallRecoveryStep<Hypothesis, Hold>> hold(context, positions, direction);
+ *      int tiles(const Hold&);
+ *  The policy type selects game rules at compile time. Runtime Context data
+ *  (map, walking mode, etc.) is passed separately; no policy instance or global
+ *  map is needed. hold() receives Context and a const vector of hypotheses,
+ *  rejecting any direction unsafe for any hypothesis, including NPCs, warps
+ *  and unknown edges. Hypotheses are copyable; Hypothesis/Position support ==.
  */
 
 #ifndef PokemonAutomation_Pokemon_WallRecovery_H
@@ -54,9 +53,9 @@ struct WallAnchor{
 //  Empty input has no anchor; already-converged input needs no holds even at
 //  max_holds=0. The borrowed span is not retained: search branches own their
 //  hypothesis vectors, including any distinct object-world alternatives.
-template <typename MovementPolicy>
+template <typename MovementPolicy, typename Context>
 std::vector<WallAnchor<typename MovementPolicy::Position, typename MovementPolicy::Hold>> find_wall_anchors(
-    const MovementPolicy& policy, std::span<const typename MovementPolicy::Hypothesis> positions,
+    std::span<const typename MovementPolicy::Hypothesis> positions, const Context& context,
     const WallRecoveryLimits& limits = WallRecoveryLimits()
 );
 
@@ -64,80 +63,67 @@ namespace WallRecoveryInternal{
 
 //  Whether a nonempty belief set represents one physical position.
 template <typename MovementPolicy>
-bool converged(const MovementPolicy& policy, std::span<const typename MovementPolicy::Hypothesis> positions);
-
-//  Explore exactly depth more holds, retaining only common safe anchors.
-template <typename MovementPolicy>
-void search(
-    const MovementPolicy& policy, const std::vector<typename MovementPolicy::Hypothesis>& positions,
-    size_t depth, std::vector<typename MovementPolicy::Hold>& holds,
-    std::vector<WallAnchor<typename MovementPolicy::Position, typename MovementPolicy::Hold>>& found
-);
-
-//  Sum held-tile distances for stable ordering among equal-length plans.
-template <typename MovementPolicy>
-int total_tiles(const MovementPolicy& policy, std::span<const typename MovementPolicy::Hold> holds);
-
-template <typename MovementPolicy>
-bool converged(const MovementPolicy& policy, std::span<const typename MovementPolicy::Hypothesis> positions){
+bool converged(std::span<const typename MovementPolicy::Hypothesis> positions){
     return !positions.empty() && std::all_of(positions.begin(), positions.end(), [&](const auto& position){
-        return policy.position(position) == policy.position(positions.front());
+        return MovementPolicy::position(position) == MovementPolicy::position(positions.front());
     });
 }
 
-template <typename MovementPolicy>
+//  Explore exactly depth more holds, retaining only common safe anchors.
+template <typename MovementPolicy, typename Context>
 void search(
-    const MovementPolicy& policy, const std::vector<typename MovementPolicy::Hypothesis>& positions,
+    const std::vector<typename MovementPolicy::Hypothesis>& positions, const Context& context,
     size_t depth, std::vector<typename MovementPolicy::Hold>& holds,
     std::vector<WallAnchor<typename MovementPolicy::Position, typename MovementPolicy::Hold>>& found
 ){
     for (Direction direction : ALL_DIRECTIONS){
-        auto next = policy.hold(positions, direction);
-        if (!next || next->positions.empty() || next->positions == positions || policy.tiles(next->hold) == 0){
+        auto next = MovementPolicy::hold(context, positions, direction);
+        if (!next || next->positions.empty() || next->positions == positions || MovementPolicy::tiles(next->hold) == 0){
             continue;
         }
         holds.push_back(next->hold);
-        if (converged(policy, next->positions)){
+        if (converged<MovementPolicy>(next->positions)){
             if (depth == 1){
-                found.push_back({holds, policy.position(next->positions.front())});
+                found.push_back({holds, MovementPolicy::position(next->positions.front())});
             }
         }else if (depth > 1){
-            search(policy, next->positions, depth - 1, holds, found);
+            search<MovementPolicy>(next->positions, context, depth - 1, holds, found);
         }
         holds.pop_back();
     }
 }
 
+//  Sum held-tile distances for stable ordering among equal-length plans.
 template <typename MovementPolicy>
-int total_tiles(const MovementPolicy& policy, std::span<const typename MovementPolicy::Hold> holds){
+int total_tiles(std::span<const typename MovementPolicy::Hold> holds){
     int total = 0;
     for (const auto& hold : holds){
-        total += policy.tiles(hold);
+        total += MovementPolicy::tiles(hold);
     }
     return total;
 }
 
 } // namespace WallRecoveryInternal
 
-template <typename MovementPolicy>
+template <typename MovementPolicy, typename Context>
 std::vector<WallAnchor<typename MovementPolicy::Position, typename MovementPolicy::Hold>> find_wall_anchors(
-    const MovementPolicy& policy, std::span<const typename MovementPolicy::Hypothesis> positions,
+    std::span<const typename MovementPolicy::Hypothesis> positions, const Context& context,
     const WallRecoveryLimits& limits
 ){
     using Anchor = WallAnchor<typename MovementPolicy::Position, typename MovementPolicy::Hold>;
-    std::vector<Anchor> found;
-    if (WallRecoveryInternal::converged(policy, positions)){
-        return {Anchor{{}, policy.position(positions.front())}};
+    if (WallRecoveryInternal::converged<MovementPolicy>(positions)){
+        return {Anchor{{}, MovementPolicy::position(positions.front())}};
     }
+    std::vector<Anchor> found;
     if (positions.empty()){
         return found;
     }
     const std::vector<typename MovementPolicy::Hypothesis> starts(positions.begin(), positions.end());
     for (size_t depth = 1; found.empty() && depth <= limits.max_holds; depth++){
         std::vector<typename MovementPolicy::Hold> holds;
-        WallRecoveryInternal::search(policy, starts, depth, holds, found);
+        WallRecoveryInternal::search<MovementPolicy>(starts, context, depth, holds, found);
         std::stable_sort(found.begin(), found.end(), [&](const Anchor& a, const Anchor& b){
-            return WallRecoveryInternal::total_tiles(policy, a.holds) < WallRecoveryInternal::total_tiles(policy, b.holds);
+            return WallRecoveryInternal::total_tiles<MovementPolicy>(a.holds) < WallRecoveryInternal::total_tiles<MovementPolicy>(b.holds);
         });
     }
     return found;
