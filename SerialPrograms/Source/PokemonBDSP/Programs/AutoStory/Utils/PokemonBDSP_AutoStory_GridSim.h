@@ -162,6 +162,7 @@ struct SimWildTap{
     size_t requested_tiles = 0;
     size_t tap = 0;  //  one-based within the matching walk_taps call
     SimEncounterPhase phase = SimEncounterPhase::AFTER_MOVEMENT;
+    WalkOrigin origin = WalkOrigin::CURRENT_LEG;
 };
 
 //  The walker's RouteIO on a GridSim. A failure throws GridSimFailure.

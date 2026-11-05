@@ -332,6 +332,9 @@ WalkResult GridSimRouteIO::walk_taps(Direction direction, size_t tiles, const st
             //  of actual simulated displacement. Consumers must not infer
             //  pose solely from this credit after an interrupted input.
             result.wild_battles++;
+            if (tap == 0 || encounter->origin == WalkOrigin::MAY_PRECEDE_LEG){
+                result.origin = WalkOrigin::MAY_PRECEDE_LEG;
+            }
             result.moved_chunks++;
             still = 0;
             m_notes.push_back("[Sim] cleared wild encounter during " + label);

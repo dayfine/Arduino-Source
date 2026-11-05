@@ -7,6 +7,7 @@
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "Programs/AutoStory/PokemonBDSP_AutoStory_Actions_Tests.h"
 #include "Programs/AutoStory/PokemonBDSP_AutoStory_GridSim_Tests.h"
+#include "Programs/AutoStory/PokemonBDSP_AutoStory_RecoveryWalk_Tests.h"
 #include "Programs/AutoStory/PokemonBDSP_AutoStory_Maps_Tests.h"
 #include "Programs/AutoStory/PokemonBDSP_AutoStory_PlannedRoute_Tests.h"
 #include "Programs/AutoStory/PokemonBDSP_AutoStory_RoutePlanner_Tests.h"
@@ -37,6 +38,7 @@ void add_tests(UnitTestDatabase& database){
     add_tests_AutoStory_Walk(database);
     add_tests_AutoStory_PlannedRoute(database);
     add_tests_AutoStory_GridSim(database);
+    add_tests_AutoStory_RecoveryWalk(database);
     add_tests_AutoStory_StorySim(database);
 }
 
