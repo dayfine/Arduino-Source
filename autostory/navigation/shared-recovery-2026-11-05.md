@@ -1,133 +1,115 @@
-# Shared recovery extraction — offline checkpoint, 2026-11-05
+# Shared recovery — offline native implementation, 2026-11-05
 
-User authorized driving the native migration without consoles, conditioned on
-credible simulator/unit coverage. No consoles, saves, profiles or other agents'
-active worktrees have been changed. This is an incomplete migration checkpoint,
-not a claim that BDSP recovery is fixed or that the owning PRs have adopted it.
+User authorized driving the migration without consoles. Work used isolated
+worktrees; consoles, saves, profiles and other agents' active branches were
+untouched. These are fork drafts for owner handoff, not merged changes.
 
-## Isolated implementation branches
+## Review and merge order
 
-| Branch | Worktree | Revision | Base / intended handoff |
-|---|---|---|---|
-| `nav/recovery-core-extraction` | `~/Projects/wt/nav-recovery-core` | `af21f2750` | #114 `acf85aa2411a125ea1088908e66d4eff93351f1f`; shared search and 9 registered C++ tests. |
-| `frlg/shared-recovery-adapter` | `~/Projects/wt/frlg-shared-recovery` | `616d2f5f0` | #224 `51c0ce6128e5981da56b370a770874b96a1e129f` plus merged shared branch; owner handoff for FRLG adapter. |
-| `bdsp/shared-recovery-tests` | `~/Projects/wt/bdsp-shared-recovery` | `1f9f07eb9` | #226 `f8bdd62b9df4dbf285f93853147295e0552a0367` plus merged shared branch; tested movement adapter only. |
+| Draft | Branch / tested revision | Base and scope |
+|---|---|---|
+| [#227](https://github.com/dayfine/Arduino-Source/pull/227) | `nav/recovery-core-extraction` @ `af21f2750289adef1a370ba214eb557b26c9c0ec` | #114 `acf85aa2411a125ea1088908e66d4eff93351f1f`: game-independent convergent wall search, 9 registered native tests. |
+| [#228](https://github.com/dayfine/Arduino-Source/pull/228) | `frlg/shared-recovery-adapter` @ `616d2f5f0` | #224 `51c0ce6128e5981da56b370a770874b96a1e129f`, merged #227: replace FRLG's pure search with the shared search. |
+| [#229](https://github.com/dayfine/Arduino-Source/pull/229) | `bdsp/shared-recovery-tests` @ `33898d825b68ac92aa9fdd1487b2dea3d6d25072` | #226 `f8bdd62b9df4dbf285f93853147295e0552a0367`, merged #227: BDSP adapter, native encounter outcomes and real story/walker recovery regressions and fixes. |
 
-FRLG pure `find_player` search now delegates to `Pokemon_WallRecovery.h` through
-an adapter. Its movement, trainer-world alternatives, route-back checks, timing,
-connection slack and route executor are unchanged. The shared search preserves
-hold count priority, total held-tile ordering and directional tie order. Empty
-input safely has no result. Existing shared registration/CMake additions are
-part of the #114 owner patch; these are not direct pushes over owner branches.
+Shared extraction stays separate from BDSP behavior changes. FRLG baseline
+includes #213 plus later #215/#219 behavior inherited by #224. Preserve trainer
+world alternatives, movement semantics, hold-count/held-tile ordering, route-back
+checks, connection slack and late-interruption handling. No terrain, map bytes,
+Simulation publication pins or story route legs were changed.
 
-BDSP's adapter uses its real `StoryWorld`/`slide_to_wall`/`step` implementation,
-rejecting people as anchors, doors/unknown map edges, cross-map rays and ledge
-hops. It is not yet wired into production interrupted-leg execution. It uses
-native #226 map bytes; no terrain or Simulation publishing pins were changed.
+The reusable search belongs with #114. FRLG adapters belong with their owners;
+BDSP planner/walker and simulator/story patches belong with #127/#129 and
+#167/#226 respectively. Hand these branches to owners rather than pushing over
+their branches. Do not merge the aggregate FRLG stack into nav-core. No upstream
+publication is authorized.
 
-## Validation actually executed
+## Implemented BDSP behavior
 
-- C++23 Clang `-Wall -Wextra -Werror -fsyntax-only` passes for the new shared
-  native tests, FRLG adapter and BDSP adapter/tests.
-- Nine shared native UnitTestDatabase tests pass with real Common logger,
-  cancellable scope, exceptions and lifetime machinery; no fake test framework.
-- FRLG selected native runner: **57 passed, 0 failed** (48 existing map/route/
-  re-anchor/recovery tests plus 9 shared tests). Compiled the real production
-  map decoder, route planner and recovery code, existing native tests and all
-  53 map JSONs embedded as C++ strings, matching the build-time resource contract.
-- Rebuilt that runner with the original #224 `OverworldReanchor.cpp`: **57
-  passed, 0 failed**. Result logs compare identical. This compares registered
-  test outcomes; it is not a claim of exhaustive native trace equality.
-- BDSP selected native runner: **18 passed, 0 failed** (9 shared tests plus
-  route-planner/world suites, including the two new source-grounded checks and
-  the normalized encounter-tap case).
-  Uses the actual #226 map decoder and 22 native map JSONs.
-- Current `agents` code health against each intended base: **0 failures**.
-  CRLF source checked with `git -c core.whitespace=cr-at-eol diff --check`.
+A credited tap after a wild battle does not establish displacement. Keep every
+legal prefix of an interrupted leg, search for safe common wall holds, execute
+them through the actual RouteWalker, and route back to the leg's intended goal
+before the next leg. Restore the original leg's facing explicitly. Three further
+interrupted holds exhaust the recovery budget and fail rather than advancing.
 
-Temporary reproducible build sources/recipes and logs remain on this machine:
+First-input/late encounters that may belong to an earlier leg fail explicitly.
+Unconfirmed transition/dialogue outcomes cannot establish a same-map pose.
+Single-step and dialogue-approach interruptions also fail explicitly in this
+slice. This deliberately does not infer a previous map/pose from a battle alone.
 
-- `/tmp/nav-recovery-native-tests.cpp`, `/tmp/nav-recovery-native-tests`.
-- `/tmp/frlg-recovery-native-tests.cpp`, `/tmp/frlg-recovery-native-maps.cpp`,
-  `/tmp/build-native-recovery.py` (argument `baseline` builds the original).
-- `/tmp/frlg-reanchor-baseline.cpp`: original source read from #224 Git object.
-- `/tmp/frlg-recovery-native-results.log`, `/tmp/frlg-recovery-baseline-results.log`.
-- `/tmp/bdsp-recovery-native-tests.cpp`, `/tmp/bdsp-recovery-native-maps.cpp`,
-  `/tmp/build-bdsp-recovery.py`, `/tmp/bdsp-recovery-native-results.log`.
+The BDSP adapter rejects NPC anchors, wandering areas, declared warps (including
+warps on blocked glyphs), unknown map edges, cross-map rays and ledge hops.
+Recovery metadata is separate from ordinary collision; crop coordinate offsets
+are retained for object wandering bounds and warps. Ordinary terrain is unchanged.
 
-These temporary runners call existing registered native test functions directly
-and avoid app/UI initialization. They do not substitute model implementations
-or parse C++ source text into tests. They do not run OverworldSim, full AutoStory,
-image detectors or controller I/O; those coverage gaps remain open.
+## Evidence and validation
 
-## CI and publishing blocker
+- **9 shared tests pass** with native UnitTestDatabase/Common machinery.
+- **FRLG selected native tests: 57 pass, 0 fail**, both original #224 search and
+  shared adapter. Same registered outcomes, not exhaustive trace equality.
+- **FRLG full Clang comparison:** baseline [42010965658](https://github.com/dayfine/Arduino-Source/actions/runs/42010965658)
+  and adapter [42050176912](https://github.com/dayfine/Arduino-Source/actions/runs/42050176912)
+  both pass the same **83 Overworld** and **30 AutoStorySimulation** tests.
+  Both full jobs fail on the same **69 FileException cases for absent image
+  fixtures**; there are no additional failing test names/messages in the adapter.
+- Untouched FRLG GCC [42010288031](https://github.com/dayfine/Arduino-Source/actions/runs/42010288031)
+  fails before tests on existing battle-data dangling references (lines 283/305).
+- Shared core full **macOS [42050010624](https://github.com/dayfine/Arduino-Source/actions/runs/42050010624)
+  and Windows Clang [42050010694](https://github.com/dayfine/Arduino-Source/actions/runs/42050010694) pass**.
+  Linux Clang [42050010826](https://github.com/dayfine/Arduino-Source/actions/runs/42050010826) pending at this checkpoint.
+- **BDSP focused native runner: 33 pass, 0 fail** at `33898d825`.
+  Includes 9 shared tests, existing planner/world/PlannedRoute tests, normalized
+  encounter outcomes, safety diagnostics and 9 actual mine story-step cases.
+- Rebuilding the original production StoryWalkSteps/PlannedRoute/Walk against
+  the initial 8 consumer cases gives **6 failures**, including the reported
+  `(19,15)` / `EAST 14 moved 4` shape with two interrupted advances.
+  The exact deployed run/revision and actual interruption timing are unavailable;
+  before/after movement and two missed advances are labelled diagnostics, not a
+  claim that one observed battle caused two missing tiles.
+- Frozen red reference: `bdsp/recovery-red-baseline` @ `2ac420dc1`;
+  CI [42051485263](https://github.com/dayfine/Arduino-Source/actions/runs/42051485263) pending.
+- Patched BDSP full Clang [42054684795](https://github.com/dayfine/Arduino-Source/actions/runs/42054684795)
+  and Windows Clang [42054689499](https://github.com/dayfine/Arduino-Source/actions/runs/42054689499) pending.
+- Code health against each immutable owning base: **0 failures**. CRLF diff
+  checked with `git -c core.whitespace=cr-at-eol diff --check`.
 
-Untouched #224 baseline mirrored to `nav/recovery-frlg-baseline` (no code change):
+Draft automatic build checks are skipped by repository policy. Explicit
+workflow_dispatch runs above perform the full builds; skipped is not passed.
 
-- [GCC baseline run 42010288031](https://github.com/dayfine/Arduino-Source/actions/runs/42010288031)
-  failed before tests in existing `PokemonFRLG_AutoStoryBattleData.cpp`, lines
-  283 and 305, with `-Werror=dangling-reference`. This is not the recovery patch.
-- [Clang baseline run 42010965658](https://github.com/dayfine/Arduino-Source/actions/runs/42010965658)
-  was still compiling when this checkpoint was written. Inspect its eventual
-  result; do not call full FRLG baseline CI green based on selected local tests.
+## Fidelity boundary and remaining work
 
-First shared-branch push was refused. The hook has no PR from which to discover
-the new branch's intended base, so falls back to `origin/main` and reports three
-inherited `USE_QT_UI` declarations in CommandLine_Main.cpp, Globals.h and Main.cpp.
-The actual extraction passes against #114. No hook or code-health bypass has
-been performed. A narrow one-time `--no-verify` bootstrap push approval was
-requested through the chat's pending question, citing `tools/hooks/pre-push`'s
-explicit user-approval requirement. Approval has not arrived at this checkpoint.
-Do not infer approval from elapsed time or the recommended/preselected option.
-After authorized publishing, create only a fork draft with base `nav/shared`,
-then normal hook pushes can discover the correct base. Honor owning-PR handoffs.
+Native tests compile the real decoder, maps, shared search, game movement,
+planner, story table, StoryWalkSteps and RouteWalker. The focused runner embeds
+native JSON resource bytes, uses actual Common/test machinery, and has strict
+unused image/filesystem stubs which throw if called. GridSim supplies normalized
+cleared encounter outcomes; it does not emulate detector pixels, battle escape
+mechanics, cancellation/queue timing, free movement or sub-tile clipping.
+Full application CI separately checks normal linking and test registration.
 
-## Critical fidelity findings and next steps
+The successful mine case proves complete `below_roark` execution to `(18,29)`
+facing west under the scripted outcomes. Source-grounded geometry also proves
+rows 15/16/17 at column15 converge south at `(15,17)`, and r55 Route202
+`(27,5)/(26,5)` converge east at `(30,5)` clear of Logan. The r55 check is geometry,
+not an end-to-end native replay. Warp/NPC corridor cases are synthetic diagnostics.
 
-1. BDSP `GridSimRouteIO::walk_taps` and `walk_to_wall` currently always report
-   `wild_battles=0`. Passing grid/story simulations therefore cannot validate
-   the reported battle-interrupted mine leg. Add deterministic encounter
-   outcomes before relying on the full story run: movement completed versus not completed, delayed detection,
-   queued input and repeat interruptions. Separate actual simulated movement
-   from the walker-reported credit; do not assume a screenshot proves the cause.
-2. `StoryWalkSteps::tap_legs` presently advances the pose using intended tile
-   counts after accepting `moved_chunks`; `RouteWalker::open_leg` explicitly
-   assumes wild-battle tap counts remain exact. They need uncertain outcomes
-   and recovery before the next leg, using the shared candidate search.
-3. BDSP `RouteWalker::wall_leg` retries an encountered wall leg up to three
-   times, but its `if (interrupted) return NEXT_LEG` can still advance after
-   repeated encounters exhaust retries. `on_to_wall` similarly does not inspect
-   the final walk outcome. Add red scripted native regressions before fixing.
-4. AutoStory's simpler `walk_until_stopped` helper accepts LIMIT as wall arrival.
-   Do not use it blindly for new localization. Require proven convergence plus
-   appropriate observed stop/verification or fail explicitly.
-5. Test complete mine inbound and outbound paths, r55, house transitions and
-   unconfirmed fades through the real consumers. Re-run FRLG native recovery
-   and simulation suites after any shared behavioral change. Current new mine
-   test proves only that column-15 rows 15/16/17 have a common south wall endpoint.
-6. Preserve the later #215/#219 behavior when handing the FRLG patch to owners.
-   Do not merge the aggregate game stack into #114; core stays game-independent.
+Still needed: native queued-input/detector characterization, outbound mine
+stairs/B1F-B2F and house transitions through real story consumers, full r55 replay,
+first-input/late-origin recovery beyond explicit failure, and a wall-vs-unmapped
+NPC confirmation policy. Static metadata cannot prove live obstacles absent.
+The legacy generic LegInterrupt clear/same-pose contract still needs audit.
+Do not claim universal recovery, full-game replay or console validation.
 
-No deployment, live validation or successful full-game replay is claimed.
+Temporary local recipes/logs: `/tmp/build-native-recovery.py` (FRLG; `baseline`
+argument), `/tmp/build-bdsp-recovery-consumer.py` (`red` argument),
+`/tmp/bdsp-recovery-consumer-results.log`, `/tmp/bdsp-recovery-consumer-red-results.log`,
+`/tmp/frlg-recovery-native-results.log`, `/tmp/frlg-recovery-baseline-results.log`,
+`/tmp/frlg-clang-baseline-failure.log`, `/tmp/frlg-shared-clang-failure.log`.
+Tests themselves are registered beside production sources in the PRs; temporary
+recipes are only local build orchestration, not application source-text tests.
 
+The user approved one bootstrap `git push --no-verify` because no PR existed for
+the hook to resolve #114 as base. It was used once for #227; all subsequent code
+pushes used the normal hook. No upstream PR mutation or GitHub comments/messages.
 
-## Additional simulator-model progress
-
-Commit `1f9f07eb9` adds optional `SimWildTap` events to the BDSP GridSimRouteIO.
-A matching tap can complete movement before a normalized encounter or leave it
-uncompleted. Both cases report the same production-style escape movement credit,
-so the test proves that the credited count cannot alone determine pose. This
-is a deterministic adapter-outcome model, not a detector/escape-mechanics model.
-Existing callers have an empty event script and preserve their behavior.
-
-The new native regression passes in the 18-test runner. Rebuilding with original
-#226 GridSim.cpp (same tests, actual production decoder/movement) gives exactly
-one failing test, `encounter credits do not establish pose`, confirming the old
-simulator did not exercise this uncertainty. Logs:
-`/tmp/bdsp-before-encounters-results.log`; recipe:
-`python3 /tmp/build-bdsp-recovery.py baseline`.
-
-Late detection, partial/queued movement, interrupted holds, retry exhaustion and
-real StoryWalkSteps/RouteWalker consumer recovery still need native regressions
-and fixes. Do not call BDSP fixed based on the new event primitive or geometry
-adapter. The production execution code has not been modified in these branches.
+Quota at 07:24 PST: primary 67%, weekly 22% remaining, from actual local
+account/rateLimits/read. Primary resets 11:56 PST; weekly November10 22:35 PST.
