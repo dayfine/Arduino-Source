@@ -5,7 +5,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from . import allow, contracts, layering, style
+from . import allow, layering, style
 from .classes import measure_classes
 from .findings import annotations
 from .git_files import changed_files, default_base, read_revision
@@ -30,7 +30,6 @@ def run(root, base_ref=None, github=False):
         metrics = analyze(current, source)
         previous = analyze(current, previous_source) if original else []
         failures.extend(layering.check(current, source, previous_source))
-        failures.extend(contracts.check(current, source, previous_source))
         allowances, tag_errors = allow.parse(current, source)
         allowed, misplaced = allow.attach(current, source, allowances, metrics)
         failures.extend(tag_errors + misplaced)

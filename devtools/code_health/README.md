@@ -199,8 +199,9 @@ integration layer; extract a separate package only when another consumer needs i
 
 ## Header and native test contracts
 
-The fork's structural checks (`contracts.py`) run in both the normal CLI and
-pre-push/CI gate. They use the comment/literal-aware scope lexer, not raw line
+The fork's structural checks in `style.py` run in both the normal CLI and
+pre-push/CI gate. They share the existing parsing pass and comment/literal-aware
+scope lexer, not raw line
 matches or application source-extraction tests. Only changed namespace closes
 and declarations are enforced; untouched legacy declarations are grandfathered.
 

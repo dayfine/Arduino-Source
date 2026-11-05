@@ -8,7 +8,7 @@ HEADER = 'SerialPrograms/Source/VideoGames/PokemonFRLG/Programs/Example.h'
 
 
 def wrap(body):
-    return 'namespace PokemonAutomation{\nnamespace NintendoSwitch{\n' + body + '\n}\n}\n'
+    return 'namespace PokemonAutomation{\nnamespace NintendoSwitch{\n' + body + '\n} // namespace NintendoSwitch\n} // namespace PokemonAutomation\n'
 
 
 def in_function(body):
@@ -17,7 +17,8 @@ def in_function(body):
 
 class StyleCase(unittest.TestCase):
     def errors(self, source, path=CPP, previous=None):
-        return [f.message for f in check(path, source, previous)[0]]
+        # Isolate the original lexical rules; structural rules have their own fixtures.
+        return [f.message for f in check(path, source, previous)[0] if f.message.startswith('style:')]
 
     def warnings(self, source, path=CPP, previous=None):
         return [f.message for f in check(path, source, previous)[1]]

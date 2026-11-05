@@ -1,6 +1,6 @@
 import unittest
 
-from devtools.code_health.contracts import check
+from devtools.code_health.style import check
 
 
 HEADER = 'SerialPrograms/Source/Pokemon/Navigation/Example.h'
@@ -9,7 +9,9 @@ CPP = HEADER.replace('.h', '_Tests.cpp')
 
 class ContractTests(unittest.TestCase):
     def messages(self, source, path=HEADER, previous=None):
-        return [finding.message for finding in check(path, source, previous)]
+        # Isolate structural rules; CLI tests exercise the complete style pipeline.
+        return [finding.message for finding in check(path, source, previous)[0]
+                if not finding.message.startswith('style:')]
 
     def test_namespace_close_requires_matching_comment(self):
         self.assertTrue(any('namespace-close' in m for m in self.messages('namespace Pokemon{\n}\n')))
