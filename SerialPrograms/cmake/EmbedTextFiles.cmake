@@ -17,7 +17,10 @@
 # at run time, so no literal exceeds MSVC's limit of 16380 bytes.
 
 function(pa_embed_text_files TARGET FOLDER HEADER NAMESPACE FUNCTION)
-    file(GLOB FILES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/${FOLDER}/*.json")
+    # Canonicalize once so resource verification and embedding watch the same
+    # paths. Mixed absolute/../ aliases can produce duplicate Ninja outputs.
+    file(REAL_PATH "${FOLDER}" MAP_DIRECTORY BASE_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
+    file(GLOB FILES CONFIGURE_DEPENDS "${MAP_DIRECTORY}/*.json")
     if(NOT FILES)
         message(FATAL_ERROR "pa_embed_text_files(): no .json files in ${FOLDER}.")
     endif()
