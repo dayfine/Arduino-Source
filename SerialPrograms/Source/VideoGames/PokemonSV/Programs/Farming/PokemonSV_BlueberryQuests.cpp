@@ -1178,6 +1178,43 @@ void quest_wash_pokemon(const ProgramInfo& info, VideoStream& stream, ProControl
     context.wait_for_all_requests();
 }
 
+namespace{
+
+//Look through the current box for an egg, from the box system. Leaves the cursor on the egg and
+//returns its slot, or returns false if the box has none.
+bool find_egg_in_box(
+    const ProgramInfo& info, ConsoleHandle& console, ProControllerContext& context,
+    uint8_t& row, uint8_t& col
+){
+    BoxCurrentEggDetector egg_detector;
+    SomethingInBoxSlotDetector sth_in_box_detector(COLOR_RED);
+    for (row = 0; row < 5; row++){
+        for (uint8_t j_col = 0; j_col < 6; j_col++){
+            col = (row % 2 == 0 ? j_col : 5 - j_col);
+            move_box_cursor(info, console, context, BoxCursorLocation::SLOTS, row, col);
+            context.wait_for_all_requests();
+            auto snapshot = console.video().snapshot();
+            if (sth_in_box_detector.detect(snapshot) && egg_detector.detect(snapshot)){
+                console.log("Found egg.");
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+}
+
+bool box_has_egg(const ProgramInfo& info, ConsoleHandle& console, ProControllerContext& context){
+    enter_box_system_from_overworld(info, console, context);
+    context.wait_for(std::chrono::milliseconds(400));
+    uint8_t row = 0;
+    uint8_t col = 0;
+    const bool found = find_egg_in_box(info, console, context, row, col);
+    leave_box_system_to_overworld(info, console, context);
+    return found;
+}
+
 void quest_hatch_egg(
     ProgramEnvironment& env,
     ConsoleHandle& console, ProControllerContext& context,
@@ -1210,30 +1247,15 @@ void quest_hatch_egg(
     context.wait_for(std::chrono::milliseconds(400));
     
     //move_to_left_box(context);
-    BoxCurrentEggDetector egg_detector;
-    SomethingInBoxSlotDetector sth_in_box_detector(COLOR_RED);
-    bool egg_found = false;
     uint8_t row = 0;
     uint8_t col = 0;
-    for ( ; row < 5; row++){
-        for (uint8_t j_col = 0; j_col < 6; j_col++){
-            col = (row % 2 == 0 ? j_col : 5 - j_col);
-            move_box_cursor(env.program_info(), console, context, BoxCursorLocation::SLOTS, row, col);
-            context.wait_for_all_requests();
-            auto snapshot = console.video().snapshot();
-            if (sth_in_box_detector.detect(snapshot) && egg_detector.detect(snapshot)){
-                console.log("Found egg.");
-                egg_found = true;
-                break;
-            }
-        }
-        if (egg_found){
-            break;
-        }
-    }
-
-    if (!egg_found){
+    if (!find_egg_in_box(env.program_info(), console, context, row, col)){
+        //Leave the box and go back, so the quest fails instead of leaving the game in the box.
         console.log("No egg found during egg hatching quest!", COLOR_RED);
+        leave_box_system_to_overworld(env.program_info(), console, context);
+        pbf_press_button(context, BUTTON_PLUS, 160ms, 400ms);
+        return_to_plaza(env.program_info(), console, context);
+        context.wait_for_all_requests();
     }else{
         swap_two_box_slots(env.program_info(), console, context,
             BoxCursorLocation::SLOTS, row, col,

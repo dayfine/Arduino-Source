@@ -211,6 +211,9 @@ void quest_wash_pokemon(
     VideoStream& stream, ProControllerContext& context
 );
 
+//Open the box system from the overworld and check that the current box has an egg.
+bool box_has_egg(const ProgramInfo& info, ConsoleHandle& console, ProControllerContext& context);
+
 //Withdraw and hatch an egg
 void quest_hatch_egg(
     ProgramEnvironment& env,
