@@ -27,7 +27,7 @@ bool mostly_dark(const EdgeDark& edge){
     return edge.count > 0 && edge.dark * 100 >= edge.count * 15;
 }
 
-}
+} // namespace
 
 bool indoors(const ImageViewRGB32& screen){
     const size_t width = screen.width(), height = screen.height();
@@ -63,6 +63,6 @@ bool indoors(const ImageViewRGB32& screen){
 
 
 
-}
-}
-}
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

@@ -66,7 +66,7 @@ bool in_region(const std::string& map, const std::string& region, const TilePos&
     return std::find(tiles.begin(), tiles.end(), pos) != tiles.end();
 }
 
-}
+} // namespace
 
 
 //  Offsets are the maps' places in the game's world grid (the decomp's
@@ -106,7 +106,7 @@ bool on_route203_west_line(const TilePos& pos){
 namespace{
 const TilePos JUBILIFE_EAST_CORNER{42, 12};
 const int JUBILIFE_EAST_BOTTOM = 25;
-}
+} // namespace
 const StoryWorld& jubilife_east_maps(){
     static const StoryWorld maps = []{
         const MapData& city = story_map("JubilifeCity");
@@ -209,7 +209,7 @@ std::vector<TilePos> route202_region(const char* region){
     }
     return tiles;
 }
-}
+} // namespace
 
 std::vector<TilePos> story_catch_save_area(){
     return route202_region("catch_save_area");
@@ -294,6 +294,6 @@ std::vector<TilePos> route204_south_tiles_to_avoid(){
 
 
 
-}
-}
-}
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

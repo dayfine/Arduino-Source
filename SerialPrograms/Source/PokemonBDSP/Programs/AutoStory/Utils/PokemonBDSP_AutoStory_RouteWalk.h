@@ -30,6 +30,7 @@ namespace PokemonBDSP{
 //  Walking time per tile, measured on the console from the post-catch save:
 //  a row is deeper than a column is wide under the tilted camera.
 constexpr Milliseconds ROUTE_MS_PER_TILE_ACROSS = Milliseconds(160);    //  east or west
+//  Walking time per vertical tile (north or south).
 constexpr Milliseconds ROUTE_MS_PER_TILE_UP_DOWN = Milliseconds(240);   //  north or south
 //  From pressing the stick to the first step, when standing still.
 constexpr Milliseconds ROUTE_START_DELAY = Milliseconds(250);
@@ -47,6 +48,7 @@ enum class MoveSpeed{
 //  Rounded down: a count from too fast a pace runs over, which a wall leg
 //  forgives, where one from too slow a pace stops short of the wall.
 constexpr Milliseconds ROUTE_RUN_MS_PER_TILE_ACROSS = Milliseconds(100);
+//  Running time per vertical tile (north or south).
 constexpr Milliseconds ROUTE_RUN_MS_PER_TILE_UP_DOWN = Milliseconds(150);
 
 //  Time per tile in `direction` at `speed`.
@@ -91,6 +93,7 @@ struct RouteInput{
     size_t count;
     RouteInputEnd end;
 };
+//  Executes the specified route input sequence on the controller context.
 void press_route_input(ProControllerContext& context, const RouteInput& input);
 
 //  The tap route_turn() turns with: on the D-pad, ROUTE_TURN_TAP long.
@@ -130,6 +133,7 @@ bool talk_with_nudges(
     Milliseconds wait = Milliseconds(3000),
     const std::function<bool(const ImageViewRGB32& before, const ImageViewRGB32& after)>& accept = nullptr
 );
+//  D-pad nudge tap duration for micro-adjusting player position.
 constexpr Milliseconds ROUTE_NUDGE_TAP = Milliseconds(50);
 
 //  Whether a walk to the wall that ends on any of `after` can tell it has
@@ -168,6 +172,7 @@ void leave_door_south(VideoStream& stream, ProControllerContext& context, const 
 //  Brightness (mean r + g + b) below which a look is the door's fade, and
 //  above which a look that is not a room is outside.
 inline constexpr double DOOR_FADE_DARK = 120.0;
+//  Brightness threshold above which non-room frame is classified as outside.
 inline constexpr double DOOR_OUTSIDE_BRIGHT = 200.0;
 
 //  What leave_door_south() has seen of the door's fade so far.
@@ -185,7 +190,7 @@ bool door_walk_stops(DoorFadeWatch& watch, double brightness, bool room);
 
 
 
-}
-}
-}
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

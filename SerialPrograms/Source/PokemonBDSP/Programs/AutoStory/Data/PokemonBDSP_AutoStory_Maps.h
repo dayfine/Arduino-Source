@@ -51,7 +51,7 @@ std::vector<Pokemon::TilePos> map_region(std::string_view map, std::string_view 
 
 
 
-}
-}
-}
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

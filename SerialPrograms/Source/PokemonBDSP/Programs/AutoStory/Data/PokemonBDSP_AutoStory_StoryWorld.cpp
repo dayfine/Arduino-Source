@@ -47,7 +47,7 @@ std::optional<Direction> ledge_direction(TileKind tile){
     throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "Unknown TileKind.");
 }
 
-}
+} // namespace
 
 
 void StoryWorld::add(std::string name, const Pokemon::MapData& map, const TilePos& offset){
@@ -246,6 +246,6 @@ std::string describe(const StoryWorld& world, const TilePos& pos){
 
 
 
-}
-}
-}
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
