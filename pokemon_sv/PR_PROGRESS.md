@@ -1,7 +1,7 @@
 # BBQ PR progress
 
 Audited 2026-11-06 against live GitHub PR state/base metadata and the diffs of
-all 34 open BBQ-related fork PRs. Inventory: **43 fork PRs: 34 open, 8 closed,
+all 34 originally open BBQ-related fork PRs. Inventory: **43 fork PRs: 33 open, 9 closed,
 1 merged notes PR**. Selection: head branch `bbq/*` or title containing BBQ /
 Blueberry. Shared dependencies are listed separately below. This is an inventory
 and dependency audit, **not renewed CI/live-console approval**. Old build counts
@@ -15,8 +15,9 @@ rebase/force-push instructions. No agent publishes upstream.
 ## Current dependency graph
 
 Numbers below are fork PRs. These are current base relationships, not proof that
-parents contain the latest upstream changes. #51 is still open on the fork even
-though its counterpart PokemonAutomation/Arduino-Source#1754 is merged.
+parents contain the latest upstream changes. #51 is closed on the fork after confirming its counterpart
+PokemonAutomation/Arduino-Source#1754 merged. Its branch is retained for children;
+the graph records their existing bases until the owning chains are updated.
 
 ```text
 main → #51
@@ -79,7 +80,7 @@ bbq/battle-entry-guard → #35                 Kleavor look-around; old parent c
 | [#37](https://github.com/dayfine/Arduino-Source/pull/37) | open | `bbq/tests-file` | run rounds against injectable BBQGameActions |
 | [#38](https://github.com/dayfine/Arduino-Source/pull/38) | open | `bbq/save-milestone-tracker` | separate the quest plan from the controller actions |
 | [#49](https://github.com/dayfine/Arduino-Source/pull/49) | merged | `agents` | Merged notes PR, not a code prerequisite. |
-| [#51](https://github.com/dayfine/Arduino-Source/pull/51) | open | `main` | Still open on fork; upstream #1754 merged Nov 3. |
+| [#51](https://github.com/dayfine/Arduino-Source/pull/51) | closed | `main` | Upstream #1754 merged Nov 3; redundant fork PR closed Nov 6, branch retained for children. |
 | [#52](https://github.com/dayfine/Arduino-Source/pull/52) | open | `bbq/bp-status` | check the BP stats against the rerolls at the end of a run |
 | [#53](https://github.com/dayfine/Arduino-Source/pull/53) | open | `bbq/quest-planner` | pin the ways the round loop gets stuck today |
 | [#73](https://github.com/dayfine/Arduino-Source/pull/73) | open | `bbq/reroll-impossible-quests` | fail the egg quest when the box has no egg, and check for one at start (behavior change) |
@@ -90,7 +91,7 @@ bbq/battle-entry-guard → #35                 Kleavor look-around; old parent c
 - PokemonAutomation/Arduino-Source#1628: BP crop, **merged Oct 28**.
 - PokemonAutomation/Arduino-Source#1631: quest identity, **merged Oct 28**.
 - PokemonAutomation/Arduino-Source#1636: confirmed Tera entry, **merged Oct 26**.
-- PokemonAutomation/Arduino-Source#1754: BBQ test file, **merged Nov 3**; fork #51 remains open.
+- PokemonAutomation/Arduino-Source#1754: BBQ test file, **merged Nov 3**; fork #51 closed Nov 6 after confirmation.
 - PokemonAutomation/Arduino-Source#1759 and fork #7: detector tests **closed**; active replacement #180.
 - Fork #50: shared streamless error-report fix, **closed**; upstream #1743 **merged**.
 - Upstream #1625/#1626/#1629/#1632/#1639/#1640/#1641/#1642/#1644/#1645/#1659:
@@ -131,7 +132,8 @@ branch is ready for upstream.
 - Resolve the #3/#19 catch-timeout capture overlap at integration.
 - Refresh stale upstream references in PR descriptions (#27 still names closed
   upstream #1640); refresh #35's obsolete closed parent in its owning chain.
-- Reconcile fork #51 with merged upstream #1754 before the next handoff.
+- Refresh #51's children onto the main branch containing upstream #1754 in their
+  owning chains. #51 itself is now closed; its branch was retained, not deleted.
 - Recheck CI/tests at the final heads after changes. No new console run is authorized
   or claimed by this documentation audit.
 
