@@ -123,6 +123,17 @@ bool exclusions_leave_a_blue_quest(const BBQOption& options){
 // language is wrong so no quest is read, or there is no BP left to reroll.
 const size_t MAX_READS_WITHOUT_DOABLE_QUEST = 30;
 
+}
+
+// Quests done at Central Plaza with no flight out: they start at its fly
+// point and fly back to it, so the player is where the round actions and the
+// next quest expect. Every other route flies to another plaza or area.
+bool bbq_quest_is_no_trip(BBQuests quest){
+    return quest == BBQuests::make_tm || quest == BBQuests::travel_500;
+}
+
+namespace{
+
 // Whether a round that took the completed count from previous_completed
 // to completed crossed a nonzero multiple of the save interval.
 bool bbq_save_due(uint64_t previous_completed, uint64_t completed, uint64_t interval){
@@ -208,23 +219,37 @@ void run_bbq_rounds(Logger& logger, const BBQOption& options, BBQGameActions& ga
         const uint64_t completed_before_round = num_completed_quests;
         bool replan_after_reroll = false;
         std::optional<std::vector<BBQuests>> rerolled_panel;
+        //The panel read that checked a completed no-trip quest. Nothing runs
+        //between it and the next dispatch or plan, so a no-trip quest next or
+        //the next plan starts from it instead of reading again.
+        std::optional<std::vector<BBQuests>> no_trip_panel;
         for (auto current_quest : quests_to_do){
             //Check if quest was already completed (ex. 500 meters completed while navigating to take a photo)
             if (dispatch_panel){
                 logger.log("Reusing verified quest panel for first dispatch.");
                 quest_list = std::move(*dispatch_panel);
                 dispatch_panel.reset();
+            }else if (no_trip_panel && bbq_quest_is_no_trip(current_quest)){
+                logger.log("Reusing quest panel read after a no-trip quest for dispatch.");
+                quest_list = std::move(*no_trip_panel);
+                no_trip_panel.reset();
+                forget_quests_gone_from_panel(failed_quests, quest_list);
             }else{
+                no_trip_panel.reset();
                 logger.log("Reading quest panel before dispatch.");
                 quest_list = read_panel();
             }
             if (std::find(quest_list.begin(), quest_list.end(), current_quest) != quest_list.end()){
                 logger.log("Current quest exists on list. Doing quest.");
-                bool questSuccess = game.do_quest(current_quest, eggs_hatched);
+                std::vector<BBQuests> panel_after;
+                bool questSuccess = game.do_quest(current_quest, eggs_hatched, panel_after);
                 if (questSuccess){
                     logger.log("Quest completed successfully.");
                     game.quest_completed();
                     num_completed_quests++;
+                    if (bbq_quest_is_no_trip(current_quest)){
+                        no_trip_panel = std::move(panel_after);
+                    }
                 }else{
                     logger.log("Quest did not complete successfully.");
                     switch (options.OUT_OF_RETRIES){
@@ -261,6 +286,15 @@ void run_bbq_rounds(Logger& logger, const BBQOption& options, BBQGameActions& ga
         uint64_t temp_save_num_option = options.SAVE_NUM_QUESTS;
         // A round can cross a milestone without ending at an exact multiple.
         const bool save = bbq_save_due(completed_before_round, num_completed_quests, temp_save_num_option);
+
+        //A no-trip quest ended the round at Central Plaza, and fixing the date
+        //does not change the quests, so plan the next quests from its read
+        //at once. Round actions still run before a save or the last stop.
+        if (no_trip_panel && !save && num_completed_quests < options.NUM_QUESTS){
+            logger.log("Chaining after a no-trip quest. Skipping round actions.");
+            observed_panel = std::move(no_trip_panel);
+            continue;
+        }
         game.end_round(save);
 
         //The reroll was the last game action of the round. Fixing the date
@@ -295,8 +329,8 @@ public:
     ) override{
         return PokemonSV::process_quest_list(m_env.program_info(), m_env.console, m_context, m_options, quests, eggs_hatched);
     }
-    virtual bool do_quest(BBQuests quest, uint8_t& eggs_hatched) override{
-        return process_and_do_quest(m_env, m_env.console, m_context, m_options, quest, eggs_hatched);
+    virtual bool do_quest(BBQuests quest, uint8_t& eggs_hatched, std::vector<BBQuests>& panel_after) override{
+        return process_and_do_quest(m_env, m_env.console, m_context, m_options, quest, eggs_hatched, &panel_after);
     }
     virtual std::optional<std::vector<BBQuests>> reroll_quest(BBQuests quest) override{
         std::vector<BBQuests> quests = PokemonSV::read_quests(m_env.program_info(), m_env.console, m_context, m_options);
