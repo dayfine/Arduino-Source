@@ -192,16 +192,24 @@ public:
 
 struct BBQAutoBattlePolicy{
     uint64_t kill_target = 10;
+    //Give up after this many passes in a row with no kill.
+    uint64_t max_empty_passes = 3;
+    //Give up after the pass that ends past this time.
+    std::chrono::minutes time_limit = std::chrono::minutes(35);
 };
 
 //Why run_auto_battle() returned.
 enum class BBQAutoBattleResult{
     TargetReached,
+    NoKills,        //max_empty_passes passes in a row had no kill.
+    TimeLimit,
 };
 
 //Clear Chargestone Cavern, one pass at a time, until the kills reach the target, and return why
 //it stopped. It ends at Central Plaza, where the next quest starts. Logs one line per pass: its
 //kills, the total, the lead's HP, the time spent, and what happens next.
+//It gives up early when a limit in `policy` is reached; the board check then decides the quest
+//failed.
 BBQAutoBattleResult run_auto_battle(
     Logger& logger,
     BBQAutoBattleActions& actions,
