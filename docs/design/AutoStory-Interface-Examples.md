@@ -2,8 +2,9 @@
 
 Companion to [the cross-game architecture review](AutoStory-Shared-Architecture.md).
 These are **proposed API/data examples**, not implemented public interfaces or
-validated game fixtures. Supporting types and routine error handling are omitted
-from the code sketches. JSON versions, extension names and sample IDs below are
+validated game fixtures. [Contract types and polymorphism choices](AutoStory-Contract-Types.md)
+define the supporting types in a standalone, syntax-checked header. Engine/codec
+behavior remains a sketch. JSON versions, extension names and sample IDs below are
 illustrative. No existing runtime loader accepts these documents yet.
 
 The useful division is shared orchestration plus game adapters. Battle mechanics
@@ -14,43 +15,25 @@ Python class hierarchies.
 
 ## 1. Story events: common data with typed game extensions
 
-The core should know about travel, battle, heal, shop, capture, learning and
-checkpoint operations. A game extension carries a namespaced schema and payload.
-Its registered game adapter validates that payload and decodes it into a concrete
-game-specific type. The shared engine never includes FRLG/BDSP/SV action headers.
-
-C++ shape; `Destination`, `Requirement` and `Observation` are tagged records,
-not arbitrary callbacks serialized into JSON:
+The common action vocabulary is parameterized by a concrete game action type,
+which can itself be a variant. Stored JSON uses schema tags and payloads; a
+parsing layer validates it into these types before execution. Raw JSON is not
+stored in the in-memory action model. Definitions for every supporting type
+below are in [the contract sketch](examples/AutoStory_ContractSketch.h).
 
 ```cpp
-// Registered game-specific action, e.g. "frlg/cut-obstacle/1".
-struct GameAction{
-    std::string schema;
-    JsonValue payload;
-};
-
-// Common actions; definitions carry each action's required parameters.
-using StoryAction = std::variant<
-    TravelAction, TrainerBattleAction, HealAction, ShopAction,
-    CaptureAction, LearnMoveAction, GameAction
->;
-
-// Data only: predicates have IDs and arguments, not captured C++ lambdas.
-struct StoryEventData{
-    std::string id;
-    std::vector<Requirement> preconditions;
-    StoryAction action;
-    std::vector<Requirement> postconditions;
-    RecoveryPolicy recovery;
-};
-
-// Exactly one game/version and data profile apply to a selected plan.
-struct StoryPlanData{
-    GameProfile game;
-    DataPins pins;
-    std::vector<CheckpointData> checkpoints;
-};
+// Concrete extension types live in the game's module in production.
+using FrlgActions = std::variant<Frlg::CutObstacle, Frlg::ApproachTrainer>;
+using FrlgAction = Action<FrlgActions>;
+using FrlgEvent = StoryEventData<FrlgActions>;
+using FrlgPlan = StoryPlanData<FrlgActions>;
 ```
+
+`Action<T>` is `std::variant<TravelAction, TrainerBattleAction, HealAction,
+ShopAction, CaptureAction, LearnMoveAction, T>`. `StoryEventData<T>` adds typed
+pre/postconditions and recovery policy; `StoryPlanData<T>` adds game/profile,
+input `DataPins` and checkpoints. `DataPins` binds exact map/reference/ruleset
+artifacts, separately from the plan source, policy and runtime save identities.
 
 Reuse/extend the existing
 `StoryStep` -> `Event` conversion and `run_checkpoint()`/`run_segment()` ownership,
@@ -103,45 +86,21 @@ permission for the offline replay to assume that an opaque scene succeeded.
 
 ### One runner, several executors
 
-```cpp
-// Success is not the default when a check is unreadable.
-enum class CheckResult{ SATISFIED, VIOLATED, UNKNOWN };
+The recommended design templates action data, the codec and a narrow binding
+visitor. It binds concrete game-executor calls into the existing non-template
+event/checkpoint engine. It does **not** require a templated engine or a universal
+virtual interface carrying JSON. See [the binder example and tradeoffs](AutoStory-Contract-Types.md#1-recommended-polymorphism-typed-data-a-narrow-binder-shared-runner).
 
-// Report partial effects and interruptions as well as completed actions.
-struct ActionReport{
-    ActionStatus status;
-    std::vector<Observation> observations;
-    std::vector<EffectEvidence> effects;
-    std::optional<Failure> failure;
-};
+`FrlgExecutor`, `BdspExecutor` and `SvExecutor` implement action overloads using
+their own movement/menu/battle/detector routines. For example, the FRLG executor
+visits `FrlgActions`, then dispatches `Frlg::CutObstacle` to its screen-confirmed
+cut routine. Schema-string dispatch occurs in parsing, not in the execution loop.
+There is no growing cross-game switch in the runner.
 
-// Game-owned actions and observation; orchestration stays in the runner.
-class GameExecutor{
-public:
-    virtual ~GameExecutor() = default;
-    virtual ValidationReport validate(const StoryPlanData& plan) const = 0;
-    virtual CheckReport observe(std::span<const Requirement> requirements) = 0;
-    virtual ActionReport execute(const StoryAction& action, const StoryState& before) = 0;
-};
-```
-
-`FrlgExecutor`, `BdspExecutor` and `SvExecutor` each implement these operations by
-calling their own existing movement, menu, battle and detector routines. A visitor
-dispatches the common action variant; the game registry dispatches a `GameAction`:
-
-```cpp
-// Inside FrlgExecutor's game-action dispatch, after schema/payload validation.
-if (action.schema == "frlg/cut-obstacle/1"){
-    const CutObstacle request = decode_cut_obstacle(action.payload);
-    return cut_obstacle_with_screen_confirmation(m_io, request);
-}
-return unsupported_action(action.schema);
-```
-
-This is a game-local branch, not a growing cross-game switch in the runner.
-Decode into `CutObstacle` only after validation; a generic `JsonValue` does not
-make the payload untyped. Most actions should become common semantic operations
-once two games need them; one-off puzzles/scenes can remain extensions.
+The [report/check structures](AutoStory-Contract-Types.md#5-observation-effects-and-failure-are-different-records)
+define COMPLETED/INTERRUPTED/FAILED/UNSUPPORTED/INCOMPLETE and
+SATISFIED/VIOLATED/UNKNOWN separately. Observations, effects, provenance and
+failures are typed records, including partial state changes and unreadable fields.
 
 | Selected game | Common travel implementation | Example required extension |
 |---|---|---|
@@ -201,8 +160,8 @@ above must be rejected by production validation. Support is a claim to test:
 load-time capability checks are supplemented by entry validation (moves, abilities,
 items, format and game-specific mechanics) and mechanics regression cases.
 
-Python interfaces belong in PokemonSimulation. This sketch leaves `BattleState`,
-`BattleAction`, `PolicyView` and related domain types to the battle schema:
+Python interfaces belong in PokemonSimulation. The [boundary type stubs](AutoStory-Contract-Types.md#6-remaining-map-and-battle-boundary-names)
+define the roles of `BattleState`, `BattleAction`, `PolicyView` and related types:
 
 ```python
 class MechanicsBackend(Protocol):
