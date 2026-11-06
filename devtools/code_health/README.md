@@ -247,8 +247,9 @@ should remain beside the tests or need a deliberate parser extension, not an
 unexplained bypass. Header parameter spans, game movement policies and comment
 quality still require design review. These rules do not force a default policy.
 
-Namespace-only function moves retain the previous metric ceilings only when the
-function text (including its signature) is identical, stays in the same file,
-and the old qualified symbol is gone. Copies and changed bodies receive no
-such allowance. Namespace comments are also recognized after declarations such
-as `Q_DECLARE_METATYPE(...)` that do not end with a semicolon.
+Namespace moves retain previous metric ceilings only when the declaration text
+is unchanged, stays in the same file, matches one old and one current function,
+and the old qualified symbol is gone. Copies and ambiguous matches receive no
+allowance, and increases beyond the previous metrics still fail. Namespace
+comments are also recognized after declarations such as
+`Q_DECLARE_METATYPE(...)` that do not end with a semicolon.

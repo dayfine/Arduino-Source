@@ -1,4 +1,6 @@
 """Compare changed C++ with its base revision; no stored debt registry."""
+from collections import Counter, defaultdict
+
 from .allow import ceiling as bypass_ceiling
 from .config import ADVISORY, HINTS
 from .findings import Finding
@@ -7,17 +9,21 @@ from .findings import Finding
 def base_values(previous, current=()):
     old = {}
     current_keys = {metric.key for metric in current}
+    current_moves = Counter(move_key(metric) for metric in current if metric.declaration_identity)
+    moved = defaultdict(dict)
     for metric in previous:
         old[metric.key] = max(old.get(metric.key, 0), metric.value)
-        if metric.source_identity is not None and metric.key not in current_keys:
-            key = move_key(metric)
-            old[key] = max(old.get(key, 0), metric.value)
+        if metric.declaration_identity is not None and metric.key not in current_keys:
+            moved[move_key(metric)][metric.key] = metric.value
+    for key, candidates in moved.items():
+        if len(candidates) == 1 and current_moves[key] == 1:
+            old[key] = next(iter(candidates.values()))
     return old
 
 
 def move_key(metric):
-    """An exact same-file function move; never borrow debt from a retained copy."""
-    return ('namespace_move', metric.path, metric.source_identity, metric.check)
+    """A same-file namespace move with an unchanged, unambiguous declaration."""
+    return ('namespace_move', metric.path, metric.declaration_identity, metric.check)
 
 
 def base_value(metric, old, default):
