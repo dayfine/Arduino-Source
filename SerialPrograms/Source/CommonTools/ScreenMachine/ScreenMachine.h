@@ -27,6 +27,7 @@
 namespace PokemonAutomation{
 
 
+// Single recognizable screen state, including detection predicate and handler action.
 struct ScreenState{
     std::string name;
     //  Whether this is the screen. States are tried in order; the first match wins, so
@@ -81,6 +82,12 @@ template <typename ControllerContext>
 std::string run_screen_machine(
     VideoStream& stream, ControllerContext& context, StepTrace& trace,
     const std::vector<ScreenState>& states, Milliseconds timeout
+);
+
+template <typename ControllerContext>
+std::string run_screen_machine(
+    VideoStream& stream, ControllerContext& context, StepTrace& trace,
+    const std::vector<ScreenState>& states, Milliseconds timeout
 ){
     ScreenMachineChecks checks(trace);
     const WallClock deadline = current_time() + timeout;
@@ -101,5 +108,5 @@ std::string run_screen_machine(
 
 
 
-}
+} // namespace PokemonAutomation
 #endif

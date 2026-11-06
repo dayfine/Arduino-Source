@@ -188,7 +188,7 @@ Event from_save_event(const Pose& start){
     return event;
 }
 
-}
+} // namespace
 
 Checkpoint build_story_checkpoint(const StoryCheckpoint& data, StoryStepExecutor& executor){
     executor.begin_attempt(data);
@@ -233,7 +233,7 @@ std::string missing_field(const StoryStep& step){
     }
 }
 
-}
+} // namespace
 
 std::vector<std::string> lint_story_checkpoint(const StoryCheckpoint& data){
     std::vector<std::string> problems;
@@ -285,5 +285,5 @@ std::optional<Direction> facing_of(const Pose& pose){
 
 
 
-}
-}
+} // namespace Pokemon
+} // namespace PokemonAutomation

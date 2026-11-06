@@ -60,12 +60,7 @@ struct WallCase{
     bool anchored = false;
 };
 
-class Test_WalkToWall : public UnitTest{
-public:
-    Test_WalkToWall()
-        : UnitTest("PokemonBDSP::AutoStory - Route planner: walking until stopped")
-    {}
-    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+UnitTestResult test_walk_to_wall(Logger&){
         const std::vector<WallCase> cases{
             {.name = "to a wall", .rows = {"....#"}, .stop = {3, 0}, .tiles = 3, .anchored = true},
             {.name = "off the map", .rows = {"...."}, .stop = {3, 0}, .tiles = 3, .anchored = false},
@@ -81,18 +76,12 @@ public:
             }
         }
         return true;
-    }
-};
+}
 
 
 //  plan_tile_route() around a pillar: two legs, both to a wall, that trace
 //  to the goal.
-class Test_PlanTileRoute : public UnitTest{
-public:
-    Test_PlanTileRoute()
-        : UnitTest("PokemonBDSP::AutoStory - Route planner: legs to walls around a pillar")
-    {}
-    virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
+UnitTestResult test_plan_tile_route(Logger& logger){
         const StoryWorld world = make_world({"#####", "#...#", "#.#.#", "#...#", "#####"});
         const std::optional<std::vector<TileLeg>> legs = plan_tile_route(world, {1, 1}, {3, 3});
         if (!legs || legs->size() != 2 || !(*legs)[0].ends_at_wall || !(*legs)[1].ends_at_wall){
@@ -107,8 +96,7 @@ public:
             return std::string("A route to the start is not empty.");
         }
         return true;
-    }
-};
+}
 
 
 //  plan_robust_route() from one or several tiles to a goal, with the open
@@ -122,12 +110,7 @@ struct RobustCase{
     std::string legs;
 };
 
-class Test_PlanRobustRoute : public UnitTest{
-public:
-    Test_PlanRobustRoute()
-        : UnitTest("PokemonBDSP::AutoStory - Route planner: robust plans")
-    {}
-    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+UnitTestResult test_plan_robust_route(Logger&){
         const StoryWorld world = make_world({"######", "#....#", "######"});
         RobustPlanCosts exact_step;
         exact_step.exact_open_tiles = 1;
@@ -149,18 +132,12 @@ public:
             return std::string("A start on a wall did not throw.");
         }catch (InternalProgramError&){}
         return true;
-    }
-};
+}
 
 
 //  A trainer's sight stops at the first tile the player cannot stand on,
 //  and a leg through it is reported; a leg that is stopped throws.
-class Test_TrainerSight : public UnitTest{
-public:
-    Test_TrainerSight()
-        : UnitTest("PokemonBDSP::AutoStory - Route planner: trainers' sight lines")
-    {}
-    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+UnitTestResult test_trainer_sight(Logger&){
         const StoryWorld world = make_world({".....", ".....", "..#.."});
         const TrainerSight trainer{.name = "lass", .pos = {2, 0}, .facing = Direction::SOUTH, .range = 4};
         if (sight_tiles(world, trainer) != std::vector<TilePos>{{2, 1}}){
@@ -176,20 +153,70 @@ public:
             return std::string("A leg off the map did not throw.");
         }catch (InternalProgramError&){}
         return true;
-    }
+}
+
+
+struct RoutePlannerInput{
+    std::string name;
+    std::function<UnitTestResult(Logger&)> body;
 };
 
-}
+struct RoutePlannerExpectation{
+};
 
+struct RoutePlannerCase{
+    RoutePlannerInput input;
+    RoutePlannerExpectation expectation;
+};
+
+class Test_RoutePlanner : public UnitTest{
+public:
+    explicit Test_RoutePlanner(RoutePlannerCase test_case)
+        : UnitTest("PokemonBDSP::AutoStory - Route planner: " + test_case.input.name)
+        , m_case(std::move(test_case))
+    {}
+    virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
+        try{
+            return m_case.input.body(logger);
+        }catch (Exception& e){
+            return std::string(e.name()) + ": " + e.message();
+        }
+    }
+
+private:
+    RoutePlannerCase m_case;
+};
+
+} // namespace
+
+
+const RoutePlannerCase ROUTE_PLANNER_CASES[] = {
+    {
+        .input = {"walking until stopped", test_walk_to_wall},
+        .expectation = {},
+    },
+    {
+        .input = {"legs to walls around a pillar", test_plan_tile_route},
+        .expectation = {},
+    },
+    {
+        .input = {"robust plans", test_plan_robust_route},
+        .expectation = {},
+    },
+    {
+        .input = {"trainers' sight lines", test_trainer_sight},
+        .expectation = {},
+    },
+};
 
 void add_tests_AutoStory_RoutePlanner(UnitTestDatabase& database){
-    database.add<Test_WalkToWall>();
-    database.add<Test_PlanTileRoute>();
-    database.add<Test_PlanRobustRoute>();
-    database.add<Test_TrainerSight>();
+    for (const auto& item : ROUTE_PLANNER_CASES){
+        database.add<Test_RoutePlanner>(item);
+    }
 }
 
 
-}
-}
-}
+
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

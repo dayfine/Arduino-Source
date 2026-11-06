@@ -21,7 +21,7 @@ void add_tests_AutoStory_Segment00(UnitTestDatabase& database);
 
 
 
-}
-}
-}
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

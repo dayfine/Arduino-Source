@@ -35,6 +35,7 @@ enum class LegEnd{
     SCENE,          //  walks until a cutscene takes over
 };
 
+//  Single directional leg within a recorded route with its ending condition.
 struct RouteLeg{
     Pokemon::Direction direction;
     size_t tiles;
@@ -46,6 +47,7 @@ struct RouteLeg{
     bool exact = true;
 };
 
+//  Recorded sequence of route legs associated with a story checkpoint.
 struct RouteRecord{
     std::string checkpoint;         //  "01.05"
     std::string title;
@@ -57,11 +59,12 @@ struct RouteRecord{
     std::string source;             //  the code and the console runs behind it
 };
 
+//  Returns all defined story route records across checkpoints.
 const std::vector<RouteRecord>& all();
 
 
-}
-}
-}
-}
+} // namespace RouteRecords
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif
