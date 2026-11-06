@@ -719,6 +719,12 @@ file(GLOB LIBRARY_SOURCES
     Source/CommonFramework/Startup/SetupSettings.h
     Source/CommonFramework/Startup/StartupArguments.cpp
     Source/CommonFramework/Startup/StartupArguments.h
+    Source/CommonFramework/Devices/LabDeviceAccessQt.cpp
+    Source/CommonFramework/Devices/LabDeviceAccessQt.h
+    Source/CommonFramework/Devices/LabDeviceRuntime.cpp
+    Source/CommonFramework/Devices/LabDeviceRuntime.h
+    Source/CommonFramework/Devices/LabDeviceAccessQt_Tests.cpp
+    Source/CommonFramework/Devices/LabDeviceAccessQt_Tests.h
     Source/CommonFramework/Startup/LabStartupPolicy.cpp
     Source/CommonFramework/Startup/LabStartupPolicy.h
     Source/CommonFramework/Startup/LabStartupPolicy_Tests.cpp
