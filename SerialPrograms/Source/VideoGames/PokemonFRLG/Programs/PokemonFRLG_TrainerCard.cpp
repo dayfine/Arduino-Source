@@ -80,7 +80,7 @@ auto read_on_card(ConsoleHandle& console, ProControllerContext& context, Read re
     return tid;
 }
 
-}
+} // namespace
 
 uint16_t read_trainer_card_tid(ConsoleHandle& console, ProControllerContext& context, Language language){
     uint16_t tid = read_on_card(console, context, [&](TrainerIdReader& reader, const VideoSnapshot& screen){
@@ -100,6 +100,6 @@ std::optional<uint16_t> try_read_trainer_card_tid(ConsoleHandle& console, ProCon
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

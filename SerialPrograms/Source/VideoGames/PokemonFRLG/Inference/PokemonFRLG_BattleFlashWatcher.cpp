@@ -28,7 +28,7 @@ constexpr double FLASH_DARKER = 0.8;    //  the dip is below this much of the br
 constexpr double FLASH_FLOOR = 0.4;     //  and above this much: lower is a fade to black
 constexpr double FLASH_RECOVERY = 1.1;  //  then the screen comes back to this much of the dip
 
-}
+} // namespace
 
 
 BattleFlashWatcher::BattleFlashWatcher(Color color)
@@ -71,6 +71,6 @@ bool BattleFlashWatcher::process_frame(const ImageViewRGB32& frame, WallClock ti
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

@@ -56,7 +56,7 @@ bool frame_color(uint32_t pixel){
     return r >= 95 && r <= 170 && g >= 90 && g <= 175 && b >= 120 && b <= 240 && b >= r + 15;
 }
 
-}
+} // namespace
 
 bool battle_yes_no_shows(const ImageViewRGB32& screen){
     if (!BattleLearnDialogDetector(COLOR_RED).detect(screen)){
@@ -77,6 +77,6 @@ bool battle_yes_no_shows(const ImageViewRGB32& screen){
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

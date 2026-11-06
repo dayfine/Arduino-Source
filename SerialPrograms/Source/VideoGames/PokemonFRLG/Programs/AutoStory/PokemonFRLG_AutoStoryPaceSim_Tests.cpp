@@ -111,35 +111,61 @@ UnitTestResult test_capture_paced_in_trainer_sight(){
 }
 
 
+struct AutoStoryPaceSimInput{
+    std::string name;
+    std::function<UnitTestResult()> body;
+};
+
+struct AutoStoryPaceSimExpectation{
+    const char* description;
+};
+
+struct AutoStoryPaceSimTestCase{
+    AutoStoryPaceSimInput input;
+    AutoStoryPaceSimExpectation expectation;
+};
+
 class Test_AutoStoryPaceSim : public UnitTest{
 public:
-    Test_AutoStoryPaceSim(std::string name, std::function<UnitTestResult()> body)
-        : UnitTest("PokemonFRLG::AutoStory - Pace Sim: " + std::move(name))
-        , m_body(std::move(body))
+    explicit Test_AutoStoryPaceSim(AutoStoryPaceSimTestCase scenario)
+        : UnitTest("PokemonFRLG::AutoStory - Pace Sim: " + scenario.input.name)
+        , m_scenario(std::move(scenario))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
         try{
-            return m_body();
+            return m_scenario.input.body();
         }catch (Exception& e){
             return std::string(e.name()) + ": " + e.message();
         }
     }
 
 private:
-    std::function<UnitTestResult()> m_body;
+    AutoStoryPaceSimTestCase m_scenario;
 };
 
-}
+const AutoStoryPaceSimTestCase AUTO_STORY_PACE_SIM_CASES[] = {
+    {
+        .input = {
+            .name = "a capture paced in a trainer's sight fights them and goes on",
+            .body = test_capture_paced_in_trainer_sight,
+        },
+        .expectation = {
+            .description = "handles trainer encounter while pacing and resumes capture sequence",
+        },
+    },
+};
+
+} // namespace
 
 
 void add_tests_AutoStoryPaceSim(UnitTestDatabase& database){
-    database.add<Test_AutoStoryPaceSim>(
-        "a capture paced in a trainer's sight fights them and goes on", test_capture_paced_in_trainer_sight
-    );
+    for (const auto& scenario : AUTO_STORY_PACE_SIM_CASES){
+        database.add<Test_AutoStoryPaceSim>(scenario);
+    }
 }
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

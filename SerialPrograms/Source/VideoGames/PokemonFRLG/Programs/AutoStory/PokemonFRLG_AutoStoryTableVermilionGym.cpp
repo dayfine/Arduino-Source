@@ -56,7 +56,7 @@ StoryStep unless(const char* flag, StoryStep step){
     return step;
 }
 
-}
+} // namespace
 
 
 //  HM01 Cut, from the S.S. Anne (00.22), to the Oddish (00.20), second in
@@ -152,7 +152,7 @@ StoryCheckpoint lt_surge(){
 }
 
 
-}
-}
-}
-}
+} // namespace StoryTable
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

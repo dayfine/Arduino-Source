@@ -22,49 +22,90 @@ namespace PokemonFRLG{
 namespace StoryTable{
 
 
+//  Cardinal direction: North.
 inline constexpr Direction NORTH = Direction::NORTH;
+//  Cardinal direction: South.
 inline constexpr Direction SOUTH = Direction::SOUTH;
+//  Cardinal direction: East.
 inline constexpr Direction EAST = Direction::EAST;
+//  Cardinal direction: West.
 inline constexpr Direction WEST = Direction::WEST;
 
+//  Pallet Town player's bedroom map.
 inline constexpr const char* BEDROOM = "PalletTown_PlayersHouse_2F";
+//  Pallet Town overworld map.
 inline constexpr const char* PALLET = "PalletTown";
+//  Professor Oak's lab map.
 inline constexpr const char* LAB = "PalletTown_ProfessorOaksLab";
+//  Viridian City overworld map.
 inline constexpr const char* VIRIDIAN = "ViridianCity";
+//  Viridian City Mart map.
 inline constexpr const char* VIRIDIAN_MART = "ViridianCity_Mart";
+//  Viridian City Pokemon Center map.
 inline constexpr const char* VIRIDIAN_CENTER = "ViridianCity_PokemonCenter_1F";
+//  Viridian Forest overworld map.
 inline constexpr const char* FOREST = "ViridianForest";
+//  Viridian Forest North Entrance gate map.
 inline constexpr const char* FOREST_GATE = "Route2_ViridianForest_NorthEntrance";
+//  Pewter City overworld map.
 inline constexpr const char* PEWTER = "PewterCity";
+//  Pewter City Pokemon Center map.
 inline constexpr const char* PEWTER_CENTER = "PewterCity_PokemonCenter_1F";
+//  Pewter City Gym map.
 inline constexpr const char* GYM = "PewterCity_Gym";
+//  Route 3 overworld map.
 inline constexpr const char* ROUTE3 = "Route3";
+//  Route 4 overworld map.
 inline constexpr const char* ROUTE4 = "Route4";
+//  Route 4 Pokemon Center map.
 inline constexpr const char* ROUTE4_CENTER = "Route4_PokemonCenter_1F";
+//  Mt. Moon 1F map.
 inline constexpr const char* MT_MOON_1F = "MtMoon_1F";
+//  Mt. Moon B2F map.
 inline constexpr const char* MT_MOON_B2F = "MtMoon_B2F";
+//  Cerulean City overworld map.
 inline constexpr const char* CERULEAN = "CeruleanCity";
+//  Cerulean City Pokemon Center map.
 inline constexpr const char* CERULEAN_CENTER = "CeruleanCity_PokemonCenter_1F";
+//  Cerulean City Mart map.
 inline constexpr const char* CERULEAN_MART = "CeruleanCity_Mart";
+//  Cerulean City Gym map.
 inline constexpr const char* CERULEAN_GYM = "CeruleanCity_Gym";
+//  Route 24 overworld map.
 inline constexpr const char* ROUTE24 = "Route24";
+//  Route 25 overworld map.
 inline constexpr const char* ROUTE25 = "Route25";
+//  Bill's Sea Cottage map.
 inline constexpr const char* SEA_COTTAGE = "Route25_SeaCottage";
+//  Route 6 overworld map.
 inline constexpr const char* ROUTE6 = "Route6";
+//  Vermilion City overworld map.
 inline constexpr const char* VERMILION = "VermilionCity";
+//  Vermilion City Pokemon Center map.
 inline constexpr const char* VERMILION_CENTER = "VermilionCity_PokemonCenter_1F";
+//  Vermilion City Gym map.
 inline constexpr const char* VERMILION_GYM = "VermilionCity_Gym";
+//  S.S. Anne 1F corridor map.
 inline constexpr const char* SS_ANNE_1F = "SSAnne_1F_Corridor";
+//  S.S. Anne 2F corridor map.
 inline constexpr const char* SS_ANNE_2F = "SSAnne_2F_Corridor";
+//  Captain's Office map.
 inline constexpr const char* CAPTAINS_OFFICE = "SSAnne_CaptainsOffice";
+//  Vermilion City Pokemon Fan Club map.
 inline constexpr const char* FAN_CLUB = "VermilionCity_PokemonFanClub";
+//  Cerulean City Bike Shop map.
 inline constexpr const char* BIKE_SHOP = "CeruleanCity_BikeShop";
+//  Route 9 overworld map.
 inline constexpr const char* ROUTE9 = "Route9";
+//  Route 10 overworld map.
 inline constexpr const char* ROUTE10 = "Route10";
+//  Route 10 Pokemon Center map.
 inline constexpr const char* ROUTE10_CENTER = "Route10_PokemonCenter_1F";
 
+//  Constructs pose at map coordinates.
 Pokemon::Pose at(const char* map, int x, int y, std::optional<Direction> facing = std::nullopt);
 
+//  Constructs story checkpoint row.
 StoryCheckpoint row(
     std::string id, std::string title, std::optional<Pokemon::Pose> start,
     Supplies supplies, StartMenu menu, std::vector<StoryStep> steps
@@ -83,8 +124,11 @@ enum class WildBattles{
     FIGHT,
 };
 
+//  Constructs a story step of given kind.
 StoryStep make(StoryStepKind kind, std::string name, std::string why);
+//  Constructs a route navigation step.
 StoryStep route(std::string name, Pokemon::Pose target, std::string why, WildBattles wild = WildBattles::RUN);
+//  Constructs a single directional movement step.
 StoryStep step_into(std::string name, Direction direction, std::string why);
 //  A step `direction` into a trainer's line, a tile at a time until the
 //  trainer sees the player (TRAINER_LINE_VARIANT): the battle after it
@@ -102,19 +146,30 @@ StoryStep hop(std::string name, Direction direction, Pokemon::Pose landing, std:
 //  One step `direction` onto `tile`, the next one, where a walk's hold
 //  would go on: onto the tile before a ledge, which a held leg hops.
 StoryStep step_onto(std::string name, Direction direction, Pokemon::Pose tile, std::string why);
+//  Constructs a dialog answer step.
 StoryStep answer(std::string name, bool yes, std::string why);
+//  Constructs an in-game cutscene or dialog interaction step.
 StoryStep scene(std::string name, std::optional<Pokemon::Pose> pose_after, std::string why);
+//  Constructs a trainer or boss battle step.
 StoryStep battle(std::string name, Pokemon::Pose pose_after, bool may_lose, std::string why);
+//  Constructs a fixed multi-leg route step.
 StoryStep legs(std::string name, std::vector<StoryLeg> legs, std::string why, WildBattles wild = WildBattles::RUN);
 //  `step`, a ROUTE or LEGS, run with B held: from the Running Shoes on.
 //  Indoors, where the game doesn't let the player run, it walks.
 StoryStep running(StoryStep step);
+//  Constructs new game introduction sequence step.
 StoryStep new_game_intro(Pokemon::Pose pose_after, std::string why);
+//  Constructs an NPC dialog interaction step.
 StoryStep talk(std::string name, std::string why);
+//  Constructs checkpoint preparation and recovery step.
 StoryStep ready(std::string name, Pokemon::Pose nurse, std::string why);
+//  Constructs a Pokemon Center healing sequence step.
 StoryStep heal(std::string name);
+//  Constructs a Poke Mart shopping step.
 StoryStep shop(std::string name, std::vector<Pokemon::StoryItem> items, std::string why);
+//  Constructs an internal engine gameplay automation step.
 StoryStep game_step(std::string variant, Pokemon::Pose pose_after, std::string why);
+//  Constructs game settings configuration step.
 StoryStep options_step();
 //  Cuts the tree the player faces (CUT_TREE_VARIANT) and steps onto its
 //  tile, `tree`, facing the way the step goes.
@@ -124,15 +179,19 @@ StoryStep cut_tree(std::string name, Pokemon::Pose tree, std::string why);
 //  Rows in files of their own (PokemonFRLG_AutoStoryTableVermilionGym.cpp,
 //  PokemonFRLG_AutoStoryTableCeladon.cpp).
 StoryCheckpoint vermilion_gym();
+//  Route navigation step towards Lt. Surge battle.
 StoryCheckpoint to_lt_surge();
+//  Lt. Surge gym leader battle checkpoint.
 StoryCheckpoint lt_surge();
+//  Bike Voucher retrieval checkpoint in Vermilion City Fan Club.
 StoryCheckpoint bike_voucher();
+//  Route 10 Pokemon Center navigation checkpoint.
 StoryCheckpoint route10_center();
 
 
 
-}
-}
-}
-}
+} // namespace StoryTable
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

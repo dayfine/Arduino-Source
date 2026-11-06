@@ -14,10 +14,11 @@ namespace NintendoSwitch{
 namespace PokemonFRLG{
 
 
+//  Registers starter RNG loop unit tests.
 void add_tests_StarterRngLoop(UnitTestDatabase& database);
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

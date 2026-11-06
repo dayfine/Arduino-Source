@@ -62,7 +62,7 @@ const StringSelectDatabase& checkpoint_database(){
     return database;
 }
 
-}
+} // namespace
 
 const char* const RUN_STARTER_RNG_TEXT =
     "<b>Run Starter RNG in AutoStory:</b><br>Off by default. Instead of stopping for them, run SID Helper's steps on the "
@@ -252,7 +252,7 @@ void verify_story_checkpoint(
 }
 
 
-}
+} // namespace
 
 //  The options' problems, before anything is pressed.
 static void check_setup(
@@ -480,7 +480,7 @@ const StarterRngLoopLimits RNG_LOOP_LIMITS{
     .max_retries = 2,
 };
 
-}
+} // namespace
 
 //  The RNG plan's attempts for `planned`, each tried through `steps`. A
 //  shiny that confirms the SID writes it into the RNG plan's SID option.
@@ -743,6 +743,6 @@ std::optional<StoryRunPlan> AutoStory::after_magikarp_salesman(
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

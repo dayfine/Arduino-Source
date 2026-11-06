@@ -36,7 +36,9 @@ namespace NintendoSwitch{
 namespace PokemonFRLG{
 
 
+//  Total number of party slots.
 constexpr size_t PARTY_SLOTS = 6;
+//  Total number of move slots per Pokemon.
 constexpr size_t MOVE_SLOTS = 4;
 
 //  A party member as its summary shows it.
@@ -81,12 +83,14 @@ std::optional<LevelCheck> parse_level_variant(std::string_view variant);
 //  The table's LEVEL step.
 Pokemon::StoryStep level_step(std::string name, std::string why, const LevelCheck& check);
 
+//  Outcome of checking a party member level.
 enum class LevelEnd{
     REACHED,
     BELOW,
     //  The member couldn't be read: nothing is known.
     UNREAD,
 };
+//  The result of a party member level check.
 struct LevelResult{
     LevelEnd end = LevelEnd::UNREAD;
     std::optional<unsigned> level = std::nullopt;
@@ -97,7 +101,7 @@ LevelResult run_level_check(Logger& logger, const MemberReader& reader, const Le
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

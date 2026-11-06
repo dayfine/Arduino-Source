@@ -34,6 +34,7 @@ struct BattleBoxes{
     bool foe = false;
 };
 
+//  Tracks opposing trainer identity and species roster during battle.
 class TrainerFoeTracker{
 public:
     //  `trainer`: pret's constant, or "" when the battle's trainer isn't
@@ -69,7 +70,7 @@ private:
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

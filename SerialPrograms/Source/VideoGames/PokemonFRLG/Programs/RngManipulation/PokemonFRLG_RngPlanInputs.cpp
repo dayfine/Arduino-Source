@@ -39,7 +39,7 @@ std::vector<std::string> split(const std::string& text, char separator){
     }
 }
 
-}
+} // namespace
 
 
 std::optional<uint16_t> parse_trainer_id(const std::string& text){
@@ -101,6 +101,6 @@ std::optional<std::vector<AdvNature>> parse_natures(const std::string& text){
 }
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

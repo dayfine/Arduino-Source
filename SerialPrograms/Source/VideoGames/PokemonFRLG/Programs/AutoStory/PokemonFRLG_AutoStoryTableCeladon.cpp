@@ -148,7 +148,7 @@ StoryCheckpoint route10_center(){
 }
 
 
-}
-}
-}
-}
+} // namespace StoryTable
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

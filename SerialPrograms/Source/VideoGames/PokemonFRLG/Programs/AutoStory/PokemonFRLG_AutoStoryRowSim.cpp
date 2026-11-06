@@ -57,7 +57,7 @@ std::string step_onto_on_sim(OverworldSim& sim, StoryPose& at, const StoryStep& 
     return sim.state().position == MapPosition{at.map, at.tile} ? "" : "expected to end on " + to_string(MapPosition{at.map, at.tile}) + ".";
 }
 
-}
+} // namespace
 
 //  Runs `step` of row `id` on `sim` as the program does: routes and legs
 //  by the sim's walker from `at`, where the table says the player stands,
@@ -117,6 +117,6 @@ std::string row_step_on_sim(OverworldSim& sim, StoryPose& at, const StoryStep& s
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

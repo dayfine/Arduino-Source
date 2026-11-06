@@ -46,7 +46,9 @@ enum class Fossil{
     DOME,
     HELIX,
 };
+//  The human-readable name of a fossil choice.
 const char* fossil_name(Fossil fossil);
+//  Parses a fossil choice from its name.
 std::optional<Fossil> fossil_from_name(std::string_view name);
 
 //  Where `fossil` lies on MtMoon_B2F (map.json object_events).
@@ -57,6 +59,7 @@ inline constexpr std::string_view FOSSIL_VARIANT_PREFIX = "fossil ";
 
 //  "fossil helix" or "fossil dome".
 std::string fossil_variant(Fossil fossil);
+//  Parses a fossil CHOICE variant string.
 std::optional<Fossil> parse_fossil_variant(std::string_view variant);
 
 //  The table's CHOICE(fossil) step, the player facing the fossil.
@@ -82,14 +85,17 @@ public:
     virtual std::optional<Fossil> fossil_in_bag() = 0;
 };
 
+//  The outcome of choosing a fossil.
 enum class ChoiceEnd{
     TAKEN,
     //  The prompt offered the other fossil: NO answered.
     WRONG_ONE,
     FAILED,
 };
+//  The human-readable name of a choice outcome.
 const char* choice_end_name(ChoiceEnd end);
 
+//  The result of a fossil choice attempt.
 struct ChoiceResult{
     ChoiceEnd end = ChoiceEnd::FAILED;
     //  TAKEN: whether the bag confirmed it.
@@ -120,11 +126,12 @@ private:
 };
 
 
+//  Register auto-story fossil choice unit tests.
 void add_tests_AutoStoryChoice(UnitTestDatabase& database);
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

@@ -36,14 +36,16 @@ enum class RngAttemptOutcome{
     UNUSABLE,
 };
 
+//  Outcome details from an attempted RNG frame hit.
 struct RngAttemptResult{
     bool shiny;
     Pokemon::AdvNature nature;
     Pokemon::AdvIVs ivs;
 };
+//  Classifies attempt result relative to target specifications.
 RngAttemptOutcome classify_attempt(const RngTarget& target, const RngAttemptResult& result);
 
-
+//  Current execution phase within the RNG plan state machine.
 enum class RngPlanStep{
     //  Run current_attempt(): the first, the next, or the same again after a miss.
     RUN_ATTEMPT,
@@ -113,7 +115,7 @@ enum class RngPlanNext{
 RngPlanNext rng_plan_next(RngPlanStep step, size_t index, size_t next_index);
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

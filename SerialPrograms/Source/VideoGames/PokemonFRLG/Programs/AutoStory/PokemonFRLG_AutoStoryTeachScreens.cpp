@@ -50,7 +50,7 @@ std::string rows_text(const std::vector<std::string>& rows){
     return text.empty() ? "none read" : text;
 }
 
-}
+} // namespace
 
 
 ScreenTeachActions::ScreenTeachActions(Logger& logger, TeachScreens& screens)
@@ -509,6 +509,6 @@ bool ConsoleTeachScreens::to_overworld(){
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

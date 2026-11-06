@@ -435,7 +435,7 @@ std::vector<size_t> damaging_slots(const SimBattler& own, const SimBattler& foe)
     return slots;
 }
 
-}
+} // namespace
 
 
 std::optional<SimBattler> own_battler(const PartyMember& lead, double hp_share, const Genes& genes){
@@ -783,7 +783,7 @@ double lasting_harm_chance(const PotionCase& c){
     return chance;
 }
 
-}
+} // namespace
 
 bool top_up_now(
     const PotionCase& c, const SimBattler& own, const SimTrainer& trainer,
@@ -820,7 +820,7 @@ bool sure_first_ko(
     return first && sure && lowest_roll(own, foe, move) >= foe.hp && !ai_item_choice(foe, items, foes_left);
 }
 
-}
+} // namespace
 
 OwnTurn own_turn(
     const SimBattler& own, const SimItems& own_items, const SimBattler& foe,
@@ -854,6 +854,6 @@ OwnTurn own_turn(
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

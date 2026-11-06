@@ -22,22 +22,36 @@ using namespace Pokemon;
 
 namespace{
 
+struct RngPlanInputsInput{
+    std::string name;
+    UnitTestResult (*body)(Logger&);
+};
+
+struct RngPlanInputsExpectation{
+    const char* description;
+};
+
+struct RngPlanInputsTestCase{
+    RngPlanInputsInput input;
+    RngPlanInputsExpectation expectation;
+};
+
 class Test_RngPlanInputs : public UnitTest{
 public:
-    Test_RngPlanInputs(std::string name, std::function<UnitTestResult(Logger&)> body)
-        : UnitTest("PokemonFRLG::RngPlanInputs - " + std::move(name))
-        , m_body(std::move(body))
+    explicit Test_RngPlanInputs(RngPlanInputsTestCase scenario)
+        : UnitTest("PokemonFRLG::RngPlanInputs - " + scenario.input.name)
+        , m_scenario(std::move(scenario))
     {}
     virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
         try{
-            return m_body(logger);
+            return m_scenario.input.body(logger);
         }catch (Exception& e){
             return std::string(e.name()) + ": " + e.message();
         }
     }
 
 private:
-    std::function<UnitTestResult(Logger&)> m_body;
+    RngPlanInputsTestCase m_scenario;
 };
 
 
@@ -121,17 +135,32 @@ UnitTestResult test_parse_natures(Logger&){
     return true;
 }
 
-}
+const RngPlanInputsTestCase RNG_PLAN_INPUTS_CASES[] = {
+    {
+        .input = {.name = "TID and SID text", .body = test_parse_trainer_id},
+        .expectation = {.description = "parses TID and SID text formats"},
+    },
+    {
+        .input = {.name = "IVs text", .body = test_parse_ivs},
+        .expectation = {.description = "parses six individual IV integer values"},
+    },
+    {
+        .input = {.name = "natures text", .body = test_parse_natures},
+        .expectation = {.description = "parses comma-separated nature names"},
+    },
+};
+
+} // namespace
 
 
 void add_tests_RngPlanInputs(UnitTestDatabase& database){
-    database.add<Test_RngPlanInputs>("TID and SID text", test_parse_trainer_id);
-    database.add<Test_RngPlanInputs>("IVs text", test_parse_ivs);
-    database.add<Test_RngPlanInputs>("natures text", test_parse_natures);
+    for (const auto& scenario : RNG_PLAN_INPUTS_CASES){
+        database.add<Test_RngPlanInputs>(scenario);
+    }
 }
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

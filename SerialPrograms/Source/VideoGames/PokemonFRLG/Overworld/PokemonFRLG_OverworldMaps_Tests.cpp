@@ -25,22 +25,36 @@ namespace PokemonFRLG{
 
 namespace{
 
+struct OverworldMapsInput{
+    std::string name;
+    UnitTestResult (*body)();
+};
+
+struct OverworldMapsExpectation{
+    const char* description;
+};
+
+struct OverworldMapsTestCase{
+    OverworldMapsInput input;
+    OverworldMapsExpectation expectation;
+};
+
 class Test_OverworldMaps : public UnitTest{
 public:
-    Test_OverworldMaps(std::string name, std::function<UnitTestResult()> body)
-        : UnitTest("PokemonFRLG::OverworldMaps - " + std::move(name))
-        , m_body(std::move(body))
+    explicit Test_OverworldMaps(OverworldMapsTestCase scenario)
+        : UnitTest("PokemonFRLG::OverworldMaps - " + scenario.input.name)
+        , m_scenario(std::move(scenario))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
         try{
-            return m_body();
+            return m_scenario.input.body();
         }catch (Exception& e){
             return std::string(e.name()) + ": " + e.message();
         }
     }
 
 private:
-    std::function<UnitTestResult()> m_body;
+    OverworldMapsTestCase m_scenario;
 };
 
 
@@ -636,33 +650,97 @@ UnitTestResult test_trainer_stops(){
     return true;
 }
 
-}
+
+const OverworldMapsTestCase OVERWORLD_MAPS_CASES[] = {
+    {
+        .input = {.name = "valid map", .body = test_valid_map},
+        .expectation = {.description = "parses valid map json and properties"},
+    },
+    {
+        .input = {.name = "missing field", .body = test_missing_field},
+        .expectation = {.description = "detects missing required fields in map json"},
+    },
+    {
+        .input = {.name = "elevation left out", .body = test_elevation_left_out},
+        .expectation = {.description = "handles omitted elevation data cleanly"},
+    },
+    {
+        .input = {.name = "field of the wrong type", .body = test_bad_field_type},
+        .expectation = {.description = "rejects invalid field types in map json"},
+    },
+    {
+        .input = {.name = "row of the wrong length", .body = test_bad_row_length},
+        .expectation = {.description = "rejects rows not matching declared width"},
+    },
+    {
+        .input = {.name = "unknown tile", .body = test_unknown_tile},
+        .expectation = {.description = "rejects unmapped character codes in tile map"},
+    },
+    {
+        .input = {.name = "not JSON", .body = test_not_json},
+        .expectation = {.description = "rejects malformed json input string"},
+    },
+    {
+        .input = {.name = "Route 3, Route 4 and its Pokemon Center", .body = test_route3_route4_maps},
+        .expectation = {.description = "verifies route 3 and 4 map definitions"},
+    },
+    {
+        .input = {.name = "Mt. Moon joins Route 4's cave mouths", .body = test_mt_moon_maps},
+        .expectation = {.description = "verifies Mt. Moon map connections"},
+    },
+    {
+        .input = {.name = "Mt. Moon's floor closed on one side is wild", .body = test_mt_moon_closed_floor_wild},
+        .expectation = {.description = "verifies wild encounters on closed floor"},
+    },
+    {
+        .input = {.name = "walks where running isn't allowed", .body = test_walk_only_indoors},
+        .expectation = {.description = "verifies walking-only constraints indoors"},
+    },
+    {
+        .input = {.name = "Route 4's Pokemon Center escalator", .body = test_route4_center_escalator},
+        .expectation = {.description = "verifies Route 4 center escalator"},
+    },
+    {
+        .input = {.name = "trainer sight", .body = test_trainer_sight},
+        .expectation = {.description = "evaluates line of sight for trainer objects"},
+    },
+    {
+        .input = {.name = "no hold onto an escalator", .body = test_no_hold_onto_escalator},
+        .expectation = {.description = "prevents holding into an escalator"},
+    },
+    {
+        .input = {.name = "found again on Route 3 and 4", .body = test_found_again_route3_route4},
+        .expectation = {.description = "verifies player reanchoring on Route 3 and 4"},
+    },
+    {
+        .input = {.name = "trainer stops on the story's maps", .body = test_trainer_stops},
+        .expectation = {.description = "verifies trainer stops along story routes"},
+    },
+    {
+        .input = {.name = "Cerulean's Mart and Gym, Route 25 and Bill's Sea Cottage", .body = test_cerulean_maps},
+        .expectation = {.description = "validates Cerulean City, Gym, Mart, Route 25 and Sea Cottage map data"},
+    },
+    {
+        .input = {.name = "Route 5 and 6 to Vermilion City and the S.S. Anne", .body = test_vermilion_maps},
+        .expectation = {.description = "validates Route 5, Route 6, Vermilion City and S.S. Anne maps"},
+    },
+    {
+        .input = {.name = "Vermilion Gym: behind the tree, beams, cans and trainers' sight", .body = test_vermilion_gym_map},
+        .expectation = {.description = "validates Vermilion Gym layout, electric fences and trainer sightlines"},
+    },
+};
+
+} // namespace
 
 
 void add_tests_OverworldMaps(UnitTestDatabase& database){
-    database.add<Test_OverworldMaps>("valid map", test_valid_map);
-    database.add<Test_OverworldMaps>("missing field", test_missing_field);
-    database.add<Test_OverworldMaps>("elevation left out", test_elevation_left_out);
-    database.add<Test_OverworldMaps>("field of the wrong type", test_bad_field_type);
-    database.add<Test_OverworldMaps>("row of the wrong length", test_bad_row_length);
-    database.add<Test_OverworldMaps>("unknown tile", test_unknown_tile);
-    database.add<Test_OverworldMaps>("not JSON", test_not_json);
-    database.add<Test_OverworldMaps>("Route 3, Route 4 and its Pokemon Center", test_route3_route4_maps);
-    database.add<Test_OverworldMaps>("Mt. Moon joins Route 4's cave mouths", test_mt_moon_maps);
-    database.add<Test_OverworldMaps>("Mt. Moon's floor closed on one side is wild", test_mt_moon_closed_floor_wild);
-    database.add<Test_OverworldMaps>("Cerulean's Mart and Gym, Route 25 and Bill's Sea Cottage", test_cerulean_maps);
-    database.add<Test_OverworldMaps>("Route 5 and 6 to Vermilion City and the S.S. Anne", test_vermilion_maps);
-    database.add<Test_OverworldMaps>("Vermilion Gym: behind the tree, beams, cans and trainers' sight", test_vermilion_gym_map);
-    database.add<Test_OverworldMaps>("walks where running isn't allowed", test_walk_only_indoors);
-    database.add<Test_OverworldMaps>("Route 4's Pokemon Center escalator", test_route4_center_escalator);
-    database.add<Test_OverworldMaps>("trainer sight", test_trainer_sight);
-    database.add<Test_OverworldMaps>("no hold onto an escalator", test_no_hold_onto_escalator);
-    database.add<Test_OverworldMaps>("found again on Route 3 and 4", test_found_again_route3_route4);
-    database.add<Test_OverworldMaps>("trainer stops on the story's maps", test_trainer_stops);
+    for (const auto& scenario : OVERWORLD_MAPS_CASES){
+        database.add<Test_OverworldMaps>(scenario);
+    }
 }
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

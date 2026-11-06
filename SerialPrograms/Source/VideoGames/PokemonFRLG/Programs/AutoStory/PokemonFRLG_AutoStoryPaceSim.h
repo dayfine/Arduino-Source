@@ -26,6 +26,7 @@ namespace NintendoSwitch{
 namespace PokemonFRLG{
 
 
+//  Simulated grass patch stepping adapter for pacing and capture testing.
 class SimPatch : public PatchSteps{
 public:
     //  `back_to_patch`: after a trainer's battle, the walk back onto the
@@ -48,11 +49,12 @@ private:
 };
 
 
+//  Register AutoStory pace simulation unit tests.
 void add_tests_AutoStoryPaceSim(UnitTestDatabase& database);
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

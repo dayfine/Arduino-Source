@@ -48,8 +48,11 @@ enum class StartMenu{
     BEFORE_POKEDEX,
     FULL,
 };
+//  Total rows in the start menu.
 int start_menu_rows(StartMenu menu);
+//  Row index of the SAVE option in the start menu.
 int start_menu_save_row(StartMenu menu);
+//  Row index of the OPTION item in the start menu.
 int start_menu_option_row(StartMenu menu);
 
 
@@ -88,9 +91,11 @@ enum class IntroNameStep{
 //  A preset picked returns to the list only after NO on "Er, was it ...?",
 //  so after this many picks A opens the keyboard instead.
 constexpr size_t RIVAL_PRESET_TRIES = 3;
+//  Determines the next input step in character/rival naming sequence.
 IntroNameStep intro_name_step(IntroNameScreen screen, size_t keyboards_seen, size_t presets_picked);
 
 
+//  Expected screen state when dialogue text finishes.
 enum class TextEnd{
     OVERWORLD,
     BATTLE,
@@ -168,6 +173,7 @@ enum class SaveScreen{
     //  No message and no menu: the overworld, or a frame between two boxes.
     NOTHING,
 };
+//  Action to perform in the save menu loop.
 enum class SaveAction{
     WAIT,
     ANSWER_YES,
@@ -269,7 +275,7 @@ void leave_gift_summary(ConsoleHandle& console, ProControllerContext& context);
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

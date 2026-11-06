@@ -98,7 +98,7 @@ bool set_mart_word(MartPlan& plan, std::string_view word){
     return true;
 }
 
-}
+} // namespace
 
 
 const std::vector<MartStockItem>& mart_stock(std::string_view map){
@@ -297,7 +297,7 @@ private:
     MartResult m_result;
 };
 
-}
+} // namespace
 
 MartResult run_mart(Logger& logger, MartActions& actions, const MartPlan& plan){
     return MartRun(logger, actions, plan).run();
@@ -430,6 +430,6 @@ void count_supplies(Supplies& supplies, std::string_view item, size_t quantity){
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

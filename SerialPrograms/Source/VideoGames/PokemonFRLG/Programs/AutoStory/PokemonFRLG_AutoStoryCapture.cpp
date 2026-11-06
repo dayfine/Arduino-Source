@@ -85,7 +85,7 @@ Direction opposite(Direction direction){
     return direction;
 }
 
-}
+} // namespace
 
 
 const char* destination_name(CatchDestination destination){
@@ -348,7 +348,7 @@ private:
     CaptureResult m_result;
 };
 
-}
+} // namespace
 
 CaptureResult run_capture(Logger& logger, CaptureActions& actions, const CapturePlan& plan, size_t party_size){
     return CaptureRun(logger, actions, plan, party_size).run();
@@ -665,6 +665,6 @@ bool ConsoleCaptureActions::finish_catch(CatchDestination destination){
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

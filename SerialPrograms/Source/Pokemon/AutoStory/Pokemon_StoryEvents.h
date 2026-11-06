@@ -48,6 +48,7 @@ enum class PoseCertainty{
     SET,
     UNKNOWN,
 };
+// Returns the string label for a pose certainty level.
 const char* certainty_name(PoseCertainty certainty);
 
 //  Whether a pose known to `have` is good enough for an event that needs `need`.
@@ -76,6 +77,7 @@ struct Pose{
     PoseCertainty certainty = PoseCertainty::UNKNOWN;
     std::shared_ptr<const Position> where;
 };
+// Formats a Pose as a human-readable string.
 std::string to_string(const Pose& pose);
 
 
@@ -102,16 +104,21 @@ struct Outcome{
 
     bool succeeded() const;
 };
+// Constructs a successful event outcome without changing pose.
 Outcome outcome_ok();
+// Constructs a successful event outcome updating the run pose.
 Outcome outcome_ok(Pose pose);
 //  outcome_ok() with `changed_nothing`.
 Outcome outcome_unchanged();
+// Constructs a failed event outcome with reason and optional diagnostic detail.
 Outcome outcome_failed(std::string failure, std::string detail = "");
 //  "probe_exhausted: 4 rows": the failure and its detail, if any.
 std::string to_string(const Outcome& outcome);
 
 
+// Callable action executed for a story event.
 using Act = MoveOnlyFunction<Outcome(RunState& state)>;
+// Predicate callable evaluating current run state.
 using Check = MoveOnlyFunction<bool(RunState& state)>;
 
 //  A question the screen (or the run state) answers, named for the log.
@@ -119,6 +126,7 @@ struct Condition{
     std::string name;
     Check check;
 };
+// Constructs a named Condition from a predicate check.
 Condition condition(std::string name, Check check);
 
 //  Holds while the pose is on `map` (any map if empty) and at least as
@@ -126,11 +134,13 @@ Condition condition(std::string name, Check check);
 Condition pose_known(std::string map, PoseCertainty need);
 
 
+// Strategy for recovering from a failed event.
 enum class RecoveryKind{
     WAIT,       //  Something transient (a wanderer, a slow scene): wait, try again.
     REANCHOR,   //  The pose is in doubt: confirm it on a landmark, try again.
     STOP,       //  Nothing to do: stop the checkpoint.
 };
+// Returns the readable name of a recovery strategy.
 const char* recovery_name(RecoveryKind kind);
 
 //  Answers a failure named `on` (any failure if empty): runs `prepare`, if
@@ -144,6 +154,7 @@ struct Recovery{
 };
 
 
+// Single executable story action with preconditions, recovery steps, and postconditions.
 struct Event{
     std::string name;
     std::string why;
@@ -163,11 +174,13 @@ struct Event{
 };
 
 
+// Pose confidence adjustment following an event interruption.
 enum class InterruptPose{
     UNCHANGED,  //  Cleared where we stood (a talk-only trainer).
     WITHIN_SET, //  Moved an unknown part of a leg: still within the position we had, no longer exactly where.
     LOST,       //  Anywhere.
 };
+// Policy defining how an interrupted event should be resumed.
 enum class ResumePolicy{
     RETRY_EVENT,    //  Run the event again, from its skip_if.
     RECHECK_EXPECT, //  The action may have finished: done if its expects hold, else retry.
@@ -184,6 +197,7 @@ struct Interrupt{
 };
 
 
+// Story milestone containing pre/post conditions and a series of events.
 struct Checkpoint{
     std::string id;
     //  Must hold before the first event (the save it starts from).
@@ -198,6 +212,7 @@ struct Checkpoint{
 };
 
 
+// Result report from executing a checkpoint.
 struct CheckpointReport{
     bool completed = false;
     //  1-based number of the event that failed; 0 for the start or end check
@@ -209,6 +224,7 @@ struct CheckpointReport{
     size_t events_skipped = 0;
 };
 
+// Callback receiver for story event execution log messages.
 using EventLogger = MoveOnlyFunction<void(const std::string& line)>;
 
 
@@ -233,6 +249,6 @@ CheckpointReport run_checkpoint(RunState& state, Checkpoint& checkpoint, EventLo
 
 
 
-}
-}
+} // namespace Pokemon
+} // namespace PokemonAutomation
 #endif

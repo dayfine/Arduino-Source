@@ -48,11 +48,12 @@ std::optional<Direction> read_player_facing(const ImageViewRGB32& screen);
 std::optional<Direction> match_player_facing(const ImageViewRGB32& game, const PlayerSprites& sprites);
 
 
+//  Registers player facing reader unit tests.
 void add_tests_PlayerFacingReader(UnitTestDatabase& database);
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

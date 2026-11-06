@@ -19,6 +19,7 @@
 namespace PokemonAutomation{
 
 
+// Recorder that captures screen transitions and recent actions for failure diagnostics.
 class StepTrace{
 public:
     //  Screenshots go to <Screenshots>/StepTrace/<time>-<label>/.
@@ -49,5 +50,5 @@ private:
 
 
 
-}
+} // namespace PokemonAutomation
 #endif

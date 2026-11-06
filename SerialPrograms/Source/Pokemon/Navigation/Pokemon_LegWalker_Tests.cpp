@@ -185,35 +185,79 @@ UnitTestResult test_too_many_interruptions(){
 }
 
 
+struct LegWalkerInput{
+    std::string name;
+    UnitTestResult (*test)();
+};
+
+struct LegWalkerExpectation{
+    const char* description;
+};
+
+struct LegWalkerTestCase{
+    LegWalkerInput input;
+    LegWalkerExpectation expectation;
+};
+
 class Test_LegWalker : public UnitTest{
 public:
-    Test_LegWalker(std::string name, std::function<UnitTestResult()> body)
-        : UnitTest("Pokemon::LegWalker - " + std::move(name))
-        , m_body(std::move(body))
+    explicit Test_LegWalker(LegWalkerTestCase scenario)
+        : UnitTest("Pokemon::LegWalker - " + scenario.input.name)
+        , m_scenario(std::move(scenario))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        return m_body();
+        return m_scenario.input.test();
     }
 
 private:
-    std::function<UnitTestResult()> m_body;
+    LegWalkerTestCase m_scenario;
 };
 
-}
+const LegWalkerTestCase LEG_WALKER_CASES[] = {
+    {
+        .input = {.name = "hold times", .test = test_hold_times},
+        .expectation = {.description = "verifies open and wall leg hold durations"},
+    },
+    {
+        .input = {.name = "tiles before an interrupt", .test = test_tiles_before_interrupt},
+        .expectation = {.description = "computes traversed tiles before an interrupt occurred"},
+    },
+    {
+        .input = {.name = "a wall leg is walked again", .test = test_wall_leg_walked_again},
+        .expectation = {.description = "re-executes entire wall leg following an interrupt"},
+    },
+    {
+        .input = {.name = "an open leg walks the rest", .test = test_open_leg_rest_walked},
+        .expectation = {.description = "walks only the remaining tiles on an open leg"},
+    },
+    {
+        .input = {.name = "an open leg interrupted at its end", .test = test_open_leg_interrupted_at_end},
+        .expectation = {.description = "does not re-walk an open leg interrupted at its final tile"},
+    },
+    {
+        .input = {.name = "gives up after too many interruptions", .test = test_too_many_interruptions},
+        .expectation = {.description = "throws when interrupt count exceeds limit"},
+    },
+    {
+        .input = {.name = "an open leg stops at an interrupt", .test = test_open_leg_stops},
+        .expectation = {.description = "aborts remaining movement when stop_on_interrupt is set"},
+    },
+    {
+        .input = {.name = "a wall leg blocked by a sign stops", .test = test_wall_leg_blocked},
+        .expectation = {.description = "aborts wall movement when blocked prematurely repeatedly"},
+    },
+};
+
+} // namespace
 
 
 void add_tests_LegWalker(UnitTestDatabase& database){
-    database.add<Test_LegWalker>("hold times", test_hold_times);
-    database.add<Test_LegWalker>("tiles before an interrupt", test_tiles_before_interrupt);
-    database.add<Test_LegWalker>("a wall leg is walked again", test_wall_leg_walked_again);
-    database.add<Test_LegWalker>("an open leg walks the rest", test_open_leg_rest_walked);
-    database.add<Test_LegWalker>("an open leg interrupted at its end", test_open_leg_interrupted_at_end);
-    database.add<Test_LegWalker>("gives up after too many interruptions", test_too_many_interruptions);
-    database.add<Test_LegWalker>("an open leg stops at an interrupt", test_open_leg_stops);
-    database.add<Test_LegWalker>("a wall leg blocked by a sign stops", test_wall_leg_blocked);
+    for (const auto& scenario : LEG_WALKER_CASES){
+        database.add<Test_LegWalker>(scenario);
+    }
 }
 
 
 
-}
-}
+} // namespace Pokemon
+} // namespace PokemonAutomation

@@ -36,22 +36,35 @@ namespace PokemonFRLG{
 
 namespace{
 
+struct AutoStoryCeladonInput{
+    std::string name;
+    std::function<UnitTestResult()> body;
+};
+
+struct AutoStoryCeladonExpectation{
+};
+
+struct AutoStoryCeladonCase{
+    AutoStoryCeladonInput input;
+    AutoStoryCeladonExpectation expectation;
+};
+
 class Test_AutoStoryCeladon : public UnitTest{
 public:
-    Test_AutoStoryCeladon(std::string name, std::function<UnitTestResult()> body)
-        : UnitTest("PokemonFRLG::AutoStory - Simulation: " + std::move(name))
-        , m_body(std::move(body))
+    explicit Test_AutoStoryCeladon(AutoStoryCeladonCase test_case)
+        : UnitTest("PokemonFRLG::AutoStory - Simulation: " + test_case.input.name)
+        , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
         try{
-            return m_body();
+            return m_case.input.body();
         }catch (Exception& e){
             return std::string(e.name()) + ": " + e.message();
         }
     }
 
 private:
-    std::function<UnitTestResult()> m_body;
+    AutoStoryCeladonCase m_case;
 };
 
 size_t row_index(const std::string& id){
@@ -264,20 +277,44 @@ UnitTestResult test_route10_save_place(){
     return true;
 }
 
-}
+} // namespace
 
+
+const AutoStoryCeladonCase AUTO_STORY_CELADON_CASES[] = {
+    {
+        .input = {"00.26 starts where 00.25 ends", test_starts_where_lt_surge_ends},
+        .expectation = {},
+    },
+    {
+        .input = {"00.26 the Fan Club, Route 6 and the Underground Path north, the Bike Shop, past Oak's aide", test_bike_voucher_row},
+        .expectation = {},
+    },
+    {
+        .input = {"00.26 Repels and Escape Ropes, 3000 left", test_repels_and_escape_ropes},
+        .expectation = {},
+    },
+    {
+        .input = {"00.27 starts where 00.26 ends", test_starts_where_bicycle_ends},
+        .expectation = {},
+    },
+    {
+        .input = {"00.27 the two trees, Route 9's Alicia, Jeremy and Conner, to Route 10's Pokemon Center", test_route10_row},
+        .expectation = {},
+    },
+    {
+        .input = {"00.27 saves in Route 10's Pokemon Center, ROUTE 10 on the save card", test_route10_save_place},
+        .expectation = {},
+    },
+};
 
 void add_tests_AutoStoryCeladon(UnitTestDatabase& database){
-    database.add<Test_AutoStoryCeladon>("00.26 starts where 00.25 ends", test_starts_where_lt_surge_ends);
-    database.add<Test_AutoStoryCeladon>("00.26 the Fan Club, Route 6 and the Underground Path north, the Bike Shop, past Oak's aide", test_bike_voucher_row);
-    database.add<Test_AutoStoryCeladon>("00.26 Repels and Escape Ropes, 3000 left", test_repels_and_escape_ropes);
-    database.add<Test_AutoStoryCeladon>("00.27 starts where 00.26 ends", test_starts_where_bicycle_ends);
-    database.add<Test_AutoStoryCeladon>("00.27 the two trees, Route 9's Alicia, Jeremy and Conner, to Route 10's Pokemon Center", test_route10_row);
-    database.add<Test_AutoStoryCeladon>("00.27 saves in Route 10's Pokemon Center, ROUTE 10 on the save card", test_route10_save_place);
+    for (const auto& item : AUTO_STORY_CELADON_CASES){
+        database.add<Test_AutoStoryCeladon>(item);
+    }
 }
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

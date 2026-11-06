@@ -47,22 +47,35 @@ public:
     virtual void log(const std::string&, Color) override{}
 };
 
+struct AutoStoryVermilionGymInput{
+    std::string name;
+    std::function<UnitTestResult()> body;
+};
+
+struct AutoStoryVermilionGymExpectation{
+};
+
+struct AutoStoryVermilionGymCase{
+    AutoStoryVermilionGymInput input;
+    AutoStoryVermilionGymExpectation expectation;
+};
+
 class Test_AutoStoryVermilionGym : public UnitTest{
 public:
-    Test_AutoStoryVermilionGym(std::string name, std::function<UnitTestResult()> body)
-        : UnitTest("PokemonFRLG::AutoStory - Simulation: " + std::move(name))
-        , m_body(std::move(body))
+    explicit Test_AutoStoryVermilionGym(AutoStoryVermilionGymCase test_case)
+        : UnitTest("PokemonFRLG::AutoStory - Simulation: " + test_case.input.name)
+        , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
         try{
-            return m_body();
+            return m_case.input.body();
         }catch (Exception& e){
             return std::string(e.name()) + ": " + e.message();
         }
     }
 
 private:
-    std::function<UnitTestResult()> m_body;
+    AutoStoryVermilionGymCase m_case;
 };
 
 const char* const GYM = StoryTable::VERMILION_GYM;
@@ -505,23 +518,56 @@ UnitTestResult test_surge_winnable_skips_grind(){
     }
     return true;
 }
-}
+} // namespace
 
+
+const AutoStoryVermilionGymCase AUTO_STORY_VERMILION_GYM_CASES[] = {
+    {
+        .input = {"00.23 the tree shuts the gym's yard until cut", test_tree_shuts_the_yard},
+        .expectation = {},
+    },
+    {
+        .input = {"00.23 Vermilion Gym: Dwayne, Baily and Tucker, the cans at once or after a reset", test_gym_row},
+        .expectation = {},
+    },
+    {
+        .input = {"00.23 every can's stand from Tucker's tile and from every other, and out", test_cans_from_everywhere},
+        .expectation = {},
+    },
+    {
+        .input = {"00.24 and 00.25 through the beams to Lt. Surge and out", test_to_surge_and_out},
+        .expectation = {},
+    },
+    {
+        .input = {"00.25 out to the nurse past Oak's aide on (25, 7)", test_out_past_oaks_aide},
+        .expectation = {},
+    },
+    {
+        .input = {"Lt. Surge: Dig over Withdraw, the sim's chance", test_surge_chance},
+        .expectation = {},
+    },
+    {
+        .input = {"Lt. Surge: the Raichu's Double Team at full HP", test_surge_raichu_double_team},
+        .expectation = {},
+    },
+    {
+        .input = {"Lt. Surge: Dig takes two turns, m73's lead under 79%", test_surge_dig_two_turns},
+        .expectation = {},
+    },
+    {
+        .input = {"00.24 with Lt. Surge winnable already: no trip to Route 6", test_surge_winnable_skips_grind},
+        .expectation = {},
+    },
+};
 
 void add_tests_AutoStoryVermilionGym(UnitTestDatabase& database){
-    database.add<Test_AutoStoryVermilionGym>("00.23 the tree shuts the gym's yard until cut", test_tree_shuts_the_yard);
-    database.add<Test_AutoStoryVermilionGym>("00.23 Vermilion Gym: Dwayne, Baily and Tucker, the cans at once or after a reset", test_gym_row);
-    database.add<Test_AutoStoryVermilionGym>("00.23 every can's stand from Tucker's tile and from every other, and out", test_cans_from_everywhere);
-    database.add<Test_AutoStoryVermilionGym>("00.24 and 00.25 through the beams to Lt. Surge and out", test_to_surge_and_out);
-    database.add<Test_AutoStoryVermilionGym>("00.25 out to the nurse past Oak's aide on (25, 7)", test_out_past_oaks_aide);
-    database.add<Test_AutoStoryVermilionGym>("Lt. Surge: Dig over Withdraw, the sim's chance", test_surge_chance);
-    database.add<Test_AutoStoryVermilionGym>("Lt. Surge: the Raichu's Double Team at full HP", test_surge_raichu_double_team);
-    database.add<Test_AutoStoryVermilionGym>("Lt. Surge: Dig takes two turns, m73's lead under 79%", test_surge_dig_two_turns);
-    database.add<Test_AutoStoryVermilionGym>("00.24 with Lt. Surge winnable already: no trip to Route 6", test_surge_winnable_skips_grind);
+    for (const auto& item : AUTO_STORY_VERMILION_GYM_CASES){
+        database.add<Test_AutoStoryVermilionGym>(item);
+    }
 }
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

@@ -104,7 +104,7 @@ int guess_beside(int first){
     return beside[0];
 }
 
-}
+} // namespace
 
 
 TrashCanResult run_trash_cans(Logger& logger, const CheckCan& check, size_t max_checks){
@@ -149,6 +149,6 @@ TrashCanResult run_trash_cans(Logger& logger, const CheckCan& check, size_t max_
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

@@ -252,22 +252,35 @@ private:
 };
 
 
+struct AutoStoryPcStorageInput{
+    std::string name;
+    std::function<UnitTestResult()> body;
+};
+
+struct AutoStoryPcStorageExpectation{
+};
+
+struct AutoStoryPcStorageCase{
+    AutoStoryPcStorageInput input;
+    AutoStoryPcStorageExpectation expectation;
+};
+
 class Test_AutoStoryPcStorage : public UnitTest{
 public:
-    Test_AutoStoryPcStorage(std::string name, std::function<UnitTestResult()> body)
-        : UnitTest("PokemonFRLG::AutoStoryPcStorage - " + std::move(name))
-        , m_body(std::move(body))
+    explicit Test_AutoStoryPcStorage(AutoStoryPcStorageCase test_case)
+        : UnitTest("PokemonFRLG::AutoStoryPcStorage - " + test_case.input.name)
+        , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
         try{
-            return m_body();
+            return m_case.input.body();
         }catch (Exception& e){
             return std::string(e.name()) + ": " + e.message();
         }
     }
 
 private:
-    std::function<UnitTestResult()> m_body;
+    AutoStoryPcStorageCase m_case;
 };
 
 
@@ -534,20 +547,32 @@ UnitTestResult test_pc_variant(){
     return true;
 }
 
-}
+} // namespace
 
+
+const AutoStoryPcStorageCase AUTO_STORY_PC_STORAGE_CASES[] = {
+    {
+        .input = {"deposits, withdrawals and refusals on a fake PC", test_pc_transfers},
+        .expectation = {},
+    },
+    {
+        .input = {"the dialog on other screens", test_pc_dialog_screens},
+        .expectation = {},
+    },
+    {
+        .input = {"the table's variant", test_pc_variant},
+        .expectation = {},
+    },
+};
 
 void add_tests_AutoStoryPcStorage(UnitTestDatabase& database){
-    const auto add = [&](std::string name, UnitTestResult (*body)()){
-        database.add<Test_AutoStoryPcStorage>(std::move(name), body);
-    };
-    add("deposits, withdrawals and refusals on a fake PC", test_pc_transfers);
-    add("the dialog on other screens", test_pc_dialog_screens);
-    add("the table's variant", test_pc_variant);
+    for (const auto& item : AUTO_STORY_PC_STORAGE_CASES){
+        database.add<Test_AutoStoryPcStorage>(item);
+    }
 }
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

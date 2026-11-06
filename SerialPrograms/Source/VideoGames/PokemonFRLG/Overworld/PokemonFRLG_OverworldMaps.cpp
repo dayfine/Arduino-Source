@@ -95,7 +95,7 @@ const std::vector<MapData>& all_maps(){
     return MAPS;
 }
 
-}
+} // namespace
 
 
 MapData parse_map(const std::string& json, const std::string& source){
@@ -150,6 +150,6 @@ std::set<std::string> map_flag_set(const std::vector<MapData>& maps, const std::
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

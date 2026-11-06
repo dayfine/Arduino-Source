@@ -37,7 +37,7 @@ bool type_name_without_confirming(
 );
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

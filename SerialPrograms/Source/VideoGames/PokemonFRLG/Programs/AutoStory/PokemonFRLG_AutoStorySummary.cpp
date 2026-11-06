@@ -108,7 +108,7 @@ std::optional<SummaryRead> read_open_summary(ConsoleHandle& console, ProControll
     return read;
 }
 
-}
+} // namespace
 
 std::optional<SummaryRead> read_party_summary(
     ConsoleHandle& console, ProControllerContext& context, StartMenu menu, Language language, size_t slot
@@ -150,6 +150,6 @@ std::optional<SummaryRead> read_party_summary(
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

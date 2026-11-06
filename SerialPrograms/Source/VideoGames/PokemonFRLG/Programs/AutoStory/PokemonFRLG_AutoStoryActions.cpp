@@ -383,7 +383,7 @@ private:
     size_t m_presets_picked = 0;
 };
 
-}
+} // namespace
 
 
 IntroNameStep intro_name_step(IntroNameScreen screen, size_t keyboards_seen, size_t presets_picked){
@@ -473,7 +473,7 @@ bool yes_no_shows(ConsoleHandle& console){
     VideoSnapshot screen = console.video().snapshot();
     return screen && yes_no_cursor(screen).has_value();
 }
-}
+} // namespace
 
 TextEnd advance_text(ConsoleHandle& console, ProControllerContext& context, Milliseconds timeout, bool stop_at_battle){
     const WallClock deadline = current_time() + timeout;
@@ -718,7 +718,7 @@ void run_save_dialog(ConsoleHandle& console, ProControllerContext& context){
     );
 }
 
-}
+} // namespace
 
 void save_game(ConsoleHandle& console, ProControllerContext& context, StartMenu menu){
     console.log("Saving the game.");
@@ -957,7 +957,7 @@ void back_to_overworld_after(ConsoleHandle& console, ProControllerContext& conte
     mash_until_overworld(console, context, 20000ms);
 }
 
-}
+} // namespace
 
 void close_trainer_card(ConsoleHandle& console, ProControllerContext& context){
     //  B closes the card, then the START menu.
@@ -971,6 +971,6 @@ void leave_gift_summary(ConsoleHandle& console, ProControllerContext& context){
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

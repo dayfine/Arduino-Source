@@ -216,7 +216,7 @@ bool moved_past_wall(ConsoleHandle& console, ProControllerContext& context, cons
     return change > WALL_TAP_MOVED_RMSD;
 }
 
-}
+} // namespace
 
 
 void walk_overworld_route_with_recovery(
@@ -256,6 +256,6 @@ void walk_overworld_route_with_recovery(
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

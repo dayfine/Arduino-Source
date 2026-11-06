@@ -71,7 +71,7 @@ uint32_t base_damage(const Combatant& attacker, const Combatant& defender, const
     return damage + 2;
 }
 
-}
+} // namespace
 
 
 uint8_t trainer_iv(uint8_t pret_iv){
@@ -170,6 +170,6 @@ double average_damage(const Combatant& attacker, const Combatant& defender, cons
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
