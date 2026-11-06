@@ -22,6 +22,10 @@ add_library(RuntimeMapDecoder STATIC
 )
 target_include_directories(RuntimeMapDecoder PUBLIC "${ROOT}" "${ROOT}/SerialPrograms/Source")
 target_compile_features(RuntimeMapDecoder PUBLIC cxx_std_23)
+# Match the application's existing policy for this unchanged platform-specific helper.
+if(MSVC)
+    set_property(SOURCE "${ROOT}/Common/Cpp/Filesystem/FileIO.cpp" APPEND PROPERTY COMPILE_OPTIONS /wd4505)
+endif()
 add_executable(RuntimeMapTests "${NAV}/Pokemon_RuntimeMap_Tests.cpp")
 target_compile_definitions(RuntimeMapTests PRIVATE PA_RUNTIME_MAP_STANDALONE)
 target_link_libraries(RuntimeMapTests PRIVATE RuntimeMapDecoder)
