@@ -14,10 +14,11 @@ namespace NintendoSwitch{
 namespace PokemonBDSP{
 
 
+//  Registers AutoStory map unit tests with the database.
 void add_tests_AutoStory_Maps(UnitTestDatabase& database);
 
 
-}
-}
-}
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

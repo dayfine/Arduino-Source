@@ -38,6 +38,7 @@ namespace PokemonAutomation{
 namespace Pokemon{
 
 
+// Prefix tag prepended to route navigation log messages.
 inline constexpr const char* ROUTE_LOG_TAG = "[Route] ";
 
 //  A tile of a named map.
@@ -51,6 +52,7 @@ std::string to_string(const RouteTile& tile);
 std::string describe(const std::vector<RouteTile>& tiles);
 
 
+// Action type performed during a route leg.
 enum class RouteLegAction{
     WALK,
     SURF,
@@ -64,6 +66,7 @@ enum class RouteLegEnd{
     WARP,
 };
 
+// Description of a single route movement segment.
 struct RouteLogLeg{
     RouteLegAction action = RouteLegAction::WALK;
     Direction direction = Direction::NORTH;
@@ -86,6 +89,7 @@ enum class EndBasis{
     ASSUMED,    //  taken to have ended as planned after an interrupt
     UNKNOWN,    //  stopped somewhere on the way
 };
+// Returns the readable string representation of an end basis.
 const char* basis_name(EndBasis basis);
 
 
@@ -115,6 +119,6 @@ std::string route_arrived_line(const std::string& label, const std::vector<Route
 
 
 
-}
-}
+} // namespace Pokemon
+} // namespace PokemonAutomation
 #endif
