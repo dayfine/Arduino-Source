@@ -56,7 +56,7 @@ struct DiagnosticLogInput{
 // Exact message order is part of the diagnostics contract.
 struct DiagnosticLogExpectation{
     std::vector<std::string> messages;
-    Color final_color;
+    Color final_color{};
 };
 
 // Each case keeps all inputs and expected output visible together.
