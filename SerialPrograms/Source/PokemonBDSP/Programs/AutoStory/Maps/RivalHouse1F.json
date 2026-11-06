@@ -1,0 +1,28 @@
+{
+    "name": "RivalHouse1F",
+    "source": {"decomp_file": "pret/pokeplatinum: res/field/maps/data/map_data_184.bin; events_twinleaf_town_rival_house_1f.json; decomp only, not checked on the console", "revision": "c6689696d5fb", "date": "2026-11-01"},
+    "tiles": [
+        "#############",
+        "#############",
+        "#############",
+        "#..#####..###",
+        "#..####.....#",
+        "#....##..####",
+        "#...........#",
+        "#...........#",
+        "#.......##..#",
+        "##......##.##",
+        "##....D....##",
+        "#############"
+    ],
+    "points": {
+        "door": [6, 10],
+        "stairs": [2, 3]
+    },
+    "warps": [
+        {"x": 6, "y": 10, "to_map": "TwinleafTown", "to_point": "rival_house_door"}
+    ],
+    "objects": [
+        {"name": "pokefan_f_0", "kind": "npc", "x": 4, "y": 6}
+    ]
+}
