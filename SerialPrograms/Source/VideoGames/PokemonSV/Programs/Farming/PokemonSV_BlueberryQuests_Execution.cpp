@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
+#include "CommonFramework/Tools/ProgramEnvironment.h"
 #include "PokemonSV_BlueberryCatchPhoto.h"
 #include "PokemonSV_BlueberryQuests.h"
 
