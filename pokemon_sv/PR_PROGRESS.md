@@ -1,133 +1,194 @@
 # BBQ PR progress
 
-Live status of [PR_PLAN.md](PR_PLAN.md). Update whenever a PR changes state. Risk letters
-(L/M/H) and what each can regress are in PR_PLAN.md; open problems are in
-[KNOWN_ISSUES.md](KNOWN_ISSUES.md).
+Audited 2026-11-06 against live GitHub PR state/base metadata and the diffs of
+all 34 originally open BBQ-related fork PRs. Inventory: **43 fork PRs: 33 open, 9 closed,
+1 merged notes PR**. Selection: head branch `bbq/*` or title containing BBQ /
+Blueberry, excluding this audit PR #239. Shared dependencies are listed separately below. This is an inventory
+and dependency audit, **not renewed CI/live-console approval**. Old build counts
+and readiness badges are not carried forward.
 
-Legend: ✅ merged upstream · 🔵 open upstream · 🟢 fork draft, built and tested ·
-🟡 fork draft, needs build/tests · 🛠 branch in progress · ⬜ not started · ❌ closed
+[PR_PLAN.md](PR_PLAN.md) remains the broader design/stage plan; its 2026-10-26
+PR graph is historical. Previous tracker versions remain in Git history. Merge
+parents into children; do not follow old rebase/force-push instructions. No agent publishes upstream.
 
-Last updated: 2026-10-26 23:10. Fork `main` synced with upstream `main` (4e017f888).
+## Active dependency tree (parent cleanup pending)
 
-```
-upstream/main
-├── ✅ U#1636 Tera battle only after confirmed entry
-├── 🔵 U#1631 quest identity → Options module (L) ........ approved by kichithewolf
-│   └── 🟢 B1 #2 BBQ log lines (L) ......................... c8ba680b3 on 6c312f238, 14/14
-│       └── 🟢 B2 #3 snapshots (L) ......................... e1d2a2de5, 16/16
-├── 🔵 U#1628 BP reader crop (L) .......................... CI green after CommandLineTests#36 merged
-│   ├── 🟢 #7 quest detector tests (L) .................... a58ecebd8, 29/29; README note → CommandLineTests follow-up
-│   └── 🟢 B3 #16 BP status (L) ........................... 57ea3f413, 19/19
-│       └── 🟢 #52 BP check at run end (L) ................ 7f38c7189, 24/24
-│
-├── P prep moves
-│   ├── 🟢 P1 #51 BBQ tests into PokemonSV_BBQTests.cpp (L) ... b9d9a10e0, 9/9 tests
-│   ├── ⬜ P2 spot routes → BlueberryRoutes (L)
-│   └── ⬜ P3 BlueberryCatchPhoto split (L)
-│
-├── A L1 cores
-│   ├── ⬜ A1 MapDestinationMenu snow fix (M) ............. needs day/night/snow menu samples in CommandLineTests
-│   ├── 🟢 A2 #50 error report without stream (L) ......... d65c9f427, built, code health 0 failures
-│   ├── ⬜ A3 SpeciesTypes table (L)
-│   ├── ⬜ A4 PlaceNameBannerReader (L)
-│   ├── ⬜ A5 PrideRockDetector (L)
-│   ├── ⬜ A6 TeraGlowDetector (L)
-│   └── ⬜ A7 OverworldControls (M) ........................ blocked: lock-on-first rework
-│
-├── C navigation ........................................... ⬜ C1 · 🟡 C2a/C2b #24 · 🟡 C3 #30 · ⬜ C4 · ⬜ C5a-c
-├── D battle & catch ....................................... ⬜ D1 · ⬜ D2 · ⬜ D3 · 🟡 D4 #23
-├── E Auto Battle .......................................... 🟡 #15 → #17 → #18 → #21 → #31 → #32 · ⬜ E7
-├── F controller ........................................... 🟡 #37 → #5 #4 #6 · 🟡 #38 → #8 → #27 #25 #10 → #12 → #13 → #22 → #26 · ⬜ F14 F15
-├── G routes ............................................... ⬜ G1–G5 · 🟡 G6 #35 · 🟡 G7 #33 · 🟡 G8 #29
-├── Z docs ................................................. ⬜ Z1 · ⬜ Z2
-│
-└── ❌ closed as superseded: #9 #14 #20 #28 #34 #36
+Numbers below are active fork code PRs. #51 is closed because its tests-file
+change merged upstream (#1754); it is no longer a prerequisite in the active
+plan. Its children still name the retained `bbq/tests-file` branch in GitHub
+metadata (shown in the inventory), and their owners must merge current main and
+retarget those bases. The tree below shows the required parent relationships
+after that mechanical cleanup, not a claim that the live bases already changed.
+
+```text
+main
+ ├→ #2 → #3                         board/attempt logging, screenshots
+ ├→ #19                            target-specific evidence
+ ├→ #23                            catch grace / heal policy
+ ├→ #37 → #38 → #53 → #8
+ │                     ├→ #27      standalone reroll log (consolidate)
+ │                     └→ #6 → #5 → #4 → #10
+ │                                        ├→ #25 → #16 → #52
+ │                                        │      └→ #73
+ │                                        └→ #12 → #13 → #22 → #26
+ ├→ #15 → #17 → #18 → #21 → #31 → #32   Auto Battle
+ ├→ #24 → #30                            navigation/return bounds
+ ├→ #29                                 Make TM resume
+ ├→ #33                                 egg verification/restoration
+ ├→ #180                                detector image tests
+ └→ #35                                 Kleavor look-around; old closed parent also needs cleanup
 ```
 
-## Working set rules (user, 2026-10-26)
+## Complete fork inventory
 
-- **Upstream: at most three open at a time.** When one merges, the user publishes the next from the
-  queue below the same day.
-- **Working set: about 10 fork drafts** that are being built, tested or fixed. When it drops under
-  6, start the next batch of 8–10 from the plan, lowest risk first.
-- A PR leaves the working set when it goes upstream or is closed.
+| PR | State | Current base | Scope / disposition |
+|---|---|---|---|
+| [#1](https://github.com/dayfine/Arduino-Source/pull/1) | closed | `main` | Upstream #1636 merged; fork closed. |
+| [#2](https://github.com/dayfine/Arduino-Source/pull/2) | open | `bbq/tests-file` | Consolidation target for #27; remains open until tested. |
+| [#3](https://github.com/dayfine/Arduino-Source/pull/3) | open | `bbq/diagnostics-and-baseline` | Screenshots; capture overlap with #19 must be resolved. |
+| [#4](https://github.com/dayfine/Arduino-Source/pull/4) | open | `bbq/endless-reroll-guard` | save once when completion milestones advance |
+| [#5](https://github.com/dayfine/Arduino-Source/pull/5) | open | `bbq/persistent-quest-retries` | stop instead of rerolling the quest panel forever |
+| [#6](https://github.com/dayfine/Arduino-Source/pull/6) | open | `bbq/verified-reroll` | don't retry a failed quest every round while it stays on the panel |
+| [#7](https://github.com/dayfine/Arduino-Source/pull/7) | closed | `bbq/tests-file` | Replaced by fork #180 after upstream #1759 closed. |
+| [#8](https://github.com/dayfine/Arduino-Source/pull/8) | open | `bbq/pin-stuck-rounds` | check which quest a reroll pays for, and that it was replaced |
+| [#9](https://github.com/dayfine/Arduino-Source/pull/9) | closed | `bbq/verified-reroll` | Superseded by #25. |
+| [#10](https://github.com/dayfine/Arduino-Source/pull/10) | open | `bbq/save-reset-milestones` | let a quest that fails all its retries be rerolled or stop the program |
+| [#12](https://github.com/dayfine/Arduino-Source/pull/12) | open | `bbq/exhausted-quest-actions` | reuse verified reroll panels for selection and first dispatch |
+| [#13](https://github.com/dayfine/Arduino-Source/pull/13) | open | `bbq/reuse-quest-board` | replan after rerolling an exhausted quest |
+| [#14](https://github.com/dayfine/Arduino-Source/pull/14) | closed | `review/1632-base` | Closed review-annotation trial. |
+| [#15](https://github.com/dayfine/Arduino-Source/pull/15) | open | `bbq/tests-file` | run the Auto Battle loop against injectable game steps, with a per-pass log |
+| [#16](https://github.com/dayfine/Arduino-Source/pull/16) | open | `bbq/reroll-impossible-quests` | show BP earned, spent, net and BP/hour in the stats |
+| [#17](https://github.com/dayfine/Arduino-Source/pull/17) | open | `bbq/auto-battle-seam` | stop Auto Battle at the kill target and skip the last heal (behavior change) |
+| [#18](https://github.com/dayfine/Arduino-Source/pull/18) | open | `bbq/auto-battle-stop-at-target` | give up Auto Battle after 3 empty passes or a time limit (behavior change) |
+| [#19](https://github.com/dayfine/Arduino-Source/pull/19) | open | `bbq/tests-file` | Target-specific evidence/options; not a replacement for #2. |
+| [#20](https://github.com/dayfine/Arduino-Source/pull/20) | closed | `main` | Closed; future navigation work remains in PR_PLAN. |
+| [#21](https://github.com/dayfine/Arduino-Source/pull/21) | open | `bbq/auto-battle-bounds` | heal between Auto Battle passes only when HP is below 50% (behavior change) |
+| [#22](https://github.com/dayfine/Arduino-Source/pull/22) | open | `bbq/replan-after-reroll` | reuse verified quest panel reads after a failed-quest reroll (C9) |
+| [#23](https://github.com/dayfine/Arduino-Source/pull/23) | open | `bbq/tests-file` | stop fleeing from catch targets, skip the heal after no-battle attempts (behavior change) |
+| [#24](https://github.com/dayfine/Arduino-Source/pull/24) | open | `main` | check Central Plaza arrivals; a failed quest fly fails the attempt, not the program |
+| [#25](https://github.com/dayfine/Arduino-Source/pull/25) | open | `bbq/exhausted-quest-actions` | reroll quests it cannot do as soon as they appear, red or blue (behavior change) |
+| [#26](https://github.com/dayfine/Arduino-Source/pull/26) | open | `bbq/panel-read-reuse` | chain no-trip quests without round actions between (M15 step 1b) |
+| [#27](https://github.com/dayfine/Arduino-Source/pull/27) | open | `bbq/verified-reroll` | Pure reroll logging; fold into #2, then retire after validation. |
+| [#28](https://github.com/dayfine/Arduino-Source/pull/28) | closed | `bbq/exhausted-quest-actions` | Closed; broader quest-policy work remains planned. |
+| [#29](https://github.com/dayfine/Arduino-Source/pull/29) | open | `main` | start Make TM at the last craftable TM |
+| [#30](https://github.com/dayfine/Arduino-Source/pull/30) | open | `bbq/plaza-arrival-check` | bound the return to Central Plaza (behavior change) |
+| [#31](https://github.com/dayfine/Arduino-Source/pull/31) | open | `bbq/auto-battle-heal-threshold` | Keep counting/stop behavior and its logs together. |
+| [#32](https://github.com/dayfine/Arduino-Source/pull/32) | open | `bbq/auto-battle-kill-count` | near the Auto Battle target, stop when the quest leaves the board (C10, behavior change) |
+| [#33](https://github.com/dayfine/Arduino-Source/pull/33) | open | `main` | Contains inline #2/#3 copies plus lab artifacts; narrow to egg behavior. |
+| [#34](https://github.com/dayfine/Arduino-Source/pull/34) | closed | `main` | Closed startup-only proposal. |
+| [#35](https://github.com/dayfine/Arduino-Source/pull/35) | open | `bbq/battle-entry-guard` | look around for another target when Kleavor is absent |
+| [#36](https://github.com/dayfine/Arduino-Source/pull/36) | closed | `bbq/kleavor-look-around` | Closed catch-any proposal. |
+| [#37](https://github.com/dayfine/Arduino-Source/pull/37) | open | `bbq/tests-file` | run rounds against injectable BBQGameActions |
+| [#38](https://github.com/dayfine/Arduino-Source/pull/38) | open | `bbq/save-milestone-tracker` | separate the quest plan from the controller actions |
+| [#49](https://github.com/dayfine/Arduino-Source/pull/49) | merged | `agents` | Merged notes PR, not a code prerequisite. |
+| [#51](https://github.com/dayfine/Arduino-Source/pull/51) | closed | `main` | Upstream #1754 merged Nov 3; redundant fork PR closed Nov 6, branch retained for children. |
+| [#52](https://github.com/dayfine/Arduino-Source/pull/52) | open | `bbq/bp-status` | check the BP stats against the rerolls at the end of a run |
+| [#53](https://github.com/dayfine/Arduino-Source/pull/53) | open | `bbq/quest-planner` | pin the ways the round loop gets stuck today |
+| [#73](https://github.com/dayfine/Arduino-Source/pull/73) | open | `bbq/reroll-impossible-quests` | fail the egg quest when the box has no egg, and check for one at start (behavior change) |
+| [#180](https://github.com/dayfine/Arduino-Source/pull/180) | open | `main` | Active replacement for closed #7/#1759. |
 
-## Upstream queue (publish in this order, by stage; see PR_PLAN.md "Stages")
+## Upstream and shared dependencies
 
-| # | Stage | PR | Risk | State |
-|---|---|---|---|---|
-| — | 0 | U#1628 BP reader crop | L | open upstream, CI green |
-| — | 1 | U#1631 quest identity | L | open upstream, approved |
-| 1 | 0 | A2 #50 error report without stream | L | 🟢 ready |
-| 2 | 0 | P1 #51 BBQ tests file | L | 🟢 ready |
-| 3 | 0 | #7 quest detector tests (after U#1628) | L | 🟢 a58ecebd8, 29/29 |
-| 4 | 0 | B3 #16 BP status (after U#1628) | L | 🟢 57ea3f413, 19/19; to do: fork code health flags `program()` 111→129 and `read_quests` 54 lines |
-| 4b | 0 | #52 BP check: rerolls vs reads at run end (on #16) | L | 🟢 7f38c7189, 24/24 |
-| 5 | 1 | #37 BBQGameActions seam | M | 🟢 21b53eda2, 15 |
-| 6 | 1 | #38 quest planner | M | 🟢 f4b2be7d5, 24 |
-| 6b | 1 | #53 pin today's stuck behaviors (test-only) | L | 🟢 e326a90ac, 29 |
-| 7 | 1 | #8 verified reroll (fold in-panel reroll) | M | 🟢 6ebb53d73, 38 |
-| 8 | 1 | #6 persistent retries | M | 🟢 90cb78ef8, 40 |
-| 9 | 1 | #10 out-of-retries action | H | 🟢 41b3e4fcd, 44 |
-| 10 | 1 | #25 reroll impossible quests on sight | M | 🟢 8ee930626, 61 |
-| 11 | 1 | #4 save milestones, #5 endless-reroll guard | L | 🟢 0bcd8071d, b4bc0f0bb, 42 |
-| 12 | 1 | B1 #2 logging, B2 #3 snapshots | L | 🟢 c8ba680b3 14/14, e1d2a2de5 16/16 |
+- PokemonAutomation/Arduino-Source#1628: BP crop, **merged Oct 28**.
+- PokemonAutomation/Arduino-Source#1631: quest identity, **merged Oct 28**.
+- PokemonAutomation/Arduino-Source#1636: confirmed Tera entry, **merged Oct 26**.
+- PokemonAutomation/Arduino-Source#1754: BBQ test file, **merged Nov 3**; fork #51 closed Nov 6 after confirmation.
+- PokemonAutomation/Arduino-Source#1759 and fork #7: detector tests **closed**; active replacement #180.
+- Fork #50: shared streamless error-report fix, **closed**; upstream #1743 **merged**.
+- Upstream #1625/#1626/#1629/#1632/#1639/#1640/#1641/#1642/#1644/#1645/#1659:
+  **closed handoffs**, not merged implementations; corresponding work remains in fork PRs above.
+- No current open upstream BBQ PR was found among dayfine's PRs at this audit.
+  Upstream publishing limits and authorization remain governed by AGENTS.md,
+  not by historical queue text.
 
-## Stage 1 stack (rebuilt 2026-10-27, linear on P1 #51)
+## Logging audit and consolidation
 
-#37 21b53eda2 → #38 f4b2be7d5 → #53 e326a90ac → #8 6ebb53d73 → #6 90cb78ef8 → #5 b4bc0f0bb →
-#4 0bcd8071d → #10 41b3e4fcd → #25 8ee930626 (carries closed #9's commit). Every commit builds
-and passes the BBQ tests on its own (15 → 61 tests). #53 (test-only) pins five ways the round
-loop stalls or wastes time today; #6, #5 and #4 each replace their scenario in place, so their
-diffs show the behavior change. Fork PR bases form one chain; stage-4 PRs (#12, #13, #22,
-#26, #27) still sit on the old branches and need rebasing when stage 4 starts.
+All open diffs were checked, including logs added in non-logging PRs.
 
-**Stage runs:** S0 (`test/stage0` 23c6bdea5) and S1 (`test/stage01`), plan and results in [STAGE_RUNS.md](STAGE_RUNS.md).
+| PRs | Log/evidence scope | Ownership decision |
+|---|---|---|
+| #2 | Board, attempt start/return/result, timings, battle-entry timeout, exhaustion | Canonical general diagnostic logger and tests. |
+| #27 | Slot + quest line before every single-slot reroll, including failures | Fold into #2 after verified-reroll #8 exists; preserve exactly-once outcome tests. Do not close before integration passes. |
+| #33 | Inline copies of board/attempt/timeout logs and snapshots | Remove duplicate diagnostics from the egg PR; #2/#3 own these features. Egg verification/restoration stays in #33. |
+| #3, #19 | Snapshot/path records versus detailed target acquisition evidence | Keep distinct feature scope; deduplicate the shared catch-entry timeout capture when integrating. #19 is not a replacement for general attempt logs. |
+| #15, #31, #32 | Per-pass Auto Battle log, kill accounting and board-completion confirmation | Keep with the algorithms/results they explain; #31 changes counting and stop behavior, not just formatting. |
+| #6, #8, #10, #12, #13, #22, #25, #26, #37, #38 | Stop/reroll verification, scheduler/board reuse and controller decisions | Keep decision/outcome logs with the feature; avoid a second generic attempt/board/reroll emitter. |
+| #16, #52 | BP ledger/reconciliation | Keep with BP accounting. |
+| #23, #24, #29, #30, #35, #73 | Catch/arrival/heal/TM/return/target/egg decisions | Keep with their specific behavior and tests. |
+| #4, #5, #17, #18, #21, #51, #53, #180 | No new production logging emission found in the reviewed delta | No logging consolidation needed. |
 
-**Test build for the stage 0+1 run:** branch `test/stage01` c0025b745 = stage 1 + #50 + #1628 +
-#16 + #52, with the BP stats and end-of-run check re-wired into stage 1's game-actions seam (each
-verified reroll now gets an exact BP window). 76 BBQ tests pass. Binary SHA-256 prefix
-81b7714581a0204e (verify-wt). Built before #53 was inserted; the stack differs only in tests, so
-the binary is unchanged in behavior. Not run on the Switch yet. When #16/#52 rebase onto stage 1, this
-wiring is the change they take.
+The #2/#27 consolidation changes the diagnostics branch's dependency: #2 will
+need #8 as its base, rather than pretending verified-reroll exists on #51.
+Until that integration, its child #3 and the graph above retain their live bases.
+Do not merge all behavior branches into #2 merely because they add explanatory
+logs. Do not infer that "closed" means merged or that a clean inventory means a
+branch is ready for upstream.
 
-**#16/#52 rebased onto stage 1 (2026-10-27):** `bbq/bp-status` 78c00504d (#25 + merge of
-U#1628's branch + #16, 71 tests) → `bbq/bp-check` 852b61cb0 (#52, 76 tests). They take the BP
-wiring from `test/stage01`; #52 now also logs the BP check when a run stops early. Send order
-is therefore #50, #51, #7, stage 1, then #16 and #52 (stage 0's BP stats land after stage 1).
+## Outstanding work from this audit
 
-**2026-10-27: upstream bugs found (not reported yet; user's call):**
-- `StatSet::update_file` (CommonFramework/ProgramStats/StatsDatabase.cpp:153) fails when the stats file doesn't exist, so a fresh profile shows "Unable to save stats." after every program; regression from #1630 (QFile ReadWrite used to create it). Fix: treat a missing file as empty.
-- #1741 broke Windows builds: CommonFramework/Main.cpp:284 uses cout/endl (Windows-only block) after `using std::cout/endl` were removed. Makes U#1743's Windows checks fail; not our change.
+- Finish and validate #27 → #2 consolidation, update #2's base/description, merge
+  the resulting parent into #3, then retire the redundant #27.
+- Strip duplicate diagnostics from #33 and narrow its unrelated historical lab
+  notes/analysis artifacts before handoff; preserve source history/evidence.
+- Resolve the #3/#19 catch-timeout capture overlap at integration.
+- Refresh stale upstream references in PR descriptions (#27 still names closed
+  upstream #1640); refresh #35's obsolete closed parent in its owning chain.
+- Refresh #51's children onto the main branch containing upstream #1754 in their
+  owning chains. #51 itself is now closed; its branch was retained, not deleted.
+- Recheck CI/tests at the final heads after changes. No new console run is authorized
+  or claimed by this documentation audit.
 
-**2026-10-27: fork #50 sent upstream as U#1743** (user's go; head 51715774e, uses `screenshot_view()`, says it fixes a regression from #1431, asks jw098 to review). Upstream now 2 of 2 (U#1628, U#1743). Upstream main 820694c4a breaks the macOS build (#1741 commented out `<iostream>` in SetupSettings.cpp, which still uses `cout`).
+## Local consolidation handoff — not published or CI-approved
 
-**2026-10-27: U#1631 merged (squash ce4f06e11); chain rebased onto it.**
-- Fork `main` merged with upstream main (e61ff4147); #50/#51/#2 bases refreshed, so their diffs show only their own change.
-- #2 7d24d5f88 (base now `main`), #3 72099ba89; #50 9a21fb6c0; #51 0b0fef3ce (conflict: kept upstream's
-  BBQuests slug test in PokemonSV_Tests.cpp, since it tests Options, not the farmer).
-- Stage 1: #37 64c2af9d1, #38 5e35b966c, #53 0725fc73f, #8 99d649735, #6 7a7c8805e, #5 4fd705d95, #4 77bcaa53e,
-  #10 c0dfb0b3f, unsupported-quest-rerolls c22cfcd9d, #25 74a07493b, #16 e47e69ca2 (merge of bp-reader-crop redone;
-  same test-registration conflict), #52 b41504756, egg-preflight 2b3dddbfc. Built; BBQ tests 16/30/45/62/77/62 pass.
-- Not rebased: #27 (on #8) and #12→#13→#22→#26 (on #10) still sit on the old commits.
-- U#1628 now conflicts with upstream main (test registrations). Rebased locally as `prep/1628` e04057221, not
-  pushed: pushing updates the user's upstream PR. If pushed, redo #16's merge onto it.
+The audit/documentation is published in fork draft #239. Code candidates below
+are local handoffs for the owning PRs; no live code branch/base was changed.
+Fork #51 is closed, but #27 remains open until its replacement passes native CI.
 
-**Paused 2026-10-27 until an upstream PR merges** (U#1628 awaiting review, U#1631 approved).
-On resume:
-- Egg fix `bbq/egg-preflight` 1ebdecbcb (on #25, no PR yet): KI-14 + start checks (wake screen,
-  egg in box). Open decision: strict setup error when Number of eggs > 0 and the box has none
-  (current code), or treat it as out of eggs so Out of eggs decides (recommended; defaults are
-  30 eggs / Stop). Then Switch test E1 (about 2 min, see the plan in the session notes: wake a
-  dimmed screen, scan the box, stop with the setup message), then open the fork PR.
-- Switch use: run `switch_guard.sh` first; ask before each run (the user runs Max Lair on it).
+### #2 + #27: intended-base code health passes; native execution pending
 
-## Current working set (10)
+- Branch `integration/bbq-logging-handoff`, commit
+  `141193220b654f96bbafdd360b9d40df2696177a`, in
+  `/Users/difan/Projects/wt/bbq-logging-consolidation`.
+- This is a clean merge of #2 head
+  `bba29249245f5e80861663db45672555f3b45acf` and #27 head
+  `6e9871d582495f3f6cc7ab8beed83d564da10bc0`, with the resolved final tree.
+  It includes the #8 dependencies that make reroll instrumentation possible.
+- `BBQLogger` owns the reroll formatter; existing nine reroll outcome cases
+  retain their exactly-once message assertions. Duplicate legacy attempt,
+  timeout and exhaustion messages are replaced by the structured events.
+  Exhaustion keeps its red severity. No controller behavior is intentionally changed.
+- Six explicit input/expectation table rows now live beside the logger in
+  `PokemonSV_BBQLogger_Tests.cpp`, registered through `PokemonSV_Tests.cpp` and
+  `SourceFiles.cmake`. They cover board ordering/unknown/empty results, success,
+  timeout/retry exhaustion (including final color), and long durations.
+- Validation: code health against `origin/bbq/verified-reroll` passes with zero
+  failures; logger and logger tests pass C++23 `-Wall -Wextra -Werror`
+  syntax-only compilation; CRLF-aware whitespace check passes.
+  **Neither syntax checking nor case registration is native test execution.**
+  Full application compilation and native test runs remain pending.
+- Publication constraint: this candidate has no fork PR yet, so the pre-push
+  hook would use `main`, which reports 10 inherited findings from the #8 chain.
+  The intended #8 base passes. Do not bypass the hook or publish from another
+  checkout to evade it. No bypass was attempted or authorized for this work.
+- Owner landing order: review this local merge, arrange the correct intended-base
+  publication path, merge into #2 and change its base to #8, run native CI,
+  then merge updated #2 into #3. Close #27 only after its behavior and tests
+  survive integration. Do not merge all behavior branches into diagnostics.
+- Earlier exploratory branch `integration/bbq-logging-consolidation` remains
+  local at `1a43de23b`; use the clean handoff merge above instead. Its final
+  tree is identical, but the exploratory history includes an intermediate bad
+  conflict resolution and is not the landing candidate.
 
-Stage 0: A2 #50, P1 #51, #7, #16, #52. Stage 1: #37, #38, #53, #8, #6, #10, #25.
-Deferred to their stage: #2/#3 (stage 1 tail), D2, A6, P2, P3 (stage 5).
+### #33: diagnostic-only removal prepared; egg-code findings remain
 
-## Next up (low risk first)
+- Branch `integration/bbq-egg-log-dedup`, commit `d7191a26e`, in
+  `/Users/difan/Projects/wt/bbq-egg-log-dedup`.
+- Removes 45 copied diagnostic lines from three production files, retaining
+  hatch/restore behavior. Intended-base code health still reports 3 egg-code
+  findings: large source file, long hatch routine, undocumented namespace close.
+- Still needs the owning PR's code-health fixes and native validation. Its
+  unrelated historical lab notes/analysis artifacts also need scope review;
+  preserve source history/evidence rather than silently deleting it.
 
-3. Stage 1: rebase #37 and #38 onto P1, then their children; split #10.
-4. After stage 1 is queued: stage 2 (#24 split, A4) and stage 3 (Auto Battle chain).
+The audit and migration scope are complete; code landing and native validation
+are pending. No console run, upstream publication or hook bypass is claimed.
