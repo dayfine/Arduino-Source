@@ -203,6 +203,15 @@ if (APPLE)
     # https://stackoverflow.com/questions/53560288/how-to-create-a-macos-app-bundle-with-cmake
     # https://cmake.org/cmake/help/latest/command/add_executable.html
     add_executable(SerialPrograms MACOSX_BUNDLE ${SerialPrograms_ICON} ${EXECUTABLE_SOURCES})
+    # Compiled identity survives Finder/TCC relaunch without command-line arguments.
+    set(PA_LAB_PROFILE "" CACHE STRING "Bind this lab binary to one macOS settings profile")
+    if(NOT PA_LAB_PROFILE STREQUAL "")
+        if(NOT PA_LAB_PROFILE MATCHES "^[A-Za-z0-9_][A-Za-z0-9_-]*$")
+            message(FATAL_ERROR "PA_LAB_PROFILE must contain only ASCII letters, digits, '_' or '-'.")
+        endif()
+        target_compile_definitions(SerialPrograms PRIVATE PA_LAB_PROFILE="${PA_LAB_PROFILE}")
+    endif()
+
     set_target_properties(SerialPrograms PROPERTIES
         BUNDLE True
         MACOSX_BUNDLE_GUI_IDENTIFIER PokemonAutomation.SerialPrograms

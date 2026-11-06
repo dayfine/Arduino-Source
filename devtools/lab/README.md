@@ -38,9 +38,10 @@ rules are cheap; use both.
 
 `PROFILE` is the app's user-files folder: the one with `SerialPrograms.log`,
 `Screenshots/` and the settings. On macOS it is
-`~/Library/Application Support/SerialPrograms`, or
-`.../SerialPrograms/Profiles/NAME` for an app launched with
-`--args --profile NAME`. On Windows and Linux it is the folder the app was
+`~/Library/Application Support/SerialPrograms/Profiles/NAME` for a lab app
+launched with `--args --profile NAME` or built with `PA_LAB_PROFILE=NAME`.
+Lab builds refuse an unprofiled macOS GUI launch; they never fall back to the
+live app's default settings directory. On Windows and Linux it is the folder the app was
 started in. `labctl.sh supports BUILD` says whether a build has the channel
 at all.
 
@@ -71,8 +72,68 @@ touched. On macOS:
    and capture device (the `ConsoleSetup` of each program in the settings
    file), so two lab apps drive two consoles at once.
 
-On Windows and Linux the separate copy is just a second folder, and the
-profile flag is the same.
+On Windows and Linux the separate copy is a second folder; `--profile` is
+unsupported and rejected.
+
+## Startup isolation and tests
+
+Bind each deployed macOS lab binary to its console when configuring its existing
+build directory, for example:
+
+```sh
+cmake -S SerialPrograms -B /path/to/build -DPA_LAB_PROFILE=lab-B
+```
+
+This compiles the identity into the executable. Finder and macOS permission-dialog
+relaunches need no arguments and still select `Profiles/lab-B`. An explicit
+`--profile lab-A` against that binary exits with status 2 before Qt, settings,
+logging or device discovery. Changing the bundle's name or identifier does not
+change its compiled profile; build each console's binary with the correct value.
+The existing signing/bundle-identity procedure still applies.
+
+With `PA_LAB_PROFILE` empty (the build default), macOS GUI startup requires
+`--profile NAME`; a no-argument relaunch safely exits. Names are ASCII letters,
+digits, `_` and `-`, cannot start with `-`, and must be a single path component.
+Empty, missing, duplicate and malformed names are rejected rather than rewritten.
+
+On this baseline, run the registered native tests with:
+
+```sh
+./SerialPrograms.app/Contents/MacOS/SerialPrograms --command-line-test-mode
+# Optional image augmentation:
+./SerialPrograms.app/Contents/MacOS/SerialPrograms --command-line-test-mode --augment-color-distortions
+```
+
+Explicit tests use `QCoreApplication`, bypass settings loading and window
+restoration, and never enter startup's serial/camera discovery. macOS test file
+output uses `Profiles/unit-tests`; no console profile can be supplied with tests.
+The legacy persisted test-mode setting remains supported, but only after a valid
+GUI profile is selected. It also runs before device discovery. Prefer the explicit
+flag so no saved settings are loaded.
+
+Unknown or incomplete arguments fail closed with status 2. `--test bdsp` and `--test-filter=...`
+are not supported by this baseline. Documented Qt application options (including `-platform offscreen`, `-style Fusion`,
+`-style=Fusion`, stylesheet, window and plugin options) are preserved in order and
+passed to Qt. Missing values and unknown option spellings are rejected; values in
+option/value pairs must not begin with `-`. Qt environment variables such as
+`QT_QPA_PLATFORM` remain supported.
+The separate `SerialProgramsTests` runner is an independent pending feature;
+this lab change does not import it.
+
+The colocated `StartupArguments_Tests.cpp` table covers the general grammar,
+ordinary unprofiled GUI startup, and Qt argument preservation. The separate
+`LabStartupPolicy_Tests.cpp` table covers rejection, profile binding, no-argument
+lab relaunch and exclusive dispatch to the test entry point. Its injected
+GUI callback represents the boundary that owns settings/window/hardware startup.
+These tests verify that boundary is not entered; they do not exercise real devices
+or claim that all unit-test bodies are incapable of opening hardware.
+
+Profiles isolate settings, not physical serial devices. A mistakenly configured
+profile can still refer to another console's port. Enforcing ownership before a
+physical port opens requires a separate device-lease change; the channel owner
+and shell lock do not enforce that boundary.
+
+See [STARTUP_ISOLATION.md](STARTUP_ISOLATION.md) for the review split and upstream path.
 
 ## Worked example: run a program with nothing clicked
 
