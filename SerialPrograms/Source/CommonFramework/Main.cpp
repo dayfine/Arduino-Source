@@ -1,5 +1,7 @@
 
 #include <iostream>
+#include <memory>
+#include <stdexcept>
 #include <vector>
 #include <QCoreApplication>
 //#include <QTextStream>
@@ -19,6 +21,7 @@
 #include "Common/Cpp/ScopeExit.h"
 #include "Common/Qt/GlobalThreadPoolsQt.h"
 #include "StaticRegistration.h"
+#include "CommonFramework/Devices/LabDeviceRuntime.h"
 #include "CommonFramework/GlobalAutoPaths.h"
 #include "CommonFramework/Tools/GlobalThreadPools.h"
 #include "CommonFramework/Panels/OptionsPanel.h"
@@ -395,6 +398,13 @@ int main(int argc, char* argv[]){
 #else
             (void)selected;
 #endif
+            std::unique_ptr<PokemonAutomation::LabDeviceLease> profile_lease;
+            try{
+                profile_lease = PokemonAutomation::reserve_lab_profile();
+            }catch (const std::runtime_error& error){
+                std::cerr << error.what() << std::endl;
+                return 2;
+            }
             return PokemonAutomation::run_gui_application(qt_argc, qt_argv.data());
         },
         .tests = [&](const PokemonAutomation::StartupPlan& selected){

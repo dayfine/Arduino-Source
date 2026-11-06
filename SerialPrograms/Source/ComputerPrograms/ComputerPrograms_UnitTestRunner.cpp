@@ -24,6 +24,7 @@
 #include "CommonFramework/Windows/LabChannel_Tests.h"
 #include "CommonFramework/Startup/StartupArguments_Tests.h"
 #include "CommonFramework/Startup/LabStartupPolicy_Tests.h"
+#include "CommonFramework/Devices/LabDeviceAccessQt_Tests.h"
 #include "CommonTools/VisualDetectors/BlackBorderDetector.h"
 #include "CommonTools/OCR/OCR_Tests.h"
 
@@ -69,6 +70,7 @@ UnitTestDatabase make_UNIT_TESTS_ALL(){
     add_tests_LabChannel(ret);
     add_tests_StartupArguments(ret);
     add_tests_LabStartupPolicy(ret);
+    add_tests_LabDeviceAccess(ret);
     OCR::add_tests(ret);
     Kernels::add_tests(ret);
     NintendoSwitch::add_tests_CheckOnlineDetector(ret);

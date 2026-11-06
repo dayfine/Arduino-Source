@@ -109,6 +109,14 @@ void SerialPABotBase2_Connection::naked_wait(WallDuration duration){
     std::unique_lock<Mutex> lg(lock);
     cv.wait_until(lg, deadline, [=]{ return current_time() >= deadline; });
 }
+void SerialPABotBase2_Connection::open_guarded_serial_port(){
+#ifdef QT_CORE_LIB
+    m_device_lease = acquire_lab_serial(m_logger, m_device_name);
+#endif
+    m_unreliable_connection = std::make_unique<SerialConnection>(
+        GlobalThreadPools::unlimited_realtime(), m_device_name, 115200
+    );
+}
 bool SerialPABotBase2_Connection::open_serial_port(){
     {
         std::string text = "Opening serial port...";
@@ -162,11 +170,7 @@ bool SerialPABotBase2_Connection::open_serial_port(){
         return false;
     }
 
-    m_unreliable_connection = std::make_unique<SerialConnection>(
-        GlobalThreadPools::unlimited_realtime(),
-        m_device_name,
-        115200
-    );
+    open_guarded_serial_port();
 
     return true;
 }
@@ -327,6 +331,13 @@ void SerialPABotBase2_Connection::connect_thread_body(){
         if (ok){
             declare_ready();
         }else{
+            // Close native resources before releasing the lease on any failed open/handshake.
+            m_device.reset();
+            m_stream_connection.reset();
+            m_unreliable_connection.reset();
+#ifdef QT_CORE_LIB
+            m_device_lease.reset();
+#endif
             declare_failed();
         }
     });
