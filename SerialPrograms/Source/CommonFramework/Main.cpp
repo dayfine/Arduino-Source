@@ -51,13 +51,10 @@
 
 Q_DECLARE_METATYPE(std::string)
 
-using namespace PokemonAutomation;
-
 namespace PokemonAutomation{
 bool use_qt_ui(){
     return qobject_cast<QApplication*>(QCoreApplication::instance()) != nullptr;
 }
-} // namespace PokemonAutomation
 
 namespace{
 
@@ -363,6 +360,7 @@ int run_test_application(int argc, char* argv[], const StartupPlan& plan){
 }
 
 } // namespace
+} // namespace PokemonAutomation
 
 // Validate before even constructing Qt: a typo must never become a hardware launch.
 int main(int argc, char* argv[]){
@@ -370,15 +368,15 @@ int main(int argc, char* argv[]){
     for (int i = 1; i < argc; i++){
         arguments.emplace_back(argv[i]);
     }
-    LabStartupPolicy policy;
+    PokemonAutomation::LabStartupPolicy policy;
 #if defined(__APPLE__)
-    policy.profiles = LabProfileMode::REQUIRED;
+    policy.profiles = PokemonAutomation::LabProfileMode::REQUIRED;
 #ifdef PA_LAB_PROFILE
     policy.bound_profile = PA_LAB_PROFILE;
 #endif
 #endif
-    const StartupPlan plan = apply_lab_startup_policy(parse_startup_arguments(arguments), policy);
-    if (plan.mode == StartupMode::REJECTED){
+    const PokemonAutomation::StartupPlan plan = PokemonAutomation::apply_lab_startup_policy(PokemonAutomation::parse_startup_arguments(arguments), policy);
+    if (plan.mode == PokemonAutomation::StartupMode::REJECTED){
         std::cerr << plan.error << std::endl;
     }
     // Keep backing storage alive for Qt, which may mutate argc and argv.
@@ -390,17 +388,17 @@ int main(int argc, char* argv[]){
     }
     int qt_argc = (int)qt_argv.size();
     qt_argv.push_back(nullptr);
-    return dispatch_startup(plan, {
-        .gui = [&](const StartupPlan& selected){
+    return PokemonAutomation::dispatch_startup(plan, {
+        .gui = [&](const PokemonAutomation::StartupPlan& selected){
 #if defined(__APPLE__)
-            Filesystem::set_startup_profile(*selected.profile);
+            PokemonAutomation::Filesystem::set_startup_profile(*selected.profile);
 #else
             (void)selected;
 #endif
-            return run_gui_application(qt_argc, qt_argv.data());
+            return PokemonAutomation::run_gui_application(qt_argc, qt_argv.data());
         },
-        .tests = [&](const StartupPlan& selected){
-            return run_test_application(qt_argc, qt_argv.data(), selected);
+        .tests = [&](const PokemonAutomation::StartupPlan& selected){
+            return PokemonAutomation::run_test_application(qt_argc, qt_argv.data(), selected);
         },
     });
 }
