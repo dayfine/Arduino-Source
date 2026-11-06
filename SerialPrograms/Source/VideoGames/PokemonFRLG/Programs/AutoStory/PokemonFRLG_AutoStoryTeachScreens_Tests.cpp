@@ -453,33 +453,55 @@ UnitTestResult test_screens(){
 }
 
 
+struct AutoStoryTeachScreensInput{
+    std::string name;
+    std::function<UnitTestResult()> body;
+};
+
+struct AutoStoryTeachScreensExpectation{
+};
+
+struct AutoStoryTeachScreensCase{
+    AutoStoryTeachScreensInput input;
+    AutoStoryTeachScreensExpectation expectation;
+};
+
 class Test_AutoStoryTeachScreens : public UnitTest{
 public:
-    Test_AutoStoryTeachScreens(std::string name, std::function<UnitTestResult()> body)
-        : UnitTest("PokemonFRLG::AutoStoryTeachScreens - " + std::move(name))
-        , m_body(std::move(body))
+    explicit Test_AutoStoryTeachScreens(AutoStoryTeachScreensCase test_case)
+        : UnitTest("PokemonFRLG::AutoStoryTeachScreens - " + test_case.input.name)
+        , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
         try{
-            return m_body();
+            return m_case.input.body();
         }catch (Exception& e){
             return std::string(e.name()) + ": " + e.message();
         }
     }
 
 private:
-    std::function<UnitTestResult()> m_body;
+    AutoStoryTeachScreensCase m_case;
 };
 
-}
+} // namespace
 
+
+const AutoStoryTeachScreensCase AUTO_STORY_TEACH_SCREENS_CASES[] = {
+    {
+        .input = {"TM03 through the console's screens", test_screens},
+        .expectation = {},
+    },
+};
 
 void add_tests_AutoStoryTeachScreens(UnitTestDatabase& database){
-    database.add<Test_AutoStoryTeachScreens>("TM03 through the console's screens", test_screens);
+    for (const auto& item : AUTO_STORY_TEACH_SCREENS_CASES){
+        database.add<Test_AutoStoryTeachScreens>(item);
+    }
 }
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

@@ -124,22 +124,35 @@ private:
 };
 
 
+struct AutoStoryMartInput{
+    std::string name;
+    std::function<UnitTestResult()> body;
+};
+
+struct AutoStoryMartExpectation{
+};
+
+struct AutoStoryMartCase{
+    AutoStoryMartInput input;
+    AutoStoryMartExpectation expectation;
+};
+
 class Test_AutoStoryMart : public UnitTest{
 public:
-    Test_AutoStoryMart(std::string name, std::function<UnitTestResult()> body)
-        : UnitTest("PokemonFRLG::AutoStoryMart - " + std::move(name))
-        , m_body(std::move(body))
+    explicit Test_AutoStoryMart(AutoStoryMartCase test_case)
+        : UnitTest("PokemonFRLG::AutoStoryMart - " + test_case.input.name)
+        , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
         try{
-            return m_body();
+            return m_case.input.body();
         }catch (Exception& e){
             return std::string(e.name()) + ": " + e.message();
         }
     }
 
 private:
-    std::function<UnitTestResult()> m_body;
+    AutoStoryMartCase m_case;
 };
 
 
@@ -380,22 +393,40 @@ UnitTestResult test_count_supplies(){
     return true;
 }
 
-}
+} // namespace
 
+
+const AutoStoryMartCase AUTO_STORY_MART_CASES[] = {
+    {
+        .input = {"buy lists on a fake Mart", test_mart_buys},
+        .expectation = {},
+    },
+    {
+        .input = {"quantity presses", test_quantity_presses},
+        .expectation = {},
+    },
+    {
+        .input = {"the table's variant", test_mart_variant},
+        .expectation = {},
+    },
+    {
+        .input = {"Mart stocks", test_mart_stock},
+        .expectation = {},
+    },
+    {
+        .input = {"bought supplies counted", test_count_supplies},
+        .expectation = {},
+    },
+};
 
 void add_tests_AutoStoryMart(UnitTestDatabase& database){
-    const auto add = [&](std::string name, UnitTestResult (*body)()){
-        database.add<Test_AutoStoryMart>(std::move(name), body);
-    };
-    add("buy lists on a fake Mart", test_mart_buys);
-    add("quantity presses", test_quantity_presses);
-    add("the table's variant", test_mart_variant);
-    add("Mart stocks", test_mart_stock);
-    add("bought supplies counted", test_count_supplies);
+    for (const auto& item : AUTO_STORY_MART_CASES){
+        database.add<Test_AutoStoryMart>(item);
+    }
 }
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

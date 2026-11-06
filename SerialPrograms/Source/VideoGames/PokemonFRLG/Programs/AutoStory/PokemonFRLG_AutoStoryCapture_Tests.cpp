@@ -169,22 +169,35 @@ private:
 };
 
 
+struct AutoStoryCaptureInput{
+    std::string name;
+    std::function<UnitTestResult()> body;
+};
+
+struct AutoStoryCaptureExpectation{
+};
+
+struct AutoStoryCaptureCase{
+    AutoStoryCaptureInput input;
+    AutoStoryCaptureExpectation expectation;
+};
+
 class Test_AutoStoryCapture : public UnitTest{
 public:
-    Test_AutoStoryCapture(std::string name, std::function<UnitTestResult()> body)
-        : UnitTest("PokemonFRLG::AutoStoryCapture - " + std::move(name))
-        , m_body(std::move(body))
+    explicit Test_AutoStoryCapture(AutoStoryCaptureCase test_case)
+        : UnitTest("PokemonFRLG::AutoStoryCapture - " + test_case.input.name)
+        , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
         try{
-            return m_body();
+            return m_case.input.body();
         }catch (Exception& e){
             return std::string(e.name()) + ": " + e.message();
         }
     }
 
 private:
-    std::function<UnitTestResult()> m_body;
+    AutoStoryCaptureCase m_case;
 };
 
 
@@ -594,22 +607,40 @@ UnitTestResult test_pace_until_battle(){
     return true;
 }
 
-}
+} // namespace
 
+
+const AutoStoryCaptureCase AUTO_STORY_CAPTURE_CASES[] = {
+    {
+        .input = {"decisions by encounter", test_capture_decisions},
+        .expectation = {},
+    },
+    {
+        .input = {"the table's variant", test_capture_variant},
+        .expectation = {},
+    },
+    {
+        .input = {"messages", test_capture_messages},
+        .expectation = {},
+    },
+    {
+        .input = {"capture and PC steps in a segment: reloads and stops", test_capture_in_segment},
+        .expectation = {},
+    },
+    {
+        .input = {"pacing finds a battle whose flash was missed", test_pace_until_battle},
+        .expectation = {},
+    },
+};
 
 void add_tests_AutoStoryCapture(UnitTestDatabase& database){
-    const auto add = [&](std::string name, UnitTestResult (*body)()){
-        database.add<Test_AutoStoryCapture>(std::move(name), body);
-    };
-    add("decisions by encounter", test_capture_decisions);
-    add("the table's variant", test_capture_variant);
-    add("messages", test_capture_messages);
-    add("capture and PC steps in a segment: reloads and stops", test_capture_in_segment);
-    add("pacing finds a battle whose flash was missed", test_pace_until_battle);
+    for (const auto& item : AUTO_STORY_CAPTURE_CASES){
+        database.add<Test_AutoStoryCapture>(item);
+    }
 }
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

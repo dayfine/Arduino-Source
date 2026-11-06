@@ -905,7 +905,7 @@ void back_to_overworld_after(ConsoleHandle& console, ProControllerContext& conte
     mash_until_overworld(console, context, 20000ms);
 }
 
-}
+} // namespace
 
 void close_trainer_card(ConsoleHandle& console, ProControllerContext& context){
     //  B closes the card, then the START menu.

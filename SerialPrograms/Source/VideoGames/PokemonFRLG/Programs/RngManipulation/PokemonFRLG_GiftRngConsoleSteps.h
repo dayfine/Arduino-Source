@@ -33,6 +33,7 @@ namespace PokemonFRLG{
 StarterRngOutcome loop_outcome(GiftRngOutcome outcome);
 
 
+//  Console environment settings for Gift RNG loops.
 struct GiftRngConsoleSettings{
     Language language = Language::English;
     SoundSetting sound = SoundSetting::Mono;
@@ -67,7 +68,7 @@ private:
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

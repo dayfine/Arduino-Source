@@ -166,22 +166,35 @@ MemberReader reader_of(FakeTeachGame& game){
 }
 
 
+struct AutoStoryTeachInput{
+    std::string name;
+    std::function<UnitTestResult()> body;
+};
+
+struct AutoStoryTeachExpectation{
+};
+
+struct AutoStoryTeachCase{
+    AutoStoryTeachInput input;
+    AutoStoryTeachExpectation expectation;
+};
+
 class Test_AutoStoryTeach : public UnitTest{
 public:
-    Test_AutoStoryTeach(std::string name, std::function<UnitTestResult()> body)
-        : UnitTest("PokemonFRLG::AutoStoryTeach - " + std::move(name))
-        , m_body(std::move(body))
+    explicit Test_AutoStoryTeach(AutoStoryTeachCase test_case)
+        : UnitTest("PokemonFRLG::AutoStoryTeach - " + test_case.input.name)
+        , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
         try{
-            return m_body();
+            return m_case.input.body();
         }catch (Exception& e){
             return std::string(e.name()) + ": " + e.message();
         }
     }
 
 private:
-    std::function<UnitTestResult()> m_body;
+    AutoStoryTeachCase m_case;
 };
 
 
@@ -387,21 +400,33 @@ UnitTestResult test_teach_variant(){
     return true;
 }
 
-}
+} // namespace
 
+
+const AutoStoryTeachCase AUTO_STORY_TEACH_CASES[] = {
+    {
+        .input = {"TMs and HMs on a fake party", test_teach},
+        .expectation = {},
+    },
+    {
+        .input = {"a TM is used up, an HM kept", test_tm_used_up},
+        .expectation = {},
+    },
+    {
+        .input = {"the table's variant", test_teach_variant},
+        .expectation = {},
+    },
+};
 
 void add_tests_AutoStoryTeach(UnitTestDatabase& database){
-    const auto add = [&](std::string name, UnitTestResult (*body)()){
-        database.add<Test_AutoStoryTeach>(std::move(name), body);
-    };
-    add("TMs and HMs on a fake party", test_teach);
-    add("a TM is used up, an HM kept", test_tm_used_up);
-    add("the table's variant", test_teach_variant);
+    for (const auto& item : AUTO_STORY_TEACH_CASES){
+        database.add<Test_AutoStoryTeach>(item);
+    }
     add_tests_AutoStoryTeachScreens(database);
 }
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

@@ -130,7 +130,7 @@ StoryRunPlan then_rows(
     return plan;
 }
 
-}
+} // namespace
 
 StoryRunPlan rows_after_starter_rng(
     const std::vector<StoryCheckpoint>& checkpoints, size_t ball_row, size_t last, const StoryHandoffs& handoffs

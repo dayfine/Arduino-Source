@@ -64,7 +64,7 @@ std::optional<size_t> counted_value(std::string_view word, std::string_view key,
     return value - 1;
 }
 
-}
+} // namespace
 
 
 std::string pc_variant(const PcTransfer& transfer){
@@ -417,6 +417,6 @@ void ConsolePcStorageActions::press(PcPress press){
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

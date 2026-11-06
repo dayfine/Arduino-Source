@@ -29,6 +29,7 @@ struct VariantPair{
     std::string_view key;
     std::string_view value;
 };
+//  Splits a variant word into a key-value pair separated by "=".
 std::optional<VariantPair> variant_pair(std::string_view word);
 
 //  `text` as a number of up to `max_digits` decimal digits; nothing if it
@@ -37,7 +38,7 @@ std::optional<size_t> variant_number(std::string_view text, size_t max_digits = 
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

@@ -290,7 +290,7 @@ const char* battle_on_its_way(ConsoleHandle& console, ProControllerContext& cont
     return nullptr;
 }
 
-}
+} // namespace
 
 size_t clear_unseen_battle(
     ConsoleHandle& console, ProControllerContext& context,

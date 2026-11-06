@@ -507,7 +507,7 @@ std::optional<Outcome> run_abilities(StoryEnv& env, RunState& state, const Story
     return run_ability_game_step(env.console.logger(), &env.console, step, abilities);
 }
 
-}
+} // namespace
 
 Outcome StoryExecutor::game(RunState& state, const StoryStep& step){
     if (step.variant == CLOSE_TRAINER_CARD){

@@ -80,22 +80,35 @@ private:
 };
 
 
+struct AutoStoryChoiceInput{
+    std::string name;
+    std::function<UnitTestResult()> body;
+};
+
+struct AutoStoryChoiceExpectation{
+};
+
+struct AutoStoryChoiceCase{
+    AutoStoryChoiceInput input;
+    AutoStoryChoiceExpectation expectation;
+};
+
 class Test_AutoStoryChoice : public UnitTest{
 public:
-    Test_AutoStoryChoice(std::string name, std::function<UnitTestResult()> body)
-        : UnitTest("PokemonFRLG::AutoStoryChoice - " + std::move(name))
-        , m_body(std::move(body))
+    explicit Test_AutoStoryChoice(AutoStoryChoiceCase test_case)
+        : UnitTest("PokemonFRLG::AutoStoryChoice - " + test_case.input.name)
+        , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
         try{
-            return m_body();
+            return m_case.input.body();
         }catch (Exception& e){
             return std::string(e.name()) + ": " + e.message();
         }
     }
 
 private:
-    std::function<UnitTestResult()> m_body;
+    AutoStoryChoiceCase m_case;
 };
 
 
@@ -181,19 +194,28 @@ UnitTestResult test_fossil_variant(){
     return true;
 }
 
-}
+} // namespace
 
+
+const AutoStoryChoiceCase AUTO_STORY_CHOICE_CASES[] = {
+    {
+        .input = {"the fossil on a fake Mt. Moon", test_fossil_choice},
+        .expectation = {},
+    },
+    {
+        .input = {"the table's variant", test_fossil_variant},
+        .expectation = {},
+    },
+};
 
 void add_tests_AutoStoryChoice(UnitTestDatabase& database){
-    const auto add = [&](std::string name, UnitTestResult (*body)()){
-        database.add<Test_AutoStoryChoice>(std::move(name), body);
-    };
-    add("the fossil on a fake Mt. Moon", test_fossil_choice);
-    add("the table's variant", test_fossil_variant);
+    for (const auto& item : AUTO_STORY_CHOICE_CASES){
+        database.add<Test_AutoStoryChoice>(item);
+    }
 }
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

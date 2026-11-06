@@ -89,6 +89,6 @@ LevelResult run_level_check(Logger& logger, const MemberReader& reader, const Le
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
