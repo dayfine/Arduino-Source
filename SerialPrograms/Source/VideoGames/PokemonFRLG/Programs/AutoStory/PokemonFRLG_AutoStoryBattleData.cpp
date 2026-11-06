@@ -58,7 +58,7 @@ constexpr StoryTrainer STORY_TRAINERS[] = {
 
 using JsonTable = std::map<std::string, JsonValue, std::less<>>;
 
-const JsonValue& file_json(const std::string& name){
+const JsonValue& file_json(std::string_view name){
     static const JsonTable FILES = []{
         JsonTable files;
         for (const auto& [file, text] : autostory_battle_json()){
@@ -68,7 +68,7 @@ const JsonValue& file_json(const std::string& name){
     }();
     const auto it = FILES.find(name);
     if (it == FILES.end()){
-        throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "BattleData/" + name + ".json is not built into the program.");
+        throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "BattleData/" + std::string(name) + ".json is not built into the program.");
     }
     return it->second;
 }
