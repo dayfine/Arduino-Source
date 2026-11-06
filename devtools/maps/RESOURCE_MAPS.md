@@ -16,11 +16,11 @@ BDSP's held map differences are not imported or overwritten.
 
 Clone a full tools/data checkout outside deployed Resources, then explicitly
 select the pinned tool version used by CI (a draft dependency until Simulation
-#57 lands):
+#57 and #58 land):
 
 ```sh
 git clone https://github.com/dayfine/PokemonSimulation.git /path/to/pokesim
-git -C /path/to/pokesim checkout 0efe131008c4bcdceb4d036a7022171cbcb2375a
+git -C /path/to/pokesim checkout 8436751a34b08da777fee11e6e2106624494f486
 PYTHONPATH=/path/to/pokesim/src python3 -m pokesim.maps.consumer_sync prepare \
   --layout resources --source /path/to/pokesim --consumer /path/to/Arduino-Source
 cmake -S SerialPrograms -B /path/to/build \
@@ -33,10 +33,12 @@ modified, extra or unapproved resource data fails before compilation. The pack
 includes pinned license/provenance. Generated resources and external caches are
 ignored; the resource lock is checked in.
 
-The old FRLG Python builder is retained temporarily because `frlg_battle_data.py`
-imports its decomp reader. Move that dependency to the simulation owner before
-removing the module; do not break battle-data regeneration as incidental cleanup.
-The shared Sinnoh decomp CLI also remains a separate consumer migration.
+The duplicate FRLG builder and Python tests are removed. `frlg_battle_data.py`
+is a thin CLI forwarder to `pokesim.games.frlg.battle_data_export`; set
+`PYTHONPATH=<pinned-tools>/src` when running it. All five existing battle-data
+outputs reproduced byte-for-byte after the move. Map-builder tests already live
+beside their source in PokemonSimulation. Native game tests remain here.
+The shared Sinnoh decomp CLI remains a separate consumer migration.
 
 Native map, story, transition and recovery tests must run from this tree without
 the old map directory before adopting this handoff in the owning chain. This
