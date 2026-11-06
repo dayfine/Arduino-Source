@@ -63,11 +63,12 @@ std::vector<StoryCheckpoint> rows_after_starter_rng(
 );
 
 
+//  Registers AutoStory RNG loop unit tests.
 void add_tests_AutoStoryRngLoop(UnitTestDatabase& database);
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

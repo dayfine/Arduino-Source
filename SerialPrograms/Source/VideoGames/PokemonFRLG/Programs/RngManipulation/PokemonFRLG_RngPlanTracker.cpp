@@ -129,6 +129,6 @@ RngPlanNext rng_plan_next(RngPlanStep step, size_t index, size_t next_index){
 }
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

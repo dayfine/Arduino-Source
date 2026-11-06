@@ -112,6 +112,6 @@ StarterRngResult ConsoleStarterRngSteps::run_attempt(const RngAttempt& attempt, 
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

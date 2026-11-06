@@ -194,6 +194,6 @@ std::vector<RngAttempt> StarterRngPlanOptions::plan(Logger& logger, Language lan
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

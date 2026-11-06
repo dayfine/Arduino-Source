@@ -75,7 +75,7 @@ RngAttempt make_attempt(const RngTarget& target, const std::vector<SidCandidate>
     return attempt;
 }
 
-}
+} // namespace
 
 
 std::vector<RngAttempt> plan_rng_attempts(
@@ -154,6 +154,6 @@ std::vector<RngAttempt> plan_starter_rng(const StarterRngPlanInputs& inputs){
 }
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

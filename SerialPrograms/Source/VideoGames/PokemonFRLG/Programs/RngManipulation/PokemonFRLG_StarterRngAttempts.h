@@ -32,6 +32,7 @@ namespace NintendoSwitch{
 namespace PokemonFRLG{
 
 
+//  Selectable Kanto starter species.
 enum class StarterSpecies{
     bulbasaur,
     squirtle,
@@ -47,6 +48,7 @@ EVs rival_ev_yield(StarterSpecies starter);
 int steps_left_to_lab_door(StarterSpecies starter);
 
 
+//  Statistical counters for Starter RNG attempts.
 struct StarterRngStats : public StatsTracker{
     StarterRngStats();
 
@@ -58,6 +60,7 @@ struct StarterRngStats : public StatsTracker{
 };
 
 
+//  Target criteria for starter manipulation.
 struct StarterRngTarget{
     StarterSpecies starter = StarterSpecies::bulbasaur;
     uint16_t seed = 0;
@@ -92,6 +95,7 @@ std::optional<AdvRngState> reset_hit(
     const RngUncertainHistory& uncertain, const RngCalibrationHistory& calibration, const std::vector<AdvRngState>& hits
 );
 
+//  Console and game environment settings for starter RNG.
 struct StarterRngSettings{
     Language language = Language::None;
     //  The Switch profile's position on the user selection screen; 0 for
@@ -122,6 +126,7 @@ struct StarterRngDisplays{
     RngCalibrationDisplay& calibration;
 };
 
+//  Notification event options for starter RNG outcomes.
 struct StarterRngNotifications{
     EventNotificationOption& shiny;
     EventNotificationOption& status_update;
@@ -129,6 +134,7 @@ struct StarterRngNotifications{
 };
 
 
+//  Result outcome of an individual starter attempt.
 enum class StarterRngOutcome{
     shiny,          //  The starter was shiny after a reset; not known if on the target.
     shiny_on_target,    //  Shiny, and the target is among the states its stats match.
@@ -144,6 +150,7 @@ enum class StarterRngOutcome{
 //  shiny if none match.
 StarterRngOutcome identify_shiny(uint16_t seed, uint64_t advances, const std::vector<AdvRngState>& hits);
 
+//  Complete result report from starter RNG execution.
 struct StarterRngResult{
     StarterRngOutcome outcome = StarterRngOutcome::out_of_resets;
     //  The target's PID, nature and IVs, on target_hit and shiny_on_target.
@@ -151,6 +158,7 @@ struct StarterRngResult{
 };
 
 
+//  Manages execution loop and tracking for starter resets.
 class StarterRngAttempts{
 public:
     StarterRngAttempts(
@@ -257,7 +265,7 @@ private:
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

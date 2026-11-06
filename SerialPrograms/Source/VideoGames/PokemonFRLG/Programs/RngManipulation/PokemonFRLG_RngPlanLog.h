@@ -53,9 +53,12 @@ std::vector<std::string> rng_attempt_lines(const std::vector<RngAttempt>& attemp
 //  Starter RNG by hand, its own "Target Hit!" and "Missed target." lines
 //  are the attempts' results.
 std::string rng_log_tid(uint16_t tid, bool from_card);
+//  Formats SID Helper summary line for log output.
 std::string rng_log_sid_helper(uint16_t tid, uint32_t target_advances, const std::vector<SidCandidate>& candidates);
+//  Formats attempt parameters for log output.
 std::string rng_log_attempt(size_t index, const RngAttempt& attempt);
 
+//  Structured log summary of an RNG outcome.
 struct RngResultLog{
     size_t index = 0;
     //  From 1.
@@ -67,11 +70,13 @@ struct RngResultLog{
     std::optional<Pokemon::AdvPokemonResult> pokemon;
     RngPlanNext next = RngPlanNext::STOP;
 };
+//  Formats RNG attempt result for logging.
 std::string rng_log_result(const RngResultLog& result);
+//  Formats confirmed SID and candidate weights for logging.
 std::string rng_log_confirmed(uint16_t tid, uint16_t sid, const std::vector<SidCandidate>& sid_helper_candidates);
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

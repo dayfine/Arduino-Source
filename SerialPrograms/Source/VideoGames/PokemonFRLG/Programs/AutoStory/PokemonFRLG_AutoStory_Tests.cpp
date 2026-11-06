@@ -573,30 +573,38 @@ const char* handoff_name(StoryHandoff handoff){
     return "?";
 }
 
-struct RunPlanScenario{
+struct RunPlanInput{
     std::string name = "";
     std::string first = "";
     //  The table's last row if empty.
     std::string last = "";
     StoryHandoffs handoffs = {};
+};
+
+struct RunPlanExpectation{
     std::string expected_ids = "";
     StoryHandoff expected_stop = StoryHandoff::NONE;
 };
 
+struct RunPlanTestCase{
+    RunPlanInput input;
+    RunPlanExpectation expectation;
+};
+
 class Test_RunPlan : public UnitTest{
 public:
-    Test_RunPlan(RunPlanScenario scenario)
-        : UnitTest("PokemonFRLG::AutoStory - run plan: " + scenario.name)
+    explicit Test_RunPlan(RunPlanTestCase scenario)
+        : UnitTest("PokemonFRLG::AutoStory - run plan: " + scenario.input.name)
         , m_scenario(std::move(scenario))
     {}
 
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
         try{
-            const size_t last = m_scenario.last.empty() ? story_checkpoints().size() - 1 : row_index(m_scenario.last);
-            const StoryRunPlan plan = plan_story_run(story_checkpoints(), row_index(m_scenario.first), last, m_scenario.handoffs);
+            const size_t last = m_scenario.input.last.empty() ? story_checkpoints().size() - 1 : row_index(m_scenario.input.last);
+            const StoryRunPlan plan = plan_story_run(story_checkpoints(), row_index(m_scenario.input.first), last, m_scenario.input.handoffs);
             const std::string ids = joined_ids(plan.rows);
-            if (ids != m_scenario.expected_ids || plan.stop != m_scenario.expected_stop){
-                return "Expected rows \"" + m_scenario.expected_ids + "\", stop " + handoff_name(m_scenario.expected_stop)
+            if (ids != m_scenario.expectation.expected_ids || plan.stop != m_scenario.expectation.expected_stop){
+                return "Expected rows \"" + m_scenario.expectation.expected_ids + "\", stop " + handoff_name(m_scenario.expectation.expected_stop)
                     + "; got \"" + ids + "\", stop " + handoff_name(plan.stop) + ".";
             }
             return true;
@@ -606,49 +614,58 @@ public:
     }
 
 private:
-    const RunPlanScenario m_scenario;
+    const RunPlanTestCase m_scenario;
+};
+
+const RunPlanTestCase RUN_PLAN_CASES[] = {
+    {
+        .input = {.name = "handoffs off: the story as before", .first = "00.01"},
+        .expectation = {.expected_ids = "00.01 00.02 00.03 00.04 00.05 00.06 00.07 00.08 00.09 00.10"},
+    },
+    {
+        .input = {.name = "handoffs off: a range", .first = "00.02", .last = "00.04"},
+        .expectation = {.expected_ids = "00.02 00.03 00.04"},
+    },
+    {
+        .input = {.name = "SID Helper: 00.01 stops on the keyboard", .first = "00.01", .handoffs = {.sid_helper = true}},
+        .expectation = {.expected_ids = "", .expected_stop = StoryHandoff::SID_HELPER},
+    },
+    {
+        .input = {.name = "SID Helper: back in at 00.01b", .first = "00.01b", .last = "00.03", .handoffs = {.sid_helper = true}},
+        .expectation = {.expected_ids = "00.01b 00.02 00.03"},
+    },
+    {
+        .input = {.name = "00.01b runs when started at, option off", .first = "00.01b", .last = "00.02"},
+        .expectation = {.expected_ids = "00.01b 00.02"},
+    },
+    {
+        .input = {.name = "SID Helper: a later start passes over it", .first = "00.02", .last = "00.03", .handoffs = {.sid_helper = true}},
+        .expectation = {.expected_ids = "00.02 00.03"},
+    },
+    {
+        .input = {.name = "handoffs off: an end at 00.04 still takes the rival's battle", .first = "00.03", .last = "00.04"},
+        .expectation = {.expected_ids = "00.03 00.04"},
+    },
+    {
+        .input = {.name = "Starter RNG: stops after 00.04's save", .first = "00.02", .handoffs = {.starter_rng = true}},
+        .expectation = {.expected_ids = "00.02 00.03 00.04", .expected_stop = StoryHandoff::STARTER_RNG},
+    },
+    {
+        .input = {.name = "00.04b runs from its own save", .first = "00.04b", .last = "00.05"},
+        .expectation = {.expected_ids = "00.04b 00.05"},
+    },
+    {
+        .input = {.name = "Starter RNG: a later start doesn't stop", .first = "00.05", .last = "00.06", .handoffs = {.starter_rng = true}},
+        .expectation = {.expected_ids = "00.05 00.06"},
+    },
+    {
+        .input = {.name = "both handoffs, back in after SID Helper", .first = "00.01b", .handoffs = {.sid_helper = true, .starter_rng = true}},
+        .expectation = {.expected_ids = "00.01b 00.02 00.03 00.04", .expected_stop = StoryHandoff::STARTER_RNG},
+    },
 };
 
 void add_tests_RunPlan(UnitTestDatabase& database){
-    const std::string TODAY = "00.01 00.02 00.03 00.04 00.05 00.06 00.07 00.08 00.09 00.10";
-    const RunPlanScenario scenarios[] = {
-        {.name = "handoffs off: the story as before", .first = "00.01", .expected_ids = TODAY},
-        {.name = "handoffs off: a range", .first = "00.02", .last = "00.04", .expected_ids = "00.02 00.03 00.04"},
-        {
-            .name = "SID Helper: 00.01 stops on the keyboard",
-            .first = "00.01",
-            .handoffs = {.sid_helper = true},
-            .expected_ids = "",
-            .expected_stop = StoryHandoff::SID_HELPER,
-        },
-        {
-            .name = "SID Helper: back in at 00.01b",
-            .first = "00.01b",
-            .last = "00.03",
-            .handoffs = {.sid_helper = true},
-            .expected_ids = "00.01b 00.02 00.03",
-        },
-        {.name = "00.01b runs when started at, option off", .first = "00.01b", .last = "00.02", .expected_ids = "00.01b 00.02"},
-        {.name = "SID Helper: a later start passes over it", .first = "00.02", .last = "00.03", .handoffs = {.sid_helper = true}, .expected_ids = "00.02 00.03"},
-        {.name = "handoffs off: an end at 00.04 still takes the rival's battle", .first = "00.03", .last = "00.04", .expected_ids = "00.03 00.04"},
-        {
-            .name = "Starter RNG: stops after 00.04's save",
-            .first = "00.02",
-            .handoffs = {.starter_rng = true},
-            .expected_ids = "00.02 00.03 00.04",
-            .expected_stop = StoryHandoff::STARTER_RNG,
-        },
-        {.name = "00.04b runs from its own save", .first = "00.04b", .last = "00.05", .expected_ids = "00.04b 00.05"},
-        {.name = "Starter RNG: a later start doesn't stop", .first = "00.05", .last = "00.06", .handoffs = {.starter_rng = true}, .expected_ids = "00.05 00.06"},
-        {
-            .name = "both handoffs, back in after SID Helper",
-            .first = "00.01b",
-            .handoffs = {.sid_helper = true, .starter_rng = true},
-            .expected_ids = "00.01b 00.02 00.03 00.04",
-            .expected_stop = StoryHandoff::STARTER_RNG,
-        },
-    };
-    for (const RunPlanScenario& scenario : scenarios){
+    for (const auto& scenario : RUN_PLAN_CASES){
         database.add<Test_RunPlan>(scenario);
     }
 }

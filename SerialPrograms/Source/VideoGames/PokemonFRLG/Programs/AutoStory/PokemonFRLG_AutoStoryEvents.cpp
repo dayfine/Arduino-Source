@@ -467,7 +467,7 @@ StoryCheckpoint joined_rows(const StoryCheckpoint& first, const StoryCheckpoint&
     return row;
 }
 
-}
+} // namespace
 
 StoryRunPlan plan_story_run(
     const std::vector<StoryCheckpoint>& checkpoints, size_t first, size_t last, const StoryHandoffs& handoffs

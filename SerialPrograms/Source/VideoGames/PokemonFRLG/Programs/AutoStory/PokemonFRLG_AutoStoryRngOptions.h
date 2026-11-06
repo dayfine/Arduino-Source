@@ -54,6 +54,7 @@ public:
 };
 
 
+//  User options for Starter RNG plan execution.
 class StarterRngPlanOptions : public GroupOption{
 public:
     StarterRngPlanOptions();
@@ -94,7 +95,7 @@ private:
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

@@ -460,7 +460,7 @@ const StarterRngLoopLimits STARTER_RNG_LIMITS{
     .max_retries = 2,
 };
 
-}
+} // namespace
 
 //  Starter RNG's attempts in the program, from the save south of the table.
 //  Returns true for a shiny Squirtle, on the target or not, the game on its

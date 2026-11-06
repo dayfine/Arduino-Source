@@ -26,22 +26,36 @@ using namespace RngPlanTestTargets;
 
 namespace{
 
+struct RngPlanTrackerInput{
+    std::string name;
+    UnitTestResult (*body)(Logger&);
+};
+
+struct RngPlanTrackerExpectation{
+    const char* description;
+};
+
+struct RngPlanTrackerTestCase{
+    RngPlanTrackerInput input;
+    RngPlanTrackerExpectation expectation;
+};
+
 class Test_RngPlanTracker : public UnitTest{
 public:
-    Test_RngPlanTracker(std::string name, std::function<UnitTestResult(Logger&)> body)
-        : UnitTest("PokemonFRLG::RngPlanTracker - " + std::move(name))
-        , m_body(std::move(body))
+    explicit Test_RngPlanTracker(RngPlanTrackerTestCase scenario)
+        : UnitTest("PokemonFRLG::RngPlanTracker - " + scenario.input.name)
+        , m_scenario(std::move(scenario))
     {}
     virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
         try{
-            return m_body(logger);
+            return m_scenario.input.body(logger);
         }catch (Exception& e){
             return std::string(e.name()) + ": " + e.message();
         }
     }
 
 private:
-    std::function<UnitTestResult(Logger&)> m_body;
+    RngPlanTrackerTestCase m_scenario;
 };
 
 
@@ -247,16 +261,28 @@ UnitTestResult test_tracker(Logger&){
     return true;
 }
 
-}
+const RngPlanTrackerTestCase RNG_PLAN_TRACKER_CASES[] = {
+    {
+        .input = {.name = "attempt outcome", .body = test_classify},
+        .expectation = {.description = "classifies outcome of target attempt"},
+    },
+    {
+        .input = {.name = "step after each outcome", .body = test_tracker},
+        .expectation = {.description = "evaluates state transitions after attempt outcomes"},
+    },
+};
+
+} // namespace
 
 
 void add_tests_RngPlanTracker(UnitTestDatabase& database){
-    database.add<Test_RngPlanTracker>("attempt outcome", test_classify);
-    database.add<Test_RngPlanTracker>("step after each outcome", test_tracker);
+    for (const auto& scenario : RNG_PLAN_TRACKER_CASES){
+        database.add<Test_RngPlanTracker>(scenario);
+    }
 }
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
