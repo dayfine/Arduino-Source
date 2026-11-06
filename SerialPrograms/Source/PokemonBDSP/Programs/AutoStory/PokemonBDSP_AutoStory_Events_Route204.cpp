@@ -71,7 +71,7 @@ void smash_the_rock(VideoStream& stream, ProControllerContext& context){
     }
 }
 
-}
+} // namespace
 
 
 void add_route204_events(StoryEvents& events){
@@ -80,6 +80,6 @@ void add_route204_events(StoryEvents& events){
 
 
 
-}
-}
-}
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

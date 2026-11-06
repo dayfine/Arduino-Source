@@ -74,7 +74,7 @@ void walk_out_of_center(VideoStream& stream, ProControllerContext& context, cons
 
 
 
-}
-}
-}
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

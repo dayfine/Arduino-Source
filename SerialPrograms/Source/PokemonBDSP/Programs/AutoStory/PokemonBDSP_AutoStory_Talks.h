@@ -43,6 +43,7 @@ enum class TalkExpect{
     TALK_OR_BATTLE,
     BATTLE,
 };
+//  Handles dialogue interaction or battle sequence with an NPC or trainer.
 bool talk_or_fight(
     VideoStream& stream, ProControllerContext& context, const std::string& label,
     TalkExpect expect = TalkExpect::TALK_OR_BATTLE, BattleFormat format = BattleFormat::SINGLES
@@ -63,6 +64,7 @@ bool center_floor_on_screen(const ImageViewRGB32& screen, size_t* percent = null
 //  Sandgem's and Oreburgh's streets at 30 to 35 %; of 635 lab frames, the
 //  two together pick out exactly the Center interiors.
 bool pokemon_center_on_screen(const ImageViewRGB32& screen, size_t* percent = nullptr);
+//  Checks whether the console stream currently shows the interior of a Pokemon Center.
 bool in_pokemon_center(VideoStream& stream);
 //  The Oreburgh Mine's hall and corridors are dim: mean brightness 45 to 64
 //  on the console, against 99 to 116 for the city and its yard (2026-10-31).
@@ -96,7 +98,7 @@ DialogueRead read_sign(VideoStream& stream, ProControllerContext& context, Pokem
 
 
 
-}
-}
-}
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

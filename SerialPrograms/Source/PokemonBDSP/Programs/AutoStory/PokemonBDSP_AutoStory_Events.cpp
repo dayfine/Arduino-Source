@@ -34,6 +34,6 @@ StoryEvent console_event(std::function<void(VideoStream& stream, ProControllerCo
 
 
 
-}
-}
-}
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

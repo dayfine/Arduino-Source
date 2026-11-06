@@ -208,7 +208,7 @@ std::vector<TrainerSight> map_trainers(const std::string& map){
     return {};
 }
 
-}
+} // namespace
 
 
 const std::string& story_banner_name(const std::string& map){
@@ -254,6 +254,6 @@ std::vector<TrainerSight> story_trainers(const StoryWorld& world){
 
 
 
-}
-}
-}
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

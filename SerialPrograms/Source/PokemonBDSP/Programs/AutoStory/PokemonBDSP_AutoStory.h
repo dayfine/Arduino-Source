@@ -26,6 +26,7 @@ namespace NintendoSwitch{
 namespace PokemonBDSP{
 
 
+//  Descriptor for the BDSP AutoStory single-switch program.
 class BDSPAutoStory_Descriptor : public SingleSwitchProgramDescriptor{
 public:
     BDSPAutoStory_Descriptor();
@@ -34,6 +35,7 @@ public:
 };
 
 
+//  Single-switch program instance executing BDSP story automation.
 class BDSPAutoStory : public SingleSwitchProgramInstance{
 public:
     using Descriptor = BDSPAutoStory_Descriptor;
@@ -54,7 +56,7 @@ private:
 
 
 
-}
-}
-}
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif
