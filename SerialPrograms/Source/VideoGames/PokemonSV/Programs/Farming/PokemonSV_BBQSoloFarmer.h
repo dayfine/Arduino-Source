@@ -8,6 +8,7 @@
 #define PokemonAutomation_PokemonSV_BBQSoloFarmer_H
 
 #include <stdint.h>
+#include <optional>
 #include <vector>
 #include "Common/Cpp/Logging/AbstractLogger.h"
 #include "CommonFramework/Notifications/EventNotificationsTable.h"
@@ -34,6 +35,8 @@ public:
     // Decide which of the quests just read are worth attempting this round.
     // May reroll quests in game, so the returned list can be empty even when
     // `quests` is not; a complete post-reroll observation can seed selection.
+    // Only returns quests to attempt when it changed nothing in game, so
+    // `quests` still shows the panel.
     virtual BBQuestBatch process_quest_list(
         const std::vector<BBQuests>& quests, uint8_t eggs_hatched
     ) = 0;
@@ -44,8 +47,9 @@ public:
     virtual bool do_quest(BBQuests quest, uint8_t& eggs_hatched) = 0;
 
     // Reroll a quest that failed all its attempts, if it is still on the
-    // panel. Spends BP.
-    virtual void reroll_quest(BBQuests quest) = 0;
+    // panel. Spends BP. Returns the panel read to verify the reroll when
+    // reroll_quest() found it reusable, so scheduling can skip a read.
+    virtual std::optional<std::vector<BBQuests>> reroll_quest(BBQuests quest) = 0;
 
     // Progress reporting only: a quest was counted as completed. Lets stats
     // update after every quest instead of once per round.
