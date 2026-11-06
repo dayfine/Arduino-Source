@@ -719,6 +719,10 @@ file(GLOB LIBRARY_SOURCES
     Source/CommonFramework/Startup/SetupSettings.h
     Source/CommonFramework/Startup/StartupArguments.cpp
     Source/CommonFramework/Startup/StartupArguments.h
+    Source/CommonFramework/Startup/LabStartupPolicy.cpp
+    Source/CommonFramework/Startup/LabStartupPolicy.h
+    Source/CommonFramework/Startup/LabStartupPolicy_Tests.cpp
+    Source/CommonFramework/Startup/LabStartupPolicy_Tests.h
     Source/CommonFramework/Startup/StartupArguments_Tests.cpp
     Source/CommonFramework/Startup/StartupArguments_Tests.h
     Source/CommonFramework/Tools/DebugDumper.cpp

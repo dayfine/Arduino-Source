@@ -111,14 +111,19 @@ The legacy persisted test-mode setting remains supported, but only after a valid
 GUI profile is selected. It also runs before device discovery. Prefer the explicit
 flag so no saved settings are loaded.
 
-Unknown arguments fail closed with status 2. `--test bdsp` and `--test-filter=...`
-are not supported by this baseline. Arbitrary Qt command-line flags are also
-rejected; use Qt environment variables such as `QT_QPA_PLATFORM` where needed.
+Unknown or incomplete arguments fail closed with status 2. `--test bdsp` and `--test-filter=...`
+are not supported by this baseline. Documented Qt application options (including `-platform offscreen`, `-style Fusion`,
+`-style=Fusion`, stylesheet, window and plugin options) are preserved in order and
+passed to Qt. Missing values and unknown option spellings are rejected; values in
+option/value pairs must not begin with `-`. Qt environment variables such as
+`QT_QPA_PLATFORM` remain supported.
 The separate `SerialProgramsTests` runner is an independent pending feature;
 this lab change does not import it.
 
-The colocated `StartupArguments_Tests.cpp` table covers rejection, profile binding,
-no-argument relaunch and exclusive dispatch to the test entry point. Its injected
+The colocated `StartupArguments_Tests.cpp` table covers the general grammar,
+ordinary unprofiled GUI startup, and Qt argument preservation. The separate
+`LabStartupPolicy_Tests.cpp` table covers rejection, profile binding, no-argument
+lab relaunch and exclusive dispatch to the test entry point. Its injected
 GUI callback represents the boundary that owns settings/window/hardware startup.
 These tests verify that boundary is not entered; they do not exercise real devices
 or claim that all unit-test bodies are incapable of opening hardware.
@@ -127,6 +132,8 @@ Profiles isolate settings, not physical serial devices. A mistakenly configured
 profile can still refer to another console's port. Enforcing ownership before a
 physical port opens requires a separate device-lease change; the channel owner
 and shell lock do not enforce that boundary.
+
+See [STARTUP_ISOLATION.md](STARTUP_ISOLATION.md) for the review split and upstream path.
 
 ## Worked example: run a program with nothing clicked
 

@@ -41,6 +41,7 @@
 #include "Logging/OutputRedirector.h"
 #include "Startup/SetupSettings.h"
 #include "Startup/StartupArguments.h"
+#include "Startup/LabStartupPolicy.h"
 #include "Startup/NewVersionCheck.h"
 #include "Windows/MainWindow.h"
 #include "GlobalSettingsPanel.h"
@@ -375,20 +376,26 @@ int main(int argc, char* argv[]){
     for (int i = 1; i < argc; i++){
         arguments.emplace_back(argv[i]);
     }
-    StartupPolicy policy;
+    LabStartupPolicy policy;
 #if defined(__APPLE__)
-    policy.profiles = StartupProfiles::REQUIRED;
+    policy.profiles = LabProfileMode::REQUIRED;
 #ifdef PA_LAB_PROFILE
     policy.bound_profile = PA_LAB_PROFILE;
 #endif
 #endif
-    const StartupPlan plan = parse_startup_arguments(arguments, policy);
+    const StartupPlan plan = apply_lab_startup_policy(parse_startup_arguments(arguments), policy);
     if (plan.mode == StartupMode::REJECTED){
         std::cerr << plan.error << std::endl;
     }
-    // Custom flags have been consumed. Do not let Qt reinterpret them.
-    int qt_argc = 1;
-    char* qt_argv[] = {argv[0], nullptr};
+    // Keep backing storage alive for Qt, which may mutate argc and argv.
+    std::vector<std::string> qt_storage = plan.qt_arguments;
+    qt_storage.insert(qt_storage.begin(), argv[0]);
+    std::vector<char*> qt_argv;
+    for (std::string& arg : qt_storage){
+        qt_argv.push_back(arg.data());
+    }
+    int qt_argc = (int)qt_argv.size();
+    qt_argv.push_back(nullptr);
     return dispatch_startup(plan, {
         .gui = [&](const StartupPlan& selected){
 #if defined(__APPLE__)
@@ -396,10 +403,10 @@ int main(int argc, char* argv[]){
 #else
             (void)selected;
 #endif
-            return run_gui_application(qt_argc, qt_argv);
+            return run_gui_application(qt_argc, qt_argv.data());
         },
         .tests = [&](const StartupPlan& selected){
-            return run_test_application(qt_argc, qt_argv, selected);
+            return run_test_application(qt_argc, qt_argv.data(), selected);
         },
     });
 }

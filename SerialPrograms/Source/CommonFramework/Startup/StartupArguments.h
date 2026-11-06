@@ -13,17 +13,9 @@
 #include <span>
 #include <string>
 #include <string_view>
+#include <vector>
 
 namespace PokemonAutomation{
-
-// Whether this platform supports isolated macOS settings profiles.
-enum class StartupProfiles{UNSUPPORTED, REQUIRED};
-
-// A build-bound profile survives Finder and permission-dialog relaunches.
-struct StartupPolicy{
-    StartupProfiles profiles = StartupProfiles::UNSUPPORTED;
-    std::optional<std::string> bound_profile = std::nullopt;
-};
 
 // Rejected launches must not enter either application entry point.
 enum class StartupMode{REJECTED, GUI, TESTS};
@@ -34,10 +26,15 @@ struct StartupPlan{
     std::optional<std::string> profile = std::nullopt;
     bool augment_color_distortions = false;
     std::string error = {};
+    std::vector<std::string> qt_arguments = {};
 };
 
-// Parse arguments excluding argv[0]. Unknown, ambiguous and unsafe inputs fail closed.
-StartupPlan parse_startup_arguments(std::span<const std::string_view> arguments, const StartupPolicy& policy);
+// Check a single ASCII profile path component without rewriting its identity.
+bool valid_startup_profile(std::string_view profile);
+
+// Parse argv without argv[0]; preserve documented Qt options for Qt to interpret.
+// Unknown or malformed application/Qt arguments fail before settings or devices.
+StartupPlan parse_startup_arguments(std::span<const std::string_view> arguments);
 
 // Application entry points: the GUI callback owns all settings and hardware startup.
 struct StartupHandlers{
