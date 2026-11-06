@@ -280,35 +280,81 @@ UnitTestResult test_controller_wait(){
 }
 
 
+struct LabChannelInput{
+    std::string name;
+    std::function<UnitTestResult()> body;
+};
+
+struct LabChannelExpectation{
+};
+
+struct LabChannelCase{
+    LabChannelInput input;
+    LabChannelExpectation expectation;
+};
+
 class Test_LabChannel : public UnitTest{
 public:
-    Test_LabChannel(std::string name, std::function<UnitTestResult()> body)
-        : UnitTest("CommonFramework::LabChannel - " + std::move(name))
-        , m_body(std::move(body))
+    explicit Test_LabChannel(LabChannelCase test_case)
+        : UnitTest("CommonFramework::LabChannel - " + test_case.input.name)
+        , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        return m_body();
+        return m_case.input.body();
     }
 
 private:
-    std::function<UnitTestResult()> m_body;
+    LabChannelCase m_case;
 };
 
-}
+} // namespace
 
+
+const LabChannelCase LAB_CHANNEL_CASES[] = {
+    {
+        .input = {"split a line", test_split_line},
+        .expectation = {},
+    },
+    {
+        .input = {"line after words", test_line_after_words},
+        .expectation = {},
+    },
+    {
+        .input = {"next inbox file", test_next_file},
+        .expectation = {},
+    },
+    {
+        .input = {"parse a request", test_parse_request},
+        .expectation = {},
+    },
+    {
+        .input = {"journal lines", test_journal},
+        .expectation = {},
+    },
+    {
+        .input = {"state text", test_state_text},
+        .expectation = {},
+    },
+    {
+        .input = {"owner lock", test_owner},
+        .expectation = {},
+    },
+    {
+        .input = {"keep-awake schedule", test_keep_awake},
+        .expectation = {},
+    },
+    {
+        .input = {"controller wait", test_controller_wait},
+        .expectation = {},
+    },
+};
 
 void add_tests_LabChannel(UnitTestDatabase& database){
-    database.add<Test_LabChannel>("split a line", test_split_line);
-    database.add<Test_LabChannel>("line after words", test_line_after_words);
-    database.add<Test_LabChannel>("next inbox file", test_next_file);
-    database.add<Test_LabChannel>("parse a request", test_parse_request);
-    database.add<Test_LabChannel>("journal lines", test_journal);
-    database.add<Test_LabChannel>("state text", test_state_text);
-    database.add<Test_LabChannel>("owner lock", test_owner);
-    database.add<Test_LabChannel>("keep-awake schedule", test_keep_awake);
-    database.add<Test_LabChannel>("controller wait", test_controller_wait);
+    for (const auto& item : LAB_CHANNEL_CASES){
+        database.add<Test_LabChannel>(item);
+    }
 }
 
 
 
-}
+} // namespace PokemonAutomation

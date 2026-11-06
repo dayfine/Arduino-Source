@@ -53,7 +53,7 @@ private:
     ProControllerContext m_context;
 };
 
-}
+} // namespace
 
 
 
@@ -114,5 +114,5 @@ void SwitchLabCommands::help(std::ostream& out){
 
 
 
-}
-}
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

@@ -42,6 +42,7 @@
 namespace PokemonAutomation{
 
 
+//  Returns descriptive name of program state.
 std::string program_state_name(ProgramState state);
 
 
@@ -98,6 +99,7 @@ public:
 };
 
 
+//  Background communication channel for automated lab commands.
 class LabChannel{
 public:
     //  The channel, if "<user files>/Lab/" exists when the app starts;
@@ -167,5 +169,5 @@ private:
 
 
 
-}
+} // namespace PokemonAutomation
 #endif

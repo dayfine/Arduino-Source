@@ -117,7 +117,7 @@ double screen_change(const VideoSnapshot& before, const VideoSnapshot& after){
     );
 }
 
-}
+} // namespace
 
 
 
@@ -441,7 +441,7 @@ private:
     CommandFileSession& m_session;
 };
 
-}
+} // namespace
 
 
 
@@ -550,7 +550,7 @@ bool run_command_file(
     return result != LineResult::STOP;
 }
 
-}
+} // namespace
 
 
 
@@ -632,5 +632,5 @@ void CommandFileRunner::program(SingleSwitchProgramEnvironment& env, ProControll
 
 
 
-}
-}
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

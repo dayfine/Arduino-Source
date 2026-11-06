@@ -146,7 +146,7 @@ std::string set_option(PanelSession* panel, const std::string& key, const std::s
     return "";
 }
 
-}
+} // namespace
 
 
 
@@ -605,4 +605,4 @@ void LabChannel::write_state(){
 
 
 
-}
+} // namespace PokemonAutomation

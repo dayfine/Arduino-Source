@@ -12,9 +12,10 @@
 namespace PokemonAutomation{
 
 
+//  Registers LabChannel unit tests with database.
 void add_tests_LabChannel(UnitTestDatabase& database);
 
 
 
-}
+} // namespace PokemonAutomation
 #endif

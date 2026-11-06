@@ -72,14 +72,17 @@ using CommandFileDetectorFactory = std::function<std::unique_ptr<StaticScreenDet
 //  command counts as driving the console: the lab channel runs it only while
 //  no program runs.
 void register_command_file_command(const std::string& name, const std::string& usage, CommandFileCommand command);
+//  Registers screen detector factory for command file runner.
 void register_command_file_detector(const std::string& name, CommandFileDetectorFactory factory);
 
 
+//  Classification of command file actions (reads video stream vs drives console).
 enum class CommandFileCommandKind{
     UNKNOWN,
     READS_STREAM,       //  Screenshots and detectors.
     DRIVES_CONSOLE,     //  Presses and waits.
 };
+//  Returns whether given command reads stream or drives console.
 CommandFileCommandKind command_file_command_kind(const std::string& name);
 
 //  Runs one command line. Returns false for "stop". Throws to fail the line.
@@ -94,11 +97,13 @@ void print_command_file_help(std::ostream& out);
 
 
 
+//  Program descriptor for CommandFileRunner.
 class CommandFileRunner_Descriptor : public SingleSwitchProgramDescriptor{
 public:
     CommandFileRunner_Descriptor();
 };
 
+//  Single Switch program instance executing commands from file in inbox.
 class CommandFileRunner : public SingleSwitchProgramInstance{
 public:
     using Descriptor = CommandFileRunner_Descriptor;
@@ -119,6 +124,6 @@ private:
 
 
 
-}
-}
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

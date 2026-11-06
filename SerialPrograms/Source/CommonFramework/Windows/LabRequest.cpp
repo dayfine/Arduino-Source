@@ -216,4 +216,4 @@ bool KeepAwakeSchedule::due(WallClock now, bool program_running){
 
 
 
-}
+} // namespace PokemonAutomation

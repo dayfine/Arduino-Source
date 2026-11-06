@@ -54,11 +54,13 @@ struct LabRequest{
     std::string owner;
     std::vector<LabRequestLine> lines;
 };
+//  Parses request text into owner line and command lines.
 LabRequest parse_lab_request(const std::string& text);
 
 
 //  Journal lines of a request's ".out" file. Times are from the start of the request.
 std::string journal_ok(size_t number, const std::string& command, Milliseconds start, Milliseconds end);
+//  Formats error output line for journal log.
 std::string journal_error(size_t number, const std::string& command, const std::string& reason);
 
 
@@ -71,6 +73,7 @@ struct LabState{
     std::string owner;      //  The owner token, or "".
     std::string error;      //  The last error; "" once a request succeeds.
 };
+//  Formats LabState fields into serialized state text.
 std::string lab_state_text(const LabState& state);
 
 
@@ -129,5 +132,5 @@ private:
 
 
 
-}
+} // namespace PokemonAutomation
 #endif

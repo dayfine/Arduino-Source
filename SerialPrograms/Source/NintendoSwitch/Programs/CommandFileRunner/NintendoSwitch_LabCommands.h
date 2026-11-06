@@ -17,6 +17,7 @@ namespace PokemonAutomation{
 namespace NintendoSwitch{
 
 
+//  Console command implementations for Nintendo Switch lab operations.
 class SwitchLabCommands : public LabConsoleCommands{
 public:
     virtual Kind kind(const std::string& command) const override;
@@ -31,6 +32,6 @@ public:
 
 
 
-}
-}
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

@@ -105,5 +105,5 @@ TapsArguments parse_taps(const std::vector<std::string>& words){
 
 
 
-}
-}
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

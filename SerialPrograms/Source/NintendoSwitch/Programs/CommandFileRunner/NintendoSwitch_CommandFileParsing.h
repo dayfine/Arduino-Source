@@ -50,10 +50,11 @@ struct TapsArguments{
     Milliseconds release = Milliseconds(0);
     double still = 0;           //  A tap changing the screen less than this (RMSD at 192x108) didn't move.
 };
+//  Parses taps command arguments into structured configuration.
 TapsArguments parse_taps(const std::vector<std::string>& words);
 
 
 
-}
-}
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

@@ -126,32 +126,66 @@ UnitTestResult test_taps(){
     return true;
 }
 
+struct CommandFileRunnerInput{
+    std::string name;
+    std::function<UnitTestResult()> body;
+};
+
+struct CommandFileRunnerExpectation{
+};
+
+struct CommandFileRunnerCase{
+    CommandFileRunnerInput input;
+    CommandFileRunnerExpectation expectation;
+};
+
 class Test_CommandFileRunner : public UnitTest{
 public:
-    Test_CommandFileRunner(std::string name, std::function<UnitTestResult()> body)
-        : UnitTest("NintendoSwitch::CommandFileRunner - " + std::move(name))
-        , m_body(std::move(body))
+    explicit Test_CommandFileRunner(CommandFileRunnerCase test_case)
+        : UnitTest("NintendoSwitch::CommandFileRunner - " + test_case.input.name)
+        , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        return m_body();
+        return m_case.input.body();
     }
 
 private:
-    std::function<UnitTestResult()> m_body;
+    CommandFileRunnerCase m_case;
 };
 
-}
+} // namespace
 
+
+const CommandFileRunnerCase COMMAND_FILE_RUNNER_CASES[] = {
+    {
+        .input = {"arguments", test_arguments},
+        .expectation = {},
+    },
+    {
+        .input = {"argument errors", test_argument_errors},
+        .expectation = {},
+    },
+    {
+        .input = {"buttons", test_buttons},
+        .expectation = {},
+    },
+    {
+        .input = {"D-pad", test_dpad},
+        .expectation = {},
+    },
+    {
+        .input = {"taps arguments", test_taps},
+        .expectation = {},
+    },
+};
 
 void add_tests_CommandFileRunner(UnitTestDatabase& database){
-    database.add<Test_CommandFileRunner>("arguments", test_arguments);
-    database.add<Test_CommandFileRunner>("argument errors", test_argument_errors);
-    database.add<Test_CommandFileRunner>("buttons", test_buttons);
-    database.add<Test_CommandFileRunner>("D-pad", test_dpad);
-    database.add<Test_CommandFileRunner>("taps arguments", test_taps);
+    for (const auto& item : COMMAND_FILE_RUNNER_CASES){
+        database.add<Test_CommandFileRunner>(item);
+    }
 }
 
 
 
-}
-}
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

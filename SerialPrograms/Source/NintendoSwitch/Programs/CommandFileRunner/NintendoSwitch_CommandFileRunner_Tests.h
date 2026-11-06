@@ -13,10 +13,11 @@ namespace PokemonAutomation{
 namespace NintendoSwitch{
 
 
+//  Registers CommandFileRunner unit tests with database.
 void add_tests_CommandFileRunner(UnitTestDatabase& database);
 
 
 
-}
-}
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif
