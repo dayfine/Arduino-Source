@@ -1,5 +1,8 @@
 # AutoStory: FRLG pilot first, shared run flow and 2D movement later
 
+For the current cross-game sharing assessment and proposed SV/LGPE/Ruby–Sapphire
+work, see [AutoStory-Shared-Architecture.md](AutoStory-Shared-Architecture.md).
+
 Status: internal plan, revised 2026-10-25 after review. The upstream-facing
 one-page summary is [AutoStory-Proposal.md](AutoStory-Proposal.md). The
 review comment drafts for the BDSP PR are in
