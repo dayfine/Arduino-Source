@@ -13,6 +13,7 @@
 #include "CommonTools/VisualDetectors/BlackScreenDetector.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_Superscalar.h"
+#include "PokemonBDSP/Inference/Battles/PokemonBDSP_BattleMenuDetector.h"
 #include "PokemonBDSP/Inference/PokemonBDSP_DialogDetector.h"
 #include "PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_OverworldDetector.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Location.h"
@@ -46,33 +47,35 @@ namespace{
 //  and only the quiet after the fade counts: r30's scene went quiet for 5 s
 //  before the fade home, and r28 "went out" a tile beside the door and
 //  walked a whole route in the house. No fade is a map mismatch.
-constexpr double FADE_DARKNESS = 40;    //  brightness 0 to 255; r24's dim fade home goes darker
+constexpr double FADE_DARKNESS = 75;    //  brightness 0 to 255; cave fades reach ~45..64, r24's dim fade goes darker
 void settle(VideoStream& stream, ProControllerContext& context, Button button, const std::string& label, bool fade){
     const WallClock none = WallClock::max();
     const WallClock deadline = current_time() + 120s;
     ShortDialogDetector dialog;
     OverworldDetector overworld;
-    WallClock quiet_since = none;
-    WallClock calm_since = none;    //  overworld, no text, still or not
+    BattleMenuDetector battle_menu(BattleType::STANDARD);
+    WallClock quiet_since = none, calm_since = none;
     double darkest = 255;
     VideoSnapshot previous;
     while (current_time() < deadline){
         context.wait_for_all_requests();
         const auto frame = stream.video().snapshot();
         const WallClock now = current_time();
+        if (frame && battle_menu.detect(frame)){
+            stream.log("[Story] " + label + ": in wild battle during settle; fleeing.");
+            run_from_wild_battle(stream, context);
+            continue;
+        }
         if (frame){
             darkest = std::min(darkest, image_average(*frame.frame).sum() / 3);
         }
         const bool talking = frame && dialog.detect(frame);
         const bool still = frame && previous && walk_screen_change(*previous.frame, *frame.frame) < WALK_TAP_BLOCKED_CHANGE;
         previous = frame;
-        //  Cloud shadows drift over Floaroma, so its screen is never still: r83
-        //  got Mew and then waited out the 120 s on a calm overworld. 15 s of
-        //  overworld with no text is three times r31's silent walk-in.
         const bool calm = !talking && overworld.detect(frame) && (!fade || darkest < FADE_DARKNESS);
         calm_since = calm ? (calm_since == none ? now : calm_since) : none;
         if (calm && now - calm_since >= 15000ms){
-            stream.log(std::format("[Story] {}: settled on 15 s of overworld without text (the screen kept moving); darkest frame {:.0f}.", label, darkest));
+            stream.log(std::format("[Story] {}: settled on calm overworld; darkest frame {:.0f}.", label, darkest));
             return;
         }
         if (!talking && still && overworld.detect(frame) && (!fade || darkest < FADE_DARKNESS)){
@@ -95,9 +98,8 @@ void settle(VideoStream& stream, ProControllerContext& context, Button button, c
 
 //  Holds the D-pad toward a door (with B after the shoes) until the screen goes
 //  dark or a line shows, up to 12 s. Returns whether it went dark. A line
-//  stops it: holding on under Mom's "Oh, Kosmos!" wasted 12 s (r45). The walker's black-screen watch
-//  missed the lab's fade into Sandgem (r44, "dialog"), and settle's samples
-//  1.3 s apart can fall either side of it, so watch at settle's own darkness.
+//  stops it: holding on under Mom's "Oh, Kosmos!" wasted 12 s (r45). A wild
+//  battle in a cave corridor runs away before returning.
 DpadPosition dpad_toward(Direction direction){
     return
         direction == Direction::NORTH ? DPAD_UP :
@@ -109,12 +111,18 @@ bool run_into_door(VideoStream& stream, ProControllerContext& context, Direction
     const DpadPosition dpad = dpad_toward(direction);
     BlackScreenWatcher dark(COLOR_RED, {0.1, 0.1, 0.8, 0.8}, 3 * FADE_DARKNESS, 60);
     ShortDialogWatcher dialog(COLOR_YELLOW);
+    BattleMenuWatcher battle(BattleType::STANDARD, COLOR_YELLOW);
     const int ret = run_until<ProControllerContext>(stream, context, [&](ProControllerContext& context){
         if (run){
             ssf_press_button(context, BUTTON_B, 0ms, 12000ms, 0ms);
         }
         pbf_press_dpad(context, dpad, 12000ms, 0ms);
-    }, {{dark}, {dialog}});
+    }, {{dark}, {dialog}, {battle}});
+    if (ret == 2){
+        stream.log("[Story] run_into_door: wild battle; fleeing.");
+        run_from_wild_battle(stream, context);
+        return false;
+    }
     return ret == 0;
 }
 

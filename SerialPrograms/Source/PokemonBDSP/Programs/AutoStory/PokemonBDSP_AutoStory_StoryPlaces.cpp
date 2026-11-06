@@ -191,6 +191,21 @@ std::vector<TrainerSight> route_203_trainer_sights(){
     };
 }
 
+std::vector<TrainerSight> oreburgh_gate_trainer_sights(){
+    const auto at = [](const char* name){
+        for (const Pokemon::MapObject& object : story_map("OreburghGate").objects){
+            if (object.name == name){
+                return TilePos{object.x, object.y};
+            }
+        }
+        throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, std::string("Oreburgh Gate has no ") + name + ".");
+    };
+    return {
+        {.name = "Camper Curtis", .pos = at("camper_1"), .facing = Direction::NORTH, .range = 4},
+        {.name = "Picnicker Diana", .pos = at("picnicker_0"), .facing = Direction::SOUTH, .range = 2},
+    };
+}
+
 //  The trainers of the JSON map `map`, in its own tiles.
 std::vector<TrainerSight> map_trainers(const std::string& map){
     if (map == "Route202"){

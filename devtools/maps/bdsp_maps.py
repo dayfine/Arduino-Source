@@ -419,7 +419,7 @@ WARP_DOORS = {
     'OreburghCity': [(x, 59) for x in range(44, 49)],
     #   The hall's way up to the city: its other warp row (11..13, 21) has
     #   cave mouths below it, so a step south from row 20 goes through.
-    'OreburghMineB1F': [(11, 1), (12, 1), (13, 1)],
+    'OreburghMineB1F': [(11, 1), (12, 1), (13, 1), (11, 21), (12, 21), (13, 21)],
 }
 
 

@@ -230,8 +230,9 @@ bool run_until_escaped(
         const int result = run_until<ProControllerContext>(stream,
             context,
             [](ProControllerContext& controller){
-                pbf_press_button(controller, BUTTON_A, 60ms, 0ms);
-                pbf_wait(controller, 4s);
+                pbf_mash_button(controller, BUTTON_ZL, 1000ms);
+                pbf_mash_button(controller, BUTTON_A, 1000ms);
+                pbf_mash_button(controller, BUTTON_B, 3000ms);
                 controller.wait_for_all_requests();
             },
             {battle_end});

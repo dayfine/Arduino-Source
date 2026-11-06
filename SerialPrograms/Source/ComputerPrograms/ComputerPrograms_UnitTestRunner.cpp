@@ -22,13 +22,14 @@
 #include "CommonFramework/GlobalAutoPaths.h"
 #include "CommonFramework/ProgramStats/StatsTracking.h"
 #include "CommonFramework/Tools/GlobalThreadPools.h"
-#include "CommonFramework/Windows/LabControl.h"
+#include "CommonFramework/Windows/LabChannel_Tests.h"
 #include "CommonTools/VisualDetectors/BlackBorderDetector.h"
 #include "CommonTools/OCR/OCR_Tests.h"
 
 #include "NintendoSwitch/Inference/NintendoSwitch_CheckOnlineDetector.h"
 #include "NintendoSwitch/Inference/NintendoSwitch_FailedToConnectDetector.h"
 #include "NintendoSwitch/Inference/NintendoSwitch_UpdatePopupDetector.h"
+#include "NintendoSwitch/Programs/CommandFileRunner/NintendoSwitch_CommandFileRunner_Tests.h"
 #include "NintendoSwitch/Programs/Typewriter/NintendoSwitch_Typewriter_Tests.h"
 
 #include "Pokemon/AutoStory/Pokemon_AutoStory_Tests.h"
@@ -67,7 +68,7 @@ UnitTestDatabase make_UNIT_TESTS_ALL(){
     add_tests_FFTStreamer(ret);
     add_tests_SinkPipeline(ret);
     add_tests_AudioFileLoader(ret);
-    add_tests_LabControl(ret);
+    add_tests_LabChannel(ret);
     OCR::add_tests(ret);
     Kernels::add_tests(ret);
     Pokemon::add_tests_AutoStorySelect(ret);
@@ -82,6 +83,7 @@ UnitTestDatabase make_UNIT_TESTS_ALL(){
     NintendoSwitch::add_tests_CheckOnlineDetector(ret);
     NintendoSwitch::add_tests_FailedToConnectDetector(ret);
     NintendoSwitch::add_tests_UpdatePopupDetector(ret);
+    NintendoSwitch::add_tests_CommandFileRunner(ret);
     NintendoSwitch::Typewriter::add_tests_TypewriterTextMapping(ret);
     NintendoSwitch::PokemonBDSP::add_tests(ret);
     NintendoSwitch::PokemonBDSP::add_tests_DialogDetector(ret);
@@ -373,7 +375,7 @@ void UnitTestRunner::on_test_finished(
 
 
 
-bool CommandLineUnitTestRunner::run(bool augment_color_distortions){
+bool CommandLineUnitTestRunner::run(bool augment_color_distortions, const std::string& filter){
     if (augment_color_distortions){
         //  Load the distortion data before any test runs. Each `ImageUnitTest` checks the global
         //  manager when it runs, and only runs with distortions if it is loaded.
@@ -398,7 +400,9 @@ bool CommandLineUnitTestRunner::run(bool augment_color_distortions){
     );
     runner.add_listener(*this);
     for (const auto& test : UNIT_TESTS_ALL()){
-        runner.add_test(test.second);
+        if (filter.empty() || test.first.find(filter) != std::string::npos){
+            runner.add_test(test.second);
+        }
     }
     runner.run();
 

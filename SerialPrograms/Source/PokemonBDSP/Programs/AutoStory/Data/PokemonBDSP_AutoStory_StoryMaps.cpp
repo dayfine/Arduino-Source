@@ -54,8 +54,23 @@ MapData crop(const MapData& map, const TilePos& corner, int width, int height){
     for (Pokemon::MapObject object : map.objects){
         object.x -= corner.x;
         object.y -= corner.y;
-        if (cropped.tiles.contains({object.x, object.y})){
+        if (object.wander){
+            object.wander->x0 -= corner.x;
+            object.wander->x1 -= corner.x;
+            object.wander->y0 -= corner.y;
+            object.wander->y1 -= corner.y;
+        }
+        if (cropped.tiles.contains({object.x, object.y}) || (object.wander
+            && object.wander->x1 >= 0 && object.wander->y1 >= 0
+            && object.wander->x0 < width && object.wander->y0 < height)){
             cropped.objects.push_back(std::move(object));
+        }
+    }
+    for (auto warp : map.warps){
+        warp.x -= corner.x;
+        warp.y -= corner.y;
+        if (cropped.tiles.contains({warp.x, warp.y})){
+            cropped.warps.push_back(std::move(warp));
         }
     }
     return cropped;

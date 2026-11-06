@@ -77,7 +77,7 @@ bool talk_or_fight(VideoStream& stream, ProControllerContext& context, const std
                 finish_dialogue(stream, context, BUTTON_B, label + " after the battle");
             }
             if (!in_pokemon_center(stream)){
-                use_potion_first_pokemon(stream, context, 0.5);
+                use_potion_first_pokemon(stream, context, 0.8);
             }
             return true;
         }
@@ -190,7 +190,7 @@ void fight_route_trainer(VideoStream& stream, ProControllerContext& context, con
     context.wait_for_all_requests();
     // The next trainer may be a few tiles on: check HP now. With no
     // Potion in the Bag this only looks.
-    use_potion_first_pokemon(stream, context, 0.5);
+    use_potion_first_pokemon(stream, context, 0.8);
 }
 
 bool sign_text_matches(const std::string& text, const std::string& key){

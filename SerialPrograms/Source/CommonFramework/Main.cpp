@@ -1,5 +1,6 @@
 
 #include <iostream>
+#include <optional>
 //#include <QTextStream>
 #include <QApplication>
 #include "Common/Cpp/Logging/LastLogTracker.h"
@@ -79,6 +80,31 @@ FileLogger& global_file_logger(){
         }
     );
     return logger;
+}
+
+std::optional<int> maybe_run_command_line_tests(int argc, char* argv[]){
+    bool augment_test_color_distortions = false;
+    std::string test_filter;
+    for (int i = 0; i < argc; i++){
+        constexpr const char* force_run_tests = "--command-line-test-mode";
+        constexpr const char* distort_test_images = "--augment-color-distortions";
+
+        if (strcmp(argv[i], force_run_tests) == 0){
+            GlobalSettings::instance().COMMAND_LINE_TEST_MODE = true;
+        }
+        if (strcmp(argv[i], distort_test_images) == 0){
+            augment_test_color_distortions = true;
+        }
+        if (strncmp(argv[i], "--test-filter=", 14) == 0){
+            test_filter = argv[i] + 14;
+        }
+    }
+    if (GlobalSettings::instance().COMMAND_LINE_TEST_MODE){
+        GlobalThreadPools::qt_worker_threadpool();
+        GlobalThreadPools::qt_event_threadpool();
+        return run_command_line_tests(augment_test_color_distortions, test_filter);
+    }
+    return std::nullopt;
 }
 
 }
@@ -209,6 +235,10 @@ int run_program(int argc, char *argv[]){
     //  Load the Switch framework settings now, not only when their panel is opened.
     OptionsPanelWrapper<NintendoSwitch::ConsoleSettingsPanel>().make_panel()->load_json_from_global();
 
+    if (auto exit_code = maybe_run_command_line_tests(argc, argv)){
+        return *exit_code;
+    }
+
     //  Preload a bunch of stuff now so they are ready later.
     SerialPortPoller::instance().ports();
     get_all_cameras();
@@ -216,23 +246,6 @@ int run_program(int argc, char *argv[]){
     //  Force all the Qt thread pools to be constructed now on the main thread.
     GlobalThreadPools::qt_worker_threadpool();
     GlobalThreadPools::qt_event_threadpool();
-
-    bool augment_test_color_distortions = false;
-    for (size_t i = 0; i < argc; i++){
-        constexpr const char* force_run_tests = "--command-line-test-mode";
-        constexpr const char* distort_test_images = "--augment-color-distortions";
-
-        if (strcmp(argv[i], force_run_tests) == 0){
-            GlobalSettings::instance().COMMAND_LINE_TEST_MODE = true;
-        }
-        if (strcmp(argv[i], distort_test_images) == 0){
-            augment_test_color_distortions = true;
-        }
-    }
-
-    if (GlobalSettings::instance().COMMAND_LINE_TEST_MODE){
-        return run_command_line_tests(augment_test_color_distortions);
-    }
 
     //  Check whether the hardware is powerful enough to run this program.
     if (!check_hardware()){
