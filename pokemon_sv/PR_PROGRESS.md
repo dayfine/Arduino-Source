@@ -139,16 +139,55 @@ branch is ready for upstream.
 
 ## Local consolidation handoff — not published or CI-approved
 
-- `integration/bbq-logging-consolidation` in
-  `/Users/difan/Projects/wt/bbq-logging-consolidation` contains a candidate merge
-  of #27 into #2. Its current test-file resolution is still being checked;
-  code health against intended #8 reports older diagnostic style/size findings.
-  Do not push it over #2 or close #27 as if validation had passed.
-- `integration/bbq-egg-log-dedup` in
-  `/Users/difan/Projects/wt/bbq-egg-log-dedup` removes 45 diagnostic-only lines
-  from #33's three production files while retaining its hatch/restore changes.
-  Its current intended-base check still reports 3 egg-code findings: large
-  source file, long hatch routine and an undocumented namespace close.
-- These local candidates establish the migration scope, not a completed landing.
-  They need native build/tests and code-health fixes in the owning PRs, then
-  ordinary merge propagation. No bypass permission is assumed from earlier tasks.
+The audit/documentation is published in fork draft #239. Code candidates below
+are local handoffs for the owning PRs; no live code branch/base was changed.
+Fork #51 is closed, but #27 remains open until its replacement passes native CI.
+
+### #2 + #27: intended-base code health passes; native execution pending
+
+- Branch `integration/bbq-logging-handoff`, commit
+  `141193220b654f96bbafdd360b9d40df2696177a`, in
+  `/Users/difan/Projects/wt/bbq-logging-consolidation`.
+- This is a clean merge of #2 head
+  `bba29249245f5e80861663db45672555f3b45acf` and #27 head
+  `6e9871d582495f3f6cc7ab8beed83d564da10bc0`, with the resolved final tree.
+  It includes the #8 dependencies that make reroll instrumentation possible.
+- `BBQLogger` owns the reroll formatter; existing nine reroll outcome cases
+  retain their exactly-once message assertions. Duplicate legacy attempt,
+  timeout and exhaustion messages are replaced by the structured events.
+  Exhaustion keeps its red severity. No controller behavior is intentionally changed.
+- Six explicit input/expectation table rows now live beside the logger in
+  `PokemonSV_BBQLogger_Tests.cpp`, registered through `PokemonSV_Tests.cpp` and
+  `SourceFiles.cmake`. They cover board ordering/unknown/empty results, success,
+  timeout/retry exhaustion (including final color), and long durations.
+- Validation: code health against `origin/bbq/verified-reroll` passes with zero
+  failures; logger and logger tests pass C++23 `-Wall -Wextra -Werror`
+  syntax-only compilation; CRLF-aware whitespace check passes.
+  **Neither syntax checking nor case registration is native test execution.**
+  Full application compilation and native test runs remain pending.
+- Publication constraint: this candidate has no fork PR yet, so the pre-push
+  hook would use `main`, which reports 10 inherited findings from the #8 chain.
+  The intended #8 base passes. Do not bypass the hook or publish from another
+  checkout to evade it. No bypass was attempted or authorized for this work.
+- Owner landing order: review this local merge, arrange the correct intended-base
+  publication path, merge into #2 and change its base to #8, run native CI,
+  then merge updated #2 into #3. Close #27 only after its behavior and tests
+  survive integration. Do not merge all behavior branches into diagnostics.
+- Earlier exploratory branch `integration/bbq-logging-consolidation` remains
+  local at `1a43de23b`; use the clean handoff merge above instead. Its final
+  tree is identical, but the exploratory history includes an intermediate bad
+  conflict resolution and is not the landing candidate.
+
+### #33: diagnostic-only removal prepared; egg-code findings remain
+
+- Branch `integration/bbq-egg-log-dedup`, commit `d7191a26e`, in
+  `/Users/difan/Projects/wt/bbq-egg-log-dedup`.
+- Removes 45 copied diagnostic lines from three production files, retaining
+  hatch/restore behavior. Intended-base code health still reports 3 egg-code
+  findings: large source file, long hatch routine, undocumented namespace close.
+- Still needs the owning PR's code-health fixes and native validation. Its
+  unrelated historical lab notes/analysis artifacts also need scope review;
+  preserve source history/evidence rather than silently deleting it.
+
+The audit and migration scope are complete; code landing and native validation
+are pending. No console run, upstream publication or hook bypass is claimed.
