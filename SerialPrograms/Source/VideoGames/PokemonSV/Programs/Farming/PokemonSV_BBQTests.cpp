@@ -11,6 +11,7 @@
 #include "Tests/ImageUnitTest.h"
 #include "VideoGames/PokemonSV/Inference/PokemonSV_BlueberryPointsReader.h"
 #include "VideoGames/PokemonSV/Options/PokemonSV_BBQuests.h"
+#include "PokemonSV_BBQLogger_Tests.h"
 #include "PokemonSV_BlueberryQuests.h"
 #include "PokemonSV_BBQSoloFarmer.h"
 #include "PokemonSV_BBQTests.h"
@@ -801,7 +802,6 @@ static void add_tests_BBQReroll(UnitTestDatabase& database){
 
 
 
-
 void add_tests_BBQ(UnitTestDatabase& database){
     database.add<Test_BBQuestsSlugs>();
 
@@ -817,6 +817,7 @@ void add_tests_BBQ(UnitTestDatabase& database){
     add_tests_BBQuestPlan(database);
     add_tests_BBQFarmerRounds(database);
     add_tests_TeraEncounterAction(database);
+    add_tests_BBQDiagnosticLogs(database);
 }
 
 
