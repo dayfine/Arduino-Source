@@ -27,6 +27,7 @@ namespace NintendoSwitch{
 namespace PokemonBDSP{
 
 
+//  Abstract interface for story step input/output operations.
 class StoryStepIO{
 public:
     virtual ~StoryStepIO() = default;
@@ -80,7 +81,7 @@ private:
 
 
 
-}
-}
-}
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

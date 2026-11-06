@@ -34,6 +34,8 @@ struct MapTile{
 };
 
 
+//  Composite coordinate space combining multiple contiguous maps into one
+//  traversable overworld representation.
 class StoryWorld{
 public:
     //  Places `map` under `name` with its tile (0,0) at `offset`. Offsets are
@@ -120,7 +122,7 @@ std::string describe(const StoryWorld& world, const Pokemon::TilePos& pos);
 
 
 
-}
-}
-}
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

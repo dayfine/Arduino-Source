@@ -374,7 +374,7 @@ void fight_with_best_move(VideoStream& stream, ProControllerContext& context, co
     }
 }
 
-}
+} // namespace
 
 void confirm_battle_overworld(VideoStream& stream, ProControllerContext& context,
     const std::string& label){
@@ -426,6 +426,6 @@ void fight_wild_battle(VideoStream& stream, ProControllerContext& context, const
 }
 
 
-}
-}
-}
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

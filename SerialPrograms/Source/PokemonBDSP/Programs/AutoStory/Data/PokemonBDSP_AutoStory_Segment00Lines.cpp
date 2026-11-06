@@ -113,7 +113,8 @@ WalkedLine walked(
 ){
     return {std::move(checkpoint), std::move(name), std::move(corners), std::move(ends_in), std::move(live_triggers)};
 }
-}
+
+} // namespace
 
 const std::vector<WalkedLine>& lines(){
     static const std::vector<WalkedLine> lines{
@@ -139,7 +140,7 @@ const std::vector<WalkedLine>& lines(){
     return lines;
 }
 
-}
-}
-}
-}
+} // namespace Segment00Lines
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

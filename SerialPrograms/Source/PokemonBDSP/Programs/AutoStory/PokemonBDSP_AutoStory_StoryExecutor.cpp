@@ -320,6 +320,6 @@ Pokemon::Segment make_story_segment(
 
 
 
-}
-}
-}
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

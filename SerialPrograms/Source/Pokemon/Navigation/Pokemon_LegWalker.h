@@ -59,6 +59,7 @@ public:
     virtual void clear(Console& console, Context& context) const = 0;
 };
 
+// Collection of interrupt detectors active during leg movement.
 template <typename Console, typename Context>
 using LegInterrupts = std::vector<std::unique_ptr<LegInterrupt<Console, Context>>>;
 
@@ -85,8 +86,10 @@ struct LegSpec{
     //  interrupts every hold, so the wall is never reached.
     bool stop_if_blocked = false;
 };
+// Formats a LegSpec into a descriptive string.
 std::string to_string(const LegSpec& leg);
 
+// Execution summary of a completed or stopped leg movement.
 struct LegResult{
     //  Tiles walked, which is `tiles` unless the leg gave up.
     int tiles = 0;
@@ -130,6 +133,7 @@ struct LegCalls{
     std::function<void(const std::string& message)> log;
     std::function<void(const std::string& message)> fail;
 };
+// Low-level leg execution using provided callback interface.
 LegResult walk_leg_with(const LegSpec& leg, const LegCalls& calls, size_t max_interruptions);
 
 
@@ -142,6 +146,15 @@ LegResult walk_leg(
     const LegInterrupts<Console, Context>& interrupts,
     const LegSpec& leg,
     size_t max_interruptions = 5
+);
+
+template <typename Console, typename Context>
+LegResult walk_leg(
+    Console& console, Context& context,
+    const std::type_identity_t<LegMover<Context>>& mover,
+    const LegInterrupts<Console, Context>& interrupts,
+    const LegSpec& leg,
+    size_t max_interruptions
 ){
     auto hold_watching = [&](Milliseconds hold) -> std::optional<HoldOutcome>{
         std::vector<std::unique_ptr<VisualInferenceCallback>> watchers;
@@ -188,6 +201,14 @@ size_t clear_late_interrupts(
     const LegInterrupts<Console, Context>& interrupts,
     Milliseconds watch,
     size_t max_interruptions = 5
+);
+
+template <typename Console, typename Context>
+size_t clear_late_interrupts(
+    Console& console, Context& context,
+    const LegInterrupts<Console, Context>& interrupts,
+    Milliseconds watch,
+    size_t max_interruptions
 ){
     for (size_t count = 0; ; count++){
         std::vector<std::unique_ptr<VisualInferenceCallback>> watchers;
@@ -216,6 +237,6 @@ size_t clear_late_interrupts(
 
 
 
-}
-}
+} // namespace Pokemon
+} // namespace PokemonAutomation
 #endif

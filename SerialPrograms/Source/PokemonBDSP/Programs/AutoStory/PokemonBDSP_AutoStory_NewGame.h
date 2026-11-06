@@ -46,6 +46,7 @@ enum class IntroStep{
     PROBE_FOR_MENU,         //  X, to see whether the player is in control
     WAIT,                   //  nothing: a black screen (the boot, a fade)
 };
+//  Progress tracking state for the new-game introductory sequence.
 struct IntroProgress{
     bool player_named = false;
     //  A preset name was picked from the rival's list, and how many screens
@@ -99,6 +100,7 @@ inline constexpr size_t INTRO_X_WITHOUT_MENU = 20;
 //  Notes `screen`, read `since_start` into the intro, in `progress`: the
 //  game is confirmed on a BDSP screen; black screens leave the clock alone.
 void note_intro_screen(IntroProgress& progress, const std::string& screen, std::chrono::milliseconds since_start);
+//  Decides the next controller action based on the current screen and intro progress.
 IntroStep decide_intro_step(const std::string& screen, const IntroProgress& progress);
 
 //  When X opens nothing the menu detector knows, the player is still in
@@ -107,14 +109,19 @@ IntroStep decide_intro_step(const std::string& screen, const IntroProgress& prog
 //  than INTRO_X_CHANGE, and B put it back within INTRO_B_RESTORE: the menu
 //  opened and closed. Changes are pixel RMSD.
 inline constexpr std::chrono::milliseconds INTRO_STILL_TIME = std::chrono::seconds(2);
+//  Maximum pixel RMSD threshold for considering the screen still before probing menu.
 inline constexpr double INTRO_STILL_CHANGE = 4;
+//  Minimum pixel RMSD change indicating menu opened after pressing X.
 inline constexpr double INTRO_X_CHANGE = 25;
+//  Maximum pixel RMSD difference between pre-X screen and post-B screen.
 inline constexpr double INTRO_B_RESTORE = 10;
+//  Probe metrics for detecting menu presence via screen changes from X and B.
 struct XProbe{
     double still_change;    //  over INTRO_STILL_TIME before X
     double x_change;        //  from before X to after it
     double b_change;        //  from before X to after the B that follows
 };
+//  Evaluates whether probe metrics indicate player is in control without menu detection.
 bool intro_in_control_without_menu(const XProbe& probe);
 //  Counts `step` in `progress`.
 void record_intro_step(IntroProgress& progress, IntroStep step);
@@ -135,7 +142,7 @@ void play_new_game_intro(
 );
 
 
-}
-}
-}
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

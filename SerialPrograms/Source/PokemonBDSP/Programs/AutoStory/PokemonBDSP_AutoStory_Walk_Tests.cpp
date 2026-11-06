@@ -28,12 +28,7 @@ namespace{
 //  turned, a 160 ms D-pad tap stepped a whole tile, and a 100 ms stick tap
 //  stepped about 0.6 tile, off the tile grid (r49, r248a). So route_turn()
 //  taps the D-pad, once, for at most 80 ms.
-class Test_RouteTurnTap : public UnitTest{
-public:
-    Test_RouteTurnTap()
-        : UnitTest("PokemonBDSP::AutoStory - a turn is a D-pad tap too short to step")
-    {}
-    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+UnitTestResult test_route_turn_tap(Logger&){
         constexpr Milliseconds LONGEST_TURN(80);
         for (Pokemon::Direction direction : {Pokemon::Direction::NORTH, Pokemon::Direction::SOUTH, Pokemon::Direction::EAST, Pokemon::Direction::WEST}){
             const RouteInput tap = route_turn_tap(direction);
@@ -52,8 +47,7 @@ public:
             return "ROUTE_TURN_TAP is " + std::to_string(ROUTE_TURN_TAP.count()) + " ms; over 80 ms may step.";
         }
         return true;
-    }
-};
+}
 
 //  indoors() decides when leave_door_south() is out: r257 walked on south
 //  past Sandgem's road into a house after leaving the Center, because the
@@ -67,12 +61,7 @@ struct IndoorsCase{
     bool indoors;
 };
 
-class Test_IndoorsAnyLight : public UnitTest{
-public:
-    Test_IndoorsAnyLight()
-        : UnitTest("PokemonBDSP::AutoStory - indoors() under the evening tint")
-    {}
-    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+UnitTestResult test_indoors_any_light(Logger&){
         const std::vector<IndoorsCase> cases{
             {.name = "evening outside, orange all over", .fill = 0xffe0a040, .dark_bottom = 0, .indoors = false},
             {.name = "a room: orange, black below its floor", .fill = 0xffe0a040, .dark_bottom = 0.10, .indoors = true},
@@ -93,8 +82,7 @@ public:
             }
         }
         return true;
-    }
-};
+}
 
 //  door_fade_look(): out of a door is a dark look, then a bright one that is
 //  not a room. r259 turned round in Sandgem's lit Center, read "not a room"
@@ -110,12 +98,7 @@ struct DoorCase{
     size_t out_at;
 };
 
-class Test_DoorFade : public UnitTest{
-public:
-    Test_DoorFade()
-        : UnitTest("PokemonBDSP::AutoStory - out of a door needs its fade")
-    {}
-    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+UnitTestResult test_door_fade(Logger&){
         const std::vector<DoorCase> cases{
             {.name = "r259: a bright look in the Center that misses the room", .looks = {{458, true}, {440, false}, {457, true}}, .out_at = 0},
             {.name = "the fade, then the town", .looks = {{458, true}, {300, true}, {60, false}, {310, false}}, .out_at = 4},
@@ -135,17 +118,10 @@ public:
             }
         }
         return true;
-    }
-};
+}
 
 
-class Test_LocationBanner : public UnitTest{
-public:
-    Test_LocationBanner()
-        : UnitTest("PokemonBDSP::AutoStory - location banner match")
-    {}
-
-    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+UnitTestResult test_location_banner(Logger&){
         struct Case{
             const char* read;
             const char* expected;
@@ -168,16 +144,10 @@ public:
             }
         }
         return true;
-    }
-};
+}
 
 
-class Test_Indoors : public UnitTest{
-public:
-    Test_Indoors()
-        : UnitTest("PokemonBDSP::AutoStory - indoors")
-    {}
-    virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
+UnitTestResult test_indoors(Logger& logger){
         struct Case{ const char* file; bool inside; };
         const Case cases[] = {
             {"PokemonBDSP/AutoStory/JubilifeCenterInside-20261030-c6.png", true},
@@ -204,16 +174,10 @@ public:
             }
         }
         return true;
-    }
-};
+}
 
 
-class Test_LocationBannerShowing : public UnitTest{
-public:
-    Test_LocationBannerShowing()
-        : UnitTest("PokemonBDSP::AutoStory - location banner showing")
-    {}
-    virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
+UnitTestResult test_location_banner_showing(Logger& logger){
         struct Case{ const char* file; bool banner; };
         const Case cases[] = {
             {"PokemonBDSP/AutoStory/JubilifeCenterDoorstep-20261030-c5.png", true},
@@ -235,65 +199,117 @@ public:
             }
         }
         return true;
-    }
-};
+}
+
+
 
 //  pokemon_center_on_screen(): the Center's warm floor in a room. r79 read
 //  Jubilife's yellow plaza as a Center and called a won battle lost.
-class Test_PokemonCenterOnScreen : public UnitTest{
-public:
-    Test_PokemonCenterOnScreen()
-        : UnitTest("PokemonBDSP::AutoStory - a Pokemon Center is its floor in a room, not a yellow plaza")
-    {}
-    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        constexpr uint32_t FLOOR = 0xfff0c860;      //  the Center's warm yellow
-        constexpr uint32_t WALL = 0xffe08030;       //  its orange back wall
-        constexpr uint32_t GRASS = 0xff60b040;
-        struct Case{
-            std::string name;
-            uint32_t top;
-            uint32_t bottom;
-            double dark_bottom;     //  how much of the screen's height, from the bottom, is black
-            bool center;
-        };
-        const std::vector<Case> cases{
-            {"a Center: wall over floor, black below it", WALL, FLOOR, 0.15, true},
-            {"Jubilife's plaza: yellow paving, no black edge", FLOOR, FLOOR, 0, false},
-            {"a street: grass over yellow paving", GRASS, FLOOR, 0, false},
-            {"a grey gym in a room", 0xff808080, 0xff909090, 0.15, false},
-        };
-        for (const Case& item : cases){
-            ImageRGB32 screen(1920, 1080);
-            const size_t dark_from = (size_t)(1080 * (1 - item.dark_bottom));
-            for (size_t y = 0; y < 1080; y++){
-                for (size_t x = 0; x < 1920; x++){
-                    screen.pixel(x, y) = y >= dark_from ? 0xff000000 : y < 540 ? item.top : item.bottom;
-                }
-            }
-            if (pokemon_center_on_screen(screen) != item.center){
-                return item.name + (item.center ? ": not read as a Center." : ": read as a Center.");
+UnitTestResult test_pokemon_center_on_screen(Logger&){
+    constexpr uint32_t FLOOR = 0xfff0c860;      //  the Center's warm yellow
+    constexpr uint32_t WALL = 0xffe08030;       //  its orange back wall
+    constexpr uint32_t GRASS = 0xff60b040;
+    struct Case{
+        std::string name;
+        uint32_t top;
+        uint32_t bottom;
+        double dark_bottom;     //  how much of the screen's height, from the bottom, is black
+        bool center;
+    };
+    const std::vector<Case> cases{
+        {"a Center: wall over floor, black below it", WALL, FLOOR, 0.15, true},
+        {"Jubilife's plaza: yellow paving, no black edge", FLOOR, FLOOR, 0, false},
+        {"a street: grass over yellow paving", GRASS, FLOOR, 0, false},
+        {"a grey gym in a room", 0xff808080, 0xff909090, 0.15, false},
+    };
+    for (const Case& item : cases){
+        ImageRGB32 screen(1920, 1080);
+        const size_t dark_from = (size_t)(1080 * (1 - item.dark_bottom));
+        for (size_t y = 0; y < 1080; y++){
+            for (size_t x = 0; x < 1920; x++){
+                screen.pixel(x, y) = y >= dark_from ? 0xff000000 : y < 540 ? item.top : item.bottom;
             }
         }
-        return true;
+        if (pokemon_center_on_screen(screen) != item.center){
+            return item.name + (item.center ? ": not read as a Center." : ": read as a Center.");
+        }
     }
+    return true;
+}
+
+
+struct AutoStoryWalkInput{
+    std::string name;
+    std::function<UnitTestResult(Logger&)> body;
 };
 
+struct AutoStoryWalkExpectation{
+};
 
-}
+struct AutoStoryWalkCase{
+    AutoStoryWalkInput input;
+    AutoStoryWalkExpectation expectation;
+};
 
+class Test_AutoStoryWalk : public UnitTest{
+public:
+    explicit Test_AutoStoryWalk(AutoStoryWalkCase test_case)
+        : UnitTest("PokemonBDSP::AutoStory - " + test_case.input.name)
+        , m_case(std::move(test_case))
+    {}
+    virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
+        try{
+            return m_case.input.body(logger);
+        }catch (Exception& e){
+            return std::string(e.name()) + ": " + e.message();
+        }
+    }
+
+private:
+    AutoStoryWalkCase m_case;
+};
+
+} // namespace
+
+
+const AutoStoryWalkCase AUTO_STORY_WALK_CASES[] = {
+    {
+        .input = {"a turn is a D-pad tap too short to step", test_route_turn_tap},
+        .expectation = {},
+    },
+    {
+        .input = {"indoors() under the evening tint", test_indoors_any_light},
+        .expectation = {},
+    },
+    {
+        .input = {"out of a door needs its fade", test_door_fade},
+        .expectation = {},
+    },
+    {
+        .input = {"location banner match", test_location_banner},
+        .expectation = {},
+    },
+    {
+        .input = {"indoors", test_indoors},
+        .expectation = {},
+    },
+    {
+        .input = {"location banner showing", test_location_banner_showing},
+        .expectation = {},
+    },
+    {
+        .input = {"a Pokemon Center is its floor in a room, not a yellow plaza", test_pokemon_center_on_screen},
+        .expectation = {},
+    },
+};
 
 void add_tests_AutoStory_Walk(UnitTestDatabase& database){
-    database.add<Test_RouteTurnTap>();
-    database.add<Test_IndoorsAnyLight>();
-    database.add<Test_DoorFade>();
-    database.add<Test_LocationBanner>();
-    database.add<Test_LocationBannerShowing>();
-    database.add<Test_Indoors>();
-    database.add<Test_PokemonCenterOnScreen>();
+    for (const auto& item : AUTO_STORY_WALK_CASES){
+        database.add<Test_AutoStoryWalk>(item);
+    }
 }
 
 
-
-}
-}
-}
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

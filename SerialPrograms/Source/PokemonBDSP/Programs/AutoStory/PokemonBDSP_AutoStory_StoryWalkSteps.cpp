@@ -45,7 +45,7 @@ std::string label_of(const StoryStep& step){
     throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "RouteIO::note() returned from a failure: " + message);
 }
 
-}
+} // namespace
 
 
 void StoryWalkSteps::begin_attempt(const std::string& row){
@@ -323,6 +323,6 @@ Outcome StoryWalkSteps::mash(RunState& state, const StoryStep& step){
 
 
 
-}
-}
-}
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

@@ -101,7 +101,7 @@ bool battle_follows(VideoStream& stream, ProControllerContext& context){
     return wait_until(stream, context, 5s, {{battle_menu}, {battle_dialog}}) >= 0;
 }
 
-}
+} // namespace
 
 //  A step in tall grass that was started before the stick was released still
 //  finishes, and its encounter starts after the walk has ended. Watch a little
@@ -172,7 +172,7 @@ private:
     bool m_has_last = false;
 };
 
-}
+} // namespace
 
 
 namespace{
@@ -423,7 +423,7 @@ WalkResult walk_until_spec(
     return WalkUntil(stream, context, escape, spec).run();
 }
 
-}
+} // namespace
 
 WalkResult walk_until(
     VideoStream& stream, ProControllerContext& context, const WildBattleEscape& escape,
@@ -604,6 +604,6 @@ WalkResult walk_expecting(
 }
 
 
-}
-}
-}
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

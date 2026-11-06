@@ -46,7 +46,7 @@ bool holding_against_wall(VideoStream& stream, ProControllerContext& context, do
     return before && most < WALKING_CHANGE;
 }
 
-}
+} // namespace
 
 
 WalkResult ConsoleRouteIO::walk_to_wall(const RouteWallWalk& walk){
@@ -96,6 +96,6 @@ void ConsoleRouteIO::note(const std::string& text, RouteNote kind){
 
 
 
-}
-}
-}
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

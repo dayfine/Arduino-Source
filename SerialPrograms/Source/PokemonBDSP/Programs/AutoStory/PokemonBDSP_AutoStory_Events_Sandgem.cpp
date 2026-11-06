@@ -240,7 +240,7 @@ void sandgem_potions(VideoStream& stream, ProControllerContext& context){
     }
 }
 
-}
+} // namespace
 
 
 void add_sandgem_events(StoryEvents& events){
@@ -250,6 +250,6 @@ void add_sandgem_events(StoryEvents& events){
 
 
 
-}
-}
-}
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

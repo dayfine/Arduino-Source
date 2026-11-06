@@ -128,7 +128,7 @@ void gym_until_roark_beaten(VideoStream& stream, ProControllerContext& context){
     }
 }
 
-}
+} // namespace
 
 
 void add_oreburgh_events(StoryEvents& events){
@@ -137,6 +137,6 @@ void add_oreburgh_events(StoryEvents& events){
 
 
 
-}
-}
-}
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

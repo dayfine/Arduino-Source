@@ -49,6 +49,7 @@ struct SimPos{
     int y = 0;
     bool operator==(const SimPos& other) const = default;
 };
+//  Converts a TilePos to its fixed-point fractional simulation coordinate.
 SimPos sim_pos(const Pokemon::TilePos& tile);
 //  Whether the player stands exactly on a tile.
 bool on_grid(const SimPos& pos);
@@ -77,6 +78,7 @@ struct SimWorld{
     std::optional<bool> can_run = std::nullopt;
 };
 
+//  Reason why simulated player movement stopped.
 enum class SimStop{
     DONE,       //  the input finished
     BLOCKED,    //  stopped by a wall, a person, or a door off its column
@@ -84,6 +86,7 @@ enum class SimStop{
     WARP,       //  stepped onto a door
     LIMIT,      //  a held walk ran out of time
 };
+//  Returns the debug string for a SimStop reason.
 const char* sim_stop_name(SimStop stop);
 
 //  What one input did.
@@ -115,6 +118,7 @@ enum class SimPace{
     RUN,    //  B held: a run once the player has the Running Shoes
 };
 
+//  Simulates grid-based player movement and collisions in BDSP.
 class GridSim{
 public:
     GridSim(SimWorld world, const Pokemon::TilePos& start, Pokemon::Direction facing, bool can_run);
@@ -199,7 +203,7 @@ struct GridSimFailure{
 
 
 
-}
-}
-}
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

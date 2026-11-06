@@ -32,7 +32,7 @@ bool tall_grass(const StoryWorld& world, const TilePos& pos){
     return world.tile(pos) == TileKind::TALL_GRASS;
 }
 
-}
+} // namespace
 
 
 WallHit slide_to_wall(const StoryWorld& world, const TilePos& from, Direction direction){
@@ -102,7 +102,7 @@ void check_standable(const StoryWorld& world, const TilePos& from, const TilePos
     }
 }
 
-}
+} // namespace
 
 std::optional<std::vector<TileLeg>> plan_tile_route(
     const StoryWorld& world,
@@ -422,7 +422,7 @@ private:
     std::priority_queue<Entry, std::vector<Entry>, EntryGreater> m_queue;
 };
 
-}
+} // namespace
 
 std::optional<std::vector<PlannedLeg>> plan_robust_route(
     const StoryWorld& world,
@@ -448,6 +448,6 @@ std::optional<std::vector<PlannedLeg>> plan_robust_route(
 
 
 
-}
-}
-}
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

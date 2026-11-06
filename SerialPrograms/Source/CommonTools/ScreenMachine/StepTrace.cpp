@@ -71,4 +71,4 @@ void StepTrace::fail(const std::string& message) const{
 
 
 
-}
+} // namespace PokemonAutomation

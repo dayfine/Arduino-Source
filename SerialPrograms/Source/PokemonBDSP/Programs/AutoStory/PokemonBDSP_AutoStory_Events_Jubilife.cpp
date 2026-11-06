@@ -82,7 +82,7 @@ Pokemon::Outcome talk_to_wanderer(StoryExecutor& executor, Pokemon::RunState&, c
     fail_step(stream, step.name + ": no answer from any tile below his range.");
 }
 
-}
+} // namespace
 
 
 void add_jubilife_events(StoryEvents& events){
@@ -91,6 +91,6 @@ void add_jubilife_events(StoryEvents& events){
 
 
 
-}
-}
-}
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

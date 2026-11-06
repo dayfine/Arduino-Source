@@ -18,7 +18,7 @@ namespace PokemonBDSP{
 void add_tests_AutoStory_StoryMaps(UnitTestDatabase& database);
 
 
-}
-}
-}
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

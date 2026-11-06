@@ -265,7 +265,7 @@ void move_menu_cursor(VideoStream& stream, ProControllerContext& context, MenuCu
     }
 }
 
-}
+} // namespace
 
 std::string read_location_from_save_screen(VideoStream& stream, ProControllerContext& context){
     const std::string location = open_save_prompt(stream, context);
@@ -352,6 +352,6 @@ void open_menu(VideoStream& stream, ProControllerContext& context, MenuCursorPos
 
 
 
-}
-}
-}
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
