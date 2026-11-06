@@ -47,7 +47,9 @@ void BBQLogger::board(bool panel_detected, const std::vector<BBQuests>& quests){
 }
 
 void BBQLogger::reroll_attempt(size_t slot, BBQuests quest){
-    m_logger.log("Rerolling quest " + std::to_string(slot + 1) + " (" + std::string(quest_label(quest)) + ").");
+    m_logger.log(
+        "Rerolling quest " + std::to_string(slot + 1) + " (" + std::string(quest_label(quest)) + ")."
+    );
 }
 
 void BBQLogger::battle_entry_timeout(BBQuests quest){

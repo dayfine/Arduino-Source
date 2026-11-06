@@ -2656,6 +2656,7 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonSV/Programs/Farming/PokemonSV_BlueberryCatchPhoto.cpp
     Source/VideoGames/PokemonSV/Programs/Farming/PokemonSV_BlueberryCatchPhoto.h
     Source/VideoGames/PokemonSV/Programs/Farming/PokemonSV_BlueberryQuests.cpp
+    Source/VideoGames/PokemonSV/Programs/Farming/PokemonSV_BlueberryQuests_Execution.cpp
     Source/VideoGames/PokemonSV/Programs/Farming/PokemonSV_BlueberryQuests.h
     Source/VideoGames/PokemonSV/Programs/Farming/PokemonSV_ClaimMysteryGift.cpp
     Source/VideoGames/PokemonSV/Programs/Farming/PokemonSV_ClaimMysteryGift.h
