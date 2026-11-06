@@ -30,6 +30,22 @@ class RatchetTests(unittest.TestCase):
         grown = measure('Common/test.cpp', 'void A::f(MoveOnlyFunction<void()> f){\n' + 'x();\n' * 61 + '}\n')
         self.assertTrue(evaluate(grown, old))
 
+    def test_namespace_move_retains_only_an_identical_removed_function_base(self):
+        body = 'void f(){\n' + '    x();\n' * 60 + '}\n'
+        old = measure('Common/test.cpp', body)
+        moved = measure('Common/test.cpp', 'namespace Project{\nnamespace{\n' + body + '}\n}\n')
+        self.assertEqual([], evaluate(moved, old))
+        changed = measure('Common/test.cpp', 'namespace Project{\n' + body.replace('x();', 'y();') + '}\n')
+        self.assertTrue(evaluate(changed, old))
+        copied = measure('Common/test.cpp', body + 'namespace Project{\n' + body + '}\n')
+        self.assertTrue(evaluate(copied, old))
+
+    def test_namespace_move_does_not_transfer_debt_across_files(self):
+        body = 'void f(){\n' + 'x();\n' * 60 + '}\n'
+        old = measure('Common/old.cpp', body)
+        moved = measure('Common/new.cpp', 'namespace Project{\n' + body + '}\n')
+        self.assertTrue(evaluate(moved, old))
+
     def test_growth_below_limit_is_allowed(self):
         self.assertEqual([], evaluate([function(50)], [function(25)]))
 

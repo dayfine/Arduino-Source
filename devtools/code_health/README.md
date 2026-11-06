@@ -246,3 +246,9 @@ generated declarations or C++ overloads like a compiler. Shared fixture types
 should remain beside the tests or need a deliberate parser extension, not an
 unexplained bypass. Header parameter spans, game movement policies and comment
 quality still require design review. These rules do not force a default policy.
+
+Namespace-only function moves retain the previous metric ceilings only when the
+function text (including its signature) is identical, stays in the same file,
+and the old qualified symbol is gone. Copies and changed bodies receive no
+such allowance. Namespace comments are also recognized after declarations such
+as `Q_DECLARE_METATYPE(...)` that do not end with a semicolon.

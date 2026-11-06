@@ -13,6 +13,13 @@ class ContractTests(unittest.TestCase):
         return [finding.message for finding in check(path, source, previous)[0]
                 if not finding.message.startswith('style:')]
 
+    def test_namespace_name_after_a_metatype_macro_without_semicolon(self):
+        source = ('Q_DECLARE_METATYPE(std::string)\nnamespace Project{\nnamespace{\n'
+                  '} // namespace\n} // namespace Project\n')
+        self.assertEqual([], self.messages(source, path=CPP))
+        broken = source.replace('// namespace Project', '// namespace Wrong')
+        self.assertTrue(any('namespace-close' in m for m in self.messages(broken, path=CPP)))
+
     def test_namespace_close_requires_matching_comment(self):
         self.assertTrue(any('namespace-close' in m for m in self.messages('namespace Pokemon{\n}\n')))
         self.assertEqual([], self.messages('namespace Pokemon{\n} // namespace Pokemon\n'))
