@@ -1265,10 +1265,22 @@ BBQAutoBattleResult run_auto_battle(
         const uint64_t kills = actions.kills();
         empty_passes = kills == kills_before ? empty_passes + 1 : 0;
         const auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(actions.now() - start);
+
+        //Unknown HP heals, as every pass did before the threshold existed. The log rounds HP
+        //down, so it shows below the threshold exactly when it is.
+        const bool heal = !hp || *hp * 100 < policy.heal_below_hp_percent;
         const std::string hp_text = hp ? std::to_string((int)std::floor(*hp * 100)) + "%" : "?";
+        const std::string threshold_text = std::to_string(policy.heal_below_hp_percent) + "%";
 
         std::optional<BBQAutoBattleResult> end;
-        std::string next = "Below the target: return, heal and go again.";
+        std::string next;
+        if (!hp){
+            next = "Below the target and HP unknown: return, heal and go again.";
+        }else if (heal){
+            next = "Below the target and HP below " + threshold_text + ": return, heal and go again.";
+        }else{
+            next = "Below the target and HP at or above " + threshold_text + ": return and go again without healing.";
+        }
         if (kills >= policy.kill_target){
             end = BBQAutoBattleResult::TargetReached;
             next = "Target reached: return without healing.";
@@ -1293,7 +1305,11 @@ BBQAutoBattleResult run_auto_battle(
         if (end){
             return *end;
         }
-        actions.heal();
+        //Skipping the heal also skips its re-fly: return_to_plaza() already lands on the Central
+        //Plaza fly point, which is where the flight to Chargestone starts from.
+        if (heal){
+            actions.heal();
+        }
     }
     return BBQAutoBattleResult::TargetReached;
 }
@@ -1419,6 +1435,7 @@ void quest_auto_battle(
         policy.kill_target = 30;
         policy.time_limit = std::chrono::minutes(60);
     }
+    policy.heal_below_hp_percent = BBQ_OPTIONS.AUTO_BATTLE_HEAL_PERCENT;
 
     ConsoleBBQAutoBattleActions actions(env, stream, context, stats, tracker, sensors.lets_go_hp);
     run_auto_battle(stream.logger(), actions, policy);
