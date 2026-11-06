@@ -11,6 +11,9 @@ executes the selected plan on hardware. PokemonSimulation owns map preparation,
 offline route planning and evaluation. Its replay must consume the same selected
 plan and policies that hardware executes.
 
+Concrete data and executor/ruleset/map interfaces are sketched in
+[AutoStory-Interface-Examples.md](AutoStory-Interface-Examples.md).
+
 ## 1. What exists, and what remains different
 
 “Shared” below means implemented shared code in the inspected fork stack, not
