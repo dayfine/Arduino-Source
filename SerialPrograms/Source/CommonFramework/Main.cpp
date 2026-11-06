@@ -47,13 +47,10 @@
 
 Q_DECLARE_METATYPE(std::string)
 
-using namespace PokemonAutomation;
-
 namespace PokemonAutomation{
 bool use_qt_ui(){
     return true;
 }
-} // namespace PokemonAutomation
 
 namespace{
 
@@ -318,6 +315,7 @@ void stop_thread_pools(){
 }
 
 } // namespace
+} // namespace PokemonAutomation
 
 int main(int argc, char *argv[]){
 #if 0
@@ -337,12 +335,12 @@ int main(int argc, char *argv[]){
     //  So far, this is only needed on Mac where static initialization is fucked up.
     PokemonAutomation::register_all_statics();
 
-    setup_crash_handler();
+    PokemonAutomation::setup_crash_handler();
 
-    int ret = run_program(argc, argv);
+    int ret = PokemonAutomation::run_program(argc, argv);
 
 
-    stop_application_services();
+    PokemonAutomation::stop_application_services();
 
 //
 //  Workaround Qt 6.9 thread-adoption bug on Windows.
@@ -356,7 +354,7 @@ int main(int argc, char *argv[]){
     std::quick_exit(ret);
 #endif
 
-    stop_thread_pools();
+    PokemonAutomation::stop_thread_pools();
 
     std::cout << "Exiting main()..." << std::endl;
 
