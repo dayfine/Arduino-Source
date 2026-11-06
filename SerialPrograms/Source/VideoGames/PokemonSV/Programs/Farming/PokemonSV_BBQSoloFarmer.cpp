@@ -205,6 +205,7 @@ void run_bbq_rounds(Logger& logger, const BBQOption& options, BBQGameActions& ga
         //Never carry an observation across quest actions or the round's date/reset work.
         observed_panel.reset();
         const uint64_t completed_before_round = num_completed_quests;
+        bool replan_after_reroll = false;
         for (auto current_quest : quests_to_do){
             //Check if quest was already completed (ex. 500 meters completed while navigating to take a photo)
             if (dispatch_panel){
@@ -231,6 +232,8 @@ void run_bbq_rounds(Logger& logger, const BBQOption& options, BBQGameActions& ga
                     case BBQOption::OutOfRetries::Reroll:
                         logger.log("Reroll selected. Rerolling the failed quest.");
                         game.reroll_quest(current_quest);
+                        logger.log("Reroll finished. Discarding the remaining batch before scheduling.");
+                        replan_after_reroll = true;
                         break;
                     case BBQOption::OutOfRetries::Stop:
                         logger.log("Stop selected. Stopping program.", COLOR_RED);
@@ -244,6 +247,11 @@ void run_bbq_rounds(Logger& logger, const BBQOption& options, BBQGameActions& ga
                 num_completed_quests++;
             }
             quest_list.clear();
+            if (replan_after_reroll){
+                //A replacement belongs in the next plan, before more old queued
+                //work. Finish normal round actions so save milestones are kept.
+                break;
+            }
         }
         //Clear out the todo list
         quests_to_do.clear();
