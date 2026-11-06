@@ -43,7 +43,7 @@ main
 | PR | State | Current base | Scope / disposition |
 |---|---|---|---|
 | [#1](https://github.com/dayfine/Arduino-Source/pull/1) | closed | `main` | Upstream #1636 merged; fork closed. |
-| [#2](https://github.com/dayfine/Arduino-Source/pull/2) | open | `bbq/verified-reroll` | Canonical diagnostics, includes #27; native Linux/Windows CI passes. |
+| [#2](https://github.com/dayfine/Arduino-Source/pull/2) | open | `bbq/verified-reroll` | Canonical diagnostics, includes #27; native macOS Intel/Linux/Windows CI passes. |
 | [#3](https://github.com/dayfine/Arduino-Source/pull/3) | open | `bbq/diagnostics-and-baseline` | Updated for consolidated #2; local failure screenshots only. #19 overlap remains. |
 | [#4](https://github.com/dayfine/Arduino-Source/pull/4) | open | `bbq/endless-reroll-guard` | save once when completion milestones advance |
 | [#5](https://github.com/dayfine/Arduino-Source/pull/5) | open | `bbq/persistent-quest-retries` | stop instead of rerolling the quest panel forever |
@@ -117,8 +117,8 @@ All open diffs were checked, including logs added in non-logging PRs.
 | #4, #5, #17, #18, #21, #51, #53, #180 | No new production logging emission found in the reviewed delta | No logging consolidation needed. |
 
 The #2/#27 consolidation is now published in #2, based on verified-reroll #8.
-#3 has merged that parent and retains only local screenshot evidence. Native Linux/Windows validation passes at the heads below; remaining platform
-checks continue. Other behavior branches retain their own
+#3 has merged that parent and retains only local screenshot evidence. Native macOS Intel/Linux/Windows validation passes for #2 at the head below;
+remaining platform checks continue. Other behavior branches retain their own
 explanatory logs. Closed PRs are not assumed merged; upstream readiness remains
 separate from this inventory.
 
@@ -154,7 +154,8 @@ separate from this inventory.
 - Both PR descriptions reflect their current scope and dependencies.
   Intended-base code health passes for both. #2 native CI passes on
   [Linux](https://github.com/dayfine/Arduino-Source/actions/runs/42306026274) and
-  [Windows Clang](https://github.com/dayfine/Arduino-Source/actions/runs/42306026142).
+  [Windows Clang](https://github.com/dayfine/Arduino-Source/actions/runs/42306026142),
+  and [macOS Intel](https://github.com/dayfine/Arduino-Source/actions/runs/42306026133).
   [#3 Linux Clang](https://github.com/dayfine/Arduino-Source/actions/runs/42306032346)
   explicitly passes all nine reroll, six logger and two screenshot cases.
   Remaining platform checks continue.
