@@ -473,7 +473,7 @@ SimWorld SimExecutor::setup(const StoryWorld* world) const{
         if (sim_world(armed.map) != world){
             continue;
         }
-        SimTrigger trigger{.name = armed.trigger.name};
+        SimTrigger trigger{.name = armed.trigger.name, .tiles = {}};
         for (const TilePos& pos : armed.trigger.tiles){
             trigger.tiles.push_back(story_to_world(*world, armed.map, pos));
         }
@@ -710,10 +710,10 @@ UnitTestResult run_exit_test(Logger& logger, const std::string& row_id, const St
     }
     std::vector<SimMisses> runs;
     for (size_t i = 0; i < clean.misses().fades; i++){
-        runs.push_back({.fade = i});
+        runs.push_back({.fade = i, .banner = std::nullopt});
     }
     for (size_t i = 0; i < clean.misses().banners; i++){
-        runs.push_back({.banner = i});
+        runs.push_back({.fade = std::nullopt, .banner = i});
     }
     for (const SimMisses& m : runs){
         SimExecutor sim(logger, m);
@@ -844,7 +844,7 @@ UnitTestResult test_exit_gate(Logger& logger){
 }
 
 UnitTestResult test_exit_ravaged_path(Logger& logger){
-    return run_exit_test(logger, "01.09", r81_old_cave_exit(), SimMisses{.fade = 0}, r81_below_the_mouth());
+    return run_exit_test(logger, "01.09", r81_old_cave_exit(), SimMisses{.fade = 0, .banner = std::nullopt}, r81_below_the_mouth());
 }
 
 struct AutoStoryStorySimInput{
