@@ -62,7 +62,7 @@ int read_BP(const ProgramInfo& info, VideoStream& stream, ProControllerContext& 
                 context.wait_for_all_requests();
             }
         },
-        {{ right_panel }}  // Detector index 0; a negative run_until result means no detection.
+        {{ right_panel }}
     );
     if (result == 0){
         stream.log("Found quest panel.");
@@ -103,6 +103,7 @@ bool open_quest_panel(VideoStream& stream, ProControllerContext& context){
 
 }
 
+// Detector index 0 confirms the quest panel; a negative run_until result means no detection.
 std::vector<BBQuests> read_quests(
     const ProgramInfo& info,
     VideoStream& stream, ProControllerContext& context,
