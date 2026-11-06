@@ -82,7 +82,7 @@ HpBarReading read_hp_bar(const ImageViewRGB32& game, const ImageFloatBox& box){
     return reading;
 }
 
-}
+} // namespace
 
 
 HpBarReading read_player_hp_bar(const ImageViewRGB32& game){
@@ -100,6 +100,6 @@ std::optional<double> read_opponent_hp_fill(const ImageViewRGB32& screen){
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

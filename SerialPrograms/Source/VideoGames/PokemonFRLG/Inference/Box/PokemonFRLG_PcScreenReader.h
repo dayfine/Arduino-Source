@@ -61,8 +61,10 @@ enum class PcScreen{
     //  Anything else: a fade, a frame between two screens.
     OTHER,
 };
+//  The human-readable name of the PC screen.
 const char* pc_screen_name(PcScreen screen);
 
+//  The state and cursor position read from a PC screen.
 struct PcView{
     PcScreen screen = PcScreen::OTHER;
     //  The cursor's row (a menu, the party panel; YES/NO: 0 YES, 1 NO) or
@@ -78,11 +80,12 @@ struct PcView{
 PcView read_pc_screen(Logger& logger, const ImageViewRGB32& screen);
 
 
+//  Register PC screen reader unit tests.
 void add_tests_PcScreenReader(UnitTestDatabase& database);
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

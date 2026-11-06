@@ -58,6 +58,7 @@ namespace NintendoSwitch{
 namespace PokemonFRLG{
 
 
+//  The storage operation to perform at the PC.
 enum class PcAction{
     DEPOSIT,
     WITHDRAW,
@@ -108,6 +109,7 @@ struct PcPartyMember{
 std::string pc_transfer_error(const PcTransfer& transfer, const std::vector<PcPartyMember>& party);
 
 
+//  A controller action taken during a PC dialog sequence.
 enum class PcPress{
     A,
     B,
@@ -121,8 +123,10 @@ enum class PcPress{
     DONE,
     FAIL,
 };
+//  The human-readable name of a PC controller action.
 const char* pc_press_name(PcPress press);
 
+//  The next action decided by the PC dialog state machine.
 struct PcDecision{
     PcPress press = PcPress::WAIT;
     //  FAIL: why.
@@ -175,6 +179,7 @@ public:
     virtual void press(PcPress press) = 0;
 };
 
+//  How a PC transfer sequence concluded.
 enum class PcEnd{
     DONE,
     //  A DEPOSIT with PcMissing::SKIP whose slot the party hasn't got: the
@@ -184,6 +189,7 @@ enum class PcEnd{
     REFUSED,
     FAILED,
 };
+//  The result of a PC transfer operation.
 struct PcResult{
     PcEnd end = PcEnd::FAILED;
     std::string detail = {};
@@ -223,11 +229,12 @@ private:
 };
 
 
+//  Register auto-story PC storage unit tests.
 void add_tests_AutoStoryPcStorage(UnitTestDatabase& database);
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

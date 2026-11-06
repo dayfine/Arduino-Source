@@ -30,8 +30,11 @@ enum class NamingScreenPage : uint8_t{
     LOWER,
     SYMBOLS,
 };
+//  Total page count on naming screen.
 constexpr size_t NAMING_SCREEN_PAGES = 3;
+//  Number of key rows per page.
 constexpr size_t NAMING_SCREEN_KEY_ROWS = 4;
+//  Maximum key columns across pages.
 constexpr size_t NAMING_SCREEN_MAX_KEY_COLUMNS = 8;
 
 // Key columns on each page (sPageColumnCounts). The button column (page / back / OK) comes
@@ -66,8 +69,12 @@ constexpr const char* NAMING_SCREEN_KEYS
 };
 
 // The three buttons in the button column, top to bottom.
+// The three buttons in the button column, top to bottom.
+//  Button index for switching character pages.
 constexpr uint8_t NAMING_SCREEN_BUTTON_PAGE = 0;
+//  Button index for backspacing a character.
 constexpr uint8_t NAMING_SCREEN_BUTTON_BACK = 1;
+//  Button index for confirming naming input.
 constexpr uint8_t NAMING_SCREEN_BUTTON_OK = 2;
 
 
@@ -78,7 +85,9 @@ enum class NamingScreenKind : uint8_t{
     BOX,        //  BOX_NAME_LENGTH
     POKEMON,    //  POKEMON_NAME_LENGTH, for caught Pokemon and the nickname rater
 };
+//  Maximum character length for the given naming screen type.
 size_t naming_screen_max_chars(NamingScreenKind kind);
+//  Display name for naming screen kind.
 const char* naming_screen_kind_name(NamingScreenKind kind);
 
 
@@ -94,9 +103,11 @@ struct NamingCursor{
 
     bool operator==(const NamingCursor& other) const = default;
 };
+//  String representation of cursor coordinates.
 std::string to_string(const NamingCursor& cursor);
 
 
+//  Input action on the naming screen keyboard.
 enum class NamingAction : uint8_t{
     UP,
     DOWN,
@@ -106,6 +117,7 @@ enum class NamingAction : uint8_t{
     SELECT,     //  next page
     START,      //  move the cursor to OK
 };
+//  String representation of naming action.
 const char* naming_action_name(NamingAction action);
 // Space-separated action names, e.g. "LEFT LEFT A START A".
 std::string to_string(const std::vector<NamingAction>& actions);
@@ -134,7 +146,7 @@ std::vector<NamingAction> plan_naming_input(
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

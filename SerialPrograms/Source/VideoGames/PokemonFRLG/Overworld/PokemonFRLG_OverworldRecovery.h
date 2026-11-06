@@ -155,11 +155,12 @@ void run_route(
 );
 
 
+//  Registers overworld recovery unit tests.
 void add_tests_OverworldRecovery(UnitTestDatabase& database);
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

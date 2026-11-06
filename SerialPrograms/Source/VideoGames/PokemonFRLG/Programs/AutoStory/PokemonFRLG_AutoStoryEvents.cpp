@@ -316,7 +316,7 @@ Outcome shop(StoryEnv& env, const StoryStep& step){
     return Pokemon::outcome_ok();
 }
 
-}
+} // namespace
 
 
 std::optional<std::vector<MartOrder>> viridian_mart_orders(const std::vector<Pokemon::StoryItem>& items){
@@ -700,7 +700,8 @@ Outcome open_gym_door(StoryEnv& env, RunState& state, const StoryStep& step){
     return Pokemon::outcome_ok(state.pose);
 }
 
-}
+} // namespace
+
 
 Outcome StoryExecutor::game(RunState& state, const StoryStep& step){
     if (step.variant == CLOSE_TRAINER_CARD){
@@ -752,7 +753,7 @@ StoryCheckpoint joined_rows(const StoryCheckpoint& first, const StoryCheckpoint&
     return row;
 }
 
-}
+} // namespace
 
 StoryRunPlan plan_story_run(
     const std::vector<StoryCheckpoint>& checkpoints, size_t first, size_t last, const StoryHandoffs& handoffs
@@ -879,6 +880,6 @@ Pokemon::Segment make_story_segment(const std::vector<StoryCheckpoint>& checkpoi
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

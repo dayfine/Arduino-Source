@@ -57,6 +57,7 @@ struct LossTally{
     size_t turn_cap = 0;
 };
 
+//  Outcome count and win probability estimate from Monte Carlo simulations.
 struct WinEstimate{
     size_t battles = 0;
     size_t wins = 0;
@@ -86,7 +87,7 @@ std::optional<std::string> win_chance_refusal(const WinEstimate& estimate, doubl
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

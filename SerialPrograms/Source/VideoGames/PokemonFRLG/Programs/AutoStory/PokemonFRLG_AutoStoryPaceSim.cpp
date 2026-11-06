@@ -59,6 +59,6 @@ void SimPatch::dump_screen(std::string_view){}
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

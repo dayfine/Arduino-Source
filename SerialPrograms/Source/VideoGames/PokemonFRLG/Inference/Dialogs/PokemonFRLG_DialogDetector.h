@@ -135,12 +135,15 @@ public:
     {}
 };
 
+//  Register white dialog detector unit tests.
 void add_tests_WhiteDialogDetector(UnitTestDatabase& database);
+//  Register advance white dialog detector unit tests.
 void add_tests_AdvanceWhiteDialogDetector(UnitTestDatabase& database);
+//  Register selection dialog detector unit tests.
 void add_tests_SelectionDialogDetector(UnitTestDatabase& database);
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 
 #endif

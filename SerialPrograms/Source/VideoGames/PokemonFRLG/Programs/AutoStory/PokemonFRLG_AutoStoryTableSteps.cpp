@@ -152,7 +152,7 @@ StoryStep cut_tree(std::string name, Pokemon::Pose tree, std::string why){
 
 
 
-}
-}
-}
-}
+} // namespace StoryTable
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

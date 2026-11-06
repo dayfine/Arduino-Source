@@ -14,10 +14,11 @@ namespace NintendoSwitch{
 namespace PokemonFRLG{
 
 
+//  Registers RNG plan tracker unit tests.
 void add_tests_RngPlanTracker(UnitTestDatabase& database);
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

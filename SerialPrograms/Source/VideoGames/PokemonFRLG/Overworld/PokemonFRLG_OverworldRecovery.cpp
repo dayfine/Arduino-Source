@@ -458,7 +458,7 @@ private:
     std::optional<Walked> m_walked;     //  the step walked last, if it may have stopped part-way
 };
 
-}
+} // namespace
 
 
 WalkedTiles walked_before_warp(const RouteStep& step){
@@ -495,6 +495,6 @@ void run_route(
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

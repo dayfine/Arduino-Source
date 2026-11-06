@@ -30,22 +30,35 @@ namespace PokemonFRLG{
 
 namespace{
 
+struct AutoStoryInput{
+    std::string name;
+    std::function<UnitTestResult()> body;
+};
+
+struct AutoStoryExpectation{
+};
+
+struct AutoStoryCase{
+    AutoStoryInput input;
+    AutoStoryExpectation expectation;
+};
+
 class Test_AutoStory : public UnitTest{
 public:
-    Test_AutoStory(std::string name, std::function<UnitTestResult()> body)
-        : UnitTest("PokemonFRLG::AutoStory - " + std::move(name))
-        , m_body(std::move(body))
+    explicit Test_AutoStory(AutoStoryCase test_case)
+        : UnitTest("PokemonFRLG::AutoStory - " + test_case.input.name)
+        , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
         try{
-            return m_body();
+            return m_case.input.body();
         }catch (Exception& e){
             return std::string(e.name()) + ": " + e.message();
         }
     }
 
 private:
-    std::function<UnitTestResult()> m_body;
+    AutoStoryCase m_case;
 };
 
 
@@ -81,30 +94,38 @@ const char* handoff_name(StoryHandoff handoff){
     return "?";
 }
 
-struct RunPlanScenario{
+struct RunPlanInput{
     std::string name = "";
     std::string first = "";
     //  The table's last row if empty.
     std::string last = "";
     StoryHandoffs handoffs = {};
+};
+
+struct RunPlanExpectation{
     std::string expected_ids = "";
     StoryHandoff expected_stop = StoryHandoff::NONE;
 };
 
+struct RunPlanScenario{
+    RunPlanInput input;
+    RunPlanExpectation expectation;
+};
+
 class Test_RunPlan : public UnitTest{
 public:
-    Test_RunPlan(RunPlanScenario scenario)
-        : UnitTest("PokemonFRLG::AutoStory - run plan: " + scenario.name)
+    explicit Test_RunPlan(RunPlanScenario scenario)
+        : UnitTest("PokemonFRLG::AutoStory - run plan: " + scenario.input.name)
         , m_scenario(std::move(scenario))
     {}
 
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
         try{
-            const size_t last = m_scenario.last.empty() ? story_checkpoints().size() - 1 : row_index(m_scenario.last);
-            const StoryRunPlan plan = plan_story_run(story_checkpoints(), row_index(m_scenario.first), last, m_scenario.handoffs);
+            const size_t last = m_scenario.input.last.empty() ? story_checkpoints().size() - 1 : row_index(m_scenario.input.last);
+            const StoryRunPlan plan = plan_story_run(story_checkpoints(), row_index(m_scenario.input.first), last, m_scenario.input.handoffs);
             const std::string ids = joined_ids(plan.rows);
-            if (ids != m_scenario.expected_ids || plan.stop != m_scenario.expected_stop){
-                return "Expected rows \"" + m_scenario.expected_ids + "\", stop " + handoff_name(m_scenario.expected_stop)
+            if (ids != m_scenario.expectation.expected_ids || plan.stop != m_scenario.expectation.expected_stop){
+                return "Expected rows \"" + m_scenario.expectation.expected_ids + "\", stop " + handoff_name(m_scenario.expectation.expected_stop)
                     + "; got \"" + ids + "\", stop " + handoff_name(plan.stop) + ".";
             }
             return true;
@@ -117,87 +138,143 @@ private:
     const RunPlanScenario m_scenario;
 };
 
-void add_tests_RunPlan(UnitTestDatabase& database){
-    const std::string TODAY = "00.01 00.02 00.03 00.04 00.05 00.06 00.07 00.08 00.09 00.10 00.11 00.12 00.12c 00.13 00.14 00.14b 00.14c 00.15 00.15b 00.16 00.17 00.18 00.19 00.20 00.21 00.22 00.23 00.24 00.25";
-    const RunPlanScenario scenarios[] = {
-        {.name = "handoffs off: the story as before", .first = "00.01", .expected_ids = TODAY},
-        {.name = "handoffs off: a range", .first = "00.02", .last = "00.04", .expected_ids = "00.02 00.03 00.04"},
-        {.name = "handoffs off: Mt. Moon to Nugget Bridge", .first = "00.13", .last = "00.16", .expected_ids = "00.13 00.14 00.14b 00.14c 00.15 00.15b 00.16"},
-        {
-            .name = "SID Helper: 00.01 stops on the keyboard",
+const std::string TODAY = "00.01 00.02 00.03 00.04 00.05 00.06 00.07 00.08 00.09 00.10 00.11 00.12 00.12c 00.13 00.14 00.14b 00.14c 00.15 00.15b 00.16 00.17 00.18 00.19 00.20 00.21 00.22 00.23 00.24 00.25";
+
+const RunPlanScenario RUN_PLAN_CASES[] = {
+    {
+        .input = {.name = "handoffs off: the story as before", .first = "00.01"},
+        .expectation = {.expected_ids = TODAY},
+    },
+    {
+        .input = {.name = "handoffs off: a range", .first = "00.02", .last = "00.04"},
+        .expectation = {.expected_ids = "00.02 00.03 00.04"},
+    },
+    {
+        .input = {.name = "handoffs off: Mt. Moon to Nugget Bridge", .first = "00.13", .last = "00.16"},
+        .expectation = {.expected_ids = "00.13 00.14 00.14b 00.14c 00.15 00.15b 00.16"},
+    },
+    {
+        .input = {            .name = "SID Helper: 00.01 stops on the keyboard",
             .first = "00.01",
             .handoffs = {.sid_helper = true},
+        },
+        .expectation = {
             .expected_ids = "",
             .expected_stop = StoryHandoff::SID_HELPER,
         },
-        {
+    },
+    {
+        .input = {
             .name = "SID Helper: back in at 00.01b",
             .first = "00.01b",
             .last = "00.03",
             .handoffs = {.sid_helper = true},
+        },
+        .expectation = {
             .expected_ids = "00.01b 00.02 00.03",
         },
-        {.name = "00.01b runs when started at, option off", .first = "00.01b", .last = "00.02", .expected_ids = "00.01b 00.02"},
-        {.name = "SID Helper: a later start passes over it", .first = "00.02", .last = "00.03", .handoffs = {.sid_helper = true}, .expected_ids = "00.02 00.03"},
-        {.name = "handoffs off: an end at 00.04 still takes the rival's battle", .first = "00.03", .last = "00.04", .expected_ids = "00.03 00.04"},
-        {
+    },
+    {
+        .input = {.name = "00.01b runs when started at, option off", .first = "00.01b", .last = "00.02"},
+        .expectation = {.expected_ids = "00.01b 00.02"},
+    },
+    {
+        .input = {.name = "SID Helper: a later start passes over it", .first = "00.02", .last = "00.03", .handoffs = {.sid_helper = true}},
+        .expectation = {.expected_ids = "00.02 00.03"},
+    },
+    {
+        .input = {.name = "handoffs off: an end at 00.04 still takes the rival's battle", .first = "00.03", .last = "00.04"},
+        .expectation = {.expected_ids = "00.03 00.04"},
+    },
+    {
+        .input = {
             .name = "Starter RNG: stops after 00.04's save",
             .first = "00.02",
             .handoffs = {.starter_rng = true},
+        },
+        .expectation = {
             .expected_ids = "00.02 00.03 00.04",
             .expected_stop = StoryHandoff::STARTER_RNG,
         },
-        {.name = "00.04b runs from its own save", .first = "00.04b", .last = "00.05", .expected_ids = "00.04b 00.05"},
-        {.name = "Starter RNG: a later start doesn't stop", .first = "00.05", .last = "00.06", .handoffs = {.starter_rng = true}, .expected_ids = "00.05 00.06"},
-        {
+    },
+    {
+        .input = {.name = "00.04b runs from its own save", .first = "00.04b", .last = "00.05"},
+        .expectation = {.expected_ids = "00.04b 00.05"},
+    },
+    {
+        .input = {.name = "Starter RNG: a later start doesn't stop", .first = "00.05", .last = "00.06", .handoffs = {.starter_rng = true}},
+        .expectation = {.expected_ids = "00.05 00.06"},
+    },
+    {
+        .input = {
             .name = "both handoffs, back in after SID Helper",
             .first = "00.01b",
             .handoffs = {.sid_helper = true, .starter_rng = true},
+        },
+        .expectation = {
             .expected_ids = "00.01b 00.02 00.03 00.04",
             .expected_stop = StoryHandoff::STARTER_RNG,
         },
-    };
-    for (const RunPlanScenario& scenario : scenarios){
-        database.add<Test_RunPlan>(scenario);
-    }
-}
-
-void add_tests_GiftRunPlan(UnitTestDatabase& database){
-    const RunPlanScenario scenarios[] = {
-        {
+    },
+    {
+        .input = {
             .name = "Gift RNG: stops after 00.12's save",
             .first = "00.11",
             .handoffs = {.gift_rng = true},
+        },
+        .expectation = {
             .expected_ids = "00.11 00.12",
             .expected_stop = StoryHandoff::GIFT_RNG,
         },
-        {.name = "Gift RNG off: 00.12b is passed over", .first = "00.11", .expected_ids = "00.11 00.12 00.12c 00.13 00.14 00.14b 00.14c 00.15 00.15b 00.16 00.17 00.18 00.19 00.20 00.21 00.22 00.23 00.24 00.25"},
-        {.name = "Gift RNG off: 00.12b runs when started at", .first = "00.12b", .expected_ids = "00.12b 00.12c 00.13 00.14 00.14b 00.14c 00.15 00.15b 00.16 00.17 00.18 00.19 00.20 00.21 00.22 00.23 00.24 00.25"},
-        {
-            .name = "Gift RNG: started at 00.12b, from the save beside the salesman",
+    },
+    {
+        .input = {.name = "Gift RNG off: 00.12b is passed over", .first = "00.11"},
+        .expectation = {.expected_ids = "00.11 00.12 00.12c 00.13 00.14 00.14b 00.14c 00.15 00.15b 00.16 00.17 00.18 00.19 00.20 00.21 00.22 00.23 00.24 00.25"},
+    },
+    {
+        .input = {.name = "Gift RNG off: 00.12b runs when started at", .first = "00.12b"},
+        .expectation = {.expected_ids = "00.12b 00.12c 00.13 00.14 00.14b 00.14c 00.15 00.15b 00.16 00.17 00.18 00.19 00.20 00.21 00.22 00.23 00.24 00.25"},
+    },
+    {
+        .input = {            .name = "Gift RNG: started at 00.12b, from the save beside the salesman",
             .first = "00.12b",
             .handoffs = {.gift_rng = true},
+        },
+        .expectation = {
             .expected_ids = "",
             .expected_stop = StoryHandoff::GIFT_RNG,
         },
-        {
+    },
+    {
+        .input = {
             .name = "Gift RNG: started at 00.12b with Starter RNG on too",
             .first = "00.12b",
             .handoffs = {.sid_helper = true, .starter_rng = true, .gift_rng = true},
+        },
+        .expectation = {
             .expected_ids = "",
             .expected_stop = StoryHandoff::GIFT_RNG,
         },
-        {.name = "Starter RNG alone: 00.12b runs when started at", .first = "00.12b", .handoffs = {.starter_rng = true}, .expected_ids = "00.12b 00.12c 00.13 00.14 00.14b 00.14c 00.15 00.15b 00.16 00.17 00.18 00.19 00.20 00.21 00.22 00.23 00.24 00.25"},
-        {
-            .name = "Starter RNG first, with both on",
+    },
+    {
+        .input = {.name = "Starter RNG alone: 00.12b runs when started at", .first = "00.12b", .handoffs = {.starter_rng = true}},
+        .expectation = {.expected_ids = "00.12b 00.12c 00.13 00.14 00.14b 00.14c 00.15 00.15b 00.16 00.17 00.18 00.19 00.20 00.21 00.22 00.23 00.24 00.25"},
+    },
+    {
+        .input = {            .name = "Starter RNG first, with both on",
             .first = "00.03",
             .handoffs = {.starter_rng = true, .gift_rng = true},
+        },
+        .expectation = {
             .expected_ids = "00.03 00.04",
             .expected_stop = StoryHandoff::STARTER_RNG,
         },
-    };
-    for (const RunPlanScenario& scenario : scenarios){
-        database.add<Test_RunPlan>(scenario);
+    },
+};
+
+void add_tests_RunPlan(UnitTestDatabase& database){
+    for (const auto& item : RUN_PLAN_CASES){
+        database.add<Test_RunPlan>(item);
     }
 }
 
@@ -493,22 +570,43 @@ UnitTestResult test_misty_grind_order(){
     return true;
 }
 
-}
+} // namespace
 
+
+const AutoStoryCase AUTO_STORY_CASES[] = {
+    {
+        .input = {"00.01b and 00.12b: back in after SID Helper and Gift RNG", test_after_sid_helper_row},
+        .expectation = {},
+    },
+    {
+        .input = {"00.04 and 00.04b: one checkpoint with Starter RNG off", test_starter_rows_joined},
+        .expectation = {},
+    },
+    {
+        .input = {"00.15: Potions at Cerulean's Mart and a GRIND before the rival", test_cerulean_mart_and_grind},
+        .expectation = {},
+    },
+    {
+        .input = {"00.15b: the rival's battle alone, from a save before him", test_cerulean_rival_row},
+        .expectation = {},
+    },
+    {
+        .input = {"00.14b and 00.14c: Cerulean Gym, then Misty alone from a save before her", test_misty_rows},
+        .expectation = {},
+    },
+    {
+        .input = {"00.14b: Potions and Super Potions, a GRIND to Lv23, the nurse, then the Gym", test_misty_grind_order},
+        .expectation = {},
+    },
+};
 
 void add_tests_AutoStoryRunPlan(UnitTestDatabase& database){
     add_tests_RunPlan(database);
-    add_tests_GiftRunPlan(database);
-    database.add<Test_AutoStory>("00.01b and 00.12b: back in after SID Helper and Gift RNG", test_after_sid_helper_row);
-    database.add<Test_AutoStory>("00.04 and 00.04b: one checkpoint with Starter RNG off", test_starter_rows_joined);
-    database.add<Test_AutoStory>("00.15: Potions at Cerulean's Mart and a GRIND before the rival", test_cerulean_mart_and_grind);
-    database.add<Test_AutoStory>("00.15b: the rival's battle alone, from a save before him", test_cerulean_rival_row);
-    database.add<Test_AutoStory>("00.14b and 00.14c: Cerulean Gym, then Misty alone from a save before her", test_misty_rows);
-    database.add<Test_AutoStory>("00.14b: Potions and Super Potions, a GRIND to Lv23, the nurse, then the Gym", test_misty_grind_order);
+    for (const auto& item : AUTO_STORY_CASES){
+        database.add<Test_AutoStory>(item);
+    }
 }
 
-
-
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

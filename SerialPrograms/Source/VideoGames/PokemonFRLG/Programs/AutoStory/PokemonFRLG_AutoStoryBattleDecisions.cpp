@@ -254,7 +254,7 @@ std::optional<double> lead_hp(const Supplies& supplies, const PartyStatus& statu
     return status.hp_fill * own->body.stats.hp;
 }
 
-}
+} // namespace
 
 
 void healed_by_nurse(Supplies& supplies){
@@ -575,6 +575,6 @@ bool BattleEndWatch::overworld_lost(WallClock now) const{
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

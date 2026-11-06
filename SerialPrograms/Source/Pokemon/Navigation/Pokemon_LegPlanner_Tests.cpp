@@ -329,38 +329,91 @@ UnitTestResult test_unreachable(){
 }
 
 
+struct LegPlannerInput{
+    std::string name;
+    UnitTestResult (*test)();
+};
+
+struct LegPlannerExpectation{
+    const char* description;
+};
+
+struct LegPlannerTestCase{
+    LegPlannerInput input;
+    LegPlannerExpectation expectation;
+};
+
 class Test_LegPlanner : public UnitTest{
 public:
-    Test_LegPlanner(std::string name, std::function<UnitTestResult()> body)
-        : UnitTest("Pokemon::LegPlanner - " + std::move(name))
-        , m_body(std::move(body))
+    explicit Test_LegPlanner(LegPlannerTestCase scenario)
+        : UnitTest("Pokemon::LegPlanner - " + scenario.input.name)
+        , m_scenario(std::move(scenario))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        return m_body();
+        return m_scenario.input.test();
     }
 
 private:
-    std::function<UnitTestResult()> m_body;
+    LegPlannerTestCase m_scenario;
 };
 
-}
+const LegPlannerTestCase LEG_PLANNER_CASES[] = {
+    {
+        .input = {.name = "prefers legs that end at a wall", .test = test_prefers_wall_legs},
+        .expectation = {.description = "ends last leg against a wall rather than in the open"},
+    },
+    {
+        .input = {.name = "a person is not a wall", .test = test_person_is_not_a_wall},
+        .expectation = {.description = "does not treat an NPC obstacle as a wall to stop against"},
+    },
+    {
+        .input = {.name = "avoids tall grass", .test = test_avoids_grass},
+        .expectation = {.description = "routes around tall grass tiles when cheaper"},
+    },
+    {
+        .input = {.name = "one-way tile", .test = test_one_way_tile},
+        .expectation = {.description = "respects directional one-way constraints"},
+    },
+    {
+        .input = {.name = "a warp ends the leg", .test = test_warp_ends_leg},
+        .expectation = {.description = "terminates the current leg upon entering a warp"},
+    },
+    {
+        .input = {.name = "turns to face the goal", .test = test_goal_facing},
+        .expectation = {.description = "adds a final turn leg to match required goal orientation"},
+    },
+    {
+        .input = {.name = "nothing through a wall", .test = test_unreachable},
+        .expectation = {.description = "returns empty plan when destination is blocked"},
+    },
+    {
+        .input = {.name = "a leg through grass is wild", .test = test_wild_leg},
+        .expectation = {.description = "marks leg as wild when stepping through grass"},
+    },
+    {
+        .input = {.name = "an open stop after grass is weighed", .test = test_open_wild_stop},
+        .expectation = {.description = "prefers wall stops over open stops following grass"},
+    },
+    {
+        .input = {.name = "the weight needs a wild step", .test = test_open_stop_without_grass},
+        .expectation = {.description = "does not penalize open stop when route has no grass"},
+    },
+    {
+        .input = {.name = "a new leg is not wild", .test = test_wild_ends_with_leg},
+        .expectation = {.description = "clears wild status on subsequent non-grass legs"},
+    },
+};
+
+} // namespace
 
 
 void add_tests_LegPlanner(UnitTestDatabase& database){
-    database.add<Test_LegPlanner>("prefers legs that end at a wall", test_prefers_wall_legs);
-    database.add<Test_LegPlanner>("a person is not a wall", test_person_is_not_a_wall);
-    database.add<Test_LegPlanner>("avoids tall grass", test_avoids_grass);
-    database.add<Test_LegPlanner>("one-way tile", test_one_way_tile);
-    database.add<Test_LegPlanner>("a warp ends the leg", test_warp_ends_leg);
-    database.add<Test_LegPlanner>("turns to face the goal", test_goal_facing);
-    database.add<Test_LegPlanner>("nothing through a wall", test_unreachable);
-    database.add<Test_LegPlanner>("a leg through grass is wild", test_wild_leg);
-    database.add<Test_LegPlanner>("an open stop after grass is weighed", test_open_wild_stop);
-    database.add<Test_LegPlanner>("the weight needs a wild step", test_open_stop_without_grass);
-    database.add<Test_LegPlanner>("a new leg is not wild", test_wild_ends_with_leg);
+    for (const auto& scenario : LEG_PLANNER_CASES){
+        database.add<Test_LegPlanner>(scenario);
+    }
 }
 
 
 
-}
-}
+} // namespace Pokemon
+} // namespace PokemonAutomation

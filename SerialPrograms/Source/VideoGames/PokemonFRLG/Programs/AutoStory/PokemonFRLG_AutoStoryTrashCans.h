@@ -59,7 +59,9 @@ namespace PokemonFRLG{
 //  The GAME step that opens Vermilion Gym's door.
 inline const std::string TRASH_CANS_VARIANT = "trash_cans";
 
+//  Total number of trash cans in Vermilion Gym.
 inline constexpr int TRASH_CAN_COUNT = 15;
+//  Maximum number of trash can inspections before aborting.
 inline constexpr size_t TRASH_CAN_MAX_CHECKS = 200;
 
 //  Can `can`'s tile (1-15).
@@ -76,6 +78,7 @@ struct TrashCanStand{
     Pokemon::TilePos tile;
     Pokemon::Direction facing = Pokemon::Direction::SOUTH;
 };
+//  Position and facing to inspect a trash can.
 TrashCanStand trash_can_stand(int can);
 
 //  `maps` with Vermilion Gym's trainers where their battles in 00.23 leave
@@ -103,6 +106,7 @@ enum class CanPages{
 //  its message to the overworld.
 using CheckCan = std::function<CanPages(int can)>;
 
+//  Termination reason for trash can search.
 enum class TrashCanEnd{
     //  The second lock opened.
     OPENED,
@@ -110,8 +114,10 @@ enum class TrashCanEnd{
     GAVE_UP,
     FAILED,
 };
+//  String name for trash can search termination reason.
 const char* trash_can_end_name(TrashCanEnd end);
 
+//  Result summary of trash can search run.
 struct TrashCanResult{
     TrashCanEnd end = TrashCanEnd::FAILED;
     size_t checks = 0;
@@ -126,12 +132,12 @@ struct TrashCanResult{
 //  in.
 TrashCanResult run_trash_cans(Logger& logger, const CheckCan& check, size_t max_checks = TRASH_CAN_MAX_CHECKS);
 
-
+//  Registers Vermilion Gym trash can puzzle unit tests.
 void add_tests_AutoStoryTrashCans(UnitTestDatabase& database);
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

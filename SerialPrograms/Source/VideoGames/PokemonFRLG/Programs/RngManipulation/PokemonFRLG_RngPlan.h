@@ -40,6 +40,7 @@ namespace PokemonFRLG{
 std::vector<SidCandidate> sid_helper_candidates(uint16_t tid, uint32_t target_advances, uint8_t count);
 
 
+//  An individual RNG calibration attempt.
 struct RngAttempt{
     RngTarget target;
     //  The SIDs the target is shiny for, of those the attempts before it
@@ -108,6 +109,7 @@ int64_t starter_rng_ingame_ms(uint64_t advances);
 //  plan's targets are at least this many advances past Starter RNG's
 //  minimum. To tune from the logs' calibrations.
 inline constexpr uint64_t STARTER_RNG_INGAME_MARGIN_ADVANCES = 720;
+//  Minimum advance threshold for planning starter attempts.
 inline constexpr uint64_t STARTER_RNG_PLAN_MIN_ADVANCES = STARTER_RNG_MIN_ADVANCES + STARTER_RNG_INGAME_MARGIN_ADVANCES;
 
 //  The attempts for Starter RNG, from the seed list of the version and
@@ -115,7 +117,7 @@ inline constexpr uint64_t STARTER_RNG_PLAN_MIN_ADVANCES = STARTER_RNG_MIN_ADVANC
 std::vector<RngAttempt> plan_starter_rng(const StarterRngPlanInputs& inputs);
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

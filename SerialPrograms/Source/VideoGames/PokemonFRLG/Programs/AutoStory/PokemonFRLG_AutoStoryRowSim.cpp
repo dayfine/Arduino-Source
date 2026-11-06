@@ -46,7 +46,7 @@ std::string cut_on_sim(OverworldSim& sim, StoryPose& at, const StoryStep& step){
     return "";
 }
 
-}
+} // namespace
 
 //  Runs `step` of row `id` on `sim` as the program does: routes and legs
 //  by the sim's walker from `at`, where the table says the player stands,
@@ -100,6 +100,6 @@ std::string row_step_on_sim(OverworldSim& sim, StoryPose& at, const StoryStep& s
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

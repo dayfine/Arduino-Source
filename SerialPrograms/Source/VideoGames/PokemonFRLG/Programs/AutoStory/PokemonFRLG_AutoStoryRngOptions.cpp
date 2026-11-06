@@ -217,6 +217,6 @@ std::vector<RngAttempt> StarterRngPlanOptions::plan_for(
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

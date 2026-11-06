@@ -35,18 +35,31 @@ public:
     virtual void log(const std::string&, Color) override{}
 };
 
+struct AutoStoryTrashCansInput{
+    std::string name;
+    std::function<UnitTestResult()> body;
+};
+
+struct AutoStoryTrashCansExpectation{
+};
+
+struct AutoStoryTrashCansCase{
+    AutoStoryTrashCansInput input;
+    AutoStoryTrashCansExpectation expectation;
+};
+
 class Test_AutoStoryTrashCans : public UnitTest{
 public:
-    Test_AutoStoryTrashCans(std::string name, std::function<UnitTestResult()> body)
-        : UnitTest("PokemonFRLG::AutoStoryTrashCans - " + std::move(name))
-        , m_body(std::move(body))
+    explicit Test_AutoStoryTrashCans(AutoStoryTrashCansCase test_case)
+        : UnitTest("PokemonFRLG::AutoStoryTrashCans - " + test_case.input.name)
+        , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        return m_body();
+        return m_case.input.body();
     }
 
 private:
-    std::function<UnitTestResult()> m_body;
+    AutoStoryTrashCansCase m_case;
 };
 
 using Switches = std::pair<int, int>;
@@ -249,20 +262,44 @@ UnitTestResult test_failed_check_stops(){
     return true;
 }
 
-}
+} // namespace
 
+
+const AutoStoryTrashCansCase AUTO_STORY_TRASH_CANS_CASES[] = {
+    {
+        .input = {"cans, the cans beside each and their stands match the gym", test_cans_and_neighbors},
+        .expectation = {},
+    },
+    {
+        .input = {"a right guess opens the door", test_right_guess},
+        .expectation = {},
+    },
+    {
+        .input = {"a wrong guess resets, the search goes on from there", test_wrong_guess_resets},
+        .expectation = {},
+    },
+    {
+        .input = {"every first and second switch opens the door", test_every_pair_opens},
+        .expectation = {},
+    },
+    {
+        .input = {"10000 gyms as the game draws them", test_many_gyms},
+        .expectation = {},
+    },
+    {
+        .input = {"a failed check stops the search", test_failed_check_stops},
+        .expectation = {},
+    },
+};
 
 void add_tests_AutoStoryTrashCans(UnitTestDatabase& database){
-    database.add<Test_AutoStoryTrashCans>("cans, the cans beside each and their stands match the gym", test_cans_and_neighbors);
-    database.add<Test_AutoStoryTrashCans>("a right guess opens the door", test_right_guess);
-    database.add<Test_AutoStoryTrashCans>("a wrong guess resets, the search goes on from there", test_wrong_guess_resets);
-    database.add<Test_AutoStoryTrashCans>("every first and second switch opens the door", test_every_pair_opens);
-    database.add<Test_AutoStoryTrashCans>("10000 gyms as the game draws them", test_many_gyms);
-    database.add<Test_AutoStoryTrashCans>("a failed check stops the search", test_failed_check_stops);
+    for (const auto& item : AUTO_STORY_TRASH_CANS_CASES){
+        database.add<Test_AutoStoryTrashCans>(item);
+    }
 }
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

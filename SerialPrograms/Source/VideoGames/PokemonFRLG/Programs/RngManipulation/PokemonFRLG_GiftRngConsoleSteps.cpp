@@ -59,7 +59,7 @@ GiftRngSettings try_settings(
     };
 }
 
-}
+} // namespace
 
 
 ConsoleGiftRngSteps::ConsoleGiftRngSteps(
@@ -122,6 +122,6 @@ StarterRngResult ConsoleGiftRngSteps::run_attempt(const RngAttempt& attempt, con
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

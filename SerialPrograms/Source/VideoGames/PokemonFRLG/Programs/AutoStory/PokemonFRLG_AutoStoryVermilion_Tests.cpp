@@ -29,22 +29,35 @@ namespace PokemonFRLG{
 
 namespace{
 
+struct AutoStoryVermilionInput{
+    std::string name;
+    std::function<UnitTestResult()> body;
+};
+
+struct AutoStoryVermilionExpectation{
+};
+
+struct AutoStoryVermilionCase{
+    AutoStoryVermilionInput input;
+    AutoStoryVermilionExpectation expectation;
+};
+
 class Test_AutoStoryVermilion : public UnitTest{
 public:
-    Test_AutoStoryVermilion(std::string name, std::function<UnitTestResult()> body)
-        : UnitTest("PokemonFRLG::AutoStory - Simulation: " + std::move(name))
-        , m_body(std::move(body))
+    explicit Test_AutoStoryVermilion(AutoStoryVermilionCase test_case)
+        : UnitTest("PokemonFRLG::AutoStory - Simulation: " + test_case.input.name)
+        , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
         try{
-            return m_body();
+            return m_case.input.body();
         }catch (Exception& e){
             return std::string(e.name()) + ": " + e.message();
         }
     }
 
 private:
-    std::function<UnitTestResult()> m_body;
+    AutoStoryVermilionCase m_case;
 };
 
 const StoryCheckpoint* checkpoint(const std::string& id){
@@ -197,16 +210,28 @@ UnitTestResult test_ss_anne_walks(){
     return true;
 }
 
-}
+} // namespace
 
+
+const AutoStoryVermilionCase AUTO_STORY_VERMILION_CASES[] = {
+    {
+        .input = {"00.21 to Vermilion, only Jeff on Route 6, the walk onto column 15 whole or a tile short", test_route6_jeff_only},
+        .expectation = {},
+    },
+    {
+        .input = {"00.22 the S.S. Anne's walks, short of the ticket check and the rival's trigger", test_ss_anne_walks},
+        .expectation = {},
+    },
+};
 
 void add_tests_AutoStoryVermilion(UnitTestDatabase& database){
-    database.add<Test_AutoStoryVermilion>("00.21 to Vermilion, only Jeff on Route 6, the walk onto column 15 whole or a tile short", test_route6_jeff_only);
-    database.add<Test_AutoStoryVermilion>("00.22 the S.S. Anne's walks, short of the ticket check and the rival's trigger", test_ss_anne_walks);
+    for (const auto& item : AUTO_STORY_VERMILION_CASES){
+        database.add<Test_AutoStoryVermilion>(item);
+    }
 }
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

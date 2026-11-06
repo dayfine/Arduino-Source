@@ -92,7 +92,7 @@ TilePos trainer_stop(const Pokemon::TileBox& box, const TilePos& player){
     return TilePos{box.x0 > player.x ? player.x + 1 : player.x - 1, player.y};
 }
 
-}
+} // namespace
 
 
 OverworldSim::OverworldSim(std::vector<MapData> maps, MapPosition start, Direction facing, SimScript script)
@@ -523,7 +523,7 @@ Milliseconds delay_of(const OverworldInterrupts& interrupts, size_t index){
     return interrupts[index]->detection_delay();
 }
 
-}
+} // namespace
 
 
 OverworldSimWalker::OverworldSimWalker(OverworldSim& sim, SimWalkerRules rules, const OverworldInterruptSet& walker)
@@ -772,6 +772,6 @@ std::string OverworldSimWalker::run(const std::vector<RouteStep>& route, const R
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

@@ -267,7 +267,7 @@ NamingCursor append_moves_to_key(const NamingCursor& start, const char* key, std
     throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, std::string("No path to naming screen key: ") + key);
 }
 
-}
+} // namespace
 
 
 NamingCursor apply_naming_action(const NamingCursor& cursor, NamingAction action){
@@ -343,6 +343,6 @@ std::vector<NamingAction> plan_naming_input(
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

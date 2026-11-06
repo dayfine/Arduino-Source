@@ -38,7 +38,7 @@ std::string row_step_on_sim(OverworldSim& sim, StoryPose& at, const StoryStep& s
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

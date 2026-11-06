@@ -152,7 +152,7 @@ Pokemon::LegSpec leg_spec(const RouteStep& step, MoveSpeed speed){
     return leg;
 }
 
-}
+} // namespace
 
 
 namespace OverworldWalkSteps{
@@ -292,7 +292,7 @@ const char* battle_on_its_way(ConsoleHandle& console, ProControllerContext& cont
     return nullptr;
 }
 
-}
+} // namespace
 
 size_t clear_unseen_battle(
     ConsoleHandle& console, ProControllerContext& context,
@@ -391,7 +391,7 @@ void start_surf(ConsoleHandle& console, ProControllerContext& context, Direction
     pbf_wait(context, SURF_ANIMATION);
 }
 
-}
+} // namespace OverworldWalkSteps
 
 
 
@@ -506,6 +506,6 @@ void walk_overworld_route(
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

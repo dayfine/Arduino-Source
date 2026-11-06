@@ -163,7 +163,7 @@ PcView box_screen(Logger& logger, const ImageViewRGB32& screen, const ImageViewR
     return view;
 }
 
-}
+} // namespace
 
 
 const char* pc_screen_name(PcScreen screen){
@@ -250,7 +250,7 @@ public:
     }
 };
 
-}
+} // namespace
 
 void add_tests_PcScreenReader(UnitTestDatabase& database){
     //  FireRed on console B, 2026-11-02, Route 4's Pokemon Center: a deposit
@@ -286,6 +286,6 @@ void add_tests_PcScreenReader(UnitTestDatabase& database){
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

@@ -18,7 +18,7 @@ namespace PokemonFRLG{
 void add_tests_RngSteps(UnitTestDatabase& database);
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

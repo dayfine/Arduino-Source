@@ -52,6 +52,7 @@ std::function<void(const RngResetRead&)> reset_line_logger(
 );
 
 
+//  Console hardware and audio setup for starter manipulation.
 struct StarterRngConsoleSettings{
     Language language = Language::English;
     SoundSetting sound = SoundSetting::Mono;
@@ -87,7 +88,7 @@ private:
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

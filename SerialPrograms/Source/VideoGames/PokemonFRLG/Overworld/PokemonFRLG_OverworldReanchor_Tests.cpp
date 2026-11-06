@@ -25,22 +25,36 @@ namespace PokemonFRLG{
 
 namespace{
 
+struct OverworldReanchorInput{
+    std::string name;
+    UnitTestResult (*body)();
+};
+
+struct OverworldReanchorExpectation{
+    const char* description;
+};
+
+struct OverworldReanchorTestCase{
+    OverworldReanchorInput input;
+    OverworldReanchorExpectation expectation;
+};
+
 class Test_OverworldReanchor : public UnitTest{
 public:
-    Test_OverworldReanchor(std::string name, std::function<UnitTestResult()> body)
-        : UnitTest("PokemonFRLG::OverworldReanchor - " + std::move(name))
-        , m_body(std::move(body))
+    explicit Test_OverworldReanchor(OverworldReanchorTestCase scenario)
+        : UnitTest("PokemonFRLG::OverworldReanchor - " + scenario.input.name)
+        , m_scenario(std::move(scenario))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
         try{
-            return m_body();
+            return m_scenario.input.body();
         }catch (Exception& e){
             return std::string(e.name()) + ": " + e.message();
         }
     }
 
 private:
-    std::function<UnitTestResult()> m_body;
+    OverworldReanchorTestCase m_scenario;
 };
 
 std::string describe(const std::vector<RouteStep>& route){
@@ -227,20 +241,44 @@ UnitTestResult test_person_in_the_way(){
 }
 
 
-}
+const OverworldReanchorTestCase OVERWORLD_REANCHOR_CASES[] = {
+    {
+        .input = {.name = "rules", .body = test_rules},
+        .expectation = {.description = "tests reanchor candidate generation and rules"},
+    },
+    {
+        .input = {.name = "timing", .body = test_timing},
+        .expectation = {.description = "verifies reanchor hold durations and timing"},
+    },
+    {
+        .input = {.name = "a person in the way", .body = test_person_in_the_way},
+        .expectation = {.description = "avoids planning reanchor into dynamic map obstacle"},
+    },
+    {
+        .input = {.name = "Viridian Mart to Oak's Lab", .body = test_viridian_mart_to_oaks_lab},
+        .expectation = {.description = "reanchors along route from Viridian Mart to Oak's Lab"},
+    },
+    {
+        .input = {.name = "Pallet Town to Viridian Mart", .body = test_pallet_to_viridian_mart},
+        .expectation = {.description = "reanchors along route from Pallet Town to Viridian Mart"},
+    },
+    {
+        .input = {.name = "Viridian Forest", .body = test_viridian_forest},
+        .expectation = {.description = "reanchors along route through Viridian Forest"},
+    },
+};
+
+} // namespace
 
 
 void add_tests_OverworldReanchor(UnitTestDatabase& database){
-    database.add<Test_OverworldReanchor>("rules", test_rules);
-    database.add<Test_OverworldReanchor>("timing", test_timing);
-    database.add<Test_OverworldReanchor>("a person in the way", test_person_in_the_way);
-    database.add<Test_OverworldReanchor>("Viridian Mart to Oak's Lab", test_viridian_mart_to_oaks_lab);
-    database.add<Test_OverworldReanchor>("Pallet Town to Viridian Mart", test_pallet_to_viridian_mart);
-    database.add<Test_OverworldReanchor>("Viridian Forest", test_viridian_forest);
+    for (const auto& scenario : OVERWORLD_REANCHOR_CASES){
+        database.add<Test_OverworldReanchor>(scenario);
+    }
 }
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

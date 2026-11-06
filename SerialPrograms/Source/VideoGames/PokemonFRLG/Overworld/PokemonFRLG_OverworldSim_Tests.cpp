@@ -31,22 +31,35 @@ namespace PokemonFRLG{
 
 namespace{
 
+struct OverworldSimInput{
+    std::string name;
+    std::function<UnitTestResult()> body;
+};
+
+struct OverworldSimExpectation{
+};
+
+struct OverworldSimCase{
+    OverworldSimInput input;
+    OverworldSimExpectation expectation;
+};
+
 class Test_OverworldSim : public UnitTest{
 public:
-    Test_OverworldSim(std::string name, std::function<UnitTestResult()> body)
-        : UnitTest("PokemonFRLG::OverworldSim - " + std::move(name))
-        , m_body(std::move(body))
+    explicit Test_OverworldSim(OverworldSimCase test_case)
+        : UnitTest("PokemonFRLG::OverworldSim - " + test_case.input.name)
+        , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
         try{
-            return m_body();
+            return m_case.input.body();
         }catch (Exception& e){
             return std::string(e.name()) + ": " + e.message();
         }
     }
 
 private:
-    std::function<UnitTestResult()> m_body;
+    OverworldSimCase m_case;
 };
 
 
@@ -912,6 +925,10 @@ UnitTestResult test_nugget_bridge_legs(){
     return true;
 }
 
+} // namespace
+
+
+
 //  Story row 00.24 from Route 6 to Vermilion City's nurse: the open leg
 //  south 14 crosses onto Vermilion City and is held a tile longer for the
 //  game holding the player up there. It didn't: the player ended a tile
@@ -931,41 +948,43 @@ UnitTestResult test_route6_to_vermilion_center(){
     return true;
 }
 
-}
-
+const OverworldSimCase OVERWORLD_SIM_CASES[] = {
+    {.input = {"the forest's north gate: no fade or black read as a battle", test_forest_north_gate}, .expectation = {},},
+    {.input = {"a battle on a leg onto a warp", test_battle_on_warp_leg}, .expectation = {},},
+    {.input = {"the START menu left open", test_start_menu_open}, .expectation = {},},
+    {.input = {"a battle at the end of a leg", test_battle_at_end_of_leg}, .expectation = {},},
+    {.input = {"a late battle stops an open leg", test_late_battle_mid_leg}, .expectation = {},},
+    {.input = {"a trainer's battle is fought, not fled", test_trainer_not_fled}, .expectation = {},},
+    {.input = {"no hold over a ledge", test_no_hold_over_ledge}, .expectation = {},},
+    {.input = {"a short leg, then a sign", test_short_leg_then_sign}, .expectation = {},},
+    {.input = {"a short leg, nothing seen", test_short_leg_unseen}, .expectation = {},},
+    {.input = {"a trainer on the way out of Pewter Gym", test_trainer_on_way_out}, .expectation = {},},
+    {.input = {"out of Viridian Mart from the clerk's scene", test_mart_exit}, .expectation = {},},
+    {.input = {"Mt. Moon: down the ladders to B2F", test_mt_moon_ladders}, .expectation = {},},
+    {.input = {"Mt. Moon: the Moon Stone is a short detour", test_moon_stone_detour}, .expectation = {},},
+    {.input = {"Mt. Moon: the Grunt who looks around stops a leg to a wall", test_mt_moon_grunt_mid_leg}, .expectation = {},},
+    {.input = {"Mt. Moon: a short open leg before the Grunt's line", test_mt_moon_short_leg}, .expectation = {},},
+    {.input = {"Mt. Moon: a late wild battle in the cave", test_mt_moon_late_battle}, .expectation = {},},
+    {.input = {"Mt. Moon: after the HELIX, out to Route 4", test_mt_moon_way_out}, .expectation = {},},
+    {.input = {"Mt. Moon: a battle on the leg onto 1F's ladder", test_mt_moon_battle_on_ladder_leg}, .expectation = {},},
+    {.input = {"Mt. Moon: a battle seen only after a leg to a wall", test_mt_moon_battle_seen_after_wall_leg}, .expectation = {},},
+    {.input = {"Mt. Moon: black after a leg not marked wild", test_mt_moon_black_after_unmarked_leg}, .expectation = {},},
+    {.input = {"Mt. Moon: a battle seen only before the next leg", test_mt_moon_battle_before_next_leg}, .expectation = {},},
+    {.input = {"Route 4 east, down its ledge, to Cerulean's Pokemon Center", test_route4_to_cerulean}, .expectation = {},},
+    {.input = {"Cerulean Gym: to Misty and back round the pool, no trainer met", test_cerulean_gym_walks}, .expectation = {},},
+    {.input = {"Cerulean Gym: the straight ways meet Luis and Diana", test_cerulean_gym_lines}, .expectation = {},},
+    {.input = {"Cerulean: the Center to the rival's row and Nugget Bridge", test_cerulean_to_bridge}, .expectation = {},},
+    {.input = {"Nugget Bridge: each trainer met on the step onto their row", test_nugget_bridge_legs}, .expectation = {},},    {.input = {"Route 6 into Vermilion's Pokemon Center, the crossing stalled or not", test_route6_to_vermilion_center}, .expectation = {}},
+};
 
 void add_tests_OverworldSim(UnitTestDatabase& database){
-    database.add<Test_OverworldSim>("the forest's north gate: no fade or black read as a battle", test_forest_north_gate);
-    database.add<Test_OverworldSim>("a battle on a leg onto a warp", test_battle_on_warp_leg);
-    database.add<Test_OverworldSim>("the START menu left open", test_start_menu_open);
-    database.add<Test_OverworldSim>("a battle at the end of a leg", test_battle_at_end_of_leg);
-    database.add<Test_OverworldSim>("a late battle stops an open leg", test_late_battle_mid_leg);
-    database.add<Test_OverworldSim>("a trainer's battle is fought, not fled", test_trainer_not_fled);
-    database.add<Test_OverworldSim>("no hold over a ledge", test_no_hold_over_ledge);
-    database.add<Test_OverworldSim>("a short leg, then a sign", test_short_leg_then_sign);
-    database.add<Test_OverworldSim>("a short leg, nothing seen", test_short_leg_unseen);
-    database.add<Test_OverworldSim>("a trainer on the way out of Pewter Gym", test_trainer_on_way_out);
-    database.add<Test_OverworldSim>("out of Viridian Mart from the clerk's scene", test_mart_exit);
-    database.add<Test_OverworldSim>("Mt. Moon: down the ladders to B2F", test_mt_moon_ladders);
-    database.add<Test_OverworldSim>("Mt. Moon: the Moon Stone is a short detour", test_moon_stone_detour);
-    database.add<Test_OverworldSim>("Mt. Moon: the Grunt who looks around stops a leg to a wall", test_mt_moon_grunt_mid_leg);
-    database.add<Test_OverworldSim>("Mt. Moon: a short open leg before the Grunt's line", test_mt_moon_short_leg);
-    database.add<Test_OverworldSim>("Mt. Moon: a late wild battle in the cave", test_mt_moon_late_battle);
-    database.add<Test_OverworldSim>("Mt. Moon: after the HELIX, out to Route 4", test_mt_moon_way_out);
-    database.add<Test_OverworldSim>("Mt. Moon: a battle on the leg onto 1F's ladder", test_mt_moon_battle_on_ladder_leg);
-    database.add<Test_OverworldSim>("Mt. Moon: a battle seen only after a leg to a wall", test_mt_moon_battle_seen_after_wall_leg);
-    database.add<Test_OverworldSim>("Mt. Moon: black after a leg not marked wild", test_mt_moon_black_after_unmarked_leg);
-    database.add<Test_OverworldSim>("Mt. Moon: a battle seen only before the next leg", test_mt_moon_battle_before_next_leg);
-    database.add<Test_OverworldSim>("Route 4 east, down its ledge, to Cerulean's Pokemon Center", test_route4_to_cerulean);
-    database.add<Test_OverworldSim>("Cerulean Gym: to Misty and back round the pool, no trainer met", test_cerulean_gym_walks);
-    database.add<Test_OverworldSim>("Cerulean Gym: the straight ways meet Luis and Diana", test_cerulean_gym_lines);
-    database.add<Test_OverworldSim>("Cerulean: the Center to the rival's row and Nugget Bridge", test_cerulean_to_bridge);
-    database.add<Test_OverworldSim>("Nugget Bridge: each trainer met on the step onto their row", test_nugget_bridge_legs);
-    database.add<Test_OverworldSim>("Route 6 into Vermilion's Pokemon Center, the crossing stalled or not", test_route6_to_vermilion_center);
+    for (const auto& item : OVERWORLD_SIM_CASES){
+        database.add<Test_OverworldSim>(item);
+    }
 }
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
