@@ -49,15 +49,17 @@
 #include "PersistentSettings.h"
 #include "NintendoSwitch/NintendoSwitch_SettingsPanel.h"
 
+Q_DECLARE_METATYPE(std::string)
+
 using namespace PokemonAutomation;
 
 namespace PokemonAutomation{
-    bool use_qt_ui(){
-        return qobject_cast<QApplication*>(QCoreApplication::instance()) != nullptr;
-    }
+bool use_qt_ui(){
+    return qobject_cast<QApplication*>(QCoreApplication::instance()) != nullptr;
+}
 } // namespace PokemonAutomation
 
-Q_DECLARE_METATYPE(std::string)
+namespace{
 
 void set_working_directory(){
     const std::string app_dir = Filesystem::application_binary_directory().string_slash_normalized();
@@ -73,10 +75,6 @@ void set_working_directory(){
     }
 }
 
-namespace PokemonAutomation{
-
-
-
 FileLogger& global_file_logger(){
     static FileLogger logger(
         GlobalThreadPools::unlimited_normal(),
@@ -85,8 +83,6 @@ FileLogger& global_file_logger(){
         }
     );
     return logger;
-}
-
 }
 
 
@@ -262,8 +258,6 @@ int run_program(int argc, char *argv[]){
 }
 
 
-namespace{
-
 // Stop GUI services after run_program() returns, preserving the existing order.
 void stop_application_services(){
 #ifdef PA_SOCIAL_SDK
@@ -304,8 +298,6 @@ void stop_thread_pools(){
     GlobalThreadPools::qt_event_threadpool().stop();
 
 }
-
-} // namespace
 
 int run_gui_application(int argc, char *argv[]){
 #if 0
@@ -369,6 +361,8 @@ int run_test_application(int argc, char* argv[], const StartupPlan& plan){
     stop_thread_pools();
     return ret;
 }
+
+} // namespace
 
 // Validate before even constructing Qt: a typo must never become a hardware launch.
 int main(int argc, char* argv[]){
