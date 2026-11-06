@@ -1,5 +1,7 @@
 
 #include <iostream>
+#include <vector>
+#include <QCoreApplication>
 //#include <QTextStream>
 #include <QApplication>
 #include "Common/Cpp/Logging/LastLogTracker.h"
@@ -38,6 +40,7 @@
 #include "Logging/Logger.h"
 #include "Logging/OutputRedirector.h"
 #include "Startup/SetupSettings.h"
+#include "Startup/StartupArguments.h"
 #include "Startup/NewVersionCheck.h"
 #include "Windows/MainWindow.h"
 #include "GlobalSettingsPanel.h"
@@ -49,9 +52,9 @@ using namespace PokemonAutomation;
 
 namespace PokemonAutomation{
     bool use_qt_ui(){
-        return true;
+        return qobject_cast<QApplication*>(QCoreApplication::instance()) != nullptr;
     }
-}
+} // namespace PokemonAutomation
 
 Q_DECLARE_METATYPE(std::string)
 
@@ -90,12 +93,7 @@ FileLogger& global_file_logger(){
 int run_program(int argc, char *argv[]){
 //    qputenv("QT_RHI_BACKEND", "opengl");
 
-#if defined(__APPLE__)
-    Filesystem::set_startup_profile(argc, argv);
     QApplication application(argc, argv);
-#else
-    QApplication application(argc, argv);
-#endif
 
 #ifdef PA_DPP
     // Configure OpenSSL before DPP or background tasks create a TLS context.
@@ -208,33 +206,16 @@ int run_program(int argc, char *argv[]){
         logger.log(error.message(), COLOR_RED);
     }
 
-    //  Load the Switch framework settings now, not only when their panel is opened.
-    OptionsPanelWrapper<NintendoSwitch::ConsoleSettingsPanel>().make_panel()->load_json_from_global();
-
-    //  Preload a bunch of stuff now so they are ready later.
-    SerialPortPoller::instance().ports();
-    get_all_cameras();
-
-    //  Force all the Qt thread pools to be constructed now on the main thread.
+    // Persisted test mode also exits before console options, devices or a window.
     GlobalThreadPools::qt_worker_threadpool();
     GlobalThreadPools::qt_event_threadpool();
-
-    bool augment_test_color_distortions = false;
-    for (size_t i = 0; i < argc; i++){
-        constexpr const char* force_run_tests = "--command-line-test-mode";
-        constexpr const char* distort_test_images = "--augment-color-distortions";
-
-        if (strcmp(argv[i], force_run_tests) == 0){
-            GlobalSettings::instance().COMMAND_LINE_TEST_MODE = true;
-        }
-        if (strcmp(argv[i], distort_test_images) == 0){
-            augment_test_color_distortions = true;
-        }
-    }
-
     if (GlobalSettings::instance().COMMAND_LINE_TEST_MODE){
-        return run_command_line_tests(augment_test_color_distortions);
+        return run_command_line_tests(false);
     }
+
+    OptionsPanelWrapper<NintendoSwitch::ConsoleSettingsPanel>().make_panel()->load_json_from_global();
+    SerialPortPoller::instance().ports();
+    get_all_cameras();
 
     //  Check whether the hardware is powerful enough to run this program.
     if (!check_hardware()){
@@ -280,29 +261,8 @@ int run_program(int argc, char *argv[]){
 }
 
 
-int main(int argc, char *argv[]){
-#if 0
-    // Retrieve and store program name
-    set_program_path(argv[0]);
-#endif
-
-#if defined(__linux__)
-    // Qt multimedia, default to gstreamer to prevent flickering
-    // Easier than the alternative which is compiling qt6multimedia with QT_DEFAULT_MEDIA_BACKEND
-    // See: https://doc.qt.io/qt-6.5/qtmultimedia-index.html
-    if (qEnvironmentVariableIsEmpty("QT_MEDIA_BACKEND")){
-        qputenv("QT_MEDIA_BACKEND", "gstreamer");
-    }
-#endif
-
-    //  So far, this is only needed on Mac where static initialization is fucked up.
-    PokemonAutomation::register_all_statics();
-
-    setup_crash_handler();
-
-    int ret = run_program(argc, argv);
-
-
+// Stop only services that the GUI startup can initialize.
+void stop_application_services(){
 #ifdef PA_SOCIAL_SDK
     Integration::DiscordSocialSDK::DiscordSocial::instance().stop();
 #endif
@@ -325,6 +285,47 @@ int main(int argc, char *argv[]){
     global_watchdog().stop();
     global_file_logger().stop();
 
+}
+
+// Shared test/GUI worker teardown; no settings, device or GUI services are created.
+void stop_thread_pools(){
+    //  Force stop the thread pools.
+    //  This is where all the threads in the program are joined.
+    PokemonAutomation::GlobalThreadPools::computation_realtime().stop();
+    PokemonAutomation::GlobalThreadPools::computation_normal().stop();
+    PokemonAutomation::GlobalThreadPools::unlimited_realtime().stop();
+    PokemonAutomation::GlobalThreadPools::unlimited_normal().stop();
+    PokemonAutomation::global_dispatcher.stop();
+
+    GlobalThreadPools::qt_worker_threadpool().stop();
+    GlobalThreadPools::qt_event_threadpool().stop();
+
+}
+
+int run_gui_application(int argc, char *argv[]){
+#if 0
+    // Retrieve and store program name
+    set_program_path(argv[0]);
+#endif
+
+#if defined(__linux__)
+    // Qt multimedia, default to gstreamer to prevent flickering
+    // Easier than the alternative which is compiling qt6multimedia with QT_DEFAULT_MEDIA_BACKEND
+    // See: https://doc.qt.io/qt-6.5/qtmultimedia-index.html
+    if (qEnvironmentVariableIsEmpty("QT_MEDIA_BACKEND")){
+        qputenv("QT_MEDIA_BACKEND", "gstreamer");
+    }
+#endif
+
+    //  So far, this is only needed on Mac where static initialization is fucked up.
+    PokemonAutomation::register_all_statics();
+
+    setup_crash_handler();
+
+    int ret = run_program(argc, argv);
+
+
+    stop_application_services();
 //
 //  Workaround Qt 6.9 thread-adoption bug on Windows.
 //      https://github.com/PokemonAutomation/Arduino-Source/issues/570
@@ -337,18 +338,64 @@ int main(int argc, char *argv[]){
     std::quick_exit(ret);
 #endif
 
-    //  Force stop the thread pools.
-    //  This is where all the threads in the program are joined.
-    PokemonAutomation::GlobalThreadPools::computation_realtime().stop();
-    PokemonAutomation::GlobalThreadPools::computation_normal().stop();
-    PokemonAutomation::GlobalThreadPools::unlimited_realtime().stop();
-    PokemonAutomation::GlobalThreadPools::unlimited_normal().stop();
-    PokemonAutomation::global_dispatcher.stop();
-
-    GlobalThreadPools::qt_worker_threadpool().stop();
-    GlobalThreadPools::qt_event_threadpool().stop();
+    stop_thread_pools();
 
     std::cout << "Exiting main()..." << std::endl;
 
     return ret;
+}
+
+// Explicit tests use QCoreApplication and never enter GUI/settings/device startup.
+int run_test_application(int argc, char* argv[], const StartupPlan& plan){
+#if defined(__APPLE__)
+    Filesystem::set_startup_profile("unit-tests");
+#endif
+    QCoreApplication application(argc, argv);
+    register_all_statics();
+    GlobalThreadPools::qt_worker_threadpool();
+    GlobalThreadPools::qt_event_threadpool();
+    const int ret = run_command_line_tests(plan.augment_color_distortions);
+    OCR::clear_ocr_cache();
+    global_periodic_runner().stop();
+    global_watchdog().stop();
+#ifdef PA_ENABLE_QT_ADOPTION_WORKAROUND
+    std::quick_exit(ret);
+#endif
+    stop_thread_pools();
+    return ret;
+}
+
+// Validate before even constructing Qt: a typo must never become a hardware launch.
+int main(int argc, char* argv[]){
+    std::vector<std::string_view> arguments;
+    for (int i = 1; i < argc; i++){
+        arguments.emplace_back(argv[i]);
+    }
+    StartupPolicy policy;
+#if defined(__APPLE__)
+    policy.profiles = StartupProfiles::REQUIRED;
+#ifdef PA_LAB_PROFILE
+    policy.bound_profile = PA_LAB_PROFILE;
+#endif
+#endif
+    const StartupPlan plan = parse_startup_arguments(arguments, policy);
+    if (plan.mode == StartupMode::REJECTED){
+        std::cerr << plan.error << std::endl;
+    }
+    // Custom flags have been consumed. Do not let Qt reinterpret them.
+    int qt_argc = 1;
+    char* qt_argv[] = {argv[0], nullptr};
+    return dispatch_startup(plan, {
+        .gui = [&](const StartupPlan& selected){
+#if defined(__APPLE__)
+            Filesystem::set_startup_profile(*selected.profile);
+#else
+            (void)selected;
+#endif
+            return run_gui_application(qt_argc, qt_argv);
+        },
+        .tests = [&](const StartupPlan& selected){
+            return run_test_application(qt_argc, qt_argv, selected);
+        },
+    });
 }

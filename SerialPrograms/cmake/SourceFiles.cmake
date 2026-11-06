@@ -717,6 +717,10 @@ file(GLOB LIBRARY_SOURCES
     Source/CommonFramework/Startup/NewVersionCheck.h
     Source/CommonFramework/Startup/SetupSettings.cpp
     Source/CommonFramework/Startup/SetupSettings.h
+    SerialPrograms/Source/CommonFramework/Startup/StartupArguments.cpp
+    SerialPrograms/Source/CommonFramework/Startup/StartupArguments.h
+    SerialPrograms/Source/CommonFramework/Startup/StartupArguments_Tests.cpp
+    SerialPrograms/Source/CommonFramework/Startup/StartupArguments_Tests.h
     Source/CommonFramework/Tools/DebugDumper.cpp
     Source/CommonFramework/Tools/DebugDumper.h
     Source/CommonFramework/Tools/ErrorDumper.cpp
