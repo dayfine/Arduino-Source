@@ -1,9 +1,9 @@
 # BBQ PR progress
 
 Audited 2026-11-06 against live GitHub PR state/base metadata and the diffs of
-all 34 originally open BBQ-related fork PRs. Inventory: **43 fork PRs: 33 open, 9 closed,
+all 34 originally open BBQ-related fork PRs. Inventory: **43 fork PRs: 32 open, 10 closed,
 1 merged notes PR**. Selection: head branch `bbq/*` or title containing BBQ /
-Blueberry, excluding this audit PR #239. Shared dependencies are listed separately below. This is an inventory
+Blueberry, excluding later audit/status documentation PRs (including #239). Shared dependencies are listed separately below. This is an inventory
 and dependency audit, **not renewed CI/live-console approval**. Old build counts
 and readiness badges are not carried forward.
 
@@ -15,18 +15,17 @@ parents into children; do not follow old rebase/force-push instructions. No agen
 
 Numbers below are active fork code PRs. #51 is closed because its tests-file
 change merged upstream (#1754); it is no longer a prerequisite in the active
-plan. Its children still name the retained `bbq/tests-file` branch in GitHub
+plan. Some remaining children still name the retained `bbq/tests-file` branch in GitHub
 metadata (shown in the inventory), and their owners must merge current main and
 retarget those bases. The tree below shows the required parent relationships
 after that mechanical cleanup, not a claim that the live bases already changed.
 
 ```text
 main
- ├→ #2 → #3                         board/attempt logging, screenshots
  ├→ #19                            target-specific evidence
  ├→ #23                            catch grace / heal policy
  ├→ #37 → #38 → #53 → #8
- │                     ├→ #27      standalone reroll log (consolidate)
+ │                     ├→ #2 → #3 board/attempt/reroll logging, then screenshots
  │                     └→ #6 → #5 → #4 → #10
  │                                        ├→ #25 → #16 → #52
  │                                        │      └→ #73
@@ -44,8 +43,8 @@ main
 | PR | State | Current base | Scope / disposition |
 |---|---|---|---|
 | [#1](https://github.com/dayfine/Arduino-Source/pull/1) | closed | `main` | Upstream #1636 merged; fork closed. |
-| [#2](https://github.com/dayfine/Arduino-Source/pull/2) | open | `bbq/tests-file` | Consolidation target for #27; remains open until tested. |
-| [#3](https://github.com/dayfine/Arduino-Source/pull/3) | open | `bbq/diagnostics-and-baseline` | Screenshots; capture overlap with #19 must be resolved. |
+| [#2](https://github.com/dayfine/Arduino-Source/pull/2) | open | `bbq/verified-reroll` | Canonical diagnostics, includes #27; native Linux/Windows CI passes. |
+| [#3](https://github.com/dayfine/Arduino-Source/pull/3) | open | `bbq/diagnostics-and-baseline` | Updated for consolidated #2; local failure screenshots only. #19 overlap remains. |
 | [#4](https://github.com/dayfine/Arduino-Source/pull/4) | open | `bbq/endless-reroll-guard` | save once when completion milestones advance |
 | [#5](https://github.com/dayfine/Arduino-Source/pull/5) | open | `bbq/persistent-quest-retries` | stop instead of rerolling the quest panel forever |
 | [#6](https://github.com/dayfine/Arduino-Source/pull/6) | open | `bbq/verified-reroll` | don't retry a failed quest every round while it stays on the panel |
@@ -68,7 +67,7 @@ main
 | [#24](https://github.com/dayfine/Arduino-Source/pull/24) | open | `main` | check Central Plaza arrivals; a failed quest fly fails the attempt, not the program |
 | [#25](https://github.com/dayfine/Arduino-Source/pull/25) | open | `bbq/exhausted-quest-actions` | reroll quests it cannot do as soon as they appear, red or blue (behavior change) |
 | [#26](https://github.com/dayfine/Arduino-Source/pull/26) | open | `bbq/panel-read-reuse` | chain no-trip quests without round actions between (M15 step 1b) |
-| [#27](https://github.com/dayfine/Arduino-Source/pull/27) | open | `bbq/verified-reroll` | Pure reroll logging; fold into #2, then retire after validation. |
+| [#27](https://github.com/dayfine/Arduino-Source/pull/27) | closed | `bbq/verified-reroll` | Consolidated into #2; closed Nov 6 after native Linux/Windows validation. Branch retained. |
 | [#28](https://github.com/dayfine/Arduino-Source/pull/28) | closed | `bbq/exhausted-quest-actions` | Closed; broader quest-policy work remains planned. |
 | [#29](https://github.com/dayfine/Arduino-Source/pull/29) | open | `main` | start Make TM at the last craftable TM |
 | [#30](https://github.com/dayfine/Arduino-Source/pull/30) | open | `bbq/plaza-arrival-check` | bound the return to Central Plaza (behavior change) |
@@ -108,7 +107,7 @@ All open diffs were checked, including logs added in non-logging PRs.
 | PRs | Log/evidence scope | Ownership decision |
 |---|---|---|
 | #2 | Board, attempt start/return/result, timings, battle-entry timeout, exhaustion | Canonical general diagnostic logger and tests. |
-| #27 | Slot + quest line before every single-slot reroll, including failures | Fold into #2 after verified-reroll #8 exists; preserve exactly-once outcome tests. Do not close before integration passes. |
+| #27 | Slot + quest line before every single-slot reroll, including failures | Code and exactly-once outcome tests are published and native-tested in #2; #27 is closed. |
 | #33 | Inline copies of board/attempt/timeout logs and snapshots | Remove duplicate diagnostics from the egg PR; #2/#3 own these features. Egg verification/restoration stays in #33. |
 | #3, #19 | Snapshot/path records versus detailed target acquisition evidence | Keep distinct feature scope; deduplicate the shared catch-entry timeout capture when integrating. #19 is not a replacement for general attempt logs. |
 | #15, #31, #32 | Per-pass Auto Battle log, kill accounting and board-completion confirmation | Keep with the algorithms/results they explain; #31 changes counting and stop behavior, not just formatting. |
@@ -117,67 +116,53 @@ All open diffs were checked, including logs added in non-logging PRs.
 | #23, #24, #29, #30, #35, #73 | Catch/arrival/heal/TM/return/target/egg decisions | Keep with their specific behavior and tests. |
 | #4, #5, #17, #18, #21, #51, #53, #180 | No new production logging emission found in the reviewed delta | No logging consolidation needed. |
 
-The #2/#27 consolidation changes the diagnostics branch's dependency: #2 will
-need #8 as its base, rather than pretending verified-reroll exists on #51.
-Until that integration, its child #3 and the graph above retain their live bases.
-Do not merge all behavior branches into #2 merely because they add explanatory
-logs. Do not infer that "closed" means merged or that a clean inventory means a
-branch is ready for upstream.
+The #2/#27 consolidation is now published in #2, based on verified-reroll #8.
+#3 has merged that parent and retains only local screenshot evidence. Native Linux/Windows validation passes at the heads below; remaining platform
+checks continue. Other behavior branches retain their own
+explanatory logs. Closed PRs are not assumed merged; upstream readiness remains
+separate from this inventory.
 
 ## Outstanding work from this audit
 
-- Finish and validate #27 → #2 consolidation, update #2's base/description, merge
-  the resulting parent into #3, then retire the redundant #27.
 - Strip duplicate diagnostics from #33 and narrow its unrelated historical lab
   notes/analysis artifacts before handoff; preserve source history/evidence.
-- Resolve the #3/#19 catch-timeout capture overlap at integration.
-- Refresh stale upstream references in PR descriptions (#27 still names closed
-  upstream #1640); refresh #35's obsolete closed parent in its owning chain.
+- #3 is developer/bug-report evidence, currently captured automatically. Decide
+  lab-only versus explicit opt-in (default off) before normal-user release; keep
+  it separate from #2. Resolve its #19 catch-timeout capture overlap at integration.
+- Refresh #35's obsolete closed parent in its owning chain.
 - Refresh #51's children onto the main branch containing upstream #1754 in their
   owning chains. #51 itself is now closed; its branch was retained, not deleted.
 - Recheck CI/tests at the final heads after changes. No new console run is authorized
   or claimed by this documentation audit.
 
-## Local consolidation handoff — not published or CI-approved
+## Published logging consolidation
 
-The audit/documentation is published in fork draft #239. Code candidates below
-are local handoffs for the owning PRs; no live code branch/base was changed.
-Fork #51 is closed, but #27 remains open until its replacement passes native CI.
-
-### #2 + #27: intended-base code health passes; native execution pending
-
-- Branch `integration/bbq-logging-handoff`, commit
-  `141193220b654f96bbafdd360b9d40df2696177a`, in
-  `/Users/difan/Projects/wt/bbq-logging-consolidation`.
-- This is a clean merge of #2 head
-  `bba29249245f5e80861663db45672555f3b45acf` and #27 head
-  `6e9871d582495f3f6cc7ab8beed83d564da10bc0`, with the resolved final tree.
-  It includes the #8 dependencies that make reroll instrumentation possible.
-- `BBQLogger` owns the reroll formatter; existing nine reroll outcome cases
-  retain their exactly-once message assertions. Duplicate legacy attempt,
-  timeout and exhaustion messages are replaced by the structured events.
-  Exhaustion keeps its red severity. No controller behavior is intentionally changed.
-- Six explicit input/expectation table rows now live beside the logger in
-  `PokemonSV_BBQLogger_Tests.cpp`, registered through `PokemonSV_Tests.cpp` and
-  `SourceFiles.cmake`. They cover board ordering/unknown/empty results, success,
-  timeout/retry exhaustion (including final color), and long durations.
-- Validation: code health against `origin/bbq/verified-reroll` passes with zero
-  failures; logger and logger tests pass C++23 `-Wall -Wextra -Werror`
-  syntax-only compilation; CRLF-aware whitespace check passes.
-  **Neither syntax checking nor case registration is native test execution.**
-  Full application compilation and native test runs remain pending.
-- Publication constraint: this candidate has no fork PR yet, so the pre-push
-  hook would use `main`, which reports 10 inherited findings from the #8 chain.
-  The intended #8 base passes. Do not bypass the hook or publish from another
-  checkout to evade it. No bypass was attempted or authorized for this work.
-- Owner landing order: review this local merge, arrange the correct intended-base
-  publication path, merge into #2 and change its base to #8, run native CI,
-  then merge updated #2 into #3. Close #27 only after its behavior and tests
-  survive integration. Do not merge all behavior branches into diagnostics.
-- Earlier exploratory branch `integration/bbq-logging-consolidation` remains
-  local at `1a43de23b`; use the clean handoff merge above instead. Its final
-  tree is identical, but the exploratory history includes an intermediate bad
-  conflict resolution and is not the landing candidate.
+- #2 branch `bbq/diagnostics-and-baseline`, head
+  `57002fb3aeb785f7cd5c4146f23f30dfe8247bd9`, now targets #8's
+  `bbq/verified-reroll` branch. Merge `141193220` includes #27 head
+  `6e9871d582495f3f6cc7ab8beed83d564da10bc0`; the follow-up initializes the
+  default expected color required by Windows Clang's warning-as-error policy.
+- `BBQLogger` owns the reroll formatter and all general diagnostic events.
+  Nine reroll outcome tests retain their exactly-once assertions. Six explicit
+  logger cases live in `PokemonSV_BBQLogger_Tests.cpp` beside the formatter.
+  Duplicate legacy status messages are replaced, and exhaustion stays red.
+- #3 branch `bbq/failure-screenshots`, head
+  `5db585ba3682e94984ee84f19b5860e441065bd9`, has merged #2. The snapshot adapter
+  augments the canonical timeout/result events rather than duplicating them.
+  The caller keeps retry/counting decisions. Both screenshot regressions now
+  live beside the snapshot source as input/expectation table rows.
+- Both PR descriptions reflect their current scope and dependencies.
+  Intended-base code health passes for both. #2 native CI passes on
+  [Linux](https://github.com/dayfine/Arduino-Source/actions/runs/42306026274) and
+  [Windows Clang](https://github.com/dayfine/Arduino-Source/actions/runs/42306026142).
+  [#3 Linux Clang](https://github.com/dayfine/Arduino-Source/actions/runs/42306032346)
+  explicitly passes all nine reroll, six logger and two screenshot cases.
+  Remaining platform checks continue.
+- #27 is closed as redundant after that native validation; its branch is
+  retained. It is no longer an active dependency or an unlanded candidate.
+- No hook bypass, force-push, upstream mutation or console run was needed.
+  Earlier exploratory branches and the #33 candidate below remain local;
+  they are not the published branches to review.
 
 ### #33: diagnostic-only removal prepared; egg-code findings remain
 
@@ -190,5 +175,5 @@ Fork #51 is closed, but #27 remains open until its replacement passes native CI.
   unrelated historical lab notes/analysis artifacts also need scope review;
   preserve source history/evidence rather than silently deleting it.
 
-The audit and migration scope are complete; code landing and native validation
-are pending. No console run, upstream publication or hook bypass is claimed.
+The #2/#27 consolidation is published and native-tested, #27 is closed, and #3
+has merged the update. The #33 cleanup and #3 distribution decision remain separate. No console run, upstream publication or hook bypass is claimed.
