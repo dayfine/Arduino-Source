@@ -7,6 +7,7 @@
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/Json/JsonArray.h"
 #include "Common/Cpp/Json/JsonObject.h"
+#include "Pokemon_MapData.h"
 #include "Pokemon_RuntimeMap.h"
 #ifndef PA_RUNTIME_MAP_STANDALONE
 #include "Pokemon_RuntimeMap_Tests.h"
@@ -101,7 +102,7 @@ std::string check_pair(const JsonValue& input, const JsonValue& expected){
     if (!(normalized == expected)){
         return "Full normalized JSON differs (including extension metadata/order).";
     }
-    const MapData map = parse_runtime_map(input, "Maps/parity.json");
+    const MapData map = parse_map(input, "Maps/parity.json");
     const MapData legacy = parse_map(expected, "Maps/parity-v1.json");
     if (map.objects.size() != legacy.objects.size() || map.warps.size() != legacy.warps.size()){
         return "Native parsed object/warp counts differ.";
@@ -115,7 +116,7 @@ std::string check_runtime_case(const RuntimeMapCase& test){
         if (!test.expectation.normalized_fields.empty()){
             return check_pair(input, parse_json(map_document(test.expectation.normalized_fields)));
         }
-        parse_runtime_map(input, "Maps/contract.json");
+        parse_map(input, "Maps/contract.json");
     }catch (const ParseException& error){
         const std::string message = error.message();
         if (!test.expectation.error.empty() && message.find(test.expectation.error) != std::string::npos && message.find("Maps/contract.json") != std::string::npos){

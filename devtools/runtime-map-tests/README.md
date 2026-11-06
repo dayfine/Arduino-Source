@@ -1,7 +1,7 @@
 # Versioned map reader preparation
 
-`Pokemon_RuntimeMap` adds `normalize_runtime_map()` and `parse_runtime_map()` on
-top of the existing shared `parse_map()` implementation. It accepts unmarked or
+`Pokemon_RuntimeMap` adds wire normalization inside the existing shared
+`parse_map()` entry point. Both games gain v1/v2 support through that same API. It accepts unmarked or
 explicit v1 and `pokesim-runtime-map/2`. The wire conversion is independent of
 FRLG/BDSP and does not duplicate either game's map parser.
 
@@ -15,12 +15,12 @@ source/path error. Source/world coordinates and trigger-box fields retain the
 existing publisher contract. Extensions, zeros and false values survive in the
 normalized JSON; the existing `MapData` model still consumes only its known fields.
 
-This is a staged API. Existing `parse_map()` and both games' loader call sites
-are unchanged. No map bytes, generation code, resource paths or pins are switched.
-After this prerequisite merges into `nav/shared`, the owning FRLG/BDSP loader PRs
-must adopt `parse_runtime_map()`, run their route/story/recovery tests, and only
-then activate a v2 resource pack. Full route-policy parity and the five pending
-BDSP content differences remain separate work.
+The decoder is integrated into nav-core #114. Existing game loader call sites
+remain unchanged; merge nav-core into each story chain to pick up support.
+Published maps, generation code, resource paths and pins remain unchanged. Run
+the games' route/story/recovery tests before activating a v2 resource pack.
+Full route-policy parity and the five pending BDSP content differences remain
+separate work.
 
 ## Offline native checks
 
@@ -30,7 +30,8 @@ cmake --build /path/to/build -j4
 ctest --test-dir /path/to/build --output-on-failure
 ```
 
-The 26 synthetic cases are also registered in the application's native test
+The focused target also runs all eight existing registered MapData cases,
+including their legacy diagnostics and embedded map assets. The 26 new cases are registered in the application's native test
 database. They cover v1 compatibility, mixed/malformed versions and pairs,
 inclusive wander bounds, object groups, interaction-vs-item rejection, coordinate
 events and complete normalized JSON parity, including unknown metadata.

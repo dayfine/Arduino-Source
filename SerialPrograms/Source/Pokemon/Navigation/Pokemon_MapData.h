@@ -207,7 +207,8 @@ struct MapData{
     std::vector<MapPatch> patches;
 };
 
-//  Reads a map from its parsed JSON. `source_name` names it in errors.
+//  Reads legacy/unmarked v1 or compact pokesim-runtime-map/2 JSON.
+//  Both games use this entry point; `source_name` names it in errors.
 //  Throws ParseException, naming the source and the JSON path (e.g.
 //  "Maps/TestTown.json: warps[2].x is missing."), when a field is missing,
 //  doesn't fit the schema, or places something outside the tiles.

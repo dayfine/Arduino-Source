@@ -9,6 +9,7 @@
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/Json/JsonArray.h"
 #include "Common/Cpp/Json/JsonObject.h"
+#include "Pokemon_Grid.h"
 #include "Pokemon_RuntimeMap.h"
 
 namespace PokemonAutomation{
@@ -20,7 +21,7 @@ enum class WireFormat{ LEGACY, COMPACT };
 const JsonObject& object_at(const JsonValue& value, const std::string& where){
     const JsonObject* object = value.to_object();
     if (!object){
-        throw ParseException(where + " must be an object.");
+        throw ParseException(where + " is not a JSON object.");
     }
     return *object;
 }
@@ -44,8 +45,11 @@ JsonObject copy_without(const JsonObject& object, const std::set<std::string>& o
 }
 
 int coordinate(const JsonValue* value, const std::string& where){
-    if (!value || !value->is_integer()){
-        throw ParseException(where + " must be an integer.");
+    if (!value){
+        throw ParseException(where + " is missing.");
+    }
+    if (!value->is_integer()){
+        throw ParseException(where + " is not an integer.");
     }
     const int64_t number = value->to_integer_default();
     if (number < std::numeric_limits<int>::min() || number > std::numeric_limits<int>::max()){
@@ -76,7 +80,7 @@ JsonValue normalize_wander(const JsonValue& value, WireFormat format, const std:
     const JsonObject& source = object_at(value, where);
     const TilePos low = pair_at(source, {"x0", "y0", "min"}, format, where);
     const TilePos high = pair_at(source, {"x1", "y1", "max"}, format, where);
-    if (low.x > high.x || low.y > high.y){
+    if (format == WireFormat::COMPACT && (low.x > high.x || low.y > high.y)){
         throw ParseException(where + "must have inclusive min <= max bounds.");
     }
     JsonObject result = copy_without(source, {"x0", "y0", "x1", "y1", "min", "max"});
@@ -105,10 +109,6 @@ void append_objects(JsonArray& output, const JsonArray& input, WireFormat format
                 throw ParseException(path + "kind is redundant in v2 typed arrays.");
             }
             record["kind"] = group == "npcs" ? "npc" : group == "signs" ? "sign" : "item";
-        }
-        const std::string* kind = record.get_string("kind");
-        if (!kind || (*kind != "npc" && *kind != "item" && *kind != "sign")){
-            throw ParseException(path + "kind must be npc, item or sign.");
         }
         if (group == "interactables"){
             const JsonObject* interaction = record.get_object("interaction");
@@ -190,10 +190,6 @@ JsonValue normalize_runtime_map(const JsonValue& json, std::string_view source_n
         }
     }
     return output;
-}
-
-MapData parse_runtime_map(const JsonValue& json, std::string_view source_name){
-    return parse_map(normalize_runtime_map(json, source_name), std::string(source_name));
 }
 
 } // namespace Pokemon

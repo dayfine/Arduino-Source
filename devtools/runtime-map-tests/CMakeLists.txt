@@ -7,9 +7,8 @@ project(RuntimeMapTests LANGUAGES CXX)
 enable_testing()
 get_filename_component(ROOT "../.." ABSOLUTE)
 set(NAV "${ROOT}/SerialPrograms/Source/Pokemon/Navigation")
-add_executable(RuntimeMapTests
+add_library(RuntimeMapDecoder STATIC
     "${NAV}/Pokemon_RuntimeMap.cpp"
-    "${NAV}/Pokemon_RuntimeMap_Tests.cpp"
     "${NAV}/Pokemon_MapData.cpp"
     "${NAV}/Pokemon_Grid.cpp"
     "${ROOT}/Common/Cpp/Exceptions.cpp"
@@ -21,13 +20,29 @@ add_executable(RuntimeMapTests
     "${ROOT}/Common/Cpp/Filesystem/FilePath.cpp"
     "${ROOT}/Common/Cpp/Strings/Unicode.cpp"
 )
-target_include_directories(RuntimeMapTests PRIVATE "${ROOT}" "${ROOT}/SerialPrograms/Source")
-target_compile_features(RuntimeMapTests PRIVATE cxx_std_23)
+target_include_directories(RuntimeMapDecoder PUBLIC "${ROOT}" "${ROOT}/SerialPrograms/Source")
+target_compile_features(RuntimeMapDecoder PUBLIC cxx_std_23)
+add_executable(RuntimeMapTests "${NAV}/Pokemon_RuntimeMap_Tests.cpp")
 target_compile_definitions(RuntimeMapTests PRIVATE PA_RUNTIME_MAP_STANDALONE)
-if(MSVC)
-    target_compile_definitions(RuntimeMapTests PRIVATE _CRT_SECURE_NO_WARNINGS)
-    target_compile_options(RuntimeMapTests PRIVATE /W4 /WX)
-else()
-    target_compile_options(RuntimeMapTests PRIVATE -Wall -Wextra -Werror)
-endif()
+target_link_libraries(RuntimeMapTests PRIVATE RuntimeMapDecoder)
+add_executable(RuntimeMapLegacyTests
+    legacy_tests.cpp
+    "${NAV}/Pokemon_MapData_Tests.cpp"
+    "${ROOT}/Common/Cpp/CancellableScope.cpp"
+    "${ROOT}/Common/Cpp/LifetimeSanitizer.cpp"
+    "${ROOT}/Common/Cpp/Concurrency/SpinLock.cpp"
+)
+target_link_libraries(RuntimeMapLegacyTests PRIVATE RuntimeMapDecoder)
+include("${ROOT}/SerialPrograms/cmake/EmbedTextFiles.cmake")
+pa_embed_text_files(RuntimeMapLegacyTests ../../SerialPrograms/Source/Pokemon/Navigation/TestMaps
+    Pokemon/Navigation/Pokemon_Navigation_Tests.h PokemonAutomation::Pokemon navigation_test_map_json)
+foreach(target RuntimeMapDecoder RuntimeMapTests RuntimeMapLegacyTests)
+    if(MSVC)
+        target_compile_definitions(${target} PRIVATE _CRT_SECURE_NO_WARNINGS)
+        target_compile_options(${target} PRIVATE /W4 /WX)
+    else()
+        target_compile_options(${target} PRIVATE -Wall -Wextra -Werror)
+    endif()
+endforeach()
 add_test(NAME RuntimeMap COMMAND RuntimeMapTests)
+add_test(NAME RuntimeMapLegacy COMMAND RuntimeMapLegacyTests)
