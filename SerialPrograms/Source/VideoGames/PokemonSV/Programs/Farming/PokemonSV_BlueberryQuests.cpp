@@ -1255,9 +1255,12 @@ BBQAutoBattleResult run_auto_battle(
     const WallClock start = actions.now();
     uint64_t pass = 0;
     uint64_t empty_passes = 0;
+    //The kill sound is heard in every step, not only while clearing: the lead can finish a kill
+    //after the clear ends, as the flight back starts. Each pass counts the kills since the last
+    //pass log, so a kill heard after it goes to the next pass and the passes add up to the total.
+    uint64_t kills_before = actions.kills();
     while (actions.kills() < policy.kill_target){
         pass++;
-        const uint64_t kills_before = actions.kills();
 
         actions.fly_to_battle_area();
         const std::optional<double> hp = actions.clear(policy.kill_target);
@@ -1299,11 +1302,20 @@ BBQAutoBattleResult run_auto_battle(
             + std::to_string(elapsed.count()) + " s elapsed. "
             + next
         );
+        kills_before = kills;
 
         //The next quest starts from Central Plaza, so return even when done.
         actions.return_to_plaza();
         if (end){
             return *end;
+        }
+        if (actions.kills() >= policy.kill_target){
+            logger.log(
+                "Auto Battle: kills heard on the way back reached the target, "
+                + std::to_string(actions.kills()) + "/" + std::to_string(policy.kill_target)
+                + ". Stop without healing."
+            );
+            return BBQAutoBattleResult::TargetReached;
         }
         //Skipping the heal also skips its re-fly: return_to_plaza() already lands on the Central
         //Plaza fly point, which is where the flight to Chargestone starts from.
