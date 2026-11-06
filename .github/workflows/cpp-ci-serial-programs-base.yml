@@ -88,6 +88,19 @@ jobs:
           ref: 'master'
           path: 'Arduino-Source/Packages'
 
+      - name: Install Python for pinned map preparation
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Prepare approved FRLG map resources
+        id: map-resources
+        uses: dayfine/PokemonSimulation/integrations/arduino-source/verify-map-packs@0efe131008c4bcdceb4d036a7022171cbcb2375a
+        with:
+          layout: resources
+          operation: prepare
+          consumer-directory: Arduino-Source
+
       - name: Install Qt
         uses: jurplel/install-qt-action@v4
         with:
@@ -204,6 +217,8 @@ jobs:
           # every file missed, compiling took 10-40% longer than before on Linux and macOS, and
           # about twice as long on Windows.
           CCACHE_DEPEND: 1
+          POKESIM_TOOLS_SOURCE: ${{ steps.map-resources.outputs.tools-source }}
+          POKESIM_SOURCE_CACHE: ${{ steps.map-resources.outputs.source-cache }}
         run: |
           cd Arduino-Source/SerialPrograms
           mkdir bin
