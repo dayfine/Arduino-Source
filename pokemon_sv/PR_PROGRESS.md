@@ -12,30 +12,32 @@ PR graph is historical. [The previous tracker](PR_PROGRESS_20261027_ARCHIVE.md)
 retains old test/run notes. Merge parents into children; do not follow old
 rebase/force-push instructions. No agent publishes upstream.
 
-## Current dependency graph
+## Active dependency tree (parent cleanup pending)
 
-Numbers below are fork PRs. These are current base relationships, not proof that
-parents contain the latest upstream changes. #51 is closed on the fork after confirming its counterpart
-PokemonAutomation/Arduino-Source#1754 merged. Its branch is retained for children;
-the graph records their existing bases until the owning chains are updated.
+Numbers below are active fork code PRs. #51 is closed because its tests-file
+change merged upstream (#1754); it is no longer a prerequisite in the active
+plan. Its children still name the retained `bbq/tests-file` branch in GitHub
+metadata (shown in the inventory), and their owners must merge current main and
+retarget those bases. The tree below shows the required parent relationships
+after that mechanical cleanup, not a claim that the live bases already changed.
 
 ```text
-main → #51
-       ├→ #2 → #3                         board/attempt logging, screenshots
-       ├→ #19                            target-specific evidence
-       ├→ #23                            catch grace / heal policy
-       ├→ #37 → #38 → #53 → #8
-       │                     ├→ #27      standalone reroll log (consolidate)
-       │                     └→ #6 → #5 → #4 → #10
-       │                                        ├→ #25 → #16 → #52
-       │                                        │      └→ #73
-       │                                        └→ #12 → #13 → #22 → #26
-       └→ #15 → #17 → #18 → #21 → #31 → #32   Auto Battle
-main → #24 → #30                            navigation/return bounds
-main → #29                                 Make TM resume
-main → #33                                 egg verification/restoration
-main → #180                                detector image tests
-bbq/battle-entry-guard → #35                 Kleavor look-around; old parent closed
+main
+ ├→ #2 → #3                         board/attempt logging, screenshots
+ ├→ #19                            target-specific evidence
+ ├→ #23                            catch grace / heal policy
+ ├→ #37 → #38 → #53 → #8
+ │                     ├→ #27      standalone reroll log (consolidate)
+ │                     └→ #6 → #5 → #4 → #10
+ │                                        ├→ #25 → #16 → #52
+ │                                        │      └→ #73
+ │                                        └→ #12 → #13 → #22 → #26
+ ├→ #15 → #17 → #18 → #21 → #31 → #32   Auto Battle
+ ├→ #24 → #30                            navigation/return bounds
+ ├→ #29                                 Make TM resume
+ ├→ #33                                 egg verification/restoration
+ ├→ #180                                detector image tests
+ └→ #35                                 Kleavor look-around; old closed parent also needs cleanup
 ```
 
 ## Complete fork inventory
