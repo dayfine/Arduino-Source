@@ -127,7 +127,7 @@ void catch_tutorial(VideoStream& stream, ProControllerContext& context){
     pbf_wait(context, 2000ms);
 }
 
-}
+} // namespace
 
 
 void add_lake_events(StoryEvents& events){
@@ -142,6 +142,6 @@ void add_lake_events(StoryEvents& events){
 
 
 
-}
-}
-}
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

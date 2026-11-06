@@ -131,6 +131,6 @@ bool ensure_poketch_visible(VideoStream& stream, ProControllerContext& context){
 }
 
 
-}
-}
-}
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

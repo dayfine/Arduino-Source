@@ -31,7 +31,7 @@ size_t pick_best_move(VideoStream& stream, const ImageViewRGB32& screen, const B
 
 
 
-}
-}
-}
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

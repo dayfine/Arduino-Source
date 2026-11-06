@@ -25,7 +25,7 @@ void verify_tutorial_settings(VideoStream& stream, ProControllerContext& context
 
 
 
-}
-}
-}
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

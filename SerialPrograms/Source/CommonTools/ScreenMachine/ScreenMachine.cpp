@@ -24,7 +24,7 @@ const ScreenState* classify(const std::vector<ScreenState>& states, const ImageV
     return nullptr;
 }
 
-}
+} // namespace
 
 
 const ScreenState& read_screen_state(
@@ -94,4 +94,4 @@ void ScreenMachineChecks::check(const ScreenState& state, VideoSnapshot frame){
 
 
 
-}
+} // namespace PokemonAutomation

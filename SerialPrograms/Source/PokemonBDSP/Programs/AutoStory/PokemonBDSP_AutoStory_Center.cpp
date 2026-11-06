@@ -203,7 +203,7 @@ void log_doorway(VideoStream& stream, const std::string& label, const LitDoorway
         std::to_string(doorway.x) + ", " + std::to_string(doorway.y) + " of the screen).");
 }
 
-}
+} // namespace
 
 
 bool pokemon_center_inside(const ImageViewRGB32& screen){
@@ -364,7 +364,7 @@ void confirm_inside_without_doorway(VideoStream& stream, ProControllerContext& c
     pbf_wait(context, 1500ms);
 }
 
-}
+} // namespace
 
 void enter_lit_door(
     VideoStream& stream, ProControllerContext& context,
@@ -461,6 +461,6 @@ void move_across(VideoStream& stream, ProControllerContext& context, double tile
 }
 
 
-}
-}
-}
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

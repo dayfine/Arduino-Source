@@ -70,12 +70,14 @@ struct Step{
 };
 
 
+// Category of navigation action in a route leg.
 enum class LegKind{
     WALK,       //  hold `direction` for `tiles` steps
     ACTION,     //  one step of the game's own kind, `action`
     FACE,       //  turn to `direction` without moving
 };
 
+// Single continuous movement leg or turn action.
 template <typename State>
 struct Leg{
     LegKind kind = LegKind::WALK;
@@ -95,6 +97,7 @@ struct Leg{
 };
 
 
+// Weights and penalties used during route planning.
 struct LegCosts{
     int per_tile = 1;
     //  Extra for a step in a new direction.
@@ -137,6 +140,7 @@ struct Node{
     bool operator==(const Node& other) const = default;
 };
 
+// Hash functor for planner search nodes.
 template <typename State, typename StateHash>
 struct NodeHash{
     size_t operator()(const Node<State>& node) const{
@@ -144,6 +148,7 @@ struct NodeHash{
     }
 };
 
+// Edge transition between search nodes.
 template <typename State>
 struct Move{
     Node<State> from;
@@ -151,6 +156,7 @@ struct Move{
     Step<State> step;
 };
 
+// Cost incurred when stopping at a node.
 template <typename Model, typename State>
 int stop_cost(const Model& model, const Node<State>& node, const LegCosts& costs){
     if (!node.moving || model.held_at(node.state, (Direction)node.facing)){
@@ -159,6 +165,7 @@ int stop_cost(const Model& model, const Node<State>& node, const LegCosts& costs
     return costs.per_open_stop + (node.wild ? costs.per_open_wild_stop : 0);
 }
 
+// Combines atomic movement steps into contiguous legs.
 template <typename Model, typename State>
 std::vector<Leg<State>> join_legs(const Model& model, const State& start, const std::vector<Move<State>>& moves){
     std::vector<Leg<State>> legs;
@@ -206,6 +213,7 @@ struct Search{
     std::priority_queue<Entry, std::vector<Entry>, std::greater<Entry>> queue;
 };
 
+// Looks up the distance to a search node.
 template <typename Model, typename State>
 int distance_of(const Search<Model>& search, const Node<State>& node){
     auto iter = search.distance.find(node);
@@ -309,6 +317,7 @@ std::vector<Move<State>> trace_moves(const Search<Model>& search, const Node<Sta
     return moves;
 }
 
+// Constructs a leg that faces a direction in place.
 template <typename State>
 Leg<State> face_leg(const State& state, Direction direction){
     Leg<State> face;
@@ -320,7 +329,7 @@ Leg<State> face_leg(const State& state, Direction direction){
     return face;
 }
 
-}
+} // namespace LegPlannerInternal
 
 
 
@@ -352,6 +361,6 @@ std::optional<std::vector<Leg<typename Model::State>>> plan_legs(
 
 
 
-}
-}
+} // namespace Pokemon
+} // namespace PokemonAutomation
 #endif

@@ -58,6 +58,7 @@ namespace NintendoSwitch{
 namespace PokemonBDSP{
 
 
+//  Possible icon positions for the BDSP pause/X menu cursor.
 enum class MenuCursorPosition {
     UNKNOWN = -1,
     POKEDEX = 0,
@@ -70,11 +71,14 @@ enum class MenuCursorPosition {
     MYSTERYGIFT = 7,
 };
 
+//  Total number of icons in the pause menu layout.
 static constexpr int MENU_CURSOR_NUM_ICONS = 8;
 
+//  Returns the debug name of a MenuCursorPosition.
 std::string menu_cursor_to_string(MenuCursorPosition pos);
 
 
+//  Detects which icon in the BDSP pause menu is currently focused by the cursor.
 class MenuCursorDetector {
 public:
     // ── Approach 1: dark pixel detection ─────────────────────────────────────
@@ -142,7 +146,7 @@ private:
 MenuCursorPosition detect_menu_cursor(VideoStream& stream, ProControllerContext& context);
 
 
-}
-}
-}
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

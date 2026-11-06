@@ -36,6 +36,7 @@ namespace PokemonBDSP{
 using StoryEvent = std::function<Pokemon::Outcome(
     StoryExecutor& executor, Pokemon::RunState& state, const Pokemon::StoryStep& step
 )>;
+//  Map of story event names to their execution functions.
 using StoryEvents = std::map<std::string, StoryEvent>;
 
 //  Every event of the story, by name.
@@ -44,15 +45,20 @@ const StoryEvents& story_events();
 //  An event that only acts and says nothing of where it leaves us.
 StoryEvent console_event(std::function<void(VideoStream& stream, ProControllerContext& context)> action);
 
+//  Populates lake-area story event handlers.
 void add_lake_events(StoryEvents& events);
+//  Populates Sandgem-area story event handlers.
 void add_sandgem_events(StoryEvents& events);
+//  Populates Jubilife-area story event handlers.
 void add_jubilife_events(StoryEvents& events);
+//  Populates Oreburgh-area story event handlers.
 void add_oreburgh_events(StoryEvents& events);
+//  Populates Route 204-area story event handlers.
 void add_route204_events(StoryEvents& events);
 
 
 
-}
-}
-}
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

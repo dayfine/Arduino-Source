@@ -476,38 +476,75 @@ UnitTestResult test_no_text_reader(Logger&){
 }
 
 
+struct AutoStoryStorySimulationInput{
+    std::string name;
+    std::function<UnitTestResult(Logger&)> body;
+};
+
+struct AutoStoryStorySimulationExpectation{
+};
+
+struct AutoStoryStorySimulationCase{
+    AutoStoryStorySimulationInput input;
+    AutoStoryStorySimulationExpectation expectation;
+};
+
 class Test_StorySimulation : public UnitTest{
 public:
-    Test_StorySimulation(std::string name, std::function<UnitTestResult(Logger&)> body)
-        : UnitTest("PokemonBDSP::AutoStory - Simulation: " + std::move(name))
-        , m_body(std::move(body))
+    explicit Test_StorySimulation(AutoStoryStorySimulationCase test_case)
+        : UnitTest("PokemonBDSP::AutoStory - Simulation: " + test_case.input.name)
+        , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
         try{
-            return m_body(logger);
+            return m_case.input.body(logger);
         }catch (Exception& e){
             return std::string(e.name()) + ": " + e.message();
         }
     }
 
 private:
-    std::function<UnitTestResult(Logger&)> m_body;
+    AutoStoryStorySimulationCase m_case;
 };
 
-}
+} // namespace
 
+
+const AutoStoryStorySimulationCase AUTO_STORY_STORY_SIMULATION_CASES[] = {
+    {
+        .input = {"00.00 to Floaroma, in order, each row saved first, English and Japanese", test_whole_table},
+        .expectation = {},
+    },
+    {
+        .input = {"start and end checkpoints", test_start_and_end},
+        .expectation = {},
+    },
+    {
+        .input = {"a blackout in 00.04b's training resets to its save", test_training_blackout},
+        .expectation = {},
+    },
+    {
+        .input = {"a step that keeps failing stops after 3 attempts", test_gives_up_after_attempts},
+        .expectation = {},
+    },
+    {
+        .input = {"each start pose is where the row before ends; routes plan on the maps", test_poses_chain},
+        .expectation = {},
+    },
+    {
+        .input = {"no text reader for the game's language", test_no_text_reader},
+        .expectation = {},
+    },
+};
 
 void add_tests_AutoStory_StorySimulation(UnitTestDatabase& database){
-    database.add<Test_StorySimulation>("00.00 to Floaroma, in order, each row saved first, English and Japanese", test_whole_table);
-    database.add<Test_StorySimulation>("start and end checkpoints", test_start_and_end);
-    database.add<Test_StorySimulation>("a blackout in 00.04b's training resets to its save", test_training_blackout);
-    database.add<Test_StorySimulation>("a step that keeps failing stops after 3 attempts", test_gives_up_after_attempts);
-    database.add<Test_StorySimulation>("each start pose is where the row before ends; routes plan on the maps", test_poses_chain);
-    database.add<Test_StorySimulation>("no text reader for the game's language", test_no_text_reader);
+    for (const auto& item : AUTO_STORY_STORY_SIMULATION_CASES){
+        database.add<Test_StorySimulation>(item);
+    }
 }
 
 
 
-}
-}
-}
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

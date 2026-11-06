@@ -124,7 +124,7 @@ private:
     bool m_expected;
 };
 
-}
+} // namespace
 
 void add_tests_MenuDetector(UnitTestDatabase& database){
     //  The new game's menu: a "NEW" tag above OPTIONS. Jubilife after the
@@ -154,6 +154,6 @@ void add_tests_MenuDetector(UnitTestDatabase& database){
 }
 
 
-}
-}
-}
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

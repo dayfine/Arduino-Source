@@ -94,5 +94,5 @@ std::string route_arrived_line(const std::string& label, const std::vector<Route
 
 
 
-}
-}
+} // namespace Pokemon
+} // namespace PokemonAutomation

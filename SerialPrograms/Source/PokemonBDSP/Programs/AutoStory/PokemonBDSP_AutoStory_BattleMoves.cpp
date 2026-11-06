@@ -224,7 +224,7 @@ std::pair<std::string, const KnownMove*> identify_move(const ImageViewRGB32& scr
     return {name, known};
 }
 
-}
+} // namespace
 
 
 size_t pick_best_move(VideoStream& stream, const ImageViewRGB32& screen,
@@ -271,6 +271,6 @@ size_t pick_best_move(VideoStream& stream, const ImageViewRGB32& screen,
 
 
 
-}
-}
-}
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

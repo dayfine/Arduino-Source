@@ -243,7 +243,7 @@ void finish_talk(VideoStream& stream, ProControllerContext& context, DialogueRea
     stream.log("[Talk] " + label + (read.closed ? ": closed." : ": still open."));
 }
 
-}
+} // namespace
 
 DialogueRead talk_facing(VideoStream& stream, ProControllerContext& context, Direction direction, Button next, const std::string& label){
     route_turn(stream, context, direction);
@@ -320,6 +320,6 @@ DialogueRead read_sign(VideoStream& stream, ProControllerContext& context, Direc
 
 
 
-}
-}
-}
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

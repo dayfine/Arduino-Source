@@ -446,7 +446,7 @@ void check_saved_autosave(
         context.wait_for_all_requests();
     }
     stream.log("[Tutorial settings] Autosave = Off: confirmed after reopening saved Options (3 frames).");
-}
+} // namespace
 
 void verify_tutorial_settings_once(VideoStream& stream, ProControllerContext& context){
     open_main_menu(stream, context);
@@ -514,7 +514,7 @@ void back_to_overworld(VideoStream& stream, ProControllerContext& context){
     context.wait_for_all_requests();
 }
 
-}
+} // namespace
 
 void verify_tutorial_settings(VideoStream& stream, ProControllerContext& context){
     // Settings-only recovery: initial attempt plus three retries.
@@ -538,6 +538,6 @@ void verify_tutorial_settings(VideoStream& stream, ProControllerContext& context
 
 
 
-}
-}
-}
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

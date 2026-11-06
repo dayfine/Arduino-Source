@@ -253,7 +253,7 @@ Dose potion_dose(VideoStream& stream, ProControllerContext& context, size_t dose
     return after >= 0.98 ? Dose::HEALED : Dose::GIVEN;
 }
 
-}
+} // namespace
 
 int bag_pocket_position(const ImageViewRGB32& frame){
     if (!frame){
@@ -422,6 +422,6 @@ void use_potion_first_pokemon(VideoStream& stream, ProControllerContext& context
 
 
 
-}
-}
-}
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
