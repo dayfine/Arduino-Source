@@ -77,6 +77,11 @@ unsupported and rejected.
 
 ## Startup isolation and tests
 
+For safe preference seeding and checked packaging of two lab apps, see
+[INSTANCE_PREPARATION.md](INSTANCE_PREPARATION.md). Its staging tool validates the
+linked build's profile receipt before signing and records the final package hashes.
+Physical-device ownership remains a separate required boundary.
+
 Bind each deployed macOS lab binary to its console when configuring its existing
 build directory, for example:
 

@@ -212,6 +212,18 @@ if (APPLE)
         target_compile_definitions(SerialPrograms PRIVATE PA_LAB_PROFILE="${PA_LAB_PROFILE}")
     endif()
 
+    # Receipt binds packaging to the linked binary, not just a CMake cache value.
+    set_property(TARGET SerialPrograms APPEND PROPERTY LINK_DEPENDS
+        "${CMAKE_CURRENT_SOURCE_DIR}/cmake/LabBuildReceipt.cmake")
+    add_custom_command(TARGET SerialPrograms POST_BUILD
+        COMMAND "${CMAKE_COMMAND}"
+            "-DBINARY=$<TARGET_FILE:SerialPrograms>"
+            "-DPROFILE=${PA_LAB_PROFILE}"
+            "-DSOURCE=${CMAKE_CURRENT_SOURCE_DIR}/.."
+            -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/LabBuildReceipt.cmake"
+        VERBATIM
+    )
+
     set_target_properties(SerialPrograms PROPERTIES
         BUNDLE True
         MACOSX_BUNDLE_GUI_IDENTIFIER PokemonAutomation.SerialPrograms
