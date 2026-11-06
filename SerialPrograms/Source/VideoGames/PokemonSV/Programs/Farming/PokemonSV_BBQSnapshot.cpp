@@ -7,6 +7,7 @@
 #include <sstream>
 #include "Common/Cpp/PrettyPrint.h"
 #include "CommonFramework/GlobalAutoPaths.h"
+#include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "PokemonSV_BBQSnapshot.h"
 
 namespace PokemonAutomation{
@@ -36,6 +37,20 @@ std::string save_bbq_snapshot(
 }
 
 
+void record_bbq_battle_entry_timeout(ConsoleHandle& console, BBQuests quest){
+    BBQLogger(console.logger()).battle_entry_timeout(quest);
+    save_bbq_snapshot(console.logger(), console.video().snapshot(), bbq_snapshot_directory(), quest, "battle-entry-timeout");
 }
+
+void record_bbq_attempt_result(
+    ConsoleHandle& console, BBQAttemptLog& attempt, BBQuests quest, BBQAttemptOutcome outcome
+){
+    if (outcome == BBQAttemptOutcome::StillOnBoard){
+        save_bbq_snapshot(console.logger(), console.video().snapshot(), bbq_snapshot_directory(), quest, "verification-failed");
+    }
+    attempt.result(outcome == BBQAttemptOutcome::Completed);
 }
-}
+
+} // namespace PokemonSV
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

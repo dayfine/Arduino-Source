@@ -11,7 +11,8 @@
 #include <string_view>
 #include "Common/Cpp/Logging/AbstractLogger.h"
 #include "CommonFramework/ImageTypes/ImageViewRGB32.h"
-#include "VideoGames/PokemonSV/Options/PokemonSV_BBQuests.h"
+#include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
+#include "PokemonSV_BBQLogger.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -32,7 +33,22 @@ std::string save_bbq_snapshot(
 );
 
 
-}
-}
-}
+// Board verification decides whether the attempt completed; capturing evidence does not.
+enum class BBQAttemptOutcome{
+    Completed,
+    StillOnBoard,
+};
+
+// Log a battle-entry timeout and save its current frame locally; no controller input.
+void record_bbq_battle_entry_timeout(ConsoleHandle& console, BBQuests quest);
+
+// Save the verification-failure frame when needed, then log the attempt result.
+// The caller retains all retry/counting decisions; this performs no controller input.
+void record_bbq_attempt_result(
+    ConsoleHandle& console, BBQAttemptLog& attempt, BBQuests quest, BBQAttemptOutcome outcome
+);
+
+} // namespace PokemonSV
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

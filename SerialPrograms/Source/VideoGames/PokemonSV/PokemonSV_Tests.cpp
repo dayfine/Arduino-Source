@@ -26,6 +26,8 @@
 #include "Inference/Picnics/PokemonSV_SandwichRecipeDetector.h"
 #include "Inference/Picnics/PokemonSV_SandwichHandDetector.h"
 #include "Programs/Farming/PokemonSV_BBQTests.h"
+#include "Programs/Farming/PokemonSV_BBQLogger_Tests.h"
+#include "Programs/Farming/PokemonSV_BBQSnapshot_Tests.h"
 #include "PokemonSV_Tests.h"
 
 namespace PokemonAutomation{
@@ -54,6 +56,8 @@ void add_tests(UnitTestDatabase& database){
     add_tests_NormalBattleMenus(database);
     add_tests_LetsGoKillDetector(database);
     add_tests_BBQ(database);
+    add_tests_BBQDiagnosticLogs(database);
+    add_tests_BBQSnapshot(database);
 }
 
 
