@@ -38,8 +38,21 @@ add_executable(RuntimeMapLegacyTests
 )
 target_link_libraries(RuntimeMapLegacyTests PRIVATE RuntimeMapDecoder)
 include("${ROOT}/SerialPrograms/cmake/EmbedTextFiles.cmake")
+# Resource consumers also register canonical paths; embed dependencies must not
+# retain a second ../ alias, which Ninja can treat as duplicate generated outputs.
+file(GLOB CANONICAL_MAPS "${NAV}/TestMaps/*.json")
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${CANONICAL_MAPS})
 pa_embed_text_files(RuntimeMapLegacyTests ../../SerialPrograms/Source/Pokemon/Navigation/TestMaps
     Pokemon/Navigation/Pokemon_Navigation_Tests.h PokemonAutomation::Pokemon navigation_test_map_json)
+get_property(MAP_DEPENDENCIES DIRECTORY PROPERTY CMAKE_CONFIGURE_DEPENDS)
+foreach(INPUT IN LISTS MAP_DEPENDENCIES)
+    if(INPUT MATCHES "TestMaps/.*\\.json$")
+        file(REAL_PATH "${INPUT}" CANONICAL_INPUT)
+        if(NOT INPUT STREQUAL CANONICAL_INPUT)
+            message(FATAL_ERROR "Map embedding registered a noncanonical dependency: ${INPUT}")
+        endif()
+    endif()
+endforeach()
 foreach(target RuntimeMapDecoder RuntimeMapTests RuntimeMapLegacyTests)
     if(MSVC)
         target_compile_definitions(${target} PRIVATE _CRT_SECURE_NO_WARNINGS)
