@@ -30,6 +30,33 @@ class RatchetTests(unittest.TestCase):
         grown = measure('Common/test.cpp', 'void A::f(MoveOnlyFunction<void()> f){\n' + 'x();\n' * 61 + '}\n')
         self.assertTrue(evaluate(grown, old))
 
+    def test_namespace_move_retains_only_an_unambiguous_removed_function_base(self):
+        body = 'void f(){\n' + '    x();\n' * 60 + '}\n'
+        old = measure('Common/test.cpp', body)
+        moved = measure('Common/test.cpp', 'namespace Project{\nnamespace{\n' + body + '}\n}\n')
+        self.assertEqual([], evaluate(moved, old))
+        changed = measure('Common/test.cpp', 'namespace Project{\n' + body.replace('x();', 'y();') + '}\n')
+        self.assertEqual([], evaluate(changed, old))
+        grown = measure('Common/test.cpp', 'namespace Project{\n' + body.replace('x();\n', 'x();\ny();\n') + '}\n')
+        self.assertTrue(evaluate(grown, old))
+        copied = measure('Common/test.cpp', body + 'namespace Project{\n' + body + '}\n')
+        self.assertTrue(evaluate(copied, old))
+
+    def test_ambiguous_namespace_moves_do_not_transfer_debt(self):
+        body = 'void f(){\n' + 'x();\n' * 60 + '}\n'
+        old = measure('Common/test.cpp', body + 'namespace A{\n' + body + '}\n')
+        new = measure('Common/test.cpp', 'namespace B{\n' + body + '}\n')
+        self.assertTrue(evaluate(new, old))
+        single_old = measure('Common/test.cpp', body)
+        multiple_new = measure('Common/test.cpp', 'namespace B{\n' + body + '}\nnamespace C{\n' + body + '}\n')
+        self.assertTrue(evaluate(multiple_new, single_old))
+
+    def test_namespace_move_does_not_transfer_debt_across_files(self):
+        body = 'void f(){\n' + 'x();\n' * 60 + '}\n'
+        old = measure('Common/old.cpp', body)
+        moved = measure('Common/new.cpp', 'namespace Project{\n' + body + '}\n')
+        self.assertTrue(evaluate(moved, old))
+
     def test_growth_below_limit_is_allowed(self):
         self.assertEqual([], evaluate([function(50)], [function(25)]))
 

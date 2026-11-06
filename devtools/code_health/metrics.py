@@ -2,6 +2,7 @@
 from contextlib import redirect_stderr
 from dataclasses import dataclass
 from io import StringIO
+from hashlib import sha256
 
 import lizard
 
@@ -19,6 +20,9 @@ class Metric:
     # (std::function to MoveOnlyFunction, #90) must not turn an old long
     # function into a new one held to the limit.
     name: str = None
+    # Unchanged declaration text for a uniquely identified namespace move.
+    # The old qualified symbol must disappear; copies cannot inherit its debt.
+    declaration_identity: str = None
 
     @property
     def key(self):
@@ -56,7 +60,9 @@ def measure(path, source):
             ('nesting', max(0, getattr(function, 'brace_peak', 1) - 1), 4),
             ('parameters', function.parameter_count, 7),
         )
+        declaration = '\n'.join(lines[function.start_line - 1:function.end_line]).split('{', 1)[0]
+        declaration_identity = sha256(declaration.encode('utf-8')).hexdigest()
         for check, value, limit in values:
             result.append(Metric(path, function.long_name, check, value, limit,
-                                 function.start_line, function.name))
+                                 function.start_line, function.name, declaration_identity))
     return result

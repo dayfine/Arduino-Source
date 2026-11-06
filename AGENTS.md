@@ -230,8 +230,10 @@ See [pokemon_sv/PR_WORKFLOW.md](pokemon_sv/PR_WORKFLOW.md). In short:
   - module dependencies point one way
 - **Tests:** native C++ unit tests registered in the game's `*_Tests.cpp`
   (e.g. `PokemonSV_Tests.cpp`).
-  - Data-driven, with designated initializers so every value has a field name,
-    and no if/else-if chains.
+  - Data-driven: separate input and expectation structs, a test-case struct with
+    exactly `input` and `expectation` fields, and a named table of designated
+    case initializers. A UnitTest receives one case; a range-for registers the
+    table rows. Code Health checks new/changed test classes. No if/else-if chains.
   - Failure messages say what was expected and what was read.
   - No Python or source-extraction tests.
 - **Seams:** to test controller logic, inject the game steps through a small
@@ -283,7 +285,8 @@ so keep it where it clearly pays off. `std::string_view` is the exception (see S
   Files are `PokemonFRLG_Navigation.h/.cpp`. Not Google's `kName`, `name_`, `PascalCase()`.
 - **Formatting:** 4 spaces, CRLF, `if (x){`, `}else{`, `namespace X{`, `class A : public B{`,
   always braced multi-line bodies. No 80-column limit. Wrap long parameter lists the way
-  nearby code does. Close namespaces with a bare `}`.
+  nearby code does. Close named namespaces with `} // namespace Name` and anonymous
+  namespaces with `} // namespace`; the fork Code Health gate checks changed closes.
 - **`virtual ... override`** on overrides (Google says `override` alone).
 - **Guards and includes:** `PokemonAutomation_<Name>_H`. Include order per
   IncludeOrder.md with the file's own header **last** (Google puts it first).
@@ -291,7 +294,13 @@ so keep it where it clearly pays off. `std::string_view` is the exception (see S
   `OperationFailedExceptionWithScreenshot::fire()` / `throw_and_log<OperationFailedException>`.
   Config problem: `UserSetupError`. Programmer bug (Google's `CHECK`): `InternalProgramError`.
   Let `ProgramCancelledException` and `ProgramFinishedException` propagate.
-- **Forward declarations:** stricter than Google. None in our code; include the header.
+- **Forward declarations:** include real headers instead of forward-declaring types.
+  Function templates in headers declare their public API before internal helper
+  namespaces; internal helper templates are defined in place. Definitions stay
+  in the same header; this is not permission to forward-declare external types.
+- **Header documentation:** comment every namespace-scope symbol, including
+  types, aliases, constants and internal helpers. A function definition may reuse
+  its documented declaration in the same header. Code Health checks changed symbols.
 - **Unsigned:** counts and indexes are `size_t` / `uint8_t` (Google prefers `int`).
   Match that, and see TotW #227 below.
 - **Callbacks:** APIs such as `run_until()` take `std::function<...>&&`. Match the API

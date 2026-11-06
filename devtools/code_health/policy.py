@@ -1,23 +1,43 @@
 """Compare changed C++ with its base revision; no stored debt registry."""
+from collections import Counter, defaultdict
+
 from .allow import ceiling as bypass_ceiling
 from .config import ADVISORY, HINTS
 from .findings import Finding
 
 
-def base_values(previous):
+def base_values(previous, current=()):
     old = {}
+    current_keys = {metric.key for metric in current}
+    current_moves = Counter(move_key(metric) for metric in current if metric.declaration_identity)
+    moved = defaultdict(dict)
     for metric in previous:
         old[metric.key] = max(old.get(metric.key, 0), metric.value)
+        if metric.declaration_identity is not None and metric.key not in current_keys:
+            moved[move_key(metric)][metric.key] = metric.value
+    for key, candidates in moved.items():
+        if len(candidates) == 1 and current_moves[key] == 1:
+            old[key] = next(iter(candidates.values()))
     return old
+
+
+def move_key(metric):
+    """A same-file namespace move with an unchanged, unambiguous declaration."""
+    return ('namespace_move', metric.path, metric.declaration_identity, metric.check)
+
+
+def base_value(metric, old, default):
+    return old.get(metric.key, old.get(move_key(metric), default))
 
 
 def evaluate(metrics, previous, allowed=None):
     """Failures for values above both the limit and the base; `allowed` maps metrics to tags."""
-    old = base_values(previous)
+    metrics = list(metrics)
+    old = base_values(previous, metrics)
     allowed = allowed or {}
     failures = []
     for metric in metrics:
-        ceiling = max(metric.limit, old.get(metric.key, metric.limit))
+        ceiling = max(metric.limit, base_value(metric, old, metric.limit))
         if metric.value <= ceiling:
             continue
         message = (f'{metric.symbol or "<file>"}: {metric.check}={metric.value}, '
@@ -56,11 +76,12 @@ def advisories(metrics, previous):
     """New or changed values between an advisory floor and the limit; legacy excess is not repeated.
 
     Every changed file above its floor is reported: the file changed even if its length did not."""
-    old = base_values(previous)
+    metrics = list(metrics)
+    old = base_values(previous, metrics)
     notes = []
     for metric in metrics:
         floor = ADVISORY.get(metric.check)
-        if floor is None or (metric.check != 'file_lines' and old.get(metric.key) == metric.value):
+        if floor is None or (metric.check != 'file_lines' and base_value(metric, old, None) == metric.value):
             continue
         if floor < metric.value <= metric.limit:
             notes.append(Finding(metric.path, metric.line, f'{metric.symbol or "<file>"}: '
