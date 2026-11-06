@@ -185,6 +185,10 @@ public:
     //Fly back to Central Plaza. Leaving the cave respawns its Pokemon.
     virtual void return_to_plaza() = 0;
 
+    //At Central Plaza, read the quest panel. Returns whether this quest is still on it: the game
+    //removes a quest once it is completed.
+    virtual bool quest_on_board() = 0;
+
     //Walk to the nurse and heal, then fly to the Central Plaza fly point again: the flight to
     //Chargestone moves the map cursor from there.
     virtual void heal() = 0;
@@ -198,6 +202,9 @@ struct BBQAutoBattlePolicy{
     std::chrono::minutes time_limit = std::chrono::minutes(35);
     //Between passes, heal only if the lead's HP is below this percentage or unknown.
     uint8_t heal_below_hp_percent = 50;
+    //After a pass that ends this close to the target, read the board before going again, and
+    //stop if the quest is gone. 0 never reads it.
+    uint64_t check_board_within_kills = 2;
 };
 
 //Why run_auto_battle() returned.
@@ -205,6 +212,7 @@ enum class BBQAutoBattleResult{
     TargetReached,
     NoKills,        //max_empty_passes passes in a row had no kill.
     TimeLimit,
+    QuestDone,      //The quest left the board before the heard kills reached the target.
 };
 
 //Clear Chargestone Cavern, one pass at a time, until the kills reach the target, and return why
