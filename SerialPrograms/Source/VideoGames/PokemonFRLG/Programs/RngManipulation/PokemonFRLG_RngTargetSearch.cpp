@@ -34,7 +34,7 @@ const uint32_t LCRNG_ADD_INVERSE = 0x0a3561a1;
 //  The GBA frame rate, as Ten Lines uses it (SYSTEM_TIMING_DATA in src/tenLines/index.ts).
 const double GBA_FRAMES_PER_SECOND = 16777216.0 / 280896.0;
 
-}
+} // namespace
 
 
 uint32_t lcrng_next(uint32_t state){
@@ -373,7 +373,7 @@ void search_iv_states(const LowBitsTable& table, const AdvIVs& min_ivs, TargetCo
     }
 }
 
-}
+} // namespace
 
 
 std::vector<RngTarget> search_rng_targets(
@@ -412,6 +412,6 @@ void rank_rng_targets(std::vector<RngTarget>& targets){
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

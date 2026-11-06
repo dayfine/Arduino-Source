@@ -36,11 +36,12 @@ ImageFloatBox save_card_title_box();
 std::string read_save_card_location(Logger& logger, Language language, const ImageViewRGB32& screen);
 
 
+//  Registers save card reader unit tests.
 void add_tests_SaveCardReader(UnitTestDatabase& database);
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

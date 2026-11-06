@@ -33,22 +33,36 @@ namespace PokemonFRLG{
 
 namespace{
 
+struct AutoStoryInput{
+    std::string name;
+    UnitTestResult (*body)();
+};
+
+struct AutoStoryExpectation{
+    const char* description;
+};
+
+struct AutoStoryTestCase{
+    AutoStoryInput input;
+    AutoStoryExpectation expectation;
+};
+
 class Test_AutoStory : public UnitTest{
 public:
-    Test_AutoStory(std::string name, std::function<UnitTestResult()> body)
-        : UnitTest("PokemonFRLG::AutoStory - " + std::move(name))
-        , m_body(std::move(body))
+    explicit Test_AutoStory(AutoStoryTestCase scenario)
+        : UnitTest("PokemonFRLG::AutoStory - " + scenario.input.name)
+        , m_scenario(std::move(scenario))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
         try{
-            return m_body();
+            return m_scenario.input.body();
         }catch (Exception& e){
             return std::string(e.name()) + ": " + e.message();
         }
     }
 
 private:
-    std::function<UnitTestResult()> m_body;
+    AutoStoryTestCase m_scenario;
 };
 
 const MapData* find_map_named(const std::string& name){
@@ -831,29 +845,77 @@ UnitTestResult test_option_presses(){
     return true;
 }
 
-}
+const AutoStoryTestCase AUTO_STORY_CASES[] = {
+    {
+        .input = {.name = "every route plans, and checkpoints chain", .body = test_routes_and_chain},
+        .expectation = {.description = "verifies route planning validity across all chained checkpoints"},
+    },
+    {
+        .input = {.name = "step names are unique per checkpoint", .body = test_unique_names},
+        .expectation = {.description = "ensures step identifier uniqueness within checkpoints"},
+    },
+    {
+        .input = {.name = "every save has a place on the save card", .body = test_save_places},
+        .expectation = {.description = "validates save location identifiers on save card"},
+    },
+    {
+        .input = {.name = "a reload's save is checked against the start", .body = test_save_place_error},
+        .expectation = {.description = "detects mismatch between checkpoint initial state and save point"},
+    },
+    {
+        .input = {.name = "save dialogs: every YES/NO is YES, a cancel fails", .body = test_save_dialog},
+        .expectation = {.description = "verifies save confirmation prompt interactions"},
+    },
+    {
+        .input = {.name = "every checkpoint lints clean", .body = test_lint},
+        .expectation = {.description = "validates semantic lint rules across story step sequence"},
+    },
+    {
+        .input = {.name = "Pewter Gym walks", .body = test_pewter_gym_walks},
+        .expectation = {.description = "verifies Pewter Gym route planning and obstacle avoidance"},
+    },
+    {
+        .input = {.name = "Pewter: to the aide's trigger", .body = test_pewter_aide_walk},
+        .expectation = {.description = "plans path to Running Shoes aide trigger tile"},
+    },
+    {
+        .input = {.name = "routes run after the Running Shoes", .body = test_runs_after_shoes},
+        .expectation = {.description = "switches movement speed to running once shoes acquired"},
+    },
+    {
+        .input = {.name = "intro: names, the rival's from the list", .body = test_intro_names},
+        .expectation = {.description = "verifies character and rival naming inputs"},
+    },
+    {
+        .input = {.name = "options: RIGHT presses from the shown value", .body = test_option_presses},
+        .expectation = {.description = "calculates Dpad RIGHT inputs for setting game options"},
+    },
+    {
+        .input = {.name = "Route 3: only the planned trainers' lines", .body = test_trainer_lines},
+        .expectation = {.description = "verifies route 3 trainer interaction sightlines"},
+    },
+    {
+        .input = {.name = "Route 3: Lass Robin stops the walk on (40, 9)", .body = test_robin_crossing},
+        .expectation = {.description = "verifies trainer interruption on route 3"},
+    },
+    {
+        .input = {.name = "00.12c: the Magikarp's deposit is skipped without Gift RNG", .body = test_magikarp_deposit_skippable},
+        .expectation = {.description = "skips magikarp deposit when gift rng is disabled"},
+    },
+};
+
+} // namespace
 
 
 void add_tests_AutoStory(UnitTestDatabase& database){
     add_tests_AutoStoryRunPlan(database);
-    database.add<Test_AutoStory>("every route plans, and checkpoints chain", test_routes_and_chain);
-    database.add<Test_AutoStory>("step names are unique per checkpoint", test_unique_names);
-    database.add<Test_AutoStory>("every save has a place on the save card", test_save_places);
-    database.add<Test_AutoStory>("a reload's save is checked against the start", test_save_place_error);
-    database.add<Test_AutoStory>("save dialogs: every YES/NO is YES, a cancel fails", test_save_dialog);
-    database.add<Test_AutoStory>("every checkpoint lints clean", test_lint);
-    database.add<Test_AutoStory>("Pewter Gym walks", test_pewter_gym_walks);
-    database.add<Test_AutoStory>("Pewter: to the aide's trigger", test_pewter_aide_walk);
-    database.add<Test_AutoStory>("routes run after the Running Shoes", test_runs_after_shoes);
-    database.add<Test_AutoStory>("Route 3: only the planned trainers' lines", test_trainer_lines);
-    database.add<Test_AutoStory>("Route 3: Lass Robin stops the walk on (40, 9)", test_robin_crossing);
-    database.add<Test_AutoStory>("intro: names, the rival's from the list", test_intro_names);
-    database.add<Test_AutoStory>("options: RIGHT presses from the shown value", test_option_presses);
-    database.add<Test_AutoStory>("00.12c: the Magikarp's deposit is skipped without Gift RNG", test_magikarp_deposit_skippable);
+    for (const auto& scenario : AUTO_STORY_CASES){
+        database.add<Test_AutoStory>(scenario);
+    }
 }
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

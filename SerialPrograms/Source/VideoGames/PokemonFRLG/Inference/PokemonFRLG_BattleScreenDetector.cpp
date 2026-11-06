@@ -31,6 +31,6 @@ bool BattleScreenDetector::detect(const ImageViewRGB32& screen){
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

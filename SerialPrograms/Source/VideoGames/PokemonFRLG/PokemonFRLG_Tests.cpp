@@ -294,27 +294,35 @@ void add_tests_ExitWildBattle(UnitTestDatabase& database){
 //  Naming screen keyboard: cursor moves, plans and text checks, against pokefirered's
 //  src/naming_screen.c.
 
-struct NamingCursorScenario{
+struct NamingCursorInput{
     std::string name = "";
     NamingCursor start = {};
     std::vector<NamingAction> actions = {};
+};
+
+struct NamingCursorExpectation{
     NamingCursor expected = {};
+};
+
+struct NamingCursorScenario{
+    NamingCursorInput input;
+    NamingCursorExpectation expectation;
 };
 
 class Test_NamingCursor : public UnitTest{
 public:
-    Test_NamingCursor(NamingCursorScenario scenario)
-        : UnitTest("PokemonFRLG::NamingScreen cursor - " + scenario.name)
+    explicit Test_NamingCursor(NamingCursorScenario scenario)
+        : UnitTest("PokemonFRLG::NamingScreen cursor - " + scenario.input.name)
         , m_scenario(std::move(scenario))
     {}
 
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        NamingCursor cursor = m_scenario.start;
-        for (NamingAction action : m_scenario.actions){
+        NamingCursor cursor = m_scenario.input.start;
+        for (NamingAction action : m_scenario.input.actions){
             cursor = apply_naming_action(cursor, action);
         }
-        if (cursor != m_scenario.expected){
-            return "After " + to_string(m_scenario.actions) + ": expected " + to_string(m_scenario.expected)
+        if (cursor != m_scenario.expectation.expected){
+            return "After " + to_string(m_scenario.input.actions) + ": expected " + to_string(m_scenario.expectation.expected)
                 + ", got " + to_string(cursor);
         }
         return true;
@@ -324,148 +332,200 @@ private:
     const NamingCursorScenario m_scenario;
 };
 
-//  Crossing and moving on the button column.
-std::vector<NamingCursorScenario> naming_cursor_button_column_scenarios(){
-    using enum NamingAction;
-    using enum NamingScreenPage;
-    return {
-        {
+const NamingCursorScenario NAMING_CURSOR_CASES[] = {
+    //  Crossing and moving on the button column.
+    {
+        .input = {
             .name = "left from A goes to the page button",
-            .actions = {LEFT},
-            .expected = {.page = UPPER, .row = 0, .column = 8, .remembered_row = 1},
+            .actions = {NamingAction::LEFT},
         },
-        {
+        .expectation = {
+            .expected = {.page = NamingScreenPage::UPPER, .row = 0, .column = 8, .remembered_row = 1},
+        },
+    },
+    {
+        .input = {
             .name = "left and right return to A",
-            .actions = {LEFT, RIGHT},
-            .expected = {.page = UPPER, .row = 0, .column = 0, .remembered_row = 1},
+            .actions = {NamingAction::LEFT, NamingAction::RIGHT},
         },
-        {
-            //  Rows 1 and 2 share the back button; the game remembers which one it came from.
+        .expectation = {
+            .expected = {.page = NamingScreenPage::UPPER, .row = 0, .column = 0, .remembered_row = 1},
+        },
+    },
+    {
+        .input = {
             .name = "row 1 crosses the button column",
-            .start = {.page = UPPER, .row = 1, .column = 0},
-            .actions = {LEFT, RIGHT},
-            .expected = {.page = UPPER, .row = 1, .column = 0, .remembered_row = 1},
+            .start = {.page = NamingScreenPage::UPPER, .row = 1, .column = 0},
+            .actions = {NamingAction::LEFT, NamingAction::RIGHT},
         },
-        {
+        .expectation = {
+            .expected = {.page = NamingScreenPage::UPPER, .row = 1, .column = 0, .remembered_row = 1},
+        },
+    },
+    {
+        .input = {
             .name = "row 2 crosses the button column",
-            .start = {.page = UPPER, .row = 2, .column = 0},
-            .actions = {LEFT, RIGHT},
-            .expected = {.page = UPPER, .row = 2, .column = 0, .remembered_row = 2},
+            .start = {.page = NamingScreenPage::UPPER, .row = 2, .column = 0},
+            .actions = {NamingAction::LEFT, NamingAction::RIGHT},
         },
-        {
+        .expectation = {
+            .expected = {.page = NamingScreenPage::UPPER, .row = 2, .column = 0, .remembered_row = 2},
+        },
+    },
+    {
+        .input = {
             .name = "row 3 crosses the OK button",
-            .start = {.page = UPPER, .row = 3, .column = 0},
-            .actions = {LEFT, RIGHT},
-            .expected = {.page = UPPER, .row = 3, .column = 0, .remembered_row = 2},
+            .start = {.page = NamingScreenPage::UPPER, .row = 3, .column = 0},
+            .actions = {NamingAction::LEFT, NamingAction::RIGHT},
         },
-        {
+        .expectation = {
+            .expected = {.page = NamingScreenPage::UPPER, .row = 3, .column = 0, .remembered_row = 2},
+        },
+    },
+    {
+        .input = {
             .name = "right from the last column wraps through the buttons",
-            .start = {.page = UPPER, .row = 0, .column = 7},
-            .actions = {RIGHT, RIGHT},
-            .expected = {.page = UPPER, .row = 0, .column = 0, .remembered_row = 1},
+            .start = {.page = NamingScreenPage::UPPER, .row = 0, .column = 7},
+            .actions = {NamingAction::RIGHT, NamingAction::RIGHT},
         },
-        {
-            //  Moving on the button column overwrites the remembered row with BACK.
+        .expectation = {
+            .expected = {.page = NamingScreenPage::UPPER, .row = 0, .column = 0, .remembered_row = 1},
+        },
+    },
+    {
+        .input = {
             .name = "moving on the button column forgets row 2",
-            .start = {.page = UPPER, .row = 2, .column = 0},
-            .actions = {LEFT, UP, DOWN, RIGHT},
-            .expected = {.page = UPPER, .row = 1, .column = 0, .remembered_row = 1},
+            .start = {.page = NamingScreenPage::UPPER, .row = 2, .column = 0},
+            .actions = {NamingAction::LEFT, NamingAction::UP, NamingAction::DOWN, NamingAction::RIGHT},
         },
-    };
-}
-//  Wrap-around on the keys and the button column.
-std::vector<NamingCursorScenario> naming_cursor_wrap_scenarios(){
-    using enum NamingAction;
-    using enum NamingScreenPage;
-    return {
-        {
+        .expectation = {
+            .expected = {.page = NamingScreenPage::UPPER, .row = 1, .column = 0, .remembered_row = 1},
+        },
+    },
+    //  Wrap-around on the keys and the button column.
+    {
+        .input = {
             .name = "button column wraps over three buttons",
-            .start = {.page = UPPER, .row = 0, .column = 8, .remembered_row = 1},
-            .actions = {UP},
-            .expected = {.page = UPPER, .row = 2, .column = 8, .remembered_row = 2},
+            .start = {.page = NamingScreenPage::UPPER, .row = 0, .column = 8, .remembered_row = 1},
+            .actions = {NamingAction::UP},
         },
-        {
+        .expectation = {
+            .expected = {.page = NamingScreenPage::UPPER, .row = 2, .column = 8, .remembered_row = 2},
+        },
+    },
+    {
+        .input = {
             .name = "rows wrap up",
-            .actions = {UP},
-            .expected = {.page = UPPER, .row = 3, .column = 0},
+            .actions = {NamingAction::UP},
         },
-        {
+        .expectation = {
+            .expected = {.page = NamingScreenPage::UPPER, .row = 3, .column = 0},
+        },
+    },
+    {
+        .input = {
             .name = "rows wrap down",
-            .start = {.page = UPPER, .row = 3, .column = 0},
-            .actions = {DOWN},
-            .expected = {.page = UPPER, .row = 0, .column = 0},
+            .start = {.page = NamingScreenPage::UPPER, .row = 3, .column = 0},
+            .actions = {NamingAction::DOWN},
         },
-        {
+        .expectation = {
+            .expected = {.page = NamingScreenPage::UPPER, .row = 0, .column = 0},
+        },
+    },
+    {
+        .input = {
             .name = "symbols page has six key columns",
-            .start = {.page = SYMBOLS, .row = 0, .column = 0},
-            .actions = {LEFT, LEFT},
-            .expected = {.page = SYMBOLS, .row = 0, .column = 5, .remembered_row = 1},
+            .start = {.page = NamingScreenPage::SYMBOLS, .row = 0, .column = 0},
+            .actions = {NamingAction::LEFT, NamingAction::LEFT},
         },
-    };
-}
-//  SELECT and START.
-std::vector<NamingCursorScenario> naming_cursor_page_scenarios(){
-    using enum NamingAction;
-    using enum NamingScreenPage;
-    return {
-        {
+        .expectation = {
+            .expected = {.page = NamingScreenPage::SYMBOLS, .row = 0, .column = 5, .remembered_row = 1},
+        },
+    },
+    //  SELECT and START.
+    {
+        .input = {
             .name = "SELECT goes to lower case",
-            .actions = {SELECT},
-            .expected = {.page = LOWER, .row = 0, .column = 0},
+            .actions = {NamingAction::SELECT},
         },
-        {
+        .expectation = {
+            .expected = {.page = NamingScreenPage::LOWER, .row = 0, .column = 0},
+        },
+    },
+    {
+        .input = {
             .name = "SELECT twice goes to symbols",
-            .actions = {SELECT, SELECT},
-            .expected = {.page = SYMBOLS, .row = 0, .column = 0},
+            .actions = {NamingAction::SELECT, NamingAction::SELECT},
         },
-        {
+        .expectation = {
+            .expected = {.page = NamingScreenPage::SYMBOLS, .row = 0, .column = 0},
+        },
+    },
+    {
+        .input = {
             .name = "SELECT three times returns to upper case",
-            .actions = {SELECT, SELECT, SELECT},
-            .expected = {.page = UPPER, .row = 0, .column = 0},
+            .actions = {NamingAction::SELECT, NamingAction::SELECT, NamingAction::SELECT},
         },
-        {
+        .expectation = {
+            .expected = {.page = NamingScreenPage::UPPER, .row = 0, .column = 0},
+        },
+    },
+    {
+        .input = {
             .name = "SELECT moves the cursor into the symbols columns",
-            .start = {.page = UPPER, .row = 0, .column = 7},
-            .actions = {SELECT, SELECT, SELECT},
-            .expected = {.page = UPPER, .row = 0, .column = 5},
+            .start = {.page = NamingScreenPage::UPPER, .row = 0, .column = 7},
+            .actions = {NamingAction::SELECT, NamingAction::SELECT, NamingAction::SELECT},
         },
-        {
+        .expectation = {
+            .expected = {.page = NamingScreenPage::UPPER, .row = 0, .column = 5},
+        },
+    },
+    {
+        .input = {
             .name = "SELECT keeps the cursor on the button column",
-            .start = {.page = UPPER, .row = 1, .column = 8, .remembered_row = 1},
-            .actions = {SELECT, SELECT},
-            .expected = {.page = SYMBOLS, .row = 1, .column = 6, .remembered_row = 1},
+            .start = {.page = NamingScreenPage::UPPER, .row = 1, .column = 8, .remembered_row = 1},
+            .actions = {NamingAction::SELECT, NamingAction::SELECT},
         },
-        {
+        .expectation = {
+            .expected = {.page = NamingScreenPage::SYMBOLS, .row = 1, .column = 6, .remembered_row = 1},
+        },
+    },
+    {
+        .input = {
             .name = "START goes to OK",
-            .start = {.page = LOWER, .row = 1, .column = 3},
-            .actions = {START},
-            .expected = {.page = LOWER, .row = 2, .column = 8},
+            .start = {.page = NamingScreenPage::LOWER, .row = 1, .column = 3},
+            .actions = {NamingAction::START},
         },
-        {
+        .expectation = {
+            .expected = {.page = NamingScreenPage::LOWER, .row = 2, .column = 8},
+        },
+    },
+    {
+        .input = {
             .name = "START goes to OK on symbols",
-            .start = {.page = SYMBOLS, .row = 0, .column = 0},
-            .actions = {START},
-            .expected = {.page = SYMBOLS, .row = 2, .column = 6},
+            .start = {.page = NamingScreenPage::SYMBOLS, .row = 0, .column = 0},
+            .actions = {NamingAction::START},
         },
-    };
-}
+        .expectation = {
+            .expected = {.page = NamingScreenPage::SYMBOLS, .row = 2, .column = 6},
+        },
+    },
+};
+
 void add_tests_NamingCursor(UnitTestDatabase& database){
-    for (auto scenarios : {
-        naming_cursor_button_column_scenarios(),
-        naming_cursor_wrap_scenarios(),
-        naming_cursor_page_scenarios(),
-    }){
-        for (const NamingCursorScenario& scenario : scenarios){
-            database.add<Test_NamingCursor>(scenario);
-        }
+    for (const NamingCursorScenario& scenario : NAMING_CURSOR_CASES){
+        database.add<Test_NamingCursor>(scenario);
     }
 }
 
 
-struct NamingPlanScenario{
+struct NamingPlanInput{
     std::string name = "";
     std::string text = "";
     NamingScreenKind kind = NamingScreenKind::PLAYER;
+};
+
+struct NamingPlanExpectation{
     //  What the game shows when it differs from `text` (another spelling of a key).
     std::string typed = "";
     //  The exact plan, when the shortest one is unique; "" to skip.
@@ -474,48 +534,62 @@ struct NamingPlanScenario{
     size_t expected_presses = 0;
 };
 
+struct NamingPlanScenario{
+    NamingPlanInput input;
+    NamingPlanExpectation expectation;
+};
+
+std::string replay_naming_plan(
+    const std::vector<NamingAction>& actions,
+    const std::string& plan,
+    const NamingPlanScenario& scenario
+){
+    std::string typed;
+    NamingCursor cursor;
+    for (size_t i = 0; i < actions.size(); i++){
+        cursor = apply_naming_action(cursor, actions[i]);
+        if (actions[i] != NamingAction::A){
+            continue;
+        }
+        const uint8_t columns = NAMING_SCREEN_KEY_COLUMNS[(size_t)cursor.page];
+        if (i + 1 == actions.size()){
+            if (cursor.column != columns || cursor.row != NAMING_SCREEN_BUTTON_OK){
+                return "The last A is not on OK but on " + to_string(cursor) + ": " + plan;
+            }
+            break;
+        }
+        if (cursor.column >= columns){
+            return "A pressed on the button column at " + to_string(cursor) + ": " + plan;
+        }
+        typed += NAMING_SCREEN_KEYS[(size_t)cursor.page][cursor.row][cursor.column];
+    }
+    const std::string& expected = scenario.expectation.typed.empty() ? scenario.input.text : scenario.expectation.typed;
+    if (typed != expected){
+        return "Expected the plan to type \"" + expected + "\", it types \"" + typed + "\": " + plan;
+    }
+    return "";
+}
+
 class Test_NamingPlan : public UnitTest{
 public:
-    Test_NamingPlan(NamingPlanScenario scenario)
-        : UnitTest("PokemonFRLG::NamingScreen plan - " + scenario.name)
+    explicit Test_NamingPlan(NamingPlanScenario scenario)
+        : UnitTest("PokemonFRLG::NamingScreen plan - " + scenario.input.name)
         , m_scenario(std::move(scenario))
     {}
 
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        const std::vector<NamingAction> actions = plan_naming_input(m_scenario.text, m_scenario.kind);
+        const std::vector<NamingAction> actions = plan_naming_input(m_scenario.input.text, m_scenario.input.kind);
         const std::string plan = to_string(actions);
-        if (!m_scenario.expected_actions.empty() && plan != m_scenario.expected_actions){
-            return "Expected plan: " + m_scenario.expected_actions + "\nActual plan:   " + plan;
+        if (!m_scenario.expectation.expected_actions.empty() && plan != m_scenario.expectation.expected_actions){
+            return "Expected plan: " + m_scenario.expectation.expected_actions + "\nActual plan:   " + plan;
         }
-        if (m_scenario.expected_presses != 0 && actions.size() != m_scenario.expected_presses){
-            return "Expected " + std::to_string(m_scenario.expected_presses) + " presses, got "
+        if (m_scenario.expectation.expected_presses != 0 && actions.size() != m_scenario.expectation.expected_presses){
+            return "Expected " + std::to_string(m_scenario.expectation.expected_presses) + " presses, got "
                 + std::to_string(actions.size()) + ": " + plan;
         }
-
-        //  Replay the plan: every A but the last types the key under the cursor, and the last
-        //  presses OK.
-        std::string typed;
-        NamingCursor cursor;
-        for (size_t i = 0; i < actions.size(); i++){
-            cursor = apply_naming_action(cursor, actions[i]);
-            if (actions[i] != NamingAction::A){
-                continue;
-            }
-            const uint8_t columns = NAMING_SCREEN_KEY_COLUMNS[(size_t)cursor.page];
-            if (i + 1 == actions.size()){
-                if (cursor.column != columns || cursor.row != NAMING_SCREEN_BUTTON_OK){
-                    return "The last A is not on OK but on " + to_string(cursor) + ": " + plan;
-                }
-                break;
-            }
-            if (cursor.column >= columns){
-                return "A pressed on the button column at " + to_string(cursor) + ": " + plan;
-            }
-            typed += NAMING_SCREEN_KEYS[(size_t)cursor.page][cursor.row][cursor.column];
-        }
-        const std::string& expected = m_scenario.typed.empty() ? m_scenario.text : m_scenario.typed;
-        if (typed != expected){
-            return "Expected the plan to type \"" + expected + "\", it types \"" + typed + "\": " + plan;
+        std::string replay_error = replay_naming_plan(actions, plan, m_scenario);
+        if (!replay_error.empty()){
+            return replay_error;
         }
         return true;
     }
@@ -524,70 +598,132 @@ private:
     const NamingPlanScenario m_scenario;
 };
 
-void add_tests_NamingPlan(UnitTestDatabase& database){
-    using enum NamingScreenKind;
-    const NamingPlanScenario scenarios[] = {
-        {.name = "starts on A", .text = "A", .expected_actions = "A START A"},
-        {.name = "next key", .text = "AB", .expected_actions = "A RIGHT A START A"},
-        {.name = "next row", .text = "AG", .expected_actions = "A DOWN A START A"},
-        {.name = "rows wrap", .text = "T", .expected_actions = "UP A START A"},
-        {
+const NamingPlanScenario NAMING_PLAN_CASES[] = {
+    {
+        .input = {.name = "starts on A", .text = "A"},
+        .expectation = {.expected_actions = "A START A"},
+    },
+    {
+        .input = {.name = "next key", .text = "AB"},
+        .expectation = {.expected_actions = "A RIGHT A START A"},
+    },
+    {
+        .input = {.name = "next row", .text = "AG"},
+        .expectation = {.expected_actions = "A DOWN A START A"},
+    },
+    {
+        .input = {.name = "rows wrap", .text = "T"},
+        .expectation = {.expected_actions = "UP A START A"},
+    },
+    {
+        .input = {
             .name = "columns wrap through the button column",
             .text = ".",
-            .expected_actions = "LEFT LEFT A START A",
         },
-        {.name = "lower case page", .text = "a", .expected_actions = "SELECT A START A"},
-        {.name = "symbols page", .text = "0", .expected_actions = "SELECT SELECT A START A"},
-        {
-            //  The cursor moves from column 7 to the symbols page's last column, 5.
+        .expectation = {.expected_actions = "LEFT LEFT A START A"},
+    },
+    {
+        .input = {.name = "lower case page", .text = "a"},
+        .expectation = {.expected_actions = "SELECT A START A"},
+    },
+    {
+        .input = {.name = "symbols page", .text = "0"},
+        .expectation = {.expected_actions = "SELECT SELECT A START A"},
+    },
+    {
+        .input = {
             .name = "page change moves the cursor into the symbols columns",
             .text = ".4",
-            .expected_actions = "LEFT LEFT A SELECT SELECT LEFT A START A",
         },
-        {.name = "both ways round", .text = "Z", .expected_presses = 7},
-        {.name = "male sign", .text = "\xE2\x99\x82", .expected_presses = 9},
-        {.name = "full player name", .text = "ABCDEFG", .expected_presses = 19},
-        {.name = "mixed case", .text = "Gary", .expected_presses = 16},
-        {.name = "space", .text = "A B", .expected_presses = 12},
-        {.name = "full nickname", .text = "BULBASAURS", .kind = POKEMON},
-        {.name = "female sign", .text = "NIDORAN\xE2\x99\x80", .kind = POKEMON},
-        {.name = "box name", .text = "BOX 1-2!", .kind = BOX},
-        {.name = "rival", .text = "Blue?", .kind = RIVAL},
-        {
+        .expectation = {.expected_actions = "LEFT LEFT A SELECT SELECT LEFT A START A"},
+    },
+    {
+        .input = {.name = "both ways round", .text = "Z"},
+        .expectation = {.expected_presses = 7},
+    },
+    {
+        .input = {.name = "male sign", .text = "\xE2\x99\x82"},
+        .expectation = {.expected_presses = 9},
+    },
+    {
+        .input = {.name = "full player name", .text = "ABCDEFG"},
+        .expectation = {.expected_presses = 19},
+    },
+    {
+        .input = {.name = "mixed case", .text = "Gary"},
+        .expectation = {.expected_presses = 16},
+    },
+    {
+        .input = {.name = "space", .text = "A B"},
+        .expectation = {.expected_presses = 12},
+    },
+    {
+        .input = {.name = "full nickname", .text = "BULBASAURS", .kind = NamingScreenKind::POKEMON},
+        .expectation = {},
+    },
+    {
+        .input = {.name = "female sign", .text = "NIDORAN\xE2\x99\x80", .kind = NamingScreenKind::POKEMON},
+        .expectation = {},
+    },
+    {
+        .input = {.name = "box name", .text = "BOX 1-2!", .kind = NamingScreenKind::BOX},
+        .expectation = {},
+    },
+    {
+        .input = {.name = "rival", .text = "Blue?", .kind = NamingScreenKind::RIVAL},
+        .expectation = {},
+    },
+    {
+        .input = {
             .name = "symbols row 4",
             .text = "\xE2\x80\xA6\xE2\x80\x9C\xE2\x80\x9D\xE2\x80\x98'",
-            .kind = POKEMON,
+            .kind = NamingScreenKind::POKEMON,
         },
-        {.name = "curly apostrophe", .text = "IT\xE2\x80\x99S", .typed = "IT'S"},
-    };
-    for (const NamingPlanScenario& scenario : scenarios){
+        .expectation = {},
+    },
+    {
+        .input = {.name = "curly apostrophe", .text = "IT\xE2\x80\x99S"},
+        .expectation = {.typed = "IT'S"},
+    },
+};
+
+void add_tests_NamingPlan(UnitTestDatabase& database){
+    for (const NamingPlanScenario& scenario : NAMING_PLAN_CASES){
         database.add<Test_NamingPlan>(scenario);
     }
 }
 
 
-struct NamingKeysScenario{
+struct NamingKeysInput{
     std::string name = "";
     std::string text = "";
     NamingScreenKind kind = NamingScreenKind::PLAYER;
+};
+
+struct NamingKeysExpectation{
     //  The exact plan, when the shortest one is unique; "" to skip.
     std::string expected_actions = "";
+};
+
+struct NamingKeysScenario{
+    NamingKeysInput input;
+    NamingKeysExpectation expectation;
 };
 
 //  plan_naming_keys() stops before OK: it is plan_naming_input() without the final START A.
 class Test_NamingKeys : public UnitTest{
 public:
-    Test_NamingKeys(NamingKeysScenario scenario)
-        : UnitTest("PokemonFRLG::NamingScreen keys only - " + scenario.name)
+    explicit Test_NamingKeys(NamingKeysScenario scenario)
+        : UnitTest("PokemonFRLG::NamingScreen keys only - " + scenario.input.name)
         , m_scenario(std::move(scenario))
     {}
 
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        const std::string keys = to_string(plan_naming_keys(m_scenario.text, m_scenario.kind));
-        if (!m_scenario.expected_actions.empty() && keys != m_scenario.expected_actions){
-            return "Expected keys: " + m_scenario.expected_actions + "\nActual keys:   " + keys;
+        const std::string keys = to_string(plan_naming_keys(m_scenario.input.text, m_scenario.input.kind));
+        if (!m_scenario.expectation.expected_actions.empty() && keys != m_scenario.expectation.expected_actions){
+            return "Expected keys: " + m_scenario.expectation.expected_actions + "\nActual keys:   " + keys;
         }
-        const std::string input = to_string(plan_naming_input(m_scenario.text, m_scenario.kind));
+        const std::string input = to_string(plan_naming_input(m_scenario.input.text, m_scenario.input.kind));
         if (input != keys + " START A"){
             return "Expected the confirmed plan to be \"" + keys + " START A\", got \"" + input + "\"";
         }
@@ -598,82 +734,143 @@ private:
     const NamingKeysScenario m_scenario;
 };
 
+const NamingKeysScenario NAMING_KEYS_CASES[] = {
+    {
+        .input = {.name = "one key", .text = "A"},
+        .expectation = {.expected_actions = "A"},
+    },
+    {
+        .input = {.name = "next key", .text = "AB"},
+        .expectation = {.expected_actions = "A RIGHT A"},
+    },
+    {
+        .input = {.name = "lower case page", .text = "a"},
+        .expectation = {.expected_actions = "SELECT A"},
+    },
+    {
+        .input = {.name = "full player name", .text = "ABCDEFG"},
+        .expectation = {},
+    },
+    {
+        .input = {.name = "mixed case", .text = "Kosmos"},
+        .expectation = {},
+    },
+};
+
 void add_tests_NamingKeys(UnitTestDatabase& database){
-    using enum NamingScreenKind;
-    const NamingKeysScenario scenarios[] = {
-        {.name = "one key", .text = "A", .expected_actions = "A"},
-        {.name = "next key", .text = "AB", .expected_actions = "A RIGHT A"},
-        {.name = "lower case page", .text = "a", .expected_actions = "SELECT A"},
-        //  A full name: the game moves the cursor to OK by itself, but nothing presses it.
-        {.name = "full player name", .text = "ABCDEFG"},
-        {.name = "mixed case", .text = "Kosmos"},
-    };
-    for (const NamingKeysScenario& scenario : scenarios){
+    for (const NamingKeysScenario& scenario : NAMING_KEYS_CASES){
         database.add<Test_NamingKeys>(scenario);
     }
 }
 
 
-struct NamingTextScenario{
+struct NamingTextInput{
     std::string name = "";
     std::string text = "";
     NamingScreenKind kind = NamingScreenKind::PLAYER;
+};
+
+struct NamingTextExpectation{
     //  A part of the expected error; "" if the text is fine.
     std::string expected_error = "";
 };
 
+struct NamingTextScenario{
+    NamingTextInput input;
+    NamingTextExpectation expectation;
+};
+
 class Test_NamingText : public UnitTest{
 public:
-    Test_NamingText(NamingTextScenario scenario)
-        : UnitTest("PokemonFRLG::NamingScreen text - " + scenario.name)
+    explicit Test_NamingText(NamingTextScenario scenario)
+        : UnitTest("PokemonFRLG::NamingScreen text - " + scenario.input.name)
         , m_scenario(std::move(scenario))
     {}
 
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        const std::string error = naming_text_error(m_scenario.text, m_scenario.kind);
-        if (m_scenario.expected_error.empty()){
+        const std::string error = naming_text_error(m_scenario.input.text, m_scenario.input.kind);
+        if (m_scenario.expectation.expected_error.empty()){
             if (!error.empty()){
-                return "Expected \"" + m_scenario.text + "\" to be accepted, got: " + error;
+                return "Expected \"" + m_scenario.input.text + "\" to be accepted, got: " + error;
             }
             return true;
         }
-        if (error.find(m_scenario.expected_error) == std::string::npos){
-            return "Expected an error containing \"" + m_scenario.expected_error + "\", got: \"" + error + "\"";
+        if (error.find(m_scenario.expectation.expected_error) == std::string::npos){
+            return "Expected an error containing \"" + m_scenario.expectation.expected_error + "\", got: \"" + error + "\"";
         }
         try{
-            plan_naming_input(m_scenario.text, m_scenario.kind);
+            plan_naming_input(m_scenario.input.text, m_scenario.input.kind);
         }catch (InternalProgramError&){
             return true;
         }
-        return "Expected plan_naming_input() to throw for \"" + m_scenario.text + "\"";
+        return "Expected plan_naming_input() to throw for \"" + m_scenario.input.text + "\"";
     }
 
 private:
     const NamingTextScenario m_scenario;
 };
 
-void add_tests_NamingText(UnitTestDatabase& database){
-    using enum NamingScreenKind;
-    const NamingTextScenario scenarios[] = {
-        {.name = "player name of 7", .text = "ABCDEFG", .kind = PLAYER},
-        {.name = "player name of 8", .text = "ABCDEFGH", .kind = PLAYER, .expected_error = "at most 7"},
-        {.name = "rival name of 7", .text = "ABCDEFG", .kind = RIVAL},
-        {.name = "rival name of 8", .text = "ABCDEFGH", .kind = RIVAL, .expected_error = "at most 7"},
-        {.name = "box name of 8", .text = "ABCDEFGH", .kind = BOX},
-        {.name = "box name of 9", .text = "ABCDEFGHI", .kind = BOX, .expected_error = "at most 8"},
-        {.name = "nickname of 10", .text = "ABCDEFGHIJ", .kind = POKEMON},
-        {.name = "nickname of 11", .text = "ABCDEFGHIJK", .kind = POKEMON, .expected_error = "at most 10"},
-        {
-            //  Seven characters, 21 bytes.
+const NamingTextScenario NAMING_TEXT_CASES[] = {
+    {
+        .input = {.name = "player name of 7", .text = "ABCDEFG", .kind = NamingScreenKind::PLAYER},
+        .expectation = {},
+    },
+    {
+        .input = {.name = "player name of 8", .text = "ABCDEFGH", .kind = NamingScreenKind::PLAYER},
+        .expectation = {.expected_error = "at most 7"},
+    },
+    {
+        .input = {.name = "rival name of 7", .text = "ABCDEFG", .kind = NamingScreenKind::RIVAL},
+        .expectation = {},
+    },
+    {
+        .input = {.name = "rival name of 8", .text = "ABCDEFGH", .kind = NamingScreenKind::RIVAL},
+        .expectation = {.expected_error = "at most 7"},
+    },
+    {
+        .input = {.name = "box name of 8", .text = "ABCDEFGH", .kind = NamingScreenKind::BOX},
+        .expectation = {},
+    },
+    {
+        .input = {.name = "box name of 9", .text = "ABCDEFGHI", .kind = NamingScreenKind::BOX},
+        .expectation = {.expected_error = "at most 8"},
+    },
+    {
+        .input = {.name = "nickname of 10", .text = "ABCDEFGHIJ", .kind = NamingScreenKind::POKEMON},
+        .expectation = {},
+    },
+    {
+        .input = {.name = "nickname of 11", .text = "ABCDEFGHIJK", .kind = NamingScreenKind::POKEMON},
+        .expectation = {.expected_error = "at most 10"},
+    },
+    {
+        .input = {
             .name = "symbols count as one character",
             .text = "\xE2\x99\x82\xE2\x99\x82\xE2\x99\x82\xE2\x99\x82\xE2\x99\x82\xE2\x99\x82\xE2\x99\x82",
+            .kind = NamingScreenKind::PLAYER,
         },
-        {.name = "unknown character", .text = "Ash@", .expected_error = "type: \"@\""},
-        {.name = "unknown accented character", .text = "Jos\xC3\xA9", .expected_error = "type: \"\xC3\xA9\""},
-        {.name = "empty", .text = "", .expected_error = "empty"},
-        {.name = "only spaces", .text = "   ", .expected_error = "only spaces"},
-    };
-    for (const NamingTextScenario& scenario : scenarios){
+        .expectation = {},
+    },
+    {
+        .input = {.name = "unknown character", .text = "Ash@", .kind = NamingScreenKind::PLAYER},
+        .expectation = {.expected_error = "type: \"@\""},
+    },
+    {
+        .input = {.name = "unknown accented character", .text = "Jos\xC3\xA9", .kind = NamingScreenKind::PLAYER},
+        .expectation = {.expected_error = "type: \"\xC3\xA9\""},
+    },
+    {
+        .input = {.name = "empty", .text = "", .kind = NamingScreenKind::PLAYER},
+        .expectation = {.expected_error = "empty"},
+    },
+    {
+        .input = {.name = "only spaces", .text = "   ", .kind = NamingScreenKind::PLAYER},
+        .expectation = {.expected_error = "only spaces"},
+    },
+};
+
+void add_tests_NamingText(UnitTestDatabase& database){
+    for (const NamingTextScenario& scenario : NAMING_TEXT_CASES){
         database.add<Test_NamingText>(scenario);
     }
 }
@@ -690,11 +887,8 @@ void add_tests_RngManipulation(UnitTestDatabase& database){
     add_tests_GiftRngAttempts(database);
 }
 
-}
+} // namespace
 
-
-//  The menu readers AutoStory brought: the bag's and Marts' lists, the
-//  options, the save card and the summary's moves.
 static void add_tests_AutoStoryReaders(UnitTestDatabase& database){
     add_tests_ItemListReader(database);
     add_tests_OptionMenuReader(database);

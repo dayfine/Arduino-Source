@@ -53,9 +53,9 @@ const std::vector<RngTarget> TARGETS = {
 };
 
 
-}
+} // namespace RngPlanTestTargets
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

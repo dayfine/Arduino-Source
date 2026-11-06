@@ -64,6 +64,7 @@ inline constexpr Genes OWN_GENES{.iv = 15, .ev = 0, .nature = 0};
 //  HP a Potion heals.
 inline constexpr uint16_t POTION_HP = 20;
 
+//  Simulated battler status condition.
 enum class SimStatus{
     NONE,
     SLEEP,
@@ -71,6 +72,7 @@ enum class SimStatus{
     PARALYSIS,
 };
 
+//  A move in simulated combat.
 struct SimMove{
     std::string move = {};
     uint8_t pp = 0;
@@ -99,6 +101,7 @@ std::optional<SimBattler> own_battler(const PartyMember& lead, double hp_share =
 //  A trainer's Pokemon at full HP and PP.
 std::optional<SimBattler> trainer_battler(const TrainerMon& mon);
 
+//  Simulated opposing trainer state.
 struct SimTrainer{
     std::vector<SimBattler> party = {};
     //  Each used once; a used one becomes "".
@@ -193,7 +196,7 @@ void add_tests_AutoStoryBattleSim(UnitTestDatabase& database);
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

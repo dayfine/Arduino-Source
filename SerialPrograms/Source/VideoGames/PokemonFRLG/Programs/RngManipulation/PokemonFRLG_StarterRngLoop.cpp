@@ -79,7 +79,7 @@ std::string calibration_text(const std::optional<RngCalibrations>& calibration){
     return std::format("{:.2f}/{:.2f}/{:.2f}", calibration->seed_offset, calibration->csf_offset, calibration->ingame_offset);
 }
 
-}
+} // namespace
 
 std::string rng_log_state(const RngLoopState& state){
     return std::format(
@@ -143,7 +143,7 @@ std::string shiny_text(const RngResetLine& line){
     return hits.empty() ? "shiny, not known if on the target." : "shiny, not on the target.";
 }
 
-}
+} // namespace
 
 std::string rng_reset_line(const RngResetLine& line){
     const RngResetRead& read = line.read;
@@ -288,7 +288,7 @@ TryOutcome run_try_outcome(
     }
 }
 
-}
+} // namespace
 
 
 StarterRngLoopResult run_starter_rng_plan(
@@ -332,6 +332,6 @@ StarterRngLoopResult run_starter_rng_plan(
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

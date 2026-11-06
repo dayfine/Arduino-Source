@@ -22,6 +22,7 @@ namespace PokemonFRLG{
 namespace RngPlanTestTargets{
 
 
+//  Formats vector of integer values as space-delimited string.
 std::string join(const std::vector<uint16_t>& values);
 
 //  SIDs 100, 200 and 300 weigh 3, 2 and 1.
@@ -37,10 +38,10 @@ RngTarget make_target(uint32_t state, uint64_t seconds, std::vector<size_t> shin
 extern const std::vector<RngTarget> TARGETS;
 
 
-}
+} // namespace RngPlanTestTargets
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

@@ -29,6 +29,7 @@ namespace PokemonFRLG{
 const std::vector<StoryCheckpoint>& story_checkpoints();
 
 
+//  Registers AutoStory table validation unit tests.
 void add_tests_AutoStory(UnitTestDatabase& database);
 //  Which rows a run takes (PokemonFRLG_AutoStoryRunPlan_Tests.cpp).
 void add_tests_AutoStoryRunPlan(UnitTestDatabase& database);
@@ -37,7 +38,7 @@ void add_tests_AutoStorySimulation(UnitTestDatabase& database);
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

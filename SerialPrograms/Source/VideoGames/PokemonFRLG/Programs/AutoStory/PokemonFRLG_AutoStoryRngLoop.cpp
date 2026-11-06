@@ -25,7 +25,7 @@ std::string join_sids(const std::vector<uint16_t>& sids){
     return text.empty() ? "-" : text;
 }
 
-}
+} // namespace
 
 std::string starter_rng_loop_message(const StarterRngLoopResult& result){
     const std::string sids = join_sids(result.remaining_sids);
@@ -170,6 +170,6 @@ StoryRunPlan rows_after_gift_rng(
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

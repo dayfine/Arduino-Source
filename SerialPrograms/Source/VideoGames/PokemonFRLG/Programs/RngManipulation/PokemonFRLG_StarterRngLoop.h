@@ -66,6 +66,7 @@ struct RngLoopState{
     //  The calibration of the last reset, in frames; none before the first.
     std::optional<RngCalibrations> calibration;
 };
+//  Formats loop state summary line for logging.
 std::string rng_log_state(const RngLoopState& state);
 
 
@@ -89,6 +90,7 @@ std::optional<int> seed_frame_offset(const std::vector<uint16_t>& seed_values, i
 std::string rng_reset_line(const RngResetLine& line);
 
 
+//  Timeout and iteration constraints on starter RNG loop.
 struct StarterRngLoopLimits{
     //  An attempt makes no more resets after this long, and counts as missed.
     Milliseconds attempt_time = Milliseconds(0);
@@ -136,6 +138,7 @@ public:
     virtual StarterRngResult run_attempt(const RngAttempt& attempt, const StarterRngAttemptCall& call) = 0;
 };
 
+//  Termination condition of the starter RNG loop.
 enum class StarterRngLoopEnd{
     //  The starter is shiny and the target; the game is on its summary, not saved.
     SHINY,
@@ -154,6 +157,7 @@ enum class StarterRngLoopEnd{
     OUT_OF_TIME,
 };
 
+//  Aggregated outcome of the starter RNG loop.
 struct StarterRngLoopResult{
     StarterRngLoopEnd end = StarterRngLoopEnd::OUT_OF_TIME;
     //  Attempts run, retries included.
@@ -176,7 +180,7 @@ StarterRngLoopResult run_starter_rng_plan(
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

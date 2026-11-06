@@ -25,22 +25,36 @@ using namespace RngPlanTestTargets;
 
 namespace{
 
+struct RngPlanLogInput{
+    std::string name;
+    UnitTestResult (*body)(Logger&);
+};
+
+struct RngPlanLogExpectation{
+    const char* description;
+};
+
+struct RngPlanLogTestCase{
+    RngPlanLogInput input;
+    RngPlanLogExpectation expectation;
+};
+
 class Test_RngPlanLog : public UnitTest{
 public:
-    Test_RngPlanLog(std::string name, std::function<UnitTestResult(Logger&)> body)
-        : UnitTest("PokemonFRLG::RngPlanLog - " + std::move(name))
-        , m_body(std::move(body))
+    explicit Test_RngPlanLog(RngPlanLogTestCase scenario)
+        : UnitTest("PokemonFRLG::RngPlanLog - " + scenario.input.name)
+        , m_scenario(std::move(scenario))
     {}
     virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
         try{
-            return m_body(logger);
+            return m_scenario.input.body(logger);
         }catch (Exception& e){
             return std::string(e.name()) + ": " + e.message();
         }
     }
 
 private:
-    std::function<UnitTestResult(Logger&)> m_body;
+    RngPlanLogTestCase m_scenario;
 };
 
 
@@ -95,15 +109,24 @@ UnitTestResult test_log_lines(Logger&){
     return true;
 }
 
-}
+const RngPlanLogTestCase RNG_PLAN_LOG_CASES[] = {
+    {
+        .input = {.name = "RngPlan log lines", .body = test_log_lines},
+        .expectation = {.description = "verifies structured RNG plan log lines formatting"},
+    },
+};
+
+} // namespace
 
 
 void add_tests_RngPlanLog(UnitTestDatabase& database){
-    database.add<Test_RngPlanLog>("RngPlan log lines", test_log_lines);
+    for (const auto& scenario : RNG_PLAN_LOG_CASES){
+        database.add<Test_RngPlanLog>(scenario);
+    }
 }
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

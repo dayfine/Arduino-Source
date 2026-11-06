@@ -29,22 +29,36 @@ namespace PokemonFRLG{
 
 namespace{
 
+struct AutoStoryBattleDataInput{
+    std::string name;
+    UnitTestResult (*body)();
+};
+
+struct AutoStoryBattleDataExpectation{
+    const char* description;
+};
+
+struct AutoStoryBattleDataTestCase{
+    AutoStoryBattleDataInput input;
+    AutoStoryBattleDataExpectation expectation;
+};
+
 class Test_AutoStoryBattleData : public UnitTest{
 public:
-    Test_AutoStoryBattleData(std::string name, std::function<UnitTestResult()> body)
-        : UnitTest("PokemonFRLG::AutoStoryBattleData - " + std::move(name))
-        , m_body(std::move(body))
+    explicit Test_AutoStoryBattleData(AutoStoryBattleDataTestCase scenario)
+        : UnitTest("PokemonFRLG::AutoStoryBattleData - " + scenario.input.name)
+        , m_scenario(std::move(scenario))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
         try{
-            return m_body();
+            return m_scenario.input.body();
         }catch (Exception& e){
             return std::string(e.name()) + ": " + e.message();
         }
     }
 
 private:
-    std::function<UnitTestResult()> m_body;
+    AutoStoryBattleDataTestCase m_scenario;
 };
 
 const PartyStatus GREEN{.hp_seen = true, .hp_yellow = false, .hp_red = false, .status = StatusCondition::NONE};
@@ -185,20 +199,41 @@ UnitTestResult test_wild_fallback(){
     return true;
 }
 
-}
+const AutoStoryBattleDataTestCase AUTO_STORY_BATTLE_DATA_CASES[] = {
+    {
+        .input = {.name = "type chart, moves and species from pret", .body = test_data},
+        .expectation = {.description = "validates decompiled type charts, moves, and species"},
+    },
+    {
+        .input = {.name = "every story battle fights a trainer with a party", .body = test_story_trainers},
+        .expectation = {.description = "ensures all scripted story battles encounter valid teams"},
+    },
+    {
+        .input = {.name = "Miguel's Grimer: Water Gun", .body = test_miguel_grimer},
+        .expectation = {.description = "verifies move matchup choice against Miguel Grimer"},
+    },
+    {
+        .input = {.name = "Bite on Psychic, Ghost and Water-resistant foes", .body = test_bite_wins},
+        .expectation = {.description = "verifies move matchup prioritization for Bite"},
+    },
+    {
+        .input = {.name = "a wild Pokemon not read: the plan's order", .body = test_wild_fallback},
+        .expectation = {.description = "falls back to default move preference when unread"},
+    },
+};
+
+} // namespace
 
 
 void add_tests_AutoStoryBattleData(UnitTestDatabase& database){
-    database.add<Test_AutoStoryBattleData>("type chart, moves and species from pret", test_data);
-    database.add<Test_AutoStoryBattleData>("every story battle fights a trainer with a party", test_story_trainers);
-    database.add<Test_AutoStoryBattleData>("Miguel's Grimer: Water Gun", test_miguel_grimer);
-    database.add<Test_AutoStoryBattleData>("Bite on Psychic, Ghost and Water-resistant foes", test_bite_wins);
-    database.add<Test_AutoStoryBattleData>("a wild Pokemon not read: the plan's order", test_wild_fallback);
+    for (const auto& scenario : AUTO_STORY_BATTLE_DATA_CASES){
+        database.add<Test_AutoStoryBattleData>(scenario);
+    }
     add_tests_AutoStoryBattleSim(database);
 }
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

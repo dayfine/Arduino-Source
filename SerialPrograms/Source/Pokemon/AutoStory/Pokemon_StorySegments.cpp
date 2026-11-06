@@ -191,7 +191,7 @@ SegmentReport stop_segment(SegmentReport& report, SegmentHooks& hooks, const std
     return report;
 }
 
-}
+} // namespace
 
 
 bool CheckpointRun::one_shot() const{
@@ -269,7 +269,7 @@ VerifyReport verify_summary(VerifyReport& report, const VerifyPolicy& policy, Se
     return report;
 }
 
-}
+} // namespace
 
 
 VerifyReport verify_checkpoint(
@@ -323,5 +323,5 @@ std::string describe(Segment& segment){
 
 
 
-}
-}
+} // namespace Pokemon
+} // namespace PokemonAutomation
