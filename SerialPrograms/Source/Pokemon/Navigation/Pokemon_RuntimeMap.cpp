@@ -69,7 +69,8 @@ TilePos pair_at(const JsonObject& object, const std::array<std::string, 3>& keys
     if (object.get_value(keys[0]) || object.get_value(keys[1]) || !value){
         throw ParseException(where + keys[2] + " requires only the v2 coordinate pair.");
     }
-    const JsonArray& pair = array_at(*value, where + keys[2]);
+    const std::string pair_path = where + keys[2];
+    const JsonArray& pair = array_at(*value, pair_path);
     if (pair.size() != 2){
         throw ParseException(where + keys[2] + " requires exactly two integers.");
     }
@@ -181,7 +182,8 @@ JsonValue normalize_runtime_map(const JsonValue& json, std::string_view source_n
     normalize_objects(output, root, format, where);
     for (const std::string section : {"warps", "patches", "coord_events"}){
         if (const JsonValue* field = root.get_value(section)){
-            const JsonArray& input = array_at(*field, where + section);
+            const std::string section_path = where + section;
+            const JsonArray& input = array_at(*field, section_path);
             JsonArray records;
             for (size_t i = 0; i < input.size(); i++){
                 records.push_back(normalize_record(input[i], format, where + section + "[" + std::to_string(i) + "]."));
