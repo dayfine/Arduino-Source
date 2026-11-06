@@ -28,6 +28,9 @@ public:
     // detected, and the quests in board order.
     void board(bool panel_detected, const std::vector<BBQuests>& quests);
 
+    // Logs a zero-based board slot before attempting its reroll, including failures.
+    void reroll_attempt(size_t slot, BBQuests quest);
+
     // A catch quest gave up waiting for the battle menu after navigating to its target.
     void battle_entry_timeout(BBQuests quest);
 
@@ -67,7 +70,7 @@ private:
 };
 
 
-}
-}
-}
+} // namespace PokemonSV
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

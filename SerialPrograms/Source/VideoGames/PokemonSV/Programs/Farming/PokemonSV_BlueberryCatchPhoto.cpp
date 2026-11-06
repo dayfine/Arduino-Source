@@ -16,11 +16,9 @@
 #include "VideoGames/PokemonSV/Programs/PokemonSV_GameEntry.h"
 #include "VideoGames/PokemonSV/Programs/PokemonSV_SaveGame.h"
 #include "VideoGames/PokemonSV/PokemonSV_Settings.h"
-#include "VideoGames/PokemonSV/Programs/PokemonSV_GameEntry.h"
 #include "VideoGames/PokemonSV/Inference/Dialogs/PokemonSV_DialogDetector.h"
 #include "VideoGames/PokemonSV/Inference/Battles/PokemonSV_NormalBattleMenus.h"
 #include "VideoGames/PokemonSV/Inference/Battles/PokemonSV_EncounterWatcher.h"
-#include "VideoGames/PokemonSV/Inference/Dialogs/PokemonSV_DialogDetector.h"
 #include "VideoGames/PokemonSV/Inference/Overworld/PokemonSV_OverworldDetector.h"
 #include "VideoGames/PokemonSV/Programs/PokemonSV_MenuNavigation.h"
 #include "VideoGames/PokemonSV/Programs/PokemonSV_WorldNavigation.h"
@@ -917,7 +915,6 @@ void quest_catch(
                 { battle_menu }
             );
             if (ret2 != 0){
-                console.log("Did not enter battle. Did target spawn?");
                 BBQLogger(console.logger()).battle_entry_timeout(current_quest);
             }
         },

@@ -29,7 +29,7 @@ void append_elapsed(std::ostream& out, std::string_view field, BBQAttemptLog::Cl
         << ' ' << field << "=\"" << duration_to_string(milliseconds) << '\"';
 }
 
-}
+} // namespace
 
 
 void BBQLogger::board(bool panel_detected, const std::vector<BBQuests>& quests){
@@ -37,11 +37,17 @@ void BBQLogger::board(bool panel_detected, const std::vector<BBQuests>& quests){
     out << "BBQ event=board panel_detected=" << panel_detected << " quests=";
     bool first = true;
     for (BBQuests quest : quests){
-        if (!first) out << ',';
+        if (!first){
+            out << ',';
+        }
         first = false;
         out << quest_label(quest);
     }
     m_logger.log(out.str());
+}
+
+void BBQLogger::reroll_attempt(size_t slot, BBQuests quest){
+    m_logger.log("Rerolling quest " + std::to_string(slot + 1) + " (" + std::string(quest_label(quest)) + ").");
 }
 
 void BBQLogger::battle_entry_timeout(BBQuests quest){
@@ -53,7 +59,7 @@ void BBQLogger::battle_entry_timeout(BBQuests quest){
 void BBQLogger::retry_exhausted(BBQuests quest){
     std::ostringstream out;
     out << "BBQ quest=" << quest_label(quest) << " event=retry_exhausted recovery=skip_current_batch";
-    m_logger.log(out.str());
+    m_logger.log(out.str(), COLOR_RED);
 }
 
 
@@ -89,6 +95,6 @@ void BBQAttemptLog::result(bool completed, Clock::time_point end){
 }
 
 
-}
-}
-}
+} // namespace PokemonSV
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
