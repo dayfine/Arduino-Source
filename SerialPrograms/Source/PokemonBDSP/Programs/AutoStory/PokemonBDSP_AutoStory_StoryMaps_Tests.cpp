@@ -44,12 +44,7 @@ StoryWorld alone(const std::string& json_map){
 //  and r254 loaded the catch's save in the pocket behind the trees at
 //  (21, 29), planned from the catch spot instead, and walked up and down
 //  the lawn east of the grass for three minutes without a battle.
-class Test_Route202CatchGrass : public UnitTest{
-public:
-    Test_Route202CatchGrass()
-        : UnitTest("PokemonBDSP::AutoStory - Route 202: the catch patch and the walk to it")
-    {}
-    virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
+UnitTestResult test_route202_catch_grass(Logger& logger){
         const StoryWorld route = alone("Route202");
         for (int x = 15; x <= 20; x++){
             const WallHit up = slide_to_wall(route, {x, 27}, Direction::NORTH);
@@ -87,19 +82,13 @@ public:
             logger.log(std::format("From {} to the catch grass: {} legs, ending in the grass.", name, legs->size()));
         }
         return true;
-    }
-};
+}
 
 //  00.04's way to Sandgem's Pokemon Center ends below the Center's sign,
 //  walking north into it, then taps west along the doors' row to below the
 //  door: the row must be open there, the door straight north of where the
 //  taps end, and nothing else (a sign, the Mart's door) on the way.
-class Test_SandgemCenterApproach : public UnitTest{
-public:
-    Test_SandgemCenterApproach()
-        : UnitTest("PokemonBDSP::AutoStory - Sandgem Town: below the Center's sign to below its door")
-    {}
-    virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
+UnitTestResult test_sandgem_center_approach(Logger& logger){
         const StoryWorld town = alone("SandgemTown");
         const TilePos sign = map_point("SandgemTown", "pokemon_center_sign");
         const TilePos door = map_point("SandgemTown", "pokemon_center_door");
@@ -124,19 +113,13 @@ public:
         logger.log(std::format("Sandgem: below the sign {}, {} taps west to below the door {}.",
             Pokemon::to_string(sign.next(Direction::SOUTH)), sign.x - door.x, Pokemon::to_string(door)));
         return true;
-    }
-};
+}
 
 //  After training, 00.04 walks from wherever the training left us into
 //  Sandgem, to where the road stops above the Mart, with the default costs
 //  (heal_at_sandgem_center()): from the whole area and from each of its
 //  tiles alone, a plan must exist and end there.
-class Test_TrainingToSandgem : public UnitTest{
-public:
-    Test_TrainingToSandgem()
-        : UnitTest("PokemonBDSP::AutoStory - Route 202: from every tile of the training area into Sandgem")
-    {}
-    virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
+UnitTestResult test_training_to_sandgem(Logger& logger){
         const StoryWorld& maps = story_maps();
         const TilePos entry = maps.to_world(MAP_SANDGEM_TOWN, map_point("SandgemTown", "route_202_entry_stop"));
         const std::vector<TilePos> area = story_after_training_area();
@@ -156,18 +139,12 @@ public:
             logger.log(std::format("From {} into Sandgem: {} legs.", name, legs->size()));
         }
         return true;
-    }
-};
+}
 
 //  The Oreburgh Gym's inside: the column up from the entrance runs to Roark
 //  with nothing in the way but the two Youngsters' sight lines, which is
 //  what 01.04's "north until a trainer stops us" relies on.
-class Test_OreburghGymColumn : public UnitTest{
-public:
-    Test_OreburghGymColumn()
-        : UnitTest("PokemonBDSP::AutoStory - Oreburgh Gym: the column up to Roark")
-    {}
-    virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
+UnitTestResult test_oreburgh_gym_column(Logger& logger){
         const StoryWorld gym = alone("OreburghGym");
         const TilePos entrance = map_point("OreburghGym", "entrance");
         const TilePos roark = map_point("OreburghGym", "roark");
@@ -195,18 +172,12 @@ public:
             }
         }
         return true;
-    }
-};
+}
 
 //  Each traceable record with a start tile starts on ground, and its legs
 //  counted in whole tiles trace on its map up to the first leg that ends
 //  some other way.
-class Test_RouteRecords : public UnitTest{
-public:
-    Test_RouteRecords()
-        : UnitTest("PokemonBDSP::AutoStory - Route records: counted legs trace on their maps")
-    {}
-    virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
+UnitTestResult test_route_records(Logger& logger){
         for (const RouteRecords::RouteRecord& record : RouteRecords::all()){
             const std::string name = record.checkpoint + " " + record.title;
             const StoryWorld world = alone(record.map_file);
@@ -231,21 +202,74 @@ public:
             }
         }
         return true;
-    }
+}
+
+
+struct StoryMapsInput{
+    std::string name;
+    std::function<UnitTestResult(Logger&)> body;
 };
 
-}
+struct StoryMapsExpectation{
+};
 
+struct StoryMapsCase{
+    StoryMapsInput input;
+    StoryMapsExpectation expectation;
+};
+
+class Test_StoryMaps : public UnitTest{
+public:
+    explicit Test_StoryMaps(StoryMapsCase test_case)
+        : UnitTest("PokemonBDSP::AutoStory - " + test_case.input.name)
+        , m_case(std::move(test_case))
+    {}
+    virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
+        try{
+            return m_case.input.body(logger);
+        }catch (Exception& e){
+            return std::string(e.name()) + ": " + e.message();
+        }
+    }
+
+private:
+    StoryMapsCase m_case;
+};
+
+} // namespace
+
+
+const StoryMapsCase STORY_MAPS_CASES[] = {
+    {
+        .input = {"Route 202: the catch patch and the walk to it", test_route202_catch_grass},
+        .expectation = {},
+    },
+    {
+        .input = {"Sandgem Town: below the Center's sign to below its door", test_sandgem_center_approach},
+        .expectation = {},
+    },
+    {
+        .input = {"Route 202: from every tile of the training area into Sandgem", test_training_to_sandgem},
+        .expectation = {},
+    },
+    {
+        .input = {"Oreburgh Gym: the column up to Roark", test_oreburgh_gym_column},
+        .expectation = {},
+    },
+    {
+        .input = {"Route records: counted legs trace on their maps", test_route_records},
+        .expectation = {},
+    },
+};
 
 void add_tests_AutoStory_StoryMaps(UnitTestDatabase& database){
-    database.add<Test_Route202CatchGrass>();
-    database.add<Test_SandgemCenterApproach>();
-    database.add<Test_TrainingToSandgem>();
-    database.add<Test_OreburghGymColumn>();
-    database.add<Test_RouteRecords>();
+    for (const auto& item : STORY_MAPS_CASES){
+        database.add<Test_StoryMaps>(item);
+    }
 }
 
 
-}
-}
-}
+
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

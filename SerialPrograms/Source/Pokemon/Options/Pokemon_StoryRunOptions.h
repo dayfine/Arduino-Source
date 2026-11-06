@@ -38,6 +38,7 @@ struct StoryCheckpointEntry{
         return label;
     }
 };
+// Formats a checkpoint identifier and description into a dropdown label.
 std::string story_checkpoint_label(const StoryCheckpoint& checkpoint);
 
 //  The start/end dropdown database of a story's checkpoints, `rows` in
@@ -46,6 +47,9 @@ std::string story_checkpoint_label(const StoryCheckpoint& checkpoint);
 //  joined: a section's entry i is then story_index(true, i, first of the
 //  section). The program keeps it in a function-local static: the options
 //  hold a reference.
+template <typename Row>
+StringSelectDatabase story_checkpoint_database(const std::vector<Row>& rows);
+
 template <typename Row>
 StringSelectDatabase story_checkpoint_database(const std::vector<Row>& rows){
     std::vector<std::unique_ptr<StoryCheckpointEntry>> entries;
@@ -74,6 +78,7 @@ public:
 };
 
 
+// Configuration options panel for selecting story checkpoints and execution mode.
 class StoryRunOptions : public GroupOption{
 public:
     //  `checkpoints`: story_checkpoint_database() of the game's story, kept
@@ -109,6 +114,6 @@ public:
 
 
 
-}
-}
+} // namespace Pokemon
+} // namespace PokemonAutomation
 #endif

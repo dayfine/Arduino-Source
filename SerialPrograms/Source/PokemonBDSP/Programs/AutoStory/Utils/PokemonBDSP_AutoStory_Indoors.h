@@ -27,7 +27,7 @@ namespace PokemonBDSP{
 bool indoors(const ImageViewRGB32& screen);
 
 
-}
-}
-}
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

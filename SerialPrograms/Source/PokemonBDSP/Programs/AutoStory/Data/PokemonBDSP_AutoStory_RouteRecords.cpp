@@ -141,7 +141,7 @@ std::vector<RouteRecord> segment01_records_from_jubilife(){
     };
 }
 
-}
+} // namespace
 
 //  The walks planned on a grid (00.04 and 00.05's walk_route goals, 01.03's
 //  Mine legs, 01.06's Route 203 and Jubilife legs, 01.08's Route 204 South,
@@ -171,7 +171,7 @@ const std::vector<RouteRecord>& all(){
 }
 
 
-}
-}
-}
-}
+} // namespace RouteRecords
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

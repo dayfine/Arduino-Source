@@ -98,7 +98,7 @@ std::string map_of(const StoryWorld& maps, const std::vector<TilePos>& tiles){
     return name;
 }
 
-}
+} // namespace
 
 
 namespace{
@@ -734,7 +734,7 @@ LegNext RouteWalker::replan_from(const LegWalk& walk, std::vector<TilePos> stopp
     return LegNext::REPLAN;
 }
 
-}
+} // namespace
 
 
 std::vector<TilePos> walk_route(
@@ -813,6 +813,6 @@ void talk_to_npc(
 
 
 
-}
-}
-}
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

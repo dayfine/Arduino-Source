@@ -44,6 +44,7 @@ enum class RouteNote{
     FAILURE,    //  fails the program with a screenshot; does not return
 };
 
+//  Abstract I/O interface for route traversal, logging, and controller execution.
 class RouteIO{
 public:
     virtual ~RouteIO() = default;
@@ -97,7 +98,7 @@ private:
 
 
 
-}
-}
-}
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

@@ -30,6 +30,7 @@ namespace Segment00Lines{
 //  Map names in segment00_maps(); Route 201 and Sandgem Town go by
 //  StoryMaps' MAP_ROUTE_201 and MAP_SANDGEM_TOWN.
 extern const char* const MAP_TWINLEAF_TOWN;
+//  Verity Lakefront overworld map name.
 extern const char* const MAP_VERITY_LAKEFRONT;
 
 //  Twinleaf Town, Route 201, the Verity Lakefront and Sandgem Town joined on
@@ -48,7 +49,9 @@ struct SceneTrigger{
     int height;
     std::string when;           //  the story state it fires in
 };
+//  Returns all scene trigger zones for Segment 00.
 const std::vector<SceneTrigger>& scene_triggers();
+//  Returns whether given map tile falls within the scene trigger zone.
 bool trigger_covers(const SceneTrigger& trigger, const MapTile& tile);
 
 //  A line walked corner to corner: every stretch between two corners is one
@@ -60,14 +63,15 @@ struct WalkedLine{
     std::string ends_in;                        //  the scene the last corner steps into, "" for none
     std::vector<std::string> live_triggers;     //  the scenes armed while this line is walked
 };
+//  Returns all pre-defined walked route lines for Segment 00.
 const std::vector<WalkedLine>& lines();
 
 //  The route records start and end on named points of the maps (Twinleaf
 //  Town's house_doorstep, Route 201's barry_warning, ...), all on the lines.
 
 
-}
-}
-}
-}
+} // namespace Segment00Lines
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

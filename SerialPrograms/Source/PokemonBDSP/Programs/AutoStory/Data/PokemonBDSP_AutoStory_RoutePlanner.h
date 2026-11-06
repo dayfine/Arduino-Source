@@ -32,6 +32,7 @@ struct WallHit{
     Pokemon::TilePos wall;      //  the first tile the player could not enter
     bool anchored = false;      //  the player is held at `stop` (see StoryWorld::at_wall())
 };
+//  Computes straight-line sliding movement from tile position until hitting a wall.
 WallHit slide_to_wall(const StoryWorld& world, const Pokemon::TilePos& from, Pokemon::Direction direction);
 
 
@@ -41,8 +42,10 @@ struct TileLeg{
     size_t tiles = 0;           //  tiles travelled; a ledge hop counts 2
     bool ends_at_wall = false;  //  the next tile in `direction` stops the player
 };
+//  Formats tile movement leg into human-readable string representation.
 std::string to_string(const TileLeg& leg);
 
+//  Cost configuration parameters for tile route planning.
 struct TilePlanCosts{
     int per_tile = 1;
     int per_grass_tile = 4;     //  extra for each tall-grass tile entered
@@ -67,6 +70,7 @@ struct TrainerSight{
     Pokemon::Direction facing = Pokemon::Direction::NORTH;
     int range = 4;
 };
+//  Computes straight line-of-sight tiles for a trainer.
 std::vector<Pokemon::TilePos> sight_tiles(const StoryWorld& world, const TrainerSight& trainer);
 
 //  For each leg, the trainers whose sight line it enters.
@@ -94,8 +98,10 @@ struct PlannedLeg{
     TileLeg leg;
     std::vector<Pokemon::TilePos> after;
 };
+//  Formats planned route leg with uncertainties into human-readable representation.
 std::string to_string(const PlannedLeg& leg);
 
+//  Cost configuration parameters accounting for movement execution tolerances.
 struct RobustPlanCosts : TilePlanCosts{
     //  An open leg of n tiles may end open_error + n / open_error_per tiles
     //  short or long: on the console 7 tiles went 9.
@@ -138,7 +144,7 @@ std::optional<std::vector<PlannedLeg>> plan_robust_route(
 
 
 
-}
-}
-}
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

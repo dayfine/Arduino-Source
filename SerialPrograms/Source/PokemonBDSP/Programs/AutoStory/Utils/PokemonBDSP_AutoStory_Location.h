@@ -31,8 +31,11 @@ std::string normalize_location_name(const std::string& text);
 //  language-free checks: the banner's box showing, a sign's box opening, the
 //  first row of a Bag pocket.
 Language story_language();
+//  Sets the active story language.
 void set_story_language(Language language);
+//  Returns whether text recognition is supported for the current story language.
 bool story_reads_text();
+//  Returns whether text recognition is supported for the specified language.
 bool story_reads_text(Language language);
 
 //  What the reads below return for a banner or save card that showed, when
@@ -61,7 +64,7 @@ std::string read_save_screen_location(const ImageViewRGB32& screen);
 bool location_banner_matches(const std::string& read, const std::string& expected);
 
 
-}
-}
-}
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

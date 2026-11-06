@@ -39,7 +39,7 @@ bool across(Direction direction){
     return direction == Direction::EAST || direction == Direction::WEST;
 }
 
-}
+} // namespace
 
 Milliseconds route_ms_per_tile(Direction direction, MoveSpeed speed){
     if (speed == MoveSpeed::RUN){
@@ -285,7 +285,7 @@ bool outside_for_three_looks(VideoStream& stream, ProControllerContext& context,
     return true;
 }
 
-}
+} // namespace
 
 void leave_door_south(VideoStream& stream, ProControllerContext& context, const WildBattleEscape& escape, const std::string& label){
     //  A last line of talk may still be up, and it would stop the walk.
@@ -326,6 +326,6 @@ void leave_door_south(VideoStream& stream, ProControllerContext& context, const 
 
 
 
-}
-}
-}
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
