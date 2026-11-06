@@ -1,0 +1,54 @@
+# Versioned map reader preparation
+
+`Pokemon_RuntimeMap` adds `normalize_runtime_map()` and `parse_runtime_map()` on
+top of the existing shared `parse_map()` implementation. It accepts unmarked or
+explicit v1 and `pokesim-runtime-map/2`. The wire conversion is independent of
+FRLG/BDSP and does not duplicate either game's map parser.
+
+V2 uses `coord: [x,y]` and inclusive wander `min`/`max` pairs. Typed arrays decode
+in NPC/item/sign/interactable order, preserving order inside each group and
+allowing repeated names. Interactables retain their interaction payload and use
+the historical item-sprite occupancy kind for the legacy native model; decoding
+one grants no item or Pokemon. Pairs must contain exactly two integer coordinates
+that fit native `int`. Mixed encodings and unsupported versions fail with a
+source/path error. Source/world coordinates and trigger-box fields retain the
+existing publisher contract. Extensions, zeros and false values survive in the
+normalized JSON; the existing `MapData` model still consumes only its known fields.
+
+This is a staged API. Existing `parse_map()` and both games' loader call sites
+are unchanged. No map bytes, generation code, resource paths or pins are switched.
+After this prerequisite merges into `nav/shared`, the owning FRLG/BDSP loader PRs
+must adopt `parse_runtime_map()`, run their route/story/recovery tests, and only
+then activate a v2 resource pack. Full route-policy parity and the five pending
+BDSP content differences remain separate work.
+
+## Offline native checks
+
+```sh
+cmake -S devtools/runtime-map-tests -B /path/to/build
+cmake --build /path/to/build -j4
+ctest --test-dir /path/to/build --output-on-failure
+```
+
+The 26 synthetic cases are also registered in the application's native test
+database. They cover v1 compatibility, mixed/malformed versions and pairs,
+inclusive wander bounds, object groups, interaction-vs-item rejection, coordinate
+events and complete normalized JSON parity, including unknown metadata.
+
+For real data, prepare a clean PokemonSimulation checkout at
+`40717c7c809c415c751fd7a348dfc1895f7ec3d7` (merged #53), then run:
+
+```sh
+python3 devtools/runtime-map-tests/prepare_parity.py \
+  --publisher /path/to/PokemonSimulation --out /tmp/runtime-map-pairs.json
+/path/to/build/RuntimeMapTests /tmp/runtime-map-pairs.json
+```
+
+The preparation command refuses another revision, tracked local edits or an
+existing output. It generates 150 input/expectation records: all 75 checked-in
+maps, both plain and with staged pickup/interaction enrichment. The expected
+values come from that pinned Python codec; the native executable performs the
+full JSON comparison and invokes both versioned and legacy production decoders.
+No game maps or decomp inputs are copied into this PR. CI repeats these checks
+on macOS, Linux and Windows with the immutable publishing pin. These are decoder
+checks, not native walker replay or live-console validation.
