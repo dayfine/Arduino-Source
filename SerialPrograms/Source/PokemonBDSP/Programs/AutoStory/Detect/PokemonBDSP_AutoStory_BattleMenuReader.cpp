@@ -124,7 +124,7 @@ bool move_button_selected(const ImageViewRGB32& screen, double top, double botto
     return false;
 }
 
-}
+} // namespace
 
 
 BattleMenuOption battle_menu_selected_option(BattleMenuDetector& menu, const ImageViewRGB32& screen){
@@ -177,6 +177,6 @@ BattleMoveMenuState detect_battle_move_menu(const ImageViewRGB32& screen){
 
 
 
-}
-}
-}
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

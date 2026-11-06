@@ -258,7 +258,7 @@ void mash_to_overworld(VideoStream& stream, ProControllerContext& context, const
     }
 }
 
-}
+} // namespace
 
 void fight_starly(VideoStream& stream, ProControllerContext& context){
     stream.log("[AutoStory] Starting Starly battle...", COLOR_BLUE);
@@ -351,7 +351,7 @@ bool throw_until_caught(VideoStream& stream, ProControllerContext& context, EndB
         "Catch failed: Exhausted ten ball attempts.", stream);
 }
 
-}
+} // namespace
 
 void catch_1_pokemon(
     VideoStream& stream,
@@ -422,6 +422,6 @@ void run_from_wild_battle(VideoStream& stream, ProControllerContext& context){
 
 
 
-}
-}
-}
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
