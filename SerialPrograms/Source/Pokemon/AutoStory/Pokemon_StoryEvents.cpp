@@ -386,7 +386,7 @@ Outcome finish_checkpoint(RunState& state, Checkpoint& checkpoint){
     return saved.succeeded() ? saved : outcome_failed("save_failed", to_string(saved));
 }
 
-}
+} // namespace
 
 
 CheckpointReport run_checkpoint(RunState& state, Checkpoint& checkpoint, EventLogger& log){
@@ -461,7 +461,7 @@ void lint_event(std::vector<std::string>& problems, std::set<std::string>& names
     lint_recoveries(problems, event);
 }
 
-}
+} // namespace
 
 
 std::vector<std::string> lint_checkpoint(const Checkpoint& checkpoint){
@@ -522,7 +522,7 @@ void describe_event(std::string& text, size_t number, const Event& event){
     }
 }
 
-}
+} // namespace
 
 
 std::string describe(const Checkpoint& checkpoint){
@@ -545,5 +545,5 @@ std::string describe(const Checkpoint& checkpoint){
 
 
 
-}
-}
+} // namespace Pokemon
+} // namespace PokemonAutomation

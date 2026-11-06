@@ -629,42 +629,107 @@ UnitTestResult test_lint(){
 }
 
 
+struct StoryStepInput{
+    std::string name;
+    UnitTestResult (*test)();
+};
+
+struct StoryStepExpectation{
+    const char* description;
+};
+
+struct StoryStepTestCase{
+    StoryStepInput input;
+    StoryStepExpectation expectation;
+};
+
 class Test_StorySteps : public UnitTest{
 public:
-    Test_StorySteps(std::string name, std::function<UnitTestResult()> body)
-        : UnitTest("Pokemon::StorySteps - " + std::move(name))
-        , m_body(std::move(body))
+    explicit Test_StorySteps(StoryStepTestCase scenario)
+        : UnitTest("Pokemon::StorySteps - " + scenario.input.name)
+        , m_scenario(std::move(scenario))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        return m_body();
+        return m_scenario.input.test();
     }
 
 private:
-    std::function<UnitTestResult()> m_body;
+    StoryStepTestCase m_scenario;
 };
 
-}
+const StoryStepTestCase STORY_STEP_CASES[] = {
+    {
+        .input = {.name = "steps run in table order", .test = test_events_in_table_order},
+        .expectation = {.description = "executes story steps sequentially as defined in table"},
+    },
+    {
+        .input = {.name = "skip_if asks the executor", .test = test_skip_if},
+        .expectation = {.description = "delegates skip condition check to executor"},
+    },
+    {
+        .input = {.name = "each step starts where the last left the player", .test = test_pose_propagation},
+        .expectation = {.description = "propagates player pose across sequential step executions"},
+    },
+    {
+        .input = {.name = "a failure names its step", .test = test_failure_names_the_step},
+        .expectation = {.description = "records failing step identifier on error"},
+    },
+    {
+        .input = {.name = "unsupported kinds and lost battles", .test = test_unsupported_and_lost_battles},
+        .expectation = {.description = "flags unsupported step types and handles battle defeat"},
+    },
+    {
+        .input = {.name = "tables as a segment, with a reload", .test = test_segment_of_tables},
+        .expectation = {.description = "converts step tables into segment with checkpoint reload support"},
+    },
+    {
+        .input = {.name = "lint", .test = test_lint},
+        .expectation = {.description = "verifies lint validation rules on story checkpoints"},
+    },
+    {
+        .input = {.name = "the checks level reaches the steps", .test = test_checks_level},
+        .expectation = {.description = "transfers checks granularity option to step execution"},
+    },
+    {
+        .input = {.name = "the run options' defaults", .test = test_run_options},
+        .expectation = {.description = "validates initial default story run option values"},
+    },
+    {
+        .input = {.name = "the run options' verify mode", .test = test_verify_options},
+        .expectation = {.description = "configures verification mode options and passes count"},
+    },
+    {
+        .input = {.name = "start and end checkpoint dropdowns", .test = test_checkpoint_dropdowns},
+        .expectation = {.description = "populates start and end dropdown selections correctly"},
+    },
+    {
+        .input = {.name = "a segment's run in the AutoStory stats", .test = test_story_stats},
+        .expectation = {.description = "updates story run statistics following segment completion"},
+    },
+    {
+        .input = {.name = "policy: attempts per checkpoint, then fail", .test = test_policy_attempts_then_fail},
+        .expectation = {.description = "enforces max checkpoint attempt policy before terminal failure"},
+    },
+    {
+        .input = {.name = "policy: stop at the first failure", .test = test_policy_stop_at_first_failure},
+        .expectation = {.description = "halts execution immediately when stop_at_first_failure is enabled"},
+    },
+    {
+        .input = {.name = "policy: recover in place before reloading", .test = test_policy_recovers_in_place},
+        .expectation = {.description = "applies in-place recovery handler prior to reloading save"},
+    },
+};
+
+} // namespace
 
 
 void add_tests_StorySteps(UnitTestDatabase& database){
-    database.add<Test_StorySteps>("steps run in table order", test_events_in_table_order);
-    database.add<Test_StorySteps>("skip_if asks the executor", test_skip_if);
-    database.add<Test_StorySteps>("each step starts where the last left the player", test_pose_propagation);
-    database.add<Test_StorySteps>("a failure names its step", test_failure_names_the_step);
-    database.add<Test_StorySteps>("unsupported kinds and lost battles", test_unsupported_and_lost_battles);
-    database.add<Test_StorySteps>("tables as a segment, with a reload", test_segment_of_tables);
-    database.add<Test_StorySteps>("lint", test_lint);
-    database.add<Test_StorySteps>("the checks level reaches the steps", test_checks_level);
-    database.add<Test_StorySteps>("the run options' defaults", test_run_options);
-    database.add<Test_StorySteps>("the run options' verify mode", test_verify_options);
-    database.add<Test_StorySteps>("start and end checkpoint dropdowns", test_checkpoint_dropdowns);
-    database.add<Test_StorySteps>("a segment's run in the AutoStory stats", test_story_stats);
-    database.add<Test_StorySteps>("policy: attempts per checkpoint, then fail", test_policy_attempts_then_fail);
-    database.add<Test_StorySteps>("policy: stop at the first failure", test_policy_stop_at_first_failure);
-    database.add<Test_StorySteps>("policy: recover in place before reloading", test_policy_recovers_in_place);
+    for (const auto& scenario : STORY_STEP_CASES){
+        database.add<Test_StorySteps>(scenario);
+    }
 }
 
 
 
-}
-}
+} // namespace Pokemon
+} // namespace PokemonAutomation
