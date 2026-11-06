@@ -3,7 +3,7 @@
 Audited 2026-11-06 against live GitHub PR state/base metadata and the diffs of
 all 34 originally open BBQ-related fork PRs. Inventory: **43 fork PRs: 33 open, 9 closed,
 1 merged notes PR**. Selection: head branch `bbq/*` or title containing BBQ /
-Blueberry. Shared dependencies are listed separately below. This is an inventory
+Blueberry, excluding this audit PR #239. Shared dependencies are listed separately below. This is an inventory
 and dependency audit, **not renewed CI/live-console approval**. Old build counts
 and readiness badges are not carried forward.
 
