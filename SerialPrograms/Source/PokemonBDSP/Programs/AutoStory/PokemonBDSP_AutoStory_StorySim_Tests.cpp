@@ -54,7 +54,6 @@ namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonBDSP{
 
-
 namespace{
 
 using namespace std::chrono_literals;
@@ -65,7 +64,6 @@ using Pokemon::RunState;
 using Pokemon::StoryStep;
 using Pokemon::StoryStepKind;
 using Pokemon::TilePos;
-
 
 //  Which detections the simulation misses on purpose (#162): the `fade`th
 //  door fade (run_into_door(), from 0) or the `banner`th map banner
@@ -239,7 +237,6 @@ std::optional<size_t> SimStoryStepIO::tap_to_banner(Direction direction, const s
     return std::nullopt;
 }
 
-
 //  A scene's trigger the simulation fires from row `row` on, once the step
 //  `after` has run ("" from the row's start), on `map`'s `tiles`.
 struct RowTrigger{
@@ -317,7 +314,6 @@ std::vector<RowTrigger> story_triggers(){
     return triggers;
 }
 
-
 //  Someone the maps do not have, who stands on `tile` of `map` and is
 //  talked to there or walked round: from row `row` on if `until` is "",
 //  else in `row` until its step `until` has run.
@@ -352,7 +348,6 @@ std::vector<SimStairs> sim_stairs(){
         {.map = "RivalHouse2F", .side = Direction::WEST},
     };
 }
-
 
 //  The program's walking steps on the simulation, the rest stubbed.
 class SimExecutor : public Pokemon::StoryStepExecutor{
@@ -639,7 +634,6 @@ Outcome SimExecutor::run(RunState& state, const StoryStep& step){
     return outcome;
 }
 
-
 //  Runs `range` of `rows` (the table unless given) on `executor`, stopping
 //  at the first failure.
 Pokemon::SegmentReport run_rows_on(
@@ -692,7 +686,6 @@ bool ends_on(const SimRun& run, const Pose& pose){
 std::string end_of(const SimRun& run){
     return run.world ? describe(*run.world, run.end) : "nowhere";
 }
-
 
 UnitTestResult run_exit_test(Logger& logger, const std::string& row_id, const StoryStep& old_step, const SimMisses& misses, const Pose& overshoot){
     SimExecutor executor(logger, misses);
@@ -763,7 +756,6 @@ StoryStep r81_old_cave_exit(){
 Pose r81_below_the_mouth(){
     return Pokemon::tile_pose("Route204North", {TilePos{20, 27}, TilePos{20, 28}, TilePos{20, 29}, TilePos{20, 30}});
 }
-
 
 UnitTestResult test_coord_events(Logger&){
     for (const auto& [map, json] : bdsp_map_json()){
@@ -850,38 +842,46 @@ UnitTestResult test_exit_ravaged_path(Logger& logger){
 //  Oreburgh Mine B1F: tapping 20 tiles south steps onto the cave mouth warp
 //  at (12, 21), cutting the counted leg short at 19 tiles.
 StoryStep old_mine_hall_south_20(){
-    return {.kind = StoryStepKind::LEGS, .name = "into_the_coal_room", .legs = {{.direction = Direction::SOUTH, .tiles = 20}}};
+    StoryStep step;
+    step.kind = StoryStepKind::LEGS;
+    step.name = "into_the_coal_room";
+    step.legs = {{.direction = Direction::SOUTH, .tiles = 20}};
+    return step;
 }
 
 //  Oreburgh Mine B1F: tapping 19 tiles south leaves the player on row 20
 //  without warping; the next step (south_to_the_rock) hits the warp immediately.
 StoryStep old_mine_hall_south_19(){
-    return {.kind = StoryStepKind::LEGS, .name = "into_the_coal_room", .legs = {{.direction = Direction::SOUTH, .tiles = 19}}};
+    StoryStep step;
+    step.kind = StoryStepKind::LEGS;
+    step.name = "into_the_coal_room";
+    step.legs = {{.direction = Direction::SOUTH, .tiles = 19}};
+    return step;
 }
 
 //  Oreburgh Mine B1F: tapping 20 tiles north steps onto the city exit warp
 //  at (11, 1), cutting the leg short / warping unexpectedly.
 StoryStep old_mine_hall_north_20(){
-    return {.kind = StoryStepKind::LEGS, .name = "out_of_the_mine", .legs = {{.direction = Direction::NORTH, .tiles = 20}}};
+    StoryStep step;
+    step.kind = StoryStepKind::LEGS;
+    step.name = "out_of_the_mine";
+    step.legs = {{.direction = Direction::NORTH, .tiles = 20}};
+    return step;
 }
 
 //  Oreburgh Mine: stepping south at col 29 without bypassing the crate
 //  hits the wooden crate at (29, 28) on the south leg.
 StoryStep old_coal_room_crate_cut(){
-    return StoryStep{
-        .kind = StoryStepKind::LEGS,
-        .name = "below_roark",
-        .legs = {
-            {.direction = Direction::EAST,  .tiles = 1},
-            {.direction = Direction::SOUTH, .tiles = 2},
-            {.direction = Direction::WEST,  .tiles = 1},
-            {.direction = Direction::SOUTH, .tiles = 5},
-            {.direction = Direction::EAST,  .tiles = 14},
-            {.direction = Direction::SOUTH, .tiles = 10},
-            {.direction = Direction::SOUTH, .tiles = 2},
-            {.direction = Direction::WEST,  .tiles = 11},
-        },
+    StoryStep step;
+    step.kind = StoryStepKind::LEGS;
+    step.name = "below_roark";
+    step.legs = {
+        {.direction = Direction::EAST, .tiles = 1}, {.direction = Direction::SOUTH, .tiles = 2},
+        {.direction = Direction::WEST, .tiles = 1}, {.direction = Direction::SOUTH, .tiles = 5},
+        {.direction = Direction::EAST, .tiles = 14}, {.direction = Direction::SOUTH, .tiles = 10},
+        {.direction = Direction::SOUTH, .tiles = 2}, {.direction = Direction::WEST, .tiles = 11},
     };
+    return step;
 }
 
 UnitTestResult test_story_sim_step_failure(Logger& logger, const std::string& row, const StoryStep& old_step, const std::string& expected_failed_step, const std::string& expected_error){
@@ -928,7 +928,6 @@ private:
 };
 
 } // namespace
-
 
 const AutoStoryStorySimCase AUTO_STORY_STORY_SIM_CASES[] = {
     {
@@ -986,7 +985,6 @@ void add_tests_AutoStory_StorySim(UnitTestDatabase& database){
         database.add<Test_AutoStoryStorySim>(item);
     }
 }
-
 
 } // namespace PokemonBDSP
 } // namespace NintendoSwitch
