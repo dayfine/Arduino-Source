@@ -4,7 +4,6 @@
  *
  */
 
-#include "Common/Cpp/PrettyPrint.h"
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "CommonFramework/Tools/ErrorDumper.h"
@@ -16,6 +15,7 @@
 #include "VideoGames/PokemonSwSh/MaxLair/Inference/PokemonSwSh_MaxLair_Detect_BattleMenu.h"
 #include "VideoGames/PokemonSwSh/MaxLair/AI/PokemonSwSh_MaxLair_AI.h"
 //#include "PokemonSwSh_MaxLair_Run_CaughtScreen.h"
+#include "PokemonSwSh_MaxLair_OpponentRead.h"
 #include "PokemonSwSh_MaxLair_Run_Battle.h"
 
 namespace PokemonAutomation{
@@ -25,36 +25,43 @@ namespace MaxLairInternal{
 
 
 
-bool process_header_read(
-    Logger& logger,
-    GlobalState& state,
-    std::set<std::string> mon
-){
-    if (mon.size() == 1){
-        state.opponent = std::move(mon);
-        return true;
-    }
-    if (mon.size() > 1){
-        logger.log("Ambiguous Read Result: " + set_to_str(mon), COLOR_PURPLE);
-        if (state.opponent.size() == 1 && mon.find(*state.opponent.begin()) != mon.end()){
-            logger.log(
-                "Using previous known value to disambiguate: " + set_to_str(mon),
-                COLOR_PURPLE
-            );
-            return true;
-        }
-    }
-    if (state.opponent.size() == 1){
-        logger.log(
-            "Failed to read opponent from battle. Using previously known value: " + set_to_str(state.opponent),
-            COLOR_ORANGE
-        );
-        return true;
-    }
+namespace{
 
-    return false;
-}
+// Console implementation of the opponent-read flow's screen/input boundary.
+class ConsoleOpponentRead : public OpponentReadActions{
+public:
+    ConsoleOpponentRead(VideoStream& stream, ProControllerContext& context, BattleMenuReader& reader)
+        : m_stream(stream), m_context(context), m_reader(reader)
+    {}
+    virtual std::set<std::string> read_header() override{
+        return m_reader.read_opponent(m_stream.logger(), m_context, m_stream.video());
+    }
+    virtual void open_summary() override{
+        pbf_press_button(m_context, BUTTON_Y, 80ms, 1000ms);
+        pbf_press_dpad(m_context, DPAD_UP, 80ms, 400ms);
+        pbf_press_button(m_context, BUTTON_A, 80ms, 2000ms);
+    }
+    virtual std::set<std::string> read_summary() override{
+        m_summary = m_stream.video().snapshot();
+        return m_reader.read_opponent_in_summary(m_stream.logger(), m_summary);
+    }
+    virtual void close_summary() override{
+        pbf_mash_button(m_context, BUTTON_B, 3000ms);
+    }
+    virtual void wait_for_inputs() override{
+        m_context.wait_for_all_requests();
+    }
+    virtual void report_invalid() override{
+        dump_image(m_stream.logger(), MODULE_NAME, "UnexpectedBattleOpponent", m_summary);
+    }
+private:
+    VideoStream& m_stream;
+    ProControllerContext& m_context;
+    BattleMenuReader& m_reader;
+    VideoSnapshot m_summary;
+};
 
+} // namespace
 
 bool read_battle_menu(
     ProgramEnvironment& env,
@@ -71,45 +78,8 @@ bool read_battle_menu(
     BattleMoveArrowFinder arrow_finder(stream.overlay());
     arrow_finder.make_overlays(boxes);
 
-    //  Read raid mon.
-    std::set<std::string> mon = reader.read_opponent(stream.logger(), context, stream.video());
-
-    bool retry = !process_header_read(stream.logger(), state, std::move(mon));
-
-    //  The fourth battle must be a boss; earlier battles must be rentals.
-    if (!state.accept_opponent()){
-        retry = true;
-    }
-
-    VideoSnapshot snapshot;
-    if (retry){
-        stream.log("Unable to read opponent from battle. Attempting to read from summary.", COLOR_ORANGE);
-        pbf_press_button(context, BUTTON_Y, 80ms, 1000ms);
-        pbf_press_dpad(context, DPAD_UP, 80ms, 400ms);
-        pbf_press_button(context, BUTTON_A, 80ms, 2000ms);
-        context.wait_for_all_requests();
-
-        snapshot = stream.video().snapshot();
-        mon = reader.read_opponent_in_summary(stream.logger(), snapshot);
-        pbf_mash_button(context, BUTTON_B, 3000ms);
-        state.opponent = std::move(mon);
-
-        if (state.in_boss_battle_with_known_boss()){
-            if (!state.opponent.empty() && *state.opponent.begin() != state.boss){
-                stream.log(
-                    "Inconsistent Boss: Expected " + state.boss + ", Read: " + *state.opponent.begin(),
-                    COLOR_RED
-                );
-            }
-            state.opponent = {state.boss};
-        }
-    }
-    context.wait_for_all_requests();
-
-
-    if (!state.accept_opponent()){
-        stream.log("Opponent does not match the battle stage after summary read.", COLOR_RED);
-        dump_image(stream.logger(), MODULE_NAME, "UnexpectedBattleOpponent", snapshot);
+    ConsoleOpponentRead opponent_read(stream, context, reader);
+    if (!read_battle_opponent(stream.logger(), state, opponent_read)){
         return false;
     }
 
