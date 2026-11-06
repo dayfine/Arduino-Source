@@ -72,6 +72,7 @@ enum class TileKind : uint8_t{
 };
 //  The tile a glyph stands for, or nothing if it isn't one.
 std::optional<TileKind> tile_from_glyph(char glyph);
+// Returns the character glyph representing a TileKind.
 char glyph_of(TileKind tile);
 
 
@@ -120,6 +121,7 @@ struct MapWarp{
     std::optional<WarpDestination> to;
 };
 
+// Type classification for interactive map objects.
 enum class ObjectKind{
     NPC,
     ITEM,
@@ -179,6 +181,7 @@ struct MapPatch{
     std::string measured_by;
 };
 
+// Complete map dataset including dimensions, collision tiles, warps, and objects.
 struct MapData{
     std::string name;
     MapSource source;
@@ -215,6 +218,6 @@ const MapWarp* warp_at(const MapData& map, const TilePos& pos);
 
 
 
-}
-}
+} // namespace Pokemon
+} // namespace PokemonAutomation
 #endif

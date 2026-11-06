@@ -45,7 +45,7 @@ std::string digits_of(const std::string& text){
     return out;
 }
 
-}
+} // namespace
 
 
 std::string normalize_location_name(const std::string& text){
@@ -63,7 +63,7 @@ Language& story_language_setting(){
     static Language language = Language::English;
     return language;
 }
-}
+} // namespace
 
 Language story_language(){
     return story_language_setting();
@@ -143,6 +143,6 @@ bool location_banner_matches(const std::string& read, const std::string& expecte
 }
 
 
-}
-}
-}
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

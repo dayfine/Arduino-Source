@@ -56,32 +56,26 @@ std::string region_of(const std::string& point){
 
 
 //  Every built-in map parses through the shared loader, named as its file.
-class Test_StoryMapsLoad : public UnitTest{
-public:
-    Test_StoryMapsLoad()
-        : UnitTest("PokemonBDSP::AutoStory - Maps: the built-in JSON maps load")
-    {}
-    virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
-        if (bdsp_map_json().empty()){
-            return std::string("No built-in maps.");
-        }
-        for (const auto& [name, json] : bdsp_map_json()){
-            try{
-                const MapData& map = story_map(name);
-                if (map.name != name){
-                    return std::format("{}.json: story_map() returned \"{}\".", name, map.name);
-                }
-                logger.log(std::format(
-                    "{}: {} x {}, {} points, {} objects, {} patches",
-                    name, map.tiles.width, map.tiles.height, map.points.size(), map.objects.size(), map.patches.size()
-                ));
-            }catch (Exception& e){
-                return std::format("{}: {}: {}", name, e.name(), e.message());
-            }
-        }
-        return true;
+UnitTestResult test_story_maps_load(Logger& logger){
+    if (bdsp_map_json().empty()){
+        return std::string("No built-in maps.");
     }
-};
+    for (const auto& [name, json] : bdsp_map_json()){
+        try{
+            const MapData& map = story_map(name);
+            if (map.name != name){
+                return std::format("{}.json: story_map() returned \"{}\".", name, map.name);
+            }
+            logger.log(std::format(
+                "{}: {} x {}, {} points, {} objects, {} patches",
+                name, map.tiles.width, map.tiles.height, map.points.size(), map.objects.size(), map.patches.size()
+            ));
+        }catch (Exception& e){
+            return std::format("{}: {}: {}", name, e.name(), e.message());
+        }
+    }
+    return true;
+}
 
 
 //  What a named point must be on. Points not listed are ground the player
@@ -171,12 +165,7 @@ std::string check_ground(const MapData& map, const TilePos& pos){
 //  Every point is ground with nobody on it, unless point_cases() says
 //  otherwise; every numbered region runs from 1 with no gap; every case
 //  names a point the map has; every warp leads to a point that exists.
-class Test_StoryMapPoints : public UnitTest{
-public:
-    Test_StoryMapPoints()
-        : UnitTest("PokemonBDSP::AutoStory - Maps: points stand where they can")
-    {}
-    virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
+UnitTestResult test_story_map_points(Logger& logger){
         for (const PointCase& item : point_cases()){
             const MapData& map = story_map(item.map);
             if (!map.points.contains(item.point) && !map.points.contains(item.point + ".1")){
@@ -214,17 +203,11 @@ public:
         }
         logger.log(std::format("{} points checked.", checked));
         return true;
-    }
-};
+}
 
 
 //  Everyone stands on ground, and a wanderer's box holds their tile.
-class Test_StoryMapObjects : public UnitTest{
-public:
-    Test_StoryMapObjects()
-        : UnitTest("PokemonBDSP::AutoStory - Maps: objects stand on open ground")
-    {}
-    virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
+UnitTestResult test_story_map_objects(Logger& logger){
         size_t checked = 0;
         for (const auto& [name, json] : bdsp_map_json()){
             const MapData& map = story_map(name);
@@ -242,8 +225,7 @@ public:
         }
         logger.log(std::format("{} objects checked.", checked));
         return true;
-    }
-};
+}
 
 
 //  Route 202's regions are the tiles the story code computed before they
@@ -272,12 +254,7 @@ std::vector<TilePos> after_training_area(const MapData& map){
     return standable_in_box(map, {catch_spot.x - 1, catch_spot.y - 2}, {catch_spot.x + 1, catch_spot.y + 2});
 }
 
-class Test_Route202Regions : public UnitTest{
-public:
-    Test_Route202Regions()
-        : UnitTest("PokemonBDSP::AutoStory - Maps: Route 202's regions are what the story computed")
-    {}
-    virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
+UnitTestResult test_route202_regions(Logger& logger){
         const std::vector<RegionCase> cases{
             {
                 .region = "catch_save_area",    //  story_catch_save_area()
@@ -310,8 +287,7 @@ public:
             logger.log(std::format("Route202 {}: {} tiles.", item.region, region.size()));
         }
         return true;
-    }
-};
+}
 
 
 //  map_point() and map_region() find what the story asks for, regions in
@@ -323,12 +299,7 @@ struct LookupCase{
     std::vector<TilePos> expected;
 };
 
-class Test_StoryMapLookups : public UnitTest{
-public:
-    Test_StoryMapLookups()
-        : UnitTest("PokemonBDSP::AutoStory - Maps: map_point() and map_region()")
-    {}
-    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+UnitTestResult test_story_map_lookups(Logger&){
         const std::vector<LookupCase> cases{
             {
                 .name = "a point",
@@ -376,21 +347,74 @@ public:
             }
         }
         return true;
-    }
+}
+
+
+struct StoryMapsInput{
+    std::string name;
+    std::function<UnitTestResult(Logger&)> body;
 };
 
-}
+struct StoryMapsExpectation{
+};
 
+struct StoryMapsCase{
+    StoryMapsInput input;
+    StoryMapsExpectation expectation;
+};
+
+class Test_StoryMaps : public UnitTest{
+public:
+    explicit Test_StoryMaps(StoryMapsCase test_case)
+        : UnitTest("PokemonBDSP::AutoStory - Maps: " + test_case.input.name)
+        , m_case(std::move(test_case))
+    {}
+    virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
+        try{
+            return m_case.input.body(logger);
+        }catch (Exception& e){
+            return std::string(e.name()) + ": " + e.message();
+        }
+    }
+
+private:
+    StoryMapsCase m_case;
+};
+
+} // namespace
+
+
+const StoryMapsCase STORY_MAPS_CASES[] = {
+    {
+        .input = {"the built-in JSON maps load", test_story_maps_load},
+        .expectation = {},
+    },
+    {
+        .input = {"points stand where they can", test_story_map_points},
+        .expectation = {},
+    },
+    {
+        .input = {"objects stand on open ground", test_story_map_objects},
+        .expectation = {},
+    },
+    {
+        .input = {"map_point() and map_region()", test_story_map_lookups},
+        .expectation = {},
+    },
+    {
+        .input = {"Route 202's regions are what the story computed", test_route202_regions},
+        .expectation = {},
+    },
+};
 
 void add_tests_AutoStory_Maps(UnitTestDatabase& database){
-    database.add<Test_StoryMapsLoad>();
-    database.add<Test_StoryMapPoints>();
-    database.add<Test_StoryMapObjects>();
-    database.add<Test_StoryMapLookups>();
-    database.add<Test_Route202Regions>();
+    for (const auto& item : STORY_MAPS_CASES){
+        database.add<Test_StoryMaps>(item);
+    }
 }
 
 
-}
-}
-}
+
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

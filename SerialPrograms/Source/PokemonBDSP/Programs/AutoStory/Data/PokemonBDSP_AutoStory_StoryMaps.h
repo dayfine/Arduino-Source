@@ -27,15 +27,25 @@ namespace PokemonBDSP{
 //  JSON map named without spaces ("Route 201" from Route201.json), except
 //  MAP_ROUTE_204, which is Route204North.json.
 extern const char* const MAP_ROUTE_201;
+//  Sandgem Town overworld map name.
 extern const char* const MAP_SANDGEM_TOWN;
+//  Route 202 overworld map name.
 extern const char* const MAP_ROUTE_202;
+//  Jubilife City overworld map name.
 extern const char* const MAP_JUBILIFE_CITY;
+//  Oreburgh Mine map name.
 extern const char* const MAP_OREBURGH_MINE;
+//  Ravaged Path map name.
 extern const char* const MAP_RAVAGED_PATH;
+//  Route 204 North map name.
 extern const char* const MAP_ROUTE_204;
+//  Route 204 South map name.
 extern const char* const MAP_ROUTE_204_SOUTH;
+//  Route 203 overworld map name.
 extern const char* const MAP_ROUTE_203;
+//  Oreburgh City overworld map name.
 extern const char* const MAP_OREBURGH_CITY;
+//  Floaroma Town overworld map name.
 extern const char* const MAP_FLOAROMA_TOWN;
 
 //  Route 201, Sandgem Town and Route 202.
@@ -49,6 +59,7 @@ const StoryWorld& jubilife_maps();
 //  into Jubilife, so the plan ends there (no leg may leave the map) and a
 //  walk west until Jubilife's banner shows goes on from there.
 const StoryWorld& route203_maps();
+//  Returns whether given tile lies on the west line towards Jubilife.
 bool on_route203_west_line(const Pokemon::TilePos& pos);
 //  Jubilife City's north-east corner (01.06), at its own tile coordinates:
 //  the rest of the city is walled off, so the plan searches only the part
@@ -56,7 +67,9 @@ bool on_route203_west_line(const Pokemon::TilePos& pos);
 //  on the north road below the plaza: walking north from there goes up the
 //  road to Route 204 (and Rowan's scene).
 const StoryWorld& jubilife_east_maps();
+//  Returns entrance coordinates for east entrance of Jubilife.
 const std::vector<Pokemon::TilePos>& jubilife_east_entrance();
+//  Returns whether given tile lies on the north road towards Route 204.
 bool on_jubilife_north_road(const Pokemon::TilePos& pos);
 //  The Oreburgh Mine's coal room on its own (01.03).
 const StoryWorld& oreburgh_mine_maps();
@@ -67,6 +80,7 @@ StoryWorld ravaged_path_maps(const std::vector<Pokemon::TilePos>& smashed = {});
 //  Route 204's north half on its own (01.05), and whether a tile is on the
 //  path north into Floaroma.
 const StoryWorld& route204_north_maps();
+//  Returns whether given tile lies within the Floaroma entrance path.
 bool in_floaroma_path(const Pokemon::TilePos& pos);
 
 //  Route 204's south half on its own (01.08): it joins the north half only
@@ -75,6 +89,7 @@ const StoryWorld& route204_south_maps();
 
 //  Oreburgh City alone (01.04, 01.05), and Floaroma Town alone (01.11).
 const StoryWorld& oreburgh_city_maps();
+//  Returns StoryWorld instance containing Floaroma Town alone.
 const StoryWorld& floaroma_maps();
 
 //  Whether a plan may cross this map. Towns are crossed by screen-driven
@@ -114,8 +129,11 @@ std::vector<TrainerSight> story_trainer_sights();
 //  The trainers of a map, in its own tiles, with the sight ranges that fit
 //  the console. A trainer who looks two ways is listed once per way.
 std::vector<TrainerSight> route202_trainer_sights();
+//  Returns trainer sights for Route 204 North.
 std::vector<TrainerSight> route204_north_trainer_sights();
+//  Returns trainer sights for Route 204 South.
 std::vector<TrainerSight> route204_south_trainer_sights();
+//  Returns trainer sights for Oreburgh Gym.
 std::vector<TrainerSight> oreburgh_gym_trainer_sights();
 
 //  Route 204 South's tiles in the trainers' sight that a walk can avoid:
@@ -124,7 +142,7 @@ std::vector<Pokemon::TilePos> route204_south_tiles_to_avoid();
 
 
 
-}
-}
-}
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

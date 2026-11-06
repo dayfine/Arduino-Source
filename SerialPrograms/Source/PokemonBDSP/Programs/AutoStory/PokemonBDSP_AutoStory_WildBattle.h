@@ -50,7 +50,7 @@ void run_from_wild_battle(VideoStream& stream, ProControllerContext& context);
 
 
 
-}
-}
-}
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

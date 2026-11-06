@@ -389,7 +389,7 @@ std::vector<ScreenState> intro_states(IntroRun& run){
     };
 }
 
-}
+} // namespace
 
 
 
@@ -431,6 +431,6 @@ void play_new_game_intro(
 
 
 
-}
-}
-}
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

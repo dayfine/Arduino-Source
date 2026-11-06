@@ -57,7 +57,7 @@ void open_menu(VideoStream& stream, ProControllerContext& context, MenuCursorPos
 
 
 
-}
-}
-}
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

@@ -35,7 +35,7 @@ const std::map<std::string, MapData, std::less<>>& story_maps_by_name(){
     return maps;
 }
 
-}
+} // namespace
 
 
 const MapData& story_map(std::string_view name){
@@ -72,6 +72,6 @@ std::vector<TilePos> map_region(std::string_view map, std::string_view region){
 
 
 
-}
-}
-}
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

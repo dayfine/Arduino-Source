@@ -79,12 +79,7 @@ struct StepCase{
     bool at_wall = false;
 };
 
-class Test_StoryWorldSteps : public UnitTest{
-public:
-    Test_StoryWorldSteps()
-        : UnitTest("PokemonBDSP::AutoStory - Story world: what each tile does to a step")
-    {}
-    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+UnitTestResult test_story_world_steps(Logger&){
         const std::vector<StepCase> cases{
             {.name = "open ground", .rows = {".", "."}, .from = {0, 1}, .lands = TilePos{0, 0}},
             {.name = "tall grass", .rows = {"~", "."}, .from = {0, 1}, .lands = TilePos{0, 0}},
@@ -113,18 +108,12 @@ public:
             }
         }
         return true;
-    }
-};
+}
 
 
 //  Two maps joined: tiles of each at their offsets, the gap between them
 //  off the maps, and a shared wall border allowed where nothing else is.
-class Test_StoryWorldJoin : public UnitTest{
-public:
-    Test_StoryWorldJoin()
-        : UnitTest("PokemonBDSP::AutoStory - Story world: maps joined at offsets")
-    {}
-    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+UnitTestResult test_story_world_join(Logger&){
         StoryWorld world;
         world.add("West", make_map({"##", ".#"}), {0, 0});
         world.add("East", make_map({"#.", "#~"}), {1, -1});
@@ -154,18 +143,12 @@ public:
             return std::string("to_world() of an unknown map did not throw.");
         }catch (InternalProgramError&){}
         return true;
-    }
-};
+}
 
 
 //  block() and uncover() change what a tile does, and survive a map added
 //  later that moves the world's origin.
-class Test_StoryWorldBlockUncover : public UnitTest{
-public:
-    Test_StoryWorldBlockUncover()
-        : UnitTest("PokemonBDSP::AutoStory - Story world: blocked and uncovered tiles")
-    {}
-    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+UnitTestResult test_story_world_block_uncover(Logger&){
         StoryWorld world;
         world.add("Road", make_map({"...."}), {0, 0});
         world.block({1, 0});
@@ -183,19 +166,66 @@ public:
             return std::string("Adding a map lost the blocked or uncovered tile.");
         }
         return true;
-    }
+}
+
+
+struct StoryWorldInput{
+    std::string name;
+    std::function<UnitTestResult(Logger&)> body;
 };
 
-}
+struct StoryWorldExpectation{
+};
 
+struct StoryWorldCase{
+    StoryWorldInput input;
+    StoryWorldExpectation expectation;
+};
+
+class Test_StoryWorld : public UnitTest{
+public:
+    explicit Test_StoryWorld(StoryWorldCase test_case)
+        : UnitTest("PokemonBDSP::AutoStory - Story world: " + test_case.input.name)
+        , m_case(std::move(test_case))
+    {}
+    virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
+        try{
+            return m_case.input.body(logger);
+        }catch (Exception& e){
+            return std::string(e.name()) + ": " + e.message();
+        }
+    }
+
+private:
+    StoryWorldCase m_case;
+};
+
+} // namespace
+
+
+const StoryWorldCase STORY_WORLD_CASES[] = {
+    {
+        .input = {"what each tile does to a step", test_story_world_steps},
+        .expectation = {},
+    },
+    {
+        .input = {"maps joined at offsets", test_story_world_join},
+        .expectation = {},
+    },
+    {
+        .input = {"blocked and uncovered tiles", test_story_world_block_uncover},
+        .expectation = {},
+    },
+};
 
 void add_tests_AutoStory_StoryWorld(UnitTestDatabase& database){
-    database.add<Test_StoryWorldSteps>();
-    database.add<Test_StoryWorldJoin>();
-    database.add<Test_StoryWorldBlockUncover>();
+    for (const auto& item : STORY_WORLD_CASES){
+        database.add<Test_StoryWorld>(item);
+    }
 }
 
 
-}
-}
-}
+
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

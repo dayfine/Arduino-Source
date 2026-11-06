@@ -49,7 +49,7 @@ std::vector<ImagePixelBox> find_name_list_arrows(const ImageViewRGB32& image){
     }
     return ret;
 }
-}
+} // namespace
 
 
 NameListDetector::NameListDetector(Color color)
@@ -91,6 +91,6 @@ int NameListDetector::selected_row(const ImageViewRGB32& screen) const{
 }
 
 
-}
-}
-}
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

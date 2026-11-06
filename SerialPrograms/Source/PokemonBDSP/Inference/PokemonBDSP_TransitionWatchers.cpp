@@ -40,6 +40,6 @@ bool WhiteScreenOverWatcher::white_is_over(const ImageViewRGB32& frame){
 }
 
 
-}
-}
-}
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

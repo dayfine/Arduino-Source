@@ -37,6 +37,7 @@ private:
     ImageFloatBox m_bottom_bar;
     ImageFloatBox m_ok_button;
 };
+//  Periodic watcher for the Switch system on-screen keyboard.
 class SystemKeyboardWatcher : public DetectorToFinder<SystemKeyboardDetector>{
 public:
     SystemKeyboardWatcher(Color color = COLOR_CYAN)
@@ -62,6 +63,6 @@ void type_on_system_keyboard(VideoStream& stream, ProControllerContext& context,
 
 
 
-}
-}
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

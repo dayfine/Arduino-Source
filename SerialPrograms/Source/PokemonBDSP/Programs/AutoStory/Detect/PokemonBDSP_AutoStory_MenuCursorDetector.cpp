@@ -185,7 +185,7 @@ double template_match_rmsd(const ImageViewRGB32& screen, const ImageFloatBox& bo
     return min_rmsd;
 }
 
-} // anonymous namespace
+} // namespace
 
 
 MenuCursorPosition MenuCursorDetector::detect_dark_pixels(const ImageViewRGB32& screen) const {
@@ -281,6 +281,6 @@ MenuCursorPosition detect_menu_cursor(VideoStream& stream, ProControllerContext&
 }
 
 
-}
-}
-}
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

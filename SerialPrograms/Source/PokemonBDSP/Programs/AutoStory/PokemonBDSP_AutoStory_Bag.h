@@ -30,12 +30,14 @@ bool bag_list_is_empty(const ImageViewRGB32& frame);
 //  The cursor's row, 1-7, or 0 if unknown.
 int bag_cursor_position(const ImageViewRGB32& frame);
 
+//  Navigation action between bag pocket tabs.
 enum class BagPocketAction{
     UNKNOWN,
     CONFIRM,
     LEFT,
     RIGHT,
 };
+//  Plan to navigate from one bag pocket tab to another.
 struct BagPocketMovePlan{
     BagPocketAction action = BagPocketAction::UNKNOWN;
     size_t presses = 0;
@@ -85,7 +87,7 @@ void use_potion_first_pokemon(
 
 
 
-}
-}
-}
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

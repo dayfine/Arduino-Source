@@ -81,6 +81,7 @@ private:
     ImageFloatBox m_button;
 };
 
+//  Inference watcher tracking the visibility of the Poketch button on screen.
 class PoketchButtonWatcher : public PoketchButtonDetector, public VisualInferenceCallback {
 public:
     PoketchButtonWatcher(Color color = COLOR_RED);
@@ -94,7 +95,7 @@ public:
 bool ensure_poketch_visible(VideoStream& stream, ProControllerContext& context);
 
 
-}
-}
-}
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

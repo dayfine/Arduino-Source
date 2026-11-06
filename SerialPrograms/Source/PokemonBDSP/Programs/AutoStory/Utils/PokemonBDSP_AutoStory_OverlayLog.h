@@ -21,7 +21,7 @@ namespace PokemonBDSP{
 void add_wrapped_log(VideoOverlay& overlay, const std::string& text, Color color);
 
 
-}
-}
-}
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif
