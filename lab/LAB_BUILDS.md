@@ -1,5 +1,7 @@
 # Lab builds base on `lab/main`
 
+For a human one-command build and launch, see [Start a development instance](DEV_INSTANCE.md).
+
 Every lab build (BDSP AutoStory on console B, FRLG nav on console A, any
 future lab) is built from a branch that merges `lab/main`. Lab-only tooling
 lives there, not in fork `main`.
