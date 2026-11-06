@@ -497,7 +497,7 @@ def scopes(parsed):
             kind = brace_kind(statement.text)
             if re.fullmatch(r'extern\s*"\s*"', statement.text):
                 kind = 'linkage'
-            match = re.fullmatch(r'(?:inline\s+)?namespace\s*([\w:]*)', statement.text)
+            match = re.search(r'\b(?:inline\s+)?namespace\s*([\w:]*)$', statement.text)
             if kind == 'class':
                 match = re.search(r'\b(?:class|struct|union)\s+(\w+)', statement.text)
             stack.append((kind, match.group(1) if match else ''))
