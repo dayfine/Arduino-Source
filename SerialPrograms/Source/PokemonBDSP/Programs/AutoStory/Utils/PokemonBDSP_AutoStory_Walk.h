@@ -29,6 +29,7 @@ namespace PokemonBDSP{
 //  started; how to leave it is the program's battle code, passed in.
 using WildBattleEscape = std::function<void(VideoStream& stream, ProControllerContext& context)>;
 
+//  Possible termination conditions for an automated walking sequence.
 enum class WalkStop{
     ARRIVED,        //  `arrived` matched.
     DIALOG,         //  A dialogue box opened: an NPC or a trainer stopped us.
@@ -36,11 +37,13 @@ enum class WalkStop{
     BLOCKED,        //  The screen stopped changing: we are walking into a wall.
     LIMIT,          //  Walked `limit` without any of the above.
 };
+//  Returns display name string corresponding to given WalkStop condition.
 const char* walk_stop_name(WalkStop stop);
 
 //  Whether the walk has arrived, from the screen after each chunk.
 using WalkArrived = std::function<bool(const ImageViewRGB32& screen)>;
 
+//  Result metrics and terminal state returned by automated walking execution.
 struct WalkResult{
     WalkStop stop;
     Milliseconds walked;
@@ -67,6 +70,7 @@ enum class DpadPace{
     WALK,
     RUN,
 };
+//  Configuration options controlling D-pad based walking maneuvers.
 struct DpadWalkOptions{
     WalkArrived arrived = nullptr;
     DpadPace pace = DpadPace::WALK;
@@ -80,7 +84,7 @@ struct DpadWalkOptions{
 WalkResult walk_until_dpad(
     VideoStream& stream, ProControllerContext& context, const WildBattleEscape& escape,
     JoystickPosition stick, Milliseconds limit, const std::string& label,
-    const DpadWalkOptions& options = {}
+    const DpadWalkOptions& options = DpadWalkOptions()
 );
 
 //  A set number of whole tiles on the D-pad, a tap a tile (a tap moves
@@ -151,6 +155,7 @@ WalkResult walk_to_talk(
 //  the whole view: 16 to 85 per 400ms on Route 202, against about 6 for running in
 //  place against trees.
 double walk_screen_change(const ImageViewRGB32& before, const ImageViewRGB32& after);
+//  Screen change metric threshold indicative of blocked movement against an obstacle.
 constexpr double WALK_BLOCKED_CHANGE = 10.0;
 //  For whole-tile D-pad taps: a tap that moves changes the screen by 21 to 50
 //  (r244a: 40 per tap along Route 204's row 27); a tap into a wall or an NPC
@@ -176,6 +181,7 @@ struct WalkProbe{
     };
     std::vector<Sample> samples;
 };
+//  Probes walking movement and records timestamped screen change samples.
 WalkProbe probe_walk(
     VideoStream& stream, ProControllerContext& context,
     JoystickPosition stick, Milliseconds limit,
@@ -183,7 +189,7 @@ WalkProbe probe_walk(
 );
 
 
-}
-}
-}
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

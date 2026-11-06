@@ -183,12 +183,7 @@ StoryWorld make_world(const std::vector<std::string>& rows){
 //  r54: a trainer's line froze the check walk at a leg's wall; after the
 //  battle the walk on reached the wall, but the check still judged the
 //  frozen walk's DIALOG and failed. The walk on is what counts.
-class Test_WallLegTrainerOnTheWay : public UnitTest{
-public:
-    Test_WallLegTrainerOnTheWay()
-        : UnitTest("PokemonBDSP::AutoStory - Planned route: a trainer on a wall leg, then on to the wall")
-    {}
-    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+UnitTestResult test_wall_leg_trainer_on_the_way(Logger&){
         Script script{.steps = {
             walk_step("wall: T: east 4 (to wall)", WalkStop::LIMIT, 2050ms, 0),
             walk_step("wall: T: east 4 (to wall): at the wall?", WalkStop::DIALOG, 400ms, 0),
@@ -211,8 +206,7 @@ public:
         }
         const std::string left = script_left(script);
         return left.empty() ? UnitTestResult(true) : UnitTestResult(left);
-    }
-};
+}
 
 
 //  A leg to a wall that ran out of time: a check walk that also runs out
@@ -224,12 +218,7 @@ struct WallCheckCase{
     bool fails;
 };
 
-class Test_WallLegLimit : public UnitTest{
-public:
-    Test_WallLegLimit()
-        : UnitTest("PokemonBDSP::AutoStory - Planned route: a wall leg out of time needs the holding check")
-    {}
-    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+UnitTestResult test_wall_leg_limit(Logger&){
         const std::vector<WallCheckCase> cases{
             {.name = "the check stops at the wall", .check = {
                 walk_step("wall: T: east 4 (to wall): at the wall?", WalkStop::BLOCKED, 1050ms, 0),
@@ -262,8 +251,7 @@ public:
             }
         }
         return true;
-    }
-};
+}
 
 
 //  Whether walking `legs` from `from` ever steps into `person`'s tile: a
@@ -322,12 +310,7 @@ std::string check_replan_from(const Script& script, const std::vector<std::strin
 //  the tap count alone walked into him. The replan must start from both the
 //  tile the taps give and the tile where the leg enters his sight, and walk
 //  on from either without bumping into him.
-class Test_OpenLegKnownTrainer : public UnitTest{
-public:
-    Test_OpenLegKnownTrainer()
-        : UnitTest("PokemonBDSP::AutoStory - Planned route: a known trainer stops an open leg")
-    {}
-    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+UnitTestResult test_open_leg_known_trainer(Logger&){
         const StoryWorld world = route202_world();
         //  West along row 5 from (30, 5) to (24, 5): his line is the 4th tap,
         //  and his dialogue comes after 3 taps that moved.
@@ -366,20 +349,66 @@ public:
         }
         const std::string left = script_left(script);
         return left.empty() ? UnitTestResult(true) : UnitTestResult(left);
-    }
+}
+
+
+struct PlannedRouteInput{
+    std::string name;
+    std::function<UnitTestResult(Logger&)> body;
 };
 
-}
+struct PlannedRouteExpectation{
+};
 
+struct PlannedRouteCase{
+    PlannedRouteInput input;
+    PlannedRouteExpectation expectation;
+};
+
+class Test_PlannedRoute : public UnitTest{
+public:
+    explicit Test_PlannedRoute(PlannedRouteCase test_case)
+        : UnitTest("PokemonBDSP::AutoStory - Planned route: " + test_case.input.name)
+        , m_case(std::move(test_case))
+    {}
+    virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
+        try{
+            return m_case.input.body(logger);
+        }catch (Exception& e){
+            return std::string(e.name()) + ": " + e.message();
+        }
+    }
+
+private:
+    PlannedRouteCase m_case;
+};
+
+} // namespace
+
+
+const PlannedRouteCase PLANNED_ROUTE_CASES[] = {
+    {
+        .input = {"a trainer on a wall leg, then on to the wall", test_wall_leg_trainer_on_the_way},
+        .expectation = {},
+    },
+    {
+        .input = {"a wall leg out of time needs the holding check", test_wall_leg_limit},
+        .expectation = {},
+    },
+    {
+        .input = {"a known trainer stops an open leg", test_open_leg_known_trainer},
+        .expectation = {},
+    },
+};
 
 void add_tests_AutoStory_PlannedRoute(UnitTestDatabase& database){
-    database.add<Test_WallLegTrainerOnTheWay>();
-    database.add<Test_WallLegLimit>();
-    database.add<Test_OpenLegKnownTrainer>();
+    for (const auto& item : PLANNED_ROUTE_CASES){
+        database.add<Test_PlannedRoute>(item);
+    }
 }
 
 
 
-}
-}
-}
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
