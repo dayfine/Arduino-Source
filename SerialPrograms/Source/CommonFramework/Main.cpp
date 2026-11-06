@@ -45,15 +45,17 @@
 #include "PersistentSettings.h"
 #include "NintendoSwitch/NintendoSwitch_SettingsPanel.h"
 
+Q_DECLARE_METATYPE(std::string)
+
 using namespace PokemonAutomation;
 
 namespace PokemonAutomation{
-    bool use_qt_ui(){
-        return true;
-    }
+bool use_qt_ui(){
+    return true;
 }
+} // namespace PokemonAutomation
 
-Q_DECLARE_METATYPE(std::string)
+namespace{
 
 void set_working_directory(){
     const std::string app_dir = Filesystem::application_binary_directory().string_slash_normalized();
@@ -69,10 +71,6 @@ void set_working_directory(){
     }
 }
 
-namespace PokemonAutomation{
-
-
-
 FileLogger& global_file_logger(){
     static FileLogger logger(
         GlobalThreadPools::unlimited_normal(),
@@ -81,8 +79,6 @@ FileLogger& global_file_logger(){
         }
     );
     return logger;
-}
-
 }
 
 
@@ -279,8 +275,6 @@ int run_program(int argc, char *argv[]){
     return ret;
 }
 
-
-namespace{
 
 // Stop GUI services after run_program() returns, preserving the existing order.
 void stop_application_services(){
