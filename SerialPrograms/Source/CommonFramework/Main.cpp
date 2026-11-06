@@ -261,7 +261,9 @@ int run_program(int argc, char *argv[]){
 }
 
 
-// Stop only services that the GUI startup can initialize.
+namespace{
+
+// Stop GUI services after run_program() returns, preserving the existing order.
 void stop_application_services(){
 #ifdef PA_SOCIAL_SDK
     Integration::DiscordSocialSDK::DiscordSocial::instance().stop();
@@ -287,7 +289,7 @@ void stop_application_services(){
 
 }
 
-// Shared test/GUI worker teardown; no settings, device or GUI services are created.
+// Join the worker pools after service shutdown and the Windows Qt workaround.
 void stop_thread_pools(){
     //  Force stop the thread pools.
     //  This is where all the threads in the program are joined.
@@ -301,6 +303,8 @@ void stop_thread_pools(){
     GlobalThreadPools::qt_event_threadpool().stop();
 
 }
+
+} // namespace
 
 int run_gui_application(int argc, char *argv[]){
 #if 0
