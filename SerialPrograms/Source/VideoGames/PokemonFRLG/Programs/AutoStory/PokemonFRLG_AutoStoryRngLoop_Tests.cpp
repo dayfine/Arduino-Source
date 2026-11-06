@@ -27,22 +27,36 @@ namespace PokemonFRLG{
 
 namespace{
 
+struct AutoStoryRngLoopInput{
+    std::string name;
+    UnitTestResult (*body)();
+};
+
+struct AutoStoryRngLoopExpectation{
+    const char* description;
+};
+
+struct AutoStoryRngLoopTestCase{
+    AutoStoryRngLoopInput input;
+    AutoStoryRngLoopExpectation expectation;
+};
+
 class Test_AutoStoryRngLoop : public UnitTest{
 public:
-    Test_AutoStoryRngLoop(std::string name, std::function<UnitTestResult()> body)
-        : UnitTest("PokemonFRLG::AutoStoryRngLoop - " + std::move(name))
-        , m_body(std::move(body))
+    explicit Test_AutoStoryRngLoop(AutoStoryRngLoopTestCase scenario)
+        : UnitTest("PokemonFRLG::AutoStoryRngLoop - " + scenario.input.name)
+        , m_scenario(std::move(scenario))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
         try{
-            return m_body();
+            return m_scenario.input.body();
         }catch (Exception& e){
             return std::string(e.name()) + ": " + e.message();
         }
     }
 
 private:
-    std::function<UnitTestResult()> m_body;
+    AutoStoryRngLoopTestCase m_scenario;
 };
 
 
@@ -327,22 +341,53 @@ UnitTestResult test_gift_calibration(){
     return true;
 }
 
-}
+
+const AutoStoryRngLoopTestCase AUTO_STORY_RNG_LOOP_CASES[] = {
+    {
+        .input = {.name = "shiny messages", .body = test_shiny_messages},
+        .expectation = {.description = "formats notifications for shiny starter encounters"},
+    },
+    {
+        .input = {.name = "rows after a shiny", .body = test_rows_after_shiny},
+        .expectation = {.description = "plans continuation rows following shiny discovery"},
+    },
+    {
+        .input = {.name = "Gift RNG messages", .body = test_gift_messages},
+        .expectation = {.description = "formats notifications for gift rng encounters"},
+    },
+    {
+        .input = {.name = "00.12 and 00.12b: rows after a shiny Magikarp", .body = test_rows_after_magikarp},
+        .expectation = {.description = "plans continuation rows following shiny magikarp"},
+    },
+    {
+        .input = {.name = "Gift RNG outcomes in the RNG plan", .body = test_gift_outcomes},
+        .expectation = {.description = "handles gift rng outcomes in plan"},
+    },
+    {
+        .input = {.name = "Starter RNG starts from the RNG plan's calibration", .body = test_starter_calibration_from_options},
+        .expectation = {.description = "initializes starter calibrations from program options"},
+    },
+    {
+        .input = {.name = "Starter RNG saves its calibration after each reset", .body = test_starter_calibration_saved},
+        .expectation = {.description = "persists calibration adjustments across reset cycles"},
+    },
+    {
+        .input = {.name = "Gift RNG keeps its own in-game calibration", .body = test_gift_calibration},
+        .expectation = {.description = "persists gift rng in-game calibrations separately"},
+    },
+};
+
+} // namespace
 
 
 void add_tests_AutoStoryRngLoop(UnitTestDatabase& database){
-    database.add<Test_AutoStoryRngLoop>("shiny messages", test_shiny_messages);
-    database.add<Test_AutoStoryRngLoop>("rows after a shiny", test_rows_after_shiny);
-    database.add<Test_AutoStoryRngLoop>("Gift RNG messages", test_gift_messages);
-    database.add<Test_AutoStoryRngLoop>("00.12 and 00.12b: rows after a shiny Magikarp", test_rows_after_magikarp);
-    database.add<Test_AutoStoryRngLoop>("Gift RNG outcomes in the RNG plan", test_gift_outcomes);
-    database.add<Test_AutoStoryRngLoop>("Starter RNG starts from the RNG plan's calibration", test_starter_calibration_from_options);
-    database.add<Test_AutoStoryRngLoop>("Starter RNG saves its calibration after each reset", test_starter_calibration_saved);
-    database.add<Test_AutoStoryRngLoop>("Gift RNG keeps its own in-game calibration", test_gift_calibration);
+    for (const auto& scenario : AUTO_STORY_RNG_LOOP_CASES){
+        database.add<Test_AutoStoryRngLoop>(scenario);
+    }
 }
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

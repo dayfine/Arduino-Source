@@ -27,14 +27,23 @@ namespace NintendoSwitch{
 namespace PokemonFRLG{
 
 
+//  Direction enum from Pokemon navigation.
 using Pokemon::Direction;
+//  Grid tile coordinates.
 using Pokemon::TilePos;
+//  Classification of tile terrain.
 using Pokemon::TileKind;
+//  Parsed map representation.
 using Pokemon::MapData;
+//  Warp point connection.
 using Pokemon::MapWarp;
+//  Entity object on a map.
 using Pokemon::MapObject;
+//  Inter-map border connection.
 using Pokemon::MapConnection;
+//  Warp entry trigger definition.
 using Pokemon::WarpEntry;
+//  Finds warp located at specific tile coordinates.
 using Pokemon::warp_at;
 
 
@@ -67,12 +76,16 @@ constexpr uint8_t ELEVATION_GROUND = 3;
 //    way.
 //  A map without an elevation grid is all ground.
 
+//  Whether the given point falls within the map bounds.
 bool in_bounds(const MapData& map, const TilePos& point);
 //  Out-of-bounds tiles are walls.
 TileKind tile_at(const MapData& map, const TilePos& point);
+//  Returns the elevation index at the given coordinate.
 uint8_t elevation_at(const MapData& map, const TilePos& point);
 
+//  Whether the tile at point is unwalkable wall terrain.
 bool is_wall(const MapData& map, const TilePos& point);
+//  Whether the tile at point is water terrain.
 bool is_water(const MapData& map, const TilePos& point);
 //  The map region of the tiles with wild encounters whose glyph isn't tall
 //  grass.
@@ -80,10 +93,12 @@ extern const char WILD_REGION[];
 //  Whether a step onto the tile may start a wild battle: tall grass, or a
 //  tile in WILD_REGION.
 bool is_tall_grass(const MapData& map, const TilePos& point);
+//  Whether the tile at point is a one-way ledge.
 bool is_ledge(const MapData& map, const TilePos& point);
 //  Whether the tile itself refuses a step in `direction`: entering it, or
 //  leaving it.
 bool blocks_entering(const MapData& map, const TilePos& point, Direction direction);
+//  Whether leaving the tile in the given direction is blocked.
 bool blocks_leaving(const MapData& map, const TilePos& point, Direction direction);
 
 //  Whether the game takes this tile's warp on stepping onto it (a ladder or
@@ -117,6 +132,7 @@ struct PlayerState{
     bool surfing = false;
 };
 
+//  Classification of movement result when taking a step.
 enum class StepKind{
     BLOCKED,
     WALK,           //  moves one tile (on land, or on water while surfing)
@@ -137,6 +153,7 @@ StepKind classify_step_onto(
 //  The player after a step of kind WALK, STOP_SURFING or START_SURF (the
 //  Surf action moves the player onto the water).
 PlayerState after_step(const MapData& map, const PlayerState& state, Direction direction, StepKind kind);
+//  The player state resulting from stepping across map boundaries.
 PlayerState after_step_onto(
     const MapData& from, const PlayerState& state,
     const MapData& to, const TilePos& destination, StepKind kind
@@ -144,7 +161,7 @@ PlayerState after_step_onto(
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

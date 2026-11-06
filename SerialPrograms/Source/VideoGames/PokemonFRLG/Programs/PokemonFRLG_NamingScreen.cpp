@@ -81,7 +81,7 @@ bool press_on_naming_screen(
     return true;
 }
 
-}
+} // namespace
 
 
 bool type_name(
@@ -101,6 +101,6 @@ bool type_name_without_confirming(
 }
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

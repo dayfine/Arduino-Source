@@ -75,7 +75,7 @@ bool set_teach_word(TeachPlan& plan, std::string_view word){
     return false;
 }
 
-}
+} // namespace
 
 std::optional<TeachPlan> parse_teach_variant(std::string_view variant){
     if (!variant.starts_with(TEACH_VARIANT_PREFIX)){
@@ -262,7 +262,7 @@ private:
     TeachResult m_result;
 };
 
-}
+} // namespace
 
 TeachResult run_teach(Logger& logger, TeachActions& actions, const MemberReader& reader, const TeachPlan& plan){
     TeachResult result = TeachRun(actions, reader, plan).run();
@@ -288,6 +288,6 @@ std::string teach_message(const TeachPlan& plan, const TeachResult& result){
 }
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

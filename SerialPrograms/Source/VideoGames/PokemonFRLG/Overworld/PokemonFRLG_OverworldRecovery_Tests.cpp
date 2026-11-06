@@ -28,22 +28,36 @@ namespace PokemonFRLG{
 
 namespace{
 
+struct OverworldRecoveryInput{
+    std::string name;
+    UnitTestResult (*body)();
+};
+
+struct OverworldRecoveryExpectation{
+    const char* description;
+};
+
+struct OverworldRecoveryTestCase{
+    OverworldRecoveryInput input;
+    OverworldRecoveryExpectation expectation;
+};
+
 class Test_OverworldRecovery : public UnitTest{
 public:
-    Test_OverworldRecovery(std::string name, std::function<UnitTestResult()> body)
-        : UnitTest("PokemonFRLG::OverworldRecovery - " + std::move(name))
-        , m_body(std::move(body))
+    explicit Test_OverworldRecovery(OverworldRecoveryTestCase scenario)
+        : UnitTest("PokemonFRLG::OverworldRecovery - " + scenario.input.name)
+        , m_scenario(std::move(scenario))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
         try{
-            return m_body();
+            return m_scenario.input.body();
         }catch (Exception& e){
             return std::string(e.name()) + ": " + e.message();
         }
     }
 
 private:
-    std::function<UnitTestResult()> m_body;
+    OverworldRecoveryTestCase m_scenario;
 };
 
 //  Steps that end as scripted, by the order they are walked in; DONE if not.
@@ -481,23 +495,56 @@ UnitTestResult test_grass_in_sight(){
     return expect_logged(script.logs, {"Robin (3, 1) (stopped by a trainer, now at (3, 2))"});
 }
 
-}
+const OverworldRecoveryTestCase OVERWORLD_RECOVERY_CASES[] = {
+    {
+        .input = {.name = "stop, recover, resume", .body = test_stop_recover_resume},
+        .expectation = {.description = "verifies full stop, recovery reanchor, and resume sequence"},
+    },
+    {
+        .input = {.name = "no recovery", .body = test_no_recovery},
+        .expectation = {.description = "handles clean runs where no recovery interruption occurs"},
+    },
+    {
+        .input = {.name = "legs to a wall", .body = test_wall_legs},
+        .expectation = {.description = "tests wall-stopping leg recovery"},
+    },
+    {
+        .input = {.name = "a leg to a warp", .body = test_warp_leg},
+        .expectation = {.description = "tests warp arrival leg recovery"},
+    },
+    {
+        .input = {.name = "the route is logged", .body = test_route_logged},
+        .expectation = {.description = "verifies route execution logging and breadcrumbs"},
+    },
+    {
+        .input = {.name = "a leg to a wall ends at it", .body = test_wall_check},
+        .expectation = {.description = "validates arrival position at wall terminator"},
+    },
+    {
+        .input = {.name = "a leg crosses a trainer's sight", .body = test_trainer_crossing},
+        .expectation = {.description = "recovers when traversing through trainer vision cones"},
+    },
+    {
+        .input = {.name = "a trainer stops a leg", .body = test_trainer_stops_leg},
+        .expectation = {.description = "handles forced stop and battle start from trainer challenge"},
+    },
+    {
+        .input = {.name = "a stop on the grass in a trainer's sight", .body = test_grass_in_sight},
+        .expectation = {.description = "handles wild encounter in trainer sight line"},
+    },
+};
+
+} // namespace
 
 
 void add_tests_OverworldRecovery(UnitTestDatabase& database){
-    database.add<Test_OverworldRecovery>("stop, recover, resume", test_stop_recover_resume);
-    database.add<Test_OverworldRecovery>("no recovery", test_no_recovery);
-    database.add<Test_OverworldRecovery>("legs to a wall", test_wall_legs);
-    database.add<Test_OverworldRecovery>("a leg to a warp", test_warp_leg);
-    database.add<Test_OverworldRecovery>("the route is logged", test_route_logged);
-    database.add<Test_OverworldRecovery>("a leg to a wall ends at it", test_wall_check);
-    database.add<Test_OverworldRecovery>("a leg crosses a trainer's sight", test_trainer_crossing);
-    database.add<Test_OverworldRecovery>("a trainer stops a leg", test_trainer_stops_leg);
-    database.add<Test_OverworldRecovery>("a stop on the grass in a trainer's sight", test_grass_in_sight);
+    for (const auto& scenario : OVERWORLD_RECOVERY_CASES){
+        database.add<Test_OverworldRecovery>(scenario);
+    }
 }
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

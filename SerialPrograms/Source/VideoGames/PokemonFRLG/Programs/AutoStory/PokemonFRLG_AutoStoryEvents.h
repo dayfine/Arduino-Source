@@ -39,8 +39,11 @@ namespace NintendoSwitch{
 namespace PokemonFRLG{
 
 
+//  Story leg definition imported from Pokemon AutoStory.
 using Pokemon::StoryLeg;
+//  Story step definition imported from Pokemon AutoStory.
 using Pokemon::StoryStep;
+//  Story step kind classification imported from Pokemon AutoStory.
 using Pokemon::StoryStepKind;
 
 //  Where the player stands and faces: the one-tile poses of FRLG's table
@@ -61,6 +64,7 @@ inline const std::string RUN_VARIANT = "run";
 //  (step_until_seen()). The battle after it starts on the trainer's row
 //  whether the walk before ended on its tile or a tile short.
 inline const std::string TRAINER_LINE_VARIANT = "trainer_line";
+//  Maximum tiles to step into a trainer's line of sight.
 inline constexpr int TRAINER_LINE_TILES = 3;
 
 //  The GAME step that closes the Trainer Card SID Helper leaves open.
@@ -140,6 +144,7 @@ StoryRunPlan plan_story_run(
 //  frlg_route does.
 const std::vector<MapData>& story_maps();
 
+//  Converts a StoryPose to a general navigation Pose.
 Pokemon::Pose to_pose(const StoryPose& pose);
 //  `pose` as a StoryPose: nothing unless it is on one tile.
 std::optional<StoryPose> story_pose(const Pokemon::Pose& pose);
@@ -286,7 +291,7 @@ Pokemon::Segment make_story_segment(const std::vector<StoryCheckpoint>& checkpoi
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

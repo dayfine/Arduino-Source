@@ -25,22 +25,36 @@ namespace PokemonFRLG{
 
 namespace{
 
+struct StarterRngLoopInput{
+    std::string name;
+    std::function<UnitTestResult()> body;
+};
+
+struct StarterRngLoopExpectation{
+    const char* description;
+};
+
+struct StarterRngLoopTestCase{
+    StarterRngLoopInput input;
+    StarterRngLoopExpectation expectation;
+};
+
 class Test_StarterRngLoop : public UnitTest{
 public:
-    Test_StarterRngLoop(std::string name, std::function<UnitTestResult()> body)
-        : UnitTest("PokemonFRLG::StarterRngLoop - " + std::move(name))
-        , m_body(std::move(body))
+    explicit Test_StarterRngLoop(StarterRngLoopTestCase scenario)
+        : UnitTest("PokemonFRLG::StarterRngLoop - " + scenario.input.name)
+        , m_scenario(std::move(scenario))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
         try{
-            return m_body();
+            return m_scenario.input.body();
         }catch (Exception& e){
             return std::string(e.name()) + ": " + e.message();
         }
     }
 
 private:
-    std::function<UnitTestResult()> m_body;
+    StarterRngLoopTestCase m_scenario;
 };
 
 
@@ -494,23 +508,60 @@ UnitTestResult test_reset_line(const ResetLineRow& row){
     return true;
 }
 
+UnitTestResult test_loop_rows(){
+    for (const LoopRow& row : LOOP_ROWS){
+        UnitTestResult res = run_loop_row(row);
+        if (res.result != UnitTestResult::PASSED){
+            return row.name + ": " + res.message;
+        }
+    }
+    return true;
 }
+
+UnitTestResult test_reset_line_rows(){
+    for (const ResetLineRow& row : RESET_LINE_ROWS){
+        UnitTestResult res = test_reset_line(row);
+        if (res.result != UnitTestResult::PASSED){
+            return row.name + ": " + res.message;
+        }
+    }
+    return true;
+}
+
+const StarterRngLoopTestCase STARTER_RNG_LOOP_CASES[] = {
+    {
+        .input = {.name = "attempt deadlines", .body = test_deadlines},
+        .expectation = {.description = "verifies attempt timeout and deadline handling"},
+    },
+    {
+        .input = {.name = "a setup error stops the loop", .body = test_setup_error_stops},
+        .expectation = {.description = "aborts loop when setup verification fails"},
+    },
+    {
+        .input = {.name = "state line", .body = test_state_line},
+        .expectation = {.description = "formats loop state line output correctly"},
+    },
+    {
+        .input = {.name = "loop row scenarios", .body = test_loop_rows},
+        .expectation = {.description = "evaluates simulated starter RNG loop rows"},
+    },
+    {
+        .input = {.name = "reset line scenarios", .body = test_reset_line_rows},
+        .expectation = {.description = "evaluates RNG reset summary lines"},
+    },
+};
+
+} // namespace
 
 
 void add_tests_StarterRngLoop(UnitTestDatabase& database){
-    for (const LoopRow& row : LOOP_ROWS){
-        database.add<Test_StarterRngLoop>(row.name, [row]{ return run_loop_row(row); });
-    }
-    database.add<Test_StarterRngLoop>("attempt deadlines", test_deadlines);
-    database.add<Test_StarterRngLoop>("a setup error stops the loop", test_setup_error_stops);
-    database.add<Test_StarterRngLoop>("state line", test_state_line);
-    for (const ResetLineRow& row : RESET_LINE_ROWS){
-        database.add<Test_StarterRngLoop>("reset line " + row.name, [row]{ return test_reset_line(row); });
+    for (const auto& scenario : STARTER_RNG_LOOP_CASES){
+        database.add<Test_StarterRngLoop>(scenario);
     }
 }
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

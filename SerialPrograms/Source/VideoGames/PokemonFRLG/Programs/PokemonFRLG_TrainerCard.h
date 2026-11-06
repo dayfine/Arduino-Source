@@ -35,7 +35,7 @@ std::optional<uint16_t> try_read_trainer_card_tid(ConsoleHandle& console, ProCon
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

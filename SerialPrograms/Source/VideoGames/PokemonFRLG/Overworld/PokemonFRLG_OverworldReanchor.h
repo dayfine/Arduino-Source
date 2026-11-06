@@ -67,6 +67,7 @@ struct StopCandidate{
 
     bool operator==(const StopCandidate& other) const = default;
 };
+//  Formats a StopCandidate as a string.
 std::string to_string(const StopCandidate& candidate);
 
 //  Where `step`, an open WALK from `start`, may have been stopped:
@@ -84,6 +85,7 @@ std::vector<StopCandidate> stop_candidates(
     WalkedTiles walked
 );
 
+//  A candidate reanchor route step with its cost estimate.
 struct Reanchor{
     //  Legs to walls, in order, that bring the player to `found` from every
     //  candidate; none if there was only one. Each but the last ends on a
@@ -114,11 +116,12 @@ std::optional<std::vector<RouteStep>> holds_to_one_tile(
 );
 
 
+//  Registers overworld reanchor unit tests.
 void add_tests_OverworldReanchor(UnitTestDatabase& database);
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

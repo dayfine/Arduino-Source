@@ -129,22 +129,35 @@ private:
 };
 
 
+struct AutoStoryGrindInput{
+    std::string name;
+    std::function<UnitTestResult()> body;
+};
+
+struct AutoStoryGrindExpectation{
+};
+
+struct AutoStoryGrindCase{
+    AutoStoryGrindInput input;
+    AutoStoryGrindExpectation expectation;
+};
+
 class Test_AutoStoryGrind : public UnitTest{
 public:
-    Test_AutoStoryGrind(std::string name, std::function<UnitTestResult()> body)
-        : UnitTest("PokemonFRLG::AutoStoryGrind - " + std::move(name))
-        , m_body(std::move(body))
+    explicit Test_AutoStoryGrind(AutoStoryGrindCase test_case)
+        : UnitTest("PokemonFRLG::AutoStoryGrind - " + test_case.input.name)
+        , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
         try{
-            return m_body();
+            return m_case.input.body();
         }catch (Exception& e){
             return std::string(e.name()) + ": " + e.message();
         }
     }
 
 private:
-    std::function<UnitTestResult()> m_body;
+    AutoStoryGrindCase m_case;
 };
 
 
@@ -457,22 +470,40 @@ UnitTestResult test_grind_variant(){
     return true;
 }
 
-}
+} // namespace
 
+
+const AutoStoryGrindCase AUTO_STORY_GRIND_CASES[] = {
+    {
+        .input = {"grinding on a fake patch", test_grind},
+        .expectation = {},
+    },
+    {
+        .input = {"the table's variant", test_grind_variant},
+        .expectation = {},
+    },
+    {
+        .input = {"the level cap's message", test_grind_cap_message},
+        .expectation = {},
+    },
+    {
+        .input = {"the lead the sim plays is the one read", test_lead_as_read},
+        .expectation = {},
+    },
+    {
+        .input = {"console B's party is fought at Lv22 against the Cerulean rival", test_console_party},
+        .expectation = {},
+    },
+};
 
 void add_tests_AutoStoryGrind(UnitTestDatabase& database){
-    const auto add = [&](std::string name, UnitTestResult (*body)()){
-        database.add<Test_AutoStoryGrind>(std::move(name), body);
-    };
-    add("grinding on a fake patch", test_grind);
-    add("the table's variant", test_grind_variant);
-    add("the level cap's message", test_grind_cap_message);
-    add("the lead the sim plays is the one read", test_lead_as_read);
-    add("console B's party is fought at Lv22 against the Cerulean rival", test_console_party);
+    for (const auto& item : AUTO_STORY_GRIND_CASES){
+        database.add<Test_AutoStoryGrind>(item);
+    }
 }
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

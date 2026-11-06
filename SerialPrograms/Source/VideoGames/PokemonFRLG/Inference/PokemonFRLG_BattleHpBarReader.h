@@ -17,12 +17,14 @@ namespace NintendoSwitch{
 namespace PokemonFRLG{
 
 
+//  Color classification of an HP bar.
 enum class HpBarColor{
     GREEN,      //  over half
     YELLOW,     //  over a fifth
     RED,
 };
 
+//  Parsed health bar reading indicating fraction and health state color.
 struct HpBarReading{
     //  Some of the bar is filled.
     bool seen = false;
@@ -37,7 +39,7 @@ HpBarReading read_player_hp_bar(const ImageViewRGB32& game);
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

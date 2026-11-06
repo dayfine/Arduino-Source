@@ -55,6 +55,7 @@ enum class SimScreen{
     BATTLE,         //  a battle's text box with the HP boxes
     FADE,           //  a warp's fade out and in
 };
+//  The human-readable name of a simulated screen.
 const char* sim_screen_name(SimScreen screen);
 
 //  What the walker watches the screen with.
@@ -141,12 +142,14 @@ enum class SimBattleChoice{
     RUN,
     FIGHT,
 };
+//  How a simulated battle concluded.
 enum class SimBattleEnd{
     ENDED,
     CANT_RUN,       //  a trainer's battle: "No! There's no running from a TRAINER battle!"
     NO_BATTLE,      //  there was none, on screen or about to show
 };
 
+//  Simulates overworld movement, encounters and dialogs.
 class OverworldSim{
 public:
     OverworldSim(std::vector<MapData> maps, MapPosition start, Direction facing, SimScript script = {});
@@ -345,11 +348,12 @@ private:
 };
 
 
+//  Register overworld simulation unit tests.
 void add_tests_OverworldSim(UnitTestDatabase& database);
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

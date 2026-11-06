@@ -47,6 +47,7 @@ struct GiftRngSpecies{
 GiftRngSpecies gift_rng_species(PokemonFRLG_RngTarget target);
 
 
+//  Statistics tracker for Gift RNG attempts.
 struct GiftRngStats : public StatsTracker{
     GiftRngStats();
 
@@ -57,6 +58,7 @@ struct GiftRngStats : public StatsTracker{
 };
 
 
+//  Target seed and advances for Gift RNG manipulation.
 struct GiftRngTarget{
     PokemonFRLG_RngTarget target = PokemonFRLG_RngTarget::magikarp;
     uint16_t seed = 0;
@@ -72,6 +74,7 @@ struct GiftRngProgress{
     RngCalibrations calibrations{};
 };
 
+//  Settings controlling Gift RNG reset loops.
 struct GiftRngSettings{
     Language language = Language::None;
     //  The Switch profile's position on the user selection screen; 0 for
@@ -106,6 +109,7 @@ struct GiftRngDisplays{
     RngCalibrationDisplay& calibration;
 };
 
+//  Notification options for Gift RNG events.
 struct GiftRngNotifications{
     EventNotificationOption& shiny;
     EventNotificationOption& status_update;
@@ -113,6 +117,7 @@ struct GiftRngNotifications{
 };
 
 
+//  The outcome of an individual Gift RNG reset attempt.
 enum class GiftRngOutcome{
     shiny,              //  The gift was shiny after a reset; not known if on the target.
     shiny_on_target,    //  Shiny, and the target is among the states its stats match.
@@ -127,6 +132,7 @@ enum class GiftRngOutcome{
 //  shiny if none match.
 GiftRngOutcome gift_shiny_outcome(uint16_t seed, uint64_t advances, const std::vector<AdvRngState>& hits);
 
+//  The result of a Gift RNG attempt sequence.
 struct GiftRngResult{
     GiftRngOutcome outcome = GiftRngOutcome::out_of_resets;
     //  The target's PID, nature and IVs, on target_hit and shiny_on_target.
@@ -134,6 +140,7 @@ struct GiftRngResult{
 };
 
 
+//  Automates Gift RNG attempts until a target outcome is reached.
 class GiftRngAttempts{
 public:
     GiftRngAttempts(
@@ -185,7 +192,7 @@ private:
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

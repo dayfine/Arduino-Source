@@ -341,7 +341,7 @@ private:
     bool m_flinched = false;
 };
 
-}
+} // namespace
 
 
 WinEstimate estimate_win_chance(const SimBattler& own, const SimItems& items, const SimTrainer& trainer, size_t battles, uint32_t seed){
@@ -388,6 +388,6 @@ std::optional<std::string> win_chance_refusal(const WinEstimate& estimate, doubl
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

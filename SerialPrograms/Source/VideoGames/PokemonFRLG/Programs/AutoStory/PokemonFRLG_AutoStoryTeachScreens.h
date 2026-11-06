@@ -71,6 +71,7 @@ struct TeachView{
     TeachText text = TeachText::UNKNOWN;
 };
 
+//  A controller action taken while navigating teaching menus.
 enum class TeachPress{
     A,
     B,
@@ -79,6 +80,7 @@ enum class TeachPress{
     LEFT,
     RIGHT,
 };
+//  The human-readable name of a teaching navigation action.
 const char* teach_press_name(TeachPress press);
 
 //  The console's screens and buttons, as the TEACH step uses them.
@@ -164,11 +166,12 @@ private:
 };
 
 
+//  Register teach screen navigation unit tests.
 void add_tests_AutoStoryTeachScreens(UnitTestDatabase& database);
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

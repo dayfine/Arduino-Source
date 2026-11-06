@@ -321,22 +321,36 @@ struct Simulation{
 };
 
 
+struct AutoStorySimulationInput{
+    std::string name;
+    UnitTestResult (*body)();
+};
+
+struct AutoStorySimulationExpectation{
+    const char* description;
+};
+
+struct AutoStorySimulationTestCase{
+    AutoStorySimulationInput input;
+    AutoStorySimulationExpectation expectation;
+};
+
 class Test_AutoStorySimulation : public UnitTest{
 public:
-    Test_AutoStorySimulation(std::string name, std::function<UnitTestResult()> body)
-        : UnitTest("PokemonFRLG::AutoStory - Simulation: " + std::move(name))
-        , m_body(std::move(body))
+    explicit Test_AutoStorySimulation(AutoStorySimulationTestCase scenario)
+        : UnitTest("PokemonFRLG::AutoStory - Simulation: " + scenario.input.name)
+        , m_scenario(std::move(scenario))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
         try{
-            return m_body();
+            return m_scenario.input.body();
         }catch (Exception& e){
             return std::string(e.name()) + ": " + e.message();
         }
     }
 
 private:
-    std::function<UnitTestResult()> m_body;
+    AutoStorySimulationTestCase m_scenario;
 };
 
 
@@ -925,30 +939,34 @@ UnitTestResult test_out_of_bill_cottage(){
     return true;
 }
 
-}
+
+const AutoStorySimulationTestCase AUTO_STORY_SIMULATION_CASES[] = {
+    {.input = {.name = "new game to Brock, in order, each start where the last save stood", .body = test_whole_story}, .expectation = {.description = "runs full story progression from new game through Brock gym"}},
+    {.input = {.name = "start and end checkpoints", .body = test_start_and_end}, .expectation = {.description = "executes segment bounded by start and end checkpoints"}},
+    {.input = {.name = "a failed walk reloads its checkpoint's save", .body = test_retry_from_save}, .expectation = {.description = "reloads checkpoint save state on simulated movement failure"}},
+    {.input = {.name = "a battle lost every time stops after 3 attempts", .body = test_gives_up_after_attempts}, .expectation = {.description = "aborts after three consecutive battle blackouts"}},
+    {.input = {.name = "00.14 into Cerulean, the entry leg a tile short", .body = test_cerulean_entry_short}, .expectation = {.description = "recovers when entering Cerulean City if movement ends one tile short"}},
+    {.input = {.name = "00.14 from Mt. Moon to the Mega Kick tutor, then above the ledge", .body = test_mega_kick_tutor_walks}, .expectation = {.description = "verifies route navigation from Mt. Moon to tutor and past ledge"}},
+    {.input = {.name = "00.16 Nugget Bridge, the walk onto it a tile short", .body = test_nugget_bridge_short}, .expectation = {.description = "completes Nugget Bridge battles even if initial approach stops short"}},
+    {.input = {.name = "00.17 Route 25, its four trainers and Dan", .body = test_route25_trainers}, .expectation = {.description = "simulates Route 25 trainer battles and Dan detour"}},
+    {.input = {.name = "00.18 out of Bill's Sea Cottage, Bill on (7, 6)", .body = test_out_of_bill_cottage}, .expectation = {.description = "simulates exiting Bill sea cottage with Bill relocated"}},
+    {.input = {.name = "00.20 to Route 24's grass and back, past Shane", .body = test_oddish_walks}, .expectation = {.description = "navigates to Route 24 grass avoiding trainer line of sight"}},
+    {.input = {.name = "00.20 back to the Center, the Oddish's battle on the pace's far step", .body = test_oddish_battle_on_far_step}, .expectation = {.description = "handles Oddish capture encounter occurring on far pace step"}},
+    {.input = {.name = "00.20 onto the grass out of Shane's sight, the leg west a tile short", .body = test_oddish_patch_west_short}, .expectation = {.description = "recovers when approaching grass patch with short western leg"}},
+    {.input = {.name = "the routes after pacing, from either of its tiles", .body = test_routes_after_pacing}, .expectation = {.description = "plans valid routes regardless of which pacing tile character ends on"}},
+};
+
+} // namespace
 
 
 void add_tests_AutoStorySimulation(UnitTestDatabase& database){
-    const auto add = [&](std::string name, UnitTestResult (*body)()){
-        database.add<Test_AutoStorySimulation>(std::move(name), body);
-    };
-    add("new game to Brock, in order, each start where the last save stood", test_whole_story);
-    add("start and end checkpoints", test_start_and_end);
-    add("a failed walk reloads its checkpoint's save", test_retry_from_save);
-    add("a battle lost every time stops after 3 attempts", test_gives_up_after_attempts);
-    add("00.14 into Cerulean, the entry leg a tile short", test_cerulean_entry_short);
-    add("00.14 from Mt. Moon to the Mega Kick tutor, then above the ledge", test_mega_kick_tutor_walks);
-    add("00.16 Nugget Bridge, the walk onto it a tile short", test_nugget_bridge_short);
-    add("00.17 Route 25, its four trainers and Dan", test_route25_trainers);
-    add("00.18 out of Bill's Sea Cottage, Bill on (7, 6)", test_out_of_bill_cottage);
-    add("00.20 to Route 24's grass and back, past Shane", test_oddish_walks);
-    add("00.20 back to the Center, the Oddish's battle on the pace's far step", test_oddish_battle_on_far_step);
-    add("00.20 onto the grass out of Shane's sight, the leg west a tile short", test_oddish_patch_west_short);
-    add("the routes after pacing, from either of its tiles", test_routes_after_pacing);
+    for (const auto& scenario : AUTO_STORY_SIMULATION_CASES){
+        database.add<Test_AutoStorySimulation>(scenario);
+    }
 }
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

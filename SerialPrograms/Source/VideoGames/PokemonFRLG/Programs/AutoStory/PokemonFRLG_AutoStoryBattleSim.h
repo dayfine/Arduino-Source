@@ -76,6 +76,8 @@ struct SimItems{
     int awakenings = 0;
 };
 
+
+//  Simulated battler status condition.
 enum class SimStatus{
     NONE,
     SLEEP,
@@ -83,6 +85,7 @@ enum class SimStatus{
     PARALYSIS,
 };
 
+//  A move in simulated combat.
 struct SimMove{
     std::string move = {};
     uint8_t pp = 0;
@@ -111,6 +114,7 @@ std::optional<SimBattler> own_battler(const PartyMember& lead, double hp_share =
 //  A trainer's Pokemon at full HP and PP.
 std::optional<SimBattler> trainer_battler(const TrainerMon& mon);
 
+//  Simulated opposing trainer state.
 struct SimTrainer{
     std::vector<SimBattler> party = {};
     //  Each used once; a used one becomes "".
@@ -141,6 +145,7 @@ std::vector<int> ai_move_scores(const SimTrainer& trainer, const SimBattler& foe
 //  seed, ties split evenly. The chances change with the state (a status
 //  on the target, Leech Seed, stages, HP). All 0 with no PP left.
 inline constexpr size_t AI_MOVE_SAMPLES = 1000;
+//  Calculates the probability distribution of enemy AI move selection.
 std::vector<double> ai_move_chances(const SimTrainer& trainer, const SimBattler& foe, const SimBattler& target);
 
 //  The chance in percent that `user`'s `move` hits `target`: its accuracy
@@ -169,6 +174,7 @@ struct NextTurnDamage{
     uint32_t percentile(double share) const;
     uint32_t most() const;
 };
+//  Calculates incoming damage distribution across the foe's next turn.
 NextTurnDamage next_turn_damage(const SimTrainer& trainer, const SimBattler& foe, const SimBattler& own);
 
 //  The party slot the AI sends out after `fainted`, of the ones still up.
@@ -258,7 +264,7 @@ void add_tests_AutoStoryBattleSim(UnitTestDatabase& database);
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

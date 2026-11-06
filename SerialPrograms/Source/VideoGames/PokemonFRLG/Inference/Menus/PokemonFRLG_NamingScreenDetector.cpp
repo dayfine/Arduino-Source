@@ -28,7 +28,7 @@ bool is_keyboard_color(const ImageViewRGB32& image, const FloatPixel& color){
     return is_solid(image, color, 0.08, 30);
 }
 
-}
+} // namespace
 
 
 //  Boxes are fractions of the 240x160 GBA screen inside the game box.
@@ -60,6 +60,6 @@ bool NamingScreenDetector::detect(const ImageViewRGB32& screen){
 }
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

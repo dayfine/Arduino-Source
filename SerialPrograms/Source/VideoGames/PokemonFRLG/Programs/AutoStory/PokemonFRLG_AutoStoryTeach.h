@@ -89,6 +89,7 @@ inline constexpr std::string_view TEACH_VARIANT_PREFIX = "teach ";
 //  `plan` as a variant: "teach hm03 surf slot=1 forget=tail-whip" or
 //  "... forget_slot=2", slots counted from 1, no forget when it has room.
 std::string teach_variant(const TeachPlan& plan);
+//  Parses a move teaching plan from a variant string.
 std::optional<TeachPlan> parse_teach_variant(std::string_view variant);
 
 //  The table's TEACH step, once per save (StoryStep::once_per_save): a
@@ -105,6 +106,7 @@ struct TeachDecision{
     //  It knows the move already: nothing to do.
     bool already_known = false;
 };
+//  Determines which move slot to overwrite given current moves.
 TeachDecision decide_teach(const TeachPlan& plan, const std::vector<std::string>& moves);
 
 
@@ -118,6 +120,7 @@ enum class TeachPrompt{
     FAILED,
 };
 
+//  The outcome of attempting to forget a move.
 enum class ForgetEnd{
     LEARNED,
     //  "HM moves can't be forgotten now.": back on the moves page.
@@ -156,6 +159,7 @@ public:
     virtual void dump_screen(std::string_view label) = 0;
 };
 
+//  How a move teaching sequence concluded.
 enum class TeachEnd{
     LEARNED,
     ALREADY_KNOWN,
@@ -167,8 +171,10 @@ enum class TeachEnd{
     NO_ITEM,
     FAILED,
 };
+//  The human-readable name of a teach outcome.
 const char* teach_end_name(TeachEnd end);
 
+//  The summary result of a move teaching operation.
 struct TeachResult{
     TeachEnd end = TeachEnd::FAILED;
     //  The move forgotten, if any.
@@ -180,14 +186,16 @@ struct TeachResult{
 //  the overworld, and reads the member again to confirm.
 TeachResult run_teach(Logger& logger, TeachActions& actions, const MemberReader& reader, const TeachPlan& plan);
 
+//  Formats a log message summarizing the move teaching result.
 std::string teach_message(const TeachPlan& plan, const TeachResult& result);
 
 
+//  Register auto-story move teaching unit tests.
 void add_tests_AutoStoryTeach(UnitTestDatabase& database);
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

@@ -33,6 +33,7 @@ namespace NintendoSwitch{
 namespace PokemonFRLG{
 
 
+//  The screen or menu shown while teaching a TM or HM.
 enum class TeachScreen{
     OTHER,
     //  A pocket's list, its cursor live.
@@ -50,15 +51,19 @@ enum class TeachScreen{
     //  The KNOWN MOVES page with its red cursor: the move to forget.
     KNOWN_MOVES,
 };
+//  The human-readable name of a teach screen.
 const char* teach_screen_name(TeachScreen screen);
 
+//  Reads the active teach screen from an image.
 TeachScreen read_teach_screen(const ImageViewRGB32& screen);
 
 
 //  Rows a list or menu shows at once: the bag's, the TM CASE's (its info
 //  box is below), the item menu's.
 constexpr size_t TEACH_LIST_ROWS = 6;
+//  The number of visible rows in the TM Case.
 constexpr size_t TM_CASE_ROWS = 5;
+//  The number of visible rows in the item menu.
 constexpr size_t ITEM_MENU_ROWS = 3;
 
 //  The row the cursor is on: the dark arrow in the bag's list, the TM
@@ -95,6 +100,7 @@ enum class TeachText{
     DID_NOT_LEARN,      //  "<MON> did not learn the move <MOVE>."
     NOT_COMPATIBLE,     //  "<MON> and <MOVE> are not compatible."
 };
+//  The human-readable name of a teach dialog message.
 const char* teach_text_name(TeachText text);
 
 //  The message over the party menu, from the prompt's or the message box's
@@ -102,11 +108,12 @@ const char* teach_text_name(TeachText text);
 TeachText read_teach_text(Logger& logger, Language language, const ImageViewRGB32& screen);
 
 
+//  Register teach screen reader unit tests.
 void add_tests_TeachScreenReader(UnitTestDatabase& database);
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

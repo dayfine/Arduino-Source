@@ -34,5 +34,5 @@ std::vector<TilePos> tiles_of(const Pose& pose){
 
 
 
-}
-}
+} // namespace Pokemon
+} // namespace PokemonAutomation

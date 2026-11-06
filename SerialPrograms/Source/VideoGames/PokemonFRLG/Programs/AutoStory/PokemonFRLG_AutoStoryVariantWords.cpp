@@ -51,6 +51,6 @@ std::optional<size_t> variant_number(std::string_view text, size_t max_digits){
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

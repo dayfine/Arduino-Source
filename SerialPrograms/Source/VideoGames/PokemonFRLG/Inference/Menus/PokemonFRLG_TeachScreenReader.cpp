@@ -258,7 +258,7 @@ TeachScreen read_party_screen(const ImageViewRGB32& screen){
     return TeachScreen::OTHER;
 }
 
-}
+} // namespace
 
 
 const char* teach_screen_name(TeachScreen screen){
@@ -485,7 +485,7 @@ private:
     }
 };
 
-}
+} // namespace
 
 void add_tests_TeachScreenReader(UnitTestDatabase& database){
     //  FireRed on console B, 2026-11-03: TM03 taught to the lead from the
@@ -513,6 +513,6 @@ void add_tests_TeachScreenReader(UnitTestDatabase& database){
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
