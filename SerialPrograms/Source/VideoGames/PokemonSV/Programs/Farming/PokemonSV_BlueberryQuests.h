@@ -64,15 +64,23 @@ struct BBQuestPlan{
     std::vector<size_t> reroll_slots;   //Slots to reroll, in panel order.
     bool reroll_all = false;            //Nothing to do and nothing rerolled: reroll every slot.
 };
+//BP it costs to reroll one quest: 50 for a red quest, 10 for a blue one.
+int reroll_cost(BBQuests quest);
 //Decide what to do with each quest from the options alone, without touching the game, so
-//the decision can be tested. Quests not possible are left out. Out-of-egg hatch quests and
-//quests set to reroll in the exclusions table are rerolled. A quest with several table rows
-//gets the action of each row, in table order.
+//the decision can be tested. Quests not possible are never run. Those not in the exclusions
+//table are rerolled, red or blue, so they do not hold a slot, as long as BP (the balance
+//read from the panel, if any) still covers their cost after the other planned rerolls; the
+//rest are skipped, and the doable quests run. A table row for one decides instead.
+//Out-of-egg hatch quests and quests set to reroll in the exclusions table are rerolled. A
+//quest with several table rows gets the action of each row, in table order. With nothing to
+//do, every quest not possible and not in the table is rerolled whatever the BP, or else
+//every quest.
 BBQuestPlan plan_quests(
     Logger& logger,
     const BBQOption& BBQ_OPTIONS,
     const std::vector<BBQuests>& quest_list,
-    uint8_t eggs_hatched
+    uint8_t eggs_hatched,
+    std::optional<int> bp
 );
 
 //The steps of rerolling one quest on the quest panel. They are injected so that the reroll
