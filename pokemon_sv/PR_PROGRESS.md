@@ -8,9 +8,8 @@ and dependency audit, **not renewed CI/live-console approval**. Old build counts
 and readiness badges are not carried forward.
 
 [PR_PLAN.md](PR_PLAN.md) remains the broader design/stage plan; its 2026-10-26
-PR graph is historical. [The previous tracker](PR_PROGRESS_20261027_ARCHIVE.md)
-retains old test/run notes. Merge parents into children; do not follow old
-rebase/force-push instructions. No agent publishes upstream.
+PR graph is historical. Previous tracker versions remain in Git history. Merge
+parents into children; do not follow old rebase/force-push instructions. No agent publishes upstream.
 
 ## Active dependency tree (parent cleanup pending)
 
