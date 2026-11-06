@@ -101,6 +101,8 @@ public:
 
     BooleanCheckBoxOption FIX_TIME_WHEN_DONE;
 
+    BooleanCheckBoxOption SAVE_TARGET_DIAGNOSTICS;
+
 private:
     BBQOption(OCR::LanguageOCROption* language_option);
 };
