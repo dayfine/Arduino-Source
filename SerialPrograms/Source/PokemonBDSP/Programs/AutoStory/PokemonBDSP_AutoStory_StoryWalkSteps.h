@@ -23,6 +23,7 @@ namespace NintendoSwitch{
 namespace PokemonBDSP{
 
 
+//  Executes walking and movement-related story steps via StoryStepIO.
 class StoryWalkSteps{
 public:
     explicit StoryWalkSteps(StoryStepIO& io)
@@ -68,7 +69,7 @@ private:
 
 
 
-}
-}
-}
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

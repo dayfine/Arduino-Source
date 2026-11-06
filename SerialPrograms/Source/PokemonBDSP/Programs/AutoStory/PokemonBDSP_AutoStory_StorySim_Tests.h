@@ -22,7 +22,7 @@ void add_tests_AutoStory_StorySim(UnitTestDatabase& database);
 
 
 
-}
-}
-}
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

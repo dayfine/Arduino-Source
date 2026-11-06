@@ -145,7 +145,7 @@ TapLook look_after_tap(VideoStream& stream, ProControllerContext& context, const
     }
 }
 
-}
+} // namespace
 
 
 ConsoleStoryStepIO::ConsoleStoryStepIO(VideoStream& stream, ProControllerContext& context)
@@ -211,6 +211,6 @@ void ConsoleStoryStepIO::settle(Button button, const std::string& label, bool fa
 
 
 
-}
-}
-}
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

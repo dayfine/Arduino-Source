@@ -85,7 +85,7 @@ std::vector<CoordEvent> read_events(const std::string& name, const std::string& 
     return events;
 }
 
-}
+} // namespace
 
 
 const std::vector<CoordEvent>& story_coord_events(std::string_view map){
@@ -104,6 +104,6 @@ const std::vector<CoordEvent>& story_coord_events(std::string_view map){
 
 
 
-}
-}
-}
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

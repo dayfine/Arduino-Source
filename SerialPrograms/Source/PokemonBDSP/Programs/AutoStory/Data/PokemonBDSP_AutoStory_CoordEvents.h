@@ -28,6 +28,7 @@ namespace NintendoSwitch{
 namespace PokemonBDSP{
 
 
+//  Coordinate-triggered event parsed from BDSP map data.
 struct CoordEvent{
     std::string name;
     //  The map's own tiles: `width` columns from x, `length` rows from y.
@@ -44,7 +45,7 @@ const std::vector<CoordEvent>& story_coord_events(std::string_view map);
 
 
 
-}
-}
-}
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

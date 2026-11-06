@@ -384,35 +384,63 @@ UnitTestResult test_door_routes(Logger& logger){
 }
 
 
+struct AutoStoryGridSimInput{
+    std::string name;
+    std::function<UnitTestResult(Logger&)> body;
+};
+
+struct AutoStoryGridSimExpectation{
+};
+
+struct AutoStoryGridSimCase{
+    AutoStoryGridSimInput input;
+    AutoStoryGridSimExpectation expectation;
+};
+
 class Test_GridSim : public UnitTest{
 public:
-    Test_GridSim(std::string name, std::function<UnitTestResult(Logger&)> body)
-        : UnitTest("PokemonBDSP::AutoStory - Grid sim: " + std::move(name))
-        , m_body(std::move(body))
+    explicit Test_GridSim(AutoStoryGridSimCase test_case)
+        : UnitTest("PokemonBDSP::AutoStory - Grid sim: " + test_case.input.name)
+        , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
         try{
-            return m_body(logger);
+            return m_case.input.body(logger);
         }catch (Exception& e){
             return std::string(e.name()) + ": " + e.message();
         }
     }
 
 private:
-    std::function<UnitTestResult(Logger&)> m_body;
+    AutoStoryGridSimCase m_case;
 };
 
-}
+} // namespace
 
+
+const AutoStoryGridSimCase AUTO_STORY_GRID_SIM_CASES[] = {
+    {
+        .input = {"taps, holds, stick offsets, doors, people and trainers as measured", test_moves},
+        .expectation = {},
+    },
+    {
+        .input = {"the table's routes end on their targets", test_table_routes},
+        .expectation = {},
+    },
+    {
+        .input = {"a stick-tap turn misses the Sandgem Center and Jubilife School doors", test_door_routes},
+        .expectation = {},
+    },
+};
 
 void add_tests_AutoStory_GridSim(UnitTestDatabase& database){
-    database.add<Test_GridSim>("taps, holds, stick offsets, doors, people and trainers as measured", test_moves);
-    database.add<Test_GridSim>("the table's routes end on their targets", test_table_routes);
-    database.add<Test_GridSim>("a stick-tap turn misses the Sandgem Center and Jubilife School doors", test_door_routes);
+    for (const auto& item : AUTO_STORY_GRID_SIM_CASES){
+        database.add<Test_GridSim>(item);
+    }
 }
 
 
 
-}
-}
-}
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

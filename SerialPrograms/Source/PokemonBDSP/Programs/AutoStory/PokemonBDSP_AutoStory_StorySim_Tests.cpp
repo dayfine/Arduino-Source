@@ -694,71 +694,37 @@ std::string end_of(const SimRun& run){
 }
 
 
-//  A way out of a map that a hold walked on past (r75, r81), against the
-//  table's tap to the banner. The old step, with `misses`, must end on
-//  `overshoot`, caught there by the end-tile check. The table's step must
-//  never end there, whichever one fade or banner of the row is missed: it
-//  ends on its tile or stops in that step.
-class Test_StorySimExit : public UnitTest{
-public:
-    Test_StorySimExit(std::string name, std::string row, StoryStep old_step, SimMisses misses, Pose overshoot)
-        : UnitTest("PokemonBDSP::AutoStory - Story sim, exits: " + std::move(name))
-        , m_row(std::move(row))
-        , m_old(std::move(old_step))
-        , m_misses(std::move(misses))
-        , m_overshoot(std::move(overshoot))
-    {}
-    virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
-        try{
-            const std::string old = old_form(logger);
-            return old.empty() ? table_form(logger) : UnitTestResult(old);
-        }catch (Exception& e){
-            return std::string(e.name()) + ": " + e.message();
+UnitTestResult run_exit_test(Logger& logger, const std::string& row_id, const StoryStep& old_step, const SimMisses& misses, const Pose& overshoot){
+    SimExecutor executor(logger, misses);
+    const std::vector<StoryCheckpoint> rows = table_with(row_id, old_step);
+    run_rows_on(executor, logger, {.from = row_id, .to = row_id}, rows);
+    const SimRun& run = executor.result();
+    logger.log(std::format("The old {}: {}, ended on {}.", old_step.name, run.error, end_of(run)));
+    if (run.failed_step != row_id + " " + old_step.name || !ends_on(run, overshoot)){
+        return std::format("the old {} should end on {} and fail there; it ended on {}: {}",
+            old_step.name, Pokemon::to_string(overshoot), end_of(run), run.error.empty() ? "no failure" : run.error);
+    }
+    SimExecutor clean(logger);
+    if (!run_rows_on(clean, logger, {.from = row_id, .to = row_id}).completed){
+        return "the table's row fails without misses: " + clean.result().error;
+    }
+    std::vector<SimMisses> runs;
+    for (size_t i = 0; i < clean.misses().fades; i++){
+        runs.push_back({.fade = i});
+    }
+    for (size_t i = 0; i < clean.misses().banners; i++){
+        runs.push_back({.banner = i});
+    }
+    for (const SimMisses& m : runs){
+        SimExecutor sim(logger, m);
+        run_rows_on(sim, logger, {.from = row_id, .to = row_id});
+        if (ends_on(sim.result(), overshoot)){
+            return std::format("the table's {} ended on {} with a miss in {}.", old_step.name, end_of(sim.result()),
+                sim.result().missed_step);
         }
     }
-
-private:
-    //  Why the old step did not go wrong as on the console, or "".
-    std::string old_form(Logger& logger) const{
-        SimExecutor executor(logger, m_misses);
-        const std::vector<StoryCheckpoint> rows = table_with(m_row, m_old);
-        run_rows_on(executor, logger, {.from = m_row, .to = m_row}, rows);
-        const SimRun& run = executor.result();
-        logger.log(std::format("The old {}: {}, ended on {}.", m_old.name, run.error, end_of(run)));
-        if (run.failed_step != m_row + " " + m_old.name || !ends_on(run, m_overshoot)){
-            return std::format("the old {} should end on {} and fail there; it ended on {}: {}",
-                m_old.name, Pokemon::to_string(m_overshoot), end_of(run), run.error.empty() ? "no failure" : run.error);
-        }
-        return "";
-    }
-    UnitTestResult table_form(Logger& logger) const{
-        SimExecutor clean(logger);
-        if (!run_rows_on(clean, logger, {.from = m_row, .to = m_row}).completed){
-            return "the table's row fails without misses: " + clean.result().error;
-        }
-        std::vector<SimMisses> runs;
-        for (size_t i = 0; i < clean.misses().fades; i++){
-            runs.push_back({.fade = i});
-        }
-        for (size_t i = 0; i < clean.misses().banners; i++){
-            runs.push_back({.banner = i});
-        }
-        for (const SimMisses& misses : runs){
-            SimExecutor executor(logger, misses);
-            run_rows_on(executor, logger, {.from = m_row, .to = m_row});
-            if (ends_on(executor.result(), m_overshoot)){
-                return std::format("the table's {} ended on {} with a miss in {}.", m_old.name, end_of(executor.result()),
-                    executor.result().missed_step);
-            }
-        }
-        return true;
-    }
-
-    std::string m_row;
-    StoryStep m_old;
-    SimMisses m_misses;
-    Pose m_overshoot;
-};
+    return true;
+}
 
 //  r75: out of the Oreburgh Gate as a run west until Route 203's banner
 //  (the old event west_until_transition()). The banner reads a few tiles
@@ -799,134 +765,156 @@ Pose r81_below_the_mouth(){
 }
 
 
-//  Every coord event has ground the player can step onto, and the ones
-//  the story's variables arm are there.
-class Test_CoordEvents : public UnitTest{
-public:
-    Test_CoordEvents()
-        : UnitTest("PokemonBDSP::AutoStory - Story sim: the maps' coord events are on open ground or doors")
-    {}
-    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        for (const auto& [map, json] : bdsp_map_json()){
-            const StoryWorld* world = story_plan_world(map, map);
-            for (const CoordEvent& event : world == nullptr ? std::vector<CoordEvent>{} : story_coord_events(map)){
-                const auto open = [&](const TilePos& pos){
-                    const TilePos tile = story_to_world(*world, map, pos);
-                    return standable(*world, tile) || world->tile(tile) == Pokemon::TileKind::DOOR;
-                };
-                //  The decomp's boxes may run into walls (Sandgem's (4, 10..15)).
-                if (!std::ranges::any_of(event.tiles, open)){
-                    return std::format("{} {}: no tile is open ground or a door.", map, event.name);
-                }
+UnitTestResult test_coord_events(Logger&){
+    for (const auto& [map, json] : bdsp_map_json()){
+        const StoryWorld* world = story_plan_world(map, map);
+        for (const CoordEvent& event : world == nullptr ? std::vector<CoordEvent>{} : story_coord_events(map)){
+            const auto open = [&](const TilePos& pos){
+                const TilePos tile = story_to_world(*world, map, pos);
+                return standable(*world, tile) || world->tile(tile) == Pokemon::TileKind::DOOR;
+            };
+            if (!std::ranges::any_of(event.tiles, open)){
+                return std::format("{} {}: no tile is open ground or a door.", map, event.name);
             }
         }
-        const size_t armed = story_triggers().size();
-        return armed == story_vars().size() ? UnitTestResult(true)
-            : UnitTestResult(std::format("Expected {} coord events armed by the story's variables, found {}.", story_vars().size(), armed));
     }
-};
-
-
-//  A detection the console can miss, missed in turn at each place the run
-//  makes it (#162). Each miss must either be got over (the run completes,
-//  every walk ending on its tiles) or stop the run in the step that missed:
-//  a miss that lets the run go on and fail later went unseen, and a later
-//  step started from somewhere it did not expect. Each miss runs its own
-//  row and the next, which checks where the row left us.
-class Test_StorySimMisses : public UnitTest{
-public:
-    Test_StorySimMisses(std::string name, std::string from, std::string to)
-        : UnitTest("PokemonBDSP::AutoStory - Story sim, detector misses: " + std::move(name))
-        , m_range{.from = std::move(from), .to = std::move(to)}
-    {}
-    virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
-        try{
-            SimExecutor clean(logger);
-            if (!run_rows_on(clean, logger, m_range).completed){
-                return "the run fails without misses: " + clean.result().error;
-            }
-            logger.log(std::format("{} fades and {} banners to miss.", clean.misses().fades, clean.misses().banners));
-            std::vector<std::string> unseen;
-            for (size_t i = 0; i < clean.misses().fades + clean.misses().banners; i++){
-                const std::string line = miss(logger, clean.result(), i < clean.misses().fades, i < clean.misses().fades ? i : i - clean.misses().fades);
-                if (!line.empty()){
-                    unseen.push_back(line);
-                }
-            }
-            std::string out = "Misses that went unseen:";
-            for (const std::string& line : unseen){
-                out += "\n  " + line;
-            }
-            return unseen.empty() ? UnitTestResult(true) : UnitTestResult(out);
-        }catch (Exception& e){
-            return std::string(e.name()) + ": " + e.message();
-        }
-    }
-
-private:
-    //  Misses the `index`th fade (or banner) of the clean run `clean` in its
-    //  row. Returns how it went unseen, or "".
-    static std::string miss(Logger& logger, const SimRun& clean, bool fade, size_t index){
-        size_t k = 0;
-        while (k + 1 < clean.rows.size() && (fade ? clean.rows[k + 1].fades : clean.rows[k + 1].banners) <= index){
-            k++;
-        }
-        const SimRun::RowStart& start = clean.rows[k];
-        SimMisses misses;
-        (fade ? misses.fade : misses.banner) = index - (fade ? start.fades : start.banners);
-        SimExecutor executor(logger, misses);
-        const Pokemon::SegmentReport report = run_rows_on(executor, logger,
-            {.from = start.row, .to = clean.rows[std::min(k + 1, clean.rows.size() - 1)].row});
-        const SimRun& run = executor.result();
-        const std::string what = std::format("{} {}", fade ? "fade" : "banner", index);
-        logger.log(std::format("Missed {} in {}: {}.", what, run.missed_step,
-            report.completed ? "got over it" : "stopped in " + run.failed_step + ": " + run.error));
-        if (report.completed || run.failed_step == run.missed_step){
-            return "";
-        }
-        return std::format("{} missed in {}, failed later in {}: {}", what, run.missed_step, run.failed_step, run.error);
-    }
-
-    Pokemon::SegmentRange m_range;
-};
-
-
-class Test_StorySim : public UnitTest{
-public:
-    Test_StorySim(std::string name, std::string from, std::string to)
-        : UnitTest("PokemonBDSP::AutoStory - Story sim: " + std::move(name))
-        , m_from(std::move(from))
-        , m_to(std::move(to))
-    {}
-    virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
-        try{
-            return run_rows(logger, {.from = m_from, .to = m_to});
-        }catch (Exception& e){
-            return std::string(e.name()) + ": " + e.message();
-        }
-    }
-
-private:
-    std::string m_from;
-    std::string m_to;
-};
-
+    const size_t armed = story_triggers().size();
+    return armed == story_vars().size() ? UnitTestResult(true)
+        : UnitTestResult(std::format("Expected {} coord events armed by the story's variables, found {}.", story_vars().size(), armed));
 }
 
+std::string miss(Logger& logger, const SimRun& clean, bool fade, size_t index){
+    size_t k = 0;
+    while (k + 1 < clean.rows.size() && (fade ? clean.rows[k + 1].fades : clean.rows[k + 1].banners) <= index){
+        k++;
+    }
+    const SimRun::RowStart& start = clean.rows[k];
+    SimMisses misses;
+    (fade ? misses.fade : misses.banner) = index - (fade ? start.fades : start.banners);
+    SimExecutor executor(logger, misses);
+    const Pokemon::SegmentReport report = run_rows_on(executor, logger,
+        {.from = start.row, .to = clean.rows[std::min(k + 1, clean.rows.size() - 1)].row});
+    const SimRun& run = executor.result();
+    const std::string what = std::format("{} {}", fade ? "fade" : "banner", index);
+    logger.log(std::format("Missed {} in {}: {}.", what, run.missed_step,
+        report.completed ? "got over it" : "stopped in " + run.failed_step + ": " + run.error));
+    if (report.completed || run.failed_step == run.missed_step){
+        return "";
+    }
+    return std::format("{} missed in {}, failed later in {}: {}", what, run.missed_step, run.failed_step, run.error);
+}
+
+UnitTestResult test_story_sim_misses(Logger& logger){
+    Pokemon::SegmentRange range{.from = "00.00", .to = "01.11"};
+    SimExecutor clean(logger);
+    if (!run_rows_on(clean, logger, range).completed){
+        return "the run fails without misses: " + clean.result().error;
+    }
+    logger.log(std::format("{} fades and {} banners to miss.", clean.misses().fades, clean.misses().banners));
+    std::vector<std::string> unseen;
+    for (size_t i = 0; i < clean.misses().fades + clean.misses().banners; i++){
+        const std::string line = miss(logger, clean.result(), i < clean.misses().fades, i < clean.misses().fades ? i : i - clean.misses().fades);
+        if (!line.empty()){
+            unseen.push_back(line);
+        }
+    }
+    std::string out = "Misses that went unseen:";
+    for (const std::string& line : unseen){
+        out += "\n  " + line;
+    }
+    return unseen.empty() ? UnitTestResult(true) : UnitTestResult(out);
+}
+
+UnitTestResult test_story_sim_whole_table(Logger& logger){
+    return run_rows(logger, {.from = "00.00", .to = "01.11"});
+}
+
+UnitTestResult test_story_sim_each_row(Logger& logger){
+    for (const StoryCheckpoint& row : story_checkpoints()){
+        const auto res = run_rows(logger, {.from = row.id, .to = row.id});
+        if (res.result != UnitTestResult::PASSED){
+            return std::format("Row {} failed: {}", row.id, res.message);
+        }
+    }
+    return true;
+}
+
+UnitTestResult test_exit_gate(Logger& logger){
+    return run_exit_test(logger, "01.05", r75_old_gate_exit(), SimMisses{}, r75_pond_pocket());
+}
+
+UnitTestResult test_exit_ravaged_path(Logger& logger){
+    return run_exit_test(logger, "01.09", r81_old_cave_exit(), SimMisses{.fade = 0}, r81_below_the_mouth());
+}
+
+struct AutoStoryStorySimInput{
+    std::string name;
+    std::function<UnitTestResult(Logger&)> body;
+};
+
+struct AutoStoryStorySimExpectation{
+};
+
+struct AutoStoryStorySimCase{
+    AutoStoryStorySimInput input;
+    AutoStoryStorySimExpectation expectation;
+};
+
+class Test_AutoStoryStorySim : public UnitTest{
+public:
+    explicit Test_AutoStoryStorySim(AutoStoryStorySimCase test_case)
+        : UnitTest("PokemonBDSP::AutoStory - Story sim: " + test_case.input.name)
+        , m_case(std::move(test_case))
+    {}
+    virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
+        try{
+            return m_case.input.body(logger);
+        }catch (Exception& e){
+            return std::string(e.name()) + ": " + e.message();
+        }
+    }
+
+private:
+    AutoStoryStorySimCase m_case;
+};
+
+} // namespace
+
+
+const AutoStoryStorySimCase AUTO_STORY_STORY_SIM_CASES[] = {
+    {
+        .input = {"the maps' coord events are on open ground or doors", test_coord_events},
+        .expectation = {},
+    },
+    {
+        .input = {"detector misses from 00.00 to 01.11", test_story_sim_misses},
+        .expectation = {},
+    },
+    {
+        .input = {"00.00 to 01.11: the whole table, from the new game to Floaroma", test_story_sim_whole_table},
+        .expectation = {},
+    },
+    {
+        .input = {"each row from 00.00 to 01.11 in isolation", test_story_sim_each_row},
+        .expectation = {},
+    },
+    {
+        .input = {"r75, out of the Oreburgh Gate", test_exit_gate},
+        .expectation = {},
+    },
+    {
+        .input = {"r81, out of the Ravaged Path", test_exit_ravaged_path},
+        .expectation = {},
+    },
+};
 
 void add_tests_AutoStory_StorySim(UnitTestDatabase& database){
-    database.add<Test_CoordEvents>();
-    database.add<Test_StorySimMisses>("00.00 to 01.11", "00.00", "01.11");
-    database.add<Test_StorySim>("00.00 to 01.11: the whole table, from the new game to Floaroma", "00.00", "01.11");
-    for (const StoryCheckpoint& row : story_checkpoints()){
-        database.add<Test_StorySim>(std::format("row {}", row.id), row.id, row.id);
+    for (const auto& item : AUTO_STORY_STORY_SIM_CASES){
+        database.add<Test_AutoStoryStorySim>(item);
     }
-    database.add<Test_StorySimExit>("r75, out of the Oreburgh Gate", "01.05", r75_old_gate_exit(), SimMisses{}, r75_pond_pocket());
-    database.add<Test_StorySimExit>("r81, out of the Ravaged Path", "01.09", r81_old_cave_exit(), SimMisses{.fade = 0}, r81_below_the_mouth());
 }
 
 
-
-}
-}
-}
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

@@ -67,7 +67,7 @@ Milliseconds per_tile(Direction direction, SimPace pace, bool can_run){
     return route_ms_per_tile(direction, pace == SimPace::RUN && can_run ? MoveSpeed::RUN : MoveSpeed::WALK);
 }
 
-}
+} // namespace
 
 
 SimPos sim_pos(const TilePos& tile){
@@ -290,7 +290,7 @@ WalkStop walk_stop(SimStop stop){
     return WalkStop::LIMIT;
 }
 
-}
+} // namespace
 
 WalkResult GridSimRouteIO::walk_to_wall(const RouteWallWalk& walk){
     const SimPace pace = walk.options.pace == DpadPace::RUN ? SimPace::RUN : SimPace::WALK;
@@ -359,6 +359,6 @@ void GridSimRouteIO::note(const std::string& text, RouteNote kind){
 
 
 
-}
-}
-}
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
