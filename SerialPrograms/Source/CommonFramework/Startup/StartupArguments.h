@@ -1,4 +1,4 @@
-/*  Lab Startup Arguments
+/*  Application Startup Arguments
  *
  *  From: https://github.com/PokemonAutomation/
  *

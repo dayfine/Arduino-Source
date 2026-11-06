@@ -187,11 +187,6 @@ int run_program(int argc, char *argv[]){
 
 
 
-    ScopeExit cleanup([]{
-        SerialPortPoller::instance().stop();
-        GlobalMediaServices::instance().stop();
-    });
-
     //  Several novice developers struggled to build and run the program due to missing Resources folder.
     //  Add this check to pop a message box when Resources folder is missing.
     if (!check_resource_folder(logger)){
@@ -213,6 +208,11 @@ int run_program(int argc, char *argv[]){
     if (GlobalSettings::instance().COMMAND_LINE_TEST_MODE){
         return run_command_line_tests(false);
     }
+
+    ScopeExit cleanup([]{
+        SerialPortPoller::instance().stop();
+        GlobalMediaServices::instance().stop();
+    });
 
     OptionsPanelWrapper<NintendoSwitch::ConsoleSettingsPanel>().make_panel()->load_json_from_global();
     SerialPortPoller::instance().ports();
