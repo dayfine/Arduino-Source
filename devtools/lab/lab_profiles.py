@@ -8,7 +8,7 @@ import shutil
 import tempfile
 
 
-SETTINGS = "SerialPrograms-Settings.json"
+SETTINGS = "UserSettings/SerialPrograms-Settings.json"
 PREFERENCES = {"THEME", "WINDOW_SIZE", "LOG_WINDOW_SIZE", "CONSOLE_SETTINGS_COLLAPSED"}
 
 
@@ -55,6 +55,7 @@ def seed(source, root, profile):
     temporary = Path(tempfile.mkdtemp(prefix=".seed-", dir=destination.parent))
     os.chmod(temporary, 0o700)
     try:
+        (temporary / "UserSettings").mkdir()
         write_json(temporary / SETTINGS, {"20-GlobalSettings": safe, "99-Panels": {}})
         write_json(temporary / "lab-profile.json", {
             "schema": 1, "profile": profile, "hardware_configured": False,

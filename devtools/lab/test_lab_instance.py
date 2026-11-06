@@ -19,6 +19,7 @@ class ProfileTests(unittest.TestCase):
         self.root = Path(self.temporary.name)
         self.source = self.root / "default"
         self.source.mkdir()
+        (self.source / "UserSettings").mkdir()
         self.original = {
             "20-GlobalSettings": {
                 "THEME": "dark", "CONSOLE_SETTINGS_COLLAPSED": False,

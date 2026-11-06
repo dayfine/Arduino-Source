@@ -6,7 +6,7 @@ app, sends a command, changes permissions, or opens a controller or capture devi
 
 ## Seed profiles without copying live state
 
-Work from an offline snapshot of `SerialPrograms-Settings.json`, taken while the
+Work from an offline snapshot containing `UserSettings/SerialPrograms-Settings.json`, taken while the
 source app is closed. Keep that snapshot as the backup; do not seed from a file
 being rewritten by a running app. For example, using a scratch root first:
 
