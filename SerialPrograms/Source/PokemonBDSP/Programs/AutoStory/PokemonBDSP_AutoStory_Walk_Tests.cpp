@@ -1,0 +1,275 @@
+/*  BDSP AutoStory Walk Tests
+ *
+ *  From: https://github.com/PokemonAutomation/
+ *
+ */
+
+#include <cstdint>
+#include <string>
+#include <vector>
+#include "Common/Cpp/Filesystem/Filesystem.h"
+#include "Common/Cpp/TestRunners/UnitTestDatabase.h"
+#include "CommonFramework/GlobalAutoPaths.h"
+#include "CommonFramework/ImageTypes/ImageRGB32.h"
+#include "Utils/PokemonBDSP_AutoStory_Indoors.h"
+#include "Utils/PokemonBDSP_AutoStory_Location.h"
+#include "Utils/PokemonBDSP_AutoStory_RouteWalk.h"
+#include "PokemonBDSP_AutoStory_Walk_Tests.h"
+
+namespace PokemonAutomation{
+namespace NintendoSwitch{
+namespace PokemonBDSP{
+
+
+namespace{
+
+//  A turn must not step: on the console D-pad taps of 40 to 80 ms only
+//  turned, a 160 ms D-pad tap stepped a whole tile, and a 100 ms stick tap
+//  stepped about 0.6 tile, off the tile grid (r49, r248a). So route_turn()
+//  taps the D-pad, once, for at most 80 ms.
+UnitTestResult test_route_turn_tap(Logger&){
+        constexpr Milliseconds LONGEST_TURN(80);
+        for (Pokemon::Direction direction : {Pokemon::Direction::NORTH, Pokemon::Direction::SOUTH, Pokemon::Direction::EAST, Pokemon::Direction::WEST}){
+            const RouteInput tap = route_turn_tap(direction);
+            const std::string name = std::string("turning ") + Pokemon::direction_name(direction);
+            if (tap.kind != RouteInputKind::DPAD){
+                return name + ": not a D-pad tap; a stick tap moves part of a tile.";
+            }
+            if (tap.direction != direction || tap.count != 1){
+                return name + ": expected one tap that way.";
+            }
+            if (tap.hold > LONGEST_TURN){
+                return name + ": a " + std::to_string(tap.hold.count()) + " ms tap; over 80 ms may step.";
+            }
+        }
+        if (ROUTE_TURN_TAP > LONGEST_TURN){
+            return "ROUTE_TURN_TAP is " + std::to_string(ROUTE_TURN_TAP.count()) + " ms; over 80 ms may step.";
+        }
+        return true;
+}
+
+//  indoors() decides when leave_door_south() is out: r257 walked on south
+//  past Sandgem's road into a house after leaving the Center, because the
+//  evening tint made the outside as warm as a room. Synthetic screens: the
+//  evening outside (warm all over), a room (warm, black along the bottom),
+//  a fade (black all over), and warm with a thin dark edge (a shadow).
+struct IndoorsCase{
+    std::string name;
+    uint32_t fill;
+    double dark_bottom;     //  how much of the screen's height, from the bottom, is black
+    bool indoors;
+};
+
+UnitTestResult test_indoors_any_light(Logger&){
+        const std::vector<IndoorsCase> cases{
+            {.name = "evening outside, orange all over", .fill = 0xffe0a040, .dark_bottom = 0, .indoors = false},
+            {.name = "a room: orange, black below its floor", .fill = 0xffe0a040, .dark_bottom = 0.10, .indoors = true},
+            {.name = "a fade: black all over", .fill = 0xff000000, .dark_bottom = 0, .indoors = false},
+            {.name = "orange with a thin shadow at the bottom", .fill = 0xffe0a040, .dark_bottom = 0.01, .indoors = false},
+            {.name = "daytime grass", .fill = 0xff60b040, .dark_bottom = 0.10, .indoors = false},
+        };
+        for (const IndoorsCase& item : cases){
+            ImageRGB32 screen(1920, 1080);
+            const size_t dark_from = (size_t)(1080 * (1 - item.dark_bottom));
+            for (size_t y = 0; y < 1080; y++){
+                for (size_t x = 0; x < 1920; x++){
+                    screen.pixel(x, y) = y >= dark_from ? 0xff000000 : item.fill;
+                }
+            }
+            if (indoors(screen) != item.indoors){
+                return item.name + (item.indoors ? ": read as outside." : ": read as inside.");
+            }
+        }
+        return true;
+}
+
+//  door_fade_look(): out of a door is a dark look, then a bright one that is
+//  not a room. r259 turned round in Sandgem's lit Center, read "not a room"
+//  once at full brightness, and walked east inside it as if outside.
+struct DoorLook{
+    double brightness;
+    bool room;
+};
+struct DoorCase{
+    std::string name;
+    std::vector<DoorLook> looks;
+    //  The look (1-based) that reads out, or 0 for none.
+    size_t out_at;
+};
+
+UnitTestResult test_door_fade(Logger&){
+        const std::vector<DoorCase> cases{
+            {.name = "r259: a bright look in the Center that misses the room", .looks = {{458, true}, {440, false}, {457, true}}, .out_at = 0},
+            {.name = "the fade, then the town", .looks = {{458, true}, {300, true}, {60, false}, {310, false}}, .out_at = 4},
+            {.name = "the fade, then the room again", .looks = {{458, true}, {60, false}, {420, true}}, .out_at = 0},
+            {.name = "the fade, still dim", .looks = {{60, false}, {150, false}, {320, false}}, .out_at = 3},
+        };
+        for (const DoorCase& item : cases){
+            DoorFadeWatch watch;
+            size_t out_at = 0;
+            for (size_t i = 0; i < item.looks.size() && out_at == 0; i++){
+                if (door_fade_look(watch, item.looks[i].brightness, item.looks[i].room)){
+                    out_at = i + 1;
+                }
+            }
+            if (out_at != item.out_at){
+                return item.name + ": out at look " + std::to_string(out_at) + ", expected " + std::to_string(item.out_at) + ".";
+            }
+        }
+        return true;
+}
+
+
+UnitTestResult test_location_banner(Logger&){
+        struct Case{
+            const char* read;
+            const char* expected;
+            bool match;
+        };
+        const Case cases[] = {
+            {"sandgemtown",     "Sandgem Town",     true},
+            {"andgemltown",     "Sandgem Town",     true},     //  r109's OCR
+            {"Route 202",       "Route 202",        true},
+            {"route2o2",        "Route 202",        false},    //  a digit read as a letter is not trusted
+            {"route201",        "Route 202",        false},
+            {"jubilifecity",    "Sandgem Town",     false},
+            {"twinleaftown",    "Sandgem Town",     false},
+            {"",                "Sandgem Town",     false},
+        };
+        for (const Case& c : cases){
+            if (location_banner_matches(c.read, c.expected) != c.match){
+                return std::string("Banner \"") + c.read + "\" for " + c.expected +
+                    (c.match ? " should match." : " should not match.");
+            }
+        }
+        return true;
+}
+
+
+UnitTestResult test_indoors(Logger& logger){
+        struct Case{ const char* file; bool inside; };
+        const Case cases[] = {
+            {"PokemonBDSP/AutoStory/JubilifeCenterInside-20261030-c6.png", true},
+            {"PokemonBDSP/AutoStory/JubilifeCenterInside-20261030-c4.png", true},
+            {"PokemonBDSP/AutoStory/JubilifeCenterInsideUpper-20261030-r151a.png", true},
+            {"PokemonBDSP/AutoStory/SandgemCenterInside-20261030-053555.png", true},
+            {"PokemonBDSP/AutoStory/JubilifeSchoolInside-20261030.png", true},
+            {"PokemonBDSP/AutoStory/JubilifeCenterDoorstep-20261030-c5.png", false},
+            {"PokemonBDSP/AutoStory/JubilifeSchoolDoorstep-20261030.png", false},
+            {"PokemonBDSP/AutoStory/JubilifeSchoolDoorstep2-20261030.png", false},
+            {"PokemonBDSP/AutoStory/JubilifeCenterFrontDoor-20261030-q2.png", false},
+            {"PokemonBDSP/AutoStory/SandgemCenterBelowSign-20261030-053527.png", false},
+            {"PokemonBDSP/AutoStory/SandgemMartDoorUpRight-20261030-023443.png", false},
+        };
+        for (const Case& c : cases){
+            const std::string path = UNIT_TEST_RESOURCE_PATH() + c.file;
+            if (!Filesystem::is_regular_file(path)){
+                return UnitTestResult(UnitTestResult::SKIPPED, "Screenshot not found: " + path);
+            }
+            const bool inside = indoors(ImageRGB32(path));
+            logger.log(std::string(c.file) + ": " + (inside ? "indoors" : "outside"));
+            if (inside != c.inside){
+                return std::string(c.file) + ": expected " + (c.inside ? "indoors" : "outside") + ".";
+            }
+        }
+        return true;
+}
+
+
+UnitTestResult test_location_banner_showing(Logger& logger){
+        struct Case{ const char* file; bool banner; };
+        const Case cases[] = {
+            {"PokemonBDSP/AutoStory/JubilifeCenterDoorstep-20261030-c5.png", true},
+            {"PokemonBDSP/AutoStory/JubilifeSchoolDoorstep-20261030.png", true},
+            {"PokemonBDSP/AutoStory/JubilifeCenterInside-20261030-c6.png", false},
+            {"PokemonBDSP/AutoStory/JubilifeCenterInside-20261030-c4.png", false},
+            {"PokemonBDSP/AutoStory/JubilifeCenterInsideUpper-20261030-r151a.png", false},
+            {"PokemonBDSP/AutoStory/JubilifeCenterFrontDoor-20261030-q2.png", false},
+        };
+        for (const Case& c : cases){
+            const std::string path = UNIT_TEST_RESOURCE_PATH() + c.file;
+            if (!Filesystem::is_regular_file(path)){
+                return UnitTestResult(UnitTestResult::SKIPPED, "Screenshot not found: " + path);
+            }
+            const bool banner = location_banner_showing(ImageRGB32(path));
+            logger.log(std::string(c.file) + ": banner " + (banner ? "shows" : "none"));
+            if (banner != c.banner){
+                return std::string(c.file) + ": expected " + (c.banner ? "a banner" : "no banner") + ".";
+            }
+        }
+        return true;
+}
+
+
+struct AutoStoryWalkInput{
+    std::string name;
+    std::function<UnitTestResult(Logger&)> body;
+};
+
+struct AutoStoryWalkExpectation{
+};
+
+struct AutoStoryWalkCase{
+    AutoStoryWalkInput input;
+    AutoStoryWalkExpectation expectation;
+};
+
+class Test_AutoStoryWalk : public UnitTest{
+public:
+    explicit Test_AutoStoryWalk(AutoStoryWalkCase test_case)
+        : UnitTest("PokemonBDSP::AutoStory - " + test_case.input.name)
+        , m_case(std::move(test_case))
+    {}
+    virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
+        try{
+            return m_case.input.body(logger);
+        }catch (Exception& e){
+            return std::string(e.name()) + ": " + e.message();
+        }
+    }
+
+private:
+    AutoStoryWalkCase m_case;
+};
+
+} // namespace
+
+
+const AutoStoryWalkCase AUTO_STORY_WALK_CASES[] = {
+    {
+        .input = {"a turn is a D-pad tap too short to step", test_route_turn_tap},
+        .expectation = {},
+    },
+    {
+        .input = {"indoors() under the evening tint", test_indoors_any_light},
+        .expectation = {},
+    },
+    {
+        .input = {"out of a door needs its fade", test_door_fade},
+        .expectation = {},
+    },
+    {
+        .input = {"location banner match", test_location_banner},
+        .expectation = {},
+    },
+    {
+        .input = {"indoors", test_indoors},
+        .expectation = {},
+    },
+    {
+        .input = {"location banner showing", test_location_banner_showing},
+        .expectation = {},
+    },
+};
+
+void add_tests_AutoStory_Walk(UnitTestDatabase& database){
+    for (const auto& item : AUTO_STORY_WALK_CASES){
+        database.add<Test_AutoStoryWalk>(item);
+    }
+}
+
+
+
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
