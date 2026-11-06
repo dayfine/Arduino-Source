@@ -203,10 +203,10 @@ public:
         const ProgramInfo& info,
         VideoStream& stream, ProControllerContext& context,
         const BBQOption& BBQ_OPTIONS,
-        BBQPointsLedger* ledger
+        BBQPointsLedger* ledger, int reroll_cost
     )
         : m_info(info), m_stream(stream), m_context(context), m_options(BBQ_OPTIONS)
-        , m_ledger(ledger)
+        , m_ledger(ledger), m_reroll_cost(reroll_cost)
     {}
 
     virtual bool open_panel() override{
@@ -246,6 +246,9 @@ public:
         pbf_press_button(m_context, BUTTON_A, 160ms, 400ms);
         pbf_wait(m_context, 800ms);
         m_context.wait_for_all_requests();
+        if (m_ledger != nullptr){
+            m_ledger->expect_spend(m_reroll_cost);
+        }
     }
     virtual void close_panel() override{
         press_Bs_to_back_to_overworld(m_info, m_stream, m_context);
@@ -265,17 +268,27 @@ private:
     ProControllerContext& m_context;
     const BBQOption& m_options;
     BBQPointsLedger* m_ledger;
+    int m_reroll_cost;
 };
 
 //This does not handle out of BP.
 void reroll_all_slots(
     const ProgramInfo& info,
     VideoStream& stream, ProControllerContext& context,
-    size_t slots
+    const std::vector<BBQuests>& quests,
+    BBQPointsLedger* ledger
 ){
     open_quest_panel(stream, context);
 
-    for (size_t i = 0; i < slots; i++){
+    for (BBQuests quest : quests){
+        if (ledger != nullptr){
+            //An unreadable slot may be empty or a quest of unknown cost.
+            if (quest == BBQuests::UnableToDetect){
+                ledger->skip_spend_check();
+            }else{
+                ledger->expect_spend(reroll_cost(quest));
+            }
+        }
         pbf_press_button(context, BUTTON_A, 160ms, 400ms);
         pbf_press_button(context, BUTTON_A, 160ms, 400ms); //Yes.
         pbf_wait(context, 800ms);
@@ -346,7 +359,7 @@ void reroll_quest_slot(
     size_t slot,
     BBQPointsLedger* ledger
 ){
-    ConsoleBBQRerollActions actions(info, stream, context, BBQ_OPTIONS, ledger);
+    ConsoleBBQRerollActions actions(info, stream, context, BBQ_OPTIONS, ledger, reroll_cost(quest_list[slot]));
     switch (reroll_quest(stream.logger(), actions, quest_list, slot)){
     case BBQRerollResult::Rerolled:
         return;
@@ -487,7 +500,7 @@ std::vector<BBQuests> process_quest_list(
     }
     if (plan.reroll_all){
         stream.log("No possible quests! Rerolling all quests.");
-        reroll_all_slots(info, stream, context, quest_list.size());
+        reroll_all_slots(info, stream, context, quest_list, ledger);
     }
 
     //Disabled since 2025-05, when the exclusions table gained its reroll action. Before that,

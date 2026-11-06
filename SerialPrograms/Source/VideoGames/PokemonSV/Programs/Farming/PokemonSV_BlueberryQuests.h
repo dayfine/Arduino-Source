@@ -133,7 +133,8 @@ BBQRerollResult reroll_quest(
 );
 
 //Reroll the quest in `slot` of `quests` on the console, with reroll_quest(). Stops the program
-//if the reroll fails. If ledger is not null, it records the BP of each panel read.
+//if the reroll fails. If ledger is not null, it records the BP of each panel read and what the
+//reroll should cost.
 void reroll_quest_slot(
     const ProgramInfo& info,
     VideoStream& stream, ProControllerContext& context,
@@ -145,7 +146,7 @@ void reroll_quest_slot(
 
 //Determine which quests are possible and which quests are not. (ex. no eggs, reroll egg hatcher.)
 //Quests not possible are removed from the list. If the list is empty, then reroll all items.
-//If ledger is not null, it records every BP read here.
+//If ledger is not null, it records every BP read here and what each reroll should cost.
 std::vector<BBQuests> process_quest_list(
     const ProgramInfo& info,
     VideoStream& stream, ProControllerContext& context,
