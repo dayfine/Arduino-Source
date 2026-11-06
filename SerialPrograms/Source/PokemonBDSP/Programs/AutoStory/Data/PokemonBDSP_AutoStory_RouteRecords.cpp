@@ -32,8 +32,10 @@ std::vector<RouteRecord> checkpoint_0001_records(){
         }, "Segment00Lines line 2, not walked by the program yet"},
         {"00.01", "Route 201: Barry's tall-grass warning, then west to the Lakefront", "Route 201", "Route201", true, map_point("Route201", "route_201_arrival"), {
             {Direction::NORTH, 6, LegEnd::COUNT, "up the exit path to (15, 18): Barry's warning fires on that row"},
-            {Direction::WEST, 3, LegEnd::COUNT, "after the scene, along row 18 to column 12"},
-            {Direction::NORTH, 2, LegEnd::COUNT, "to row 16, the lower level's row to the Lakefront"},
+            {Direction::WEST, 1, LegEnd::COUNT, "after the scene, to (14, 18); west of it is the 201 sign and trees (r16)"},
+            {Direction::NORTH, 1, LegEnd::COUNT, "onto row 17, the top of the exit path's T"},
+            {Direction::WEST, 2, LegEnd::COUNT, "along row 17 to column 12"},
+            {Direction::NORTH, 1, LegEnd::COUNT, "to row 16, the lower level's row to the Lakefront"},
             {Direction::WEST, 12, LegEnd::COUNT, "to (0, 16), the route's last tile"},
             {Direction::WEST, 0, LegEnd::BANNER, "on west onto the Verity Lakefront"},
         }, "Segment00Lines lines 2 and 3, not walked by the program yet; traced on the Route201 map, the decomp's since #111"},

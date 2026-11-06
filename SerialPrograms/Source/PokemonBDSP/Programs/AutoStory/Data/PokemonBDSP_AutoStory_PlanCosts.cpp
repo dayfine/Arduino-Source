@@ -29,13 +29,14 @@ RobustPlanCosts waypoint_plan_costs(){
 }
 
 RobustPlanCosts town_plan_costs(){
+    //  Open legs go on the D-pad now, a whole tile a tap, so they land exactly
+    //  at any length ("south 5" went 6 in r134a on stick holds). A wall at a
+    //  leg's end is still worth a little: r64 went 38 tiles round the town
+    //  to end each leg on one, for 12 straight.
     RobustPlanCosts costs;
-    //  A tile's hold moves exactly a tile; a longer open leg may end a tile
-    //  either way ("south 5" went 6 in r134a), so the plan ends on a wall.
-    costs.exact_open_tiles = 1;
-    costs.open_error_per = 8;
-    costs.leg_not_at_wall = 6;
-    costs.per_open_tile = 2;
+    costs.exact_open_tiles = costs.max_open_tiles;
+    costs.per_open_tile = 1;
+    costs.leg_not_at_wall = 4;
     return costs;
 }
 

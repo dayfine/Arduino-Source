@@ -14,6 +14,7 @@
 #include "Utils/PokemonBDSP_AutoStory_Indoors.h"
 #include "Utils/PokemonBDSP_AutoStory_Location.h"
 #include "Utils/PokemonBDSP_AutoStory_RouteWalk.h"
+#include "PokemonBDSP_AutoStory_Talks.h"
 #include "PokemonBDSP_AutoStory_Walk_Tests.h"
 
 namespace PokemonAutomation{
@@ -201,6 +202,42 @@ UnitTestResult test_location_banner_showing(Logger& logger){
 }
 
 
+
+//  pokemon_center_on_screen(): the Center's warm floor in a room. r79 read
+//  Jubilife's yellow plaza as a Center and called a won battle lost.
+UnitTestResult test_pokemon_center_on_screen(Logger&){
+    constexpr uint32_t FLOOR = 0xfff0c860;      //  the Center's warm yellow
+    constexpr uint32_t WALL = 0xffe08030;       //  its orange back wall
+    constexpr uint32_t GRASS = 0xff60b040;
+    struct Case{
+        std::string name;
+        uint32_t top;
+        uint32_t bottom;
+        double dark_bottom;     //  how much of the screen's height, from the bottom, is black
+        bool center;
+    };
+    const std::vector<Case> cases{
+        {"a Center: wall over floor, black below it", WALL, FLOOR, 0.15, true},
+        {"Jubilife's plaza: yellow paving, no black edge", FLOOR, FLOOR, 0, false},
+        {"a street: grass over yellow paving", GRASS, FLOOR, 0, false},
+        {"a grey gym in a room", 0xff808080, 0xff909090, 0.15, false},
+    };
+    for (const Case& item : cases){
+        ImageRGB32 screen(1920, 1080);
+        const size_t dark_from = (size_t)(1080 * (1 - item.dark_bottom));
+        for (size_t y = 0; y < 1080; y++){
+            for (size_t x = 0; x < 1920; x++){
+                screen.pixel(x, y) = y >= dark_from ? 0xff000000 : y < 540 ? item.top : item.bottom;
+            }
+        }
+        if (pokemon_center_on_screen(screen) != item.center){
+            return item.name + (item.center ? ": not read as a Center." : ": read as a Center.");
+        }
+    }
+    return true;
+}
+
+
 struct AutoStoryWalkInput{
     std::string name;
     std::function<UnitTestResult(Logger&)> body;
@@ -260,6 +297,10 @@ const AutoStoryWalkCase AUTO_STORY_WALK_CASES[] = {
         .input = {"location banner showing", test_location_banner_showing},
         .expectation = {},
     },
+    {
+        .input = {"a Pokemon Center is its floor in a room, not a yellow plaza", test_pokemon_center_on_screen},
+        .expectation = {},
+    },
 };
 
 void add_tests_AutoStory_Walk(UnitTestDatabase& database){
@@ -267,7 +308,6 @@ void add_tests_AutoStory_Walk(UnitTestDatabase& database){
         database.add<Test_AutoStoryWalk>(item);
     }
 }
-
 
 
 } // namespace PokemonBDSP
