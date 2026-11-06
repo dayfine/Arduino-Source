@@ -52,6 +52,7 @@ namespace NintendoSwitch{
 namespace PokemonFRLG{
 
 
+//  Configuration for an auto-story grinding session.
 struct GrindPlan{
     //  The party slot that grinds: the lead (0) only.
     size_t member = 0;
@@ -79,12 +80,14 @@ inline constexpr std::string_view GRIND_VARIANT_PREFIX = "grind ";
 //  " beat=TRAINER_RIVAL_CERULEAN_BULBASAUR chance=70", the chance in
 //  percent. The step's target is the nurse.
 std::string grind_variant(const GrindPlan& plan);
+//  Parses a grinding plan from a variant string.
 std::optional<GrindPlan> parse_grind_variant(std::string_view variant);
 
 //  The table's GRIND step: `nurse` is where the player faces the nurse.
 Pokemon::StoryStep grind_step(std::string name, std::string why, const GrindPlan& plan, Pokemon::Pose nurse);
 
 
+//  The outcome of an individual grinding battle.
 enum class GrindFight{
     //  The battle ended with the overworld back and the lead standing,
     //  won or run from.
@@ -118,6 +121,7 @@ public:
     virtual std::optional<WinEstimate> win_chance(const MemberInfo& member, std::string_view trainer) = 0;
 };
 
+//  How a grinding session concluded.
 enum class GrindEnd{
     //  The level, or the win chance, reached.
     REACHED,
@@ -135,8 +139,10 @@ enum class GrindEnd{
     REFUSED,
     FAILED,
 };
+//  The human-readable name of a grind end outcome.
 const char* grind_end_name(GrindEnd end);
 
+//  The summary result of a grinding session.
 struct GrindResult{
     GrindEnd end = GrindEnd::FAILED;
     size_t encounters = 0;
@@ -150,6 +156,7 @@ struct GrindResult{
 //  From the overworld in the patch: grinds as `plan` says.
 GrindResult run_grind(Logger& logger, GrindActions& actions, const MemberReader& reader, const GrindPlan& plan);
 
+//  Formats a log message summarizing the grind result.
 std::string grind_message(const GrindPlan& plan, const GrindResult& result);
 
 //  The story's lead as `read` shows it (species, level, moves, stats),
@@ -199,11 +206,12 @@ private:
 };
 
 
+//  Register auto-story grind unit tests.
 void add_tests_AutoStoryGrind(UnitTestDatabase& database);
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

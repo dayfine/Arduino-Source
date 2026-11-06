@@ -25,21 +25,25 @@ namespace NintendoSwitch{
 namespace PokemonFRLG{
 
 
+//  Position on a specific map.
 struct MapPosition{
     std::string map;
     TilePos point;
 
     bool operator==(const MapPosition& other) const = default;
 };
+//  Formats a MapPosition as a string.
 std::string to_string(const MapPosition& position);
 
 
+//  Action associated with reaching a route waypoint.
 enum class RouteAction{
     WALK,       //  hold `direction` for `tiles` tiles
     SURF,       //  face `direction`, use Surf, and land on the water there
     FACE,       //  turn to `direction` without moving
 };
 
+//  A single step along an overworld path.
 struct RouteStep{
     RouteAction action = RouteAction::WALK;
     Direction direction = Direction::NORTH;
@@ -65,9 +69,11 @@ struct RouteStep{
     //  Where the player is after the step.
     MapPosition end;
 };
+//  Formats a RouteStep as a string.
 std::string to_string(const RouteStep& step);
 
 
+//  Navigation goal specification.
 struct RouteGoal{
     MapPosition position;
     //  Which way to face on arrival, e.g. towards a Pokemon to talk to.
@@ -91,6 +97,7 @@ enum class RouteCost{
     //  (console B, 2026-11-01, Route 1, four runs).
     OPEN_WILD_STOP,
 };
+//  Cost mapping table for path planning.
 using RouteCosts = std::map<RouteCost, int>;
 
 //  TILE 1, TURN 2, WARP 30, SURF 40, GRASS_TILE 20, OPEN_STOP 8,
@@ -145,11 +152,12 @@ MapPosition follow_overworld_route(
 );
 
 
+//  Registers overworld route unit tests.
 void add_tests_OverworldRoute(UnitTestDatabase& database);
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

@@ -710,7 +710,7 @@ StoryCheckpoint nugget_bridge(){
     });
 }
 
-}
+} // namespace
 
 
 const std::vector<StoryCheckpoint>& story_checkpoints(){
@@ -724,6 +724,6 @@ const std::vector<StoryCheckpoint>& story_checkpoints(){
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

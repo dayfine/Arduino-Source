@@ -121,9 +121,11 @@ struct QuantityPresses{
     size_t right = 0;
     size_t up = 0;
 };
+//  Calculates D-pad presses needed to select a purchase quantity.
 QuantityPresses quantity_presses(size_t quantity);
 
 
+//  The outcome of attempting to buy an item at the Mart.
 enum class PurchaseEnd{
     //  "Here you are!": bought, back at the list.
     BOUGHT,
@@ -158,6 +160,7 @@ public:
     virtual bool leave() = 0;
 };
 
+//  How a Mart shopping trip concluded.
 enum class MartEnd{
     DONE,
     //  The plan bought nothing: the money (or its floor) doesn't cover one
@@ -167,8 +170,10 @@ enum class MartEnd{
     NO_MONEY_READ,
     FAILED,
 };
+//  The human-readable name of a Mart outcome.
 const char* mart_end_name(MartEnd end);
 
+//  The summary result of a Mart shopping session.
 struct MartResult{
     MartEnd end = MartEnd::FAILED;
     std::vector<MartBuy> bought = {};
@@ -180,6 +185,7 @@ struct MartResult{
 //  Facing the clerk: buys as `plan` says, then back to the overworld.
 MartResult run_mart(Logger& logger, MartActions& actions, const MartPlan& plan);
 
+//  Formats a log message summarizing the Mart shopping result.
 std::string mart_message(const MartPlan& plan, const MartResult& result);
 
 
@@ -216,11 +222,12 @@ private:
 };
 
 
+//  Register auto-story Mart unit tests.
 void add_tests_AutoStoryMart(UnitTestDatabase& database);
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

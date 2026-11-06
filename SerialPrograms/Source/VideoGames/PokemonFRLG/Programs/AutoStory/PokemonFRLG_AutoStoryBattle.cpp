@@ -784,7 +784,7 @@ private:
     const Language m_language;
 };
 
-}
+} // namespace
 
 
 const char* status_name(StatusCondition status){
@@ -990,6 +990,6 @@ OverworldInterruptSet story_interrupts(Supplies& supplies, bool fight_wild, Stor
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

@@ -21,7 +21,7 @@ namespace{
 const FloatPixel BOX_BLUE{0.176, 0.357, 0.467};
 const FloatPixel FRAME_GOLD{0.493, 0.391, 0.116};
 
-}
+} // namespace
 
 
 BattleTextBoxDetector::BattleTextBoxDetector(Color color)
@@ -85,6 +85,6 @@ void add_tests_BattleTextBoxDetector(UnitTestDatabase& database){
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

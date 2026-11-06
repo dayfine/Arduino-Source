@@ -86,7 +86,7 @@ ChoiceResult decline(ChoiceActions& actions, ChoiceEnd end, std::string detail){
     return choice_end(end, std::move(detail));
 }
 
-}
+} // namespace
 
 ChoiceResult run_fossil_choice(Logger& logger, ChoiceActions& actions, Fossil fossil){
     if (!actions.talk()){
@@ -160,6 +160,6 @@ std::optional<Fossil> ConsoleChoiceActions::fossil_in_bag(){
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

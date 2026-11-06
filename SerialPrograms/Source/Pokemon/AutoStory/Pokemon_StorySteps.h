@@ -47,6 +47,7 @@ namespace PokemonAutomation{
 namespace Pokemon{
 
 
+// Action category classification for individual story steps.
 enum class StoryStepKind{
     NEW_GAME,   //  title screen (no save) to the first room
     OPTIONS,    //  the game's options as the story needs them
@@ -64,6 +65,7 @@ enum class StoryStepKind{
     READY,      //  before a big battle: items, and the nurse at `target` if they can't
     GAME,       //  a step only this game has, named by `variant`
 };
+// Returns the readable string representation of a story step kind.
 const char* story_step_kind_name(StoryStepKind kind);
 
 //  How much a step reads the screen to confirm what it did. Each game
@@ -74,6 +76,7 @@ enum class StoryChecks{
     //  In a rush: trust counts and timings.
     FAST,
 };
+// Returns the readable string representation of a story check level.
 const char* story_checks_name(StoryChecks checks);
 
 
@@ -89,6 +92,7 @@ struct StoryItem{
     size_t quantity = 0;
 };
 
+// Specification of an atomic story task with actions and postconditions.
 struct StoryStep{
     StoryStepKind kind = StoryStepKind::TALK;
     std::string name;
@@ -132,6 +136,7 @@ struct StoryStep{
     std::optional<Pose> pose_after;
 };
 
+// Milestone row in the story table grouping related steps and starting pose.
 struct StoryCheckpoint{
     std::string id;
     std::string title;
@@ -251,6 +256,6 @@ std::optional<Direction> facing_of(const Pose& pose);
 
 
 
-}
-}
+} // namespace Pokemon
+} // namespace PokemonAutomation
 #endif

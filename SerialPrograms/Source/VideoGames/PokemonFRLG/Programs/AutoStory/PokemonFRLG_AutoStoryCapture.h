@@ -97,6 +97,7 @@ enum class FoeHp{
     RED,
 };
 
+//  How an attack turn during a capture concluded.
 enum class TurnEnd{
     //  The battle menu is back.
     MENU,
@@ -107,6 +108,7 @@ enum class TurnEnd{
     FAILED,
 };
 
+//  The result of throwing a ball during a capture attempt.
 enum class ThrowEnd{
     //  Caught: its first message shows.
     CAUGHT,
@@ -118,10 +120,12 @@ enum class ThrowEnd{
     FAILED,
 };
 
+//  Where a captured Pokemon was sent.
 enum class CatchDestination{
     PARTY,
     PC,
 };
+//  The human-readable name of a catch destination.
 const char* destination_name(CatchDestination destination);
 
 //  The game steps a capture takes, injected so its decisions run in tests.
@@ -150,6 +154,7 @@ public:
     virtual bool finish_catch(CatchDestination destination) = 0;
 };
 
+//  How an encounter capture attempt concluded.
 enum class CaptureEnd{
     CAUGHT,
     OUT_OF_ENCOUNTERS,
@@ -160,8 +165,10 @@ enum class CaptureEnd{
     PLAYER_FAINTED,
     FAILED,
 };
+//  The human-readable name of a capture end outcome.
 const char* capture_end_name(CaptureEnd end);
 
+//  The summary result of a capture attempt.
 struct CaptureResult{
     CaptureEnd end = CaptureEnd::FAILED;
     size_t encounters = 0;
@@ -275,11 +282,12 @@ private:
 };
 
 
+//  Register auto-story capture unit tests.
 void add_tests_AutoStoryCapture(UnitTestDatabase& database);
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

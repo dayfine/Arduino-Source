@@ -82,7 +82,7 @@ private:
     }
 };
 
-}
+} // namespace
 
 
 ImageFloatBox save_card_title_box(){
@@ -126,7 +126,7 @@ public:
     }
 };
 
-}
+} // namespace
 
 void add_tests_SaveCardReader(UnitTestDatabase& database){
     //  FireRed on console B, 2026-11-02. The card covers the same corner of
@@ -141,6 +141,6 @@ void add_tests_SaveCardReader(UnitTestDatabase& database){
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

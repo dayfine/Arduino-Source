@@ -226,30 +226,18 @@ std::string check_advances(const TenLinesRow& row){
     return "";
 }
 
-class Test_RngTargetMethod1 : public UnitTest{
-public:
-    Test_RngTargetMethod1(TenLinesGroup group)
-        : UnitTest("PokemonFRLG::RngTargetSearch - Method 1 - " + group.name)
-        , m_group(std::move(group))
-    {}
-
-    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        for (const TenLinesRow& row : parse_rows(m_group.rows)){
-            std::string error = check_pokemon(row, m_group);
-            if (error.empty()){
-                error = check_advances(row);
-            }
-            if (!error.empty()){
-                return error;
-            }
+UnitTestResult run_method1(const TenLinesGroup& group){
+    for (const TenLinesRow& row : parse_rows(group.rows)){
+        std::string error = check_pokemon(row, group);
+        if (error.empty()){
+            error = check_advances(row);
         }
-        return true;
+        if (!error.empty()){
+            return error;
+        }
     }
-
-private:
-    const TenLinesGroup m_group;
-};
-
+    return true;
+}
 
 RngTargetFilters ten_lines_filters(const TenLinesGroup& group){
     RngTargetFilters filters;
@@ -298,149 +286,193 @@ std::string compare_target(const TenLinesRow& row, const RngTarget& target){
     return "";
 }
 
+UnitTestResult run_search(const TenLinesGroup& group){
+    std::vector<RngTarget> targets = search_rng_targets(
+        leafgreen_mono_help_seeds(), TID, {{SID, 1}}, ten_lines_filters(group)
+    );
+    std::vector<TenLinesRow> rows = parse_rows(group.rows);
+    if (targets.size() < rows.size()){
+        return "Expected at least " + std::to_string(rows.size()) + " targets, got " + std::to_string(targets.size());
+    }
+    for (size_t c = 0; c < rows.size(); c++){
+        std::string error = compare_target(rows[c], targets[c]);
+        if (!error.empty()){
+            return "Target #" + std::to_string(c + 1) + ": " + error;
+        }
+    }
+    return true;
+}
+
+UnitTestResult run_iv_search(){
+    const TenLinesGroup group = groups()[2];
+    std::vector<InitialSeedEntry> seeds = leafgreen_mono_help_seeds();
+    RngTargetFilters filters = ten_lines_filters(group);
+    std::vector<RngTarget> shiny = search_rng_targets(seeds, TID, {{SID, 1}}, filters);
+
+    filters.shiny_required = false;
+    std::vector<RngTarget> any = search_rng_targets(seeds, TID, {{SID, 1}}, filters);
+    std::vector<RngTarget> any_shiny;
+    for (const RngTarget& target : any){
+        if (!target.shiny_for.empty()){
+            any_shiny.push_back(target);
+        }
+    }
+    if (any.size() <= any_shiny.size()){
+        return "Expected targets that are not shiny";
+    }
+    if (any_shiny.size() != shiny.size()){
+        return "Expected " + std::to_string(shiny.size()) + " shiny targets, got " + std::to_string(any_shiny.size());
+    }
+    for (size_t c = 0; c < shiny.size(); c++){
+        if (any_shiny[c].state != shiny[c].state || any_shiny[c].advances != shiny[c].advances){
+            return "Shiny target #" + std::to_string(c + 1) + " differs: " + hex(any_shiny[c].state);
+        }
+    }
+    return true;
+}
+
+UnitTestResult run_candidates(){
+    const TenLinesGroup group = groups()[0];
+    const uint16_t other_sid = SID ^ 0x0100;
+    std::vector<RngTarget> targets = search_rng_targets(
+        leafgreen_mono_help_seeds(), TID, {{SID, 3}, {other_sid, 1}}, ten_lines_filters(group)
+    );
+    size_t found = 0;
+    for (const RngTarget& target : targets){
+        if (target.shiny_for.size() != 1){
+            return "Target " + hex(target.state) + " is shiny for " + std::to_string(target.shiny_for.size()) + " SIDs";
+        }
+        double expected = target.shiny_for[0].candidate == 0 ? 0.75 : 0.25;
+        if (target.shiny_probability != expected){
+            return "Target " + hex(target.state) + " has shiny probability " + std::to_string(target.shiny_probability);
+        }
+        found += target.shiny_for[0].candidate == 0 && target.advances <= 171172;
+    }
+    if (found != 20){
+        return "Expected the 20 Ten Lines targets for SID " + std::to_string(SID) + ", got " + std::to_string(found);
+    }
+    return true;
+}
+
+UnitTestResult run_ranking(){
+    auto target = [](uint32_t state, uint64_t advances, double probability){
+        RngTarget ret{state, {0, 40000, SeedButton::A, BlackoutButton::None}, advances, {}, {}, probability};
+        return ret;
+    };
+    std::vector<RngTarget> targets{
+        target(0xA, 10000, 0.5),
+        target(0xB, 12500, 1),
+        target(0xC, 100, 0),
+        target(0xD, 1000, 0.1),
+    };
+    rank_rng_targets(targets);
+    std::string order;
+    for (const RngTarget& item : targets){
+        order += hex(item.state);
+    }
+    if (order != "BADC"){
+        return "Expected order BADC, got " + order;
+    }
+    return true;
+}
+
+enum class RngTargetSearchKind{
+    Method1,
+    Search,
+    IvSearch,
+    Candidates,
+    Ranking,
+};
+
+struct RngTargetSearchInput{
+    std::string name;
+    RngTargetSearchKind kind = RngTargetSearchKind::Method1;
+    size_t group_index = 0;
+};
+
+struct RngTargetSearchExpectation{
+    std::string description = "";
+};
+
+struct RngTargetSearchCase{
+    RngTargetSearchInput input;
+    RngTargetSearchExpectation expectation;
+};
+
+const RngTargetSearchCase RNG_TARGET_SEARCH_CASES[] = {
+    {
+        .input = {.name = "Method 1 - Modest", .kind = RngTargetSearchKind::Method1, .group_index = 0},
+        .expectation = {},
+    },
+    {
+        .input = {.name = "Method 1 - Adamant", .kind = RngTargetSearchKind::Method1, .group_index = 1},
+        .expectation = {},
+    },
+    {
+        .input = {.name = "Method 1 - Neutral", .kind = RngTargetSearchKind::Method1, .group_index = 2},
+        .expectation = {},
+    },
+    {
+        .input = {.name = "Search - Modest", .kind = RngTargetSearchKind::Search, .group_index = 0},
+        .expectation = {},
+    },
+    {
+        .input = {.name = "Search - Adamant", .kind = RngTargetSearchKind::Search, .group_index = 1},
+        .expectation = {},
+    },
+    {
+        .input = {.name = "Search - Neutral", .kind = RngTargetSearchKind::Search, .group_index = 2},
+        .expectation = {},
+    },
+    {
+        .input = {.name = "IV search", .kind = RngTargetSearchKind::IvSearch, .group_index = 0},
+        .expectation = {},
+    },
+    {
+        .input = {.name = "SID candidates", .kind = RngTargetSearchKind::Candidates, .group_index = 0},
+        .expectation = {},
+    },
+    {
+        .input = {.name = "Ranking", .kind = RngTargetSearchKind::Ranking, .group_index = 0},
+        .expectation = {},
+    },
+};
+
 class Test_RngTargetSearch : public UnitTest{
 public:
-    Test_RngTargetSearch(TenLinesGroup group)
-        : UnitTest("PokemonFRLG::RngTargetSearch - Search - " + group.name)
-        , m_group(std::move(group))
+    explicit Test_RngTargetSearch(const RngTargetSearchCase& test_case)
+        : UnitTest("PokemonFRLG::RngTargetSearch - " + test_case.input.name)
+        , m_case(test_case)
     {}
 
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        std::vector<RngTarget> targets = search_rng_targets(
-            leafgreen_mono_help_seeds(), TID, {{SID, 1}}, ten_lines_filters(m_group)
-        );
-        std::vector<TenLinesRow> rows = parse_rows(m_group.rows);
-        if (targets.size() < rows.size()){
-            return "Expected at least " + std::to_string(rows.size()) + " targets, got " + std::to_string(targets.size());
+        switch (m_case.input.kind){
+        case RngTargetSearchKind::Method1:
+            return run_method1(groups()[m_case.input.group_index]);
+        case RngTargetSearchKind::Search:
+            return run_search(groups()[m_case.input.group_index]);
+        case RngTargetSearchKind::IvSearch:
+            return run_iv_search();
+        case RngTargetSearchKind::Candidates:
+            return run_candidates();
+        case RngTargetSearchKind::Ranking:
+            return run_ranking();
         }
-        for (size_t c = 0; c < rows.size(); c++){
-            std::string error = compare_target(rows[c], targets[c]);
-            if (!error.empty()){
-                return "Target #" + std::to_string(c + 1) + ": " + error;
-            }
-        }
-        return true;
+        return "Unknown test kind";
     }
 
 private:
-    const TenLinesGroup m_group;
+    const RngTargetSearchCase m_case;
 };
 
-
-//  Searching every IV combination finds the same shiny targets as searching shiny PIDs.
-class Test_RngTargetIvSearch : public UnitTest{
-public:
-    Test_RngTargetIvSearch()
-        : UnitTest("PokemonFRLG::RngTargetSearch - IV search")
-    {}
-
-    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        const TenLinesGroup group = groups()[2];
-        std::vector<InitialSeedEntry> seeds = leafgreen_mono_help_seeds();
-        RngTargetFilters filters = ten_lines_filters(group);
-        std::vector<RngTarget> shiny = search_rng_targets(seeds, TID, {{SID, 1}}, filters);
-
-        filters.shiny_required = false;
-        std::vector<RngTarget> any = search_rng_targets(seeds, TID, {{SID, 1}}, filters);
-        std::vector<RngTarget> any_shiny;
-        for (const RngTarget& target : any){
-            if (!target.shiny_for.empty()){
-                any_shiny.push_back(target);
-            }
-        }
-        if (any.size() <= any_shiny.size()){
-            return "Expected targets that are not shiny";
-        }
-        if (any_shiny.size() != shiny.size()){
-            return "Expected " + std::to_string(shiny.size()) + " shiny targets, got " + std::to_string(any_shiny.size());
-        }
-        for (size_t c = 0; c < shiny.size(); c++){
-            if (any_shiny[c].state != shiny[c].state || any_shiny[c].advances != shiny[c].advances){
-                return "Shiny target #" + std::to_string(c + 1) + " differs: " + hex(any_shiny[c].state);
-            }
-        }
-        return true;
-    }
-};
-
-
-//  A second SID candidate: each target is shiny for one of the two, by weight.
-class Test_RngTargetCandidates : public UnitTest{
-public:
-    Test_RngTargetCandidates()
-        : UnitTest("PokemonFRLG::RngTargetSearch - SID candidates")
-    {}
-
-    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        const TenLinesGroup group = groups()[0];
-        const uint16_t other_sid = SID ^ 0x0100;
-        std::vector<RngTarget> targets = search_rng_targets(
-            leafgreen_mono_help_seeds(), TID, {{SID, 3}, {other_sid, 1}}, ten_lines_filters(group)
-        );
-        size_t found = 0;
-        for (const RngTarget& target : targets){
-            if (target.shiny_for.size() != 1){
-                return "Target " + hex(target.state) + " is shiny for " + std::to_string(target.shiny_for.size()) + " SIDs";
-            }
-            double expected = target.shiny_for[0].candidate == 0 ? 0.75 : 0.25;
-            if (target.shiny_probability != expected){
-                return "Target " + hex(target.state) + " has shiny probability " + std::to_string(target.shiny_probability);
-            }
-            found += target.shiny_for[0].candidate == 0 && target.advances <= 171172;
-        }
-        if (found != 20){
-            return "Expected the 20 Ten Lines targets for SID " + std::to_string(SID) + ", got " + std::to_string(found);
-        }
-        return true;
-    }
-};
-
-
-class Test_RngTargetRanking : public UnitTest{
-public:
-    Test_RngTargetRanking()
-        : UnitTest("PokemonFRLG::RngTargetSearch - Ranking")
-    {}
-
-    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        auto target = [](uint32_t state, uint64_t advances, double probability){
-            RngTarget ret{state, {0, 40000, SeedButton::A, BlackoutButton::None}, advances, {}, {}, probability};
-            return ret;
-        };
-        //  About 60 advances per second, after a 40 s seed time: A takes 207 s and B 249 s,
-        //  but A is shiny only half the time. D takes 57 s, but is shiny one time in 10.
-        std::vector<RngTarget> targets{
-            target(0xA, 10000, 0.5),
-            target(0xB, 12500, 1),
-            target(0xC, 100, 0),
-            target(0xD, 1000, 0.1),
-        };
-        rank_rng_targets(targets);
-        std::string order;
-        for (const RngTarget& item : targets){
-            order += hex(item.state);
-        }
-        if (order != "BADC"){
-            return "Expected order BADC, got " + order;
-        }
-        return true;
-    }
-};
-
-}
-
+} // namespace
 
 void add_tests_RngTargetSearch(UnitTestDatabase& database){
-    for (const TenLinesGroup& group : groups()){
-        database.add<Test_RngTargetMethod1>(group);
-        database.add<Test_RngTargetSearch>(group);
+    for (const RngTargetSearchCase& test_case : RNG_TARGET_SEARCH_CASES){
+        database.add<Test_RngTargetSearch>(test_case);
     }
-    database.add<Test_RngTargetIvSearch>();
-    database.add<Test_RngTargetCandidates>();
-    database.add<Test_RngTargetRanking>();
 }
 
-
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

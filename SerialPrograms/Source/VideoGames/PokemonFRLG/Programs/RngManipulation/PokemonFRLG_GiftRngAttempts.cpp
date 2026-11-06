@@ -37,7 +37,7 @@ const std::set<std::string>& gift_species_names(){
     return SPECIES_LIST;
 }
 
-}
+} // namespace
 
 
 GiftRngSpecies gift_rng_species(PokemonFRLG_RngTarget target){
@@ -327,6 +327,6 @@ void GiftRngAttempts::run_attempt(SingleSwitchProgramEnvironment& env, ProContro
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

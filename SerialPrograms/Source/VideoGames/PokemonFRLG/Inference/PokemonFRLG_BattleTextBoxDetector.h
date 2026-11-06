@@ -29,6 +29,7 @@ namespace NintendoSwitch{
 namespace PokemonFRLG{
 
 
+//  Visual detector for battle text boxes.
 class BattleTextBoxDetector : public StaticScreenDetector{
 public:
     BattleTextBoxDetector(Color color = COLOR_RED);
@@ -45,11 +46,12 @@ private:
 };
 
 
+//  Register battle text box detector unit tests.
 void add_tests_BattleTextBoxDetector(UnitTestDatabase& database);
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

@@ -36,22 +36,36 @@ namespace PokemonFRLG{
 
 namespace{
 
+struct AutoStoryItemsInput{
+    std::string name;
+    UnitTestResult (*body)(Logger&);
+};
+
+struct AutoStoryItemsExpectation{
+    const char* description;
+};
+
+struct AutoStoryItemsTestCase{
+    AutoStoryItemsInput input;
+    AutoStoryItemsExpectation expectation;
+};
+
 class Test_AutoStoryItems : public UnitTest{
 public:
-    Test_AutoStoryItems(std::string name, std::function<UnitTestResult(Logger&)> body)
-        : UnitTest("PokemonFRLG::AutoStoryItems - " + std::move(name))
-        , m_body(std::move(body))
+    explicit Test_AutoStoryItems(AutoStoryItemsTestCase scenario)
+        : UnitTest("PokemonFRLG::AutoStoryItems - " + scenario.input.name)
+        , m_scenario(std::move(scenario))
     {}
     virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
         try{
-            return m_body(logger);
+            return m_scenario.input.body(logger);
         }catch (Exception& e){
             return std::string(e.name()) + ": " + e.message();
         }
     }
 
 private:
-    std::function<UnitTestResult(Logger&)> m_body;
+    AutoStoryItemsTestCase m_scenario;
 };
 
 
@@ -376,20 +390,56 @@ private:
 };
 
 
-}
+const AutoStoryItemsTestCase AUTO_STORY_ITEMS_CASES[] = {
+    {
+        .input = {.name = "Mart cursor stays on the row bought", .body = test_mart_cursor},
+        .expectation = {.description = "verifies mart cursor remains on purchased item index"},
+    },
+    {
+        .input = {.name = "Items pocket rows", .body = test_pocket_rows},
+        .expectation = {.description = "parses item pocket rows from visual representation"},
+    },
+    {
+        .input = {.name = "a loaded save's counts come from the bag", .body = test_loaded_bag},
+        .expectation = {.description = "initializes bag counts when loading saved state"},
+    },
+    {
+        .input = {.name = "an item the story doesn't count keeps its row", .body = test_loaded_bag_other_items},
+        .expectation = {.description = "preserves row indexing for uncounted items"},
+    },
+    {
+        .input = {.name = "an unread item name keeps its row", .body = test_pocket_rows_unread},
+        .expectation = {.description = "preserves placeholder row when item name is unread"},
+    },
+    {
+        .input = {.name = "unread bag counts count as some", .body = test_unread_counts},
+        .expectation = {.description = "treats unread quantities as holding at least one"},
+    },
+    {
+        .input = {.name = "no item names read in a language without them", .body = test_unread_language},
+        .expectation = {.description = "handles unsupported languages gracefully"},
+    },
+    {
+        .input = {.name = "a wild battle seen late is placed where it stopped the leg", .body = test_late_battle_placed},
+        .expectation = {.description = "places late wild battle at interruption point"},
+    },
+    {
+        .input = {.name = "Awakenings counted from the bag", .body = test_loaded_bag_awakenings},
+        .expectation = {.description = "verifies awakenings are read and tracked from bag contents"},
+    },
+    {
+        .input = {.name = "the status badge: none, PSN, SLP", .body = test_status_badge},
+        .expectation = {.description = "detects status conditions accurately from status bar image"},
+    },
+};
+
+} // namespace
 
 
 void add_tests_AutoStoryItems(UnitTestDatabase& database){
-    database.add<Test_AutoStoryItems>("Mart cursor stays on the row bought", test_mart_cursor);
-    database.add<Test_AutoStoryItems>("Items pocket rows", test_pocket_rows);
-    database.add<Test_AutoStoryItems>("a loaded save's counts come from the bag", test_loaded_bag);
-    database.add<Test_AutoStoryItems>("an item the story doesn't count keeps its row", test_loaded_bag_other_items);
-    database.add<Test_AutoStoryItems>("Awakenings counted from the bag", test_loaded_bag_awakenings);
-    database.add<Test_AutoStoryItems>("the status badge: none, PSN, SLP", test_status_badge);
-    database.add<Test_AutoStoryItems>("an unread item name keeps its row", test_pocket_rows_unread);
-    database.add<Test_AutoStoryItems>("unread bag counts count as some", test_unread_counts);
-    database.add<Test_AutoStoryItems>("no item names read in a language without them", test_unread_language);
-    database.add<Test_AutoStoryItems>("a wild battle seen late is placed where it stopped the leg", test_late_battle_placed);
+    for (const auto& scenario : AUTO_STORY_ITEMS_CASES){
+        database.add<Test_AutoStoryItems>(scenario);
+    }
     //  "Wild CHANSEY appeared!" with its HP box, and Mt. Moon B2F's corridor
     //  after "Got away safely!", whose black lower half reads as the battle's
     //  text box (console B, 2026-11-03: 9 minutes of A and B there).
@@ -405,6 +455,6 @@ void add_tests_AutoStoryItems(UnitTestDatabase& database){
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

@@ -37,8 +37,10 @@ namespace NintendoSwitch{
 namespace PokemonFRLG{
 
 
+//  Type enum imported from Pokemon navigation.
 using Pokemon::PokemonType;
 
+//  Data attributes of a battle move.
 struct MoveData{
     //  Moves whose damage doesn't come from their power (Flail, Dragon
     //  Rage) have 1; moves that do no damage 0.
@@ -66,6 +68,7 @@ struct BaseStats{
     uint8_t speed = 0;
 };
 
+//  Species battle base attributes and typing.
 struct SpeciesData{
     //  The same type twice for a species with one.
     PokemonType first = PokemonType::NONE;
@@ -73,6 +76,7 @@ struct SpeciesData{
     BaseStats base = {};
 };
 
+//  A trainer party Pokemon entry.
 struct TrainerMon{
     std::string species;
     uint8_t level = 0;
@@ -85,6 +89,7 @@ struct TrainerMon{
     std::vector<std::string> moves;
 };
 
+//  Trainer AI flags and team definition.
 struct TrainerData{
     //  pret's AI flags as slugs: "check-bad-move", "try-to-faint", ...
     std::vector<std::string> ai = {};
@@ -95,6 +100,7 @@ struct TrainerData{
 
 //  None for a move or species the data doesn't have.
 const MoveData* move_data(std::string_view move);
+//  Base stats and typing for species; nullptr if unknown.
 const SpeciesData* species_data(std::string_view species);
 
 //  Every species, for reading a wild Pokemon's name.
@@ -147,6 +153,7 @@ enum class BattleRisk{
     //  Potions, and the step fails before the fight when it wins too rarely.
     HIGH,
 };
+//  String representation of battle risk level.
 const char* battle_risk_name(BattleRisk risk);
 
 //  A trainer's risk by its kind: HIGH for the rival, gym leaders, bosses
@@ -170,11 +177,12 @@ inline constexpr double MIN_WIN_CHANCE = 0.50;
 const std::vector<std::pair<std::string, std::string>>& autostory_battle_json();
 
 
+//  Registers AutoStory battle data unit tests.
 void add_tests_AutoStoryBattleData(UnitTestDatabase& database);
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

@@ -86,7 +86,7 @@ ImageViewRGB32 game_box(const ImageViewRGB32& screen){
     return extract_box_reference(screen, GameSettings::instance().GAME_BOX);
 }
 
-}
+} // namespace
 
 
 ImageFloatBox item_list_name_box(int row){
@@ -196,7 +196,7 @@ public:
     }
 };
 
-}
+} // namespace
 
 void add_tests_ItemListReader(UnitTestDatabase& database){
     //  FireRed on console B, 2026-11-02, after the Viridian Mart: the 5 and
@@ -212,6 +212,6 @@ void add_tests_ItemListReader(UnitTestDatabase& database){
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

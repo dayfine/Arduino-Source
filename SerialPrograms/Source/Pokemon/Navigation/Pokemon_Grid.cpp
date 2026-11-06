@@ -46,5 +46,5 @@ std::string to_string(const TilePos& pos){
 
 
 
-}
-}
+} // namespace Pokemon
+} // namespace PokemonAutomation

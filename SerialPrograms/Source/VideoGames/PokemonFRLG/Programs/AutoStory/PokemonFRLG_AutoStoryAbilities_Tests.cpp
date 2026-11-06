@@ -83,22 +83,35 @@ struct StubGame{
 };
 
 
+struct AutoStoryAbilitiesInput{
+    std::string name;
+    std::function<UnitTestResult()> body;
+};
+
+struct AutoStoryAbilitiesExpectation{
+};
+
+struct AutoStoryAbilitiesCase{
+    AutoStoryAbilitiesInput input;
+    AutoStoryAbilitiesExpectation expectation;
+};
+
 class Test_AutoStoryAbilities : public UnitTest{
 public:
-    Test_AutoStoryAbilities(std::string name, std::function<UnitTestResult()> body)
-        : UnitTest("PokemonFRLG::AutoStoryAbilities - " + std::move(name))
-        , m_body(std::move(body))
+    explicit Test_AutoStoryAbilities(AutoStoryAbilitiesCase test_case)
+        : UnitTest("PokemonFRLG::AutoStoryAbilities - " + test_case.input.name)
+        , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
         try{
-            return m_body();
+            return m_case.input.body();
         }catch (Exception& e){
             return std::string(e.name()) + ": " + e.message();
         }
     }
 
 private:
-    std::function<UnitTestResult()> m_body;
+    AutoStoryAbilitiesCase m_case;
 };
 
 
@@ -218,17 +231,32 @@ UnitTestResult test_level_variant(){
     return true;
 }
 
-}
+} // namespace
 
+
+const AutoStoryAbilitiesCase AUTO_STORY_ABILITIES_CASES[] = {
+    {
+        .input = {"the steps' ends as outcomes", test_ability_steps},
+        .expectation = {},
+    },
+    {
+        .input = {"a shiny in a GRIND stops the program", test_grind_shiny_stops},
+        .expectation = {},
+    },
+    {
+        .input = {"the LEVEL step's variant", test_level_variant},
+        .expectation = {},
+    },
+    {
+        .input = {"TEACH and MART run once per save", test_once_per_save_steps},
+        .expectation = {},
+    },
+};
 
 void add_tests_AutoStoryAbilities(UnitTestDatabase& database){
-    const auto add = [&](std::string name, UnitTestResult (*body)()){
-        database.add<Test_AutoStoryAbilities>(std::move(name), body);
-    };
-    add("the steps' ends as outcomes", test_ability_steps);
-    add("TEACH and MART run once per save", test_once_per_save_steps);
-    add("a shiny in a GRIND stops the program", test_grind_shiny_stops);
-    add("the LEVEL step's variant", test_level_variant);
+    for (const auto& item : AUTO_STORY_ABILITIES_CASES){
+        database.add<Test_AutoStoryAbilities>(item);
+    }
     add_tests_AutoStoryMart(database);
     add_tests_AutoStoryTeach(database);
     add_tests_AutoStoryGrind(database);
@@ -237,6 +265,6 @@ void add_tests_AutoStoryAbilities(UnitTestDatabase& database){
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

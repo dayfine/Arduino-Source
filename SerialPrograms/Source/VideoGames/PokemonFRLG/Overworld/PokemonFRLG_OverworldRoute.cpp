@@ -363,7 +363,7 @@ RouteStep to_route_step(const std::vector<MapData>& maps, const Pokemon::Leg<Loc
     return step;
 }
 
-}
+} // namespace
 
 
 
@@ -430,7 +430,7 @@ std::optional<Located> plain_step(const std::vector<MapData>& maps, const Locate
     return transition->next;
 }
 
-}
+} // namespace
 
 
 namespace{
@@ -443,7 +443,7 @@ bool ledge_stops_north(const std::vector<MapData>& maps, const Located& player, 
     return direction == Direction::NORTH && is_ledge(maps[player.map], player.state.position.next(direction));
 }
 
-}
+} // namespace
 
 std::optional<WallHold> hold_to_wall(
     const std::vector<MapData>& maps,
@@ -969,7 +969,7 @@ UnitTestResult test_ground_only_elevation_left_out(){
     return true;
 }
 
-}
+} // namespace
 
 void add_tests_OverworldRoute(UnitTestDatabase& database){
     database.add<Test_OverworldRoute>("route through a warp", test_route_through_warp);
@@ -990,6 +990,6 @@ void add_tests_OverworldRoute(UnitTestDatabase& database){
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

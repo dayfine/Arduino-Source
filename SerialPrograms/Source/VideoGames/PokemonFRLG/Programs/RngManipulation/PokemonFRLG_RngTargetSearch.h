@@ -38,6 +38,7 @@ namespace PokemonFRLG{
 
 //  The Gen 3 LCRNG: state * 0x41C64E6D + 0x6073.
 uint32_t lcrng_next(uint32_t state);
+//  Steps the Gen 3 LCRNG backward by one advance.
 uint32_t lcrng_previous(uint32_t state);
 //  How many lcrng_next() calls take "from" to "to". The LCRNG has a single cycle of
 //  2^32 states, so every pair has exactly one distance.
@@ -48,12 +49,15 @@ uint32_t lcrng_distance(uint32_t from, uint32_t to);
 //  the two after that the IVs (HP/Atk/Def, then Spe/SpA/SpD).
 Pokemon::AdvPokemonResult method1_pokemon(uint32_t state);
 
+//  Determines shiny type (none, star, square) from PID and trainer IDs.
 Pokemon::AdvShinyType shiny_type(uint32_t pid, uint16_t tid, uint16_t sid);
 
+//  Calculated Hidden Power typing and base power.
 struct HiddenPower{
     std::string type;
     uint8_t power;
 };
+//  Calculates Hidden Power attributes from individual values.
 HiddenPower hidden_power(const Pokemon::AdvIVs& ivs);
 
 
@@ -81,12 +85,14 @@ std::vector<InitialSeedEntry> initial_seed_entries(
 );
 
 
+//  Candidate SID with associated relative weight.
 struct SidCandidate{
     uint16_t sid;
     //  Relative likelihood. The weights need not add up to 1.
     double weight;
 };
 
+//  Criteria for filtering acceptable RNG targets.
 struct RngTargetFilters{
     //  Empty: any nature.
     std::vector<Pokemon::AdvNature> natures;
@@ -109,12 +115,14 @@ struct RngTargetFilters{
     uint64_t avoided_seed_time_radius_ms = 0;
 };
 
+//  A candidate target evaluated for shininess against an SID candidate.
 struct ShinyCandidate{
     //  Index into the SID candidates.
     size_t candidate;
     Pokemon::AdvShinyType type;
 };
 
+//  A target RNG state and its rolled attributes.
 struct RngTarget{
     //  The RNG state before the PID is rolled: the "Target" column of Ten Lines.
     uint32_t state;
@@ -144,7 +152,7 @@ void rank_rng_targets(std::vector<RngTarget>& targets);
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

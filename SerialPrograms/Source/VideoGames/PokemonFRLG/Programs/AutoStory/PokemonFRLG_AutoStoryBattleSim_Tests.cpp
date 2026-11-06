@@ -31,22 +31,36 @@ namespace PokemonFRLG{
 
 namespace{
 
+struct AutoStoryBattleSimInput{
+    std::string name;
+    UnitTestResult (*body)();
+};
+
+struct AutoStoryBattleSimExpectation{
+    const char* description;
+};
+
+struct AutoStoryBattleSimTestCase{
+    AutoStoryBattleSimInput input;
+    AutoStoryBattleSimExpectation expectation;
+};
+
 class Test_AutoStoryBattleSim : public UnitTest{
 public:
-    Test_AutoStoryBattleSim(std::string name, std::function<UnitTestResult()> body)
-        : UnitTest("PokemonFRLG::AutoStoryBattleSim - " + std::move(name))
-        , m_body(std::move(body))
+    explicit Test_AutoStoryBattleSim(AutoStoryBattleSimTestCase scenario)
+        : UnitTest("PokemonFRLG::AutoStoryBattleSim - " + scenario.input.name)
+        , m_scenario(std::move(scenario))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
         try{
-            return m_body();
+            return m_scenario.input.body();
         }catch (Exception& e){
             return std::string(e.name()) + ": " + e.message();
         }
     }
 
 private:
-    std::function<UnitTestResult()> m_body;
+    AutoStoryBattleSimTestCase m_scenario;
 };
 
 constexpr std::string_view RIVAL = "TRAINER_RIVAL_CERULEAN_BULBASAUR";
@@ -641,32 +655,90 @@ UnitTestResult test_rival_potions_raise_chance(){
     }
     return true;
 }
-}
+
+const AutoStoryBattleSimTestCase AUTO_STORY_BATTLE_SIM_CASES[] = {
+    {
+        .input = {.name = "Gen 3 stats and damage worked by hand", .body = test_hand_numbers},
+        .expectation = {.description = "verifies Gen 3 stat calculation and damage formula numbers"},
+    },
+    {
+        .input = {.name = "the Elite Four Farmer's Starmie picks OHKO at Sp. Atk 302", .body = test_elite_four_table},
+        .expectation = {.description = "verifies OHKO move selection against Elite Four Starmie"},
+    },
+    {
+        .input = {.name = "Misty: Thundershock on Staryu, Bite on Starmie", .body = test_misty_per_foe},
+        .expectation = {.description = "validates targeted attack decisions in Misty gym battle"},
+    },
+    {
+        .input = {.name = "the trainer AI's healing items", .body = test_ai_heal_rule},
+        .expectation = {.description = "simulates opponent trainer AI heal threshold logic"},
+    },
+    {
+        .input = {.name = "the rival's next Pokemon when no name is read", .body = test_next_foe},
+        .expectation = {.description = "predicts next pokemon in rival roster when unread"},
+    },
+    {
+        .input = {.name = "battle risks by trainer", .body = test_risks},
+        .expectation = {.description = "evaluates risk classification across various trainers"},
+    },
+    {
+        .input = {.name = "Cerulean rival: refused at Lv22, fought at Lv30", .body = test_rival_win_chance},
+        .expectation = {.description = "simulates battle level threshold for Cerulean rival"},
+    },
+    {
+        .input = {.name = "m51: no Potion the foe's hit undoes", .body = test_m51_potion_loop},
+        .expectation = {.description = "avoids endless potion loop when damage outpaces heal"},
+    },
+    {
+        .input = {.name = "the sim's Potion: only when it outheals the hit", .body = test_sim_potion_rule},
+        .expectation = {.description = "verifies potion usage condition based on damage expectations"},
+    },
+    {
+        .input = {.name = "Misty: m51's lead as the summary showed it", .body = test_misty_real_lead},
+        .expectation = {.description = "simulates Misty battle using lead Pokemon status"},
+    },
+    {
+        .input = {.name = "Cerulean rival with m51's moves at Lv20 to 30", .body = test_rival_real_moves},
+        .expectation = {.description = "simulates Cerulean rival across level ranges"},
+    },
+    {
+        .input = {.name = "m56: asleep at red HP, a Potion undone; an Awakening first", .body = test_rival_sleep_turns},
+        .expectation = {.description = "prioritizes awakening item over potion when sleep state persists"},
+    },
+    {
+        .input = {.name = "the sim's Awakening: asleep, outlasting the next hit", .body = test_sim_awakening_rule},
+        .expectation = {.description = "validates simulated awakening rule under incoming damage threshold"},
+    },
+    {
+        .input = {.name = "Cerulean rival: Awakenings raise the win chance", .body = test_rival_awakenings},
+        .expectation = {.description = "verifies win rate improvement against Cerulean rival with awakenings"},
+    },
+    {
+        .input = {.name = "Cerulean rival: a Potion against the Bulbasaur", .body = test_rival_bulbasaur_potion},
+        .expectation = {.description = "simulates potion usage against rival Bulbasaur moveset"},
+    },
+    {
+        .input = {.name = "Cerulean rival: 15 Potions win over half", .body = test_rival_potions_raise_chance},
+        .expectation = {.description = "verifies >=50% win probability against rival with 15 potions"},
+    },
+    {
+        .input = {.name = "the foe's next-turn damage and move chances", .body = test_next_turn_damage},
+        .expectation = {.description = "evaluates enemy next-turn damage distribution and move selection weights"},
+    },
+};
+
+} // namespace
 
 
 void add_tests_AutoStoryBattleSim(UnitTestDatabase& database){
-    database.add<Test_AutoStoryBattleSim>("Gen 3 stats and damage worked by hand", test_hand_numbers);
-    database.add<Test_AutoStoryBattleSim>("the Elite Four Farmer's Starmie picks OHKO at Sp. Atk 302", test_elite_four_table);
-    database.add<Test_AutoStoryBattleSim>("Misty: Thundershock on Staryu, Bite on Starmie", test_misty_per_foe);
-    database.add<Test_AutoStoryBattleSim>("the trainer AI's healing items", test_ai_heal_rule);
-    database.add<Test_AutoStoryBattleSim>("the rival's next Pokemon when no name is read", test_next_foe);
-    database.add<Test_AutoStoryBattleSim>("battle risks by trainer", test_risks);
-    database.add<Test_AutoStoryBattleSim>("Cerulean rival: refused at Lv22, fought at Lv30", test_rival_win_chance);
-    database.add<Test_AutoStoryBattleSim>("m56: a 56% battle is fought, 49% refused", test_threshold_m56);
-    database.add<Test_AutoStoryBattleSim>("m51: no Potion the foe's hit undoes", test_m51_potion_loop);
-    database.add<Test_AutoStoryBattleSim>("the sim's Potion: only when it outheals the hit", test_sim_potion_rule);
-    database.add<Test_AutoStoryBattleSim>("Misty: m51's lead as the summary showed it", test_misty_real_lead);
-    database.add<Test_AutoStoryBattleSim>("Cerulean rival with m51's moves at Lv20 to 30", test_rival_real_moves);
-    database.add<Test_AutoStoryBattleSim>("m56: asleep at red HP, a Potion undone; an Awakening first", test_rival_sleep_turns);
-    database.add<Test_AutoStoryBattleSim>("the sim's Awakening: asleep, outlasting the next hit", test_sim_awakening_rule);
-    database.add<Test_AutoStoryBattleSim>("Cerulean rival: Awakenings raise the win chance", test_rival_awakenings);
-    database.add<Test_AutoStoryBattleSim>("Cerulean rival: a Potion against the Bulbasaur", test_rival_bulbasaur_potion);
-    database.add<Test_AutoStoryBattleSim>("Cerulean rival: 15 Potions win over half", test_rival_potions_raise_chance);
-    database.add<Test_AutoStoryBattleSim>("the foe's next-turn damage and move chances", test_next_turn_damage);
+    for (const auto& scenario : AUTO_STORY_BATTLE_SIM_CASES){
+        database.add<Test_AutoStoryBattleSim>(scenario);
+    }
+
 }
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

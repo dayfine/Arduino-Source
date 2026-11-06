@@ -119,6 +119,6 @@ void finish_intro_animations(SingleSwitchProgramEnvironment& env, ProControllerC
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

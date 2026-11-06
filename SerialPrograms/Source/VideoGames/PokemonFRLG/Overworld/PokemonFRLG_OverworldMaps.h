@@ -62,11 +62,12 @@ TilePos map_point(const std::vector<MapData>& maps, const std::string& map, cons
 std::set<std::string> map_flag_set(const std::vector<MapData>& maps, const std::string& name);
 
 
+//  Registers overworld map unit tests.
 void add_tests_OverworldMaps(UnitTestDatabase& database);
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

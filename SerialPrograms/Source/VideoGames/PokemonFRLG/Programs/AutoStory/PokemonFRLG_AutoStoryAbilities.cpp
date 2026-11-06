@@ -76,7 +76,7 @@ Outcome fossil(Logger& logger, Fossil fossil, StoryAbilities& abilities){
     return Pokemon::outcome_failed(std::string("fossil_") + choice_end_name(result.end), result.detail);
 }
 
-}
+} // namespace
 
 
 std::optional<Outcome> run_ability_game_step(
@@ -111,6 +111,6 @@ std::optional<Outcome> run_ability_game_step(
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

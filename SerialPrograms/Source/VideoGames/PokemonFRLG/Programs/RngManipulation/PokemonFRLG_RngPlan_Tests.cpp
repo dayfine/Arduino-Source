@@ -28,22 +28,36 @@ using namespace RngPlanTestTargets;
 
 namespace{
 
+struct RngPlanInput{
+    std::string name;
+    UnitTestResult (*body)(Logger&);
+};
+
+struct RngPlanExpectation{
+    const char* description;
+};
+
+struct RngPlanTestCase{
+    RngPlanInput input;
+    RngPlanExpectation expectation;
+};
+
 class Test_RngPlan : public UnitTest{
 public:
-    Test_RngPlan(std::string name, std::function<UnitTestResult(Logger&)> body)
-        : UnitTest("PokemonFRLG::RngPlan - " + std::move(name))
-        , m_body(std::move(body))
+    explicit Test_RngPlan(RngPlanTestCase scenario)
+        : UnitTest("PokemonFRLG::RngPlan - " + scenario.input.name)
+        , m_scenario(std::move(scenario))
     {}
     virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
         try{
-            return m_body(logger);
+            return m_scenario.input.body(logger);
         }catch (Exception& e){
             return std::string(e.name()) + ": " + e.message();
         }
     }
 
 private:
-    std::function<UnitTestResult(Logger&)> m_body;
+    RngPlanTestCase m_scenario;
 };
 
 
@@ -269,19 +283,40 @@ UnitTestResult test_starter_plan(Logger&){
     return true;
 }
 
-}
+const RngPlanTestCase RNG_PLAN_CASES[] = {
+    {
+        .input = {.name = "SID Helper's candidates and weights", .body = test_sid_helper_candidates},
+        .expectation = {.description = "evaluates SID Helper candidates and candidate weighting"},
+    },
+    {
+        .input = {.name = "attempt order", .body = test_plan_order},
+        .expectation = {.description = "validates chronological ordering of plan attempts"},
+    },
+    {
+        .input = {.name = "Starter RNG plan from the FireRed list", .body = test_starter_plan},
+        .expectation = {.description = "builds Starter RNG plan from FireRed seed list"},
+    },
+    {
+        .input = {.name = "Starter RNG plan: no seed too early for the title screen", .body = test_starter_plan_seed_delay},
+        .expectation = {.description = "filters out seeds too early for title screen timing"},
+    },
+    {
+        .input = {.name = "Starter RNG plan: room for the in-game calibration", .body = test_starter_ingame_wait},
+        .expectation = {.description = "allows sufficient margin for in-game calibration advances"},
+    },
+};
+
+} // namespace
 
 
 void add_tests_RngPlan(UnitTestDatabase& database){
-    database.add<Test_RngPlan>("SID Helper's candidates and weights", test_sid_helper_candidates);
-    database.add<Test_RngPlan>("attempt order", test_plan_order);
-    database.add<Test_RngPlan>("Starter RNG plan from the FireRed list", test_starter_plan);
-    database.add<Test_RngPlan>("Starter RNG plan: no seed too early for the title screen", test_starter_plan_seed_delay);
-    database.add<Test_RngPlan>("Starter RNG plan: room for the in-game calibration", test_starter_ingame_wait);
+    for (const auto& scenario : RNG_PLAN_CASES){
+        database.add<Test_RngPlan>(scenario);
+    }
 }
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

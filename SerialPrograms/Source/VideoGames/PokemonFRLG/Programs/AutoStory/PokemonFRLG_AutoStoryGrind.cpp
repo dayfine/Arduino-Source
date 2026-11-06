@@ -87,7 +87,7 @@ bool set_grind_word(GrindPlan& plan, std::string_view word){
     return true;
 }
 
-}
+} // namespace
 
 std::optional<GrindPlan> parse_grind_variant(std::string_view variant){
     if (!variant.starts_with(GRIND_VARIANT_PREFIX)){
@@ -266,7 +266,7 @@ private:
     GrindResult m_result;
 };
 
-}
+} // namespace
 
 GrindResult run_grind(Logger& logger, GrindActions& actions, const MemberReader& reader, const GrindPlan& plan){
     GrindResult result = GrindRun(logger, actions, reader, plan).run();
@@ -368,6 +368,6 @@ bool ConsoleGrindActions::heal_trip(){
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

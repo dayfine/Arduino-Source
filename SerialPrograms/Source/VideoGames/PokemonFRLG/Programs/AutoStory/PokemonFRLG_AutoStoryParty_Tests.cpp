@@ -29,22 +29,36 @@ using namespace std::chrono_literals;
 
 namespace{
 
+struct AutoStoryPartyInput{
+    std::string name;
+    UnitTestResult (*body)(Logger&);
+};
+
+struct AutoStoryPartyExpectation{
+    const char* description;
+};
+
+struct AutoStoryPartyTestCase{
+    AutoStoryPartyInput input;
+    AutoStoryPartyExpectation expectation;
+};
+
 class Test_AutoStoryParty : public UnitTest{
 public:
-    Test_AutoStoryParty(std::string name, std::function<UnitTestResult(Logger&)> body)
-        : UnitTest("PokemonFRLG::AutoStoryParty - " + std::move(name))
-        , m_body(std::move(body))
+    explicit Test_AutoStoryParty(AutoStoryPartyTestCase scenario)
+        : UnitTest("PokemonFRLG::AutoStoryParty - " + scenario.input.name)
+        , m_scenario(std::move(scenario))
     {}
     virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
         try{
-            return m_body(logger);
+            return m_scenario.input.body(logger);
         }catch (Exception& e){
             return std::string(e.name()) + ": " + e.message();
         }
     }
 
 private:
-    std::function<UnitTestResult(Logger&)> m_body;
+    AutoStoryPartyTestCase m_scenario;
 };
 
 
@@ -625,7 +639,7 @@ UnitTestResult test_end_watch_timing(Logger&){
 }
 
 
-}
+} // namespace
 
 
 //  The lead console B took into Super Nerd Miguel's battle (2026-11-03,
@@ -801,31 +815,95 @@ UnitTestResult test_nurse_before_battle(Logger&){
     return true;
 }
 
+const AutoStoryPartyTestCase AUTO_STORY_PARTY_CASES[] = {
+    {
+        .input = {.name = "movesets the game gives and the story plays", .body = test_movesets},
+        .expectation = {.description = "verifies movesets progression through early game"},
+    },
+    {
+        .input = {.name = "move offered and slot forgotten", .body = test_learn_prompts},
+        .expectation = {.description = "determines move learning replacements and prompts"},
+    },
+    {
+        .input = {.name = "YES/NO answers to move prompts", .body = test_prompt_answers},
+        .expectation = {.description = "answers prompts when deciding to learn new moves"},
+    },
+    {
+        .input = {.name = "fainted lead runs or sends the next member", .body = test_fainted_lead},
+        .expectation = {.description = "switches to next alive member when lead faints"},
+    },
+    {
+        .input = {.name = "PP: preferred attack, then Tackle; nurse restores", .body = test_pp},
+        .expectation = {.description = "tracks PP depletion and replenishment"},
+    },
+    {
+        .input = {.name = "moves read off the summary, Water Gun over Tackle", .body = test_moves_from_summary},
+        .expectation = {.description = "reads move list from summary screen"},
+    },
+    {
+        .input = {.name = "summary members: fewer moves, unread PP, strongest attack", .body = test_summary_members},
+        .expectation = {.description = "handles party members with partial move data"},
+    },
+    {
+        .input = {.name = "no B during an evolution", .body = test_no_b_during_evolution},
+        .expectation = {.description = "prevents cancelling evolution sequence"},
+    },
+    {
+        .input = {.name = "RUN, then a dark cave: no evolution wait, START soon", .body = test_run_then_overworld},
+        .expectation = {.description = "handles post-battle overworld transition in dark cave"},
+    },
+    {
+        .input = {.name = "battle end: START after the battle is gone, A and B for 30 s at most", .body = test_end_watch_timing},
+        .expectation = {.description = "verifies timing constraints on battle end loop"},
+    },
+    {
+        .input = {.name = "attacks by matchup: Bite on the rival's Bulbasaur and Misty", .body = test_attack_by_matchup},
+        .expectation = {.description = "selects optimal attack move based on type matchup"},
+    },
+    {
+        .input = {.name = "attacks against an unknown foe: the plan's order", .body = test_attack_unknown_foe},
+        .expectation = {.description = "falls back to default move preference order against unknown foe"},
+    },
+    {
+        .input = {.name = "Bite learned over Tail Whip or Withdraw", .body = test_bite_learned},
+        .expectation = {.description = "prioritizes learning offensive moves over status moves"},
+    },
+    {
+        .input = {.name = "a YES/NO with no move list after it changes no move", .body = test_yes_no_without_move_list},
+        .expectation = {.description = "maintains moveset when prompt completes without move selection"},
+    },
+    {
+        .input = {.name = "a disabled move: left alone while Disable lasts, PP back", .body = test_disabled_move},
+        .expectation = {.description = "avoids selecting disabled moves"},
+    },
+    {
+        .input = {.name = "a move turned down: the move list, then the menu sooner than a turn", .body = test_move_refusal_watch},
+        .expectation = {.description = "handles refusing a new move cleanly"},
+    },
+    {
+        .input = {.name = "the move list closed with nothing forgotten: YES to \"Stop learning?\"", .body = test_move_list_closed},
+        .expectation = {.description = "confirms stopping learning when cancelling move list"},
+    },
+    {
+        .input = {.name = "move prompts after a turn: a plain YES after the first few", .body = test_move_prompts_bounded},
+        .expectation = {.description = "bounds prompt handling attempts after turns"},
+    },
+    {
+        .input = {.name = "the nurse before a battle for HP not green with no Potion", .body = test_nurse_before_battle},
+        .expectation = {.description = "triggers pokemon center visit when health is low and without potions"},
+    },
+};
+
+
 void add_tests_AutoStoryParty(UnitTestDatabase& database){
-    database.add<Test_AutoStoryParty>("movesets the game gives and the story plays", test_movesets);
-    database.add<Test_AutoStoryParty>("move offered and slot forgotten", test_learn_prompts);
-    database.add<Test_AutoStoryParty>("YES/NO answers to move prompts", test_prompt_answers);
-    database.add<Test_AutoStoryParty>("fainted lead runs or sends the next member", test_fainted_lead);
-    database.add<Test_AutoStoryParty>("PP: preferred attack, then Tackle; nurse restores", test_pp);
-    database.add<Test_AutoStoryParty>("moves read off the summary, Water Gun over Tackle", test_moves_from_summary);
-    database.add<Test_AutoStoryParty>("summary members: fewer moves, unread PP, strongest attack", test_summary_members);
-    database.add<Test_AutoStoryParty>("no B during an evolution", test_no_b_during_evolution);
-    database.add<Test_AutoStoryParty>("RUN, then a dark cave: no evolution wait, START soon", test_run_then_overworld);
-    database.add<Test_AutoStoryParty>("battle end: START after the battle is gone, A and B for 30 s at most", test_end_watch_timing);
-    database.add<Test_AutoStoryParty>("attacks by matchup: Bite on the rival's Bulbasaur and Misty", test_attack_by_matchup);
-    database.add<Test_AutoStoryParty>("attacks against an unknown foe: the plan's order", test_attack_unknown_foe);
-    database.add<Test_AutoStoryParty>("Bite learned over Tail Whip or Withdraw", test_bite_learned);
-    database.add<Test_AutoStoryParty>("a YES/NO with no move list after it changes no move", test_yes_no_without_move_list);
-    database.add<Test_AutoStoryParty>("a disabled move: left alone while Disable lasts, PP back", test_disabled_move);
-    database.add<Test_AutoStoryParty>("a move turned down: the move list, then the menu sooner than a turn", test_move_refusal_watch);
-    database.add<Test_AutoStoryParty>("the move list closed with nothing forgotten: YES to \"Stop learning?\"", test_move_list_closed);
-    database.add<Test_AutoStoryParty>("move prompts after a turn: a plain YES after the first few", test_move_prompts_bounded);
-    database.add<Test_AutoStoryParty>("the nurse before a battle for HP not green with no Potion", test_nurse_before_battle);
+    for (const auto& scenario : AUTO_STORY_PARTY_CASES){
+        database.add<Test_AutoStoryParty>(scenario);
+    }
     add_tests_AutoStoryBattleData(database);
 }
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

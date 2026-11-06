@@ -245,7 +245,7 @@ std::vector<size_t> attack_order(const PartyMember& member){
     return order;
 }
 
-}
+} // namespace
 
 
 std::optional<LevelEvolution> level_evolution(std::string_view species){
@@ -440,6 +440,6 @@ void restore_pp(PartyMember& member){
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

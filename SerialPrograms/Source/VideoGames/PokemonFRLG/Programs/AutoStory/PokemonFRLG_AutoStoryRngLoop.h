@@ -77,11 +77,12 @@ StoryRunPlan rows_after_gift_rng(
 );
 
 
+//  Registers AutoStory RNG loop unit tests.
 void add_tests_AutoStoryRngLoop(UnitTestDatabase& database);
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

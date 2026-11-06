@@ -46,7 +46,7 @@ const std::set<std::string>& starter_species(){
     return SPECIES_LIST;
 }
 
-}
+} // namespace
 
 
 BaseStats starter_base_stats(StarterSpecies starter){
@@ -840,6 +840,6 @@ bool StarterRngAttempts::read_wild_level_up(
 
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

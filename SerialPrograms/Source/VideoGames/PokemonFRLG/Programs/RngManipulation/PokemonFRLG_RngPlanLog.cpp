@@ -26,7 +26,7 @@ std::string join_sids(const std::vector<uint16_t>& sids){
     return text;
 }
 
-}
+} // namespace
 
 std::string rng_log_tid(uint16_t tid, bool from_card){
     return std::format("RngPlan: tid={} source={}", tid, from_card ? "card" : "option");
@@ -80,7 +80,7 @@ const char* next_name(RngPlanNext next){
     throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "Unknown RngPlanNext.");
 }
 
-}
+} // namespace
 
 std::string rng_log_result(const RngResultLog& result){
     const std::optional<AdvPokemonResult>& pokemon = result.pokemon;
@@ -132,6 +132,6 @@ std::vector<std::string> rng_attempt_lines(const std::vector<RngAttempt>& attemp
 }
 
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
