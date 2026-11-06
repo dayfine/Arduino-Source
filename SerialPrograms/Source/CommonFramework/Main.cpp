@@ -45,15 +45,14 @@
 #include "PersistentSettings.h"
 #include "NintendoSwitch/NintendoSwitch_SettingsPanel.h"
 
-using namespace PokemonAutomation;
+Q_DECLARE_METATYPE(std::string)
 
 namespace PokemonAutomation{
-    bool use_qt_ui(){
-        return true;
-    }
+bool use_qt_ui(){
+    return true;
 }
 
-Q_DECLARE_METATYPE(std::string)
+namespace{
 
 void set_working_directory(){
     const std::string app_dir = Filesystem::application_binary_directory().string_slash_normalized();
@@ -69,10 +68,6 @@ void set_working_directory(){
     }
 }
 
-namespace PokemonAutomation{
-
-
-
 FileLogger& global_file_logger(){
     static FileLogger logger(
         GlobalThreadPools::unlimited_normal(),
@@ -81,8 +76,6 @@ FileLogger& global_file_logger(){
         }
     );
     return logger;
-}
-
 }
 
 
@@ -280,29 +273,8 @@ int run_program(int argc, char *argv[]){
 }
 
 
-int main(int argc, char *argv[]){
-#if 0
-    // Retrieve and store program name
-    set_program_path(argv[0]);
-#endif
-
-#if defined(__linux__)
-    // Qt multimedia, default to gstreamer to prevent flickering
-    // Easier than the alternative which is compiling qt6multimedia with QT_DEFAULT_MEDIA_BACKEND
-    // See: https://doc.qt.io/qt-6.5/qtmultimedia-index.html
-    if (qEnvironmentVariableIsEmpty("QT_MEDIA_BACKEND")){
-        qputenv("QT_MEDIA_BACKEND", "gstreamer");
-    }
-#endif
-
-    //  So far, this is only needed on Mac where static initialization is fucked up.
-    PokemonAutomation::register_all_statics();
-
-    setup_crash_handler();
-
-    int ret = run_program(argc, argv);
-
-
+// Stop GUI services after run_program() returns, preserving the existing order.
+void stop_application_services(){
 #ifdef PA_SOCIAL_SDK
     Integration::DiscordSocialSDK::DiscordSocial::instance().stop();
 #endif
@@ -325,6 +297,51 @@ int main(int argc, char *argv[]){
     global_watchdog().stop();
     global_file_logger().stop();
 
+}
+
+// Join the worker pools after service shutdown and the Windows Qt workaround.
+void stop_thread_pools(){
+    //  Force stop the thread pools.
+    //  This is where all the threads in the program are joined.
+    PokemonAutomation::GlobalThreadPools::computation_realtime().stop();
+    PokemonAutomation::GlobalThreadPools::computation_normal().stop();
+    PokemonAutomation::GlobalThreadPools::unlimited_realtime().stop();
+    PokemonAutomation::GlobalThreadPools::unlimited_normal().stop();
+    PokemonAutomation::global_dispatcher.stop();
+
+    GlobalThreadPools::qt_worker_threadpool().stop();
+    GlobalThreadPools::qt_event_threadpool().stop();
+
+}
+
+} // namespace
+} // namespace PokemonAutomation
+
+int main(int argc, char *argv[]){
+#if 0
+    // Retrieve and store program name
+    set_program_path(argv[0]);
+#endif
+
+#if defined(__linux__)
+    // Qt multimedia, default to gstreamer to prevent flickering
+    // Easier than the alternative which is compiling qt6multimedia with QT_DEFAULT_MEDIA_BACKEND
+    // See: https://doc.qt.io/qt-6.5/qtmultimedia-index.html
+    if (qEnvironmentVariableIsEmpty("QT_MEDIA_BACKEND")){
+        qputenv("QT_MEDIA_BACKEND", "gstreamer");
+    }
+#endif
+
+    //  So far, this is only needed on Mac where static initialization is fucked up.
+    PokemonAutomation::register_all_statics();
+
+    PokemonAutomation::setup_crash_handler();
+
+    int ret = PokemonAutomation::run_program(argc, argv);
+
+
+    PokemonAutomation::stop_application_services();
+
 //
 //  Workaround Qt 6.9 thread-adoption bug on Windows.
 //      https://github.com/PokemonAutomation/Arduino-Source/issues/570
@@ -337,16 +354,7 @@ int main(int argc, char *argv[]){
     std::quick_exit(ret);
 #endif
 
-    //  Force stop the thread pools.
-    //  This is where all the threads in the program are joined.
-    PokemonAutomation::GlobalThreadPools::computation_realtime().stop();
-    PokemonAutomation::GlobalThreadPools::computation_normal().stop();
-    PokemonAutomation::GlobalThreadPools::unlimited_realtime().stop();
-    PokemonAutomation::GlobalThreadPools::unlimited_normal().stop();
-    PokemonAutomation::global_dispatcher.stop();
-
-    GlobalThreadPools::qt_worker_threadpool().stop();
-    GlobalThreadPools::qt_event_threadpool().stop();
+    PokemonAutomation::stop_thread_pools();
 
     std::cout << "Exiting main()..." << std::endl;
 
