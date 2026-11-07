@@ -11,7 +11,7 @@
 #include <vector>
 #include <map>
 #include <chrono>
-#include <functional>
+#include "Common/Cpp/MoveOnlyFunction.h"
 #include "Common/Cpp/Time.h"
 
 namespace PokemonAutomation{
@@ -58,7 +58,7 @@ protected:
     void operator+=(VisualInferenceCallback& callback);
     void operator+=(AudioInferenceCallback& callback);
 
-    void register_state_command(size_t state, std::function<bool()>&& action);
+    void register_state_command(size_t state, MoveOnlyFunction<bool()>&& action);
 
 
 protected:
@@ -91,7 +91,7 @@ private:
     std::vector<AudioInferenceCallback*> m_audio_callbacks;
 
     //  These are actions
-    std::map<size_t, std::function<bool()>> m_state_actions;
+    std::map<size_t, MoveOnlyFunction<bool()>> m_state_actions;
 
 private:
     //  Run-time state.

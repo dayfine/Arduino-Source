@@ -46,7 +46,7 @@ private:
         GET_ON_SNEASLER,
         CLIMBING,
     };
-    void register_state_command(State state, std::function<bool()>&& action){
+    void register_state_command(State state, MoveOnlyFunction<bool()>&& action){
         SuperControlSession::register_state_command((size_t)state, std::move(action));
     }
     bool run_state_action(State state){
