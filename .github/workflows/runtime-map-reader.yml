@@ -14,12 +14,12 @@ jobs:
       - uses: actions/checkout@v7
         with:
           repository: dayfine/PokemonSimulation
-          ref: d38f716d0494f8d2e2941b7ae6b5bbbf4e7afa3c
+          ref: b6442ba6f8212701e2c574831e70c8111aafdc5b
           path: publisher
       - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
-      - run: python devtools/runtime-map-tests/prepare_parity.py --publisher publisher --publisher-revision d38f716d0494f8d2e2941b7ae6b5bbbf4e7afa3c --out runtime-map-pairs.json
+      - run: python devtools/runtime-map-tests/prepare_parity.py --publisher publisher --publisher-revision b6442ba6f8212701e2c574831e70c8111aafdc5b --out runtime-map-pairs.json
       - run: cmake -S devtools/runtime-map-tests -B build-runtime-maps -DCMAKE_BUILD_TYPE=Debug
       - run: cmake --build build-runtime-maps --config Debug -j4
       - run: ctest --test-dir build-runtime-maps -C Debug --output-on-failure

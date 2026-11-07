@@ -10,7 +10,7 @@ map/route/story tests remain here. No controller behavior changes in this handof
 
 Merge [PokemonSimulation #65](https://github.com/dayfine/PokemonSimulation/pull/65)
 first. The checked-in resource lock names its candidate publishing commit
-`d38f716d0494f8d2e2941b7ae6b5bbbf4e7afa3c` and manifest checksum. Normal preparation
+`b6442ba6f8212701e2c574831e70c8111aafdc5b` and manifest checksum. Normal preparation
 and full application CI reject that revision until it is on publishing main.
 Do not override that approval check. If it lands by squash under another SHA,
 verify that the intended map/manifest bytes are unchanged and regenerate the
@@ -23,7 +23,9 @@ Before enrichment, all 22 maps matched #226 at
 `fc56a720b9c0b1f4d945dbef382d61b0a6382b97` byte-for-byte. The publishing change
 adds resolved Diamond/Platinum-baseline identities, quantities, collection flags
 and provenance to 15 pickups, with no geometry, point, NPC, trigger or warp edits.
-`item_3` remains a stable object ID; `item: escape_rope` is its reward identity.
+Pickup names and quantity 1 are omitted on the wire: `source_event: 3`
+restores internal label `item_3`; `item: escape_rope` identifies the reward.
+Explicit custom names and quantities above one remain supported.
 These are explicitly remake baselines, not verified BDSP item data. Reading a
 map never grants an item or proves that a controller action collected it.
 
@@ -76,7 +78,7 @@ cmake -S devtools/runtime-map-tests -B build/runtime-map-tests
 cmake --build build/runtime-map-tests -j4
 ctest --test-dir build/runtime-map-tests --output-on-failure
 python3 devtools/runtime-map-tests/prepare_parity.py --publisher /path/to/candidate \
-  --publisher-revision d38f716d0494f8d2e2941b7ae6b5bbbf4e7afa3c --out /tmp/bdsp-map-pairs.json
+  --publisher-revision b6442ba6f8212701e2c574831e70c8111aafdc5b --out /tmp/bdsp-map-pairs.json
 build/runtime-map-tests/RuntimeMapTests /tmp/bdsp-map-pairs.json
 ```
 
