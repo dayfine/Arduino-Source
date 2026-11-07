@@ -19,7 +19,7 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
-      - run: python devtools/runtime-map-tests/prepare_parity.py --publisher publisher --out runtime-map-pairs.json
+      - run: python devtools/runtime-map-tests/prepare_parity.py --publisher publisher --publisher-revision 906956e94fc912ae9adb0e44845da780f3bc7e4c --out runtime-map-pairs.json
       - run: cmake -S devtools/runtime-map-tests -B build-runtime-maps -DCMAKE_BUILD_TYPE=Debug
       - run: cmake --build build-runtime-maps --config Debug -j4
       - run: ctest --test-dir build-runtime-maps -C Debug --output-on-failure
