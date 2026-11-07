@@ -262,7 +262,7 @@ jobs:
         with:
           # Complete fork fixtures include pending FRLG image submissions.
           repository: 'dayfine/CommandLineTests'
-          ref: '49e507fde8c3a54cd0264db0dbea7c3ee3618085'
+          ref: 'd150a6c547434110a920f95ba7857b93d5bb9222'
           path: 'CommandLineTests'
 
       # The unit tests assume the downloadable resources they need are already downloaded

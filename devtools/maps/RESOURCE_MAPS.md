@@ -48,7 +48,7 @@ required data available through the agreed Packages repository/process.
 ## Full native test fixtures
 
 Fork CI pins `dayfine/CommandLineTests` at
-`49e507fde8c3a54cd0264db0dbea7c3ee3618085`. This includes the pending FRLG
+`d150a6c547434110a920f95ba7857b93d5bb9222`. This includes the pending FRLG
 fixture submissions needed by the existing native image tests and preserves
 all current upstream fixture files. It is a test-data pin, independent of the
 map resource lock. The upstream-only fixture checkout lacked 69 required frames;
