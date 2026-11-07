@@ -17,9 +17,13 @@
 #include "Inference/Dialogs/PokemonFRLG_PrizeSelectDetector.h"
 #include "Inference/Map/PokemonFRLG_PokemonLeagueDetectors.h"
 #include "Inference/Menus/PokemonFRLG_BagDetector.h"
+#include "Inference/Menus/PokemonFRLG_ItemListReader.h"
+#include "Inference/Menus/PokemonFRLG_OptionMenuReader.h"
 #include "Inference/Menus/PokemonFRLG_PartyEmptySlotDetector.h"
 #include "Inference/Menus/PokemonFRLG_PartyHeldItemDetector.h"
 #include "Inference/Menus/PokemonFRLG_PartyMenuDetector.h"
+#include "Inference/Menus/PokemonFRLG_SaveCardReader.h"
+#include "Inference/Menus/PokemonFRLG_SummaryMovesReader.h"
 #include "Inference/PokemonFRLG_BattleLevelUpReader.h"
 #include "Inference/PokemonFRLG_BattleSelectionArrowDetector.h"
 #include "Inference/PokemonFRLG_PartyLevelUpReader.h"
@@ -27,7 +31,15 @@
 #include "Inference/PokemonFRLG_StatsReader.h"
 #include "Inference/PokemonFRLG_TrainerIdReader.h"
 #include "Inference/PokemonFRLG_WildEncounterReader.h"
+#include "Overworld/PokemonFRLG_OverworldMaps.h"
+#include "Overworld/PokemonFRLG_OverworldReanchor.h"
+#include "Overworld/PokemonFRLG_OverworldRecovery.h"
+#include "Overworld/PokemonFRLG_OverworldRoute.h"
+#include "Overworld/PokemonFRLG_OverworldWalk.h"
+#include "Overworld/PokemonFRLG_PlayerFacingReader.h"
 #include "PokemonFRLG_Navigation.h"
+#include "Programs/AutoStory/PokemonFRLG_AutoStoryBattle.h"
+#include "Programs/AutoStory/PokemonFRLG_AutoStoryTable.h"
 #include "Tests/TestUtils.h"
 
 #include "PokemonFRLG_Tests.h"
@@ -263,6 +275,15 @@ void add_tests_ExitWildBattle(UnitTestDatabase& database){
 }
 
 
+//  The menu readers AutoStory brought: the bag's and Marts' lists, the
+//  options, the save card and the summary's moves.
+static void add_tests_AutoStoryReaders(UnitTestDatabase& database){
+    add_tests_ItemListReader(database);
+    add_tests_OptionMenuReader(database);
+    add_tests_SaveCardReader(database);
+    add_tests_SummaryMovesReader(database);
+}
+
 void add_tests(UnitTestDatabase& database){
     add_tests_AdvanceWhiteDialogDetector(database);
     add_tests_BoxCellOccupiedDetector(database);
@@ -287,7 +308,17 @@ void add_tests(UnitTestDatabase& database){
     add_tests_HallOfFameSavingDetector(database);
     add_tests_BattleMoveSelectionArrow(database);
     add_tests_BagDetector(database);
+    add_tests_AutoStoryReaders(database);
     add_tests_ExitWildBattle(database);
+    add_tests_OverworldMaps(database);
+    add_tests_OverworldRoute(database);
+    add_tests_OverworldWalk(database);
+    add_tests_OverworldReanchor(database);
+    add_tests_OverworldRecovery(database);
+    add_tests_PlayerFacingReader(database);
+    add_tests_AutoStory(database);
+    add_tests_AutoStorySimulation(database);
+    add_tests_AutoStoryItems(database);
 }
 
 

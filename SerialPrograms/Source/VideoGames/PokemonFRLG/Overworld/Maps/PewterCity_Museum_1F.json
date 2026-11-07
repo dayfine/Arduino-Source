@@ -1,0 +1,108 @@
+{
+    "name": "PewterCity_Museum_1F",
+    "source": {
+        "decomp_file": "data/maps/PewterCity_Museum_1F/map.json",
+        "revision": "ce6406d8c2eaf46d543c8a2606de0c3cb1951982",
+        "date": "2026-10-31"
+    },
+    "tiles": [
+        "############################",
+        "############################",
+        "...............#............",
+        "...............#......#....#",
+        "...####........#...........#",
+        "...............#............",
+        "...........#...#...........#",
+        "...####..###...###.........#",
+        ".........###.....#..........",
+        "#........###....##......##..",
+        "############################"
+    ],
+    "points": {
+        "warp_1": [14, 9],
+        "warp_3": [21, 9]
+    },
+    "warps": [
+        {
+            "x": 13,
+            "y": 9,
+            "enter": "walk_into",
+            "to_map": "PewterCity",
+            "to_point": "warp_0"
+        },
+        {
+            "x": 14,
+            "y": 9,
+            "enter": "walk_south",
+            "to_map": "PewterCity",
+            "to_point": "warp_0"
+        },
+        {
+            "x": 15,
+            "y": 9,
+            "enter": "walk_into",
+            "to_map": "PewterCity",
+            "to_point": "warp_0"
+        },
+        {
+            "x": 21,
+            "y": 9,
+            "enter": "walk_south",
+            "to_map": "PewterCity",
+            "to_point": "warp_1"
+        },
+        {
+            "x": 22,
+            "y": 9,
+            "enter": "walk_into",
+            "to_map": "PewterCity",
+            "to_point": "warp_1"
+        },
+        {
+            "x": 8,
+            "y": 8,
+            "enter": "walk_east"
+        }
+    ],
+    "objects": [
+        {
+            "name": "worker_m",
+            "kind": "npc",
+            "x": 16,
+            "y": 5
+        },
+        {
+            "name": "old_man_1",
+            "kind": "npc",
+            "x": 2,
+            "y": 4
+        },
+        {
+            "name": "scientist",
+            "kind": "npc",
+            "x": 21,
+            "y": 3
+        },
+        {
+            "name": "old_amber",
+            "kind": "npc",
+            "x": 22,
+            "y": 3,
+            "hide_flag": "FLAG_HIDE_OLD_AMBER"
+        },
+        {
+            "name": "scientist",
+            "kind": "npc",
+            "x": 26,
+            "y": 4
+        },
+        {
+            "name": "scientist",
+            "kind": "npc",
+            "x": 26,
+            "y": 7
+        }
+    ],
+    "flag_sets": {},
+    "connections": []
+}

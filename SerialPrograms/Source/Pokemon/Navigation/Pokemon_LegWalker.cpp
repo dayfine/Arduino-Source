@@ -63,9 +63,16 @@ LegResult walk_leg_with(const LegSpec& leg, const LegCalls& calls, size_t max_in
         calls.clear(outcome->interrupt);
         const std::string seen = std::format("{} after {}ms", calls.name(outcome->interrupt), outcome->elapsed.count());
         if (stops_here(leg, result, *outcome)){
-            calls.log(seen + ", stopping the leg.");
             result.exact = false;
             result.stopped = true;
+            if (leg.to_wall){
+                calls.log(seen + ", stopping the leg.");
+                return result;
+            }
+            //  The caller finds the player again, near where the timing says.
+            result.tiles = leg.tiles - remaining
+                + tiles_before_interrupt(leg, outcome->elapsed, calls.detection_delay(outcome->interrupt), remaining);
+            calls.log(std::format("{}, about {} of {} tiles walked, stopping the leg.", seen, result.tiles, leg.tiles));
             return result;
         }
         if (leg.to_wall){

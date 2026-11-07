@@ -1,0 +1,69 @@
+{
+    "name": "PalletTown_RivalsHouse",
+    "source": {
+        "decomp_file": "data/maps/PalletTown_RivalsHouse/map.json",
+        "revision": "ce6406d8c2eaf46d543c8a2606de0c3cb1951982",
+        "date": "2026-10-31"
+    },
+    "tiles": [
+        "#############",
+        "#############",
+        ".............",
+        ".............",
+        "......##.....",
+        "......##.....",
+        ".............",
+        ".............",
+        "#...........#",
+        "#############"
+    ],
+    "points": {
+        "warp_0": [4, 8]
+    },
+    "warps": [
+        {
+            "x": 4,
+            "y": 8,
+            "enter": "walk_south",
+            "to_map": "PalletTown",
+            "to_point": "warp_1"
+        },
+        {
+            "x": 5,
+            "y": 8,
+            "enter": "walk_into",
+            "to_map": "PalletTown",
+            "to_point": "warp_1"
+        },
+        {
+            "x": 3,
+            "y": 8,
+            "enter": "walk_into",
+            "to_map": "PalletTown",
+            "to_point": "warp_1"
+        }
+    ],
+    "objects": [
+        {
+            "name": "daisy",
+            "kind": "npc",
+            "x": 10,
+            "y": 6,
+            "wander": {
+                "x0": 9,
+                "y0": 3,
+                "x1": 11,
+                "y1": 9
+            }
+        },
+        {
+            "name": "town_map",
+            "kind": "npc",
+            "x": 6,
+            "y": 4,
+            "hide_flag": "FLAG_HIDE_TOWN_MAP"
+        }
+    ],
+    "flag_sets": {},
+    "connections": []
+}
