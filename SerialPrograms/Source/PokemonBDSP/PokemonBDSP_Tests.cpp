@@ -5,7 +5,7 @@
  */
 
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
-#include "Programs/AutoStory/PokemonBDSP_AutoStory_Actions_Tests.h"
+#include "Programs/AutoStory/Actions/PokemonBDSP_AutoStory_Actions_Tests.h"
 #include "Programs/AutoStory/PokemonBDSP_AutoStory_Maps_Tests.h"
 #include "Programs/AutoStory/PokemonBDSP_AutoStory_PlannedRoute_Tests.h"
 #include "Programs/AutoStory/PokemonBDSP_AutoStory_RoutePlanner_Tests.h"
