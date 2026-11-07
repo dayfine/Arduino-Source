@@ -4,6 +4,9 @@ on:
     paths:
       - '.uncrustify.cfg'
       - 'devtools/format/**'
+      - 'SerialPrograms/CMakeLists.txt'
+      - 'SerialPrograms/cmake/Formatting.cmake'
+      - 'SerialPrograms/cmake/RunFormatting.cmake'
       - '.github/workflows/formatter-config.yml'
   workflow_dispatch:
 permissions:
