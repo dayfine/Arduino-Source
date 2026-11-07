@@ -30,6 +30,13 @@ flags); typed battle/inventory consumers for reward metadata remain future work.
 
 ## Prepare and build
 
+On a fresh Arduino checkout, clone Packages before preparing the map subdirectory.
+Skip this command when the checkout already has its Packages repository:
+
+```sh
+git clone --depth 1 --branch master https://github.com/PokemonAutomation/Packages.git /path/to/Arduino-Source/Packages
+```
+
 Use the same approved tool revision pinned in CI. Preparation reads the separate
 data revision from the resource lock; tools and data pins are independent.
 
