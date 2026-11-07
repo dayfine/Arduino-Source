@@ -13,8 +13,11 @@ first. The checked-in resource lock names its candidate publishing commit
 `d38f716d0494f8d2e2941b7ae6b5bbbf4e7afa3c` and manifest checksum. Normal preparation
 and full application CI reject that revision until it is on publishing main.
 Do not override that approval check. If it lands by squash under another SHA,
-update the lock with the normal `consumer_sync update` command below after
-reviewing that the intended data/manifest bytes are unchanged.
+verify that the intended map/manifest bytes are unchanged and regenerate the
+initial lock in a new empty staging consumer with `consumer_sync update`. Copy
+that verified lock into this draft only while its candidate remains unapproved
+and no resources have been prepared. An existing approved deployment instead
+uses the normal update transaction below, which verifies its current exports.
 
 Before enrichment, all 22 maps matched #226 at
 `fc56a720b9c0b1f4d945dbef382d61b0a6382b97` byte-for-byte. The publishing change
