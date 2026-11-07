@@ -1,6 +1,11 @@
 {
+    "format": "pokesim-runtime-map/2",
     "name": "SandgemTown",
-    "source": {"decomp_file": "pret/pokediamond: files/fielddata/land_data/land_data_release/narc_0007.bin, files/fielddata/land_data/land_data_release/narc_0173.bin; zone_event narc_0396", "revision": "default branch", "date": "2026-10-31"},
+    "source": {
+        "decomp_file": "pret/pokediamond: files/fielddata/land_data/land_data_release/narc_0007.bin, files/fielddata/land_data/land_data_release/narc_0173.bin; zone_event narc_0396",
+        "revision": "default branch",
+        "date": "2026-10-31"
+    },
     "tiles": [
         "########################......####",
         "########################......####",
@@ -49,10 +54,18 @@
         "sandgem_arrival": [0, 12],
         "dawn_stop": [4, 12]
     },
-    "objects": [
-        {"name": "youngster_0", "kind": "npc", "x": 27, "y": 23, "wander": {"x0": 26, "y0": 22, "x1": 28, "y1": 24}}
-    ],
     "coord_events": [
-        {"name": "dawn_walks_us_to_the_lab", "x": 4, "y": 10, "width": 1, "length": 6, "var": "VAR_SANDGEM_TOWN_STATE", "value": 0, "source": "pret/pokediamond files/fielddata/eventdata/zone_event_release/narc_0396.bin coord_events[0] (164, 842), script 2"}
+        {
+            "name": "dawn_walks_us_to_the_lab",
+            "coord": [4, 10],
+            "width": 1,
+            "length": 6,
+            "var": "VAR_SANDGEM_TOWN_STATE",
+            "value": 0,
+            "source": "pret/pokediamond files/fielddata/eventdata/zone_event_release/narc_0396.bin coord_events[0] (164, 842), script 2"
+        }
+    ],
+    "npcs": [
+        {"name": "youngster_0", "coord": [27, 23], "wander": {"min": [26, 22], "max": [28, 24]}}
     ]
 }

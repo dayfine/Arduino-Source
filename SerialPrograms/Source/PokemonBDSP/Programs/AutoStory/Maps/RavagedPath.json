@@ -1,6 +1,11 @@
 {
+    "format": "pokesim-runtime-map/2",
     "name": "RavagedPath",
-    "source": {"decomp_file": "pret/pokeplatinum: res/field/maps/data/map_data_435.bin, res/field/maps/data/map_data_436.bin; events_ravaged_path.json", "revision": "default branch", "date": "2026-10-31"},
+    "source": {
+        "decomp_file": "pret/pokeplatinum: res/field/maps/data/map_data_435.bin, res/field/maps/data/map_data_436.bin; events_ravaged_path.json",
+        "revision": "default branch",
+        "date": "2026-10-31"
+    },
     "tiles": [
         "................................",
         "................................",
@@ -78,10 +83,10 @@
         "before_rocks.1": [21, 42],
         "before_rocks.2": [21, 43]
     },
-    "objects": [
-        {"name": "item_27", "kind": "item", "x": 7, "y": 38},
-        {"name": "item_28", "kind": "item", "x": 17, "y": 11},
-        {"name": "item_29", "kind": "item", "x": 28, "y": 5},
-        {"name": "item_30", "kind": "item", "x": 22, "y": 44}
+    "items": [
+        {"name": "item_27", "coord": [7, 38]},
+        {"name": "item_28", "coord": [17, 11]},
+        {"name": "item_29", "coord": [28, 5]},
+        {"name": "item_30", "coord": [22, 44]}
     ]
 }
