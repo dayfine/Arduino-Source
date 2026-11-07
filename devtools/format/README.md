@@ -1,59 +1,101 @@
-# C++ formatter proposal
+# C++ formatting
 
-The root `.clang-format` is an opt-in draft, tested with **clang-format 21.1.8**.
-No source files are reformatted and no source-format CI gate is enabled.
+Use **Uncrustify 0.83.0** with the root `.uncrustify.cfg`. This replaces the
+initial clang-format proposal: Uncrustify can produce the repository's compact
+`if (condition){`, `}else{` and `namespace Name{` spelling directly.
+No regex postprocessor or change to AGENTS.md's style rules is needed.
 
-**Known incompatibility:** stock clang-format emits `if (condition) {`,
-`} else {`, `namespace Name {` and `class Name {`. The repository requires
-compact braces such as `if (condition){` and `}else{`. LLVM 21 has no style
-option to express that spacing. This proposal does not change AGENTS.md's
-rules: do not enable format-on-save or apply its output without reviewing and
-restoring the required brace spacing. Exact automatic formatting needs a
-separate decision: a tested compatibility tool, or an explicitly approved
-style change. No regex postprocessor or silent style change is included here.
+## Install and preview
 
-The configuration supplies four-space indentation, no tabs, type-attached
-pointers/references, unindented namespaces and access labels, attached braces
-and multiline control flow. It preserves include order (including the own-header
-last rule and registration-order exceptions), existing LF/CRLF style, and comment
-text. There is no forced column limit. It does not insert/remove braces or add
-namespace comments; the existing code-health checks still cover those contracts.
-It can change other whitespace and wrapping, so review every proposed diff.
-
-Install the pinned tool in an isolated environment, for example:
+On macOS:
 
 ```sh
-uv tool install 'clang-format==21.1.8'
-clang-format --version
+brew install uncrustify
+uncrustify --version
 ```
 
-From the repo root, preview a specific file without modifying it:
+Check for `Uncrustify-0.83.0` (Homebrew's release appends `_f`). CI builds that
+release from a SHA-256-verified source archive. If your package manager supplies
+a different version, install the pinned release before comparing formatter output.
+
+From the repo root, preview a specific file without changing it:
 
 ```sh
-clang-format --style=file SerialPrograms/Source/CommonFramework/Main.cpp > /tmp/Main.formatted.cpp
+uncrustify -q -c .uncrustify.cfg -l CPP \
+  -f SerialPrograms/Source/CommonFramework/Main.cpp -o /tmp/Main.formatted.cpp
 git diff --no-index -- SerialPrograms/Source/CommonFramework/Main.cpp /tmp/Main.formatted.cpp
 ```
 
-A diff exits 1 when changes are present; that is expected. Use `--lines=START:END`
-for an edited region, while reviewing neighboring changes clang-format may make.
-Do not bulk-format the repo or third-party files. `--dry-run --Werror` is not a
-repository-style validator while the known brace-spacing incompatibility exists.
+A diff exits 1 when changes are present; that is expected. Apply to an explicit
+file only after reviewing the preview:
 
-Run the configuration checks (not application tests):
+```sh
+uncrustify -q -c .uncrustify.cfg -l CPP --replace --no-backup \
+  SerialPrograms/Source/CommonFramework/Main.cpp
+```
+
+To check an explicit file without writing it:
+
+```sh
+uncrustify -q -c .uncrustify.cfg -l CPP --check \
+  SerialPrograms/Source/CommonFramework/Main.cpp
+```
+
+Format edited files in a separate commit from behavioral changes. Preserve
+unrelated changes and do not format vendored or generated files. The repository
+contains legacy formatting differences; adopting the configuration does not
+require reformatting all existing sources. This PR's CI tests the configuration,
+not source-wide compliance. Do not enable a broad format-on-save hook yet.
+
+## What this configuration covers
+
+- Four spaces, no indentation tabs, unindented namespaces/access labels and
+  type-attached pointers/references.
+- Compact control/namespace braces and spaced control parentheses. Existing
+  standalone class brace spacing and nested-template `>>` spelling are preserved. Existing braced
+  single-line `if`/`for`/`while` bodies expand onto multiple lines.
+- Existing LF or CRLF style, include order (including own-header-last and
+  registration-order exceptions), comment text and unlimited line width.
+- No brace insertion/removal, statement removal, include sorting or generated
+  namespace comments. Missing-brace and namespace/API documentation requirements
+  remain the responsibility of review and existing code-health checks.
+
+Formatting still changes indentation, spacing and some line breaks. C++ macros,
+conditional compilation and newer syntax need review; a successful formatter
+exit does not prove semantic equivalence or a successful native build. Main-tree
+trials are performed in an isolated snapshot and reviewed before any formatting
+commit is proposed. Known limitations are recorded in the fork PR/run record:
+
+- Class/struct brace spacing is not fully enforced: standalone declarations
+  retain their existing spacing, and inherited declarations can gain a space
+  before `{`, for example
+  `struct Derived : public Base {`. Uncrustify 0.83.0 does not expose a separate
+  configurable spacing rule for this case. Restore the repository's compact
+  spelling when reviewing output; this formatter is not a complete code-health
+  compliance check.
+- Function-definition brace line breaks are preserved to avoid moving a
+  constructor's brace across comments or commented-out initializer entries.
+- Missing braces stay missing. Formatting is not a substitute for the existing
+  multiline-control-flow/braces lint rules.
+
+## Configuration tests
+
+These are tooling tests, not application tests. They call the real formatter:
 
 ```sh
 python3 -m unittest discover -s devtools/format -v
 ```
 
-Without a persistent install, the equivalent is:
+For a non-PATH installation:
 
 ```sh
-CLANG_FORMAT='uv tool run --from clang-format==21.1.8 clang-format' \
-  python3 -m unittest discover -s devtools/format -v
+UNCRUSTIFY=/path/to/uncrustify python3 -m unittest discover -s devtools/format -v
 ```
 
-Tests run the real formatter on small C++ examples, check line endings, includes,
-indentation, comments and idempotence, and explicitly demonstrate the brace gap.
-They do not assert the existing source tree is already formatted.
+Coverage includes exact brace spelling, indentation, pointers, includes,
+line-ending preservation, comment/long-line preservation, templates/designated
+initializers, raw strings, macro continuations/token pasting, constructor-comment placement and idempotence.
+Regressions also preserve conversion-operator tokens and expose the
+inherited-class spacing gap explicitly.
 
-Reference: [LLVM 21 style options](https://releases.llvm.org/21.1.0/tools/clang/docs/ClangFormatStyleOptions.html).
+Reference: [Uncrustify 0.83.0 options](https://github.com/uncrustify/uncrustify/blob/uncrustify-0.83.0/documentation/htdocs/default.cfg).
