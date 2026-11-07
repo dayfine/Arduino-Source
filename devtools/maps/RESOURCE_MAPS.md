@@ -7,20 +7,20 @@ unchanged. Resource preparation happens before configuring, with no implicit
 fallback to the deleted source directory and no map download during configure.
 This is a change of build input, not runtime filesystem loading.
 
-The resource lock pins PokemonSimulation main `40717c7c809c415c751fd7a348dfc1895f7ec3d7`.
-All 53 maps were compared byte-for-byte with the original native tree before
-removing that copy. This initial adoption uses the approved v1 pack; upgrading
-to v2 is a later explicit lock change after Simulation #56 lands and native
-validation passes. #114's shared v2 reader is already present in this handoff.
+The resource lock and CI tools pin published PokemonSimulation main
+`906956e94fc912ae9adb0e44845da780f3bc7e4c`. The 53-map resource pack now uses the
+compact v2 wire format, read by #114's shared decoder. V2 groups records by kind
+and omits empty sections; map geometry, triggers and per-kind record order must
+match the previous v1 pack. Native schema, map, route/story and recovery tests
+verify this adoption; their current results are recorded in the fork PR.
 BDSP's held map differences are not imported or overwritten.
 
 Clone a full tools/data checkout outside deployed Resources, then explicitly
-select the pinned tool version used by CI (a draft dependency until Simulation
-#57 and #58 land):
+select the published tool version used by CI:
 
 ```sh
 git clone https://github.com/dayfine/PokemonSimulation.git /path/to/pokesim
-git -C /path/to/pokesim checkout 8436751a34b08da777fee11e6e2106624494f486
+git -C /path/to/pokesim checkout 906956e94fc912ae9adb0e44845da780f3bc7e4c
 PYTHONPATH=/path/to/pokesim/src python3 -m pokesim.maps.consumer_sync prepare \
   --layout resources --source /path/to/pokesim --consumer /path/to/Arduino-Source
 cmake -S SerialPrograms -B /path/to/build \
