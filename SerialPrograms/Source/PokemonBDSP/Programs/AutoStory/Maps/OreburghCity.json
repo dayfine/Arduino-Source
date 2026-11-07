@@ -1,6 +1,11 @@
 {
+    "format": "pokesim-runtime-map/2",
     "name": "OreburghCity",
-    "source": {"decomp_file": "pret/pokediamond: files/fielddata/land_data/land_data_release/narc_0022.bin, files/fielddata/land_data/land_data_release/narc_0023.bin, files/fielddata/land_data/land_data_release/narc_0024.bin, files/fielddata/land_data/land_data_release/narc_0175.bin; zone_event narc_0044", "revision": "default branch", "date": "2026-10-31"},
+    "source": {
+        "decomp_file": "pret/pokediamond: files/fielddata/land_data/land_data_release/narc_0022.bin, files/fielddata/land_data/land_data_release/narc_0023.bin, files/fielddata/land_data/land_data_release/narc_0024.bin, files/fielddata/land_data/land_data_release/narc_0175.bin; zone_event narc_0044",
+        "revision": "default branch",
+        "date": "2026-10-31"
+    },
     "tiles": [
         "#########################################......#################",
         "#########################################...S..#################",
@@ -61,7 +66,7 @@
         "#####################################..####.#S....###.....######",
         "###########################################.......####.......###",
         "############################################.....#####.......###",
-        "############################################.....#####.....#####",
+        "############################################DDDDD#####.....#####",
         "######################################################..#..#####",
         "################################################################",
         "################################################################",
@@ -74,22 +79,38 @@
         "gym_doorstep": [26, 21],
         "gate_mouth": [1, 13]
     },
-    "objects": [
-        {"name": "hiker_0", "kind": "npc", "x": 47, "y": 26, "wander": {"x0": 46, "y0": 25, "x1": 48, "y1": 27}},
-        {"name": "school_kid_f_1", "kind": "npc", "x": 32, "y": 18, "wander": {"x0": 32, "y0": 16, "x1": 32, "y1": 20}},
-        {"name": "pokefan_f_2", "kind": "npc", "x": 45, "y": 38, "wander": {"x0": 45, "y0": 37, "x1": 45, "y1": 39}},
-        {"name": "youngster_4", "kind": "npc", "x": 10, "y": 16, "facing": "north"},
-        {"name": "worker_15", "kind": "npc", "x": 11, "y": 25},
-        {"name": "worker_16", "kind": "npc", "x": 56, "y": 57, "wander": {"x0": 55, "y0": 54, "x1": 57, "y1": 60}},
-        {"name": "camper_17", "kind": "npc", "x": 36, "y": 19, "wander": {"x0": 33, "y0": 19, "x1": 39, "y1": 19}},
-        {"name": "worker_18", "kind": "npc", "x": 37, "y": 39, "wander": {"x0": 36, "y0": 38, "x1": 38, "y1": 40}},
-        {"name": "worker_19", "kind": "npc", "x": 50, "y": 41, "wander": {"x0": 50, "y0": 38, "x1": 50, "y1": 44}},
-        {"name": "guitarist_20", "kind": "npc", "x": 23, "y": 13, "wander": {"x0": 22, "y0": 10, "x1": 24, "y1": 16}},
-        {"name": "battle_girl_21", "kind": "npc", "x": 36, "y": 23, "wander": {"x0": 36, "y0": 21, "x1": 36, "y1": 25}},
-        {"name": "machop_22", "kind": "npc", "x": 55, "y": 56, "wander": {"x0": 53, "y0": 54, "x1": 57, "y1": 58}}
-    ],
     "coord_events": [
-        {"name": "coord_event_0", "x": 10, "y": 12, "width": 1, "length": 4, "var": "VAR_OREBURGH_CITY_STATE", "value": 0, "source": "pret/pokediamond files/fielddata/eventdata/zone_event_release/narc_0044.bin coord_events[0] (266, 748), script 3"},
-        {"name": "coord_event_1", "x": 6, "y": 12, "width": 1, "length": 4, "var": "VAR_OREBURGH_CITY_STATE", "value": 2, "source": "pret/pokediamond files/fielddata/eventdata/zone_event_release/narc_0044.bin coord_events[1] (262, 748), script 4"}
+        {
+            "name": "coord_event_0",
+            "coord": [10, 12],
+            "width": 1,
+            "length": 4,
+            "var": "VAR_OREBURGH_CITY_STATE",
+            "value": 0,
+            "source": "pret/pokediamond files/fielddata/eventdata/zone_event_release/narc_0044.bin coord_events[0] (266, 748), script 3"
+        },
+        {
+            "name": "coord_event_1",
+            "coord": [6, 12],
+            "width": 1,
+            "length": 4,
+            "var": "VAR_OREBURGH_CITY_STATE",
+            "value": 2,
+            "source": "pret/pokediamond files/fielddata/eventdata/zone_event_release/narc_0044.bin coord_events[1] (262, 748), script 4"
+        }
+    ],
+    "npcs": [
+        {"name": "hiker_0", "coord": [47, 26], "wander": {"min": [46, 25], "max": [48, 27]}},
+        {"name": "school_kid_f_1", "coord": [32, 18], "wander": {"min": [32, 16], "max": [32, 20]}},
+        {"name": "pokefan_f_2", "coord": [45, 38], "wander": {"min": [45, 37], "max": [45, 39]}},
+        {"name": "youngster_4", "coord": [10, 16], "facing": "north"},
+        {"name": "worker_15", "coord": [11, 25]},
+        {"name": "worker_16", "coord": [56, 57], "wander": {"min": [55, 54], "max": [57, 60]}},
+        {"name": "camper_17", "coord": [36, 19], "wander": {"min": [33, 19], "max": [39, 19]}},
+        {"name": "worker_18", "coord": [37, 39], "wander": {"min": [36, 38], "max": [38, 40]}},
+        {"name": "worker_19", "coord": [50, 41], "wander": {"min": [50, 38], "max": [50, 44]}},
+        {"name": "guitarist_20", "coord": [23, 13], "wander": {"min": [22, 10], "max": [24, 16]}},
+        {"name": "battle_girl_21", "coord": [36, 23], "wander": {"min": [36, 21], "max": [36, 25]}},
+        {"name": "machop_22", "coord": [55, 56], "wander": {"min": [53, 54], "max": [57, 58]}}
     ]
 }
