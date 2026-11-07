@@ -17,6 +17,7 @@
 #include <optional>
 #include <set>
 #include <string>
+#include <string_view>
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
@@ -67,16 +68,16 @@ private:
     AutoStoryCeladonCase m_case;
 };
 
-size_t row_index(const std::string& id){
+size_t row_index(std::string_view id){
     const std::vector<StoryCheckpoint>& rows = story_checkpoints();
     const auto row = std::find_if(rows.begin(), rows.end(), [&](const StoryCheckpoint& data){ return data.id == id; });
     if (row == rows.end()){
-        throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "No checkpoint " + id + ".");
+        throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, std::format("No checkpoint {}.", id));
     }
     return row - rows.begin();
 }
 
-const StoryCheckpoint& checkpoint(const std::string& id){
+const StoryCheckpoint& checkpoint(std::string_view id){
     return story_checkpoints()[row_index(id)];
 }
 
