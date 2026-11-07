@@ -25,10 +25,10 @@ struct Thread::Data{
 
     std::thread m_thread;
 
-    Data(std::function<void()>&& function)
+    Data(MoveOnlyFunction<void()>&& function)
         : m_stopped(false)
         , m_thread(
-            [this, function = std::move(function)]{
+            [this, function = std::move(function)]() mutable{
                 function();
 //                std::lock_guard<std::mutex> lg(m_lock);
 //                m_stopped = true;
@@ -60,7 +60,7 @@ Thread::Thread() = default;
 // Main constructor - starts thread immediately with given function
 // - Uses CONSTRUCT_TOKEN to construct Pimpl<Data> with Data constructor
 // - Thread starts running immediately (same as std::thread behavior)
-Thread::Thread(std::function<void()>&& function)
+Thread::Thread(MoveOnlyFunction<void()>&& function)
     : m_data(CONSTRUCT_TOKEN, std::move(function))
 {}
 
