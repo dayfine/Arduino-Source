@@ -24,10 +24,10 @@
 #include "Pokemon/AutoStory/Pokemon_StorySegments.h"
 #include "Pokemon/AutoStory/Pokemon_StorySteps.h"
 #include "Pokemon/AutoStory/Pokemon_TilePose.h"
-#include "Utils/PokemonBDSP_AutoStory_Location.h"
-#include "Data/PokemonBDSP_AutoStory_PlanCosts.h"
-#include "PokemonBDSP_AutoStory_StoryPlaces.h"
-#include "PokemonBDSP_AutoStory_StoryTable.h"
+#include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Location.h"
+#include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_PlanCosts.h"
+#include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryPlaces.h"
+#include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryTable.h"
 #include "PokemonBDSP_AutoStory_StorySimulation_Tests.h"
 
 namespace PokemonAutomation{

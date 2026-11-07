@@ -38,16 +38,16 @@
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "Pokemon/AutoStory/Pokemon_StorySegments.h"
 #include "Pokemon/AutoStory/Pokemon_TilePose.h"
-#include "Data/PokemonBDSP_AutoStory_CoordEvents.h"
-#include "Data/PokemonBDSP_AutoStory_Maps.h"
+#include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_CoordEvents.h"
+#include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_Maps.h"
 #include "PokemonBDSP_AutoStory_GridSim.h"
-#include "Utils/PokemonBDSP_AutoStory_RouteWalk.h"
-#include "PokemonBDSP_AutoStory_Events.h"
-#include "PokemonBDSP_AutoStory_StoryExecutor.h"
-#include "PokemonBDSP_AutoStory_StoryPlaces.h"
-#include "PokemonBDSP_AutoStory_StoryStepIO.h"
-#include "PokemonBDSP_AutoStory_StoryTable.h"
-#include "PokemonBDSP_AutoStory_StoryWalkSteps.h"
+#include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_RouteWalk.h"
+#include "PokemonBDSP/Programs/AutoStory/Actions/PokemonBDSP_AutoStory_Events.h"
+#include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryExecutor.h"
+#include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryPlaces.h"
+#include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryStepIO.h"
+#include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryTable.h"
+#include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryWalkSteps.h"
 #include "PokemonBDSP_AutoStory_StorySim_Tests.h"
 
 namespace PokemonAutomation{
@@ -839,33 +839,38 @@ UnitTestResult test_exit_ravaged_path(Logger& logger){
     return run_exit_test(logger, "01.09", r81_old_cave_exit(), SimMisses{.fade = 0, .banner = std::nullopt}, r81_below_the_mouth());
 }
 
-//  Oreburgh Mine B1F: tapping 20 tiles south steps onto the cave mouth warp
-//  at (12, 21), cutting the counted leg short at 19 tiles.
-StoryStep old_mine_hall_south_20(){
-    StoryStep step;
-    step.kind = StoryStepKind::LEGS;
-    step.name = "into_the_coal_room";
-    step.legs = {{.direction = Direction::SOUTH, .tiles = 20}};
-    return step;
+//  Oreburgh Mine B1F: the entrance hall corridor is traversed to and back by
+//  running south from (12, 1) to (12, 21), and north from (11, 21) to (11, 1).
+UnitTestResult test_oreburgh_mine_hall_corridor(Logger& logger){
+    const StoryWorld* world = story_plan_world("OreburghMineB1F", "OreburghMineB1F");
+    if (world == nullptr){
+        return "OreburghMineB1F world not found.";
+    }
+    const SimWorld sim_world{.world = world, .can_run = true};
+    const auto test_run = [&](TilePos start, Direction dir, TilePos expected, const char* label){
+        GridSim sim(sim_world, start, dir, true);
+        const SimMove move = sim.hold(dir, 5000ms, SimPace::RUN);
+        if (move.stop != SimStop::WARP || sim.player().pos != sim_pos(expected)){
+            return std::format("{}: expected WARP at {}, got {} at {}.", label,
+                Pokemon::to_string(expected), sim_stop_name(move.stop), Pokemon::to_string(nearest_tile(sim.player().pos)));
+        }
+        logger.log(std::format("{} hall run reached {} in {} ms.", label, Pokemon::to_string(expected), move.time.count()));
+        return std::string{};
+    };
+    std::string err = test_run({12, 1}, Direction::SOUTH, {12, 21}, "Southbound");
+    if (!err.empty()){
+        return err;
+    }
+    err = test_run({11, 21}, Direction::NORTH, {11, 1}, "Northbound");
+    return err.empty() ? UnitTestResult(true) : UnitTestResult(err);
 }
 
-//  Oreburgh Mine B1F: tapping 19 tiles south leaves the player on row 20
-//  without warping; the next step (south_to_the_rock) hits the warp immediately.
-StoryStep old_mine_hall_south_19(){
+//  Oreburgh Mine B1F: tapping 19 tiles leaves the player 1 tile short of the warp door.
+StoryStep old_mine_hall_19(std::string name, Direction direction){
     StoryStep step;
     step.kind = StoryStepKind::LEGS;
-    step.name = "into_the_coal_room";
-    step.legs = {{.direction = Direction::SOUTH, .tiles = 19}};
-    return step;
-}
-
-//  Oreburgh Mine B1F: tapping 20 tiles north steps onto the city exit warp
-//  at (11, 1), cutting the leg short / warping unexpectedly.
-StoryStep old_mine_hall_north_20(){
-    StoryStep step;
-    step.kind = StoryStepKind::LEGS;
-    step.name = "out_of_the_mine";
-    step.legs = {{.direction = Direction::NORTH, .tiles = 20}};
+    step.name = std::move(name);
+    step.legs = {{.direction = direction, .tiles = 19}};
     return step;
 }
 
@@ -955,20 +960,18 @@ const AutoStoryStorySimCase AUTO_STORY_STORY_SIM_CASES[] = {
         .expectation = {},
     },
     {
-        .input = {"01.03, counted 20 taps south into cave mouth warp", [](Logger& logger){
-            return test_story_sim_step_failure(logger, "01.03", old_mine_hall_south_20(), "01.03 into_the_coal_room", "warped at (12, 21)");
-        }},
+        .input = {"01.03, Oreburgh Mine B1F entrance hall corridor runs to and back", test_oreburgh_mine_hall_corridor},
         .expectation = {},
     },
     {
         .input = {"01.03, counted 19 taps south leaves player in hall", [](Logger& logger){
-            return test_story_sim_step_failure(logger, "01.03", old_mine_hall_south_19(), "01.03 south_to_the_rock", "warp instead of a stop.");
+            return test_story_sim_step_failure(logger, "01.03", old_mine_hall_19("into_the_coal_room", Direction::SOUTH), "01.03 south_to_the_rock", "warp instead of a stop.");
         }},
         .expectation = {},
     },
     {
-        .input = {"01.03, counted 20 taps north into city exit warp", [](Logger& logger){
-            return test_story_sim_step_failure(logger, "01.03", old_mine_hall_north_20(), "01.03 out_of_the_mine", "warped at (11, 1)");
+        .input = {"01.03, counted 19 taps north leaves player in hall", [](Logger& logger){
+            return test_story_sim_step_failure(logger, "01.03", old_mine_hall_19("out_of_the_mine", Direction::NORTH), "01.03 up_to_the_mines_sign", "warp instead of a stop.");
         }},
         .expectation = {},
     },

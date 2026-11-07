@@ -17,7 +17,7 @@
 #include "Data/PokemonBDSP_AutoStory_RoutePlanner.h"
 #include "Data/PokemonBDSP_AutoStory_WallRecovery.h"
 #include "Data/PokemonBDSP_AutoStory_Maps.h"
-#include "Utils/PokemonBDSP_AutoStory_GridSim.h"
+#include "Simulation/PokemonBDSP_AutoStory_GridSim.h"
 #include "PokemonBDSP_AutoStory_RoutePlanner_Tests.h"
 
 namespace PokemonAutomation{

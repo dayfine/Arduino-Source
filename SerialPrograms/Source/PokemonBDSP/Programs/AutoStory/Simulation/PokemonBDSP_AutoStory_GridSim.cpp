@@ -6,7 +6,7 @@
 
 #include <algorithm>
 #include <format>
-#include "PokemonBDSP_AutoStory_RouteWalk.h"
+#include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_RouteWalk.h"
 #include "PokemonBDSP_AutoStory_GridSim.h"
 
 namespace PokemonAutomation{

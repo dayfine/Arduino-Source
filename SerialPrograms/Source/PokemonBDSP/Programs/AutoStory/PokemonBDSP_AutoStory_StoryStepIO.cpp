@@ -18,9 +18,9 @@
 #include "PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_OverworldDetector.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Location.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_RouteWalk.h"
-#include "PokemonBDSP_AutoStory_Talks.h"
+#include "Actions/PokemonBDSP_AutoStory_Talks.h"
 #include "PokemonBDSP_AutoStory_Walks.h"
-#include "PokemonBDSP_AutoStory_WildBattle.h"
+#include "Actions/PokemonBDSP_AutoStory_WildBattle.h"
 #include "PokemonBDSP_AutoStory_StoryPlaces.h"
 #include "PokemonBDSP_AutoStory_StoryStepIO.h"
 

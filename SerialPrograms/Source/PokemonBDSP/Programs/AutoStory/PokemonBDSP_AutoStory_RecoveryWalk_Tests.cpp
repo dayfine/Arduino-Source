@@ -9,7 +9,7 @@
  */
 #include <algorithm>
 #include "Pokemon/AutoStory/Pokemon_TilePose.h"
-#include "Utils/PokemonBDSP_AutoStory_GridSim.h"
+#include "Simulation/PokemonBDSP_AutoStory_GridSim.h"
 #include "PokemonBDSP_AutoStory_StoryPlaces.h"
 #include "PokemonBDSP_AutoStory_StoryStepIO.h"
 #include "PokemonBDSP_AutoStory_StoryTable.h"
