@@ -77,3 +77,25 @@ program-generated save/attempt behavior, uncertainty and explicit data bindings.
 Compare native serialized records before replacing authored C++ tables; bind
 native/Python replay afterward. Current FRLG/BDSP transcriptions and PLZA guides
 are review data, not executable exports or battle-ready histories.
+
+## Later validation and dev-flow steering
+
+The v2 Windows run completed: 32,964 cases passed and 69 failed, all missing-image
+`FileException`s. No other failed assertions were reported. Latest Linux at
+`b24bc1848` now compiles and is running tests; macOS remains queued.
+
+The user also requested device policies and reported the first external-build
+configure failure. Both local lab policies were populated from the independent
+`~/BDSPLab/consoles.json` A/B record and verified against fresh read-only Qt
+serial/video/audio enumeration. Each has exactly one identity per type, no A/B
+overlap, mode 0600, and passes the production policy parser. Actual device IDs
+remain local. No driver/controller/camera/audio input was opened for this check.
+
+Fork #242, `build/external-generated-source-groups`, fixes CMake IDE grouping for
+Qt qrc files generated outside the source tree. Two configure-only regressions
+failed with the original source_group call; all five pass after grouping files
+marked GENERATED separately. Windows CTest needed explicit `-C Debug`, fixed in
+`12bb5be64`. Linux/Windows CI pass; macOS CI remains queued. The actual slot-B
+configure now succeeds with the existing external build/cache. Both local dev
+branches include the production fix: A `05060b36d`, B `3a13883fd`. No app build,
+GUI launch or console operation was performed for this configure fix.
