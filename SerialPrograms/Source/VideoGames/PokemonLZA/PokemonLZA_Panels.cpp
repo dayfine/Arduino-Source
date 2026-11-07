@@ -8,6 +8,7 @@
 #include "CommonFramework/GlobalAutoPaths.h"
 #include "Pokemon/Pokemon_Strings.h"
 #include "PokemonLZA_Panels.h"
+#include "Programs/AutoStory/PokemonLZA_AutoStory.h"
 
 #include "PokemonLZA_Settings.h"
 
@@ -68,23 +69,18 @@ PanelListFactory::PanelListFactory()
     )
 {}
 
+
+static void add_general_panels(std::vector<PanelEntry>& ret){
+    add_general_panels(ret);
+}
+
 std::vector<PanelEntry> PanelListFactory::make_panels() const{
     std::vector<PanelEntry> ret;
 
     ret.emplace_back("---- Settings ----");
     ret.emplace_back(make_OptionsPanel<GameSettingsPanel>());
 
-    ret.emplace_back("---- General ----");
-    ret.emplace_back(make_SingleSwitchProgram<ClothingBuyer>());
-    ret.emplace_back(make_SingleSwitchProgram<StallBuyer>());
-    ret.emplace_back(make_MultiSwitchProgram<SelfBoxTrade>());
-    ret.emplace_back(make_SingleSwitchProgram<PostKillCatcher>());
-    ret.emplace_back(make_SingleSwitchProgram<BoxSorter>());
-    ret.emplace_back(make_SingleSwitchProgram<WeatherFinder>());
-    ret.emplace_back(make_SingleSwitchProgram<HyperspaceRewardReset>());
-    ret.emplace_back(make_SingleSwitchProgram<DonutMaker>());
-    if (IS_BETA_VERSION){
-    }
+    add_general_panels(ret);
 
     ret.emplace_back("---- Farming ----");
     ret.emplace_back(make_SingleSwitchProgram<RestaurantFarmer>());

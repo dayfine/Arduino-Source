@@ -2292,6 +2292,12 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonLZA/Programs/PokemonLZA_TrainerBattle.h
     Source/VideoGames/PokemonLZA/Programs/PokemonLZA_TurboMacro.cpp
     Source/VideoGames/PokemonLZA/Programs/PokemonLZA_TurboMacro.h
+    Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStory.cpp
+    Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStory.h
+    Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryTools.cpp
+    Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryTools.h
+    Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStory_Segment_01.cpp
+    Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStory_Segment_01.h
     Source/VideoGames/PokemonLZA/Programs/ShinyHunting/PokemonLZA_AutoFossil.cpp
     Source/VideoGames/PokemonLZA/Programs/ShinyHunting/PokemonLZA_AutoFossil.h
     Source/VideoGames/PokemonLZA/Programs/ShinyHunting/PokemonLZA_BeldumHunter.cpp
