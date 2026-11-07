@@ -2951,6 +2951,10 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonSwSh/MaxLair/PokemonSwSh_MaxLair_StrongBoss.h
     Source/VideoGames/PokemonSwSh/MaxLair/Program/PokemonSwSh_MaxLair_Run_Adventure.cpp
     Source/VideoGames/PokemonSwSh/MaxLair/Program/PokemonSwSh_MaxLair_Run_Adventure.h
+    Source/VideoGames/PokemonSwSh/MaxLair/Program/PokemonSwSh_MaxLair_OpponentRead.cpp
+    Source/VideoGames/PokemonSwSh/MaxLair/Program/PokemonSwSh_MaxLair_OpponentRead.h
+    Source/VideoGames/PokemonSwSh/MaxLair/Program/PokemonSwSh_MaxLair_OpponentRead_Tests.cpp
+    Source/VideoGames/PokemonSwSh/MaxLair/Program/PokemonSwSh_MaxLair_OpponentRead_Tests.h
     Source/VideoGames/PokemonSwSh/MaxLair/Program/PokemonSwSh_MaxLair_Run_Battle.cpp
     Source/VideoGames/PokemonSwSh/MaxLair/Program/PokemonSwSh_MaxLair_Run_Battle.h
     Source/VideoGames/PokemonSwSh/MaxLair/Program/PokemonSwSh_MaxLair_Run_CaughtScreen.cpp
