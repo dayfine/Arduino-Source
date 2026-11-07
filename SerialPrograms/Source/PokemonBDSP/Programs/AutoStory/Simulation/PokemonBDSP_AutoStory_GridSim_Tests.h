@@ -15,7 +15,7 @@ namespace PokemonBDSP{
 
 
 
-//  The grid simulation (Utils/PokemonBDSP_AutoStory_GridSim.h): the moves
+//  The grid simulation (PokemonBDSP_AutoStory_GridSim.h): the moves
 //  measured on the console, the story table's routes walked by the route
 //  walker on it, and walks that missed doors on the console missing them here.
 void add_tests_AutoStory_GridSim(UnitTestDatabase& database);

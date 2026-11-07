@@ -40,7 +40,7 @@
 #include "Pokemon/AutoStory/Pokemon_TilePose.h"
 #include "Data/PokemonBDSP_AutoStory_CoordEvents.h"
 #include "Data/PokemonBDSP_AutoStory_Maps.h"
-#include "Utils/PokemonBDSP_AutoStory_GridSim.h"
+#include "PokemonBDSP_AutoStory_GridSim.h"
 #include "Utils/PokemonBDSP_AutoStory_RouteWalk.h"
 #include "PokemonBDSP_AutoStory_Events.h"
 #include "PokemonBDSP_AutoStory_StoryExecutor.h"

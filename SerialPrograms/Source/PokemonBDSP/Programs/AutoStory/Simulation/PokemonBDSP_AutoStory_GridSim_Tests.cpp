@@ -20,7 +20,7 @@
 #include "Pokemon/AutoStory/Pokemon_TilePose.h"
 #include "Data/PokemonBDSP_AutoStory_Maps.h"
 #include "Data/PokemonBDSP_AutoStory_PlanCosts.h"
-#include "Utils/PokemonBDSP_AutoStory_GridSim.h"
+#include "PokemonBDSP_AutoStory_GridSim.h"
 #include "Utils/PokemonBDSP_AutoStory_PlannedRoute.h"
 #include "PokemonBDSP_AutoStory_StoryExecutor.h"
 #include "PokemonBDSP_AutoStory_StoryPlaces.h"
