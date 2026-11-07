@@ -68,3 +68,31 @@ Inspect all failures and record counts/results. Superseded queued macOS runs on
 this validation branch were cancelled to avoid building old fixture/code inputs.
 Other branches' runs are untouched. Actual console/detector timing remains a
 separate live validation concern.
+
+## Image sidecars and final rerun
+
+The first fixture-complete Linux Clang run (42340106165) compiled and passed
+33,026 cases, with exactly three failures: missing `_MachineSet_eng.txt`,
+`_Oddish_KnownMoves_eng.txt` and `_ItemsPocketMoonStone_eng.txt` golden files.
+The image-only inventory missed their sidecars. These original public blobs
+are now included in fixture #12 at `d150a6c547434110a920f95ba7857b93d5bb9222`;
+no expectation was changed to fit detector output. #243 now pins that revision,
+head `37d4bde7dce83034a0f4e4ca09b199833c20fd37`.
+
+Final matrix dispatched at that head (results pending):
+
+| Job | Run |
+|---|---|
+| GCC | 42341231577 |
+| Linux Clang | 42341231632 |
+| Windows Clang | 42341231772 |
+| MSVC | 42341231551 |
+| macOS ARM | 42341231550 |
+| macOS Intel | 42341231621 |
+
+The previous GCC/Windows/macOS runs were cancelled by workflow concurrency
+when these replacements were dispatched. Do not count cancelled builds as
+successful tests. macOS remained queued when the replacement runs started.
+Next data-unification milestone is real evaluated FRLG Parcel `00.05` and BDSP
+mine/Roark `01.03` exports, followed by native/Python replay parity; current
+hand-transcribed JSON examples are not native exports.
