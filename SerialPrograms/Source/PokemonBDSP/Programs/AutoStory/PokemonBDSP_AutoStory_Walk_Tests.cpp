@@ -14,7 +14,7 @@
 #include "Utils/PokemonBDSP_AutoStory_Indoors.h"
 #include "Utils/PokemonBDSP_AutoStory_Location.h"
 #include "Utils/PokemonBDSP_AutoStory_RouteWalk.h"
-#include "PokemonBDSP_AutoStory_Talks.h"
+#include "Actions/PokemonBDSP_AutoStory_Talks.h"
 #include "PokemonBDSP_AutoStory_Walk_Tests.h"
 
 namespace PokemonAutomation{

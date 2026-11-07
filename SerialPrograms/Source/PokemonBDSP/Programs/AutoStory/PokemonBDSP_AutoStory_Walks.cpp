@@ -13,8 +13,8 @@
 #include "CommonTools/Async/InferenceRoutines.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_RouteWalk.h"
-#include "PokemonBDSP_AutoStory_Talks.h"
-#include "PokemonBDSP_AutoStory_WildBattle.h"
+#include "Actions/PokemonBDSP_AutoStory_Talks.h"
+#include "Actions/PokemonBDSP_AutoStory_WildBattle.h"
 #include "PokemonBDSP_AutoStory_Walks.h"
 
 namespace PokemonAutomation{
