@@ -5,6 +5,7 @@
  */
 
 //#include "Common/Cpp/Concurrency/ReverseLockGuard.h"
+#include "Common/Cpp/MoveOnlyFunction.h"
 #include "Common/Cpp/Concurrency/AsyncTask.h"
 #include "CommonFramework/ImageTypes/ImageRGB32_Qt.h"
 #include "CommonFramework/Tools/GlobalThreadPools.h"
@@ -100,7 +101,7 @@ bool SnapshotManager::try_dispatch_conversion(uint64_t seqnum, QVideoFrame frame
     }
 
     try{
-        std::function<void()> lambda = [=, this, frame = std::move(frame)](){
+        MoveOnlyFunction<void()> lambda = [=, this, frame = std::move(frame)](){
             convert(seqnum, std::move(frame), timestamp);
         };
 

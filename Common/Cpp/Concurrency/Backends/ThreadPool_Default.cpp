@@ -90,7 +90,7 @@ WallDuration ThreadPool_Default::cpu_time() const{
     return ret;
 }
 
-AsyncTask ThreadPool_Default::dispatch(std::function<void()>&& func){
+AsyncTask ThreadPool_Default::dispatch(MoveOnlyFunction<void()>&& func){
     AsyncTask task;
     {
         std::unique_lock<Mutex> lg(m_lock);
@@ -114,7 +114,7 @@ AsyncTask ThreadPool_Default::dispatch(std::function<void()>&& func){
     m_thread_cv.notify_one();
     return task;
 }
-AsyncTask ThreadPool_Default::dispatch_now_blocking(std::function<void()>&& func){
+AsyncTask ThreadPool_Default::dispatch_now_blocking(MoveOnlyFunction<void()>&& func){
     AsyncTask task;
     {
         std::unique_lock<Mutex> lg(m_lock);
@@ -138,7 +138,7 @@ AsyncTask ThreadPool_Default::dispatch_now_blocking(std::function<void()>&& func
     m_thread_cv.notify_one();
     return task;
 }
-AsyncTask ThreadPool_Default::try_dispatch_now(std::function<void()>& func){
+AsyncTask ThreadPool_Default::try_dispatch_now(MoveOnlyFunction<void()>& func){
     AsyncTask task;
     {
         std::lock_guard<Mutex> lg(m_lock);
