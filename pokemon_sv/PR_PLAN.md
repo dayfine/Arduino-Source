@@ -1,5 +1,11 @@
 # BBQ work → upstream PRs: layered plan
 
+**Status update (2026-11-06):** use [PR_PROGRESS.md](PR_PROGRESS.md) for the
+complete current inventory and logging consolidation decisions. The dependency
+graphs and readiness statements below are the original design snapshot; several
+prerequisites have since merged or been replaced. Merge parents; old references
+to rebasing are superseded by the agents-branch workflow.
+
 Written 2026-10-26 from lab/r10 at f20d06c7b against upstream/main d47a41f82.
 lab/r10 is 148 non-merge commits ahead (+9.5k / −0.9k in `SerialPrograms/Source`); about 100 of
 those commits (+5.5k net) are in no fork PR yet. This plan says how all of it becomes reviewable

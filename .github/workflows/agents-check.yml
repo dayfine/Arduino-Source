@@ -34,6 +34,8 @@ jobs:
           python-version: '3.11'
           cache: pip
           cache-dependency-path: devtools/code_health/requirements.txt
+      - name: Offline development launcher tests
+        run: python3 -m unittest discover -s lab/scripts -p test_start_dev.py -v
       - name: Code health linter self-tests
         run: |
           python -m pip install -r devtools/code_health/requirements.txt
