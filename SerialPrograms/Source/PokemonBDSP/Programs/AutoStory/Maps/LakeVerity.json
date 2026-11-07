@@ -1,6 +1,11 @@
 {
+    "format": "pokesim-runtime-map/2",
     "name": "LakeVerity",
-    "source": {"decomp_file": "pret/pokediamond: files/fielddata/land_data/land_data_release/narc_0512.bin; zone_event narc_0298", "revision": "default branch", "date": "2026-10-31"},
+    "source": {
+        "decomp_file": "pret/pokediamond: files/fielddata/land_data/land_data_release/narc_0512.bin; zone_event narc_0298",
+        "revision": "default branch",
+        "date": "2026-10-31"
+    },
     "tiles": [
         "wwwwwwwwwwwwwwww################",
         "wwwwwwwwwwwwwwww################",
@@ -35,9 +40,9 @@
         "################################",
         "################################"
     ],
-    "objects": [
-        {"name": "rowan", "kind": "npc", "x": 16, "y": 11, "facing": "north"},
-        {"name": "counterpart", "kind": "npc", "x": 17, "y": 11, "facing": "north"},
-        {"name": "starly_3", "kind": "npc", "x": 16, "y": 19, "facing": "north"}
+    "npcs": [
+        {"name": "rowan", "coord": [16, 11], "facing": "north"},
+        {"name": "counterpart", "coord": [17, 11], "facing": "north"},
+        {"name": "starly_3", "coord": [16, 19], "facing": "north"}
     ]
 }

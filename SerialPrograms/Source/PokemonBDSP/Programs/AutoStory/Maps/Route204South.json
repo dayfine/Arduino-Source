@@ -1,6 +1,11 @@
 {
+    "format": "pokesim-runtime-map/2",
     "name": "Route204South",
-    "source": {"decomp_file": "pret/pokediamond: files/fielddata/land_data/land_data_release/narc_0021.bin; zone_event narc_0330", "revision": "default branch", "date": "2026-11-01"},
+    "source": {
+        "decomp_file": "pret/pokediamond: files/fielddata/land_data/land_data_release/narc_0021.bin; zone_event narc_0330",
+        "revision": "default branch",
+        "date": "2026-11-01"
+    },
     "tiles": [
         "################################",
         "###########D###.################",
@@ -44,13 +49,15 @@
         "trainer_sarah": [12, 21],
         "trainer_tyler": [7, 18]
     },
-    "objects": [
-        {"name": "lass_0", "kind": "npc", "x": 12, "y": 21},
-        {"name": "lass_1", "kind": "npc", "x": 11, "y": 8, "facing": "south"},
-        {"name": "youngster_2", "kind": "npc", "x": 7, "y": 18},
-        {"name": "youngster_3", "kind": "npc", "x": 13, "y": 2, "wander": {"x0": 12, "y0": 2, "x1": 14, "y1": 2}},
-        {"name": "item_7", "kind": "item", "x": 2, "y": 28},
-        {"name": "item_8", "kind": "item", "x": 29, "y": 12},
-        {"name": "item_9", "kind": "item", "x": 17, "y": 18}
+    "npcs": [
+        {"name": "lass_0", "coord": [12, 21]},
+        {"name": "lass_1", "coord": [11, 8], "facing": "south"},
+        {"name": "youngster_2", "coord": [7, 18]},
+        {"name": "youngster_3", "coord": [13, 2], "wander": {"min": [12, 2], "max": [14, 2]}}
+    ],
+    "items": [
+        {"name": "item_7", "coord": [2, 28]},
+        {"name": "item_8", "coord": [29, 12]},
+        {"name": "item_9", "coord": [17, 18]}
     ]
 }
