@@ -8,11 +8,14 @@
  */
 
 #include <cmath>
+#include <cstdint>
 #include <format>
 #include <functional>
 #include <optional>
 #include <string_view>
+#include <utility>
 #include <vector>
+#include "Common/Cpp/Color.h"
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/Logging/AbstractLogger.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
@@ -202,6 +205,42 @@ UnitTestResult test_loaded_bag_other_items(Logger&){
     return true;
 }
 
+//  Awakenings, bought at Cerulean after a MOON STONE took its row: counted
+//  from the bag and found in their row.
+UnitTestResult test_loaded_bag_awakenings(Logger&){
+    Supplies row;
+    Supplies saved = row;
+    set_from_loaded_bag(row, saved, {{"", 1}, {"parlyz-heal", 1}, {"potion", 15}, {"awakening", 3}});
+    if (row.awakenings != 3 || saved.awakenings != 3 || item_count(row, "awakening") != 3 || item_row(row, "awakening") != 3){
+        return std::format(
+            "Expected 3 Awakenings in row 3, now and for a reload; got {} and {}, row {}.",
+            row.awakenings, saved.awakenings, item_row(row, "awakening")
+        );
+    }
+    return true;
+}
+
+//  The status badge's mean color on console B's captures: none and PSN
+//  (2026-11-01), and SLP after the Cerulean rival's Sleep Powder
+//  (2026-11-03, m56 run 2, turns 6 and 7 at 34/65 and 13/65 HP), which
+//  read as "a status".
+UnitTestResult test_status_badge(Logger&){
+    const std::vector<std::pair<uint32_t, StatusCondition>> cases = {
+        {combine_rgb(255, 255, 217), StatusCondition::NONE},
+        {combine_rgb(228, 168, 212), StatusCondition::POISON},
+        {combine_rgb(202, 203, 168), StatusCondition::SLEEP},
+    };
+    for (const auto& [color, expected] : cases){
+        ImageRGB32 badge(12, 4);
+        badge.fill(color);
+        const StatusCondition read = read_status_badge(badge);
+        if (read != expected){
+            return std::format("Badge 0x{:08x}: expected {}, got {}.", color, status_name(expected), status_name(read));
+        }
+    }
+    return true;
+}
+
 //  The pocket's rows as read: an unread name keeps its row, so the rows
 //  below it are still read; the rows end at CANCEL, or at the last name read.
 UnitTestResult test_pocket_rows_unread(Logger&){
@@ -383,6 +422,14 @@ const AutoStoryItemsTestCase AUTO_STORY_ITEMS_CASES[] = {
     {
         .input = {.name = "a wild battle seen late is placed where it stopped the leg", .body = test_late_battle_placed},
         .expectation = {.description = "places late wild battle at interruption point"},
+    },
+    {
+        .input = {.name = "Awakenings counted from the bag", .body = test_loaded_bag_awakenings},
+        .expectation = {.description = "verifies awakenings are read and tracked from bag contents"},
+    },
+    {
+        .input = {.name = "the status badge: none, PSN, SLP", .body = test_status_badge},
+        .expectation = {.description = "detects status conditions accurately from status bar image"},
     },
 };
 

@@ -156,6 +156,7 @@ Pokemon::StoryStep mart_step(std::string name, std::string why, const MartPlan& 
     step.name = std::move(name);
     step.why = std::move(why);
     step.variant = mart_variant(plan);
+    step.once_per_save = true;
     return step;
 }
 
@@ -415,6 +416,8 @@ void count_supplies(Supplies& supplies, std::string_view item, size_t quantity){
         count = &Supplies::antidotes;
     }else if (item == "parlyz-heal"){
         count = &Supplies::parlyz_heals;
+    }else if (item == "awakening"){
+        count = &Supplies::awakenings;
     }
     if (count == nullptr){
         return;

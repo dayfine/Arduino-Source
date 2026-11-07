@@ -786,95 +786,176 @@ UnitTestResult test_mt_moon_way_out(){
     return true;
 }
 
+//  Story row 00.14: from Route 4 east of Mt. Moon along the upper road to
+//  above the ledge row 9, out of Lass Crissy's line (75, 3); one step
+//  south hops the ledge onto the lower road two tiles down; from there
+//  into Cerulean City and its Pokemon Center by one door. No route plans
+//  past the ledge: the upper road reaches the city only by water.
+UnitTestResult test_route4_to_cerulean(){
+    const SimCase upper{.start = at("Route4", 32, 6), .facing = Direction::SOUTH, .goal = at("Route4", 93, 8)};
+    const SimRun walk = run_case(upper);
+    if (!arrived(walk, upper.goal) || !walk.state.trainers_beaten.empty()){
+        return "Expected the upper road walked to above the ledge, no trainer met:" + describe(walk);
+    }
+    OverworldSim sim(maps(), at("Route4", 93, 8), Direction::SOUTH);
+    sim.tap(Direction::SOUTH);
+    sim.watch({SimWatcher::MESSAGE}, std::chrono::milliseconds(2000));
+    if (!(sim.state().position == at("Route4", 93, 10))){
+        return "Expected the step south to hop the ledge onto (93, 10), not " + to_string(sim.state().position) + ".";
+    }
+    const SimCase lower{.start = at("Route4", 93, 10), .facing = Direction::SOUTH, .goal = at("CeruleanCity_PokemonCenter_1F", 7, 4)};
+    const SimRun now = run_case(lower);
+    if (!arrived(now, lower.goal) || now.state.warps != 1 || !now.state.trainers_beaten.empty()){
+        return "Expected Cerulean's Pokemon Center reached by its door, no trainer met:" + describe(now);
+    }
+    return true;
+}
+
+//  Story rows 00.14b and 00.14c in Cerulean Gym (pokefirered map.json):
+//  from the Center into the Gym, up column 9 to (9, 13), west to (4, 13),
+//  then to walls round the pool's west and north sides and west to (9, 7)
+//  below Misty's platform, meeting no one; and back from beside her (9, 6)
+//  the same way round to (9, 13) and out to the Center.
+UnitTestResult test_cerulean_gym_walks(){
+    const SimCase in{.start = at("CeruleanCity_PokemonCenter_1F", 7, 4), .facing = Direction::NORTH, .goal = at("CeruleanCity_Gym", 9, 13)};
+    const SimRun entered = run_case(in);
+    if (!arrived(entered, in.goal) || entered.state.warps != 2 || !entered.state.trainers_beaten.empty()){
+        return "Expected the Gym entered and (9, 13) reached, no trainer met:" + describe(entered);
+    }
+    SimCase west{.start = in.goal, .facing = Direction::NORTH, .goal = at("CeruleanCity_Gym", 4, 13)};
+    west.route = std::vector<RouteStep>{leg(Direction::WEST, 5, west.goal, true)};
+    const SimRun walkway = run_case(west);
+    if (!arrived(walkway, west.goal) || !walkway.state.trainers_beaten.empty()){
+        return "Expected the wall (4, 13) reached west from (9, 13), no trainer met:" + describe(walkway);
+    }
+    SimCase up{.start = west.goal, .facing = Direction::WEST, .goal = at("CeruleanCity_Gym", 9, 7)};
+    up.route = std::vector<RouteStep>{
+        leg(Direction::NORTH, 3, at("CeruleanCity_Gym", 4, 10), true),
+        leg(Direction::EAST, 8, at("CeruleanCity_Gym", 12, 10), true),
+        leg(Direction::NORTH, 3, at("CeruleanCity_Gym", 12, 7), true),
+        leg(Direction::WEST, 3, up.goal, false),
+    };
+    const SimRun walk = run_case(up);
+    if (!arrived(walk, up.goal) || !walk.state.trainers_beaten.empty()){
+        return "Expected (9, 7) below Misty's platform reached round the pool, no trainer met:" + describe(walk);
+    }
+    SimCase out{.start = at("CeruleanCity_Gym", 9, 6), .facing = Direction::WEST, .goal = at("CeruleanCity_Gym", 9, 13)};
+    out.route = std::vector<RouteStep>{
+        leg(Direction::SOUTH, 1, at("CeruleanCity_Gym", 9, 7), false),
+        leg(Direction::EAST, 3, at("CeruleanCity_Gym", 12, 7), true),
+        leg(Direction::SOUTH, 3, at("CeruleanCity_Gym", 12, 10), true),
+        leg(Direction::WEST, 8, at("CeruleanCity_Gym", 4, 10), true),
+        leg(Direction::SOUTH, 3, at("CeruleanCity_Gym", 4, 13), true),
+        leg(Direction::EAST, 5, out.goal, true),
+    };
+    const SimRun back = run_case(out);
+    if (!arrived(back, out.goal) || !back.state.trainers_beaten.empty()){
+        return "Expected (9, 13) reached from beside Misty round the pool, no trainer met:" + describe(back);
+    }
+    const SimCase nurse{.start = out.goal, .facing = Direction::EAST, .goal = at("CeruleanCity_PokemonCenter_1F", 7, 4)};
+    const SimRun healed = run_case(nurse);
+    if (!arrived(healed, nurse.goal) || healed.state.warps != 2 || !healed.state.trainers_beaten.empty()){
+        return "Expected the Center reached from (9, 13), no trainer met:" + describe(healed);
+    }
+    return true;
+}
+
+//  The straight ways in Cerulean Gym that 00.14b and 00.14c keep off: the
+//  step onto (9, 12) meets Swimmer Luis, and the step onto (8, 7),
+//  misty_front, Picnicker Diana.
+UnitTestResult test_cerulean_gym_lines(){
+    const struct{
+        MapPosition from;
+        Direction direction;
+        MapPosition onto;
+        const char* trainer;
+    } LINES[] = {
+        {at("CeruleanCity_Gym", 9, 13), Direction::NORTH, at("CeruleanCity_Gym", 9, 12), "swimmer_m_water"},
+        {at("CeruleanCity_Gym", 9, 7), Direction::WEST, at("CeruleanCity_Gym", 8, 7), "picnicker"},
+    };
+    for (const auto& line : LINES){
+        SimCase c{.start = line.from, .facing = line.direction, .goal = line.onto};
+        c.route = std::vector<RouteStep>{leg(line.direction, 1, c.goal, false)};
+        const SimRun now = run_case(c);
+        if (!arrived(now, c.goal) || now.state.trainers_beaten != std::vector<std::string>{line.trainer}){
+            return std::format("Expected the {} fought on the step onto {}:", line.trainer, to_string(line.onto)) + describe(now);
+        }
+    }
+    return true;
+}
+
+//  Story rows 00.15 and 00.16: out of Cerulean's Pokemon Center by its mat
+//  to below the rival's trigger row, and on north across the city's edge
+//  onto Nugget Bridge, below Cale's row, meeting no one.
+UnitTestResult test_cerulean_to_bridge(){
+    const MapPosition nurse = at("CeruleanCity_PokemonCenter_1F", 7, 4);
+    for (const MapPosition& goal : {at("CeruleanCity", 23, 7), at("Route24", 11, 32)}){
+        const SimCase c{.start = nurse, .facing = Direction::NORTH, .goal = goal};
+        const SimRun now = run_case(c);
+        if (!arrived(now, c.goal) || now.state.warps != 1 || !now.state.trainers_beaten.empty()){
+            return "Expected " + to_string(goal) + " reached by the Center's mat, no trainer met:" + describe(now);
+        }
+    }
+    return true;
+}
+
+//  Story row 00.16 up Nugget Bridge: the short legs between the five
+//  trainers' rows meet no one; and the step from the tile below each row
+//  onto it is in that trainer's sight, beside them, so they fight there
+//  without walking: Cale, Ali, Timmy, Reli and Ethan.
+UnitTestResult test_nugget_bridge_legs(){
+    SimCase between{.start = at("Route24", 11, 31), .facing = Direction::NORTH, .goal = at("Route24", 11, 29)};
+    between.route = std::vector<RouteStep>{leg(Direction::NORTH, 2, between.goal, false)};
+    const SimRun walk = run_case(between);
+    if (!arrived(walk, between.goal) || !walk.state.trainers_beaten.empty()){
+        return "Expected the leg between two rows walked, no trainer met:" + describe(walk);
+    }
+    const struct{
+        int row;
+        const char* trainer;
+    } LINES[] = {{31, "bug_catcher"}, {28, "lass"}, {25, "youngster"}, {22, "lass"}, {19, "camper"}};
+    for (const auto& line : LINES){
+        SimCase c{.start = at("Route24", 11, line.row + 1), .facing = Direction::NORTH, .goal = at("Route24", 11, line.row)};
+        c.route = std::vector<RouteStep>{leg(Direction::NORTH, 1, c.goal, false)};
+        const SimRun now = run_case(c);
+        if (!arrived(now, c.goal) || now.state.trainers_beaten != std::vector<std::string>{line.trainer}){
+            return std::format("Expected the {} on row {} fought beside the player:", line.trainer, line.row) + describe(now);
+        }
+    }
+    return true;
+}
+
 } // namespace
 
 
+
 const OverworldSimCase OVERWORLD_SIM_CASES[] = {
-    {
-        .input = {"the forest's north gate: no fade or black read as a battle", test_forest_north_gate},
-        .expectation = {},
-    },
-    {
-        .input = {"a battle on a leg onto a warp", test_battle_on_warp_leg},
-        .expectation = {},
-    },
-    {
-        .input = {"the START menu left open", test_start_menu_open},
-        .expectation = {},
-    },
-    {
-        .input = {"a battle at the end of a leg", test_battle_at_end_of_leg},
-        .expectation = {},
-    },
-    {
-        .input = {"a late battle stops an open leg", test_late_battle_mid_leg},
-        .expectation = {},
-    },
-    {
-        .input = {"a trainer's battle is fought, not fled", test_trainer_not_fled},
-        .expectation = {},
-    },
-    {
-        .input = {"no hold over a ledge", test_no_hold_over_ledge},
-        .expectation = {},
-    },
-    {
-        .input = {"a short leg, then a sign", test_short_leg_then_sign},
-        .expectation = {},
-    },
-    {
-        .input = {"a short leg, nothing seen", test_short_leg_unseen},
-        .expectation = {},
-    },
-    {
-        .input = {"a trainer on the way out of Pewter Gym", test_trainer_on_way_out},
-        .expectation = {},
-    },
-    {
-        .input = {"out of Viridian Mart from the clerk's scene", test_mart_exit},
-        .expectation = {},
-    },
-    {
-        .input = {"Mt. Moon: down the ladders to B2F", test_mt_moon_ladders},
-        .expectation = {},
-    },
-    {
-        .input = {"Mt. Moon: the Moon Stone is a short detour", test_moon_stone_detour},
-        .expectation = {},
-    },
-    {
-        .input = {"Mt. Moon: the Grunt who looks around stops a leg to a wall", test_mt_moon_grunt_mid_leg},
-        .expectation = {},
-    },
-    {
-        .input = {"Mt. Moon: a short open leg before the Grunt's line", test_mt_moon_short_leg},
-        .expectation = {},
-    },
-    {
-        .input = {"Mt. Moon: a late wild battle in the cave", test_mt_moon_late_battle},
-        .expectation = {},
-    },
-    {
-        .input = {"Mt. Moon: after the HELIX, out to Route 4", test_mt_moon_way_out},
-        .expectation = {},
-    },
-    {
-        .input = {"Mt. Moon: a battle on the leg onto 1F's ladder", test_mt_moon_battle_on_ladder_leg},
-        .expectation = {},
-    },
-    {
-        .input = {"Mt. Moon: a battle seen only after a leg to a wall", test_mt_moon_battle_seen_after_wall_leg},
-        .expectation = {},
-    },
-    {
-        .input = {"Mt. Moon: black after a leg not marked wild", test_mt_moon_black_after_unmarked_leg},
-        .expectation = {},
-    },
-    {
-        .input = {"Mt. Moon: a battle seen only before the next leg", test_mt_moon_battle_before_next_leg},
-        .expectation = {},
-    },
-};
+    {.input = {"the forest's north gate: no fade or black read as a battle", test_forest_north_gate}, .expectation = {},},
+    {.input = {"a battle on a leg onto a warp", test_battle_on_warp_leg}, .expectation = {},},
+    {.input = {"the START menu left open", test_start_menu_open}, .expectation = {},},
+    {.input = {"a battle at the end of a leg", test_battle_at_end_of_leg}, .expectation = {},},
+    {.input = {"a late battle stops an open leg", test_late_battle_mid_leg}, .expectation = {},},
+    {.input = {"a trainer's battle is fought, not fled", test_trainer_not_fled}, .expectation = {},},
+    {.input = {"no hold over a ledge", test_no_hold_over_ledge}, .expectation = {},},
+    {.input = {"a short leg, then a sign", test_short_leg_then_sign}, .expectation = {},},
+    {.input = {"a short leg, nothing seen", test_short_leg_unseen}, .expectation = {},},
+    {.input = {"a trainer on the way out of Pewter Gym", test_trainer_on_way_out}, .expectation = {},},
+    {.input = {"out of Viridian Mart from the clerk's scene", test_mart_exit}, .expectation = {},},
+    {.input = {"Mt. Moon: down the ladders to B2F", test_mt_moon_ladders}, .expectation = {},},
+    {.input = {"Mt. Moon: the Moon Stone is a short detour", test_moon_stone_detour}, .expectation = {},},
+    {.input = {"Mt. Moon: the Grunt who looks around stops a leg to a wall", test_mt_moon_grunt_mid_leg}, .expectation = {},},
+    {.input = {"Mt. Moon: a short open leg before the Grunt's line", test_mt_moon_short_leg}, .expectation = {},},
+    {.input = {"Mt. Moon: a late wild battle in the cave", test_mt_moon_late_battle}, .expectation = {},},
+    {.input = {"Mt. Moon: after the HELIX, out to Route 4", test_mt_moon_way_out}, .expectation = {},},
+    {.input = {"Mt. Moon: a battle on the leg onto 1F's ladder", test_mt_moon_battle_on_ladder_leg}, .expectation = {},},
+    {.input = {"Mt. Moon: a battle seen only after a leg to a wall", test_mt_moon_battle_seen_after_wall_leg}, .expectation = {},},
+    {.input = {"Mt. Moon: black after a leg not marked wild", test_mt_moon_black_after_unmarked_leg}, .expectation = {},},
+    {.input = {"Mt. Moon: a battle seen only before the next leg", test_mt_moon_battle_before_next_leg}, .expectation = {},},
+    {.input = {"Route 4 east, down its ledge, to Cerulean's Pokemon Center", test_route4_to_cerulean}, .expectation = {},},
+    {.input = {"Cerulean Gym: to Misty and back round the pool, no trainer met", test_cerulean_gym_walks}, .expectation = {},},
+    {.input = {"Cerulean Gym: the straight ways meet Luis and Diana", test_cerulean_gym_lines}, .expectation = {},},
+    {.input = {"Cerulean: the Center to the rival's row and Nugget Bridge", test_cerulean_to_bridge}, .expectation = {},},
+    {.input = {"Nugget Bridge: each trainer met on the step onto their row", test_nugget_bridge_legs}, .expectation = {},},};
 
 void add_tests_OverworldSim(UnitTestDatabase& database){
     for (const auto& item : OVERWORLD_SIM_CASES){

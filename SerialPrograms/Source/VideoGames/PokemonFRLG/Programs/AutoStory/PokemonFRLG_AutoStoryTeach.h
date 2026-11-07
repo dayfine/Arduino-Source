@@ -80,7 +80,9 @@ std::string teach_variant(const TeachPlan& plan);
 //  Parses a move teaching plan from a variant string.
 std::optional<TeachPlan> parse_teach_variant(std::string_view variant);
 
-//  Constructs an auto-story step for teaching a TM or HM.
+//  The table's TEACH step, once per save (StoryStep::once_per_save): a
+//  retry from the same save skips it when the lead knew the move or there
+//  was no TM.
 Pokemon::StoryStep teach_step(std::string name, std::string why, const TeachPlan& plan);
 
 

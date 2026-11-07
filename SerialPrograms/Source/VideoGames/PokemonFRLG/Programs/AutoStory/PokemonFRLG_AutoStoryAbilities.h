@@ -44,7 +44,8 @@ struct StoryAbilities{
 //  the segment stops without reloading. Any other end but success is a
 //  failed Outcome; a MART that buys nothing because the money doesn't
 //  cover it, and a TEACH whose TM isn't in the TM CASE, succeed, with the
-//  reason logged.
+//  reason logged. Those, a TEACH of a move the member knows and a LEVEL
+//  reached change nothing in the game (Outcome::changed_nothing).
 std::optional<Pokemon::Outcome> run_ability_game_step(
     Logger& logger, VideoStream* stream, const Pokemon::StoryStep& step, StoryAbilities& abilities
 );

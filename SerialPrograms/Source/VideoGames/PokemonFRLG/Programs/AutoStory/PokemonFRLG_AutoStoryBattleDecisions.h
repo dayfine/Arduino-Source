@@ -23,6 +23,7 @@
 #include <map>
 #include <optional>
 #include <set>
+#include <string>
 #include "Common/Cpp/Time.h"
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "PokemonFRLG_AutoStoryBattle.h"
@@ -38,6 +39,7 @@ enum class TurnChoice{
     RUN,
     POTION,
     ANTIDOTE,
+    AWAKENING,
     MOVE,
 };
 
@@ -46,6 +48,9 @@ struct TurnAction{
     TurnChoice choice = TurnChoice::MOVE;
     //  For MOVE, the move list's slot.
     size_t slot = BOTTOM_LEFT_MOVE;
+    //  Why a Potion was or wasn't used, for the log; empty when none was
+    //  weighed (green HP, awake).
+    std::string heal_reason = {};
 };
 
 //  What came of a TurnAction.

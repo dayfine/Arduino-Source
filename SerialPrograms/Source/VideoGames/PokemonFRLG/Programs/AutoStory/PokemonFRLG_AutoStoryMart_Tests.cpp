@@ -377,7 +377,8 @@ UnitTestResult test_mart_stock(){
 }
 
 
-//  Potions, Antidotes and Parlyz Heals bought go into the battles' supplies.
+//  Potions, Antidotes, Parlyz Heals and Awakenings bought go into the
+//  battles' supplies.
 UnitTestResult test_count_supplies(){
     Supplies supplies;
     supplies.pocket = {"potion"};
@@ -386,9 +387,11 @@ UnitTestResult test_count_supplies(){
     count_supplies(supplies, "potion", 2);
     count_supplies(supplies, "repel", 4);
     count_supplies(supplies, "poke-ball", 5);
-    if (supplies.potions != 3 || supplies.antidotes != 3 || supplies.pocket != std::vector<std::string>{"potion", "antidote"}){
-        return std::format("Supplies {} potions, {} antidotes, {} pocket rows.",
-            supplies.potions, supplies.antidotes, supplies.pocket.size());
+    count_supplies(supplies, "awakening", 3);
+    const std::vector<std::string> pocket{"potion", "antidote", "awakening"};
+    if (supplies.potions != 3 || supplies.antidotes != 3 || supplies.awakenings != 3 || supplies.pocket != pocket){
+        return std::format("Supplies {} potions, {} antidotes, {} awakenings, {} pocket rows.",
+            supplies.potions, supplies.antidotes, supplies.awakenings, supplies.pocket.size());
     }
     return true;
 }

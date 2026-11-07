@@ -123,8 +123,9 @@ Pokemon::StoryStep game_step(std::string variant){
     return step;
 }
 
-//  The failure name the step ends with ("" for success); "none" if it
-//  isn't one of these steps.
+//  The failure name the step ends with ("" for success, "unchanged" for
+//  one that changed nothing in the game); "none" if it isn't one of these
+//  steps.
 std::string run_step(StubGame& game, const Pokemon::StoryStep& step){
     QuietLogger logger;
     const MemberReader members = [&game](size_t slot) -> std::optional<MemberInfo>{
@@ -135,7 +136,10 @@ std::string run_step(StubGame& game, const Pokemon::StoryStep& step){
     };
     StoryAbilities abilities{members, game.mart, game.teach, game.patch, game.fossils};
     const std::optional<Pokemon::Outcome> outcome = run_ability_game_step(logger, nullptr, step, abilities);
-    return outcome ? outcome->failure : "none";
+    if (!outcome){
+        return "none";
+    }
+    return outcome->changed_nothing ? "unchanged" : outcome->failure;
 }
 
 struct StepCase{
@@ -149,13 +153,13 @@ std::vector<StepCase> step_cases(){
     const auto none = [](StubGame&){};
     const Pokemon::StoryStep grind = grind_step("grind", "", {.member = 0, .level = 20, .max_encounters = 5, .pace = Pokemon::Direction::EAST, .heal_every = 0}, {});
     return {
-        {"level reached", none, level_step("check", "", {.slot = 0, .level = 16}), ""},
+        {"level reached", none, level_step("check", "", {.slot = 0, .level = 16}), "unchanged"},
         {"level below", none, level_step("check", "", {.slot = 0, .level = 17}), "level_below"},
         {"level unread", [](StubGame& game){ game.level.reset(); }, level_step("check", "", {.slot = 0, .level = 16}), "level_unread"},
-        {"a Mart with too little money succeeds", [](StubGame& game){ game.mart.money = 100; }, game_step("mart PewterCity_Mart budget=2000 potion=5"), ""},
+        {"a Mart with too little money succeeds", [](StubGame& game){ game.mart.money = 100; }, game_step("mart PewterCity_Mart budget=2000 potion=5"), "unchanged"},
         {"a Mart purchase that fails", none, game_step("mart PewterCity_Mart budget=2000 potion=5"), "mart_failed"},
-        {"a move it knows already succeeds", none, game_step("teach hm03 surf slot=1"), ""},
-        {"a TM not in the TM Case is skipped", none, game_step("teach tm03 water-pulse slot=1 forget=water-gun"), ""},
+        {"a move it knows already succeeds", none, game_step("teach hm03 surf slot=1"), "unchanged"},
+        {"a TM not in the TM Case is skipped", none, game_step("teach tm03 water-pulse slot=1 forget=water-gun"), "unchanged"},
         {"a level that can't be read stops a GRIND", [](StubGame& game){ game.level.reset(); }, grind, "grind_unread"},
         {"a GRIND without a nurse", none, game_step("grind slot=1 level=20"), "bad_variant"},
         {"no YES/NO at the fossil", none, fossil_step("fossil", "", Fossil::HELIX), "fossil_failed"},
@@ -172,6 +176,27 @@ UnitTestResult test_ability_steps(){
         if (failure != item.failure){
             return std::format("{}: \"{}\", expected \"{}\".", item.name, failure, item.failure);
         }
+    }
+    return true;
+}
+
+
+//  TEACH and MART steps are preparation, once per save: a retry from the
+//  same save skips one that changed nothing. A LEVEL check, which follows
+//  a GRIND, and the GRIND run every attempt.
+UnitTestResult test_once_per_save_steps(){
+    const std::vector<Pokemon::StoryStep> once{
+        teach_step("teach", "", {.item = "tm03", .move = "water-pulse", .member = 0, .forget_move = "tail-whip"}),
+        mart_step("mart", "", {.map = "CeruleanCity_Mart", .lines = {{.item = "potion", .quantity = 3}}, .budget = 1500, .money_floor = 1500}),
+    };
+    for (const Pokemon::StoryStep& step : once){
+        if (!step.once_per_save){
+            return step.name + ": expected once per save.";
+        }
+    }
+    const Pokemon::StoryStep grind = grind_step("grind", "", {.member = 0, .level = 20, .max_encounters = 5, .pace = Pokemon::Direction::EAST, .heal_every = 0}, {});
+    if (grind.once_per_save || level_step("level", "", {.slot = 0, .level = 16}).once_per_save){
+        return "GRIND and LEVEL: expected every attempt.";
     }
     return true;
 }
@@ -220,6 +245,10 @@ const AutoStoryAbilitiesCase AUTO_STORY_ABILITIES_CASES[] = {
     },
     {
         .input = {"the LEVEL step's variant", test_level_variant},
+        .expectation = {},
+    },
+    {
+        .input = {"TEACH and MART run once per save", test_once_per_save_steps},
         .expectation = {},
     },
 };

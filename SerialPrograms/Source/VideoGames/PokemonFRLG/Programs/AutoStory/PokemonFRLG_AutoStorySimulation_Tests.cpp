@@ -17,6 +17,7 @@
 #include <format>
 #include <functional>
 #include <map>
+#include <optional>
 #include <string>
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
@@ -24,6 +25,9 @@
 #include "Pokemon/AutoStory/Pokemon_StorySegments.h"
 #include "Pokemon/AutoStory/Pokemon_StorySteps.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRoute.h"
+#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSim.h"
+#include "PokemonFRLG_AutoStoryActions.h"
+#include "PokemonFRLG_AutoStoryEvents.h"
 #include "PokemonFRLG_AutoStoryTable.h"
 
 namespace PokemonAutomation{
@@ -147,12 +151,31 @@ protected:
         }
         return Pokemon::outcome_ok(to_pose(StoryPose{route->back().end.map, route->back().end.point, route->back().facing_after}));
     }
+    //  A step into a trainer's line goes on until a trainer can see the
+    //  player, as step_until_seen() does on the console.
     virtual Outcome step(RunState& state, const StoryStep& step) override{
         const std::optional<StoryPose> at = story_pose(state.pose);
         if (!at){
             return Pokemon::outcome_failed("no_pose", Pokemon::to_string(state.pose));
         }
-        return Pokemon::outcome_ok(to_pose(StoryPose{at->map, at->tile.next(step.direction), step.direction}));
+        const MapData* map = map_named(at->map);
+        if (step.variant != TRAINER_LINE_VARIANT || map == nullptr){
+            return Pokemon::outcome_ok(to_pose(StoryPose{at->map, at->tile.next(step.direction), step.direction}));
+        }
+        TilePos onto = at->tile;
+        const std::optional<int> stepped = step_until_seen(
+            TRAINER_LINE_TILES,
+            [&]{ onto = onto.next(step.direction); },
+            [&]{
+                return std::any_of(map->objects.begin(), map->objects.end(), [&](const MapObject& object){
+                    return object.trainer && trainer_may_see(*map, object, onto);
+                });
+            }
+        );
+        if (!stepped){
+            return Pokemon::outcome_failed("no_trainer", to_string(MapPosition{at->map, onto}));
+        }
+        return Pokemon::outcome_ok(to_pose(StoryPose{at->map, onto, step.direction}));
     }
     //  The nurse's way must plan too, but the run goes on from where it stands.
     virtual Outcome ready(RunState& state, const StoryStep& step) override{
@@ -392,6 +415,157 @@ UnitTestResult test_gives_up_after_attempts(){
     return true;
 }
 
+//  The route the program walks for `step`, a ROUTE or LEGS, from `at`:
+//  planned, or the legs laid out.
+std::optional<std::vector<RouteStep>> walked_route(const StoryPose& at, const StoryStep& step){
+    const MapPosition start{at.map, at.tile};
+    if (step.kind == StoryStepKind::LEGS){
+        return fixed_route(story_maps(), start, step.legs);
+    }
+    const std::optional<StoryPose> target = story_pose(*step.target);
+    const RouteGoal goal{{target->map, target->tile}, target->facing};
+    return plan_overworld_route(story_maps(), start, goal, default_route_costs(), at.facing);
+}
+
+//  Walks `step` of 00.14 on `sim` from `at`, where the table says the
+//  player stands, and moves `at` to where it says the step ends. Returns
+//  the failure, or empty.
+std::string walk_on_sim(OverworldSim& sim, StoryPose& at, const StoryStep& step){
+    const std::string where = "00.14/" + step.name + ": ";
+    //  A walk that ends on an open leg may leave the player short of it.
+    bool open_end = false;
+    if (step.kind == StoryStepKind::ROUTE || step.kind == StoryStepKind::LEGS){
+        const std::optional<std::vector<RouteStep>> route = walked_route(at, step);
+        if (!route || route->empty()){
+            return where + "no route from " + to_string(MapPosition{at.map, at.tile}) + ".";
+        }
+        const RoutePlanning planning{.maps = &story_maps(), .start = MapPosition{at.map, at.tile}, .label = step.name};
+        const std::string failure = OverworldSimWalker(sim).run(*route, planning);
+        if (!failure.empty()){
+            return where + failure + " On " + to_string(sim.state().position) + ".";
+        }
+        const RouteStep& last = route->back();
+        open_end = last.action == RouteAction::WALK && !last.to_wall && !last.warps;
+        at = StoryPose{last.end.map, last.end.point, last.facing_after};
+    }else if (step.kind == StoryStepKind::STEP){
+        if (sim.state().facing != step.direction){
+            sim.tap(step.direction);
+        }
+        sim.tap(step.direction);
+        sim.watch({SimWatcher::MESSAGE}, std::chrono::milliseconds(2000));
+        at = *story_pose(*step.pose_after);
+    }
+    if (!open_end && !(sim.state().position == MapPosition{at.map, at.tile})){
+        return where + "expected " + to_string(MapPosition{at.map, at.tile}) + ", but on " + to_string(sim.state().position) + ".";
+    }
+    return "";
+}
+
+//  Console B, 2026-11-03 (row 00.14): the open leg east from Route 4
+//  into Cerulean City ended a tile short, on (6, 20), with nothing on
+//  screen. No hold to a wall finds the player there, and the walk went on
+//  a column off, the hold south stopped by the fence on (6, 23), to a
+//  wall below a row of houses, not the Pokemon Center's door. From the
+//  foot of Route 4's ledge, the row's walks on the sim reach the nurse
+//  with that leg whole or a tile short.
+UnitTestResult test_cerulean_entry_short(){
+    const std::vector<StoryCheckpoint>& rows = story_checkpoints();
+    const auto row = std::find_if(rows.begin(), rows.end(), [](const StoryCheckpoint& data){ return data.id == "00.14"; });
+    if (row == rows.end()){
+        return "No checkpoint 00.14.";
+    }
+    const auto hop = std::find_if(row->steps.begin(), row->steps.end(), [](const StoryStep& step){ return step.name == "ledge_hop"; });
+    if (hop == row->steps.end() || !hop->pose_after){
+        return "00.14: no ledge_hop.";
+    }
+    for (int short_by : {0, 1}){
+        StoryPose at = *story_pose(*hop->pose_after);
+        SimScript script;
+        script.short_holds[1] = short_by;
+        OverworldSim sim(story_maps(), MapPosition{at.map, at.tile}, *at.facing, script);
+        for (auto step = hop + 1; step != row->steps.end() && step->kind != StoryStepKind::HEAL; ++step){
+            const std::string failure = walk_on_sim(sim, at, *step);
+            if (!failure.empty()){
+                return std::format("Entry {} tile(s) short: ", short_by) + failure;
+            }
+        }
+    }
+    return true;
+}
+
+//  Runs `step` of 00.16 on `sim` as the program does: legs by the sim's
+//  walker from `at`, where the table says the player stands; a step one
+//  tap at a time, or for a step into a trainer's line by
+//  step_until_seen(), each watched for the trainer; a battle from the
+//  trainer's message, which must be up. Moves `at` to where the table
+//  says the step ends. Returns the failure, or empty.
+std::string bridge_step_on_sim(OverworldSim& sim, StoryPose& at, const StoryStep& step){
+    const std::string where = "00.16/" + step.name + ": ";
+    const auto on = [&sim]{ return " On " + to_string(sim.state().position) + "."; };
+    if (step.kind == StoryStepKind::LEGS){
+        const std::optional<std::vector<RouteStep>> route = walked_route(at, step);
+        const RoutePlanning planning{.maps = &story_maps(), .start = MapPosition{at.map, at.tile}, .label = step.name};
+        const std::string failure = route ? OverworldSimWalker(sim).run(*route, planning) : "no legs.";
+        at = route ? StoryPose{route->back().end.map, route->back().end.point, route->back().facing_after} : at;
+        return failure.empty() ? "" : where + failure + on();
+    }
+    if (step.kind == StoryStepKind::STEP){
+        const auto tap = [&sim, &step]{
+            if (sim.state().facing != step.direction){
+                sim.tap(step.direction);
+            }
+            sim.tap(step.direction);
+        };
+        const auto seen = [&sim]{
+            return sim.watch({SimWatcher::MESSAGE, SimWatcher::BATTLE_SCREEN}, TRAINER_LINE_WATCH).has_value();
+        };
+        const int tiles = step.variant == TRAINER_LINE_VARIANT ? TRAINER_LINE_TILES : 1;
+        return step_until_seen(tiles, tap, seen) ? "" : where + "no trainer saw the player." + on();
+    }
+    if (step.kind == StoryStepKind::BATTLE){
+        if (!sim.close_message() || sim.handle_battle(SimBattleChoice::FIGHT) != SimBattleEnd::ENDED){
+            return where + "no_battle." + on();
+        }
+        at = *story_pose(*step.pose_after);
+        if (!(sim.state().position == MapPosition{at.map, at.tile})){
+            return where + "expected " + to_string(MapPosition{at.map, at.tile}) + "." + on();
+        }
+    }
+    return "";
+}
+
+//  Console B, 2026-11-03 (row 00.16), twice: the open leg north from
+//  Cerulean City onto Nugget Bridge ended on (11, 33), a tile short of
+//  (11, 32), and the one step onto Cale's row reached only (11, 32), out
+//  of his sight: "bug_catcher_cale: failed: no_battle". From the walk's
+//  end, whole or a tile short, the five trainers are met and beaten on
+//  the sim, each battle on the trainer's row.
+UnitTestResult test_nugget_bridge_short(){
+    const std::vector<StoryCheckpoint>& rows = story_checkpoints();
+    const auto row = std::find_if(rows.begin(), rows.end(), [](const StoryCheckpoint& data){ return data.id == "00.16"; });
+    if (row == rows.end()){
+        return "No checkpoint 00.16.";
+    }
+    const auto walk = std::find_if(row->steps.begin(), row->steps.end(), [](const StoryStep& step){ return step.name == "below_cale_line"; });
+    if (walk == row->steps.end() || !walk->target){
+        return "No step 00.16/below_cale_line.";
+    }
+    for (int short_by : {0, 1}){
+        StoryPose at = *story_pose(*walk->target);
+        OverworldSim sim(story_maps(), MapPosition{at.map, {at.tile.x, at.tile.y + short_by}}, Direction::NORTH);
+        for (auto step = walk + 1; step != row->steps.end() && step->kind != StoryStepKind::READY; ++step){
+            const std::string failure = bridge_step_on_sim(sim, at, *step);
+            if (!failure.empty()){
+                return std::format("Walk {} tile(s) short: ", short_by) + failure;
+            }
+        }
+        if (sim.state().trainers_beaten.size() != 5){
+            return std::format("Walk {} tile(s) short: expected 5 trainers beaten, got {}.", short_by, sim.state().trainers_beaten.size());
+        }
+    }
+    return true;
+}
+
 const AutoStorySimulationTestCase AUTO_STORY_SIMULATION_CASES[] = {
     {
         .input = {.name = "new game to Brock, in order, each start where the last save stood", .body = test_whole_story},
@@ -409,6 +583,14 @@ const AutoStorySimulationTestCase AUTO_STORY_SIMULATION_CASES[] = {
         .input = {.name = "a battle lost every time stops after 3 attempts", .body = test_gives_up_after_attempts},
         .expectation = {.description = "aborts after three consecutive battle blackouts"},
     },
+    {
+        .input = {.name = "00.14 into Cerulean, the entry leg a tile short", .body = test_cerulean_entry_short},
+        .expectation = {.description = "recovers when entering Cerulean City if movement ends one tile short"},
+    },
+    {
+        .input = {.name = "00.16 Nugget Bridge, the walk onto it a tile short", .body = test_nugget_bridge_short},
+        .expectation = {.description = "completes Nugget Bridge battles even if initial approach stops short"},
+    },
 };
 
 } // namespace
@@ -418,6 +600,7 @@ void add_tests_AutoStorySimulation(UnitTestDatabase& database){
     for (const auto& scenario : AUTO_STORY_SIMULATION_CASES){
         database.add<Test_AutoStorySimulation>(scenario);
     }
+
 }
 
 

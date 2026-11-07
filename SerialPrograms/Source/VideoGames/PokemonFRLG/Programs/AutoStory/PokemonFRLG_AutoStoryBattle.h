@@ -7,7 +7,9 @@
  *  is put back on FIGHT and the move list's top left, since the game
  *  remembers both, then onto the move BattleDecisions picks. A Potion is
  *  used when the HP bar turns yellow or red, an Antidote (once a battle)
- *  when the status reads PSN at two turns in a row; after the battle, PSN
+ *  when the status reads PSN at two turns in a row, an Awakening in a
+ *  trainer's battle when it reads SLP; each turn's reason for a Potion or
+ *  none is logged. After the battle, PSN
  *  and PAR are cured from the bag. Move prompts, an evolution after the
  *  battle and a fainted lead are as PokemonFRLG_AutoStoryBattleDecisions.h
  *  says.
@@ -40,23 +42,25 @@ namespace NintendoSwitch{
 namespace PokemonFRLG{
 
 
-//  A status condition, as far as the story treats them: the two it carries
+//  A status condition, as far as the story treats them: the ones it carries
 //  items for, and the rest, which only a nurse cures.
 enum class StatusCondition{
     NONE,
     POISON,
     PARALYSIS,
-    OTHER,      //  SLP, BRN, FRZ
+    SLEEP,
+    OTHER,      //  BRN, FRZ
 };
 //  String representation of a status condition.
 const char* status_name(StatusCondition status);
 
 //  The healing items in the Items pocket, in the order they were bought:
-//  Potions, Antidotes, then Parlyz Heals.
+//  Potions, Antidotes, then Parlyz Heals; Awakenings from Cerulean's Mart.
 struct Supplies{
     int potions = 0;
     int antidotes = 0;
     int parlyz_heals = 0;
+    int awakenings = 0;
     //  The Items pocket's order, by slug (see read_item_list_name()): the
     //  order bought, or as read from the bag, with "" for a row whose name
     //  couldn't be read. A counted item with none left takes no row; the
@@ -149,10 +153,14 @@ std::vector<std::string> set_from_loaded_bag(Supplies& supplies, Supplies& saved
 std::vector<BagRow> read_items_pocket(ConsoleHandle& console, ProControllerContext& context, Language language);
 
 
+//  The status badge left of the player's HP numbers, by its mean color.
+StatusCondition read_status_badge(const ImageViewRGB32& badge);
+
 //  What the HP bar (read_player_hp_bar()) and the status badge of the
 //  player's Pokemon show, on a battle screen with its box. The badge's
 //  place measured on console B's captures (2026-11-01): off-white
-//  (255, 255, 217) with no status, (228, 168, 212) for PSN.
+//  (255, 255, 217) with no status, (228, 168, 212) for PSN, (202, 203, 168)
+//  for SLP (2026-11-03, after the Cerulean rival's Sleep Powder).
 struct PartyStatus{
     bool hp_seen = false;
     bool hp_yellow = false;

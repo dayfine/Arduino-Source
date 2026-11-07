@@ -146,12 +146,26 @@ Outcome walk_legs(StoryEnv& env, RunState& state, const StoryStep& step){
 }
 
 Outcome take_step(StoryEnv& env, RunState& state, const StoryStep& step){
-    step_once(env.context, step.direction, facing_of(state.pose));
+    int tiles_stepped = 1;
+    if (step.variant == TRAINER_LINE_VARIANT){
+        const std::optional<int> stepped = step_into_line(env.console, env.context, step.direction, facing_of(state.pose), TRAINER_LINE_TILES);
+        if (!stepped){
+            return Pokemon::outcome_failed("no_trainer", std::format("{} tiles {}", TRAINER_LINE_TILES, direction_name(step.direction)));
+        }
+        env.console.log(std::format("Story: {}: a trainer saw the player after {} tile(s).", step.name, *stepped));
+        tiles_stepped = *stepped;
+    }else{
+        step_once(env.context, step.direction, facing_of(state.pose));
+    }
     const std::vector<TilePos> tiles = Pokemon::tiles_of(state.pose);
     if (tiles.size() != 1){
         return Pokemon::outcome_ok();
     }
-    return Pokemon::outcome_ok(to_pose(StoryPose{state.pose.map, tiles[0].next(step.direction), step.direction}));
+    TilePos onto = tiles[0];
+    for (int c = 0; c < tiles_stepped; c++){
+        onto = onto.next(step.direction);
+    }
+    return Pokemon::outcome_ok(to_pose(StoryPose{state.pose.map, onto, step.direction}));
 }
 
 //  Before a BattleRisk::HIGH battle the story may lose: the sim's win
@@ -161,7 +175,8 @@ std::optional<std::string> refuse_battle(StoryEnv& env, const StoryStep& step, s
     if (step.may_lose || supplies.risk != BattleRisk::HIGH){
         return std::nullopt;
     }
-    const std::optional<WinEstimate> estimate = story_win_chance(supplies.lead, supplies.potions, supplies.hp_fill, trainer);
+    const SimItems items{.potions = supplies.potions, .awakenings = supplies.awakenings};
+    const std::optional<WinEstimate> estimate = story_win_chance(supplies.lead, items, supplies.hp_fill, trainer);
     if (!estimate){
         return std::nullopt;
     }
@@ -324,6 +339,7 @@ std::string save_card_place(const std::string& map){
         {"PewterCity", "pewter-city"},
         {"Route3", "route-3"},
         {"Route4", "route-4"},
+        {"CeruleanCity", "cerulean-city"},
     };
     for (const auto& [prefix, place] : PLACES){
         if (map == prefix || map.rfind(prefix + "_", 0) == 0){
@@ -631,17 +647,19 @@ void read_bag_supplies(StoryEnv& env, StartMenu menu){
         env.console.log("Couldn't read the Items pocket; going on with the checkpoint's items.", COLOR_ORANGE);
         return;
     }
-    for (const std::string& item : set_from_loaded_bag(env.supplies, env.saved_supplies, rows)){
+    const std::vector<std::string> unread = set_from_loaded_bag(env.supplies, env.saved_supplies, rows);
+    for (const std::string& item : unread){
         env.console.log(std::format(
             "Story: couldn't read how many {} the bag holds; counting {}.", item, item_count(env.supplies, item)
         ), COLOR_ORANGE);
     }
+    env.bag_read = unread.empty();
 }
 
 Pokemon::Checkpoint build_checkpoint(const StoryCheckpoint& data, StoryExecutor& executor){
     executor.set_menu(data.menu);
-    Pokemon::Checkpoint checkpoint = Pokemon::build_story_checkpoint(data, executor);
     StoryEnv& env = executor.env();
+    Pokemon::Checkpoint checkpoint = Pokemon::build_story_checkpoint(data, executor, env.prepared);
     env.start_map = data.start ? data.start->map : "";
     env.start_menu = data.menu;
     const StartMenu menu = data.menu;
@@ -650,6 +668,8 @@ Pokemon::Checkpoint build_checkpoint(const StoryCheckpoint& data, StoryExecutor&
             save_game(env.console, env.context, menu);
             env.has_save = true;
             env.saved_supplies = env.supplies;
+            env.prepared.clear();
+            env.bag_read = false;
             return Pokemon::outcome_ok();
         });
     };

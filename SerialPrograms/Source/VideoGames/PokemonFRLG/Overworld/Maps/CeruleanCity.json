@@ -91,6 +91,8 @@
     ],
     "points": {
         "warp_3": [22, 19],
+        "warp_4": [31, 21],
+        "warp_6": [29, 28],
         "warp_7": [1, 12]
     },
     "warps": [
@@ -119,7 +121,9 @@
         {
             "x": 31,
             "y": 21,
-            "enter": "walk_into"
+            "enter": "walk_into",
+            "to_map": "CeruleanCity_Gym",
+            "to_point": "warp_1"
         },
         {
             "x": 13,
@@ -129,7 +133,9 @@
         {
             "x": 29,
             "y": 28,
-            "enter": "walk_into"
+            "enter": "walk_into",
+            "to_map": "CeruleanCity_Mart",
+            "to_point": "warp_1"
         },
         {
             "x": 1,

@@ -6,8 +6,11 @@
 
 #include "PokemonFRLG_AutoStoryCapture.h"
 #include "PokemonFRLG_AutoStoryChoice.h"
+#include "PokemonFRLG_AutoStoryGrind.h"
+#include "PokemonFRLG_AutoStoryMart.h"
 #include "PokemonFRLG_AutoStoryPcStorage.h"
 #include "PokemonFRLG_AutoStoryTable.h"
+#include "PokemonFRLG_AutoStoryTeach.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -37,6 +40,11 @@ const char* const ROUTE4 = "Route4";
 const char* const ROUTE4_CENTER = "Route4_PokemonCenter_1F";
 const char* const MT_MOON_1F = "MtMoon_1F";
 const char* const MT_MOON_B2F = "MtMoon_B2F";
+const char* const CERULEAN = "CeruleanCity";
+const char* const CERULEAN_CENTER = "CeruleanCity_PokemonCenter_1F";
+const char* const CERULEAN_MART = "CeruleanCity_Mart";
+const char* const CERULEAN_GYM = "CeruleanCity_Gym";
+const char* const ROUTE24 = "Route24";
 
 Pokemon::Pose at(const char* map, int x, int y, std::optional<Direction> facing = std::nullopt){
     return to_pose(StoryPose{map, {x, y}, facing});
@@ -91,6 +99,25 @@ StoryStep route(std::string name, Pokemon::Pose target, std::string why, WildBat
 StoryStep step_into(std::string name, Direction direction, std::string why){
     StoryStep step = make(StoryStepKind::STEP, std::move(name), std::move(why));
     step.direction = direction;
+    return step;
+}
+
+//  A step the way a ledge faces, from the tile before it: the player hops
+//  it and lands on `landing`, two tiles on. Planned routes never hop a
+//  ledge (they hold into walls, and a held ledge hops), so where the only
+//  way on is down a ledge the table takes it as this one step.
+//  A step `direction` into a trainer's line, a tile at a time until the
+//  trainer sees the player (TRAINER_LINE_VARIANT): the battle after it
+//  starts whether the walk before ended on its tile or a tile short.
+StoryStep into_line(std::string name, Direction direction, std::string why){
+    StoryStep step = step_into(std::move(name), direction, std::move(why));
+    step.variant = TRAINER_LINE_VARIANT;
+    return step;
+}
+
+StoryStep hop(std::string name, Direction direction, Pokemon::Pose landing, std::string why){
+    StoryStep step = step_into(std::move(name), direction, std::move(why));
+    step.pose_after = std::move(landing);
     return step;
 }
 
@@ -468,6 +495,221 @@ StoryCheckpoint mt_moon(){
     });
 }
 
+//  Route 4 east of Mt. Moon (Route4 map.json) joins Cerulean City at its
+//  east end (x 107; Route 4's row 3 is the city's row 13). Its upper road
+//  (rows 2..8) reaches the city only by water: the way on by land is down
+//  the ledge row 9 at x 90..96 to the lower road (rows 10..12), which
+//  joins the city's rows 20..22. Lass Crissy (75, 3) faces east, sight 4,
+//  over row 3 from x 76 to 79; the way east keeps out of her line and off
+//  the grass south of the road (75..87, 11..17).
+//
+//  The open leg east across the city's edge ended a tile short on the
+//  console (2026-11-03: on (6, 20), not (7, 20)), and no hold to a wall
+//  in the city's west end finds the player from there: the next hold
+//  south met the fence on (6, 23) and the walk went on a column off. So
+//  the entry ends on (9, 20), and only legs to walls follow: north up
+//  column 9 (or 8, a tile short) to row 12, west to (8, 12), east to
+//  (30, 12) beside the policeman (31, 12), south to (30, 17), west to
+//  (25, 17), and down the ledge row 18 to (25, 19), a few tiles from the
+//  door (22, 19). The way keeps out of the boy's (16, 18..24) and the
+//  balding man's (8..10, 22..24) wander boxes.
+StoryCheckpoint route4_to_cerulean(){
+    return row("00.14", "Route 4 east to Cerulean's Pokemon Center", at(ROUTE4, 32, 6, SOUTH), after_brock(), StartMenu::FULL, {
+        running(route("above_ledge", at(ROUTE4, 93, 8, SOUTH), "east along Route 4's upper road to above the ledge row 9")),
+        hop("ledge_hop", SOUTH, at(ROUTE4, 93, 10, SOUTH), "down the ledge (93, 9) to the lower road"),
+        running(route("cerulean_entry", at(CERULEAN, 9, 20, EAST), "east into Cerulean City, to (9, 20) below column 9")),
+        running(legs("above_city_ledge", {{NORTH, 8}, {WEST, 1}, {EAST, 22}, {SOUTH, 5}, {WEST, 5}}, "to walls: (9, 12), (8, 12), (30, 12), (30, 17), (25, 17)")),
+        hop("city_ledge_hop", SOUTH, at(CERULEAN, 25, 19, SOUTH), "down the ledge (25, 18)"),
+        running(route("cerulean_nurse", at(CERULEAN_CENTER, 7, 4, NORTH), "west along row 20 to the Pokemon Center's door (22, 19)")),
+        heal("heal_cerulean"),
+    });
+}
+
+//  Cerulean Gym (pokefirered CeruleanCity_Gym map.json and scripts.inc):
+//  a pool with walkways. Misty (8, 6) stands on a platform (7..9, 6) above
+//  row 7. Picnicker Diana (4, 7) faces east, sight 4, over (5..8, 7), so
+//  misty_front (8, 7) is in her line; Swimmer Luis (10, 12) in the water
+//  faces west, sight 1, over (9, 12), on column 9 north of the door. No
+//  gym trainer has to be fought for Misty, so neither is: from the door up
+//  column 9 to row 13 (a route there, so the planner's walk to a wall
+//  doesn't run on past it through (9, 12)), west to (4, 13), and to walls
+//  round the pool's west and north sides, (4, 10), (12, 10), (12, 7), then
+//  west to (9, 7), the tile below the platform's east end, out of Diana's
+//  line. 00.14c steps up onto (9, 6) and talks to Misty from beside her.
+//
+//  Misty beat a Lv20 Wartortle (console B, run m51), so first a GRIND to
+//  Lv23 on 00.15's patch. Gen 3 numbers (pokefirered: her mons have IV 0;
+//  Wartortle taken at IV 15, no EVs): Starmie Lv21 has 56 HP, Atk 36, SpA
+//  47, SpD 40. Bite is Dark, special in Gen 3, no STAB, x2 on Psychic: at
+//  Lv23 (SpA 39) it does 23..28, three hits (two on top rolls); at Lv20,
+//  20..24. Her Swift (physical, 60) does 9..11 to a Lv23 Wartortle (about
+//  67 HP, Def 45) and Water Pulse (STAB, resisted) 8..10: 6 or more hits,
+//  though m51 saw about 20 a turn. Her Recover (28) and Super Potion undo
+//  a Bite, so the margin is in Bite's damage.
+//
+//  The Mart comes before the GRIND: its wild battles are fought only with
+//  2 or more Potions, and 00.14's save has none (m51 met Misty with only
+//  the 5 this row bought). 5 Potions (row 3, 300 each), then up to 3 Super
+//  Potions (row 2, 700), last so they take the Items pocket's last row;
+//  the battle doesn't use them yet. The money box can't be read, so the
+//  floor stands for it, and a floor above the money fails the step (the
+//  quantity box wraps). Prizes (pokefirered: 4 x last level x the class's
+//  factor) from a new game's 3000, less Viridian's 2000 and the Magikarp's
+//  500: Liam 220, Brock 1400, Route 3's bug catchers 360, the Mt. Moon
+//  grunt 416 and Miguel 288 (the first rival's 80 only if won), at least
+//  3184 here. Floor and budget 3000: 5 Potions and 2 Super Potions, 2900.
+//  Misty's 2100 (4 x 21 x 25) then leaves 00.15 its floor of 1500. Then the
+//  nurse, and the save before Misty, so her battle is its own checkpoint,
+//  00.14c, verified and retried from it. 00.15's GRIND then fights
+//  until the sim beats the Cerulean rival often enough.
+StoryCheckpoint cerulean_gym(){
+    const MartPlan supplies{
+        .map = CERULEAN_MART,
+        .lines = {{.item = "potion", .quantity = 5}, {.item = "super-potion", .quantity = 3}},
+        .budget = 3000,
+        .money_floor = 3000,
+    };
+    const GrindPlan to_lv23{.member = 0, .level = 23, .max_encounters = 100, .pace = WEST, .heal_every = 0};
+    return row("00.14b", "Cerulean: Potions, a GRIND to Lv23, then into the Gym, saved below Misty's platform", at(CERULEAN_CENTER, 7, 4, NORTH), after_brock(), StartMenu::FULL, {
+        running(route("mart_clerk", at(CERULEAN_MART, 4, 3, WEST), "out of the Center to the Mart's clerk")),
+        mart_step("buy_potions", "5 Potions for the GRIND's wild battles, then Super Potions as the money allows", supplies),
+        running(route("grind_patch", at(ROUTE4, 86, 16, WEST), "west out of the city along Route 4's lower road onto its grass's east edge")),
+        grind_step("grind_to_lv23", "wild battles until the lead is Lv23, where Bite takes Starmie in three", to_lv23, at(CERULEAN_CENTER, 7, 4, NORTH)),
+        running(route("cerulean_nurse", at(CERULEAN_CENTER, 7, 4, NORTH), "back to the Center: Misty's battle starts at full HP and PP")),
+        heal("heal_cerulean"),
+        running(route("gym_below_luis", at(CERULEAN_GYM, 9, 13), "into the Gym, up column 9 to row 13, short of Luis's (9, 12)")),
+        running(legs("gym_west_walkway", {{WEST, 5}}, "west to the wall (4, 13)")),
+        running(legs("below_misty_platform", {{NORTH, 3}, {EAST, 8}, {NORTH, 3}, {WEST, 3}}, "walls (4, 10), (12, 10), (12, 7), then to (9, 7), out of Diana's line")),
+    });
+}
+
+//  Misty (TRAINER_LEADER_MISTY: Staryu Lv18, Starmie Lv21), talked to from
+//  (9, 6), beside her on the platform. Her win text runs on to the CASCADE
+//  BADGE, TM03 (Water Pulse) and its explanation, all read with the
+//  battle's. Bite is chosen against her party (Starmie is Water/Psychic).
+//  Back to the nurse round the pool's west side, out of Luis's line; then
+//  Water Pulse in place of Tail Whip, last, at the Center, from the bag's
+//  TM CASE. Ends where 00.15 starts.
+StoryCheckpoint misty(){
+    const TeachPlan water_pulse{.item = "tm03", .move = "water-pulse", .member = 0, .forget_move = "tail-whip"};
+    return row("00.14c", "Cerulean Gym: Misty, then Water Pulse", at(CERULEAN_GYM, 9, 7, WEST), after_brock(), StartMenu::FULL, {
+        running(route("beside_misty", at(CERULEAN_GYM, 9, 6, WEST), "up onto (9, 6), facing Misty (8, 6)")),
+        talk("challenge_misty", "Misty's speech"),
+        battle("misty", at(CERULEAN_GYM, 9, 6, WEST), false, "Staryu and Starmie, with Bite; CASCADE BADGE and TM03"),
+        running(legs("gym_way_out", {{SOUTH, 1}, {EAST, 3}, {SOUTH, 3}, {WEST, 8}, {SOUTH, 3}, {EAST, 5}}, "walls (12, 7), (12, 10), (4, 10), (4, 13), (9, 13), round Luis's (9, 12)")),
+        running(route("cerulean_nurse", at(CERULEAN_CENTER, 7, 4, NORTH), "down column 9 out of the Gym, to the Center")),
+        heal("heal_cerulean"),
+        teach_step("teach_water_pulse", "TM03 Water Pulse in place of Tail Whip", water_pulse),
+    });
+}
+
+//  Before the rival north of Cerulean (cerulean_rival()), from the
+//  Center: first TM03 Water Pulse over Tail Whip, if the lead doesn't know
+//  it yet, so the GRIND's sim plays it (a run without TM03 from Misty
+//  skips the step). Then 3 Potions at the Mart
+//  (CeruleanCity_Mart_Items: POTION is row 3, 300 each; Mt. Moon's
+//  trainers leave well over the floor) and 2 Awakenings (row 6, 250 each;
+//  pokefirered items.json) for the rival's Bulbasaur's Sleep Powder
+//  (console B, m56: asleep at 34/65 HP, it fainted two turns later with
+//  15 Potions), 1400 of the floor's 1500. Then a GRIND on Route 4's grass
+//  east of Mt. Moon (75..86, 11..17; Spearow, Rattata, Ekans and Mankey
+//  around Lv10, about 80 EXP each), healing at the Center, until the
+//  battle sim beats the rival 00.15b fights 50% or more: the win chance
+//  his battle refuses below. Console B's Wartortle (Lv22, 65 HP, Water
+//  Pulse) is about 42% there and 62% at Lv23; Lv28 (about 88%, some 120
+//  battles from Lv22) is the cap. Then the nurse, and the save on (23, 7),
+//  the tile below his trigger: his battle is its own checkpoint, 00.15b,
+//  verified and retried from this save.
+StoryCheckpoint cerulean_grind(){
+    const TeachPlan water_pulse{.item = "tm03", .move = "water-pulse", .member = 0, .forget_move = "tail-whip"};
+    const MartPlan potions{
+        .map = CERULEAN_MART,
+        .lines = {{.item = "potion", .quantity = 3}, {.item = "awakening", .quantity = 2}},
+        .budget = 1500,
+        .money_floor = 1500,
+    };
+    const GrindPlan for_rival{
+        .member = 0, .level = 28, .max_encounters = 150, .pace = WEST, .heal_every = 0,
+        .trainer = std::string(story_trainer(CERULEAN, "rival_cerulean").value_or("")), .min_chance = MIN_WIN_CHANCE,
+    };
+    return row("00.15", "Cerulean: Water Pulse, Potions, a GRIND until the rival is winnable, then saved below his trigger", at(CERULEAN_CENTER, 7, 4, NORTH), after_brock(), StartMenu::FULL, {
+        teach_step("teach_water_pulse", "TM03 Water Pulse in place of Tail Whip, unless the lead knows it or there is no TM03", water_pulse),
+        running(route("mart_clerk", at(CERULEAN_MART, 4, 3, WEST), "out of the Center to the Mart's clerk")),
+        mart_step("buy_potions", "3 Potions: the GRIND fights wild battles only with 2 or more; 2 Awakenings for the rival's Sleep Powder", potions),
+        running(route("grind_patch", at(ROUTE4, 86, 16, WEST), "west out of the city along Route 4's lower road onto its grass's east edge")),
+        grind_step("grind_for_rival", "wild battles until the sim beats the rival 50% or more, Lv28 at most; the nurse when hurt or low on PP", for_rival, at(CERULEAN_CENTER, 7, 4, NORTH)),
+        running(route("cerulean_nurse", at(CERULEAN_CENTER, 7, 4, NORTH), "back to the Center: the rival's battle starts at full HP and PP")),
+        heal("heal_cerulean"),
+        running(route("below_rival_trigger", at(CERULEAN, 23, 7, NORTH), "out of the Center, north up to (23, 7), short of the trigger row 6")),
+    });
+}
+
+//  The rival north of Cerulean (CeruleanCity scripts.inc): the only way
+//  north to Nugget Bridge is columns 22..24, and a step onto row 6 there
+//  (CeruleanCity_EventScript_RivalTrigger*, VAR_MAP_SCENE_CERULEAN_CITY_RIVAL
+//  0) brings him down to the player. From the middle, (23, 6), he stops
+//  at (23, 5); after the battle he walks round the player and off south,
+//  and the player, turning to watch him, ends facing south. His FAME
+//  CHECKER's text is read to the overworld with the battle's. For a player
+//  who took Squirtle he has Pidgeotto Lv17, Abra Lv16, Rattata Lv15 and
+//  Bulbasaur Lv18 (sParty_RivalCeruleanBulbasaur), whose Vine Whip and
+//  Sleep Powder are the danger. The row starts from 00.15's save below the
+//  trigger, and saves after him. First TM03 Water Pulse over Tail Whip (from
+//  the bag, where the player stands), if the lead doesn't know it yet:
+//  console B's save (2026-11-03) is past Misty's TEACH, which failed there.
+//  Where she taught it, the step reads the moves and does nothing.
+StoryCheckpoint cerulean_rival(){
+    const TeachPlan water_pulse{.item = "tm03", .move = "water-pulse", .member = 0, .forget_move = "tail-whip"};
+    return row("00.15b", "Cerulean: Water Pulse if not known, then the rival north of the city", at(CERULEAN, 23, 7, NORTH), after_brock(), StartMenu::FULL, {
+        teach_step("teach_water_pulse", "TM03 Water Pulse in place of Tail Whip, unless the lead knows it", water_pulse),
+        step_into("rival_trigger", NORTH, "onto (23, 6), the middle trigger: \"Yo! <player>!\""),
+        battle("rival_cerulean", at(CERULEAN, 23, 6, SOUTH), false, "Pidgeotto, Abra, Rattata and Bulbasaur; then the FAME CHECKER"),
+    });
+}
+
+//  Nugget Bridge (Route24 map.json) is x 10..12 from row 32 north to row
+//  16, the city's columns 22..24 (offset 12). Its five trainers stand on
+//  it facing across, sight 2, so each line crosses the middle column 11
+//  on the trainer's row: Bug Catcher Cale (12, 31), Lass Ali (10, 28),
+//  Youngster Timmy (12, 25), Lass Reli (10, 22) and Camper Ethan (12, 19).
+//  Each is fought on the step onto their row, beside them: they don't
+//  walk, and the player keeps facing north. Two tiles separate the rows,
+//  walked as one short leg; the step onto a row goes on a tile at a time
+//  until the trainer sees the player (into_line()), as the open leg onto
+//  the bridge ended a tile short twice on console B (2026-11-03), on
+//  (11, 33), and one step left the player out of Cale's sight. Then the
+//  Rocket (12, 15): the step onto (11, 15)
+//  (Route24_EventScript_RocketTriggerRight, VAR_MAP_SCENE_ROUTE24 0) gives
+//  the NUGGET, "join Team Rocket", and his battle; he only turns, and the
+//  player turns east to him. Camper Shane (5, 21) looks north from the
+//  west bank, off the way.
+StoryCheckpoint nugget_bridge(){
+    return row("00.16", "Nugget Bridge: the nurse, five trainers and the Rocket", at(CERULEAN, 23, 6, SOUTH), after_brock(), StartMenu::FULL, {
+        running(route("cerulean_nurse", at(CERULEAN_CENTER, 7, 4, NORTH), "back to the Center after the rival, before Nugget Bridge")),
+        heal("heal_cerulean"),
+        running(route("below_cale_line", at(ROUTE24, 11, 32, NORTH), "out of the Center, north past the rival's row onto the bridge, below Cale's row")),
+        into_line("cale_line", NORTH, "onto (11, 31), beside Cale"),
+        battle("bug_catcher_cale", at(ROUTE24, 11, 31, NORTH), false, "his Bug Pokemon"),
+        running(legs("below_ali_line", {{NORTH, 2}}, "up to (11, 29)")),
+        into_line("ali_line", NORTH, "onto (11, 28), beside Ali"),
+        battle("lass_ali", at(ROUTE24, 11, 28, NORTH), false, "her Pokemon"),
+        running(legs("below_timmy_line", {{NORTH, 2}}, "up to (11, 26)")),
+        into_line("timmy_line", NORTH, "onto (11, 25), beside Timmy"),
+        battle("youngster_timmy", at(ROUTE24, 11, 25, NORTH), false, "his Pokemon"),
+        running(legs("below_reli_line", {{NORTH, 2}}, "up to (11, 23)")),
+        into_line("reli_line", NORTH, "onto (11, 22), beside Reli"),
+        battle("lass_reli", at(ROUTE24, 11, 22, NORTH), false, "her Pokemon"),
+        running(legs("below_ethan_line", {{NORTH, 2}}, "up to (11, 20)")),
+        into_line("ethan_line", NORTH, "onto (11, 19), beside Ethan"),
+        battle("camper_ethan", at(ROUTE24, 11, 19, NORTH), false, "his Pokemon"),
+        //  A route, not legs: the nurse may have been needed.
+        ready("ready_for_rocket", at(CERULEAN_CENTER, 7, 4, NORTH), "items for a status or low HP; the nurse only if they can't"),
+        running(route("below_rocket_trigger", at(ROUTE24, 11, 16, NORTH), "up the bridge to below the Rocket's trigger (11, 15)")),
+        step_into("rocket_trigger", NORTH, "onto (11, 15), beside the Rocket"),
+        battle("rocket_grunt", at(ROUTE24, 11, 15, EAST), false, "the NUGGET, then Ekans and Zubat, Lv15"),
+    });
+}
+
 } // namespace
 
 
@@ -475,6 +717,7 @@ const std::vector<StoryCheckpoint>& story_checkpoints(){
     static const std::vector<StoryCheckpoint> checkpoints{
         new_game(), after_sid_helper(), leave_house(), oaks_trigger(), to_starter_ball(), starter(), parcel(), pokedex(), shopping(), forest(), brock(),
         running_shoes(), route3(), magikarp_salesman(), after_gift_rng(), magikarp_to_box(), mt_moon(),
+        route4_to_cerulean(), cerulean_gym(), misty(), cerulean_grind(), cerulean_rival(), nugget_bridge(),
     };
     return checkpoints;
 }

@@ -75,25 +75,6 @@ constexpr Milliseconds MOVE_LIST_TIMEOUT = 5000ms;
 //  pixel inside.
 const ImageFloatBox STATUS_BADGE_BOX(146.0 / 240, 99.0 / 160, 12.0 / 240, 4.0 / 160);
 
-StatusCondition read_status_badge(const ImageViewRGB32& badge){
-    const ImageStats stats = image_stats(badge);
-    const double r = stats.average.r;
-    const double g = stats.average.g;
-    const double b = stats.average.b;
-    const double off_white = std::abs(r - 255) + std::abs(g - 255) + std::abs(b - 217);
-    if (off_white < 60){
-        return StatusCondition::NONE;
-    }
-    if (r > 200 && g < 200 && b > 180){
-        return StatusCondition::POISON;
-    }
-    //  Not measured yet: PAR's badge is taken to be the yellow one.
-    if (r > 180 && g > 150 && b < 140){
-        return StatusCondition::PARALYSIS;
-    }
-    return StatusCondition::OTHER;
-}
-
 
 enum class BattleScreen{
     //  Keep in step with screen_name().
@@ -614,10 +595,13 @@ private:
         const TurnAction action = m_decisions.turn(status);
         m_evolution.turn_taken(action.choice);
         m_console.log(std::format(
-            "Battle: turn {}, HP {} ({:.0f}% of the bar), {}, {} Potions, {} Antidotes, {} Parlyz Heals.",
+            "Battle: turn {}, HP {} ({:.0f}% of the bar), {}, {} Potions, {} Antidotes, {} Parlyz Heals, {} Awakenings.",
             m_decisions.turns(), status.hp_red ? "red" : status.hp_yellow ? "yellow" : "green", 100 * status.hp_fill,
-            status_name(status.status), m_supplies.potions, m_supplies.antidotes, m_supplies.parlyz_heals
+            status_name(status.status), m_supplies.potions, m_supplies.antidotes, m_supplies.parlyz_heals, m_supplies.awakenings
         ));
+        if (!action.heal_reason.empty()){
+            m_console.log("Battle: " + action.heal_reason + ".");
+        }
         dump_debug_image(m_console, "AutoStory/battle", std::format("turn{}-menu", m_decisions.turns()), screen);
         switch (action.choice){
         case TurnChoice::RUN:
@@ -629,6 +613,9 @@ private:
             return;
         case TurnChoice::ANTIDOTE:
             m_decisions.turn_done(action.choice, item_result(use_item(m_console, m_context, item_row(m_supplies, "antidote"), "antidote", m_checks, m_language)));
+            return;
+        case TurnChoice::AWAKENING:
+            m_decisions.turn_done(action.choice, item_result(use_item(m_console, m_context, item_row(m_supplies, "awakening"), "awakening", m_checks, m_language)));
             return;
         case TurnChoice::MOVE:
             m_console.log(std::format("Battle: move {}.", action.slot + 1));
@@ -808,10 +795,36 @@ const char* status_name(StatusCondition status){
         return "PSN";
     case StatusCondition::PARALYSIS:
         return "PAR";
+    case StatusCondition::SLEEP:
+        return "SLP";
     case StatusCondition::OTHER:
         return "a status";
     }
     return "?";
+}
+
+StatusCondition read_status_badge(const ImageViewRGB32& badge){
+    const ImageStats stats = image_stats(badge);
+    const double r = stats.average.r;
+    const double g = stats.average.g;
+    const double b = stats.average.b;
+    const double off_white = std::abs(r - 255) + std::abs(g - 255) + std::abs(b - 217);
+    if (off_white < 60){
+        return StatusCondition::NONE;
+    }
+    if (r > 200 && g < 200 && b > 180){
+        return StatusCondition::POISON;
+    }
+    //  SLP's grey-olive badge with its cream letters: red and green even,
+    //  blue lower but above the yellow taken for PAR.
+    if (std::abs(r - g) < 20 && b < g - 15 && b > 140 && r < 235){
+        return StatusCondition::SLEEP;
+    }
+    //  Not measured yet: PAR's badge is taken to be the yellow one.
+    if (r > 180 && g > 150 && b < 140){
+        return StatusCondition::PARALYSIS;
+    }
+    return StatusCondition::OTHER;
 }
 
 PartyStatus read_party_status(const ImageViewRGB32& screen){
@@ -832,36 +845,35 @@ bool battle_shows(const ImageViewRGB32& screen){
 }
 
 //  The count the story keeps for `item`, or null for an item it doesn't count.
-static int* count_slot(Supplies& supplies, const std::string& item){
+static int Supplies::* count_member(const std::string& item){
     if (item == "potion"){
-        return &supplies.potions;
+        return &Supplies::potions;
     }
     if (item == "antidote"){
-        return &supplies.antidotes;
+        return &Supplies::antidotes;
     }
     if (item == "parlyz-heal"){
-        return &supplies.parlyz_heals;
+        return &Supplies::parlyz_heals;
+    }
+    if (item == "awakening"){
+        return &Supplies::awakenings;
     }
     return nullptr;
 }
 
+static int* count_slot(Supplies& supplies, const std::string& item){
+    int Supplies::* const member = count_member(item);
+    return member == nullptr ? nullptr : &(supplies.*member);
+}
+
 int item_count(const Supplies& supplies, const std::string& item){
-    if (item == "potion"){
-        return supplies.potions;
-    }
-    if (item == "antidote"){
-        return supplies.antidotes;
-    }
-    if (item == "parlyz-heal"){
-        return supplies.parlyz_heals;
-    }
-    return 0;
+    int Supplies::* const member = count_member(item);
+    return member == nullptr ? 0 : supplies.*member;
 }
 
 //  Whether the story keeps a count for `item`.
 static bool counted(const std::string& item){
-    Supplies probe;
-    return count_slot(probe, item) != nullptr;
+    return count_member(item) != nullptr;
 }
 
 int item_row(const Supplies& supplies, const std::string& item){
@@ -883,6 +895,7 @@ std::vector<std::string> set_from_bag(Supplies& supplies, const std::vector<BagR
     supplies.potions = 0;
     supplies.antidotes = 0;
     supplies.parlyz_heals = 0;
+    supplies.awakenings = 0;
     supplies.pocket.clear();
     std::vector<std::string> unread;
     for (const BagRow& row : rows){
@@ -911,6 +924,7 @@ std::vector<std::string> set_from_loaded_bag(Supplies& supplies, Supplies& saved
     saved.potions = supplies.potions;
     saved.antidotes = supplies.antidotes;
     saved.parlyz_heals = supplies.parlyz_heals;
+    saved.awakenings = supplies.awakenings;
     saved.pocket = supplies.pocket;
     return unread;
 }

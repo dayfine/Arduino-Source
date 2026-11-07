@@ -564,6 +564,34 @@ void step_once(ProControllerContext& context, Direction direction, std::optional
     context.wait_for_all_requests();
 }
 
+std::optional<int> step_until_seen(int max_tiles, const std::function<void()>& step, const std::function<bool()>& seen){
+    for (int tiles = 1; tiles <= max_tiles; tiles++){
+        step();
+        if (seen()){
+            return tiles;
+        }
+    }
+    return std::nullopt;
+}
+
+std::optional<int> step_into_line(
+    ConsoleHandle& console, ProControllerContext& context,
+    Direction direction, std::optional<Direction> facing, int max_tiles
+){
+    return step_until_seen(
+        max_tiles,
+        [&]{
+            step_once(context, direction, facing);
+            facing = direction;
+        },
+        [&]{
+            WhiteDialogWatcher message(COLOR_RED);
+            BattleScreenWatcher battle(COLOR_RED);
+            return wait_until(console, context, TRAINER_LINE_WATCH, {message, battle}) >= 0;
+        }
+    );
+}
+
 void face_wall(ProControllerContext& context, Direction direction){
     pbf_press_dpad(context, dpad(direction), TURN_TAP, TURN_SETTLE);
     context.wait_for_all_requests();

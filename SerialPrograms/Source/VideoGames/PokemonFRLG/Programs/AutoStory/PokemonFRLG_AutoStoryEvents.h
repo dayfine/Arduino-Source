@@ -59,6 +59,14 @@ struct StoryPose{
 //  has the Running Shoes (00.10 on).
 inline const std::string RUN_VARIANT = "run";
 
+//  The variant of a STEP into a trainer's line: a tile at a time, at most
+//  TRAINER_LINE_TILES, until the trainer sees the player
+//  (step_until_seen()). The battle after it starts on the trainer's row
+//  whether the walk before ended on its tile or a tile short.
+inline const std::string TRAINER_LINE_VARIANT = "trainer_line";
+//  Maximum tiles to step into a trainer's line of sight.
+inline constexpr int TRAINER_LINE_TILES = 3;
+
 //  The GAME step that closes the Trainer Card SID Helper leaves open.
 inline const std::string CLOSE_TRAINER_CARD = "close_trainer_card";
 
@@ -189,6 +197,12 @@ struct StoryEnv{
     std::string start_map = {};
     //  That checkpoint's START menu: a reload reads the bag again with it.
     StartMenu start_menu = StartMenu::BEFORE_POKEMON;
+    //  The once_per_save steps done from the last save that changed
+    //  nothing: a retry after a reload skips them. Emptied by a save.
+    Pokemon::PreparedSteps prepared = {};
+    //  The last save's Items pocket was read in full (read_bag_supplies()):
+    //  a reload restores `saved_supplies` without reading it again.
+    bool bag_read = false;
 };
 
 //  After a save is loaded for a checkpoint that starts on `start_map`: the
@@ -206,7 +220,8 @@ void read_lead_moves(StoryEnv& env, StartMenu menu);
 //  After a save is loaded, with START's menu `menu`: the Items pocket's
 //  counts as read (set_from_loaded_bag()), in place of the row's, which
 //  are kept if nothing can be read. Only with the full menu: the rows
-//  before it carry the items they have.
+//  before it carry the items they have. Sets `bag_read` when every count
+//  was read.
 void read_bag_supplies(StoryEnv& env, StartMenu menu);
 
 //  Does FRLG's kinds of story step on the console. A console step that

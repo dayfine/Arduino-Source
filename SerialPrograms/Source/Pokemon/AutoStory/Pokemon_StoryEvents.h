@@ -97,6 +97,10 @@ struct Outcome{
     std::string failure;
     std::string detail;
     std::optional<Pose> pose;
+    //  A succeeded action that left the game as it found it: a read, a
+    //  check, a TM the lead already knows. A reload of the same save undoes
+    //  nothing it did.
+    bool changed_nothing = false;
 
     bool succeeded() const;
 };
@@ -104,6 +108,8 @@ struct Outcome{
 Outcome outcome_ok();
 // Constructs a successful event outcome updating the run pose.
 Outcome outcome_ok(Pose pose);
+//  outcome_ok() with `changed_nothing`.
+Outcome outcome_unchanged();
 // Constructs a failed event outcome with reason and optional diagnostic detail.
 Outcome outcome_failed(std::string failure, std::string detail = "");
 //  "probe_exhausted: 4 rows": the failure and its detail, if any.

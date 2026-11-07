@@ -325,6 +325,42 @@ UnitTestResult test_mt_moon_closed_floor_wild(){
     return true;
 }
 
+//  Whether a route plans from Cerulean's Pokemon Center, at its nurse, to
+//  `goal` on `maps`.
+bool plans_from_cerulean_nurse(const std::vector<MapData>& maps, const RouteGoal& goal){
+    const MapPosition nurse{"CeruleanCity_PokemonCenter_1F", map_point(maps, "CeruleanCity_PokemonCenter_1F", "nurse_front")};
+    return plan_overworld_route(maps, nurse, goal, default_route_costs(), Direction::NORTH).has_value();
+}
+
+//  Cerulean City's Mart and Gym and Route 25's Sea Cottage load with the
+//  points the story walks to, and join the city: from its Pokemon Center
+//  a route plans to the Mart's clerk, to Misty, and north over Nugget
+//  Bridge (Route 24) and east along Route 25 into Bill's Sea Cottage.
+UnitTestResult test_cerulean_maps(){
+    const std::vector<MapData> maps = overworld_maps();
+    for (const char* name : {"CeruleanCity_Mart", "CeruleanCity_Gym", "Route25", "Route25_SeaCottage"}){
+        if (built_in(maps, name) == nullptr){
+            return std::string("Missing map ") + name + ".";
+        }
+    }
+    const MapPosition clerk{"CeruleanCity_Mart", map_point(maps, "CeruleanCity_Mart", "clerk_front")};
+    const MapPosition misty{"CeruleanCity_Gym", map_point(maps, "CeruleanCity_Gym", "misty_front")};
+    if (clerk.point != TilePos{4, 3} || misty.point != TilePos{8, 7}){
+        return "Unexpected clerk_front or misty_front.";
+    }
+    if (!plans_from_cerulean_nurse(maps, RouteGoal{clerk, Direction::WEST})){
+        return "No route from Cerulean's Pokemon Center to the Mart's clerk.";
+    }
+    if (!plans_from_cerulean_nurse(maps, RouteGoal{misty, Direction::NORTH})){
+        return "No route from Cerulean's Pokemon Center to Misty.";
+    }
+    const MapPosition bill_front{"Route25_SeaCottage", {7, 7}};
+    if (!plans_from_cerulean_nurse(maps, RouteGoal{bill_front, Direction::NORTH})){
+        return "No route from Cerulean's Pokemon Center over Nugget Bridge and Route 25 into Bill's Sea Cottage.";
+    }
+    return true;
+}
+
 //  A planned step walks where its map doesn't let the player run, and only
 //  there: out of Pewter's Pokemon Center to the Gym.
 UnitTestResult test_walk_only_indoors(){
@@ -577,6 +613,10 @@ const OverworldMapsTestCase OVERWORLD_MAPS_CASES[] = {
     {
         .input = {.name = "trainer stops on the story's maps", .body = test_trainer_stops},
         .expectation = {.description = "verifies trainer stops along story routes"},
+    },
+    {
+        .input = {.name = "Cerulean's Mart and Gym, Route 25 and Bill's Sea Cottage", .body = test_cerulean_maps},
+        .expectation = {.description = "validates Cerulean City, Gym, Mart, Route 25 and Sea Cottage map data"},
     },
 };
 

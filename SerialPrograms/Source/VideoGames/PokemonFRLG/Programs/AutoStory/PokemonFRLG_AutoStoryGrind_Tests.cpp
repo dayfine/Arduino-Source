@@ -177,21 +177,21 @@ GrindPlan squirtle_to(unsigned level){
     return {.member = 0, .level = level, .max_encounters = 20, .pace = Pokemon::Direction::EAST, .heal_every = 0};
 }
 
-//  Until the rival is 70%, Lv`cap` at most.
+//  Until the rival is 50%, Lv`cap` at most.
 GrindPlan beat_rival(unsigned cap){
     GrindPlan plan = squirtle_to(cap);
     plan.trainer = std::string(RIVAL);
     return plan;
 }
 
-//  40% at Lv16, 5% more a level, 72% from Lv19.
+//  30% at Lv16, 5% more a level, 72% from Lv19.
 void winnable_from_19(FakePatch& patch){
     patch.chance_at = [](unsigned level) -> std::optional<double>{
-        return level >= 19 ? 0.72 : 0.40 + 0.05 * (level - 16);
+        return level >= 19 ? 0.72 : 0.30 + 0.05 * (level - 16);
     };
 }
 void never_winnable(FakePatch& patch){
-    patch.chance_at = [](unsigned) -> std::optional<double>{ return 0.50; };
+    patch.chance_at = [](unsigned) -> std::optional<double>{ return 0.40; };
 }
 
 std::vector<GrindCase> grind_cases_1(){
@@ -268,7 +268,7 @@ std::vector<GrindCase> grind_cases_2(){
 std::vector<GrindCase> grind_cases_3(){
     return {
         {
-            .name = "until 70% against the rival: the first level that is",
+            .name = "until 50% against the rival: the first level that is",
             .plan = beat_rival(30),
             .setup = winnable_from_19,
             .encounters = 6, .fights = 6, .heals = 2,
@@ -370,7 +370,7 @@ UnitTestResult test_grind_cap_message(){
     }, plan);
     const std::string message = grind_message(plan, result);
     const std::string expected =
-        "Grind slot 1: level_cap: Lv18 is the cap, short of the win chance: level 18 of 18, win chance 50% of 70%"
+        "Grind slot 1: level_cap: Lv18 is the cap, short of the win chance: level 18 of 18, win chance 40% of 50%"
         " against TRAINER_RIVAL_CERULEAN_BULBASAUR, 4 encounters, 1 trips to the nurse.";
     if (message != expected){
         return "Expected \"" + expected + "\", got \"" + message + "\".";
@@ -407,23 +407,26 @@ UnitTestResult test_lead_as_read(){
 //  Console B at the end of 00.15 (2026-11-03): Wartortle Lv22, 65 HP,
 //  with Water Pulse taught over Tail Whip, and 10 Potions. The sim, the
 //  levels since the summary added to its stats, wins against the
-//  Cerulean rival about 42% at Lv22, 62% at Lv23, 66% at Lv24 and 76% at
-//  Lv25: a GRIND to 70% stops at Lv25.
+//  Cerulean rival about 52% at Lv22 (42% when the sim's Potion was sized
+//  on the foe's biggest hit) and more at Lv25: a GRIND to 50% stops at
+//  Lv22.
 UnitTestResult test_console_party(){
     Stats stats = combatant("wartortle", 22, OWN_GENES)->stats;
     stats.hp = 65;
     const MemberInfo read{.species = "wartortle", .level = 22, .moves = {"bite", "water-pulse", "bubble", "withdraw"}, .stats = stats};
     const PartyMember at22 = lead_as_read(read, PartyMember{});
-    for (uint8_t level = 22; level <= 25; level++){
+    double previous = 0;
+    for (uint8_t level = 22; level <= 25; level += 3){
         PartyMember lead = at22;
         lead.moves_through_level = level;
-        const std::optional<WinEstimate> estimate = healed_win_chance(lead, 10, RIVAL);
-        if (!estimate || (estimate->chance >= MIN_WIN_CHANCE) != (level == 25)){
+        const std::optional<WinEstimate> estimate = healed_win_chance(lead, SimItems{.potions = 10}, RIVAL);
+        if (!estimate || estimate->chance < MIN_WIN_CHANCE || estimate->chance <= previous){
             return std::format(
-                "Lv{}: {:.1f}%; expected the first at {:.0f}% or more at Lv25.",
+                "Lv{}: {:.1f}%; expected {:.0f}% or more, rising with the level.",
                 level, estimate ? 100 * estimate->chance : 0.0, 100 * MIN_WIN_CHANCE
             );
         }
+        previous = estimate->chance;
     }
     return true;
 }
@@ -448,7 +451,7 @@ UnitTestResult test_grind_variant(){
     rival.max_encounters = 100;
     rival.pace = Pokemon::Direction::WEST;
     const std::string rival_variant = grind_variant(rival);
-    if (rival_variant != "grind slot=1 level=30 encounters=100 pace=west heal_every=0 beat=TRAINER_RIVAL_CERULEAN_BULBASAUR chance=70"){
+    if (rival_variant != "grind slot=1 level=30 encounters=100 pace=west heal_every=0 beat=TRAINER_RIVAL_CERULEAN_BULBASAUR chance=50"){
         return "Unexpected variant \"" + rival_variant + "\".";
     }
     const std::optional<GrindPlan> rival_back = parse_grind_variant(rival_variant + " chance=75");
@@ -488,7 +491,7 @@ const AutoStoryGrindCase AUTO_STORY_GRIND_CASES[] = {
         .expectation = {},
     },
     {
-        .input = {"console B's party stops at Lv25 against the Cerulean rival", test_console_party},
+        .input = {"console B's party is fought at Lv22 against the Cerulean rival", test_console_party},
         .expectation = {},
     },
 };

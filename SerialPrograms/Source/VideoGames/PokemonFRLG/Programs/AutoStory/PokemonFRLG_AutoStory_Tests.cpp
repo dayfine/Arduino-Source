@@ -23,13 +23,13 @@
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRecovery.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRoute.h"
 #include "PokemonFRLG_AutoStoryActions.h"
+#include "PokemonFRLG_AutoStoryGrind.h"
 #include "PokemonFRLG_AutoStoryPcStorage.h"
 #include "PokemonFRLG_AutoStoryTable.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonFRLG{
-
 
 namespace{
 
@@ -229,8 +229,8 @@ UnitTestResult check_checkpoint(const StoryCheckpoint& checkpoint, StoryPose& po
 
 UnitTestResult test_routes_and_chain(){
     const std::vector<StoryCheckpoint>& checkpoints = story_checkpoints();
-    if (checkpoints.size() != 17 || checkpoints[0].start){
-        return "Expected 17 checkpoints, the first from a new game.";
+    if (checkpoints.size() != 23 || checkpoints[0].start){
+        return "Expected 23 checkpoints, the first from a new game.";
     }
     StoryPose pose;
     for (size_t c = 0; c < checkpoints.size(); c++){
@@ -392,6 +392,24 @@ const MapObject* trainer_seeing(const MapData& map, const TilePos& tile, const s
     return nullptr;
 }
 
+//  The tile a STEP from `pose` ends on: the next one; for a step into a
+//  trainer's line, the first within TRAINER_LINE_TILES that a trainer
+//  other than the `beaten` sees, where step_until_seen() stops, else the
+//  last.
+TilePos step_end(const StoryPose& pose, const StoryStep& step, const std::set<const MapObject*>& beaten){
+    const MapData* map = find_map_named(pose.map);
+    if (step.variant != TRAINER_LINE_VARIANT || map == nullptr){
+        return pose.tile.next(step.direction);
+    }
+    TilePos tile = pose.tile;
+    step_until_seen(
+        TRAINER_LINE_TILES,
+        [&]{ tile = tile.next(step.direction); },
+        [&]{ return trainer_seeing(*map, tile, beaten) != nullptr; }
+    );
+    return tile;
+}
+
 //  Whether every floor tile of `map` has wild encounters, as in a cave:
 //  every open tile is tall grass, but for warps. No route keeps out of
 //  its grass.
@@ -522,7 +540,7 @@ UnitTestResult advance(StoryPose& pose, const StoryStep& step){
         return check_legs(pose, step);
     }
     if (step.kind == StoryStepKind::STEP){
-        pose = StoryPose{pose.map, pose.tile.next(step.direction), step.direction};
+        pose = StoryPose{pose.map, step_end(pose, step, {}), step.direction};
     }
     if (step.pose_after){
         pose = one_tile(*step.pose_after);
@@ -538,8 +556,12 @@ UnitTestResult check_lines(const StoryCheckpoint& checkpoint, std::set<const Map
         const StoryStep& step = checkpoint.steps[c];
         const std::string where = checkpoint.id + "/" + step.name + ": ";
         const bool walks = step.kind == StoryStepKind::ROUTE || step.kind == StoryStepKind::LEGS;
+        //  A GRIND's patch is grass: the route there may end on it.
+        const bool to_patch = step.target && c + 1 < checkpoint.steps.size() && parse_grind_variant(checkpoint.steps[c + 1].variant);
         for (const MapPosition& tile : walks ? tiles_walked(pose, step) : std::vector<MapPosition>{}){
-            if (const std::string problem = tile_problem(tile, beaten); !problem.empty()){
+            const StoryPose end = to_patch ? one_tile(*step.target) : StoryPose{};
+            const bool patch = to_patch && tile.map == end.map && tile.point == end.tile;
+            if (const std::string problem = tile_problem(tile, beaten); !problem.empty() && !(patch && problem.starts_with("in the grass"))){
                 return where + problem;
             }
         }
@@ -551,7 +573,7 @@ UnitTestResult check_lines(const StoryCheckpoint& checkpoint, std::set<const Map
             return where + problem;
         }
         const MapData* map = find_map_named(pose.map);
-        const MapObject* trainer = step.kind == StoryStepKind::STEP && map ? trainer_seeing(*map, pose.tile.next(step.direction), beaten) : nullptr;
+        const MapObject* trainer = step.kind == StoryStepKind::STEP && map ? trainer_seeing(*map, step_end(pose, step, beaten), beaten) : nullptr;
         if (trainer != nullptr && (c + 1 == checkpoint.steps.size() || checkpoint.steps[c + 1].kind != StoryStepKind::BATTLE)){
             return where + "steps into a trainer's line with no battle after it.";
         }
@@ -566,12 +588,12 @@ UnitTestResult check_lines(const StoryCheckpoint& checkpoint, std::set<const Map
 }
 
 //  From the Running Shoes on, routes and legs keep out of the grass (but
-//  in caves, which are all grass), off warps to maps not loaded and out of
-//  trainers' lines, but for the three Route 3 trainers and Mt. Moon's Grunt
-//  at (12, 20) the table steps in front of to fight; where they cross a
-//  wandering trainer's sight, the walk can place the player if the trainer
-//  stops them; and where they cross the sight of one who looks around, on
-//  a leg to a wall.
+//  in caves, which are all grass, and onto a GRIND's patch), off warps to maps not loaded and out of
+//  trainers' lines, but for the three Route 3 trainers, Mt. Moon's Grunt
+//  at (12, 20) and Nugget Bridge's five the table steps in front of to
+//  fight; where they cross a wandering trainer's sight, the walk can place
+//  the player if the trainer stops them; and where they cross the sight of
+//  one who looks around, on a leg to a wall.
 UnitTestResult test_trainer_lines(){
     std::set<const MapObject*> beaten;
     bool has_shoes = false;
@@ -583,8 +605,8 @@ UnitTestResult test_trainer_lines(){
         }
         has_shoes = has_shoes || checkpoint.id == "00.10";
     }
-    if (beaten.size() != 4){
-        return "Expected to fight Colton, Greg and James on Route 3 and the Grunt at (12, 20) in Mt. Moon; the table fights "
+    if (beaten.size() != 9){
+        return "Expected to fight Colton, Greg and James on Route 3, the Grunt at (12, 20) in Mt. Moon and Nugget Bridge's five; the table fights "
             + std::to_string(beaten.size()) + " trainers.";
     }
     return true;
@@ -608,6 +630,105 @@ UnitTestResult test_robin_crossing(){
     return "No step 00.12/route4_nurse.";
 }
 
+//  A scene the table starts on a step onto its trigger, and the walks of
+//  its checkpoint before that step, which keep off the trigger's tiles:
+//  the maps have no triggers, so a route over one would start the scene
+//  part-way.
+struct TriggerCase{
+    std::string checkpoint;
+    std::string step;
+    std::string map;
+    //  The trigger's tiles: row `y` from `x0` to `x1`.
+    int y = 0;
+    int x0 = 0;
+    int x1 = 0;
+    //  The tile the step lands on.
+    int onto_x = 0;
+};
+
+const StoryCheckpoint* find_checkpoint(const std::string& id){
+    for (const StoryCheckpoint& checkpoint : story_checkpoints()){
+        if (checkpoint.id == id){
+            return &checkpoint;
+        }
+    }
+    return nullptr;
+}
+
+UnitTestResult check_trigger(const TriggerCase& c){
+    const StoryCheckpoint* checkpoint = find_checkpoint(c.checkpoint);
+    if (checkpoint == nullptr){
+        return "No checkpoint " + c.checkpoint + ".";
+    }
+    const MapPosition onto{c.map, {c.onto_x, c.y}};
+    StoryPose pose = one_tile(*checkpoint->start);
+    for (const StoryStep& step : checkpoint->steps){
+        const std::string where = c.checkpoint + "/" + step.name + ": ";
+        if (step.name == c.step && step.kind == StoryStepKind::STEP && onto == MapPosition{pose.map, pose.tile.next(step.direction)}){
+            return true;
+        }
+        if (step.name == c.step){
+            return where + "expected a step onto " + to_string(onto) + ", from " + describe(pose) + ".";
+        }
+        const bool walks = step.kind == StoryStepKind::ROUTE || step.kind == StoryStepKind::LEGS;
+        for (const MapPosition& tile : walks ? tiles_walked(pose, step) : std::vector<MapPosition>{}){
+            if (tile.map == c.map && tile.point.y == c.y && tile.point.x >= c.x0 && tile.point.x <= c.x1){
+                return where + "walks over the trigger at " + to_string(tile) + ".";
+            }
+        }
+        if (UnitTestResult result = advance(pose, step); result.result != UnitTestResult::PASSED){
+            return c.checkpoint + " " + result.message;
+        }
+    }
+    return "No step " + c.checkpoint + "/" + c.step + ".";
+}
+
+//  00.15b meets the rival on the middle of his three trigger tiles, row 6
+//  at x 22..24 north of Cerulean (VAR_MAP_SCENE_CERULEAN_CITY_RIVAL 0),
+//  and 00.16 the Rocket on the east one of his two, (10..11, 15) on Nugget
+//  Bridge (VAR_MAP_SCENE_ROUTE24 0), each from the tile below.
+UnitTestResult test_cerulean_triggers(){
+    const TriggerCase CASES[] = {
+        {.checkpoint = "00.15b", .step = "rival_trigger", .map = "CeruleanCity", .y = 6, .x0 = 22, .x1 = 24, .onto_x = 23},
+        {.checkpoint = "00.16", .step = "rocket_trigger", .map = "Route24", .y = 15, .x0 = 10, .x1 = 11, .onto_x = 11},
+    };
+    for (const TriggerCase& c : CASES){
+        if (UnitTestResult result = check_trigger(c); result.result != UnitTestResult::PASSED){
+            return result;
+        }
+    }
+    return true;
+}
+
+//  00.16 steps beside Nugget Bridge's five trainers from the south, one
+//  step at a time, each battle right after its step: Cale, Ali, Timmy,
+//  Reli and Ethan, by where they stand.
+UnitTestResult test_nugget_bridge_order(){
+    const StoryCheckpoint* checkpoint = find_checkpoint("00.16");
+    if (checkpoint == nullptr){
+        return "No checkpoint 00.16.";
+    }
+    const std::vector<StoryStep>& steps = checkpoint->steps;
+    std::string met;
+    StoryPose pose = one_tile(*checkpoint->start);
+    for (size_t c = 0; c < steps.size(); c++){
+        const MapData* map = find_map_named(pose.map);
+        const MapObject* trainer = steps[c].kind == StoryStepKind::STEP && map ? trainer_seeing(*map, step_end(pose, steps[c], {}), {}) : nullptr;
+        if (trainer != nullptr && (c + 1 == steps.size() || steps[c + 1].kind != StoryStepKind::BATTLE)){
+            return "00.16/" + steps[c].name + ": no battle right after the step.";
+        }
+        met += trainer ? " " + to_string(TilePos{trainer->x, trainer->y}) : "";
+        if (UnitTestResult result = advance(pose, steps[c]); result.result != UnitTestResult::PASSED){
+            return "00.16 " + result.message;
+        }
+    }
+    const std::string expected = " (12, 31) (10, 28) (12, 25) (10, 22) (12, 19)";
+    if (met != expected){
+        return "00.16: expected the five bridge trainers south to north," + expected + "; met" + met + ".";
+    }
+    return true;
+}
+
 //  Every checkpoint that starts from a save has a place the save card
 //  names, so a save left elsewhere is caught before it runs; and the
 //  places of the starts that matter differ.
@@ -624,6 +745,9 @@ UnitTestResult test_save_places(){
     }
     if (save_card_place("Route3") != "route-3" || save_card_place("Route4_PokemonCenter_1F") != "route-4"){
         return "Wrong save card places on Route 3 and 4.";
+    }
+    if (save_card_place("CeruleanCity_PokemonCenter_1F") != "cerulean-city"){
+        return "Wrong save card place in Cerulean City.";
     }
     //  Not Route 2's or Route 4's: a map name is a place's or a building's in it.
     if (!save_card_place("Route22").empty() || !save_card_place("Route24").empty() || !save_card_place("Route2").empty()){
@@ -786,7 +910,6 @@ UnitTestResult test_intro_names(){
     return true;
 }
 
-
 //  00.12c stores the Magikarp Gift RNG bought; with Gift RNG off there is
 //  none, and the deposit is skipped instead of refused.
 UnitTestResult test_magikarp_deposit_skippable(){
@@ -846,66 +969,24 @@ UnitTestResult test_option_presses(){
 }
 
 const AutoStoryTestCase AUTO_STORY_CASES[] = {
-    {
-        .input = {.name = "every route plans, and checkpoints chain", .body = test_routes_and_chain},
-        .expectation = {.description = "verifies route planning validity across all chained checkpoints"},
-    },
-    {
-        .input = {.name = "step names are unique per checkpoint", .body = test_unique_names},
-        .expectation = {.description = "ensures step identifier uniqueness within checkpoints"},
-    },
-    {
-        .input = {.name = "every save has a place on the save card", .body = test_save_places},
-        .expectation = {.description = "validates save location identifiers on save card"},
-    },
-    {
-        .input = {.name = "a reload's save is checked against the start", .body = test_save_place_error},
-        .expectation = {.description = "detects mismatch between checkpoint initial state and save point"},
-    },
-    {
-        .input = {.name = "save dialogs: every YES/NO is YES, a cancel fails", .body = test_save_dialog},
-        .expectation = {.description = "verifies save confirmation prompt interactions"},
-    },
-    {
-        .input = {.name = "every checkpoint lints clean", .body = test_lint},
-        .expectation = {.description = "validates semantic lint rules across story step sequence"},
-    },
-    {
-        .input = {.name = "Pewter Gym walks", .body = test_pewter_gym_walks},
-        .expectation = {.description = "verifies Pewter Gym route planning and obstacle avoidance"},
-    },
-    {
-        .input = {.name = "Pewter: to the aide's trigger", .body = test_pewter_aide_walk},
-        .expectation = {.description = "plans path to Running Shoes aide trigger tile"},
-    },
-    {
-        .input = {.name = "routes run after the Running Shoes", .body = test_runs_after_shoes},
-        .expectation = {.description = "switches movement speed to running once shoes acquired"},
-    },
-    {
-        .input = {.name = "intro: names, the rival's from the list", .body = test_intro_names},
-        .expectation = {.description = "verifies character and rival naming inputs"},
-    },
-    {
-        .input = {.name = "options: RIGHT presses from the shown value", .body = test_option_presses},
-        .expectation = {.description = "calculates Dpad RIGHT inputs for setting game options"},
-    },
-    {
-        .input = {.name = "Route 3: only the planned trainers' lines", .body = test_trainer_lines},
-        .expectation = {.description = "verifies route 3 trainer interaction sightlines"},
-    },
-    {
-        .input = {.name = "Route 3: Lass Robin stops the walk on (40, 9)", .body = test_robin_crossing},
-        .expectation = {.description = "verifies trainer interruption on route 3"},
-    },
-    {
-        .input = {.name = "00.12c: the Magikarp's deposit is skipped without Gift RNG", .body = test_magikarp_deposit_skippable},
-        .expectation = {.description = "skips magikarp deposit when gift rng is disabled"},
-    },
-};
+    {.input = {.name = "every route plans, and checkpoints chain", .body = test_routes_and_chain}, .expectation = {.description = "verifies route planning validity across all chained checkpoints"},},
+    {.input = {.name = "step names are unique per checkpoint", .body = test_unique_names}, .expectation = {.description = "ensures step identifier uniqueness within checkpoints"},},
+    {.input = {.name = "every save has a place on the save card", .body = test_save_places}, .expectation = {.description = "validates save location identifiers on save card"},},
+    {.input = {.name = "a reload's save is checked against the start", .body = test_save_place_error}, .expectation = {.description = "detects mismatch between checkpoint initial state and save point"},},
+    {.input = {.name = "save dialogs: every YES/NO is YES, a cancel fails", .body = test_save_dialog}, .expectation = {.description = "verifies save confirmation prompt interactions"},},
+    {.input = {.name = "every checkpoint lints clean", .body = test_lint}, .expectation = {.description = "validates semantic lint rules across story step sequence"},},
+    {.input = {.name = "Pewter Gym walks", .body = test_pewter_gym_walks}, .expectation = {.description = "verifies Pewter Gym route planning and obstacle avoidance"},},
+    {.input = {.name = "Pewter: to the aide's trigger", .body = test_pewter_aide_walk}, .expectation = {.description = "plans path to Running Shoes aide trigger tile"},},
+    {.input = {.name = "routes run after the Running Shoes", .body = test_runs_after_shoes}, .expectation = {.description = "switches movement speed to running once shoes acquired"},},
+    {.input = {.name = "intro: names, the rival's from the list", .body = test_intro_names}, .expectation = {.description = "verifies character and rival naming inputs"},},
+    {.input = {.name = "options: RIGHT presses from the shown value", .body = test_option_presses}, .expectation = {.description = "calculates Dpad RIGHT inputs for setting game options"},},
+    {.input = {.name = "Route 3: only the planned trainers' lines", .body = test_trainer_lines}, .expectation = {.description = "verifies route 3 trainer interaction sightlines"},},
+    {.input = {.name = "Route 3: Lass Robin stops the walk on (40, 9)", .body = test_robin_crossing}, .expectation = {.description = "verifies trainer interruption on route 3"},},
+    {.input = {.name = "00.12c: the Magikarp's deposit is skipped without Gift RNG", .body = test_magikarp_deposit_skippable}, .expectation = {.description = "skips magikarp deposit when gift rng is disabled"},},
+    {.input = {"Cerulean: the rival's and the Rocket's triggers", test_cerulean_triggers}, .expectation = {},},
+    {.input = {"Nugget Bridge: its five trainers, south to north", test_nugget_bridge_order}, .expectation = {},},};
 
 } // namespace
-
 
 void add_tests_AutoStory(UnitTestDatabase& database){
     add_tests_AutoStoryRunPlan(database);
@@ -913,8 +994,6 @@ void add_tests_AutoStory(UnitTestDatabase& database){
         database.add<Test_AutoStory>(scenario);
     }
 }
-
-
 
 } // namespace PokemonFRLG
 } // namespace NintendoSwitch
