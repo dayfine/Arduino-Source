@@ -45,7 +45,7 @@ public:
     virtual bool run_until_map(Pokemon::Direction direction, Milliseconds limit, const std::string& map, const std::string& label) = 0;
     //  Holds the D-pad toward a door (running with `run`) until the screen
     //  goes dark or a line shows. Returns whether it went dark.
-    virtual bool run_into_door(Pokemon::Direction direction, bool run) = 0;
+    virtual bool run_into_door(Pokemon::Direction direction, bool run, Milliseconds timeout = Milliseconds(12000)) = 0;
     //  D-pad taps `direction` one at a time, each looked at, toward a door
     //  or cave mouth, until the fade (then no more taps) and the location
     //  banner of `map` (a JSON map's name), for at most `max_taps`. Returns
@@ -68,7 +68,7 @@ public:
     virtual void fight(const std::string& trainer) override;
     virtual void walk_until_stopped(Pokemon::Direction direction, size_t tiles, const std::string& label) override;
     virtual bool run_until_map(Pokemon::Direction direction, Milliseconds limit, const std::string& map, const std::string& label) override;
-    virtual bool run_into_door(Pokemon::Direction direction, bool run) override;
+    virtual bool run_into_door(Pokemon::Direction direction, bool run, Milliseconds timeout = Milliseconds(12000)) override;
     virtual std::optional<size_t> tap_to_banner(Pokemon::Direction direction, const std::string& map, size_t max_taps) override;
     virtual void settle(Button button, const std::string& label, bool fade) override;
 

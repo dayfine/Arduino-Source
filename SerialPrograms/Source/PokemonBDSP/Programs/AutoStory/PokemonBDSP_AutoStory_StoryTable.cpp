@@ -148,10 +148,11 @@ StoryStep anchored(StoryStep step, Pose pose){
 }
 //  TODO(#114 coord events): the map schema has no scene triggers yet, so
 //  each row steps onto the decomp's trigger tile, named in its reason.
-StoryStep step_into(std::string name, Direction direction, std::string why, std::optional<Pose> pose_after = std::nullopt){
+StoryStep step_into(std::string name, Direction direction, std::string why, std::optional<Pose> pose_after = std::nullopt, std::string variant = ""){
     StoryStep step = make(StoryStepKind::STEP, std::move(name), std::move(why));
     step.direction = direction;
     step.pose_after = std::move(pose_after);
+    step.variant = std::move(variant);
     return step;
 }
 //  Through a door or a cave mouth `direction` a D-pad tap at a time, each
@@ -745,7 +746,7 @@ StoryCheckpoint oreburgh_mine_to_roark(){
             at(MINE, 15, 2, NORTH)),
         step_into("up_to_the_hall", NORTH, "the warp tile (15, 1)", at(MINE_HALL, 11, 21, NORTH)),
         step_into("out_of_the_mine", NORTH, "up the entrance hall and out to the city",
-            Pokemon::tile_pose(OREBURGH, {TilePos{45, 59}, TilePos{45, 58}}, NORTH)),
+            Pokemon::tile_pose(OREBURGH, {TilePos{45, 59}, TilePos{45, 58}}, NORTH), "bounded"),
         anchored(to_walls("up_to_the_mines_sign", {{.direction = NORTH, .tiles = 3}}, "north against the mine's sign (45, 56)"),
             at(OREBURGH, 45, 57, NORTH)),
         route("below_the_centers_door_again", below_oreburghs_center(), "up to below the Center's door", "town"),

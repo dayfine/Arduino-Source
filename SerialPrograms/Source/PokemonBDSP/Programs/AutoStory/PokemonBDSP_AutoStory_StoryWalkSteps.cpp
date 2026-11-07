@@ -272,7 +272,8 @@ Outcome StoryWalkSteps::step(RunState& state, const StoryStep& step){
     //  (r33 was outside, "no fade"). No separate turn tap first: at 1 tile
     //  from the door, a 50 ms turn tap can step in before run_into_door() watches.
     if (step.pose_after && step.pose_after->map != state.pose.map){
-        const bool faded = m_io.run_into_door(step.direction, m_can_run);
+        const Milliseconds timeout = (step.variant == "bounded" || (state.pose.map == "OreburghMineB1F" && step.name == "out_of_the_mine")) ? 3800ms : 12000ms;
+        const bool faded = m_io.run_into_door(step.direction, m_can_run, timeout);
         log(std::format("[{}] {}: {} through the door: {}.", m_row, step.name, direction_name(step.direction), faded ? "faded" : "no fade yet"));
         m_io.settle(BUTTON_B, label_of(step), !faded);
         return Pokemon::outcome_ok();

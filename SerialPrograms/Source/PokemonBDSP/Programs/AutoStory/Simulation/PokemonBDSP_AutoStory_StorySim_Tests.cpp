@@ -131,8 +131,8 @@ public:
     }
     virtual void walk_until_stopped(Direction direction, size_t tiles, const std::string& label) override;
     virtual bool run_until_map(Direction direction, Milliseconds limit, const std::string& map, const std::string&) override;
-    virtual bool run_into_door(Direction direction, bool run) override{
-        const bool warped = m_sim.hold(direction, 12000ms, run ? SimPace::RUN : SimPace::WALK).stop == SimStop::WARP;
+    virtual bool run_into_door(Direction direction, bool run, Milliseconds timeout = Milliseconds(12000)) override{
+        const bool warped = m_sim.hold(direction, timeout, run ? SimPace::RUN : SimPace::WALK).stop == SimStop::WARP;
         if (warped && fade_missed()){
             m_misses.fade_unseen = true;
             return false;
