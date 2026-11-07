@@ -60,6 +60,16 @@ constexpr StoryTrainer STORY_TRAINERS[] = {
     {.map = "Route25", .battle = "picnicker_kelsey", .trainer = "TRAINER_PICNICKER_KELSEY"},
     {.map = "Route25", .battle = "hiker_nob", .trainer = "TRAINER_HIKER_NOB"},
     {.map = "Route25", .battle = "lass_haley", .trainer = "TRAINER_LASS_HALEY"},
+    //  The burgled house's Rocket (33, 6), CeruleanCity_EventScript_GruntTrigger.
+    {.map = "CeruleanCity", .battle = "rocket_grunt", .trainer = "TRAINER_TEAM_ROCKET_GRUNT_5"},
+    //  Route 6's Jeff (13, 33), across the only way south.
+    {.map = "Route6", .battle = "camper_jeff", .trainer = "TRAINER_CAMPER_JEFF"},
+    {.map = "SSAnne_2F_Corridor", .battle = "rival_ss_anne", .trainer = "TRAINER_RIVAL_SS_ANNE_BULBASAUR"},
+    //  Vermilion Gym's three, before the trash cans, and Lt. Surge.
+    {.map = "VermilionCity_Gym", .battle = "sailor_dwayne", .trainer = "TRAINER_SAILOR_DWAYNE"},
+    {.map = "VermilionCity_Gym", .battle = "engineer_baily", .trainer = "TRAINER_ENGINEER_BAILY"},
+    {.map = "VermilionCity_Gym", .battle = "gentleman_tucker", .trainer = "TRAINER_GENTLEMAN_TUCKER"},
+    {.map = "VermilionCity_Gym", .battle = "lt_surge", .trainer = "TRAINER_LEADER_LT_SURGE"},
 };
 
 using JsonTable = std::map<std::string, JsonValue, std::less<>>;

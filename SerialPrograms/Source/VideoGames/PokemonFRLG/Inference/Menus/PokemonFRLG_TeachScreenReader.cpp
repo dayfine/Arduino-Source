@@ -57,6 +57,12 @@ bool solid(const ImageViewRGB32& screen, const GameBox& box, const FloatPixel& c
     return euclidean_distance(stats.average, color) < 40 && stats.stddev.sum() < 40;
 }
 
+//  The box is a fine pattern of light colors averaging near `color`.
+bool patterned(const ImageViewRGB32& screen, const GameBox& box, const FloatPixel& color){
+    const ImageStats stats = image_stats(game_crop(screen, box));
+    return euclidean_distance(stats.average, color) < 30 && stats.stddev.sum() < 70;
+}
+
 //  Measured on the captures (console B, 2026-11-03). Left of the title, the
 //  frame's color tells the screen: the bag's orange, the TM CASE's mint,
 //  the party menu's dark teal.
@@ -65,6 +71,11 @@ const FloatPixel BAG_ORANGE(255, 210, 94);
 const FloatPixel TM_CASE_MINT(193, 234, 207);
 const FloatPixel PARTY_TEAL(18, 109, 107);
 const FloatPixel WHITE(255, 255, 255);
+//  The TM's scene: pale blue diamonds on both sides of the member, around
+//  (198, 234, 255) with a stddev near 30 for the pattern.
+constexpr GameBox SCENE_LEFT{0, 20, 16, 90};
+constexpr GameBox SCENE_RIGHT{224, 20, 16, 90};
+const FloatPixel SCENE_BLUE(198, 234, 255);
 
 //  The item menu's box, between its rows (OPEN at y 109, REGISTER 125,
 //  CANCEL 141); blue text box or list below it when it is closed.
@@ -202,6 +213,8 @@ const NameMatcher& text_matcher(){
         {"stop-question", "Stop trying to teach"},
         {"did-not-learn", "did not learn the"},
         {"not-compatible", "are not compatible"},
+        {"machine-set", "Machine set"},
+        {"learned", "learned"},
     };
     return matcher;
 }
@@ -216,6 +229,8 @@ TeachText teach_text(const std::string& slug){
         {"stop-question", TeachText::STOP_QUESTION},
         {"did-not-learn", TeachText::DID_NOT_LEARN},
         {"not-compatible", TeachText::NOT_COMPATIBLE},
+        {"machine-set", TeachText::MACHINE_SET},
+        {"learned", TeachText::LEARNED},
     };
     for (const auto& [name, text] : texts){
         if (name == slug){
@@ -271,6 +286,7 @@ const char* teach_screen_name(TeachScreen screen){
     case TeachScreen::PARTY_TEXT:   return "party_text";
     case TeachScreen::PARTY_YES_NO: return "party_yes_no";
     case TeachScreen::KNOWN_MOVES:  return "known_moves";
+    case TeachScreen::TM_SCENE:     return "tm_scene";
     }
     return "?";
 }
@@ -286,6 +302,8 @@ const char* teach_text_name(TeachText text){
     case TeachText::STOP_QUESTION:   return "stop_question";
     case TeachText::DID_NOT_LEARN:   return "did_not_learn";
     case TeachText::NOT_COMPATIBLE:  return "not_compatible";
+    case TeachText::MACHINE_SET:     return "machine_set";
+    case TeachText::LEARNED:         return "learned";
     }
     return "?";
 }
@@ -300,6 +318,9 @@ TeachScreen read_teach_screen(const ImageViewRGB32& screen){
     }
     if (solid(screen, CORNER, PARTY_TEAL)){
         return read_party_screen(screen);
+    }
+    if (patterned(screen, SCENE_LEFT, SCENE_BLUE) && patterned(screen, SCENE_RIGHT, SCENE_BLUE)){
+        return TeachScreen::TM_SCENE;
     }
     if (read_summary_move_cursor(screen)){
         return TeachScreen::KNOWN_MOVES;
@@ -350,7 +371,7 @@ TeachText read_teach_text(Logger& logger, Language language, const ImageViewRGB3
     if (kind == TeachScreen::PARTY_PROMPT){
         return teach_text(text_matcher().read(logger, language, game_crop(screen, PROMPT_LINE), DARK_TEXT_FILTERS()));
     }
-    if (kind != TeachScreen::PARTY_TEXT && kind != TeachScreen::PARTY_YES_NO){
+    if (kind != TeachScreen::PARTY_TEXT && kind != TeachScreen::PARTY_YES_NO && kind != TeachScreen::TM_SCENE){
         return TeachText::UNKNOWN;
     }
     //  The phrase either line matches best.
@@ -415,8 +436,8 @@ void add_list(
 //  then: in the bag, its pocket, the key items from the top (KEY ITEMS
 //  only) and the cursor's row (from 1, or "none"); in the TM CASE, its
 //  moves from the top and the cursor's row; in an item menu or YES/NO, the
-//  cursor's row; over the party menu, the message; on KNOWN MOVES, the five
-//  rows' moves and the cursor's row.
+//  cursor's row; over the party menu or in the TM's scene, the message; on
+//  KNOWN MOVES, the five rows' moves and the cursor's row.
 class Test_TeachScreen : public ImageUnitTest{
 public:
     Test_TeachScreen(const std::string& image)
@@ -467,6 +488,7 @@ private:
             [[fallthrough]];
         case TeachScreen::PARTY_PROMPT:
         case TeachScreen::PARTY_TEXT:
+        case TeachScreen::TM_SCENE:
             labels.push_back("text");
             values.push_back(teach_text_name(read_teach_text(logger, language, screen)));
             return;
@@ -506,6 +528,8 @@ void add_tests_TeachScreenReader(UnitTestDatabase& database){
         "KnownMoves_eng.png",
         "StopQuestion_eng.png",
         "DidNotLearn_eng.png",
+        //  HM01 to an Oddish with two free slots (00.23, console B).
+        "MachineSet_eng.png",
     }){
         database.add<Test_TeachScreen>(std::string("PokemonFRLG/TeachScreenReader/") + image);
     }

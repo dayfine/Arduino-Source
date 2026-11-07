@@ -470,7 +470,32 @@ UnitTestResult test_grind_variant(){
     return true;
 }
 
+//  The check in the Center before the walk out: a lead that already has
+//  the chance needs no trip (00.24 at Lv29, 79% against Lt. Surge, console
+//  B, 2026-11-03); one short of it does. Nothing is fought either way.
+UnitTestResult test_grind_reached_already(){
+    QuietLogger logger;
+    for (const unsigned level : {16u, 19u}){
+        FakePatch patch;
+        patch.level = level;
+        winnable_from_19(patch);
+        const bool reached = grind_reached_already(logger, patch, [&patch](size_t slot){
+            return patch.read_member(slot);
+        }, beat_rival(30));
+        if (reached != (level >= 19) || patch.encounters != 0 || patch.heals != 0 || !patch.error.empty()){
+            return std::format("Lv{}: reached {}, {} encounters, {} heals {}.", level, reached, patch.encounters, patch.heals, patch.error);
+        }
+    }
+    const Pokemon::StoryStep check = grind_check_step("rival_winnable", "", beat_rival(30));
+    const std::optional<GrindPlan> back = parse_grind_check_variant(check.variant);
+    if (!back || back->trainer != RIVAL || back->level != 30 || parse_grind_variant(check.variant)){
+        return "\"" + check.variant + "\" didn't read back as its plan, or read as a GRIND step.";
+    }
+    return true;
+}
+
 } // namespace
+
 
 
 const AutoStoryGrindCase AUTO_STORY_GRIND_CASES[] = {
@@ -494,6 +519,7 @@ const AutoStoryGrindCase AUTO_STORY_GRIND_CASES[] = {
         .input = {"console B's party is fought at Lv22 against the Cerulean rival", test_console_party},
         .expectation = {},
     },
+    {.input = {"reached already: no walk out to the patch", test_grind_reached_already}, .expectation = {}},
 };
 
 void add_tests_AutoStoryGrind(UnitTestDatabase& database){

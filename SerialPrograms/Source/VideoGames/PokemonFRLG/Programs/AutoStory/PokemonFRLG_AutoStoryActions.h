@@ -112,6 +112,13 @@ void mash_until_overworld(ConsoleHandle& console, ProControllerContext& context,
 //  answers NO. Throws OperationFailedException after `timeout`.
 void answer_yes_no(ConsoleHandle& console, ProControllerContext& context, bool yes, Button advance, Milliseconds timeout);
 
+//  From the overworld, facing something that answers A with a message (a
+//  sign, Vermilion Gym's trash cans): A, then how many pages the message
+//  has, one or two, then on to the overworld. Language-free: one A after
+//  the first page has printed either closes the message or shows its
+//  second page. Nothing if no message showed.
+std::optional<size_t> talk_and_count_pages(ConsoleHandle& console, ProControllerContext& context);
+
 //  From the overworld: one step `direction`, onto a trigger or into a door.
 //  `facing` is the way the player faces, if known; a player facing another
 //  way is turned first.
@@ -130,12 +137,17 @@ std::optional<int> step_until_seen(int max_tiles, const std::function<void()>& s
 //  with no tiles to walk up (PokemonFRLG_OverworldRecoveryWalk.cpp).
 inline constexpr Milliseconds TRAINER_LINE_WATCH(2500);
 
+//  How long a step into the line of a trainer who looks around waits for
+//  them to turn to the player (TRAINER_WAIT_VARIANT).
+inline constexpr Milliseconds TRAINER_WAIT_WATCH(30000);
+
 //  From the overworld: step_until_seen() `direction`, turning first
-//  unless `facing` is `direction`, each step watched TRAINER_LINE_WATCH
-//  for a trainer's message or battle.
+//  unless `facing` is `direction`, each step watched `watch` for a
+//  trainer's message or battle.
 std::optional<int> step_into_line(
     ConsoleHandle& console, ProControllerContext& context,
-    Pokemon::Direction direction, std::optional<Pokemon::Direction> facing, int max_tiles
+    Pokemon::Direction direction, std::optional<Pokemon::Direction> facing, int max_tiles,
+    Milliseconds watch = TRAINER_LINE_WATCH
 );
 
 //  From the overworld, turns to face `direction` without stepping: the

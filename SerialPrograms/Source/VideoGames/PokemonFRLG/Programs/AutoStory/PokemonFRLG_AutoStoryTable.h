@@ -4,9 +4,10 @@
  *
  *  FireRed from a new game to the Boulder Badge, the Running Shoes, Route
  *  3 to the Magikarp salesman in Route 4's Pokemon Center, through Mt.
- *  Moon to Route 4 east of it, and on to Cerulean City, Misty, its rival
- *  and Nugget Bridge, as story checkpoints 00.01 to 00.16, each saved at its
- *  end. After 00.10 every route and leg runs. Taken from a by-hand run on
+ *  Moon to Route 4 east of it, and on to Cerulean City, Misty, its rival,
+ *  Nugget Bridge and Bill, then Route 6 to Vermilion City, the S.S.
+ *  Anne's HM01 and Lt. Surge, as story checkpoints 00.01 to 00.25, each
+ *  saved at its end. After 00.10 every route and leg runs. Taken from a by-hand run on
  *  console B (2026-11-01) and the pokefirered map scripts.
  *
  */
@@ -23,7 +24,7 @@ namespace NintendoSwitch{
 namespace PokemonFRLG{
 
 
-//  Checkpoints 00.01 to 00.16, in order, with 00.01b, the way back in after
+//  Checkpoints 00.01 to 00.25, in order, with 00.01b, the way back in after
 //  SID Helper, after 00.01, 00.04 split in two at Squirtle's ball for
 //  Starter RNG: 00.04 and 00.04b, 00.12b, the way back in after Gift RNG,
 //  after 00.12, 00.12c, the Magikarp put in BOX 1, after it, 00.14b and
@@ -39,6 +40,10 @@ void add_tests_AutoStory(UnitTestDatabase& database);
 void add_tests_AutoStoryRunPlan(UnitTestDatabase& database);
 //  The table run end to end against a fake game (PokemonFRLG_AutoStorySimulation_Tests.cpp).
 void add_tests_AutoStorySimulation(UnitTestDatabase& database);
+//  Rows 00.21 and 00.22 on the overworld sim (PokemonFRLG_AutoStoryVermilion_Tests.cpp).
+void add_tests_AutoStoryVermilion(UnitTestDatabase& database);
+//  Rows 00.23 to 00.25 on the overworld sim (PokemonFRLG_AutoStoryVermilionGym_Tests.cpp).
+void add_tests_AutoStoryVermilionGym(UnitTestDatabase& database);
 
 
 

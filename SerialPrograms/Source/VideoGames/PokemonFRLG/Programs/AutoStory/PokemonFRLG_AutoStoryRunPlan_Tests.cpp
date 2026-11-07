@@ -138,7 +138,7 @@ private:
     const RunPlanScenario m_scenario;
 };
 
-const std::string TODAY = "00.01 00.02 00.03 00.04 00.05 00.06 00.07 00.08 00.09 00.10 00.11 00.12 00.12c 00.13 00.14 00.14b 00.14c 00.15 00.15b 00.16 00.17 00.18 00.19 00.20";
+const std::string TODAY = "00.01 00.02 00.03 00.04 00.05 00.06 00.07 00.08 00.09 00.10 00.11 00.12 00.12c 00.13 00.14 00.14b 00.14c 00.15 00.15b 00.16 00.17 00.18 00.19 00.20 00.21 00.22 00.23 00.24 00.25";
 
 const RunPlanScenario RUN_PLAN_CASES[] = {
     {
@@ -154,8 +154,7 @@ const RunPlanScenario RUN_PLAN_CASES[] = {
         .expectation = {.expected_ids = "00.13 00.14 00.14b 00.14c 00.15 00.15b 00.16"},
     },
     {
-        .input = {
-            .name = "SID Helper: 00.01 stops on the keyboard",
+        .input = {            .name = "SID Helper: 00.01 stops on the keyboard",
             .first = "00.01",
             .handoffs = {.sid_helper = true},
         },
@@ -230,15 +229,14 @@ const RunPlanScenario RUN_PLAN_CASES[] = {
     },
     {
         .input = {.name = "Gift RNG off: 00.12b is passed over", .first = "00.11"},
-        .expectation = {.expected_ids = "00.11 00.12 00.12c 00.13 00.14 00.14b 00.14c 00.15 00.15b 00.16 00.17 00.18 00.19 00.20"},
+        .expectation = {.expected_ids = "00.11 00.12 00.12c 00.13 00.14 00.14b 00.14c 00.15 00.15b 00.16 00.17 00.18 00.19 00.20 00.21 00.22 00.23 00.24 00.25"},
     },
     {
         .input = {.name = "Gift RNG off: 00.12b runs when started at", .first = "00.12b"},
-        .expectation = {.expected_ids = "00.12b 00.12c 00.13 00.14 00.14b 00.14c 00.15 00.15b 00.16 00.17 00.18 00.19 00.20"},
+        .expectation = {.expected_ids = "00.12b 00.12c 00.13 00.14 00.14b 00.14c 00.15 00.15b 00.16 00.17 00.18 00.19 00.20 00.21 00.22 00.23 00.24 00.25"},
     },
     {
-        .input = {
-            .name = "Gift RNG: started at 00.12b, from the save beside the salesman",
+        .input = {            .name = "Gift RNG: started at 00.12b, from the save beside the salesman",
             .first = "00.12b",
             .handoffs = {.gift_rng = true},
         },
@@ -260,11 +258,10 @@ const RunPlanScenario RUN_PLAN_CASES[] = {
     },
     {
         .input = {.name = "Starter RNG alone: 00.12b runs when started at", .first = "00.12b", .handoffs = {.starter_rng = true}},
-        .expectation = {.expected_ids = "00.12b 00.12c 00.13 00.14 00.14b 00.14c 00.15 00.15b 00.16 00.17 00.18 00.19 00.20"},
+        .expectation = {.expected_ids = "00.12b 00.12c 00.13 00.14 00.14b 00.14c 00.15 00.15b 00.16 00.17 00.18 00.19 00.20 00.21 00.22 00.23 00.24 00.25"},
     },
     {
-        .input = {
-            .name = "Starter RNG first, with both on",
+        .input = {            .name = "Starter RNG first, with both on",
             .first = "00.03",
             .handoffs = {.starter_rng = true, .gift_rng = true},
         },

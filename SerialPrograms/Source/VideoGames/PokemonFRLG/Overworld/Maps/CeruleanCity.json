@@ -90,10 +90,12 @@
         "000000000000000333303333333303333000000000000000"
     ],
     "points": {
+        "warp_1": [30, 11],
         "warp_3": [22, 19],
         "warp_4": [31, 21],
         "warp_6": [29, 28],
-        "warp_7": [1, 12]
+        "warp_7": [1, 12],
+        "warp_9": [31, 8]
     },
     "warps": [
         {
@@ -104,7 +106,9 @@
         {
             "x": 30,
             "y": 11,
-            "enter": "walk_into"
+            "enter": "walk_into",
+            "to_map": "CeruleanCity_House2",
+            "to_point": "warp_1"
         },
         {
             "x": 15,
@@ -152,12 +156,16 @@
         {
             "x": 31,
             "y": 8,
-            "enter": "walk_south"
+            "enter": "walk_south",
+            "to_map": "CeruleanCity_House2",
+            "to_point": "warp_3"
         },
         {
             "x": 31,
             "y": 9,
-            "enter": "walk_into"
+            "enter": "walk_into",
+            "to_map": "CeruleanCity_House2",
+            "to_point": "warp_3"
         },
         {
             "x": 14,
@@ -271,6 +279,11 @@
             "side": "north",
             "to_map": "Route24",
             "offset": 12
+        },
+        {
+            "side": "south",
+            "to_map": "Route5",
+            "offset": 0
         },
         {
             "side": "west",

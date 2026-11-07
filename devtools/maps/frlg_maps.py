@@ -94,6 +94,7 @@ POINTS = {
     'CeruleanCave_1F': {'entrance': (33, 21)},
     #   Mewtwo's tile. Its battle starts by talking to it from the south.
     'CeruleanCave_B1F': {'mewtwo': (7, 12)},
+    'VermilionCity_PokemonCenter_1F': {'nurse_front': (7, 4)},
 }
 FLAG_SETS = {
     #   Set once the player has entered the Hall of Fame. They clear the way
@@ -103,6 +104,23 @@ FLAG_SETS = {
         'FLAG_HIDE_CERULEAN_RIVAL',
         'FLAG_HIDE_CERULEAN_ROCKET',
     ]},
+    #   Set at every new game (EventScript_ResetAllMapFlags in
+    #   data/event_scripts.s): people who are on the map only in a scene.
+    #   The S.S. Anne's rival stands on the Captain's door until his scene
+    #   brings him out.
+    'SSAnne_2F_Corridor': {'new_game': ['FLAG_HIDE_SS_ANNE_RIVAL']},
+    'VermilionCity': {'new_game': ['FLAG_HIDE_VERMILION_CITY_OAKS_AIDE']},
+}
+
+#   Tiles a script changes for good once the story is past it, written as
+#   the story finds them after: Vermilion Gym's beams across rows 6 and 7
+#   go off once both switches are found
+#   (VermilionCity_Gym_EventScript_SetBeamsOff: (4..6, 6..7) floor,
+#   FLAG_FOUND_BOTH_VERMILION_GYM_SWITCHES). No route of the story's goes
+#   north of them before that, and one after can't end a leg on them as on
+#   a wall.
+OPENED_TILES = {
+    'VermilionCity_Gym': [(x, y) for y in (6, 7) for x in (4, 5, 6)],
 }
 
 
@@ -132,9 +150,18 @@ def behaviors(decomp):
     return names
 
 
-def tileset_attributes(decomp, symbol, kind):
-    name = re.sub(r'([a-z])([A-Z0-9])', r'\1_\2', symbol.replace('gTileset_', '')).lower()
-    data = decomp.read(f'data/tilesets/{kind}/{name}/metatile_attributes.bin')
+def tileset_attributes(decomp, symbol):
+    """The metatile attributes of tileset `symbol` (gTileset_<name>), from the
+    file src/data/tilesets/metatiles.h names for gMetatileAttributes_<name>:
+    folder names don't always follow the symbol (gTileset_SSAnne is ss_anne)."""
+    attributes = symbol.replace('gTileset_', 'gMetatileAttributes_')
+    match = re.search(
+        r'\b' + attributes + r'\[\]\s*=\s*INCBIN_U32\("([^"]+)"\)',
+        decomp.read('src/data/tilesets/metatiles.h').decode(),
+    )
+    if not match:
+        sys.exit(f'No {attributes} in src/data/tilesets/metatiles.h.')
+    data = decomp.read(match.group(1))
     return [struct.unpack_from('<I', data, i)[0] for i in range(0, len(data), 4)]
 
 
@@ -193,8 +220,8 @@ def grid(decomp, layout, names, unhandled, signs=frozenset(), land_encounters=Fa
     for "open, with wild encounters"."""
     width, height = layout['width'], layout['height']
     blocks = decomp.read(layout['blockdata_filepath'])
-    primary = tileset_attributes(decomp, layout['primary_tileset'], 'primary')
-    secondary = tileset_attributes(decomp, layout['secondary_tileset'], 'secondary')
+    primary = tileset_attributes(decomp, layout['primary_tileset'])
+    secondary = tileset_attributes(decomp, layout['secondary_tileset'])
     tiles, elevation, entries, wild_edges = [], [], {}, []
     for y in range(height):
         row, levels = '', ''
@@ -334,6 +361,8 @@ def map_json(decomp, name, sources, layouts, names, loaded, unhandled, land_maps
     tiles, elevation, entries, wild_edges = grid(
         decomp, layouts[source['layout']], names, unhandled, signs, source['id'] in land_maps
     )
+    for x, y in OPENED_TILES.get(name, []):
+        tiles[y] = tiles[y][:x] + '.' + tiles[y][x + 1:]
     warp_events = source.get('warp_events', [])
     points = {n: [x, y] for n, (x, y) in POINTS.get(name, {}).items()}
     for index in sorted(arrivals(sources, loaded)[name]):

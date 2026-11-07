@@ -211,7 +211,7 @@ public:
         , m_calls(calls)
         , m_lines(calls, planning)
         , m_steps(calls, planning != nullptr ? planning->wall_check : WallCheck::TAP)
-        , m_plan(route)
+        , m_plan(with_warp_slack(route))
         , m_at(planning != nullptr ? planning->start : std::nullopt)
         , m_facing(facing)
     {}

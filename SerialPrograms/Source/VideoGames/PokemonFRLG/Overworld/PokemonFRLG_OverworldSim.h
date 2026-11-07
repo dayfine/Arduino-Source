@@ -32,6 +32,7 @@
 #include <optional>
 #include <set>
 #include <string>
+#include <utility>
 #include <vector>
 #include "Common/Cpp/Time.h"
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
@@ -108,6 +109,11 @@ struct SimScript{
     //  don't mark as grass: Mt. Moon B2F's tiles closed on one side ('8')
     //  are cave floor too (console B, 2026-11-03).
     std::set<std::string> wild_floor_maps;
+    //  Whether the game holds the player up a tile on a step onto a
+    //  connected map. It did north onto Nugget Bridge (console B,
+    //  2026-11-03, rows 00.16 and 00.20), not south from Route 6 into
+    //  Vermilion City (row 00.24).
+    bool connections_stall = true;
     SimTiming timing;
 };
 
@@ -180,6 +186,11 @@ public:
     //  battle follows it.
     bool close_message();
 
+    //  Cuts the tree the player faces (an object named "cut_tree") with
+    //  YES to the game's question: it is gone until the player next warps,
+    //  as its hide flag is a FLAG_TEMP. Returns whether there was one.
+    bool cut_tree();
+
 private:
     //  A screen that shows at `at`; `unfreeze`: the player can move again.
     struct Pending{
@@ -230,6 +241,8 @@ private:
     std::optional<size_t> m_trainer_speaking;
     //  The trainer whose battle is on screen or about to show.
     std::optional<size_t> m_trainer;
+    //  The trees cut since the last warp, and their maps.
+    std::vector<std::pair<int, MapObject>> m_cut_trees;
     int m_grass_steps = 0;
     int m_holds = 0;
     SimState m_state;

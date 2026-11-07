@@ -67,6 +67,28 @@ inline const std::string TRAINER_LINE_VARIANT = "trainer_line";
 //  Maximum tiles to step into a trainer's line of sight.
 inline constexpr int TRAINER_LINE_TILES = 3;
 
+//  The variant of a STEP into the line of a trainer who looks around
+//  (MOVEMENT_TYPE_LOOK_AROUND): one tile, then a wait of up to
+//  TRAINER_WAIT_WATCH for the trainer to turn to the player. Indoors, where
+//  the player can't run, such a trainer turns a random way every 32 to 128
+//  frames (pokefirered event_object_movement.c, MovementType_LookAround;
+//  it turns to the player only when the player runs), so they face the
+//  player within 30 s all but about 1 time in 500; and the game checks
+//  their sight every frame (ProcessPlayerFieldInput()), not only after a
+//  step. Stepped into from outside their sight onto the second tile of
+//  their line, the player is always seen there, and the trainer walks up
+//  one tile.
+inline const std::string TRAINER_WAIT_VARIANT = "trainer_wait";
+
+//  The GAME step that cuts the tree the player faces, `direction`
+//  (pokefirered data/scripts/field_moves.inc, EventScript_CutTree): A,
+//  "This tree looks like it can be CUT down! Would you like to CUT it?"
+//  YES, "<MON> used CUT!", the tree falls; then a step onto its tile. With
+//  no Pokemon that knows Cut there is no YES/NO, and the step fails. The
+//  tree grows back when the player leaves the map (its hide flag is a
+//  FLAG_TEMP), so the walk back cuts it again.
+inline const std::string CUT_TREE_VARIANT = "cut_tree";
+
 //  The GAME step that closes the Trainer Card SID Helper leaves open.
 inline const std::string CLOSE_TRAINER_CARD = "close_trainer_card";
 
@@ -141,8 +163,13 @@ StoryRunPlan plan_story_run(
 
 //  The maps the story plans on: every map to Route 4's Pokemon Center, with
 //  the objects the game hides after the Hall of Fame removed, as the lab's
-//  frlg_route does.
+//  frlg_route does, and those a new game hides until their scene (the
+//  S.S. Anne's rival on the Captain's door).
 const std::vector<MapData>& story_maps();
+//  default_route_costs() without Surf, which the story hasn't got yet:
+//  routes stay on land, even where water is the shorter way (Vermilion
+//  City's harbor).
+const RouteCosts& story_route_costs();
 
 //  Converts a StoryPose to a general navigation Pose.
 Pokemon::Pose to_pose(const StoryPose& pose);
@@ -171,9 +198,10 @@ std::optional<std::vector<RouteStep>> fixed_route(
 //  other step, or a `patch` not on one tile.
 Pokemon::Pose paced_pose(const Pokemon::Pose& patch, const StoryStep& step);
 
-//  A ROUTE's legs from `pose` to `goal`: from one tile, as planned; from
-//  a set of tiles (paced_pose()), first the holds to walls that bring them
-//  all to one tile (holds_to_one_tile()), then the route from there.
+//  A ROUTE's legs from `pose` to `goal`, on story_route_costs(): from
+//  one tile, as planned; from a set of tiles (paced_pose()), first the
+//  holds to walls that bring them all to one tile (holds_to_one_tile()),
+//  then the route from there.
 //  Nothing if either can't be planned.
 std::optional<std::vector<RouteStep>> plan_story_route(
     const std::vector<MapData>& maps, const Pokemon::Pose& pose,

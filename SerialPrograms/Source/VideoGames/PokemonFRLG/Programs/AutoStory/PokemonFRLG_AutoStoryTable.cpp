@@ -10,6 +10,7 @@
 #include "PokemonFRLG_AutoStoryMart.h"
 #include "PokemonFRLG_AutoStoryPcStorage.h"
 #include "PokemonFRLG_AutoStoryTable.h"
+#include "PokemonFRLG_AutoStoryTableSteps.h"
 #include "PokemonFRLG_AutoStoryTeach.h"
 
 namespace PokemonAutomation{
@@ -19,180 +20,7 @@ namespace PokemonFRLG{
 
 namespace{
 
-constexpr Direction NORTH = Direction::NORTH;
-constexpr Direction SOUTH = Direction::SOUTH;
-constexpr Direction EAST = Direction::EAST;
-constexpr Direction WEST = Direction::WEST;
-
-const char* const BEDROOM = "PalletTown_PlayersHouse_2F";
-const char* const PALLET = "PalletTown";
-const char* const LAB = "PalletTown_ProfessorOaksLab";
-const char* const VIRIDIAN = "ViridianCity";
-const char* const VIRIDIAN_MART = "ViridianCity_Mart";
-const char* const VIRIDIAN_CENTER = "ViridianCity_PokemonCenter_1F";
-const char* const FOREST = "ViridianForest";
-const char* const FOREST_GATE = "Route2_ViridianForest_NorthEntrance";
-const char* const PEWTER = "PewterCity";
-const char* const PEWTER_CENTER = "PewterCity_PokemonCenter_1F";
-const char* const GYM = "PewterCity_Gym";
-const char* const ROUTE3 = "Route3";
-const char* const ROUTE4 = "Route4";
-const char* const ROUTE4_CENTER = "Route4_PokemonCenter_1F";
-const char* const MT_MOON_1F = "MtMoon_1F";
-const char* const MT_MOON_B2F = "MtMoon_B2F";
-const char* const CERULEAN = "CeruleanCity";
-const char* const CERULEAN_CENTER = "CeruleanCity_PokemonCenter_1F";
-const char* const CERULEAN_MART = "CeruleanCity_Mart";
-const char* const CERULEAN_GYM = "CeruleanCity_Gym";
-const char* const ROUTE24 = "Route24";
-const char* const ROUTE25 = "Route25";
-const char* const SEA_COTTAGE = "Route25_SeaCottage";
-
-Pokemon::Pose at(const char* map, int x, int y, std::optional<Direction> facing = std::nullopt){
-    return to_pose(StoryPose{map, {x, y}, facing});
-}
-
-StoryCheckpoint row(
-    std::string id, std::string title, std::optional<Pokemon::Pose> start,
-    Supplies supplies, StartMenu menu, std::vector<StoryStep> steps
-){
-    StoryCheckpoint checkpoint;
-    checkpoint.id = std::move(id);
-    checkpoint.title = std::move(title);
-    checkpoint.start = std::move(start);
-    checkpoint.steps = std::move(steps);
-    checkpoint.supplies = supplies;
-    checkpoint.menu = menu;
-    return checkpoint;
-}
-
-//  At the rows after Brock: no items counted, the starter with the moves
-//  the story gave it by Lv13. A run that loads a save reads the moves off
-//  the lead's summary instead (read_lead_moves()), so a save whose moves
-//  differ from these (console B, 2026-11-02: Water Gun where Tackle was)
-//  is fought with the moves it has.
-Supplies after_brock(){
-    Supplies supplies;
-    supplies.lead = story_lead_after_brock();
-    return supplies;
-}
-
-//  What a walk does about wild Pokemon: runs, or fights them for EXP.
-enum class WildBattles{
-    RUN,
-    FIGHT,
-};
-
-StoryStep make(StoryStepKind kind, std::string name, std::string why){
-    StoryStep step;
-    step.kind = kind;
-    step.name = std::move(name);
-    step.why = std::move(why);
-    return step;
-}
-
-StoryStep route(std::string name, Pokemon::Pose target, std::string why, WildBattles wild = WildBattles::RUN){
-    StoryStep step = make(StoryStepKind::ROUTE, std::move(name), std::move(why));
-    step.target = std::move(target);
-    step.fight_wild = wild == WildBattles::FIGHT;
-    return step;
-}
-
-StoryStep step_into(std::string name, Direction direction, std::string why){
-    StoryStep step = make(StoryStepKind::STEP, std::move(name), std::move(why));
-    step.direction = direction;
-    return step;
-}
-
-//  A step the way a ledge faces, from the tile before it: the player hops
-//  it and lands on `landing`, two tiles on. Planned routes never hop a
-//  ledge (they hold into walls, and a held ledge hops), so where the only
-//  way on is down a ledge the table takes it as this one step.
-//  A step `direction` into a trainer's line, a tile at a time until the
-//  trainer sees the player (TRAINER_LINE_VARIANT): the battle after it
-//  starts whether the walk before ended on its tile or a tile short.
-StoryStep into_line(std::string name, Direction direction, std::string why){
-    StoryStep step = step_into(std::move(name), direction, std::move(why));
-    step.variant = TRAINER_LINE_VARIANT;
-    return step;
-}
-
-StoryStep hop(std::string name, Direction direction, Pokemon::Pose landing, std::string why){
-    StoryStep step = step_into(std::move(name), direction, std::move(why));
-    step.pose_after = std::move(landing);
-    return step;
-}
-
-StoryStep answer(std::string name, bool yes, std::string why){
-    StoryStep step = make(StoryStepKind::ANSWER, std::move(name), std::move(why));
-    step.yes = yes;
-    return step;
-}
-
-StoryStep scene(std::string name, std::optional<Pokemon::Pose> pose_after, std::string why){
-    StoryStep step = make(StoryStepKind::MASH, std::move(name), std::move(why));
-    step.pose_after = std::move(pose_after);
-    return step;
-}
-
-StoryStep battle(std::string name, Pokemon::Pose pose_after, bool may_lose, std::string why){
-    StoryStep step = make(StoryStepKind::BATTLE, std::move(name), std::move(why));
-    step.pose_after = std::move(pose_after);
-    step.may_lose = may_lose;
-    return step;
-}
-
-StoryStep legs(std::string name, std::vector<StoryLeg> legs, std::string why, WildBattles wild = WildBattles::RUN){
-    StoryStep step = make(StoryStepKind::LEGS, std::move(name), std::move(why));
-    step.legs = std::move(legs);
-    step.fight_wild = wild == WildBattles::FIGHT;
-    return step;
-}
-
-//  `step`, a ROUTE or LEGS, run with B held: from the Running Shoes on.
-//  Indoors, where the game doesn't let the player run, it walks.
-StoryStep running(StoryStep step){
-    step.variant = RUN_VARIANT;
-    return step;
-}
-
-StoryStep new_game_intro(Pokemon::Pose pose_after, std::string why){
-    StoryStep step = make(StoryStepKind::NEW_GAME, "intro", std::move(why));
-    step.pose_after = std::move(pose_after);
-    return step;
-}
-
-StoryStep talk(std::string name, std::string why){
-    return make(StoryStepKind::TALK, std::move(name), std::move(why));
-}
-
-StoryStep ready(std::string name, Pokemon::Pose nurse, std::string why){
-    StoryStep step = make(StoryStepKind::READY, std::move(name), std::move(why));
-    step.target = std::move(nurse);
-    return step;
-}
-
-StoryStep heal(std::string name){
-    return make(StoryStepKind::HEAL, std::move(name), "full HP");
-}
-
-StoryStep shop(std::string name, std::vector<Pokemon::StoryItem> items, std::string why){
-    StoryStep step = make(StoryStepKind::SHOP, std::move(name), std::move(why));
-    step.items = std::move(items);
-    return step;
-}
-
-
-StoryStep game_step(std::string variant, Pokemon::Pose pose_after, std::string why){
-    StoryStep step = make(StoryStepKind::GAME, variant, std::move(why));
-    step.variant = std::move(variant);
-    step.pose_after = std::move(pose_after);
-    return step;
-}
-
-StoryStep options_step(){
-    return make(StoryStepKind::OPTIONS, "options", "fast text; no switch prompt between a trainer's Pokemon");
-}
+using namespace StoryTable;
 
 
 StoryCheckpoint new_game(){
@@ -875,7 +703,88 @@ StoryCheckpoint oddish(){
     });
 }
 
+//  Cerulean's only way south without Cut (CeruleanCity map.json,
+//  scripts.inc) is through the burgled house (30, 11), whose door the
+//  policeman leaves once the S.S. TICKET is had, out of the hole in its
+//  back wall into the yard (31, 8). The Rocket there (33, 6) stops the
+//  player on (33, 5) or (33, 7) (CeruleanCity_EventScript_GruntTrigger*):
+//  from (32, 7), the step east onto (33, 7) turns the player to him;
+//  Machop and Drowzee, Lv17, then TM28 Dig, and he is gone. Then east
+//  round the yard, down to the city's south edge by the path along its
+//  east side (39..40, 20..31), down Route 5's east side to the
+//  Underground Path's north house (31, 31), through its tunnel and out of
+//  the south house onto Route 6, below its door (19, 14). Route 6:
+//  - Bug Catcher Keigo (3, 16) faces east, sight 5, over the middle path
+//    (4..8, 16); Bug Catcher Elijah (20, 25) faces west, sight 3, over
+//    the east path (17..19, 25). The way goes down column 15, through the
+//    grass to the wall (15, 33), out of both lines; the open leg west to
+//    it, a tile short, leaves the player on column 16, out of them too.
+//  - Camper Ricky and Picnicker Nancy (12..13, 21) battle only when
+//    talked to.
+//  - Picnicker Isabelle (13, 32) and Camper Jeff (13, 33) face west, sight
+//    3, over (10..12, 32) and (10..12, 33); the only way south, (10..12,
+//    34), is from Jeff's row. Up to (15, 31), west to the wall (7, 31),
+//    down to the wall (7, 33), east: Jeff is fought on the step onto
+//    (10, 33) and walks up to (11, 33). Isabelle's row is kept off.
+//  Then down into Vermilion City (offset 12) to its Pokemon Center.
+StoryCheckpoint to_vermilion(){
+    return row("00.21", "The Cerulean Rocket, Route 5, the Underground Path and Route 6 to Vermilion's Pokemon Center: Jeff", at(CERULEAN_CENTER, 7, 4, NORTH), after_brock(), StartMenu::FULL, {
+        running(route("west_of_rocket", at(CERULEAN, 32, 7, EAST), "through the burgled house and out of the hole in its back wall, west of the Rocket (33, 6)")),
+        step_into("rocket_trigger", EAST, "onto (33, 7), below the Rocket"),
+        battle("rocket_grunt", at(CERULEAN, 33, 7, NORTH), false, "Machop and Drowzee, Lv17; TM28 Dig"),
+        running(route("route6_column15", at(ROUTE6, 15, 14), "round the yard and down Cerulean's east side, Route 5 into the Underground Path, through it onto Route 6, west to column 15")),
+        running(legs("round_keigo_and_elijah", {
+            {SOUTH, 19}, {NORTH, 1}, {NORTH, 1}, {WEST, 8}, {SOUTH, 2}, {EAST, 2},
+        }, "down column 15 to the wall (15, 33); up to (15, 31), west to the wall (7, 31), down to the wall (7, 33), east to (9, 33)")),
+        into_line("jeff_line", EAST, "onto (10, 33), in Jeff's line"),
+        battle("camper_jeff", at(ROUTE6, 10, 33, EAST), false, "Spearow and Raticate, Lv16; Jeff stops at (11, 33)"),
+        running(route("vermilion_nurse", at(VERMILION_CENTER, 7, 4, NORTH), "down Route 6's south path into Vermilion City, to the Pokemon Center")),
+        heal("heal_vermilion"),
+    });
+}
+
+//  The S.S. Anne (VermilionCity, SSAnne_* scripts.inc). The step onto
+//  (23, 33) (VermilionCity_EventScript_CheckTicket) has the sailor (24, 33)
+//  ask for a ticket; the S.S. TICKET (00.18) is shown and the player turns
+//  east to him. Then onto the pier (23, 34), along the gangway, through
+//  1F, by legs off its cabins' doormats on row 10, which planned routes
+//  cross, and up its stairs (3, 8) to 2F. The step onto (30, 6), below the
+//  Captain's door (30, 2) (SSAnne_2F_Corridor_EventScript_RivalTriggerLeft),
+//  brings the rival out and down to (30, 5); the player keeps facing
+//  north, and after the battle he walks round the player and off. For a
+//  player who took Squirtle: Pidgeotto Lv19, Raticate Lv16, Kadabra Lv18,
+//  Ivysaur Lv20. The ship's trainers are in its cabins and on its deck,
+//  off the way. The Captain (5, 4) faces up; talked to from (5, 5) he is
+//  rubbed on the back and gives HM01 (VAR_MAP_SCENE_VERMILION_CITY 1).
+//  Back out through 1F's door (19, 1): on the gangway the ship sails
+//  (SSAnne_Exterior_ExitSSAnne), the player is put on (23, 34) and walked
+//  up to (23, 32) (VermilionCity_EventScript_ExitSSAnne). Cut is taught
+//  later, to the Oddish.
+StoryCheckpoint ss_anne(){
+    return row("00.22", "The S.S. Anne: the rival, HM01 Cut from the Captain, back to Vermilion's Pokemon Center", at(VERMILION_CENTER, 7, 4, NORTH), after_brock(), StartMenu::FULL, {
+        running(route("above_ticket_check", at(VERMILION, 23, 32, SOUTH), "out of the Center down to the harbor, above the ticket check (23, 33)")),
+        step_into("ticket_check", SOUTH, "onto (23, 33): \"Do you have a ticket?\""),
+        scene("show_ss_ticket", at(VERMILION, 23, 33, EAST), "the S.S. TICKET; the player turns to the sailor"),
+        running(route("aboard", at(SS_ANNE_1F, 19, 2, SOUTH), "onto the pier, along the gangway and in by 1F's door, a step below it")),
+        running(legs("past_the_cabins", {{SOUTH, 8}, {NORTH, 1}, {WEST, 6}, {NORTH, 1}}, "to the wall (19, 10), up a step, west to the worker (12, 9), up a step to (13, 8): off the cabins' mats on row 10")),
+        running(route("below_rival_trigger", at(SS_ANNE_2F, 30, 7, NORTH), "west along 1F, up the stairs (3, 8) and along 2F below the Captain's door")),
+        step_into("rival_trigger", NORTH, "onto (30, 6): the rival comes out of the Captain's door"),
+        battle("rival_ss_anne", at(SS_ANNE_2F, 30, 6, NORTH), false, "Pidgeotto, Raticate, Kadabra and Ivysaur"),
+        running(route("behind_captain", at(CAPTAINS_OFFICE, 5, 5, NORTH), "into the Captain's office, behind the Captain (5, 4)")),
+        talk("captain", "\"Ooargh... I feel hideous... Urrp! Seasick...\""),
+        scene("hm01_cut", at(CAPTAINS_OFFICE, 5, 5, NORTH), "the player rubs his back; HM01, and what Cut does"),
+        running(route("off_2f", at(SS_ANNE_1F, 13, 8), "back along 2F, down the stairs and east along 1F's row 8")),
+        running(legs("round_the_sailor", {{EAST, 4}, {SOUTH, 1}, {EAST, 2}}, "to the sailor (18, 8), down a step, east to (19, 9): off the cabins' mats on row 10")),
+        running(route("below_ship_door", at(SS_ANNE_1F, 19, 2, NORTH), "up below the door to the gangway")),
+        step_into("off_the_ship", NORTH, "out onto the gangway"),
+        scene("ss_anne_sails", at(VERMILION, 23, 32, NORTH), "the ship sails; the player is walked off the pier to (23, 32)"),
+        running(route("vermilion_nurse", at(VERMILION_CENTER, 7, 4, NORTH), "back to the Pokemon Center")),
+        heal("heal_vermilion"),
+    });
+}
+
 } // namespace
+
 
 
 const std::vector<StoryCheckpoint>& story_checkpoints(){
@@ -883,7 +792,8 @@ const std::vector<StoryCheckpoint>& story_checkpoints(){
         new_game(), after_sid_helper(), leave_house(), oaks_trigger(), to_starter_ball(), starter(), parcel(), pokedex(), shopping(), forest(), brock(),
         running_shoes(), route3(), magikarp_salesman(), after_gift_rng(), magikarp_to_box(), mt_moon(),
         route4_to_cerulean(), cerulean_gym(), misty(), cerulean_grind(), cerulean_rival(), nugget_bridge(),
-        route25(), bill(), back_to_cerulean(), oddish(),
+        route25(), bill(), back_to_cerulean(), oddish(), to_vermilion(), ss_anne(),
+        vermilion_gym(), to_lt_surge(), lt_surge(),
     };
     return checkpoints;
 }

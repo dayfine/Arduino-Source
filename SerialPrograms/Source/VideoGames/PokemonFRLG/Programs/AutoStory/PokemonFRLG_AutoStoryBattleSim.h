@@ -23,7 +23,7 @@
  *    Attack) and takes 1 off the damaging moves that aren't its strongest;
  *    CHECK_VIABILITY scores the status moves the early trainers carry
  *    (AI_CV_AttackDown, DefenseDown, AccuracyDown, SpeedDown, Poison,
- *    Toxic for Leech Seed too, Paralyze, Heal) by HP, speed and stages,
+ *    Toxic for Leech Seed too, Paralyze, Heal, EvasionUp) by HP, speed and stages,
  *    with their random parts. The best score wins, ties at random. The
  *    other scripts, and CHECK_VIABILITY on damaging moves, are left out.
  *  - The AI's items (battle_ai_switch_items.c ShouldUseItem) as the game
@@ -70,10 +70,16 @@ inline constexpr uint16_t POTION_HP = 20;
 //  must be rarer than 1 in 5.
 inline constexpr double POTION_COVER_PERCENTILE = 0.80;
 
+//  An Antidote is used, once a battle, on the turn the lead is read
+//  poisoned this many turns in a row, if no Potion or Awakening comes
+//  first.
+inline constexpr int PSN_TURNS_BEFORE_ANTIDOTE = 2;
+
 //  The lead's items in the bag that the sim plays.
 struct SimItems{
     int potions = 0;
     int awakenings = 0;
+    int antidotes = 0;
 };
 
 
@@ -103,6 +109,9 @@ struct SimBattler{
     //  moves on the turn it reaches 0.
     uint8_t sleep = 0;
     bool seeded = false;
+    //  The two-turn move (two_turn()) it charged last turn and strikes
+    //  with this turn, "" for none.
+    std::string charging = {};
 };
 
 //  The lead with `hp_share` of its HP (1 for full), its moves and PP as
@@ -156,6 +165,16 @@ uint32_t hit_percent(const SimBattler& user, const SimBattler& target, const Mov
 //  A move's crit odds: 1 in 16, 1 in 8 for a high-crit move.
 uint32_t crit_odds(const MoveData& move);
 
+//  A move that charges a turn and hits the next: Dig, Fly, Dive, Bounce,
+//  Solar Beam (no sun in the sim), Razor Wind, Skull Bash, Sky Attack.
+bool two_turn(const MoveData& move);
+
+//  Under ground, in the air or under water: charging Dig, Fly, Dive or
+//  Bounce. pret AccuracyCalcHelper misses every move at it before the
+//  never-miss check (Shock Wave too); moves on the user itself (Double
+//  Team) don't check.
+bool semi_invulnerable(const SimBattler& battler);
+
 //  The HP `own` loses over the foe's next turn, as the AI picks its move
 //  (ai_move_chances()): each damaging move's 16 rolls, crit chance,
 //  accuracy with stages and multi-hit counts; a poison or Leech Seed that
@@ -177,17 +196,24 @@ struct NextTurnDamage{
 //  Calculates incoming damage distribution across the foe's next turn.
 NextTurnDamage next_turn_damage(const SimTrainer& trainer, const SimBattler& foe, const SimBattler& own);
 
+//  The chance `foe`'s next turn seeds `own`: the AI's chance of Leech Seed
+//  times its accuracy. 0 if it has none, or `own` is seeded or Grass.
+double seed_chance(const SimTrainer& trainer, const SimBattler& foe, const SimBattler& own);
+
 //  The party slot the AI sends out after `fainted`, of the ones still up.
 size_t ai_next_foe(const std::vector<SimBattler>& party, size_t fainted, const SimBattler& lead);
 
 
-//  BattleRisk::LOW: the slot with PP left whose mean damage against `foe`
-//  is highest. None if no move does damage.
+//  BattleRisk::LOW: the slot with PP left whose mean damage a turn against
+//  `foe` is highest. None if no move does damage.
 std::optional<size_t> best_damage_slot(const SimBattler& own, const SimBattler& foe);
 
 //  BattleRisk::HIGH: a move that faints `foe` at the lowest roll, the
 //  weakest of them to keep the strong moves' PP; else the one that faints
-//  it in the fewest turns at the mean roll and accuracy, counting the
+//  it in the fewest turns at the mean roll and accuracy, a two-turn move
+//  at half its damage a turn (console B, m73: Dig against Lt. Surge's
+//  Raichu, the Raichu's Double Team landing while the lead was under
+//  ground), counting the
 //  heals the AI would use on it from `items` (ai_item_choice()), ties to
 //  the weaker move. None if no move does damage.
 std::optional<size_t> planned_attack_slot(
@@ -207,8 +233,9 @@ struct PotionCase{
     double expected_hit = 0;
     uint32_t likely_hit = 0;
     uint32_t max_hit = 0;
-    //  The foe's hits the lead takes before its attacks faint the foe, if
-    //  it attacks from now on.
+    //  The lead's attacks that faint the foe at the mean, and the foe's hits
+    //  the lead takes before they do, if it attacks from now on.
+    size_t turns_to_ko = 0;
     size_t hits_to_ko = 0;
     //  The foe's moves and ai_move_chances(), for the log.
     std::vector<std::pair<std::string, double>> move_chances = {};
@@ -240,6 +267,17 @@ bool potion_now(const PotionCase& c, int potions);
 //  rules say.
 bool awakening_now(const PotionCase& c, const SimBattler& own, int awakenings);
 
+//  Task #77's top-up before the knockout, with `potions` left: the lead's
+//  next attack faints the foe out at the mean, whose turn takes at most
+//  half a Potion on average (`c`), a Potion heals at least a quarter of its
+//  HP more than that, and a foe in `to_come` hits harder on average
+//  (next_turn_damage()). Each such turn costs a small hit and heals more,
+//  so the lead meets the stronger foe near full.
+bool top_up_now(
+    const PotionCase& c, const SimBattler& own, const SimTrainer& trainer,
+    const std::vector<SimBattler>& to_come, int potions
+);
+
 //  The lead's turn at BattleRisk::HIGH.
 struct OwnTurn{
     bool potion = false;
@@ -247,15 +285,20 @@ struct OwnTurn{
     //  damage.
     std::optional<size_t> slot = std::nullopt;
     bool awakening = false;
+    //  The Potion is top_up_now()'s.
+    bool top_up = false;
 };
-//  planned_attack_slot()'s move when it surely faints `foe` first (the
-//  lead is awake and faster, the lowest roll faints it, it never misses and
-//  the AI won't heal first), else a Potion if potion_now(), else an
-//  Awakening if awakening_now(), else that move. `trainer`: its AI and the
-//  items it has left.
+//  A Potion if top_up_now() (`to_come`: the trainer's Pokemon not out and
+//  not fainted), else planned_attack_slot()'s move when it surely faints
+//  `foe` first (the lead is awake and faster, the lowest roll faints it, it
+//  never misses, takes one turn and the AI won't heal first), else a Potion if
+//  potion_now(), else an Awakening if awakening_now(), else that move.
+//  `trainer`: its AI and the items it has left. `seen_hit`: as
+//  potion_case() takes it.
 OwnTurn own_turn(
     const SimBattler& own, const SimItems& own_items, const SimBattler& foe,
-    const SimTrainer& trainer, size_t foes_left
+    const SimTrainer& trainer, size_t foes_left,
+    const std::vector<SimBattler>& to_come = std::vector<SimBattler>(), double seen_hit = 0
 );
 
 

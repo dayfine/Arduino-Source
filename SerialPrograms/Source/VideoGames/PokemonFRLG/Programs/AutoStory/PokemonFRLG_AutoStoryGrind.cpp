@@ -120,6 +120,22 @@ Pokemon::StoryStep grind_step(std::string name, std::string why, const GrindPlan
     return step;
 }
 
+std::optional<GrindPlan> parse_grind_check_variant(std::string_view variant){
+    if (!variant.starts_with(GRIND_CHECK_VARIANT_PREFIX)){
+        return std::nullopt;
+    }
+    return parse_grind_variant(std::string(GRIND_VARIANT_PREFIX) + std::string(variant.substr(GRIND_CHECK_VARIANT_PREFIX.size())));
+}
+
+Pokemon::StoryStep grind_check_step(std::string name, std::string why, const GrindPlan& plan){
+    Pokemon::StoryStep step;
+    step.kind = Pokemon::StoryStepKind::GAME;
+    step.name = std::move(name);
+    step.why = std::move(why);
+    step.variant = std::string(GRIND_CHECK_VARIANT_PREFIX) + grind_variant(plan).substr(GRIND_VARIANT_PREFIX.size());
+    return step;
+}
+
 
 namespace{
 
@@ -160,6 +176,10 @@ public:
                 return end(GrindEnd::FAILED, "the last trip to the nurse failed");
             }
         }
+    }
+    //  The member, read, has what the plan grinds for. Nothing fought.
+    bool reached_already(){
+        return m_plan.member == 0 && read_level() && over() && m_result.end == GrindEnd::REACHED;
     }
 
 private:
@@ -274,6 +294,12 @@ GrindResult run_grind(Logger& logger, GrindActions& actions, const MemberReader&
     return result;
 }
 
+bool grind_reached_already(Logger& logger, GrindActions& actions, const MemberReader& reader, const GrindPlan& plan){
+    const bool reached = GrindRun(logger, actions, reader, plan).reached_already();
+    logger.log(reached ? "Grind: reached already; no walk out to the patch." : "Grind: not reached yet; out to the patch.");
+    return reached;
+}
+
 std::string grind_message(const GrindPlan& plan, const GrindResult& result){
     const std::string level = result.level ? std::to_string(*result.level) : "?";
     const std::string chance = plan.trainer.empty() ? "" : std::format(
@@ -355,7 +381,7 @@ bool ConsoleGrindActions::needs_heal(){
 
 std::optional<WinEstimate> ConsoleGrindActions::win_chance(const MemberInfo& member, std::string_view trainer){
     m_supplies.lead = lead_as_read(member, m_supplies.lead);
-    return healed_win_chance(m_supplies.lead, SimItems{.potions = m_supplies.potions, .awakenings = m_supplies.awakenings}, trainer);
+    return healed_win_chance(m_supplies.lead, SimItems{.potions = m_supplies.potions, .awakenings = m_supplies.awakenings, .antidotes = m_supplies.antidotes}, trainer);
 }
 
 bool ConsoleGrindActions::heal_trip(){

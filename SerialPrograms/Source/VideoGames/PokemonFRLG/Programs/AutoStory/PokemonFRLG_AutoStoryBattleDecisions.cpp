@@ -5,6 +5,7 @@
  */
 
 #include <algorithm>
+#include <cmath>
 #include <format>
 #include <iterator>
 #include <string>
@@ -24,8 +25,6 @@ constexpr size_t PARTY_SLOTS = 6;
 constexpr int MIN_POTIONS_TO_FIGHT = 2;
 //  RUN this many times ("Can't escape!") before fighting instead.
 constexpr int RUN_TRIES = 4;
-//  PSN read at this many turns in a row before an Antidote.
-constexpr int PSN_READS = 2;
 //  An evolution screen held this long was an evolution, not a text box
 //  between two others.
 constexpr Milliseconds EVOLUTION_SEEN = std::chrono::milliseconds(5000);
@@ -39,6 +38,10 @@ constexpr Milliseconds BATTLE_GONE = std::chrono::milliseconds(3000);
 constexpr Milliseconds OVERWORLD_CHECK = std::chrono::milliseconds(3000);
 //  A and B pressed blind for this long with no battle menu: give up.
 constexpr Milliseconds BLIND_PRESSES = std::chrono::milliseconds(30000);
+//  No battle on screen for this long, and START has not opened the menu:
+//  stop. Longer than a gym leader's speech after the battle and a
+//  whiteout's walk to the nurse, with B pressed through them.
+constexpr Milliseconds NO_OVERWORLD = std::chrono::milliseconds(60000);
 //  Turns a move turned down is left alone: the longest Disable (pret
 //  battle_script_commands.c Cmd_disablelastusedattack, 2 to 5 turns).
 constexpr int DISABLE_TURNS = 5;
@@ -50,15 +53,51 @@ constexpr Milliseconds REFUSED_WITHIN = std::chrono::milliseconds(7000);
 constexpr size_t LOW_ATTACK_PP = 10;
 //  The move prompts a turn can bring: two moves offered, NO then YES each.
 constexpr int MOVE_PROMPTS = 4;
+//  The levels the lead can gain in a battle, for the moves it can be
+//  offered: a story battle gives one or two.
+constexpr uint8_t MAX_LEVELS_IN_BATTLE = 3;
+//  The lead is taken as seeded once the chance that a foe's Leech Seed hit
+//  it is over this.
+constexpr double SEEDED_CHANCE = 0.5;
 
-//  The trainer's Pokemon out, at full HP (its damage taken isn't read),
+SimStatus sim_status(StatusCondition status){
+    switch (status){
+    case StatusCondition::SLEEP:
+        return SimStatus::SLEEP;
+    case StatusCondition::POISON:
+        return SimStatus::POISON;
+    case StatusCondition::PARALYSIS:
+        return SimStatus::PARALYSIS;
+    default:
+        return SimStatus::NONE;
+    }
+}
+
+//  The trainer's Pokemon out, with the HP its bar shows (full if not read),
 //  when the battle loop knows which.
 std::optional<SimBattler> foe_out(const Supplies& supplies){
     if (supplies.trainer.empty() || !supplies.foe_out){
         return std::nullopt;
     }
     const std::vector<TrainerMon> party = trainer_mons(supplies.trainer);
-    return *supplies.foe_out < party.size() ? trainer_battler(party[*supplies.foe_out]) : std::nullopt;
+    std::optional<SimBattler> foe = *supplies.foe_out < party.size() ? trainer_battler(party[*supplies.foe_out]) : std::nullopt;
+    if (foe && supplies.foe_hp_fill){
+        const double hp = std::round(*supplies.foe_hp_fill * foe->body.stats.hp);
+        foe->hp = static_cast<uint16_t>(std::clamp<double>(hp, 1, foe->body.stats.hp));
+    }
+    return foe;
+}
+
+//  The trainer's Pokemon still to come: not out and not seen fainted, at
+//  full HP.
+std::vector<SimBattler> foes_to_come(const Supplies& supplies, const SimTrainer& trainer){
+    std::vector<SimBattler> to_come;
+    for (size_t slot = 0; slot < trainer.party.size(); slot++){
+        if (slot != supplies.foe_out && !supplies.foes_fainted.contains(slot)){
+            to_come.push_back(trainer.party[slot]);
+        }
+    }
+    return to_come;
 }
 
 //  A trainer's battle: against the foe out, the best expected damage at
@@ -114,7 +153,7 @@ std::string no_potion_reason(const Supplies& supplies, const PartyStatus& status
     if (supplies.potions <= 0){
         return "none left";
     }
-    const bool asked = supplies.risk == BattleRisk::HIGH ? status.hp_red : status.hp_red || status.hp_yellow;
+    const bool asked = supplies.risk == BattleRisk::HIGH ? c.max_hit >= c.hp : status.hp_red || status.hp_yellow;
     if (!asked){
         return std::format("HP {} and the next hit can't faint the lead", bar_name(status));
     }
@@ -135,27 +174,26 @@ std::string move_chances_text(const PotionCase& c){
     return text.empty() ? "none" : text;
 }
 
-//  Against a known foe: a Potion at BattleRisk::HIGH when its next turn
-//  could faint the lead (potion_now(), the HP from the bar's share) or the
-//  bar is red, at LOW whenever the bar isn't green; either only if
-//  potion_pays(). Else, asleep, an Awakening if awakening_now().
+std::string potion_numbers(const PotionCase& c, bool seeded){
+    return std::format(
+        "{}/{} HP{}, the foe's next turn {} HP or less {:.0f}% of the time (mean {:.0f}, up to {}; {}), {} of them before the lead's attacks faint it",
+        c.hp, c.max_hp, seeded ? " (taken as seeded)" : "", c.likely_hit, 100 * POTION_COVER_PERCENTILE,
+        c.expected_hit, c.max_hit, move_chances_text(c), c.hits_to_ko
+    );
+}
+
+//  Against a known foe at BattleRisk::LOW: a Potion whenever the bar isn't
+//  green, if potion_pays(). Else, asleep, an Awakening if awakening_now().
 ItemTurn known_foe_items(
     const Supplies& supplies, const PartyStatus& status, int awakenings,
     const SimBattler& own, const PotionCase& c
 ){
     const bool hurt = status.hp_red || status.hp_yellow;
-    const std::string numbers = std::format(
-        "{}/{} HP, the foe's next turn {} HP or less {:.0f}% of the time (mean {:.0f}, up to {}; {}), {} of them before the lead's attacks faint it",
-        c.hp, c.max_hp, c.likely_hit, 100 * POTION_COVER_PERCENTILE, c.expected_hit, c.max_hit, move_chances_text(c), c.hits_to_ko
-    );
+    const std::string numbers = potion_numbers(c, own.seeded);
     if (awakening_now(c, own, awakenings)){
         return {TurnChoice::AWAKENING, "an Awakening: asleep, and the lead outlasts the turn it costs; " + numbers};
     }
-    const bool high = supplies.risk == BattleRisk::HIGH;
-    if (high && potion_now(c, supplies.potions)){
-        return {TurnChoice::POTION, "a Potion: the next turn could faint the lead, and it covers that turn; " + numbers};
-    }
-    if (supplies.potions > 0 && (high ? status.hp_red : hurt) && potion_pays(c)){
+    if (supplies.potions > 0 && hurt && potion_pays(c)){
         return {TurnChoice::POTION, "a Potion: it covers the next turn, or outlasts the foe; " + numbers};
     }
     if (!hurt && own.status != SimStatus::SLEEP){
@@ -164,15 +202,46 @@ ItemTurn known_foe_items(
     return {TurnChoice::MOVE, "no Potion: " + no_potion_reason(supplies, status, c) + "; " + numbers};
 }
 
-//  The item this turn, from the bar and the badge as read.
-ItemTurn item_turn(const Supplies& supplies, const PartyStatus& status, double seen_hit, int awakenings){
+//  Against a known foe at BattleRisk::HIGH: the win-chance sim's own_turn(),
+//  so the chance it gives is the one the loop plays for.
+ItemTurn sim_items(
+    const Supplies& supplies, const PartyStatus& status, int awakenings,
+    const SimBattler& own, const SimBattler& foe, const SimTrainer& trainer, double seen_hit
+){
+    const std::vector<SimBattler> to_come = foes_to_come(supplies, trainer);
+    const SimItems items{.potions = supplies.potions, .awakenings = awakenings, .antidotes = supplies.antidotes};
+    const OwnTurn turn = own_turn(own, items, foe, trainer, to_come.size() + 1, to_come, seen_hit);
+    const PotionCase c = potion_case(own, foe, trainer, seen_hit);
+    const std::string numbers = potion_numbers(c, own.seeded);
+    if (turn.awakening){
+        return {TurnChoice::AWAKENING, "an Awakening: asleep, and the lead outlasts the turn it costs; " + numbers};
+    }
+    if (turn.top_up){
+        return {TurnChoice::POTION, "a Potion: topping up before the knockout, a stronger foe to come; " + numbers};
+    }
+    if (turn.potion){
+        return {TurnChoice::POTION, "a Potion: the next turn could faint the lead, and it covers that turn; " + numbers};
+    }
+    if (!status.hp_red && !status.hp_yellow && own.status != SimStatus::SLEEP){
+        return {};
+    }
+    return {TurnChoice::MOVE, "no Potion: " + no_potion_reason(supplies, status, c) + "; " + numbers};
+}
+
+//  The item this turn, from the bar and the badge as read, and the chance
+//  the lead is seeded.
+ItemTurn item_turn(const Supplies& supplies, const PartyStatus& status, double seen_hit, int awakenings, bool seeded){
     const std::optional<SimBattler> foe = foe_out(supplies);
     std::optional<SimBattler> own = own_battler(supplies.lead, status.hp_seen ? status.hp_fill : 1.0);
     const std::optional<SimTrainer> trainer = sim_trainer(supplies.trainer);
     if (!foe || !own || !trainer){
         return unknown_foe_items(supplies, status, seen_hit, awakenings);
     }
-    own->status = status.status == StatusCondition::SLEEP ? SimStatus::SLEEP : SimStatus::NONE;
+    own->status = sim_status(status.status);
+    own->seeded = seeded;
+    if (supplies.risk == BattleRisk::HIGH){
+        return sim_items(supplies, status, awakenings, *own, *foe, *trainer, seen_hit);
+    }
     return known_foe_items(supplies, status, awakenings, *own, potion_case(*own, *foe, *trainer, seen_hit));
 }
 
@@ -208,11 +277,16 @@ bool nurse_before_battle(const Supplies& supplies){
 BattleDecisions::BattleDecisions(Supplies& supplies, BattleKind kind)
     : m_supplies(supplies)
     , m_kind(kind)
-{}
+{
+    if (supplies.lead.level > 0){
+        m_level_cap = static_cast<uint8_t>(std::min(battle_level(supplies.lead) + MAX_LEVELS_IN_BATTLE, 255));
+    }
+}
 
 TurnAction BattleDecisions::turn(const PartyStatus& status){
     m_turns++;
     m_move_prompts = 0;
+    m_declined_delete = false;
     m_before_forget.reset();
     count_down_refused();
     m_last_move_slot.reset();
@@ -245,19 +319,32 @@ TurnAction BattleDecisions::lead_turn(const PartyStatus& status){
         return TurnAction{.choice = TurnChoice::RUN};
     }
     see_hit(status);
+    see_seed_chance();
     //  Awakenings are kept for trainers: a wild battle with a status is run from.
     const int awakenings = m_kind == BattleKind::TRAINER ? m_supplies.awakenings : 0;
-    const ItemTurn items = m_items_off ? ItemTurn{} : item_turn(m_supplies, status, m_seen_hit, awakenings);
+    const bool seeded = 1 - m_unseeded > SEEDED_CHANCE;
+    const ItemTurn items = m_items_off ? ItemTurn{} : item_turn(m_supplies, status, m_seen_hit, awakenings, seeded);
     if (items.choice != TurnChoice::MOVE){
         return TurnAction{.choice = items.choice, .heal_reason = items.reason};
     }
-    if (!m_items_off && m_psn_reads >= PSN_READS && !m_antidote_used && m_supplies.antidotes > 0){
+    if (!m_items_off && m_psn_reads >= PSN_TURNS_BEFORE_ANTIDOTE && !m_antidote_used && m_supplies.antidotes > 0){
         m_antidote_used = true;
         return TurnAction{.choice = TurnChoice::ANTIDOTE, .heal_reason = items.reason};
     }
     TurnAction action = move_turn();
     action.heal_reason = items.reason;
     return action;
+}
+
+void BattleDecisions::see_seed_chance(){
+    m_unseeded *= 1 - m_seed_pending;
+    m_seed_pending = 0;
+    const std::optional<SimBattler> foe = foe_out(m_supplies);
+    const std::optional<SimBattler> own = own_battler(m_supplies.lead);
+    const std::optional<SimTrainer> trainer = sim_trainer(m_supplies.trainer);
+    if (foe && own && trainer){
+        m_seed_pending = seed_chance(*trainer, *foe, *own);
+    }
 }
 
 void BattleDecisions::see_hit(const PartyStatus& status){
@@ -325,8 +412,10 @@ void BattleDecisions::turn_done(TurnChoice choice, TurnResult result){
     }
     const bool done = result == TurnResult::DONE;
     if (!done && choice == TurnChoice::MOVE){
-        if (m_last_move_slot){
+        if (m_last_move_slot && !m_no_pp_read.insert(*m_last_move_slot).second){
             no_pp_left(m_supplies.lead, *m_last_move_slot);
+        }else{
+            move_refused();
         }
         return;
     }
@@ -381,6 +470,10 @@ PromptAnswer BattleDecisions::prompt(bool lead_box_gone){
     }
     PartyMember learning = m_supplies.lead;
     const LearnDecision decision = learn_move(learning);
+    if (!decision.move || (m_level_cap && battle_level(learning) > *m_level_cap)){
+        //  No move the lead can have reached: not a move prompt.
+        return PromptAnswer{.answer = YesNo::NO};
+    }
     if (decision.forget_slot){
         m_before_forget = m_supplies.lead;
         return PromptAnswer{.answer = YesNo::YES, .forget_slot = decision.forget_slot, .learned = std::move(learning)};
@@ -458,6 +551,10 @@ void MoveRefusalWatch::no_battle_screen(){
     m_list_back = m_chosen.has_value();
 }
 
+bool MoveRefusalWatch::no_pp_due(WallClock now) const{
+    return m_chosen && now - *m_chosen < REFUSED_WITHIN;
+}
+
 bool MoveRefusalWatch::refused(WallClock now){
     const bool refused = m_chosen && m_list_back && now - *m_chosen < REFUSED_WITHIN;
     m_chosen.reset();
@@ -470,6 +567,10 @@ bool BattleEndWatch::pressed_blind(WallClock now){
         m_blind_since = now;
     }
     return now - *m_blind_since >= BLIND_PRESSES;
+}
+
+bool BattleEndWatch::overworld_lost(WallClock now) const{
+    return m_last_battle && m_last_check && now - *m_last_battle >= NO_OVERWORLD;
 }
 
 

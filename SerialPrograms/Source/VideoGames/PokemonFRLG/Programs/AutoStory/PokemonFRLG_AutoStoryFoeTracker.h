@@ -54,6 +54,9 @@ public:
     //  The party slot out; none when the trainer isn't known.
     std::optional<size_t> out() const;
 
+    //  The party slots seen fainted.
+    const std::set<size_t>& fainted() const{ return m_fainted; }
+
 private:
     std::vector<SimBattler> m_party;
     std::vector<std::string> m_species;

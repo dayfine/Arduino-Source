@@ -147,7 +147,7 @@ private:
 
 
 Pokemon::LegSpec leg_spec(const RouteStep& step, MoveSpeed speed){
-    Pokemon::LegSpec leg{step.direction, step.tiles, step.to_wall, tile_time(step, speed)};
+    Pokemon::LegSpec leg{step.direction, step.tiles + step.warp_slack, step.to_wall, tile_time(step, speed)};
     leg.stalled_steps = step.connection_steps;
     return leg;
 }

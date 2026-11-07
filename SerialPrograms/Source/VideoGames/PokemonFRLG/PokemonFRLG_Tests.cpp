@@ -51,6 +51,7 @@
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryPcStorage.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryRngLoop.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryTable.h"
+#include "Programs/AutoStory/PokemonFRLG_AutoStoryTrashCans.h"
 #include "Programs/RngManipulation/PokemonFRLG_GiftRngAttempts_Tests.h"
 #include "Programs/RngManipulation/PokemonFRLG_RngPlanInputs_Tests.h"
 #include "Programs/RngManipulation/PokemonFRLG_RngPlanLog_Tests.h"
@@ -732,26 +733,11 @@ private:
 };
 
 const NamingKeysScenario NAMING_KEYS_CASES[] = {
-    {
-        .input = {.name = "one key", .text = "A"},
-        .expectation = {.expected_actions = "A"},
-    },
-    {
-        .input = {.name = "next key", .text = "AB"},
-        .expectation = {.expected_actions = "A RIGHT A"},
-    },
-    {
-        .input = {.name = "lower case page", .text = "a"},
-        .expectation = {.expected_actions = "SELECT A"},
-    },
-    {
-        .input = {.name = "full player name", .text = "ABCDEFG"},
-        .expectation = {},
-    },
-    {
-        .input = {.name = "mixed case", .text = "Kosmos"},
-        .expectation = {},
-    },
+    {.input = {.name = "one key", .text = "A"}, .expectation = {.expected_actions = "A"}},
+    {.input = {.name = "next key", .text = "AB"}, .expectation = {.expected_actions = "A RIGHT A"}},
+    {.input = {.name = "lower case page", .text = "a"}, .expectation = {.expected_actions = "SELECT A"}},
+    {.input = {.name = "full player name", .text = "ABCDEFG"}, .expectation = {}},
+    {.input = {.name = "mixed case", .text = "Kosmos"}, .expectation = {}},
 };
 
 void add_tests_NamingKeys(UnitTestDatabase& database){
@@ -893,7 +879,16 @@ static void add_tests_AutoStoryReaders(UnitTestDatabase& database){
     add_tests_TeachScreenReader(database);
 }
 
+//  The naming screen's cursor, plans, keys and text.
+static void add_tests_Naming(UnitTestDatabase& database){
+    add_tests_NamingCursor(database);
+    add_tests_NamingPlan(database);
+    add_tests_NamingKeys(database);
+    add_tests_NamingText(database);
+}
+
 void add_tests(UnitTestDatabase& database){
+    add_tests_WhiteDialogDetector(database);
     add_tests_AdvanceWhiteDialogDetector(database);
     add_tests_BoxCellOccupiedDetector(database);
     add_tests_BoxCellReader(database);
@@ -930,16 +925,16 @@ void add_tests(UnitTestDatabase& database){
     add_tests_PlayerFacingReader(database);
     add_tests_AutoStory(database);
     add_tests_AutoStorySimulation(database);
+    add_tests_AutoStoryVermilion(database);
+    add_tests_AutoStoryVermilionGym(database);
+    add_tests_AutoStoryTrashCans(database);
     add_tests_AutoStoryPaceSim(database);
     add_tests_AutoStoryItems(database);
     add_tests_AutoStoryRngLoop(database);
     add_tests_AutoStoryCapture(database);
     add_tests_AutoStoryPcStorage(database);
     add_tests_AutoStoryAbilities(database);
-    add_tests_NamingCursor(database);
-    add_tests_NamingPlan(database);
-    add_tests_NamingKeys(database);
-    add_tests_NamingText(database);
+    add_tests_Naming(database);
     add_tests_RngManipulation(database);
 }
 

@@ -10,13 +10,18 @@
  *  AI's ties. Too low a chance stops the story before the fight, for a
  *  GRIND or the nurse first.
  *
- *  Each turn: the Potion or Awakening and the AI's item first, then the moves by
- *  priority and speed (a quarter with PARALYSIS). Sleep (2 to 5 on the
+ *  Each turn: the Potion, Awakening or Antidote (as the battle loop: once a
+ *  battle, after PSN_TURNS_BEFORE_ANTIDOTE turns poisoned) and the AI's
+ *  item first, then the moves by priority and speed (a quarter with
+ *  PARALYSIS). Sleep (2 to 5 on the
  *  game's counter), poison (1/8 HP a turn), paralysis (1/4 no move), Leech
  *  Seed (1/8 a turn to the other side), flinch, one- and two-stage stat
  *  changes, multi-hit moves (2 to 5 as the game draws them), drain (half)
- *  and Recover (half) are played; burn, freeze, confusion, recoil,
- *  recharge, two-turn moves, trapping, abilities and held items are not.
+ *  and Recover (half) are played, and two-turn moves (two_turn()): the
+ *  charge turn, PP paid then and no choice the next, cut short by a turn
+ *  the user can't move; under ground or in the air every move at it but
+ *  its own stat raises and heals misses. Burn, freeze, confusion, recoil,
+ *  recharge, trapping, abilities and held items are not.
  *  The lead is never switched out: a fainted lead is a lost battle.
  *
  */
@@ -26,6 +31,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <map>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -36,6 +42,21 @@ namespace NintendoSwitch{
 namespace PokemonFRLG{
 
 
+//  How the battles were lost: the foe out when the lead fainted, and the
+//  lead's state then. A battle can count under more than one state.
+struct LossTally{
+    std::map<std::string, size_t> by_foe = {};
+    size_t seeded = 0;
+    size_t poisoned = 0;
+    size_t asleep = 0;
+    size_t paralyzed = 0;
+    //  The lead's accuracy below 0.
+    size_t accuracy_down = 0;
+    size_t no_potions = 0;
+    //  Still going at the turn cap.
+    size_t turn_cap = 0;
+};
+
 //  Outcome count and win probability estimate from Monte Carlo simulations.
 struct WinEstimate{
     size_t battles = 0;
@@ -45,7 +66,12 @@ struct WinEstimate{
     //  The lead and items the battles were played with, for the log:
     //  "wartortle Lv20 60/60 HP: bite 25/25, ...; 5 Potions, 2 Awakenings".
     std::string inputs = {};
+    LossTally losses = {};
 };
+
+//  The losses for the log: "lost 604: ivysaur 410, kadabra 150; seeded
+//  380, poisoned 300, asleep 120, accuracy down 200, no Potions 50".
+std::string loss_text(const WinEstimate& estimate);
 
 //  `own` with `items` against `trainer`, `battles` times, from a fixed
 //  `seed` so the same inputs give the same estimate.

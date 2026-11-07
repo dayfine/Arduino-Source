@@ -10,6 +10,7 @@
 
 #include <format>
 #include <functional>
+#include <optional>
 #include <string>
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
@@ -653,6 +654,37 @@ UnitTestResult test_end_watch_timing(Logger&){
     return true;
 }
 
+//  Console B, 2026-11-03, after losing to Lt. Surge: no battle screen and
+//  no START menu, and the loop pressed + and B for 8 minutes. It gives up
+//  60 s after the last battle screen, once START has looked; a battle
+//  screen in between starts that time over.
+UnitTestResult test_end_watch_gives_up(Logger&){
+    const WallClock start = current_time();
+    const auto at = [&](int ms){ return start + std::chrono::milliseconds(ms); };
+    BattleEndWatch watch;
+    if (watch.overworld_lost(at(120000))){
+        return "Gave up before any battle screen showed.";
+    }
+    watch.seen(BattleSeen::BATTLE, at(0));
+    std::optional<int> gave_up;
+    for (int ms = 300; ms <= 600000 && !gave_up; ms += 300){
+        watch.seen(BattleSeen::NONE, at(ms));
+        watch.check_overworld(at(ms));
+        if (ms == 30000){
+            watch.seen(BattleSeen::BATTLE, at(ms));
+        }
+        if (watch.overworld_lost(at(ms))){
+            gave_up = ms;
+        }
+    }
+    if (!gave_up || *gave_up < 90000 || *gave_up > 95000){
+        return gave_up
+            ? std::format("Expected to give up 60 s after the battle screen at 30 s, at {} ms.", *gave_up)
+            : std::string("Never gave up on the overworld in 10 minutes.");
+    }
+    return true;
+}
+
 
 } // namespace
 
@@ -720,6 +752,56 @@ UnitTestResult test_disabled_move(Logger&){
     }
     if (decisions.turn(GREEN).slot != TOP_LEFT_MOVE){
         return "Expected Water Gun again once Disable is over.";
+    }
+    return true;
+}
+
+//  Regression, console B 2026-11-03, m68, the S.S. Anne rival: "no PP left
+//  for that move" read 37 s after the battle's last move, as it ended, and
+//  the story took the move's PP as 0. Read once, a move is left alone as a
+//  Disable (Kadabra's) would have it, its PP kept; read again for the same
+//  move, its PP is 0.
+UnitTestResult test_no_pp_read_once(Logger&){
+    Supplies supplies;
+    supplies.lead = squirtle_before_miguel();
+    supplies.foes = {"grimer", "voltorb", "koffing"};
+    BattleDecisions decisions(supplies, BattleKind::TRAINER);
+    if (decisions.turn(GREEN).slot != TOP_LEFT_MOVE){
+        return "Expected Water Gun (slot 0) at turn 1.";
+    }
+    decisions.turn_done(TurnChoice::MOVE, TurnResult::NOT_DONE);
+    if (supplies.lead.moves[TOP_LEFT_MOVE].pp != 25){
+        return std::format("Expected Water Gun's 25 PP kept after one \"no PP\" read, got {}.", supplies.lead.moves[TOP_LEFT_MOVE].pp);
+    }
+    for (int c = 0; c < 5; c++){
+        if (decisions.turn(GREEN).slot == TOP_LEFT_MOVE){
+            return std::format("Expected Water Gun left alone at turn {} after the read, as a Disable.", c + 1);
+        }
+    }
+    if (decisions.turn(GREEN).slot != TOP_LEFT_MOVE){
+        return "Expected Water Gun again once a Disable would be over.";
+    }
+    decisions.turn_done(TurnChoice::MOVE, TurnResult::NOT_DONE);
+    if (supplies.lead.moves[TOP_LEFT_MOVE].pp != 0){
+        return std::format("Expected Water Gun at 0 PP after a second read, got {}.", supplies.lead.moves[TOP_LEFT_MOVE].pp);
+    }
+    return true;
+}
+
+//  "no PP left" counts only as soon after the choice as a refusal's menu
+//  comes: m68's read 37 s after the battle's last move doesn't.
+UnitTestResult test_no_pp_due(Logger&){
+    const WallClock start = current_time();
+    MoveRefusalWatch watch;
+    if (watch.no_pp_due(start)){
+        return "Expected no \"no PP\" read counted with no move chosen.";
+    }
+    watch.move_chosen(start);
+    if (!watch.no_pp_due(start + 4000ms)){
+        return "Expected a \"no PP\" read 4 s after the choice counted.";
+    }
+    if (watch.no_pp_due(start + 37000ms)){
+        return "Expected a \"no PP\" read 37 s after the choice not counted.";
     }
     return true;
 }
@@ -831,86 +913,29 @@ UnitTestResult test_nurse_before_battle(Logger&){
 }
 
 const AutoStoryPartyTestCase AUTO_STORY_PARTY_CASES[] = {
-    {
-        .input = {.name = "movesets the game gives and the story plays", .body = test_movesets},
-        .expectation = {.description = "verifies movesets progression through early game"},
-    },
-    {
-        .input = {.name = "move offered and slot forgotten", .body = test_learn_prompts},
-        .expectation = {.description = "determines move learning replacements and prompts"},
-    },
-    {
-        .input = {.name = "Mega Kick kept over later level-up moves", .body = test_mega_kick_kept},
-        .expectation = {.description = "keeps Mega Kick over later level-up moves"},
-    },
-    {
-        .input = {.name = "YES/NO answers to move prompts", .body = test_prompt_answers},
-        .expectation = {.description = "answers prompts when deciding to learn new moves"},
-    },
-    {
-        .input = {.name = "fainted lead runs or sends the next member", .body = test_fainted_lead},
-        .expectation = {.description = "switches to next alive member when lead faints"},
-    },
-    {
-        .input = {.name = "PP: preferred attack, then Tackle; nurse restores", .body = test_pp},
-        .expectation = {.description = "tracks PP depletion and replenishment"},
-    },
-    {
-        .input = {.name = "moves read off the summary, Water Gun over Tackle", .body = test_moves_from_summary},
-        .expectation = {.description = "reads move list from summary screen"},
-    },
-    {
-        .input = {.name = "summary members: fewer moves, unread PP, strongest attack", .body = test_summary_members},
-        .expectation = {.description = "handles party members with partial move data"},
-    },
-    {
-        .input = {.name = "no B during an evolution", .body = test_no_b_during_evolution},
-        .expectation = {.description = "prevents cancelling evolution sequence"},
-    },
-    {
-        .input = {.name = "RUN, then a dark cave: no evolution wait, START soon", .body = test_run_then_overworld},
-        .expectation = {.description = "handles post-battle overworld transition in dark cave"},
-    },
-    {
-        .input = {.name = "battle end: START after the battle is gone, A and B for 30 s at most", .body = test_end_watch_timing},
-        .expectation = {.description = "verifies timing constraints on battle end loop"},
-    },
-    {
-        .input = {.name = "attacks by matchup: Bite on the rival's Bulbasaur and Misty", .body = test_attack_by_matchup},
-        .expectation = {.description = "selects optimal attack move based on type matchup"},
-    },
-    {
-        .input = {.name = "attacks against an unknown foe: the plan's order", .body = test_attack_unknown_foe},
-        .expectation = {.description = "falls back to default move preference order against unknown foe"},
-    },
-    {
-        .input = {.name = "Bite learned over Tail Whip or Withdraw", .body = test_bite_learned},
-        .expectation = {.description = "prioritizes learning offensive moves over status moves"},
-    },
-    {
-        .input = {.name = "a YES/NO with no move list after it changes no move", .body = test_yes_no_without_move_list},
-        .expectation = {.description = "maintains moveset when prompt completes without move selection"},
-    },
-    {
-        .input = {.name = "a disabled move: left alone while Disable lasts, PP back", .body = test_disabled_move},
-        .expectation = {.description = "avoids selecting disabled moves"},
-    },
-    {
-        .input = {.name = "a move turned down: the move list, then the menu sooner than a turn", .body = test_move_refusal_watch},
-        .expectation = {.description = "handles refusing a new move cleanly"},
-    },
-    {
-        .input = {.name = "the move list closed with nothing forgotten: YES to \"Stop learning?\"", .body = test_move_list_closed},
-        .expectation = {.description = "confirms stopping learning when cancelling move list"},
-    },
-    {
-        .input = {.name = "move prompts after a turn: a plain YES after the first few", .body = test_move_prompts_bounded},
-        .expectation = {.description = "bounds prompt handling attempts after turns"},
-    },
-    {
-        .input = {.name = "the nurse before a battle for HP not green with no Potion", .body = test_nurse_before_battle},
-        .expectation = {.description = "triggers pokemon center visit when health is low and without potions"},
-    },
+    {.input = {.name = "movesets the game gives and the story plays", .body = test_movesets}, .expectation = {.description = "verifies movesets progression through early game"},},
+    {.input = {.name = "move offered and slot forgotten", .body = test_learn_prompts}, .expectation = {.description = "determines move learning replacements and prompts"},},
+    {.input = {.name = "Mega Kick kept over later level-up moves", .body = test_mega_kick_kept}, .expectation = {.description = "keeps Mega Kick over later level-up moves"},},
+    {.input = {.name = "YES/NO answers to move prompts", .body = test_prompt_answers}, .expectation = {.description = "answers prompts when deciding to learn new moves"},},
+    {.input = {.name = "fainted lead runs or sends the next member", .body = test_fainted_lead}, .expectation = {.description = "switches to next alive member when lead faints"},},
+    {.input = {.name = "PP: preferred attack, then Tackle; nurse restores", .body = test_pp}, .expectation = {.description = "tracks PP depletion and replenishment"},},
+    {.input = {.name = "moves read off the summary, Water Gun over Tackle", .body = test_moves_from_summary}, .expectation = {.description = "reads move list from summary screen"},},
+    {.input = {.name = "summary members: fewer moves, unread PP, strongest attack", .body = test_summary_members}, .expectation = {.description = "handles party members with partial move data"},},
+    {.input = {.name = "no B during an evolution", .body = test_no_b_during_evolution}, .expectation = {.description = "prevents cancelling evolution sequence"},},
+    {.input = {.name = "RUN, then a dark cave: no evolution wait, START soon", .body = test_run_then_overworld}, .expectation = {.description = "handles post-battle overworld transition in dark cave"},},
+    {.input = {.name = "battle end: START after the battle is gone, A and B for 30 s at most", .body = test_end_watch_timing}, .expectation = {.description = "verifies timing constraints on battle end loop"},},
+    {.input = {.name = "attacks by matchup: Bite on the rival's Bulbasaur and Misty", .body = test_attack_by_matchup}, .expectation = {.description = "selects optimal attack move based on type matchup"},},
+    {.input = {.name = "attacks against an unknown foe: the plan's order", .body = test_attack_unknown_foe}, .expectation = {.description = "falls back to default move preference order against unknown foe"},},
+    {.input = {.name = "Bite learned over Tail Whip or Withdraw", .body = test_bite_learned}, .expectation = {.description = "prioritizes learning offensive moves over status moves"},},
+    {.input = {.name = "a YES/NO with no move list after it changes no move", .body = test_yes_no_without_move_list}, .expectation = {.description = "maintains moveset when prompt completes without move selection"},},
+    {.input = {.name = "a disabled move: left alone while Disable lasts, PP back", .body = test_disabled_move}, .expectation = {.description = "avoids selecting disabled moves"},},
+    {.input = {.name = "a move turned down: the move list, then the menu sooner than a turn", .body = test_move_refusal_watch}, .expectation = {.description = "handles refusing a new move cleanly"},},
+    {.input = {.name = "the move list closed with nothing forgotten: YES to \"Stop learning?\"", .body = test_move_list_closed}, .expectation = {.description = "confirms stopping learning when cancelling move list"},},
+    {.input = {.name = "move prompts after a turn: a plain YES after the first few", .body = test_move_prompts_bounded}, .expectation = {.description = "bounds prompt handling attempts after turns"},},
+    {.input = {.name = "the nurse before a battle for HP not green with no Potion", .body = test_nurse_before_battle}, .expectation = {.description = "triggers pokemon center visit when health is low and without potions"},},
+    {.input = {.name = "battle end: no overworld 60 s after the battle, a stop", .body = test_end_watch_gives_up}, .expectation = {.description = "stops battle watch loop when overworld does not reappear within 60s"},},
+    {.input = {.name = "\"no PP\" read once: left alone as a Disable; twice: PP 0", .body = test_no_pp_read_once}, .expectation = {.description = "treats first no PP message as disable and second as zero PP"},},
+    {.input = {.name = "\"no PP\" counts only soon after the move chosen", .body = test_no_pp_due}, .expectation = {.description = "only attributes no PP warning to recently selected move"},},
 };
 
 
