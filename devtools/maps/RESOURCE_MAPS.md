@@ -8,16 +8,11 @@ map/route/story tests remain here. No controller behavior changes in this handof
 
 ## Publishing prerequisite and pins
 
-Merge [PokemonSimulation #65](https://github.com/dayfine/PokemonSimulation/pull/65)
-first. The checked-in resource lock names its candidate publishing commit
-`b6442ba6f8212701e2c574831e70c8111aafdc5b` and manifest checksum. Normal preparation
-and full application CI reject that revision until it is on publishing main.
-Do not override that approval check. If it lands by squash under another SHA,
-verify that the intended map/manifest bytes are unchanged and regenerate the
-initial lock in a new empty staging consumer with `consumer_sync update`. Copy
-that verified lock into this draft only while its candidate remains unapproved
-and no resources have been prepared. An existing approved deployment instead
-uses the normal update transaction below, which verifies its current exports.
+[PokemonSimulation #65](https://github.com/dayfine/PokemonSimulation/pull/65)
+merged by squash as `4de7742a764d27293b4525d6ad2a6fc8a95f3e3a`. The checked-in resource lock and
+CI tools now use that approved revision. The squash preserves the reviewed
+candidate's manifest/license and all 22 map bytes. Normal resource preparation
+verifies the published ancestry, manifest hash and exports before configuration.
 
 Before enrichment, all 22 maps matched #226 at
 `fc56a720b9c0b1f4d945dbef382d61b0a6382b97` byte-for-byte. The publishing change
@@ -40,7 +35,7 @@ data revision from the resource lock; tools and data pins are independent.
 
 ```sh
 git clone https://github.com/dayfine/PokemonSimulation.git /path/to/pokesim
-git -C /path/to/pokesim checkout f12af546d98f453e005c3116442423dcbdcda347
+git -C /path/to/pokesim checkout 4de7742a764d27293b4525d6ad2a6fc8a95f3e3a
 PYTHONPATH=/path/to/pokesim/src python3 -m pokesim.maps.consumer_sync prepare \
   --layout resources --source /path/to/pokesim --consumer /path/to/Arduino-Source
 cmake -S SerialPrograms -B /path/to/build \
@@ -78,7 +73,7 @@ cmake -S devtools/runtime-map-tests -B build/runtime-map-tests
 cmake --build build/runtime-map-tests -j4
 ctest --test-dir build/runtime-map-tests --output-on-failure
 python3 devtools/runtime-map-tests/prepare_parity.py --publisher /path/to/candidate \
-  --publisher-revision b6442ba6f8212701e2c574831e70c8111aafdc5b --out /tmp/bdsp-map-pairs.json
+  --publisher-revision 4de7742a764d27293b4525d6ad2a6fc8a95f3e3a --out /tmp/bdsp-map-pairs.json
 build/runtime-map-tests/RuntimeMapTests /tmp/bdsp-map-pairs.json
 ```
 

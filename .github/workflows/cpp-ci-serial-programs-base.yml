@@ -90,7 +90,7 @@ jobs:
 
       - name: Prepare pinned BDSP map resources
         id: map-resources
-        uses: dayfine/PokemonSimulation/integrations/arduino-source/verify-map-packs@f12af546d98f453e005c3116442423dcbdcda347
+        uses: dayfine/PokemonSimulation/integrations/arduino-source/verify-map-packs@4de7742a764d27293b4525d6ad2a6fc8a95f3e3a
         with:
           layout: resources
           operation: prepare
