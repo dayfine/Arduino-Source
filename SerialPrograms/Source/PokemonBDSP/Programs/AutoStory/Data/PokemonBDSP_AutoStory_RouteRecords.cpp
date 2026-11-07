@@ -162,8 +162,8 @@ const std::vector<RouteRecord>& all(){
     static const std::vector<RouteRecord> records = []{
         std::vector<RouteRecord> all;
         for (auto part : {checkpoint_0001_records, checkpoints_0002_0003_records, segment01_records_to_oreburgh, segment01_records_from_jubilife}){
-            const std::vector<RouteRecord> records = part();
-            all.insert(all.end(), records.begin(), records.end());
+            const std::vector<RouteRecord> part_records = part();
+            all.insert(all.end(), part_records.begin(), part_records.end());
         }
         return all;
     }();
