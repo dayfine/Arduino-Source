@@ -5,12 +5,14 @@
     python3 -m devtools.maps fetch Sandgem_Town_DP.png
     python3 -m devtools.maps overlay <Data/..._SandgemTown.cpp> [--log SerialPrograms.log [--walk LABEL]] -o out.svg
     python3 -m devtools.maps overlay r204n.txt --image ~/.cache/maps/Sinnoh_Route_204_DP.png --row-px 12 --level 12:24 -o r204n.svg
+    python3 -m devtools.maps routes SerialPrograms.log --maps <dir of map JSON> [--maps ...] -o routes/   # every run
+    python3 -m devtools.maps routes Lab/runs/<run_id> --maps <dir> -o routes/                           # one run record
 """
 import argparse
 import sys
 from pathlib import Path
 
-from . import decomp, fetch, grid_source, route_log, svg
+from . import decomp, fetch, grid_source, route_log, route_maps, route_render, route_trace, svg
 
 CACHE = Path.home() / '.cache' / 'maps'
 
@@ -50,7 +52,16 @@ def main(argv=None):
     draw.add_argument('--last', type=int, default=0, help='only the last N walks')
     draw.add_argument('--cache', type=Path, default=CACHE)
     draw.add_argument('-o', '--out', type=Path, required=True)
+    walks = sub.add_parser('routes', help="draw every route walk of a run's log on its maps: plan and walk")
+    walks.add_argument('source', type=Path, help='a SerialPrograms log, or a Lab/runs/<run_id> folder (its log.txt)')
+    walks.add_argument('--maps', type=Path, action='append', default=[], help='a folder of map JSON files (repeatable)')
+    walks.add_argument('--run', type=int, action='append', help='only this run, by its number in --list (-1: the last; repeatable)')
+    walks.add_argument('--list', action='store_true', help='list the runs with route walks and stop')
+    walks.add_argument('-o', '--out', type=Path, help='output folder: <run_id>/ per run, and index.html')
     args = parser.parse_args(argv)
+
+    if args.command == 'routes':
+        return routes(args)
 
     if args.command == 'decomp':
         game = decomp.game_for(args.repo, args.cache / 'decomp', args.local)
@@ -82,6 +93,35 @@ def main(argv=None):
     title = f'{source.name}: {len(source.rows)} rows x {source.width}, {len(walks)} walk(s)'
     args.out.write_text(svg.render(source, image.read_bytes() if image else None, walks, title), encoding='utf-8')
     print(args.out)
+    return 0
+
+
+def routes(args):
+    maps = route_maps.load_dir(*args.maps)
+    source = args.source
+    run_id = None
+    if source.is_dir():
+        run_id = source.name
+        source = source / 'log.txt'
+    lines = source.read_text(encoding='utf-8', errors='replace').splitlines()
+    runs = route_trace.parse(lines, maps)
+    if run_id and len(runs) == 1:
+        runs[0].run_id = run_id
+    if args.list or not args.out:
+        for n, run in enumerate(runs):
+            failed = sum(1 for w in run.walks if w.outcome == 'failed')
+            print(f'{n:3d}  {run.run_id}  {run.program}  {len(run.walks)} walk(s), {failed} failed')
+        return 0
+    if args.run:
+        runs = [runs[n] for n in args.run]
+    results = []
+    for run in runs:
+        pictures = route_render.render_run(run, maps, args.out / run.run_id)
+        results.append((run, run.run_id, pictures))
+        missing = sorted({name for _, _, name, _, has in pictures if not has})
+        print(f'{args.out / run.run_id / "index.html"}: {len(pictures)} picture(s)'
+              + (f'; no map file for {", ".join(missing)}' if missing else ''))
+    route_render.render_index(results, args.out)
     return 0
 
 
