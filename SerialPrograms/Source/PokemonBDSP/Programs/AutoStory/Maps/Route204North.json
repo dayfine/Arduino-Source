@@ -1,6 +1,11 @@
 {
+    "format": "pokesim-runtime-map/2",
     "name": "Route204North",
-    "source": {"decomp_file": "pret/pokediamond: files/fielddata/land_data/land_data_release/narc_0031.bin; zone_event narc_0331", "revision": "default branch", "date": "2026-10-31"},
+    "source": {
+        "decomp_file": "pret/pokediamond: files/fielddata/land_data/land_data_release/narc_0031.bin; zone_event narc_0331",
+        "revision": "default branch",
+        "date": "2026-10-31"
+    },
     "tiles": [
         "########.#...###################",
         "########.#...###################",
@@ -67,17 +72,19 @@
         "trainer_taylor": [17, 20],
         "trainer_brandon": [20, 12]
     },
-    "objects": [
-        {"name": "bug_catcher_brandon", "kind": "npc", "x": 20, "y": 12},
-        {"name": "pokemon_breeder_f_1", "kind": "npc", "x": 17, "y": 20},
-        {"name": "twin_2", "kind": "npc", "x": 15, "y": 7, "facing": "south"},
-        {"name": "twin_3", "kind": "npc", "x": 16, "y": 7, "facing": "south"},
-        {"name": "youngster_4", "kind": "npc", "x": 15, "y": 28, "wander": {"x0": 14, "y0": 28, "x1": 16, "y1": 28}},
-        {"name": "item_9", "kind": "item", "x": 2, "y": 10},
-        {"name": "ace_trainer_f_10", "kind": "npc", "x": 31, "y": 4, "facing": "west"},
-        {"name": "item_11", "kind": "item", "x": 20, "y": 23}
-    ],
     "patches": [
-        {"x": 12, "y": 6, "glyph": "#", "measured_by": "r248a, 2026-10-31"}
+        {"coord": [12, 6], "glyph": "#", "measured_by": "r248a, 2026-10-31"}
+    ],
+    "npcs": [
+        {"name": "bug_catcher_brandon", "coord": [20, 12]},
+        {"name": "pokemon_breeder_f_1", "coord": [17, 20]},
+        {"name": "twin_2", "coord": [15, 7], "facing": "south"},
+        {"name": "twin_3", "coord": [16, 7], "facing": "south"},
+        {"name": "youngster_4", "coord": [15, 28], "wander": {"min": [14, 28], "max": [16, 28]}},
+        {"name": "ace_trainer_f_10", "coord": [31, 4], "facing": "west"}
+    ],
+    "items": [
+        {"name": "item_9", "coord": [2, 10]},
+        {"name": "item_11", "coord": [20, 23]}
     ]
 }
