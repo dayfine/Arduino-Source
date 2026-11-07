@@ -164,6 +164,14 @@ StoryStep tap_into(std::string name, Direction direction, std::string why, Pose 
     step.variant = "to_banner";
     return step;
 }
+//  Through a door or cave warp by a single D-pad tap onto the warp tile,
+//  settling on the far map without holding/running (which overshoots if the
+//  fade is missed or delayed).
+StoryStep tap_step(std::string name, Direction direction, std::string why, Pose pose_after){
+    StoryStep step = step_into(std::move(name), direction, std::move(why), std::move(pose_after));
+    step.variant = "tap";
+    return step;
+}
 StoryStep talk(std::string name, std::string why){
     return make(StoryStepKind::TALK, std::move(name), std::move(why));
 }
@@ -224,13 +232,13 @@ std::vector<StoryStep> route_201_to_the_lakefront(){
         //  Barry's warning covers the whole exit path (14..19, 18), so it ends our walk
         //  north: exact legs to the row below it, never a run to a wall through it (r14
         //  ran north to (15, 13) and back, into it and the row-19 pull-back, in a loop).
-        legs("below_barrys_warning", {{.direction = EAST, .tiles = 6}, {.direction = NORTH, .tiles = 18}},
-            "along row 12, then up Twinleaf's exit to Route 201 (15, 19)"),
+        anchored(legs("below_barrys_warning", {{.direction = EAST, .tiles = 6}, {.direction = NORTH, .tiles = 18}},
+            "along row 12, then up Twinleaf's exit to Route 201 (15, 19)"), at(ROUTE_201, 15, 19, NORTH)),
         step_into("barrys_warning", NORTH, "the trigger (14..19, 18)"),
         scene("barry_warns_us", at(ROUTE_201, "barry_warning"), "Barry's tall-grass warning; he then stands north of us at (15, 17)"),
         //  West at once, never back south onto row 19, which pulls us back.
-        legs("away_from_barry", {{.direction = WEST, .tiles = 1}, {.direction = NORTH, .tiles = 1}, {.direction = WEST, .tiles = 2}},
-            "to (12, 17): row 18 west of the path is trees (r16), the dirt goes on along row 17"),
+        legs("away_from_barry", {{.direction = WEST, .tiles = 1}, {.direction = NORTH, .tiles = 2}},
+            "to (14, 16): row 18 west of the path is trees (r16) and (13, 17) is the 201 sign (probe-r201-sign), so clear both onto row 16"),
         //  Route 201's lower level, row 16, clear of the grass, then the Lakefront.
         route("below_the_lake_entrance", at(LAKEFRONT, "below_lake_entrance", NORTH), "west along Route 201's lower level to the Lakefront"),
     };
@@ -253,17 +261,19 @@ StoryCheckpoint bedroom_to_lakefront(){
         scene("mom_calls", at_or_next_to(HOME, "stairs", SOUTH),
             "Mom calls the player over as they come down; we stay put"),
         route("above_the_door", at(HOME, 6, 9, SOUTH), "past Mom at (7, 8) to above the door"),
-        step_into("mom_warning", SOUTH, "the door's tile (6, 10): Mom's warning (coord event, VAR_PLAYER_HOUSE_STATE 1)"),
-        scene("mom_warns_us", at(HOME, "door", SOUTH), "\"don't go into the tall grass\""),
-        step_into("out_of_the_house", SOUTH, "out of the door", at(TWINLEAF, "house_doorstep", SOUTH)),
+        //  In BDSP Mom's downstairs scene already warned us about the tall grass,
+        //  so the door's tile (6, 10) warps right out without Platinum's coord event.
+        step_into("out_of_the_house", SOUTH, "onto the door's tile (6, 10), and out", at(TWINLEAF, "house_doorstep", SOUTH)),
         route("short_of_barrys_door", at(TWINLEAF, 10, 12, WEST), "a tile east of Barry's doorstep"),
         step_into("barrys_door", WEST, "the trigger on his doorstep (9, 12)"),
         //  Barry bumps into us and knocks us back a tile, still facing north (decomp;
         //  r10: the first north tap after the scene gave no warp, the second did).
         scene("barry_bursts_out", at(TWINLEAF, 9, 13, NORTH), "Barry runs out, bumps into us and runs back in", "a"),
         scene("barry_goes_home", at(TWINLEAF, 9, 13, NORTH), "his second lines (Butters waited for two)", "a"),
-        legs("back_onto_barrys_doorstep", {{.direction = NORTH, .tiles = 1}}, "back to (9, 12); its trigger is spent"),
-        step_into("into_barrys_house", NORTH, "his door", at(BARRYS_HOUSE, "door", NORTH)),
+        //  From (9, 13) straight north through (9, 12) (its trigger is spent) into
+        //  his door: a separate tap to (9, 12) first stepped into the door before
+        //  into_barrys_house watched for the fade.
+        step_into("into_barrys_house", NORTH, "past (9, 12) into his door", at(BARRYS_HOUSE, "door", NORTH)),
         legs("off_barrys_mat", {{.direction = NORTH, .tiles = 1}}, "off the door's mat, which no route starts on"),
         //  Like ours: stairs are entered sideways from the top of their mat, the
         //  stairs point (r11: north from (2, 4) only bumps the wall).
@@ -339,7 +349,7 @@ std::vector<StoryCheckpoint> lake_and_pokedex(){
             //  B answers No too, and closes an item's lines as it did Barry's
             //  parcel (r45). Into the lab is a fade.
             scene("rowan_gives_pokedex", at(LAB, "rowan_talk", NORTH),
-                "Dawn walks us to the lab: Rowan, no nickname, the Pokedex"),
+                "Dawn walks us to the lab: Rowan, no nickname, the Pokedex", "a"),
         }),
     };
 }
@@ -365,46 +375,49 @@ StoryStep out_of_the_lab_into_dawns_tour(){
         }, NORTH));
 }
 
-//  Anywhere in the door's column: the step runs north into the door, so the
-//  route can end where the south run along x 14 stops (row 26) and go east.
-StoryStep home_to_the_doors_column(){
-    return route("home", Pokemon::tile_pose(TWINLEAF, {
-            TilePos{20, 22}, TilePos{20, 23}, TilePos{20, 24}, TilePos{20, 25}, TilePos{20, 26}
-        }, NORTH), "west along Route 201 to Twinleaf, running from wild battles");
+//  West along Route 201 to Mom's doorstep:
+//  1. Over the ledge at column 57 down onto Route 201's main road (row 14).
+//  2. West along the main road (row 14) to the Twinleaf path at column 15.
+//  3. South down column 15 into Twinleaf Town to row 22.
+//  4. East to Mom's house doorstep at (20, 22), facing north into the door.
+std::vector<StoryStep> home_to_the_doors_column(){
+    return {
+        route("to_ledge_column", at(ROUTE_201, 55, 5, WEST), "west to ledge column 55", "line"),
+        anchored(legs("over_the_ledge", {{.direction = SOUTH, .tiles = 8}}, "south over the ledge to the lower road"),
+            at(ROUTE_201, 55, 14, SOUTH)),
+        route("along_route_201_road", at(ROUTE_201, 15, 14, WEST), "west along Route 201's road to the Twinleaf path", "line"),
+        route("into_twinleaf", at(TWINLEAF, 15, 22, SOUTH), "south down column 15 into Twinleaf Town", "line"),
+        route("to_moms_doorstep", at(TWINLEAF, 20, 22, NORTH), "east to Mom's house doorstep", "line"),
+    };
 }
 
 std::vector<StoryCheckpoint> to_the_catch(){
+    std::vector<StoryStep> steps{
+        out_of_the_lab_into_dawns_tour(),
+        //  Not west along the doors' row: running it took us into the lab at its
+        //  mat (8, 11) (r41, r42). Row 12 is open into Route 201: run it until
+        //  Route 201's banner shows, a few tiles in.
+        route("onto_the_path", at(SANDGEM, 29, 12, WEST), "to the east end of the path below the doors' row", "town"),
+        route_201_by_the_path(),
+    };
+    for (StoryStep& s : home_to_the_doors_column()){
+        steps.push_back(std::move(s));
+    }
+    steps.push_back(step_into("into_the_house", NORTH, "the house's door", at(HOME, 6, 9, NORTH)));
+    steps.push_back(route("beside_mom", at(HOME, 6, 8, EAST), "west of Mom at (7, 8)"));
+    steps.push_back(talk("mom", "Mom"));
+    steps.push_back(scene("mom_heals_us", at(HOME, 7, 7, SOUTH), "Mom heals us; Barry's mom gives us his parcel"));
+    steps.push_back(legs("around_mom", {{.direction = WEST, .tiles = 1}, {.direction = SOUTH, .tiles = 2}},
+        "around Mom to (6, 9) above the door"));
+    steps.push_back(step_into("to_moms_call", SOUTH, "onto the door mat (6, 10), triggering Mom's call"));
+    steps.push_back(scene("moms_hat", at(TWINLEAF, 19, 22, EAST), "Mom's hat; she walks out with us"));
+    steps.push_back(route("short_of_the_catch_tutorial", at(ROUTE_202, 22, 27, WEST), "through Sandgem onto Route 202, east of its trigger column"));
+    steps.push_back(step_into("catch_tutorial_trigger", WEST, "the trigger (21, 25..29), VAR_ROUTE_202_STATE 0"));
+    steps.push_back(event("catch_tutorial", "Dawn's catching tutorial"));
+    steps.push_back(event("catch_pokemon", "a Pokemon of our own from the grass", on(ROUTE_202, "catch_save_area")));
+
     return {
-        row("00.04", "Home to Mom, then Dawn's catching tutorial on Route 202", at(LAB, "rowan_talk", NORTH), {
-            out_of_the_lab_into_dawns_tour(),
-            //  Not west along the doors' row: running it took us into the lab at its
-            //  mat (8, 11) (r41, r42). Row 12 is open into Route 201: run it until
-            //  Route 201's banner shows, a few tiles in.
-            route("onto_the_path", at(SANDGEM, 29, 12, WEST), "to the east end of the path below the doors' row", "town"),
-            route_201_by_the_path(),
-            home_to_the_doors_column(),
-            //  The game sets us a tile inside, off the mat: (6, 9) (r40: the old extra
-            //  step north put us beside the TV, above Mom).
-            step_into("into_the_house", NORTH, "the house's door", at(HOME, 6, 9, NORTH)),
-            //  Mom stands at (7, 7) now, a row above the decomp's (7, 8): from (6, 8)
-            //  she was up and to the right; a tap north, east and A answered (r43).
-            route("beside_mom", at(HOME, 6, 7, EAST), "west of Mom at (7, 7)"),
-            talk("mom", "Mom"),
-            //  Mom heals us, then Barry's mom comes in with his parcel; the scene
-            //  leaves Mom at (6, 8), below us (r45).
-            scene("mom_heals_us", at(HOME, 6, 7, EAST), "Mom heals us; Barry's mom gives us his parcel"),
-            legs("around_mom", {{.direction = WEST, .tiles = 1}, {.direction = SOUTH, .tiles = 2}},
-                "around Mom at (6, 8), to beside the door's column"),
-            //  Stepping onto (6, 9), above the door, Mom calls us back ("Oh, Kosmos!",
-            //  r46), gives us the hat and walks out with us; we end a tile west of the
-            //  doorstep, beside her (r45).
-            legs("to_moms_call", {{.direction = EAST, .tiles = 1}}, "east above the door until Mom calls", "to_dialogue"),
-            scene("moms_hat", at(TWINLEAF, 19, 22, EAST), "Mom's hat; she walks out with us"),
-            route("short_of_the_catch_tutorial", at(ROUTE_202, 22, 27, WEST), "through Sandgem onto Route 202, east of its trigger column"),
-            step_into("catch_tutorial_trigger", WEST, "the trigger (21, 25..29), VAR_ROUTE_202_STATE 0"),
-            event("catch_tutorial", "Dawn's catching tutorial"),
-            event("catch_pokemon", "a Pokemon of our own from the grass", on(ROUTE_202, "catch_save_area")),
-        }),
+        row("00.04", "Home to Mom, then Dawn's catching tutorial on Route 202", at(LAB, "rowan_talk", NORTH), std::move(steps)),
         //  A Lv5 starter fainted to Route 202's trainers (r72): training, a
         //  heal, and Potions first, each row from the save the one before ends on.
         row("00.04b", "After the catch: train and heal in Sandgem", on(ROUTE_202, "catch_save_area"), {
@@ -445,7 +458,7 @@ std::vector<StoryCheckpoint> to_jubilife(){
         "Jubilife's south edge is a wall with stairs in it, west of where the route may leave us (r78)",
         below_jubilifes_steps());
     return {
-        row("00.04c", "Potions, back to Route 202's save spot", door_front(SANDGEM, "pokemon_center_door"), {
+        row("00.04c", "Poke Mart lady for Potions, back to Route 202's save spot", door_front(SANDGEM, "pokemon_center_door"), {
             potions,
         }),
         //  From the one save spot: from both at once the planner gives up.
@@ -531,15 +544,17 @@ StoryCheckpoint the_coupons(){
 //  and is gone (decomp); then up to the street east to Route 203, where
 //  01.01 walks east until Barry stops us.
 StoryCheckpoint the_poketch(){
-    const Pose below_the_president = next_to(JUBILIFE, "poketch_president", SOUTH, NORTH);
+    const Pose beside_the_president = next_to(JUBILIFE, "poketch_president", WEST, EAST);
     return row("00.05c", "Jubilife: the Poketch, up to the street east to Route 203",
         next_to(JUBILIFE, "clown_poketch_company", SOUTH, NORTH), {
-        route("below_the_president", below_the_president, "east along the long road, down the main road", "town"),
-        talk("president", "the Poketch Company's president at (46, 35)"),
+        route("to_main_boulevard", at(JUBILIFE, 15, 22, SOUTH), "south to the main boulevard", "line"),
+        route("along_main_boulevard", at(JUBILIFE, 45, 22, SOUTH), "east along the main boulevard", "line"),
+        route("beside_the_president", beside_the_president, "south down column 45 to the Poketch president", "line"),
+        talk("president", "the Poketch Company's president at (46, 36)"),
         //  BDSP adds a help panel on the Poketch; B closes it.
-        scene("the_poketch", below_the_president, "the coupons for the Poketch; he walks off north"),
+        scene("the_poketch", beside_the_president, "the coupons for the Poketch; he walks off north"),
         //  The street's rows 21 to 24 lead onto Route 203 at x 63.
-        route("to_the_route_203_street", at(JUBILIFE, 58, 22, EAST), "up the main road and east along the street", "town"),
+        route("to_the_route_203_street", at(JUBILIFE, 58, 22, EAST), "up the main road and east along the street", "line"),
     });
 }
 
@@ -573,14 +588,15 @@ Pose into_the_ravaged_path(){
     return at(RAVAGED_PATH, "entrance", NORTH);
 }
 
-//  Where Oreburgh's welcome scene leaves us, Barry in the Center's door: "a row
-//  or two below the Center's front, a little west of its door" (01.03's
-//  save, 2026-10-29); "two tiles west of the door and a row down" (the old
-//  event). Not Diamond's: its man walks us to the Gym, (23, 23).
+//  Where Oreburgh's welcome scene leaves us, Barry in the Gym's door.
+//  In Diamond/Pearl/BDSP, the guide walks us to the Gym: (23, 23) facing east,
+//  with the guide himself standing directly east at (24, 23).
 Pose after_the_welcome(){
-    return Pokemon::tile_pose(OREBURGH, {
-        TilePos{43, 21}, TilePos{44, 21}, TilePos{45, 21}, TilePos{43, 22}, TilePos{44, 22}, TilePos{45, 22}
-    });
+    return at(OREBURGH, 23, 23, EAST);
+}
+//  Below Oreburgh's Gym door (26, 20), facing Barry on the doorstep (26, 21).
+Pose below_barry(){
+    return at(OREBURGH, 26, 22, NORTH);
 }
 //  Below Oreburgh's Pokemon Center's door (47, 20), facing it.
 Pose below_oreburghs_center(){
@@ -657,7 +673,7 @@ StoryCheckpoint route_203_to_oreburgh(){
         step_into("welcome_trigger", EAST, "the trigger (10, 12..15): the man walks over"),
         //  He walks us to the Pokemon Center between his lines; Barry joins
         //  there with more lines after each walk.
-        scene("oreburgh_welcome", after_the_welcome(), "the man's lines, the walk to the Center, and Barry's"),
+        scene("oreburgh_welcome", after_the_welcome(), "the man's lines, the walk to the Gym, and Barry's"),
     });
 }
 
@@ -681,40 +697,54 @@ StoryCheckpoint route_203_to_oreburgh(){
 //  from the city's (46, 59) we land on its (12, 1); up, from the coal
 //  room's warp we land on its (11, 21) and come out on the city's (45, 59),
 //  below the mine's sign (the old walk north stopped against it, r103).
+std::vector<StoryLeg> legs_below_roark(){
+    return {
+        {.direction = EAST,  .tiles = 1},
+        {.direction = SOUTH, .tiles = 2},
+        {.direction = WEST,  .tiles = 1},
+        {.direction = SOUTH, .tiles = 5},
+        {.direction = EAST,  .tiles = 14},
+        {.direction = SOUTH, .tiles = 10},
+        {.direction = WEST,  .tiles = 2},
+        {.direction = SOUTH, .tiles = 2},
+        {.direction = WEST,  .tiles = 9},
+    };
+}
+
+std::vector<StoryLeg> legs_out_of_coal_room(){
+    return {
+        {.direction = EAST,  .tiles = 9},
+        {.direction = NORTH, .tiles = 2},
+        {.direction = EAST,  .tiles = 2},
+        {.direction = NORTH, .tiles = 10},
+        {.direction = WEST,  .tiles = 14},
+        {.direction = NORTH, .tiles = 5},
+        {.direction = EAST,  .tiles = 1},
+        {.direction = NORTH, .tiles = 2},
+        {.direction = WEST,  .tiles = 1},
+        {.direction = NORTH, .tiles = 8},
+    };
+}
+
 StoryCheckpoint oreburgh_mine_to_roark(){
     const Pose below_roark = next_to(MINE, "roark", SOUTH, NORTH);
     return row("01.03", "Oreburgh Mine to Roark", after_the_welcome(), {
-        //  The fence south of the Center's east corner (column 49) stops a
-        //  walk east on these rows a tile east of the door, as by hand.
-        anchored(to_walls("to_the_centers_fence", {{.direction = EAST, .tiles = 6}, {.direction = NORTH, .tiles = 2}},
-            "east to the fence below the Center's east corner, north to the Center's front"), at(OREBURGH, 48, 21, NORTH)),
-        anchored(legs("below_the_centers_door", {{.direction = WEST, .tiles = 1}}, "a tap west below the door"),
-            below_oreburghs_center()),
-        //  He stands in the door the first time; walking into him reads as a wall.
-        talk("barry", "Barry in the Center's door"),
-        scene("barrys_lines", below_oreburghs_center(), "Roark has gone to the mine"),
-        //  The Hiker wanders (46..48, 25..27), in the door's column: the
-        //  route goes round him.
+        anchored(legs("below_barry", {{.direction = SOUTH, .tiles = 1}, {.direction = EAST, .tiles = 3}, {.direction = NORTH, .tiles = 2}},
+            "south 1 around the guide, east 3 to Barry's column, north 2 to below Barry"), below_barry()),
+        talk("barry", "Barry in the Gym's door"),
+        scene("barrys_lines", below_barry(), "Roark has gone to the mine"),
         route("above_the_mine", at(OREBURGH, 46, 58, SOUTH), "down the door's column to above the mine's warp tiles", "town"),
         step_into("into_the_mine", SOUTH, "the warp tile (46, 59)", at(MINE_HALL, 12, 1, SOUTH)),
-        //  We land on the warp tile we came by, (12, 1): 19 taps end on row
-        //  20, a step short of the warp row.
-        legs("down_the_hall", {{.direction = SOUTH, .tiles = 19}}, "down column 12 of the entrance hall"),
-        step_into("into_the_coal_room", SOUTH, "the hall's warp tiles (11..13, 21)",
-            Pokemon::tile_pose(MINE, {TilePos{15, 2}, TilePos{15, 1}}, SOUTH)),
-        //  One known tile to plan from: the corridor's column 15 ends at the
-        //  boulder (15, 10), where the old walk south stopped too.
-        anchored(to_walls("down_to_the_boulder", {{.direction = SOUTH, .tiles = 9}}, "down the corridor to the boulder (15, 10)"),
-            at(MINE, 15, 9, SOUTH)),
-        route("below_roark", below_roark, "down the corridor and the room's east side, west along the bottom row"),
-        //  His first line comes after the camera zooms in on us (r98); his
-        //  rocks either side answer A too, but he is the one north of us.
+        step_into("into_the_coal_room", SOUTH, "down the entrance hall through the cave mouth", at(MINE, 15, 2, SOUTH)),
+        anchored(to_walls("south_to_the_rock", {{.direction = SOUTH, .tiles = 8}}, "south against the corridor rock (15, 11)"),
+            at(MINE, 15, 10, SOUTH)),
+        anchored(legs("below_roark", legs_below_roark(), "east around rock, across room, down column 29, and west to below Roark"), below_roark),
         talk("roark", "Roark, north of us between his rocks"),
         scene("roark_smashes_the_rock", below_roark, "his lines, Rock Smash on the rock east of him, and he walks off"),
-        route("below_the_coal_rooms_warp", at(MINE, 15, 2, NORTH), "back up the corridor"),
+        anchored(legs("below_the_coal_rooms_warp", legs_out_of_coal_room(), "east around crate, up column 29, west across row 17, and up corridor to warp doorstep"),
+            at(MINE, 15, 2, NORTH)),
         step_into("up_to_the_hall", NORTH, "the warp tile (15, 1)", at(MINE_HALL, 11, 21, NORTH)),
-        legs("up_the_hall", {{.direction = NORTH, .tiles = 19}}, "up column 11 of the entrance hall"),
-        step_into("out_of_the_mine", NORTH, "the hall's warp tiles (11..13, 1)",
+        step_into("out_of_the_mine", NORTH, "up the entrance hall and out to the city",
             Pokemon::tile_pose(OREBURGH, {TilePos{45, 59}, TilePos{45, 58}}, NORTH)),
         anchored(to_walls("up_to_the_mines_sign", {{.direction = NORTH, .tiles = 3}}, "north against the mine's sign (45, 56)"),
             at(OREBURGH, 45, 57, NORTH)),

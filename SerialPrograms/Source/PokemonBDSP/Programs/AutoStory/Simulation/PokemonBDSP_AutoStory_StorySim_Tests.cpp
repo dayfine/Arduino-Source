@@ -54,7 +54,6 @@ namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonBDSP{
 
-
 namespace{
 
 using namespace std::chrono_literals;
@@ -65,7 +64,6 @@ using Pokemon::RunState;
 using Pokemon::StoryStep;
 using Pokemon::StoryStepKind;
 using Pokemon::TilePos;
-
 
 //  Which detections the simulation misses on purpose (#162): the `fade`th
 //  door fade (run_into_door(), from 0) or the `banner`th map banner
@@ -146,7 +144,8 @@ public:
     //  A fade missed on the way in stays missed: it was over before settle()
     //  looked, which then fails as it does on the console after 120 s.
     virtual void settle(Button, const std::string& label, bool fade) override{
-        if (fade && ((!m_sim.player().warped && !m_sim.player().dialog) || m_misses.fade_unseen)){
+        const bool scene_fades = m_sim.player().dialog && m_far_side();
+        if (fade && ((!m_sim.player().warped && !scene_fades) || m_misses.fade_unseen)){
             m_route.note(label + ": no fade, so we are not where the step goes (map mismatch).", RouteNote::FAILURE);
         }
         m_misses.fade_unseen = false;
@@ -238,7 +237,6 @@ std::optional<size_t> SimStoryStepIO::tap_to_banner(Direction direction, const s
     return std::nullopt;
 }
 
-
 //  A scene's trigger the simulation fires from row `row` on, once the step
 //  `after` has run ("" from the row's start), on `map`'s `tiles`.
 struct RowTrigger{
@@ -273,7 +271,6 @@ struct VarState{
 std::vector<VarState> story_vars(){
     return {
         {.var = "VAR_TWINLEAF_TOWN_RIVAL_TRIGGER_STATE", .value = 0, .row = "00.01", .after = ""},
-        {.var = "VAR_PLAYER_HOUSE_STATE", .value = 1, .row = "00.01", .after = ""},
         {.var = "VAR_FOLLOWER_RIVAL_STATE", .value = 0, .row = "00.01", .after = ""},
         {.var = "VAR_FOLLOWER_RIVAL_STATE", .value = 1, .row = "00.01", .after = "barry_warns_us"},
         {.var = "VAR_VERITY_LAKEFRONT_STATE", .value = 0, .row = "00.02", .after = ""},
@@ -317,7 +314,6 @@ std::vector<RowTrigger> story_triggers(){
     return triggers;
 }
 
-
 //  Someone the maps do not have, who stands on `tile` of `map` and is
 //  talked to there or walked round: from row `row` on if `until` is "",
 //  else in `row` until its step `until` has run.
@@ -332,9 +328,9 @@ std::vector<SimPerson> sim_people(){
     return {
         //  Mom stands a row above the decomp's (7, 8) from 00.04 on (r43).
         {.name = "mom", .map = "PlayerHouse1F", .tile = {7, 7}, .row = "00.04", .until = ""},
-        //  Barry stands in the Center's door until his lines (01.03; Roark
+        //  Barry stands in the Gym's door until his lines (01.03; Roark
         //  ignored A until then, r101 and r104).
-        {.name = "barry", .map = "OreburghCity", .tile = {47, 20}, .row = "01.03", .until = "barrys_lines"},
+        {.name = "barry", .map = "OreburghCity", .tile = {26, 21}, .row = "01.03", .until = "barrys_lines"},
     };
 }
 
@@ -352,7 +348,6 @@ std::vector<SimStairs> sim_stairs(){
         {.map = "RivalHouse2F", .side = Direction::WEST},
     };
 }
-
 
 //  The program's walking steps on the simulation, the rest stubbed.
 class SimExecutor : public Pokemon::StoryStepExecutor{
@@ -639,7 +634,6 @@ Outcome SimExecutor::run(RunState& state, const StoryStep& step){
     return outcome;
 }
 
-
 //  Runs `range` of `rows` (the table unless given) on `executor`, stopping
 //  at the first failure.
 Pokemon::SegmentReport run_rows_on(
@@ -692,7 +686,6 @@ bool ends_on(const SimRun& run, const Pose& pose){
 std::string end_of(const SimRun& run){
     return run.world ? describe(*run.world, run.end) : "nowhere";
 }
-
 
 UnitTestResult run_exit_test(Logger& logger, const std::string& row_id, const StoryStep& old_step, const SimMisses& misses, const Pose& overshoot){
     SimExecutor executor(logger, misses);
@@ -763,7 +756,6 @@ StoryStep r81_old_cave_exit(){
 Pose r81_below_the_mouth(){
     return Pokemon::tile_pose("Route204North", {TilePos{20, 27}, TilePos{20, 28}, TilePos{20, 29}, TilePos{20, 30}});
 }
-
 
 UnitTestResult test_coord_events(Logger&){
     for (const auto& [map, json] : bdsp_map_json()){
@@ -847,6 +839,63 @@ UnitTestResult test_exit_ravaged_path(Logger& logger){
     return run_exit_test(logger, "01.09", r81_old_cave_exit(), SimMisses{.fade = 0, .banner = std::nullopt}, r81_below_the_mouth());
 }
 
+//  Oreburgh Mine B1F: tapping 20 tiles south steps onto the cave mouth warp
+//  at (12, 21), cutting the counted leg short at 19 tiles.
+StoryStep old_mine_hall_south_20(){
+    StoryStep step;
+    step.kind = StoryStepKind::LEGS;
+    step.name = "into_the_coal_room";
+    step.legs = {{.direction = Direction::SOUTH, .tiles = 20}};
+    return step;
+}
+
+//  Oreburgh Mine B1F: tapping 19 tiles south leaves the player on row 20
+//  without warping; the next step (south_to_the_rock) hits the warp immediately.
+StoryStep old_mine_hall_south_19(){
+    StoryStep step;
+    step.kind = StoryStepKind::LEGS;
+    step.name = "into_the_coal_room";
+    step.legs = {{.direction = Direction::SOUTH, .tiles = 19}};
+    return step;
+}
+
+//  Oreburgh Mine B1F: tapping 20 tiles north steps onto the city exit warp
+//  at (11, 1), cutting the leg short / warping unexpectedly.
+StoryStep old_mine_hall_north_20(){
+    StoryStep step;
+    step.kind = StoryStepKind::LEGS;
+    step.name = "out_of_the_mine";
+    step.legs = {{.direction = Direction::NORTH, .tiles = 20}};
+    return step;
+}
+
+//  Oreburgh Mine: stepping south at col 29 without bypassing the crate
+//  hits the wooden crate at (29, 28) on the south leg.
+StoryStep old_coal_room_crate_cut(){
+    StoryStep step;
+    step.kind = StoryStepKind::LEGS;
+    step.name = "below_roark";
+    step.legs = {
+        {.direction = Direction::EAST, .tiles = 1}, {.direction = Direction::SOUTH, .tiles = 2},
+        {.direction = Direction::WEST, .tiles = 1}, {.direction = Direction::SOUTH, .tiles = 5},
+        {.direction = Direction::EAST, .tiles = 14}, {.direction = Direction::SOUTH, .tiles = 10},
+        {.direction = Direction::SOUTH, .tiles = 2}, {.direction = Direction::WEST, .tiles = 11},
+    };
+    return step;
+}
+
+UnitTestResult test_story_sim_step_failure(Logger& logger, const std::string& row, const StoryStep& old_step, const std::string& expected_failed_step, const std::string& expected_error){
+    SimExecutor executor(logger);
+    const std::vector<StoryCheckpoint> rows = table_with(row, old_step);
+    run_rows_on(executor, logger, {.from = row, .to = row}, rows);
+    const SimRun& run = executor.result();
+    if (run.failed_step != expected_failed_step || run.error.find(expected_error) == std::string::npos){
+        return std::format("expected old {} to fail at '{}' with '{}', but got failed_step='{}', error='{}'.",
+            old_step.name, expected_failed_step, expected_error, run.failed_step, run.error);
+    }
+    return true;
+}
+
 struct AutoStoryStorySimInput{
     std::string name;
     std::function<UnitTestResult(Logger&)> body;
@@ -880,7 +929,6 @@ private:
 
 } // namespace
 
-
 const AutoStoryStorySimCase AUTO_STORY_STORY_SIM_CASES[] = {
     {
         .input = {"the maps' coord events are on open ground or doors", test_coord_events},
@@ -906,6 +954,30 @@ const AutoStoryStorySimCase AUTO_STORY_STORY_SIM_CASES[] = {
         .input = {"r81, out of the Ravaged Path", test_exit_ravaged_path},
         .expectation = {},
     },
+    {
+        .input = {"01.03, counted 20 taps south into cave mouth warp", [](Logger& logger){
+            return test_story_sim_step_failure(logger, "01.03", old_mine_hall_south_20(), "01.03 into_the_coal_room", "warped at (12, 21)");
+        }},
+        .expectation = {},
+    },
+    {
+        .input = {"01.03, counted 19 taps south leaves player in hall", [](Logger& logger){
+            return test_story_sim_step_failure(logger, "01.03", old_mine_hall_south_19(), "01.03 south_to_the_rock", "warp instead of a stop.");
+        }},
+        .expectation = {},
+    },
+    {
+        .input = {"01.03, counted 20 taps north into city exit warp", [](Logger& logger){
+            return test_story_sim_step_failure(logger, "01.03", old_mine_hall_north_20(), "01.03 out_of_the_mine", "warped at (11, 1)");
+        }},
+        .expectation = {},
+    },
+    {
+        .input = {"01.03, cut corner through coal room crate at col 29", [](Logger& logger){
+            return test_story_sim_step_failure(logger, "01.03", old_coal_room_crate_cut(), "01.03 below_roark", "short_leg: south 2 moved 0");
+        }},
+        .expectation = {},
+    },
 };
 
 void add_tests_AutoStory_StorySim(UnitTestDatabase& database){
@@ -913,7 +985,6 @@ void add_tests_AutoStory_StorySim(UnitTestDatabase& database){
         database.add<Test_AutoStoryStorySim>(item);
     }
 }
-
 
 } // namespace PokemonBDSP
 } // namespace NintendoSwitch

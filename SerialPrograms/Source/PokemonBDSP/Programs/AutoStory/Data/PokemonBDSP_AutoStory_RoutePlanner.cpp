@@ -376,6 +376,12 @@ private:
         if (expansion.next.size() > m_costs.max_spread || expansion.next == spread){
             return;
         }
+        if (spread != m_start){
+            const TileLeg& prev = m_nodes.at(spread).leg.leg;
+            if (expansion.leg.direction == prev.direction && !prev.ends_at_wall){
+                expansion.cost -= m_costs.per_leg;
+            }
+        }
         const long long total = cost + expansion.cost;
         auto iter = m_nodes.find(expansion.next);
         if (iter != m_nodes.end() && iter->second.cost <= total){
@@ -393,7 +399,20 @@ private:
             at = step.parent;
         }
         std::reverse(legs.begin(), legs.end());
-        return legs;
+        std::vector<PlannedLeg> consolidated;
+        for (const PlannedLeg& planned : legs){
+            if (!consolidated.empty() &&
+                consolidated.back().leg.direction == planned.leg.direction &&
+                !consolidated.back().leg.ends_at_wall
+            ){
+                consolidated.back().leg.tiles += planned.leg.tiles;
+                consolidated.back().leg.ends_at_wall = planned.leg.ends_at_wall;
+                consolidated.back().after = planned.after;
+            }else{
+                consolidated.push_back(planned);
+            }
+        }
+        return consolidated;
     }
 
     const StoryWorld& m_world;
