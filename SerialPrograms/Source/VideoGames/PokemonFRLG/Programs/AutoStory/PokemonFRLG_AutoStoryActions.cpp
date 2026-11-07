@@ -891,15 +891,30 @@ void play_new_game_to_player_name(ConsoleHandle& console, ProControllerContext& 
     NewGameIntro(console, context, player_name, NewGameIntro::End::PLAYER_NAME_TYPED).run();
 }
 
-void close_trainer_card(ConsoleHandle& console, ProControllerContext& context){
+namespace{
+
+//  After the RNG program `program`: from HOME, if it went there, back to
+//  the game, then B until the overworld.
+void back_to_overworld_after(ConsoleHandle& console, ProControllerContext& context, const std::string& program){
     context.wait_for_all_requests();
     VideoSnapshot screen = console.video().snapshot();
     if (screen && HomeMenuDetector(console, COLOR_RED).detect(screen)){
-        console.log("After SID Helper: on HOME, back to the game.");
+        console.log("After " + program + ": on HOME, back to the game.");
         resume_game_from_home(console, context);
     }
-    //  B closes the card, then the START menu.
     mash_until_overworld(console, context, 20000ms);
+}
+
+} // namespace
+
+void close_trainer_card(ConsoleHandle& console, ProControllerContext& context){
+    //  B closes the card, then the START menu.
+    back_to_overworld_after(console, context, "SID Helper");
+}
+
+void leave_gift_summary(ConsoleHandle& console, ProControllerContext& context){
+    //  B closes the summary, the party, then the START menu.
+    back_to_overworld_after(console, context, "Gift RNG");
 }
 
 

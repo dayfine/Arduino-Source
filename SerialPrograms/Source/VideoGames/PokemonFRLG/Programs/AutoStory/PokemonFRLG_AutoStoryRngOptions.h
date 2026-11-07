@@ -51,6 +51,8 @@ public:
     FloatingPointOption CSF;
     //  Starter RNG's in-game advances offset.
     FloatingPointOption STARTER_INGAME;
+    //  Gift RNG's, for the Magikarp.
+    FloatingPointOption GIFT_INGAME;
 };
 
 
@@ -69,6 +71,9 @@ public:
     //  in "language", logged as "RngPlan:" lines. Throws UserSetupError
     //  when no target passes.
     std::vector<RngAttempt> plan(Logger& logger, Language language, uint16_t tid) const;
+    //  As plan(), for Gift RNG's Magikarp from Route 4's salesman. Throws
+    //  UserSetupError in a language other than English.
+    std::vector<RngAttempt> gift_plan(Logger& logger, Language language, uint16_t tid) const;
     //  SID Helper's candidates for "tid", from the two SID Helper options.
     std::vector<SidCandidate> helper_candidates(uint16_t tid) const;
     //  The SIDs plan() plans for: the SID if set, else helper_candidates().
@@ -91,6 +96,9 @@ public:
 private:
     RngTargetFilters filters(Logger& logger) const;
     std::optional<uint16_t> sid(Logger& logger) const;
+    //  The attempts plan_starter_rng() finds, logged, for `program`
+    //  ("Starter RNG") in the error when there are none.
+    std::vector<RngAttempt> plan_for(Logger& logger, Language language, uint16_t tid, const std::string& program) const;
 };
 
 

@@ -8,6 +8,7 @@
 #include <format>
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
 #include "CommonTools/Async/InferenceRoutines.h"
+#include "CommonTools/VisualDetectors/BlackScreenDetector.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "VideoGames/PokemonFRLG/Inference/Dialogs/PokemonFRLG_BattleDialogs.h"
@@ -15,6 +16,7 @@
 #include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_StartMenuDetector.h"
 #include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleFlashWatcher.h"
 #include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleScreenDetector.h"
+#include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleTextBoxDetector.h"
 #include "VideoGames/PokemonFRLG/PokemonFRLG_Navigation.h"
 #include "PokemonFRLG_PlayerFacingReader.h"
 #include "PokemonFRLG_OverworldWalk.h"
@@ -68,11 +70,8 @@ public:
     virtual std::unique_ptr<VisualInferenceCallback> make_watcher() const override{
         return std::make_unique<BattleScreenWatcher>(COLOR_RED);
     }
-    //  The flashes, the wipe and the opening animation: 3.7s after the step's
-    //  press, twice on Route 1 (console B, 2026-11-01). Other maps open
-    //  battles with other wipes, so elsewhere this is a guess.
     virtual Milliseconds detection_delay() const override{
-        return 3700ms;
+        return OverworldWalkSteps::LATE_WILD_BATTLE_DELAY;
     }
 };
 
@@ -179,15 +178,19 @@ void hold_dpad_running(ProControllerContext& context, Direction direction, Milli
     pbf_wait(context, STEP_RELEASE);
 }
 
+MoveSpeed step_speed(const RouteStep& step, MoveSpeed speed){
+    return step.walk_only ? MoveSpeed::WALK : speed;
+}
+
 Milliseconds tile_time(const RouteStep& step, MoveSpeed speed){
     if (step.surfing){
         return SURF_TILE_TIME;
     }
-    return speed == MoveSpeed::RUN ? RUN_TILE_TIME : TILE_TIME;
+    return step_speed(step, speed) == MoveSpeed::RUN ? RUN_TILE_TIME : TILE_TIME;
 }
 
 Pokemon::LegMover<ProControllerContext> leg_mover(const RouteStep& step, MoveSpeed speed){
-    if (speed == MoveSpeed::RUN && !step.surfing){
+    if (step_speed(step, speed) == MoveSpeed::RUN && !step.surfing){
         return hold_dpad_running;
     }
     return hold_dpad;
@@ -203,7 +206,7 @@ std::string speed_note(const RouteStep& step, MoveSpeed speed){
     }
     return std::format(
         "[Speed] {} {}: {} tiles in {} ms, held {} ms",
-        move_speed_name(speed), Pokemon::direction_name(step.direction), step.tiles,
+        move_speed_name(step_speed(step, speed)), Pokemon::direction_name(step.direction), step.tiles,
         (tile_time(step, speed) * step.tiles).count(), leg_hold_time(step, speed).count()
     );
 }
@@ -262,18 +265,79 @@ void clear_open_message(
     Pokemon::clear_late_interrupts(console, context, interrupts, OPEN_MESSAGE_WATCH, 1);
 }
 
+//  A battle whose flashes were missed shows its HP boxes, which the leg's
+//  watch for a late battle needs, seconds after its text box: in Mt. Moon
+//  the watch after "south 15 (to wall)" ended on the box still empty, the
+//  leg was taken as walked to its wall, and the next leg was walked into
+//  the battle, 5 tiles short of where it was planned from (console B,
+//  2026-11-03, row 00.13).
+namespace{
+
+//  What on screen shows a wild battle on its way: its text box, or the
+//  black of its wipe. Nothing if neither shows.
+const char* battle_on_its_way(ConsoleHandle& console, ProControllerContext& context){
+    context.wait_for_all_requests();
+    VideoSnapshot screen = console.video().snapshot();
+    if (!screen){
+        return nullptr;
+    }
+    if (BattleTextBoxDetector(COLOR_RED).detect(screen)){
+        return "a battle's text box";
+    }
+    if (BlackScreenDetector(COLOR_RED).detect(screen)){
+        return "a black screen";
+    }
+    return nullptr;
+}
+
+} // namespace
+
+size_t clear_unseen_battle(
+    ConsoleHandle& console, ProControllerContext& context,
+    const OverworldInterrupts& wild, const RouteStep& step
+){
+    if (step.action != RouteAction::WALK || step.warps){
+        return 0;
+    }
+    const char* seen = battle_on_its_way(console, context);
+    if (seen == nullptr){
+        return 0;
+    }
+    console.log(std::format("Route: {} after {}, which nothing stopped: watching on for a wild battle.", seen, to_string(step)), COLOR_ORANGE);
+    return Pokemon::clear_late_interrupts(console, context, wild, UNSEEN_BATTLE_WATCH, MAX_INTERRUPTIONS_PER_LEG);
+}
+
+size_t clear_battle_before(
+    ConsoleHandle& console, ProControllerContext& context,
+    const OverworldInterrupts& wild, const RouteStep& step
+){
+    const char* seen = battle_on_its_way(console, context);
+    if (seen == nullptr){
+        return 0;
+    }
+    console.log(std::format("Route: {} before {}: watching on for a wild battle set off before it.", seen, to_string(step)), COLOR_ORANGE);
+    return Pokemon::clear_late_interrupts(console, context, wild, UNSEEN_BATTLE_WATCH, MAX_INTERRUPTIONS_PER_LEG);
+}
+
 //  After a warp's fade: fails, once the battle is fled, if it was a wild
 //  battle's. In run 7 (console B, 2026-11-01) the player had drifted onto
 //  Route 1's grass, and the step meant for Oak's Lab's door set off a
 //  battle; its flashes and wipe passed for the warp's fade, the route went
 //  on as if inside, and the next screen was the battle's FIGHT menu.
-void check_warp_was_no_battle(ConsoleHandle& console, ProControllerContext& context, const RouteStep& step){
+bool run_from_battle_after_warp(ConsoleHandle& console, ProControllerContext& context){
     BattleScreenWatcher battle(COLOR_RED);
     context.wait_for_all_requests();
     if (wait_until(console, context, AFTER_WARP_BATTLE_WATCH, {battle}) < 0){
-        return;
+        return false;
     }
     flee_battle(console, context);
+    return true;
+}
+
+void check_warp_was_no_battle(ConsoleHandle& console, ProControllerContext& context, const RouteStep& step){
+    if (!run_from_battle_after_warp(console, context)){
+        return;
+    }
     OperationFailedExceptionWithScreenshot::fire(
         ErrorReportMode::SEND_ERROR_REPORT,
         "walk_overworld_route(): a wild battle, not the warp to " + step.end.map + ": the player is off the route.",
@@ -428,10 +492,10 @@ void walk_overworld_route(
             break;
         }
         if (step.action != RouteAction::FACE){
-            Pokemon::clear_late_interrupts(
-                console, context, step.wild ? interrupts.wild : interrupts.other,
-                step.wild ? AFTER_WILD_LEG_WATCH : AFTER_LEG_WATCH, MAX_INTERRUPTIONS_PER_LEG
-            );
+            const OverworldInterrupts& watched = step.wild ? interrupts.wild : interrupts.other;
+            if (Pokemon::clear_late_interrupts(console, context, watched, step.wild ? AFTER_WILD_LEG_WATCH : AFTER_LEG_WATCH, MAX_INTERRUPTIONS_PER_LEG) == 0){
+                clear_unseen_battle(console, context, interrupts.wild, step);
+            }
         }
         facing = step.facing_after;
     }

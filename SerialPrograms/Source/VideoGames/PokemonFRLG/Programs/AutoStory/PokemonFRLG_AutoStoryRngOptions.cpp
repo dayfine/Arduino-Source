@@ -31,10 +31,15 @@ RngStopCalibrationOptions::RngStopCalibrationOptions()
         "for Squirtle only: each RNG stop keeps its own.",
         LockMode::LOCK_WHILE_RUNNING, 0.0
     )
+    , GIFT_INGAME(
+        "<b>Gift RNG's In-Game Advances Calibration:</b><br>As in Gift RNG's RNG Calibration, for the Magikarp.",
+        LockMode::LOCK_WHILE_RUNNING, 0.0
+    )
 {
     PA_ADD_OPTION(SEED);
     PA_ADD_OPTION(CSF);
     PA_ADD_OPTION(STARTER_INGAME);
+    PA_ADD_OPTION(GIFT_INGAME);
 }
 
 RngCalibrations RngStopCalibrationOptions::calibration(const FloatingPointOption& ingame) const{
@@ -162,6 +167,24 @@ std::vector<SidCandidate> StarterRngPlanOptions::plan_candidates(Logger& logger,
 }
 
 std::vector<RngAttempt> StarterRngPlanOptions::plan(Logger& logger, Language language, uint16_t tid) const{
+    return plan_for(logger, language, tid, "Starter RNG");
+}
+
+std::vector<RngAttempt> StarterRngPlanOptions::gift_plan(Logger& logger, Language language, uint16_t tid) const{
+    //  In English, Gift RNG's Magikarp is timed as Starter RNG's Squirtle is:
+    //  the same title screen offset (-845 ms), 200 Continue Screen frames, an
+    //  in-game wait of at least 7,500 ms (7,200 ms of presses and a 300 ms
+    //  gap) and advances offset 160, so Starter RNG's plan suits it. The
+    //  salesman's text takes 1.5 s less in French and 1.5 s more in Japanese.
+    if (language != Language::English){
+        throw UserSetupError(logger, "RNG plan: Gift RNG in AutoStory plans for English games only.");
+    }
+    return plan_for(logger, language, tid, "Gift RNG");
+}
+
+std::vector<RngAttempt> StarterRngPlanOptions::plan_for(
+    Logger& logger, Language language, uint16_t tid, const std::string& program
+) const{
     //  SID Helper's candidates are logged even with the SID known, to place
     //  it among them (rng_log_confirmed()).
     const std::vector<SidCandidate> helper = helper_candidates(tid);
@@ -183,7 +206,7 @@ std::vector<RngAttempt> StarterRngPlanOptions::plan(Logger& logger, Language lan
     });
     if (attempts.empty()){
         throw UserSetupError(logger,
-            "RNG plan: no Starter RNG target passes the natures, minimum IVs and shiny options for TID " + std::to_string(tid) + "."
+            "RNG plan: no " + program + " target passes the natures, minimum IVs and shiny options for TID " + std::to_string(tid) + "."
         );
     }
     for (size_t c = 0; c < attempts.size(); c++){

@@ -2,14 +2,17 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  The Mart cursor's moves, and the bag's rows as the story counts them.
+ *  The Mart cursor's moves, the bag's rows as the story counts them, and
+ *  where the story's wild battle seen late places a stopped leg.
  *
  */
 
 #include <cmath>
 #include <format>
 #include <functional>
+#include <optional>
 #include <string_view>
+#include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/Logging/AbstractLogger.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
@@ -17,6 +20,8 @@
 #include "CommonFramework/Language.h"
 #include "Tests/ImageUnitTest.h"
 #include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_SaveCardReader.h"
+#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
+#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSim.h"
 #include "PokemonFRLG_AutoStoryActions.h"
 #include "PokemonFRLG_AutoStoryBattle.h"
 #include "PokemonFRLG_AutoStoryBattleDecisions.h"
@@ -229,6 +234,69 @@ UnitTestResult test_unread_language(Logger& logger){
     return true;
 }
 
+//  The open leg through Route 1's grass on the way from Viridian Mart to
+//  Oak's Lab ("south 20"), and the tile it starts from.
+struct GrassLeg{
+    MapPosition start;
+    RouteStep step;
+};
+std::optional<GrassLeg> route1_grass_leg(const std::vector<MapData>& maps){
+    const MapPosition mart{"ViridianCity_Mart", {4, 3}};
+    const RouteGoal lab{MapPosition{"PalletTown_ProfessorOaksLab", {6, 11}}, std::nullopt};
+    const std::optional<std::vector<RouteStep>> route = plan_overworld_route(maps, mart, lab, default_route_costs(), Direction::WEST);
+    if (!route){
+        return std::nullopt;
+    }
+    MapPosition start = mart;
+    for (const RouteStep& step : *route){
+        if (step.action == RouteAction::WALK && step.wild && !step.to_wall && !step.warps && step.tiles >= 16){
+            return GrassLeg{start, step};
+        }
+        start = step.end;
+    }
+    return std::nullopt;
+}
+
+//  How many tiles of `leg` the player walked to `at`, or -1 if `at` is off it.
+int tiles_walked(const std::vector<MapData>& maps, const GrassLeg& leg, const MapPosition& at){
+    const std::vector<MapPosition> tiles = leg_tiles(maps, leg.start, leg.step);
+    for (size_t c = 0; c < tiles.size(); c++){
+        if (tiles[c] == at){
+            return (int)c;
+        }
+    }
+    return -1;
+}
+
+//  r16 and r17 (console B, 2026-11-01), Route 1: a wild battle on the first
+//  grass step of "south 20" whose flashes were missed shows "Wild <Pokemon>
+//  appeared!" 3.7 s after the step's press. The story's interrupt for it
+//  must place the stop where the battle stopped the player, as the walker's
+//  does: with 2 s it put them about 6 tiles further on.
+UnitTestResult test_late_battle_placed(Logger&){
+    const std::vector<MapData> maps = overworld_maps();
+    const std::optional<GrassLeg> leg = route1_grass_leg(maps);
+    if (!leg){
+        return "Expected an open leg of 16 tiles or more through Route 1's grass from Viridian Mart to Oak's Lab.";
+    }
+    SimScript script;
+    script.encounters = {{.grass_step = 1, .seen_late = true}};
+    OverworldSim sim(maps, leg->start, leg->step.direction, script);
+    Supplies supplies;
+    const OverworldInterruptSet story = story_interrupts(supplies, false, StoryChecks::FAST, Language::English);
+    OverworldSimWalker walker(sim, {}, story);
+    const StepOutcome outcome = walker.calls().walk(leg->step, leg->step.direction);
+    const int walked = tiles_walked(maps, *leg, sim.state().position);
+    if (outcome.end != StepEnd::STOPPED || !outcome.walked || walked < outcome.walked->min || outcome.walked->max < walked){
+        return std::format(
+            "Expected \"{}\" from {} stopped and placed on tile {} ({}), where the battle stopped the player; placed on tiles {} to {}.",
+            to_string(leg->step), to_string(leg->start), walked, to_string(sim.state().position),
+            outcome.walked ? outcome.walked->min : -1, outcome.walked ? outcome.walked->max : -1
+        );
+    }
+    return true;
+}
+
 
 //  battle_shows(), the battle loop's look at whether the battle is still on
 //  screen, on console B's captures.
@@ -311,6 +379,10 @@ const AutoStoryItemsTestCase AUTO_STORY_ITEMS_CASES[] = {
     {
         .input = {.name = "no item names read in a language without them", .body = test_unread_language},
         .expectation = {.description = "handles unsupported languages gracefully"},
+    },
+    {
+        .input = {.name = "a wild battle seen late is placed where it stopped the leg", .body = test_late_battle_placed},
+        .expectation = {.description = "places late wild battle at interruption point"},
     },
 };
 

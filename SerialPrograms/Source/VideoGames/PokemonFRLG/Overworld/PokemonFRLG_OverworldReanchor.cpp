@@ -177,6 +177,7 @@ std::optional<std::pair<std::vector<Hypothesis>, RouteStep>> hold_all(
         add_unique(ends, Hypothesis{position.world, wall->end});
         hold.tiles = std::max(hold.tiles, wall->tiles);
         hold.wild = hold.wild || wall->wild;
+        hold.walk_only = hold.walk_only || wall->walk_only;
         hold.end = wall->end;
     }
     return std::make_pair(std::move(ends), hold);

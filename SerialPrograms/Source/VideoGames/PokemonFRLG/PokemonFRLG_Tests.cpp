@@ -13,6 +13,7 @@
 #include "Inference/Box/PokemonFRLG_BoxCellReader.h"
 #include "Inference/Box/PokemonFRLG_BoxGenderReader.h"
 #include "Inference/Box/PokemonFRLG_BoxSelectionModeDetector.h"
+#include "Inference/Box/PokemonFRLG_PcScreenReader.h"
 #include "Inference/Dialogs/PokemonFRLG_BattleDialogs.h"
 #include "Inference/Dialogs/PokemonFRLG_DialogDetector.h"
 #include "Inference/Dialogs/PokemonFRLG_PrizeSelectDetector.h"
@@ -25,8 +26,10 @@
 #include "Inference/Menus/PokemonFRLG_PartyMenuDetector.h"
 #include "Inference/Menus/PokemonFRLG_SaveCardReader.h"
 #include "Inference/Menus/PokemonFRLG_SummaryMovesReader.h"
+#include "Inference/Menus/PokemonFRLG_TeachScreenReader.h"
 #include "Inference/PokemonFRLG_BattleLevelUpReader.h"
 #include "Inference/PokemonFRLG_BattleSelectionArrowDetector.h"
+#include "Inference/PokemonFRLG_BattleTextBoxDetector.h"
 #include "Inference/PokemonFRLG_PartyLevelUpReader.h"
 #include "Inference/PokemonFRLG_ShinySymbolDetector.h"
 #include "Inference/PokemonFRLG_StatsReader.h"
@@ -36,13 +39,18 @@
 #include "Overworld/PokemonFRLG_OverworldReanchor.h"
 #include "Overworld/PokemonFRLG_OverworldRecovery.h"
 #include "Overworld/PokemonFRLG_OverworldRoute.h"
+#include "Overworld/PokemonFRLG_OverworldSim.h"
 #include "Overworld/PokemonFRLG_OverworldWalk.h"
 #include "Overworld/PokemonFRLG_PlayerFacingReader.h"
 #include "Programs/PokemonFRLG_NamingScreenKeyboard.h"
 #include "PokemonFRLG_Navigation.h"
+#include "Programs/AutoStory/PokemonFRLG_AutoStoryAbilities.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryBattle.h"
+#include "Programs/AutoStory/PokemonFRLG_AutoStoryCapture.h"
+#include "Programs/AutoStory/PokemonFRLG_AutoStoryPcStorage.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryRngLoop.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryTable.h"
+#include "Programs/RngManipulation/PokemonFRLG_GiftRngAttempts_Tests.h"
 #include "Programs/RngManipulation/PokemonFRLG_RngPlanInputs_Tests.h"
 #include "Programs/RngManipulation/PokemonFRLG_RngPlanLog_Tests.h"
 #include "Programs/RngManipulation/PokemonFRLG_RngPlanTracker_Tests.h"
@@ -867,6 +875,18 @@ void add_tests_NamingText(UnitTestDatabase& database){
     }
 }
 
+//  The RNG programs' searches, plans and loops.
+void add_tests_RngManipulation(UnitTestDatabase& database){
+    add_tests_RngTargetSearch(database);
+    add_tests_RngPlanInputs(database);
+    add_tests_RngPlan(database);
+    add_tests_RngPlanTracker(database);
+    add_tests_RngPlanLog(database);
+    add_tests_RngSteps(database);
+    add_tests_StarterRngLoop(database);
+    add_tests_GiftRngAttempts(database);
+}
+
 } // namespace
 
 static void add_tests_AutoStoryReaders(UnitTestDatabase& database){
@@ -874,6 +894,7 @@ static void add_tests_AutoStoryReaders(UnitTestDatabase& database){
     add_tests_OptionMenuReader(database);
     add_tests_SaveCardReader(database);
     add_tests_SummaryMovesReader(database);
+    add_tests_TeachScreenReader(database);
 }
 
 void add_tests(UnitTestDatabase& database){
@@ -882,6 +903,7 @@ void add_tests(UnitTestDatabase& database){
     add_tests_BoxCellReader(database);
     add_tests_BoxGenderReader(database);
     add_tests_BoxSelectionModeDetector(database);
+    add_tests_PcScreenReader(database);
     add_tests_SelectionDialogDetector(database);
     add_tests_ShinySymbolDetector(database);
     add_tests_PrizeSelectDetector(database);
@@ -899,6 +921,7 @@ void add_tests(UnitTestDatabase& database){
     add_tests_EliteFourRoomDetector(database);
     add_tests_HallOfFameSavingDetector(database);
     add_tests_BattleMoveSelectionArrow(database);
+    add_tests_BattleTextBoxDetector(database);
     add_tests_BagDetector(database);
     add_tests_AutoStoryReaders(database);
     add_tests_ExitWildBattle(database);
@@ -907,22 +930,20 @@ void add_tests(UnitTestDatabase& database){
     add_tests_OverworldWalk(database);
     add_tests_OverworldReanchor(database);
     add_tests_OverworldRecovery(database);
+    add_tests_OverworldSim(database);
     add_tests_PlayerFacingReader(database);
     add_tests_AutoStory(database);
     add_tests_AutoStorySimulation(database);
     add_tests_AutoStoryItems(database);
     add_tests_AutoStoryRngLoop(database);
+    add_tests_AutoStoryCapture(database);
+    add_tests_AutoStoryPcStorage(database);
+    add_tests_AutoStoryAbilities(database);
     add_tests_NamingCursor(database);
     add_tests_NamingPlan(database);
     add_tests_NamingKeys(database);
     add_tests_NamingText(database);
-    add_tests_RngTargetSearch(database);
-    add_tests_RngPlanInputs(database);
-    add_tests_RngPlan(database);
-    add_tests_RngPlanTracker(database);
-    add_tests_RngPlanLog(database);
-    add_tests_RngSteps(database);
-    add_tests_StarterRngLoop(database);
+    add_tests_RngManipulation(database);
 }
 
 

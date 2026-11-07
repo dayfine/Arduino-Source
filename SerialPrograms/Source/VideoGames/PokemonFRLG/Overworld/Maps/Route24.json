@@ -103,37 +103,61 @@
             "name": "camper",
             "kind": "npc",
             "x": 12,
-            "y": 19
+            "y": 19,
+            "facing": "west",
+            "trainer": {
+                "sight": 2
+            }
         },
         {
             "name": "lass",
             "kind": "npc",
             "x": 10,
-            "y": 22
+            "y": 22,
+            "facing": "east",
+            "trainer": {
+                "sight": 2
+            }
         },
         {
             "name": "youngster",
             "kind": "npc",
             "x": 12,
-            "y": 25
+            "y": 25,
+            "facing": "west",
+            "trainer": {
+                "sight": 2
+            }
         },
         {
             "name": "lass",
             "kind": "npc",
             "x": 10,
-            "y": 28
+            "y": 28,
+            "facing": "east",
+            "trainer": {
+                "sight": 2
+            }
         },
         {
             "name": "bug_catcher",
             "kind": "npc",
             "x": 12,
-            "y": 31
+            "y": 31,
+            "facing": "west",
+            "trainer": {
+                "sight": 2
+            }
         },
         {
             "name": "camper",
             "kind": "npc",
             "x": 5,
-            "y": 21
+            "y": 21,
+            "facing": "north",
+            "trainer": {
+                "sight": 5
+            }
         },
         {
             "name": "item_ball",

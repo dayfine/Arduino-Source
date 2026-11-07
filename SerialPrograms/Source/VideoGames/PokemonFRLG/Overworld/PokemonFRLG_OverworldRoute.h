@@ -53,6 +53,9 @@ struct RouteStep{
     bool warps = false;
     //  WALK: on the water, where the player moves twice as fast.
     bool surfing = false;
+    //  WALK: on a map where the game doesn't let the player run (indoors,
+    //  MapData::allow_running): B held there still walks.
+    bool walk_only = false;
     //  WALK: a wall stops the player at the end, so the leg can be held for
     //  longer than it takes and still ends on its tile.
     bool to_wall = false;
@@ -117,12 +120,13 @@ std::optional<std::vector<RouteStep>> plan_overworld_route(
 );
 
 //  Holding `direction` from `from`, on the water if `surfing`: where a wall
-//  stops the player, how many tiles on, and whether any tile on the way is
-//  tall grass or water.
+//  stops the player, how many tiles on, whether any tile on the way is tall
+//  grass or water, and whether the map lets the player run.
 struct WallHold{
     MapPosition end;
     int tiles = 0;
     bool wild = false;
+    bool walk_only = false;
 };
 //  Nothing unless every step on the way is a plain walk: a warp, Surf, a
 //  ledge, a person, a sign that would speak, or the edge of the loaded maps
