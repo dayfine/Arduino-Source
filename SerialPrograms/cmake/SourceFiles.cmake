@@ -1787,6 +1787,8 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonFRLG/Programs/PokemonFRLG_SafariOptimalAction.h
     Source/VideoGames/PokemonFRLG/Programs/PokemonFRLG_StartMenuNavigation.cpp
     Source/VideoGames/PokemonFRLG/Programs/PokemonFRLG_StartMenuNavigation.h
+    Source/VideoGames/PokemonFRLG/Programs/PokemonFRLG_TrainerCard.cpp
+    Source/VideoGames/PokemonFRLG/Programs/PokemonFRLG_TrainerCard.h
     Source/VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_BlindNavigation.cpp
     Source/VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_BlindNavigation.h
     Source/VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_EggRng.cpp
